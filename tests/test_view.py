@@ -402,3 +402,41 @@ def test_missing_save_exits_1(lib, game_dir, tmp_path):
     result = subprocess.run([ROOT / "build" / "dm2", "--save", tmp_path / "none.DAT"], capture_output=True, timeout=10)
     assert result.returncode == 1
     assert b"cannot load the save" in result.stderr
+
+
+G_MAP_COLUMNS = 0x7F3C8
+
+
+def test_door_states_match_original(lib, loaded, original_view):
+    # start.DAT has no half open or broken door: set the door state of 10 doors in front of the party in both.
+    game = WeatherGame.in_dll(lib, "game")
+    saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
+    lib.dungeon_square_byte.restype = u8_p
+    emu = original_view.emu
+    doors = []
+    for map_ in range(lib.dungeon_map_count()):
+        lib.view_enter_map(map_)
+        for x in range(lib.dungeon_map_width(map_)):
+            for y in range(lib.dungeon_map_height(map_)):
+                for direction in range(4):
+                    if len(doors) == 10 or not lib.dungeon_square(map_, x, y) >> 5:
+                        continue
+                    c_view_squares(lib, x, y, direction)
+                    door = (ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "view_squares")[3 * SQUARE_SIZE:]
+                    if struct.unpack_from("<H", bytes(door), 2)[0] == 0x11:  # a door front ahead
+                        doors.append((map_, x, y, direction, door[0], door[1]))
+    assert len(doors) == 10
+    for map_, x, y, direction, door_x, door_y in doors:
+        square = lib.dungeon_square_byte(map_, door_x, door_y)
+        columns = emu.read_u32(emu.read_u32(G_MAP_COLUMNS) + 4 * map_)
+        original_square = emu.read_u32(columns + 4 * door_x) + door_y
+        saved_square = square[0]
+        for state in (1, 2, 3, 5):  # three half open states, broken
+            square[0] = saved_square & ~7 | state
+            emu.write(original_square, bytes([square[0]]))
+            mine = c_view(lib, map_, x, y, direction, 0)
+            assert mine == original_view.draw(map_, x, y, direction, 0, b"\xff" + bytes(9)), (map_, x, y, direction, state)
+        square[0] = saved_square
+        emu.write(original_square, bytes([saved_square]))
+    game.party_x, game.party_y, game.party_dir, game.party_map = saved
+    lib.view_enter_map(game.party_map)

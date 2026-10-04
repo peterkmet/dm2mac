@@ -123,8 +123,8 @@ enum door_state { DOOR_OPEN, DOOR_DESTROYED = 5 };
 #define TEXT_SUBTYPE_SHIFT 11
 #define TEXT_SUBTYPE_MASK 0x1f
 enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT };
-#define SENSOR_ACTIVE 0x0001
-#define SENSOR_STATE_SHIFT 2
+#define SENSOR_ACTIVE_BIT 0         /* bits of SENSOR_FLAGS */
+#define SENSOR_STATE_BIT 2
 #define SENSOR_ORNAMENT_SHIFT 12
 enum sensor_type {
     SENSOR_TOGGLE_ORNAMENT = 0x17, SENSOR_TIMED_ORNAMENT = 0x18, SENSOR_HOLDER = 0x1a, SENSOR_STATE_MATCH = 0x1b,
@@ -575,7 +575,7 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
             ornament = sensor_ornament(thing, dungeon_map_wall_ornaments(view.map));
             if (ornament == ORNAMENT_NONE) continue;
             uint16_t data = thing_word(thing, SENSOR_TYPE_DATA);
-            int active = sensor_bit(thing, 0), state = sensor_bit(thing, SENSOR_STATE_SHIFT);
+            int active = sensor_bit(thing, SENSOR_ACTIVE_BIT), state = sensor_bit(thing, SENSOR_STATE_BIT);
             switch (data & SENSOR_TYPE_MASK) {
             case SENSOR_TOGGLE_ORNAMENT: animated = state; frame = state; break;
             case SENSOR_TIMED_ORNAMENT: case SENSOR_TIMED_ORNAMENT_2: frame = active ^ state; break;
@@ -644,7 +644,7 @@ static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square
             }
         } else if (thing_type(thing) == THING_SENSOR) {
             uint16_t data = thing_word(thing, SENSOR_TYPE_DATA);
-            int type = data & SENSOR_TYPE_MASK, active = sensor_bit(thing, 0);
+            int type = data & SENSOR_TYPE_MASK, active = sensor_bit(thing, SENSOR_ACTIVE_BIT);
             if (type == SENSOR_SHOP) s->side[3] = 0;
             ornament = sensor_ornament(thing, dungeon_map_floor_ornaments(view.map));
             if (ornament == ORNAMENT_NONE) continue;
