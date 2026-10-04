@@ -384,6 +384,7 @@ EDGE_EVENTS = [
     "b4660c", "e40000", "943c40", "e4007f", "b40720",
     *[f"9{ch:x}{0x30 + ch:02x}50" for ch in range(5, 16)],
     "bc7900", "bd7900", "b57b00", "b60730", "a03c10", "d01000", "e00040",
+    "c711", "973c40", "c911", "99233f",  # additive instruments (17) on a melodic and the drum channel
 ]
 
 

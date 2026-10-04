@@ -218,10 +218,9 @@ static int drum_pitch(int note)
     return banks[FM_BANK_DRUM][bank_names[FM_BANK_DRUM] + note * BNK_NAME_SIZE + BNK_NAME_DRUM_PITCH];
 }
 
-/* Fix: the driver reads outside its table for notes beyond it; clamp to the table. */
 static uint32_t note_freq(int note)
 {
-    return note_freq_table[note < 0 ? 0 : note >= FREQ_ENTRIES ? FREQ_ENTRIES - 1 : note];
+    return note_freq_table[note < 0 ? 0 : note >= FREQ_ENTRIES ? FREQ_ENTRIES - 1 : note];  /* fix: clamped */
 }
 
 /* Picks a voice for a new note: a free voice, else a voice of the first channel without pitch bend. */
@@ -399,8 +398,8 @@ static void pitch_bend(int channel, int bend)
 void fm_send(const uint8_t *event)
 {
     if (!banks[FM_BANK_MELODIC] || !banks[FM_BANK_DRUM]) return;
-    /* Fix: data bytes are 7-bit; the driver indexes its tables with them unchecked. */
-    int channel = event[0] & MIDI_CHANNEL_MASK, data1 = event[1] & MIDI_DATA_MASK, data2 = event[2] & MIDI_DATA_MASK;
+    int channel = event[0] & MIDI_CHANNEL_MASK;
+    int data1 = event[1] & MIDI_DATA_MASK, data2 = event[2] & MIDI_DATA_MASK;  /* fix: the driver does not mask */
     switch (event[0] & MIDI_STATUS_MASK) {
     case MIDI_NOTE_OFF: note_off(data1, data2, channel); break;
     case MIDI_NOTE_ON:
