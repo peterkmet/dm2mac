@@ -67,7 +67,13 @@ def image_items(lib, gd):
         _, _, key_type, _, language, _, value = struct.unpack_from(">6BH", keys, 20 + 8 * i)
         if key_type == 1 and language & 0xF0 in (0, 0x10):
             items.add(value & 0x7FFF)
-    return sorted(i for i in items if item_bytes(lib, gd, i)[3] >> 2 in (FORMAT_4BPP, FORMAT_8BPP, FORMAT_RAW))
+    return sorted(items)
+
+
+def image_format(raw):
+    """8 bpp, raw, or 4 bpp: the format bits of a 4 bpp image can hold its y offset."""
+    fmt = raw[3] >> 2
+    return fmt if fmt in (FORMAT_8BPP, FORMAT_RAW) else FORMAT_4BPP
 
 
 def poisoned(size):
@@ -82,7 +88,7 @@ def image_size(lib, gd, item):
 def original_decode(emu, raw, size, base=None):
     emu.write(SRC, raw)
     emu.write(DST, bytes([POISON]) * (size + MARGIN))
-    fmt = raw[3] >> 2
+    fmt = image_format(raw)
     if base is not None:
         emu.write(BASE, base)
         emu.call(IMAGE_DECODE_4BPP_DELTA, BASE, SRC, DST)
@@ -133,13 +139,13 @@ def test_every_image_matches_original(lib, gd, emu):
         assert size >= 0, item
         dst = poisoned(size + MARGIN)
         assert lib.gdat_decode_image(gd, item, dst, size) == OK, item
-        fmt = raw[3] >> 2
+        fmt = image_format(raw)
         counts[fmt] += 1
         if fmt == FORMAT_RAW:
             assert bytes(dst[:size]) == raw[10:10 + size], item
         else:
             assert bytes(dst) == original_decode(emu, raw, size), item
-    assert counts == {FORMAT_4BPP: 803, FORMAT_8BPP: 3166, FORMAT_RAW: 6}
+    assert counts == {FORMAT_4BPP: 827, FORMAT_8BPP: 3166, FORMAT_RAW: 6}  # 24 of the 4 bpp images have a y offset
 
 
 def test_delta_decoder_matches_original(lib, gd, emu):

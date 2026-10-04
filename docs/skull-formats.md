@@ -72,9 +72,10 @@ reDM2 measurements for the shipped file:
 - The delta table key `(0,0,8,0)` is absent. `g_gdat_base_image_count` (`0x7fabe`) stays 0. Thus `image_decode_4bpp_delta` does not run with the shipped file.
 - 1442 items have a gate outside `{0, 31, -32}` and are not images. The decode entry does not reject them. Do not decode them in the Step 8 test.
 - Step 8 sweep (`tests/test_gdat.py`): the English image keys (type 1) point to 803 4-bit, 3166 8-bit, and 6 uncompressed images, and to 24 items with other gates. All 3969 compressed images decode byte-equal to the original decoders. 167 gate-0 items of types 2, 4, 7, 8, and 9 are not valid 4-bit streams.
+- Step 12: the 24 image items with other gates are 4-bit images. The gate (top 6 bits of word 1) holds the y offset and the top 6 bits of word 0 hold the x offset of the image (`gdat_get_image_offset`, `0x3eed3`). An 8-bit image holds its offset in bytes 4 and 5. When the top 6 bits of word 0 are `-32`, the offset is the value key `(category, index, 0x0c, entry)`. All 827 4-bit images decode byte-equal.
 - An uncompressed image holds u16 bits per pixel (4 or 8) at item + 4 and the pixels at item + 10. A 4-bit image (compressed or not) ends with its 16-byte color map.
 - The palette item `(1,0,9,254)` has 256 entries of 4 bytes: color index, then 6-bit red, green, blue.
-- The layout item `(1,0,4,0)` is raw bytes: u16 magic `0xfc0d`, u16 group count, group ranges, then `{x, y, w, h}` records. `zone_unpack_layout` (`0x19d0e`) reads it.
+- The layout item `(1,0,4,0)` is raw bytes: u16 magic `0xfc0d`, u16 group count, group ranges, then `{anchor type, parent, x, y}` records (`port/src/zone.h`). `zone_unpack_layout` (`0x19d0e`) reads it.
 
 ## 1. Digital sound effects
 

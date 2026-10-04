@@ -34,7 +34,6 @@
 #define IMAGE_FORMAT_BYTE 3
 #define IMAGE_FORMAT_SHIFT 2
 #define IMAGE_DIM_MASK 0x3ff
-#define FORMAT_4BPP 0x00
 #define FORMAT_8BPP 0x1f
 #define FORMAT_RAW 0x20
 #define RAW_BPP 4
@@ -180,10 +179,10 @@ static int image_header(const gdat_t *g, int item, const uint8_t **data, uint32_
     int format = (*data)[IMAGE_FORMAT_BYTE] >> IMAGE_FORMAT_SHIFT;
     *width = image_dim(*data, IMAGE_WIDTH);
     *height = image_dim(*data, IMAGE_HEIGHT);
-    if (format == FORMAT_4BPP) *bpp = 4;
-    else if (format == FORMAT_8BPP) *bpp = 8;
+    if (format == FORMAT_8BPP) *bpp = 8;
     else if (format == FORMAT_RAW && *size >= RAW_PIXELS) *bpp = le16(*data + RAW_BPP);
-    else return GDAT_ERR_NOT_IMAGE;
+    else if (format == FORMAT_RAW) return GDAT_ERR_NOT_IMAGE;
+    else *bpp = 4;  /* the format bits of a 4 bpp image can hold its y offset (gdat_image_offset) */
     if (*bpp != 4 && *bpp != 8) return GDAT_ERR_NOT_IMAGE;
     return format;
 }
@@ -203,8 +202,8 @@ int gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size)
     int width, height, bpp;
     int format = image_header(g, item, &data, &size, &width, &height, &bpp);
     if (format < 0) return format;
-    if (format == FORMAT_4BPP) return image_decode_4bpp(data, size, NULL, dst, dst_size);
     if (format == FORMAT_8BPP) return image_decode_8bpp(data, size, dst, dst_size);
+    if (format != FORMAT_RAW) return image_decode_4bpp(data, size, NULL, dst, dst_size);
     size_t bytes = image_bytes(width, height, bpp);
     if (RAW_PIXELS + bytes > size) return GDAT_ERR_DATA;
     if (bytes > dst_size) return GDAT_ERR_SPACE;
