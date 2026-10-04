@@ -117,9 +117,10 @@ def test_header_and_keys(lib, gd):
 def test_palette(lib, gd):
     raw = item_bytes(lib, gd, 206)
     rgb = (ctypes.c_uint8 * 3)()
-    for color in (0, 1, 128, 255):
+    for color in range(256):
         assert lib.gdat_palette_color(gd, color, rgb) == OK
-        assert bytes(rgb) == raw[4 * color + 1:4 * color + 4]
+        assert bytes(rgb) == bytes(v >> 2 for v in raw[4 * color + 1:4 * color + 4])
+    assert lib.gdat_palette_color(gd, 15, rgb) == OK and bytes(rgb) == bytes((236 >> 2, 183 >> 2, 72 >> 2))
     assert lib.gdat_palette_color(gd, 256, rgb) != OK
 
 

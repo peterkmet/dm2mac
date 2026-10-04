@@ -238,7 +238,7 @@ int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[3])
     const uint8_t *palette = gdat_item(g, gdat_find(g, PALETTE_CATEGORY, PALETTE_INDEX, PALETTE_TYPE, PALETTE_ENTRY), &size);
     if (!palette || size < GDAT_PALETTE_COLORS * PALETTE_ENTRY_SIZE) return GDAT_ERR_FORMAT;
     if (color < 0 || color >= GDAT_PALETTE_COLORS) return GDAT_ERR_ITEM;
-    memcpy(rgb, palette + color * PALETTE_ENTRY_SIZE + PALETTE_RED, 3);
+    for (int i = 0; i < 3; i++) rgb[i] = palette[color * PALETTE_ENTRY_SIZE + PALETTE_RED + i] >> 2;  /* the file holds 8-bit values, the VGA DAC takes 6 bits */
     return GDAT_OK;
 }
 
