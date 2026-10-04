@@ -21,7 +21,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - One function does one game task. Split a long original function when parts have their own meaning.
 4. Each non-trivial function has a one-line comment that tells what it does in game terms. The comment does not repeat the code, and does not give the original address. The address belongs in `docs/skull-symbols.csv`.
 5. Keep original quirks only when they change what the player sees. Fix the original bugs that are clearly bugs (stale registers, overflows), and mark each fix with a short comment.
-6. Read game data at run time. Do not copy game tables into the source.
+6. Read the data files (`DUNGEON.DAT`, `GRAPHICS.DAT`, saves) at run time. Do not copy their content into the source. A table that exists only in `SKULL.EXE` goes into the source as a named `const` array with a one-line comment that tells its game meaning. No unexplained numbers or strings.
 
 ## Check before a step is done
 
