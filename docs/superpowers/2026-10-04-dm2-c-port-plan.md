@@ -88,7 +88,7 @@ Each step ends with green tests and a commit. A fresh subagent executes each ste
 
 - Classify all functions of `SKULL.EXE` and the main globals by subsystem: runtime library, memory, file I/O, graphics, palette, text, input, sound, music, dungeon data, dungeon view, outdoor view, weather, day and night, interface, champions, inventory, items, money and shops, creatures, minions, projectiles, magic, timeline, Skullkeep machines, main loop, save and load, start menu, end of game.
 - Give each function a descriptive name and a C signature. Write `docs/skull-symbols.csv` and `docs/skull-map.md` (entry point, main loop, call graph between subsystems, key data structures with offsets).
-- Answer the open points of the PRD and record the answers in `docs/`: format of digital sounds, location of HMP songs, effect of the SVGA option, purpose of `DUNGENB.DAT` and `GRAPHIC2.DAT`, the MIDI to OPL conversion in `HMIMDRV.386`.
+- Answer the open points of the PRD and record the answers in `docs/`: format of digital sounds, location of HMP songs, effect of the SVGA option, purpose of `DUNGENB.DAT` and `GRAPHIC2.DAT`, the MIDI to OPL conversion in `HMIMDRV.386`, the PIT divisor that SKULL.EXE programs; update `PIT_DIVISOR` in `port/src/platform.c` if it differs from the provisional 65536.
 - Re-run the decompiler with `ApplySymbols.java`.
 - Test: a pytest validates the CSV (unique addresses, every address is a function start in `decomp/SKULL.c`, no empty names, each subsystem from the list is valid).
 

@@ -7,7 +7,7 @@
 uint8_t fb[SCREEN_H][SCREEN_W] = { 0 }; /* initialized: keeps it out of __common, which ld warns about */
 uint8_t palette[PALETTE_COLORS][RGB_CHANNELS];
 
-/* Repeats the high bits in the low bits, so 0 gives 0 and 63 gives 255. */
+/* Repeats the high bits in the low bits, so 0 gives 0 and 63 gives 255; DOSBox uses the same v<<2|v>>4. */
 uint8_t video_vga_to_8bit(uint8_t v)
 {
     return (uint8_t)(v << (CHANNEL_BITS - VGA_BITS) | v >> (2 * VGA_BITS - CHANNEL_BITS));

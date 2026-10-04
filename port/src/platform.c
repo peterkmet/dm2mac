@@ -4,7 +4,7 @@
 #include "video.h"
 
 #define PIT_CLOCK_HZ 1193182 /* PIT input clock */
-#define PIT_DIVISOR 65536    /* DOS default divisor, about 18.2065 Hz; Step 5 confirms the rate of SKULL.EXE */
+#define PIT_DIVISOR 65536    /* provisional DOS default, about 18.2065 Hz */
 #define TICK_NS ((Uint64)SDL_NS_PER_SECOND * PIT_DIVISOR / PIT_CLOCK_HZ)
 #define ARGB_BYTES 4
 #define FILTER_MAX 3
@@ -75,7 +75,6 @@ int plat_poll(PlatEvent *e)
             if (ev.key.repeat) break;
             e->type = PLAT_KEY;
             e->key = ev.key.key;
-            e->modifiers = ev.key.mod;
             return 1;
         case SDL_EVENT_MOUSE_MOTION:
             SDL_ConvertEventToRenderCoordinates(ren, &ev); /* window points -> output pixels */

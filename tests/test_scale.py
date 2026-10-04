@@ -37,3 +37,9 @@ def test_unknown_filter_exits_2(lib, args, env):
     result = subprocess.run([ROOT / "build" / "dm2", *args], env=environ, capture_output=True, timeout=10)
     assert result.returncode == 2
     assert b"unknown filter bad" in result.stderr
+
+
+def test_filter_without_value_exits_2(lib):
+    result = subprocess.run([ROOT / "build" / "dm2", "--filter"], capture_output=True, timeout=10)
+    assert result.returncode == 2
+    assert b"--filter needs a value" in result.stderr

@@ -27,9 +27,15 @@ static void test_pattern(void)
 int main(int argc, char **argv)
 {
     const char *data = "game", *filter = SDL_getenv("DM2_FILTER");
-    for (int i = 1; i < argc - 1; i++) {
-        if (!strcmp(argv[i], "--data")) data = argv[i + 1];
-        if (!strcmp(argv[i], "--filter")) filter = argv[i + 1];
+    for (int i = 1; i < argc; i++) {
+        int is_data = !strcmp(argv[i], "--data"), is_filter = !strcmp(argv[i], "--filter");
+        if (!is_data && !is_filter) continue;
+        if (i + 1 == argc) {
+            fprintf(stderr, "%s needs a value\n", argv[i]);
+            return EXIT_USAGE;
+        }
+        if (is_data) data = argv[++i];
+        else filter = argv[++i];
     }
     int factor = filter ? scale_filter_factor(filter) : 1;
     if (!factor) {
