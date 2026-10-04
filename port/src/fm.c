@@ -208,15 +208,14 @@ void fm_free_banks(void)
     }
 }
 
-/* The packed record of an instrument; indexes are 7-bit MIDI data. */
 static const uint8_t *instrument(int bank, int index)
 {
-    return banks[bank] + bank_records[bank] + (index & MIDI_DATA_MASK) * BNK_RECORD_SIZE;
+    return banks[bank] + bank_records[bank] + index * BNK_RECORD_SIZE;
 }
 
 static int drum_pitch(int note)
 {
-    return banks[FM_BANK_DRUM][bank_names[FM_BANK_DRUM] + (note & MIDI_DATA_MASK) * BNK_NAME_SIZE + BNK_NAME_DRUM_PITCH];
+    return banks[FM_BANK_DRUM][bank_names[FM_BANK_DRUM] + note * BNK_NAME_SIZE + BNK_NAME_DRUM_PITCH];
 }
 
 /* Fix: the driver reads outside its table for notes beyond it; clamp to the table. */
@@ -400,16 +399,17 @@ static void pitch_bend(int channel, int bend)
 void fm_send(const uint8_t *event)
 {
     if (!banks[FM_BANK_MELODIC] || !banks[FM_BANK_DRUM]) return;
-    int channel = event[0] & MIDI_CHANNEL_MASK;
+    /* Fix: data bytes are 7-bit; the driver indexes its tables with them unchecked. */
+    int channel = event[0] & MIDI_CHANNEL_MASK, data1 = event[1] & MIDI_DATA_MASK, data2 = event[2] & MIDI_DATA_MASK;
     switch (event[0] & MIDI_STATUS_MASK) {
-    case MIDI_NOTE_OFF: note_off(event[1], event[2], channel); break;
+    case MIDI_NOTE_OFF: note_off(data1, data2, channel); break;
     case MIDI_NOTE_ON:
-        if (event[2]) note_on(event[1], event[2], channel);
-        else note_off(event[1], event[2], channel);
+        if (data2) note_on(data1, data2, channel);
+        else note_off(data1, data2, channel);
         break;
-    case MIDI_CONTROL: control(channel, event[1], event[2]); break;
-    case MIDI_PROGRAM: ch_program[channel] = event[1]; break;
-    case MIDI_PITCH_BEND: pitch_bend(channel, event[2]); break;
+    case MIDI_CONTROL: control(channel, data1, data2); break;
+    case MIDI_PROGRAM: ch_program[channel] = data1; break;
+    case MIDI_PITCH_BEND: pitch_bend(channel, data2); break;
     }
 }
 
