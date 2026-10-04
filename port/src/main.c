@@ -1,11 +1,14 @@
+#include <stdio.h>
 #include <string.h>
 #include <SDL3/SDL.h>
 #include "platform.h"
+#include "scale.h"
 #include "video.h"
 
 #define WINDOW_SCALE 3
 #define PATTERN_CELLS 16 /* 16 x 16 cells show the 256 palette colors */
 #define VGA_MAX 63
+#define EXIT_USAGE 2
 
 /* Fills the palette with a color cube and the screen with one cell per palette color. */
 static void test_pattern(void)
@@ -23,12 +26,19 @@ static void test_pattern(void)
 
 int main(int argc, char **argv)
 {
-    const char *data = "game";
-    for (int i = 1; i < argc - 1; i++)
+    const char *data = "game", *filter = SDL_getenv("DM2_FILTER");
+    for (int i = 1; i < argc - 1; i++) {
         if (!strcmp(argv[i], "--data")) data = argv[i + 1];
+        if (!strcmp(argv[i], "--filter")) filter = argv[i + 1];
+    }
+    int factor = filter ? scale_filter_factor(filter) : 1;
+    if (!factor) {
+        fprintf(stderr, "unknown filter %s: use none, scale2x, or scale3x\n", filter);
+        return EXIT_USAGE;
+    }
     SDL_Log("data folder: %s", data);
 
-    if (!plat_init(WINDOW_SCALE)) return 1;
+    if (!plat_init(WINDOW_SCALE, factor)) return 1;
     test_pattern();
     for (int running = 1; running;) {
         PlatEvent e;

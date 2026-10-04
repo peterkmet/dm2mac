@@ -1,24 +1,30 @@
 #include <SDL3/SDL.h>
 #include "platform.h"
+#include "scale.h"
 #include "video.h"
 
 #define PIT_CLOCK_HZ 1193182 /* PIT input clock */
 #define PIT_DIVISOR 65536    /* DOS default divisor, about 18.2065 Hz; Step 5 confirms the rate of SKULL.EXE */
 #define TICK_NS ((Uint64)SDL_NS_PER_SECOND * PIT_DIVISOR / PIT_CLOCK_HZ)
 #define ARGB_BYTES 4
+#define FILTER_MAX 3
 
 static SDL_Window *win;
 static SDL_Renderer *ren;
 static SDL_Texture *tex;
 static Uint64 next_tick;
 static int mouse_x, mouse_y;
+static int filter = 1; /* upscale factor: 1 none, 2 Scale2x, 3 Scale3x */
+static uint8_t big[SCREEN_H * FILTER_MAX][SCREEN_W * FILTER_MAX];
 
-int plat_init(int scale)
+int plat_init(int scale, int filter_factor)
 {
+    filter = filter_factor;
     if (!SDL_Init(SDL_INIT_VIDEO) ||
         !SDL_CreateWindowAndRenderer("Dungeon Master II", SCREEN_W * scale, SCREEN_H * scale,
                                      SDL_WINDOW_RESIZABLE, &win, &ren) ||
-        !(tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_W, SCREEN_H))) {
+        !(tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                SCREEN_W * filter, SCREEN_H * filter))) {
         SDL_Log("SDL: %s", SDL_GetError());
         return 0;
     }
@@ -35,12 +41,15 @@ void plat_quit(void)
 void plat_present(void)
 {
     uint32_t pal[PALETTE_COLORS], *px;
-    int pitch, w, h, s, ox, oy;
+    int pitch, w, h, s, ox, oy, tw = SCREEN_W * filter;
+    const uint8_t *src = filter == 1 ? &fb[0][0] : &big[0][0];
+    if (filter == 2) scale2x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
+    if (filter == 3) scale3x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
     for (int i = 0; i < PALETTE_COLORS; i++) pal[i] = video_argb((uint8_t)i);
     if (!SDL_LockTexture(tex, NULL, (void **)&px, &pitch)) return;
     int stride = pitch / ARGB_BYTES;
-    for (int y = 0; y < SCREEN_H; y++)
-        for (int x = 0; x < SCREEN_W; x++) px[y * stride + x] = pal[fb[y][x]];
+    for (int y = 0; y < SCREEN_H * filter; y++)
+        for (int x = 0; x < tw; x++) px[y * stride + x] = pal[src[y * tw + x]];
     SDL_UnlockTexture(tex);
 
     SDL_GetCurrentRenderOutputSize(ren, &w, &h);

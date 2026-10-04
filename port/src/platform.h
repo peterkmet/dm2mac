@@ -10,8 +10,8 @@ typedef struct {
     int button, x, y; /* PLAT_MOUSE and PLAT_MOUSE_UP, x and y in game screen pixels */
 } PlatEvent;
 
-/* Opens the window at scale times the game screen. */
-int plat_init(int scale);
+/* Opens the window at scale times the game screen; filter is the upscale factor of scale_filter_factor. */
+int plat_init(int scale, int filter);
 void plat_quit(void);
 /* Shows fb with the palette, scaled into the window. */
 void plat_present(void);
