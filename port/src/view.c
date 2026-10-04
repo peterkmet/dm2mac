@@ -91,6 +91,8 @@ enum {
 
 /* View square sides by aspect. */
 enum { SIDE_DOOR_STATE = 0, SIDE_DOOR_THING = 1, SIDE_FLOOR_ORNAMENT = 2, SIDE_STAIRS_UP = 0, SIDE_PIT_UP = 0 };
+#define SIDE_SHOP_FLAG 3            /* floor: a shop display there sets it to 0 (read by the things drawing, 12b) */
+#define FAKE_WALL_FLOOR_SQUARE 1    /* the square byte that the floor things see on an open fake wall */
 #define SIDE_FRONT 2                /* the wall face that looks at the party */
 #define ORN_INDEX_MASK 0xff
 #define ORN_FRAME_SHIFT 10          /* wall ornament words: frame in bits 10-15 */
@@ -123,6 +125,23 @@ enum door_state { DOOR_OPEN, DOOR_DESTROYED = 5 };
 #define TEXT_SUBTYPE_SHIFT 11
 #define TEXT_SUBTYPE_MASK 0x1f
 enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT };
+/* Subtypes of ornament texts, by what the view does with them (game meanings from docs/skull-notes/range-6.md). */
+enum text_subtype {
+    SUBTYPE_STILL = 0,              /* plain ornament */
+    SUBTYPE_ANIMATED = 2,
+    SUBTYPE_SWITCH = 4,             /* frame 1 while visible */
+    SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
+    SUBTYPE_STILL_2 = 6,
+    SUBTYPE_SWITCH_2 = 7,
+    SUBTYPE_SWITCH_3 = 8,
+    SUBTYPE_TRAP_TELEPORT = 10,
+    SUBTYPE_TOGGLE_2 = 13,
+    SUBTYPE_PLATE = 14,             /* a text plate on the wall */
+    SUBTYPE_WARP_MARKER = 15,       /* frame 1 */
+    SUBTYPE_WARP_MARKER_2 = 16,
+    SUBTYPE_SQUARE_SWITCH = 17,     /* frame from SQUARE_FLAG_3 */
+    SUBTYPE_SHOP_STAND = 20,        /* clears SIDE_SHOP_FLAG */
+};
 #define SENSOR_ACTIVE_BIT 0         /* bits of SENSOR_FLAGS */
 #define SENSOR_STATE_BIT 2
 #define SENSOR_ORNAMENT_SHIFT 12
@@ -550,7 +569,7 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
         if (thing_type(thing) == THING_TEXT) {
             uint16_t w = thing_word(thing, TEXT_DATA);
             int kind = w >> TEXT_KIND_SHIFT & TEXT_KIND_MASK, subtype = w >> TEXT_SUBTYPE_SHIFT & TEXT_SUBTYPE_MASK;
-            if (kind == TEXT_KIND_TEXT || (kind == TEXT_KIND_ORNAMENT && subtype == 14)) {
+            if (kind == TEXT_KIND_TEXT || (kind == TEXT_KIND_ORNAMENT && subtype == SUBTYPE_PLATE)) {
                 s->side[face] = ORNAMENT_PLATE;
                 if (face == SIDE_FRONT) s->text = w & TEXT_VISIBLE ? thing : THING_TEXT_NONE;
                 done |= 1 << cell;
@@ -559,10 +578,10 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
             if (kind != TEXT_KIND_ORNAMENT) continue;
             ornament = (uint8_t)(w >> TEXT_ORNAMENT_SHIFT);
             switch (subtype) {
-            case 0: case 6: break;
-            case 2: animated = 1; break;
-            case 5: case 13: animated = w & TEXT_VISIBLE; break;
-            case 4: case 7: case 8:
+            case SUBTYPE_STILL: case SUBTYPE_STILL_2: break;
+            case SUBTYPE_ANIMATED: animated = 1; break;
+            case SUBTYPE_TOGGLE: case SUBTYPE_TOGGLE_2: animated = w & TEXT_VISIBLE; break;
+            case SUBTYPE_SWITCH: case SUBTYPE_SWITCH_2: case SUBTYPE_SWITCH_3:
                 frame = w & TEXT_VISIBLE;
                 if (frame) {
                     animated = 1;
@@ -634,18 +653,18 @@ static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square
             if ((w & (TEXT_KIND_MASK << TEXT_KIND_SHIFT)) != TEXT_KIND_ORNAMENT << TEXT_KIND_SHIFT) continue;
             ornament = (uint8_t)(w >> TEXT_ORNAMENT_SHIFT);
             switch (w >> TEXT_SUBTYPE_SHIFT & TEXT_SUBTYPE_MASK) {
-            case 0: case 10: case 16: break;
-            case 2: animated = 1; break;
-            case 5: animated = w & TEXT_VISIBLE; break;
-            case 15: frame = 1; break;
-            case 17: frame = (square & 8) != 0; break;
-            case 20: s->side[3] = 0; continue;
+            case SUBTYPE_STILL: case SUBTYPE_TRAP_TELEPORT: case SUBTYPE_WARP_MARKER_2: break;
+            case SUBTYPE_ANIMATED: animated = 1; break;
+            case SUBTYPE_TOGGLE: animated = w & TEXT_VISIBLE; break;
+            case SUBTYPE_WARP_MARKER: frame = 1; break;
+            case SUBTYPE_SQUARE_SWITCH: frame = square_flag(square, SQUARE_FLAG_3); break;
+            case SUBTYPE_SHOP_STAND: s->side[SIDE_SHOP_FLAG] = 0; continue;
             default: continue;
             }
         } else if (thing_type(thing) == THING_SENSOR) {
             uint16_t data = thing_word(thing, SENSOR_TYPE_DATA);
             int type = data & SENSOR_TYPE_MASK, active = sensor_bit(thing, SENSOR_ACTIVE_BIT);
-            if (type == SENSOR_SHOP) s->side[3] = 0;
+            if (type == SENSOR_SHOP) s->side[SIDE_SHOP_FLAG] = 0;
             ornament = sensor_ornament(thing, dungeon_map_floor_ornaments(view.map));
             if (ornament == ORNAMENT_NONE) continue;
             if (type == SENSOR_LINK) {
@@ -689,8 +708,8 @@ static void get_square_aspect(ViewSquare *s, int dir, int x, int y)
     case SQUARE_WALL:
     case SQUARE_FAKE_WALL: {
         int fake = type == SQUARE_FAKE_WALL;
-        if (fake && square & 4) {
-            square = 1;  /* an open fake wall is a floor; the floor things then see this square byte */
+        if (fake && square_flag(square, SQUARE_FAKE_WALL_OPEN)) {
+            square = FAKE_WALL_FLOOR_SQUARE;  /* an open fake wall is a floor */
             s->aspect = ASPECT_FLOOR;
             floor_ornament = 1;
             break;
@@ -721,21 +740,21 @@ static void get_square_aspect(ViewSquare *s, int dir, int x, int y)
     }
     case SQUARE_FLOOR: floor_ornament = 1; break;
     case SQUARE_PIT:
-        if (square & 8) s->side[SIDE_PIT_UP] = square & 4;
+        if (square_flag(square, SQUARE_PIT_OPEN)) s->side[SIDE_PIT_UP] = square & SQUARE_PIT_VARIANT;
         else {
             s->aspect = ASPECT_FLOOR;
             floor_ornament = 1;
         }
         break;
     case SQUARE_STAIRS:
-        s->aspect = (uint16_t)(ASPECT_STAIRS_FRONT + ((square & 8) >> 3 != (dir & 1)));
-        s->side[SIDE_STAIRS_UP] = square & 4;
+        s->aspect = (uint16_t)(ASPECT_STAIRS_FRONT + (square_flag(square, SQUARE_STAIRS_ALONG_X) != (dir & 1)));
+        s->side[SIDE_STAIRS_UP] = square & SQUARE_STAIRS_UP;
         floor_things = 0;
         break;
     case SQUARE_DOOR:
-        s->side[SIDE_DOOR_STATE] = square & 7;
+        s->side[SIDE_DOOR_STATE] = square & SQUARE_DOOR_STATE;
         s->side[SIDE_DOOR_THING] = first_thing(x, y);
-        if ((square & 8) >> 3 == (dir & 1)) {
+        if (square_flag(square, SQUARE_DOOR_ALONG_X) == (dir & 1)) {
             s->aspect = ASPECT_DOOR_SIDE;
         } else {
             s->aspect = ASPECT_DOOR_FRONT;
@@ -745,9 +764,9 @@ static void get_square_aspect(ViewSquare *s, int dir, int x, int y)
         floor_things = 0;
         break;
     case SQUARE_TELEPORTER:
-        if (!(square & 8) || !(square & 4)) {
+        if (!square_flag(square, SQUARE_TELEPORTER_ON) || !square_flag(square, SQUARE_TELEPORTER_VISIBLE)) {
             s->aspect = ASPECT_FLOOR;
-            s->square &= ~8;
+            s->square &= ~SQUARE_TELEPORTER_ON;
         }
         break;
     default:
@@ -1313,7 +1332,7 @@ static void view_draw_ceiling_pit(int pos)
     if (map < 0) return;
     /* fix: the original reads the square without a bounds check; outside the map it is a wall */
     uint8_t square = dungeon_square_edge(map, x, y);
-    if (square_type(square) != SQUARE_PIT || !(square & 8)) return;
+    if (square_type(square) != SQUARE_PIT || !square_flag(square, SQUARE_PIT_OPEN)) return;
     int flip = pos == POS_PARTY ? view_get_flip_parity(PARITY_CEILING, view.party_dir, view.party_x, view.party_y) != 0
                                 : ceiling_pit_flip[pos];
     view_draw_picture_in_zone(CAT_MAP, view.gfx_set, ceiling_pit_entry[pos], ceiling_pit_zone[pos], view.wall_key, flip);

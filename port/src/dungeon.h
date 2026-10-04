@@ -17,6 +17,18 @@ enum square_type {
     SQUARE_UNKNOWN
 };
 #define SQUARE_OUTSIDE 0xe0     /* dungeon_square_edge: a square away from the map */
+/* Square bits 0-3 by square type. */
+#define SQUARE_PIT_OPEN 0x08
+#define SQUARE_PIT_VARIANT 0x04         /* selects the second pit picture */
+#define SQUARE_STAIRS_ALONG_X 0x08      /* the stairs run east to west */
+#define SQUARE_STAIRS_UP 0x04
+#define SQUARE_DOOR_ALONG_X 0x08        /* the door faces east and west */
+#define SQUARE_DOOR_STATE 0x07          /* 0 open, 1-3 half open, 4 closed, 5 broken */
+#define SQUARE_TELEPORTER_ON 0x08
+#define SQUARE_TELEPORTER_VISIBLE 0x04
+#define SQUARE_FAKE_WALL_OPEN 0x04
+#define SQUARE_FLAG_3 0x08              /* bit 3 of any square: one floor text ornament shows it */
+#define square_flag(s, bit) (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
 #define WALL_FACE(dir) (8 >> (dir))
 
