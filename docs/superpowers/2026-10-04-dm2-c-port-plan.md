@@ -8,7 +8,7 @@ PRD: `docs/superpowers/2026-10-04-dm2-c-port.md`. Each executor reads the PRD an
 
 ## Decisions
 
-- Basis: our own decompilation of `SKULL.EXE`. ReDMCSB, SKWin, and similar projects may be used for names and data formats only. Do not copy their code.
+- Basis: our own decompilation of `SKULL.EXE`. ReDMCSB, SKWin, reDM2 (https://codeberg.org/CyCl0ne/reDM2), and similar projects may be read and cited for names, data formats, game logic, and test methods. Do not copy their code 1:1. Cite the source in a comment when the port follows their analysis.
 - Reuse from `../dm`: copy and adapt tools, Ghidra scripts, the Makefile, and `docs/coding-standard.md`. `dm2` has no run-time or build dependency on `../dm`.
 - Fidelity: a reimplementation, not an emulation. Game rules follow the decompiled code exactly (PRD, section "Fidelity rules"). The DOS technical layer is not reproduced: no DOS/4GW, memory manager, image cache, HMI drivers, VGA registers, Mode X, or busy waits.
 - Scope: the game in `SKULL.EXE` from the start menu to the end of the game. Intro, ending movie, and credits (`INTRO`, `END`, `CREDITS`, `FTL`, `SPLASH`) are out of scope.
