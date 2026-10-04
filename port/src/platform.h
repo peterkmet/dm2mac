@@ -1,5 +1,6 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
+#include <stdint.h>
 
 enum { PLAT_QUIT, PLAT_KEY, PLAT_MOUSE, PLAT_MOUSE_UP };
 
@@ -20,6 +21,11 @@ int plat_poll(PlatEvent *e);
 void plat_mouse_position(int *x, int *y);
 /* Sleeps until the next timer tick. */
 void plat_wait_tick(void);
+/* Adds sound into frames of interleaved stereo at SOUND_OUTPUT_RATE. */
+typedef void PlatMixer(int16_t *stereo, int frames);
+/* Sets the music source that the audio output mixes before the sound effects; NULL for none. */
+void plat_audio_music(PlatMixer *mix);
+/* Feeds the mixed music and sound effects to the audio device; plat_wait_tick calls it. */
 void plat_audio_pump(void);
 
 #endif
