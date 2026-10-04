@@ -1,18 +1,14 @@
 """Loader for LE (Linear Executable) programs bound to a DOS/4GW stub.
 
 The loader places each object at its relocation base address, applies all
-internal fixups, and returns one flat memory image.
-
-Selector mapping (flat model): a 16-bit selector fixup (type 0x02, and the
-selector part of a 16:32 pointer, type 0x06) gets the 1-based number of the
-target object. `Image.selectors` lists each patched selector as
-`(linear address, object number)`. Step 3 runs all code in one flat 32-bit
-segment, so it can map every object number to the same flat selector.
+internal fixups, and returns one flat memory image. It supports only the
+fixups that SKULL.EXE uses: internal 32-bit offsets (source type 0x07).
+Other fixups raise ValueError.
 """
 
 import struct
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -29,7 +25,6 @@ class Image:
     base: int
     objects: list[Object]
     entry: int
-    selectors: list[tuple[int, int]] = field(default_factory=list)
 
 
 def load_image(path) -> Image:
@@ -72,57 +67,26 @@ def load_image(path) -> Image:
             mem[addr - lo : addr - lo + length] = raw[src : src + length]
             page_addr[n] = addr
 
-    selectors = []
     for n in range(1, num_pages + 1):
         start, end = struct.unpack_from("<2I", raw, fixup_pages + 4 * (n - 1))
         pos, end = fixup_records + start, fixup_records + end
         while pos < end:
             src, flags = raw[pos], raw[pos + 1]
-            pos += 2
-            stype = src & 0x0F
-            if src & 0xD0 or flags & ~0x50:
-                raise ValueError(f"page {n}: unsupported fixup flags src={src:#x} flags={flags:#x}")
-            if src & 0x20:
-                count = raw[pos]
-                pos += 1
+            # Only internal 32-bit offset fixups with an 8-bit object number.
+            if src != 0x07 or flags not in (0x00, 0x10):
+                raise ValueError(f"page {n}: unsupported fixup src={src:#x} flags={flags:#x}")
+            off, target_obj = struct.unpack_from("<hB", raw, pos + 2)
+            if flags & 0x10:
+                target_off = struct.unpack_from("<I", raw, pos + 5)[0]
+                pos += 9
             else:
-                offsets = [struct.unpack_from("<h", raw, pos)[0]]
-                pos += 2
-            if flags & 0x40:
-                target_obj = struct.unpack_from("<H", raw, pos)[0]
-                pos += 2
-            else:
-                target_obj = raw[pos]
-                pos += 1
-            target_off = 0
-            if stype != 0x02:
-                if flags & 0x10:
-                    target_off = struct.unpack_from("<I", raw, pos)[0]
-                    pos += 4
-                else:
-                    target_off = struct.unpack_from("<H", raw, pos)[0]
-                    pos += 2
-            if src & 0x20:
-                offsets = list(struct.unpack_from(f"<{count}h", raw, pos))
-                pos += 2 * count
+                target_off = struct.unpack_from("<H", raw, pos + 5)[0]
+                pos += 7
             target = objects[target_obj - 1].base + target_off
-            for off in offsets:
-                at = page_addr[n] + off - lo
-                if stype == 0x07:
-                    struct.pack_into("<I", mem, at, target)
-                elif stype == 0x08:
-                    struct.pack_into("<i", mem, at, target - (at + lo + 4))
-                elif stype == 0x02:
-                    struct.pack_into("<H", mem, at, target_obj)
-                    selectors.append((at + lo, target_obj))
-                elif stype == 0x06:
-                    struct.pack_into("<IH", mem, at, target, target_obj)
-                    selectors.append((at + lo + 4, target_obj))
-                else:
-                    raise ValueError(f"page {n}: unsupported fixup source type {stype:#x}")
+            struct.pack_into("<I", mem, page_addr[n] + off - lo, target)
 
     entry = objects[hdr(0x18) - 1].base + hdr(0x1C)
-    return Image(bytes(mem), lo, objects, entry, selectors)
+    return Image(bytes(mem), lo, objects, entry)
 
 
 def main():
