@@ -8,6 +8,14 @@ other segment registers hold 0x10. Code that copies segment registers
 Calling convention (Watcom register): arguments 1-4 go in EAX, EDX, EBX, ECX,
 the rest on the stack, pushed right to left. The callee pops the stack
 arguments (`ret n`), so ESP after the return is not the ESP before the call.
+
+Stubs: `stub(addr, fn)` replaces a function of the image with a Python
+function. `serve_file(data)` stubs the file I/O wrappers of SKULL.EXE and
+serves them from one host buffer, for every file handle:
+- `file_seek(fd, offset)` sets the position, returns 1.
+- `file_read(fd, size, buf)` copies from the position, returns 1 (like the
+  original, a short read at the end of the file is not an error).
+No other DOS or IBMIOP service is emulated; `int 21h` still raises.
 """
 
 import struct
@@ -30,6 +38,8 @@ STACK_SIZE = 0x00100000
 SCRATCH = 0x00500000  # free buffer for inputs, outputs and code stubs
 SCRATCH_SIZE = 0x00100000
 ARG_REGS = (UC_X86_REG_EAX, UC_X86_REG_EDX, UC_X86_REG_EBX, UC_X86_REG_ECX)
+FILE_SEEK = 0x10F5D
+FILE_READ = 0x10FAE
 
 
 class EmuError(Exception):
@@ -122,6 +132,43 @@ class Emu:
         if self._pc() != RET_ADDR:
             raise EmuError(f"instruction budget {self.max_insns} exceeded, pc={self._pc():#x}")
         return uc.reg_read(UC_X86_REG_EAX)
+
+    def stub(self, addr, fn):
+        """Run fn(eax, edx, ebx, ecx) instead of the function at addr; its result (None = 0) goes to EAX.
+
+        Only for functions without stack arguments: the stub returns with a plain `ret`.
+        """
+        def hook(uc, *_):
+            try:
+                result = fn(*(uc.reg_read(r) for r in ARG_REGS)) or 0
+            except Exception as e:
+                self._fail(f"stub {addr:#x}: {e!r}")
+                return
+            sp = uc.reg_read(UC_X86_REG_ESP)
+            uc.reg_write(UC_X86_REG_EAX, result & 0xFFFFFFFF)
+            uc.reg_write(UC_X86_REG_EIP, self.read_u32(sp))
+            uc.reg_write(UC_X86_REG_ESP, sp + 4)
+
+        self.uc.hook_add(UC_HOOK_CODE, hook, begin=addr, end=addr)
+
+    def serve_file(self, data):
+        """Serve file_seek and file_read from data; see the module docstring."""
+        pos = 0
+
+        def seek(fd, offset, *_):
+            nonlocal pos
+            pos = offset
+            return 1
+
+        def read(fd, size, buf, *_):
+            nonlocal pos
+            size = max(0, min(size if size < 0x80000000 else 0, len(data) - pos))  # size is a signed int32
+            self.write(buf, data[pos:pos + size])
+            pos += size
+            return 1
+
+        self.stub(FILE_SEEK, seek)
+        self.stub(FILE_READ, read)
 
     def read(self, addr, size):
         return bytes(self.uc.mem_read(addr, size))

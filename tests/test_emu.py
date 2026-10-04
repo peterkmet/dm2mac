@@ -1,6 +1,6 @@
 import pytest
 
-from dm2tools.emu import SCRATCH, Emu, EmuError
+from dm2tools.emu import FILE_SEEK, SCRATCH, Emu, EmuError
 from dm2tools.le import load_image
 
 # Watcom clib strcat(dst=EAX, src=EDX) -> dst: push ds; pop es; repne scasb; copy loop.
@@ -60,3 +60,19 @@ def test_fault_raises_with_allow_io(emu):
     emu.write(stub, bytes.fromhex("31c9 f7f1 c3"))  # xor ecx,ecx; div ecx; ret
     with pytest.raises(EmuError, match="CPU fault 0x0"):
         emu.call(stub, allow_io=True)
+
+
+def test_serve_file(emu):
+    # gamefile_read(buf, size) reads the save/dungeon file handle through file_read.
+    gamefile_read = 0x34683
+    emu.serve_file(b"0123456789")
+    assert emu.call(FILE_SEEK, 0, 3) == 1
+    assert emu.call(gamefile_read, SCRATCH, 4) == 1
+    assert emu.call(gamefile_read, SCRATCH + 4, 8) == 1  # short read at the end of the file
+    assert emu.read(SCRATCH, 8) == b"3456789\0"
+
+
+def test_stub_error_raises(emu):
+    emu.stub(FILE_SEEK, lambda *_: 1 / 0)
+    with pytest.raises(EmuError, match="ZeroDivisionError"):
+        emu.call(FILE_SEEK, 0, 3)
