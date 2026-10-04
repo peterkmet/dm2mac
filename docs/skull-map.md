@@ -6,6 +6,7 @@ Related files:
 
 - `docs/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
 - `docs/skull-formats.md`: file formats, sound, music, the SVGA option, and the PIT rate.
+- `docs/skull-notes/`: per-range analysis notes (layout, data structures, open questions).
 - `decomp/SKULL.c`: Ghidra output with the names from `docs/skull-symbols.csv` (`tools/decompile-skull.sh`).
 
 Conventions:
