@@ -410,6 +410,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The original round trip is not byte-equal: 4292 of 50452 bytes differ, all in the dungeon image. The file size and the bit stream stay equal. The load creates the groups and items again in the first free records, so the first-thing table and the link words change.
 - A second round trip of the original output is byte-equal (a fixed point).
 - The C port gives the same bytes as the original writer for `start.DAT`, and for the original output.
+- A second test (`link_things` in `tests/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets another bit stream position than its record index, so the deferred links use the written positions.
 
 ### Details found while porting (Step 10)
 
@@ -421,6 +422,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Event types with a thing: `0x19` explosion (event `+8`), `0x1d`/`0x1e` projectile move (event `+6`), `0x3c`/`0x3d` move group (event `+8`, a single-thing list that only loads when the header format word is not 0).
 - Header: `game_save` reads the old header from the `.BAK` file (the old `.DAT`, renamed just before). Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The name is copied with `str_copy`: the bytes after the end mark keep the old header bytes.
 - The original treats a short read at the end of the file as success, so it does not find a truncated bit stream.
+- A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again: the things of the shared list are stored under both squares. The original has the same weakness. The C port does not check this yet.
 
 ### Deviations of the C port (`port/src/save.c`)
 

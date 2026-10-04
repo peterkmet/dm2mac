@@ -396,6 +396,7 @@ static uint8_t square_mask(int map, int x, int y, int *skip)
     }
 }
 
+/* Writes the saved bits and the thing list of each square, column by column. */
 static int write_squares(void)
 {
     for (int map = 0; map < dungeon_map_count(); map++)
@@ -636,6 +637,7 @@ static void free_movable_things(void)
         for (int i = 0; i < dungeon_thing_count(type); i++) set_thing_word(type << THING_TYPE_SHIFT | i, THING_NEXT, THING_NONE);
 }
 
+/* Reads the saved bits of each square, the bits of its fixed things, and its movable things. */
 static int read_squares(void)
 {
     for (int map = 0; map < dungeon_map_count(); map++)
