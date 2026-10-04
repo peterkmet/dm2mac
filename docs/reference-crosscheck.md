@@ -29,7 +29,7 @@ reDM2 names are mostly mechanical (`obj_type_value4`, `rec12_index_sift`, `type_
 |---|---|
 | Same meaning | 473 |
 | Different but compatible | 151 |
-| Conflicting meaning | 27 (2 resolved by rename, 25 open) |
+| Conflicting meaning | 27 (1 resolved by rename, 26 open) |
 | Both have a start, reDM2 has only a placeholder name | 677 |
 | reDM2-only starts (inside one of our functions) | 79 |
 | Ours-only starts (no reDM2 start) | 34 |
@@ -53,10 +53,11 @@ All renames are in `docs/skull-symbols.csv`. The function address set did not ch
 | Address | Old name | New name | Reason |
 |---|---|---|---|
 | `0x46745` | `champ_reduce_by_stat` | `champ_get_stat_adjusted_attack` | reDM2 matches the body with DM1 `F0307_CHAMPION_GetStatisticAdjustedAttack` and tests it (1035 cases). The function scales an attack value by `170 - stat`. "Reduce" did not tell this. The third argument is now `attack`. |
-| `0x1f347` | `money_is_coin` | `item_is_stackable` | reDM2: `object_is_stackable`. The body only tests "thing type 10 and attribute 0 bit `0x4000`". The callers (`money_count_coins_in_box`, `money_add_coin_to_box`) then test the coin table themselves. The stack count is in bits 8-13. Subsystem changed to `items`. |
 | `0x7f8dc` | `g_save_checksum` | `g_save_bit_total` | reDM2: `g_packed_bit_ctr`. `save_write_packed` and `save_read_packed` add the number of stored bits. No code reads the value for a check. |
 
-Not changed here (owned by other work): `docs/skull-notes/range-2.md` still uses `money_is_coin`. `decomp/SKULL.c` keeps the old names until the next Ghidra export.
+`decomp/SKULL.c` was exported again with the new names (`tools/decompile-skull.sh`). `docs/skull-map.md` and `docs/skull-notes/` use the new names.
+
+Rejected rename: `0x1f347` `money_is_coin` → `item_is_stackable` (reDM2 `object_is_stackable`). A first pass applied it, because the body only tests "thing type 10 and attribute 0 bit `0x4000`". `money_init_coin_table` (`0x154e0`) builds `g_coin_item_types` from the same attribute bit of the same GDAT entries `(0x15, i, 0x0b, 0)`. Thus the bit marks coins, and `money_is_coin` is correct. The name was restored.
 
 ## Conflicts left open
 
@@ -66,6 +67,7 @@ We keep our name in each case. The reason is in the last column.
 
 | Address | Ours | reDM2 | Why we keep ours |
 |---|---|---|---|
+| `0x1f347` | `money_is_coin` | `object_is_stackable` | `money_init_coin_table` builds the coin table from the same `0x4000` bit. See "Rejected rename". |
 | `0x104ea` | `sound_prepare_sample` | `hilite_node_add` | The only caller passes `g_sample_descs`. The XOR of bit 7 converts signed PCM to unsigned. reDM2 marks its role "not confirmed". |
 | `0x13898` | `pal_set_palette` | `mouse_shape_upload` | Both are inferences. Payload is GDAT `(1,0,9,254)`, 1024 bytes, `IBMIOP` function `0x10a` in the video group (`0x103`-`0x10a`). Needs the `IBMIOP.EXE` handler body. |
 | `0x159c3` | `view_position_to_cell` | `obj_type_remap` | Maps 6, 8, `0x12`, `0x10` to 0-3. reDM2 gives no role. |
@@ -152,7 +154,14 @@ Disagreements:
 - `IBMIOP` function `0x0e`, third word: buttons (ours) or cursor height (reDM2). Open.
 - `IBMIOP` function `0x10a`: palette (ours) or cursor image (reDM2). Open.
 
-Corrections to our document: none of our statements was wrong. The game tick rate stays an open measurement in both projects.
+Corrections to our documents (all applied in this change):
+
+1. `g_save_checksum` (`0x7f8dc`) was described as a bit checksum. It is a counter of stored bits that no code checks. Now `g_save_bit_total`.
+2. `champ_reduce_by_stat` (`0x46745`) did not say what the function computes. It is DM1 `F0307_CHAMPION_GetStatisticAdjustedAttack`. Now `champ_get_stat_adjusted_attack`.
+3. The decompressor caller was marked open, and the table was described from `0x757a0` with entries 0-2. The caller is `image_decode_8bpp`, the table starts at `0x75798`, and the codec numbers are 1-3.
+4. The `IBMIOP` table described `0x12` as a drive status query. The driver does nothing for `0x12`; the game reads a buffer word that the driver keeps. Functions `0x0e` (third word) and `0x10a` (payload role) are now marked open.
+
+The game tick rate stays an open measurement in both projects.
 
 Risk for Step 10: a load moves things of types 4-15 to new slots. A "load, then write" test can thus give a file that is not byte-equal to the input, also in the original game. Plan the Step 10 test with the original writer in `dm2tools.emu` as the reference.
 

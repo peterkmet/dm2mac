@@ -302,7 +302,7 @@ address,name,signature,subsystem
 0x0001f274,dun_get_thing_gdat_category,uint8_t dun_get_thing_gdat_category(uint16_t thing),dungeon data
 0x0001f2ab,money_is_moneybox,int money_is_moneybox(uint16_t thing),money and shops
 0x0001f309,item_is_chest,int item_is_chest(uint16_t thing),items
-0x0001f347,item_is_stackable,int item_is_stackable(uint16_t thing),items
+0x0001f347,money_is_coin,int money_is_coin(uint16_t thing),money and shops
 0x0001f380,money_count_coins_in_box,"void money_count_coins_in_box(uint16_t box, int16_t counts[10])",money and shops
 0x0001f413,money_add_coin_to_box,"int money_add_coin_to_box(uint16_t box, uint16_t coin)",money and shops
 0x0001f50d,money_take_coin_from_box,"uint16_t money_take_coin_from_box(uint16_t box, int16_t coin_type)",money and shops

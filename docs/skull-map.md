@@ -7,6 +7,7 @@ Related files:
 - `docs/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
 - `docs/skull-formats.md`: file formats, sound, music, the SVGA option, and the PIT rate.
 - `docs/skull-notes/`: per-range analysis notes (layout, data structures, open questions).
+- `docs/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
 - `decomp/SKULL.c`: Ghidra output with the names from `docs/skull-symbols.csv` (`tools/decompile-skull.sh`).
 
 Conventions:
@@ -71,6 +72,8 @@ Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_s
 
 `SKULL.EXE` calls `INT 0xFC` with the function number in EAX and an argument in EBX. The real-mode program `IBMIOP.EXE` serves the call. The shared buffer is `g_iop_buffer` (`0x8048c`), set by `iop_init_shared_buffer` from `g_iop_info` (`0x7618c`) + `0x3ec`. The port platform layer replaces every function in this table.
 
+The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go to one exit that does nothing. Bit `0x100` selects a second table (functions `0x103`-`0x10a`). The call keeps all registers; every result comes back through the shared buffer. Source for the driver side: reDM2 (`docs/reference-crosscheck.md`).
+
 | EAX | Function | Caller |
 |---|---|---|
 | `0x00` | Print a `0x100`-byte message | `iop_print_message` |
@@ -84,22 +87,23 @@ Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_s
 | `0x0b` | Select a cursor | `input_init`, `champ_drag_click` |
 | `0x0c` | Set the hover rectangle | `mouse_set_hover_area`, `mouse_set_default_cursor` |
 | `0x0d` | Set the mouse position | hidden function at `0x14c93` (inside `iop_input_unlock`) |
-| `0x0e` | Get mouse x, y, buttons | `mouse_get_state` |
+| `0x0e` | Get mouse x, y, and a third word. Buffer word 0 on entry: `0` = live position, other = position at the last event. Third word: buttons (ours, the game tests bit 1 for the right button) or cursor height (reDM2, from the driver code); open | `mouse_get_state` |
 | `0x0f` | Install the game timer callback on `INT 0x2d`; returns the tick step | `iop_install_timer_isr` |
-| `0x12`, `0x13`, `0x14` | Drive status, volume label (`0x10` bytes) | `disk_get_drive_status`, `disk_get_volume_label` |
+| `0x12`, `0x13`, `0x14` | Drive status, volume label (`0x10` bytes). `0x12` does nothing in the driver: the caller at `0x113ad` (`iop_call_return_word`) then reads buffer word 0, which the driver keeps up to date. `0x14` writes an empty string if the drive has no label | `disk_get_drive_status`, `disk_get_volume_label` |
 | `0x15` | Drive information | `disk_query_drive_info` |
 | `0x1b` | Key code to ASCII | `kbd_key_to_ascii` |
 | `0x28` | 3 bytes of drive path data | `disk_get_drive_path` |
 | `0x29` | Data path string | `data_path_init` |
 | `0x2a` | Initialize the shared buffer; reinstall the IOP timer | `iop_init_shared_buffer`, `timer_init` |
 | `0x2b` | Allocate a DOS memory buffer | `iop_alloc_dos_buffer` |
-| `0x2e` | Sound hardware configuration | `sound_init` |
-| `0x2f`, `0x30` | Memory block query; shutdown | `system_init`, `system_shutdown` |
+| `0x2e` | Sound hardware configuration: returns the linear address of a 6-word record from `SKULL.CFG` (`+0` digital device ID, `+2` IRQ, `+4` DMA, `+6` port, `+8` MIDI device ID, `+0x0a` MIDI port), stored at `0x7ef2c` | `sound_init` |
+| `0x2f` | Free DOS memory block: returns `{linear address, size}`; the game adds it as one more memory pool | `system_init` |
+| `0x30` | Shutdown; also stops the game timer callback | `system_shutdown` |
 | `0x103` | Present an 8-byte rectangle of a game bitmap | `screen_present_rect` (`0x13a87`) |
 | `0x105` | Scroll the message area by one line height | `text_scroll_message_area` (`0x139e4`) |
 | `0x106` | Video state on or off | `iop_set_video_state` |
 | `0x109` | Present the viewport (flags 8 or `0x8008`) | `screen_present_viewport` |
-| `0x10a` | Set the palette, 256 × 4 bytes | `pal_set_palette` |
+| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,254)`; the first result word goes to `0x7f07c`. Ours: set the palette (256 × 4 bytes). reDM2: cursor image upload. Open | `pal_set_palette` |
 
 Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga_wait_vblank` polls port `0x3da`.
 
@@ -266,7 +270,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 - Categories 5, 6, `0x1b` are read from the file on every use (`gdat_category_is_raw`).
 - Image buffer: 6-byte header before the pixels (`-6` bpp, `-4` width, `-2` height). 4-bpp rows are `(width + 1) / 2` bytes.
 - Encoded image: word 0 bits 0-9 width, word 1 bits 0-9 height, top 6 bits of word 1 select raw, 8 bpp (`g_gdat_8bpp_marker` `0x7fac8`), or 4 bpp. Decoders: `image_decode_4bpp` (`0x12e4f`), `image_decode_4bpp_delta` (`0x13258`, base images from GDAT `(0,0,8,0)`), `image_decode_8bpp` (`0x3f71c`).
-- Compressed items: decompressor table `g_gdat_decompressors` (`0x757a0`, 8 bytes: decode, init). Entry 0 LZW 9-12 bit + RLE (escape `0x90`), entry 1 LZSS 12-bit distance, entry 2 LZSS 13-bit distance.
+- Compressed items: `image_decode_8bpp` reads the codec byte at item + 6 and calls `g_image_decoders[codec]` (`0x75798 + codec * 8`, 8 bytes: decode, init). Codec 1 LZW 9-12 bit + RLE (escape `0x90`), codec 2 LZSS 4/4 (12-bit distance), codec 3 LZSS 5/3 (13-bit distance). `g_gdat_decompressors` (`0x757a0`) is the codec 1 entry. Details: `docs/skull-formats.md`, "Image compression".
 - Text entries hold `XX=n` fields (`gdat_get_text_field`; names `SK LV CM BZ TR ST PA TA NC EX PB DM MS SD RP HN AT WH`). Encrypted text: `byte = (byte ^ 0xff) - counter`.
 
 ### Memory manager and image cache
@@ -294,7 +298,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 
 ### Save file
 
-- Bit stream (`save_write_packed`, `save_read_packed`) with a bit checksum (`0x7f8dc`). Per thing: 1 bit more, 4 bits type, 2 bits cell (square lists), then the record through `g_save_thing_masks` (`0x754d7`).
+- Bit stream (`save_write_packed`, `save_read_packed`) with a bit counter `g_save_bit_total` (`0x7f8dc`). Per thing: 1 bit more, 4 bits type, 2 bits cell (square lists), then the record through `g_save_thing_masks` (`0x754d7`).
 - Order: timeline things, all squares of all maps, deferred containers and creatures.
 - Save slot table: 10 × `0x2a` bytes; `+2` name, `+0x26` = `0xdeadbeef` unused.
 
@@ -306,7 +310,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 
 | System | Location | Notes |
 |---|---|---|
-| Money | `0x1538d`-`0x15958`, `0x1f2ab`-`0x1f50d`, `money_normalize_coins` `0x29598`, `money_draw_coin_counts` `0x39409`, `money_box_click_coin` `0x42a35`, `ui_draw_money_box` `0x4534f` | Coins are misc items with attribute 0 flag `0x4000`. `g_coin_values` `0x7f3a8`, `g_coin_item_types` `0x7f390`, `g_coin_type_count` `0x7f3fa`. `money_split_amount` is greedy. |
+| Money | `0x1538d`-`0x15958`, `0x1f2ab`-`0x1f50d`, `money_normalize_coins` `0x29598`, `money_draw_coin_counts` `0x39409`, `money_box_click_coin` `0x42a35`, `ui_draw_money_box` `0x4534f` | Coins are misc items with attribute 0 flag `0x4000`: `money_init_coin_table` builds `g_coin_item_types` from exactly this flag, and `money_is_coin` tests it (reDM2 calls the test `object_is_stackable`). `g_coin_values` `0x7f3a8`, `g_coin_item_types` `0x7f390`, `g_coin_type_count` `0x7f3fa`. `money_split_amount` is greedy. |
 | Shops | `shop_get_item_value` `0x15737`, merchant AI commands `0x27cd2`-`0x29caa`, `shop_draw_display` `0x4ec19` | Merchants are creatures. Class sets from creature text (`W A J P C S` letters). Sensor type `0x30` is a shop display. |
 | Minions | `item_is_minion_map` `0x1fa8f`, `minion_map_set_location`, `minion_find_link_projectile`, `minion_map_click_set_destination` (command `0x55`), `creature_summon_group` `0x30944`, `minion_dismiss` `0x30b3d`, `ui_draw_minion_map` `0x44fc6` | Champion actions `0x2c`-`0x33` summon creature types `0x30`-`0x35`. A type 14 record in the group possessions links the minion to its map item. The map panel drains mana. |
 | Weather | `0x59f12`-`0x5a808`, `world_update_day_night` `0x5a073`, `weather_draw_rain` `0x4e79c`, globals `0x8046a`-`0x80480` | Storm curves (table `0x76104`), rain intensity `0x8047e`, wind `0x8047f`, lightning (`explosion_create(0xffb0)`), thunder. Images in GDAT category `0x17`. |
@@ -374,7 +378,7 @@ Library signatures (clib, DPMI, HMI) are firm only for the names. `dpmi_map_phys
 ## Open questions
 
 1. Game tick rate: the real rate of the `INT 0x2d` callback under DOS/4GW. Measure it in DOSBox (`docs/skull-formats.md`, section 6).
-2. Which function selects the GDAT decompressor entry (`[0x757a0 + n * 8]`) by item compression type. Step 8 needs it.
+2. Answered: `image_decode_8bpp` (`0x3f71c`) selects the decompressor by the codec byte at item + 6 through `g_image_decoders` (`0x75798`). See `docs/skull-formats.md`, "Image compression".
 3. Thing types 11-13 and square type 7 in DM2.
 4. `0x7f278` with `0x7f25c`, `0x7f25e`, `0x7f272`: alternate view position or arrival position after a map link. Also the difference between `g_party_square_*` (`0x7f27a`-`0x7f27e`) and `g_party_x`/`g_party_y`.
 5. Creature AI plan tables (`0x74f7e`) and scanner kinds: a table dump is necessary to give each plan command and scanner a game meaning.

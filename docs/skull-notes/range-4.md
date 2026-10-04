@@ -41,7 +41,7 @@ Paths are cached in the image cache with keys `0x30000000 | group` (path steps) 
 
 ## Save format (bit stream)
 
-- `save_write_packed(src, mask, size, count)` writes only the bits set in `mask`. `save_write_bit` writes one bit (mask 0x75517). `save_flush_bits` pads the last byte. The checksum 0x7f8dc counts written bits.
+- `save_write_packed(src, mask, size, count)` writes only the bits set in `mask`. `save_write_bit` writes one bit (mask 0x75517). `save_flush_bits` pads the last byte. The bit counter `g_save_bit_total` (0x7f8dc) counts written bits.
 - Thing list: per thing, 1 bit "more", 4 bits type; then 2 bits cell when the list is a square list; then the record through mask `g_save_thing_masks[type]` (0x754d7). Actuators with types 0x1b, 0x1d, 0x27, 0x2c, 0x2d, 0x30, 0x32, 0x41 save 9 bits of data separately. Groups save 7 bits creature type and recurse into possessions. Containers save 2 bits and recurse. Projectiles (type 14) recurse into their payload; explosions (type 15) save the timeline event index (event type 0x19).
 - Square bytes are saved with a per-type mask: pit 8 (0x08), door 7, fake wall 4, teleporter 8 unless it leads to a lower map.
 - Order: timeline things (events 0x3c, 0x3d), then all squares of all maps, then deferred containers and creatures (`save_write_deferred_things`).

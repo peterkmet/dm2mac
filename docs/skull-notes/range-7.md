@@ -14,7 +14,7 @@ None. All 38 anchors kept.
 
 ## GRAPHICS.DAT decompressors (0x5a95b-0x5ad8d)
 
-Table `g_gdat_decompressors` at 0x757a0, 8 bytes per entry: `decode`, `init`.
+Table `g_gdat_decompressors` at 0x757a0, 8 bytes per entry: `decode`, `init`. It is entry 1 of `g_image_decoders` (0x75798); the codec number is the entry number below + 1.
 
 | Entry | decode | init | Method |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Table `g_gdat_decompressors` at 0x757a0, 8 bytes per entry: `decode`, `init`.
 | 2 | 0x5ad8d `gdat_lzss13_decode` | none | LZSS. Match: length = (b0 & 0x1f) + 3, distance = b1 * 8 + (b0 >> 5) |
 
 - Signature of all three decoders: `(src, dst, src_size)`, return value = output size.
-- `gdat_open` (0x3d3xx) calls the init function `[0x757a4]` when the GDAT flag 0x40 of item `(0,0,0x0b,0)` is set. Callers of the decode entries use the table with an index; no direct call exists. The caller, which picks the entry by the compression type, is still open (step 8 needs it).
+- `gdat_open` (0x3d3xx) calls the init function `[0x757a4]` when the GDAT flag 0x40 of item `(0,0,0x0b,0)` is set. Callers of the decode entries use the table with an index; no direct call exists. The caller that picks the entry is `image_decode_8bpp` (0x3f71c): codec byte at item + 6, table `g_image_decoders` (0x75798), see `docs/skull-formats.md`.
 - `gdat_lzw_alloc_tables` allocates two buffers with `mem_alloc`: sizes 0x3aa1 (prefix table, 16-bit entries) and 0x138b (suffix table).
 - LZW decoder state: `g_lzw_*` (0x80490-0x804ac). `gdat_lzw_read_code` reads variable width codes from the source. Width grows when `g_lzw_next_code` passes `g_lzw_max_code`.
 - 0x5a95b has no direct caller besides 0x5aada. This answers the open point in notes.md.
@@ -90,7 +90,7 @@ None in this range. There is no weather, minion, money, shop, Skullkeep or outdo
 
 ## Open questions
 
-1. Which function selects the decompressor entry by GDAT item compression type (callers of `[0x757a0 + n * 8]` use an index form that the byte search did not find).
+1. Answered: `image_decode_8bpp` (0x3f71c) selects the decompressor entry through `g_image_decoders` (0x75798 + codec * 8).
 2. Fields +0x36, +0x38, +0x44, +0x4c of the digital sample record. Names are guesses.
 3. `hmi_midi_register_branch_callback` and `hmi_midi_register_loop_callback`: the two table addresses (0x7caa8 and 0x7ca78) are consumed by 0x65a3b in range 8. The assignment is a guess.
 4. `hmi_detect_get_hardware_caps` field offsets in the caller struct.
