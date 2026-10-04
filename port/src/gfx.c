@@ -4,6 +4,7 @@
 
 #define NIBBLE_BITS 4
 #define NIBBLE_MASK 0xf
+#define HIGH_NIBBLE_MASK 0xf0
 #define FRACTION_BITS 7      /* the scalers step through the source in 1/128 pixel */
 #define BYTE_FRACTION_BITS 8 /* the 8 bpp scaler steps in 1/256 pixel */
 #define DIM_SHIFT 6          /* brightness * light / 64 */
@@ -40,7 +41,7 @@ static void put_pixel(uint8_t *p, int bpp, int i, int color)
         return;
     }
     uint8_t *b = p + (i >> 1);
-    *b = i & 1 ? (*b & 0xf0) | (color & NIBBLE_MASK) : (*b & NIBBLE_MASK) | (uint8_t)(color << NIBBLE_BITS);
+    *b = i & 1 ? (*b & HIGH_NIBBLE_MASK) | (color & NIBBLE_MASK) : (*b & NIBBLE_MASK) | (uint8_t)(color << NIBBLE_BITS);
 }
 
 void gfx_blit(const uint8_t *src, uint8_t *dst, const int16_t *rect, int src_x, int src_y, int src_width,

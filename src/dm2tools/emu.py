@@ -159,21 +159,22 @@ class Emu:
         """The ESP value that run() starts with."""
         return STACK_TOP - RUN_FRAME
 
-    def stub(self, addr, fn):
-        """Run fn(eax, edx, ebx, ecx) instead of the function at addr; its result (None = 0) goes to EAX.
+    def stub(self, addr, fn, stack_args=0):
+        """Run fn(eax, edx, ebx, ecx, *stack_args) instead of the function at addr; its result (None = 0) goes to EAX.
 
-        Only for functions without stack arguments: the stub returns with a plain `ret`.
+        The stub returns like the callee: `ret 4 * stack_args`.
         """
         def hook(uc, *_):
+            sp = uc.reg_read(UC_X86_REG_ESP)
             try:
-                result = fn(*(uc.reg_read(r) for r in ARG_REGS)) or 0
+                stack = [self.read_u32(sp + 4 + 4 * i) for i in range(stack_args)]
+                result = fn(*(uc.reg_read(r) for r in ARG_REGS), *stack) or 0
             except Exception as e:
                 self._fail(f"stub {addr:#x}: {e!r}")
                 return
-            sp = uc.reg_read(UC_X86_REG_ESP)
             uc.reg_write(UC_X86_REG_EAX, result & 0xFFFFFFFF)
             uc.reg_write(UC_X86_REG_EIP, self.read_u32(sp))
-            uc.reg_write(UC_X86_REG_ESP, sp + 4)
+            uc.reg_write(UC_X86_REG_ESP, sp + 4 + 4 * stack_args)
 
         self.uc.hook_add(UC_HOOK_CODE, hook, begin=addr, end=addr)
 

@@ -41,6 +41,10 @@ void view_unhide_linked_squares(void);
 void view_mark_hidden_squares(void);
 /* Draws the view of the party at (x, y) of the party map looking to dir into view_viewport. */
 void view_draw_dungeon(int dir, int x, int y);
+/* The colors of a 4 bpp picture dimmed by the view shade, with key kept; NULL for an 8 bpp picture in full dark. */
+const uint8_t *view_get_shaded_palette(int category, int index, int entry, int key);
+/* Copies a bitmap mirrored left to right. */
+void view_copy_image_mode1(const Bitmap *src, Bitmap *dst);
 /* The view zone of grid cell cell (0 to 24, 5 x 5) of view element base, turned by dir. */
 int zone_id_for_view_cell(int base, int cell, int dir);
 /* Turns a cell of a 5 x 5 grid around its center by dir quarter turns. */

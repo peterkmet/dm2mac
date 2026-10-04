@@ -49,6 +49,7 @@
 #define FLAGS_INDEX 0
 #define FLAGS_ENTRY 0
 #define FLAG_ENCRYPTED_TEXT 0x08
+#define TEXT_INVERT 0xff           /* encrypted text: byte = (stored ^ 0xff) - position */
 #define GDAT_TYPE_TEXT 5
 
 /* 8 bpp stream: codec byte, then the LZSS data. */
@@ -377,7 +378,7 @@ char *gdat_text(const gdat_t *g, int category, int index, int entry, char *dst, 
     int encrypted = gdat_entry_index(g, FLAGS_CATEGORY, FLAGS_INDEX, GDAT_TYPE_VALUE, FLAGS_ENTRY) & FLAG_ENCRYPTED_TEXT;
     size_t n = 0;
     for (; text && n < size && n + 1 < dst_size; n++) {
-        uint8_t c = encrypted ? (uint8_t)((text[n] ^ 0xff) - n) : text[n];
+        uint8_t c = encrypted ? (uint8_t)((text[n] ^ TEXT_INVERT) - n) : text[n];
         if (!c) break;
         dst[n] = (char)c;
     }
