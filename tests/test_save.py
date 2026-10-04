@@ -354,6 +354,9 @@ def test_linked_things_round_trip_equals_original(lib, gdat, linked, tmp_path):
     assert c_round_trip(lib, gdat, linked[0], tmp_path) == original_round_trip(lib, gdat, linked[0])[0]
 
 
+EXPLOSION_EVENT_BIT = 44239 * 8 + 3  # first bit of the explosion's event index in the linked save
+
+
 def test_linked_things_damaged(lib, gdat, linked, tmp_path):
     written = linked[0]
     # The last stored value is the position of the minion map's group, 1: bits 7 to 0 end with the last 1 bit, then bits 9 and 8.
@@ -364,7 +367,11 @@ def test_linked_things_damaged(lib, gdat, linked, tmp_path):
         bad_index[bit // 8] |= 0x80 >> bit % 8
     old_format = bytearray(written)  # a format 0 file stores no group in a move-group event
     old_format[0] = 0
-    for data in (bad_index, old_format):
+    bad_event = bytearray(written)  # the explosion's event index 4 gets bits 9 and 8: 772 is past the timeline
+    start = EXPLOSION_EVENT_BIT
+    for bit in (start + 8, start + 9):
+        bad_event[bit // 8] |= 0x80 >> bit % 8
+    for data in (bad_index, old_format, bad_event):
         path = tmp_path / "damaged.DAT"
         path.write_bytes(data)
         assert lib.save_load(str(path).encode(), gdat) == SAVE_ERR_DATA
