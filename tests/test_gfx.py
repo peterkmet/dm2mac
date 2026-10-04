@@ -101,7 +101,7 @@ def run_both(lib, emu, func, addr, src, dst_size, args, cargs):
 
 def test_blit_matches_original(lib, emu):
     rng = random.Random(1)
-    for case in range(300):
+    for case in range(1000):
         src_bpp = rng.choice([4, 8])
         dst_bpp = 4 if src_bpp == 4 and rng.random() < 0.3 else 8
         sw, sh = rng.randint(1, 13), rng.randint(1, 9)
@@ -112,9 +112,9 @@ def test_blit_matches_original(lib, emu):
         w = min(w, dw - x)
         stride = (sw + 1) // 2 if src_bpp == 4 else sw
         src = [rng.randrange(256) for _ in range(stride * sh)]
-        # The original 4 to 4 bpp rows with a transparent color have quirks at the row ends (docs/skull-formats.md).
-        transparent = rng.choice([OPAQUE, rng.randrange(16)]) if dst_bpp == 8 else OPAQUE
-        mirror = rng.randrange(5)
+        # The original mirrored 4 to 4 bpp rows with a transparent color have quirks (docs/skull-formats.md).
+        transparent = rng.choice([OPAQUE, rng.randrange(16)])
+        mirror = rng.randrange(5) if dst_bpp == 8 or transparent == OPAQUE else rng.choice([0, 2, 4])
         colormap = [rng.randrange(256) for _ in range(256)] if src_bpp == 4 or rng.random() < 0.5 else None
         dst_size = 400
         emu.write(RECT, ctypes.string_at(rect(x, y, w, h), 8))

@@ -440,6 +440,6 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - `gfx_blit` selects a row function by the source depth: a 4 bpp source goes to a 4 bpp or 8 bpp destination, an 8 bpp source always goes to an 8 bpp destination (mapped through the colormap when it is not `NULL`). Offsets are pixels; a 4 bpp row holds an even pixel count.
 - Mirror 1 reads each row of the source window backwards, mirror 2 reads the rows from the bottom up, mirror 3 does both. A value above 3 works as 0.
 - The transparent value is compared with the source pixel before the colormap.
-- The 4 bpp to 4 bpp rows with a transparent color have quirks at the row ends: for example, the flipped row writes its last pixel only when it is the transparent color. The port draws these rows like the other blits. The view does not use this case; text drawing (Step 13) must check it.
+- The mirrored 4 bpp to 4 bpp rows with a transparent color have quirks at the row ends: for example, the mirrored row writes its last pixel only when it is the transparent color. The port draws these rows like the other blits. The view does not use this case; text drawing (Step 13) must check it.
 - The 8 bpp scaler steps in 1/256 pixel from half a step; the 4 bpp scaler steps in 1/128 pixel from half a step. Both copy the previous destination row when the source row repeats.
 - The masked tiled blit (`gfx_blit_tiled_4to8_masked`) skips the masked pixels at the start and at the end of each row; the tile advances for the skipped start pixels, not for the skipped end pixels.
