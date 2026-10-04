@@ -19,6 +19,7 @@ enum {
 enum { GDAT_TYPE_IMAGE = 1, GDAT_TYPE_VALUE = 0x0b, GDAT_TYPE_VALUE2 = 0x0c };
 
 #define GDAT_PALETTE_COLORS 256
+#define GDAT_NO_ITEM 0xffff
 
 typedef struct gdat gdat_t;
 
@@ -39,6 +40,16 @@ int gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size);
 const uint8_t *gdat_image_colormap(const gdat_t *g, int item);
 /* The 6-bit VGA red, green, blue of a color of the game palette. */
 int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[3]);
+
+/* The original lookup: the value of a value key or 0, else the item of the key or GDAT_NO_ITEM. */
+uint16_t gdat_entry_index(const gdat_t *g, int category, int index, int type, int entry);
+int gdat_exists(const gdat_t *g, int category, int index, int type, int entry);
+/* The text entry (category, index, 5, entry), decrypted, in dst; an empty string when it is absent. */
+char *gdat_text(const gdat_t *g, int category, int index, int entry, char *dst, size_t dst_size);
+/* The number after the last key in text, as the original parses "key=number" fields. */
+int text_find_int_field(const char *text, const char *key);
+/* The drawing offset of an image: x in the high byte, y in the low byte, each signed. */
+int gdat_image_offset(const gdat_t *g, int category, int index, int entry);
 
 /* A 4 bpp image stream; with base, nibble command 5 copies pixels from the same place of base. */
 int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst, size_t dst_size);

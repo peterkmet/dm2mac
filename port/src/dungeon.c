@@ -15,8 +15,6 @@
 #define MAP_WIDTH_SHIFT 6
 #define MAP_WIDTH_MASK 0x1f
 #define MAP_HEIGHT_SHIFT 11
-#define SQUARE_TYPE_SHIFT 5
-#define SQUARE_TELEPORTER 5
 #define THING_ID_MASK 0x3fff
 #define MISC_RESERVED 3          /* free misc records that only the forced creation of a misc item may use */
 #define TELEPORTER_X_MASK 0x1f
@@ -30,7 +28,13 @@ enum header_field {
     HEADER_MAP_DATA_SIZE = 2, HEADER_MAP_COUNT = 4, HEADER_TEXT_WORDS = 6, HEADER_PARTY_START = 8,
     HEADER_SQUARE_THINGS = 10, HEADER_THING_COUNTS = 12
 };
-enum map_desc_field { MAP_DATA_OFFSET = 0, MAP_SIZE_AND_LEVEL = 8 };
+enum map_desc_field {
+    MAP_DATA_OFFSET = 0, MAP_FLAGS = 2, MAP_OFFSET_X = 6, MAP_OFFSET_Y = 7, MAP_SIZE_AND_LEVEL = 8,
+    MAP_ORNAMENT_COUNTS = 10, MAP_OBJECT_COUNTS = 12, MAP_GRAPHICS = 14
+};
+#define WALL_ORNAMENT_MASK 0xf
+#define FLOOR_ORNAMENT_SHIFT 8
+#define CREATURE_TYPE_SHIFT 4
 
 static const uint8_t thing_size[THING_TYPE_COUNT] = {4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4};
 /* Free records that a new game adds to each thing type, for things created during play. */
@@ -247,7 +251,7 @@ uint16_t dungeon_unused_thing(int type)
 static int teleporter_link_side(int map, int x, int y, uint16_t *teleporter)
 {
     if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map)) return 0;
-    if (dungeon_square(map, x, y) >> SQUARE_TYPE_SHIFT != SQUARE_TELEPORTER) return 0;
+    if (square_type(dungeon_square(map, x, y)) != SQUARE_TELEPORTER) return 0;
     *teleporter = dungeon_square_first_thing(map, x, y);
     if (*teleporter == THING_ENDOFLIST) return 0;  /* fix: the original reads a record of the end mark */
     for (uint16_t t = dungeon_next_thing(*teleporter); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
@@ -258,15 +262,125 @@ static int teleporter_link_side(int map, int x, int y, uint16_t *teleporter)
     return 0;
 }
 
-int dungeon_teleporter_link_map(int map, int x, int y)
+int dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link)
 {
     uint16_t teleporter, other;
-    if (!teleporter_link_side(map, x, y, &teleporter)) return -1;
+    int side = teleporter_link_side(map, x, y, &teleporter);
+    if (!side) return 0;
     uint16_t target = thing_word(teleporter, TELEPORTER_TARGET);
     int target_map = thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT;
-    if (target_map >= dun.map_count) return -1;  /* fix: the original uses a map outside the dungeon */
-    int found = teleporter_link_side(target_map, target & TELEPORTER_X_MASK, target >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK, &other);
-    return found ? target_map : -1;
+    if (target_map >= dun.map_count) return 0;  /* fix: the original uses a map outside the dungeon */
+    int tx = target & TELEPORTER_X_MASK, ty = target >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK;
+    int target_side = teleporter_link_side(target_map, tx, ty, &other);
+    if (!target_side) return 0;
+    *link = (TeleporterLink){side - 1, target_side - 1, tx, ty, target_map};
+    return 1;
+}
+
+int dungeon_teleporter_link_map(int map, int x, int y)
+{
+    TeleporterLink link;
+    return dungeon_teleporter_link(map, x, y, &link) ? link.map : -1;
+}
+
+static const uint8_t *map_desc(int map) { return dun.map_descs + map * MAP_DESC_SIZE; }
+int dungeon_map_offset_x(int map) { return map_desc(map)[MAP_OFFSET_X]; }
+int dungeon_map_offset_y(int map) { return map_desc(map)[MAP_OFFSET_Y]; }
+uint16_t dungeon_map_flags(int map) { return le16(map_desc(map) + MAP_FLAGS); }
+uint16_t dungeon_map_ornament_counts(int map) { return le16(map_desc(map) + MAP_ORNAMENT_COUNTS); }
+uint16_t dungeon_map_object_counts(int map) { return le16(map_desc(map) + MAP_OBJECT_COUNTS); }
+uint16_t dungeon_map_graphics(int map) { return le16(map_desc(map) + MAP_GRAPHICS); }
+uint16_t dungeon_ornament_seed(void) { return le16(dun.header); }
+
+/* After the squares of a map: its creature types, then its wall, floor, and door ornaments. */
+static const uint8_t *map_extra(int map)
+{
+    return dun.map_data + map_data_offset(map) + dungeon_map_width(map) * dungeon_map_height(map);
+}
+
+const uint8_t *dungeon_map_wall_ornaments(int map)
+{
+    return map_extra(map) + (dungeon_map_object_counts(map) >> CREATURE_TYPE_SHIFT & WALL_ORNAMENT_MASK);
+}
+
+const uint8_t *dungeon_map_floor_ornaments(int map)
+{
+    return dungeon_map_wall_ornaments(map) + (dungeon_map_ornament_counts(map) & WALL_ORNAMENT_MASK);
+}
+
+const uint8_t *dungeon_map_door_ornaments(int map)
+{
+    return dungeon_map_floor_ornaments(map) + (dungeon_map_ornament_counts(map) >> FLOOR_ORNAMENT_SHIFT & WALL_ORNAMENT_MASK);
+}
+
+/* True for a closed teleporter square. */
+static int teleporter_closed(int map, int x, int y)
+{
+    uint16_t t = dungeon_square_first_thing(map, x, y);
+    return t != THING_ENDOFLIST && thing_word(t, TELEPORTER_MAP) & TELEPORTER_CLOSED;  /* fix: the original reads the end mark */
+}
+
+/* True for a square that the party can see into: not a wall, not unknown, not a closed teleporter. */
+static int square_open(int map, int x, int y)
+{
+    int type = square_type(dungeon_square(map, x, y));
+    if (type == SQUARE_TELEPORTER && teleporter_closed(map, x, y)) return 0;
+    return type != SQUARE_WALL && type != SQUARE_UNKNOWN;
+}
+
+/* The edge wall beside an edge square at (ex, ey): face toward the map when that square is open, a plain wall
+   when the square after it (step) is open, else outside. */
+static uint8_t edge_wall(int map, int ex, int ey, int step_x, int step_y, int limit, uint8_t face)
+{
+    if (square_open(map, ex, ey)) return face;
+    int along = step_x ? ex : ey;
+    if (along > 0 && square_open(map, ex - step_x, ey - step_y)) return 0;
+    if (along + 1 >= limit) return SQUARE_OUTSIDE;
+    return square_open(map, ex + step_x, ey + step_y) ? 0 : SQUARE_OUTSIDE;
+}
+
+uint8_t dungeon_square_edge(int map, int x, int y)
+{
+    int w = dungeon_map_width(map), h = dungeon_map_height(map);
+    int in_x = x >= 0 && x < w, in_y = y >= 0 && y < h;
+    if (in_x && in_y) return dungeon_square(map, x, y);
+    if (in_y) {
+        if (x == -1) return edge_wall(map, 0, y, 0, 1, h, WALL_FACE(DIR_EAST));
+        if (x == w) return edge_wall(map, w - 1, y, 0, 1, h, WALL_FACE(DIR_WEST));
+        return SQUARE_OUTSIDE;
+    }
+    if (in_x) {
+        if (y == -1) return edge_wall(map, x, 0, 1, 0, w, WALL_FACE(DIR_SOUTH));
+        if (y == h) return edge_wall(map, x, h - 1, 1, 0, w, WALL_FACE(DIR_NORTH));
+        return SQUARE_OUTSIDE;
+    }
+    int ex;
+    if (x == -1) ex = 0;
+    else if (x == w) ex = w - 1;
+    else return SQUARE_OUTSIDE;
+    if (y == -1 && square_open(map, ex, 0)) return 0;
+    if (y != h) return SQUARE_OUTSIDE;
+    return square_open(map, ex, h - 1) ? 0 : SQUARE_OUTSIDE;
+}
+
+int dungeon_location_on_map(int map, int level_delta, int *x, int *y)
+{
+    int ax = *x + dungeon_map_offset_x(map), ay = *y + dungeon_map_offset_y(map);
+    int level = dungeon_map_level(map) + level_delta;
+    if (level < 0 || level >= LEVEL_COUNT) return -1;
+    for (const uint8_t *m = dungeon_level_maps(level); *m != LEVEL_LIST_END; m++) {
+        int ox = dungeon_map_offset_x(*m), oy = dungeon_map_offset_y(*m);
+        if (ax < ox - 1 || (unsigned)ax > (unsigned)(ox + dungeon_map_width(*m)) || ay < oy - 1
+            || (unsigned)ay > (unsigned)(oy + dungeon_map_height(*m)))
+            continue;
+        int lx = ax - ox, ly = ay - oy;
+        int type = square_type(dungeon_square_edge(*m, lx, ly));
+        if (type == SQUARE_UNKNOWN || (type == SQUARE_TELEPORTER && teleporter_closed(*m, lx, ly))) continue;
+        *x = lx;
+        *y = ly;
+        return *m;
+    }
+    return -1;
 }
 
 void dungeon_free(void)

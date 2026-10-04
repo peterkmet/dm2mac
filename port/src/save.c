@@ -32,12 +32,10 @@
 #define INDEX_MASK 0x3ff
 #define SPELL_THING_BASE 0xff80   /* a projectile payload that is a spell, not a thing record */
 
-#define SQUARE_TYPE_SHIFT 5
-enum square_type { SQUARE_PIT = 2, SQUARE_STAIRS = 4, SQUARE_TELEPORTER = 5, SQUARE_DOOR = 6 };
 /* Square bits that change during play and that the save stores, by square type. */
 #define PIT_SAVED_BITS 0x08
-#define STAIRS_SAVED_BITS 0x07
-#define DOOR_SAVED_BITS 0x04
+#define DOOR_SAVED_BITS 0x07
+#define FAKE_WALL_SAVED_BITS 0x04
 #define TELEPORTER_SAVED_BITS 0x08   /* only for a teleporter without a linked teleporter */
 
 #define CONTAINER_KIND_SHIFT 1
@@ -384,8 +382,8 @@ static uint8_t square_mask(int map, int x, int y, int *skip)
     *skip = 0;
     switch (dungeon_square(map, x, y) >> SQUARE_TYPE_SHIFT) {
     case SQUARE_PIT: return PIT_SAVED_BITS;
-    case SQUARE_STAIRS: return STAIRS_SAVED_BITS;
     case SQUARE_DOOR: return DOOR_SAVED_BITS;
+    case SQUARE_FAKE_WALL: return FAKE_WALL_SAVED_BITS;
     case SQUARE_TELEPORTER: {
         int target = dungeon_teleporter_link_map(map, x, y);
         if (target < 0) return TELEPORTER_SAVED_BITS;

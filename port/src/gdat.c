@@ -39,6 +39,17 @@
 #define RAW_BPP 4
 #define RAW_PIXELS 10
 #define COLORMAP_SIZE 16
+#define IMAGE_OFFSET_SHIFT 10      /* the top 6 bits of the width and height words hold the image offset */
+#define OFFSET_IN_KEYS (-32)       /* x offset bits: the offset is the value key (category, index, 0x0c, entry) */
+#define IMAGE_8BPP_OFFSET_X 4
+#define IMAGE_8BPP_OFFSET_Y 5
+
+/* The GDAT flag word: value key (0, 0, 0x0b, 0). */
+#define FLAGS_CATEGORY 0
+#define FLAGS_INDEX 0
+#define FLAGS_ENTRY 0
+#define FLAG_ENCRYPTED_TEXT 0x08
+#define GDAT_TYPE_TEXT 5
 
 /* 8 bpp stream: codec byte, then the LZSS data. */
 #define CODEC_OFFSET 6
@@ -345,4 +356,62 @@ int image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t 
     }
     int out = lzss_decode(src + LZSS_DATA, src_size - LZSS_DATA, dst, bytes, length_bits);
     return out == (int)bytes ? GDAT_OK : GDAT_ERR_DATA;
+}
+
+uint16_t gdat_entry_index(const gdat_t *g, int category, int index, int type, int entry)
+{
+    int value = gdat_find(g, category, index, type, entry);
+    if (value >= 0) return (uint16_t)value;
+    return type == GDAT_TYPE_VALUE || type == GDAT_TYPE_VALUE2 ? 0 : GDAT_NO_ITEM;
+}
+
+int gdat_exists(const gdat_t *g, int category, int index, int type, int entry)
+{
+    return gdat_find(g, category, index, type, entry) >= 0;
+}
+
+char *gdat_text(const gdat_t *g, int category, int index, int entry, char *dst, size_t dst_size)
+{
+    uint32_t size;
+    const uint8_t *text = gdat_item(g, gdat_find(g, category, index, GDAT_TYPE_TEXT, entry), &size);
+    int encrypted = gdat_entry_index(g, FLAGS_CATEGORY, FLAGS_INDEX, GDAT_TYPE_VALUE, FLAGS_ENTRY) & FLAG_ENCRYPTED_TEXT;
+    size_t n = 0;
+    for (; text && n < size && n + 1 < dst_size; n++) {
+        uint8_t c = encrypted ? (uint8_t)((text[n] ^ 0xff) - n) : text[n];
+        if (!c) break;
+        dst[n] = (char)c;
+    }
+    dst[n] = '\0';
+    return dst;
+}
+
+int text_find_int_field(const char *text, const char *key)
+{
+    int value = 0;  /* like the original, a second match goes on with the digits of the first */
+    for (const char *p = strstr(text, key); p; p = strstr(p, key)) {
+        p += strlen(key);
+        if (*p == '=') p++;
+        int negative = *p == '-';
+        if (negative) p++;
+        for (; *p >= '0' && *p <= '9'; p++) value = value * 10 + (*p - '0');
+        if (negative) value = -value;
+    }
+    return value;
+}
+
+int gdat_image_offset(const gdat_t *g, int category, int index, int entry)
+{
+    uint32_t size;
+    const uint8_t *data = gdat_item(g, gdat_find(g, category, index, GDAT_TYPE_IMAGE, entry), &size);
+    if (!data || size < LZSS_DATA) return 0;
+    int x = (int16_t)le16(data + IMAGE_WIDTH) >> IMAGE_OFFSET_SHIFT;
+    int y = (int16_t)le16(data + IMAGE_HEIGHT) >> IMAGE_OFFSET_SHIFT;
+    if (x == OFFSET_IN_KEYS) return gdat_entry_index(g, category, index, GDAT_TYPE_VALUE2, entry);
+    if (y == FORMAT_8BPP) {
+        x = (int8_t)data[IMAGE_8BPP_OFFSET_X];
+        y = (int8_t)data[IMAGE_8BPP_OFFSET_Y];
+    } else if (y == OFFSET_IN_KEYS) {
+        y = (int8_t)data[IMAGE_8BPP_OFFSET_Y];  /* an uncompressed image: the high byte of its bpp */
+    }
+    return x * 256 + (uint8_t)y;
 }

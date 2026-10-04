@@ -9,6 +9,19 @@ enum thing_type {
     THING_TYPE_COUNT
 };
 
+/* Square byte: square type in bits 5-7; the other bits depend on the type. */
+#define SQUARE_TYPE_SHIFT 5
+#define square_type(s) ((s) >> SQUARE_TYPE_SHIFT)
+enum square_type {
+    SQUARE_WALL, SQUARE_FLOOR, SQUARE_PIT, SQUARE_STAIRS, SQUARE_DOOR, SQUARE_TELEPORTER, SQUARE_FAKE_WALL,
+    SQUARE_UNKNOWN
+};
+#define SQUARE_OUTSIDE 0xe0     /* dungeon_square_edge: a square away from the map */
+/* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
+#define WALL_FACE(dir) (8 >> (dir))
+
+enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
+
 #define THING_NONE 0xffff
 #define THING_ENDOFLIST 0xfffe
 #define LEVEL_COUNT 63
@@ -26,8 +39,11 @@ enum thing_type {
 enum thing_field {
     THING_NEXT = 0,
     TELEPORTER_TARGET = 2,      /* x bits 0-4, y bits 5-9, rotation bits 10-11 */
-    TELEPORTER_MAP = 4,         /* target map in bits 8-15 */
+    TELEPORTER_MAP = 4,         /* target map in bits 8-15, bit 0 closed */
+    TEXT_DATA = 2,              /* bit 0 visible, bits 1-2 kind, bits 3-10 ornament, bits 11-15 subtype */
+    DOOR_DATA = 2,              /* bit 0 door type, bits 1-4 ornament ordinal, bit 5 no animation, bit 6 button */
     SENSOR_TYPE_DATA = 2,       /* sensor type bits 0-6, data bits 7-15 */
+    SENSOR_FLAGS = 4,           /* bit 0 active, bit 2 state, bits 12-15 ornament ordinal */
     GROUP_POSSESSIONS = 2,
     GROUP_CREATURE = 4,         /* byte: creature type */
     CONTAINER_CONTENTS = 2,
@@ -36,6 +52,7 @@ enum thing_field {
     PROJECTILE_EVENT = 6,       /* timeline event that moves the projectile */
 };
 
+#define TELEPORTER_CLOSED 0x0001
 #define SENSOR_TYPE_MASK 0x7f
 #define SENSOR_DATA_SHIFT 7
 #define SENSOR_TELEPORTER_LINK 0x27
@@ -80,6 +97,35 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
 uint16_t dungeon_unused_thing(int type);
 /* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
 int dungeon_teleporter_link_map(int map, int x, int y);
+/* The square byte of map at (x, y). Away from the map it gives the edge walls: a wall (with the bit of the
+   side that faces the map) next to an open square at the map edge, else SQUARE_OUTSIDE. */
+uint8_t dungeon_square_edge(int map, int x, int y);
+/* The map of the level at level_delta from the level of map that holds the dungeon position of (x, y) of map, and
+   its square there in *x, *y; -1 when no such map has an open square there. */
+int dungeon_location_on_map(int map, int level_delta, int *x, int *y);
+
+/* A pair of teleporters with link sensors: a seamless passage to another map. */
+typedef struct {
+    int side, target_side;  /* side of the passage on the source and on the target square, 0 to 3 */
+    int x, y, map;          /* the target square */
+} TeleporterLink;
+/* Fills link for a teleporter square whose target is a teleporter, both with link sensors; returns 0 when not. */
+int dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link);
+
+/* Map descriptor values. */
+int dungeon_map_offset_x(int map);              /* position of the map on its level */
+int dungeon_map_offset_y(int map);
+uint16_t dungeon_map_flags(int map);            /* bit 7 door type 0 present, bit 8 door type 1 present */
+uint16_t dungeon_map_ornament_counts(int map);  /* wall bits 0-3, random wall 4-7, floor 8-11, random floor 12-15 */
+uint16_t dungeon_map_object_counts(int map);    /* door ornaments bits 0-3, creature types bits 4-7 */
+uint16_t dungeon_map_graphics(int map);         /* graphics set bits 4-7, door types bits 8-11 and 12-15 */
+/* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */
+const uint8_t *dungeon_map_wall_ornaments(int map);
+const uint8_t *dungeon_map_floor_ornaments(int map);
+const uint8_t *dungeon_map_door_ornaments(int map);
+/* The first word of the dungeon header; it seeds the random wall ornaments. */
+uint16_t dungeon_ornament_seed(void);
+
 int dungeon_text_word_count(void);
 const uint16_t *dungeon_text_data(void);
 /* The maps of a level, ended by LEVEL_LIST_END. */
