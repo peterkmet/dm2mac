@@ -10,6 +10,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - Directions, cells, champion slots (`SLOT_HAND_READY`, `SLOT_COUNT`), statistics, skills, square types, sensor types, door states, timeline event types, commands.
    - Message and text numbers: a named constant for each string id, for example `TEXT_RESURRECTED`.
    - Graphic and layout zone numbers: named constants in `port/src/ids.h`, for example `GFX_WALLSET_FIRST`, `ZONE_VIEWPORT`.
+   - DM2 systems: money types (`COIN_GOLD`), minion types (`MINION_GUARD`), weather states (`WEATHER_RAIN`), and Skullkeep machine states each get named constants. Step 5 fixes the exact names in `docs/skull-symbols.csv`.
    - Plain numbers are allowed only when the number is obvious: 0, 1, -1, 2 for halves, loop bounds that come from a named constant.
 2. Do not index raw record bytes outside one accessor module. Put field access in small functions or macros with names, for example `sensor_type(t)`, `sensor_disable(t)`, `door_state(t)`, `group_count(t)`. One module (`dungeon.c` or `things.h`) owns the record layout.
 3. Write C, not decompiler output.
