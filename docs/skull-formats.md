@@ -443,3 +443,27 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The mirrored 4 bpp to 4 bpp rows with a transparent color have quirks at the row ends: for example, the mirrored row writes its last pixel only when it is the transparent color. The port draws these rows like the other blits. The view does not use this case; text drawing (Step 13) must check it.
 - The 8 bpp scaler steps in 1/256 pixel from half a step; the 4 bpp scaler steps in 1/128 pixel from half a step. Both copy the previous destination row when the source row repeats.
 - The masked tiled blit (`gfx_blit_tiled_4to8_masked`) skips the masked pixels at the start and at the end of each row; the tile advances for the skipped start pixels, not for the skipped end pixels.
+
+### Layout zones (`zone_compute_rect`)
+
+- A zone record is `{anchor type, parent, x, y}`. The parent chain ends at a zone with parent 0. A size zone (type 9) gives a width and height; the zones under it are placed in it and clipped to it.
+- The image size comes from `*w`, `*h`, or the image header. A zone with bit 15 (`ZONE_RELATIVE`) adds `*w` and `*h` to its position. On return, `*w` and `*h` hold the pixels clipped at the left and the top: the source offset of the blit.
+- `g_zone_clip_rect` (`0x7f1c8`) clips the next zones while its width is not 0. `zone_set_clip_margins` sets it to the viewport minus margins; the view sets its width to 0 after each picture.
+- While the party walks (`0x7f1d4` and `g_party_move_steps`), zones of parent 3 clip to the walking view `{21, 8, 182, 110}`.
+
+### View square record and the view
+
+- View square (18 bytes, 23 records): `+0`/`+1` map x, y; `+2` aspect (0 wall, 1 floor, 2 open pit, 5 visible teleporter, 7 hidden, `0x10` door seen from the side, `0x11` door front, `0x12` stairs front, `0x13` stairs side); `+4` square byte; `+6` first thing that is not a wall thing; `+8` to `+0x0e` by aspect: the wall ornaments of the faces (`frame << 10 | ornament`, front face at `+0x0c`), or door state and door thing, or the up bit of stairs and pits, or the floor ornament at `+0x0c` (`frame * 10 << 8 | ornament`); `+0x10` wall text thing or portrait index.
+- Squares away from the map (`dun_get_square`): a wall with the bit of its face toward the map (`8 >> direction`, the random ornament bits of a wall) next to an open edge square, else `0xe0`.
+- Random wall ornaments: hash `((((x * 0x20 + 2000 + (((dir + side) & 3) + 1) * (y + 1)) * 0x7ab9) >> 1) + (map * 0x40 + 3000 + width + height) * 11 + dungeon header word 0) >> 2) % 30`; a value below the random ornament count picks an ornament of the party map's wall ornament list.
+- Pictures go through `view_setup_picture`: GDAT image, scale (1/64), offset, layout zone, and a color remap. The remap is the depth shading table `(8, graphics set, 7, depth)` when it exists, else a dimming by the depth light; the view shade (light level * 10) dims both.
+- Doors with an ornament or damage are put together in an offscreen bitmap of the door size (`view_render_picture_offscreen`), then drawn. A door in states 1 to 3 draws two halves that slide apart, unless bit 5 of the door record is set.
+- Wall text plates: the text goes into a 4 bpp bitmap of the plate size with the 8 x 8 font `(8, graphics set, 1, 3)`, lines centered, then the bitmap is scaled and drawn like the plate.
+- Outdoor maps: sky objects (GDAT category `0x17`) are text entries with fields `cd` (zone), `fw` (flip kind), `mv` (0 fixed, 1 landmark), `xl`, `yl` (landmark position on the level), `fd` (fade distance). A landmark is scaled by its distance; its screen offset is `lateral * 210 / distance`. Like the original, the landmarks use the first sky object record as their work record.
+
+### Deviations of the C port (Step 12a)
+
+- No image cache: each GDAT image is decoded once and kept; scaled images and offscreen bitmaps live until the end of the frame. The original cache key of a scaled image keeps only 5 bits of the height scale and 7 bits of the width scale, so two scales can share a cached image; the port always scales anew.
+- `gdat_exists` is true for every key of the file. The original also says no for an image that the map did not preload. The view checks only images of the map graphics set, which the original preloads.
+- Text entries: `gdat_text` decrypts the text but does not expand the `.Z` placeholders of `text_format` (Step 13).
+- Fixes: `view_unhide_linked_squares` read far past the view squares for missing neighbours; `view_draw_ceiling_pit` read the square above without a bounds check; `view_setup_picture` divided by 0 for a width scale key with a low byte of 0; `view_get_shaded_palette` wrote a 256-color table into a 16-byte buffer; `dun_is_open_square_raw` read the record of the end mark on a teleporter square without things.
