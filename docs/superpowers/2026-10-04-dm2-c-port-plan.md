@@ -131,7 +131,25 @@ Each step ends with green tests and a commit. A fresh subagent executes each ste
 
 ### Step 12: Dungeon view and outdoor view
 
-Reimplement the dungeon view (floor, ceiling, walls, doors, ornaments, objects, creatures, projectiles, explosions, field effects) and the outdoor view (sky, terrain, weather effects) on the framebuffer. Use the drawing order and coordinate tables of the original. Test: unit tests for blit with transparency and flip, and for view square visibility; a differential test of one coordinate or clipping function; a manual visual check in `build/dm2`.
+Reimplement the dungeon view and the outdoor view on the framebuffer. Use the drawing order and coordinate tables of the original. The outdoor view has no separate renderer: `view_draw_dungeon` adds a sky layer (`docs/skull-map.md`, section "DM2-specific systems"). Step 12 has two parts. Each part ends with green tests, a commit, and a `reviewer` pass.
+
+Common rules for 12a and 12b:
+
+- The view state comes from a loaded save. `build/dm2 --save PATH` loads the save with `save_load` and draws the view at the party position. Without `--save`, `build/dm2` shows the test pattern. A save load skips the link pass (Step 9, "Deferred"), but the save data is already linked.
+- The light level and the weather state are read from the save. Their update logic is Step 17.
+- Not in Step 12: click zones and hit tests (`view_click_*`, `view_hit_test_*`, `view_add_click_zone`, `view_set_click_zone`, `zone_id_for_view_*`): Step 14. Weather and light simulation (`weather_init`, `weather_schedule_event`, `world_update_day_night`, `light_update_party_light`, `light_add_square_light`): Step 17.
+
+#### Step 12a: Drawing primitives, view squares, walls, and sky
+
+- Original functions: `gfx_blit` with the row functions `gfx_blit_row_*` and `gfx_blit_4bpp_to_4bpp`, `gfx_blit_4bpp_to_8bpp`, `gfx_blit_8bpp_to_8bpp`, `gfx_blit_8bpp_mapped`, `gfx_blit_scaled_4bpp`, `gfx_blit_scaled_8bpp`, `gfx_blit_tiled_4to8`, `gfx_blit_tiled_4to8_masked`; `zone_get_rect`, `zone_get_rect_clipped`; `gfx_ctx_init`, `gfx_ctx_prepare`, `gfx_ctx_draw`, `gfx_blit_image`, `gfx_blit_to_viewport`; `viewport_alloc`, `view_clear_viewport`, `view_setup_picture`, `view_flush_picture`, `view_draw_picture_in_zone`, `view_copy_image_mode1`, `view_get_depth_shading`, `view_get_shaded_palette`, `view_inverse_scale`, `view_get_flip_parity`; `view_load_square`, `view_mark_hidden_squares`, `view_unhide_linked_squares`; `view_draw_dungeon`, `view_draw_far_squares`, `view_draw_party_square`, `view_draw_wall_square`, `view_draw_wall_block`, `view_draw_wall_ornament`, `view_wall_text_glyph`, `view_draw_floor_ornament`, `view_draw_ceiling_pit`, `view_draw_floor_pit`, `view_draw_door`, `view_draw_door_front`, `view_draw_door_frame`, `view_draw_door_ornament`, `view_draw_stairs_side`, `view_draw_stairs_front`; `outdoor_draw_sky`, `outdoor_draw_sky_object`, `outdoor_place_sky_object`, `outdoor_relative_distance`, `weather_load_sky_object`.
+- `view_draw_dungeon` calls the thing drawing of 12b. In 12a, this call is an empty function.
+- Test: unit tests for `gfx_blit` (opaque, transparent, mirror 1, 2, and 3, 4bpp to 8bpp, colormap). A differential test of `zone_get_rect_clipped` against `dm2tools.emu`. A differential test of `view_load_square` and `view_mark_hidden_squares` on `tests/saves/start.DAT`: the 23 view square records are equal to the original records. A manual visual check: `build/dm2 --save tests/saves/start.DAT` and the same save in DOSBox.
+
+#### Step 12b: Things in the view and weather drawing
+
+- Original functions: `view_draw_square_things`, `view_draw_objects_in_cell`, `view_draw_object`, `view_shift_object_cell`, `view_draw_alcove_contents`, `view_draw_creatures`, `view_draw_creature`, `view_offset_creature_toward_party`, `creature_get_view_cell_zone`, `view_draw_creature_possessions`, `view_draw_pending_possessions`, `view_draw_missiles`, `view_draw_explosions`, `view_setup_explosion_picture`, `view_draw_sparkle_field`, `view_draw_centered_label`, `view_position_to_cell`, `view_get_thing_position`, `view_grid5_cell_to_xy`, `view_rotate_grid5_cell`; `weather_get_rain_image`, `weather_draw_rain`, `view_draw_wet_image`.
+- Test: differential tests of `view_grid5_cell_to_xy`, `view_rotate_grid5_cell`, and `view_offset_creature_toward_party` against `dm2tools.emu`. A unit test: a square with one object draws the object image in the expected cell rectangle. A manual visual check as in 12a, on a save with objects and creatures in the view.
+- Input: a DOS save with objects and creatures in the view, if `start.DAT` has none. The user makes it in DOSBox.
 
 ### Step 13: Interface panels and text
 
