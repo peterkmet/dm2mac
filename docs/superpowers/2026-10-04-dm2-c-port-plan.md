@@ -113,13 +113,16 @@ Each step ends with green tests and a commit. A fresh subagent executes each ste
 
 - Load `DUNGEON.DAT` (header, maps, object lists, text). Port the loader logic from `SKULL.EXE`.
 - Test: map count, map sizes, square data, and object counts are equal to the values that the original loader gives in `dm2tools.emu`.
-- Deferred: the two post-load passes of a new game, `dungeon_link_things_after_load` (teleporter actuator numbering, object list merge, text square marks) and `dungeon_read_level_table` (level digits from the text on the party start square). The C loader does not do them yet. `dungeon_square` and the thing records return the file data before these passes. Owner: open, the user decides. Proposal: Step 14 (first step that moves the party and needs linked squares).
+- Deferred: the two post-load passes of a new game, `dungeon_link_things_after_load` (teleporter actuator numbering, object list merge, text square marks) and `dungeon_read_level_table` (level digits from the text on the party start square). The C loader does not do them yet. `dungeon_square` and the thing records return the file data before these passes. Owner: open, the user decides. Proposal: Step 14 (first step that moves the party and needs linked squares). Step 10 checked: the save path does not need them. A save load calls `dungeon_load(0)`, which skips the link pass, and the level digit table is not in the save file.
 
 ### Step 10: Save format
 
 - Port the save file reader and writer (`SKSAVE*.DAT`, `SKSAVE*.BAK`) in the original format.
 - Input: a DOS save from DOSBox in `tests/saves/`.
 - Test: load the DOS save and write it again. The written file is byte-equal to the original file. A damaged save gives an error code, not a crash.
+- Done. Measurement (`docs/skull-formats.md` section 7): the original load followed by the original save is not byte-equal to `start.DAT` (4292 bytes differ in the dungeon image, the bit stream is equal); a second original round trip is byte-equal. The test thus compares the C output with the original writer output (`tests/test_save.py`), not with the input file.
+- Added: `dungeon_read`/`dungeon_write` and the thing list functions in `dungeon.c`, `timeline_build_queue`/`timeline_compact` in `timeline.c`, `Emu.run` and the `file_write` capture in `dm2tools.emu`.
+- Deviations and the parts that later steps add (item effects, timed effects, active groups): `docs/skull-formats.md` section 7.
 
 ### Step 11: Random numbers and timeline
 

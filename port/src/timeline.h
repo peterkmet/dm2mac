@@ -38,6 +38,10 @@ int timeline_add_event(const TimelineEvent *event);
 void timeline_delete_event(uint16_t index);
 /* Removes the next event and copies it to event; call timeline_is_event_due first. */
 void timeline_pop_first_event(TimelineEvent *event);
+/* Orders the queue of the first count events and links the other events into the free list. */
+void timeline_build_queue(void);
+/* Moves the events in use to the first count slots and rebuilds the queue. */
+void timeline_compact(void);
 /* True when the next event is due at game_time. */
 int timeline_is_event_due(uint32_t game_time);
 

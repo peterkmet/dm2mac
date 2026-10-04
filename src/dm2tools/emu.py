@@ -15,6 +15,7 @@ serves them from one host buffer, for every file handle:
 - `file_seek(fd, offset)` sets the position, returns 1.
 - `file_read(fd, size, buf)` copies from the position, returns 1 (like the
   original, a short read at the end of the file is not an error).
+- `file_write(fd, size, buf)` appends to the `written` buffer, returns 1.
 No other DOS or IBMIOP service is emulated; `int 21h` still raises.
 """
 
@@ -40,6 +41,8 @@ SCRATCH_SIZE = 0x00100000
 ARG_REGS = (UC_X86_REG_EAX, UC_X86_REG_EDX, UC_X86_REG_EBX, UC_X86_REG_ECX)
 FILE_SEEK = 0x10F5D
 FILE_READ = 0x10FAE
+FILE_WRITE = 0x10FFF
+RUN_FRAME = 0x8000  # stack room above ESP for the locals of a function that run() enters in the middle
 
 
 class EmuError(Exception):
@@ -133,6 +136,29 @@ class Emu:
             raise EmuError(f"instruction budget {self.max_insns} exceeded, pc={self._pc():#x}")
         return uc.reg_read(UC_X86_REG_EAX)
 
+    def run(self, begin, until):
+        """Run the code from begin to until, for example the middle part of a function; return EAX.
+
+        ESP starts RUN_FRAME bytes below the stack top, so that the code finds its stack frame
+        locals above ESP. The caller writes the locals that the code reads with frame().
+        """
+        self.error = None
+        self.uc.reg_write(UC_X86_REG_ESP, self.frame())
+        try:
+            self.uc.emu_start(begin, until, count=self.max_insns)
+        except UcError as e:
+            raise self.error or EmuError(f"{e}, pc={self._pc():#x}") from None
+        if self.error:
+            raise self.error
+        if self._pc() != until:
+            raise EmuError(f"instruction budget {self.max_insns} exceeded, pc={self._pc():#x}")
+        return self.uc.reg_read(UC_X86_REG_EAX)
+
+    @staticmethod
+    def frame():
+        """The ESP value that run() starts with."""
+        return STACK_TOP - RUN_FRAME
+
     def stub(self, addr, fn):
         """Run fn(eax, edx, ebx, ecx) instead of the function at addr; its result (None = 0) goes to EAX.
 
@@ -152,7 +178,7 @@ class Emu:
         self.uc.hook_add(UC_HOOK_CODE, hook, begin=addr, end=addr)
 
     def serve_file(self, data):
-        """Serve file_seek and file_read from data; see the module docstring."""
+        """Serve file_seek and file_read from data and collect file_write in written; see the module docstring."""
         pos = 0
 
         def seek(fd, offset, *_):
@@ -167,8 +193,14 @@ class Emu:
             pos += size
             return 1
 
+        def write(fd, size, buf, *_):
+            self.written.extend(self.read(buf, size))
+            return 1
+
+        self.written = bytearray()
         self.stub(FILE_SEEK, seek)
         self.stub(FILE_READ, read)
+        self.stub(FILE_WRITE, write)
 
     def read(self, addr, size):
         return bytes(self.uc.mem_read(addr, size))

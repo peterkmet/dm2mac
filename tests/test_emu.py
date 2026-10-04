@@ -76,3 +76,21 @@ def test_stub_error_raises(emu):
     emu.stub(FILE_SEEK, lambda *_: 1 / 0)
     with pytest.raises(EmuError, match="ZeroDivisionError"):
         emu.call(FILE_SEEK, 0, 3)
+
+
+def test_serve_file_write(emu):
+    # gamefile_write(buf, size) writes the save file handle through file_write.
+    gamefile_write = 0x346AA
+    emu.serve_file(b"")
+    emu.write(SCRATCH, b"abcdef")
+    assert emu.call(gamefile_write, SCRATCH, 4) == 1
+    assert emu.call(gamefile_write, SCRATCH + 4, 2) == 1
+    assert emu.written == b"abcdef"
+
+
+def test_run_range(emu):
+    # mov eax,[esp+8]; inc eax; nop: run() stops before the nop, and the code reads a frame local.
+    code = SCRATCH + 0x3400
+    emu.write(code, bytes.fromhex("8b442408 40 90"))
+    emu.write_u32(emu.frame() + 8, 41)
+    assert emu.run(code, code + 5) == 42

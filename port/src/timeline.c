@@ -75,6 +75,64 @@ void timeline_init(uint16_t capacity)
     timeline.fix_slot = TIMELINE_NO_SLOT;
 }
 
+/* Links the events without a type into the free list and finds the end of the used events. */
+static void rebuild_free_list(void)
+{
+    int prev = END_OF_FREE_LIST;
+    timeline.used_end = 0;
+    timeline.first_free = END_OF_FREE_LIST;
+    for (int i = 0; i < timeline.capacity; i++) {
+        if (timeline.events[i].type != EVENT_NONE) {
+            timeline.used_end = i + 1;
+            continue;
+        }
+        if (prev == END_OF_FREE_LIST) timeline.first_free = i;
+        else timeline.events[prev].next_free = i;
+        timeline.events[i].next_free = END_OF_FREE_LIST;
+        prev = i;
+    }
+}
+
+void timeline_build_queue(void)
+{
+    uint16_t *queue = timeline.queue;
+    int count = timeline.count;
+    for (int i = 0; i < count; i++) queue[i] = i;
+    for (int start = (count - 2) / 2; count > 1 && start >= 0; start--) {
+        uint16_t moving = queue[start];
+        for (int slot = start; 2 * slot + 1 < count;) {
+            int child = 2 * slot + 1;
+            if (child + 1 < count) {
+                if (runs_before(moving, queue[child]) ? !runs_before(moving, queue[child + 1])
+                                                      : runs_before(queue[child + 1], queue[child]))
+                    child++;
+                else if (runs_before(moving, queue[child])) break;
+            } else if (runs_before(moving, queue[child])) {
+                break;
+            }
+            queue[slot] = queue[child];
+            queue[child] = moving;
+            slot = child;
+        }
+    }
+    timeline.fix_slot = TIMELINE_NO_SLOT;
+    rebuild_free_list();
+}
+
+void timeline_compact(void)
+{
+    if (timeline.count == 0) return;
+    for (int i = 0; i < timeline.count; i++) {
+        if (timeline.events[i].type != EVENT_NONE) continue;
+        int j = i + 1;
+        while (j < timeline.capacity && timeline.events[j].type == EVENT_NONE) j++;
+        if (j == timeline.capacity) break;  /* fix: the original reads past the events when count is too high */
+        timeline.events[i] = timeline.events[j];
+        timeline.events[j].type = EVENT_NONE;
+    }
+    timeline_build_queue();
+}
+
 int timeline_add_event(const TimelineEvent *event)
 {
     if (event->type == EVENT_NONE) return -1;

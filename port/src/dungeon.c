@@ -15,6 +15,16 @@
 #define MAP_WIDTH_SHIFT 6
 #define MAP_WIDTH_MASK 0x1f
 #define MAP_HEIGHT_SHIFT 11
+#define SQUARE_TYPE_SHIFT 5
+#define SQUARE_TELEPORTER 5
+#define THING_ID_MASK 0x3fff
+#define MISC_RESERVED 3          /* free misc records that only the forced creation of a misc item may use */
+#define TELEPORTER_X_MASK 0x1f
+#define TELEPORTER_Y_SHIFT 5
+#define TELEPORTER_Y_MASK 0x1f
+#define TELEPORTER_ROTATION_SHIFT 10
+#define TELEPORTER_MAP_SHIFT 8
+#define SIDE_COUNT 4
 
 enum header_field {
     HEADER_MAP_DATA_SIZE = 2, HEADER_MAP_COUNT = 4, HEADER_TEXT_WORDS = 6, HEADER_PARTY_START = 8,
@@ -27,11 +37,13 @@ static const uint8_t thing_size[THING_TYPE_COUNT] = {4, 6, 4, 8, 16, 4, 4, 4, 4,
 static const uint8_t thing_slack[THING_TYPE_COUNT] = {0, 0, 0, 0, 75, 100, 60, 0, 12, 5, 200, 0, 0, 0, 60, 50};
 
 static struct {
+    uint8_t header[HEADER_SIZE];  /* the file header with the counts of the loaded game */
     uint16_t party_start;
     int map_count;
     uint8_t *map_descs;
     uint16_t *map_first_column;
     uint16_t *column_first_thing;
+    int column_count;
     uint16_t *square_first_things;
     int square_thing_count;
     int text_word_count;
@@ -57,6 +69,22 @@ static void put_le16(uint8_t *p, uint16_t value)
 static int read_bytes(FILE *f, void *dst, size_t size)
 {
     return size == 0 || (dst && fread(dst, 1, size, f) == size);
+}
+
+static int write_bytes(FILE *f, const void *src, size_t size)
+{
+    return size == 0 || fwrite(src, 1, size, f) == size;
+}
+
+/* Writes count words in little-endian order. */
+static int write_words(FILE *f, const uint16_t *src, int count)
+{
+    for (int i = 0; i < count; i++) {
+        uint8_t le[2];
+        put_le16(le, src[i]);
+        if (!write_bytes(f, le, 2)) return 0;
+    }
+    return 1;
 }
 
 /* Reads count little-endian words into dst. */
@@ -106,15 +134,139 @@ uint8_t dungeon_square(int map, int x, int y)
     return map_column(map, x)[y];
 }
 
-/* Squares with things own consecutive entries of the first-thing table, counted per column. */
-uint16_t dungeon_square_first_thing(int map, int x, int y)
+uint8_t *dungeon_square_byte(int map, int x, int y)
+{
+    return dun.map_data + map_data_offset(map) + x * dungeon_map_height(map) + y;
+}
+
+/* Squares with things own consecutive entries of the first-thing table, counted per column; -1 for a square without things. */
+static int square_thing_index(int map, int x, int y)
 {
     const uint8_t *column = map_column(map, x);
-    if (!(column[y] & SQUARE_HAS_THINGS)) return THING_ENDOFLIST;
+    if (!(column[y] & SQUARE_HAS_THINGS)) return -1;
     int index = dun.column_first_thing[dun.map_first_column[map] + x];
     for (int i = 0; i < y; i++)
         if (column[i] & SQUARE_HAS_THINGS) index++;
-    return dun.square_first_things[index];
+    return index;
+}
+
+uint16_t dungeon_square_first_thing(int map, int x, int y)
+{
+    int index = square_thing_index(map, x, y);
+    return index < 0 ? THING_ENDOFLIST : dun.square_first_things[index];
+}
+
+uint16_t thing_word(uint16_t thing, int field)
+{
+    return le16(dungeon_thing_record(thing) + field);
+}
+
+void set_thing_word(uint16_t thing, int field, uint16_t value)
+{
+    put_le16(dungeon_thing_record(thing) + field, value);
+}
+
+uint16_t dungeon_next_thing(uint16_t thing)
+{
+    return thing_word(thing, THING_NEXT);
+}
+
+void dungeon_append_thing(uint16_t thing, uint16_t *list)
+{
+    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+    uint8_t *link = NULL;
+    for (uint16_t t = *list; t != THING_ENDOFLIST; t = le16(link)) link = dungeon_thing_record(t) + THING_NEXT;
+    if (link) put_le16(link, thing);
+    else *list = thing;
+}
+
+/* Adds count to the first-thing index of each column after column x of map, in all later maps too. */
+static void shift_later_columns(int map, int x, int count)
+{
+    for (int c = dun.map_first_column[map] + x + 1; c < dun.column_count; c++) dun.column_first_thing[c] += count;
+}
+
+int dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y)
+{
+    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+    uint16_t last = dungeon_square_first_thing(map, x, y);
+    if (last != THING_ENDOFLIST) {
+        while (dungeon_next_thing(last) != THING_ENDOFLIST) last = dungeon_next_thing(last);
+        set_thing_word(last, THING_NEXT, thing);
+        return 1;
+    }
+    uint16_t *table = dun.square_first_things;
+    int count = dun.square_thing_count;
+    if (table[count - 1] != THING_NONE) return 0;  /* the original stops with a system error */
+    *dungeon_square_byte(map, x, y) |= SQUARE_HAS_THINGS;
+    shift_later_columns(map, x, 1);
+    int index = square_thing_index(map, x, y);
+    memmove(table + index + 1, table + index, (count - index - 1) * sizeof *table);
+    table[index] = thing;
+    return 1;
+}
+
+void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y)
+{
+    int index = square_thing_index(map, x, y);
+    if (index < 0) return;  /* fix: the original reads before the first-thing table */
+    uint16_t *table = dun.square_first_things;
+    int count = dun.square_thing_count;
+    uint16_t id = thing & THING_ID_MASK;
+    if (dungeon_next_thing(thing) == THING_ENDOFLIST && (table[index] & THING_ID_MASK) == id) {
+        *dungeon_square_byte(map, x, y) &= ~SQUARE_HAS_THINGS;
+        memmove(table + index, table + index + 1, (count - 1 - index) * sizeof *table);
+        table[count - 1] = THING_NONE;
+        shift_later_columns(map, x, -1);
+    } else if ((table[index] & THING_ID_MASK) == id) {
+        table[index] = dungeon_next_thing(thing);
+    } else {
+        uint16_t prev = table[index];
+        while (dungeon_next_thing(prev) != THING_ENDOFLIST && (dungeon_next_thing(prev) & THING_ID_MASK) != id)
+            prev = dungeon_next_thing(prev);
+        if (dungeon_next_thing(prev) != THING_ENDOFLIST) set_thing_word(prev, THING_NEXT, dungeon_next_thing(thing));
+    }
+    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+}
+
+uint16_t dungeon_unused_thing(int type)
+{
+    int count = dun.thing_count[type] - (type == THING_MISC ? MISC_RESERVED : 0);
+    for (int i = 0; i < count; i++) {
+        uint16_t thing = type << THING_TYPE_SHIFT | i;
+        if (dungeon_next_thing(thing) != THING_NONE) continue;
+        memset(dungeon_thing_record(thing), 0, thing_size[type]);
+        set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+        if (type == THING_CONTAINER) set_thing_word(thing, CONTAINER_CONTENTS, THING_ENDOFLIST);
+        return thing;
+    }
+    return THING_NONE;  /* the original then reuses a discarded item, see dun_get_discarded_thing */
+}
+
+/* The side (1 to 4) of the link sensor of a teleporter square, 0 when the square is no teleporter with a link. */
+static int teleporter_link_side(int map, int x, int y, uint16_t *teleporter)
+{
+    if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map)) return 0;
+    if (dungeon_square(map, x, y) >> SQUARE_TYPE_SHIFT != SQUARE_TELEPORTER) return 0;
+    *teleporter = dungeon_square_first_thing(map, x, y);
+    if (*teleporter == THING_ENDOFLIST) return 0;  /* fix: the original reads a record of the end mark */
+    for (uint16_t t = dungeon_next_thing(*teleporter); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+        if (thing_type(t) == THING_SENSOR && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_TELEPORTER_LINK) {
+            int rotation = thing_word(*teleporter, TELEPORTER_TARGET) >> TELEPORTER_ROTATION_SHIFT & (SIDE_COUNT - 1);
+            return (rotation + 2 & (SIDE_COUNT - 1)) + 1;
+        }
+    return 0;
+}
+
+int dungeon_teleporter_link_map(int map, int x, int y)
+{
+    uint16_t teleporter, other;
+    if (!teleporter_link_side(map, x, y, &teleporter)) return -1;
+    uint16_t target = thing_word(teleporter, TELEPORTER_TARGET);
+    int target_map = thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT;
+    if (target_map >= dun.map_count) return -1;  /* fix: the original uses a map outside the dungeon */
+    int found = teleporter_link_side(target_map, target & TELEPORTER_X_MASK, target >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK, &other);
+    return found ? target_map : -1;
 }
 
 void dungeon_free(void)
@@ -129,14 +281,16 @@ void dungeon_free(void)
     memset(&dun, 0, sizeof dun);
 }
 
-/* Reads the records of one thing type and appends the free records of a new game. */
-static int read_things(FILE *f, int type, int count_in_file)
+/* Reads the records of one thing type; a new game appends free records. */
+static int read_things(FILE *f, int type, int count_in_file, int new_game)
 {
-    int count = count_in_file + thing_slack[type];
+    int count = count_in_file + (new_game ? thing_slack[type] : 0);
     int max = type == THING_EXPLOSION ? EXPLOSION_COUNT_MAX : THING_COUNT_MAX;
     if (count > max) count = max;
     if (count_in_file > count) return 0;  /* fix: the original reads past the capped buffer */
+    if (count && !thing_size[type]) return 0;  /* fix: the original writes links into the records of an unused type */
     dun.thing_count[type] = count;
+    put_le16(dun.header + HEADER_THING_COUNTS + 2 * type, count);
     dun.things[type] = calloc(count, thing_size[type]);
     if (!read_bytes(f, dun.things[type], (size_t)thing_size[type] * count_in_file)) return 0;
     for (int i = count_in_file; i < count; i++)  /* fix: the original writes free records past the cap */
@@ -156,28 +310,39 @@ static void build_level_lists(void)
     }
 }
 
-/* Checks that each column's squares with things stay inside the first-thing table and each first thing exists. */
-static int square_things_valid(int square_things)
+int dungeon_thing_valid(uint16_t thing)
 {
+    return thing_index(thing) < dun.thing_count[thing_type(thing)];
+}
+
+/* Checks that a thing list has only existing things and ends. */
+static int thing_list_valid(uint16_t thing)
+{
+    for (int things = 0; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing))
+        if (!dungeon_thing_valid(thing) || ++things > THING_TYPE_COUNT * THING_COUNT_MAX) return 0;  /* bad thing or loop */
+    return 1;
+}
+
+/* Checks that the squares with things own the first entries of the first-thing table in column order,
+   and that each has a valid thing list. */
+static int square_things_valid(void)
+{
+    int index = 0;
     for (int map = 0; map < dun.map_count; map++)
         for (int x = 0; x < dungeon_map_width(map); x++) {
-            int index = dun.column_first_thing[dun.map_first_column[map] + x];
-            for (int y = 0; y < dungeon_map_height(map); y++)
-                if (map_column(map, x)[y] & SQUARE_HAS_THINGS) index++;
-            if (index > dun.square_thing_count) return 0;
+            if (dun.column_first_thing[dun.map_first_column[map] + x] != index) return 0;
+            for (int y = 0; y < dungeon_map_height(map); y++) {
+                if (!(map_column(map, x)[y] & SQUARE_HAS_THINGS)) continue;
+                if (index >= dun.square_thing_count || !thing_list_valid(dun.square_first_things[index++])) return 0;
+            }
         }
-    for (int i = 0; i < square_things; i++) {
-        uint16_t thing = dun.square_first_things[i];
-        if (thing != THING_NONE && thing != THING_ENDOFLIST && thing_index(thing) >= dun.thing_count[thing_type(thing)])
-            return 0;
-    }
     return 1;
 }
 
 /* Reads the DUNGEON.DAT sections in file order: header, maps, thing lists, text, things, squares. */
-static int read_dungeon(FILE *f)
+static int read_dungeon(FILE *f, int new_game)
 {
-    uint8_t header[HEADER_SIZE];
+    uint8_t *header = dun.header;
     if (!read_bytes(f, header, HEADER_SIZE) || le16(header) == COMPRESSED_SIGNATURE) return 0;
     dun.party_start = le16(header + HEADER_PARTY_START);
     dun.map_count = header[HEADER_MAP_COUNT];
@@ -190,39 +355,64 @@ static int read_dungeon(FILE *f)
         dun.map_first_column[map] = column_count;
         column_count += dungeon_map_width(map);
     }
+    dun.column_count = column_count;
     dun.column_first_thing = malloc(column_count * sizeof(uint16_t));
     if (!read_words(f, dun.column_first_thing, column_count)) return 0;
 
     int square_things = le16(header + HEADER_SQUARE_THINGS);
-    dun.square_first_things = malloc((square_things + SQUARE_THING_SLACK) * sizeof(uint16_t));
+    int slack = new_game ? SQUARE_THING_SLACK : 0;
+    if (square_things + slack == 0) return 0;
+    dun.square_first_things = malloc((square_things + slack) * sizeof(uint16_t));
     if (!read_words(f, dun.square_first_things, square_things)) return 0;
-    for (int i = 0; i < SQUARE_THING_SLACK; i++) dun.square_first_things[square_things + i] = THING_NONE;
-    dun.square_thing_count = square_things + SQUARE_THING_SLACK;
+    for (int i = 0; i < slack; i++) dun.square_first_things[square_things + i] = THING_NONE;
+    dun.square_thing_count = square_things + slack;
+    put_le16(header + HEADER_SQUARE_THINGS, dun.square_thing_count);
 
     dun.text_word_count = le16(header + HEADER_TEXT_WORDS);
     dun.text_data = malloc(dun.text_word_count * sizeof(uint16_t));
     if (!read_words(f, dun.text_data, dun.text_word_count)) return 0;
 
     for (int type = 0; type < THING_TYPE_COUNT; type++)
-        if (!read_things(f, type, le16(header + HEADER_THING_COUNTS + 2 * type))) return 0;
+        if (!read_things(f, type, le16(header + HEADER_THING_COUNTS + 2 * type), new_game)) return 0;
 
     int map_data_size = le16(header + HEADER_MAP_DATA_SIZE);
     dun.map_data = malloc(map_data_size);
     if (!read_bytes(f, dun.map_data, map_data_size)) return 0;
     for (int map = 0; map < dun.map_count; map++)
         if (map_data_offset(map) + dungeon_map_width(map) * dungeon_map_height(map) > map_data_size) return 0;
-    if (!square_things_valid(square_things)) return 0;
+    if (!square_things_valid()) return 0;
     build_level_lists();
     return 1;
 }
 
-int dungeon_load(const char *path)
+int dungeon_read(FILE *f, int new_game)
 {
     dungeon_free();
-    FILE *f = fopen(path, "rb");
-    if (!f) return 0;
-    int ok = read_dungeon(f);
-    fclose(f);
+    int ok = read_dungeon(f, new_game);
     if (!ok) dungeon_free();
     return ok;
+}
+
+int dungeon_load(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        dungeon_free();
+        return 0;
+    }
+    int ok = dungeon_read(f, 1);
+    fclose(f);
+    return ok;
+}
+
+int dungeon_write(FILE *f)
+{
+    if (!write_bytes(f, dun.header, HEADER_SIZE) || !write_bytes(f, dun.map_descs, dun.map_count * MAP_DESC_SIZE)
+        || !write_words(f, dun.column_first_thing, dun.column_count)
+        || !write_words(f, dun.square_first_things, dun.square_thing_count)
+        || !write_words(f, dun.text_data, dun.text_word_count))
+        return 0;
+    for (int type = 0; type < THING_TYPE_COUNT; type++)
+        if (!write_bytes(f, dun.things[type], (size_t)thing_size[type] * dun.thing_count[type])) return 0;
+    return write_bytes(f, dun.map_data, le16(dun.header + HEADER_MAP_DATA_SIZE));
 }
