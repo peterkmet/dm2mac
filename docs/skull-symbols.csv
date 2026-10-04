@@ -302,7 +302,7 @@ address,name,signature,subsystem
 0x0001f274,dun_get_thing_gdat_category,uint8_t dun_get_thing_gdat_category(uint16_t thing),dungeon data
 0x0001f2ab,money_is_moneybox,int money_is_moneybox(uint16_t thing),money and shops
 0x0001f309,item_is_chest,int item_is_chest(uint16_t thing),items
-0x0001f347,money_is_coin,int money_is_coin(uint16_t thing),money and shops
+0x0001f347,item_is_stackable,int item_is_stackable(uint16_t thing),items
 0x0001f380,money_count_coins_in_box,"void money_count_coins_in_box(uint16_t box, int16_t counts[10])",money and shops
 0x0001f413,money_add_coin_to_box,"int money_add_coin_to_box(uint16_t box, uint16_t coin)",money and shops
 0x0001f50d,money_take_coin_from_box,"uint16_t money_take_coin_from_box(uint16_t box, int16_t coin_type)",money and shops
@@ -823,7 +823,7 @@ address,name,signature,subsystem
 0x0004663a,item_get_throw_fatigue,uint16_t item_get_throw_fatigue(uint16_t thing),items
 0x0004667a,champ_scale_by_stamina,"int16_t champ_scale_by_stamina(uint8_t *champ, int16_t value)",champions
 0x000466ab,champ_get_stat,"int16_t champ_get_stat(uint8_t *champ, uint16_t stat, uint16_t which)",champions
-0x00046745,champ_reduce_by_stat,"int16_t champ_reduce_by_stat(uint8_t *champ, uint16_t stat, uint16_t value)",champions
+0x00046745,champ_get_stat_adjusted_attack,"int16_t champ_get_stat_adjusted_attack(uint8_t *champ, uint16_t stat, uint16_t attack)",champions
 0x00046786,champ_test_luck,"int champ_test_luck(uint8_t *champ, uint16_t chance)",champions
 0x00046824,champ_get_max_load,uint16_t champ_get_max_load(uint8_t *champ),champions
 0x00046892,champ_get_move_delay,uint16_t champ_get_move_delay(uint16_t champ),champions
@@ -1796,7 +1796,7 @@ address,name,signature,subsystem
 0x0007f8d2,g_ai_target_map,int16_t,creatures
 0x0007f8d4,g_ai_target_x,int16_t,creatures
 0x0007f8d6,g_ai_target_dir,int16_t,creatures
-0x0007f8dc,g_save_checksum,uint32_t,save and load
+0x0007f8dc,g_save_bit_total,uint32_t,save and load
 0x0007f8e0,g_save_creature_remap,uint16_t *,save and load
 0x0007f8e4,g_save_deferred_things,uint16_t *,save and load
 0x0007f8ec,g_save_container_remap,uint16_t *,save and load

@@ -26,6 +26,53 @@ The key table is big-endian (first word `0x8001` is read byte-swapped). It holds
 
 The sum of all item sizes ends at byte `8639757`. This is the exact size of `game/DATA/GRAPHICS.DAT`.
 
+The reDM2 project (`docs/formats.md`, section "GRAPHICS.DAT") gives the same header, item count, key table size (`0x17284` = 94852), and row layout. Its census also gives these facts. We did not repeat the census.
+
+### Language filter (field `F`)
+
+Source: reDM2 `docs/formats.md`, "F IS THE LANGUAGE". Our code names agree: `gdat_key_row_matches_language` (`0x3cd2f`) and `g_language` (`0x7576c`).
+
+- `gdat_load_key_table` keeps a row only if `F & 0xf0` is `0` or equal to `g_language`. Other rows are not installed.
+- `g_language` is `0x10` by default. `main` sets `0x30` for `+GLG` and `0x40` for `+GLF`.
+- High nibble of `F`: `0` = all languages (10102 rows), `1` = English, `3` = German, `4` = French (545 rows each), `0xf` = never installed (117 developer labels).
+- Each setting installs 10647 rows with the same key set. Only the item numbers of the 478 localized keys change.
+
+Impact on the port: apply the same filter when the key table loads. The default is English (`0x10`).
+
+### Image compression (Step 8)
+
+Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. We checked the dispatch in `decomp/SKULL.c`.
+
+`gdat_decode_image` (`0x3e867`) reads the first u32 of the raw item as a signed value and shifts it right by 26 (the gate):
+
+| Gate | Meaning | Decode |
+|---|---|---|
+| `-32` | Not compressed | The pixels start at item + `0x0a`. Item + 4 holds a ready image header. |
+| Equal to `g_gdat_8bpp_marker` (`0x7fac8`) | 8-bit image | `image_decode_8bpp` (`0x3f71c`) |
+| Other value | 4-bit image, nibble and run-length codes | `image_decode_4bpp` (`0x12e4f`) |
+| (delta table present) | 4-bit image relative to a parent image | `image_decode_4bpp_delta` (`0x13258`) |
+
+`gdat_load_index` sets `g_gdat_8bpp_marker` to 31 if bit `0x40` of the flag item `(0,0,0x0b,0)` is set, else to 1000 (no gate can be 1000, so all images are 4-bit). The shipped flag item is `0x7b`, so the marker is 31.
+
+`image_decode_8bpp` selects the decompressor. It reads the codec byte at item + 6, skips 8 bytes, and calls the first pointer of the entry `g_image_decoders[codec]` (`0x75798 + codec * 8`). The second pointer of the entry is a work area allocator. The function does not check the codec value.
+
+| Codec | Function | Scheme |
+|---|---|---|
+| 0 | none (null pointer) | — |
+| 1 | `gdat_lzw_decode` (`0x5aada`), allocator `gdat_lzw_alloc_tables` (`0x5acf4`) | LZW and `0x90` run-length |
+| 2 | `gdat_lzss12_decode` (`0x5ad2b`) | LZSS, mask `0x0f`, 4/4 bit split |
+| 3 | `gdat_lzss13_decode` (`0x5ad8d`) | LZSS, mask `0x1f`, 5/3 bit split |
+
+This answers open question 2 of `docs/skull-map.md`: `g_gdat_decompressors` (`0x757a0`) is `g_image_decoders[1]`.
+
+reDM2 measurements for the shipped file:
+
+- 3167 images are 8-bit and use codec 2 or 3. 1003 images are 4-bit. 6 images are not compressed.
+- No shipped image uses codec 1 (LZW). Do not port it first.
+- The delta table key `(0,0,8,0)` is absent. `g_gdat_base_image_count` (`0x7fabe`) stays 0. Thus `image_decode_4bpp_delta` does not run with the shipped file.
+- 1442 items have a gate outside `{0, 31, -32}` and are not images. The decode entry does not reject them. Do not decode them in the Step 8 test.
+- The layout item `(1,0,4,0)` is raw bytes: u16 magic `0xfc0d`, u16 group count, group ranges, then `{x, y, w, h}` records. `zone_unpack_layout` (`0x19d0e`) reads it.
+
 ## 1. Digital sound effects
 
 ### Answer
@@ -79,6 +126,8 @@ else {
 
 Confidence: high for the format and the formulas. Medium for the SOS structure field names.
 
+Disagreement with reDM2: reDM2 (`docs/formats.md`, "There is no audio in GRAPHICS.DAT") states that the archive holds no digital samples. It lists the 292 type-2 rows as "image?, inferred, no reader". Our evidence is the reader `FUN_0001623b`, which loads exactly these 292 items as sound descriptors, and the constant 6-byte sample header. We keep our answer. reDM2 names `FUN_000104ea` `hilite_node_add` and marks its role as not verified. The caller passes the sample descriptors, and an XOR of bit 7 is the signed to unsigned PCM conversion. We keep `sound_prepare_sample`.
+
 Impact on the port: load sounds from GDAT type `2`, skip 6 bytes, convert signed to SDL `S8` (or unsigned `U8`), and play at 11025 Hz. Port `FUN_00010877` and the scaling in `FUN_00015ca9` for the Step 18 differential test.
 
 ## 2. HMP songs and SONGLIST.DAT
@@ -108,7 +157,7 @@ Impact on the port: load sounds from GDAT type `2`, skip 6 bytes, convert signed
 
 Music master volume, `FUN_00010736(level 0..7, 10)`: `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
 
-Confidence: high.
+Confidence: high. reDM2 (`docs/formats.md`, "T=0x04 IS MUSIC") gives the same key, the same 29 items, and the same match of item 5602 with `TEST.HMP`.
 
 Impact on the port: read songs from GDAT `(4, n, 3, 0)`. Port `FUN_00010af6` with the per-step fade.
 
@@ -266,6 +315,14 @@ Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` 
 
 Confidence: high for divisor 4971 and the 120 Hz music tick. Medium for the 60 Hz and 7.5 Hz game rates.
 
+reDM2 findings (`docs/memory.md`, "PART 1 — determinism audit", and the `IBMIOP.EXE` driver notes) agree and add these facts:
+
+- `IBMIOP.EXE` function `0x0f` ends with `mov ax,1; retf`. Thus `g_timer_step` (`0x7efac`) is 1: each callback adds 1 tick.
+- The tick from the keyboard poll (function `0x02`) runs only with the `IBMIOP.EXE` option `+D`. `DM2.BAT` passes `+VS`, so the tick comes from the `INT 8` handler on every 4th interrupt. This agrees with our reading.
+- Function `0x30` (shutdown) clears the flag that function `0x0f` sets. After it, no tick arrives.
+- Game code reads no clock: all `int 21h` calls are in the Watcom library, and there is no `int 1Ah`. `g_game_time` (`0x7f22c`) counts game steps. Timeline event times are game steps (24 bits).
+- reDM2 did not measure the real rate either. The DOSBox measurement stays open.
+
 Impact on the port: set `PIT_DIVISOR` in `port/src/platform.c` to `4971` (240.02 Hz). Derive the game tick as every 4th PIT tick (60 Hz) and the game step at 8 game ticks. Drive the HMP player at 120 Hz. Confirm the game rate with the DOSBox measurement.
 
 ## Other finding: IBMIOP.EXE is a required runtime layer
@@ -273,3 +330,62 @@ Impact on the port: set `PIT_DIVISOR` in `port/src/platform.c` to `4971` (240.02
 `DM2.BAT` starts `IBMIOP SKULL.EXE`. `IBMIOP.EXE` is a real-mode resident layer that `SKULL.EXE` calls through `int 0FCh` with a shared buffer (`DAT_0008048c`). It sets video mode `0x13`, writes the palette (port `0x3c8`), reads `skull.cfg`, handles the keyboard and timer, and runs the movie script. `SKULL.EXE` uses 34 call sites with function numbers `0x00` to `0x30` and `0x103` to `0x10a` (for example `0x0f` timer callback, `0x2a` timer reinstall, `0x2e`, `0x2f`, `0x30` at start and exit).
 
 Impact on the port: `docs/skull-map.md` lists these `int 0FCh` functions. The platform layer replaces them (video, palette, input, timer).
+
+### IBMIOP service details from reDM2
+
+Source: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x14`, `0x2e`, `0x2f`, `0x30`) and its comments on `0x10010`, `0x13898`, `0x14cb1`. reDM2 read the unpacked `IBMIOP.EXE` code. These facts add to or correct the table in `docs/skull-map.md`:
+
+- The dispatcher accepts `EAX` from `0x00` to `0x30`. 28 functions do work. 21 numbers go to one exit that does nothing. Bit `0x100` selects a second table (the `0x103` to `0x10a` functions).
+- `int 0FCh` keeps all registers. All results go through the shared buffer (`DGROUP:0x2342` in `IBMIOP.EXE`, `g_iop_buffer` in `SKULL.EXE`).
+- `0x0e`: the first buffer word is an input. `0` gives the live pointer position. Other values give the position at the last event. The result is x, y, and a third word. reDM2 calls the third word "cursor height". We call it the button state (`g_mouse_buttons`, `0x7f0ae`). See the open conflicts in `docs/reference-crosscheck.md`.
+- `0x12`: the driver does nothing. `SKULL.EXE` then reads buffer word 0, which the driver keeps up to date. Our name `disk_get_drive_status` stays, because the game uses that word as the drive status.
+- `0x14`: the driver first writes a zero byte. If the drive has no volume label, the result is an empty string.
+- `0x2e`: the result is the linear address of a 6-word sound configuration record, filled from `SKULL.CFG`: `+0` digital device ID, `+2` IRQ, `+4` DMA, `+6` port, `+8` MIDI device ID, `+0x0a` MIDI port. `sound_init` stores the address at `0x7ef2c`.
+- `0x2f`: the result is `{linear address, size}` of a free DOS memory block. `system_init` adds it as one more memory pool.
+- `0x30`: shutdown. It also stops the game timer callback.
+- `0x10a`: `SKULL.EXE` sends 1024 bytes from GDAT item `(1,0,9,254)` and stores the first result word in `0x7f07c`. We read it as the palette upload (256 × 4 bytes). reDM2 reads it as a cursor image upload and marks this as an inference. This stays open.
+
+## 7. Save file format (Step 10)
+
+Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`0x370d2`) in `decomp/SKULL.c`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
+
+### Container
+
+| Part | Size (reDM2 saves) | Content |
+|---|---|---|
+| 1 | 42 bytes | Save header |
+| 2 | 43443 bytes | Dungeon image in the `DUNGEON.DAT` section format |
+| 3 | rest of file | Bit-packed game state |
+
+- Header: `+0x00` u16 = 1 (format marker), `+0x02` 16 bytes save name (`"GAME 0"`, NUL padded). The meaning of `+0x12` to `+0x29` is not known.
+- `game_save` (`0x3502b`) first reads the old header, then changes only `+0x00` and the name, and writes it back. All other header bytes come from the previous save. The port must keep them byte for byte.
+- `game_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
+- The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with 0, and `DUNGEON.DAT` with 1.
+- The dungeon image has no trailing 16-bit checksum. `DUNGEON.DAT` has one.
+
+### Bit-packed records (part 3)
+
+`save_read_packed(dest, masks, size, count)` (`0x34536`) reads `count` records of `size` bytes. Each record byte has one mask byte. Only the bits set in the mask are stored, most significant bit first. The bit position continues from one call to the next. `save_write_packed` (`0x343be`) is the writer. `g_save_bit_total` (`0x7f8dc`) counts the stored bits.
+
+| Order | Destination | Masks | Size × count |
+|---|---|---|---|
+| 1 | Local party and game record (to globals) | `0x75316` | 60 × 1 |
+| 2 | `g_global_flags` (`0x7f100`) | `0x75312` | 1 × 8 |
+| 3 | `g_global_bytes` (`0x7f0c0`) | `0x75312` | 1 × 64 |
+| 4 | `g_global_words` (`0x7f108`) | `0x75312` | 2 × 64 |
+| 5 | `g_champions` (`0x7fbd0`) | `0x75352` | 263 × `g_champion_count` |
+| 6 | `g_magic_light` (`0x7ffec`) | `0x75459` | 6 × 1 |
+| 7 | `g_timeline_events` (`0x760e8`) | `0x7545f` | 12 × `g_timeline_event_count` |
+| 8 | Things, through `save_read_dungeon_things` (`0x35b97`) | `g_save_thing_masks` (`0x754d7`) | per thing type |
+
+- Record 1: fields go to `g_game_time` (`0x7f22c`), `g_random_seed` (`0x70518`), `g_party_x`, `g_party_y`, `g_party_dir`, `g_party_map`, `g_champion_count`, `g_timeline_event_count`, and other globals.
+- Record 5 does not store the hand and inventory slots (`+0xaf` to `+0xf0`). Record 8 rebuilds them.
+- Record 7 stores timeline bytes `+0` to `+9`. Bytes `+0x0a` and `+0x0b` are not stored.
+- Record 8 walks the squares and their thing lists. For each thing it reads the thing record with the mask of its type. The masks never store bytes 0-1 (the link word). Thing types 1 and 11-13 have no mask and are not stored.
+- Record 8 first unlinks and frees all things of types 4 to 15. Then it creates them again from the bit stream. Types 0 to 3 keep their slots.
+
+### Impact on the port (Step 10)
+
+- Port the reader and writer from the mask tables. Do not write a separate format description in C.
+- The byte-equal test of Step 10 needs care: after a load, things of types 4 to 15 can sit in other slots than in the file (reDM2 measured 492 of 941). A load followed by a save can thus give a different dungeon image. Compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and compare a C load with the original load by content.
+- Keep the unknown header bytes.
