@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 #include "platform.h"
 #include "scale.h"
+#include "sound.h"
 #include "video.h"
 
 #define PIT_CLOCK_HZ 1193182 /* PIT input clock */
@@ -8,6 +9,8 @@
 #define TICK_NS ((Uint64)SDL_NS_PER_SECOND * PIT_DIVISOR / PIT_CLOCK_HZ)
 #define ARGB_BYTES 4
 #define FILTER_MAX 3
+#define AUDIO_CHANNELS 2
+#define AUDIO_QUEUE_FRAMES 2048 /* about 46 ms at 44100 Hz */
 
 static SDL_Window *win;
 static SDL_Renderer *ren;
@@ -16,6 +19,8 @@ static Uint64 next_tick;
 static int mouse_x, mouse_y;
 static int filter = 1; /* upscale factor: 1 none, 2 Scale2x, 3 Scale3x */
 static uint8_t big[SCREEN_H * FILTER_MAX][SCREEN_W * FILTER_MAX];
+static SDL_AudioStream *audio;
+static PlatMixer *music;
 
 int plat_init(int scale, int filter_factor)
 {
@@ -29,6 +34,12 @@ int plat_init(int scale, int filter_factor)
         return 0;
     }
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
+    SDL_AudioSpec spec = { SDL_AUDIO_S16, AUDIO_CHANNELS, SOUND_OUTPUT_RATE };
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO) ||
+        !(audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL)))
+        SDL_Log("SDL audio: %s, playing without sound", SDL_GetError());
+    else
+        SDL_ResumeAudioStreamDevice(audio);
     next_tick = SDL_GetTicksNS() + TICK_NS;
     return 1;
 }
@@ -111,7 +122,21 @@ void plat_wait_tick(void)
     next_tick += TICK_NS;
 }
 
-/* Audio stub: the port has no sound output yet. */
+void plat_audio_music(PlatMixer *mix)
+{
+    music = mix;
+}
+
+/* Tops up the audio queue on the main thread, so that the mixers need no lock. */
 void plat_audio_pump(void)
 {
+    static int16_t buf[AUDIO_QUEUE_FRAMES * AUDIO_CHANNELS];
+    const int frame_bytes = sizeof(buf[0]) * AUDIO_CHANNELS;
+    if (!audio) return;
+    int frames = AUDIO_QUEUE_FRAMES - SDL_GetAudioStreamQueued(audio) / frame_bytes;
+    if (frames <= 0) return;
+    SDL_memset(buf, 0, frames * frame_bytes);
+    if (music) music(buf, frames);
+    sound_mix(buf, frames);
+    SDL_PutAudioStreamData(audio, buf, frames * frame_bytes);
 }
