@@ -75,7 +75,10 @@ class Emu:
         self.uc.emu_stop()
 
     def _intr(self, uc, intno, _):
-        if not self.allow_io:
+        is_int_n = self.uc.mem_read(self._pc() - 2, 2) == bytes([0xCD, intno])
+        if not is_int_n:
+            self._fail(f"CPU fault {intno:#x}")
+        elif not self.allow_io:
             self._fail(f"interrupt {intno:#x}")
 
     def _in(self, uc, port, size, _):
@@ -94,7 +97,8 @@ class Emu:
     def call(self, addr, *args, allow_io=False):
         """Call addr with Watcom register arguments; return EAX.
 
-        allow_io=True turns IN into a read of 0 and OUT and INT into no-ops.
+        allow_io=True turns IN into a read of 0 and OUT and `int n` into no-ops.
+        CPU faults (#DE, #GP, ...) always raise.
         Execution outside the image always raises: nothing is mapped there.
         """
         self.allow_io = allow_io
