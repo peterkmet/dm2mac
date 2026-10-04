@@ -21,12 +21,14 @@ SQUARE_FIRST_THING = 0x1D391
 
 G_THING_SIZE = 0x71808
 G_THING_DATA = 0x7F288
+G_SQUARE_FIRST_THINGS = 0x7F388
 G_MAP_DESCS = 0x7F3C4
 G_MAP_COLUMNS = 0x7F3C8
 G_TEXT_DATA = 0x7F3CC
 G_LEVEL_MAP_LISTS = 0x7F3D8
 G_DUNGEON_HEADER = 0x7F3E8
 G_LEVEL_MAP_LIST_OFFSETS = 0x7F3EC
+THING_SLACK = 0x71818
 
 
 class Original:
@@ -79,6 +81,7 @@ def original():
 def dungeon(lib):
     lib.dungeon_thing_record.restype = ctypes.c_void_p
     lib.dungeon_text_data.restype = ctypes.c_void_p
+    lib.dungeon_square_things.restype = ctypes.c_void_p
     lib.dungeon_level_maps.restype = ctypes.c_void_p
     lib.dungeon_party_start.restype = ctypes.c_uint16
     lib.dungeon_square.restype = ctypes.c_uint8
@@ -107,6 +110,19 @@ def test_maps_and_squares(original, dungeon):
                 assert dungeon.dungeon_square_first_thing(m, x, y) == original.square_first_thing(m, x, y), (m, x, y)
 
 
+def test_square_things(original, dungeon):
+    count = dungeon.dungeon_square_thing_count()
+    assert count == original.u16(original.header(10)) == 2660
+    table = ctypes.string_at(dungeon.dungeon_square_things(), 2 * count)
+    assert table == original.emu.read(original.ptr(G_SQUARE_FIRST_THINGS), 2 * count)
+
+
+def test_thing_slack_table(original, dungeon):
+    slack = original.emu.read(THING_SLACK, 16)
+    in_file = struct.unpack_from("<16H", DUNGEON.read_bytes(), 12)
+    assert [dungeon.dungeon_thing_count(t) - in_file[t] for t in range(16)] == list(slack)
+
+
 def test_things(original, dungeon):
     for t in range(16):
         count = original.u16(original.header(12 + 2 * t))
@@ -123,8 +139,26 @@ def test_text_and_level_lists(original, dungeon):
     assert ctypes.string_at(dungeon.dungeon_text_data(), 2 * words) == original.emu.read(original.ptr(G_TEXT_DATA), 2 * words)
     offsets = original.emu.read(original.ptr(G_LEVEL_MAP_LIST_OFFSETS), 63)
     for level in range(63):
+        assert dungeon.dungeon_level_maps(level) - dungeon.dungeon_level_maps(0) == offsets[level], level
         maps = original.emu.read(original.ptr(G_LEVEL_MAP_LISTS) + offsets[level], 64).split(b"\xff")[0]
         assert ctypes.string_at(dungeon.dungeon_level_maps(level), 64).split(b"\xff")[0] == maps, level
+
+
+def synthetic_dungeon(counts):
+    """A dungeon file without maps and text, with zeroed records of the given thing counts."""
+    header = struct.pack("<6H16H", 0, 0, 0, 0, 0, 0, *counts)
+    return header + bytes(16 * sum(counts))
+
+
+def test_thing_count_cap(lib, tmp_path):
+    path = tmp_path / "groups.dat"
+    path.write_bytes(synthetic_dungeon([0, 0, 0, 0, 1000] + [0] * 11))
+    assert lib.dungeon_load(str(path).encode()) == 1
+    assert lib.dungeon_thing_count(4) == 0x400
+    lib.dungeon_thing_record.restype = ctypes.c_void_p
+    assert ctypes.string_at(lib.dungeon_thing_record(4 << 10 | 0x3FF), 2) == b"\xff\xff"
+    path.write_bytes(synthetic_dungeon([0, 0, 0, 0, 0x401] + [0] * 11))
+    assert lib.dungeon_load(str(path).encode()) == 0
 
 
 def test_bad_files(lib, tmp_path):
@@ -132,8 +166,19 @@ def test_bad_files(lib, tmp_path):
     compressed.write_bytes(b"\x04\x81" + bytes(0x2A))
     paths = [compressed, tmp_path / "missing.dat"]
     if DUNGEON.exists():
+        data = DUNGEON.read_bytes()
         paths.append(tmp_path / "truncated.dat")
-        paths[-1].write_bytes(DUNGEON.read_bytes()[:1000])
+        paths[-1].write_bytes(data[:1000])
+        map_count = data[4]
+        columns = 0x2C + 16 * map_count
+        widths = sum((struct.unpack_from("<H", data, 0x2C + 16 * m + 8)[0] >> 6 & 0x1F) + 1 for m in range(map_count))
+        square_things = columns + 2 * widths
+        damages = {"map_outside": (0x2C, 0xFFFF), "bad_column": (columns, 0xFFFF), "bad_thing": (square_things, 3 << 10 | 0x3FF)}
+        for name, (offset, value) in damages.items():
+            damaged = bytearray(data)
+            struct.pack_into("<H", damaged, offset, value)
+            paths.append(tmp_path / f"{name}.dat")
+            paths[-1].write_bytes(damaged)
     for path in paths:
         assert lib.dungeon_load(str(path).encode()) == 0
         assert lib.dungeon_map_count() == 0

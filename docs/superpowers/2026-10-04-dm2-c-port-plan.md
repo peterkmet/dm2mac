@@ -113,6 +113,7 @@ Each step ends with green tests and a commit. A fresh subagent executes each ste
 
 - Load `DUNGEON.DAT` (header, maps, object lists, text). Port the loader logic from `SKULL.EXE`.
 - Test: map count, map sizes, square data, and object counts are equal to the values that the original loader gives in `dm2tools.emu`.
+- Deferred: the two post-load passes of a new game, `dungeon_link_things_after_load` (teleporter actuator numbering, object list merge, text square marks) and `dungeon_read_level_table` (level digits from the text on the party start square). The C loader does not do them yet. `dungeon_square` and the thing records return the file data before these passes. Owner: open, the user decides. Proposal: Step 14 (first step that moves the party and needs linked squares).
 
 ### Step 10: Save format
 

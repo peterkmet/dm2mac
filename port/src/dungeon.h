@@ -14,7 +14,9 @@ enum thing_type {
 #define LEVEL_LIST_END 0xff
 
 /* A thing id: record index in bits 0-9, thing type in bits 10-13, cell in bits 14-15. */
-#define thing_type(t) (((t) >> 10) & 0xf)
+#define THING_TYPE_SHIFT 10
+#define THING_TYPE_MASK 0xf
+#define thing_type(t) (((t) >> THING_TYPE_SHIFT) & THING_TYPE_MASK)
 #define THING_INDEX_MASK 0x3ff
 #define thing_index(t) ((t) & THING_INDEX_MASK)
 
@@ -31,6 +33,9 @@ int dungeon_map_level(int map);
 uint8_t dungeon_square(int map, int x, int y);
 /* The first thing on the square (x, y), THING_ENDOFLIST when the square has no things. */
 uint16_t dungeon_square_first_thing(int map, int x, int y);
+/* Entries of the square first-thing table, including the free entries of a new game. */
+int dungeon_square_thing_count(void);
+const uint16_t *dungeon_square_things(void);
 int dungeon_thing_count(int type);
 int dungeon_thing_size(int type);
 uint8_t *dungeon_thing_record(uint16_t thing);

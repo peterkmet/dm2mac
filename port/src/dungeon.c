@@ -33,6 +33,7 @@ static struct {
     uint16_t *map_first_column;
     uint16_t *column_first_thing;
     uint16_t *square_first_things;
+    int square_thing_count;
     int text_word_count;
     uint16_t *text_data;
     int thing_count[THING_TYPE_COUNT];
@@ -76,6 +77,8 @@ int dungeon_map_height(int map) { return (map_size_and_level(map) >> MAP_HEIGHT_
 int dungeon_map_level(int map) { return map_size_and_level(map) & MAP_LEVEL_MASK; }
 int dungeon_map_count(void) { return dun.map_count; }
 uint16_t dungeon_party_start(void) { return dun.party_start; }
+int dungeon_square_thing_count(void) { return dun.square_thing_count; }
+const uint16_t *dungeon_square_things(void) { return dun.square_first_things; }
 int dungeon_thing_count(int type) { return dun.thing_count[type]; }
 int dungeon_thing_size(int type) { return thing_size[type]; }
 int dungeon_text_word_count(void) { return dun.text_word_count; }
@@ -132,11 +135,11 @@ static int read_things(FILE *f, int type, int count_in_file)
     int count = count_in_file + thing_slack[type];
     int max = type == THING_EXPLOSION ? EXPLOSION_COUNT_MAX : THING_COUNT_MAX;
     if (count > max) count = max;
-    if (count_in_file > count) return 0;
+    if (count_in_file > count) return 0;  /* fix: the original reads past the capped buffer */
     dun.thing_count[type] = count;
     dun.things[type] = calloc(count, thing_size[type]);
     if (!read_bytes(f, dun.things[type], (size_t)thing_size[type] * count_in_file)) return 0;
-    for (int i = count_in_file; i < count; i++)
+    for (int i = count_in_file; i < count; i++)  /* fix: the original writes free records past the cap */
         put_le16(dun.things[type] + i * thing_size[type], THING_NONE);  /* a free record has THING_NONE as link */
     return 1;
 }
@@ -151,6 +154,24 @@ static void build_level_lists(void)
             if (dungeon_map_level(map) == level) dun.level_maps[n++] = map;
         dun.level_maps[n++] = LEVEL_LIST_END;
     }
+}
+
+/* Checks that each column's squares with things stay inside the first-thing table and each first thing exists. */
+static int square_things_valid(int square_things)
+{
+    for (int map = 0; map < dun.map_count; map++)
+        for (int x = 0; x < dungeon_map_width(map); x++) {
+            int index = dun.column_first_thing[dun.map_first_column[map] + x];
+            for (int y = 0; y < dungeon_map_height(map); y++)
+                if (map_column(map, x)[y] & SQUARE_HAS_THINGS) index++;
+            if (index > dun.square_thing_count) return 0;
+        }
+    for (int i = 0; i < square_things; i++) {
+        uint16_t thing = dun.square_first_things[i];
+        if (thing != THING_NONE && thing != THING_ENDOFLIST && thing_index(thing) >= dun.thing_count[thing_type(thing)])
+            return 0;
+    }
+    return 1;
 }
 
 /* Reads the DUNGEON.DAT sections in file order: header, maps, thing lists, text, things, squares. */
@@ -176,6 +197,7 @@ static int read_dungeon(FILE *f)
     dun.square_first_things = malloc((square_things + SQUARE_THING_SLACK) * sizeof(uint16_t));
     if (!read_words(f, dun.square_first_things, square_things)) return 0;
     for (int i = 0; i < SQUARE_THING_SLACK; i++) dun.square_first_things[square_things + i] = THING_NONE;
+    dun.square_thing_count = square_things + SQUARE_THING_SLACK;
 
     dun.text_word_count = le16(header + HEADER_TEXT_WORDS);
     dun.text_data = malloc(dun.text_word_count * sizeof(uint16_t));
@@ -189,6 +211,7 @@ static int read_dungeon(FILE *f)
     if (!read_bytes(f, dun.map_data, map_data_size)) return 0;
     for (int map = 0; map < dun.map_count; map++)
         if (map_data_offset(map) + dungeon_map_width(map) * dungeon_map_height(map) > map_data_size) return 0;
+    if (!square_things_valid(square_things)) return 0;
     build_level_lists();
     return 1;
 }
