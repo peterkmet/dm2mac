@@ -1,5 +1,5 @@
 // Name functions and globals from a CSV file with the columns address,name,signature,subsystem (first line is a header).
-// A row with a signature, or at an instruction, names a function (created if missing). Other rows label a global.
+// A row with a signature in an executable block, or at an instruction, names a function (created if missing). Other rows label a global.
 // The script does not apply the signature text. If the file does not exist, the script does nothing.
 // Usage: -postScript ApplySymbols.java <symbols.csv>
 import ghidra.app.script.GhidraScript;
@@ -26,7 +26,7 @@ public class ApplySymbols extends GhidraScript {
             String name = cols[1].trim();
             Function f = getFunctionAt(addr);
             boolean signature = cols.length > 2 && !cols[2].isEmpty() && !cols[2].startsWith(",");
-            boolean code = getInstructionAt(addr) != null || signature;
+            boolean code = getInstructionAt(addr) != null || (signature && getMemoryBlock(addr).isExecute());
             if (f == null && code) {
                 disassemble(addr);
                 f = createFunction(addr, name);

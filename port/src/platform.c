@@ -4,7 +4,7 @@
 #include "video.h"
 
 #define PIT_CLOCK_HZ 1193182 /* PIT input clock */
-#define PIT_DIVISOR 65536    /* provisional DOS default, about 18.2065 Hz */
+#define PIT_DIVISOR 4971     /* 240 Hz, see docs/skull-formats.md section 6 */
 #define TICK_NS ((Uint64)SDL_NS_PER_SECOND * PIT_DIVISOR / PIT_CLOCK_HZ)
 #define ARGB_BYTES 4
 #define FILTER_MAX 3
