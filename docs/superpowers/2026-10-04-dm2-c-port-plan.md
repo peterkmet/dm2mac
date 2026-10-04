@@ -148,12 +148,12 @@ Common rules for 12a and 12b:
 - Deviations (details: `docs/skull-formats.md` section 8):
   - `view_load_square` fills the 23 records. The creature grid, the object grid, and the missile and object masks are thing data: 12b fills them. 12b also ports `view_get_thing_position`, `view_grid5_cell_to_xy`, and `view_offset_creature_toward_party`, which only that part uses.
   - No DOS memory layer: `viewport_alloc` is the static bitmap `view_viewport`; `gfx_blit_to_viewport` is `gfx_blit_to_bitmap` with the bitmap as a parameter.
-  - `view_rotate_grid5_cell` and `zone_id_for_view_cell` (12b list) come forward: the view zones need them. `view_render_picture_offscreen` (no decompilation) is ported from the disassembly.
+  - `view_rotate_grid5_cell` (12b list) comes forward. `zone_id_for_view_cell` and `zone_id_for_view_element` are in the Step 14 list ("Not in Step 12": `zone_id_for_view_*`); they come forward because the view zones need them for drawing. Their click use stays in Step 14. `view_render_picture_offscreen` (no decompilation) is ported from the disassembly.
   - The light level is not in the save file: `light_update_party_light` computes it (Step 17). Until then `view_light_level` stays 0 (full light).
   - `view_enter_map` holds the view part of `game_enter_map`: map graphics, door types, wall color key, flip flags, the cleared band of the viewport, and the rain and clouds of the saved weather (the sky part of `world_update_day_night` without its update and lightning, Step 17).
   - Empty until their steps: things, creatures, explosions, sparkles, rain (12b), alcove contents (12b), the wet image (12b: the offscreen bitmap starts clear), click zones (Step 14), shop display (Step 15).
   - The walking view (`g_party_move_steps`) is ported but stays off until Step 14; no test covers it yet.
-  - Fix in Step 8 code: a 4 bpp image whose format bits hold its y offset (24 images) now decodes; `gdat.c` treated it as no image.
+  - Fix in Step 8 code: a 4 bpp image whose format bits hold its y offset (24 images) now decodes; `gdat.c` treated it as no image. `tests/test_gdat.py` now checks all 827 4 bpp images of the type 1 keys (before: 803), because the original sends these offset-format images to the 4 bpp decoder.
   - `dungeon.h` names the square types; `save.c` had the names of stairs and door swapped (values unchanged).
 
 #### Step 12b: Things in the view and weather drawing
