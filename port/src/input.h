@@ -43,6 +43,10 @@ void input_mouse_click(int x, int y, int type);
 void input_key_down(uint16_t key);
 /* Clears the pending keys, clicks, and commands. */
 void input_flush(void);
+/* A click on a champion hand (status box) or a champion icon (party icons) becomes the command of the champion
+   in that cell: the hand action when the hand is ready and has actions; near the icon edges toward the party
+   center the leader choice, else the icon command when the spell is ready; else no command (0). */
+void input_refine_champion_click(Command *c);
 /* Turns the waiting events into commands and runs the click feedback. */
 void input_poll(void);
 /* Ends the push mode, the click feedback, and a drag. */

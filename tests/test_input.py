@@ -75,6 +75,46 @@ def test_clicks_and_keys_match_original(tree, lib, keys):
     assert found > 300
 
 
+INPUT_REFINE_CHAMPION_CLICK = 0x2186C
+CHAMPION_ACTION_DELAY, CHAMPION_HANDS = 0x2A, 0xC3
+
+
+def test_champion_clicks_match_original(tree, lib):
+    # Clicks on the champion hands (status boxes) and on the champion icons (party icons): 1 to 4 champions in
+    # random cells and party directions, busy hands and spells, empty hands, random points in the icon.
+    from test_interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+    from test_move import CHAMPION_CELL, COMMAND_RECORD, G_CHAMPION_COUNT, Command
+    rng = random.Random(16)
+    first = bytes(champion_records(lib)[:CHAMPION_SIZE])
+    results = set()
+    for n in range(600):
+        count = rng.randrange(1, 5)
+        tree.game.champion_count = count
+        tree.emu.write(G_CHAMPION_COUNT, struct.pack("<H", count))
+        for champ, cell in enumerate(rng.sample(range(4), count)):
+            champion_bytes(lib, champ, 0, first)
+            champion_bytes(lib, champ, CHAMPION_CELL, [cell])
+            champion_bytes(lib, champ, CHAMPION_ACTION_DELAY, [rng.choice((0, 0, 3)) for _ in range(3)])
+            if rng.random() < 0.3:
+                champion_bytes(lib, champ, CHAMPION_HANDS + 2 * rng.randrange(2), b"\xff\xff")
+        sync_champions(lib, tree)
+        tree.game.party_dir = rng.randrange(4)
+        tree.emu.write(0x7F254, struct.pack("<h", tree.game.party_dir))
+        command = rng.choice(list(range(0x5F, 0x63)) + list(range(0x74, 0x7C)))
+        w, h = rng.randrange(8, 40), rng.randrange(8, 30)
+        rect = (rng.randrange(200), rng.randrange(150), w, h)
+        c = Command(rect[0] + rng.randrange(w), rect[1] + rng.randrange(h), command, (ctypes.c_int16 * 4)(*rect))
+        tree.emu.write(COMMAND_RECORD, bytes(c))
+        lib.input_refine_champion_click(ctypes.byref(c))
+        tree.emu.call(INPUT_REFINE_CHAMPION_CLICK, COMMAND_RECORD)
+        theirs = struct.unpack("<H", tree.emu.read(COMMAND_RECORD + 4, 2))[0]
+        assert c.command == theirs, (n, hex(command))
+        results.add((command, theirs))
+    assert len(results) > 30
+    refined = {theirs for _, theirs in results}
+    assert refined & set(range(0x74, 0x7C)) and refined & set(range(0x10, 0x14)) and refined & set(range(0x5F, 0x63))
+
+
 class MainLoop(ctypes.Structure):
     _fields_ = [("tick_threshold", ctypes.c_int), ("tick_count", ctypes.c_int), ("timer_ticks", ctypes.c_uint32),
                 ("running", ctypes.c_int), ("view_hidden", ctypes.c_int), ("end", ctypes.c_int)]

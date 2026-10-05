@@ -53,7 +53,8 @@ enum {
     CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41, CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
-    CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2
+    CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
+    CMD_HAND_LAST = 0x7b
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -522,9 +523,37 @@ void input_flush(void)
 
 /* ---- Click feedback ---- */
 
-/* The script that shows a command being pressed (and queues it); NULL for no command. */
-static const uint8_t *click_feedback_script(const Command *c)
+void input_refine_champion_click(Command *c)
 {
+    int command = c->command;
+    if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
+        int n = command - CMD_HAND_FIRST, hand = n & 1;
+        int champ = champ_get_index_in_cell((game.party_dir + (n >> 1)) & 3);
+        if (champ < 0 || champion(champ)->action_delay[hand] || !champ_list_actions(champ, champion(champ)->slots[hand], hand))
+            c->command = 0;
+        else
+            c->command = (uint16_t)(CMD_HAND_FIRST + champ * 2 + hand);
+        return;
+    }
+    if (command < CMD_PARTY_ICON_FIRST || command > CMD_PARTY_ICON_LAST) return;
+    int icon = command - CMD_PARTY_ICON_FIRST;  /* the cell relative to the party direction */
+    int champ = champ_get_index_in_cell((icon + game.party_dir) & 3);
+    if (champ < 0) {
+        c->command = 0;
+        return;
+    }
+    const int16_t *r = c->rect;
+    /* the distances to the edges of the icon that face the party center */
+    int16_t dy = (int16_t)(icon < 2 ? r[RECT_Y] + r[RECT_H] - 1 - c->y : c->y - r[RECT_Y]);
+    int16_t dx = (int16_t)(icon == 1 || icon == 2 ? c->x - r[RECT_X] : r[RECT_X] + r[RECT_W] - 1 - c->x);
+    if (dx <= dy) c->command = (uint16_t)(CMD_LEADER_FIRST + icon);
+    else if (champion(champ)->action_delay[ACTION_SPELL]) c->command = 0;
+}
+
+/* The script that shows a command being pressed (and queues it); NULL for no command. */
+static const uint8_t *click_feedback_script(Command *c)
+{
+    input_refine_champion_click(c);
     uint16_t command = c->command;
     int offset;
     if (!command || command > CMD_LAST) return NULL;
