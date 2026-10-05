@@ -389,3 +389,34 @@ def test_magic_light_events_match_original(magic):
         magic.step()
     magic.assert_magic_state("steps")
     magic.assert_equal("end")
+
+
+def test_many_casts_match_original(magic):
+    # 1500 casts of random spells (no summons) by champions with random wisdom and skills: the cast rolls, the
+    # experience, the auras that add up (a big aura makes the next one a quarter), haste, light, and invisibility.
+    rng = random.Random(19)
+    make_party(magic, rng)
+    lib = magic.lib
+    spells = [i for i in range(SPELL_COUNT) if spell_kind(i) != 4]
+    auras = [i for i in spells if spell_kind(i) == 3]
+    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    big = 0
+    for n in range(1500):
+        if n % 100 == 0:
+            for champ in range(4):
+                champion_bytes(lib, champ, CH_STATS + 2 * STAT_WISDOM, [rng.randrange(10, 110)])
+                champion_bytes(lib, champ, CH_MANA, struct.pack("<h", rng.randrange(0, 300)))
+            sync_champions(lib, magic)
+            aura = rng.choice(auras)
+        index = aura if rng.random() < 0.5 else rng.choice(spells)
+        mine, theirs = cast(magic, rng.randrange(4), index, rng.randrange(1, 7))
+        assert mine == theirs, (n, index)
+        assert seed.value == magic.emu.read_u32(0x70518), n
+        assert c_hook_calls(lib) == magic.calls, n
+        magic.calls.clear()
+        assert bytes(champion_records(lib)) == magic.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE), n
+        big += any(struct.unpack_from("<h", bytes(champion_records(lib)), i * CHAMPION_SIZE + 0x103)[0] > 50 for i in range(4))
+        if n % 10 == 9:
+            magic.step()
+    assert big > 50
+    magic.assert_magic_state("end")
