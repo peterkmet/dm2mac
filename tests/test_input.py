@@ -203,8 +203,8 @@ KBD_KEY_AVAILABLE, KBD_READ_KEY = 0x114B8, 0x11413
 G_TIMER_STEP, G_TICK_ELAPSED, G_PARTY_SLEEPING = 0x7EFAC, 0x717F2, 0x7F234
 # The loop functions of later steps: the status boxes (drawing), repeated actions (Step 15); creature activation (Step 16); music (Step 19); the mouse cursor, its areas, and the
 # IBMIOP input lock (not ported).
-LOOP_STUBS = (0x4904F, 0x40EE2, 0x34236, 0x342A3, 0x10AF6, 0x1483A,
-              0x1482E, 0x14846, 0x14743, 0x14B1F, 0x14B4F, 0x14C0E, 0x14C7B, 0x14C87,
+LOOP_STUBS = (0x4904F, 0x40EE2, 0x34236, 0x342A3, 0x10AF6,
+              0x14B1F,
               # game_start_session: the screen fill, the retrace wait, and the dialog after a load with its disk
               # check (Step 20)
               0x13B4D, 0x1C5FD, 0x1A37D, 0x1A0A4, 0x3D187, 0x346D1, 0x3D111,

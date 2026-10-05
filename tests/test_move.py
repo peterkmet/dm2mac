@@ -46,6 +46,8 @@ STUBS = {
     0x1DE8E: (0, NONE), 0x494FB: (0, 0),                                    # new items, recruiting
     0x22942: (0, 0),                                                         # throw objects
     0x14889: (0, 0), 0x38392: (0, 0),                                       # the hand cursor and its icon
+    0x14C7B: (0, 0), 0x14C87: (0, 0), 0x1483A: (0, 0), 0x14846: (0, 0),     # IBMIOP input lock, mouse capture, cursor
+    0x14B4F: (0, 0), 0x14C0E: (0, 0), 0x1482E: (0, 0), 0x14743: (5, 0),     # mouse areas, capture, cursor image
     0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
 }
 # Globals of the movement state: name -> (address, struct format).

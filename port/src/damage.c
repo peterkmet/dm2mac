@@ -450,7 +450,7 @@ void champ_apply_time_effects(void)
         if (c->mana < c->max_mana) {
             uint16_t magic = (uint16_t)(champ_get_skill_level(i, SKILL_WIZARD, 1) + champ_get_skill_level(i, SKILL_PRIEST, 1));
             if (champ_regen_counter < (uint16_t)champ_get_stat(c, STAT_WISDOM, 0) + magic) {
-                int gain = c->mana / MANA_PER_STEP + 1;
+                int gain = c->max_mana / MANA_PER_STEP + 1;
                 if (party_sleeping) gain *= 2;
                 int cost = (int16_t)(MANA_STAMINA_BASE - magic);
                 if (cost < MANA_STAMINA_MIN) cost = MANA_STAMINA_MIN;
