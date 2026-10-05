@@ -124,6 +124,9 @@ ActiveGroup *creature_active(uint16_t group);
 
 /* The current animation frame of a creature group. */
 void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE]);
+/* The frame of an animation state of a creature type. */
+void creature_anim_frame_of(const gdat_t *g, int creature_type, uint16_t sequence, uint16_t state, uint8_t frame[CREATURE_FRAME_SIZE]);
+#define CREATURE_ACTION_VANISH 0x13
 /* The animation bits (random shift and mirror) of a creature group, 0 for a static creature. */
 int creature_anim_bits(uint16_t group);
 /* The animation sequence and state words of a group record: in the record of a static creature, else in its active group. */
@@ -166,5 +169,13 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
 void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible);
 void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag);
 void timeline_event_move_group(TimelineEvent *e);
+
+/* Pushing creatures: the push arrows of the party and the pushes of creatures. */
+int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);
+int move_party_can_push_group(uint16_t group);
+void creature_push_group(int x, int y, int dir, int strength);
+void move_push_creature(int arrow);
+/* The party walks on after a push that waited for its slow move: the push ends now. */
+void creature_continue_push(int command);
 
 #endif

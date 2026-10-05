@@ -46,9 +46,6 @@ int shop_cmd_count_payment(void);
 int shop_cmd_pay_change(void);
 
 /* Step 16: creatures and projectiles. */
-int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);              /* returns 0: no push */
-int move_party_can_push_group(uint16_t group);                                   /* returns 0 */
-void creature_push_group(int x, int y, int dir, int strength);
 void creature_refresh_party_maps(void);
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
 void projectile_process_event(TimelineEvent *e);
@@ -58,8 +55,6 @@ void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect);
 void sensor_turn_creatures(const TimelineEvent *e);
 /* The push arrows and the clicks on creatures in front of the party. */
-void move_push_creature(int arrow);
-void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y);                              /* returns 0 */                               /* returns -1: no event */
 
 /* Step 17: weather, day and night. */
 void world_update_day_night(int step);

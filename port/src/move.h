@@ -83,6 +83,8 @@ int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y);
 int champ_get_move_delay(int champ);
 /* The champion nearest to the square (x, y) next to the party, seen from cell (0xff: any); -1 none. */
 int champ_get_nearest_at(int x, int y, int cell);
+/* Damage of a bump into (x, y) for the two champions on that side; returns 1 when one was hurt. */
+int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int dir, int step);
 /* Takes stamina from a champion. */
 void champ_decrease_stamina(int champ, int amount);
 

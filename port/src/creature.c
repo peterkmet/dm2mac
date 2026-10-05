@@ -10,6 +10,7 @@
 #include "input.h"
 #include "item.h"
 #include "move.h"
+#include "move.h"
 #include "random.h"
 #include "save.h"
 #include "ui.h"
@@ -221,6 +222,12 @@ void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE
     }
     unsigned index = (uint16_t)(anim_frame_offset(&state) + sequence);
     if (words) words[1] = state;
+    creature_anim_frame_of(g, type, (uint16_t)index, ANIM_STILL, frame);
+}
+
+void creature_anim_frame_of(const gdat_t *g, int type, uint16_t sequence, uint16_t state, uint8_t frame[CREATURE_FRAME_SIZE])
+{
+    unsigned index = (uint16_t)(anim_frame_offset(&state) + sequence);
     uint32_t size;
     const uint8_t *data = gdat_item(g, gdat_find(g, CAT_CREATURE, type, TYPE_DATA, CREATURE_FRAMES_ENTRY), &size);
     memset(frame, 0, CREATURE_FRAME_SIZE);
@@ -1149,4 +1156,165 @@ int creature_get_party_distance(int x, int y)
         }
     }
     return d - 1;
+}
+
+/* Pushing creatures. */
+
+#define PUSH_STRENGTH_PARTY 0xfe
+#define PUSH_FAIL_STAMINA 5
+#define PUSH_LIGHT 0x2e                 /* creatures below this resistance are easy to push */
+#define CATEGORY_CHAMPION 0x16
+#define SOUND_ENTRY_STRAIN 0x82
+#define SOUND_ENTRY_PUSHED 0x8a
+#define SOUND_PRIORITY_STRAIN 0x69
+#define SOUND_PRIORITY_PUSHED 100
+#define SOUND_VOLUME_PUSH 200
+#define ALERT_PUSHED 0x4002
+#define PUSH_BASE_STRENGTH 0x28
+#define ACTION_FLAG_PATH 0x04
+
+/* The push that waits for the slow move of the party. */
+static struct {
+    int16_t turn, y, x, map, dir, party_y, party_x;
+} push;
+
+int creature_can_be_pushed(int x, int y, int dir, uint16_t *group)
+{
+    uint16_t g = creature_get_group_at(x, y);
+    if (g == THING_NONE || creature_group_info(g)->push_resistance >= PUSH_IMMOVABLE) return 0;
+    PassageEnd end;
+    if (dun_get_linked_teleporter_dest(&end, x, y) && dir == ((end.side + 2) & 3)) {
+        if (!creature_is_native_to_map(g, end.map)) return 0;
+        int saved = party.cur_map;
+        dun_set_current_map(end.map);
+        int blocked = dun_square_blocks_movement(dun_get_square(end.x, end.y))
+                      || (group && creature_get_group_at((uint16_t)(end.x + dir_dx[end.target_side]),
+                                                         (uint16_t)(end.y + dir_dy[end.target_side])) != THING_NONE);
+        dun_set_current_map(saved);
+        if (blocked) return 0;
+    }
+    int16_t nx = (int16_t)(x + dir_dx[dir]), ny = (int16_t)(y + dir_dy[dir]);
+    uint8_t square = dun_get_square(nx, ny);
+    if (dun_square_blocks_movement(square) || square_type(square) == SQUARE_STAIRS) return 0;
+    if (group && creature_get_group_at(nx, ny) != THING_NONE) return 0;
+    if (dun_get_linked_teleporter_dest(&end, nx, ny) && !creature_is_native_to_map(g, end.map)) return 0;
+    if (group) *group = g;
+    return 1;
+}
+
+int move_party_can_push_group(uint16_t group)
+{
+    int16_t resistance = creature_group_info(group)->push_resistance;
+    if (resistance >= PUSH_IMMOVABLE) return 0;
+    int pushed = 0;
+    for (int i = 0; i < game.champion_count; i++) {
+        Champion *c = champion(i);
+        if (!c->health) continue;
+        int16_t s = (int16_t)champ_get_stat(c, STAT_STRENGTH, 0);
+        if (i == game.leader) s = (int16_t)(s + (s >> 3));
+        if (resistance < PUSH_LIGHT) s = (int16_t)(s + (s >> 2));
+        s = (int16_t)champ_scale_by_stamina(c, s);
+        if (resistance <= s || !rand_below((uint16_t)(((resistance - s) >> 1) + 1))) {
+            pushed = 1;
+            break;
+        }
+    }
+    for (int i = 0; i < game.champion_count; i++) {
+        Champion *c = champion(i);
+        if (c->health && c->max_stamina >> 4 < c->stamina) {
+            int16_t cost = pushed ? (int16_t)(resistance >> 2 > PUSH_FAIL_STAMINA ? resistance >> 2 : PUSH_FAIL_STAMINA)
+                                  : PUSH_FAIL_STAMINA;
+            champ_decrease_stamina(i, cost);
+        }
+    }
+    return pushed;
+}
+
+void creature_push_group(int x, int y, int dir, int strength)
+{
+    uint16_t g;
+    if (creature_can_be_pushed(x, y, dir, &g)) {
+        int16_t resistance = creature_group_info(g)->push_resistance;
+        int stop = 0;
+        if ((int16_t)strength < PUSH_IMMOVABLE && (int16_t)strength < resistance)
+            stop = rand_below((uint16_t)(((resistance - (int16_t)strength) >> 2) + 1)) != 0;
+        if (!stop) {
+            int16_t nx = (int16_t)(x + dir_dx[dir]), ny = (int16_t)(y + dir_dy[dir]);
+            uint16_t flags = creature_group_info(g)->flags;
+            if (party.cur_map == party.square_map && nx == party.square_x && ny == party.square_y && !(flags & CREATURE_NOT_SOLID)) {
+                int16_t first, second;
+                move_party_bump_damage(x, y, &first, &second, game.party_dir, (dir + 2) & 3);
+            } else {
+                creature_free_cached_ai_data(g);
+                ActiveGroup *a = creature_active(g);
+                if (a && (int8_t)a->action != -1 && (int8_t)a->action != AI_ACTION_VANISH
+                    && ai_action_flag((int8_t)a->action) & ACTION_FLAG_PATH) {
+                    creature_cancel_update(g);
+                    creature_schedule_update(x, y);
+                }
+                move_thing(g, x, y, nx, ny);
+                if (creature_get_group_at(nx, ny) != THING_NONE && !(flags & CREATURE_STATIC))
+                    creature_alert(THING_NONE, nx, ny, ALERT_PUSHED, 10, 0);
+            }
+        }
+    }
+    if (party.cur_map != party.square_map || x != party.square_x || y != party.square_y) return;
+    int16_t load = 0;
+    uint16_t alive = 0;
+    for (int i = 0; i < CHAMPION_MAX; i++) {
+        Champion *c = champion(i);
+        if (!c->health) continue;
+        sound_play_with_fallback(CATEGORY_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
+                                 SOUND_VOLUME_PUSH);
+        load = (int16_t)(load + (uint16_t)champ_get_load(i) / 10);
+        alive++;
+    }
+    if (!alive) return;
+    load = (int16_t)(load / (int16_t)alive + PUSH_BASE_STRENGTH);
+    if ((int16_t)strength > 0xfd || load < (int16_t)strength) move_party(((dir - game.party_dir) & 3) + CMD_MOVE_FORWARD);
+}
+
+void move_push_creature(int arrow)
+{
+    static const int8_t turns[6] = {0, 2, 1, 0, 2, 1}, commands[6] = {3, 3, 4, 5, 6, 3}, dirs[6] = {0, 1, 2, 2, 2, -1};
+    if (arrow < 0 || arrow > 5) return;
+    int dir = (game.party_dir + dirs[arrow]) & 3;
+    int16_t x = (int16_t)(game.party_x + dir_dx[game.party_dir]), y = (int16_t)(game.party_y + dir_dy[game.party_dir]);
+    uint16_t g;
+    if (!creature_can_be_pushed(x, y, dir, &g)) return;
+    if (!move_party_can_push_group(g)) {
+        for (int i = 0; i < game.champion_count; i++)
+            if (champion(i)->health && (i == game.leader || !rand_2bits()))
+                sound_play_with_fallback(CATEGORY_CHAMPION, i, SOUND_ENTRY_STRAIN, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                                         SOUND_PRIORITY_STRAIN, SOUND_VOLUME_PUSH);
+        return;
+    }
+    push.x = x;
+    push.party_x = (int16_t)game.party_x;
+    push.party_y = (int16_t)game.party_y;
+    push.map = (int16_t)game.party_map;
+    party.push_pending_group = g;
+    push.turn = turns[arrow];
+    push.y = y;
+    push.dir = (int16_t)dir;
+    move_party(commands[arrow]);
+}
+
+void creature_continue_push(int command)
+{
+    if (game.party_dir != party.view_dir) return;
+    if (game.party_map != push.map || game.party_x != push.party_x || game.party_y != push.party_y
+        || creature_get_group_at(push.x, push.y) != party.push_pending_group)
+        return;
+    party.push_pending_group = THING_NONE;
+    int map = game.party_map;
+    if (command == CMD_MOVE_FORWARD) creature_push_group(push.x, push.y, push.dir, PUSH_STRENGTH_PARTY);
+    if (move_party(command)) {
+        move_party_turn(push.turn);
+        if (command != CMD_MOVE_FORWARD) {
+            dun_set_current_map(map);
+            creature_push_group(push.x, push.y, push.dir, PUSH_STRENGTH_PARTY);
+        }
+    }
+    dun_set_current_map(game.party_map);
 }

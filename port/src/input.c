@@ -1,4 +1,5 @@
 /* Mouse and keyboard input: the input tree of SKULL.EXE maps clicks and keys to commands; the command queue. */
+#include <stdlib.h>
 #include <string.h>
 #include "action.h"
 #include "champion.h"
@@ -8,6 +9,7 @@
 #include "game.h"
 #include "gdat.h"
 #include "hooks.h"
+#include "item.h"
 #include "input.h"
 #include "move.h"
 #include "music.h"
@@ -760,7 +762,7 @@ void input_cancel_push_mode(void)
 }
 
 /* Draws a movement arrow released or pressed. */
-static void ui_draw_move_arrow(int entry, int zone, int pressed)
+void ui_draw_move_arrow(int entry, int zone, int pressed)
 {
     in.arrow_pressed = pressed;
     in.arrow_zone = zone;
@@ -780,6 +782,7 @@ void ui_release_move_arrow(void)
 
 /* ---- Clicks in the dungeon view ---- */
 
+#define CAT_CREATURE_SOUND 0x0f
 #define ZONE_FRONT_WALL_LOW 0x2fd   /* the parts of the view that show the wall in front of the party */
 #define ZONE_FRONT_WALL_HIGH 0x2fe
 #define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
@@ -808,6 +811,23 @@ static void view_click_wall_sensor(int cell)
     }
     if (x < 0 || x >= dungeon_map_width(party.cur_map) || y < 0 || y >= dungeon_map_height(party.cur_map)) return;
     sensor_process_wall_click(x, y, (dir + side_turn[cell & 3]) & 3, THING_NONE, game.leader_hand);
+}
+
+/* A click on a static creature in front: a push of its middle starts the push arrows, a side turns it. */
+static void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y)
+{
+    int side;
+    if (!view_hit_test_creature(x, y, square_x, square_y, &side)) return;
+    if (creature_group_info(group)->push_resistance == 0xff) {
+        sound_play_with_fallback(CAT_CREATURE_SOUND, item_gdat_index(group), 0x84, 0xfe, square_x, square_y, 0, 0x8c, 0x80);
+    } else if (!side) {
+        party.push_mode = 1;
+        ui.push_mode = 1;
+        ui_draw_movement_arrows();
+        party.push_arrow = 6;
+    } else {
+        creature_turn_group(group, 0, side);
+    }
 }
 
 /* A click on the wall in front: a plain wall sounds; the mouse drag through a fake wall is not ported. */
@@ -986,6 +1006,43 @@ int command_execute(Command *c)
     }
     if (in.dialog_value >= CMD_TEXT_FIRST && in.dialog_value <= CMD_TEXT_LAST) input_command_stop = 1;
     return 1;
+}
+
+int input_mouse_x = -1, input_mouse_y = -1;
+
+#define PUSH_ARROW_NONE 6
+#define ARROW_CENTER_X 0x14     /* half size of the middle part of the viewport, without an arrow */
+#define ARROW_CENTER_Y 0x0f
+
+void input_update_viewport_arrow(void)
+{
+    /* by push arrow: the movement arrow entry and zone, the direction of the push and of the party step */
+    static const uint8_t entries[6] = {0x12, 0x10, 0x14, 0x16, 0x18, 0x0e};
+    static const uint16_t zones[6] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
+    static const uint8_t push_dirs[6] = {0, 1, 2, 2, 2, 3}, step_dirs[6] = {0, 0, 1, 2, 3, 0};
+    if (!view_arrows_enabled || party.push_pending_group != THING_NONE) return;
+    int16_t r[RECT_SIZE];
+    if (!zone_get_rect(ZONE_VIEWPORT, r)) return;
+    int x = input_mouse_x - r[RECT_X], y = input_mouse_y - r[RECT_Y];
+    party.push_arrow = PUSH_ARROW_NONE;
+    if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT) return;
+    int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
+    if (abs(dx) < ARROW_CENTER_X) {
+        if (abs(dy) < ARROW_CENTER_Y) return;
+        arrow = dy >= 0 ? 3 : 0;
+    } else if (dx < 0) {
+        arrow = abs(dy) < ARROW_CENTER_Y ? 5 : dy >= 0 ? 4 : 0;
+    } else {
+        arrow = abs(dy) < ARROW_CENTER_Y ? 1 : dy >= 0 ? 2 : 0;
+    }
+    int step = (step_dirs[arrow] + game.party_dir) & 3;
+    if (dun_square_blocks_movement(dun_get_square((int16_t)(game.party_x + dir_dx[step]), (int16_t)(game.party_y + dir_dy[step]))))
+        return;
+    if (!creature_can_be_pushed((int16_t)(game.party_x + dir_dx[game.party_dir]), (int16_t)(game.party_y + dir_dy[game.party_dir]),
+                                (push_dirs[arrow] + game.party_dir) & 3, NULL))
+        return;
+    ui_draw_move_arrow(entries[arrow], zones[arrow], 1);
+    party.push_arrow = (int16_t)arrow;
 }
 
 void input_set_wait(int steps)

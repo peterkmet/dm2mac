@@ -256,7 +256,7 @@ int champ_get_nearest_at(int x, int y, int cell)
 }
 
 /* Damage of a bump into a wall or a creature for the two champions on that side; returns 1 when one was hurt. */
-static int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int dir, int step)
+int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int dir, int step)
 {
     int side = step + dir + 2;
     int16_t champs[2];
@@ -492,7 +492,7 @@ int move_party(int command)
         party.move_command = (uint16_t)command;
         if (command != CMD_MOVE_FORWARD) dun_move_relative(game.party_dir, -1, 0, &party.view_x, &party.view_y);
     } else if (party.push_pending_group != THING_NONE) {
-        /* Step 16 ports the push of a creature; until then no push is pending */
+        creature_continue_push(command);
         party.push_pending_group = THING_NONE;
         if (!party.push_mode) party.push_arrow = 6;
         return 1;

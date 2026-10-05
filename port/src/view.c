@@ -10,6 +10,7 @@
 #include "text.h"
 #include "timeline.h"
 #include "view.h"
+#include "input.h"
 #include "zone.h"
 
 /* GDAT categories of the view pictures. */
@@ -576,6 +577,7 @@ static struct {
 ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 int view_click_zone_count;
 uint8_t view_creature_grid[VIEW_GRID_SIZE];
+int view_arrows_enabled;
 uint8_t view_object_grid[VIEW_GRID_SIZE];
 uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
 uint32_t view_object_masks[VIEW_SQUARE_COUNT];
@@ -1599,7 +1601,13 @@ static void view_draw_creature(int pos, int depth, uint16_t group)
     int type = dungeon_thing_record(group)[GROUP_CREATURE];
     uint8_t frame[CREATURE_FRAME_SIZE];
     creature_anim_frame(g, group, frame);
-    int anim = 0;  /* the animation bits of the active group (Step 16): mirror and random shift */
+    /* a vanishing creature keeps the cell, size, and shift of the frame where it stopped */
+    uint8_t still[CREATURE_FRAME_SIZE];
+    memcpy(still, frame, sizeof still);
+    ActiveGroup *active = creature_active(group);
+    if (active && active->action == CREATURE_ACTION_VANISH)
+        creature_anim_frame_of(g, type, (uint16_t)active->counters[0], (uint16_t)active->counters[1], still);
+    int anim = active ? active->anim_bits : 0;
     int side = creature_info(g, type)->flags & CREATURE_FACES_PARTY ? DIR_SOUTH : (view.party_dir - creature_dir(group)) & 3;
     int entry = frame[FRAME_ENTRY + side], flip = 0, mirrored = 0;
     if (!creature_picture_exists(type, entry)) {
@@ -1630,14 +1638,22 @@ static void view_draw_creature(int pos, int depth, uint16_t group)
         }
         if (flip != saved) mirrored = 1;
     }
-    /* Step 16: an attacking creature takes the size of its picture from its attack frame */
-    uint32_t size;
-    const uint8_t *sizes = gdat_item(g, gdat_find(g, CAT_CREATURE, type, TYPE_CREATURE_DATA, CREATURE_SIZES), &size);
-    unsigned at = frame[FRAME_SIZE] * DIR_COUNT + side;
-    int scale = gfx_scale_64(sizes && at < size ? sizes[at] : 0, depth_scale[depth]);  /* fix: no read past the table */
-    /* Step 14 adds the cell and scale of a creature at the push arrow */
-    int zone = zone_id_for_view_cell(pos, frame[FRAME_CELL], side) | ZONE_RELATIVE;
-    int shift = (int8_t)frame[FRAME_SHIFT], dx = 0, dy = 0;
+    int cell = still[FRAME_CELL], scale;
+    if (pos == POS_FRONT && view_arrows_enabled) {
+        /* by push arrow: the cell and scale of the creature that the party pushes */
+        static const uint8_t arrow_cells[7] = {2, 0x0e, 0x16, 0x16, 0x16, 0x0a, 0x0c};
+        static const uint8_t arrow_scales[7] = {0x34, 0x40, 0x4e, 0x4e, 0x4e, 0x40, 0x40};
+        cell = (int8_t)arrow_cells[party.push_arrow];
+        scale = arrow_scales[party.push_arrow];
+        side = 0;
+    } else {
+        uint32_t size;
+        const uint8_t *sizes = gdat_item(g, gdat_find(g, CAT_CREATURE, type, TYPE_CREATURE_DATA, CREATURE_SIZES), &size);
+        unsigned at = still[FRAME_SIZE] * DIR_COUNT + side;
+        scale = gfx_scale_64(sizes && at < size ? sizes[at] : 0, depth_scale[depth]);  /* fix: no read past the table */
+    }
+    int zone = zone_id_for_view_cell(pos, cell, side) | ZONE_RELATIVE;
+    int shift = (int8_t)still[FRAME_SHIFT], dx = 0, dy = 0;
     if (shift) {
         int sx = 0, sy = 0;
         if (side == DIR_NORTH) sy = -CREATURE_SHIFT_Y;
@@ -2644,6 +2660,8 @@ void view_draw_dungeon(int dir, int x, int y)
     memset(view_creature_grid, 0, sizeof view_creature_grid);
     memset(view_object_grid, NO_POSITION, sizeof view_object_grid);
     view_clear_viewport();
+    view_arrows_enabled = party.push_mode || party.push_pending_group != THING_NONE;
+    input_update_viewport_arrow();
     for (int pos = VIEW_SQUARE_COUNT - 1; pos >= 0; pos--) view_load_square(x, y, pos, dir);
     int margins = -1;
     if (view_squares[7].aspect == ASPECT_WALL && view_squares[6].aspect == ASPECT_WALL && view_squares[8].aspect == ASPECT_WALL)
@@ -2688,6 +2706,31 @@ static int view_hit_test_picture(int x, int y, int key)
         pixel = i & 1 ? image->pixels[i >> 1] & 0x0f : image->pixels[i >> 1] >> 4;
     }
     return pixel != key;
+}
+
+#define HIT_SIDE_LIMIT 0x4b      /* percent of the half picture width: a click beyond it hits a side */
+#define HIT_DEPTH 1               /* the depth at which the creature in front is drawn for a hit test */
+
+int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
+{
+    uint16_t group = creature_get_group_at(square_x, square_y);
+    if (group == THING_NONE) return 0;
+    view_draw_creature(POS_FRONT, HIT_DEPTH, group);
+    int key = view.ctx.transparent;
+    view.ctx.transparent = DRAW_NO_BLIT;
+    view_flush_picture();
+    if (!view_hit_test_picture(x, y, key)) {
+        draw_free_temp();
+        return 0;
+    }
+    const DrawCtx *c = &view.ctx;
+    const int16_t *r = c->rect;
+    int sx = c->flip & MIRROR_H ? r[RECT_X] + r[RECT_W] - 1 - x + c->src_x : x - r[RECT_X] + c->src_x;
+    int half = c->image ? c->image->width >> 1 : 0;
+    int16_t offset = half ? (int16_t)((sx - c->x - half) * 100 / half) : 0;
+    *side = offset < -HIT_SIDE_LIMIT ? 3 : offset <= HIT_SIDE_LIMIT ? 0 : 1;
+    draw_free_temp();
+    return 1;
 }
 
 int view_hit_test_wall_ornament(int pos, int x, int y)

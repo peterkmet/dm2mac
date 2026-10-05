@@ -35,9 +35,6 @@ void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void timeline_event_magic_light(TimelineEvent *e) { (void)e; }
 void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
-int creature_can_be_pushed(int x, int y, int dir, uint16_t *group) { (void)x; (void)y; (void)dir; (void)group; return 0; }
-int move_party_can_push_group(uint16_t group) { (void)group; return 0; }
-void creature_push_group(int x, int y, int dir, int strength) { (void)x; (void)y; (void)dir; (void)strength; }
 void creature_refresh_party_maps(void) { }
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y) { (void)from_x; (void)from_y; (void)to_x; (void)to_y; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
@@ -63,8 +60,6 @@ void view_click_take_object(int x, int y) { (void)x; (void)y; }
 int view_click_place_object(int x, int y, int square_x, int square_y, int cell_from, int cell, int kind) { (void)x; (void)y; (void)square_x; (void)square_y; (void)cell_from; (void)cell; (void)kind; return 0; }
 int view_click_drop_object(int square_x, int square_y, int cell) { (void)square_x; (void)square_y; (void)cell; return 0; }
 void view_click_throw_object(int x, int y) { (void)x; (void)y; }
-void move_push_creature(int arrow) { (void)arrow; }
-void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y) { (void)group; (void)x; (void)y; (void)square_x; (void)square_y; }
 int shop_cmd_wait_for_offer(void) { return 0xfd; }
 int shop_cmd_evaluate_offer(void) { return 0xfd; }
 int shop_cmd_count_payment(void) { return 0xfd; }
