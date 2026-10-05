@@ -4,8 +4,8 @@ import random
 import struct
 
 import pytest
-from unicorn import UC_PROT_ALL
-from unicorn.x86_const import UC_X86_REG_ESP
+from unicorn import UC_HOOK_CODE, UC_PROT_ALL
+from unicorn.x86_const import UC_X86_REG_EIP, UC_X86_REG_ESP
 
 from conftest import ROOT
 from test_save import GRAPHICS, START, Game
@@ -27,11 +27,11 @@ TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, ZONE_GET_RECT, MONEY_INIT_COIN_TABL
 NO_OPS = (0x14C55, 0x14C68, 0x138D9, 0x13A87, 0x13B7C, 0x1C5FD, 0x20707, 0x206FF, 0x14889, 0x3BDDA)
 # Original globals.
 G_UI_COLORS, G_FONT_BITMAP, G_MESSAGE_LINE, G_MESSAGE_AREA_Y = 0x7F210, 0x80414, 0x80410, 0x80418
-G_GAME_TIME, G_CHAMPIONS, G_INVENTORY, G_LEADER_HAND = 0x7F22C, 0x7FBD0, 0x7F972, 0x7FBB4
+G_GAME_TIME, G_CHAMPIONS, G_LEADER_HAND = 0x7F22C, 0x7FBD0, 0x7FBB4
 G_EYE, G_MOUTH, G_ACTION_CHAMPION, G_ACTION_HAND = 0x7F224, 0x7F21C, 0x7FB70, 0x7FB72
 G_ACTION_DIRTY, G_ACTION_DELAY, G_ACTION_RESULT, G_ACTION_RESULT_FLAG, G_ACTION_RESULT_AMMO = (
     0x7FB2C, 0x7FB68, 0x7FB78, 0x7FB6E, 0x7FB74)
-G_SKILL_RAISED, G_PARTY_DIR, G_MAP_GFX_SET = 0x7FFF8, 0x7F254, 0x75BFE
+G_SKILL_RAISED, G_MAP_GFX_SET = 0x7FFF8, 0x75BFE
 
 
 class UiState(ctypes.Structure):
@@ -481,9 +481,6 @@ def test_measure_and_wrap_match_original(port, original):
                 emu.write(out, struct.pack("<h", pos.value))
 
 
-TextArgs = None  # set in test_text_format_matches_original
-
-
 def test_text_format_matches_original(port, original):
     # Format codes: champion names, numbers, and inserted texts, also nested.
     lib = port
@@ -588,3 +585,80 @@ def test_layout_zone_helpers_match_original(port, original):
         emu.call(0x19BAE, zone, out, out + 2)
         assert (x.value, y.value) == struct.unpack("<2h", emu.read(out, 4)), zone
     assert zones > 250
+
+
+def test_skill_raised_acknowledged_like_original(port, original):
+    # Raised skills show green in the skills panel; closing the inventory takes back the counts that it showed.
+    lib = port
+    emu = original.emu
+    draw_game_screen(lib, original)
+    original.emu.call(INV_TOGGLE, 0)
+    lib.inv_toggle(0)
+    set_eye(lib, original, 1)
+    original.emu.call(G_CHAMP_DRAW_STATE, 0)
+    lib.champ_draw_state(0)
+    plain = original.view()
+    raised = (ctypes.c_uint8 * 16).in_dll(lib, "champ_skill_raised")
+    counts = [2, 1, 3, 1]
+    for i, n in enumerate(counts):
+        raised[i] = n
+    emu.write(G_SKILL_RAISED, bytes(counts) + bytes(12))
+    champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0x2000))
+    sync_champions(lib, original)
+    original.emu.call(G_CHAMP_DRAW_STATE, 0)
+    lib.champ_draw_state(0)
+    assert_same_screen_and_view(lib, original, "raised")
+    assert original.view() != plain  # a raised skill shows green
+    set_eye(lib, original, 0)
+    original.emu.call(INV_TOGGLE, 0)
+    lib.inv_toggle(0)
+    assert bytes(raised) == emu.read(G_SKILL_RAISED, 16)
+    assert bytes(raised) != bytes(counts) + bytes(12)
+
+
+G_IOP_BUFFER, IOP_SCROLL_CALL, IOP_SCROLL_NEXT = 0x8048C, 0x13A28, 0x13A2A
+TEXT_PRINT_NUMBER = 0x55AD8
+
+
+def test_message_area_pending_rows_match_original(port, original):
+    # Messages past the bottom row: the new row waits in the row bitmap, then the area moves up and the bottom
+    # 6 rows come from the bitmap. The IBMIOP move (service 0x105) is stubbed in the original like the port does it.
+    lib = port
+    emu = original.emu
+    emu.write_u32(G_IOP_BUFFER, original.alloc(0x400))
+    rect = original.alloc(8)
+    emu.call(ZONE_GET_RECT, 15, rect)
+    x, y, w, h = struct.unpack("<4h", emu.read(rect, 8))
+
+    def iop_scroll(uc, *_):
+        for row in range(y, y + h - 7):
+            emu.write(VGA + row * SCREEN_W + x, emu.read(VGA + (row + 7) * SCREEN_W + x, w))
+        uc.reg_write(UC_X86_REG_EIP, IOP_SCROLL_NEXT)
+
+    hook = emu.uc.hook_add(UC_HOOK_CODE, iop_scroll, begin=IOP_SCROLL_CALL, end=IOP_SCROLL_CALL)
+    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
+    text = original.alloc(256)
+    messages = [(4, b"\nFIRST"), (7, b"\nSECOND MESSAGE"), (15, b"\nTHIRD"), (9, b"\nFOURTH ROW SCROLLS THE AREA"),
+                (11, b"\nA LONG FIFTH MESSAGE THAT WRAPS INTO A SECOND ROW AND SCROLLS TWICE"), (4, b" MORE")]
+    try:
+        for color, message in messages:
+            emu.write(text, message + b"\0")
+            emu.call(TEXT_PRINT_MESSAGE, color, text, allow_io=True)
+            lib.text_print_message(color, message)
+            mine, theirs = c_screen(lib), original.screen()
+            assert mine == theirs, (message, diff(mine, theirs, SCREEN_W))
+    finally:
+        emu.uc.hook_del(hook)
+
+
+def test_print_number_matches_original(port, original):
+    lib = port
+    emu = original.emu
+    lib.text_print_number.argtypes = [ctypes.c_int, ctypes.c_int32]
+    emu.call(TEXT_SET_MESSAGE_CURSOR, 0, 0)
+    lib.text_set_message_cursor(0, 0)
+    for color, value in ((4, 0), (7, 12345), (15, -77), (9, 2147483647), (11, -2147483647)):
+        emu.call(TEXT_PRINT_NUMBER, color, value, allow_io=True)
+        lib.text_print_number(color, value)
+        mine, theirs = c_screen(lib), original.screen()
+        assert mine == theirs, (value, diff(mine, theirs, SCREEN_W))

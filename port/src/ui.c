@@ -107,6 +107,7 @@ static struct {
     uint16_t shown_object;      /* the object of the panel */
     int16_t shown_eye, shown_mouth;
     int16_t description_x, description_y;
+    uint8_t shown_raised[SKILL_BASE_COUNT];   /* the raised skill counts that the skills panel showed */
 } cache;
 static Offscreen status_box;
 
@@ -200,6 +201,7 @@ void offscreen_flush(Offscreen *o, int close)
     if (close) o->bitmap = NULL;  /* draw_free_temp frees it */
 }
 
+/* True when rectangle outer holds rectangle inner. */
 static int contains(const int16_t *outer, const int16_t *inner)
 {
     return outer[RECT_X] <= inner[RECT_X] && inner[RECT_X] + inner[RECT_W] - 1 <= outer[RECT_X] + outer[RECT_W] - 1
@@ -244,6 +246,7 @@ void offscreen_add_dirty_rect(Offscreen *o, const int16_t *rect)
     if (delta < 0) d[RECT_H] = (int16_t)(d[RECT_H] + delta);
 }
 
+/* The screen rectangle rect in the coordinates of the offscreen bitmap. */
 static void local_rect(const Offscreen *o, const int16_t *rect, int16_t *out)
 {
     out[RECT_X] = (int16_t)(rect[RECT_X] - o->rect[RECT_X]);
@@ -383,6 +386,7 @@ static void status_box_begin(int champ, int clear)
     if (!clear) status_box.dirty_count = 0;
 }
 
+/* Draws the health, stamina, and mana bars of a status box. */
 static void draw_champion_bars(int champ)
 {
     const Champion *c = champion(champ);
@@ -402,6 +406,7 @@ static void draw_champion_bars(int champ)
     }
 }
 
+/* Draws the damage star with the last damage of a champion in its status box. */
 static void draw_damage_number(int champ)
 {
     offscreen_draw_gdat_image(&status_box, CAT_INTERFACE, UI_INDEX_STATUS, BOX_DAMAGE, ZONE_STATUS_DAMAGE + champ, 10);
@@ -409,6 +414,7 @@ static void draw_damage_number(int champ)
                                 text_format_number(champion(champ)->damage, 0, 3));
 }
 
+/* Draws a value and its maximum ("83/ 83") in zone of the inventory. */
 static void draw_value_pair(int zone, unsigned value, unsigned maximum)
 {
     char s[TEXT_SIZE];
@@ -418,6 +424,7 @@ static void draw_value_pair(int zone, unsigned value, unsigned maximum)
     text_draw_in_zone_with_shadow(zone, ui_colors[UI_LIGHT_GRAY], ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
 }
 
+/* Draws the health, stamina, and mana values of the inventory. */
 static void draw_champion_values(const Champion *c)
 {
     draw_value_pair(ZONE_HEALTH_VALUE, (uint16_t)c->health, (uint16_t)c->max_health);
@@ -425,6 +432,7 @@ static void draw_champion_values(const Champion *c)
     draw_value_pair(ZONE_MANA_VALUE, (uint16_t)c->mana, (uint16_t)c->max_mana);
 }
 
+/* Draws the good or bad state icon over the eye or the mouth of the inventory. */
 static void draw_panel_icon(int icon, int zone)
 {
     int16_t r[RECT_SIZE];
@@ -433,6 +441,7 @@ static void draw_panel_icon(int icon, int zone)
                     draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_STATUS, icon));
 }
 
+/* Draws the portrait of the champion with the open inventory, dimmed while the party is invisible. */
 static void draw_champion_portrait(int champ)
 {
     offscreen_draw_gdat_image(&status_box, GDAT_CHAMPION_CATEGORY, champion(champ)->portrait, 0,
@@ -443,6 +452,7 @@ static void draw_champion_portrait(int champ)
     }
 }
 
+/* Draws an inventory button (save, sleep, sound, exit, close), pressed when its bit is set. */
 static void draw_inventory_button(int icon, int zone, uint16_t mask)
 {
     gfx_draw_gdat_in_viewport_zone(CAT_PANEL, 0, ui.buttons & mask ? icon + 1 : icon, zone, UI_OPAQUE);
@@ -565,6 +575,7 @@ static void draw_description_text(const char *text)
     }
 }
 
+/* Draws a centered line of a scroll in the scroll font. */
 static void draw_scroll_line(int center_x, int y, const char *line)
 {
     int16_t w, h;
@@ -581,6 +592,7 @@ static void draw_scroll_line(int center_x, int y, const char *line)
     text_draw_in_viewport((int16_t)(center_x - (w >> 1)), y, ui_colors[UI_BLACK], mapped);
 }
 
+/* Draws an open scroll with its text in the inventory panel. */
 static void draw_scroll(uint16_t scroll)
 {
     char text[TEXT_SIZE * 2], line[TEXT_SIZE * 2];
@@ -649,6 +661,7 @@ static void draw_object_gauge(int zone, int value, int high, uint8_t glyph, int 
                           (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y, ui_colors[UI_WHITE], bg, s);
 }
 
+/* Draws the coin count of each coin slot of a money box and the total value. */
 static void draw_coin_counts(uint16_t box)
 {
     int16_t counts[COIN_TYPE_MAX];
@@ -666,6 +679,7 @@ static void draw_coin_counts(uint16_t box)
     text_draw_in_zone(ZONE_COIN_TOTAL, ui_colors[UI_LIGHT_GRAY], s);
 }
 
+/* Draws the items of a chest in the object info. */
 static void draw_container_contents(uint16_t container)
 {
     uint16_t t = thing_word(container, CONTAINER_CONTENTS);
@@ -738,6 +752,7 @@ static int draw_object_info(uint16_t thing, int full)
     return 1;
 }
 
+/* Draws the food and water gauges (and the poison gauge) of the inventory panel. */
 static void draw_food_water_panel(void)
 {
     const Champion *c = champion(ui.inventory - 1);
@@ -753,6 +768,7 @@ static void draw_food_water_panel(void)
     }
 }
 
+/* Draws the closed mouth of the inventory panel while a champion is recruited. */
 static void draw_mouth_picture(void)
 {
     enum { MOUTH_CATEGORY = 9, MOUTH_INDEX = 0x5b, MOUTH_CLOSED = 0xfa };
@@ -760,6 +776,7 @@ static void draw_mouth_picture(void)
     ui.panel_mode = PANEL_MODE_MOUTH;
 }
 
+/* Draws the skill levels and the statistics of the champion in the inventory panel. */
 static void draw_skills_and_statistics(void)
 {
     int champ = ui.inventory - 1;
@@ -776,6 +793,7 @@ static void draw_skills_and_statistics(void)
         text_args.entry = (uint8_t)skill;
         text_gdat(CAT_PANEL, 0, skill_level_texts[level], text);
         text_draw_in_viewport(x, y, ui_colors[champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
+        cache.shown_raised[skill] = champ_skill_raised[champ][skill];
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
     zone_get_position(ZONE_STATS, &stat_x, &unused);
@@ -802,6 +820,7 @@ static uint16_t panel_object(const Champion *c)
     return c->slots[SLOT_ACTION_HAND];
 }
 
+/* Draws the load and the maximum load of the champion in the inventory. */
 static void draw_load(int champ)
 {
     restore_panel_back(ZONE_LOAD_BACK);
@@ -972,9 +991,13 @@ void inv_toggle(int champ)
             c->redraw |= REDRAW_STATUS_BOX;
             champ_draw_state(open - 1);
         }
+        /* the raised skills that the player saw no longer show green */
+        for (int i = 0; i < SKILL_BASE_COUNT; i++)
+            champ_skill_raised[open - 1][i] = (uint8_t)(champ_skill_raised[open - 1][i] - cache.shown_raised[i]);
         if (party_sleeping || champ == CHAMPION_MAX) return;  /* ponytail: closing redraws the view in Step 14 */
     }
     ui.inventory = (int16_t)(champ + 1);
+    memset(cache.shown_raised, 0, sizeof cache.shown_raised);
     champion(champ)->redraw |= REDRAW_ALL;
     ui.buttons = 0;
     champ_draw_state(champ);

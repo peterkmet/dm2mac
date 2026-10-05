@@ -84,7 +84,8 @@ extern int champ_action_count;
 extern uint16_t champ_action_thing;
 /* The party sleeps; Step 14 sets it. */
 extern int party_sleeping;
-/* The base skills whose level went up, per champion; the inventory shows them green. Step 15 sets them. */
+/* The base skills whose level went up, per champion; the inventory shows them green,
+   and closing it takes back the counts that it showed. Step 15 sets them. */
 extern uint8_t champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
 static inline Champion *champion(int index) { return (Champion *)game.champions[index]; }
