@@ -22,6 +22,7 @@ G_THINGS, THING_SIZES = 0x7F288, (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 
 EVENT_WEATHER, CHAMPION_HANDS = 0x54, 0xC3
 OUTDOOR_MAPS = (1, 14, 15, 16, 17, 25, 27, 29, 30, 33, 39, 41, 42)  # sky state 1 or 4: the weather shows
 MAP_LIGHTNING_TARGET = 1  # its graphics set gives a fixed square that lightning hits
+INDOOR_MAPS = (2, 5, 11, 20, 38)  # no weather: the hour does not update the light
 
 
 @pytest.fixture
@@ -82,7 +83,7 @@ def random_weather(rng):
     return dict(heavy_rain=rng.randrange(2), wind_dir=rng.randrange(4), rain_intensity=rng.choice((0, 0, 1, 0x20, 0x90)),
                 sky_darkness=rng.randrange(256), cloud_cover=rng.choice((0, 0x30, 0x50, 0x90, 0xD0, 0xFF)),
                 storm_multiplier=rng.randrange(1, 4), storm_step=rng.randrange(32), storm_curve=rng.randrange(4),
-                storm_intensity=rng.choice((0, 0, rng.randrange(256), 0xB0, 0xC0, 0xD0, 0xFF)),
+                storm_intensity=rng.choice((0, 0, rng.randrange(256), 0xB5, 0xB6, 0xCC, 0xCD, 0xD0, 0xFF)),
                 hour_light=rng.randrange(1, 6), thunder_toggle=rng.randrange(2), lightning_flash=rng.randrange(2))
 
 
@@ -147,13 +148,13 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
     sc = world
     strikes = bolts = pictures = 0
     for n in range(14):
-        map_ = MAP_LIGHTNING_TARGET if n % 5 == 0 else rng.choice(OUTDOOR_MAPS)
+        map_ = MAP_LIGHTNING_TARGET if n % 5 == 0 else rng.choice(OUTDOOR_MAPS) if n % 4 else rng.choice(INDOOR_MAPS)
         _, x, y, _ = rng.choice([s for s in squares(lib, (1,)) if s[0] == map_])
         sc.place(map_, x, y, rng.randrange(4))
         sc.set_time(rng.choice((rng.randrange(12000), 12000 + rng.randrange(1 << 20))))
         weather = random_weather(rng)
         weather["next_hour_time"] = sc.time() + rng.randrange(-5, 40)
-        set_weather(sc, strike_threshold=rng.randrange(4, 8), **weather)
+        set_weather(sc, strike_threshold=rng.randrange(4, 8), light_level=rng.randrange(6), **weather)
         set_global(sc, 0x40, rng.choice((0, 3, 9, 30)))
         inventory, sleeping = rng.random() < 0.3, rng.random() < 0.3
         ctypes.c_int16.in_dll(lib, "ui").value = inventory  # UiState.inventory
@@ -222,10 +223,10 @@ def test_party_light_matches_original(world, lib):
         for champ in range(count):
             champion_bytes(lib, champ, 0, first)
             for hand in range(2):
-                thing = rng.choice(torches + others + [NONE] * 10)
+                thing = rng.choice(torches) if n % 4 == 0 else rng.choice(torches + others + [NONE] * 10)
                 champion_bytes(lib, champ, CHAMPION_HANDS + 2 * hand, struct.pack("<H", thing))
         sync_champions(lib, sc)
-        hand = rng.choice(torches + [NONE] * 3)
+        hand = rng.choice(torches) if n % 4 == 0 else rng.choice(torches + [NONE] * 3)
         ctypes.c_uint16.from_address(ctypes.addressof(game) + GAME_LEADER_HAND).value = hand
         sc.emu.write(G_LEADER_HAND, struct.pack("<H", hand))
         for t in torches:
@@ -289,7 +290,7 @@ def test_zone_interpolate_offset_matches_original(world, lib):
 
 
 def transfer_sensors(lib):
-    """(map, x, y, cell, kind, target) of every object transfer sensor."""
+    """(map, x, y, cell, sensor) of every object transfer sensor."""
     out = []
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
@@ -298,7 +299,7 @@ def transfer_sensors(lib):
                 while t != 0xFFFE:
                     kind = lib.thing_word(t, 2) & 0x7F
                     if t >> 10 & 15 == 3 and kind in (0x3B, 0x40, 0x47, 0x48, 0x49):
-                        out.append((map_, x, y, t >> 14, kind, lib.thing_word(t, 6)))
+                        out.append((map_, x, y, t >> 14, t))
                     t = lib.dungeon_next_thing(t)
     return out
 
@@ -316,17 +317,33 @@ def objects_on_map(lib, map_):
     return out
 
 
+def set_word(sc, thing, offset, value):
+    """Writes a word of a thing record in both."""
+    ctypes.c_uint16.from_address(sc.lib.dungeon_thing_record(thing) + offset).value = value
+    sync_thing(sc, thing)
+
+
 def test_object_transfer_sensors_match_original(world, lib):
-    # Every object transfer sensor (kinds 0x3b, 0x40, 0x47, 0x48, 0x49 on walls and floors) gets objects of its map
-    # on its source cell, often the object that it wants, then square events with each effect; the objects move to
-    # the target (or back), with the charge changes of the sensor; bones bring back a champion (Step 15 hook).
+    # Every object transfer sensor of the dungeon on walls and floors, in its own kind and as each of the kinds 0x3b,
+    # 0x40, 0x47, 0x48, 0x49, wanting its item or any object, with each charge change, inverted or not, sometimes
+    # aimed at its own square: objects of its map go on its source cell, then square events with each effect; the
+    # objects move to the target (or back), with the charge changes; bones bring back a champion (Step 15 hook).
     rng = random.Random(176)
     sc = world
-    moved = 0
-    for n, (map_, x, y, cell, kind, target) in enumerate(transfer_sensors(lib)):
+    moved = recharged = 0
+    for n, (map_, x, y, cell, sensor) in enumerate(transfer_sensors(lib) * 3):
         places = [s for s in squares(lib, (1,)) if s[0] == map_]
         _, px, py, _ = rng.choice(places)
         sc.place(map_, px, py, rng.randrange(4))
+        data, flags = lib.thing_word(sensor, 2), lib.thing_word(sensor, 4)
+        if n >= len(transfer_sensors(lib)):
+            kind = rng.choice((0x3B, 0x40, 0x47, 0x48, 0x49))
+            item = 0x1FF if rng.random() < 0.5 else data >> 7
+            set_word(sc, sensor, 2, item << 7 | kind)
+            set_word(sc, sensor, 4, flags & ~0x3C | rng.randrange(4) << 3 | rng.randrange(2) << 2 | rng.randrange(2) << 5)
+            if rng.random() < 0.3:
+                set_word(sc, sensor, 6, lib.thing_word(sensor, 6) & 0xF | cell << 4 | x << 6 | y << 11)
+        kind, target = lib.thing_word(sensor, 2) & 0x7F, lib.thing_word(sensor, 6)
         sx, sy, scell = (target >> 6 & 31, target >> 11, target >> 4 & 3) if kind in (0x47, 0x49) else (x, y, cell)
         wall = lib.dungeon_square(map_, sx, sy) >> 5 == 0
         for _ in range(4):
@@ -342,12 +359,138 @@ def test_object_transfer_sensors_match_original(world, lib):
             before = sc.differences()
             assert before == [], (n, "objects")
             square_event(sc, map_, x, y, cell, rng.randrange(3), 0)
+            charges = [lib.item_add_charges(t, 0) for t, _, _ in objects_on_map(lib, map_)]
             first = objects_on_map(lib, map_)
             for _ in range(3):
                 sc.step()
             moved += objects_on_map(lib, map_) != first
+            recharged += charges != [lib.item_add_charges(t, 0) for t, _, _ in objects_on_map(lib, map_)]
             sc.assert_same((n, map_, x, y, cell, hex(kind)))
         if n % 10 == 9:
             sc.assert_equal(n)
-    assert moved > 10
+    assert moved > 30 and recharged > 10, (moved, recharged)
     sc.assert_equal("end")
+
+
+def lightning_seed(lib, rng, storm, chance, target):
+    """A random seed with which the next weather step of a storm (rain already falling) rolls a lightning that hits
+    squares and tries target first; the C random functions follow the calls of world_update_day_night."""
+    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    lib.rand_next.restype = ctypes.c_uint32
+    lib.rand_below.restype = ctypes.c_uint16
+    while True:
+        value = rng.getrandbits(32)
+        seed.value = value
+        span = (0x100 - storm + (lib.rand_next() & 0xF)) & 0xFFFF
+        if lib.rand_below(span) > chance or lib.rand_below((storm + 1) & 0xFFFF) < 60:
+            continue
+        lib.rand_next()
+        if (lib.rand_below(32), lib.rand_below(32)) == target:
+            return value
+
+
+def set_party_state(sc, inventory, sleeping):
+    """The open inventory (champion ordinal) and the sleep of the party in both."""
+    ctypes.c_int16.in_dll(sc.lib, "ui").value = inventory  # UiState.inventory
+    sc.emu.write(G_INVENTORY, struct.pack("<h", inventory))
+    ctypes.c_int.in_dll(sc.lib, "party_sleeping").value = sleeping
+    sc.emu.write_u32(G_PARTY_SLEEPING, sleeping)
+
+
+def test_lightning_strikes_match_original(world, lib):
+    # Lightning that tries the party square (early or late game time, weak or strong storm, script byte 0x40 below or
+    # above the threshold), a creature square (party 1 to 4 squares away, facing it or not), or a square near the
+    # party while the inventory is open or the party sleeps (script byte 0x41).
+    rng = random.Random(177)
+    sc = world
+    groups = {}
+    for map_ in OUTDOOR_MAPS[1:]:
+        for _, x, y, _ in [s for s in squares(lib, (1,)) if s[0] == map_]:
+            t = lib.dungeon_square_first_thing(map_, x, y)
+            while t != 0xFFFE:
+                if t >> 10 & 15 == 4:
+                    groups.setdefault(map_, []).append((x, y))
+                t = lib.dungeon_next_thing(t)
+    party_hits = creature_hits = seen = 0
+    for n in range(240):
+        case = n % 3
+        map_ = rng.choice(sorted(groups))
+        floors = [(x, y) for m, x, y, _ in squares(lib, (1,)) if m == map_]
+        target = rng.choice(groups[map_]) if case == 1 else rng.choice(floors)
+        near = [(x, y) for x, y in floors if 1 <= abs(x - target[0]) + abs(y - target[1]) <= 4] or floors
+        party = target if case == 0 else rng.choice(near)
+        sc.place(map_, *party, rng.randrange(4))
+        storm = rng.choice((0xB0, 0xB6, 0xF0))
+        sc.set_time(rng.choice((11999, 12000, 40000)))
+        set_weather(sc, rain_intensity=1, storm_intensity=storm, storm_multiplier=1, next_hour_time=sc.time() + 100,
+                    strike_threshold=5, light_level=0)
+        set_global(sc, 0x40, rng.choice((5, 6, 20)))
+        set_party_state(sc, int(case == 2 and rng.random() < 0.6), int(case == 2 and rng.random() < 0.4))
+        value = lightning_seed(lib, rng, storm, 0x28 if storm >= 0xCD else 7, target)
+        ctypes.c_uint32.in_dll(lib, "random_seed").value = value
+        sc.emu.write_u32(VIEW_SEED_ADDR, value)
+        before = lib.dun_get_global_var(0x41)
+        lib.world_update_day_night(0)
+        sc.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
+        hit = [e for e in sc.explosions if (e[2], e[3]) == target]
+        party_hits += case == 0 and bool(hit)
+        creature_hits += case == 1 and bool(hit)
+        seen += lib.dun_get_global_var(0x41) != before
+        assert_world(sc, (n, map_, target, party))
+    set_party_state(sc, 0, 0)
+    assert party_hits > 5 and creature_hits > 5 and seen > 5, (party_hits, creature_hits, seen)
+
+
+def test_square_light_of_added_things_matches_original(world, lib, gdat):
+    # start.DAT has no explosions or missiles: an explosion (light types and others, with a power), a spell missile
+    # (with a power), or a creature that glows goes at the end of the things of a floor, pit, or teleporter square
+    # (with or without a floor ornament), then both add the light of the square.
+    rng = random.Random(178)
+    sc = world
+    free = {t: [i for i in range(lib.dungeon_thing_count(t)) if lib.thing_word(t << 10 | i, 0) == NONE] for t in (4, 14, 15)}
+    glowing = [c for c in range(256) if lib.gdat_entry_index(gdat, 0x0F, c, 0x0B, 0xF8)]
+    assert free[4] and free[14] and free[15] and glowing
+    lib.gdat_entry_index.restype = ctypes.c_uint16
+    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lit = 0
+    for map_ in range(lib.dungeon_map_count()):
+        cells = [(x, y) for m, x, y, _ in squares(lib, (1, 2, 5)) if m == map_]
+        if not cells:
+            continue
+        sc.place(map_, *rng.choice(cells), rng.randrange(4))
+        for x, y in rng.sample(cells, min(len(cells), 25)):
+            last = lib.dungeon_square_first_thing(map_, x, y)
+            if last == 0xFFFE:
+                continue
+            while lib.dungeon_next_thing(last) != 0xFFFE:
+                last = lib.dungeon_next_thing(last)
+            kind = rng.randrange(3)
+            if kind == 0:
+                thing = 15 << 10 | rng.choice(free[15]) | rng.randrange(4) << 14
+                data = rng.choice((0, 2, 0x30, 0x30, 1, 7)) | rng.randrange(2) << 7 | rng.randrange(256) << 8
+                record = struct.pack("<HH", 0xFFFE, data)
+            elif kind == 1:
+                thing = 14 << 10 | rng.choice(free[14]) | rng.randrange(4) << 14
+                payload = 0xFF80 if rng.random() < 0.8 else 0xFF81
+                record = struct.pack("<HHBBH", 0xFFFE, payload, rng.randrange(256), 0, 0)
+            else:
+                thing = 4 << 10 | rng.choice(free[4]) | rng.randrange(4) << 14
+                record = struct.pack("<HHBBHHHHH", 0xFFFE, 0xFFFE, rng.choice(glowing), 0, 100, 0, 0, 0, 0)
+            write_record(sc, thing, record)
+            set_word(sc, last, 0, thing)
+            for d in range(4):
+                args = (rng.randrange(10), d, x, y, rng.choice((1, 3, 7)))
+                set_weather(sc, light_source_sum=0, explosion_light_sum=0)
+                lib.light_add_square_light(*args)
+                sc.emu.call(LIGHT_ADD_SQUARE_LIGHT, *args[:4], args[4])
+                sc.assert_same_weather((map_, hex(thing), args))
+                lit += ctypes.c_int16.in_dll(lib, "explosion_light_sum").value != 0
+            set_word(sc, last, 0, 0xFFFE)
+            write_record(sc, thing, struct.pack("<H", NONE) + bytes(len(record) - 2))
+    assert lit > 100
+
+
+def write_record(sc, thing, record):
+    """Writes the first bytes of a thing record in both."""
+    ctypes.memmove(sc.lib.dungeon_thing_record(thing), record, len(record))
+    sync_thing(sc, thing)
