@@ -283,12 +283,13 @@ enum step_result { STEP_STAIRS_HERE = 1, STEP_STAIRS_AHEAD, STEP_BLOCKED, STEP_C
    square next to it; moves *x, *y to that square. THING_NONE when there is none. */
 static uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
 {
-    static const int16_t hit_offsets[4][4][2] = {
-        {{0, 0}, {0, -1}, {-1, 0}, {-1, -1}}, {{0, 0}, {0, -1}, {1, 0}, {1, -1}},
-        {{0, 0}, {0, 1}, {1, 0}, {1, 1}}, {{0, 0}, {0, 1}, {-1, 0}, {-1, 1}},
+    /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
+       cell (its table has rows of 4 pairs), which this table keeps. */
+    static const int16_t hit_offsets[10][2] = {
+        {0, 0}, {0, -1}, {0, -1}, {1, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, 1}, {0, 1}, {0, -1}
     };
-    static const int16_t hit_offsets_any_cell[4][2] = {{0, 0}, {0, -1}, {1, 0}, {0, 1}};
-    static const int16_t hit_radius_sq[] = {1, 4, 9, 16};
+    static const int16_t hit_offsets_any_cell[4][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+    static const int16_t hit_radius_sq[] = {0, 3, 6, 6};
     static const uint16_t cell_grid[4] = {6, 8, 18, 16};
     int16_t sx = *x, sy = *y, px, py, cx, cy;
     view_grid5_cell_to_xy(sx, sy, cell == 0xff ? 12 : cell_grid[cell], &px, &py);
@@ -312,8 +313,8 @@ static uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
             sx = (int16_t)(*x + hit_offsets_any_cell[i][0]);
             sy = (int16_t)(*y + hit_offsets_any_cell[i][1]);
         } else {
-            sx = (int16_t)(*x + hit_offsets[cell][i][0]);
-            sy = (int16_t)(*y + hit_offsets[cell][i][1]);
+            sx = (int16_t)(*x + hit_offsets[cell * 2 + i][0]);
+            sy = (int16_t)(*y + hit_offsets[cell * 2 + i][1]);
         }
     }
     return THING_NONE;
@@ -478,7 +479,7 @@ int move_party(int command)
                 break;
             }
             PassageEnd end;
-            if (dun_get_linked_teleporter_dest(&end, x, y) && ((end.side + 2) & 3) != dir) {
+            if (dun_get_linked_teleporter_dest(&end, x, y) && ((end.target_side + 2) & 3) != dir) {
                 move_party_to(end.x, end.y, end.map, end.target_side);
                 break;
             }
