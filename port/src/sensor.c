@@ -1185,7 +1185,7 @@ enum {
 enum { TEXT_LADDER = 6, TEXT_LADDER_HIDDEN = 7, TEXT_SWITCH = 0x0d };
 
 /* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
-static int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
+int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
 {
     int ornament = item_gdat_index(thing);
     if (ornament == 0xff

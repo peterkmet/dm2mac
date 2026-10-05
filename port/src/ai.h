@@ -184,4 +184,8 @@ void creature_ai_end(int restored, const AiContext *saved);
 void creature_ai_prepare(void);
 void creature_ai_set_map(int map);
 
+/* ai_move.c */
+/* The stored path of the group in the AI context, NULL when it has none. */
+uint8_t *ai_find_path(void);
+
 #endif

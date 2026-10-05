@@ -37,7 +37,6 @@ void view_click_throw_object(int x, int y);
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);              /* returns 0: no push */
 int move_party_can_push_group(uint16_t group);                                   /* returns 0 */
 void creature_push_group(int x, int y, int dir, int strength);
-void creature_refresh_party_maps(void);
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
 void projectile_process_event(TimelineEvent *e);
 void explosion_process_event(TimelineEvent *e);

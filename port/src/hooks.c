@@ -35,7 +35,6 @@ void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group) { (void)x; (void)y; (void)dir; (void)group; return 0; }
 int move_party_can_push_group(uint16_t group) { (void)group; return 0; }
 void creature_push_group(int x, int y, int dir, int strength) { (void)x; (void)y; (void)dir; (void)strength; }
-void creature_refresh_party_maps(void) { }
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y) { (void)from_x; (void)from_y; (void)to_x; (void)to_y; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
 void explosion_process_event(TimelineEvent *e) { (void)e; }
