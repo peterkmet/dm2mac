@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "action.h"
 #include "champion.h"
@@ -30,7 +30,7 @@ enum {
     PANEL_BACK = 0, PANEL_PANEL = 1, PANEL_OBJECT_NAME = 5, PANEL_FOOD = 6, PANEL_WATER = 7,
     PANEL_POISON = 8, PANEL_BUTTON_EXIT = 0x0b, PANEL_BUTTON_SAVE = 0x0d, PANEL_BUTTON_SLEEP = 0x0f,
     PANEL_BUTTON_SOUND = 0x11, PANEL_BUTTON_CLOSE = 0x13, PANEL_MOUTH = 0x20, PANEL_EYE = 0x25,
-    PANEL_ICON_GOOD = 4, PANEL_ICON_BAD = 5, PANEL_EMPTY_SLOT = 0
+    PANEL_ICON_GOOD = 4, PANEL_ICON_BAD = 5
 };
 /* Inventory texts (7, 0, 5, entry). */
 enum { TEXT_WEIGHT = 0x1f, TEXT_STAT_FIRST = 0x20, TEXT_LOAD = 0x2a };
@@ -46,6 +46,10 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 #define WEAPON_THROW_MAX 100
 #define ARMOUR_CLASS_MAX 200
 #define POTION_POWER_MAX 0xff
+#define POTION_DATA 2              /* potion word 2: power in bits 0-7 */
+#define POTION_POWER_MASK 0xff
+#define ARMOUR_CLASS_MASK 0xff
+#define DITHER_COLOR_MASK 0x0f      /* the dither pattern holds 4-bit pixels */
 #define GAUGE_CHARGE_COLOR 4
 #define GAUGE_VALUE_COLOR 5
 #define FOOD_MIN (-0x400)
@@ -63,7 +67,6 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 #define OBJECT_PICTURE_ENTRY 0x11   /* (category, index, 1, 0x11): the big picture of an item */
 #define GDAT_IMAGE_TYPE 1
 #define TITLE_NO_SPACE ",;-"        /* a title that starts with one of these follows the name without a space */
-#define DIRTY_FULL (-1)
 
 /* The slots of the status boxes (champion * 2 + hand), of the inventory (8 + slot), of the object info,
    and of the open container: zone, icon of the empty slot, and the drawn state. */
@@ -121,7 +124,7 @@ void gfx_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int
     if (!rect || !rect[RECT_W] || !rect[RECT_H]) return;
     uint16_t start = (uint16_t)(rect[RECT_Y] * dst_width + rect[RECT_X]);
     int phase = ((start / dst_width) ^ start) & 1;
-    uint8_t color = ui_colors[ui_color & 0x0f];
+    uint8_t color = ui_colors[ui_color & DITHER_COLOR_MASK];
     for (int row = 0; row < (uint16_t)rect[RECT_H]; row++, phase ^= 1) {
         uint16_t at = (uint16_t)(start + row * dst_width);
         for (int col = phase; col < (uint16_t)rect[RECT_W]; col += 2) dst[(uint16_t)(at + col)] = color;
@@ -345,13 +348,14 @@ void ui_draw_movement_arrows(void)
     for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += 2)
         offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry, zone, UI_OPAQUE);
     offscreen_flush(&o, 1);
+    draw_free_temp();
 }
 
 void ui_reset(void)
 {
     memset(&ui, 0, sizeof ui);
     memset(&cache, 0, sizeof cache);
-    for (int i = 0; i < SLOT_ENTRY_COUNT; i++) cache.slots[i].thing = 0;
+    ui.screen_needs_refresh = 1;
     cache.shown_object = THING_NONE;
     status_box.bitmap = NULL;
     action_reset();
@@ -363,7 +367,6 @@ void ui_draw_game_screen(void)
     ui_draw_movement_arrows();
     champ_init_party_state();
     champ_draw_all_states(1);
-    draw_free_temp();
 }
 
 /* ---- Status boxes ---- */
@@ -722,11 +725,11 @@ static int draw_object_info(uint16_t thing, int full)
         }
     } else if (type == THING_ARMOUR) {
         glyph = GLYPH_STRENGTH;
-        value = item_attr(thing, ATTR_ARMOUR_CLASS) & 0xff;
+        value = item_attr(thing, ATTR_ARMOUR_CLASS) & ARMOUR_CLASS_MASK;
         high = ARMOUR_CLASS_MAX;
     } else if (type == THING_POTION) {
         glyph = GLYPH_POTION;
-        value = thing_word(thing, 2) & 0xff;
+        value = thing_word(thing, POTION_DATA) & POTION_POWER_MASK;
         high = POTION_POWER_MAX;
     } else {
         return 1;
@@ -933,7 +936,8 @@ void champ_draw_state(int champ)
     }
     if (box_drawn) offscreen_flush(&status_box, 1);
     if (present) ui.screen_needs_refresh = 0;
-    c->redraw &= 0x03ff;
+    c->redraw &= REDRAW_KEEP;
+    draw_free_temp();
 }
 
 void champ_set_redraw_flags(uint16_t flags)
@@ -971,7 +975,7 @@ void inv_toggle(int champ)
         if (party_sleeping || champ == CHAMPION_MAX) return;  /* ponytail: closing redraws the view in Step 14 */
     }
     ui.inventory = (int16_t)(champ + 1);
-    champion(champ)->redraw |= 0xfc00;
+    champion(champ)->redraw |= REDRAW_ALL;
     ui.buttons = 0;
     champ_draw_state(champ);
 }

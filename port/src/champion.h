@@ -26,6 +26,8 @@ enum { STAT_LUCK, STAT_STRENGTH, STAT_COUNT = 7 };
 #define REDRAW_BARS 0x0800
 #define REDRAW_NAME 0x0400
 #define REDRAW_ALL_INVENTORY 0x8000
+#define REDRAW_ALL 0xfc00
+#define REDRAW_KEEP 0x03ff       /* the bits that stay after a redraw */
 
 /* Aura types: 0 to 2 shields, 3 to 6 raise a statistic. */
 #define AURA_STAT_FIRST 3

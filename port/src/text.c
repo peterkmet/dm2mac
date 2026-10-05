@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include "draw.h"
 #include "dungeon.h"
@@ -19,7 +18,6 @@
 #define GLYPH_BYTES_PER_ROW 3
 #define GLYPH_BIT_FIRST 0x10        /* font bit of the first pixel of a pixel pair */
 #define GLYPH_BIT_SECOND 0x08
-#define GDAT_TEXT_TYPE 5
 #define FORMAT_CODE_BYTE 1          /* a format code: this byte, then the code + FORMAT_CODE_BASE */
 #define FORMAT_CODE_BASE 0x20
 #define FORMAT_CODE_DIGITS 3        /* or ".Z" and 3 decimal digits */

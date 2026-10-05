@@ -36,6 +36,13 @@
 #define FIELD_CHARGES 8
 #define GDAT_TEXT_TYPE 5
 #define MISC_ITEM_INDEX_BASE 0x100
+/* Item index ranges. */
+#define ITEM_FIRST_CLOTHING 0x80
+#define ITEM_FIRST_MISC 0x100
+#define ITEM_FIRST_POTION 0x180
+#define ITEM_FIRST_CREATURE 0x1b0
+#define ITEM_FIRST_CONTAINER 0x1e0
+#define ITEM_SCROLL 0x1fc
 #define ITEM_KIND_ITEMS 0x80           /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
 #define MONEY_SLOT_COUNT 10
 #define COIN_SCAN_COUNT 0x80
@@ -100,7 +107,7 @@ uint16_t item_attr(uint16_t thing, int entry)
 {
     if (thing == THING_NONE) return 0;
     return gdat_entry_index(draw_gdat(), item_gdat_category(thing), item_gdat_index(thing), GDAT_TYPE_VALUE,
-                            entry & 0xff);
+                            (uint8_t)entry);
 }
 
 int item_charges(uint16_t thing)
@@ -364,13 +371,13 @@ uint8_t item_index_gdat_index(uint16_t item)
     item &= ITEM_INDEX_NONE;
     switch (item / ITEM_KIND_ITEMS) {
     case 0: return (uint8_t)item;
-    case 1: return (uint8_t)(item - 0x80);
-    case 2: return (uint8_t)(item - 0x100);
+    case 1: return (uint8_t)(item - ITEM_FIRST_CLOTHING);
+    case 2: return (uint8_t)(item - ITEM_FIRST_MISC);
     default:
-        if (item >= 0x1fc) return 0;
-        if (item >= 0x1e0) return (uint8_t)(item - 0x1e0);
-        if (item >= 0x1b0) return (uint8_t)(item - 0x1b0);
-        return (uint8_t)(item - 0x180);
+        if (item >= ITEM_SCROLL) return 0;
+        if (item >= ITEM_FIRST_CONTAINER) return (uint8_t)(item - ITEM_FIRST_CONTAINER);
+        if (item >= ITEM_FIRST_CREATURE) return (uint8_t)(item - ITEM_FIRST_CREATURE);
+        return (uint8_t)(item - ITEM_FIRST_POTION);
     }
 }
 
@@ -380,10 +387,10 @@ uint8_t item_index_gdat_category(uint16_t item)
     item &= ITEM_INDEX_NONE;
     int type;
     if (item < 3 * ITEM_KIND_ITEMS) type = kind_type[item / ITEM_KIND_ITEMS];
-    else if (item > 0x1fc) type = THING_EXPLOSION;  /* the original reads an item index of no type like this */
-    else if (item == 0x1fc) type = THING_SCROLL;
-    else if (item >= 0x1e0) type = THING_CONTAINER;
-    else if (item >= 0x1b0) type = THING_GROUP;
+    else if (item > ITEM_SCROLL) type = THING_EXPLOSION;  /* the original reads an item index of no type like this */
+    else if (item == ITEM_SCROLL) type = THING_SCROLL;
+    else if (item >= ITEM_FIRST_CONTAINER) type = THING_CONTAINER;
+    else if (item >= ITEM_FIRST_CREATURE) type = THING_GROUP;
     else type = THING_POTION;
     return thing_gdat_category[type];
 }

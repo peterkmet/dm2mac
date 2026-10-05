@@ -65,6 +65,9 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define FLAGS_MINION_HEADER 0x0400
 #define ICON_KEY_COLOR UI_RED       /* the background of a hand icon bitmap; the blit skips it */
 #define UI_INDEX_AURA 7
+#define NO_CELL 0xff
+#define GFX_SET_SHIFT 4             /* map graphics word: wall set in bits 4-7 */
+#define GFX_SET_MASK 0x0f
 
 ActionArea action;
 /* The champion ordinal that a click drags (Step 14), 0 none. */
@@ -83,7 +86,7 @@ static struct {
 
 void action_reset_champion(int champ)
 {
-    drawn.cell[champ] = drawn.dir[champ] = 0xff;
+    drawn.cell[champ] = drawn.dir[champ] = NO_CELL;
     drawn.alive[champ] = 0;
     memset(drawn.busy[champ], 0, sizeof drawn.busy[champ]);
     action.hand_items[champ][0] = action.hand_items[champ][1] = THING_NONE;
@@ -93,6 +96,9 @@ void action_reset(void)
 {
     memset(&action, 0, sizeof action);
     memset(&drawn, 0, sizeof drawn);
+    action.mode = ACTION_MODE_NONE;
+    drawn.gfx_set = NO_CELL;
+    drawn.leader = -1;
     action.open_container = THING_NONE;
     for (int i = 0; i < CONTAINER_SLOTS; i++) action.open_items[i] = THING_NONE;
     area.bitmap = NULL;
@@ -108,7 +114,7 @@ uint16_t action_open_hand_item(void)
 static int relative_dir(int dir) { return (dir + DIR_COUNT - game.party_dir) & 3; }
 
 /* The wall set of the party map. */
-static uint8_t map_gfx_set(void) { return dungeon_map_graphics(game.party_map) >> 4 & 0x0f; }
+static uint8_t map_gfx_set(void) { return dungeon_map_graphics(game.party_map) >> GFX_SET_SHIFT & GFX_SET_MASK; }
 
 /* Opens the action area bitmap; clear: it starts black and goes to the screen as a whole. */
 static void begin_draw(int clear)
@@ -584,7 +590,6 @@ void ui_update_action_area(int tick)
         goto flush;
     }
     /* ponytail: the hand reload countdown (Step 15) and the mana of an open minion map (Step 16) are game rules */
-    (void)tick;
     if (action.result) {
         draw_action_result(action.result);
         action.dirty = 1;
@@ -599,10 +604,10 @@ void ui_update_action_area(int tick)
         for (int i = 0; i < game.champion_count; i++) {
             const Champion *c = champion(i);
             uint8_t dir = (uint8_t)relative_dir(c->dir), cell = (uint8_t)relative_dir(c->cell);
-            if (!c->health || drag_cell == cell + 1) cell = 0xff;
+            if (!c->health || drag_cell == cell + 1) cell = NO_CELL;
             if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
                 party_changed = 1;
-                if (cell != 0xff) action.dirty = 1;
+                if (cell != NO_CELL) action.dirty = 1;
                 drawn.cell[i] = cell;
                 drawn.dir[i] = dir;
             }
@@ -681,4 +686,5 @@ void ui_update_action_area(int tick)
     }
 flush:
     if (area.bitmap) offscreen_flush(&area, 1);
+    draw_free_temp();
 }

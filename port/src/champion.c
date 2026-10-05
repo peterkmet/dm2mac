@@ -203,7 +203,7 @@ void champ_init_party_state(void)
 {
     /* ponytail: a leader hand object (its cursor and its name message) comes with Step 15; the new game party with Step 20 */
     for (int i = 0; i < game.champion_count; i++) {
-        champion(i)->redraw &= 0x03ff;
+        champion(i)->redraw &= REDRAW_KEEP;
         action_reset_champion(i);
     }
     champ_set_redraw_flags(REDRAW_STATUS_BOX);
