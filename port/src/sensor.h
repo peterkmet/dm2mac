@@ -30,6 +30,8 @@ void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t t
 void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).
    Returns 1 when the door breaks. */
+/* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
+void move_square_contents_through(int x, int y);
 int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay);
 /* Runs a due square event or door event. */
 void timeline_event_square(TimelineEvent *e);

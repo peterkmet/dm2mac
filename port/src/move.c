@@ -238,7 +238,7 @@ int dun_get_direction_to(int x1, int y1, int x2, int y2)
 }
 
 /* The champion of the cell nearest to the side of the party square that faces (x, y), -1 none. */
-static int champ_get_nearest_at(int x, int y, int cell)
+int champ_get_nearest_at(int x, int y, int cell)
 {
     static const uint8_t attack_cell_orders[8][4] = {
         {0, 1, 3, 2}, {1, 0, 2, 3}, {1, 2, 0, 3}, {2, 1, 3, 0}, {3, 2, 0, 1}, {2, 3, 1, 0}, {0, 3, 1, 2}, {3, 0, 2, 1}

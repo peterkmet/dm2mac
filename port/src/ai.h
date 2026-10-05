@@ -140,6 +140,12 @@ typedef struct {
 
 extern AiContext ai;
 
+/* Command results (ai.command_result and the plan commands). */
+#define AI_RESULT_ISSUED 0xfc       /* an action was set: the update ends */
+#define AI_RESULT_FAIL 0xfd
+#define AI_RESULT_DONE 0xfe
+#define AI_MOVE_TEST 0x80           /* creature_ai_try_* mode bit: only test and set the action */
+
 /* The party position as the current map sees it (g_ai_target_* of SKULL.EXE). */
 typedef struct { int16_t x, y, map, dir; } AiPartyView;
 extern AiPartyView ai_party;
@@ -164,6 +170,13 @@ int creature_attack_group_at(int x, int y);
 uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir);
 void minion_dismiss(uint16_t group);
 int creature_roll_armor_factor(uint16_t group, int enabled);
+int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor);
+int dun_set_pit_or_teleporter_state(int x, int y, int mode);
+/* The target square of the action that runs (g_ai_dest_x/y of SKULL.EXE). */
+extern int16_t ai_dest_x, ai_dest_y;
+/* Projectiles and explosions (projectile.c), champion attacks. */
+void projectile_create(uint16_t thing, int x, int y, int cell, int dir, int kinetic, int attack, int step);
+int creature_attack_champion(uint16_t group, int champ);
 void creature_apply_damage_kind(uint16_t group, int x, int y, int kind);
 int creature_ai_class(void);
 uint8_t *ai_scratch_push(void);

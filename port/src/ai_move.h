@@ -32,7 +32,7 @@ int creature_count_matching_items(int filter, uint16_t first_thing, int cell, in
 int creature_find_ai_marker(int level_delta, uint16_t id_mask);
 int creature_find_ai_marker_by_id(int level_delta, int id);
 /* The breadth-first search from (x, y): the nearest of count candidates; returns its index, -1 for none. */
-int creature_ai_search_area(int x, int y, int flags, int count, AiCandidate *candidates, uint8_t *path);
+int creature_ai_search_area(int x, int y, int command, int count, AiCandidate *candidates, uint8_t *path);
 void creature_ai_load_cached_path(void);
 int creature_ai_next_path_step(void);
 int creature_ai_plan_path(void);

@@ -81,6 +81,8 @@ int move_find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out_x,
 int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y);
 /* The number of game steps that the champion needs for a move (load, wounds, haste). */
 int champ_get_move_delay(int champ);
+/* The champion nearest to the square (x, y) next to the party, seen from cell (0xff: any); -1 none. */
+int champ_get_nearest_at(int x, int y, int cell);
 /* Takes stamina from a champion. */
 void champ_decrease_stamina(int champ, int amount);
 

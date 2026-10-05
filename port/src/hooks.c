@@ -1,6 +1,9 @@
 #include "dungeon.h"
 #include "hooks.h"
 #include "input.h"
+#include "save.h"
+
+#define CHAMPION_SLOTS_OFFSET 0xc3   /* the hand slots in the champion record */
 
 /* Empty until their steps; see hooks.h. */
 DamageCall damage_calls[DAMAGE_CALL_MAX];
@@ -62,3 +65,17 @@ int view_click_drop_object(int square_x, int square_y, int cell) { (void)square_
 void view_click_throw_object(int x, int y) { (void)x; (void)y; }
 void move_push_creature(int arrow) { (void)arrow; }
 void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y) { (void)group; (void)x; (void)y; (void)square_x; (void)square_y; }
+int shop_cmd_wait_for_offer(void) { return 0xfd; }
+int shop_cmd_evaluate_offer(void) { return 0xfd; }
+int shop_cmd_count_payment(void) { return 0xfd; }
+int shop_cmd_pay_change(void) { return 0xfd; }
+int champ_test_luck(int champ, int chance) { (void)champ; (void)chance; return 0; }
+int champ_get_dexterity(int champ) { (void)champ; return 0; }
+uint16_t item_get_value(uint16_t thing) { (void)thing; return 0; }
+uint16_t champ_remove_object_from_slot(int champ, int slot)
+{
+    uint16_t *slots = (uint16_t *)(game.champions[champ] + CHAMPION_SLOTS_OFFSET);
+    uint16_t t = slots[slot];
+    slots[slot] = THING_NONE;
+    return t;
+}

@@ -25,13 +25,25 @@ void timeline_event_magic_light(TimelineEvent *e);
 void champ_poison(int champ, int amount);
 uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
 void champ_put_object_in_leader_hand(uint16_t thing, int flag);
-uint16_t item_create_by_index(int item);                                        /* returns THING_NONE */
+uint16_t item_create_by_index(int item);
+/* Rules of Step 15 that the creatures use: a luck test (returns 0: fails), the dexterity (0), the value of an item (0),
+   and the removal of a hand object (clears the slot and returns the object). */
+int champ_test_luck(int champ, int chance);
+int champ_get_dexterity(int champ);
+uint16_t item_get_value(uint16_t thing);
+uint16_t champ_remove_object_from_slot(int champ, int slot);                                        /* returns THING_NONE */
 void champ_start_recruit(int x, int y, int map);
 /* The clicks in the view with an object in the hand or on objects (Step 15): returns 1 when done. */
 void view_click_take_object(int x, int y);
 int view_click_place_object(int x, int y, int square_x, int square_y, int cell_from, int cell, int kind);
 int view_click_drop_object(int square_x, int square_y, int cell);
 void view_click_throw_object(int x, int y);
+
+/* Merchant commands of the creature AI (shops, Step 15): return AI_RESULT_FAIL (0xfd). */
+int shop_cmd_wait_for_offer(void);
+int shop_cmd_evaluate_offer(void);
+int shop_cmd_count_payment(void);
+int shop_cmd_pay_change(void);
 
 /* Step 16: creatures and projectiles. */
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);              /* returns 0: no push */

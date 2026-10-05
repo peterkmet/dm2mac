@@ -17,14 +17,24 @@ IMAGE_CACHE_GET, IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE = 0x3F337, 0x3F3C2, 0x3F4
 MEM_ALLOC, MEM_FREE_SIZE = 0x3BBBA, 0x3BCA5
 # Original functions that Step 16 ports: the scenario runs them (test_move.STUBS replaces them by empty hooks).
 PORTED = (0x34106, 0x306A8, 0x3085A, 0x3064D, 0x2538C, 0x24E62, 0x49EF8, 0x30D45, 0x30FE3, 0x4A096, 0x4A005, 0x30BA6)
-# Original functions of Step 16 that the C port does not have yet: (address, stack arguments, result).
+# Original functions of other Step 16 parts that this branch does not have yet, and rules of Step 15: the same
+# empty results as the C placeholders (ai_pending.c, hooks.c). (address, stack arguments, result); FAIL also sets
+# the command result of the AI context.
+FAIL = "fail"
 NOT_YET = {
-    0x262F7: None,          # creature_ai_decide: action 0
-    0x25FB2: (0, 0),        # creature_ai_plan_flags
-    0x2B75E: (0, 0),        # creature_ai_execute_action
-    0x30102: (0, 0),        # creature_group_in_state5
     0x16746: (1, 0),        # explosion_create
+    0x16457: (4, 0),        # projectile_create
+    0x18758: (0, 0),        # creature_attack_champion
+    0x2B96A: (0, 0), 0x2BBAD: (1, 0), 0x2BEAF: (0, 0), 0x2C005: (0, 0),    # obstacles, lines, square cache, turn
+    0x2C404: (2, FAIL), 0x2CC42: (2, FAIL), 0x2D52D: (0, 0),                # attack, door, missiles
+    0x2D792: (2, FAIL), 0x2EA68: (3, FAIL), 0x2F2CF: (3, FAIL),             # move, take items, wall actuators
+    0x2F636: (0, 0), 0x2FF1E: (0, 0xFFFE), 0x2FF89: (0, 0), 0x2697B: (1, 0),  # item filters
+    0x31724: (0, 0), 0x3188A: (3, 0xFFFF), 0x33E61: (0, 0), 0x33EF3: (0, 0),  # markers, path search
+    0x46786: (0, 0), 0x46968: (0, 0), 0x1F8A7: (0, 0),                      # Step 15: luck, dexterity, value
+    0x28574: (0, 0xFD), 0x28711: (0, 0xFD), 0x28E99: (0, 0xFD), 0x296D5: (0, 0xFD),  # Step 15: merchants
 }
+CHAMP_REMOVE_OBJECT_FROM_SLOT, G_CHAMPIONS, CHAMPION_SIZE_BYTES, CHAMPION_SLOTS = 0x45F27, 0x7FBD0, 0x107, 0xC3
+G_AI_COMMAND_RESULT = 0x7F56B
 G_AI_ACTIVE_GROUP = 0x7F552
 
 
@@ -36,11 +46,14 @@ class CreatureScenario(Scenario):
         emu = self.emu
         for addr in PORTED:
             emu.uc.hook_del(self.stubs.pop(addr))
-        for addr, stub in NOT_YET.items():
-            if stub is None:
-                emu.stub(addr, lambda *_: emu.write(emu.read_u32(G_AI_ACTIVE_GROUP) + 0x1A, b"\0"))
+        for addr, (stack, result) in NOT_YET.items():
+            if result == FAIL:
+                emu.stub(addr, lambda *_: emu.write(G_AI_COMMAND_RESULT, b"\xfd"), stack_args=stack)
             else:
-                emu.stub(addr, lambda *_, r=stub[1]: r, stack_args=stub[0])
+                emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
+        emu.stub(CHAMP_REMOVE_OBJECT_FROM_SLOT, self.remove_object_from_slot)
+        for addr in (IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE, MEM_FREE_SIZE):  # replaced below
+            emu.uc.hook_del(self.view.no_ops.pop(addr))
         self.ai_cache = {}  # image cache keys of the AI data: key -> index
         self.sizes = {}
         emu.stub(IMAGE_CACHE_LOOKUP, self.cache_lookup)
@@ -54,6 +67,12 @@ class CreatureScenario(Scenario):
         emu.call(CREATURE_ALLOC_ACTIVE_GROUPS)
         emu.call(CREATURE_RESET_ACTIVE_GROUPS)
         lib.creature_reset_active_groups()
+
+    def remove_object_from_slot(self, champ, slot, *_):
+        at = G_CHAMPIONS + (champ & 0xFFFF) * CHAMPION_SIZE_BYTES + CHAMPION_SLOTS + 2 * (slot & 0xFFFF)
+        thing = struct.unpack("<H", self.emu.read(at, 2))[0]
+        self.emu.write(at, b"\xff\xff")
+        return thing
 
     def mem_alloc(self, size, *_):
         if size in (0x100, 0x350):

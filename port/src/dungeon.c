@@ -146,6 +146,7 @@ uint8_t *dungeon_square_byte(int map, int x, int y)
 /* Squares with things own consecutive entries of the first-thing table, counted per column; -1 for a square without things. */
 static int square_thing_index(int map, int x, int y)
 {
+    if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map)) return -1;
     const uint8_t *column = map_column(map, x);
     if (!(column[y] & SQUARE_HAS_THINGS)) return -1;
     int index = dun.column_first_thing[dun.map_first_column[map] + x];

@@ -852,7 +852,7 @@ static void timeline_event_floor_square(TimelineEvent *e)
 }
 
 /* A pit or teleporter turns on: the party, a creature, and the objects on it go through. */
-static void move_square_contents_through(int x, int y)
+void move_square_contents_through(int x, int y)
 {
     if (dun_on_party_square(x, y)) move_thing(THING_NONE, x, y, x, y);
     uint16_t g = creature_group_at(party.cur_map, x, y);

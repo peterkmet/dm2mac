@@ -393,6 +393,12 @@ int creature_active_group_floats(int active_index)
     return a->action == AI_ACTION_JUMP && (a->phase == 1 || a->phase == 2);
 }
 
+int creature_group_jumps(uint16_t group)
+{
+    int active = dungeon_thing_record(group)[GROUP_ACTIVE];
+    return active != GROUP_NOT_ACTIVE && creature_active_group_floats(active);
+}
+
 void creature_alloc_active_groups(void)
 {
     int n = 0, count = dungeon_thing_count(THING_GROUP);
