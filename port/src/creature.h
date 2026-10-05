@@ -144,6 +144,8 @@ uint32_t creature_ai_animate_and_get_next_time(void);
 
 /* Active groups. */
 void creature_alloc_active_groups(void);
+/* Drops the active groups of the last game (a load). */
+void creature_free_active_groups(void);
 void creature_reset_active_groups(void);
 void creature_activate_groups_on_map(void);
 void creature_activate_groups_all_maps(void);

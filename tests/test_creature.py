@@ -12,6 +12,7 @@ ACTIVE_GROUP_SIZE = 0x22
 G_ACTIVE_GROUPS, G_ACTIVE_GROUP_COUNT, G_ACTIVE_GROUP_MAX = 0x7F898, 0x7301C, 0x7F89C
 G_RANDOM_SEED = 0x70518
 CREATURE_ALLOC_ACTIVE_GROUPS, CREATURE_RESET_ACTIVE_GROUPS = 0x342F9, 0x342A3
+CREATURE_ACTIVATE_GROUPS_ALL_MAPS = 0x34236
 IMAGE_CACHE_LOOKUP, IMAGE_CACHE_ALLOC, IMAGE_CACHE_REALLOC = 0x3F1F8, 0x3F279, 0x3F2C2
 IMAGE_CACHE_GET, IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE = 0x3F337, 0x3F3C2, 0x3F406
 MEM_ALLOC, MEM_FREE_SIZE = 0x3BBBA, 0x3BCA5
@@ -73,6 +74,12 @@ class CreatureScenario(Scenario):
         thing = struct.unpack("<H", self.emu.read(at, 2))[0]
         self.emu.write(at, b"\xff\xff")
         return thing
+
+    def state(self):
+        """The save files of both; the original game_save activates the groups again after the file (like the C port)."""
+        result = super().state()
+        self.emu.call(CREATURE_ACTIVATE_GROUPS_ALL_MAPS)
+        return result
 
     def mem_alloc(self, size, *_):
         if size in (0x100, 0x350):
@@ -150,8 +157,11 @@ def test_activation_after_load(creatures):
     creatures.assert_creatures("activation")
 
 
-def test_creature_updates_without_ai(creatures):
-    # The update events of all creatures of the dungeon: animation steps and the timing of the next update.
-    for n in range(200):
+def test_creature_updates(creatures):
+    # The update events of all creatures of the dungeon: moods, plans, actions, animation steps, and the timing of the
+    # next update; every 50 steps the save files (the save deactivates and activates the groups again).
+    for n in range(300):
         creatures.step()
         creatures.assert_creatures(n)
+        if n % 50 == 49:
+            creatures.assert_equal(n)

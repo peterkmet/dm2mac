@@ -175,7 +175,8 @@ const CreatureInfo *creature_group_info(uint16_t group)
 ActiveGroup *creature_active(uint16_t group)
 {
     int index = dungeon_thing_record(group)[GROUP_ACTIVE];
-    return index == GROUP_NOT_ACTIVE ? NULL : active_groups + index;
+    /* after a load the records keep the stale indices of the saved game until the session activates the groups */
+    return index == GROUP_NOT_ACTIVE || index >= active_group_max ? NULL : active_groups + index;
 }
 
 uint16_t *creature_anim_words(uint16_t group)
@@ -215,7 +216,7 @@ void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE
     int type = record[GROUP_CREATURE];
     uint16_t sequence = 0, state = 0;
     uint16_t *words = NULL;
-    if (creature_info(g, type)->flags & CREATURE_STATIC || record[GROUP_ACTIVE] != GROUP_NOT_ACTIVE) {
+    if (creature_info(g, type)->flags & CREATURE_STATIC || creature_active(group)) {
         words = creature_anim_words(group);
         sequence = words[0];
         state = words[1];
@@ -404,6 +405,13 @@ int creature_group_jumps(uint16_t group)
 {
     int active = dungeon_thing_record(group)[GROUP_ACTIVE];
     return active != GROUP_NOT_ACTIVE && creature_active_group_floats(active);
+}
+
+void creature_free_active_groups(void)
+{
+    free(active_groups);
+    active_groups = NULL;
+    active_group_max = active_group_count = 0;
 }
 
 void creature_alloc_active_groups(void)
