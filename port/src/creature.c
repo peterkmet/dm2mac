@@ -956,7 +956,8 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
         if (!is_static) return;
         creature_activate_group(group, x, y);
     }
-    ActiveGroup *a = active_groups + record[GROUP_ACTIVE];
+    ActiveGroup *a = creature_active(group);
+    if (!a) return;  /* fix: a stale index of a save before the session activates the groups */
     a->damage = (uint16_t)(a->damage + damage);
     uint16_t total = a->damage;
     int changed = 0, clear = 0;
