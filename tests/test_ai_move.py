@@ -8,7 +8,8 @@ import struct
 
 import pytest
 
-from test_creature import G_RANDOM_SEED, creatures  # noqa: F401 (fixture)
+from creature_oracle import G_RANDOM_SEED
+from test_creature import creatures  # noqa: F401 (fixture)
 from test_move import gdat, start  # noqa: F401 (fixtures)
 
 AI_BEGIN, AI_PREPARE, AI_END = 0x24A88, 0x24BFC, 0x24D88

@@ -10,6 +10,7 @@ from conftest import ROOT
 from dm2tools.emu import SCRATCH
 from test_save import GRAPHICS, START, original_save
 from test_view import OriginalView
+from creature_oracle import CreatureOracle
 
 
 def original_view_of(lib, gdat, start):
@@ -37,15 +38,11 @@ STUBS = {
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
-    0x24E62: (2, 0), 0x24328: (0, 0), 0x24171: (0, 0), 0x23E5B: (0, 0),     # creature alert, push
-    0x49EF8: (0, 0), 0x34106: (0, 0), 0x306A8: (0, 0),                      # creature turn, activation
-    0x3085A: (0, 0), 0x3064D: (0, 0), 0x30D45: (1, 0), 0x30FE3: (0, 0),     # creature groups
-    0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
-    0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
+    0x4A0FE: (0, 0),                                                         # missiles that hit the party
+    0x57A63: (0, 0),                                                         # missile launchers
     0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
     0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
     0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
-    0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
     0x38C46: (1, 0), 0x389C2: (0, 0),                                       # light of the squares, party light
 }
 # Globals of the movement state: name -> (address, struct format).
@@ -130,7 +127,7 @@ def start():
     return START.read_bytes()
 
 
-class Scenario:
+class Scenario(CreatureOracle):
     """start.DAT in the C port and in the original code, run step by step."""
 
     def __init__(self, lib, gdat, start, tmp_path, place_party=True):
@@ -154,13 +151,7 @@ class Scenario:
         ctypes.c_int.in_dll(lib, "damage_call_count").value = 0
         self.fix_square_events()
         self.view = view
-        groups = emu.read_u32(G_ACTIVE_GROUPS)
-        for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
-            emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
         emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
-        for ptr in G_DISTANCE_MAPS:  # the original allocates them with the active groups (Step 16)
-            if not emu.read_u32(ptr):
-                emu.write_u32(ptr, view.alloc(32 * 32))
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
         self.clear_uninitialized_event_bytes()
@@ -172,6 +163,7 @@ class Scenario:
         self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         if place_party:
             self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
+        self.setup_creatures(place_party)
 
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
@@ -301,7 +293,7 @@ class Scenario:
                 self.emu.write(addr, struct.pack("<H", value - 1))
         self.set_time(self.time() + 1)
 
-    def state(self):
+    def save_states(self):
         """(C, original) save files and movement globals."""
         self.emu.written = bytearray()
         theirs = original_save(self.emu, self.start)
@@ -359,7 +351,8 @@ class Scenario:
         self.damage.clear()
 
     def assert_same(self, where):
-        """The quick check: movement globals, damage calls, and the dungeon records and events."""
+        """The quick check: creatures, movement globals, damage calls, and the dungeon records and events."""
+        self.check_creatures(where)
         self.assert_same_damage(where)
         mine = {name: getattr(self.party, name) for name in GLOBALS}
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
