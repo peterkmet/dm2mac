@@ -49,6 +49,7 @@ void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
 int champ_get_stat_adjusted_attack(int champ, int stat, int attack) { (void)champ; (void)stat; (void)attack; return 0; }
 void world_update_day_night(int step) { (void)step; }
 void light_update_party_light(void) { }
+void light_add_square_light(int distance, int dir, int x, int y, int mode) { (void)distance; (void)dir; (void)x; (void)y; (void)mode; }
 void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, int kind) { (void)e; (void)sensor; (void)kind; }
 void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority, int volume) { (void)category; (void)index; (void)entry; (void)fallback; (void)x; (void)y; (void)delay; (void)priority; (void)volume; }
 void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay) { (void)category; (void)index; (void)entry; (void)priority; (void)volume; (void)x; (void)y; (void)delay; }

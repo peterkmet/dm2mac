@@ -58,12 +58,11 @@ int shop_cmd_evaluate_offer(void);
 int shop_cmd_count_payment(void);
 int shop_cmd_pay_change(void);
 
-/* Step 16: creatures and projectiles. */
-/* The push arrows and the clicks on creatures in front of the party. */
-
 /* Step 17: weather, day and night. */
 void world_update_day_night(int step);
 void light_update_party_light(void);
+/* The light of a square that a creature sees, by distance and direction (mode 3: a wall, mode 4: a floor). */
+void light_add_square_light(int distance, int dir, int x, int y, int mode);
 /* Skullkeep machines: sensors that move or create objects (kinds 0x3b, 0x3c, 0x40, 0x47, 0x48, 0x49). */
 void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, int kind);
 

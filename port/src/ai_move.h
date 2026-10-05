@@ -71,8 +71,4 @@ void creature_ai_load_cached_path(void);
 int creature_ai_next_path_step(void);
 int creature_ai_plan_path(void);
 
-/* Functions of other parts of Step 16 and of Step 17 (weak stubs in ai_move_stubs.c until they exist). */
-int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor);
-void light_add_square_light(int distance, int dir, int x, int y, int mode);
-
 #endif
