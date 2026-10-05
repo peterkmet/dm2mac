@@ -640,7 +640,7 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
 
 SPELL_MISSILES = (0, 2, 3, 4, 6, 7, 9, 10, 13, 49)
 EXPLOSION_TYPES = (0, 2, 3, 4, 6, 7, 9, 10, 13, 14, 40, 48, 49)
-THING_PROJECTILE, THING_EXPLOSION, EVENT_SIZE = 14, 15, 12
+THING_GROUP, THING_PROJECTILE, THING_EXPLOSION, EVENT_SIZE = 4, 14, 15, 12
 
 
 class Things:
@@ -667,15 +667,20 @@ class Things:
         return bytes(self.events[index * EVENT_SIZE:(index + 1) * EVENT_SIZE])
 
 
-def test_missiles_and_explosions_match_original(lib, loaded, original_view):
+def test_added_missiles_explosions_creatures_match_original(lib, loaded, original_view):
     # start.DAT has no missiles or explosions: add one at the end of the thing list of a square in view, with a
-    # random cell, payload, power, flight direction, or explosion type, then compare the whole view picture.
+    # random cell, payload, power, flight direction, or explosion type, or a creature of any type with or without
+    # a possession, then compare the whole view picture.
     lib.thing_word.restype = ctypes.c_uint16
     game = WeatherGame.in_dll(lib, "game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     things = Things(lib, original_view.emu)
     weapons = [t for t in range(lib.dungeon_thing_count(5)) if lib.dungeon_thing_valid(5 << 10 | t)]
     saved_event = things.read_event(0)
+    free_groups = [t for t in range(lib.dungeon_thing_count(THING_GROUP)) if lib.thing_word(THING_GROUP << 10 | t, 0) == 0xFFFF]
+    free_weapons = [t for t in range(lib.dungeon_thing_count(5)) if lib.thing_word(5 << 10 | t, 0) == 0xFFFF]
+    creature_types = [t for t in range(256) if lib.gdat_exists(original_view.gdat, 0x0F, t, 7, 0xFD)]
+    assert free_groups and free_weapons and creature_types
     rng = random.Random(24)
     views = 0
     for map_, x, y, direction in views_with_things(lib, 700, 25):
@@ -687,12 +692,22 @@ def test_missiles_and_explosions_match_original(lib, loaded, original_view):
             continue
         last = thing_list(lib, struct.unpack_from("<H", squares, rng.choice(positions) * SQUARE_SIZE + 6)[0])[-1]
         cell = rng.randrange(4) << 14
-        if rng.random() < 0.5:
+        kind = rng.random()
+        if kind < 0.4:
             thing = THING_PROJECTILE << 10 | rng.randrange(lib.dungeon_thing_count(THING_PROJECTILE)) | cell
             payload = 0xFF80 + rng.choice(SPELL_MISSILES) if rng.random() < 0.7 else 5 << 10 | rng.choice(weapons)
             power = rng.choice([0xFF, rng.randrange(256)])
             things.write(thing, 0, struct.pack("<HHBBH", THING_END, payload, power, 0, 0))
             things.write_event(0, 8, struct.pack("<H", rng.randrange(4) << 10))
+        elif kind < 0.75:
+            thing = THING_GROUP << 10 | rng.choice(free_groups) | cell
+            possessions = THING_END
+            if rng.random() < 0.7:
+                possessions = 5 << 10 | rng.choice(free_weapons) | rng.randrange(4) << 14
+                things.write(possessions, 0, struct.pack("<HH", THING_END, rng.randrange(40)))
+            record = struct.pack("<HHBBHHHHH", THING_END, possessions, rng.choice(creature_types), 0, 100, 0, 0, 0,
+                                 rng.randrange(4) << 8)
+            things.write(thing, 0, record)
         else:
             thing = THING_EXPLOSION << 10 | rng.randrange(lib.dungeon_thing_count(THING_EXPLOSION)) | cell
             data = rng.choice(EXPLOSION_TYPES) | rng.choice([0, 0x80]) | rng.randrange(256) << 8

@@ -1377,6 +1377,10 @@ static void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
     int16_t area = (int16_t)(drops->width * drops->height);
     int offset = rand_below((uint16_t)(area - WET_TILE_TRIM));
     int width = (int16_t)(area - (rand_next() & RANDOM_TILE_SPREAD) - WET_TILE_EXTRA);
+    if (area <= WET_TILE_TRIM || width <= offset) {  /* fix: the original reads far past a small rain bitmap */
+        gfx_fill_bitmap(offscreen, transparent);
+        return;
+    }
     gfx_blit_tiled_4to8(drops->pixels, offscreen->pixels, NULL, ctx->rect, width, offset, ctx->w, GFX_OPAQUE, palette);
 }
 
