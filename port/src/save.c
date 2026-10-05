@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "creature.h"
 #include "dungeon.h"
 #include "random.h"
 #include "save.h"
@@ -53,22 +54,10 @@ enum event_data { EVENT_THING = 0, EVENT_THING2 = 2 };  /* byte offsets in Timel
 #define GDAT_CONTAINER_CATEGORY 0x14
 #define GDAT_TYPE_TEXT 5
 #define GDAT_MONEYBOX_ENTRY 0x40
-#define CREATURE_INFO_COUNT 63
-#define CREATURE_FLAG_STATIC 0x1   /* the creature does not act: no active group, fewer saved fields */
 
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
    animated ornament (0x2c), shop display (0x30), activation with sound (0x32), and four of unknown use. */
 static const uint8_t sensors_with_data[] = {0x27, 0x1b, 0x1d, 0x41, 0x2c, 0x32, 0x30, 0x2d};
-
-/* The flags word of each creature info record of SKULL.EXE; the save format needs CREATURE_FLAG_STATIC.
-   ponytail: copied here until the creature module reads the creature info. */
-static const uint16_t creature_flags[CREATURE_INFO_COUNT] = {
-    0x0045, 0x0085, 0x0085, 0x0085, 0x0045, 0x0045, 0x0045, 0x0085, 0x0041, 0x0081, 0x0085, 0x0045, 0x0081,
-    0xcc40, 0xc840, 0xc840, 0xc840, 0xc840, 0xc840, 0x0240, 0x8081, 0x8ca0, 0x8860, 0x8840, 0x0ac0, 0x0a80,
-    0x0280, 0x0280, 0x0ac0, 0x0a40, 0x1c40, 0x0040, 0x0040, 0x0240, 0xc840, 0x8840, 0x0240, 0x0043, 0x0045,
-    0x0085, 0x0140, 0x8c78, 0x0280, 0xc840, 0x0240, 0x0081, 0x0240, 0x2044, 0x0290, 0xc840, 0x0240, 0x0041,
-    0x0280, 0xacb8, 0xacb8, 0x0290, 0x8081, 0x0240, 0x0880, 0x0045, 0x0085, 0x8c78, 0xc840,
-};
 
 /* Mask tables of SKULL.EXE: one mask byte per record byte. */
 static const uint8_t all_bits[2] = {0xff, 0xff};
@@ -248,7 +237,8 @@ static int creature_is_static(uint16_t group)
     int info = gdat_find(io.gdat, GDAT_CREATURE_CATEGORY, dungeon_thing_record(group)[GROUP_CREATURE], GDAT_TYPE_VALUE,
                          GDAT_CREATURE_INFO_ENTRY);
     if (info == -1) info = 0;  /* a missing value key reads as 0 */
-    return info < CREATURE_INFO_COUNT && creature_flags[info] & CREATURE_FLAG_STATIC;  /* fix: no read past the table */
+    const CreatureInfo *record = creature_info_at(info);
+    return record && record->flags & CREATURE_STATIC;  /* fix: no read past the table */
 }
 
 static int container_kind(uint16_t container)
