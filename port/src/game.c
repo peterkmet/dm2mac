@@ -34,9 +34,16 @@ void screen_present_viewport(void)
     int ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
     party.move_steps = (int16_t)steps;
     if (!ok) return;
-    for (int y = 0; y < VIEWPORT_HEIGHT; y++)
-        memcpy(draw_screen.pixels + (r[RECT_Y] + y) * draw_screen.width + r[RECT_X], view_viewport.pixels + y * VIEWPORT_WIDTH,
-               VIEWPORT_WIDTH);
+    for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
+        uint8_t *dst = draw_screen.pixels + (r[RECT_Y] + y) * draw_screen.width + r[RECT_X];
+        if (!steps) {
+            memcpy(dst, view_viewport.pixels + y * VIEWPORT_WIDTH, VIEWPORT_WIDTH);
+            continue;
+        }
+        /* While the party walks, the visible part of the view fills the whole viewport (nearest neighbour). */
+        const uint8_t *src = view_viewport.pixels + (walk_view_rect[RECT_Y] + y * walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
+        for (int x = 0; x < VIEWPORT_WIDTH; x++) dst[x] = src[walk_view_rect[RECT_X] + x * walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
+    }
 }
 
 static void ui_draw_sleep_message(void)

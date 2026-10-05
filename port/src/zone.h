@@ -15,6 +15,9 @@
 #define VIEWPORT_WIDTH 224
 #define VIEWPORT_HEIGHT 136
 
+/* The view part that stays visible while the party walks. */
+extern const int16_t walk_view_rect[RECT_SIZE];
+
 /* Clip rectangle of the next zone computations; active while its width is not 0. */
 extern int16_t zone_clip_rect[RECT_SIZE];
 
