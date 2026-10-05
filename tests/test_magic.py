@@ -424,6 +424,7 @@ def test_many_casts_match_original(magic):
 
 # ---- Minion maps ----
 
+ACTIVE_SIZE, G_ACTIVE_GROUPS = 0x22, 0x7F898
 G_THINGS, THING_SIZES = 0x7F288, (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 G_LEVEL_DIGIT_TABLE, DUN_SET_PARTY_LOCATION, G_CUR_MAP, G_PARTY_DIR = 0x7F3D0, 0x1C82D, 0x72244, 0x7F254
 G_ACTION_FLAGS, G_ACTION_HAND = 0x7FB5E, 0x7FB72
@@ -460,10 +461,30 @@ def word(lib, thing, offset):
     return lib.thing_word(thing, offset)
 
 
+# ui_map_draw_square reads square bytes of the map that dun_get_location_on_map found without a bounds check; the
+# C port ignores squares outside that map: (address of the read, address to skip to).
+MAP_SQUARE_READS = ((0x44805, 0x44873), (0x448CB, 0x4493A))
+
+
 @pytest.fixture(scope="module")
-def map_ui(spell_ui):
-    """The spell interface with a level digit table of zeros, like the C port before Step 20."""
+def map_ui(spell_ui, lib):
+    """The spell interface with a level digit table of zeros (the C port before Step 20), and without the reads of
+    square bytes outside a map."""
+    from unicorn import UC_HOOK_CODE
+    from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBP, UC_X86_REG_EDI, UC_X86_REG_EIP
+    emu = spell_ui.emu
     spell_ui.digits = spell_ui.alloc(64)
+
+    def hook(uc, address, size, skip_to):
+        reg = UC_X86_REG_EDI if address == 0x44805 else UC_X86_REG_EAX
+        m = ctypes.c_int16(uc.reg_read(reg) & 0xFFFF).value
+        ebp = uc.reg_read(UC_X86_REG_EBP)
+        x, y = struct.unpack("<h", emu.read(ebp - 0x1E, 2))[0], struct.unpack("<h", emu.read(ebp - 0x22, 2))[0]
+        if not (0 <= x < lib.dungeon_map_width(m) and 0 <= y < lib.dungeon_map_height(m)):
+            uc.reg_write(UC_X86_REG_EIP, skip_to)
+
+    for at, skip_to in MAP_SQUARE_READS:
+        emu.uc.hook_add(UC_HOOK_CODE, hook, skip_to, begin=at, end=at)
     return spell_ui
 
 
@@ -526,12 +547,63 @@ def static_groups(lib):
     return out
 
 
+def leads(lib, m, x, y, delta):
+    """True when the dungeon has a map at delta levels from map m at the position of (x, y)."""
+    lib.dungeon_location_on_map.argtypes = [ctypes.c_int] * 2 + [ctypes.POINTER(ctypes.c_int)] * 2
+    cx, cy = ctypes.c_int(x), ctypes.c_int(y)
+    return lib.dungeon_location_on_map(m, delta, ctypes.byref(cx), ctypes.byref(cy)) >= 0
+
+
 def set_time(lib, emu, t):
     Game.in_dll(lib, "game").game_time = t
     emu.write_u32(0x7F22C, t)
 
 
-def test_minion_maps_match_original(port, map_ui):
+class Pool:
+    """Free projectile and explosion records that the test puts at the end of the thing lists of squares."""
+
+    def __init__(self, lib):
+        self.lib = lib
+        self.free = {t: [t << 10 | i for i in range(lib.dungeon_thing_count(t)) if word(lib, t << 10 | i, 0) == 0xFFFF][1:9]
+                     for t in (14, 15)}  # the first free projectile links the minion
+
+    def last_thing(self, m, x, y):
+        lib = self.lib
+        t = lib.dungeon_square_first_thing(m, x, y)
+        if t == 0xFFFE:
+            return None
+        while lib.dungeon_next_thing(t) != 0xFFFE:
+            t = lib.dungeon_next_thing(t)
+        return t
+
+    def inject(self, emu, rng, m, px, py):
+        """Missiles and explosions on squares with things around (px, py); returns what remove takes back."""
+        lib, undo = self.lib, []
+        squares = [(x, y) for x in range(px - 3, px + 4) for y in range(py - 3, py + 4)
+                   if 0 <= x < lib.dungeon_map_width(m) and 0 <= y < lib.dungeon_map_height(m) and self.last_thing(m, x, y)]
+        rng.shuffle(squares)
+        for (x, y), kind in zip(squares, (14, 15, 14, 15)):
+            last = self.last_thing(m, x, y)
+            record = self.free[kind][len([u for u in undo if u[1] >> 10 & 15 == kind])]
+            thing = rng.randrange(4) << 14 | record
+            if kind == 14:
+                set_word(lib, emu, record, 2, rng.choice((0xFF82, 0xFF80, 0xFF84, 0xFF87)))
+                set_word(lib, emu, record, 4, 0x6464)
+                set_word(lib, emu, record, 6, rng.randrange(20))
+            else:
+                set_word(lib, emu, record, 2, rng.choice((0, 2, 3, 4, 14, 48)) | 0x4000)
+            set_word(lib, emu, record, 0, 0xFFFE)
+            set_word(lib, emu, last, 0, thing)
+            undo.append((last, record))
+        return undo
+
+    def remove(self, emu, undo):
+        for last, record in reversed(undo):
+            set_word(self.lib, emu, last, 0, 0xFFFE)
+            set_word(self.lib, emu, record, 0, 0xFFFF)
+
+
+def test_minion_maps_match_original(port, map_ui, gdat):
     # The minion maps of the dungeon in the hand of the first champion, of each kind (no location, minion,
     # location, without options), with a minion (a link projectile in the possessions of a creature group) and a
     # marker at random squares, at random party places and directions, with the option buttons, over game ticks that
@@ -549,25 +621,36 @@ def test_minion_maps_match_original(port, map_ui):
     maps = [9 << 10 | i for i in range(lib.dungeon_thing_count(9)) if lib.dungeon_thing_valid(9 << 10 | i)
             and lib.item_is_minion_map(9 << 10 | i)]
     assert len(maps) >= 4
-    groups = [g for g in static_groups(lib) if lib.creature_group_info(g[0])[0] & 1]
+    all_groups = static_groups(lib)
+    groups = [g for g in all_groups if lib.creature_group_info(g[0])[0] & 1]  # static: the animation state is in the record
     places = squares_of(lib, (1,))
+    marks = places + squares_of(lib, (2, 3))
+    # stairs up and open pits that lead to another level
+    ways = [(m, x, y) for m, x, y in squares_of(lib, (3,)) if lib.dungeon_square(m, x, y) & 4 and leads(lib, m, x, y, -1)] * 3 \
+        + [(m, x, y) for m, x, y in squares_of(lib, (2,)) if lib.dungeon_square(m, x, y) & 8 and leads(lib, m, x, y, 1)]
+    busy = [g for g in all_groups if g[4] in (17, 19, 22, 26, 36, 37, 47)]
+    moving = [g for g in all_groups if not lib.creature_group_info(g[0])[0] & 1]
+    lib.creature_alloc_active_groups()
+    activated = []
+    pool = Pool(lib)
     free_projectile = next(14 << 10 | i for i in range(lib.dungeon_thing_count(14)) if word(lib, 14 << 10 | i, 0) == 0xFFFF)
     draw_game_screen(lib, original)
     rng = random.Random(20)
+    place_set = set(places)
     time = Game.in_dll(lib, "game").game_time
-    kinds, clicks, moved, dark = set(), 0, 0, 0
-    for n in range(48):
+    kinds, clicks, moved, dark, offsets, markers = set(), 0, 0, 0, set(), set()
+    for n in range(64):
         thing = rng.choice(maps)
         kind = n % 4
         set_word(lib, emu, thing, 4, word(lib, thing, 4) & 0x1FFF | kind << 13)
         location = 0xFFFF
-        if kind == 2 or rng.random() < 0.5:
-            m, x, y = rng.choice(places)
+        if kind in (1, 2) or rng.random() < 0.5:
+            m, x, y = rng.choice(marks if kind != 1 and rng.random() < 0.5 else ways)
             location = x | y << 5 | m << 10
         set_word(lib, emu, thing, 6, location)
         set_word(lib, emu, thing, 2, 0xFFFE)
         if kind == 1 and rng.random() < 0.8:
-            group, gm, gx, gy, _ = rng.choice(groups)
+            group, gm, gx, gy, _ = rng.choice(groups if rng.random() < 0.5 else moving)
             set_word(lib, emu, free_projectile, 0, word(lib, group, 2))
             set_word(lib, emu, free_projectile, 2, thing)
             dx, dy = rng.randrange(-2, 3), rng.randrange(-2, 3)
@@ -577,8 +660,28 @@ def test_minion_maps_match_original(port, map_ui):
             set_word(lib, emu, free_projectile, 6, 0)
             set_word(lib, emu, group, 2, free_projectile)
             set_word(lib, emu, thing, 2, group)
-        m, x, y = rng.choice(places)
+            size = ctypes.c_uint32()
+            lib.gdat_item(gdat, lib.gdat_find(gdat, 0x0F, word(lib, group, 4) & 0xFF, 7, 0xFD), ctypes.byref(size))
+            sequence = rng.randrange(max(1, size.value // 8))  # another animation frame: another cell of the minion
+            if lib.creature_group_info(group)[0] & 1:
+                set_word(lib, emu, group, 8, sequence)
+                set_word(lib, emu, group, 10, 0)
+            else:
+                # a moving minion: its animation is in active group 1
+                active = ctypes.c_void_p.in_dll(lib, "active_groups").value
+                ctypes.memmove(active + ACTIVE_SIZE + 8, struct.pack("<HH", sequence, 0), 4)
+                emu.write(emu.read_u32(G_ACTIVE_GROUPS) + ACTIVE_SIZE + 8, struct.pack("<HH", sequence, 0))
+                activated.append((group, word(lib, group, 4)))
+                set_word(lib, emu, group, 4, word(lib, group, 4) & 0xFF | 1 << 8)
+            set_word(lib, emu, group, 10, 0)
+        if rng.random() < 0.4:
+            _, m, gx, gy, _ = rng.choice(busy)
+            near = [(m, x, y) for x in range(gx - 2, gx + 3) for y in range(gy - 2, gy + 3) if (m, x, y) in place_set]
+            m, x, y = rng.choice(near or places)
+        else:
+            m, x, y = rng.choice(places)
         place_party(lib, emu, m, x, y, rng.randrange(4))
+        undo = pool.inject(emu, rng, m, x, y)
         champion_bytes(lib, 0, CH_SLOTS, struct.pack("<H", thing))
         champion_bytes(lib, 0, CH_MANA, struct.pack("<h", rng.choice((0, 2, 5, 60, 300))))
         sync_champions(lib, original)
@@ -587,6 +690,17 @@ def test_minion_maps_match_original(port, map_ui):
         open_hand(lib, original, 0)
         kinds.add((kind, ActionArea.in_dll(lib, "action").flags & 0x60))
         assert_map_state(lib, original, (n, "open", hex(thing), kind))
+        for option in range(4):
+            if rng.random() < 0.6:
+                assert command(lib, emu, 0x56 + option) == (1, 1)
+        mm = MinionMap.in_dll(lib, "minion_map")
+        offsets.add((mm.x_offset, mm.y_offset))
+        if word(lib, thing, 2) != 0xFFFE and rng.random() < 0.7:
+            # the minion goes where the marker square leads: the grid shows the marker on its other level
+            for m, x, y in rng.sample([(mm.above_map, mm.above_x, mm.above_y), (mm.below_map, mm.below_x, mm.below_y)], 2):
+                if m >= 0:
+                    set_word(lib, emu, free_projectile, 4, x | y << 5 | m << 10)
+                    break
         for k in range(rng.randrange(10, 60)):
             r = rng.random()
             if r < 0.1:
@@ -604,14 +718,21 @@ def test_minion_maps_match_original(port, map_ui):
             set_time(lib, emu, time)
             update_action_area(lib, original, tick=1)
             dark += not ActionArea.in_dll(lib, "action").flags & 0x200
+            markers.add(MinionMap.in_dll(lib, "minion_map").marker_state)
             assert_map_state(lib, original, (n, k, hex(thing), kind))
         lib.ui_action_area_close()
         emu.call(UI_ACTION_AREA_CLOSE)
         update_action_area(lib, original)
         assert_map_state(lib, original, (n, "close"))
+        pool.remove(emu, undo)
+        for group, w in activated:
+            set_word(lib, emu, group, 4, w)
+        activated.clear()
         if word(lib, thing, 2) != 0xFFFE:  # unlink the minion again
             group = word(lib, thing, 2)
             set_word(lib, emu, group, 2, word(lib, free_projectile, 0))
             set_word(lib, emu, free_projectile, 0, 0xFFFF)
-    assert {k for k, _ in kinds} == {0, 1, 2, 3} and (1, 0x20) in kinds
+    lib.creature_free_active_groups()
+    assert {k for k, _ in kinds} == {0, 1, 2, 3} and any(k == 1 and f & 0x20 for k, f in kinds)
     assert clicks > 20 and moved > 5 and dark > 20
+    assert len(offsets) > 2 and markers == {0, 1, 2, 3}, (offsets, markers)

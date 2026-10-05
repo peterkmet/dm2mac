@@ -174,6 +174,11 @@ static void draw_strip(const Strip *s, int icon, int x, int y, int mirror)
     draw_icon(s->image, s->palette, icon, x, y, mirror);
 }
 
+static int inside_map(int map, int x, int y)
+{
+    return x >= 0 && x < dungeon_map_width(map) && y >= 0 && y < dungeon_map_height(map);
+}
+
 /* The level digit icons of the current map: what a square outside the maps of a level shows. */
 static int level_icon_set(void) { return dungeon_level_digit(dungeon_map_level(party.cur_map)); }
 
@@ -391,7 +396,8 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
            (sx, sy) on the map that it found */
         int next = 0, m = party.cur_map;
         while (m == party.cur_map) m = dungeon_location_on_map_from(party.cur_map, 0, &sx, &sy, &next);
-        if (m < 0 || square_type(dungeon_square_edge(m, sx, sy)) != SQUARE_WALL) break;
+        /* fix: the original reads the square byte also outside the map (out of its column table) */
+        if (m < 0 || !inside_map(m, sx, sy) || square_type(dungeon_square(m, sx, sy)) != SQUARE_WALL) break;
         other_map = 1;
         saved_map = party.cur_map;
         dun_set_current_map(m);
@@ -406,8 +412,8 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
     /* an open pit in the level above shows as a hole in the ceiling */
     int ax = sx, ay = sy;
     int m = dungeon_location_on_map(party.cur_map, LEVEL_UP, &ax, &ay);
-    if (m < 0) return;
-    uint8_t square = dungeon_square_edge(m, ax, ay);
+    if (m < 0 || !inside_map(m, ax, ay)) return;  /* fix: as above, no read outside the map */
+    uint8_t square = dungeon_square(m, ax, ay);
     if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN) draw_strip(&base, ICON_PIT_ABOVE, x, y, 0);
 }
 

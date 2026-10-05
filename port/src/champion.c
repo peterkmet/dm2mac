@@ -138,7 +138,7 @@ static int minion_map_allows_action(uint16_t thing, int command)
     int type = kind >> CONTAINER_TYPE_SHIFT;
     if (type < MINION_MAP_FIRST_TYPE || type > MINION_MAP_LAST_TYPE) return 0;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    if (!minion_find_link_projectile(group, THING_NONE)) {
+    if (!minion_find_link_projectile(group, thing)) {
         if (command == COMMAND_SUMMON_4 || command == COMMAND_SUMMON_FIRST) return 1;
         if (thing_word(thing, MINION_MAP_TARGET) == THING_NONE) return 0;
         return command == COMMAND_SUMMON_2 || command == COMMAND_SUMMON_3;
