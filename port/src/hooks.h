@@ -23,10 +23,17 @@ void timeline_event_altar_rebirth(TimelineEvent *e);
 void timeline_event_apply_item_effect(TimelineEvent *e);
 void timeline_event_magic_light(TimelineEvent *e);
 void champ_poison(int champ, int amount);
+/* A champion comes back from the bones that a sensor took (Step 15). */
+void champ_revive(int champ);
+/* Sets the bits of the item indexes of an item class (GDAT text of a creature type); the hook sets none. */
+#define ITEM_CLASS_SET_SIZE 0x40
+int shop_parse_item_class_set(int creature_type, int entry, uint8_t *bits, int skip_containers);
 uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
 void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);                                        /* returns THING_NONE */
 void champ_start_recruit(int x, int y, int map);
+/* A wall sensor (kind 0x3c) creates the item of its data and sends it to its target. */
+void sensor_create_item(const TimelineEvent *e, uint16_t sensor);
 /* The clicks in the view with an object in the hand or on objects (Step 15): returns 1 when done. */
 void view_click_take_object(int x, int y);
 int view_click_place_object(int x, int y, int square_x, int square_y, int cell_from, int cell, int kind);
@@ -57,6 +64,12 @@ void creature_process_event(int x, int y, int type);
 void creature_update_anim_at(int x, int y, int start);
 void timeline_event_move_group(TimelineEvent *e);
 void projectile_process_event(TimelineEvent *e);
+/* The arguments of the explosion hook calls (lightning), for the tests until Step 16. */
+typedef struct { uint16_t type, attack, x, y; int16_t cell; } ExplosionCall;
+#define EXPLOSION_CALL_MAX 64
+extern ExplosionCall explosion_calls[EXPLOSION_CALL_MAX];
+extern int explosion_call_count;
+void explosion_create(int type, int attack, int x, int y, int cell);
 void explosion_process_event(TimelineEvent *e);
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect);
@@ -64,12 +77,6 @@ void sensor_turn_creatures(const TimelineEvent *e);
 /* The push arrows and the clicks on creatures in front of the party. */
 void move_push_creature(int arrow);
 void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y);                              /* returns 0 */                               /* returns -1: no event */
-
-/* Step 17: weather, day and night. */
-void world_update_day_night(int step);
-void light_update_party_light(void);
-/* Skullkeep machines: sensors that move or create objects (kinds 0x3b, 0x3c, 0x40, 0x47, 0x48, 0x49). */
-void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, int kind);
 
 /* Step 18: sound effects. */
 void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority,

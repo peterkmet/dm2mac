@@ -16,6 +16,7 @@
 #include "timeline.h"
 #include "ui.h"
 #include "view.h"
+#include "weather.h"
 
 #define CAT_WALLSET 8
 #define MAP_KEY_PIT_TO_MARKER 0x6a  /* map graphics value: pits lead to a random marker, not one level down */
@@ -729,6 +730,7 @@ static int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, 
                 if (falls) {
                     dun_set_party_location(x, y, map);
                     view_enter_map(map);
+                    world_update_day_night(0);
                 }
                 int steps = party.move_steps;
                 party.move_steps = 0;

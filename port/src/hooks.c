@@ -1,3 +1,4 @@
+#include <string.h>
 #include "dungeon.h"
 #include "hooks.h"
 #include "input.h"
@@ -24,6 +25,13 @@ int champ_damage_party(int damage, int wound_mask, int attack_type)
     return 0;
 }
 void champ_apply_pending_damage(void) { }
+void champ_revive(int champ) { (void)champ; }
+int shop_parse_item_class_set(int creature_type, int entry, uint8_t *bits, int skip_containers)
+{
+    (void)creature_type; (void)entry; (void)skip_containers;
+    memset(bits, 0, ITEM_CLASS_SET_SIZE);
+    return 0;
+}
 void champ_apply_time_effects(void) { }
 void champ_process_repeated_actions(void) { }
 void items_burn_held_lights(void) { }
@@ -55,13 +63,17 @@ void creature_process_event(int x, int y, int type) { (void)x; (void)y; (void)ty
 void creature_update_anim_at(int x, int y, int start) { (void)x; (void)y; (void)start; }
 void timeline_event_move_group(TimelineEvent *e) { (void)e; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
+ExplosionCall explosion_calls[EXPLOSION_CALL_MAX];
+int explosion_call_count;
+void explosion_create(int type, int attack, int x, int y, int cell)
+{
+    if (explosion_call_count < EXPLOSION_CALL_MAX)
+        explosion_calls[explosion_call_count++] = (ExplosionCall){(uint16_t)type, (uint16_t)attack, (uint16_t)x, (uint16_t)y, (int16_t)cell};
+}
 void explosion_process_event(TimelineEvent *e) { (void)e; }
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e) { (void)sensor; (void)e; }
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect) { (void)kind_data; (void)count; (void)x; (void)y; (void)tx; (void)ty; (void)kind; (void)effect; }
 void sensor_turn_creatures(const TimelineEvent *e) { (void)e; }
-void world_update_day_night(int step) { (void)step; }
-void light_update_party_light(void) { }
-void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, int kind) { (void)e; (void)sensor; (void)kind; }
 void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority, int volume) { (void)category; (void)index; (void)entry; (void)fallback; (void)x; (void)y; (void)delay; (void)priority; (void)volume; }
 void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay) { (void)category; (void)index; (void)entry; (void)priority; (void)volume; (void)x; (void)y; (void)delay; }
 void sound_flush_requests(int queue) { (void)queue; }
@@ -72,6 +84,7 @@ uint16_t champ_remove_object_from_leader_hand(void) { return THING_NONE; }
 void champ_put_object_in_leader_hand(uint16_t thing, int flag) { (void)thing; (void)flag; }
 uint16_t item_create_by_index(int item) { (void)item; return THING_NONE; }
 void champ_start_recruit(int x, int y, int map) { (void)x; (void)y; (void)map; }
+void sensor_create_item(const TimelineEvent *e, uint16_t sensor) { (void)e; (void)sensor; }
 void view_click_take_object(int x, int y) { (void)x; (void)y; }
 int view_click_place_object(int x, int y, int square_x, int square_y, int cell_from, int cell, int kind) { (void)x; (void)y; (void)square_x; (void)square_y; (void)cell_from; (void)cell; (void)kind; return 0; }
 int view_click_drop_object(int square_x, int square_y, int cell) { (void)square_x; (void)square_y; (void)cell; return 0; }

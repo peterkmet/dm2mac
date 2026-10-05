@@ -507,7 +507,6 @@ static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 
 /* Sky objects: clouds, rain, and the landmarks of an outdoor map. */
 #define SKY_OBJECT_MAX 5
-#define SKY_OBJECT_END 0xff
 #define SKY_LANDMARK_MAX 100
 #define SKY_RAIN_LIGHT 0x67
 #define SKY_RAIN_MEDIUM 0x68
@@ -524,12 +523,6 @@ static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 #define SKY_CLOUDS_MOST 0xc0
 enum sky_flip { SKY_FLIP_FLOOR = 8, SKY_FLIP_CEILING = 2, SKY_FLIP_FLOOR_2 = 0x40, SKY_FLIP_CEILING_2 = 0x20 };
 enum sky_move { SKY_FIXED, SKY_LANDMARK };
-typedef struct {
-    uint8_t entry;
-    uint8_t flip;               /* enum sky_flip */
-    int16_t zone, dx, dy;
-    uint8_t scale_x, scale_y;
-} SkyObject;
 
 /* Flip parity kinds and the map flip flags (value key MAP_KEY_FLIP_FLAGS). */
 enum { PARITY_SQUARE = 0, PARITY_FLOOR = 1, PARITY_CEILING = 0x20 };
@@ -612,8 +605,7 @@ static void move_relative(int dir, int forward, int right, int *x, int *y)
 
 /* ---- Map graphics and sky objects ---- */
 
-/* Reads a weather sky object (rain, clouds) of the map graphics; returns 0 when the map has none. */
-static int weather_load_sky_object(SkyObject *object)
+int weather_load_sky_object(SkyObject *object)
 {
     char text[WALL_TEXT_SIZE];
     gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, object->entry, text, sizeof text);
@@ -625,7 +617,9 @@ static int weather_load_sky_object(SkyObject *object)
     return 1;
 }
 
-/* The rain and clouds of the saved weather; the weather update (Step 17) rebuilds them every step. */
+SkyObject *view_sky_objects(void) { return view.sky; }
+
+/* The rain and clouds of the saved weather, until world_update_day_night rebuilds them after view_enter_map. */
 static void build_weather_sky(void)
 {
     SkyObject *o = view.sky;
@@ -983,6 +977,14 @@ static void get_square_aspect(ViewSquare *s, int dir, int x, int y)
         }
     }
     s->first_thing = floor_things ? apply_floor_things(s, thing, square) : skip_wall_things(thing);
+}
+
+void dun_get_square_aspect(ViewSquare *s, int dir, int x, int y)
+{
+    int map = view.map;
+    view.map = party.cur_map;
+    get_square_aspect(s, dir, x, y);
+    view.map = map;
 }
 
 /* ---- Things of the view squares ---- */
