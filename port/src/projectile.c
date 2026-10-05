@@ -762,12 +762,12 @@ void explosion_process_event(TimelineEvent *e)
     set_thing_word(t, THING_NEXT, THING_NONE);
 }
 
-/* The order in which a creature attacks the 4 cells of the party, by its direction and side (8 rows), and in a
-   random order by its direction: 4 bytes from the direction, the original reads past the first row. */
+/* The order in which a creature attacks the 4 cells of the party, by its direction and side (8 rows), and the
+   cells from the direction on, before a random swap of the pairs. */
 static const uint8_t attack_cell_orders[8][4] = {
     {0, 1, 3, 2}, {1, 0, 2, 3}, {1, 2, 0, 3}, {2, 1, 3, 0}, {3, 2, 0, 1}, {2, 3, 1, 0}, {0, 3, 1, 2}, {3, 0, 2, 1}
 };
-static const uint8_t attack_cell_orders_random[7] = {0, 1, 2, 3, 0x20, 0x10, 0x08};
+static const uint8_t attack_cell_orders_random[7] = {0, 1, 2, 3, 0, 1, 2};
 
 void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell)
 {
