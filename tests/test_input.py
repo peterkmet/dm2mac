@@ -220,8 +220,7 @@ class Loop(Scenario):
     """start.DAT in the C port and in the original; both start the game session and run the main loop tick by tick."""
 
     def __init__(self, lib, gdat, start, tmp_path):
-        from test_move import NONE
-        super().__init__(lib, gdat, start, tmp_path, copy_runtime=False)
+        super().__init__(lib, gdat, start, tmp_path, place_party=False)
         from test_interface import G_FONT_BITMAP, G_UI_COLORS, VGA
         from unicorn import UC_PROT_ALL
         emu = self.emu
@@ -239,9 +238,7 @@ class Loop(Scenario):
         emu.write(G_TIMER_STEP, struct.pack("<H", 1))
         emu.call(INPUT_INIT_TABLES)
         emu.write_u32(LOOP_GLOBALS["timer_ticks"][0], 0)
-        # the C port as build/dm2 starts: the movement and loop state of the program start
-        ctypes.memset(ctypes.addressof(self.party), 0, ctypes.sizeof(self.party))
-        self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
+        # the C port as build/dm2 starts: the loop state of the program start
         self.loop = MainLoop.in_dll(lib, "main_loop")
         self.loop.tick_count, self.loop.timer_ticks, self.loop.end = 0, 0, 0
         assert lib.text_init(gdat)

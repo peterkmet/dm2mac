@@ -130,9 +130,9 @@ def start():
 class Scenario:
     """start.DAT in the C port and in the original code, run step by step."""
 
-    def __init__(self, lib, gdat, start, tmp_path, copy_runtime=True):
-        """copy_runtime: the C port takes the runtime movement state of the original after the load; else the
-        caller starts the game session in both."""
+    def __init__(self, lib, gdat, start, tmp_path, place_party=True):
+        """place_party: both put the party on its square of the save, like a load; else the caller starts the
+        game session in both."""
         self.lib, self.gdat, self.start, self.tmp = lib, gdat, start, tmp_path
         path = tmp_path / "SKSAVE0.DAT"
         path.write_bytes(start)
@@ -161,13 +161,11 @@ class Scenario:
         self.set_local(FORWARD_REVERSE_HOLD, 0, 3)
         emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
         emu.write(G_PUSH_PENDING, struct.pack("<H", NONE))
-        if not copy_runtime:
-            return
-        for name, (addr, fmt) in GLOBALS.items():  # the runtime state that a save does not store
-            setattr(self.party, name, struct.unpack(fmt, emu.read(addr, struct.calcsize(fmt)))[0])
-        self.party.fell, self.party.push_mode, self.party.push_pending_group = 0, 0, NONE
-        self.party.cur_map = -1
-        self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
+        # the C port starts from the movement state of the program start (move.c), like the original before its load
+        ctypes.memset(ctypes.addressof(self.party), 0, ctypes.sizeof(self.party))
+        self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
+        if place_party:
+            self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
 
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
