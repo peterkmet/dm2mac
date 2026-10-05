@@ -298,9 +298,10 @@ static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
 #define ORNAMENT_TEXT_CATEGORY 3
 #define NO_ORNAMENT_TEXT 0xff
 
-char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
+/* The text of a scroll or a text thing as stored, with its format codes; see text_decode_dungeon for mode. */
+void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
 {
-    char raw[TEXT_SIZE * 2], *o = raw, *end = raw + sizeof raw - 1;
+    char *o = out, *end = out + size - 1;
     unsigned ornament = NO_ORNAMENT_TEXT;
     uint16_t text = thing;
     *o = '\0';
@@ -308,19 +309,20 @@ char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
         uint16_t w = thing_word(thing, 2);
         if (w >> SCROLL_TEXT_SHIFT) ornament = (uint8_t)(w >> SCROLL_TEXT_SHIFT);
         else text = (uint16_t)(THING_TEXT << THING_TYPE_SHIFT | (w & THING_INDEX_MASK));
+    } else if (thing_type(thing) != THING_TEXT) {
+        return;
     }
     if (ornament == NO_ORNAMENT_TEXT) {
         uint16_t w = thing_word(text, TEXT_DATA);
         int kind = w >> TEXT_KIND_SHIFT & TEXT_KIND_MASK;
-        if (kind && (kind != TEXT_KIND_ORNAMENT || w >> TEXT_SUBTYPE_SHIFT != TEXT_SUBTYPE_PLATE)) goto done;
-        if (!(w & TEXT_VISIBLE) && !(mode & TEXT_MODE_HIDDEN)) goto done;
+        if (kind && (kind != TEXT_KIND_ORNAMENT || w >> TEXT_SUBTYPE_SHIFT != TEXT_SUBTYPE_PLATE)) return;
+        if (!(w & TEXT_VISIBLE) && !(mode & TEXT_MODE_HIDDEN)) return;
         if (kind == TEXT_KIND_ORNAMENT) ornament = (uint8_t)(w >> TEXT_OFFSET_SHIFT);
     }
-    if ((mode & TEXT_MODE_MASK) == TEXT_MODE_NEW_LINE) *o++ = '\n';
+    if ((mode & TEXT_MODE_MASK) == TEXT_MODE_NEW_LINE && o < end) *o++ = '\n';
     if (ornament != NO_ORNAMENT_TEXT) {
-        text_gdat(ORNAMENT_TEXT_CATEGORY, 0, (int)ornament, o);
-        o += strlen(o);
-        goto done;
+        if (draw_gdat()) gdat_text(draw_gdat(), ORNAMENT_TEXT_CATEGORY, 0, (int)ornament, o, (size_t)(end + 1 - o));
+        return;
     }
     const uint16_t *p = dungeon_text_data() + (thing_word(text, TEXT_DATA) >> TEXT_OFFSET_SHIFT);
     const uint16_t *text_end = dungeon_text_data() + dungeon_text_word_count();
@@ -347,9 +349,13 @@ char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
             escape = code;
         }
     }
-done:
     *o = '\0';
-    char formatted[TEXT_SIZE];
+}
+
+char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
+{
+    char raw[TEXT_SIZE * 2], formatted[TEXT_SIZE];
+    text_decode_raw(thing, mode, raw, sizeof raw);
     text_format(raw, formatted);
     snprintf(dst, size, "%s", formatted);
     return dst;

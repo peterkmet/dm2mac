@@ -72,8 +72,10 @@ const char *text_gdat_label(int category, int index, int entry);
 /* The number of field (0 SK, 1 LV, 2 CM, ... 17 WH) of a text entry, 0 when it is absent. */
 int16_t text_gdat_field(int category, int index, int entry, int field);
 
-/* The text of a scroll or a text thing with its format codes; mode 1 starts with a new line, mode bit 15 also
-   gives a hidden text. */
+/* The text of a scroll or a text thing as stored, without the format pass; mode as in text_decode_dungeon. */
+void text_decode_raw(uint16_t thing, int mode, char *out, size_t size);
+/* The text of a scroll or a text thing with its format codes replaced; mode 1 starts with a new line, mode bit 15
+   also gives a hidden text. */
 char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);
 
 /* Message area. color is a UI color. */
