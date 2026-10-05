@@ -18,6 +18,7 @@
 #define GAME_RECORD_SIZE 60
 #define EVENT_SIZE 12
 #define CHAMPION_SLOTS 0xc3   /* 30 thing words: hands, body, pouches, quiver, backpack */
+#define CHAMPION_DAMAGE_EVENT 0x2e  /* the timeline event that ends the damage display */
 #define SLOT_COUNT 30
 #define DEFERRED_MAX 100
 #define EVENT_SLACK 50        /* timeline events beyond one for each group, projectile, and explosion record */
@@ -44,7 +45,7 @@
 enum container_kind { CONTAINER_CHEST = 0, CONTAINER_MINION_MAP = 1 };
 
 enum event_type {
-    EVENT_EXPLOSION = 0x19, EVENT_PROJECTILE_MOVE = 0x1d, EVENT_PROJECTILE_MOVE_NEXT = 0x1e,
+    EVENT_HIDE_DAMAGE = 0x0c, EVENT_EXPLOSION = 0x19, EVENT_PROJECTILE_MOVE = 0x1d, EVENT_PROJECTILE_MOVE_NEXT = 0x1e,
     EVENT_MOVE_GROUP = 0x3c, EVENT_MOVE_GROUP_SOUND = 0x3d
 };
 enum event_data { EVENT_THING = 0, EVENT_THING2 = 2 };  /* byte offsets in TimelineEvent.data */
@@ -261,12 +262,16 @@ static int defer_thing(uint16_t thing)
     return 1;
 }
 
-/* Points each projectile at the timeline event that moves it. */
-static void relink_projectiles(void)
+/* Points each projectile at the timeline event that moves it, and each champion at the event that ends its damage
+   display (THING_NONE: no damage shows). */
+static void timeline_relink_events(void)
 {
+    for (int c = 0; c < CHAMPION_MAX; c++) put_le16(game.champions[c] + CHAMPION_DAMAGE_EVENT, THING_NONE);
     for (int i = 0; i < timeline.count; i++) {
         const TimelineEvent *e = &timeline.events[i];
         uint16_t thing = le16(e->data + EVENT_THING);
+        if (e->type == EVENT_HIDE_DAMAGE && e->priority < CHAMPION_MAX)  /* fix: the original does not check the champion */
+            put_le16(game.champions[e->priority] + CHAMPION_DAMAGE_EVENT, (uint16_t)i);
         if ((e->type == EVENT_PROJECTILE_MOVE || e->type == EVENT_PROJECTILE_MOVE_NEXT)
             && thing_type(thing) == THING_PROJECTILE && dungeon_thing_valid(thing))
             set_thing_word(thing, PROJECTILE_EVENT, i);
@@ -482,7 +487,7 @@ static int write_state(void)
 {
     uint8_t record[GAME_RECORD_SIZE];
     timeline_compact();
-    relink_projectiles();
+    timeline_relink_events();
     pack_game_record(record);
     if (!write_packed(record, game_record_mask, GAME_RECORD_SIZE, 1)
         || !write_packed(game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES)
@@ -707,7 +712,7 @@ static int read_state(void)
     for (int i = timeline.count; i < timeline.capacity; i++) timeline.events[i].type = EVENT_NONE;
     timeline_build_queue();
     if (!read_things()) return 0;
-    relink_projectiles();
+    timeline_relink_events();
     return 1;
 }
 

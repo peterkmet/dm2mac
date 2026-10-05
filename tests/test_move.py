@@ -130,7 +130,9 @@ def start():
 class Scenario:
     """start.DAT in the C port and in the original code, run step by step."""
 
-    def __init__(self, lib, gdat, start, tmp_path):
+    def __init__(self, lib, gdat, start, tmp_path, copy_runtime=True):
+        """copy_runtime: the C port takes the runtime movement state of the original after the load; else the
+        caller starts the game session in both."""
         self.lib, self.gdat, self.start, self.tmp = lib, gdat, start, tmp_path
         path = tmp_path / "SKSAVE0.DAT"
         path.write_bytes(start)
@@ -141,8 +143,8 @@ class Scenario:
         assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
         view = original_view_of(lib, gdat, start)
         self.emu = emu = view.emu
-        for addr, (stack, result) in STUBS.items():
-            emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
+        self.stubs = {addr: emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
+                      for addr, (stack, result) in STUBS.items()}
         self.damage = []  # the damage calls of the original: (champion or -1 for the party, damage, wounds, attack)
         emu.stub(CHAMP_TAKE_DAMAGE, lambda c, d, w, a, *_: self.damage.append(tuple(map(int16, (c, d, w, a)))))
         emu.stub(CHAMP_DAMAGE_PARTY, lambda d, w, a, *_: self.damage.append((-1,) + tuple(map(int16, (d, w, a)))))
@@ -159,6 +161,8 @@ class Scenario:
         self.set_local(FORWARD_REVERSE_HOLD, 0, 3)
         emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
         emu.write(G_PUSH_PENDING, struct.pack("<H", NONE))
+        if not copy_runtime:
+            return
         for name, (addr, fmt) in GLOBALS.items():  # the runtime state that a save does not store
             setattr(self.party, name, struct.unpack(fmt, emu.read(addr, struct.calcsize(fmt)))[0])
         self.party.fell, self.party.push_mode, self.party.push_pending_group = 0, 0, NONE

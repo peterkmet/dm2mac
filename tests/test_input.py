@@ -6,7 +6,7 @@ import struct
 
 import pytest
 
-from test_move import Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from test_move import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 INPUT_INIT_TABLES, INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND = 0x20847, 0x203A3, 0x2048A
 MOUSE_AREA_ALLOC_NODE = 0x14B1F
@@ -192,3 +192,234 @@ def test_clicks_on_the_movement_arrows(session, lib):
     lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, 2)
     run_ticks(lib, 40)
     assert (game.party_x, game.party_y) != (x, y)
+
+
+# The original main loop (game_loop) in parts: the timer interrupt body, one pass of the input wait (the wall drag
+# check and command_process_queue), the end of a step, and a step up to the input wait.
+TIMER_ISR_BODY, TIMER_ISR_END = 0x10CD1, 0x10D07
+LOOP_START, LOOP_STEP, LOOP_WAIT, LOOP_WAIT_END, LOOP_STEP_END = 0x24696, 0x246AC, 0x248F2, 0x2496E, 0x24989
+GAME_START_SESSION, INPUT_MOUSE_CLICK, INPUT_POLL, INPUT_FLUSH = 0x551D4, 0x20C5D, 0x210DC, 0x209E0
+KBD_KEY_AVAILABLE, KBD_READ_KEY = 0x114B8, 0x11413
+G_TIMER_STEP, G_TICK_ELAPSED, G_PARTY_SLEEPING = 0x7EFAC, 0x717F2, 0x7F234
+# The loop functions of later steps: champion damage, time effects, hand cursor, status boxes, burning lights,
+# repeated actions (Step 15); creature activation (Step 16); music (Step 19); the mouse cursor, its areas, and the
+# IBMIOP input lock (not ported).
+LOOP_STUBS = (0x47113, 0x47CC3, 0x4910B, 0x4904F, 0x39044, 0x40EE2, 0x34236, 0x342A3, 0x10AF6, 0x14889, 0x1483A,
+              0x1482E, 0x14846, 0x14743, 0x14B1F, 0x14B4F, 0x14C0E, 0x14C7B, 0x14C87,
+              # game_start_session: the screen fill, the retrace wait, and the dialog after a load with its disk
+              # check (Step 20)
+              0x13B4D, 0x1C5FD, 0x1A37D, 0x1A0A4, 0x3D187, 0x346D1, 0x3D111,
+              0x557B5,  # the expired rows of the message area: the screen only
+              0x3F62D,  # the key sequence that prints the free memory (a debug message, not ported)
+              0x13A87, 0x13B7C)  # screen presents
+LOOP_GLOBALS = {"tick_threshold": (0x7F268, "<h"), "tick_count": (0x7F256, "<h"), "timer_ticks": (0x7F228, "<I"),
+                "running": (0x7F244, "<I"), "view_hidden": (0x803EC, "<I")}
+
+
+class Loop(Scenario):
+    """start.DAT in the C port and in the original; both start the game session and run the main loop tick by tick."""
+
+    def __init__(self, lib, gdat, start, tmp_path):
+        from test_move import NONE
+        super().__init__(lib, gdat, start, tmp_path, copy_runtime=False)
+        from test_interface import G_FONT_BITMAP, G_UI_COLORS, VGA
+        from unicorn import UC_PROT_ALL
+        emu = self.emu
+        emu.uc.mem_map(VGA, 0x10000, UC_PROT_ALL)  # the screen of the pressed buttons, messages, and panels
+        emu.write_u32(G_UI_COLORS, self.view.entry_data(1, 0, 0x0D, 0xFE))
+        font = self.view.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300]
+        emu.write_u32(G_FONT_BITMAP, self.view.put(font + bytes(0x80)))
+        emu.uc.hook_del(self.view.no_ops[INPUT_POLL])
+        emu.uc.hook_del(self.stubs.pop(INPUT_FLUSH))
+        for addr in LOOP_STUBS:
+            emu.stub(addr, lambda *_: 0)
+        self.keys = []
+        emu.stub(KBD_KEY_AVAILABLE, lambda *_: int(bool(self.keys)))
+        emu.stub(KBD_READ_KEY, lambda *_: self.keys.pop(0))
+        emu.write(G_TIMER_STEP, struct.pack("<H", 1))
+        emu.call(INPUT_INIT_TABLES)
+        emu.write_u32(LOOP_GLOBALS["timer_ticks"][0], 0)
+        # the C port as build/dm2 starts: the movement and loop state of the program start
+        ctypes.memset(ctypes.addressof(self.party), 0, ctypes.sizeof(self.party))
+        self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
+        self.loop = MainLoop.in_dll(lib, "main_loop")
+        self.loop.tick_count, self.loop.timer_ticks, self.loop.end = 0, 0, 0
+        assert lib.text_init(gdat)
+        lib.view_enter_map(self.game.party_map)
+        lib.ui_reset()
+        lib.money_init_coin_table()
+        lib.ui_draw_game_screen()
+        lib.input_init()
+        lib.input_key_down.argtypes = [ctypes.c_uint16]
+        lib.game_start_session()
+        emu.call(GAME_START_SESSION)
+        emu.run(LOOP_START, LOOP_STEP)
+        emu.run(LOOP_STEP, LOOP_WAIT)
+
+    def tick(self):
+        """One timer tick in both."""
+        self.lib.game_tick()
+        emu = self.emu
+        emu.run(TIMER_ISR_BODY, TIMER_ISR_END)
+        emu.run(LOOP_WAIT, LOOP_WAIT_END)
+        if struct.unpack("<H", emu.read(G_TICK_ELAPSED, 2))[0] and emu.read_u32(LOOP_GLOBALS["running"][0]):
+            emu.run(LOOP_STEP_END, LOOP_STEP)
+            emu.run(LOOP_STEP, LOOP_WAIT)
+
+    def key(self, key):
+        self.lib.input_key_down(key)
+        self.keys.append(key)
+
+    def click(self, x, y, buttons):
+        self.lib.input_mouse_click(x, y, buttons)
+        self.emu.call(INPUT_MOUSE_CLICK, x, y, buttons)
+
+    def assert_tick(self, where):
+        """The main loop state, the game time, the cooldowns, the movement state, and the damage calls of both."""
+        from test_move import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale
+        game = self.game
+        mine = {name: getattr(self.loop, name) for name in LOOP_GLOBALS}
+        mine |= {"sleeping": ctypes.c_int.in_dll(self.lib, "party_sleeping").value, "time": game.game_time,
+                 "cooldown": game.party_move_cooldown, "throw": game.throw_cooldown}
+        mine |= {name: getattr(self.party, name) for name in GLOBALS}
+        values = LOOP_GLOBALS | GLOBALS | {"sleeping": (G_PARTY_SLEEPING, "<I"), "time": (G_GAME_TIME, "<I"),
+                                           "cooldown": (G_MOVE_COOLDOWN, "<H"), "throw": (G_THROW_COOLDOWN, "<H")}
+        theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
+                  for name, (addr, fmt) in values.items()}
+        assert ignore_stale(mine) == ignore_stale(theirs), where
+        self.assert_same_damage(where)
+
+    def champions(self):
+        """(C, original) champion records without the fields that this harness does not keep equal: the redraw
+        flags (the original status box drawing is a stub), the skill bonuses of items and the load that the
+        original load computes (save_restore_timed_effects, Step 15)."""
+        from test_interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records
+
+        def records(data):
+            out = []
+            for i in range(0, 4 * CHAMPION_SIZE, CHAMPION_SIZE):
+                r = bytearray(data[i:i + CHAMPION_SIZE])
+                for offset, size in CHAMPION_UNCOMPARED:
+                    r[offset:offset + size] = bytes(size)
+                out.append(bytes(r))
+            return out
+        return records(bytes(champion_records(self.lib))), records(self.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE))
+
+    def assert_loop(self, where):
+        """assert_tick, the champion records (the save leaves out the damage display and the aura), and the
+        dungeon records and events of both."""
+        self.assert_tick(where)
+        mine, theirs = self.champions()
+        assert mine == theirs, where
+        self.assert_same(where)
+
+
+@pytest.fixture
+def loop(lib, gdat, start, tmp_path):
+    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
+    return Loop(lib, gdat, start, tmp_path)
+
+
+def test_session_start_matches_original(loop):
+    # game_start_session and the first game step of game_loop: movement state, loop state, and the save files.
+    loop.assert_loop("start")
+    loop.assert_equal("start")
+
+
+def test_keys_and_move_cooldowns_match_original(loop, lib):
+    # Movement keys at random ticks, often before the cooldown of the last move ends, turns, side steps, and the
+    # pause key: the commands, the walks, the cooldowns, and the game steps tick by tick.
+    rng = random.Random(17)
+    keys = [0x4C] * 6 + [0x4B, 0x4D, 0x4F, 0x50, 0x51]
+    for t in range(600):
+        if rng.random() < 0.25:
+            loop.key(rng.choice(keys))
+        if t in (300, 340):
+            loop.key(KEY_PAUSE)
+        loop.tick()
+        loop.assert_tick(t)
+        if t % 100 == 99:
+            loop.assert_loop(t)
+    assert loop.game.game_time > 60
+    loop.assert_equal("end")
+
+
+def find_click(lib, mode, command):
+    """A screen point whose left click gives command in mode."""
+    rect = (ctypes.c_int16 * 4)()
+    return next((x, y) for y in range(200) for x in range(320)
+                if lib.input_find_command(mode, x, y, INPUT_BUTTON_LEFT, 0, rect) == command)
+
+
+INPUT_BUTTON_LEFT, MODE_INVENTORY, CMD_SLEEP, KEY_INVENTORY, KEY_WAKE = 2, 8, 0x8E, 0x02, 0x1C
+
+
+def test_sleep_and_wake_match_original(loop, lib):
+    # The inventory key, then a click on the sleep button of the inventory: a game step on each tick while the
+    # party sleeps; the wake key ends it.
+    lib.input_find_command.restype = ctypes.c_uint16
+    loop.key(KEY_INVENTORY)
+    for t in range(16):
+        loop.tick()
+        loop.assert_tick(("inventory", t))
+    loop.click(*find_click(lib, MODE_INVENTORY, CMD_SLEEP), INPUT_BUTTON_LEFT)
+    slept = 0
+    for t in range(120):
+        if t == 80:
+            loop.key(KEY_WAKE)
+        loop.tick()
+        loop.assert_tick(t)
+        slept += loop.loop.tick_threshold == 1
+    assert slept > 40 and loop.loop.tick_threshold == 8
+    loop.assert_loop("end")
+    loop.assert_equal("end")
+
+
+CHAMPION_AURA, CHAMPION_DAMAGE_EVENT = 0x102, 0x2E
+CHAMPION_UNCOMPARED = ((0x32, 2), (0xAF, 20), (0xFF, 2))  # redraw flags, skill bonuses, load
+EVENT_HIDE_DAMAGE, EVENT_AURA = 0x0C, 0x48
+
+
+def test_damage_and_aura_events_match_original(loop, lib):
+    # The timeline of the main loop: the damage display of a champion ends (event 0x0c); the aura of a champion
+    # weakens twice (event 0x48), the second time below 0.
+    import test_save
+    from test_interface import champion_bytes, sync_champions
+    champion_bytes(lib, 0, CHAMPION_AURA, [3, 50, 0])
+    champion_bytes(lib, 0, CHAMPION_DAMAGE_EVENT, [0, 0])  # the damage display shows, its event is the first one
+    sync_champions(lib, loop)
+    now, map_ = loop.game.game_time, loop.game.party_map
+    for delay, type_, priority, data in ((2, EVENT_HIDE_DAMAGE, 0, (0,) * 6), (3, EVENT_AURA, 1, (7, 0, 0, 0, 0, 0)),
+                                         (5, EVENT_AURA, 1, (60, 0, 0, 0, 0, 0))):
+        e = test_save.Event((now + delay) | map_ << 24, type_, priority, (ctypes.c_uint8 * 6)(*data))
+        loop.emu.write(COMMAND_RECORD, bytes(e))
+        lib.timeline_add_event(ctypes.byref(e))
+        loop.emu.call(TIMELINE_ADD_EVENT, COMMAND_RECORD)
+    for t in range(64):
+        loop.tick()
+        loop.assert_loop(t)
+    loop.assert_equal("end")
+
+
+def test_arrow_clicks_and_feedback_delays_match_original(loop, lib):
+    # Left clicks on the six movement arrows (zones 0x28 to 0x2d) and in the view at random ticks, often while the
+    # feedback of the last click still shows the pressed arrow or waits for the queue.
+    rng = random.Random(18)
+    rect = (ctypes.c_int16 * 4)()
+    targets = []
+    for zone in range(0x28, 0x2E):
+        assert lib.zone_get_rect(zone, rect)
+        targets.append(tuple(rect))
+    targets.append((80, 70, 60, 50))
+    moves = 0
+    for t in range(500):
+        if rng.random() < 0.2:
+            x, y, w, h = rng.choice(targets)
+            loop.click(x + rng.randrange(w), y + rng.randrange(h), INPUT_BUTTON_LEFT)
+        before = (loop.game.party_x, loop.game.party_y, loop.game.party_dir)
+        loop.tick()
+        loop.assert_tick(t)
+        moves += before != (loop.game.party_x, loop.game.party_y, loop.game.party_dir)
+    assert moves > 20
+    loop.assert_loop("end")
+    loop.assert_equal("end")

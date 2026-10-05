@@ -177,8 +177,7 @@ class OriginalView:
         emu.stub(0x3F2F0, self.cache_alloc_image)
         emu.stub(0x3F337, lambda index, *_: self.cache[index & 0xFFFF])
         emu.stub(0x3F3EE, lambda *_: self.new_index())
-        for addr in NO_OPS:
-            emu.stub(addr, lambda *_: 0)
+        self.no_ops = {addr: emu.stub(addr, lambda *_: 0) for addr in NO_OPS}
         emu.stub(SHOP_DRAW_DISPLAY, lambda *_: 0, stack_args=5)
         # No active groups exist after a load; like the port (Step 16), the creatures show their first frame.
         emu.write_u32(G_ACTIVE_GROUPS, self.put(bytes(ACTIVE_GROUP_SIZE * ACTIVE_GROUP_MAX)))
