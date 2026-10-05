@@ -28,7 +28,7 @@ LIGHT_NAMES = ("light_source_sum", "explosion_light_sum", "cached_light_sum", "c
 DISTANCE_MAPS = (("party_distance", 0x7F8C8, 0x752A0, 0x7F8CE), ("alt_distance", 0x7F8C4, 0x752A2, 0x7F8CC))
 G_AI_SCRATCH, G_AI_CONTEXT_ACTIVE = 0x7F894, 0x7F7E6
 # Functions of later parts that both sides stub: (address, stack arguments).
-EMPTY = {0x16D72: 0, 0x181F0: 0, 0x38C46: 1, 0x389C2: 0}
+EMPTY = {0x16D72: 0, 0x181F0: 0}  # projectile and explosion attacks; test_move.STUBS has the light hooks
 
 # Original functions of ai_move.c.
 F = {
