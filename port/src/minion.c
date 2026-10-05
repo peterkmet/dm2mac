@@ -64,6 +64,8 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
 #define FLOOR_FRAME_SHIFT 8
 #define FLOOR_FRAME_STEP 10
 #define ORNAMENT_NONE 0xff
+#define ORNAMENT_INDEX_MASK 0xff
+enum { SIDE_DOOR_STATE, SIDE_DOOR_THING, SIDE_FLOOR_ORNAMENT, SIDE_STAIRS_UP = 0, SIDE_PIT_VARIANT = 0 };
 #define MAP_KIND_SHIFT 13               /* container word 4: the kind of minion map */
 enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };
 #define MAP_LOCATION 6                  /* minion map record word: x bits 0-4, y bits 5-9, map bits 10-15 */
@@ -73,6 +75,7 @@ enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS }
 #define LOCATION_X(w) ((w) & 0x1f)
 #define LOCATION_Y(w) ((w) >> 5 & 0x1f)
 #define LOCATION_MAP(w) ((w) >> 10)
+#define LOCATION(x, y, map) (uint16_t)(((x) & 0x1f) | ((y) & 0x1f) << 5 | ((map) & 0x3f) << 10)
 #define MINION_MAP_MANA_TICKS 25
 #define LEVEL_UP (-1)
 #define LEVEL_DOWN 1
@@ -194,7 +197,7 @@ static void draw_wall(const ViewSquare *s, const Strip *base, int x, int y, int 
     }
     if (!other_map) draw_strip(base, ICON_WALL, x, y, 0);
     for (int side = 0; side < VIEW_SIDE_COUNT; side++) {
-        int ornament = s->side[side] & 0xff;
+        int ornament = s->side[side] & ORNAMENT_INDEX_MASK;
         if (ornament == ORNAMENT_NONE) continue;
         if (!(flags & MAP_OPTION_DETAILS) && detail_only(CAT_WALL_ORNAMENT, ornament)) continue;
         Strip o = map_icon_strip(CAT_WALL_ORNAMENT, ornament);
@@ -209,11 +212,11 @@ static void draw_wall(const ViewSquare *s, const Strip *base, int x, int y, int 
 static void draw_floor(const ViewSquare *s, const Strip *base, int x, int y, int flags)
 {
     draw_strip(base, ICON_FLOOR, x, y, 0);
-    int ornament = s->side[2] & 0xff;
+    int ornament = s->side[SIDE_FLOOR_ORNAMENT] & ORNAMENT_INDEX_MASK;
     if (ornament != ORNAMENT_NONE && (flags & MAP_OPTION_DETAILS || !detail_only(CAT_FLOOR_ORNAMENT, ornament))) {
         Strip o = map_icon_strip(CAT_FLOOR_ORNAMENT, ornament);
         if (o.count) {
-            int frame = (int8_t)(s->side[2] >> FLOOR_FRAME_SHIFT) / FLOOR_FRAME_STEP;
+            int frame = (int8_t)(s->side[SIDE_FLOOR_ORNAMENT] >> FLOOR_FRAME_SHIFT) / FLOOR_FRAME_STEP;
             draw_strip(&o, o.count < frame + 1 ? 0 : frame, x, y, 0);
         }
     }
@@ -354,21 +357,21 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
         case ASPECT_TELEPORTER: draw_floor(&s, &base, x, y, flags); break;
         case ASPECT_DOOR_SIDE: case ASPECT_DOOR_FRONT: {
             int icon = s.aspect == ASPECT_DOOR_SIDE ? ICON_DOOR_SIDE : ICON_DOOR_FRONT;
-            const uint8_t *door = dungeon_thing_record(s.side[1]);
+            const uint8_t *door = dungeon_thing_record(s.side[SIDE_DOOR_THING]);
             if (!(door[2] & DOOR_BUTTON) && !(door[3] & DOOR_NO_ANIMATION >> 8)) icon += ICON_DOOR_NO_BUTTON;
-            if (s.side[0] == DOOR_STATE_OPEN || s.side[0] == DOOR_STATE_BROKEN) icon += ICON_DOOR_OPEN;
+            if (s.side[SIDE_DOOR_STATE] == DOOR_STATE_OPEN || s.side[SIDE_DOOR_STATE] == DOOR_STATE_BROKEN) icon += ICON_DOOR_OPEN;
             draw_strip(&base, icon, x, y, 0);
             break;
         }
         case ASPECT_STAIRS_FRONT: case ASPECT_STAIRS_SIDE: {
             int d = (dun_get_stairs_exit_direction(sx, sy) - dir) & 3;
-            if (s.side[0]) d = (d + 2) & 3;
+            if (s.side[SIDE_STAIRS_UP]) d = (d + 2) & 3;
             draw_strip(&base, d + ICON_STAIRS_FIRST, x, y, 0);
             break;
         }
         case ASPECT_PIT: {
             int icon = ICON_PIT;
-            if (s.side[0]) icon = flags & MAP_OPTION_DETAILS && game.game_time & 1 ? ICON_PIT_BLINK : ICON_PIT_VARIANT;
+            if (s.side[SIDE_PIT_VARIANT]) icon = flags & MAP_OPTION_DETAILS && game.game_time & 1 ? ICON_PIT_BLINK : ICON_PIT_VARIANT;
             draw_strip(&base, icon, x, y, 0);
             break;
         }
@@ -693,7 +696,7 @@ int minion_map_set_location(uint16_t thing, int x, int y, int map)
     int saved = party.cur_map;
     dun_set_current_map(map);
     int inside = x >= 0 && x < dungeon_map_width(party.cur_map) && y >= 0 && y < dungeon_map_height(party.cur_map);
-    if (inside) set_thing_word(thing, MAP_LOCATION, (uint16_t)((x & 0x1f) | (y & 0x1f) << 5 | (map & 0x3f) << 10));
+    if (inside) set_thing_word(thing, MAP_LOCATION, LOCATION(x, y, map));
     dun_set_current_map(saved);
     return inside;
 }

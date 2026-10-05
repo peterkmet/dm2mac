@@ -61,6 +61,16 @@ enum {
 #define CAST_BASE_SKILLS 4              /* skills 4 to 19 are the sub-skills of the base skills 0 to 3 */
 #define SKILL_WIZARD 3
 #define LIGHT_EVENT_STEP 8              /* game ticks between two steps of a fading light */
+#define LIGHT_POWER_MIN 0x20
+#define LIGHT_POWER_MAX 0x100
+#define LIGHT_STRENGTH_MIN 8            /* power / 8, at least this */
+#define DARKNESS_SIGN (-2)              /* darkness takes twice the light of its level */
+#define TORCH_TICKS 2000                /* the base duration of the light spells */
+#define LIGHT_TICKS 10000
+#define SPELL_DELAY_POWER_BASE 0x12     /* the action delay: factor * (power + 18) / 24 */
+#define SPELL_DELAY_DIVISOR 0x18
+#define CAST_KIND_MASK 0xf0
+#define SHIFT_COUNT_MASK 0x1f           /* the x86 shift uses the low 5 bits of the count */
 /* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
 #define CAT_SPELL_ITEM 0x0d
 #define SPELL_ITEM_INDEX 0x0f
@@ -170,17 +180,18 @@ int magic_find_flask_in_hands(const Champion *c)
 
 void magic_add_light(int kind, int power)
 {
-    int level = imax(8, (int16_t)iclamp(0x20, (int16_t)(power + 1), 0x100) >> 3), sign = 1;
+    int level = imax(LIGHT_STRENGTH_MIN, (int16_t)iclamp(LIGHT_POWER_MIN, (int16_t)(power + 1), LIGHT_POWER_MAX) >> 3);
+    int sign = 1;
     uint16_t ticks = 0;  /* the callers use only the three kinds; the original leaves the delay of another kind unset */
     if (kind == LIGHT_DARKNESS) {
-        ticks = (uint16_t)((level - 8) * 16 + 16);
-        sign = -2;
+        ticks = (uint16_t)((level - LIGHT_STRENGTH_MIN) * 16 + 16);
+        sign = DARKNESS_SIGN;
         level = (level >> 1) - 1;
     } else if (kind == LIGHT_TORCH) {
-        ticks = (uint16_t)((level - 3) * 128 + 2000);
+        ticks = (uint16_t)((level - 3) * 128 + TORCH_TICKS);
         level = (level >> 2) + 1;
     } else if (kind == LIGHT_LIGHT) {
-        ticks = (uint16_t)((level - 8) * 512 + 10000);
+        ticks = (uint16_t)((level - LIGHT_STRENGTH_MIN) * 512 + LIGHT_TICKS);
         level = (level >> 1) - 1;
     }
     TimelineEvent e = party_event(EVENT_MAGIC_LIGHT, ticks);
@@ -311,7 +322,7 @@ static void cast_create_item(void)
     }
     int cell = (rand_bit() + game.party_dir) & 3;
     if (thing == THING_NONE) return;  /* fix: the original moves an invalid thing when no record is free */
-    move_thing((uint16_t)(cell << THING_CELL_SHIFT | (thing & 0x3fff)), -1, 0, game.party_x, game.party_y);
+    move_thing((uint16_t)(cell << THING_CELL_SHIFT | (thing & ~(3 << THING_CELL_SHIFT))), -1, 0, game.party_x, game.party_y);
 }
 
 /* The spells that are neither potions, missiles, nor summons. */
@@ -361,7 +372,7 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
 {
     Champion *c = champion(champ);
     int kind = spell->effect & SPELL_KIND_MASK, type = spell->effect >> SPELL_TYPE_SHIFT & SPELL_TYPE_MASK;
-    int delay = (spell->effect >> SPELL_DELAY_SHIFT & SPELL_DELAY_MASK) * (power + 0x12) / 0x18;
+    int delay = (spell->effect >> SPELL_DELAY_SHIFT & SPELL_DELAY_MASK) * (power + SPELL_DELAY_POWER_BASE) / SPELL_DELAY_DIVISOR;
     int level = power + spell->difficulty;
     uint16_t experience = (uint16_t)(spell->difficulty * (power - 1) * 8 + level * 16 + (int)(rand_next() & EXPERIENCE_ROLL_MASK)
                                      + level * level);
@@ -369,7 +380,7 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
     for (int16_t tries = (int16_t)(level - skill); tries > 0; tries--) {
         int roll = (int)(rand_next() & CAST_ROLL_MASK);
         if (imin(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
-            champ_add_experience(champ, spell->skill, experience >> ((level - skill) & 0x1f));
+            champ_add_experience(champ, spell->skill, experience >> ((level - skill) & SHIFT_COUNT_MASK));
             return cast_failure(CAST_FAILED, spell);
         }
     }
@@ -413,7 +424,7 @@ static void draw_in_screen_zone(int category, int index, int entry, int zone)
 void magic_report_cast_failure(int result)
 {
     int min_delay = 1, var;
-    switch (result & 0xf0) {
+    switch (result & CAST_KIND_MASK) {
     case CAST_FAILED:
         action.result = (int16_t)((result & 0xf) == SKILL_WIZARD ? RESULT_WIZARD_FAILED : RESULT_PRIEST_FAILED);
         var = GLOBAL_SPELL_FAILED;
@@ -442,7 +453,7 @@ int magic_cast_entered_runes(void)
     const Spell *spell = magic_find_spell(runes);
     int result = spell ? magic_cast_spell(champ, spell, (int16_t)(runes[0] - POWER_RUNE_BASE)) : CAST_UNKNOWN_SPELL;
     if (result) magic_report_cast_failure(result);
-    if ((result & 0xf0) != CAST_NEEDS_FLASK) {
+    if ((result & CAST_KIND_MASK) != CAST_NEEDS_FLASK) {
         runes[0] = 0;
         c->rune_count = 0;
         ui_action_area_close();
