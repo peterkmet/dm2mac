@@ -164,6 +164,12 @@ void timeline_delete_event(uint16_t index)
     }
 }
 
+void timeline_reposition_event(uint16_t index)
+{
+    fix_pending_slot();
+    fix_queue_slot(find_queue_slot(index));
+}
+
 void timeline_pop_first_event(TimelineEvent *event)
 {
     uint16_t index = timeline.queue[0];

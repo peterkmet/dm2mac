@@ -107,6 +107,7 @@ int dungeon_square_thing_count(void);
 const uint16_t *dungeon_square_things(void);
 int dungeon_thing_count(int type);
 int dungeon_thing_size(int type);
+#define DUNGEON_RECORD_MAX 16     /* the largest thing record (a creature group) */
 uint8_t *dungeon_thing_record(uint16_t thing);
 /* True when thing has a record in the loaded dungeon. */
 int dungeon_thing_valid(uint16_t thing);
@@ -123,7 +124,9 @@ void dungeon_append_thing(uint16_t thing, uint16_t *list);
 int dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y);
 /* Removes thing from the square's thing list. */
 void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
-/* Takes a free record of type, cleared, without cell bits; THING_NONE when all records are in use. */
+/* Takes a free record of type, cleared, without cell bits; THING_NONE when all records are in use. type |
+   THING_ANY_RECORD: a miscellaneous item may take the records that the dungeon keeps for the game. */
+#define THING_ANY_RECORD 0x8000
 uint16_t dungeon_unused_thing(int type);
 /* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
 int dungeon_teleporter_link_map(int map, int x, int y);

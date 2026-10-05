@@ -7,21 +7,8 @@
    returns the "nothing happened" value until its step ports it; the step then moves it to its module. */
 
 /* Step 15: champions. */
-/* The arguments of the damage hook calls (champ -1: the whole party), for the tests until Step 15. */
-typedef struct { int16_t champ, damage, wound_mask, attack_type; } DamageCall;
-#define DAMAGE_CALL_MAX 64
-extern DamageCall damage_calls[DAMAGE_CALL_MAX];
-extern int damage_call_count;
-int champ_take_damage(int champ, int damage, int wound_mask, int attack_type);   /* returns 0: no damage */
-int champ_damage_party(int damage, int wound_mask, int attack_type);             /* returns the hit champions, 0 */
-void champ_apply_pending_damage(void);
-void champ_apply_time_effects(void);
 void champ_process_repeated_actions(void);
-void items_burn_held_lights(void);
-void timeline_event_altar_rebirth(TimelineEvent *e);
-void timeline_event_apply_item_effect(TimelineEvent *e);
 void timeline_event_magic_light(TimelineEvent *e);
-void champ_poison(int champ, int amount);
 uint16_t item_create_by_index(int item);                                        /* returns THING_NONE */
 void champ_start_recruit(int x, int y, int map);
 /* A click in the view that throws the leader hand object. */
@@ -52,6 +39,8 @@ void creature_update_anim_at(int x, int y, int start);
 void timeline_event_move_group(TimelineEvent *e);
 void projectile_process_event(TimelineEvent *e);
 void explosion_process_event(TimelineEvent *e);
+/* Creates an explosion of type on cell (0xff: the center) of the square (x, y) of the current map. */
+void explosion_create(int type, int attack, int x, int y, int cell);
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect);
 void sensor_turn_creatures(const TimelineEvent *e);

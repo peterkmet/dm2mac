@@ -201,10 +201,9 @@ LOOP_START, LOOP_STEP, LOOP_WAIT, LOOP_WAIT_END, LOOP_STEP_END = 0x24696, 0x246A
 GAME_START_SESSION, INPUT_MOUSE_CLICK, INPUT_POLL, INPUT_FLUSH = 0x551D4, 0x20C5D, 0x210DC, 0x209E0
 KBD_KEY_AVAILABLE, KBD_READ_KEY = 0x114B8, 0x11413
 G_TIMER_STEP, G_TICK_ELAPSED, G_PARTY_SLEEPING = 0x7EFAC, 0x717F2, 0x7F234
-# The loop functions of later steps: champion damage, time effects, status boxes, burning lights,
-# repeated actions (Step 15); creature activation (Step 16); music (Step 19); the mouse cursor, its areas, and the
+# The loop functions of later steps: the status boxes (drawing), repeated actions (Step 15); creature activation (Step 16); music (Step 19); the mouse cursor, its areas, and the
 # IBMIOP input lock (not ported).
-LOOP_STUBS = (0x47113, 0x47CC3, 0x4904F, 0x39044, 0x40EE2, 0x34236, 0x342A3, 0x10AF6, 0x1483A,
+LOOP_STUBS = (0x4904F, 0x40EE2, 0x34236, 0x342A3, 0x10AF6, 0x1483A,
               0x1482E, 0x14846, 0x14743, 0x14B1F, 0x14B4F, 0x14C0E, 0x14C7B, 0x14C87,
               # game_start_session: the screen fill, the retrace wait, and the dialog after a load with its disk
               # check (Step 20)
@@ -272,7 +271,7 @@ class Loop(Scenario):
         self.emu.call(INPUT_MOUSE_CLICK, x, y, buttons)
 
     def assert_tick(self, where):
-        """The main loop state, the game time, the cooldowns, the movement state, and the damage calls of both."""
+        """The main loop state, the game time, the cooldowns, the movement state, the pending damage, and the champions."""
         from test_move import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale
         game = self.game
         mine = {name: getattr(self.loop, name) for name in LOOP_GLOBALS}
@@ -287,9 +286,7 @@ class Loop(Scenario):
         self.assert_same_damage(where)
 
     def champions(self):
-        """(C, original) champion records without the fields that this harness does not keep equal: the redraw
-        flags (the original status box drawing is a stub), the skill bonuses of items and the load that the
-        original load computes (save_restore_timed_effects, Step 15)."""
+        """(C, original) champion records without the redraw flags: the original status box drawing is a stub."""
         from test_interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records
 
         def records(data):
@@ -373,7 +370,7 @@ def test_sleep_and_wake_match_original(loop, lib):
 
 
 CHAMPION_AURA, CHAMPION_DAMAGE_EVENT = 0x102, 0x2E
-CHAMPION_UNCOMPARED = ((0x32, 2), (0xAF, 20), (0xFF, 2))  # redraw flags, skill bonuses, load
+CHAMPION_UNCOMPARED = ((0x32, 2),)  # redraw flags
 EVENT_HIDE_DAMAGE, EVENT_AURA = 0x0C, 0x48
 
 

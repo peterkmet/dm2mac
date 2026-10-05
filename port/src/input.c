@@ -56,7 +56,7 @@ enum {
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
-    CMD_HAND_LAST = 0x7b
+    CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -1074,6 +1074,15 @@ int command_execute(Command *c)
         champ_wake_party();
     } else if (command == CMD_QUIT && !party.push_mode && !input_drag_state) {
         main_loop.end = 1;
+    } else if (command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) {
+        inv_click_slot(command - CMD_SLOT_FIRST);
+    } else if (command >= CMD_STORE_FIRST && command <= CMD_STORE_LAST) {
+        inv_store_leader_hand_object(command - CMD_STORE_FIRST);
+    } else if (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL) {
+        if (command == CMD_DRAG_CANCEL) champ_drag_cancel();
+        else champ_drag_click(command - CMD_DRAG_FIRST);
+        input_refresh_mode();
+        ui_update_action_area(0);
     } else {
         command_execute_later(c);
     }

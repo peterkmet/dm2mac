@@ -63,7 +63,6 @@ G_ACTIVE_GROUPS, G_COMMAND_STOP = 0x7F898, 0x7F484
 COMMAND_RECORD = SCRATCH + 0xF8000
 SCHEDULED_EVENT = SCRATCH + 0xF8100
 SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
-CHAMP_TAKE_DAMAGE, CHAMP_DAMAGE_PARTY = 0x4722A, 0x4766B  # Step 15: the tests compare their arguments
 # The wall sensor that creates an item (kind 0x3c) in timeline_event_wall_square: Step 15.
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
 # The wall sensor of the end of the game (kind 0x12): Step 20.
@@ -96,8 +95,8 @@ class GameRecord(ctypes.Structure):
                 ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
 
 
-class DamageCall(ctypes.Structure):
-    _fields_ = [(name, ctypes.c_int16) for name in ("champ", "damage", "wound_mask", "attack_type")]
+G_PENDING_WOUNDS, G_PENDING_DAMAGE, G_CHAMPIONS, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, 0x7FBD0, 263
+CHAMPION_REDRAW = 0x32  # the redraw flags: the original status box drawing does not run in these tests
 
 
 def int16(value):
@@ -142,14 +141,11 @@ class Scenario:
         self.game = GameRecord.in_dll(lib, "game")
         self.party = Party.in_dll(lib, "party")
         assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
+        assert lib.text_init(gdat)  # the messages of the leader hand
         view = original_view_of(lib, gdat, start)
         self.emu = emu = view.emu
         self.stubs = {addr: emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
                       for addr, (stack, result) in STUBS.items()}
-        self.damage = []  # the damage calls of the original: (champion or -1 for the party, damage, wounds, attack)
-        emu.stub(CHAMP_TAKE_DAMAGE, lambda c, d, w, a, *_: self.damage.append(tuple(map(int16, (c, d, w, a)))))
-        emu.stub(CHAMP_DAMAGE_PARTY, lambda d, w, a, *_: self.damage.append((-1,) + tuple(map(int16, (d, w, a)))))
-        ctypes.c_int.in_dll(lib, "damage_call_count").value = 0
         self.fix_square_events()
         self.view = view
         groups = emu.read_u32(G_ACTIVE_GROUPS)
@@ -195,7 +191,8 @@ class Scenario:
         keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
-                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0)}
+                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0),
+                0x0C: (0, 0, 0, 0, 0, 0), 0x0E: (0xFF, 0xFF, 0xFF, 0, 0, 0), 0x4B: (0xFF, 0xFF, 0, 0, 0, 0)}
         emu = self.emu
 
         def hook(uc, *_):
@@ -340,14 +337,31 @@ class Scenario:
                 out.append(("event", i, mine[i * 12:i * 12 + 12].hex(), theirs[i * 12:i * 12 + 12].hex()))
         return out
 
+    def pending(self):
+        """(C, original) damage and wounds of the champions that the end of the step applies."""
+        mine = tuple((ctypes.c_int16 * 4).in_dll(self.lib, "champ_pending_damage")) + \
+            tuple((ctypes.c_uint16 * 4).in_dll(self.lib, "champ_pending_wounds"))
+        theirs = struct.unpack("<4h", self.emu.read(G_PENDING_DAMAGE, 8)) + struct.unpack("<4H", self.emu.read(G_PENDING_WOUNDS, 8))
+        return mine, theirs
+
+    def champion_records(self):
+        """(C, original) champion records without the redraw flags."""
+        from test_interface import champion_records
+        mine, theirs = bytearray(champion_records(self.lib)), bytearray(self.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE))
+        for record in (mine, theirs):
+            for i in range(4):
+                record[i * CHAMPION_SIZE + CHAMPION_REDRAW:i * CHAMPION_SIZE + CHAMPION_REDRAW + 2] = bytes(2)
+        return bytes(mine), bytes(theirs)
+
     def assert_same_damage(self, where):
-        """The damage hook calls of both since the last check."""
-        count = ctypes.c_int.in_dll(self.lib, "damage_call_count")
-        calls = (DamageCall * 64).in_dll(self.lib, "damage_calls")
-        mine = [(c.champ, c.damage, c.wound_mask, c.attack_type) for c in calls[:count.value]]
-        assert mine == self.damage, where
-        count.value = 0
-        self.damage.clear()
+        """The pending damage and wounds and the champion records of both."""
+        mine, theirs = self.pending()
+        assert mine == theirs, where
+        mine, theirs = self.champion_records()
+        if mine != theirs:
+            first = next(i for i in range(len(mine)) if mine[i] != theirs[i])
+            pytest.fail(f"{where}: champion {first // CHAMPION_SIZE} differs at {first % CHAMPION_SIZE:#x}: "
+                        f"{mine[first:first + 4].hex()} {theirs[first:first + 4].hex()}")
 
     def assert_same(self, where):
         """The quick check: movement globals, damage calls, and the dungeon records and events."""
@@ -462,7 +476,7 @@ def test_bump_damage_hits_the_champions_of_the_bump_side(scenario, lib):
         command = rng.choice((3, 4, 5, 6))
         mine, theirs = scenario.command(command)
         assert mine == theirs, (n, command)
-        bumps += any(champ >= 0 for champ, *_ in scenario.damage)
+        bumps += any(scenario.pending()[0][:4])
         for _ in range(4):
             scenario.step()
         scenario.assert_same((n, map_, x, y, command))

@@ -3,34 +3,8 @@
 #include "input.h"
 
 /* Empty until their steps; see hooks.h. */
-DamageCall damage_calls[DAMAGE_CALL_MAX];
-int damage_call_count;
-
-static void record_damage(int champ, int damage, int wound_mask, int attack_type)
-{
-    if (damage_call_count < DAMAGE_CALL_MAX)
-        damage_calls[damage_call_count++] = (DamageCall){(int16_t)champ, (int16_t)damage, (int16_t)wound_mask, (int16_t)attack_type};
-}
-
-int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
-{
-    record_damage(champ, damage, wound_mask, attack_type);
-    return 0;
-}
-
-int champ_damage_party(int damage, int wound_mask, int attack_type)
-{
-    record_damage(-1, damage, wound_mask, attack_type);
-    return 0;
-}
-void champ_apply_pending_damage(void) { }
-void champ_apply_time_effects(void) { }
 void champ_process_repeated_actions(void) { }
-void items_burn_held_lights(void) { }
-void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
-void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void timeline_event_magic_light(TimelineEvent *e) { (void)e; }
-void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
 void creature_alert(uint16_t group, int x, int y, int flags, int amount, int chance) { (void)group; (void)x; (void)y; (void)flags; (void)amount; (void)chance; }
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group) { (void)x; (void)y; (void)dir; (void)group; return 0; }
 int move_party_can_push_group(uint16_t group) { (void)group; return 0; }
@@ -55,6 +29,7 @@ void creature_update_anim_at(int x, int y, int start) { (void)x; (void)y; (void)
 void timeline_event_move_group(TimelineEvent *e) { (void)e; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
 void explosion_process_event(TimelineEvent *e) { (void)e; }
+void explosion_create(int type, int attack, int x, int y, int cell) { (void)type; (void)attack; (void)x; (void)y; (void)cell; }
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e) { (void)sensor; (void)e; }
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect) { (void)kind_data; (void)count; (void)x; (void)y; (void)tx; (void)ty; (void)kind; (void)effect; }
 void sensor_turn_creatures(const TimelineEvent *e) { (void)e; }

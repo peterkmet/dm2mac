@@ -120,7 +120,7 @@ void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode)
             if (timed && mode == EFFECT_MODE_CONSUME) {
                 /* fix: the original leaves the last 3 data bytes uninitialized */
                 TimelineEvent e = {.time_map = (game.game_time + item_attr(thing, ATTR_EFFECT_TIME))
-                                               | (uint32_t)(uint8_t)party.cur_map << 24,
+                                               | (uint32_t)(uint8_t)game.party_map << 24,
                                    .type = EVENT_ITEM_EFFECT, .priority = (uint8_t)champ};
                 e.data[0] = (uint8_t)thing_type(thing);
                 e.data[2] = item_gdat_index(thing);
@@ -192,3 +192,102 @@ void inv_update_hand_cursor(void)
 }
 
 uint16_t inv_cursor_object(void) { return game.leader_hand; }
+
+/* The slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
+static uint16_t *slot_of(int champ, int slot)
+{
+    return slot < SLOT_COUNT ? &champion(champ)->slots[slot] : &action.open_items[slot - SLOT_CONTAINER_FIRST];
+}
+
+uint16_t champ_remove_object_from_slot(int champ, int slot)
+{
+    uint16_t *at = slot_of(champ, slot), thing = *at;
+    *at = THING_NONE;
+    if (thing != THING_NONE) {
+        if (champ == action.champion - 1 && slot < SLOT_HAND_COUNT && slot == action.hand) ui_action_area_close();
+        champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_REMOVE);
+    }
+    return thing;
+}
+
+void champ_add_object_to_slot(int champ, uint16_t thing, int slot)
+{
+    if (thing == THING_NONE) return;
+    thing &= THING_INDEX_MASK | THING_TYPE_MASK << THING_TYPE_SHIFT;
+    *slot_of(champ, slot) = thing;
+    champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_ADD);
+}
+
+#define CLICK_STATUS_HANDS 8        /* inv_click_slot slots 0 to 7: the hands of the status boxes */
+#define SLOT_POUCH_FIRST 13
+#define SLOT_QUIVER_FIRST 6         /* the slots that a hand loads from: 6, 7 to 9, 11, 12 */
+#define SLOT_QUIVER_LAST 9
+#define SLOT_QUIVER_READY 11
+#define SLOT_QUIVER_ACTION 12
+
+void inv_click_slot(int slot)
+{
+    uint16_t hand = game.leader_hand;
+    int champ;
+    if ((int16_t)game.leader == -1) return;
+    if (slot < CLICK_STATUS_HANDS) {
+        champ = slot >> 1;
+        if (ui.candidate || champ >= game.champion_count || champ + 1 == ui.inventory || !champion(champ)->health) return;
+        slot &= 1;
+    } else {
+        slot -= CLICK_STATUS_HANDS;
+        champ = (slot < SLOT_COUNT ? ui.inventory : action.champion) - 1;
+    }
+    uint16_t thing = *slot_of(champ, slot);
+    if (thing == THING_NONE && hand == THING_NONE) return;
+    if (hand != THING_NONE && !item_fits_slot(hand, slot, 0)) return;
+    if (hand != THING_NONE) champ_remove_object_from_leader_hand();
+    if (thing != THING_NONE) {
+        champ_remove_object_from_slot(champ, slot);
+        champ_put_object_in_leader_hand(thing, 1);
+    }
+    if (hand != THING_NONE) champ_add_object_to_slot(champ, hand, slot);
+    champ_draw_all_states(0);
+    if (slot == SLOT_QUIVER_READY || slot == SLOT_QUIVER_FIRST || slot == SLOT_QUIVER_ACTION
+        || (slot > SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot >= SLOT_COUNT) {
+        action.redraw_delay = 1;
+        ui_update_action_area(0);
+    }
+}
+
+void inv_store_leader_hand_object(int champ)
+{
+    if (game.leader_hand == THING_NONE || !champion(champ)->health) return;
+    int slot = SLOT_POUCH_FIRST;
+    while (slot < SLOT_COUNT && champion(champ)->slots[slot] != THING_NONE) slot++;
+    if (slot == SLOT_COUNT) return;
+    uint16_t thing = champ_remove_object_from_leader_hand();
+    if (thing != THING_NONE) champ_add_object_to_slot(champ, thing, slot);
+}
+
+void inv_put_object_in_free_slot(int champ, uint16_t thing)
+{
+    /* slot ranges in the order of the search, with the thing type that they take (-1 any) */
+    static const struct { uint8_t first, last; int8_t type; } ranges[] = {
+        {2, 5, -1}, {10, 10, -1}, {0, 1, THING_WEAPON}, {0, 1, THING_ARMOUR}, {13, 29, -1}
+    };
+    for (size_t r = 0; r < sizeof ranges / sizeof *ranges; r++)
+        for (int slot = ranges[r].first; slot <= ranges[r].last; slot++)
+            if (champion(champ)->slots[slot] == THING_NONE && item_fits_slot(thing, slot, 0)
+                && (ranges[r].type < 0 || ranges[r].type == (int)thing_type(thing))) {
+                champ_add_object_to_slot(champ, thing, slot);
+                return;
+            }
+}
+
+void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
+{
+    /* the effect ends: a record of the item type stands in for the eaten item, with its kind */
+    uint16_t thing = (uint16_t)((e->data[0] | e->data[1] << 8) << THING_TYPE_SHIFT);
+    uint8_t *record = dungeon_thing_record(thing), saved[DUNGEON_RECORD_MAX];
+    int size = dungeon_thing_size(thing_type(thing));
+    memcpy(saved, record, size);
+    item_set_gdat_index(thing, e->data[2]);
+    champ_apply_item_effects(e->priority, thing, -1, mode);
+    memcpy(record, saved, size);
+}

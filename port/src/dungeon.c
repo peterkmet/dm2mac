@@ -251,7 +251,8 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y)
 
 uint16_t dungeon_unused_thing(int type)
 {
-    int count = dun.thing_count[type] - (type == THING_MISC ? MISC_RESERVED : 0);
+    int count = dun.thing_count[type & THING_TYPE_MASK] - (type == THING_MISC ? MISC_RESERVED : 0);
+    type &= THING_TYPE_MASK;
     for (int i = 0; i < count; i++) {
         uint16_t thing = type << THING_TYPE_SHIFT | i;
         if (dungeon_next_thing(thing) != THING_NONE) continue;

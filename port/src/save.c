@@ -1,10 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "champion.h"
 #include "creature.h"
+#include "draw.h"
 #include "dungeon.h"
+#include "inventory.h"
 #include "random.h"
 #include "save.h"
+#include "sensor.h"
 #include "timeline.h"
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
@@ -44,10 +48,6 @@
 #define CONTAINER_ITEM_SHIFT 13
 enum container_kind { CONTAINER_CHEST = 0, CONTAINER_MINION_MAP = 1 };
 
-enum event_type {
-    EVENT_HIDE_DAMAGE = 0x0c, EVENT_EXPLOSION = 0x19, EVENT_PROJECTILE_MOVE = 0x1d, EVENT_PROJECTILE_MOVE_NEXT = 0x1e,
-    EVENT_MOVE_GROUP = 0x3c, EVENT_MOVE_GROUP_SOUND = 0x3d
-};
 enum event_data { EVENT_THING = 0, EVENT_THING2 = 2 };  /* byte offsets in TimelineEvent.data */
 
 #define GDAT_CREATURE_CATEGORY 0x0f
@@ -272,7 +272,7 @@ static void timeline_relink_events(void)
         uint16_t thing = le16(e->data + EVENT_THING);
         if (e->type == EVENT_HIDE_DAMAGE && e->priority < CHAMPION_MAX)  /* fix: the original does not check the champion */
             put_le16(game.champions[e->priority] + CHAMPION_DAMAGE_EVENT, (uint16_t)i);
-        if ((e->type == EVENT_PROJECTILE_MOVE || e->type == EVENT_PROJECTILE_MOVE_NEXT)
+        if ((e->type == EVENT_PROJECTILE_MOVE || e->type == EVENT_PROJECTILE_MOVE_2)
             && thing_type(thing) == THING_PROJECTILE && dungeon_thing_valid(thing))
             set_thing_word(thing, PROJECTILE_EVENT, i);
     }
@@ -405,7 +405,7 @@ static int write_squares(void)
 
 static int is_move_group_event(const TimelineEvent *e)
 {
-    return e->type == EVENT_MOVE_GROUP || e->type == EVENT_MOVE_GROUP_SOUND;
+    return e->type == EVENT_MOVE_GROUP || e->type == EVENT_MOVE_GROUP_2;
 }
 
 /* Writes the things of the deferred minion maps and carried projectiles as bit stream positions. */
@@ -433,7 +433,7 @@ static void pack_game_record(uint8_t *r)
     put_le16(r + REC_LEADER, game.leader);
     put_le16(r + REC_EVENT_COUNT, timeline.count);
     put_le32(r + REC_UNKNOWN_TIME_A, game.unknown_time_a);
-    put_le32(r + REC_UNKNOWN_TIME_B, game.unknown_time_b);
+    put_le32(r + REC_UNKNOWN_TIME_B, game.first_recruit_time);
     put_le16(r + REC_MOVE_COOLDOWN, game.party_move_cooldown);
     put_le16(r + REC_UNKNOWN_COUNTDOWN, game.throw_cooldown);
     put_le16(r + REC_UNKNOWN_DIR, game.throw_dir);
@@ -463,7 +463,7 @@ static void unpack_game_record(const uint8_t *r)
     game.leader = le16(r + REC_LEADER);
     timeline.count = le16(r + REC_EVENT_COUNT);
     game.unknown_time_a = le32(r + REC_UNKNOWN_TIME_A);
-    game.unknown_time_b = le32(r + REC_UNKNOWN_TIME_B);
+    game.first_recruit_time = le32(r + REC_UNKNOWN_TIME_B);
     game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
     game.throw_cooldown = le16(r + REC_UNKNOWN_COUNTDOWN);
     game.throw_dir = le16(r + REC_UNKNOWN_DIR);
@@ -669,8 +669,8 @@ static int read_deferred(void)
     return 1;
 }
 
-/* Reads the things of the champions, the leader's hand, the timeline events, and the squares.
-   ponytail: the original also applies the item effects of the champion slots; the inventory step adds them. */
+/* Reads the things of the champions, the leader's hand, the timeline events, and the squares; the items that the
+   champions hold give their bonuses again. */
 static int read_things(void)
 {
     free_movable_things();
@@ -683,6 +683,9 @@ static int read_things(void)
     game.leader_hand = THING_ENDOFLIST;
     if (!read_thing_list(0, 0, 0, &game.leader_hand, 0, 0)) return 0;
     if (game.leader_hand == THING_ENDOFLIST) game.leader_hand = THING_NONE;
+    for (int c = 0; c < game.champion_count; c++)
+        for (int s = 0; s < SLOT_COUNT; s++) champ_apply_item_effects(c, champion(c)->slots[s], s, EFFECT_MODE_LOAD);
+    champ_apply_item_effects((int16_t)game.leader, game.leader_hand, -1, EFFECT_MODE_LOAD);
     for (int i = 0; i < timeline.count; i++) {
         TimelineEvent *e = &timeline.events[i];
         if (!is_move_group_event(e)) continue;
@@ -691,6 +694,42 @@ static int read_things(void)
         put_le16(e->data + EVENT_THING2, group);
     }
     return read_squares() && read_deferred();
+}
+
+/* The light of a magic light event by its power (event data), from SKULL.EXE. */
+static const int8_t light_power[16] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
+#define LIGHT_POWER_COUNT 16
+
+/* The magic effects that the timeline holds come back: magic light, invisibility, auras, poison, eaten items; then
+   the champion loads. */
+static void save_restore_timed_effects(void)
+{
+    memset(game.magic_light, 0, sizeof game.magic_light);
+    for (int i = 0; i < timeline.used_end; i++) {
+        const TimelineEvent *e = &timeline.events[i];
+        int16_t v = (int16_t)(e->data[0] | e->data[1] << 8);
+        switch (e->type) {
+        case EVENT_ITEM_EFFECT: timeline_event_apply_item_effect(e, EFFECT_MODE_RESTORE); break;
+        case EVENT_MAGIC_LIGHT:
+            if (v && v > -LIGHT_POWER_COUNT && v < LIGHT_POWER_COUNT) {
+                uint16_t light = (uint16_t)(game.magic_light[0] | game.magic_light[1] << 8);
+                light = (uint16_t)(light + (v < 0 ? light_power[-v] : light_power[v] * -2));
+                game.magic_light[0] = (uint8_t)light;
+                game.magic_light[1] = (uint8_t)(light >> 8);
+            }
+            break;
+        case EVENT_INVISIBILITY: game.magic_light[MAGIC_INVISIBILITY]++; break;
+        case EVENT_AURA:
+            for (int c = 0; c < game.champion_count; c++)
+                if (e->priority >> c & 1 && champion(c)->health) champion(c)->aura_value = (int16_t)(champion(c)->aura_value + v);
+            break;
+        case EVENT_POISON:
+            champion(e->priority)->poisoned++;
+            champion(e->priority)->poison = (int16_t)(champion(e->priority)->poison + v);
+            break;
+        }
+    }
+    for (int c = 0; c < game.champion_count; c++) champ_compute_load(c);
 }
 
 static int read_state(void)
@@ -712,11 +751,11 @@ static int read_state(void)
     for (int i = timeline.count; i < timeline.capacity; i++) timeline.events[i].type = EVENT_NONE;
     timeline_build_queue();
     if (!read_things()) return 0;
+    save_restore_timed_effects();
     timeline_relink_events();
     return 1;
 }
 
-/* ponytail: the original then restores the timed magic effects and champion loads; the magic step adds them. */
 int save_load(const char *path, const gdat_t *gdat)
 {
     FILE *f = fopen(path, "rb");
@@ -725,6 +764,8 @@ int save_load(const char *path, const gdat_t *gdat)
     int result = SAVE_ERR_FORMAT;
     if (fread(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_read(f, 0)) {
         start_io(f, gdat);
+        if (draw_gdat() != gdat) draw_init(gdat);  /* the item effects of the champions read the item attributes */
+        champ_reset_step_state();
         io.format = le16(header + HEADER_FORMAT);
         result = read_state() ? SAVE_OK : SAVE_ERR_DATA;
     }

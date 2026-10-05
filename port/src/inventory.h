@@ -1,6 +1,7 @@
 #ifndef INVENTORY_H
 #define INVENTORY_H
 #include <stdint.h>
+#include "timeline.h"
 
 /* Modes of champ_apply_item_effects: how an item changes the champion that holds it. */
 enum item_effect_mode {
@@ -42,6 +43,20 @@ void champ_adjust_stat(uint8_t *stat, int delta);
 void ui_show_object_name(uint16_t thing);
 /* Updates the cursor when the icon of the animated leader hand object changes. */
 void inv_update_hand_cursor(void);
+/* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
+uint16_t champ_remove_object_from_slot(int champ, int slot);
+/* Puts thing into slot of champ. */
+void champ_add_object_to_slot(int champ, uint16_t thing, int slot);
+/* A click on a slot: 0 to 7 the hands in the status boxes, then the inventory slots, then the open chest. The leader
+   hand object and the item in the slot change places. */
+void inv_click_slot(int slot);
+/* Puts the leader hand object into the first free pouch or pack slot of champ. */
+void inv_store_leader_hand_object(int champ);
+/* Puts thing into the first free slot of champ that takes it. */
+void inv_put_object_in_free_slot(int champ, uint16_t thing);
+/* The timed effect of an eaten item (event 0x0e) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
+   for a loaded game. */
+void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
 

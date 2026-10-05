@@ -2,6 +2,7 @@
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
+#include "input.h"
 #include "item.h"
 #include "random.h"
 #include "text.h"
@@ -61,7 +62,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define ICON_OFFSET 1               /* the icon of an item in a hand casts a shadow 1 pixel up and left */
 #define FACE_SIZE 17
 #define ICON_SHADOW_REMAP 1         /* GDAT (1, 0, 7, 1): the colors of an item icon in a hand */
-#define DRAG_NONE 0
 #define FLAGS_MINION_HEADER 0x0400
 #define ICON_KEY_COLOR UI_RED       /* the background of a hand icon bitmap; the blit skips it */
 #define UI_INDEX_AURA 7
@@ -70,8 +70,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define GFX_SET_MASK 0x0f
 
 ActionArea action;
-/* The champion ordinal that a click drags (Step 14), 0 none. */
-static uint16_t drag_cell;
 
 static Offscreen area;
 static struct {
@@ -102,7 +100,6 @@ void action_reset(void)
     action.open_container = THING_NONE;
     for (int i = 0; i < CONTAINER_SLOTS; i++) action.open_items[i] = THING_NONE;
     area.bitmap = NULL;
-    drag_cell = DRAG_NONE;
 }
 
 uint16_t action_open_hand_item(void)
@@ -274,7 +271,7 @@ static void draw_party_icons(void)
     for (int i = 0; face && i < game.champion_count; i++) {
         const Champion *c = champion(i);
         int cell = relative_dir(c->cell);
-        if (!c->health || drag_cell == cell + 1) continue;
+        if (!c->health || input_drag_state == cell + 1) continue;
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
         int zone = ZONE_PARTY_FACE_FIRST + cell;
         if (!zone_compute_rect(face, r, zone, &sx, &sy, ZONE_NO_ANCHOR)) continue;
@@ -618,7 +615,7 @@ void ui_update_action_area(int tick)
         for (int i = 0; i < game.champion_count; i++) {
             const Champion *c = champion(i);
             uint8_t dir = (uint8_t)relative_dir(c->dir), cell = (uint8_t)relative_dir(c->cell);
-            if (!c->health || drag_cell == cell + 1) cell = NO_CELL;
+            if (!c->health || input_drag_state == cell + 1) cell = NO_CELL;
             if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
                 party_changed = 1;
                 if (cell != NO_CELL) action.dirty = 1;

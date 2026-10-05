@@ -26,7 +26,8 @@ typedef struct {
     uint16_t party_x, party_y, party_dir, party_map;
     uint16_t leader;
     uint16_t party_move_cooldown;
-    uint32_t unknown_time_a, unknown_time_b;  /* game times, meaning not known */
+    uint32_t unknown_time_a;     /* a game time, meaning not known */
+    uint32_t first_recruit_time; /* when the first champion joined: the party gets hungry faster after it */
     uint16_t throw_cooldown, throw_dir;      /* steps after a throw in which the party cannot move toward throw_dir */
     uint8_t sound_volume, music_volume;
     uint8_t weather_visible, heavy_rain, wind_dir, rain_intensity, sky_darkness, cloud_cover;

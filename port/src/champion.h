@@ -2,6 +2,7 @@
 #define CHAMPION_H
 #include <stdint.h>
 #include "save.h"
+#include "timeline.h"
 
 /* Champion slots: the hands, the body and pack slots (to 29), then the slots of an open container. */
 enum {
@@ -10,7 +11,7 @@ enum {
 };
 /* SLOT_CONTAINER_TEST: when the open hand item fits this slot, container slots take only pouch items. */
 
-enum { STAT_LUCK, STAT_STRENGTH, STAT_COUNT = 7 };
+enum { STAT_LUCK, STAT_STRENGTH, STAT_DEXTERITY, STAT_WISDOM, STAT_VITALITY, STAT_ANTI_MAGIC, STAT_ANTI_FIRE, STAT_COUNT };
 #define SKILL_COUNT 20
 #define SKILL_BASE_COUNT 4      /* skills 4 to 19 are sub-skills: 4 per base skill */
 #define CHAMPION_NAME_SIZE 8
@@ -69,6 +70,8 @@ typedef struct __attribute__((packed)) {
 _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record has 263 bytes");
 
 #define WOUND_LEGS 0x10
+#define NO_CHAMPION_CELL 0xff
+#define DRAG_CANCEL 0x8000
 
 /* Bytes of game.magic_light: the party spells. */
 enum { MAGIC_INVISIBILITY = 2, MAGIC_ACTION_EFFECT = 3, MAGIC_HASTE = 4 };
@@ -109,6 +112,45 @@ int champ_list_actions(int champ, uint16_t thing, int hand);
 int champ_get_index_in_cell(int cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
+/* Damage, poison, and death (damage.c). */
+extern int16_t champ_pending_damage[CHAMPION_MAX];   /* the damage of this game step, applied at its end */
+extern uint16_t champ_pending_wounds[CHAMPION_MAX];
+extern uint16_t champ_regen_counter;                 /* steps the regeneration of mana and health */
+/* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
+int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack);
+/* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100. */
+int champ_get_strength(int champ, int hand, int skill);
+/* The dexterity of champ with its load, 1 to 100. */
+int champ_get_dexterity(int champ);
+/* A luck test against chance; the luck changes by 2. Returns 1 when the champion is lucky. */
+int champ_test_luck(Champion *c, int chance);
+/* Wounds and damages champ (the damage shows at the end of the step); returns the damage, 0 when none. */
+int champ_take_damage(int champ, int damage, int wound_mask, int attack_type);
+/* Damages each champion by about damage; returns the mask of the champions that took damage. */
+int champ_damage_party(int damage, int wound_mask, int attack_type);
+/* Poisons champ: damage now, and a poison event that repeats with less. */
+void champ_poison(int champ, int amount);
+/* Takes amount away from the poison events of champ. */
+void champ_cure_poison(int champ, int amount);
+/* Clears the damage of the step, the regeneration counter, and the leader hand cache, as at the program start. */
+void champ_reset_step_state(void);
+/* Applies the damage and wounds of this step; a champion without health dies. */
+void champ_apply_pending_damage(void);
+/* Kills champ: it drops its items and its bones. */
+void champ_kill(int champ);
+/* Mana, food, water, stamina, health, and statistics change with the time. */
+void champ_apply_time_effects(void);
+/* The torches in the hands burn down. */
+void items_burn_held_lights(void);
+/* Brings champ back to life in a free cell, without items, with less maximum health. */
+void champ_revive(int champ);
+/* A step of an altar rebirth (event 0x0d). */
+void timeline_event_altar_rebirth(TimelineEvent *e);
+/* A click on the face of a champion in cell (bit 15: cancel the drag): the first click takes the face, the second
+   swaps it with the champion of the second cell. */
+void champ_drag_click(int cell);
+void champ_drag_cancel(void);
+
 /* Prepares the party of a loaded game for the screen: redraw flags, drawn hand state, the leader. */
 void champ_init_party_state(void);
 

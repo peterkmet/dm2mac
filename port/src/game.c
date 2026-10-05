@@ -148,7 +148,7 @@ void timeline_process(void)
         case EVENT_SQUARE: timeline_event_square(&e); break;
         case EVENT_HIDE_DAMAGE: timeline_event_hide_damage(e.priority); break;
         case EVENT_ALTAR_REBIRTH: timeline_event_altar_rebirth(&e); break;
-        case EVENT_ITEM_EFFECT: timeline_event_apply_item_effect(&e); break;
+        case EVENT_ITEM_EFFECT: timeline_event_apply_item_effect(&e, EFFECT_MODE_CONSUME_END); break;
         case EVENT_DELAYED_SOUND: sound_play_delayed(word); break;
         case EVENT_EXPLOSION: explosion_process_event(&e); break;
         case EVENT_PROJECTILE_MOVE: case EVENT_PROJECTILE_MOVE_2: projectile_process_event(&e); break;

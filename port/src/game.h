@@ -16,6 +16,7 @@ typedef struct {
     int running;            /* 0 while the game is paused */
     int view_hidden;        /* the viewport shows no dungeon (pause, sleep) */
     int end;                /* the game ended: the loop stops */
+    int completed;          /* the party won (Step 20 sets it): no more damage */
 } MainLoop;
 
 extern MainLoop main_loop;
