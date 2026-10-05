@@ -37,7 +37,6 @@ STUBS = {
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
-    0x4722A: (0, 0), 0x4766B: (0, 0),                                        # champion damage
     0x24E62: (2, 0), 0x24328: (0, 0), 0x24171: (0, 0), 0x23E5B: (0, 0),     # creature alert, push
     0x49EF8: (0, 0), 0x34106: (0, 0), 0x2F8F5: (0, 0), 0x306A8: (0, 0),     # creature turn, activation
     0x3085A: (0, 0), 0x3064D: (0, 0), 0x30D45: (1, 0), 0x30FE3: (0, 0),     # creature groups
@@ -63,7 +62,8 @@ G_ACTIVE_GROUPS, G_COMMAND_STOP = 0x7F898, 0x7F484
 COMMAND_RECORD = SCRATCH + 0xF8000
 SCHEDULED_EVENT = SCRATCH + 0xF8100
 SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
-# The wall sensor that creates an item (kind 0x3c) in timeline_event_wall_square: Step 17.
+CHAMP_TAKE_DAMAGE, CHAMP_DAMAGE_PARTY = 0x4722A, 0x4766B  # Step 15: the tests compare their arguments
+# The wall sensor that creates an item (kind 0x3c) in timeline_event_wall_square: Step 15.
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
 # The wall sensor of the end of the game (kind 0x12): Step 20.
 WALL_END_GAME = 0x58A12
@@ -93,6 +93,14 @@ class GameRecord(ctypes.Structure):
                 ("party_y", ctypes.c_uint16), ("party_dir", ctypes.c_uint16), ("party_map", ctypes.c_uint16),
                 ("leader", ctypes.c_uint16), ("party_move_cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
                 ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
+
+
+class DamageCall(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_int16) for name in ("champ", "damage", "wound_mask", "attack_type")]
+
+
+def int16(value):
+    return ctypes.c_int16(value).value
 
 
 class Command(ctypes.Structure):
@@ -135,6 +143,10 @@ class Scenario:
         self.emu = emu = view.emu
         for addr, (stack, result) in STUBS.items():
             emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
+        self.damage = []  # the damage calls of the original: (champion or -1 for the party, damage, wounds, attack)
+        emu.stub(CHAMP_TAKE_DAMAGE, lambda c, d, w, a, *_: self.damage.append(tuple(map(int16, (c, d, w, a)))))
+        emu.stub(CHAMP_DAMAGE_PARTY, lambda d, w, a, *_: self.damage.append((-1,) + tuple(map(int16, (d, w, a)))))
+        ctypes.c_int.in_dll(lib, "damage_call_count").value = 0
         self.fix_square_events()
         self.view = view
         groups = emu.read_u32(G_ACTIVE_GROUPS)
@@ -239,8 +251,6 @@ class Scenario:
         """Puts the party on (x, y) of map_ in both, like a load."""
         self.game.party_dir = direction
         self.emu.write(0x7F254, struct.pack("<h", direction))
-        for i in range(self.game.champion_count):
-            pass
         self.party.cur_map = -1
         self.emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
         self.lib.dun_set_party_location(x, y, map_)
@@ -327,8 +337,18 @@ class Scenario:
                 out.append(("event", i, mine[i * 12:i * 12 + 12].hex(), theirs[i * 12:i * 12 + 12].hex()))
         return out
 
+    def assert_same_damage(self, where):
+        """The damage hook calls of both since the last check."""
+        count = ctypes.c_int.in_dll(self.lib, "damage_call_count")
+        calls = (DamageCall * 64).in_dll(self.lib, "damage_calls")
+        mine = [(c.champ, c.damage, c.wound_mask, c.attack_type) for c in calls[:count.value]]
+        assert mine == self.damage, where
+        count.value = 0
+        self.damage.clear()
+
     def assert_same(self, where):
-        """The quick check: movement globals and the dungeon records and events."""
+        """The quick check: movement globals, damage calls, and the dungeon records and events."""
+        self.assert_same_damage(where)
         mine = {name: getattr(self.party, name) for name in GLOBALS}
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
                   for name, (addr, fmt) in GLOBALS.items()}
@@ -336,6 +356,7 @@ class Scenario:
         assert self.differences() == [], where
 
     def assert_equal(self, where):
+        self.assert_same_damage(where)
         (mine, mg), (theirs, tg) = self.state()
         assert ignore_stale(mg) == ignore_stale(tg), where
         if mine != theirs:
@@ -414,12 +435,43 @@ def test_random_walks_on_all_maps(scenario, lib):
             scenario.assert_equal((n, map_, x, y))  # the save files: the champions and the game record too
 
 
+G_CHAMPION_COUNT, CHAMPION_CELL = 0x7F276, 29
+
+
+def test_bump_damage_hits_the_champions_of_the_bump_side(scenario, lib):
+    # Four champions (copies of the first) in random cells, random places and directions, moves in all four
+    # directions: on a bump into a wall the champions of the two cells on that side take the damage.
+    import random
+    from test_interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+    rng = random.Random(15)
+    first = bytes(champion_records(lib)[:CHAMPION_SIZE])
+    scenario.game.champion_count = 4
+    scenario.emu.write(G_CHAMPION_COUNT, struct.pack("<H", 4))
+    places = squares(lib, (1,))
+    bumps = 0
+    for n in range(200):
+        for champ, cell in enumerate(rng.sample(range(4), 4)):
+            champion_bytes(lib, champ, 0, first)
+            champion_bytes(lib, champ, CHAMPION_CELL, [cell])
+        sync_champions(lib, scenario)
+        map_, x, y, _ = rng.choice(places)
+        scenario.place(map_, x, y, rng.randrange(4))
+        command = rng.choice((3, 4, 5, 6))
+        mine, theirs = scenario.command(command)
+        assert mine == theirs, (n, command)
+        bumps += any(champ >= 0 for champ, *_ in scenario.damage)
+        for _ in range(4):
+            scenario.step()
+        scenario.assert_same((n, map_, x, y, command))
+    assert bumps > 25
+
+
 def sensor_squares(lib):
     """(map, x, y, cell) of every square cell with a sensor or a text thing."""
     lib.dungeon_square_first_thing.restype = ctypes.c_uint16
     lib.dungeon_next_thing.restype = ctypes.c_uint16
     lib.thing_word.restype = ctypes.c_uint16
-    out, bad = set(), None
+    out, bad = set(), set()
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
@@ -427,11 +479,11 @@ def sensor_squares(lib):
                 while t != ENDOFLIST:
                     w = lib.thing_word(t, 2)
                     if t >> 10 & 15 == 3 and w & 0x7F == 0x16 and w >> 7 & 0x3F >= lib.dungeon_map_count():
-                        bad = (map_, x, y, t >> 14)  # it sends events to a map outside the dungeon (C: fixed)
+                        bad.add((map_, x, y, t >> 14))  # it sends events to a map outside the dungeon (C: fixed)
                     elif t >> 10 & 15 in (2, 3):
                         out.add((map_, x, y, t >> 14))
                     t = lib.dungeon_next_thing(t)
-    return sorted(out - {bad})
+    return sorted(out - bad)
 
 
 @pytest.mark.parametrize("part", range(4))

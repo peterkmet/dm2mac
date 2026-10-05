@@ -20,8 +20,6 @@
 #include "zone.h"
 
 #define REDRAW_INVENTORY_BOX 0x4000
-#define TEXT_SLEEPING 0x11          /* GDAT text (1, 0, 0x11): the sleep message */
-#define ZONE_VIEW_TEXT 6
 #define CHAMP_DAMAGE_SHOWN 0xffff
 
 MainLoop main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
@@ -149,30 +147,30 @@ void timeline_process(void)
         case EVENT_SQUARE: timeline_event_square(&e); break;
         case EVENT_HIDE_DAMAGE: timeline_event_hide_damage(e.priority); break;
         case EVENT_ALTAR_REBIRTH: timeline_event_altar_rebirth(&e); break;
-        case 0x0e: timeline_event_apply_item_effect(&e); break;
-        case 0x15: sound_play_delayed(word); break;
-        case 0x19: explosion_process_event(&e); break;
-        case 0x1d: case 0x1e: projectile_process_event(&e); break;
-        case 0x21: case 0x22: creature_process_event(e.data[0], e.data[1], e.type); break;
-        case 0x3c: case 0x3d: timeline_event_move_group(&e); break;
-        case 0x46:
+        case EVENT_ITEM_EFFECT: timeline_event_apply_item_effect(&e); break;
+        case EVENT_DELAYED_SOUND: sound_play_delayed(word); break;
+        case EVENT_EXPLOSION: explosion_process_event(&e); break;
+        case EVENT_PROJECTILE_MOVE: case EVENT_PROJECTILE_MOVE_2: projectile_process_event(&e); break;
+        case EVENT_CREATURE_ANIMATION: case EVENT_CREATURE_THINK: creature_process_event(e.data[0], e.data[1], e.type); break;
+        case EVENT_MOVE_GROUP: case EVENT_MOVE_GROUP_2: timeline_event_move_group(&e); break;
+        case EVENT_MAGIC_LIGHT:
             dun_set_current_map(game.party_map);
             timeline_event_magic_light(&e);
             light_update_party_light();
             break;
-        case 0x47:  /* invisibility ends */
+        case EVENT_INVISIBILITY:  /* invisibility ends */
             if (!--game.magic_light[MAGIC_INVISIBILITY] && ui.inventory)
                 champion(ui.inventory - 1)->redraw |= REDRAW_INVENTORY_BOX;
             break;
-        case 0x48: timeline_event_aura(e.priority, (int16_t)word); break;
-        case 0x4b: {  /* poison */
+        case EVENT_AURA: timeline_event_aura(e.priority, (int16_t)word); break;
+        case EVENT_POISON: {
             Champion *c = champion(e.priority);
             c->poisoned--;
             c->poison = (int16_t)(c->poison - word);
             champ_poison(e.priority, word);
             break;
         }
-        case 0x54: world_update_day_night(1); break;
+        case EVENT_WEATHER: world_update_day_night(1); break;
         case EVENT_SENSOR_ANIMATION_STEP: case EVENT_SENSOR_TIMER: case EVENT_SENSOR_IDLE: case EVENT_CLEAR_THING_FLAG8:
         case EVENT_SENSOR_ANIMATION_END: case EVENT_SENSOR_AMBIENT_SOUND: case EVENT_SENSOR_READY: case EVENT_SET_MARKER:
             timeline_event_sensor(&e);
@@ -193,11 +191,9 @@ void timeline_process(void)
     dun_set_current_map(game.party_map);
 }
 
-/* The part of a game step before the input wait: events, the view, the party clocks. */
-static void game_step(void)
+/* The events, map changes, and view of a game step, with each step of a walk. Returns 0 while the party sleeps. */
+static int game_step_view(void)
 {
-    tick_elapsed = 0;
-    main_loop.tick_count = 0;
     for (;;) {
         if (party.new_map != -1) {
             game_enter_map(game.party_x, game.party_y, party.new_map, 1);
@@ -208,7 +204,7 @@ static void game_step(void)
         timeline_process();
         if (party.new_map != -1) continue;
         world_update_day_night(0);
-        if (party_sleeping) goto clocks;
+        if (party_sleeping) return 0;
         if (!ui.candidate) ui_show_game_view();
         if (!ui.inventory) {
             if (party.redraw) creature_refresh_party_maps();
@@ -216,15 +212,23 @@ static void game_step(void)
             else view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
             screen_present_viewport();
         }
-        if (!party.move_steps) break;
+        if (!party.move_steps) return 1;
         if (party.move_steps == 1) move_party(party.move_command);
         int map = party.new_map;
         party.move_steps--;
-        if (map == -1) break;
+        if (map == -1) return 1;
     }
-    input_feedback_busy = 0;
-    input_poll();
-clocks:
+}
+
+/* The part of a game step before the input wait: events, the view, the party clocks. */
+static void game_step(void)
+{
+    tick_elapsed = 0;
+    main_loop.tick_count = 0;
+    if (game_step_view()) {
+        input_feedback_busy = 0;
+        input_poll();
+    }
     ui_release_move_arrow();
     sound_flush_requests(0);
     champ_apply_pending_damage();

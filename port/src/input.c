@@ -196,7 +196,7 @@ static const InputKey input_keys[INPUT_KEY_COUNT] = {
     {0x00d5, 0x0227}, {0x00d6, 0x0039}, {0x00df, 0x000f}, {0x004b, 0x0001}, {0x800b, 0x0039}, {0x8093, 0x0039},
     {0x8000, 0x0000},
 };
-/* The click feedback scripts (see input_run_click_feedback). */
+/* The click feedback scripts (see run_click_feedback). */
 static const uint8_t click_feedback_scripts[CLICK_FEEDBACK_SIZE] = {
     0x86, 0x85, 0x47, 0x01, 0x03, 0x03, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x02,
     0xff, 0x82, 0x47, 0x01, 0x03, 0x05, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x04,
@@ -572,6 +572,12 @@ static void queue_current(void)
     in.queue_tail = (in.queue_tail + 1) % COMMAND_QUEUE;
 }
 
+/* The commands that wait in the queue keep the input disabled until they run. */
+static void release_queue(void)
+{
+    in.disabled = (in.queue_tail - in.queue_head + COMMAND_QUEUE) % COMMAND_QUEUE;
+}
+
 /* Runs the click feedback script for elapsed timer ticks: pictures of pressed buttons, then the command. */
 static void run_click_feedback(int elapsed)
 {
@@ -584,7 +590,7 @@ static void run_click_feedback(int elapsed)
     }
     if (in.disabled || in.feedback_waiting || input_feedback_busy || !in.script) return;
     Offscreen o = {0};
-    int opened = 0;
+    int opened = 0, queue_full = 0;
     uint8_t op;
     do {
         const uint8_t *p = in.script + 1;
@@ -594,8 +600,7 @@ static void run_click_feedback(int elapsed)
             in.script_delay = *p++;
             break;
         case FB_RELEASE_QUEUE:
-        release:
-            in.disabled = (in.queue_tail - in.queue_head + COMMAND_QUEUE) % COMMAND_QUEUE;
+            release_queue();
             break;
         case FB_WAIT_QUEUE:
             in.feedback_waiting = 1;
@@ -606,18 +611,16 @@ static void run_click_feedback(int elapsed)
         case FB_QUEUE: case FB_QUEUE_AND_RELEASE:
             if ((in.queue_tail + 1) % COMMAND_QUEUE == in.queue_head) {
                 if (!in.disabled) in.disabled = 1;
-                goto done;  /* the queue is full: the script waits */
+                queue_full = 1;  /* the script waits */
+                break;
             }
             queue_current();
-            if ((op & 0x3f) == FB_QUEUE_AND_RELEASE) {
-                in.script = p;
-                goto release;
-            }
+            if ((op & 0x3f) == FB_QUEUE_AND_RELEASE) release_queue();
             break;
         case FB_EXECUTE:
             in.script = p;
             if (!command_execute(&in.current)) p = in.script - 1;
-            else if (input_command_stop) goto release;
+            else if (input_command_stop) release_queue();
             break;
         case FB_PICTURE: {
             int category = p[0], index = p[1], entry = p[2], key = (int8_t)p[3];
@@ -646,13 +649,13 @@ static void run_click_feedback(int elapsed)
             p += op_argument_size(op & 0x3f);
             break;
         }
+        if (queue_full) break;
         in.script = p;
         if (op & FB_END) {
             in.script = NULL;
             break;
         }
     } while (op & FB_RUN_ON);
-done:
     if (opened) offscreen_flush(&o, 1);
 }
 
@@ -691,12 +694,11 @@ void input_poll(void)
             }
             in.events_locked = 0;
             flush_deferred_click();
-            if (!command) goto feedback;
+            if (!command) break;
             in.script = click_feedback_script(&in.current);
             elapsed = 0;
         }
     }
-feedback:
     run_click_feedback(elapsed);
 }
 
@@ -891,8 +893,8 @@ static void game_pause(void)
     main_loop.running = 0;
     ui_hide_game_view();
     gfx_fill_bitmap(&view_viewport, ui_colors[UI_BLACK]);
-    gdat_text(draw_gdat(), CAT_INTERFACE, 0, 0x12, text, sizeof text);
-    text_draw_in_zone(6, ui_colors[UI_CYAN], text);
+    gdat_text(draw_gdat(), CAT_INTERFACE, 0, TEXT_PAUSED, text, sizeof text);
+    text_draw_in_zone(ZONE_VIEW_TEXT, ui_colors[UI_CYAN], text);
     screen_present_viewport();
     input_push_mode(INPUT_MODE_PAUSE);
     input_flush();

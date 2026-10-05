@@ -28,6 +28,7 @@ extern int input_drag_state;
 
 /* Builds the input tables; call once. */
 void input_init(void);
+/* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
 void input_set_mode(int mode);
 /* The command of a click (key 0) or of a key in mode, and the rectangle of its zone; 0 for none. */
 uint16_t input_find_command(int mode, int x, int y, int buttons, int key, int16_t *rect);
@@ -44,7 +45,9 @@ void input_key_down(uint16_t key);
 void input_flush(void);
 /* Turns the waiting events into commands and runs the click feedback. */
 void input_poll(void);
+/* Ends the push mode, the click feedback, and a drag. */
 void input_reset_states(void);
+/* Ends the push mode and redraws the movement arrows. */
 void input_cancel_push_mode(void);
 /* Redraws the released movement arrow. */
 void ui_release_move_arrow(void);

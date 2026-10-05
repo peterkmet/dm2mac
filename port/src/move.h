@@ -77,7 +77,7 @@ void move_compute_map_arrival(int x, int y, int map);
 int move_find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out_x, int16_t *out_y);
 /* Marker search over all maps; see the mode values in move.c. */
 int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y);
-/* The number of steps that the slowest champion needs for a move. */
+/* The number of game steps that the champion needs for a move (load, wounds, haste). */
 int champ_get_move_delay(int champ);
 /* Takes stamina from a champion. */
 void champ_decrease_stamina(int champ, int amount);

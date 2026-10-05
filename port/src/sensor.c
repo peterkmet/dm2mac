@@ -1008,7 +1008,10 @@ void timeline_event_door_animation(TimelineEvent *e)
     e->time_map++;
     int again = 0;
     if (!(w & DOOR_OPENING)) {
-        if (state == DOOR_CLOSED) goto stop;
+        if (state == DOOR_CLOSED) {
+            set_thing_word(door, DOOR_DATA, w & ~DOOR_MOVING);
+            return;
+        }
         int tall = (w & DOOR_TALL) != 0, hit = 0;
         int16_t damage = (int16_t)door_value(door, DOOR_KEY_DAMAGE);
         if (dun_on_party_square(x, y) && state) {
@@ -1058,7 +1061,6 @@ void timeline_event_door_animation(TimelineEvent *e)
         timeline_add_event(e);
         return;
     }
-stop:
     set_thing_word(door, DOOR_DATA, thing_word(door, DOOR_DATA) & ~DOOR_MOVING);
 }
 

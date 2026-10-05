@@ -4,6 +4,9 @@
 
 #define STEP_TICKS 8        /* timer ticks (60 Hz) of a game step */
 #define SLEEP_STEP_TICKS 1  /* a sleeping party runs a step on each tick */
+#define TEXT_SLEEPING 0x11  /* GDAT text (1, 0, 0x11): the sleep message */
+#define TEXT_PAUSED 0x12    /* GDAT text (1, 0, 0x12): the pause message */
+#define ZONE_VIEW_TEXT 6    /* the layout zone of a message in the viewport */
 
 /* Main loop state. */
 typedef struct {
@@ -27,6 +30,7 @@ void timeline_process(void);
 void game_tick(void);
 /* Shows the dungeon view again after a pause, sleep, or the inventory. */
 void ui_show_game_view(void);
+/* Hides the dungeon view: the viewport shows a message (pause, sleep) until ui_show_game_view. */
 void ui_hide_game_view(void);
 /* Copies the view picture to the screen. */
 void screen_present_viewport(void);

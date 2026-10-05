@@ -7,6 +7,11 @@
    returns the "nothing happened" value until its step ports it; the step then moves it to its module. */
 
 /* Step 15: champions. */
+/* The arguments of the damage hook calls (champ -1: the whole party), for the tests until Step 15. */
+typedef struct { int16_t champ, damage, wound_mask, attack_type; } DamageCall;
+#define DAMAGE_CALL_MAX 64
+extern DamageCall damage_calls[DAMAGE_CALL_MAX];
+extern int damage_call_count;
 int champ_take_damage(int champ, int damage, int wound_mask, int attack_type);   /* returns 0: no damage */
 int champ_damage_party(int damage, int wound_mask, int attack_type);             /* returns the hit champions, 0 */
 void champ_apply_pending_damage(void);

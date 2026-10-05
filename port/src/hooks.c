@@ -3,8 +3,26 @@
 #include "input.h"
 
 /* Empty until their steps; see hooks.h. */
-int champ_take_damage(int champ, int damage, int wound_mask, int attack_type) { (void)champ; (void)damage; (void)wound_mask; (void)attack_type; return 0; }
-int champ_damage_party(int damage, int wound_mask, int attack_type) { (void)damage; (void)wound_mask; (void)attack_type; return 0; }
+DamageCall damage_calls[DAMAGE_CALL_MAX];
+int damage_call_count;
+
+static void record_damage(int champ, int damage, int wound_mask, int attack_type)
+{
+    if (damage_call_count < DAMAGE_CALL_MAX)
+        damage_calls[damage_call_count++] = (DamageCall){(int16_t)champ, (int16_t)damage, (int16_t)wound_mask, (int16_t)attack_type};
+}
+
+int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
+{
+    record_damage(champ, damage, wound_mask, attack_type);
+    return 0;
+}
+
+int champ_damage_party(int damage, int wound_mask, int attack_type)
+{
+    record_damage(-1, damage, wound_mask, attack_type);
+    return 0;
+}
 void champ_apply_pending_damage(void) { }
 void champ_apply_time_effects(void) { }
 void champ_process_repeated_actions(void) { }
