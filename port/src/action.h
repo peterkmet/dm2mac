@@ -2,6 +2,7 @@
 #define ACTION_H
 #include <stdint.h>
 #include "save.h"
+#include "ui.h"
 
 /* What the action area shows. */
 enum action_mode {
@@ -41,5 +42,9 @@ uint16_t action_open_hand_item(void);
 void ui_action_area_close(void);
 /* Redraws what changed in the action area (tick: one game tick passed). */
 void ui_update_action_area(int tick);
+/* Opens the action area bitmap (clear: it starts black) and returns it. */
+Offscreen *ui_action_area_begin_draw(int clear);
+/* Draws the button and the name of action i of the action menu or of a minion map. */
+void ui_draw_action_name(int i, int highlight);
 
 #endif

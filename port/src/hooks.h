@@ -82,5 +82,8 @@ void sound_play_delayed(int index);
 
 /* Step 20: end of game. */
 void game_complete(void);
+/* The level digit table (dungeon_read_level_table): the map icon set of the squares outside the maps of a level;
+   returns 0 until Step 20 reads the table. */
+int dungeon_level_digit(int level);
 
 #endif

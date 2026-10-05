@@ -62,6 +62,7 @@ void sound_request(int category, int index, int entry, int priority, int volume,
 void sound_flush_requests(int queue) { (void)queue; }
 void sound_play_delayed(int index) { (void)index; }
 void game_complete(void) { }
+int dungeon_level_digit(int level) { (void)level; return 0; }
 void command_execute_later(const Command *c) { (void)c; }
 uint16_t champ_remove_object_from_leader_hand(void) { return THING_NONE; }
 void champ_put_object_in_leader_hand(uint16_t thing, int flag) { hook_record(HOOK_PUT_IN_LEADER_HAND, thing, flag, 0, 0, 0); }

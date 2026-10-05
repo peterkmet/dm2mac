@@ -12,6 +12,7 @@
 #include "item.h"
 #include "input.h"
 #include "magic.h"
+#include "minion.h"
 #include "move.h"
 #include "music.h"
 #include "save.h"
@@ -57,7 +58,8 @@ enum {
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
-    CMD_HAND_LAST = 0x7b, CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c
+    CMD_HAND_LAST = 0x7b, CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
+    CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -993,6 +995,10 @@ int command_execute(Command *c)
         magic_remove_last_rune();
     } else if (command >= CMD_RUNE_FIRST && command <= CMD_RUNE_LAST) {
         magic_add_rune(command - CMD_RUNE_FIRST);
+    } else if (command == CMD_MINION_MAP) {
+        minion_map_click_set_destination(command, c->x, c->y);
+    } else if (command >= CMD_MAP_OPTION_FIRST && command <= CMD_MAP_OPTION_LAST) {
+        ui_toggle_map_option(command - CMD_MAP_OPTION_FIRST);
     } else if (command == CMD_PAUSE) {
         game_pause();
     } else if (command == CMD_RESUME) {

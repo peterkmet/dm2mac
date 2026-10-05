@@ -68,6 +68,8 @@ int view_hit_test_wall_ornament(int pos, int x, int y);
 /* The ornament (low byte of the front face word) that the wall things from first show on the face that looks to
    dir, as dun_apply_wall_things_to_aspect; 0xff none. */
 int view_wall_face_ornament(int map, uint16_t first, int dir);
+/* What the party looking to dir sees of the square (x, y) of map (the minion map draws it). */
+void dun_get_square_aspect(ViewSquare *s, int map, int dir, int x, int y);
 /* Fills the cleared band of the viewport (a gap that the floor and ceiling leave). */
 void view_clear_viewport(void);
 /* True when the last view picture shows the party position and direction. */

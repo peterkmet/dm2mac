@@ -12,7 +12,7 @@ from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from test_creature import CreatureScenario
 from test_interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, Game, c_screen, champion_bytes, champion_records,
-                            diff, draw_game_screen, open_hand, sync_champions, update_action_area)
+                            diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
 from test_interface import gdat, original, port  # noqa: F401 (fixtures)
 from test_move import start  # noqa: F401 (fixture)
 
@@ -420,3 +420,198 @@ def test_many_casts_match_original(magic):
             magic.step()
     assert big > 50
     magic.assert_magic_state("end")
+
+
+# ---- Minion maps ----
+
+G_THINGS, THING_SIZES = 0x7F288, (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
+G_LEVEL_DIGIT_TABLE, DUN_SET_PARTY_LOCATION, G_CUR_MAP, G_PARTY_DIR = 0x7F3D0, 0x1C82D, 0x72244, 0x7F254
+G_ACTION_FLAGS, G_ACTION_HAND = 0x7FB5E, 0x7FB72
+# MinionMap fields: name -> (address, format).
+MINION_GLOBALS = {"marker_state": (0x7FB52, "<h"), "y_offset": (0x7FB54, "<h"), "x_offset": (0x7FB56, "<h"),
+                  "below_y": (0x7FB58, "<h"), "below_x": (0x7FB5A, "<h"), "above_map": (0x7FB5C, "<h"),
+                  "marker_map": (0x7FB60, "<h"), "below_map": (0x7FB62, "<h"), "above_x": (0x7FB64, "<h"),
+                  "above_y": (0x7FB66, "<h"), "marker_x": (0x7FB6A, "<h"), "marker_y": (0x7FB6C, "<h"),
+                  "map": (0x7FB7D, "<b"), "x": (0x7FB7E, "<b"), "y": (0x7FB7F, "<b"), "dir": (0x7FB80, "<b"),
+                  "mana_divisor": (0x7FB4A, "<h"), "mana_timer": (0x7FB95, "<h")}
+
+
+class MinionMap(ctypes.Structure):
+    _fields_ = [(n, ctypes.c_int16) for n in ("marker_state", "y_offset", "x_offset", "below_y", "below_x", "above_map",
+                                              "marker_map", "below_map", "above_x", "above_y", "marker_x", "marker_y")] + [
+        (n, ctypes.c_int8) for n in ("map", "x", "y", "dir")] + [
+        ("mana_divisor", ctypes.c_int16), ("mana_timer", ctypes.c_int16), ("clip", ctypes.c_int16 * 4)]
+
+
+def record_address(emu, thing):
+    t = thing >> 10 & 15
+    return emu.read_u32(G_THINGS + 4 * t) + (thing & 0x3FF) * THING_SIZES[t]
+
+
+def set_word(lib, emu, thing, offset, value):
+    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.set_thing_word(thing, offset, value)
+    emu.write(record_address(emu, thing) + offset, struct.pack("<H", value))
+
+
+def word(lib, thing, offset):
+    lib.thing_word.restype = ctypes.c_uint16
+    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    return lib.thing_word(thing, offset)
+
+
+@pytest.fixture(scope="module")
+def map_ui(spell_ui):
+    """The spell interface with a level digit table of zeros, like the C port before Step 20."""
+    spell_ui.digits = spell_ui.alloc(64)
+    return spell_ui
+
+
+def place_party(lib, emu, map_, x, y, d):
+    from test_move import GameRecord, Party
+    Party.in_dll(lib, "party").cur_map = -1
+    emu.write(G_CUR_MAP, struct.pack("<h", -1))
+    GameRecord.in_dll(lib, "game").party_dir = d
+    emu.write(G_PARTY_DIR, struct.pack("<H", d))
+    lib.dun_set_party_location(x, y, map_)
+    emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
+    emu.write(0x75BFE, bytes([lib.dungeon_map_graphics(map_) >> 4 & 0xF]))  # g_map_gfx_set of game_enter_map
+
+
+def assert_map_state(lib, original, where):
+    emu = original.emu
+    mine, theirs = c_screen(lib), original.screen()
+    assert mine == theirs, (where, diff(mine, theirs, 320))
+    assert bytes(champion_records(lib)) == emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE), where
+    action = ActionArea.in_dll(lib, "action")
+    for field, addr in (("champion", G_ACTION_CHAMPION), ("redraw_delay", G_ACTION_DELAY), ("mode", G_ACTION_MODE),
+                        ("flags", G_ACTION_FLAGS)):
+        assert getattr(action, field) & 0xFFFF == struct.unpack("<H", emu.read(addr, 2))[0], (where, field)
+    m = MinionMap.in_dll(lib, "minion_map")
+    for name, (addr, fmt) in MINION_GLOBALS.items():
+        assert getattr(m, name) == struct.unpack(fmt, emu.read(addr, struct.calcsize(fmt)))[0], (where, name)
+    assert ctypes.c_uint32.in_dll(lib, "random_seed").value == emu.read_u32(0x70518), where
+    lib.dungeon_thing_record.restype = ctypes.c_void_p
+    for t in (9, 14):
+        n = lib.dungeon_thing_count(t)
+        assert ctypes.string_at(lib.dungeon_thing_record(t << 10), n * THING_SIZES[t]) == \
+            emu.read(emu.read_u32(G_THINGS + 4 * t), n * THING_SIZES[t]), (where, "things", t)
+
+
+def squares_of(lib, kinds):
+    out = []
+    for m in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(m)):
+            for y in range(lib.dungeon_map_height(m)):
+                if lib.dungeon_square(m, x, y) >> 5 in kinds:
+                    out.append((m, x, y))
+    return out
+
+
+def static_groups(lib):
+    """(group, map, x, y) of the static creature groups on the squares of the dungeon."""
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
+    out = []
+    for m in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(m)):
+            for y in range(lib.dungeon_map_height(m)):
+                t = lib.dungeon_square_first_thing(m, x, y)
+                while t != 0xFFFE:
+                    if t >> 10 & 15 == 4:
+                        record = ctypes.string_at(ctypes.c_void_p(lib.dungeon_thing_record(t)), 16)
+                        out.append((t, m, x, y, record[4]))
+                    t = lib.dungeon_next_thing(t)
+    return out
+
+
+def set_time(lib, emu, t):
+    Game.in_dll(lib, "game").game_time = t
+    emu.write_u32(0x7F22C, t)
+
+
+def test_minion_maps_match_original(port, map_ui):
+    # The minion maps of the dungeon in the hand of the first champion, of each kind (no location, minion,
+    # location, without options), with a minion (a link projectile in the possessions of a creature group) and a
+    # marker at random squares, at random party places and directions, with the option buttons, over game ticks that
+    # take the mana (and darken the map without mana), and clicks on the grid that send the minion. The screen, the
+    # champion, the action area flags, the map state, and the map records must be equal to the original.
+    lib, original = port, map_ui
+    emu = original.emu
+    emu.write_u32(G_LEVEL_DIGIT_TABLE, original.digits)
+    lib.item_is_minion_map.argtypes = [ctypes.c_uint16]
+    lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]
+    lib.dungeon_thing_record.restype = ctypes.c_void_p
+    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
+    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint16)
+    lib.creature_group_info.argtypes = [ctypes.c_uint16]
+    maps = [9 << 10 | i for i in range(lib.dungeon_thing_count(9)) if lib.dungeon_thing_valid(9 << 10 | i)
+            and lib.item_is_minion_map(9 << 10 | i)]
+    assert len(maps) >= 4
+    groups = [g for g in static_groups(lib) if lib.creature_group_info(g[0])[0] & 1]
+    places = squares_of(lib, (1,))
+    free_projectile = next(14 << 10 | i for i in range(lib.dungeon_thing_count(14)) if word(lib, 14 << 10 | i, 0) == 0xFFFF)
+    draw_game_screen(lib, original)
+    rng = random.Random(20)
+    time = Game.in_dll(lib, "game").game_time
+    kinds, clicks, moved, dark = set(), 0, 0, 0
+    for n in range(48):
+        thing = rng.choice(maps)
+        kind = n % 4
+        set_word(lib, emu, thing, 4, word(lib, thing, 4) & 0x1FFF | kind << 13)
+        location = 0xFFFF
+        if kind == 2 or rng.random() < 0.5:
+            m, x, y = rng.choice(places)
+            location = x | y << 5 | m << 10
+        set_word(lib, emu, thing, 6, location)
+        set_word(lib, emu, thing, 2, 0xFFFE)
+        if kind == 1 and rng.random() < 0.8:
+            group, gm, gx, gy, _ = rng.choice(groups)
+            set_word(lib, emu, free_projectile, 0, word(lib, group, 2))
+            set_word(lib, emu, free_projectile, 2, thing)
+            dx, dy = rng.randrange(-2, 3), rng.randrange(-2, 3)
+            mx = min(max(gx + dx, 0), lib.dungeon_map_width(gm) - 1)
+            my = min(max(gy + dy, 0), lib.dungeon_map_height(gm) - 1)
+            set_word(lib, emu, free_projectile, 4, mx | my << 5 | gm << 10)
+            set_word(lib, emu, free_projectile, 6, 0)
+            set_word(lib, emu, group, 2, free_projectile)
+            set_word(lib, emu, thing, 2, group)
+        m, x, y = rng.choice(places)
+        place_party(lib, emu, m, x, y, rng.randrange(4))
+        champion_bytes(lib, 0, CH_SLOTS, struct.pack("<H", thing))
+        champion_bytes(lib, 0, CH_MANA, struct.pack("<h", rng.choice((0, 2, 5, 60, 300))))
+        sync_champions(lib, original)
+        set_action(lib, original, champion=0)
+        update_action_area(lib, original)
+        open_hand(lib, original, 0)
+        kinds.add((kind, ActionArea.in_dll(lib, "action").flags & 0x60))
+        assert_map_state(lib, original, (n, "open", hex(thing), kind))
+        for k in range(rng.randrange(10, 60)):
+            r = rng.random()
+            if r < 0.1:
+                assert command(lib, emu, 0x56 + rng.randrange(4)) == (1, 1)
+            elif r < 0.25 and kind == 1:
+                rect = original.alloc(8)
+                from test_interface import ZONE_GET_RECT
+                emu.call(ZONE_GET_RECT, 99, rect)
+                zx, zy, zw, zh = struct.unpack("<4h", emu.read(rect, 8))
+                before = word(lib, thing, 6)
+                assert command(lib, emu, 0x55, zx + rng.randrange(zw), zy + rng.randrange(zh)) == (1, 1)
+                clicks += 1
+                moved += word(lib, thing, 6) != before
+            time += 1
+            set_time(lib, emu, time)
+            update_action_area(lib, original, tick=1)
+            dark += not ActionArea.in_dll(lib, "action").flags & 0x200
+            assert_map_state(lib, original, (n, k, hex(thing), kind))
+        lib.ui_action_area_close()
+        emu.call(UI_ACTION_AREA_CLOSE)
+        update_action_area(lib, original)
+        assert_map_state(lib, original, (n, "close"))
+        if word(lib, thing, 2) != 0xFFFE:  # unlink the minion again
+            group = word(lib, thing, 2)
+            set_word(lib, emu, group, 2, word(lib, free_projectile, 0))
+            set_word(lib, emu, free_projectile, 0, 0xFFFF)
+    assert {k for k, _ in kinds} == {0, 1, 2, 3} and (1, 0x20) in kinds
+    assert clicks > 20 and moved > 5 and dark > 20

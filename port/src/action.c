@@ -3,6 +3,7 @@
 #include "champion.h"
 #include "dungeon.h"
 #include "item.h"
+#include "minion.h"
 #include "random.h"
 #include "text.h"
 #include "ui.h"
@@ -123,6 +124,12 @@ static void begin_draw(int clear)
     if (area.bitmap) return;
     offscreen_create(&area, ZONE_ACTION_AREA, clear);
     if (clear) offscreen_fill_rect(&area, area.rect, ui_colors[UI_BLACK]);
+}
+
+Offscreen *ui_action_area_begin_draw(int clear)
+{
+    begin_draw(clear);
+    return &area;
 }
 
 /* Draws the result of an action: the damage in a star, or the picture of a failure. */
@@ -400,6 +407,8 @@ static void draw_action_name(int i, int highlight)
                                             text_gdat_label(a->category, a->index, a->entry));
 }
 
+void ui_draw_action_name(int i, int highlight) { draw_action_name(i, highlight); }
+
 /* Draws the action menu of the open hand. */
 static void draw_action_menu(void)
 {
@@ -603,7 +612,8 @@ void ui_update_action_area(int tick)
         action.mode = ACTION_MODE_NONE;
         goto flush;
     }
-    /* ponytail: the hand reload countdown (Step 15) and the mana of an open minion map (Step 16) are game rules */
+    /* ponytail: the hand reload countdown (Step 15) is a game rule */
+    if (tick && action.mode == ACTION_MODE_MINION_MAP) minion_map_drain_mana();
     if (action.result) {
         draw_action_result(action.result);
         action.dirty = 1;
@@ -664,7 +674,7 @@ void ui_update_action_area(int tick)
                 int champ = action.champion - 1;
                 uint16_t thing = champion(champ)->slots[action.hand];
                 if (item_is_minion_map(thing) && !action.flags) {
-                    action.mode = ACTION_MODE_MINION_MAP;  /* ponytail: the minion map comes with Step 16 */
+                    minion_map_open(champ);
                 } else if (item_is_moneybox(thing)) {
                     action.mode = ACTION_MODE_MONEY_BOX;
                 } else if (item_is_chest(thing) && action.mode != ACTION_MODE_CONTAINER) {
@@ -678,7 +688,9 @@ void ui_update_action_area(int tick)
                 } else if (champ_list_actions(champ, thing, action.hand) && action.mode != ACTION_MODE_MINION_MAP) {
                     action.mode = ACTION_MODE_MENU;
                     draw_action_menu();
-                } else if (action.mode != ACTION_MODE_MINION_MAP) {
+                } else if (action.mode == ACTION_MODE_MINION_MAP) {
+                    ui_draw_minion_map(thing);
+                } else {
                     action.champion = 0;
                     action.mode = ACTION_MODE_HANDS;
                 }

@@ -133,6 +133,9 @@ uint8_t dungeon_square_edge(int map, int x, int y);
 /* The map of the level at level_delta from the level of map that holds the dungeon position of (x, y) of map, and
    its square there in *x, *y; -1 when no such map has an open square there. */
 int dungeon_location_on_map(int map, int level_delta, int *x, int *y);
+/* The same search from list position *next (0: the first map of the level); sets *next to the position after the
+   map that it found, 0 when it found none. */
+int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *next);
 
 /* A pair of teleporters with link sensors: a seamless passage to another map. */
 typedef struct {
