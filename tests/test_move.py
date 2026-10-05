@@ -42,7 +42,7 @@ STUBS = {
     0x3085A: (0, 0), 0x3064D: (0, 0), 0x30D45: (1, 0), 0x30FE3: (0, 0),     # creature groups
     0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
     0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
-    0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
+    0x49CBB: (0, 0),                                                         # champion revival (Step 15)
     0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
     0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
     0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
@@ -69,6 +69,61 @@ WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
 WALL_END_GAME = 0x58A12
 # sensor_forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
 FORWARD_REVERSE_HOLD = 0x5723C
+# Step 17: the weather update, and sensor_transfer_object with its charge change that mode 3 leaves uninitialized.
+WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2
+EXPLOSION_CREATE, SHOP_PARSE_ITEM_CLASS_SET = 0x16746, 0x1538D  # Steps 16 and 15: the tests compare the arguments
+MAP_GRAPHICS_TAIL = SCRATCH + 0xF8200  # the end of gdat_load_map_graphics: world_update_day_night(0), then return
+# Weather globals of the original: name -> (address, struct format); the C values come from World.
+WEATHER = {
+    "weather_visible": (0x8047B, "<B"), "heavy_rain": (0x8047C, "<B"), "wind_dir": (0x8047F, "<B"),
+    "rain_intensity": (0x8047E, "<B"), "sky_darkness": (0x8047A, "<B"), "cloud_cover": (0x80479, "<B"),
+    "storm_multiplier": (0x80480, "<B"), "storm_step": (0x80477, "<B"), "storm_curve": (0x80474, "<B"),
+    "storm_intensity": (0x80470, "<H"), "next_hour_time": (0x80430, "<I"),
+    "strike_threshold": (0x8046C, "<h"), "storm_previous": (0x8046A, "<H"), "hour_light": (0x80472, "<h"),
+    "day_time_offset": (0x80434, "<I"), "first_init": (0x76184, "<i"), "thunder_toggle": (0x76188, "<i"),
+    "lightning_flash": (0x7F248, "<i"), "light_level": (0x7F282, "<h"), "light_source_sum": (0x7F970, "<h"),
+    "explosion_light_sum": (0x7F974, "<h"),
+}
+G_SKY_OBJECTS, SKY_OBJECTS_SIZE = 0x80438, 50
+G_GFX_HAS_CLOUDS, G_GFX_HAS_RAIN, G_GFX_HAS_LIGHTNING = 0x80475, 0x80476, 0x8047D
+
+
+class WeatherState(ctypes.Structure):
+    """The C weather.h Weather."""
+    _fields_ = [("strike_threshold", ctypes.c_int16), ("storm_previous", ctypes.c_uint16), ("hour_light", ctypes.c_int16),
+                ("day_time_offset", ctypes.c_uint32), ("first_init", ctypes.c_int), ("thunder_toggle", ctypes.c_int),
+                ("lightning_flash", ctypes.c_int), ("dungeon_loaded", ctypes.c_int)]
+
+
+class ExplosionCall(ctypes.Structure):
+    _fields_ = [("type", ctypes.c_uint16), ("attack", ctypes.c_uint16), ("x", ctypes.c_uint16), ("y", ctypes.c_uint16),
+                ("cell", ctypes.c_int16)]
+
+
+def c_weather(lib):
+    """The weather globals of the C port, by the names of WEATHER."""
+    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "weather")
+    out = {name: getattr(game, name) for name in list(WEATHER)[:11]}
+    out |= {name: getattr(weather, name) for name in list(WEATHER)[11:18]}
+    out["light_level"] = ctypes.c_int.in_dll(lib, "view_light_level").value
+    out["light_source_sum"] = ctypes.c_int16.in_dll(lib, "light_source_sum").value
+    out["explosion_light_sum"] = ctypes.c_int16.in_dll(lib, "explosion_light_sum").value
+    return out
+
+
+def c_sky(lib):
+    """The C sky objects up to the end mark."""
+    lib.view_sky_objects.restype = ctypes.c_void_p
+    return sky_list(ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
+
+
+def sky_list(raw):
+    out = []
+    for i in range(0, SKY_OBJECTS_SIZE, 10):
+        if raw[i] == 0xFF:
+            break
+        out.append(raw[i:i + 10])
+    return out
 
 
 def ignore_stale(state):
@@ -93,6 +148,16 @@ class GameRecord(ctypes.Structure):
                 ("party_y", ctypes.c_uint16), ("party_dir", ctypes.c_uint16), ("party_map", ctypes.c_uint16),
                 ("leader", ctypes.c_uint16), ("party_move_cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
                 ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
+
+
+class WorldGame(ctypes.Structure):
+    """The weather fields of the C save.h Game."""
+    _fields_ = GameRecord._fields_ + [
+        ("sound_volume", ctypes.c_uint8), ("music_volume", ctypes.c_uint8), ("weather_visible", ctypes.c_uint8),
+        ("heavy_rain", ctypes.c_uint8), ("wind_dir", ctypes.c_uint8), ("rain_intensity", ctypes.c_uint8),
+        ("sky_darkness", ctypes.c_uint8), ("cloud_cover", ctypes.c_uint8), ("storm_multiplier", ctypes.c_uint8),
+        ("storm_step", ctypes.c_uint8), ("storm_curve", ctypes.c_uint8), ("storm_intensity", ctypes.c_uint16),
+        ("next_hour_time", ctypes.c_uint32)]
 
 
 class DamageCall(ctypes.Structure):
@@ -154,7 +219,14 @@ class Scenario:
         groups = emu.read_u32(G_ACTIVE_GROUPS)
         for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
             emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
-        emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
+        self.explosions = []  # the explosion calls of the original (lightning)
+        emu.stub(EXPLOSION_CREATE, lambda t, a, x, y, cell, *_: self.explosions.append(
+            (t & 0xFFFF, a & 0xFFFF, x & 0xFFFF, y & 0xFFFF, int16(cell))), stack_args=1)
+        ctypes.c_int.in_dll(lib, "explosion_call_count").value = 0
+        emu.stub(SHOP_PARSE_ITEM_CLASS_SET, lambda c, e, bits, *_: emu.write(bits, bytes(0x40)))
+        self.map_graphics_tail()
+        self.set_local(TRANSFER_OBJECT_FRAME, 0, 0)
+        self.sync_weather()
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
         self.clear_uninitialized_event_bytes()
@@ -166,6 +238,49 @@ class Scenario:
         self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         if place_party:
             self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
+
+    def map_graphics_tail(self):
+        """gdat_load_map_graphics runs load_map_graphics, then the original world_update_day_night(0) like the C
+        callers of view_enter_map."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EIP
+        call = WORLD_UPDATE_DAY_NIGHT - (MAP_GRAPHICS_TAIL + 7)
+        self.emu.write(MAP_GRAPHICS_TAIL, b"\x31\xc0\xe8" + struct.pack("<i", call) + b"\xc3")
+
+        def hook(uc, *_):
+            try:
+                self.load_map_graphics()
+            except Exception as e:  # exceptions do not cross the Unicorn callbacks
+                self.emu._fail(f"map graphics stub: {e!r}")
+            uc.reg_write(UC_X86_REG_EIP, MAP_GRAPHICS_TAIL)
+
+        self.emu.uc.hook_add(UC_HOOK_CODE, hook, begin=GDAT_LOAD_MAP_GRAPHICS, end=GDAT_LOAD_MAP_GRAPHICS)
+
+    def sync_weather(self):
+        """The weather state that the save does not keep: the original load stubs weather_init, so it gets the values
+        of the C weather_init (the strike threshold and the hour light depend on the time and seed before the load)."""
+        theirs = self.weather()
+        mine = c_weather(self.lib)
+        assert mine["day_time_offset"] == theirs["day_time_offset"]
+        for name in ("strike_threshold", "storm_previous", "hour_light", "first_init", "thunder_toggle", "lightning_flash",
+                     "light_level", "light_source_sum", "explosion_light_sum"):
+            addr, fmt = WEATHER[name]
+            self.emu.write(addr, struct.pack(fmt, mine[name]))
+
+    def weather(self):
+        """The weather globals of the original."""
+        return {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0] for name, (addr, fmt) in WEATHER.items()}
+
+    def assert_same_weather(self, where):
+        """The weather, the light, the sky objects (while the weather shows), and the lightning explosions of both."""
+        assert c_weather(self.lib) == self.weather(), where
+        if self.weather()["weather_visible"]:
+            assert c_sky(self.lib) == sky_list(self.emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)), where
+        count = ctypes.c_int.in_dll(self.lib, "explosion_call_count")
+        calls = (ExplosionCall * 64).in_dll(self.lib, "explosion_calls")
+        assert [(c.type, c.attack, c.x, c.y, c.cell) for c in calls[:count.value]] == self.explosions, where
+        count.value = 0
+        self.explosions.clear()
 
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
@@ -180,10 +295,11 @@ class Scenario:
         emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
         emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
         emu.write(tv.G_VIEW_CLEAR, bytes(2))
-        weather = tv.WeatherGame.in_dll(lib, "game")
-        sky = view.sky_objects(gfx_set, weather.sky_darkness, weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)
-        emu.write(tv.G_SKY_OBJECTS, sky)
+        lib.view_sky_objects.restype = ctypes.c_void_p
+        emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
         emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
+        for addr, entry in ((G_GFX_HAS_CLOUDS, 0x6A), (G_GFX_HAS_RAIN, 0x67), (G_GFX_HAS_LIGHTNING, 0x64)):
+            emu.write(addr, bytes([lib.gdat_exists(self.gdat, 0x17, gfx_set, 1, entry)]))
         lib.view_enter_map(map_)
 
     def clear_uninitialized_event_bytes(self):
@@ -194,7 +310,8 @@ class Scenario:
         keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
-                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0)}
+                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0),
+                0x54: (0, 0, 0, 0, 0, 0)}
         emu = self.emu
 
         def hook(uc, *_):
@@ -275,9 +392,11 @@ class Scenario:
         return mine, theirs
 
     def step(self):
-        """The game loop part that this test runs per step: the timeline, the walk, and the cooldowns."""
+        """The game loop part that this test runs per step: the timeline, the weather, the walk, and the cooldowns."""
         self.lib.timeline_process()
         self.emu.call(TIMELINE_PROCESS)
+        self.lib.world_update_day_night(0)
+        self.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
         if self.party.move_steps:
             if self.party.move_steps == 1:
                 self.lib.move_party(self.party.move_command)
@@ -356,6 +475,7 @@ class Scenario:
                   for name, (addr, fmt) in GLOBALS.items()}
         assert ignore_stale(mine) == ignore_stale(theirs), where
         assert self.differences() == [], where
+        self.assert_same_weather(where)
 
     def assert_equal(self, where):
         self.assert_same_damage(where)
@@ -589,10 +709,9 @@ def test_clicks_in_the_view(scenario, lib):
     clicked = 0
     for n, (map_, x, y, d) in enumerate(places[::2]):
         scenario.place(map_, x, y, d)
-        weather = tv.WeatherGame.in_dll(lib, "game")
-        sky = scenario.view.sky_objects(lib.dungeon_map_graphics(map_) >> 4 & 0xF, weather.sky_darkness,
-                                        weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)
-        scenario.view.draw(map_, x, y, d, 0, sky)
+        lib.view_sky_objects.restype = ctypes.c_void_p
+        sky = ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE)  # the weather of the C port in both
+        scenario.view.draw(map_, x, y, d, ctypes.c_int.in_dll(lib, "view_light_level").value, sky)
         seed.value = tv.VIEW_SEED
         lib.view_draw_dungeon(d, x, y)
         n_zones = count.value

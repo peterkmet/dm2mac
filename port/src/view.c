@@ -508,19 +508,7 @@ static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 /* Sky objects: clouds, rain, and the landmarks of an outdoor map. */
 #define SKY_OBJECT_MAX 5
 #define SKY_LANDMARK_MAX 100
-#define SKY_RAIN_LIGHT 0x67
-#define SKY_RAIN_MEDIUM 0x68
-#define SKY_RAIN_HEAVY 0x69
-#define SKY_CLOUDS_LIGHT 0x6a
-#define SKY_CLOUDS_MEDIUM 0x6b
-#define SKY_CLOUDS_HEAVY 0x6c
 #define SKY_LANDMARK_DISTANCE 210   /* screen offset per square of lateral distance */
-#define SKY_DARKNESS_RAIN 0x10      /* rain pictures from this sky darkness on, heavier from the next limits */
-#define SKY_DARKNESS_MEDIUM 0x40
-#define SKY_DARKNESS_HEAVY 0x80
-#define SKY_CLOUDS_SHOWN 0x40
-#define SKY_CLOUDS_MORE 0x80
-#define SKY_CLOUDS_MOST 0xc0
 enum sky_flip { SKY_FLIP_FLOOR = 8, SKY_FLIP_CEILING = 2, SKY_FLIP_FLOOR_2 = 0x40, SKY_FLIP_CEILING_2 = 0x20 };
 enum sky_move { SKY_FIXED, SKY_LANDMARK };
 
@@ -548,7 +536,6 @@ static struct {
     int16_t wall_key;
     uint16_t flip_flags;
     const uint8_t *wall_ornaments; /* random wall ornaments: the list of the party map */
-    int gfx_has_rain, gfx_has_clouds;
     int clear;                  /* fill clear_rect before drawing: floor and ceiling leave a gap */
     int16_t clear_rect[RECT_SIZE];
     uint8_t clear_color;
@@ -564,7 +551,7 @@ static struct {
         uint16_t group;
         uint32_t cells;
     } pending;
-} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST};
+} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST, .sky[0].entry = SKY_OBJECT_END};
 
 ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 int view_click_zone_count;
@@ -619,25 +606,6 @@ int weather_load_sky_object(SkyObject *object)
 
 SkyObject *view_sky_objects(void) { return view.sky; }
 
-/* The rain and clouds of the saved weather, until world_update_day_night rebuilds them after view_enter_map. */
-static void build_weather_sky(void)
-{
-    SkyObject *o = view.sky;
-    if (game.weather_visible) {
-        if (view.gfx_has_rain && game.sky_darkness >= SKY_DARKNESS_RAIN) {
-            o->entry = game.sky_darkness < SKY_DARKNESS_MEDIUM ? SKY_RAIN_LIGHT
-                       : game.sky_darkness < SKY_DARKNESS_HEAVY ? SKY_RAIN_MEDIUM : SKY_RAIN_HEAVY;
-            if (weather_load_sky_object(o)) o++;
-        }
-        if (view.gfx_has_clouds && game.cloud_cover >= SKY_CLOUDS_SHOWN) {
-            o->entry = game.cloud_cover < SKY_CLOUDS_MORE ? SKY_CLOUDS_LIGHT
-                       : game.cloud_cover < SKY_CLOUDS_MOST ? SKY_CLOUDS_MEDIUM : SKY_CLOUDS_HEAVY;
-            if (weather_load_sky_object(o)) o++;
-        }
-    }
-    o->entry = SKY_OBJECT_END;
-}
-
 void view_enter_map(int map)
 {
     const gdat_t *g = draw_gdat();
@@ -649,8 +617,6 @@ void view_enter_map(int map)
     view.wall_key = (int16_t)value_key(CAT_MAP, view.gfx_set, MAP_KEY_WALL_COLOR);
     view.flip_flags = value_key(CAT_MAP, view.gfx_set, MAP_KEY_FLIP_FLAGS);
     view.wall_ornaments = dungeon_map_wall_ornaments(map);
-    view.gfx_has_rain = gdat_exists(g, CAT_SKY, view.gfx_set, GDAT_TYPE_IMAGE, SKY_RAIN_LIGHT);
-    view.gfx_has_clouds = gdat_exists(g, CAT_SKY, view.gfx_set, GDAT_TYPE_IMAGE, SKY_CLOUDS_LIGHT);
     uint16_t sky_state = value_key(CAT_MAP, view.gfx_set, MAP_KEY_SKY_STATE);
     view.rain_shown = sky_state < sizeof sky_state_rain && sky_state_rain[sky_state];  /* fix: no read past the table */
     /* floor and ceiling pictures that do not fill the viewport leave a band that is cleared */
@@ -670,7 +636,6 @@ void view_enter_map(int map)
     uint32_t size;
     const uint8_t *colors = gdat_item(g, gdat_find(g, CAT_INTERFACE, 0, TYPE_DATA, UI_COLORS_ENTRY), &size);
     view.clear_color = colors && size ? colors[0] : 0;
-    build_weather_sky();
 }
 
 /* 1 when the picture of kind should be mirrored for the party at (x, y) looking to dir. */
