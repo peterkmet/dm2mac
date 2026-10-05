@@ -26,6 +26,15 @@ enum view_aspect {
 };
 
 extern ViewSquare view_squares[VIEW_SQUARE_COUNT];
+/* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward. */
+#define VIEW_GRID_SIZE 0x166
+/* The view position of the square that holds each grid cell. */
+extern uint8_t view_creature_grid[VIEW_GRID_SIZE];
+/* The view position of the square of the creature that stands at each grid cell, 0xff for none. */
+extern uint8_t view_object_grid[VIEW_GRID_SIZE];
+/* By view position: bit n set when grid cell n of the square holds a missile, or an object. */
+extern uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
+extern uint32_t view_object_masks[VIEW_SQUARE_COUNT];
 /* The view picture, 224 x 136 pixels. */
 extern Bitmap view_viewport;
 /* The party light level, 0 (bright) to 5. Step 17 computes it; until then it stays as set. */
@@ -49,5 +58,9 @@ void view_copy_image_mode1(const Bitmap *src, Bitmap *dst);
 int zone_id_for_view_cell(int base, int cell, int dir);
 /* Turns a cell of a 5 x 5 grid around its center by dir quarter turns. */
 int view_rotate_grid5_cell(int cell, int dir);
+/* The thing grid position of cell (0 to 24) of the square (base_x, base_y) of the map. */
+void view_grid5_cell_to_xy(int base_x, int base_y, uint16_t cell, int16_t *x, int16_t *y);
+/* Moves a creature of size 1 to 3 at (*x, *y) toward the party eye at (party_x, party_y), in thing grid cells. */
+void view_offset_creature_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y);
 
 #endif
