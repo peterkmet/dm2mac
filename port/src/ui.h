@@ -39,6 +39,7 @@ typedef struct {
     int16_t dirty[OFFSCREEN_DIRTY_MAX][RECT_SIZE];
 } Offscreen;
 
+/* Opens an offscreen bitmap of zone (-1: of o->rect); mark_dirty marks it all as changed. */
 void offscreen_create(Offscreen *o, int zone, int mark_dirty);
 /* Copies the changed parts to the screen; close frees the bitmap. */
 void offscreen_flush(Offscreen *o, int close);
@@ -49,8 +50,11 @@ void offscreen_fill_rect(Offscreen *o, const int16_t *rect, int color);
 void offscreen_fill_rect_dithered(Offscreen *o, const int16_t *rect, int ui_color);
 void offscreen_blit(Offscreen *o, const Bitmap *src, const int16_t *rect, int src_x, int src_y, int transparent,
                     int mirror, const uint8_t *colormap);
+/* Draws a GDAT image placed in zone. */
 void offscreen_draw_gdat_image(Offscreen *o, int category, int index, int entry, int zone, int transparent);
+/* Draws a prepared picture placed in zone (-1: at its rect). */
 void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
+/* Draws text placed in zone, plain or with a shadow. */
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text);
 void offscreen_draw_text_in_zone_with_shadow(Offscreen *o, int zone, int color, int bg, const char *text);
 
@@ -92,6 +96,7 @@ void ui_draw_movement_arrows(void);
 void champ_draw_state(int champ);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
 void champ_draw_all_states(int tick);
+/* Sets redraw flags on all champions. */
 void champ_set_redraw_flags(uint16_t flags);
 /* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
 void inv_toggle(int champ);

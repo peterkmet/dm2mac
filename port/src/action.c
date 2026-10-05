@@ -111,6 +111,7 @@ uint16_t action_open_hand_item(void)
     return action.hand_items[action.champion - 1][action.hand];
 }
 
+/* A direction or cell relative to the party direction. */
 static int relative_dir(int dir) { return (dir + DIR_COUNT - game.party_dir) & 3; }
 
 /* The wall set of the party map. */
@@ -124,6 +125,7 @@ static void begin_draw(int clear)
     if (clear) offscreen_fill_rect(&area, area.rect, ui_colors[UI_BLACK]);
 }
 
+/* Draws the result of an action: the damage in a star, or the picture of a failure. */
 static void draw_action_result(int16_t value)
 {
     begin_draw(1);
@@ -204,6 +206,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
     return icon;
 }
 
+/* Draws a hand of a champion in the action area: its back, its item icon, dimmed while it is busy. */
 static void draw_hand_icon(int champ, int hand, int flash)
 {
     begin_draw(0);
@@ -254,6 +257,7 @@ static void haste_jitter(int16_t *r)
     if (d) r[RECT_X] = (int16_t)(r[RECT_X] + d - 2);
 }
 
+/* A cleared bitmap for a champion face icon. */
 static Bitmap *face_bitmap(void)
 {
     Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, 4);
@@ -261,6 +265,7 @@ static Bitmap *face_bitmap(void)
     return face;
 }
 
+/* Draws the faces of the party in their cells, with the auras. */
 static void draw_party_icons(void)
 {
     begin_draw(0);
@@ -285,6 +290,7 @@ static void draw_party_icons(void)
     }
 }
 
+/* Draws the spell hand and the rune icon of a champion in the action area. */
 static void draw_spell_icon(int champ, int flash)
 {
     begin_draw(0);
@@ -317,6 +323,7 @@ static void draw_spell_icon(int champ, int flash)
     }
 }
 
+/* Draws the header of an open hand or spell panel with the champion name. */
 static void draw_menu_header(void)
 {
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_MENU_HEADER, ZONE_MENU_HEADER, UI_OPAQUE);
@@ -326,6 +333,7 @@ static void draw_menu_header(void)
                                             ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
 }
 
+/* Draws the face of the champion whose hand or spell panel is open. */
 static void draw_action_champion_face(void)
 {
     begin_draw(0);
@@ -344,6 +352,7 @@ static void draw_action_champion_face(void)
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_FACE_RIGHT, ZONE_FACE_RIGHT, UI_OPAQUE);
 }
 
+/* Draws the runes that the champion entered in the spell panel. */
 static void draw_entered_runes(int clear)
 {
     begin_draw(0);
@@ -357,6 +366,7 @@ static void draw_entered_runes(int clear)
     }
 }
 
+/* Draws the spell panel: the runes of the next set, the entered runes, the face. */
 static void draw_spell_panel(void)
 {
     int set = champion(action.champion - 1)->rune_count;
@@ -372,6 +382,7 @@ static void draw_spell_panel(void)
     draw_action_champion_face();
 }
 
+/* Draws the button and the name of action i of the action menu. */
 static void draw_action_name(int i, int highlight)
 {
     begin_draw(0);
@@ -389,12 +400,14 @@ static void draw_action_name(int i, int highlight)
                                             text_gdat_label(a->category, a->index, a->entry));
 }
 
+/* Draws the action menu of the open hand. */
 static void draw_action_menu(void)
 {
     for (int i = 0; i < champ_action_count; i++) draw_action_name(i, 0);
     draw_action_champion_face();
 }
 
+/* Draws an open money box with a pile of coins for each coin slot. */
 static void draw_money_box(uint16_t box)
 {
     /* the offsets of up to 32 coins in a pile */
@@ -442,6 +455,7 @@ static void draw_money_box(uint16_t box)
     }
 }
 
+/* Draws an open chest with its items; full also draws the chest and its lid. */
 static void draw_container(uint16_t container, int full)
 {
     int index = item_gdat_index(container);

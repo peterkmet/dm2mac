@@ -38,6 +38,7 @@ int item_max_charges(uint16_t thing);
 int item_fits_slot(uint16_t thing, int slot, int strict);
 /* The icon entry of an item in slot (animated: by its icon animation attribute). */
 int item_icon_index(uint16_t thing, int slot, int animated);
+/* Container kinds: money box (a chest with coin slots), chest, minion map. */
 int item_is_moneybox(uint16_t thing);
 int item_is_chest(uint16_t thing);
 int item_is_minion_map(uint16_t thing);

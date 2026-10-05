@@ -80,6 +80,7 @@ char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);
 void text_set_message_cursor(int column, int row);
 /* Clears the message rows whose show time is over. */
 void text_clear_expired_rows(void);
+/* Prints a message, a character, a number and a space, or a new line at the message cursor. */
 void text_print_message(int color, const char *text);
 void text_print_char(int color, char c);
 void text_print_number(int color, int32_t value);

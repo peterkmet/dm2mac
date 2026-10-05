@@ -392,6 +392,7 @@ static void text_scroll_message_area(void)
              NULL);
 }
 
+/* Goes to the next message row; at the bottom row the new row waits in the row bitmap. */
 static void text_message_new_line(void)
 {
     if (message.row != MESSAGE_ROWS - 1) {
@@ -406,6 +407,7 @@ static void text_message_new_line(void)
     message_expiry[MESSAGE_ROWS - 1] = MESSAGE_NEVER;
 }
 
+/* Draws a message line at the cursor (or into the pending row) and starts its show time. */
 static void text_message_draw_line(int color, const char *line)
 {
     int16_t r[RECT_SIZE];

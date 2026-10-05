@@ -52,6 +52,7 @@ uint16_t champ_action_thing = THING_NONE;
 int party_sleeping;
 uint8_t champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
+/* v limited to low and high. */
 static int clamp(int low, int v, int high) { return v < low ? low : v > high ? high : v; }
 
 int champ_get_stat(Champion *c, int stat, int which)

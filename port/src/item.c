@@ -73,6 +73,7 @@ static struct {
     int16_t values[COIN_TYPE_MAX];
 } coins;
 
+/* The 16-bit field of a thing record at byte offset offset. */
 static uint16_t record_word(uint16_t thing, int offset) { return thing_word(thing, offset); }
 
 uint8_t item_gdat_category(uint16_t thing)
@@ -200,6 +201,7 @@ int item_icon_index(uint16_t thing, int slot, int animated)
     }
 }
 
+/* The kind bits of a container: chest or money box, minion map. */
 static int container_kind_bits(uint16_t thing) { return record_word(thing, CONTAINER_KIND) & CONTAINER_KIND_BITS; }
 
 int item_is_moneybox(uint16_t thing)
