@@ -114,3 +114,46 @@ def test_key_in_the_keyhole_opens_the_door(loop, lib):
     loop.assert_equal("end")
     mine, theirs = square(loop, 22, 3, 4)
     assert mine == theirs and mine & DOOR_STATE == DOOR_OPEN and closed[0] & DOOR_STATE == DOOR_CLOSED, (closed, mine)
+
+
+KEY_INVENTORY = 0x02
+MODE_MOVE, MODE_INVENTORY = 5, 8
+CMD_SLOT_FIRST, CMD_MOUTH, CMD_HAND_FIRST, CMD_ACTION_FIRST = 0x14 + 8, 0x46, 0x74, 0x71
+CHAMPION_WATER = 0x46
+
+
+def find_click(lib, mode, command):
+    """A screen point whose left click gives command in mode, with the C port state."""
+    lib.input_find_command.restype = ctypes.c_uint16
+    rect = (ctypes.c_int16 * 4)()
+    return next((x, y) for y in range(0, 200, 2) for x in range(0, 320, 2)
+                if lib.input_find_command(mode, x, y, LEFT, 0, rect) == command)
+
+
+def test_drink_and_hand_actions(loop, lib):
+    # The inventory of the first champion: the bota of the pouch goes into the leader hand, a click on the mouth
+    # drinks from it, and it goes back into the pouch. Then the action menu of the ready hand and its first action,
+    # several times, with the busy hand counting down between them.
+    from test_interface import CHAMPION_SIZE, champion_records
+    run(loop, [("k", KEY_INVENTORY), ("t", 16)], "inventory")
+    pouch = find_click(lib, MODE_INVENTORY, CMD_SLOT_FIRST + 13)
+    run(loop, [("c", *pouch), ("t", 8)], "take bota")
+    assert hands(loop)[0][0] != 0xFFFF
+    water = struct.unpack_from("<h", bytes(champion_records(lib)), CHAMPION_WATER)[0]
+    run(loop, [("c", *find_click(lib, MODE_INVENTORY, CMD_MOUTH)), ("t", 8)], "drink")
+    assert struct.unpack_from("<h", bytes(champion_records(lib)), CHAMPION_WATER)[0] != water
+    run(loop, [("c", *pouch), ("t", 8), ("k", KEY_INVENTORY), ("t", 16)], "put back")
+    assert hands(loop)[0][0] == 0xFFFF
+    loop.assert_loop("inventory")
+    actions = 0
+    for n in range(6):
+        run(loop, [("c", *find_click(lib, MODE_MOVE, CMD_HAND_FIRST)), ("t", 4)], ("menu", n))
+        try:
+            point = find_click(lib, MODE_MOVE, CMD_ACTION_FIRST)
+        except StopIteration:
+            continue
+        run(loop, [("c", *point), ("t", 60)], ("action", n))
+        actions += 1
+        loop.assert_loop(("action", n))
+    assert actions >= 3
+    loop.assert_equal("end")
