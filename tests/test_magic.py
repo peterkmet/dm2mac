@@ -117,7 +117,6 @@ class MagicScenario(CreatureScenario):
         emu.stub(CHAMP_LAUNCH_PROJECTILE, lambda c, t, p, a, s, *_: rec(
             (HOOK_LAUNCH_PROJECTILE, (c - G_CHAMPIONS) // CHAMPION_SIZE, t & 0xFFFF, p & 0xFFFF, a & 0xFFFF, s & 0xFFFF)),
             stack_args=1)
-        emu.stub(LIGHT_UPDATE_PARTY_LIGHT, lambda *_: 0)
         clear_magic_event_bytes(emu)
         c_hook_calls(lib)
         self.game_record = Game.in_dll(lib, "game")
@@ -144,7 +143,7 @@ class MagicScenario(CreatureScenario):
         assert leader_hand == struct.unpack("<H", self.emu.read(G_LEADER_HAND, 2))[0], where
         assert c_hook_calls(self.lib) == self.calls, where
         self.calls.clear()
-        self.assert_creatures(where)
+        self.assert_same(where)
 
 
 @pytest.fixture
