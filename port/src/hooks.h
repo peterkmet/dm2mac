@@ -31,7 +31,7 @@ void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);
 /* Rules of Step 15 that the spells use: they change nothing; the tests compare the arguments of their calls. */
 enum hook_call_kind {
-    HOOK_ADD_EXPERIENCE, HOOK_ADD_ACTION_DELAY, HOOK_ADD_OBJECT_TO_SLOT, HOOK_PUT_IN_LEADER_HAND, HOOK_LAUNCH_PROJECTILE
+    HOOK_ADD_EXPERIENCE, HOOK_ADD_ACTION_DELAY, HOOK_ADD_OBJECT_TO_SLOT, HOOK_PUT_IN_LEADER_HAND
 };
 typedef struct { int32_t kind, args[5]; } HookCall;
 #define HOOK_CALL_MAX 64
