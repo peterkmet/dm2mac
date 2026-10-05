@@ -549,6 +549,13 @@ static int square_has_explosion(uint16_t first, int kind)
     return 0;
 }
 
+/* Fails the command: with AI_EXECUTE the creature reports the failure. */
+static int command_failed(int execute)
+{
+    if (execute) ai.command_result = AI_RESULT_FAILED;
+    return 0;
+}
+
 /* Tests (and with AI_EXECUTE starts) an attack from (x, y) on (target_x, target_y) (-1: the square in dir).
    mode 0, 1: the party; 2: a group; 3: anything. */
 int creature_ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir)
@@ -558,44 +565,44 @@ int creature_ai_try_attack(int mode, int x, int y, int target_x, int target_y, i
     uint16_t flags = ai.attack_flags;
     int16_t tx = (int16_t)target_x, ty = (int16_t)target_y;
     int cell = -1;
-    if (!flags) goto fail;
+    if (!flags) return command_failed(execute);
     if (tx == -1) {
         tx = (int16_t)(dir_dx[(int16_t)dir] + x);
         ty = (int16_t)(y + dir_dy[(int16_t)dir]);
     }
-    if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty)) goto fail;
+    if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty)) return command_failed(execute);
     int16_t distance = (int16_t)square_distance(x, y, tx, ty);
-    if (distance > 1 && !(flags &= ATTACK_RANGED_MASK)) goto fail;
-    if (distance == 0 && !(flags &= ATTACK_MELEE_MASK)) goto fail;
-    if (distance > info_attack_range(ai.info)) goto fail;
+    if (distance > 1 && !(flags &= ATTACK_RANGED_MASK)) return command_failed(execute);
+    if (distance == 0 && !(flags &= ATTACK_MELEE_MASK)) return command_failed(execute);
+    if (distance > info_attack_range(ai.info)) return command_failed(execute);
     if (distance == 0) {
         int16_t d = 0;
         while (d < 4 && !creature_ai_try_move(0, x, y, dir_dx[d] + x, (int16_t)(y + dir_dy[d]), d)) d++;
-        if (d < 4) goto fail;
+        if (d < 4) return command_failed(execute);
     }
     if (mode <= 1) {
-        if (!at_party(tx, ty)) goto fail;
+        if (!at_party(tx, ty)) return command_failed(execute);
     } else if (mode == 2) {
         creature_ai_cache_square(tx, ty);
-        if (creature_ai_cached_first_group() == THING_ENDOFLIST) goto fail;
+        if (creature_ai_cached_first_group() == THING_ENDOFLIST) return command_failed(execute);
     }
-    if (distance > 1 && !(int16_t)creature_trace_line(x, y, tx, ty, creature_square_blocks_line)) goto fail;
+    if (distance > 1 && !(int16_t)creature_trace_line(x, y, tx, ty, creature_square_blocks_line)) return command_failed(execute);
     int steal_cell = -1;
     if (flags & ATTACK_STEAL) {
         steal_cell = steal_target_cell(x, y);
-        if ((int16_t)steal_cell < 0 && !(flags &= (uint16_t)~ATTACK_STEAL)) goto fail;
+        if ((int16_t)steal_cell < 0 && !(flags &= (uint16_t)~ATTACK_STEAL)) return command_failed(execute);
     }
     if (class_flags() & AI_CLASS_AVOIDS_CLOUDS) {
         creature_ai_cache_square(tx, ty);
         if (square_has_explosion(creature_ai_cached_first_object(), EXPLOSION_LASTING_CLOUD) && !(flags &= ATTACK_MELEE_MASK))
-            goto fail;
+            return command_failed(execute);
     }
     if (ai_party.map == party.cur_map && class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS
         && !(ai.info->flags & CREATURE_NOT_SEEN_THROUGH)
         && !((uint16_t)x == group_x() && (uint16_t)y == group_y() && party.cur_map == ai.map)) {
         if (square_type(dun_get_square(x, y)) == SQUARE_DOOR && square_distance(x, y, ai_party.x, ai_party.y) < 2
             && rand_2bits())
-            goto fail;
+            return command_failed(execute);
     }
     if (!execute) return 1;
     if ((int16_t)dir == -1)
@@ -649,9 +656,6 @@ int creature_ai_try_attack(int mode, int x, int y, int target_x, int target_y, i
     ai.active->mode = (uint8_t)mode;
     ai.command_result = AI_RESULT_ACTING;
     return 1;
-fail:
-    if (execute) ai.command_result = AI_RESULT_FAILED;
-    return 0;
 }
 
 /* A door spell flying toward the door or an explosion that opens it between (x, y) and the door. */
@@ -687,51 +691,48 @@ int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, 
     int state = 0;  /* 1: the door is as wanted; 2: a spell is on the way */
     int16_t distance = 0;
     uint8_t *door = NULL;
-    if (!flags) goto fail;
+    if (!flags) return command_failed(execute);
     if (tx == -1) {
         tx = (int16_t)(x + dir_dx[d]);
         ty = (int16_t)(y + dir_dy[d]);
     } else if (d == -1) {
         d = (int16_t)dun_get_direction_to(x, y, tx, ty);
     } else if (tx == (int16_t)x && (int16_t)y == ty) {
-        goto fail;
+        return command_failed(execute);
     }
-    if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty)) goto fail;
+    if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty)) return command_failed(execute);
     creature_ai_cache_square(tx, ty);
-    if (square_type(ai_square.square) != SQUARE_DOOR) goto fail;
+    if (square_type(ai_square.square) != SQUARE_DOOR) return command_failed(execute);
     int door_state = ai_square.square & SQUARE_DOOR_STATE;
     if (mode == 0 ? door_state == DOOR_STATE_OPEN : door_state == DOOR_STATE_CLOSED) {
         state = 1;
     } else if (mode != 0 && door_state == DOOR_STATE_BROKEN) {
-        goto fail;
+        return command_failed(execute);
     } else {
         door = dungeon_thing_record(cached_first_thing());
         uint16_t bits = (uint16_t)(door[2] | door[3] << 8);
-        if (mode == 2 && !(bits & DOOR_MARKED)) goto fail;
-        if (bits & DOOR_LOCKED) {
-            if (bits & DOOR_LOCK_OPEN ? mode == 0 : mode != 0) {
-                state = 2;
-                goto decided;
-            }
-            if (!(bits & DOOR_LOCK_OPEN) && !(flags &= 0xfff3)) goto fail;
-        }
-        distance = (int16_t)square_distance(x, y, tx, ty);
-        int button = (bits & DOOR_BUTTON) || (bits & DOOR_OPENER);
-        if (distance == 1) {
-            if (!((flags & DOOR_SKILL_BUTTON && button)
-                  || (mode == 0 && ((flags & DOOR_SKILL_BASH && bits & DOOR_BREAKABLE) || (flags & DOOR_SKILL_BURN && bits & DOOR_BURNABLE)))
-                  || flags & DOOR_SKILL_HANDLE))
-                goto fail;
+        if (mode == 2 && !(bits & DOOR_MARKED)) return command_failed(execute);
+        if (bits & DOOR_LOCKED && (bits & DOOR_LOCK_OPEN ? mode == 0 : mode != 0)) {
+            state = 2;
         } else {
-            if (distance > info_attack_range(ai.info)) goto fail;
-            if (!((flags & DOOR_SKILL_SHOOT_BUTTON && button) || (mode == 0 && flags & DOOR_SKILL_BASH && bits & DOOR_BREAKABLE)))
-                goto fail;
-            if (!(int16_t)creature_trace_line(x, y, tx, ty, creature_square_blocks_line)) goto fail;
+            if (bits & DOOR_LOCKED && !(bits & DOOR_LOCK_OPEN) && !(flags &= 0xfff3)) return command_failed(execute);
+            distance = (int16_t)square_distance(x, y, tx, ty);
+            int button = (bits & DOOR_BUTTON) || (bits & DOOR_OPENER);
+            if (distance == 1) {
+                if (!((flags & DOOR_SKILL_BUTTON && button)
+                      || (mode == 0 && ((flags & DOOR_SKILL_BASH && bits & DOOR_BREAKABLE) || (flags & DOOR_SKILL_BURN && bits & DOOR_BURNABLE)))
+                      || flags & DOOR_SKILL_HANDLE))
+                    return command_failed(execute);
+            } else {
+                if (distance > info_attack_range(ai.info)) return command_failed(execute);
+                if (!((flags & DOOR_SKILL_SHOOT_BUTTON && button) || (mode == 0 && flags & DOOR_SKILL_BASH && bits & DOOR_BREAKABLE)))
+                    return command_failed(execute);
+                if (!(int16_t)creature_trace_line(x, y, tx, ty, creature_square_blocks_line)) return command_failed(execute);
+            }
+            if (flags & DOOR_SKILL_SHOOT_BUTTON && door_spell_on_line(x, y, distance, d)) state = 2;
         }
-        if (flags & DOOR_SKILL_SHOOT_BUTTON && door_spell_on_line(x, y, distance, d)) state = 2;
     }
-decided:
-    if (state && mode == 2) goto fail;
+    if (state && mode == 2) return command_failed(execute);
     if (!execute) return 1;
     if (d == -1) d = (int16_t)dun_get_direction_to(x, y, tx, ty);
     if (state == 1) {
@@ -757,7 +758,7 @@ decided:
     } else {
         uint16_t saved = ai.attack_flags;
         if (flags & DOOR_SKILL_BURN && saved & 1 && (!(flags & 0xffb4) || rand_bit())) ai.attack_flags &= 1;
-        else if (!(flags & DOOR_SKILL_BASH)) goto fail;
+        else if (!(flags & DOOR_SKILL_BASH)) return command_failed(execute);
         else ai.attack_flags &= 0x50;
         int r = creature_ai_try_attack(AI_EXECUTE | 4, x, y, tx, ty, d);
         ai.attack_flags = saved;
@@ -770,9 +771,6 @@ decided:
     ai.active->mode = (uint8_t)mode;
     ai.command_result = AI_RESULT_ACTING;
     return 1;
-fail:
-    if (execute) ai.command_result = AI_RESULT_FAILED;
-    return 0;
 }
 
 /* True when a dangerous projectile flies toward (x, y) within 3 squares in a direction that the creature sees. */
@@ -957,175 +955,192 @@ static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing,
     return map;
 }
 
-/* Tests (and with AI_EXECUTE starts) a move of the group from (x, y) to (dest_x, dest_y) (-1: the square in dir).
-   dir 4 and 5: a level change up and down; dir 6: a move to the given square that keeps the facing. Kinds 3, 7, and
-   8 are the quick tests of the search; kinds 4 and 5 avoid dangers, kind 6 is a step back, kind 1 keeps a distance
-   to the party. */
-int creature_ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir)
+/* A move of the group: the squares, the directions, the action, and the result that the test sets for the execution. */
+typedef struct {
+    int16_t sx, sy, tx, ty, d, action, facing;
+    int kind, result, map_changed, attack_group, same;
+} Move;
+
+/* Tests the move; returns 1 when the move continues to the execution, 0 when the result is final. */
+static int test_move(Move *m, int command)
 {
     int execute = command & AI_EXECUTE, no_movers = command & AI_MOVE_NO_MOVERS, attack_groups = command & AI_MOVE_ATTACK_GROUPS;
-    int kind = command & AI_MOVE_KIND_MASK;
-    int16_t sx = (int16_t)x, sy = (int16_t)y, tx = (int16_t)dest_x, ty = (int16_t)dest_y, d = (int16_t)dir;
-    int16_t action = -1, facing = d;
-    int result = 0, map_changed = 0, attack_group = 0, same = 0, saved_map = party.cur_map;
-    if (kind == 2) goto finish;
-    int enabled = command_enabled(kind);
-    if (!enabled && !ai.move_flags) goto finish;
-    if (d == 6) {
-        facing = (int16_t)group_dir();
-    } else if (d >= 4) {
-        if (!(ai.move_flags & MOVE_LEVELS)) goto finish;
-        int map = level_change(sx, sy, d, &action, &facing, &tx, &ty);
-        if (map < 0) goto finish;
-        map_changed = 1;
+    if (m->kind == 2) return 1;
+    int enabled = command_enabled(m->kind);
+    if (!enabled && !ai.move_flags) return 1;
+    if (m->d == 6) {
+        m->facing = (int16_t)group_dir();
+    } else if (m->d >= 4) {
+        if (!(ai.move_flags & MOVE_LEVELS)) return 1;
+        int map = level_change(m->sx, m->sy, m->d, &m->action, &m->facing, &m->tx, &m->ty);
+        if (map < 0) return 1;
+        m->map_changed = 1;
         creature_ai_set_map(map);
-        sx = sy = -1;
-    } else if (tx == -1) {
-        tx = (int16_t)(sx + dir_dx[d]);
-        ty = (int16_t)(sy + dir_dy[d]);
+        m->sx = m->sy = -1;
+    } else if (m->tx == -1) {
+        m->tx = (int16_t)(m->sx + dir_dx[m->d]);
+        m->ty = (int16_t)(m->sy + dir_dy[m->d]);
     } else {
-        same = tx == sx && sy == ty;
-        if (!same && d == -1) facing = d = (int16_t)dun_get_direction_to(sx, sy, tx, ty);
+        m->same = m->tx == m->sx && m->sy == m->ty;
+        if (!m->same && m->d == -1) m->facing = m->d = (int16_t)dun_get_direction_to(m->sx, m->sy, m->tx, m->ty);
     }
-    if (!on_map(tx, ty)) goto finish;
-    if (enabled && (kind == 3 || kind == 7 || kind == 8)) {
-        if (kind == 3) {
-            creature_ai_cache_square(tx, ty);
+    if (!on_map(m->tx, m->ty)) return 1;
+    if (enabled && (m->kind == 3 || m->kind == 7 || m->kind == 8)) {
+        if (m->kind == 3) {
+            creature_ai_cache_square(m->tx, m->ty);
             uint8_t square = ai_square.square;
-            result = square_type(square) != SQUARE_WALL && !(square_type(square) == SQUARE_FAKE_WALL && !(square & 5));
-        } else if (kind == 7) {
-            result = !creature_square_is_obstacle(tx, ty);
-            if (result) creature_ai_cache_square(tx, ty);
+            m->result = square_type(square) != SQUARE_WALL && !(square_type(square) == SQUARE_FAKE_WALL && !(square & 5));
+        } else if (m->kind == 7) {
+            m->result = !creature_square_is_obstacle(m->tx, m->ty);
+            if (m->result) creature_ai_cache_square(m->tx, m->ty);
         } else {
-            result = search_square_test(kind, tx, ty);
+            m->result = search_square_test(m->kind, m->tx, m->ty);
         }
-        goto done;
+        return 0;
     }
-    creature_ai_cache_square(tx, ty);
-    if (ai.attr7 && d != 6) {
+    creature_ai_cache_square(m->tx, m->ty);
+    if (ai.attr7 && m->d != 6) {
         int16_t sides = (int16_t)creature_find_ai_marker(1, (uint16_t)ai.attr7);
-        if (sides != -1 && (1 << ((d + 2) & 3)) & sides) goto finish;
+        if (sides != -1 && (1 << ((m->d + 2) & 3)) & sides) return 1;
     }
-    if ((kind == 4 || kind == 5) && ai.info->defense == CREATURE_NO_HURT) kind = 0;
-    uint16_t need = square_move_flags(kind, no_movers, map_changed, tx, ty) & ai.move_flags;
-    if (!need) goto finish;
-    if (kind == 1 && abs16(tx - ai_party.x) + abs16(ty - ai_party.y) <= 1) goto finish;
-    uint16_t also = at_party(tx, ty) ? MOVE_PARTY : 0;
-    if (!same) {
+    if ((m->kind == 4 || m->kind == 5) && ai.info->defense == CREATURE_NO_HURT) m->kind = 0;
+    uint16_t need = square_move_flags(m->kind, no_movers, m->map_changed, m->tx, m->ty) & ai.move_flags;
+    if (!need) return 1;
+    if (m->kind == 1 && abs16(m->tx - ai_party.x) + abs16(m->ty - ai_party.y) <= 1) return 1;
+    uint16_t also = at_party(m->tx, m->ty) ? MOVE_PARTY : 0;
+    if (!m->same) {
         uint16_t g = creature_ai_cached_first_group();
         if (g != THING_ENDOFLIST && !(no_movers && creature_group_info(g)->movement)
-            && (!attack_groups || map_changed || !(attack_group = creature_thing_matches_filter(g, 9))))
+            && (!attack_groups || m->map_changed || !(m->attack_group = creature_thing_matches_filter(g, 9))))
             also |= MOVE_GROUPS;
     }
-    if ((ai.move_flags & also) != also) goto finish;
-    if (kind == 4 || kind == 5) {
+    if ((ai.move_flags & also) != also) return 1;
+    if (m->kind == 4 || m->kind == 5) {
         int cloud = 0;
         for (uint16_t t = creature_ai_cached_first_object(); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
             int type = thing_type(t);
             if (type == THING_EXPLOSION) {
                 int k = explosion_type(t);
                 if (k == EXPLOSION_POISON_CLOUD) {
-                    if (explosion_get_attack(t, ai.group_thing)) goto finish;
+                    if (explosion_get_attack(t, ai.group_thing)) return 1;
                 } else if (k == EXPLOSION_LASTING_CLOUD) {
                     cloud = 1;
                 }
-            } else if (type == THING_PROJECTILE && !at_group(tx, ty)) {
-                if (projectile_dir(t) != (d == 6 ? facing : d) && projectile_get_attack(t, thing_word(t, PROJECTILE_PAYLOAD)))
-                    goto finish;
+            } else if (type == THING_PROJECTILE && !at_group(m->tx, m->ty)) {
+                if (projectile_dir(t) != (m->d == 6 ? m->facing : m->d) && projectile_get_attack(t, thing_word(t, PROJECTILE_PAYLOAD)))
+                    return 1;
             }
         }
-        if (kind == 5 && !cloud && creature_ai_projectile_incoming(tx, ty)) goto finish;
+        if (m->kind == 5 && !cloud && creature_ai_projectile_incoming(m->tx, m->ty)) return 1;
     }
-    if (!same && ai_party.map == party.cur_map && class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS
+    if (!m->same && ai_party.map == party.cur_map && class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS
         && !(ai.info->flags & CREATURE_NOT_SEEN_THROUGH) && square_type(ai_square.square) == SQUARE_DOOR
-        && square_distance(tx, ty, ai_party.x, ai_party.y) < 2
-        && ((uint16_t)sx != group_x() || (uint16_t)sy != group_y() || rand_2bits()))
-        goto finish;
-    result = 1;
-    if (map_changed || need == MOVE_TELEPORTER) {
-        move_follow_square_transitions(ai.group_thing, sx, sy, tx, ty, 0);
-        if (party.cur_map == party.dest_map && tx == party.dest_x && ty == party.dest_y) goto finish;
+        && square_distance(m->tx, m->ty, ai_party.x, ai_party.y) < 2
+        && ((uint16_t)m->sx != group_x() || (uint16_t)m->sy != group_y() || rand_2bits()))
+        return 1;
+    m->result = 1;
+    if (m->map_changed || need == MOVE_TELEPORTER) {
+        move_follow_square_transitions(ai.group_thing, m->sx, m->sy, m->tx, m->ty, 0);
+        if (party.cur_map == party.dest_map && m->tx == party.dest_x && m->ty == party.dest_y) return 1;
         int saved = party.cur_map;
         if (saved != party.dest_map) {
             if (!(ai.move_flags & MOVE_LEVELS) || !creature_is_native_to_map(ai.group_thing, (uint16_t)party.dest_map)) {
-                result = 0;
-                goto finish;
+                m->result = 0;
+                return 1;
             }
             creature_ai_set_map((uint16_t)party.dest_map);
         }
-        result = creature_ai_try_move(kind | no_movers, (uint16_t)party.dest_x, (uint16_t)party.dest_y,
-                                      (uint16_t)party.dest_x, (uint16_t)party.dest_y, 6);
+        m->result = creature_ai_try_move(m->kind | no_movers, (uint16_t)party.dest_x, (uint16_t)party.dest_y,
+                                         (uint16_t)party.dest_x, (uint16_t)party.dest_y, 6);
         creature_ai_set_map(saved);
-        goto finish;
+        return 1;
     }
-    if (same) goto finish;
-    if (need == MOVE_DOOR) return creature_ai_try_door_action(execute, sx, sy, tx, ty, facing);
+    if (m->same) return 1;
+    if (need == MOVE_DOOR) {
+        m->result = creature_ai_try_door_action(execute, m->sx, m->sy, m->tx, m->ty, m->facing);
+        return 0;
+    }
     if (need & MOVE_FALLS) {
-        if (kind == 6) {
-            result = 0;
+        if (m->kind == 6) {
+            m->result = 0;
         } else {
             uint16_t saved = ai.move_flags;
             ai.move_flags &= MOVE_FLAGS_NO_FALL;
-            result = creature_ai_try_move(kind | no_movers, tx, ty, (int16_t)(tx + dir_dx[facing]), (int16_t)(ty + dir_dy[facing]), facing);
+            m->result = creature_ai_try_move(m->kind | no_movers, m->tx, m->ty, (int16_t)(m->tx + dir_dx[m->facing]), (int16_t)(m->ty + dir_dy[m->facing]), m->facing);
             ai.move_flags = saved;
         }
-        if (result) {
-            action = ACTION_FALL;
+        if (m->result) {
+            m->action = ACTION_FALL;
         } else if (ai.move_flags & MOVE_OPEN_PIT) {
             uint16_t saved = ai.move_flags;
             ai.move_flags &= (uint16_t)~MOVE_FALLS;
-            result = creature_ai_try_move(kind | no_movers, sx, sy, tx, ty, facing);
-            if (result) action = ACTION_PIT;
+            m->result = creature_ai_try_move(m->kind | no_movers, m->sx, m->sy, m->tx, m->ty, m->facing);
+            if (m->result) m->action = ACTION_PIT;
             ai.move_flags = saved;
         }
-        if (!result) ai_square_scan.blocking = 1;
+        if (!m->result) ai_square_scan.blocking = 1;
     }
-finish:
-    if (!execute) goto done;
-    if (!result) {
+    return 1;
+}
+
+/* Starts the tested move: a failure, an attack on a group in the way, a door action, a turn, or the step. */
+static void execute_move(Move *m)
+{
+    if (!m->result) {
         ai.command_result = AI_RESULT_FAILED;
-        goto done;
+        return;
     }
-    if (same) {
+    if (m->same) {
         ai.command_result = AI_RESULT_DONE;
-        goto done;
+        return;
     }
-    if (attack_group && creature_ai_try_attack(AI_EXECUTE | 2, sx, sy, tx, ty, -1)) goto done;
+    if (m->attack_group && creature_ai_try_attack(AI_EXECUTE | 2, m->sx, m->sy, m->tx, m->ty, -1)) return;
     if (ai.door_flags & DOOR_SKILL_ANY_SIDE)
         for (int16_t i = 0; i <= 3; i++) {
-            if (i == facing) continue;
-            int16_t nx = (int16_t)(sx + dir_dx[i]), ny = (int16_t)(sy + dir_dy[i]);
-            if (square_type(dun_get_square(nx, ny)) == SQUARE_DOOR && creature_ai_try_door_action(AI_EXECUTE | 2, sx, sy, nx, ny, i))
-                goto done;
+            if (i == m->facing) continue;
+            int16_t nx = (int16_t)(m->sx + dir_dx[i]), ny = (int16_t)(m->sy + dir_dy[i]);
+            if (square_type(dun_get_square(nx, ny)) == SQUARE_DOOR && creature_ai_try_door_action(AI_EXECUTE | 2, m->sx, m->sy, nx, ny, i))
+                return;
         }
-    if (kind == 6) {
-        facing = (int16_t)((facing + 2) & 3);
-        action = ACTION_TURN_BACK;
-    } else if (action == -1) {
-        action = abs16(sx - tx) + abs16(sy - ty) <= 1 ? ACTION_MOVE_NEAR : ACTION_MOVE;
+    if (m->kind == 6) {
+        m->facing = (int16_t)((m->facing + 2) & 3);
+        m->action = ACTION_TURN_BACK;
+    } else if (m->action == -1) {
+        m->action = abs16(m->sx - m->tx) + abs16(m->sy - m->ty) <= 1 ? ACTION_MOVE_NEAR : ACTION_MOVE;
     }
     int current = group_dir();
-    if (current != facing && (current == ((facing + 2) & 3) || action != ACTION_MOVE_NEAR)) {
-        if ((kind == 4 || kind == 5) && !(class_flags() & AI_CLASS_SEES_ALL_SIDES) && rand_2bits()) {
-            action = ACTION_TURN_BACK;
+    if (current != m->facing && (current == ((m->facing + 2) & 3) || m->action != ACTION_MOVE_NEAR)) {
+        if ((m->kind == 4 || m->kind == 5) && !(class_flags() & AI_CLASS_SEES_ALL_SIDES) && rand_2bits()) {
+            m->action = ACTION_TURN_BACK;
         } else {
-            creature_ai_turn_toward(facing);
-            goto done;
+            creature_ai_turn_toward(m->facing);
+            return;
         }
-    } else if (current != facing && action != ACTION_TURN_BACK) {
-        action = ((current + 1) & 3) == facing ? ACTION_STEP_LEFT : ACTION_STEP_RIGHT;
-    } else if (ai_action_flag((int8_t)ai.previous_action) & AI_ACTION_FLAG_MOVES && kind != 6 && !map_changed) {
-        action = ACTION_NONE;
+    } else if (current != m->facing && m->action != ACTION_TURN_BACK) {
+        m->action = ((current + 1) & 3) == m->facing ? ACTION_STEP_LEFT : ACTION_STEP_RIGHT;
+    } else if (ai_action_flag((int8_t)ai.previous_action) & AI_ACTION_FLAG_MOVES && m->kind != 6 && !m->map_changed) {
+        m->action = ACTION_NONE;
     }
-    set_action_destination(tx, ty);
-    ai.active->direction = (uint8_t)d;
-    ai.active->facing = (uint8_t)facing;
-    ai.active->mode = (uint8_t)kind;
-    ai.active->action = (uint8_t)action;
+    set_action_destination(m->tx, m->ty);
+    ai.active->direction = (uint8_t)m->d;
+    ai.active->facing = (uint8_t)m->facing;
+    ai.active->mode = (uint8_t)m->kind;
+    ai.active->action = (uint8_t)m->action;
     ai.command_result = AI_RESULT_ACTING;
-done:
-    if (map_changed) creature_ai_set_map(saved_map);
-    return result;
+}
+
+/* Tests (and with AI_EXECUTE starts) a move of the group from (x, y) to (dest_x, dest_y) (-1: the square in dir).
+   dir 4 and 5: a level change up and down; dir 6: a move to the given square that keeps the facing. Kinds 3, 7, and
+   8 are the quick tests of the search; kinds 4 and 5 avoid dangers, kind 6 is a step back, kind 1 keeps a distance
+   to the party. */
+int creature_ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir)
+{
+    int saved_map = party.cur_map;
+    Move m = {(int16_t)x, (int16_t)y, (int16_t)dest_x, (int16_t)dest_y, (int16_t)dir, -1, (int16_t)dir,
+              command & AI_MOVE_KIND_MASK, 0, 0, 0, 0};
+    if (test_move(&m, command) && command & AI_EXECUTE) execute_move(&m);
+    if (m.map_changed) creature_ai_set_map(saved_map);
+    return m.result;
 }
 
 /* ---- Items ---- */
@@ -1189,7 +1204,7 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
     mode &= AI_MODE_MASK;
     int16_t tx = (int16_t)dest_x, ty = (int16_t)dest_y, d = (int16_t)dir, action = -1, cell = 0;
     int same = 0;
-    if (!ai.item_flags) goto fail;
+    if (!ai.item_flags) return command_failed(execute);
     if (tx == -1) {
         tx = (int16_t)(dir_dx[d] + x);
         ty = (int16_t)(dir_dy[d] + y);
@@ -1198,14 +1213,14 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
         if (!same && d == -1) d = (int16_t)dun_get_direction_to(x, y, tx, ty);
     }
     creature_ai_cache_square(tx, ty);
-    if (mode == 0 && !(ai_square.square & 0x10)) goto fail;
+    if (mode == 0 && !(ai_square.square & 0x10)) return command_failed(execute);
     if (square_type(ai_square.square) == SQUARE_WALL) {
         if (ai_square_scan.items_elsewhere == -1) {
             ai_square_scan.items_elsewhere = 0;
             ai_square_scan.facing_ornament = 0;
             if (!same && ai.item_flags & ITEM_SKILL_WALL) scan_wall_ornaments((d + 2) & 3);
         }
-        if (!ai_square_scan.facing_ornament) goto fail;
+        if (!ai_square_scan.facing_ornament) return command_failed(execute);
         if (mode == 1) {
             action = ACTION_TAKE_FROM_WALL;
         } else {
@@ -1218,15 +1233,15 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
                 if (creature_thing_matches_filter(t, (int16_t)filter) || (int16_t)creature_find_matching_item_inside(t, filter, d) != -1)
                     break;
             }
-            if (t == THING_ENDOFLIST) goto fail;
+            if (t == THING_ENDOFLIST) return command_failed(execute);
         }
     } else {
         if (ai_square_scan.items_elsewhere == -1) {
             ai_square_scan.items_elsewhere = 0;
             ai_square_scan.cells[0] = -1;
         }
-        if (!same && at_party(tx, ty)) goto fail;
-        if (!(ai.item_flags & (same ? ITEM_SKILL_SAME_SQUARE : ITEM_SKILL_OTHER_SQUARE))) goto fail;
+        if (!same && at_party(tx, ty)) return command_failed(execute);
+        if (!(ai.item_flags & (same ? ITEM_SKILL_SAME_SQUARE : ITEM_SKILL_OTHER_SQUARE))) return command_failed(execute);
         if (mode == 1) {
             if (!same) action = ACTION_GIVE;
         } else {
@@ -1256,7 +1271,7 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
                 if (ai_square_scan.cells[(uint16_t)cell]) break;
                 ai_square_scan.items_elsewhere = 1;
             }
-            if (t == THING_ENDOFLIST) goto fail;
+            if (t == THING_ENDOFLIST) return command_failed(execute);
         }
     }
     if (!execute) return 1;
@@ -1269,7 +1284,7 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
         } else if (action == ACTION_GIVE) {
             uint16_t g = creature_ai_cached_first_group();
             int bits = possession_cell_mask(creature_group_info(g)->possessions, d) & 0xff;
-            if (!bits) goto fail;
+            if (!bits) return command_failed(execute);
             int count = 0;
             for (int b = bits; b; b >>= 1) count += b & 1;
             int nth = rand_below((uint16_t)count) + 1;
@@ -1307,9 +1322,6 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
     ai.active->action = (uint8_t)action;
     ai.command_result = AI_RESULT_ACTING;
     return 1;
-fail:
-    if (execute) ai.command_result = AI_RESULT_FAILED;
-    return 0;
 }
 
 /* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
@@ -1362,17 +1374,17 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
     int execute = mode & AI_EXECUTE;
     mode &= AI_MODE_MASK;
     int16_t tx = (int16_t)dest_x, ty = (int16_t)dest_y, d = (int16_t)dir;
-    if (!(ai.actuator_flags & 1)) goto fail;
+    if (!(ai.actuator_flags & 1)) return command_failed(execute);
     if (tx == -1) {
         tx = (int16_t)(dir_dx[d] + x);
         ty = (int16_t)(dir_dy[d] + y);
     } else if ((int16_t)x == tx && (int16_t)y == ty) {
-        goto fail;
+        return command_failed(execute);
     }
-    if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty)) goto fail;
+    if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty)) return command_failed(execute);
     if (d == -1) d = (int16_t)dun_get_direction_to(x, y, tx, ty);
     creature_ai_cache_square(tx, ty);
-    if (!(ai_square.square & 0x10)) goto fail;
+    if (!(ai_square.square & 0x10)) return command_failed(execute);
     uint16_t slot = THING_NONE;
     for (uint16_t t = cached_first_thing(); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_SENSOR && t >> THING_CELL_SHIFT == ((d + 2) & 3)
@@ -1383,11 +1395,11 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
     }
     if (slot == THING_NONE || thing_word(slot, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT != ai.group[GROUP_CREATURE]
         || !(thing_word(slot, SENSOR_FLAGS) & SENSOR_FLAG_ACTIVE))
-        goto fail;
+        return command_failed(execute);
     uint16_t actuator = creature_find_wall_actuator_in_cell(cached_first_thing(), (d + 2) & 3, mode, filter);
-    if (actuator == THING_NONE) goto fail;
+    if (actuator == THING_NONE) return command_failed(execute);
     uint16_t slot_flags = thing_word(slot, SENSOR_FLAGS);
-    if (!creature_wall_actuator_accepts(actuator, mode, filter, (slot_flags & SENSOR_STATE_MASK) >> SENSOR_STATE_SHIFT)) goto fail;
+    if (!creature_wall_actuator_accepts(actuator, mode, filter, (slot_flags & SENSOR_STATE_MASK) >> SENSOR_STATE_SHIFT)) return command_failed(execute);
     if (execute && !creature_ai_turn_toward(d)) {
         set_action_destination(tx, ty);
         ai.active->facing = (uint8_t)d;
@@ -1398,9 +1410,6 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
         ai.command_result = mode == 0 && (slot_flags & SENSOR_STATE_MASK) < SENSOR_STATE_BUSY ? AI_RESULT_ACTING : AI_RESULT_DONE;
     }
     return 1;
-fail:
-    if (execute) ai.command_result = AI_RESULT_FAILED;
-    return 0;
 }
 
 #define FILTER_INVERT 0x80
@@ -1859,14 +1868,12 @@ static int test_entered(Search *s, int i)
     }
     case TARGET_MARKER: return at_mark(s, m);
     case TARGET_NEAR_MARKER:
-        if (m[2] == s->check_map) {
-            d = (int16_t)square_distance(x, y, m[0], m[1]);
-            if (m[3] > d) goto nearer;
+        d = m[2] == s->check_map ? (int16_t)square_distance(x, y, m[0], m[1]) : m[3];
+        if (m[3] <= d) {
+            if (m[2] != s->passage_map) return 0;
+            d = (int16_t)square_distance(s->passage_x, s->passage_y, m[0], m[1]);
+            if (d >= m[3]) return 0;
         }
-        if (m[2] != s->passage_map) return 0;
-        d = (int16_t)square_distance(s->passage_x, s->passage_y, m[0], m[1]);
-        if (d >= m[3]) return 0;
-    nearer:
         m[3] = (int8_t)d;
         if (!(uint8_t)d) c->unknown_10 &= (uint8_t)~KIND_FIRST_BEST;
         return 1;
@@ -2331,6 +2338,33 @@ int creature_ai_next_path_step(void)
     return left;
 }
 
+/* True when the target of the plan is still at the found square and the next steps of the stored path from the
+   group on the map saved are free. */
+static int path_holds(int saved)
+{
+    int16_t x = ai.cache.found & 0x1f, y = ai.cache.found >> 5 & 0x1f;
+    uint8_t path[AI_PATH_MAX * 2];
+    if ((int16_t)creature_ai_search_area(x, y, 2, 1, ai.candidates, path) || ai.candidates[0].path_length) return 0;
+    int16_t cx = (int16_t)group_x(), cy = (int16_t)group_y(), left = ai.cache.path_left;
+    if (!left) return cx == x && cy == y && party.cur_map == saved;
+    creature_ai_set_map(saved);
+    creature_ai_load_cached_path();
+    /* fix: without a stored path the original reads its steps at address 0 */
+    if (!ai.cached_path) return 0;
+    for (int16_t checks = PATH_CHECK_STEPS;;) {
+        uint16_t step = path_step(ai.cache.path_length - left);
+        if (!creature_ai_try_move(PATH_CHECK_COMMAND, cx, cy, -1, -1, step & 7)) return 0;
+        if ((step >> 3 & 0x1f) != ai_square.x || (step >> 8 & 0x1f) != ai_square.y
+            || (step >> 13 & 1) != (ai_square.map != party.cur_map))
+            return 0;
+        creature_ai_set_map(ai_square.map);
+        cx = ai_square.x;
+        cy = ai_square.y;
+        if (--left <= 0 || --checks <= 0) break;
+    }
+    return 1;
+}
+
 /* Checks that the stored path still leads to the target of the plan: the target is still where the search found it,
    and the next steps (at most 5) of the path are free. Returns 1 when the path holds. */
 int creature_ai_plan_path(void)
@@ -2343,33 +2377,9 @@ int creature_ai_plan_path(void)
     if (i >= (int8_t)ai.candidate_count) return 0;
     if (i) ai.candidates[0] = ai.candidates[i];
     ai.candidates[0].cost = 0;
-    int saved = party.cur_map, result = 0;
+    int saved = party.cur_map;
     creature_ai_set_map(ai.cache.found >> 10);
-    int16_t x = ai.cache.found & 0x1f, y = ai.cache.found >> 5 & 0x1f;
-    uint8_t path[AI_PATH_MAX * 2];
-    if ((int16_t)creature_ai_search_area(x, y, 2, 1, ai.candidates, path) || ai.candidates[0].path_length) goto end;
-    int16_t cx = (int16_t)group_x(), cy = (int16_t)group_y(), left = ai.cache.path_left;
-    if (!left) {
-        result = cx == x && cy == y && party.cur_map == saved;
-        goto end;
-    }
-    creature_ai_set_map(saved);
-    creature_ai_load_cached_path();
-    /* fix: without a stored path the original reads its steps at address 0 */
-    if (!ai.cached_path) goto end;
-    for (int16_t checks = PATH_CHECK_STEPS;;) {
-        uint16_t step = path_step(ai.cache.path_length - left);
-        if (!creature_ai_try_move(PATH_CHECK_COMMAND, cx, cy, -1, -1, step & 7)) goto end;
-        if ((step >> 3 & 0x1f) != ai_square.x || (step >> 8 & 0x1f) != ai_square.y
-            || (step >> 13 & 1) != (ai_square.map != party.cur_map))
-            goto end;
-        creature_ai_set_map(ai_square.map);
-        cx = ai_square.x;
-        cy = ai_square.y;
-        if (--left <= 0 || --checks <= 0) break;
-    }
-    result = 1;
-end:
+    int result = path_holds(saved);
     creature_ai_set_map(saved);
     return result;
 }
