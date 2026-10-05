@@ -1133,7 +1133,9 @@ done:
 static int possession_cell_mask(uint16_t possessions, int side)
 {
     if (!(possessions & STATIC_POSSESSIONS_SHOWN) || possessions & STATIC_POSSESSIONS_ALL) return 0x0f;
-    return possession_cells[possessions & 0x0f][side & 3];
+    /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
+    if ((uint16_t)side > 3) return 0x0f;
+    return possession_cells[possessions & 0x0f][side];
 }
 
 /* An item of filter inside a chest or in the possessions of a group that the creature may take from: the chest

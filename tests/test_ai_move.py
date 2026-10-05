@@ -14,6 +14,7 @@ from test_move import gdat, start  # noqa: F401 (fixtures)
 AI_BEGIN, AI_PREPARE, AI_END = 0x24A88, 0x24BFC, 0x24D88
 DUN_SET_CURRENT_MAP = 0x1C724
 G_AI = 0x7F548
+CELL_MASK = 0x15286
 G_AI_SQUARE, G_AI_PARTY = 0x7F8A4, 0x7F8D0
 G_DIRECTION_BITS = 0x752E8
 G_MEM_FREE_BYTES = 0x7FA7C
@@ -23,7 +24,9 @@ G_PARTY_DISTANCE_MAP, G_ALT_DISTANCE_MAP = 0x752A0, 0x752A2
 G_PARTY_DISTANCE_WIDTH, G_ALT_DISTANCE_WIDTH = 0x7F8CE, 0x7F8CC
 G_LIGHT_SUMS = (0x7F970, 0x7F974, 0x752A4, 0x752A6, 0x752A8)
 G_VIEW_REDRAW = 0x7F38C
-G_AI_SCRATCH = 0x7F894
+LIGHT_NAMES = ("light_source_sum", "explosion_light_sum", "cached_light_sum", "cached_explosion_light_sum", "last_party_map")
+DISTANCE_MAPS = (("party_distance", 0x7F8C8, 0x752A0, 0x7F8CE), ("alt_distance", 0x7F8C4, 0x752A2, 0x7F8CC))
+G_AI_SCRATCH, G_AI_CONTEXT_ACTIVE = 0x7F894, 0x7F7E6
 # Functions of later parts that both sides stub: (address, stack arguments).
 EMPTY = {0x16D72: 0, 0x181F0: 0, 0x38C46: 1, 0x389C2: 0}
 
@@ -53,6 +56,7 @@ AI_FIELDS = {
 }
 AI_SIZE = 1072
 ENDOFLIST, NONE = 0xFFFE, 0xFFFF
+THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 
 
 def s16(v):
@@ -65,9 +69,16 @@ class Ai:
     def __init__(self, sc):
         self.sc, self.lib, self.emu = sc, sc.lib, sc.emu
         lib, emu = self.lib, self.emu
+        # CreatureScenario stubs these again over the empty stubs of OriginalView: two hooks return twice
+        for addr in (0x3BCA5, 0x3F406, 0x3F3C2):
+            if addr in sc.view.no_ops:
+                emu.uc.hook_del(sc.view.no_ops.pop(addr))
+        if F["creature_refresh_party_maps"] in sc.stubs:  # test_move.STUBS: the hook of Step 14
+            emu.uc.hook_del(sc.stubs.pop(F["creature_refresh_party_maps"]))
         for addr, stack in EMPTY.items():
             emu.stub(addr, lambda *_: 0, stack_args=stack)
         emu.write_u32(G_MEM_FREE_BYTES, 0x7FFFFFFF)
+        self.fix_cell_mask()
         self.sync_map_values()
         self.ai = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "ai"))
         self.square = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "ai_square"))
@@ -84,6 +95,34 @@ class Ai:
         lib.creature_ai_search_area.argtypes = [ctypes.c_int] * 4 + [ctypes.c_void_p] * 2
         lib.creature_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
         self.begun = None
+        emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
+        ctypes.c_uint8.from_address(self.ai + 704).value = 0
+        # the C library lives through the tests: its AI state starts from the state of the original
+        for c_off, o_off, size in AI_FIELDS.values():
+            ctypes.memmove(self.ai + c_off, emu.read(G_AI + o_off, size), size)
+        ctypes.c_uint16.in_dll(lib, "search_direction_bits").value = struct.unpack("<H", emu.read(G_DIRECTION_BITS, 2))[0]
+        for addr, name in zip(G_LIGHT_SUMS, LIGHT_NAMES):
+            ctypes.c_int16.in_dll(lib, name).value = s16(struct.unpack("<H", emu.read(addr, 2))[0])
+        for name, ptr, map_addr, width_addr in DISTANCE_MAPS:
+            o_map, o_width = (s16(struct.unpack("<H", emu.read(a, 2))[0]) for a in (map_addr, width_addr))
+            cells = emu.read(emu.read_u32(ptr), 32 * 32) if emu.read_u32(ptr) else bytes(32 * 32)
+            ctypes.memmove(ctypes.addressof(ctypes.c_uint8.in_dll(lib, name)), struct.pack("<hh", o_map, o_width) + cells, 4 + 32 * 32)
+
+    def fix_cell_mask(self):
+        """The fix of the port: the cells of the possessions seen from side -1 (outside the table) are all cells."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EDX, UC_X86_REG_EIP, UC_X86_REG_ESP
+        emu = self.emu
+
+        def hook(uc, *_):
+            possessions, side = uc.reg_read(UC_X86_REG_EAX) & 0xFFFF, uc.reg_read(UC_X86_REG_EDX) & 0xFFFF
+            if side > 3 and possessions & 0x400 and not possessions & 0x200:
+                sp = uc.reg_read(UC_X86_REG_ESP)
+                uc.reg_write(UC_X86_REG_EAX, uc.reg_read(UC_X86_REG_EAX) & ~0xFF | 0x0F)
+                uc.reg_write(UC_X86_REG_EIP, emu.read_u32(sp))
+                uc.reg_write(UC_X86_REG_ESP, sp + 4)
+
+        emu.uc.hook_add(UC_HOOK_CODE, hook, begin=CELL_MASK, end=CELL_MASK)
 
     def sync_map_values(self):
         """The values of the party map graphics that the original reads at the map load: light radius, wall cost."""
@@ -280,3 +319,449 @@ def test_try_move(ai):
             ai.check((g, n, command, tx, ty, d))
         ai.end()
     assert moved > 100 and acted > 30
+
+
+DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def places_near(ai, rng, kinds, things=None, per_group=4):
+    """(group, x, y, map, target x, target y): a group put on an open square next to a square of the kinds (with
+    things when things is set) of its map."""
+    lib = ai.lib
+    out = []
+    for g, _, _, m in ai.groups():
+        w, h = lib.dungeon_map_width(m), lib.dungeon_map_height(m)
+        found = []
+        for tx in range(w):
+            for ty in range(h):
+                s = lib.dungeon_square(m, tx, ty)
+                if s >> 5 not in kinds or (things is not None and bool(s & 0x10) != things):
+                    continue
+                for dx, dy in DIRS:
+                    x, y = tx - dx, ty - dy
+                    if 0 <= x < w and 0 <= y < h and lib.dungeon_square(m, x, y) >> 5 in (1, 4, 5):
+                        found.append((g, x, y, m, tx, ty))
+        out += rng.sample(found, min(per_group, len(found)))
+    return out
+
+
+def filters(ai, g):
+    """The item filters that stay inside the filter table of the original for group g."""
+    record = ai.lib.dungeon_thing_record
+    record.restype = ctypes.c_void_p
+    variant = s16(struct.unpack("<H", ctypes.string_at(record(g) + 8, 2))[0])
+    out = []
+    for f in range(0x40):
+        base = 0x10 if f == 0x28 else f
+        if 0x10 <= base < 0x13:
+            base += variant * 3
+        if f == 0x29:
+            base = 7
+        if f in (0x3E, 0x3F) or 0 <= base < 0x2A:
+            out.append(f)
+    return out
+
+
+def test_turn_toward(ai):
+    rng = random.Random(18)
+    for g, x, y, m in places(ai, rng, 0):
+        ai.begin(g, x, y, m)
+        for d in range(4):
+            mine, theirs = ai.call("creature_ai_turn_toward", d)
+            assert mine == theirs, (g, d)
+            ai.check((g, d))
+        ai.end()
+
+
+def test_try_attack(ai):
+    # Attacks from the squares near walls, doors, and other squares on the squares in lines around them: the party
+    # (modes 0, 1), groups (2), anything (3), with and without the action; the attack skills of each creature type.
+    rng = random.Random(19)
+    lib = ai.lib
+    attacked = 0
+    for g, x, y, m in places(ai, rng):
+        ai.begin(g, x, y, m)
+        for n in range(30):
+            mode = rng.randrange(4) | rng.choice((0, 0x80))
+            if rng.random() < 0.3:
+                tx = ty = -1
+                d = rng.randrange(4)
+            else:
+                dx, dy = DIRS[rng.randrange(4)]
+                k = rng.randrange(0, 5)
+                tx, ty, d = x + dx * k, y + dy * k, rng.choice((-1, -1, rng.randrange(4)))
+            if rng.random() < 0.3:
+                # the party square as the target
+                tx, ty = ai.sc.party.square_x, ai.sc.party.square_y
+            mine, theirs = ai.call("creature_ai_try_attack", mode, x, y, tx, ty, d)
+            assert mine == theirs, (g, n, mode, tx, ty, d)
+            attacked += mine
+            ai.check((g, n, mode, tx, ty, d))
+        ai.end()
+    assert attacked > 20
+
+
+def test_try_door_action(ai):
+    # Open, close, and close-marked actions on the doors next to the groups and in lines up to 3 squares away.
+    rng = random.Random(20)
+    done = 0
+    for g, x, y, m, tx, ty in places_near(ai, rng, (4,), per_group=6):
+        ai.begin(g, x, y, m)
+        for mode in (0, 1, 2, 0x80, 0x81, 0x82):
+            for target, d in (((tx, ty), -1), ((-1, -1), rng.randrange(4)), ((tx, ty), rng.randrange(4))):
+                mine, theirs = ai.call("creature_ai_try_door_action", mode, x, y, *target, d)
+                assert mine == theirs, (g, x, y, mode, target, d)
+                done += mine
+                ai.check((g, mode, target, d))
+        ai.end()
+    assert done > 10
+
+
+def test_try_take_item(ai):
+    # Takes and gives of items of many filters on the squares with things next to the groups and on their own square:
+    # floor items, alcoves, chests, possessions of groups.
+    rng = random.Random(21)
+    taken = 0
+    for g, x, y, m, tx, ty in places_near(ai, rng, (0, 1, 2, 4, 5), things=True, per_group=5):
+        ai.begin(g, x, y, m)
+        fs = filters(ai, g)
+        for n in range(16):
+            mode = rng.randrange(2) | rng.choice((0, 0x80))
+            target = rng.choice(((tx, ty, -1), (tx, ty, rng.randrange(4)), (x, y, -1), (x, y, rng.randrange(4)),
+                                 (-1, -1, rng.randrange(4))))
+            f = rng.choice(fs) | rng.choice((0, 0, 0x80))
+            mine, theirs = ai.call("creature_ai_try_take_item", mode, x, y, *target, f)
+            assert mine == theirs, (g, x, y, n, mode, target, f)
+            taken += mine
+            ai.check((g, n, mode, target, f))
+        ai.end()
+    assert taken > 10
+
+
+def test_try_use_wall_actuator(ai):
+    # Wall actuators next to the groups: use, put, and take with many filters.
+    rng = random.Random(22)
+    used = 0
+    for g, x, y, m, tx, ty in places_near(ai, rng, (0,), things=True, per_group=6):
+        ai.begin(g, x, y, m)
+        fs = filters(ai, g)
+        for n in range(8):
+            mode = rng.randrange(3) | rng.choice((0, 0x80))
+            target = rng.choice(((tx, ty, -1), (tx, ty, rng.randrange(4)), (-1, -1, rng.randrange(4))))
+            mine, theirs = ai.call("creature_ai_try_use_wall_actuator", mode, x, y, *target, rng.choice(fs))
+            assert mine == theirs, (g, n, mode, target)
+            used += mine
+            ai.check((g, n, mode, target))
+        ai.end()
+    print("used", used)
+
+
+def test_projectile_incoming(ai):
+    rng = random.Random(23)
+    for g, x, y, m in places(ai, rng):
+        ai.begin(g, x, y, m)
+        mine, theirs = ai.call("creature_ai_projectile_incoming", x, y)
+        assert mine == theirs, g
+        ai.check(g)
+        ai.end()
+
+
+def all_things(lib):
+    """Every thing of the dungeon on a square, with the contents of containers and the possessions of groups."""
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    out = []
+
+    def walk(t):
+        while t != ENDOFLIST:
+            out.append(t)
+            if t >> 10 & 15 in (4, 9):
+                walk(lib.thing_word(t, 2))
+            t = lib.dungeon_next_thing(t)
+
+    for m in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(m)):
+            for y in range(lib.dungeon_map_height(m)):
+                walk(lib.dungeon_square_first_thing(m, x, y))
+    return out
+
+
+def test_item_filters(ai):
+    # Every thing of the dungeon against the item filters of several creature types (and inverted filters): the
+    # class texts, the money boxes, the creature types, the wall actuators.
+    rng = random.Random(24)
+    lib = ai.lib
+    things = all_things(lib)
+    groups = ai.groups()
+    matched = 0
+    types = set()
+    for g, x, y, m in rng.sample(groups, 12):
+        record = lib.dungeon_thing_record
+        record.restype = ctypes.c_void_p
+        kind = ctypes.string_at(record(g) + 4, 1)[0]
+        if kind in types:
+            continue
+        types.add(kind)
+        ai.begin(g, x, y, m)
+        fs = filters(ai, g)
+        for f in fs:
+            for t in rng.sample(things, 120):
+                for flt in (f, f | 0x80):
+                    mine, theirs = ai.call("creature_thing_matches_filter", t, flt)
+                    assert mine == theirs, (g, hex(t), hex(flt))
+                    matched += mine == 1
+            ai.check((g, f))
+        ai.end()
+    assert matched > 100
+
+
+def test_item_lists(ai):
+    # The item searches, counts, and removals in the thing lists of the squares, chests, and groups.
+    rng = random.Random(25)
+    lib = ai.lib
+    lib.creature_find_matching_item.restype = ctypes.c_uint16
+    lib.creature_find_matching_item_inside.restype = ctypes.c_int16
+    things = all_things(lib)
+    containers = [t for t in things if t >> 10 & 15 in (4, 9)]
+    for g, x, y, m in rng.sample(ai.groups(), 10):
+        ai.begin(g, x, y, m)
+        fs = filters(ai, g)
+        for n in range(40):
+            f = rng.choice(fs) | rng.choice((0, 0x80))
+            cell = rng.choice((0xFF, rng.randrange(4)))
+            first = rng.choice(things)
+            mine, theirs = ai.call("creature_find_matching_item", f, first, cell)
+            assert mine == theirs & 0xFFFF, (g, n, "find")
+            mine, theirs = ai.call("creature_count_matching_items", f, first, cell, rng.randrange(2), rng.randrange(2))
+            assert mine == s16(theirs), (g, n, "count")
+            c = rng.choice(containers)
+            mine, theirs = ai.call("creature_find_matching_item_inside", c, f, rng.randrange(4))
+            assert mine == s16(theirs), (g, n, "inside", hex(c))
+            ai.check((g, n))
+        # removals from the contents of chests and the possessions of groups
+        for c in rng.sample(containers, 6):
+            f = rng.choice(fs) | rng.choice((0, 0x80))
+            cell = rng.choice((0xFF, rng.randrange(4)))
+            mine = lib.dungeon_thing_record(c) + 2
+            theirs = ai.emu.read_u32(0x7F288 + 4 * (c >> 10 & 15)) + (c & 0x3FF) * THING_SIZES[c >> 10 & 15] + 2
+            lib.creature_remove_matching_items(mine, f, cell)
+            ai.emu.call(F["creature_remove_matching_items"], theirs, f, cell)
+            ai.check((g, "remove", hex(c)), dungeon=True)
+        ai.end()
+
+
+def test_ai_markers(ai):
+    # The AI marker texts of the squares: by kind mask and by id, for the level deltas.
+    rng = random.Random(26)
+    lib = ai.lib
+    found = 0
+    g, x, y, m = ai.groups()[0]
+    marked = []
+    for mp in range(lib.dungeon_map_count()):
+        for sx in range(lib.dungeon_map_width(mp)):
+            for sy in range(lib.dungeon_map_height(mp)):
+                if lib.dungeon_square(mp, sx, sy) & 0x10:
+                    marked.append((mp, sx, sy))
+    ai.begin(g, x, y, m)
+    for mp, sx, sy in rng.sample(marked, 400):
+        ai.set_map(mp)
+        ai.call("creature_ai_cache_square", sx, sy)
+        for delta in (-1, 0, 1, 2):
+            mine, theirs = ai.call("creature_find_ai_marker", delta, rng.randrange(0x10000))
+            assert mine == s16(theirs), (mp, sx, sy, delta)
+            found += mine != -1
+            mine, theirs = ai.call("creature_find_ai_marker_by_id", delta, rng.randrange(16))
+            assert mine == s16(theirs), (mp, sx, sy, delta)
+        ai.check((mp, sx, sy))
+    ai.set_map(m)
+    ai.end()
+    assert found > 0
+
+
+class Buffers:
+    """The same bytes at a C address and at an emulator address."""
+
+    def __init__(self, ai, size):
+        self.ai, self.size = ai, size
+        self.c = ctypes.create_string_buffer(size)
+        self.emu = ai.sc.view.alloc(size)
+
+    def put(self, data):
+        ctypes.memmove(self.c, data, len(data))
+        self.ai.emu.write(self.emu, data)
+
+    def both(self):
+        return self.c.raw, self.ai.emu.read(self.emu, self.size)
+
+
+def test_find_target_in_lines(ai):
+    # Targets in the four lines (or one) from the squares near the groups, with search maps of random distances.
+    rng = random.Random(27)
+    found = 0
+    for g, x, y, m in places(ai, rng):
+        ai.begin(g, x, y, m)
+        fs = filters(ai, g)
+        dist = Buffers(ai, 32 * 32 * 4)
+        out = Buffers(ai, 2)
+        for n in range(6):
+            cells = bytearray(32 * 32 * 4)
+            for i in range(0, len(cells), 4):
+                cells[i] = rng.choice((0, 0, 1, 2, 3, 4, 5))
+            dist.put(bytes(cells))
+            args = (rng.choice(fs), dist, out, x, y, rng.choice((-1, rng.randrange(4))), rng.randrange(2))
+            mine = ai.lib.creature_ai_find_target_in_lines(args[0], dist.c, out.c, *args[3:])
+            theirs = ai.emu.call(F["creature_ai_find_target_in_lines"], args[0], dist.emu, out.emu, *args[3:])
+            assert mine == theirs, (g, n, args)
+            assert out.both()[0] == out.both()[1], (g, n)
+            found += mine
+            ai.check((g, n))
+        ai.end()
+    print("found", found)
+
+
+def random_candidate(rng, fs, x, y, m):
+    kind = rng.randrange(0x1C)
+    marker = rng.choice((0xFFFF, (x + rng.randrange(-4, 5)) & 0x1F | (y + rng.randrange(-4, 5)) % 32 << 5 | m << 10))
+    item = rng.choice((rng.choice(fs), rng.randrange(-4, 6) & 0xFFFF, rng.randrange(8)))
+    if kind == 0x15:
+        item = rng.choice((0, 1, 3, 4, 5, 7, 8))
+    if kind in (8, 9, 0x0F, 0x10, 0x11, 0x14, 0x16):
+        item = rng.choice(fs) | rng.choice((0, 0x80))  # an item filter
+    mask = rng.choice((0, 1, 2, 3, rng.randrange(0x10000)))
+    cost = rng.randrange(1, 16)
+    value = rng.choice((0, 0, 1, 2, 0xFF, 0x80))
+    return struct.pack("<bBHHbbHHHbbBbI", cost, value, 0, 0, 0, kind, item, mask, marker, 0, 0, 0, 0, 0)
+
+
+def test_search_area(ai):
+    # The path search from the squares near the groups: the same candidate records in both (all target kinds, costs,
+    # bonus values, filters, markers), the move commands of the plans; the found index, the candidates, the path.
+    rng = random.Random(28)
+    lib = ai.lib
+    lib.creature_ai_search_area.restype = ctypes.c_int
+    found = paths = 0
+    for g, x, y, m in places(ai, rng, 2):
+        ai.begin(g, x, y, m)
+        fs = filters(ai, g)
+        for n in range(5):
+            count = rng.choice((1, 1, 2, 3, 5))
+            cands = Buffers(ai, 22 * count)
+            path = Buffers(ai, 0x64)
+            cands.put(b"".join(random_candidate(rng, fs, x, y, m) for _ in range(count)))
+            command = rng.choice((0, 2, 3, 4, 5, 7, 8)) | rng.choice((0, 0, 0x20, 0x40))
+            mine = lib.creature_ai_search_area(x, y, command, count, cands.c, path.c)
+            theirs = ai.emu.call(F["creature_ai_search_area"], x, y, command, 0, count, cands.emu, path.emu)
+            where = (g, x, y, n, hex(command), cands.c.raw.hex())
+            assert mine == s16(theirs), where
+            mc, tc = cands.both()
+            for i in range(count):
+                assert mc[i * 22:i * 22 + 22].hex(" ") == tc[i * 22:i * 22 + 22].hex(" "), (where, i)
+            assert path.both()[0] == path.both()[1], where
+            found += mine >= 0
+            paths += mine >= 0 and mc[mine * 22 + 6] not in (0, 0xFF)
+            ai.check(where, dungeon=True)
+        ai.end()
+    assert found > 50 and paths > 20
+
+
+def store_path(ai, g, data):
+    """The stored path of group g in both (C ai_store_path, original image cache key 0x30000000 | group)."""
+    lib, sc = ai.lib, ai.sc
+    lib.ai_store_path.restype = ctypes.c_void_p
+    ctypes.memmove(lib.ai_store_path(len(data)), data, len(data))
+    index = sc.view.new_index()
+    sc.ai_cache[0x30000000 | g & 0x3FF] = index
+    addr = sc.view.alloc(len(data))
+    sc.view.cache[index] = addr
+    sc.sizes[index] = len(data)
+    ai.emu.write(addr, data)
+
+
+def put_ai(ai, name, data):
+    c_off, o_off, size = AI_FIELDS[name]
+    ctypes.memmove(ai.ai + c_off, data, len(data))
+    ai.emu.write(G_AI + o_off, data)
+
+
+def test_plan_path_and_next_step(ai):
+    # A search from each group to a marked square nearby gives a path; with that path stored and the plan state set,
+    # the path check of the plan and the next step of the path, also after random changes of the plan state.
+    rng = random.Random(29)
+    lib = ai.lib
+    lib.creature_ai_search_area.restype = ctypes.c_int
+    held = steps = 0
+    for g, x, y, m in places(ai, rng, 2):
+        ai.begin(g, x, y, m)
+        tx, ty = x + rng.randrange(-5, 6), y + rng.randrange(-5, 6)
+        cand = struct.pack("<bBHHbbHHHbbBbI", 30, 0, 0, 0, 0, 0x0B, rng.randrange(4), 0, tx & 0x1F | (ty & 0x1F) << 5 | m << 10,
+                           0, 0, 0, 0, 0)
+        cands, path = Buffers(ai, 22), Buffers(ai, 0x64)
+        cands.put(cand)
+        command = rng.choice((0, 3, 5))
+        mine = lib.creature_ai_search_area(x, y, command, 1, cands.c, path.c)
+        theirs = ai.emu.call(F["creature_ai_search_area"], x, y, command, 0, 1, cands.emu, path.emu)
+        assert mine == s16(theirs) and cands.both()[0] == cands.both()[1] and path.both()[0] == path.both()[1], (g, x, y)
+        record = cands.c.raw
+        length = record[6] if mine == 0 and record[6] < 0x80 else rng.randrange(4)
+        put_ai(ai, "candidate_count", bytes([1, 0]))
+        put_ai(ai, "candidates", record + bytes(22 * 15))
+        for n in range(4):
+            left = rng.randrange(length + 1) if n else length
+            kind = record[7] if n < 3 else rng.randrange(0x1C)
+            cache = struct.pack("<BBbbHHHI", length, left, 0, kind, struct.unpack_from("<H", record, 8)[0], 0,
+                                struct.unpack_from("<H", record, 4)[0], 0)
+            put_ai(ai, "cache", cache)
+            if length:
+                store_path(ai, g, path.c.raw[:length * 2])
+            mine, theirs = ai.call("creature_ai_plan_path")
+            assert mine == theirs, (g, x, y, n)
+            held += mine
+            ai.check((g, n, "plan"))
+            put_ai(ai, "cache", cache)
+            mine, theirs = ai.call("creature_ai_next_path_step")
+            assert mine == s16(theirs), (g, x, y, n)
+            steps += mine > 0
+            ai.check((g, n, "step"))
+        ai.end()
+    assert held > 10 and steps > 10
+
+
+def distance_maps(ai):
+    lib, emu = ai.lib, ai.emu
+    out = []
+    for name, ptr, map_addr, width_addr in DISTANCE_MAPS:
+        raw = ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(lib, name)), 4 + 32 * 32)
+        c_map, c_width = struct.unpack_from("<hh", raw)
+        o_map = s16(struct.unpack("<H", emu.read(map_addr, 2))[0])
+        o_width = s16(struct.unpack("<H", emu.read(width_addr, 2))[0])
+        cells = emu.read(emu.read_u32(ptr), 32 * max(o_width, 0)) if o_map >= 0 else b""
+        out.append(((c_map, c_width if c_map >= 0 else None, raw[4:4 + len(cells)]), (o_map, o_width if o_map >= 0 else None, cells)))
+    return out
+
+
+def test_refresh_party_maps(ai):
+    # The distance maps of the party map (and of the map of the alternate view) and the light pass after the party
+    # moved: the party at random open squares of all maps.
+    rng = random.Random(30)
+    lib, emu, sc = ai.lib, ai.emu, ai.sc
+    assert emu.read_u32(G_PARTY_DISTANCE) and emu.read_u32(G_ALT_DISTANCE)
+    reached = 0
+    places_ = [(m, x, y) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
+               for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> 5 == 1]
+    for n, (m, x, y) in enumerate(rng.sample(places_, 25)):
+        sc.place(m, x, y, rng.randrange(4))
+        ai.sync_map_values()
+        redraw = rng.choice((1, 2, 3, 3))
+        sc.party.redraw = redraw
+        emu.write_u32(G_VIEW_REDRAW, redraw)
+        mine, theirs = ai.call("creature_refresh_party_maps")
+        for c_map, o_map in distance_maps(ai):
+            assert c_map[:2] == o_map[:2], (n, m, x, y)
+            assert c_map[2].hex() == o_map[2].hex(), (n, m, x, y)
+        reached += sum(1 for b in distance_maps(ai)[0][0][2] if b)
+        for addr, name in zip(G_LIGHT_SUMS, LIGHT_NAMES):
+            assert ctypes.c_int16.in_dll(lib, name).value == s16(struct.unpack("<H", emu.read(addr, 2))[0]), (n, name)
+        assert sc.party.redraw == emu.read_u32(G_VIEW_REDRAW)
+        ai.check((n, m, x, y), fields=("flags", "path", "candidates", "cache"), dungeon=True)
+    assert reached > 200
