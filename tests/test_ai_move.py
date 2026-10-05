@@ -848,3 +848,24 @@ def test_with_clouds_and_projectiles(ai):
             ai.check((g, n))
         ai.end()
     assert acted > 20
+
+
+def test_door_spells_on_the_way(ai):
+    # A door spell that flies toward the door (or the other way) between a group and a door: the door action waits.
+    rng = random.Random(32)
+    waits = 0
+    for g, x, y, m, tx, ty in places_near(ai, rng, (4,), per_group=3)[:50]:  # start.DAT has 60 projectile records
+        d = [i for i, (dx, dy) in enumerate(DIRS) if (x + dx, y + dy) == (tx, ty)][0]
+        payload = rng.choice((0xFF8D, 0xFF84, 0xFF80))
+        add_projectile(ai, payload, rng.choice((d, (d + 2) & 3)), m, x, y, rng.randrange(4))
+        ai.begin(g, x, y, m)
+        flags = struct.unpack("<H", ctypes.string_at(ai.ai + 68 + 4, 2))[0]
+        ctypes.memmove(ai.ai + 68 + 4, struct.pack("<H", flags | 1), 2)  # the door skill of shooting at the button
+        ai.emu.write(G_AI + 0x2A + 4, struct.pack("<H", flags | 1))
+        for mode in (0, 1, 0x80, 0x81):
+            mine, theirs = ai.call("creature_ai_try_door_action", mode, x, y, tx, ty, -1)
+            assert mine == theirs, (g, x, y, mode)
+            ai.check((g, mode))
+            waits += mine and mode & 0x80 and ctypes.string_at(ai.ai + 61, 1)[0] == 0xFC
+        ai.end()
+    assert waits > 3
