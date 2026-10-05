@@ -486,7 +486,8 @@ static void sensor_start_ambient_sound(uint16_t sensor, uint16_t thing, int x, i
     int ornament = wall ? sensor_wall_ornament(sensor) : sensor_floor_ornament(sensor);
     uint32_t start = game.game_time + (w >> SENSOR_DATA_SHIFT & 0xff);
     uint16_t offset = gdat_entry_index(draw_gdat(), category, ornament, GDAT_TYPE_VALUE, 0x88);
-    TimelineEvent e = {.time_map = event_time(cycle - (offset + start) % cycle + game.game_time),
+    unsigned phase = (offset + start) % cycle;
+    TimelineEvent e = {.time_map = event_time(cycle - phase + game.game_time),
                        .type = EVENT_SENSOR_AMBIENT_SOUND};
     e.data[0] = (uint8_t)x;
     e.data[1] = (uint8_t)y;
@@ -494,6 +495,15 @@ static void sensor_start_ambient_sound(uint16_t sensor, uint16_t thing, int x, i
     e.data[3] = (uint8_t)(thing >> 8);
     timeline_add_event(&e);
     set_thing_word(sensor, SENSOR_TYPE_DATA, (uint16_t)((w & 0x7f) | (0x100 | (w >> SENSOR_DATA_SHIFT & 0xff)) << SENSOR_DATA_SHIFT));
+    if (phase) return;  /* the sound plays now only when the animation cycle starts now */
+    if (wall) {  /* a wall sound comes from the square in front of the wall, unless the party stands in the wall */
+        int side = thing >> THING_CELL_SHIFT;
+        int dx = x + (side == DIR_EAST) - (side == DIR_WEST), dy = y + (side == DIR_SOUTH) - (side == DIR_NORTH);
+        if (party.cur_map != party.square_map || dx != party.square_x || dy != party.square_y) {
+            x = dx;
+            y = dy;
+        }
+    }
     sound_play_with_fallback(category, ornament, 0x88, 0xfe, x, y, 1, 0x8c, 0x80);
 }
 

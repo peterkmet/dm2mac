@@ -84,7 +84,7 @@ WEATHER = {
     "lightning_flash": (0x7F248, "<i"), "light_level": (0x7F282, "<h"), "light_source_sum": (0x7F970, "<h"),
     "explosion_light_sum": (0x7F974, "<h"),
 }
-G_SKY_OBJECTS, SKY_OBJECTS_SIZE = 0x80438, 50
+G_SKY_OBJECTS, SKY_OBJECTS_SIZE, G_VIEW_CLEAR_RECT, G_UI_COLORS = 0x80438, 50, 0x8002C, 0x7F210
 # The sound requests: the original sound table (the sounds that the map graphics load) and the driver are stubs; every
 # sound of GRAPHICS.DAT counts as loaded, as in the C port, and the tests compare the requests that reach the driver.
 SOUND_FIND_LOADED, SOUND_PLAY_REQUESTS, SOUND_FLUSH_REQUESTS = 0x15C10, 0x10573, 0x1616D
@@ -241,6 +241,7 @@ class Scenario:
         self.map_graphics_tail()
         self.set_local(TRANSFER_OBJECT_FRAME, 0, 0)
         self.sound_setup()
+        emu.write_u32(G_UI_COLORS, view.entry_data(1, 0, 0x0D, 0xFE))  # view_clear_viewport fills the band with color 0
         self.sync_weather()
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
@@ -316,7 +317,7 @@ class Scenario:
         count = ctypes.c_int.in_dll(self.lib, "sound_played_count")
         played = (SoundRequest * 64).in_dll(self.lib, "sound_played")
         mine = [(r.category, r.index, r.entry, r.priority, r.volume, r.lateral, r.forward) for r in played[:count.value]]
-        assert mine == self.sounds[:64], where
+        assert mine == self.sounds[:64], (where, mine, self.sounds)
         count.value = 0
         self.sounds.clear()
 
@@ -346,6 +347,24 @@ class Scenario:
         count.value = 0
         self.explosions.clear()
 
+    def clear_band(self, gfx_set):
+        """The band between the ceiling and floor pictures that view_clear_viewport fills (G_VIEW_CLEAR_RECT), and
+        its size; 0 when the pictures fill the viewport."""
+        sizes = []
+        for entry in (0, 1):  # floor, ceiling
+            w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
+            item = self.lib.gdat_find(self.gdat, 8, gfx_set, 1, entry)
+            if item < 0:
+                return 0
+            self.lib.gdat_image_size(self.gdat, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
+            sizes.append((w.value, h.value))
+        (fw, fh), (cw, ch) = sizes
+        floor, rest = fw * fh & 0xFFFF, (224 * 136 - cw * ch) & 0xFFFF
+        if floor >= rest:
+            return 0
+        self.emu.write(G_VIEW_CLEAR_RECT, struct.pack("<4h", 0, ch, 224, 136 - (ch + fh)))
+        return rest - floor
+
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
         import test_view as tv
@@ -358,7 +377,7 @@ class Scenario:
                                                   graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
         emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
         emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
-        emu.write(tv.G_VIEW_CLEAR, bytes(2))
+        emu.write(tv.G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
         lib.view_sky_objects.restype = ctypes.c_void_p
         emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
         emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))

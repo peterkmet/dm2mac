@@ -520,3 +520,34 @@ def write_record(sc, thing, record):
     """Writes the first bytes of a thing record in both."""
     ctypes.memmove(sc.lib.dungeon_thing_record(thing), record, len(record))
     sync_thing(sc, thing)
+
+
+def test_pit_falls_match_original(lib, gdat, start, tmp_path):
+    # The main loop of both: the party walks into open pits in random weather; move_follow_square_transitions draws
+    # the fall view, then the game step enters the map below (game_enter_map with its weather update). The loop state
+    # on each tick; weather, light, random seed, sky objects, sounds, dungeon, and the view picture after each fall.
+    # (The second fall view of a pit below a pit, with its own map change and weather update, needs the debug flag
+    # g_debug_flag_g of the original: it never runs in the game.)
+    import test_view as tv
+    from test_input import KEY_FORWARD, Loop
+    from test_move import approaches
+    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
+    sc = Loop(lib, gdat, start, tmp_path)
+    sc.emu.uc.hook_del(sc.view.weather_init_stub)
+    rng = random.Random(180)
+    viewport = tv.Bitmap.in_dll(lib, "view_viewport")
+    falls = 0
+    for n, (map_, x, y, d) in enumerate(approaches(lib, 2, lambda s: s & 8, limit=40)):
+        sc.place(map_, x, y, d)
+        set_weather(sc, **random_weather(rng))
+        for i in range(48):
+            if i == 8:
+                sc.key(KEY_FORWARD)
+            sc.tick()
+            sc.assert_tick((n, i))
+        assert_world(sc, (n, map_, x, y))
+        sc.assert_loop((n, map_, x, y))
+        falls += sc.game.party_map != map_
+        assert ctypes.string_at(viewport.pixels, tv.VIEW_W * tv.VIEW_H) == \
+            sc.emu.read(sc.view.viewport, tv.VIEW_W * tv.VIEW_H), (n, map_, x, y)
+    assert falls > 10, falls
