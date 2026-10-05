@@ -1,5 +1,6 @@
 /* Party movement and thing movement through pits, teleporters, and stairs. */
 #include <stdlib.h>
+#include <string.h>
 #include "champion.h"
 #include "creature.h"
 #include "draw.h"
@@ -246,8 +247,24 @@ int champ_get_nearest_at(int x, int y, int cell)
     if (!game.champion_count) return -1;
     if (abs(x - party.square_x) + abs(y - party.square_y) >= 2) return -1;
     int dir = dun_get_direction_to(party.square_x, party.square_y, x, y);
-    if (!(dir * 2 & 2)) cell++;
-    const uint8_t *cells = attack_cell_orders[(dir * 2 & 0xffff) + (cell >> 1 & 1)];
+    uint8_t cells[4];
+    if (cell == 0xff) {
+        /* any cell: the cells from the side toward (x, y) on, the two front and the two back cells in random order */
+        for (int i = 0; i < 4; i++) cells[i] = (uint8_t)((dir + i) & 3);
+        if (rand_bit()) {
+            uint8_t c = cells[0];
+            cells[0] = cells[1];
+            cells[1] = c;
+        }
+        if (rand_bit()) {
+            uint8_t c = cells[2];
+            cells[2] = cells[3];
+            cells[3] = c;
+        }
+    } else {
+        if (!(dir * 2 & 2)) cell++;
+        memcpy(cells, attack_cell_orders[(dir * 2 & 0xffff) + (cell >> 1 & 1)], 4);
+    }
     for (int i = 0; i < 4; i++) {
         int c = champ_get_index_in_cell(cells[i]);
         if (c >= 0) return c;

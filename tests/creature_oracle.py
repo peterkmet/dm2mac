@@ -6,6 +6,7 @@ import struct
 ACTIVE_GROUP_SIZE = 0x22
 G_ACTIVE_GROUPS, G_ACTIVE_GROUP_COUNT, G_ACTIVE_GROUP_MAX = 0x7F898, 0x7301C, 0x7F89C
 G_RANDOM_SEED = 0x70518
+G_TIMELINE_QUEUE, G_TIMELINE_FIX_SLOT = 0x80420, 0x80424
 CREATURE_ALLOC_ACTIVE_GROUPS, CREATURE_RESET_ACTIVE_GROUPS = 0x342F9, 0x342A3
 CREATURE_ACTIVATE_GROUPS_ALL_MAPS = 0x34236
 IMAGE_CACHE_LOOKUP, IMAGE_CACHE_ALLOC, IMAGE_CACHE_REALLOC = 0x3F1F8, 0x3F279, 0x3F2C2
@@ -140,5 +141,11 @@ class CreatureOracle:
         assert ctypes.c_int.in_dll(self.lib, "active_group_count").value == \
             struct.unpack("<H", self.emu.read(G_ACTIVE_GROUP_COUNT, 2))[0], where
         assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
+        import test_save
+        tl = test_save.Timeline.in_dll(self.lib, "timeline")
+        theirs = struct.unpack("<hhHH", self.emu.read(G_TIMELINE_FIX_SLOT, 8))
+        assert (tl.fix_slot, tl.first_free, tl.capacity, tl.count) == theirs, (where, "timeline")
+        mine_q = ctypes.string_at(tl.queue, tl.count * 2)
+        assert mine_q == self.emu.read(self.emu.read_u32(G_TIMELINE_QUEUE), tl.count * 2), (where, "timeline queue")
 
 
