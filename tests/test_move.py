@@ -33,7 +33,7 @@ TIMELINE_PROCESS, TIMELINE_ADD_EVENT, DUN_SET_PARTY_LOCATION = 0x59A5C, 0x56390,
 SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
 # Functions of later steps and of the DOS layer: (address, stack arguments, result).
 STUBS = {
-    0x15BAA: (5, 0), 0x15CA9: (4, 0), 0x1616D: (0, 0), 0x160DB: (0, 0),     # sound
+    0x2FACC: (0, 0),                                                         # party distance map (Step 16)
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
@@ -85,6 +85,20 @@ WEATHER = {
     "explosion_light_sum": (0x7F974, "<h"),
 }
 G_SKY_OBJECTS, SKY_OBJECTS_SIZE = 0x80438, 50
+# The sound requests: the original sound table (the sounds that the map graphics load) and the driver are stubs; every
+# sound of GRAPHICS.DAT counts as loaded, as in the C port, and the tests compare the requests that reach the driver.
+SOUND_FIND_LOADED, SOUND_PLAY_REQUESTS, SOUND_FLUSH_REQUESTS = 0x15C10, 0x10573, 0x1616D
+G_DELAYED_SOUNDS, G_SOUND_TABLE, G_SOUND_DEFERRED, G_SAMPLE_DESCS, G_SOUND_REQUESTS = 0x7F188, 0x7F18C, 0x7F190, 0x7F194, 0x7F198
+G_SOUND_REQUEST_COUNT, G_SOUND_DEFERRED_COUNT, SOUND_TABLE_MAX = 0x71690, 0x71692, 512
+
+
+class SoundRequest(ctypes.Structure):
+    _fields_ = [(n, ctypes.c_uint8) for n in ("category", "index", "entry", "priority", "volume")] + [
+        ("lateral", ctypes.c_int8), ("forward", ctypes.c_int8)]
+
+
+class Sound(ctypes.Structure):
+    _fields_ = [("data", ctypes.c_void_p), ("length", ctypes.c_uint32)]
 G_GFX_HAS_CLOUDS, G_GFX_HAS_RAIN, G_GFX_HAS_LIGHTNING = 0x80475, 0x80476, 0x8047D
 
 
@@ -226,6 +240,7 @@ class Scenario:
         emu.stub(SHOP_PARSE_ITEM_CLASS_SET, lambda c, e, bits, *_: emu.write(bits, bytes(0x40)))
         self.map_graphics_tail()
         self.set_local(TRANSFER_OBJECT_FRAME, 0, 0)
+        self.sound_setup()
         self.sync_weather()
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
@@ -255,6 +270,55 @@ class Scenario:
             uc.reg_write(UC_X86_REG_EIP, MAP_GRAPHICS_TAIL)
 
         self.emu.uc.hook_add(UC_HOOK_CODE, hook, begin=GDAT_LOAD_MAP_GRAPHICS, end=GDAT_LOAD_MAP_GRAPHICS)
+
+    def sound_setup(self):
+        """The sound buffers of the original, its sound table filled on demand, and the recorder of its driver calls."""
+        emu, lib, view = self.emu, self.lib, self.view
+        lib.sound_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
+        for addr, size in ((G_DELAYED_SOUNDS, 0x70), (G_SOUND_DEFERRED, 0x48), (G_SOUND_REQUESTS, 0xF0),
+                           (G_SOUND_TABLE, 7 * SOUND_TABLE_MAX), (G_SAMPLE_DESCS, 16 * SOUND_TABLE_MAX)):
+            emu.write_u32(addr, view.put(bytes(size)))
+        emu.write(G_SOUND_REQUEST_COUNT, bytes(4))
+        self.sound_keys = []
+        self.sounds = []  # the requests that reached the driver of the original
+
+        def find_loaded(category, index, entry, *_):
+            key = (category & 0xFF, index & 0xFF, entry & 0xFF)
+            s = Sound()
+            if lib.sound_load(self.gdat, *key, ctypes.byref(s)) != 0:
+                return 0
+            if key not in self.sound_keys:
+                n = len(self.sound_keys)
+                self.sound_keys.append(key)
+                emu.write(emu.read_u32(G_SOUND_TABLE) + 7 * n, struct.pack("<HBBBH", n, *key, 0xFFFF))
+                emu.write(emu.read_u32(G_SAMPLE_DESCS) + 16 * n, struct.pack("<IH", s.data & 0xFFFFFFFF, s.length & 0xFFFF))
+            return self.sound_keys.index(key) + 1
+
+        def play(count, requests, *_):
+            descs = emu.read_u32(G_SAMPLE_DESCS)
+            for i in range(count & 0xFFFF):
+                desc, priority, volume, lateral, forward = struct.unpack_from("<IBBbb", emu.read(requests + 12 * i, 8))
+                self.sounds.append(self.sound_keys[(desc - descs) // 16] + (priority, volume, lateral, forward))
+            return count
+
+        emu.stub(SOUND_FIND_LOADED, find_loaded)
+        emu.stub(SOUND_PLAY_REQUESTS, play)
+        ctypes.c_int.in_dll(lib, "sound_played_count").value = 0
+        lib.sound_reset_requests()  # both start from the sound state of the program start
+
+    def flush_sounds(self):
+        """The end of a game step: the sound requests of the step play in both."""
+        self.lib.sound_flush_requests(0)
+        self.emu.call(SOUND_FLUSH_REQUESTS, 0)
+
+    def assert_same_sounds(self, where):
+        """The sound requests that reached the voices in both since the last check."""
+        count = ctypes.c_int.in_dll(self.lib, "sound_played_count")
+        played = (SoundRequest * 64).in_dll(self.lib, "sound_played")
+        mine = [(r.category, r.index, r.entry, r.priority, r.volume, r.lateral, r.forward) for r in played[:count.value]]
+        assert mine == self.sounds[:64], where
+        count.value = 0
+        self.sounds.clear()
 
     def sync_weather(self):
         """The weather state that the save does not keep: the original load stubs weather_init, so it gets the values
@@ -300,6 +364,7 @@ class Scenario:
         emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
         for addr, entry in ((G_GFX_HAS_CLOUDS, 0x6A), (G_GFX_HAS_RAIN, 0x67), (G_GFX_HAS_LIGHTNING, 0x64)):
             emu.write(addr, bytes([lib.gdat_exists(self.gdat, 0x17, gfx_set, 1, entry)]))
+        emu.write(G_SOUND_REQUEST_COUNT, bytes(2))  # sound_wait_and_clear_requests
         lib.view_enter_map(map_)
 
     def clear_uninitialized_event_bytes(self):
@@ -311,7 +376,7 @@ class Scenario:
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
                 0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0),
-                0x54: (0, 0, 0, 0, 0, 0)}
+                0x54: (0, 0, 0, 0, 0, 0), 0x15: (0xFF, 0xFF, 0, 0, 0, 0)}
         emu = self.emu
 
         def hook(uc, *_):
@@ -397,6 +462,7 @@ class Scenario:
         self.emu.call(TIMELINE_PROCESS)
         self.lib.world_update_day_night(0)
         self.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
+        self.flush_sounds()
         if self.party.move_steps:
             if self.party.move_steps == 1:
                 self.lib.move_party(self.party.move_command)
@@ -476,6 +542,8 @@ class Scenario:
         assert ignore_stale(mine) == ignore_stale(theirs), where
         assert self.differences() == [], where
         self.assert_same_weather(where)
+        self.assert_same_sounds(where)
+        assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(0x70518), where
 
     def assert_equal(self, where):
         self.assert_same_damage(where)

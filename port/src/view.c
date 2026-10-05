@@ -7,6 +7,7 @@
 #include "move.h"
 #include "random.h"
 #include "save.h"
+#include "sound_request.h"
 #include "text.h"
 #include "timeline.h"
 #include "view.h"
@@ -610,6 +611,7 @@ void view_enter_map(int map)
 {
     const gdat_t *g = draw_gdat();
     uint16_t graphics = dungeon_map_graphics(map), flags = dungeon_map_flags(map);
+    sound_clear_requests();
     view.map = view.party_map = map;
     view.gfx_set = graphics >> MAP_GFX_SET_SHIFT & NIBBLE;
     view.door_types[0] = flags & MAP_HAS_DOOR_TYPE_0 ? graphics >> MAP_DOOR_TYPE_SHIFT & NIBBLE : DOOR_TYPE_NONE;

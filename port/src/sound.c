@@ -122,6 +122,11 @@ int sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
     return 0;
 }
 
+void sound_stop_all(void)
+{
+    for (int i = 0; i < SOUND_VOICES; i++) voices[i].data = NULL;
+}
+
 static int16_t clamp16(int s)
 {
     return s < INT16_MIN ? INT16_MIN : s > INT16_MAX ? INT16_MAX : s;

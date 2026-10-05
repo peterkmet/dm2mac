@@ -62,8 +62,11 @@ def set_global(sc, var, value):
 
 
 def assert_world(sc, where):
-    """Weather, light, sky, explosions, script bytes 0x40 and 0x41, random seed, dungeon, and timeline."""
+    """Weather, light, sky, explosions, sounds, script bytes 0x40 and 0x41, random seed, dungeon, and timeline."""
     sc.assert_same_weather(where)
+    sc.flush_sounds()
+    sc.sounds_seen = getattr(sc, "sounds_seen", []) + sc.sounds
+    sc.assert_same_sounds(where)
     for var in (0x40, 0x41):
         assert sc.lib.dun_get_global_var(var) == sc.emu.read(G_GLOBAL_BYTES + var - 0x40, 1)[0], (where, var)
     assert ctypes.c_uint32.in_dll(sc.lib, "random_seed").value == sc.emu.read_u32(VIEW_SEED_ADDR), where
@@ -439,6 +442,29 @@ def test_lightning_strikes_match_original(world, lib):
         assert_world(sc, (n, map_, target, party))
     set_party_state(sc, 0, 0)
     assert party_hits > 5 and creature_hits > 5 and seen > 5, (party_hits, creature_hits, seen)
+
+
+def test_lightning_sounds_match_original(world, lib):
+    # Bolts in the sky with the thunder after 1 to 15 ticks (every second bolt; delays above 1 go through the
+    # timeline, event 0x15), and the lightning of the fixed square of map 1 with its sound; the sound requests that
+    # reach the voices, their volume and place, and the delayed sound events of both.
+    rng = random.Random(179)
+    sc = world
+    sc.sounds_seen = []
+    for n in range(30):
+        map_ = MAP_LIGHTNING_TARGET if n % 3 == 0 else rng.choice(OUTDOOR_MAPS)
+        _, x, y, _ = rng.choice([s for s in squares(lib, (1,)) if s[0] == map_])
+        sc.place(map_, x, y, rng.randrange(4))
+        set_weather(sc, rain_intensity=1, storm_intensity=rng.choice((0, 0x40, 0xC0, 0xF0)),
+                    storm_multiplier=rng.randrange(1, 4), next_hour_time=sc.time() + 1000)
+        set_party_state(sc, 0, int(rng.random() < 0.3))
+        for i in range(30):
+            sc.step()
+            assert_world(sc, (n, map_, i))
+    set_party_state(sc, 0, 0)
+    thunder = sum(s[0] == 0x17 for s in sc.sounds_seen)
+    fixed = sum(s[:3] == (0x0D, 0x30, 0x81) for s in sc.sounds_seen)
+    assert thunder > 5 and fixed > 2, (thunder, fixed)
 
 
 def test_square_light_of_added_things_matches_original(world, lib, gdat):

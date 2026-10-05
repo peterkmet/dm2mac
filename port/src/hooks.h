@@ -1,6 +1,7 @@
 #ifndef HOOKS_H
 #define HOOKS_H
 #include <stdint.h>
+#include "sound_request.h"
 #include "timeline.h"
 
 /* Calls of the movement, sensor, and main loop code into systems of later steps. Each hook is empty or
@@ -63,6 +64,8 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
 void creature_process_event(int x, int y, int type);
 void creature_update_anim_at(int x, int y, int start);
 void timeline_event_move_group(TimelineEvent *e);
+/* The walking distance from the party to (x, y) (party distance map); 0: as the straight distance. */
+int creature_get_party_distance(int x, int y);
 void projectile_process_event(TimelineEvent *e);
 /* The arguments of the explosion hook calls (lightning), for the tests until Step 16. */
 typedef struct { uint16_t type, attack, x, y; int16_t cell; } ExplosionCall;
@@ -77,13 +80,6 @@ void sensor_turn_creatures(const TimelineEvent *e);
 /* The push arrows and the clicks on creatures in front of the party. */
 void move_push_creature(int arrow);
 void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y);                              /* returns 0 */                               /* returns -1: no event */
-
-/* Step 18: sound effects. */
-void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority,
-                              int volume);
-void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay);
-void sound_flush_requests(int queue);
-void sound_play_delayed(int index);
 
 /* Step 20: end of game. */
 void game_complete(void);

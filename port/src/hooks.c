@@ -62,6 +62,7 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
 void creature_process_event(int x, int y, int type) { (void)x; (void)y; (void)type; }
 void creature_update_anim_at(int x, int y, int start) { (void)x; (void)y; (void)start; }
 void timeline_event_move_group(TimelineEvent *e) { (void)e; }
+int creature_get_party_distance(int x, int y) { (void)x; (void)y; return 0; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
 ExplosionCall explosion_calls[EXPLOSION_CALL_MAX];
 int explosion_call_count;
@@ -74,10 +75,6 @@ void explosion_process_event(TimelineEvent *e) { (void)e; }
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e) { (void)sensor; (void)e; }
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect) { (void)kind_data; (void)count; (void)x; (void)y; (void)tx; (void)ty; (void)kind; (void)effect; }
 void sensor_turn_creatures(const TimelineEvent *e) { (void)e; }
-void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority, int volume) { (void)category; (void)index; (void)entry; (void)fallback; (void)x; (void)y; (void)delay; (void)priority; (void)volume; }
-void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay) { (void)category; (void)index; (void)entry; (void)priority; (void)volume; (void)x; (void)y; (void)delay; }
-void sound_flush_requests(int queue) { (void)queue; }
-void sound_play_delayed(int index) { (void)index; }
 void game_complete(void) { }
 void command_execute_later(const Command *c) { (void)c; }
 uint16_t champ_remove_object_from_leader_hand(void) { return THING_NONE; }
