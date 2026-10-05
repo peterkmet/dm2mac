@@ -262,6 +262,30 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     assert path.read_bytes() == first
 
 
+G_CHAMPIONS, CHAMPION_SIZE, CHAMPION_DAMAGE_EVENT = 0x7FBD0, 263, 0x2E
+
+
+def test_load_relinks_champion_damage_events_like_original(lib, gdat, start, tmp_path):
+    # A save with queued hide damage events (0x0c) for champion 0 and an altar rebirth event (0x0d): after the load
+    # each champion points at its hide damage event (or 0xffff), in the C port and in the original.
+    path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
+    path.write_bytes(start)
+    assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
+    game = Game.in_dll(lib, "game")
+    for delay, type_, priority in ((40, 0x0D, 0), (20, 0x0C, 0), (90, 0x0C, 0)):
+        event = Event(game.game_time + delay | game.party_map << 24, type_, priority, (ctypes.c_uint8 * 6)())
+        lib.timeline_add_event(ctypes.byref(event))
+    assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == SAVE_OK
+    saved = path.read_bytes()
+    assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
+    records = ctypes.string_at(ctypes.addressof(game) + 252, 4 * CHAMPION_SIZE)  # offsetof(Game, champions)
+    mine = [records[c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT:][:2] for c in range(4)]
+    emu = original_load(lib, gdat, saved)
+    theirs = [emu.read(G_CHAMPIONS + c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT, 2) for c in range(4)]
+    assert mine == theirs
+    assert struct.unpack("<H", mine[0])[0] not in (0, 0xFFFF) and mine[1:] == [b"\xff\xff"] * 3
+
+
 G_THING_DATA = 0x7F288
 G_TIMELINE_EVENTS = 0x760E8
 G_TIMELINE_EVENT_MAX = 0x80428
