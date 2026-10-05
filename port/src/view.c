@@ -2751,6 +2751,14 @@ int view_hit_test_wall_ornament(int pos, int x, int y)
     return hit;
 }
 
+void dun_get_square_aspect(ViewSquare *s, int map, int dir, int x, int y)
+{
+    int saved = view.map;
+    view.map = map;
+    get_square_aspect(s, dir, x, y);
+    view.map = saved;
+}
+
 int view_wall_face_ornament(int map, uint16_t first, int dir)
 {
     ViewSquare s;

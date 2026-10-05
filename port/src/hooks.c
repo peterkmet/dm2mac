@@ -21,6 +21,18 @@ int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
     return 0;
 }
 
+HookCall hook_calls[HOOK_CALL_MAX];
+int hook_call_count;
+
+void hook_record(int kind, int a, int b, int c, int d, int e)
+{
+    if (hook_call_count < HOOK_CALL_MAX) hook_calls[hook_call_count++] = (HookCall){kind, {a, b, c, d, e}};
+}
+
+void champ_add_experience(int champ, int skill, uint32_t amount) { hook_record(HOOK_ADD_EXPERIENCE, champ, skill, (int)amount, 0, 0); }
+void champ_add_action_delay(int champ, uint16_t ticks, int hand) { hook_record(HOOK_ADD_ACTION_DELAY, champ, ticks, hand, 0, 0); }
+void champ_add_object_to_slot(int champ, uint16_t thing, int slot) { hook_record(HOOK_ADD_OBJECT_TO_SLOT, champ, thing, slot, 0, 0); }
+
 int champ_damage_party(int damage, int wound_mask, int attack_type)
 {
     record_damage(-1, damage, wound_mask, attack_type);
@@ -33,7 +45,6 @@ void items_burn_held_lights(void) { }
 void inv_update_hand_cursor(void) { }
 void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
-void timeline_event_magic_light(TimelineEvent *e) { (void)e; }
 void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y) { (void)from_x; (void)from_y; (void)to_x; (void)to_y; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
@@ -48,9 +59,10 @@ void sound_request(int category, int index, int entry, int priority, int volume,
 void sound_flush_requests(int queue) { (void)queue; }
 void sound_play_delayed(int index) { (void)index; }
 void game_complete(void) { }
+int dungeon_level_digit(int level) { (void)level; return 0; }
 void command_execute_later(const Command *c) { (void)c; }
 uint16_t champ_remove_object_from_leader_hand(void) { return THING_NONE; }
-void champ_put_object_in_leader_hand(uint16_t thing, int flag) { (void)thing; (void)flag; }
+void champ_put_object_in_leader_hand(uint16_t thing, int flag) { hook_record(HOOK_PUT_IN_LEADER_HAND, thing, flag, 0, 0, 0); }
 uint16_t item_create_by_index(int item) { (void)item; return THING_NONE; }
 void champ_start_recruit(int x, int y, int map) { (void)x; (void)y; (void)map; }
 void view_click_take_object(int x, int y) { (void)x; (void)y; }

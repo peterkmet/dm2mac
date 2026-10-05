@@ -387,10 +387,18 @@ uint8_t dungeon_square_edge(int map, int x, int y)
 
 int dungeon_location_on_map(int map, int level_delta, int *x, int *y)
 {
+    return dungeon_location_on_map_from(map, level_delta, x, y, NULL);
+}
+
+int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *next)
+{
     int ax = *x + dungeon_map_offset_x(map), ay = *y + dungeon_map_offset_y(map);
     int level = dungeon_map_level(map) + level_delta;
+    int start = next ? *next : 0;
+    if (next) *next = 0;
     if (level < 0 || level >= LEVEL_COUNT) return -1;
-    for (const uint8_t *m = dungeon_level_maps(level); *m != LEVEL_LIST_END; m++) {
+    const uint8_t *maps = dungeon_level_maps(level);
+    for (const uint8_t *m = maps + start; *m != LEVEL_LIST_END; m++) {
         int ox = dungeon_map_offset_x(*m), oy = dungeon_map_offset_y(*m);
         if (ax < ox - 1 || (unsigned)ax > (unsigned)(ox + dungeon_map_width(*m)) || ay < oy - 1
             || (unsigned)ay > (unsigned)(oy + dungeon_map_height(*m)))
@@ -400,6 +408,7 @@ int dungeon_location_on_map(int map, int level_delta, int *x, int *y)
         if (type == SQUARE_UNKNOWN || (type == SQUARE_TELEPORTER && teleporter_closed(*m, lx, ly))) continue;
         *x = lx;
         *y = ly;
+        if (next) *next = (int)(m - maps) + 1;
         return *m;
     }
     return -1;

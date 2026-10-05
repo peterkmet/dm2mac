@@ -416,7 +416,7 @@ static void sensor_forward_effect(const TimelineEvent *e, uint16_t sensor, int d
     sensor_trigger_target(sensor, sensor_own_effect(flags), delay);
 }
 
-void dun_modify_global_var(int var, int value, int op)
+int dun_modify_global_var(int var, int value, int op)
 {
     int old = dun_get_global_var(var), v = old;
     switch (op) {
@@ -431,12 +431,15 @@ void dun_modify_global_var(int var, int value, int op)
         uint8_t bit = (uint8_t)(1 << (var & 7));
         if ((int16_t)v) game.global_flags[var >> 3] |= bit;
         else game.global_flags[var >> 3] &= (uint8_t)~bit;
+        return (int16_t)v != 0;
     } else if (var < 0x80) {
         v = (int16_t)v;
-        game.global_bytes[var - 0x40] = (uint8_t)(v < 0 ? 0 : v > 0xff ? 0xff : v);
+        v = v < 0 ? 0 : v > 0xff ? 0xff : v;
+        game.global_bytes[var - 0x40] = (uint8_t)v;
     } else if (var < 0xc0) {
         game.global_words[var - 0x80] = (uint16_t)v;
     }
+    return (int16_t)v;
 }
 
 int dun_get_global_var(int var)
