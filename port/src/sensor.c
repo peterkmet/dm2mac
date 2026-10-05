@@ -12,7 +12,9 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
+#include "input.h"
 #include "text.h"
+#include "view.h"
 
 #define CAT_DOOR 0x0e
 #define CAT_ORNAMENT 9
@@ -1162,22 +1164,271 @@ void sensor_process_map_entry(int entering)
     dun_set_current_map(saved);
 }
 
-void sensor_start_timers(int new_game)
+/* ---- Wall clicks ---- */
+
+#define ORNAMENT_KEY_TOUCH 0x0b      /* ornament value: touching the ornament fills the water (a fountain) */
+#define ORNAMENT_KEY_ALCOVE 0x0a     /* ornament value 1: an alcove */
+#define ORNAMENT_KEY_LADDER_UP 0x11  /* ornament value: the ladder goes up */
+#define ORNAMENT_KEY_MARKER_DELAY 0x12
+#define WATER_FULL 0x800
+#define ITEM_EMPTY_FLASK 0x194
+#define FLASK_FULL_INDEX 0x0f
+#define ATTR_REFILLS 0x0001          /* item attribute 0 bit: the item takes water */
+enum {
+    WALL_CLICK_ANY = 1, WALL_CLICK_EMPTY_HAND, WALL_CLICK_ITEM, WALL_CLICK_CHARGED_ITEM = 0x15, WALL_CLICK_TOGGLE = 0x17,
+    WALL_CLICK_BUTTON = 0x18, WALL_CLICK_COUNTED_ITEM = 0x1b, WALL_CLICK_TELEPORT = 0x1c, WALL_CLICK_RESET = 0x3f,
+    WALL_CLICK_DOOR_BUTTON = 0x46, WALL_CLICK_BUTTON_2 = 0x4a, WALL_CLICK_PORTRAIT = 0x7e
+};
+enum { TEXT_LADDER = 6, TEXT_LADDER_HIDDEN = 7, TEXT_SWITCH = 0x0d };
+
+/* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
+static int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
 {
-    for (int map = 0; map < dungeon_map_count(); map++)
-        for (int x = 0; x < dungeon_map_width(map); x++)
-            for (int y = 0; y < dungeon_map_height(map); y++)
-                for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
-                     t = dungeon_next_thing(t)) {
-                    if (thing_type(t) != THING_SENSOR) continue;
-                    int kind = thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK;
-                    if (!new_game || !(kind == 0x1e || (kind > 0x32 && kind < 0x38))) continue;
-                    uint16_t flags = thing_word(t, SENSOR_FLAGS);
-                    if (!(flags & (1 << SENSOR_STATE_SHIFT))) {
-                        set_sensor_flags(t, flags & ~SENSOR_BUSY);
-                    } else {
-                        dun_set_current_map(map);
-                        sensor_schedule_timer(t, t);
-                    }
+    int ornament = item_gdat_index(thing);
+    if (ornament == 0xff
+        || gdat_entry_index(draw_gdat(), CAT_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
+        return 0;
+    return view_wall_face_ornament(party.cur_map, first, ((thing >> THING_CELL_SHIFT) + 2) & 3) == ornament;
+}
+
+static int ornament_value(uint16_t thing, int key)
+{
+    int ornament = item_gdat_index(thing);
+    return ornament == 0xff ? 0 : gdat_entry_index(draw_gdat(), CAT_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
+}
+
+/* The object of the item index type on the cell of the square (x, y), or a new one; THING_NONE when none can be made. */
+static uint16_t wall_item(int x, int y, int cell, int item)
+{
+    for (uint16_t t = dungeon_square_first_object(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+        if (item_get_index(t) == item && (cell == -1 || t >> THING_CELL_SHIFT == cell)) return t;
+    uint16_t t = item_create_by_index(item);
+    if (t == THING_NONE) return t;
+    t = (uint16_t)((t & 0x3fff) | cell << THING_CELL_SHIFT);
+    dungeon_link_thing_to_square(t, party.cur_map, x, y);
+    return t;
+}
+
+void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand)
+{
+    const uint16_t hand_arg = hand;
+    int stop = 0, take = 0, done = 0;
+    uint16_t give = THING_NONE;
+    int has_leader = (int16_t)game.leader != -1;
+    uint16_t first = first_thing(x, y);
+    for (uint16_t t = first; t != THING_ENDOFLIST && !done; t = dungeon_next_thing(t)) {
+        int extra = 0, cell = t >> THING_CELL_SHIFT;
+        if (cell != side) continue;
+        if (dun_is_wall_thing_ornament_shown(first, t)) {
+            if (hand == THING_NONE) {
+                uint16_t object = THING_NONE;
+                for (uint16_t o = dungeon_square_first_object(party.cur_map, x, y); o != THING_ENDOFLIST; o = dungeon_next_thing(o))
+                    if (o >> THING_CELL_SHIFT == cell) object = o;
+                if (object != THING_NONE && thing_type(object) >= THING_WEAPON && thing_type(object) <= THING_MISC) {
+                    move_thing(object, x, y, -1, 0);
+                    give = object;
                 }
+            } else {
+                take = 1;
+                move_thing((uint16_t)((hand & 0x3fff) | cell << THING_CELL_SHIFT), -1, 0, x, y);
+            }
+            break;
+        }
+        if (ornament_value(t, ORNAMENT_KEY_TOUCH)) {
+            if (hand == THING_NONE) {
+                if (!has_leader) break;
+                for (int i = 0; i < CHAMPION_MAX; i++)
+                    if (champion(i)->health) champion(i)->water = WATER_FULL;
+                sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, champion(game.leader)->portrait, 0x83, 0xfe, game.party_x,
+                                         game.party_y, 0, 0x96, 0x80);
+            } else if (item_attr(hand, 0) & ATTR_REFILLS) {
+                item_add_charges(hand, 0xf);
+                take = 1;
+                give = hand;
+            } else if (item_get_index(hand) == ITEM_EMPTY_FLASK) {
+                item_set_gdat_index(hand, FLASK_FULL_INDEX);
+                take = 1;
+                give = hand;
+            }
+            break;
+        }
+        int type = thing_type(t);
+        if (type == THING_SENSOR) {
+            uint16_t w = thing_word(t, SENSOR_TYPE_DATA), flags = thing_word(t, SENSOR_FLAGS);
+            int kind = w & SENSOR_TYPE_MASK, effect = sensor_own_effect(flags);
+            unsigned data = w >> SENSOR_DATA_SHIFT;
+            if (!has_leader && kind != WALL_CLICK_PORTRAIT) continue;
+            int ornament = sensor_wall_ornament(t);
+            if (!kind) continue;
+            int skip = 1;
+            switch (kind) {
+            case WALL_CLICK_ANY:
+                skip = 0;
+                if (effect == EFFECT_HOLD) continue;
+                break;
+            case WALL_CLICK_EMPTY_HAND:
+                skip = (hand == THING_NONE) != (flags >> 5 & 1);
+                break;
+            case WALL_CLICK_CHARGED_ITEM:
+                if (!item_add_charges(hand, 0)) break;
+                /* fall through */
+            case WALL_CLICK_ITEM: {
+                int match = item_get_index(hand) == data;
+                skip = match == (flags >> 5 & 1);
+                if (match && flags & 4) champ_remove_object_from_leader_hand();  /* the original frees it */
+                break;
+            }
+            case WALL_CLICK_TOGGLE: {
+                if (hand != THING_NONE) continue;
+                flags = (uint16_t)(flags ^ 1 << SENSOR_STATE_SHIFT);
+                set_sensor_flags(t, flags);
+                skip = (flags >> 5 & 1) == (flags >> SENSOR_STATE_SHIFT & 1);
+                break;
+            }
+            case WALL_CLICK_DOOR_BUTTON: {
+                uint16_t target = thing_word(t, SENSOR_TARGET);
+                if (!(thing_word(first_thing(target >> 6 & 0x1f, target >> 11), DOOR_DATA) & 0x2000)) continue;
+            }
+                /* fall through */
+            case WALL_CLICK_BUTTON: case WALL_CLICK_BUTTON_2: {
+                if (hand != THING_NONE || flags & SENSOR_BUSY) continue;
+                /* fix: the original leaves 4 data bytes of the event uninitialized */
+                TimelineEvent e = {.time_map = event_time(data + game.game_time + 2), .type = EVENT_SENSOR_IDLE};
+                e.data[0] = (uint8_t)t;
+                e.data[1] = (uint8_t)(t >> 8);
+                timeline_add_event(&e);
+                flags |= SENSOR_BUSY;
+                set_sensor_flags(t, flags);
+                skip = 0;
+                if (flags & SENSOR_INVERTED) extra = 0x10;
+                if (effect != EFFECT_HOLD) break;
+                stop = 1;
+                if (flags & SENSOR_AUDIBLE)
+                    sound_play_with_fallback(CAT_ORNAMENT, ornament, 0x88, 0xfe, game.party_x, game.party_y, 1, 0x8c, 0x80);
+                sensor_trigger_target(t, EFFECT_SET, extra);
+                sensor_trigger_target(t, EFFECT_CLEAR, (int16_t)(data + 1 + extra));
+                continue;
+            }
+            case WALL_CLICK_PORTRAIT:
+                if (flags & 4 && side == ((game.party_dir + 2) & 3)) {
+                    champ_start_recruit(game.party_x, game.party_y, game.party_map);
+                    done = 1;
+                    skip = 0;
+                }
+                break;
+            case WALL_ITEM_HOLDER: {
+                int item = item_holder_item(ornament);
+                if (flags & (1 << SENSOR_STATE_SHIFT)) {
+                    if (hand != THING_NONE) {
+                        done = 1;
+                        continue;
+                    }
+                    uint16_t object = wall_item(x, y, cell, item);
+                    if (object == THING_NONE) continue;
+                    item_add_charges(object, 0xf);
+                    move_thing(object, x, y, -1, 0);
+                    give = object;
+                } else {
+                    if (hand == THING_NONE || item_get_index(hand) != item) continue;
+                    take = 1;
+                    move_thing((uint16_t)((hand & 0x3fff) | cell << THING_CELL_SHIFT), -1, 0, x, y);
+                }
+                hand = THING_NONE;
+                party.redraw |= REDRAW_VIEW;
+                done = 1;
+                continue;
+            }
+            case WALL_CLICK_COUNTED_ITEM:
+                if (!data || item_get_index(hand) != item_holder_item(ornament)) continue;
+                take = 1;
+                hand = THING_NONE;
+                if (!(uint16_t)--data) {
+                    skip = 0;
+                    flags |= SENSOR_BUSY;
+                    set_sensor_flags(t, flags);
+                }
+                set_sensor_data(t, data);
+                break;
+            case WALL_CLICK_TELEPORT: {
+                if (hand != THING_NONE || flags & 4) continue;
+                uint16_t target = thing_word(t, SENSOR_TARGET);
+                int dir = flags & SENSOR_INVERTED ? flags >> 3 & 3 : ((flags >> 3 & 3) + game.party_dir) & 3;
+                move_party_to(target >> 6 & 0x1f, target >> 11, data & 0x3f, dir);
+                input_flush();
+                break;
+            }
+            case WALL_CLICK_RESET:
+                if (hand == THING_NONE) set_sensor_flags(t, flags & ~SENSOR_BUSY);
+                break;
+            default:
+                continue;
+            }
+            if (effect == EFFECT_HOLD) {
+                effect = skip != 0;
+                skip = 0;
+            }
+            if (skip) continue;
+            stop = 1;
+            if (thing_word(t, SENSOR_FLAGS) & SENSOR_AUDIBLE)
+                sound_play_with_fallback(CAT_ORNAMENT, ornament, 0x88, 0xfe, game.party_x, game.party_y, 1, 0x8c, 0x80);
+            sensor_trigger_target(t, effect, extra);
+        } else if (actor == THING_NONE && type == THING_TEXT) {
+            uint16_t w = thing_word(t, TEXT_DATA);
+            if ((w & TEXT_KIND_MASK) != TEXT_KIND_DATA || !has_leader) continue;
+            int value = w >> TEXT_VALUE_SHIFT & 0xff, sub = w >> TEXT_SUBTYPE_SHIFT & 0x1f;
+            if (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) {
+                int item = item_holder_item(value);
+                if (w & TEXT_SHOWN) {
+                    if (hand != THING_NONE) {
+                        done = 1;
+                        continue;
+                    }
+                    uint16_t object = wall_item(x, y, cell, item);
+                    if (object == THING_NONE) continue;
+                    item_add_charges(object, 0xf);
+                    move_thing(object, x, y, -1, 0);
+                    give = object;
+                    hand = THING_NONE;
+                    if (sub == TEXT_ITEM_HOLDER_2) {
+                        /* fix: the original leaves 4 data bytes of the event uninitialized */
+                        uint16_t delay = gdat_entry_index(draw_gdat(), CAT_ORNAMENT, value, GDAT_TYPE_VALUE,
+                                                          ORNAMENT_KEY_MARKER_DELAY);
+                        TimelineEvent e = {.time_map = event_time(game.game_time + delay + 2), .type = EVENT_SET_MARKER};
+                        e.data[0] = (uint8_t)t;
+                        e.data[1] = (uint8_t)(t >> 8);
+                        timeline_add_event(&e);
+                    }
+                } else if (sub != TEXT_ITEM_HOLDER_2) {
+                    if (hand == THING_NONE || item_get_index(hand) != item) continue;
+                    take = 1;
+                    move_thing((uint16_t)((hand & 0x3fff) | cell << THING_CELL_SHIFT), -1, 0, x, y);
+                    hand = THING_NONE;
+                }
+                party.redraw |= REDRAW_VIEW;
+                done = 1;
+            } else if ((sub == TEXT_LADDER_HIDDEN && !(w & TEXT_SHOWN)) || sub == TEXT_LADDER) {
+                if (hand != THING_NONE) continue;
+                int delta = gdat_entry_index(draw_gdat(), CAT_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_LADDER_UP) ? -1 : 1;
+                int lx = game.party_x, ly = game.party_y;
+                int map = dungeon_location_on_map(game.party_map, delta, &lx, &ly);
+                if (map >= 0) {
+                    move_party_to(lx, ly, map, game.party_dir);
+                    input_flush();
+                }
+            } else if (sub == TEXT_SWITCH && hand == THING_NONE) {
+                set_thing_word(t, TEXT_DATA, w ^ 1);
+            }
+        } else if (type >= THING_SENSOR) {
+            break;
+        }
+    }
+    if (actor == THING_NONE) {
+        if (take) champ_remove_object_from_leader_hand();
+        if (give != THING_NONE) champ_put_object_in_leader_hand(give, 1);
+        input_command_stop = stop;
+    } else {
+        uint16_t *possessions = (uint16_t *)(void *)(dungeon_thing_record(actor) + GROUP_POSSESSIONS);
+        if (!take && hand_arg != THING_NONE) dungeon_append_thing(hand_arg, possessions);
+        if (give != THING_NONE) dungeon_append_thing(give, possessions);
+    }
 }

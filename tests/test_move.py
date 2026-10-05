@@ -44,6 +44,9 @@ STUBS = {
     0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
     0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
     0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
+    0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
+    0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
+    0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
 }
 # Globals of the movement state: name -> (address, struct format).
 GLOBALS = {
@@ -176,7 +179,8 @@ class Scenario:
         from unicorn.x86_const import UC_X86_REG_EAX
         keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
-                0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0)}
+                0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
+                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0)}
         emu = self.emu
 
         def hook(uc, *_):
@@ -487,3 +491,76 @@ def test_step_into_special_squares(scenario, lib, kind, condition, name):
         if n % 20 == 19:
             scenario.assert_equal((name, n))
     assert moved > len(places) // 3, name
+
+
+SENSOR_PROCESS_WALL_CLICK = 0x4C134
+
+
+@pytest.mark.parametrize("part", range(2))
+def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
+    # A click with an empty hand on every wall cell with a sensor or a text: buttons, switches, counters, item
+    # holders, ladders, fountains; then the timeline runs what they trigger.
+    lib.sensor_process_wall_click.argtypes = [ctypes.c_int] * 3 + [ctypes.c_uint16] * 2
+    cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0][part::2]
+    for n, (map_, x, y, cell) in enumerate(cells):
+        scenario.place(map_, x, y, (cell + 2) & 3)
+        lib.sensor_process_wall_click(x, y, cell, NONE, NONE)
+        scenario.emu.call(SENSOR_PROCESS_WALL_CLICK, x, y, cell, NONE, NONE)
+        scenario.assert_same(("click", n, map_, x, y, cell))
+        for _ in range(3):
+            scenario.step()
+        scenario.assert_same(("steps", n, map_, x, y, cell))
+        if n % 100 == 99:
+            scenario.assert_equal(n)
+    scenario.assert_equal("end")
+
+
+def test_clicks_in_the_view(scenario, lib):
+    # The party faces walls with sensors (and doors); both draw the view, then a click goes to the center of each
+    # click zone of the view (wall ornaments, door buttons, objects) and to the front wall.
+    import test_view as tv
+    scenario.lib.view_draw_dungeon.argtypes = [ctypes.c_int] * 3
+    zones = (ctypes.c_uint8 * (32 * 12)).in_dll(lib, "view_click_zones")
+    count = ctypes.c_int.in_dll(lib, "view_click_zone_count")
+    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    places = []
+    for map_, x, y, cell in sensor_squares(lib):
+        if lib.dungeon_square(map_, x, y) >> 5:
+            continue
+        px, py = x + DIRS[cell][0], y + DIRS[cell][1]
+        if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \
+                and lib.dungeon_square(map_, px, py) >> 5 == 1:
+            places.append((map_, px, py, (cell + 2) & 3))
+    places += [(m, x, y, d) for m, x, y, d in approaches(lib, 4, limit=40)]
+    clicked = 0
+    for n, (map_, x, y, d) in enumerate(places[::2]):
+        scenario.place(map_, x, y, d)
+        weather = tv.WeatherGame.in_dll(lib, "game")
+        sky = scenario.view.sky_objects(lib.dungeon_map_graphics(map_) >> 4 & 0xF, weather.sky_darkness,
+                                        weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)
+        scenario.view.draw(map_, x, y, d, 0, sky)
+        seed.value = tv.VIEW_SEED
+        lib.view_draw_dungeon(d, x, y)
+        n_zones = count.value
+        raw = bytes(zones)
+        targets = []
+        for i in range(n_zones):
+            zx, zy, zw, zh = struct.unpack_from("<4h", raw, i * 12)
+            if raw[i * 12 + 11]:
+                targets.append((zx + zw // 2, zy + zh // 2 + 40))
+        targets.append((112, 40 + 60))  # the middle of the view: the front wall or a creature
+        for tx, ty in targets:
+            c = Command(tx, ty, 0x50)
+            scenario.emu.write(COMMAND_RECORD, bytes(c))
+            mine = lib.command_execute(ctypes.byref(c))
+            theirs = scenario.emu.call(COMMAND_EXECUTE, COMMAND_RECORD)
+            assert mine == theirs, (n, map_, x, y, d, tx, ty)
+            scenario.assert_same(("click", n, map_, x, y, d, tx, ty))
+            clicked += 1
+        for _ in range(3):
+            scenario.step()
+        scenario.assert_same(("steps", n, map_, x, y, d))
+        if n % 50 == 49:
+            scenario.assert_equal(n)
+    assert clicked > 100
+    scenario.assert_equal("end")

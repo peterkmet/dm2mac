@@ -32,10 +32,11 @@ void timeline_event_square(TimelineEvent *e);
 void timeline_event_door_animation(TimelineEvent *e);
 void timeline_event_door_destruction(TimelineEvent *e);
 
+/* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
+   with hand (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
+void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand);
 /* The party enters (1) or leaves (0) the party map: the map entry sensors and the creature generators. */
 void sensor_process_map_entry(int entering);
-/* Starts the timers of the timer sensors of a new game. */
-void sensor_start_timers(int new_game);
 /* Runs a due sensor animation, timer, or busy event. */
 void timeline_event_sensor(TimelineEvent *e);
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */

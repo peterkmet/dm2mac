@@ -406,3 +406,38 @@ uint8_t item_index_gdat_category(uint16_t item)
     else type = THING_POTION;
     return thing_gdat_category[type];
 }
+
+int item_add_charges(uint16_t thing, int delta)
+{
+    if (thing == THING_NONE) return 0;
+    uint16_t w = record_word(thing, 2);
+    int charges, max, shift;
+    switch (thing_type(thing)) {
+    case THING_WEAPON: charges = w >> 10 & 0xf; max = 0xf; shift = 10; break;
+    case THING_ARMOUR: charges = w >> 9 & 0xf; max = 0xf; shift = 9; break;
+    case THING_MISC: charges = w >> 14; max = 3; shift = 14; break;
+    default: return 0;  /* fix: the original returns a register of no meaning */
+    }
+    int n = (int16_t)(charges + delta);
+    n = n < 0 ? 0 : n > max ? max : n;
+    set_thing_word(thing, 2, (uint16_t)((w & ~(max << shift)) | n << shift));
+    return n;
+}
+
+void item_set_gdat_index(uint16_t thing, int index)
+{
+    if (thing == THING_NONE || thing >= EXPLOSION_THING_FIRST) return;
+    uint8_t *r = dungeon_thing_record(thing);
+    uint16_t w2 = record_word(thing, 2), w4 = record_word(thing, 4);
+    switch (thing_type(thing)) {
+    case THING_GROUP: r[GROUP_CREATURE] = (uint8_t)index; break;
+    case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
+        set_thing_word(thing, 2, (uint16_t)((w2 & ~0x7f) | (index & 0x7f)));
+        break;
+    case THING_POTION: set_thing_word(thing, 2, (uint16_t)((w2 & ~0x7f00) | (index & 0x7f) << 8)); break;
+    case THING_CONTAINER:
+        set_thing_word(thing, 4, (uint16_t)((w4 & 0x1ff9) | (index >> 3 & 3) << 1 | (index & 7) << 13));
+        if ((w4 & 6) == 2) set_thing_word(thing, 6, THING_NONE);
+        break;
+    }
+}

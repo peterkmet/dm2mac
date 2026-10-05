@@ -3,6 +3,8 @@
 #include "action.h"
 #include "champion.h"
 #include "draw.h"
+#include "creature.h"
+#include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
 #include "hooks.h"
@@ -10,6 +12,7 @@
 #include "move.h"
 #include "music.h"
 #include "save.h"
+#include "sensor.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
@@ -736,11 +739,141 @@ void ui_release_move_arrow(void)
     if (in.arrow_pressed) ui_draw_move_arrow(in.arrow_entry, in.arrow_zone, 0);
 }
 
-/* TODO Step 14: the clicks in the dungeon view. */
+/* ---- Clicks in the dungeon view ---- */
+
+#define ZONE_FRONT_WALL_LOW 0x2fd   /* the parts of the view that show the wall in front of the party */
+#define ZONE_FRONT_WALL_HIGH 0x2fe
+#define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
+
+static const int8_t dir_dx[4] = {0, 1, 0, -1}, dir_dy[4] = {-1, 0, 1, 0};
+
+static int zone_contains_point(int zone, int x, int y)
+{
+    int16_t r[RECT_SIZE];
+    return zone_get_rect(zone, r) && rect_contains(r, x, y);
+}
+
+/* A click on a wall ornament of the view (cell 0 to 3: the party square, left, right, front). */
+static void view_click_wall_sensor(int cell)
+{
+    static const int8_t side_turn[4] = {1, 1, 3, 2};  /* the face that the party sees of each wall, from its direction */
+    int dir = game.party_dir, x = game.party_x, y = game.party_y;
+    if (cell == 1) {
+        x += dir_dx[(dir + 3) & 3];
+        y += dir_dy[(dir + 3) & 3];
+    } else if (cell == 2) {
+        x += dir_dx[(dir + 1) & 3];
+        y += dir_dy[(dir + 1) & 3];
+    } else if (cell == 3) {
+        x += dir_dx[dir];
+        y += dir_dy[dir];
+    }
+    if (x < 0 || x >= dungeon_map_width(party.cur_map) || y < 0 || y >= dungeon_map_height(party.cur_map)) return;
+    sensor_process_wall_click(x, y, (dir + side_turn[cell & 3]) & 3, THING_NONE, game.leader_hand);
+}
+
+/* A click on the wall in front: a plain wall sounds; the mouse drag through a fake wall is not ported. */
+static void view_click_front_wall(int passable, int x, int y)
+{
+    if (!game.champion_count) return;
+    if (!passable)
+        sound_play_with_fallback(CAT_WALLSET, dungeon_map_graphics(game.party_map) >> 4 & 0xf, 0x84, 0xfe, x, y, 0, 0x8c,
+                                 200);
+    input_command_stop = 1;
+}
+
+/* A door button of the door at (x, y): the door toggles, the button shows pressed until the next game step. */
+static void view_click_door_button(int x, int y, uint16_t door)
+{
+    sound_request(3, 0, 0x88, 0x8c, 0x80, game.party_x, game.party_y, 1);
+    sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, game.game_time + 1);
+    TimelineEvent e = {.time_map = (game.game_time + 1) | (uint32_t)(uint8_t)party.cur_map << 24,
+                       .type = EVENT_CLEAR_THING_FLAG8};
+    uint16_t first = dungeon_square_first_thing(party.cur_map, x, y);
+    e.data[0] = (uint8_t)first;
+    e.data[1] = (uint8_t)(first >> 8);
+    timeline_add_event(&e);
+    set_thing_word(door, 2, thing_word(door, 2) | 0x0800);
+    input_command_stop = 1;
+}
+
 void view_click_in_viewport(int x, int y)
 {
-    (void)x;
-    (void)y;
+    dun_set_current_map(game.party_map);
+    if (party.push_mode) {
+        party.push_mode = 0;
+        ui.push_mode = 0;
+        move_push_creature(party.push_arrow);
+        ui_draw_movement_arrows();
+        return;
+    }
+    int16_t origin[RECT_SIZE];
+    if (zone_get_rect(ZONE_VIEWPORT, origin)) {
+        x -= origin[RECT_X];
+        y -= origin[RECT_Y];
+    }
+    int dir = game.party_dir, px = game.party_x, py = game.party_y;
+    int fx = px + dir_dx[dir], fy = py + dir_dy[dir];
+    uint8_t front = dun_get_square(fx, fy);
+    uint16_t hand = game.leader_hand;
+    for (int i = 0; i < view_click_zone_count; i++) {
+        const ViewClickZone *z = &view_click_zones[i];
+        if (!rect_contains(z->rect, x, y)) continue;
+        switch (z->kind) {
+        case CLICK_OBJECT: case CLICK_POSSESSIONS: case CLICK_ALCOVE:
+            if (z->thing == THING_NONE) break;
+            if (hand == THING_NONE) {
+                view_click_take_object(x, y);
+                return;
+            }
+            if (z->kind == CLICK_ALCOVE) {
+                if (view_click_place_object(x, y, fx, fy, 0, 2, 3)) return;
+            } else if (z->kind == CLICK_OBJECT) {
+                for (int k = 0; k < 2; k++)
+                    if (view_click_place_object(x, y, px, py, 0, k, 1)) return;
+            }
+            break;
+        case CLICK_DOOR_BUTTON: {
+            if ((int16_t)game.leader == -1) break;
+            int dx = z->cell == 3 ? fx : px, dy = z->cell == 3 ? fy : py;
+            uint16_t door = dungeon_square_first_thing(party.cur_map, dx, dy);
+            if (!(thing_word(door, 2) & 0x0040)) {
+                int side = (dir + 1) & 3;
+                sensor_process_wall_click(dx + dir_dx[side], dy + dir_dy[side], (dir + 3) & 3, THING_NONE, hand);
+            } else if (hand == THING_NONE) {
+                view_click_door_button(dx, dy, door);
+            }
+            break;
+        }
+        case CLICK_WALL_ORNAMENT:
+            if (view_hit_test_wall_ornament(z->cell, x, y)) {
+                view_click_wall_sensor(z->cell);
+                return;
+            }
+            break;
+        }
+    }
+    int passable = square_type(front) == SQUARE_FAKE_WALL && front & 1 && !(front & SQUARE_FAKE_WALL_OPEN);
+    if (hand != THING_NONE) {
+        for (int k = 0; k < 2; k++) {
+            if (view_click_place_object(x, y, px, py, 0, k, 1)) return;
+            if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(px, py, k)) return;
+        }
+        if (square_type(front) == SQUARE_WALL && !passable) return;
+        for (int k = 2; k < 4; k++) {
+            if (view_click_place_object(x, y, fx, fy, 3, k, 1)) return;
+            if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(fx, fy, k)) return;
+        }
+        view_click_throw_object(x, y);
+        return;
+    }
+    if (square_type(front) == SQUARE_WALL
+        && (zone_contains_point(ZONE_FRONT_WALL_LOW, x, y) || zone_contains_point(ZONE_FRONT_WALL_HIGH, x, y))) {
+        view_click_front_wall(passable, fx, fy);
+        return;
+    }
+    uint16_t g = creature_group_at(party.cur_map, fx, fy);
+    if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) view_click_creature(g, x, y, fx, fy);
 }
 
 /* Shows the pause message and waits for the resume command. */

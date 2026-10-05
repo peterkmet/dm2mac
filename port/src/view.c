@@ -2667,3 +2667,54 @@ void view_draw_dungeon(int dir, int x, int y)
     view_draw_party_square();
     draw_free_temp();
 }
+
+/* ---- Clicks ---- */
+
+/* True when the last picture has a pixel other than key at (x, y) of the viewport. */
+static int view_hit_test_picture(int x, int y, int key)
+{
+    const DrawCtx *c = &view.ctx;
+    const int16_t *r = c->rect;
+    if (x < r[RECT_X] || x > r[RECT_X] + r[RECT_W] - 1 || y < r[RECT_Y] || y > r[RECT_Y] + r[RECT_H] - 1) return 0;
+    int sx = c->flip & MIRROR_H ? r[RECT_X] + r[RECT_W] - 1 - x + c->src_x : x - r[RECT_X] + c->src_x;
+    int sy = y - r[RECT_Y] + c->src_y;
+    const Bitmap *image = c->image;
+    if (!image || sx < 0 || sy < 0 || sx >= image->width || sy >= image->height) return 0;
+    int pixel;
+    if (image->bpp == 8) {
+        pixel = image->pixels[sy * image->width + sx];
+    } else {
+        int i = sy * ((image->width + 1) & ~1) + sx;
+        pixel = i & 1 ? image->pixels[i >> 1] & 0x0f : image->pixels[i >> 1] >> 4;
+    }
+    return pixel != key;
+}
+
+int view_hit_test_wall_ornament(int pos, int x, int y)
+{
+    static const int8_t face_of_pos[4] = {0, -1, 1, 0};  /* the face that the party sees of the walls at 0 to 3 */
+    if (pos > POS_FRONT) return 0;
+    ViewSquare saved = view_squares[pos];
+    int sx = view.party_x, sy = view.party_y;
+    move_relative(view.party_dir, view_offset[pos][1], view_offset[pos][0], &sx, &sy);
+    view_squares[pos].x = (int8_t)sx;
+    view_squares[pos].y = (int8_t)sy;
+    get_square_aspect(&view_squares[pos], view.party_dir, sx, sy);
+    int hit = 0, key = view_draw_wall_ornament(pos, face_of_pos[pos], 0);
+    if (key >= 0) hit = view_hit_test_picture(x, y, key);
+    if (pos == POS_FRONT || view.ctx.w < 0x20 || view.ctx.h < 0x20) hit = 1;
+    view_squares[pos] = saved;
+    draw_free_temp();
+    return hit;
+}
+
+int view_wall_face_ornament(int map, uint16_t first, int dir)
+{
+    ViewSquare s;
+    memset(&s, 0xff, sizeof s);
+    int saved = view.map;
+    view.map = map;
+    apply_wall_things(&s, first, dir, 1);
+    view.map = saved;
+    return (uint8_t)s.side[SIDE_FRONT];
+}
