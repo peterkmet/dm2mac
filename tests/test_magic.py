@@ -736,3 +736,35 @@ def test_minion_maps_match_original(port, map_ui, gdat):
     assert {k for k, _ in kinds} == {0, 1, 2, 3} and any(k == 1 and f & 0x20 for k, f in kinds)
     assert clicks > 20 and moved > 5 and dark > 20
     assert len(offsets) > 2 and markers == {0, 1, 2, 3}, (offsets, markers)
+
+
+MOVE_PARTY_WARP_TO_MARKER = 0x4BFD4
+
+
+def test_warp_to_marker_matches_original(magic):
+    # The party on every square with a warp marker text (subtypes 15 and 16) and on squares around them: the move to the
+    # marker of its id, the marker that a one-way warp shows, the result.
+    lib, emu = magic.lib, magic.emu
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
+    places = []
+    for m in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(m)):
+            for y in range(lib.dungeon_map_height(m)):
+                t = lib.dungeon_square_first_thing(m, x, y)
+                while t != 0xFFFE and t >> 10 & 15 <= 3:
+                    w = word(lib, t, 2)
+                    if t >> 10 & 15 == 2 and w & 6 == 2 and w >> 11 in (15, 16):
+                        places.append((m, x, y))
+                    t = lib.dungeon_next_thing(t)
+    assert places
+    moved = 0
+    for n, (m, x, y) in enumerate(places + [(m, x + 1, y) for m, x, y in places if x + 1 < lib.dungeon_map_width(m)]):
+        magic.place(m, x, y, n & 3)
+        mine, theirs = lib.move_party_warp_to_marker(), emu.call(MOVE_PARTY_WARP_TO_MARKER)
+        assert mine == theirs, (n, m, x, y)
+        moved += mine
+        magic.assert_same((n, m, x, y))
+    assert moved
+    magic.assert_equal("end")
