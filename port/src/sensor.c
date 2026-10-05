@@ -747,7 +747,7 @@ static void timeline_event_wall_square(TimelineEvent *e)
             sensor_transfer_objects(e, t, kind);
             break;
         case 0x42:
-            sensor_turn_creatures(e);
+            sensor_turn_creatures(e, t);
             break;
         case 0x43:
             sensor_set_global_flag(e, t);
@@ -839,7 +839,7 @@ static void timeline_event_floor_square(TimelineEvent *e)
             sensor_forward_effect(e, t, w >> SENSOR_DATA_SHIFT);
             break;
         case 0x42:
-            sensor_turn_creatures(e);
+            sensor_turn_creatures(e, t);
             break;
         case 0x43:
             sensor_set_global_flag(e, t);

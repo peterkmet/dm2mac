@@ -52,8 +52,6 @@ void projectile_process_event(TimelineEvent *e);
 void explosion_process_event(TimelineEvent *e);
 void explosion_create(int type, int power, int x, int y, int cell);
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
-void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect);
-void sensor_turn_creatures(const TimelineEvent *e);
 /* The push arrows and the clicks on creatures in front of the party. */
 
 /* Step 17: weather, day and night. */

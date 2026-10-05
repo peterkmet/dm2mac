@@ -1326,3 +1326,41 @@ void creature_continue_push(int command)
     }
     dun_set_current_map(game.party_map);
 }
+
+/* Creature sensors. */
+
+#define SENSOR_TURN_ON_SET 0x20         /* sensor flags: the sensor turns on effect 1 instead of 0 */
+#define SENSOR_TARGET_WORD 6            /* sensor record word: target x bits 6-10, y bits 11-15 */
+#define SENSOR_KIND_VANISH 0x0b
+#define SENSOR_KIND_ALERT 0x28
+#define VANISH_POWER 2
+
+void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
+{
+    int on_set = thing_word(sensor, SENSOR_FLAGS) & SENSOR_TURN_ON_SET;
+    if (e->data[3] != (on_set ? 1 : 0)) return;
+    uint16_t target = thing_word(sensor, SENSOR_TARGET_WORD);
+    uint16_t g = creature_get_group_at((target & 0x7ff) >> 6, target >> 11);
+    if (g != THING_NONE) creature_turn_group(g, 1, thing_word(sensor, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT & 3);
+}
+
+void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect)
+{
+    int rx = abs((int16_t)(x - tx)), ry = abs((int16_t)(y - ty));
+    int left = x - rx, top = y - ry;
+    for (int row = ry * 2; row >= 0; row--)
+        for (int col = rx * 2; col >= 0; col--) {
+            int16_t sx = (int16_t)(left + col), sy = (int16_t)(top + row);
+            if (sx < 0 || sx >= dungeon_map_width(party.cur_map) || sy < 0 || sy >= dungeon_map_height(party.cur_map)) continue;
+            uint16_t g = creature_get_group_at(sx, sy);
+            if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != (uint16_t)creature_type) continue;
+            if (kind == SENSOR_KIND_VANISH) {
+                if ((uint16_t)power > 1) {
+                    if ((uint16_t)power != VANISH_POWER) return;
+                    creature_set_next_action(g, sx, sy, CREATURE_ACTION_VANISH, 1);
+                }
+            } else if (kind == SENSOR_KIND_ALERT) {
+                creature_alert(g, sx, sy, power | (effect ? ALERT_CLEAR : 0), 100, 0);
+            }
+        }
+}

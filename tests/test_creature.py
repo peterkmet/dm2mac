@@ -17,7 +17,8 @@ IMAGE_CACHE_LOOKUP, IMAGE_CACHE_ALLOC, IMAGE_CACHE_REALLOC = 0x3F1F8, 0x3F279, 0
 IMAGE_CACHE_GET, IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE = 0x3F337, 0x3F3C2, 0x3F406
 MEM_ALLOC, MEM_FREE_SIZE = 0x3BBBA, 0x3BCA5
 # Original functions that Step 16 ports: the scenario runs them (test_move.STUBS replaces them by empty hooks).
-PORTED = (0x34106, 0x306A8, 0x3085A, 0x3064D, 0x2538C, 0x24E62, 0x49EF8, 0x30D45, 0x30FE3, 0x4A096, 0x4A005, 0x30BA6)
+PORTED = (0x34106, 0x306A8, 0x3085A, 0x3064D, 0x2538C, 0x24E62, 0x49EF8, 0x30D45, 0x30FE3, 0x4A096, 0x4A005, 0x30BA6,
+          0x24328, 0x24171, 0x23E5B, 0x23F9B, 0x4DCEE, 0x56B39, 0x56BA5)
 # Original functions of other Step 16 parts that this branch does not have yet, and rules of Step 15: the same
 # empty results as the C placeholders (ai_pending.c, hooks.c). (address, stack arguments, result); FAIL also sets
 # the command result of the AI context.

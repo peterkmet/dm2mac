@@ -41,8 +41,6 @@ void projectile_process_event(TimelineEvent *e) { (void)e; }
 void explosion_process_event(TimelineEvent *e) { (void)e; }
 void explosion_create(int type, int power, int x, int y, int cell) { (void)type; (void)power; (void)x; (void)y; (void)cell; }
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e) { (void)sensor; (void)e; }
-void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect) { (void)kind_data; (void)count; (void)x; (void)y; (void)tx; (void)ty; (void)kind; (void)effect; }
-void sensor_turn_creatures(const TimelineEvent *e) { (void)e; }
 void world_update_day_night(int step) { (void)step; }
 void light_update_party_light(void) { }
 void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, int kind) { (void)e; (void)sensor; (void)kind; }

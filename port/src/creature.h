@@ -172,6 +172,12 @@ void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audibl
 void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag);
 void timeline_event_move_group(TimelineEvent *e);
 
+/* Creature sensors: a sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */
+void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor);
+/* A sensor reaches the groups of a creature type in the rectangle around (x, y) that (tx, ty) spans: kind 0x0b makes
+   them vanish (power 2), kind 0x28 sets mood bit power (cleared when effect is set). */
+void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect);
+
 /* Pushing creatures: the push arrows of the party and the pushes of creatures. */
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);
 int move_party_can_push_group(uint16_t group);
