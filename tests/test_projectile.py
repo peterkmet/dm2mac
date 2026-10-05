@@ -15,7 +15,7 @@ from test_move import gdat, start  # noqa: F401 (fixtures)
 
 PROJECTILE_CREATE, EXPLOSION_CREATE, MOVE_CHECK_MISSILES = 0x16457, 0x16746, 0x4A0FE
 SENSOR_LAUNCH_MISSILE, CHAMP_LAUNCH_PROJECTILE, CREATURE_ATTACK_CHAMPION = 0x57A63, 0x47773, 0x18758
-CREATURE_GET_ORDERED_ATTACK_CELLS, DUN_UNLINK_THING = 0x1869A, 0x1D542
+CREATURE_GET_ORDERED_ATTACK_CELLS, DUN_UNLINK_THING, DUN_LINK_THING = 0x1869A, 0x1D542, 0x1D3DB
 # Step 15 rules that the C port leaves as hooks: (address, stack arguments, result) as in hooks.c.
 STEP15_STUBS = {
     0x46968: (0, 0),    # champ_get_dexterity
@@ -26,7 +26,7 @@ STEP15_STUBS = {
 G_SQUARE_FIRST_THINGS = 0x7F388
 G_THINGS, G_CHAMPIONS, G_CHAMPION_COUNT, G_PARTY_SLEEPING = 0x7F288, 0x7FBD0, 0x7F276, 0x7F234
 CHAMP_WAKE_PARTY, G_LIGHT_LEVEL = 0x46D9C, 0x7F282
-CHAMPION_SIZE, CHAMPION_CELL = 0x107, 29
+CHAMPION_SIZE, CHAMPION_CELL, CHAMPION_EXPERIENCE = 0x107, 29, 0x5F
 SCRATCH_OUT = COMMAND_RECORD + 0x40
 EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2 = 0x19, 0x1D, 0x1E
 SPELLS = (0xFF80, 0xFF81, 0xFF82, 0xFF83, 0xFF84, 0xFF86, 0xFF87, 0xFF89, 0xFF8A, 0xFF8D, 0xFF8E)
@@ -182,6 +182,8 @@ def four_champions(s, rng):
         champion_bytes(lib, champ, 0, first)
         champion_bytes(lib, champ, CHAMPION_CELL, [cell])
         champion_bytes(lib, champ, CHAMPION_CELL - 1, [rng.randrange(4)])  # direction
+        experience = b"".join(struct.pack("<I", rng.choice((0, 600, 5000, 40000, 300000))) for _ in range(20))
+        champion_bytes(lib, champ, CHAMPION_EXPERIENCE, experience)
     sync_champions(lib, s)
 
 
@@ -311,7 +313,7 @@ def test_missiles_hit_party_on_moves(pj, lib):
     rng = random.Random(163)
     places = squares(lib, (1,))
     hit = 0
-    for n in range(150):
+    for n in range(250):
         four_champions(pj, rng)
         map_, x, y, _ = rng.choice(places)
         pj.place(map_, x, y, rng.randrange(4))
@@ -356,9 +358,17 @@ def test_missile_launchers(pj, lib):
     rng = random.Random(164)
     cells = launchers(lib)
     assert cells
+    pool = objects_by_map(lib)
     for rounds in range(3):
         for n, (map_, x, y, cell) in enumerate(cells):
             place_near(pj, rng, map_, x, y)
+            for _ in range(rng.randrange(3)):  # objects for the launchers of the objects of their square
+                if pool.get(map_):
+                    ox, oy, t = pool[map_].pop()
+                    take(pj, ox, oy, t)
+                    t = t & 0x3FFF | (cell + rng.randrange(2)) % 4 << 14
+                    lib.dungeon_link_thing_to_square(t, map_, x, y)
+                    pj.emu.call(DUN_LINK_THING, t, 0, x, y)
             square_event(pj, map_, x, y, cell, rng.randrange(4), rng.randrange(2))
             for _ in range(2):
                 pj.step()
@@ -431,3 +441,151 @@ def test_ordered_attack_cells(pj, lib):
         assert bytes(order) == pj.emu.read(SCRATCH_OUT, 4), (n, x, y, px, py, cell)
         assert ctypes.c_uint32.in_dll(lib, "random_seed").value == pj.emu.read_u32(tc.G_RANDOM_SEED), n
 
+
+
+DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def objects_by_map(lib):
+    out = {}
+    for map_, x, y, t in objects(lib):
+        out.setdefault(map_, []).append((x, y, t))
+    return out
+
+
+def open_square(lib, map_, x, y):
+    return 0 <= x < lib.dungeon_map_width(map_) and 0 <= y < lib.dungeon_map_height(map_) \
+        and lib.dungeon_square(map_, x, y) >> 5 == 1
+
+
+def payload_for(s, rng, pool, map_, n):
+    """An object of map_ (taken from its square) for odd n while any is left, else a random spell."""
+    if n % 2 and pool.get(map_):
+        x, y, t = pool[map_].pop()
+        take(s, x, y, t)
+        return t
+    return rng.choice(SPELLS)
+
+
+def test_projectiles_at_creatures(pj, lib):
+    # Objects and spells fly at every creature group from 1 to 3 squares in all directions and cells: hits, misses,
+    # bounces, objects that creatures catch, spells that creatures reflect, damage and alerts.
+    rng = random.Random(168)
+    four_champions(pj, rng)
+    pool = objects_by_map(lib)
+    for p in pool.values():
+        rng.shuffle(p)
+    shots = 0
+    for n, (map_, x, y, g) in enumerate(groups(lib) * 2):
+        d = rng.randrange(4)
+        dist = rng.randrange(1, 4)
+        sx, sy = x - DIRS[d][0] * dist, y - DIRS[d][1] * dist
+        if not open_square(lib, map_, sx, sy):
+            continue
+        place_near(pj, rng, map_, sx, sy)
+        payload = payload_for(pj, rng, pool, map_, n)
+        launch(pj, payload, sx, sy, rng.randrange(4), d, rng.randrange(1, 256), rng.randrange(256), rng.randrange(1, 8))
+        shots += 1
+        check(pj, ("launch", n))
+        run_out(pj, ("creature", n, map_, x, y, hex(g), hex(payload)))
+    assert shots > 150
+    assert_saves(pj, "end")
+
+
+def set_square(s, map_, x, y, value):
+    """Sets a square byte in both."""
+    s.lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
+    s.lib.dungeon_square_byte(map_, x, y)[0] = value
+    emu = s.emu
+    table = emu.read_u32(emu.read_u32(0x7F3C8) + 4 * map_)
+    emu.write(emu.read_u32(table + 4 * x) + y, bytes([value]))
+
+
+def test_projectiles_at_doors(pj, lib):
+    # Objects, spells, and explosions at every door in each door state: grates, breaking doors, door spells, door
+    # buttons; then the timeline runs the door events that they queue.
+    rng = random.Random(169)
+    four_champions(pj, rng)
+    pool = objects_by_map(lib)
+    for p in pool.values():
+        rng.shuffle(p)
+    shots = 0
+    for n, (map_, x, y, square) in enumerate(squares(lib, (4,)) * 2):
+        set_square(pj, map_, x, y, square & ~7 | rng.randrange(6))
+        d = rng.randrange(4)
+        dist = rng.randrange(1, 3)
+        sx, sy = x - DIRS[d][0] * dist, y - DIRS[d][1] * dist
+        if open_square(lib, map_, sx, sy):
+            place_near(pj, rng, map_, sx, sy)
+            payload = payload_for(pj, rng, pool, map_, n)
+            launch(pj, payload, sx, sy, rng.randrange(4), d, rng.randrange(1, 256), rng.randrange(256),
+                   rng.randrange(1, 8))
+            shots += 1
+        else:
+            place_near(pj, rng, map_, x, y)
+            both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((0xFF80, 0xFF82, 0xFF84, 0xFF8D, 0xFFB0)),
+                 rng.randrange(256), x, y, 0xFF)
+        check(pj, ("launch", n))
+        run_out(pj, ("door", n, map_, x, y, hex(square)))
+    assert shots > 25
+    assert_saves(pj, "end")
+
+
+def test_projectiles_at_wall_sensors(pj, lib):
+    # Objects fly at every wall cell with a sensor or a text: hit sensors, portal sensors, alcoves that catch them.
+    rng = random.Random(170)
+    four_champions(pj, rng)
+    pool = objects_by_map(lib)
+    for p in pool.values():
+        rng.shuffle(p)
+    wanted = [(m, x, y, t) for m, x, y, t in objects(lib) if lib.item_get_index(t) == 0x13A]  # the item of the sensors
+    shots = 0
+    for n, (map_, x, y, cell) in enumerate(c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0):
+        dist = rng.randrange(1, 3)
+        sx, sy = x + DIRS[cell][0] * dist, y + DIRS[cell][1] * dist
+        if not open_square(lib, map_, sx, sy):
+            continue
+        if wanted and n % 3 == 0:
+            om, ox, oy, payload = wanted.pop()
+            place_near(pj, rng, om, ox, oy)
+            if pj.party.cur_map != om:
+                continue
+            take(pj, ox, oy, payload)
+            place_near(pj, rng, map_, sx, sy)
+        else:
+            place_near(pj, rng, map_, sx, sy)
+            if not pool.get(map_):
+                continue
+            px, py, payload = pool[map_].pop()
+            take(pj, px, py, payload)
+        launch(pj, payload, sx, sy, rng.randrange(4), (cell + 2) & 3, rng.randrange(10, 256), rng.randrange(256), 1)
+        shots += 1
+        check(pj, ("launch", n))
+        run_out(pj, ("wall", n, map_, x, y, cell, hex(payload)))
+    assert shots > 40
+    assert_saves(pj, "end")
+
+
+def test_missile_walls_and_packed_explosions(pj, lib):
+    # Spells fly into a lasting missile wall (explosion 0xff8e) and turn back; explosions get the packed squares of a
+    # hit (x above 0xff: the hit square in the low bytes, the explosion square in the high bytes).
+    rng = random.Random(171)
+    four_champions(pj, rng)
+    places = squares(lib, (1,))
+    for n in range(120):
+        map_, x, y, _ = rng.choice(places)
+        d = rng.randrange(4)
+        sx, sy = x - DIRS[d][0] * 2, y - DIRS[d][1] * 2
+        if not open_square(lib, map_, sx, sy):
+            continue
+        place_near(pj, rng, map_, sx, sy)
+        if n % 2:
+            both(pj, lib.explosion_create, EXPLOSION_CREATE, 0xFF8E, rng.randrange(20, 256), x, y, 0xFF)
+            launch(pj, rng.choice(SPELLS), sx, sy, rng.randrange(4), d, rng.randrange(1, 256), rng.randrange(256), 1)
+        else:
+            hx, hy = x - DIRS[d][0], y - DIRS[d][1]
+            both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((0xFF80, 0xFF82, 0xFFB0, 0xFFB1, 0xFF87)),
+                 rng.randrange(256), hx | (x + 1) << 8, hy | y << 8, rng.randrange(4))
+        check(pj, ("start", n))
+        run_out(pj, ("wall", n, map_, x, y), limit=300)
+    assert_saves(pj, "end")
