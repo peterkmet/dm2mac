@@ -160,7 +160,7 @@ class OriginalView:
         self.top = HEAP
         self.images, self.palettes, self.data, self.cache = {}, {}, {}, {}
         emu.serve_file(data)
-        emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
+        self.alloc_hook = emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
         emu.stub(GDAT_ENTRY_INDEX, self.entry_index)
         emu.stub(WEATHER_INIT, lambda *_: 0)
         emu.stub(READ_LEVEL_TABLE, lambda *_: 0)

@@ -33,6 +33,8 @@ typedef struct {
 } Party;
 
 extern Party party;
+/* The square step of each direction. */
+extern const int8_t dir_dx[4], dir_dy[4];
 
 /* Makes map the map of the square reads; updates the party position as seen from it. */
 void dun_set_current_map(int map);

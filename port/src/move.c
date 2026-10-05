@@ -49,7 +49,7 @@
 #define FALL_DAMAGE_MAX 0x11
 #define STAMINA_REDRAW_LIMIT 10
 
-static const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
+const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
 /* Steps of the move commands 3 to 6: forward and right parts. */
 static const int8_t command_forward[4] = {1, 0, -1, 0}, command_right[4] = {0, 1, 0, -1};
 /* The order in which move_find_free_adjacent_square tries the 4 sides, by a random row: for the party

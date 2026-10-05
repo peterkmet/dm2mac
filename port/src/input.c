@@ -784,7 +784,6 @@ void ui_release_move_arrow(void)
 #define ZONE_FRONT_WALL_HIGH 0x2fe
 #define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
 
-static const int8_t dir_dx[4] = {0, 1, 0, -1}, dir_dy[4] = {-1, 0, 1, 0};
 
 static int zone_contains_point(int zone, int x, int y)
 {
