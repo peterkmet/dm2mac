@@ -765,3 +765,86 @@ def test_refresh_party_maps(ai):
         assert sc.party.redraw == emu.read_u32(G_VIEW_REDRAW)
         ai.check((n, m, x, y), fields=("flags", "path", "candidates", "cache"), dungeon=True)
     assert reached > 200
+
+
+DUN_GET_UNUSED_THING, DUN_LINK_THING_TO_SQUARE, TIMELINE_ADD_EVENT = 0x1DDD7, 0x1D3DB, 0x56390
+
+
+def add_thing(ai, type_, words, map_, x, y, cell):
+    """Adds the same new thing (record words from +2) on (x, y) of map_ in both; returns it."""
+    lib, emu = ai.lib, ai.emu
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    mine = lib.dungeon_unused_thing(type_)
+    theirs = emu.call(DUN_GET_UNUSED_THING, type_) & 0xFFFF
+    assert mine == theirs
+    record = emu.read_u32(0x7F288 + 4 * type_) + (mine & 0x3FF) * THING_SIZES[type_]
+    for i, w in enumerate(words):
+        lib.set_thing_word(mine, 2 + 2 * i, w)
+        emu.write(record + 2 + 2 * i, struct.pack("<H", w))
+    thing = mine | cell << 14
+    saved = ai.sc.party.cur_map
+    ai.set_map(map_)
+    assert lib.dungeon_link_thing_to_square(thing, map_, x, y) == 1
+    emu.call(DUN_LINK_THING_TO_SQUARE, thing, 0, x, y)
+    ai.set_map(saved)
+    return thing
+
+
+def add_projectile(ai, payload, direction, map_, x, y, cell):
+    """A projectile with its move event (the direction in data byte 3) in both."""
+    import test_save
+    lib, emu = ai.lib, ai.emu
+    thing = add_thing(ai, 14, (payload, 0x40, 0), map_, x, y, cell)
+    event = test_save.Event((ai.sc.time() + 50) | map_ << 24, 0x1D, 0,
+                            (ctypes.c_uint8 * 6)(*struct.pack("<HBB2x", thing, 0, direction << 2)))
+    buf = ai.sc.view.alloc(12)
+    emu.write(buf, bytes(event))
+    index = lib.timeline_add_event(ctypes.byref(event))
+    assert index == emu.call(TIMELINE_ADD_EVENT, buf) & 0xFFFF
+    lib.set_thing_word(thing, 6, index)
+    record = emu.read_u32(0x7F288 + 4 * 14) + (thing & 0x3FF) * 8
+    emu.write(record + 6, struct.pack("<H", index))
+    return thing
+
+
+def test_with_clouds_and_projectiles(ai):
+    # Clouds, door spells, and projectiles on the squares around the groups: the line tests, attacks, door actions,
+    # dangerous moves (kinds 4 and 5), and the projectile test see them.
+    rng = random.Random(31)
+    lib = ai.lib
+    groups = ai.groups()
+    for g, x, y, m in rng.sample(groups, 30):
+        for _ in range(3):
+            sx, sy = x + rng.randrange(-3, 4), y + rng.randrange(-3, 4)
+            if not (0 <= sx < lib.dungeon_map_width(m) and 0 <= sy < lib.dungeon_map_height(m)) \
+                    or lib.dungeon_square(m, sx, sy) >> 5 == 0:
+                continue
+            if rng.random() < 0.5:
+                add_thing(ai, 15, (rng.choice((0xFF8E, 0xFF84, 0xFF8D, 0xFF87, 0xFF80)),), m, sx, sy, rng.randrange(4))
+            else:
+                add_projectile(ai, rng.choice((0xFF8D, 0xFF84, 0xFF80)), rng.randrange(4), m, sx, sy, rng.randrange(4))
+    ai.check("added", dungeon=True)
+    acted = 0
+    for g, x, y, m in groups:
+        ai.begin(g, x, y, m)
+        for sx, sy in squares_near(lib, m, x, y, 2):
+            for name in LINE_TESTS:
+                mine, theirs = ai.call(name, sx, sy)
+                assert mine == s16(theirs), (g, name, sx, sy)
+        for n in range(20):
+            d = rng.randrange(4)
+            k = rng.randrange(1, 4)
+            tx, ty = x + DIRS[d][0] * k, y + DIRS[d][1] * k
+            mine, theirs = ai.call("creature_ai_try_attack", rng.randrange(4) | 0x80, x, y, tx, ty, -1)
+            assert mine == theirs, (g, n, "attack")
+            mine, theirs = ai.call("creature_ai_try_door_action", rng.randrange(3) | 0x80, x, y, tx, ty, -1)
+            assert mine == theirs, (g, n, "door")
+            mine, theirs = ai.call("creature_ai_try_move", rng.choice((4, 5, 0x84, 0x85)), x, y, -1, -1, d)
+            assert mine == theirs, (g, n, "move")
+            acted += mine
+            mine, theirs = ai.call("creature_ai_projectile_incoming", tx, ty)
+            assert mine == theirs, (g, n, "incoming")
+            ai.check((g, n))
+        ai.end()
+    assert acted > 20
