@@ -35,6 +35,13 @@ class CreatureOracle:
     def setup_creatures(self, reset):
         """reset: activate the groups in both, like a session start; else the caller starts the session."""
         emu, lib = self.emu, self.lib
+        # the C library keeps its globals from test to test: back to the values of the program start
+        for name, value in (("light_source_sum", 0), ("explosion_light_sum", 0), ("cached_light_sum", -1),
+                            ("cached_explosion_light_sum", -1), ("last_party_map", -1)):
+            ctypes.c_int16.in_dll(lib, name).value = value
+        ctypes.c_uint16.in_dll(lib, "search_direction_bits").value = 1
+        for name in ("party_distance", "alt_distance"):
+            ctypes.c_int16.in_dll(lib, name).value = -1
         for addr, (stack, result) in NOT_YET.items():
             if result == FAIL:
                 emu.stub(addr, lambda *_: emu.write(G_AI_COMMAND_RESULT, b"\xfd"), stack_args=stack)
