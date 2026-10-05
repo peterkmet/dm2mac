@@ -263,3 +263,328 @@ def test_inventory_panels_match_original(port, original):
     assert len(pictures) > 20  # each object draws its own panel
     set_eye(lib, original, 0)
     set_leader_hand(lib, original, 0xFFFF)
+
+
+G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
+    0x7FB50, 0x7FB4E, 0x757B8, 0x7FB5E, 0x7F234)
+GAME_MAGIC = GAME_LEADER_HAND + 2
+CH_RUNE_COUNT, CH_RUNES, CH_ACTION_DELAY, CH_WOUNDS, CH_HEALTH, CH_SLOTS, CH_AURA = 0x1E, 0x22, 0x2A, 0x34, 0x36, 0xC3, 0x102
+CH_DIR, CH_CELL, CH_POISONED, CH_FOOD, CH_DAMAGE_EVENT, CH_REDRAW = 0x1C, 0x1D, 0x1F, 0x44, 0x2E, 0x32
+
+
+def champion_bytes(lib, champ, offset, data):
+    """Writes data into champion champ of the C game state."""
+    records = champion_records(lib)
+    for i, b in enumerate(data):
+        records[champ * CHAMPION_SIZE + offset + i] = b
+
+
+def sync_champions(lib, original):
+    original.emu.write(G_CHAMPIONS, bytes(champion_records(lib)))
+
+
+def set_magic(lib, original, invisible, haste):
+    magic = (ctypes.c_uint8 * 6).from_address(ctypes.addressof(Game.in_dll(lib, "game")) + GAME_MAGIC)
+    magic[2], magic[4] = invisible, haste
+    original.emu.write(0x7FFEE, bytes([invisible]))
+    original.emu.write(0x7FFF0, bytes([haste]))
+
+
+def set_sleeping(lib, original, value):
+    ctypes.c_int.in_dll(lib, "party_sleeping").value = value
+    original.emu.write(G_PARTY_SLEEPING, struct.pack("<I", value))
+
+
+def set_action(lib, original, **fields):
+    """Sets fields of the action area state in the port and in the original."""
+    addresses = {"dirty": G_ACTION_DIRTY, "champion": G_ACTION_CHAMPION, "hand": G_ACTION_HAND, "mode": G_ACTION_MODE, "redraw_delay": G_ACTION_DELAY,
+                 "flags": G_ACTION_FLAGS, "result": G_ACTION_RESULT, "result_flag": G_ACTION_RESULT_FLAG,
+                 "result_ammo": G_ACTION_RESULT_AMMO, "flash": G_ACTION_FLASH, "flash_hand": G_ACTION_FLASH_HAND}
+    action = ActionArea.in_dll(lib, "action")
+    for name, value in fields.items():
+        setattr(action, name, value)
+        original.emu.write(addresses[name], struct.pack("<H", value & 0xFFFF))
+
+
+def update_action_area(lib, original, tick=0):
+    original.emu.call(UI_UPDATE_ACTION_AREA, tick)
+    lib.ui_update_action_area(tick)
+
+
+def open_hand(lib, original, hand):
+    # Like ui_action_area_open_hand and ui_action_area_open_spells: the area of champion 0 opens on hand.
+    set_action(lib, original, champion=1, hand=hand, redraw_delay=1, flags=0, flash=1, flash_hand=hand)
+    update_action_area(lib, original)
+
+
+def test_action_area_panels_match_original(port, original):
+    # The action menu of the weapon in the ready hand, the own actions of the empty action hand, and the spell
+    # panel with each rune set and entered runes.
+    lib = port
+    draw_game_screen(lib, original)
+    pictures = set()
+    for hand in (0, 1):
+        open_hand(lib, original, hand)
+        assert_same_screen_and_view(lib, original, f"hand {hand}")
+        pictures.add(original.screen())
+    for set_, runes in ((0, b""), (1, b"`"), (2, b"`f"), (3, b"`fl"), (4, b"`flr")):
+        champion_bytes(lib, 0, CH_RUNE_COUNT, [set_])
+        champion_bytes(lib, 0, CH_RUNES, runes.ljust(4, b"\0"))
+        sync_champions(lib, original)
+        open_hand(lib, original, 2)
+        assert_same_screen_and_view(lib, original, f"spells {set_}")
+        pictures.add(original.screen())
+    assert len(pictures) == 7
+
+
+def test_action_results_match_original(port, original):
+    # Damage numbers in the small and the large star, and the failure pictures; -2 shows the missing ammunition.
+    lib = port
+    draw_game_screen(lib, original)
+    pictures = set()
+    for result, flag, ammo in ((3, 0, 0), (15, 0, 0), (16, 0, 0), (40, 0, 0), (41, 0, 0), (123, 0, 0), (-1, 0, 0),
+                               (-2, 0, 0x01), (-2, 1, 0x02), (-2, 0, 0x10), (-3, 0, 0), (-4, 0, 0), (-5, 0, 0), (-6, 0, 0)):
+        set_action(lib, original, result=result, result_flag=flag, result_ammo=ammo)
+        update_action_area(lib, original)
+        assert_same_screen_and_view(lib, original, f"result {result}")
+        pictures.add(original.screen())
+    assert len(pictures) >= 12
+
+
+def test_containers_in_hand_match_original(port, original):
+    # A money box and a chest in the ready hand open their panels in the action area.
+    lib = port
+    lib.item_is_chest.argtypes = lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
+    boxes = things_of(lib, 9, 2, lib.item_is_moneybox) + things_of(lib, 9, 2, lib.item_is_chest)
+    assert len(boxes) == 4
+    draw_game_screen(lib, original)
+    modes = set()
+    for box in boxes:
+        champion_bytes(lib, 0, CH_SLOTS, struct.pack("<H", box))
+        sync_champions(lib, original)
+        set_action(lib, original, champion=0)
+        update_action_area(lib, original)  # the hand icons take the box
+        open_hand(lib, original, 0)
+        assert_same_screen_and_view(lib, original, f"box {box:#x}")
+        modes.add(ActionArea.in_dll(lib, "action").mode)
+        update_action_area(lib, original, tick=1)
+        assert_same_screen_and_view(lib, original, f"box {box:#x} tick")
+    assert modes == {4, 5}  # money box and container panels
+
+
+def test_party_states_match_original(port, original):
+    # The status box and the hands of the party in other states: turned, invisible, wounded, busy, asleep,
+    # with an aura, damaged, hungry, poisoned, and dead; then the inventory in the last living state.
+    lib = port
+    draw_game_screen(lib, original)
+    states = [
+        ("turned", lambda: champion_bytes(lib, 0, CH_DIR, [1])),
+        ("cell", lambda: champion_bytes(lib, 0, CH_CELL, [2])),
+        ("invisible", lambda: set_magic(lib, original, 1, 0)),
+        ("visible", lambda: set_magic(lib, original, 0, 0)),
+        ("wounded", lambda: champion_bytes(lib, 0, CH_WOUNDS, struct.pack("<H", 0x13))),
+        ("asleep", lambda: set_sleeping(lib, original, 1)),
+        ("awake", lambda: set_sleeping(lib, original, 0)),
+        ("busy", lambda: champion_bytes(lib, 0, CH_ACTION_DELAY, [3, 4, 5])),
+        ("aura", lambda: champion_bytes(lib, 0, CH_AURA, [4, 30, 0])),
+        ("haste", lambda: set_magic(lib, original, 0, 1)),
+        ("damage", lambda: champion_bytes(lib, 0, CH_DAMAGE_EVENT, struct.pack("<HH", 5, 37))),
+        ("hungry", lambda: champion_bytes(lib, 0, CH_FOOD, struct.pack("<hh", -300, -700))),
+        ("poisoned", lambda: champion_bytes(lib, 0, CH_POISONED, [1])),
+    ]
+    pictures = set()
+    for name, change in states:
+        change()
+        champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0xFC00))
+        sync_champions(lib, original)
+        set_action(lib, original, dirty=1)
+        original.emu.call(CHAMP_DRAW_ALL_STATES, 1)
+        lib.champ_draw_all_states(1)
+        assert_same_screen_and_view(lib, original, name)
+        pictures.add(original.screen())
+    assert len(pictures) == 9  # visible and awake go back to a former picture; hungry and poisoned show in the inventory
+    original.emu.call(INV_TOGGLE, 0)
+    lib.inv_toggle(0)
+    assert_same_screen_and_view(lib, original, "inventory")
+    champion_bytes(lib, 0, CH_HEALTH, struct.pack("<h", 0))
+    champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0xFC00))
+    sync_champions(lib, original)
+    original.emu.call(CHAMP_DRAW_ALL_STATES, 1)
+    lib.champ_draw_all_states(1)
+    assert_same_screen_and_view(lib, original, "dead")
+
+
+# ---- Text ----
+
+def random_text(rng, length):
+    return bytes(rng.randrange(1, 128) for _ in range(length))
+
+
+def test_draw_text_matches_original(port, original):
+    # Random texts in 8 bpp and 4 bpp bitmaps, with and without background, at random positions.
+    lib = port
+    emu = original.emu
+    lib.gfx_draw_text.argtypes = [u8_p] + [ctypes.c_int] * 5 + [ctypes.c_char_p, ctypes.c_int]
+    rng = random.Random(13)
+    width, height = 96, 40
+    src, text = original.alloc(width * height), original.alloc(64)
+    for case in range(300):
+        bpp = rng.choice([8, 4])
+        size = width * height if bpp == 8 else width // 2 * height
+        fill = bytes(rng.randrange(256) for _ in range(size))
+        s = random_text(rng, rng.randrange(0, 12))
+        x, y = rng.randrange(0, 40), rng.randrange(4, height - 1)  # inside the bitmap
+        color, bg = rng.randrange(256 if bpp == 8 else 16), rng.randrange(256 if bpp == 8 else 16)
+        if rng.random() < 0.5:
+            bg |= 0x4000
+        emu.write(src, fill)
+        emu.write(text, s + b"\0")
+        emu.call(GFX_DRAW_TEXT, src, width, x, y, color, bg, text, bpp)
+        mine = (ctypes.c_uint8 * size).from_buffer_copy(fill)
+        lib.gfx_draw_text(mine, width, x, y, color, bg, s, bpp)
+        assert bytes(mine) == emu.read(src, size), (case, s, x, y, color, bg, bpp)
+
+
+def test_measure_and_wrap_match_original(port, original):
+    lib = port
+    emu = original.emu
+    lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
+    lib.text_measure.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.POINTER(ctypes.c_int16)]
+    rng = random.Random(14)
+    text, line, out = original.alloc(256), original.alloc(256), original.alloc(16)
+    for case in range(300):
+        words = [bytes(rng.choice(b"ABCDEFGHIJKLMNOPQRSTUVWXYZ.") for _ in range(rng.randrange(0, 9)))
+                 for _ in range(rng.randrange(1, 12))]
+        s = b" ".join(words)
+        if rng.random() < 0.3:
+            s = s.replace(b" ", b"\n", 1)
+        emu.write(text, s + b"\0")
+        w, h = ctypes.c_int16(), ctypes.c_int16()
+        theirs = emu.call(TEXT_MEASURE, text, out, out + 2)
+        assert lib.text_measure(s, ctypes.byref(w), ctypes.byref(h)) == theirs
+        if theirs:
+            assert (w.value, h.value) == struct.unpack("<hh", emu.read(out, 4))
+        max_width = rng.randrange(1, 200)
+        pos = ctypes.c_int16(0)
+        emu.write(out, bytes(2))
+        while True:
+            start = pos.value
+            mine_line = ctypes.create_string_buffer(256)
+            width = lib.text_wrap_line(s, mine_line, ctypes.byref(pos), max_width)
+            their_width = emu.call(TEXT_WRAP_LINE, text, line, out, max_width) & 0xFFFF
+            assert (width & 0xFFFF, pos.value) == (their_width, struct.unpack("<h", emu.read(out, 2))[0]), (case, s, start)
+            assert mine_line.value == emu.read(line, 256).split(b"\0")[0]
+            if pos.value >= len(s) or pos.value == start:
+                break
+            if s[pos.value:pos.value + 1] == b"\n":
+                pos.value += 1
+                emu.write(out, struct.pack("<h", pos.value))
+
+
+TextArgs = None  # set in test_text_format_matches_original
+
+
+def test_text_format_matches_original(port, original):
+    # Format codes: champion names, numbers, and inserted texts, also nested.
+    lib = port
+    emu = original.emu
+
+    class Args(ctypes.Structure):
+        _fields_ = [("champion", ctypes.c_int16), ("number", ctypes.c_int16 * 5), ("entry", ctypes.c_uint8)]
+
+    args = Args.in_dll(lib, "text_args")
+    lib.text_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    rng = random.Random(15)
+    number_addresses = (0x7F996, 0x7F98A, 0x7F994, 0x7F992, 0x7F986)
+    src, dst = original.alloc(256), original.alloc(512)
+    for case in range(100):
+        args.champion = rng.choice([0, 0, -1])
+        emu.write(0x7F988, struct.pack("<h", args.champion))
+        for i, addr in enumerate(number_addresses):
+            args.number[i] = rng.randrange(-500, 30000)
+            emu.write(addr, struct.pack("<h", args.number[i]))
+        args.entry = rng.randrange(4)  # the skill names
+        emu.write(0x7F990, bytes([args.entry]))
+        parts = []
+        for _ in range(rng.randrange(1, 6)):
+            code = rng.choice([7, 10, 11, 12, 13, 14, 17])
+            parts.append(rng.choice([b"AB ", b"", b"X"]) + (b".Z%03d" % code if rng.random() < 0.5 else bytes([1, code + 32])))
+        if args.champion < 0:
+            parts = [p for p in parts if b"007" not in p and bytes([1, 39]) not in p]  # the original shows stale bytes
+        fmt = b"".join(parts) + b" END"
+        emu.write(src, fmt + b"\0")
+        emu.call(TEXT_FORMAT, src, dst)
+        mine = ctypes.create_string_buffer(512)
+        lib.text_format(fmt, mine)
+        assert mine.value == emu.read(dst, 512).split(b"\0")[0], (case, fmt)
+
+
+def test_message_area_matches_original(port, original):
+    # Messages in the 3 rows of the message area: colors, wrapped lines, new lines, then the rows that expire.
+    lib = port
+    emu = original.emu
+    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
+    text = original.alloc(256)
+    emu.call(TEXT_SET_MESSAGE_CURSOR, 0, 0)
+    lib.text_set_message_cursor(0, 0)
+    messages = [(4, b"TORHAM ZED"), (7, b" SAYS HELLO."), (15, b"\nTHIS IS A LONG MESSAGE THAT DOES NOT FIT IN ONE ROW OF THE AREA"),
+                (9, b" OK")]
+    for color, message in messages:
+        emu.write(text, message + b"\0")
+        emu.call(TEXT_PRINT_MESSAGE, color, text, allow_io=True)
+        lib.text_print_message(color, message)
+        mine, theirs = c_screen(lib), original.screen()
+        assert mine == theirs, (message, diff(mine, theirs, SCREEN_W))
+    expiry = (ctypes.c_uint32 * 3).in_dll(lib, "message_expiry")
+    assert list(expiry) == list(struct.unpack("<3I", emu.read(0x80404, 12)))
+    time = expiry[1]
+    emu.write(G_GAME_TIME, struct.pack("<I", time))
+    Game.in_dll(lib, "game").game_time = time
+    emu.call(0x557B5, allow_io=True)
+    lib.text_clear_expired_rows()
+    mine, theirs = c_screen(lib), original.screen()
+    assert mine == theirs, ("expired", diff(mine, theirs, SCREEN_W))
+    assert list(expiry) == list(struct.unpack("<3I", emu.read(0x80404, 12)))
+
+
+def test_message_area_scrolls(port):
+    # A fourth row moves the area up by one row; the new row appears at the bottom (IBMIOP service 0x105 is not
+    # in SKULL.EXE: the port moves the rows).
+    lib = port
+    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
+    lib.zone_get_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    r = (ctypes.c_int16 * 4)()
+    lib.zone_get_rect(15, r)
+    x, y, w, h = r
+    lib.text_set_message_cursor(0, 0)
+    lib.text_print_message(15, b"ONE\nTWO\nTHREE")
+    before = c_screen(lib)
+    lib.text_print_message(15, b"\nFOUR")
+    after = c_screen(lib)
+    rows = lambda screen, top, count: [screen[(top + i) * SCREEN_W + x:(top + i) * SCREEN_W + x + w] for i in range(count)]
+    assert rows(after, y, h - 7) == rows(before, y + 7, h - 7)
+    assert rows(after, y + h - 6, 6) != rows(before, y + h - 6, 6)
+
+
+def test_layout_zone_helpers_match_original(port, original):
+    # The icon rectangle and the position of every zone of the screen layout.
+    lib = port
+    emu = original.emu
+    lib.zone_get_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_icon_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_position.argtypes = [ctypes.c_int] + [ctypes.POINTER(ctypes.c_int16)] * 2
+    out = original.alloc(16)
+    zones = 0
+    for zone in range(1, 0x300):
+        r = (ctypes.c_int16 * 4)()
+        if not lib.zone_get_rect(zone, r):
+            continue
+        zones += 1
+        lib.zone_get_icon_rect(zone, r)
+        emu.call(0x37F3A, zone, out)
+        assert tuple(r) == struct.unpack("<4h", emu.read(out, 8)), zone
+        x, y = ctypes.c_int16(), ctypes.c_int16()
+        lib.zone_get_position(zone, ctypes.byref(x), ctypes.byref(y))
+        emu.call(0x19BAE, zone, out, out + 2)
+        assert (x.value, y.value) == struct.unpack("<2h", emu.read(out, 4)), zone
+    assert zones > 250
