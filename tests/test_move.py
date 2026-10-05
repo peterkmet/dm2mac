@@ -68,6 +68,11 @@ WALL_END_GAME = 0x58A12
 FORWARD_REVERSE_HOLD = 0x5723C
 
 
+def ignore_stale(state):
+    """After a removal (no destination) the original leaves a stale register in the destination map."""
+    return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
+
+
 class Party(ctypes.Structure):
     _fields_ = [(name, ctypes.c_int16) for name in ("cur_map", "square_x", "square_y", "square_map", "ref_dir",
                                                      "move_steps")] + [
@@ -129,6 +134,9 @@ class Scenario:
             emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
         self.fix_square_events()
         self.view = view
+        groups = emu.read_u32(G_ACTIVE_GROUPS)
+        for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
+            emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
         emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
@@ -320,12 +328,12 @@ class Scenario:
         mine = {name: getattr(self.party, name) for name in GLOBALS}
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
                   for name, (addr, fmt) in GLOBALS.items()}
-        assert mine == theirs, where
+        assert ignore_stale(mine) == ignore_stale(theirs), where
         assert self.differences() == [], where
 
     def assert_equal(self, where):
         (mine, mg), (theirs, tg) = self.state()
-        assert mg == tg, where
+        assert ignore_stale(mg) == ignore_stale(tg), where
         if mine != theirs:
             for d in self.differences()[:20]:
                 print(d)
@@ -439,3 +447,43 @@ def test_square_events_on_all_sensors(scenario, lib, part):
     for _ in range(40):
         scenario.step()
     scenario.assert_equal("end")
+
+
+DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def approaches(lib, kind, condition=lambda s: True, limit=60):
+    """(map, x, y, dir): a free square beside a square of the kind, facing it."""
+    out = []
+    for map_, x, y, s in squares(lib, (kind,)):
+        if not condition(s):
+            continue
+        for d, (dx, dy) in enumerate(DIRS):
+            px, py = x - dx, y - dy
+            if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \
+                    and lib.dungeon_square(map_, px, py) >> 5 == 1:
+                out.append((map_, px, py, d))
+                break
+    return out[:limit]
+
+
+@pytest.mark.parametrize("kind, condition, name", [
+    (3, lambda s: True, "stairs"), (2, lambda s: s & 8, "open pits"), (5, lambda s: s & 8, "active teleporters"),
+    (4, lambda s: True, "doors"), (6, lambda s: True, "fake walls")])
+def test_step_into_special_squares(scenario, lib, kind, condition, name):
+    # The party steps onto stairs, open pits, active teleporters, doors, and fake walls, then turns and steps on.
+    places = approaches(lib, kind, condition)
+    assert places, name
+    moved = 0
+    for n, (map_, x, y, d) in enumerate(places):
+        scenario.place(map_, x, y, d)
+        for command in (3, 1, 3, 2, 2, 3):
+            for _ in range(3):
+                scenario.step()
+            mine, theirs = scenario.command(command)
+            assert mine == theirs, (name, n, command)
+            scenario.assert_same((name, n, map_, x, y, d, command))
+        moved += (scenario.game.party_map, scenario.game.party_x, scenario.game.party_y) != (map_, x, y)
+        if n % 20 == 19:
+            scenario.assert_equal((name, n))
+    assert moved > len(places) // 3, name
