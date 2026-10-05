@@ -162,7 +162,7 @@ class OriginalView:
         emu.serve_file(data)
         emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
         emu.stub(GDAT_ENTRY_INDEX, self.entry_index)
-        emu.stub(WEATHER_INIT, lambda *_: 0)
+        self.weather_init_stub = emu.stub(WEATHER_INIT, lambda *_: 0)  # the load: the test gives the C values
         emu.stub(READ_LEVEL_TABLE, lambda *_: 0)
         emu.run(LOAD_BEGIN, LOAD_END)
         emu.stub(0x3EC2B, lambda c, i, e, *_: self.image(self.image_item(c, i, e)))  # gdat_get_image
