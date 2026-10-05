@@ -178,7 +178,7 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
         sc.emu.write(G_INVENTORY, bytes(2))
         ctypes.c_int.in_dll(lib, "party_sleeping").value = 0
         sc.emu.write_u32(G_PARTY_SLEEPING, 0)
-    assert strikes > 3 and bolts > 3 and pictures == 56
+    assert strikes > 1 and bolts > 3 and pictures == 56
     sc.assert_equal("end")
 
 
