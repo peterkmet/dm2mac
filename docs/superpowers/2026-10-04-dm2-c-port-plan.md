@@ -45,7 +45,7 @@ tests/saves/             DOS saves from DOSBox (git-ignored)
 
 These inputs come from the user. The steps that need them name them.
 
-- DOS saves from DOSBox in `tests/saves/`: a save at the start of the game (Step 10), saves before and after a short command sequence (Steps 14 to 17), a save near the end of the game (Step 20).
+- DOS saves from DOSBox in `tests/saves/`: a save at the start of the game (Step 10). Steps 14 to 17 and 20 need no other saves: their scenario tests use the emulator oracle (Step 14). A save near the end of the game is optional, for the manual check of Step 21.
 - Ghidra and OpenJDK 21 from Homebrew (Step 4).
 
 ## Steps
@@ -192,7 +192,7 @@ Reimplement the screen layout, champion status boxes, action area, spell area, m
 
 ### Step 14: Main loop, input, movement
 
-Port the main loop, the command queue, mouse and keyboard handling, party movement and turning, sensors, doors, pits, teleporters, and stairs. Pure rule functions get differential tests against `dm2tools.emu`. Stateful logic gets scenario tests: a DOS save plus a command sequence gives the expected party position and state. The expected state comes from a DOS save that the user makes in DOSBox after the same command sequence.
+Port the main loop, the command queue, mouse and keyboard handling, party movement and turning, sensors, doors, pits, teleporters, and stairs. Pure rule functions get differential tests against `dm2tools.emu`. Stateful logic gets scenario tests: the test loads `tests/saves/start.DAT` into the C port and into the memory of the original code in `dm2tools.emu`. Both run the same command sequence through the same functions. Then the test compares the game state (party position and direction, champions, dungeon records, timeline). This emulator oracle replaces DOS saves made in DOSBox (user decision, 2026-10-05).
 
 ### Step 15: Champions, inventory, items, money, shops
 
@@ -219,7 +219,7 @@ Port the digital sound playback through SDL3 audio. Sample data and format come 
 
 ### Step 20: Start menu, save and load, end of game
 
-Port the start menu, new game, load, save, and the end sequence of `SKULL.EXE`. Tests: a scenario test saves a game, loads it, and checks the same state; the near-end DOS save from `tests/saves/` loads and reaches the end-of-game state after the final command sequence.
+Port the start menu, new game, load, save, and the end sequence of `SKULL.EXE`. Tests: a scenario test saves a game, loads it, and checks the same state; a state built from `start.DAT` that meets the end condition reaches the end-of-game state in the C port and in the original code in `dm2tools.emu` (emulator oracle, Step 14).
 
 ### Step 21: Full test and release
 
