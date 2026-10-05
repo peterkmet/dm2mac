@@ -34,19 +34,11 @@ int view_click_drop_object(int square_x, int square_y, int cell);
 void view_click_throw_object(int x, int y);
 
 /* Step 16: creatures and projectiles. */
-void creature_alert(uint16_t group, int x, int y, int flags, int amount, int chance);
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);              /* returns 0: no push */
 int move_party_can_push_group(uint16_t group);                                   /* returns 0 */
 void creature_push_group(int x, int y, int dir, int strength);
-void creature_turn_group(uint16_t group, int absolute, int dir);
 void creature_refresh_party_maps(void);
-void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map);
-void creature_delete_group_at(int x, int y, int mode, int sound_map);
-void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible);
-void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag);
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
-uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y);  /* returns THING_NONE */
-void timeline_event_move_group(TimelineEvent *e);
 void projectile_process_event(TimelineEvent *e);
 void explosion_process_event(TimelineEvent *e);
 void explosion_create(int type, int power, int x, int y, int cell);

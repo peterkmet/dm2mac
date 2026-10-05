@@ -292,4 +292,4 @@ void creature_ai_decide(void) { ai.active->action = 0; }
 int creature_ai_plan_flags(void) { return 0; }
 int creature_ai_execute_action(void) { return 0; }
 int creature_group_jumps(uint16_t group) { (void)group; return 0; }
-int creature_damage_current_group(uint16_t damage) { (void)damage; return 0; }
+DistanceMap party_distance = {.map = -1}, alt_distance = {.map = -1};

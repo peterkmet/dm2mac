@@ -156,4 +156,15 @@ void creature_process_event(int x, int y, int type);
 void creature_update_anim_at(int x, int y, int alt);
 void creature_refresh_party_maps(void);
 
+/* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
+   percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
+void creature_alert(uint16_t group, int x, int y, int flags, int chance, int damage);
+void creature_turn_group(uint16_t group, int absolute, int dir);
+void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map);
+void creature_delete_group_at(int x, int y, int mode, int sound_map);
+uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y);
+void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible);
+void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag);
+void timeline_event_move_group(TimelineEvent *e);
+
 #endif

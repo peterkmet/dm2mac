@@ -16,14 +16,13 @@ IMAGE_CACHE_LOOKUP, IMAGE_CACHE_ALLOC, IMAGE_CACHE_REALLOC = 0x3F1F8, 0x3F279, 0
 IMAGE_CACHE_GET, IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE = 0x3F337, 0x3F3C2, 0x3F406
 MEM_ALLOC, MEM_FREE_SIZE = 0x3BBBA, 0x3BCA5
 # Original functions that Step 16 ports: the scenario runs them (test_move.STUBS replaces them by empty hooks).
-PORTED = (0x34106, 0x306A8, 0x3085A, 0x3064D, 0x2538C)
+PORTED = (0x34106, 0x306A8, 0x3085A, 0x3064D, 0x2538C, 0x24E62, 0x49EF8, 0x30D45, 0x30FE3, 0x4A096, 0x4A005, 0x30BA6)
 # Original functions of Step 16 that the C port does not have yet: (address, stack arguments, result).
 NOT_YET = {
     0x262F7: None,          # creature_ai_decide: action 0
     0x25FB2: (0, 0),        # creature_ai_plan_flags
     0x2B75E: (0, 0),        # creature_ai_execute_action
     0x30102: (0, 0),        # creature_group_in_state5
-    0x31348: (0, 0),        # creature_damage_current_group
     0x16746: (1, 0),        # explosion_create
 }
 G_AI_ACTIVE_GROUP = 0x7F552

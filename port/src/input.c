@@ -988,6 +988,11 @@ int command_execute(Command *c)
     return 1;
 }
 
+void input_set_wait(int steps)
+{
+    in.wait = steps;
+}
+
 void command_process_queue(void)
 {
     if (in.wait) in.wait--;

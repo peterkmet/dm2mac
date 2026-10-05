@@ -32,19 +32,11 @@ void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void timeline_event_magic_light(TimelineEvent *e) { (void)e; }
 void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
-void creature_alert(uint16_t group, int x, int y, int flags, int amount, int chance) { (void)group; (void)x; (void)y; (void)flags; (void)amount; (void)chance; }
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group) { (void)x; (void)y; (void)dir; (void)group; return 0; }
 int move_party_can_push_group(uint16_t group) { (void)group; return 0; }
 void creature_push_group(int x, int y, int dir, int strength) { (void)x; (void)y; (void)dir; (void)strength; }
-void creature_turn_group(uint16_t group, int absolute, int dir) { (void)group; (void)absolute; (void)dir; }
 void creature_refresh_party_maps(void) { }
-void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map) { (void)group; (void)x; (void)y; (void)mode; (void)sound_map; }
-void creature_delete_group_at(int x, int y, int mode, int sound_map) { (void)x; (void)y; (void)mode; (void)sound_map; }
-void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible) { (void)group; (void)x; (void)y; (void)map; (void)audible; }
-void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag) { (void)holder; (void)x; (void)y; (void)map; (void)flag; }
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y) { (void)from_x; (void)from_y; (void)to_x; (void)to_y; }
-uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y) { (void)creature_type; (void)count; (void)dir; (void)x; (void)y; return THING_NONE; }
-void timeline_event_move_group(TimelineEvent *e) { (void)e; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
 void explosion_process_event(TimelineEvent *e) { (void)e; }
 void explosion_create(int type, int power, int x, int y, int cell) { (void)type; (void)power; (void)x; (void)y; (void)cell; }

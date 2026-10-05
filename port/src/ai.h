@@ -148,7 +148,18 @@ typedef struct {
 } AiSquare;
 extern AiSquare ai_square;
 
+/* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
+typedef struct { int16_t map, width; uint8_t cells[32 * 32]; } DistanceMap;
+extern DistanceMap party_distance, alt_distance;
+
 uint8_t ai_action_flag(int8_t action);
+int creature_get_party_distance(int x, int y);
+int creature_is_near_party_front(int x, int y, int map);
+int creature_attack_group_at(int x, int y);
+uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir);
+void minion_dismiss(uint16_t group);
+int creature_roll_armor_factor(uint16_t group, int enabled);
+void creature_apply_damage_kind(uint16_t group, int x, int y, int kind);
 int creature_ai_class(void);
 uint8_t *ai_scratch_push(void);
 void ai_scratch_pop(void);
