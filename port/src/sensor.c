@@ -8,6 +8,7 @@
 #include "gdat.h"
 #include "hooks.h"
 #include "inventory.h"
+#include "money.h"
 #include "item.h"
 #include "move.h"
 #include "random.h"

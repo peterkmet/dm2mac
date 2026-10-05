@@ -35,6 +35,7 @@ class Rules:
         self.pool = [lib.dungeon_unused_thing(t) for t in (WEAPON,) * 4 + (CLOTHING,) * 4]
         for t in self.pool:
             self.set_word(t, 0, 0xFFFE)
+            self.sync_record(t)
         scenario.game.champion_count = 4
         self.emu.write(G_CHAMPION_COUNT, struct.pack("<H", 4))
         lib.champ_test_luck.argtypes = [ctypes.c_void_p, ctypes.c_int]
@@ -44,6 +45,11 @@ class Rules:
         kind = thing >> 10 & 15
         return (self.lib.dungeon_thing_record(thing),
                 self.emu.read_u32(G_THING_DATA + 4 * kind) + THING_SIZES[kind] * (thing & 0x3FF))
+
+    def sync_record(self, thing):
+        """Copies the C record of thing into the original."""
+        mine, theirs = self.record(thing)
+        self.emu.write(theirs, ctypes.string_at(mine, THING_SIZES[thing >> 10 & 15]))
 
     def set_word(self, thing, offset, value):
         mine, theirs = self.record(thing)
@@ -221,6 +227,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     misc = [lib.dungeon_unused_thing(MISC) for _ in range(4)]
     for t in potions + misc:
         rules.set_word(t, 0, 0xFFFE)
+        rules.sync_record(t)
     places = squares(lib, (1,))
     # places that face a creature group, for the melee actions and their repeats
     lib.dungeon_square_first_thing.restype = ctypes.c_uint16
@@ -320,3 +327,92 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             scenario.assert_equal(n)
     assert performed > 150 and consumed > 150 and len(commands) > 20 and repeats > 2, (
         performed, consumed, sorted(commands), repeats)
+
+
+MONEY_INIT_COIN_TABLE, ITEM_CREATE_BY_INDEX, MONEY_ADD_COIN_TO_BOX = 0x154E0, 0x1DE8E, 0x1F413
+MONEY_TAKE_COIN_FROM_BOX, MONEY_NORMALIZE_COINS, MONEY_SPLIT_AMOUNT = 0x1F50D, 0x29598, 0x15958
+SHOP_PARSE_ITEM_CLASS_SET, SHOP_GET_ITEM_VALUE, MONEY_BOX_CLICK_COIN = 0x1538D, 0x15737, 0x42A35
+G_ACTION_CHAMPION, G_ACTION_MODE, UI_UPDATE_ACTION_AREA = 0x7FB70, 0x757B8, 0x3FE68
+MONEY_BOX = 0xA40F  # the money box on the shelf of the first room (map 22)
+ACTION_MODE_MONEY_BOX = 4
+
+
+def test_money_and_prices_match_original(rules, lib):
+    # Coins into and out of a money box (also through clicks on its panel with the leader hand), the exchange of
+    # coins, the split of an amount into coins, the item class sets of the merchants, and their prices.
+    from dm2tools.emu import SCRATCH
+    from test_interface import G_LEADER_HAND, set_leader_hand
+    rng, emu, scenario = rules.rng, rules.emu, rules.s
+    lib.money_init_coin_table()
+    emu.call(MONEY_INIT_COIN_TABLE)
+    lib.money_coin_item.restype = ctypes.c_uint16
+    coins = [lib.money_coin_item(i) for i in range(lib.money_coin_type_count())]
+    lib.item_create_by_index.restype = ctypes.c_uint16
+    lib.money_take_coin_from_box.restype = ctypes.c_uint16
+    lib.money_add_coin_to_box.argtypes = [ctypes.c_uint16, ctypes.c_uint16]
+    lib.shop_get_item_value.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int16]
+    buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
+    creatures = [t for t in range(0x100) if lib.gdat_exists(rules.s.gdat, 0x0F, t, 5, 0x10)]
+    action_state = ActionState.in_dll(lib, "action")
+    emu.stub(UI_UPDATE_ACTION_AREA, lambda *_: 0)  # the drawing of the panel (the screen is not mapped here)
+    lib.action_reset()
+    clicks = taken = 0
+    for n in range(600):
+        kind = rng.randrange(7)
+        if kind == 0:
+            coin = rng.choice(coins)
+            mine, theirs = lib.item_create_by_index(coin), emu.call(ITEM_CREATE_BY_INDEX, coin) & 0xFFFF
+            assert mine == theirs, n
+            if mine != 0xFFFF:
+                assert lib.money_add_coin_to_box(MONEY_BOX, mine) == emu.call(MONEY_ADD_COIN_TO_BOX, MONEY_BOX, mine), n
+        elif kind == 1:
+            t = rng.randrange(-1, len(coins))
+            mine = lib.money_take_coin_from_box(MONEY_BOX, t) if t >= 0 else 0xFFFF
+            theirs = emu.call(MONEY_TAKE_COIN_FROM_BOX, MONEY_BOX, t) & 0xFFFF if t >= 0 else 0xFFFF
+            assert mine == theirs, n
+            taken += mine != 0xFFFF
+        elif kind == 2:
+            check = rng.randrange(2)
+            assert lib.money_normalize_coins(check, MONEY_BOX) == emu.call(MONEY_NORMALIZE_COINS, check, MONEY_BOX), n
+        elif kind == 3:
+            amount, most = rng.randrange(-5, 2000), rng.randrange(1, 18)
+            types, count = (ctypes.c_uint8 * 32)(), ctypes.c_int16()
+            mine = lib.money_split_amount(amount, most, types, ctypes.byref(count))
+            theirs = emu.call(MONEY_SPLIT_AMOUNT, amount, most, buffer, out, 0)
+            their_count = struct.unpack("<h", emu.read(out, 2))[0]
+            assert (mine, count.value) == (theirs, their_count), n
+            assert bytes(types[:count.value]) == emu.read(buffer, their_count), n
+        elif kind == 4:
+            creature, list_, skip = rng.choice(creatures), rng.randrange(-1, 16), rng.randrange(2)
+            bits = (ctypes.c_uint8 * 0x40)()
+            mine = lib.shop_parse_item_class_set(creature, list_, bits, skip)
+            theirs = emu.call(SHOP_PARSE_ITEM_CLASS_SET, creature, list_, buffer, skip)
+            assert mine == theirs and (not mine or bytes(bits) == emu.read(buffer, 0x40)), (n, creature, list_)
+        elif kind == 5:
+            creature, list_ = rng.choice(creatures), rng.randrange(5)
+            item = rng.randrange(0x1fd)
+            bits = (ctypes.c_uint8 * 0x40)()
+            if rng.random() < 0.7 and lib.shop_parse_item_class_set(creature, list_ * 3 + rng.choice((0x11, 0x12)), bits, 0):
+                listed = [i for i in range(0x1fd) if bits[i >> 3] >> (i & 7) & 1]
+                item = rng.choice(listed) if listed else item  # an item of a price class of the merchant
+            args = (item, creature, list_, rng.randrange(2), rng.randrange(2), rng.choice((-1, 0, 3, 15)))
+            mine = lib.shop_get_item_value(*args)
+            theirs = emu.call(SHOP_GET_ITEM_VALUE, *args)
+            assert ctypes.c_int16(mine).value == ctypes.c_int16(theirs).value, (n, args)
+        else:
+            champion_bytes(lib, 0, CH["slots"] + 2, struct.pack("<H", MONEY_BOX))
+            sync_champions(lib, scenario)
+            action_state.champion, action_state.hand, action_state.mode = 1, 1, ACTION_MODE_MONEY_BOX
+            emu.write(G_ACTION_CHAMPION, struct.pack("<hh", 1, 1))
+            emu.write(G_ACTION_MODE, struct.pack("<h", ACTION_MODE_MONEY_BOX))
+            slot = rng.randrange(6)
+            lib.money_box_click_coin(slot)
+            emu.call(MONEY_BOX_CLICK_COIN, slot)
+            clicks += 1
+            action_state.mode = ACTION_MODE_MONEY_BOX
+            emu.write(G_ACTION_MODE, struct.pack("<h", ACTION_MODE_MONEY_BOX))
+        rules.assert_same((n, kind))
+        mine_hand = ctypes.c_uint16.from_address(ctypes.addressof(scenario.game) + 252 + 4 * 263).value
+        assert mine_hand == struct.unpack("<H", emu.read(G_LEADER_HAND, 2))[0], n
+    assert clicks > 30 and taken > 30
+    scenario.assert_equal("end")

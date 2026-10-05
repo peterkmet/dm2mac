@@ -11,6 +11,7 @@
 #include "champ_action.h"
 #include "inventory.h"
 #include "item.h"
+#include "money.h"
 #include "input.h"
 #include "move.h"
 #include "music.h"
@@ -58,7 +59,7 @@ enum {
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
     CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81,
-    CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46
+    CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -1096,6 +1097,8 @@ int command_execute(Command *c)
     } else if (command >= CMD_PARTY_ICON_FIRST && command <= CMD_PARTY_ICON_LAST) {
         int champ = champ_get_index_in_cell((command - CMD_PARTY_ICON_FIRST + game.party_dir) & 3);
         if (champ >= 0) ui_action_area_open_spells(champ);
+    } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
+        money_box_click_coin(command - CMD_COIN_FIRST);
     } else if (command == CMD_MOUTH) {
         champ_consume_object(-1, THING_NONE, -1);
     } else if (command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) {

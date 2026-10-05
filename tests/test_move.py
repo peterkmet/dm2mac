@@ -43,7 +43,7 @@ STUBS = {
     0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
     0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
     0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
-    0x1DE8E: (0, NONE), 0x494FB: (0, 0),                                    # new items, recruiting
+    0x494FB: (0, 0),                                                         # recruiting
     0x14889: (0, 0), 0x38392: (0, 0),                                       # the hand cursor and its icon
     0x14C7B: (0, 0), 0x14C87: (0, 0), 0x1483A: (0, 0), 0x14846: (0, 0),     # IBMIOP input lock, mouse capture, cursor
     0x14B4F: (0, 0), 0x14C0E: (0, 0), 0x1482E: (0, 0), 0x14743: (5, 0),     # mouse areas, capture, cursor image
