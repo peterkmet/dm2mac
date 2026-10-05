@@ -26,9 +26,6 @@ void timeline_event_magic_light(TimelineEvent *e);
 void champ_poison(int champ, int amount);
 /* A champion comes back from the bones that a sensor took (Step 15). */
 void champ_revive(int champ);
-/* Sets the bits of the item indexes of an item class (GDAT text of a creature type); the hook sets none. */
-#define ITEM_CLASS_SET_SIZE 0x40
-int shop_parse_item_class_set(int creature_type, int entry, uint8_t *bits, int skip_containers);
 uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
 void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);                                        /* returns THING_NONE */
@@ -64,6 +61,9 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
 void creature_process_event(int x, int y, int type);
 void creature_update_anim_at(int x, int y, int start);
 void timeline_event_move_group(TimelineEvent *e);
+/* Sets the bits of the item indexes of an item class (GDAT text of a creature type); the hook sets none. */
+#define ITEM_CLASS_SET_SIZE 0x40
+int shop_parse_item_class_set(int creature_type, int entry, uint8_t *bits, int skip_containers);
 /* The walking distance from the party to (x, y) (party distance map); 0: as the straight distance. */
 int creature_get_party_distance(int x, int y);
 void projectile_process_event(TimelineEvent *e);

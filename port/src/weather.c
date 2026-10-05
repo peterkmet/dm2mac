@@ -86,6 +86,12 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define THUNDER_CALM_BASE 5
 #define THUNDER_DELAY_BASE 0x4c
 #define THUNDER_DELAY_MAX 15
+#define STORM_SPAN_JITTER 0xf      /* plus 0 to 15 on the random span of rain and lightning */
+#define MAP_GFX_SET_SHIFT 4         /* map graphics word: graphics set in bits 4-7 */
+#define MAP_GFX_SET_MASK 0xf
+#define TARGET_X_SHIFT 8            /* lightning target value: x in the high byte, y in the low byte */
+#define TARGET_Y_MASK 0xff
+#define PERCENT 100
 #define CLOUD_STEP_TICKS 3          /* clouds change at most each third tick */
 #define CREATURE_LIGHTNING_PROOF 0xff
 /* Script variables of the weather. */
@@ -108,7 +114,6 @@ enum { VAR_ADD = 3, VAR_ASSIGN = 6 };
 enum { EXPLOSION_FIRE = 0, EXPLOSION_LIGHT = 2, EXPLOSION_GLOW = 0x30 };
 #define EXPLOSION_TYPE_BITS 0x7f
 #define EXPLOSION_LIGHT_SHIFT 9     /* half of the explosion power */
-#define CREATURE_INFO_SIZE 63
 #define SIDE_LIGHT 2                /* the view square side of the front wall ornament or of the floor ornament */
 #define ORNAMENT_MASK 0xff          /* ornament index in a side word; 0xff: no ornament */
 
@@ -132,7 +137,7 @@ static const int8_t light_levels[LIGHT_LEVEL_MAX + 1] = {99, 75, 50, 25, 1, 0};
 static const int16_t window_falloff[FALLOFF_WEATHER_MAX + 1] = {0, 6, 14, 30, 42, 54, 76, 88, 96};
 static const int16_t light_falloff[FALLOFF_MAX + 1] = {0, 10, 22, 45, 70, 90};
 /* Byte +2 of the creature info records of SKULL.EXE (meaning not known): 0xff, lightning does not strike there. */
-static const uint8_t creature_lightning[CREATURE_INFO_SIZE] = {
+static const uint8_t creature_lightning[CREATURE_INFO_COUNT] = {
     255, 255, 255, 100, 255, 255, 255, 255, 255, 80, 255, 255, 255, 130, 150, 130, 130, 200, 110, 85, 255, 150, 100,
     50, 65, 80, 50, 70, 100, 135, 175, 220, 120, 180, 75, 50, 160, 255, 255, 255, 220, 100, 65, 75, 115, 255, 70, 255,
     100, 75, 115, 255, 90, 255, 255, 140, 255, 100, 110, 140, 255, 100, 75,
@@ -143,7 +148,7 @@ int16_t light_source_sum, explosion_light_sum;
 
 static int clamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static int gfx_set(void) { return dungeon_map_graphics(game.party_map) >> 4 & 0xf; }
+static int gfx_set(void) { return dungeon_map_graphics(game.party_map) >> MAP_GFX_SET_SHIFT & MAP_GFX_SET_MASK; }
 
 static uint16_t map_value(int key) { return gdat_entry_index(draw_gdat(), CAT_MAP, gfx_set(), GDAT_TYPE_VALUE, key); }
 
@@ -233,7 +238,7 @@ static int weather_update_rain(void)
         game.sky_darkness = 1;
         return lightning;
     }
-    uint16_t span = (uint16_t)(STORM_RANDOM_SPAN - game.storm_intensity + (rand_next() & 0xf));
+    uint16_t span = (uint16_t)(STORM_RANDOM_SPAN - game.storm_intensity + (rand_next() & STORM_SPAN_JITTER));
     int chance = (int16_t)game.storm_intensity >= STORM_STRONG ? LIGHTNING_CHANCE_STRONG : LIGHTNING_CHANCE_WEAK;
     game.sky_darkness = (uint8_t)game.storm_intensity;
     /* rain starts by chance, then follows the storm */
@@ -290,7 +295,7 @@ static SkyObject *weather_lightning(SkyObject *o)
         strikes = (uint16_t)((rand_next() & LIGHTNING_STRIKES_MASK) + 1);
         uint16_t target = map_value(MAP_KEY_LIGHTNING_TARGET);
         if (target) {
-            int x = target >> 8, y = target & 0xff;
+            int x = target >> TARGET_X_SHIFT, y = target & TARGET_Y_MASK;
             sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
             sound_play_with_fallback(CAT_LIGHTNING_SOUND, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_NO_FALLBACK,
                                      x, y, 1, LIGHTNING_SOUND_PRIORITY,
@@ -431,7 +436,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
         uint16_t v = ornament_light(CAT_WALL_ORNAMENT, ornament, &animated_only);
         if (!v && !animated_only) break;
         if (gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_DAYLIGHT))
-            window = (int16_t)(window + v * daylight() / 100);
+            window = (int16_t)(window + v * daylight() / PERCENT);
         else if (!animated_only || animated) light = (int16_t)(light + v);
         break;
     }
@@ -443,7 +448,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
                 uint16_t v = ornament_light(CAT_FLOOR_ORNAMENT, ornament, &animated_only);
                 /* like the original, a floor ornament without light also hides the other light of its square */
                 if (!v && !animated_only) break;
-                if (dun_get_linked_teleporter_dest(&end, x, y)) window = (int16_t)(window + v * daylight() / 100);
+                if (dun_get_linked_teleporter_dest(&end, x, y)) window = (int16_t)(window + v * daylight() / PERCENT);
                 else if (!animated_only || animated) light = (int16_t)(light + v);
             }
             for (uint16_t t = s.first_thing; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
