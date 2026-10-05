@@ -49,6 +49,29 @@ void view_load_square(int x, int y, int pos, int dir);
 void view_unhide_linked_squares(void);
 /* Hides the wall squares that walls in front of them cover. */
 void view_mark_hidden_squares(void);
+/* A click zone of the view: where an object, an ornament, a door button, or creature possessions show. */
+typedef struct {
+    int16_t rect[RECT_SIZE];
+    uint16_t thing;             /* THING_NONE: the zone is not set */
+    uint8_t cell;               /* view position or cell, by kind */
+    uint8_t kind;               /* enum view_click_kind */
+} ViewClickZone;
+enum view_click_kind {
+    CLICK_NONE, CLICK_OBJECT, CLICK_POSSESSIONS, CLICK_ALCOVE, CLICK_DOOR_BUTTON, CLICK_WALL_ORNAMENT = 6
+};
+#define VIEW_CLICK_ZONE_MAX 32
+#define VIEW_CLICK_ZONE_FIXED 9     /* zones 0 to 7: the cells of the party square and of the square in front; 8: an alcove */
+extern ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
+extern int view_click_zone_count;
+/* True when the ornament of the wall at view position pos (0 to 3) shows a pixel at (x, y) of the viewport. */
+int view_hit_test_wall_ornament(int pos, int x, int y);
+/* The ornament (low byte of the front face word) that the wall things from first show on the face that looks to
+   dir, as dun_apply_wall_things_to_aspect; 0xff none. */
+int view_wall_face_ornament(int map, uint16_t first, int dir);
+/* Fills the cleared band of the viewport (a gap that the floor and ceiling leave). */
+void view_clear_viewport(void);
+/* True when the last view picture shows the party position and direction. */
+int view_shows_party(void);
 /* Draws the view of the party at (x, y) of the party map looking to dir into view_viewport. */
 void view_draw_dungeon(int dir, int x, int y);
 /* The colors of a 4 bpp picture dimmed by the view shade, with key kept; NULL for an 8 bpp picture in full dark. */
@@ -59,6 +82,8 @@ void view_copy_image_mode1(const Bitmap *src, Bitmap *dst);
 int zone_id_for_view_cell(int base, int cell, int dir);
 /* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else key. */
 void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key);
+/* The grid cell (0 to 24) of a creature in its square, turned by dir quarter turns. */
+int creature_get_view_cell_zone(uint16_t group, int dir);
 /* Turns a cell of a 5 x 5 grid around its center by dir quarter turns. */
 int view_rotate_grid5_cell(int cell, int dir);
 /* The thing grid position of cell (0 to 24) of the square (base_x, base_y) of the map. */

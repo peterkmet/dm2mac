@@ -521,7 +521,7 @@ static void close_container(void)
 }
 
 /* Closes the open hand or spell panel. */
-static void action_area_close(void)
+void ui_action_area_close(void)
 {
     if (!action.champion) return;
     if (!action.result || action.redraw_delay < 2) action.redraw_delay = 0;
@@ -613,7 +613,7 @@ void ui_update_action_area(int tick)
     }
     if (action.champion > 0 && action.hand >= 0 && action.hand != ACTION_HAND_SPELL
         && action.hand_items[action.champion - 1][action.hand] != champion(action.champion - 1)->slots[action.hand])
-        action_area_close();
+        ui_action_area_close();
     if (action.champion >= 0) {
         for (int i = 0; i < game.champion_count; i++) {
             const Champion *c = champion(i);

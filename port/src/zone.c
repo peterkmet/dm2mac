@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "zone.h"
+#include "move.h"
 
 /* GDAT (1, 0, 4, 0), little-endian words: signature, range count, the first and last zone of each range,
    then 4 words per zone of each range. */
@@ -24,7 +25,6 @@ enum anchor {
 #define WALK_PARENT 3           /* the parent zone of the dungeon view pictures */
 
 int16_t zone_clip_rect[RECT_SIZE];
-int zone_walk_clip;
 
 /* The view part that stays visible while the party walks. */
 static const int16_t walk_view_rect[RECT_SIZE] = {21, 8, 182, 110};
@@ -211,7 +211,7 @@ int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t
     if (zone_clip_rect[RECT_W]) {
         for (int i = 0; i < RECT_SIZE; i++) clip[i] = zone_clip_rect[i];
     }
-    if (zone_walk_clip && last_parent == WALK_PARENT && !rect_clip(clip, walk_view_rect)) return NULL;
+    if (party.move_steps && last_parent == WALK_PARENT && !rect_clip(clip, walk_view_rect)) return NULL;
     int16_t d = (int16_t)(clip[RECT_X] - rect[RECT_X]), limit;
     if (d <= 0) {
         *w = 0;

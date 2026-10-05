@@ -27,7 +27,7 @@ typedef struct {
     uint16_t leader;
     uint16_t party_move_cooldown;
     uint32_t unknown_time_a, unknown_time_b;  /* game times, meaning not known */
-    uint16_t unknown_countdown, unknown_dir;  /* set to 4 and to a party direction, meaning not known */
+    uint16_t throw_cooldown, throw_dir;      /* steps after a throw in which the party cannot move toward throw_dir */
     uint8_t sound_volume, music_volume;
     uint8_t weather_visible, heavy_rain, wind_dir, rain_intensity, sky_darkness, cloud_cover;
     uint8_t storm_multiplier, storm_step, storm_curve;

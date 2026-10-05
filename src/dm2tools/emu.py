@@ -144,10 +144,14 @@ class Emu:
         """
         self.error = None
         self.uc.reg_write(UC_X86_REG_ESP, self.frame())
+        # Unicorn checks until only in blocks translated for this call; a hook also stops in cached blocks
+        stop = self.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: uc.emu_stop(), begin=until, end=until)
         try:
             self.uc.emu_start(begin, until, count=self.max_insns)
         except UcError as e:
             raise self.error or EmuError(f"{e}, pc={self._pc():#x}") from None
+        finally:
+            self.uc.hook_del(stop)
         if self.error:
             raise self.error
         if self._pc() != until:
@@ -162,7 +166,7 @@ class Emu:
     def stub(self, addr, fn, stack_args=0):
         """Run fn(eax, edx, ebx, ecx, *stack_args) instead of the function at addr; its result (None = 0) goes to EAX.
 
-        The stub returns like the callee: `ret 4 * stack_args`.
+        The stub returns like the callee: `ret 4 * stack_args`. Returns the hook handle (uc.hook_del removes it).
         """
         def hook(uc, *_):
             sp = uc.reg_read(UC_X86_REG_ESP)
@@ -176,7 +180,7 @@ class Emu:
             uc.reg_write(UC_X86_REG_EIP, self.read_u32(sp))
             uc.reg_write(UC_X86_REG_ESP, sp + 4 + 4 * stack_args)
 
-        self.uc.hook_add(UC_HOOK_CODE, hook, begin=addr, end=addr)
+        return self.uc.hook_add(UC_HOOK_CODE, hook, begin=addr, end=addr)
 
     def serve_file(self, data):
         """Serve file_seek and file_read from data and collect file_write in written; see the module docstring."""

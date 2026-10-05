@@ -71,7 +71,7 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define WOUND_LEGS 0x10
 
 /* Bytes of game.magic_light: the party spells. */
-enum { MAGIC_INVISIBILITY = 2, MAGIC_HASTE = 4 };
+enum { MAGIC_INVISIBILITY = 2, MAGIC_ACTION_EFFECT = 3, MAGIC_HASTE = 4 };
 
 /* One action of an item in a champion's hand: its GDAT text (category, index, 5, entry). */
 typedef struct {
@@ -105,6 +105,8 @@ int champ_find_hand_source_slot(int champ, int hand);
 /* Lists in champ_actions the actions of the thing in hand (THING_NONE: the champion's own actions);
    returns 1 when the action area has something to show. */
 int champ_list_actions(int champ, uint16_t thing, int hand);
+/* The living champion in cell (0 to 3), -1 none. */
+int champ_get_index_in_cell(int cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
 /* Prepares the party of a loaded game for the screen: redraw flags, drawn hand state, the leader. */

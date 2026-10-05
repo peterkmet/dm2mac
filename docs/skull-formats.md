@@ -589,3 +589,55 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
 - `text_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `text_decode_raw` in `text.c`. `text_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
 - Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types.
+
+## 10. Main loop, input, and movement (Step 14)
+
+### Timing and the game step
+
+- The PIT runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`main_loop.tick_threshold`), every timer tick while the party sleeps.
+- `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it: `game_step` (the timeline, the view, the party clocks) and `game_step_end` (a map change, repeated actions, music). `game_tick` runs one timer tick: the input, the click feedback, the command queue, and a game step when it is due.
+- Pause (`game_pause`) stops the game time until the resume command. The port keeps the main loop running and clears `main_loop.running`.
+
+### The input tree
+
+- The tables are in `SKULL.EXE` and in `port/src/input.c`: the nodes (condition with bit 7 for a node with children, argument, child list or zone), the child lists (bit 7 starts a list), the root node of each of the 10 input modes, the zones (7 bytes: layout zone with bit 15 for the inventory panel and bit 14 for the action area, command list, key list, cursor area), the command lists at `0x72388` (6 bytes: command with bit 15 to start a list, zone, mouse buttons, flags), and the key lists at `0x729b8` (4 bytes: command with bit 15 to start a list, key code).
+- A key code is the PC scan code, plus `0x200` for shift, `0x400` for control, `0x800` for alt. The arrow keys give the numpad codes: up `0x4c`, left `0x4b`, right `0x4d`, down `0x50`, shift and left `0x4f`, shift and right `0x51`. Esc (`0x01`) pauses.
+- A click goes down the tree from the root node of the input mode. The first command whose zone holds the click and whose buttons match wins. The matched zone rectangle and the click position stay for the click feedback.
+- The event ring holds 11 events. A new event goes in when fewer than 7 events wait (9 for a released right button and for the area events). A key goes into the ring only when the main loop reads it. `input_flush` keeps only the area events and the released right buttons.
+
+### Click feedback
+
+- Each command has a feedback script: bytecode that draws the pressed button, waits timer ticks, draws the released button, and then queues the command. The low 6 bits are the opcode, bit 6 runs the next opcode at once, bit 7 ends the script.
+- The port runs the opcodes 0 to 7 and `0xd`. The other opcodes draw panels of later steps; the port skips their argument bytes.
+- The movement arrows show pressed (`ui_draw_move_arrow`) until the move is done (`ui_release_move_arrow`).
+- Before the script lookup, `input_refine_champion_click` makes the command of a champion click. A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions; else no command. A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center; else it keeps the command when the spell is ready, and else no command.
+
+### Click zones of the view
+
+- The view drawing records up to 32 click zones (`g_view_click_zones`, 12 bytes: rectangle, thing, cell, kind). The first 9 are fixed: the objects of the 4 cells (the party square, and the 2 near cells of the front square, when no walking creature stands on them), the creature possessions of 4 cells, and the alcove in front. `view_draw_dungeon` clears the thing and the kind of the fixed zones. Their rectangle and cell keep the values of an older view. The wall ornaments and the door buttons add zones after the fixed ones.
+- A fixed zone of an object grows to hold all the objects of its cell, and is at least 14 × 11 pixels.
+- `view_click_in_viewport` tests the zones in order: an object or alcove zone takes or places an object (Step 15), a wall ornament goes to `sensor_process_wall_click`, a door button toggles the door. A click on no zone goes to the front wall or to a creature (Step 16).
+
+### Movement
+
+- `g_cur_map` is the map of the dungeon reads (`dun_get_square`, `dun_move_relative`). The party map and the current map differ while things move on other maps.
+- A slow party (`champ_get_move_delay`) walks: `g_party_move_steps` holds the view one square back for the steps of the walk.
+- `move_follow_square_transitions` takes a thing through teleporters, open pits, and stairs until it stays on a square. A pit can lead to the map below or to a marker of the map.
+- A move into a wall, a closed door, or a creature gives bump damage (`move_party_bump_damage`) to the champions on the front cells.
+
+### Sensors and square events
+
+- A square event (type 4) holds x, y, cell, and effect: 0 set, 1 clear, 2 toggle, 3 hold. The priority is 1 for set, 3 for clear, 2 for toggle.
+- Floor sensors react when a thing (or the party) enters or leaves the square. Wall sensors react to clicks and to square events. A sensor with a target queues a square event at the target after its delay.
+- The script variables are 64 flags, 64 bytes, and 64 words (`dun_get_global_var`): the ops are set, clear, toggle, add, subtract, and assign.
+- Door events: type 1 opens or closes a door one step per event, type 2 breaks it.
+
+### Deviations of the C port (Step 14)
+
+- Uninitialized data of the original: some events keep 2 to 4 data bytes or the high bits of a word from the stack (hold square events, sensor timers, item and wall events). The port sets them to 0. The reverse of a hold effect and the priority of a hold square event are uninitialized too: the port keeps the hold effect and uses priority 3.
+- Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones.
+- `creature_cell_mask` reads display kinds 5 to 15 from the bytes after its table in the original. The port keeps those bytes.
+- The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
+- Not ported: the mouse areas of the cursor (enter and leave events, cursor shapes); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
+- The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
+- Later steps (empty hooks in `port/src/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); the weather update and the object transfer of a sensor (Step 17); sounds (Step 18); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).

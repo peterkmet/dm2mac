@@ -30,8 +30,14 @@ uint8_t item_gdat_category(uint16_t thing);
 uint8_t item_gdat_index(uint16_t thing);
 /* The attribute entry of an item, 0 for no thing. */
 uint16_t item_attr(uint16_t thing, int entry);
+/* The item index of a thing: the base of its type plus its GDAT index, ITEM_INDEX_NONE for no thing. */
+uint16_t item_get_index(uint16_t thing);
 /* Charges of a weapon, clothing, or miscellaneous item; 0 for other things. */
 int item_charges(uint16_t thing);
+/* Adds delta to the charges of a weapon, clothing, or miscellaneous item (clamped); returns the new charges. */
+int item_add_charges(uint16_t thing, int delta);
+/* Changes the GDAT index (the kind) of an item or creature group. */
+void item_set_gdat_index(uint16_t thing, int index);
 /* The highest charge count of the thing type. */
 int item_max_charges(uint16_t thing);
 /* True when thing may go into slot. strict: only the champion slots 0 to 12 (or -1, a hand) count. */

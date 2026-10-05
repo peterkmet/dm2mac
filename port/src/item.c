@@ -5,6 +5,7 @@
 #include "draw.h"
 #include "dungeon.h"
 #include "item.h"
+#include "move.h"
 #include "random.h"
 #include "save.h"
 #include "text.h"
@@ -99,7 +100,17 @@ uint8_t item_gdat_index(uint16_t thing)
         case THING_CONTAINER:
             return (uint8_t)((w4 >> CONTAINER_TYPE_SHIFT) | ((w4 & CONTAINER_KIND_BITS) >> CONTAINER_KIND_SHIFT) << 3);
         case THING_PROJECTILE: thing = w2; break;
-        default: return GDAT_NO_INDEX;  /* ponytail: wall texts and sensors (ornaments) are not items; not needed yet */
+        case THING_TEXT: {
+            /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
+            int sub = w2 >> 11;
+            if ((w2 & 6) != 2 || (sub != 0 && sub != 2 && sub != 5 && sub != 13)) return GDAT_NO_INDEX;
+            return (uint8_t)(w2 >> 3);
+        }
+        case THING_SENSOR: {
+            int ordinal = w4 >> 12;
+            return ordinal && party.cur_map >= 0 ? dungeon_map_wall_ornaments(party.cur_map)[ordinal - 1] : GDAT_NO_INDEX;
+        }
+        default: return GDAT_NO_INDEX;
         }
     }
 }
@@ -310,8 +321,7 @@ int money_is_coin(uint16_t thing)
     return thing_type(thing) == THING_MISC && item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_COIN;
 }
 
-/* The item index of a thing: the base of its type plus its GDAT index. */
-static uint16_t item_index(uint16_t thing)
+uint16_t item_get_index(uint16_t thing)
 {
     if (thing == THING_NONE) return ITEM_INDEX_NONE;
     uint8_t index = item_gdat_index(thing);
@@ -328,7 +338,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
     memset(counts, 0, COIN_TYPE_MAX * sizeof *counts);
     for (uint16_t t = record_word(box, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!money_is_coin(t)) continue;
-        uint16_t item = item_index(t);
+        uint16_t item = item_get_index(t);
         for (int c = 0; c < coins.count; c++)
             if (item == coins.items[c]) counts[c] += (record_word(t, 2) >> MISC_STACK_SHIFT & MISC_STACK_MASK) + 1;
     }
@@ -395,4 +405,39 @@ uint8_t item_index_gdat_category(uint16_t item)
     else if (item >= ITEM_FIRST_CREATURE) type = THING_GROUP;
     else type = THING_POTION;
     return thing_gdat_category[type];
+}
+
+int item_add_charges(uint16_t thing, int delta)
+{
+    if (thing == THING_NONE) return 0;
+    uint16_t w = record_word(thing, 2);
+    int charges, max, shift;
+    switch (thing_type(thing)) {
+    case THING_WEAPON: charges = w >> 10 & 0xf; max = 0xf; shift = 10; break;
+    case THING_ARMOUR: charges = w >> 9 & 0xf; max = 0xf; shift = 9; break;
+    case THING_MISC: charges = w >> 14; max = 3; shift = 14; break;
+    default: return 0;  /* fix: the original returns a register of no meaning */
+    }
+    int n = (int16_t)(charges + delta);
+    n = n < 0 ? 0 : n > max ? max : n;
+    set_thing_word(thing, 2, (uint16_t)((w & ~(max << shift)) | n << shift));
+    return n;
+}
+
+void item_set_gdat_index(uint16_t thing, int index)
+{
+    if (thing == THING_NONE || thing >= EXPLOSION_THING_FIRST) return;
+    uint8_t *r = dungeon_thing_record(thing);
+    uint16_t w2 = record_word(thing, 2), w4 = record_word(thing, 4);
+    switch (thing_type(thing)) {
+    case THING_GROUP: r[GROUP_CREATURE] = (uint8_t)index; break;
+    case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
+        set_thing_word(thing, 2, (uint16_t)((w2 & ~0x7f) | (index & 0x7f)));
+        break;
+    case THING_POTION: set_thing_word(thing, 2, (uint16_t)((w2 & ~0x7f00) | (index & 0x7f) << 8)); break;
+    case THING_CONTAINER:
+        set_thing_word(thing, 4, (uint16_t)((w4 & 0x1ff9) | (index >> 3 & 3) << 1 | (index & 7) << 13));
+        if ((w4 & 6) == 2) set_thing_word(thing, 6, THING_NONE);
+        break;
+    }
 }

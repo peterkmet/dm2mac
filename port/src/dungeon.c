@@ -160,6 +160,13 @@ uint16_t dungeon_square_first_thing(int map, int x, int y)
     return index < 0 ? THING_ENDOFLIST : dun.square_first_things[index];
 }
 
+uint16_t dungeon_square_first_object(int map, int x, int y)
+{
+    uint16_t t = dungeon_square_first_thing(map, x, y);
+    while (thing_type(t) <= THING_SENSOR) t = dungeon_next_thing(t);
+    return t;
+}
+
 uint16_t thing_word(uint16_t thing, int field)
 {
     return le16(dungeon_thing_record(thing) + field);
@@ -173,6 +180,15 @@ void set_thing_word(uint16_t thing, int field, uint16_t value)
 uint16_t dungeon_next_thing(uint16_t thing)
 {
     return thing_word(thing, THING_NEXT);
+}
+
+void dungeon_unlink_thing_from_list(uint16_t thing, uint8_t *field)
+{
+    uint8_t *link = field;
+    while (le16(link) != THING_ENDOFLIST && (le16(link) & THING_ID_MASK) != (thing & THING_ID_MASK))
+        link = dungeon_thing_record(le16(link)) + THING_NEXT;
+    if (le16(link) != THING_ENDOFLIST) put_le16(link, dungeon_next_thing(le16(link)));
+    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
 }
 
 void dungeon_append_thing(uint16_t thing, uint16_t *list)
@@ -296,6 +312,11 @@ uint16_t dungeon_ornament_seed(void) { return le16(dun.header); }
 static const uint8_t *map_extra(int map)
 {
     return dun.map_data + map_data_offset(map) + dungeon_map_width(map) * dungeon_map_height(map);
+}
+
+const uint8_t *dungeon_map_creature_types(int map)
+{
+    return map_extra(map);
 }
 
 const uint8_t *dungeon_map_wall_ornaments(int map)

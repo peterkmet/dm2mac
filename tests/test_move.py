@@ -1,0 +1,620 @@
+"""Scenario tests of Step 14 with the emulator oracle: start.DAT goes into the C port and into the memory of the
+original code; both run the same commands and timeline events; then the game state must be equal."""
+
+import ctypes
+import struct
+
+import pytest
+
+from conftest import ROOT
+from dm2tools.emu import SCRATCH
+from test_save import GRAPHICS, START, original_save
+from test_view import OriginalView
+
+
+def original_view_of(lib, gdat, start):
+    """The original code after loading start, with the GDAT data of the C port (test_view.OriginalView)."""
+    lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
+    lib.gdat_item.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    lib.gdat_image_colormap.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
+    lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
+    lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lib.text_find_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    return OriginalView(lib, gdat, start)
+
+ENDOFLIST, NONE = 0xFFFE, 0xFFFF
+
+# Original functions of Step 14.
+COMMAND_EXECUTE, MOVE_PARTY, MOVE_PARTY_TURN, MOVE_THING = 0x21D6C, 0x235BF, 0x2339D, 0x4B108
+TIMELINE_PROCESS, TIMELINE_ADD_EVENT, DUN_SET_PARTY_LOCATION = 0x59A5C, 0x56390, 0x1C82D
+SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
+# Functions of later steps and of the DOS layer: (address, stack arguments, result).
+STUBS = {
+    0x15BAA: (5, 0), 0x15CA9: (4, 0), 0x1616D: (0, 0), 0x160DB: (0, 0),     # sound
+    0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
+    0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
+    0x5599F: (0, 0),                                                         # message area
+    0x24E62: (2, 0), 0x24328: (0, 0), 0x24171: (0, 0), 0x23E5B: (0, 0),     # creature alert, push
+    0x49EF8: (0, 0), 0x34106: (0, 0), 0x2F8F5: (0, 0), 0x306A8: (0, 0),     # creature turn, activation
+    0x3085A: (0, 0), 0x3064D: (0, 0), 0x30D45: (1, 0), 0x30FE3: (0, 0),     # creature groups
+    0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
+    0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
+    0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
+    0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
+    0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
+    0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
+}
+# Globals of the movement state: name -> (address, struct format).
+GLOBALS = {
+    "cur_map": (0x72244, "<h"), "square_x": (0x7F27C, "<h"), "square_y": (0x7F27A, "<h"), "square_map": (0x7F27E, "<h"),
+    "ref_dir": (0x7F260, "<h"), "move_steps": (0x7F258, "<h"), "move_command": (0x7F252, "<H"),
+    "view_x": (0x7F266, "<h"), "view_y": (0x7F264, "<h"), "view_dir": (0x7F274, "<h"),
+    "alt_view_active": (0x7F230, "<i"), "alt_view_x": (0x7F25C, "<h"), "alt_view_y": (0x7F25E, "<h"),
+    "alt_view_dir": (0x7F272, "<h"), "alt_view_map": (0x7F278, "<h"), "new_map": (0x717F4, "<h"),
+    "dest_x": (0x80026, "<h"), "dest_y": (0x80024, "<h"), "dest_map": (0x80028, "<h"), "dest_cell": (0x80022, "<h"),
+    "redraw": (0x7F38C, "<I"),
+}
+G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, G_PUSH_PENDING = 0x7F22C, 0x7F26A, 0x7F25A, 0x72FFC
+G_ACTIVE_GROUPS, G_COMMAND_STOP = 0x7F898, 0x7F484
+COMMAND_RECORD = SCRATCH + 0xF8000
+SCHEDULED_EVENT = SCRATCH + 0xF8100
+SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
+CHAMP_TAKE_DAMAGE, CHAMP_DAMAGE_PARTY = 0x4722A, 0x4766B  # Step 15: the tests compare their arguments
+# The wall sensor that creates an item (kind 0x3c) in timeline_event_wall_square: Step 15.
+WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
+# The wall sensor of the end of the game (kind 0x12): Step 20.
+WALL_END_GAME = 0x58A12
+# sensor_forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
+FORWARD_REVERSE_HOLD = 0x5723C
+
+
+def ignore_stale(state):
+    """After a removal (no destination) the original leaves a stale register in the destination map."""
+    return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
+
+
+class Party(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_int16) for name in ("cur_map", "square_x", "square_y", "square_map", "ref_dir",
+                                                     "move_steps")] + [
+        ("move_command", ctypes.c_uint16), ("view_x", ctypes.c_int16), ("view_y", ctypes.c_int16),
+        ("view_dir", ctypes.c_int16), ("alt_view_active", ctypes.c_int), ("alt_view_x", ctypes.c_int16),
+        ("alt_view_y", ctypes.c_int16), ("alt_view_dir", ctypes.c_int16), ("alt_view_map", ctypes.c_int16),
+        ("new_map", ctypes.c_int16), ("fell", ctypes.c_int16), ("dest_x", ctypes.c_int16), ("dest_y", ctypes.c_int16),
+        ("dest_map", ctypes.c_int16), ("dest_cell", ctypes.c_int16), ("dest_dir", ctypes.c_int16),
+        ("teleporter_flag", ctypes.c_int), ("redraw", ctypes.c_uint32), ("push_pending_group", ctypes.c_uint16),
+        ("push_mode", ctypes.c_int), ("push_arrow", ctypes.c_int16)]
+
+
+class GameRecord(ctypes.Structure):
+    _fields_ = [("game_time", ctypes.c_uint32), ("champion_count", ctypes.c_uint16), ("party_x", ctypes.c_uint16),
+                ("party_y", ctypes.c_uint16), ("party_dir", ctypes.c_uint16), ("party_map", ctypes.c_uint16),
+                ("leader", ctypes.c_uint16), ("party_move_cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
+                ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
+
+
+class DamageCall(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_int16) for name in ("champ", "damage", "wound_mask", "attack_type")]
+
+
+def int16(value):
+    return ctypes.c_int16(value).value
+
+
+class Command(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16), ("command", ctypes.c_uint16), ("rect", ctypes.c_int16 * 4)]
+
+
+@pytest.fixture(scope="module")
+def gdat(lib):
+    if not GRAPHICS.exists():
+        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    g = ctypes.c_void_p()
+    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
+    yield g
+    lib.gdat_free(g)
+
+
+@pytest.fixture(scope="module")
+def start():
+    if not START.exists():
+        pytest.skip("tests/saves/start.DAT missing")
+    if not (ROOT / "game" / "SKULL.EXE").exists():
+        pytest.skip("game/SKULL.EXE missing")
+    return START.read_bytes()
+
+
+class Scenario:
+    """start.DAT in the C port and in the original code, run step by step."""
+
+    def __init__(self, lib, gdat, start, tmp_path, place_party=True):
+        """place_party: both put the party on its square of the save, like a load; else the caller starts the
+        game session in both."""
+        self.lib, self.gdat, self.start, self.tmp = lib, gdat, start, tmp_path
+        path = tmp_path / "SKSAVE0.DAT"
+        path.write_bytes(start)
+        assert lib.save_load(str(path).encode(), gdat) == 0
+        lib.draw_init(gdat)
+        self.game = GameRecord.in_dll(lib, "game")
+        self.party = Party.in_dll(lib, "party")
+        assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
+        view = original_view_of(lib, gdat, start)
+        self.emu = emu = view.emu
+        self.stubs = {addr: emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
+                      for addr, (stack, result) in STUBS.items()}
+        self.damage = []  # the damage calls of the original: (champion or -1 for the party, damage, wounds, attack)
+        emu.stub(CHAMP_TAKE_DAMAGE, lambda c, d, w, a, *_: self.damage.append(tuple(map(int16, (c, d, w, a)))))
+        emu.stub(CHAMP_DAMAGE_PARTY, lambda d, w, a, *_: self.damage.append((-1,) + tuple(map(int16, (d, w, a)))))
+        ctypes.c_int.in_dll(lib, "damage_call_count").value = 0
+        self.fix_square_events()
+        self.view = view
+        groups = emu.read_u32(G_ACTIVE_GROUPS)
+        for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
+            emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
+        emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
+        self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
+        self.skip(WALL_END_GAME, WALL_NEXT_THING)
+        self.clear_uninitialized_event_bytes()
+        self.set_local(FORWARD_REVERSE_HOLD, 0, 3)
+        emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
+        emu.write(G_PUSH_PENDING, struct.pack("<H", NONE))
+        # the C port starts from the movement state of the program start (move.c), like the original before its load
+        ctypes.memset(ctypes.addressof(self.party), 0, ctypes.sizeof(self.party))
+        self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
+        if place_party:
+            self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
+
+    def load_map_graphics(self):
+        """The view globals of the party map, as the C view_enter_map sets them."""
+        import test_view as tv
+        lib, emu, view = self.lib, self.emu, self.view
+        map_ = struct.unpack("<h", emu.read(0x7F262, 2))[0]
+        graphics, flags = lib.dungeon_map_graphics(map_), lib.dungeon_map_flags(map_)
+        gfx_set = graphics >> 4 & 0xF
+        emu.write(tv.G_MAP_GFX_SET, bytes([gfx_set]))
+        emu.write(tv.G_CUR_MAP_DOOR_TYPES, bytes([graphics >> 8 & 0xF if flags & 0x80 else 0xFF,
+                                                  graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
+        emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
+        emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
+        emu.write(tv.G_VIEW_CLEAR, bytes(2))
+        weather = tv.WeatherGame.in_dll(lib, "game")
+        sky = view.sky_objects(gfx_set, weather.sky_darkness, weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)
+        emu.write(tv.G_SKY_OBJECTS, sky)
+        emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
+        lib.view_enter_map(map_)
+
+    def clear_uninitialized_event_bytes(self):
+        """The original leaves some event bytes uninitialized (stack garbage); the C port clears them. This clears
+        them in each event that the original queues: (data byte, mask of the bytes to keep) by event type."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EAX
+        keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
+                0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
+                0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
+                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0)}
+        emu = self.emu
+
+        def hook(uc, *_):
+            event = uc.reg_read(UC_X86_REG_EAX)
+            mask = keep.get(emu.read(event + 4, 1)[0])
+            if mask:
+                data = emu.read(event + 6, 6)
+                emu.write(event + 6, bytes(b & m for b, m in zip(data, mask)))
+
+        emu.uc.hook_add(UC_HOOK_CODE, hook, begin=TIMELINE_ADD_EVENT, end=TIMELINE_ADD_EVENT)
+
+    def set_local(self, at, offset, value):
+        """Sets the dword at ESP + offset when the original reaches at: a local that it leaves uninitialized."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_ESP
+        self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: self.emu.write_u32(uc.reg_read(UC_X86_REG_ESP) + offset, value),
+                             begin=at, end=at)
+
+    def skip(self, begin, end):
+        """Runs the original from end when it reaches begin: a code part of a later step."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EIP
+        self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: uc.reg_write(UC_X86_REG_EIP, end), begin=begin, end=begin)
+
+    def fix_square_events(self):
+        """The original sensor_schedule_square_event leaves 2 data bytes (and the priority of a hold) uninitialized;
+        this runs it with them cleared, like the C port, and then the original timeline_add_event."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_EIP, \
+            UC_X86_REG_ESP
+        emu = self.emu
+
+        def hook(uc, *_):
+            try:
+                schedule(uc)
+            except Exception as e:  # exceptions do not cross the Unicorn callbacks
+                emu._fail(f"square event stub: {e!r}")
+
+        def schedule(uc):
+            x, y, cell, effect = (uc.reg_read(r) & 0xFF for r in (UC_X86_REG_EAX, UC_X86_REG_EDX, UC_X86_REG_EBX,
+                                                                  UC_X86_REG_ECX))
+            sp = uc.reg_read(UC_X86_REG_ESP)
+            ret, time = emu.read_u32(sp), emu.read_u32(sp + 4)
+            cur_map = struct.unpack("<h", emu.read(GLOBALS["cur_map"][0], 2))[0]
+            event = struct.pack("<IBB6B", (time | (cur_map & 0xFF) << 24) & 0xFFFFFFFF, 4, (1, 3, 2, 3)[effect & 3],
+                                x, y, cell, effect, 0, 0)
+            emu.write(SCHEDULED_EVENT, event)
+            emu.write_u32(sp + 4, ret)
+            uc.reg_write(UC_X86_REG_ESP, sp + 4)
+            uc.reg_write(UC_X86_REG_EAX, SCHEDULED_EVENT)
+            uc.reg_write(UC_X86_REG_EIP, TIMELINE_ADD_EVENT)
+
+        emu.uc.hook_add(UC_HOOK_CODE, hook, begin=SENSOR_SCHEDULE_SQUARE_EVENT, end=SENSOR_SCHEDULE_SQUARE_EVENT)
+
+    def place(self, map_, x, y, direction):
+        """Puts the party on (x, y) of map_ in both, like a load."""
+        self.game.party_dir = direction
+        self.emu.write(0x7F254, struct.pack("<h", direction))
+        self.party.cur_map = -1
+        self.emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
+        self.lib.dun_set_party_location(x, y, map_)
+        self.emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
+        self.load_map_graphics()
+
+    def time(self):
+        return self.game.game_time
+
+    def set_time(self, t):
+        self.game.game_time = t
+        self.emu.write_u32(G_GAME_TIME, t)
+
+    def command(self, command):
+        """Executes a command in both; returns the two results."""
+        c = Command(0, 0, command)
+        self.emu.write(COMMAND_RECORD, bytes(c))
+        mine = self.lib.command_execute(ctypes.byref(c))
+        theirs = self.emu.call(COMMAND_EXECUTE, COMMAND_RECORD)
+        return mine, theirs
+
+    def step(self):
+        """The game loop part that this test runs per step: the timeline, the walk, and the cooldowns."""
+        self.lib.timeline_process()
+        self.emu.call(TIMELINE_PROCESS)
+        if self.party.move_steps:
+            if self.party.move_steps == 1:
+                self.lib.move_party(self.party.move_command)
+                self.emu.call(MOVE_PARTY, self.party.move_command)
+            self.party.move_steps -= 1
+            self.emu.write(GLOBALS["move_steps"][0], struct.pack("<h", self.party.move_steps))
+        for addr, field in ((G_MOVE_COOLDOWN, "party_move_cooldown"), (G_THROW_COOLDOWN, "throw_cooldown")):
+            value = getattr(self.game, field)
+            if value:
+                setattr(self.game, field, value - 1)
+                self.emu.write(addr, struct.pack("<H", value - 1))
+        self.set_time(self.time() + 1)
+
+    def state(self):
+        """(C, original) save files and movement globals."""
+        self.emu.written = bytearray()
+        theirs = original_save(self.emu, self.start)
+        path, bak = self.tmp / "SKSAVE0.DAT", self.tmp / "SKSAVE0.BAK"
+        path.write_bytes(self.start)
+        name = self.start[2:0x12].split(b"\0")[0]
+        assert self.lib.save_write(str(path).encode(), str(bak).encode(), name, self.gdat) == 0
+        mine = path.read_bytes()
+        mine_globals = {name: getattr(self.party, name) for name in GLOBALS}
+        their_globals = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
+                         for name, (addr, fmt) in GLOBALS.items()}
+        return (mine, mine_globals), (theirs, their_globals)
+
+    def differences(self):
+        """Where the dungeons differ: squares, thing records, timeline events."""
+        lib, emu = self.lib, self.emu
+        out = []
+        columns = emu.read_u32(0x7F3C8)
+        for map_ in range(lib.dungeon_map_count()):
+            w, h = lib.dungeon_map_width(map_), lib.dungeon_map_height(map_)
+            table = emu.read_u32(columns + 4 * map_)
+            for x in range(w):
+                col = emu.read(emu.read_u32(table + 4 * x), h)
+                for y in range(h):
+                    if col[y] != lib.dungeon_square(map_, x, y):
+                        out.append(("square", map_, x, y, hex(lib.dungeon_square(map_, x, y)), hex(col[y])))
+        lib.dungeon_thing_record.restype = ctypes.c_void_p
+        sizes = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
+        for t in range(16):
+            n = lib.dungeon_thing_count(t)
+            if not n:
+                continue
+            mine = ctypes.string_at(lib.dungeon_thing_record(t << 10), n * sizes[t])
+            theirs = emu.read(emu.read_u32(0x7F288 + 4 * t), n * sizes[t])
+            for i in range(n):
+                a, b = mine[i * sizes[t]:(i + 1) * sizes[t]], theirs[i * sizes[t]:(i + 1) * sizes[t]]
+                if a != b:
+                    out.append(("thing", t, i, a.hex(), b.hex()))
+        import test_save
+        tl = test_save.Timeline.in_dll(lib, "timeline")
+        mine = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
+        theirs = emu.read(emu.read_u32(0x760E8), tl.capacity * 12)
+        for i in range(tl.capacity):
+            if mine[i * 12:i * 12 + 12] != theirs[i * 12:i * 12 + 12]:
+                out.append(("event", i, mine[i * 12:i * 12 + 12].hex(), theirs[i * 12:i * 12 + 12].hex()))
+        return out
+
+    def assert_same_damage(self, where):
+        """The damage hook calls of both since the last check."""
+        count = ctypes.c_int.in_dll(self.lib, "damage_call_count")
+        calls = (DamageCall * 64).in_dll(self.lib, "damage_calls")
+        mine = [(c.champ, c.damage, c.wound_mask, c.attack_type) for c in calls[:count.value]]
+        assert mine == self.damage, where
+        count.value = 0
+        self.damage.clear()
+
+    def assert_same(self, where):
+        """The quick check: movement globals, damage calls, and the dungeon records and events."""
+        self.assert_same_damage(where)
+        mine = {name: getattr(self.party, name) for name in GLOBALS}
+        theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
+                  for name, (addr, fmt) in GLOBALS.items()}
+        assert ignore_stale(mine) == ignore_stale(theirs), where
+        assert self.differences() == [], where
+
+    def assert_equal(self, where):
+        self.assert_same_damage(where)
+        (mine, mg), (theirs, tg) = self.state()
+        assert ignore_stale(mg) == ignore_stale(tg), where
+        if mine != theirs:
+            for d in self.differences()[:20]:
+                print(d)
+            first = next(i for i in range(min(len(mine), len(theirs))) if mine[i] != theirs[i])
+            pytest.fail(f"{where}: save files differ from byte {first:#x} ({len(mine)} and {len(theirs)} bytes)")
+
+
+@pytest.fixture
+def scenario(lib, gdat, start, tmp_path):
+    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
+    return Scenario(lib, gdat, start, tmp_path)
+
+
+def test_states_equal_after_load(scenario):
+    scenario.assert_equal("load")
+
+
+def test_walk_and_turn_at_start(scenario):
+    # The start room: forward, turns, side steps, and moves into walls (bumps).
+    sequence = [3, 3, 3, 2, 3, 3, 1, 1, 6, 5, 5, 4, 3, 3, 3, 3, 2, 3, 3, 3, 1, 3, 3]
+    for i, command in enumerate(sequence):
+        for _ in range(4):
+            scenario.step()
+        mine, theirs = scenario.command(command)
+        assert mine == theirs, (i, command)
+        scenario.assert_equal((i, command))
+
+
+def square_event(scenario, map_, x, y, cell, effect, delay):
+    """Queues the same square event (type 4) in both."""
+    import test_save
+    e = test_save.Event((scenario.time() + delay) | map_ << 24, 4, {0: 1, 1: 3, 2: 2, 3: 3}[effect],
+                        (ctypes.c_uint8 * 6)(x, y, cell, effect, 0, 0))
+    scenario.emu.write(COMMAND_RECORD, bytes(e))
+    scenario.lib.timeline_add_event(ctypes.byref(e))
+    scenario.emu.call(TIMELINE_ADD_EVENT, COMMAND_RECORD)
+
+
+def squares(lib, kinds):
+    """All (map, x, y, square) whose square type is in kinds."""
+    out = []
+    for map_ in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(map_)):
+            for y in range(lib.dungeon_map_height(map_)):
+                s = lib.dungeon_square(map_, x, y)
+                if s >> 5 in kinds:
+                    out.append((map_, x, y, s))
+    return out
+
+
+def test_random_walks_on_all_maps(scenario, lib):
+    # Random places on all maps, random moves and turns, and square events on the squares around the party:
+    # walls, floors, doors, pits, teleporters, stairs, fake walls, and their sensors.
+    import random
+    rng = random.Random(14)
+    places = squares(lib, (1, 2, 3, 4, 5, 6))
+    for n in range(150):
+        map_, x, y, _ = rng.choice(places)
+        scenario.place(map_, x, y, rng.randrange(4))
+        for i in range(8):
+            for _ in range(rng.randrange(1, 4)):
+                scenario.step()
+            if rng.random() < 0.3:
+                m = scenario.game.party_map
+                ex = scenario.game.party_x + rng.randrange(-2, 3)
+                ey = scenario.game.party_y + rng.randrange(-2, 3)
+                if 0 <= ex < lib.dungeon_map_width(m) and 0 <= ey < lib.dungeon_map_height(m):
+                    square_event(scenario, m, ex, ey, rng.randrange(4), rng.randrange(4), rng.randrange(3))
+            command = rng.choice((1, 2, 3, 3, 3, 4, 5, 6))
+            mine, theirs = scenario.command(command)
+            assert mine == theirs, (n, i, command)
+            scenario.assert_same((n, map_, x, y, i, command))
+        if n % 10 == 9:
+            scenario.assert_equal((n, map_, x, y))  # the save files: the champions and the game record too
+
+
+G_CHAMPION_COUNT, CHAMPION_CELL = 0x7F276, 29
+
+
+def test_bump_damage_hits_the_champions_of_the_bump_side(scenario, lib):
+    # Four champions (copies of the first) in random cells, random places and directions, moves in all four
+    # directions: on a bump into a wall the champions of the two cells on that side take the damage.
+    import random
+    from test_interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+    rng = random.Random(15)
+    first = bytes(champion_records(lib)[:CHAMPION_SIZE])
+    scenario.game.champion_count = 4
+    scenario.emu.write(G_CHAMPION_COUNT, struct.pack("<H", 4))
+    places = squares(lib, (1,))
+    bumps = 0
+    for n in range(200):
+        for champ, cell in enumerate(rng.sample(range(4), 4)):
+            champion_bytes(lib, champ, 0, first)
+            champion_bytes(lib, champ, CHAMPION_CELL, [cell])
+        sync_champions(lib, scenario)
+        map_, x, y, _ = rng.choice(places)
+        scenario.place(map_, x, y, rng.randrange(4))
+        command = rng.choice((3, 4, 5, 6))
+        mine, theirs = scenario.command(command)
+        assert mine == theirs, (n, command)
+        bumps += any(champ >= 0 for champ, *_ in scenario.damage)
+        for _ in range(4):
+            scenario.step()
+        scenario.assert_same((n, map_, x, y, command))
+    assert bumps > 25
+
+
+def sensor_squares(lib):
+    """(map, x, y, cell) of every square cell with a sensor or a text thing."""
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    out, bad = set(), set()
+    for map_ in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(map_)):
+            for y in range(lib.dungeon_map_height(map_)):
+                t = lib.dungeon_square_first_thing(map_, x, y)
+                while t != ENDOFLIST:
+                    w = lib.thing_word(t, 2)
+                    if t >> 10 & 15 == 3 and w & 0x7F == 0x16 and w >> 7 & 0x3F >= lib.dungeon_map_count():
+                        bad.add((map_, x, y, t >> 14))  # it sends events to a map outside the dungeon (C: fixed)
+                    elif t >> 10 & 15 in (2, 3):
+                        out.add((map_, x, y, t >> 14))
+                    t = lib.dungeon_next_thing(t)
+    return sorted(out - bad)
+
+
+@pytest.mark.parametrize("part", range(4))
+def test_square_events_on_all_sensors(scenario, lib, part):
+    # Every sensor and text cell of the dungeon gets square events with each effect; the timeline then runs the
+    # relays, timers, counters, animations, doors, pits, teleporters, and fake walls that they reach.
+    import random
+    rng = random.Random(part)
+    cells = sensor_squares(lib)[part::4]
+    for n, (map_, x, y, cell) in enumerate(cells):
+        square_event(scenario, map_, x, y, cell, rng.randrange(4), rng.randrange(2))
+        for _ in range(rng.randrange(1, 3)):
+            scenario.step()
+        scenario.assert_same((n, map_, x, y, cell))
+        if n % 100 == 99:
+            scenario.assert_equal((n, map_, x, y, cell))
+    for _ in range(40):
+        scenario.step()
+    scenario.assert_equal("end")
+
+
+DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def approaches(lib, kind, condition=lambda s: True, limit=60):
+    """(map, x, y, dir): a free square beside a square of the kind, facing it."""
+    out = []
+    for map_, x, y, s in squares(lib, (kind,)):
+        if not condition(s):
+            continue
+        for d, (dx, dy) in enumerate(DIRS):
+            px, py = x - dx, y - dy
+            if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \
+                    and lib.dungeon_square(map_, px, py) >> 5 == 1:
+                out.append((map_, px, py, d))
+                break
+    return out[:limit]
+
+
+@pytest.mark.parametrize("kind, condition, name", [
+    (3, lambda s: True, "stairs"), (2, lambda s: s & 8, "open pits"), (5, lambda s: s & 8, "active teleporters"),
+    (4, lambda s: True, "doors"), (6, lambda s: True, "fake walls")])
+def test_step_into_special_squares(scenario, lib, kind, condition, name):
+    # The party steps onto stairs, open pits, active teleporters, doors, and fake walls, then turns and steps on.
+    places = approaches(lib, kind, condition)
+    assert places, name
+    moved = 0
+    for n, (map_, x, y, d) in enumerate(places):
+        scenario.place(map_, x, y, d)
+        for command in (3, 1, 3, 2, 2, 3):
+            for _ in range(3):
+                scenario.step()
+            mine, theirs = scenario.command(command)
+            assert mine == theirs, (name, n, command)
+            scenario.assert_same((name, n, map_, x, y, d, command))
+        moved += (scenario.game.party_map, scenario.game.party_x, scenario.game.party_y) != (map_, x, y)
+        if n % 20 == 19:
+            scenario.assert_equal((name, n))
+    assert moved > len(places) // 3, name
+
+
+SENSOR_PROCESS_WALL_CLICK = 0x4C134
+
+
+@pytest.mark.parametrize("part", range(2))
+def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
+    # A click with an empty hand on every wall cell with a sensor or a text: buttons, switches, counters, item
+    # holders, ladders, fountains; then the timeline runs what they trigger.
+    lib.sensor_process_wall_click.argtypes = [ctypes.c_int] * 3 + [ctypes.c_uint16] * 2
+    cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0][part::2]
+    for n, (map_, x, y, cell) in enumerate(cells):
+        scenario.place(map_, x, y, (cell + 2) & 3)
+        lib.sensor_process_wall_click(x, y, cell, NONE, NONE)
+        scenario.emu.call(SENSOR_PROCESS_WALL_CLICK, x, y, cell, NONE, NONE)
+        scenario.assert_same(("click", n, map_, x, y, cell))
+        for _ in range(3):
+            scenario.step()
+        scenario.assert_same(("steps", n, map_, x, y, cell))
+        if n % 100 == 99:
+            scenario.assert_equal(n)
+    scenario.assert_equal("end")
+
+
+def test_clicks_in_the_view(scenario, lib):
+    # The party faces walls with sensors (and doors); both draw the view, then a click goes to the center of each
+    # click zone of the view (wall ornaments, door buttons, objects) and to the front wall.
+    import test_view as tv
+    scenario.lib.view_draw_dungeon.argtypes = [ctypes.c_int] * 3
+    zones = (ctypes.c_uint8 * (32 * 12)).in_dll(lib, "view_click_zones")
+    count = ctypes.c_int.in_dll(lib, "view_click_zone_count")
+    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    places = []
+    for map_, x, y, cell in sensor_squares(lib):
+        if lib.dungeon_square(map_, x, y) >> 5:
+            continue
+        px, py = x + DIRS[cell][0], y + DIRS[cell][1]
+        if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \
+                and lib.dungeon_square(map_, px, py) >> 5 == 1:
+            places.append((map_, px, py, (cell + 2) & 3))
+    places += [(m, x, y, d) for m, x, y, d in approaches(lib, 4, limit=40)]
+    clicked = 0
+    for n, (map_, x, y, d) in enumerate(places[::2]):
+        scenario.place(map_, x, y, d)
+        weather = tv.WeatherGame.in_dll(lib, "game")
+        sky = scenario.view.sky_objects(lib.dungeon_map_graphics(map_) >> 4 & 0xF, weather.sky_darkness,
+                                        weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)
+        scenario.view.draw(map_, x, y, d, 0, sky)
+        seed.value = tv.VIEW_SEED
+        lib.view_draw_dungeon(d, x, y)
+        n_zones = count.value
+        raw = bytes(zones)
+        targets = []
+        for i in range(n_zones):
+            zx, zy, zw, zh = struct.unpack_from("<4h", raw, i * 12)
+            if raw[i * 12 + 11]:
+                targets.append((zx + zw // 2, zy + zh // 2 + 40))
+        targets.append((112, 40 + 60))  # the middle of the view: the front wall or a creature
+        for tx, ty in targets:
+            c = Command(tx, ty, 0x50)
+            scenario.emu.write(COMMAND_RECORD, bytes(c))
+            mine = lib.command_execute(ctypes.byref(c))
+            theirs = scenario.emu.call(COMMAND_EXECUTE, COMMAND_RECORD)
+            assert mine == theirs, (n, map_, x, y, d, tx, ty)
+            scenario.assert_same(("click", n, map_, x, y, d, tx, ty))
+            clicked += 1
+        for _ in range(3):
+            scenario.step()
+        scenario.assert_same(("steps", n, map_, x, y, d))
+        if n % 50 == 49:
+            scenario.assert_equal(n)
+    assert clicked > 100
+    scenario.assert_equal("end")

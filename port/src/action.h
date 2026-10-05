@@ -37,6 +37,8 @@ void action_reset(void);
 void action_reset_champion(int champ);
 /* The item in the open hand, as the action area shows it. */
 uint16_t action_open_hand_item(void);
+/* Closes the open hand or spell panel. */
+void ui_action_area_close(void);
 /* Redraws what changed in the action area (tick: one game tick passed). */
 void ui_update_action_area(int tick);
 

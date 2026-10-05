@@ -3,6 +3,7 @@
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
+#include "input.h"
 #include "item.h"
 #include "save.h"
 #include "text.h"
@@ -99,6 +100,7 @@ static const uint8_t skill_level_texts[SKILL_LEVEL_MAX + 1] = {
 };
 
 UiState ui;
+int inv_arrows_on_close = 1;
 
 static struct {
     struct { uint8_t icon, gdat_index, flags; uint16_t thing; } slots[SLOT_ENTRY_COUNT];
@@ -982,6 +984,7 @@ void inv_toggle(int champ)
     ui.panel_mode = PANEL_MODE_NONE;
     cache.shown_object = THING_NONE;
     if ((champ < CHAMPION_MAX && !champion(champ)->health) || ui.push_mode || ui.mouth || ui.eye) return;
+    input_command_stop = 1;
     int open = ui.inventory;
     if (champ + 1 == open) champ = CHAMPION_MAX;
     if (open) {
@@ -994,11 +997,19 @@ void inv_toggle(int champ)
         /* the raised skills that the player saw no longer show green */
         for (int i = 0; i < SKILL_BASE_COUNT; i++)
             champ_skill_raised[open - 1][i] = (uint8_t)(champ_skill_raised[open - 1][i] - cache.shown_raised[i]);
-        if (party_sleeping || champ == CHAMPION_MAX) return;  /* ponytail: closing redraws the view in Step 14 */
+        if (party_sleeping || champ == CHAMPION_MAX) {
+            if (!party_sleeping) {
+                if (inv_arrows_on_close) ui_draw_movement_arrows();
+                view_clear_viewport();
+            }
+            input_refresh_mode();
+            return;
+        }
     }
     ui.inventory = (int16_t)(champ + 1);
     memset(cache.shown_raised, 0, sizeof cache.shown_raised);
     champion(champ)->redraw |= REDRAW_ALL;
     ui.buttons = 0;
     champ_draw_state(champ);
+    input_set_mode(INPUT_MODE_INVENTORY);
 }
