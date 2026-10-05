@@ -188,7 +188,7 @@ Reimplement the screen layout, champion status boxes, action area, spell area, m
   - Parts that later steps add: the hand reload countdown, the leader hand object (Step 15); the minion map panel and its mana (Step 16); input modes, move arrow feedback, and the view redraw when the inventory closes (Step 14); the new game party (Step 20).
   - `champ_get_load` adds the leader hand weight when it is called, not a kept value. The action area reads the wall set from the party map descriptor.
   - `start.DAT` has 0 (not `0xffff`) in the damage event field of Torham: the port, like the original, shows the damage star until the timeline (Step 14) clears it.
-  - `text_decode_dungeon` repeats the text decoder of `view.c`; the view still reads plate texts without format codes.
+  - `text_decode_dungeon` and the view share one raw decoder, `text_decode_raw`; the view still reads plate texts without format codes.
 
 ### Step 14: Main loop, input, movement
 

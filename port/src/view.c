@@ -6,6 +6,7 @@
 #include "item.h"
 #include "random.h"
 #include "save.h"
+#include "text.h"
 #include "timeline.h"
 #include "view.h"
 #include "zone.h"
@@ -169,7 +170,7 @@ enum sensor_type {
 #define SCALE_FAR_SIDE 0x4c
 #define SCALE_BIG_NEAR 0x60         /* floor ornaments with ORN_KEY_BIG_NEAR beside the party */
 #define RANDOM_ORNAMENT_SLOTS 30    /* random wall ornament hash: one of 30 values picks an ornament of the list */
-#define FONT_SPACING 2              /* line gap of wall text */
+#define WALL_TEXT_LINE_GAP 2              /* line gap of wall text */
 #define WALL_TEXT_SIZE 128
 #define NO_KEY (-1)
 #define IMAGE_COLORS 16             /* colors of a 4 bpp picture */
@@ -314,12 +315,6 @@ static const uint8_t stairs_front_entry[POS_CEILING_PIT_LAST + 1][2] = {
 static const int16_t stairs_front_zone[POS_CEILING_PIT_LAST + 1][2] = {
     {-1, -1}, {832, 832}, {833, 833}, {-1, -1}, {830, 828}, {831, 829}, {-1, -1}, {826, 826}, {827, 827},
 };
-/* Wall text: the 5-bit codes 29 and 30 of the dungeon text select an escape character or word. */
-static const char *const text_escape_words[] = {"x", "y", "THE ", "YOU ", "z", "{", "|", "}", "~", "\x7f"};
-static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
-enum { TEXT_SPACE = 26, TEXT_PERIOD = 27, TEXT_NEWLINE = 28, TEXT_ESCAPE_CHAR = 29, TEXT_ESCAPE_WORD = 30, TEXT_END = 31 };
-#define TEXT_CODE_BITS 5
-#define TEXT_CODE_MASK 0x1f
 #define GLYPH_SPACE 0x1a
 #define GLYPH_PERIOD 0x1b
 #define GLYPH_SIZE 8                /* the wall text font has 8 x 8 glyphs */
@@ -1896,48 +1891,6 @@ static uint8_t wall_text_glyph(uint8_t c)
     return c == '.' ? GLYPH_PERIOD : GLYPH_SPACE;
 }
 
-/* The text of a wall text thing, with lines ended by '\n'. */
-static void decode_wall_text(uint16_t thing, char *out, size_t size)
-{
-    char *o = out, *end = out + size - 1;
-    *o = '\0';
-    if (thing_type(thing) != THING_TEXT) return;
-    uint16_t w = thing_word(thing, TEXT_DATA);
-    int kind = w >> TEXT_KIND_SHIFT & TEXT_KIND_MASK;
-    if (kind > TEXT_KIND_ORNAMENT || (kind == TEXT_KIND_ORNAMENT && w >> TEXT_SUBTYPE_SHIFT != 14)) return;
-    if (!(w & TEXT_VISIBLE)) return;
-    if (kind == TEXT_KIND_ORNAMENT) {
-        gdat_text(draw_gdat(), 3, 0, (uint8_t)(w >> TEXT_ORNAMENT_SHIFT), out, size);
-        return;
-    }
-    int offset = w >> TEXT_ORNAMENT_SHIFT;
-    const uint16_t *p = dungeon_text_data() + offset, *text_end = dungeon_text_data() + dungeon_text_word_count();
-    uint16_t word = 0;
-    int escape = 0;
-    for (int phase = 0; p <= text_end; phase = (phase + 1) % 3) {
-        if (phase == 0) {
-            if (p == text_end) break;  /* fix: the original reads past the text of a damaged dungeon */
-            word = *p++;
-        }
-        int code = word >> (TEXT_CODE_BITS * (2 - phase)) & TEXT_CODE_MASK;
-        if (escape) {
-            const char *s = escape == TEXT_ESCAPE_WORD ? (code < 10 ? text_escape_words[code] : "")
-                                                       : (char[]){text_escape_chars[code], '\0'};
-            while (*s && o < end) *o++ = *s++;
-            escape = 0;
-        } else if (code < TEXT_NEWLINE) {
-            if (o < end) *o++ = code == TEXT_SPACE ? ' ' : code == TEXT_PERIOD ? '.' : (char)('A' + code);
-        } else if (code == TEXT_NEWLINE) {
-            if (o < end) *o++ = '\n';
-        } else if (code == TEXT_END) {
-            break;
-        } else {
-            escape = code;
-        }
-    }
-    *o = '\0';
-}
-
 /* Draws the text of a front wall plate: the text goes into a bitmap of the plate size, centered, then into the view. */
 static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int depth, int zone, int anchor, int key)
 {
@@ -1947,10 +1900,10 @@ static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int dep
     const Bitmap *font = draw_gdat_image(CAT_MAP, view.gfx_set, MAP_FONT);
     if (!plate_image || !font) return;
     char text[WALL_TEXT_SIZE];
-    decode_wall_text(view_squares[pos].text, text, sizeof text);
+    text_decode_raw(view_squares[pos].text, 0, text, sizeof text);
     int lines = 1;
     for (const char *p = text; *p; p++) lines += *p == '\n';
-    int line_height = GLYPH_SIZE + FONT_SPACING;
+    int line_height = GLYPH_SIZE + WALL_TEXT_LINE_GAP;
     Bitmap *bitmap = draw_temp_bitmap(plate_image->width, plate_image->height, 4);
     if (!bitmap) return;
     gfx_fill_bitmap(bitmap, key);

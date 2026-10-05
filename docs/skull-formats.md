@@ -587,5 +587,5 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
 - Later steps: the hand reload countdown of `ui_update_action_area` and the leader hand object of `champ_init_party_state` (Step 15); the minion map panel and its mana (Step 16); input modes (`input_set_mode`, `input_refresh_mode`), the move arrow feedback, and the view redraw when the inventory closes (Step 14); the new game party of `champ_init_party_state` (Step 20).
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
-- `text_decode_dungeon` (`dun_decode_text`) has its own copy of the text decoder of `view.c` (`decode_wall_text`). The view still reads the ornament texts of wall plates with `gdat_text`, without the format codes.
+- `text_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `text_decode_raw` in `text.c`. `text_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
 - Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types.
