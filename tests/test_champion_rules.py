@@ -55,7 +55,9 @@ class Rules:
         rng, lib = self.rng, self.lib
         self.pick_up_pool()
         for t in self.pool:
-            self.set_word(t, 2, rng.randrange(0x30) | rng.choice((0, 0, 0x0400 * rng.randrange(16))))
+            # a weapon kind (2: a torch), charges, and the do-not-discard bit
+            kind = rng.choice((2, 2, rng.randrange(0x30)))
+            self.set_word(t, 2, kind | 0x80 * rng.randrange(2) | rng.choice((0, 0x0400, 0x0400 * rng.randrange(16))))
         hands = rng.sample(self.pool, 8)
         for champ, cell in enumerate(rng.sample(range(4), 4)):
             champion_bytes(lib, champ, 0, self.first)
@@ -133,7 +135,7 @@ def test_damage_rules_match_original(rules, lib):
             args = (rng.randrange(0, 200), rng.randrange(0x40), rng.randrange(10))
             mine, theirs = lib.champ_damage_party(*args), emu.call(CHAMP_DAMAGE_PARTY, *args)
         elif kind == 4:
-            args = (champ, rng.randrange(1, 400))
+            args = (champ, rng.choice((rng.randrange(1, 400), rng.randrange(1, 3500))))
             lib.champ_poison(*args)
             emu.call(CHAMP_POISON, *args)
             if rng.random() < 0.5:
@@ -158,7 +160,8 @@ def test_damage_rules_match_original(rules, lib):
                 rules.assert_same((n, kind))
                 rules.randomize()
         else:
-            scenario.set_time(scenario.time() + rng.randrange(1, 300))
+            step = rng.randrange(1, 300)
+            scenario.set_time(scenario.time() + step if rng.random() < 0.5 else (scenario.time() | 0xFF) + 1)
             lib.champ_apply_time_effects()
             emu.call(CHAMP_APPLY_TIME_EFFECTS)
             lib.items_burn_held_lights()
