@@ -4,6 +4,7 @@
 #include "draw.h"
 #include "dungeon.h"
 #include "item.h"
+#include "move.h"
 #include "random.h"
 #include "save.h"
 #include "text.h"
@@ -1001,7 +1002,7 @@ static int creature_picture_exists(int type, int entry)
 }
 
 /* The grid cell of a creature in its square, turned by dir: the cell of its animation frame. */
-static int creature_get_view_cell_zone(uint16_t group, int dir)
+int creature_get_view_cell_zone(uint16_t group, int dir)
 {
     if (!gdat_exists(draw_gdat(), CAT_CREATURE, dungeon_thing_record(group)[GROUP_CREATURE], TYPE_CREATURE_DATA,
                      CREATURE_FRAMES))
@@ -1878,7 +1879,7 @@ static void view_draw_alcove_contents(int pos)
     }
 }
 
-static void view_clear_viewport(void)
+void view_clear_viewport(void)
 {
     if (view.clear) gfx_fill_rect(view_viewport.pixels, view.clear_rect, view.clear_color, VIEWPORT_WIDTH, 8);
 }
@@ -2552,6 +2553,12 @@ static void view_draw_party_square(void)
     view_draw_explosions(view_squares[POS_PARTY].first_thing, POS_PARTY, THINGS_ALL);
 }
 
+int view_shows_party(void)
+{
+    return view.party_x == game.party_x && view.party_y == game.party_y && view.party_map == game.party_map
+           && view.party_dir == game.party_dir;
+}
+
 void view_draw_dungeon(int dir, int x, int y)
 {
     view.map = view.party_map = game.party_map;
@@ -2559,8 +2566,7 @@ void view_draw_dungeon(int dir, int x, int y)
     view.party_x = x;
     view.party_y = y;
     view.shade = view_light_level * LIGHT_STEP;
-    view.walking = 0;
-    zone_walk_clip = view.walking;
+    view.walking = party.move_steps != 0;
     memset(view_creature_grid, 0, sizeof view_creature_grid);
     memset(view_object_grid, NO_POSITION, sizeof view_object_grid);
     view_clear_viewport();

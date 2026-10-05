@@ -5,6 +5,7 @@
 #include "draw.h"
 #include "dungeon.h"
 #include "item.h"
+#include "move.h"
 #include "random.h"
 #include "save.h"
 #include "text.h"
@@ -99,7 +100,17 @@ uint8_t item_gdat_index(uint16_t thing)
         case THING_CONTAINER:
             return (uint8_t)((w4 >> CONTAINER_TYPE_SHIFT) | ((w4 & CONTAINER_KIND_BITS) >> CONTAINER_KIND_SHIFT) << 3);
         case THING_PROJECTILE: thing = w2; break;
-        default: return GDAT_NO_INDEX;  /* ponytail: wall texts and sensors (ornaments) are not items; not needed yet */
+        case THING_TEXT: {
+            /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
+            int sub = w2 >> 11;
+            if ((w2 & 6) != 2 || (sub != 0 && sub != 2 && sub != 5 && sub != 13)) return GDAT_NO_INDEX;
+            return (uint8_t)(w2 >> 3);
+        }
+        case THING_SENSOR: {
+            int ordinal = w4 >> 12;
+            return ordinal && party.cur_map >= 0 ? dungeon_map_wall_ornaments(party.cur_map)[ordinal - 1] : GDAT_NO_INDEX;
+        }
+        default: return GDAT_NO_INDEX;
         }
     }
 }
@@ -310,8 +321,7 @@ int money_is_coin(uint16_t thing)
     return thing_type(thing) == THING_MISC && item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_COIN;
 }
 
-/* The item index of a thing: the base of its type plus its GDAT index. */
-static uint16_t item_index(uint16_t thing)
+uint16_t item_get_index(uint16_t thing)
 {
     if (thing == THING_NONE) return ITEM_INDEX_NONE;
     uint8_t index = item_gdat_index(thing);
@@ -328,7 +338,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
     memset(counts, 0, COIN_TYPE_MAX * sizeof *counts);
     for (uint16_t t = record_word(box, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!money_is_coin(t)) continue;
-        uint16_t item = item_index(t);
+        uint16_t item = item_get_index(t);
         for (int c = 0; c < coins.count; c++)
             if (item == coins.items[c]) counts[c] += (record_word(t, 2) >> MISC_STACK_SHIFT & MISC_STACK_MASK) + 1;
     }

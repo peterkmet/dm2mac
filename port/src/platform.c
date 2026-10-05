@@ -83,9 +83,10 @@ int plat_poll(PlatEvent *e)
             e->type = PLAT_QUIT;
             return 1;
         case SDL_EVENT_KEY_DOWN:
-            if (ev.key.repeat) break;
             e->type = PLAT_KEY;
             e->key = ev.key.key;
+            e->scancode = ev.key.scancode;
+            e->mod = ev.key.mod;
             return 1;
         case SDL_EVENT_MOUSE_MOTION:
             SDL_ConvertEventToRenderCoordinates(ren, &ev); /* window points -> output pixels */

@@ -17,8 +17,6 @@
 
 /* Clip rectangle of the next zone computations; active while its width is not 0. */
 extern int16_t zone_clip_rect[RECT_SIZE];
-/* While the party walks, zones of parent 3 clip to the walking view. */
-extern int zone_walk_clip;
 
 /* Reads the layout zones from GRAPHICS.DAT; returns 0 when they are missing or damaged. */
 int zone_load(const gdat_t *gdat);

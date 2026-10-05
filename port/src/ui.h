@@ -100,5 +100,7 @@ void champ_draw_all_states(int tick);
 void champ_set_redraw_flags(uint16_t flags);
 /* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
 void inv_toggle(int champ);
+/* Closing the inventory redraws the movement arrows (0 while the party falls asleep). */
+extern int inv_arrows_on_close;
 
 #endif

@@ -430,8 +430,8 @@ static void pack_game_record(uint8_t *r)
     put_le32(r + REC_UNKNOWN_TIME_A, game.unknown_time_a);
     put_le32(r + REC_UNKNOWN_TIME_B, game.unknown_time_b);
     put_le16(r + REC_MOVE_COOLDOWN, game.party_move_cooldown);
-    put_le16(r + REC_UNKNOWN_COUNTDOWN, game.unknown_countdown);
-    put_le16(r + REC_UNKNOWN_DIR, game.unknown_dir);
+    put_le16(r + REC_UNKNOWN_COUNTDOWN, game.throw_cooldown);
+    put_le16(r + REC_UNKNOWN_DIR, game.throw_dir);
     put_le16(r + REC_VOLUMES, (game.sound_volume & VOLUME_MASK) | (game.music_volume & VOLUME_MASK) << MUSIC_VOLUME_SHIFT);
     put_le32(r + REC_WEATHER_VISIBLE, game.weather_visible);
     r[REC_HEAVY_RAIN] = game.heavy_rain;
@@ -460,8 +460,8 @@ static void unpack_game_record(const uint8_t *r)
     game.unknown_time_a = le32(r + REC_UNKNOWN_TIME_A);
     game.unknown_time_b = le32(r + REC_UNKNOWN_TIME_B);
     game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
-    game.unknown_countdown = le16(r + REC_UNKNOWN_COUNTDOWN);
-    game.unknown_dir = le16(r + REC_UNKNOWN_DIR);
+    game.throw_cooldown = le16(r + REC_UNKNOWN_COUNTDOWN);
+    game.throw_dir = le16(r + REC_UNKNOWN_DIR);
     game.sound_volume = r[REC_VOLUMES] & VOLUME_MASK;
     game.music_volume = r[REC_VOLUMES] >> MUSIC_VOLUME_SHIFT & VOLUME_MASK;
     game.weather_visible = r[REC_WEATHER_VISIBLE];

@@ -58,9 +58,11 @@ enum thing_field {
     SENSOR_FLAGS = 4,           /* bit 0 active, bit 2 state, bits 12-15 ornament ordinal */
     GROUP_POSSESSIONS = 2,
     GROUP_CREATURE = 4,         /* byte: creature type */
+    GROUP_ACTIVE = 5,           /* byte: active group index, 0xff none */
     GROUP_ANIM_SEQUENCE = 8,    /* static creatures: first frame of the animation sequence */
     GROUP_FLAGS = 0x0a,         /* byte: bit 1 seen by the party */
     GROUP_ANIM_STATE = 0x0a,    /* static creatures: animation state word */
+    GROUP_HOME = 0x0c,          /* home square: x bits 0-4, y bits 5-9, map bits 10-15 */
     GROUP_DIR = 0x0e,           /* bits 8-9: direction the creature faces */
     CONTAINER_CONTENTS = 2,
     CONTAINER_KIND = 4,         /* bit 0 open, bits 1-2 container kind, bits 13-15 subtype */
@@ -98,6 +100,8 @@ int dungeon_map_level(int map);
 uint8_t dungeon_square(int map, int x, int y);
 /* The first thing on the square (x, y), THING_ENDOFLIST when the square has no things. */
 uint16_t dungeon_square_first_thing(int map, int x, int y);
+/* The first thing on the square after its doors, teleporters, texts, and sensors. */
+uint16_t dungeon_square_first_object(int map, int x, int y);
 /* Entries of the square first-thing table, including the free entries of a new game. */
 int dungeon_square_thing_count(void);
 const uint16_t *dungeon_square_things(void);
@@ -111,6 +115,8 @@ uint16_t thing_word(uint16_t thing, int field);
 void set_thing_word(uint16_t thing, int field, uint16_t value);
 uint16_t dungeon_next_thing(uint16_t thing);
 uint8_t *dungeon_square_byte(int map, int x, int y);
+/* Removes thing from the thing list whose first-thing word is at field (a record field). */
+void dungeon_unlink_thing_from_list(uint16_t thing, uint8_t *field);
 /* Appends thing at the end of a thing list. */
 void dungeon_append_thing(uint16_t thing, uint16_t *list);
 /* Appends thing at the end of the square's thing list; returns 0 when the first-thing table is full. */
@@ -143,6 +149,8 @@ uint16_t dungeon_map_flags(int map);            /* bit 7 door type 0 present, bi
 uint16_t dungeon_map_ornament_counts(int map);  /* wall bits 0-3, random wall 4-7, floor 8-11, random floor 12-15 */
 uint16_t dungeon_map_object_counts(int map);    /* door ornaments bits 0-3, creature types bits 4-7 */
 uint16_t dungeon_map_graphics(int map);         /* graphics set bits 4-7, door types bits 8-11 and 12-15 */
+/* The creature types of map (count in dungeon_map_object_counts bits 4-7). */
+const uint8_t *dungeon_map_creature_types(int map);
 /* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */
 const uint8_t *dungeon_map_wall_ornaments(int map);
 const uint8_t *dungeon_map_floor_ornaments(int map);

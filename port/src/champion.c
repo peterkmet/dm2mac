@@ -214,3 +214,10 @@ void champ_init_party_state(void)
         champ_set_leader(leader);
     }
 }
+
+int champ_get_index_in_cell(int cell)
+{
+    for (int i = 0; i < game.champion_count; i++)
+        if (champion(i)->cell == cell && champion(i)->health) return i;
+    return -1;
+}

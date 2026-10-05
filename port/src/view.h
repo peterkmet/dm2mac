@@ -49,6 +49,10 @@ void view_load_square(int x, int y, int pos, int dir);
 void view_unhide_linked_squares(void);
 /* Hides the wall squares that walls in front of them cover. */
 void view_mark_hidden_squares(void);
+/* Fills the cleared band of the viewport (a gap that the floor and ceiling leave). */
+void view_clear_viewport(void);
+/* True when the last view picture shows the party position and direction. */
+int view_shows_party(void);
 /* Draws the view of the party at (x, y) of the party map looking to dir into view_viewport. */
 void view_draw_dungeon(int dir, int x, int y);
 /* The colors of a 4 bpp picture dimmed by the view shade, with key kept; NULL for an 8 bpp picture in full dark. */
@@ -59,6 +63,8 @@ void view_copy_image_mode1(const Bitmap *src, Bitmap *dst);
 int zone_id_for_view_cell(int base, int cell, int dir);
 /* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else key. */
 void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key);
+/* The grid cell (0 to 24) of a creature in its square, turned by dir quarter turns. */
+int creature_get_view_cell_zone(uint16_t group, int dir);
 /* Turns a cell of a 5 x 5 grid around its center by dir quarter turns. */
 int view_rotate_grid5_cell(int cell, int dir);
 /* The thing grid position of cell (0 to 24) of the square (base_x, base_y) of the map. */

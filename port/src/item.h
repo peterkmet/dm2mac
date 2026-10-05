@@ -30,6 +30,8 @@ uint8_t item_gdat_category(uint16_t thing);
 uint8_t item_gdat_index(uint16_t thing);
 /* The attribute entry of an item, 0 for no thing. */
 uint16_t item_attr(uint16_t thing, int entry);
+/* The item index of a thing: the base of its type plus its GDAT index, ITEM_INDEX_NONE for no thing. */
+uint16_t item_get_index(uint16_t thing);
 /* Charges of a weapon, clothing, or miscellaneous item; 0 for other things. */
 int item_charges(uint16_t thing);
 /* The highest charge count of the thing type. */
