@@ -31,6 +31,10 @@ void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).
    Returns 1 when the door breaks. */
 int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay);
+/* A GDAT value of the door type of a door thing. */
+uint16_t door_value(uint16_t door, int key);
+/* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
+int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
 /* Runs a due square event or door event. */
 void timeline_event_square(TimelineEvent *e);
 void timeline_event_door_animation(TimelineEvent *e);

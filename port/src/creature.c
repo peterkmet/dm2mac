@@ -975,13 +975,13 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
     creature_schedule_update(x, y);
 }
 
-int creature_roll_armor_factor(uint16_t group, int enabled)
+int creature_roll_armor_factor(uint16_t group, int amount)
 {
-    if (!enabled) return 0;
+    if (!(uint16_t)amount) return 0;
     int armor = creature_group_info(group)->door_flags & 0xf;
     if (armor == 0xf) return 0;
     int r = rand_2bits();
-    return ((uint16_t)r + (uint16_t)r) * 8 / (armor + 2);
+    return ((uint16_t)amount + (uint16_t)r) * 8 / (armor + 2);
 }
 
 void creature_apply_damage_kind(uint16_t group, int x, int y, int kind)

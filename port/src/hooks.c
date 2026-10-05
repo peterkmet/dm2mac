@@ -32,15 +32,13 @@ void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void timeline_event_magic_light(TimelineEvent *e) { (void)e; }
 void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
+int champ_get_dexterity(int champ) { (void)champ; return 0; }
+int champ_test_luck(int champ, int chance) { (void)champ; (void)chance; return 0; }
+int champ_get_stat_adjusted_attack(int champ, int stat, int attack) { (void)champ; (void)stat; (void)attack; return 0; }
 int creature_can_be_pushed(int x, int y, int dir, uint16_t *group) { (void)x; (void)y; (void)dir; (void)group; return 0; }
 int move_party_can_push_group(uint16_t group) { (void)group; return 0; }
 void creature_push_group(int x, int y, int dir, int strength) { (void)x; (void)y; (void)dir; (void)strength; }
 void creature_refresh_party_maps(void) { }
-void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y) { (void)from_x; (void)from_y; (void)to_x; (void)to_y; }
-void projectile_process_event(TimelineEvent *e) { (void)e; }
-void explosion_process_event(TimelineEvent *e) { (void)e; }
-void explosion_create(int type, int power, int x, int y, int cell) { (void)type; (void)power; (void)x; (void)y; (void)cell; }
-void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e) { (void)sensor; (void)e; }
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect) { (void)kind_data; (void)count; (void)x; (void)y; (void)tx; (void)ty; (void)kind; (void)effect; }
 void sensor_turn_creatures(const TimelineEvent *e) { (void)e; }
 void world_update_day_night(int step) { (void)step; }

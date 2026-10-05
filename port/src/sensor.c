@@ -80,7 +80,7 @@ static int door_type(uint16_t door)
     return flags & 0x100 ? graphics >> 12 : 0xff;
 }
 
-static uint16_t door_value(uint16_t door, int key)
+uint16_t door_value(uint16_t door, int key)
 {
     return gdat_entry_index(draw_gdat(), CAT_DOOR, door_type(door), GDAT_TYPE_VALUE, key);
 }
@@ -1198,6 +1198,11 @@ static int ornament_value(uint16_t thing, int key)
 {
     int ornament = item_gdat_index(thing);
     return ornament == 0xff ? 0 : gdat_entry_index(draw_gdat(), CAT_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
+}
+
+int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
+{
+    return dun_is_wall_thing_ornament_shown(first, thing) ? ornament_value(thing, key) : 0;
 }
 
 /* The object of the item index type on the cell of the square (x, y), or a new one; THING_NONE when none can be made. */

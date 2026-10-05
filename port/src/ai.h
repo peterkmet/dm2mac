@@ -163,7 +163,8 @@ int creature_is_near_party_front(int x, int y, int map);
 int creature_attack_group_at(int x, int y);
 uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir);
 void minion_dismiss(uint16_t group);
-int creature_roll_armor_factor(uint16_t group, int enabled);
+/* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
+int creature_roll_armor_factor(uint16_t group, int amount);
 void creature_apply_damage_kind(uint16_t group, int x, int y, int kind);
 int creature_ai_class(void);
 uint8_t *ai_scratch_push(void);

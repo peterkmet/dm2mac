@@ -2,6 +2,7 @@
 #define HOOKS_H
 #include <stdint.h>
 #include "timeline.h"
+#include "projectile.h"
 
 /* Calls of the movement, sensor, and main loop code into systems of later steps. Each hook is empty or
    returns the "nothing happened" value until its step ports it; the step then moves it to its module. */
@@ -23,6 +24,9 @@ void timeline_event_altar_rebirth(TimelineEvent *e);
 void timeline_event_apply_item_effect(TimelineEvent *e);
 void timeline_event_magic_light(TimelineEvent *e);
 void champ_poison(int champ, int amount);
+int champ_get_dexterity(int champ);                                              /* returns 0 */
+int champ_test_luck(int champ, int chance);                                      /* returns 0: no luck */
+int champ_get_stat_adjusted_attack(int champ, int stat, int attack);             /* returns 0 */
 uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
 void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);                                        /* returns THING_NONE */
@@ -38,11 +42,6 @@ int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);             
 int move_party_can_push_group(uint16_t group);                                   /* returns 0 */
 void creature_push_group(int x, int y, int dir, int strength);
 void creature_refresh_party_maps(void);
-void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
-void projectile_process_event(TimelineEvent *e);
-void explosion_process_event(TimelineEvent *e);
-void explosion_create(int type, int power, int x, int y, int cell);
-void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 void sensor_affect_creatures_in_area(int kind_data, int count, int x, int y, int tx, int ty, int kind, int effect);
 void sensor_turn_creatures(const TimelineEvent *e);
 /* The push arrows and the clicks on creatures in front of the party. */
