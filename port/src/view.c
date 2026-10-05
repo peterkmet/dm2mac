@@ -573,6 +573,8 @@ static struct {
     } pending;
 } view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST};
 
+ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
+int view_click_zone_count;
 uint8_t view_creature_grid[VIEW_GRID_SIZE];
 uint8_t view_object_grid[VIEW_GRID_SIZE];
 uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
@@ -1255,6 +1257,52 @@ static void view_setup_picture(int flip, int scale_x, int scale_y, int dx, int d
 
 static void view_flush_picture(void) { gfx_ctx_draw(&view.ctx); }
 
+static int imax(int a, int b) { return a > b ? a : b; }
+static int imin(int a, int b) { return a < b ? a : b; }
+
+/* Adds a click zone at rect. */
+static void view_add_click_zone(const int16_t *rect, int kind, int cell)
+{
+    if (view_click_zone_count >= VIEW_CLICK_ZONE_MAX) return;  /* fix: the original has no limit */
+    ViewClickZone *z = &view_click_zones[view_click_zone_count++];
+    memcpy(z->rect, rect, sizeof z->rect);
+    z->kind = (uint8_t)kind;
+    z->cell = (uint8_t)cell;
+    z->thing = THING_NONE;
+}
+
+/* Sets click zone index to the rectangle of the last picture (at least 14 x 11 pixels), or widens it. */
+static void view_set_click_zone(int index, uint16_t thing, int cell, int kind)
+{
+    ViewClickZone *z = &view_click_zones[index];
+    const int16_t *r = view.ctx.rect;
+    if (z->thing == THING_NONE) {
+        memcpy(z->rect, r, sizeof z->rect);
+        int16_t h = z->rect[RECT_H];
+        if (h < 15) {
+            if (h < 11) z->rect[RECT_H] = 11;
+            z->rect[RECT_Y] = (int16_t)(z->rect[RECT_Y] + (h >> 1) - 7);
+        }
+        int16_t w = z->rect[RECT_W];
+        if (w < 14) {
+            z->rect[RECT_W] = 14;
+            z->rect[RECT_X] = (int16_t)(z->rect[RECT_X] + (w >> 1) - 7);
+        }
+    } else {
+        int x2 = imax((int16_t)(z->rect[RECT_X] + z->rect[RECT_W]), (int16_t)(r[RECT_X] + r[RECT_W]));
+        int x1 = imin(z->rect[RECT_X], r[RECT_X]);
+        z->rect[RECT_X] = (int16_t)x1;
+        z->rect[RECT_W] = (int16_t)(x2 - x1);
+        int y2 = imax((int16_t)(z->rect[RECT_Y] + z->rect[RECT_H]), (int16_t)(r[RECT_Y] + r[RECT_H]));
+        int y1 = imin(z->rect[RECT_Y], r[RECT_Y]);
+        z->rect[RECT_Y] = (int16_t)y1;
+        z->rect[RECT_H] = (int16_t)(y2 - y1);
+    }
+    z->kind = (uint8_t)kind;
+    z->thing = thing;
+    z->cell = (uint8_t)cell;
+}
+
 const uint8_t *view_get_shaded_palette(int category, int index, int entry, int key)
 {
     static uint8_t palette[REMAP_COLORS];  /* fix: the original has 16 bytes, which the full table overruns */
@@ -1520,11 +1568,27 @@ static void view_draw_objects_in_cell(uint16_t thing, int pos, int cell, uint16_
     int ordinal = 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (!is_item(thing) || (((thing >> THING_CELL_SHIFT) - view.party_dir) & 3) != cell) continue;
-        /* a creature that hides what it holds: Step 14 adds the click zone of the creature */
-        if (info && !(info->possessions & POSSESSIONS_SHOWN) && !(info->possessions & POSSESSIONS_CELLS_MASK)) return;
+        if (info && !(info->possessions & POSSESSIONS_SHOWN) && !(info->possessions & POSSESSIONS_CELLS_MASK)) {
+            /* a creature that hides what it holds: one click zone for all of it */
+            if (view_click_zone_count < VIEW_CLICK_ZONE_MAX) {
+                ViewClickZone *z = &view_click_zones[view_click_zone_count++];
+                if (!zone_get_rect(info->possession_zone, z->rect)) memset(z->rect, 0, sizeof z->rect);
+                z->kind = CLICK_POSSESSIONS;
+                z->thing = thing;
+                z->cell = (uint8_t)pos;
+            }
+            return;
+        }
         view_draw_object(thing, pos, 0, 0, ordinal, group, 1, 0, 0);
         ordinal = (ordinal + 1) % JITTER_COUNT;
-        /* Step 14 adds the click zone of the object (view_set_click_zone) */
+        if (info) {
+            if (creature_cell_mask(info->possessions) >> cell & 1) view_set_click_zone(cell + 4, thing, pos, CLICK_POSSESSIONS);
+        } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > 1)) {
+            int16_t x = view_squares[pos].x, y = view_squares[pos].y;
+            uint16_t g = creature_find_group_near_point(&x, &y, thing >> THING_CELL_SHIFT);
+            if (g == THING_NONE || creature_is_flying(g) || creature_group_info(g)->possessions & POSSESSIONS_HIDE_CLICKS)
+                view_set_click_zone(cell, thing, pos, CLICK_OBJECT);
+        }
     }
 }
 
@@ -1860,7 +1924,7 @@ static void view_draw_alcove_contents(int pos)
         if (is_item(thing)) {
             view_draw_object(thing, pos, 0, 0, ordinal, THING_NONE, 1, 0, 1);
             if (++ordinal >= ALCOVE_ORDINAL_END) ordinal = ALCOVE_FIRST_ORDINAL;
-            /* Step 14 adds the click zone of the alcove (view_set_click_zone) */
+            if (pos == POS_FRONT) view_set_click_zone(VIEW_CLICK_ZONE_FIXED - 1, thing, POS_FRONT, CLICK_ALCOVE);
             continue;
         }
         if (thing_type(thing) != THING_EXPLOSION || !(ALCOVE_EXPLOSION_POSITIONS & POS_BIT(pos))) continue;
@@ -1970,6 +2034,7 @@ static int view_draw_wall_ornament(int pos, int side, int record_click)
         if (!record_click) view.ctx.transparent = DRAW_NO_BLIT;
         view_flush_picture();
         if (!record_click) return key;
+        if (depth == 1) view_add_click_zone(view.ctx.rect, CLICK_WALL_ORNAMENT, pos);
     }
     if (side <= -2 || side >= 2) {
         if (depth == 2) scale_x = SCALE_WIDE_SIDE;
@@ -1991,6 +2056,7 @@ static int view_draw_wall_ornament(int pos, int side, int record_click)
         return key;
     }
     int entry;
+    int16_t click_rect[RECT_SIZE] = {0};
     if (side == 0) {
         entry = 1;  /* front ornaments are not mirrored: the depth flip of SKULL.EXE is off (0x75c11 = 1) */
     } else {
@@ -2017,14 +2083,17 @@ static int view_draw_wall_ornament(int pos, int side, int record_click)
             gfx_ctx_draw(&c);
             draw_offscreen(&c, offscreen, zone, anchor, mapped_key(&c, key));
         }
+        memcpy(click_rect, c.rect, sizeof click_rect);  /* the wet picture gives the click zone */
     } else {
         view_setup_picture(flip, scale_x, scale_y, 0, 0, depth, zone, anchor, key, NO_KEY, CAT_WALL_ORNAMENT, ornament,
                            entry);
         if (!record_click) view.ctx.transparent = DRAW_NO_BLIT;
         view_flush_picture();
         if (!record_click) return key;
+        memcpy(click_rect, view.ctx.rect, sizeof click_rect);
     }
-    /* Step 14 adds the click zone of the ornament (view_add_click_zone) */
+    if (record_click && kind != KIND_PORTRAIT && pos >= 1 && pos <= 3)
+        view_add_click_zone(click_rect, CLICK_WALL_ORNAMENT, pos);
     if (kind && side == 0) {
         view.alcove = view.ctx;
         if (picture_exists(CAT_WALL_ORNAMENT, ornament, ORN_OVERLAY)) {
@@ -2239,7 +2308,7 @@ static void view_draw_door_ornament(int category, int ornament, int entry, int p
     view_setup_picture(0, scale, scale, 0, 0, depth, base + ZONE_DOOR_ORNAMENT + row, ZONE_NO_ANCHOR, key, NO_KEY,
                        category, ornament, entry);
     view_flush_picture();
-    /* Step 14 adds the click zone of the door button */
+    if (row == 3 || row == 4) view_add_click_zone(view.ctx.rect, CLICK_DOOR_BUTTON, pos);
 }
 
 static void view_draw_door_frame(int pos, int parts)
@@ -2567,6 +2636,11 @@ void view_draw_dungeon(int dir, int x, int y)
     view.party_y = y;
     view.shade = view_light_level * LIGHT_STEP;
     view.walking = party.move_steps != 0;
+    view_click_zone_count = VIEW_CLICK_ZONE_FIXED;
+    for (int i = 0; i < VIEW_CLICK_ZONE_FIXED; i++) {
+        view_click_zones[i].thing = THING_NONE;
+        view_click_zones[i].kind = CLICK_NONE;
+    }
     memset(view_creature_grid, 0, sizeof view_creature_grid);
     memset(view_object_grid, NO_POSITION, sizeof view_object_grid);
     view_clear_viewport();

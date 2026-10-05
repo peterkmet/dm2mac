@@ -56,6 +56,9 @@ int dun_get_linked_teleporter_dest(PassageEnd *end, int x, int y);
 
 /* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
 int dun_get_direction_to(int x1, int y1, int x2, int y2);
+/* The creature group whose body covers the point of cell (0xff: any cell) of the square (*x, *y) of the current
+   map or of a square next to it; moves *x, *y to that square. THING_NONE when there is none. */
+uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell);
 /* Turns the party to dir; the champions turn with it. */
 void champ_set_party_direction(int dir);
 /* Moves the party one square in a move command; returns 0 when the command must wait. */

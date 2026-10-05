@@ -12,6 +12,7 @@ typedef struct {
     uint8_t push_resistance;    /* against the party strength; 0xfe and 0xff: the creature cannot be pushed */
     uint8_t hit_size;           /* row of the hit radius table */
     uint16_t movement;          /* CREATURE_FLIES */
+    uint16_t possession_zone;   /* the view zone of the possessions that the creature hides */
 } CreatureInfo;
 
 #define CREATURE_STATIC 0x0001      /* the creature does not act: no active group, animation state in its record */
@@ -24,6 +25,7 @@ typedef struct {
 #define CREATURE_POSSESSIONS_ON_FLOOR 0x0800 /* possessions bit: a static creature holds what lies on its square */
 #define PUSH_IMMOVABLE 0xfe
 #define CREATURE_FLIES 0x0004
+#define POSSESSIONS_HIDE_CLICKS 0x2000  /* possessions bit: objects under the creature stay clickable */
 #define CREATURE_INFO_COUNT 63
 #define CREATURE_FRAME_SIZE 8
 
@@ -44,6 +46,8 @@ const CreatureInfo *creature_info_at(int index);
 const CreatureInfo *creature_group_info(uint16_t group);
 /* True when the creature of group may stay on map: a wanderer, or a creature type of the map. */
 int creature_is_native_to_map(uint16_t group, int map);
+/* The cells (bits 0 to 3) in which a static creature shows its possessions, from its possessions word. */
+int creature_cell_mask(uint16_t possessions);
 /* True for a creature that flies over pits and does not press floor sensors. */
 int creature_is_flying(uint16_t group);
 /* The first creature group on the square (x, y) of map, THING_NONE for none. */

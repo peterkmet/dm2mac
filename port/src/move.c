@@ -279,9 +279,7 @@ static int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second,
 
 enum step_result { STEP_STAIRS_HERE = 1, STEP_STAIRS_AHEAD, STEP_BLOCKED, STEP_CREATURE, STEP_CREATURE_SIDE, STEP_FREE };
 
-/* The creature group whose body covers the point of cell (0xff: any cell) of the square (*x, *y) or of a
-   square next to it; moves *x, *y to that square. THING_NONE when there is none. */
-static uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
+uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
 {
     /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
        cell (its table has rows of 4 pairs), which this table keeps. */

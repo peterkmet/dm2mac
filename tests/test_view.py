@@ -124,9 +124,9 @@ G_ZONE_LIST, G_COLOR_RAMPS, G_COLOR_RAMP_OF_COLOR, G_VIEWPORT_BITMAP = 0x71796, 
 G_MAP_GFX_SET, G_MAP_WALL_COLOR_KEY, G_CUR_MAP_DOOR_TYPES, G_MAP_FLIP_FLAGS = 0x75BFE, 0x75BFC, 0x7F40A, 0x802D2
 G_VIEW_CLEAR, G_SKY_OBJECTS, G_WEATHER_VISIBLE, G_LIGHT_LEVEL = 0x802D0, 0x80438, 0x8047B, 0x7F282
 G_PARTY_X, G_PARTY_DIR, G_PUSH_MODE, G_PUSH_PENDING_GROUP = 0x7F26C, 0x7F254, 0x7F3A4, 0x72FFC
-# The original functions that Step 12 does not port: click zones and the shop display (Steps 14, 15) do nothing;
-# the image cache, the GDAT index, and the memory manager are served from the C port and Python.
-NO_OPS = (0x4E6C3, 0x3F3C2, 0x3F406, 0x3F352, 0x3F422, 0x3F49D, 0x3BCA5, 0x3BC8E, 0x3BCBA, 0x210DC, 0x50BF4)
+# The original functions that the C port does not have: the shop display (Step 15) does nothing; the image cache, the
+# GDAT index, and the memory manager are served from the C port and Python; the viewport arrow (Step 16) does nothing.
+NO_OPS = (0x3F3C2, 0x3F406, 0x3F352, 0x3F422, 0x3F49D, 0x3BCA5, 0x3BC8E, 0x3BCBA, 0x210DC, 0x50BF4)
 SHOP_DRAW_DISPLAY = 0x4EC19
 G_ACTIVE_GROUPS, G_RANDOM_SEED, G_SKY_STATE, G_RAIN_INTENSITY = 0x7F898, 0x70518, 0x8046E, 0x8047E
 ACTIVE_GROUP_SIZE, ACTIVE_GROUP_MAX = 0x22, 256
@@ -838,4 +838,37 @@ def test_wet_image_matches_original(lib, loaded, original_view):
         small_drawn += area <= 0x3C
     assert drawn > 100 and filled > 10 and small_drawn > 5
     (game.party_x, game.party_y, game.party_dir, game.party_map, game.rain_intensity, game.wind_dir) = saved
+    lib.view_enter_map(game.party_map)
+
+
+G_VIEW_CLICK_ZONES, G_VIEW_CLICK_ZONE_COUNT, CLICK_ZONE_SIZE = 0x7F2EC, 0x7F400, 12
+
+
+def test_view_click_zones_match_original(lib, loaded, original_view):
+    # The click zones that the view drawing records (objects, alcoves, wall ornaments, door buttons, possessions)
+    # for random places of all maps, as in test_view_picture_matches_original.
+    game = WeatherGame.in_dll(lib, "game")
+    saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible)
+    original_view.emu.write(G_WEATHER_VISIBLE, b"\0")
+    game.weather_visible = 0
+    emu = original_view.emu
+    count = ctypes.c_int.in_dll(lib, "view_click_zone_count")
+    zones = (ctypes.c_uint8 * (32 * CLICK_ZONE_SIZE)).in_dll(lib, "view_click_zones")
+    rng = random.Random(21)
+    views = with_zones = 0
+    while views < 300:
+        map_ = rng.randrange(lib.dungeon_map_count())
+        x, y = rng.randrange(lib.dungeon_map_width(map_)), rng.randrange(lib.dungeon_map_height(map_))
+        if not lib.dungeon_square(map_, x, y) >> 5:
+            continue
+        direction = rng.randrange(4)
+        c_view(lib, map_, x, y, direction, 0)
+        original_view.draw(map_, x, y, direction, 0, b"\xff" + bytes(9))
+        n = struct.unpack("<h", emu.read(G_VIEW_CLICK_ZONE_COUNT, 2))[0]
+        assert count.value == n, (map_, x, y, direction)
+        assert bytes(zones)[:n * CLICK_ZONE_SIZE] == emu.read(G_VIEW_CLICK_ZONES, n * CLICK_ZONE_SIZE), (map_, x, y, direction)
+        with_zones += any(emu.read(G_VIEW_CLICK_ZONES + i * 12 + 11, 1)[0] for i in range(n))
+        views += 1
+    assert with_zones > 10
+    game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible = saved
     lib.view_enter_map(game.party_map)
