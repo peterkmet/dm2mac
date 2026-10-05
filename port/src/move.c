@@ -301,7 +301,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
     /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
        cell (its table has rows of 4 pairs), which this table keeps. */
     static const int16_t hit_offsets[10][2] = {
-        {0, 0}, {0, -1}, {0, -1}, {1, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, 1}, {0, 1}, {0, -1}
+        {-1, 0}, {0, -1}, {0, -1}, {1, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, 1}, {0, 1}, {0, -1}
     };
     static const int16_t hit_offsets_any_cell[4][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
     static const int16_t hit_radius_sq[] = {0, 3, 6, 6};
@@ -685,7 +685,7 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
         scope = SCOPE_ALL;
         if (type == THING_GROUP) scope = item_attr(thing, ATTR_TELEPORT_SCOPE) ? SCOPE_PARTY : SCOPE_CREATURES;
         else if (type == THING_PROJECTILE)
-            party.dest_dir = (int16_t)(timeline.events[thing_word(thing, PROJECTILE_EVENT)].data[2] >> 2 & 3);
+            party.dest_dir = (int16_t)(timeline.events[thing_word(thing, PROJECTILE_EVENT)].data[3] >> 2 & 3  /* fix: bits 10-11 of the position word */);
         draw_fall = 0;
     }
     for (int loop = TRANSITION_MAX; --loop;) {

@@ -46,11 +46,7 @@ void inv_update_hand_cursor(void) { }
 void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
-void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y) { (void)from_x; (void)from_y; (void)to_x; (void)to_y; }
-void projectile_process_event(TimelineEvent *e) { (void)e; }
-void explosion_process_event(TimelineEvent *e) { (void)e; }
-void explosion_create(int type, int power, int x, int y, int cell) { (void)type; (void)power; (void)x; (void)y; (void)cell; }
-void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e) { (void)sensor; (void)e; }
+int champ_get_stat_adjusted_attack(int champ, int stat, int attack) { (void)champ; (void)stat; (void)attack; return 0; }
 void world_update_day_night(int step) { (void)step; }
 void light_update_party_light(void) { }
 void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, int kind) { (void)e; (void)sensor; (void)kind; }

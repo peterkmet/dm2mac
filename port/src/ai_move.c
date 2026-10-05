@@ -10,6 +10,7 @@
 #include "hooks.h"
 #include "item.h"
 #include "move.h"
+#include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -241,16 +242,16 @@ static int door_type(uint16_t door)
     return flags & 0x100 ? graphics >> 12 : 0xff;
 }
 
-static int door_value(int x, int y, int key)
+static int door_value_at(int x, int y, int key)
 {
     return gdat_entry_index(draw_gdat(), CAT_DOOR, door_type(first_thing(x, y)), GDAT_TYPE_VALUE, key);
 }
 
 static int door_pass_cost(int x, int y)
 {
-    int cost = door_value(x, y, DOOR_KEY_PASS_COST);
+    int cost = door_value_at(x, y, DOOR_KEY_PASS_COST);
     if (cost) return cost;
-    return door_value(x, y, DOOR_KEY_SOMETIMES_SEEN) ? 1 : DOOR_DEFAULT_PASS_COST;
+    return door_value_at(x, y, DOOR_KEY_SOMETIMES_SEEN) ? 1 : DOOR_DEFAULT_PASS_COST;
 }
 
 static int explosion_type(uint16_t t) { return thing_word(t, EXPLOSION_DATA) & EXPLOSION_TYPE_MASK; }
@@ -302,7 +303,7 @@ int creature_square_is_obstacle(int x, int y)
     uint8_t square = dun_get_square(x, y);
     int type = square_type(square);
     if (type == SQUARE_DOOR)
-        return (square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED && !door_value(x, y, DOOR_KEY_SEE_THROUGH);
+        return (square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED && !door_value_at(x, y, DOOR_KEY_SEE_THROUGH);
     return type == SQUARE_WALL || type == SQUARE_UNKNOWN || (type == SQUARE_FAKE_WALL && !(square & SQUARE_FAKE_WALL_OPEN));
 }
 
@@ -315,7 +316,7 @@ int creature_square_blocks_line(int x, int y)
     if (type == SQUARE_WALL) return 1;
     if (type == SQUARE_DOOR) {
         int state = square & SQUARE_DOOR_STATE;
-        if ((state == 3 || state == DOOR_STATE_CLOSED) && (!door_value(sx, sy, DOOR_KEY_SOMETIMES_SEEN) || !rand_bit()))
+        if ((state == 3 || state == DOOR_STATE_CLOSED) && (!door_value_at(sx, sy, DOOR_KEY_SOMETIMES_SEEN) || !rand_bit()))
             return 1;
     }
     if (type == SQUARE_FAKE_WALL && !(square & SQUARE_FAKE_WALL_OPEN)) return 1;

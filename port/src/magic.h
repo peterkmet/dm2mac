@@ -45,6 +45,5 @@ int move_party_warp_to_marker(void);
 void timeline_event_magic_light(TimelineEvent *e);
 
 /* Projectiles (port/src/projectile.c): champion c launches thing from the party square. */
-void champ_launch_projectile(Champion *c, uint16_t thing, int power, int attack, int step);
 
 #endif

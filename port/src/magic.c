@@ -9,6 +9,7 @@
 #include "input.h"
 #include "item.h"
 #include "magic.h"
+#include "projectile.h"
 #include "move.h"
 #include "random.h"
 #include "sensor.h"
@@ -284,7 +285,7 @@ int magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
         power += 4;
         step = (int16_t)power >> 2;
     }
-    champ_launch_projectile(c, thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
+    champ_launch_projectile((int)(c - champion(0)), thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
     return 1;
 }
 

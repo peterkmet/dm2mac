@@ -1,6 +1,5 @@
 /* Creature AI: the update context, moods, plans, and the update of a creature that acts. */
 #include <stddef.h>
-#include <stdio.h>
 #include <string.h>
 #include "ai.h"
 #include "champion.h"
@@ -390,9 +389,6 @@ static int creature_ai_update_mood(uint32_t entries)
         if (mask == mood) break;
     }
     if (!mask && (all != -1 || any != -1)) i = all != -1 ? all : any;
-#ifdef DM2_DEBUG
-    fprintf(stderr, "MOOD g=%x t=%u mood=%x s=%x r=%x i=%d entries=%x\n", ai.group_thing, game.game_time, mood, random_seed, r, i, entries);
-#endif
     if ((int8_t)i != a->behavior) {
         ai.cache.path_left = 0;
         a->plan = -1;
@@ -612,9 +608,6 @@ static void creature_ai_wander(void)
 {
     ActiveGroup *a = ai.active;
     int r = rand_next() & 7;
-#ifdef DM2_DEBUG
-    fprintf(stderr, "MOOD g=%x t=%u wander r=%d i=0\n", ai.group_thing, game.game_time, r);
-#endif
     if (r > 3) {
         a->action = 0;
         return;

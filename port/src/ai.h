@@ -169,7 +169,8 @@ int creature_is_near_party_front(int x, int y, int map);
 int creature_attack_group_at(int x, int y);
 uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir);
 void minion_dismiss(uint16_t group);
-int creature_roll_armor_factor(uint16_t group, int enabled);
+/* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
+int creature_roll_armor_factor(uint16_t group, int amount);
 int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor);
 int dun_set_pit_or_teleporter_state(int x, int y, int mode);
 /* The target square of the action that runs (g_ai_dest_x/y of SKULL.EXE). */

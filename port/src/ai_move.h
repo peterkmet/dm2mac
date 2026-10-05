@@ -73,8 +73,6 @@ int creature_ai_plan_path(void);
 
 /* Functions of other parts of Step 16 and of Step 17 (weak stubs in ai_move_stubs.c until they exist). */
 int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor);
-uint16_t projectile_get_attack(uint16_t projectile, uint16_t payload);
-uint16_t explosion_get_attack(uint16_t explosion, uint16_t target);
 void light_add_square_light(int distance, int dir, int x, int y, int mode);
 
 #endif

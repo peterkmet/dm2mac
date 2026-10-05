@@ -33,6 +33,10 @@ void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
 void move_square_contents_through(int x, int y);
 int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay);
+/* A GDAT value of the door type of a door thing. */
+uint16_t door_value(uint16_t door, int key);
+/* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
+int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
 /* Runs a due square event or door event. */
 void timeline_event_square(TimelineEvent *e);
 void timeline_event_door_animation(TimelineEvent *e);

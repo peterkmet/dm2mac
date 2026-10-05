@@ -17,10 +17,8 @@ MEM_ALLOC, MEM_FREE_SIZE = 0x3BBBA, 0x3BCA5
 # the command result of the AI context.
 FAIL = "fail"
 NOT_YET = {
-    0x16746: (1, 0),        # explosion_create
-    0x16457: (4, 0),        # projectile_create
-    0x18758: (0, 0),        # creature_attack_champion
     0x46786: (0, 0), 0x46968: (0, 0), 0x1F8A7: (0, 0),                      # Step 15: luck, dexterity, value
+    0x46745: (0, 0), 0x474FC: (0, 0),                                       # Step 15: adjusted attack, poison
     0x28574: (0, 0xFD), 0x28711: (0, 0xFD), 0x28E99: (0, 0xFD), 0x296D5: (0, 0xFD),  # Step 15: merchants
 }
 CHAMP_REMOVE_OBJECT_FROM_SLOT, G_CHAMPIONS, CHAMPION_SIZE_BYTES, CHAMPION_SLOTS = 0x45F27, 0x7FBD0, 0x107, 0xC3

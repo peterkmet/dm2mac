@@ -38,8 +38,6 @@ STUBS = {
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
-    0x4A0FE: (0, 0),                                                         # missiles that hit the party
-    0x57A63: (0, 0),                                                         # missile launchers
     0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
     0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
     0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
@@ -196,7 +194,8 @@ class Scenario(CreatureOracle):
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
                 0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x21: (0xFF, 0xFF, 0, 0, 0, 0), 0x22: (0xFF, 0xFF, 0, 0, 0, 0), 0x3C: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
-                0x3D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0)}
+                0x3D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x19: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x1D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
+                0x1E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0)}
         emu = self.emu
 
         def hook(uc, *_):

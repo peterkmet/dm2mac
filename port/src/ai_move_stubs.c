@@ -7,6 +7,4 @@
 
 #define WEAK __attribute__((weak))
 
-WEAK uint16_t projectile_get_attack(uint16_t projectile, uint16_t payload) { (void)projectile; (void)payload; return 0; }
-WEAK uint16_t explosion_get_attack(uint16_t explosion, uint16_t target) { (void)explosion; (void)target; return 0; }
 WEAK void light_add_square_light(int distance, int dir, int x, int y, int mode) { (void)distance; (void)dir; (void)x; (void)y; (void)mode; }

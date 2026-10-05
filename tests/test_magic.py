@@ -87,10 +87,11 @@ def int16(v):
 
 
 def clear_magic_event_bytes(emu):
-    """The original leaves the data bytes after the word of the light, invisibility, and aura events uninitialized."""
+    """The original leaves the data bytes after the word of the light, invisibility, and aura events, and data bytes 4
+    and 5 of the projectile and explosion events uninitialized."""
     from unicorn import UC_HOOK_CODE
     from unicorn.x86_const import UC_X86_REG_EAX
-    keep = {0x46: 2, 0x47: 0, 0x48: 2}
+    keep = {0x46: 2, 0x47: 0, 0x48: 2, 0x19: 4, 0x1D: 4, 0x1E: 4}
 
     def hook(uc, *_):
         event = uc.reg_read(UC_X86_REG_EAX)
@@ -114,9 +115,6 @@ class MagicScenario(CreatureScenario):
         emu.stub(CHAMP_ADD_OBJECT_TO_SLOT, lambda c, t, s, *_: rec((HOOK_ADD_OBJECT_TO_SLOT, c & 0xFFFF, t & 0xFFFF, s & 0xFFFF, 0, 0)))
         emu.uc.hook_del(self.stubs.pop(CHAMP_PUT_OBJECT_IN_LEADER_HAND))
         emu.stub(CHAMP_PUT_OBJECT_IN_LEADER_HAND, lambda t, f, *_: rec((HOOK_PUT_IN_LEADER_HAND, t & 0xFFFF, int16(f), 0, 0, 0)))
-        emu.stub(CHAMP_LAUNCH_PROJECTILE, lambda c, t, p, a, s, *_: rec(
-            (HOOK_LAUNCH_PROJECTILE, (c - G_CHAMPIONS) // CHAMPION_SIZE, t & 0xFFFF, p & 0xFFFF, a & 0xFFFF, s & 0xFFFF)),
-            stack_args=1)
         clear_magic_event_bytes(emu)
         c_hook_calls(lib)
         self.game_record = Game.in_dll(lib, "game")
@@ -261,12 +259,8 @@ def spell_ui(original):
     emu.stub(CHAMP_ADD_ACTION_DELAY, lambda c, t, h, *_: rec((HOOK_ADD_ACTION_DELAY, c & 0xFFFF, t & 0xFFFF, int16(h), 0, 0)))
     emu.stub(CHAMP_ADD_OBJECT_TO_SLOT, lambda c, t, s, *_: rec((HOOK_ADD_OBJECT_TO_SLOT, c & 0xFFFF, t & 0xFFFF, s & 0xFFFF, 0, 0)))
     emu.stub(CHAMP_PUT_OBJECT_IN_LEADER_HAND, lambda t, f, *_: rec((HOOK_PUT_IN_LEADER_HAND, t & 0xFFFF, int16(f), 0, 0, 0)))
-    emu.stub(CHAMP_LAUNCH_PROJECTILE, lambda c, t, p, a, s, *_: rec(
-        (HOOK_LAUNCH_PROJECTILE, (c - G_CHAMPIONS) // CHAMPION_SIZE, t & 0xFFFF, p & 0xFFFF, a & 0xFFFF, s & 0xFFFF)),
-        stack_args=1)
     emu.stub(LIGHT_UPDATE_PARTY_LIGHT, lambda *_: 0)
     emu.stub(ITEM_CREATE_BY_INDEX, lambda *_: 0xFFFF)
-    emu.stub(EXPLOSION_CREATE, lambda *_: 0, stack_args=1)
     clear_magic_event_bytes(emu)
     return original
 
@@ -287,14 +281,27 @@ def spell_kind(index):
     return SPELL_TABLE_BYTES[index * SPELL_SIZE + 6] & 0xF
 
 
-def test_runes_and_casts_match_original(port, spell_ui):
+@pytest.fixture
+def cast_ui(spell_ui):
+    """spell_ui; the heap of the original (the dungeon) goes back after the test, so the missiles of the casts do not
+    stay. The port fixture puts the globals back."""
+    from test_view import HEAP
+    heap = spell_ui.emu.read(HEAP, spell_ui.top - HEAP)
+    yield spell_ui
+    spell_ui.emu.write(HEAP, heap)
+
+
+def test_runes_and_casts_match_original(port, cast_ui):
     # The spell panel of the first champion: runes added (with enough mana and without), removed, and cast: unknown
     # rune sets, failed casts, casts without a flask, and successful spells (not the summons, which need active
     # creature groups: test_every_spell_cast_matches_original). The screen, the champion, the action area state,
     # the party spells, the timeline, and the hook arguments must be equal.
-    lib, original = port, spell_ui
+    lib, original = port, cast_ui
     emu = original.emu
     draw_game_screen(lib, original)
+    party_map = Game.in_dll(lib, "game").party_map  # the missile spells fly on the current map
+    lib.dun_set_current_map(party_map)
+    emu.call(DUN_SET_CURRENT_MAP, party_map)
     action = ActionArea.in_dll(lib, "action")
     rng = random.Random(17)
     c_hook_calls(lib)
@@ -426,6 +433,7 @@ def test_many_casts_match_original(magic):
 ACTIVE_SIZE, G_ACTIVE_GROUPS = 0x22, 0x7F898
 G_THINGS, THING_SIZES = 0x7F288, (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 G_LEVEL_DIGIT_TABLE, DUN_SET_PARTY_LOCATION, G_CUR_MAP, G_PARTY_DIR = 0x7F3D0, 0x1C82D, 0x72244, 0x7F254
+DUN_SET_CURRENT_MAP = 0x1C724
 G_ACTION_FLAGS, G_ACTION_HAND = 0x7FB5E, 0x7FB72
 # MinionMap fields: name -> (address, format).
 MINION_GLOBALS = {"marker_state": (0x7FB52, "<h"), "y_offset": (0x7FB54, "<h"), "x_offset": (0x7FB56, "<h"),

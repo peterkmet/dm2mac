@@ -2,6 +2,7 @@
 #define HOOKS_H
 #include <stdint.h>
 #include "timeline.h"
+#include "projectile.h"
 
 /* Calls of the movement, sensor, and main loop code into systems of later steps. Each hook is empty or
    returns the "nothing happened" value until its step ports it; the step then moves it to its module. */
@@ -22,6 +23,9 @@ void inv_update_hand_cursor(void);
 void timeline_event_altar_rebirth(TimelineEvent *e);
 void timeline_event_apply_item_effect(TimelineEvent *e);
 void champ_poison(int champ, int amount);
+int champ_get_dexterity(int champ);                                              /* returns 0 */
+int champ_test_luck(int champ, int chance);                                      /* returns 0: no luck */
+int champ_get_stat_adjusted_attack(int champ, int stat, int attack);             /* returns 0 */
 uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
 void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);
@@ -39,8 +43,6 @@ void champ_add_action_delay(int champ, uint16_t ticks, int hand);
 void champ_add_object_to_slot(int champ, uint16_t thing, int slot);
 /* Rules of Step 15 that the creatures use: a luck test (returns 0: fails), the dexterity (0), the value of an item (0),
    and the removal of a hand object (clears the slot and returns the object). */
-int champ_test_luck(int champ, int chance);
-int champ_get_dexterity(int champ);
 uint16_t item_get_value(uint16_t thing);
 uint16_t champ_remove_object_from_slot(int champ, int slot);                                        /* returns THING_NONE */
 void champ_start_recruit(int x, int y, int map);
@@ -57,11 +59,6 @@ int shop_cmd_count_payment(void);
 int shop_cmd_pay_change(void);
 
 /* Step 16: creatures and projectiles. */
-void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
-void projectile_process_event(TimelineEvent *e);
-void explosion_process_event(TimelineEvent *e);
-void explosion_create(int type, int power, int x, int y, int cell);
-void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 /* The push arrows and the clicks on creatures in front of the party. */
 
 /* Step 17: weather, day and night. */
