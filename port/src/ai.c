@@ -38,7 +38,7 @@ static struct {
     int present;
     AiPlanCache cache;
     int path_size;
-    uint16_t path[AI_PATH_MAX];
+    uint8_t path[0x64];
 } ai_store[AI_GROUP_KEY_COUNT];
 
 /* The scratch blocks of the updates in progress: item filter bitmaps (the 0x100-byte blocks of SKULL.EXE). */
@@ -195,17 +195,11 @@ static void ai_store_cache(void)
     ai_store[g].cache = ai.cache;
 }
 
-uint16_t *ai_store_path(int size)
+uint8_t *ai_store_path(int size)
 {
     int g = thing_index(ai.group_thing);
     if (ai_store[g].path_size < size) ai_store[g].path_size = size;
     return ai_store[g].path;
-}
-
-uint16_t *ai_stored_path(void)
-{
-    int g = thing_index(ai.group_thing);
-    return ai_store[g].path_size ? ai_store[g].path : NULL;
 }
 
 void creature_free_cached_ai_data(uint16_t group)

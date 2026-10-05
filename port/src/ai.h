@@ -56,34 +56,39 @@ AiChoice ai_choice(uint32_t addr);
 uint16_t ai_mood_mask(uint32_t addr);
 uint32_t ai_mood_choices(uint32_t addr);
 
-/* A candidate destination of a plan (22 bytes in SKULL.EXE). */
-typedef struct {
-    int8_t cost;
-    uint8_t value;
-    uint16_t destination;   /* filled by the search: x bits 0-4, y bits 5-9, map bits 10-15 */
-    uint16_t found;         /* filled by the search */
-    int8_t path_length;     /* filled by the search */
-    int8_t kind;
-    uint16_t item;
-    uint16_t mask;
-    uint16_t marker;
-    int8_t plan, scan_arg;
-    uint8_t unknown_10;
-    int8_t scan_kind;
-    uint32_t targets;
+/* A candidate destination of a plan: the 22-byte record of SKULL.EXE (g_ai_candidates, 0x7f674), same layout. */
+typedef struct __attribute__((packed)) {
+    int8_t cost;            /* +0x00 */
+    uint8_t value;          /* +0x01 target value_9 */
+    uint16_t destination;   /* +0x02 filled by the search: x bits 0-4, y bits 5-9, map bits 10-15 */
+    uint16_t found;         /* +0x04 filled by the search */
+    int8_t path_length;     /* +0x06 filled by the search */
+    int8_t kind;            /* +0x07 */
+    uint16_t item;          /* +0x08 target item */
+    uint16_t mask;          /* +0x0a target mask & candidate mask */
+    uint16_t marker;        /* +0x0c */
+    int8_t plan;            /* +0x0e */
+    int8_t scan_arg;        /* +0x0f */
+    uint8_t unknown_10;     /* +0x10 */
+    int8_t scan_kind;       /* +0x11 */
+    uint32_t targets;       /* +0x12 address of the target list */
 } AiCandidate;
+
+_Static_assert(sizeof(AiCandidate) == 22, "the candidates of SKULL.EXE have 22 bytes");
 
 #define AI_CANDIDATE_MAX 16
 #define AI_PATH_MAX 0x31
 
-/* The cached plan state of a group (14 bytes in SKULL.EXE): it lasts from one update to the next. */
-typedef struct {
-    uint8_t path_length;
-    uint8_t path_left;
-    int8_t scan_kind;
-    int8_t kind;
-    uint16_t item, mask, found;
-    uint32_t targets;
+/* The plan state of a group that lasts from one update to the next: the 14 bytes at 0x7f7d4 of SKULL.EXE. */
+typedef struct __attribute__((packed)) {
+    uint8_t path_length;    /* 0x7f7d4 */
+    uint8_t path_left;      /* 0x7f7d5 */
+    int8_t scan_kind;       /* 0x7f7d6 */
+    int8_t kind;            /* 0x7f7d7, -1 none */
+    uint16_t item;          /* 0x7f7d8 */
+    uint16_t mask;          /* 0x7f7da */
+    uint16_t found;         /* 0x7f7dc */
+    uint32_t targets;       /* 0x7f7de */
 } AiPlanCache;
 
 /* The item counts of a target list (32 bytes in SKULL.EXE). */
@@ -117,12 +122,12 @@ typedef struct {
     uint8_t counts_dirty;
     uint8_t alert;
     AiItemCounts item_counts[4];
-    uint16_t path[AI_PATH_MAX];
+    uint8_t path[0x64];         /* 0x7f60a: the path of the search (2 bytes per step) */
     uint8_t candidate_count;
     int8_t chosen;
     AiCandidate candidates[AI_CANDIDATE_MAX];
     AiPlanCache cache;
-    uint16_t *cached_path;
+    uint8_t *cached_path;       /* 0x7f7e2: the stored path of the group, NULL none */
     uint8_t active_flag;        /* a context is in use: a nested update saves it */
     uint8_t prepared;
     uint8_t plan_flags;
@@ -163,8 +168,7 @@ void creature_apply_damage_kind(uint16_t group, int x, int y, int kind);
 int creature_ai_class(void);
 uint8_t *ai_scratch_push(void);
 void ai_scratch_pop(void);
-uint16_t *ai_store_path(int size);
-uint16_t *ai_stored_path(void);
+uint8_t *ai_store_path(int size);
 void creature_free_cached_ai_data(uint16_t group);
 void creature_ai_update_group(void);
 void creature_ai_decide(void);
