@@ -62,6 +62,10 @@ SCHEDULED_EVENT = SCRATCH + 0xF8100
 SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
 # The wall sensor that creates an item (kind 0x3c) in timeline_event_wall_square: Step 17.
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
+# The wall sensor of the end of the game (kind 0x12): Step 20.
+WALL_END_GAME = 0x58A12
+# sensor_forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
+FORWARD_REVERSE_HOLD = 0x5723C
 
 
 class Party(ctypes.Structure):
@@ -127,6 +131,9 @@ class Scenario:
         self.view = view
         emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
+        self.skip(WALL_END_GAME, WALL_NEXT_THING)
+        self.clear_uninitialized_event_bytes()
+        self.set_local(FORWARD_REVERSE_HOLD, 0, 3)
         emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
         emu.write(G_PUSH_PENDING, struct.pack("<H", NONE))
         for name, (addr, fmt) in GLOBALS.items():  # the runtime state that a save does not store
@@ -153,6 +160,32 @@ class Scenario:
         emu.write(tv.G_SKY_OBJECTS, sky)
         emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
         lib.view_enter_map(map_)
+
+    def clear_uninitialized_event_bytes(self):
+        """The original leaves some event bytes uninitialized (stack garbage); the C port clears them. This clears
+        them in each event that the original queues: (data byte, mask of the bytes to keep) by event type."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EAX
+        keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
+                0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
+                0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0)}
+        emu = self.emu
+
+        def hook(uc, *_):
+            event = uc.reg_read(UC_X86_REG_EAX)
+            mask = keep.get(emu.read(event + 4, 1)[0])
+            if mask:
+                data = emu.read(event + 6, 6)
+                emu.write(event + 6, bytes(b & m for b, m in zip(data, mask)))
+
+        emu.uc.hook_add(UC_HOOK_CODE, hook, begin=TIMELINE_ADD_EVENT, end=TIMELINE_ADD_EVENT)
+
+    def set_local(self, at, offset, value):
+        """Sets the dword at ESP + offset when the original reaches at: a local that it leaves uninitialized."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_ESP
+        self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: self.emu.write_u32(uc.reg_read(UC_X86_REG_ESP) + offset, value),
+                             begin=at, end=at)
 
     def skip(self, begin, end):
         """Runs the original from end when it reaches begin: a code part of a later step."""
@@ -367,3 +400,42 @@ def test_random_walks_on_all_maps(scenario, lib):
             scenario.assert_same((n, map_, x, y, i, command))
         if n % 10 == 9:
             scenario.assert_equal((n, map_, x, y))  # the save files: the champions and the game record too
+
+
+def sensor_squares(lib):
+    """(map, x, y, cell) of every square cell with a sensor or a text thing."""
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    out, bad = set(), None
+    for map_ in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(map_)):
+            for y in range(lib.dungeon_map_height(map_)):
+                t = lib.dungeon_square_first_thing(map_, x, y)
+                while t != ENDOFLIST:
+                    w = lib.thing_word(t, 2)
+                    if t >> 10 & 15 == 3 and w & 0x7F == 0x16 and w >> 7 & 0x3F >= lib.dungeon_map_count():
+                        bad = (map_, x, y, t >> 14)  # it sends events to a map outside the dungeon (C: fixed)
+                    elif t >> 10 & 15 in (2, 3):
+                        out.add((map_, x, y, t >> 14))
+                    t = lib.dungeon_next_thing(t)
+    return sorted(out - {bad})
+
+
+@pytest.mark.parametrize("part", range(4))
+def test_square_events_on_all_sensors(scenario, lib, part):
+    # Every sensor and text cell of the dungeon gets square events with each effect; the timeline then runs the
+    # relays, timers, counters, animations, doors, pits, teleporters, and fake walls that they reach.
+    import random
+    rng = random.Random(part)
+    cells = sensor_squares(lib)[part::4]
+    for n, (map_, x, y, cell) in enumerate(cells):
+        square_event(scenario, map_, x, y, cell, rng.randrange(4), rng.randrange(2))
+        for _ in range(rng.randrange(1, 3)):
+            scenario.step()
+        scenario.assert_same((n, map_, x, y, cell))
+        if n % 100 == 99:
+            scenario.assert_equal((n, map_, x, y, cell))
+    for _ in range(40):
+        scenario.step()
+    scenario.assert_equal("end")

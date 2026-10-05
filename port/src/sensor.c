@@ -404,8 +404,9 @@ static void sensor_forward_effect(const TimelineEvent *e, uint16_t sensor, int d
         }
         sensor_trigger_target(sensor, effect, 0);
         if (!delay) return;
-        static const uint8_t reverse[3] = {EFFECT_CLEAR, EFFECT_SET, EFFECT_TOGGLE};
-        sensor_trigger_target(sensor, effect < 3 ? reverse[effect] : EFFECT_SET, delay);
+        /* fix: the original leaves the reverse of a hold effect uninitialized; it stays a hold here */
+        static const uint8_t reverse[4] = {EFFECT_CLEAR, EFFECT_SET, EFFECT_TOGGLE, EFFECT_HOLD};
+        sensor_trigger_target(sensor, reverse[effect & 3], delay);
         return;
     }
     if (!sensor_activated(flags, effect)) return;
@@ -711,6 +712,7 @@ static void timeline_event_wall_square(TimelineEvent *e)
             break;
         case 0x16: {  /* passes the event to a square of another map */
             int map = data & 0x3f, tx = target >> 6 & 0x1f, ty = target >> 11;
+            if (map >= dungeon_map_count()) break;  /* fix: the original reads a map outside the dungeon */
             TimelineEvent ev = {.time_map = (game.game_time & 0xffffff) | (uint32_t)map << 24, .type = EVENT_SQUARE,
                                 .priority = e->priority};
             ev.data[EVENT_X] = (uint8_t)tx;
@@ -727,8 +729,8 @@ static void timeline_event_wall_square(TimelineEvent *e)
             sensor_play_activation(e, t, t, 1);
             break;
         case 0x41: {  /* an ornament that steps its animation frame */
-            int frame = (int16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
-            set_sensor_data(t, (unsigned)(frame % (int)(uint16_t)sensor_get_ornament_cycle(t, 1)));
+            unsigned frame = (uint16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
+            set_sensor_data(t, frame % (uint16_t)sensor_get_ornament_cycle(t, 1));
             break;
         }
         case 0x2c:
