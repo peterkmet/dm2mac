@@ -208,6 +208,19 @@ uint8_t *ai_store_path(int size)
     return ai_store[g].path;
 }
 
+void creature_ai_forget_all(void)
+{
+    memset(ai_store, 0, sizeof ai_store);
+    memset(&ai, 0, sizeof ai);
+    ai_scratch_depth = 0;
+}
+
+uint8_t *ai_find_path(void)
+{
+    int g = thing_index(ai.group_thing);
+    return ai_store[g].path_size ? ai_store[g].path : NULL;
+}
+
 void creature_free_cached_ai_data(uint16_t group)
 {
     int g = thing_index(group) | thing_index(ai.group_thing);  /* the original ORs both indices into the key */

@@ -87,5 +87,10 @@ int champ_get_nearest_at(int x, int y, int cell);
 int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int dir, int step);
 /* Takes stamina from a champion. */
 void champ_decrease_stamina(int champ, int amount);
+/* The champion of the cell nearest to the side of the party square that faces (x, y) (cell 0xff: any), -1 none. */
+int champ_get_nearest_at(int x, int y, int cell);
+/* Follows pits, teleporters, and stairs from (x, y) of the current map; leaves the end in party.dest_*.
+   Returns 1 for a flying thing. */
+int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound);
 
 #endif

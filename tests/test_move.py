@@ -38,7 +38,7 @@ STUBS = {
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
     0x24E62: (2, 0), 0x24328: (0, 0), 0x24171: (0, 0), 0x23E5B: (0, 0),     # creature alert, push
-    0x49EF8: (0, 0), 0x34106: (0, 0), 0x2F8F5: (0, 0), 0x306A8: (0, 0),     # creature turn, activation
+    0x49EF8: (0, 0), 0x34106: (0, 0), 0x306A8: (0, 0),                      # creature turn, activation
     0x3085A: (0, 0), 0x3064D: (0, 0), 0x30D45: (1, 0), 0x30FE3: (0, 0),     # creature groups
     0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
     0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
@@ -46,6 +46,7 @@ STUBS = {
     0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
     0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
     0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
+    0x38C46: (1, 0), 0x389C2: (0, 0),                                       # light of the squares, party light
 }
 # Globals of the movement state: name -> (address, struct format).
 GLOBALS = {
@@ -57,6 +58,8 @@ GLOBALS = {
     "dest_x": (0x80026, "<h"), "dest_y": (0x80024, "<h"), "dest_map": (0x80028, "<h"), "dest_cell": (0x80022, "<h"),
     "redraw": (0x7F38C, "<I"),
 }
+G_MAP_LIGHT, G_MAP_WALL_COST = 0x7F3F4, 0x7F3FC
+G_DISTANCE_MAPS = (0x7F8C8, 0x7F8C4)  # the party distance maps of creature_refresh_party_maps  # the light radius and wall cost of the party map graphics
 G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, G_PUSH_PENDING = 0x7F22C, 0x7F26A, 0x7F25A, 0x72FFC
 G_ACTIVE_GROUPS, G_COMMAND_STOP = 0x7F898, 0x7F484
 COMMAND_RECORD = SCRATCH + 0xF8000
@@ -155,6 +158,9 @@ class Scenario:
         for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
             emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
         emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
+        for ptr in G_DISTANCE_MAPS:  # the original allocates them with the active groups (Step 16)
+            if not emu.read_u32(ptr):
+                emu.write_u32(ptr, view.alloc(32 * 32))
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
         self.clear_uninitialized_event_bytes()
@@ -179,6 +185,8 @@ class Scenario:
                                                   graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
         emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
         emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
+        emu.write(G_MAP_LIGHT, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x6D)))
+        emu.write(G_MAP_WALL_COST, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x72) or 1))
         emu.write(tv.G_VIEW_CLEAR, bytes(2))
         weather = tv.WeatherGame.in_dll(lib, "game")
         sky = view.sky_objects(gfx_set, weather.sky_darkness, weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)

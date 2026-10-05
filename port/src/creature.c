@@ -412,6 +412,7 @@ void creature_free_active_groups(void)
     free(active_groups);
     active_groups = NULL;
     active_group_max = active_group_count = 0;
+    creature_ai_forget_all();
 }
 
 void creature_alloc_active_groups(void)

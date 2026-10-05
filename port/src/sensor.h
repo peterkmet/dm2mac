@@ -41,6 +41,8 @@ void timeline_event_door_destruction(TimelineEvent *e);
 /* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
    with hand (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
 void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand);
+/* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
+int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
 /* The party enters (1) or leaves (0) the party map: the map entry sensors and the creature generators. */
 void sensor_process_map_entry(int entering);
 /* Runs a due sensor animation, timer, or busy event. */

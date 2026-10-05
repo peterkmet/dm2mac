@@ -27,11 +27,6 @@ NOT_YET = {
     0x16746: (1, 0),        # explosion_create
     0x16457: (4, 0),        # projectile_create
     0x18758: (0, 0),        # creature_attack_champion
-    0x2B96A: (0, 0), 0x2BBAD: (1, 0), 0x2BEAF: (0, 0), 0x2C005: (0, 0),    # obstacles, lines, square cache, turn
-    0x2C404: (2, FAIL), 0x2CC42: (2, FAIL), 0x2D52D: (0, 0),                # attack, door, missiles
-    0x2D792: (2, FAIL), 0x2EA68: (3, FAIL), 0x2F2CF: (3, FAIL),             # move, take items, wall actuators
-    0x2F636: (0, 0), 0x2FF1E: (0, 0xFFFE), 0x2FF89: (0, 0), 0x2697B: (1, 0),  # item filters
-    0x31724: (0, 0), 0x3188A: (3, 0xFFFF), 0x33E61: (0, 0), 0x33EF3: (0, 0),  # markers, path search
     0x46786: (0, 0), 0x46968: (0, 0), 0x1F8A7: (0, 0),                      # Step 15: luck, dexterity, value
     0x28574: (0, 0xFD), 0x28711: (0, 0xFD), 0x28E99: (0, 0xFD), 0x296D5: (0, 0xFD),  # Step 15: merchants
 }
@@ -60,6 +55,8 @@ class CreatureScenario(Scenario):
         self.sizes = {}
         emu.stub(IMAGE_CACHE_LOOKUP, self.cache_lookup)
         emu.stub(IMAGE_CACHE_REALLOC, self.cache_realloc)
+        emu.uc.hook_del(self.view.cache_alloc_hook)
+        emu.stub(IMAGE_CACHE_ALLOC, self.cache_alloc)
         emu.stub(IMAGE_CACHE_RELEASE, lambda *_: 0)
         emu.stub(IMAGE_CACHE_FREE, self.cache_free)
         self.blocks = []  # the 0x100 and 0x350 blocks of the creature updates: a stack, like the original allocator
@@ -112,6 +109,11 @@ class CreatureScenario(Scenario):
         self.emu.write(index, struct.pack("<H", i))
         return 0
 
+    def cache_alloc(self, index, size, *_):
+        index &= 0xFFFF
+        self.sizes[index] = size
+        return self.view.cache_put(index, self.view.alloc(size))
+
     def cache_realloc(self, index, size, *_):
         index &= 0xFFFF
         old, old_size = self.view.cache[index], self.sizes.get(index, 0)
@@ -141,7 +143,8 @@ class CreatureScenario(Scenario):
         """The quick check with the creature state: active groups, their count, and the random seed."""
         mine, theirs = self.active_groups()
         for i in range(0, len(mine), ACTIVE_GROUP_SIZE):
-            assert mine[i:i + ACTIVE_GROUP_SIZE].hex() == theirs[i:i + ACTIVE_GROUP_SIZE].hex(), (where, i // ACTIVE_GROUP_SIZE)
+            a, b = mine[i:i + ACTIVE_GROUP_SIZE].hex(), theirs[i:i + ACTIVE_GROUP_SIZE].hex()
+            assert a == b, (where, i // ACTIVE_GROUP_SIZE, a, b)
         assert ctypes.c_int.in_dll(self.lib, "active_group_count").value == \
             struct.unpack("<H", self.emu.read(G_ACTIVE_GROUP_COUNT, 2))[0], where
         assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where

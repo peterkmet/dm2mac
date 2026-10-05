@@ -46,7 +46,6 @@ int shop_cmd_count_payment(void);
 int shop_cmd_pay_change(void);
 
 /* Step 16: creatures and projectiles. */
-void creature_refresh_party_maps(void);
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
 void projectile_process_event(TimelineEvent *e);
 void explosion_process_event(TimelineEvent *e);

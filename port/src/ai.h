@@ -183,6 +183,8 @@ uint8_t *ai_scratch_push(void);
 void ai_scratch_pop(void);
 uint8_t *ai_store_path(int size);
 void creature_free_cached_ai_data(uint16_t group);
+/* Forgets the AI data of all groups (a load). */
+void creature_ai_forget_all(void);
 void creature_ai_update_group(void);
 void creature_ai_decide(void);
 int creature_ai_plan_flags(void);
@@ -196,5 +198,9 @@ int creature_ai_begin(uint16_t group, int x, int y, int type, AiContext *saved);
 void creature_ai_end(int restored, const AiContext *saved);
 void creature_ai_prepare(void);
 void creature_ai_set_map(int map);
+
+/* ai_move.c */
+/* The stored path of the group in the AI context, NULL when it has none. */
+uint8_t *ai_find_path(void);
 
 #endif

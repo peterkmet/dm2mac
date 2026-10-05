@@ -35,7 +35,6 @@ void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void timeline_event_magic_light(TimelineEvent *e) { (void)e; }
 void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
-void creature_refresh_party_maps(void) { }
 void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y) { (void)from_x; (void)from_y; (void)to_x; (void)to_y; }
 void projectile_process_event(TimelineEvent *e) { (void)e; }
 void explosion_process_event(TimelineEvent *e) { (void)e; }

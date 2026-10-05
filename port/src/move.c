@@ -646,7 +646,7 @@ static uint16_t move_rotate_through_teleporter(uint16_t teleporter, uint16_t thi
 
 /* Follows pits, teleporters, and stairs from (x, y) of the current map; leaves the end in party.dest_*.
    Returns 1 for a flying thing. */
-static int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound)
+int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound)
 {
     party.teleporter_flag = 0;
     int start_map = party.cur_map, map = start_map;
