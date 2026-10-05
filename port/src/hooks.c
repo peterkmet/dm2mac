@@ -27,7 +27,6 @@ void champ_apply_pending_damage(void) { }
 void champ_apply_time_effects(void) { }
 void champ_process_repeated_actions(void) { }
 void items_burn_held_lights(void) { }
-void inv_update_hand_cursor(void) { }
 void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void timeline_event_magic_light(TimelineEvent *e) { (void)e; }
@@ -68,13 +67,8 @@ void sound_flush_requests(int queue) { (void)queue; }
 void sound_play_delayed(int index) { (void)index; }
 void game_complete(void) { }
 void command_execute_later(const Command *c) { (void)c; }
-uint16_t champ_remove_object_from_leader_hand(void) { return THING_NONE; }
-void champ_put_object_in_leader_hand(uint16_t thing, int flag) { (void)thing; (void)flag; }
 uint16_t item_create_by_index(int item) { (void)item; return THING_NONE; }
 void champ_start_recruit(int x, int y, int map) { (void)x; (void)y; (void)map; }
-void view_click_take_object(int x, int y) { (void)x; (void)y; }
-int view_click_place_object(int x, int y, int square_x, int square_y, int cell_from, int cell, int kind) { (void)x; (void)y; (void)square_x; (void)square_y; (void)cell_from; (void)cell; (void)kind; return 0; }
-int view_click_drop_object(int square_x, int square_y, int cell) { (void)square_x; (void)square_y; (void)cell; return 0; }
 void view_click_throw_object(int x, int y) { (void)x; (void)y; }
 void move_push_creature(int arrow) { (void)arrow; }
 void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y) { (void)group; (void)x; (void)y; (void)square_x; (void)square_y; }

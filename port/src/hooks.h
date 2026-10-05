@@ -18,19 +18,13 @@ void champ_apply_pending_damage(void);
 void champ_apply_time_effects(void);
 void champ_process_repeated_actions(void);
 void items_burn_held_lights(void);
-void inv_update_hand_cursor(void);
 void timeline_event_altar_rebirth(TimelineEvent *e);
 void timeline_event_apply_item_effect(TimelineEvent *e);
 void timeline_event_magic_light(TimelineEvent *e);
 void champ_poison(int champ, int amount);
-uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
-void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);                                        /* returns THING_NONE */
 void champ_start_recruit(int x, int y, int map);
-/* The clicks in the view with an object in the hand or on objects (Step 15): returns 1 when done. */
-void view_click_take_object(int x, int y);
-int view_click_place_object(int x, int y, int square_x, int square_y, int cell_from, int cell, int kind);
-int view_click_drop_object(int square_x, int square_y, int cell);
+/* A click in the view that throws the leader hand object. */
 void view_click_throw_object(int x, int y);
 
 /* Step 16: creatures and projectiles. */

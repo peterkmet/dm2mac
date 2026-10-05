@@ -8,6 +8,8 @@
 #include "game.h"
 #include "gdat.h"
 #include "hooks.h"
+#include "inventory.h"
+#include "item.h"
 #include "input.h"
 #include "move.h"
 #include "music.h"
@@ -836,6 +838,86 @@ static void view_click_door_button(int x, int y, uint16_t door)
     input_command_stop = 1;
 }
 
+#define MONEYBOX_WORD 6
+#define POS_FRONT_SQUARE 3          /* click zone cell: the square in front of the party */
+#define POSSESSION_SLOT_MASK 0x0f
+#define MONEYBOX_FLAG 0x0400        /* a money box flag that clears when the party takes or drops the box */
+#define CELL_POSSESSION_FIRST 4     /* drop cells 4 to 7: the possession cells of a static creature */
+#define CELL_POSSESSION_LAST 7
+#define POSSESSIONS_DROP_ON_CELLS 0x0800
+#define POSSESSIONS_DROP_IN_FRONT 0x2000
+
+static void moneybox_clear_flag(uint16_t thing)
+{
+    if (item_is_moneybox(thing)) set_thing_word(thing, MONEYBOX_WORD, thing_word(thing, MONEYBOX_WORD) & ~MONEYBOX_FLAG);
+}
+
+/* A click with an empty hand on the object of click zone index: the leader takes the object. */
+static void view_click_take_object(int x, int y, int index)
+{
+    if ((int16_t)game.leader == -1) return;
+    const ViewClickZone *z = &view_click_zones[index];
+    int sx = game.party_x, sy = game.party_y;
+    if (z->cell) {
+        if (z->cell != POS_FRONT_SQUARE) return;
+        sx += dir_dx[game.party_dir];
+        sy += dir_dy[game.party_dir];
+    }
+    uint16_t thing = view_hit_test_object(x, y, z->cell, sx, sy, z->thing, z->kind, 0);
+    if (thing != THING_NONE) {
+        move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
+        moneybox_clear_flag(thing);
+        champ_put_object_in_leader_hand(thing, 1);
+    }
+    input_command_stop = 1;
+}
+
+/* Drops the leader hand object into cell of the square (x, y): 0 to 3 a floor cell, 4 to 7 a possession cell of
+   a static creature, relative to the party direction. Returns 1 when done. */
+static int view_click_drop_object(int x, int y, int cell)
+{
+    if ((int16_t)game.leader == -1) return 0;
+    int dir_cell = (game.party_dir + cell) & 3;
+    uint16_t group = creature_group_at(party.cur_map, x, y);
+    int possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
+    if (group != THING_NONE) {
+        const CreatureInfo *info = creature_group_info(group);
+        if (info->flags & CREATURE_STATIC) {
+            if (possession && !(info->possessions & POSSESSIONS_DROP_ON_CELLS)) return 0;
+            if (cell < CELL_POSSESSION_FIRST && !(info->possessions & POSSESSIONS_DROP_IN_FRONT)) return 0;
+        } else {
+            group = THING_NONE;
+        }
+    }
+    uint16_t thing = champ_remove_object_from_leader_hand() & (THING_INDEX_MASK | THING_TYPE_MASK << THING_TYPE_SHIFT);
+    if (possession) {
+        dir_cell = (cell - CELL_POSSESSION_FIRST + game.party_dir) & 3;
+        if (group != THING_NONE)
+            for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+                if (t >> THING_CELL_SHIFT == dir_cell) moneybox_clear_flag(t);
+        move_thing((uint16_t)(thing | dir_cell << THING_CELL_SHIFT), -1, -1, x, y);
+    } else {
+        move_thing((uint16_t)(thing | dir_cell << THING_CELL_SHIFT), -1, 0, x, y);
+    }
+    input_command_stop = 1;
+    return 1;
+}
+
+/* A click with the leader hand object on the objects of a square cell: it goes into an open chest there (1), or
+   it drops into the cell when the click hits no object; pos: the view position of the square (0 or 3). */
+static int view_click_place_object(int x, int y, int sx, int sy, int pos, int cell, int kind)
+{
+    uint16_t hand = (uint16_t)(((game.party_dir + cell) & 3) << THING_CELL_SHIFT
+                               | (game.leader_hand & (THING_INDEX_MASK | THING_TYPE_MASK << THING_TYPE_SHIFT)));
+    uint16_t hit = view_hit_test_object(x, y, pos, sx, sy, hand, kind, 1);
+    if (hit == THING_NONE) {
+        champ_remove_object_from_leader_hand();
+        return 1;
+    }
+    if (hit == THING_ENDOFLIST) return view_click_drop_object(sx, sy, kind == CLICK_POSSESSIONS ? cell + 4 : cell);
+    return 0;
+}
+
 void view_click_in_viewport(int x, int y)
 {
     dun_set_current_map(game.party_map);
@@ -862,7 +944,7 @@ void view_click_in_viewport(int x, int y)
         case CLICK_OBJECT: case CLICK_POSSESSIONS: case CLICK_ALCOVE:
             if (z->thing == THING_NONE) break;
             if (hand == THING_NONE) {
-                view_click_take_object(x, y);
+                view_click_take_object(x, y, i);
                 return;
             }
             if (z->kind == CLICK_ALCOVE) {
@@ -902,6 +984,16 @@ void view_click_in_viewport(int x, int y)
         for (int k = 2; k < 4; k++) {
             if (view_click_place_object(x, y, fx, fy, 3, k, 1)) return;
             if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(fx, fy, k)) return;
+        }
+        uint16_t g = creature_group_at(party.cur_map, fx, fy);
+        if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
+            const CreatureInfo *info = creature_group_info(g);
+            for (int k = 0; k < (info->possessions & POSSESSION_SLOT_MASK); k++) {
+                if (view_click_place_object(x, y, fx, fy, POS_FRONT_SQUARE, k + 2, CLICK_POSSESSIONS)) return;
+                if (zone_contains_point(info->possession_zone + k, x, y)
+                    && view_click_drop_object(fx, fy, k + 2 + CELL_POSSESSION_FIRST))
+                    return;
+            }
         }
         view_click_throw_object(x, y);
         return;

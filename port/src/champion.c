@@ -2,6 +2,7 @@
 #include "champion.h"
 #include "draw.h"
 #include "dungeon.h"
+#include "inventory.h"
 #include "item.h"
 #include "random.h"
 #include "text.h"
@@ -109,8 +110,7 @@ int champ_get_load(int champ)
     const Champion *c = champion(champ);
     if (!c->health) return 0;
     uint16_t load = c->load;
-    /* the original caches the weight of the leader hand object when it goes into the hand */
-    if (champ == game.leader) load = (uint16_t)(load + item_weight(game.leader_hand));
+    if (champ == game.leader) load = (uint16_t)(load + leader_hand.weight);
     return load;
 }
 
@@ -202,7 +202,15 @@ void champ_set_leader(int champ)
 
 void champ_init_party_state(void)
 {
-    /* ponytail: a leader hand object (its cursor and its name message) comes with Step 15; the new game party with Step 20 */
+    /* ponytail: the new game party comes with Step 20 */
+    if (game.leader_hand == THING_NONE) {
+        leader_hand.icon = HAND_ICON_NONE;
+    } else {
+        uint16_t leader = game.leader;
+        game.leader = (uint16_t)-1;
+        champ_put_object_in_leader_hand(game.leader_hand, 1);
+        game.leader = leader;
+    }
     for (int i = 0; i < game.champion_count; i++) {
         champion(i)->redraw &= REDRAW_KEEP;
         action_reset_champion(i);

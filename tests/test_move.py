@@ -43,8 +43,9 @@ STUBS = {
     0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
     0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
     0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
-    0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
-    0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
+    0x1DE8E: (0, NONE), 0x494FB: (0, 0),                                    # new items, recruiting
+    0x22942: (0, 0),                                                         # throw objects
+    0x14889: (0, 0), 0x38392: (0, 0),                                       # the hand cursor and its icon
     0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
 }
 # Globals of the movement state: name -> (address, struct format).

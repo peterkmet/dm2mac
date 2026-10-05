@@ -2,9 +2,11 @@
 #include <string.h>
 #include <SDL3/SDL.h>
 #include "draw.h"
+#include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
 #include "input.h"
+#include "inventory.h"
 #include "item.h"
 #include "platform.h"
 #include "save.h"
@@ -34,6 +36,33 @@ static void test_pattern(void)
     for (int y = 0; y < SCREEN_H; y++)
         for (int x = 0; x < SCREEN_W; x++)
             fb[y][x] = (uint8_t)(y * PATTERN_CELLS / SCREEN_H * PATTERN_CELLS + x * PATTERN_CELLS / SCREEN_W);
+}
+
+/* Shows fb with the leader hand object at the mouse pointer (the original sets it as the mouse cursor). */
+static void present_with_hand_cursor(void)
+{
+    static uint8_t under[HAND_ICON_SIZE][HAND_ICON_SIZE];
+    if (inv_cursor_object() == THING_NONE) {
+        plat_present();
+        return;
+    }
+    int mx, my;
+    plat_mouse_position(&mx, &my);
+    int x0 = mx - HAND_ICON_SIZE / 2, y0 = my - HAND_ICON_SIZE / 2;
+    for (int y = 0; y < HAND_ICON_SIZE; y++)
+        for (int x = 0; x < HAND_ICON_SIZE; x++) {
+            int sx = x0 + x, sy = y0 + y;
+            if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
+            under[y][x] = fb[sy][sx];
+            uint8_t c = leader_hand.cursor[y * HAND_ICON_SIZE + x];
+            if (c != HAND_ICON_KEY) fb[sy][sx] = leader_hand.palette[c];
+        }
+    plat_present();
+    for (int y = 0; y < HAND_ICON_SIZE; y++)
+        for (int x = 0; x < HAND_ICON_SIZE; x++) {
+            int sx = x0 + x, sy = y0 + y;
+            if (sx >= 0 && sy >= 0 && sx < SCREEN_W && sy < SCREEN_H) fb[sy][sx] = under[y][x];
+        }
 }
 
 /* Loads a save and draws the dungeon view of the party into the screen; returns 0 with a message on an error. */
@@ -146,7 +175,7 @@ int main(int argc, char **argv)
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
             if (save) game_tick();
-            plat_present();
+            present_with_hand_cursor();
         }
         plat_wait_tick();
     }

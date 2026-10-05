@@ -1,0 +1,194 @@
+/* The leader hand, the champion slots, and the effects of the items that the champions hold. */
+#include <string.h>
+#include "action.h"
+#include "champion.h"
+#include "draw.h"
+#include "dungeon.h"
+#include "hooks.h"
+#include "inventory.h"
+#include "item.h"
+#include "move.h"
+#include "sensor.h"
+#include "text.h"
+#include "timeline.h"
+#include "ui.h"
+
+/* Item attributes of the effects. */
+enum {
+    ATTR_LIGHT_FLAGS = 0x10,        /* ATTR_FLAGS bit: the item gives light */
+    ATTR_HAS_EFFECTS = 0x2000,      /* ATTR_FLAGS bit: the item changes the champion */
+    ATTR_MAX_MANA = 0x14, ATTR_STAT_FIRST = 0x15, ATTR_SKILL_FIRST = 0x1e, ATTR_LIGHT = 0x32, ATTR_MOVE_SPEED = 0x33,
+    ATTR_EFFECT_TIME = 0x13         /* game steps until the effect of a consumed item ends */
+};
+#define MODIFIER_CONSUMED 0x4000    /* the modifier counts only when the item is consumed */
+#define MODIFIER_ANY_SLOT 0x8000    /* the modifier counts in any slot */
+#define MANA_MAX 999
+#define STAT_MIN 10
+#define STAT_MAX 220
+#define STAT_STEP 20                /* a statistic change shrinks by a quarter for each step away from the maximum */
+#define MESSAGE_OBJECT_NAME 13      /* the message color of an object name */
+#define REDRAW_MANA 0x0800          /* REDRAW_BARS */
+#define REDRAW_STATS 0x3000
+#define REDRAW_SKILLS 0x2000
+
+LeaderHand leader_hand = {.icon = HAND_ICON_NONE};
+
+static int16_t clamp16(int low, int v, int high) { return (int16_t)(v < low ? low : v > high ? high : v); }
+
+/* The magic light of the party (the first word of game.magic_light). */
+static void add_magic_light(int delta)
+{
+    uint16_t v = (uint16_t)(game.magic_light[0] | game.magic_light[1] << 8);
+    v = (uint16_t)(v + delta);
+    game.magic_light[0] = (uint8_t)v;
+    game.magic_light[1] = (uint8_t)(v >> 8);
+}
+
+/* The modifier of attribute attr of thing for mode; equipped: the item is in a slot that fits it. */
+static int item_stat_modifier(uint16_t thing, int attr, int equipped, int mode)
+{
+    uint16_t v = item_attr(thing, attr);
+    if (!v) return 0;
+    if (!(v & MODIFIER_CONSUMED)) {
+        if (!equipped && !(v & MODIFIER_ANY_SLOT)) return 0;
+    } else if (mode != EFFECT_MODE_CONSUME_END && mode != EFFECT_MODE_CONSUME && mode != EFFECT_MODE_RESTORE) {
+        return 0;
+    }
+    int r = (int8_t)v;
+    return mode < 0 ? -r : r;
+}
+
+void champ_adjust_stat(uint8_t *stat, int delta)
+{
+    int16_t d = (int16_t)delta;
+    int16_t diff = (int16_t)(stat[0] + d - stat[1]);
+    if ((diff < 0) == (d < 0)) {
+        for (int16_t left = (int16_t)(diff < 0 ? -diff : diff); left > STAT_STEP; left = (int16_t)(left - STAT_STEP))
+            d = (int16_t)(d - (d >> 2));
+    }
+    stat[0] = (uint8_t)clamp16(STAT_MIN, (int16_t)(stat[0] + d), STAT_MAX);
+}
+
+void champ_compute_load(int champ)
+{
+    Champion *c = champion(champ);
+    uint16_t load = 0;
+    for (int s = 0; s < SLOT_COUNT; s++) load = (uint16_t)(load + item_weight(c->slots[s]));
+    if (champ == action.champion - 1 && action.hand < SLOT_HAND_COUNT && item_is_chest(action.hand_items[champ][action.hand]))
+        for (int i = 0; i < CONTAINER_SLOTS; i++) load = (uint16_t)(load + item_weight(action.open_items[i]));
+    c->load = load;
+    c->redraw |= REDRAW_LOAD;
+}
+
+void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode)
+{
+    if ((int16_t)champ < 0 || thing == THING_NONE) return;
+    if ((int16_t)slot < SLOT_COUNT) {
+        uint16_t flags = item_attr(thing, ATTR_FLAGS);
+        if (mode && flags & ATTR_LIGHT_FLAGS) light_update_party_light();
+        if (flags & ATTR_HAS_EFFECTS) {
+            Champion *c = champion(champ);
+            int equipped = item_fits_slot(thing, slot, 1) != 0, timed = 0, m;
+            if (mode != EFFECT_MODE_LOAD && mode != EFFECT_MODE_RESTORE && mode != EFFECT_MODE_CONSUME_END) {
+                if ((m = item_stat_modifier(thing, ATTR_MAX_MANA, equipped, mode))) {
+                    if (mode == EFFECT_MODE_ADD || mode == EFFECT_MODE_REMOVE) c->max_mana = (int16_t)(c->max_mana + m);
+                    else if (mode == EFFECT_MODE_CONSUME) c->mana = clamp16(0, (int16_t)(m + c->mana), MANA_MAX);
+                    c->redraw |= REDRAW_MANA;
+                }
+                for (int s = 0; s < STAT_COUNT; s++) {
+                    if (!(m = item_stat_modifier(thing, ATTR_STAT_FIRST + s, equipped, mode))) continue;
+                    if (mode == EFFECT_MODE_ADD || mode == EFFECT_MODE_REMOVE) c->stat_bonus[s] = (int8_t)(c->stat_bonus[s] + m);
+                    else champ_adjust_stat(c->stats[s], m);
+                    c->redraw |= REDRAW_STATS;
+                }
+            }
+            for (int s = 0; s < SKILL_COUNT; s++) {
+                if (!(m = item_stat_modifier(thing, ATTR_SKILL_FIRST + s, equipped, mode))) continue;
+                c->skill_bonus[s] = (int8_t)(c->skill_bonus[s] + m);
+                c->redraw |= REDRAW_SKILLS;
+                timed = 1;
+            }
+            if ((m = item_stat_modifier(thing, ATTR_MOVE_SPEED, equipped, mode))) {
+                c->move_speed = (uint16_t)((c->move_speed & 0xff00) | (uint8_t)(c->move_speed + m));
+                timed = 1;
+            }
+            if (mode != EFFECT_MODE_CONSUME && mode != EFFECT_MODE_CONSUME_END && mode != EFFECT_MODE_RESTORE
+                && (m = item_stat_modifier(thing, ATTR_LIGHT, equipped, mode))) {
+                add_magic_light(m);
+                if (mode) light_update_party_light();
+            }
+            if (timed && mode == EFFECT_MODE_CONSUME) {
+                /* fix: the original leaves the last 3 data bytes uninitialized */
+                TimelineEvent e = {.time_map = (game.game_time + item_attr(thing, ATTR_EFFECT_TIME))
+                                               | (uint32_t)(uint8_t)party.cur_map << 24,
+                                   .type = EVENT_ITEM_EFFECT, .priority = (uint8_t)champ};
+                e.data[0] = (uint8_t)thing_type(thing);
+                e.data[2] = item_gdat_index(thing);
+                timeline_add_event(&e);
+            }
+        }
+    }
+    if (mode) champ_compute_load(champ);
+}
+
+/* Draws the icon of the leader hand object into the cursor: its 4 bpp color numbers and its palette colors. */
+static void render_hand_icon(void)
+{
+    static const uint8_t identity[HAND_ICON_COLORS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    uint16_t t = game.leader_hand;
+    int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
+    const Bitmap *image = draw_gdat_image(category, index, entry);
+    const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
+    Bitmap cursor = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, 8};
+    memset(leader_hand.cursor, HAND_ICON_KEY, sizeof leader_hand.cursor);
+    const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
+    if (image && colors) {
+        gfx_blit_bitmap(image, &cursor, r, 0, 0, UI_OPAQUE, identity);
+        memcpy(leader_hand.palette, colors, sizeof leader_hand.palette);
+    }
+    draw_free_temp();
+}
+
+void ui_show_object_name(uint16_t thing)
+{
+    text_print_newline();
+    text_print_message(MESSAGE_OBJECT_NAME, item_name(thing));
+}
+
+void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)
+{
+    if (thing == THING_NONE) return;
+    thing &= THING_INDEX_MASK | THING_TYPE_MASK << THING_TYPE_SHIFT;
+    leader_hand.attr = item_attr(thing, ATTR_FLAGS);
+    leader_hand.weight = (uint16_t)item_weight(thing);
+    game.leader_hand = thing;
+    render_hand_icon();
+    ui_show_object_name(thing);
+    (void)defer_cursor;  /* the port draws the cursor each frame (inv_cursor_object) */
+    champ_apply_item_effects((int16_t)game.leader, thing, -1, EFFECT_MODE_ADD);
+    sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 1, 0);
+}
+
+uint16_t champ_remove_object_from_leader_hand(void)
+{
+    uint16_t thing = game.leader_hand;
+    if (thing == THING_NONE) return thing;
+    leader_hand.attr = 0;
+    leader_hand.weight = 0;
+    game.leader_hand = THING_NONE;
+    leader_hand.icon = HAND_ICON_NONE;
+    champ_apply_item_effects((int16_t)game.leader, thing, -1, EFFECT_MODE_REMOVE);
+    sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 0, 0);
+    return thing;
+}
+
+void inv_update_hand_cursor(void)
+{
+    if (game.leader_hand == THING_NONE || !(item_attr(game.leader_hand, ATTR_FLAGS) & ITEM_FLAG_ICON_IN_HAND)) return;
+    uint8_t icon = (uint8_t)item_icon_index(game.leader_hand, -1, 1);
+    if (icon == leader_hand.icon) return;
+    render_hand_icon();
+    leader_hand.icon = icon;
+}
+
+uint16_t inv_cursor_object(void) { return game.leader_hand; }

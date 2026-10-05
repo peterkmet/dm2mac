@@ -7,6 +7,7 @@
 #include "dungeon.h"
 #include "gdat.h"
 #include "hooks.h"
+#include "inventory.h"
 #include "item.h"
 #include "move.h"
 #include "random.h"
@@ -1278,7 +1279,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
             case WALL_CLICK_ITEM: {
                 int match = item_get_index(hand) == data;
                 skip = match == (flags >> 5 & 1);
-                if (match && flags & 4) champ_remove_object_from_leader_hand();  /* the original frees it */
+                if (match && flags & 4) set_thing_word(champ_remove_object_from_leader_hand(), THING_NEXT, THING_NONE);  /* frees it */
                 break;
             }
             case WALL_CLICK_TOGGLE: {

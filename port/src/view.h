@@ -63,6 +63,11 @@ enum view_click_kind {
 #define VIEW_CLICK_ZONE_FIXED 9     /* zones 0 to 7: the cells of the party square and of the square in front; 8: an alcove */
 extern ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 extern int view_click_zone_count;
+/* The object of a click at (x, y) of the viewport among the objects in the cell of thing (the cell bits) on the
+   square (square_x, square_y) at view position pos, by click zone kind; a chest opens or closes. placing: thing is the
+   leader hand object that goes there. Returns the object, THING_NONE when the click is done (a chest changed, or
+   thing went into an open chest), THING_ENDOFLIST when thing must drop; thing when nothing is hit. */
+uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y, uint16_t thing, int kind, int placing);
 /* True when the ornament of the wall at view position pos (0 to 3) shows a pixel at (x, y) of the viewport. */
 int view_hit_test_wall_ornament(int pos, int x, int y);
 /* The ornament (low byte of the front face word) that the wall things from first show on the face that looks to

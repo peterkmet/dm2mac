@@ -201,10 +201,10 @@ LOOP_START, LOOP_STEP, LOOP_WAIT, LOOP_WAIT_END, LOOP_STEP_END = 0x24696, 0x246A
 GAME_START_SESSION, INPUT_MOUSE_CLICK, INPUT_POLL, INPUT_FLUSH = 0x551D4, 0x20C5D, 0x210DC, 0x209E0
 KBD_KEY_AVAILABLE, KBD_READ_KEY = 0x114B8, 0x11413
 G_TIMER_STEP, G_TICK_ELAPSED, G_PARTY_SLEEPING = 0x7EFAC, 0x717F2, 0x7F234
-# The loop functions of later steps: champion damage, time effects, hand cursor, status boxes, burning lights,
+# The loop functions of later steps: champion damage, time effects, status boxes, burning lights,
 # repeated actions (Step 15); creature activation (Step 16); music (Step 19); the mouse cursor, its areas, and the
 # IBMIOP input lock (not ported).
-LOOP_STUBS = (0x47113, 0x47CC3, 0x4910B, 0x4904F, 0x39044, 0x40EE2, 0x34236, 0x342A3, 0x10AF6, 0x14889, 0x1483A,
+LOOP_STUBS = (0x47113, 0x47CC3, 0x4904F, 0x39044, 0x40EE2, 0x34236, 0x342A3, 0x10AF6, 0x1483A,
               0x1482E, 0x14846, 0x14743, 0x14B1F, 0x14B4F, 0x14C0E, 0x14C7B, 0x14C87,
               # game_start_session: the screen fill, the retrace wait, and the dialog after a load with its disk
               # check (Step 20)

@@ -3,6 +3,7 @@
 #include "creature.h"
 #include "draw.h"
 #include "dungeon.h"
+#include "inventory.h"
 #include "item.h"
 #include "move.h"
 #include "random.h"
@@ -2717,4 +2718,82 @@ int view_wall_face_ornament(int map, uint16_t first, int dir)
     apply_wall_things(&s, first, dir, 1);
     view.map = saved;
     return (uint8_t)s.side[SIDE_FRONT];
+}
+
+/* Chest pictures and states of a hit test. */
+#define CHEST_OPEN_PICTURE 0x48
+enum { CHEST_HIT_NONE, CHEST_HIT_OPEN = 2, CHEST_HIT_INSIDE = 3 };
+#define CHEST_CAPACITY 8
+#define ALCOVE_ORDINAL_FIRST 2
+#define ALCOVE_ORDINAL_END 14
+#define HIT_KEY 10
+#define ATTR_SLOTS_NO_CONTAINER 0x8000
+
+uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y, uint16_t thing, int kind, int placing)
+{
+    uint16_t group = THING_NONE, t;
+    if (kind == CLICK_POSSESSIONS) {
+        group = creature_group_at(party.cur_map, square_x, square_y);
+        t = thing_word(group, GROUP_POSSESSIONS);
+    } else {
+        t = dungeon_square_first_thing(party.cur_map, square_x, square_y);
+    }
+    if (t == THING_ENDOFLIST) return placing ? thing : THING_NONE;
+    int ordinal = kind == CLICK_ALCOVE ? ALCOVE_ORDINAL_FIRST : 0;
+    uint16_t hit = THING_NONE, chest = THING_NONE;
+    int hit_state = CHEST_HIT_NONE;
+    for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+        if (!is_item(t) || t >> THING_CELL_SHIFT != thing >> THING_CELL_SHIFT) continue;
+        int state = CHEST_HIT_NONE;
+        uint16_t this_chest = THING_NONE;
+        if (item_is_chest(t) && gdat_exists(draw_gdat(), CAT_CONTAINER, item_gdat_index(t), 1, CHEST_OPEN_PICTURE)) {
+            this_chest = t;
+            if (thing_word(t, CONTAINER_KIND) & CONTAINER_OPEN) state = CHEST_HIT_INSIDE;
+            else if (!placing) state = CHEST_HIT_OPEN;
+        }
+        for (;;) {
+            view_draw_object(t, pos, 0, 0, ordinal, group, 0, state, kind == CLICK_ALCOVE);
+            if (view_hit_test_picture(x, y, HIT_KEY) == 1) {
+                chest = this_chest;
+                hit = t;
+                hit_state = state;
+                break;
+            }
+            if (!state) break;
+            state = CHEST_HIT_NONE;
+        }
+        ordinal++;
+        if (kind == CLICK_ALCOVE) {
+            if (ordinal >= ALCOVE_ORDINAL_END) ordinal = ALCOVE_ORDINAL_FIRST;
+        } else {
+            ordinal &= JITTER_COUNT - 1;
+        }
+    }
+    draw_free_temp();
+    if (chest == THING_NONE) return hit != THING_NONE ? hit : thing;
+    uint16_t kind_word = thing_word(chest, CONTAINER_KIND);
+    switch (hit_state) {
+    case CHEST_HIT_NONE:
+        if (placing) return THING_ENDOFLIST;
+        if (!(kind_word & CONTAINER_OPEN)) return hit;
+        set_thing_word(chest, CONTAINER_KIND, kind_word & ~CONTAINER_OPEN);
+        break;
+    case CHEST_HIT_OPEN: set_thing_word(chest, CONTAINER_KIND, kind_word | CONTAINER_OPEN); break;
+    case CHEST_HIT_INSIDE: {
+        if (placing && item_attr(thing, ATTR_SLOTS) & ATTR_SLOTS_NO_CONTAINER) return THING_ENDOFLIST;
+        uint16_t *contents = (uint16_t *)(void *)(dungeon_thing_record(chest) + CONTAINER_CONTENTS);
+        uint16_t last = *contents;
+        int count = 0;
+        for (uint16_t c = *contents; c != THING_ENDOFLIST; c = dungeon_next_thing(c), count++) last = c;
+        if (placing) {
+            if (count >= CHEST_CAPACITY) return THING_ENDOFLIST;
+            dungeon_append_thing(thing, contents);
+        } else if (count > 0) {
+            dungeon_unlink_thing_from_list(last, (uint8_t *)contents);
+            champ_put_object_in_leader_hand(last, 1);
+        }
+        break;
+    }
+    }
+    return THING_NONE;
 }
