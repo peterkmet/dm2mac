@@ -3,6 +3,7 @@
 #include "creature.h"
 #include "draw.h"
 #include "dungeon.h"
+#include "item.h"
 #include "random.h"
 #include "save.h"
 #include "timeline.h"
@@ -1484,7 +1485,7 @@ static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordina
         if (pos == POS_PARTY && row < 2) return;  /* the near rows of the party square are below the view */
         zone = zone_id_for_view_cell(pos, cell, 0) | ZONE_RELATIVE;
     }
-    uint8_t category = dungeon_thing_gdat_category(thing), index = dungeon_thing_gdat_index(thing);
+    uint8_t category = item_gdat_category(thing), index = item_gdat_index(thing);
     int chest = category == CAT_CONTAINER && index < CHEST_KINDS;
     if (chest && !open_state) open_state = thing_word(thing, CONTAINER_KIND) & CONTAINER_OPEN;
     int entry = object_picture[open_state][0], flip = 0, lateral = view_lateral[pos];
@@ -1646,7 +1647,7 @@ static void view_draw_pending_possessions(int pos)
 /* The picture kind of a missile by the pictures of its payload. */
 static int missile_picture_kind(uint16_t thing)
 {
-    int category = dungeon_thing_gdat_category(thing), index = dungeon_thing_gdat_index(thing);
+    int category = item_gdat_category(thing), index = item_gdat_index(thing);
     if (!picture_exists(category, index, MISSILE_PICTURE_FRONT)) return MISSILE_NO_PICTURE;
     if (!picture_exists(category, index, MISSILE_PICTURE_SIDE)) return MISSILE_NO_SIDE;
     if (picture_exists(category, index, MISSILE_PICTURE_BACK)) return MISSILE_FRONT_BACK;
@@ -1672,7 +1673,7 @@ static void view_draw_missiles(uint16_t thing, int pos, int position)
             view_draw_object(object, pos, 0, MISSILE_DY, -1, THING_NONE, 1, 0, 0);
             continue;
         }
-        int category = dungeon_thing_gdat_category(thing), index = dungeon_thing_gdat_index(thing);
+        int category = item_gdat_category(thing), index = item_gdat_index(thing);
         int spell = category == CAT_EXPLOSION, power = dungeon_thing_record(thing)[PROJECTILE_POWER];
         int scale, offset_scale;
         if ((!spell || power == POWER_MAX) && depth == 0) {

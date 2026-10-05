@@ -175,45 +175,6 @@ uint16_t dungeon_next_thing(uint16_t thing)
     return thing_word(thing, THING_NEXT);
 }
 
-/* The GDAT category of the pictures of each thing type. */
-static const uint8_t thing_gdat_category[THING_TYPE_COUNT] = {
-    0x0e, 0x18, 0xff, 0xff, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0xff, 0xff, 0xff, 0xff, 0x0d,
-};
-#define GDAT_NONE 0xff
-#define ITEM_INDEX_MASK 0x7f
-#define POTION_INDEX_SHIFT 8
-#define CONTAINER_KIND_BITS 1           /* container kind in bits 1-2, subtype in bits 13-15 */
-#define CONTAINER_KIND_MASK 3
-#define CONTAINER_SUBTYPE_SHIFT 13
-#define CONTAINER_KIND_STEP 8           /* GDAT index: kind * 8 + subtype */
-
-uint8_t dungeon_thing_gdat_category(uint16_t thing)
-{
-    while (thing != THING_NONE && thing_type(thing) == THING_PROJECTILE) thing = thing_word(thing, PROJECTILE_PAYLOAD);
-    return thing == THING_NONE ? GDAT_NONE : thing_gdat_category[thing_type(thing)];
-}
-
-uint8_t dungeon_thing_gdat_index(uint16_t thing)
-{
-    for (;;) {
-        if (thing == THING_NONE) return GDAT_NONE;
-        if (thing >= THING_SPELL_FIRST) return (uint8_t)(thing - THING_SPELL_FIRST);
-        uint16_t data = thing_word(thing, ITEM_DATA);
-        switch (thing_type(thing)) {
-        case THING_GROUP: return dungeon_thing_record(thing)[GROUP_CREATURE];
-        case THING_WEAPON: case THING_ARMOUR: case THING_MISC: case THING_EXPLOSION: return data & ITEM_INDEX_MASK;
-        case THING_SCROLL: return 0;
-        case THING_POTION: return data >> POTION_INDEX_SHIFT & ITEM_INDEX_MASK;
-        case THING_CONTAINER: {
-            uint16_t kind = thing_word(thing, CONTAINER_KIND);
-            return (uint8_t)((kind >> CONTAINER_KIND_BITS & CONTAINER_KIND_MASK) * CONTAINER_KIND_STEP + (kind >> CONTAINER_SUBTYPE_SHIFT));
-        }
-        case THING_PROJECTILE: thing = data; break;
-        default: return GDAT_NONE;  /* texts and sensors give their ornament; the view does not ask for them */
-        }
-    }
-}
-
 void dungeon_append_thing(uint16_t thing, uint16_t *list)
 {
     set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);

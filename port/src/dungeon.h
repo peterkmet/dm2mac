@@ -62,7 +62,6 @@ enum thing_field {
     GROUP_FLAGS = 0x0a,         /* byte: bit 1 seen by the party */
     GROUP_ANIM_STATE = 0x0a,    /* static creatures: animation state word */
     GROUP_DIR = 0x0e,           /* bits 8-9: direction the creature faces */
-    ITEM_DATA = 2,              /* weapons, armour, misc items: GDAT index in bits 0-6; potions: bits 8-14 */
     CONTAINER_CONTENTS = 2,
     CONTAINER_KIND = 4,         /* bit 0 open, bits 1-2 container kind, bits 13-15 subtype */
     PROJECTILE_PAYLOAD = 2,
@@ -76,7 +75,6 @@ enum thing_field {
 #define EXPLOSION_TYPE_MASK 0x7f
 #define EXPLOSION_CENTERED 0x0080
 #define EXPLOSION_POWER_SHIFT 8
-#define THING_SPELL_FIRST 0xff80    /* projectile payloads from here on are spells, not things */
 
 #define TELEPORTER_CLOSED 0x0001
 #define SENSOR_TYPE_MASK 0x7f
@@ -112,9 +110,6 @@ int dungeon_thing_valid(uint16_t thing);
 uint16_t thing_word(uint16_t thing, int field);
 void set_thing_word(uint16_t thing, int field, uint16_t value);
 uint16_t dungeon_next_thing(uint16_t thing);
-/* The GDAT category and index of the pictures of a thing; a projectile gives those of its payload, 0xff for none. */
-uint8_t dungeon_thing_gdat_category(uint16_t thing);
-uint8_t dungeon_thing_gdat_index(uint16_t thing);
 uint8_t *dungeon_square_byte(int map, int x, int y);
 /* Appends thing at the end of a thing list. */
 void dungeon_append_thing(uint16_t thing, uint16_t *list);

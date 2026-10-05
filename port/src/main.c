@@ -3,9 +3,12 @@
 #include <SDL3/SDL.h>
 #include "draw.h"
 #include "gdat.h"
+#include "item.h"
 #include "platform.h"
 #include "save.h"
 #include "scale.h"
+#include "text.h"
+#include "ui.h"
 #include "video.h"
 #include "view.h"
 #include "zone.h"
@@ -14,7 +17,6 @@
 #define PATTERN_CELLS 16 /* 16 x 16 cells show the 256 palette colors */
 #define VGA_MAX 63
 #define EXIT_USAGE 2
-#define ZONE_VIEWPORT 7
 #define PATH_SIZE 1024
 
 /* Fills the palette with a color cube and the screen with one cell per palette color. */
@@ -45,14 +47,17 @@ static int show_save(const char *data, const char *path)
         fprintf(stderr, "cannot load the save %s\n", path);
         return 0;
     }
-    if (!zone_load(gdat) || !pal_load_color_ramps(gdat)) {
-        fprintf(stderr, "%s has no screen layout or color ramps\n", graphics);
+    if (!zone_load(gdat) || !pal_load_color_ramps(gdat) || !text_init(gdat)) {
+        fprintf(stderr, "%s has no screen layout, color ramps, or font\n", graphics);
         return 0;
     }
     for (int c = 0; c < PALETTE_COLORS; c++) gdat_palette_color(gdat, c, palette[c]);
     draw_init(gdat);
     view_enter_map(game.party_map);
     view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
+    ui_reset();
+    money_init_coin_table();
+    ui_draw_game_screen();
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_VIEWPORT, r))
         for (int y = 0; y < VIEWPORT_HEIGHT; y++)
