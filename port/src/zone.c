@@ -27,7 +27,7 @@ enum anchor {
 int16_t zone_clip_rect[RECT_SIZE];
 
 /* The view part that stays visible while the party walks. */
-static const int16_t walk_view_rect[RECT_SIZE] = {21, 8, 182, 110};
+const int16_t walk_view_rect[RECT_SIZE] = {21, 8, 182, 110};
 
 static struct {
     int count;
