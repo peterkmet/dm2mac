@@ -137,6 +137,7 @@ static int item_find_in_possessions(uint16_t group, int type)
 void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t time)
 {
     TimelineEvent e = {.time_map = event_time(time), .type = EVENT_SQUARE};
+    /* fix: the original leaves the priority of a hold effect uninitialized; it gets the priority of a clear */
     e.priority = effect == EFFECT_SET ? 1 : effect == EFFECT_CLEAR || effect == EFFECT_HOLD ? 3 : 2;
     e.data[EVENT_X] = (uint8_t)x;
     e.data[EVENT_Y] = (uint8_t)y;
