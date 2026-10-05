@@ -413,6 +413,14 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
     return command;
 }
 
+uint16_t input_find_command(int mode, int x, int y, int buttons, int key, int16_t *rect)
+{
+    uint16_t command = key ? find_key_command(&input_mode_roots[mode], (uint16_t)key)
+                           : find_click_command(&input_mode_roots[mode], x, y, buttons);
+    memcpy(rect, in.rect, sizeof in.rect);
+    return command;
+}
+
 void input_set_mode(int mode)
 {
     if (mode != in.mode) input_flush();

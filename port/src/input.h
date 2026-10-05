@@ -29,6 +29,8 @@ extern int input_drag_state;
 /* Builds the input tables; call once. */
 void input_init(void);
 void input_set_mode(int mode);
+/* The command of a click (key 0) or of a key in mode, and the rectangle of its zone; 0 for none. */
+uint16_t input_find_command(int mode, int x, int y, int buttons, int key, int16_t *rect);
 /* The mode of before the last input_push_mode returns. */
 void input_push_mode(int mode);
 void input_pop_mode(void);
