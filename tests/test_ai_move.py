@@ -101,6 +101,9 @@ class Ai:
         for c_off, o_off, size in AI_FIELDS.values():
             ctypes.memmove(self.ai + c_off, emu.read(G_AI + o_off, size), size)
         ctypes.c_uint16.in_dll(lib, "search_direction_bits").value = struct.unpack("<H", emu.read(G_DIRECTION_BITS, 2))[0]
+        theirs = emu.read(G_AI_SQUARE, 0x1E)
+        ctypes.memmove(self.square, theirs[:7] + b"\0" + theirs[8:14] + theirs[0x1C:0x1E], 16)
+        ctypes.memmove(self.scan, theirs[14:21] + b"\0" + theirs[22:28], 14)
         for addr, name in zip(G_LIGHT_SUMS, LIGHT_NAMES):
             ctypes.c_int16.in_dll(lib, name).value = s16(struct.unpack("<H", emu.read(addr, 2))[0])
         for name, ptr, map_addr, width_addr in DISTANCE_MAPS:
