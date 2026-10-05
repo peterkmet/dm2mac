@@ -1,6 +1,7 @@
 #ifndef VIEW_H
 #define VIEW_H
 #include <stdint.h>
+#include "draw.h"
 #include "gfx.h"
 
 /* The dungeon view shows 23 squares: 3 at depth 0 and 1 (the party square, left, right), 5 at depth 2 and 3,
@@ -56,6 +57,8 @@ const uint8_t *view_get_shaded_palette(int category, int index, int entry, int k
 void view_copy_image_mode1(const Bitmap *src, Bitmap *dst);
 /* The view zone of grid cell cell (0 to 24, 5 x 5) of view element base, turned by dir. */
 int zone_id_for_view_cell(int base, int cell, int dir);
+/* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else key. */
+void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key);
 /* Turns a cell of a 5 x 5 grid around its center by dir quarter turns. */
 int view_rotate_grid5_cell(int cell, int dir);
 /* The thing grid position of cell (0 to 24) of the square (base_x, base_y) of the map. */

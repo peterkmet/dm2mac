@@ -1355,8 +1355,7 @@ static void weather_draw_rain(void)
     gfx_blit_tiled_4to8(rain->pixels, view_viewport.pixels, NULL, rect, width, offset, VIEWPORT_WIDTH, 0, palette);
 }
 
-/* Fills the offscreen bitmap of a wet ornament: with rain, a random part of the rain picture, else the color key. */
-static void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
+void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
 {
     int transparent = mapped_key(ctx, key);
     if (!game.rain_intensity) {
@@ -1377,7 +1376,7 @@ static void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
     int16_t area = (int16_t)(drops->width * drops->height);
     int offset = rand_below((uint16_t)(area - WET_TILE_TRIM));
     int width = (int16_t)(area - (rand_next() & RANDOM_TILE_SPREAD) - WET_TILE_EXTRA);
-    if (area <= WET_TILE_TRIM || width <= offset) {  /* fix: the original reads far past a small rain bitmap */
+    if (width <= offset) {  /* fix: the original tiles from past the end of the rain bitmap */
         gfx_fill_bitmap(offscreen, transparent);
         return;
     }

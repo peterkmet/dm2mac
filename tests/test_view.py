@@ -641,6 +641,11 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
 SPELL_MISSILES = (0, 2, 3, 4, 6, 7, 9, 10, 13, 49)
 EXPLOSION_TYPES = (0, 2, 3, 4, 6, 7, 9, 10, 13, 14, 40, 48, 49)
 THING_GROUP, THING_PROJECTILE, THING_EXPLOSION, EVENT_SIZE = 4, 14, 15, 12
+HIDDEN_POSSESSION_TYPES = (19, 26, 37)  # creature infos 7, 10, 39: static, possessions not shown
+
+
+class CreatureInfo(ctypes.Structure):
+    _fields_ = [("flags", ctypes.c_uint16), ("possessions", ctypes.c_uint16), ("size", ctypes.c_uint8)]
 
 
 class Things:
@@ -670,7 +675,8 @@ class Things:
 def test_added_missiles_explosions_creatures_match_original(lib, loaded, original_view):
     # start.DAT has no missiles or explosions: add one at the end of the thing list of a square in view, with a
     # random cell, payload, power, flight direction, or explosion type, or a creature of any type with or without
-    # a possession, then compare the whole view picture.
+    # a possession (also creatures that hide it, and static creatures in other animation frames), then compare the
+    # whole view picture.
     lib.thing_word.restype = ctypes.c_uint16
     game = WeatherGame.in_dll(lib, "game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
@@ -681,6 +687,19 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
     free_weapons = [t for t in range(lib.dungeon_thing_count(5)) if lib.thing_word(5 << 10 | t, 0) == 0xFFFF]
     creature_types = [t for t in range(256) if lib.gdat_exists(original_view.gdat, 0x0F, t, 7, 0xFD)]
     assert free_groups and free_weapons and creature_types
+    lib.creature_info.restype = ctypes.POINTER(CreatureInfo)
+    lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    size = ctypes.c_uint32()
+
+    def frame_data(creature):
+        item = lib.gdat_find(original_view.gdat, 0x0F, creature, 7, 0xFD)
+        return ctypes.string_at(lib.gdat_item(original_view.gdat, item, ctypes.byref(size)), size.value)
+
+    def frame_count(creature):
+        return len(frame_data(creature)) // 8
+
+    hidden_cases = shifted_cases = 0
+    shifted_types = [t for t in creature_types if frame_count(t) and frame_data(t)[6]]  # moving in their first frame
     rng = random.Random(24)
     views = 0
     for map_, x, y, direction in views_with_things(lib, 700, 25):
@@ -701,13 +720,26 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
             things.write_event(0, 8, struct.pack("<H", rng.randrange(4) << 10))
         elif kind < 0.75:
             thing = THING_GROUP << 10 | rng.choice(free_groups) | cell
+            hidden = rng.random() < 0.3  # creatures that show no possessions
+            shifted = rng.random() < 0.2
+            creature = rng.choice(HIDDEN_POSSESSION_TYPES if hidden else shifted_types if shifted else creature_types)
             possessions = THING_END
-            if rng.random() < 0.7:
+            if hidden or rng.random() < 0.7:
                 possessions = 5 << 10 | rng.choice(free_weapons) | rng.randrange(4) << 14
                 things.write(possessions, 0, struct.pack("<HH", THING_END, rng.randrange(40)))
-            record = struct.pack("<HHBBHHHHH", THING_END, possessions, rng.choice(creature_types), 0, 100, 0, 0, 0,
-                                 rng.randrange(4) << 8)
+            sequence = state = 0
+            flags = lib.creature_info(original_view.gdat, creature).contents.flags
+            frames = frame_count(creature)
+            if flags & 1 and frames:  # a static creature keeps its animation in the record: a still frame
+                sequence = rng.randrange(frames)
+                state = rng.randrange(min(64, frames - sequence))
+            creature_dir = rng.randrange(4)
+            record = struct.pack("<HHBBHHHHH", THING_END, possessions, creature, 0, 100, sequence, state, 0,
+                                 creature_dir << 8)
             things.write(thing, 0, record)
+            hidden_cases += hidden
+            side = 2 if flags & 4 else (direction - creature_dir) & 3
+            shifted_cases += frame_data(creature)[(sequence + state) * 8 + 6] != 0 and side in (0, 2)
         else:
             thing = THING_EXPLOSION << 10 | rng.randrange(lib.dungeon_thing_count(THING_EXPLOSION)) | cell
             data = rng.choice(EXPLOSION_TYPES) | rng.choice([0, 0x80]) | rng.randrange(256) << 8
@@ -720,6 +752,90 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
         assert mine == original, (map_, x, y, direction, hex(thing), hex(last))
         views += 1
     things.write_event(0, 0, saved_event)
-    assert views > 200
+    assert views > 200 and hidden_cases > 10 and shifted_cases > 0
     game.party_x, game.party_y, game.party_dir, game.party_map = saved
+    lib.view_enter_map(game.party_map)
+
+
+VIEW_DRAW_WET_IMAGE, G_MAP_GFX_SET_BYTE, G_VIEW_SHADE = 0x4E930, 0x75BFE, 0x802CE
+WET_INDEX, CTX_SIZE = 0x7000, 0x13A
+CTX_W, CTX_RECT, CTX_PALETTE_COUNT, CTX_PALETTE = 0x12, 0x24, 0x38, 0x3A
+
+
+class DrawCtx(ctypes.Structure):
+    _fields_ = [("image", ctypes.POINTER(Bitmap)), ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("w", ctypes.c_int16),
+                ("h", ctypes.c_int16), ("category", ctypes.c_uint8), ("index", ctypes.c_uint8), ("entry", ctypes.c_uint8),
+                ("item", ctypes.c_int16), ("zone", ctypes.c_int16), ("anchor", ctypes.c_int16), ("dx", ctypes.c_int16),
+                ("dy", ctypes.c_int16), ("src_x", ctypes.c_int16), ("src_y", ctypes.c_int16),
+                ("rect", ctypes.c_int16 * 4), ("dst", ctypes.POINTER(Bitmap)), ("transparent", ctypes.c_int16),
+                ("flip", ctypes.c_int16), ("scale_x", ctypes.c_int16), ("scale_y", ctypes.c_int16),
+                ("palette_count", ctypes.c_int16), ("palette", ctypes.c_uint8 * 256)]
+
+
+def test_wet_image_matches_original(lib, loaded, original_view):
+    # The rain background of wet ornaments of all widths, with small widths where the tile row of the rain bitmap
+    # (rect width x rain height - 16 - 0 to 31 pixels) is shorter than its random start. There the original tiles
+    # from past the end of the rain bitmap; the port fills the color key.
+    game = WeatherGame.in_dll(lib, "game")
+    saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.rain_intensity, game.wind_dir)
+    gdat, emu = original_view.gdat, original_view.emu
+    map_ = next(m for m in range(lib.dungeon_map_count())
+                if lib.gdat_exists(gdat, 0x17, lib.dungeon_map_graphics(m) >> 4 & 0xF, 1, 0x71))
+    x, y = next((x, y) for x in range(lib.dungeon_map_width(map_)) for y in range(lib.dungeon_map_height(map_))
+                if lib.dungeon_square(map_, x, y) >> 5)
+    lib.view_draw_wet_image.argtypes = [ctypes.POINTER(DrawCtx), ctypes.POINTER(Bitmap), ctypes.c_int]
+    lib.rand_below.restype = ctypes.c_uint16
+    lib.rand_below.argtypes = [ctypes.c_uint16]
+    lib.rand_next.restype = ctypes.c_uint32
+    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    rng = random.Random(26)
+    ctx_addr = original_view.alloc(CTX_SIZE)
+    drawn = filled = small_drawn = 0
+    for case in range(400):
+        direction, light = rng.randrange(4), rng.choice([0, 3])
+        game.rain_intensity, game.wind_dir = rng.choice([5, 0x20, 0x50, 0x90]), rng.randrange(4)
+        c_view(lib, map_, x, y, direction, light)
+        emu.write(G_MAP_GFX_SET_BYTE, bytes([lib.dungeon_map_graphics(map_) >> 4 & 0xF]))
+        emu.write(G_VIEW_PARTY_DIR, struct.pack("<h", direction))
+        emu.write(G_VIEW_SHADE, bytes([light * 10]))
+        emu.write(G_RAIN_INTENSITY, bytes([game.rain_intensity, game.wind_dir]))
+        w = rng.choice([1, 2, 3, 3, 3, 4, 5, 8, 13, 30])
+        h = rng.choice([1, 4, 20])
+        key = rng.randrange(16)
+        palette = bytes(rng.randrange(256) for _ in range(16)) if rng.random() < 0.5 else None
+        ctx = DrawCtx()
+        ctx.w, ctx.h = w, h
+        ctx.rect[:] = [0, 0, w, h]
+        ctx.palette_count = 16 if palette else -1
+        if palette:
+            ctx.palette[:16] = palette
+        pixels = (ctypes.c_uint8 * (w * h))()
+        offscreen = Bitmap(ctypes.cast(pixels, u8_p), w, h, 8)
+        emu.write(ctx_addr, bytes(CTX_SIZE))
+        emu.write(ctx_addr + CTX_W, struct.pack("<h", w))
+        emu.write(ctx_addr + CTX_RECT, struct.pack("<4h", 0, 0, w, h))
+        emu.write(ctx_addr + CTX_PALETTE_COUNT, struct.pack("<h", ctx.palette_count))
+        if palette:
+            emu.write(ctx_addr + CTX_PALETTE, palette)
+        original_pixels = original_view.cache_alloc_image(WET_INDEX, w, h, 8)
+        case_seed = rng.getrandbits(32)
+        # the tile row and its start, from the same random numbers
+        seed.value = case_seed
+        area = struct.unpack("<h", struct.pack("<H", w * 20 & 0xFFFF))[0]
+        start = lib.rand_below((area - 0x3C) & 0xFFFF)
+        row = struct.unpack("<h", struct.pack("<H", area - (lib.rand_next() & 0x1F) - 0x10 & 0xFFFF))[0]
+        seed.value = case_seed
+        lib.view_draw_wet_image(ctypes.byref(ctx), ctypes.byref(offscreen), key)
+        mine = bytes(pixels)
+        if row <= start:
+            assert mine == bytes([palette[key] if palette else key]) * (w * h), (case, w, h)
+            filled += 1
+            continue
+        emu.write_u32(G_RANDOM_SEED, case_seed)
+        emu.call(VIEW_DRAW_WET_IMAGE, ctx_addr, WET_INDEX, key)
+        assert mine == emu.read(original_pixels, w * h), (case, w, h, key)
+        drawn += 1
+        small_drawn += area <= 0x3C
+    assert drawn > 100 and filled > 10 and small_drawn > 5
+    (game.party_x, game.party_y, game.party_dir, game.party_map, game.rain_intensity, game.wind_dir) = saved
     lib.view_enter_map(game.party_map)
