@@ -641,3 +641,41 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Not ported: the mouse areas of the cursor (enter and leave events, cursor shapes); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
 - The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
 - Later steps (empty hooks in `port/src/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); the weather update and the object transfer of a sensor (Step 17); sounds (Step 18); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
+
+## 11. Weather, day and night, light, and Skullkeep machines (Step 17)
+
+### Day and night
+
+- One hour is `0x555` game ticks; a day has 24 hours. `dungeon_load` sets the day time offset: GDAT value `(3, 0, 0x0b, 0)` (clamped to 0 to 23) × `0x555`.
+- `g_light_by_hour` (`0x760ec`) gives the darkness of each hour: 5 at night, 1 by day. `world_update_day_night(0)` sets the hour light again when the game time reaches `g_next_hour_time` (saved, game record `+0x38`), and then the next hour time is 1 hour later.
+- `weather_init` also sets the hour light. A load calls it before the game record is read, so the hour light comes from the game time before the load until the next hour starts. The port keeps this.
+
+### Weather
+
+- The sky state of a map is GDAT value `(8, graphics set, 0x0b, 0x66)`. `g_sky_state_table` (`0x75be2`, 4 bytes per state): byte 0 tells that the weather shows (states 1 and 4 in `GRAPHICS.DAT`), byte 2 that rain shows in the view.
+- A weather cycle (`weather_init(0)`) clears script byte `0x40`, selects a storm curve (0 to 3) and a multiplier (1 to 3), and queues the first storm step (event `0x54`) after 500 to 8499 ticks. The first cycle of a run uses curve 3, multiplier 1, and 0 to 499 ticks.
+- A storm step (event `0x54`, `world_update_day_night(1)`) adds multiplier × the curve value of the step to the storm intensity (0 to 255) and queues the next step after 50 to 305 ticks. After 32 steps a new cycle starts.
+- Each game step (`world_update_day_night(0)`): without a storm, the clouds thin out and lightning comes with a chance of 1 in 64. With a storm, the sky darkness is the storm intensity; rain starts by chance and then follows the storm intensity; rain grows the clouds; lightning comes more often from intensity `0xcd` on.
+- Sky objects (`g_sky_objects`, 10-byte records, ended by `0xff`): rain (`0x67` to `0x69` by sky darkness from `0x10`, `0x40`, `0x80`; `0x80` sets heavy rain), clouds (`0x6a` to `0x6c` by cloud cover from `0x40`, `0x80`, `0xc0`), and a lightning bolt (`0x64` to `0x66`) at a random place between its zone and the next zone. The weather update builds them again in each step while the weather shows.
+- Lightning: in a storm from intensity 60 (random), it strikes 1 to 8 random floor squares of the map. A creature is struck only when it is near the party or in front of it (creature info byte `+2` not `0xff`). The party square is struck only from game time 12000 on, in a strong storm (`0xb6`), and when script byte `0x40` is above a random threshold (4 to 7). A strike creates explosion `0xffb0` (Step 16). A strike near the party, seen while the inventory is open or the party sleeps, adds 1 to script byte `0x41`. The graphics set of map 1 gives a fixed square instead (value key `0x6c`: x high byte, y low byte), which gets a square event. Without a strike, a bolt shows in the sky; every second bolt thunders after a delay. The flash sets the light level to 0 for one step.
+
+### The party light
+
+- `light_update_party_light` sets `g_light_level` (0 bright to 5 dark). A map without bits 12 to 15 in its object counts word is always at level 1.
+- The light sum: the torches (items with attribute flag `0x10`) in the leader hand and in the champion hands, by charges through `g_light_power_table`, the first fully and each next one half as much (after one bubble pass, not a full sort); the square light sum; the magic light (`g_magic_light`); the map value `0x67`; and the daylight (`0x7570e`, by hour light + heavy rain) while the weather shows.
+- The level is the first of `99, 75, 50, 25, 1` that the sum is above, at least the map value `0x68`. An explosion light sum above 12 makes the view one level darker.
+- `light_add_square_light` adds the light of one square around the party: lit wall ornaments and windows (value keys `0xf8` and `0x63`), floor ornaments, explosions and spell missiles, and creatures, less by distance. Its caller is the creature search of `creature_refresh_party_maps` (Step 16).
+
+### Skullkeep machines: object transfer sensors
+
+- Sensor kinds `0x3b`, `0x40`, `0x47`, `0x48`, `0x49` on walls and floors move objects from the event square to the sensor target (`0x47` and `0x49`: from the target to the event square). `0x40` moves the items of an item class (`shop_parse_item_class_set`, Step 15). `0x48` and `0x49` move one object only. Floor sensors `0x3b` and `0x40` take objects from all cells.
+- An object that matches the item of the sensor data (item `0x1ff`: any object) moves with `sensor_transfer_object`: its charges become full, empty, or random (sensor flags bits 3 and 4), and on a floor it lands in a random cell. Objects in the possessions of creatures on the square move too. Bones of a champion bring the champion back (`champ_revive`, Step 15) unless sensor flag bit 2 is set.
+
+### Deviations of the C port (Step 17)
+
+- Uninitialized data of the original: a storm step event (`0x54`) keeps 6 data bytes from the stack; the port sets them to 0. A transfer sensor with charge mode 3 adds an uninitialized amount; the port adds 0.
+- Bounds: the thunder delay divides by the storm multiplier; the port uses 1 for a multiplier of 0 (the original divides by 0). A sky state past the table shows no weather (`GRAPHICS.DAT` has states 0 to 4 only).
+- `view_enter_map` holds the view part of `gdat_load_map_graphics`. Its callers (`game_enter_map` and the pit fall in `move_follow_square_transitions`) then call `world_update_day_night(0)`, as the original does at the end of `gdat_load_map_graphics`. The sky objects of the saved weather that 12a built in `view_enter_map` are gone: the weather update builds them.
+- `build/dm2 --save` no longer calls `view_enter_map` before `game_start_session`: `game_start_session` enters the map, as in the original. Thus the weather update runs once at the start, as in the original.
+- The port reads the map graphics flags (rain, clouds, lightning pictures) and the sky state from the party map when it needs them; the original keeps them in globals that `gdat_load_map_graphics` sets.
+- Hooks of other steps: `explosion_create` (Step 16; records its arguments for the tests), `creature_refresh_party_maps` with the square light search (Step 16), `champ_revive`, `shop_parse_item_class_set` (no item class), and the item creation of wall sensor `0x3c` (`sensor_create_item`) (Step 15). Until Step 16, the square light sums stay 0, and the light level changes only at the hour (outdoors), with lightning, magic light events, and burnt torches.
