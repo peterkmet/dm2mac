@@ -73,3 +73,82 @@ def test_clicks_and_keys_match_original(tree, lib, keys):
             if mine:
                 assert bytes(rect) == their_rect, (mode, hex(key))
     assert found > 300
+
+
+class MainLoop(ctypes.Structure):
+    _fields_ = [("tick_threshold", ctypes.c_int), ("tick_count", ctypes.c_int), ("timer_ticks", ctypes.c_uint32),
+                ("running", ctypes.c_int), ("view_hidden", ctypes.c_int), ("end", ctypes.c_int)]
+
+
+@pytest.fixture
+def session(lib, gdat, start, tmp_path):
+    """start.DAT ready to play, as build/dm2 --save starts it."""
+    from test_move import GameRecord
+    path = tmp_path / "SKSAVE0.DAT"
+    path.write_bytes(start)
+    assert lib.save_load(str(path).encode(), gdat) == 0
+    assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
+    lib.draw_init(gdat)
+    game = GameRecord.in_dll(lib, "game")
+    party = __import__("test_move").Party.in_dll(lib, "party")
+    party.cur_map, party.new_map, party.move_steps, party.push_pending_group = -1, -1, 0, 0xFFFF
+    lib.view_enter_map(game.party_map)
+    lib.ui_reset()
+    lib.money_init_coin_table()
+    lib.ui_draw_game_screen()
+    lib.input_init()
+    lib.game_start_session()
+    return game, MainLoop.in_dll(lib, "main_loop")
+
+
+def run_ticks(lib, n):
+    for _ in range(n):
+        lib.game_tick()
+
+
+KEY_FORWARD, KEY_TURN_RIGHT, KEY_PAUSE = 0x4C, 0x4D, 0x01
+
+
+def test_keys_walk_and_turn_in_the_main_loop(session, lib):
+    # A game step every 8 timer ticks; the forward key moves the party (a slow walk ends a step later), the right
+    # key turns it, the pause key stops the game time until it is pressed again.
+    game, loop = session
+    lib.input_key_down.argtypes = [ctypes.c_uint16]
+    time, x, y, direction = game.game_time, game.party_x, game.party_y, game.party_dir
+    run_ticks(lib, 16)
+    assert game.game_time == time + 2 and loop.tick_threshold == 8
+    lib.input_key_down(KEY_FORWARD)
+    run_ticks(lib, 40)
+    dx, dy = ((0, -1), (1, 0), (0, 1), (-1, 0))[direction]
+    assert (game.party_x, game.party_y) == (x + dx, y + dy)
+    lib.input_key_down(KEY_TURN_RIGHT)
+    run_ticks(lib, 16)
+    assert game.party_dir == (direction + 1) % 4
+    lib.input_key_down(KEY_PAUSE)
+    run_ticks(lib, 8)
+    paused = game.game_time
+    run_ticks(lib, 40)
+    assert game.game_time == paused and not loop.running
+    lib.input_key_down(KEY_PAUSE)
+    run_ticks(lib, 24)
+    assert loop.running and game.game_time > paused
+
+
+def test_clicks_on_the_movement_arrows(session, lib):
+    # Left clicks on the turn left, turn right, and forward arrows (layout zones 0x28, 0x29, and 0x2a).
+    game, loop = session
+    rect = (ctypes.c_int16 * 4)()
+    direction = game.party_dir
+    assert lib.zone_get_rect(0x28, rect)
+    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, 2)
+    run_ticks(lib, 16)
+    assert game.party_dir == (direction + 3) % 4
+    assert lib.zone_get_rect(0x29, rect)
+    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, 2)
+    run_ticks(lib, 16)
+    assert game.party_dir == direction
+    x, y = game.party_x, game.party_y
+    assert lib.zone_get_rect(0x2A, rect)
+    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, 2)
+    run_ticks(lib, 40)
+    assert (game.party_x, game.party_y) != (x, y)

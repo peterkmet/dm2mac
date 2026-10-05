@@ -333,9 +333,18 @@ def original_view(lib, gdat, start):
     return OriginalView(lib, gdat, start)
 
 
+class PartyHead(ctypes.Structure):
+    """The first fields of the C movement state (move.h, Party)."""
+    _fields_ = [(name, ctypes.c_int16) for name in ("cur_map", "square_x", "square_y", "square_map", "ref_dir",
+                                                     "move_steps")]
+
+
 def c_view(lib, map_, x, y, direction, light):
     game = WeatherGame.in_dll(lib, "game")
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
+    party = PartyHead.in_dll(lib, "party")
+    party.cur_map, party.move_steps = -1, 0  # no walk; the current map of the dungeon reads becomes map_
+    lib.dun_set_party_location(x, y, map_)
     lib.view_enter_map(map_)
     ctypes.c_int.in_dll(lib, "view_light_level").value = light
     ctypes.c_uint32.in_dll(lib, "random_seed").value = VIEW_SEED
@@ -844,6 +853,12 @@ def test_wet_image_matches_original(lib, loaded, original_view):
 G_VIEW_CLICK_ZONES, G_VIEW_CLICK_ZONE_COUNT, CLICK_ZONE_SIZE = 0x7F2EC, 0x7F400, 12
 
 
+def used_click_zones(raw):
+    """The click zones without the old rects and cells of the unused fixed zones (kind 0): the view keeps them."""
+    zones = [raw[i:i + CLICK_ZONE_SIZE] for i in range(0, len(raw), CLICK_ZONE_SIZE)]
+    return [z if z[11] else z[8:10] + z[11:] for z in zones]
+
+
 def test_view_click_zones_match_original(lib, loaded, original_view):
     # The click zones that the view drawing records (objects, alcoves, wall ornaments, door buttons, possessions)
     # for random places of all maps, as in test_view_picture_matches_original.
@@ -866,7 +881,8 @@ def test_view_click_zones_match_original(lib, loaded, original_view):
         original_view.draw(map_, x, y, direction, 0, b"\xff" + bytes(9))
         n = struct.unpack("<h", emu.read(G_VIEW_CLICK_ZONE_COUNT, 2))[0]
         assert count.value == n, (map_, x, y, direction)
-        assert bytes(zones)[:n * CLICK_ZONE_SIZE] == emu.read(G_VIEW_CLICK_ZONES, n * CLICK_ZONE_SIZE), (map_, x, y, direction)
+        mine = used_click_zones(bytes(zones)[:n * CLICK_ZONE_SIZE])
+        assert mine == used_click_zones(emu.read(G_VIEW_CLICK_ZONES, n * CLICK_ZONE_SIZE)), (map_, x, y, direction)
         with_zones += any(emu.read(G_VIEW_CLICK_ZONES + i * 12 + 11, 1)[0] for i in range(n))
         views += 1
     assert with_zones > 10
