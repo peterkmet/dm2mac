@@ -346,8 +346,8 @@ static int drink_potion(int champ, uint16_t thing)
         break;
     }
     case POTION_MANA: {
-        int16_t mana = min16(MANA_POTION_MAX, c->mana + value - 8);
-        if ((uint16_t)mana > c->mana) {
+        int16_t mana = min16(MANA_POTION_MAX, c->mana + value * 2 - 8);
+        if ((uint16_t)mana > c->max_mana) {
             int16_t limit = c->max_mana > c->mana ? c->max_mana : c->mana;
             mana = (int16_t)((uint16_t)mana - (((uint16_t)mana - limit) >> 1));
         }

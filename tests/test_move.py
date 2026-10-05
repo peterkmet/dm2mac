@@ -197,7 +197,9 @@ class Scenario:
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
                 0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0),
-                0x0C: (0, 0, 0, 0, 0, 0), 0x0E: (0xFF, 0xFF, 0xFF, 0, 0, 0), 0x4B: (0xFF, 0xFF, 0, 0, 0, 0)}
+                0x0C: (0, 0, 0, 0, 0, 0), 0x0E: (0xFF, 0xFF, 0xFF, 0, 0, 0), 0x4B: (0xFF, 0xFF, 0, 0, 0, 0),
+                0x47: (0, 0, 0, 0, 0, 0)}
+        no_priority = {0x47}  # the invisibility event of an action leaves its priority uninitialized too
         emu = self.emu
 
         def hook(uc, *_):
@@ -206,6 +208,8 @@ class Scenario:
             if mask:
                 data = emu.read(event + 6, 6)
                 emu.write(event + 6, bytes(b & m for b, m in zip(data, mask)))
+            if emu.read(event + 4, 1)[0] in no_priority:
+                emu.write(event + 5, b"\0")
 
         emu.uc.hook_add(UC_HOOK_CODE, hook, begin=TIMELINE_ADD_EVENT, end=TIMELINE_ADD_EVENT)
 

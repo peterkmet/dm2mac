@@ -18,7 +18,7 @@ CHAMP_GET_STRENGTH, CHAMP_GET_DEXTERITY, CHAMP_TEST_LUCK = 0x46A19, 0x46968, 0x4
 CHAMP_APPLY_PENDING_DAMAGE, CHAMP_APPLY_TIME_EFFECTS, ITEMS_BURN_HELD_LIGHTS = 0x47113, 0x47CC3, 0x39044
 CH = {"dir": 0x1C, "cell": 0x1D, "poisoned": 0x1F, "last_command": 0x20, "damage_event": 0x2E, "wounds": 0x34,
       "health": 0x36, "stamina": 0x3A, "mana": 0x3E, "defense": 0x42, "food": 0x44, "stats": 0x4A, "slots": 0xC3,
-      "aura": 0x102, "aura_value": 0x103}
+      "aura": 0x102, "aura_value": 0x103, "experience": 0x5F}
 WEAPON, CLOTHING = 5, 6
 DUN_UNLINK_THING_FROM_SQUARE = 0x1D542
 
@@ -56,7 +56,7 @@ class Rules:
         self.pick_up_pool()
         for t in self.pool:
             # a weapon kind (2: a torch), charges, and the do-not-discard bit
-            kind = rng.choice((2, 2, rng.randrange(0x30)))
+            kind = rng.choice((2, 2, rng.randrange(0x40)))
             self.set_word(t, 2, kind | 0x80 * rng.randrange(2) | rng.choice((0, 0x0400, 0x0400 * rng.randrange(16))))
         hands = rng.sample(self.pool, 8)
         for champ, cell in enumerate(rng.sample(range(4), 4)):
@@ -73,7 +73,10 @@ class Rules:
                       "aura": [rng.randrange(7)], "aura_value": struct.pack("<h", rng.choice((0, rng.randrange(120)))),
                       "slots": struct.pack("<HH", *(rng.choice((hands[2 * champ + k], 0xFFFF)) for k in range(2)))
                       + b"\xff\xff" * 28,  # the copies must not share the items of the first champion
-                      "damage_event": b"\xff\xff", "poisoned": [0]}
+                      "damage_event": b"\xff\xff", "poisoned": [0],
+                      "experience": struct.pack("<20I", *(rng.choice((0, rng.randrange(1 << rng.randrange(24)),
+                                                                      rng.randrange(1 << 22, 1 << 24)))
+                                                         for _ in range(20)))}
             for name, data in values.items():
                 champion_bytes(lib, champ, CH[name], data)
         sync_champions(lib, self.s)
@@ -171,3 +174,149 @@ def test_damage_rules_match_original(rules, lib):
         if n % 100 == 99:
             scenario.assert_equal(n)
     assert hits > 50 and kills > 3, (hits, kills)
+
+
+CHAMP_CONSUME_OBJECT, CHAMP_LIST_ACTIONS, CHAMP_PERFORM_ACTION = 0x39C3F, 0x3F9F5, 0x414A5
+CHAMP_USE_ACTION_CHARGE, CHAMP_RELOAD_HAND, CHAMP_PROCESS_REPEATED_ACTIONS = 0x40D39, 0x40AA6, 0x40EE2
+G_ACTION_LIST, G_ACTION_THING, G_ACTION_COUNT, G_ACTION_REPEAT = 0x7FB3C, 0x7FB4C, 0x7FB76, 0x7FAD8
+G_ACTION_HAND, G_ACTION_RESULT, G_ACTION_RESULT_FLAG, G_ACTION_RESULT_AMMO, G_ACTION_DELAY = (
+    0x7FB72, 0x7FB78, 0x7FB6E, 0x7FB74, 0x7FB68)
+POTION, MISC = 8, 10
+REPEATING_WEAPON = 14  # its third action repeats
+# Item kinds (GDAT indices) with actions, by thing type.
+ACTION_ITEMS = {WEAPON: [0, 1, 2, 3, 4, 5, 6, 8, 14, 17, 41, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44],
+                CLOTHING: [28, 29, 30, 31, 42, 47, 52], MISC: [1, 29, 30, 31, 32, 34, 43, 45, 63, 64]}
+
+
+class ActionState(ctypes.Structure):
+    _fields_ = [("champion", ctypes.c_int16), ("hand", ctypes.c_int16), ("mode", ctypes.c_int16),
+                ("dirty", ctypes.c_int16), ("redraw_delay", ctypes.c_int16), ("flags", ctypes.c_uint16),
+                ("result", ctypes.c_int16), ("result_flag", ctypes.c_int16), ("result_ammo", ctypes.c_uint16)]
+
+
+def assert_same_actions(rules, where):
+    """The action list, the action area results, and the repeats of both."""
+    lib, emu = rules.lib, rules.emu
+    mine = bytes((ctypes.c_uint8 * 64).in_dll(lib, "champ_action_repeat"))
+    assert mine == emu.read(G_ACTION_REPEAT, 64), where
+    count = ctypes.c_int.in_dll(lib, "champ_action_count").value
+    assert count == struct.unpack("<H", emu.read(G_ACTION_COUNT, 2))[0], where
+    actions = bytes((ctypes.c_uint8 * 9).in_dll(lib, "champ_actions"))
+    theirs = emu.read(G_ACTION_LIST, 12)
+    assert all(actions[3 * i:3 * i + 3] == theirs[4 * i:4 * i + 3] for i in range(count)), where
+    assert ctypes.c_uint16.in_dll(lib, "champ_action_thing").value == struct.unpack("<H", emu.read(G_ACTION_THING, 2))[0]
+    a = ActionState.in_dll(lib, "action")
+    theirs = [struct.unpack("<h", emu.read(addr, 2))[0] for addr in (G_ACTION_RESULT, G_ACTION_DELAY, G_ACTION_RESULT_FLAG)]
+    assert [a.result, a.redraw_delay, a.result_flag] == theirs, where
+    assert a.result_ammo == struct.unpack("<H", emu.read(G_ACTION_RESULT_AMMO, 2))[0], where
+
+
+def test_eating_drinking_and_actions_match_original(rules, lib):
+    # Potions of all kinds and powers, food, water from flasks, and every action of random items in the hands of
+    # random champions at random places: the actions, their charges, the reload of a free hand, and the repeats.
+    from test_move import squares
+    rng, emu, scenario = rules.rng, rules.emu, rules.s
+    lib.champ_list_actions.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
+    potions = [lib.dungeon_unused_thing(POTION) for _ in range(4)]
+    misc = [lib.dungeon_unused_thing(MISC) for _ in range(4)]
+    for t in potions + misc:
+        rules.set_word(t, 0, 0xFFFE)
+    places = squares(lib, (1,))
+    # places that face a creature group, for the melee actions and their repeats
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    facing = []
+    for map_, x, y, _ in places:
+        for d, (dx, dy) in enumerate(((0, -1), (1, 0), (0, 1), (-1, 0))):
+            fx, fy = x + dx, y + dy
+            if 0 <= fx < lib.dungeon_map_width(map_) and 0 <= fy < lib.dungeon_map_height(map_):
+                t = lib.dungeon_square_first_thing(map_, fx, fy)
+                while t != 0xFFFE:
+                    if t >> 10 & 15 == 4:
+                        facing.append((map_, x, y, d))
+                        break
+                    t = lib.dungeon_next_thing(t)
+    action_state = ActionState.in_dll(lib, "action")
+    emu.write(G_ACTION_THING, struct.pack("<H", 0xFFFF))  # the port starts without an action item
+    performed = consumed = 0
+    commands = set()
+    repeats = 0
+    for n in range(1500):
+        if n % 10 == 0:
+            rules.randomize()
+            if rng.random() < 0.5:
+                place = rng.choice(facing)
+                scenario.place(*place)
+                for c in range(4):
+                    champion_bytes(lib, c, CH["dir"], [place[3]])
+                sync_champions(lib, scenario)
+            else:
+                map_, x, y, _ = rng.choice(places)
+                scenario.place(map_, x, y, rng.randrange(4))
+        champ = rng.randrange(4)
+        if not champion_records(lib)[champ * CHAMPION_SIZE + CH["health"]:champ * CHAMPION_SIZE + CH["health"] + 2] != b"\0\0":
+            continue
+        kind = rng.randrange(4)
+        if kind == 0:
+            t = rng.choice(potions + misc)
+            if t >> 10 == POTION:
+                rules.set_word(t, 2, rng.choice((rng.randrange(6, 16), rng.randrange(0x80))) << 8 | rng.randrange(0x100))
+            else:
+                rules.set_word(t, 2, rng.choice((1, 8, 0x0b, 0x1d, 0x3a, rng.randrange(0x60))) | rng.randrange(4) << 14)
+            slot = rng.choice((0, 1, 13))
+            champion_bytes(lib, champ, CH["slots"] + 2 * slot, struct.pack("<H", t))
+            sync_champions(lib, scenario)
+            lib.champ_consume_object(champ, t, slot)
+            emu.call(CHAMP_CONSUME_OBJECT, champ, t, slot)
+            consumed += 1
+        elif kind == 1:
+            hand = rng.randrange(2)
+            if rng.random() < 0.7:  # an item with actions: a weapon, clothing, or a miscellaneous item
+                kind_, t = rng.choice(((WEAPON, rng.choice(rules.pool[:4])), (CLOTHING, rng.choice(rules.pool[4:])),
+                                       (MISC, rng.choice(misc))))
+                index = rng.choice(ACTION_ITEMS[kind_])
+                if kind_ == WEAPON and rng.random() < 0.6:
+                    index = REPEATING_WEAPON
+                charges = rng.randrange(4) << 14 if kind_ == MISC else rng.randrange(16) << (10 if kind_ == WEAPON else 9)
+                rules.set_word(t, 2, index | charges)
+                for c in range(4):  # the item must not be in two hands
+                    for k in range(2):
+                        off = c * CHAMPION_SIZE + CH["slots"] + 2 * k
+                        if struct.unpack_from("<H", bytes(champion_records(lib)), off)[0] == t:
+                            champion_bytes(lib, c, CH["slots"] + 2 * k, b"\xff\xff")
+                champion_bytes(lib, champ, CH["slots"] + 2 * hand, struct.pack("<H", t))
+                sync_champions(lib, scenario)
+            action_state.hand = hand
+            emu.write(G_ACTION_HAND, struct.pack("<h", hand))
+            thing = struct.unpack_from("<H", bytes(champion_records(lib)), champ * CHAMPION_SIZE + CH["slots"] + 2 * hand)[0]
+            mine = lib.champ_list_actions(champ, thing, hand)
+            theirs = emu.call(CHAMP_LIST_ACTIONS, champ, thing, hand)
+            assert mine == theirs, n
+            count = ctypes.c_int.in_dll(lib, "champ_action_count").value
+            if count:
+                index = rng.randrange(count) | rng.choice((0, 0, 0x8000))
+                mine = lib.champ_perform_action(champ, index)
+                theirs = emu.call(CHAMP_PERFORM_ACTION, champ, index)
+                assert mine == theirs, n
+                performed += 1
+                commands.add(bytes(champion_records(lib))[champ * CHAMPION_SIZE + CH["last_command"] + hand])
+                if rng.random() < 0.5:
+                    assert lib.champ_use_action_charge(champ) == emu.call(CHAMP_USE_ACTION_CHARGE, champ), n
+                for _ in range(rng.choice((0, 0, 2, 3))):  # the repeats of the next game steps
+                    lib.champ_process_repeated_actions()
+                    emu.call(CHAMP_PROCESS_REPEATED_ACTIONS)
+                    rules.assert_same((n, "repeat"))
+                    repeats += any(r for r in (ctypes.c_uint16 * 32).in_dll(lib, "champ_action_repeat")[1::4])
+        elif kind == 2:
+            hand = rng.randrange(3)
+            lib.champ_reload_hand(champ, hand)
+            emu.call(CHAMP_RELOAD_HAND, champ, hand)
+        else:
+            lib.champ_process_repeated_actions()
+            emu.call(CHAMP_PROCESS_REPEATED_ACTIONS)
+        rules.assert_same((n, kind))
+        assert_same_actions(rules, (n, kind))
+        if n % 100 == 99:
+            scenario.assert_equal(n)
+    assert performed > 150 and consumed > 150 and len(commands) > 20 and repeats > 2, (
+        performed, consumed, sorted(commands), repeats)
