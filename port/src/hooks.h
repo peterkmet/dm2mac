@@ -21,11 +21,22 @@ void items_burn_held_lights(void);
 void inv_update_hand_cursor(void);
 void timeline_event_altar_rebirth(TimelineEvent *e);
 void timeline_event_apply_item_effect(TimelineEvent *e);
-void timeline_event_magic_light(TimelineEvent *e);
 void champ_poison(int champ, int amount);
 uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
 void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);
+/* Rules of Step 15 that the spells use: they change nothing; the tests compare the arguments of their calls. */
+enum hook_call_kind {
+    HOOK_ADD_EXPERIENCE, HOOK_ADD_ACTION_DELAY, HOOK_ADD_OBJECT_TO_SLOT, HOOK_PUT_IN_LEADER_HAND, HOOK_LAUNCH_PROJECTILE
+};
+typedef struct { int32_t kind, args[5]; } HookCall;
+#define HOOK_CALL_MAX 64
+extern HookCall hook_calls[HOOK_CALL_MAX];
+extern int hook_call_count;
+void hook_record(int kind, int a, int b, int c, int d, int e);
+void champ_add_experience(int champ, int skill, uint32_t amount);
+void champ_add_action_delay(int champ, uint16_t ticks, int hand);
+void champ_add_object_to_slot(int champ, uint16_t thing, int slot);
 /* Rules of Step 15 that the creatures use: a luck test (returns 0: fails), the dexterity (0), the value of an item (0),
    and the removal of a hand object (clears the slot and returns the object). */
 int champ_test_luck(int champ, int chance);

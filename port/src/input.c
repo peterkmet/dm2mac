@@ -11,6 +11,7 @@
 #include "hooks.h"
 #include "item.h"
 #include "input.h"
+#include "magic.h"
 #include "move.h"
 #include "music.h"
 #include "save.h"
@@ -56,7 +57,7 @@ enum {
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
-    CMD_HAND_LAST = 0x7b
+    CMD_HAND_LAST = 0x7b, CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -986,6 +987,12 @@ int command_execute(Command *c)
         if (game.leader != 0xffff) inv_toggle(game.leader);
     } else if (command == CMD_VIEWPORT) {
         view_click_in_viewport(c->x, c->y);
+    } else if (command == CMD_CAST_SPELL) {
+        input_command_stop = magic_cast_entered_runes();
+    } else if (command == CMD_REMOVE_RUNE) {
+        magic_remove_last_rune();
+    } else if (command >= CMD_RUNE_FIRST && command <= CMD_RUNE_LAST) {
+        magic_add_rune(command - CMD_RUNE_FIRST);
     } else if (command == CMD_PAUSE) {
         game_pause();
     } else if (command == CMD_RESUME) {
