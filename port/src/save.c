@@ -432,7 +432,7 @@ static void pack_game_record(uint8_t *r)
     put_le16(r + REC_PARTY_MAP, game.party_map);
     put_le16(r + REC_LEADER, game.leader);
     put_le16(r + REC_EVENT_COUNT, timeline.count);
-    put_le32(r + REC_UNKNOWN_TIME_A, game.unknown_time_a);
+    put_le32(r + REC_UNKNOWN_TIME_A, game.last_combat_time);
     put_le32(r + REC_UNKNOWN_TIME_B, game.first_recruit_time);
     put_le16(r + REC_MOVE_COOLDOWN, game.party_move_cooldown);
     put_le16(r + REC_UNKNOWN_COUNTDOWN, game.throw_cooldown);
@@ -462,7 +462,7 @@ static void unpack_game_record(const uint8_t *r)
     game.party_map = le16(r + REC_PARTY_MAP);
     game.leader = le16(r + REC_LEADER);
     timeline.count = le16(r + REC_EVENT_COUNT);
-    game.unknown_time_a = le32(r + REC_UNKNOWN_TIME_A);
+    game.last_combat_time = le32(r + REC_UNKNOWN_TIME_A);
     game.first_recruit_time = le32(r + REC_UNKNOWN_TIME_B);
     game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
     game.throw_cooldown = le16(r + REC_UNKNOWN_COUNTDOWN);

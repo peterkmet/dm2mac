@@ -1,5 +1,6 @@
 #include <string.h>
 #include "action.h"
+#include "champ_action.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "input.h"
@@ -600,7 +601,13 @@ void ui_update_action_area(int tick)
         action.mode = ACTION_MODE_NONE;
         goto flush;
     }
-    /* ponytail: the hand reload countdown (Step 15) and the mana of an open minion map (Step 16) are game rules */
+    if (tick) {
+        /* the busy hands count down; a free hand reloads */
+        for (int i = 0; i < game.champion_count; i++)
+            for (int k = 0; k < ACTION_DELAY_COUNT; k++)
+                if (champion(i)->action_delay[k] && !--champion(i)->action_delay[k]) champ_reload_hand(i, k);
+    }
+    /* ponytail: the mana of an open minion map (Step 16) */
     if (action.result) {
         draw_action_result(action.result);
         action.dirty = 1;

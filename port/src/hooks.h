@@ -7,12 +7,9 @@
    returns the "nothing happened" value until its step ports it; the step then moves it to its module. */
 
 /* Step 15: champions. */
-void champ_process_repeated_actions(void);
 void timeline_event_magic_light(TimelineEvent *e);
 uint16_t item_create_by_index(int item);                                        /* returns THING_NONE */
 void champ_start_recruit(int x, int y, int map);
-/* A click in the view that throws the leader hand object. */
-void view_click_throw_object(int x, int y);
 
 /* Step 16: creatures and projectiles. */
 void creature_alert(uint16_t group, int x, int y, int flags, int amount, int chance);
@@ -39,6 +36,21 @@ void creature_update_anim_at(int x, int y, int start);
 void timeline_event_move_group(TimelineEvent *e);
 void projectile_process_event(TimelineEvent *e);
 void explosion_process_event(TimelineEvent *e);
+/* The champion actions on creatures, magic, missiles, and minions (Step 16). They return 0: nothing happened. */
+int champ_action_frighten(int power, int x, int y);
+int champ_melee_attack_creature(int champ, uint16_t group, int x, int y, int attack, int wounds, int skill, int power);
+int magic_cast_projectile_spell(int champ, int spell, int power, int mana_cost);
+void magic_add_light(int command, int power);
+int magic_cast_party_aura(int champ, int aura, int power, int use_mana);
+int move_party_warp_to_marker(void);
+void champ_launch_projectile(int champ, uint16_t thing, int kinetic, int attack, int step);
+void projectile_create(uint16_t thing, int x, int y, int cell, int dir, int kinetic, int attack, int step);
+int minion_map_set_location(uint16_t map_item, int x, int y, int map);
+uint16_t creature_summon_group(int type, int level, int dir, int x, int y, int map, uint16_t link, int search_dir);
+void creature_free_cached_ai_data(uint16_t group);
+void minion_dismiss(uint16_t group);
+/* Adds amount to the aura of the champions in mask for duration game steps (magic). */
+void magic_add_party_aura(int mask, int aura, int amount, int duration);
 /* Creates an explosion of type on cell (0xff: the center) of the square (x, y) of the current map. */
 void explosion_create(int type, int attack, int x, int y, int cell);
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);

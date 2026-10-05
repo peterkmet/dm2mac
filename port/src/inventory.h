@@ -57,6 +57,11 @@ void inv_put_object_in_free_slot(int champ, uint16_t thing);
 /* The timed effect of an eaten item (event 0x0e) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
    for a loaded game. */
 void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
+/* Uses a charge of an item that holds water; returns 1 when it had one. */
+int item_use_charge(uint16_t thing);
+/* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
+   champion of the open inventory (a click on the mouth). */
+void champ_consume_object(int champ, uint16_t thing, int slot);
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
 

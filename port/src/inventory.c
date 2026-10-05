@@ -7,6 +7,7 @@
 #include "hooks.h"
 #include "inventory.h"
 #include "item.h"
+#include "random.h"
 #include "move.h"
 #include "sensor.h"
 #include "text.h"
@@ -30,6 +31,7 @@ enum {
 #define REDRAW_MANA 0x0800          /* REDRAW_BARS */
 #define REDRAW_STATS 0x3000
 #define REDRAW_SKILLS 0x2000
+#define SOUND_SWALLOW 0x83
 
 LeaderHand leader_hand = {.icon = HAND_ICON_NONE};
 
@@ -219,11 +221,6 @@ void champ_add_object_to_slot(int champ, uint16_t thing, int slot)
 }
 
 #define CLICK_STATUS_HANDS 8        /* inv_click_slot slots 0 to 7: the hands of the status boxes */
-#define SLOT_POUCH_FIRST 13
-#define SLOT_QUIVER_FIRST 6         /* the slots that a hand loads from: 6, 7 to 9, 11, 12 */
-#define SLOT_QUIVER_LAST 9
-#define SLOT_QUIVER_READY 11
-#define SLOT_QUIVER_ACTION 12
 
 void inv_click_slot(int slot)
 {
@@ -290,4 +287,127 @@ void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
     item_set_gdat_index(thing, e->data[2]);
     champ_apply_item_effects(e->priority, thing, -1, mode);
     memcpy(record, saved, size);
+}
+
+/* ---- Eating and drinking ---- */
+
+#define ATTR_FOOD 3                 /* item attribute: the food value */
+#define ATTR_REFILLS 0x0001         /* ATTR_FLAGS bit: the item holds water */
+#define FOOD_MAX 0x800
+#define WATER_PER_DRINK 800
+#define WATER_PER_POTION 1600
+#define MANA_POTION_MAX 900
+#define POTION_POWER_MASK 0xff
+#define POTION_TYPE_SHIFT 8
+#define POTION_TYPE_MASK 0x7f
+#define EMPTY_FLASK 0x14            /* the potion kind of an empty flask */
+#define WOUND_TRIES 10
+#define REDRAW_EATEN 0x3800
+enum {
+    POTION_DEXTERITY = 6, POTION_STRENGTH, POTION_WISDOM, POTION_VITALITY, POTION_ANTIDOTE, POTION_STAMINA,
+    POTION_DEFENSE, POTION_MANA, POTION_HEALTH, POTION_WATER
+};
+#define AURA_DEFENSE 2
+
+static int16_t min16(int a, int b) { return (int16_t)a < (int16_t)b ? (int16_t)a : (int16_t)b; }
+
+int item_use_charge(uint16_t thing)
+{
+    if (!(item_attr(thing, ATTR_FLAGS) & ATTR_REFILLS) || !item_charges(thing)) return 0;
+    item_add_charges(thing, -1);
+    if (thing == game.leader_hand) champ_put_object_in_leader_hand(thing, 0);
+    return 1;
+}
+
+/* A potion changes the champion; returns 0 for a potion kind without an effect. */
+static int drink_potion(int champ, uint16_t thing)
+{
+    Champion *c = champion(champ);
+    uint16_t w = thing_word(thing, 2);
+    unsigned power = w & POTION_POWER_MASK;
+    int16_t divisor = (int16_t)(((0x1ff - (int)power) / (int)(((power + 1) >> 3) + 0x20)) >> 1);
+    int16_t value = (int16_t)(power / 25 + 8);
+    switch (w >> POTION_TYPE_SHIFT & POTION_TYPE_MASK) {
+    case POTION_DEXTERITY: champ_adjust_stat(c->stats[STAT_DEXTERITY], value); break;
+    case POTION_STRENGTH: champ_adjust_stat(c->stats[STAT_STRENGTH], (int16_t)(power / 35 + 5)); break;
+    case POTION_WISDOM: champ_adjust_stat(c->stats[STAT_WISDOM], value); break;
+    case POTION_VITALITY: champ_adjust_stat(c->stats[STAT_VITALITY], value); break;
+    case POTION_ANTIDOTE: {
+        unsigned square = (power / 7) * (power / 7) & 0xffff;
+        champ_cure_poison(champ, (int16_t)(value + power + square));
+        break;
+    }
+    case POTION_STAMINA:
+        c->stamina = (int16_t)(c->stamina + min16(c->max_stamina / (uint16_t)divisor, c->max_stamina - c->stamina));
+        break;
+    case POTION_DEFENSE: {
+        int16_t amount = (int16_t)((uint16_t)value + ((uint16_t)value >> 1));
+        magic_add_party_aura((int16_t)(1 << champ), AURA_DEFENSE, amount, (uint16_t)(amount * amount));
+        break;
+    }
+    case POTION_MANA: {
+        int16_t mana = min16(MANA_POTION_MAX, c->mana + value - 8);
+        if ((uint16_t)mana > c->mana) {
+            int16_t limit = c->max_mana > c->mana ? c->max_mana : c->mana;
+            mana = (int16_t)((uint16_t)mana - (((uint16_t)mana - limit) >> 1));
+        }
+        c->mana = mana;
+        break;
+    }
+    case POTION_HEALTH: {
+        int16_t tries = (int16_t)(power / 42) > 1 ? (int16_t)(power / 42) : 1;
+        c->health = (int16_t)(c->health + c->max_health / (uint16_t)divisor);
+        uint16_t wounds = c->wounds;
+        for (int left = WOUND_TRIES; wounds && left; left--) {
+            for (int k = 0; k < tries; k++) c->wounds &= (uint16_t)rand_next();
+            tries = 1;
+            if (wounds != c->wounds) break;
+        }
+        break;
+    }
+    case POTION_WATER: c->water = min16(c->water + WATER_PER_POTION, FOOD_MAX); break;
+    default: return 0;
+    }
+    return 1;
+}
+
+void champ_consume_object(int champ, uint16_t thing, int slot)
+{
+    if (thing == THING_NONE) {
+        /* ponytail: the mouth held with an empty hand needs the mouse capture of the original; nothing here */
+        if (game.leader_hand == THING_NONE) return;
+        champ = ui.inventory - 1;
+        thing = game.leader_hand;
+        slot = -1;
+    }
+    if (ui.candidate) return;
+    Champion *c = champion(champ);
+    int16_t food = (int16_t)item_attr(thing, ATTR_FOOD);
+    if (food) {
+        if (slot == -1) champ_remove_object_from_leader_hand();  /* the original also animates the mouth */
+        c->food = min16(c->food + food, FOOD_MAX);
+        champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_CONSUME);
+        set_thing_word(thing, THING_NEXT, THING_NONE);
+        if (slot != -1) c->slots[slot] = THING_NONE;
+    } else if (item_use_charge(thing)) {
+        c->water = min16(c->water + WATER_PER_DRINK, FOOD_MAX);
+        if (slot != -1) c->slots[slot] = thing;
+    } else {
+        if (thing_type(thing) != THING_POTION || !drink_potion(champ, thing)) return;
+        if (slot == -1) champ_remove_object_from_leader_hand();
+        set_thing_word(thing, THING_NEXT, THING_NONE);
+        uint16_t flask = dungeon_unused_thing(THING_POTION);
+        if (flask == THING_NONE) return;
+        item_set_gdat_index(flask, EMPTY_FLASK);
+        if (slot == -1) champ_put_object_in_leader_hand(flask, 0);
+        else c->slots[slot] = flask;
+    }
+    if (c->stamina > c->max_stamina) c->stamina = c->max_stamina;
+    if (c->health > c->max_health) c->health = c->max_health;
+    sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, c->portrait, SOUND_SWALLOW, 0xfe, game.party_x, game.party_y, 0, 0x96, 0x80);
+    c->redraw |= REDRAW_EATEN;
+    if (slot != -1) {
+        c->redraw |= REDRAW_STATUS_BOX;
+        champ_compute_load(champ);
+    }
 }

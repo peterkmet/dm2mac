@@ -402,7 +402,9 @@ def test_party_states_match_original(port, original):
         lib.champ_draw_all_states(1)
         assert_same_screen_and_view(lib, original, name)
         pictures.add(original.screen())
-    assert len(pictures) == 9  # visible and awake go back to a former picture; hungry and poisoned show in the inventory
+    # visible and awake go back to a former picture; hungry and poisoned show in the inventory; the busy hands count
+    # down on each tick, so the states after busy differ
+    assert len(pictures) == 11
     original.emu.call(INV_TOGGLE, 0)
     lib.inv_toggle(0)
     assert_same_screen_and_view(lib, original, "inventory")

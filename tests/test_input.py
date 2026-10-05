@@ -201,9 +201,9 @@ LOOP_START, LOOP_STEP, LOOP_WAIT, LOOP_WAIT_END, LOOP_STEP_END = 0x24696, 0x246A
 GAME_START_SESSION, INPUT_MOUSE_CLICK, INPUT_POLL, INPUT_FLUSH = 0x551D4, 0x20C5D, 0x210DC, 0x209E0
 KBD_KEY_AVAILABLE, KBD_READ_KEY = 0x114B8, 0x11413
 G_TIMER_STEP, G_TICK_ELAPSED, G_PARTY_SLEEPING = 0x7EFAC, 0x717F2, 0x7F234
-# The loop functions of later steps: the status boxes (drawing), repeated actions (Step 15); creature activation (Step 16); music (Step 19); the mouse cursor, its areas, and the
+# The loop functions of later steps: the status boxes (drawing, Step 15); creature activation (Step 16); music (Step 19); the mouse cursor, its areas, and the
 # IBMIOP input lock (not ported).
-LOOP_STUBS = (0x4904F, 0x40EE2, 0x34236, 0x342A3, 0x10AF6,
+LOOP_STUBS = (0x4904F, 0x34236, 0x342A3, 0x10AF6,
               0x14B1F,
               # game_start_session: the screen fill, the retrace wait, and the dialog after a load with its disk
               # check (Step 20)

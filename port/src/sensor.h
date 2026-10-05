@@ -45,6 +45,6 @@ void sensor_process_map_entry(int entering);
 void timeline_event_sensor(TimelineEvent *e);
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
 int dun_get_global_var(int var);
-void dun_modify_global_var(int var, int value, int op);
+int dun_modify_global_var(int var, int value, int op);   /* returns the new value */
 
 #endif

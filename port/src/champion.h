@@ -71,6 +71,12 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 
 #define WOUND_LEGS 0x10
 #define NO_CHAMPION_CELL 0xff
+/* Champion slots of the quiver and the pouch. */
+#define SLOT_QUIVER_FIRST 6         /* the slots that the hands load from: 6, 7 to 9, 11, 12 */
+#define SLOT_QUIVER_LAST 9
+#define SLOT_QUIVER_READY 11
+#define SLOT_QUIVER_ACTION 12
+#define SLOT_POUCH_FIRST 13
 #define DRAG_CANCEL 0x8000
 
 /* Bytes of game.magic_light: the party spells. */

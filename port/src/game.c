@@ -1,6 +1,7 @@
 /* The main loop: game steps, the timeline, map changes. */
 #include <string.h>
 #include "action.h"
+#include "champ_action.h"
 #include "champion.h"
 #include "draw.h"
 #include "dungeon.h"
