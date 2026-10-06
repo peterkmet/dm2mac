@@ -226,6 +226,8 @@ Port the main loop, the command queue, mouse and keyboard handling, party moveme
 
 Port champion recruiting, stats, inventory, item use, eating and drinking, actions, money, and shops. Tests as in Step 14.
 
+- From Step 16: the click feedback opcodes `8` (`ui_draw_spell_icon`), `9` (`ui_draw_hand_icon`), and `0x0c` (`ui_draw_action_name`), each with the flush of the action area. `port/src/input.c` skips their argument byte until then.
+
 ### Step 16: Creatures, minions, projectiles, magic, combat
 
 Port creature groups and AI, minions, projectiles, explosions, spells, damage, and death. Tests as in Step 14.
@@ -244,7 +246,7 @@ Port creature groups and AI, minions, projectiles, explosions, spells, damage, a
   - Step 15: the merchant commands of the AI (`shop_cmd_wait_for_offer`, `shop_cmd_evaluate_offer`, `shop_cmd_count_payment`, `shop_cmd_pay_change`: fail), `champ_test_luck` (fails), `champ_get_dexterity` (0), `item_get_value` (0), `champ_remove_object_from_slot` (clears the slot only), champion damage and poison (recorded), item creation (none), the champion actions that call the spells and summons.
   - Step 15: also `champ_get_stat_adjusted_attack` (0), `champ_add_experience`, `champ_add_action_delay`, `champ_add_object_to_slot`, and `champ_put_object_in_leader_hand` (recorded; the tests compare the arguments).
   - Step 17: `light_update_party_light`, `light_add_square_light`; Step 18: sounds; Step 20: `dun_get_discarded_thing` (the reuse of discarded records when a table is full), `dungeon_level_digit` (0; the test points the table of the original at zeros).
-  - Not ported: the click feedback opcodes of the map option buttons (`0x0e`) and of the spell feedback (`8`, `0x0b`, `0x0c`).
+  - The click feedback opcodes `8` (spell icon), `9` (hand icon), and `0x0c` (action name) go to Step 15. The opcodes `0x0f` and `0x10` (dialog buttons) go to Step 20. Step 16 ports `0x0a` (pressed rune button, with `gfx_offscreen_draw_text_at` as `offscreen_draw_text_at`), `0x0b` (entered runes), and `0x0e` (map option buttons); `tests/test_magic.py` compares their screens with the original.
 - Done. Modules: `creature.c` (creature info, animation, active groups, group life, pushes, creature sensors), `ai.c` and `ai_data.c` (AI context, moods, plans, scanners, conditions, commands, actions, AI tables of `SKULL.EXE`), `ai_move.c` (perception, item filters, path search, party distance maps), `projectile.c` (projectiles, explosions, missile launchers, creature attacks on champions), `magic.c` (runes, spells, light, auras), `minion.c` (minion map panel). `build/dm2 --save tests/saves/start.DAT` shows animated creatures that move, attack, and react to pushes, missiles, and spells. Tests (emulator oracle on `start.DAT`; `tests/creature_oracle.py` makes every scenario of `tests/test_move.py` run the creatures and compare the active groups, the timeline queue, and the random seed):
   - `tests/test_creature.py`: activation after the load; 300 update steps of all creatures with save file checks; square events on the creature sensors; 80 pushes with each push arrow; the views of 40 running creature groups against the original pictures.
   - `tests/test_ai_move.py`: the AI context; square, line, and cache tests; `creature_ai_try_move`, `try_attack`, `try_door_action`, `try_take_item`, `try_use_wall_actuator`, `projectile_incoming`; item filters and lists; AI markers; target lines; `creature_ai_search_area`; path plans; party distance maps; the same with clouds, projectiles, and door spells near the creatures.
@@ -271,6 +273,8 @@ Port the digital sound playback through SDL3 audio. Sample data and format come 
 ### Step 20: Start menu, save and load, end of game
 
 Port the start menu, new game, load, save, and the end sequence of `SKULL.EXE`. Tests: a scenario test saves a game, loads it, and checks the same state; a state built from `start.DAT` that meets the end condition reaches the end-of-game state in the C port and in the original code in `dm2tools.emu` (emulator oracle, Step 14).
+
+- From Step 16: the click feedback opcodes `0x0f` and `0x10` (`ui_dialog_draw_button`, `ui_dialog_present`). `port/src/input.c` skips their 3 argument bytes until then.
 
 ### Step 21: Full test and release
 
