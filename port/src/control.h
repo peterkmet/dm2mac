@@ -4,9 +4,11 @@
 /* Control of the running game over a Unix domain socket: one JSON request per line, one JSON reply per line
    (docs/llm-control.md). Plain POSIX, no SDL. */
 
-/* Listens on the socket path (an old socket file is replaced, the folder is made). Returns 1 on success. */
+/* Listens on the socket path: an old socket there is replaced, the last folder level is made. Returns 0 when path
+   is another file (it stays) or the socket cannot open. */
 int control_open(const char *path);
-/* Call once per timer tick (game loop and modal loops): accepts a client, reads requests, and answers them. */
+/* main.c calls it on every PIT tick of the game loop and once per frame of the modal loops: accepts a client (other
+   clients get a busy error), reads requests, and answers them. A reply blocks until the client reads it. */
 void control_poll(void);
 /* Closes the sockets and removes the socket file. */
 void control_close(void);
