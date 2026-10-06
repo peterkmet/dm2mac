@@ -34,7 +34,6 @@ TIMELINE_PROCESS, TIMELINE_ADD_EVENT, DUN_SET_PARTY_LOCATION = 0x59A5C, 0x56390,
 SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
 # Functions of later steps and of the DOS layer: (address, stack arguments, result).
 STUBS = {
-    0x2FACC: (0, 0),                                                         # party distance map (Step 16)
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area

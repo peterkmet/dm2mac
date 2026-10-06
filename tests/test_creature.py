@@ -132,10 +132,8 @@ def test_animated_creature_views(creatures, lib):
     # The views of the creature groups while they run: the frames, the random shift and mirror, and the moves of the
     # active groups must draw the same pictures as the original.
     import random
-    from test_view import G_WEATHER_VISIBLE, WeatherGame, c_view
+    from test_world import draw_both
     rng = random.Random(18)
-    creatures.emu.write(G_WEATHER_VISIBLE, b"\0")
-    WeatherGame.in_dll(lib, "game").weather_visible = 0
     fronts = creature_fronts(lib)
     shown = 0
     for n, (map_, x, y, d) in enumerate(rng.sample(fronts, min(40, len(fronts)))):
@@ -143,7 +141,7 @@ def test_animated_creature_views(creatures, lib):
         for _ in range(rng.randrange(1, 6)):
             creatures.step()
         creatures.assert_same((n, "steps"))
-        original = creatures.view.draw(map_, x, y, d, 0, b"\xff" + bytes(9))
-        assert c_view(lib, map_, x, y, d, 0) == original, (n, map_, x, y, d)
+        mine, original = draw_both(creatures)
+        assert mine == original, (n, map_, x, y, d)
         shown += len(set(original)) > 2
     assert shown > 20
