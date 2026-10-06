@@ -331,12 +331,25 @@ Port weather, day and night, and the Skullkeep machines. Each system has at leas
 
 Port the digital sound playback through SDL3 audio. Sample data and format come from Step 5. Port the volume and stereo position calculation. Test: a differential test of the volume and stereo calculation against `dm2tools.emu`; a test that decodes one sound and checks the sample count.
 
+- Done. Modules: `sound.c` (sample load from `GRAPHICS.DAT`, `sound_party_offset`, `sound_volume_pan`, 64 voices, the mix at 44100 Hz, `sound_stop_all`, the master volume `sound_set_volume`), `sound_request.c` (sound requests and delayed sounds, Step 17), `platform.c` (the SDL audio stream, filled by `plat_audio_pump` on the main thread). Step 20 adds the sound volume setting and the test sound: `sound_set_volume_and_test` in `dialog.c`, called by the volume dialog and by `game_init` in `session.c`. Tests (`tests/test_sound.py`):
+  - Against the original in `dm2tools.emu`: `test_volume_pan_matches_original` (7075 cases of volume, lateral, and forward), `test_party_offset_matches_original`, `test_master_volume_scales_like_original` (the mix scale of each sound volume and the master volume of the original driver).
+  - Unit tests: `test_sound_load_sample_count` (one decoded sound), `test_volume_pan_fixes_ratio_overflow`, `test_party_offset_drops_sound_without_path`, `test_mix_upsamples_and_pans`, `test_all_voices_busy`.
+- Deviations: `docs/skull-formats.md` section 1.
+- Manual check: at the game start the test sound plays; a door, a wall bump, and the thunder play from the correct side.
+
 ### Step 19: Music
 
 - Add Nuked-OPL3 as `port/src/opl3.c` and `opl3.h` with its LGPL-2.1 license file.
 - Add the BNK loader (`MELODIC.BNK`, `DRUM.BNK`), the HMP parser, and the HMP player. Use the MIDI to OPL conversion from Step 5. If `HMIMDRV.386` cannot be decompiled, use a standard AdLib conversion.
 - Read `SONGLIST.DAT` and start the songs where the original starts them.
 - Test: render the first seconds of `TEST.HMP` and of one game song. The output is not silent, and the event times are equal to the times in the HMP file.
+- Done. Modules: `opl3.c` and `opl3.h` (Nuked-OPL3) with `opl3-LICENSE`, `fm.c` (BNK loader and the MIDI to OPL conversion of `fmmidi.com` in `HMIMDRV.386`), `hmp.c` (HMP parser and player), `music.c` (`SONGLIST.DAT`, the song of each map with the fade, pause, volume, and `music_render`). `main.c` calls `music_init` after `plat_init` and `music_quit` at the end, and connects `music_render` to the audio output with `plat_audio_music`. The song calls are at the places of the original: `music_update_for_map` in `game_step_end`, `music_pause` on the pause command, `music_set_volume` from `sound_set_volume_and_test` (volume dialog, and `game_init` after the start menu). The start menu plays no song, as in the original. Tests (`tests/test_music.py`):
+  - `test_event_times_equal_hmp_times` and `test_render_first_seconds_not_silent` (both for `TEST.HMP` and song 2), `test_loop_restarts_tracks_at_their_loop_points`, `test_render_without_banks_is_silent`.
+  - `SONGLIST.DAT` and the song changes: `test_songlist_gives_the_song_of_each_map`, `test_first_map_starts_its_song_now`, `test_new_map_fades_out_then_starts_its_song`, `test_map_change_during_fade_starts_the_song_now`, `test_song_zero_keeps_the_old_song_after_the_fade`, `test_map_outside_songlist_keeps_the_song`, `test_pause_until_next_game_step`, `test_volume_zero_stops_and_volume_up_restarts_the_song`.
+  - `test_fm_driver_writes_like_the_original`: the original `fmmidi.com` runs in Unicorn and gives the same OPL register writes as `fm.c` for edge events and the first 1000 events of each song.
+  - The program wiring in `main.c` has no automated test: the SDL audio device is not tested (manual check).
+- Deviations: `docs/skull-formats.md` section 2, "Deviations of the C port (Step 19)".
+- Manual check: music plays from the first game step, the song changes with a fade when the party goes to a map with another song, and the music volume in the volume dialog changes the music (0 stops it, a higher value starts it again).
 
 ### Step 20: Start menu, save and load, end of game
 
