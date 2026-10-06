@@ -20,11 +20,12 @@ GAME_CHAMPIONS = 252  # offsetof(Game, champions) in save.h
 
 # Original functions.
 GFX_DRAW_TEXT, TEXT_FORMAT, TEXT_MEASURE, TEXT_WRAP_LINE = 0x10E3F, 0x3A6AB, 0x554AB, 0x554FC
+SCREEN_PRESENT_VIEWPORT = 0x138D9
 GFX_FILL_ZONE_SCREEN, UI_DRAW_MOVEMENT_ARROWS, CHAMP_INIT_PARTY_STATE = 0x13B4D, 0x42AE4, 0x49D46
 CHAMP_DRAW_ALL_STATES, INV_TOGGLE, UI_UPDATE_ACTION_AREA = 0x4904F, 0x3A464, 0x3FE68
 TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, ZONE_GET_RECT, MONEY_INIT_COIN_TABLE = 0x5599F, 0x5570F, 0x19CFC, 0x154E0
 # Hardware and input services that the drawing calls: no-ops here.
-NO_OPS = (0x14C55, 0x14C68, 0x138D9, 0x13A87, 0x13B7C, 0x1C5FD, 0x20707, 0x206FF, 0x14889, 0x3BDDA)
+NO_OPS = (0x14C55, 0x14C68, 0x13A87, 0x13B7C, 0x1C5FD, 0x20707, 0x206FF, 0x14889, 0x3BDDA)
 # Original globals.
 G_UI_COLORS, G_FONT_BITMAP, G_MESSAGE_LINE, G_MESSAGE_AREA_Y = 0x7F210, 0x80414, 0x80410, 0x80418
 G_GAME_TIME, G_CHAMPIONS, G_LEADER_HAND = 0x7F22C, 0x7FBD0, 0x7FBB4
@@ -69,6 +70,9 @@ class OriginalUi(OriginalView):
         emu.call(ZONE_GET_RECT, 15, rect)
         height = struct.unpack("<h", emu.read(rect + 6, 2))[0]
         emu.write(G_MESSAGE_AREA_Y, struct.pack("<h", (height - 20) >> 1))
+        emu.call(ZONE_GET_RECT, 7, rect)
+        x, y = struct.unpack("<hh", emu.read(rect, 4))
+        emu.stub(SCREEN_PRESENT_VIEWPORT, lambda *_: self.present_viewport(x, y))
         emu.call(TEXT_SET_MESSAGE_CURSOR, 0, 2)
         emu.call(MONEY_INIT_COIN_TABLE)
         self.data_snapshot = emu.read(DATA_START, DATA_END - DATA_START)
@@ -90,6 +94,13 @@ class OriginalUi(OriginalView):
         emu.write(tramp, code)
         emu.write_u32(sp, tramp)
         return buf
+
+    def present_viewport(self, x, y):
+        """screen_present_viewport without the walk scaling: the view picture goes to the viewport zone."""
+        view = self.view()
+        for row in range(VIEW_H):
+            self.emu.write(VGA + (y + row) * SCREEN_W + x, view[row * VIEW_W:(row + 1) * VIEW_W])
+        return 0
 
     def screen(self):
         return self.emu.read(VGA, SCREEN_W * SCREEN_H)
