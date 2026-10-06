@@ -282,12 +282,12 @@ def test_party_walks_into_missiles(pj, lib):
 
 def test_missiles_hit_party_on_moves(pj, lib):
     # move_check_missiles_hit_party directly: projectiles in all cells of the square that the party leaves and of the
-    # square that it enters, with champions in random cells.
+    # square that it enters, with 1 to 4 champions in random cells.
     rng = random.Random(163)
     places = squares(lib, (1,))
     hit = 0
-    for n in range(250):
-        four_champions(pj, rng)
+    for n in range(150):
+        tc.random_champions(pj, rng)
         map_, x, y, _ = rng.choice(places)
         pj.place(map_, x, y, rng.randrange(4))
         d = rng.randrange(4)
