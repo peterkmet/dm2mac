@@ -13,6 +13,7 @@ HAND_OFFSET = 252 + 4 * 263  # offsetof(Game, leader_hand) in save.h
 KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = 0x4C, 0x4B, 0x4D
 LEFT = 2
 GOLD_COIN = 0x108
+TABLE_COIN = 0xA8B8  # the gold coin on the table of the first room (map 22)
 DUN_LINK_THING_TO_SQUARE, DUN_UNLINK_THING_FROM_SQUARE = 0x1D3DB, 0x1D542
 DOOR_STATE, DOOR_OPEN, DOOR_CLOSED = 7, 0, 4
 
@@ -116,6 +117,86 @@ def test_key_in_the_keyhole_opens_the_door(loop, lib):
     loop.assert_equal("end")
     mine, theirs = square(loop, 22, 3, 4)
     assert mine == theirs and mine & DOOR_STATE == DOOR_OPEN and closed[0] & DOOR_STATE == DOOR_CLOSED, (closed, mine)
+
+
+MONEY_BOXES = 0xA401, 0xA40F  # on map 0 at (3, 2), and on the shelf of map 22 at (1, 5)
+MONEYBOX_WORD, MONEYBOX_FLAG = 6, 0x0400
+DUN_GET_THING_DATA = 0x1D2DA
+
+
+def write_word(loop, thing, offset, value):
+    """Writes a word of a thing record in both."""
+    loop.lib.set_thing_word(thing, offset, value)
+    loop.emu.write(loop.emu.call(DUN_GET_THING_DATA, thing & 0x3FFF) + offset, struct.pack("<H", value))
+
+
+def test_money_box_flags_in_the_view(loop, lib):
+    # A money box flag clears when the party takes the box from the floor, and when the party drops an object onto
+    # the possession cell of the table where another money box lies.
+    lib.thing_word.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    floor_box, table_box = MONEY_BOXES
+    lib.dungeon_unlink_thing_from_square(floor_box, 0, 3, 2)
+    loop.emu.call(DUN_UNLINK_THING_FROM_SQUARE, floor_box, 0, 3, 2)
+    climb_ladder(loop)
+    lib.dungeon_unlink_thing_from_square(table_box, 22, 1, 5)
+    loop.emu.call(DUN_UNLINK_THING_FROM_SQUARE, table_box, 0, 1, 5)
+    floor = floor_box & 0x3FFF | 1 << 14
+    lib.dungeon_link_thing_to_square(floor, 22, 2, 6)
+    loop.emu.call(DUN_LINK_THING_TO_SQUARE, floor, 0, 2, 6)
+    last = TABLE_COIN  # the last possession of the table
+    while lib.thing_word(last, 0) != 0xFFFE:
+        last = lib.thing_word(last, 0)
+    write_word(loop, last, 0, table_box & 0x3FFF | 2 << 14)
+    write_word(loop, table_box, 0, 0xFFFE)
+    for box in MONEY_BOXES:
+        write_word(loop, box, MONEYBOX_WORD, lib.thing_word(box, MONEYBOX_WORD) | MONEYBOX_FLAG)
+    loop.assert_loop("boxes")
+    run(loop, walk(KEY_TURN_RIGHT, KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "floor")
+    run(loop, [("c", 150, 145), ("t", 16)], "take")
+    assert hands(loop)[0][0] == floor_box & 0x3FFF
+    run(loop, walk(KEY_FORWARD) + [("c", 77, 101), ("t", 16)], "drop")
+    assert hands(loop)[0][0] == 0xFFFF
+    loop.assert_loop("end")
+    assert not any(lib.thing_word(box, MONEYBOX_WORD) & MONEYBOX_FLAG for box in MONEY_BOXES)
+
+
+DUN_GET_UNUSED_THING, THING_SENSOR, FLOOR_PARTY_POSSESSES = 0x1DDD7, 3, 8
+SENSOR_TOGGLE, SENSOR_INVERTED = 2 << 3, 1 << 5  # sensor flags: the effect, and the inverted trigger
+
+
+def test_floor_sensor_sees_the_leader_hand(loop, lib):
+    # Two floor sensors under the party that test for a gold coin in the party possessions (new sensor records in
+    # both), with the door of the room as target: one toggles the door when the leader takes the coin from the
+    # table, the inverted one toggles it when the leader puts the coin back.
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+    lib.item_get_index.restype = ctypes.c_uint16
+    climb_ladder(loop)
+    run(loop, walk(KEY_TURN_RIGHT, KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT, KEY_FORWARD), "table")
+    door_x, door_y = 3, 4
+    x, y = loop.game.party_x, loop.game.party_y
+    for flags in (SENSOR_TOGGLE, SENSOR_TOGGLE | SENSOR_INVERTED):
+        sensor = lib.dungeon_unused_thing(THING_SENSOR)
+        assert loop.emu.call(DUN_GET_UNUSED_THING, THING_SENSOR) & 0xFFFF == sensor
+        for offset, value in ((0, 0xFFFE), (2, FLOOR_PARTY_POSSESSES | GOLD_COIN << 7), (4, flags),
+                              (6, door_x << 6 | door_y << 11)):
+            write_word(loop, sensor, offset, value)
+        lib.dungeon_link_thing_to_square(sensor, 22, x, y)
+        loop.emu.call(DUN_LINK_THING_TO_SQUARE, sensor, 0, x, y)
+    loop.assert_loop("sensors")
+    closed = square(loop, 22, door_x, door_y)
+    run(loop, [("c", 77, 101), ("t", 16)], "take")
+    assert lib.item_get_index(hands(loop)[0][0]) == GOLD_COIN
+    loop.assert_loop("take")
+    run(loop, [("t", 60)], "door")
+    mine, theirs = square(loop, 22, door_x, door_y)
+    assert mine == theirs and mine & DOOR_STATE != closed[0] & DOOR_STATE, (closed, mine)
+    run(loop, [("c", 77, 101), ("t", 16)], "back")
+    assert hands(loop)[0][0] == 0xFFFF
+    run(loop, [("t", 60)], "door")
+    loop.assert_loop("end")
+    mine, theirs = square(loop, 22, door_x, door_y)
+    assert mine == theirs and mine & DOOR_STATE == closed[0] & DOOR_STATE, (closed, mine)
 
 
 KEY_INVENTORY = 0x02

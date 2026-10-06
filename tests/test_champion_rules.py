@@ -416,3 +416,47 @@ def test_money_and_prices_match_original(rules, lib):
         assert mine_hand == struct.unpack("<H", emu.read(G_LEADER_HAND, 2))[0], n
     assert clicks > 30 and taken > 30
     scenario.assert_equal("end")
+
+
+G_MAGIC_LIGHT = 0x7FFEC  # 6 bytes: magic light, invisibility, action effect, haste, ...
+CHAMPIONS_OFFSET, MAGIC_LIGHT_OFFSET = 252, 252 + 4 * CHAMPION_SIZE + 2  # offsetof(Game, ...) in save.h
+EVENT_ITEM_EFFECT, EVENT_MAGIC_LIGHT, EVENT_INVISIBILITY, EVENT_AURA, EVENT_POISON = 0x0E, 0x46, 0x47, 0x48, 0x4B
+POTION, MISC = 8, 10
+
+
+@pytest.mark.parametrize("dead", [False, True])
+def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, dead):  # noqa: F811
+    # A save with magic light events (powers in and out of the table), invisibility, an aura on the first champion,
+    # poison, and the timed effects of eaten items (34 and 50 have skill modifiers that count when consumed): the
+    # load restores the light, the invisibility, the aura value (not on a dead champion), the poison, and the item
+    # effects, in the C port and in the original.
+    from test_save import Event, Game, original_load
+    path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
+    path.write_bytes(start)
+    assert lib.save_load(str(path).encode(), gdat) == 0
+    lib.draw_init(gdat)
+    game = Game.in_dll(lib, "game")
+    champions = ctypes.addressof(game) + CHAMPIONS_OFFSET
+    if dead:
+        ctypes.c_int16.from_address(champions + CH["health"]).value = 0
+    before = ctypes.string_at(champions, 4 * CHAMPION_SIZE)
+    events = [(EVENT_MAGIC_LIGHT, 0, struct.pack("<h", v)) for v in (3, -5, 15, -15, 16, 0)]
+    events += [(EVENT_INVISIBILITY, 0, b""), (EVENT_INVISIBILITY, 0, b""), (EVENT_AURA, 1, struct.pack("<h", 7)),
+               (EVENT_AURA, 2, struct.pack("<h", 9)), (EVENT_POISON, 0, struct.pack("<h", 30))]
+    events += [(EVENT_ITEM_EFFECT, 0, bytes([kind, 0, index]))
+               for kind, index in ((MISC, 34), (MISC, 50), (MISC, 3), (POTION, 0), (POTION, 5))]
+    for n, (type_, priority, data) in enumerate(events):
+        event = Event(game.game_time + 50 + n | game.party_map << 24, type_, priority,
+                      (ctypes.c_uint8 * 6)(*data.ljust(6, b"\0")))
+        lib.timeline_add_event(ctypes.byref(event))
+    assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == 0
+    saved = path.read_bytes()
+    assert lib.save_load(str(path).encode(), gdat) == 0
+    mine = ctypes.string_at(champions, 4 * CHAMPION_SIZE)
+    light = ctypes.string_at(ctypes.addressof(game) + MAGIC_LIGHT_OFFSET, 6)
+    emu = original_load(lib, gdat, saved)
+    assert light == emu.read(G_MAGIC_LIGHT, 6)
+    assert mine == emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE)
+    assert mine != before and light[2] == 2 and struct.unpack("<h", light[:2])[0] != 0
+    aura = struct.unpack_from("<h", mine, CH["aura_value"])[0] - struct.unpack_from("<h", before, CH["aura_value"])[0]
+    assert aura == (0 if dead else 7)

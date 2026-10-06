@@ -789,7 +789,7 @@ class DrawCtx(ctypes.Structure):
 
 def test_shop_displays_match_original(lib, gdat, loaded, original_view):
     # Each shop of start.DAT seen from the front: the display steps to the next item (the shop flag 4 of the save),
-    # then stays; a click below the center steps back, a click above steps forward. The item, its name, and the prices
+    # then stays; a click below the center steps back, a click above steps forward, a click at the center steps back. The item, its name, and the prices
     # in coins, in 3 light levels.
     game = WeatherGame.in_dll(lib, "game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
@@ -816,7 +816,7 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
         target = lib.thing_word(shop, 6)
         display = lib.dungeon_square_first_thing(map_, target >> 6 & 31, target >> 11)
         items = []
-        for step, (light, offset) in enumerate(((0, None), (3, None), (2, 50), (0, -50))):
+        for step, (light, offset) in enumerate(((0, None), (3, None), (2, 50), (0, -50), (5, 0))):
             if offset is not None:  # a click with an empty hand below or above the center clears the shown flag
                 Things(lib, emu).write(shop, 4, struct.pack("<H", lib.thing_word(shop, 4) & ~1))
                 ctypes.c_int16.in_dll(lib, "view_hit_offset_y").value = offset
@@ -825,7 +825,7 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
             assert c_view(lib, map_, party_x, party_y, (cell + 2) & 3, light) == original, (map_, x, y, step)
             items.append(lib.thing_word(display, 2) >> 7)
             assert struct.unpack("<H", emu.read(emu.call(DUN_GET_THING_DATA, display) + 2, 2))[0] >> 7 == items[-1]
-        assert items[0] == items[1] == items[3] != items[2], (map_, x, y)
+        assert items[0] == items[1] == items[3] != items[2] == items[4], (map_, x, y)
     game.party_x, game.party_y, game.party_dir, game.party_map = saved
     lib.view_enter_map(game.party_map)
 
