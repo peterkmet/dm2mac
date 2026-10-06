@@ -265,6 +265,38 @@ def test_inventory_panels_match_original(port, original):
     set_leader_hand(lib, original, 0xFFFF)
 
 
+INV_RENDER_HAND_ICON = 0x38392
+HAND_ICON_SIZE = 16
+
+
+class LeaderHand(ctypes.Structure):
+    _fields_ = [("attr", ctypes.c_uint16), ("weight", ctypes.c_uint16), ("icon", ctypes.c_uint8),
+                ("cursor", ctypes.c_uint8 * HAND_ICON_SIZE ** 2), ("palette", ctypes.c_uint8 * 16)]
+
+
+def test_hand_icon_matches_original(port, original):
+    # The cursor icon of objects in the leader hand: the 4 bpp color numbers of the original inv_render_hand_icon
+    # (high nibble first) and its 16 palette colors.
+    lib, emu = port, original.emu
+    hand = LeaderHand.in_dll(lib, "leader_hand")
+    bitmap = original.alloc(4 + HAND_ICON_SIZE ** 2 // 2) + 4
+    emu.write(bitmap - 4, struct.pack("<hh", HAND_ICON_SIZE, HAND_ICON_SIZE))
+    icon = original.alloc(6 + 16)
+    samples = [t for kind in (5, 6, 7, 8, 10) for t in things_of(lib, kind, 4)] + things_of(lib, 9, 2)
+    pictures = set()
+    for thing in samples:
+        lib.champ_put_object_in_leader_hand(thing, 0)
+        lib.champ_remove_object_from_leader_hand()
+        emu.write(icon, struct.pack("<HI", thing, bitmap))
+        emu.call(INV_RENDER_HAND_ICON, icon)
+        packed = emu.read(bitmap, HAND_ICON_SIZE ** 2 // 2)
+        theirs = bytes(v for b in packed for v in (b >> 4, b & 0xF))
+        assert bytes(hand.cursor) == theirs, hex(thing)
+        assert bytes(hand.palette) == emu.read(icon + 6, 16), hex(thing)
+        pictures.add(theirs)
+    assert len(pictures) > 10
+
+
 G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
     0x7FB50, 0x7FB4E, 0x757B8, 0x7FB5E, 0x7F234)
 GAME_MAGIC = GAME_LEADER_HAND + 2
