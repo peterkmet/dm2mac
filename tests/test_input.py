@@ -123,12 +123,13 @@ def test_champion_clicks_match_original(tree, lib):
 INPUT_SET_MODE, MOUSE_MOVE_EVENT, MOUSE_SET_HOVER_AREA, MOUSE_AREA_ADD, MOUSE_AREA_REMOVE = (
     0x20707, 0x14483, 0x14400, 0x14B4F, 0x14C0E)
 G_CURSOR_ZONES, G_INPUT_ZONES, G_MOUSE_AREAS, G_MOUSE_HOVER_INVALID = 0x722D4, 0x72D1F, 0x7F098, 0x7F0A0
-G_CURSOR_HAS_ITEM, G_LEADER, INPUT_MOUSE_CLICK = 0x7F094, 0x759A4, 0x20C5D
+G_CURSOR_HAS_ITEM, G_LEADER, INPUT_MOUSE_CLICK, G_CHAMP_DRAG_STATE = 0x7F094, 0x759A4, 0x20C5D, 0x7F0B4
 
 
 def test_cursor_matches_original(tree, lib):
-    # The cursor image (arrow, hand, held object) at random pointer positions and in each shown cursor zone, in all
-    # input modes, with and without an object in the leader hand and a leader, after mode changes in a random order.
+    # The cursor image (arrow, hand, held object, dragged champion) at random pointer positions and in each shown
+    # cursor zone, in all input modes, with and without an object in the leader hand and a leader, after mode changes
+    # in a random order, then in all input modes while a champion is dragged.
     from test_interface import set_leader_hand
     emu, game = tree.emu, tree.game
     for addr in (MOUSE_AREA_ADD, MOUSE_AREA_REMOVE):
@@ -144,8 +145,13 @@ def test_cursor_matches_original(tree, lib):
         emu.write(G_INPUT_ZONES + 7 * i + 6, bytes([emu.read(G_INPUT_ZONES + 7 * i + 6, 1)[0] & 0x3F]))
     rng = random.Random(19)
     modes = [*MODES, *rng.sample(MODES, 10), *rng.sample(MODES, 10)]
+    drag, action = ctypes.c_int.in_dll(lib, "input_drag_state"), ActionArea.in_dll(lib, "action")
     seen = set()
-    for mode in modes:
+    for mode, dragged in [(mode, 0) for mode in modes] + [(mode, 1) for mode in MODES]:
+        if dragged:  # the party icons show the dragged champion with the hands in the action area (action mode 0)
+            drag.value, action.mode = 1, 0
+            emu.write(G_CHAMP_DRAG_STATE, b"\1\0")
+            emu.write(G_ACTION_AREA_MODE, b"\0\0")
         lib.input_set_mode(mode)
         emu.call(INPUT_SET_MODE, mode, allow_io=True)
         points = [(rng.randrange(320), rng.randrange(200)) for _ in range(300)]
@@ -165,8 +171,9 @@ def test_cursor_matches_original(tree, lib):
             theirs = emu.call(MOUSE_MOVE_EVENT, x, y, allow_io=True) & 0xFFFF
             assert lib.input_cursor_at(x, y) == theirs, (mode, x, y, hex(hand), leader)
             seen.add((mode, theirs))
-    assert {cursor for _, cursor in seen} == {0, 1, 2}  # 3 needs a champion drag
+    assert {cursor for _, cursor in seen} == {0, 1, 2, 3}
     assert {mode for mode, cursor in seen if cursor == 2} >= {5, 8}
+    assert {mode for mode, cursor in seen if cursor == 3} == {5, 8}
 
 
 class MainLoop(ctypes.Structure):
