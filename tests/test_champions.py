@@ -6,7 +6,7 @@ import struct
 import pytest
 
 from test_input import Loop
-from test_move import gdat, start  # noqa: F401 (fixtures)
+from test_move import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
 
 G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAP_COLUMNS = 0x7FBB4, 0x7FBCE, 0x7F3C8
 HAND_OFFSET = 252 + 4 * 263  # offsetof(Game, leader_hand) in save.h
@@ -264,3 +264,35 @@ def test_recruit_and_cancel(loop, lib):
         loop.assert_loop(("finish", n))
     assert loop.game.champion_count == 2 and ui.candidate == 0
     loop.assert_equal("end")
+
+
+SENSOR_CREATE_ITEM = 0x3C
+
+
+def test_sensors_create_items(scenario, lib):
+    # Every item creation sensor (kind 0x3c) of the dungeon gets a set and a clear square event, plain and inverted:
+    # the new item (its record, gdat index, charges, the do-not-discard bit) goes to the target cell, or to a random
+    # cell of an open target square.
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    sensors = []
+    for map_ in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(map_)):
+            for y in range(lib.dungeon_map_height(map_)):
+                t = lib.dungeon_square_first_thing(map_, x, y)
+                while t != 0xFFFE:
+                    if t >> 10 & 15 == 3 and lib.thing_word(t, 2) & 0x7F == SENSOR_CREATE_ITEM:
+                        sensors.append((map_, x, y, t))
+                    t = lib.dungeon_next_thing(t)
+    assert len(sensors) >= 9
+    for n, (map_, x, y, sensor) in enumerate(sensors):
+        scenario.place(map_, x, y, 0)
+        flags = lib.thing_word(sensor, 4)
+        for inverted in (0, 0x20):
+            write_word(scenario, sensor, 4, flags & ~0x20 | inverted)
+            for effect in (0, 1):
+                square_event(scenario, map_, x, y, sensor >> 14, effect, 0)
+                scenario.step()
+                scenario.assert_same(("create", n, map_, x, y, inverted, effect))
+    scenario.assert_equal("end")

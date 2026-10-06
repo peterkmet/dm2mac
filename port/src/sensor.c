@@ -29,6 +29,10 @@
 /* Sensor record: type and data word, flags word, target word. */
 #define SENSOR_TARGET 6
 #define SENSOR_BUSY 0x0001
+#define SENSOR_CREATE_ITEM 0x3c
+#define SENSOR_KEEP_ITEM 0x0018     /* both bits: the new item is kept from reuse */
+enum { CHARGES_FULL, CHARGES_EMPTY, CHARGES_RANDOM };  /* sensor flags bits 3 and 4 of a new item */
+#define ALL_CHARGES 0x0f
 #define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * 8)  /* script variables: 64 flags, 64 bytes, 64 words */
 #define GLOBAL_WORD_FIRST 0x80
 #define GLOBAL_VAR_END 0xc0
@@ -642,6 +646,37 @@ static void set_sensor_data(uint16_t sensor, unsigned data)
     set_thing_word(sensor, SENSOR_TYPE_DATA, (uint16_t)((w & 0x7f) | (data & 0x1ff) << SENSOR_DATA_SHIFT));
 }
 
+/* Puts the new item thing at the target of sensor, with the charges of the sensor flags bits 3 and 4. */
+static void sensor_transfer_object(uint16_t thing, uint16_t sensor, int x, int y, int cell, int keep_flag)
+{
+    uint16_t flags = thing_word(sensor, SENSOR_FLAGS);
+    if (item_gdat_category(thing) != GDAT_MISC_CATEGORY || item_gdat_index(thing) != 0) {
+        int charges;
+        switch (flags >> SENSOR_EFFECT_SHIFT & 3) {
+        case CHARGES_FULL: charges = item_max_charges(thing); break;
+        case CHARGES_EMPTY: charges = -ALL_CHARGES; break;
+        case CHARGES_RANDOM: charges = (int)rand_below((uint16_t)(item_max_charges(thing) + 1)); break;
+        default: charges = ALL_CHARGES; break;  /* fix: the original adds an uninitialized word; the field fills */
+        }
+        item_add_charges(thing, charges);
+    }
+    if (square_type(dun_get_square(x, y)) != SQUARE_WALL) cell = (int)rand_below(4);
+    move_thing((uint16_t)(cell << THING_CELL_SHIFT | (thing & 0x3fff)), -1, keep_flag ? -1 : 0, x, y);
+}
+
+/* A sensor of kind SENSOR_CREATE_ITEM makes a new item of its data item index at its target. */
+static void sensor_create_item(uint16_t sensor)
+{
+    uint16_t item = thing_word(sensor, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT, flags = thing_word(sensor, SENSOR_FLAGS);
+    int type = item_index_to_thing_type(item);
+    uint16_t thing = type < 0 ? THING_NONE : dungeon_unused_thing(type);  /* fix: no record of type 0xffff */
+    if (thing == THING_NONE) return;
+    item_set_gdat_index(thing, item_index_gdat_index(item));
+    if ((flags & SENSOR_KEEP_ITEM) == SENSOR_KEEP_ITEM) item_set_do_not_discard(thing, 1);
+    uint16_t target = thing_word(sensor, SENSOR_TARGET);
+    sensor_transfer_object(thing, sensor, target >> 6 & 0x1f, target >> 11, target >> 4 & 3, flags >> 2 & 1);
+}
+
 static void timeline_event_wall_square(TimelineEvent *e)
 {
     int x = e->data[EVENT_X], y = e->data[EVENT_Y], effect = e->data[EVENT_EFFECT];
@@ -752,8 +787,11 @@ static void timeline_event_wall_square(TimelineEvent *e)
             set_sensor_flags(t, (uint16_t)((flags & ~(1 << SENSOR_STATE_SHIFT))
                                            | (sensor_apply_effect(effect, flags >> SENSOR_STATE_SHIFT & 1) & 1) << SENSOR_STATE_SHIFT));
             break;
-        case 0x3b: case 0x47: case 0x40: case 0x48: case 0x49: case 0x3c:
+        case 0x3b: case 0x47: case 0x40: case 0x48: case 0x49:
             sensor_transfer_objects(e, t, kind);
+            break;
+        case SENSOR_CREATE_ITEM:
+            if (effect == (flags & SENSOR_INVERTED ? EFFECT_CLEAR : EFFECT_SET)) sensor_create_item(t);
             break;
         case 0x42:
             sensor_turn_creatures(e);

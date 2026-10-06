@@ -209,8 +209,7 @@ LOOP_STUBS = (0x34236, 0x342A3, 0x10AF6,
               # check (Step 20)
               0x13B4D, 0x1C5FD, 0x1A37D, 0x1A0A4, 0x3D187, 0x346D1, 0x3D111,
               0x557B5,  # the expired rows of the message area: the screen only
-              0x3F62D,  # the key sequence that prints the free memory (a debug message, not ported)
-              0x13A87, 0x13B7C)  # screen presents
+              0x3F62D)  # the key sequence that prints the free memory (a debug message, not ported)
 LOOP_GLOBALS = {"tick_threshold": (0x7F268, "<h"), "tick_count": (0x7F256, "<h"), "timer_ticks": (0x7F228, "<I"),
                 "running": (0x7F244, "<I"), "view_hidden": (0x803EC, "<I")}
 

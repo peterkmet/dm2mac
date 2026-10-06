@@ -40,6 +40,8 @@ int item_add_charges(uint16_t thing, int delta);
 void item_set_gdat_index(uint16_t thing, int index);
 /* The highest charge count of the thing type. */
 int item_max_charges(uint16_t thing);
+/* Sets or clears the bit that keeps a thing from being reused when the dungeon runs out of records. */
+void item_set_do_not_discard(uint16_t thing, int keep);
 /* True when thing may go into slot. strict: only the champion slots 0 to 12 (or -1, a hand) count. */
 int item_fits_slot(uint16_t thing, int slot, int strict);
 /* The icon entry of an item in slot (animated: by its icon animation attribute). */

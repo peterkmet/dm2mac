@@ -34,7 +34,7 @@ SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
 # Functions of later steps and of the DOS layer: (address, stack arguments, result).
 STUBS = {
     0x15BAA: (5, 0), 0x15CA9: (4, 0), 0x1616D: (0, 0), 0x160DB: (0, 0),     # sound
-    0x138D9: (0, 0),                                                         # screen
+    0x138D9: (0, 0), 0x13A87: (0, 0), 0x13B7C: (0, 0),                      # screen, screen presents
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
     0x24E62: (2, 0), 0x24328: (0, 0), 0x24171: (0, 0), 0x23E5B: (0, 0),     # creature alert, push
@@ -164,7 +164,6 @@ class Scenario:
         for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
             emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
         emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
-        self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
         self.skip(*ARROWS_DRAWING)  # ui_draw_movement_arrows: only its input mode
         self.clear_uninitialized_event_bytes()
@@ -583,7 +582,7 @@ SENSOR_PROCESS_WALL_CLICK = 0x4C134
 
 
 def mirror(lib, map_, x, y, cell):
-    """True for a champion mirror on the cell of a wall: test_champions recruits from it in the main loop."""
+    """True for a champion mirror (sensor kind 0x7e) on the cell of a wall."""
     lib.dungeon_square_first_thing.restype = ctypes.c_uint16
     lib.dungeon_next_thing.restype = ctypes.c_uint16
     lib.thing_word.restype = ctypes.c_uint16
@@ -600,9 +599,12 @@ def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
     # A click with an empty hand on every wall cell with a sensor or a text: buttons, switches, counters, item
     # holders, ladders, fountains; then the timeline runs what they trigger.
     lib.sensor_process_wall_click.argtypes = [ctypes.c_int] * 3 + [ctypes.c_uint16] * 2
-    cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0 and not mirror(lib, *c)][part::2]
+    cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0][part::2]
     for n, (map_, x, y, cell) in enumerate(cells):
-        scenario.place(map_, x, y, (cell + 2) & 3)
+        if mirror(lib, map_, x, y, cell):  # the champion of a mirror joins the party that stands in front of it
+            scenario.place(map_, x + DIRS[cell][0], y + DIRS[cell][1], (cell + 2) & 3)
+        else:
+            scenario.place(map_, x, y, (cell + 2) & 3)
         lib.sensor_process_wall_click(x, y, cell, NONE, NONE)
         scenario.emu.call(SENSOR_PROCESS_WALL_CLICK, x, y, cell, NONE, NONE)
         scenario.assert_same(("click", n, map_, x, y, cell))
@@ -624,7 +626,7 @@ def test_clicks_in_the_view(scenario, lib):
     seed = ctypes.c_uint32.in_dll(lib, "random_seed")
     places = []
     for map_, x, y, cell in sensor_squares(lib):
-        if lib.dungeon_square(map_, x, y) >> 5 or mirror(lib, map_, x, y, cell):
+        if lib.dungeon_square(map_, x, y) >> 5:
             continue
         px, py = x + DIRS[cell][0], y + DIRS[cell][1]
         if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \

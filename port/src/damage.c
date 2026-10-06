@@ -54,6 +54,8 @@ enum { SKILL_FIGHTER, SKILL_NINJA, SKILL_PRIEST, SKILL_WIZARD, SKILL_SWING = 4, 
 #define LUCK_STEP 2
 #define BONES_KEEP 0x3f80           /* bones word 2: keeps the stack count and the do-not-discard bit */
 #define DO_NOT_DISCARD 0x0080
+#define POTION_DO_NOT_DISCARD 0x8000
+#define GROUP_DO_NOT_DISCARD 0x0400  /* in word GROUP_DIR */
 #define ITEM_DATA_SHIFT 14          /* bones word 2: the champion in the charge bits */
 #define CURE_ALL 10000
 #define WOUND_HAND_BIT(hand) ((hand) ? 2 : 1)
@@ -514,14 +516,19 @@ void champ_apply_time_effects(void)
     }
 }
 
-/* Sets or clears the bit that keeps an item from being reused when the dungeon runs out of records. */
-static void item_set_do_not_discard(uint16_t thing, int keep)
+void item_set_do_not_discard(uint16_t thing, int keep)
 {
     switch (thing_type(thing)) {
     case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
         set_thing_word(thing, 2, (uint16_t)((thing_word(thing, 2) & ~DO_NOT_DISCARD) | (keep & 1) << 7));
         break;
-    default: break;  /* the port needs only the held torches */
+    case THING_POTION:
+        set_thing_word(thing, 2, (uint16_t)((thing_word(thing, 2) & ~POTION_DO_NOT_DISCARD) | (keep & 1) << 15));
+        break;
+    case THING_GROUP:
+        set_thing_word(thing, GROUP_DIR, (uint16_t)((thing_word(thing, GROUP_DIR) & ~GROUP_DO_NOT_DISCARD) | (keep & 1) << 10));
+        break;
+    default: break;
     }
 }
 
