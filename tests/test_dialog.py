@@ -75,7 +75,9 @@ def ui(port, original):
     emu.write_u32(G_DATA_PATH, path)
     emu.write_u32(G_SAVE_PATH, path)
     emu.write(G_DISK_PATH_KIND + 2, struct.pack("<H", 2))
-    ctypes.memmove(ctypes.addressof(ctypes.c_char.in_dll(port, "text_drive_path")), DRIVE_PATH + b"\0", len(DRIVE_PATH) + 1)
+    # the port gets the default --data folder as main.c sets it; the font has no lowercase letters
+    data = DRIVE_PATH.lower() + b"\0"
+    ctypes.memmove(ctypes.addressof(ctypes.c_char.in_dll(port, "text_drive_path")), data, len(data))
     return port
 
 

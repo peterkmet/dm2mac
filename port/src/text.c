@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include "draw.h"
@@ -247,6 +248,7 @@ char *text_format(const char *fmt, char *dst)
             text_gdat(FONT_CATEGORY, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : FORMAT_TITLE_2_ENTRY, value);
         } else if (code == FORMAT_DATA_PATH || code == FORMAT_SAVE_PATH || code == FORMAT_DISK_PATH) {
             snprintf(value, sizeof value, "%s", text_drive_path);
+            for (char *p = value; *p; p++) *p = (char)toupper((unsigned char)*p);  /* the font has no lowercase */
         }  /* the error, memory, and file name codes of the DOS layer give "" */
         out = append(dst, text_format(value, inner));
     }
