@@ -1,0 +1,12 @@
+#!/bin/bash
+# Runs the full test suite unless a green full run of the same clean git tree is recorded.
+cd "$(dirname "$0")/.." || exit 1
+tree=$(git rev-parse HEAD^{tree})
+if [ -z "$(git status --porcelain --untracked-files=no)" ] &&
+   grep -qx "$tree" "$(git rev-parse --path-format=absolute --git-common-dir)/green-trees" 2>/dev/null; then
+    echo "tree $tree already passed the full suite; not run again"
+    exit 0
+fi
+mkdir -p build
+uv run pytest -n auto -q -p no:cacheprovider 2>&1 | tee build/test-suite.log
+exit "${PIPESTATUS[0]}"

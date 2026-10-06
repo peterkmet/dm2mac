@@ -1,0 +1,1989 @@
+address,name,signature,subsystem
+0x00010000,system_debug_break,void system_debug_break(void),runtime library
+0x00010001,system_debug_break_alias,void system_debug_break_alias(void),runtime library
+0x00010010,sound_init,void sound_init(void),sound
+0x0001043c,sound_shutdown,void sound_shutdown(void),sound
+0x000104ea,sound_prepare_sample,void sound_prepare_sample(void *sample_desc),sound
+0x00010546,sound_unprepare_sample,void sound_unprepare_sample(void *sample_desc),sound
+0x00010573,sound_play_requests,"int sound_play_requests(uint16_t count, void *requests)",sound
+0x00010736,sound_set_volume,"void sound_set_volume(int16_t volume, int16_t device)",sound
+0x000107fe,sound_stop_all,void sound_stop_all(void),sound
+0x00010835,sound_wait_until_idle,void sound_wait_until_idle(void),sound
+0x0001084d,sound_request_has_priority,"int sound_request_has_priority(const void *request_a, const void *request_b)",sound
+0x00010877,sound_compute_volume_pan,void sound_compute_volume_pan(void *request),sound
+0x0001095d,music_play_song,void music_play_song(uint8_t song),music
+0x00010a86,music_pause,void music_pause(void),music
+0x00010ab4,music_stop,void music_stop(void),music
+0x00010af6,music_update_for_map,void music_update_for_map(int16_t map),music
+0x00010bd3,system_init,void system_init(void),main loop
+0x00010c7b,gfx_alloc_dos_bitmap,"uint8_t *gfx_alloc_dos_bitmap(uint16_t width, uint16_t height, int16_t bpp)",graphics
+0x00010cc2,timer_isr,void timer_isr(void),main loop
+0x00010d0f,timer_init,void timer_init(void),main loop
+0x00010d29,system_shutdown,void system_shutdown(int code),main loop
+0x00010d9e,system_init_stub,void system_init_stub(void),main loop
+0x00010d9f,text_build_glyph,"uint8_t *text_build_glyph(uint8_t ch, uint8_t fg_color, uint8_t bg_color)",text
+0x00010e3f,gfx_draw_text,"void gfx_draw_text(uint8_t *dst, uint16_t dst_width, int16_t x, int16_t y, int16_t color, uint32_t flags, const char *text, uint16_t bpp)",text
+0x00010f43,mem_copy,"void mem_copy(const void *src, void *dst, int32_t size)",runtime library
+0x00010f51,mem_zero,"void mem_zero(void *dst, int32_t size)",runtime library
+0x00010f5d,file_seek,"int file_seek(int16_t fd, int32_t offset)",file I/O
+0x00010f78,file_length,int32_t file_length(int16_t fd),file I/O
+0x00010f7e,file_open,int16_t file_open(const char *path),file I/O
+0x00010f92,file_create,int16_t file_create(const char *path),file I/O
+0x00010f9e,file_close,void file_close(int16_t fd),file I/O
+0x00010fa4,file_delete,int file_delete(const char *path),file I/O
+0x00010fa9,file_rename,"int file_rename(const char *old_path, const char *new_path)",file I/O
+0x00010fae,file_read,"int file_read(int16_t fd, int32_t size, void *buf)",file I/O
+0x00010fff,file_write,"int file_write(int16_t fd, int32_t size, const void *buf)",file I/O
+0x0001105f,disk_detect_drives,void disk_detect_drives(void),file I/O
+0x000111c7,disk_get_drive_status,uint16_t disk_get_drive_status(int16_t drive),file I/O
+0x000111db,disk_query_drive_info,uint16_t disk_query_drive_info(int16_t drive),file I/O
+0x000111e5,disk_get_volume_label,"void disk_get_volume_label(int16_t drive, char *label)",file I/O
+0x00011200,disk_check_save_disk,int disk_check_save_disk(int mode),save and load
+0x000113ad,iop_call_return_word,int16_t iop_call_return_word(int function),input
+0x000113b9,disk_is_save_disk_ready,int disk_is_save_disk_ready(uint16_t mode),save and load
+0x000113dc,disk_prompt_stub,void disk_prompt_stub(int16_t mode),save and load
+0x000113f7,input_stub_return_zero,int input_stub_return_zero(uint16_t key),input
+0x000113fa,disk_get_drive_path,"void disk_get_drive_path(int16_t drive, char *path)",file I/O
+0x00011413,kbd_read_key,uint16_t kbd_read_key(void),input
+0x00011488,input_key_or_button_pressed,int input_key_or_button_pressed(void),input
+0x000114b8,kbd_key_available,int kbd_key_available(void),input
+0x000114c5,kbd_key_to_ascii,uint16_t kbd_key_to_ascii(uint16_t key),input
+0x000114e9,iop_print_message,void iop_print_message(const char *text),text
+0x00011504,gfx_blit_row_4bpp,"void gfx_blit_row_4bpp(uint16_t src_x, uint16_t dst_x, int16_t width)",graphics
+0x000116b0,gfx_blit_row_4bpp_flip,"void gfx_blit_row_4bpp_flip(uint16_t src_x, uint16_t dst_x, int16_t width)",graphics
+0x0001185e,gfx_blit_row_4bpp_transparent,"void gfx_blit_row_4bpp_transparent(uint16_t src_x, uint16_t dst_x, int16_t width, uint8_t transparent)",graphics
+0x00011a72,gfx_blit_row_4bpp_flip_transparent,"void gfx_blit_row_4bpp_flip_transparent(uint16_t src_x, uint16_t dst_x, int16_t width, uint8_t transparent)",graphics
+0x00011c88,gfx_blit_4bpp_to_4bpp,"void gfx_blit_4bpp_to_4bpp(const uint8_t *src, uint8_t *dst, const int16_t *rect, int16_t src_x, int16_t src_y, int16_t src_width, int16_t dst_width, int16_t transparent, uint16_t mirror)",graphics
+0x00011e93,gfx_blit_end,void gfx_blit_end(void),graphics
+0x00011e9b,gfx_set_blit_colormap,void gfx_set_blit_colormap(const uint8_t *colormap),graphics
+0x00011ea1,gfx_blit_row_4to8,"void gfx_blit_row_4to8(uint16_t src_x, uint16_t dst_x, uint16_t width)",graphics
+0x00011f84,gfx_blit_row_4to8_flip,"void gfx_blit_row_4to8_flip(uint16_t src_x, uint16_t dst_x, uint16_t width)",graphics
+0x00012070,gfx_blit_row_4to8_transparent,"void gfx_blit_row_4to8_transparent(uint16_t src_x, uint16_t dst_x, uint16_t width, uint8_t transparent)",graphics
+0x000121a4,gfx_blit_row_4to8_flip_transparent,"void gfx_blit_row_4to8_flip_transparent(uint16_t src_x, uint16_t dst_x, uint16_t width, uint8_t transparent)",graphics
+0x000122b0,gfx_fill_end,void gfx_fill_end(void),graphics
+0x000122c8,gfx_blit_4bpp_to_8bpp,"void gfx_blit_4bpp_to_8bpp(const uint8_t *src, uint8_t *dst, const int16_t *rect, int16_t src_x, int16_t src_y, int16_t src_width, int16_t dst_width, int16_t transparent, uint16_t mirror, const uint8_t *colormap)",graphics
+0x000124db,gfx_blit_row_8bpp,"void gfx_blit_row_8bpp(uint16_t src_x, uint16_t dst_x, uint16_t width)",graphics
+0x00012504,gfx_blit_row_8bpp_transparent,"void gfx_blit_row_8bpp_transparent(uint16_t src_x, uint16_t dst_x, uint16_t width, uint8_t transparent)",graphics
+0x0001253a,gfx_blit_row_8bpp_flip,"void gfx_blit_row_8bpp_flip(uint16_t src_x, uint16_t dst_x, uint16_t width)",graphics
+0x00012570,gfx_blit_row_8bpp_flip_transparent,"void gfx_blit_row_8bpp_flip_transparent(uint16_t src_x, uint16_t dst_x, uint16_t width, uint8_t transparent)",graphics
+0x000125c4,gfx_blit_8bpp_to_8bpp,"void gfx_blit_8bpp_to_8bpp(const uint8_t *src, uint8_t *dst, const int16_t *rect, int16_t src_x, int16_t src_y, int16_t src_width, int16_t dst_width, int16_t transparent, uint16_t mirror)",graphics
+0x000127c0,gfx_blit_row_8bpp_mapped,"void gfx_blit_row_8bpp_mapped(uint16_t src_x, uint16_t dst_x, uint16_t width, const uint8_t *colormap)",graphics
+0x000127f1,gfx_blit_row_8bpp_mapped_transparent,"void gfx_blit_row_8bpp_mapped_transparent(uint16_t src_x, uint16_t dst_x, uint16_t width, uint8_t transparent, const uint8_t *colormap)",graphics
+0x0001282e,gfx_blit_row_8bpp_mapped_flip,"void gfx_blit_row_8bpp_mapped_flip(uint16_t src_x, uint16_t dst_x, uint16_t width, const uint8_t *colormap)",graphics
+0x0001286a,gfx_blit_row_8bpp_mapped_flip_transparent,"void gfx_blit_row_8bpp_mapped_flip_transparent(uint16_t src_x, uint16_t dst_x, uint16_t width, uint8_t transparent, const uint8_t *colormap)",graphics
+0x000128c4,gfx_blit_8bpp_mapped,"void gfx_blit_8bpp_mapped(const uint8_t *src, uint8_t *dst, const int16_t *rect, int16_t src_x, int16_t src_y, int16_t src_width, int16_t dst_width, int16_t transparent, uint16_t mirror, const uint8_t *colormap)",graphics
+0x00012ad2,gfx_blit,"void gfx_blit(const uint8_t *src, uint8_t *dst, const int16_t *rect, int16_t src_x, int16_t src_y, int16_t src_width, int16_t dst_width, int16_t transparent, uint16_t mirror, int16_t src_bpp, int16_t dst_bpp, const uint8_t *colormap)",graphics
+0x00012bd7,gfx_put_pixel_4bpp,"void gfx_put_pixel_4bpp(uint16_t x, uint8_t color)",graphics
+0x00012c1d,gfx_fill_row_4bpp,"void gfx_fill_row_4bpp(uint16_t x, uint8_t color, int16_t count)",graphics
+0x00012cae,gfx_fill_row_8bpp,"void gfx_fill_row_8bpp(uint16_t x, uint8_t color, int16_t count)",graphics
+0x00012ce3,gfx_copy_pixels_4bpp_in_dest,"void gfx_copy_pixels_4bpp_in_dest(uint16_t dst_x, uint16_t src_x, int16_t count)",graphics
+0x00012d7a,image_read_nibble,uint8_t image_read_nibble(void),graphics
+0x00012ddb,image_read_run_length,uint16_t image_read_run_length(void),graphics
+0x00012e4f,image_decode_4bpp,"void image_decode_4bpp(const uint8_t *src, uint8_t *dst)",graphics
+0x000131be,gfx_copy_pixels_4bpp_from_base,"void gfx_copy_pixels_4bpp_from_base(uint16_t x, int16_t count)",graphics
+0x00013258,image_decode_4bpp_delta,"void image_decode_4bpp_delta(const uint8_t *base, const uint8_t *src, uint8_t *dst)",graphics
+0x00013658,gfx_fill_rect_8bpp,"void gfx_fill_rect_8bpp(uint8_t *dst, const int16_t *rect, uint8_t color, int16_t pitch)",graphics
+0x000136a9,gfx_fill_rect_4bpp,"void gfx_fill_rect_4bpp(uint8_t *dst, const int16_t *rect, uint8_t color, int16_t width)",graphics
+0x00013702,gfx_fill_rect,"void gfx_fill_rect(uint8_t *dst, const int16_t *rect, uint8_t color, uint16_t pitch, int16_t bpp)",graphics
+0x00013745,gfx_fill_rect_dithered,"void gfx_fill_rect_dithered(uint8_t *dst, const uint16_t *rect, uint8_t color, uint16_t pitch)",graphics
+0x00013887,vga_wait_vblank,void vga_wait_vblank(void),graphics
+0x00013898,pal_set_palette,void pal_set_palette(const uint8_t *palette_rgba),palette
+0x000138c7,iop_set_video_state,void iop_set_video_state(uint8_t state),graphics
+0x000138d9,screen_present_viewport,void screen_present_viewport(void),graphics
+0x000139e4,text_scroll_message_area,void text_scroll_message_area(void),text
+0x00013a87,screen_present_rect,void screen_present_rect(const int16_t *rect),graphics
+0x00013aab,gfx_fill_bitmap,"void gfx_fill_bitmap(uint8_t *bitmap, uint8_t color)",graphics
+0x00013b27,gfx_fill_rect_viewport,"void gfx_fill_rect_viewport(const int16_t *rect, uint8_t color)",graphics
+0x00013b4d,gfx_fill_zone_screen,"void gfx_fill_zone_screen(int16_t zone, uint8_t color)",graphics
+0x00013b7c,screen_present_zone,void screen_present_zone(int16_t zone),graphics
+0x00013b99,gfx_fill_rect_screen,"void gfx_fill_rect_screen(const int16_t *rect, uint8_t color)",graphics
+0x00013be5,gfx_blit_tiled_4to8_masked,"void gfx_blit_tiled_4to8_masked(const uint8_t *src, uint8_t *dst, const uint8_t *mask, const int16_t *rect, uint16_t tile_width, uint16_t tile_offset, int16_t mask_x, int16_t mask_y, int16_t mask_width, int16_t dst_width, int16_t transparent, const uint8_t *colormap)",graphics
+0x00013ee3,gfx_blit_tiled_4to8,"void gfx_blit_tiled_4to8(const uint8_t *src, uint8_t *dst, const uint8_t *mask, const int16_t *rect, uint16_t tile_width, uint16_t tile_offset, int16_t dst_width, int16_t transparent, const uint8_t *colormap)",graphics
+0x00013f1d,gfx_scale_row_4bpp,"void gfx_scale_row_4bpp(uint16_t src_offset, uint16_t dst_x, uint16_t step, uint16_t width)",graphics
+0x00013ffc,gfx_scale_row_4bpp_mapped,"void gfx_scale_row_4bpp_mapped(uint16_t src_offset, uint16_t dst_x, uint16_t step, uint16_t width)",graphics
+0x0001410d,gfx_blit_scaled_4bpp,"void gfx_blit_scaled_4bpp(const uint8_t *src, uint8_t *dst, int16_t src_width, int16_t src_height, int16_t dst_width, int16_t dst_height, const uint8_t *colormap)",graphics
+0x0001424b,gfx_blit_scaled_8bpp,"void gfx_blit_scaled_8bpp(const uint8_t *src, uint8_t *dst, int16_t src_width, int16_t src_height, int16_t dst_width, int16_t dst_height)",graphics
+0x00014375,mouse_draw_item_cursor_bitmap,"void mouse_draw_item_cursor_bitmap(uint8_t *icon_bitmap, uint8_t *dst, const uint8_t *colormap)",input
+0x00014400,mouse_set_hover_area,"void mouse_set_hover_area(void *area, int16_t x1, int16_t x2, int16_t y1, int16_t y2)",input
+0x00014483,mouse_move_event,"int mouse_move_event(int16_t x, int16_t y)",input
+0x000146e8,input_event_isr,void input_event_isr(void),input
+0x00014743,mouse_set_cursor_image,"void mouse_set_cursor_image(int kind, uint8_t *bitmap, int hot_x, int hot_y, int w, int h, int bpp, const uint8_t *colormap, uint8_t transparent)",input
+0x000147d1,input_init,void input_init(void),input
+0x0001482e,mouse_capture_begin,void mouse_capture_begin(void),input
+0x0001483a,mouse_capture_end,void mouse_capture_end(void),input
+0x00014846,mouse_set_default_cursor,void mouse_set_default_cursor(void),input
+0x00014889,mouse_update_hand_cursor,void mouse_update_hand_cursor(void),input
+0x000149a2,champ_drag_cancel,void champ_drag_cancel(void),champions
+0x000149ba,champ_drag_click,void champ_drag_click(uint16_t cell),champions
+0x00014b1f,mouse_area_alloc_node,void mouse_area_alloc_node(void *area),input
+0x00014b4e,mouse_area_free_node,void mouse_area_free_node(void *area),input
+0x00014b4f,mouse_area_add,void mouse_area_add(void *area),input
+0x00014c0e,mouse_area_remove,void mouse_area_remove(void *area),input
+0x00014c55,mouse_hide,void mouse_hide(void),input
+0x00014c68,mouse_show,void mouse_show(void),input
+0x00014c7b,iop_input_lock,void iop_input_lock(void),input
+0x00014c87,iop_input_unlock,void iop_input_unlock(void),input
+0x00014cb1,mouse_get_state,"void mouse_get_state(int16_t *x, int16_t *y, int16_t *buttons)",input
+0x00014cf2,creature_get_anim_frame,"void creature_get_anim_frame(uint8_t creature_type, uint16_t seq_start, uint16_t *anim_state, void *frame8)",creatures
+0x00014d39,creature_get_anim_step,"void creature_get_anim_step(uint8_t creature_type, uint16_t seq_start, uint16_t *anim_state, void *step4)",creatures
+0x00014d75,creature_anim_frame_offset,uint16_t creature_anim_frame_offset(uint16_t *anim_state),creatures
+0x00014df7,creature_anim_sequence_length,"int16_t creature_anim_sequence_length(uint8_t creature_type, uint16_t seq_start)",creatures
+0x00014e42,creature_anim_start_command,"int creature_anim_start_command(uint8_t creature_type, int16_t command, uint16_t *seq_start, uint16_t *anim_state, void **step, uint16_t phase)",creatures
+0x00014f1b,creature_anim_next_random_step,"int creature_anim_next_random_step(uint8_t creature_type, uint16_t seq_start, uint16_t *anim_state, void **step)",creatures
+0x0001501a,creature_anim_next_step,"int creature_anim_next_step(uint8_t creature_type, uint16_t seq_start, uint16_t *anim_state, void **step)",creatures
+0x000150ae,dun_get_global_var,int16_t dun_get_global_var(uint16_t var),dungeon data
+0x0001512e,dun_modify_global_var,"int16_t dun_modify_global_var(uint16_t var, int16_t value, uint16_t op)",dungeon data
+0x000151e6,item_get_image_kind,int16_t item_get_image_kind(uint16_t thing),items
+0x00015286,creature_get_cell_mask,"uint8_t creature_get_cell_mask(uint16_t group_position, uint16_t dir)",creatures
+0x000152c4,inv_item_fits_slot,"uint16_t inv_item_fits_slot(uint16_t thing, int16_t slot, int strict)",inventory
+0x0001538d,shop_parse_item_class_set,"int shop_parse_item_class_set(uint8_t creature_type, uint8_t text_entry, uint8_t *bitset, int skip_containers)",money and shops
+0x000154e0,money_init_coin_table,void money_init_coin_table(void),money and shops
+0x000155ef,money_get_coin_type_for_slot,"int16_t money_get_coin_type_for_slot(uint16_t container, uint16_t slot)",money and shops
+0x00015737,shop_get_item_value,"uint16_t shop_get_item_value(uint16_t thing, uint8_t creature_type, int16_t list, int buying, int apply_margin, int16_t charges)",money and shops
+0x00015958,money_split_amount,"int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count)",money and shops
+0x000159c3,view_position_to_cell,int16_t view_position_to_cell(int16_t position),dungeon view
+0x00015a02,view_get_thing_position,"int16_t view_get_thing_position(uint16_t thing, int16_t dir)",dungeon view
+0x00015a91,sound_alloc_buffers,void sound_alloc_buffers(void),sound
+0x00015b4a,sound_set_volume_and_test,"void sound_set_volume_and_test(int16_t volume, int16_t device)",sound
+0x00015baa,sound_play_with_fallback,"void sound_play_with_fallback(uint8_t category, uint8_t index, uint8_t entry, uint8_t fallback_index, int16_t x, int16_t y, int16_t delay, int16_t priority, int16_t volume)",sound
+0x00015c10,sound_find_loaded,"int sound_find_loaded(uint8_t category, uint8_t index, uint8_t entry)",sound
+0x00015c5f,sound_find_by_gdat_entry,uint16_t sound_find_by_gdat_entry(int16_t raw_entry),sound
+0x00015ca9,sound_request,"void sound_request(uint8_t category, uint8_t index, uint8_t entry, int16_t priority, int16_t volume, int16_t x, int16_t y, int16_t delay)",sound
+0x000160db,sound_play_delayed,void sound_play_delayed(int16_t slot),sound
+0x0001616d,sound_flush_requests,void sound_flush_requests(int queue),sound
+0x000161c8,sound_wait_and_clear_requests,void sound_wait_and_clear_requests(void),sound
+0x000161d9,sound_register,"void sound_register(uint8_t category, uint8_t index, uint8_t entry)",sound
+0x0001623b,sound_load_registered,void sound_load_registered(void),sound
+0x000163c2,sound_unload_all,void sound_unload_all(void),sound
+0x00016457,projectile_create,"void projectile_create(uint16_t thing, uint16_t x, uint16_t y, int cell, uint16_t dir, uint8_t kinetic, uint8_t attack, uint8_t step)",projectiles
+0x00016632,explosion_trigger_sensors,"void explosion_trigger_sensors(int16_t explosion_type, int16_t x, int16_t y, int16_t attack)",projectiles
+0x00016746,explosion_create,"void explosion_create(uint16_t type, uint16_t attack, uint16_t x, uint16_t y, int16_t cell)",projectiles
+0x00016bdc,projectile_cancel_event,void projectile_cancel_event(uint16_t thing),projectiles
+0x00016c0c,projectile_destroy,"void projectile_destroy(uint16_t projectile, uint16_t *possessions, int16_t x, int16_t y)",projectiles
+0x00016d72,projectile_get_attack,"uint16_t projectile_get_attack(const uint8_t *projectile, uint16_t payload)",projectiles
+0x00016f87,projectile_hit_wall_sensors,"int projectile_hit_wall_sensors(int16_t x, int16_t y, int16_t from_x, int16_t from_y, int16_t dir, uint16_t projectile)",projectiles
+0x0001726b,projectile_hit,"int projectile_hit(int16_t impact, int16_t x, int16_t y, int16_t cell, uint16_t projectile)",projectiles
+0x00017a7b,projectile_process_event,void projectile_process_event(const void *event),projectiles
+0x000181f0,explosion_get_attack,"uint16_t explosion_get_attack(uint16_t explosion, uint16_t target)",projectiles
+0x00018395,explosion_process_event,void explosion_process_event(void *event),projectiles
+0x0001861b,math_square_distance,"int16_t math_square_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
+0x0001863d,dun_get_direction_to,"uint16_t dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
+0x0001869a,creature_get_ordered_attack_cells,"void creature_get_ordered_attack_cells(uint8_t *cells, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t cell)",creatures
+0x00018758,creature_attack_champion,"int16_t creature_attack_champion(uint8_t *group, uint16_t champion_index)",creatures
+0x00018a57,champ_melee_attack_creature,"int16_t champ_melee_attack_creature(uint8_t *champion, uint16_t champion_index, uint16_t group_thing, uint16_t cell, int16_t action_value, uint16_t flags, uint16_t skill, int16_t x, int16_t y)",champions
+0x00018d9e,dun_door_try_destroy,"int dun_door_try_destroy(int16_t x, int16_t y, int16_t attack, int magic, int16_t delay)",dungeon data
+0x00018e7f,view_grid5_cell_to_xy,"void view_grid5_cell_to_xy(int16_t base_x, int16_t base_y, uint16_t cell, int16_t *x, int16_t *y)",dungeon view
+0x00018ec1,rect_set,"void rect_set(int16_t *rect, int16_t x, int16_t y, int16_t w, int16_t h)",interface
+0x00018ed7,rect_set_size,"void rect_set_size(int16_t *rect, int16_t w, int16_t h)",interface
+0x00018eeb,rect_temp,"int16_t *rect_temp(int16_t x, int16_t y, int16_t w, int16_t h)",interface
+0x00018f2f,rect_temp_size,"int16_t *rect_temp_size(int16_t w, int16_t h)",interface
+0x00018f43,rect_inflate,"void rect_inflate(int16_t *rect, int16_t dx, int16_t dy)",interface
+0x00018f57,rect_clip,"int16_t *rect_clip(int16_t *rect, const int16_t *clip, int16_t *clipped_x, int16_t *clipped_y)",interface
+0x00018fe7,rect_center_in,"void rect_center_in(int16_t *rect, const int16_t *outer, int16_t w, int16_t h)",interface
+0x0001902b,rect_contains,"int rect_contains(int16_t *rect, int16_t x, int16_t y)",interface
+0x0001906d,zone_contains_point,"int zone_contains_point(int16_t zone, int16_t x, int16_t y)",interface
+0x00019091,zone_record_data_size,int zone_record_data_size(uint8_t flags),interface
+0x000190e9,zone_find_record,"int16_t *zone_find_record(void *list, int16_t zone)",interface
+0x00019234,zone_interpolate_offset,"int zone_interpolate_offset(int16_t zone_from, int16_t zone_to, int16_t percent, int16_t *dx, int16_t *dy)",interface
+0x0001936f,zone_compute_rect,"int16_t *zone_compute_rect(const uint8_t *image, int16_t *rect, uint16_t zone, int16_t *w, int16_t *h, int16_t anchor_override)",interface
+0x00019ac4,zone_set_clip_margins,"void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bottom)",interface
+0x00019b0b,view_rotate_grid5_cell,"int view_rotate_grid5_cell(int16_t cell, int16_t dir)",dungeon view
+0x00019b77,zone_id_for_view_cell,"int zone_id_for_view_cell(int16_t base, int16_t cell, int16_t dir)",dungeon view
+0x00019b91,zone_id_for_view_element,"int zone_id_for_view_element(int16_t element, int16_t offset, int use_table)",dungeon view
+0x00019bae,zone_get_position,"void zone_get_position(int16_t zone, int16_t *x, int16_t *y)",interface
+0x00019bf2,zone_get_rect_clipped,"int16_t *zone_get_rect_clipped(int16_t zone, int16_t *rect, uint16_t w_scale, uint16_t h_scale)",interface
+0x00019cfc,zone_get_rect,"int16_t *zone_get_rect(int16_t zone, int16_t *rect)",interface
+0x00019d0e,zone_unpack_layout,"void zone_unpack_layout(const int16_t *data, int32_t size, void **list, void *(*alloc)(int32_t size))",interface
+0x00019f29,zone_alloc_record,void *zone_alloc_record(int32_t size),interface
+0x00019f3d,zone_load_layout,"void zone_load_layout(uint8_t category, uint8_t index, uint8_t entry)",interface
+0x00019fb5,zone_init,void zone_init(void),interface
+0x00019fd2,ui_dialog_screen_mode,void ui_dialog_screen_mode(int begin),interface
+0x0001a001,ui_dialog_present,void ui_dialog_present(void),interface
+0x0001a0a4,ui_dialog_run,uint16_t ui_dialog_run(uint8_t dialog),interface
+0x0001a270,ui_dialog_draw_button,"void ui_dialog_draw_button(int16_t zone, int highlighted)",interface
+0x0001a37d,ui_dialog_draw,"uint8_t ui_dialog_draw(uint8_t dialog, uint8_t message)",interface
+0x0001aa09,ui_draw_progress_bar,void ui_draw_progress_bar(int16_t permille),interface
+0x0001aa75,ui_volume_dialog,void ui_volume_dialog(void),interface
+0x0001ac92,gfx_image_byte_size,uint32_t gfx_image_byte_size(uint8_t *image),graphics
+0x0001acc5,gfx_scale_64,"int gfx_scale_64(int16_t value, int16_t scale)",graphics
+0x0001acd8,image_ref_load_gdat,uint8_t *image_ref_load_gdat(image_ref_t *ref),graphics
+0x0001ad22,image_ref_load_cached,"uint8_t *image_ref_load_cached(int16_t cache_id, image_ref_t *ref)",graphics
+0x0001ad6a,image_ref_get_pixels,uint8_t *image_ref_get_pixels(image_ref_t *ref),graphics
+0x0001adba,image_ref_release,void image_ref_release(image_ref_t *ref),graphics
+0x0001ae06,image_ref_free,void image_ref_free(image_ref_t *ref),graphics
+0x0001ae54,pal_load_color_ramps,void pal_load_color_ramps(void),palette
+0x0001af61,pal_load_remap_table,"uint8_t *pal_load_remap_table(uint8_t *table, uint8_t category, uint8_t index, uint8_t entry, int16_t *count)",palette
+0x0001afc2,pal_apply_dim_remap,"uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int16_t keep_a, int16_t keep_b, int16_t *count)",palette
+0x0001b2be,pal_get_dimmed_remap,"uint8_t *pal_get_dimmed_remap(uint8_t *table, uint8_t category, uint8_t index, uint8_t entry, uint8_t dim, int16_t keep_a, int16_t keep_b, int16_t *count)",palette
+0x0001b3e8,gfx_ctx_init,"draw_ctx_t *gfx_ctx_init(draw_ctx_t *ctx, uint8_t category, uint8_t index, uint8_t entry)",graphics
+0x0001b510,gfx_ctx_cache_key,uint32_t gfx_ctx_cache_key(const draw_ctx_t *ctx),graphics
+0x0001b54a,gfx_ctx_prepare,draw_ctx_t *gfx_ctx_prepare(draw_ctx_t *ctx),graphics
+0x0001b8e5,gfx_ctx_draw,void gfx_ctx_draw(draw_ctx_t *ctx),graphics
+0x0001babb,gfx_offscreen_create,"offscreen_t *gfx_offscreen_create(offscreen_t *buf, int16_t zone, int mark_dirty)",graphics
+0x0001bb0e,gfx_offscreen_flush,"void gfx_offscreen_flush(offscreen_t *buf, int free_buffer)",graphics
+0x0001bb94,gfx_offscreen_add_dirty_rect,"void gfx_offscreen_add_dirty_rect(offscreen_t *buf, const int16_t *rect)",graphics
+0x0001bd49,gfx_offscreen_local_rect,"void gfx_offscreen_local_rect(const offscreen_t *buf, const int16_t *rect, int16_t *local)",graphics
+0x0001bd7e,gfx_offscreen_fill_rect,"void gfx_offscreen_fill_rect(offscreen_t *buf, const int16_t *rect, uint8_t color)",graphics
+0x0001bdc3,gfx_offscreen_fill_rect_alt,"void gfx_offscreen_fill_rect_alt(offscreen_t *buf, const int16_t *rect, uint8_t color)",graphics
+0x0001bdf5,gfx_offscreen_blit,"void gfx_offscreen_blit(const uint8_t *image, offscreen_t *buf, const int16_t *rect, int16_t src_x, int16_t src_y, int16_t transparent, const uint8_t *remap)",graphics
+0x0001be6a,gfx_offscreen_draw_gdat_image,"void gfx_offscreen_draw_gdat_image(uint8_t category, uint8_t index, uint8_t entry, offscreen_t *buf, int16_t zone, int16_t transparent)",graphics
+0x0001bef7,gfx_offscreen_draw_ctx,"void gfx_offscreen_draw_ctx(draw_ctx_t *ctx, offscreen_t *buf, int16_t zone, int16_t transparent)",graphics
+0x0001bf98,gfx_offscreen_draw_text_at,"void gfx_offscreen_draw_text_at(offscreen_t *buf, int16_t x, int16_t y, int16_t color, int16_t bg_color, const char *text)",text
+0x0001c021,gfx_offscreen_draw_text_in_zone,"void gfx_offscreen_draw_text_in_zone(offscreen_t *buf, int16_t zone, int16_t color, int16_t bg_color, const char *text)",text
+0x0001c0bc,gfx_offscreen_draw_text_in_zone_alt,"void gfx_offscreen_draw_text_in_zone_alt(offscreen_t *buf, int16_t zone, int16_t color, int16_t bg_color, const char *text)",text
+0x0001c149,image_is_fully_transparent,"int image_is_fully_transparent(image_ref_t *ref, uint8_t transparent_color)",graphics
+0x0001c2a0,gfx_blit_forward,void gfx_blit_forward(void),graphics
+0x0001c2d8,gfx_blit_image,"void gfx_blit_image(uint8_t *image, uint8_t *dst, int16_t transparent)",graphics
+0x0001c338,gfx_blit_to_viewport,"void gfx_blit_to_viewport(const uint8_t *image, const int16_t *rect, int16_t transparent, const uint8_t *remap)",graphics
+0x0001c367,gfx_draw_gdat_in_viewport_zone,"void gfx_draw_gdat_in_viewport_zone(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t transparent)",graphics
+0x0001c3bf,gfx_blit_to_screen_zone,"void gfx_blit_to_screen_zone(const uint8_t *image, int16_t zone, int16_t transparent, const uint8_t *remap)",graphics
+0x0001c440,gfx_draw_gdat_in_screen_zone,"void gfx_draw_gdat_in_screen_zone(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t transparent)",graphics
+0x0001c472,str_length,int str_length(const char *s),runtime library
+0x0001c484,str_append,"char *str_append(char *dst, const char *src)",runtime library
+0x0001c4bd,str_copy,"char *str_copy(char *dst, const char *src)",runtime library
+0x0001c4d0,str_find,"char *str_find(const char *haystack, const char *needle)",runtime library
+0x0001c510,str_from_int,"void str_from_int(int32_t value, char *dst)",runtime library
+0x0001c56b,system_error,void system_error(int16_t code),main loop
+0x0001c5fd,vga_wait_retrace,void vga_wait_retrace(void),graphics
+0x0001c602,mem_fill_strided8,"void mem_fill_strided8(uint8_t *dst, uint16_t count, uint8_t value, int16_t stride)",runtime library
+0x0001c633,mem_fill_strided16,"void mem_fill_strided16(uint16_t *dst, uint16_t count, uint16_t value, int16_t stride_bytes)",runtime library
+0x0001c660,wait_vblanks,void wait_vblanks(int16_t count),graphics
+0x0001c673,math_abs16,int math_abs16(int16_t v),runtime library
+0x0001c67e,math_min16,"int math_min16(int16_t a, int16_t b)",runtime library
+0x0001c687,math_max16,"int math_max16(int16_t a, int16_t b)",runtime library
+0x0001c690,math_clamp16,"int math_clamp16(int16_t lo, int16_t v, int16_t hi)",runtime library
+0x0001c6a1,rand_next,uint32_t rand_next(void),runtime library
+0x0001c6b7,rand_below,uint16_t rand_below(uint16_t n),runtime library
+0x0001c6dc,rand_bit,uint32_t rand_bit(void),runtime library
+0x0001c6f6,rand_2bits,uint32_t rand_2bits(void),runtime library
+0x0001c710,math_mul_shift,"int math_mul_shift(uint16_t a, uint8_t shift, uint16_t b)",runtime library
+0x0001c724,dun_set_current_map,void dun_set_current_map(int16_t map),dungeon data
+0x0001c82d,dun_set_party_location,"void dun_set_party_location(int16_t x, int16_t y, int16_t map)",dungeon data
+0x0001c8e5,dun_find_thing_in_list,"uint16_t *dun_find_thing_in_list(uint16_t *list, uint8_t cell, uint16_t **found_list, int (*match)(uint16_t thing), void *arg, int search_groups, int search_chests)",dungeon data
+0x0001c9e9,dun_move_relative,"void dun_move_relative(int16_t dir, int16_t forward, int16_t right, int16_t *x, int16_t *y)",dungeon data
+0x0001ca43,dun_is_open_square_raw,"int dun_is_open_square_raw(int16_t x, int16_t y)",dungeon data
+0x0001ca96,dun_get_square,"uint8_t dun_get_square(int16_t x, int16_t y)",dungeon data
+0x0001cc4f,dun_get_square_relative,"uint8_t dun_get_square_relative(int16_t dir, int16_t forward, int16_t right, int16_t x, int16_t y)",dungeon data
+0x0001cc7e,dun_get_location_on_map,"int dun_get_location_on_map(int16_t map, int16_t level_delta, int16_t *x, int16_t *y, char **link_cursor)",dungeon data
+0x0001ce6f,dun_get_stairs_exit_direction,"int dun_get_stairs_exit_direction(int16_t x, int16_t y)",dungeon data
+0x0001cee1,dun_find_adjacent_level_link,"int dun_find_adjacent_level_link(int16_t x, int16_t y, int16_t level_delta, void **sensor)",dungeon data
+0x0001d074,dun_get_teleporter_link_side,"int dun_get_teleporter_link_side(void **teleporter, int16_t x, int16_t y)",dungeon data
+0x0001d113,dun_get_linked_teleporter_dest,"int dun_get_linked_teleporter_dest(uint8_t *dest, int16_t x, int16_t y)",dungeon data
+0x0001d1d2,dun_find_open_teleporter_link,"void *dun_find_open_teleporter_link(int16_t x, int16_t y)",dungeon data
+0x0001d2c6,system_debug_hook,void system_debug_hook(int value),main loop
+0x0001d2cc,dun_get_square_first_thing_data,"void *dun_get_square_first_thing_data(int16_t x, int16_t y)",dungeon data
+0x0001d2da,dun_get_thing_data,void *dun_get_thing_data(uint16_t thing),dungeon data
+0x0001d30b,dun_get_next_thing,uint16_t dun_get_next_thing(uint16_t thing),dungeon data
+0x0001d319,dun_get_square_thing_index,"int16_t dun_get_square_thing_index(int16_t x, int16_t y)",dungeon data
+0x0001d391,dun_get_square_first_thing,"uint16_t dun_get_square_first_thing(int16_t x, int16_t y)",dungeon data
+0x0001d3b1,dun_get_square_first_object,"uint16_t dun_get_square_first_object(int16_t x, int16_t y)",dungeon data
+0x0001d3db,dun_link_thing_to_square,"void dun_link_thing_to_square(uint16_t thing, uint16_t *list, int16_t x, int16_t y)",dungeon data
+0x0001d542,dun_unlink_thing_from_square,"void dun_unlink_thing_from_square(uint16_t thing, uint16_t *list, int16_t x, int16_t y)",dungeon data
+0x0001d6ec,dun_set_thing_do_not_discard,"void dun_set_thing_do_not_discard(uint16_t thing, int flag)",dungeon data
+0x0001d748,dun_get_discarded_thing,"uint16_t dun_get_discarded_thing(uint16_t type, uint8_t subtype)",dungeon data
+0x0001ddd7,dun_get_unused_thing,uint16_t dun_get_unused_thing(uint16_t type),dungeon data
+0x0001de8e,item_create_by_index,uint16_t item_create_by_index(uint16_t item_index),items
+0x0001ded7,item_create_by_index_reuse,uint16_t item_create_by_index_reuse(uint16_t item_index),items
+0x0001df5c,dun_free_thing,void dun_free_thing(uint16_t thing),dungeon data
+0x0001df6c,dun_decode_text,"void dun_decode_text(char *dst, uint16_t thing, uint16_t mode)",text
+0x0001e1c8,dun_ornament_hash,"int dun_ornament_hash(uint16_t a, uint16_t b, uint16_t modulo)",dungeon data
+0x0001e210,dun_get_random_ornament,"uint8_t dun_get_random_ornament(int allowed, int16_t count, int16_t x, int16_t salt, uint16_t modulo)",dungeon data
+0x0001e273,dun_set_random_wall_ornaments,"void dun_set_random_wall_ornaments(uint16_t *aspect, int16_t allow_front, int16_t allow_right, int16_t allow_back, int16_t allow_left, uint8_t dir, int16_t x, int16_t y)",dungeon data
+0x0001e3da,dun_get_ornament_anim_frame,"uint16_t dun_get_ornament_anim_frame(uint8_t category, uint8_t ornament, uint32_t time, int16_t offset)",dungeon data
+0x0001e4ee,dun_apply_wall_things_to_aspect,"uint16_t dun_apply_wall_things_to_aspect(uint16_t *aspect, uint16_t thing, int16_t dir, int front_only)",dungeon data
+0x0001e908,dun_get_square_aspect,"void dun_get_square_aspect(uint16_t *aspect, uint16_t dir, int16_t x, int16_t y)",dungeon data
+0x0001ef0c,item_get_index,uint16_t item_get_index(uint16_t thing),items
+0x0001efa8,dun_get_thing_gdat_index,uint8_t dun_get_thing_gdat_index(uint16_t thing),dungeon data
+0x0001f07c,dun_set_thing_gdat_index,"void dun_set_thing_gdat_index(uint16_t thing, uint8_t index)",dungeon data
+0x0001f12f,item_get_attr,"uint16_t item_get_attr(uint16_t thing, uint8_t attr)",items
+0x0001f180,item_index_to_thing_type,uint16_t item_index_to_thing_type(uint16_t item_index),items
+0x0001f1fc,item_index_to_gdat_index,uint8_t item_index_to_gdat_index(uint16_t item_index),items
+0x0001f262,item_index_get_gdat_category,uint8_t item_index_get_gdat_category(uint16_t item_index),items
+0x0001f274,dun_get_thing_gdat_category,uint8_t dun_get_thing_gdat_category(uint16_t thing),dungeon data
+0x0001f2ab,money_is_moneybox,int money_is_moneybox(uint16_t thing),money and shops
+0x0001f309,item_is_chest,int item_is_chest(uint16_t thing),items
+0x0001f347,money_is_coin,int money_is_coin(uint16_t thing),money and shops
+0x0001f380,money_count_coins_in_box,"void money_count_coins_in_box(uint16_t box, int16_t counts[10])",money and shops
+0x0001f413,money_add_coin_to_box,"int money_add_coin_to_box(uint16_t box, uint16_t coin)",money and shops
+0x0001f50d,money_take_coin_from_box,"uint16_t money_take_coin_from_box(uint16_t box, int16_t coin_type)",money and shops
+0x0001f5d0,item_get_max_charges,int item_get_max_charges(uint16_t thing),items
+0x0001f606,item_add_charges,"int item_add_charges(uint16_t thing, int16_t delta)",items
+0x0001f6d2,item_get_attr_3,uint16_t item_get_attr_3(uint16_t thing),items
+0x0001f6e4,item_sum_attr,"int32_t item_sum_attr(uint16_t thing, uint8_t attr)",items
+0x0001f895,item_get_weight,uint16_t item_get_weight(uint16_t thing),items
+0x0001f8a7,item_get_value,uint16_t item_get_value(uint16_t thing),items
+0x0001f8c7,creature_get_info_for_group,uint8_t *creature_get_info_for_group(uint16_t group_thing),creatures
+0x0001f8d9,creature_get_info,uint8_t *creature_get_info(uint8_t creature_type),creatures
+0x0001f8ff,creature_get_gdat_attr,"uint16_t creature_get_gdat_attr(uint8_t creature_type, uint8_t attr)",creatures
+0x0001f9a3,creature_get_flags,uint16_t creature_get_flags(uint16_t group_thing),creatures
+0x0001f9b1,creature_get_info_word_1e,uint16_t creature_get_info_word_1e(uint16_t group_thing),creatures
+0x0001f9c0,creature_get_info_word_20,uint16_t creature_get_info_word_20(uint16_t group_thing),creatures
+0x0001f9cf,creature_get_info_byte_1d,uint8_t creature_get_info_byte_1d(uint16_t group_thing),creatures
+0x0001f9df,creature_get_gdat_attr4,uint16_t creature_get_gdat_attr4(uint8_t creature_type),creatures
+0x0001f9ff,creature_is_native_to_map,"int creature_is_native_to_map(uint16_t group_thing, uint16_t map)",creatures
+0x0001fa8f,item_is_minion_map,int item_is_minion_map(uint16_t thing),minions
+0x0001fac8,minion_map_set_location,"int minion_map_set_location(uint16_t map_item, int16_t x, int16_t y, int16_t map)",minions
+0x0001fb62,minion_find_link_projectile,"void *minion_find_link_projectile(uint16_t group_thing, uint16_t map_item)",minions
+0x0001fbd0,dun_get_text_ornament,uint8_t dun_get_text_ornament(uint16_t thing),dungeon data
+0x0001fc2c,dun_get_sensor_wall_ornament,uint8_t dun_get_sensor_wall_ornament(const void *sensor),dungeon data
+0x0001fc82,dun_get_sensor_floor_ornament,uint8_t dun_get_sensor_floor_ornament(const void *sensor),dungeon data
+0x0001fcec,dun_get_wall_ornament_attr_0a,uint16_t dun_get_wall_ornament_attr_0a(uint8_t ornament),dungeon data
+0x0001fd15,dun_is_wall_thing_ornament_shown,"int dun_is_wall_thing_ornament_shown(uint16_t list, uint16_t thing)",dungeon data
+0x0001fd74,dun_get_wall_thing_ornament_attr_13,"uint16_t dun_get_wall_thing_ornament_attr_13(uint16_t list, uint16_t thing)",dungeon data
+0x0001fdbb,dun_get_thing_ornament_attr_0b,uint16_t dun_get_thing_ornament_attr_0b(uint16_t thing),dungeon data
+0x0001fdf0,dun_get_thing_ornament_attr_0c,uint16_t dun_get_thing_ornament_attr_0c(uint16_t thing),dungeon data
+0x0001fe1c,dun_get_door_type,uint8_t dun_get_door_type(const void *door),dungeon data
+0x0001fe50,dun_get_door_attr_0d,uint16_t dun_get_door_attr_0d(uint8_t door_type),dungeon data
+0x0001fe74,dun_get_door_attr_10,uint16_t dun_get_door_attr_10(uint8_t door_type),dungeon data
+0x0001fe82,dun_get_door_attr_0e,uint16_t dun_get_door_attr_0e(uint8_t door_type),dungeon data
+0x0001fe9a,dun_get_door_attr_0f,uint16_t dun_get_door_attr_0f(uint8_t door_type),dungeon data
+0x0001feb5,dun_get_door_attr_11,uint16_t dun_get_door_attr_11(uint8_t door_type),dungeon data
+0x0001fef6,game_end,void game_end(int16_t party_dead),end of game
+0x0002005b,game_quit,void game_quit(void),end of game
+0x000200b4,input_cond_always,int input_cond_always(const uint8_t *node),input
+0x000200ba,input_cond_game_over_state,int input_cond_game_over_state(const uint8_t *node),input
+0x000200d1,input_cond_dialog_kind,int input_cond_dialog_kind(const uint8_t *node),input
+0x000200df,input_cond_inventory_champion,int input_cond_inventory_champion(const uint8_t *node),input
+0x00020120,input_cond_champion_alive,int input_cond_champion_alive(const uint8_t *node),input
+0x00020144,input_cond_champion_in_cell,int input_cond_champion_in_cell(const uint8_t *node),input
+0x00020169,input_cond_flag_7f0b4,int input_cond_flag_7f0b4(const uint8_t *node),input
+0x00020192,input_cond_no_action_champion_in_cell,int input_cond_no_action_champion_in_cell(const uint8_t *node),input
+0x000201d0,input_cond_action_panel_kind,int input_cond_action_panel_kind(const uint8_t *node),input
+0x000201f7,input_cond_action_champion_mask,int input_cond_action_champion_mask(const uint8_t *node),input
+0x00020241,input_cond_action_panel_variant,int input_cond_action_panel_variant(const uint8_t *node),input
+0x0002028d,input_cond_value_757b8,int input_cond_value_757b8(const uint8_t *node),input
+0x0002029e,input_get_zone_rect,"int16_t *input_get_zone_rect(uint16_t zone_flags, int16_t *rect)",input
+0x000202fa,input_mode_node_children,const uint8_t *input_mode_node_children(const int32_t *node),input
+0x00020305,input_mode_node_commands,const uint16_t *input_mode_node_commands(const int32_t *node),input
+0x00020333,input_mark_active_zones,void input_mark_active_zones(const uint8_t *node),input
+0x000203a3,input_find_click_command,"int input_find_click_command(const uint8_t *node, int16_t x, int16_t y, int16_t buttons)",input
+0x0002048a,input_find_key_command,"uint16_t input_find_key_command(const uint8_t *node, uint16_t key)",input
+0x0002056f,input_cancel_push_mode,void input_cancel_push_mode(void),input
+0x00020588,input_cancel_mouse_capture,void input_cancel_mouse_capture(void),input
+0x000206c6,input_reset_states,void input_reset_states(void),input
+0x000206ff,input_refresh_mode,void input_refresh_mode(void),input
+0x00020707,input_set_mode,void input_set_mode(int16_t mode),input
+0x0002073f,input_push_mode,void input_push_mode(int16_t mode),input
+0x0002075d,input_pop_mode,void input_pop_mode(void),input
+0x00020764,input_find_command_entry,"uint16_t *input_find_command_entry(const uint8_t *node, uint16_t command)",input
+0x000207f1,input_simulate_command_click,void input_simulate_command_click(uint16_t command),input
+0x00020847,input_init_tables,void input_init_tables(void),input
+0x000209bb,input_release_cursor_zones,void input_release_cursor_zones(void),input
+0x000209e0,input_flush,void input_flush(void),input
+0x00020b01,input_match_click_in_list,"int input_match_click_in_list(const uint16_t *list, int16_t x, int16_t y, uint16_t buttons)",input
+0x00020c28,input_flush_deferred_click,void input_flush_deferred_click(void),input
+0x00020c5d,input_mouse_click,"void input_mouse_click(int16_t x, int16_t y, int16_t buttons)",input
+0x00020d3c,input_select_command_in_list,"int input_select_command_in_list(uint16_t command, const uint16_t *list)",input
+0x00020e41,input_enqueue_key,void input_enqueue_key(uint16_t key),input
+0x00020ee0,input_get_click_feedback_script,const uint8_t *input_get_click_feedback_script(int16_t *command_record),input
+0x000210dc,input_poll,void input_poll(void),input
+0x00021301,input_feedback_init_rect,"void input_feedback_init_rect(int16_t *picture, int16_t *rect, int16_t width, int16_t height)",interface
+0x00021394,input_run_click_feedback,void input_run_click_feedback(int16_t elapsed_ticks),input
+0x0002186c,input_refine_champion_click,void input_refine_champion_click(int16_t *command_record),input
+0x000219c2,champ_set_leader,void champ_set_leader(int16_t index),champions
+0x00021a49,minion_map_click_set_destination,"int minion_map_click_set_destination(int16_t command, int16_t x, int16_t y)",minions
+0x00021d19,ui_draw_sleep_message,void ui_draw_sleep_message(void),interface
+0x00021d6c,command_execute,int command_execute(int16_t *command_record),input
+0x000224a9,command_process_queue,void command_process_queue(void),input
+0x00022544,view_click_wall_sensor,void view_click_wall_sensor(uint16_t relative_side),dungeon view
+0x00022626,view_click_front_wall,"void view_click_front_wall(int is_passable, int16_t x, int16_t y)",dungeon view
+0x000226c9,view_click_take_object,"void view_click_take_object(int16_t x, int16_t y, uint16_t zone_index)",dungeon view
+0x000227e2,view_click_drop_done,void view_click_drop_done(int dropped),dungeon view
+0x000227ea,view_click_drop_object,"int view_click_drop_object(int16_t x, int16_t y, uint16_t cell)",dungeon view
+0x00022942,view_click_throw_object,"int view_click_throw_object(int16_t x, int16_t y)",dungeon view
+0x000229bb,view_click_place_object,"int view_click_place_object(int16_t click_x, int16_t click_y, int16_t square_x, int16_t square_y, int16_t cell, int16_t mode, int16_t kind)",dungeon view
+0x00022a68,view_click_in_viewport,"void view_click_in_viewport(int16_t x, int16_t y)",dungeon view
+0x000231b1,view_click_object_zone_by_kind,void view_click_object_zone_by_kind(uint16_t kind),dungeon view
+0x00023233,ui_draw_move_arrow,"void ui_draw_move_arrow(uint8_t arrow, uint16_t zone, int pressed)",interface
+0x000232b8,ui_release_move_arrow,void ui_release_move_arrow(void),interface
+0x000232dd,move_party_take_stairs,void move_party_take_stairs(int16_t going_up),champions
+0x0002336d,champ_sync_directions_to_party,void champ_sync_directions_to_party(void),champions
+0x0002339d,move_party_turn,void move_party_turn(int16_t command),champions
+0x000234a8,move_party_bump_damage,"int move_party_bump_damage(int16_t x, int16_t y, int16_t *champ_a, int16_t *champ_b, int8_t party_dir, int8_t move_dir)",champions
+0x000235bf,move_party,int move_party(int16_t command),champions
+0x00023d13,move_get_step_result,"int16_t move_get_step_result(int16_t move_dir, uint16_t from_square, uint16_t to_square, int16_t x, int16_t y, int16_t *group)",champions
+0x00023e0d,move_group_side_blocks,"int move_group_side_blocks(uint8_t *group, int16_t dir)",creatures
+0x00023e5b,move_party_can_push_group,int move_party_can_push_group(uint16_t group_thing),creatures
+0x00023f9b,move_push_creature,void move_push_creature(uint16_t arrow),creatures
+0x00024171,creature_can_be_pushed,"int creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, int16_t *group)",creatures
+0x00024328,creature_push_group,"void creature_push_group(int16_t x, int16_t y, int16_t dir, int16_t strength)",creatures
+0x00024629,game_enter_map,"void game_enter_map(int16_t x, int16_t y, int16_t map, int redraw)",main loop
+0x00024691,game_loop,void game_loop(void),main loop
+0x000249db,main,"int main(int argc, char **argv)",main loop
+0x00024a88,creature_ai_begin,"void *creature_ai_begin(uint16_t group_thing, uint8_t x, uint8_t y, int16_t event_type)",creatures
+0x00024bfc,creature_ai_prepare,void creature_ai_prepare(void),creatures
+0x00024d88,creature_ai_end,void creature_ai_end(void *saved_context),creatures
+0x00024db5,creature_set_next_action,"void creature_set_next_action(uint16_t group_thing, int16_t x, int16_t y, uint8_t action, int reschedule)",creatures
+0x00024e62,creature_alert,"void creature_alert(uint16_t group_thing, int16_t x, int16_t y, uint16_t flags, int16_t amount, int16_t chance)",creatures
+0x00025204,creature_anim_schedule,void creature_anim_schedule(void),creatures
+0x000252c3,creature_anim_schedule_alt,void creature_anim_schedule_alt(void),creatures
+0x0002538c,creature_update_anim_at,"void creature_update_anim_at(int16_t x, int16_t y, int alt)",creatures
+0x00025420,creature_ai_update_group,void creature_ai_update_group(void),creatures
+0x000257cc,creature_process_event,"void creature_process_event(int16_t x, int16_t y, int16_t event_type)",creatures
+0x00025962,creature_ai_select_behavior,void creature_ai_select_behavior(void),creatures
+0x000259cc,creature_ai_update_mood,int16_t creature_ai_update_mood(const uint16_t *behavior_table),creatures
+0x00025c59,creature_ai_load_candidate_path,void creature_ai_load_candidate_path(const uint8_t *candidate),creatures
+0x00025d49,creature_ai_continue_plan,int8_t creature_ai_continue_plan(void),creatures
+0x00025df9,creature_ai_compact_candidates,void creature_ai_compact_candidates(void),creatures
+0x00025ef0,creature_ai_scan_plan_list,"void creature_ai_scan_plan_list(const int8_t *list, int8_t plan, int8_t step, int force)",creatures
+0x00025fb2,creature_ai_plan_flags,uint8_t creature_ai_plan_flags(void),creatures
+0x00026008,creature_ai_choose_plan,int8_t creature_ai_choose_plan(void),creatures
+0x000261a0,creature_ai_clear_plan,void creature_ai_clear_plan(void),creatures
+0x000261b3,creature_ai_fetch_plan_step,int8_t creature_ai_fetch_plan_step(void),creatures
+0x00026249,creature_ai_advance_plan_step,int creature_ai_advance_plan_step(int8_t result),creatures
+0x000262f7,creature_ai_decide,void creature_ai_decide(void),creatures
+0x00026873,creature_ai_run_target_scanner,"void creature_ai_run_target_scanner(uint8_t scanner, int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x00026896,creature_ai_add_candidate,"void creature_ai_add_candidate(uint8_t kind, const uint8_t *target, const int8_t *entry, uint8_t scan_kind, int8_t bonus, uint16_t param, int8_t step, int8_t plan)",creatures
+0x0002697b,creature_count_matching_items,"int16_t creature_count_matching_items(int16_t flag, uint16_t first_thing, uint8_t cell, int into_groups, int into_containers)",creatures
+0x00026a67,creature_ai_get_item_counts,"uint8_t *creature_ai_get_item_counts(const uint8_t *targets, int16_t kind)",creatures
+0x00026d16,creature_ai_test_condition,"int creature_ai_test_condition(uint8_t condition, uint16_t value, int8_t plan)",creatures
+0x00027578,creature_ai_scan_idle,"void creature_ai_scan_idle(int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x0002759e,creature_ai_scan_targets,"void creature_ai_scan_targets(int8_t kind, int8_t step, const uint8_t *targets, uint8_t bonus, uint16_t param)",creatures
+0x0002764e,creature_ai_scan_kind0,"void creature_ai_scan_kind0(int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x00027663,creature_ai_scan_items_seen,"void creature_ai_scan_items_seen(int8_t invert, int8_t step, const uint8_t *targets, int8_t kind)",creatures
+0x000276cd,creature_ai_scan_items_seen_2,"void creature_ai_scan_items_seen_2(int8_t invert, int8_t step, const uint8_t *targets)",creatures
+0x000276e2,creature_ai_scan_items_seen_4,"void creature_ai_scan_items_seen_4(int8_t invert, int8_t step, const uint8_t *targets)",creatures
+0x000276f2,creature_ai_scan_item_counts,"void creature_ai_scan_item_counts(uint8_t ignore_path, int8_t step, const uint8_t *targets, int8_t kind)",creatures
+0x000277da,creature_ai_scan_item_counts_1,"void creature_ai_scan_item_counts_1(int8_t ignore_path, int8_t step, const uint8_t *targets)",creatures
+0x000277ed,creature_ai_scan_item_counts_3,"void creature_ai_scan_item_counts_3(int8_t ignore_path, int8_t step, const uint8_t *targets)",creatures
+0x000277fb,creature_ai_scan_carried_items,"void creature_ai_scan_carried_items(int8_t invert, int8_t step, const uint8_t *targets, int8_t kind)",creatures
+0x00027877,creature_ai_scan_carried_items_2,"void creature_ai_scan_carried_items_2(int8_t invert, int8_t step, const uint8_t *targets)",creatures
+0x0002788c,creature_ai_scan_carried_items_4,"void creature_ai_scan_carried_items_4(int8_t invert, int8_t step, const uint8_t *targets)",creatures
+0x0002789c,creature_ai_scan_path_kind13,"void creature_ai_scan_path_kind13(int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x000278c8,creature_ai_scan_home,"void creature_ai_scan_home(int8_t skip_at_home, int8_t step, const uint8_t *targets)",creatures
+0x0002792d,creature_ai_scan_minion_destination,"void creature_ai_scan_minion_destination(int8_t plan, int8_t step, const uint8_t *targets)",minions
+0x00027986,creature_ai_scan_path_kind5,"void creature_ai_scan_path_kind5(int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x000279af,creature_ai_scan_carried_kind,"void creature_ai_scan_carried_kind(uint8_t ignore_path, uint8_t step, const uint8_t *targets, int8_t kind)",creatures
+0x00027a8c,creature_ai_scan_carried_kind_f,"void creature_ai_scan_carried_kind_f(int8_t ignore_path, int8_t step, const uint8_t *targets)",creatures
+0x00027a9f,creature_ai_scan_carried_kind_10,"void creature_ai_scan_carried_kind_10(int8_t ignore_path, int8_t step, const uint8_t *targets)",creatures
+0x00027aad,creature_ai_scan_random_wander,"void creature_ai_scan_random_wander(int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x00027b3a,creature_ai_scan_by_condition,"void creature_ai_scan_by_condition(int8_t ignore_path, uint8_t step, const uint8_t *targets, int8_t kind)",creatures
+0x00027be3,creature_ai_scan_by_condition_15,"void creature_ai_scan_by_condition_15(int8_t ignore_path, int8_t step, const uint8_t *targets)",creatures
+0x00027bf6,creature_ai_scan_party,"void creature_ai_scan_party(int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x00027cd2,creature_ai_exec_plan_command,int8_t creature_ai_exec_plan_command(int8_t command),creatures
+0x00027e28,creature_ai_cmd_follow_candidate_path,int8_t creature_ai_cmd_follow_candidate_path(void),creatures
+0x00027eeb,creature_ai_cmd_shoot_random,void creature_ai_cmd_shoot_random(void),creatures
+0x00027f28,creature_ai_cmd_move_forward,int8_t creature_ai_cmd_move_forward(void),creatures
+0x00027f6e,creature_ai_cmd_turn_sideways,void creature_ai_cmd_turn_sideways(void),creatures
+0x00028017,creature_ai_cmd_seek_item,int8_t creature_ai_cmd_seek_item(void),creatures
+0x000280ac,creature_ai_cmd_turn_front_group,void creature_ai_cmd_turn_front_group(void),creatures
+0x00028138,creature_ai_cmd_seek_with_carried_item,int8_t creature_ai_cmd_seek_with_carried_item(void),creatures
+0x000281f3,creature_ai_cmd_take_from_front_group,int8_t creature_ai_cmd_take_from_front_group(void),creatures
+0x00028344,creature_ai_cmd_front_group_carries,int8_t creature_ai_cmd_front_group_carries(void),creatures
+0x00028427,shop_front_customer_has_goods,int shop_front_customer_has_goods(uint8_t cell),money and shops
+0x00028574,shop_cmd_wait_for_offer,int8_t shop_cmd_wait_for_offer(void),money and shops
+0x0002864b,shop_sum_value_callback,"int shop_sum_value_callback(uint16_t *thing, int32_t *accumulator)",money and shops
+0x000286c8,shop_sum_items_value,"int16_t shop_sum_items_value(uint16_t *list, uint16_t flag, uint8_t cell, uint16_t selling, uint16_t mark, uint16_t unused)",money and shops
+0x00028711,shop_cmd_evaluate_offer,int8_t shop_cmd_evaluate_offer(void),money and shops
+0x00028a24,dun_find_sensor_on_square,"uint16_t dun_find_sensor_on_square(int16_t x, int16_t y, uint8_t cell, uint16_t sensor_type)",dungeon data
+0x00028aad,creature_ai_cmd_place_item_on_sensor,int8_t creature_ai_cmd_place_item_on_sensor(void),creatures
+0x00028df0,creature_ai_cmd_check_party_ahead,int8_t creature_ai_cmd_check_party_ahead(void),creatures
+0x00028e99,shop_cmd_count_payment,int8_t shop_cmd_count_payment(void),money and shops
+0x0002905a,creature_ai_cmd_drop_then_seek,int8_t creature_ai_cmd_drop_then_seek(void),creatures
+0x0002911c,creature_ai_cmd_set_mood_flag,int8_t creature_ai_cmd_set_mood_flag(void),creatures
+0x0002923e,creature_ai_cmd_go_to_target,int8_t creature_ai_cmd_go_to_target(void),creatures
+0x000293a4,creature_ai_cmd_seek_kind11_targets,int8_t creature_ai_cmd_seek_kind11_targets(void),creatures
+0x00029448,creature_ai_cmd_turn_toward_party,int8_t creature_ai_cmd_turn_toward_party(void),creatures
+0x000294ca,creature_ai_cmd_move_relative,int8_t creature_ai_cmd_move_relative(void),creatures
+0x00029544,creature_ai_cmd_path_to_target,int8_t creature_ai_cmd_path_to_target(void),creatures
+0x00029598,money_normalize_coins,"int money_normalize_coins(int check_only, uint16_t container)",money and shops
+0x000296d5,shop_cmd_pay_change,int8_t shop_cmd_pay_change(void),money and shops
+0x0002992d,creature_ai_cmd_set_action_by_flag,int8_t creature_ai_cmd_set_action_by_flag(void),creatures
+0x000299ba,creature_ai_cmd_consume_carried_item,int8_t creature_ai_cmd_consume_carried_item(void),creatures
+0x00029b16,creature_ai_cmd_check_transform_marker,int8_t creature_ai_cmd_check_transform_marker(void),creatures
+0x00029be7,creature_ai_cmd_set_special_action,int8_t creature_ai_cmd_set_special_action(void),creatures
+0x00029c0f,creature_ai_cmd_set_action,void creature_ai_cmd_set_action(void),creatures
+0x00029c2d,creature_ai_cmd_path_to_target_alt,int8_t creature_ai_cmd_path_to_target_alt(void),creatures
+0x00029c88,creature_ai_cmd_random_chance,int8_t creature_ai_cmd_random_chance(void),creatures
+0x00029caa,creature_ai_cmd_carries_item,int8_t creature_ai_cmd_carries_item(void),creatures
+0x00029d0c,dun_set_pit_or_teleporter_state,"int dun_set_pit_or_teleporter_state(uint16_t x, uint16_t y, uint16_t mode)",dungeon data
+0x00029de7,creature_ai_act_move,int creature_ai_act_move(void),creatures
+0x00029f39,creature_ai_act_turn_then_move,int16_t creature_ai_act_turn_then_move(void),creatures
+0x00029f6b,creature_ai_act_move_two_steps,int creature_ai_act_move_two_steps(void),creatures
+0x0002a088,creature_ai_act_move_stairs,int creature_ai_act_move_stairs(void),creatures
+0x0002a357,creature_ai_act_turn,void creature_ai_act_turn(void),creatures
+0x0002a3b9,creature_ai_act_melee_attack,int creature_ai_act_melee_attack(void),creatures
+0x0002a835,creature_ai_act_shoot,int creature_ai_act_shoot(void),creatures
+0x0002a9a1,creature_ai_act_steal_from_champion,int creature_ai_act_steal_from_champion(void),creatures
+0x0002abd3,creature_ai_act_trigger_square,int creature_ai_act_trigger_square(void),creatures
+0x0002ac69,creature_ai_act_turn_then_pick_up,int16_t creature_ai_act_turn_then_pick_up(void),creatures
+0x0002acbc,creature_ai_act_drop_items,int creature_ai_act_drop_items(void),creatures
+0x0002adb8,creature_ai_act_vanish,void creature_ai_act_vanish(void),creatures
+0x0002ade1,creature_ai_act_pick_up_items,int creature_ai_act_pick_up_items(void),creatures
+0x0002aed3,creature_ai_act_throw_item,int creature_ai_act_throw_item(void),creatures
+0x0002afa5,creature_ai_act_turn_target_group,int creature_ai_act_turn_target_group(void),creatures
+0x0002afeb,creature_ai_act_give_items_to_group,int creature_ai_act_give_items_to_group(void),creatures
+0x0002b163,creature_ai_act_take_items_from_group,int creature_ai_act_take_items_from_group(void),creatures
+0x0002b23b,creature_ai_act_use_wall_sensor,int creature_ai_act_use_wall_sensor(void),creatures
+0x0002b35d,creature_ai_act_transform,void creature_ai_act_transform(void),creatures
+0x0002b570,creature_ai_act_explode_or_spawn,int creature_ai_act_explode_or_spawn(void),creatures
+0x0002b724,creature_ai_act_cloud_explosion,void creature_ai_act_cloud_explosion(void),creatures
+0x0002b75e,creature_ai_execute_action,int creature_ai_execute_action(void),creatures
+0x0002b96a,creature_square_is_obstacle,"int creature_square_is_obstacle(int16_t x, int16_t y)",creatures
+0x0002b9fc,creature_square_blocks_line,"int creature_square_blocks_line(int16_t x, int16_t y)",creatures
+0x0002bb78,creature_square_blocks_line_to_target,"int creature_square_blocks_line_to_target(int16_t x, int16_t y)",creatures
+0x0002bbad,creature_trace_line,"int16_t creature_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int (*blocked)(int16_t x, int16_t y))",creatures
+0x0002beaf,creature_ai_cache_square,"void creature_ai_cache_square(int16_t x, int16_t y)",creatures
+0x0002bf41,creature_ai_cached_first_object,uint16_t creature_ai_cached_first_object(void),creatures
+0x0002bfae,creature_ai_cached_first_group,uint16_t creature_ai_cached_first_group(void),creatures
+0x0002bff8,creature_thing_matches_filter_wrapper,"int creature_thing_matches_filter_wrapper(uint16_t thing, int16_t filter)",creatures
+0x0002c005,creature_ai_turn_toward,int creature_ai_turn_toward(int16_t dir),creatures
+0x0002c0a2,creature_ai_find_target_in_lines,"int creature_ai_find_target_in_lines(int16_t filter, uint8_t *distance_map, uint16_t *out_location, int16_t x, int16_t y, int16_t dir, int ranged)",creatures
+0x0002c404,creature_ai_try_attack,"int creature_ai_try_attack(uint8_t mode, int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t dir)",creatures
+0x0002cc42,creature_ai_try_door_action,"int creature_ai_try_door_action(uint8_t mode, int16_t x, int16_t y, int16_t door_x, int16_t door_y, int16_t dir)",creatures
+0x0002d35e,dun_get_level_transfer_destination,"int16_t dun_get_level_transfer_destination(int16_t *x, int16_t *y, int16_t map, int16_t level_delta, uint16_t flags)",dungeon data
+0x0002d52d,creature_ai_projectile_incoming,"int creature_ai_projectile_incoming(int16_t x, int16_t y)",creatures
+0x0002d725,creature_thing_matches_filter9,int creature_thing_matches_filter9(uint16_t thing),creatures
+0x0002d792,creature_ai_try_move,"uint16_t creature_ai_try_move(uint8_t command, int16_t x, int16_t y, int16_t dest_x, int16_t dest_y, int16_t dir)",creatures
+0x0002e8e1,creature_find_matching_item_inside,"int16_t creature_find_matching_item_inside(uint16_t thing, int16_t filter, int16_t dir)",creatures
+0x0002ea68,creature_ai_try_take_item,"int creature_ai_try_take_item(uint8_t mode, int16_t x, int16_t y, int16_t dest_x, int16_t dest_y, int16_t dir, int16_t filter)",creatures
+0x0002f0fa,creature_find_wall_actuator_in_cell,"uint16_t creature_find_wall_actuator_in_cell(uint16_t first_thing, int16_t cell, int16_t mode, int16_t filter)",creatures
+0x0002f1c4,creature_wall_actuator_accepts,"int creature_wall_actuator_accepts(uint16_t actuator, int16_t mode, int16_t filter, uint16_t state)",creatures
+0x0002f2cf,creature_ai_try_use_wall_actuator,"int creature_ai_try_use_wall_actuator(uint8_t mode, int16_t x, int16_t y, int16_t dest_x, int16_t dest_y, int16_t dir, int16_t filter)",creatures
+0x0002f636,creature_thing_matches_filter,"uint16_t creature_thing_matches_filter(uint16_t thing, uint16_t filter)",creatures
+0x0002f85a,creature_free_cached_ai_data,void creature_free_cached_ai_data(uint16_t group_thing),creatures
+0x0002f8d6,creature_get_anim_state,"uint8_t *creature_get_anim_state(uint8_t *group, const uint8_t *info)",creatures
+0x0002f8f5,creature_refresh_party_maps,void creature_refresh_party_maps(void),creatures
+0x0002facc,creature_get_party_distance,"int16_t creature_get_party_distance(int16_t x, int16_t y)",creatures
+0x0002fba9,creature_get_group_at,"uint16_t creature_get_group_at(int16_t x, int16_t y)",creatures
+0x0002fbe0,creature_find_group_near_point,"uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, uint16_t cell)",creatures
+0x0002fd7b,math_nth_set_bit,"uint32_t math_nth_set_bit(uint32_t mask, int16_t n)",runtime library
+0x0002fda0,math_count_bits,int16_t math_count_bits(uint32_t mask),runtime library
+0x0002fe35,creature_ai_set_map,void creature_ai_set_map(int16_t map),creatures
+0x0002feb5,item_match_type_callback,"int item_match_type_callback(const uint16_t *thing, const int16_t *wanted_type)",items
+0x0002fed6,item_find_in_possessions,"uint16_t *item_find_in_possessions(int16_t owner_thing, int16_t item_type, uint8_t nth)",items
+0x0002ff1e,creature_find_matching_item,"uint16_t creature_find_matching_item(int16_t filter, uint16_t first_thing, uint8_t cell)",creatures
+0x0002ff89,creature_remove_matching_items,"void creature_remove_matching_items(uint16_t *list_head, int16_t filter, uint8_t cell)",creatures
+0x00030102,creature_group_in_state5,int creature_group_in_state5(const uint8_t *group),creatures
+0x0003014d,creature_group_check_pass_flag,int creature_group_check_pass_flag(uint16_t group_thing),creatures
+0x00030185,creature_group_current_frame_flag,int creature_group_current_frame_flag(uint16_t group_thing),creatures
+0x000301dc,creature_group_check_field8,int creature_group_check_field8(uint16_t group_thing),creatures
+0x000301f3,creature_reset_animation,void creature_reset_animation(uint8_t *group),creatures
+0x0003023f,creature_ai_animate_and_get_next_time,uint32_t creature_ai_animate_and_get_next_time(void),creatures
+0x0003059d,creature_schedule_update,"void creature_schedule_update(int16_t x, int16_t y)",creatures
+0x0003064d,creature_cancel_update,void creature_cancel_update(uint16_t group_thing),creatures
+0x000306a8,creature_activate_group,"void creature_activate_group(uint16_t group_thing, int16_t x, int16_t y)",creatures
+0x0003085a,creature_deactivate_group,void creature_deactivate_group(uint16_t active_index),creatures
+0x00030944,creature_summon_group,"uint16_t creature_summon_group(uint8_t type, uint16_t level, uint8_t dir, int16_t x, int16_t y, int16_t map, int16_t link_thing, int8_t search_dir)",creatures
+0x00030b3d,minion_dismiss,void minion_dismiss(uint16_t link_thing),minions
+0x00030ba6,creature_create_group,"uint16_t creature_create_group(uint16_t type_flags, int16_t level, uint16_t dir, uint16_t x, uint16_t y)",creatures
+0x00030d45,creature_drop_possessions,"void creature_drop_possessions(uint16_t group_thing, uint16_t x, uint16_t y, int16_t mode, int16_t sound_map)",creatures
+0x00030fe3,creature_delete_group_at,"void creature_delete_group_at(int16_t x, int16_t y, uint16_t mode, int16_t sound_map)",creatures
+0x00031113,creature_attack_group_at,"int16_t creature_attack_group_at(int16_t x, int16_t y)",creatures
+0x0003128a,creature_is_near_party_front,"int creature_is_near_party_front(int16_t x, int16_t y, int16_t map)",creatures
+0x00031348,creature_damage_current_group,int creature_damage_current_group(uint16_t damage),creatures
+0x00031574,creature_roll_armor_factor,"int creature_roll_armor_factor(uint16_t group_thing, int16_t enabled)",creatures
+0x000315c5,creature_apply_damage_kind,"void creature_apply_damage_kind(uint16_t group_thing, int16_t x, int16_t y, uint16_t kind)",creatures
+0x0003161e,creature_find_ai_marker,"int16_t creature_find_ai_marker(int16_t level_delta, uint16_t id_mask)",creatures
+0x00031724,creature_find_ai_marker_by_id,"int16_t creature_find_ai_marker_by_id(int16_t level_delta, int16_t id)",creatures
+0x000317ee,creature_square_blocks_line_except_self,"int creature_square_blocks_line_except_self(int16_t x, int16_t y)",creatures
+0x0003188a,creature_ai_search_area,"int creature_ai_search_area(int16_t x, int16_t y, uint8_t max_distance, int16_t flags, int16_t goal_count, uint8_t *goals, uint8_t *result)",creatures
+0x00033df9,creature_ai_load_cached_path,void creature_ai_load_cached_path(void),creatures
+0x00033e61,creature_ai_next_path_step,int16_t creature_ai_next_path_step(void),creatures
+0x00033ef3,creature_ai_plan_path,int creature_ai_plan_path(void),creatures
+0x00034106,creature_activate_groups_on_map,void creature_activate_groups_on_map(void),creatures
+0x00034236,creature_activate_groups_all_maps,void creature_activate_groups_all_maps(void),creatures
+0x0003426d,creature_deactivate_all_groups,void creature_deactivate_all_groups(void),creatures
+0x000342a3,creature_reset_active_groups,void creature_reset_active_groups(void),creatures
+0x000342f9,creature_alloc_active_groups,void creature_alloc_active_groups(void),creatures
+0x000343af,save_reset_bit_buffer,void save_reset_bit_buffer(void),save and load
+0x000343be,save_write_packed,"int save_write_packed(uint8_t *src, uint8_t *mask, uint16_t size, uint32_t count)",save and load
+0x0003449b,save_write_bit,int save_write_bit(uint8_t bit),save and load
+0x000344c0,save_flush_bits,int save_flush_bits(void),save and load
+0x00034536,save_read_packed,"int save_read_packed(uint8_t *dst, uint8_t *mask, uint16_t size, uint32_t count, int flags)",save and load
+0x00034650,save_read_bit,int save_read_bit(uint32_t *bit),save and load
+0x00034683,gamefile_read,"int gamefile_read(void *buf, int16_t size)",save and load
+0x000346aa,gamefile_write,"int gamefile_write(const void *buf, int16_t size)",save and load
+0x000346d1,save_check_disk,int save_check_disk(int mode),save and load
+0x00034772,save_defer_thing,void save_defer_thing(uint16_t thing),save and load
+0x00034797,save_write_deferred_things,int save_write_deferred_things(void),save and load
+0x0003484f,save_read_deferred_things,int save_read_deferred_things(void),save and load
+0x0003491a,save_write_thing_list,"int save_write_thing_list(uint16_t thing, int with_cell, int follow_list)",save and load
+0x00034dfe,save_write_timeline_things,int save_write_timeline_things(void),save and load
+0x00034e73,save_write_dungeon_squares,int save_write_dungeon_squares(void),save and load
+0x0003502b,game_save,void game_save(void),save and load
+0x0003573a,save_read_thing_list,"int save_read_thing_list(int16_t x, int16_t y, uint16_t *list_head, int with_cell, int follow_list)",save and load
+0x00035b0e,save_read_timeline_things,int save_read_timeline_things(void),save and load
+0x00035b97,save_read_dungeon_things,int save_read_dungeon_things(void),save and load
+0x00036117,dun_mark_square_bit1,"void dun_mark_square_bit1(int16_t x, int16_t y, int16_t map)",dungeon data
+0x0003613c,dun_merge_object_lists,"uint16_t dun_merge_object_lists(uint16_t list, uint16_t objects)",dungeon data
+0x000361bc,dun_number_linked_actuators,"int dun_number_linked_actuators(uint16_t thing, int16_t map, int16_t *count)",dungeon data
+0x0003624f,dungeon_link_things_after_load,void dungeon_link_things_after_load(void),dungeon data
+0x000367da,dungeon_read_level_table,void dungeon_read_level_table(void),dungeon data
+0x00036909,dungeon_load,void dungeon_load(int new_game),dungeon data
+0x00036ef6,save_restore_timed_effects,void save_restore_timed_effects(void),save and load
+0x00037058,dungeon_open_file,void dungeon_open_file(void),dungeon data
+0x000370d2,game_load,int16_t game_load(void),save and load
+0x000376b6,save_choose_load_slot,int16_t save_choose_load_slot(void),save and load
+0x000377e5,save_make_slot_name,"void save_make_slot_name(char *dst, int slot)",save and load
+0x0003780f,save_choose_save_slot,int16_t save_choose_save_slot(void),save and load
+0x00037ab0,save_open_slot_dialog,"void save_open_slot_dialog(uint8_t dialog_index, int16_t input_mode)",save and load
+0x00037bfc,save_close_slot_dialog,void save_close_slot_dialog(void),save and load
+0x00037c33,save_draw_name_entry,"void save_draw_name_entry(const char *name, int show_cursor)",save and load
+0x00037cfb,save_list_slots,void save_list_slots(void),save and load
+0x00037d9f,save_draw_slot_selection,void save_draw_slot_selection(int16_t slot),save and load
+0x00037e22,inv_alloc_hand_icon_bitmap,void inv_alloc_hand_icon_bitmap(void),inventory
+0x00037e4e,text_get_object_name,"void text_get_object_name(uint8_t category, uint8_t index)",text
+0x00037e7a,item_get_name,char *item_get_name(uint16_t thing),items
+0x00037ee5,ui_show_object_name,void ui_show_object_name(uint16_t thing),interface
+0x00037f04,inv_leader_hand_removed_stub,void inv_leader_hand_removed_stub(void),inventory
+0x00037f05,zone_compute_icon_rect,"void zone_compute_icon_rect(int16_t zone, int16_t *rect)",interface
+0x00037f3a,zone_get_icon_rect,"void zone_get_icon_rect(int16_t zone, int16_t *rect)",interface
+0x00037f76,item_get_icon_index,"uint8_t item_get_icon_index(uint16_t thing, int16_t variant, int animate)",items
+0x0003815d,inv_draw_slot,"void inv_draw_slot(uint16_t thing, int16_t slot, int16_t icon_offset, int highlighted, int draw_frame)",inventory
+0x00038392,inv_render_hand_icon,void inv_render_hand_icon(uint16_t *hand_icon),inventory
+0x0003844c,ui_draw_action_hand_icon,"uint8_t *ui_draw_action_hand_icon(int16_t champion, int16_t hand, uint8_t *target)",interface
+0x0003867b,menu_draw_title,void menu_draw_title(void),start menu
+0x000386f5,menu_run,void menu_run(void),start menu
+0x00038877,menu_show_picture_and_wait,void menu_show_picture_and_wait(void),start menu
+0x000388ff,inv_draw_description_text,void inv_draw_description_text(const char *text),inventory
+0x000389c2,light_update_party_light,void light_update_party_light(void),day and night
+0x00038c46,light_add_square_light,"void light_add_square_light(int16_t distance, int16_t dir, int16_t x, int16_t y, uint16_t flags)",day and night
+0x00039044,items_burn_held_lights,void items_burn_held_lights(void),items
+0x000390f1,inv_draw_scroll_line,"void inv_draw_scroll_line(int16_t center_x, int16_t y, const char *line)",inventory
+0x0003918a,inv_draw_scroll,void inv_draw_scroll(uint16_t scroll_thing),inventory
+0x00039312,inv_close_container,void inv_close_container(void),inventory
+0x0003937b,inv_open_container,"void inv_open_container(int16_t container_thing, uint8_t *container)",inventory
+0x00039409,money_draw_coin_counts,void money_draw_coin_counts(uint16_t container_thing),money and shops
+0x000394b2,inv_draw_container_contents,void inv_draw_container_contents(const uint8_t *container),inventory
+0x000394f7,inv_draw_object_gauge,"void inv_draw_object_gauge(int16_t zone, int16_t value, int16_t max, uint8_t label_glyph, int16_t color)",inventory
+0x0003962a,inv_draw_object_info,int inv_draw_object_info(uint16_t thing),inventory
+0x000398ff,ui_draw_gauge_bar,"void ui_draw_gauge_bar(int16_t value, int16_t zone, uint16_t color, int16_t min, int16_t max, int16_t back_color)",interface
+0x00039a4d,inv_draw_food_water_panel,void inv_draw_food_water_panel(void),inventory
+0x00039b3f,inv_draw_mouth_picture,void inv_draw_mouth_picture(int eating),inventory
+0x00039bbb,item_use_charge,int item_use_charge(uint16_t thing),items
+0x00039c3f,champ_consume_object,"void champ_consume_object(int16_t champion, uint16_t thing, int16_t slot)",champions
+0x0003a12a,inv_draw_skills_and_statistics,void inv_draw_skills_and_statistics(void),inventory
+0x0003a409,input_hold_right_button,void input_hold_right_button(void),input
+0x0003a464,inv_toggle,void inv_toggle(int16_t champion),inventory
+0x0003a6ab,text_format,"char *text_format(const char *fmt, char *dst)",text
+0x0003a921,gdat_get_text,"char *gdat_get_text(uint8_t category, uint8_t index, uint8_t entry, char *dst)",text
+0x0003a9de,data_path_init,void data_path_init(void),file I/O
+0x0003aa32,gdat_preload_add,void gdat_preload_add(uint32_t key),graphics
+0x0003aa7e,gdat_preload_add_flagged,void gdat_preload_add_flagged(uint32_t key),graphics
+0x0003aaa4,gdat_preload_add_range,"void gdat_preload_add_range(uint32_t first_key, uint8_t last_entry)",graphics
+0x0003aadd,gdat_preload_add_referenced,"void gdat_preload_add_referenced(uint8_t category, uint8_t index, uint8_t entry)",graphics
+0x0003ab31,gdat_load_map_graphics,void gdat_load_map_graphics(void),graphics
+0x0003ba23,gdat_swap16,uint16_t gdat_swap16(uint16_t value),graphics
+0x0003ba35,gdat_raw_entry_offset,int32_t gdat_raw_entry_offset(uint16_t raw_index),graphics
+0x0003ba8d,mem_pool_init,"void mem_pool_init(void *block, int32_t size, uint16_t flags)",memory
+0x0003babf,mem_pool_take_largest,void *mem_pool_take_largest(uint16_t flags),memory
+0x0003bb10,mem_pool_find_best_fit,"void *mem_pool_find_best_fit(int32_t size, uint16_t flags)",memory
+0x0003bb62,mem_pool_carve,"uint8_t *mem_pool_carve(void *pool, int32_t size)",memory
+0x0003bb72,mem_pools_save_marks,void mem_pools_save_marks(void),memory
+0x0003bb96,mem_pools_restore_marks,void mem_pools_restore_marks(void),memory
+0x0003bbba,mem_alloc,"void *mem_alloc(uint32_t size, uint16_t flags, uint16_t pool_flags)",memory
+0x0003bc8e,mem_free_block,void mem_free_block(uint8_t *block),memory
+0x0003bca5,mem_free_size,void mem_free_size(uint32_t size),memory
+0x0003bcba,mem_release_size,void mem_release_size(uint32_t size),memory
+0x0003bcc6,mem_free_picture,void mem_free_picture(uint8_t *image),memory
+0x0003bd64,mem_alloc_image,"uint8_t *mem_alloc_image(uint16_t width, uint16_t height, uint16_t flags, int16_t bpp)",memory
+0x0003bdda,mem_free_image,void mem_free_image(uint8_t *image),memory
+0x0003be1a,image_cache_slot_of,uint16_t image_cache_slot_of(uint16_t id),graphics
+0x0003be51,image_cache_unlink_free_block,void image_cache_unlink_free_block(int32_t *block),graphics
+0x0003be7e,image_cache_insert_free_block,void image_cache_insert_free_block(int32_t *block),graphics
+0x0003bef6,gdat_file_read,"void gdat_file_read(int32_t offset, int32_t size, void *dst)",file I/O
+0x0003bfd3,gdat_read_raw_entry,"void gdat_read_raw_entry(uint16_t raw_index, void *dst)",graphics
+0x0003c0d0,mem_add_pool,"int mem_add_pool(void *block, uint32_t size, uint16_t flags)",memory
+0x0003c1c3,image_cache_init,void image_cache_init(int32_t reserve),memory
+0x0003c3ab,gdat_pack_key,"uint32_t gdat_pack_key(uint8_t category, uint8_t index, uint8_t type, uint8_t entry)",graphics
+0x0003c3c4,gdat_category_is_raw,int gdat_category_is_raw(uint8_t category),graphics
+0x0003c3d9,gdat_load_raw_entry,"uint8_t *gdat_load_raw_entry(uint16_t raw_index, int16_t *slot, int keep)",graphics
+0x0003c4a5,gdat_key_table_field,"int32_t gdat_key_table_field(uint16_t row, int16_t column)",graphics
+0x0003c4f2,gdat_find_entry,"uint8_t *gdat_find_entry(uint8_t category, uint8_t index, uint8_t type, uint8_t entry)",graphics
+0x0003c5d3,gdat_entry_index,"uint16_t gdat_entry_index(uint8_t category, uint8_t index, uint8_t type, uint8_t entry)",graphics
+0x0003c636,gdat_find_resident_entry,uint16_t gdat_find_resident_entry(uint16_t raw_index),graphics
+0x0003c68a,gdat_iterate_next,int gdat_iterate_next(void *iterator),graphics
+0x0003c92e,gdat_entry_exists,"int gdat_entry_exists(uint8_t category, uint8_t index, uint8_t type, uint8_t entry)",graphics
+0x0003c9aa,gdat_build_lookup_tables,"void gdat_build_lookup_tables(void *tables, int (*filter)(uint16_t row), const uint8_t *columns)",graphics
+0x0003cd2f,gdat_key_row_matches_language,int gdat_key_row_matches_language(uint16_t row),graphics
+0x0003cd67,gdat_preload_resident_entries,void gdat_preload_resident_entries(void),graphics
+0x0003ce0a,gdat_load_key_table,void gdat_load_key_table(void),graphics
+0x0003cf67,gdat_index_last_type,"uint16_t gdat_index_last_type(uint8_t category, uint8_t index)",graphics
+0x0003cfcc,gdat_find_max_song_size,void gdat_find_max_song_size(void),music
+0x0003d024,gdat_count_sound_entries,void gdat_count_sound_entries(void),sound
+0x0003d111,gdat_open_files,void gdat_open_files(void),file I/O
+0x0003d187,gdat_close_files,void gdat_close_files(void),file I/O
+0x0003d1c8,gdat_load_index,void gdat_load_index(void),graphics
+0x0003d49e,image_cache_free_slot,void image_cache_free_slot(uint16_t id),graphics
+0x0003d599,image_cache_evict_until,void image_cache_evict_until(int32_t size),graphics
+0x0003d5d0,image_cache_compact,void image_cache_compact(void),graphics
+0x0003d688,image_cache_alloc_block,int32_t *image_cache_alloc_block(int32_t size),graphics
+0x0003d73b,mem_arena_init,"void mem_arena_init(void *arena, uint8_t *top, int32_t size, uint16_t flags)",memory
+0x0003d751,gdat_arena_compact,void gdat_arena_compact(void *arena),graphics
+0x0003d7c9,gdat_mark_entry_unloaded,void gdat_mark_entry_unloaded(uint16_t raw_index),graphics
+0x0003d7fc,mem_arena_take,"uint8_t *mem_arena_take(void *arena, int32_t size)",memory
+0x0003d809,gdat_arena_move_entry,"uint8_t *gdat_arena_move_entry(void *arena, uint8_t *entry, int32_t size)",graphics
+0x0003d826,gdat_load_entry_sets,"void gdat_load_entry_sets(const uint32_t *key_ranges, int16_t count)",graphics
+0x0003e408,image_cache_alloc_slot,uint16_t image_cache_alloc_slot(void),graphics
+0x0003e47b,image_cache_alloc_temp_index,uint16_t image_cache_alloc_temp_index(void),graphics
+0x0003e4d0,image_cache_reset_usage,void image_cache_reset_usage(void),graphics
+0x0003e5dd,image_cache_link_slot,"void image_cache_link_slot(uint16_t slot, int locked)",graphics
+0x0003e6e3,image_cache_touch_slot,uint8_t *image_cache_touch_slot(uint16_t slot),graphics
+0x0003e867,gdat_decode_image,"uint8_t *gdat_decode_image(uint16_t raw_index, int temporary)",graphics
+0x0003ec2b,gdat_get_image,"uint8_t *gdat_get_image(uint8_t category, uint8_t index, uint8_t entry)",graphics
+0x0003ecc7,gdat_get_entry_data,"void *gdat_get_entry_data(uint8_t category, uint8_t index, uint8_t type, uint8_t entry)",graphics
+0x0003ed8a,gdat_get_entry_data_or_null,"void *gdat_get_entry_data_or_null(uint8_t category, uint8_t index, uint8_t type, uint8_t entry)",graphics
+0x0003edf0,gdat_load_entry_to,"void gdat_load_entry_to(uint8_t category, uint8_t index, uint8_t type, uint8_t entry, void *dst)",graphics
+0x0003ee1d,gdat_get_image_palette,"uint8_t *gdat_get_image_palette(uint8_t category, uint8_t index, uint8_t entry)",palette
+0x0003eed3,gdat_get_image_offset,"uint16_t gdat_get_image_offset(uint8_t category, uint8_t index, uint8_t entry)",graphics
+0x0003efb3,image_cache_new_temp_key,uint32_t image_cache_new_temp_key(void),graphics
+0x0003efe3,image_cache_find_key,"int image_cache_find_key(uint32_t key, int16_t *position)",graphics
+0x0003f04d,image_cache_insert_key,"uint16_t image_cache_insert_key(uint32_t key, int16_t position)",graphics
+0x0003f100,image_cache_remove_key,void image_cache_remove_key(int16_t index),graphics
+0x0003f186,image_cache_lookup_or_add,"int image_cache_lookup_or_add(uint32_t key, uint16_t *index)",graphics
+0x0003f1f8,image_cache_lookup,"int32_t image_cache_lookup(uint32_t key, uint16_t *index, int create)",graphics
+0x0003f279,image_cache_alloc,"uint8_t *image_cache_alloc(uint16_t index, int32_t size)",graphics
+0x0003f2c2,image_cache_realloc,"void image_cache_realloc(uint16_t index, int32_t size)",graphics
+0x0003f2f0,image_cache_alloc_image,"uint8_t *image_cache_alloc_image(int16_t index, uint16_t width, int16_t height, int16_t bpp)",graphics
+0x0003f337,image_cache_get,uint8_t *image_cache_get(uint16_t index),graphics
+0x0003f352,image_cache_lock,void image_cache_lock(uint16_t index),graphics
+0x0003f36a,image_cache_unlink_slot,void image_cache_unlink_slot(uint16_t slot),graphics
+0x0003f3c2,image_cache_release,void image_cache_release(uint16_t index),graphics
+0x0003f3ee,image_cache_new_temp,uint16_t image_cache_new_temp(void),graphics
+0x0003f406,image_cache_free,void image_cache_free(uint16_t index),graphics
+0x0003f422,gdat_lock_image,"void gdat_lock_image(uint8_t category, uint8_t index, uint8_t entry)",graphics
+0x0003f49d,gdat_release_image,"void gdat_release_image(uint8_t category, uint8_t index, uint8_t entry)",graphics
+0x0003f51a,gfx_copy_image_header,"void gfx_copy_image_header(uint8_t *src, uint8_t *dst)",graphics
+0x0003f573,gdat_entry_size,"uint32_t gdat_entry_size(uint8_t category, uint8_t index, uint8_t type, uint8_t entry)",graphics
+0x0003f594,gdat_raw_entry_size,uint32_t gdat_raw_entry_size(uint16_t raw_index),graphics
+0x0003f5b0,gdat_get_image_size,"void gdat_get_image_size(uint8_t category, uint8_t index, uint8_t entry, uint16_t *width, uint16_t *height)",graphics
+0x0003f62d,input_check_memory_cheat,void input_check_memory_cheat(uint16_t key),input
+0x0003f71c,image_decode_8bpp,"void image_decode_8bpp(const uint8_t *src, uint8_t *dst, uint16_t size)",graphics
+0x0003f731,text_get_gdat_label,"char *text_get_gdat_label(uint8_t category, uint8_t index, uint8_t entry)",text
+0x0003f791,text_find_int_field,"int32_t text_find_int_field(const char *text, const char *key)",text
+0x0003f7fa,gdat_get_text_field,"int16_t gdat_get_text_field(uint8_t category, uint8_t index, uint8_t entry, uint16_t field)",text
+0x0003f846,item_has_charged_action,int item_has_charged_action(uint16_t thing),items
+0x0003f8ff,champ_get_action_field,int16_t champ_get_action_field(uint16_t field),champions
+0x0003f927,minion_map_allows_action,"int minion_map_allows_action(uint16_t champ, uint16_t thing, int16_t command)",minions
+0x0003f9f5,champ_list_actions,"int champ_list_actions(uint16_t champ, uint16_t thing, int16_t hand)",champions
+0x0003fc6d,champ_find_hand_source_slot,"int16_t champ_find_hand_source_slot(int16_t champ, int16_t hand)",inventory
+0x0003fd17,ui_action_area_close,void ui_action_area_close(void),interface
+0x0003fd77,ui_action_area_open_hand,"void ui_action_area_open_hand(uint16_t champ, uint16_t hand)",interface
+0x0003fe03,ui_action_area_open_spells,void ui_action_area_open_spells(uint16_t champ),interface
+0x0003fe68,ui_update_action_area,void ui_update_action_area(int tick),interface
+0x000408a8,item_is_ammo_for_hand,"int item_is_ammo_for_hand(uint16_t champ, uint16_t hand, uint16_t thing)",items
+0x00040930,item_has_action_command,"int item_has_action_command(uint16_t champ, uint16_t thing, int16_t command)",items
+0x00040a0a,champ_add_action_delay,"void champ_add_action_delay(uint16_t champ, uint16_t ticks, int16_t hand)",champions
+0x00040aa6,champ_reload_hand,"void champ_reload_hand(int16_t champ, uint16_t hand)",inventory
+0x00040d39,champ_use_action_charge,int champ_use_action_charge(uint16_t champ),champions
+0x00040dec,champ_execute_selected_action,int champ_execute_selected_action(int16_t action),champions
+0x00040ee2,champ_process_repeated_actions,void champ_process_repeated_actions(void),champions
+0x00041081,ui_toggle_map_option,void ui_toggle_map_option(uint16_t option),interface
+0x000410f7,champ_action_frighten,"int champ_action_frighten(uint16_t power, int16_t x, int16_t y)",champions
+0x00041171,champ_action_melee_attack,"int champ_action_melee_attack(uint16_t champ, int16_t mode, int16_t x, int16_t y, int16_t skill, int16_t power)",champions
+0x000412e1,magic_add_light,"void magic_add_light(uint16_t spell, int16_t power)",magic
+0x000414a5,champ_perform_action,"int champ_perform_action(uint16_t champ, uint16_t action)",champions
+0x000421fd,magic_find_spell,uint32_t *magic_find_spell(const uint8_t *runes),magic
+0x0004225e,magic_find_flask_in_hands,int16_t magic_find_flask_in_hands(uint8_t *champ),magic
+0x000422f5,magic_cast_spell,"uint16_t magic_cast_spell(uint16_t champ, const uint8_t *spell, int16_t power)",magic
+0x000428a2,magic_cast_entered_runes,int magic_cast_entered_runes(void),magic
+0x00042924,magic_add_rune,void magic_add_rune(int16_t symbol),magic
+0x000429f5,magic_remove_last_rune,void magic_remove_last_rune(void),magic
+0x00042a35,money_box_click_coin,void money_box_click_coin(int16_t coin_type),money and shops
+0x00042ae4,ui_draw_movement_arrows,void ui_draw_movement_arrows(void),interface
+0x00042b8f,ui_action_area_begin_draw,void ui_action_area_begin_draw(int clear),interface
+0x00042bd0,ui_draw_action_result,void ui_draw_action_result(uint16_t result),interface
+0x00042da6,ui_draw_hand_icon,"void ui_draw_hand_icon(uint16_t champ, uint16_t hand, int highlight)",interface
+0x00042edd,ui_draw_party_icons,void ui_draw_party_icons(void),interface
+0x0004315d,ui_draw_spell_icon,"void ui_draw_spell_icon(int16_t champ, int highlight)",interface
+0x00043332,ui_draw_action_menu_header,void ui_draw_action_menu_header(void),interface
+0x000433d6,ui_draw_action_champion_face,void ui_draw_action_champion_face(void),interface
+0x000435d3,ui_draw_entered_runes,void ui_draw_entered_runes(int clear),interface
+0x00043686,ui_draw_spell_panel,void ui_draw_spell_panel(void),interface
+0x00043759,ui_draw_action_name,void ui_draw_action_name(uint16_t index),interface
+0x00043827,ui_draw_action_menu,void ui_draw_action_menu(void),interface
+0x0004384b,magic_report_cast_failure,void magic_report_cast_failure(uint16_t result),magic
+0x000438fa,gdat_get_map_icon_strip,"int16_t gdat_get_map_icon_strip(uint8_t category, uint8_t index, uint8_t **image, uint8_t *palette)",graphics
+0x00043970,ui_map_draw_icon,"void ui_map_draw_icon(uint8_t *image, int16_t frame, int16_t x, int16_t y, uint16_t flags, uint8_t *palette)",interface
+0x00043a7c,ui_map_draw_square,"void ui_map_draw_square(uint16_t map_item, int16_t x, int16_t y, int16_t dir, int16_t screen_x, int16_t screen_y, uint8_t wallset, uint8_t flags)",interface
+0x00044943,ui_map_set_marker,"void ui_map_set_marker(int16_t x, int16_t y, int16_t map)",interface
+0x000449be,ui_map_draw_grid,"void ui_map_draw_grid(uint16_t map_item, int16_t x, int16_t y, int16_t map, int16_t dir, int16_t offset_x, int16_t offset_y, uint16_t flags)",interface
+0x00044ee3,ui_draw_map_option_buttons,void ui_draw_map_option_buttons(uint16_t changed),interface
+0x00044fc6,ui_draw_minion_map,void ui_draw_minion_map(uint16_t map_item),interface
+0x0004534f,ui_draw_money_box,void ui_draw_money_box(uint16_t thing),money and shops
+0x00045503,ui_draw_container,"void ui_draw_container(uint16_t thing, int full)",inventory
+0x0004565a,magic_add_party_aura,"void magic_add_party_aura(uint16_t champ_mask, uint8_t aura, int16_t amount, uint16_t duration)",magic
+0x00045815,magic_cast_party_aura,"int magic_cast_party_aura(uint8_t *champ, uint8_t aura, uint16_t power, int16_t use_mana)",magic
+0x00045869,champ_set_party_direction,void champ_set_party_direction(int16_t dir),champions
+0x000458f4,champ_get_index_in_cell,int champ_get_index_in_cell(uint16_t cell),champions
+0x00045938,champ_get_nearest_at,"int16_t champ_get_nearest_at(int16_t x, int16_t y)",champions
+0x000459c8,champ_adjust_stat,"void champ_adjust_stat(uint8_t *champ, uint16_t stat, int16_t delta)",champions
+0x00045a41,item_get_stat_modifier,"int16_t item_get_stat_modifier(uint16_t thing, uint8_t attribute, int equipped, int16_t mode)",items
+0x00045a9d,champ_apply_item_effects,"void champ_apply_item_effects(int16_t champ, uint16_t thing, int16_t slot, int16_t mode)",inventory
+0x00045d6b,inv_store_leader_hand_object,void inv_store_leader_hand_object(int16_t champ),inventory
+0x00045def,champ_put_object_in_leader_hand,"void champ_put_object_in_leader_hand(uint16_t thing, int draw)",inventory
+0x00045e9e,champ_remove_object_from_leader_hand,uint16_t champ_remove_object_from_leader_hand(void),inventory
+0x00045f27,champ_remove_object_from_slot,"uint16_t champ_remove_object_from_slot(uint16_t champ, uint16_t slot)",inventory
+0x00045fcb,champ_add_object_to_slot,"void champ_add_object_to_slot(uint16_t champ, uint16_t thing, uint16_t slot)",inventory
+0x00046029,inv_click_slot,void inv_click_slot(uint16_t slot),inventory
+0x000461e8,champ_get_party_level,int16_t champ_get_party_level(void),champions
+0x00046241,champ_get_skill_level,"int16_t champ_get_skill_level(int16_t champ, uint16_t skill, int with_bonus)",champions
+0x000462fa,champ_add_experience,"void champ_add_experience(uint16_t champ, uint16_t skill, uint32_t amount)",champions
+0x0004663a,item_get_throw_fatigue,uint16_t item_get_throw_fatigue(uint16_t thing),items
+0x0004667a,champ_scale_by_stamina,"int16_t champ_scale_by_stamina(uint8_t *champ, int16_t value)",champions
+0x000466ab,champ_get_stat,"int16_t champ_get_stat(uint8_t *champ, uint16_t stat, uint16_t which)",champions
+0x00046745,champ_get_stat_adjusted_attack,"int16_t champ_get_stat_adjusted_attack(uint8_t *champ, uint16_t stat, uint16_t attack)",champions
+0x00046786,champ_test_luck,"int champ_test_luck(uint8_t *champ, uint16_t chance)",champions
+0x00046824,champ_get_max_load,uint16_t champ_get_max_load(uint8_t *champ),champions
+0x00046892,champ_get_move_delay,uint16_t champ_get_move_delay(uint16_t champ),champions
+0x00046968,champ_get_dexterity,int16_t champ_get_dexterity(uint16_t champ),champions
+0x00046a19,champ_get_strength,"int16_t champ_get_strength(int16_t champ, int16_t slot, uint16_t skill)",champions
+0x00046bad,item_armor_defense,"int16_t item_armor_defense(uint16_t armor_attribute, int sharp)",items
+0x00046bdc,champ_get_wound_defense,"int16_t champ_get_wound_defense(int16_t champ, uint16_t location)",champions
+0x00046d9c,champ_wake_party,void champ_wake_party(void),champions
+0x00046dc9,champ_drop_all_objects,void champ_drop_all_objects(uint16_t champ),inventory
+0x00046e4d,champ_place_in_free_cell,void champ_place_in_free_cell(uint16_t champ),champions
+0x00046eca,champ_kill,void champ_kill(uint16_t champ),champions
+0x00047113,champ_apply_pending_damage,void champ_apply_pending_damage(void),champions
+0x0004722a,champ_take_damage,"int16_t champ_take_damage(int16_t champ, int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
+0x000474fc,champ_poison,"void champ_poison(int16_t champ, uint16_t amount)",champions
+0x000475d3,champ_cure_poison,"void champ_cure_poison(int16_t champ, int16_t amount)",champions
+0x0004766b,champ_damage_party,"uint16_t champ_damage_party(int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
+0x00047707,champ_decrease_stamina,"void champ_decrease_stamina(int16_t champ, int16_t amount)",champions
+0x00047773,champ_launch_projectile,"void champ_launch_projectile(uint8_t *champ, uint16_t thing, int16_t kinetic, int16_t attack, int16_t step)",projectiles
+0x00047813,magic_cast_projectile_spell,"int magic_cast_projectile_spell(uint16_t champ, uint16_t thing, uint16_t power, uint16_t mana_cost)",magic
+0x000478a1,champ_throw_object,"int champ_throw_object(uint16_t champ, int16_t slot, int side)",champions
+0x00047b0a,champ_throw_leader_hand_object,int champ_throw_leader_hand_object(int side),champions
+0x00047b39,champ_get_move_time,int16_t champ_get_move_time(int16_t champ),champions
+0x00047b9e,champ_get_party_move_time,int16_t champ_get_party_move_time(void),champions
+0x00047bc5,champ_get_load,uint16_t champ_get_load(uint16_t champ),champions
+0x00047c05,champ_compute_load,void champ_compute_load(uint16_t champ),champions
+0x00047cc3,champ_apply_time_effects,void champ_apply_time_effects(void),champions
+0x0004807f,ui_draw_champion_face_icon,"uint8_t *ui_draw_champion_face_icon(uint8_t *dst, int16_t champ, uint8_t *palette)",interface
+0x00048140,ui_status_box_begin_draw,"void ui_status_box_begin_draw(uint16_t champ, int clear)",interface
+0x000481dc,ui_draw_champion_bars,void ui_draw_champion_bars(uint16_t champ),interface
+0x00048332,text_format_number,"char *text_format_number(uint16_t value, int pad, uint16_t width)",text
+0x000483cb,ui_draw_value_pair,"void ui_draw_value_pair(int16_t zone, uint16_t value, uint16_t maximum)",interface
+0x00048441,ui_draw_champion_values,void ui_draw_champion_values(uint8_t *champ),interface
+0x000484b0,ui_draw_champion_slot,"int ui_draw_champion_slot(uint16_t champ, uint16_t slot, int force)",interface
+0x00048733,ui_draw_damage_number,void ui_draw_damage_number(uint16_t champ),interface
+0x000487a8,ui_draw_panel_icon,"void ui_draw_panel_icon(uint8_t icon, int16_t zone)",interface
+0x000487f9,ui_draw_champion_portrait,void ui_draw_champion_portrait(uint16_t champ),interface
+0x00048863,ui_draw_inventory_button,"void ui_draw_inventory_button(uint8_t icon, int16_t zone, uint16_t mask)",interface
+0x00048890,champ_draw_state,void champ_draw_state(uint16_t champ),interface
+0x00049020,champ_set_redraw_flags,void champ_set_redraw_flags(uint16_t flags),interface
+0x0004904f,champ_draw_all_states,void champ_draw_all_states(int tick),interface
+0x0004910b,inv_update_hand_cursor,void inv_update_hand_cursor(void),inventory
+0x0004916b,inv_put_object_in_free_slot,"void inv_put_object_in_free_slot(uint16_t champ, uint16_t thing)",inventory
+0x00049242,champ_add_to_party,"void champ_add_to_party(uint8_t portrait, int16_t index, uint8_t dir)",champions
+0x000494fb,champ_start_recruit,"int champ_start_recruit(int16_t x, int16_t y, int16_t dir, int16_t map)",champions
+0x000496e5,champ_edit_name,void champ_edit_name(char *champ_name),champions
+0x00049a17,champ_finish_recruit,"void champ_finish_recruit(int16_t x, int16_t y, int16_t dir, int16_t map, int16_t command)",champions
+0x00049cbb,champ_revive,void champ_revive(uint16_t champ),champions
+0x00049d46,champ_init_party_state,void champ_init_party_state(void),champions
+0x00049ef8,creature_turn_group,"void creature_turn_group(uint16_t group_thing, int absolute, uint16_t dir)",creatures
+0x00049f7c,move_rotate_through_teleporter,"uint16_t move_rotate_through_teleporter(uint8_t *teleporter, uint16_t thing)",dungeon data
+0x00049fcb,move_thing_is_flying,int move_thing_is_flying(uint16_t thing),dungeon data
+0x0004a005,move_update_carried_missiles,"void move_update_carried_missiles(uint16_t holder_thing, uint8_t x, uint8_t y, uint16_t map, uint8_t flag)",projectiles
+0x0004a096,move_schedule_group_retry,"void move_schedule_group_retry(uint16_t group_thing, int16_t x, int16_t y, int16_t map, int audible)",creatures
+0x0004a0fe,move_check_missiles_hit_party,"void move_check_missiles_hit_party(int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",projectiles
+0x0004a34a,move_follow_square_transitions,"int move_follow_square_transitions(uint16_t thing, int16_t x, int16_t y, int16_t map, int fall_allowed)",dungeon data
+0x0004ae20,move_compute_map_arrival,"void move_compute_map_arrival(int16_t x, int16_t y, int16_t map)",dungeon data
+0x0004af50,move_set_party_position,"void move_set_party_position(int16_t x, int16_t y)",champions
+0x0004af72,dun_square_blocks_movement,int dun_square_blocks_movement(uint8_t square),dungeon data
+0x0004afcd,move_find_free_adjacent_square,"int move_find_free_adjacent_square(uint16_t thing, int16_t x, int16_t y, int16_t *out_x, int16_t *out_y)",dungeon data
+0x0004b108,move_thing,"int move_thing(uint16_t thing, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",dungeon data
+0x0004bbe4,sensor_schedule_square_event,"void sensor_schedule_square_event(uint8_t x, uint8_t y, uint8_t cell, uint16_t effect, uint32_t time)",Skullkeep machines
+0x0004bc4c,sensor_trigger_target,"void sensor_trigger_target(uint8_t *sensor, uint16_t effect, int16_t extra_delay)",Skullkeep machines
+0x0004bca2,item_container_holds_type,"int item_container_holds_type(uint16_t container_thing, int16_t object_type)",items
+0x0004bd17,dun_find_object_type_on_square,"uint16_t dun_find_object_type_on_square(int16_t x, int16_t y, int16_t cell, uint16_t object_type)",dungeon data
+0x0004bd6c,item_party_possesses_type,int item_party_possesses_type(int16_t object_type),items
+0x0004bed2,move_party_to,"void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir)",champions
+0x0004bfd4,move_party_warp_to_marker,int move_party_warp_to_marker(void),magic
+0x0004c134,sensor_process_wall_click,"void sensor_process_wall_click(int16_t x, int16_t y, int16_t side, uint16_t actor_thing, uint16_t hand_object)",Skullkeep machines
+0x0004cdcc,sensor_process_floor,"void sensor_process_floor(int16_t x, int16_t y, uint16_t thing, int party_on_square, int entering, int creature_holder)",Skullkeep machines
+0x0004d88a,dun_find_marker,"int16_t dun_find_marker(uint16_t mode, int16_t nth, uint16_t marker_id, int16_t *out_x, int16_t *out_y)",dungeon data
+0x0004db2e,game_init_stub,void game_init_stub(void),main loop
+0x0004db2f,creature_get_view_cell_zone,"int16_t creature_get_view_cell_zone(uint8_t *group, int16_t dir)",creatures
+0x0004db9b,dun_map_gfx_flag20_clear,int dun_map_gfx_flag20_clear(int16_t map),dungeon data
+0x0004dbe1,view_hit_test_picture,"int view_hit_test_picture(int16_t x, int16_t y, int16_t color)",dungeon view
+0x0004dcee,view_hit_test_creature,"int view_hit_test_creature(int16_t x, int16_t y, int16_t square_x, int16_t square_y, int16_t *out_side)",dungeon view
+0x0004ddc0,view_hit_test_wall_ornament,"int view_hit_test_wall_ornament(int16_t view_pos, int16_t x, int16_t y)",dungeon view
+0x0004df08,view_hit_test_object,"uint16_t view_hit_test_object(int16_t x, int16_t y, int16_t view_pos, int16_t square_x, int16_t square_y, uint16_t thing, int16_t kind, int put)",dungeon view
+0x0004e226,view_get_shaded_palette,"uint8_t *view_get_shaded_palette(uint8_t category, uint8_t index, uint8_t entry, int16_t color_key)",dungeon view
+0x0004e294,view_clear_viewport,void view_clear_viewport(void),dungeon view
+0x0004e31d,view_copy_image_mode1,"void view_copy_image_mode1(uint8_t *src, uint8_t *dst)",dungeon view
+0x0004e32a,view_draw_picture_in_zone,"void view_draw_picture_in_zone(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t color_key, int flip)",dungeon view
+0x0004e3d5,view_get_depth_shading,"void view_get_depth_shading(uint8_t *palette, int16_t depth, int16_t color_key, int16_t count, int16_t *out_size)",dungeon view
+0x0004e502,view_setup_picture,"void view_setup_picture(int flip, int16_t scale_x, int16_t scale_y, int16_t dx, int16_t dy, int16_t depth, int16_t zone, int16_t align, int16_t color_key, int16_t mirror, uint8_t category, uint8_t index, uint8_t entry)",dungeon view
+0x0004e616,view_flush_picture,void view_flush_picture(void),dungeon view
+0x0004e620,view_render_picture_offscreen,"int16_t view_render_picture_offscreen(uint8_t *context, uint8_t category, uint8_t index, uint8_t entry, int16_t scale_x, int16_t scale_y, int16_t depth, int flip, int16_t color_key, int16_t mirror)",dungeon view
+0x0004e6c3,view_add_click_zone,"void view_add_click_zone(const int16_t *rect, uint8_t kind, uint8_t view_pos)",dungeon view
+0x0004e733,weather_get_rain_image,"void weather_get_rain_image(char *out_entry, uint16_t *out_relative_dir)",weather
+0x0004e79c,weather_draw_rain,void weather_draw_rain(void),weather
+0x0004e930,view_draw_wet_image,"void view_draw_wet_image(uint8_t *context, int16_t image_id, uint16_t color_key)",weather
+0x0004ead8,view_draw_centered_label,"void view_draw_centered_label(int16_t x, int16_t y, const char *text)",dungeon view
+0x0004eb6e,shop_square_has_object_type,"int shop_square_has_object_type(uint8_t *sensor, int16_t object_type, int skip_loose_items)",money and shops
+0x0004ec19,shop_draw_display,"void shop_draw_display(uint8_t *sensor, uint8_t ornament, int16_t x, int16_t y)",money and shops
+0x0004f3c0,view_wall_text_glyph,uint8_t view_wall_text_glyph(uint8_t c),text
+0x0004f3df,view_draw_wall_ornament,"int16_t view_draw_wall_ornament(int16_t view_pos, int16_t side, int record_click)",dungeon view
+0x00050081,view_draw_floor_ornament,int view_draw_floor_ornament(uint16_t view_pos),dungeon view
+0x000507ab,view_draw_ceiling_pit,void view_draw_ceiling_pit(int16_t view_pos),dungeon view
+0x000508ff,view_draw_floor_pit,void view_draw_floor_pit(int16_t view_pos),dungeon view
+0x000509e6,view_draw_sparkle_field,"void view_draw_sparkle_field(int16_t view_pos, uint8_t category, uint8_t index)",dungeon view
+0x00050bf4,input_update_viewport_arrow,void input_update_viewport_arrow(void),input
+0x00050dee,view_draw_creature,"void view_draw_creature(int16_t view_pos, int16_t depth, uint8_t *group, uint8_t *active_group, uint16_t group_thing)",dungeon view
+0x00051203,view_draw_creatures,"int view_draw_creatures(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask)",dungeon view
+0x00051359,view_setup_explosion_picture,"void view_setup_explosion_picture(uint8_t explosion_type, uint16_t size, int16_t color_key, int16_t zone)",dungeon view
+0x0005142d,view_draw_explosions,"void view_draw_explosions(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask)",dungeon view
+0x000518b0,view_draw_missiles,"void view_draw_missiles(uint16_t first_thing, int16_t view_pos, int16_t cell)",dungeon view
+0x00051cc6,view_set_click_zone,"void view_set_click_zone(int16_t slot, uint16_t thing, uint8_t view_pos, uint8_t kind)",dungeon view
+0x00051df8,view_shift_object_cell,"int view_shift_object_cell(int16_t *view_pos, int16_t *cell, int16_t dx, int16_t dy)",dungeon view
+0x00051eb7,view_draw_object,"void view_draw_object(uint16_t thing, int16_t view_pos, int16_t dx, int16_t dy, uint8_t *group, int record_click, uint16_t open_state, int in_alcove)",dungeon view
+0x000522a7,view_draw_objects_in_cell,"void view_draw_objects_in_cell(uint16_t first_thing, int16_t view_pos, int16_t cell, uint8_t *group)",dungeon view
+0x00052518,view_draw_square_things,"void view_draw_square_things(uint16_t view_pos, uint32_t cell_mask, int with_explosions)",dungeon view
+0x000527ba,view_draw_creature_possessions,"void view_draw_creature_possessions(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask, uint8_t *group)",dungeon view
+0x0005288f,view_draw_pending_possessions,void view_draw_pending_possessions(int16_t view_pos),dungeon view
+0x000528c5,view_draw_alcove_contents,void view_draw_alcove_contents(int16_t view_pos),dungeon view
+0x00052a88,view_offset_creature_toward_party,"void view_offset_creature_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y)",dungeon view
+0x00052bf6,view_load_square,"void view_load_square(int16_t x, int16_t y, int16_t view_pos, uint16_t dir)",dungeon view
+0x000530d1,view_draw_door_ornament,"void view_draw_door_ornament(uint8_t category, uint8_t index, uint8_t entry, int16_t view_pos)",dungeon view
+0x000531ec,view_draw_door_frame,"void view_draw_door_frame(int16_t view_pos, uint16_t parts)",dungeon view
+0x0005342f,view_inverse_scale,"int view_inverse_scale(uint16_t size, uint16_t scaled)",dungeon view
+0x0005346e,view_draw_door,"void view_draw_door(int16_t view_pos, int16_t frame_before, int16_t frame_after, uint32_t cell_mask)",dungeon view
+0x000539cb,view_draw_door_front,void view_draw_door_front(uint16_t view_pos),dungeon view
+0x00053b1b,view_draw_stairs_side,void view_draw_stairs_side(int16_t view_pos),dungeon view
+0x00053bfb,view_draw_stairs_front,void view_draw_stairs_front(int16_t view_pos),dungeon view
+0x00053c7b,view_draw_wall_block,void view_draw_wall_block(int16_t view_pos),dungeon view
+0x00053e41,view_draw_wall_square,void view_draw_wall_square(int16_t view_pos),dungeon view
+0x00053e9e,view_draw_far_squares,void view_draw_far_squares(void),dungeon view
+0x00054117,view_draw_party_square,void view_draw_party_square(void),dungeon view
+0x000542f6,outdoor_relative_distance,"uint16_t outdoor_relative_distance(int16_t dir, int16_t *dx, int16_t *dy, int16_t party_x, int16_t party_y)",outdoor view
+0x0005439a,outdoor_place_sky_object,"int outdoor_place_sky_object(uint8_t *object, const char *definition, int16_t dir, int16_t x, int16_t y)",outdoor view
+0x000544be,outdoor_draw_sky_object,"void outdoor_draw_sky_object(uint8_t *object, int16_t dir, int16_t x, int16_t y)",outdoor view
+0x00054699,outdoor_draw_sky,"void outdoor_draw_sky(int16_t dir, int16_t x, int16_t y)",outdoor view
+0x00054874,view_get_flip_parity,"uint16_t view_get_flip_parity(uint16_t kind, int16_t dir, int16_t x, int16_t y)",dungeon view
+0x0005497e,view_mark_hidden_squares,void view_mark_hidden_squares(void),dungeon view
+0x00054abd,view_unhide_linked_squares,void view_unhide_linked_squares(void),dungeon view
+0x00054b3f,view_draw_dungeon,"void view_draw_dungeon(int16_t dir, int16_t x, int16_t y)",dungeon view
+0x00054e41,ui_hide_game_view,void ui_hide_game_view(void),interface
+0x00054eac,ui_show_game_view,void ui_show_game_view(void),interface
+0x00054f2d,viewport_alloc,void viewport_alloc(void),dungeon view
+0x00054f5a,mem_config_stub,void mem_config_stub(void),memory
+0x00054f5b,mem_parse_config_entry,"int mem_parse_config_entry(uint8_t **cursor, int32_t *size, int16_t *extra)",memory
+0x00055045,mem_test_all_maps,"int mem_test_all_maps(int fatal, int32_t reserve)",memory
+0x000551d4,game_start_session,void game_start_session(void),main loop
+0x00055310,game_init,void game_init(void),main loop
+0x000554ab,text_measure,"int text_measure(const char *text, int16_t *width, int16_t *height)",text
+0x000554fc,text_wrap_line,"int text_wrap_line(const char *text, char *line, int16_t *pos, int16_t max_width)",text
+0x000555d2,text_draw_with_shadow,"void text_draw_with_shadow(uint8_t *bitmap, int16_t pitch, int16_t x, int16_t y, int16_t color, uint16_t flags, const char *text)",text
+0x0005570f,text_set_message_cursor,"void text_set_message_cursor(int16_t column, int16_t row)",text
+0x000557b5,text_clear_expired_rows,void text_clear_expired_rows(void),text
+0x00055844,text_message_new_line,void text_message_new_line(void),text
+0x000558bb,text_message_draw_line,"void text_message_draw_line(int16_t color, const char *text)",text
+0x0005599f,text_print_message,"void text_print_message(int16_t color_index, const char *text)",text
+0x00055ac0,text_print_char,"void text_print_char(int16_t color_index, char c)",text
+0x00055ad8,text_print_number,"void text_print_number(int16_t color_index, int32_t value)",text
+0x00055b05,text_print_newline,void text_print_newline(void),text
+0x00055b14,text_draw_in_viewport,"void text_draw_in_viewport(int16_t x, int16_t y, int16_t color, const char *text)",text
+0x00055b43,text_draw_on_screen,"void text_draw_on_screen(int16_t x, int16_t y, int16_t color, int16_t background, const char *text)",text
+0x00055b70,text_draw_in_zone,"void text_draw_in_zone(int16_t zone, uint16_t color, const char *text)",text
+0x00055bd2,text_draw_in_zone_with_shadow,"void text_draw_in_zone_with_shadow(int16_t zone, int16_t color, int16_t flags, const char *text)",text
+0x00055c45,text_init_message_area,void text_init_message_area(void),text
+0x00055d10,timeline_init,void timeline_init(void),timeline
+0x00055dbd,timeline_build_queue,void timeline_build_queue(void),timeline
+0x00055f4f,timeline_relink_events,void timeline_relink_events(void),timeline
+0x00055fdc,timeline_compact,void timeline_compact(void),timeline
+0x00056030,timeline_rebuild_free_list,void timeline_rebuild_free_list(void),timeline
+0x000560b8,timeline_event_is_later,"int timeline_event_is_later(const uint8_t *a, const uint8_t *b)",timeline
+0x000560f9,timeline_find_queue_slot,int16_t timeline_find_queue_slot(uint16_t event_index),timeline
+0x00056134,timeline_fix_queue_slot,void timeline_fix_queue_slot(uint16_t slot),timeline
+0x000562ce,timeline_reposition_event,void timeline_reposition_event(uint16_t event_index),timeline
+0x000562ff,timeline_delete_event,void timeline_delete_event(uint16_t event_index),timeline
+0x00056390,timeline_add_event,int timeline_add_event(void *event),timeline
+0x0005643d,timeline_pop_first_event,void timeline_pop_first_event(void *event),timeline
+0x0005646f,timeline_is_event_due,int timeline_is_event_due(void),timeline
+0x000564c6,timeline_event_door_animation,void timeline_event_door_animation(uint8_t *event),timeline
+0x000568f7,timeline_event_door_square,void timeline_event_door_square(uint8_t *event),timeline
+0x00056a03,timeline_event_fake_wall_square,void timeline_event_fake_wall_square(uint8_t *event),timeline
+0x00056af9,timeline_event_door_destruction,void timeline_event_door_destruction(uint8_t *event),timeline
+0x00056b39,sensor_turn_creatures,"void sensor_turn_creatures(uint8_t *event, uint8_t *sensor)",Skullkeep machines
+0x00056ba5,sensor_affect_creatures_in_area,"void sensor_affect_creatures_in_area(uint16_t power, uint16_t creature_type, int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t sensor_type, int16_t effect)",Skullkeep machines
+0x00056cf4,sensor_get_ornament_cycle,"uint16_t sensor_get_ornament_cycle(uint8_t *sensor, int on_wall)",Skullkeep machines
+0x00056d6a,sensor_start_ambient_sound,"void sensor_start_ambient_sound(uint8_t *sensor, uint16_t sensor_thing, int16_t x, int16_t y, uint16_t period, int on_wall)",Skullkeep machines
+0x00056f11,sensor_toggle_animation,"void sensor_toggle_animation(uint16_t sensor_thing, uint8_t *event, uint8_t *sensor, int on_wall)",Skullkeep machines
+0x000570b1,sensor_play_activation,"void sensor_play_activation(uint8_t *event, uint8_t *sensor, uint16_t sensor_thing, int on_wall)",Skullkeep machines
+0x000571f3,sensor_forward_effect,"void sensor_forward_effect(uint8_t *event, uint8_t *sensor, int16_t delay)",Skullkeep machines
+0x000572a8,sensor_relay_delayed,"void sensor_relay_delayed(uint8_t *event, uint8_t *sensor, int scaled_delay)",Skullkeep machines
+0x0005737c,sensor_set_global_flag,"void sensor_set_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
+0x000573e9,sensor_test_global_flag,"void sensor_test_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
+0x00057476,timeline_event_floor_square,void timeline_event_floor_square(uint8_t *event),timeline
+0x00057a63,sensor_launch_missile,"void sensor_launch_missile(uint8_t *sensor, uint8_t *event)",Skullkeep machines
+0x00057d21,sensor_nop,void sensor_nop(void),Skullkeep machines
+0x00057d27,sensor_apply_effect,"int sensor_apply_effect(uint16_t effect, uint16_t state)",Skullkeep machines
+0x00057d4c,sensor_transfer_object,"void sensor_transfer_object(uint16_t thing, uint8_t *sensor, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y, uint16_t to_cell, int party_hand, int keep_charges)",Skullkeep machines
+0x00057e6c,sensor_transfer_objects,"void sensor_transfer_objects(uint8_t *event, uint8_t *sensor, uint16_t first_thing, int any_cell, int use_filter, int party_hand, int reverse, int first_only)",Skullkeep machines
+0x00058304,timeline_event_wall_square,void timeline_event_wall_square(uint8_t *event),timeline
+0x00058c6f,move_square_contents_through,"void move_square_contents_through(uint16_t x, uint16_t y)",dungeon data
+0x00058edb,timeline_event_teleporter_square,void timeline_event_teleporter_square(uint8_t *event),timeline
+0x00058f5c,timeline_event_pit_square,void timeline_event_pit_square(uint8_t *event),timeline
+0x00058fc2,timeline_event_move_group,void timeline_event_move_group(uint8_t *event),creatures
+0x00059026,timeline_event_hide_damage,void timeline_event_hide_damage(uint16_t champion),champions
+0x00059050,timeline_event_altar_rebirth,void timeline_event_altar_rebirth(uint8_t *event),champions
+0x0005917d,timeline_event_magic_light,void timeline_event_magic_light(uint8_t *event),magic
+0x00059207,timeline_event_apply_item_effect,"void timeline_event_apply_item_effect(uint8_t *event, int16_t slot)",items
+0x00059293,timeline_event_sensor_animation_step,uint32_t timeline_event_sensor_animation_step(uint8_t *event),Skullkeep machines
+0x000592fa,sensor_schedule_timer,"void sensor_schedule_timer(uint8_t *sensor, uint16_t sensor_thing)",Skullkeep machines
+0x000593cf,timeline_event_sensor_timer,void timeline_event_sensor_timer(uint8_t *event),Skullkeep machines
+0x000594a1,sensor_start_timers,void sensor_start_timers(void),Skullkeep machines
+0x00059608,timeline_event_clear_thing_flag8,void timeline_event_clear_thing_flag8(uint8_t *event),timeline
+0x0005961b,timeline_event_sensor_animation_end,void timeline_event_sensor_animation_end(uint8_t *event),Skullkeep machines
+0x0005964e,timeline_event_sensor_ambient_sound,void timeline_event_sensor_ambient_sound(uint8_t *event),Skullkeep machines
+0x00059785,sensor_process_map_entry,void sensor_process_map_entry(int night),Skullkeep machines
+0x00059a5c,timeline_process,void timeline_process(uint32_t until),timeline
+0x00059f12,weather_schedule_event,void weather_schedule_event(int32_t delay),weather
+0x00059f38,weather_init,void weather_init(int keep_state),weather
+0x0005a073,world_update_day_night,void world_update_day_night(int storm_step),weather
+0x0005a808,weather_load_sky_object,int weather_load_sky_object(uint8_t *object),weather
+0x0005a87c,iop_init_shared_buffer,void iop_init_shared_buffer(void),input
+0x0005a8b1,iop_install_timer_isr,uint16_t iop_install_timer_isr(void (*isr)(void)),main loop
+0x0005a8d5,iop_alloc_dos_buffer,void *iop_alloc_dos_buffer(uint32_t size),memory
+0x0005a8f3,iop_install_input_isr,void iop_install_input_isr(void (*isr)(void)),input
+0x0005a95b,gdat_lzw_read_code,int gdat_lzw_read_code(void),graphics
+0x0005aada,gdat_lzw_decode,"int gdat_lzw_decode(const uint8_t *src, uint8_t *dst, int src_size)",graphics
+0x0005acf4,gdat_lzw_alloc_tables,void gdat_lzw_alloc_tables(void),graphics
+0x0005ad2b,gdat_lzss12_decode,"int gdat_lzss12_decode(const uint8_t *src, uint8_t *dst, int src_size)",graphics
+0x0005ad8d,gdat_lzss13_decode,"int gdat_lzss13_decode(const uint8_t *src, uint8_t *dst, int src_size)",graphics
+0x0005adf4,hmi_timer_lock_marker_1,void hmi_timer_lock_marker_1(void),sound
+0x0005ae04,hmi_timer_init_system,"int hmi_timer_init_system(unsigned rate_hz, unsigned flags)",sound
+0x0005aee0,hmi_timer_uninit_system,int hmi_timer_uninit_system(int flags),sound
+0x0005af1a,hmi_timer_register_event,"int hmi_timer_register_event(unsigned rate_hz, void (*callback)(void), unsigned *handle)",sound
+0x0005b127,hmi_timer_change_event_rate,"int hmi_timer_change_event_rate(unsigned handle, unsigned rate_hz)",sound
+0x0005b29f,hmi_timer_remove_event,int hmi_timer_remove_event(unsigned handle),sound
+0x0005b44e,hmi_timer_get_event_rate,unsigned hmi_timer_get_event_rate(unsigned handle),sound
+0x0005b478,hmi_timer_set_pit_divisor,void hmi_timer_set_pit_divisor(unsigned divisor),sound
+0x0005b4b2,hmi_timer_dispatch_events,void hmi_timer_dispatch_events(void),sound
+0x0005b57c,hmi_timer_isr_entry,void hmi_timer_isr_entry(void),sound
+0x0005b596,hmi_timer_lock_marker_2,void hmi_timer_lock_marker_2(void),sound
+0x0005b5ab,hmi_timer_lock_marker_3,void hmi_timer_lock_marker_3(void),sound
+0x0005b5bb,hmi_digi_lock_memory,int hmi_digi_lock_memory(void),sound
+0x0005b881,hmi_digi_unlock_memory,int hmi_digi_unlock_memory(void),sound
+0x0005bb47,hmi_digi_init_system,"int hmi_digi_init_system(void *path, int flags)",sound
+0x0005bbc0,hmi_digi_uninit_system,int hmi_digi_uninit_system(void),sound
+0x0005bc00,hmi_digi_init_driver,"int hmi_digi_init_driver(unsigned driver_id, void *hardware, void *init, unsigned *handle)",sound
+0x0005c4c0,hmi_digi_uninit_driver,"int hmi_digi_uninit_driver(unsigned handle, int close_driver)",sound
+0x0005c6d8,hmi_digi_alloc_dma_buffer,"int hmi_digi_alloc_dma_buffer(unsigned size, unsigned *segment, void **pointer)",sound
+0x0005c7b8,hmi_digi_get_dma_physical_address,"int hmi_digi_get_dma_physical_address(void *far_ptr, uint32_t *physical, unsigned *length)",sound
+0x0005c8d4,hmi_digi_release_dma_mapping,void hmi_digi_release_dma_mapping(void),sound
+0x0005c955,hmi_digi_lock_marker_1,void hmi_digi_lock_marker_1(void),sound
+0x0005c96a,hmi_digi_lock_marker_2,void hmi_digi_lock_marker_2(void),sound
+0x0005c97a,hmi_detect_init,int hmi_detect_init(void *path),sound
+0x0005cac4,hmi_detect_uninit,int hmi_detect_uninit(void),sound
+0x0005cb4f,hmi_detect_find_hardware,"int hmi_detect_find_hardware(unsigned id, void *caps, unsigned *driver_id)",sound
+0x0005cdd5,hmi_detect_select_hardware,"int hmi_detect_select_hardware(unsigned id, void *caps)",sound
+0x0005cf6a,hmi_detect_find_first_hardware,"int hmi_detect_find_first_hardware(void *caps, unsigned *driver_id)",sound
+0x0005d1bc,hmi_detect_find_next_hardware,"int hmi_detect_find_next_hardware(void *caps, unsigned *driver_id)",sound
+0x0005d3e4,hmi_detect_get_hardware_caps,int hmi_detect_get_hardware_caps(void *settings),sound
+0x0005d568,hmi_detect_get_settings,int hmi_detect_get_settings(void *hardware),sound
+0x0005d63e,hmi_detect_lock_marker_1,void hmi_detect_lock_marker_1(void),sound
+0x0005d653,hmi_detect_lock_marker_2,void hmi_detect_lock_marker_2(void),sound
+0x0005d663,hmi_midi_lock_memory,int hmi_midi_lock_memory(void),music
+0x0005d8fe,hmi_midi_unlock_memory,int hmi_midi_unlock_memory(void),music
+0x0005db99,hmi_midi_init_system,"int hmi_midi_init_system(void *path, int flags)",music
+0x0005dd05,hmi_midi_uninit_system,int hmi_midi_uninit_system(void),music
+0x0005dd45,hmi_midi_init_driver,"int hmi_midi_init_driver(unsigned driver_id, void *hardware, void *init, unsigned *handle)",music
+0x0005e26a,hmi_midi_uninit_driver,"int hmi_midi_uninit_driver(unsigned handle, int close_driver)",music
+0x0005e381,hmi_midi_reset_driver_channels,void hmi_midi_reset_driver_channels(unsigned driver),music
+0x0005e464,hmi_midi_lock_marker_1,void hmi_midi_lock_marker_1(void),music
+0x0005e479,hmi_midi_lock_marker_2,void hmi_midi_lock_marker_2(void),music
+0x0005e489,hmi_midi_send_event,"int hmi_midi_send_event(unsigned song, unsigned driver, const uint8_t *message, unsigned length)",music
+0x0005ef87,hmi_midi_silence_song_channels,int hmi_midi_silence_song_channels(unsigned song),music
+0x0005f36f,hmi_midi_driver_send_raw,int hmi_midi_driver_send_raw(unsigned driver),music
+0x0005f3ae,hmi_midi_set_channel_remap,int hmi_midi_set_channel_remap(int enable),music
+0x0005f3e4,hmi_midi_lock_marker_3,void hmi_midi_lock_marker_3(void),music
+0x0005f3f4,clib_malloc,void *clib_malloc(size_t size),memory
+0x0005f4dc,hmi_midi_lock_marker_4,void hmi_midi_lock_marker_4(void),music
+0x0005f4ec,hmi_midi_set_ins_data,"int hmi_midi_set_ins_data(unsigned handle, int bank, void *data)",music
+0x0005f52b,hmi_midi_load_instrument_range_paced,"int hmi_midi_load_instrument_range_paced(unsigned driver, unsigned count, int first, unsigned bank)",music
+0x0005f60e,hmi_midi_pace_tick_callback,void hmi_midi_pace_tick_callback(void),music
+0x0005f62a,hmi_midi_lock_marker_5,void hmi_midi_lock_marker_5(void),music
+0x0005f63a,clib_free,void clib_free(void *ptr),memory
+0x0005f69d,hmi_midi_lock_marker_6,void hmi_midi_lock_marker_6(void),music
+0x0005f6ad,hmi_midi_init_song,"int hmi_midi_init_song(void *init_song, void *track_map, unsigned *song_handle)",music
+0x0005fe88,hmi_midi_uninit_song,int hmi_midi_uninit_song(unsigned song),music
+0x0005fed2,hmi_midi_start_song,int hmi_midi_start_song(unsigned song),music
+0x0005ff61,hmi_midi_stop_song,int hmi_midi_stop_song(unsigned song),music
+0x0006006d,hmi_midi_setup_song_tracks,"void hmi_midi_setup_song_tracks(unsigned song, const void *init_song)",music
+0x0006030f,hmi_midi_read_varlen,"int hmi_midi_read_varlen(const uint8_t *data, uint32_t *value)",music
+0x00060399,hmi_midi_set_master_volume,int hmi_midi_set_master_volume(uint8_t volume),music
+0x00060407,hmi_midi_register_branch_callback,"int hmi_midi_register_branch_callback(unsigned song, void (*callback)(void))",music
+0x00060443,hmi_midi_register_loop_callback,"int hmi_midi_register_loop_callback(unsigned song, void (*callback)(void))",music
+0x0006047e,hmi_midi_register_trigger_callback,"int hmi_midi_register_trigger_callback(unsigned song, uint8_t trigger_id, void (*callback)(void))",music
+0x000604c8,hmi_midi_branch_track_to_marker,"int hmi_midi_branch_track_to_marker(unsigned song, uint8_t track, int8_t branch_id)",music
+0x000606c6,hmi_midi_loop_tracks_to_marker,"int hmi_midi_loop_tracks_to_marker(unsigned song, uint8_t loop_id)",music
+0x00060894,hmi_digi_lock_marker_3,void hmi_digi_lock_marker_3(void),sound
+0x000608a9,hmi_digi_lock_marker_4,void hmi_digi_lock_marker_4(void),sound
+0x000608b9,hmi_digi_sample_done,"int hmi_digi_sample_done(unsigned handle, int sample)",sound
+0x00060916,hmi_digi_sample_is_playing,"int hmi_digi_sample_is_playing(unsigned handle, unsigned sample)",sound
+0x00060994,hmi_digi_lock_marker_5,void hmi_digi_lock_marker_5(void),sound
+0x000609a9,hmi_digi_lock_marker_6,void hmi_digi_lock_marker_6(void),sound
+0x000609b9,hmi_digi_start_sample,"int hmi_digi_start_sample(unsigned handle, int channel, void *start_sample)",sound
+0x00060fd2,hmi_digi_stop_sample,"int hmi_digi_stop_sample(unsigned handle, int sample)",sound
+0x00061082,hmi_digi_continue_sample,"int hmi_digi_continue_sample(unsigned handle, unsigned sample, const void *start_sample)",sound
+0x000613fc,hmi_digi_lock_marker_7,void hmi_digi_lock_marker_7(void),sound
+0x00061411,hmi_digi_lock_marker_8,void hmi_digi_lock_marker_8(void),sound
+0x00061426,hmi_digi_get_driver_field_0,uint32_t hmi_digi_get_driver_field_0(unsigned handle),sound
+0x0006144d,hmi_digi_set_sample_volume,"int hmi_digi_set_sample_volume(unsigned handle, unsigned sample, uint16_t volume)",sound
+0x000614d5,hmi_digi_get_sample_volume,"int hmi_digi_get_sample_volume(unsigned handle, unsigned sample)",sound
+0x0006153b,hmi_digi_set_sample_channel,"int hmi_digi_set_sample_channel(unsigned handle, unsigned sample, uint16_t channel)",sound
+0x000615c0,hmi_digi_get_sample_channel,"int hmi_digi_get_sample_channel(unsigned handle, unsigned sample)",sound
+0x00061627,hmi_digi_get_sample_position,"uint32_t hmi_digi_get_sample_position(unsigned handle, unsigned sample)",sound
+0x0006168d,hmi_digi_get_sample_loop_count,"int hmi_digi_get_sample_loop_count(unsigned handle, unsigned sample)",sound
+0x000616f0,hmi_digi_set_sample_pan,"int hmi_digi_set_sample_pan(unsigned handle, unsigned sample, uint16_t pan)",sound
+0x00061778,hmi_digi_get_sample_pan,"int hmi_digi_get_sample_pan(unsigned handle, unsigned sample)",sound
+0x000617de,hmi_digi_set_sample_pan_speed,"int hmi_digi_set_sample_pan_speed(unsigned handle, unsigned sample, uint16_t speed)",sound
+0x00061863,hmi_digi_get_sample_pan_speed,"int hmi_digi_get_sample_pan_speed(unsigned handle, unsigned sample)",sound
+0x000618c9,hmi_digi_set_sample_rate,"uint32_t hmi_digi_set_sample_rate(unsigned handle, unsigned sample, uint32_t rate)",sound
+0x0006194c,hmi_digi_get_sample_rate,"uint32_t hmi_digi_get_sample_rate(unsigned handle, unsigned sample)",sound
+0x000619b2,hmi_digi_get_sample_id,"int hmi_digi_get_sample_id(unsigned handle, unsigned sample)",sound
+0x000619ea,hmi_digi_find_sample_by_id,"int hmi_digi_find_sample_by_id(unsigned handle, int sample_id)",sound
+0x00061a45,hmi_digi_set_master_volume,"int hmi_digi_set_master_volume(unsigned handle, unsigned volume)",sound
+0x00061a80,hmi_digi_lock_marker_9,void hmi_digi_lock_marker_9(void),sound
+0x00061a95,hmi_digi_lock_marker_10,void hmi_digi_lock_marker_10(void),sound
+0x00061aa5,hmi_digi_count_active_samples,int hmi_digi_count_active_samples(unsigned handle),sound
+0x00061b09,hmi_digi_lock_marker_11,void hmi_digi_lock_marker_11(void),sound
+0x00061b1e,hmi_digi_lock_marker_12,void hmi_digi_lock_marker_12(void),sound
+0x00061b2e,hmi_midi_pause_song,"int hmi_midi_pause_song(unsigned song, int mute_channels)",music
+0x00061c91,hmi_midi_resume_song,int hmi_midi_resume_song(unsigned song),music
+0x00061e01,hmi_midi_mute_song,void hmi_midi_mute_song(unsigned song),music
+0x00061ee3,hmi_midi_unmute_song,void hmi_midi_unmute_song(unsigned song),music
+0x00062012,hmi_midi_set_song_volume,"int hmi_midi_set_song_volume(unsigned song, uint8_t volume)",music
+0x00062160,hmi_midi_fade_song,"int hmi_midi_fade_song(unsigned song, unsigned flags, int time, uint8_t from_volume, uint8_t to_volume, unsigned steps)",music
+0x00062272,hmi_lock_marker_01,void hmi_lock_marker_01(void),sound
+0x00062284,cstart_entry,void cstart_entry(void),runtime library
+0x000622fc,clib_cstart,void clib_cstart(void),runtime library
+0x00062515,clib_fatal_exit_msg,"void clib_fatal_exit_msg(int code, const char *msg)",runtime library
+0x00062550,clib_getds,void clib_getds(void),runtime library
+0x0006255b,clib_noop,void clib_noop(void),runtime library
+0x0006255c,clib_exit,void clib_exit(int status),runtime library
+0x00062574,clib_exit_no_atexit,void clib_exit_no_atexit(int status),runtime library
+0x0006258a,clib_memmove,"void *clib_memmove(void *dst, const void *src, size_t n)",runtime library
+0x000625e0,clib_memset,"void *clib_memset(void *dst, int c, size_t n)",runtime library
+0x000625f8,clib_lseek,"long clib_lseek(int fd, long offset, int origin)",file I/O
+0x00062639,clib_tell,long clib_tell(int fd),file I/O
+0x0006264a,clib_filelength,long clib_filelength(int fd),file I/O
+0x00062687,clib_open,"int clib_open(const char *path, int oflag, ...)",file I/O
+0x000626ab,clib_open_core,"int clib_open_core(const char *path, int oflag, int share, int pmode)",file I/O
+0x00062870,clib_set_raw_device_mode,int clib_set_raw_device_mode(int fd),file I/O
+0x000628d5,clib_close_thunk,int clib_close_thunk(int fd),file I/O
+0x000628da,clib_unlink,int clib_unlink(const char *path),file I/O
+0x000628f9,clib_rename,"int clib_rename(const char *old_path, const char *new_path)",file I/O
+0x00062923,clib_read,"int clib_read(int fd, void *buf, unsigned n)",file I/O
+0x00062a36,clib_write,"int clib_write(int fd, const void *buf, unsigned n)",file I/O
+0x00062c08,clib_harderr,void clib_harderr(void (*handler)(void)),runtime library
+0x00062c44,clib_harderr_isr,void clib_harderr_isr(void),runtime library
+0x00062ce6,clib_dos_getdrive,void clib_dos_getdrive(unsigned *drive),file I/O
+0x00062d10,clib_strcmp,"int clib_strcmp(const char *a, const char *b)",runtime library
+0x00062db2,clib_setjmp,int clib_setjmp(jmp_buf env),runtime library
+0x00062de7,clib_longjmp,"void clib_longjmp(jmp_buf env, int value)",runtime library
+0x00062e44,clib_toupper,int clib_toupper(int c),runtime library
+0x00062e52,clib_dos_setvect,"void clib_dos_setvect(int vector, void (*handler)(void))",runtime library
+0x00062efd,hmi_timer_program_pit,void hmi_timer_program_pit(unsigned divisor),sound
+0x00062f43,hmi_timer_install_isr,"void hmi_timer_install_isr(unsigned divisor, void (*callback)(void))",sound
+0x00063005,hmi_mask_irq0,uint8_t hmi_mask_irq0(uint8_t unused),sound
+0x00063031,hmi_unmask_irq0,uint8_t hmi_unmask_irq0(uint8_t unused),sound
+0x0006305d,hmi_timer_restore_isr,void hmi_timer_restore_isr(void),sound
+0x000630d9,hmi_timer_leave_isr_stack,void hmi_timer_leave_isr_stack(void),sound
+0x00063138,hmi_lock_marker_02,void hmi_lock_marker_02(void),sound
+0x0006314d,hmi_error_string,const char *hmi_error_string(int code),sound
+0x00063177,hmi_lock_marker_03,void hmi_lock_marker_03(void),sound
+0x00063189,dpmi_lock_region,"int dpmi_lock_region(void *addr, uint32_t size)",memory
+0x000631c6,dpmi_unlock_region,"int dpmi_unlock_region(void *addr, uint32_t size)",memory
+0x00063203,dpmi_alloc_memory_block,void *dpmi_alloc_memory_block(uint32_t size),memory
+0x00063291,dpmi_free_memory_block,void dpmi_free_memory_block(uint32_t handle),memory
+0x000632c7,dpmi_alloc_code_alias_selector,uint16_t dpmi_alloc_code_alias_selector(uint16_t data_selector),memory
+0x00063324,hmi_drv_init_ptr_table,"void hmi_drv_init_ptr_table(void **table, void *base)",sound
+0x00063354,dpmi_alloc_dos_memory,int dpmi_alloc_dos_memory(uint16_t paragraphs),memory
+0x0006338a,dpmi_free_dos_memory,void dpmi_free_dos_memory(uint16_t selector),memory
+0x000633ea,hmi_drv_call_fn8_copy_info,"void hmi_drv_call_fn8_copy_info(void (*entry)(void), void *ctx, void *info_out)",sound
+0x00063438,hmi_drv_call_fn5,"void hmi_drv_call_fn5(void (*entry)(void), void *ctx)",sound
+0x0006345b,hmi_drv_call_fn0,"void hmi_drv_call_fn0(void (*entry)(void), void *ctx)",sound
+0x0006347e,hmi_drv_call_fn1_get_status,"void hmi_drv_call_fn1_get_status(void (*entry)(void), void *ctx)",sound
+0x000634c2,hmi_drv_call_fn2_copy_info,"void hmi_drv_call_fn2_copy_info(void (*entry)(void), void *ctx, void *info_out)",sound
+0x00063510,hmi_drv_call_fn3_set_params,"void hmi_drv_call_fn3_set_params(void (*entry)(void), void *ctx, int bx, int ch, int cl)",sound
+0x00063540,hmi_drv_call_fn1,"void hmi_drv_call_fn1(void (*entry)(void), void *ctx)",sound
+0x00063563,hmi_drv_call_fn10_start,"void hmi_drv_call_fn10_start(void (*entry)(void), void *ctx, ...)",sound
+0x000635b6,hmi_drv_call_fn0_init,"void hmi_drv_call_fn0_init(void (*entry)(void), void *ctx, int bx, int cx, int dx, int si)",sound
+0x000635eb,hmi_drv_call_fn4_set,"void hmi_drv_call_fn4_set(void (*entry)(void), void *ctx, void *edi, int ecx)",sound
+0x00063614,hmi_drv_call_fn2_arg,"void hmi_drv_call_fn2_arg(void (*entry)(void), void *ctx, int ebx)",sound
+0x0006363a,hmi_drv_call_fn3_bx8,"void hmi_drv_call_fn3_bx8(void (*entry)(void), void *ctx)",sound
+0x0006368b,hmi_vds_disable_dma_translation,int hmi_vds_disable_dma_translation(uint16_t flags),memory
+0x000636c0,hmi_vds_enable_dma_translation,int hmi_vds_enable_dma_translation(uint16_t flags),memory
+0x000636f5,hmi_drv_call_fn4_get_tables,"void hmi_drv_call_fn4_get_tables(void (*entry)(void), void *ctx)",sound
+0x00063734,hmi_drv_get_hardware_entry,void *hmi_drv_get_hardware_entry(unsigned index),sound
+0x0006377e,hmi_drv_set_table_entry,"void hmi_drv_set_table_entry(unsigned index, void *value)",sound
+0x000637b4,dpmi_get_free_memory_info,void dpmi_get_free_memory_info(void *info),memory
+0x00063814,hmi_windows_enhanced_mode_check,void hmi_windows_enhanced_mode_check(void),memory
+0x00063831,dpmi_alloc_dos_block_status,"int dpmi_alloc_dos_block_status(uint32_t paragraphs, uint16_t *selector, uint16_t *segment)",memory
+0x00063872,dpmi_free_dos_block_selector,int dpmi_free_dos_block_selector(uint16_t selector),memory
+0x000638a0,dpmi_simulate_real_int,int dpmi_simulate_real_int(void),memory
+0x0006390c,dpmi_simulate_real_int_vds_release,void dpmi_simulate_real_int_vds_release(uint16_t buffer_id),memory
+0x00063959,dpmi_map_physical_address,uint32_t dpmi_map_physical_address(void),memory
+0x000639d9,dpmi_free_selector,void dpmi_free_selector(uint16_t selector),memory
+0x00063a11,hmi_lock_marker_04,void hmi_lock_marker_04(void),sound
+0x00063a21,hmi_digi_drv_query_info,"int hmi_digi_drv_query_info(unsigned handle, void *info_out)",sound
+0x00063ab7,hmi_lock_marker_05,void hmi_lock_marker_05(void),sound
+0x00063acc,hmi_lock_marker_06,void hmi_lock_marker_06(void),sound
+0x00063adc,hmi_load_digi_driver_file,int hmi_load_digi_driver_file(void),sound
+0x00063cff,hmi_digi_drv_unload,int hmi_digi_drv_unload(unsigned handle),sound
+0x00063dd7,hmi_load_detect_driver_file,"int hmi_load_detect_driver_file(unsigned driver_id, void *far_entry_out, void *far_data_out, void *id_out, uint32_t *block_out)",sound
+0x00063fb1,hmi_detect_drv_unload,int hmi_detect_drv_unload(unsigned handle),sound
+0x0006404f,hmi_detect_drv_stub_ok,int hmi_detect_drv_stub_ok(void),sound
+0x00064078,hmi_lock_marker_07,void hmi_lock_marker_07(void),sound
+0x0006408d,hmi_lock_marker_08,void hmi_lock_marker_08(void),sound
+0x000640a1,hmi_digi_drv_set_user_value,"int hmi_digi_drv_set_user_value(unsigned handle, uint32_t value)",sound
+0x00064104,hmi_lock_marker_09,void hmi_lock_marker_09(void),sound
+0x00064114,clib_far_strcpy,"char *clib_far_strcpy(char *dst, uint16_t dst_seg, const char *src, uint16_t src_seg)",runtime library
+0x00064147,clib_memcpy,"void *clib_memcpy(void *dst, const void *src, size_t n)",runtime library
+0x0006416f,clib_strcpy,"char *clib_strcpy(char *dst, const char *src)",runtime library
+0x0006418e,clib_strcat,"char *clib_strcat(char *dst, const char *src)",runtime library
+0x000641c6,clib_dos_read_far,"int clib_dos_read_far(int fd, void *buf, uint16_t buf_seg, unsigned count, unsigned *bytes_read)",file I/O
+0x000641f7,clib_getenv,char *clib_getenv(const char *name),runtime library
+0x00064256,hmi_lock_marker_10,void hmi_lock_marker_10(void),sound
+0x00064266,hmi_midi_drv_query_info,"int hmi_midi_drv_query_info(unsigned handle, void *info_out)",music
+0x00064310,hmi_lock_marker_11,void hmi_lock_marker_11(void),sound
+0x00064325,hmi_lock_marker_12,void hmi_lock_marker_12(void),sound
+0x00064335,hmi_mdrv_a003_get_function_table,void *hmi_mdrv_a003_get_function_table(void),music
+0x0006435a,hmi_mdrv_a003_send_event,"int hmi_mdrv_a003_send_event(void *ctx, uint16_t seg, const uint8_t *event, unsigned length)",music
+0x0006438a,hmi_mdrv_a003_init,int hmi_mdrv_a003_init(void),music
+0x000643a3,hmi_mdrv_a003_uninit,int hmi_mdrv_a003_uninit(void),music
+0x000643bc,hmi_mdrv_a003_reset,int hmi_mdrv_a003_reset(void),music
+0x000643d5,hmi_mdrv_a003_set_callback,"int hmi_mdrv_a003_set_callback(void (*callback)(void), uint16_t seg)",music
+0x00064402,hmi_lock_marker_13,void hmi_lock_marker_13(void),sound
+0x00064417,hmi_lock_marker_14,void hmi_lock_marker_14(void),sound
+0x00064427,hmi_mdrv_a005_get_function_table,void *hmi_mdrv_a005_get_function_table(void),music
+0x0006444c,hmi_mdrv_a005_send_event,"int hmi_mdrv_a005_send_event(void *ctx, uint16_t seg, const uint8_t *event, unsigned length, unsigned driver)",music
+0x00064810,hmi_mdrv_a005_init,"int hmi_mdrv_a005_init(void *ctx, uint16_t seg, void *digi_init, unsigned driver, unsigned handle)",music
+0x000649c5,hmi_mdrv_a005_uninit,int hmi_mdrv_a005_uninit(unsigned driver),music
+0x00064a40,hmi_mdrv_a005_reset,int hmi_mdrv_a005_reset(unsigned driver),music
+0x00064a6d,hmi_mdrv_a005_set_instrument_data,"int hmi_mdrv_a005_set_instrument_data(void *bank, uint16_t seg, int bank_no, unsigned driver)",music
+0x00064bf0,hmi_mdrv_a005_set_channel_param,"int hmi_mdrv_a005_set_channel_param(unsigned channel, int param, unsigned value, unsigned driver)",music
+0x00064c1c,hmi_lock_marker_15,void hmi_lock_marker_15(void),sound
+0x00064c31,hmi_lock_marker_16,void hmi_lock_marker_16(void),sound
+0x00064c41,hmi_midi_song_is_inactive,int hmi_midi_song_is_inactive(unsigned song),music
+0x00064c86,hmi_lock_marker_17,void hmi_lock_marker_17(void),sound
+0x00064c9b,hmi_lock_marker_18,void hmi_lock_marker_18(void),sound
+0x00064cab,hmi_voice_queue_reset,"void hmi_voice_queue_reset(unsigned driver, unsigned capacity)",music
+0x00064d79,hmi_voice_queue_free_stub,void hmi_voice_queue_free_stub(unsigned driver),music
+0x00064d91,hmi_voice_queue_push,"int hmi_voice_queue_push(unsigned driver, uint32_t voice, uint32_t sample, uint32_t volume, uint32_t key)",music
+0x00064e49,hmi_voice_queue_remove_by_key,"int hmi_voice_queue_remove_by_key(unsigned driver, uint32_t key)",music
+0x00064fbd,hmi_voice_queue_remove_by_sample_key,"int hmi_voice_queue_remove_by_sample_key(unsigned driver, uint32_t sample, uint32_t key)",music
+0x0006513f,hmi_voice_queue_remove_by_voice,"int hmi_voice_queue_remove_by_voice(unsigned driver, uint32_t voice)",music
+0x0006529c,hmi_voice_queue_find_by_sample_key,"int hmi_voice_queue_find_by_sample_key(unsigned driver, uint32_t sample, uint32_t key)",music
+0x00065344,hmi_voice_queue_pop_first,int hmi_voice_queue_pop_first(unsigned driver),music
+0x000654a6,hmi_voice_queue_remove_at,"int hmi_voice_queue_remove_at(unsigned driver, unsigned index)",music
+0x000655c1,hmi_lock_marker_19,void hmi_lock_marker_19(void),music
+0x000655d6,hmi_lock_marker_20,void hmi_lock_marker_20(void),music
+0x000655e6,hmi_load_midi_driver_file,int hmi_load_midi_driver_file(void),music
+0x00065802,hmi_midi_drv_unload,int hmi_midi_drv_unload(unsigned handle),music
+0x000658d2,hmi_lock_marker_21,void hmi_lock_marker_21(void),music
+0x000658e7,hmi_lock_marker_22,void hmi_lock_marker_22(void),music
+0x000658f7,hmi_far_ptr_pass,"void *hmi_far_ptr_pass(void *offset, uint16_t selector)",runtime library
+0x00065929,hmi_lock_marker_23,void hmi_lock_marker_23(void),music
+0x0006593e,hmi_lock_marker_24,void hmi_lock_marker_24(void),music
+0x00065952,hmi_midi_song_set_tempo,"int hmi_midi_song_set_tempo(unsigned song, unsigned percent)",music
+0x000659e4,hmi_midi_song_get_base_tempo,uint32_t hmi_midi_song_get_base_tempo(unsigned song),music
+0x00065a11,hmi_lock_marker_25,void hmi_lock_marker_25(void),music
+0x00065a26,hmi_lock_marker_26,void hmi_lock_marker_26(void),music
+0x00065a3b,hmi_midi_song_tick,void hmi_midi_song_tick(void),music
+0x00066fb8,hmi_midi_send_track_setup,"void hmi_midi_send_track_setup(unsigned song, unsigned track, unsigned index)",music
+0x0006719e,hmi_lock_marker_27,void hmi_lock_marker_27(void),music
+0x000671b0,hmi_mdrv_a007_send_event,"int hmi_mdrv_a007_send_event(void *ctx, uint16_t seg, const uint8_t *event, unsigned length, unsigned driver)",music
+0x0006762b,hmi_mdrv_a007_get_function_table,void *hmi_mdrv_a007_get_function_table(void),music
+0x00067650,hmi_mdrv_a007_init,"int hmi_mdrv_a007_init(void *ctx, uint16_t seg, void *digi_init, unsigned driver, unsigned handle)",music
+0x0006780f,hmi_mdrv_a007_uninit,int hmi_mdrv_a007_uninit(unsigned driver),music
+0x0006788a,hmi_mdrv_a007_reset,int hmi_mdrv_a007_reset(unsigned driver),music
+0x000678b7,hmi_mdrv_a007_set_instrument_data,"int hmi_mdrv_a007_set_instrument_data(void *bank, uint16_t seg, int bank_no, unsigned driver)",music
+0x00067a47,hmi_mdrv_a007_set_channel_param,"int hmi_mdrv_a007_set_channel_param(unsigned channel, int param, unsigned value, unsigned driver)",music
+0x00067a75,hmi_mdrv_a007_reset_channel,"int hmi_mdrv_a007_reset_channel(unsigned channel, unsigned driver)",music
+0x00067adf,hmi_mdrv_a007_reset_channel_controllers,"int hmi_mdrv_a007_reset_channel_controllers(unsigned channel, unsigned driver)",music
+0x00067b60,hmi_mdrv_a007_apply_volume,"void hmi_mdrv_a007_apply_volume(unsigned channel, unsigned driver)",music
+0x00067bfb,hmi_mdrv_a007_apply_pan,"void hmi_mdrv_a007_apply_pan(unsigned channel, unsigned driver)",music
+0x00067c88,hmi_mdrv_a007_apply_pitch,"void hmi_mdrv_a007_apply_pitch(unsigned channel, unsigned driver)",music
+0x00067d94,hmi_mdrv_a007_stop_channel_voices,"int hmi_mdrv_a007_stop_channel_voices(unsigned channel, unsigned driver)",music
+0x00067dda,hmi_debug_put_text,"void hmi_debug_put_text(uint8_t column, uint8_t row, const char *text, uint8_t attribute)",sound
+0x00067e59,hmi_mdrv_a007_compute_pitch,"int hmi_mdrv_a007_compute_pitch(unsigned channel, int base, unsigned note, unsigned root_note)",music
+0x00067fc1,hmi_mdrv_a007_find_nearest_patch,"void *hmi_mdrv_a007_find_nearest_patch(unsigned patch_list, unsigned note)",music
+0x000680f4,hmi_drv_call_fn0_copy_info,"void hmi_drv_call_fn0_copy_info(void (*entry)(void), void *ctx, void *info_out)",music
+0x00068129,hmi_drv_call_fn1_copy_status,"void hmi_drv_call_fn1_copy_status(void (*entry)(void), void *ctx, void *status_out)",music
+0x0006816f,hmi_drv_call_fn_n,"void hmi_drv_call_fn_n(void (*entry)(void), void *ctx, int function)",music
+0x00068192,clib_load_es_from_ds,uint16_t clib_load_es_from_ds(void),runtime library
+0x00068198,clib_heap_alloc_block,"void *clib_heap_alloc_block(size_t size, uint16_t seg, void *heap)",memory
+0x00068240,clib_heap_free_block,"void clib_heap_free_block(void *ptr, uint16_t seg, void *heap)",memory
+0x0006834b,clib_heap_unlink_segment,void clib_heap_unlink_segment(void *heap),memory
+0x0006838a,clib_heap_release_free_segments,void clib_heap_release_free_segments(void),memory
+0x000684eb,clib_heap_insert_segment,"void *clib_heap_insert_segment(void *heap, size_t size)",memory
+0x0006855f,clib_heap_last_segment_size,size_t clib_heap_last_segment_size(void),memory
+0x000685ad,clib_heap_alloc_segment,void *clib_heap_alloc_segment(size_t size),memory
+0x00068680,clib_heap_grow_with_segment,int clib_heap_grow_with_segment(size_t size),memory
+0x0006872f,clib_heap_grow_with_brk,int clib_heap_grow_with_brk(size_t size),memory
+0x00068873,clib_heap_round_request,int clib_heap_round_request(size_t *size),memory
+0x000688ea,clib_return_zero,int clib_return_zero(void),runtime library
+0x000688ed,clib_cmain,void clib_cmain(void),runtime library
+0x0006893c,clib_init_rtns,void clib_init_rtns(uint8_t max_priority),runtime library
+0x00068987,clib_fini_rtns,"void clib_fini_rtns(uint8_t min_priority, uint8_t max_priority)",runtime library
+0x000689e0,clib_memset_fill,"void clib_memset_fill(void *dst, uint32_t pattern, size_t n)",runtime library
+0x00068a17,clib_fill_dwords,"void clib_fill_dwords(uint32_t *dst, uint32_t value, size_t count)",runtime library
+0x00068a8f,clib_set_errno_dos,int clib_set_errno_dos(unsigned dos_error),runtime library
+0x00068af5,clib_isatty,int clib_isatty(int fd),file I/O
+0x00068b18,clib_set_errno,void clib_set_errno(int value),runtime library
+0x00068b3b,clib_set_doserrno,void clib_set_doserrno(int value),runtime library
+0x00068b4e,clib_get_io_mode,unsigned clib_get_io_mode(int fd),file I/O
+0x00068ba3,clib_set_io_mode,"void clib_set_io_mode(int fd, unsigned mode)",file I/O
+0x00068bb8,clib_close,int clib_close(int fd),file I/O
+0x00068bea,clib_stackavail,int clib_stackavail(void),runtime library
+0x00068bf4,clib_stack_check_init,void clib_stack_check_init(void),runtime library
+0x00068c2d,clib_stack_overflow,void clib_stack_overflow(void),runtime library
+0x00068c3c,clib_noop_ret,void clib_noop_ret(void),runtime library
+0x00068c3d,clib_init_argv,void clib_init_argv(void),runtime library
+0x00068cfa,clib_split_args,"int clib_split_args(char *cmdline, int store, char **argv)",runtime library
+0x00068de4,clib_dos_result,int clib_dos_result(int ax),runtime library
+0x00068df8,clib_strnicmp,"int clib_strnicmp(const char *a, const char *b, size_t n)",runtime library
+0x00068e4f,clib_abs,int clib_abs(int value),runtime library
+0x00068f25,clib_brk,int clib_brk(size_t new_break),memory
+0x00068fe7,clib_init_amblksiz,void clib_init_amblksiz(void),runtime library
+0x00068ff2,clib_errno_ptr,int *clib_errno_ptr(void),runtime library
+0x00068ff8,clib_doserrno_ptr,int *clib_doserrno_ptr(void),runtime library
+0x00069003,clib_runtime_fatal,"void clib_runtime_fatal(int code, const char *msg)",runtime library
+0x000690f4,clib_init_files,void clib_init_files(void),runtime library
+0x0006916c,clib_full_io_exit,void clib_full_io_exit(void),runtime library
+0x0006917d,clib_close_streams_from,int clib_close_streams_from(int first_index),file I/O
+0x000691cf,clib_stream_alloc,void *clib_stream_alloc(void),file I/O
+0x0006929d,clib_stream_release,void clib_stream_release(void *stream),file I/O
+0x000692d6,clib_free_stream_pool,void clib_free_stream_pool(void),file I/O
+0x00069323,clib_stream_close,"int clib_stream_close(void *stream, int free_buffer)",file I/O
+0x00069338,clib_hex_digit_char,char clib_hex_digit_char(int value),runtime library
+0x00069344,clib_make_tmpname,"void clib_make_tmpname(char *buf, unsigned index)",file I/O
+0x000693ad,clib_stream_close_fd,"int clib_stream_close_fd(void *stream, int free_buffer)",file I/O
+0x00069436,clib_get_psp_selector,uint16_t clib_get_psp_selector(void),runtime library
+0x0006943c,clib_stream_flush,int clib_stream_flush(void *stream),file I/O
+0x000694fb,clib_stream_tell_adjusted,long clib_stream_tell_adjusted(void *stream),file I/O
+0x0006952b,clib_unlink_thunk,int clib_unlink_thunk(const char *path),file I/O
+0x00069530,clib_write_exact,"long clib_write_exact(int fd, const void *buf, unsigned count)",file I/O
+0x0007033c,g_hmi_digi_driver_file_name,char[12],sound
+0x000703f8,g_sos_start_sample,uint8_t[0x48],sound
+0x00070472,g_sos_digi_init,uint8_t[0x20],sound
+0x000704be,g_digi_enabled,int32_t,sound
+0x000704c2,g_midi_enabled,int32_t,music
+0x000704c6,g_music_fade,int16_t,music
+0x000704c8,g_music_paused,int16_t,music
+0x000704cc,g_music_playing,int32_t,music
+0x000704d0,g_music_started,int32_t,music
+0x000704d4,g_requested_song,int16_t,music
+0x000704d6,g_songlist_loaded,int16_t,music
+0x000704da,g_song_buffer,uint8_t *,music
+0x000704de,g_pan_thresholds,uint16_t[8],sound
+0x000704ee,g_pan_values,uint16_t[16],sound
+0x0007050e,g_current_song,uint8_t,music
+0x00070514,g_mem_pool_count,int16_t,memory
+0x00070518,g_random_seed,uint32_t,runtime library
+0x0007051c,g_disk_labels,char *[3],file I/O
+0x00070528,g_data_drive_path,char[4],file I/O
+0x0007052c,g_save_drive_path,char[4],file I/O
+0x00070546,g_disk_single_drive,int16_t,file I/O
+0x0007054a,g_disk_no_swap,int16_t,file I/O
+0x00070550,g_nibble_transparent_masks,uint8_t[16][256],graphics
+0x00071550,g_screen_bitmap,uint8_t *,graphics
+0x00071556,g_nibble_masks,uint8_t[2],graphics
+0x00071558,g_mouse_hide_count,int16_t,input
+0x0007155a,g_cursor_arrow_bitmap,uint8_t[0x60],input
+0x000715ba,g_cursor_hand_bitmap,uint8_t[0x80],input
+0x0007164a,g_mouse_cursor_kind,int16_t,input
+0x0007165c,g_group_cell_masks,uint8_t[][4],creatures
+0x0007166c,g_slot_item_masks,uint16_t[13],inventory
+0x00071686,g_coin_table_ready,int16_t,money and shops
+0x0007168a,g_cell_view_positions,uint8_t[4],dungeon view
+0x00071690,g_sound_request_count,int16_t,sound
+0x00071692,g_sound_deferred_count,int16_t,sound
+0x00071694,g_sound_table_count,uint16_t,sound
+0x00071696,g_sample_count,uint16_t,sound
+0x00071698,g_samples_have_rate,int16_t,sound
+0x0007169c,g_sound_volume_setting,int16_t,sound
+0x0007169e,g_music_volume_setting,int16_t,music
+0x000716c4,g_explosion_attack_flags,uint8_t[8],projectiles
+0x000716cc,g_attack_cell_orders,uint8_t[8][4],creatures
+0x000716ec,g_attack_cell_orders_random,uint8_t[4][4],creatures
+0x000716f8,g_viewport_origin,int16_t[2],dungeon view
+0x00071700,g_screen_pitch,int16_t,graphics
+0x00071706,g_viewport_width,int16_t,dungeon view
+0x00071708,g_viewport_height,int16_t,dungeon view
+0x00071796,g_zone_list,void *,interface
+0x0007179a,g_zone_temp_index,int16_t,interface
+0x0007179c,g_view_zone_ids,int16_t[],dungeon view
+0x000717bc,g_dialog_screen_mode,int16_t,interface
+0x000717e4,g_system_error_formats,char *[3],main loop
+0x000717f0,g_screen_needs_refresh,int16_t,interface
+0x000717f2,g_tick_elapsed,int16_t,main loop
+0x000717f4,g_new_map_index,int16_t,main loop
+0x000717f8,g_dir_dx,int16_t[4],dungeon data
+0x00071800,g_dir_dy,int16_t[4],dungeon data
+0x00071808,g_thing_size,uint8_t[16],dungeon data
+0x00071828,g_text_escape_words,char[32][8],text
+0x00071928,g_text_escape_chars,char[32][2],text
+0x00071968,g_creature_info,uint8_t[][0x24],creatures
+0x00072244,g_cur_map_index,int16_t,dungeon data
+0x00072246,g_push_arrow,int16_t,creatures
+0x00072248,g_sensor_blocks_discard,uint8_t[44],dungeon data
+0x00072274,g_item_index_base,uint16_t[16],items
+0x00072294,g_thing_gdat_category,uint8_t[16],dungeon data
+0x000722a4,g_input_cond_funcs,int (*[12])(const uint8_t *),input
+0x000722d4,g_cursor_zones,uint8_t[0x12][10],input
+0x00072386,g_input_command_lists,uint16_t[][3],input
+0x000729b6,g_input_key_lists,uint16_t[][2],input
+0x00072ccc,g_input_mode_children,uint8_t[0x53],input
+0x00072d1f,g_input_zones,uint8_t[0x3e][7],input
+0x00072ed1,g_input_mode_roots,uint8_t[10],input
+0x00072ef9,g_click_feedback_scripts,uint8_t[],input
+0x00072fe5,g_input_event_tail,int16_t,input
+0x00072fe7,g_input_events_locked,int16_t,input
+0x00072fed,g_input_mode,int16_t,input
+0x00072ffc,g_push_pending_group,uint16_t,creatures
+0x00073000,g_data_file_names,char *[7],file I/O
+0x0007301c,g_active_group_count,uint16_t,creatures
+0x00074f7e,g_ai_plan_tables,int8_t *[],creatures
+0x0007507a,g_creature_class_flags,uint32_t[],creatures
+0x00075136,g_ai_action_flags,uint8_t[],creatures
+0x0007518c,g_ai_behavior_tables,uint16_t *[],creatures
+0x00075248,g_ai_target_scanners,"void (*[17])(int8_t, int8_t, const uint8_t *)",creatures
+0x0007528c,g_ai_command_enabled,uint8_t[],creatures
+0x000752a0,g_party_distance_map_map,int16_t,creatures
+0x000752a2,g_alt_distance_map_map,int16_t,creatures
+0x000752a4,g_cached_light_sum,int16_t,day and night
+0x000752a6,g_cached_explosion_light_sum,int16_t,day and night
+0x000752a8,g_last_party_map,int16_t,creatures
+0x000752ac,g_creature_hit_offsets,int16_t[][4][2],creatures
+0x000752cc,g_creature_hit_offsets_any_cell,int16_t[4][2],creatures
+0x000752dc,g_creature_hit_radius_sq,int16_t[],creatures
+0x00075308,g_save_slot,int16_t,save and load
+0x0007530a,g_dungeon_fd,int16_t,file I/O
+0x0007530c,g_save_container_count,int16_t,save and load
+0x0007530e,g_save_creature_count,int16_t,save and load
+0x00075310,g_save_deferred_count,int16_t,save and load
+0x000754d7,g_save_thing_masks,uint8_t *[16],save and load
+0x000756f0,g_title_palette,uint8_t *,start menu
+0x000756f4,g_title_from_raw_entry,int16_t,start menu
+0x000756f8,g_inv_panel_mode,int16_t,inventory
+0x000756fc,g_open_container_thing,int16_t,inventory
+0x000756fe,g_light_power_table,int8_t[],magic
+0x0007576c,g_language,uint8_t,text
+0x0007576d,g_gdat_version,uint16_t,graphics
+0x0007576f,g_gdat_cached_block,int16_t,graphics
+0x00075775,g_gdat_column_names,char[8],graphics
+0x0007577d,g_gdat_offset_cache_index,uint16_t,graphics
+0x0007577f,g_gdat_offset_cache_value,int32_t,graphics
+0x0007578f,g_image_cache_temp_key_counter,uint16_t,graphics
+0x00075793,g_memory_cheat_keys,char[4],input
+0x00075798,g_image_decoders,void *[][2],graphics
+0x000757a0,g_gdat_decompressors,"struct {int (*decode)(const uint8_t*, uint8_t*, int); void (*init)(void);}[3]",graphics
+0x000757b8,g_action_area_mode,int16_t,interface
+0x000757fa,g_map_option_mana_cost,uint8_t[4],interface
+0x000757fe,g_spell_table,uint32_t[34][2],magic
+0x0007590e,g_text_field_names,char[18][3],text
+0x00075948,g_action_area_context,uint8_t[],interface
+0x000759a4,g_leader_index,int16_t,champions
+0x000759a6,g_wound_defense_factor,uint8_t[],champions
+0x000759ac,g_champion_drop_order,uint16_t[30],inventory
+0x000759d0,g_status_box_context,uint8_t[],interface
+0x00075a04,g_name_alphabet,char[38],champions
+0x00075a29,g_recruit_silent,int16_t,champions
+0x00075a2d,g_free_slot_ranges,uint16_t[5][3],inventory
+0x00075be2,g_sky_state_table,uint8_t[][4],weather
+0x00075bfc,g_map_wall_color_key,int16_t,dungeon view
+0x00075bfe,g_map_gfx_set,uint8_t,dungeon view
+0x000760e6,g_message_column,int16_t,text
+0x000760e8,g_timeline_events,uint8_t *,timeline
+0x000760ec,g_light_by_hour,int8_t[24],day and night
+0x00076104,g_storm_curves,int8_t[][32],weather
+0x00076184,g_weather_first_init,int16_t,weather
+0x00076188,g_thunder_toggle,int16_t,weather
+0x0007618c,g_iop_info,uint8_t *,input
+0x00076190,g_lzw_bit_masks,uint8_t[9],graphics
+0x00076199,g_lzw_bit_offset,int16_t,graphics
+0x0007619b,g_lzw_codes_left,int16_t,graphics
+0x000761a0,g_heap_segment_list,void *,memory
+0x000761a4,g_heap_rover,void *,memory
+0x000761a8,g_heap_largest_free,uint32_t,memory
+0x000761b4,g_exit_hooks,void (*[3])(void),runtime library
+0x000761c0,g_harderr_saved_stack,uint32_t,runtime library
+0x000761c6,g_harderr_handler,void (*)(void),runtime library
+0x000761dc,g_hmi_old_irq0_vector,void *,sound
+0x000761e8,g_hmi_timer_callback,void (*)(void),sound
+0x000761f2,g_hmi_isr_stack,uint8_t *,sound
+0x000761fa,g_hmi_saved_stack,uint32_t,sound
+0x00077202,g_hmi_isr_stack_pointer,uint32_t,sound
+0x0007720a,g_hmi_in_timer_isr,int16_t,sound
+0x0007720c,g_hmi_pit_enabled,int32_t,sound
+0x00077210,g_hmi_use_dpmi_vectors,int32_t,sound
+0x00077244,g_hmi_digi_driver_blocks,uint8_t[6][6],sound
+0x0007730c,g_hmi_digi_driver_loaded,int32_t[6],sound
+0x000773b6,g_hmi_digi_driver_ids,uint32_t[4],sound
+0x000773e8,g_hmi_digi_sample_table,struct {void *offset; uint16_t selector;}[4][32],sound
+0x000777a8,g_hmi_digi_driver_table,struct {void *offset; uint16_t selector;}[4],sound
+0x00077aa3,g_hmi_digi_driver_info,uint8_t[5][0x4c],sound
+0x00077c0f,g_hmi_timer_divisor,uint16_t,sound
+0x00077c13,g_hmi_timer_callbacks,struct {void *offset; uint16_t selector;}[16],sound
+0x00077c73,g_hmi_timer_event_rates,uint32_t[16],sound
+0x00077cb3,g_hmi_timer_event_steps,uint32_t[16],sound
+0x00077cf3,g_hmi_timer_event_accumulators,uint32_t[16],sound
+0x00077d33,g_hmi_timer_event_song,int8_t[16],sound
+0x00077d43,g_hmi_timer_current_song,uint8_t,sound
+0x00077d44,g_hmi_digi_driver_path,char[0x100],sound
+0x00077e43,g_hmi_driver_file_path,char[0x100],sound
+0x00077f42,g_hmi_timer_isr_depth,int16_t,sound
+0x00077f46,g_hmi_detect_header,uint8_t[0x2c],sound
+0x00077f66,g_hmi_detect_device_count,uint32_t,sound
+0x00077fa2,g_hmi_detect_ready,int16_t,sound
+0x00077fb2,g_hmi_detect_fd,int32_t,sound
+0x00077fb6,g_hmi_detect_current_offset,uint32_t,sound
+0x00077fba,g_hmi_detect_device_index,uint32_t,sound
+0x00077fc6,g_hmi_detect_current_record,struct {void *offset; uint16_t selector;},sound
+0x00078038,g_hmi_error_strings,const char *[],sound
+0x0007809c,g_hmi_digi_system_ready,int16_t,sound
+0x000782a0,g_hmi_midi_driver_active,int32_t[5],music
+0x000782dc,g_hmi_midi_driver_ids,uint32_t[5],music
+0x00078318,g_hmi_midi_track_cursors,struct {void *offset; uint16_t selector;}[8][32],music
+0x00078918,g_hmi_midi_track_first_delta,uint32_t[8][32],music
+0x00078d18,g_hmi_midi_track_delta_left,uint32_t[8][32],music
+0x00079118,g_hmi_midi_song_track_devices,struct {void *offset; uint16_t selector;}[8],music
+0x00079148,g_hmi_midi_song_active_tracks,uint32_t[8],music
+0x00079168,g_hmi_midi_song_track_counts,uint32_t[8],music
+0x00079188,g_hmi_midi_driver_call_table,struct {void *offset; uint16_t selector;}[5][12],music
+0x000792f0,g_hmi_midi_song_paused,int32_t[8],music
+0x00079310,g_hmi_midi_song_muted,int32_t[8],music
+0x00079330,g_hmi_midi_song_playing,int32_t[8],music
+0x00079370,g_hmi_midi_song_data,struct {void *offset; uint16_t selector;}[8],music
+0x000793a0,g_hmi_midi_song_timer_events,int32_t[8],music
+0x000793c0,g_hmi_midi_driver_file_name,char[12],music
+0x00079428,g_hmi_midi_system_ready,int32_t,music
+0x0007942c,g_hmi_midi_opl_driver_calls,struct {void *offset; uint16_t selector;}[12],music
+0x0007948c,g_hmi_voice_queues,uint8_t[][0x200],music
+0x00079e8c,g_hmi_voice_queue_head,int32_t[],music
+0x00079ea0,g_hmi_voice_queue_tail,int32_t[],music
+0x00079eb4,g_hmi_voice_queue_capacity,int32_t[],music
+0x00079ec8,g_hmi_voice_queue_count,int32_t[],music
+0x00079edc,g_hmi_midi_driver_b_calls,struct {void *offset; uint16_t selector;}[12],music
+0x0007ae18,g_hmi_midi_digi_handles,int32_t[],music
+0x0007ae7c,g_hmi_digi_patch_signature,char[8],music
+0x0007b485,g_hmi_midi_channel_map,uint8_t[5][8][16],music
+0x0007b755,g_hmi_midi_device_channel_owner,uint8_t[5][16],music
+0x0007c0b5,g_hmi_midi_event_buffer,uint8_t[4],music
+0x0007c0bf,g_hmi_midi_volume_event_buffer,uint8_t[3],music
+0x0007c0c9,g_hmi_midi_channel_remap,uint8_t,music
+0x0007c1cd,g_hmi_midi_master_volume,uint8_t,music
+0x0007c1ce,g_hmi_midi_song_volumes,uint8_t[8],music
+0x0007c1ee,g_hmi_midi_channel_volumes,uint8_t[8][16],music
+0x0007c23e,g_hmi_midi_pace_flag,uint8_t,music
+0x0007c24e,g_hmi_midi_driver_path,char[0x100],sound
+0x0007c478,g_hmi_midi_track_branch_tables,struct {void *offset; uint16_t selector;}[8][32],music
+0x0007ca78,g_hmi_midi_loop_callbacks,struct {void *offset; uint16_t selector;}[8],music
+0x0007caa8,g_hmi_midi_branch_callbacks,struct {void *offset; uint16_t selector;}[8],music
+0x0007cad8,g_hmi_midi_trigger_callbacks,struct {void *offset; uint16_t selector;}[8][125],music
+0x0007e2a9,g_hmi_midi_fade_flags,uint32_t[8],music
+0x0007e2c9,g_hmi_midi_fade_steps,int32_t[8],music
+0x0007e2e9,g_hmi_midi_fade_volume,int32_t[8],music
+0x0007e309,g_hmi_midi_fade_ticks_left,uint32_t[8],music
+0x0007e345,g_hmi_midi_driver_c_calls,struct {void *offset; uint16_t selector;}[12],music
+0x0007e4ac,g_hmi_pitch_table,int32_t[],music
+0x0007ea80,g_clib_break_limit,uint32_t,memory
+0x0007ea8c,g_clib_psp_selector,uint16_t,runtime library
+0x0007ea90,g_clib_stack_limit,uint32_t,runtime library
+0x0007ea94,g_clib_stack_base,uint32_t,runtime library
+0x0007eaae,g_clib_extender_type,uint8_t,runtime library
+0x0007eaaf,g_clib_extender_flag,uint8_t,runtime library
+0x0007eab1,g_clib_command_line,char *,runtime library
+0x0007eab5,g_clib_environment_selector,uint16_t,runtime library
+0x0007eab7,g_clib_dos_version_major,uint8_t,runtime library
+0x0007eab8,g_clib_dos_version_minor,uint8_t,runtime library
+0x0007eb30,g_clib_static_streams,uint8_t[5][0x1a],file I/O
+0x0007ed44,g_clib_stack_segment,uint16_t,runtime library
+0x0007ed5c,g_clib_environ,char **,runtime library
+0x0007ed64,g_clib_heap_limit,int32_t,memory
+0x0007ed68,g_clib_amblksiz,uint32_t,memory
+0x0007eda0,g_sample_handles,int32_t[64],sound
+0x0007ef20,g_digi_handle,uint32_t,sound
+0x0007ef28,g_midi_song_handle,uint32_t,music
+0x0007ef2c,g_sound_config,uint16_t *,sound
+0x0007ef30,g_sound_error,int32_t,sound
+0x0007ef34,g_prepared_samples,void *,sound
+0x0007ef38,g_digi_timer_event,uint32_t,sound
+0x0007ef6c,g_drum_bnk,uint8_t *,music
+0x0007ef70,g_midi_driver_handle,uint32_t,music
+0x0007ef74,g_melodic_bnk,uint8_t *,music
+0x0007ef78,g_songlist,uint8_t *,music
+0x0007ef82,g_midi_volume,int16_t,music
+0x0007ef84,g_digi_volume,int16_t,sound
+0x0007ef86,g_next_song,uint8_t,music
+0x0007ef88,g_mem_pool_blocks,void *[8],memory
+0x0007efac,g_timer_step,int16_t,main loop
+0x0007efb4,g_glyph_bitmap,uint8_t[18],text
+0x0007efd2,g_disk_status,int16_t,save and load
+0x0007efd4,g_disk_prompt_needed,int16_t,file I/O
+0x0007f078,g_blit_src,uint8_t *,graphics
+0x0007f07c,g_palette_set_result,int32_t,palette
+0x0007f080,g_decode_base,uint8_t *,graphics
+0x0007f084,g_blit_dst,uint8_t *,graphics
+0x0007f088,g_scale_colormap,uint8_t *,graphics
+0x0007f08c,g_blit_colormap,uint8_t *,graphics
+0x0007f090,g_decode_nibble_pos,uint16_t,graphics
+0x0007f094,g_cursor_has_item,int32_t,input
+0x0007f098,g_mouse_areas,void *,input
+0x0007f09c,g_mouse_hover_area,void *,input
+0x0007f0a0,g_mouse_hover_invalid,int16_t,input
+0x0007f0a4,g_mouse_hover_x2,int16_t,input
+0x0007f0a6,g_mouse_hover_x1,int16_t,input
+0x0007f0a8,g_mouse_hover_y2,int16_t,input
+0x0007f0aa,g_mouse_hover_y1,int16_t,input
+0x0007f0ac,g_champ_drag_cell,uint16_t,champions
+0x0007f0ae,g_mouse_buttons,int16_t,input
+0x0007f0b0,g_mouse_y,int16_t,input
+0x0007f0b2,g_mouse_x,int16_t,input
+0x0007f0b4,g_champ_drag_state,int16_t,champions
+0x0007f0c0,g_global_bytes,uint8_t[64],dungeon data
+0x0007f100,g_global_flags,uint8_t[8],dungeon data
+0x0007f108,g_global_words,int16_t[64],dungeon data
+0x0007f188,g_delayed_sounds,uint8_t *,sound
+0x0007f18c,g_sound_table,uint8_t *,sound
+0x0007f190,g_sound_requests_deferred,uint8_t *,sound
+0x0007f194,g_sample_descs,uint8_t *,sound
+0x0007f198,g_sound_requests,uint8_t *,sound
+0x0007f1a0,g_projectile_extra_damage,uint16_t,projectiles
+0x0007f1a2,g_projectile_attack_type,uint16_t,projectiles
+0x0007f1a4,g_missile_from_sensor,int16_t,projectiles
+0x0007f1a8,g_temp_rects,int16_t[4][4],interface
+0x0007f1c8,g_zone_clip_rect,int16_t[4],interface
+0x0007f1d0,g_zones_loaded,int16_t,interface
+0x0007f1d8,g_temp_rect_index,int16_t,interface
+0x0007f1da,g_zone_temp_records,int16_t[4][4],interface
+0x0007f1fc,g_progress_bar_enabled,int16_t,interface
+0x0007f200,g_dialog_button_count,int16_t,interface
+0x0007f205,g_progress_bar_width,int16_t,interface
+0x0007f208,g_color_ramps,uint8_t *,palette
+0x0007f20c,g_color_ramp_of_color,uint8_t *,palette
+0x0007f210,g_ui_colors,uint8_t *,interface
+0x0007f214,g_system_error_code,int16_t,main loop
+0x0007f220,g_wall_drag_active,int16_t,dungeon view
+0x0007f228,g_timer_ticks,uint32_t,main loop
+0x0007f22c,g_game_time,uint32_t,timeline
+0x0007f230,g_alt_view_active,int16_t,dungeon data
+0x0007f234,g_party_sleeping,int16_t,champions
+0x0007f23c,g_game_completed,int16_t,end of game
+0x0007f240,g_viewport_bitmap,uint8_t *,dungeon view
+0x0007f244,g_game_running,int16_t,main loop
+0x0007f248,g_lightning_flash,int16_t,weather
+0x0007f24c,g_game_end_flag,int16_t,end of game
+0x0007f254,g_party_dir,int16_t,champions
+0x0007f256,g_tick_accumulator,int16_t,main loop
+0x0007f258,g_party_move_steps,int16_t,champions
+0x0007f25c,g_alt_view_x,int16_t,dungeon data
+0x0007f25e,g_alt_view_y,int16_t,dungeon data
+0x0007f260,g_ref_dir,int16_t,dungeon data
+0x0007f262,g_party_map,int16_t,champions
+0x0007f264,g_party_view_y,int16_t,champions
+0x0007f266,g_party_view_x,int16_t,champions
+0x0007f268,g_tick_threshold,int16_t,main loop
+0x0007f26a,g_party_move_cooldown,int16_t,champions
+0x0007f26c,g_party_x,int16_t,champions
+0x0007f26e,g_party_y,int16_t,champions
+0x0007f272,g_alt_view_dir,int16_t,dungeon data
+0x0007f274,g_party_view_dir,int16_t,champions
+0x0007f276,g_champion_count,uint16_t,champions
+0x0007f278,g_alt_view_map,int16_t,dungeon data
+0x0007f27a,g_party_square_y,int16_t,champions
+0x0007f27c,g_party_square_x,int16_t,champions
+0x0007f27e,g_party_square_map,int16_t,champions
+0x0007f280,g_new_game,int16_t,start menu
+0x0007f282,g_light_level,int16_t,day and night
+0x0007f284,g_candidate_champion_ordinal,uint16_t,champions
+0x0007f288,g_thing_data,uint8_t *[16],dungeon data
+0x0007f2c8,g_cur_map_wall_ornaments,uint8_t[16],dungeon data
+0x0007f2d8,g_cur_map_floor_ornaments,uint8_t[16],dungeon data
+0x0007f2e8,g_creature_attr_cache,uint8_t *,creatures
+0x0007f2ec,g_view_click_zones,uint8_t[][12],dungeon view
+0x0007f388,g_square_first_things,uint16_t *,dungeon data
+0x0007f38c,g_view_redraw_flags,uint8_t,dungeon view
+0x0007f390,g_coin_item_types,uint16_t[],money and shops
+0x0007f3a4,g_push_mode,int16_t,creatures
+0x0007f3a8,g_coin_values,int16_t[],money and shops
+0x0007f3bc,g_cur_map_desc,uint8_t *,dungeon data
+0x0007f3c0,g_cur_map_extra_data,uint8_t *,dungeon data
+0x0007f3c4,g_map_descs,uint8_t *,dungeon data
+0x0007f3c8,g_map_columns,uint8_t ***,dungeon data
+0x0007f3cc,g_text_data,uint16_t *,text
+0x0007f3d0,g_level_digit_table,uint8_t *,dungeon data
+0x0007f3d4,g_column_first_thing_index,uint16_t *,dungeon data
+0x0007f3d8,g_level_map_lists,int8_t *,dungeon data
+0x0007f3e0,g_map_first_column,uint16_t *,dungeon data
+0x0007f3e4,g_cur_map_columns,uint8_t **,dungeon data
+0x0007f3e8,g_dungeon_header,uint8_t *,dungeon data
+0x0007f3ec,g_level_map_list_offsets,uint8_t *,dungeon data
+0x0007f3f0,g_cur_map_column_things,uint16_t *,dungeon data
+0x0007f3fa,g_coin_type_count,uint16_t,money and shops
+0x0007f3fe,g_view_dir,int16_t,dungeon view
+0x0007f400,g_view_click_zone_count,int16_t,dungeon view
+0x0007f402,g_view_map,int16_t,dungeon view
+0x0007f404,g_column_count,int16_t,dungeon data
+0x0007f406,g_view_x,int16_t,dungeon view
+0x0007f408,g_view_y,int16_t,dungeon view
+0x0007f40a,g_cur_map_door_types,uint8_t[2],dungeon data
+0x0007f40c,g_cur_map_height,int16_t,dungeon data
+0x0007f40e,g_cur_map_width,int16_t,dungeon data
+0x0007f410,g_cur_map_door_ornaments,uint8_t[16],dungeon data
+0x0007f421,g_creature_attr_cache_max,uint8_t,creatures
+0x0007f422,g_last_discarded_map,uint8_t[16],dungeon data
+0x0007f434,g_quit_exit_code,int16_t,end of game
+0x0007f438,g_main_jmpbuf,jmp_buf,main loop
+0x0007f478,g_input_deferred_click,int16_t,input
+0x0007f47c,g_click_feedback_script,uint8_t *,input
+0x0007f484,g_command_stop,int16_t,input
+0x0007f48c,g_input_events,uint8_t[11][6],input
+0x0007f4ce,g_current_command,int16_t[7],input
+0x0007f4dc,g_command_queue,int16_t[3][7],input
+0x0007f506,g_input_event_head,int16_t,input
+0x0007f508,g_input_event_count,int16_t,input
+0x0007f50a,g_input_disabled_count,int16_t,input
+0x0007f50c,g_saved_input_mode,int16_t,input
+0x0007f50e,g_command_queue_head,int16_t,input
+0x0007f516,g_command_queue_tail,int16_t,input
+0x0007f51c,g_dialog_choice,int16_t,interface
+0x0007f526,g_dialog_value,int16_t,interface
+0x0007f52a,g_click_feedback_delay,uint16_t,input
+0x0007f548,g_ai_group_thing,uint16_t,creatures
+0x0007f54a,g_ai_group,uint8_t *,creatures
+0x0007f54e,g_ai_creature_info,uint8_t *,creatures
+0x0007f552,g_ai_active_group,uint8_t *,creatures
+0x0007f556,g_ai_anim_frame,uint8_t *,creatures
+0x0007f55a,g_ai_anim_offset,int16_t *,creatures
+0x0007f55e,g_ai_event,uint8_t[12],creatures
+0x0007f564,g_ai_group_x,uint8_t,creatures
+0x0007f565,g_ai_group_y,uint8_t,creatures
+0x0007f56b,g_ai_command_result,uint8_t,creatures
+0x0007f56c,g_ai_group_removed,uint8_t,creatures
+0x0007f56d,g_ai_group_map,uint8_t,creatures
+0x0007f56e,g_ai_cmd_arg1,int16_t,creatures
+0x0007f570,g_ai_cmd_arg2,int16_t,creatures
+0x0007f572,g_ai_move_flags,uint16_t,creatures
+0x0007f574,g_ai_attack_flags,uint16_t,creatures
+0x0007f576,g_ai_door_flags,uint16_t,creatures
+0x0007f578,g_ai_item_flags,uint16_t,creatures
+0x0007f57a,g_ai_actuator_flags,uint16_t,creatures
+0x0007f580,g_ai_class,int16_t,creatures
+0x0007f584,g_ai_behavior_entry,uint16_t *,creatures
+0x0007f589,g_ai_alert,uint8_t,creatures
+0x0007f670,g_ai_candidate_count,int8_t,creatures
+0x0007f674,g_ai_candidates,uint8_t[16][0x16],creatures
+0x0007f7e6,g_ai_context_active,uint8_t,creatures
+0x0007f7ea,g_item_filter_bitmaps,uint8_t *[],creatures
+0x0007f892,g_item_filter_free,int16_t,creatures
+0x0007f894,g_ai_scratch,uint8_t *,creatures
+0x0007f898,g_active_groups,uint8_t *,creatures
+0x0007f89c,g_active_group_max,uint16_t,creatures
+0x0007f8a0,g_ai_dest_y,int16_t,creatures
+0x0007f8a2,g_ai_dest_x,int16_t,creatures
+0x0007f8a4,g_ai_sq_x,int16_t,creatures
+0x0007f8a6,g_ai_sq_y,int16_t,creatures
+0x0007f8a8,g_ai_sq_map,int16_t,creatures
+0x0007f8aa,g_ai_sq_byte,uint16_t,creatures
+0x0007f8ac,g_ai_sq_first_thing,uint16_t,creatures
+0x0007f8ae,g_ai_sq_first_object,uint16_t,creatures
+0x0007f8b0,g_ai_sq_first_group,uint16_t,creatures
+0x0007f8c0,g_ai_sq_cost,int16_t,creatures
+0x0007f8c4,g_alt_distance_map,uint8_t *,creatures
+0x0007f8c8,g_party_distance_map,uint8_t *,creatures
+0x0007f8cc,g_alt_distance_map_width,int16_t,creatures
+0x0007f8ce,g_party_distance_map_width,int16_t,creatures
+0x0007f8d0,g_ai_target_y,int16_t,creatures
+0x0007f8d2,g_ai_target_map,int16_t,creatures
+0x0007f8d4,g_ai_target_x,int16_t,creatures
+0x0007f8d6,g_ai_target_dir,int16_t,creatures
+0x0007f8dc,g_save_bit_total,uint32_t,save and load
+0x0007f8e0,g_save_creature_remap,uint16_t *,save and load
+0x0007f8e4,g_save_deferred_things,uint16_t *,save and load
+0x0007f8ec,g_save_container_remap,uint16_t *,save and load
+0x0007f8f0,g_save_slots,uint8_t *,save and load
+0x0007f8fc,g_save_slot_entry,uint8_t[0x2a],save and load
+0x0007f91c,g_extra_slots,uint16_t[],inventory
+0x0007f92a,g_save_bit_buffer,uint8_t,save and load
+0x0007f92b,g_save_bit_count,uint8_t,save and load
+0x0007f92c,g_object_name,char[],text
+0x0007f94c,g_menu_picture,uint8_t *,start menu
+0x0007f950,g_title_picture,uint8_t *,start menu
+0x0007f954,g_menu_palette,uint8_t *,start menu
+0x0007f958,g_open_container_items,uint16_t[8],inventory
+0x0007f970,g_light_source_sum,int16_t,day and night
+0x0007f972,g_inventory_champion_ordinal,int16_t,inventory
+0x0007f974,g_explosion_light_sum,int16_t,day and night
+0x0007f978,g_format_buffers,char *[2],text
+0x0007f99c,g_gdat_preload_list,uint8_t *,graphics
+0x0007f9a0,g_gdat_preload_count,int16_t,graphics
+0x0007f9a4,g_gdat_key_table,uint8_t *,graphics
+0x0007f9a8,g_gdat_key_row_count,uint16_t,graphics
+0x0007f9aa,g_gdat_key_row_size,uint16_t,graphics
+0x0007f9ac,g_gdat_key_column_count,uint16_t,graphics
+0x0007f9ae,g_gdat_key_column_offsets,uint16_t[7],graphics
+0x0007f9bc,g_gdat_key_column_widths,uint8_t[7],graphics
+0x0007f9c4,g_image_cache_top,int32_t *,graphics
+0x0007f9cc,g_image_cache_tick,uint32_t,graphics
+0x0007f9d0,g_image_cache_lru_tail,int32_t *,graphics
+0x0007f9d4,g_mem_pool_list,void *,memory
+0x0007f9d8,g_image_cache_keys,uint32_t *,graphics
+0x0007f9dc,g_gdat_category_start,uint16_t *,graphics
+0x0007f9e0,g_gdat_index_start,uint16_t *,graphics
+0x0007f9e4,g_gdat_index_entries,uint8_t *,graphics
+0x0007f9e8,g_gdat_category_count,uint8_t,graphics
+0x0007fa08,g_mem_free_after_load,int32_t,memory
+0x0007fa0c,g_image_cache_slots,int32_t **,graphics
+0x0007fa14,g_image_cache_key_order,uint16_t *,graphics
+0x0007fa18,g_image_cache_free_list,int32_t *,graphics
+0x0007fa20,g_image_cache_lru_head,int32_t *,graphics
+0x0007fa24,g_image_cache_free_bytes,int32_t,graphics
+0x0007fa28,g_image_cache_end,uint8_t *,graphics
+0x0007fa2c,g_mem_pool2_top,uint8_t *,memory
+0x0007fa30,g_gdat_image_slot,uint16_t *,graphics
+0x0007fa38,g_gdat_data_offset,int32_t,graphics
+0x0007fa3c,g_gdat_data_end,int32_t,graphics
+0x0007fa40,g_gdat_key_table_size,uint32_t,graphics
+0x0007fa44,g_graphics_file_size,int32_t,file I/O
+0x0007fa48,g_mem_heap_top,uint8_t *,memory
+0x0007fa4c,g_mem_pool2_free,int32_t,memory
+0x0007fa50,g_image_cache_temp_slots,uint16_t *,graphics
+0x0007fa54,g_gdat_entries,uint32_t *,graphics
+0x0007fa58,g_picture_list,void *,memory
+0x0007fa5c,g_image_cache_base,int32_t *,graphics
+0x0007fa60,g_gdat_base_images,uint16_t *,graphics
+0x0007fa64,g_gdat_block_buffer,uint8_t *,graphics
+0x0007fa6c,g_image_cache_enabled,int32_t,graphics
+0x0007fa74,g_gdat_split,int32_t,file I/O
+0x0007fa78,g_gdat_split_single_file,int32_t,file I/O
+0x0007fa7c,g_mem_free_bytes,int32_t,memory
+0x0007fa90,g_gdat_arena_main,uint8_t[14],graphics
+0x0007fa9e,g_gdat_arena_extra,uint8_t[14],graphics
+0x0007faac,g_image_cache_slots_used,uint16_t,graphics
+0x0007faae,g_image_cache_temp_used,uint16_t,graphics
+0x0007fab0,g_image_cache_slot_count,uint16_t,graphics
+0x0007fab2,g_image_cache_temp_count,uint16_t,graphics
+0x0007fab4,g_image_cache_next_slot,uint16_t,graphics
+0x0007fab6,g_image_cache_next_temp,uint16_t,graphics
+0x0007fab8,g_mem_pool1_flags,uint16_t,memory
+0x0007fabc,g_mem_pool2_flags,uint16_t,memory
+0x0007fabe,g_gdat_base_image_count,uint16_t,graphics
+0x0007fac0,g_graphic2_fd,int16_t,file I/O
+0x0007fac2,g_gdat_entry_count,uint16_t,graphics
+0x0007fac4,g_graphics_fd,int16_t,file I/O
+0x0007fac6,g_graphics_open_count,int16_t,file I/O
+0x0007fac8,g_gdat_8bpp_marker,int16_t,graphics
+0x0007faca,g_sample_max,uint16_t,sound
+0x0007facc,g_gdat_flags,uint16_t,graphics
+0x0007fad0,g_song_buffer_size,uint16_t,music
+0x0007fad2,g_sound_table_max,uint16_t,sound
+0x0007fad4,g_gdat_max_sound_size,uint16_t,sound
+0x0007fad8,g_action_repeat,uint8_t[4][2][8],champions
+0x0007fb2c,g_action_area_dirty,int16_t,interface
+0x0007fb3c,g_action_list,uint8_t[3][4],champions
+0x0007fb48,g_action_target_group,uint16_t,champions
+0x0007fb4a,g_map_mana_divisor,int16_t,interface
+0x0007fb52,g_map_marker_state,int16_t,interface
+0x0007fb5e,g_action_area_flags,uint16_t,interface
+0x0007fb68,g_action_area_redraw_delay,int16_t,interface
+0x0007fb70,g_action_champion_ordinal,int16_t,interface
+0x0007fb72,g_action_hand_slot,int16_t,interface
+0x0007fb76,g_action_count,uint16_t,champions
+0x0007fb78,g_action_result,int16_t,interface
+0x0007fb7a,g_action_entry,uint8_t,champions
+0x0007fb7b,g_action_category,uint8_t,champions
+0x0007fb7c,g_action_index,uint8_t,champions
+0x0007fb81,g_gdat_label_buffer,char[],text
+0x0007fb95,g_map_mana_timer,int16_t,interface
+0x0007fb98,g_map_clip_rect,int16_t[4],interface
+0x0007fba0,g_map_item_index,uint8_t,interface
+0x0007fba4,g_pending_wounds,uint16_t[4],champions
+0x0007fbac,g_pending_damage,int16_t[4],champions
+0x0007fbb4,g_leader_hand_object,uint16_t,inventory
+0x0007fbb6,g_hand_icon_bitmap,uint8_t *,inventory
+0x0007fbca,g_leader_hand_icon,uint8_t,inventory
+0x0007fbcc,g_leader_hand_attr,uint16_t,inventory
+0x0007fbce,g_leader_hand_weight,uint16_t,inventory
+0x0007fbd0,g_champions,uint8_t[4][0x107],champions
+0x0007ffec,g_magic_light,int16_t,magic
+0x0007ffee,g_party_invisibility,uint8_t,magic
+0x0007ffef,g_party_action_effect,uint8_t,magic
+0x0007fff0,g_party_haste,uint8_t,magic
+0x0007fff4,g_regen_counter,uint16_t,champions
+0x00080008,g_inventory_button_state,uint16_t,interface
+0x0008001c,g_move_teleporter_flag,int32_t,dungeon data
+0x00080020,g_move_dest_dir,uint16_t,dungeon data
+0x00080022,g_move_dest_cell,uint16_t,dungeon data
+0x00080024,g_move_dest_y,int16_t,dungeon data
+0x00080026,g_move_dest_x,int16_t,dungeon data
+0x00080028,g_move_dest_map,int16_t,dungeon data
+0x0008002a,g_party_fell,int16_t,dungeon data
+0x00080034,g_view_missile_masks,uint32_t *,dungeon view
+0x00080040,g_view_squares,uint8_t (*)[0x12],dungeon view
+0x00080044,g_view_creature_grid,uint8_t *,dungeon view
+0x00080048,g_view_object_masks,uint32_t *,dungeon view
+0x0008004c,g_view_object_grid,uint8_t *,dungeon view
+0x00080050,g_view_draw_context_backup,uint8_t[0x13a],dungeon view
+0x0008018a,g_view_draw_context,uint8_t[0x13a],dungeon view
+0x000802c4,g_view_party_dir,int16_t,dungeon view
+0x000802c6,g_view_party_y,int16_t,dungeon view
+0x000802c8,g_view_party_x,int16_t,dungeon view
+0x000802ca,g_view_arrows_enabled,int16_t,input
+0x000802cc,g_view_flip,uint16_t,dungeon view
+0x000802ce,g_view_shade,int16_t,dungeon view
+0x000802d2,g_map_flip_flags,uint16_t,dungeon view
+0x000802d4,g_view_hit_offset,int16_t[2],dungeon view
+0x000802d8,g_view_shade_palette,uint8_t[16],dungeon view
+0x000803ec,g_game_view_hidden,int16_t,interface
+0x000803f0,g_end_offer_restore,int16_t,end of game
+0x000803f8,g_use_dungenb,int16_t,start menu
+0x000803fa,g_debug_flag_g,uint8_t,main loop
+0x000803fb,g_debug_flag_s,uint8_t,main loop
+0x000803fc,g_debug_flag_e,uint8_t,main loop
+0x00080404,g_message_expiry,uint32_t[3],text
+0x00080410,g_message_scroll_bitmap,uint8_t *,text
+0x00080414,g_font_bitmap,uint8_t *,text
+0x00080418,g_message_area_y,int16_t,text
+0x0008041a,g_message_row,int16_t,text
+0x0008041c,g_message_scroll_pending,int16_t,text
+0x00080420,g_timeline_queue,uint16_t *,timeline
+0x00080424,g_timeline_fix_slot,int16_t,timeline
+0x00080426,g_timeline_first_free,int16_t,timeline
+0x00080428,g_timeline_event_max,uint16_t,timeline
+0x0008042a,g_timeline_event_count,uint16_t,timeline
+0x0008042c,g_timeline_used_end,int16_t,timeline
+0x00080430,g_next_hour_time,uint32_t,day and night
+0x00080434,g_day_time_offset,uint32_t,day and night
+0x00080438,g_sky_objects,uint8_t[][10],weather
+0x0008046a,g_storm_previous,uint16_t,weather
+0x0008046c,g_weather_random_period,int16_t,weather
+0x0008046e,g_sky_state,int16_t,weather
+0x00080470,g_storm_intensity,uint16_t,weather
+0x00080472,g_hour_light,int16_t,day and night
+0x00080474,g_storm_curve,uint16_t,weather
+0x00080475,g_gfx_has_clouds,uint8_t,weather
+0x00080476,g_gfx_has_rain,uint8_t,weather
+0x00080477,g_storm_step,uint8_t,weather
+0x00080479,g_cloud_cover,uint8_t,weather
+0x0008047a,g_sky_darkness,uint8_t,weather
+0x0008047b,g_weather_visible,uint8_t,weather
+0x0008047c,g_heavy_rain,uint8_t,weather
+0x0008047d,g_gfx_has_lightning,uint8_t,weather
+0x0008047e,g_rain_intensity,uint8_t,weather
+0x0008047f,g_wind_dir,uint8_t,weather
+0x00080480,g_storm_multiplier,uint8_t,weather
+0x00080484,g_iop_input_info,uint8_t *,input
+0x00080488,g_iop_input_event,int16_t *,input
+0x0008048c,g_iop_buffer,uint8_t *,input
+0x00080490,g_lzw_src,const uint8_t *,graphics
+0x00080494,g_lzw_src_cur,const uint8_t *,graphics
+0x00080498,g_lzw_prefix_table,uint16_t *,graphics
+0x0008049c,g_lzw_suffix_table,uint8_t *,graphics
+0x000804a0,g_lzw_src_remaining,int16_t,graphics
+0x000804a4,g_lzw_rle_pending,int16_t,graphics
+0x000804a6,g_lzw_max_code,int16_t,graphics
+0x000804a8,g_lzw_clear_flag,int16_t,graphics
+0x000804aa,g_lzw_next_code,int16_t,graphics
+0x000804ac,g_lzw_code_bits,int16_t,graphics
+0x000808c9,g_heap_busy_flag,uint8_t,memory
+0x000808cc,g_clib_free_streams,void *,file I/O
+0x000808e4,g_clib_open_streams,void *,file I/O

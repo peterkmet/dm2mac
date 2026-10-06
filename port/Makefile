@@ -1,0 +1,21 @@
+CC = clang
+CFLAGS = -std=c11 -Wall -Wextra -O2 -g
+SDL = $(shell brew --prefix sdl3)
+B = ../build
+GAME = $(filter-out src/main.c src/platform.c,$(wildcard src/*.c))
+SRC = $(wildcard src/*.c src/*.h)
+
+all: $(B)/dm2 $(B)/libdm2.dylib
+
+$(B)/dm2: $(SRC)
+	@mkdir -p $(B)
+	$(CC) $(CFLAGS) -I$(SDL)/include -o $@ src/main.c src/platform.c $(GAME) -L$(SDL)/lib -lSDL3
+
+$(B)/libdm2.dylib: $(SRC)
+	@mkdir -p $(B)
+	$(CC) $(CFLAGS) -dynamiclib -o $@ $(GAME)
+
+clean:
+	rm -rf $(B)
+
+.PHONY: all clean
