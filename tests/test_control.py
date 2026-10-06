@@ -30,6 +30,7 @@ SCREEN_W, SCREEN_H, PALETTE_COLORS, RGB = 320, 200, 256, 3
 PNG_ROW = 1 + RGB * SCREEN_W  # the filter byte and the pixels of a row
 CHAMPION_SIZE, NAME_SIZE, SCAN_QUOTE = 263, 8, 0x28
 LONG_LINE = 5000  # more than the request buffer of 4096 bytes
+TOO_BIG = 2**32 + 1  # 1 after a cast to int
 
 
 class GameWithChampions(WorldGame):
@@ -248,6 +249,8 @@ def test_bad_requests_get_errors(control, lib):
     bad = [({"x": 1}, "missing cmd"), ({"cmd": "jump"}, "unknown cmd"), ({"cmd": "key", "key": "nokey"}, "unknown key"),
            ({"cmd": "click", "x": 320, "y": 0}, "x must be 0-319 and y 0-199"),
            ({"cmd": "click", "x": 1, "y": 1, "button": "middle"}, "button must be left or right"),
+           ({"cmd": "click", "x": TOO_BIG, "y": 0}, "x must be 0-319 and y 0-199"),
+           ({"cmd": "command", "id": TOO_BIG}, "missing id"),
            ({"cmd": "wait", "ticks": 0}, "ticks must be 1-6000"), ({"cmd": "screenshot"}, "missing path"),
            ({"cmd": "screenshot", "path": "/nonexistent/a.png"}, "cannot write the PNG file")]
     with pumped(lib, ticks=False):
@@ -280,3 +283,34 @@ def test_program_with_control_answers_and_quits(start, tmp_path):  # noqa: F811
     finally:
         program.kill()
         shutil.rmtree(folder)
+
+
+def test_bad_unicode_escapes_are_not_hex_digits(control, lib):
+    path, *_ = control
+    data = b'{"cmd": "key", "key": "\\u 041"}\n{"cmd": "key", "key": "\\u0x41"}\n'
+    with pumped(lib, ticks=False):
+        assert raw_lines(path, data, 2) == [{"ok": False, "error": "unknown key"}] * 2
+
+
+def test_too_long_reply_is_one_error_line(control, lib, tmp_path):
+    path, *_ = control
+    folder = tmp_path
+    for _ in range(4):  # 800 control characters, each 6 bytes as a JSON escape: more than a reply holds
+        folder = folder / ("\x01" * 200)
+    folder.mkdir(parents=True)
+    raw_path = str(folder / "a.png").encode()  # raw bytes 1 in the request: it stays short
+    data = b'{"cmd": "screenshot", "path": "' + raw_path + b'"}\n{"cmd": "state"}\n'
+    with pumped(lib, ticks=False):
+        too_long, state = raw_lines(path, data, 2)
+    assert too_long == {"ok": False, "error": "reply too long"} and state["ok"]
+
+
+def test_open_replaces_a_stale_socket(control, lib):
+    path, *_ = control
+    lib.control_close()
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as stale:
+        stale.bind(path)
+    assert os.path.exists(path)
+    assert lib.control_open(path.encode())
+    with pumped(lib, ticks=False):
+        assert request({"cmd": "state"}, path, timeout=5)["ok"]
