@@ -86,6 +86,8 @@ def loaded(lib, gdat, start, tmp_path_factory):
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     lib.draw_init(gdat)
+    assert lib.text_init(gdat)  # the shops show item names and prices
+    lib.money_init_coin_table()
     game = Game.in_dll(lib, "game")
     lib.view_enter_map(game.party_map)
     return game
@@ -124,12 +126,11 @@ G_ZONE_LIST, G_COLOR_RAMPS, G_COLOR_RAMP_OF_COLOR, G_VIEWPORT_BITMAP = 0x71796, 
 G_MAP_GFX_SET, G_MAP_WALL_COLOR_KEY, G_CUR_MAP_DOOR_TYPES, G_MAP_FLIP_FLAGS = 0x75BFE, 0x75BFC, 0x7F40A, 0x802D2
 G_VIEW_CLEAR, G_SKY_OBJECTS, G_WEATHER_VISIBLE, G_LIGHT_LEVEL = 0x802D0, 0x80438, 0x8047B, 0x7F282
 G_PARTY_X, G_PARTY_DIR, G_PUSH_MODE, G_PUSH_PENDING_GROUP = 0x7F26C, 0x7F254, 0x7F3A4, 0x72FFC
-# The original functions that the C port does not have: the shop display (Step 15) does nothing; the image cache, the
-# GDAT index, and the memory manager are served from the C port and Python; the viewport arrow (Step 16) does nothing.
+# The original functions that the C port does not have: the image cache, the GDAT index, and the memory manager are served from the C port and Python; the viewport arrow (Step 16) does nothing.
 NO_OPS = (0x3F3C2, 0x3F406, 0x3F352, 0x3F422, 0x3F49D, 0x3BCA5, 0x3BC8E, 0x3BCBA, 0x210DC, 0x50BF4)
-SHOP_DRAW_DISPLAY = 0x4EC19
 G_ACTIVE_GROUPS, G_RANDOM_SEED, G_SKY_STATE, G_RAIN_INTENSITY = 0x7F898, 0x70518, 0x8046E, 0x8047E
 ACTIVE_GROUP_SIZE, ACTIVE_GROUP_MAX = 0x22, 256
+G_VIEW_HIT_OFFSET = 0x802D4  # int16 y, x: the place of the last view hit test, in percent
 VIEW_SEED = 0x2F6B1D35  # the random numbers of sparkles, rain, and explosions start from it in each view
 HEAP, HEAP_SIZE = 0x01000000, 0x02000000
 VIEW_W, VIEW_H = 224, 136
@@ -171,6 +172,9 @@ class OriginalView:
         emu.stub(0x3C92E, lambda c, i, t, e: lib.gdat_exists(gdat, c & 0xFF, i & 0xFF, t & 0xFF, e & 0xFF))
         emu.stub(GDAT_GET_TEXT, self.text)
         emu.stub(0x3ECC7, self.entry_data)
+        # gdat_get_entry_data_or_null, gdat_entry_size: the map graphics load has all entries of the map ornaments
+        emu.stub(0x3ED8A, lambda c, i, t, e: self.entry_data(c, i, t, e) if self.entry_index(c, i, t, e) != 0xFFFF else 0)
+        emu.stub(0x3F573, lambda c, i, t, e: len(self.item_bytes(self.entry_index(c, i, t, e))))
         emu.stub(0x3F5B0, self.image_size, stack_args=1)
         emu.stub(0x3F186, self.cache_lookup)  # image_cache_lookup_or_add: always a new entry
         emu.stub(0x3F279, lambda index, size, *_: self.cache_put(index, self.alloc(size)))
@@ -178,7 +182,6 @@ class OriginalView:
         emu.stub(0x3F337, lambda index, *_: self.cache[index & 0xFFFF])
         emu.stub(0x3F3EE, lambda *_: self.new_index())
         self.no_ops = {addr: emu.stub(addr, lambda *_: 0) for addr in NO_OPS}
-        emu.stub(SHOP_DRAW_DISPLAY, lambda *_: 0, stack_args=5)
         # No active groups exist after a load; like the port (Step 16), the creatures show their first frame.
         emu.write_u32(G_ACTIVE_GROUPS, self.put(bytes(ACTIVE_GROUP_SIZE * ACTIVE_GROUP_MAX)))
         layout = self.item_bytes(lib.gdat_find(gdat, 1, 0, 4, 0))
@@ -196,6 +199,10 @@ class OriginalView:
         emu.write(self.viewport - 6, struct.pack("<BBhh", 8, 0, VIEW_W, VIEW_H))
         emu.write_u32(G_VIEWPORT_BITMAP, self.viewport)
         self.next_index = 1
+        from test_interface import G_FONT_BITMAP, G_UI_COLORS, MONEY_INIT_COIN_TABLE
+        emu.write_u32(G_UI_COLORS, self.entry_data(1, 0, 0x0D, 0xFE))  # the shops show item names and prices
+        emu.write_u32(G_FONT_BITMAP, self.put(self.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300] + bytes(0x80)))
+        emu.call(MONEY_INIT_COIN_TABLE)
 
     def alloc(self, size):
         self.top += size + 15 & ~15
@@ -778,6 +785,49 @@ class DrawCtx(ctypes.Structure):
                 ("rect", ctypes.c_int16 * 4), ("dst", ctypes.POINTER(Bitmap)), ("transparent", ctypes.c_int16),
                 ("flip", ctypes.c_int16), ("scale_x", ctypes.c_int16), ("scale_y", ctypes.c_int16),
                 ("palette_count", ctypes.c_int16), ("palette", ctypes.c_uint8 * 256)]
+
+
+def test_shop_displays_match_original(lib, gdat, loaded, original_view):
+    # Each shop of start.DAT seen from the front: the display steps to the next item (the shop flag 4 of the save),
+    # then stays; a click below the center steps back, a click above steps forward. The item, its name, and the prices
+    # in coins, in 3 light levels.
+    game = WeatherGame.in_dll(lib, "game")
+    saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
+    emu = original_view.emu
+    lib.thing_word.restype = ctypes.c_uint16
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)
+    shops = []
+    for map_ in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(map_)):
+            for y in range(lib.dungeon_map_height(map_)):
+                t = lib.dungeon_square_first_thing(map_, x, y)
+                while t != 0xFFFE:
+                    flags = lib.thing_word(t, 4)
+                    if t >> 10 & 15 == 3 and lib.thing_word(t, 2) & 0x7F == 0x3F and flags >> 12:
+                        ornament = lib.dungeon_map_wall_ornaments(map_)[(flags >> 12) - 1]
+                        if lib.gdat_entry_index(gdat, 9, ornament, 0x0B, 0x0A) == 2:
+                            shops.append((map_, x, y, t >> 14, t))
+                    t = lib.dungeon_next_thing(t)
+    assert len(shops) == 8
+    for map_, x, y, cell, shop in shops:
+        party_x, party_y = x + (0, 1, 0, -1)[cell], y + (-1, 0, 1, 0)[cell]
+        target = lib.thing_word(shop, 6)
+        display = lib.dungeon_square_first_thing(map_, target >> 6 & 31, target >> 11)
+        items = []
+        for step, (light, offset) in enumerate(((0, None), (3, None), (2, 50), (0, -50))):
+            if offset is not None:  # a click with an empty hand below or above the center clears the shown flag
+                Things(lib, emu).write(shop, 4, struct.pack("<H", lib.thing_word(shop, 4) & ~1))
+                ctypes.c_int16.in_dll(lib, "view_hit_offset_y").value = offset
+                emu.write(G_VIEW_HIT_OFFSET, struct.pack("<h", offset))
+            original = original_view.draw(map_, party_x, party_y, (cell + 2) & 3, light, b"\xff" + bytes(9))
+            assert c_view(lib, map_, party_x, party_y, (cell + 2) & 3, light) == original, (map_, x, y, step)
+            items.append(lib.thing_word(display, 2) >> 7)
+            assert struct.unpack("<H", emu.read(emu.call(DUN_GET_THING_DATA, display) + 2, 2))[0] >> 7 == items[-1]
+        assert items[0] == items[1] == items[3] != items[2], (map_, x, y)
+    game.party_x, game.party_y, game.party_dir, game.party_map = saved
+    lib.view_enter_map(game.party_map)
 
 
 def test_wet_image_matches_original(lib, loaded, original_view):

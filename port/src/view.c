@@ -5,11 +5,14 @@
 #include "dungeon.h"
 #include "inventory.h"
 #include "item.h"
+#include "money.h"
 #include "move.h"
 #include "random.h"
 #include "save.h"
+#include "sensor.h"
 #include "text.h"
 #include "timeline.h"
+#include "ui.h"
 #include "view.h"
 #include "zone.h"
 
@@ -1957,6 +1960,188 @@ static uint8_t wall_text_glyph(uint8_t c)
     return c == '.' ? GLYPH_PERIOD : GLYPH_SPACE;
 }
 
+/* Shops: a wall sensor (SENSOR_WALL_TEXT with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
+   on its target square, with the item name and the merchant prices in coins. */
+#define SHOP_SHOWN 0x0001           /* SENSOR_FLAGS of the shop and display: the display item is chosen */
+#define SHOP_STEP_FORWARD 0x0004    /* SENSOR_FLAGS of the shop: the next click goes to the next item */
+#define SHOP_LIST_SHIFT 7           /* SENSOR_FLAGS of the shop: bits 7-10 the price list */
+#define SHOP_LIST_MASK 0x0f
+#define SHOP_CLASS_TEXT 0x10        /* + list * 3: the class set of the items of the list */
+#define ITEM_FLAG_UNIQUE 0x1000     /* ATTR_FLAGS: the shop shows the item only when it exists */
+#define ORN_SHOP_EMPTY 0x11         /* the picture of a display without its item */
+#define ORN_SHOP_COINS 0x10         /* a strip of coin pictures, COIN_WIDTH wide each */
+#define ORN_SHOP_TABLE 0x13         /* (CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, 0x13): the item order */
+#define GDAT_TYPE_TABLE 8
+#define SHOP_TABLE_CREATE 0x8000    /* table word: a new item is made when the display shows it */
+#define ORN_KEY_SHOP_LABEL 0xf2     /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offsets of the name and prices */
+#define ORN_KEY_SHOP_SELL 0xf1
+#define ORN_KEY_SHOP_BUY 0xf0
+#define SHOP_PRICE_COINS 6
+#define COIN_WIDTH 8
+#define COIN_HEIGHT 7
+#define SHOP_TARGET 6               /* sensor record word: target x bits 6-10, y bits 11-15 */
+#define ITEM_NAME_ENTRY 0x18
+#define DISPLAY_POS POS_FRONT       /* only the wall in front shows the name and prices */
+
+int16_t view_hit_offset_y;
+
+static void record_target(uint16_t record, int *x, int *y)
+{
+    uint16_t target = thing_word(record, SHOP_TARGET);
+    *x = target >> 6 & 0x1f;
+    *y = target >> 11;
+}
+
+/* True when the target square of the sensor record holds an item of the item index type: in the possessions of a
+   creature, or loose when loose is set. */
+static int shop_square_has_object_type(uint16_t record, int type, int loose)
+{
+    int x, y;
+    record_target(record, &x, &y);
+    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+        int kind = thing_type(t);
+        if (loose && kind >= THING_WEAPON && kind <= THING_MISC) {
+            if (item_get_index(t) == type) return 1;
+        } else if (kind == THING_GROUP) {
+            for (uint16_t p = thing_word(t, GROUP_POSSESSIONS); p != THING_ENDOFLIST; p = dungeon_next_thing(p))
+                if (item_get_index(p) == type) return 1;
+        }
+    }
+    return 0;
+}
+
+/* Draws text centered at x with its base line at y in the view, in the view shade. */
+static void view_draw_centered_label(int x, int y, const char *text)
+{
+    int16_t width, height, count = UI_COLOR_COUNT;
+    if (!text_measure(text, &width, &height)) return;
+    uint8_t colors[UI_COLOR_COUNT];
+    memcpy(colors, ui_colors, sizeof colors);
+    pal_apply_dim_remap(colors, view.shade, NO_KEY, NO_KEY, &count);
+    text_draw_with_shadow(view_viewport.pixels, view_viewport.width, x - (width >> 1), y, colors[UI_WHITE],
+                          colors[UI_BLACK] | TEXT_TRANSPARENT, text);
+}
+
+static const uint16_t *shop_table(uint8_t ornament, int *count)
+{
+    int item = gdat_find(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, ORN_SHOP_TABLE);
+    uint32_t size = 0;
+    const uint8_t *data = item < 0 ? NULL : gdat_item(draw_gdat(), item, &size);
+    *count = (int)(size / 2);
+    return (const uint16_t *)data;
+}
+
+/* Chooses the item that the display shows: the next or the last item of the price list that the merchant sells. */
+static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, int creature)
+{
+    uint16_t flags = thing_word(shop, SENSOR_FLAGS);
+    uint16_t item = thing_word(display, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT;
+    uint8_t set[SHOP_CLASS_SET_SIZE];
+    int list = flags >> SHOP_LIST_SHIFT & SHOP_LIST_MASK;
+    if (shop_parse_item_class_set(creature, list * 3 + SHOP_CLASS_TEXT, set, 0)) {
+        int count, at = item;
+        const uint16_t *table = shop_table(ornament, &count);
+        if (table) for (at = 0; at < count && (table[at] & ITEM_INDEX_NONE) != item; at++) {}
+        /* fix: the original loops for ever when the merchant sells no item of the list */
+        for (int tries = 0; tries <= ITEM_INDEX_NONE; tries++) {
+            at += flags & SHOP_STEP_FORWARD || view_hit_offset_y < 0 ? 1 : -1;
+            if (table) {
+                if (at < 0) at = count - 1;
+                else if (at >= count) at = 0;
+                item = table[at] & ITEM_INDEX_NONE;
+            } else {
+                at &= ITEM_INDEX_NONE;
+                item = (uint16_t)at;
+            }
+            if (!(set[item >> 3] & 1 << (item & 7))) continue;
+            if (gdat_entry_index(draw_gdat(), item_index_gdat_category(item), item_index_gdat_index(item),
+                                 GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_UNIQUE
+                && !shop_square_has_object_type(shop, item, 1) && !shop_square_has_object_type(display, item, 0)
+                && !item_party_possesses_type(item))
+                continue;
+            break;
+        }
+        flags &= ~SHOP_STEP_FORWARD;
+    }
+    set_thing_word(shop, SENSOR_FLAGS, flags | SHOP_SHOWN);
+    set_thing_word(display, SENSOR_FLAGS, thing_word(display, SENSOR_FLAGS) | SHOP_SHOWN);
+    uint16_t data = thing_word(display, SENSOR_TYPE_DATA);
+    set_thing_word(display, SENSOR_TYPE_DATA, (uint16_t)((data & SENSOR_TYPE_MASK) | (item & ITEM_INDEX_NONE) << SENSOR_DATA_SHIFT));
+}
+
+/* Draws amount as coins at the offset of key from zone. */
+static void shop_draw_price(int amount, uint8_t ornament, int depth, int zone, int anchor, int key, int offset_key)
+{
+    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, offset_key);
+    int16_t x = (int8_t)HIGH_BYTE(offset), y = (int8_t)LOW_BYTE(offset), count;
+    uint8_t coins[SHOP_PRICE_COINS];
+    if (!(uint16_t)amount) return;
+    money_split_amount(amount, SHOP_PRICE_COINS, coins, &count);
+    if (count <= 0) return;
+    Bitmap *strip = draw_temp_bitmap(count * COIN_WIDTH, COIN_HEIGHT, 4);
+    if (!strip) return;
+    view_setup_picture(0, SCALE_FULL, SCALE_FULL, 0, 0, depth, ZONE_NONE, anchor, NO_KEY, NO_KEY, CAT_WALL_ORNAMENT,
+                       ornament, ORN_SHOP_COINS);
+    if (!view.ctx.image) return;
+    int16_t rect[RECT_SIZE] = {0, 0, COIN_WIDTH, COIN_HEIGHT};
+    for (int i = 0; i < count; i++, rect[RECT_X] += COIN_WIDTH)
+        gfx_blit_bitmap(view.ctx.image, strip, rect, coins[i] * COIN_WIDTH, 0, NO_KEY, NULL);
+    if (zone_compute_rect(strip, rect, zone | ZONE_RELATIVE, &x, &y, anchor))
+        gfx_blit_bitmap(strip, &view_viewport, rect, 0, 0, key, view.ctx.palette);
+}
+
+/* Draws the shop display of the wall sensor shop with the shop ornament: the item, its name and prices in front. */
+static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int pos, int scale_x, int scale_y, int zone,
+                              int anchor, int key)
+{
+    int x, y;
+    record_target(shop, &x, &y);
+    uint16_t display = THING_ENDOFLIST;
+    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t))
+        if (thing_type(t) == THING_SENSOR && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_SHOP) {
+            display = t;
+            break;
+        }
+    if (display == THING_ENDOFLIST) return;  /* fix: the original reads a NULL record */
+    int creature = (uint8_t)(thing_word(shop, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT);
+    uint16_t flags = thing_word(shop, SENSOR_FLAGS);
+    if (!(flags & SHOP_SHOWN) || flags & SHOP_STEP_FORWARD) shop_choose_item(shop, display, ornament, creature);
+    uint16_t item = thing_word(display, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT;
+    int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
+    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_ALCOVE_ITEMS);
+    view_setup_picture(0, scale_x, scale_y, (int8_t)HIGH_BYTE(offset), (int8_t)LOW_BYTE(offset), depth, zone, anchor,
+                       key, NO_KEY, category, index, 0);
+    view_flush_picture();
+    if (!shop_square_has_object_type(shop, item, 1) && !shop_square_has_object_type(display, item, 0)) {
+        int count, at = 0;
+        const uint16_t *table = shop_table(ornament, &count);
+        if (table) for (; at < count && (table[at] & ITEM_INDEX_NONE) != item; at++) {}
+        uint16_t made = table && at < count && table[at] & SHOP_TABLE_CREATE ? item_create_by_index(item) : THING_NONE;
+        if (made != THING_NONE) {
+            dungeon_link_thing_to_square(made, view.map, x, y);
+        } else {
+            view_setup_picture(0, scale_x, scale_y, (int8_t)HIGH_BYTE(offset), (int8_t)LOW_BYTE(offset), depth, zone,
+                               anchor, key, NO_KEY, CAT_WALL_ORNAMENT, ornament, ORN_SHOP_EMPTY);
+            view_flush_picture();
+        }
+    }
+    view_setup_picture(0, scale_x, scale_y, 0, 0, depth, zone, anchor, key, NO_KEY, CAT_WALL_ORNAMENT, ornament,
+                       ORN_OVERLAY);
+    view_flush_picture();
+    if (pos != DISPLAY_POS) return;
+    int16_t lx, ly;
+    zone_get_position(zone, &lx, &ly);
+    uint16_t place = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
+    char raw[TEXT_SIZE], name[TEXT_SIZE];
+    view_draw_centered_label(lx + (int8_t)HIGH_BYTE(place), ly + (int8_t)LOW_BYTE(place),
+                             text_format(text_gdat(category, index, ITEM_NAME_ENTRY, raw), name));
+    int list = flags >> SHOP_LIST_SHIFT & SHOP_LIST_MASK;
+    int buy = shop_get_item_value(item, creature, list, 1, 1, -1);
+    int sell = shop_get_item_value(item, creature, list, 0, 1, -1);
+    shop_draw_price(sell, ornament, depth, zone, anchor, key, ORN_KEY_SHOP_SELL);
+    shop_draw_price(buy, ornament, depth, zone, anchor, key, ORN_KEY_SHOP_BUY);
+}
+
 /* Draws the text of a front wall plate: the text goes into a bitmap of the plate size, centered, then into the view. */
 static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int depth, int zone, int anchor, int key)
 {
@@ -2098,7 +2283,9 @@ static int view_draw_wall_ornament(int pos, int side, int record_click)
     if (kind && side == 0) {
         view.alcove = view.ctx;
         if (picture_exists(CAT_WALL_ORNAMENT, ornament, ORN_OVERLAY)) {
-            if (kind != KIND_SHOP) {  /* Step 15 ports the shop display (shop_draw_display) */
+            if (kind == KIND_SHOP) {
+                shop_draw_display(view_squares[pos].text, ornament, depth, pos, scale_x, scale_y, zone, anchor, key);
+            } else {
                 view_setup_picture(flip, scale_x, scale_y, 0, 0, depth, zone, anchor, key, NO_KEY, CAT_WALL_ORNAMENT,
                                    ornament, ORN_OVERLAY);
                 if (!record_click) view.ctx.transparent = DRAW_NO_BLIT;
@@ -2680,6 +2867,7 @@ static int view_hit_test_picture(int x, int y, int key)
     int sx = c->flip & MIRROR_H ? r[RECT_X] + r[RECT_W] - 1 - x + c->src_x : x - r[RECT_X] + c->src_x;
     int sy = y - r[RECT_Y] + c->src_y;
     const Bitmap *image = c->image;
+    if (image && image->height >= 2) view_hit_offset_y = (int16_t)((sy - (image->height >> 1)) * 100 / (image->height >> 1));
     if (!image || sx < 0 || sy < 0 || sx >= image->width || sy >= image->height) return 0;
     int pixel;
     if (image->bpp == 8) {

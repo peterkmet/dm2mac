@@ -68,6 +68,9 @@ extern int view_click_zone_count;
    leader hand object that goes there. Returns the object, THING_NONE when the click is done (a chest changed, or
    thing went into an open chest), THING_ENDOFLIST when thing must drop; thing when nothing is hit. */
 uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y, uint16_t thing, int kind, int placing);
+/* The vertical place of the last hit test of a view picture, in percent of half the picture height from its center:
+   a shop click above the center shows the next item, else the last item. */
+extern int16_t view_hit_offset_y;
 /* True when the ornament of the wall at view position pos (0 to 3) shows a pixel at (x, y) of the viewport. */
 int view_hit_test_wall_ornament(int pos, int x, int y);
 /* The ornament (low byte of the front face word) that the wall things from first show on the face that looks to

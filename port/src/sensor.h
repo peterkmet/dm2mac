@@ -46,5 +46,7 @@ void timeline_event_sensor(TimelineEvent *e);
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
 int dun_get_global_var(int var);
 int dun_modify_global_var(int var, int value, int op);   /* returns the new value */
+/* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
+int item_party_possesses_type(int type);
 
 #endif

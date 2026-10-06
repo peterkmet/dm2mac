@@ -114,7 +114,7 @@ static int item_container_holds_type(uint16_t thing, int type)
     return 0;
 }
 
-static int item_party_possesses_type(int type)
+int item_party_possesses_type(int type)
 {
     for (int i = 0; i < game.champion_count; i++) {
         Champion *c = champion(i);
