@@ -9,6 +9,13 @@ enum gdat_category {
 };
 #define GDAT_NO_INDEX 0xff
 #define ITEM_INDEX_NONE 0x1ff   /* item index of no thing */
+/* Item index ranges. */
+#define ITEM_FIRST_CLOTHING 0x80
+#define ITEM_FIRST_MISC 0x100
+#define ITEM_FIRST_POTION 0x180
+#define ITEM_FIRST_CREATURE 0x1b0
+#define ITEM_FIRST_CONTAINER 0x1e0
+#define ITEM_SCROLL 0x1fc
 
 /* Item attribute entries: GDAT value keys (category, index, 0x0b, entry). */
 enum item_attr {
@@ -40,6 +47,8 @@ int item_add_charges(uint16_t thing, int delta);
 void item_set_gdat_index(uint16_t thing, int index);
 /* The highest charge count of the thing type. */
 int item_max_charges(uint16_t thing);
+/* The value of a thing with its contents (attribute 2), at most 0xffff. */
+uint16_t item_get_value(uint16_t thing);
 /* Sets or clears the bit that keeps a thing from being reused when the dungeon runs out of records. */
 void item_set_do_not_discard(uint16_t thing, int keep);
 /* True when thing may go into slot. strict: only the champion slots 0 to 12 (or -1, a hand) count. */

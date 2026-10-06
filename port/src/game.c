@@ -3,6 +3,7 @@
 #include "action.h"
 #include "champ_action.h"
 #include "champion.h"
+#include "creature.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "game.h"
@@ -10,6 +11,7 @@
 #include "hooks.h"
 #include "input.h"
 #include "inventory.h"
+#include "magic.h"
 #include "move.h"
 #include "music.h"
 #include "random.h"
@@ -19,6 +21,7 @@
 #include "timeline.h"
 #include "ui.h"
 #include "view.h"
+#include "weather.h"
 #include "zone.h"
 
 #define REDRAW_INVENTORY_BOX 0x4000
@@ -35,9 +38,16 @@ void screen_present_viewport(void)
     int ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
     party.move_steps = (int16_t)steps;
     if (!ok) return;
-    for (int y = 0; y < VIEWPORT_HEIGHT; y++)
-        memcpy(draw_screen.pixels + (r[RECT_Y] + y) * draw_screen.width + r[RECT_X], view_viewport.pixels + y * VIEWPORT_WIDTH,
-               VIEWPORT_WIDTH);
+    for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
+        uint8_t *dst = draw_screen.pixels + (r[RECT_Y] + y) * draw_screen.width + r[RECT_X];
+        if (!steps) {
+            memcpy(dst, view_viewport.pixels + y * VIEWPORT_WIDTH, VIEWPORT_WIDTH);
+            continue;
+        }
+        /* While the party walks, the visible part of the view fills the whole viewport (nearest neighbour). */
+        const uint8_t *src = view_viewport.pixels + (walk_view_rect[RECT_Y] + y * walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
+        for (int x = 0; x < VIEWPORT_WIDTH; x++) dst[x] = src[walk_view_rect[RECT_X] + x * walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
+    }
 }
 
 static void ui_draw_sleep_message(void)
@@ -111,6 +121,7 @@ void game_enter_map(int x, int y, int map, int leaving)
     if (leaving) sensor_process_map_entry(0);
     dun_set_party_location(x, y, map);
     view_enter_map(map);
+    world_update_day_night(0);
     sensor_process_map_entry(1);
     creature_activate_groups_on_map();
     party.redraw |= REDRAW_SQUARES;
@@ -273,7 +284,7 @@ void game_start_session(void)
     ui_draw_movement_arrows();
     champ_init_party_state();
     creature_refresh_party_maps();
-    creature_activate_groups_all_maps();
+    creature_reset_active_groups();
     game_step();
 }
 

@@ -10,10 +10,12 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
+#include "sound_request.h"
 #include "text.h"
 #include "timeline.h"
 #include "ui.h"
 #include "view.h"
+#include "input.h"
 #include "zone.h"
 
 /* GDAT categories of the view pictures. */
@@ -47,10 +49,6 @@ enum {
 /* Pictures (CAT_MAP, graphics set, 1, entry). */
 /* Map graphics of the map descriptor. */
 #define MAP_GFX_SET_SHIFT 4
-#define MAP_DOOR_TYPE_SHIFT 8       /* door type 0; door type 1 follows 4 bits higher */
-#define MAP_HAS_DOOR_TYPE_0 0x0080
-#define MAP_HAS_DOOR_TYPE_1 0x0100
-#define DOOR_TYPE_NONE 0xff
 #define NIBBLE 0xf
 enum {
     MAP_FLOOR = 0, MAP_CEILING = 1, MAP_FONT = 3, MAP_DOOR_SIDE = 6, MAP_WALL = 0x22, MAP_FAR_WALL = 0x32,
@@ -417,7 +415,6 @@ enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_B
 #define CELL_ROW_STEP (CELL_GRID_SIDE * GRID_SQUARE_CELLS)  /* cell offset of the square ahead or behind */
 
 /* Possessions of a static creature (CreatureInfo.possessions). */
-#define POSSESSIONS_KIND_MASK 0x000f    /* 0: none shown; 1 or less: carried low */
 #define POSSESSIONS_CELLS_MASK 0x00f0
 #define POSSESSIONS_SHOWN 0x0400
 #define POSSESSIONS_LOW_KIND 1
@@ -511,29 +508,10 @@ static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 
 /* Sky objects: clouds, rain, and the landmarks of an outdoor map. */
 #define SKY_OBJECT_MAX 5
-#define SKY_OBJECT_END 0xff
 #define SKY_LANDMARK_MAX 100
-#define SKY_RAIN_LIGHT 0x67
-#define SKY_RAIN_MEDIUM 0x68
-#define SKY_RAIN_HEAVY 0x69
-#define SKY_CLOUDS_LIGHT 0x6a
-#define SKY_CLOUDS_MEDIUM 0x6b
-#define SKY_CLOUDS_HEAVY 0x6c
 #define SKY_LANDMARK_DISTANCE 210   /* screen offset per square of lateral distance */
-#define SKY_DARKNESS_RAIN 0x10      /* rain pictures from this sky darkness on, heavier from the next limits */
-#define SKY_DARKNESS_MEDIUM 0x40
-#define SKY_DARKNESS_HEAVY 0x80
-#define SKY_CLOUDS_SHOWN 0x40
-#define SKY_CLOUDS_MORE 0x80
-#define SKY_CLOUDS_MOST 0xc0
 enum sky_flip { SKY_FLIP_FLOOR = 8, SKY_FLIP_CEILING = 2, SKY_FLIP_FLOOR_2 = 0x40, SKY_FLIP_CEILING_2 = 0x20 };
 enum sky_move { SKY_FIXED, SKY_LANDMARK };
-typedef struct {
-    uint8_t entry;
-    uint8_t flip;               /* enum sky_flip */
-    int16_t zone, dx, dy;
-    uint8_t scale_x, scale_y;
-} SkyObject;
 
 /* Flip parity kinds and the map flip flags (value key MAP_KEY_FLIP_FLAGS). */
 enum { PARITY_SQUARE = 0, PARITY_FLOOR = 1, PARITY_CEILING = 0x20 };
@@ -559,7 +537,6 @@ static struct {
     int16_t wall_key;
     uint16_t flip_flags;
     const uint8_t *wall_ornaments; /* random wall ornaments: the list of the party map */
-    int gfx_has_rain, gfx_has_clouds;
     int clear;                  /* fill clear_rect before drawing: floor and ceiling leave a gap */
     int16_t clear_rect[RECT_SIZE];
     uint8_t clear_color;
@@ -575,11 +552,12 @@ static struct {
         uint16_t group;
         uint32_t cells;
     } pending;
-} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST};
+} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST, .sky[0].entry = SKY_OBJECT_END};
 
 ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 int view_click_zone_count;
 uint8_t view_creature_grid[VIEW_GRID_SIZE];
+int view_arrows_enabled;
 uint8_t view_object_grid[VIEW_GRID_SIZE];
 uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
 uint32_t view_object_masks[VIEW_SQUARE_COUNT];
@@ -616,8 +594,7 @@ static void move_relative(int dir, int forward, int right, int *x, int *y)
 
 /* ---- Map graphics and sky objects ---- */
 
-/* Reads a weather sky object (rain, clouds) of the map graphics; returns 0 when the map has none. */
-static int weather_load_sky_object(SkyObject *object)
+int weather_load_sky_object(SkyObject *object)
 {
     char text[WALL_TEXT_SIZE];
     gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, object->entry, text, sizeof text);
@@ -629,29 +606,13 @@ static int weather_load_sky_object(SkyObject *object)
     return 1;
 }
 
-/* The rain and clouds of the saved weather; the weather update (Step 17) rebuilds them every step. */
-static void build_weather_sky(void)
-{
-    SkyObject *o = view.sky;
-    if (game.weather_visible) {
-        if (view.gfx_has_rain && game.sky_darkness >= SKY_DARKNESS_RAIN) {
-            o->entry = game.sky_darkness < SKY_DARKNESS_MEDIUM ? SKY_RAIN_LIGHT
-                       : game.sky_darkness < SKY_DARKNESS_HEAVY ? SKY_RAIN_MEDIUM : SKY_RAIN_HEAVY;
-            if (weather_load_sky_object(o)) o++;
-        }
-        if (view.gfx_has_clouds && game.cloud_cover >= SKY_CLOUDS_SHOWN) {
-            o->entry = game.cloud_cover < SKY_CLOUDS_MORE ? SKY_CLOUDS_LIGHT
-                       : game.cloud_cover < SKY_CLOUDS_MOST ? SKY_CLOUDS_MEDIUM : SKY_CLOUDS_HEAVY;
-            if (weather_load_sky_object(o)) o++;
-        }
-    }
-    o->entry = SKY_OBJECT_END;
-}
+SkyObject *view_sky_objects(void) { return view.sky; }
 
 void view_enter_map(int map)
 {
     const gdat_t *g = draw_gdat();
     uint16_t graphics = dungeon_map_graphics(map), flags = dungeon_map_flags(map);
+    sound_clear_requests();
     view.map = view.party_map = map;
     view.gfx_set = graphics >> MAP_GFX_SET_SHIFT & NIBBLE;
     view.door_types[0] = flags & MAP_HAS_DOOR_TYPE_0 ? graphics >> MAP_DOOR_TYPE_SHIFT & NIBBLE : DOOR_TYPE_NONE;
@@ -659,8 +620,6 @@ void view_enter_map(int map)
     view.wall_key = (int16_t)value_key(CAT_MAP, view.gfx_set, MAP_KEY_WALL_COLOR);
     view.flip_flags = value_key(CAT_MAP, view.gfx_set, MAP_KEY_FLIP_FLAGS);
     view.wall_ornaments = dungeon_map_wall_ornaments(map);
-    view.gfx_has_rain = gdat_exists(g, CAT_SKY, view.gfx_set, GDAT_TYPE_IMAGE, SKY_RAIN_LIGHT);
-    view.gfx_has_clouds = gdat_exists(g, CAT_SKY, view.gfx_set, GDAT_TYPE_IMAGE, SKY_CLOUDS_LIGHT);
     uint16_t sky_state = value_key(CAT_MAP, view.gfx_set, MAP_KEY_SKY_STATE);
     view.rain_shown = sky_state < sizeof sky_state_rain && sky_state_rain[sky_state];  /* fix: no read past the table */
     /* floor and ceiling pictures that do not fill the viewport leave a band that is cleared */
@@ -680,7 +639,6 @@ void view_enter_map(int map)
     uint32_t size;
     const uint8_t *colors = gdat_item(g, gdat_find(g, CAT_INTERFACE, 0, TYPE_DATA, UI_COLORS_ENTRY), &size);
     view.clear_color = colors && size ? colors[0] : 0;
-    build_weather_sky();
 }
 
 /* 1 when the picture of kind should be mirrored for the party at (x, y) looking to dir. */
@@ -987,6 +945,14 @@ static void get_square_aspect(ViewSquare *s, int dir, int x, int y)
         }
     }
     s->first_thing = floor_things ? apply_floor_things(s, thing, square) : skip_wall_things(thing);
+}
+
+void dun_get_square_aspect(ViewSquare *s, int dir, int x, int y)
+{
+    int map = view.map;
+    view.map = party.cur_map;
+    get_square_aspect(s, dir, x, y);
+    view.map = map;
 }
 
 /* ---- Things of the view squares ---- */
@@ -1603,7 +1569,13 @@ static void view_draw_creature(int pos, int depth, uint16_t group)
     int type = dungeon_thing_record(group)[GROUP_CREATURE];
     uint8_t frame[CREATURE_FRAME_SIZE];
     creature_anim_frame(g, group, frame);
-    int anim = 0;  /* the animation bits of the active group (Step 16): mirror and random shift */
+    /* a vanishing creature keeps the cell, size, and shift of the frame where it stopped */
+    uint8_t still[CREATURE_FRAME_SIZE];
+    memcpy(still, frame, sizeof still);
+    ActiveGroup *active = creature_active(group);
+    if (active && active->action == CREATURE_ACTION_VANISH)
+        creature_anim_frame_of(g, type, (uint16_t)active->counters[0], (uint16_t)active->counters[1], still);
+    int anim = active ? active->anim_bits : 0;
     int side = creature_info(g, type)->flags & CREATURE_FACES_PARTY ? DIR_SOUTH : (view.party_dir - creature_dir(group)) & 3;
     int entry = frame[FRAME_ENTRY + side], flip = 0, mirrored = 0;
     if (!creature_picture_exists(type, entry)) {
@@ -1634,14 +1606,22 @@ static void view_draw_creature(int pos, int depth, uint16_t group)
         }
         if (flip != saved) mirrored = 1;
     }
-    /* Step 16: an attacking creature takes the size of its picture from its attack frame */
-    uint32_t size;
-    const uint8_t *sizes = gdat_item(g, gdat_find(g, CAT_CREATURE, type, TYPE_CREATURE_DATA, CREATURE_SIZES), &size);
-    unsigned at = frame[FRAME_SIZE] * DIR_COUNT + side;
-    int scale = gfx_scale_64(sizes && at < size ? sizes[at] : 0, depth_scale[depth]);  /* fix: no read past the table */
-    /* Step 14 adds the cell and scale of a creature at the push arrow */
-    int zone = zone_id_for_view_cell(pos, frame[FRAME_CELL], side) | ZONE_RELATIVE;
-    int shift = (int8_t)frame[FRAME_SHIFT], dx = 0, dy = 0;
+    int cell = still[FRAME_CELL], scale;
+    if (pos == POS_FRONT && view_arrows_enabled) {
+        /* by push arrow: the cell and scale of the creature that the party pushes */
+        static const uint8_t arrow_cells[7] = {2, 0x0e, 0x16, 0x16, 0x16, 0x0a, 0x0c};
+        static const uint8_t arrow_scales[7] = {0x34, 0x40, 0x4e, 0x4e, 0x4e, 0x40, 0x40};
+        cell = (int8_t)arrow_cells[party.push_arrow];
+        scale = arrow_scales[party.push_arrow];
+        side = 0;
+    } else {
+        uint32_t size;
+        const uint8_t *sizes = gdat_item(g, gdat_find(g, CAT_CREATURE, type, TYPE_CREATURE_DATA, CREATURE_SIZES), &size);
+        unsigned at = still[FRAME_SIZE] * DIR_COUNT + side;
+        scale = gfx_scale_64(sizes && at < size ? sizes[at] : 0, depth_scale[depth]);  /* fix: no read past the table */
+    }
+    int zone = zone_id_for_view_cell(pos, cell, side) | ZONE_RELATIVE;
+    int shift = (int8_t)still[FRAME_SHIFT], dx = 0, dy = 0;
     if (shift) {
         int sx = 0, sy = 0;
         if (side == DIR_NORTH) sy = -CREATURE_SHIFT_Y;
@@ -2832,6 +2812,8 @@ void view_draw_dungeon(int dir, int x, int y)
     memset(view_creature_grid, 0, sizeof view_creature_grid);
     memset(view_object_grid, NO_POSITION, sizeof view_object_grid);
     view_clear_viewport();
+    view_arrows_enabled = party.push_mode || party.push_pending_group != THING_NONE;
+    input_update_viewport_arrow();
     for (int pos = VIEW_SQUARE_COUNT - 1; pos >= 0; pos--) view_load_square(x, y, pos, dir);
     int margins = -1;
     if (view_squares[7].aspect == ASPECT_WALL && view_squares[6].aspect == ASPECT_WALL && view_squares[8].aspect == ASPECT_WALL)
@@ -2879,6 +2861,31 @@ static int view_hit_test_picture(int x, int y, int key)
     return pixel != key;
 }
 
+#define HIT_SIDE_LIMIT 0x4b      /* percent of the half picture width: a click beyond it hits a side */
+#define HIT_DEPTH 1               /* the depth at which the creature in front is drawn for a hit test */
+
+int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
+{
+    uint16_t group = creature_get_group_at(square_x, square_y);
+    if (group == THING_NONE) return 0;
+    view_draw_creature(POS_FRONT, HIT_DEPTH, group);
+    int key = view.ctx.transparent;
+    view.ctx.transparent = DRAW_NO_BLIT;
+    view_flush_picture();
+    if (!view_hit_test_picture(x, y, key)) {
+        draw_free_temp();
+        return 0;
+    }
+    const DrawCtx *c = &view.ctx;
+    const int16_t *r = c->rect;
+    int sx = c->flip & MIRROR_H ? r[RECT_X] + r[RECT_W] - 1 - x + c->src_x : x - r[RECT_X] + c->src_x;
+    int half = c->image ? c->image->width >> 1 : 0;
+    int16_t offset = half ? (int16_t)((sx - c->x - half) * 100 / half) : 0;
+    *side = offset < -HIT_SIDE_LIMIT ? 3 : offset <= HIT_SIDE_LIMIT ? 0 : 1;
+    draw_free_temp();
+    return 1;
+}
+
 int view_hit_test_wall_ornament(int pos, int x, int y)
 {
     static const int8_t face_of_pos[4] = {0, -1, 1, 0};  /* the face that the party sees of the walls at 0 to 3 */
@@ -2896,6 +2903,7 @@ int view_hit_test_wall_ornament(int pos, int x, int y)
     draw_free_temp();
     return hit;
 }
+
 
 int view_wall_face_ornament(int map, uint16_t first, int dir)
 {

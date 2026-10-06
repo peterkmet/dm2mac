@@ -1,6 +1,7 @@
 /* Floor and wall sensors, square events, doors, pits, teleporters, and fake walls. */
 #include <string.h>
 #include "action.h"
+#include "ai_move.h"
 #include "champion.h"
 #include "creature.h"
 #include "draw.h"
@@ -31,8 +32,6 @@
 #define SENSOR_BUSY 0x0001
 #define SENSOR_CREATE_ITEM 0x3c
 #define SENSOR_KEEP_ITEM 0x0018     /* both bits: the new item is kept from reuse */
-enum { CHARGES_FULL, CHARGES_EMPTY, CHARGES_RANDOM };  /* sensor flags bits 3 and 4 of a new item */
-#define ALL_CHARGES 0x0f
 #define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * 8)  /* script variables: 64 flags, 64 bytes, 64 words */
 #define GLOBAL_WORD_FIRST 0x80
 #define GLOBAL_VAR_END 0xc0
@@ -89,7 +88,7 @@ int dun_get_door_type(uint16_t door)
     return flags & 0x100 ? graphics >> 12 : 0xff;
 }
 
-static uint16_t door_value(uint16_t door, int key)
+uint16_t door_value(uint16_t door, int key)
 {
     return gdat_entry_index(draw_gdat(), CAT_DOOR, dun_get_door_type(door), GDAT_TYPE_VALUE, key);
 }
@@ -499,7 +498,8 @@ static void sensor_start_ambient_sound(uint16_t sensor, uint16_t thing, int x, i
     int ornament = wall ? sensor_wall_ornament(sensor) : sensor_floor_ornament(sensor);
     uint32_t start = game.game_time + (w >> SENSOR_DATA_SHIFT & 0xff);
     uint16_t offset = gdat_entry_index(draw_gdat(), category, ornament, GDAT_TYPE_VALUE, 0x88);
-    TimelineEvent e = {.time_map = event_time(cycle - (offset + start) % cycle + game.game_time),
+    unsigned phase = (offset + start) % cycle;
+    TimelineEvent e = {.time_map = event_time(cycle - phase + game.game_time),
                        .type = EVENT_SENSOR_AMBIENT_SOUND};
     e.data[0] = (uint8_t)x;
     e.data[1] = (uint8_t)y;
@@ -507,6 +507,15 @@ static void sensor_start_ambient_sound(uint16_t sensor, uint16_t thing, int x, i
     e.data[3] = (uint8_t)(thing >> 8);
     timeline_add_event(&e);
     set_thing_word(sensor, SENSOR_TYPE_DATA, (uint16_t)((w & 0x7f) | (0x100 | (w >> SENSOR_DATA_SHIFT & 0xff)) << SENSOR_DATA_SHIFT));
+    if (phase) return;  /* the sound plays now only when the animation cycle starts now */
+    if (wall) {  /* a wall sound comes from the square in front of the wall, unless the party stands in the wall */
+        int side = thing >> THING_CELL_SHIFT;
+        int dx = x + (side == DIR_EAST) - (side == DIR_WEST), dy = y + (side == DIR_SOUTH) - (side == DIR_NORTH);
+        if (party.cur_map != party.square_map || dx != party.square_x || dy != party.square_y) {
+            x = dx;
+            y = dy;
+        }
+    }
     sound_play_with_fallback(category, ornament, 0x88, 0xfe, x, y, 1, 0x8c, 0x80);
 }
 
@@ -646,22 +655,98 @@ static void set_sensor_data(uint16_t sensor, unsigned data)
     set_thing_word(sensor, SENSOR_TYPE_DATA, (uint16_t)((w & 0x7f) | (data & 0x1ff) << SENSOR_DATA_SHIFT));
 }
 
-/* Puts the new item thing at the target of sensor, with the charges of the sensor flags bits 3 and 4. */
-static void sensor_transfer_object(uint16_t thing, uint16_t sensor, int x, int y, int cell, int keep_flag)
+/* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
+enum { CHARGES_FILL, CHARGES_EMPTY, CHARGES_RANDOM };
+#define CHARGES_MODE_MASK 3
+#define CHARGES_EMPTY_AMOUNT (-15)
+#define SENSOR_KEEP_BONES 0x0004    /* sensor flags: bones move like other objects; the moved object goes into
+                                       the possessions of a static creature there */
+#define SENSOR_TARGET_CELL_SHIFT 4
+#define SENSOR_ANY_ITEM 0xff80      /* sensor type data: item index 0x1ff, any object */
+#define SENSOR_DATA_ITEM_SHIFT 7
+#define ITEM_CLASS_ENTRY_SHIFT 7    /* sensor flags bits 7-10: the item class text of the creature type */
+#define ITEM_CLASS_ENTRY_MASK 0xf
+#define ITEM_CLASS_ENTRY_STEP 3
+#define ITEM_CLASS_ENTRY_FIRST 0x10
+#define CELL_COUNT 4
+
+static int is_object(uint16_t thing) { return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC; }
+
+void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
+                            int from_creature, int to_possessions)
 {
-    uint16_t flags = thing_word(sensor, SENSOR_FLAGS);
-    if (item_gdat_category(thing) != GDAT_MISC_CATEGORY || item_gdat_index(thing) != 0) {
-        int charges;
-        switch (flags >> SENSOR_EFFECT_SHIFT & 3) {
-        case CHARGES_FULL: charges = item_max_charges(thing); break;
-        case CHARGES_EMPTY: charges = -ALL_CHARGES; break;
-        case CHARGES_RANDOM: charges = (int)rand_below((uint16_t)(item_max_charges(thing) + 1)); break;
-        default: charges = ALL_CHARGES; break;  /* fix: the original adds an uninitialized word; the field fills */
+    if (item_gdat_category(thing) != GDAT_MISC_CATEGORY || item_gdat_index(thing) != BONES_INDEX) {
+        int charges = 0;  /* fix: mode 3 adds an uninitialized amount in the original */
+        switch (thing_word(sensor, SENSOR_FLAGS) >> SENSOR_EFFECT_SHIFT & CHARGES_MODE_MASK) {
+        case CHARGES_FILL: charges = item_max_charges(thing); break;
+        case CHARGES_EMPTY: charges = CHARGES_EMPTY_AMOUNT; break;
+        case CHARGES_RANDOM: charges = rand_below((uint16_t)(item_max_charges(thing) + 1)); break;
         }
         item_add_charges(thing, charges);
     }
-    if (square_type(dun_get_square(x, y)) != SQUARE_WALL) cell = (int)rand_below(4);
-    move_thing((uint16_t)(cell << THING_CELL_SHIFT | (thing & 0x3fff)), -1, keep_flag ? -1 : 0, x, y);
+    if (square_type(*square_byte(to_x, to_y)) != SQUARE_WALL) to_cell = rand_below(CELL_COUNT);
+    if (from_x >= 0 && from_y >= 0) move_thing(thing, from_x, from_y, -1, from_creature ? -1 : 0);
+    move_thing((uint16_t)((thing & ~(3 << THING_CELL_SHIFT)) | to_cell << THING_CELL_SHIFT), -1, to_possessions ? -1 : 0,
+               to_x, to_y);
+}
+
+/* A Skullkeep machine: the objects of the event square (reverse: of the sensor target) that the sensor wants move
+   to the sensor target (reverse: to the event square), also from the creatures there. first: the first thing to
+   look at, THING_NONE for the square; any_cell: all cells, not only the event cell; use_filter: the item class of
+   the sensor data; possessions: the list of the creature that holds the things; first_only: one object only. */
+static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uint16_t first, int any_cell, int use_filter,
+                                    uint8_t *possessions, int reverse, int first_only)
+{
+    uint16_t data = thing_word(sensor, SENSOR_TYPE_DATA), flags = thing_word(sensor, SENSOR_FLAGS);
+    uint16_t target = thing_word(sensor, SENSOR_TARGET);
+    int ex = e->data[EVENT_X], ey = e->data[EVENT_Y], ecell = e->data[EVENT_CELL];
+    int tx = target >> 6 & 0x1f, ty = target >> 11, tcell = target >> SENSOR_TARGET_CELL_SHIFT & 3;
+    int fx = reverse ? tx : ex, fy = reverse ? ty : ey, fcell = reverse ? tcell : ecell;
+    int dx = reverse ? ex : tx, dy = reverse ? ey : ty, dcell = reverse ? ecell : tcell;
+    int effect = e->data[EVENT_EFFECT];
+    if (flags & SENSOR_INVERTED ? effect != EFFECT_CLEAR : effect != EFFECT_SET) return;
+    if (first == THING_NONE) {
+        first = first_thing(fx, fy);
+        if (square_type(*square_byte(fx, fy)) != SQUARE_WALL) any_cell = 1;
+    }
+    int count = 0;
+    for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+        if (is_object(t) && (any_cell || t >> THING_CELL_SHIFT == fcell)) count++;
+    uint8_t bits[ITEM_CLASS_SET_SIZE];
+    if (use_filter)
+        shop_parse_item_class_set(data >> SENSOR_DATA_ITEM_SHIFT & 0xff,
+                                  (flags >> ITEM_CLASS_ENTRY_SHIFT & ITEM_CLASS_ENTRY_MASK) * ITEM_CLASS_ENTRY_STEP
+                                  + ITEM_CLASS_ENTRY_FIRST, bits, 0);
+    for (uint16_t t = first, next; t != THING_ENDOFLIST; t = next) {
+        next = dungeon_next_thing(t);
+        if (count > 0 && is_object(t) && (any_cell || t >> THING_CELL_SHIFT == fcell)) {
+            count--;
+            uint16_t item = item_get_index(t);
+            int match;
+            if (use_filter) {
+                match = bits[item >> 3] >> (item & 7) & 1;
+            } else if (item == data >> SENSOR_DATA_ITEM_SHIFT) {
+                if (!(flags & SENSOR_KEEP_BONES) && item_gdat_category(t) == GDAT_MISC_CATEGORY
+                    && item_gdat_index(t) == BONES_INDEX) {
+                    /* bones: the champion comes back */
+                    if (possessions) dungeon_unlink_thing_from_list(t, possessions);
+                    else dungeon_unlink_thing_from_square(t, party.cur_map, fx, fy);
+                    set_thing_word(t, THING_NEXT, THING_NONE);
+                    champ_revive(item_add_charges(t, 0));
+                    continue;
+                }
+                match = 1;
+            } else {
+                match = (data & SENSOR_ANY_ITEM) == SENSOR_ANY_ITEM;
+            }
+            if (!match) continue;
+            sensor_transfer_object(t, sensor, fx, fy, dx, dy, dcell, possessions != NULL, (flags & SENSOR_KEEP_BONES) != 0);
+            if (first_only) return;
+        } else if (!use_filter && thing_type(t) == THING_GROUP) {
+            uint8_t *list = dungeon_thing_record(t) + GROUP_POSSESSIONS;
+            sensor_transfer_objects(e, sensor, thing_word(t, GROUP_POSSESSIONS), any_cell, 0, list, reverse, first_only);
+        }
+    }
 }
 
 /* A sensor of kind SENSOR_CREATE_ITEM makes a new item of its data item index at its target. */
@@ -674,7 +759,8 @@ static void sensor_create_item(uint16_t sensor)
     item_set_gdat_index(thing, item_index_gdat_index(item));
     if ((flags & SENSOR_KEEP_ITEM) == SENSOR_KEEP_ITEM) item_set_do_not_discard(thing, 1);
     uint16_t target = thing_word(sensor, SENSOR_TARGET);
-    sensor_transfer_object(thing, sensor, target >> 6 & 0x1f, target >> 11, target >> 4 & 3, flags >> 2 & 1);
+    sensor_transfer_object(thing, sensor, -1, -1, target >> 6 & 0x1f, target >> 11, target >> SENSOR_TARGET_CELL_SHIFT & 3, 0,
+                           (flags & SENSOR_KEEP_BONES) != 0);
 }
 
 static void timeline_event_wall_square(TimelineEvent *e)
@@ -787,14 +873,16 @@ static void timeline_event_wall_square(TimelineEvent *e)
             set_sensor_flags(t, (uint16_t)((flags & ~(1 << SENSOR_STATE_SHIFT))
                                            | (sensor_apply_effect(effect, flags >> SENSOR_STATE_SHIFT & 1) & 1) << SENSOR_STATE_SHIFT));
             break;
-        case 0x3b: case 0x47: case 0x40: case 0x48: case 0x49:
-            sensor_transfer_objects(e, t, kind);
-            break;
+        case 0x3b: sensor_transfer_objects(e, t, t, 0, 0, NULL, 0, 0); break;
+        case 0x40: sensor_transfer_objects(e, t, t, 0, 1, NULL, 0, 0); break;
+        case 0x47: sensor_transfer_objects(e, t, THING_NONE, 0, 0, NULL, 1, 0); break;
+        case 0x48: sensor_transfer_objects(e, t, t, 0, 0, NULL, 0, 1); break;
+        case 0x49: sensor_transfer_objects(e, t, THING_NONE, 0, 0, NULL, 1, 1); break;
         case SENSOR_CREATE_ITEM:
             if (effect == (flags & SENSOR_INVERTED ? EFFECT_CLEAR : EFFECT_SET)) sensor_create_item(t);
             break;
         case 0x42:
-            sensor_turn_creatures(e);
+            sensor_turn_creatures(e, t);
             break;
         case 0x43:
             sensor_set_global_flag(e, t);
@@ -879,14 +967,16 @@ static void timeline_event_floor_square(TimelineEvent *e)
         case 0x3a:
             creature_update_anim_at(x, y, effect == EFFECT_SET);
             break;
-        case 0x3b: case 0x40: case 0x47: case 0x48: case 0x49:
-            sensor_transfer_objects(e, t, kind);
-            break;
+        case 0x3b: sensor_transfer_objects(e, t, t, 1, 0, NULL, 0, 0); break;
+        case 0x40: sensor_transfer_objects(e, t, t, 1, 1, NULL, 0, 0); break;
+        case 0x47: sensor_transfer_objects(e, t, THING_NONE, 0, 0, NULL, 1, 0); break;
+        case 0x48: sensor_transfer_objects(e, t, t, 0, 0, NULL, 0, 1); break;
+        case 0x49: sensor_transfer_objects(e, t, THING_NONE, 0, 0, NULL, 1, 1); break;
         case 0x3d:
             sensor_forward_effect(e, t, w >> SENSOR_DATA_SHIFT);
             break;
         case 0x42:
-            sensor_turn_creatures(e);
+            sensor_turn_creatures(e, t);
             break;
         case 0x43:
             sensor_set_global_flag(e, t);
@@ -899,7 +989,7 @@ static void timeline_event_floor_square(TimelineEvent *e)
 }
 
 /* A pit or teleporter turns on: the party, a creature, and the objects on it go through. */
-static void move_square_contents_through(int x, int y)
+void move_square_contents_through(int x, int y)
 {
     if (dun_on_party_square(x, y)) move_thing(THING_NONE, x, y, x, y);
     uint16_t g = creature_group_at(party.cur_map, x, y);
@@ -1113,6 +1203,12 @@ void timeline_event_door_animation(TimelineEvent *e)
 
 /* ---- Sensor timeline events ---- */
 
+/* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
+   with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
+   the data after those tables in SKULL.EXE (0x717f8 and 0x71800); these are the values it reads. */
+static const int16_t ambient_wall_dx[4][4] = {{2052, 4, 0, 1032}, {0, 0, 0, 0}, {0, 0, 0, 0}, {450, 0, 255, 0}};
+static const int16_t ambient_wall_dy[4][4] = {{0, 0, 25675, 60}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+
 void timeline_event_sensor(TimelineEvent *e)
 {
     uint16_t thing = (uint16_t)(e->data[0] | e->data[1] << 8);
@@ -1161,9 +1257,18 @@ void timeline_event_sensor(TimelineEvent *e)
             int wall = square_type(dun_get_square(e->data[0], e->data[1])) == SQUARE_WALL;
             e->time_map += (uint16_t)sensor_get_ornament_cycle(thing, wall);
             timeline_add_event(e);
+            int16_t x = e->data[0], y = e->data[1];
+            if (wall) {  /* the sound comes from the square in front of the wall, unless the party stands there */
+                int16_t fx = (int16_t)(x + ambient_wall_dx[e->data[3] >> 6][e->data[3] & 3]);
+                int16_t fy = (int16_t)(y + ambient_wall_dy[e->data[3] >> 6][e->data[3] & 3]);
+                if (party.cur_map != party.square_map || fx != party.square_x || fy != party.square_y) {
+                    x = fx;
+                    y = fy;
+                }
+            }
             sound_play_with_fallback(wall ? CAT_ORNAMENT : CAT_ORNAMENT + 1,
                                      wall ? sensor_wall_ornament(thing) : sensor_floor_ornament(thing), 0x88, 0xfe,
-                                     e->data[0], e->data[1], 1, 0x8c, 0x80);
+                                     x, y, 1, 0x8c, 0x80);
         } else {
             set_thing_word(thing, SENSOR_TYPE_DATA, (uint16_t)((w & 0x7f) | (w >> SENSOR_DATA_SHIFT & 0xff) << SENSOR_DATA_SHIFT));
         }
@@ -1232,7 +1337,7 @@ enum {
 enum { TEXT_LADDER = 6, TEXT_LADDER_HIDDEN = 7, TEXT_SWITCH = 0x0d };
 
 /* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
-static int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
+int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
 {
     int ornament = item_gdat_index(thing);
     if (ornament == 0xff
@@ -1245,6 +1350,11 @@ static int ornament_value(uint16_t thing, int key)
 {
     int ornament = item_gdat_index(thing);
     return ornament == 0xff ? 0 : gdat_entry_index(draw_gdat(), CAT_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
+}
+
+int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
+{
+    return dun_is_wall_thing_ornament_shown(first, thing) ? ornament_value(thing, key) : 0;
 }
 
 /* The object of the item index type on the cell of the square (x, y), or a new one; THING_NONE when none can be made. */

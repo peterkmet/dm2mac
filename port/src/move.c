@@ -1,5 +1,6 @@
 /* Party movement and thing movement through pits, teleporters, and stairs. */
 #include <stdlib.h>
+#include <string.h>
 #include "champion.h"
 #include "creature.h"
 #include "draw.h"
@@ -16,6 +17,7 @@
 #include "timeline.h"
 #include "ui.h"
 #include "view.h"
+#include "weather.h"
 
 #define CAT_WALLSET 8
 #define MAP_KEY_PIT_TO_MARKER 0x6a  /* map graphics value: pits lead to a random marker, not one level down */
@@ -49,7 +51,7 @@
 #define FALL_DAMAGE_MAX 0x11
 #define STAMINA_REDRAW_LIMIT 10
 
-static const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
+const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
 /* Steps of the move commands 3 to 6: forward and right parts. */
 static const int8_t command_forward[4] = {1, 0, -1, 0}, command_right[4] = {0, 1, 0, -1};
 /* The order in which move_find_free_adjacent_square tries the 4 sides, by a random row: for the party
@@ -238,7 +240,7 @@ int dun_get_direction_to(int x1, int y1, int x2, int y2)
 }
 
 /* The champion of the cell nearest to the side of the party square that faces (x, y), -1 none. */
-static int champ_get_nearest_at(int x, int y, int cell)
+int champ_get_nearest_at(int x, int y, int cell)
 {
     static const uint8_t attack_cell_orders[8][4] = {
         {0, 1, 3, 2}, {1, 0, 2, 3}, {1, 2, 0, 3}, {2, 1, 3, 0}, {3, 2, 0, 1}, {2, 3, 1, 0}, {0, 3, 1, 2}, {3, 0, 2, 1}
@@ -246,8 +248,24 @@ static int champ_get_nearest_at(int x, int y, int cell)
     if (!game.champion_count) return -1;
     if (abs(x - party.square_x) + abs(y - party.square_y) >= 2) return -1;
     int dir = dun_get_direction_to(party.square_x, party.square_y, x, y);
-    if (!(dir * 2 & 2)) cell++;
-    const uint8_t *cells = attack_cell_orders[(dir * 2 & 0xffff) + (cell >> 1 & 1)];
+    uint8_t cells[4];
+    if (cell == 0xff) {
+        /* any cell: the cells from the side toward (x, y) on, the two front and the two back cells in random order */
+        for (int i = 0; i < 4; i++) cells[i] = (uint8_t)((dir + i) & 3);
+        if (rand_bit()) {
+            uint8_t c = cells[0];
+            cells[0] = cells[1];
+            cells[1] = c;
+        }
+        if (rand_bit()) {
+            uint8_t c = cells[2];
+            cells[2] = cells[3];
+            cells[3] = c;
+        }
+    } else {
+        if (!(dir * 2 & 2)) cell++;
+        memcpy(cells, attack_cell_orders[(dir * 2 & 0xffff) + (cell >> 1 & 1)], 4);
+    }
     for (int i = 0; i < 4; i++) {
         int c = champ_get_index_in_cell(cells[i]);
         if (c >= 0) return c;
@@ -256,7 +274,7 @@ static int champ_get_nearest_at(int x, int y, int cell)
 }
 
 /* Damage of a bump into a wall or a creature for the two champions on that side; returns 1 when one was hurt. */
-static int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int dir, int step)
+int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int dir, int step)
 {
     int side = step + dir + 2;
     int16_t champs[2];
@@ -284,7 +302,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
     /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
        cell (its table has rows of 4 pairs), which this table keeps. */
     static const int16_t hit_offsets[10][2] = {
-        {0, 0}, {0, -1}, {0, -1}, {1, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, 1}, {0, 1}, {0, -1}
+        {-1, 0}, {0, -1}, {0, -1}, {1, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, 1}, {0, 1}, {0, -1}
     };
     static const int16_t hit_offsets_any_cell[4][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
     static const int16_t hit_radius_sq[] = {0, 3, 6, 6};
@@ -492,7 +510,7 @@ int move_party(int command)
         party.move_command = (uint16_t)command;
         if (command != CMD_MOVE_FORWARD) dun_move_relative(game.party_dir, -1, 0, &party.view_x, &party.view_y);
     } else if (party.push_pending_group != THING_NONE) {
-        /* Step 16 ports the push of a creature; until then no push is pending */
+        creature_continue_push(command);
         party.push_pending_group = THING_NONE;
         if (!party.push_mode) party.push_arrow = 6;
         return 1;
@@ -646,7 +664,7 @@ static uint16_t move_rotate_through_teleporter(uint16_t teleporter, uint16_t thi
 
 /* Follows pits, teleporters, and stairs from (x, y) of the current map; leaves the end in party.dest_*.
    Returns 1 for a flying thing. */
-static int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound)
+int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound)
 {
     party.teleporter_flag = 0;
     int start_map = party.cur_map, map = start_map;
@@ -668,7 +686,7 @@ static int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, 
         scope = SCOPE_ALL;
         if (type == THING_GROUP) scope = item_attr(thing, ATTR_TELEPORT_SCOPE) ? SCOPE_PARTY : SCOPE_CREATURES;
         else if (type == THING_PROJECTILE)
-            party.dest_dir = (int16_t)(timeline.events[thing_word(thing, PROJECTILE_EVENT)].data[2] >> 2 & 3);
+            party.dest_dir = (int16_t)(timeline.events[thing_word(thing, PROJECTILE_EVENT)].data[3] >> 2 & 3  /* fix: bits 10-11 of the position word */);
         draw_fall = 0;
     }
     for (int loop = TRANSITION_MAX; --loop;) {
@@ -729,6 +747,7 @@ static int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, 
                 if (falls) {
                     dun_set_party_location(x, y, map);
                     view_enter_map(map);
+                    world_update_day_night(0);
                 }
                 int steps = party.move_steps;
                 party.move_steps = 0;

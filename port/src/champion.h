@@ -138,7 +138,8 @@ int champ_damage_party(int damage, int wound_mask, int attack_type);
 void champ_poison(int champ, int amount);
 /* Takes amount away from the poison events of champ. */
 void champ_cure_poison(int champ, int amount);
-/* Clears the damage of the step, the regeneration counter, and the leader hand cache, as at the program start. */
+/* Clears the damage of the step, the regeneration counter, the leader hand cache, and the recruit candidate, as at
+   the program start. */
 void champ_reset_step_state(void);
 /* Applies the damage and wounds of this step; a champion without health dies. */
 void champ_apply_pending_damage(void);

@@ -13,6 +13,7 @@
 #include "sensor.h"
 #include "timeline.h"
 #include "ui.h"
+#include "weather.h"
 
 /* Attack types of champ_take_damage (bit 15: a parry can block the attack). */
 enum {
@@ -113,6 +114,7 @@ void champ_reset_step_state(void)
     memset(champ_pending_wounds, 0, sizeof champ_pending_wounds);
     champ_regen_counter = 0;
     leader_hand = (LeaderHand){.icon = HAND_ICON_NONE};
+    ui.candidate = 0;
 }
 
 int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack)

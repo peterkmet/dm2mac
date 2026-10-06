@@ -1,5 +1,6 @@
 /* The actions of the champions: the action menu, the actions, their delays and repeats, experience, throwing. */
 #include "action.h"
+#include "ai.h"
 #include "champ_action.h"
 #include "champion.h"
 #include "creature.h"
@@ -7,18 +8,23 @@
 #include "hooks.h"
 #include "inventory.h"
 #include "item.h"
+#include "magic.h"
+#include "minion.h"
 #include "move.h"
+#include "projectile.h"
 #include "random.h"
 #include "sensor.h"
 #include "text.h"
 #include "timeline.h"
 #include "ui.h"
+#include "view.h"
 
 /* Fields of an action text (category, index, 5, entry). */
 enum {
     FIELD_SKILL = 0, FIELD_COMMAND = 2, FIELD_DELAY = 3, FIELD_STAMINA = 4, FIELD_POWER = 5, FIELD_MODE = 6,
     FIELD_DEFENSE = 7, FIELD_CHARGES = 8, FIELD_EXPERIENCE = 9, FIELD_ATTACK = 10, FIELD_WOUNDS = 11,
-    FIELD_SOUND = 13, FIELD_REPEATS = 14, FIELD_PIERCES = 15
+    FIELD_SOUND = 13, FIELD_REPEATS = 14, FIELD_PIERCES = 15,
+    FIELD_MELEE_KIND = 0x10     /* 1: full damage to creatures that take half damage from other hits */
 };
 /* Action commands. */
 enum {
@@ -51,6 +57,18 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define STAMINA_MAX 9999
 #define DELAY_MAX 0xff
 #define ACTION_DOOR_DELAY 6
+#define MELEE_PIERCES 0x8000        /* attack bit: the hit reaches creatures that CREATURE_NOT_DOOR_HIT marks */
+#define MELEE_LUCK_BASE 0x4b        /* a missed hit gets a luck test of 75 - attack */
+#define MELEE_ALERT_FLAGS 0x6002
+#define MELEE_ALERT_CHANCE 0x5a
+#define DEXTERITY_UNHITTABLE 0xff
+#define MAP_DIFFICULTY_SHIFT 12     /* map object counts: difficulty bits 12-15 */
+#define ATTR_ANTI_ARMOR 0x0d        /* item attribute: the weapon breaks creature armor */
+#define FRIGHTEN_RESIST_SHIFT 4     /* creature info speed bits 4-7: the resistance to fear, 15 immune */
+#define FRIGHTEN_RESIST_MASK 0xf
+#define FRIGHTEN_IMMUNE 0xf
+#define FRIGHTEN_ALERT_FLAGS 0x2005
+#define FRIGHTEN_ALERT_CHANCE 100
 #define CAT_DOOR 0x0e
 #define CAT_CREATURE 0x0f
 #define SOUND_HIT 0x8d              /* sound entry of a door or creature that a melee action hits */
@@ -113,7 +131,6 @@ enum { BASE_FIGHTER, BASE_NINJA, BASE_PRIEST, BASE_WIZARD };
 ActionRepeat champ_action_repeat[CHAMPION_MAX][2];
 /* The creature group in front of the champion of the current action. */
 static uint16_t champ_action_target = THING_NONE;
-static const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
 /* The creature info records of things that a blow does not hurt (static, without the bytes 2 and 8 of a fighter). */
 static const uint8_t furniture_infos[] = {0, 1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 20, 37, 38, 39, 45, 51, 56, 60};
 
@@ -358,8 +375,86 @@ void champ_add_experience(int champ, int skill, uint32_t amount)
     }
 }
 
+/* The champion action that frightens the creature group in front at (x, y); returns 1 when it worked. */
+static int champ_action_frighten(int power, int x, int y)
+{
+    if (champ_action_target == THING_NONE) return 0;
+    unsigned resist = creature_group_info(champ_action_target)->speed >> FRIGHTEN_RESIST_SHIFT & FRIGHTEN_RESIST_MASK;
+    if (resist > rand_below((uint16_t)power) || resist == FRIGHTEN_IMMUNE) return 0;
+    creature_alert(champ_action_target, x, y, FRIGHTEN_ALERT_FLAGS, FRIGHTEN_ALERT_CHANCE, 0);
+    return 1;
+}
+
+/* A melee hit of champion champ (record c) on the creature group at (x, y): attack (bit 15: it hits creatures that
+   only piercing hits reach) sets the hit chance, factor the damage. Returns the damage. */
+static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, int x, int y, uint16_t attack,
+                                       uint16_t factor, int skill, int kind)
+{
+    if ((uint16_t)champ >= game.champion_count || !c->health) return 0;
+    int difficulty = (dungeon_map_object_counts(party.cur_map) >> MAP_DIFFICULTY_SHIFT) * 2;
+    const CreatureInfo *info = creature_group_info(group);
+    int pierces = attack & MELEE_PIERCES;
+    attack &= (uint16_t)~MELEE_PIERCES;
+    int16_t damage = 0, stamina, rest = 0;  /* fix: the original reads rest uninitialized for a strength of 0 */
+    int hit = info->dexterity != DEXTERITY_UNHITTABLE;
+    uint16_t at = creature_group_at(party.cur_map, x, y);
+    if (hit && at != THING_NONE && creature_current_step_acts(at)) hit = 0;
+    if (hit && info->flags & CREATURE_NOT_DOOR_HIT && !pierces) hit = 0;
+    if (hit) {
+        int16_t chance = (int16_t)(((int)(rand_next() & 0x1f) + info->dexterity + difficulty + view_light_level * 2 - 16) >> 1);
+        if ((int)(uint16_t)champ_get_dexterity(champ) <= chance && rand_2bits())
+            hit = champ_test_luck(c, (uint16_t)(MELEE_LUCK_BASE - attack)) != 0;
+    }
+    if (hit) {
+        int strength = (int16_t)champ_get_strength(champ, action.hand, skill);
+        int big = 0;
+        if (strength) {
+            damage = (int16_t)(strength + rand_below((uint16_t)((strength >> 1) + 1)));
+            damage = (int16_t)((int)factor * damage >> 5);
+            int defense = (int)(rand_next() & 0x1f) + info->defense + difficulty;
+            damage = (int16_t)(damage + (int)(rand_next() & 0x1f) - defense);
+            rest = damage;
+            big = damage > 1;
+        }
+        if (!big) {
+            int r = rand_2bits();
+            if (!r) {
+                hit = 0;
+            } else {
+                damage = (int16_t)(r + 1);
+                rest = (int16_t)(rest + (rand_next() & 0xf));
+                if (rest > 0 || rand_bit()) {
+                    damage = (int16_t)(damage + rand_2bits());
+                    if (!rand_2bits()) damage = (int16_t)(damage + max16(0, (int16_t)(rest + (rand_next() & 0xf))));
+                }
+            }
+        }
+    }
+    if (hit) {
+        damage = (int16_t)(damage >> 1);
+        int r = rand_below((uint16_t)damage);
+        damage = (int16_t)(damage + r + rand_2bits());
+        damage = (int16_t)(damage + rand_below((uint16_t)damage));
+        damage = (int16_t)(damage >> 2);
+        damage = (int16_t)(damage + rand_2bits() + 1);
+        unsigned roll = rand_next() & 0x3f;
+        if ((unsigned)(uint16_t)champ_get_skill_level(champ, skill, 1) > roll) damage = (int16_t)(damage + damage + 10);
+        uint16_t armor = item_attr(c->slots[action.hand], ATTR_ANTI_ARMOR);
+        if (armor && damage > (int16_t)(rand_next() & 0x1f)) damage = (int16_t)(damage + creature_roll_armor_factor(group, armor));
+        champ_add_experience(champ, skill, (uint32_t)(((info->speed >> 8 & 0xf) * damage >> 4) + 3));
+        stamina = (int16_t)(rand_2bits() + 4);
+    } else {
+        damage = 0;
+        stamina = (int16_t)(rand_bit() + 2);
+    }
+    champ_decrease_stamina(champ, stamina);
+    if (info->door_flags & CREATURE_DOOR_HALF_DAMAGE && kind != 1) damage = (int16_t)(damage >> (rand_bit() + 1));
+    creature_alert(group, x, y, MELEE_ALERT_FLAGS, MELEE_ALERT_CHANCE, (uint16_t)damage);
+    return damage;
+}
+
 /* A melee attack of champ on the creature group at (x, y); returns 1 when the attack happened. */
-static int champ_action_melee_attack(int champ, int mode, int x, int y, int skill, int power)
+static int champ_action_melee_attack(int champ, int mode, int x, int y, int skill, int kind)
 {
     Champion *c = champion(champ);
     if (champ_action_target == THING_NONE) return 0;
@@ -379,7 +474,7 @@ static int champ_action_melee_attack(int champ, int mode, int x, int y, int skil
     uint16_t attack = (uint16_t)action_field(FIELD_ATTACK);
     uint16_t wounds = (uint16_t)action_field(FIELD_WOUNDS);
     if (action_field(FIELD_PIERCES)) attack |= 0x8000;
-    action.result = (int16_t)champ_melee_attack_creature(champ, champ_action_target, x, y, attack, wounds, skill, power);
+    action.result = (int16_t)champ_melee_attack_creature(c, champ, champ_action_target, x, y, attack, wounds, skill, kind);
     return 1;
 }
 
@@ -512,7 +607,7 @@ int champ_perform_action(int champ, int index)
         if (champ_action_target != THING_NONE && creature_is_furniture(champ_action_target)) {
             experience = (int16_t)(experience >> 1);
         } else {
-            done = champ_action_melee_attack(champ, action_field(FIELD_MODE), fx, fy, skill, power);
+            done = champ_action_melee_attack(champ, action_field(FIELD_MODE), fx, fy, skill, action_field(FIELD_MELEE_KIND));
             if (!done) {
                 experience = (int16_t)(experience >> 1);
                 delay = (uint16_t)(delay >> 1);
@@ -556,7 +651,7 @@ int champ_perform_action(int champ, int index)
         int shield = command >= COMMAND_SHIELD_FIRST;
         int aura = shield ? shields[command - COMMAND_SHIELD_FIRST] : auras[command - COMMAND_AURA_FIRST];
         power = (int16_t)(shield ? max16(POWER_MIN, power) * 3 : max16(POWER_MIN, power) << 2);
-        if (!magic_cast_party_aura(champ, aura, (uint16_t)power, shield)) {
+        if (!magic_cast_party_aura(c, aura, (uint16_t)power, shield)) {
             experience = (int16_t)(experience >> 2);
             delay = (uint16_t)(delay >> 1);
         }

@@ -161,9 +161,9 @@ class OriginalView:
         self.top = HEAP
         self.images, self.palettes, self.data, self.cache = {}, {}, {}, {}
         emu.serve_file(data)
-        emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
+        self.alloc_hook = emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
         emu.stub(GDAT_ENTRY_INDEX, self.entry_index)
-        emu.stub(WEATHER_INIT, lambda *_: 0)
+        self.weather_init_stub = emu.stub(WEATHER_INIT, lambda *_: 0)  # the load: the test gives the C values
         emu.stub(READ_LEVEL_TABLE, lambda *_: 0)
         emu.run(LOAD_BEGIN, LOAD_END)
         emu.stub(0x3EC2B, lambda c, i, e, *_: self.image(self.image_item(c, i, e)))  # gdat_get_image
@@ -177,7 +177,7 @@ class OriginalView:
         emu.stub(0x3F573, lambda c, i, t, e: len(self.item_bytes(self.entry_index(c, i, t, e))))
         emu.stub(0x3F5B0, self.image_size, stack_args=1)
         emu.stub(0x3F186, self.cache_lookup)  # image_cache_lookup_or_add: always a new entry
-        emu.stub(0x3F279, lambda index, size, *_: self.cache_put(index, self.alloc(size)))
+        self.cache_alloc_hook = emu.stub(0x3F279, lambda index, size, *_: self.cache_put(index, self.alloc(size)))
         emu.stub(0x3F2F0, self.cache_alloc_image)
         emu.stub(0x3F337, lambda index, *_: self.cache[index & 0xFFFF])
         emu.stub(0x3F3EE, lambda *_: self.new_index())
@@ -279,7 +279,7 @@ class OriginalView:
         size = ((width + 1) // 2 if bpp == 4 else width) * height
         return self.cache_put(index, self.put(struct.pack("<BBhh", bpp, 0, width, height) + bytes(size)) + 6)
 
-    def draw(self, map_, x, y, direction, light, sky):
+    def draw(self, map_, x, y, direction, light, sky, walking=0):
         """The view of the party at (x, y) of map_ looking to direction, with the map graphics of view_enter_map."""
         lib, emu = self.lib, self.emu
         emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
@@ -295,7 +295,7 @@ class OriginalView:
         emu.write(G_VIEW_CLEAR, bytes(2))
         emu.write(G_SKY_OBJECTS, sky)
         emu.write(G_LIGHT_LEVEL, struct.pack("<h", light))
-        emu.write(G_PARTY_MOVE_STEPS, bytes(2))
+        emu.write(G_PARTY_MOVE_STEPS, struct.pack("<h", walking))
         emu.write(G_PUSH_MODE, bytes(4))
         emu.write(G_PUSH_PENDING_GROUP, struct.pack("<h", -1))
         emu.write(G_SKY_STATE, struct.pack("<H", self.entry_index(8, gfx_set, 0x0B, 0x66)))
@@ -307,7 +307,7 @@ class OriginalView:
         return emu.read(self.viewport, VIEW_W * VIEW_H)
 
     def sky_objects(self, gfx_set, darkness, clouds):
-        """The rain and clouds of a weather state, as the C port builds them (Step 17 builds them in the weather)."""
+        """The rain and clouds of a weather state, as world_update_day_night builds them."""
         text = ctypes.create_string_buffer(128)
         out = b""
         # (amount, lowest amount shown, limits of the light and medium pictures, the 3 pictures)
@@ -345,13 +345,16 @@ class PartyHead(ctypes.Structure):
                                                      "move_steps")]
 
 
-def c_view(lib, map_, x, y, direction, light):
+def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     game = WeatherGame.in_dll(lib, "game")
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
     party = PartyHead.in_dll(lib, "party")
-    party.cur_map, party.move_steps = -1, 0  # no walk; the current map of the dungeon reads becomes map_
+    party.cur_map, party.move_steps = -1, walking  # 0: no walk; the current map of the dungeon reads becomes map_
     lib.dun_set_party_location(x, y, map_)
     lib.view_enter_map(map_)
+    if sky is not None:  # the weather sky objects that world_update_day_night builds
+        lib.view_sky_objects.restype = ctypes.c_void_p
+        ctypes.memmove(lib.view_sky_objects(), sky, len(sky))
     ctypes.c_int.in_dll(lib, "view_light_level").value = light
     ctypes.c_uint32.in_dll(lib, "random_seed").value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "view_viewport")
@@ -402,8 +405,8 @@ def test_outdoor_sky_matches_original(lib, loaded, original_view):
             continue
         game.weather_visible, game.sky_darkness, game.cloud_cover = 1, rng.choice([0, 0x20, 0x50, 0x90]), rng.choice([0, 0x50, 0x90, 0xD0])
         direction = rng.randrange(4)
-        mine = c_view(lib, map_, x, y, direction, 0)
         sky = original_view.sky_objects(lib.dungeon_map_graphics(map_) >> 4 & 0xF, game.sky_darkness, game.cloud_cover)
+        mine = c_view(lib, map_, x, y, direction, 0, sky)
         assert mine == original_view.draw(map_, x, y, direction, 0, sky), (map_, x, y, direction)
         views += 1
     original_view.emu.write(G_WEATHER_VISIBLE, b"\0")
@@ -937,3 +940,62 @@ def test_view_click_zones_match_original(lib, loaded, original_view):
     assert with_zones > 10
     game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible = saved
     lib.view_enter_map(game.party_map)
+
+
+def test_walking_view_matches_original(lib, loaded, original_view):
+    # While the party walks, only the walk rectangle of the view is drawn.
+    game = WeatherGame.in_dll(lib, "game")
+    saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible)
+    original_view.emu.write(G_WEATHER_VISIBLE, b"\0")
+    game.weather_visible = 0
+    rng = random.Random(11)
+    views = [(game.party_map, game.party_x, game.party_y, game.party_dir, 0)]
+    while len(views) < 60:
+        map_ = rng.randrange(lib.dungeon_map_count())
+        x, y = rng.randrange(lib.dungeon_map_width(map_)), rng.randrange(lib.dungeon_map_height(map_))
+        if lib.dungeon_square(map_, x, y) >> 5:
+            views.append((map_, x, y, rng.randrange(4), rng.choice([0, 2, 5])))
+    pictures = 0
+    for map_, x, y, direction, light in views:
+        original = original_view.draw(map_, x, y, direction, light, b"\xff" + bytes(9), walking=1)
+        pictures += len(set(original)) > 2
+        assert c_view(lib, map_, x, y, direction, light, walking=1) == original, (map_, x, y, direction, light)
+    assert pictures > 40
+    game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible = saved
+    lib.view_enter_map(game.party_map)
+
+
+def present_viewport(lib, gdat, walking):
+    """The screen viewport rect after screen_present_viewport of a view whose walk rectangle holds the values 2 up."""
+    walk = (ctypes.c_int16 * 4).in_dll(lib, "walk_view_rect")
+    rect = (ctypes.c_int16 * 4)()
+    assert lib.zone_load(gdat) == 1
+    PartyHead.in_dll(lib, "party").move_steps = 0
+    lib.zone_get_rect.restype = ctypes.c_void_p
+    assert lib.zone_get_rect(7, rect)  # ZONE_VIEWPORT
+    wx, wy, ww, wh = walk
+    view = bytearray([1]) * (VIEW_W * VIEW_H)  # 1: outside the walk rectangle
+    for y in range(wh):
+        for x in range(ww):
+            view[(wy + y) * VIEW_W + wx + x] = 2 + (x * 7 + y * 13) % 250
+    viewport = Bitmap.in_dll(lib, "view_viewport")
+    ctypes.memmove(viewport.pixels, bytes(view), len(view))
+    PartyHead.in_dll(lib, "party").move_steps = walking
+    lib.screen_present_viewport()
+    PartyHead.in_dll(lib, "party").move_steps = 0
+    screen = Bitmap.in_dll(lib, "draw_screen")
+    shown = [ctypes.string_at(ctypes.addressof(screen.pixels.contents) + (rect[1] + y) * screen.width + rect[0], VIEW_W) for y in range(VIEW_H)]
+    return view, shown, (wx, wy, ww, wh)
+
+
+def test_present_viewport_stretches_the_walking_view(lib, gdat, loaded):
+    view, shown, (wx, wy, ww, wh) = present_viewport(lib, gdat, 1)
+    assert all(1 not in row for row in shown)
+    corner = lambda x, y: view[(wy + y) * VIEW_W + wx + x]
+    assert (shown[0][0], shown[0][-1]) == (corner(0, 0), corner(ww - 1, 0))
+    assert (shown[-1][0], shown[-1][-1]) == (corner(0, wh - 1), corner(ww - 1, wh - 1))
+
+
+def test_present_viewport_copies_the_still_view(lib, gdat, loaded):
+    view, shown, _ = present_viewport(lib, gdat, 0)
+    assert b"".join(shown) == bytes(view)

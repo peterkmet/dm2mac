@@ -5,6 +5,7 @@
 #include "dungeon.h"
 #include "input.h"
 #include "item.h"
+#include "minion.h"
 #include "random.h"
 #include "text.h"
 #include "ui.h"
@@ -56,8 +57,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define COIN_ICON 0x18
 #define MAP_ACTION_PICTURE_BASE 0x41
 #define SPELL_RUNE_SETS 4           /* the rune sets 0 to 3; the panel of set 4 has no runes */
-#define SPELL_RUNES_PER_SET 6
-#define SPELL_RUNE_GLYPH_FIRST 0x60
 #define AURA_FRAMES 4               /* the aura picture holds 4 x 4 frames: direction by game time */
 #define ICON_SIZE 16
 #define ICON_OFFSET 1               /* the icon of an item in a hand casts a shadow 1 pixel up and left */
@@ -121,6 +120,12 @@ static void begin_draw(int clear)
     if (area.bitmap) return;
     offscreen_create(&area, ZONE_ACTION_AREA, clear);
     if (clear) offscreen_fill_rect(&area, area.rect, ui_colors[UI_BLACK]);
+}
+
+Offscreen *ui_action_area_begin_draw(int clear)
+{
+    begin_draw(clear);
+    return &area;
 }
 
 /* Draws the result of an action: the damage in a star, or the picture of a failure. */
@@ -351,7 +356,7 @@ static void draw_action_champion_face(void)
 }
 
 /* Draws the runes that the champion entered in the spell panel. */
-static void draw_entered_runes(int clear)
+void ui_draw_entered_runes(int clear)
 {
     begin_draw(0);
     if (clear) offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNES_BACK, ZONE_RUNES_BACK, UI_OPAQUE);
@@ -376,7 +381,7 @@ static void draw_spell_panel(void)
                                         ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
         }
     }
-    draw_entered_runes(0);
+    ui_draw_entered_runes(0);
     draw_action_champion_face();
 }
 
@@ -397,6 +402,10 @@ static void draw_action_name(int i, int highlight)
                                             ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
                                             text_gdat_label(a->category, a->index, a->entry));
 }
+
+void ui_draw_action_name(int i, int highlight) { draw_action_name(i, highlight); }
+void ui_draw_hand_icon(int champ, int hand, int flash) { draw_hand_icon(champ, hand, flash); }
+void ui_draw_spell_icon(int champ, int flash) { draw_spell_icon(champ, flash); }
 
 /* Draws the action menu of the open hand. */
 static void draw_action_menu(void)
@@ -607,7 +616,7 @@ void ui_update_action_area(int tick)
             for (int k = 0; k < ACTION_DELAY_COUNT; k++)
                 if (champion(i)->action_delay[k] && !--champion(i)->action_delay[k]) champ_reload_hand(i, k);
     }
-    /* ponytail: the mana of an open minion map (Step 16) */
+    if (tick && action.mode == ACTION_MODE_MINION_MAP) minion_map_drain_mana();
     if (action.result) {
         draw_action_result(action.result);
         action.dirty = 1;
@@ -668,7 +677,7 @@ void ui_update_action_area(int tick)
                 int champ = action.champion - 1;
                 uint16_t thing = champion(champ)->slots[action.hand];
                 if (item_is_minion_map(thing) && !action.flags) {
-                    action.mode = ACTION_MODE_MINION_MAP;  /* ponytail: the minion map comes with Step 16 */
+                    minion_map_open(champ);
                 } else if (item_is_moneybox(thing)) {
                     action.mode = ACTION_MODE_MONEY_BOX;
                 } else if (item_is_chest(thing) && action.mode != ACTION_MODE_CONTAINER) {
@@ -682,7 +691,9 @@ void ui_update_action_area(int tick)
                 } else if (champ_list_actions(champ, thing, action.hand) && action.mode != ACTION_MODE_MINION_MAP) {
                     action.mode = ACTION_MODE_MENU;
                     draw_action_menu();
-                } else if (action.mode != ACTION_MODE_MINION_MAP) {
+                } else if (action.mode == ACTION_MODE_MINION_MAP) {
+                    ui_draw_minion_map(thing);
+                } else {
                     action.champion = 0;
                     action.mode = ACTION_MODE_HANDS;
                 }

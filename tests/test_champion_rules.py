@@ -191,7 +191,9 @@ POTION, MISC = 8, 10
 REPEATING_WEAPON = 14  # its third action repeats
 # Item kinds (GDAT indices) with actions, by thing type.
 ACTION_ITEMS = {WEAPON: [0, 1, 2, 3, 4, 5, 6, 8, 14, 17, 41, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44],
-                CLOTHING: [28, 29, 30, 31, 42, 47, 52], MISC: [1, 29, 30, 31, 32, 34, 43, 45, 63, 64]}
+                CLOTHING: [28, 29, 30, 31, 42, 47, 52], MISC: [1, 29, 30, 31, 32, 34, 43, 45]}
+# Not the attack and guard minions (63, 64): their minion carries the item as its link, and the original save reads
+# the container order of that link past the end of its table (the port writes 0); the save files would differ.
 
 
 class ActionState(ctypes.Structure):

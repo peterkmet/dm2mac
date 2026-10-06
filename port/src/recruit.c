@@ -11,6 +11,7 @@
 #include "item.h"
 #include "move.h"
 #include "random.h"
+#include "sound_request.h"
 #include "text.h"
 #include "ui.h"
 
@@ -25,12 +26,13 @@
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */
 #define MOUTH_CATEGORY 9
 #define MOUTH_INDEX 0x5b
-#define MOUTH_OPEN 0xfb
+#define MOUTH_OPEN 0xfb             /* also the entry of its sound */
+#define MOUTH_SOUND_PRIORITY 0xff
+#define MOUTH_SOUND_VOLUME 200
 #define INPUT_MODE_RECRUIT 7
 #define MESSAGE_COLOR_FIRST UI_GREEN
 enum { DATA_HEALTH, DATA_STAMINA, DATA_MANA, DATA_STATS, DATA_SKILLS = 6 };  /* word indices; skill s at DATA_SKILLS + s */
 
-static const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
 /* The colors of the champion messages. */
 static const uint8_t message_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED, UI_BLUE};
 
@@ -146,6 +148,7 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
     }
     gfx_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
     screen_present_viewport();
+    sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, MOUTH_SOUND_VOLUME, game.party_x, game.party_y, 0);
     if (hand != THING_NONE) inv_put_object_in_free_slot(champ, hand);
     ui.candidate = 0;
     int fx = x + dir_dx[dir], fy = y + dir_dy[dir];

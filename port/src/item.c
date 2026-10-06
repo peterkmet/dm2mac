@@ -37,13 +37,6 @@
 #define FIELD_CHARGES 8
 #define GDAT_TEXT_TYPE 5
 #define MISC_ITEM_INDEX_BASE 0x100
-/* Item index ranges. */
-#define ITEM_FIRST_CLOTHING 0x80
-#define ITEM_FIRST_MISC 0x100
-#define ITEM_FIRST_POTION 0x180
-#define ITEM_FIRST_CREATURE 0x1b0
-#define ITEM_FIRST_CONTAINER 0x1e0
-#define ITEM_SCROLL 0x1fc
 #define ITEM_KIND_ITEMS 0x80           /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
 #define MONEY_SLOT_COUNT 10
 #define COIN_SCAN_COUNT 0x80
@@ -258,6 +251,12 @@ static int item_sum_attr(uint16_t thing, int entry)
 }
 
 int item_weight(uint16_t thing) { return item_sum_attr(thing, ATTR_WEIGHT); }
+
+uint16_t item_get_value(uint16_t thing)
+{
+    int v = item_sum_attr(thing, ATTR_COIN_VALUE);
+    return (uint16_t)(v > 0xffff ? 0xffff : v);
+}
 
 int item_has_charged_action(uint16_t thing)
 {

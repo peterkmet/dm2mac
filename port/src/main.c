@@ -85,7 +85,6 @@ static int show_save(const char *data, const char *path)
     }
     for (int c = 0; c < PALETTE_COLORS; c++) gdat_palette_color(gdat, c, palette[c]);
     draw_init(gdat);
-    view_enter_map(game.party_map);
     ui_reset();
     money_init_coin_table();
     ui_draw_game_screen();
@@ -174,7 +173,10 @@ int main(int argc, char **argv)
         }
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
-            if (save) game_tick();
+            if (save) {
+                plat_mouse_position(&input_mouse_x, &input_mouse_y);
+                game_tick();
+            }
             present_with_hand_cursor();
         }
         plat_wait_tick();

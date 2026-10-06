@@ -13,6 +13,8 @@
 #include "text.h"
 #include "timeline.h"
 #include "ui.h"
+#include "magic.h"
+#include "weather.h"
 
 /* Item attributes of the effects. */
 enum {

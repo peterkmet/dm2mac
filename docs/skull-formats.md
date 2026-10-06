@@ -537,7 +537,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Deviations of the C port (Step 12b)
 
-- No active groups until Step 16: the creatures that are not static show the first frame of their first animation sequence, without the random shift and mirror of the active group. After a load the original also has no active groups until the party enters the map. The test oracle gives these creatures a zeroed active group, which gives the same frame.
+- Step 16 removes this deviation: the active groups animate the creatures that are not static (frame, random shift, mirror). `tests/test_creature.py` compares the views of running creatures with the original. The view tests of Step 12 still give the original a zeroed active group, because they draw without active groups.
 - Not ported until their steps: the push arrow cell and scale of a creature in front of the party, and all click zones (Step 14); `view_draw_centered_label`, whose only caller is the shop display (Step 15), and which needs the text drawing (Step 13).
 - Explosion types 100 and 101 in alcoves are ported, but GRAPHICS.DAT has no pictures for them.
 - Fixes: the mirrored sparkle mask of an odd width has an undefined last column in the original (an image cache bitmap that is not cleared); the port clears it. The rain bitmap of a wet ornament is rect width x rain height (all rain pictures are 224 x 20). Its tile row is that area - 16 - 0 to 31 pixels, from a start of `rand_below(area - 60)` (16-bit). When the tile row is not longer than its start, for example a wet ornament 1 or 2 pixels wide, the original tiles from past the end of the rain bitmap; the port then fills the background with the color key. Reads past tables (creature info, animation frames, creature sizes) and a division by 0 for a looping animation of length 0 are guarded.
@@ -608,7 +608,12 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### Click feedback
 
 - Each command has a feedback script: bytecode that draws the pressed button, waits timer ticks, draws the released button, and then queues the command. The low 6 bits are the opcode, bit 6 runs the next opcode at once, bit 7 ends the script.
-- The port runs the opcodes 0 to 7 and `0xd`. The other opcodes draw panels of later steps; the port skips their argument bytes.
+- The port runs the opcodes 0 to 7, `0xa`, `0xb`, `0xd`, and `0xe`. The other opcodes draw panels of later steps; the port skips their argument bytes.
+- Opcode `0xa` (rune commands `0x65` to `0x6a`) has no argument. It draws the pressed rune button (GDAT `(1, 5, 8)`, opaque) centered in the button rectangle. Then it draws the rune character of the button in the next rune set (`0x60` + 6 × rune count + command - `0x65`), centered, black on UI color 4 (`gfx_offscreen_draw_text_at`). The changed rectangle of that text starts at its base line.
+- Opcode `0xb` (cast command `0x6c`) has no argument. It draws the entered runes with their background (`ui_draw_entered_runes(1)`).
+- Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`ui_draw_map_option_buttons`). The script draws the pressed button, executes the command, waits 4 ticks, and draws the buttons with argument 0.
+- After opcodes `8`, `9`, `0xb`, `0xc`, and `0xe`, the script copies the action area bitmap to the screen and closes it.
+- Opcodes `8` (spell icon), `9` (hand icon), and `0xc` (action name) go to Step 15. Opcodes `0xf` and `0x10` (dialog buttons) go to Step 20.
 - The movement arrows show pressed (`ui_draw_move_arrow`) until the move is done (`ui_release_move_arrow`).
 - Before the script lookup, `input_refine_champion_click` makes the command of a champion click. A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions; else no command. A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center; else it keeps the command when the spell is ready, and else no command.
 
@@ -638,11 +643,107 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones.
 - `creature_cell_mask` reads display kinds 5 to 15 from the bytes after its table in the original. The port keeps those bytes.
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
+- The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `screen_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
 - Not ported: the mouse areas of the cursor (enter and leave events, cursor shapes); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
 - The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
-- Later steps (empty hooks in `port/src/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); the weather update and the object transfer of a sensor (Step 17); sounds (Step 18); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
+- Later steps (empty hooks in `port/src/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); sounds (Step 18). Step 17 has ported the weather update, the object transfer of a sensor, and the sound requests (section 11); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
 
-## 11. Champions, inventory, items, money, and shops (Step 15)
+## 11. Weather, day and night, light, and Skullkeep machines (Step 17)
+
+### Day and night
+
+- One hour is `0x555` game ticks; a day has 24 hours. `dungeon_load` sets the day time offset: GDAT value `(3, 0, 0x0b, 0)` (clamped to 0 to 23) × `0x555`.
+- `g_light_by_hour` (`0x760ec`) gives the darkness of each hour: 5 at night, 1 by day. `world_update_day_night(0)` sets the hour light again when the game time reaches `g_next_hour_time` (saved, game record `+0x38`), and then the next hour time is 1 hour later.
+- `weather_init` also sets the hour light. A load calls it before the game record is read, so the hour light comes from the game time before the load until the next hour starts. The port keeps this.
+
+### Weather
+
+- The sky state of a map is GDAT value `(8, graphics set, 0x0b, 0x66)`. `g_sky_state_table` (`0x75be2`, 4 bytes per state): byte 0 tells that the weather shows (states 1 and 4 in `GRAPHICS.DAT`), byte 2 that rain shows in the view.
+- A weather cycle (`weather_init(0)`) clears script byte `0x40`, selects a storm curve (0 to 3) and a multiplier (1 to 3), and queues the first storm step (event `0x54`) after 500 to 8499 ticks. The first cycle of a run uses curve 3, multiplier 1, and 0 to 499 ticks.
+- A storm step (event `0x54`, `world_update_day_night(1)`) adds multiplier × the curve value of the step to the storm intensity (0 to 255) and queues the next step after 50 to 305 ticks. After 32 steps a new cycle starts.
+- Each game step (`world_update_day_night(0)`): without a storm, the clouds thin out and lightning comes with a chance of 1 in 64. With a storm, the sky darkness is the storm intensity; rain starts by chance and then follows the storm intensity; rain grows the clouds; lightning comes more often from intensity `0xcd` on.
+- Sky objects (`g_sky_objects`, 10-byte records, ended by `0xff`): rain (`0x67` to `0x69` by sky darkness from `0x10`, `0x40`, `0x80`; `0x80` sets heavy rain), clouds (`0x6a` to `0x6c` by cloud cover from `0x40`, `0x80`, `0xc0`), and a lightning bolt (`0x64` to `0x66`) at a random place between its zone and the next zone. The weather update builds them again in each step while the weather shows.
+- Lightning: in a storm from intensity 60 (random), it strikes 1 to 8 random floor squares of the map. A creature is struck only when it is near the party or in front of it (creature info byte `+2` not `0xff`). The party square is struck only from game time 12000 on, in a strong storm (`0xb6`), and when script byte `0x40` is above a random threshold (4 to 7). A strike creates explosion `0xffb0` (Step 16). A strike near the party, seen while the inventory is open or the party sleeps, adds 1 to script byte `0x41`. The graphics set of map 1 gives a fixed square instead (value key `0x6c`: x high byte, y low byte), which gets a square event. Without a strike, a bolt shows in the sky; every second bolt thunders after a delay. The flash sets the light level to 0 for one step.
+
+### The party light
+
+- `light_update_party_light` sets `g_light_level` (0 bright to 5 dark). A map without bits 12 to 15 in its object counts word is always at level 1.
+- The light sum: the torches (items with attribute flag `0x10`) in the leader hand and in the champion hands, by charges through `g_light_power_table`, the first fully and each next one half as much (after one bubble pass, not a full sort); the square light sum; the magic light (`g_magic_light`); the map value `0x67`; and the daylight (`0x7570e`, by hour light + heavy rain) while the weather shows.
+- The level is the first of `99, 75, 50, 25, 1` that the sum is above, at least the map value `0x68`. An explosion light sum above 12 makes the view one level darker.
+- `light_add_square_light` adds the light of one square around the party: lit wall ornaments and windows (value keys `0xf8` and `0x63`), floor ornaments, explosions and spell missiles, and creatures, less by distance. Its caller is the creature search of `creature_refresh_party_maps` (Step 16).
+
+### Skullkeep machines: object transfer sensors
+
+- Sensor kinds `0x3b`, `0x40`, `0x47`, `0x48`, `0x49` on walls and floors move objects from the event square to the sensor target (`0x47` and `0x49`: from the target to the event square). `0x40` moves the items of an item class (`shop_parse_item_class_set`, Step 15). `0x48` and `0x49` move one object only. Floor sensors `0x3b` and `0x40` take objects from all cells.
+- An object that matches the item of the sensor data (item `0x1ff`: any object) moves with `sensor_transfer_object`: its charges become full, empty, or random (sensor flags bits 3 and 4), and on a floor it lands in a random cell. Objects in the possessions of creatures on the square move too. Bones of a champion bring the champion back (`champ_revive`, Step 15) unless sensor flag bit 2 is set.
+
+### Deviations of the C port (Step 17)
+
+- Uninitialized data of the original: a storm step event (`0x54`) keeps 6 data bytes from the stack; the port sets them to 0. A transfer sensor with charge mode 3 adds an uninitialized amount; the port adds 0.
+- Bounds: the thunder delay divides by the storm multiplier; the port uses 1 for a multiplier of 0 (the original divides by 0). A sky state past the table shows no weather (`GRAPHICS.DAT` has states 0 to 4 only).
+- `view_enter_map` holds the view part of `gdat_load_map_graphics`. Its callers (`game_enter_map` and the pit fall in `move_follow_square_transitions`) then call `world_update_day_night(0)`, as the original does at the end of `gdat_load_map_graphics`. The sky objects of the saved weather that 12a built in `view_enter_map` are gone: the weather update builds them.
+- `build/dm2 --save` no longer calls `view_enter_map` before `game_start_session`. The original has no such call: `game_start_session` enters the map (`game_enter_map`). The extra call was a 12a leftover; `view_enter_map` does not run the weather update.
+- The second fall view of a pit below a pit (`move_follow_square_transitions`, with its map change and weather update) runs only with the debug flag `g_debug_flag_g` of the original. In the game it never runs; the port keeps the code, and no test can reach it.
+- The port reads the map graphics flags (rain, clouds, lightning pictures) and the sky state from the party map when it needs them; the original keeps them in globals that `gdat_load_map_graphics` sets.
+- Hooks of other steps: `champ_revive` and the item creation of wall sensor `0x3c` (`sensor_create_item`) (Step 15; real since the merge with Step 15, section 13). The Step 16 functions `explosion_create`, `creature_refresh_party_maps` with the square light search, `shop_parse_item_class_set`, and `creature_get_party_distance` are real since the merge of Steps 16 and 17 (section 12).
+
+### Sound requests
+
+- `sound_request(category, index, entry, priority, volume, x, y, delay)` (`port/src/sound_request.c`): delay 0 plays at once; delay 1 goes to the queue of the game step (20 requests), which `sound_flush_requests(0)` plays at the end of the step; a negative delay goes to the deferred queue (6 requests, `sound_flush_requests(1)`); a longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + delay - 1. A sound with delay above 0 plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
+- The place of a sound seen by the party (lateral, forward) and the push away by the walking distance are `sound_party_offset` of `sound.c`. A sound that is already in the queue at the same place is not added again. A map change (`gdat_load_map_graphics`, `sound_wait_and_clear_requests`) drops the queue of the step.
+- `sound_play_requests` sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its HMI driver calls (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `sound.c` plays the voices. `sound_play_with_fallback` uses the sound of index fallback when index has none.
+- The ambient sound of an animated ornament (`sensor_start_ambient_sound`) plays at once only when the animation cycle starts now; a wall sound comes from the square in front of the wall. The Step 14 port played it always (the sound was a hook then).
+
+### Deviations of the sound requests (Step 17)
+
+- Every sound of `GRAPHICS.DAT` counts as loaded. The original plays only the sounds that `gdat_load_map_graphics` loads for the map (`sound_find_loaded`, table from `gdat_load_entry_sets`).
+- Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_play_delayed` masks the slot to 0 to 7.
+- The port does not check the sound settings of `sound_play_requests` (digital sound on, sound volume not 0). The sound volume setting is Step 20 (dialogs).
+- The walking distance of a sound is `creature_get_party_distance` (the party distance map of Step 16).
+
+## 12. Creatures, projectiles, magic, and minions (Step 16)
+
+### Creature data
+
+- The creature info table has 36 bytes for each creature type (`creature_infos` in `port/src/creature.c`, generated from `SKULL.EXE`): flags, defense, regeneration, maximum health, attack, poison, dexterity, traits, movement, skills of items, attacks, doors, and actuators, speed, door flags, push resistance, possessions, possession zone, size, and hit size.
+- An active group has 34 bytes: the animation state, the mood, the behavior, the action, the timing of the next update, the destination, and the plan state. The table has room for the groups of the dungeon plus 100. A group is active while the party is on its map.
+- The AI script data is at `0x73020`-`0x74f7e` of `SKULL.EXE`: plan tables, behavior tables, class flags, action flags, the enabled commands, and the plan steps. The links in the data are `SKULL.EXE` addresses. `port/src/ai_data.c` holds a copy.
+- The AI context of the group that updates (`0x7f548`, 0x350 bytes) holds the group, its info, the scan results, the candidates (22 bytes each), the plan cache (14 bytes), and the move flags.
+
+### Updates
+
+- An update event of a group runs the animation step. When the animation is at its end, the AI runs: update the mood, select a behavior, choose a plan, run its commands and actions, and compute the time of the next update.
+- An AI command returns `0xfc` (an action is issued), `0xfd` (fail), or `0xfe` (done).
+- The plan state and the path of each group stay between its updates. The original keeps them in the image cache (keys `0x20000000 | group` and `0x30000000 | group`).
+
+### Projectiles, explosions, and magic
+
+- A projectile record links its payload (an object or a spell), and its event (type `0x1d` or `0x1e`) holds the energy, the attack, and the step. Each event moves the projectile one cell. At a wall, a closed door, a creature, or a champion the projectile hits (`projectile_hit`).
+- An explosion record holds its type and power. Its event (type `0x19`) applies the damage on its square and can trigger the wall sensors.
+- A spell is a sequence of up to 4 runes (power, element, form, class). `magic_find_spell` finds it in the spell table of `SKULL.EXE`. The kinds are potions, projectiles, party auras, summons, and others.
+- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes mana every tick, and a click on the grid sends the minion there.
+
+### Deviations of the C port (Step 16)
+
+- The repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `port/src/sensor.c`). With the real walking distance since the merge with Step 17, most of these sounds are too far away and do not play, in both.
+- The scenario tests stub the mouse areas of an input mode (`mouse_area_add`, `mouse_area_remove`; not ported): a creature attack wakes the party, and the original then sets the input mode.
+- Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light, invisibility, and aura events. The port sets them to 0. The oracle clears them with a hook on `timeline_add_event`.
+- The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
+- The scratch blocks of the AI (LIFO allocations of the original memory layer) are ordinary buffers in the port.
+- No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive. The table has room for 100 more groups than the dungeon has.
+- Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range reads 0 (the original reads any word of the active group).
+- The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
+- Bounds fixes: reads past the creature info table, the animation frames, the item filter table, the AI level table, and the candidate records; a square read at the map edge (not a pit); a division by 0 for an animation of length 0 and for a minion map strip of 1 icon; the minion map square read outside the map; a path step read without a stored path (address 0 in the original); a write outside an item class set for a number without a class letter; the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook).
+- `creature_ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
+- `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
+- The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
+- Kept quirks of the original: `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect; a projectile compares directions without a wrap, so only flights to the north and east can face a champion; a projectile move also writes the direction into its freed event; the power that the sensors test after a door spell comes from the door record; `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables.
+- Hooks in `port/src/hooks.c` for later steps; the oracle stubs the originals with the same results:
+  - Step 15 (real since the merge with Step 15, section 13): the merchant commands of the AI fail (`0xfd`); `champ_test_luck` fails; `champ_get_dexterity`, `champ_get_stat_adjusted_attack`, and `item_get_value` return 0; `champ_remove_object_from_slot` clears the slot; champion damage is recorded; champion poison has no effect; item creation gives no item; the experience, the action delay, the object in a slot, and the object in the leader hand are recorded.
+  - Step 18: the sound driver (the sound requests of Step 17 run). Step 20: `dungeon_level_digit` returns 0; `dun_get_discarded_thing`.
+- Since the merge with Step 17, `creature_refresh_party_maps` and `creature_ai_search_area` call the real `light_add_square_light` and `light_update_party_light` of `port/src/weather.c`, the lightning of the weather calls the real `explosion_create`, sensor `0x40` calls `shop_parse_item_class_set` of `port/src/ai_move.c`, and the sound requests use `creature_get_party_distance`.
+
+## 13. Champions, inventory, items, money, and shops (Step 15)
 
 ### The leader hand
 
@@ -675,13 +776,19 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - A wall sensor of kind `0x3c` makes a new item when a square event reaches it: with the effect set, or with the effect clear when the sensor is inverted (flags bit 5). Its data is the item index. A new record of the thing type gets the GDAT index. Flags bits 3 and 4 both set keep the item from reuse (`dun_set_thing_do_not_discard`).
 - `sensor_transfer_object` sets the charges by flags bits 3 and 4: 0 full, 1 empty, 2 random up to full, 3 an uninitialized word. Miscellaneous item 0 keeps its charges. The item goes to the target square (target word: x bits 6 to 10, y bits 11 to 15, cell bits 4 and 5), to a random cell when the target is not a wall. Flags bit 2 selects the move mode of `move_thing`.
 
+### Merchant trading
+
+- A merchant faces a counter: a group in front of it. Coins (item filter `0x10`) and goods (filter `7`) on the counter are the offer. The AI plan of the merchant runs four commands: `shop_cmd_wait_for_offer` waits for coins or goods in the customer cells; `shop_cmd_evaluate_offer` compares the value of the offer with the price of the goods in the merchant cells (in whole coins, at most 18 coins, with a random discount of up to 15 % above 16); `shop_cmd_count_payment` checks the payment and keeps the change in the active group (`position` word); `shop_cmd_pay_change` normalizes the coins of its money boxes and gives the change in coins (into its money box, or into its possessions).
+- The active group words `counters[0]` and `counters[1]` hold the patience and the last offer. The actions are `0x1b` refuse, `0x1c` accept, `0x1d` wait, `0x1e` idle, `0x1f` offer, `0x20` haggle.
+- `shop_sum_items_value` adds the merchant values (`shop_get_item_value`, price list from group word 8) of the items of a filter in a cell, also inside chests; -1 when none matches.
+
 ### Deviations of the C port (Step 15)
 
-- Fixes: the original leaves data bytes of some events uninitialized (the timed effects of eaten items, poison, the hide damage event, invisibility). The port sets them to 0. `champ_add_to_party` reads the champion data without a test that the GDAT entry exists; the port stops when it does not exist. `champ_start_recruit` without a mirror on the wall takes an uninitialized portrait; the port does not recruit. `shop_parse_item_class_set` writes outside the set for bad numbers; the port writes only inside it. `shop_draw_display` loops for ever when the merchant sells no item of the list, and reads a NULL record without a display sensor; the port stops after 512 tries, and draws nothing without a display sensor. `item_create_by_index` and the item creation sensor ask for a record of type `0xffff` for an item index without a thing type; the port gives no item. The item creation sensor with charge mode 3 adds an uninitialized stack word to the charges; the port fills the charge field. A coin type below 0 reads before the coin table; the port gives no coin.
+- Fixes: the original leaves data bytes of some events uninitialized (the timed effects of eaten items, poison, the hide damage event, invisibility). The port sets them to 0. `champ_add_to_party` reads the champion data without a test that the GDAT entry exists; the port stops when it does not exist. `champ_start_recruit` without a mirror on the wall takes an uninitialized portrait; the port does not recruit. `shop_parse_item_class_set` writes outside the set for bad numbers; the port writes only inside it. `shop_draw_display` loops for ever when the merchant sells no item of the list, and reads a NULL record without a display sensor; the port stops after 512 tries, and draws nothing without a display sensor. `shop_cmd_evaluate_offer` divides by the price in coins, 0 when the merchant cells hold no goods; the port takes 100 %. The save writes the container order of a minion link that is no container (the attack and guard minion items) from past its table; the port writes 0. `item_create_by_index` and the item creation sensor ask for a record of type `0xffff` for an item index without a thing type; the port gives no item. The item creation sensor with charge mode 3 adds an uninitialized stack word to the charges; the port adds 0, as for the transfer sensors (section 11), and the oracle sets the word to 0. A coin type below 0 reads before the coin table; the port gives no coin.
 - Fixes of earlier steps: the slot mask table of `item.c` was shifted by one slot (Step 13). `ui_draw_movement_arrows` did not set the input mode (Step 14).
 - The port draws the leader hand icon at the mouse pointer in each present. The original sets it as the mouse cursor.
-- The load clears the pending damage and wounds, the regeneration counter, and the leader hand of the last game (`champ_reset_step_state`).
+- The load clears the pending damage and wounds, the regeneration counter, the leader hand, and the recruit candidate of the last game (`champ_reset_step_state`).
 - Not ported: the mouth or eye held with an empty hand (it needs the mouse capture of the original); `dun_get_discarded_thing`, the reuse of discarded items when the records run out.
-- Open Step 15 work: merchant trading (the merchant AI commands), after the merge of step/16-creatures.
-- Later steps: the creature parts of the actions, spells, minions, and missiles (Step 16, hooks); the sound layer behind the sound hooks that `champ_perform_action` calls (Steps 17 and 18); `champ_edit_name` and the party of a new game (Step 20).
-- The coin of `start.DAT`: the gold coin on the table of the first room does not open the door. No wall slot takes it, also in the original. The way out: the party pushes the table (static creature `0x19`, push resistance `0x2d`) east or south (`creature_can_be_pushed`, `move_push_creature`, Step 16), takes the solid key from the shelf (1, 5), puts it into the keyhole (4, 5) cell 3, and presses the door button (4, 4) (sensor kind `0x46`), which toggles the door (3, 4).
+- Later steps: the creature parts of the actions, spells, minions, and missiles (Step 16; real since the merge with Step 16); the sound layer behind the sound hooks that `champ_perform_action` calls (Steps 17 and 18); `champ_edit_name` and the party of a new game (Step 20).
+- The table of the first room can be pushed (Step 16). The shelf face (1, 5) behind it shows a sun crest holder (text `0x885c`); the alcove text of the shelf with the solid key (`0x8854`, ornament `0x86`) is hidden, in the original too, so the key is not reachable from the start without another trigger.
+- The coin of `start.DAT`: the gold coin on the table of the first room does not open the door. No wall slot takes it, also in the original. The door opens with the solid key in the keyhole (4, 5) cell 3 and the door button (4, 4) (sensor kind `0x46`), which toggles the door (3, 4).

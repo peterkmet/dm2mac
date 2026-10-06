@@ -53,6 +53,12 @@ void input_poll(void);
 void input_reset_states(void);
 /* Ends the push mode and redraws the movement arrows. */
 void input_cancel_push_mode(void);
+/* The commands wait for steps timer ticks (the death of a boss near the party). */
+void input_set_wait(int steps);
+/* The mouse position on the screen (main.c sets it before each tick). */
+extern int input_mouse_x, input_mouse_y;
+/* The push arrow under the mouse in the viewport while the party can push a creature (party.push_arrow). */
+void input_update_viewport_arrow(void);
 /* Redraws the released movement arrow. */
 void ui_release_move_arrow(void);
 /* Executes the queued commands until one stops the processing. */

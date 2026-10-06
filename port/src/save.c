@@ -10,6 +10,7 @@
 #include "save.h"
 #include "sensor.h"
 #include "timeline.h"
+#include "weather.h"
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
    of the bit stream stores only the bits that its mask table selects, most significant bit first.
@@ -414,7 +415,11 @@ static int write_deferred(void)
     for (int i = 0; i < io.deferred_count; i++) {
         uint16_t thing = io.deferred[i];
         uint16_t target = thing_index(thing_word(thing, CONTAINER_CONTENTS));
-        uint16_t order = thing_type(thing) == THING_CONTAINER ? io.group_order[target] : io.container_order[target];
+        int of_group = thing_type(thing) == THING_CONTAINER;
+        /* fix: the original reads past its table for a minion whose link is no container (the minion items) */
+        uint16_t order = 0;
+        if (target < dungeon_thing_count(of_group ? THING_GROUP : THING_CONTAINER))
+            order = of_group ? io.group_order[target] : io.container_order[target];
         if (!write_value(order, INDEX_MASK)) return 0;
     }
     return 1;
@@ -737,6 +742,7 @@ static int read_state(void)
     uint8_t record[GAME_RECORD_SIZE];
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE)
                   + dungeon_thing_count(THING_EXPLOSION));
+    weather_load(io.gdat);  /* the weather part of the original dungeon_load; the record then sets the weather */
     if (!read_packed(record, game_record_mask, GAME_RECORD_SIZE, 1, 0)) return 0;
     unpack_game_record(record);
     if (game.champion_count > CHAMPION_MAX || timeline.count > timeline.capacity) return 0;
@@ -760,6 +766,7 @@ int save_load(const char *path, const gdat_t *gdat)
 {
     FILE *f = fopen(path, "rb");
     if (!f) return SAVE_ERR_IO;
+    creature_free_active_groups();
     uint8_t header[HEADER_SIZE];
     int result = SAVE_ERR_FORMAT;
     if (fread(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_read(f, 0)) {
@@ -794,10 +801,14 @@ int save_write(const char *path, const char *bak_path, const char *name, const g
     start_io(f, gdat);
     io.group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *io.group_order);
     io.container_order = calloc(dungeon_thing_count(THING_CONTAINER) + 1, sizeof *io.container_order);
-    int ok = fwrite(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_write(f) && write_state();
+    /* the records keep the indices of the active groups; the timeline loses their events (game_save) */
+    int ok = fwrite(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_write(f);
+    creature_deactivate_all_groups();
+    ok = ok && write_state();
     free(io.group_order);
     free(io.container_order);
     if (fclose(f) != 0) ok = 0;
     if (!ok) remove(path);
+    creature_activate_groups_all_maps();
     return ok ? SAVE_OK : SAVE_ERR_IO;
 }

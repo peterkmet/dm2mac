@@ -38,9 +38,23 @@ extern uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
 extern uint32_t view_object_masks[VIEW_SQUARE_COUNT];
 /* The view picture, 224 x 136 pixels. */
 extern Bitmap view_viewport;
-/* The party light level, 0 (bright) to 5. Step 17 computes it; until then it stays as set. */
+/* The party light level, 0 (bright) to 5 (light_update_party_light). */
 extern int view_light_level;
 
+/* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
+typedef struct {
+    uint8_t entry;              /* GDAT entry (0x17, graphics set, entry) */
+    uint8_t flip;               /* how the picture mirrors */
+    int16_t zone, dx, dy;       /* layout zone and offset */
+    uint8_t scale_x, scale_y;
+} SkyObject;
+#define SKY_OBJECT_END 0xff
+/* The weather sky objects that the view draws, ended by SKY_OBJECT_END (world_update_day_night fills them). */
+SkyObject *view_sky_objects(void);
+/* Reads the sky object entry of the map graphics into object; returns 0 when the map has none. */
+int weather_load_sky_object(SkyObject *object);
+/* What the party looking to dir sees of the square (x, y) of the current map. */
+void dun_get_square_aspect(ViewSquare *s, int dir, int x, int y);
 /* Sets up the map graphics of map for the view: the view part of entering a map. */
 void view_enter_map(int map);
 /* Loads the view square at view position pos for the party at (x, y) looking to dir. */
@@ -98,5 +112,11 @@ int view_rotate_grid5_cell(int cell, int dir);
 void view_grid5_cell_to_xy(int base_x, int base_y, uint16_t cell, int16_t *x, int16_t *y);
 /* Moves a creature of size 1 to 3 at (*x, *y) toward the party eye at (party_x, party_y), in thing grid cells. */
 void view_offset_creature_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y);
+
+/* The viewport shows the push arrows (the party pushes or can push a creature). */
+extern int view_arrows_enabled;
+/* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *side:
+   0 its middle, 1 its right, 3 its left. */
+int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
 
 #endif
