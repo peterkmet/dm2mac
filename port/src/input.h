@@ -4,8 +4,9 @@
 
 /* Input modes: the root of the input tree that maps clicks and keys to commands. */
 enum input_mode { INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_MOVE = 5, INPUT_MODE_PUSH = 6, INPUT_MODE_INVENTORY = 8 };
-/* Mouse event types: buttons (bit 1 left, bit 0 right), a released right button, a key. */
-enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_RIGHT_RELEASED = 4, INPUT_KEY = 0x20 };
+/* Mouse event types: buttons (bit 1 left, bit 0 right), a released right button, a key; a released left button
+   only while the automap is open (no original command reads it). */
+enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_RIGHT_RELEASED = 4, INPUT_LEFT_RELEASED = 8, INPUT_KEY = 0x20 };
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
 #define KEY_EXTENDED 0x1000
 #define KEY_SHIFT 0x0200

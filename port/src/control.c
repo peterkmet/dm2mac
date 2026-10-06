@@ -265,7 +265,8 @@ static void send_error(const char *error)
     send_reply();
 }
 
-/* The state of the game: time, party, champions, input mode, open dialog and panels, hand, volumes, end, game mode. */
+/* The state of the game: time, party, champions, input mode, open dialog and panels, hand, volumes, end, game mode,
+   automap, cheats. */
 static void send_state(void)
 {
     int mode = input_get_mode();
@@ -291,8 +292,9 @@ static void send_state(void)
         put_string(name, strlen(name));
         put("}");
     }
-    put(",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\"}", game.sound_volume,
-        game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode]);
+    put(",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d", game.sound_volume,
+        game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode], advanced_automap_open);
+    put(",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", cheat_immortal, cheat_food, cheat_light);
     send_reply();
 }
 
@@ -436,7 +438,8 @@ static void handle_key(const char *request)
     send_ok();
 }
 
-/* A click moves the pointer there, like the mouse; a right click also gives the release that main.c gives. */
+/* A click moves the pointer there, like the mouse; a right click, and a left click on the open automap, also give the
+   release that main.c gives. */
 static void handle_click(const char *request)
 {
     char button[NAME_SIZE] = "left";
@@ -451,6 +454,7 @@ static void handle_click(const char *request)
     input_mouse_x = x, input_mouse_y = y;
     input_mouse_click(x, y, right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);
     if (right) input_mouse_click(x, y, INPUT_RIGHT_RELEASED);
+    else if (advanced_automap_open) input_mouse_click(x, y, INPUT_LEFT_RELEASED);
     send_ok();
 }
 

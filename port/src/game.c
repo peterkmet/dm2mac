@@ -1,6 +1,8 @@
 /* The main loop: game steps, the timeline, map changes. */
 #include <string.h>
 #include "action.h"
+#include "advanced.h"
+#include "automap.h"
 #include "champ_action.h"
 #include "champion.h"
 #include "creature.h"
@@ -239,6 +241,7 @@ static int game_step_view(void)
             if (party.move_steps) view_draw_dungeon(party.view_dir, party.view_x, party.view_y);
             else view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
             screen_present_viewport();
+            automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir);
         }
         if (!party.move_steps) return 1;
         if (party.move_steps == 1) move_party(party.move_command);
@@ -297,6 +300,7 @@ void game_start_session(void)
     input_set_mode(INPUT_MODE_MOVE);
     game_enter_map(game.party_x, game.party_y, game.party_map, 0);
     dialog.progress_enabled = 0;
+    advanced_reset();
     if (session.loaded) {
         gfx_fill_zone_screen(ZONE_SCREEN, 0);
         ui_dialog_run(ui_dialog_draw(DIALOG_LOADED, MESSAGE_NONE));
@@ -321,7 +325,7 @@ void game_tick(void)
     main_loop.timer_ticks++;
     if (++main_loop.tick_count >= main_loop.tick_threshold) tick_elapsed = 1;
     command_process_queue();
-    if (!tick_elapsed || !main_loop.running) return;
+    if (!tick_elapsed || !main_loop.running || advanced_automap_open) return;  /* the automap stops the game time */
     game_step_end();
     game_step();
 }

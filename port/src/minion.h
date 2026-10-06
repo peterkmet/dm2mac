@@ -1,6 +1,7 @@
 #ifndef MINION_H
 #define MINION_H
 #include <stdint.h>
+#include "ui.h"
 
 /* action.flags while the action area shows a minion map. */
 #define MAP_OPTION_CREATURES 0x0001     /* option button 0: moving creatures */
@@ -50,5 +51,11 @@ void ui_draw_minion_map(uint16_t thing);
 int minion_map_set_location(uint16_t thing, int x, int y, int map);
 /* A click (command) at (x, y) of the screen on the grid of a minion location map sends its minion there. */
 void minion_map_click_set_destination(int command, int x, int y);
+/* The square icon of (sx, sy) of the current map at (x, y) of the screen in target, north up, clipped to clip, without
+   things; party_item >= 0: the party stands there, with the party icons of the map item party_item (category 0x14). */
+void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int sy, int x, int y, int party_item);
+/* The first map item index of GRAPHICS.DAT with the party icons; -1 none. */
+int minion_map_party_icons_item(void);
+#define MAP_CELL_SIZE 8                 /* pixels per square of a map: a 7 x 7 icon and a 1 pixel gap */
 
 #endif

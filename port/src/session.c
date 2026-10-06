@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "action.h"
+#include "automap.h"
 #include "creature.h"
 #include "dialog.h"
 #include "draw.h"
@@ -343,6 +344,7 @@ static int load_new_game(void)
     game.leader_hand = THING_NONE;
     int first = !weather.dungeon_loaded;
     if (!dungeon_load(path)) return 0;
+    automap_reset();
     uint16_t start = dungeon_party_start();
     game.party_x = location_x(start);
     game.party_y = location_y(start);

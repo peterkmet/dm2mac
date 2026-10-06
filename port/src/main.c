@@ -123,6 +123,8 @@ static void pump_events(void)
             input_mouse_click(e.x, e.y, e.button == SDL_BUTTON_RIGHT ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);
         } else if (e.type == PLAT_MOUSE_UP && e.button == SDL_BUTTON_RIGHT) {
             input_mouse_click(e.x, e.y, INPUT_RIGHT_RELEASED);
+        } else if (e.type == PLAT_MOUSE_UP && advanced_automap_open) {
+            input_mouse_click(e.x, e.y, INPUT_LEFT_RELEASED);  /* ends a drag of the automap */
         }
     }
     plat_mouse_position(&x, &y);

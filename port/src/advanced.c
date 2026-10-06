@@ -1,11 +1,17 @@
-/* The advanced mode: the movement letter keys and the quick save and quick load. */
+/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, and the cheats. */
 #include <stdio.h>
 #include "advanced.h"
+#include "automap.h"
 #include "draw.h"
+#include "dungeon.h"
+#include "input.h"
+#include "minion.h"
 #include "save.h"
 #include "session.h"
 #include "text.h"
 #include "timeline.h"
+#include "ui.h"
+#include "zone.h"
 
 #define QUICK_SAVE_NAME "QUICK SAVE"    /* the name in the header of QUICK.DAT */
 
@@ -16,8 +22,20 @@ enum {
     KEYPAD_RIGHT = 0x51
 };
 
+/* PC scan codes of the keys on the open automap. */
+enum { SCAN_ESCAPE = 0x01, SCAN_I = 0x17, SCAN_F = 0x21, SCAN_L = 0x26 };
+#define READOUT_MARGIN 2                /* pixels between the viewport edge and the readout */
+
 int game_mode = GAME_MODE_VANILLA;
 const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced"};
+int advanced_automap_open, cheat_light, cheat_immortal, cheat_food;
+
+static struct {
+    int active;
+    int x, y;                           /* the mouse position that matches the current scroll */
+} drag;
+
+static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH", "WEST"};
 
 uint16_t advanced_movement_key(uint16_t key)
 {
@@ -85,4 +103,85 @@ void advanced_quick_load(void)
     session = kept;
     if (loaded) session.load_time = session.save_time = 0;  /* a quick load is not a saved game for the QUIT question */
     print_line(loaded ? "GAME LOADED" : "QUICK SAVE DAMAGED");
+}
+
+/* Line row of the readout at the top left of the viewport, in white on black. */
+static void draw_readout_line(Offscreen *o, int row, const char *text)
+{
+    int baseline = o->rect[RECT_Y] + READOUT_MARGIN + row * TEXT_LINE_HEIGHT + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1;
+    offscreen_draw_text_at(o, o->rect[RECT_X] + READOUT_MARGIN, baseline, ui_colors[UI_WHITE], ui_colors[UI_BLACK], text);
+}
+
+static const char *on_off(int on) { return on ? "ON" : "OFF"; }
+
+void advanced_draw_automap(void)
+{
+    Offscreen o;
+    char line[TEXT_SIZE];
+    offscreen_create(&o, ZONE_VIEWPORT, 1);
+    if (!o.bitmap) return;
+    automap_draw(&o, o.rect);
+    snprintf(line, sizeof line, "LEVEL %d  X %d  Y %d", dungeon_map_level(game.party_map), game.party_x, game.party_y);
+    draw_readout_line(&o, 0, line);
+    draw_readout_line(&o, 1, direction_names[game.party_dir & (DIR_COUNT - 1)]);
+    snprintf(line, sizeof line, "I IMMORTAL %s", on_off(cheat_immortal));
+    draw_readout_line(&o, 2, line);
+    snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(cheat_food));
+    draw_readout_line(&o, 3, line);
+    snprintf(line, sizeof line, "L LIGHT %s", on_off(cheat_light));
+    draw_readout_line(&o, 4, line);
+    offscreen_flush(&o, 1);
+    draw_free_temp();
+}
+
+static void close_automap(void)
+{
+    advanced_automap_open = drag.active = 0;
+    automap_scroll_reset();
+}
+
+void advanced_reset(void)
+{
+    close_automap();
+    cheat_light = cheat_immortal = cheat_food = 0;
+}
+
+void advanced_open_automap(void)
+{
+    advanced_automap_open = 1;
+    advanced_draw_automap();
+}
+
+void advanced_automap_drag(int x, int y)
+{
+    if (!drag.active) return;
+    int dx = (x - drag.x) / MAP_CELL_SIZE, dy = (y - drag.y) / MAP_CELL_SIZE;
+    if (!dx && !dy) return;
+    drag.x += dx * MAP_CELL_SIZE;
+    drag.y += dy * MAP_CELL_SIZE;
+    automap_scroll(-dx, -dy);
+    advanced_draw_automap();
+}
+
+void advanced_automap_event(int type, int x, int y)
+{
+    int16_t r[RECT_SIZE];
+    if (type == INPUT_KEY) {
+        if (x == KEY_AUTOMAP || x == KEY_AUTOMAP_M || x == SCAN_ESCAPE) {
+            close_automap();
+            return;
+        }
+        int *cheat = x == SCAN_I ? &cheat_immortal : x == SCAN_F ? &cheat_food : x == SCAN_L ? &cheat_light : NULL;
+        if (!cheat) return;
+        *cheat = !*cheat;
+        advanced_draw_automap();
+    } else if (type == INPUT_LEFT_RELEASED) {
+        advanced_automap_drag(x, y);
+        drag.active = 0;
+    } else if (type & INPUT_BUTTON_LEFT && zone_get_rect(ZONE_VIEWPORT, r) && x >= r[RECT_X] && x < r[RECT_X] + r[RECT_W]
+               && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
+        drag.active = 1;
+        drag.x = x;
+        drag.y = y;
+    }
 }

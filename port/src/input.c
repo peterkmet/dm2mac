@@ -85,7 +85,7 @@ enum {
     CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93,
     CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
     CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59,
-    CMD_QUICK_SAVE = CMD_LAST + 1, CMD_QUICK_LOAD  /* the advanced mode: no original command has these numbers */
+    CMD_QUICK_SAVE = CMD_LAST + 1, CMD_QUICK_LOAD, CMD_AUTOMAP  /* the advanced mode: no original command has these numbers */
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -471,13 +471,15 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 }
 
 /* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
-   load, and a letter key W S A D Q E without a command gives the command of its keypad key. */
+   load, Tab and M there open the automap, and a letter key W S A D Q E without a command gives the command of its
+   keypad key. */
 static uint16_t key_command(int mode, uint16_t key)
 {
     uint16_t command = find_key_command(&input_mode_roots[mode], key);
     if (command || game_mode == GAME_MODE_VANILLA) return command;
     if (mode == INPUT_MODE_MOVE && (key == KEY_QUICK_SAVE || key == KEY_QUICK_LOAD))
         return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
+    if (mode == INPUT_MODE_MOVE && (key == KEY_AUTOMAP || key == KEY_AUTOMAP_M)) return CMD_AUTOMAP;
     uint16_t keypad = advanced_movement_key(key);
     return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
 }
@@ -790,7 +792,7 @@ static const uint8_t *click_feedback_script(Command *c)
     input_refine_champion_click(c);
     uint16_t command = c->command;
     int offset;
-    if (!command || command > CMD_QUICK_LOAD) return NULL;
+    if (!command || command > CMD_AUTOMAP) return NULL;
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == 0x8d || (command > 0x7c && command < 0x82)
         || (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) || (command > 0x9c && command < 0xa5)
         || (command > 0x47 && command < 0x4c) || (command > 0x94 && command < 0x9d))
@@ -984,11 +986,29 @@ static void run_click_feedback(int elapsed)
     if (opened) offscreen_flush(&o, 1);
 }
 
+/* The open automap takes the keys and the mouse events until it closes; the mouse drags the map. */
+static void automap_input(void)
+{
+    uint16_t key;
+    while (advanced_automap_open && (key = input_read_key())) advanced_automap_event(INPUT_KEY, key, 0);
+    while (advanced_automap_open && in.event_count) {
+        int type = in.events[in.event_head].type, x = in.events[in.event_head].x, y = in.events[in.event_head].y;
+        in.event_count--;
+        in.event_head = (in.event_head + 1) % EVENT_RING;
+        advanced_automap_event(type, x, y);
+    }
+    if (advanced_automap_open) advanced_automap_drag(input_mouse_x, input_mouse_y);
+}
+
 void input_poll(void)
 {
     int elapsed = (int)(main_loop.timer_ticks - in.last_ticks);
     if (!elapsed) return;
     in.last_ticks = main_loop.timer_ticks;
+    if (advanced_automap_open) {
+        automap_input();
+        return;
+    }
     if (!in.disabled && !in.feedback_waiting && !input_feedback_busy) {
         while (!in.script) {
             for (int i = 0; i < in.key_count; i++) enqueue_key(in.keys[i]);
@@ -1452,10 +1472,11 @@ int command_execute(Command *c)
         else champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
         ui_update_action_area(0);
-    } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD) {
+    } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
         if (game.champion_count && !ui.candidate && !party.push_mode && !input_drag_state) {
             if (command == CMD_QUICK_SAVE) advanced_quick_save();
-            else advanced_quick_load();
+            else if (command == CMD_QUICK_LOAD) advanced_quick_load();
+            else advanced_open_automap();
         }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
         if (ui.inventory) champ_edit_name(champion(ui.inventory - 1));
@@ -1517,7 +1538,7 @@ void command_process_queue(void)
     in.feedback_waiting = 0;
     do {
         input_poll();
-        if (in.queue_head == in.queue_tail) return;
+        if (in.queue_head == in.queue_tail || advanced_automap_open) return;
         int head = in.queue_head;
         in.queue_head = (head + 1) % COMMAND_QUEUE;
         if (!command_execute(&in.queue[head])) in.queue_head = head;
