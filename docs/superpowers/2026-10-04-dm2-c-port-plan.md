@@ -392,3 +392,14 @@ Port the start menu, new game, load, save, and the end sequence of `SKULL.EXE`. 
 - Write a manual test checklist: compare the port with the DOS version in DOSBox side by side (image, sound effects, music, input, save in the port and load in DOS, save in DOS and load in the port).
 - The manual test checklist is in `docs/manual-test-checklist.md`.
 - Update `CHANGELOG.md`. Merge to `main`. Push.
+
+### Step 22: LLM control over a socket
+
+Let an LLM (Claude Code through Bash) drive the running game for manual-style UI tests and look at screenshots. Raw input only: no MCP server, no high-level actions, no map. The game runs in real time.
+
+- `build/dm2 --control PATH` opens a Unix domain socket: one client, one JSON object per line each way. `control_poll` runs in `pump_events` of `main.c`, so the requests work in the game loop and in the modal loops (menu, dialogs).
+- Commands: `state`, `key`, `click`, `command`, `move`, `wait` (timer ticks of `main_loop.timer_ticks`, 1 to 6000, deferred reply), `screenshot` (PNG with the palette and the pointer), `quit`.
+- Python: `src/dm2tools/control_client.py` with `request` and the CLI `dm2-play`.
+- Done. Modules: `control.c` and `control.h` (plain POSIX, also in `libdm2`: the socket, the request parser, the key names, the state reply, the PNG writer with stored deflate blocks); `input_draw_hand_cursor` in `input.c` draws the leader hand object for the window and the screenshot; `main.c` takes `--control`, keeps the pointer in `input_mouse_x` and `input_mouse_y` (a mouse move of the window or a control request sets it), and closes the socket at the end. The screenshot draws a small arrow where the window shows the system pointer. The key names come from `kbd_key_to_ascii` and a table of the keys without a character; `main.c` keeps its SDL table. The message area text is not in the state (the port keeps no text of the rows). Docs: `docs/llm-control.md`. Tests (`tests/test_control.py`):
+  - In process on `start.DAT` with the socket in a thread loop: `test_state_tells_the_party_and_the_champions`, `test_keys_by_name_and_code`, `test_key_click_and_command_move_the_party`, `test_wait_answers_after_the_ticks`, `test_screenshot_is_the_screen_with_the_pointer` (the PNG pixels equal the palette colors of `fb`; the pointer changes only its own pixels), `test_bad_requests_get_errors`.
+  - `test_program_with_control_answers_and_quits`: `build/dm2 --control` with the dummy SDL drivers and `--save tests/saves/start.DAT` answers `state`, `key`, `wait`, `screenshot`, and `quit`, and exits with 0.
