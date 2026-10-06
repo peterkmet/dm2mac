@@ -98,6 +98,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] B14. Compare the screen after a load. Expected: champion status boxes, bars, portraits, hands, movement arrows, and the action area are equal (plan Step 13). Covered by `tests/test_interface.py::test_game_screen_matches_original`, `tests/test_interface.py::test_party_states_match_original`.
 - [x] B15. Open the inventory of each champion. Expected: slots, statistics, skills, food and water bars, and the mouth picture are equal. Covered by `tests/test_interface.py::test_inventory_matches_original`, `tests/test_interface.py::test_inventory_panels_match_original`.
 - [x] B16. Put the eye on a weapon, a piece of clothing, a scroll, a potion, a chest, and a money box. Expected: the object information panel is equal. Covered by `tests/test_interface.py::test_inventory_panels_match_original`.
+- [ ] B16a. In the inventory, hold the left mouse button down on the eye, with an empty hand and with an object in the hand. Expected: the skills and statistics panel or the object information panel shows, and the pointer hides, while the button is down. The release shows the normal panel again. A short click shows nothing. The real click path is covered by `tests/test_control.py::test_eye_and_mouth_hold_while_the_left_button_is_down`.
 - [x] B17. Open the spell panel and enter runes. Expected: the rune sets and the entered runes are equal. Covered by `tests/test_interface.py::test_action_area_panels_match_original`, `tests/test_magic.py::test_runes_and_casts_match_original`.
 - [x] B18. Fill the message area with more than three lines. Expected: the rows move up by one row; no part of an old row stays. The 7-pixel move is a port reconstruction (plan Step 13); `tests/test_interface.py::test_message_area_scrolls` checks it in the port only. Passed (manual, 2026-10-06).
 - [x] B19. Wait without new messages. Expected: old message rows clear after the same time as in DOS. Covered by `tests/test_interface.py::test_message_area_matches_original`.
@@ -220,7 +221,6 @@ Do not report these documented deviations as bugs. Details are in `docs/skull-fo
 - `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).
 - RESTART starts the program again; the dialog texts show the last folder of the `--data` path in capitals as the drive path (section 14).
 - The port hides the system cursor and draws the original cursor images: the arrow, the hand, the held object with its shadow, and the dragged champion. The held object shows only over the cursor zones where the original shows it; menus and dialogs show no object icon. The original cursor in menus and dialogs is unverified (section 13).
-- The mouth or eye held with an empty hand is not ported (section 13).
 - The enter and leave events of the cursor zones and the mouse drag through a fake wall are not ported (section 10).
 - The walking frame stretch uses nearest neighbour; its exact rounding is unverified (section 10).
 - The pit fall view shows at the next screen update, not in the middle of the step (section 10).

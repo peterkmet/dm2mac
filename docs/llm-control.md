@@ -112,7 +112,7 @@ Example of a key code: `{"cmd": "key", "key": 28}` presses Enter.
 
 ### click
 
-Clicks a mouse button at a screen position. The pointer moves there. `button` is `left` (default) or `right`. A right click also sends the release of the right button.
+Clicks a mouse button at a screen position: the button goes down and up. The pointer moves there. `button` is `left` (default) or `right`.
 
 ```json
 {"cmd": "click", "x": 260, "y": 150, "button": "left"}
@@ -121,6 +121,20 @@ Clicks a mouse button at a screen position. The pointer moves there. `button` is
 ```json
 {"ok":true}
 ```
+
+### press and release
+
+`press` holds a mouse button down at a screen position until a `release`. The pointer moves there. `button` is `left` (default) or `right`. Use them for the eye and the mouth of the inventory: the game shows the eye panel only while the left button is down, and the release ends it.
+
+```json
+{"cmd": "press", "x": 20, "y": 64}
+```
+
+```json
+{"cmd": "release", "x": 20, "y": 64}
+```
+
+Both reply `{"ok":true}`.
 
 ### command
 
