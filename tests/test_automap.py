@@ -31,6 +31,8 @@ def automap(lib, advanced):  # noqa: F811
     lib.dungeon_square.restype = ctypes.c_uint8
     for name in ("view_light_level", "cheat_light", "cheat_immortal", "cheat_food"):
         flag(lib, name).value = 0
+    game, _ = advanced
+    lib.automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
     yield advanced
     for name in ("cheat_light", "cheat_immortal", "cheat_food", "advanced_automap_open"):
         flag(lib, name).value = 0
@@ -246,6 +248,32 @@ def test_quick_save_keeps_the_automap(lib, automap):
     assert seen_squares(lib, game.party_map) >= seen
 
 
+def test_damaged_quick_save_keeps_the_automap(lib, automap):
+    # The running game comes back from QUICK.TMP with its AMAP block.
+    game, data = automap
+    run_ticks(lib, 20)
+    press(lib, 0x4D)
+    seen = seen_squares(lib, game.party_map)
+    (data / "QUICK.DAT").write_bytes(bytes(300))
+    press(lib, KEY_F9)
+    assert seen and seen_squares(lib, game.party_map) >= seen
+
+
+def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
+    game, data = automap
+    from test_dialog import Session
+    run_ticks(lib, 20)
+    assert seen_squares(lib, game.party_map)
+    (data / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
+    state = Session.in_dll(lib, "session")
+    state.new_game = 1
+    try:
+        assert lib.game_load() == 1
+    finally:
+        state.new_game = 0
+    assert not any(seen_squares(lib, m) for m in range(lib.dungeon_map_count()))
+
+
 def viewport(lib):
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(ZONE_VIEWPORT, rect)
@@ -280,22 +308,46 @@ def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automa
     press(lib, KEY_M)
     press(lib, KEY_PAUSE)
     assert not flag(lib, "advanced_automap_open").value
+    lib.input_key_down.argtypes = [ctypes.c_uint16]
     for key in (KEY_TAB, KEY_M):
         for close in (KEY_TAB, KEY_M, KEY_ESC):
             press(lib, key)
             assert flag(lib, "advanced_automap_open").value and party_frame(lib) == red(lib)
             press(lib, close)
             assert not flag(lib, "advanced_automap_open").value
+            assert viewport_pixels(lib) == c_view(lib), "the dungeon view is back after a step"
+    assert lib.input_get_mode() == INPUT_MODE_MOVE
+
+
+def viewport_pixels(lib):
+    x, y, w, h = viewport(lib)
+    fb = bytes(screen(lib))
+    return b"".join(fb[(y + row) * SCREEN_W + x:(y + row) * SCREEN_W + x + w] for row in range(h))
+
+
+def test_close_key_drops_the_click_of_the_same_tick(lib, automap):
+    # A click on the viewport and Esc in one tick: the automap closes and the click does not reach the game.
+    game, _ = automap
+    lib.input_mouse_click.argtypes = [ctypes.c_int] * 3
+    press(lib, KEY_TAB)
+    x, y, w, h = viewport(lib)
+    lib.input_mouse_click(x + w // 2, y + h // 2, INPUT_BUTTON_LEFT)
+    lib.input_key_down(KEY_ESC)
+    lib.input_key_down(SCAN_W)
+    position = (game.party_x, game.party_y)
+    run_ticks(lib, 40)
+    assert not flag(lib, "advanced_automap_open").value and (game.party_x, game.party_y) == position
     assert lib.input_get_mode() == INPUT_MODE_MOVE
 
 
 def test_time_stops_and_keys_are_swallowed_while_open(lib, automap):
-    game, _ = automap
+    game, data = automap
     press(lib, KEY_TAB)
     state = (game.game_time, game.party_x, game.party_y, game.party_dir)
     for key in (SCAN_W, 0x4D, KEY_F5, KEY_F9):
         press(lib, key)
     assert (game.game_time, game.party_x, game.party_y, game.party_dir) == state
+    assert not (data / "QUICK.DAT").exists(), "F5 and F9 do nothing on the open automap"
     assert flag(lib, "advanced_automap_open").value
     press(lib, KEY_ESC)
     assert game.game_time > state[0] and not flag(lib, "advanced_automap_open").value
@@ -336,9 +388,36 @@ def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
     mouse_x.value = start_x + 3 * CELL  # the drag has ended
     run_ticks(lib, 2)
     assert party_frame(lib, 1) == red(lib)
+    lib.input_mouse_click(start_x, start_y, INPUT_BUTTON_LEFT)
+    run_ticks(lib, 2)
+    mouse_x.value = start_x + 40 * CELL  # far past the left edge of the map: the middle stops at column 0
+    lib.input_mouse_click(mouse_x.value, start_y, INPUT_LEFT_RELEASED)
+    run_ticks(lib, 2)
+    game, _ = automap
+    assert party_frame(lib, game.party_x) == red(lib)
     press(lib, KEY_TAB)
     press(lib, KEY_TAB)
     assert party_frame(lib) == red(lib), "a closed automap opens on the party"
+    press(lib, KEY_TAB)
+
+
+def test_readout_shows_position_direction_and_cheats(lib, automap):
+    # Drawing each expected line again at its place changes no pixel; a wrong text changes some.
+    game, _ = automap
+    lib.text_draw_on_screen.argtypes = [ctypes.c_int] * 4 + [ctypes.c_char_p]
+    colors = ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "ui_colors")
+    flag(lib, "cheat_food").value = 1
+    press(lib, KEY_TAB)
+    x, y, _, _ = viewport(lib)
+    lines = [b"LEVEL %d  X %d  Y %d" % (lib.dungeon_map_level(game.party_map), game.party_x, game.party_y),
+             [b"NORTH", b"EAST", b"SOUTH", b"WEST"][game.party_dir], b"I IMMORTAL OFF", b"F FOOD AND WATER ON",
+             b"L FULL LIGHT OFF"]
+    shown = viewport_pixels(lib)
+    for row, text in enumerate(lines):
+        for line, same in ((text, True), (text[:-1] + b"X", False)):
+            lib.text_draw_on_screen(x + 2, y + 6 + row * 7, colors[15], colors[0], line)
+            assert (viewport_pixels(lib) == shown) == same, line
+            lib.advanced_draw_automap()
     press(lib, KEY_TAB)
 
 

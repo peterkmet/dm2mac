@@ -290,6 +290,60 @@ def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
             ctypes.c_int.in_dll(lib, name).value = 0
 
 
+def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa: F811
+    # A control click gives the press and the release: moving the pointer afterwards does not scroll the map.
+    path, game, _ = control
+    lib.automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir)
+    rect = (ctypes.c_int16 * 4)()
+    assert lib.zone_get_rect(7, rect)  # the viewport
+    x, y, w, h = rect
+    middle = (y + (h - 8) // 2) * SCREEN_W + x + (w - 8) // 2  # the top left pixel of the party frame
+    fb = (ctypes.c_uint8 * (SCREEN_W * 200)).in_dll(lib, "fb")
+    set_mode(lib, ADVANCED)
+    try:
+        with pumped(lib):
+            for req in ({"cmd": "key", "key": "tab"}, {"cmd": "wait", "ticks": 4},
+                        {"cmd": "click", "x": x + w // 2, "y": y + h // 2}, {"cmd": "wait", "ticks": 4},
+                        {"cmd": "move", "x": x + w // 2 + 40, "y": y + h // 2}, {"cmd": "wait", "ticks": 4}):
+                assert request(req, path)["ok"]
+            framed = fb[middle]
+            assert request({"cmd": "key", "key": "esc"}, path)["ok"]
+            assert request({"cmd": "wait", "ticks": 4}, path)["ok"]
+        assert framed == ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "ui_colors")[8]  # red: the map did not move
+    finally:
+        set_mode(lib, VANILLA)
+        ctypes.c_int.in_dll(lib, "advanced_automap_open").value = 0
+
+
+def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
+    # QUICK.DAT is damaged, and QUICK.TMP is written without read rights (umask), so the running game cannot come
+    # back: the program quits with EXIT_GAME_LOST and no command or game step runs on the empty dungeon.
+    from test_input import MainLoop
+    game, data = advanced
+    loop, state = MainLoop.in_dll(lib, "main_loop"), Session.in_dll(lib, "session")
+    (data / "QUICK.DAT").write_bytes(b"\0" * 300)
+    old = os.umask(0o477)
+    try:
+        lib.input_key_down(KEY_F9)
+        lib.input_key_down(SCAN_W)
+        for _ in range(STEP_TICKS):
+            loop.tick_count = loop.tick_threshold  # each tick is due for a game step
+            lib.game_tick()
+            if loop.quit:
+                break
+        timer = loop.timer_ticks
+        run_ticks(lib, STEP_TICKS)
+    finally:
+        os.umask(old)
+    try:
+        assert loop.quit == 1 and state.exit_code == 4
+        assert loop.timer_ticks == timer, "no tick after the quit"
+        assert (data / "QUICK.TMP").exists()
+    finally:
+        (data / "QUICK.TMP").chmod(0o644)
+        loop.quit, state.exit_code = 0, 0
+
+
 def test_bad_mode_stops_the_program():
     result = subprocess.run([str(ROOT / "build" / "dm2"), "--mode", "turbo"], capture_output=True, text=True, timeout=10)
     assert result.returncode == 2 and "unknown mode turbo" in result.stderr
