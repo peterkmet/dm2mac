@@ -2,6 +2,18 @@
 
 Use this checklist for the manual test of the C port (workflow step 6, plan Step 21). Use DOSBox only for the items that name DOS or DOSBox. Each item gives an action and the expected result. Check the box when the result matches. Write down each mismatch with the item number, the place in the game, and a screenshot.
 
+## Results of 2026-10-06
+
+The user and LLM test agents over the control socket (`docs/llm-control.md`) ran the manual test on 2026-10-06. The checklist has 108 items:
+
+- 47 passed in the manual test.
+- 51 are covered by automated tests.
+- 7 are skipped by the user's decision: the DOSBox comparisons C10, I4, K2, K3, K4, K6, and K7.
+- 2 are not run, because they need long play: D15 and J16.
+- 1 is pending: H6 waits for a save near an ornament with a sound.
+
+The fixes that the manual test found are in `CHANGELOG.md`.
+
 ## Prerequisites
 
 - macOS with SDL3 from Homebrew: `brew install sdl3`.
@@ -33,6 +45,8 @@ Use this checklist for the manual test of the C port (workflow step 6, plan Step
    IBMIOP SKULL.EXE
    ```
 
+   To start DOSBox without the intro movies, run `tools/dosbox-nointro.sh` from the repo root. The script uses the same `game/DATA` folder, so the saves stay shared with the port.
+
 Command-line options of `build/dm2`:
 
 | Option | Default | Effect |
@@ -51,13 +65,13 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 
 ## A. Program start and window
 
-- [x] A1. Run `build/dm2`. Expected: a window at scale 3 shows the start menu title; the log shows `data folder: game`.
-- [x] A2. Run `build/dm2 --filter scale2x`, then `--filter scale3x`. Expected: the image is smoothed by the filter; the game is the same.
-- [x] A3. Run `DM2_FILTER=scale2x build/dm2 --filter none`. Expected: no filter (the option wins).
-- [x] A4. Run `build/dm2 --filter bad`. Expected: an error message and exit code 2.
-- [x] A5. Run `build/dm2 --data /tmp`. Expected: the message `cannot read /tmp/DATA/GRAPHICS.DAT` and exit code 1.
-- [x] A6. Start with `--data` on a copy of `game/` without `MELODIC.BNK`. Expected: the log says the port plays without music; the game runs with sound effects.
-- [x] A7. Close the window during the game. Expected: the program ends without a crash.
+- [x] A1. Run `build/dm2`. Expected: a window at scale 3 shows the start menu title; the log shows `data folder: game`. Passed (manual, 2026-10-06).
+- [x] A2. Run `build/dm2 --filter scale2x`, then `--filter scale3x`. Expected: the image is smoothed by the filter; the game is the same. Passed (manual, 2026-10-06).
+- [x] A3. Run `DM2_FILTER=scale2x build/dm2 --filter none`. Expected: no filter (the option wins). Passed (manual, 2026-10-06).
+- [x] A4. Run `build/dm2 --filter bad`. Expected: an error message and exit code 2. Passed (manual, 2026-10-06).
+- [x] A5. Run `build/dm2 --data /tmp`. Expected: the message `cannot read /tmp/DATA/GRAPHICS.DAT` and exit code 1. Passed (manual, 2026-10-06).
+- [x] A6. Start with `--data` on a copy of `game/` without `MELODIC.BNK`. Expected: the log says the port plays without music; the game runs with sound effects. Passed (manual, 2026-10-06).
+- [x] A7. Close the window during the game. Expected: the program ends without a crash. Passed (manual, 2026-10-06).
 
 ## B. Image
 
@@ -69,7 +83,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] B4. Look at a visible teleporter. Expected: the sparkle field shows as in DOS. Covered by `tests/test_view.py::test_view_picture_matches_original`.
 - [x] B5. Look at alcoves and shelves with objects. Expected: the objects stand in the alcove picture as in DOS. Covered by `tests/test_view.py::test_view_picture_matches_original`.
 - [x] B6. Look at missiles and explosions (thrown objects, spells). Expected: the pictures, sizes, and the tint of an explosion on the party square are as in DOS. Covered by `tests/test_view.py::test_added_missiles_explosions_creatures_match_original`.
-- [ ] B7. Walk forward one square. Expected: the walking frame fills the full viewport; the step shows no visible jump (the rounding of the stretch is unverified, plan Step 14). The walk rectangle is covered by `tests/test_view.py::test_walking_view_matches_original`.
+- [x] B7. Walk forward one square. Expected: the walking frame fills the full viewport; the step shows no visible jump (the rounding of the stretch is unverified, plan Step 14). The walk rectangle is covered by `tests/test_view.py::test_walking_view_matches_original`. Passed (manual, 2026-10-06).
 - [x] B8. Step into an open pit. Expected: the fall view shows, then the view of the map below. Covered by `tests/test_world.py::test_pit_falls_match_original`.
 - [x] B9. Walk into a dark area without a light. Expected: the view darkens by the same steps as in DOS. Covered by `tests/test_world.py::test_party_light_matches_original`, `tests/test_view.py::test_view_picture_matches_original`.
 
@@ -86,31 +100,31 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] B15. Open the inventory of each champion. Expected: slots, statistics, skills, food and water bars, and the mouth picture are equal. Covered by `tests/test_interface.py::test_inventory_matches_original`, `tests/test_interface.py::test_inventory_panels_match_original`.
 - [x] B16. Put the eye on a weapon, a piece of clothing, a scroll, a potion, a chest, and a money box. Expected: the object information panel is equal. Covered by `tests/test_interface.py::test_inventory_panels_match_original`.
 - [x] B17. Open the spell panel and enter runes. Expected: the rune sets and the entered runes are equal. Covered by `tests/test_interface.py::test_action_area_panels_match_original`, `tests/test_magic.py::test_runes_and_casts_match_original`.
-- [ ] B18. Fill the message area with more than three lines. Expected: the rows move up by one row; no part of an old row stays. The 7-pixel move is a port reconstruction (plan Step 13); `tests/test_interface.py::test_message_area_scrolls` checks it in the port only.
+- [x] B18. Fill the message area with more than three lines. Expected: the rows move up by one row; no part of an old row stays. The 7-pixel move is a port reconstruction (plan Step 13); `tests/test_interface.py::test_message_area_scrolls` checks it in the port only. Passed (manual, 2026-10-06).
 - [x] B19. Wait without new messages. Expected: old message rows clear after the same time as in DOS. Covered by `tests/test_interface.py::test_message_area_matches_original`.
 
 ## C. Input and movement
 
-- [ ] C1. Press the arrow keys and the numeric keypad keys on the Mac keyboard. Expected: the party walks forward, back, left, right and turns left and right. The commands of the keys are covered by `tests/test_input.py::test_clicks_and_keys_match_original`, `tests/test_input.py::test_keys_walk_and_turn_in_the_main_loop`.
-- [ ] C2. Press Shift with the Left or Right arrow on the Mac keyboard. Expected: the party steps sideways. The commands of the keys are covered by `tests/test_input.py::test_clicks_and_keys_match_original`.
-- [ ] C3. Click each of the six movement arrows. Expected: the arrow shows the pressed picture. The moves and the click delays are covered by `tests/test_input.py::test_clicks_on_the_movement_arrows`, `tests/test_input.py::test_arrow_clicks_and_feedback_delays_match_original`.
-- [ ] C4. Hold a movement key. Expected: the party walks on at an even speed; no step is lost or doubled. The move cooldowns are covered by `tests/test_input.py::test_keys_and_move_cooldowns_match_original`.
-- [ ] C5. Walk into a wall. Expected: the bump sound plays. The party position and the damage to the champions of the wall side are covered by `tests/test_move.py::test_bump_damage_hits_the_champions_of_the_bump_side`.
-- [ ] C6. Press Esc, then a key. Expected: the music stops during the pause and continues after it. The pause of the game is covered by `tests/test_input.py::test_keys_and_move_cooldowns_match_original`, `tests/test_music.py::test_pause_until_next_game_step`.
-- [x] C7. Click the sleep button. Expected: the party sleeps (the sleep message shows, time runs faster); a key or click wakes the party. Covered by `tests/test_input.py::test_sleep_and_wake_match_original`, `tests/test_interface.py::test_party_states_match_original`.
-- [x] C8. Click a wall button and a lever. Expected: the click feedback shows and the sensor acts as in DOS. Covered by `tests/test_move.py::test_wall_clicks_on_all_wall_cells`, `tests/test_move.py::test_square_events_on_all_sensors`.
+- [x] C1. Press the arrow keys and the numeric keypad keys on the Mac keyboard. Expected: the party walks forward, back, left, right and turns left and right. The commands of the keys are covered by `tests/test_input.py::test_clicks_and_keys_match_original`, `tests/test_input.py::test_keys_walk_and_turn_in_the_main_loop`. Passed (manual, 2026-10-06).
+- [x] C2. Press Shift with the Left or Right arrow on the Mac keyboard. Expected: the party steps sideways. The commands of the keys are covered by `tests/test_input.py::test_clicks_and_keys_match_original`. Passed (manual, 2026-10-06).
+- [x] C3. Click each of the six movement arrows. Expected: the arrow shows the pressed picture. The moves and the click delays are covered by `tests/test_input.py::test_clicks_on_the_movement_arrows`, `tests/test_input.py::test_arrow_clicks_and_feedback_delays_match_original`. Passed (manual, 2026-10-06).
+- [x] C4. Hold a movement key. Expected: the party walks on at an even speed; no step is lost or doubled. The move cooldowns are covered by `tests/test_input.py::test_keys_and_move_cooldowns_match_original`. Passed (manual, 2026-10-06).
+- [x] C5. Walk into a wall. Expected: the bump sound plays. The party position and the damage to the champions of the wall side are covered by `tests/test_move.py::test_bump_damage_hits_the_champions_of_the_bump_side`. Passed (manual, 2026-10-06).
+- [x] C6. Press Esc, then a key. Expected: the music stops during the pause and continues after it. The pause of the game is covered by `tests/test_input.py::test_keys_and_move_cooldowns_match_original`, `tests/test_music.py::test_pause_until_next_game_step`. Passed (manual, 2026-10-06).
+- [x] C7. Click the sleep button. Expected: the party sleeps (the sleep message shows, time runs faster); a key or click wakes the party. Covered by `tests/test_input.py::test_sleep_and_wake_match_original`, `tests/test_interface.py::test_party_states_match_original`. Passed (manual, 2026-10-06).
+- [x] C8. Click a wall button and a lever. Expected: the click feedback shows and the sensor acts as in DOS. Covered by `tests/test_move.py::test_wall_clicks_on_all_wall_cells`, `tests/test_move.py::test_square_events_on_all_sensors`. Passed (manual, 2026-10-06).
 - [x] C9. Click the champion hands and the action icons. Expected: the action menu opens; the choice runs. Covered by `tests/test_input.py::test_champion_clicks_match_original`, `tests/test_interface.py::test_action_area_panels_match_original`, `tests/test_interface.py::test_action_results_match_original`, `tests/test_magic.py::test_icon_click_feedback_matches_original`.
-- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; `docs/skull-formats.md` section 6 marks the real DOS rate as an open measurement).
+- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; `docs/skull-formats.md` section 6 marks the real DOS rate as an open measurement). Skipped by the user's decision (DOSBox comparison).
 
 ## D. Champions, inventory, items, money, and shops
 
 - [x] D1. Take an object from the floor and from a table. Expected: the object shows at the mouse pointer; its name shows in the message area. Covered by `tests/test_champions.py::test_coin_from_the_table`, `tests/test_champions.py::test_money_box_flags_in_the_view`, `tests/test_input.py::test_cursor_matches_original`, `tests/test_interface.py::test_hand_icon_matches_original`.
 - [x] D2. Place the object on another cell, drop it, and throw it. Expected: the object lands at the same place as in DOS; a thrown object flies. Covered by `tests/test_champions.py::test_money_box_flags_in_the_view`, `tests/test_projectile.py::test_champions_throw`, `tests/test_projectile.py::test_thrown_objects`.
-- [ ] D3. Open the inventory of a champion with the keys 1 to 4 (there is no F-key). Put objects into inventory slots and take them out. Expected: only fitting slots accept an object; the load and the statistics change.
+- [x] D3. Open the inventory of a champion with the keys 1 to 4 (there is no F-key). Put objects into inventory slots and take them out. Expected: only fitting slots accept an object; the load and the statistics change. Passed (manual, 2026-10-06).
 - [x] D4. Eat food and drink from a flask or bota. Expected: the food and water bars rise; empty containers stay. Covered by `tests/test_champion_rules.py::test_eating_drinking_and_actions_match_original`, `tests/test_champions.py::test_drink_and_hand_actions`.
 - [x] D5. Drink potions. Expected: the effect is as in DOS (health, stamina, mana, statistics). Covered by `tests/test_champion_rules.py::test_eating_drinking_and_actions_match_original`.
 - [x] D6. Run hand actions with a weapon. Expected: the action name, the busy hand, and the reload countdown are as in DOS. Covered by `tests/test_champions.py::test_drink_and_hand_actions`, `tests/test_champion_rules.py::test_eating_drinking_and_actions_match_original`, `tests/test_interface.py::test_action_results_match_original`.
-- [ ] D7. Recruit a champion at a mirror; cancel at the next mirror. Expected: the candidate panel shows the portrait and the statistics of the candidate. The join and the cancel are covered by `tests/test_champions.py::test_recruit_and_cancel`.
+- [x] D7. Recruit a champion at a mirror; cancel at the next mirror. Expected: the candidate panel shows the portrait and the statistics of the candidate. The join and the cancel are covered by `tests/test_champions.py::test_recruit_and_cancel`. Passed (manual, 2026-10-06).
 - [x] D8. Push the table of the first room south. Expected: the table moves (plan Step 15 scenario). Covered by `tests/test_champions.py::test_door_out_of_the_first_room`.
 - [x] D9. Put the solid key into the keyhole and press the door button. Expected: the door of the first room opens (the gold coin opens no door, as in DOS). Covered by `tests/test_champions.py::test_door_out_of_the_first_room`, `tests/test_champions.py::test_coin_from_the_table`.
 - [x] D10. Open a money box; put coins in and take coins out. Expected: the coin counts change as in DOS. Covered by `tests/test_champion_rules.py::test_money_and_prices_match_original`, `tests/test_champions.py::test_money_box_flags_in_the_view`, `tests/test_interface.py::test_containers_in_hand_match_original`.
@@ -118,7 +132,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] D12. Buy an item from a merchant and pay with coins. Expected: the merchant takes the payment and gives change as in DOS. Covered by `tests/test_ai_move.py::test_merchant_commands`, `tests/test_champion_rules.py::test_money_and_prices_match_original`.
 - [x] D13. Hold a torch until it burns down. Expected: the light falls; the torch burns out. Covered by `tests/test_champion_rules.py::test_damage_rules_match_original`, `tests/test_world.py::test_party_light_matches_original`.
 - [x] D14. Let a champion get poisoned and cure the poison. Expected: the health loss and the cure are as in DOS. Covered by `tests/test_champion_rules.py::test_damage_rules_match_original`, `tests/test_champion_rules.py::test_eating_drinking_and_actions_match_original`.
-- [ ] D15. Take the bones of a dead champion to an altar. Expected: the altar brings the champion back. The death and the objects on the square are covered by `tests/test_champion_rules.py::test_damage_rules_match_original`.
+- [ ] D15. Take the bones of a dead champion to an altar. Expected: the altar brings the champion back. The death and the objects on the square are covered by `tests/test_champion_rules.py::test_damage_rules_match_original`. Not run (needs long play).
 
 ## E. Creatures and combat
 
@@ -140,7 +154,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 
 ## G. World
 
-- [ ] G1. Open and close a door with its button. Expected: the door sound plays. The door animation is covered by `tests/test_move.py::test_step_into_special_squares`, `tests/test_view.py::test_door_states_match_original`.
+- [x] G1. Open and close a door with its button. Expected: the door sound plays. The door animation is covered by `tests/test_move.py::test_step_into_special_squares`, `tests/test_view.py::test_door_states_match_original`. Passed (manual, 2026-10-06).
 - [x] G2. Break a door with a weapon or a spell. Expected: the broken door picture shows as in DOS. Covered by `tests/test_view.py::test_door_states_match_original`, `tests/test_projectile.py::test_projectiles_at_doors`.
 - [x] G3. Step into an open pit. Expected: the party falls to the map below and takes damage. Covered by `tests/test_move.py::test_step_into_special_squares`, `tests/test_world.py::test_pit_falls_match_original`.
 - [x] G4. Step onto an active teleporter. Expected: the party arrives at the same place and direction as in DOS. Covered by `tests/test_move.py::test_step_into_special_squares`.
@@ -152,51 +166,51 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 
 ## H. Sound effects
 
-- [ ] H1. Start a game from the start menu. Expected: the test sound plays at the game start (plan Step 18).
-- [ ] H2. Open a door at the left and at the right of the party. Expected: the sound comes from the correct side (plan Step 18).
-- [ ] H3. Walk into a wall. Expected: the bump sound plays (plan Step 18).
-- [ ] H4. Wait for a storm with thunder. Expected: the thunder plays from the correct side and after a delay (plan Step 18).
-- [ ] H5. Fight a creature. Expected: the attack and hit sounds play at the moment of the attack and of the hit. The sound requests are covered by `tests/test_world.py::test_sound_requests_match_original`.
-- [ ] H6. Stand near an animated wall ornament with a sound. Expected: the ambient sound plays at the start of each animation cycle. The rule is covered by `tests/test_world.py::test_ambient_wall_sounds_match_original`.
-- [ ] H7. Let the party sleep near a sound. Expected: the sound is quieter.
-- [ ] H8. Open the volume dialog (see J11). Set the sound volume to 0, then to 7. Expected: 0 is silent; a new value plays the test sound.
+- [x] H1. Start a game from the start menu. Expected: the test sound plays at the game start (plan Step 18). Passed (manual, 2026-10-06).
+- [x] H2. Open a door at the left and at the right of the party. Expected: the sound comes from the correct side (plan Step 18). Passed (manual, 2026-10-06).
+- [x] H3. Walk into a wall. Expected: the bump sound plays (plan Step 18). Passed (manual, 2026-10-06).
+- [x] H4. Wait for a storm with thunder. Expected: the thunder plays from the correct side and after a delay (plan Step 18). Passed (manual, 2026-10-06).
+- [x] H5. Fight a creature. Expected: the attack and hit sounds play at the moment of the attack and of the hit. The sound requests are covered by `tests/test_world.py::test_sound_requests_match_original`. Passed (manual, 2026-10-06).
+- [ ] H6. Stand near an animated wall ornament with a sound. Expected: the ambient sound plays at the start of each animation cycle. The rule is covered by `tests/test_world.py::test_ambient_wall_sounds_match_original`. Pending.
+- [x] H7. Let the party sleep near a sound. Expected: the sound is quieter. Passed (manual, 2026-10-06).
+- [x] H8. Open the volume dialog (see J11). Set the sound volume to 0, then to 7. Expected: 0 is silent; a new value plays the test sound. Passed (manual, 2026-10-06).
 
 ## I. Music
 
-- [ ] I1. Start a game. Expected: the music plays from the first game step; the start menu plays no song (plan Step 19).
-- [ ] I2. Go to a map with another song. Expected: the old song fades out; the new song starts (plan Step 19).
-- [ ] I3. Open the volume dialog (see J11). Set the music volume to 0, then to a higher value. Expected: 0 stops the music; a higher value starts it again (plan Step 19).
-- [ ] I4. Listen to a song in the port and in DOSBox (Sound Blaster 16 with OPL). Expected: the same notes, instruments, and tempo.
-- [ ] I5. Let a song play to its end. Expected: the song loops.
+- [x] I1. Start a game. Expected: the music plays from the first game step; the start menu plays no song (plan Step 19). Passed (manual, 2026-10-06).
+- [x] I2. Go to a map with another song. Expected: the old song fades out; the new song starts (plan Step 19). Passed (manual, 2026-10-06).
+- [x] I3. Open the volume dialog (see J11). Set the music volume to 0, then to a higher value. Expected: 0 stops the music; a higher value starts it again (plan Step 19). Passed (manual, 2026-10-06).
+- [ ] I4. Listen to a song in the port and in DOSBox (Sound Blaster 16 with OPL). Expected: the same notes, instruments, and tempo. Skipped by the user's decision (DOSBox comparison).
+- [x] I5. Let a song play to its end. Expected: the song loops. Passed (manual, 2026-10-06).
 
 ## J. Start menu, new game, save and load, end of game
 
-- [ ] J1. Run `build/dm2`. Expected: the start menu shows the title and its options.
-- [ ] J2. Choose the picture option. Expected: the picture shows until a click or until the time ends.
-- [ ] J3. Choose a new game. Expected: the party starts on the start square with the champion of the start mirror as leader.
-- [ ] J4. Recruit more champions and enter the game. Expected: the party has up to four champions (PRD Epic 5).
-- [ ] J5. Press Option+S (Alt+S) to open the save menu. Expected: the dialog with SAVE, QUIT, RESTART, RESUME.
-- [ ] J6. Save into an empty slot and type a name. Expected: the slot shows the name; `game/DATA/SKSAVEn.DAT` exists.
-- [ ] J7. Quit, start `build/dm2`, and load the save. Expected: "LOADING GAME...", then "GAME LOADED, READY TO PLAY"; the game continues in the same state (PRD Epic 5).
-- [ ] J8. Save with an object in the leader hand, a magic light, and an aura; load. Expected: the object is back in the hand; the light and the aura continue.
-- [ ] J9. Choose QUIT more than 100 ticks after the last save. Expected: the program asks before the quit; then the end picture shows until a click.
-- [ ] J10. Choose RESTART. Expected: the program starts again with the start menu, also when it started with `--save`.
-- [ ] J11. Open a champion's inventory and click the speaker button (zone 0x238, command 0x8d); the dialog has no key. Expected: the sound and music volumes go from 0 to 7.
-- [ ] J12. Rename a champion with the name editor. Expected: the keys edit the name and the title.
-- [ ] J13. Let the whole party die. Expected: the scream, then "THE END"; RESTART GAME loads the last save; QUIT GAME ends with exit code 2.
-- [ ] J14. Load or save slot 0. While the game runs, rename `SKSAVE0.DAT` and keep `SKSAVE0.BAK`. Let the party die and choose RESTART GAME. Expected: the `.BAK` file loads and is renamed back to `SKSAVE0.DAT`. (The slot list reads only `.DAT` files, as in the original; a slot with only a `.BAK` shows UNUSED.)
-- [ ] J15. Load a damaged save. Expected: "THE GAME IS DAMAGED!"; no crash.
-- [ ] J16. Optional: load a save near the end and complete the final task (end sensor). Expected: the screen goes black and the program ends with exit code 1 (PRD Epic 5; the ending movie is out of scope).
+- [x] J1. Run `build/dm2`. Expected: the start menu shows the title and its options. Passed (manual, 2026-10-06).
+- [x] J2. Choose the picture option. Expected: the picture shows until a click or until the time ends. Passed (manual, 2026-10-06).
+- [x] J3. Choose a new game. Expected: the party starts on the start square with the champion of the start mirror as leader. Passed (manual, 2026-10-06).
+- [x] J4. Recruit more champions and enter the game. Expected: the party has up to four champions (PRD Epic 5). Passed (manual, 2026-10-06).
+- [x] J5. Press Option+S (Alt+S) to open the save menu. Expected: the dialog with SAVE, QUIT, RESTART, RESUME. Passed (manual, 2026-10-06).
+- [x] J6. Save into an empty slot and type a name. Expected: the slot shows the name; `game/DATA/SKSAVEn.DAT` exists. Passed (manual, 2026-10-06).
+- [x] J7. Quit, start `build/dm2`, and load the save. Expected: "LOADING GAME...", then "GAME LOADED, READY TO PLAY"; the game continues in the same state (PRD Epic 5). Passed (manual, 2026-10-06).
+- [x] J8. Save with an object in the leader hand, a magic light, and an aura; load. Expected: the object is back in the hand; the light and the aura continue. Passed (manual, 2026-10-06).
+- [x] J9. Choose QUIT more than 100 ticks after the last save. Expected: the program asks before the quit; then the end picture shows until a click. Passed (manual, 2026-10-06).
+- [x] J10. Choose RESTART. Expected: the program starts again with the start menu, also when it started with `--save`. Passed (manual, 2026-10-06).
+- [x] J11. Open a champion's inventory and click the speaker button (zone 0x238, command 0x8d); the dialog has no key. Expected: the sound and music volumes go from 0 to 7. Passed (manual, 2026-10-06).
+- [x] J12. Rename a champion with the name editor. Expected: the keys edit the name and the title. Passed (manual, 2026-10-06).
+- [x] J13. Let the whole party die. Expected: the scream, then "THE END"; RESTART GAME loads the last save; QUIT GAME ends with exit code 2. Passed (manual, 2026-10-06).
+- [x] J14. Load or save slot 0. While the game runs, rename `SKSAVE0.DAT` and keep `SKSAVE0.BAK`. Let the party die and choose RESTART GAME. Expected: the `.BAK` file loads and is renamed back to `SKSAVE0.DAT`. (The slot list reads only `.DAT` files, as in the original; a slot with only a `.BAK` shows UNUSED.) Passed (manual, 2026-10-06).
+- [x] J15. Load a damaged save. Expected: "THE GAME IS DAMAGED!"; no crash. Passed (manual, 2026-10-06).
+- [ ] J16. Optional: load a save near the end and complete the final task (end sensor). Expected: the screen goes black and the program ends with exit code 1 (PRD Epic 5; the ending movie is out of scope). Not run (needs long play).
 
 ## K. DOS cross-checks
 
 - [x] K1. Run the port and DOSBox side by side on the same save. Expected: the image is equal for the start view, a walk of ten squares, and the inventory. Covered by `tests/test_view.py::test_view_picture_matches_original`, `tests/test_view.py::test_walking_view_matches_original`, `tests/test_move.py::test_random_walks_on_all_maps`, `tests/test_interface.py::test_inventory_matches_original`.
-- [ ] K2. Compare the sound effects of K1 side by side. Expected: the same sounds at the same moments.
-- [ ] K3. Compare the music side by side. Expected: the same song and the same tempo.
-- [ ] K4. Compare the input side by side: the same keys and clicks. Expected: the same results.
-- [ ] K5. Save in the port, then load the slot in DOS. Expected: DOS loads the game; the party, champions, and objects are equal.
-- [ ] K6. Save in DOS, then load the slot in the port. Expected: the port loads the game; the party, champions, and objects are equal.
-- [ ] K7. After K5 and K6, play one minute in each. Expected: no crash and no visible difference in the game state.
+- [ ] K2. Compare the sound effects of K1 side by side. Expected: the same sounds at the same moments. Skipped by the user's decision (DOSBox comparison).
+- [ ] K3. Compare the music side by side. Expected: the same song and the same tempo. Skipped by the user's decision (DOSBox comparison).
+- [ ] K4. Compare the input side by side: the same keys and clicks. Expected: the same results. Skipped by the user's decision (DOSBox comparison).
+- [x] K5. Save in the port, then load the slot in DOS. Expected: DOS loads the game; the party, champions, and objects are equal. Passed (manual, 2026-10-06).
+- [ ] K6. Save in DOS, then load the slot in the port. Expected: the port loads the game; the party, champions, and objects are equal. Skipped by the user's decision (DOSBox comparison).
+- [ ] K7. After K5 and K6, play one minute in each. Expected: no crash and no visible difference in the game state. Skipped by the user's decision (DOSBox comparison).
 
 ## Known deviations
 
