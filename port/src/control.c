@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -30,6 +31,7 @@
 #define KEY_CODE_MAX 0xffff
 #define HEX_DIGITS 4                  /* the digits of a \uXXXX escape */
 #define HEX_BASE 16
+#define DECIMAL_BASE 10              /* the value of hex digit a */
 #define UTF8_ONE_BYTE_END 0x80        /* the first code point of 2, 3, and 4 UTF-8 bytes */
 #define UTF8_TWO_BYTES_END 0x800
 #define UTF8_THREE_BYTES_END 0x10000
@@ -125,10 +127,12 @@ static const char *find_value(const char *line, const char *key)
 /* Four hex digits at p, -1 when they are not. */
 static long hex4(const char *p)
 {
-    char digits[HEX_DIGITS + 1] = {0}, *end;
-    memcpy(digits, p, strnlen(p, HEX_DIGITS));
-    long value = strtol(digits, &end, HEX_BASE);
-    return end == digits + HEX_DIGITS && digits[0] != '-' && digits[0] != '+' ? value : -1;
+    long value = 0;
+    for (int i = 0; i < HEX_DIGITS; i++) {
+        if (!isxdigit((unsigned char)p[i])) return -1;
+        value = value * HEX_BASE + (isdigit((unsigned char)p[i]) ? p[i] - '0' : tolower((unsigned char)p[i]) - 'a' + DECIMAL_BASE);
+    }
+    return value;
 }
 
 /* Appends code point c as UTF-8; 0 when it does not fit. */
@@ -206,7 +210,8 @@ static void put(const char *format, ...)
     else reply_length += (size_t)n;
 }
 
-/* A JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). */
+/* A JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). The game
+   texts of GRAPHICS.DAT (701 entries) are ASCII, so only request text can bring other bytes. */
 static void put_string(const char *text, size_t n)
 {
     put("\"");

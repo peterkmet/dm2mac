@@ -8,7 +8,9 @@
    is another file (it stays) or the socket cannot open. */
 int control_open(const char *path);
 /* main.c calls it on every PIT tick of the game loop and once per frame of the modal loops: accepts a client (other
-   clients get a busy error), reads requests, and answers them. A reply blocks until the client reads it. */
+   clients get a busy error), reads requests, and answers them. A reply blocks until the client reads it. A client that
+   closes with nothing unread during a wait frees the socket at once; one that sent more lines keeps it until the wait
+   ends. */
 void control_poll(void);
 /* Closes the sockets and removes the socket file. */
 void control_close(void);
