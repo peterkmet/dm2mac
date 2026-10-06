@@ -33,6 +33,7 @@
 #define INPUT_ZONE_COUNT 0x3e
 #define INPUT_COMMAND_COUNT 0x108
 #define INPUT_KEY_COUNT 0x79
+#define CURSOR_ZONE_COUNT 0x12
 #define CLICK_FEEDBACK_SIZE 0xec
 #define LIST_START 0x8000
 #define NODE_HAS_CHILDREN 0x80
@@ -52,7 +53,9 @@
 #define EVENT_LEAVE_AREA 0x60
 
 typedef struct { uint8_t cond, arg; uint16_t link; } InputNode;
-typedef struct { uint16_t zone; int16_t commands, keys; } InputZone;
+typedef struct { uint16_t zone; int16_t commands, keys; uint8_t cursor; } InputZone;
+typedef struct { uint16_t zone; uint8_t kind, priority; } CursorZone;
+enum { CURSOR_KIND_HAND = 1, CURSOR_KIND_CHAMPION = 2 };
 typedef struct { uint16_t command, zone; uint8_t buttons, flags; } InputCommand;
 typedef struct { uint16_t command, key; } InputKey;
 
@@ -105,19 +108,26 @@ static const InputNode input_mode_roots[INPUT_MODE_COUNT] = {
 /* The input zones: layout zone (bit 15: in the inventory panel, bit 14: in the action area), command list,
    key list (-1 none), cursor area. */
 static const InputZone input_zones[INPUT_ZONE_COUNT] = {
-    {0x0002, 0, 0}, {0x0002, 1, 1}, {0x0002, 2, 2}, {0x0002, 3, 3}, {0x0002, 4, 4},
-    {0x00a1, 5, 5}, {0x00a1, 6, 6}, {0x009c, 7, -1}, {0x00a2, 8, 7}, {0x00a2, 9, 8},
-    {0x009d, 10, -1}, {0x00a3, 11, 9}, {0x00a3, 12, 10}, {0x009e, 13, -1}, {0x00a4, 14, 11},
-    {0x00a4, 15, 12}, {0x009f, 16, -1}, {0x0009, 17, 13}, {0x0007, 18, -1}, {0x0007, 19, -1},
-    {0x0002, 20, -1}, {0x0007, 21, -1}, {0x0002, 22, -1}, {0x81ee, 23, -1}, {0x0002, 55, 14},
-    {0x002f, 24, -1}, {0x0031, 25, -1}, {0x0032, 26, -1}, {0x0033, 27, -1}, {0x0034, 28, -1},
-    {0x000b, 29, -1}, {0x000b, 30, -1}, {0x000b, 31, -1}, {0x000b, 32, -1}, {0x000b, 33, -1},
-    {0x000b, 34, -1}, {0x000b, 35, -1}, {0x000b, 36, -1}, {0x000b, 37, -1}, {0x000b, 38, -1},
-    {0x000b, 39, -1}, {0x000b, 40, -1}, {0x000b, 41, -1}, {0x000b, 42, -1}, {0x000b, 43, -1},
-    {0x000b, 44, -1}, {0x000b, 45, -1}, {0x000b, 46, -1}, {0x0002, 47, -1}, {0x0002, 48, -1},
-    {0x0002, 49, -1}, {0x0002, 50, -1}, {0x0002, 51, -1}, {0x0002, 52, -1}, {0x0002, 53, -1},
-    {0x0002, 54, -1}, {0x0002, 56, -1}, {0x0002, 57, -1}, {0x0002, 58, -1}, {0x0002, 59, 14},
-    {0x0002, 60, -1}, {0x0002, 61, 14},
+    {0x0002, 0, 0, 0}, {0x0002, 1, 1, 0}, {0x0002, 2, 2, 0}, {0x0002, 3, 3, 0}, {0x0002, 4, 4, 0},
+    {0x00a1, 5, 5, 3}, {0x00a1, 6, 6, 3}, {0x009c, 7, -1, 14}, {0x00a2, 8, 7, 4}, {0x00a2, 9, 8, 4},
+    {0x009d, 10, -1, 15}, {0x00a3, 11, 9, 5}, {0x00a3, 12, 10, 5}, {0x009e, 13, -1, 16}, {0x00a4, 14, 11, 6},
+    {0x00a4, 15, 12, 6}, {0x009f, 16, -1, 17}, {0x0009, 17, 13, 7}, {0x0007, 18, -1, 8}, {0x0007, 19, -1, 9},
+    {0x0002, 20, -1, 10}, {0x0007, 21, -1, 8}, {0x0002, 22, -1, 10}, {0x81ee, 23, -1, 11}, {0x0002, 55, 14, 18},
+    {0x002f, 24, -1, 12}, {0x0031, 25, -1, 0}, {0x0032, 26, -1, 0}, {0x0033, 27, -1, 0}, {0x0034, 28, -1, 0},
+    {0x000b, 29, -1, 13}, {0x000b, 30, -1, 13}, {0x000b, 31, -1, 13}, {0x000b, 32, -1, 13}, {0x000b, 33, -1, 1},
+    {0x000b, 34, -1, 1}, {0x000b, 35, -1, 1}, {0x000b, 36, -1, 1}, {0x000b, 37, -1, 1}, {0x000b, 38, -1, 1},
+    {0x000b, 39, -1, 1}, {0x000b, 40, -1, 1}, {0x000b, 41, -1, 1}, {0x000b, 42, -1, 1}, {0x000b, 43, -1, 1},
+    {0x000b, 44, -1, 2}, {0x000b, 45, -1, 2}, {0x000b, 46, -1, 1}, {0x0002, 47, -1, 0}, {0x0002, 48, -1, 0},
+    {0x0002, 49, -1, 0}, {0x0002, 50, -1, 0}, {0x0002, 51, -1, 0}, {0x0002, 52, -1, 0}, {0x0002, 53, -1, 0},
+    {0x0002, 54, -1, 0}, {0x0002, 56, -1, 0}, {0x0002, 57, -1, 0}, {0x0002, 58, -1, 0}, {0x0002, 59, 14, 0},
+    {0x0002, 60, -1, 0}, {0x0002, 61, 14, 0},
+};
+/* The cursor zones of the input zones (from 1): layout zone (bit 15: in the viewport), cursor kind (1: hand or
+   held object, 2: dragged champion), priority (a higher priority comes first). */
+static const CursorZone cursor_zones[CURSOR_ZONE_COUNT] = {
+    {0x000b, 0, 1}, {0x005c, 1, 1}, {0x00a1, 1, 1}, {0x00a2, 1, 1}, {0x00a3, 1, 1}, {0x00a4, 1, 1},
+    {0x0009, 0, 1}, {0x0007, 1, 15}, {0x0007, 1, 15}, {0x823b, 0, 15}, {0x81ee, 0, 15}, {0x002f, 2, 15},
+    {0x000b, 0, 1}, {0x009c, 0, 2}, {0x009d, 0, 2}, {0x009e, 0, 2}, {0x009f, 0, 2}, {0x8267, 0, 15},
 };
 /* The command lists: command (bit 15 starts a list), zone, mouse buttons, flags (bit 3: off). */
 static const InputCommand input_commands[INPUT_COMMAND_COUNT] = {
@@ -256,6 +266,9 @@ static struct {
     uint32_t last_ticks;
     int feedback_waiting;           /* the original 0x7f474: the script waits for the next queue run */
     int arrow_pressed, arrow_zone, arrow_entry;
+    uint8_t zone_active[INPUT_ZONE_COUNT];      /* the input zones of the input tree of the mode */
+    uint8_t cursor_list[CURSOR_ZONE_COUNT];     /* the shown cursor zones (from 1), by priority */
+    int cursor_count;
 } in;
 
 int input_command_stop;
@@ -451,10 +464,74 @@ uint16_t input_find_command(int mode, int x, int y, int buttons, int key, int16_
     return command;
 }
 
+/* Marks the zones of the input tree below node whose conditions hold. */
+static void mark_active_zones(const InputNode *node, uint8_t *active)
+{
+    for (int i = 0; !node_child_end(node, i); i++) {
+        const InputNode *child = node_child(node, i);
+        if (!input_condition(node->cond & 0x7f, child->arg)) continue;
+        if (child->cond & NODE_HAS_CHILDREN) mark_active_zones(child, active);
+        else active[child->link] = 1;
+    }
+}
+
+/* Shows the cursor zone c in front of the zones of the same or a lower priority (mouse_area_add). */
+static void cursor_zone_add(int c)
+{
+    if (memchr(in.cursor_list, c, (size_t)in.cursor_count)) return;
+    int p = 0;
+    while (p < in.cursor_count && cursor_zones[in.cursor_list[p] - 1].priority > cursor_zones[c - 1].priority) p++;
+    memmove(&in.cursor_list[p + 1], &in.cursor_list[p], (size_t)(in.cursor_count - p));
+    in.cursor_list[p] = (uint8_t)c;
+    in.cursor_count++;
+}
+
+static void cursor_zone_remove(int c)
+{
+    uint8_t *e = memchr(in.cursor_list, c, (size_t)in.cursor_count);
+    if (!e) return;
+    memmove(e, e + 1, (size_t)(&in.cursor_list[--in.cursor_count] - e));
+}
+
+/* Marks the active input zones of the mode. A cursor zone of a zone that becomes active shows, of a zone that
+   becomes inactive hides; with both changes it stays as it is, as in the original. */
+static void update_active_zones(void)
+{
+    enum { CURSOR_ADD = 1, CURSOR_REMOVE = 2 };
+    uint8_t active[INPUT_ZONE_COUNT] = {0}, change[CURSOR_ZONE_COUNT + 1] = {0};
+    mark_active_zones(&input_mode_roots[in.mode], active);
+    for (int i = 0; i < INPUT_ZONE_COUNT; i++)
+        if (active[i] != in.zone_active[i]) {
+            change[input_zones[i].cursor] |= active[i] ? CURSOR_ADD : CURSOR_REMOVE;
+            in.zone_active[i] = active[i];
+        }
+    for (int c = 1; c <= CURSOR_ZONE_COUNT; c++) {
+        if (change[c] == CURSOR_ADD) cursor_zone_add(c);
+        if (change[c] == CURSOR_REMOVE) cursor_zone_remove(c);
+    }
+}
+
+int input_cursor_at(int x, int y)
+{
+    int kind = 0;
+    for (int i = 0; i < in.cursor_count; i++) {
+        const CursorZone *z = &cursor_zones[in.cursor_list[i] - 1];
+        int16_t r[RECT_SIZE];
+        if (input_get_zone_rect(z->zone, r) && rect_contains(r, x, y)) {
+            kind = z->kind;
+            break;
+        }
+    }
+    if (kind == CURSOR_KIND_CHAMPION) return CURSOR_CHAMPION;
+    if (kind != CURSOR_KIND_HAND || (int16_t)game.leader < 0) return CURSOR_ARROW;
+    return inv_cursor_object() == THING_NONE ? CURSOR_HAND : CURSOR_OBJECT;
+}
+
 void input_set_mode(int mode)
 {
     if (mode != in.mode) input_flush();
     in.mode = mode;
+    update_active_zones();
 }
 
 int input_get_mode(void)
@@ -464,6 +541,7 @@ int input_get_mode(void)
 
 void input_refresh_mode(void)
 {
+    update_active_zones();
 }
 
 void input_push_mode(int mode)

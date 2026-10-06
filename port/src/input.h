@@ -44,6 +44,10 @@ extern int input_drag_state;
 void input_init(void);
 /* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
 void input_set_mode(int mode);
+/* The cursor image at (x, y) of the screen (the original mouse_move_event): the held object or the hand over a
+   cursor zone of kind 1, the dragged champion over a zone of kind 2, else the arrow. */
+enum { CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION };
+int input_cursor_at(int x, int y);
 /* The current input mode. */
 int input_get_mode(void);
 /* The command of a click (key 0) or of a key in mode, and the rectangle of its zone; 0 for none. */

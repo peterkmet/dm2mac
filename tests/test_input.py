@@ -120,6 +120,55 @@ def test_champion_clicks_match_original(tree, lib):
     assert refined & set(range(0x74, 0x7C)) and refined & set(range(0x10, 0x14)) and refined & set(range(0x5F, 0x63))
 
 
+INPUT_SET_MODE, MOUSE_MOVE_EVENT, MOUSE_SET_HOVER_AREA, MOUSE_AREA_ADD, MOUSE_AREA_REMOVE = (
+    0x20707, 0x14483, 0x14400, 0x14B4F, 0x14C0E)
+G_CURSOR_ZONES, G_INPUT_ZONES, G_MOUSE_AREAS, G_MOUSE_HOVER_INVALID = 0x722D4, 0x72D1F, 0x7F098, 0x7F0A0
+G_CURSOR_HAS_ITEM, G_LEADER, INPUT_MOUSE_CLICK = 0x7F094, 0x759A4, 0x20C5D
+
+
+def test_cursor_matches_original(tree, lib):
+    # The cursor image (arrow, hand, held object) at random pointer positions and in each shown cursor zone, in all
+    # input modes, with and without an object in the leader hand and a leader, after mode changes in a random order.
+    from test_interface import set_leader_hand
+    emu, game = tree.emu, tree.game
+    for addr in (MOUSE_AREA_ADD, MOUSE_AREA_REMOVE):
+        emu.uc.hook_del(tree.stubs[addr])
+    for stub, args in ((MOUSE_SET_HOVER_AREA, 1), (INPUT_MOUSE_CLICK, 0)):
+        emu.stub(stub, lambda *_: 0, stack_args=args)
+    emu.write_u32(G_MOUSE_AREAS, 0)
+    for i in range(0x12):  # the list nodes of the cursor zones (the stubbed mouse_area_alloc_node)
+        zone = G_CURSOR_ZONES + 10 * i
+        emu.write(zone + 3, bytes([emu.read(zone + 3, 1)[0] & 0x0F]))
+        emu.write_u32(zone + 6, tree.view.put(bytes(12)))
+    for i in range(0x3E):
+        emu.write(G_INPUT_ZONES + 7 * i + 6, bytes([emu.read(G_INPUT_ZONES + 7 * i + 6, 1)[0] & 0x3F]))
+    rng = random.Random(19)
+    modes = [*MODES, *rng.sample(MODES, 10), *rng.sample(MODES, 10)]
+    seen = set()
+    for mode in modes:
+        lib.input_set_mode(mode)
+        emu.call(INPUT_SET_MODE, mode, allow_io=True)
+        points = [(rng.randrange(320), rng.randrange(200)) for _ in range(300)]
+        area = emu.read_u32(G_MOUSE_AREAS)
+        while area:  # a point in each shown cursor zone: node of the zone = next zone, rectangle
+            node = emu.read_u32(area + 6)
+            x, y, w, h = struct.unpack("<4h", emu.read(node + 4, 8))
+            points.append((x + rng.randrange(w), y + rng.randrange(h)))
+            area = emu.read_u32(node)
+        for x, y in points:
+            hand, leader = rng.choice((0x0400, 0xFFFF)), rng.choice((0, 0, 0xFFFF))
+            game.leader = leader
+            set_leader_hand(lib, tree, hand)
+            emu.write_u32(G_CURSOR_HAS_ITEM, hand != 0xFFFF)
+            emu.write(G_LEADER, struct.pack("<H", leader))
+            emu.write(G_MOUSE_HOVER_INVALID, b"\1\0")
+            theirs = emu.call(MOUSE_MOVE_EVENT, x, y, allow_io=True) & 0xFFFF
+            assert lib.input_cursor_at(x, y) == theirs, (mode, x, y, hex(hand), leader)
+            seen.add((mode, theirs))
+    assert {cursor for _, cursor in seen} == {0, 1, 2}  # 3 needs a champion drag
+    assert {mode for mode, cursor in seen if cursor == 2} >= {5, 8}
+
+
 class MainLoop(ctypes.Structure):
     _fields_ = [("tick_threshold", ctypes.c_int), ("tick_count", ctypes.c_int), ("timer_ticks", ctypes.c_uint32),
                 ("running", ctypes.c_int), ("view_hidden", ctypes.c_int), ("end", ctypes.c_int),
