@@ -465,34 +465,63 @@ def test_projectiles_at_creatures(pj, lib):
     assert_saves(pj, "end")
 
 
+CREATURE_ALERT, ALERT_HIT = 0x24E62, 0x200D  # the alert of a projectile hit
 INFO_DOOR_FLAGS, RESISTS_NON_FIRE = 0x19, 0x10  # creature info byte and its flag: only fire hurts the creature fully
+
+
+def group_square(lib, map_, group):
+    """(x, y) of group on map_, None when it is gone."""
+    for x in range(lib.dungeon_map_width(map_)):
+        for y in range(lib.dungeon_map_height(map_)):
+            t = lib.dungeon_square_first_thing(map_, x, y)
+            while t != ENDOFLIST:
+                if t & 0x3FFF == group & 0x3FFF:
+                    return x, y
+                t = lib.dungeon_next_thing(t)
+    return None
 
 
 def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
     # Lightning blasts, storm blasts, and poison and death clouds on the groups that resist non-fire, and lightning
-    # bolts from their square and from 1 and 2 squares away: the damage is a quarter. start.DAT has one such group
-    # (creature type 84).
+    # bolts from the square of the group at shot time and from 1 and 2 squares away: the damage is a quarter.
+    # start.DAT has one such group (creature type 84).
     rng = random.Random(170)
     four_champions(pj, rng)
     lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.creature_group_info.argtypes = [ctypes.c_uint16]
     targets = [t for t in groups(lib) if lib.creature_group_info(t[3])[INFO_DOOR_FLAGS] & RESISTS_NON_FIRE]
     assert targets
+    hits = [0]
+    resisting = {t[3] & 0x3FFF for t in targets}
+
+    def alert(uc, *_):  # creature_alert(group, x, y, flags, chance, damage) of the original
+        damage = struct.unpack("<h", pj.emu.read(uc.reg_read(UC_X86_REG_ESP) + 8, 2))[0]
+        if uc.reg_read(UC_X86_REG_EAX) & 0x3FFF in resisting and uc.reg_read(UC_X86_REG_ECX) & 0xFFFF == ALERT_HIT and damage > 0:
+            hits[0] += 1
+
+    from unicorn import UC_HOOK_CODE
+    from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_ECX, UC_X86_REG_ESP
+    pj.emu.uc.hook_add(UC_HOOK_CODE, alert, begin=CREATURE_ALERT, end=CREATURE_ALERT)
     for n, (map_, x, y, g) in enumerate(targets * (40 // len(targets))):
         place_near(pj, rng, map_, x, y)
         kind = rng.choice((0xFF82, 0xFFB1, 0xFF87, 0xFFA8))  # lightning, storm blast, poison cloud, death cloud
         both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(64, 256), x, y, rng.choice((0, 1, 2, 3, 0xFF)))
         check(pj, ("create", n))
         run_out(pj, ("resists", n, map_, x, y, hex(g), hex(kind)))
+        at = group_square(lib, map_, g)  # the group moves: aim at its square now
+        if at is None:
+            continue
+        gx, gy = at
         d, dist = rng.randrange(4), rng.randrange(3)
-        sx, sy = x - DIRS[d][0] * dist, y - DIRS[d][1] * dist
+        sx, sy = gx - DIRS[d][0] * dist, gy - DIRS[d][1] * dist
         if dist and not open_square(lib, map_, sx, sy):
-            sx, sy = x, y
-        place_near(pj, rng, map_, x, y)
-        launch(pj, 0xFF82, sx, sy, rng.randrange(4), d, rng.randrange(64, 256), rng.randrange(64, 256), 1)
+            sx, sy = gx, gy
+        place_near(pj, rng, map_, gx, gy)
+        launch(pj, 0xFF82, sx, sy, rng.randrange(4), d, 200, 200, 1)
         check(pj, ("bolt", n))
         run_out(pj, ("bolt", n, map_, sx, sy, d))
     assert_saves(pj, "end")
+    assert hits[0] > 3, hits  # bolts that hurt a group that resists non-fire
 
 
 def set_square(s, map_, x, y, value):

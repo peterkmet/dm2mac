@@ -700,6 +700,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_play_delayed` masks the slot to 0 to 7.
 - The port does not check the sound settings of `sound_play_requests` (digital sound on, sound volume not 0). The sound volume setting is Step 20 (dialogs).
 - The walking distance of a sound is `creature_get_party_distance` (the party distance map of Step 16).
+- Kept quirk of the original: the repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `port/src/sensor.c`). Most of these sounds come from far away and do not play. `tests/test_world.py` compares the repeated sounds with the original.
 
 ## 12. Creatures, projectiles, magic, and minions (Step 16)
 
@@ -725,7 +726,6 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Deviations of the C port (Step 16)
 
-- The repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `port/src/sensor.c`). With the real walking distance since the merge with Step 17, most of these sounds are too far away and do not play, in both.
 - The scenario tests stub the mouse areas of an input mode (`mouse_area_add`, `mouse_area_remove`; not ported): a creature attack wakes the party, and the original then sets the input mode.
 - Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light, invisibility, and aura events. The port sets them to 0. The oracle clears them with a hook on `timeline_add_event`.
 - The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
