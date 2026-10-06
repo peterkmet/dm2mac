@@ -140,7 +140,7 @@ void advanced_draw_automap(void)
     draw_readout_line(&o, 2, line);
     snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(cheat_food));
     draw_readout_line(&o, 3, line);
-    snprintf(line, sizeof line, "L LIGHT %s", on_off(cheat_light));
+    snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(cheat_light));
     draw_readout_line(&o, 4, line);
     offscreen_flush(&o, 1);
     draw_free_temp();
