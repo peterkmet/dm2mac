@@ -80,7 +80,7 @@ enum {
     CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
     CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81,
-    CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
+    CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_EYE = 0x47, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
     CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93,
     CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
     CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59
@@ -622,6 +622,7 @@ CursorImage input_cursor_image(int cursor)
 
 void input_draw_cursor(uint8_t *dst, int x, int y)
 {
+    if (ui.eye || ui.mouth) return;  /* the original hides the pointer while the eye or the mouth is held */
     CursorImage c = input_cursor_image(input_cursor_at(x, y));
     for (int cy = 0; cy < c.height; cy++)
         for (int cx = 0; cx < c.width; cx++) {
@@ -672,7 +673,7 @@ void input_mouse_click(int x, int y, int type)
         in.deferred_type = type;
         return;
     }
-    int limit = (type == INPUT_RIGHT_RELEASED && !in.dropped_left) || type == EVENT_ENTER_AREA || type == EVENT_LEAVE_AREA
+    int limit = (type == INPUT_LEFT_RELEASED && !in.dropped_left) || type == EVENT_ENTER_AREA || type == EVENT_LEAVE_AREA
                     ? EVENT_LIMIT_SPECIAL : EVENT_LIMIT;
     in.dropped_left = 0;
     if (in.event_count < limit) {
@@ -684,6 +685,20 @@ void input_mouse_click(int x, int y, int type)
     } else if (type == INPUT_BUTTON_LEFT) {
         in.dropped_left = 1;
     }
+}
+
+int input_mouse_buttons;
+
+void input_mouse_down(int x, int y, int button)
+{
+    input_mouse_buttons |= button;
+    input_mouse_click(x, y, button);
+}
+
+void input_mouse_up(int x, int y, int button)
+{
+    input_mouse_buttons &= ~button;
+    if (button == INPUT_BUTTON_LEFT && (ui.eye || ui.mouth)) input_mouse_click(x, y, INPUT_LEFT_RELEASED);
 }
 
 static void flush_deferred_click(void)
@@ -715,11 +730,11 @@ void input_flush(void)
     in.key_count = 0;
     int pos = (in.event_tail + 1) % EVENT_RING;
     if (pos != in.event_head || in.event_count) {
-        /* only area changes and released right buttons stay */
+        /* only area changes and released left buttons stay */
         int write = in.event_head, read = in.event_head, kept = 0;
         for (int n = in.event_count; n > 0; n--) {
             int t = in.events[read].type;
-            if (t == EVENT_ENTER_AREA || t == EVENT_LEAVE_AREA || t == INPUT_RIGHT_RELEASED) {
+            if (t == EVENT_ENTER_AREA || t == EVENT_LEAVE_AREA || t == INPUT_LEFT_RELEASED) {
                 in.events[write] = in.events[read];
                 write = (write + 1) % EVENT_RING;
                 kept++;
@@ -987,7 +1002,7 @@ void input_poll(void)
                 in.event_count--;
                 in.event_head = (in.event_head + 1) % EVENT_RING;
                 if (type < INPUT_KEY) {
-                    if (type & INPUT_RIGHT_RELEASED) command = CMD_CANCEL_CAPTURE;
+                    if (type & INPUT_LEFT_RELEASED) command = CMD_CANCEL_CAPTURE;
                     else if (type & 0x13) command = find_click_command(&input_mode_roots[in.mode], x, y, type);
                 } else if (type == INPUT_KEY) {
                     command = find_key_command(&input_mode_roots[in.mode], (uint16_t)x);
@@ -1015,6 +1030,7 @@ void input_poll(void)
 
 void input_reset_states(void)
 {
+    ui.eye = ui.mouth = 0;
     party.push_mode = 0;
     ui.push_mode = 0;
     input_feedback_busy = 0;
@@ -1367,7 +1383,7 @@ int command_execute(Command *c)
     }
     input_command_stop = 0;
     if (command == CMD_CANCEL_CAPTURE) {
-        /* the right button capture of Step 15 */
+        ui.eye = ui.mouth = 0;
     } else if (command == CMD_CANCEL_PUSH) {
         input_cancel_push_mode();
     } else if (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT) {
@@ -1429,6 +1445,9 @@ int command_execute(Command *c)
         champ_finish_recruit(game.party_x, game.party_y, game.party_dir, game.party_map, command);
     } else if (command == CMD_MOUTH) {
         champ_consume_object(-1, THING_NONE, -1);
+    } else if (command == CMD_EYE) {
+        ui.eye = (input_mouse_buttons & INPUT_BUTTON_LEFT) != 0;
+        if (ui.eye) input_flush();
     } else if (command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) {
         inv_click_slot(command - CMD_SLOT_FIRST);
     } else if (command >= CMD_STORE_FIRST && command <= CMD_STORE_LAST) {

@@ -4,8 +4,8 @@
 
 /* Input modes: the root of the input tree that maps clicks and keys to commands. */
 enum input_mode { INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_MOVE = 5, INPUT_MODE_PUSH = 6, INPUT_MODE_INVENTORY = 8 };
-/* Mouse event types: buttons (bit 1 left, bit 0 right), a released right button, a key. */
-enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_RIGHT_RELEASED = 4, INPUT_KEY = 0x20 };
+/* Mouse event types: buttons (bit 1 left, bit 0 right), a released left button, a key. */
+enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_LEFT_RELEASED = 4, INPUT_KEY = 0x20 };
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
 #define KEY_EXTENDED 0x1000
 #define KEY_SHIFT 0x0200
@@ -69,8 +69,14 @@ void input_push_mode(int mode);
 void input_pop_mode(void);
 /* Recomputes the active zones of the current mode. */
 void input_refresh_mode(void);
-/* A mouse button event at (x, y) of the screen (type: INPUT_BUTTON_* bits or INPUT_RIGHT_RELEASED). */
+/* A mouse button event at (x, y) of the screen (type: INPUT_BUTTON_* bits or INPUT_LEFT_RELEASED). */
 void input_mouse_click(int x, int y, int type);
+/* A mouse button (INPUT_BUTTON_*) goes down or up at (x, y) of the screen. The release of the left button ends the
+   mouse capture of the eye or the mouth (the original event 4). */
+void input_mouse_down(int x, int y, int button);
+void input_mouse_up(int x, int y, int button);
+/* The mouse buttons that are down: INPUT_BUTTON_* bits (the original mouse_get_state). */
+extern int input_mouse_buttons;
 /* A key press of the keyboard (key code with KEY_* bits); input_poll reads it. */
 void input_key_down(uint16_t key);
 /* Clears the pending keys, clicks, and commands. */
