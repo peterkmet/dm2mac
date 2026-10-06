@@ -203,6 +203,22 @@ def test_state_tells_the_game_mode(control, lib):  # noqa: F811
             assert request({"cmd": "state"}, path)["game_mode"] == name
 
 
+def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
+    path, *_ = control
+    names = ("advanced_automap_open", "cheat_immortal", "cheat_food", "cheat_light")
+    fields = ("automap", "cheat_immortal", "cheat_food", "cheat_light")
+    try:
+        for value in (0, 1):
+            for name in names:
+                ctypes.c_int.in_dll(lib, name).value = value
+            with pumped(lib, ticks=False):
+                state = request({"cmd": "state"}, path)
+            assert [state[f] for f in fields] == [value] * 4
+    finally:
+        for name in names:
+            ctypes.c_int.in_dll(lib, name).value = 0
+
+
 def test_bad_mode_stops_the_program():
     result = subprocess.run([str(ROOT / "build" / "dm2"), "--mode", "turbo"], capture_output=True, text=True, timeout=10)
     assert result.returncode == 2 and "unknown mode turbo" in result.stderr
