@@ -62,4 +62,7 @@ void game_quit(void);
 /* The player edits the name and the title of a champion in the inventory. */
 void champ_edit_name(Champion *c);
 
+/* Removes every "--save PATH" pair from argv, walking it like the option parser; returns the new argc. */
+int args_drop_save(int argc, char **argv);
+
 #endif

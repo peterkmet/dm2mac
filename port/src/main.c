@@ -202,11 +202,7 @@ int main(int argc, char **argv)
     music_quit();
     plat_quit();
     if (session.exit_code == EXIT_RESTART) {
-        for (int i = 1; i + 1 < argc; i++)
-            if (!strcmp(argv[i], "--save")) {  /* the original always restarts into the start menu */
-                memmove(&argv[i], &argv[i + 2], (argc - i - 1) * sizeof *argv);
-                break;
-            }
+        args_drop_save(argc, argv);  /* the original always restarts into the start menu */
         execvp(argv[0], argv);  /* the DOS launcher starts the game again */
         fprintf(stderr, "cannot restart %s\n", argv[0]);
     }
