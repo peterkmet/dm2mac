@@ -32,7 +32,6 @@
 #define TIME_BYTE_WRAP 0x100        /* the last action time is the low byte of the game time */
 #define TARGET_NO_ITEM 0xffff       /* a target record without an item filter */
 #define CANDIDATE_MASK_ALL 0xffff
-#define SHIFT_COUNT_MASK 0x1f       /* the x86 shift uses the low 5 bits of the count */
 #define POWER_MAX 0xff              /* the power of a missile or an explosion is a byte */
 
 AiContext ai;

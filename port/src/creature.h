@@ -49,6 +49,10 @@ _Static_assert(sizeof(CreatureInfo) == 36, "the creature info records of SKULL.E
 #define PUSH_IMMOVABLE 0xfe
 #define CREATURE_FLIES 0x0004
 #define POSSESSIONS_HIDE_CLICKS 0x2000  /* possessions bit: objects under the creature stay clickable */
+#define POSSESSIONS_KIND_MASK 0x000f    /* 0: none shown; 1 or less: carried low */
+#define STATIC_POSSESSIONS_SHOWN 0x400
+#define STATIC_POSSESSIONS_ALL 0x200
+#define CELLS_ALL 0x0f                  /* a cell mask: all four cells */
 #define CREATURE_INFO_COUNT 63
 /* The sound of an item that a creature drops. */
 #define SOUND_ENTRY_DROP 0x85

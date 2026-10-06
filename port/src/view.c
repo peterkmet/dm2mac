@@ -410,7 +410,6 @@ enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_B
 #define CELL_ROW_STEP (CELL_GRID_SIDE * GRID_SQUARE_CELLS)  /* cell offset of the square ahead or behind */
 
 /* Possessions of a static creature (CreatureInfo.possessions). */
-#define POSSESSIONS_KIND_MASK 0x000f    /* 0: none shown; 1 or less: carried low */
 #define POSSESSIONS_CELLS_MASK 0x00f0
 #define POSSESSIONS_SHOWN 0x0400
 #define POSSESSIONS_LOW_KIND 1

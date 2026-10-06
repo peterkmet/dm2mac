@@ -72,8 +72,6 @@
 #define DOOR_STATE_BROKEN 5
 #define DOOR_HEIGHT_PASSABLE_SHIFT 6    /* creature flags bits 6-7: how far a door may be closed for the creature */
 #define TELEPORTER_TARGET_KIND_SHIFT 13
-#define STATIC_POSSESSIONS_SHOWN 0x400
-#define STATIC_POSSESSIONS_ALL 0x200
 
 /* Creature info words. */
 #define info_attack_range(i) ((i)->unknown_14 >> 12)
@@ -154,11 +152,8 @@ static const uint8_t after_command_table[60] = {
 #define SEARCH_LEVEL_BLOCKED 0xff
 #define SEARCH_DIRECTION_TAPS 0xb400    /* the feedback of the shift register of the first search direction */
 #define VISIT_BLOCKED 0xff              /* the search cannot enter the square */
-#define DISTANCE_NEXT_TO 0x80           /* distance map: a square next to a reached square */
-#define CELLS_ALL 0x0f                  /* a cell mask: all four cells */
 #define CELLS_NEAR 0x03                 /* ... the two cells on the near side */
 #define CELLS_FAR 0x0c
-#define POSSESSIONS_KIND_MASK 0x0f      /* static creature possessions word: the display kind */
 #define SLOPE_VERTICAL 0x80             /* line slope: the main delta is 0 */
 #define GROUP_ASLEEP 0x80               /* group record byte +0x0a */
 #define COMMAND_PAST_TABLE 0x14         /* the first command past the enabled table: it reads globals */

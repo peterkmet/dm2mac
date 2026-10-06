@@ -77,6 +77,7 @@ typedef struct __attribute__((packed)) {
 _Static_assert(sizeof(AiCandidate) == 22, "the candidates of SKULL.EXE have 22 bytes");
 
 #define AI_CANDIDATE_MAX 16
+#define SHIFT_COUNT_MASK 0x1f       /* the x86 shift uses the low 5 bits of the count */
 #define FOUND_NONE 0xffff           /* a candidate or plan state without a found thing or marker */
 #define AI_PATH_MAX 0x31
 #define AI_PATH_BYTES 0x64          /* a path buffer: 2 bytes per step */
@@ -164,6 +165,8 @@ extern AiSquare ai_square;
 
 /* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
 typedef struct { int16_t map, width; uint8_t cells[32 * 32]; } DistanceMap;
+#define DISTANCE_NEXT_TO 0x80
+#define DISTANCE_FAR 0x7f
 extern DistanceMap party_distance, alt_distance;
 
 uint8_t ai_action_flag(int8_t action);
