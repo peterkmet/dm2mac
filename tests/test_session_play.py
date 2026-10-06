@@ -69,7 +69,7 @@ def click_slot(slot):
         rect = (ctypes.c_int16 * 4)()
         assert lib.zone_get_rect(0x1C3, rect)
         vx, vy = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(7, ctypes.byref(vx), ctypes.byref(vy))
+        lib.zone_get_position(InputMatch.in_dll(lib, "input_match").origin, ctypes.byref(vx), ctypes.byref(vy))
         lib.input_mouse_click(x, rect[1] + vy.value + slot * 7 + 3, 2)
     return act
 
