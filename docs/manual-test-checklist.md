@@ -227,6 +227,17 @@ Details: `docs/advanced-mode.md`.
 - [ ] L10. Load a slot, play more than 100 ticks, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
 - [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
 - [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla or advanced" and exit code 2.
+- [ ] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, the direction, and the three cheats OFF. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.
+- [ ] L14. Walk through some rooms and open the automap. Expected: the squares that the view showed are drawn with the minion map icons; squares behind walls and closed doors stay black.
+- [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the close).
+- [ ] L16. Drag the automap with the left mouse button. Expected: the map moves in whole squares and stops at the map edges; after a close and a new open, the party is in the middle again.
+- [ ] L17. Press I, F, and L with the automap open. Expected: each readout line changes to ON and back to OFF. Press I, F, and L in the dungeon view. Expected: no cheat changes.
+- [ ] L18. Turn I on, close the automap, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
+- [ ] L19. Turn F on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
+- [ ] L20. In a dark place, turn L on and close the automap. Expected: the dungeon view shows full light.
+- [ ] L21. Turn the cheats on, then press F9 after a quick save. Expected: the readout shows all cheats OFF.
+- [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
+- [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
 
 ## Known deviations
 
