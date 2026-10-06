@@ -57,6 +57,8 @@
 #define CURSOR_H 16
 #define FACE_SIZE 17
 #define FACE_CURSOR_SKIP 4  /* color 4 of the face keeps the fill color of the dragged champion cursor */
+#define FACE_HOT_X 8
+#define FACE_HOT_Y 6
 #define OBJECT_SHADOW 2     /* the offset of the black shadow of the held object cursor */
 #define OBJECT_CURSOR_SIZE (HAND_ICON_SIZE + OBJECT_SHADOW)
 
@@ -611,7 +613,8 @@ CursorImage input_cursor_image(int cursor)
                              HAND_ICON_SIZE / 2, HAND_ICON_SIZE / 2, key};
     }
     case CURSOR_CHAMPION:
-        return (CursorImage){champion_cursor, NULL, 8, FACE_SIZE, FACE_SIZE, 8, 6, champion_cursor_key};
+        return (CursorImage){champion_cursor, NULL, 8, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
+                             champion_cursor_key};
     default: return (CursorImage){cursor_arrow, ui_colors, 4, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
     }
 }
