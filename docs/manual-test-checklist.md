@@ -220,9 +220,9 @@ Do not report these documented deviations as bugs. Details are in `docs/skull-fo
 - No DOS layer: no disk, drive, or memory dialogs; menus and dialogs wait without busy loops (section 14).
 - `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).
 - RESTART starts the program again; the dialog texts show the last folder of the `--data` path in capitals as the drive path (section 14).
-- The leader hand object shows as the cursor only over the cursor zones where the original shows it; menus and dialogs show no object icon. The hand image (1) and the dragged champion image (3) are not drawn yet: the system cursor shows there (section 13).
+- The port hides the system cursor and draws the original cursor images: the arrow, the hand, the held object with its shadow, and the dragged champion. The held object shows only over the cursor zones where the original shows it; menus and dialogs show no object icon. The original cursor in menus and dialogs is unverified (section 13).
 - The mouth or eye held with an empty hand is not ported (section 13).
-- No cursor shape changes and no mouse drag through a fake wall (section 10).
+- The enter and leave events of the cursor zones and the mouse drag through a fake wall are not ported (section 10).
 - The walking frame stretch uses nearest neighbour; its exact rounding is unverified (section 10).
 - The pit fall view shows at the next screen update, not in the middle of the step (section 10).
 - The message area scroll by 7 pixels is a port reconstruction (section 9).
