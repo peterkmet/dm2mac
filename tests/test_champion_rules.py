@@ -191,9 +191,43 @@ POTION, MISC = 8, 10
 REPEATING_WEAPON = 14  # its third action repeats
 # Item kinds (GDAT indices) with actions, by thing type.
 ACTION_ITEMS = {WEAPON: [0, 1, 2, 3, 4, 5, 6, 8, 14, 17, 41, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44],
-                CLOTHING: [28, 29, 30, 31, 42, 47, 52], MISC: [1, 29, 30, 31, 32, 34, 43, 45]}
-# Not the attack and guard minions (63, 64): their minion carries the item as its link, and the original save reads
-# the container order of that link past the end of its table (the port writes 0); the save files would differ.
+                CLOTHING: [28, 29, 30, 31, 42, 47, 52], MISC: [1, 29, 30, 31, 32, 34, 43, 45, 63, 64]}
+SAVE_WRITE_DEFERRED_THINGS, G_SAVE_DEFERRED_COUNT = 0x34797, 0x75310
+G_SAVE_DEFERRED_THINGS, G_SAVE_CONTAINER_REMAP = 0x7F8E4, 0x7F8EC
+CONTAINER, PROJECTILE = 9, 14
+
+
+def zero_minion_links(rules):
+    """The minion of an attack or guard minion item (63, 64) carries the item as its link: the original save writes
+    the container order of that link from past the end of its table, the port writes 0 (skull-formats.md section 13).
+    While the original writes the links, the table entries past its end are 0; the dict keeps their values for
+    restore_minion_links."""
+    from unicorn import UC_HOOK_CODE
+    emu, lib = rules.emu, rules.lib
+    saved = {}
+
+    def hook(*_):
+        try:
+            things, remap = emu.read_u32(G_SAVE_DEFERRED_THINGS), emu.read_u32(G_SAVE_CONTAINER_REMAP)
+            for i in range(struct.unpack("<h", emu.read(G_SAVE_DEFERRED_COUNT, 2))[0]):
+                t = struct.unpack("<H", emu.read(things + 2 * i, 2))[0]
+                if t >> 10 & 15 != PROJECTILE:
+                    continue
+                target = struct.unpack("<H", emu.read(rules.record(t)[1] + 2, 2))[0] & 0x3FF
+                if target >= lib.dungeon_thing_count(CONTAINER):
+                    saved.setdefault(remap + 2 * target, emu.read(remap + 2 * target, 2))
+                    emu.write(remap + 2 * target, b"\0\0")
+        except Exception as e:  # exceptions do not cross the Unicorn callbacks
+            emu._fail(f"minion links: {e!r}")
+
+    emu.uc.hook_add(UC_HOOK_CODE, hook, begin=SAVE_WRITE_DEFERRED_THINGS, end=SAVE_WRITE_DEFERRED_THINGS)
+    return saved
+
+
+def restore_minion_links(rules, saved):
+    for addr, data in reversed(saved.items()):
+        rules.emu.write(addr, data)
+    saved.clear()
 
 
 class ActionState(ctypes.Structure):
@@ -247,6 +281,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
                     t = lib.dungeon_next_thing(t)
     action_state = ActionState.in_dll(lib, "action")
     emu.write(G_ACTION_THING, struct.pack("<H", 0xFFFF))  # the port starts without an action item
+    saved_links, minion_links = zero_minion_links(rules), 0
     performed = consumed = 0
     commands = set()
     repeats = 0
@@ -327,8 +362,10 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
         assert_same_actions(rules, (n, kind))
         if n % 100 == 99:
             scenario.assert_equal(n)
-    assert performed > 150 and consumed > 150 and len(commands) > 20 and repeats > 2, (
-        performed, consumed, sorted(commands), repeats)
+            minion_links += len(saved_links)
+            restore_minion_links(rules, saved_links)
+    assert performed > 150 and consumed > 150 and len(commands) > 20 and repeats > 2 and minion_links, (
+        performed, consumed, sorted(commands), repeats, minion_links)
 
 
 MONEY_INIT_COIN_TABLE, ITEM_CREATE_BY_INDEX, MONEY_ADD_COIN_TO_BOX = 0x154E0, 0x1DE8E, 0x1F413
@@ -420,7 +457,7 @@ def test_money_and_prices_match_original(rules, lib):
     scenario.assert_equal("end")
 
 
-ITEM_GET_VALUE, CONTAINER = 0x1F8A7, 9
+ITEM_GET_VALUE = 0x1F8A7
 
 
 def test_item_value_matches_original(rules, lib):
