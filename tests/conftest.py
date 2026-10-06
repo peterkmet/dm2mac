@@ -1,4 +1,5 @@
 import ctypes
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -32,6 +33,9 @@ def pytest_sessionfinish(session, exitstatus):
         f.write(git("rev-parse", "HEAD^{tree}") + "\n")
 
 
-@pytest.fixture(scope="session")
-def lib():
-    return ctypes.CDLL(str(ROOT / "build" / "libdm2.dylib"))
+@pytest.fixture(scope="module")
+def lib(tmp_path_factory):
+    # a copy per test module gives each module fresh globals; dlopen of one path returns one shared image
+    path = tmp_path_factory.mktemp("lib") / "libdm2.dylib"
+    shutil.copyfile(ROOT / "build" / "libdm2.dylib", path)
+    return ctypes.CDLL(str(path))
