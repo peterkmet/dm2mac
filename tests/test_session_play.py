@@ -155,6 +155,19 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
         assert (session.slot, session.loaded) == (0, 0)
 
 
+def test_hide_game_view_cancels_the_champion_drag(lib):
+    # The original ui_hide_game_view cancels a champion drag inside its guard (SKULL.c:54260).
+    drag = ctypes.c_int.in_dll(lib, "input_drag_state")
+    hidden = ctypes.c_int.from_address(ctypes.addressof(main_loop_quit(lib)) - 8)  # MainLoop.view_hidden
+    DialogState.in_dll(lib, "dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
+    lib.ui_hide_game_view()
+    assert (hidden.value, drag.value) == (1, 0)
+    drag.value = 1
+    lib.ui_hide_game_view()  # already hidden: the guard keeps the drag
+    assert drag.value == 1
+    drag.value = hidden.value = 0
+
+
 def test_end_sensor_completes_the_game(play, lib):
     # The wall sensor of the end (kind 0x12, map 38) in both: the game is complete and the program ends (exit code 1).
     sc = play
