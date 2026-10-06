@@ -878,8 +878,8 @@ void champ_draw_state(int champ)
                 draw_inventory_button(PANEL_BUTTON_CLOSE, ZONE_BUTTON_CLOSE, BUTTON_CLOSE);
                 flags |= REDRAW_NAME;
             }
-            if (buttons_changed & BUTTON_SLEEP) draw_inventory_button(PANEL_BUTTON_SLEEP, ZONE_BUTTON_SLEEP, BUTTON_SLEEP);
-            if (buttons_changed & BUTTON_SAVE) draw_inventory_button(PANEL_BUTTON_SAVE, ZONE_BUTTON_SAVE, BUTTON_SAVE);
+            if (buttons_changed & BUTTON_SLEEP) draw_inventory_button(PANEL_BUTTON_SLEEP, ZONE_BUTTON_SAVE, BUTTON_SLEEP);
+            if (buttons_changed & BUTTON_SAVE) draw_inventory_button(PANEL_BUTTON_SAVE, ZONE_BUTTON_SLEEP, BUTTON_SAVE);
         }
         if (buttons_changed & BUTTON_EXIT) draw_inventory_button(PANEL_BUTTON_EXIT, ZONE_BUTTON_EXIT, BUTTON_EXIT);
         present = 1;
