@@ -368,6 +368,24 @@ def test_cursor_images_match_original(port, original):
         emu.write(G_LEADER_HAND, b"\xff\xff")
 
 
+def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
+    # input_draw_cursor: the image pixels except the clear color, in palette colors, clipped at the screen edges.
+    lib = port
+    lib.input_cursor_image.restype = CursorImage
+    for x, y in ((0, 0), (319, 199), (160, 100)):
+        c = lib.input_cursor_image(lib.input_cursor_at(x, y))
+        screen = bytearray(range(256)) * 250
+        fb = (ctypes.c_uint8 * len(screen)).from_buffer_copy(screen)
+        lib.input_draw_cursor(fb, x, y)
+        expected = bytearray(screen)
+        for i in range(c.width * c.height):
+            n = c.bits[i // 2] >> (0 if i & 1 else 4) & 0xF if c.bpp == 4 else c.bits[i]
+            sx, sy = x - c.hot_x + i % c.width, y - c.hot_y + i // c.width
+            if n != c.key and 0 <= sx < 320 and 0 <= sy < 200:
+                expected[sy * 320 + sx] = c.palette[n] if c.palette else n
+        assert bytes(fb) == bytes(expected), (x, y)
+        assert bytes(fb) != screen, (x, y)
+
 
 G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
     0x7FB50, 0x7FB4E, 0x757B8, 0x7FB5E, 0x7F234)

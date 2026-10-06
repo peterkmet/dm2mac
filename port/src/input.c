@@ -24,6 +24,7 @@
 #include "session.h"
 #include "text.h"
 #include "ui.h"
+#include "video.h"
 #include "view.h"
 #include "zone.h"
 
@@ -613,6 +614,18 @@ CursorImage input_cursor_image(int cursor)
         return (CursorImage){champion_cursor, NULL, 8, FACE_SIZE, FACE_SIZE, 8, 6, champion_cursor_key};
     default: return (CursorImage){cursor_arrow, ui_colors, 4, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
     }
+}
+
+void input_draw_cursor(uint8_t *dst, int x, int y)
+{
+    CursorImage c = input_cursor_image(input_cursor_at(x, y));
+    for (int cy = 0; cy < c.height; cy++)
+        for (int cx = 0; cx < c.width; cx++) {
+            int sx = x - c.hot_x + cx, sy = y - c.hot_y + cy, i = cy * c.width + cx;
+            if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
+            int n = c.bpp == 4 ? (c.bits[i / 2] >> (i & 1 ? 0 : 4)) & 0xf : c.bits[i];
+            if (n != c.key) dst[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
+        }
 }
 
 void input_set_mode(int mode)

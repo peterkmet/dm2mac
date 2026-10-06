@@ -56,6 +56,8 @@ typedef struct {
 } CursorImage;
 /* The image of a cursor of input_cursor_at. */
 CursorImage input_cursor_image(int cursor);
+/* Draws the cursor image of input_cursor_at(x, y) with its hot spot at (x, y) into the screen dst. */
+void input_draw_cursor(uint8_t *dst, int x, int y);
 /* Draws the face of champ into the dragged champion cursor (champ_drag_click). */
 void input_set_champion_cursor(int champ);
 /* The current input mode. */

@@ -30,15 +30,8 @@ static void present_with_cursor(void)
     static uint8_t saved[SCREEN_H][SCREEN_W];
     int mx, my;
     plat_mouse_position(&mx, &my);
-    CursorImage c = input_cursor_image(input_cursor_at(mx, my));
     memcpy(saved, fb, sizeof saved);
-    for (int y = 0; y < c.height; y++)
-        for (int x = 0; x < c.width; x++) {
-            int sx = mx - c.hot_x + x, sy = my - c.hot_y + y, i = y * c.width + x;
-            if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
-            int n = c.bpp == 4 ? (c.bits[i / 2] >> (i & 1 ? 0 : 4)) & 0xf : c.bits[i];
-            if (n != c.key) fb[sy][sx] = c.palette ? c.palette[n] : (uint8_t)n;
-        }
+    input_draw_cursor(&fb[0][0], mx, my);
     plat_present();
     memcpy(fb, saved, sizeof saved);
 }
