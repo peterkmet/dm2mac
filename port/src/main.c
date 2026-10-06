@@ -162,6 +162,9 @@ int main(int argc, char **argv)
         plat_wait_tick();
     }
     plat_quit();
-    if (session.exit_code == EXIT_RESTART) execv(argv[0], argv);  /* the DOS launcher starts the game again */
+    if (session.exit_code == EXIT_RESTART) {
+        execvp(argv[0], argv);  /* the DOS launcher starts the game again */
+        fprintf(stderr, "cannot restart %s\n", argv[0]);
+    }
     return session.exit_code;
 }
