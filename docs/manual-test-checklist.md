@@ -205,7 +205,7 @@ Do not report these documented deviations as bugs. Details are in `docs/skull-fo
 - No intro, ending movie, or credits; a completed game ends the program with exit code 1 (PRD scope; section 14).
 - No DOS layer: no disk, drive, or memory dialogs; menus and dialogs wait without busy loops (section 14).
 - `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).
-- RESTART starts the program again; the dialog texts show the `--data` folder in capitals as the drive path (section 14).
+- RESTART starts the program again; the dialog texts show the last folder of the `--data` path in capitals as the drive path (section 14).
 - The leader hand object shows as the cursor only over the cursor zones where the original shows it; menus and dialogs show no object icon. The hand image (1) and the dragged champion image (3) are not drawn yet: the system cursor shows there (section 13).
 - The mouth or eye held with an empty hand is not ported (section 13).
 - No cursor shape changes and no mouse drag through a fake wall (section 10).
