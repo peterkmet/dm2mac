@@ -335,12 +335,11 @@ def test_cursor_images_match_original(port, original):
 
     hooks = [emu.stub(MOUSE_SET_CURSOR_IMAGE, capture, stack_args=5), emu.stub(IOP_INSTALL_INPUT_ISR, lambda *_: 0),
              emu.stub(MOUSE_SET_DEFAULT_CURSOR, lambda *_: 0), emu.stub(MEM_ALLOC_IMAGE, alloc_image)]
-    saved_icon = None
+    saved_icon = emu.read(G_HAND_ICON_BITMAP, 4)
     try:
         emu.call(INPUT_INIT, allow_io=True)
         assert port_image(CURSOR_ARROW) == images[0]
         assert port_image(CURSOR_HAND) == images[1]
-        saved_icon = emu.read(G_HAND_ICON_BITMAP, 4)
         emu.write(G_HAND_ICON_BITMAP, struct.pack("<I", alloc_image(HAND_ICON_SIZE, HAND_ICON_SIZE, 0, 4)))
         objects = set()
         for thing in [t for kind in (5, 6, 8, 10) for t in things_of(lib, kind, 2)]:
@@ -381,29 +380,31 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
     lib.input_init()
     Game.in_dll(lib, "game").leader = 0
     lib.champ_put_object_in_leader_hand(thing, 0)
-    lib.input_set_mode(5)
-    zone = [(x, y) for y in range(200) for x in range(320) if lib.input_cursor_at(x, y) == CURSOR_OBJECT]
-    assert zone
-    near_left = min(zone, key=lambda p: p[0])
-    assert near_left[0] < 8  # the left clip runs
-    middle = zone[len(zone) // 2]
-    for x, y in ((0, 0), (319, 199), (160, 100), (0, near_left[1]), near_left, middle):
-        kind = lib.input_cursor_at(x, y)
-        if (x, y) in (near_left, middle):
-            assert kind == CURSOR_OBJECT, (x, y)
-        c = lib.input_cursor_image(kind)
-        screen = bytearray(range(256)) * 250
-        fb = (ctypes.c_uint8 * len(screen)).from_buffer_copy(screen)
-        lib.input_draw_cursor(fb, x, y)
-        expected = bytearray(screen)
-        for i in range(c.width * c.height):
-            n = c.bits[i // 2] >> (0 if i & 1 else 4) & 0xF if c.bpp == 4 else c.bits[i]
-            sx, sy = x - c.hot_x + i % c.width, y - c.hot_y + i // c.width
-            if n != c.key and 0 <= sx < 320 and 0 <= sy < 200:
-                expected[sy * 320 + sx] = c.palette[n] if c.palette else n
-        assert bytes(fb) == bytes(expected), (x, y)
-        assert bytes(fb) != screen, (x, y)
-    lib.champ_remove_object_from_leader_hand()
+    try:
+        lib.input_set_mode(5)
+        zone = [(x, y) for y in range(200) for x in range(320) if lib.input_cursor_at(x, y) == CURSOR_OBJECT]
+        assert zone
+        near_left = min(zone, key=lambda p: p[0])
+        assert near_left[0] < 8  # the left clip runs
+        middle = zone[len(zone) // 2]
+        for x, y in ((0, 0), (319, 199), (160, 100), (0, near_left[1]), near_left, middle):
+            kind = lib.input_cursor_at(x, y)
+            if (x, y) in (near_left, middle):
+                assert kind == CURSOR_OBJECT, (x, y)
+            c = lib.input_cursor_image(kind)
+            screen = bytearray(range(256)) * 250
+            fb = (ctypes.c_uint8 * len(screen)).from_buffer_copy(screen)
+            lib.input_draw_cursor(fb, x, y)
+            expected = bytearray(screen)
+            for i in range(c.width * c.height):
+                n = c.bits[i // 2] >> (0 if i & 1 else 4) & 0xF if c.bpp == 4 else c.bits[i]
+                sx, sy = x - c.hot_x + i % c.width, y - c.hot_y + i // c.width
+                if n != c.key and 0 <= sx < 320 and 0 <= sy < 200:
+                    expected[sy * 320 + sx] = c.palette[n] if c.palette else n
+            assert bytes(fb) == bytes(expected), (x, y)
+            assert bytes(fb) != screen, (x, y)
+    finally:
+        lib.champ_remove_object_from_leader_hand()
 
 
 G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
