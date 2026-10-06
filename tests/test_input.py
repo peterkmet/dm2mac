@@ -256,6 +256,23 @@ def test_clicks_on_the_movement_arrows(session, lib):
     assert (game.party_x, game.party_y) != (x, y)
 
 
+def test_save_start_computes_the_party_light(lib, gdat, start, tmp_path):
+    # build/dm2 --save starts start.DAT as the menu load does: the first view has the party light of the save, not the
+    # light level of the program start.
+    path = tmp_path / "SKSAVE0.DAT"
+    path.write_bytes(start)
+    assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
+    lib.draw_init(gdat)
+    lib.input_init()
+    level = ctypes.c_int.in_dll(lib, "view_light_level")
+    level.value = -1
+    ctypes.c_int16.in_dll(lib, "last_party_map").value = -1  # the program start
+    assert lib.game_start_save(str(path).encode()) == 1
+    loaded = level.value
+    lib.light_update_party_light()
+    assert loaded == level.value == 1
+
+
 # The original main loop (game_loop) in parts: the timer interrupt body, one pass of the input wait (the wall drag
 # check and command_process_queue), the end of a step, and a step up to the input wait.
 TIMER_ISR_BODY, TIMER_ISR_END = 0x10CD1, 0x10D07
