@@ -328,7 +328,7 @@ static void draw_things(const ViewSquare *s, uint16_t map_thing, int dir, int x,
 static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int x, int y, int icon_set, int flags)
 {
     ViewSquare s;
-    dun_get_square_aspect(&s, party.cur_map, dir, sx, sy);
+    dun_get_square_aspect(&s, dir, sx, sy);
     Strip base = map_icon_strip(CAT_MAP_ICONS, icon_set);
     if (flags & MAP_PARTY) {
         int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + ICON_W, GAP_Y * 2 + ICON_H}, dx, dy;
@@ -398,13 +398,13 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
         other_map = 1;
         saved_map = party.cur_map;
         dun_set_current_map(m);
-        dun_get_square_aspect(&s, party.cur_map, dir, sx, sy);
+        dun_get_square_aspect(&s, dir, sx, sy);
     }
     if (other_map) {
         sx = saved_x;
         sy = saved_y;
         dun_set_current_map(saved_map);
-        dun_get_square_aspect(&s, party.cur_map, dir, sx, sy);
+        dun_get_square_aspect(&s, dir, sx, sy);
     }
     /* an open pit in the level above shows as a hole in the ceiling */
     int ax = sx, ay = sy;

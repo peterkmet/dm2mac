@@ -6,6 +6,7 @@
 #include "random.h"
 #include "save.h"
 #include "timeline.h"
+#include "weather.h"
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
    of the bit stream stores only the bits that its mask table selects, most significant bit first.
@@ -698,6 +699,7 @@ static int read_state(void)
     uint8_t record[GAME_RECORD_SIZE];
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE)
                   + dungeon_thing_count(THING_EXPLOSION));
+    weather_load(io.gdat);  /* the weather part of the original dungeon_load; the record then sets the weather */
     if (!read_packed(record, game_record_mask, GAME_RECORD_SIZE, 1, 0)) return 0;
     unpack_game_record(record);
     if (game.champion_count > CHAMPION_MAX || timeline.count > timeline.capacity) return 0;

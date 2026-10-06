@@ -15,6 +15,7 @@
 #include "save.h"
 #include "sensor.h"
 #include "view.h"
+#include "weather.h"
 
 #define CAT_WALLSET 8
 #define CAT_ORNAMENT 9
@@ -185,7 +186,6 @@ static const uint8_t after_command_table[60] = {
 #define PATH_CHECK_COMMAND 0
 
 AiSquareScan ai_square_scan;
-int16_t light_source_sum, explosion_light_sum;
 int16_t cached_light_sum = -1, cached_explosion_light_sum = -1, last_party_map = -1;
 uint16_t search_direction_bits = 1;
 
@@ -1434,7 +1434,7 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
 #define FILTER_BY_VARIANT 0x10          /* filters 0x10 to 0x12: one set for each of three variants of the group */
 #define FILTER_BY_VARIANT_END 0x13
 #define FILTER_MONEYBOX_OR_VARIANT 0x28
-#define FILTER_BITMAP_SIZE 0x40
+#define FILTER_BITMAP_SIZE ITEM_CLASS_SET_SIZE
 #define FILTER_TEXT_ENTRY 0x10          /* GDAT text (creature type, entry filter + 0x10): the item classes */
 #define CLASS_TEXT_SIZE 0x80
 #define MONEYBOX_EMPTY 0x04             /* container record byte 7 */
@@ -1912,7 +1912,7 @@ static int test_entered(Search *s, int i)
     }
     case TARGET_MOVE_TEST: return creature_ai_try_move((uint8_t)c->item, x, y, x, y, -1);
     case TARGET_LIGHT:
-        if (ai_square.square & SQUARE_HAS_THINGS) light_add_square_light(s->dist, s->dir == -1 ? game.party_dir : s->dir, x, y, 3);
+        if (ai_square.square & SQUARE_HAS_THINGS) light_add_square_light(s->dist, s->dir == -1 ? game.party_dir : s->dir, x, y, LIGHT_FLOOR | LIGHT_CREATURES);
         return 0;
     case TARGET_AI_MARKER: {
         if (!(ai_square.square & SQUARE_HAS_THINGS)) return 0;
@@ -2001,7 +2001,7 @@ static int test_blocked(Search *s, int i)
     }
     case TARGET_LIGHT:
         if (ai_square.square & SQUARE_HAS_THINGS) {
-            light_add_square_light(s->dist, s->dir, x, y, 4);
+            light_add_square_light(s->dist, s->dir, x, y, LIGHT_WALLS);
             s->visit = VISIT_BLOCKED;
         }
         return 0;

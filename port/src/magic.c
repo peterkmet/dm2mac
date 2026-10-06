@@ -14,6 +14,7 @@
 #include "random.h"
 #include "sensor.h"
 #include "ui.h"
+#include "weather.h"
 
 #define SPELL_COUNT 34
 #define SPELL_KIND_MASK 0x0f

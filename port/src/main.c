@@ -56,7 +56,6 @@ static int show_save(const char *data, const char *path)
     }
     for (int c = 0; c < PALETTE_COLORS; c++) gdat_palette_color(gdat, c, palette[c]);
     draw_init(gdat);
-    view_enter_map(game.party_map);
     ui_reset();
     money_init_coin_table();
     ui_draw_game_screen();

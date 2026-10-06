@@ -27,7 +27,7 @@ enum anchor {
 int16_t zone_clip_rect[RECT_SIZE];
 
 /* The view part that stays visible while the party walks. */
-static const int16_t walk_view_rect[RECT_SIZE] = {21, 8, 182, 110};
+const int16_t walk_view_rect[RECT_SIZE] = {21, 8, 182, 110};
 
 static struct {
     int count;
@@ -264,4 +264,14 @@ void zone_set_clip_margins(int left, int top, int right, int bottom)
     zone_clip_rect[RECT_Y] = (int16_t)top;
     zone_clip_rect[RECT_W] = (int16_t)(VIEWPORT_WIDTH - right - left);
     zone_clip_rect[RECT_H] = (int16_t)(VIEWPORT_HEIGHT - bottom - top);
+}
+
+int zone_interpolate_offset(int from, int to, int percent, int16_t *dx, int16_t *dy)
+{
+    const int16_t *a = find_zone(from), *b = find_zone(to);
+    if (!a || !b) return -1;
+    percent = percent < 0 ? 0 : percent > 100 ? 100 : percent;
+    *dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / 100);
+    *dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / 100);
+    return 0;
 }

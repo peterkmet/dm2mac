@@ -25,6 +25,8 @@ int sound_party_offset(int x, int y, int party_x, int party_y, int party_dir, in
 void sound_volume_pan(uint8_t volume, int8_t lateral, int8_t forward, int *loudness, int *pan);
 /* Starts a sound in the first free voice; returns 0 when all voices play. */
 int sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward);
+/* Stops all voices. */
+void sound_stop_all(void);
 /* Adds the playing voices to frames of interleaved stereo at SOUND_OUTPUT_RATE. */
 void sound_mix(int16_t *stereo, int frames);
 

@@ -1,6 +1,7 @@
 #ifndef HOOKS_H
 #define HOOKS_H
 #include <stdint.h>
+#include "sound_request.h"
 #include "timeline.h"
 #include "projectile.h"
 
@@ -26,6 +27,8 @@ void champ_poison(int champ, int amount);
 int champ_get_dexterity(int champ);                                              /* returns 0 */
 int champ_test_luck(int champ, int chance);                                      /* returns 0: no luck */
 int champ_get_stat_adjusted_attack(int champ, int stat, int attack);             /* returns 0 */
+/* A champion comes back from the bones that a sensor took (Step 15). */
+void champ_revive(int champ);
 uint16_t champ_remove_object_from_leader_hand(void);                            /* returns THING_NONE */
 void champ_put_object_in_leader_hand(uint16_t thing, int flag);
 uint16_t item_create_by_index(int item);
@@ -46,6 +49,8 @@ void champ_add_object_to_slot(int champ, uint16_t thing, int slot);
 uint16_t item_get_value(uint16_t thing);
 uint16_t champ_remove_object_from_slot(int champ, int slot);                                        /* returns THING_NONE */
 void champ_start_recruit(int x, int y, int map);
+/* A wall sensor (kind 0x3c) creates the item of its data and sends it to its target. */
+void sensor_create_item(const TimelineEvent *e, uint16_t sensor);
 /* The clicks in the view with an object in the hand or on objects (Step 15): returns 1 when done. */
 void view_click_take_object(int x, int y);
 int view_click_place_object(int x, int y, int square_x, int square_y, int cell_from, int cell, int kind);
@@ -57,21 +62,6 @@ int shop_cmd_wait_for_offer(void);
 int shop_cmd_evaluate_offer(void);
 int shop_cmd_count_payment(void);
 int shop_cmd_pay_change(void);
-
-/* Step 17: weather, day and night. */
-void world_update_day_night(int step);
-void light_update_party_light(void);
-/* The light of a square that a creature sees, by distance and direction (mode 3: a wall, mode 4: a floor). */
-void light_add_square_light(int distance, int dir, int x, int y, int mode);
-/* Skullkeep machines: sensors that move or create objects (kinds 0x3b, 0x3c, 0x40, 0x47, 0x48, 0x49). */
-void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, int kind);
-
-/* Step 18: sound effects. */
-void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority,
-                              int volume);
-void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay);
-void sound_flush_requests(int queue);
-void sound_play_delayed(int index);
 
 /* Step 20: end of game. */
 void game_complete(void);

@@ -86,7 +86,6 @@ typedef struct {
 extern AiSquareScan ai_square_scan;
 
 /* The light sums of the light search (Step 17 moves them to its module). */
-extern int16_t light_source_sum, explosion_light_sum;
 extern int16_t cached_light_sum, cached_explosion_light_sum, last_party_map;
 /* The state of the shift register that picks the first search direction (0x752e8 of SKULL.EXE). */
 extern uint16_t search_direction_bits;
@@ -112,6 +111,8 @@ uint16_t creature_find_wall_actuator_in_cell(uint16_t first_thing, int cell, int
 int creature_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state);
 int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
 int creature_thing_matches_filter(uint16_t thing, int filter);
+/* The bit set of the item indexes of an item class (GDAT text entry of a creature type). */
+#define ITEM_CLASS_SET_SIZE 0x40
 int shop_parse_item_class_set(int creature_type, int filter, uint8_t *bitset, int skip_containers);
 uint16_t creature_find_matching_item(int filter, uint16_t first_thing, int cell);
 void creature_remove_matching_items(uint16_t *list_head, int filter, int cell);
