@@ -11,13 +11,10 @@
 #define SQUARE_THING_SLACK 300
 #define THING_COUNT_MAX 0x400
 #define EXPLOSION_COUNT_MAX 0x300
-#define SQUARE_HAS_THINGS 0x10
 #define MAP_COUNT_MAX 255
-#define MAP_LEVEL_MASK 0x3f
 #define MAP_WIDTH_SHIFT 6
 #define MAP_WIDTH_MASK 0x1f
 #define MAP_HEIGHT_SHIFT 11
-#define THING_ID_MASK 0x3fff
 #define MISC_RESERVED 3          /* free misc records that only the forced creation of a misc item may use */
 #define TELEPORTER_X_MASK 0x1f
 #define TELEPORTER_Y_SHIFT 5

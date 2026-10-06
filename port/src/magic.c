@@ -129,6 +129,7 @@ static int iclamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v;
 
 /* The magic light: the light sum of the party spells (game.magic_light bytes 0 and 1). */
 static int16_t magic_light_get(void) { return (int16_t)(game.magic_light[0] | game.magic_light[1] << 8); }
+/* Adds delta to the light of the party spells. */
 static void magic_light_add(int delta)
 {
     uint16_t v = (uint16_t)(magic_light_get() + delta);
@@ -483,6 +484,7 @@ void magic_add_rune(int rune)
     if (added) champ_draw_state(action.champion - 1);
 }
 
+/* The champion who casts takes back the last rune. */
 void magic_remove_last_rune(void)
 {
     Champion *c = champion(action.champion - 1);

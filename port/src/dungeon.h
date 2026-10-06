@@ -30,6 +30,7 @@ enum square_type {
 #define SQUARE_FLAG_3 0x08              /* bit 3 of any square: one floor text ornament shows it */
 #define SQUARE_LEVEL_LINK 0x02          /* a square with a link to another level */
 #define SQUARE_FLAG_0 0x01              /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
+#define SQUARE_HAS_THINGS 0x10          /* bit 4 of any square: things lie on it */
 #define square_flag(s, bit) (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
 #define WALL_FACE(dir) (8 >> (dir))
@@ -40,6 +41,7 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 #define THING_ENDOFLIST 0xfffe
 #define LEVEL_COUNT 63
 #define LEVEL_LIST_END 0xff
+#define MAP_LEVEL_MASK 0x3f             /* the dungeon level in the map size word */
 
 /* A thing id: record index in bits 0-9, thing type in bits 10-13, cell in bits 14-15. */
 #define THING_TYPE_SHIFT 10
@@ -48,6 +50,20 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 #define THING_INDEX_MASK 0x3ff
 #define thing_index(t) ((t) & THING_INDEX_MASK)
 #define THING_CELL_SHIFT 14
+#define THING_ID_MASK 0x3fff            /* a thing id without its cell */
+#define CELL_ANY 0xff                   /* a cell argument: any cell */
+
+/* A location word: x bits 0-4, y bits 5-9, map bits 10-15. */
+#define LOCATION_COORD_MASK 0x1f
+#define LOCATION_Y_SHIFT 5
+#define LOCATION_MAP_SHIFT 10
+#define LOCATION_MAP_MASK 0x3f
+#define LOCATION_MAP_BITS 0xfc00
+#define location_x(w) ((w) & LOCATION_COORD_MASK)
+#define location_y(w) ((w) >> LOCATION_Y_SHIFT & LOCATION_COORD_MASK)
+#define location_map(w) ((w) >> LOCATION_MAP_SHIFT)
+#define location_pack(x, y, map) \
+    (((x) & LOCATION_COORD_MASK) | ((y) & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT | ((map) & LOCATION_MAP_MASK) << LOCATION_MAP_SHIFT)
 
 /* Byte offsets of thing record fields. Every record starts with the link to the next thing. */
 enum thing_field {
@@ -163,6 +179,15 @@ uint16_t dungeon_map_flags(int map);            /* bit 7 door type 0 present, bi
 uint16_t dungeon_map_ornament_counts(int map);  /* wall bits 0-3, random wall 4-7, floor 8-11, random floor 12-15 */
 uint16_t dungeon_map_object_counts(int map);    /* door ornaments bits 0-3, creature types bits 4-7 */
 uint16_t dungeon_map_graphics(int map);         /* graphics set bits 4-7, door types bits 8-11 and 12-15 */
+#define MAP_HAS_DOOR_TYPE_0 0x0080
+#define MAP_HAS_DOOR_TYPE_1 0x0100
+#define MAP_WALLSET_SHIFT 4
+#define MAP_DOOR_TYPE_SHIFT 8       /* door type 0; door type 1 follows 4 bits higher */
+#define MAP_DOOR_TYPE_1_SHIFT 12
+#define MAP_NIBBLE_MASK 0xf
+#define DOOR_TYPE_NONE 0xff
+/* The wall set (graphics set) of map. */
+#define dungeon_map_wallset(map) (dungeon_map_graphics(map) >> MAP_WALLSET_SHIFT & MAP_NIBBLE_MASK)
 /* The creature types of map (count in dungeon_map_object_counts bits 4-7). */
 const uint8_t *dungeon_map_creature_types(int map);
 /* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */

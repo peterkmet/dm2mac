@@ -22,7 +22,11 @@ int missile_from_sensor;
 #define PROJECTILE_ENERGY 4         /* record byte: the range and power left */
 #define PROJECTILE_HIT_CHANCE 5     /* record byte */
 #define CELL_MASK 3
-#define THING_ID_MASK 0x3fff
+#define POSITION_SQUARE_DIR 0x0fff  /* position word: x, y, and direction */
+#define EVENT_TIME_MASK 0xffffff    /* event time_map: the game time below the map byte */
+/* A coordinate above a byte: the low byte is the square, the high byte the stop square + 1. */
+#define COORD_STOP_SHIFT 8
+#define COORD_STOP_ONE 0x100
 
 /* Explosion types (EXPLOSION_DATA bits 0-6). */
 enum {
@@ -32,12 +36,16 @@ enum {
 #define BLAST_TYPE_COUNT 8          /* the explosion types with an attack */
 /* What an explosion type attacks: bit 0 random power, 1 doors, 2 the party, 3 creatures. */
 enum { BLAST_RANDOM = 1, BLAST_DOORS = 2, BLAST_PARTY = 4, BLAST_CREATURES = 8 };
-static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {0x0b, 0x00, 0x0b, 0x09, 0x00, 0x00, 0x00, 0x0c};
+static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
+    BLAST_RANDOM | BLAST_DOORS | BLAST_CREATURES, 0, BLAST_RANDOM | BLAST_DOORS | BLAST_CREATURES, BLAST_RANDOM | BLAST_CREATURES, 0, 0, 0,
+    BLAST_PARTY | BLAST_CREATURES
+};
 #define POISON_CLOUD_DECAY 3        /* power that a poison cloud loses per step */
 #define POISON_CLOUD_LAST 0x600     /* a poison cloud lasts while its power word part is at least this */
 #define DEATH_CLOUD_DECAY 0x28
 #define DEATH_CLOUD_LAST 0x3700
 #define SMOKE_DURATION 5
+#define EXPLOSION_POWER_BITS 0xff00
 
 #define CAT_EXPLOSION 0x0d
 #define CAT_CHAMPION 0x16
@@ -46,6 +54,12 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {0x0b, 0x00, 0x0
 #define SOUND_EXPLODE 0x81
 #define SOUND_HURT 0x82
 #define SOUND_ANY 0xfe
+#define SOUND_PRIORITY_LAUNCH 0x6e
+#define SOUND_PRIORITY_EXPLODE 0x6c
+#define SOUND_PRIORITY_HURT 0x69
+#define SOUND_VOLUME_NORMAL 0x80
+#define SOUND_VOLUME_LOUD 200
+#define SOUND_VOLUME_MAX 0xff
 
 /* Sensor types that react to projectiles and explosions. */
 #define SENSOR_PROJECTILE_HIT 0x22      /* the wall sensor of a cell triggers when an object hits it */
@@ -57,6 +71,13 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {0x0b, 0x00, 0x0
 #define SENSOR_EFFECT_SHIFT 3
 #define SENSOR_EFFECT_ALWAYS 0x18       /* effect bits: trigger with the inverted match */
 #define SENSOR_TARGET 6                 /* target word: cell bits 4-5, x bits 6-10, y bits 11-15 */
+#define TARGET_CELL_SHIFT 4
+#define TARGET_X_SHIFT 6
+#define TARGET_Y_SHIFT 11
+#define LAUNCH_ENERGY_SHIFT 4           /* missile launcher target word: energy bits 4-11, step bits 12-15 */
+#define LAUNCH_STEP_SHIFT 12
+#define STRONG_POWER 0xff               /* the explosion power that a strong-only sensor needs */
+#define STRONG_LIGHTNING_POWER 0x7f
 #define ORNAMENT_KEY_CATCH 0x13         /* ornament value: the alcove catches thrown objects */
 #define DOOR_KEY_GRATE 0x10             /* door value: objects and weak spells fly through the door */
 #define DOOR_BUTTON 0x0040
@@ -90,12 +111,30 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {0x0b, 0x00, 0x0
 #define ATTACK_KIND_ANY_DEXTERITY 9         /* unknown_1c: melee attack kinds */
 #define ATTACK_KIND_ALWAYS_HITS 8
 #define DOOR_SIZE_MASK 3
+#define PUSH_BOUNCES 0xff                   /* push_resistance: objects bounce off the creature */
+#define SPELL_PUSH_MIN 0x28                 /* the strength of a push or pull spell */
+#define SPELL_PUSH_MAX 0xfe
+/* Random parts of the projectile attacks. */
+#define ROLL_POISON 0x7f                    /* poison weakens when this roll is above the energy */
+#define ROLL_GRATE 0x7f                     /* an object flies through a grate when its hit chance beats this roll */
+#define ROLL_DOUBLE_POWER 0x1ff             /* a thrown object hits twice as hard when its hit chance beats this roll */
+#define ROLL_SLIME 0x1f
+#define HIT_CHANCE_BONUS_BASE 0x20          /* a high hit chance doubles the attack above this - hit chance / 8 */
+#define ROLL_MELEE 0x1f
+#define ROLL_WOUND_LOCATION 0x70            /* all clear: the hit wounds the hands */
+#define VISIBILITY_INVISIBLE 0x10           /* the hit bonus against an invisible party */
+#define DEXTERITY_ALWAYS_HITS 0xff
+#define DEXTERITY_DODGE_MARGIN 0x10
+#define LUCK_DODGE 0x3c
 
 /* Projectile attack types (champ_take_damage). */
 enum { ATTACK_FIRE = 1, ATTACK_NORMAL = 3, ATTACK_THROWN = 4, ATTACK_MAGIC = 5, ATTACK_LIGHTNING = 7 };
 #define ATTACK_FACING 0x8000                /* the champion faces the projectile */
 #define WOUND_PROJECTILE 0x0c               /* the wounds of a projectile hit: head and torso */
 #define WOUND_EXPLOSION 0x3f
+#define WOUND_HEAD 0x04
+#define WOUND_TORSO 0x08
+#define WOUND_FEET 0x20
 
 /* Alert flags (creature_alert). */
 #define ALERT_HIT 0x200d
@@ -121,11 +160,13 @@ static void set_event_word(TimelineEvent *e, int at, uint16_t w)
     e->data[at + 1] = (uint8_t)(w >> 8);
 }
 
+/* True for the party square on the current map. */
 static int on_party_square(int x, int y)
 {
     return party.cur_map == party.square_map && x == party.square_x && y == party.square_y;
 }
 
+/* A thing at cell. */
 static uint16_t with_cell(uint16_t thing, int cell)
 {
     return (uint16_t)((thing & THING_ID_MASK) | (cell & CELL_MASK) << THING_CELL_SHIFT);
@@ -142,7 +183,7 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
         return;
     }
     sound_play_with_fallback(item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH, SOUND_ANY, (int16_t)x,
-                             (int16_t)y, 1, 0x6e, 0x80);
+                             (int16_t)y, 1, SOUND_PRIORITY_LAUNCH, SOUND_VOLUME_NORMAL);
     t = with_cell(t, cell);
     uint8_t *record = dungeon_thing_record(t);
     set_thing_word(t, PROJECTILE_PAYLOAD, payload);
@@ -153,7 +194,8 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
     TimelineEvent e = {.time_map = (game.game_time + 1) | (uint32_t)(uint8_t)party.cur_map << 24};
     e.type = missile_from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE;
     set_event_word(&e, 0, t);
-    set_event_word(&e, PROJECTILE_POSITION, (uint16_t)((x & 0x1f) | (y & 0x1f) << 5 | (dir & 3) << POSITION_DIR_SHIFT
+    set_event_word(&e, PROJECTILE_POSITION, (uint16_t)((x & LOCATION_COORD_MASK) | (y & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT
+                                                       | (dir & 3) << POSITION_DIR_SHIFT
                                                        | (step & 0xf) << POSITION_STEP_SHIFT));
     set_thing_word(t, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
 }
@@ -167,7 +209,8 @@ static void explosion_trigger_sensors(int type, int x, int y, int power)
         if ((w & SENSOR_TYPE_MASK) != SENSOR_EXPLOSION) continue;
         int match = (w >> SENSOR_DATA_SHIFT) == SENSOR_ANY_THING || (w >> SENSOR_DATA_SHIFT) == (uint16_t)(type - SPELL_THING_FIRST);
         match ^= flags >> SENSOR_INVERTED_BIT & 1;
-        if (flags & SENSOR_STRONG_ONLY && (int16_t)power < ((uint16_t)type == SPELL_LIGHTNING ? 0x7f : 0xff)) match = 0;
+        if (flags & SENSOR_STRONG_ONLY && (int16_t)power < ((uint16_t)type == SPELL_LIGHTNING ? STRONG_LIGHTNING_POWER : STRONG_POWER))
+            match = 0;
         if ((flags & SENSOR_EFFECT_ALWAYS) == SENSOR_EFFECT_ALWAYS) sensor_trigger_target(t, !match, 0);
         else if (match) sensor_trigger_target(t, flags >> SENSOR_EFFECT_SHIFT & 3, 0);
     }
@@ -212,11 +255,11 @@ void explosion_create(int type, int power, int x, int y, int cell)
     uint16_t t = dungeon_unused_thing(THING_EXPLOSION);
     if (t == THING_NONE) return;
     int16_t ex = (int16_t)x, ey = (int16_t)y;
-    if ((uint16_t)x > 0xff) {
-        x &= 0xff;
-        y &= 0xff;
-        ex = (int16_t)(((uint16_t)ex >> 8) - 1);
-        ey = (int16_t)((uint16_t)ey >> 8);
+    if ((uint16_t)x > UINT8_MAX) {
+        x = (uint8_t)x;
+        y = (uint8_t)y;
+        ex = (int16_t)(((uint16_t)ex >> COORD_STOP_SHIFT) - 1);
+        ey = (int16_t)((uint16_t)ey >> COORD_STOP_SHIFT);
     }
     uint16_t w = thing_word(t, EXPLOSION_DATA);
     if ((uint16_t)cell == EXPLOSION_AT_CENTER) {
@@ -225,10 +268,13 @@ void explosion_create(int type, int power, int x, int y, int cell)
         w &= ~EXPLOSION_CENTERED;
         t = with_cell(t, cell);
     }
-    w = (uint16_t)((w & EXPLOSION_CENTERED) | ((type - SPELL_THING_FIRST) & EXPLOSION_TYPE_MASK) | (power & 0xff) << EXPLOSION_POWER_SHIFT);
+    w = (uint16_t)((w & EXPLOSION_CENTERED) | ((type - SPELL_THING_FIRST) & EXPLOSION_TYPE_MASK)
+                   | (uint8_t)power << EXPLOSION_POWER_SHIFT);
     set_thing_word(t, EXPLOSION_DATA, w);
-    int volume = on_party_square(ex, ey) ? 0xff : min16(0xff, (int16_t)(((uint16_t)power >> 1) + 0x80));
-    sound_play_with_fallback(CAT_EXPLOSION, w & EXPLOSION_TYPE_MASK, SOUND_EXPLODE, SOUND_ANY, ex, ey, 1, 0x6c, volume);
+    int volume =
+        on_party_square(ex, ey) ? SOUND_VOLUME_MAX : min16(SOUND_VOLUME_MAX, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
+    sound_play_with_fallback(CAT_EXPLOSION, w & EXPLOSION_TYPE_MASK, SOUND_EXPLODE, SOUND_ANY, ex, ey, 1, SOUND_PRIORITY_EXPLODE,
+                             volume);
     dungeon_link_thing_to_square(t, party.cur_map, ex, ey);
     int16_t delay = (uint16_t)type == EXPLOSION_SMOKE ? SMOKE_DURATION
                     : (uint16_t)type == SPELL_MISSILE_WALL ? (int16_t)((uint16_t)power >> 1) : 1;
@@ -280,7 +326,7 @@ void projectile_destroy(uint16_t projectile, uint16_t *holder, int x, int y)
             }
         }
         sound_play_with_fallback(item_gdat_category(projectile), item_gdat_index(projectile), SOUND_FALL, SOUND_ANY,
-                                 (int16_t)x, (int16_t)y, 1, 0x3a, 0x80);
+                                 (int16_t)x, (int16_t)y, 1, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
     }
     set_thing_word(projectile, THING_NEXT, THING_NONE);
 }
@@ -296,20 +342,20 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
         uint16_t throw_power = item_attr(payload, ITEM_ATTR_THROW_POWER);
         power = 0;
         if (throw_power) {
-            int factor = ((record[PROJECTILE_HIT_CHANCE] >> 4) + 3) & 0xffff;
+            int factor = (uint16_t)((record[PROJECTILE_HIT_CHANCE] >> 4) + 3);
             power = (uint16_t)((int)(uint16_t)(throw_power + (energy >> 1)) * (factor * factor) >> 7);
             projectile_attack_type = ATTACK_THROWN;
             projectile_extra_damage = item_attr(payload, ITEM_ATTR_POISON);
-            if (projectile_extra_damage && (rand_next() & 0x7f) > energy)
+            if (projectile_extra_damage && (rand_next() & ROLL_POISON) > energy)
                 projectile_extra_damage = (uint16_t)(projectile_extra_damage - rand_below((uint16_t)((projectile_extra_damage >> 1) + 1)));
         }
         power = (uint16_t)(power + rand_2bits());
         power = (uint16_t)(power + item_weight(payload));
-        if (record[PROJECTILE_HIT_CHANCE] > (rand_next() & 0x1ff)) power = (uint16_t)(power * 2);
+        if (record[PROJECTILE_HIT_CHANCE] > (rand_next() & ROLL_DOUBLE_POWER)) power = (uint16_t)(power * 2);
     } else if (payload == SPELL_SLIME) {
         uint16_t r = rand_next() & 0xf;
         projectile_extra_damage = (uint16_t)(r + 10);
-        power = (uint16_t)(r + (rand_next() & 0x1f));
+        power = (uint16_t)(r + (rand_next() & ROLL_SLIME));
     } else if (payload >= SPELL_HARM_NON_MATERIAL) {
         projectile_attack_type = ATTACK_MAGIC;
         if (payload != SPELL_POISON_BOLT) return 0;
@@ -327,7 +373,7 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
     uint16_t attack = (uint16_t)(((power + energy) >> 4) + 1);
     uint16_t r = rand_below((uint16_t)((attack >> 1) + 1));
     attack = (uint16_t)(attack + rand_2bits() + r);
-    int16_t a = max16((int16_t)attack, (int16_t)((attack - (0x20 - (record[PROJECTILE_HIT_CHANCE] >> 3))) * 2));
+    int16_t a = max16((int16_t)attack, (int16_t)((attack - (HIT_CHANCE_BONUS_BASE - (record[PROJECTILE_HIT_CHANCE] >> 3))) * 2));
     return min16(a, (int16_t)(energy * 2));
 }
 
@@ -361,9 +407,9 @@ static int projectile_hit_wall_sensors(int wall_x, int wall_y, int x, int y, int
             } else if (kind == SENSOR_PROJECTILE_PORTAL && !done && (data == SENSOR_ANY_THING || data == item_get_index(payload))) {
                 dungeon_unlink_thing_from_square(projectile, party.cur_map, x, y);
                 uint16_t target = thing_word(t, SENSOR_TARGET);
-                to_x = target >> 6 & 0x1f;
-                to_y = target >> 11;
-                int to_cell = square_type(dun_get_square(to_x, to_y)) == SQUARE_WALL ? target >> 4 & 3 : flags >> SENSOR_EFFECT_SHIFT & 3;
+                to_x = target >> TARGET_X_SHIFT & LOCATION_COORD_MASK;
+                to_y = target >> TARGET_Y_SHIFT;
+                int to_cell = square_type(dun_get_square(to_x, to_y)) == SQUARE_WALL ? target >> TARGET_CELL_SHIFT & 3 : flags >> SENSOR_EFFECT_SHIFT & 3;
                 projectile = with_cell(projectile, to_cell);
             } else {
                 continue;
@@ -399,7 +445,7 @@ static int projectile_hit_creature(Hit *h, int cell)
     if (info->flags & CREATURE_NON_MATERIAL && payload != SPELL_HARM_NON_MATERIAL) return 0;
     int bounce;
     if (!(info->flags & CREATURE_STATIC)) {
-        bounce = info->push_resistance == 0xff;
+        bounce = info->push_resistance == PUSH_BOUNCES;
     } else {
         if (info->possessions & STATIC_SPELLS_ONLY && payload < SPELL_THING_FIRST) return 0;
         if ((info->flags >> CREATURE_DOOR_SIZE_SHIFT & DOOR_SIZE_MASK) > 1) return 0;
@@ -458,7 +504,7 @@ static int projectile_hit_door(Hit *h)
         if (h->payload_type == THING_EXPLOSION) {
             passes = h->payload >= SPELL_HARM_NON_MATERIAL;
         } else {
-            passes = dungeon_thing_record(h->projectile)[PROJECTILE_HIT_CHANCE] > (rand_next() & 0x7f)
+            passes = dungeon_thing_record(h->projectile)[PROJECTILE_HIT_CHANCE] > (rand_next() & ROLL_GRATE)
                      && item_attr(h->payload, ITEM_ATTR_FLAGS) & ITEM_GRATE_PASSES;
         }
         if (passes) return 0;
@@ -485,11 +531,11 @@ int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile)
         }
     }
     h.explosive = h.payload_type == THING_EXPLOSION && h.payload != SPELL_SLIME && h.payload != SPELL_POISON_BOLT;
-    if ((int16_t)x > 0xff) {
-        h.stop_x = (int16_t)(((int16_t)x >> 8) - 1);
-        h.stop_y = (int8_t)(y >> 8);
-        x &= 0xff;
-        y &= 0xff;
+    if ((int16_t)x > UINT8_MAX) {
+        h.stop_x = (int16_t)(((int16_t)x >> COORD_STOP_SHIFT) - 1);
+        h.stop_y = (int8_t)(y >> COORD_STOP_SHIFT);
+        x = (uint8_t)x;
+        y = (uint8_t)y;
     } else {
         h.stop_x = (int16_t)x;
         h.stop_y = (int16_t)y;
@@ -542,7 +588,7 @@ int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile)
     dungeon_unlink_thing_from_square(h.projectile, party.cur_map, fall_x, fall_y);
     projectile_destroy(h.projectile, h.holder, h.stop_x, h.stop_y);
     if (push_strength) {
-        int16_t strength = max16(min16((int16_t)push_strength, 0xfe), 0x28);
+        int16_t strength = max16(min16((int16_t)push_strength, SPELL_PUSH_MAX), SPELL_PUSH_MIN);
         int dir = h.payload == SPELL_PUSH ? push_dir : (push_dir + 2) & 3;
         creature_push_group((int16_t)x, (int16_t)y, (int16_t)dir, strength);
     }
@@ -601,12 +647,13 @@ static void projectile_alert_ahead(void)
     if (party.dest_map != saved) dun_set_current_map(saved);
 }
 
+/* The move event of a projectile: it hits what is on its square, then flies on to the next cell or square. */
 void projectile_process_event(TimelineEvent *event)
 {
     TimelineEvent e = *event;
     uint16_t projectile = event_word(&e, 0);
     uint8_t *record = dungeon_thing_record(projectile);
-    int16_t x = e.data[PROJECTILE_POSITION] & 0x1f, y = (int16_t)(event_word(&e, PROJECTILE_POSITION) >> 5 & 0x1f);
+    int16_t x = location_x(e.data[PROJECTILE_POSITION]), y = (int16_t)location_y(event_word(&e, PROJECTILE_POSITION));
     if (e.type == EVENT_PROJECTILE_MOVE) {
         e.type = EVENT_PROJECTILE_MOVE_2;  /* the first move: no hit on the launch square */
     } else {
@@ -657,10 +704,11 @@ void projectile_process_event(TimelineEvent *event)
         if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && party.cur_map == game.party_map)
             party.redraw |= REDRAW_VIEW;
         uint16_t w = event_word(&e, PROJECTILE_POSITION);
-        w = (uint16_t)((w & ~0x0fff) | (party.dest_x & 0x1f) | (party.dest_y & 0x1f) << 5 | (party.dest_dir & 3) << POSITION_DIR_SHIFT);
+        w = (uint16_t)((w & ~POSITION_SQUARE_DIR) | (party.dest_x & LOCATION_COORD_MASK) | (party.dest_y & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT
+                        | (party.dest_dir & 3) << POSITION_DIR_SHIFT);
         set_event_word(&e, PROJECTILE_POSITION, w);
         projectile = with_cell(projectile, party.dest_cell);
-        e.time_map = (e.time_map & 0xffffff) | (uint32_t)(uint16_t)party.dest_map << 24;
+        e.time_map = (e.time_map & EVENT_TIME_MASK) | (uint32_t)(uint16_t)party.dest_map << 24;
         projectile_alert_ahead();
     } else {
         if (square_type(dun_get_square(x, y)) == SQUARE_DOOR && projectile_hit(SQUARE_DOOR, x, y, cell, projectile)) return;
@@ -713,6 +761,7 @@ int explosion_get_attack(uint16_t explosion, uint16_t target)
     }
 }
 
+/* The event of an explosion: it hurts doors, the party, and creatures on its square, then a cloud fades or the explosion ends. */
 void explosion_process_event(TimelineEvent *e)
 {
     int x = e->data[0], y = e->data[1];
@@ -733,15 +782,16 @@ void explosion_process_event(TimelineEvent *e)
         int lasts = 1;
         switch (w & EXPLOSION_TYPE_MASK) {
         case BLAST_POISON_CLOUD:
-            if ((w & 0xff00) < POISON_CLOUD_LAST) lasts = 0;
-            else w = (uint16_t)((w & 0xff) | (((w >> 8) - POISON_CLOUD_DECAY) & 0xff) << 8);
+            if ((w & EXPLOSION_POWER_BITS) < POISON_CLOUD_LAST) lasts = 0;
+            else w = (uint16_t)((uint8_t)w | (uint8_t)((w >> EXPLOSION_POWER_SHIFT) - POISON_CLOUD_DECAY) << EXPLOSION_POWER_SHIFT);
             break;
         case BLAST_DEATH_CLOUD:
-            if ((w & 0xff00) <= DEATH_CLOUD_LAST) lasts = 0;
-            else w = (uint16_t)((w & 0xff) | (((w >> 8) - DEATH_CLOUD_DECAY) & 0xff) << 8);
+            if ((w & EXPLOSION_POWER_BITS) <= DEATH_CLOUD_LAST) lasts = 0;
+            else w = (uint16_t)((uint8_t)w | (uint8_t)((w >> EXPLOSION_POWER_SHIFT) - DEATH_CLOUD_DECAY) << EXPLOSION_POWER_SHIFT);
             break;
         case BLAST_SMOKE:
-            sound_play_with_fallback(CAT_EXPLOSION, w & EXPLOSION_TYPE_MASK, SOUND_EXPLODE, SOUND_ANY, x, y, 1, 0x6c, 200);
+            sound_play_with_fallback(CAT_EXPLOSION, w & EXPLOSION_TYPE_MASK, SOUND_EXPLODE, SOUND_ANY, x, y, 1, SOUND_PRIORITY_EXPLODE,
+                                     SOUND_VOLUME_LOUD);
             w = (uint16_t)((w & ~EXPLOSION_TYPE_MASK) | ((w + 1) & EXPLOSION_TYPE_MASK));
             break;
         default:
@@ -772,7 +822,7 @@ static const uint8_t attack_cell_orders_random[7] = {0, 1, 2, 3, 0, 1, 2};
 void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell)
 {
     int dir = dun_get_direction_to((int16_t)x, (int16_t)y, (int16_t)party_x, (int16_t)party_y);
-    if ((uint16_t)cell == 0xff) {
+    if ((uint16_t)cell == CELL_ANY) {
         for (int i = 0; i < 4; i++) order[i] = attack_cell_orders_random[dir + i];
         uint8_t swap;
         if (rand_bit()) {
@@ -793,7 +843,7 @@ void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party
 }
 
 /* The wounds of a melee hit, by the hit location chosen from the creature's wound nibbles. */
-static const uint8_t melee_wounds[4] = {0x20, 0x10, 0x08, 0x04};
+static const uint8_t melee_wounds[4] = {WOUND_FEET, WOUND_LEGS, WOUND_TORSO, WOUND_HEAD};
 
 int creature_attack_champion(uint16_t group, int champ)
 {
@@ -805,22 +855,23 @@ int creature_attack_champion(uint16_t group, int champ)
     const CreatureInfo *info = creature_group_info(group);
     int kind = info->unknown_1c;
     int visibility;
-    if (game.magic_light[MAGIC_INVISIBILITY] && !(info->flags & CREATURE_SEES_INVISIBLE)) visibility = 0x10;
+    if (game.magic_light[MAGIC_INVISIBILITY] && !(info->flags & CREATURE_SEES_INVISIBLE)) visibility = VISIBILITY_INVISIBLE;
     else if (info->flags & CREATURE_IGNORES_LIGHT) visibility = 0;
     else visibility = view_light_level * 2;
     uint16_t dexterity = info->dexterity;
-    if (kind == ATTACK_KIND_ANY_DEXTERITY) dexterity = (uint16_t)min16(0xff, (int16_t)(dexterity * 2));
-    else if (kind == ATTACK_KIND_ALWAYS_HITS) dexterity = 0xff;
+    if (kind == ATTACK_KIND_ANY_DEXTERITY) dexterity = (uint16_t)min16(DEXTERITY_ALWAYS_HITS, (int16_t)(dexterity * 2));
+    else if (kind == ATTACK_KIND_ALWAYS_HITS) dexterity = DEXTERITY_ALWAYS_HITS;
     int missed = 0;
-    if (!party_sleeping && dexterity != 0xff) {
-        int threshold = (uint16_t)visibility + (int16_t)((rand_next() & 0x1f) + dexterity + difficulty);
-        missed = ((int)(uint16_t)champ_get_dexterity(champ) >= threshold - 0x10 && rand_2bits()) || champ_test_luck(champ, 0x3c);
+    if (!party_sleeping && dexterity != DEXTERITY_ALWAYS_HITS) {
+        int threshold = (uint16_t)visibility + (int16_t)((rand_next() & ROLL_MELEE) + dexterity + difficulty);
+        missed = ((int)(uint16_t)champ_get_dexterity(champ) >= threshold - DEXTERITY_DODGE_MARGIN && rand_2bits())
+                 || champ_test_luck(champ, LUCK_DODGE);
     }
     if (!missed) {
         uint32_t r = rand_next();
         uint16_t wounds;
         uint16_t nibbles = (uint16_t)(info->unknown_1a | info->unknown_1b << 8);
-        if (!(r & 0x70) || !nibbles) {
+        if (!(r & ROLL_WOUND_LOCATION) || !nibbles) {
             wounds = (uint16_t)((r & 1) + 1);
         } else {
             uint16_t roll = r & 0xf;
@@ -851,7 +902,8 @@ int creature_attack_champion(uint16_t group, int champ)
             if (rand_bit()) power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
             damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
             if (damage) {
-                sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_ANY, game.party_x, game.party_y, 2, 0x69, 200);
+                sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_ANY, game.party_x, game.party_y, 2, SOUND_PRIORITY_HURT,
+                                         SOUND_VOLUME_LOUD);
                 int16_t poison;
                 if (info->poison && rand_bit() && (poison = (int16_t)champ_get_stat_adjusted_attack(champ, STAT_VITALITY, info->poison)) != 0)
                     champ_poison(champ, (uint16_t)poison);
@@ -901,8 +953,8 @@ void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y)
         if (!again) return;
         sx = to_x;
         sy = to_y;
-        x = (uint16_t)(from_x | (((uint16_t)to_x << 8) + 0x100));
-        y = (uint16_t)(from_y | (uint16_t)to_y << 8);
+        x = (uint16_t)(from_x | (((uint16_t)to_x << COORD_STOP_SHIFT) + COORD_STOP_ONE));
+        y = (uint16_t)(from_y | (uint16_t)to_y << COORD_STOP_SHIFT);
         for (int i = 0; i < 4; i++) champs[i] = next[i];
         again = 0;
     }
@@ -929,7 +981,7 @@ void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e)
     uint16_t w = thing_word(sensor, SENSOR_TYPE_DATA), target = thing_word(sensor, SENSOR_TARGET);
     int kind = w & SENSOR_TYPE_MASK;
     uint16_t data = w >> SENSOR_DATA_SHIFT;
-    int energy = target >> 4 & 0xff, step = target >> 12;
+    int energy = (uint8_t)(target >> LAUNCH_ENERGY_SHIFT), step = target >> LAUNCH_STEP_SHIFT;
     int single = kind == LAUNCH_ITEM || kind == LAUNCH_SPELL || kind == LAUNCH_OBJECT;
     uint16_t first, second = (uint16_t)(data + SPELL_THING_FIRST);
     if (kind == LAUNCH_OBJECT || kind == LAUNCH_OBJECTS) {
@@ -962,8 +1014,8 @@ void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack
     const Champion *c = champion(champ);
     int dir = c->dir;
     int cell = (dir + ((((c->cell - dir) + 1) & 2) >> 1)) & 3;
-    projectile_create(payload, game.party_x, game.party_y, cell, dir, (uint8_t)min16((int16_t)energy, 0xff),
-                      (uint8_t)min16((int16_t)attack, 0xff), (uint8_t)min16((int16_t)step, 0xff));
+    projectile_create(payload, game.party_x, game.party_y, cell, dir, (uint8_t)min16((int16_t)energy, UINT8_MAX),
+                      (uint8_t)min16((int16_t)attack, UINT8_MAX), (uint8_t)min16((int16_t)step, UINT8_MAX));
     game.throw_cooldown = 4;
     game.throw_dir = (uint16_t)dir;
 }

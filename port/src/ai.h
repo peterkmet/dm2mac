@@ -77,7 +77,11 @@ typedef struct __attribute__((packed)) {
 _Static_assert(sizeof(AiCandidate) == 22, "the candidates of SKULL.EXE have 22 bytes");
 
 #define AI_CANDIDATE_MAX 16
+#define SHIFT_COUNT_MASK 0x1f       /* the x86 shift uses the low 5 bits of the count */
+#define FOUND_NONE 0xffff           /* a candidate or plan state without a found thing or marker */
 #define AI_PATH_MAX 0x31
+#define AI_PATH_BYTES 0x64          /* a path buffer: 2 bytes per step */
+#define FILTER_SLOTS 0x2a           /* the item filters of a creature update */
 
 /* The plan state of a group that lasts from one update to the next: the 14 bytes at 0x7f7d4 of SKULL.EXE. */
 typedef struct __attribute__((packed)) {
@@ -122,7 +126,7 @@ typedef struct {
     uint8_t counts_dirty;
     uint8_t alert;
     AiItemCounts item_counts[4];
-    uint8_t path[0x64];         /* 0x7f60a: the path of the search (2 bytes per step) */
+    uint8_t path[AI_PATH_BYTES]; /* 0x7f60a: the path of the search (2 bytes per step) */
     uint8_t candidate_count;
     int8_t chosen;
     AiCandidate candidates[AI_CANDIDATE_MAX];
@@ -132,7 +136,7 @@ typedef struct {
     uint8_t prepared;
     uint8_t plan_flags;
     uint8_t search_flags;
-    uint8_t *filters[0x2a];     /* item class bitmaps of the filters, NULL until parsed */
+    uint8_t *filters[FILTER_SLOTS]; /* item class bitmaps of the filters, NULL until parsed */
     int16_t filter_free;
     uint8_t *scratch;
     int scratch_used;
@@ -161,6 +165,8 @@ extern AiSquare ai_square;
 
 /* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
 typedef struct { int16_t map, width; uint8_t cells[32 * 32]; } DistanceMap;
+#define DISTANCE_NEXT_TO 0x80
+#define DISTANCE_FAR 0x7f
 extern DistanceMap party_distance, alt_distance;
 
 uint8_t ai_action_flag(int8_t action);
