@@ -6,6 +6,7 @@ import pytest
 from conftest import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
+from test_move import Party
 
 GRAPHICS = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 ZONE_UNPACK_LAYOUT, ZONE_ALLOC_RECORD, ZONE_GET_RECT_CLIPPED = 0x19D0E, 0x19F29, 0x19BF2
@@ -63,6 +64,7 @@ MARGINS = [None, (0, 0, 0, 0), (10, 5, 20, 30)]
 @pytest.mark.parametrize("margins", MARGINS)
 def test_zone_rect_matches_original(lib, gdat, emu, margins):
     assert lib.zone_load(gdat) == 1
+    Party.in_dll(lib, "party").move_steps = 0  # a walk clips the zones to walk_view_rect; earlier tests leave one
     rng = random.Random(5)
     zones = zone_ids(layout_bytes(lib, gdat))
     assert len(zones) > 1000
