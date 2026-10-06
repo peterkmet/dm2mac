@@ -29,6 +29,10 @@
 /* Sensor record: type and data word, flags word, target word. */
 #define SENSOR_TARGET 6
 #define SENSOR_BUSY 0x0001
+#define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * 8)  /* script variables: 64 flags, 64 bytes, 64 words */
+#define GLOBAL_WORD_FIRST 0x80
+#define GLOBAL_VAR_END 0xc0
+#define GLOBAL_BYTE_MAX 0xff
 #define SENSOR_STATE_SHIFT 2
 #define SENSOR_EFFECT_SHIFT 3
 #define SENSOR_INVERTED 0x0020
@@ -74,8 +78,7 @@ static uint32_t event_time(uint32_t time)
     return (time & 0xffffff) | (uint32_t)(uint8_t)party.cur_map << 24;
 }
 
-/* The door type (0 or 1 of the map) of a door thing, 0xff for none. */
-static int door_type(uint16_t door)
+int dun_get_door_type(uint16_t door)
 {
     uint16_t flags = dungeon_map_flags(party.cur_map), graphics = dungeon_map_graphics(party.cur_map);
     if (!(thing_word(door, DOOR_DATA) & 1)) return flags & 0x80 ? graphics >> 8 & 0xf : 0xff;
@@ -84,7 +87,7 @@ static int door_type(uint16_t door)
 
 static uint16_t door_value(uint16_t door, int key)
 {
-    return gdat_entry_index(draw_gdat(), CAT_DOOR, door_type(door), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(draw_gdat(), CAT_DOOR, dun_get_door_type(door), GDAT_TYPE_VALUE, key);
 }
 
 static int item_holder_item(int ornament)
@@ -436,11 +439,11 @@ int dun_modify_global_var(int var, int value, int op)
         return (int16_t)v != 0;
     }
     v = (int16_t)v;
-    if (var < 0x80) {
-        v = v < 0 ? 0 : v > 0xff ? 0xff : v;
-        game.global_bytes[var - 0x40] = (uint8_t)v;
-    } else if (var < 0xc0) {
-        game.global_words[var - 0x80] = (uint16_t)v;
+    if (var < GLOBAL_WORD_FIRST) {
+        v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
+        game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
+    } else if (var < GLOBAL_VAR_END) {
+        game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
     }
     return v;
 }
@@ -448,8 +451,8 @@ int dun_modify_global_var(int var, int value, int op)
 int dun_get_global_var(int var)
 {
     if (var < GLOBAL_FLAG_BYTES * 8) return game.global_flags[var >> 3] >> (var & 7) & 1;
-    if (var < 0x80) return game.global_bytes[var - 0x40];
-    if (var < 0xc0) return game.global_words[var - 0x80];
+    if (var < GLOBAL_WORD_FIRST) return game.global_bytes[var - GLOBAL_BYTE_FIRST];
+    if (var < GLOBAL_VAR_END) return game.global_words[var - GLOBAL_WORD_FIRST];
     return 0;
 }
 
@@ -1059,7 +1062,7 @@ void timeline_event_door_animation(TimelineEvent *e)
         state += w & DOOR_OPENING ? -1 : 1;
         *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | (state & SQUARE_DOOR_STATE));
         if (w & DOOR_OPENING ? state != DOOR_OPEN : state != DOOR_CLOSED) again = 1;
-        sound_play_with_fallback(CAT_DOOR, door_type(door), !again && state == DOOR_CLOSED ? 0x8f : 0x8e, 0xfe, x, y, 1, 0x5f,
+        sound_play_with_fallback(CAT_DOOR, dun_get_door_type(door), !again && state == DOOR_CLOSED ? 0x8f : 0x8e, 0xfe, x, y, 1, 0x5f,
                                  0x80);
     }
     if (again) {

@@ -90,12 +90,14 @@ def test_coin_from_the_table(loop, lib):
     loop.assert_equal("end")
 
 
-SOLID_KEY = 0xA8B1  # on the shelf behind the table (map 22, (1, 5)), which the party cannot reach from the start
+SOLID_KEY = 0xA8B1  # on the shelf behind the table (map 22, (1, 5)); the party reaches it when it pushes the table
 
 
 def test_key_in_the_keyhole_opens_the_door(loop, lib):
-    # The solid key lies on the floor beside the chest (the test moves it there in both); the party takes it, puts it
-    # into the keyhole beside the door, and presses the door button: the door opens.
+    # The way out of the first room: the party pushes the table (static creature 0x19) east or south, takes the solid
+    # key from the shelf (1, 5), puts it into the keyhole (4, 5) cell 3, and presses the door button (4, 4), which
+    # toggles the door (3, 4). The push of a creature is Step 16, so the test moves the key to the floor beside the
+    # chest in both.
     climb_ladder(loop)
     floor = SOLID_KEY & 0x3FFF | 1 << 14
     lib.dungeon_unlink_thing_from_square(SOLID_KEY, 22, 1, 5)

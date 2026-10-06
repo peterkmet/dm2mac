@@ -298,6 +298,8 @@ void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
 #define WATER_PER_POTION 1600
 #define MANA_POTION_MAX 900
 #define POTION_POWER_MASK 0xff
+#define DIVISOR_POWER_TOP 0x1ff     /* drink_potion: the divisor of the stat gains falls as the power rises */
+#define DIVISOR_POWER_BASE 0x20
 #define POTION_TYPE_SHIFT 8
 #define POTION_TYPE_MASK 0x7f
 #define EMPTY_FLASK 0x14            /* the potion kind of an empty flask */
@@ -325,7 +327,7 @@ static int drink_potion(int champ, uint16_t thing)
     Champion *c = champion(champ);
     uint16_t w = thing_word(thing, 2);
     unsigned power = w & POTION_POWER_MASK;
-    int16_t divisor = (int16_t)(((0x1ff - (int)power) / (int)(((power + 1) >> 3) + 0x20)) >> 1);
+    int16_t divisor = (int16_t)(((DIVISOR_POWER_TOP - (int)power) / (int)(((power + 1) >> 3) + DIVISOR_POWER_BASE)) >> 1);
     int16_t value = (int16_t)(power / 25 + 8);
     switch (w >> POTION_TYPE_SHIFT & POTION_TYPE_MASK) {
     case POTION_DEXTERITY: champ_adjust_stat(c->stats[STAT_DEXTERITY], value); break;

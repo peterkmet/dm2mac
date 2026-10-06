@@ -48,5 +48,7 @@ int dun_get_global_var(int var);
 int dun_modify_global_var(int var, int value, int op);   /* returns the new value */
 /* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
 int item_party_possesses_type(int type);
+/* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */
+int dun_get_door_type(uint16_t door);
 
 #endif

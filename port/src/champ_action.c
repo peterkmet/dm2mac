@@ -51,6 +51,15 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define STAMINA_MAX 9999
 #define DELAY_MAX 0xff
 #define ACTION_DOOR_DELAY 6
+#define CAT_DOOR 0x0e
+#define CAT_CREATURE 0x0f
+#define SOUND_HIT 0x8d              /* sound entry of a door or creature that a melee action hits */
+#define SOUND_FALLBACK 0xfe
+#define SOUND_HIT_PRIORITY 0x3c
+#define SOUND_ACTION_PRIORITY 0x73
+#define SOUND_VOLUME 200
+#define SPELL_BASE 0x80             /* FIELD_MODE of a projectile spell: the spell is the mode - SPELL_BASE */
+#define THROW_ATTACK_RANDOM 0x1f    /* the random part of the attack of a throw */
 #define THROW_DELAY 4
 #define THROW_COOLDOWN 4
 #define THROW_EXPERIENCE 8
@@ -452,7 +461,7 @@ int champ_perform_action(int champ, int index)
     if (!c->health) return 0;
     int command = action_field(FIELD_COMMAND);
     uint8_t sound = (uint8_t)action_field(FIELD_SOUND);
-    (void)sound;  /* ponytail: the sound of the action, Step 18 */
+    int silent = 0;
     c->last_command[hand] = (uint8_t)command;
     uint16_t item = c->slots[hand];
     int fx = (int16_t)(game.party_x + dir_dx[c->dir]), fy = (int16_t)(game.party_y + dir_dy[c->dir]);
@@ -482,7 +491,7 @@ int champ_perform_action(int champ, int index)
         break;
     }
     case COMMAND_SPELL_PROJECTILE: {
-        int spell = (uint16_t)(action_field(FIELD_MODE) + 0xff80);
+        int spell = (uint16_t)(action_field(FIELD_MODE) - SPELL_BASE);
         int16_t cost = (int16_t)(7 - min16(6, champ_get_skill_level(champ, skill, 1)));
         if (cost > c->mana) {
             power = (int16_t)max16(2, (int16_t)(power * c->mana / cost));
@@ -496,19 +505,22 @@ int champ_perform_action(int champ, int index)
         if (square_type(front) == SQUARE_DOOR && (front & SQUARE_DOOR_STATE) == DOOR_CLOSED) {
             sensor_door_try_destroy(fx, fy, champ_get_strength(champ, hand, skill), 0, DOOR_BREAK_DELAY);
             delay = ACTION_DOOR_DELAY;
-            break;  /* the original then plays the sound of the door */
+            sound_play_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, fx, fy)),
+                                     SOUND_HIT, SOUND_FALLBACK, fx, fy, 1, SOUND_HIT_PRIORITY, SOUND_VOLUME);
+            break;
         }
-        if (champ_action_target != THING_NONE) {
-            if (creature_is_furniture(champ_action_target)) {
+        if (champ_action_target != THING_NONE && creature_is_furniture(champ_action_target)) {
+            experience = (int16_t)(experience >> 1);
+        } else {
+            done = champ_action_melee_attack(champ, action_field(FIELD_MODE), fx, fy, skill, power);
+            if (!done) {
                 experience = (int16_t)(experience >> 1);
-                break;
+                delay = (uint16_t)(delay >> 1);
             }
         }
-        done = champ_action_melee_attack(champ, action_field(FIELD_MODE), fx, fy, skill, power);
-        if (!done) {
-            experience = (int16_t)(experience >> 1);
-            delay = (uint16_t)(delay >> 1);
-        }
+        if (done && champ_action_target != THING_NONE)
+            sound_request(CAT_CREATURE, item_gdat_index(champ_action_target), SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME,
+                          fx, fy, 1);
         break;
     case COMMAND_LIGHT: case COMMAND_LIGHT_2: case COMMAND_LIGHT_3:
         magic_add_light(command, power);
@@ -559,6 +571,7 @@ int champ_perform_action(int champ, int index)
             item = champ_remove_object_from_slot(champ, slot);
             champ_add_object_to_slot(champ, item, hand);
         }
+        silent = 1;
         break;
     }
     case COMMAND_SHOOT: {
@@ -579,6 +592,7 @@ int champ_perform_action(int champ, int index)
         uint16_t attack = (uint16_t)(item_attr(item, ATTR_SHOOT_ATTACK) + level * 2);
         uint16_t kinetic = (uint16_t)(level + item_attr(item, ATTR_THROW_POWER_SHOOT) + item_attr(ammo, ATTR_THROW_POWER_SHOOT));
         champ_launch_projectile(champ, ammo, kinetic, attack, step);
+        silent = 1;
         break;
     }
     case COMMAND_HEAL: {
@@ -614,6 +628,9 @@ int champ_perform_action(int champ, int index)
     default:
         break;
     }
+    if (!silent)
+        sound_play_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, game.party_x, game.party_y, 0,
+                                 SOUND_ACTION_PRIORITY, SOUND_VOLUME);
     if (!c->health || repeated) return done;
     if (delay) champ_add_action_delay(champ, delay, hand);
     if (stamina) champ_decrease_stamina(champ, stamina);
@@ -680,7 +697,6 @@ void champ_process_repeated_actions(void)
             }
             action.hand = saved;
         }
-    /* fix: the original tests an uninitialized word here; the open hand is meant */
     if (action.champion && saved >= 0 && action.hand <= 1)
         champ_list_actions(action.champion - 1, champion(action.champion - 1)->slots[action.hand], action.hand);
 }
@@ -728,7 +744,7 @@ int champ_throw_object(int champ, int hand, int side)
     int level = champ_get_skill_level(champ, SKILL_THROW, 1);
     kinetic = (int16_t)(kinetic + rand_below((uint16_t)((kinetic >> 2) + 8)) + level);
     kinetic = (int16_t)min16(kinetic, KINETIC_MAX);
-    int attack = clamp16(ATTACK_MIN, (int16_t)((rand_next() & 0x1f) + level * 8), ATTACK_MAX);
+    int attack = clamp16(ATTACK_MIN, (int16_t)((rand_next() & THROW_ATTACK_RANDOM) + level * 8), ATTACK_MAX);
     int step = item_attr(thing, ATTR_STEP);
     if (!step) step = max16(STEP_MIN, (int16_t)(STEP_BASE - level));
     projectile_create(thing, game.party_x, game.party_y, (game.party_dir + side) & 3, game.party_dir, (uint8_t)kinetic,

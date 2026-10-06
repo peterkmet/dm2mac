@@ -34,6 +34,9 @@ enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };
 #define ATTR_DEFENDS 0x8000         /* ATTR_ARMOUR_CLASS bit of a hand item: it defends */
 #define ARMOUR_SHARP_SHIFT 8
 #define ARMOUR_SHARP_MASK 7
+#define ARMOUR_DEFENSE_MASK 0xff
+#define SHARP_FACTOR_BASE 4u        /* against a sharp attack: defense * (sharp factor + 4) / 8 */
+#define SHARP_FACTOR_SHIFT 3
 #define ATTR_AMMO 5
 #define ATTR_LAUNCHER 0x8000        /* ATTR_AMMO bit: the weapon shoots */
 #define POISON_EVENT_DELAY 0x24
@@ -120,8 +123,9 @@ int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack)
 /* The defense of an armour attribute; against a sharp attack its sharp factor counts. */
 static int item_armor_defense(uint16_t attr, int sharp)
 {
-    if (!sharp) return attr & 0xff;
-    return (int)((attr & 0xff) * (((attr >> ARMOUR_SHARP_SHIFT) & ARMOUR_SHARP_MASK) + 4u) >> 3);
+    if (!sharp) return attr & ARMOUR_DEFENSE_MASK;
+    return (int)((attr & ARMOUR_DEFENSE_MASK) * (((attr >> ARMOUR_SHARP_SHIFT) & ARMOUR_SHARP_MASK) + SHARP_FACTOR_BASE)
+                 >> SHARP_FACTOR_SHIFT);
 }
 
 int champ_get_strength(int champ, int hand, int skill)
