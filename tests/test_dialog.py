@@ -35,7 +35,25 @@ class Session(ctypes.Structure):
     _fields_ = [(n, ctypes.c_int) for n in ("new_game", "use_dungenb", "loaded", "completed", "restart", "offer_restore",
                                             "quit_code", "slot")] + [
         ("load_time", ctypes.c_uint32), ("save_time", ctypes.c_uint32), ("exit_code", ctypes.c_int),
-        ("save_name", ctypes.c_char * 1024), ("data_dir", ctypes.c_char * 1024)]
+        ("save_name", ctypes.c_char * 32), ("data_dir", ctypes.c_char * 1024)]
+
+
+def reset_session(lib):
+    """The session state of the program start, so that later tests start from it."""
+    session = Session.in_dll(lib, "session")
+    for name in ("new_game", "use_dungenb", "loaded", "completed", "restart", "offer_restore", "quit_code", "exit_code"):
+        setattr(session, name, 0)
+    session.slot = -1
+    state = DialogState.in_dll(lib, "dialog")
+    state.screen_mode, state.button_count = 1, 0
+    ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 0  # MainLoop.quit
+    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+
+
+@pytest.fixture(autouse=True)
+def program_start_after(lib):
+    yield
+    reset_session(lib)
 
 
 @pytest.fixture()
@@ -287,3 +305,31 @@ def test_quit_picture_matches_original(ui, original):
     mine, theirs = c_screen(lib), original.screen()
     assert len(set(theirs)) > 8
     assert mine == theirs, diff(mine, theirs, SCREEN_W)
+
+
+UI_DIALOG_DRAW_BUTTON, G_MATCH_RECT, G_MATCH_ORIGIN, G_BUTTON_PICTURE = 0x1A270, 0x7F46C, 0x7F524, 0x7F202
+
+
+def test_pressed_buttons_match_original(ui, original):
+    # The click feedback of a dialog button (opcodes 0x0f and 0x10: GDAT (0x1a, 0xfe, 1, 0 or 1)) over each button of
+    # the save menu and of the end dialog.
+    from test_session_play import find_point
+    lib, emu = ui, original.emu
+    lib.input_init()
+    match = InputMatch.in_dll(lib, "input_match")
+    state = DialogState.in_dll(lib, "dialog")
+    for dialog, buttons in ((0x1B, 4), (0x10, 2)):
+        for choice in range(1, buttons + 1):
+            for entry in (0, 1):
+                set_screen_mode(lib, emu, 1)
+                lib.ui_dialog_draw(dialog, 0)
+                emu.call(UI_DIALOG_DRAW, dialog, 0)
+                state.button_count = buttons
+                find_point(lib, 4, lambda m: m.choice == choice)
+                state.button_category, state.button_index, state.button_entry = 0x1A, 0xFE, entry
+                emu.write(G_MATCH_RECT, bytes(match.rect))
+                emu.write(G_MATCH_ORIGIN, struct.pack("<h", match.origin))
+                emu.write(G_BUTTON_PICTURE, bytes([0x1A, 0xFE, entry]))
+                lib.ui_dialog_draw_button(match.zone, 1)
+                emu.call(UI_DIALOG_DRAW_BUTTON, match.zone, 1)
+                assert_same(lib, original, (dialog, choice, entry), screen=False)

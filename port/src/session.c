@@ -477,7 +477,6 @@ int game_init(void)
     sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     ui_reset();
     money_init_coin_table();
-    ui_draw_game_screen();
     game_start_session();
     input_flush();
     return 1;
@@ -541,8 +540,8 @@ void game_end(int party_dead)
 /* Removes the spaces at the end of text. */
 static void trim_spaces(char *text)
 {
-    for (size_t n = strlen(text); n > 0 && text[n - 1] == ' '; n--) text[n - 1] = '\0';  /* fix: the original reads
-                                                                                            before an empty text */
+    /* fix: the original reads the byte before an empty text */
+    for (size_t n = strlen(text); n > 0 && text[n - 1] == ' '; n--) text[n - 1] = '\0';
 }
 
 void champ_edit_name(Champion *c)

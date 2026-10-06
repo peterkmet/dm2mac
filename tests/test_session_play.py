@@ -6,7 +6,7 @@ import struct
 
 import pytest
 
-from test_dialog import DialogState, InputMatch, Session
+from test_dialog import DialogState, InputMatch, Session, program_start_after  # noqa: F401 (an autouse fixture)
 from test_move import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 from dm2tools.emu import EmuError
 from test_save import original_load, original_save

@@ -2,6 +2,7 @@
 #define SESSION_H
 #include <stdint.h>
 #include "champion.h"
+#include "save.h"
 
 /* The start menu, new games, loads and saves through the slot dialogs, and the end of the game. */
 #define MENU_WAITING 99                 /* session.new_game while the start menu waits */
@@ -23,7 +24,7 @@ typedef struct {
     int slot;                   /* the slot of the last load or save, SAVE_SLOT_NONE */
     uint32_t load_time, save_time; /* the game time of the last load and save */
     int exit_code;
-    char save_name[SAVE_PATH_SIZE]; /* the name of the slot in the save dialog */
+    char save_name[SAVE_NAME_SIZE]; /* the name of the slot in the save dialog */
     char data_dir[SAVE_PATH_SIZE];  /* the game folder: DATA holds the dungeon and the saves */
 } Session;
 extern Session session;

@@ -5,12 +5,11 @@
 #include "champion.h"
 #include "draw.h"
 #include "creature.h"
+#include "dialog.h"
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
-#include "dialog.h"
 #include "hooks.h"
-#include "session.h"
 #include "item.h"
 #include "input.h"
 #include "magic.h"
@@ -19,6 +18,7 @@
 #include "music.h"
 #include "save.h"
 #include "sensor.h"
+#include "session.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
@@ -59,7 +59,8 @@ enum {
     CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41, CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_SAVE = 0x8c, CMD_VOLUME = 0x8d, CMD_EDIT_CHAMPION_NAME = 0x48,
-    CMD_NEW_GAME = 0xd7, CMD_NEW_GAME_B = 0xd8, CMD_LOAD_GAME = 0xd9, CMD_MENU_PICTURE = 0xda, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
+    CMD_NEW_GAME = 0xd7, CMD_NEW_GAME_B = 0xd8, CMD_LOAD_GAME = 0xd9, CMD_MENU_PICTURE = 0xda, CMD_CANCEL_PUSH = 0xe1,
+    CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
     CMD_HAND_LAST = 0x7b, CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
     CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59

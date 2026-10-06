@@ -9,6 +9,7 @@ import pytest
 from conftest import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
+from test_dialog import program_start_after  # noqa: F401 (an autouse fixture)
 from test_save import GDAT_VALUE_TYPES, GRAPHICS
 
 DUNGEON = ROOT / "game" / "DATA" / "DUNGEON.DAT"
