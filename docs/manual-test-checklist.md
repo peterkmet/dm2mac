@@ -211,10 +211,28 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [ ] K6. Save in DOS, then load the slot in the port. Expected: the port loads the game; the party, champions, and objects are equal. Skipped by the user's decision (DOSBox comparison).
 - [ ] K7. After K5 and K6, play one minute in each. Expected: no crash and no visible difference in the game state. Skipped by the user's decision (DOSBox comparison).
 
+## L. Advanced mode
+
+Details: `docs/advanced-mode.md`.
+
+- [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, as the arrow keys.
+- [ ] L2. Run `build/dm2 --mode vanilla --save tests/saves/start.DAT`. Press W, Q, F5, and F9. Expected: nothing happens; no `game/DATA/QUICK.DAT` is written.
+- [ ] L3. In the advanced mode, open the save dialog (Option+S, SAVE) and type a slot name with W, A, S, D, Q, and E. Expected: the letters go into the name; the party does not move.
+- [ ] L4. In the advanced mode, open an inventory and rename a champion with the name editor. Expected: W, A, S, D, Q, and E type letters.
+- [ ] L5. In the dungeon view, press F5. Expected: the white line "GAME SAVED" in the message area; `game/DATA/QUICK.DAT` exists; no `QUICK.BAK`.
+- [ ] L6. Walk some squares, then press F9. Expected: "GAME LOADED"; the party is back on the square of L5; no dialog shows.
+- [ ] L7. Delete `game/DATA/QUICK.DAT` and press F9. Expected: "NO QUICK SAVE"; the game goes on.
+- [ ] L8. Write some bytes of garbage into `game/DATA/QUICK.DAT` and press F9. Expected: "QUICK SAVE DAMAGED"; the game goes on unchanged.
+- [ ] L9. Press F5 and F9 with an open inventory, during the pause (Esc), during the sleep, and in the save menu. Expected: nothing happens.
+- [ ] L10. Load a slot, play more than 100 ticks, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
+- [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
+- [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla or advanced" and exit code 2.
+
 ## Known deviations
 
 Do not report these documented deviations as bugs. Details are in `docs/skull-formats.md`.
 
+- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/advanced-mode.md`).
 - No intro, ending movie, or credits; a completed game ends the program with exit code 1 (PRD scope; section 14).
 - No DOS layer: no disk, drive, or memory dialogs; menus and dialogs wait without busy loops (section 14).
 - `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).

@@ -24,6 +24,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 - LLM control socket: `build/dm2 --control PATH` takes keys, clicks, commands, waits, and screenshots as JSON lines; the CLI `dm2-play` sends them. Details: `docs/llm-control.md`.
 - Parallel test runs: `scripts/test-suite` runs the tests with pytest-xdist, loads one copy of the library per test module, and skips a git tree that already passed.
 - `tools/dosbox-nointro.sh` starts DOSBox without the intro movies.
+- Game modes: `--mode vanilla|advanced`, default `advanced`. The advanced mode adds W A S D Q E for movement and F5 and F9 for a quick save and quick load in `DATA/QUICK.DAT`. The control state gives the mode in `game_mode`. Details: `docs/advanced-mode.md`.
 
 ### Changed
 
