@@ -162,7 +162,7 @@ class OriginalView:
         emu.serve_file(data)
         emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
         emu.stub(GDAT_ENTRY_INDEX, self.entry_index)
-        emu.stub(WEATHER_INIT, lambda *_: 0)
+        self.weather_init_stub = emu.stub(WEATHER_INIT, lambda *_: 0)  # the load: the test gives the C values
         emu.stub(READ_LEVEL_TABLE, lambda *_: 0)
         emu.run(LOAD_BEGIN, LOAD_END)
         emu.stub(0x3EC2B, lambda c, i, e, *_: self.image(self.image_item(c, i, e)))  # gdat_get_image
@@ -300,7 +300,7 @@ class OriginalView:
         return emu.read(self.viewport, VIEW_W * VIEW_H)
 
     def sky_objects(self, gfx_set, darkness, clouds):
-        """The rain and clouds of a weather state, as the C port builds them (Step 17 builds them in the weather)."""
+        """The rain and clouds of a weather state, as world_update_day_night builds them."""
         text = ctypes.create_string_buffer(128)
         out = b""
         # (amount, lowest amount shown, limits of the light and medium pictures, the 3 pictures)
@@ -338,13 +338,16 @@ class PartyHead(ctypes.Structure):
                                                      "move_steps")]
 
 
-def c_view(lib, map_, x, y, direction, light, walking=0):
+def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     game = WeatherGame.in_dll(lib, "game")
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
     party = PartyHead.in_dll(lib, "party")
     party.cur_map, party.move_steps = -1, walking  # 0: no walk; the current map of the dungeon reads becomes map_
     lib.dun_set_party_location(x, y, map_)
     lib.view_enter_map(map_)
+    if sky is not None:  # the weather sky objects that world_update_day_night builds
+        lib.view_sky_objects.restype = ctypes.c_void_p
+        ctypes.memmove(lib.view_sky_objects(), sky, len(sky))
     ctypes.c_int.in_dll(lib, "view_light_level").value = light
     ctypes.c_uint32.in_dll(lib, "random_seed").value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "view_viewport")
@@ -395,8 +398,8 @@ def test_outdoor_sky_matches_original(lib, loaded, original_view):
             continue
         game.weather_visible, game.sky_darkness, game.cloud_cover = 1, rng.choice([0, 0x20, 0x50, 0x90]), rng.choice([0, 0x50, 0x90, 0xD0])
         direction = rng.randrange(4)
-        mine = c_view(lib, map_, x, y, direction, 0)
         sky = original_view.sky_objects(lib.dungeon_map_graphics(map_) >> 4 & 0xF, game.sky_darkness, game.cloud_cover)
+        mine = c_view(lib, map_, x, y, direction, 0, sky)
         assert mine == original_view.draw(map_, x, y, direction, 0, sky), (map_, x, y, direction)
         views += 1
     original_view.emu.write(G_WEATHER_VISIBLE, b"\0")

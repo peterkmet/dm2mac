@@ -242,7 +242,6 @@ class Loop(Scenario):
         self.loop = MainLoop.in_dll(lib, "main_loop")
         self.loop.tick_count, self.loop.timer_ticks, self.loop.end = 0, 0, 0
         assert lib.text_init(gdat)
-        lib.view_enter_map(self.game.party_map)
         lib.ui_reset()
         lib.money_init_coin_table()
         lib.ui_draw_game_screen()

@@ -43,6 +43,10 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
 void sensor_process_map_entry(int entering);
 /* Runs a due sensor animation, timer, or busy event. */
 void timeline_event_sensor(TimelineEvent *e);
+/* Moves thing (from (from_x, from_y), -1: a new thing) to the cell to_cell of (to_x, to_y) for a transfer sensor,
+   with the charge change of the sensor; on a floor the cell is random. */
+void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
+                            int from_creature, int to_possessions);
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
 int dun_get_global_var(int var);
 void dun_modify_global_var(int var, int value, int op);

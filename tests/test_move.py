@@ -33,7 +33,7 @@ TIMELINE_PROCESS, TIMELINE_ADD_EVENT, DUN_SET_PARTY_LOCATION = 0x59A5C, 0x56390,
 SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
 # Functions of later steps and of the DOS layer: (address, stack arguments, result).
 STUBS = {
-    0x15BAA: (5, 0), 0x15CA9: (4, 0), 0x1616D: (0, 0), 0x160DB: (0, 0),     # sound
+    0x2FACC: (0, 0),                                                         # party distance map (Step 16)
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
@@ -42,7 +42,7 @@ STUBS = {
     0x3085A: (0, 0), 0x3064D: (0, 0), 0x30D45: (1, 0), 0x30FE3: (0, 0),     # creature groups
     0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
     0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
-    0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
+    0x49CBB: (0, 0),                                                         # champion revival (Step 15)
     0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
     0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
     0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
@@ -69,6 +69,84 @@ WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
 WALL_END_GAME = 0x58A12
 # sensor_forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
 FORWARD_REVERSE_HOLD = 0x5723C
+# Step 17: the weather update, and sensor_transfer_object with its charge change that mode 3 leaves uninitialized.
+WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2
+EXPLOSION_CREATE, SHOP_PARSE_ITEM_CLASS_SET = 0x16746, 0x1538D  # Steps 16 and 15: the tests compare the arguments
+MAP_GRAPHICS_TAIL = SCRATCH + 0xF8200  # the end of gdat_load_map_graphics: world_update_day_night(0), then return
+# Weather globals of the original: name -> (address, struct format); the C values come from World.
+WEATHER = {
+    "weather_visible": (0x8047B, "<B"), "heavy_rain": (0x8047C, "<B"), "wind_dir": (0x8047F, "<B"),
+    "rain_intensity": (0x8047E, "<B"), "sky_darkness": (0x8047A, "<B"), "cloud_cover": (0x80479, "<B"),
+    "storm_multiplier": (0x80480, "<B"), "storm_step": (0x80477, "<B"), "storm_curve": (0x80474, "<B"),
+    "storm_intensity": (0x80470, "<H"), "next_hour_time": (0x80430, "<I"),
+    "strike_threshold": (0x8046C, "<h"), "storm_previous": (0x8046A, "<H"), "hour_light": (0x80472, "<h"),
+    "day_time_offset": (0x80434, "<I"), "first_init": (0x76184, "<i"), "thunder_toggle": (0x76188, "<i"),
+    "lightning_flash": (0x7F248, "<i"), "light_level": (0x7F282, "<h"), "light_source_sum": (0x7F970, "<h"),
+    "explosion_light_sum": (0x7F974, "<h"),
+}
+G_SKY_OBJECTS, SKY_OBJECTS_SIZE, G_VIEW_CLEAR_RECT, G_UI_COLORS = 0x80438, 50, 0x8002C, 0x7F210
+# The sound requests: the original sound table (the sounds that the map graphics load) is a stub, every sound of
+# GRAPHICS.DAT counts as loaded, as in the C port; the original sound_play_requests runs with stubs for its two HMI
+# driver calls. The tests compare the requests that reach sound_play_requests and the order, loudness, and pan of the
+# sounds that start.
+SOUND_FIND_LOADED, SOUND_PLAY_REQUESTS, SOUND_FLUSH_REQUESTS = 0x15C10, 0x10573, 0x1616D
+HMI_DIGI_SAMPLE_DONE, HMI_DIGI_START_SAMPLE = 0x608B9, 0x609B9
+G_DIGI_ENABLED, G_DIGI_VOLUME, G_SAMPLE_HANDLES = 0x704BE, 0x7EF84, 0x7EDA0
+G_SOS_SAMPLE_DATA, G_SOS_VOLUME, G_SOS_PAN = 0x703F8, 0x7040C, 0x70438
+
+
+class SoundStart(ctypes.Structure):
+    _fields_ = [("data", ctypes.c_void_p), ("loudness", ctypes.c_int), ("pan", ctypes.c_int)]
+G_DELAYED_SOUNDS, G_SOUND_TABLE, G_SOUND_DEFERRED, G_SAMPLE_DESCS, G_SOUND_REQUESTS = 0x7F188, 0x7F18C, 0x7F190, 0x7F194, 0x7F198
+G_SOUND_REQUEST_COUNT, G_SOUND_DEFERRED_COUNT, SOUND_TABLE_MAX = 0x71690, 0x71692, 512
+
+
+class SoundRequest(ctypes.Structure):
+    _fields_ = [(n, ctypes.c_uint8) for n in ("category", "index", "entry", "priority", "volume")] + [
+        ("lateral", ctypes.c_int8), ("forward", ctypes.c_int8)]
+
+
+class Sound(ctypes.Structure):
+    _fields_ = [("data", ctypes.c_void_p), ("length", ctypes.c_uint32)]
+G_GFX_HAS_CLOUDS, G_GFX_HAS_RAIN, G_GFX_HAS_LIGHTNING = 0x80475, 0x80476, 0x8047D
+
+
+class WeatherState(ctypes.Structure):
+    """The C weather.h Weather."""
+    _fields_ = [("strike_threshold", ctypes.c_int16), ("storm_previous", ctypes.c_uint16), ("hour_light", ctypes.c_int16),
+                ("day_time_offset", ctypes.c_uint32), ("first_init", ctypes.c_int), ("thunder_toggle", ctypes.c_int),
+                ("lightning_flash", ctypes.c_int), ("dungeon_loaded", ctypes.c_int)]
+
+
+class ExplosionCall(ctypes.Structure):
+    _fields_ = [("type", ctypes.c_uint16), ("attack", ctypes.c_uint16), ("x", ctypes.c_uint16), ("y", ctypes.c_uint16),
+                ("cell", ctypes.c_int16)]
+
+
+def c_weather(lib):
+    """The weather globals of the C port, by the names of WEATHER."""
+    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "weather")
+    out = {name: getattr(game, name) for name in list(WEATHER)[:11]}
+    out |= {name: getattr(weather, name) for name in list(WEATHER)[11:18]}
+    out["light_level"] = ctypes.c_int.in_dll(lib, "view_light_level").value
+    out["light_source_sum"] = ctypes.c_int16.in_dll(lib, "light_source_sum").value
+    out["explosion_light_sum"] = ctypes.c_int16.in_dll(lib, "explosion_light_sum").value
+    return out
+
+
+def c_sky(lib):
+    """The C sky objects up to the end mark."""
+    lib.view_sky_objects.restype = ctypes.c_void_p
+    return sky_list(ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
+
+
+def sky_list(raw):
+    out = []
+    for i in range(0, SKY_OBJECTS_SIZE, 10):
+        if raw[i] == 0xFF:
+            break
+        out.append(raw[i:i + 10])
+    return out
 
 
 def ignore_stale(state):
@@ -93,6 +171,16 @@ class GameRecord(ctypes.Structure):
                 ("party_y", ctypes.c_uint16), ("party_dir", ctypes.c_uint16), ("party_map", ctypes.c_uint16),
                 ("leader", ctypes.c_uint16), ("party_move_cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
                 ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
+
+
+class WorldGame(ctypes.Structure):
+    """The weather fields of the C save.h Game."""
+    _fields_ = GameRecord._fields_ + [
+        ("sound_volume", ctypes.c_uint8), ("music_volume", ctypes.c_uint8), ("weather_visible", ctypes.c_uint8),
+        ("heavy_rain", ctypes.c_uint8), ("wind_dir", ctypes.c_uint8), ("rain_intensity", ctypes.c_uint8),
+        ("sky_darkness", ctypes.c_uint8), ("cloud_cover", ctypes.c_uint8), ("storm_multiplier", ctypes.c_uint8),
+        ("storm_step", ctypes.c_uint8), ("storm_curve", ctypes.c_uint8), ("storm_intensity", ctypes.c_uint16),
+        ("next_hour_time", ctypes.c_uint32)]
 
 
 class DamageCall(ctypes.Structure):
@@ -154,7 +242,16 @@ class Scenario:
         groups = emu.read_u32(G_ACTIVE_GROUPS)
         for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
             emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
-        emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
+        self.explosions = []  # the explosion calls of the original (lightning)
+        emu.stub(EXPLOSION_CREATE, lambda t, a, x, y, cell, *_: self.explosions.append(
+            (t & 0xFFFF, a & 0xFFFF, x & 0xFFFF, y & 0xFFFF, int16(cell))), stack_args=1)
+        ctypes.c_int.in_dll(lib, "explosion_call_count").value = 0
+        emu.stub(SHOP_PARSE_ITEM_CLASS_SET, lambda c, e, bits, *_: emu.write(bits, bytes(0x40)))
+        self.map_graphics_tail()
+        self.set_local(TRANSFER_OBJECT_FRAME, 0, 0)
+        self.sound_setup()
+        emu.write_u32(G_UI_COLORS, view.entry_data(1, 0, 0x0D, 0xFE))  # view_clear_viewport fills the band with color 0
+        self.sync_weather()
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
         self.clear_uninitialized_event_bytes()
@@ -166,6 +263,138 @@ class Scenario:
         self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         if place_party:
             self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
+
+    def map_graphics_tail(self):
+        """gdat_load_map_graphics runs load_map_graphics, then the original world_update_day_night(0) like the C
+        callers of view_enter_map."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EIP
+        call = WORLD_UPDATE_DAY_NIGHT - (MAP_GRAPHICS_TAIL + 7)
+        self.emu.write(MAP_GRAPHICS_TAIL, b"\x31\xc0\xe8" + struct.pack("<i", call) + b"\xc3")
+
+        def hook(uc, *_):
+            try:
+                self.load_map_graphics()
+            except Exception as e:  # exceptions do not cross the Unicorn callbacks
+                self.emu._fail(f"map graphics stub: {e!r}")
+            uc.reg_write(UC_X86_REG_EIP, MAP_GRAPHICS_TAIL)
+
+        self.emu.uc.hook_add(UC_HOOK_CODE, hook, begin=GDAT_LOAD_MAP_GRAPHICS, end=GDAT_LOAD_MAP_GRAPHICS)
+
+    def sound_setup(self):
+        """The sound buffers of the original, its sound table filled on demand, and the recorder of its driver calls."""
+        emu, lib, view = self.emu, self.lib, self.view
+        lib.sound_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
+        for addr, size in ((G_DELAYED_SOUNDS, 0x70), (G_SOUND_DEFERRED, 0x48), (G_SOUND_REQUESTS, 0xF0),
+                           (G_SOUND_TABLE, 7 * SOUND_TABLE_MAX), (G_SAMPLE_DESCS, 16 * SOUND_TABLE_MAX)):
+            emu.write_u32(addr, view.put(bytes(size)))
+        emu.write(G_SOUND_REQUEST_COUNT, bytes(4))
+        self.sound_keys = []
+        self.sounds = []  # the requests that reached the driver of the original
+
+        def find_loaded(category, index, entry, *_):
+            key = (category & 0xFF, index & 0xFF, entry & 0xFF)
+            s = Sound()
+            if lib.sound_load(self.gdat, *key, ctypes.byref(s)) != 0:
+                return 0
+            if key not in self.sound_keys:
+                n = len(self.sound_keys)
+                self.sound_keys.append(key)
+                emu.write(emu.read_u32(G_SOUND_TABLE) + 7 * n, struct.pack("<HBBBH", n, *key, 0xFFFF))
+                emu.write(emu.read_u32(G_SAMPLE_DESCS) + 16 * n, struct.pack("<IH", s.data & 0xFFFFFFFF, s.length & 0xFFFF))
+            return self.sound_keys.index(key) + 1
+
+        def play(uc, *_):
+            from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EDX
+            count, requests = uc.reg_read(UC_X86_REG_EAX) & 0xFFFF, uc.reg_read(UC_X86_REG_EDX)
+            descs = emu.read_u32(G_SAMPLE_DESCS)
+            for i in range(count):
+                desc, priority, volume, lateral, forward = struct.unpack_from("<IBBbb", emu.read(requests + 12 * i, 8))
+                self.sounds.append(self.sound_keys[(desc - descs) // 16] + (priority, volume, lateral, forward))
+
+        def start(handle, channel, *_):
+            volume = emu.read_u32(G_SOS_VOLUME)
+            self.started.append((emu.read_u32(G_SOS_SAMPLE_DATA), volume >> 7, emu.read_u32(G_SOS_PAN)))
+            return channel + 1  # a handle; the voice is free again at once (sample done)
+
+        from unicorn import UC_HOOK_CODE
+        self.started = []  # the sounds that the original starts: (sample data, loudness, pan)
+        emu.stub(SOUND_FIND_LOADED, find_loaded)
+        emu.uc.hook_add(UC_HOOK_CODE, play, begin=SOUND_PLAY_REQUESTS, end=SOUND_PLAY_REQUESTS)
+        emu.stub(HMI_DIGI_SAMPLE_DONE, lambda *_: 1)
+        emu.stub(HMI_DIGI_START_SAMPLE, start)
+        emu.write_u32(G_DIGI_ENABLED, 1)
+        emu.write(G_DIGI_VOLUME, struct.pack("<h", 7))
+        emu.write(G_SAMPLE_HANDLES, struct.pack("<64i", *[-1] * 64))
+        ctypes.c_int.in_dll(lib, "sound_played_count").value = 0
+        ctypes.c_int.in_dll(lib, "sound_started_count").value = 0
+        lib.sound_stop_all()
+        lib.sound_reset_requests()  # both start from the sound state of the program start
+
+    def flush_sounds(self):
+        """The end of a game step: the sound requests of the step play in both."""
+        self.lib.sound_flush_requests(0)
+        self.emu.call(SOUND_FLUSH_REQUESTS, 0)
+
+    def assert_same_sounds(self, where):
+        """The sound requests that reached the voices in both since the last check."""
+        count = ctypes.c_int.in_dll(self.lib, "sound_played_count")
+        played = (SoundRequest * 64).in_dll(self.lib, "sound_played")
+        mine = [(r.category, r.index, r.entry, r.priority, r.volume, r.lateral, r.forward) for r in played[:count.value]]
+        assert mine == self.sounds[:64], (where, mine, self.sounds)
+        count.value = 0
+        self.sounds.clear()
+        count = ctypes.c_int.in_dll(self.lib, "sound_started_count")
+        started = (SoundStart * 64).in_dll(self.lib, "sound_started")
+        mine = [((s.data or 0) & 0xFFFFFFFF, s.loudness, s.pan) for s in started[:count.value]]
+        assert mine == self.started[:64], (where, mine, self.started)
+        count.value = 0
+        self.started.clear()
+        self.lib.sound_stop_all()  # the original voices are free again at once (its sample done stub)
+
+    def sync_weather(self):
+        """The weather state that the save does not keep: the original load stubs weather_init, so it gets the values
+        of the C weather_init (the strike threshold and the hour light depend on the time and seed before the load)."""
+        theirs = self.weather()
+        mine = c_weather(self.lib)
+        assert mine["day_time_offset"] == theirs["day_time_offset"]
+        for name in ("strike_threshold", "storm_previous", "hour_light", "first_init", "thunder_toggle", "lightning_flash",
+                     "light_level", "light_source_sum", "explosion_light_sum"):
+            addr, fmt = WEATHER[name]
+            self.emu.write(addr, struct.pack(fmt, mine[name]))
+
+    def weather(self):
+        """The weather globals of the original."""
+        return {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0] for name, (addr, fmt) in WEATHER.items()}
+
+    def assert_same_weather(self, where):
+        """The weather, the light, the sky objects (while the weather shows), and the lightning explosions of both."""
+        assert c_weather(self.lib) == self.weather(), where
+        if self.weather()["weather_visible"]:
+            assert c_sky(self.lib) == sky_list(self.emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)), where
+        count = ctypes.c_int.in_dll(self.lib, "explosion_call_count")
+        calls = (ExplosionCall * 64).in_dll(self.lib, "explosion_calls")
+        assert [(c.type, c.attack, c.x, c.y, c.cell) for c in calls[:count.value]] == self.explosions, where
+        count.value = 0
+        self.explosions.clear()
+
+    def clear_band(self, gfx_set):
+        """The band between the ceiling and floor pictures that view_clear_viewport fills (G_VIEW_CLEAR_RECT), and
+        its size; 0 when the pictures fill the viewport."""
+        sizes = []
+        for entry in (0, 1):  # floor, ceiling
+            w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
+            item = self.lib.gdat_find(self.gdat, 8, gfx_set, 1, entry)
+            if item < 0:
+                return 0
+            self.lib.gdat_image_size(self.gdat, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
+            sizes.append((w.value, h.value))
+        (fw, fh), (cw, ch) = sizes
+        floor, rest = fw * fh & 0xFFFF, (224 * 136 - cw * ch) & 0xFFFF
+        if floor >= rest:
+            return 0
+        self.emu.write(G_VIEW_CLEAR_RECT, struct.pack("<4h", 0, ch, 224, 136 - (ch + fh)))
+        return rest - floor
 
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
@@ -179,11 +408,13 @@ class Scenario:
                                                   graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
         emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
         emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
-        emu.write(tv.G_VIEW_CLEAR, bytes(2))
-        weather = tv.WeatherGame.in_dll(lib, "game")
-        sky = view.sky_objects(gfx_set, weather.sky_darkness, weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)
-        emu.write(tv.G_SKY_OBJECTS, sky)
+        emu.write(tv.G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
+        lib.view_sky_objects.restype = ctypes.c_void_p
+        emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
         emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
+        for addr, entry in ((G_GFX_HAS_CLOUDS, 0x6A), (G_GFX_HAS_RAIN, 0x67), (G_GFX_HAS_LIGHTNING, 0x64)):
+            emu.write(addr, bytes([lib.gdat_exists(self.gdat, 0x17, gfx_set, 1, entry)]))
+        emu.write(G_SOUND_REQUEST_COUNT, bytes(2))  # sound_wait_and_clear_requests
         lib.view_enter_map(map_)
 
     def clear_uninitialized_event_bytes(self):
@@ -194,7 +425,8 @@ class Scenario:
         keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
-                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0)}
+                0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0),
+                0x54: (0, 0, 0, 0, 0, 0), 0x15: (0xFF, 0xFF, 0, 0, 0, 0)}
         emu = self.emu
 
         def hook(uc, *_):
@@ -275,9 +507,12 @@ class Scenario:
         return mine, theirs
 
     def step(self):
-        """The game loop part that this test runs per step: the timeline, the walk, and the cooldowns."""
+        """The game loop part that this test runs per step: the timeline, the weather, the walk, and the cooldowns."""
         self.lib.timeline_process()
         self.emu.call(TIMELINE_PROCESS)
+        self.lib.world_update_day_night(0)
+        self.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
+        self.flush_sounds()
         if self.party.move_steps:
             if self.party.move_steps == 1:
                 self.lib.move_party(self.party.move_command)
@@ -356,6 +591,9 @@ class Scenario:
                   for name, (addr, fmt) in GLOBALS.items()}
         assert ignore_stale(mine) == ignore_stale(theirs), where
         assert self.differences() == [], where
+        self.assert_same_weather(where)
+        self.assert_same_sounds(where)
+        assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(0x70518), where
 
     def assert_equal(self, where):
         self.assert_same_damage(where)
@@ -589,10 +827,9 @@ def test_clicks_in_the_view(scenario, lib):
     clicked = 0
     for n, (map_, x, y, d) in enumerate(places[::2]):
         scenario.place(map_, x, y, d)
-        weather = tv.WeatherGame.in_dll(lib, "game")
-        sky = scenario.view.sky_objects(lib.dungeon_map_graphics(map_) >> 4 & 0xF, weather.sky_darkness,
-                                        weather.cloud_cover) if weather.weather_visible else b"\xff" + bytes(9)
-        scenario.view.draw(map_, x, y, d, 0, sky)
+        lib.view_sky_objects.restype = ctypes.c_void_p
+        sky = ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE)  # the weather of the C port in both
+        scenario.view.draw(map_, x, y, d, ctypes.c_int.in_dll(lib, "view_light_level").value, sky)
         seed.value = tv.VIEW_SEED
         lib.view_draw_dungeon(d, x, y)
         n_zones = count.value

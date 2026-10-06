@@ -29,6 +29,8 @@ int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t
 /* The rect of zone at w_scale and h_scale (1/10000) of the size of its parent size zone. */
 int16_t *zone_get_rect_clipped(int zone, int16_t *rect, unsigned w_scale, unsigned h_scale);
 int16_t *zone_get_rect(int zone, int16_t *rect);
+/* The offset (*dx, *dy) at percent (0 to 100) of the way from zone from to zone to; returns -1 for an unknown zone. */
+int zone_interpolate_offset(int from, int to, int percent, int16_t *dx, int16_t *dy);
 /* Clips the next zones to the viewport minus these margins. */
 void zone_set_clip_margins(int left, int top, int right, int bottom);
 

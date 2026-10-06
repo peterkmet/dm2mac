@@ -32,6 +32,7 @@ def snd(lib):
     lib.sound_volume_pan.argtypes = [ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8, c_int_p, c_int_p]
     lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
     lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
+    lib.sound_stop_all()  # the scenario tests of the game play sounds in the same library
     return lib
 
 

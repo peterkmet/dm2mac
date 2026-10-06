@@ -227,13 +227,43 @@ Port the main loop, the command queue, mouse and keyboard handling, party moveme
 
 Port champion recruiting, stats, inventory, item use, eating and drinking, actions, money, and shops. Tests as in Step 14.
 
+- From Step 17: the item creation of wall sensor `0x3c` (hook `sensor_create_item`; it then calls `sensor_transfer_object`), `champ_revive` (bones on a transfer sensor), `items_burn_held_lights`.
+
 ### Step 16: Creatures, minions, projectiles, magic, combat
 
 Port creature groups and AI, minions, projectiles, explosions, spells, damage, and death. Tests as in Step 14.
 
+- From Step 17: `creature_refresh_party_maps` with `creature_ai_search_area`, which clear the square light sums, call `light_add_square_light` (ported in Step 17) for the squares around the party, and then `light_update_party_light`; `explosion_create` (lightning strikes); `shop_parse_item_class_set` (sensor `0x40`); `creature_get_party_distance` (sound requests).
+
 ### Step 17: World systems
 
 Port weather, day and night, and the Skullkeep machines. Each system has at least one automated test (differential or scenario, as in Step 14).
+
+- Original functions (from `docs/skull-symbols.csv`, subsystems weather, day and night, Skullkeep machines, and the items that Steps 12a and 14 deferred):
+  - Weather: `weather_schedule_event`, `weather_init`, `world_update_day_night` (hour, rain, clouds, storm steps, sky objects, lightning, thunder, flash), and the weather part of `dungeon_load` (the day time offset, then `weather_init`).
+  - Day and night: `light_update_party_light`, `light_add_square_light`.
+  - Skullkeep machines: `sensor_transfer_object`, `sensor_transfer_objects` (object transfer sensors `0x3b`, `0x40`, `0x47`, `0x48`, `0x49` on walls and floors).
+  - Comes forward: `zone_interpolate_offset` (interface; the place of a lightning bolt).
+  - Already ported: the other Skullkeep machine sensors (Step 14); `weather_get_rain_image`, `weather_draw_rain`, `view_draw_wet_image`, `weather_load_sky_object`, the `outdoor_*` sky drawing (Step 12).
+- Not in Step 17:
+  - Step 15: `items_burn_held_lights`, `champ_revive` (bones on a transfer sensor), the item creation of wall sensor `0x3c` (hook `sensor_create_item`).
+  - Step 16: `shop_parse_item_class_set` (the item class of sensor `0x40`), `creature_get_party_distance` (the walking distance of a sound); `creature_refresh_party_maps` and `creature_ai_search_area`, which clear the square light sums and call `light_add_square_light` around the party, then `light_update_party_light`; `explosion_create` (a lightning strike); `magic_add_light`, `timeline_event_magic_light`; `sensor_launch_missile`, `sensor_affect_creatures_in_area`, `sensor_turn_creatures`.
+  - Sound requests (user decision, 2026-10-05): Step 17 ports them (`sound_request`, `sound_play_with_fallback`, `sound_flush_requests`, `sound_play_delayed`, `sound_play_requests` onto `sound.c`), so the lightning and thunder sounds and the other game sounds play.
+  - Step 20: `sensor_start_timers` (it acts only in a new game). `sensor_nop` does nothing.
+- Done. Modules: `weather.c` (weather, day and night, party light), `sound_request.c` (sound requests, delayed sounds; `sound_stop_all` in `sound.c`), object transfer sensors in `sensor.c`, `zone_interpolate_offset` in `zone.c`, `dun_get_square_aspect` and the sky objects exported from `view.c`; `save.c` calls `weather_load` before the game record; `game_enter_map` and the pit fall call `world_update_day_night(0)` after `view_enter_map`. Tests:
+  - `tests/test_world.py` (emulator oracle, `start.DAT`): `weather_init` (60 random states, both modes, first and later cycle); 300 storm steps of all curves, also the last step; 3 × 14 places on the outdoor maps and on map 1 (fixed lightning square) with 40 game steps each in random weather (calm, weak, strong storm, early and late game time, script byte `0x40`, the inventory open or asleep) with random moves: the weather, light, sky objects, explosion calls, script bytes `0x40` and `0x41`, random seed, dungeon, and timeline after each step, and every 10 steps the view picture drawn with the light level and sky objects of each side; 400 party light states (torches with random charges in the hands, 1 to 4 champions, magic light, square and explosion light, dark and lit maps, weather, flash; all 6 levels occur); the square light of the squares of all maps in all 4 directions; `zone_interpolate_offset` (400 cases); every object transfer sensor of the dungeon with objects moved onto its source cell and square events with each effect.
+  - The Step 14 scenarios and main loop tests now run the original weather update and object transfer instead of stubs, step the weather in each scenario step, and compare the weather state in each check (`tests/test_move.py`, `tests/test_input.py`). The view tests write the sky objects into the C port, as the weather update builds them (`tests/test_view.py`).
+  - More tests in `tests/test_world.py`: 240 lightning strikes that try a chosen square first (a random seed found with the C random functions): the party square (game time before and after 12000, weak and strong storm, script byte `0x40` below and above the threshold), creature squares (party 1 to 4 squares away), and squares near the party with the inventory open or asleep; the square light of added explosions, spell missiles, and glowing creatures; the transfer sensors also as each other kind, wanting any object, with each charge change, inverted, and aimed at their own square.
+  - Review fixes: the lightning sounds test (30 places, 30 steps: thunder after 1 to 15 ticks, the fixed lightning square of map 1 with its sound), the sound requests that reach the voices compared in every scenario check of `tests/test_move.py` (the original sound table and driver are stubs, the original request code runs), the random seed in `Scenario.assert_same`, and the pit falls in the main loop of both (`test_pit_falls_match_original`: the loop state on each tick, the weather, sounds, dungeon, and the fall view picture). The harness sets the cleared band of the original view (`G_VIEW_CLEAR`) as `view_enter_map` does.
+  - Second review fixes: the oracle runs the original `sound_play_requests` with stubs for its two HMI calls only (`hmi_digi_sample_done`, `hmi_digi_start_sample`), and every check compares the start order, loudness, and pan of the sounds with the port. `test_sound_requests_match_original` (150 groups of 1 to 6 requests with delays 0, 1, -1, 2 to 8, random priorities, volumes, and places, the party asleep or not; requests from the map of the other side of a seamless passage, with the alt view map set in both; the party leaves for another map before the delayed sounds play). `test_ambient_wall_sounds_match_original` (the audible wall ornaments of the dungeon, set to animate, when their cycle starts at the map entry: the party on the square in front of the wall and elsewhere). Mutation probes of the review (sound requests and ambient sounds): 13 rule changes (wall side and party-in-front rule of the ambient sound, its cycle start, priority and loudness order, the seamless-passage offset, the map check of a delay above 0, the deferred limit, the sleep volume, the duplicate check, the delayed event time, the fallback, the map check of `sound_play_delayed`). 12 fail a test. The map check of `sound_play_delayed` cannot fail one: the event map is the current map of the request, `timeline_process` makes it the current map again, and `sound_request` repeats the same check for delay 1. The ambient test turns the sensors to the east and west wall faces too (the dungeon has these sensors only on north and south faces); the seamless-passage test sets the alt view map in both.
+  - Mutation probes: 43 rule changes in `weather.c`, `sensor.c`, and `zone.c` (timings, limits, chances, the lightning conditions, the light sum and levels, the falloffs, the charge changes, the transfer options). All 43 fail a test.
+- Deviations (details: `docs/skull-formats.md` section 11):
+  - The port sets the 6 data bytes of a storm step event to 0 (uninitialized in the original); charge mode 3 of a transfer sensor adds 0 (uninitialized); the thunder delay uses multiplier 1 for 0 (the original divides by 0); a sky state past the table shows no weather.
+  - `view_enter_map` no longer builds the sky objects of the saved weather (the 12a deviation): the weather update builds them. The light level is computed (the 12a "light level 0" deviation is gone), but until Step 16 the square light sums stay 0 and the light updates only at the hour (outdoors), with lightning, and with magic light events.
+  - `build/dm2 --save` no longer calls `view_enter_map` before `game_start_session`: the original has no such call (a 12a leftover); `game_start_session` enters the map.
+  - The sound requests: every sound of `GRAPHICS.DAT` counts as loaded; the walking distance is a Step 16 hook (0). `sensor_start_ambient_sound` now plays its sound only at the start of the animation cycle, from the square in front of a wall (a Step 14 omission). Details: `docs/skull-formats.md` section 11.
+  - The second fall view of a pit below a pit (map change and weather update in `move_follow_square_transitions`) needs the debug flag of the original: it never runs, and no test reaches it.
+  - The creature info byte `+2` (lightning does not strike `0xff`) is a separate table in `weather.c`, so that `creature.c` stays as Step 16 changes it.
 
 ### Step 18: Sound effects
 
@@ -247,6 +277,8 @@ Port the digital sound playback through SDL3 audio. Sample data and format come 
 - Test: render the first seconds of `TEST.HMP` and of one game song. The output is not silent, and the event times are equal to the times in the HMP file.
 
 ### Step 20: Start menu, save and load, end of game
+
+- From Step 17: `sensor_start_timers` (a new game starts the timer sensors).
 
 Port the start menu, new game, load, save, and the end sequence of `SKULL.EXE`. Tests: a scenario test saves a game, loads it, and checks the same state; a state built from `start.DAT` that meets the end condition reaches the end-of-game state in the C port and in the original code in `dm2tools.emu` (emulator oracle, Step 14).
 

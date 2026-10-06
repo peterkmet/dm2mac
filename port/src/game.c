@@ -17,6 +17,7 @@
 #include "timeline.h"
 #include "ui.h"
 #include "view.h"
+#include "weather.h"
 #include "zone.h"
 
 #define REDRAW_INVENTORY_BOX 0x4000
@@ -116,6 +117,7 @@ void game_enter_map(int x, int y, int map, int leaving)
     if (leaving) sensor_process_map_entry(0);
     dun_set_party_location(x, y, map);
     view_enter_map(map);
+    world_update_day_night(0);
     sensor_process_map_entry(1);
     creature_activate_groups_on_map();
     party.redraw |= REDRAW_SQUARES;
