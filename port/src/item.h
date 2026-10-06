@@ -23,6 +23,8 @@ enum item_attr {
     ATTR_STRENGTH = 8, ATTR_THROW_POWER = 9, ATTR_WEIGHT_PER_CHARGE = 0x34,
     ATTR_VALUE_PER_CHARGE = 0x35
 };
+/* Weapon, clothing, and misc item word 2: the bit that keeps a thing from being reused. */
+#define DO_NOT_DISCARD 0x0080
 /* ATTR_FLAGS bits. */
 #define ITEM_FLAG_COIN 0x4000
 #define ITEM_FLAG_ICON_IN_HAND 0x8000   /* the icon changes with the slot */

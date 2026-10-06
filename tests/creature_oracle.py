@@ -12,14 +12,12 @@ CREATURE_ACTIVATE_GROUPS_ALL_MAPS = 0x34236
 IMAGE_CACHE_LOOKUP, IMAGE_CACHE_ALLOC, IMAGE_CACHE_REALLOC = 0x3F1F8, 0x3F279, 0x3F2C2
 IMAGE_CACHE_GET, IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE = 0x3F337, 0x3F3C2, 0x3F406
 MEM_ALLOC, MEM_FREE_SIZE = 0x3BBBA, 0x3BCA5
-# Parts that the C port leaves as hooks (hooks.c): (address, stack arguments, result) as there.
-NOT_YET = {}
 G_AI_ACTIVE_GROUP = 0x7F552
 
 
 class CreatureOracle:
     """The creature parts of the scenario harness (a mixin of test_move.Scenario): the active groups in both, the
-    image cache keys and the memory blocks of the creature AI, and the stubs of the parts that are not ported."""
+    image cache keys and the memory blocks of the creature AI."""
 
     @staticmethod
     def reset_creature_globals(lib):
@@ -35,8 +33,6 @@ class CreatureOracle:
     def setup_creatures(self, reset):
         """reset: activate the groups in both, like a session start; else the caller starts the session."""
         emu, lib = self.emu, self.lib
-        for addr, (stack, result) in NOT_YET.items():
-            emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
         for addr in (IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE, MEM_FREE_SIZE):  # replaced below
             emu.uc.hook_del(self.view.no_ops.pop(addr))
         self.ai_cache = {}  # image cache keys of the AI data: key -> index

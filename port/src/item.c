@@ -28,6 +28,8 @@
 #define MISC_MAX_CHARGES 3
 #define POTION_POWER_MASK 0xff
 #define POTION_POWER_MAX 0xff
+#define POTION_DO_NOT_DISCARD 0x8000
+#define GROUP_DO_NOT_DISCARD 0x0400  /* in word GROUP_DIR */
 #define MONEYBOX_TEXT_ENTRY 0x40       /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
 #define ITEM_NAME_ENTRY 0x18
 #define ITEM_ICON_ENTRY 0x18           /* the first icon of an item */
@@ -259,6 +261,22 @@ uint16_t item_get_value(uint16_t thing)
 {
     int v = item_sum_attr(thing, ATTR_COIN_VALUE);
     return (uint16_t)(v > 0xffff ? 0xffff : v);
+}
+
+void item_set_do_not_discard(uint16_t thing, int keep)
+{
+    switch (thing_type(thing)) {
+    case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
+        set_thing_word(thing, 2, (uint16_t)((thing_word(thing, 2) & ~DO_NOT_DISCARD) | (keep & 1) << 7));
+        break;
+    case THING_POTION:
+        set_thing_word(thing, 2, (uint16_t)((thing_word(thing, 2) & ~POTION_DO_NOT_DISCARD) | (keep & 1) << 15));
+        break;
+    case THING_GROUP:
+        set_thing_word(thing, GROUP_DIR, (uint16_t)((thing_word(thing, GROUP_DIR) & ~GROUP_DO_NOT_DISCARD) | (keep & 1) << 10));
+        break;
+    default: break;
+    }
 }
 
 int item_has_charged_action(uint16_t thing)
