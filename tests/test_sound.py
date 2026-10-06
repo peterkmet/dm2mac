@@ -10,6 +10,7 @@ from dm2tools.le import load_image
 
 GDAT = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 SOUND_COMPUTE_VOLUME_PAN = 0x10877
+SOUND_SET_VOLUME, SOS_DIGI_SET_MASTER_VOLUME, G_DIGI_ENABLED = 0x10736, 0x61A45, 0x704BE
 # sound_request: from the party direction switch to the end of the distance scaling
 OFFSET_BEGIN, OFFSET_END = 0x15E81, 0x16053
 CREATURE_GET_PARTY_DISTANCE = 0x2FACC
@@ -156,3 +157,23 @@ def test_all_voices_busy(snd):
     mix(snd, UPSAMPLE)
     assert snd.sound_play(ctypes.byref(s), 255, 0, 0)
     mix(snd, UPSAMPLE)
+
+
+def test_master_volume_scales_like_original(snd, emu):
+    # The sound volume levels 0 to 7: the original gives the driver the master volume level * 0x7fff / 7; the mix
+    # scales each sample by the same share.
+    volumes = []
+    emu.stub(SOS_DIGI_SET_MASTER_VOLUME, lambda _, volume, *__: volumes.append(volume & 0xFFFF) or 0)
+    emu.write_u32(G_DIGI_ENABLED, 1)
+    pcm = (ctypes.c_int8 * 1)(100)
+    s = Sound(ctypes.cast(pcm, ctypes.POINTER(ctypes.c_int8)), 1)
+    try:
+        for level in range(8):
+            emu.call(SOUND_SET_VOLUME, level, 0)
+            snd.sound_set_volume(level)
+            assert snd.sound_play(ctypes.byref(s), 255, 0, 0)
+            left, right = mix(snd, UPSAMPLE)[:2]
+            assert left == right == (100 * 256 * volumes[-1] // 0x7FFF) * 0x7FFF >> 15, level
+    finally:
+        snd.sound_set_volume(7)
+    assert volumes[0] == 0 and volumes[-1] == 0x7FFF

@@ -63,8 +63,9 @@ def ui(port, original):
     if not getattr(original, "dialog_stubs", False):  # once: a second stub of an address would return twice
         original.dialog_stubs = True
         emu.uc.mem_map(VGA - 0x1000, 0x1000, UC_PROT_ALL)
-        for addr in (WAIT_VBLANKS, KBD_KEY_AVAILABLE, IOP_SET_VIDEO_STATE, MEM_FREE_PICTURE, FILE_CLOSE):
+        for addr in (WAIT_VBLANKS, IOP_SET_VIDEO_STATE, MEM_FREE_PICTURE, FILE_CLOSE):
             emu.stub(addr, lambda *_: 0)
+    stub(original, KBD_KEY_AVAILABLE, lambda *_: 0)
     emu.write(VGA - 6, struct.pack("<BBhh", 8, 0, SCREEN_W, SCREEN_H))
     emu.write_u32(G_SCREEN_BITMAP, VGA)
     emu.write(G_MOUSE_HIDE_COUNT, bytes(2))
@@ -128,7 +129,7 @@ def test_progress_bar_matches_original(ui, original):
 def test_volume_dialog_matches_original(ui, original):
     # The volume dialog with each pair of settings; the dialog closes at once (the OK button).
     lib, emu = ui, original.emu
-    stub(original, UI_DIALOG_RUN, lambda *_: 0xDB)
+    run = emu.stub(UI_DIALOG_RUN, lambda *_: 0xDB)
     frame = ctypes.CFUNCTYPE(None)(lambda: close_dialog(lib))
     ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
     try:
@@ -143,6 +144,7 @@ def test_volume_dialog_matches_original(ui, original):
             assert_same(lib, original, (sound, music))
     finally:
         ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+        emu.uc.hook_del(run)
 
 
 def close_dialog(lib):
@@ -333,3 +335,40 @@ def test_pressed_buttons_match_original(ui, original):
                 lib.ui_dialog_draw_button(match.zone, 1)
                 emu.call(UI_DIALOG_DRAW_BUTTON, match.zone, 1)
                 assert_same(lib, original, (dialog, choice, entry), screen=False)
+
+
+KBD_READ_KEY, INPUT_SIMULATE_COMMAND_CLICK, G_DIALOG_CHOICE = 0x11413, 0x207F1, 0x7F51C
+
+
+def test_enter_presses_first_button_like_original(ui, original):
+    # Enter in dialog 0x0c (OK, CANCEL): the original clicks command 0xdb, the first button; both return its value.
+    lib, emu = ui, original.emu
+    keys, clicks = [0x1C], []
+    stub(original, KBD_KEY_AVAILABLE, lambda *_: int(bool(keys)))
+    stub(original, KBD_READ_KEY, lambda *_: keys.pop(0))
+    stub(original, INPUT_SIMULATE_COMMAND_CLICK, lambda command, *_: clicks.append(command & 0xFFFF))
+    # the command queue: the dialog button command 0xdb + n chooses button n + 1
+    stub(original, COMMAND_PROCESS_QUEUE,
+         lambda *_: clicks and emu.write(G_DIALOG_CHOICE, struct.pack("<H", clicks[-1] - 0xDA)))
+    for addr in (INPUT_PUSH_MODE, INPUT_POP_MODE):
+        stub(original, addr, lambda *_: 0)
+    set_screen_mode(lib, emu, 1)
+    theirs = emu.call(UI_DIALOG_RUN, emu.call(UI_DIALOG_DRAW, 0x0C, 0) & 0xFF) & 0xFFFF
+    assert clicks == [0xDB]
+
+    lib.input_init()
+    lib.input_key_down.argtypes = [ctypes.c_uint16]
+    frames = []
+
+    def frame():
+        frames.append(1)
+        if len(frames) == 1:
+            lib.input_key_down(0x1C)
+        if len(frames) > 100:  # no choice: the program ends, the test fails
+            ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 1
+
+    hook = ctypes.CFUNCTYPE(None)(frame)
+    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
+    set_screen_mode(lib, emu, 1)
+    assert lib.ui_dialog_run(lib.ui_dialog_draw(0x0C, 0)) == theirs == 1
+    assert len(frames) <= 100

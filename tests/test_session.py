@@ -14,7 +14,7 @@ from test_save import GDAT_VALUE_TYPES, GRAPHICS
 
 DUNGEON = ROOT / "game" / "DATA" / "DUNGEON.DAT"
 DUNGEON_LOAD, MEM_ALLOC, GDAT_ENTRY_INDEX, WEATHER_INIT = 0x36909, 0x3BBBA, 0x3C5D3, 0x59F38
-SENSOR_START_TIMERS = 0x594A1
+SENSOR_START_TIMERS, LINK_THINGS_AFTER_LOAD = 0x594A1, 0x3624F
 G_NEW_GAME, G_RANDOM_SEED, G_GAME_TIME, G_LEVEL_DIGITS = 0x7F280, 0x70518, 0x7F22C, 0x7F3D0
 G_THING_DATA, G_MAP_COLUMNS, G_SQUARE_FIRST_THINGS, G_DUNGEON_HEADER = 0x7F288, 0x7F3C8, 0x7F388, 0x7F3E8
 G_TIMELINE_EVENTS, G_TIMELINE_COUNT = 0x760E8, 0x8042A
@@ -48,13 +48,18 @@ class NewGame:
     """The DUNGEON.DAT load of a new game in the original: the dungeon, the link pass, the level digits, the timeline,
     and the timer sensors; the weather start is a stub."""
 
-    def __init__(self, lib, gdat):
+    def __init__(self, lib, gdat, before_link=None):
+        """before_link(emu): runs when the original reaches the link pass."""
         self.emu = emu = Emu(load_image(ROOT / "game" / "SKULL.EXE"), max_insns=200_000_000)
         emu.serve_file(DUNGEON.read_bytes())
         self.heap = SCRATCH
         emu.stub(MEM_ALLOC, self.alloc)
         emu.stub(GDAT_ENTRY_INDEX, entry_index_stub(lib, gdat))
         emu.stub(WEATHER_INIT, lambda *_: 0)
+        if before_link:
+            from unicorn import UC_HOOK_CODE
+            emu.uc.hook_add(UC_HOOK_CODE, lambda *_: before_link(emu), begin=LINK_THINGS_AFTER_LOAD,
+                            end=LINK_THINGS_AFTER_LOAD)
         emu.write(G_NEW_GAME, struct.pack("<H", 1))
         emu.call(DUNGEON_LOAD, 1)
 
@@ -64,11 +69,13 @@ class NewGame:
         return addr
 
 
-def c_new_game(lib, gdat):
+def c_new_game(lib, gdat, before_link=None):
     """The same in the C port: the steps of session.c load_new_game, then the timer sensors."""
     ctypes.c_uint32.in_dll(lib, "random_seed").value = 0
     assert lib.dungeon_load(str(DUNGEON).encode()) == 1
     lib.timeline_init(50 + lib.dungeon_thing_count(4) + lib.dungeon_thing_count(14) + lib.dungeon_thing_count(15))
+    if before_link:
+        before_link(None)
     lib.dungeon_link_things_after_load()
     lib.dungeon_read_level_table()
 
@@ -155,3 +162,48 @@ def test_timer_sensors_start_like_original(lib, new_game):
     theirs = emu.read(emu.read_u32(G_TIMELINE_EVENTS), tl.capacity * 12)
     assert mine == theirs
     assert dungeon_differences(lib, emu) == []
+
+
+def square_things(lib, map_, x, y):
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    out, t = [], lib.dungeon_square_first_thing(map_, x, y)
+    while t not in (0xFFFE, 0xFFFF):
+        out.append(t)
+        t = lib.dungeon_next_thing(t)
+    return out
+
+
+def test_shared_teleporter_list_keeps_first_movable_thing(lib, gdat):
+    # A teleporter pair with numbered link sensors: square (3, 19, 3) gets two free weapons at the end of its list,
+    # square (2, 19, 14) one. The shared list keeps the first weapon of the target square and drops the second, in
+    # both. DUNGEON.DAT has no movable thing on such a target square.
+    lib.dungeon_thing_record.restype = ctypes.c_void_p
+    weapons, links = [], []
+
+    def add_weapons(emu):
+        if not links:  # the C port first: its lists before the link pass
+            weapons.extend([5 << 10 | i for i in range(lib.dungeon_thing_count(5))
+                            if ctypes.c_uint16.from_address(lib.dungeon_thing_record(5 << 10 | i)).value == 0xFFFF][:3])
+            links.extend([(square_things(lib, 3, 19, 3)[-1], weapons[0]), (weapons[0], weapons[1]),
+                          (weapons[1], 0xFFFE), (square_things(lib, 2, 19, 14)[-1], weapons[2]), (weapons[2], 0xFFFE)])
+        base = emu.read_u32(G_THING_DATA + 4 * 5) if emu else None
+        for thing, nxt in links:
+            if emu:
+                t = thing >> 10
+                emu.write(emu.read_u32(G_THING_DATA + 4 * t) + THING_SIZES[t] * (thing & 0x3FF), struct.pack("<H", nxt))
+            else:
+                ctypes.c_uint16.from_address(lib.dungeon_thing_record(thing)).value = nxt
+        for w in weapons:  # a dagger
+            if emu:
+                emu.write(base + 4 * (w & 0x3FF) + 2, struct.pack("<H", 8))
+            else:
+                ctypes.c_uint16.from_address(lib.dungeon_thing_record(w) + 2).value = 8
+
+    c_new_game(lib, gdat, add_weapons)
+    original = NewGame(lib, gdat, add_weapons)
+    assert dungeon_differences(lib, original.emu) == []
+    first, dropped, other = weapons
+    shared = square_things(lib, 3, 19, 3)[1:]  # after the teleporter of each square
+    assert shared == square_things(lib, 2, 19, 14)[1:]
+    assert first in shared and other in shared and dropped not in shared

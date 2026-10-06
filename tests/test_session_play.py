@@ -224,6 +224,43 @@ def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
     assert (game.game_time - 1, game.party_x, game.party_y, game.party_dir, game.party_map) == saved_state
 
 
+
+GAME_SAVE, G_LOAD_TIME, G_SAVE_TIME, G_DISK_NO_SWAP = 0x3502B, 0x7F218, 0x7F8F4, 0x7054A
+# game_save calls that this test leaves out: the action area, the game view, the free list of the timeline, and the
+# disk check (the scenario stubs the mouse)
+GAME_SAVE_STUBS = (0x3FD17, 0x3FE68, 0x54E41, 0x54EAC, 0x56030, SAVE_CHECK_DISK)
+
+
+@pytest.mark.parametrize("since_load, since_save", [(100, 101), (101, 100), (101, 101)])
+def test_quit_asks_when_not_saved_like_original(play, lib, since_load, since_save):
+    # QUIT of the save menu: dialog 0x0c asks first only when the last load and the last save are both more than 100
+    # ticks ago. CANCEL of the question goes back to the save menu, then RESUME; without the question the game ends.
+    emu = play.emu
+    now = play.time()
+    emu.write_u32(G_LOAD_TIME, now - since_load)
+    emu.write_u32(G_SAVE_TIME, now - since_save)
+    emu.write(G_DISK_NO_SWAP, struct.pack("<H", 1))
+    dialogs, ends = [], []
+    emu.stub(UI_DIALOG_DRAW, lambda d, *_: dialogs.append(d & 0xFF) or d & 0xFF)
+    emu.stub(UI_DIALOG_RUN, lambda d, *_: 3 if d & 0xFF == 0x0C or dialogs.count(0x1B) > 1 else 1)  # QUIT, CANCEL, RESUME
+    emu.stub(GAME_END, lambda *_: ends.append(1))
+    for addr in GAME_SAVE_STUBS:
+        emu.stub(addr, lambda *_: 0)
+    emu.call(GAME_SAVE)
+    asked = 0x0C in dialogs
+    assert asked == (since_load > 100 and since_save > 100)
+    assert dialogs == ([0x1B, 0x0C, 0x1B] if asked else [0x1B]) and ends == ([] if asked else [1])
+
+    session = Session.in_dll(lib, "session")
+    session.load_time, session.save_time = now - since_load, now - since_save
+    pick = lambda lib: setattr(InputMatch.in_dll(lib, "input_match"), "value", 0xEF)  # a click on the end picture
+    actions = [click_choice(2), click_choice(2), click_choice(4)] if asked else [click_choice(2), pick]
+    with Player(lib, actions) as player:
+        lib.game_save()
+    assert not player.actions and player.frames < 100 * player.every
+    assert main_loop_quit(lib).value == (0 if asked else 1)
+
+
 def test_menu_commands_match_original(play, lib):
     # The commands of the start menu: new game, new game from DUNGENB.DAT, load.
     from test_move import COMMAND_RECORD, Command
@@ -284,6 +321,45 @@ def test_discarded_things_match_original(play, lib, place):
             found[kind] = found.get(kind, 0) + (mine != 0xFFFF)
             sc.assert_same((kind, n))
     assert all(found.values()), found
+
+
+
+@pytest.mark.parametrize("distance", [5, 6])
+def test_discard_keeps_things_within_5_squares(play, lib, distance):
+    # One weapon that may go, on a square without sensors and texts; the party on its map, 5 or 6 squares beside it.
+    # At 5 squares the weapon stays and no record comes free; at 6 squares it goes, in both.
+    from test_session import square_things
+    sc = play
+    lib.dungeon_thing_record.restype = ctypes.c_void_p
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+
+    def loose_weapons():
+        for map_ in range(lib.dungeon_map_count()):
+            width = lib.dungeon_map_width(map_)
+            for x in range(width):
+                for y in range(lib.dungeon_map_height(map_)):
+                    things = square_things(lib, map_, x, y)
+                    if (x >= 6 or x + 6 < width) and not any(2 <= t >> 10 <= 3 for t in things):
+                        yield from ((t, map_, x, y) for t in things if t >> 10 == 5)
+
+    target, map_, x, y = next(loose_weapons())
+    base = sc.emu.read_u32(0x7F288 + 4 * 5)
+    offset, bit = KEEP_BITS[5]
+    for i in range(lib.dungeon_thing_count(5)):
+        rec = lib.dungeon_thing_record(5 << 10 | i)
+        link = ctypes.c_uint16.from_address(rec)
+        if link.value == 0xFFFF:
+            link.value = 0xFFFE
+        keep = ctypes.c_uint8.from_address(rec + offset)
+        keep.value = keep.value & ~bit if 5 << 10 | i == target else keep.value | bit
+        sc.emu.write(base + 4 * i, ctypes.string_at(rec, 4))
+    last = (ctypes.c_uint8 * 16).in_dll(lib, "last_discarded_map")
+    ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, 16), 16)
+    sc.place(map_, x - distance if x >= 6 else x + distance, y, 0)
+    mine = lib.dungeon_unused_thing(5)
+    assert mine == sc.emu.call(DUN_GET_UNUSED_THING, 5) & 0xFFFF
+    assert mine == (target if distance == 6 else 0xFFFF)
+    sc.assert_same(distance)
 
 
 def click_command(mode, command):

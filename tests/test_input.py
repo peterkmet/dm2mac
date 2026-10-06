@@ -13,6 +13,7 @@ MOUSE_AREA_ALLOC_NODE = 0x14B1F
 G_INPUT_MODE_ROOTS, G_MATCH_RECT, G_MATCH_X, G_MATCH_Y = 0x72ED1, 0x7F46C, 0x7F520, 0x7F51E
 MODES = range(10)
 G_ACTION_AREA_MODE = 0x757B8
+G_DIALOG_SCREEN_MODE, G_DIALOG_BUTTON_COUNT = 0x717BC, 0x7F200
 
 
 class ActionArea(ctypes.Structure):
@@ -42,8 +43,8 @@ def tree(lib, gdat, start, tmp_path):
     action.champion, action.mode = 0, mode
     # the dialog screen mode and button count of the input conditions 1 and 2 (dialog.h DialogState)
     dialog = (ctypes.c_int * 2).in_dll(lib, "dialog")
-    dialog[0] = scenario.emu.read_u32(0x717BC)
-    dialog[1] = struct.unpack("<h", scenario.emu.read(0x7F200, 2))[0]
+    dialog[0] = scenario.emu.read_u32(G_DIALOG_SCREEN_MODE)
+    dialog[1] = struct.unpack("<h", scenario.emu.read(G_DIALOG_BUTTON_COUNT, 2))[0]
     return scenario
 
 
