@@ -22,7 +22,6 @@ int missile_from_sensor;
 #define PROJECTILE_ENERGY 4         /* record byte: the range and power left */
 #define PROJECTILE_HIT_CHANCE 5     /* record byte */
 #define CELL_MASK 3
-#define THING_ID_MASK 0x3fff
 
 /* Explosion types (EXPLOSION_DATA bits 0-6). */
 enum {

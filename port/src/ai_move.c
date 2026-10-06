@@ -88,43 +88,10 @@
 #define AI_CLASS_STAYS_ON_MAPS 0x2000   /* targets only on its own map and on the party map */
 #define AI_CLASS_AVOIDS_CLOUDS 0x0200
 #define AI_CLASS_AVOIDS_PARTY_DOORS 0x4000
-/* ai.move_flags: the squares that the creature may enter. */
-#define MOVE_WALL 0x0001
-#define MOVE_FLOOR 0x0002
-#define MOVE_CLOSED_PIT 0x0004
-#define MOVE_OPEN_PIT 0x0008
-#define MOVE_FALL 0x0010
-#define MOVE_INVISIBLE_PIT 0x0020
-#define MOVE_HIDDEN_FAKE_WALL 0x0040
-#define MOVE_FAKE_WALL 0x0080
-#define MOVE_STAIRS 0x0100
-#define MOVE_LOCKED_DOOR 0x0200
-#define MOVE_TELEPORTER 0x0400
-#define MOVE_PARTY 0x0800
-#define MOVE_GROUPS 0x1000
-#define MOVE_LEVELS 0x2000
-#define MOVE_DOOR 0x4000
-#define MOVE_FALLS 0x8000
-#define MOVE_LEVEL_FLAGS 0x0118
-#define MOVE_DIR4_FLAGS 0x0110         /* the moves of a level change up (dir 4) */
-#define MOVE_DIR5_FLAGS 0x0108         /* ... down (dir 5) */
-#define MOVE_FLAGS_LIGHT 0x0227
-#define MOVE_FLAGS_PARTY_MAP 0x36e7
-#define MOVE_FLAGS_NO_FALL 0x7db7
 /* ai.attack_flags. */
 #define ATTACK_MELEE_MASK 0x0007
 #define ATTACK_RANGED_MASK 0x0ff8
 #define ATTACK_STEAL 0x0004
-/* ai.door_flags. */
-#define DOOR_SKILLS_OPEN 0x6f
-#define DOOR_SKILLS_CLOSE 0x73
-#define DOOR_SKILL_BUTTON 0x0003
-#define DOOR_SKILL_SHOOT_BUTTON 0x0001
-#define DOOR_SKILL_BASH 0x0004
-#define DOOR_SKILL_BURN 0x0008
-#define DOOR_SKILL_MARK 0x0020
-#define DOOR_SKILL_HANDLE 0x0040
-#define DOOR_SKILL_ANY_SIDE 0x0020
 /* ai.item_flags. */
 #define ITEM_SKILL_SAME_SQUARE 0x0001
 #define ITEM_SKILL_WALL 0x0004
@@ -132,16 +99,6 @@
 #define ITEM_SKILL_CHESTS 0x0010
 #define ITEM_SKILL_GROUPS 0x0020
 #define ITEM_SKILL_OTHER_SQUARE 0x002a
-/* AI actions (ActiveGroup.action). */
-enum {
-    ACTION_NONE = 0, ACTION_MOVE = 1, ACTION_MOVE_NEAR = 2, ACTION_STEP_RIGHT = 3, ACTION_STEP_LEFT = 4,
-    ACTION_FALL = 5, ACTION_TURN_LEFT = 6, ACTION_MELEE = 8, ACTION_TURN_BACK = 9, ACTION_STEAL = 0x0a,
-    ACTION_BASH_DOOR = 0x0b, ACTION_TAKE_LEFT = 0x0c, ACTION_THROW = 0x0e, ACTION_GIVE = 0x17,
-    ACTION_TAKE_FROM_GROUP = 0x18, ACTION_TAKE_FROM_WALL = 0x19, ACTION_PUT_IN_WALL = 0x1a, ACTION_MELEE_2 = 0x26,
-    ACTION_SHOOT = 0x27, ACTION_TAKE_FRONT = 0x2b, ACTION_TAKE_SIDE = 0x2c, ACTION_USE_ACTUATOR = 0x2f,
-    ACTION_STAIRS_UP = 0x35, ACTION_STAIRS_DOWN = 0x36, ACTION_FALL_IN_PIT = 0x37, ACTION_PIT = 0x38,
-    ACTION_LINK_UP = 0x39
-};
 #define AI_ACTION_FLAG_MOVES 0x02
 #define AI_ACTION_FLAG_BUSY 0x03
 /* Sub-commands of the shoot action (ActiveGroup.sub). */
@@ -174,7 +131,7 @@ static const uint8_t possession_cells[16][4] = {
     {0, 0, 6, 8}, {0x12, 0x10, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}
 };
 /* The actions of a take from the same square (0, 1) or from the square in front (2, 3) by a random bit. */
-static const uint8_t take_actions[4] = {0x29, 0x2a, 0x2e, 0x2d};
+static const uint8_t take_actions[4] = {ACTION_DROP_HERE, ACTION_DROP_HERE_2, ACTION_DROP_AHEAD_2, ACTION_DROP_AHEAD};
 /* The bytes after ai_command_enabled in SKULL.EXE (0x752ac to 0x752e7): commands 0x20 and up read them. */
 static const uint8_t after_command_table[60] = {
     0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0xff, 0xff, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0xff, 0xff, 0, 0, 0, 0,
@@ -189,7 +146,6 @@ static const uint8_t after_command_table[60] = {
 #define SEARCH_FAR_RANGE 0x7f
 #define PATH_MAP_CHANGE 0x2000
 #define PATH_KEEP_BITS 0xc000
-#define FOUND_NONE 0xffff
 /* The move command of the path check of creature_ai_plan_path: the original reads a byte after the path buffer
    that nothing writes. */
 #define PATH_CHECK_COMMAND 0
@@ -751,7 +707,7 @@ int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, 
     }
     if (distance > 1) flags &= 5;
     if (flags & (DOOR_SKILL_HANDLE | 2) && (!(flags & 0xffbd) || rand_2bits())) {
-        ai.active->action = ACTION_BASH_DOOR;
+        ai.active->action = ACTION_OPERATE_DOOR;
     } else if (flags & DOOR_SKILL_SHOOT_BUTTON && (!(flags & 0xffbc) || !rand_2bits())) {
         ai.active->action = (uint8_t)(ACTION_SHOOT + (rand_bit() != 0));
         ai.active->sub = (int8_t)(mode == 0 ? 0x8d : 0x84);
@@ -1222,9 +1178,9 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
         }
         if (!ai_square_scan.facing_ornament) return command_failed(execute);
         if (mode == 1) {
-            action = ACTION_TAKE_FROM_WALL;
-        } else {
             action = ACTION_PUT_IN_WALL;
+        } else {
+            action = ACTION_TAKE_FROM_WALL;
             cell = ai_square_scan.cells[0];
             uint16_t t = ai_square.first_object;
             for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
@@ -1279,7 +1235,7 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
     if (!same && creature_ai_turn_toward(d)) return 1;
     ai.active->facing = (uint8_t)d;
     if (mode == 1) {
-        if (action == ACTION_TAKE_FROM_WALL) {
+        if (action == ACTION_PUT_IN_WALL) {
             cell = d;
         } else if (action == ACTION_GIVE) {
             uint16_t g = creature_ai_cached_first_group();
@@ -1421,7 +1377,6 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
 #define FILTER_BY_VARIANT 0x10          /* filters 0x10 to 0x12: one set for each of three variants of the group */
 #define FILTER_BY_VARIANT_END 0x13
 #define FILTER_MONEYBOX_OR_VARIANT 0x28
-#define FILTER_SLOTS 0x2a
 #define FILTER_BITMAP_SIZE 0x40
 #define FILTER_TEXT_ENTRY 0x10          /* GDAT text (creature type, entry filter + 0x10): the item classes */
 #define CLASS_TEXT_SIZE 0x80

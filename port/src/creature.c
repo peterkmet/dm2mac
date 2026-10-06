@@ -74,7 +74,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define EXPLOSION_CENTER 0xff
 #define SOUND_PRIORITY_STEP 0x46
 #define SOUND_VOLUME 0x80
-#define ACTIVE_ACTION_NONE 0xff
 #define AI_ACTION_JUMP 5
 #define GROUP_HEALTH 6              /* group record word: health */
 #define GROUP_ITEM_CLASS 8          /* group record word: the item class of a creature that acts, -1 while it is created */
@@ -751,9 +750,6 @@ void creature_process_event(int x, int y, int type)
 #define DROP_RANDOM_SHIFT 4
 #define DROP_RANDOM_MASK 0x70
 #define DROP_ITEM_SHIFT 7
-#define SOUND_ENTRY_DROP 0x85
-#define SOUND_FALLBACK 0xfe
-#define SOUND_PRIORITY_DROP 0x3a
 #define SOUND_PRIORITY_MOVE 0x61
 #define SOUND_ENTRY_TELEPORT 0x89
 #define SOUND_CATEGORY_MISC 3

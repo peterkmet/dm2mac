@@ -50,6 +50,10 @@ _Static_assert(sizeof(CreatureInfo) == 36, "the creature info records of SKULL.E
 #define CREATURE_FLIES 0x0004
 #define POSSESSIONS_HIDE_CLICKS 0x2000  /* possessions bit: objects under the creature stay clickable */
 #define CREATURE_INFO_COUNT 63
+/* The sound of an item that a creature drops. */
+#define SOUND_ENTRY_DROP 0x85
+#define SOUND_FALLBACK 0xfe
+#define SOUND_PRIORITY_DROP 0x3a
 
 /* An animation frame (GDAT (0x0f, creature type, 7, 0xfd), 8 bytes per frame). */
 enum creature_frame_field {
@@ -96,6 +100,7 @@ _Static_assert(sizeof(ActiveGroup) == 34, "active groups have 34 bytes");
 
 #define ACTIVE_FREE 0xffff
 #define GROUP_NOT_ACTIVE 0xff
+#define ACTIVE_ACTION_NONE 0xff     /* an active group without a chosen action */
 #define EVENT_NO_SLOT (-1)
 
 extern ActiveGroup *active_groups;

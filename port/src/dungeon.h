@@ -28,6 +28,7 @@ enum square_type {
 #define SQUARE_TELEPORTER_VISIBLE 0x04
 #define SQUARE_FAKE_WALL_OPEN 0x04
 #define SQUARE_FLAG_3 0x08              /* bit 3 of any square: one floor text ornament shows it */
+#define SQUARE_HAS_THINGS 0x10          /* bit 4 of any square: things lie on it */
 #define square_flag(s, bit) (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
 #define WALL_FACE(dir) (8 >> (dir))
@@ -38,6 +39,7 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 #define THING_ENDOFLIST 0xfffe
 #define LEVEL_COUNT 63
 #define LEVEL_LIST_END 0xff
+#define MAP_LEVEL_MASK 0x3f             /* the dungeon level in the map size word */
 
 /* A thing id: record index in bits 0-9, thing type in bits 10-13, cell in bits 14-15. */
 #define THING_TYPE_SHIFT 10
@@ -46,6 +48,20 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 #define THING_INDEX_MASK 0x3ff
 #define thing_index(t) ((t) & THING_INDEX_MASK)
 #define THING_CELL_SHIFT 14
+#define THING_ID_MASK 0x3fff            /* a thing id without its cell */
+#define CELL_ANY 0xff                   /* a cell argument: any cell */
+
+/* A location word: x bits 0-4, y bits 5-9, map bits 10-15. */
+#define LOCATION_COORD_MASK 0x1f
+#define LOCATION_Y_SHIFT 5
+#define LOCATION_MAP_SHIFT 10
+#define LOCATION_MAP_MASK 0x3f
+#define LOCATION_MAP_BITS 0xfc00
+#define location_x(w) ((w) & LOCATION_COORD_MASK)
+#define location_y(w) ((w) >> LOCATION_Y_SHIFT & LOCATION_COORD_MASK)
+#define location_map(w) ((w) >> LOCATION_MAP_SHIFT)
+#define location_pack(x, y, map) \
+    (((x) & LOCATION_COORD_MASK) | ((y) & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT | ((map) & LOCATION_MAP_MASK) << LOCATION_MAP_SHIFT)
 
 /* Byte offsets of thing record fields. Every record starts with the link to the next thing. */
 enum thing_field {
