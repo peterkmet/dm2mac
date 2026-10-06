@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "ai.h"
+#include "champ_action.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -1046,18 +1047,6 @@ enum ai_condition {
 #define SENSOR_SPECIAL_WALL 0x3f
 #define CREATURE_TYPE_KIND_A 0x34
 #define CREATURE_TYPE_KIND_B 0x31
-#define LEVEL_EXPERIENCE 0x1ff          /* party level 1 up to this experience; each doubling adds a level */
-
-/* The sum of the base skill experience of the champions as a level (champ_get_party_level of Step 15). */
-static int party_level(void)
-{
-    uint32_t sum = 0;
-    for (int c = 0; c < game.champion_count; c++)
-        for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) sum += champion(c)->experience[skill];
-    int level = 1;
-    for (; sum > LEVEL_EXPERIENCE; sum >>= 1) level++;
-    return level;
-}
 
 /* The distance between two squares along the axes. */
 static int manhattan(int x1, int y1, int x2, int y2)
@@ -1130,7 +1119,7 @@ int creature_ai_test_condition(int condition, int arg, int plan)
             if (hand != THING_NONE && creature_thing_matches_filter(hand, FILTER_WEAPON_HANDS)) r = 1;
         }
         break;
-    case COND_PARTY_LEVEL: r = party_level() >= a; break;
+    case COND_PARTY_LEVEL: r = champ_get_party_level() >= a; break;
     case COND_PARTY_AT_PIT:
         if (ai.map != ai_party.map || (x == ai_party.x && y == ai_party.y)) break;
         if (manhattan(x, y, ai_party.x, ai_party.y) > 1) break;
