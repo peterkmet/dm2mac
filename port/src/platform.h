@@ -20,6 +20,8 @@ void plat_present(void);
 int plat_poll(PlatEvent *e);
 /* Mouse position in game screen pixels. */
 void plat_mouse_position(int *x, int *y);
+/* Sets the window and Dock icon from w by h ARGB pixels. */
+void plat_set_icon(const uint32_t *argb, int w, int h);
 /* Sleeps until the next timer tick. */
 void plat_wait_tick(void);
 /* Mixes into frames of interleaved stereo at SOUND_OUTPUT_RATE; the music mixer fills the frames and runs first, the sound mixer adds. */

@@ -6,6 +6,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 
 ### Added
 
+- Window and Dock icon (a mummy from `GRAPHICS.DAT`).
 - Tools: the LE loader `dm2-le` (`src/dm2tools/le.py`), the Unicorn emulator harness `dm2tools.emu` with the Watcom register convention, and the Ghidra headless scripts that write `decomp/SKULL.c`.
 - Analysis: the symbol map `docs/skull-symbols.csv` and `docs/skull-map.md`, and the data formats and port deviations in `docs/skull-formats.md`.
 - Platform layer: an SDL3 window with the 320×200 indexed framebuffer at scale 3, keyboard and mouse input in original coordinates, a 240 Hz timer from the PIT divisor of `SKULL.EXE`, and the upscaling filters Scale2x and Scale3x (`--filter`, `DM2_FILTER`).

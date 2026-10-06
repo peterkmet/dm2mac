@@ -9,6 +9,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
+#include "icon.h"
 #include "input.h"
 #include "item.h"
 #include "music.h"
@@ -23,6 +24,7 @@
 #include "zone.h"
 
 #define WINDOW_SCALE 3
+#define ICON_MAX_PIXELS (128 * 128)
 #define EXIT_USAGE 2
 #define PATH_SIZE 1024
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
@@ -55,6 +57,14 @@ static int load_graphics(const char *data)
     draw_init(gdat);
     input_init();
     return 1;
+}
+
+/* Gives the window the mummy icon from GRAPHICS.DAT; without the graphic, SDL keeps its icon. */
+static void set_icon(void)
+{
+    static uint32_t argb[ICON_MAX_PIXELS];
+    int w, h;
+    if (icon_build(draw_gdat(), argb, ICON_MAX_PIXELS, &w, &h)) plat_set_icon(argb, w, h);
 }
 
 /* Loads a save and starts its game at once; returns 0 with a message on an error. */
@@ -173,6 +183,7 @@ int main(int argc, char **argv)
     if (!load_graphics(data)) return 1;
     if (save && !show_save(save)) return 1;
     if (!plat_init(WINDOW_SCALE, factor)) return 1;
+    set_icon();
     if (control && !control_open(control)) {
         fprintf(stderr, "cannot open the control socket %s\n", control);
         return 1;
