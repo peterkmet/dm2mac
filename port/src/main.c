@@ -59,14 +59,10 @@ static int load_graphics(const char *data)
 /* Loads a save and starts its game at once; returns 0 with a message on an error. */
 static int show_save(const char *path)
 {
-    if (save_load(path, draw_gdat()) != SAVE_OK) {
+    if (!game_start_save(path)) {
         fprintf(stderr, "cannot load the save %s\n", path);
         return 0;
     }
-    ui_reset();
-    money_init_coin_table();
-    ui_draw_game_screen();
-    game_start_session();
     return 1;
 }
 

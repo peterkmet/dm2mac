@@ -481,6 +481,18 @@ int game_init(void)
     return 1;
 }
 
+int game_start_save(const char *path)
+{
+    if (save_load(path, draw_gdat()) != SAVE_OK) return 0;
+    ui_reset();
+    money_init_coin_table();
+    ui_draw_game_screen();
+    move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
+    party.redraw = REDRAW_ALL_VIEW;
+    game_start_session();
+    return 1;
+}
+
 /* ---- End of the game ---- */
 
 void game_quit(void)

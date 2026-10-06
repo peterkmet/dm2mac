@@ -52,6 +52,9 @@ void save_draw_name_entry(const char *name, int cursor);
 void game_save(void);
 /* The start of a run: the menu until a game loads, then the session of that game. Returns 0 when the player quit. */
 int game_init(void);
+/* Loads the save file at path and starts its game at once, with the party view and light of a menu load. Returns 0
+   when the file does not load. */
+int game_start_save(const char *path);
 /* The end of a game: the party died (party_dead 1) or the player quit (0). Offers the load of the last slot; returns
    when a game loaded again, else quits. */
 void game_end(int party_dead);
