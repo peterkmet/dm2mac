@@ -457,6 +457,11 @@ void input_set_mode(int mode)
     in.mode = mode;
 }
 
+int input_get_mode(void)
+{
+    return in.mode;
+}
+
 void input_refresh_mode(void)
 {
 }

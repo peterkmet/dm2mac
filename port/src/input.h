@@ -44,6 +44,8 @@ extern int input_drag_state;
 void input_init(void);
 /* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
 void input_set_mode(int mode);
+/* The current input mode. */
+int input_get_mode(void);
 /* The command of a click (key 0) or of a key in mode, and the rectangle of its zone; 0 for none. */
 uint16_t input_find_command(int mode, int x, int y, int buttons, int key, int16_t *rect);
 /* The mode of before the last input_push_mode returns. */

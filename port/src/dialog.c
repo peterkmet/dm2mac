@@ -124,6 +124,7 @@ int ui_dialog_draw(int id, int message)
         ui_dialog_run(ui_dialog_draw(DIALOG_ERROR, message));
         message = MESSAGE_NONE;
     }
+    dialog.id = id;
     if (present) ui_dialog_screen_mode(1);
     static char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
     int count = 0;

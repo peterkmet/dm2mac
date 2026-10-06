@@ -20,6 +20,7 @@ typedef struct {
     uint8_t button_category, button_index, button_entry; /* the picture of a pressed button */
     int progress_enabled;
     int16_t progress_width;
+    int id;                     /* the dialog of the last ui_dialog_draw */
 } DialogState;
 extern DialogState dialog;
 
