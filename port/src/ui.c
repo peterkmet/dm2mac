@@ -3,6 +3,7 @@
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
+#include "game.h"
 #include "input.h"
 #include "item.h"
 #include "save.h"
@@ -968,7 +969,10 @@ void champ_draw_state(int champ)
         }
     }
     if (box_drawn) offscreen_flush(&status_box, 1);
-    if (present) ui.screen_needs_refresh = 0;
+    if (present) {
+        ui.screen_needs_refresh = 0;
+        screen_present_viewport();
+    }
     c->redraw &= REDRAW_KEEP;
     draw_free_temp();
 }
