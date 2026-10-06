@@ -106,7 +106,7 @@ static const InputNode input_mode_roots[INPUT_MODE_COUNT] = {
     {0x80, 0, 20}, {0x80, 0, 21}, {0x80, 0, 22}, {0x80, 0, 23}, {0x80, 0, 9},
 };
 /* The input zones: layout zone (bit 15: in the inventory panel, bit 14: in the action area), command list,
-   key list (-1 none), cursor area. */
+   key list (-1 none), cursor zone. */
 static const InputZone input_zones[INPUT_ZONE_COUNT] = {
     {0x0002, 0, 0, 0}, {0x0002, 1, 1, 0}, {0x0002, 2, 2, 0}, {0x0002, 3, 3, 0}, {0x0002, 4, 4, 0},
     {0x00a1, 5, 5, 3}, {0x00a1, 6, 6, 3}, {0x009c, 7, -1, 14}, {0x00a2, 8, 7, 4}, {0x00a2, 9, 8, 4},
@@ -122,8 +122,9 @@ static const InputZone input_zones[INPUT_ZONE_COUNT] = {
     {0x0002, 54, -1, 0}, {0x0002, 56, -1, 0}, {0x0002, 57, -1, 0}, {0x0002, 58, -1, 0}, {0x0002, 59, 14, 0},
     {0x0002, 60, -1, 0}, {0x0002, 61, 14, 0},
 };
-/* The cursor zones of the input zones (from 1): layout zone (bit 15: in the viewport), cursor kind (1: hand or
-   held object, 2: dragged champion), priority (a higher priority comes first). */
+/* The cursor zones of the input zones (from 1): layout zone (bit 15: in the viewport; input_get_zone_rect adds the
+   origin of the panel zone 7, which equals the viewport origin), cursor kind (1: hand or held object, 2: dragged
+   champion), priority (a higher priority comes first). */
 static const CursorZone cursor_zones[CURSOR_ZONE_COUNT] = {
     {0x000b, 0, 1}, {0x005c, 1, 1}, {0x00a1, 1, 1}, {0x00a2, 1, 1}, {0x00a3, 1, 1}, {0x00a4, 1, 1},
     {0x0009, 0, 1}, {0x0007, 1, 15}, {0x0007, 1, 15}, {0x823b, 0, 15}, {0x81ee, 0, 15}, {0x002f, 2, 15},
@@ -486,6 +487,7 @@ static void cursor_zone_add(int c)
     in.cursor_count++;
 }
 
+/* Hides the cursor zone c (mouse_area_remove). */
 static void cursor_zone_remove(int c)
 {
     uint8_t *e = memchr(in.cursor_list, c, (size_t)in.cursor_count);
