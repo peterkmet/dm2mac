@@ -15,7 +15,12 @@ def game_dir():
     return path
 
 
+def pytest_configure(config):
+    # builds once in the main process, before the xdist workers start
+    if not hasattr(config, "workerinput"):
+        subprocess.run(["make", "-C", "port"], cwd=ROOT, check=True, capture_output=True)
+
+
 @pytest.fixture(scope="session")
 def lib():
-    subprocess.run(["make", "-C", "port"], cwd=ROOT, check=True, capture_output=True)
     return ctypes.CDLL(str(ROOT / "build" / "libdm2.dylib"))
