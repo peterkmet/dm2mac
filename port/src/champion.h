@@ -163,6 +163,8 @@ void champ_drag_cancel(void);
 int champ_start_recruit(int x, int y, int dir, int map);
 /* The candidate joins the party, or goes back to its mirror (command 0x93). */
 void champ_finish_recruit(int x, int y, int dir, int map, int command);
+/* The champion of the mirror in front of (x, y) of map joins at once, without the inventory and the message. */
+void champ_recruit_start_champion(int x, int y, int dir, int map);
 
 /* Prepares the party of a loaded game for the screen: redraw flags, drawn hand state, the leader. */
 void champ_init_party_state(void);

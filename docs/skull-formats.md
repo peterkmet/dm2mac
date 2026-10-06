@@ -740,7 +740,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Kept quirks of the original: `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect; a projectile compares directions without a wrap, so only flights to the north and east can face a champion; a projectile move also writes the direction into its freed event; the power that the sensors test after a door spell comes from the door record; `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables.
 - Hooks in `port/src/hooks.c` for later steps; the oracle stubs the originals with the same results:
   - Step 15 (real since the merge with Step 15, section 13): the merchant commands of the AI fail (`0xfd`); `champ_test_luck` fails; `champ_get_dexterity`, `champ_get_stat_adjusted_attack`, and `item_get_value` return 0; `champ_remove_object_from_slot` clears the slot; champion damage is recorded; champion poison has no effect; item creation gives no item; the experience, the action delay, the object in a slot, and the object in the leader hand are recorded.
-  - Step 18: the sound driver (the sound requests of Step 17 run). Step 20: `dungeon_level_digit` returns 0; `dun_get_discarded_thing`.
+  - Step 18: the sound driver (the sound requests of Step 17 run). Step 20 (real since the merge with Step 20, section 14): `dungeon_level_digit` returns 0; `dun_get_discarded_thing`.
 - Since the merge with Step 17, `creature_refresh_party_maps` and `creature_ai_search_area` call the real `light_add_square_light` and `light_update_party_light` of `port/src/weather.c`, the lightning of the weather calls the real `explosion_create`, sensor `0x40` calls `shop_parse_item_class_set` of `port/src/ai_move.c`, and the sound requests use `creature_get_party_distance`.
 
 ## 13. Champions, inventory, items, money, and shops (Step 15)
@@ -788,7 +788,50 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Fixes of earlier steps: the slot mask table of `item.c` was shifted by one slot (Step 13). `ui_draw_movement_arrows` did not set the input mode (Step 14).
 - The port draws the leader hand icon at the mouse pointer in each present. The original sets it as the mouse cursor.
 - The load clears the pending damage and wounds, the regeneration counter, the leader hand, and the recruit candidate of the last game (`champ_reset_step_state`).
-- Not ported: the mouth or eye held with an empty hand (it needs the mouse capture of the original); `dun_get_discarded_thing`, the reuse of discarded items when the records run out.
-- Later steps: the creature parts of the actions, spells, minions, and missiles (Step 16; real since the merge with Step 16); the sound layer behind the sound hooks that `champ_perform_action` calls (Steps 17 and 18); `champ_edit_name` and the party of a new game (Step 20).
+- Not ported: the mouth or eye held with an empty hand (it needs the mouse capture of the original). `dun_get_discarded_thing`, the reuse of discarded items when the records run out, is real since the merge with Step 20 (section 14).
+- Later steps: the creature parts of the actions, spells, minions, and missiles (Step 16; real since the merge with Step 16); the sound layer behind the sound hooks that `champ_perform_action` calls (Steps 17 and 18); `champ_edit_name` and the party of a new game (Step 20; real since the merge with Step 20, section 14).
 - The table of the first room can be pushed (Step 16). The shelf face (1, 5) behind it shows a sun crest holder (text `0x885c`); the alcove text of the shelf with the solid key (`0x8854`, ornament `0x86`) is hidden, in the original too, so the key is not reachable from the start without another trigger.
 - The coin of `start.DAT`: the gold coin on the table of the first room does not open the door. No wall slot takes it, also in the original. The door opens with the solid key in the keyhole (4, 5) cell 3 and the door button (4, 4) (sensor kind `0x46`), which toggles the door (3, 4).
+
+## 14. Start menu, save and load, dialogs, and end of game (Step 20)
+
+### Start of a run
+
+- `game_init` shows the start menu (`menu_run`, input mode 0) until the player chooses a game, then runs `game_load` until it returns 1. The menu commands: `0xd7` new game, `0xd8` new game from `DUNGENB.DAT` (the file does not exist: `DUNGEON.DAT`), `0xd9` load, `0xda` the picture GDAT `(5, 0, 1, 1)` for up to 1800 vertical retraces or until a click (command `0xef` of input mode 1), `0xe0` quit. The title is GDAT `(5, 0, 1, 4)` with its 16 colors in screen zone 2.
+- A new game reads `DUNGEON.DAT` with free records (section 7), puts the party on the start square of the header (map 0), starts the timeline and the weather, and runs the link pass (`dungeon_link_things_after_load`):
+  - A teleporter whose target is a teleporter that leads back: the link sensors (`0x27`) of both squares without a number get the map + 1. With two numbered sensors both squares share one thing list: the fixed things of the target square go in reverse order in front of the list of the source square, and the first movable thing of the target square goes to its end; the movable things after it drop out.
+  - Level link marks (square bit 1): the square in front of a text ornament of subtype 6 or 7 and of a sensor `0x1c` (cell direction of the thing); the square one level down below a pit, unless the wall set value `(8, set, 0x0b, 0x6a)` is not 0.
+  - Start states: text ornaments of subtype 8 are visible; sensors `0x27` and `0x2c` that are on become busy; sensors `0x3f` are on and not busy; a sensor `0x46` copies its state to bit 13 of the door at its target.
+  - Creature groups: full health; a moving group gets its square as home; a static group clears its animation words and gives its possessions random cells (one random number for each link), unless bit 7 of byte `0x0e` is set.
+- `dungeon_read_level_table` reads the first text (kind 0) on the party start square of map 0 into 64 bytes filled with `'1'` and takes one digit per level, skipping end marks, new lines, and spaces. The minion map of a level shows the icons of this set (`dungeon_level_digit`). It runs at the first dungeon load of a run, also when that load is a save.
+- `sensor_start_timers` (only for a new game): each timer sensor (`0x1e`, `0x33` to `0x37`) that is on starts its timer event; the others lose the busy bit. All 18 timers of `DUNGEON.DAT` are off.
+- The champion of a new game: square (0, 0) of map 0 holds a mirror sensor (`0x7e`); `champ_init_party_state` recruits its champion with the commands of a join, faces the party direction, and makes it the leader.
+
+### Save and load
+
+- Saves are `<data>/DATA/SKSAVEn.DAT` (slots 0 to 9) and `.BAK`, as the DOS game finds them. The slot dialogs (`0x80` load, `0x81` save) list the 42-byte header of each slot; an empty slot shows "n UNUSED" and has `0xdeadbeef` at byte `0x26`. A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
+- The save menu (dialog `0x1b`): SAVE, QUIT (the end picture GDAT `(6, 0, 1, 1)` until a click), RESTART (the program starts again: exit code 3), RESUME. A quit more than 100 ticks after the last load and the last save first asks dialog `0x0c`.
+- A load of a missing slot file takes the `.BAK` file and renames it back; a damaged file shows "THE GAME IS DAMAGED!" and ends the program when no game is in memory. After a load, "LOADING GAME..." stays until the session starts, and `game_start_session` shows "GAME LOADED, READY TO PLAY".
+- When the records of a thing type run out, `dun_get_discarded_thing` frees one: it searches the maps from the map after the last search (the party map last, a second time with one item of each shop display kind kept) for a thing of the type without the "do not discard" bit, not within 5 squares of the party on its map, not on a square with a protecting sensor or text ornament subtype 4; it removes it from its square (or from a static creature's possessions).
+
+### Dialogs
+
+- A dialog is GDAT `(0x1a, id)`: picture entry 0 in zone 4 (the viewport), text entries 0 to 19 the buttons (zones `0x1ce` to `0x1d3` by button count), text `0x14` the message, wrapped to a width near the message zone width and centered; an error message (dialog 0, entry `0x1b` to `0x1f`) shows below it or first in its own dialog. Screen mode 1 (after a load and at the end) draws on a black screen in zone 5; mode 0 (a new game) in the game viewport.
+- `ui_dialog_run` pushes input mode 4; the input conditions 1 and 2 select the button zones by screen mode and button count. The choice is the place of the matched command in its list. Enter clicks the first button.
+- The pressed button picture is GDAT `(0x1a, 0xfe, 1, 0 or 1)` (click feedback opcodes `0x0f` and `0x10`), color 7 transparent, centered in the button.
+- The volume dialog (`0x87`) sets the sound and music volumes (0 to 7, commands `0x95` to `0xa4`); a new sound volume plays the test sound `(3, 0, 0x8b)`. Both volumes are 7 in a new game and are part of the save.
+
+### End of game
+
+- The end sensor (wall sensor `0x12`) completes the game: the screen goes black and the program ends with exit code 1 (the DOS launcher then plays the ending).
+- When the party dies (`main_loop.end`, Step 15), `game_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with exit code 2.
+
+### Deviations of the C port (Step 20)
+
+- The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`game_wait_frames`, `main.c`); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook (`game_frame_hook`).
+- `game_quit` sets `main_loop.quit` and returns; the main loop then ends (the original exits the process at once). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error).
+- The drive path codes of the dialog texts (3, 4, 15) give the `--data` folder; the error, memory, and file name codes give an empty text.
+- The volume setting scales the mix of the sound voices (0 is silent); the music volume goes to the music player.
+- Fixes: a failed load of the last slot after the death of the party shows the error dialog (the original asks for the game disk); the link pass marks no square when no map lies below a pit (the original writes into map -1); the projectile that `dun_get_discarded_thing` frees is unlinked from its own map (the original unlinks from the current map); the name editor does not read before an empty field; slot names are bounded to 31 characters.
+- Kept quirks: `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square; a RESTART that the question of dialog `0x0c` cancels stays set for the next quit; a cancelled load leaves slot 0.
+- The `--save PATH` option starts the game of PATH at once, without the menu and without the dialog after a load.

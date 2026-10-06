@@ -22,6 +22,7 @@
 #define STAT_START_MIN 30
 #define SKILL_EXPERIENCE_BASE 0x40
 #define FOOD_START 1500
+#define CMD_RECRUIT 0x92
 #define CMD_RECRUIT_CANCEL 0x93
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */
 #define MOUTH_CATEGORY 9
@@ -35,6 +36,9 @@ enum { DATA_HEALTH, DATA_STAMINA, DATA_MANA, DATA_STATS, DATA_SKILLS = 6 };  /* 
 
 /* The colors of the champion messages. */
 static const uint8_t message_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED, UI_BLUE};
+
+/* The champion of a new game joins without the inventory, the mouth, and the message (the original flag 0x75a29). */
+static int recruit_silent;
 
 static int16_t le16s(const uint8_t *p) { return (int16_t)(p[0] | p[1] << 8); }
 
@@ -118,9 +122,11 @@ int champ_start_recruit(int x, int y, int dir, int map)
     int back = (dir + 2) & 3;
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, fx, fy); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) > THING_SENSOR && t >> THING_CELL_SHIFT == back) inv_put_object_in_free_slot(index, t);
-    inv_toggle(index);
-    input_set_mode(INPUT_MODE_RECRUIT);
-    ui_hide_game_view();
+    if (!recruit_silent) {
+        inv_toggle(index);
+        input_set_mode(INPUT_MODE_RECRUIT);
+        ui_hide_game_view();
+    }
     dun_set_current_map(saved);
     champ_compute_load(index);
     return index + 1;
@@ -146,9 +152,12 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         dun_set_current_map(saved);
         return;
     }
-    gfx_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
-    screen_present_viewport();
-    sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, MOUTH_SOUND_VOLUME, game.party_x, game.party_y, 0);
+    if (!recruit_silent) {
+        gfx_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
+        screen_present_viewport();
+        sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, MOUTH_SOUND_VOLUME, game.party_x,
+                      game.party_y, 0);
+    }
     if (hand != THING_NONE) inv_put_object_in_free_slot(champ, hand);
     ui.candidate = 0;
     int fx = x + dir_dx[dir], fy = y + dir_dy[dir];
@@ -158,13 +167,23 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
     if (mirror != THING_NONE)
         set_thing_word(mirror, SENSOR_FLAGS, thing_word(mirror, SENSOR_FLAGS) & (uint16_t)~SENSOR_MIRROR_ACTIVE);
     if (game.champion_count == 1) game.first_recruit_time = game.game_time;
-    text_args.champion = (int16_t)champ;
-    text_print_newline();
-    char text[TEXT_SIZE];
-    text_print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
-    if (ui.inventory) {
-        inv_toggle(CHAMPION_MAX);
-        ui_show_game_view();
+    if (!recruit_silent) {
+        text_args.champion = (int16_t)champ;
+        text_print_newline();
+        char text[TEXT_SIZE];
+        text_print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
+        if (ui.inventory) {
+            inv_toggle(CHAMPION_MAX);
+            ui_show_game_view();
+        }
     }
     dun_set_current_map(saved);
+}
+
+void champ_recruit_start_champion(int x, int y, int dir, int map)
+{
+    recruit_silent = 1;
+    champ_start_recruit(x, y, dir, map);
+    champ_finish_recruit(x, y, dir, map, CMD_RECRUIT);
+    recruit_silent = 0;
 }

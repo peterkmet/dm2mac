@@ -118,7 +118,7 @@ enum game_record_field {
 #define VOLUME_MASK 0xf
 #define MUSIC_VOLUME_SHIFT 4
 
-Game game;
+Game game = {.leader = 0xffff, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START};  /* no leader */
 
 /* State of one load or write. */
 static struct {

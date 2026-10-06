@@ -4,6 +4,7 @@
 #include "champ_action.h"
 #include "champion.h"
 #include "creature.h"
+#include "dialog.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "game.h"
@@ -17,6 +18,7 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
+#include "session.h"
 #include "text.h"
 #include "timeline.h"
 #include "ui.h"
@@ -29,6 +31,15 @@
 
 MainLoop main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
 static int tick_elapsed;
+void (*game_frame_hook)(void);
+
+void game_wait_frames(int count)
+{
+    while (count-- > 0) {
+        main_loop.timer_ticks++;
+        if (game_frame_hook) game_frame_hook();
+    }
+}
 
 void screen_present_viewport(void)
 {
@@ -281,16 +292,27 @@ void game_start_session(void)
     main_loop.running = 1;
     input_set_mode(INPUT_MODE_MOVE);
     game_enter_map(game.party_x, game.party_y, game.party_map, 0);
+    dialog.progress_enabled = 0;
+    if (session.loaded) {
+        gfx_fill_zone_screen(ZONE_SCREEN, 0);
+        ui_dialog_run(ui_dialog_draw(DIALOG_LOADED, MESSAGE_NONE));
+        gfx_fill_zone_screen(ZONE_SCREEN, 0);
+    } else if (session.new_game) {
+        dialog.screen_mode = 0;
+        gfx_fill_zone_screen(ZONE_SCREEN, 0);
+    }
     ui_draw_movement_arrows();
     champ_init_party_state();
+    session.offer_restore = 1;
     creature_refresh_party_maps();
     creature_reset_active_groups();
+    if (session.new_game) move_thing(THING_NONE, -1, 0, game.party_x, game.party_y);
     game_step();
 }
 
 void game_tick(void)
 {
-    if (main_loop.end) return;
+    if (main_loop.end || main_loop.quit) return;
     main_loop.timer_ticks++;
     if (++main_loop.tick_count >= main_loop.tick_threshold) tick_elapsed = 1;
     command_process_queue();

@@ -5,6 +5,7 @@
 #include "champion.h"
 #include "draw.h"
 #include "creature.h"
+#include "dialog.h"
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
@@ -20,6 +21,7 @@
 #include "music.h"
 #include "save.h"
 #include "sensor.h"
+#include "session.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
@@ -59,7 +61,9 @@ enum {
     CMD_INVENTORY_FIRST = 7, CMD_INVENTORY_LEADER = 0x0b, CMD_LEADER_FIRST = 0x10, CMD_LEADER_LAST = 0x13,
     CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41, CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
-    CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
+    CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_SAVE = 0x8c, CMD_VOLUME = 0x8d, CMD_EDIT_CHAMPION_NAME = 0x48,
+    CMD_NEW_GAME = 0xd7, CMD_NEW_GAME_B = 0xd8, CMD_LOAD_GAME = 0xd9, CMD_MENU_PICTURE = 0xda, CMD_CANCEL_PUSH = 0xe1,
+    CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
     CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81,
     CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
@@ -247,8 +251,6 @@ static struct {
     int disabled;                   /* commands queued by feedback scripts that wait */
     int wait;                       /* ticks without new commands */
     int16_t rect[RECT_SIZE];        /* the rectangle of the matched command */
-    int16_t match_x, match_y;
-    uint16_t dialog_value;          /* the last matched command */
     const uint8_t *script;          /* the running click feedback script */
     int script_delay;
     uint32_t last_ticks;
@@ -259,8 +261,6 @@ static struct {
 int input_command_stop;
 int input_feedback_busy;
 int input_drag_state;
-
-static int op_argument_size(int op);
 
 void input_init(void)
 {
@@ -284,8 +284,8 @@ static int input_condition(int cond, int arg)
 {
     switch (cond) {
     case 0: return 1;
-    case 1: return arg == 0;                       /* the dialog screen mode (Step 20) */
-    case 2: return arg == 0;                       /* the dialog button count (Step 20) */
+    case 1: return arg == dialog.screen_mode;
+    case 2: return arg == dialog.button_count;
     case 3:
         if (arg == ui.inventory) return 1;
         if (arg <= CHAMPION_MAX) return 0;
@@ -340,14 +340,27 @@ static const InputCommand *node_commands(const InputNode *node)
     return list == -1 ? NULL : &input_commands[command_list_start[list]];
 }
 
-/* Remembers the matched command entry: its zone rectangle and the click position. */
+InputMatch input_match = {.zone = ZONE_NONE_ID, .origin = -1};
+
+/* The zone that the position of a command zone is relative to: the inventory panel, the action area, or none. */
+static int16_t zone_origin(uint16_t zone)
+{
+    if (zone & ZONE_IN_PANEL) return ZONE_PANEL_ORIGIN;
+    if (zone & ZONE_IN_ACTION_AREA) return ZONE_ACTION_ORIGIN;
+    return -1;
+}
+
+/* Remembers the matched command entry: its zone, the click position, and its place in its list. */
 static void select_entry(const InputCommand *list, const InputCommand *e, int x, int y)
 {
     uint16_t command = e->command & COMMAND_MASK;
-    in.dialog_value = command;
-    in.match_x = (int16_t)x;
-    in.match_y = (int16_t)y;
-    (void)list;
+    input_match.zone = e->zone & ZONE_ID_MASK;
+    input_match.origin = zone_origin(e->zone);
+    input_match.value = command;
+    input_match.choice = (int16_t)(command - ((list->command & COMMAND_MASK) - 1));
+    input_match.x = (int16_t)x;
+    input_match.y = (int16_t)y;
+    memcpy(input_match.rect, in.rect, sizeof input_match.rect);
 }
 
 static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int buttons)
@@ -358,6 +371,7 @@ static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int 
         if (!(e->flags & COMMAND_OFF) && buttons & e->buttons && input_get_zone_rect(e->zone, in.rect)
             && rect_contains(in.rect, x, y)) {
             select_entry(list, e, x, y);
+            input_match.key = 0;
             return e->command & COMMAND_MASK;
         }
         e++;
@@ -368,6 +382,7 @@ static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int 
 
 static void select_command_in_list(uint16_t command, const InputCommand *list)
 {
+    input_match.origin = -1;
     if (list)
         for (const InputCommand *e = list; e->command & COMMAND_MASK; e++)
             if (!(e->flags & COMMAND_OFF) && (e->command & COMMAND_MASK) == command) {
@@ -376,8 +391,10 @@ static void select_command_in_list(uint16_t command, const InputCommand *list)
                 return;
             }
     if (list) in.rect[RECT_W] = in.rect[RECT_H] = 0;
-    in.match_x = in.match_y = 0;
-    in.dialog_value = command;
+    input_match.zone = ZONE_NONE_ID;
+    input_match.x = input_match.y = 0;
+    input_match.value = command;
+    input_match.choice = 0;
 }
 
 static uint16_t find_click_command(const InputNode *node, int x, int y, int buttons)
@@ -416,6 +433,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
             if (k->key == key) {
                 command = k->command & COMMAND_MASK;
                 select_command_in_list(command, node_commands(child));
+                input_match.key = key;
                 break;
             }
             k++;
@@ -526,8 +544,11 @@ void input_flush(void)
     in.disabled = 0;
     in.queue_head = in.queue_tail = 0;
     in.rect[RECT_W] = in.rect[RECT_H] = 0;
-    in.match_x = in.match_y = 0;
-    in.dialog_value = 0;
+    input_match.zone = ZONE_NONE_ID;
+    input_match.origin = -1;
+    input_match.x = input_match.y = 0;
+    input_match.value = 0;
+    input_match.choice = 0;
     in.events_locked = 0;
     flush_deferred_click();
 }
@@ -590,7 +611,7 @@ static const uint8_t *click_feedback_script(Command *c)
     return click_feedback_scripts + offset;
 }
 
-static void rect_center_in(int16_t *dst, const int16_t *src, int w, int h)
+void rect_center_in(int16_t *dst, const int16_t *src, int w, int h)
 {
     dst[RECT_W] = (int16_t)w;
     dst[RECT_X] = (int16_t)(src[RECT_X] + ((src[RECT_W] - w + 1) >> 1));
@@ -602,7 +623,7 @@ static void rect_center_in(int16_t *dst, const int16_t *src, int w, int h)
 enum {
     FB_DELAY, FB_RELEASE_QUEUE, FB_WAIT_QUEUE, FB_WAIT_STEP, FB_QUEUE, FB_EXECUTE, FB_QUEUE_AND_RELEASE, FB_PICTURE,
     FB_SPELL_ICON, FB_HAND_ICON, FB_RUNE_BUTTON, FB_ENTERED_RUNES, FB_ACTION_NAME, FB_INVENTORY_BUTTON,
-    FB_MAP_OPTION_BUTTONS
+    FB_MAP_OPTION_BUTTONS, FB_DIALOG_BUTTON, FB_DIALOG_BUTTON_2
 };
 #define SPELL_RUNE_PRESSED 8        /* GDAT (1, 5, 8): the pressed rune button */
 #define FB_RUN_ON 0x40
@@ -739,9 +760,16 @@ static void run_click_feedback(int elapsed)
             }
             p++;
             break;
+        case FB_DIALOG_BUTTON: case FB_DIALOG_BUTTON_2:
+            dialog.button_category = p[0];
+            dialog.button_index = p[1];
+            dialog.button_entry = p[2];
+            p += 3;
+            ui_dialog_draw_button(input_match.zone, 1);
+            opened = 0;  /* the original forgets the open feedback bitmap */
+            ui_dialog_present();
+            break;
         default:
-            /* the dialog button pictures: Step 20 */
-            p += op_argument_size(op & 0x3f);
             break;
         }
         if (queue_full) break;
@@ -781,8 +809,8 @@ void input_poll(void)
                     command = CMD_CANCEL_PUSH;
                 }
                 if (command) {
-                    in.current.x = in.match_x;
-                    in.current.y = in.match_y;
+                    in.current.x = input_match.x;
+                    in.current.y = input_match.y;
                     memcpy(in.current.rect, in.rect, sizeof in.rect);
                     in.current.command = command;
                 }
@@ -795,15 +823,6 @@ void input_poll(void)
         }
     }
     run_click_feedback(elapsed);
-}
-
-/* The argument bytes of the feedback opcodes that draw the dialog buttons (Step 20). */
-static int op_argument_size(int op)
-{
-    switch (op) {
-    case 0x0f: case 0x10: return 3;
-    default: return 0;
-    }
 }
 
 void input_reset_states(void)
@@ -1113,6 +1132,40 @@ static void game_pause(void)
     music_pause();
 }
 
+/* The commands of the save, volume, and start menus. */
+static void command_execute_session(int command)
+{
+    switch (command) {
+    case CMD_SAVE:
+        if (game.champion_count && !ui.candidate) {
+            in.disabled--;
+            game_save();
+            in.disabled++;
+        }
+        break;
+    case CMD_VOLUME:
+        ui_volume_dialog();
+        if (ui.inventory) champ_draw_state(ui.inventory - 1);
+        break;
+    case CMD_NEW_GAME:
+        session.new_game = 1;
+        break;
+    case CMD_NEW_GAME_B:
+        session.new_game = 1;
+        session.use_dungenb = 1;
+        break;
+    case CMD_LOAD_GAME:
+        session.new_game = 0;
+        break;
+    case CMD_MENU_PICTURE:
+        menu_show_picture_and_wait();
+        break;
+    case CMD_QUIT:
+        game_quit();
+        break;
+    }
+}
+
 int command_execute(Command *c)
 {
     int command = c->command;
@@ -1173,8 +1226,6 @@ int command_execute(Command *c)
         game_sleep();
     } else if (command == CMD_WAKE && !party.push_mode && !input_drag_state) {
         champ_wake_party();
-    } else if (command == CMD_QUIT && !party.push_mode && !input_drag_state) {
-        main_loop.end = 1;
     } else if (command == CMD_ACTION_CANCEL) {
         champ_execute_selected_action(-1);
     } else if (command > CMD_ACTION_CANCEL && command <= CMD_ACTION_LAST) {
@@ -1199,10 +1250,15 @@ int command_execute(Command *c)
         else champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
         ui_update_action_area(0);
+    } else if (command == CMD_EDIT_CHAMPION_NAME) {
+        if (ui.inventory) champ_edit_name(champion(ui.inventory - 1));
+    } else if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE)
+                || command == CMD_QUIT) && !party.push_mode && !input_drag_state) {
+        command_execute_session(command);
     } else {
         command_execute_later(c);
     }
-    if (in.dialog_value >= CMD_TEXT_FIRST && in.dialog_value <= CMD_TEXT_LAST) input_command_stop = 1;
+    if (input_match.value >= CMD_TEXT_FIRST && input_match.value <= CMD_TEXT_LAST) input_command_stop = 1;
     return 1;
 }
 
@@ -1260,4 +1316,49 @@ void command_process_queue(void)
         if (!command_execute(&in.queue[head])) in.queue_head = head;
         else if (in.disabled) in.disabled--;
     } while (!input_command_stop);
+}
+
+/* The command entry of command in the input tree under node, NULL for none. */
+static const InputCommand *find_command_entry(const InputNode *node, uint16_t command)
+{
+    for (int i = 0; !node_child_end(node, i); i++) {
+        const InputNode *child = node_child(node, i);
+        if (!input_condition(node->cond & 0x7f, child->arg)) continue;
+        if (child->cond & NODE_HAS_CHILDREN) {
+            const InputCommand *e = find_command_entry(child, command);
+            if (e) return e;
+            continue;
+        }
+        const InputCommand *e = node_commands(child);
+        if (e)
+            for (; e->command & COMMAND_MASK; e++)
+                if ((e->command & COMMAND_MASK) == command) return e;
+    }
+    return NULL;
+}
+
+void input_simulate_command_click(uint16_t command)
+{
+    const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
+    int16_t r[RECT_SIZE];
+    if (e && input_get_zone_rect(e->zone, r)) input_mouse_click(r[RECT_X], r[RECT_Y], e->buttons);
+}
+
+uint16_t input_read_key(void)
+{
+    if (!in.key_count) return 0;
+    uint16_t key = in.keys[0];
+    memmove(in.keys, in.keys + 1, --in.key_count * sizeof in.keys[0]);
+    return key;
+}
+
+char kbd_key_to_ascii(uint16_t key)
+{
+    /* the characters of the PC scan codes 0x02 to 0x39 */
+    static const char chars[] = "1234567890-=\0\0qwertyuiop[]\0\0asdfghjkl;'`\0\\zxcvbnm,./\0\0\0 ";
+    static const char shifted[] = "!@#$%^&*()_+\0\0QWERTYUIOP{}\0\0ASDFGHJKL:\"~\0|ZXCVBNM<>?\0\0\0 ";
+    enum { FIRST = 0x02, LAST = 0x39, SCAN_MASK = 0xff };
+    int scan = key & SCAN_MASK;
+    if (scan < FIRST || scan > LAST) return 0;
+    return (key & KEY_SHIFT ? shifted : chars)[scan - FIRST];
 }

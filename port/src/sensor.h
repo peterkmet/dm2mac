@@ -49,6 +49,8 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
 int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
 /* The party enters (1) or leaves (0) the party map: the map entry sensors and the creature generators. */
 void sensor_process_map_entry(int entering);
+/* A new game starts the timer sensors that are on and stops the others. */
+void sensor_start_timers(void);
 /* Runs a due sensor animation, timer, or busy event. */
 void timeline_event_sensor(TimelineEvent *e);
 /* Moves thing (from (from_x, from_y), -1: a new thing) to the cell to_cell of (to_x, to_y) for a transfer sensor,

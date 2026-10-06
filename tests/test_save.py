@@ -405,6 +405,7 @@ def test_reserved_misc_records(lib, gdat, start, tmp_path):
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
+    lib.draw_init(gdat)  # the discard pass reads the creature info of the drawing data
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
     lib.thing_word.restype = ctypes.c_uint16
     while lib.dungeon_unused_thing(MISC) != NONE:

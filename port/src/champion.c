@@ -4,7 +4,9 @@
 #include "dungeon.h"
 #include "inventory.h"
 #include "item.h"
+#include "move.h"
 #include "random.h"
+#include "session.h"
 #include "text.h"
 #include "ui.h"
 
@@ -21,6 +23,7 @@
 #define ACTION_ENTRY_LAST 11
 #define GDAT_TEXT_TYPE 5
 #define NO_SLOT (-1)
+#define SENSOR_START_CHAMPION 0x7e  /* on square (0, 0): the champion of its mirror starts a new game */
 
 /* Fields of an action text. */
 enum { FIELD_SKILL = 0, FIELD_LEVEL = 1, FIELD_COMMAND = 2, FIELD_CHARGES = 8, FIELD_HAND = 17 };
@@ -200,9 +203,28 @@ void champ_set_leader(int champ)
     if (champ != -1 && champ + 1 != ui.candidate) champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
 }
 
+/* A new game: the champion of the start square (map square (0, 0) with sensor 0x7e) joins the party. */
+static void champ_add_start_champion(void)
+{
+    game.leader_hand = THING_NONE;
+    leader_hand.icon = HAND_ICON_NONE;
+    for (uint16_t t = dungeon_square_first_thing(party.cur_map, 0, 0); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+        if (thing_type(t) != THING_SENSOR || (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) != SENSOR_START_CHAMPION)
+            continue;
+        champ_recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
+        champion(0)->dir = champion(0)->cell = (uint8_t)game.party_dir;
+        champ_set_redraw_flags(REDRAW_STATUS_BOX);
+        champ_set_leader(0);
+        return;
+    }
+}
+
 void champ_init_party_state(void)
 {
-    /* ponytail: the new game party comes with Step 20 */
+    if (session.new_game) {
+        champ_add_start_champion();
+        return;
+    }
     if (game.leader_hand == THING_NONE) {
         leader_hand.icon = HAND_ICON_NONE;
     } else {

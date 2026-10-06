@@ -11,6 +11,7 @@
 #include "move.h"
 #include "random.h"
 #include "sensor.h"
+#include "session.h"
 #include "timeline.h"
 #include "ui.h"
 #include "weather.h"
@@ -211,7 +212,7 @@ int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
 {
     champ = (int16_t)champ;
     int16_t d = (int16_t)damage;
-    if (champ == -1 || champ + 1 == ui.candidate || main_loop.completed || d < 1 || !champion(champ)->health) return 0;
+    if (champ == -1 || champ + 1 == ui.candidate || session.completed || d < 1 || !champion(champ)->health) return 0;
     Champion *c = champion(champ);
     int type = attack_type & ATTACK_TYPE_MASK;
     if (type) {

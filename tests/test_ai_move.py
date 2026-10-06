@@ -992,8 +992,8 @@ def test_merchant_commands(ai):
         for t, nxt, cell in zip(things, things[1:] + [None], cells[1:] + [0]):
             set_word(ai, t, 0, ENDOFLIST if nxt is None else nxt & 0x3FFF | cell << 14)
         set_word(ai, counter, 2, first & 0x3FFF | 1 << 14)
-        # the change coins of the last round are freed: the records do not run out (the port does not reuse
-        # discarded items, dun_get_discarded_thing)
+        # the change coins of the last round are freed: the records do not run out (no discarded item is reused,
+        # dun_get_discarded_thing)
         t = lib.thing_word(g, 2)
         while t != ENDOFLIST:
             nxt = lib.dungeon_next_thing(t)

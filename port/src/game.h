@@ -15,12 +15,15 @@ typedef struct {
     uint32_t timer_ticks;   /* all timer ticks */
     int running;            /* 0 while the game is paused */
     int view_hidden;        /* the viewport shows no dungeon (pause, sleep) */
-    int end;                /* the game ended: the loop stops */
-    int completed;          /* the party won (Step 20 sets it): no more damage */
+    int end;                /* the party died or the player quit: the loop stops (g_game_end_flag) */
+    int quit;               /* the program ends (game_quit) */
 } MainLoop;
 
 extern MainLoop main_loop;
 
+/* One timer tick of a modal loop (menu, dialog): the platform reads the input and shows the screen. */
+extern void (*game_frame_hook)(void);
+void game_wait_frames(int count);
 /* Prepares a loaded game for play: input mode, map, screen (the original game_start_session). */
 void game_start_session(void);
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */

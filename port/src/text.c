@@ -30,7 +30,7 @@
 
 /* Format codes. */
 enum {
-    FORMAT_TITLE = 2, FORMAT_CHAMPION = 7, FORMAT_NUMBER_FIRST = 10, FORMAT_NUMBER_LAST = 14, FORMAT_TEXT = 17,
+    FORMAT_TITLE = 2, FORMAT_DATA_PATH = 3, FORMAT_SAVE_PATH = 4, FORMAT_DISK_PATH = 15, FORMAT_CHAMPION = 7, FORMAT_NUMBER_FIRST = 10, FORMAT_NUMBER_LAST = 14, FORMAT_TEXT = 17,
     FORMAT_TITLE_2 = 27
 };
 #define FORMAT_TITLE_INDEX 0xfe
@@ -38,6 +38,7 @@ enum {
 #define FORMAT_TEXT_CATEGORY 7
 
 TextArgs text_args = {-1, {0}, 0};
+char text_drive_path[TEXT_SIZE];
 const uint8_t *ui_colors;
 uint32_t message_expiry[MESSAGE_ROWS];
 
@@ -244,7 +245,9 @@ char *text_format(const char *fmt, char *dst)
             text_gdat(FORMAT_TEXT_CATEGORY, 0, text_args.entry, value);
         } else if (code == FORMAT_TITLE || code == FORMAT_TITLE_2) {
             text_gdat(FONT_CATEGORY, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : FORMAT_TITLE_2_ENTRY, value);
-        }  /* ponytail: the drive, path, and system error codes of the dialogs give "" until Step 20 */
+        } else if (code == FORMAT_DATA_PATH || code == FORMAT_SAVE_PATH || code == FORMAT_DISK_PATH) {
+            snprintf(value, sizeof value, "%s", text_drive_path);
+        }  /* the error, memory, and file name codes of the DOS layer give "" */
         out = append(dst, text_format(value, inner));
     }
     *out = '\0';

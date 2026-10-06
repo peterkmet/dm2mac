@@ -35,6 +35,8 @@ typedef struct {
 } TextArgs;
 
 extern TextArgs text_args;
+/* The folder of the game files and the saves: the drive path codes of the dialog texts. */
+extern char text_drive_path[TEXT_SIZE];
 extern const uint8_t *ui_colors;
 /* Game time at which each message row clears, MESSAGE_NEVER when it is clear. */
 #define MESSAGE_NEVER 0xffffffffu
