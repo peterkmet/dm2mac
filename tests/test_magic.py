@@ -412,6 +412,45 @@ def test_runes_and_casts_match_original(port, cast_ui):
     assert results == {(0, False), (1, False), (1, True)}  # success, failure, and a missing flask that keeps the runes
 
 
+CMD_PARTY_ICON, CMD_HAND_FIRST, CMD_ACTION_FIRST = 0x5F, 0x74, 0x71
+CH_CELL = 0x1D
+
+
+def test_icon_click_feedback_matches_original(port, cast_ui):
+    # A party of two (a copy of the first champion in the next cell): the click feedback of the spell icons of the
+    # party (opcode 8), of the hands with the action area closed (opcode 9), and of the actions in the open action
+    # menu (opcode 0x0c). While the area is open, no click finds a hand command: the other branch of opcode 9 (the
+    # icon of the open hand) has no click.
+    lib, original = port, cast_ui
+    emu = original.emu
+    first = bytes(champion_records(lib)[:CHAMPION_SIZE])
+    champion_bytes(lib, 1, 0, first)
+    champion_bytes(lib, 1, CH_CELL, [first[CH_CELL] + 1 & 3])
+    champion_bytes(lib, 1, CH_SLOTS, b"\xff\xff" * 30)  # the copy must not share the items of the first champion
+    Game.in_dll(lib, "game").champion_count = 2
+    emu.write(G_CHAMPION_COUNT, struct.pack("<H", 2))
+    sync_champions(lib, original)
+    draw_game_screen(lib, original)
+    lib.input_init()
+
+    def close():
+        lib.ui_action_area_close()
+        emu.call(UI_ACTION_AREA_CLOSE)
+        update_action_area(lib, original)
+
+    for cmd in range(CMD_PARTY_ICON, CMD_PARTY_ICON + 2):
+        close()
+        click_feedback(lib, original, cmd, "party icon")
+    for cmd in range(CMD_HAND_FIRST, CMD_HAND_FIRST + 4):
+        close()
+        click_feedback(lib, original, cmd, "hand, closed")
+    open_hand(lib, original, 0)
+    actions = ctypes.c_int.in_dll(lib, "champ_action_count").value
+    assert actions
+    for cmd in range(CMD_ACTION_FIRST, CMD_ACTION_FIRST + actions):
+        click_feedback(lib, original, cmd, "action")
+
+
 TIMELINE_EVENT_MAGIC_LIGHT = 0x5917D
 
 
