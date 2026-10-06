@@ -473,8 +473,8 @@ int game_init(void)
         if (main_loop.quit) return 0;
     } while (game_load() != 1 && !main_loop.quit);
     if (main_loop.quit) return 0;
-    sound_set_volume_and_test(game.sound_volume, 0);
-    sound_set_volume_and_test(game.music_volume, 10);
+    sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
+    sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     ui_reset();
     money_init_coin_table();
     ui_draw_game_screen();

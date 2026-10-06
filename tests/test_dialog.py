@@ -60,6 +60,15 @@ def ui(port, original):
     return port
 
 
+def stub(original, addr, fn):
+    """Runs fn instead of the original function at addr; a second call replaces fn (a second hook would return
+    twice)."""
+    fns = original.__dict__.setdefault("dialog_fns", {})
+    if addr not in fns:
+        original.emu.stub(addr, lambda *args: fns[addr](*args))
+    fns[addr] = fn
+
+
 def set_screen_mode(lib, emu, mode):
     DialogState.in_dll(lib, "dialog").screen_mode = mode
     emu.write_u32(G_DIALOG_SCREEN_MODE, mode)
@@ -101,7 +110,7 @@ def test_progress_bar_matches_original(ui, original):
 def test_volume_dialog_matches_original(ui, original):
     # The volume dialog with each pair of settings; the dialog closes at once (the OK button).
     lib, emu = ui, original.emu
-    emu.stub(UI_DIALOG_RUN, lambda *_: 0xDB)
+    stub(original, UI_DIALOG_RUN, lambda *_: 0xDB)
     frame = ctypes.CFUNCTYPE(None)(lambda: close_dialog(lib))
     ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
     try:
@@ -151,7 +160,7 @@ def test_slot_dialogs_match_original(ui, original, tmp_path):
         names.append(text)
         return 5 if text[-5:-4] in (b"0", b"3") else -1
 
-    emu.stub(FILE_OPEN, file_open)
+    stub(original, FILE_OPEN, file_open)
     for dialog, buttons in ((0x80, 5), (0x81, 6)):
         for chosen in (-1, 0, 3, 7, 9):
             set_screen_mode(lib, emu, 1)
@@ -182,6 +191,99 @@ def test_menu_pictures_match_original(ui, original):
     emu.write_u32(G_TITLE_PALETTE, original.image_palette(5, 0, 4))
     lib.menu_draw_title()
     emu.call(MENU_DRAW_TITLE)
+    mine, theirs = c_screen(lib), original.screen()
+    assert len(set(theirs)) > 8
+    assert mine == theirs, diff(mine, theirs, SCREEN_W)
+
+
+CHAMP_EDIT_NAME, COMMAND_PROCESS_QUEUE, CHAMP_DRAW_STATE, UI_HIDE_GAME_VIEW, UI_SHOW_GAME_VIEW = (
+    0x496E5, 0x224A9, 0x48890, 0x54E41, 0x54EAC)
+KBD_KEY_TO_ASCII = 0x114C5
+G_INVENTORY_ORDINAL, G_DIALOG_VALUE, G_DIALOG_KEY, INPUT_PUSH_MODE = 0x7F972, 0x7F526, 0x7F51A, 0x2073F
+# Typed keys: X, backspace, Q, 1 (no name character), space, Enter (to the title), 3 backspaces, Z, Tab (back to the
+# name), Enter (to the title), Enter (done).
+NAME_KEYS = [0x2D, 0x0E, 0x10, 0x02, 0x39, 0x1C, 0x0E, 0x0E, 0x0E, 0x2C, 0x0F, 0x1C, 0x1C]
+
+
+def test_champion_name_editor_matches_original(ui, original):
+    # The name editor of the inventory: the name and title fields with the cursor after each key, and the new name and
+    # title of the champion.
+    from test_interface import G_CHAMPIONS, UiState, champion_records
+    lib, emu = ui, original.emu
+    lib.input_init()
+    lib.input_key_down.argtypes = [ctypes.c_uint16]
+    lib.input_find_command.restype = ctypes.c_uint16
+    rect = (ctypes.c_int16 * 4)()
+    commands = [lib.input_find_command(9, 0, 0, 0, k, rect) for k in NAME_KEYS]
+    assert all(commands), commands
+    UiState.in_dll(lib, "ui").inventory = 1
+    emu.write(G_INVENTORY_ORDINAL, struct.pack("<h", 1))
+    keys = list(NAME_KEYS)
+    theirs, mine = [], []
+
+    def process(*_):
+        theirs.append(original.view())
+        if keys:
+            emu.write(G_DIALOG_VALUE, struct.pack("<H", commands[len(NAME_KEYS) - len(keys)]))
+            emu.write(G_DIALOG_KEY, struct.pack("<H", keys.pop(0)))
+
+    for addr, fn in ((COMMAND_PROCESS_QUEUE, process), (INPUT_PUSH_MODE, None), (INPUT_POP_MODE, None),
+                     (UI_HIDE_GAME_VIEW, None), (UI_SHOW_GAME_VIEW, None), (CHAMP_DRAW_STATE, None),
+                     (KBD_KEY_TO_ASCII, lambda k, *_: lib.kbd_key_to_ascii(k & 0xFFFF) & 0xFF)):  # IBMIOP service 0x1b
+        stub(original, addr, fn or (lambda *_: 0))
+    emu.call(CHAMP_EDIT_NAME, G_CHAMPIONS)
+    port_keys = list(NAME_KEYS)
+
+    def frame():
+        mine.append(c_view(lib))
+        if port_keys:
+            lib.input_key_down(port_keys.pop(0))
+
+    hook = ctypes.CFUNCTYPE(None)(frame)
+    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
+    try:
+        game_champions = bytes(champion_records(lib))
+        lib.champ_edit_name.argtypes = [ctypes.c_void_p]
+        lib.champ_edit_name(ctypes.addressof(champion_records(lib)))
+    finally:
+        ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+    after = bytes(champion_records(lib))[:28]
+    assert after == emu.read(G_CHAMPIONS, 28)
+    assert after != game_champions[:28]
+    assert len(mine) == len(theirs) == len(NAME_KEYS)
+    for i, (a, b) in enumerate(zip(mine, theirs)):
+        assert a == b, (i, diff(a, b, VIEW_W))
+
+
+GAME_END, GAME_QUIT, SAVE_CHECK_DISK = 0x1FEF6, 0x2005B, 0x346D1
+
+
+def test_quit_picture_matches_original(ui, original):
+    # The end after the QUIT button of the save menu: the picture GDAT (6, 0, 1, 1) until a click, then the end.
+    from test_session_play import main_loop_quit
+    lib, emu = ui, original.emu
+    quits = []
+
+    def quit_(*_):
+        quits.append(1)
+        raise RuntimeError("game_quit")
+
+    for addr, fn in ((SAVE_CHECK_DISK, None), (GAME_QUIT, quit_),
+                     (COMMAND_PROCESS_QUEUE, lambda *_: emu.write(G_DIALOG_VALUE, struct.pack("<H", 0xEF)))):
+        stub(original, addr, fn or (lambda *_: 0))
+    from dm2tools.emu import EmuError
+    with pytest.raises(EmuError, match="game_quit"):
+        emu.call(GAME_END, 0)
+    hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "input_match"), "value", 0xEF))
+    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
+    session = Session.in_dll(lib, "session")
+    session.restart = session.quit_code = session.completed = 0
+    try:
+        lib.game_end(0)
+    finally:
+        ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+    assert quits == [1] and main_loop_quit(lib).value == 1 and session.exit_code == 0
+    main_loop_quit(lib).value = 0
     mine, theirs = c_screen(lib), original.screen()
     assert len(set(theirs)) > 8
     assert mine == theirs, diff(mine, theirs, SCREEN_W)

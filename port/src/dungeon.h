@@ -146,6 +146,8 @@ uint16_t dungeon_unused_thing(int type);
 /* Frees a record of type for reuse when the table is full: removes a thing of kind subtype (DISCARD_ANY_KIND:
    any) that may go, away from the party; THING_NONE when there is none. */
 #define DISCARD_ANY_KIND 0xff
+/* The map where the last search for each thing type ended; the next search starts there. */
+extern uint8_t last_discarded_map[THING_TYPE_COUNT];
 uint16_t dun_get_discarded_thing(int type, int subtype);
 /* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
 int dungeon_teleporter_link_map(int map, int x, int y);

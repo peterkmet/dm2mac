@@ -451,7 +451,9 @@ class Scenario(CreatureOracle):
         """Runs the original from end when it reaches begin: a code part of a later step."""
         from unicorn import UC_HOOK_CODE
         from unicorn.x86_const import UC_X86_REG_EIP
-        self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: uc.reg_write(UC_X86_REG_EIP, end), begin=begin, end=begin)
+        self.skips = getattr(self, "skips", {})
+        self.skips[begin] = self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: uc.reg_write(UC_X86_REG_EIP, end),
+                                                 begin=begin, end=begin)
 
     def fix_square_events(self):
         """The original sensor_schedule_square_event leaves 2 data bytes (and the priority of a hold) uninitialized;

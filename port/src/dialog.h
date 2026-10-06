@@ -38,7 +38,8 @@ void ui_dialog_draw_button(int zone, int highlighted);
 void ui_draw_progress_bar(int permille);
 /* The dialog of the sound and music volumes. */
 void ui_volume_dialog(void);
-/* Sets the sound (device 0, plays a test sound) or music (device 10) volume setting, 0 to 7. */
+/* Sets the sound (DEVICE_SOUND, plays a test sound) or music (DEVICE_MUSIC) volume setting, 0 to 7. */
+enum { DEVICE_SOUND = 0, DEVICE_MUSIC = 10 };
 void sound_set_volume_and_test(int volume, int device);
 
 #endif

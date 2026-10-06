@@ -1064,7 +1064,7 @@ static const uint8_t sensor_blocks_discard[SENSOR_KIND_TABLE] = {
     0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
 };
-static uint8_t last_discarded_map[THING_TYPE_COUNT];
+uint8_t last_discarded_map[THING_TYPE_COUNT];
 
 /* The thing type of an item index (weapons, armour, misc, potions, creatures, containers, scroll), -1 none. */
 static int discard_item_thing_type(unsigned item)
