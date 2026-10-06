@@ -416,6 +416,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
 
 CHAMP_INIT_PARTY_STATE, DUN_LINK_THING_TO_SQUARE = 0x49D46, 0x1D3DB
 G_LEADER, G_LEADER_HAND_ICON, G_CHAMPION_COUNT, G_CANDIDATE, G_INVENTORY = 0x759A4, 0x7FBCA, 0x7F276, 0x7F284, 0x7F972
+G_INPUT_MODE, G_MESSAGE_EXPIRY = 0x72FED, 0x80404
 CH_SLOTS = 0xC3
 
 
@@ -443,8 +444,17 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     emu.write(G_LEADER, struct.pack("<h", -1))
     Session.in_dll(lib, "session").new_game = 1
     emu.write(G_NEW_GAME, struct.pack("<H", 1))
+    mode = lib.input_get_mode()
+    assert mode == struct.unpack("<h", emu.read(G_INPUT_MODE, 2))[0]
+    rows = lambda: (list((ctypes.c_uint32 * 3).in_dll(lib, "message_expiry")), emu.read(G_MESSAGE_EXPIRY, 12))
+    before = rows()
     lib.champ_init_party_state()
     emu.call(CHAMP_INIT_PARTY_STATE)
+    # the silent join keeps the input mode, requests no mouth sound, and prints no "joined" message
+    assert lib.input_get_mode() == struct.unpack("<h", emu.read(G_INPUT_MODE, 2))[0] == mode
+    assert rows() == before  # the message rows of each side (the original leaves them at 0 in the emulator)
+    loop.flush_sounds()
+    loop.assert_same_sounds("new game")
     ui = UiState.in_dll(lib, "ui")
     mine = (game.champion_count, game.leader, ui.candidate, ui.inventory)
     theirs = tuple(struct.unpack("<H", emu.read(addr, 2))[0] for addr in (G_CHAMPION_COUNT, G_LEADER, G_CANDIDATE,
@@ -489,8 +499,11 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     emu.stub(GAME_QUIT, quit_)
     emu.write_u32(G_END_OFFER_RESTORE, 1)
     Session.in_dll(lib, "session").offer_restore = 1
+    state = DialogState.in_dll(lib, "dialog")
+    state.id = -1
     with Player(lib, [click_choice(2)], every=300):
         lib.game_end(loop.end)
+    assert state.id == 0x10
     with pytest.raises(EmuError, match="game_quit"):
         emu.call(GAME_END, struct.unpack("<h", emu.read(G_GAME_END_FLAG, 2))[0])
     assert dialogs == [(0x10, 0)] and quits == [b"\x01\x00"]

@@ -28,7 +28,7 @@ DIALOGS = [(0x1B, 0), (0x0C, 0), (0x0D, 0), (0x0E, 0), (0x10, 0), (0x06, 0), (0x
 class DialogState(ctypes.Structure):
     _fields_ = [("screen_mode", ctypes.c_int), ("button_count", ctypes.c_int), ("button_category", ctypes.c_uint8),
                 ("button_index", ctypes.c_uint8), ("button_entry", ctypes.c_uint8), ("progress_enabled", ctypes.c_int),
-                ("progress_width", ctypes.c_int16)]
+                ("progress_width", ctypes.c_int16), ("id", ctypes.c_int)]
 
 
 class Session(ctypes.Structure):
