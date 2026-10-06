@@ -135,11 +135,11 @@ def test_quick_save_and_quick_load(lib, advanced):
     # F5 writes QUICK.DAT (no backup) and keeps the QUIT question state; F9 brings the party back to the saved square.
     game, data = advanced
     state = Session.in_dll(lib, "session")
-    state.load_time, state.save_time = 5, 7
+    state.load_time, state.save_time, state.new_game = 5, 7, 1
     press(lib, KEY_F5)
     assert shows(lib, b"GAME SAVED")
     assert sorted(p.name for p in data.iterdir()) == ["QUICK.DAT"]
-    assert (state.load_time, state.save_time, state.slot, state.new_game) == (5, 7, -1, 0)
+    assert (state.load_time, state.save_time, state.slot, state.new_game) == (5, 7, -1, 1)
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     press(lib, SCAN_E)
     press(lib, SCAN_W)
@@ -150,10 +150,81 @@ def test_quick_save_and_quick_load(lib, advanced):
     assert (game.party_x, game.party_y, game.party_dir, game.party_map) == saved
     assert sorted(p.name for p in data.iterdir()) == ["QUICK.DAT"]
     assert lib.input_get_mode() == INPUT_MODE_MOVE and state.loaded == 0 and state.slot == -1
+    assert (state.load_time, state.save_time, state.new_game) == (0, 0, 1)
     position = (game.party_x, game.party_y)
     press(lib, SCAN_W)
     press(lib, SCAN_W)
     assert (game.party_x, game.party_y) != position, "the game goes on after the load"
+
+
+def sound_level(lib):
+    """The mixed level of a sample of 100 at full volume: the master volume of the sounds."""
+    from test_sound import UPSAMPLE, Sound, mix
+    lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
+    lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
+    lib.sound_stop_all()
+    pcm = (ctypes.c_int8 * 1)(100)
+    assert lib.sound_play(ctypes.byref(Sound(ctypes.cast(pcm, ctypes.POINTER(ctypes.c_int8)), 1)), 255, 0, 0)
+    level = mix(lib, UPSAMPLE)[0]
+    lib.sound_stop_all()
+    return level
+
+
+def test_quick_load_sets_the_loaded_volumes(lib, advanced):
+    from test_move import WorldGame
+    from test_music import Music
+    game = WorldGame.in_dll(lib, "game")
+    music = Music.in_dll(lib, "music")
+    game.sound_volume, game.music_volume = 5, 3
+    press(lib, KEY_F5)
+    lib.sound_set_volume(5)
+    expected = sound_level(lib)
+    game.sound_volume, game.music_volume = 1, 6
+    lib.sound_set_volume(1)
+    lib.music_set_volume(6)
+    assert sound_level(lib) != expected
+    press(lib, KEY_F9)
+    assert shows(lib, b"GAME LOADED")
+    assert (game.sound_volume, game.music_volume, music.volume) == (5, 3, 3) and sound_level(lib) == expected
+    lib.sound_set_volume(7)
+
+
+def test_failed_quick_save_keeps_the_old_quick_save(lib, advanced):
+    # QUICK.DAT and the folder are read-only: the write fails, the old bytes stay, no QUICK.BAK is left.
+    _, data = advanced
+    (data / "QUICK.DAT").write_bytes(b"old quick save")
+    (data / "QUICK.DAT").chmod(0o444)
+    data.chmod(0o555)
+    try:
+        press(lib, KEY_F5)
+        assert shows(lib, b"UNABLE TO SAVE")
+    finally:
+        data.chmod(0o755)
+        (data / "QUICK.DAT").chmod(0o644)
+    assert sorted(p.name for p in data.iterdir()) == ["QUICK.DAT"]
+    assert (data / "QUICK.DAT").read_bytes() == b"old quick save"
+
+
+def test_quick_save_without_data_folder_writes_nothing(lib, advanced, tmp_path):
+    _, data = advanced
+    state = Session.in_dll(lib, "session")
+    state.data_dir = str(tmp_path / "missing").encode()
+    press(lib, KEY_F5)
+    assert shows(lib, b"UNABLE TO SAVE") and not (tmp_path / "missing").exists() and not list(data.iterdir())
+
+
+def test_quick_load_without_quick_tmp_keeps_the_game(lib, advanced):
+    # QUICK.TMP is a folder with a file: the copy of the running game cannot be written, so the load does not run.
+    game, data = advanced
+    press(lib, KEY_F5)
+    press(lib, SCAN_E)
+    (data / "QUICK.TMP").mkdir()
+    (data / "QUICK.TMP" / "file").write_bytes(b"")
+    position = (game.party_x, game.party_y, game.party_dir)
+    press(lib, KEY_F9)
+    assert shows(lib, b"UNABLE TO SAVE")
+    assert (game.party_x, game.party_y, game.party_dir) == position
+    assert sorted(p.name for p in data.iterdir()) == ["QUICK.DAT", "QUICK.TMP"]
 
 
 def test_no_quick_save_keeps_the_game(lib, advanced):
