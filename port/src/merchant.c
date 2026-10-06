@@ -25,6 +25,8 @@ enum {
 #define DISCOUNT_FROM 0x10          /* a price above it gets a random discount of up to 15 % */
 #define PERCENT 100
 #define HAGGLE_LIMIT 0x4c           /* an offer above 76 % of the price makes the merchant think it over */
+#define HAGGLE_RANDOM 7             /* the random part added to HAGGLE_LIMIT */
+#define LOW_OFFER_CHANCE 5          /* a roll below it over the missing percent marks the offer as low */
 #define WAIT_START 5
 #define OFFER_WAIT 9
 #define GOODS_WAIT_MIN 6
@@ -110,7 +112,7 @@ static int16_t price_in_coins(uint16_t group, int cell)
 /* An offer below the price: the merchant haggles (MERCHANT_HAGGLE) or refuses, by chance. */
 static void haggle_or_refuse(int percent)
 {
-    int low = rand_below((uint16_t)max16(1, (int16_t)(PERCENT - percent))) < 5;
+    int low = rand_below((uint16_t)max16(1, (int16_t)(PERCENT - percent))) < LOW_OFFER_CHANCE;
     int odd = rand_2bits() == 0;
     ai.active->action = low ^ odd ? MERCHANT_HAGGLE : MERCHANT_REFUSE;
 }
@@ -180,7 +182,7 @@ int shop_cmd_evaluate_offer(void)
     }
     if (offer != last) {
         if (last == 0xffff || (int16_t)offer <= (int16_t)last) return AI_RESULT_ISSUED;
-        if (rand_2bits() && percent <= (int)(rand_next() & 7) + HAGGLE_LIMIT) return AI_RESULT_ISSUED;
+        if (rand_2bits() && percent <= (int)(rand_next() & HAGGLE_RANDOM) + HAGGLE_LIMIT) return AI_RESULT_ISSUED;
         a->position = 0;
         haggle_or_refuse(percent);
         return AI_RESULT_ISSUED;
