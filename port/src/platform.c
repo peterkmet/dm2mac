@@ -37,6 +37,7 @@ int plat_init(int scale, int filter_factor)
         return 0;
     }
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
+    SDL_HideCursor(); /* the game draws its own cursor into fb */
     SDL_AudioSpec spec = { SDL_AUDIO_S16, AUDIO_CHANNELS, SOUND_OUTPUT_RATE };
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO) ||
         !(audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL)))

@@ -24,6 +24,7 @@
 #include "session.h"
 #include "text.h"
 #include "ui.h"
+#include "video.h"
 #include "view.h"
 #include "zone.h"
 
@@ -51,6 +52,16 @@
 #define KEY_BUFFER 16
 #define EVENT_ENTER_AREA 0x40
 #define EVENT_LEAVE_AREA 0x60
+#define ARROW_W 12
+#define HAND_W 16
+#define CURSOR_H 16
+#define FACE_SIZE 17
+#define FACE_CURSOR_SKIP 4  /* color 4 of the face keeps the fill color of the dragged champion cursor */
+#define FACE_HOT_X 8
+#define FACE_HOT_Y 6
+#define OBJECT_SHADOW 2     /* the offset of the black shadow of the held object cursor */
+#define OBJECT_HOT 8        /* the hot spot of the held object cursor: the center of the icon */
+#define OBJECT_CURSOR_SIZE (HAND_ICON_SIZE + OBJECT_SHADOW)
 
 typedef struct { uint8_t cond, arg; uint16_t link; } InputNode;
 typedef struct { uint16_t zone; int16_t commands, keys; uint8_t cursor; } InputZone;
@@ -527,6 +538,98 @@ int input_cursor_at(int x, int y)
     if (kind == CURSOR_KIND_CHAMPION) return CURSOR_CHAMPION;
     if (kind != CURSOR_KIND_HAND || (int16_t)game.leader < 0) return CURSOR_ARROW;
     return inv_cursor_object() == THING_NONE ? CURSOR_HAND : CURSOR_OBJECT;
+}
+
+/* The arrow (g_cursor_arrow_bitmap) and the hand (g_cursor_hand_bitmap) of input_init: 4 bpp, color 12 clear. */
+static const uint8_t cursor_arrow[ARROW_W * CURSOR_H / 2] = {
+    0x00, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc,
+    0x0f, 0x0c, 0xcc, 0xcc, 0xcc, 0xcc,
+    0x0f, 0xf0, 0xcc, 0xcc, 0xcc, 0xcc,
+    0x0f, 0xff, 0x0c, 0xcc, 0xcc, 0xcc,
+    0x0f, 0xff, 0xf0, 0xcc, 0xcc, 0xcc,
+    0x0f, 0xff, 0xff, 0x0c, 0xcc, 0xcc,
+    0x0f, 0xff, 0xff, 0xf0, 0xcc, 0xcc,
+    0x0f, 0xff, 0xff, 0xff, 0x0c, 0xcc,
+    0x0f, 0xff, 0xff, 0xff, 0xf0, 0xcc,
+    0x0f, 0xff, 0xff, 0x00, 0x00, 0x0c,
+    0x0f, 0xf0, 0xff, 0x0c, 0xcc, 0xcc,
+    0x0f, 0x0c, 0x0f, 0xf0, 0xcc, 0xcc,
+    0x00, 0xcc, 0x0f, 0xf0, 0xcc, 0xcc,
+    0x0c, 0xcc, 0xc0, 0xff, 0x0c, 0xcc,
+    0xcc, 0xcc, 0xc0, 0xff, 0x0c, 0xcc,
+    0xcc, 0xcc, 0xcc, 0x00, 0x0c, 0xcc,
+};
+static const uint8_t cursor_hand[HAND_W * CURSOR_H / 2] = {
+    0xff, 0x0c, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc,
+    0x0f, 0xf0, 0xf0, 0xf0, 0xcc, 0xcc, 0xcc, 0xcc,
+    0xc0, 0xff, 0x0f, 0x0f, 0x0f, 0x0c, 0xcc, 0xcc,
+    0xcc, 0x0f, 0xf0, 0xf0, 0xf0, 0xf0, 0xcc, 0xcc,
+    0xcc, 0xc0, 0xff, 0x0f, 0x0f, 0x0f, 0x0c, 0xcc,
+    0xcc, 0xc0, 0xff, 0xf0, 0xf0, 0xf0, 0xf0, 0xcc,
+    0x00, 0xcc, 0x0f, 0xff, 0xff, 0xff, 0xf0, 0xcc,
+    0xff, 0x0c, 0x0f, 0xff, 0xff, 0xff, 0xff, 0x0c,
+    0x0f, 0xf0, 0x0f, 0xff, 0xff, 0xff, 0xff, 0x0c,
+    0x0f, 0xff, 0x0f, 0xff, 0xff, 0xff, 0xff, 0x0c,
+    0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0c,
+    0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0c,
+    0xcc, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0,
+    0xcc, 0xc0, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xcc, 0xcc, 0xc0, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xcc, 0xcc, 0xcc, 0xc0, 0xff, 0xff, 0xff, 0xff,
+};
+static uint8_t champion_cursor[FACE_SIZE * FACE_SIZE];
+static uint8_t champion_cursor_key;
+
+void input_set_champion_cursor(int champ)
+{
+    Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, 4);
+    if (!face) return;
+    memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
+    uint8_t palette[16];
+    ui_draw_champion_face_icon(face, champ, palette);
+    Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, 8};
+    memset(champion_cursor, UI_KEY, sizeof champion_cursor);
+    const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
+    gfx_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, palette);
+    champion_cursor_key = palette[UI_KEY];
+    draw_free_temp();
+}
+
+CursorImage input_cursor_image(int cursor)
+{
+    switch (cursor) {
+    case CURSOR_HAND: return (CursorImage){cursor_hand, ui_colors, 4, HAND_W, CURSOR_H, 0, 0, UI_KEY};
+    case CURSOR_OBJECT: {
+        static uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE];
+        uint8_t key = leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
+        memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
+        memset(object_cursor, key, sizeof object_cursor);
+        const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, 8};
+        Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, 8};
+        const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
+        const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
+        gfx_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
+        gfx_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
+        return (CursorImage){object_cursor, NULL, 8, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
+                             OBJECT_HOT, OBJECT_HOT, key};
+    }
+    case CURSOR_CHAMPION:
+        return (CursorImage){champion_cursor, NULL, 8, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
+                             champion_cursor_key};
+    default: return (CursorImage){cursor_arrow, ui_colors, 4, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
+    }
+}
+
+void input_draw_cursor(uint8_t *dst, int x, int y)
+{
+    CursorImage c = input_cursor_image(input_cursor_at(x, y));
+    for (int cy = 0; cy < c.height; cy++)
+        for (int cx = 0; cx < c.width; cx++) {
+            int sx = x - c.hot_x + cx, sy = y - c.hot_y + cy, i = cy * c.width + cx;
+            if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
+            int n = c.bpp == 4 ? (c.bits[i / 2] >> (i & 1 ? 0 : 4)) & 0xf : c.bits[i];
+            if (n != c.key) dst[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
+        }
 }
 
 void input_set_mode(int mode)

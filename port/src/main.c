@@ -7,7 +7,6 @@
 #include "game.h"
 #include "gdat.h"
 #include "input.h"
-#include "inventory.h"
 #include "item.h"
 #include "music.h"
 #include "platform.h"
@@ -25,32 +24,16 @@
 #define PATH_SIZE 1024
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
-/* Shows fb with the leader hand object at the mouse pointer over a cursor zone that shows it (the original sets
-   it as the mouse cursor). */
-static void present_with_hand_cursor(void)
+/* Shows fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
+static void present_with_cursor(void)
 {
-    static uint8_t under[HAND_ICON_SIZE][HAND_ICON_SIZE];
+    static uint8_t saved[SCREEN_H][SCREEN_W];
     int mx, my;
     plat_mouse_position(&mx, &my);
-    if (input_cursor_at(mx, my) != CURSOR_OBJECT) {
-        plat_present();
-        return;
-    }
-    int x0 = mx - HAND_ICON_SIZE / 2, y0 = my - HAND_ICON_SIZE / 2;
-    for (int y = 0; y < HAND_ICON_SIZE; y++)
-        for (int x = 0; x < HAND_ICON_SIZE; x++) {
-            int sx = x0 + x, sy = y0 + y;
-            if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
-            under[y][x] = fb[sy][sx];
-            uint8_t c = leader_hand.cursor[y * HAND_ICON_SIZE + x];
-            if (c != HAND_ICON_KEY) fb[sy][sx] = leader_hand.palette[c];
-        }
+    memcpy(saved, fb, sizeof saved);
+    input_draw_cursor(&fb[0][0], mx, my);
     plat_present();
-    for (int y = 0; y < HAND_ICON_SIZE; y++)
-        for (int x = 0; x < HAND_ICON_SIZE; x++) {
-            int sx = x0 + x, sy = y0 + y;
-            if (sx >= 0 && sy >= 0 && sx < SCREEN_W && sy < SCREEN_H) fb[sy][sx] = under[y][x];
-        }
+    memcpy(fb, saved, sizeof saved);
 }
 
 /* Loads GRAPHICS.DAT, the screen layout, the colors, and the font; returns 0 with a message on an error. */
@@ -149,7 +132,7 @@ static void pump_events(void)
 static void modal_frame(void)
 {
     pump_events();
-    plat_present();
+    present_with_cursor();
     for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
 }
 
@@ -190,7 +173,7 @@ int main(int argc, char **argv)
             pit = 0;
             game_tick();
             if (main_loop.end && !main_loop.quit) game_end(main_loop.end);
-            present_with_hand_cursor();
+            present_with_cursor();
         }
         plat_wait_tick();
     }

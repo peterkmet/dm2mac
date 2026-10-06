@@ -308,6 +308,116 @@ def test_hand_icon_matches_original(port, original):
     assert len(pictures) > 10
 
 
+class CursorImage(ctypes.Structure):
+    _fields_ = [("bits", u8_p), ("palette", u8_p)] + [
+        (name, ctypes.c_int) for name in ("bpp", "width", "height", "hot_x", "hot_y", "key")]
+
+
+MOUSE_SET_CURSOR_IMAGE, INPUT_INIT, IOP_INSTALL_INPUT_ISR, MOUSE_SET_DEFAULT_CURSOR = 0x14743, 0x147D1, 0x5A8F3, 0x14846
+CHAMP_DRAG_CLICK, MEM_ALLOC_IMAGE, G_CHAMP_DRAG_STATE = 0x149BA, 0x3BD64, 0x7F0B4
+# mouse_update_hand_cursor (a no-op of OriginalUi) without its register saves, up to mouse_set_default_cursor
+HAND_CURSOR_BODY, HAND_CURSOR_END, G_HAND_ICON_BITMAP = 0x1488D, 0x148FC, G_LEADER_HAND + 2
+CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION = 0, 1, 2, 3
+
+
+def test_cursor_images_match_original(port, original):
+    # The arrow and the hand of input_init, the held object of mouse_update_hand_cursor, and the dragged champion of
+    # champ_drag_click: the arguments that the original passes to mouse_set_cursor_image (bpp, size, hot spot, clear
+    # color, pixels, palette colors).
+    lib, emu = port, original.emu
+    lib.input_cursor_image.restype = CursorImage
+    images = {}
+
+    def capture(kind, bits, hot_x, hot_y, w, h, bpp, palette, key):
+        w, h, bpp = w & 0xFFFF, h & 0xFFFF, bpp & 0xFFFF
+        images[kind] = (bpp, w, h, hot_x & 0xFFFF, hot_y & 0xFFFF, key & 0xFF, emu.read(bits, w * h * bpp // 8),
+                        palette and emu.read(palette, 16))
+
+    def alloc_image(w, h, flags, bpp):
+        w, h = w & 0xFFFF, h & 0xFFFF
+        image = original.alloc(6 + w * h) + 6
+        emu.write(image - 6, struct.pack("<BBhh", bpp & 0xFF, 0, w, h))
+        return image
+
+    def port_image(cursor):
+        c = lib.input_cursor_image(cursor)
+        palette = bytes(c.palette[:16]) if c.palette else 0
+        return c.bpp, c.width, c.height, c.hot_x, c.hot_y, c.key, bytes(c.bits[:c.width * c.height * c.bpp // 8]), palette
+
+    hooks = [emu.stub(MOUSE_SET_CURSOR_IMAGE, capture, stack_args=5), emu.stub(IOP_INSTALL_INPUT_ISR, lambda *_: 0),
+             emu.stub(MOUSE_SET_DEFAULT_CURSOR, lambda *_: 0), emu.stub(MEM_ALLOC_IMAGE, alloc_image)]
+    saved_icon = emu.read(G_HAND_ICON_BITMAP, 4)
+    try:
+        emu.call(INPUT_INIT, allow_io=True)
+        assert port_image(CURSOR_ARROW) == images[0]
+        assert port_image(CURSOR_HAND) == images[1]
+        emu.write(G_HAND_ICON_BITMAP, struct.pack("<I", alloc_image(HAND_ICON_SIZE, HAND_ICON_SIZE, 0, 4)))
+        objects = set()
+        for thing in [t for kind in (5, 6, 8, 10) for t in things_of(lib, kind, 2)]:
+            emu.write(G_LEADER_HAND, struct.pack("<H", thing))
+            emu.call(INV_RENDER_HAND_ICON, G_LEADER_HAND)
+            images.pop(2, None)
+            emu.run(HAND_CURSOR_BODY, HAND_CURSOR_END)
+            assert 2 in images, hex(thing)
+            lib.champ_put_object_in_leader_hand(thing, 0)
+            assert port_image(CURSOR_OBJECT) == images[2], hex(thing)
+            lib.champ_remove_object_from_leader_hand()
+            objects.add(images[2])
+        assert len(objects) > 4
+        dragged = 0
+        for cell in range(4):
+            images.pop(3, None)
+            emu.write(G_CHAMP_DRAG_STATE, b"\0\0")
+            ctypes.c_int.in_dll(lib, "input_drag_state").value = 0
+            emu.call(CHAMP_DRAG_CLICK, cell, allow_io=True)
+            lib.champ_drag_click(cell)
+            if 3 in images:
+                assert port_image(CURSOR_CHAMPION) == images[3], cell
+                dragged += 1
+        assert dragged
+    finally:
+        for hook in hooks:
+            emu.uc.hook_del(hook)
+        ctypes.c_int.in_dll(lib, "input_drag_state").value = 0
+        emu.write(G_LEADER_HAND, b"\xff\xff")
+        emu.write(G_HAND_ICON_BITMAP, saved_icon)
+
+
+def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
+    # input_draw_cursor: the image pixels except the clear color, in palette colors, clipped at the screen edges.
+    lib = port
+    lib.input_cursor_image.restype = CursorImage
+    thing = things_of(lib, 5, 1)[0]
+    lib.input_init()
+    Game.in_dll(lib, "game").leader = 0
+    lib.champ_put_object_in_leader_hand(thing, 0)
+    try:
+        lib.input_set_mode(5)
+        zone = [(x, y) for y in range(200) for x in range(320) if lib.input_cursor_at(x, y) == CURSOR_OBJECT]
+        assert zone
+        near_left = min(zone, key=lambda p: p[0])
+        assert near_left[0] < 8  # the left clip runs
+        middle = zone[len(zone) // 2]
+        for x, y in ((0, 0), (319, 199), (160, 100), (0, near_left[1]), near_left, middle):
+            kind = lib.input_cursor_at(x, y)
+            if (x, y) in (near_left, middle):
+                assert kind == CURSOR_OBJECT, (x, y)
+            c = lib.input_cursor_image(kind)
+            screen = bytearray(range(256)) * 250
+            fb = (ctypes.c_uint8 * len(screen)).from_buffer_copy(screen)
+            lib.input_draw_cursor(fb, x, y)
+            expected = bytearray(screen)
+            for i in range(c.width * c.height):
+                n = c.bits[i // 2] >> (0 if i & 1 else 4) & 0xF if c.bpp == 4 else c.bits[i]
+                sx, sy = x - c.hot_x + i % c.width, y - c.hot_y + i // c.width
+                if n != c.key and 0 <= sx < 320 and 0 <= sy < 200:
+                    expected[sy * 320 + sx] = c.palette[n] if c.palette else n
+            assert bytes(fb) == bytes(expected), (x, y)
+            assert bytes(fb) != screen, (x, y)
+    finally:
+        lib.champ_remove_object_from_leader_hand()
+
+
 G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
     0x7FB50, 0x7FB4E, 0x757B8, 0x7FB5E, 0x7F234)
 GAME_MAGIC = GAME_LEADER_HAND + 2
