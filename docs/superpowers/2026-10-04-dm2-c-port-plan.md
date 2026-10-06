@@ -389,4 +389,5 @@ Port the start menu, new game, load, save, and the end sequence of `SKULL.EXE`. 
 
 - Run `make -C port` (no warnings) and `uv run pytest`. All tests pass.
 - Write a manual test checklist: compare the port with the DOS version in DOSBox side by side (image, sound effects, music, input, save in the port and load in DOS, save in DOS and load in the port).
+- The manual test checklist is in `docs/manual-test-checklist.md`.
 - Update `CHANGELOG.md`. Merge to `main`. Push.
