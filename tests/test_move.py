@@ -214,6 +214,7 @@ class Scenario(CreatureOracle):
         """place_party: both put the party on its square of the save, like a load; else the caller starts the
         game session in both."""
         self.lib, self.gdat, self.start, self.tmp = lib, gdat, start, tmp_path
+        self.reset_creature_globals(lib)
         path = tmp_path / "SKSAVE0.DAT"
         path.write_bytes(start)
         assert lib.save_load(str(path).encode(), gdat) == 0

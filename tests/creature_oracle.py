@@ -26,16 +26,20 @@ class CreatureOracle:
     """The creature parts of the scenario harness (a mixin of test_move.Scenario): the active groups in both, the
     image cache keys and the memory blocks of the creature AI, and the stubs of the parts that are not ported."""
 
-    def setup_creatures(self, reset):
-        """reset: activate the groups in both, like a session start; else the caller starts the session."""
-        emu, lib = self.emu, self.lib
-        # the C library keeps its globals from test to test: back to the values of the program start
+    @staticmethod
+    def reset_creature_globals(lib):
+        """The C library keeps its globals from test to test: back to the values of the program start, before the
+        party is placed."""
         for name, value in (("light_source_sum", 0), ("explosion_light_sum", 0), ("cached_light_sum", -1),
                             ("cached_explosion_light_sum", -1), ("last_party_map", -1)):
             ctypes.c_int16.in_dll(lib, name).value = value
         ctypes.c_uint16.in_dll(lib, "search_direction_bits").value = 1
         for name in ("party_distance", "alt_distance"):
             ctypes.c_int16.in_dll(lib, name).value = -1
+
+    def setup_creatures(self, reset):
+        """reset: activate the groups in both, like a session start; else the caller starts the session."""
+        emu, lib = self.emu, self.lib
         for addr, (stack, result) in NOT_YET.items():
             emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
         emu.stub(CHAMP_REMOVE_OBJECT_FROM_SLOT, self.remove_object_from_slot)
