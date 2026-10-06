@@ -331,6 +331,7 @@ def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
             lib.game_tick()
             if loop.quit:
                 break
+        due = loop.tick_count >= loop.tick_threshold  # a game step resets the tick count
         timer = loop.timer_ticks
         run_ticks(lib, STEP_TICKS)
     finally:
@@ -338,6 +339,7 @@ def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
     try:
         assert loop.quit == 1 and state.exit_code == 4
         assert loop.timer_ticks == timer, "no tick after the quit"
+        assert due, "no game step after the quit"
         assert (data / "QUICK.TMP").exists()
     finally:
         (data / "QUICK.TMP").chmod(0o644)
