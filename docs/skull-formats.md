@@ -822,7 +822,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Dialogs
 
-- A dialog is GDAT `(0x1a, id)`: picture entry 0 in zone 4 (the viewport), text entries 0 to 19 the buttons (zones `0x1ce` to `0x1d3` by button count), text `0x14` the message, wrapped to a width near the message zone width and centered; an error message (dialog 0, entry `0x1b` to `0x1f`) shows below it or first in its own dialog. Screen mode 1 (after a load and at the end) draws on a black screen in zone 5; mode 0 (a new game) in the game viewport.
+- A dialog is GDAT `(0x1a, id)`: picture entry 0 in zone 4 (the viewport), text entries 0 to 19 the buttons (zones `0x1ce` to `0x1d3` by button count), text `0x14` the message, wrapped to a width near the message zone width and centered; an error message (dialog 0, entry `0x1b` to `0x1f`) shows below it or first in its own dialog. Screen mode 1 (at the program start, the "GAME LOADED" dialog of a load, and the end) draws on a black screen in zone 5; mode 0 in the game viewport. `game_loop` sets mode 0 at its start; `ui_hide_game_view` and `ui_show_game_view` do nothing in mode 1.
 - `ui_dialog_run` pushes input mode 4; the input conditions 1 and 2 select the button zones by screen mode and button count. The choice is the place of the matched command in its list. Enter clicks the first button.
 - The pressed button picture is GDAT `(0x1a, 0xfe, 1, 0 or 1)` (click feedback opcodes `0x0f` and `0x10`), color 7 transparent, centered in the button.
 - The volume dialog (`0x87`) sets the sound and music volumes (0 to 7, commands `0x95` to `0xa4`); a new sound volume plays the test sound `(3, 0, 0x8b)`. Both volumes are 7 in a new game and are part of the save.

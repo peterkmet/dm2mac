@@ -368,8 +368,12 @@ def loop(lib, gdat, start, tmp_path):
 
 def test_session_start_matches_original(loop):
     # game_start_session and the first game step of game_loop: movement state, loop state, and the save files.
+    from test_dialog import G_DIALOG_SCREEN_MODE, DialogState
     loop.assert_loop("start")
     loop.assert_equal("start")
+    # game_loop starts with the dialogs in the game viewport
+    theirs = struct.unpack("<h", loop.emu.read(G_DIALOG_SCREEN_MODE, 2))[0]
+    assert DialogState.in_dll(loop.lib, "dialog").screen_mode == theirs == 0
 
 
 def test_keys_and_move_cooldowns_match_original(loop, lib):
