@@ -22,7 +22,7 @@ int plat_poll(PlatEvent *e);
 void plat_mouse_position(int *x, int *y);
 /* Sleeps until the next timer tick. */
 void plat_wait_tick(void);
-/* Adds sound into frames of interleaved stereo at SOUND_OUTPUT_RATE. */
+/* Mixes into frames of interleaved stereo at SOUND_OUTPUT_RATE; the music mixer fills the frames and runs first, the sound mixer adds. */
 typedef void PlatMixer(int16_t *stereo, int frames);
 /* Sets the music source that the audio output mixes before the sound effects; NULL for none. */
 void plat_audio_music(PlatMixer *mix);

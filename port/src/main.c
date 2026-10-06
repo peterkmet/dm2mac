@@ -179,7 +179,7 @@ int main(int argc, char **argv)
     if (!load_graphics(data)) return 1;
     if (save && !show_save(save)) return 1;
     if (!plat_init(WINDOW_SCALE, factor)) return 1;
-    if (music_init(draw_gdat(), data) != MUSIC_OK) SDL_Log("no MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
+    if (music_init(draw_gdat(), data) != MUSIC_OK) SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
     plat_audio_music(music_render);
     game_frame_hook = modal_frame;
     if (!save && !game_init()) main_loop.quit = 1;
