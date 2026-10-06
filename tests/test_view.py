@@ -752,7 +752,7 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
                 sequence = rng.randrange(frames)
                 state = rng.randrange(min(64, frames - sequence))
             creature_dir = rng.randrange(4)
-            record = struct.pack("<HHBBHHHHH", THING_END, possessions, creature, 0, 100, sequence, state, 0,
+            record = struct.pack("<HHBBHHHHH", THING_END, possessions, creature, 0xFF, 100, sequence, state, 0,
                                  creature_dir << 8)
             things.write(thing, 0, record)
             hidden_cases += hidden
