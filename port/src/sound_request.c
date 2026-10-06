@@ -32,6 +32,8 @@ typedef struct {
 
 SoundRequest sound_played[SOUND_PLAYED_MAX];
 int sound_played_count;
+SoundStart sound_started[SOUND_PLAYED_MAX];
+int sound_started_count;
 
 static Pending requests[REQUESTS_MAX], deferred[DEFERRED_MAX];
 static int request_count, deferred_count;
@@ -47,10 +49,10 @@ static int has_priority(const Pending *a, int loud_a, const Pending *b, int loud
 /* Starts the sounds of a request list, the most important first, while voices are free. */
 static void sound_play_requests(const Pending *list, int count)
 {
-    int order[REQUESTS_MAX], loudness[REQUESTS_MAX], pan;
+    int order[REQUESTS_MAX], loudness[REQUESTS_MAX], pan[REQUESTS_MAX];
     for (int i = 0; i < count; i++) {
         if (sound_played_count < SOUND_PLAYED_MAX) sound_played[sound_played_count++] = list[i].r;
-        sound_volume_pan(list[i].r.volume, list[i].r.lateral, list[i].r.forward, &loudness[i], &pan);
+        sound_volume_pan(list[i].r.volume, list[i].r.lateral, list[i].r.forward, &loudness[i], &pan[i]);
         order[i] = i;
     }
     for (int swapped = 1; swapped;) {
@@ -66,6 +68,8 @@ static void sound_play_requests(const Pending *list, int count)
     for (int i = 0; i < count; i++) {
         const Pending *p = &list[order[i]];
         if (!sound_play(&p->sound, p->r.volume, p->r.lateral, p->r.forward)) return;
+        if (sound_started_count < SOUND_PLAYED_MAX)
+            sound_started[sound_started_count++] = (SoundStart){p->sound.data, loudness[order[i]], pan[order[i]]};
     }
 }
 
@@ -106,7 +110,7 @@ void sound_request(int category, int index, int entry, int priority, int volume,
     Pending *queue = requests;
     int *count = &request_count;
     if (delay < 0) {
-        if (deferred_count == DEFERRED_MAX) return;  /* fix: the original tests the step queue here and can overrun */
+        if (deferred_count == DEFERRED_MAX) return;
         queue = deferred;
         count = &deferred_count;
     }

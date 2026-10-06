@@ -85,9 +85,18 @@ WEATHER = {
     "explosion_light_sum": (0x7F974, "<h"),
 }
 G_SKY_OBJECTS, SKY_OBJECTS_SIZE, G_VIEW_CLEAR_RECT, G_UI_COLORS = 0x80438, 50, 0x8002C, 0x7F210
-# The sound requests: the original sound table (the sounds that the map graphics load) and the driver are stubs; every
-# sound of GRAPHICS.DAT counts as loaded, as in the C port, and the tests compare the requests that reach the driver.
+# The sound requests: the original sound table (the sounds that the map graphics load) is a stub, every sound of
+# GRAPHICS.DAT counts as loaded, as in the C port; the original sound_play_requests runs with stubs for its two HMI
+# driver calls. The tests compare the requests that reach sound_play_requests and the order, loudness, and pan of the
+# sounds that start.
 SOUND_FIND_LOADED, SOUND_PLAY_REQUESTS, SOUND_FLUSH_REQUESTS = 0x15C10, 0x10573, 0x1616D
+HMI_DIGI_SAMPLE_DONE, HMI_DIGI_START_SAMPLE = 0x608B9, 0x609B9
+G_DIGI_ENABLED, G_DIGI_VOLUME, G_SAMPLE_HANDLES = 0x704BE, 0x7EF84, 0x7EDA0
+G_SOS_SAMPLE_DATA, G_SOS_VOLUME, G_SOS_PAN = 0x703F8, 0x7040C, 0x70438
+
+
+class SoundStart(ctypes.Structure):
+    _fields_ = [("data", ctypes.c_void_p), ("loudness", ctypes.c_int), ("pan", ctypes.c_int)]
 G_DELAYED_SOUNDS, G_SOUND_TABLE, G_SOUND_DEFERRED, G_SAMPLE_DESCS, G_SOUND_REQUESTS = 0x7F188, 0x7F18C, 0x7F190, 0x7F194, 0x7F198
 G_SOUND_REQUEST_COUNT, G_SOUND_DEFERRED_COUNT, SOUND_TABLE_MAX = 0x71690, 0x71692, 512
 
@@ -295,16 +304,31 @@ class Scenario:
                 emu.write(emu.read_u32(G_SAMPLE_DESCS) + 16 * n, struct.pack("<IH", s.data & 0xFFFFFFFF, s.length & 0xFFFF))
             return self.sound_keys.index(key) + 1
 
-        def play(count, requests, *_):
+        def play(uc, *_):
+            from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EDX
+            count, requests = uc.reg_read(UC_X86_REG_EAX) & 0xFFFF, uc.reg_read(UC_X86_REG_EDX)
             descs = emu.read_u32(G_SAMPLE_DESCS)
-            for i in range(count & 0xFFFF):
+            for i in range(count):
                 desc, priority, volume, lateral, forward = struct.unpack_from("<IBBbb", emu.read(requests + 12 * i, 8))
                 self.sounds.append(self.sound_keys[(desc - descs) // 16] + (priority, volume, lateral, forward))
-            return count
 
+        def start(handle, channel, *_):
+            volume = emu.read_u32(G_SOS_VOLUME)
+            self.started.append((emu.read_u32(G_SOS_SAMPLE_DATA), volume >> 7, emu.read_u32(G_SOS_PAN)))
+            return channel + 1  # a handle; the voice is free again at once (sample done)
+
+        from unicorn import UC_HOOK_CODE
+        self.started = []  # the sounds that the original starts: (sample data, loudness, pan)
         emu.stub(SOUND_FIND_LOADED, find_loaded)
-        emu.stub(SOUND_PLAY_REQUESTS, play)
+        emu.uc.hook_add(UC_HOOK_CODE, play, begin=SOUND_PLAY_REQUESTS, end=SOUND_PLAY_REQUESTS)
+        emu.stub(HMI_DIGI_SAMPLE_DONE, lambda *_: 1)
+        emu.stub(HMI_DIGI_START_SAMPLE, start)
+        emu.write_u32(G_DIGI_ENABLED, 1)
+        emu.write(G_DIGI_VOLUME, struct.pack("<h", 7))
+        emu.write(G_SAMPLE_HANDLES, struct.pack("<64i", *[-1] * 64))
         ctypes.c_int.in_dll(lib, "sound_played_count").value = 0
+        ctypes.c_int.in_dll(lib, "sound_started_count").value = 0
+        lib.sound_stop_all()
         lib.sound_reset_requests()  # both start from the sound state of the program start
 
     def flush_sounds(self):
@@ -320,6 +344,13 @@ class Scenario:
         assert mine == self.sounds[:64], (where, mine, self.sounds)
         count.value = 0
         self.sounds.clear()
+        count = ctypes.c_int.in_dll(self.lib, "sound_started_count")
+        started = (SoundStart * 64).in_dll(self.lib, "sound_started")
+        mine = [((s.data or 0) & 0xFFFFFFFF, s.loudness, s.pan) for s in started[:count.value]]
+        assert mine == self.started[:64], (where, mine, self.started)
+        count.value = 0
+        self.started.clear()
+        self.lib.sound_stop_all()  # the original voices are free again at once (its sample done stub)
 
     def sync_weather(self):
         """The weather state that the save does not keep: the original load stubs weather_init, so it gets the values

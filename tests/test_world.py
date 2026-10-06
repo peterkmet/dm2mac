@@ -551,3 +551,148 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
         assert ctypes.string_at(viewport.pixels, tv.VIEW_W * tv.VIEW_H) == \
             sc.emu.read(sc.view.viewport, tv.VIEW_W * tv.VIEW_H), (n, map_, x, y)
     assert falls > 10, falls
+
+
+SOUND_REQUEST, DUN_SET_CURRENT_MAP, G_ALT_VIEW_MAP = 0x15CA9, 0x1C724, 0x7F278
+
+
+def sound_keys(lib, gdat):
+    """GDAT sounds of the kinds that the game requests."""
+    from test_move import Sound
+    s = Sound()
+    keys = []
+    for category in (3, 9, 10, 0x0D, 0x0F, 0x16, 0x17, 0x18):
+        for index in range(64):
+            for entry in (0, 1, 2, 0x81, 0x82, 0x88, 0x89, 0x8A):
+                if lib.sound_load(gdat, category, index, entry, ctypes.byref(s)) == 0:
+                    keys.append((category, index, entry))
+    return keys
+
+
+def test_sound_requests_match_original(world, lib, gdat):
+    # Groups of sound requests in both: now (delay 0), at the end of the step (1), deferred (-1), later through the
+    # timeline (2 to 8), with random priorities, volumes, and places, the party asleep or not; some come from the map
+    # of the other side of a seamless passage (the map offsets move them). Then the queues play: the requests, the
+    # start order by priority and loudness, the loudness and pan. The party sometimes leaves for another map before
+    # the delayed sounds are due: they do not play there.
+    rng = random.Random(181)
+    sc = world
+    keys = sound_keys(lib, gdat)
+    assert len(keys) > 50
+    maps = [m for m in range(lib.dungeon_map_count()) if any(s[0] == m for s in squares(lib, (1,)))]
+    floors = squares(lib, (1,))
+    delayed = moved_away = several = 0
+    for n in range(150):
+        map_, x, y, _ = rng.choice(floors)
+        sc.place(map_, x, y, rng.randrange(4))
+        set_party_state(sc, 0, int(rng.random() < 0.2))
+        other = rng.choice(maps)
+        passage = rng.random() < 0.3
+        if passage:  # the party sees the map other through a seamless passage
+            sc.party.alt_view_map = other
+            sc.emu.write(G_ALT_VIEW_MAP, struct.pack("<h", other))
+        requests = rng.randrange(1, 7)
+        several += requests > 1
+        for _ in range(requests):
+            delay = rng.choice((0, 1, 1, 1, -1, -1, 2, 5, 8))
+            delayed += delay > 1
+            source = other if passage and rng.random() < 0.6 else map_
+            lib.dun_set_current_map(source)
+            sc.emu.call(DUN_SET_CURRENT_MAP, source)
+            args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, 0x80, 0xC8, 0xFF, rng.randrange(256))),
+                    x + rng.randrange(-5, 6), y + rng.randrange(-5, 6), delay)
+            lib.sound_request(*args)
+            sc.emu.call(SOUND_REQUEST, *args)
+        lib.dun_set_current_map(map_)
+        sc.emu.call(DUN_SET_CURRENT_MAP, map_)
+        if rng.random() < 0.5:
+            lib.sound_flush_requests(1)
+            sc.emu.call(0x1616D, 1)
+        if passage:
+            sc.party.alt_view_map = -1
+            sc.emu.write(G_ALT_VIEW_MAP, struct.pack("<h", -1))
+        assert_world(sc, (n, map_, x, y))
+        if rng.random() < 0.3:  # the party leaves before the delayed sounds play
+            moved_away += 1
+            m2, x2, y2, _ = rng.choice([f for f in floors if f[0] != map_])
+            sc.place(m2, x2, y2, rng.randrange(4))
+        for i in range(10):
+            sc.step()
+            assert_world(sc, (n, map_, i))
+        sc.assert_same((n, map_, x, y))
+    set_party_state(sc, 0, 0)
+    assert delayed > 50 and moved_away > 20 and several > 80, (delayed, moved_away, several)
+
+
+def ambient_wall_sensors(lib, gdat):
+    """(map, x, y, cell, sensor, cycle, offset) of the audible wall ornaments that animate (sensor kind 0x2c)."""
+    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)
+    text = ctypes.create_string_buffer(128)
+    out = []
+    for map_ in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(map_)):
+            for y in range(lib.dungeon_map_height(map_)):
+                if lib.dungeon_square(map_, x, y) >> 5:
+                    continue
+                t = lib.dungeon_square_first_thing(map_, x, y)
+                while t != 0xFFFE and t >> 10 & 15 <= 3:
+                    data, flags = lib.thing_word(t, 2), lib.thing_word(t, 4)
+                    if t >> 10 & 15 == 3 and data & 0x7F == 0x2C and flags & 0x40 and flags >> 12:
+                        ornament = lib.dungeon_map_wall_ornaments(map_)[(flags >> 12) - 1]
+                        frames = lib.gdat_entry_index(gdat, 9, ornament, 0x0B, 0x0D)
+                        if frames:
+                            cycle = frames & 0x7FFF
+                        else:
+                            lib.gdat_text(gdat, 9, ornament, 0x0D, text, 128)
+                            cycle = len(text.value) or 1
+                        offset = lib.gdat_entry_index(gdat, 9, ornament, 0x0B, 0x88)
+                        out.append((map_, x, y, t >> 14, t, cycle, offset))
+                    t = lib.dungeon_next_thing(t)
+    return out
+
+
+def test_ambient_wall_sounds_match_original(world, lib, gdat):
+    # The party enters the map of an audible animated wall ornament when its animation cycle starts (the sound plays
+    # at once): the party stands on the square in front of the wall (the sound comes from the wall square) or
+    # elsewhere (the sound comes from the square in front of the wall). The requests with their lateral and forward
+    # place, the start order, loudness, and pan, and the timeline of both.
+    sc = world
+    lib.gdat_entry_index.restype = ctypes.c_uint16
+    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lib.gdat_text.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_char_p, ctypes.c_size_t]
+    sensors = ambient_wall_sensors(lib, gdat)
+    assert len(sensors) > 5
+    rng = random.Random(182)
+    dirs = ((0, -1), (1, 0), (0, 1), (-1, 0))
+    played = {"front": 0, "elsewhere": 0}
+    all_floors = squares(lib, (1,))
+    for n, (map_, x, y, cell, sensor, cycle, offset) in enumerate(sensors * 2):
+        fx, fy = x + dirs[cell][0], y + dirs[cell][1]
+        front = n < len(sensors)
+        floors = [(sx, sy) for m, sx, sy, _ in all_floors if m == map_ and (sx, sy) != (fx, fy)]
+        if front:
+            if not (0 <= fx < lib.dungeon_map_width(map_) and 0 <= fy < lib.dungeon_map_height(map_)) \
+                    or lib.dungeon_square(map_, fx, fy) >> 5 != 1:
+                continue
+            party = (fx, fy)
+        elif floors:
+            party = rng.choice(floors)
+        else:
+            continue
+        sc.place(map_, *party, rng.randrange(4))
+        data = lib.thing_word(sensor, 2) & 0x7FFF  # not started yet
+        set_word(sc, sensor, 2, data)
+        set_word(sc, sensor, 4, lib.thing_word(sensor, 4) | 1)  # the animation runs
+        start = (-(offset + (data >> 7 & 0xFF))) % cycle  # the game time at which the cycle starts now
+        sc.set_time(start + cycle * rng.randrange(100))
+        lib.sensor_process_map_entry(1)
+        sc.emu.call(0x59785, 1)
+        sc.flush_sounds()
+        played["front" if front else "elsewhere"] += any(s[0] == 9 for s in sc.sounds)
+        assert_world(sc, (n, map_, x, y, cell, party))
+        tl = Timeline.in_dll(lib, "timeline")
+        for i in range(tl.capacity):  # the ambient sound events of this test
+            if tl.events[i].type == 0x5A:
+                lib.timeline_delete_event(i)
+                sc.emu.call(TIMELINE_DELETE_EVENT, i)
+    assert played["front"] > 3 and played["elsewhere"] > 3, played

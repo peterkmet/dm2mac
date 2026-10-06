@@ -13,6 +13,13 @@ typedef struct {
 #define SOUND_PLAYED_MAX 64
 extern SoundRequest sound_played[SOUND_PLAYED_MAX];
 extern int sound_played_count;
+/* The sounds that started in a voice, in start order, with their loudness and stereo pan, for the tests. */
+typedef struct {
+    const int8_t *data;
+    int loudness, pan;
+} SoundStart;
+extern SoundStart sound_started[SOUND_PLAYED_MAX];
+extern int sound_started_count;
 
 /* Asks for sound (category, index, entry) at (x, y) of the current map: delay 0 plays it now, 1 at the end of the
    game step, a negative delay at the next sound_flush_requests(1), a longer delay through the timeline. */

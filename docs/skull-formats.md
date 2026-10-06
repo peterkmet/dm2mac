@@ -692,7 +692,6 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### Deviations of the sound requests (Step 17)
 
 - Every sound of `GRAPHICS.DAT` counts as loaded. The original plays only the sounds that `gdat_load_map_graphics` loads for the map (`sound_find_loaded`, table from `gdat_load_entry_sets`).
-- The deferred queue checks its own count (6). The original checks the count of the step queue and can write past the deferred queue.
 - Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_play_delayed` masks the slot to 0 to 7.
 - The driver checks of `sound_play_requests` (digital sound on, master volume) and its voice handles are the DOS layer: `sound.c` plays the voices.
 - The walking distance (`creature_get_party_distance`, the party distance map of Step 16) is a hook that returns 0: a sound is not pushed away until Step 16.
