@@ -318,6 +318,68 @@ def test_try_move(ai):
     assert moved > 100 and acted > 30
 
 
+AI_MOVE_FLAGS_C, AI_MOVE_FLAGS_ORIGINAL = 68, 0x2A  # offset of the move flags in the AI context
+MOVE_OPEN_PIT, MOVE_FALL, MOVE_STAIRS, MOVE_LEVELS = 0x0008, 0x0010, 0x0100, 0x2000
+G_THINGS, GROUP_SIZE, GROUP_CREATURE = 0x7F288, 16, 4
+
+
+def set_creature_type(ai, group, kind):
+    """Sets the creature type of group in both."""
+    lib = ai.lib
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.dungeon_thing_record(group)[GROUP_CREATURE] = kind
+    ai.emu.write(ai.emu.read_u32(G_THINGS + 4 * 4) + (group & 0x3FF) * GROUP_SIZE + GROUP_CREATURE, bytes([kind]))
+
+
+def native_type(lib, m, x, y, delta):
+    """A creature type of the map above (delta -1) or below (1) the square, or None."""
+    nx, ny = ctypes.c_int(x), ctypes.c_int(y)
+    lib.dungeon_location_on_map.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+    target = lib.dungeon_location_on_map(m, delta, ctypes.byref(nx), ctypes.byref(ny))
+    if target < 0:
+        return None
+    count = lib.dungeon_map_object_counts(target) >> 4 & 0xF
+    lib.dungeon_map_creature_types.restype = ctypes.POINTER(ctypes.c_uint8)
+    return lib.dungeon_map_creature_types(target)[0] if count else None
+
+
+def test_try_move_changes_level(ai):
+    # Moves up and down from the stairs and open pits of each map with a group: the group gets a creature type of
+    # the other map and the move flags of level changes (no creature of start.DAT has them all). The level change,
+    # the move on the other map, and the result there.
+    rng = random.Random(19)
+    lib = ai.lib
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
+    tried = changed = 0
+    seen = set()
+    for g, x, y, m in ai.groups():
+        if m in seen:
+            continue
+        seen.add(m)
+        original_type = lib.dungeon_thing_record(g)[GROUP_CREATURE]
+        w, h = lib.dungeon_map_width(m), lib.dungeon_map_height(m)
+        ways = [(sx, sy) for sx in range(w) for sy in range(h) if lib.dungeon_square(m, sx, sy) >> 5 in (2, 3)]
+        for sx, sy in ways:
+            for d in (4, 5):
+                kind = native_type(lib, m, sx, sy, -1 if d == 4 else 1)
+                if kind is None:
+                    continue
+                set_creature_type(ai, g, kind)
+                ai.begin(g, sx, sy, m)
+                flags = ctypes.c_uint16.from_address(ai.ai + AI_MOVE_FLAGS_C)
+                flags.value |= MOVE_LEVELS | rng.choice((MOVE_OPEN_PIT, MOVE_FALL, MOVE_STAIRS, MOVE_OPEN_PIT | MOVE_FALL | MOVE_STAIRS))
+                ai.emu.write(G_AI + AI_MOVE_FLAGS_ORIGINAL, struct.pack("<H", flags.value))
+                command = rng.choice((0, 1, 3, 7, 8)) | rng.choice((0, 0x80))
+                mine, theirs = ai.call("creature_ai_try_move", command, sx, sy, -1, -1, d)
+                assert mine == theirs, (g, sx, sy, m, command, d)
+                tried += 1
+                changed += bool(mine)
+                ai.check((g, sx, sy, command, d))
+                ai.end()
+        set_creature_type(ai, g, original_type)
+    assert tried > 20 and changed > 5, (tried, changed)
+
+
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
 
