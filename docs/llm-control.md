@@ -18,7 +18,7 @@ The game runs in real time. The control does not stop the game time. Each reques
    SDL_AUDIO_DRIVER=dummy SDL_VIDEO_DRIVER=dummy build/dm2 --control ~/.dm2/control.sock --save tests/saves/start.DAT &
    ```
 
-   - `--control PATH`: the socket file. The game removes an old file at `PATH` and makes its folder. The socket path must be shorter than about 100 bytes.
+   - `--control PATH`: the socket file. The game replaces an old socket at `PATH`. When `PATH` is another file, the game does not start and the file stays. The game makes the last folder level of `PATH` only, not the folders above it. The socket path must be shorter than about 100 bytes.
    - `--save PATH`: optional. Without it, the game starts with the start menu.
    - Without the two `SDL_*_DRIVER` variables, the window and the sound stay on.
 
@@ -48,7 +48,11 @@ Python code can use `dm2tools.control_client.request(payload, path=None, timeout
 
 ## Protocol
 
-- One client at a time. A client sends one JSON object per line and gets one JSON object per line.
+- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection.
+- A client sends one JSON object per line and gets one JSON object per line.
+- A line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error.
+- String values can use the JSON escapes, also `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is.
+- The game sends a reply with a blocking write. A client that sends requests but never reads the replies can stop the game. This is a local test tool.
 - Each request has a `cmd` field.
 - A successful reply has `"ok": true`. A failed reply is `{"ok": false, "error": "<reason>"}`.
 - The parser is flat: it finds `"field": value` anywhere in the line. Do not nest objects.
@@ -144,7 +148,7 @@ Moves the pointer without a click. The next screenshot shows the pointer there. 
 
 ### wait
 
-Lets `ticks` timer ticks (60 Hz, 1 to 6000) run, then replies. The game loop and the modal loops (menu, dialogs) both count ticks, so a wait also ends while a dialog is open. The reply gives the ticks that ran. During a wait the game reads no other request of this client.
+Lets `ticks` timer ticks (60 Hz, 1 to 6000) run, then replies. The game loop and the modal loops (menu, dialogs) both count ticks, so a wait also ends while a dialog is open. The reply gives the ticks that ran. During a wait the game reads no other request of this client. When the client closes the connection during a wait, the game drops the wait and accepts the next client.
 
 ```json
 {"cmd": "wait", "ticks": 60}
@@ -158,7 +162,7 @@ A game step takes 8 ticks. A step forward needs about 40 ticks before the party 
 
 ### screenshot
 
-Writes a PNG file of 320 x 200 pixels: the screen with the palette and the cursor at the pointer. The cursor is the original cursor image that the window shows there: the arrow, the hand, the held object with its shadow, or the dragged champion. Before the first click or move (and before a mouse move in the window), a screenshot has no cursor. The reply gives the absolute path.
+Writes a PNG file of 320 x 200 pixels: the screen with the palette and the cursor at the pointer. The cursor is the original cursor image that the window shows there: the arrow, the hand, the held object with its shadow, or the dragged champion. The pointer is the window pointer until a click or move request moves it. In `build/dm2` the pointer starts at (0, 0), so the first screenshot has the cursor in the top left corner. The reply gives the absolute path.
 
 ```json
 {"cmd": "screenshot", "path": "/tmp/shot.png"}
@@ -191,9 +195,12 @@ Ends the program the same way as a closed window. The exit code is 0 in the game
 | `button must be left or right` | Another button name. |
 | `missing id` | `command` without an `id`. |
 | `ticks must be 1-6000` | A wait out of range. |
-| `missing path` | `screenshot` without a `path`. |
+| `missing path` | `screenshot` without a `path`, or a `path` with a bad escape, a NUL character, or more than `PATH_MAX` bytes. |
 | `cannot write the PNG file` | The game cannot write the file. |
-| `request line too long` | A line of 4096 bytes or more. |
+| `request line too long` | A line of more than 4095 bytes before its newline. |
+| `request line has a NUL byte` | The line has a byte 0. |
+| `busy` | Another client is connected. |
+| `reply too long` | The reply does not fit in 4096 bytes. |
 
 ## View a screenshot as an LLM
 
