@@ -8,6 +8,7 @@ dependencies = [
 
 [project.scripts]
 dm2-le = "dm2tools.le:main"
+dm2-play = "dm2tools.control_client:main"
 
 [build-system]
 requires = ["hatchling"]

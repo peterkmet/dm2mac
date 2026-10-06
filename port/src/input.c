@@ -24,6 +24,7 @@
 #include "session.h"
 #include "text.h"
 #include "ui.h"
+#include "video.h"
 #include "view.h"
 #include "zone.h"
 
@@ -527,6 +528,19 @@ int input_cursor_at(int x, int y)
     if (kind == CURSOR_KIND_CHAMPION) return CURSOR_CHAMPION;
     if (kind != CURSOR_KIND_HAND || (int16_t)game.leader < 0) return CURSOR_ARROW;
     return inv_cursor_object() == THING_NONE ? CURSOR_HAND : CURSOR_OBJECT;
+}
+
+int input_draw_hand_cursor(uint8_t *screen, int x, int y)
+{
+    if (input_cursor_at(x, y) != CURSOR_OBJECT) return 0;
+    for (int iy = 0; iy < HAND_ICON_SIZE; iy++)
+        for (int ix = 0; ix < HAND_ICON_SIZE; ix++) {
+            int sx = x - HAND_ICON_SIZE / 2 + ix, sy = y - HAND_ICON_SIZE / 2 + iy;
+            uint8_t c = leader_hand.cursor[iy * HAND_ICON_SIZE + ix];
+            if (sx >= 0 && sy >= 0 && sx < SCREEN_W && sy < SCREEN_H && c != HAND_ICON_KEY)
+                screen[sy * SCREEN_W + sx] = leader_hand.palette[c];
+        }
+    return 1;
 }
 
 void input_set_mode(int mode)

@@ -48,6 +48,9 @@ void input_set_mode(int mode);
    cursor zone of kind 1, the dragged champion over a zone of kind 2, else the arrow. */
 enum { CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION };
 int input_cursor_at(int x, int y);
+/* Draws the leader hand object centered at (x, y) of screen (fb layout) when the cursor there shows it (the original
+   sets it as the mouse cursor); returns 1 when it drew it. */
+int input_draw_hand_cursor(uint8_t *screen, int x, int y);
 /* The current input mode. */
 int input_get_mode(void);
 /* The command of a click (key 0) or of a key in mode, and the rectangle of its zone; 0 for none. */

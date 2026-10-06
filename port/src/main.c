@@ -2,12 +2,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <SDL3/SDL.h>
+#include "control.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
 #include "input.h"
-#include "inventory.h"
 #include "item.h"
 #include "music.h"
 #include "platform.h"
@@ -29,28 +29,11 @@
    it as the mouse cursor). */
 static void present_with_hand_cursor(void)
 {
-    static uint8_t under[HAND_ICON_SIZE][HAND_ICON_SIZE];
-    int mx, my;
-    plat_mouse_position(&mx, &my);
-    if (input_cursor_at(mx, my) != CURSOR_OBJECT) {
-        plat_present();
-        return;
-    }
-    int x0 = mx - HAND_ICON_SIZE / 2, y0 = my - HAND_ICON_SIZE / 2;
-    for (int y = 0; y < HAND_ICON_SIZE; y++)
-        for (int x = 0; x < HAND_ICON_SIZE; x++) {
-            int sx = x0 + x, sy = y0 + y;
-            if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
-            under[y][x] = fb[sy][sx];
-            uint8_t c = leader_hand.cursor[y * HAND_ICON_SIZE + x];
-            if (c != HAND_ICON_KEY) fb[sy][sx] = leader_hand.palette[c];
-        }
+    static uint8_t shown[SCREEN_H][SCREEN_W];
+    memcpy(shown, fb, sizeof shown);
+    input_draw_hand_cursor(&fb[0][0], input_mouse_x, input_mouse_y);
     plat_present();
-    for (int y = 0; y < HAND_ICON_SIZE; y++)
-        for (int x = 0; x < HAND_ICON_SIZE; x++) {
-            int sx = x0 + x, sy = y0 + y;
-            if (sx >= 0 && sy >= 0 && sx < SCREEN_W && sy < SCREEN_H) fb[sy][sx] = under[y][x];
-        }
+    memcpy(fb, shown, sizeof shown);
 }
 
 /* Loads GRAPHICS.DAT, the screen layout, the colors, and the font; returns 0 with a message on an error. */
@@ -126,9 +109,12 @@ static uint16_t pc_key_code(int scancode, int mod)
     return 0;
 }
 
-/* Passes the window events to the input of the game; a closed window ends the program. */
+/* Passes the window events and the control requests to the input of the game; a closed window ends the program.
+   A mouse move of the window and a move request of the control both set the pointer. */
 static void pump_events(void)
 {
+    static int window_x = -1, window_y = -1;
+    int x, y;
     PlatEvent e;
     while (plat_poll(&e)) {
         if (e.type == PLAT_QUIT) {
@@ -142,7 +128,9 @@ static void pump_events(void)
             input_mouse_click(e.x, e.y, INPUT_RIGHT_RELEASED);
         }
     }
-    plat_mouse_position(&input_mouse_x, &input_mouse_y);
+    plat_mouse_position(&x, &y);
+    if (x != window_x || y != window_y) input_mouse_x = window_x = x, input_mouse_y = window_y = y;
+    control_poll();
 }
 
 /* One timer tick of a modal loop (menu, dialog): the input, the screen, and the wait. */
@@ -155,18 +143,19 @@ static void modal_frame(void)
 
 int main(int argc, char **argv)
 {
-    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL;
+    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL;
     for (int i = 1; i < argc; i++) {
         int is_data = !strcmp(argv[i], "--data"), is_filter = !strcmp(argv[i], "--filter");
-        int is_save = !strcmp(argv[i], "--save");
-        if (!is_data && !is_filter && !is_save) continue;
+        int is_save = !strcmp(argv[i], "--save"), is_control = !strcmp(argv[i], "--control");
+        if (!is_data && !is_filter && !is_save && !is_control) continue;
         if (i + 1 == argc) {
             fprintf(stderr, "%s needs a value\n", argv[i]);
             return EXIT_USAGE;
         }
         if (is_data) data = argv[++i];
         else if (is_filter) filter = argv[++i];
-        else save = argv[++i];
+        else if (is_save) save = argv[++i];
+        else control = argv[++i];
     }
     int factor = filter ? scale_filter_factor(filter) : 1;
     if (!factor) {
@@ -180,6 +169,10 @@ int main(int argc, char **argv)
     if (!load_graphics(data)) return 1;
     if (save && !show_save(save)) return 1;
     if (!plat_init(WINDOW_SCALE, factor)) return 1;
+    if (control && !control_open(control)) {
+        fprintf(stderr, "cannot open the control socket %s\n", control);
+        return 1;
+    }
     if (music_init(draw_gdat(), data) != MUSIC_OK) SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
     plat_audio_music(music_render);
     game_frame_hook = modal_frame;
@@ -194,6 +187,7 @@ int main(int argc, char **argv)
         }
         plat_wait_tick();
     }
+    control_close();
     music_quit();
     plat_quit();
     if (session.exit_code == EXIT_RESTART) {
