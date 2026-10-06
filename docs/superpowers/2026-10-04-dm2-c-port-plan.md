@@ -396,7 +396,7 @@ Port the start menu, new game, load, save, and the end sequence of `SKULL.EXE`. 
 - Done.
   - Final acceptance run: see commit message.
   - Manual test on 2026-10-06 (`docs/manual-test-checklist.md`, section "Results of 2026-10-06"): the user and LLM test agents ran it. The agents drove `build/dm2 --control` with `dm2-play` (Step 22). Of 108 items, 47 passed in the manual test and 51 are covered by automated tests. Results per group: A 7 of 7 passed; B B7 and B18 passed; C C1 to C8 passed; D D3 and D7 passed; G G1 passed; H H1 to H5, H7, and H8 passed; I I1, I2, I3, and I5 passed; J J1 to J15 passed; K K5 passed.
-  - Skipped by the user's decision: the DOSBox comparisons C10, I4, K2, K3, K4, K6, and K7. Not run, because they need long play: D15 and J16. Pending: H6 (a save near an ornament with a sound).
+  - Skipped by the user's decision: the DOSBox comparisons C10, I4, K2, K3, K4, K6, and K7. Not run, because they need long play: D15 and J16. Not run: H6 (the wall ornaments with a sound are only on levels 2 and 4, far from the start).
   - The fixes that the manual test found are in `CHANGELOG.md`, section "Fixed": the inventory and the recruit candidate panel, the dialogs after a load, the cursor zones and the cursor images, the drive path of the save menu title, the `--save` start, RESTART, the window at the start, and the champion drag.
 
 ### Step 22: LLM control over a socket

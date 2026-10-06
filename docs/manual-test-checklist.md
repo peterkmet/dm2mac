@@ -9,8 +9,7 @@ The user and LLM test agents over the control socket (`docs/llm-control.md`) ran
 - 47 passed in the manual test.
 - 51 are covered by automated tests.
 - 7 are skipped by the user's decision: the DOSBox comparisons C10, I4, K2, K3, K4, K6, and K7.
-- 2 are not run, because they need long play: D15 and J16.
-- 1 is pending: H6 waits for a save near an ornament with a sound.
+- 3 are not run: D15 and J16 need long play; H6 needs a wall ornament with a sound, and these are only on levels 2 and 4, far from the start.
 
 The fixes that the manual test found are in `CHANGELOG.md`.
 
@@ -171,7 +170,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] H3. Walk into a wall. Expected: the bump sound plays (plan Step 18). Passed (manual, 2026-10-06).
 - [x] H4. Wait for a storm with thunder. Expected: the thunder plays from the correct side and after a delay (plan Step 18). Passed (manual, 2026-10-06).
 - [x] H5. Fight a creature. Expected: the attack and hit sounds play at the moment of the attack and of the hit. The sound requests are covered by `tests/test_world.py::test_sound_requests_match_original`. Passed (manual, 2026-10-06).
-- [ ] H6. Stand near an animated wall ornament with a sound. Expected: the ambient sound plays at the start of each animation cycle. The rule is covered by `tests/test_world.py::test_ambient_wall_sounds_match_original`. Pending.
+- [ ] H6. Stand near an animated wall ornament with a sound. Expected: the ambient sound plays at the start of each animation cycle. The rule is covered by `tests/test_world.py::test_ambient_wall_sounds_match_original`. Not run: the audible wall ornaments are only on levels 2 and 4, far from the start (socket test agent, 2026-10-06).
 - [x] H7. Let the party sleep near a sound. Expected: the sound is quieter. Passed (manual, 2026-10-06).
 - [x] H8. Open the volume dialog (see J11). Set the sound volume to 0, then to 7. Expected: 0 is silent; a new value plays the test sound. Passed (manual, 2026-10-06).
 
