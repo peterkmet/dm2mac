@@ -277,6 +277,53 @@ def command(lib, emu, cmd, x=0, y=0):
     return lib.command_execute(ctypes.byref(c)), emu.call(COMMAND_EXECUTE, COMMAND_RECORD)
 
 
+INPUT_GET_CLICK_FEEDBACK_SCRIPT, INPUT_RUN_CLICK_FEEDBACK = 0x20EE0, 0x21394
+G_CURRENT_COMMAND, G_CLICK_FEEDBACK_SCRIPT, G_CLICK_FEEDBACK_DELAY = 0x7F4CE, 0x7F47C, 0x7F52A
+G_INPUT_DISABLED, G_COMMAND_QUEUE_HEAD, G_COMMAND_QUEUE_TAIL = 0x7F50A, 0x7F50E, 0x7F516
+G_FEEDBACK_WAITING, G_FEEDBACK_BUSY = 0x7F474, 0x7F488
+INPUT_MODE_MOVE, INPUT_BUTTON_LEFT = 5, 2
+MAP_HAS_OPTIONS = 0x0800
+button_clicks = {}  # command: a screen point of its button and the rect of its zone
+
+
+def click_feedback(lib, original, cmd, where):
+    """A left click on the button of command cmd in the port; the original starts the click feedback script of the
+    same command and rect. Both run the script tick by tick until it ends; the screens must be equal after each
+    tick. The queued commands and the disabled input are cleared after the script."""
+    from test_input import MainLoop
+    emu = original.emu
+    if cmd not in button_clicks:
+        rect = (ctypes.c_int16 * 4)()
+        lib.input_find_command.restype = ctypes.c_uint16
+        x, y = next((x, y) for y in range(200) for x in range(320)
+                    if lib.input_find_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, 0, rect) == cmd)
+        button_clicks[cmd] = x, y, tuple(rect)
+    x, y, rect = button_clicks[cmd]
+    loop = MainLoop.in_dll(lib, "main_loop")
+    lib.input_reset_states()
+    lib.input_flush()
+    emu.write(G_CLICK_FEEDBACK_DELAY, bytes(2))
+    emu.write_u32(G_FEEDBACK_WAITING, 0)
+    emu.write_u32(G_FEEDBACK_BUSY, 0)
+    lib.input_set_mode(INPUT_MODE_MOVE)
+    lib.input_mouse_click(x, y, INPUT_BUTTON_LEFT)
+    emu.write(G_CURRENT_COMMAND, struct.pack("<3H4h", x, y, cmd, *rect))
+    emu.write_u32(G_CLICK_FEEDBACK_SCRIPT, emu.call(INPUT_GET_CLICK_FEEDBACK_SCRIPT, G_CURRENT_COMMAND))
+    for tick in range(20):
+        loop.timer_ticks += 1
+        lib.input_poll()
+        emu.call(INPUT_RUN_CLICK_FEEDBACK, int(tick > 0))
+        mine, theirs = c_screen(lib), original.screen()
+        assert mine == theirs, (where, "feedback", hex(cmd), tick, diff(mine, theirs, 320))
+        if not emu.read_u32(G_CLICK_FEEDBACK_SCRIPT):
+            break
+    assert not emu.read_u32(G_CLICK_FEEDBACK_SCRIPT), where
+    lib.input_flush()
+    emu.write(G_INPUT_DISABLED, bytes(2))
+    emu.write(G_COMMAND_QUEUE_HEAD, bytes(2))
+    emu.write(G_COMMAND_QUEUE_TAIL, bytes(2))
+
+
 def spell_kind(index):
     return SPELL_TABLE_BYTES[index * SPELL_SIZE + 6] & 0xF
 
@@ -294,8 +341,9 @@ def cast_ui(spell_ui):
 def test_runes_and_casts_match_original(port, cast_ui):
     # The spell panel of the first champion: runes added (with enough mana and without), removed, and cast: unknown
     # rune sets, failed casts, casts without a flask, and successful spells (not the summons, which need active
-    # creature groups: test_every_spell_cast_matches_original). The screen, the champion, the action area state,
-    # the party spells, the timeline, and the hook arguments must be equal.
+    # creature groups: test_every_spell_cast_matches_original). Some rune and cast commands come from a click with
+    # its click feedback (the pressed rune button, the entered runes). The screen, the champion, the action area
+    # state, the party spells, the timeline, and the hook arguments must be equal.
     lib, original = port, cast_ui
     emu = original.emu
     draw_game_screen(lib, original)
@@ -304,6 +352,8 @@ def test_runes_and_casts_match_original(port, cast_ui):
     emu.call(DUN_SET_CURRENT_MAP, party_map)
     action = ActionArea.in_dll(lib, "action")
     rng = random.Random(17)
+    clicks = random.Random(19)  # the click feedback choices; rng keeps its sequence
+    lib.input_init()
     c_hook_calls(lib)
     original.calls.clear()
     spells = [i for i in range(SPELL_COUNT) if spell_kind(i) != 4]
@@ -323,7 +373,10 @@ def test_runes_and_casts_match_original(port, cast_ui):
         if count < len(plan) and rng.random() < 0.9:
             rune = (plan[count] - RUNE_FIRST) % 6
             if rng.random() < 0.5:
-                assert command(lib, emu, CMD_RUNE_FIRST + rune) == (1, 1)
+                if clicks.random() < 0.5:
+                    click_feedback(lib, original, CMD_RUNE_FIRST + rune, n)
+                else:
+                    assert command(lib, emu, CMD_RUNE_FIRST + rune) == (1, 1)
             else:
                 lib.magic_add_rune(rune)
                 emu.call(MAGIC_ADD_RUNE, rune)
@@ -343,6 +396,8 @@ def test_runes_and_casts_match_original(port, cast_ui):
             if rng.random() < 0.5:
                 mine, theirs = lib.magic_cast_entered_runes(), emu.call(MAGIC_CAST_ENTERED_RUNES)
             else:
+                if clicks.random() < 0.5:
+                    click_feedback(lib, original, CMD_CAST_SPELL, n)  # it queues the command
                 assert command(lib, emu, CMD_CAST_SPELL) == (1, 1)
                 mine = ctypes.c_int.in_dll(lib, "input_command_stop").value
                 theirs = struct.unpack("<H", emu.read(G_COMMAND_STOP, 2))[0]
@@ -614,7 +669,8 @@ def test_minion_maps_match_original(port, map_ui, gdat):
     # The minion maps of the dungeon in the hand of the first champion, of each kind (no location, minion,
     # location, without options), with a minion (a link projectile in the possessions of a creature group) and a
     # marker at random squares, at random party places and directions, with the option buttons, over game ticks that
-    # take the mana (and darken the map without mana), and clicks on the grid that send the minion. The screen, the
+    # take the mana (and darken the map without mana), and clicks on the grid that send the minion. Some option
+    # commands come from a click with its click feedback (the pressed option button). The screen, the
     # champion, the action area flags, the map state, and the map records must be equal to the original.
     lib, original = port, map_ui
     emu = original.emu
@@ -643,6 +699,8 @@ def test_minion_maps_match_original(port, map_ui, gdat):
     free_projectile = next(14 << 10 | i for i in range(lib.dungeon_thing_count(14)) if word(lib, 14 << 10 | i, 0) == 0xFFFF)
     draw_game_screen(lib, original)
     rng = random.Random(20)
+    feedback = random.Random(21)  # the click feedback choices; rng keeps its sequence
+    lib.input_init()
     place_set = set(places)
     time = Game.in_dll(lib, "game").game_time
     kinds, clicks, moved, dark, offsets, markers = set(), 0, 0, 0, set(), set()
@@ -699,7 +757,10 @@ def test_minion_maps_match_original(port, map_ui, gdat):
         assert_map_state(lib, original, (n, "open", hex(thing), kind))
         for option in range(4):
             if rng.random() < 0.6:
-                assert command(lib, emu, 0x56 + option) == (1, 1)
+                if ActionArea.in_dll(lib, "action").flags & MAP_HAS_OPTIONS and feedback.random() < 0.5:
+                    click_feedback(lib, original, 0x56 + option, (n, "option"))
+                else:
+                    assert command(lib, emu, 0x56 + option) == (1, 1)
         mm = MinionMap.in_dll(lib, "minion_map")
         offsets.add((mm.x_offset, mm.y_offset))
         if word(lib, thing, 2) != 0xFFFE and rng.random() < 0.7:

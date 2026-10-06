@@ -55,8 +55,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define COIN_ICON 0x18
 #define MAP_ACTION_PICTURE_BASE 0x41
 #define SPELL_RUNE_SETS 4           /* the rune sets 0 to 3; the panel of set 4 has no runes */
-#define SPELL_RUNES_PER_SET 6
-#define SPELL_RUNE_GLYPH_FIRST 0x60
 #define AURA_FRAMES 4               /* the aura picture holds 4 x 4 frames: direction by game time */
 #define ICON_SIZE 16
 #define ICON_OFFSET 1               /* the icon of an item in a hand casts a shadow 1 pixel up and left */
@@ -360,7 +358,7 @@ static void draw_action_champion_face(void)
 }
 
 /* Draws the runes that the champion entered in the spell panel. */
-static void draw_entered_runes(int clear)
+void ui_draw_entered_runes(int clear)
 {
     begin_draw(0);
     if (clear) offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNES_BACK, ZONE_RUNES_BACK, UI_OPAQUE);
@@ -385,7 +383,7 @@ static void draw_spell_panel(void)
                                         ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
         }
     }
-    draw_entered_runes(0);
+    ui_draw_entered_runes(0);
     draw_action_champion_face();
 }
 

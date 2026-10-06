@@ -595,8 +595,9 @@ static void rect_center_in(int16_t *dst, const int16_t *src, int w, int h)
 /* Feedback script opcodes (low 6 bits; bit 6: run on, bit 7: end). */
 enum {
     FB_DELAY, FB_RELEASE_QUEUE, FB_WAIT_QUEUE, FB_WAIT_STEP, FB_QUEUE, FB_EXECUTE, FB_QUEUE_AND_RELEASE, FB_PICTURE,
-    FB_INVENTORY_BUTTON = 0x0d
+    FB_RUNE_BUTTON = 0x0a, FB_ENTERED_RUNES, FB_INVENTORY_BUTTON = 0x0d, FB_MAP_OPTION_BUTTONS
 };
+#define SPELL_RUNE_PRESSED 8        /* GDAT (1, 5, 8): the pressed rune button */
 #define FB_RUN_ON 0x40
 #define FB_END 0x80
 
@@ -610,6 +611,17 @@ static void queue_current(void)
 static void release_queue(void)
 {
     in.disabled = (in.queue_tail - in.queue_head + COMMAND_QUEUE) % COMMAND_QUEUE;
+}
+
+/* Opens the feedback bitmap of the clicked button when it is closed; r becomes a w x h rect centered in it. */
+static void feedback_init_rect(Offscreen *o, int *opened, int16_t *r, int w, int h)
+{
+    if (!*opened) {
+        memcpy(o->rect, in.current.rect, sizeof o->rect);
+        offscreen_create(o, -1, 0);
+        *opened = 1;
+    }
+    rect_center_in(r, o->rect, w, h);
 }
 
 /* Runs the click feedback script for elapsed timer ticks: pictures of pressed buttons, then the command. */
@@ -661,16 +673,34 @@ static void run_click_feedback(int elapsed)
             p += 4;
             const Bitmap *image = draw_gdat_image(category, index, entry);
             if (!image) break;
-            if (!opened) {
-                memcpy(o.rect, in.current.rect, sizeof o.rect);
-                offscreen_create(&o, -1, 0);
-                opened = 1;
-            }
             int16_t r[RECT_SIZE];
-            rect_center_in(r, o.rect, image->width, image->height);
+            feedback_init_rect(&o, &opened, r, image->width, image->height);
             offscreen_blit(&o, image, r, 0, 0, key, 0, draw_gdat_image_palette(category, index, entry));
             break;
         }
+        case FB_RUNE_BUTTON: {
+            const Bitmap *image = draw_gdat_image(CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNE_PRESSED);
+            if (!image) break;
+            int16_t r[RECT_SIZE], w, h;
+            feedback_init_rect(&o, &opened, r, image->width, image->height);
+            offscreen_blit(&o, image, r, 0, 0, UI_OPAQUE, 0,
+                           draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNE_PRESSED));
+            /* the rune of the pressed button in the next rune set */
+            int set = champion(action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
+            char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
+            text_measure(text, &w, &h);
+            rect_center_in(r, o.rect, w, h);
+            offscreen_draw_text_at(&o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1, ui_colors[UI_BLACK], ui_colors[UI_CYAN], text);
+            break;
+        }
+        case FB_ENTERED_RUNES:
+            ui_draw_entered_runes(1);
+            offscreen_flush(ui_action_area_begin_draw(0), 1);
+            break;
+        case FB_MAP_OPTION_BUTTONS:
+            ui_draw_map_option_buttons(*p++);
+            offscreen_flush(ui_action_area_begin_draw(0), 1);
+            break;
         case FB_INVENTORY_BUTTON:
             if (ui.inventory) {
                 ui.buttons |= *p;
@@ -679,7 +709,7 @@ static void run_click_feedback(int elapsed)
             p++;
             break;
         default:
-            /* spell, hand, action, map option, and dialog button pictures: Steps 15, 16, 20 */
+            /* spell, hand, action, and dialog button pictures: Steps 15, 20 */
             p += op_argument_size(op & 0x3f);
             break;
         }
@@ -740,7 +770,7 @@ void input_poll(void)
 static int op_argument_size(int op)
 {
     switch (op) {
-    case 8: case 9: case 0x0c: case 0x0e: return 1;
+    case 8: case 9: case 0x0c: return 1;
     case 0x0f: case 0x10: return 3;
     default: return 0;
     }

@@ -54,6 +54,8 @@ void offscreen_blit(Offscreen *o, const Bitmap *src, const int16_t *rect, int sr
 void offscreen_draw_gdat_image(Offscreen *o, int category, int index, int entry, int zone, int transparent);
 /* Draws a prepared picture placed in zone (-1: at its rect). */
 void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
+/* Draws text with its base line at (x, y) in screen coordinates. */
+void offscreen_draw_text_at(Offscreen *o, int x, int y, int color, int bg, const char *text);
 /* Draws text placed in zone, plain or with a shadow. */
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text);
 void offscreen_draw_text_in_zone_with_shadow(Offscreen *o, int zone, int color, int bg, const char *text);
