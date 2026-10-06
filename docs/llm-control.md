@@ -148,7 +148,7 @@ Moves the pointer without a click. The next screenshot shows the pointer there. 
 
 ### wait
 
-Lets `ticks` timer ticks (60 Hz, 1 to 6000) run, then replies. The game loop and the modal loops (menu, dialogs) both count ticks, so a wait also ends while a dialog is open. The reply gives the ticks that ran. During a wait the game reads no other request of this client. When the client closes the connection during a wait, the game drops the wait and accepts the next client.
+Lets `ticks` timer ticks (60 Hz, 1 to 6000) run, then replies. The game loop and the modal loops (menu, dialogs) both count ticks, so a wait also ends while a dialog is open. The reply gives the ticks that ran. During a wait the game reads no other request of this client. When the client closes the connection during a wait and the game has no unread line of it, the game drops the wait and accepts the next client. A client that sends more lines and then closes during a wait keeps the socket busy until the wait ends.
 
 ```json
 {"cmd": "wait", "ticks": 60}
