@@ -817,3 +817,33 @@ def test_print_number_matches_original(port, original):
         lib.text_print_number(color, value)
         mine, theirs = c_screen(lib), original.screen()
         assert mine == theirs, (value, diff(mine, theirs, SCREEN_W))
+
+
+ITEM_GET_NAME, DUN_GET_THING_DATA, G_OBJECT_NAME = 0x37E7A, 0x1D2DA, 0x7F92C
+
+
+def test_item_names_match_original(port, original):
+    # The name of every item index of weapons, armour, potions, and misc items. Misc 0x3E (a shell) has the
+    # GDAT name "f m" in all languages: the original shows the same 2 font glyphs. A token of no champion shows
+    # stale bytes in the original.
+    lib, emu = port, original.emu
+    lib.item_name.restype = ctypes.c_char_p
+    lib.item_name.argtypes = [ctypes.c_uint16]
+    lib.thing_word.restype = ctypes.c_uint16
+    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    names = set()
+    for kind, shift in ((5, 0), (6, 0), (8, 8), (10, 0)):
+        thing = things_of(lib, kind, 1)[0]
+        record = emu.call(DUN_GET_THING_DATA, thing)
+        word = lib.thing_word(thing, 2)
+        for index in range(128):
+            value = word & 0x3FFF & ~(0x7F << shift) | index << shift  # a champion token of champion 0
+            lib.set_thing_word(thing, 2, value)
+            emu.write(record + 2, struct.pack("<H", value))
+            emu.call(ITEM_GET_NAME, thing)
+            theirs = emu.read(G_OBJECT_NAME, 64).split(b"\0")[0]
+            assert lib.item_name(thing) == theirs, (hex(thing), hex(index))
+            names.add(theirs)
+        emu.write(record + 2, struct.pack("<H", word))
+    assert b"f m" in names and len(names) > 100
