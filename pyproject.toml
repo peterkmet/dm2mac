@@ -26,5 +26,5 @@ dev = [
 [tool.pytest.ini_options]
 timeout = 120
 testpaths = ["tests"]
-addopts = "-m 'not network' -n auto"
+addopts = "-m 'not network'"
 markers = ["network: tests that need network access"]
