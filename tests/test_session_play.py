@@ -605,3 +605,22 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
     lib.input_key_down(KEY_FORWARD)
     run_ticks(lib, 40)
     assert (game.party_x, game.party_y) != (x, y)
+
+
+@pytest.mark.parametrize("held", ["eye", "mouth"])
+def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_path, held):
+    # The original runs sleep (0x8e) and the save menu (0x8c, Alt+S) only while neither the eye (0x7f224) nor the
+    # mouth (0x7f21c) is held.
+    from test_input import run_ticks, session
+    from test_interface import UiState
+    from test_move import Command
+    session.__wrapped__(lib, gdat, start, tmp_path)
+    lib.input_key_down.argtypes = [ctypes.c_uint16]
+    run_ticks(lib, 16)
+    setattr(UiState.in_dll(lib, "ui"), held, 1)
+    with Player(lib, []) as player:
+        lib.input_key_down(KEY_SAVE_MENU)
+        run_ticks(lib, 16)
+        lib.command_execute(ctypes.byref(Command(0, 0, 0x8E)))
+    assert player.frames < player.every
+    assert ctypes.c_int.in_dll(lib, "party_sleeping").value == 0

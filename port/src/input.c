@@ -1417,6 +1417,7 @@ int command_execute(Command *c)
         return 0;
     }
     input_command_stop = 0;
+    int idle = !ui.eye && !ui.mouth && !party.push_mode && !input_drag_state;  /* no eye, mouth, drag or push mode */
     if (command == CMD_CANCEL_CAPTURE) {
         ui.eye = ui.mouth = 0;
     } else if (command == CMD_CANCEL_PUSH) {
@@ -1461,9 +1462,9 @@ int command_execute(Command *c)
             input_pop_mode();
             input_flush();
         }
-    } else if (command == CMD_SLEEP && !party.push_mode && !input_drag_state) {
+    } else if (command == CMD_SLEEP && idle) {
         game_sleep();
-    } else if (command == CMD_WAKE && !party.push_mode && !input_drag_state) {
+    } else if (command == CMD_WAKE && idle) {
         champ_wake_party();
     } else if (command == CMD_ACTION_CANCEL) {
         champ_execute_selected_action(-1);
@@ -1476,7 +1477,7 @@ int command_execute(Command *c)
         if (champ >= 0) ui_action_area_open_spells(champ);
     } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
         money_box_click_coin(command - CMD_COIN_FIRST);
-    } else if ((command == CMD_RECRUIT || command == CMD_RECRUIT_CANCEL) && !party.push_mode && !input_drag_state) {
+    } else if ((command == CMD_RECRUIT || command == CMD_RECRUIT_CANCEL) && idle) {
         champ_finish_recruit(game.party_x, game.party_y, game.party_dir, game.party_map, command);
     } else if (command == CMD_MOUTH) {
         champ_consume_object(-1, THING_NONE, -1);
@@ -1493,7 +1494,7 @@ int command_execute(Command *c)
         input_refresh_mode();
         ui_update_action_area(0);
     } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
-        if (game.champion_count && !ui.candidate && !party.push_mode && !input_drag_state) {
+        if (game.champion_count && !ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE) advanced_quick_save();
             else if (command == CMD_QUICK_LOAD) advanced_quick_load();
             else advanced_open_automap();
@@ -1501,7 +1502,7 @@ int command_execute(Command *c)
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
         if (ui.inventory) champ_edit_name(champion(ui.inventory - 1));
     } else if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE)
-                || command == CMD_QUIT) && !party.push_mode && !input_drag_state) {
+                || command == CMD_QUIT) && idle) {
         command_execute_session(command);
     } else {
         command_execute_later(c);
