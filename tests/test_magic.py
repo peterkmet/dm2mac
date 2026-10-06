@@ -440,6 +440,15 @@ def test_icon_click_feedback_matches_original(port, cast_ui):
 
     for cmd in range(CMD_PARTY_ICON, CMD_PARTY_ICON + 2):
         close()
+        # a corner of the spell half of the icon: the leader half would refine the click to a leader command
+        icon = cmd - CMD_PARTY_ICON
+        rect = (ctypes.c_int16 * 4)()
+        lib.input_find_command.restype = ctypes.c_uint16
+        next(1 for y in range(200) for x in range(320)
+             if lib.input_find_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, 0, rect) == cmd)
+        x = rect[0] + rect[2] - 1 if icon in (1, 2) else rect[0]
+        y = rect[1] + rect[3] - 1 if icon < 2 else rect[1]
+        button_clicks[cmd] = x, y, tuple(rect)
         click_feedback(lib, original, cmd, "party icon")
     for cmd in range(CMD_HAND_FIRST, CMD_HAND_FIRST + 4):
         close()
