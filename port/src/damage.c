@@ -356,7 +356,9 @@ void champ_drag_click(int cell)
     if (!finish) cell &= 3;
     int16_t target = (int16_t)champ_get_index_in_cell((cell + game.party_dir) & 3);
     if (!input_drag_state) {
-        if (target >= 0) input_drag_state = cell + 1;
+        if (target < 0) return;
+        input_set_champion_cursor(target);
+        input_drag_state = cell + 1;
         return;
     }
     int from = input_drag_state - 1;

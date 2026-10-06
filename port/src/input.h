@@ -48,9 +48,18 @@ void input_set_mode(int mode);
    cursor zone of kind 1, the dragged champion over a zone of kind 2, else the arrow. */
 enum { CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION };
 int input_cursor_at(int x, int y);
-/* Draws the leader hand object centered at (x, y) of screen (fb layout) when the cursor there shows it (the original
-   sets it as the mouse cursor); returns 1 when it drew it. */
-int input_draw_hand_cursor(uint8_t *screen, int x, int y);
+/* A cursor image (mouse_set_cursor_image): bpp 4 (high nibble first) or 8, the hot spot at the pointer, the clear
+   color number, and the palette colors of the color numbers (NULL: the numbers are palette colors). */
+typedef struct {
+    const uint8_t *bits, *palette;
+    int bpp, width, height, hot_x, hot_y, key;
+} CursorImage;
+/* The image of a cursor of input_cursor_at. */
+CursorImage input_cursor_image(int cursor);
+/* Draws the cursor image of input_cursor_at(x, y) with its hot spot at (x, y) into the screen dst. */
+void input_draw_cursor(uint8_t *dst, int x, int y);
+/* Draws the face of champ into the dragged champion cursor (champ_drag_click). */
+void input_set_champion_cursor(int champ);
 /* The current input mode. */
 int input_get_mode(void);
 /* The command of a click (key 0) or of a key in mode, and the rectangle of its zone; 0 for none. */

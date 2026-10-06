@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <SDL3/SDL.h>
 #include "control.h"
+#include "dialog.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "game.h"
@@ -25,15 +26,14 @@
 #define PATH_SIZE 1024
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
-/* Shows fb with the leader hand object at the mouse pointer over a cursor zone that shows it (the original sets
-   it as the mouse cursor). */
-static void present_with_hand_cursor(void)
+/* Shows fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
+static void present_with_cursor(void)
 {
-    static uint8_t shown[SCREEN_H][SCREEN_W];
-    memcpy(shown, fb, sizeof shown);
-    input_draw_hand_cursor(&fb[0][0], input_mouse_x, input_mouse_y);
+    static uint8_t saved[SCREEN_H][SCREEN_W];
+    memcpy(saved, fb, sizeof saved);
+    input_draw_cursor(&fb[0][0], input_mouse_x, input_mouse_y);
     plat_present();
-    memcpy(fb, shown, sizeof shown);
+    memcpy(fb, saved, sizeof saved);
 }
 
 /* Loads GRAPHICS.DAT, the screen layout, the colors, and the font; returns 0 with a message on an error. */
@@ -137,7 +137,7 @@ static void pump_events(void)
 static void modal_frame(void)
 {
     pump_events();
-    plat_present();
+    present_with_cursor();
     for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
 }
 
@@ -175,6 +175,10 @@ int main(int argc, char **argv)
     }
     if (music_init(draw_gdat(), data) != MUSIC_OK) SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
     plat_audio_music(music_render);
+    if (save) {
+        sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
+        sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
+    }
     game_frame_hook = modal_frame;
     if (!save && !game_init()) main_loop.quit = 1;
     for (int pit = 0; !main_loop.quit;) {
@@ -183,7 +187,7 @@ int main(int argc, char **argv)
             pit = 0;
             game_tick();
             if (main_loop.end && !main_loop.quit) game_end(main_loop.end);
-            present_with_hand_cursor();
+            present_with_cursor();
         }
         plat_wait_tick();
     }
@@ -191,6 +195,7 @@ int main(int argc, char **argv)
     music_quit();
     plat_quit();
     if (session.exit_code == EXIT_RESTART) {
+        args_drop_save(argc, argv);  /* the original always restarts into the start menu */
         execvp(argv[0], argv);  /* the DOS launcher starts the game again */
         fprintf(stderr, "cannot restart %s\n", argv[0]);
     }

@@ -267,10 +267,20 @@ MODE_RECRUIT, CMD_RECRUIT, CMD_RECRUIT_CANCEL = 7, 0x92, 0x93
 G_CANDIDATE, G_INVENTORY = 0x7F284, 0x7F972
 
 
+def viewport_on_screen(lib):
+    """The viewport zone (7) of the C screen."""
+    from test_interface import SCREEN_W, VIEW_W, VIEW_H, c_screen
+    rect = (ctypes.c_int16 * 4)()
+    lib.zone_get_rect(7, rect)
+    screen = c_screen(lib)
+    return b"".join(screen[(rect[1] + y) * SCREEN_W + rect[0]:][:VIEW_W] for y in range(VIEW_H))
+
+
 def test_recruit_and_cancel(loop, lib):
     # The party walks to the first mirror and recruits its champion; then it walks to the next mirror, takes that
-    # champion as a candidate, and sends it back.
-    from test_interface import UiState
+    # champion as a candidate, and sends it back. The candidate panel shows on the screen, as the original
+    # champ_draw_state (0x48890) presents the viewport after it draws the inventory.
+    from test_interface import UiState, c_view
     ui = UiState.in_dll(lib, "ui")
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")
     for n, command in enumerate((CMD_RECRUIT, CMD_RECRUIT_CANCEL)):
@@ -280,6 +290,7 @@ def test_recruit_and_cancel(loop, lib):
         assert (ui.candidate, struct.unpack("<H", loop.emu.read(G_CANDIDATE, 2))[0]) == (n + 2, n + 2), (
             n, loop.game.party_x, loop.game.party_y, loop.game.party_dir)
         assert ui.inventory == struct.unpack("<h", loop.emu.read(G_INVENTORY, 2))[0]
+        assert viewport_on_screen(lib) == c_view(lib), ("candidate panel not on screen", n)
         loop.assert_loop(("candidate", n))
         run(loop, [("c", *find_click(lib, MODE_RECRUIT, command)), ("t", 16)], ("finish", n))
         loop.assert_loop(("finish", n))
