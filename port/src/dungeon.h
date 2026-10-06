@@ -142,8 +142,9 @@ void dungeon_append_thing(uint16_t thing, uint16_t *list);
 int dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y);
 /* Removes thing from the square's thing list. */
 void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
-/* Takes a free record of type, cleared, without cell bits; THING_NONE when all records are in use. type |
-   THING_ANY_RECORD: a miscellaneous item may take the records that the dungeon keeps for the game. */
+/* Takes a free record of type, cleared, without cell bits. When the table is full, it reuses a thing from
+   dun_get_discarded_thing; THING_NONE when there is none. type | THING_ANY_RECORD: a miscellaneous item may take
+   the records that the dungeon keeps for the game. */
 #define THING_ANY_RECORD 0x8000
 uint16_t dungeon_unused_thing(int type);
 /* Frees a record of type for reuse when the table is full: removes a thing of kind subtype (DISCARD_ANY_KIND:
