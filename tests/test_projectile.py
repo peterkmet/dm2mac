@@ -469,9 +469,9 @@ INFO_DOOR_FLAGS, RESISTS_NON_FIRE = 0x19, 0x10  # creature info byte and its fla
 
 
 def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
-    # Lightning blasts, storm blasts, and poison and death clouds on the groups that resist non-fire: the blast
-    # damage is a quarter. Objects and spells cannot hit them in start.DAT: the only such group (creature type 84)
-    # has hit size 0.
+    # Lightning blasts, storm blasts, and poison and death clouds on the groups that resist non-fire, and lightning
+    # bolts from their square and from 1 and 2 squares away: the damage is a quarter. start.DAT has one such group
+    # (creature type 84).
     rng = random.Random(170)
     four_champions(pj, rng)
     lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint8)
@@ -484,6 +484,14 @@ def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
         both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(64, 256), x, y, rng.choice((0, 1, 2, 3, 0xFF)))
         check(pj, ("create", n))
         run_out(pj, ("resists", n, map_, x, y, hex(g), hex(kind)))
+        d, dist = rng.randrange(4), rng.randrange(3)
+        sx, sy = x - DIRS[d][0] * dist, y - DIRS[d][1] * dist
+        if dist and not open_square(lib, map_, sx, sy):
+            sx, sy = x, y
+        place_near(pj, rng, map_, x, y)
+        launch(pj, 0xFF82, sx, sy, rng.randrange(4), d, rng.randrange(64, 256), rng.randrange(64, 256), 1)
+        check(pj, ("bolt", n))
+        run_out(pj, ("bolt", n, map_, sx, sy, d))
     assert_saves(pj, "end")
 
 

@@ -512,7 +512,6 @@ def test_try_use_wall_actuator(ai):
             used += mine
             ai.check((g, n, mode, target))
         ai.end()
-    print("used", used)
 
 
 def test_projectile_incoming(ai):
@@ -676,7 +675,6 @@ def test_find_target_in_lines(ai):
             found += mine
             ai.check((g, n))
         ai.end()
-    print("found", found)
 
 
 def random_candidate(rng, fs, x, y, m):
