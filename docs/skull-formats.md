@@ -686,12 +686,12 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - `sound_request(category, index, entry, priority, volume, x, y, delay)` (`port/src/sound_request.c`): delay 0 plays at once; delay 1 goes to the queue of the game step (20 requests), which `sound_flush_requests(0)` plays at the end of the step; a negative delay goes to the deferred queue (6 requests, `sound_flush_requests(1)`); a longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + delay - 1. A sound with delay above 0 plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
 - The place of a sound seen by the party (lateral, forward) and the push away by the walking distance are `sound_party_offset` of `sound.c`. A sound that is already in the queue at the same place is not added again. A map change (`gdat_load_map_graphics`, `sound_wait_and_clear_requests`) drops the queue of the step.
-- `sound_play_requests` plays the requests by priority and then loudness (one bubble sort) through `sound_play` while voices are free. `sound_play_with_fallback` uses the sound of index fallback when index has none.
+- `sound_play_requests` sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its HMI driver calls (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `sound.c` plays the voices. `sound_play_with_fallback` uses the sound of index fallback when index has none.
 - The ambient sound of an animated ornament (`sensor_start_ambient_sound`) plays at once only when the animation cycle starts now; a wall sound comes from the square in front of the wall. The Step 14 port played it always (the sound was a hook then).
 
 ### Deviations of the sound requests (Step 17)
 
 - Every sound of `GRAPHICS.DAT` counts as loaded. The original plays only the sounds that `gdat_load_map_graphics` loads for the map (`sound_find_loaded`, table from `gdat_load_entry_sets`).
 - Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_play_delayed` masks the slot to 0 to 7.
-- The driver checks of `sound_play_requests` (digital sound on, master volume) and its voice handles are the DOS layer: `sound.c` plays the voices.
+- The port does not check the sound settings of `sound_play_requests` (digital sound on, sound volume not 0). The sound volume setting is Step 20 (dialogs).
 - The walking distance (`creature_get_party_distance`, the party distance map of Step 16) is a hook that returns 0: a sound is not pushed away until Step 16.

@@ -554,6 +554,7 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
 
 
 SOUND_REQUEST, DUN_SET_CURRENT_MAP, G_ALT_VIEW_MAP = 0x15CA9, 0x1C724, 0x7F278
+DUN_UNLINK_THING_FROM_SQUARE, DUN_LINK_THING_TO_SQUARE = 0x1D542, 0x1D3DB
 
 
 def sound_keys(lib, gdat):
@@ -591,7 +592,7 @@ def test_sound_requests_match_original(world, lib, gdat):
         if passage:  # the party sees the map other through a seamless passage
             sc.party.alt_view_map = other
             sc.emu.write(G_ALT_VIEW_MAP, struct.pack("<h", other))
-        requests = rng.randrange(1, 7)
+        requests, last = rng.randrange(1, 7), None
         several += requests > 1
         for _ in range(requests):
             delay = rng.choice((0, 1, 1, 1, -1, -1, 2, 5, 8))
@@ -601,6 +602,10 @@ def test_sound_requests_match_original(world, lib, gdat):
             sc.emu.call(DUN_SET_CURRENT_MAP, source)
             args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, 0x80, 0xC8, 0xFF, rng.randrange(256))),
                     x + rng.randrange(-5, 6), y + rng.randrange(-5, 6), delay)
+            if last and rng.random() < 0.4:  # the same sound again, at the same place or one square away
+                step = rng.choice(((0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)))
+                args = last[:5] + (last[5] + step[0], last[6] + step[1], last[7])
+            last = args
             lib.sound_request(*args)
             sc.emu.call(SOUND_REQUEST, *args)
         lib.dun_set_current_map(map_)
@@ -651,9 +656,20 @@ def ambient_wall_sensors(lib, gdat):
     return out
 
 
+def turn_wall_thing(sc, thing, x, y, cell):
+    """Moves a wall thing of the current map to the wall face cell (to the end of its square list) in both."""
+    turned = (thing & 0x3FFF) | cell << 14
+    map_ = sc.party.cur_map
+    sc.lib.dungeon_unlink_thing_from_square(thing, map_, x, y)
+    sc.emu.call(DUN_UNLINK_THING_FROM_SQUARE, thing, 0, x, y)
+    sc.lib.dungeon_link_thing_to_square(turned, map_, x, y)
+    sc.emu.call(DUN_LINK_THING_TO_SQUARE, turned, 0, x, y)
+    return turned
+
+
 def test_ambient_wall_sounds_match_original(world, lib, gdat):
     # The party enters the map of an audible animated wall ornament when its animation cycle starts (the sound plays
-    # at once): the party stands on the square in front of the wall (the sound comes from the wall square) or
+    # at once), the ornament turned to each of the 4 wall faces: the party stands on the square in front of the wall (the sound comes from the wall square) or
     # elsewhere (the sound comes from the square in front of the wall). The requests with their lateral and forward
     # place, the start order, loudness, and pan, and the timeline of both.
     sc = world
@@ -666,9 +682,9 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
     dirs = ((0, -1), (1, 0), (0, 1), (-1, 0))
     played = {"front": 0, "elsewhere": 0}
     all_floors = squares(lib, (1,))
-    for n, (map_, x, y, cell, sensor, cycle, offset) in enumerate(sensors * 2):
+    cases = [(s, cell, front) for s in sensors for cell in range(4) for front in (True, False)]
+    for n, ((map_, x, y, _, sensor, cycle, offset), cell, front) in enumerate(cases):
         fx, fy = x + dirs[cell][0], y + dirs[cell][1]
-        front = n < len(sensors)
         floors = [(sx, sy) for m, sx, sy, _ in all_floors if m == map_ and (sx, sy) != (fx, fy)]
         if front:
             if not (0 <= fx < lib.dungeon_map_width(map_) and 0 <= fy < lib.dungeon_map_height(map_)) \
@@ -680,6 +696,7 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
         else:
             continue
         sc.place(map_, *party, rng.randrange(4))
+        sensor = turn_wall_thing(sc, sensor, x, y, cell)
         data = lib.thing_word(sensor, 2) & 0x7FFF  # not started yet
         set_word(sc, sensor, 2, data)
         set_word(sc, sensor, 4, lib.thing_word(sensor, 4) | 1)  # the animation runs
