@@ -2,8 +2,10 @@
 state and screen; the program starts it with --control."""
 
 import ctypes
+import json
 import os
 import shutil
+import socket
 import struct
 import subprocess
 import tempfile
@@ -17,23 +19,32 @@ import pytest
 from dm2tools.control_client import request
 from test_input import session  # noqa: F401 (a fixture)
 from conftest import ROOT
-from test_move import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from test_move import WorldGame, gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 KEY_SHIFT, KEY_ALT = 0x200, 0x800
 SCAN_A, SCAN_ENTER = 0x1E, 0x1C
 ZONE_TURN_RIGHT = 0x29
 INPUT_MODE_MOVE, LEFT = 5, 2
 DIRECTIONS = ((0, -1), (1, 0), (0, 1), (-1, 0))
-GAME_CHAMPIONS = 252  # offsetof(Game, champions) in save.h
+SCREEN_W, SCREEN_H, PALETTE_COLORS, RGB = 320, 200, 256, 3
+PNG_ROW = 1 + RGB * SCREEN_W  # the filter byte and the pixels of a row
+CHAMPION_SIZE, NAME_SIZE, SCAN_QUOTE = 263, 8, 0x28
+LONG_LINE = 5000  # more than the request buffer of 4096 bytes
+
+
+class GameWithChampions(WorldGame):
+    """save.h Game up to the champion records."""
+    _fields_ = [("global_flags", ctypes.c_uint8 * 8), ("global_bytes", ctypes.c_uint8 * 64),
+                ("global_words", ctypes.c_uint16 * 64), ("champions", ctypes.c_uint8 * CHAMPION_SIZE * 4)]
 
 
 @pytest.fixture
 def control(lib, gdat, session):  # noqa: F811
     """start.DAT ready to play with its palette and the control socket open; yields the socket path, the game record,
     the main loop."""
-    palette = (ctypes.c_uint8 * (256 * 3)).in_dll(lib, "palette")
-    for c in range(256):
-        assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, 3 * c)) == 0
+    palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "palette")
+    for c in range(PALETTE_COLORS):
+        assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "sub", "control.sock")
     lib.control_open.argtypes = [ctypes.c_char_p]
@@ -83,18 +94,33 @@ def read_png(path):
         chunks[kind] = chunks.get(kind, b"") + body
         pos += 12 + n
     width, height, depth, color = struct.unpack(">IIBB", chunks[b"IHDR"][:10])
-    assert (width, height, depth, color) == (320, 200, 8, 2)
+    assert (width, height, depth, color) == (SCREEN_W, SCREEN_H, 8, 2)
     raw = zlib.decompress(chunks[b"IDAT"])
-    rows = [raw[y * 961:(y + 1) * 961] for y in range(200)]
+    rows = [raw[y * PNG_ROW:(y + 1) * PNG_ROW] for y in range(SCREEN_H)]
     assert all(row[0] == 0 for row in rows)
-    return [[tuple(row[1 + 3 * x:4 + 3 * x]) for x in range(320)] for row in rows]
+    return [[tuple(row[1 + RGB * x:1 + RGB * (x + 1)]) for x in range(SCREEN_W)] for row in rows]
 
 
 def screen_rgb(lib):
     lib.video_argb.restype = ctypes.c_uint32
-    colors = [lib.video_argb(c) for c in range(256)]
-    fb = (ctypes.c_uint8 * (320 * 200)).in_dll(lib, "fb")
-    return [[((a := colors[fb[y * 320 + x]]) >> 16 & 255, a >> 8 & 255, a & 255) for x in range(320)] for y in range(200)]
+    colors = [lib.video_argb(c) for c in range(PALETTE_COLORS)]
+    fb = (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "fb")
+    return [[((a := colors[fb[y * SCREEN_W + x]]) >> 16 & 255, a >> 8 & 255, a & 255) for x in range(SCREEN_W)]
+            for y in range(SCREEN_H)]
+
+
+def raw_lines(path, data, count):
+    """Sends raw bytes and returns the first count reply lines as objects."""
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.settimeout(10)
+        s.connect(path)
+        s.sendall(data)
+        received = b""
+        while received.count(b"\n") < count:
+            chunk = s.recv(65536)
+            assert chunk, received
+            received += chunk
+    return [json.loads(line) for line in received.split(b"\n")[:count]]
 
 
 def test_state_tells_the_party_and_the_champions(control, lib):
@@ -106,7 +132,8 @@ def test_state_tells_the_party_and_the_champions(control, lib):
     assert state["party"] == {"map": game.party_map, "x": game.party_x, "y": game.party_y, "dir": game.party_dir}
     assert state["champion_count"] == game.champion_count == len(state["champions"]) and state["leader"] == 0
     champion = state["champions"][0]
-    name = (ctypes.c_char * 8).from_address(ctypes.addressof(game) + GAME_CHAMPIONS).value.decode()
+    name = (ctypes.c_char * NAME_SIZE).from_address(
+        ctypes.addressof(game) + GameWithChampions.champions.offset).value.decode()
     assert champion["name"] == name
     assert champion["health"][0] > 0 and champion["health"][0] <= champion["health"][1]
     assert state["inventory"] == state["candidate"] == -1 and state["end"] == state["quit"] == 0
@@ -117,9 +144,10 @@ def test_keys_by_name_and_code(control, lib):
     path, *_ = control
     lib.input_read_key.restype = ctypes.c_uint16
     with pumped(lib, ticks=False):
-        for key in ("alt+a", "A", "shift+right", "enter", SCAN_ENTER):
+        for key in ("alt+a", "A", "shift+right", "enter", SCAN_ENTER, '"'):
             assert request({"cmd": "key", "key": key}, path) == {"ok": True}
-    assert [lib.input_read_key() for _ in range(5)] == [SCAN_A | KEY_ALT, SCAN_A | KEY_SHIFT, 0x51, SCAN_ENTER, SCAN_ENTER]
+    assert [lib.input_read_key() for _ in range(6)] == [SCAN_A | KEY_ALT, SCAN_A | KEY_SHIFT, 0x51, SCAN_ENTER, SCAN_ENTER,
+                                                         SCAN_QUOTE | KEY_SHIFT]
 
 
 def test_key_click_and_command_move_the_party(control, lib):
@@ -165,6 +193,54 @@ def test_screenshot_is_the_screen_with_the_pointer(control, lib, tmp_path):
     pointed = read_png(tmp_path / "b.png")
     changed = {(x, y) for y in range(200) for x in range(320) if pointed[y][x] != screen[y][x]}
     assert changed and all(100 <= x < 116 and 100 <= y < 116 for x, y in changed)  # a 16 x 16 cursor, hot spot (0, 0)
+
+
+def test_screenshot_path_with_non_ascii_characters(control, lib, tmp_path):
+    path, *_ = control
+    shot = tmp_path / "Bild \u00e4\u20ac\U0001f600.png"  # the client sends them as \\u escapes
+    with pumped(lib, ticks=False):
+        assert request({"cmd": "screenshot", "path": str(shot)}, path) == {"ok": True, "path": os.path.realpath(shot)}
+    assert shot.exists()
+
+
+def test_open_keeps_a_file_that_is_not_a_socket(lib):
+    folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")
+    path = os.path.join(folder, "start.DAT")
+    with open(path, "wb") as f:
+        f.write(b"save")
+    lib.control_open.argtypes = [ctypes.c_char_p]
+    assert not lib.control_open(path.encode())
+    assert open(path, "rb").read() == b"save"
+    shutil.rmtree(folder)
+
+
+def test_a_client_that_leaves_during_a_wait_frees_the_socket(control, lib):
+    path, *_ = control
+    with pumped(lib, ticks=False):  # the wait never ends by itself
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(path)
+            s.sendall(b'{"cmd": "wait", "ticks": 6000}\n')
+            time.sleep(0.05)
+        assert request({"cmd": "state"}, path, timeout=5)["ok"]
+
+
+def test_a_second_client_gets_busy(control, lib):
+    path, *_ = control
+    with pumped(lib, ticks=False), socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as first:
+        first.connect(path)
+        first.sendall(b'{"cmd": "wait", "ticks": 6000}\n')
+        time.sleep(0.05)
+        assert request({"cmd": "state"}, path, timeout=5) == {"ok": False, "error": "busy"}
+
+
+def test_long_line_and_nul_byte_get_one_error_each(control, lib):
+    path, *_ = control
+    data = b"x" * LONG_LINE + b"\n" + b'{"cmd": "state"\0}\n' + b'{"cmd": "state"}\n'
+    with pumped(lib, ticks=False):
+        long_line, nul, state = raw_lines(path, data, 3)
+    assert long_line == {"ok": False, "error": "request line too long"}
+    assert nul == {"ok": False, "error": "request line has a NUL byte"}
+    assert state["ok"] and state["mode"] == "move"
 
 
 def test_bad_requests_get_errors(control, lib):
