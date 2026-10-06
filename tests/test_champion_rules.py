@@ -2,6 +2,7 @@
 code in dm2tools.emu, then the same results, random seed, champions, and dungeon."""
 
 import ctypes
+import itertools
 import random
 import struct
 
@@ -256,7 +257,8 @@ def assert_same_actions(rules, where):
 
 def test_eating_drinking_and_actions_match_original(rules, lib):
     # Potions of all kinds and powers, food, water from flasks, and every action of random items in the hands of
-    # random champions at random places: the actions, their charges, the reload of a free hand, and the repeats.
+    # random champions at random places: the actions, their charges, the reload of a free hand, and the repeats. Then
+    # every action of every weapon kind.
     from test_move import squares
     rng, emu, scenario = rules.rng, rules.emu, rules.s
     lib.champ_list_actions.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
@@ -286,6 +288,17 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     performed = consumed = 0
     commands = set()
     repeats = 0
+
+    def hold(champ, hand, t, word):
+        rules.set_word(t, 2, word)
+        for c in range(4):  # the item must not be in two hands
+            for k in range(2):
+                off = c * CHAMPION_SIZE + CH["slots"] + 2 * k
+                if struct.unpack_from("<H", bytes(champion_records(lib)), off)[0] == t:
+                    champion_bytes(lib, c, CH["slots"] + 2 * k, b"\xff\xff")
+        champion_bytes(lib, champ, CH["slots"] + 2 * hand, struct.pack("<H", t))
+        sync_champions(lib, scenario)
+
     for n in range(1500):
         if n % 10 == 0:
             rules.randomize()
@@ -323,14 +336,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
                 if kind_ == WEAPON and rng.random() < 0.6:
                     index = REPEATING_WEAPON
                 charges = rng.randrange(4) << 14 if kind_ == MISC else rng.randrange(16) << (10 if kind_ == WEAPON else 9)
-                rules.set_word(t, 2, index | charges)
-                for c in range(4):  # the item must not be in two hands
-                    for k in range(2):
-                        off = c * CHAMPION_SIZE + CH["slots"] + 2 * k
-                        if struct.unpack_from("<H", bytes(champion_records(lib)), off)[0] == t:
-                            champion_bytes(lib, c, CH["slots"] + 2 * k, b"\xff\xff")
-                champion_bytes(lib, champ, CH["slots"] + 2 * hand, struct.pack("<H", t))
-                sync_champions(lib, scenario)
+                hold(champ, hand, t, index | charges)
             action_state.hand = hand
             emu.write(G_ACTION_HAND, struct.pack("<h", hand))
             thing = struct.unpack_from("<H", bytes(champion_records(lib)), champ * CHAMPION_SIZE + CH["slots"] + 2 * hand)[0]
@@ -367,6 +373,26 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             restore_minion_links(rules, saved_links)
     assert performed > 150 and consumed > 150 and len(commands) > 20 and repeats > 2 and minion_links, (
         performed, consumed, sorted(commands), repeats, minion_links)
+    exercised, listed = set(), set()
+    for index in ACTION_ITEMS[WEAPON]:  # every action of every weapon kind, in the first hand of the first champion
+        for action, _ in itertools.product(range(3), range(10)):  # random champions until one lists the action
+            if (index, action) in exercised:
+                continue
+            rules.randomize()
+            t = rules.pool[0]
+            hold(0, 0, t, index | 15 << 10)
+            action_state.hand = 0
+            emu.write(G_ACTION_HAND, struct.pack("<h", 0))
+            assert lib.champ_list_actions(0, t, 0) == emu.call(CHAMP_LIST_ACTIONS, 0, t, 0), (index, action)
+            count = ctypes.c_int.in_dll(lib, "champ_action_count").value
+            listed |= {(index, a) for a in range(count)}
+            if action < count:
+                assert lib.champ_perform_action(0, action) == emu.call(CHAMP_PERFORM_ACTION, 0, action), (index, action)
+                exercised.add((index, action))
+            rules.assert_same((index, action))
+            assert_same_actions(rules, (index, action))
+    restore_minion_links(rules, saved_links)
+    assert {i for i, _ in exercised} == set(ACTION_ITEMS[WEAPON]) and exercised == listed, sorted(listed - exercised)
 
 
 MONEY_INIT_COIN_TABLE, ITEM_CREATE_BY_INDEX, MONEY_ADD_COIN_TO_BOX = 0x154E0, 0x1DE8E, 0x1F413
