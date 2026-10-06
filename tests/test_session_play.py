@@ -453,3 +453,47 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     assert LeaderHand.in_dll(lib, "leader_hand").icon == emu.read(G_LEADER_HAND_ICON, 1)[0] == 0xFF
     assert sorted(t for t in struct.unpack_from("<30H", bytes(records), CH_SLOTS) if t != 0xFFFF) == sorted(slots)
     loop.assert_loop("new game")
+
+
+CHAMP_APPLY_PENDING_DAMAGE, G_GAME_END_FLAG, G_PENDING_DAMAGE = 0x47113, 0x7F24C, 0x7FBAC
+
+
+def test_dead_party_ends_the_game_like_original(play, lib, request):
+    # The damage of a step kills the last champion: champ_kill sets the end flag in both (main_loop.end and
+    # g_game_end_flag), drops the objects and the bones. Then game_end with that flag, as main.c and the original main
+    # call it: the scream of the dead champion, the end dialog, QUIT GAME: the exit code of a dead party.
+    sc = play
+    emu = sc.emu
+    from test_input import MainLoop
+    loop = MainLoop.in_dll(lib, "main_loop")
+    request.addfinalizer(lambda: setattr(loop, "end", 0))  # the next tests start with a running loop
+    assert sc.game.champion_count == 1 and not loop.end
+    damage = (ctypes.c_int16 * 4).in_dll(lib, "champ_pending_damage")
+    damage[0] = 999
+    emu.write(G_PENDING_DAMAGE, struct.pack("<h", 999))
+    lib.champ_apply_pending_damage()
+    emu.call(CHAMP_APPLY_PENDING_DAMAGE)
+    assert loop.end == struct.unpack("<h", emu.read(G_GAME_END_FLAG, 2))[0] == 1
+    sc.assert_same("death")
+    sc.assert_equal("death")
+    dialogs, quits = [], []
+    emu.stub(UI_DIALOG_DRAW, lambda d, m, *_: dialogs.append((d & 0xFF, m & 0xFF)) or d & 0xFF)
+    emu.stub(UI_DIALOG_RUN, lambda *_: 1)  # the text entry of QUIT GAME
+    for addr in (SAVE_CHECK_DISK, WAIT_VBLANKS, GFX_FILL_ZONE_SCREEN, IOP_SET_VIDEO_STATE):
+        emu.stub(addr, lambda *_: 0)
+
+    def quit_(*_):
+        quits.append(emu.read(G_QUIT_EXIT_CODE, 2))
+        raise RuntimeError("game_quit")
+
+    emu.stub(GAME_QUIT, quit_)
+    emu.write_u32(G_END_OFFER_RESTORE, 1)
+    Session.in_dll(lib, "session").offer_restore = 1
+    with Player(lib, [click_choice(2)], every=300):
+        lib.game_end(loop.end)
+    with pytest.raises(EmuError, match="game_quit"):
+        emu.call(GAME_END, struct.unpack("<h", emu.read(G_GAME_END_FLAG, 2))[0])
+    assert dialogs == [(0x10, 0)] and quits == [b"\x01\x00"]
+    assert (Session.in_dll(lib, "session").exit_code, main_loop_quit(lib).value) == (2, 1)
+    sc.flush_sounds()
+    sc.assert_same_sounds("scream")
