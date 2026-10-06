@@ -164,7 +164,7 @@ def test_screenshot_is_the_screen_with_the_pointer(control, lib, tmp_path):
     assert read_png(tmp_path / "a.png") == screen and len({rgb for row in screen for rgb in row}) > 16
     pointed = read_png(tmp_path / "b.png")
     changed = {(x, y) for y in range(200) for x in range(320) if pointed[y][x] != screen[y][x]}
-    assert changed and all(100 <= x < 108 and 100 <= y < 111 for x, y in changed)
+    assert changed and all(100 <= x < 116 and 100 <= y < 116 for x, y in changed)  # a 16 x 16 cursor, hot spot (0, 0)
 
 
 def test_bad_requests_get_errors(control, lib):

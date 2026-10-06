@@ -17,7 +17,6 @@
 #include "input.h"
 #include "item.h"
 #include "save.h"
-#include "text.h"
 #include "ui.h"
 #include "video.h"
 
@@ -220,12 +219,6 @@ static void send_state(void)
 #define PNG_BIT_DEPTH 8
 #define PNG_COLOR_RGB 2
 
-/* The arrow pointer of a screenshot where the cursor is not the hand object (the window shows the system pointer):
-   'o' outline, 'f' fill. */
-static const char *const arrow[] = {
-    "o", "oo", "ofo", "offo", "offfo", "offffo", "offfffo", "offffffo", "offfoooo", "ofo", "oo",
-};
-
 static uint32_t crc_table[256];
 
 static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
@@ -300,18 +293,13 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
     return fclose(f) == 0;
 }
 
-/* The screen as the window shows it, with the pointer: the hand object or an arrow. */
+/* The screen as the window shows it, with the cursor image at the pointer (none before the first pointer move). */
 static void screenshot(const char *path)
 {
     static uint8_t screen[SCREEN_H][SCREEN_W];
     char absolute[PATH_MAX];
-    int x = input_mouse_x, y = input_mouse_y;
     memcpy(screen, fb, sizeof screen);
-    if (x >= 0 && y >= 0 && ui_colors && !input_draw_hand_cursor(&screen[0][0], x, y))
-        for (int r = 0; r < (int)(sizeof arrow / sizeof arrow[0]); r++)
-            for (int i = 0; arrow[r][i]; i++)
-                if (x + i < SCREEN_W && y + r < SCREEN_H)
-                    screen[y + r][x + i] = ui_colors[arrow[r][i] == 'o' ? UI_BLACK : UI_WHITE];
+    if (input_mouse_x >= 0 && input_mouse_y >= 0) input_draw_cursor(&screen[0][0], input_mouse_x, input_mouse_y);
     if (!write_png(path, screen) || !realpath(path, absolute)) {
         send_error("cannot write the PNG file");
         return;
