@@ -100,6 +100,21 @@ def test_marks_start_and_squares_ahead(lib, automap):
     assert seen_squares(lib, m) == expected(lib, m, x, y, d)
 
 
+def test_vanilla_marks_no_square(lib, session):  # noqa: F811
+    # Only the advanced mode marks the view of the party (game.c): a vanilla walk and turn mark nothing.
+    game, _ = session
+    set_mode(lib, VANILLA)
+    lib.input_key_down.argtypes = [ctypes.c_uint16]
+    lib.automap_reset()
+    x, y = game.party_x, game.party_y
+    run_ticks(lib, 20)
+    press(lib, 0x4C)  # forward
+    run_ticks(lib, 40)
+    press(lib, 0x4D)  # turn right
+    assert (game.party_x, game.party_y) != (x, y)
+    assert not seen_squares(lib, game.party_map)
+
+
 def test_the_game_marks_what_the_view_shows(lib, automap):
     # Each game step marks the view of the party; a turn shows more squares.
     game, _ = automap
