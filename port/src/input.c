@@ -56,6 +56,8 @@
 #define CURSOR_H 16
 #define FACE_SIZE 17
 #define FACE_CURSOR_SKIP 4  /* color 4 of the face keeps the fill color of the dragged champion cursor */
+#define OBJECT_SHADOW 2     /* the offset of the black shadow of the held object cursor */
+#define OBJECT_CURSOR_SIZE (HAND_ICON_SIZE + OBJECT_SHADOW)
 
 typedef struct { uint8_t cond, arg; uint16_t link; } InputNode;
 typedef struct { uint16_t zone; int16_t commands, keys; uint8_t cursor; } InputZone;
@@ -593,9 +595,20 @@ CursorImage input_cursor_image(int cursor)
 {
     switch (cursor) {
     case CURSOR_HAND: return (CursorImage){cursor_hand, ui_colors, 4, HAND_W, CURSOR_H, 0, 0, UI_KEY};
-    case CURSOR_OBJECT:
-        return (CursorImage){leader_hand.cursor, leader_hand.palette, 8, HAND_ICON_SIZE, HAND_ICON_SIZE,
-                             HAND_ICON_SIZE / 2, HAND_ICON_SIZE / 2, HAND_ICON_KEY};
+    case CURSOR_OBJECT: {
+        static uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE];
+        uint8_t key = leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
+        memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
+        memset(object_cursor, key, sizeof object_cursor);
+        const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, 8};
+        Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, 8};
+        const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
+        const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
+        gfx_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
+        gfx_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
+        return (CursorImage){object_cursor, NULL, 8, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
+                             HAND_ICON_SIZE / 2, HAND_ICON_SIZE / 2, key};
+    }
     case CURSOR_CHAMPION:
         return (CursorImage){champion_cursor, NULL, 8, FACE_SIZE, FACE_SIZE, 8, 6, champion_cursor_key};
     default: return (CursorImage){cursor_arrow, ui_colors, 4, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
