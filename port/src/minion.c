@@ -177,6 +177,7 @@ static void draw_strip(const Strip *s, int icon, int x, int y, int mirror)
     draw_icon(s->image, s->palette, icon, x, y, mirror);
 }
 
+/* True for a square of map. */
 static int inside_map(int map, int x, int y)
 {
     return x >= 0 && x < dungeon_map_width(map) && y >= 0 && y < dungeon_map_height(map);
@@ -257,6 +258,7 @@ static void draw_group(uint16_t group, uint16_t map_thing, int dir, int x, int y
 /* The missile kinds of item_get_image_kind: which pictures a missile has. */
 enum { MISSILE_NONE = -1, MISSILE_FRONT_MIRRORED, MISSILE_THREE_SIDES, MISSILE_FRONT_ONLY, MISSILE_NO_SIDE };
 
+/* How the pictures of a flying object show its sides: from the images that exist in its GDAT entry. */
 static int missile_image_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing), index = item_gdat_index(thing);

@@ -1482,7 +1482,7 @@ static int cmd_go_to_target(void)
     return ai.command_result;
 }
 
-/* Plan command: the creature attacks or uses its target at the end of the path. */
+/* Plan command: the creature attacks its target with the attacks that its plan allows. */
 static int cmd_follow_path(void)
 {
     AiItemCounts *c = creature_ai_get_item_counts(ai.cache.targets, ai.cache.scan_kind);
