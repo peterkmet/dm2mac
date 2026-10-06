@@ -998,6 +998,7 @@ static void automap_input(void)
         advanced_automap_event(type, x, y);
     }
     if (advanced_automap_open) advanced_automap_drag(input_mouse_x, input_mouse_y);
+    else input_flush();  /* the input after the close key does not reach the game */
 }
 
 void input_poll(void)
