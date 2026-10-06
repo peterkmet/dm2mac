@@ -933,6 +933,7 @@ MERCHANT_COMMANDS = {"shop_cmd_wait_for_offer": 0x28574, "shop_cmd_evaluate_offe
                      "shop_cmd_count_payment": 0x28E99, "shop_cmd_pay_change": 0x296D5}
 DUN_GET_THING_DATA, DUN_LINK_THING_TO_SQUARE, DUN_UNLINK_THING_FROM_SQUARE = 0x1D2DA, 0x1D3DB, 0x1D542
 ITEM_CREATE_BY_INDEX = 0x1DE8E
+MONEY_BOX = 0xA40F  # the money box on the shelf of the first room (map 22)
 MERCHANT, CUSTOMER = (0x1089, 4, 6, 18), (0x1087, 3, 4)  # map 18: the merchant, and a static group as the counter
 GROUP_DIR_WORD, WEST = 0x0E, 3
 
@@ -968,11 +969,18 @@ def test_merchant_commands(ai):
         mine, theirs = lib.item_create_by_index(index), ai.emu.call(ITEM_CREATE_BY_INDEX, index) & 0xFFFF
         assert mine == theirs != NONE, hex(index)
         pool.append(mine)
+    # a money box of the merchant with coins of its own: the change goes into it
+    box_index = lib.item_get_index(MONEY_BOX)
+    box, theirs = lib.item_create_by_index(box_index), ai.emu.call(ITEM_CREATE_BY_INDEX, box_index) & 0xFFFF
+    assert box == theirs != NONE and lib.item_is_moneybox(box)
+    box_coins = [lib.item_create_by_index(index) for index in coins * 2]
+    assert box_coins == [ai.emu.call(ITEM_CREATE_BY_INDEX, index) & 0xFFFF for index in coins * 2]
     ai.begin(g, x, y, m)
     goods = [t for t in pool if ai.call("creature_thing_matches_filter", t, 0x10)[0]]
     ai.end()
     assert goods
     results = {}
+    boxes = change_in_box = 0
     for n in range(300):
         # the goods of the merchant lie in cell 1 (the cell of the counter on the merchant side, it faces west): the
         # original divides by 0 for a price of 0
@@ -989,10 +997,25 @@ def test_merchant_commands(ai):
         t = lib.thing_word(g, 2)
         while t != ENDOFLIST:
             nxt = lib.dungeon_next_thing(t)
-            if t & 0x3FFF not in pool:
+            if t & 0x3FFF not in pool and t != box:
                 set_word(ai, t, 0, NONE)
             t = nxt
         set_word(ai, g, 2, ENDOFLIST)
+        if rng.random() < 0.4:
+            t = lib.thing_word(box, 2)
+            while t != ENDOFLIST:
+                nxt = lib.dungeon_next_thing(t)
+                if t & 0x3FFF not in box_coins:
+                    set_word(ai, t, 0, NONE)
+                t = nxt
+            inside = rng.sample(box_coins, rng.randrange(len(box_coins) + 1))
+            for t, nxt in zip(inside, inside[1:] + [None]):
+                set_word(ai, t, 2, lib.thing_word(t, 2) & 0xC07F | rng.randrange(8) << 8)
+                set_word(ai, t, 0, ENDOFLIST if nxt is None else nxt)
+            set_word(ai, box, 2, inside[0] if inside else ENDOFLIST)
+            set_word(ai, box, 0, ENDOFLIST)
+            set_word(ai, g, 2, box)
+            boxes += 1
         ai.begin(g, x, y, m)
         for k in range(4):
             name = rng.choice(list(MERCHANT_COMMANDS))
@@ -1005,4 +1028,9 @@ def test_merchant_commands(ai):
             ai.check((n, k, name), dungeon=True)
             results.setdefault(name, set()).add(mine)
         ai.end()
-    assert all(len(r) >= 2 for r in results.values()) and len(results) == 4, results
+        t = lib.thing_word(box, 2)
+        while t != ENDOFLIST and lib.thing_word(g, 2) == box:
+            change_in_box += t & 0x3FFF not in box_coins
+            t = lib.dungeon_next_thing(t)
+    assert all(len(r) >= 2 for r in results.values()) and len(results) == 4 and boxes > 80 and change_in_box > 5, (
+        results, boxes, change_in_box)
