@@ -2,10 +2,13 @@
 
 import ctypes
 import random
+import shutil
 import struct
 
 import pytest
 
+from conftest import ROOT
+from test_save import GRAPHICS
 from test_move import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 INPUT_INIT_TABLES, INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND = 0x20847, 0x203A3, 0x2048A
@@ -256,21 +259,28 @@ def test_clicks_on_the_movement_arrows(session, lib):
     assert (game.party_x, game.party_y) != (x, y)
 
 
-def test_save_start_computes_the_party_light(lib, gdat, start, tmp_path):
+def test_save_start_matches_a_menu_load(start, tmp_path):
     # build/dm2 --save starts start.DAT as the menu load does: the first view has the party light of the save, not the
-    # light level of the program start.
+    # light level of the program start, and the level digits come from the dungeon (the first load reads them).
+    shutil.copyfile(ROOT / "build" / "libdm2.dylib", tmp_path / "libdm2.dylib")
+    lib = ctypes.CDLL(str(tmp_path / "libdm2.dylib"))  # its own copy: the globals of the program start
+    gdat = ctypes.c_void_p()
+    assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(gdat)) == 0
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
     lib.input_init()
-    level = ctypes.c_int.in_dll(lib, "view_light_level")
-    level.value = -1
-    ctypes.c_int16.in_dll(lib, "last_party_map").value = -1  # the program start
     assert lib.game_start_save(str(path).encode()) == 1
+    level = ctypes.c_int.in_dll(lib, "view_light_level")
     loaded = level.value
+    levels = range(max(lib.dungeon_map_level(m) for m in range(lib.dungeon_map_count())) + 1)
+    digits = [lib.dungeon_level_digit(n) for n in levels]
     lib.light_update_party_light()
+    lib.dungeon_read_level_table()
     assert loaded == level.value == 1
+    assert digits == [lib.dungeon_level_digit(n) for n in levels] and len(set(digits)) > 1
+    lib.gdat_free(gdat)
 
 
 # The original main loop (game_loop) in parts: the timer interrupt body, one pass of the input wait (the wall drag
