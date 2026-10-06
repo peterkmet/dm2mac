@@ -158,7 +158,7 @@ A game step takes 8 ticks. A step forward needs about 40 ticks before the party 
 
 ### screenshot
 
-Writes a PNG file of 320 x 200 pixels: the screen with the palette and the pointer. Over a zone where the game shows the leader hand object, the pointer is that object, as in the window. In other places the pointer is a small white arrow with its tip at the pointer position. Before the first click or move, a screenshot has no pointer. The reply gives the absolute path.
+Writes a PNG file of 320 x 200 pixels: the screen with the palette and the cursor at the pointer. The cursor is the original cursor image that the window shows there: the arrow, the hand, the held object with its shadow, or the dragged champion. Before the first click or move (and before a mouse move in the window), a screenshot has no cursor. The reply gives the absolute path.
 
 ```json
 {"cmd": "screenshot", "path": "/tmp/shot.png"}
