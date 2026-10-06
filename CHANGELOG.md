@@ -26,7 +26,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 - `tools/dosbox-nointro.sh` starts DOSBox without the intro movies.
 - Game modes: `--mode vanilla|advanced`, default `advanced`. The advanced mode adds W A S D Q E for movement and F5 and F9 for a quick save and quick load in `DATA/QUICK.DAT`. The control state gives the mode in `game_mode`. Details: `docs/advanced-mode.md`.
 - Automap in the advanced mode: Tab or M opens a map of the seen squares of the party map in the viewport, with the minion map icons and a readout of the position and the cheats. The game time stops while it is open; a mouse drag scrolls it. Slot saves and `QUICK.DAT` keep the seen squares in an AMAP block after the original save data.
-- Cheats on the open automap: I immortal, F food and water, L light. A new or loaded game turns them off. The control state gives `automap`, `cheat_immortal`, `cheat_food`, and `cheat_light`.
+- Cheats on the open automap: I immortal, F food and water, L full light. A new or loaded game turns them off. The control state gives `automap`, `cheat_immortal`, `cheat_food`, and `cheat_light`.
 
 ### Changed
 

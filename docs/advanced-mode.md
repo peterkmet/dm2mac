@@ -57,7 +57,7 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 
 - `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks before the quit, as after a game that is not saved.
 - `NO QUICK SAVE`: the file does not exist. The game goes on.
-- `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. If the copy in `QUICK.TMP` also does not load, the program ends and `QUICK.TMP` stays.
+- `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. If the copy in `QUICK.TMP` also does not load, the program prints an error and ends with exit code 4; `QUICK.TMP` stays.
 - `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `DATA/QUICK.TMP` before the load, so it does not load. The game goes on.
 
 ## Automap
@@ -66,7 +66,7 @@ The automap shows the squares of the party map that the dungeon view has shown. 
 
 - The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. A red frame and the champion icons of a minion map item mark the party square.
 - Only the seen squares show. Other squares stay black.
-- The readout at the top left shows `LEVEL n  X x  Y y`, the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`), and the cheat states `I IMMORTAL ON|OFF`, `F FOOD AND WATER ON|OFF`, and `L LIGHT ON|OFF`.
+- The readout at the top left shows `LEVEL n  X x  Y y`, the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`), and the cheat states `I IMMORTAL ON|OFF`, `F FOOD AND WATER ON|OFF`, and `L FULL LIGHT ON|OFF`.
 - The game time stops while the automap is open. Keys other than the automap keys do nothing.
 - Drag the map with the left mouse button. The map moves in whole squares. The middle of the map stays on the map. The next automap opens on the party again.
 
@@ -104,4 +104,4 @@ The cheats switch only on the open automap of the advanced mode. The automap dra
 
 - `I` immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
 - `F` food and water: food and water do not go down with the time. Eating and drinking still raise them.
-- `L` light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
+- `L` full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
