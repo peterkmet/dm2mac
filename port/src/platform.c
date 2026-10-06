@@ -1,8 +1,11 @@
 #include <SDL3/SDL.h>
+#include "music.h"
 #include "platform.h"
 #include "scale.h"
 #include "sound.h"
 #include "video.h"
+
+_Static_assert(MUSIC_SAMPLE_RATE == SOUND_OUTPUT_RATE, "the audio stream plays the music at the sound output rate");
 
 #define PIT_CLOCK_HZ 1193182 /* PIT input clock */
 #define PIT_DIVISOR 4971     /* 240 Hz, see docs/skull-formats.md section 6 */
@@ -20,7 +23,7 @@ static int mouse_x, mouse_y;
 static int filter = 1; /* upscale factor: 1 none, 2 Scale2x, 3 Scale3x */
 static uint8_t big[SCREEN_H * FILTER_MAX][SCREEN_W * FILTER_MAX];
 static SDL_AudioStream *audio;
-static PlatMixer *music;
+static PlatMixer *music_mixer;
 
 int plat_init(int scale, int filter_factor)
 {
@@ -125,7 +128,7 @@ void plat_wait_tick(void)
 
 void plat_audio_music(PlatMixer *mix)
 {
-    music = mix;
+    music_mixer = mix;
 }
 
 /* Tops up the audio queue on the main thread, so that the mixers need no lock. */
@@ -137,7 +140,7 @@ void plat_audio_pump(void)
     int frames = AUDIO_QUEUE_FRAMES - SDL_GetAudioStreamQueued(audio) / frame_bytes;
     if (frames <= 0) return;
     SDL_memset(buf, 0, frames * frame_bytes);
-    if (music) music(buf, frames);
+    if (music_mixer) music_mixer(buf, frames);
     sound_mix(buf, frames);
     SDL_PutAudioStreamData(audio, buf, frames * frame_bytes);
 }
