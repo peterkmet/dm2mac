@@ -412,3 +412,44 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     assert mine == (game.game_time, game.party_map, game.party_x, game.party_y)  # a direct load of the same file
+
+
+CHAMP_INIT_PARTY_STATE, DUN_LINK_THING_TO_SQUARE = 0x49D46, 0x1D3DB
+G_LEADER, G_LEADER_HAND_ICON, G_CHAMPION_COUNT, G_CANDIDATE, G_INVENTORY = 0x759A4, 0x7FBCA, 0x7F276, 0x7F284, 0x7F972
+CH_SLOTS = 0xC3
+
+
+def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
+    # champ_init_party_state of a new game: the champion of the mirror (sensor 0x7e) on square (0, 0) of map 0 joins at
+    # once with the objects on that square, faces the party, and leads; no inventory, no mouth, no message. start.DAT
+    # is the game after this join: both take the champion out of the party and put its objects back on the square.
+    from test_champions import LeaderHand
+    from test_input import Loop
+    from test_interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records, UiState
+    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
+    loop = Loop(lib, gdat, start, tmp_path)
+    emu, game = loop.emu, loop.game
+    assert (game.party_map, game.champion_count) == (0, 1)
+    records = champion_records(lib)
+    slots = [t for t in struct.unpack_from("<30H", bytes(records), CH_SLOTS) if t != 0xFFFF]
+    assert slots
+    for t in slots:
+        assert lib.dungeon_link_thing_to_square(t | 2 << 14, 0, 0, 0) == 1
+        emu.call(DUN_LINK_THING_TO_SQUARE, t | 2 << 14, 0, 0, 0)
+    ctypes.memset(records, 0, 4 * CHAMPION_SIZE)
+    emu.write(G_CHAMPIONS, bytes(4 * CHAMPION_SIZE))
+    game.champion_count, game.leader = 0, 0xFFFF
+    emu.write(G_CHAMPION_COUNT, bytes(2))
+    emu.write(G_LEADER, struct.pack("<h", -1))
+    Session.in_dll(lib, "session").new_game = 1
+    emu.write(G_NEW_GAME, struct.pack("<H", 1))
+    lib.champ_init_party_state()
+    emu.call(CHAMP_INIT_PARTY_STATE)
+    ui = UiState.in_dll(lib, "ui")
+    mine = (game.champion_count, game.leader, ui.candidate, ui.inventory)
+    theirs = tuple(struct.unpack("<H", emu.read(addr, 2))[0] for addr in (G_CHAMPION_COUNT, G_LEADER, G_CANDIDATE,
+                                                                         G_INVENTORY))
+    assert mine == theirs == (1, 0, 0, 0)
+    assert LeaderHand.in_dll(lib, "leader_hand").icon == emu.read(G_LEADER_HAND_ICON, 1)[0] == 0xFF
+    assert sorted(t for t in struct.unpack_from("<30H", bytes(records), CH_SLOTS) if t != 0xFFFF) == sorted(slots)
+    loop.assert_loop("new game")
