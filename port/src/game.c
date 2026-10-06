@@ -241,7 +241,7 @@ static int game_step_view(void)
             if (party.move_steps) view_draw_dungeon(party.view_dir, party.view_x, party.view_y);
             else view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
             screen_present_viewport();
-            automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir);
+            if (game_mode == GAME_MODE_ADVANCED) automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir);
         }
         if (!party.move_steps) return 1;
         if (party.move_steps == 1) move_party(party.move_command);
