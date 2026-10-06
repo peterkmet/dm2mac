@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ai.h"
 #include "dungeon.h"
+#include "move.h"
 
 #define HEADER_SIZE 0x2c
 #define MAP_DESC_SIZE 16
@@ -560,4 +562,37 @@ int dungeon_write(FILE *f)
     for (int type = 0; type < THING_TYPE_COUNT; type++)
         if (!write_bytes(f, dun.things[type], (size_t)thing_size[type] * dun.thing_count[type])) return 0;
     return write_bytes(f, dun.map_data, le16(dun.header + HEADER_MAP_DATA_SIZE));
+}
+
+/* Finds where the stairs, open pit, or level link of a square lead one level up or down. */
+int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags)
+{
+    int fall_into = 0;
+    dun_set_current_map(map);
+    uint8_t square = dun_get_square(*x, *y);
+    int type = square_type(square);
+    if (type == SQUARE_STAIRS) {
+        if (!(flags & TRANSFER_STAIRS)) return -1;
+        if (square & SQUARE_STAIRS_UP ? level_delta != LEVEL_UP : level_delta != LEVEL_DOWN) return -1;
+    } else if (!(type == SQUARE_PIT && flags & TRANSFER_PIT && level_delta == LEVEL_DOWN && square & SQUARE_PIT_OPEN
+                 && !(square & SQUARE_FLAG_0))) {
+        if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR) return -1;
+        uint16_t sensor;
+        if (!(flags & TRANSFER_STAIRS) || dun_find_adjacent_level_link(*x, *y, level_delta, &sensor) < 0) {
+            if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP) return -1;
+            fall_into = 1;
+        }
+    }
+    int lx = *x, ly = *y;
+    int found = dungeon_location_on_map(map, level_delta, &lx, &ly);
+    *x = (int16_t)lx;
+    *y = (int16_t)ly;
+    if (found >= 0 && fall_into) {
+        /* the square above must be an open pit that leads here */
+        dun_set_current_map(found);
+        square = dun_get_square(*x, *y);
+        if (square_type(square) != SQUARE_PIT || !(square & SQUARE_PIT_OPEN) || square & SQUARE_FLAG_0) found = -1;
+        dun_set_current_map(map);
+    }
+    return found;
 }
