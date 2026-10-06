@@ -60,6 +60,7 @@
 #define FACE_HOT_X 8
 #define FACE_HOT_Y 6
 #define OBJECT_SHADOW 2     /* the offset of the black shadow of the held object cursor */
+#define OBJECT_HOT 8        /* the hot spot of the held object cursor: the center of the icon */
 #define OBJECT_CURSOR_SIZE (HAND_ICON_SIZE + OBJECT_SHADOW)
 
 typedef struct { uint8_t cond, arg; uint16_t link; } InputNode;
@@ -610,7 +611,7 @@ CursorImage input_cursor_image(int cursor)
         gfx_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
         gfx_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
         return (CursorImage){object_cursor, NULL, 8, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
-                             HAND_ICON_SIZE / 2, HAND_ICON_SIZE / 2, key};
+                             OBJECT_HOT, OBJECT_HOT, key};
     }
     case CURSOR_CHAMPION:
         return (CursorImage){champion_cursor, NULL, 8, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
