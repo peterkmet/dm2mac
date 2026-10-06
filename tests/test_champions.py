@@ -157,3 +157,27 @@ def test_drink_and_hand_actions(loop, lib):
         loop.assert_loop(("action", n))
     assert actions >= 3
     loop.assert_equal("end")
+
+
+MODE_RECRUIT, CMD_RECRUIT, CMD_RECRUIT_CANCEL = 7, 0x92, 0x93
+G_CANDIDATE, G_INVENTORY = 0x7F284, 0x7F972
+
+
+def test_recruit_and_cancel(loop, lib):
+    # The party walks to the first mirror and recruits its champion; then it walks to the next mirror, takes that
+    # champion as a candidate, and sends it back.
+    from test_interface import UiState
+    ui = UiState.in_dll(lib, "ui")
+    run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")
+    for n, command in enumerate((CMD_RECRUIT, CMD_RECRUIT_CANCEL)):
+        if n:
+            run(loop, walk(KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "next mirror")
+        run(loop, [("c", 112, 77), ("t", 16)], ("candidate", n))
+        assert (ui.candidate, struct.unpack("<H", loop.emu.read(G_CANDIDATE, 2))[0]) == (n + 2, n + 2), (
+            n, loop.game.party_x, loop.game.party_y, loop.game.party_dir)
+        assert ui.inventory == struct.unpack("<h", loop.emu.read(G_INVENTORY, 2))[0]
+        loop.assert_loop(("candidate", n))
+        run(loop, [("c", *find_click(lib, MODE_RECRUIT, command)), ("t", 16)], ("finish", n))
+        loop.assert_loop(("finish", n))
+    assert loop.game.champion_count == 2 and ui.candidate == 0
+    loop.assert_equal("end")

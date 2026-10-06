@@ -197,9 +197,10 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
         }
         if (digits) {
             if (low < 0) low = number;
-            for (; low <= number; low++) {
+            for (; low <= number && low < SHOP_CLASS_SET_SIZE * 8; low++) {
                 int16_t bit = (int16_t)(low + base);
-                if (bit >= 0) bitset[bit >> 3] |= (uint8_t)(1 << (bit & 7));  /* fix: the original writes before the set */
+                /* fix: the original writes outside the set for bad numbers */
+                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * 8) bitset[bit >> 3] |= (uint8_t)(1 << (bit & 7));
             }
             number = 0;
             low = base = -1;

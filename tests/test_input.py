@@ -220,13 +220,7 @@ class Loop(Scenario):
 
     def __init__(self, lib, gdat, start, tmp_path):
         super().__init__(lib, gdat, start, tmp_path, place_party=False)
-        from test_interface import G_FONT_BITMAP, G_UI_COLORS, VGA
-        from unicorn import UC_PROT_ALL
         emu = self.emu
-        emu.uc.mem_map(VGA, 0x10000, UC_PROT_ALL)  # the screen of the pressed buttons, messages, and panels
-        emu.write_u32(G_UI_COLORS, self.view.entry_data(1, 0, 0x0D, 0xFE))
-        font = self.view.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300]
-        emu.write_u32(G_FONT_BITMAP, self.view.put(font + bytes(0x80)))
         emu.uc.hook_del(self.view.no_ops[INPUT_POLL])
         emu.uc.hook_del(self.stubs.pop(INPUT_FLUSH))
         for addr in LOOP_STUBS:

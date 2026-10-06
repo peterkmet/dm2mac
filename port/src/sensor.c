@@ -1320,7 +1320,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
             }
             case WALL_CLICK_PORTRAIT:
                 if (flags & 4 && side == ((game.party_dir + 2) & 3)) {
-                    champ_start_recruit(game.party_x, game.party_y, game.party_map);
+                    champ_start_recruit(game.party_x, game.party_y, game.party_dir, game.party_map);
                     done = 1;
                     skip = 0;
                 }

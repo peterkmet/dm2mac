@@ -8,7 +8,6 @@
 
 /* Step 15: champions. */
 void timeline_event_magic_light(TimelineEvent *e);
-void champ_start_recruit(int x, int y, int map);
 
 /* Step 16: creatures and projectiles. */
 void creature_alert(uint16_t group, int x, int y, int flags, int amount, int chance);

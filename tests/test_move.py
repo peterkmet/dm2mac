@@ -34,7 +34,7 @@ SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
 # Functions of later steps and of the DOS layer: (address, stack arguments, result).
 STUBS = {
     0x15BAA: (5, 0), 0x15CA9: (4, 0), 0x1616D: (0, 0), 0x160DB: (0, 0),     # sound
-    0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
+    0x138D9: (0, 0),                                                         # screen
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
     0x24E62: (2, 0), 0x24328: (0, 0), 0x24171: (0, 0), 0x23E5B: (0, 0),     # creature alert, push
@@ -43,7 +43,6 @@ STUBS = {
     0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
     0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
     0x57E6C: (4, 0), 0x5A073: (0, 0),                                       # object transfer, weather
-    0x494FB: (0, 0),                                                         # recruiting
     0x14889: (0, 0), 0x38392: (0, 0),                                       # the hand cursor and its icon
     0x14C7B: (0, 0), 0x14C87: (0, 0), 0x1483A: (0, 0), 0x14846: (0, 0),     # IBMIOP input lock, mouse capture, cursor
     0x14B4F: (0, 0), 0x14C0E: (0, 0), 0x1482E: (0, 0), 0x14743: (5, 0),     # mouse areas, capture, cursor image
@@ -72,6 +71,8 @@ SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
 # The wall sensor of the end of the game (kind 0x12): Step 20.
 WALL_END_GAME = 0x58A12
+# The drawing part of ui_draw_movement_arrows (the screen is not mapped); it then sets the input mode.
+ARROWS_DRAWING = (0x42B00, 0x42B6D)
 # sensor_forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
 FORWARD_REVERSE_HOLD = 0x5723C
 
@@ -149,6 +150,12 @@ class Scenario:
         assert lib.text_init(gdat)  # the messages of the leader hand
         view = original_view_of(lib, gdat, start)
         self.emu = emu = view.emu
+        from test_interface import G_FONT_BITMAP, G_UI_COLORS, VGA
+        from unicorn import UC_PROT_ALL
+        emu.uc.mem_map(VGA, 0x10000, UC_PROT_ALL)  # the screen of the pressed buttons, messages, and panels
+        emu.write_u32(G_UI_COLORS, view.entry_data(1, 0, 0x0D, 0xFE))
+        font = view.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300]
+        emu.write_u32(G_FONT_BITMAP, view.put(font + bytes(0x80)))
         self.stubs = {addr: emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
                       for addr, (stack, result) in STUBS.items()}
         self.fix_square_events()
@@ -159,6 +166,7 @@ class Scenario:
         emu.stub(GDAT_LOAD_MAP_GRAPHICS, lambda *_: self.load_map_graphics())
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
         self.skip(WALL_END_GAME, WALL_NEXT_THING)
+        self.skip(*ARROWS_DRAWING)  # ui_draw_movement_arrows: only its input mode
         self.clear_uninitialized_event_bytes()
         self.set_local(FORWARD_REVERSE_HOLD, 0, 3)
         emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
@@ -574,12 +582,25 @@ def test_step_into_special_squares(scenario, lib, kind, condition, name):
 SENSOR_PROCESS_WALL_CLICK = 0x4C134
 
 
+def mirror(lib, map_, x, y, cell):
+    """True for a champion mirror on the cell of a wall: test_champions recruits from it in the main loop."""
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    t = lib.dungeon_square_first_thing(map_, x, y)
+    while t != ENDOFLIST:
+        if t >> 10 & 15 == 3 and t >> 14 == cell and lib.thing_word(t, 2) & 0x7F == 0x7E:
+            return True
+        t = lib.dungeon_next_thing(t)
+    return False
+
+
 @pytest.mark.parametrize("part", range(2))
 def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
     # A click with an empty hand on every wall cell with a sensor or a text: buttons, switches, counters, item
     # holders, ladders, fountains; then the timeline runs what they trigger.
     lib.sensor_process_wall_click.argtypes = [ctypes.c_int] * 3 + [ctypes.c_uint16] * 2
-    cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0][part::2]
+    cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0 and not mirror(lib, *c)][part::2]
     for n, (map_, x, y, cell) in enumerate(cells):
         scenario.place(map_, x, y, (cell + 2) & 3)
         lib.sensor_process_wall_click(x, y, cell, NONE, NONE)
@@ -603,7 +624,7 @@ def test_clicks_in_the_view(scenario, lib):
     seed = ctypes.c_uint32.in_dll(lib, "random_seed")
     places = []
     for map_, x, y, cell in sensor_squares(lib):
-        if lib.dungeon_square(map_, x, y) >> 5:
+        if lib.dungeon_square(map_, x, y) >> 5 or mirror(lib, map_, x, y, cell):
             continue
         px, py = x + DIRS[cell][0], y + DIRS[cell][1]
         if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \

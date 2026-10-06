@@ -54,6 +54,5 @@ void sound_flush_requests(int queue) { (void)queue; }
 void sound_play_delayed(int index) { (void)index; }
 void game_complete(void) { }
 void command_execute_later(const Command *c) { (void)c; }
-void champ_start_recruit(int x, int y, int map) { (void)x; (void)y; (void)map; }
 void move_push_creature(int arrow) { (void)arrow; }
 void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y) { (void)group; (void)x; (void)y; (void)square_x; (void)square_y; }

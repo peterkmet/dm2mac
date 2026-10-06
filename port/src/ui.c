@@ -354,6 +354,7 @@ void ui_draw_movement_arrows(void)
         offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry, zone, UI_OPAQUE);
     offscreen_flush(&o, 1);
     draw_free_temp();
+    input_set_mode(ui.push_mode ? INPUT_MODE_PUSH : INPUT_MODE_MOVE);
 }
 
 void ui_reset(void)

@@ -157,6 +157,12 @@ void timeline_event_altar_rebirth(TimelineEvent *e);
 void champ_drag_click(int cell);
 void champ_drag_cancel(void);
 
+/* Recruiting (recruit.c): the champion of the mirror in front of (x, y) of map joins as a candidate; returns its
+   ordinal, 0 when the party is full or the leader holds an object. */
+int champ_start_recruit(int x, int y, int dir, int map);
+/* The candidate joins the party, or goes back to its mirror (command 0x93). */
+void champ_finish_recruit(int x, int y, int dir, int map, int command);
+
 /* Prepares the party of a loaded game for the screen: redraw flags, drawn hand state, the leader. */
 void champ_init_party_state(void);
 
