@@ -11,6 +11,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include "control.h"
+#include "advanced.h"
 #include "champion.h"
 #include "dialog.h"
 #include "dungeon.h"
@@ -264,7 +265,7 @@ static void send_error(const char *error)
     send_reply();
 }
 
-/* The state of the game: time, party, champions, input mode, open dialog and panels, hand, volumes, end. */
+/* The state of the game: time, party, champions, input mode, open dialog and panels, hand, volumes, end, game mode. */
 static void send_state(void)
 {
     int mode = input_get_mode();
@@ -290,8 +291,8 @@ static void send_state(void)
         put_string(name, strlen(name));
         put("}");
     }
-    put(",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d}", game.sound_volume, game.music_volume,
-        main_loop.end, main_loop.quit);
+    put(",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\"}", game.sound_volume,
+        game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode]);
     send_reply();
 }
 

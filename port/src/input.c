@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "action.h"
+#include "advanced.h"
 #include "champion.h"
 #include "draw.h"
 #include "creature.h"
@@ -83,7 +84,8 @@ enum {
     CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
     CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93,
     CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
-    CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59
+    CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59,
+    CMD_QUICK_SAVE = CMD_LAST + 1, CMD_QUICK_LOAD  /* the advanced mode: no original command has these numbers */
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -468,9 +470,21 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
     return command;
 }
 
+/* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
+   load, and a letter key W S A D Q E without a command gives the command of its keypad key. */
+static uint16_t key_command(int mode, uint16_t key)
+{
+    uint16_t command = find_key_command(&input_mode_roots[mode], key);
+    if (command || game_mode == GAME_MODE_VANILLA) return command;
+    if (mode == INPUT_MODE_MOVE && (key == KEY_QUICK_SAVE || key == KEY_QUICK_LOAD))
+        return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
+    uint16_t keypad = advanced_movement_key(key);
+    return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
+}
+
 uint16_t input_find_command(int mode, int x, int y, int buttons, int key, int16_t *rect)
 {
-    uint16_t command = key ? find_key_command(&input_mode_roots[mode], (uint16_t)key)
+    uint16_t command = key ? key_command(mode, (uint16_t)key)
                            : find_click_command(&input_mode_roots[mode], x, y, buttons);
     memcpy(rect, in.rect, sizeof in.rect);
     return command;
@@ -776,7 +790,7 @@ static const uint8_t *click_feedback_script(Command *c)
     input_refine_champion_click(c);
     uint16_t command = c->command;
     int offset;
-    if (!command || command > CMD_LAST) return NULL;
+    if (!command || command > CMD_QUICK_LOAD) return NULL;
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == 0x8d || (command > 0x7c && command < 0x82)
         || (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) || (command > 0x9c && command < 0xa5)
         || (command > 0x47 && command < 0x4c) || (command > 0x94 && command < 0x9d))
@@ -990,7 +1004,7 @@ void input_poll(void)
                     if (type & INPUT_RIGHT_RELEASED) command = CMD_CANCEL_CAPTURE;
                     else if (type & 0x13) command = find_click_command(&input_mode_roots[in.mode], x, y, type);
                 } else if (type == INPUT_KEY) {
-                    command = find_key_command(&input_mode_roots[in.mode], (uint16_t)x);
+                    command = key_command(in.mode, (uint16_t)x);
                 } else if (type == EVENT_ENTER_AREA) {
                     command = 0x81;
                 } else if (type == EVENT_LEAVE_AREA) {
@@ -1438,6 +1452,11 @@ int command_execute(Command *c)
         else champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
         ui_update_action_area(0);
+    } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD) {
+        if (game.champion_count && !ui.candidate && !party.push_mode && !input_drag_state) {
+            if (command == CMD_QUICK_SAVE) advanced_quick_save();
+            else advanced_quick_load();
+        }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
         if (ui.inventory) champ_edit_name(champion(ui.inventory - 1));
     } else if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE)

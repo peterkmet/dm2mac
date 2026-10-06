@@ -637,7 +637,7 @@ int args_drop_save(int argc, char **argv)
     int out = 1;
     for (int i = 1; i < argc; i++) {
         int is_value_option = !strcmp(argv[i], "--data") || !strcmp(argv[i], "--filter") || !strcmp(argv[i], "--save")
-                              || !strcmp(argv[i], "--control");
+                              || !strcmp(argv[i], "--control") || !strcmp(argv[i], "--mode");
         if (is_value_option && i + 1 < argc) {
             if (strcmp(argv[i], "--save")) {
                 argv[out++] = argv[i];

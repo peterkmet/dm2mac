@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <SDL3/SDL.h>
+#include "advanced.h"
 #include "control.h"
 #include "dialog.h"
 #include "draw.h"
@@ -139,11 +140,12 @@ static void modal_frame(void)
 
 int main(int argc, char **argv)
 {
-    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL;
+    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced";
     for (int i = 1; i < argc; i++) {
         int is_data = !strcmp(argv[i], "--data"), is_filter = !strcmp(argv[i], "--filter");
         int is_save = !strcmp(argv[i], "--save"), is_control = !strcmp(argv[i], "--control");
-        if (!is_data && !is_filter && !is_save && !is_control) continue;
+        int is_mode = !strcmp(argv[i], "--mode");
+        if (!is_data && !is_filter && !is_save && !is_control && !is_mode) continue;
         if (i + 1 == argc) {
             fprintf(stderr, "%s needs a value\n", argv[i]);
             return EXIT_USAGE;
@@ -151,14 +153,20 @@ int main(int argc, char **argv)
         if (is_data) data = argv[++i];
         else if (is_filter) filter = argv[++i];
         else if (is_save) save = argv[++i];
+        else if (is_mode) mode = argv[++i];
         else control = argv[++i];
+    }
+    for (game_mode = 0; game_mode < GAME_MODE_COUNT && strcmp(mode, game_mode_names[game_mode]); game_mode++) {}
+    if (game_mode == GAME_MODE_COUNT) {
+        fprintf(stderr, "unknown mode %s: use vanilla or advanced\n", mode);
+        return EXIT_USAGE;
     }
     int factor = filter ? scale_filter_factor(filter) : 1;
     if (!factor) {
         fprintf(stderr, "unknown filter %s: use none, scale2x, or scale3x\n", filter);
         return EXIT_USAGE;
     }
-    SDL_Log("data folder: %s", data);
+    SDL_Log("data folder: %s, mode %s", data, mode);
     snprintf(session.data_dir, sizeof session.data_dir, "%s", data);
     snprintf(text_drive_path, sizeof text_drive_path, "%s", data);
 
