@@ -28,6 +28,8 @@ enum square_type {
 #define SQUARE_TELEPORTER_VISIBLE 0x04
 #define SQUARE_FAKE_WALL_OPEN 0x04
 #define SQUARE_FLAG_3 0x08              /* bit 3 of any square: one floor text ornament shows it */
+#define SQUARE_LEVEL_LINK 0x02          /* a square with a link to another level */
+#define SQUARE_FLAG_0 0x01              /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
 #define square_flag(s, bit) (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
 #define WALL_FACE(dir) (8 >> (dir))
@@ -136,6 +138,15 @@ int dungeon_location_on_map(int map, int level_delta, int *x, int *y);
 /* The same search from list position *next (0: the first map of the level); sets *next to the position after the
    map that it found, 0 when it found none. */
 int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *next);
+#define LEVEL_UP (-1)
+#define LEVEL_DOWN 1
+/* Level transfer flags. */
+#define TRANSFER_PIT 0x008
+#define TRANSFER_FALL_INTO 0x010
+#define TRANSFER_STAIRS 0x100
+/* The map one level up (level_delta -1) or down (1) that the square (*x, *y) of map leads to by its stairs, its open
+   pit (TRANSFER_PIT), or a level link; *x, *y become the square there. -1 none. Leaves map current. */
+int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags);
 
 /* A pair of teleporters with link sensors: a seamless passage to another map. */
 typedef struct {

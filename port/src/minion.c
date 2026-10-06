@@ -57,7 +57,6 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
 #define DOOR_NO_ANIMATION 0x2000
 #define DOOR_STATE_OPEN 0
 #define DOOR_STATE_BROKEN 5
-#define SQUARE_FLAG_0 0x01             /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
 #define FAKE_WALL_SEEN SQUARE_FLAG_0
 #define FLOOR_SHOWS_LEVEL 0x08          /* a floor square shows the level digit instead */
 #define ORN_FRAME_SHIFT 10
@@ -77,13 +76,6 @@ enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS }
 #define LOCATION_MAP(w) ((w) >> 10)
 #define LOCATION(x, y, map) (uint16_t)(((x) & 0x1f) | ((y) & 0x1f) << 5 | ((map) & 0x3f) << 10)
 #define MINION_MAP_MANA_TICKS 25
-#define LEVEL_UP (-1)
-#define LEVEL_DOWN 1
-/* Level transfer modes. */
-#define TRANSFER_PIT 0x008
-#define TRANSFER_FALL_INTO 0x010
-#define TRANSFER_STAIRS 0x100
-#define SQUARE_LEVEL_LINK 0x02          /* a square with a link to another level */
 #define EVENT_MISSILE_DIR 2             /* projectile event data word: direction in bits 10-11 */
 #define MISSILE_DIR_SHIFT 10
 #define MISSILE_SIDES_ICON 3
@@ -420,40 +412,6 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
     if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN) draw_strip(&base, ICON_PIT_ABOVE, x, y, 0);
 }
 
-/* The map one level up (level_delta -1) or down (1) that the square (*x, *y) of map leads to by its stairs, its open
-   pit (mode TRANSFER_PIT), or a level link; *x, *y become the square there. -1 none. Leaves map current. */
-static int level_transfer_destination(int16_t *x, int16_t *y, int map, int level_delta, int mode)
-{
-    int fall_into = 0;
-    dun_set_current_map(map);
-    uint8_t square = dun_get_square(*x, *y);
-    int type = square_type(square);
-    if (type == SQUARE_STAIRS) {
-        if (!(mode & TRANSFER_STAIRS)) return -1;
-        if (square & SQUARE_STAIRS_UP ? level_delta != LEVEL_UP : level_delta != LEVEL_DOWN) return -1;
-    } else if (!(type == SQUARE_PIT && mode & TRANSFER_PIT && level_delta == LEVEL_DOWN && square & SQUARE_PIT_OPEN
-                 && !(square & SQUARE_FLAG_0))) {
-        if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR) return -1;
-        uint16_t sensor;
-        if (!(mode & TRANSFER_STAIRS) || dun_find_adjacent_level_link(*x, *y, level_delta, &sensor) < 0) {
-            if (!(mode & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP) return -1;
-            fall_into = 1;
-        }
-    }
-    int lx = *x, ly = *y;
-    int found = dungeon_location_on_map(map, level_delta, &lx, &ly);
-    *x = (int16_t)lx;
-    *y = (int16_t)ly;
-    if (found >= 0 && fall_into) {
-        /* the square above must be an open pit that leads here */
-        dun_set_current_map(found);
-        square = dun_get_square(*x, *y);
-        if (square_type(square) != SQUARE_PIT || !(square & SQUARE_PIT_OPEN) || square & SQUARE_FLAG_0) found = -1;
-        dun_set_current_map(map);
-    }
-    return found;
-}
-
 /* Sets the marker square (x, y) of map and the squares that it leads to one level up and down. */
 static void ui_map_set_marker(int x, int y, int map)
 {
@@ -461,9 +419,9 @@ static void ui_map_set_marker(int x, int y, int map)
     m->marker_x = m->below_x = m->above_x = (int16_t)x;
     m->marker_y = m->below_y = m->above_y = (int16_t)y;
     m->marker_map = (int16_t)map;
-    m->above_map = (int16_t)level_transfer_destination(&m->above_x, &m->above_y, map, LEVEL_UP,
+    m->above_map = (int16_t)dun_get_level_transfer_destination(&m->above_x, &m->above_y, map, LEVEL_UP,
                                                        TRANSFER_STAIRS | TRANSFER_FALL_INTO);
-    m->below_map = (int16_t)level_transfer_destination(&m->below_x, &m->below_y, m->marker_map, LEVEL_DOWN,
+    m->below_map = (int16_t)dun_get_level_transfer_destination(&m->below_x, &m->below_y, m->marker_map, LEVEL_DOWN,
                                                        TRANSFER_STAIRS | TRANSFER_PIT);
 }
 
