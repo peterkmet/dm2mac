@@ -297,6 +297,62 @@ def test_hand_icon_matches_original(port, original):
     assert len(pictures) > 10
 
 
+class CursorImage(ctypes.Structure):
+    _fields_ = [("bits", u8_p), ("palette", u8_p)] + [
+        (name, ctypes.c_int) for name in ("bpp", "width", "height", "hot_x", "hot_y", "key")]
+
+
+MOUSE_SET_CURSOR_IMAGE, INPUT_INIT, IOP_INSTALL_INPUT_ISR, MOUSE_SET_DEFAULT_CURSOR = 0x14743, 0x147D1, 0x5A8F3, 0x14846
+CHAMP_DRAG_CLICK, MEM_ALLOC_IMAGE, G_CHAMP_DRAG_STATE = 0x149BA, 0x3BD64, 0x7F0B4
+CURSOR_ARROW, CURSOR_HAND, CURSOR_CHAMPION = 0, 1, 3
+
+
+def test_cursor_images_match_original(port, original):
+    # The arrow and the hand of input_init and the dragged champion of champ_drag_click: the arguments that the
+    # original passes to mouse_set_cursor_image (bpp, size, hot spot, clear color, pixels, palette colors).
+    lib, emu = port, original.emu
+    lib.input_cursor_image.restype = CursorImage
+    images = {}
+
+    def capture(kind, bits, hot_x, hot_y, w, h, bpp, palette, key):
+        w, h, bpp = w & 0xFFFF, h & 0xFFFF, bpp & 0xFFFF
+        images[kind] = (bpp, w, h, hot_x & 0xFFFF, hot_y & 0xFFFF, key & 0xFF, emu.read(bits, w * h * bpp // 8),
+                        palette and emu.read(palette, 16))
+
+    def alloc_image(w, h, flags, bpp):
+        w, h = w & 0xFFFF, h & 0xFFFF
+        image = original.alloc(6 + w * h) + 6
+        emu.write(image - 6, struct.pack("<BBhh", bpp & 0xFF, 0, w, h))
+        return image
+
+    def port_image(cursor):
+        c = lib.input_cursor_image(cursor)
+        palette = bytes(c.palette[:16]) if c.palette else 0
+        return c.bpp, c.width, c.height, c.hot_x, c.hot_y, c.key, bytes(c.bits[:c.width * c.height * c.bpp // 8]), palette
+
+    hooks = [emu.stub(MOUSE_SET_CURSOR_IMAGE, capture, stack_args=5), emu.stub(IOP_INSTALL_INPUT_ISR, lambda *_: 0),
+             emu.stub(MOUSE_SET_DEFAULT_CURSOR, lambda *_: 0), emu.stub(MEM_ALLOC_IMAGE, alloc_image)]
+    try:
+        emu.call(INPUT_INIT, allow_io=True)
+        assert port_image(CURSOR_ARROW) == images[0]
+        assert port_image(CURSOR_HAND) == images[1]
+        dragged = 0
+        for cell in range(4):
+            images.pop(3, None)
+            emu.write(G_CHAMP_DRAG_STATE, b"\0\0")
+            ctypes.c_int.in_dll(lib, "input_drag_state").value = 0
+            emu.call(CHAMP_DRAG_CLICK, cell, allow_io=True)
+            lib.champ_drag_click(cell)
+            if 3 in images:
+                assert port_image(CURSOR_CHAMPION) == images[3], cell
+                dragged += 1
+        assert dragged
+    finally:
+        for hook in hooks:
+            emu.uc.hook_del(hook)
+        ctypes.c_int.in_dll(lib, "input_drag_state").value = 0
+
+
 G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
     0x7FB50, 0x7FB4E, 0x757B8, 0x7FB5E, 0x7F234)
 GAME_MAGIC = GAME_LEADER_HAND + 2
