@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "champion.h"
+#include "ai.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "hooks.h"

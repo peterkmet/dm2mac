@@ -160,7 +160,7 @@ class OriginalView:
         self.top = HEAP
         self.images, self.palettes, self.data, self.cache = {}, {}, {}, {}
         emu.serve_file(data)
-        emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
+        self.alloc_hook = emu.stub(MEM_ALLOC, lambda size, *_: self.alloc(size))
         emu.stub(GDAT_ENTRY_INDEX, self.entry_index)
         self.weather_init_stub = emu.stub(WEATHER_INIT, lambda *_: 0)  # the load: the test gives the C values
         emu.stub(READ_LEVEL_TABLE, lambda *_: 0)
@@ -173,7 +173,7 @@ class OriginalView:
         emu.stub(0x3ECC7, self.entry_data)
         emu.stub(0x3F5B0, self.image_size, stack_args=1)
         emu.stub(0x3F186, self.cache_lookup)  # image_cache_lookup_or_add: always a new entry
-        emu.stub(0x3F279, lambda index, size, *_: self.cache_put(index, self.alloc(size)))
+        self.cache_alloc_hook = emu.stub(0x3F279, lambda index, size, *_: self.cache_put(index, self.alloc(size)))
         emu.stub(0x3F2F0, self.cache_alloc_image)
         emu.stub(0x3F337, lambda index, *_: self.cache[index & 0xFFFF])
         emu.stub(0x3F3EE, lambda *_: self.new_index())

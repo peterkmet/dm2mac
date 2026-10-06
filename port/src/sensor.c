@@ -1,6 +1,7 @@
 /* Floor and wall sensors, square events, doors, pits, teleporters, and fake walls. */
 #include <string.h>
 #include "action.h"
+#include "ai_move.h"
 #include "champion.h"
 #include "creature.h"
 #include "draw.h"
@@ -80,7 +81,7 @@ static int door_type(uint16_t door)
     return flags & 0x100 ? graphics >> 12 : 0xff;
 }
 
-static uint16_t door_value(uint16_t door, int key)
+uint16_t door_value(uint16_t door, int key)
 {
     return gdat_entry_index(draw_gdat(), CAT_DOOR, door_type(door), GDAT_TYPE_VALUE, key);
 }
@@ -416,7 +417,7 @@ static void sensor_forward_effect(const TimelineEvent *e, uint16_t sensor, int d
     sensor_trigger_target(sensor, sensor_own_effect(flags), delay);
 }
 
-void dun_modify_global_var(int var, int value, int op)
+int dun_modify_global_var(int var, int value, int op)
 {
     int old = dun_get_global_var(var), v = old;
     switch (op) {
@@ -431,12 +432,15 @@ void dun_modify_global_var(int var, int value, int op)
         uint8_t bit = (uint8_t)(1 << (var & 7));
         if ((int16_t)v) game.global_flags[var >> 3] |= bit;
         else game.global_flags[var >> 3] &= (uint8_t)~bit;
+        return (int16_t)v != 0;
     } else if (var < 0x80) {
         v = (int16_t)v;
-        game.global_bytes[var - 0x40] = (uint8_t)(v < 0 ? 0 : v > 0xff ? 0xff : v);
+        v = v < 0 ? 0 : v > 0xff ? 0xff : v;
+        game.global_bytes[var - 0x40] = (uint8_t)v;
     } else if (var < 0xc0) {
         game.global_words[var - 0x80] = (uint16_t)v;
     }
+    return (int16_t)v;
 }
 
 int dun_get_global_var(int var)
@@ -854,7 +858,7 @@ static void timeline_event_wall_square(TimelineEvent *e)
         case 0x49: sensor_transfer_objects(e, t, THING_NONE, 0, 0, NULL, 1, 1); break;
         case 0x3c: sensor_create_item(e, t); break;
         case 0x42:
-            sensor_turn_creatures(e);
+            sensor_turn_creatures(e, t);
             break;
         case 0x43:
             sensor_set_global_flag(e, t);
@@ -948,7 +952,7 @@ static void timeline_event_floor_square(TimelineEvent *e)
             sensor_forward_effect(e, t, w >> SENSOR_DATA_SHIFT);
             break;
         case 0x42:
-            sensor_turn_creatures(e);
+            sensor_turn_creatures(e, t);
             break;
         case 0x43:
             sensor_set_global_flag(e, t);
@@ -961,7 +965,7 @@ static void timeline_event_floor_square(TimelineEvent *e)
 }
 
 /* A pit or teleporter turns on: the party, a creature, and the objects on it go through. */
-static void move_square_contents_through(int x, int y)
+void move_square_contents_through(int x, int y)
 {
     if (dun_on_party_square(x, y)) move_thing(THING_NONE, x, y, x, y);
     uint16_t g = creature_group_at(party.cur_map, x, y);
@@ -1175,6 +1179,12 @@ void timeline_event_door_animation(TimelineEvent *e)
 
 /* ---- Sensor timeline events ---- */
 
+/* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
+   with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
+   the data after those tables in SKULL.EXE (0x717f8 and 0x71800); these are the values it reads. */
+static const int16_t ambient_wall_dx[4][4] = {{2052, 4, 0, 1032}, {0, 0, 0, 0}, {0, 0, 0, 0}, {450, 0, 255, 0}};
+static const int16_t ambient_wall_dy[4][4] = {{0, 0, 25675, 60}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+
 void timeline_event_sensor(TimelineEvent *e)
 {
     uint16_t thing = (uint16_t)(e->data[0] | e->data[1] << 8);
@@ -1223,9 +1233,18 @@ void timeline_event_sensor(TimelineEvent *e)
             int wall = square_type(dun_get_square(e->data[0], e->data[1])) == SQUARE_WALL;
             e->time_map += (uint16_t)sensor_get_ornament_cycle(thing, wall);
             timeline_add_event(e);
+            int16_t x = e->data[0], y = e->data[1];
+            if (wall) {  /* the sound comes from the square in front of the wall, unless the party stands there */
+                int16_t fx = (int16_t)(x + ambient_wall_dx[e->data[3] >> 6][e->data[3] & 3]);
+                int16_t fy = (int16_t)(y + ambient_wall_dy[e->data[3] >> 6][e->data[3] & 3]);
+                if (party.cur_map != party.square_map || fx != party.square_x || fy != party.square_y) {
+                    x = fx;
+                    y = fy;
+                }
+            }
             sound_play_with_fallback(wall ? CAT_ORNAMENT : CAT_ORNAMENT + 1,
                                      wall ? sensor_wall_ornament(thing) : sensor_floor_ornament(thing), 0x88, 0xfe,
-                                     e->data[0], e->data[1], 1, 0x8c, 0x80);
+                                     x, y, 1, 0x8c, 0x80);
         } else {
             set_thing_word(thing, SENSOR_TYPE_DATA, (uint16_t)((w & 0x7f) | (w >> SENSOR_DATA_SHIFT & 0xff) << SENSOR_DATA_SHIFT));
         }
@@ -1294,7 +1313,7 @@ enum {
 enum { TEXT_LADDER = 6, TEXT_LADDER_HIDDEN = 7, TEXT_SWITCH = 0x0d };
 
 /* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
-static int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
+int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
 {
     int ornament = item_gdat_index(thing);
     if (ornament == 0xff
@@ -1307,6 +1326,11 @@ static int ornament_value(uint16_t thing, int key)
 {
     int ornament = item_gdat_index(thing);
     return ornament == 0xff ? 0 : gdat_entry_index(draw_gdat(), CAT_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
+}
+
+int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
+{
+    return dun_is_wall_thing_ornament_shown(first, thing) ? ornament_value(thing, key) : 0;
 }
 
 /* The object of the item index type on the cell of the square (x, y), or a new one; THING_NONE when none can be made. */

@@ -2,12 +2,14 @@
 #include <string.h>
 #include "action.h"
 #include "champion.h"
+#include "creature.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
 #include "hooks.h"
 #include "input.h"
+#include "magic.h"
 #include "move.h"
 #include "music.h"
 #include "random.h"
@@ -280,7 +282,7 @@ void game_start_session(void)
     ui_draw_movement_arrows();
     champ_init_party_state();
     creature_refresh_party_maps();
-    creature_activate_groups_all_maps();
+    creature_reset_active_groups();
     game_step();
 }
 

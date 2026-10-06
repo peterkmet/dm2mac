@@ -10,6 +10,7 @@ from conftest import ROOT
 from dm2tools.emu import SCRATCH
 from test_save import GRAPHICS, START, original_save
 from test_view import OriginalView
+from creature_oracle import CreatureOracle
 
 
 def original_view_of(lib, gdat, start):
@@ -33,19 +34,13 @@ TIMELINE_PROCESS, TIMELINE_ADD_EVENT, DUN_SET_PARTY_LOCATION = 0x59A5C, 0x56390,
 SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
 # Functions of later steps and of the DOS layer: (address, stack arguments, result).
 STUBS = {
-    0x2FACC: (0, 0),                                                         # party distance map (Step 16)
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
-    0x24E62: (2, 0), 0x24328: (0, 0), 0x24171: (0, 0), 0x23E5B: (0, 0),     # creature alert, push
-    0x49EF8: (0, 0), 0x34106: (0, 0), 0x2F8F5: (0, 0), 0x306A8: (0, 0),     # creature turn, activation
-    0x3085A: (0, 0), 0x3064D: (0, 0), 0x30D45: (1, 0), 0x30FE3: (0, 0),     # creature groups
-    0x4A096: (1, 0), 0x4A005: (1, 0), 0x4A0FE: (0, 0), 0x30BA6: (1, NONE), # retry, missiles, create group
-    0x2538C: (0, 0), 0x57A63: (0, 0), 0x56BA5: (4, 0), 0x56B39: (0, 0),     # sensors of creatures, missiles
+    0x14B4F: (0, 0), 0x14C0E: (0, 0),                                       # mouse areas of an input mode (not ported)
     0x49CBB: (0, 0),                                                         # champion revival (Step 15)
     0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
     0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects
-    0x23F9B: (0, 0), 0x4DCEE: (1, 0),                                       # push a creature, creature hit test
 }
 # Globals of the movement state: name -> (address, struct format).
 GLOBALS = {
@@ -57,11 +52,14 @@ GLOBALS = {
     "dest_x": (0x80026, "<h"), "dest_y": (0x80024, "<h"), "dest_map": (0x80028, "<h"), "dest_cell": (0x80022, "<h"),
     "redraw": (0x7F38C, "<I"),
 }
+G_MAP_LIGHT, G_MAP_WALL_COST = 0x7F3F4, 0x7F3FC  # the light radius and wall cost of the party map graphics
+G_DISTANCE_MAPS = (0x7F8C8, 0x7F8C4)  # the party distance maps of creature_refresh_party_maps
 G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, G_PUSH_PENDING = 0x7F22C, 0x7F26A, 0x7F25A, 0x72FFC
 G_ACTIVE_GROUPS, G_COMMAND_STOP = 0x7F898, 0x7F484
 COMMAND_RECORD = SCRATCH + 0xF8000
 SCHEDULED_EVENT = SCRATCH + 0xF8100
 SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
+EXPLOSION_CREATE = 0x16746
 CHAMP_TAKE_DAMAGE, CHAMP_DAMAGE_PARTY = 0x4722A, 0x4766B  # Step 15: the tests compare their arguments
 # The wall sensor that creates an item (kind 0x3c) in timeline_event_wall_square: Step 15.
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
@@ -71,7 +69,6 @@ WALL_END_GAME = 0x58A12
 FORWARD_REVERSE_HOLD = 0x5723C
 # Step 17: the weather update, and sensor_transfer_object with its charge change that mode 3 leaves uninitialized.
 WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2
-EXPLOSION_CREATE, SHOP_PARSE_ITEM_CLASS_SET = 0x16746, 0x1538D  # Steps 16 and 15: the tests compare the arguments
 MAP_GRAPHICS_TAIL = SCRATCH + 0xF8200  # the end of gdat_load_map_graphics: world_update_day_night(0), then return
 # Weather globals of the original: name -> (address, struct format); the C values come from World.
 WEATHER = {
@@ -116,11 +113,6 @@ class WeatherState(ctypes.Structure):
     _fields_ = [("strike_threshold", ctypes.c_int16), ("storm_previous", ctypes.c_uint16), ("hour_light", ctypes.c_int16),
                 ("day_time_offset", ctypes.c_uint32), ("first_init", ctypes.c_int), ("thunder_toggle", ctypes.c_int),
                 ("lightning_flash", ctypes.c_int), ("dungeon_loaded", ctypes.c_int)]
-
-
-class ExplosionCall(ctypes.Structure):
-    _fields_ = [("type", ctypes.c_uint16), ("attack", ctypes.c_uint16), ("x", ctypes.c_uint16), ("y", ctypes.c_uint16),
-                ("cell", ctypes.c_int16)]
 
 
 def c_weather(lib):
@@ -215,13 +207,14 @@ def start():
     return START.read_bytes()
 
 
-class Scenario:
+class Scenario(CreatureOracle):
     """start.DAT in the C port and in the original code, run step by step."""
 
     def __init__(self, lib, gdat, start, tmp_path, place_party=True):
         """place_party: both put the party on its square of the save, like a load; else the caller starts the
         game session in both."""
         self.lib, self.gdat, self.start, self.tmp = lib, gdat, start, tmp_path
+        self.reset_creature_globals(lib)
         path = tmp_path / "SKSAVE0.DAT"
         path.write_bytes(start)
         assert lib.save_load(str(path).encode(), gdat) == 0
@@ -239,17 +232,10 @@ class Scenario:
         ctypes.c_int.in_dll(lib, "damage_call_count").value = 0
         self.fix_square_events()
         self.view = view
-        groups = emu.read_u32(G_ACTIVE_GROUPS)
-        for i in range(256):  # no active groups until Step 16: no timeline event either (C: creature_active_group_event)
-            emu.write(groups + i * 0x22 + 2, struct.pack("<h", -1))
-        self.explosions = []  # the explosion calls of the original (lightning)
-        emu.stub(EXPLOSION_CREATE, lambda t, a, x, y, cell, *_: self.explosions.append(
-            (t & 0xFFFF, a & 0xFFFF, x & 0xFFFF, y & 0xFFFF, int16(cell))), stack_args=1)
-        ctypes.c_int.in_dll(lib, "explosion_call_count").value = 0
-        emu.stub(SHOP_PARSE_ITEM_CLASS_SET, lambda c, e, bits, *_: emu.write(bits, bytes(0x40)))
         self.map_graphics_tail()
         self.set_local(TRANSFER_OBJECT_FRAME, 0, 0)
         self.sound_setup()
+        self.record_explosions()
         emu.write_u32(G_UI_COLORS, view.entry_data(1, 0, 0x0D, 0xFE))  # view_clear_viewport fills the band with color 0
         self.sync_weather()
         self.skip(WALL_CREATE_ITEM, WALL_NEXT_THING)
@@ -263,6 +249,7 @@ class Scenario:
         self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         if place_party:
             self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
+        self.setup_creatures(place_party)
 
     def map_graphics_tail(self):
         """gdat_load_map_graphics runs load_map_graphics, then the original world_update_day_night(0) like the C
@@ -280,6 +267,20 @@ class Scenario:
             uc.reg_write(UC_X86_REG_EIP, MAP_GRAPHICS_TAIL)
 
         self.emu.uc.hook_add(UC_HOOK_CODE, hook, begin=GDAT_LOAD_MAP_GRAPHICS, end=GDAT_LOAD_MAP_GRAPHICS)
+
+    def record_explosions(self):
+        """Records the arguments of the explosion_create calls of the original (type, attack, x, y, cell); the
+        explosions themselves run in both."""
+        from unicorn import UC_HOOK_CODE
+        from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_ESP
+        self.explosions = []
+
+        def hook(uc, *_):
+            cell = struct.unpack("<h", self.emu.read(uc.reg_read(UC_X86_REG_ESP) + 4, 2))[0]
+            self.explosions.append(tuple(uc.reg_read(r) & 0xFFFF for r in (UC_X86_REG_EAX, UC_X86_REG_EDX, UC_X86_REG_EBX,
+                                                                           UC_X86_REG_ECX)) + (cell,))
+
+        self.emu.uc.hook_add(UC_HOOK_CODE, hook, begin=EXPLOSION_CREATE, end=EXPLOSION_CREATE)
 
     def sound_setup(self):
         """The sound buffers of the original, its sound table filled on demand, and the recorder of its driver calls."""
@@ -368,15 +369,12 @@ class Scenario:
         return {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0] for name, (addr, fmt) in WEATHER.items()}
 
     def assert_same_weather(self, where):
-        """The weather, the light, the sky objects (while the weather shows), and the lightning explosions of both."""
+        """The weather, the light, and the sky objects (while the weather shows) of both; check_creatures compares the
+        lightning explosions in the dungeon and the timeline."""
+        self.explosions.clear()
         assert c_weather(self.lib) == self.weather(), where
         if self.weather()["weather_visible"]:
             assert c_sky(self.lib) == sky_list(self.emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)), where
-        count = ctypes.c_int.in_dll(self.lib, "explosion_call_count")
-        calls = (ExplosionCall * 64).in_dll(self.lib, "explosion_calls")
-        assert [(c.type, c.attack, c.x, c.y, c.cell) for c in calls[:count.value]] == self.explosions, where
-        count.value = 0
-        self.explosions.clear()
 
     def clear_band(self, gfx_set):
         """The band between the ceiling and floor pictures that view_clear_viewport fills (G_VIEW_CLEAR_RECT), and
@@ -408,6 +406,8 @@ class Scenario:
                                                   graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
         emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
         emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
+        emu.write(G_MAP_LIGHT, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x6D)))
+        emu.write(G_MAP_WALL_COST, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x72) or 1))
         emu.write(tv.G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
         lib.view_sky_objects.restype = ctypes.c_void_p
         emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
@@ -426,7 +426,9 @@ class Scenario:
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
                 0x57: (0xFF, 0xFF, 0, 0, 0, 0), 0x58: (0xFF, 0xFF, 0, 0, 0, 0), 0x5C: (0xFF, 0xFF, 0, 0, 0, 0),
-                0x54: (0, 0, 0, 0, 0, 0), 0x15: (0xFF, 0xFF, 0, 0, 0, 0)}
+                0x21: (0xFF, 0xFF, 0, 0, 0, 0), 0x22: (0xFF, 0xFF, 0, 0, 0, 0), 0x3C: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
+                0x3D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x19: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x1D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
+                0x1E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x54: (0, 0, 0, 0, 0, 0), 0x15: (0xFF, 0xFF, 0, 0, 0, 0)}
         emu = self.emu
 
         def hook(uc, *_):
@@ -526,7 +528,7 @@ class Scenario:
                 self.emu.write(addr, struct.pack("<H", value - 1))
         self.set_time(self.time() + 1)
 
-    def state(self):
+    def save_states(self):
         """(C, original) save files and movement globals."""
         self.emu.written = bytearray()
         theirs = original_save(self.emu, self.start)
@@ -584,7 +586,8 @@ class Scenario:
         self.damage.clear()
 
     def assert_same(self, where):
-        """The quick check: movement globals, damage calls, and the dungeon records and events."""
+        """The quick check: creatures, movement globals, damage calls, and the dungeon records and events."""
+        self.check_creatures(where)
         self.assert_same_damage(where)
         mine = {name: getattr(self.party, name) for name in GLOBALS}
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]

@@ -723,6 +723,7 @@ int save_load(const char *path, const gdat_t *gdat)
 {
     FILE *f = fopen(path, "rb");
     if (!f) return SAVE_ERR_IO;
+    creature_free_active_groups();
     uint8_t header[HEADER_SIZE];
     int result = SAVE_ERR_FORMAT;
     if (fread(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_read(f, 0)) {
@@ -755,10 +756,14 @@ int save_write(const char *path, const char *bak_path, const char *name, const g
     start_io(f, gdat);
     io.group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *io.group_order);
     io.container_order = calloc(dungeon_thing_count(THING_CONTAINER) + 1, sizeof *io.container_order);
-    int ok = fwrite(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_write(f) && write_state();
+    /* the records keep the indices of the active groups; the timeline loses their events (game_save) */
+    int ok = fwrite(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_write(f);
+    creature_deactivate_all_groups();
+    ok = ok && write_state();
     free(io.group_order);
     free(io.container_order);
     if (fclose(f) != 0) ok = 0;
     if (!ok) remove(path);
+    creature_activate_groups_all_maps();
     return ok ? SAVE_OK : SAVE_ERR_IO;
 }

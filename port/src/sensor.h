@@ -30,7 +30,13 @@ void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t t
 void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).
    Returns 1 when the door breaks. */
+/* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
+void move_square_contents_through(int x, int y);
 int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay);
+/* A GDAT value of the door type of a door thing. */
+uint16_t door_value(uint16_t door, int key);
+/* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
+int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
 /* Runs a due square event or door event. */
 void timeline_event_square(TimelineEvent *e);
 void timeline_event_door_animation(TimelineEvent *e);
@@ -39,6 +45,8 @@ void timeline_event_door_destruction(TimelineEvent *e);
 /* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
    with hand (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
 void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand);
+/* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
+int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
 /* The party enters (1) or leaves (0) the party map: the map entry sensors and the creature generators. */
 void sensor_process_map_entry(int entering);
 /* Runs a due sensor animation, timer, or busy event. */
@@ -49,6 +57,6 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
                             int from_creature, int to_possessions);
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
 int dun_get_global_var(int var);
-void dun_modify_global_var(int var, int value, int op);
+int dun_modify_global_var(int var, int value, int op);
 
 #endif

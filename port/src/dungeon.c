@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ai.h"
 #include "dungeon.h"
+#include "move.h"
 
 #define HEADER_SIZE 0x2c
 #define MAP_DESC_SIZE 16
@@ -9,13 +11,10 @@
 #define SQUARE_THING_SLACK 300
 #define THING_COUNT_MAX 0x400
 #define EXPLOSION_COUNT_MAX 0x300
-#define SQUARE_HAS_THINGS 0x10
 #define MAP_COUNT_MAX 255
-#define MAP_LEVEL_MASK 0x3f
 #define MAP_WIDTH_SHIFT 6
 #define MAP_WIDTH_MASK 0x1f
 #define MAP_HEIGHT_SHIFT 11
-#define THING_ID_MASK 0x3fff
 #define MISC_RESERVED 3          /* free misc records that only the forced creation of a misc item may use */
 #define TELEPORTER_X_MASK 0x1f
 #define TELEPORTER_Y_SHIFT 5
@@ -146,6 +145,7 @@ uint8_t *dungeon_square_byte(int map, int x, int y)
 /* Squares with things own consecutive entries of the first-thing table, counted per column; -1 for a square without things. */
 static int square_thing_index(int map, int x, int y)
 {
+    if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map)) return -1;
     const uint8_t *column = map_column(map, x);
     if (!(column[y] & SQUARE_HAS_THINGS)) return -1;
     int index = dun.column_first_thing[dun.map_first_column[map] + x];
@@ -386,10 +386,18 @@ uint8_t dungeon_square_edge(int map, int x, int y)
 
 int dungeon_location_on_map(int map, int level_delta, int *x, int *y)
 {
+    return dungeon_location_on_map_from(map, level_delta, x, y, NULL);
+}
+
+int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *next)
+{
     int ax = *x + dungeon_map_offset_x(map), ay = *y + dungeon_map_offset_y(map);
     int level = dungeon_map_level(map) + level_delta;
+    int start = next ? *next : 0;
+    if (next) *next = 0;
     if (level < 0 || level >= LEVEL_COUNT) return -1;
-    for (const uint8_t *m = dungeon_level_maps(level); *m != LEVEL_LIST_END; m++) {
+    const uint8_t *maps = dungeon_level_maps(level);
+    for (const uint8_t *m = maps + start; *m != LEVEL_LIST_END; m++) {
         int ox = dungeon_map_offset_x(*m), oy = dungeon_map_offset_y(*m);
         if (ax < ox - 1 || (unsigned)ax > (unsigned)(ox + dungeon_map_width(*m)) || ay < oy - 1
             || (unsigned)ay > (unsigned)(oy + dungeon_map_height(*m)))
@@ -399,6 +407,7 @@ int dungeon_location_on_map(int map, int level_delta, int *x, int *y)
         if (type == SQUARE_UNKNOWN || (type == SQUARE_TELEPORTER && teleporter_closed(*m, lx, ly))) continue;
         *x = lx;
         *y = ly;
+        if (next) *next = (int)(m - maps) + 1;
         return *m;
     }
     return -1;
@@ -550,4 +559,37 @@ int dungeon_write(FILE *f)
     for (int type = 0; type < THING_TYPE_COUNT; type++)
         if (!write_bytes(f, dun.things[type], (size_t)thing_size[type] * dun.thing_count[type])) return 0;
     return write_bytes(f, dun.map_data, le16(dun.header + HEADER_MAP_DATA_SIZE));
+}
+
+/* Finds where the stairs, open pit, or level link of a square lead one level up or down. */
+int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags)
+{
+    int fall_into = 0;
+    dun_set_current_map(map);
+    uint8_t square = dun_get_square(*x, *y);
+    int type = square_type(square);
+    if (type == SQUARE_STAIRS) {
+        if (!(flags & TRANSFER_STAIRS)) return -1;
+        if (square & SQUARE_STAIRS_UP ? level_delta != LEVEL_UP : level_delta != LEVEL_DOWN) return -1;
+    } else if (!(type == SQUARE_PIT && flags & TRANSFER_PIT && level_delta == LEVEL_DOWN && square & SQUARE_PIT_OPEN
+                 && !(square & SQUARE_FLAG_0))) {
+        if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR) return -1;
+        uint16_t sensor;
+        if (!(flags & TRANSFER_STAIRS) || dun_find_adjacent_level_link(*x, *y, level_delta, &sensor) < 0) {
+            if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP) return -1;
+            fall_into = 1;
+        }
+    }
+    int lx = *x, ly = *y;
+    int found = dungeon_location_on_map(map, level_delta, &lx, &ly);
+    *x = (int16_t)lx;
+    *y = (int16_t)ly;
+    if (found >= 0 && fall_into) {
+        /* the square above must be an open pit that leads here */
+        dun_set_current_map(found);
+        square = dun_get_square(*x, *y);
+        if (square_type(square) != SQUARE_PIT || !(square & SQUARE_PIT_OPEN) || square & SQUARE_FLAG_0) found = -1;
+        dun_set_current_map(map);
+    }
+    return found;
 }

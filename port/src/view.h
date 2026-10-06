@@ -105,4 +105,10 @@ void view_grid5_cell_to_xy(int base_x, int base_y, uint16_t cell, int16_t *x, in
 /* Moves a creature of size 1 to 3 at (*x, *y) toward the party eye at (party_x, party_y), in thing grid cells. */
 void view_offset_creature_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y);
 
+/* The viewport shows the push arrows (the party pushes or can push a creature). */
+extern int view_arrows_enabled;
+/* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *side:
+   0 its middle, 1 its right, 3 its left. */
+int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
+
 #endif

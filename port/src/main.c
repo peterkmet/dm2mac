@@ -144,7 +144,10 @@ int main(int argc, char **argv)
         }
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
-            if (save) game_tick();
+            if (save) {
+                plat_mouse_position(&input_mouse_x, &input_mouse_y);
+                game_tick();
+            }
             plat_present();
         }
         plat_wait_tick();

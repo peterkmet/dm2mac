@@ -1,4 +1,5 @@
 /* Mouse and keyboard input: the input tree of SKULL.EXE maps clicks and keys to commands; the command queue. */
+#include <stdlib.h>
 #include <string.h>
 #include "action.h"
 #include "champion.h"
@@ -8,7 +9,10 @@
 #include "game.h"
 #include "gdat.h"
 #include "hooks.h"
+#include "item.h"
 #include "input.h"
+#include "magic.h"
+#include "minion.h"
 #include "move.h"
 #include "music.h"
 #include "save.h"
@@ -54,7 +58,8 @@ enum {
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_CANCEL_PUSH = 0xe1, CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
-    CMD_HAND_LAST = 0x7b
+    CMD_HAND_LAST = 0x7b, CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
+    CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59
 };
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -590,8 +595,9 @@ static void rect_center_in(int16_t *dst, const int16_t *src, int w, int h)
 /* Feedback script opcodes (low 6 bits; bit 6: run on, bit 7: end). */
 enum {
     FB_DELAY, FB_RELEASE_QUEUE, FB_WAIT_QUEUE, FB_WAIT_STEP, FB_QUEUE, FB_EXECUTE, FB_QUEUE_AND_RELEASE, FB_PICTURE,
-    FB_INVENTORY_BUTTON = 0x0d
+    FB_RUNE_BUTTON = 0x0a, FB_ENTERED_RUNES, FB_INVENTORY_BUTTON = 0x0d, FB_MAP_OPTION_BUTTONS
 };
+#define SPELL_RUNE_PRESSED 8        /* GDAT (1, 5, 8): the pressed rune button */
 #define FB_RUN_ON 0x40
 #define FB_END 0x80
 
@@ -605,6 +611,17 @@ static void queue_current(void)
 static void release_queue(void)
 {
     in.disabled = (in.queue_tail - in.queue_head + COMMAND_QUEUE) % COMMAND_QUEUE;
+}
+
+/* Opens the feedback bitmap of the clicked button when it is closed; r becomes a w x h rect centered in it. */
+static void feedback_init_rect(Offscreen *o, int *opened, int16_t *r, int w, int h)
+{
+    if (!*opened) {
+        memcpy(o->rect, in.current.rect, sizeof o->rect);
+        offscreen_create(o, -1, 0);
+        *opened = 1;
+    }
+    rect_center_in(r, o->rect, w, h);
 }
 
 /* Runs the click feedback script for elapsed timer ticks: pictures of pressed buttons, then the command. */
@@ -656,16 +673,34 @@ static void run_click_feedback(int elapsed)
             p += 4;
             const Bitmap *image = draw_gdat_image(category, index, entry);
             if (!image) break;
-            if (!opened) {
-                memcpy(o.rect, in.current.rect, sizeof o.rect);
-                offscreen_create(&o, -1, 0);
-                opened = 1;
-            }
             int16_t r[RECT_SIZE];
-            rect_center_in(r, o.rect, image->width, image->height);
+            feedback_init_rect(&o, &opened, r, image->width, image->height);
             offscreen_blit(&o, image, r, 0, 0, key, 0, draw_gdat_image_palette(category, index, entry));
             break;
         }
+        case FB_RUNE_BUTTON: {
+            const Bitmap *image = draw_gdat_image(CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNE_PRESSED);
+            if (!image) break;
+            int16_t r[RECT_SIZE], w, h;
+            feedback_init_rect(&o, &opened, r, image->width, image->height);
+            offscreen_blit(&o, image, r, 0, 0, UI_OPAQUE, 0,
+                           draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNE_PRESSED));
+            /* the rune of the pressed button in the next rune set */
+            int set = champion(action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
+            char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
+            text_measure(text, &w, &h);
+            rect_center_in(r, o.rect, w, h);
+            offscreen_draw_text_at(&o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1, ui_colors[UI_BLACK], ui_colors[UI_CYAN], text);
+            break;
+        }
+        case FB_ENTERED_RUNES:
+            ui_draw_entered_runes(1);
+            offscreen_flush(ui_action_area_begin_draw(0), 1);
+            break;
+        case FB_MAP_OPTION_BUTTONS:
+            ui_draw_map_option_buttons(*p++);
+            offscreen_flush(ui_action_area_begin_draw(0), 1);
+            break;
         case FB_INVENTORY_BUTTON:
             if (ui.inventory) {
                 ui.buttons |= *p;
@@ -674,7 +709,7 @@ static void run_click_feedback(int elapsed)
             p++;
             break;
         default:
-            /* spell, hand, action, map option, and dialog button pictures: Steps 15, 16, 20 */
+            /* spell, hand, action, and dialog button pictures: Steps 15, 20 */
             p += op_argument_size(op & 0x3f);
             break;
         }
@@ -735,7 +770,7 @@ void input_poll(void)
 static int op_argument_size(int op)
 {
     switch (op) {
-    case 8: case 9: case 0x0c: case 0x0e: return 1;
+    case 8: case 9: case 0x0c: return 1;
     case 0x0f: case 0x10: return 3;
     default: return 0;
     }
@@ -760,7 +795,7 @@ void input_cancel_push_mode(void)
 }
 
 /* Draws a movement arrow released or pressed. */
-static void ui_draw_move_arrow(int entry, int zone, int pressed)
+void ui_draw_move_arrow(int entry, int zone, int pressed)
 {
     in.arrow_pressed = pressed;
     in.arrow_zone = zone;
@@ -780,11 +815,11 @@ void ui_release_move_arrow(void)
 
 /* ---- Clicks in the dungeon view ---- */
 
+#define CAT_CREATURE_SOUND 0x0f
 #define ZONE_FRONT_WALL_LOW 0x2fd   /* the parts of the view that show the wall in front of the party */
 #define ZONE_FRONT_WALL_HIGH 0x2fe
 #define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
 
-static const int8_t dir_dx[4] = {0, 1, 0, -1}, dir_dy[4] = {-1, 0, 1, 0};
 
 static int zone_contains_point(int zone, int x, int y)
 {
@@ -809,6 +844,23 @@ static void view_click_wall_sensor(int cell)
     }
     if (x < 0 || x >= dungeon_map_width(party.cur_map) || y < 0 || y >= dungeon_map_height(party.cur_map)) return;
     sensor_process_wall_click(x, y, (dir + side_turn[cell & 3]) & 3, THING_NONE, game.leader_hand);
+}
+
+/* A click on a static creature in front: a push of its middle starts the push arrows, a side turns it. */
+static void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y)
+{
+    int side;
+    if (!view_hit_test_creature(x, y, square_x, square_y, &side)) return;
+    if (creature_group_info(group)->push_resistance == 0xff) {
+        sound_play_with_fallback(CAT_CREATURE_SOUND, item_gdat_index(group), 0x84, 0xfe, square_x, square_y, 0, 0x8c, 0x80);
+    } else if (!side) {
+        party.push_mode = 1;
+        ui.push_mode = 1;
+        ui_draw_movement_arrows();
+        party.push_arrow = 6;
+    } else {
+        creature_turn_group(group, 0, side);
+    }
 }
 
 /* A click on the wall in front: a plain wall sounds; the mouse drag through a fake wall is not ported. */
@@ -967,6 +1019,16 @@ int command_execute(Command *c)
         if (game.leader != 0xffff) inv_toggle(game.leader);
     } else if (command == CMD_VIEWPORT) {
         view_click_in_viewport(c->x, c->y);
+    } else if (command == CMD_CAST_SPELL) {
+        input_command_stop = magic_cast_entered_runes();
+    } else if (command == CMD_REMOVE_RUNE) {
+        magic_remove_last_rune();
+    } else if (command >= CMD_RUNE_FIRST && command <= CMD_RUNE_LAST) {
+        magic_add_rune(command - CMD_RUNE_FIRST);
+    } else if (command == CMD_MINION_MAP) {
+        minion_map_click_set_destination(command, c->x, c->y);
+    } else if (command >= CMD_MAP_OPTION_FIRST && command <= CMD_MAP_OPTION_LAST) {
+        ui_toggle_map_option(command - CMD_MAP_OPTION_FIRST);
     } else if (command == CMD_PAUSE) {
         game_pause();
     } else if (command == CMD_RESUME) {
@@ -987,6 +1049,48 @@ int command_execute(Command *c)
     }
     if (in.dialog_value >= CMD_TEXT_FIRST && in.dialog_value <= CMD_TEXT_LAST) input_command_stop = 1;
     return 1;
+}
+
+int input_mouse_x = -1, input_mouse_y = -1;
+
+#define PUSH_ARROW_NONE 6
+#define ARROW_CENTER_X 0x14     /* half size of the middle part of the viewport, without an arrow */
+#define ARROW_CENTER_Y 0x0f
+
+void input_update_viewport_arrow(void)
+{
+    /* by push arrow: the movement arrow entry and zone, the direction of the push and of the party step */
+    static const uint8_t entries[6] = {0x12, 0x10, 0x14, 0x16, 0x18, 0x0e};
+    static const uint16_t zones[6] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
+    static const uint8_t push_dirs[6] = {0, 1, 2, 2, 2, 3}, step_dirs[6] = {0, 0, 1, 2, 3, 0};
+    if (!view_arrows_enabled || party.push_pending_group != THING_NONE) return;
+    int16_t r[RECT_SIZE];
+    if (!zone_get_rect(ZONE_VIEWPORT, r)) return;
+    int x = input_mouse_x - r[RECT_X], y = input_mouse_y - r[RECT_Y];
+    party.push_arrow = PUSH_ARROW_NONE;
+    if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT) return;
+    int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
+    if (abs(dx) < ARROW_CENTER_X) {
+        if (abs(dy) < ARROW_CENTER_Y) return;
+        arrow = dy >= 0 ? 3 : 0;
+    } else if (dx < 0) {
+        arrow = abs(dy) < ARROW_CENTER_Y ? 5 : dy >= 0 ? 4 : 0;
+    } else {
+        arrow = abs(dy) < ARROW_CENTER_Y ? 1 : dy >= 0 ? 2 : 0;
+    }
+    int step = (step_dirs[arrow] + game.party_dir) & 3;
+    if (dun_square_blocks_movement(dun_get_square((int16_t)(game.party_x + dir_dx[step]), (int16_t)(game.party_y + dir_dy[step]))))
+        return;
+    if (!creature_can_be_pushed((int16_t)(game.party_x + dir_dx[game.party_dir]), (int16_t)(game.party_y + dir_dy[game.party_dir]),
+                                (push_dirs[arrow] + game.party_dir) & 3, NULL))
+        return;
+    ui_draw_move_arrow(entries[arrow], zones[arrow], 1);
+    party.push_arrow = (int16_t)arrow;
+}
+
+void input_set_wait(int steps)
+{
+    in.wait = steps;
 }
 
 void command_process_queue(void)

@@ -315,6 +315,17 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
     offscreen_add_dirty_rect(o, r);
 }
 
+void offscreen_draw_text_at(Offscreen *o, int x, int y, int color, int bg, const char *text)
+{
+    int16_t w, h;
+    if (!text_measure(text, &w, &h)) return;
+    gfx_draw_text(o->bitmap->pixels, o->rect[RECT_W], (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]),
+                  (uint16_t)color, (uint16_t)bg, text, 8);
+    /* like the original, the changed rect starts at the base line */
+    const int16_t r[RECT_SIZE] = {[RECT_X] = (int16_t)x, [RECT_Y] = (int16_t)y, [RECT_W] = w, [RECT_H] = h};
+    offscreen_add_dirty_rect(o, r);
+}
+
 /* The base line start of text in zone (screen coordinates) and its rectangle; returns 0 when it is not visible. */
 static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
 {
