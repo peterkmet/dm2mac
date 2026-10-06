@@ -404,6 +404,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     assert DialogState.in_dll(lib, "dialog").screen_mode == 0
 
     session.new_game = 0
+    DialogState.in_dll(lib, "dialog").screen_mode = 1  # the program start state, reset on the load path
     with Player(lib, [click_command(0, 0xD9), click_slot(0), click_choice(2), click_choice(1)]):
         assert lib.game_init() == 1
     assert (session.new_game, session.loaded, session.slot) == (0, 1, 0)
