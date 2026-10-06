@@ -103,7 +103,10 @@ void advanced_quick_load(void)
     if (restored) remove(keep);  /* else QUICK.TMP keeps the running game */
     session = kept;
     if (!restored) {
-        game_quit();  /* the dungeon is empty: the game cannot go on */
+        /* the dungeon is empty: the game cannot go on */
+        fprintf(stderr, "cannot load %s or the running game in %s\n", path, keep);
+        game_quit();
+        session.exit_code = EXIT_GAME_LOST;
         return;
     }
     if (loaded) {

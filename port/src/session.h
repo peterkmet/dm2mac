@@ -11,7 +11,7 @@
 #define SAVE_SLOT_NONE (-1)
 #define SAVE_PATH_SIZE 1024
 /* Exit codes of the program (the original system_shutdown): the launcher of the DOS game reads them. */
-enum { EXIT_QUIT = 0, EXIT_COMPLETED = 1, EXIT_PARTY_DEAD = 2, EXIT_RESTART = 3 };
+enum { EXIT_QUIT = 0, EXIT_COMPLETED = 1, EXIT_PARTY_DEAD = 2, EXIT_RESTART = 3, EXIT_GAME_LOST = 4 };
 
 typedef struct {
     int new_game;               /* 1: the next game_load starts DUNGEON.DAT; 0: it loads a slot */

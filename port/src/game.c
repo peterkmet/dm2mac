@@ -325,7 +325,8 @@ void game_tick(void)
     main_loop.timer_ticks++;
     if (++main_loop.tick_count >= main_loop.tick_threshold) tick_elapsed = 1;
     command_process_queue();
-    if (!tick_elapsed || !main_loop.running || advanced_automap_open) return;  /* the automap stops the game time */
+    /* the automap stops the game time; a quit (a lost game) ends all game work */
+    if (!tick_elapsed || !main_loop.running || advanced_automap_open || main_loop.quit) return;
     game_step_end();
     game_step();
 }

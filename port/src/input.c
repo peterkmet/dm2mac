@@ -1543,7 +1543,7 @@ void command_process_queue(void)
         in.queue_head = (head + 1) % COMMAND_QUEUE;
         if (!command_execute(&in.queue[head])) in.queue_head = head;
         else if (in.disabled) in.disabled--;
-    } while (!input_command_stop);
+    } while (!input_command_stop && !main_loop.quit);
 }
 
 /* The command entry of command in the input tree under node, NULL for none. */
