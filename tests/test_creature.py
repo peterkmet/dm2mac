@@ -86,13 +86,37 @@ def creature_fronts(lib):
 MOVE_PUSH_CREATURE = 0x23F9B
 
 
+CH_CELL, CH_HEALTH, CH_STAMINA, CH_MAX_STAMINA, CH_STRENGTH = 0x1D, 0x36, 0x3A, 0x3C, 0x4C
+G_CHAMPION_COUNT = 0x7F276
+
+
+def random_champions(s, rng):
+    """1 to 4 champions (copies of the first) with random strength, stamina, and health (some dead), in both."""
+    from test_interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+    lib = s.lib
+    first = bytes(champion_records(lib)[:CHAMPION_SIZE])
+    count = rng.randrange(1, 5)
+    s.game.champion_count = count
+    s.emu.write(G_CHAMPION_COUNT, struct.pack("<H", count))
+    for champ, cell in enumerate(rng.sample(range(4), count)):
+        champion_bytes(lib, champ, 0, first)
+        champion_bytes(lib, champ, CH_CELL, [cell])
+        max_stamina = rng.randrange(200, 2000)
+        champion_bytes(lib, champ, CH_HEALTH, struct.pack("<h", 0 if champ and rng.random() < 0.2 else 50))
+        champion_bytes(lib, champ, CH_STAMINA, struct.pack("<hh", rng.randrange(max_stamina + 1), max_stamina))
+        champion_bytes(lib, champ, CH_STRENGTH, bytes([rng.randrange(5, 100)] * 2))
+    sync_champions(lib, s)
+
+
 def test_push_creatures(creatures, lib):
-    # The party stands in front of creature groups of all maps and pushes them with each push arrow.
+    # The party (1 to 4 champions of random strength, stamina, and health) stands in front of creature groups of
+    # all maps and pushes them with each push arrow.
     import random
     rng = random.Random(17)
     fronts = creature_fronts(lib)
     assert len(fronts) > 20
-    for n, (map_, x, y, d) in enumerate(rng.sample(fronts, min(80, len(fronts)))):
+    for n, (map_, x, y, d) in enumerate(rng.sample(fronts * 3, min(200, 3 * len(fronts)))):
+        random_champions(creatures, rng)
         creatures.place(map_, x, y, d)
         arrow = rng.randrange(6)
         lib.move_push_creature(arrow)
