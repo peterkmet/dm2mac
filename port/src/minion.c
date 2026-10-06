@@ -43,6 +43,7 @@
 #define CAT_CREATURE 0x0f
 #define CAT_TELEPORTER 0x18
 #define MAP_ITEM_ICONS 0x40             /* the image of the map item with the party, minion, and marker icons */
+#define GDAT_INDEX_COUNT 256            /* GDAT indices are bytes */
 /* Icons of the square strip. */
 enum {
     ICON_WALL, ICON_FAKE_WALL_BLINK, ICON_FLOOR, ICON_PIT, ICON_PIT_VARIANT, ICON_PIT_BLINK, ICON_STAIRS_FIRST,
@@ -324,17 +325,32 @@ static void draw_things(const ViewSquare *s, uint16_t map_thing, int dir, int x,
     }
 }
 
+/* The red frame around the party square at (x, y) of the screen. */
+static void draw_party_frame(int x, int y)
+{
+    int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + ICON_W, GAP_Y * 2 + ICON_H}, dx, dy;
+    rect_clip(r, minion_map.clip, &dx, &dy);
+    offscreen_fill_rect(area, r, ui_colors[UI_RED]);
+}
+
+/* The icon of each living champion at its cell of the party square at (x, y), for a map that looks to dir. */
+static void draw_party_icons(const Strip *p, int x, int y, int dir)
+{
+    for (int i = 0; i < game.champion_count; i++) {
+        const Champion *c = champion(i);
+        if (!c->health) continue;
+        int icon = game.magic_light[MAGIC_INVISIBILITY] ? ICON_PARTY_INVISIBLE : i + ICON_PARTY_FIRST;
+        draw_strip(p, icon, x, y, mirror_one_side[(c->cell + 4 - dir) & 3]);
+    }
+}
+
 /* The square icon (and the things) of the square (sx, sy) of the current map at (x, y) of the screen. */
 static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int x, int y, int icon_set, int flags)
 {
     ViewSquare s;
     dun_get_square_aspect(&s, dir, sx, sy);
     Strip base = map_icon_strip(CAT_MAP_ICONS, icon_set);
-    if (flags & MAP_PARTY) {
-        int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + ICON_W, GAP_Y * 2 + ICON_H}, dx, dy;
-        rect_clip(r, minion_map.clip, &dx, &dy);
-        offscreen_fill_rect(area, r, ui_colors[UI_RED]);
-    }
+    if (flags & MAP_PARTY) draw_party_frame(x, y);
     int fake_seen = square_type(s.square) == SQUARE_FAKE_WALL && s.square & FAKE_WALL_SEEN;
     int other_map = 0, saved_map = 0, saved_x, saved_y;
     for (;;) {
@@ -372,12 +388,7 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
         }
         if (flags & MAP_PARTY) {
             Strip p = map_item_icons(map_thing);
-            for (int i = 0; i < game.champion_count; i++) {
-                const Champion *c = champion(i);
-                if (!c->health) continue;
-                int icon = game.magic_light[MAGIC_INVISIBILITY] ? ICON_PARTY_INVISIBLE : i + ICON_PARTY_FIRST;
-                draw_strip(&p, icon, x, y, mirror_one_side[(c->cell + 4 - dir) & 3]);
-            }
+            draw_party_icons(&p, x, y, dir);
         }
         if (flags & MAP_MARKER) {
             int icon = minion_map.marker_state == 2 ? ICON_MARKER_ABOVE : minion_map.marker_state == 3 ? ICON_MARKER_BELOW : ICON_MARKER;
@@ -412,6 +423,29 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
     if (m < 0 || !inside_map(m, ax, ay)) return;  /* fix: as above, no read outside the map */
     uint8_t square = dungeon_square(m, ax, ay);
     if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN) draw_strip(&base, ICON_PIT_ABOVE, x, y, 0);
+}
+
+void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int sy, int x, int y, int party_item)
+{
+    int16_t saved[RECT_SIZE];
+    memcpy(saved, minion_map.clip, sizeof saved);
+    memcpy(minion_map.clip, clip, sizeof saved);
+    area = target;
+    if (party_item >= 0) draw_party_frame(x, y);
+    ui_map_draw_square(THING_NONE, sx, sy, DIR_NORTH, x, y, map_icon_set(), 0);
+    if (party_item >= 0) {
+        Strip p = {draw_gdat_image(GDAT_CONTAINER_CATEGORY, party_item, MAP_ITEM_ICONS),
+                   draw_gdat_image_palette(GDAT_CONTAINER_CATEGORY, party_item, MAP_ITEM_ICONS), 0};
+        draw_party_icons(&p, x, y, DIR_NORTH);
+    }
+    memcpy(minion_map.clip, saved, sizeof saved);
+}
+
+int minion_map_party_icons_item(void)
+{
+    for (int index = 0; index < GDAT_INDEX_COUNT; index++)
+        if (gdat_exists(draw_gdat(), GDAT_CONTAINER_CATEGORY, index, GDAT_TYPE_IMAGE, MAP_ITEM_ICONS)) return index;
+    return -1;
 }
 
 /* Sets the marker square (x, y) of map and the squares that it leads to one level up and down. */

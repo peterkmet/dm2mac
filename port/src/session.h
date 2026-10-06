@@ -11,7 +11,7 @@
 #define SAVE_SLOT_NONE (-1)
 #define SAVE_PATH_SIZE 1024
 /* Exit codes of the program (the original system_shutdown): the launcher of the DOS game reads them. */
-enum { EXIT_QUIT = 0, EXIT_COMPLETED = 1, EXIT_PARTY_DEAD = 2, EXIT_RESTART = 3 };
+enum { EXIT_QUIT = 0, EXIT_COMPLETED = 1, EXIT_PARTY_DEAD = 2, EXIT_RESTART = 3, EXIT_GAME_LOST = 4 };
 
 typedef struct {
     int new_game;               /* 1: the next game_load starts DUNGEON.DAT; 0: it loads a slot */
@@ -65,7 +65,8 @@ void game_quit(void);
 /* The player edits the name and the title of a champion in the inventory. */
 void champ_edit_name(Champion *c);
 
-/* Removes every "--save PATH" pair from argv, walking it like the option parser; returns the new argc. */
+/* Removes every "--save PATH" pair from argv, walking it like the option parser (--mode and the other options stay);
+   returns the new argc. */
 int args_drop_save(int argc, char **argv);
 
 #endif

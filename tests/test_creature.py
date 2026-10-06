@@ -145,3 +145,19 @@ def test_animated_creature_views(creatures, lib):
         assert mine == original, (n, map_, x, y, d)
         shown += len(set(original)) > 2
     assert shown > 20
+
+
+def test_merchant_at_the_counter(lib, gdat, tmp_path):
+    # shop.DAT: the party stands still in front of the counter of the dwarf merchant (map 28). The merchant puts the
+    # item of the shop display on the counter, then waits for an offer: the same actions, sounds, and counter in both.
+    from test_move import ROOT
+    shop = ROOT / "tests" / "saves" / "shop.DAT"
+    if not shop.exists():
+        pytest.skip("tests/saves/shop.DAT missing")
+    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
+    s = CreatureScenario(lib, gdat, shop.read_bytes(), tmp_path)
+    s.place(28, 8, 6, 2)
+    for n in range(300):
+        s.step()
+        s.assert_same(n)
+    s.assert_equal("end")

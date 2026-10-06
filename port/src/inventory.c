@@ -5,6 +5,7 @@
 #include "draw.h"
 #include "dungeon.h"
 #include "hooks.h"
+#include "input.h"
 #include "inventory.h"
 #include "item.h"
 #include "random.h"
@@ -378,8 +379,10 @@ static int drink_potion(int champ, uint16_t thing)
 void champ_consume_object(int champ, uint16_t thing, int slot)
 {
     if (thing == THING_NONE) {
-        /* ponytail: the mouth held with an empty hand needs the mouse capture of the original; nothing here */
-        if (game.leader_hand == THING_NONE) return;
+        if (game.leader_hand == THING_NONE) {
+            ui.mouth = (input_mouse_buttons & INPUT_BUTTON_LEFT) != 0;  /* held until the left button is released */
+            return;
+        }
         champ = ui.inventory - 1;
         thing = game.leader_hand;
         slot = -1;

@@ -69,7 +69,7 @@ Reads the game state.
 ```
 
 ```json
-{"ok":true,"time":33,"ticks":61,"mode":"move","dialog":null,"party":{"map":0,"x":1,"y":8,"dir":0},"champion_count":1,"leader":0,"champions":[{"name":"TORHAM","health":[83,83],"stamina":[770,770],"mana":[14,14],"load":67}],"inventory":-1,"candidate":-1,"hand":null,"sound_volume":7,"music_volume":7,"end":0,"quit":0}
+{"ok":true,"time":33,"ticks":61,"mode":"move","dialog":null,"party":{"map":0,"x":1,"y":8,"dir":0},"champion_count":1,"leader":0,"champions":[{"name":"TORHAM","health":[83,83],"stamina":[770,770],"mana":[14,14],"load":67}],"inventory":-1,"candidate":-1,"hand":null,"sound_volume":7,"music_volume":7,"end":0,"quit":0,"game_mode":"advanced","automap":0,"cheat_immortal":0,"cheat_food":0,"cheat_light":0}
 ```
 
 | Field | Meaning |
@@ -85,6 +85,9 @@ Reads the game state.
 | `hand` | The leader hand object: `{"thing": n, "name": "..."}`, or `null`. |
 | `sound_volume`, `music_volume` | Volume settings 0 to 7. |
 | `end`, `quit` | The end flag of the game (party dead or quit) and the program end flag. |
+| `game_mode` | The game mode: `vanilla` or `advanced` (`docs/advanced-mode.md`). |
+| `automap` | 1 while the automap is open, else 0. |
+| `cheat_immortal`, `cheat_food`, `cheat_light` | 1 while the cheat is on, else 0. |
 
 The message area text is not in the state. Use a screenshot to read it.
 
@@ -112,7 +115,7 @@ Example of a key code: `{"cmd": "key", "key": 28}` presses Enter.
 
 ### click
 
-Clicks a mouse button at a screen position. The pointer moves there. `button` is `left` (default) or `right`. A right click also sends the release of the right button.
+Clicks a mouse button at a screen position: the button goes down and up. The pointer moves there. `button` is `left` (default) or `right`.
 
 ```json
 {"cmd": "click", "x": 260, "y": 150, "button": "left"}
@@ -121,6 +124,20 @@ Clicks a mouse button at a screen position. The pointer moves there. `button` is
 ```json
 {"ok":true}
 ```
+
+### press and release
+
+`press` holds a mouse button down at a screen position until a `release`. The pointer moves there. `button` is `left` (default) or `right`. Use them for the eye and the mouth of the inventory: the game shows the eye panel only while the left button is down, and the release ends it.
+
+```json
+{"cmd": "press", "x": 20, "y": 64}
+```
+
+```json
+{"cmd": "release", "x": 20, "y": 64}
+```
+
+Both reply `{"ok":true}`.
 
 ### command
 

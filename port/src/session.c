@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "action.h"
+#include "automap.h"
 #include "creature.h"
 #include "dialog.h"
 #include "draw.h"
@@ -343,6 +344,7 @@ static int load_new_game(void)
     game.leader_hand = THING_NONE;
     int first = !weather.dungeon_loaded;
     if (!dungeon_load(path)) return 0;
+    automap_reset();
     uint16_t start = dungeon_party_start();
     game.party_x = location_x(start);
     game.party_y = location_y(start);
@@ -488,7 +490,7 @@ int game_start_save(const char *path)
     if (first) dungeon_read_level_table();
     ui_reset();
     money_init_coin_table();
-    ui_draw_game_screen();
+    gfx_fill_zone_screen(ZONE_SCREEN, 0);  /* game_start_session runs champ_init_party_state */
     move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
     party.redraw = REDRAW_ALL_VIEW;
     game_start_session();
@@ -637,7 +639,7 @@ int args_drop_save(int argc, char **argv)
     int out = 1;
     for (int i = 1; i < argc; i++) {
         int is_value_option = !strcmp(argv[i], "--data") || !strcmp(argv[i], "--filter") || !strcmp(argv[i], "--save")
-                              || !strcmp(argv[i], "--control");
+                              || !strcmp(argv[i], "--control") || !strcmp(argv[i], "--mode");
         if (is_value_option && i + 1 < argc) {
             if (strcmp(argv[i], "--save")) {
                 argv[out++] = argv[i];

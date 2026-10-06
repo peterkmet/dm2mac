@@ -20,10 +20,14 @@ from dm2tools.control_client import request
 from test_input import session  # noqa: F401 (a fixture)
 from conftest import ROOT
 from test_move import WorldGame, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from test_interface import UiState, things_of
 
 KEY_SHIFT, KEY_ALT = 0x200, 0x800
 SCAN_A, SCAN_ENTER = 0x1E, 0x1C
 ZONE_TURN_RIGHT = 0x29
+ZONE_EYE_CLICK, ZONE_PANEL_ORIGIN, CMD_EYE, INPUT_MODE_INVENTORY = 0x222, 7, 0x47, 8  # the eye zone is in the panel
+PANEL_MODE_SKILLS, PANEL_MODE_SCROLL, THING_SCROLL = 2, 5, 7
+ZONE_MOUTH_CLICK, CMD_MOUTH = 0x221, 0x46
 INPUT_MODE_MOVE, LEFT = 5, 2
 DIRECTIONS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 SCREEN_W, SCREEN_H, PALETTE_COLORS, RGB = 320, 200, 256, 3
@@ -170,6 +174,52 @@ def test_key_click_and_command_move_the_party(control, lib):
         assert request({"cmd": "wait", "ticks": 16}, path)["ok"]
         assert game.party_dir == (direction + 2) % 4
         assert request({"cmd": "click", "x": 10, "y": 100, "button": "right"}, path)["ok"]
+
+
+def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path):
+    # The original eye command 0x47 (input_hold_right_button) sets the eye only while the left button is down and hides
+    # the pointer; the release of the button (event 4, input_cancel_mouse_capture) ends it. The eye shows the skills
+    # with an empty leader hand, else the leader hand object.
+    path, *_ = control
+    ui = UiState.in_dll(lib, "ui")
+    lib.champ_put_object_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.input_find_command.restype = ctypes.c_uint16
+
+    def hold_and_release(x, y, mode):
+        assert request({"cmd": "press", "x": x, "y": y}, path)["ok"]
+        assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
+        assert ui.eye == 1 and ui.panel_mode == mode
+        assert request({"cmd": "screenshot", "path": str(tmp_path / "held.png")}, path)["ok"]
+        held, screen = read_png(tmp_path / "held.png"), screen_rgb(lib)
+        assert [row[x:x + 16] for row in held[y:y + 16]] == [row[x:x + 16] for row in screen[y:y + 16]]  # no pointer
+        assert request({"cmd": "release", "x": x, "y": y}, path)["ok"]
+        assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
+        assert ui.eye == 0 and ui.panel_mode != mode
+
+    with pumped(lib):
+        assert request({"cmd": "key", "key": "1"}, path)["ok"]
+        assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
+        origin_x, origin_y = ctypes.c_int16(), ctypes.c_int16()
+        lib.zone_get_position(ZONE_PANEL_ORIGIN, ctypes.byref(origin_x), ctypes.byref(origin_y))
+        x, y = arrow_center(lib, ZONE_EYE_CLICK)
+        x, y = x + origin_x.value, y + origin_y.value
+        assert lib.input_find_command(INPUT_MODE_INVENTORY, x, y, LEFT, 0, (ctypes.c_int16 * 4)()) == CMD_EYE
+        assert request({"cmd": "click", "x": x, "y": y}, path)["ok"]
+        assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
+        assert ui.eye == 0 and ui.panel_mode != PANEL_MODE_SKILLS
+        hold_and_release(x, y, PANEL_MODE_SKILLS)
+        mouth_x, mouth_y = arrow_center(lib, ZONE_MOUTH_CLICK)
+        mouth_x, mouth_y = mouth_x + origin_x.value, mouth_y + origin_y.value
+        assert lib.input_find_command(INPUT_MODE_INVENTORY, mouth_x, mouth_y, LEFT, 0, (ctypes.c_int16 * 4)()) == CMD_MOUTH
+        assert request({"cmd": "press", "x": mouth_x, "y": mouth_y}, path)["ok"]
+        assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
+        assert ui.mouth == 1  # the mouth with an empty hand holds like the eye
+        assert request({"cmd": "release", "x": mouth_x, "y": mouth_y}, path)["ok"]
+        assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
+        assert ui.mouth == 0
+    lib.champ_put_object_in_leader_hand(things_of(lib, THING_SCROLL, 1)[0], 0)
+    with pumped(lib):
+        hold_and_release(x, y, PANEL_MODE_SCROLL)
 
 
 def test_wait_answers_after_the_ticks(control, lib):

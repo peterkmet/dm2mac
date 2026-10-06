@@ -11,6 +11,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include "control.h"
+#include "advanced.h"
 #include "champion.h"
 #include "dialog.h"
 #include "dungeon.h"
@@ -264,7 +265,8 @@ static void send_error(const char *error)
     send_reply();
 }
 
-/* The state of the game: time, party, champions, input mode, open dialog and panels, hand, volumes, end. */
+/* The state of the game: time, party, champions, input mode, open dialog and panels, hand, volumes, end, game mode,
+   automap, cheats. */
 static void send_state(void)
 {
     int mode = input_get_mode();
@@ -290,8 +292,9 @@ static void send_state(void)
         put_string(name, strlen(name));
         put("}");
     }
-    put(",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d}", game.sound_volume, game.music_volume,
-        main_loop.end, main_loop.quit);
+    put(",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d", game.sound_volume,
+        game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode], advanced_automap_open);
+    put(",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", cheat_immortal, cheat_food, cheat_light);
     send_reply();
 }
 
@@ -435,8 +438,9 @@ static void handle_key(const char *request)
     send_ok();
 }
 
-/* A click moves the pointer there, like the mouse; a right click also gives the release that main.c gives. */
-static void handle_click(const char *request)
+/* A click, a press, or a release of a mouse button moves the pointer there, like the mouse. A click presses and
+   releases the button; a press holds it down until a release. */
+static void handle_button(const char *request, int down, int up)
 {
     char button[NAME_SIZE] = "left";
     int x, y;
@@ -447,9 +451,10 @@ static void handle_click(const char *request)
         send_error("button must be left or right");
         return;
     }
+    int bit = right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT;
     input_mouse_x = x, input_mouse_y = y;
-    input_mouse_click(x, y, right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);
-    if (right) input_mouse_click(x, y, INPUT_RIGHT_RELEASED);
+    if (down) input_mouse_down(x, y, bit);
+    if (up) input_mouse_up(x, y, bit);
     send_ok();
 }
 
@@ -464,7 +469,11 @@ static void handle_request(const char *request)
     } else if (!strcmp(cmd, "key")) {
         handle_key(request);
     } else if (!strcmp(cmd, "click")) {
-        handle_click(request);
+        handle_button(request, 1, 1);
+    } else if (!strcmp(cmd, "press")) {
+        handle_button(request, 1, 0);
+    } else if (!strcmp(cmd, "release")) {
+        handle_button(request, 0, 1);
     } else if (!strcmp(cmd, "move")) {
         if (!get_position(request, &x, &y)) return;
         input_mouse_x = x, input_mouse_y = y;

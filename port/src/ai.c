@@ -1276,14 +1276,14 @@ static int cmd_place_on_sensor(void)
 {
     uint16_t saved = ai.item_flags;
     if (!(saved & ITEM_SKILL_PLACE)) return AI_RESULT_FAIL;
-    if (ai.arg1 == 1
+    if (ai.arg2 == 1
         && creature_find_matching_item(FILTER_PLACEABLE, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) != THING_ENDOFLIST)
         return AI_RESULT_DONE;
     int sx = ai.arg1 ? ai.event.data[0] : dest_x(), sy = ai.arg1 ? ai.event.data[1] : dest_y();
     uint16_t sensor = dun_find_sensor_on_square(sx, sy, CELL_ANY, SENSOR_ITEM_SPOT);
     if (sensor == THING_NONE) return AI_RESULT_FAIL;
     uint16_t item = thing_word(sensor, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT;
-    if (ai.arg1 == 2) {
+    if (ai.arg2 == 2) {
         int f = facing();
         uint16_t g = creature_get_group_at((uint16_t)(ai.event.data[0] + dir_dx[f]), (uint16_t)(ai.event.data[1] + dir_dy[f]));
         if (g == THING_NONE) return AI_RESULT_FAIL;

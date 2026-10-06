@@ -1,6 +1,7 @@
 /* Champion statistics in fights, damage, wounds, poison, death, and the effects of time. */
 #include <string.h>
 #include "action.h"
+#include "advanced.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
@@ -428,6 +429,7 @@ void champ_apply_pending_damage(void)
         champ_pending_damage[i] = 0;
         if (!c->health) continue;
         int16_t health = (int16_t)(c->health - d);
+        if (health <= 0 && cheat_immortal) health = 1;
         if (health <= 0) {
             champ_kill(i);
             continue;
@@ -475,7 +477,7 @@ void champ_apply_time_effects(void)
         if (since > NEW_PARTY_TIME) step++;
         if (since > NEW_PARTY_TIME_2) step++;
         if (party_sleeping) step *= 2;
-        int16_t stamina = 0;
+        int16_t stamina = 0, food = c->food, water = c->water;
         do {
             int low = hunger <= HUNGER_BASE;
             if (c->food < HUNGRY) {
@@ -500,6 +502,10 @@ void champ_apply_time_effects(void)
         champ_decrease_stamina(i, stamina);
         if (c->food < STARVING) c->food = STARVING;
         if (c->water < STARVING) c->water = STARVING;
+        if (cheat_food) {
+            c->food = food;
+            c->water = water;
+        }
         if (c->health < c->max_health && c->stamina >= c->max_stamina >> 2
             && champ_regen_counter < (uint16_t)champ_get_stat(c, STAT_VITALITY, 0) + HEALTH_REGEN_BASE) {
             int gain = (c->max_health >> HEALTH_REGEN_SHIFT) + 1;

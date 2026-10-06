@@ -98,6 +98,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] B14. Compare the screen after a load. Expected: champion status boxes, bars, portraits, hands, movement arrows, and the action area are equal (plan Step 13). Covered by `tests/test_interface.py::test_game_screen_matches_original`, `tests/test_interface.py::test_party_states_match_original`.
 - [x] B15. Open the inventory of each champion. Expected: slots, statistics, skills, food and water bars, and the mouth picture are equal. Covered by `tests/test_interface.py::test_inventory_matches_original`, `tests/test_interface.py::test_inventory_panels_match_original`.
 - [x] B16. Put the eye on a weapon, a piece of clothing, a scroll, a potion, a chest, and a money box. Expected: the object information panel is equal. Covered by `tests/test_interface.py::test_inventory_panels_match_original`.
+- [ ] B16a. In the inventory, hold the left mouse button down on the eye, with an empty hand and with an object in the hand. Expected: the skills and statistics panel or the object information panel shows, and the pointer hides, while the button is down. The release shows the normal panel again. A short click shows nothing. The real click path is covered by `tests/test_control.py::test_eye_and_mouth_hold_while_the_left_button_is_down`.
 - [x] B17. Open the spell panel and enter runes. Expected: the rune sets and the entered runes are equal. Covered by `tests/test_interface.py::test_action_area_panels_match_original`, `tests/test_magic.py::test_runes_and_casts_match_original`.
 - [x] B18. Fill the message area with more than three lines. Expected: the rows move up by one row; no part of an old row stays. The 7-pixel move is a port reconstruction (plan Step 13); `tests/test_interface.py::test_message_area_scrolls` checks it in the port only. Passed (manual, 2026-10-06).
 - [x] B19. Wait without new messages. Expected: old message rows clear after the same time as in DOS. Covered by `tests/test_interface.py::test_message_area_matches_original`.
@@ -211,16 +212,44 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [ ] K6. Save in DOS, then load the slot in the port. Expected: the port loads the game; the party, champions, and objects are equal. Skipped by the user's decision (DOSBox comparison).
 - [ ] K7. After K5 and K6, play one minute in each. Expected: no crash and no visible difference in the game state. Skipped by the user's decision (DOSBox comparison).
 
+## L. Advanced mode
+
+Details: `docs/advanced-mode.md`.
+
+- [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, as the arrow keys.
+- [ ] L2. Run `build/dm2 --mode vanilla --save tests/saves/start.DAT`. Press W, Q, F5, and F9. Expected: nothing happens; no `game/DATA/QUICK.DAT` is written.
+- [ ] L3. In the advanced mode, open the save dialog (Option+S, SAVE) and type a slot name with W, A, S, D, Q, and E. Expected: the letters go into the name; the party does not move.
+- [ ] L4. In the advanced mode, open an inventory and rename a champion with the name editor. Expected: W, A, S, D, Q, and E type letters.
+- [ ] L5. In the dungeon view, press F5. Expected: the white line "GAME SAVED" in the message area; `game/DATA/QUICK.DAT` exists; no `QUICK.BAK`.
+- [ ] L6. Walk some squares, then press F9. Expected: "GAME LOADED"; the party is back on the square of L5; no dialog shows.
+- [ ] L7. Delete `game/DATA/QUICK.DAT` and press F9. Expected: "NO QUICK SAVE"; the game goes on.
+- [ ] L8. Write some bytes of garbage into `game/DATA/QUICK.DAT` and press F9. Expected: "QUICK SAVE DAMAGED"; the game goes on unchanged.
+- [ ] L9. Press F5 and F9 with an open inventory, during the pause (Esc), during the sleep, and in the save menu. Expected: nothing happens.
+- [ ] L10. Load a slot, play more than 100 ticks, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
+- [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
+- [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla or advanced" and exit code 2.
+- [ ] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, the direction, and the three cheats OFF. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.
+- [ ] L14. Walk through some rooms and open the automap. Expected: the squares that the view showed are drawn with the minion map icons; squares behind walls and closed doors stay black.
+- [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the close).
+- [ ] L16. Drag the automap with the left mouse button. Expected: the map moves in whole squares and stops at the map edges; after a close and a new open, the party is in the middle again.
+- [ ] L17. Press I, F, and L with the automap open. Expected: each readout line changes to ON and back to OFF. Press I, F, and L in the dungeon view. Expected: no cheat changes.
+- [ ] L18. Turn I on, close the automap, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
+- [ ] L19. Turn F on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
+- [ ] L20. In a dark place, turn L on and close the automap. Expected: the dungeon view shows full light.
+- [ ] L21. Turn the cheats on, then press F9 after a quick save. Expected: the readout shows all cheats OFF.
+- [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
+- [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
+
 ## Known deviations
 
 Do not report these documented deviations as bugs. Details are in `docs/skull-formats.md`.
 
+- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/advanced-mode.md`).
 - No intro, ending movie, or credits; a completed game ends the program with exit code 1 (PRD scope; section 14).
 - No DOS layer: no disk, drive, or memory dialogs; menus and dialogs wait without busy loops (section 14).
 - `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).
 - RESTART starts the program again; the dialog texts show the last folder of the `--data` path in capitals as the drive path (section 14).
 - The port hides the system cursor and draws the original cursor images: the arrow, the hand, the held object with its shadow, and the dragged champion. The held object shows only over the cursor zones where the original shows it; menus and dialogs show no object icon. The original cursor in menus and dialogs is unverified (section 13).
-- The mouth or eye held with an empty hand is not ported (section 13).
 - The enter and leave events of the cursor zones and the mouse drag through a fake wall are not ported (section 10).
 - The walking frame stretch uses nearest neighbour; its exact rounding is unverified (section 10).
 - The pit fall view shows at the next screen update, not in the middle of the step (section 10).

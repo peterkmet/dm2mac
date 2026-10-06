@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "advanced.h"
+#include "automap.h"
 #include "champion.h"
 #include "creature.h"
 #include "draw.h"
@@ -14,7 +16,8 @@
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
    of the bit stream stores only the bits that its mask table selects, most significant bit first.
-   Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. */
+   Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. In the advanced mode the AMAP block
+   of the automap follows the bit stream (automap.h); the original loader ignores it. */
 
 #define HEADER_SIZE 0x2a
 #define HEADER_FORMAT 0
@@ -775,6 +778,7 @@ int save_load(const char *path, const gdat_t *gdat)
         champ_reset_step_state();
         io.format = le16(header + HEADER_FORMAT);
         result = read_state() ? SAVE_OK : SAVE_ERR_DATA;
+        if (result == SAVE_OK) automap_read(f);  /* the original stops at the last bit of the state: the block follows */
     }
     fclose(f);
     if (result != SAVE_OK) dungeon_free();
@@ -804,7 +808,7 @@ int save_write(const char *path, const char *bak_path, const char *name, const g
     /* the records keep the indices of the active groups; the timeline loses their events (game_save) */
     int ok = fwrite(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_write(f);
     creature_deactivate_all_groups();
-    ok = ok && write_state();
+    ok = ok && write_state() && (game_mode == GAME_MODE_VANILLA || automap_write(f));
     free(io.group_order);
     free(io.container_order);
     if (fclose(f) != 0) ok = 0;

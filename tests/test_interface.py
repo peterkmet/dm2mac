@@ -817,3 +817,42 @@ def test_print_number_matches_original(port, original):
         lib.text_print_number(color, value)
         mine, theirs = c_screen(lib), original.screen()
         assert mine == theirs, (value, diff(mine, theirs, SCREEN_W))
+
+
+ITEM_GET_NAME, DUN_GET_THING_DATA, G_OBJECT_NAME = 0x37E7A, 0x1D2DA, 0x7F92C
+
+
+def test_item_names_match_original(port, original):
+    # The name of every item index of weapons, armour, scrolls, potions, containers, and misc items. Misc 0x3E (a
+    # shell) has the GDAT name "f m" in all languages: the original shows the same 2 font glyphs. A token of no champion
+    # shows stale bytes in the original.
+    lib, emu = port, original.emu
+    lib.item_name.restype = ctypes.c_char_p
+    lib.item_name.argtypes = [ctypes.c_uint16]
+    lib.thing_word.restype = ctypes.c_uint16
+    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+
+    def with_index(kind, word, index):
+        if kind == 7:  # a scroll has only index 0
+            return word
+        if kind == 9:  # container word 4: the index bits 0-2 in bits 13-15, bits 3-4 in bits 1-2
+            return word & ~0xE006 | (index & 7) << 13 | (index >> 3) << 1
+        shift = 8 if kind == 8 else 0
+        return word & 0x3FFF & ~(0x7F << shift) | index << shift  # a champion token of champion 0
+
+    names = set()
+    for kind, offset, count in ((5, 2, 128), (6, 2, 128), (7, 2, 1), (8, 2, 128), (9, 4, 32), (10, 2, 128)):
+        thing = things_of(lib, kind, 1)[0]
+        record = emu.call(DUN_GET_THING_DATA, thing)
+        word = lib.thing_word(thing, offset)
+        for index in range(count):
+            value = with_index(kind, word, index)
+            lib.set_thing_word(thing, offset, value)
+            emu.write(record + offset, struct.pack("<H", value))
+            emu.call(ITEM_GET_NAME, thing)
+            theirs = emu.read(G_OBJECT_NAME, 64).split(b"\0")[0]
+            assert lib.item_name(thing) == theirs, (hex(thing), hex(index))
+            names.add(theirs)
+        emu.write(record + offset, struct.pack("<H", word))
+    assert b"f m" in names and len(names) > 100
