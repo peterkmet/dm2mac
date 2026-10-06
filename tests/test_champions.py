@@ -93,6 +93,8 @@ def test_coin_from_the_table(loop, lib):
 
 SOLID_KEY = 0xA8B1  # on the shelf of the first room (map 22, (1, 5)), behind the table at (1, 6)
 SUN_CREST = 0x130    # the item of the holder on the shelf face
+SOLID_KEY_ITEM = 0x10B
+CABINET_ITEMS = 0x1E1, 0x1EB, SOLID_KEY_ITEM  # the items of the cabinet on the shelf face, in the order of the clicks
 G_PUSH_ARROW = 0x72246
 PUSH_ARROW_LEFT = 5  # the table moves to the left of the party, the party steps forward
 
@@ -100,10 +102,10 @@ PUSH_ARROW_LEFT = 5  # the table moves to the left of the party, the party steps
 def test_door_out_of_the_first_room(loop, lib):
     # The party pushes the table (static creature 0x19) at (1, 6) to the south and steps to the shelf (1, 5). The
     # shelf face shows a sun crest holder (text 0x885c, ornament 0x74): a click gives a sun crest, a second click
-    # puts it back. The alcove of the key (text 0x8854, ornament 0x86) stays hidden, also in the original, so the
-    # test moves the solid key to the floor east of the party in both. The party puts the key into the keyhole (4, 5) cell 3 and
-    # presses the door button (4, 4): the door (3, 4) opens. Both run the same keys and clicks tick by tick; the
-    # test sets the push arrow under the mouse in both (the harness stubs the original arrow update).
+    # puts it back. With the holder empty, the face shows the cabinet (text 0x8854, ornament 0x86): the party drops
+    # the crest and takes the items of the cabinet until the solid key. The party puts the key into the keyhole
+    # (4, 5) cell 3 and presses the door button (4, 4): the door (3, 4) opens. Both run the same keys and clicks tick
+    # by tick; the test sets the push arrow under the mouse in both (the harness stubs the original arrow update).
     lib.item_get_index.restype = ctypes.c_uint16
     climb_ladder(loop)
     run(loop, walk(KEY_TURN_RIGHT, KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT, KEY_FORWARD), "table")
@@ -122,13 +124,15 @@ def test_door_out_of_the_first_room(loop, lib):
     run(loop, [("c", 110, 80), ("t", 16)], "holder back")
     assert hands(loop)[0][0] == 0xFFFF
     loop.assert_loop("shelf")
-    floor = SOLID_KEY & 0x3FFF | 3 << 14  # the near right cell of the square east of the party
-    lib.dungeon_unlink_thing_from_square(SOLID_KEY, 22, 1, 5)
-    loop.emu.call(DUN_UNLINK_THING_FROM_SQUARE, SOLID_KEY, 0, 1, 5)
-    lib.dungeon_link_thing_to_square(floor, 22, 2, 6)
-    loop.emu.call(DUN_LINK_THING_TO_SQUARE, floor, 0, 2, 6)
-    run(loop, walk(KEY_TURN_RIGHT) + [("c", 150, 145), ("t", 16)], "key")
+    run(loop, [("c", 110, 80), ("t", 16), ("c", 40, 165), ("t", 16)], "crest to the floor")
+    assert hands(loop)[0][0] == 0xFFFF
+    for item in CABINET_ITEMS:
+        run(loop, [("c", 110, 80), ("t", 16)], "cabinet")
+        assert lib.item_get_index(hands(loop)[0][0]) == item
+        if item != SOLID_KEY_ITEM:
+            run(loop, [("c", 40, 165), ("t", 16)], "to the floor")
     assert hands(loop)[0][0] == SOLID_KEY & 0x3FFF
+    run(loop, walk(KEY_TURN_RIGHT), "east")
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT, KEY_FORWARD, KEY_TURN_RIGHT), "keyhole")
     closed = square(loop, 22, 3, 4)
     run(loop, [("c", 111, 90), ("t", 16)], "keyhole")
