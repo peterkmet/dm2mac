@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <SDL3/SDL.h>
+#include "dialog.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "game.h"
@@ -165,6 +166,10 @@ int main(int argc, char **argv)
     if (!plat_init(WINDOW_SCALE, factor)) return 1;
     if (music_init(draw_gdat(), data) != MUSIC_OK) SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
     plat_audio_music(music_render);
+    if (save) {
+        sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
+        sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
+    }
     game_frame_hook = modal_frame;
     if (!save && !game_init()) main_loop.quit = 1;
     for (int pit = 0; !main_loop.quit;) {
@@ -180,6 +185,7 @@ int main(int argc, char **argv)
     music_quit();
     plat_quit();
     if (session.exit_code == EXIT_RESTART) {
+        args_drop_save(argc, argv);  /* the original always restarts into the start menu */
         execvp(argv[0], argv);  /* the DOS launcher starts the game again */
         fprintf(stderr, "cannot restart %s\n", argv[0]);
     }

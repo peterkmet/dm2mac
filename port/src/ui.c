@@ -30,14 +30,14 @@ enum { BOX_ALIVE = 0, BOX_DEAD = 1, BOX_DAMAGE = 3, BOX_SLOT_FRAME = 4, BOX_SLOT
 /* Inventory panel pictures (7, 0, entry). */
 enum {
     PANEL_BACK = 0, PANEL_PANEL = 1, PANEL_OBJECT_NAME = 5, PANEL_FOOD = 6, PANEL_WATER = 7,
-    PANEL_POISON = 8, PANEL_BUTTON_EXIT = 0x0b, PANEL_BUTTON_SAVE = 0x0d, PANEL_BUTTON_SLEEP = 0x0f,
+    PANEL_POISON = 8, PANEL_BUTTON_EXIT = 0x0b, PANEL_BUTTON_SLEEP = 0x0d, PANEL_BUTTON_SAVE = 0x0f,
     PANEL_BUTTON_SOUND = 0x11, PANEL_BUTTON_CLOSE = 0x13, PANEL_MOUTH = 0x20, PANEL_EYE = 0x25,
     PANEL_ICON_GOOD = 4, PANEL_ICON_BAD = 5
 };
 /* Inventory texts (7, 0, 5, entry). */
 enum { TEXT_WEIGHT = 0x1f, TEXT_STAT_FIRST = 0x20, TEXT_LOAD = 0x2a };
 /* Inventory buttons: bits of ui.buttons. */
-enum { BUTTON_CLOSE = 1, BUTTON_EXIT = 2, BUTTON_SAVE = 4, BUTTON_SLEEP = 8, BUTTON_SOUND = 0x10, BUTTON_ALL = 0x1f };
+enum { BUTTON_CLOSE = 1, BUTTON_EXIT = 2, BUTTON_SLEEP = 4, BUTTON_SAVE = 8, BUTTON_SOUND = 0x10, BUTTON_ALL = 0x1f };
 /* Inventory panel modes. */
 enum { PANEL_MODE_NONE, PANEL_MODE_FOOD, PANEL_MODE_SKILLS, PANEL_MODE_OBJECT, PANEL_MODE_SCROLL = 5,
        PANEL_MODE_MOUTH = 7 };
@@ -879,8 +879,8 @@ void champ_draw_state(int champ)
                 draw_inventory_button(PANEL_BUTTON_CLOSE, ZONE_BUTTON_CLOSE, BUTTON_CLOSE);
                 flags |= REDRAW_NAME;
             }
-            if (buttons_changed & BUTTON_SLEEP) draw_inventory_button(PANEL_BUTTON_SLEEP, ZONE_BUTTON_SLEEP, BUTTON_SLEEP);
             if (buttons_changed & BUTTON_SAVE) draw_inventory_button(PANEL_BUTTON_SAVE, ZONE_BUTTON_SAVE, BUTTON_SAVE);
+            if (buttons_changed & BUTTON_SLEEP) draw_inventory_button(PANEL_BUTTON_SLEEP, ZONE_BUTTON_SLEEP, BUTTON_SLEEP);
         }
         if (buttons_changed & BUTTON_EXIT) draw_inventory_button(PANEL_BUTTON_EXIT, ZONE_BUTTON_EXIT, BUTTON_EXIT);
         present = 1;

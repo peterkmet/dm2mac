@@ -86,7 +86,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] B15. Open the inventory of each champion. Expected: slots, statistics, skills, food and water bars, and the mouth picture are equal. Covered by `tests/test_interface.py::test_inventory_matches_original`, `tests/test_interface.py::test_inventory_panels_match_original`.
 - [x] B16. Put the eye on a weapon, a piece of clothing, a scroll, a potion, a chest, and a money box. Expected: the object information panel is equal. Covered by `tests/test_interface.py::test_inventory_panels_match_original`.
 - [x] B17. Open the spell panel and enter runes. Expected: the rune sets and the entered runes are equal. Covered by `tests/test_interface.py::test_action_area_panels_match_original`, `tests/test_magic.py::test_runes_and_casts_match_original`.
-- [ ] B18. Fill the message area with more than four lines. Expected: the rows move up by one row; no part of an old row stays. The 7-pixel move is a port reconstruction (plan Step 13); `tests/test_interface.py::test_message_area_scrolls` checks it in the port only.
+- [ ] B18. Fill the message area with more than three lines. Expected: the rows move up by one row; no part of an old row stays. The 7-pixel move is a port reconstruction (plan Step 13); `tests/test_interface.py::test_message_area_scrolls` checks it in the port only.
 - [x] B19. Wait without new messages. Expected: old message rows clear after the same time as in DOS. Covered by `tests/test_interface.py::test_message_area_matches_original`.
 
 ## C. Input and movement
@@ -159,13 +159,13 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [ ] H5. Fight a creature. Expected: the attack and hit sounds play at the moment of the attack and of the hit. The sound requests are covered by `tests/test_world.py::test_sound_requests_match_original`.
 - [ ] H6. Stand near an animated wall ornament with a sound. Expected: the ambient sound plays at the start of each animation cycle. The rule is covered by `tests/test_world.py::test_ambient_wall_sounds_match_original`.
 - [ ] H7. Let the party sleep near a sound. Expected: the sound is quieter.
-- [ ] H8. Set the sound volume to 0 in the volume dialog, then to 7. Expected: 0 is silent; a new value plays the test sound.
+- [ ] H8. Open the volume dialog (see J11). Set the sound volume to 0, then to 7. Expected: 0 is silent; a new value plays the test sound.
 
 ## I. Music
 
 - [ ] I1. Start a game. Expected: the music plays from the first game step; the start menu plays no song (plan Step 19).
 - [ ] I2. Go to a map with another song. Expected: the old song fades out; the new song starts (plan Step 19).
-- [ ] I3. Set the music volume to 0 in the volume dialog, then to a higher value. Expected: 0 stops the music; a higher value starts it again (plan Step 19).
+- [ ] I3. Open the volume dialog (see J11). Set the music volume to 0, then to a higher value. Expected: 0 stops the music; a higher value starts it again (plan Step 19).
 - [ ] I4. Listen to a song in the port and in DOSBox (Sound Blaster 16 with OPL). Expected: the same notes, instruments, and tempo.
 - [ ] I5. Let a song play to its end. Expected: the song loops.
 
@@ -180,11 +180,11 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [ ] J7. Quit, start `build/dm2`, and load the save. Expected: "LOADING GAME...", then "GAME LOADED, READY TO PLAY"; the game continues in the same state (PRD Epic 5).
 - [ ] J8. Save with an object in the leader hand, a magic light, and an aura; load. Expected: the object is back in the hand; the light and the aura continue.
 - [ ] J9. Choose QUIT more than 100 ticks after the last save. Expected: the program asks before the quit; then the end picture shows until a click.
-- [ ] J10. Choose RESTART. Expected: the program starts again with the start menu.
-- [ ] J11. Open the volume dialog. Expected: the sound and music volumes go from 0 to 7.
+- [ ] J10. Choose RESTART. Expected: the program starts again with the start menu, also when it started with `--save`.
+- [ ] J11. Open a champion's inventory and click the speaker button (zone 0x238, command 0x8d); the dialog has no key. Expected: the sound and music volumes go from 0 to 7.
 - [ ] J12. Rename a champion with the name editor. Expected: the keys edit the name and the title.
 - [ ] J13. Let the whole party die. Expected: the scream, then "THE END"; RESTART GAME loads the last save; QUIT GAME ends with exit code 2.
-- [ ] J14. Rename `SKSAVE0.DAT` and keep `SKSAVE0.BAK`; load slot 0. Expected: the port loads the `.BAK` file and renames it back.
+- [ ] J14. Load or save slot 0. While the game runs, rename `SKSAVE0.DAT` and keep `SKSAVE0.BAK`. Let the party die and choose RESTART GAME. Expected: the `.BAK` file loads and is renamed back to `SKSAVE0.DAT`. (The slot list reads only `.DAT` files, as in the original; a slot with only a `.BAK` shows UNUSED.)
 - [ ] J15. Load a damaged save. Expected: "THE GAME IS DAMAGED!"; no crash.
 - [ ] J16. Optional: load a save near the end and complete the final task (end sensor). Expected: the screen goes black and the program ends with exit code 1 (PRD Epic 5; the ending movie is out of scope).
 

@@ -28,6 +28,7 @@ static PlatMixer *music_mixer;
 int plat_init(int scale, int filter_factor)
 {
     filter = filter_factor;
+    SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
     if (!SDL_Init(SDL_INIT_VIDEO) ||
         !SDL_CreateWindowAndRenderer("Dungeon Master II", SCREEN_W * scale, SCREEN_H * scale,
                                      SDL_WINDOW_RESIZABLE, &win, &ren) ||
@@ -36,6 +37,7 @@ int plat_init(int scale, int filter_factor)
         SDL_Log("SDL: %s", SDL_GetError());
         return 0;
     }
+    SDL_RaiseWindow(win);
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
     SDL_HideCursor(); /* the game draws its own cursor into fb */
     SDL_AudioSpec spec = { SDL_AUDIO_S16, AUDIO_CHANNELS, SOUND_OUTPUT_RATE };
