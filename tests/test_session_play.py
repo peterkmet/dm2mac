@@ -69,7 +69,7 @@ def click_slot(slot):
         rect = (ctypes.c_int16 * 4)()
         assert lib.zone_get_rect(0x1C3, rect)
         vx, vy = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(7, ctypes.byref(vx), ctypes.byref(vy))
+        lib.zone_get_position(InputMatch.in_dll(lib, "input_match").origin, ctypes.byref(vx), ctypes.byref(vy))
         lib.input_mouse_click(x, rect[1] + vy.value + slot * 7 + 3, 2)
     return act
 
@@ -153,6 +153,19 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
         with Player(lib, actions):
             assert lib.game_load() == -1
         assert (session.slot, session.loaded) == (0, 0)
+
+
+def test_hide_game_view_cancels_the_champion_drag(lib):
+    # The original ui_hide_game_view cancels a champion drag inside its guard (SKULL.c:54260).
+    drag = ctypes.c_int.in_dll(lib, "input_drag_state")
+    hidden = ctypes.c_int.from_address(ctypes.addressof(main_loop_quit(lib)) - 8)  # MainLoop.view_hidden
+    DialogState.in_dll(lib, "dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
+    lib.ui_hide_game_view()
+    assert (hidden.value, drag.value) == (1, 0)
+    drag.value = 1
+    lib.ui_hide_game_view()  # already hidden: the guard keeps the drag
+    assert drag.value == 1
+    drag.value = hidden.value = 0
 
 
 def test_end_sensor_completes_the_game(play, lib):
@@ -404,9 +417,11 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     assert DialogState.in_dll(lib, "dialog").screen_mode == 0
 
     session.new_game = 0
+    DialogState.in_dll(lib, "dialog").screen_mode = 1  # the program start state, reset on the load path
     with Player(lib, [click_command(0, 0xD9), click_slot(0), click_choice(2), click_choice(1)]):
         assert lib.game_init() == 1
     assert (session.new_game, session.loaded, session.slot) == (0, 1, 0)
+    assert DialogState.in_dll(lib, "dialog").screen_mode == 0  # the game after "GAME LOADED"
     mine = (game.game_time - 1, game.party_map, game.party_x, game.party_y)
     path = tmp_path / "direct.DAT"
     path.write_bytes(start)
@@ -550,3 +565,43 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     theirs = (struct.unpack("<H", emu.read(G_LEADER_HAND, 2))[0], struct.unpack("<H", emu.read(G_LEADER_HAND_WEIGHT, 2))[0])
     assert mine == theirs and mine[0] != 0xFFFF and mine[1]
     loop.assert_loop("load")
+
+
+KEY_SAVE_MENU = 0x81F  # Alt+S
+
+
+@pytest.mark.parametrize("actions", [[click_choice(4)], [click_choice(1), click_slot(2), click_choice(4), key(0x1E),
+                                                        key(0x1C), click_choice(2)]], ids=["resume", "save"])
+def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions):
+    # build/dm2 --save start.DAT: Alt+S opens the save menu over the game; RESUME, or SAVE into slot 2, closes it. The
+    # game screen outside the viewport is as before the menu (no dialog parts, the status boxes), and the forward key
+    # moves the party.
+    from test_input import KEY_FORWARD, run_ticks, session
+    from test_view import Bitmap
+    game, _ = session.__wrapped__(lib, gdat, start, tmp_path)
+    (tmp_path / "DATA").mkdir()
+    Session.in_dll(lib, "session").data_dir = str(tmp_path).encode()
+    lib.input_key_down.argtypes = [ctypes.c_uint16]
+    screen = Bitmap.in_dll(lib, "draw_screen")
+    view = (ctypes.c_int16 * 4)()
+    assert lib.zone_get_rect(7, view)
+
+    def outside_viewport():
+        rows = ctypes.string_at(screen.pixels, screen.width * screen.height)
+        return [rows[y * screen.width:(y + 1) * screen.width] if not view[1] <= y < view[1] + view[3]
+                else rows[y * screen.width:y * screen.width + view[0]] + rows[y * screen.width + view[0] + view[2]:(y + 1) * screen.width]
+                for y in range(screen.height)]
+
+    run_ticks(lib, 16)
+    before = outside_viewport()
+    with Player(lib, actions) as player:
+        lib.input_key_down(KEY_SAVE_MENU)
+        run_ticks(lib, 16)
+    assert not player.actions
+    assert (tmp_path / "DATA" / "SKSAVE2.DAT").exists() == (len(actions) > 1)
+    run_ticks(lib, 16)
+    assert outside_viewport() == before
+    x, y = game.party_x, game.party_y
+    lib.input_key_down(KEY_FORWARD)
+    run_ticks(lib, 40)
+    assert (game.party_x, game.party_y) != (x, y)

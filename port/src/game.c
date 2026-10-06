@@ -71,7 +71,7 @@ static void ui_draw_sleep_message(void)
 
 void ui_show_game_view(void)
 {
-    if (!main_loop.view_hidden) return;
+    if (!main_loop.view_hidden || dialog.screen_mode) return;
     if (party_sleeping) {
         ui_draw_sleep_message();
         screen_present_viewport();
@@ -92,8 +92,12 @@ void ui_show_game_view(void)
 
 void ui_hide_game_view(void)
 {
-    if (main_loop.view_hidden) return;
+    if (main_loop.view_hidden || dialog.screen_mode) return;
     main_loop.view_hidden = 1;
+    if (input_drag_state) {
+        champ_drag_cancel();
+        ui_update_action_area(0);
+    }
     input_cancel_push_mode();
     ui_release_move_arrow();
 }
@@ -307,6 +311,7 @@ void game_start_session(void)
     creature_refresh_party_maps();
     creature_reset_active_groups();
     if (session.new_game) move_thing(THING_NONE, -1, 0, game.party_x, game.party_y);
+    dialog.screen_mode = 0;
     game_step();
 }
 
