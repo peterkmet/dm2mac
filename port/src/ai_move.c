@@ -911,7 +911,7 @@ static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing,
     uint8_t square = dun_get_square(x, y);
     int type = square_type(square);
     if (type == SQUARE_PIT && dir == 5 && square & SQUARE_PIT_OPEN && !(square & 1)) {
-        need = MOVE_FALL;
+        need = MOVE_OPEN_PIT;
         *action = ACTION_PIT;
         *facing = (int16_t)group_dir();
     } else if (type == SQUARE_FLOOR || type == SQUARE_PIT || type == SQUARE_TELEPORTER || type == SQUARE_FAKE_WALL) {
