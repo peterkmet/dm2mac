@@ -227,15 +227,18 @@ int item_is_minion_map(uint16_t thing)
            && container_kind_bits(thing) == CONTAINER_KIND_MINION_MAP;
 }
 
-/* The sum of attribute entry over thing and its contents; a money box counts coins by their stack size. */
+/* The sum of attribute entry over thing and its contents; a money box counts coins by their stack size.
+   Weight and value add a part per charge; the value of a potion scales with its power. */
 static int item_sum_attr(uint16_t thing, int entry)
 {
     if (thing == THING_NONE) return 0;
     int sum = item_attr(thing, entry);
-    if (entry == ATTR_WEIGHT) {
-        uint16_t per_charge = item_attr(thing, ATTR_WEIGHT_PER_CHARGE);
+    if (entry == ATTR_WEIGHT || entry == ATTR_COIN_VALUE) {
+        uint16_t per_charge = item_attr(thing, entry == ATTR_WEIGHT ? ATTR_WEIGHT_PER_CHARGE : ATTR_VALUE_PER_CHARGE);
         if (per_charge) sum += item_charges(thing) * per_charge;
     }
+    if (entry == ATTR_COIN_VALUE && thing_type(thing) == THING_POTION && sum > 1)
+        sum = (sum >> 1) + (int)((record_word(thing, 2) & POTION_POWER_MASK) * (unsigned)(sum >> 1) / POTION_POWER_MAX);
     if (thing_type(thing) != THING_CONTAINER || container_kind_bits(thing)) return sum;
     int moneybox = item_is_moneybox(thing), coin_sum = 0;
     for (uint16_t t = record_word(thing, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {

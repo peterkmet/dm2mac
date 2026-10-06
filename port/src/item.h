@@ -20,7 +20,8 @@ enum gdat_category {
 /* Item attribute entries: GDAT value keys (category, index, 0x0b, entry). */
 enum item_attr {
     ATTR_FLAGS = 0, ATTR_WEIGHT = 1, ATTR_COIN_VALUE = 2, ATTR_SLOTS = 4, ATTR_ICON_ANIMATION = 6, ATTR_ARMOUR_CLASS = 0x0b,
-    ATTR_STRENGTH = 8, ATTR_THROW_POWER = 9, ATTR_WEIGHT_PER_CHARGE = 0x34
+    ATTR_STRENGTH = 8, ATTR_THROW_POWER = 9, ATTR_WEIGHT_PER_CHARGE = 0x34,
+    ATTR_VALUE_PER_CHARGE = 0x35
 };
 /* ATTR_FLAGS bits. */
 #define ITEM_FLAG_COIN 0x4000

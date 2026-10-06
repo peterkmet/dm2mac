@@ -420,6 +420,51 @@ def test_money_and_prices_match_original(rules, lib):
     scenario.assert_equal("end")
 
 
+ITEM_GET_VALUE, CONTAINER = 0x1F8A7, 9
+
+
+def test_item_value_matches_original(rules, lib):
+    # The value of potions of all kinds and powers, of weapons, clothes, and miscellaneous items with charges, and
+    # of chests and money boxes with items and stacks of coins inside.
+    rng, emu = rules.rng, rules.emu
+    lib.money_init_coin_table()
+    emu.call(MONEY_INIT_COIN_TABLE)
+    lib.money_coin_item.restype = ctypes.c_uint16
+    lib.item_get_value.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    coins = [lib.money_coin_item(i) & 0x7F for i in range(lib.money_coin_type_count())]
+    box_word = lib.thing_word(MONEY_BOX, 4)
+    potions, misc = ([lib.dungeon_unused_thing(kind) for _ in range(4)] for kind in (POTION, MISC))
+    box = lib.dungeon_unused_thing(CONTAINER)
+    for t in potions + misc + [box]:
+        rules.set_word(t, 0, 0xFFFE)
+    rules.set_word(box, 2, 0xFFFE)
+    items = rules.pool + potions + misc
+    valued = boxes = 0
+    for n in range(1500):
+        for t in rules.pool:
+            charges = rng.randrange(16) << (10 if t >> 10 == WEAPON else 9)
+            rules.set_word(t, 2, rng.randrange(0x80) | charges)
+        for t in potions:
+            rules.set_word(t, 2, rng.randrange(0x80) << 8 | rng.choice((0, 1, 0xFF, rng.randrange(0x100))))
+        for t in misc:
+            index = rng.choice(coins) if rng.random() < 0.5 else rng.randrange(0x80)
+            rules.set_word(t, 2, index | rng.randrange(0x40) << 8 | rng.randrange(4) << 14)
+        contents = rng.sample(items, rng.randrange(len(items)))
+        for t, after in zip(contents, contents[1:] + [0xFFFE]):
+            rules.set_word(t, 0, after)
+        rules.set_word(box, 2, contents[0] if contents else 0xFFFE)
+        rules.set_word(box, 4, rng.choice((box_word, box_word, rng.randrange(8) << 13 | rng.choice((0, 2, 4)))))
+        boxes += lib.item_is_moneybox(box) != 0
+        for t in items + [box]:
+            mine, theirs = lib.item_get_value(t), emu.call(ITEM_GET_VALUE, t) & 0xFFFF
+            assert mine == theirs, (n, hex(t), [hex(lib.thing_word(t, w)) for w in (2, 4)])
+            valued += mine > 0
+        for t in contents:
+            rules.set_word(t, 0, 0xFFFE)
+    assert valued > 1000 and boxes > 300, (valued, boxes)
+
+
 G_MAGIC_LIGHT = 0x7FFEC  # 6 bytes: magic light, invisibility, action effect, haste, ...
 CHAMPIONS_OFFSET, MAGIC_LIGHT_OFFSET = 252, 252 + 4 * CHAMPION_SIZE + 2  # offsetof(Game, ...) in save.h
 EVENT_ITEM_EFFECT, EVENT_MAGIC_LIGHT, EVENT_INVISIBILITY, EVENT_AURA, EVENT_POISON = 0x0E, 0x46, 0x47, 0x48, 0x4B
