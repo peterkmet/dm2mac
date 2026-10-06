@@ -641,3 +641,41 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Not ported: the mouse areas of the cursor (enter and leave events, cursor shapes); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
 - The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
 - Later steps (empty hooks in `port/src/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); the weather update and the object transfer of a sensor (Step 17); sounds (Step 18); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
+
+## 11. Champions, inventory, items, money, and shops (Step 15)
+
+### The leader hand
+
+- `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `leader_hand` (`port/src/inventory.h`) and draws the icon at the mouse pointer.
+- A click on an object zone of the view takes the object (`view_click_take_object`). With an object in the hand, the click places the object in the cell (`view_click_place_object`), in an alcove, or into an open chest. A click in the upper view throws the hand object (`view_click_throw_object`). The commands `0x14` to `0x41` click the inventory slots, `0xea` to `0xed` put the hand object into a free slot.
+- `champ_apply_item_effects` adds or removes the stat effects of an item in a slot. Mode 0 is the load, 1 adds, -1 removes, 2 and -2 are the timed effects of eaten items, 3 restores. The load applies mode 0 to all slots. Then `save_restore_timed_effects` restores the light power and the timed effects.
+
+### Damage and time effects
+
+- `champ_take_damage` adds the damage to `g_pending_damage` and the wounds to `g_pending_wounds`. `champ_apply_pending_damage` applies them at the end of the step: health, the damage star (event `0x0c`), and death (`champ_kill`, bones in the champion cell).
+- `champ_apply_time_effects` runs every game step for each living champion: food, water, stamina, health and mana regeneration (mana: maximum mana / 40 + 1 per gain), the decay of raised stats to their base, and the poison.
+
+### Actions
+
+- `g_action_repeat` has 2 records of 8 bytes for each champion: count, steps left, a fresh flag, the action, and the thing. `champ_process_repeated_actions` runs them each step.
+- `champ_perform_action` runs the command of an action (GDAT text field `CM`) with its skill, stamina cost, delay, and charges. The commands of creatures, spells, minions, and missiles call Step 16 functions.
+- `champ_add_experience` uses the last combat time and the experience factor of the map. A level gain prints a message in the color of the skill class (green, yellow, red, blue).
+
+### Money and shops
+
+- The coin types are the miscellaneous items with the coin flag (`ATTR_FLAGS` bit 14), sorted by value. `money_split_amount` takes the most valuable coins first.
+- A merchant creature has price lists 0 to 4. `shop_parse_item_class_set(creature, n)` reads GDAT text `(0x0f, creature, 5, 0x10 + n)`: letters choose the item kind (`W` weapons, `A` clothing, `J` miscellaneous, `P` potions, `C` containers, `S` scroll), numbers and ranges choose the items. The shop display uses n = `0x10` + list × 3 (the items of the list). The prices use n = `0x11` and `0x12` + list × 3, the item sets of two price factors (creature values `0xa1` and `0xa2` + list × 3, in percent). The margin is creature value `0xa0` + list × 3 (default 10 %).
+- A shop is a wall sensor of kind `0x3f` with a shop ornament (ornament value `0x0a` = 2). Its data byte is the merchant creature. Its flags: bit 0 "item chosen", bit 2 "step forward", bits 7 to 10 the price list. Its target square holds the display sensor (kind `0x30`). The data of the display sensor is the shown item index.
+- `shop_draw_display` chooses the item when bit 0 is clear or bit 2 is set: the next item (bit 2, or a click above the center of the ornament) or the last item (a click below the center) of the item order table `(9, ornament, 8, 0x13)` that is in the item set of the list. A unique item (`ATTR_FLAGS` bit 12) shows only when it lies on the square, when a creature there holds it, or when the party has it. A table word with bit 15 makes a new item on the target square when the square does not have it. Then the function draws the item (offset value `0xfd`), the empty display (entry `0x11`) when no item is there, and the overlay (entry `0x0f`). In front of the party it also draws the item name (offset `0xf2`) and the sell and buy prices as coin pictures (entry `0x10`, 8 × 7 pixels for each coin type, offsets `0xf1` and `0xf0`).
+- The map graphics load has all entries of the map ornaments, also the item order table. `gdat_get_entry_data_or_null` gives entries of other categories only when they are loaded.
+- `g_view_hit_offset` (`0x802d4`) is the place of the last click in a view picture: the vertical and the horizontal distance from the picture center, in percent of half the picture size. The port keeps the vertical value in `view_hit_offset_y`.
+
+### Deviations of the C port (Step 15)
+
+- Fixes: the original leaves data bytes of some events uninitialized (the timed effects of eaten items, poison, the hide damage event, invisibility). The port sets them to 0. `champ_process_repeated_actions` tests an uninitialized word; the port tests the open hand. `champ_start_recruit` without a mirror on the wall takes an uninitialized portrait; the port does not recruit. `shop_parse_item_class_set` writes outside the set for bad numbers; the port writes only inside it. `shop_draw_display` loops for ever when the merchant sells no item of the list, and reads a NULL record without a display sensor; the port stops after 512 tries, and draws nothing without a display sensor. `item_create_by_index` asks for a record of type `0xffff` for an item index without a thing type; the port gives no item. A coin type below 0 reads before the coin table; the port gives no coin.
+- Fixes of earlier steps: the slot mask table of `item.c` was shifted by one slot (Step 13). `ui_draw_movement_arrows` did not set the input mode (Step 14).
+- The port draws the leader hand icon at the mouse pointer in each present. The original sets it as the mouse cursor.
+- The load clears the pending damage and wounds, the regeneration counter, and the leader hand of the last game (`champ_reset_step_state`).
+- Not ported: the mouth or eye held with an empty hand (it needs the mouse capture of the original); `dun_get_discarded_thing`, the reuse of discarded items when the records run out.
+- Later steps: the merchant AI commands, the creature parts of the actions, spells, minions, and missiles (Step 16, hooks); item creation by a sensor of kind `0x3c` (Step 17, `sensor_transfer_objects`); the sounds of the actions (Step 18); `champ_edit_name` and the party of a new game (Step 20).
+- The coin of `start.DAT`: the gold coin on the table of the first room does not open the door. No wall slot takes it, also in the original. The door opens with the solid key in the keyhole and the door button.
