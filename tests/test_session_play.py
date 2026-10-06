@@ -497,3 +497,43 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     assert (Session.in_dll(lib, "session").exit_code, main_loop_quit(lib).value) == (2, 1)
     sc.flush_sounds()
     sc.assert_same_sounds("scream")
+
+
+G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAGIC_LIGHT = 0x7FBB4, 0x7FBCE, 0x7FFEC
+HAND_OFFSET, MAGIC_LIGHT_OFFSET = 252 + 4 * 263, 252 + 4 * 263 + 2  # offsetof(Game, ...) in save.h
+
+
+def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tmp_path):
+    # A save with an object in the leader hand and timed effects (magic light, invisibility, aura, poison, an eaten
+    # item): the load and the start of its session in both (save_load and game_start_session, as game_load and
+    # game_init run them) give the same light, champions, and leader hand (object, weight, icon).
+    from test_champions import LeaderHand
+    from test_input import Loop
+    from test_save import Event, Game
+    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
+    path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
+    path.write_bytes(start)
+    assert lib.save_load(str(path).encode(), gdat) == 0
+    lib.draw_init(gdat)
+    game = Game.in_dll(lib, "game")
+    lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
+    hand = next(t for t in (lib.champ_remove_object_from_slot(0, s) for s in range(30)) if t != 0xFFFF)
+    ctypes.c_uint16.from_address(ctypes.addressof(game) + HAND_OFFSET).value = hand
+    events = [(0x46, 0, struct.pack("<h", 3)), (0x46, 0, struct.pack("<h", -5)), (0x47, 0, b""),
+              (0x48, 1, struct.pack("<h", 7)), (0x4B, 0, struct.pack("<h", 30)), (0x0E, 0, bytes([10, 0, 34]))]
+    for n, (type_, priority, data) in enumerate(events):
+        event = Event(game.game_time + 50 + n | game.party_map << 24, type_, priority,
+                      (ctypes.c_uint8 * 6)(*data.ljust(6, b"\0")))
+        lib.timeline_add_event(ctypes.byref(event))
+    assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == 0
+    loop = Loop(lib, gdat, path.read_bytes(), tmp_path)
+    emu = loop.emu
+    light = ctypes.string_at(ctypes.addressof(game) + MAGIC_LIGHT_OFFSET, 6)
+    assert light == emu.read(G_MAGIC_LIGHT, 6) and light[:2] != bytes(2)
+    # the hand icon is not compared: only inv_update_hand_cursor sets it, for an object with the icon flag; the load
+    # of the port clears it (champ_reset_step_state), the original keeps the value of the program start
+    mine = (ctypes.c_uint16.from_address(ctypes.addressof(game) + HAND_OFFSET).value,
+            LeaderHand.in_dll(lib, "leader_hand").weight)
+    theirs = (struct.unpack("<H", emu.read(G_LEADER_HAND, 2))[0], struct.unpack("<H", emu.read(G_LEADER_HAND_WEIGHT, 2))[0])
+    assert mine == theirs and mine[0] != 0xFFFF and mine[1]
+    loop.assert_loop("load")
