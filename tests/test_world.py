@@ -674,6 +674,48 @@ def turn_wall_thing(sc, thing, x, y, cell):
     return turned
 
 
+def test_repeated_ambient_wall_sounds_match_original(world, lib, gdat):
+    # The repeated ambient sound event (0x5a) of audible animated wall ornaments, turned to each wall face, with the
+    # party within 2 squares of the wall: the original takes the step to the square in front of the wall from the
+    # data after its direction tables (by the cell and record bits of the sensor thing), so most of the sounds come
+    # from far away and do not play; the requests that play and the timeline of both.
+    sc = world
+    lib.gdat_entry_index.restype = ctypes.c_uint16
+    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lib.gdat_text.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_char_p, ctypes.c_size_t]
+    sensors = ambient_wall_sensors(lib, gdat)
+    rng = random.Random(183)
+    all_floors = squares(lib, (1,))
+    events = played = 0
+    cases = [(s, cell) for s in sensors for cell in range(4)]
+    for n, ((map_, x, y, _, sensor, cycle, offset), cell) in enumerate(rng.sample(cases, min(32, len(cases)))):
+        near = [(sx, sy) for m, sx, sy, _ in all_floors if m == map_ and abs(sx - x) + abs(sy - y) <= 2]
+        if not near:
+            continue
+        sc.place(map_, *rng.choice(near), rng.randrange(4))
+        sensor = turn_wall_thing(sc, sensor, x, y, cell)
+        data = lib.thing_word(sensor, 2) & 0x7FFF  # not started yet
+        set_word(sc, sensor, 2, data)
+        set_word(sc, sensor, 4, lib.thing_word(sensor, 4) | 1)  # the animation runs
+        start = (-(offset + (data >> 7 & 0xFF))) % cycle
+        sc.set_time(start + cycle * rng.randrange(100) + 1)  # the cycle started a tick ago: the event repeats it
+        lib.sensor_process_map_entry(1)
+        sc.emu.call(0x59785, 1)
+        assert_world(sc, (n, "entry"))
+        for i in range(cycle + 1):
+            sc.step()
+            before = len(getattr(sc, "sounds_seen", []))
+            assert_world(sc, (n, map_, x, y, cell, i))
+            played += any(s[0] == 9 for s in sc.sounds_seen[before:])
+        tl = Timeline.in_dll(lib, "timeline")
+        for i in range(tl.capacity):
+            if tl.events[i].type == 0x5A:
+                events += 1
+                lib.timeline_delete_event(i)
+                sc.emu.call(TIMELINE_DELETE_EVENT, i)
+    assert events > 10 and played > 0, (events, played)
+
+
 def test_ambient_wall_sounds_match_original(world, lib, gdat):
     # The party enters the map of an audible animated wall ornament when its animation cycle starts (the sound plays
     # at once), the ornament turned to each of the 4 wall faces: the party stands on the square in front of the wall (the sound comes from the wall square) or
