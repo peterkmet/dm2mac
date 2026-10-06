@@ -256,6 +256,12 @@ class Scenario(CreatureOracle):
         # ... and from the interface state of the program start: an earlier test can leave a recruit open
         from test_interface import UiState
         ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "ui")), 0, ctypes.sizeof(UiState))
+        # ... and from a running game: the end-game sensor of an earlier test (game_complete) stops all damage
+        from test_dialog import Session
+        from test_input import MainLoop
+        session = Session.in_dll(lib, "session")
+        session.completed = session.exit_code = 0
+        MainLoop.in_dll(lib, "main_loop").quit = 0
         if place_party:
             self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
         self.setup_creatures(place_party)
