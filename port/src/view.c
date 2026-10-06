@@ -44,10 +44,6 @@ enum {
 /* Pictures (CAT_MAP, graphics set, 1, entry). */
 /* Map graphics of the map descriptor. */
 #define MAP_GFX_SET_SHIFT 4
-#define MAP_DOOR_TYPE_SHIFT 8       /* door type 0; door type 1 follows 4 bits higher */
-#define MAP_HAS_DOOR_TYPE_0 0x0080
-#define MAP_HAS_DOOR_TYPE_1 0x0100
-#define DOOR_TYPE_NONE 0xff
 #define NIBBLE 0xf
 enum {
     MAP_FLOOR = 0, MAP_CEILING = 1, MAP_FONT = 3, MAP_DOOR_SIDE = 6, MAP_WALL = 0x22, MAP_FAR_WALL = 0x32,

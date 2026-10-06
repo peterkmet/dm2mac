@@ -9,6 +9,13 @@ enum gdat_category {
 };
 #define GDAT_NO_INDEX 0xff
 #define ITEM_INDEX_NONE 0x1ff   /* item index of no thing */
+/* Item index ranges. */
+#define ITEM_FIRST_CLOTHING 0x80
+#define ITEM_FIRST_MISC 0x100
+#define ITEM_FIRST_POTION 0x180
+#define ITEM_FIRST_CREATURE 0x1b0
+#define ITEM_FIRST_CONTAINER 0x1e0
+#define ITEM_SCROLL 0x1fc
 
 /* Item attribute entries: GDAT value keys (category, index, 0x0b, entry). */
 enum item_attr {

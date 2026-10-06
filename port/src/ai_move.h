@@ -17,6 +17,8 @@
 #define AI_MOVE_KIND_MASK 0x1f  /* creature_ai_try_move: the kind of the move */
 #define AI_MOVE_NO_MOVERS 0x40  /* ... groups that move do not block */
 #define AI_MOVE_ATTACK_GROUPS 0x20 /* ... a group of filter 9 in the way gets attacked */
+#define AI_MOVE_FLAG_BITS 0xe0  /* ... the bits above the kind */
+#define FILTER_WEAPON_HANDS 0x0b /* item filter of the champion hands that creatures notice */
 
 /* ai.move_flags: the squares that the creature may enter. */
 #define MOVE_WALL 0x0001
@@ -46,6 +48,7 @@
 #define DOOR_SKILLS_CLOSE 0x73
 #define DOOR_SKILL_BUTTON 0x0003
 #define DOOR_SKILL_SHOOT_BUTTON 0x0001
+#define DOOR_SKILL_PRESS_BUTTON 0x0002
 #define DOOR_SKILL_BASH 0x0004
 #define DOOR_SKILL_BURN 0x0008
 #define DOOR_SKILL_MARK 0x0020

@@ -168,6 +168,15 @@ uint16_t dungeon_map_flags(int map);            /* bit 7 door type 0 present, bi
 uint16_t dungeon_map_ornament_counts(int map);  /* wall bits 0-3, random wall 4-7, floor 8-11, random floor 12-15 */
 uint16_t dungeon_map_object_counts(int map);    /* door ornaments bits 0-3, creature types bits 4-7 */
 uint16_t dungeon_map_graphics(int map);         /* graphics set bits 4-7, door types bits 8-11 and 12-15 */
+#define MAP_HAS_DOOR_TYPE_0 0x0080
+#define MAP_HAS_DOOR_TYPE_1 0x0100
+#define MAP_WALLSET_SHIFT 4
+#define MAP_DOOR_TYPE_SHIFT 8       /* door type 0; door type 1 follows 4 bits higher */
+#define MAP_DOOR_TYPE_1_SHIFT 12
+#define MAP_NIBBLE_MASK 0xf
+#define DOOR_TYPE_NONE 0xff
+/* The wall set (graphics set) of map. */
+#define dungeon_map_wallset(map) (dungeon_map_graphics(map) >> MAP_WALLSET_SHIFT & MAP_NIBBLE_MASK)
 /* The creature types of map (count in dungeon_map_object_counts bits 4-7). */
 const uint8_t *dungeon_map_creature_types(int map);
 /* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */

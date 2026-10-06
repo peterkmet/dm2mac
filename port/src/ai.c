@@ -1042,7 +1042,6 @@ enum ai_condition {
 #define COND_PLAN_TEST 0x40     /* true at once when the plan is the current plan */
 #define COND_NOT 0x80
 #define COND_MASK 0x7f
-#define FILTER_WEAPON_HANDS 0x0b /* item filter of the champion hands that creatures notice */
 #define SENSOR_SPECIAL_WALL 0x3f
 #define CREATURE_TYPE_KIND_A 0x34
 #define CREATURE_TYPE_KIND_B 0x31
