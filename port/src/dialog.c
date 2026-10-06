@@ -181,7 +181,7 @@ int ui_dialog_run(int id)
         game_wait_frames(1);
         if (input_match.choice == DIALOG_NO_CHOICE && input_read_key() == KEY_ENTER)
             input_simulate_command_click(CMD_DIALOG_BUTTON_FIRST);
-    } while (input_match.choice == DIALOG_NO_CHOICE && !main_loop.quit && game_frame_hook);  /* no frame source: no wait */
+    } while (input_match.choice == DIALOG_NO_CHOICE && !main_loop.quit);
     int choice = input_match.choice;
     int result = id == DIALOG_VOLUME ? input_match.value : choice >= 1 && choice <= count ? values[choice - 1] : 0;
     ui.screen_needs_refresh = 1;

@@ -69,7 +69,6 @@ static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
 static const char version_text[] = "V1.0";
 
 Session session = {.slot = SAVE_SLOT_NONE};
-void (*session_quit_hook)(int exit_code);
 /* The headers of the save slots in the slot dialogs. */
 static uint8_t slots[SAVE_SLOT_COUNT][SAVE_HEADER_SIZE + 1];
 static int editing;                     /* the player types the slot name or a champion name */
@@ -490,7 +489,6 @@ void game_quit(void)
     session.exit_code = session.completed ? EXIT_COMPLETED : session.quit_code ? EXIT_PARTY_DEAD
                         : session.restart ? EXIT_RESTART : EXIT_QUIT;
     main_loop.quit = 1;
-    if (session_quit_hook) session_quit_hook(session.exit_code);
 }
 
 void game_complete(void)

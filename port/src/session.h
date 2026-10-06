@@ -28,8 +28,6 @@ typedef struct {
     char data_dir[SAVE_PATH_SIZE];  /* the game folder: DATA holds the dungeon and the saves */
 } Session;
 extern Session session;
-/* main.c ends the program here (the original longjmp out of game_quit); NULL: game_quit only sets main_loop.quit. */
-extern void (*session_quit_hook)(int exit_code);
 
 /* The path of slot in the save folder; bak: the backup file. */
 char *session_save_path(char *path, int slot, int bak);
