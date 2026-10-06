@@ -14,6 +14,8 @@ import pytest
     (["dm2", "--data", "--save", "--filter", "none"], ["dm2", "--data", "--save", "--filter", "none"]),
     (["dm2", "--control", "--save", "x"], ["dm2", "--control", "--save", "x"]),
     (["dm2", "--control", "p", "--save", "s"], ["dm2", "--control", "p"]),
+    (["dm2", "--mode", "vanilla", "--save", "s"], ["dm2", "--mode", "vanilla"]),
+    (["dm2", "--mode", "--save", "s"], ["dm2", "--mode", "--save", "s"]),
 ])
 def test_args_drop_save(lib, args, expected):
     argv = (ctypes.c_char_p * (len(args) + 1))(*[a.encode() for a in args], None)
