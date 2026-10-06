@@ -6,8 +6,10 @@
 #include "dungeon.h"
 #include "input.h"
 #include "minion.h"
+#include "music.h"
 #include "save.h"
 #include "session.h"
+#include "sound.h"
 #include "text.h"
 #include "timeline.h"
 #include "ui.h"
@@ -97,11 +99,18 @@ void advanced_quick_load(void)
     }
     Session kept = session;
     session.loaded = session.new_game = 0;  /* game_start_session shows no LOADED dialog and starts no new game */
-    int loaded = game_start_save(path);
-    if (!loaded) game_start_save(keep);
-    remove(keep);
+    int loaded = game_start_save(path), restored = loaded || game_start_save(keep);
+    if (restored) remove(keep);  /* else QUICK.TMP keeps the running game */
     session = kept;
-    if (loaded) session.load_time = session.save_time = 0;  /* a quick load is not a saved game for the QUIT question */
+    if (!restored) {
+        game_quit();  /* the dungeon is empty: the game cannot go on */
+        return;
+    }
+    if (loaded) {
+        session.load_time = session.save_time = 0;  /* a quick load is not a saved game for the QUIT question */
+        sound_set_volume(game.sound_volume);
+        music_set_volume(game.music_volume);
+    }
     print_line(loaded ? "GAME LOADED" : "QUICK SAVE DAMAGED");
 }
 
