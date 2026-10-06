@@ -465,6 +465,28 @@ def test_projectiles_at_creatures(pj, lib):
     assert_saves(pj, "end")
 
 
+INFO_DOOR_FLAGS, RESISTS_NON_FIRE = 0x19, 0x10  # creature info byte and its flag: only fire hurts the creature fully
+
+
+def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
+    # Lightning blasts, storm blasts, and poison and death clouds on the groups that resist non-fire: the blast
+    # damage is a quarter. Objects and spells cannot hit them in start.DAT: the only such group (creature type 84)
+    # has hit size 0.
+    rng = random.Random(170)
+    four_champions(pj, rng)
+    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.creature_group_info.argtypes = [ctypes.c_uint16]
+    targets = [t for t in groups(lib) if lib.creature_group_info(t[3])[INFO_DOOR_FLAGS] & RESISTS_NON_FIRE]
+    assert targets
+    for n, (map_, x, y, g) in enumerate(targets * (40 // len(targets))):
+        place_near(pj, rng, map_, x, y)
+        kind = rng.choice((0xFF82, 0xFFB1, 0xFF87, 0xFFA8))  # lightning, storm blast, poison cloud, death cloud
+        both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(64, 256), x, y, rng.choice((0, 1, 2, 3, 0xFF)))
+        check(pj, ("create", n))
+        run_out(pj, ("resists", n, map_, x, y, hex(g), hex(kind)))
+    assert_saves(pj, "end")
+
+
 def set_square(s, map_, x, y, value):
     """Sets a square byte in both."""
     s.lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
