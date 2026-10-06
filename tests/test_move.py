@@ -37,6 +37,7 @@ STUBS = {
     0x138D9: (0, 0), 0x42AE4: (0, 0),                                       # screen, movement arrows
     0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
+    0x14B4F: (0, 0), 0x14C0E: (0, 0),                                       # mouse areas of an input mode (not ported)
     0x49CBB: (0, 0),                                                         # champion revival (Step 15)
     0x45E9E: (0, NONE), 0x45DEF: (0, 0), 0x1DE8E: (0, NONE), 0x494FB: (0, 0), # leader hand, new items, recruiting
     0x226C9: (0, 0), 0x229BB: (3, 0), 0x227EA: (0, 0), 0x22942: (0, 0),     # take, place, drop, throw objects

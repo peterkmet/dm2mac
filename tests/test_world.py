@@ -451,9 +451,16 @@ def test_lightning_sounds_match_original(world, lib):
     rng = random.Random(179)
     sc = world
     sc.sounds_seen = []
+    lib.gdat_entry_index.restype = ctypes.c_uint16
+    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    target = lib.gdat_entry_index(sc.gdat, 8, lib.dungeon_map_graphics(MAP_LIGHTNING_TARGET) >> 4 & 0xF, 0x0B, 0x6C)
+    tx, ty = target >> 8, target & 0xFF
     for n in range(30):
         map_ = MAP_LIGHTNING_TARGET if n % 3 == 0 else rng.choice(OUTDOOR_MAPS)
-        _, x, y, _ = rng.choice([s for s in squares(lib, (1,)) if s[0] == map_])
+        floors = [s for s in squares(lib, (1,)) if s[0] == map_]
+        if map_ == MAP_LIGHTNING_TARGET:  # next to the fixed square: no walking distance, the sound plays
+            floors = [s for s in floors if abs(s[1] - tx) + abs(s[2] - ty) <= 1] or floors
+        _, x, y, _ = rng.choice(floors)
         sc.place(map_, x, y, rng.randrange(4))
         set_weather(sc, rain_intensity=1, storm_intensity=rng.choice((0, 0x40, 0xC0, 0xF0)),
                     storm_multiplier=rng.randrange(1, 4), next_hour_time=sc.time() + 1000)
@@ -691,8 +698,8 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
                     or lib.dungeon_square(map_, fx, fy) >> 5 != 1:
                 continue
             party = (fx, fy)
-        elif floors:
-            party = rng.choice(floors)
+        elif floors:  # near the wall: the walking distance lets the sound through
+            party = rng.choice([(sx, sy) for sx, sy in floors if abs(sx - x) + abs(sy - y) <= 4] or floors)
         else:
             continue
         sc.place(map_, *party, rng.randrange(4))

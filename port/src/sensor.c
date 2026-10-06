@@ -1179,6 +1179,12 @@ void timeline_event_door_animation(TimelineEvent *e)
 
 /* ---- Sensor timeline events ---- */
 
+/* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
+   with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
+   the data after those tables in SKULL.EXE (0x717f8 and 0x71800); these are the values it reads. */
+static const int16_t ambient_wall_dx[4][4] = {{2052, 4, 0, 1032}, {0, 0, 0, 0}, {0, 0, 0, 0}, {450, 0, 255, 0}};
+static const int16_t ambient_wall_dy[4][4] = {{0, 0, 25675, 60}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}};
+
 void timeline_event_sensor(TimelineEvent *e)
 {
     uint16_t thing = (uint16_t)(e->data[0] | e->data[1] << 8);
@@ -1227,9 +1233,18 @@ void timeline_event_sensor(TimelineEvent *e)
             int wall = square_type(dun_get_square(e->data[0], e->data[1])) == SQUARE_WALL;
             e->time_map += (uint16_t)sensor_get_ornament_cycle(thing, wall);
             timeline_add_event(e);
+            int16_t x = e->data[0], y = e->data[1];
+            if (wall) {  /* the sound comes from the square in front of the wall, unless the party stands there */
+                int16_t fx = (int16_t)(x + ambient_wall_dx[e->data[3] >> 6][e->data[3] & 3]);
+                int16_t fy = (int16_t)(y + ambient_wall_dy[e->data[3] >> 6][e->data[3] & 3]);
+                if (party.cur_map != party.square_map || fx != party.square_x || fy != party.square_y) {
+                    x = fx;
+                    y = fy;
+                }
+            }
             sound_play_with_fallback(wall ? CAT_ORNAMENT : CAT_ORNAMENT + 1,
                                      wall ? sensor_wall_ornament(thing) : sensor_floor_ornament(thing), 0x88, 0xfe,
-                                     e->data[0], e->data[1], 1, 0x8c, 0x80);
+                                     x, y, 1, 0x8c, 0x80);
         } else {
             set_thing_word(thing, SENSOR_TYPE_DATA, (uint16_t)((w & 0x7f) | (w >> SENSOR_DATA_SHIFT & 0xff) << SENSOR_DATA_SHIFT));
         }
