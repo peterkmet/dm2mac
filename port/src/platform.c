@@ -114,6 +114,14 @@ int plat_poll(PlatEvent *e)
     return 0;
 }
 
+void plat_set_icon(const uint32_t *argb, int w, int h)
+{
+    SDL_Surface *icon = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_ARGB8888, (void *)argb, w * ARGB_BYTES);
+    if (!icon) return;
+    SDL_SetWindowIcon(win, icon);
+    SDL_DestroySurface(icon);
+}
+
 void plat_mouse_position(int *x, int *y)
 {
     *x = mouse_x;
