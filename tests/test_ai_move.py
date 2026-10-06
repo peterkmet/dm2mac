@@ -165,10 +165,6 @@ class Ai:
         self.begun = emu.call(AI_BEGIN, group, x, y, 0x22)
         emu.call(AI_PREPARE)
         emu.write_u32(G_AI_SCRATCH, self.scratch)
-        # the square cache and its extra bytes start equal
-        sq = ctypes.string_at(self.square, 16)
-        emu.write(G_AI_SQUARE, sq[:7] + b"\0" + sq[8:14] + bytes(14) + sq[14:16])
-        ctypes.memset(self.scan, 0, 14)
         self.check("begin")
 
     def end(self):

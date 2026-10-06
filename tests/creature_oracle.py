@@ -12,17 +12,13 @@ CREATURE_ACTIVATE_GROUPS_ALL_MAPS = 0x34236
 IMAGE_CACHE_LOOKUP, IMAGE_CACHE_ALLOC, IMAGE_CACHE_REALLOC = 0x3F1F8, 0x3F279, 0x3F2C2
 IMAGE_CACHE_GET, IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE = 0x3F337, 0x3F3C2, 0x3F406
 MEM_ALLOC, MEM_FREE_SIZE = 0x3BBBA, 0x3BCA5
-# Original functions of other Step 16 parts that this branch does not have yet, and rules of Step 15: the same
-# empty results as the C placeholders (ai_pending.c, hooks.c). (address, stack arguments, result); FAIL also sets
-# the command result of the AI context.
-FAIL = "fail"
+# Rules of Step 15 that the C port leaves as hooks (hooks.c): (address, stack arguments, result) as there.
 NOT_YET = {
     0x46786: (0, 0), 0x46968: (0, 0), 0x1F8A7: (0, 0),                      # Step 15: luck, dexterity, value
     0x46745: (0, 0), 0x474FC: (0, 0),                                       # Step 15: adjusted attack, poison
     0x28574: (0, 0xFD), 0x28711: (0, 0xFD), 0x28E99: (0, 0xFD), 0x296D5: (0, 0xFD),  # Step 15: merchants
 }
 CHAMP_REMOVE_OBJECT_FROM_SLOT, G_CHAMPIONS, CHAMPION_SIZE_BYTES, CHAMPION_SLOTS = 0x45F27, 0x7FBD0, 0x107, 0xC3
-G_AI_COMMAND_RESULT = 0x7F56B
 G_AI_ACTIVE_GROUP = 0x7F552
 
 
@@ -41,10 +37,7 @@ class CreatureOracle:
         for name in ("party_distance", "alt_distance"):
             ctypes.c_int16.in_dll(lib, name).value = -1
         for addr, (stack, result) in NOT_YET.items():
-            if result == FAIL:
-                emu.stub(addr, lambda *_: emu.write(G_AI_COMMAND_RESULT, b"\xfd"), stack_args=stack)
-            else:
-                emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
+            emu.stub(addr, lambda *_, r=result: r, stack_args=stack)
         emu.stub(CHAMP_REMOVE_OBJECT_FROM_SLOT, self.remove_object_from_slot)
         for addr in (IMAGE_CACHE_RELEASE, IMAGE_CACHE_FREE, MEM_FREE_SIZE):  # replaced below
             emu.uc.hook_del(self.view.no_ops.pop(addr))
