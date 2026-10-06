@@ -49,8 +49,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e) { (void)e; }
 void timeline_event_apply_item_effect(TimelineEvent *e) { (void)e; }
 void champ_poison(int champ, int amount) { (void)champ; (void)amount; }
 int champ_get_stat_adjusted_attack(int champ, int stat, int attack) { (void)champ; (void)stat; (void)attack; return 0; }
-void game_complete(void) { }
-int dungeon_level_digit(int level) { (void)level; return 0; }
+void champ_recruit_start_champion(int x, int y, int dir, int map) { (void)x; (void)y; (void)dir; (void)map; }
 void command_execute_later(const Command *c) { (void)c; }
 uint16_t champ_remove_object_from_leader_hand(void) { return THING_NONE; }
 void champ_put_object_in_leader_hand(uint16_t thing, int flag) { hook_record(HOOK_PUT_IN_LEADER_HAND, thing, flag, 0, 0, 0); }

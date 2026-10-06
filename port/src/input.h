@@ -19,6 +19,20 @@ typedef struct {
     int16_t rect[4];
 } Command;
 
+/* The last matched command entry: the dialogs read it. */
+#define ZONE_NONE_ID 0xffff
+#define DIALOG_NO_CHOICE 0xff           /* a dialog waits while its choice has this value */
+typedef struct {
+    uint16_t zone;              /* the zone of the entry, ZONE_NONE_ID none */
+    int16_t origin;             /* the zone that the entry zone is relative to, -1 none */
+    uint16_t key;               /* the key code of a key command, 0 for a click */
+    int16_t choice;             /* the place of the command in its list, from 1; 0 none */
+    int16_t x, y;               /* the click position */
+    uint16_t value;             /* the command */
+    int16_t rect[4];            /* the screen rect of the zone of the entry */
+} InputMatch;
+extern InputMatch input_match;
+
 /* The last command stops the command processing of this tick (the original g_command_stop). */
 extern int input_command_stop;
 /* A click feedback script waits for the next game step. */
@@ -47,6 +61,14 @@ void input_flush(void);
    in that cell: the hand action when the hand is ready and has actions; near the icon edges toward the party
    center the leader choice, else the icon command when the spell is ready; else no command (0). */
 void input_refine_champion_click(Command *c);
+/* A left or right click on the zone of command in the current mode, as if the player clicked it. */
+void input_simulate_command_click(uint16_t command);
+/* Takes a key from the keys that the input has not read yet; 0 for none. */
+uint16_t input_read_key(void);
+/* The character of a key code (US layout), 0 for none. */
+char kbd_key_to_ascii(uint16_t key);
+/* Centers a w x h rect in src. */
+void rect_center_in(int16_t *dst, const int16_t *src, int w, int h);
 /* Turns the waiting events into commands and runs the click feedback. */
 void input_poll(void);
 /* Ends the push mode, the click feedback, and a drag. */

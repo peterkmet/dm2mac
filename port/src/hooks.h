@@ -63,10 +63,8 @@ int shop_cmd_evaluate_offer(void);
 int shop_cmd_count_payment(void);
 int shop_cmd_pay_change(void);
 
-/* Step 20: end of game. */
-void game_complete(void);
-/* The level digit table (dungeon_read_level_table): the map icon set of the squares outside the maps of a level;
-   returns 0 until Step 20 reads the table. */
-int dungeon_level_digit(int level);
+/* The champion of the start square of a new game joins the party (Step 15: champ_start_recruit(x, y, dir, map),
+   then champ_finish_recruit(x, y, dir, map, 0x92), with the recruit flag 0x75a29 set around both calls). */
+void champ_recruit_start_champion(int x, int y, int dir, int map);
 
 #endif

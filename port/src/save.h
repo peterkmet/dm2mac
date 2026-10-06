@@ -9,7 +9,8 @@
 #define GLOBAL_BYTE_COUNT 64
 #define GLOBAL_WORD_COUNT 64
 #define MAGIC_LIGHT_SIZE 6
-#define SAVE_NAME_SIZE 16
+#define SAVE_NAME_SIZE 32     /* a slot name of up to 31 characters and its end mark */
+#define VOLUME_SETTING_START 7 /* the sound and music volumes of a new game */
 
 enum {
     SAVE_OK = 0,

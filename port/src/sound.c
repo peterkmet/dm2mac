@@ -21,6 +21,7 @@ enum { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST };
 #define SAMPLE_TO_S16 8
 
 #define PAN_STEPS 16
+#define SOUND_VOLUME_MAX 7
 #define PAN_FULL 0x10000
 
 /* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front. */
@@ -132,6 +133,13 @@ static int16_t clamp16(int s)
     return s < INT16_MIN ? INT16_MIN : s > INT16_MAX ? INT16_MAX : s;
 }
 
+static int master_volume = SOUND_VOLUME_MAX;
+
+void sound_set_volume(int level)
+{
+    master_volume = level < 0 ? 0 : level > SOUND_VOLUME_MAX ? SOUND_VOLUME_MAX : level;
+}
+
 void sound_mix(int16_t *stereo, int frames)
 {
     for (int f = 0; f < frames; f++) {
@@ -139,7 +147,7 @@ void sound_mix(int16_t *stereo, int frames)
         for (int i = 0; i < SOUND_VOICES; i++) {
             Voice *v = &voices[i];
             if (!v->data) continue;
-            int s = v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16;
+            int s = (v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16) * master_volume / SOUND_VOLUME_MAX;
             left += s * v->left >> GAIN_SHIFT;
             right += s * v->right >> GAIN_SHIFT;
             if (++v->pos == v->end) v->data = NULL;

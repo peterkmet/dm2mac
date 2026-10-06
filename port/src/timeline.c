@@ -76,7 +76,7 @@ void timeline_init(uint16_t capacity)
 }
 
 /* Links the events without a type into the free list and finds the end of the used events. */
-static void rebuild_free_list(void)
+void timeline_rebuild_free_list(void)
 {
     int prev = END_OF_FREE_LIST;
     timeline.used_end = 0;
@@ -116,7 +116,7 @@ void timeline_build_queue(void)
         }
     }
     timeline.fix_slot = TIMELINE_NO_SLOT;
-    rebuild_free_list();
+    timeline_rebuild_free_list();
 }
 
 void timeline_compact(void)

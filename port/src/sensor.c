@@ -12,6 +12,7 @@
 #include "move.h"
 #include "random.h"
 #include "save.h"
+#include "session.h"
 #include "sensor.h"
 #include "input.h"
 #include "text.h"
@@ -35,6 +36,9 @@
 #define SENSOR_DELAY_SHIFT 7
 #define SENSOR_DELAY_MASK 0x0f
 #define SENSOR_ORNAMENT_SHIFT 12
+#define SENSOR_TIMER 0x1e               /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
+#define SENSOR_TIMER_SLOW_FIRST 0x33
+#define SENSOR_TIMER_SLOW_LAST 0x37
 /* Floor sensor types. */
 enum {
     FLOOR_ANY = 1, FLOOR_PARTY_OR_CREATURE, FLOOR_PARTY, FLOOR_ITEM, FLOOR_CREATURE = 7, FLOOR_PARTY_POSSESSES
@@ -603,6 +607,24 @@ static void sensor_schedule_timer(uint16_t sensor, uint16_t thing)
     e.data[2] = (uint8_t)factor;
     timeline_add_event(&e);
     set_sensor_flags(sensor, thing_word(sensor, SENSOR_FLAGS) | SENSOR_BUSY);
+}
+
+void sensor_start_timers(void)
+{
+    for (int map = 0; map < dungeon_map_count(); map++)
+        for (int x = 0; x < dungeon_map_width(map); x++)
+            for (int y = 0; y < dungeon_map_height(map); y++)
+                for (uint16_t t = dungeon_square_first_thing(map, x, y); thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
+                    if (thing_type(t) != THING_SENSOR) continue;
+                    int kind = thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK;
+                    if (kind != SENSOR_TIMER && (kind < SENSOR_TIMER_SLOW_FIRST || kind > SENSOR_TIMER_SLOW_LAST)) continue;
+                    if (thing_word(t, SENSOR_FLAGS) & 1 << SENSOR_STATE_SHIFT) {
+                        dun_set_current_map(map);
+                        sensor_schedule_timer(t, t);
+                    } else {
+                        set_sensor_flags(t, thing_word(t, SENSOR_FLAGS) & ~SENSOR_BUSY);
+                    }
+                }
 }
 
 /* ---- Square events ---- */

@@ -143,6 +143,10 @@ int dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y);
 void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
 /* Takes a free record of type, cleared, without cell bits; THING_NONE when all records are in use. */
 uint16_t dungeon_unused_thing(int type);
+/* Frees a record of type for reuse when the table is full: removes a thing of kind subtype (DISCARD_ANY_KIND:
+   any) that may go, away from the party; THING_NONE when there is none. */
+#define DISCARD_ANY_KIND 0xff
+uint16_t dun_get_discarded_thing(int type, int subtype);
 /* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
 int dungeon_teleporter_link_map(int map, int x, int y);
 /* The square byte of map at (x, y). Away from the map it gives the edge walls: a wall (with the bit of the
@@ -196,6 +200,14 @@ const uint8_t *dungeon_map_floor_ornaments(int map);
 const uint8_t *dungeon_map_door_ornaments(int map);
 /* The first word of the dungeon header; it seeds the random wall ornaments. */
 uint16_t dungeon_ornament_seed(void);
+
+/* The pass of a new game after the load of DUNGEON.DAT: numbered teleporter links, shared lists of linked
+   teleporters, level link marks, the start states of sensors and texts, creature health and homes. */
+void dungeon_link_things_after_load(void);
+/* Reads the level digits from the text on the party start square (the first load of a run). */
+void dungeon_read_level_table(void);
+/* The level digit of level: the map icon set of the squares outside the maps of the level. */
+int dungeon_level_digit(int level);
 
 int dungeon_text_word_count(void);
 const uint16_t *dungeon_text_data(void);

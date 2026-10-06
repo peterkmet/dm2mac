@@ -11,6 +11,7 @@
 #include "input.h"
 #include "item.h"
 #include "move.h"
+#include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -1040,4 +1041,176 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
     party.dest_map = (int16_t)map;  /* the original writes a stale register when no destination is given */
     dun_set_current_map(start_map);
     return 0;
+}
+
+/* ---- Discarded things: the reuse of records when a thing table is full ---- */
+
+#define SENSOR_KIND_TABLE 0x2c
+#define SENSOR_SHOP_DISPLAY 0x30
+#define TEXT_KIND_BITS 0x0006
+#define TEXT_KIND_ORNAMENT 0x0002
+#define TEXT_SUBTYPE_SHIFT 11
+#define TEXT_KEEPS_SQUARE 4             /* a text ornament subtype that protects the things of its square */
+#define DISCARD_NEAR 5                  /* the things this near to the party on its map stay */
+#define GROUP_DO_NOT_DISCARD 0x0400     /* GROUP_DIR word bit 10 */
+#define ITEM_DO_NOT_DISCARD 0x80        /* weapon, armour, misc: bit 7 of the data word; potion: bit 15 */
+#define ITEM_KIND_MASK 0x7f
+#define POTION_KIND_SHIFT 8
+#define ITEM_INDEX_SHIFT 7
+
+#define DELETE_GROUP_DISCARD 1
+/* The sensor kinds whose square keeps its things. */
+static const uint8_t sensor_blocks_discard[SENSOR_KIND_TABLE] = {
+    0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+};
+static uint8_t last_discarded_map[THING_TYPE_COUNT];
+
+/* The thing type of an item index (weapons, armour, misc, potions, creatures, containers, scroll), -1 none. */
+static int discard_item_thing_type(unsigned item)
+{
+    enum { CLOTHING = 0x80, MISC = 0x100, POTION = 0x180, CREATURE = 0x1b0, CONTAINER = 0x1e0, SCROLL = 0x1fc };
+    item &= 0x1ff;
+    if (item < CLOTHING) return THING_WEAPON;
+    if (item < MISC) return THING_ARMOUR;
+    if (item < POTION) return THING_MISC;
+    if (item > SCROLL) return -1;
+    if (item == SCROLL) return THING_SCROLL;
+    if (item >= CONTAINER) return THING_CONTAINER;
+    if (item >= CREATURE) return THING_GROUP;
+    return THING_POTION;
+}
+
+/* The next map of the discard search after map: the party map comes last; alt (the map of a seamless passage, -1
+   none) comes when the search is back at stop. */
+static int discard_next_map(int map, int stop, int *alt)
+{
+    int count = dungeon_map_count();
+    if (*alt == -1) {
+        do {
+            if (++map >= count) map = 0;
+        } while (map == game.party_map);
+        return map == stop ? game.party_map : map;
+    }
+    do {
+        if (++map >= count) map = 0;
+        if (map == stop) {
+            map = *alt;
+            *alt = -1;
+        }
+    } while (map == *alt || map == game.party_map);
+    return map;
+}
+
+/* Takes the thing t of type from the square (x, y) of map (holder: the static creature that carries it, THING_NONE
+   none) when it may go; returns 1 then, and *reserved drops the item kind that a shop display keeps. */
+static int discard_take(uint16_t t, int type, int subtype, int map, int x, int y, uint16_t holder, int *reserved)
+{
+    const uint8_t *r = dungeon_thing_record(t);
+    int kind;
+    switch (type) {
+    case THING_GROUP:
+        if (thing_word(t, GROUP_DIR) & GROUP_DO_NOT_DISCARD || thing_word(t, GROUP_POSSESSIONS) != THING_ENDOFLIST
+            || (subtype != DISCARD_ANY_KIND && subtype != r[GROUP_CREATURE]))
+            return 0;
+        dun_set_current_map(map);
+        creature_delete_group_at(x, y, DELETE_GROUP_DISCARD, -1);
+        return 1;
+    case THING_PROJECTILE:
+        if (subtype != DISCARD_ANY_KIND && item_gdat_index(thing_word(t, PROJECTILE_PAYLOAD)) != subtype) return 0;
+        projectile_cancel_event(t);
+        dungeon_unlink_thing_from_square(t, map, x, y);  /* fix: the original unlinks from the current map */
+        projectile_destroy(t, NULL, x, y);
+        return 1;
+    case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
+        if (r[2] & ITEM_DO_NOT_DISCARD) return 0;
+        kind = r[2] & ITEM_KIND_MASK;
+        break;
+    case THING_POTION:
+        if (r[3] & ITEM_DO_NOT_DISCARD) return 0;
+        kind = thing_word(t, 2) >> POTION_KIND_SHIFT & ITEM_KIND_MASK;
+        break;
+    default:
+        return 1;  /* kept quirk: the original returns the other types without taking them from their square */
+    }
+    if (kind == *reserved) {
+        *reserved = DISCARD_ANY_KIND;
+        return 0;
+    }
+    if (subtype != DISCARD_ANY_KIND && kind != subtype) return 0;
+    dun_set_current_map(map);
+    move_thing(t, x, y, -1, holder != THING_NONE ? -1 : 0);
+    return 1;
+}
+
+/* Searches map for a thing of type that may go and takes it; THING_NONE when there is none. The second pass on the
+   party map lets a shop display keep one item of its kind and lets the other things of its square go. */
+static uint16_t discard_scan_map(int type, int subtype, int map, int second)
+{
+    for (int x = 0; x < dungeon_map_width(map); x++)
+        for (int y = 0; y < dungeon_map_height(map); y++) {
+            if (!(dungeon_square(map, x, y) & SQUARE_HAS_THINGS)) continue;
+            int reserved = DISCARD_ANY_KIND;
+            int near = map == game.party_map && abs(x - game.party_x) <= DISCARD_NEAR && abs(y - game.party_y) <= DISCARD_NEAR;
+            uint16_t holder = THING_NONE;
+            uint16_t t = dungeon_square_first_thing(map, x, y);
+            for (;;) {
+                int tt = thing_type(t), stop = 0;
+                if (tt == THING_SENSOR) {
+                    uint16_t w = thing_word(t, SENSOR_TYPE_DATA);
+                    int kind = w & SENSOR_TYPE_MASK;
+                    if (kind < SENSOR_KIND_TABLE && sensor_blocks_discard[kind]) stop = 1;
+                    else if (second && near && kind == SENSOR_SHOP_DISPLAY) {
+                        near = 0;
+                        if (discard_item_thing_type(w >> ITEM_INDEX_SHIFT) == type)
+                            reserved = item_index_gdat_index(w >> ITEM_INDEX_SHIFT);
+                    }
+                } else if (tt == THING_TEXT) {
+                    uint16_t w = thing_word(t, TEXT_DATA);
+                    stop = (w & TEXT_KIND_BITS) == TEXT_KIND_ORNAMENT && w >> TEXT_SUBTYPE_SHIFT == TEXT_KEEPS_SQUARE;
+                } else if (!(tt > THING_SENSOR && near)) {
+                    if (tt == type) {
+                        if (discard_take(t, type, subtype, map, x, y, holder, &reserved)) return t;
+                    } else if (tt == THING_GROUP && type != THING_PROJECTILE
+                               && thing_word(t, GROUP_POSSESSIONS) != THING_ENDOFLIST
+                               && creature_group_info(t)->flags & CREATURE_STATIC) {
+                        holder = t;
+                        t = thing_word(t, GROUP_POSSESSIONS);
+                        continue;
+                    }
+                }
+                t = stop ? THING_ENDOFLIST : dungeon_next_thing(t);
+                while (t == THING_ENDOFLIST && holder != THING_NONE) {
+                    t = dungeon_next_thing(holder);
+                    holder = THING_NONE;
+                }
+                if (t == THING_ENDOFLIST) break;
+            }
+        }
+    return THING_NONE;
+}
+
+uint16_t dun_get_discarded_thing(int type, int subtype)
+{
+    if (type == THING_EXPLOSION) return THING_NONE;
+    int saved = party.cur_map, alt = party.alt_view_active ? party.alt_view_map : -1;
+    int map = last_discarded_map[type];
+    if (map == game.party_map || map == alt) map = discard_next_map(map, map, &alt);
+    int start = map;
+    for (int second = 0;;) {
+        uint16_t t = discard_scan_map(type, subtype, map, second);
+        if (t != THING_NONE) {
+            dun_set_current_map(saved);
+            last_discarded_map[type] = (uint8_t)map;
+            return t & THING_ID_MASK;
+        }
+        if (map != game.party_map && dungeon_map_count() > 1) {
+            map = discard_next_map(map, start, &alt);
+        } else if (second) {
+            last_discarded_map[type] = (uint8_t)map;
+            return THING_NONE;
+        } else {
+            second = 1;
+        }
+    }
 }

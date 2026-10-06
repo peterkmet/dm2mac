@@ -40,6 +40,8 @@ void timeline_delete_event(uint16_t index);
 void timeline_pop_first_event(TimelineEvent *event);
 /* Orders the queue of the first count events and links the other events into the free list. */
 void timeline_build_queue(void);
+/* Links the free events into the free list in slot order. */
+void timeline_rebuild_free_list(void);
 /* Moves the events in use to the first count slots and rebuilds the queue. */
 void timeline_compact(void);
 /* True when the next event is due at game_time. */

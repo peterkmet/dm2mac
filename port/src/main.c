@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <SDL3/SDL.h>
 #include "draw.h"
 #include "game.h"
@@ -8,6 +9,7 @@
 #include "item.h"
 #include "platform.h"
 #include "save.h"
+#include "session.h"
 #include "scale.h"
 #include "text.h"
 #include "ui.h"
@@ -16,28 +18,12 @@
 #include "zone.h"
 
 #define WINDOW_SCALE 3
-#define PATTERN_CELLS 16 /* 16 x 16 cells show the 256 palette colors */
-#define VGA_MAX 63
 #define EXIT_USAGE 2
 #define PATH_SIZE 1024
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
-/* Fills the palette with a color cube and the screen with one cell per palette color. */
-static void test_pattern(void)
-{
-    enum { RED_STEPS = 8, GREEN_STEPS = 8, BLUE_STEPS = 4 };
-    for (int i = 0; i < PALETTE_COLORS; i++) {
-        palette[i][0] = (uint8_t)(i / (GREEN_STEPS * BLUE_STEPS) * VGA_MAX / (RED_STEPS - 1));
-        palette[i][1] = (uint8_t)(i / BLUE_STEPS % GREEN_STEPS * VGA_MAX / (GREEN_STEPS - 1));
-        palette[i][2] = (uint8_t)(i % BLUE_STEPS * VGA_MAX / (BLUE_STEPS - 1));
-    }
-    for (int y = 0; y < SCREEN_H; y++)
-        for (int x = 0; x < SCREEN_W; x++)
-            fb[y][x] = (uint8_t)(y * PATTERN_CELLS / SCREEN_H * PATTERN_CELLS + x * PATTERN_CELLS / SCREEN_W);
-}
-
-/* Loads a save and draws the dungeon view of the party into the screen; returns 0 with a message on an error. */
-static int show_save(const char *data, const char *path)
+/* Loads GRAPHICS.DAT, the screen layout, the colors, and the font; returns 0 with a message on an error. */
+static int load_graphics(const char *data)
 {
     char graphics[PATH_SIZE];
     snprintf(graphics, sizeof graphics, "%s/DATA/GRAPHICS.DAT", data);
@@ -46,20 +32,26 @@ static int show_save(const char *data, const char *path)
         fprintf(stderr, "cannot read %s\n", graphics);
         return 0;
     }
-    if (save_load(path, gdat) != SAVE_OK) {
-        fprintf(stderr, "cannot load the save %s\n", path);
-        return 0;
-    }
     if (!zone_load(gdat) || !pal_load_color_ramps(gdat) || !text_init(gdat)) {
         fprintf(stderr, "%s has no screen layout, color ramps, or font\n", graphics);
         return 0;
     }
     for (int c = 0; c < PALETTE_COLORS; c++) gdat_palette_color(gdat, c, palette[c]);
     draw_init(gdat);
+    input_init();
+    return 1;
+}
+
+/* Loads a save and starts its game at once; returns 0 with a message on an error. */
+static int show_save(const char *path)
+{
+    if (save_load(path, draw_gdat()) != SAVE_OK) {
+        fprintf(stderr, "cannot load the save %s\n", path);
+        return 0;
+    }
     ui_reset();
     money_init_coin_table();
     ui_draw_game_screen();
-    input_init();
     game_start_session();
     return 1;
 }
@@ -103,6 +95,33 @@ static uint16_t pc_key_code(int scancode, int mod)
     return 0;
 }
 
+/* Passes the window events to the input of the game; a closed window ends the program. */
+static void pump_events(void)
+{
+    PlatEvent e;
+    while (plat_poll(&e)) {
+        if (e.type == PLAT_QUIT) {
+            main_loop.quit = 1;
+        } else if (e.type == PLAT_KEY) {
+            uint16_t key = pc_key_code(e.scancode, e.mod);
+            if (key) input_key_down(key);
+        } else if (e.type == PLAT_MOUSE) {
+            input_mouse_click(e.x, e.y, e.button == SDL_BUTTON_RIGHT ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);
+        } else if (e.type == PLAT_MOUSE_UP && e.button == SDL_BUTTON_RIGHT) {
+            input_mouse_click(e.x, e.y, INPUT_RIGHT_RELEASED);
+        }
+    }
+    plat_mouse_position(&input_mouse_x, &input_mouse_y);
+}
+
+/* One timer tick of a modal loop (menu, dialog): the input, the screen, and the wait. */
+static void modal_frame(void)
+{
+    pump_events();
+    plat_present();
+    for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
+}
+
 int main(int argc, char **argv)
 {
     const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL;
@@ -124,34 +143,25 @@ int main(int argc, char **argv)
         return EXIT_USAGE;
     }
     SDL_Log("data folder: %s", data);
+    snprintf(session.data_dir, sizeof session.data_dir, "%s", data);
+    snprintf(text_drive_path, sizeof text_drive_path, "%s", data);
 
-    if (save && !show_save(data, save)) return 1;
+    if (!load_graphics(data)) return 1;
+    if (save && !show_save(save)) return 1;
     if (!plat_init(WINDOW_SCALE, factor)) return 1;
-    if (!save) test_pattern();
-    for (int running = 1, pit = 0; running && !main_loop.end;) {
-        PlatEvent e;
-        while (plat_poll(&e)) {
-            if (e.type == PLAT_QUIT || (!save && e.type == PLAT_KEY && e.key == SDLK_ESCAPE)) running = 0;
-            if (!save) continue;
-            if (e.type == PLAT_KEY) {
-                uint16_t key = pc_key_code(e.scancode, e.mod);
-                if (key) input_key_down(key);
-            } else if (e.type == PLAT_MOUSE) {
-                input_mouse_click(e.x, e.y, e.button == SDL_BUTTON_RIGHT ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);
-            } else if (e.type == PLAT_MOUSE_UP && e.button == SDL_BUTTON_RIGHT) {
-                input_mouse_click(e.x, e.y, INPUT_RIGHT_RELEASED);
-            }
-        }
+    game_frame_hook = modal_frame;
+    if (!save && !game_init()) main_loop.quit = 1;
+    for (int pit = 0; !main_loop.quit;) {
+        pump_events();
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
-            if (save) {
-                plat_mouse_position(&input_mouse_x, &input_mouse_y);
-                game_tick();
-            }
+            game_tick();
+            if (main_loop.end && !main_loop.quit) game_end(main_loop.end);
             plat_present();
         }
         plat_wait_tick();
     }
     plat_quit();
-    return 0;
+    if (session.exit_code == EXIT_RESTART) execv(argv[0], argv);  /* the DOS launcher starts the game again */
+    return session.exit_code;
 }
