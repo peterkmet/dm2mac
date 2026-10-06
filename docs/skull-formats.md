@@ -805,7 +805,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
   - Creature groups: full health; a moving group gets its square as home; a static group clears its animation words and gives its possessions random cells (one random number for each link), unless bit 7 of byte `0x0e` is set.
 - `dungeon_read_level_table` reads the first text (kind 0) on the party start square of map 0 into 64 bytes filled with `'1'` and takes one digit per level, skipping end marks, new lines, and spaces. The minion map of a level shows the icons of this set (`dungeon_level_digit`). It runs at the first dungeon load of a run, also when that load is a save.
 - `sensor_start_timers` (only for a new game): each timer sensor (`0x1e`, `0x33` to `0x37`) that is on starts its timer event; the others lose the busy bit. All 18 timers of `DUNGEON.DAT` are off.
-- The champion of a new game: square (0, 0) of map 0 holds a mirror sensor (`0x7e`); `champ_init_party_state` recruits its champion with the commands of a join, faces the party direction, and makes it the leader.
+- The champion of a new game: square (0, 0) of map 0 holds a mirror sensor (`0x7e`); `champ_init_party_state` recruits its champion with the commands of a join (`champ_start_recruit`, then `champ_finish_recruit` with command `0x92`) while the recruit flag `0x75a29` is set: the join opens no inventory, draws no mouth, plays no sound, and prints no message. The objects on the square in front of the mirror go into the slots. Then the champion faces the party direction, takes the party direction as its cell, and becomes the leader. The leader hand is empty.
 
 ### Save and load
 
