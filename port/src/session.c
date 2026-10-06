@@ -483,7 +483,9 @@ int game_init(void)
 
 int game_start_save(const char *path)
 {
+    int first = !weather.dungeon_loaded;
     if (save_load(path, draw_gdat()) != SAVE_OK) return 0;
+    if (first) dungeon_read_level_table();
     ui_reset();
     money_init_coin_table();
     ui_draw_game_screen();
