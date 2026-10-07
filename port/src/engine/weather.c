@@ -5,6 +5,7 @@
 #include "dungeon.h"
 #include "hooks.h"
 #include "item.h"
+#include "le.h"
 #include "move.h"
 #include "random.h"
 #include "save.h"
@@ -70,6 +71,9 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define STORM_FIRST_DELAY 500       /* ticks to the first storm step of a run */
 #define STORM_NEXT_DELAY 8000       /* plus STORM_FIRST_DELAY: ticks to the storm of a new cycle */
 #define CALM_CURVE 3
+#define STORM_MULTIPLIER_MAX 3      /* a new storm cycle is 1 to 3 times as strong as its curve */
+#define STRIKE_THRESHOLD_MIN 4      /* storms before lightning may hit the party: 4 to 7 */
+#define STRIKE_THRESHOLD_SPAN 4
 #define RAIN_CHANCE_MAX 7           /* rand_below(span) up to this starts rain */
 #define LIGHTNING_CHANCE_WEAK 7
 #define LIGHTNING_CHANCE_STRONG 0x28
@@ -87,12 +91,11 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define THUNDER_DELAY_BASE 0x4c
 #define THUNDER_DELAY_MAX 15
 #define STORM_SPAN_JITTER 0xf      /* plus 0 to 15 on the random span of rain and lightning */
-#define MAP_GFX_SET_SHIFT 4         /* map graphics word: graphics set in bits 4-7 */
-#define MAP_GFX_SET_MASK 0xf
 #define TARGET_X_SHIFT 8            /* lightning target value: x in the high byte, y in the low byte */
 #define TARGET_Y_MASK 0xff
 #define PERCENT 100
 #define CLOUD_STEP_TICKS 3          /* clouds change at most each third tick */
+#define CLOUD_SLOW_TICKS_MASK 3     /* any rain grows the clouds each fourth tick */
 #define CREATURE_LIGHTNING_PROOF 0xff
 /* Script variables of the weather. */
 #define VAR_STORM_COUNT 0x40        /* cleared by each lightning of a weak storm */
@@ -103,7 +106,7 @@ enum { VAR_ADD = 3, VAR_ASSIGN = 6 };
 #define LIGHT_LEVEL_MAX 5
 #define LIGHT_LEVEL_LIT 1
 #define HAND_LIGHT_SHIFT 6          /* the first hand light counts fully, each next one half as much */
-#define HAND_LIGHTS_MAX (1 + 2 * CHAMPION_MAX)
+#define HAND_LIGHTS_MAX (1 + SLOT_HAND_COUNT * CHAMPION_MAX)
 #define EXPLOSION_GLARE 12          /* explosion light above which the view gets one level darker (glare) */
 #define FALLOFF_WEATHER_MAX 8
 #define FALLOFF_MAX 5
@@ -114,6 +117,7 @@ enum { VAR_ADD = 3, VAR_ASSIGN = 6 };
 enum { EXPLOSION_FIRE = 0, EXPLOSION_LIGHT = 2, EXPLOSION_GLOW = 0x30 };
 #define SIDE_LIGHT 2                /* the view square side of the front wall ornament or of the floor ornament */
 #define ORNAMENT_MASK 0xff          /* ornament index in a side word; 0xff: no ornament */
+#define TORCH_CHARGE_COUNT 16
 
 /* The sky kinds of the map graphics: the weather shows (rain, clouds, lightning) in kinds 1 and 4. */
 static const uint8_t sky_state_weather[] = {0, 1, 0, 0, 1};
@@ -128,7 +132,7 @@ static const int8_t storm_curves[][STORM_STEPS] = {
     {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, -26, -22, -18, -10},
 };
 /* The light of a torch by its charges. */
-static const int8_t light_power[16] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
+static const int8_t light_power[TORCH_CHARGE_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 /* The light that each light level needs (level 0 above 99), and the daylight in % by the darkness of the hour. */
 static const int8_t light_levels[LIGHT_LEVEL_MAX + 1] = {99, 75, 50, 25, 1, 0};
 /* What a square light loses by its distance to the party: window light, other light. */
@@ -146,7 +150,7 @@ int16_t light_source_sum, explosion_light_sum;
 
 static int clamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static int gfx_set(void) { return dungeon_map_graphics(game.party_map) >> MAP_GFX_SET_SHIFT & MAP_GFX_SET_MASK; }
+static int gfx_set(void) { return dungeon_map_wallset(game.party_map); }
 
 static uint16_t map_value(int key) { return gdat_entry_index(draw_gdat(), CAT_MAP, gfx_set(), GDAT_TYPE_VALUE, key); }
 
@@ -188,7 +192,7 @@ void weather_init(int keep_state)
         } else {
             delay = rand_below(STORM_NEXT_DELAY) + STORM_FIRST_DELAY;
             game.storm_curve = (uint8_t)rand_2bits();
-            game.storm_multiplier = (uint8_t)(rand_below(3) + 1);
+            game.storm_multiplier = (uint8_t)(rand_below(STORM_MULTIPLIER_MAX) + 1);
         }
         game.sky_darkness = 1;
         game.rain_intensity = 0;
@@ -198,7 +202,7 @@ void weather_init(int keep_state)
         game.wind_dir = (uint8_t)rand_2bits();
         weather_schedule_event(delay);
     }
-    weather.strike_threshold = (int16_t)(rand_below(4) + 4);
+    weather.strike_threshold = (int16_t)(rand_below(STRIKE_THRESHOLD_SPAN) + STRIKE_THRESHOLD_MIN);
     set_hour_light();
     weather.first_init = 0;
 }
@@ -245,11 +249,15 @@ static int weather_update_rain(void)
     if (rain && game.cloud_cover < CLOUDS_MAX) {
         int even = !(game.game_time & 1);
         if (rain >= RAIN_STRONG || (rain >= RAIN_MEDIUM && even)
-            || (rain >= RAIN_LIGHT && game.game_time % CLOUD_STEP_TICKS == 0) || !(game.game_time & 3))
+            || (rain >= RAIN_LIGHT && game.game_time % CLOUD_STEP_TICKS == 0) || !(game.game_time & CLOUD_SLOW_TICKS_MASK))
             game.cloud_cover++;
     }
     return sky_has(SKY_LIGHTNING) && rand_below(span) <= chance;
 }
+
+/* The ornament index and the animation frame of a view square side word. */
+static int side_ornament(uint16_t side) { return side & ORNAMENT_MASK; }
+static bool side_animates(uint16_t side) { return side >> BYTE_BITS != 0; }
 
 static int abs16(int v) { return (int16_t)v < 0 ? -(int16_t)v : (int16_t)v; }
 static int max16(int lo, int v) { return (int16_t)v > lo ? (int16_t)v : lo; }
@@ -381,7 +389,7 @@ void light_update_party_light(void)
         if (item_attr(game.leader_hand, ATTR_FLAGS) & ITEM_FLAG_LIGHT)
             lights[n++] = (int16_t)item_add_charges(game.leader_hand, 0);
         for (int c = 0; c < game.champion_count; c++)
-            for (int hand = 0; hand < 2; hand++) {
+            for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
                 uint16_t thing = champion(c)->slots[hand];
                 if (item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_LIGHT) lights[n++] = (int16_t)item_add_charges(thing, 0);
             }
@@ -398,7 +406,7 @@ void light_update_party_light(void)
             sum = (int16_t)(sum + ((light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
             if (shift) shift--;
         }
-        int16_t magic = (int16_t)(game.magic_light[MAGIC_LIGHT_BYTE] | game.magic_light[MAGIC_LIGHT_BYTE + 1] << 8);
+        int16_t magic = (int16_t)le16(&game.magic_light[MAGIC_LIGHT_BYTE]);
         sum = (int16_t)(sum + light_source_sum + magic + map_value(MAP_KEY_LIGHT));
         if (game.weather_visible) sum = (int16_t)(sum + daylight());
         level = 0;
@@ -425,7 +433,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
     ViewSquare s;
     dun_get_square_aspect(&s, dir, x, y);
     /* the front wall ornament, or the floor ornament: index in the low byte, animation frame in the high byte */
-    int ornament = s.side[SIDE_LIGHT] & ORNAMENT_MASK, animated = (s.side[SIDE_LIGHT] >> 8) != 0;
+    int ornament = side_ornament(s.side[SIDE_LIGHT]), animated = side_animates(s.side[SIDE_LIGHT]);
     int animated_only;
     PassageEnd end;
     switch (s.aspect) {
