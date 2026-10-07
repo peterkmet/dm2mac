@@ -11,6 +11,7 @@
 #define MAGIC_LIGHT_SIZE 6
 #define SAVE_NAME_SIZE 32     /* a slot name of up to 31 characters and its end mark */
 #define VOLUME_SETTING_START 7 /* the sound and music volumes of a new game */
+#define LEADER_NONE 0xffff     /* game.leader of a party without a leader */
 
 enum {
     SAVE_OK = 0,
