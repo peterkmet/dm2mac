@@ -590,10 +590,6 @@ int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int leve
 
 /* ---- The passes after the load of DUNGEON.DAT ---- */
 
-#define TEXT_KIND_MASK 0x0006
-#define TEXT_KIND_ORNAMENT 0x0002
-#define TEXT_SUBTYPE_SHIFT 11
-#define TEXT_VISIBLE 0x0001
 enum text_ornament_subtype { TEXT_LEVEL_LINK_FIRST = 6, TEXT_LEVEL_LINK_LAST = 7, TEXT_SHOWN_AT_START = 8 };
 enum link_sensor_type {
     SENSOR_LEVEL_LINK = 0x1c, SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
@@ -722,13 +718,12 @@ static int link_thing(uint16_t t, int x, int y, int map)
     case THING_TELEPORTER:
         return link_teleporters(t, x, y, map);
     case THING_TEXT: {
-        uint16_t w = thing_word(t, TEXT_DATA);
-        if ((w & TEXT_KIND_MASK) != TEXT_KIND_ORNAMENT) break;
-        int subtype = w >> TEXT_SUBTYPE_SHIFT;
+        if (text_kind(t) != TEXT_KIND_ORNAMENT) break;
+        int subtype = text_subtype(t);
         if (subtype >= TEXT_LEVEL_LINK_FIRST && subtype <= TEXT_LEVEL_LINK_LAST)
             mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
         else if (subtype == TEXT_SHOWN_AT_START)
-            set_thing_word(t, TEXT_DATA, w | TEXT_VISIBLE);
+            text_set_visible(t, true);
         break;
     }
     case THING_SENSOR: {
@@ -788,7 +783,7 @@ void dungeon_read_level_table(void)
     uint16_t t = dungeon_square_first_thing(0, dun.party_start & LOCATION_COORD_MASK,
                                             dun.party_start >> LOCATION_Y_SHIFT & LOCATION_COORD_MASK);
     while (t != THING_ENDOFLIST && thing_type(t) != THING_TEXT) t = dungeon_next_thing(t);
-    if (t != THING_ENDOFLIST && !(thing_word(t, TEXT_DATA) & TEXT_KIND_MASK))
+    if (t != THING_ENDOFLIST && text_kind(t) == TEXT_KIND_TEXT)
         text_decode_dungeon(text, sizeof text, t, LEVEL_TEXT_MODE);
     const char *p = text;
     for (int level = 0; level <= last; level++) {

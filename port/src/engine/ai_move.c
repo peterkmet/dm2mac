@@ -32,13 +32,8 @@
 #define WALLSET_KEY_LIGHT 0x6d          /* ... the light radius of the map */
 #define WALL_COST_BLOCKING 0x32
 #define LIGHT_RADIUS_MAX 8
-#define TEXT_KIND_MASK 0x0006
-#define TEXT_KIND_ORNAMENT 0x0002
-#define TEXT_KIND_MARKER 0x0004
-#define TEXT_SUBTYPE_SHIFT 11
 #define TEXT_LADDER 6
 #define TEXT_LADDER_HIDDEN 7
-#define MARKER_LEVEL_SHIFT 12           /* AI marker texts: data >> 3 holds id bits 0-4, kind 5-8, level 9-12 */
 #define SENSOR_LEVEL_LINK 0x1c
 #define SENSOR_CREATURE_SLOT 0x26       /* a wall slot that a creature type uses */
 #define SENSOR_FLAG_ACTIVE 0x0004       /* sensor word +4 */
@@ -58,7 +53,6 @@
 #define EXPLOSION_DOOR_SPELL 0x0d
 #define EXPLOSION_LASTING_CLOUD 0x0e    /* blocks the sight */
 #define EXPLOSION_THING_BASE 0xff80
-/* Door record word +2 bits that the AI reads. */
 #define DOOR_STATE_OPEN 0
 #define DOOR_STATE_ONE_FOURTH 1
 #define DOOR_STATE_HALF 2
@@ -155,10 +149,6 @@ static const uint8_t after_command_table[60] = {
 #define SENSOR_LINK_TARGET 6            /* level link sensor word: x bits 6-10, y bits 11-15 */
 #define LINK_TARGET_X_SHIFT 6
 #define LINK_TARGET_Y_SHIFT 11
-#define MARKER_ID_SHIFT 3               /* AI marker text data: id bits 3-7, kind bits 8-11 */
-#define MARKER_ID_MASK 0x1f
-#define MARKER_KIND_SHIFT 8
-#define MARKER_KIND_MASK 0xf
 #define PATH_X_SHIFT 3                  /* path step: direction bits 0-2, x bits 3-7, y bits 8-12 */
 #define PATH_Y_SHIFT 8
 #define PATH_MAP_CHANGE_SHIFT 13
@@ -1564,11 +1554,10 @@ int creature_find_ai_marker(int level_delta, uint16_t id_mask)
     int16_t other = (int16_t)level_delta == 1 ? 2 : -1;
     for (uint16_t t = cached_first_thing(); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT) continue;
-        uint16_t data = thing_word(t, TEXT_DATA);
-        if ((data & TEXT_KIND_MASK) != TEXT_KIND_MARKER) continue;
-        int level = data >> MARKER_LEVEL_SHIFT;
-        if ((level == (int16_t)level_delta || (level == other && data & 1)) && (1 << (data >> MARKER_KIND_SHIFT & MARKER_KIND_MASK)) & id_mask)
-            return data >> MARKER_ID_SHIFT & MARKER_ID_MASK;
+        if (text_kind(t) != TEXT_KIND_AI_MARKER) continue;
+        int level = ai_marker_level(t);
+        if ((level == (int16_t)level_delta || (level == other && text_is_visible(t))) && (1 << ai_marker_kind(t)) & id_mask)
+            return ai_marker_id(t);
     }
     return -1;
 }
@@ -1578,10 +1567,8 @@ int creature_find_ai_marker_by_id(int level_delta, int id)
 {
     for (uint16_t t = cached_first_thing(); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT) continue;
-        uint16_t data = thing_word(t, TEXT_DATA);
-        if ((data & TEXT_KIND_MASK) == TEXT_KIND_MARKER && data >> MARKER_LEVEL_SHIFT == (int16_t)level_delta
-            && (data >> MARKER_KIND_SHIFT & MARKER_KIND_MASK) == (int16_t)id)
-            return data >> MARKER_ID_SHIFT & MARKER_ID_MASK;
+        if (text_kind(t) == TEXT_KIND_AI_MARKER && ai_marker_level(t) == (int16_t)level_delta && ai_marker_kind(t) == (int16_t)id)
+            return ai_marker_id(t);
     }
     return -1;
 }

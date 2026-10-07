@@ -53,12 +53,7 @@ enum {
 };
 /* Wall sensor types of objects put on a wall cell. */
 enum { WALL_ITEM_HOLDER = 0x1a, WALL_ANY_ITEM = 0x29, WALL_ITEM = 0x2a, WALL_NOT_ITEM = 0x2b };
-/* Text record: bits 1-2 kind, bits 3-10 value, bits 11-15 subtype. */
-#define TEXT_SHOWN 0x0001
-#define TEXT_KIND_MASK 6
-#define TEXT_KIND_DATA 2
-#define TEXT_VALUE_SHIFT 3
-#define TEXT_SUBTYPE_SHIFT 11
+/* Ornament text subtypes. */
 enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_FALL_RISK = 10 };
 
 enum { DOOR_OPEN = 0, DOOR_CLOSED = 4, DOOR_BROKEN = 5 };
@@ -199,8 +194,7 @@ static void sensor_fall_risk(uint16_t text, int x, int y, int on_square)
         Champion *c = champion(i);
         if (c->health) load = (int16_t)(load + (uint16_t)champ_get_load(i) / (int)((uint16_t)champ_get_max_load(c) >> 1));
     }
-    uint16_t w = thing_word(text, TEXT_DATA);
-    int chance = (int16_t)(load * 10 + (w & TEXT_SHOWN ? 0x32 : 0x19));
+    int chance = (int16_t)(load * 10 + (text_is_visible(text) ? 0x32 : 0x19));
     if (chance > 0x5a) chance = 0x5a;
     if (!on_square && (int)rand_below(100) < chance) {
         /* fix: the original leaves the high bits of the event data uninitialized */
@@ -215,7 +209,7 @@ static void sensor_fall_risk(uint16_t text, int x, int y, int on_square)
         sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, champion(c)->portrait, 0x82, 0xfe, game.party_x, game.party_y, 1,
                                  0x69, 200);
     } else {
-        sound_request(10, (uint8_t)(w >> TEXT_VALUE_SHIFT), 0x88, 0x8c, 0x80, game.party_x, game.party_y, 1);
+        sound_request(10, text_value(text), 0x88, 0x8c, 0x80, game.party_x, game.party_y, 1);
     }
 }
 
@@ -245,8 +239,7 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
                 if (creature_group_info(t)->flags & CREATURE_STATIC && item_find_in_possessions(t, item)) same_item = 1;
                 creature = 1;
             } else if (tt == THING_TEXT && type == -1 && enter && !on_square) {
-                uint16_t w = thing_word(t, TEXT_DATA);
-                if (!(w & TEXT_KIND_MASK) && w & TEXT_SHOWN) {
+                if (text_kind(t) == TEXT_KIND_TEXT && text_is_visible(t)) {
                     char text[TEXT_SIZE];
                     text_print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
                 }
@@ -339,13 +332,12 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
             }
             sensor_fire(t, trigger, cell == -1, x, y);
         } else if (tt == THING_TEXT) {
-            uint16_t w = thing_word(t, TEXT_DATA);
-            if ((w & TEXT_KIND_MASK) != TEXT_KIND_DATA) continue;
-            int sub = w >> TEXT_SUBTYPE_SHIFT;
+            if (text_kind(t) != TEXT_KIND_ORNAMENT) continue;
+            int sub = text_subtype(t);
             if (cell == -1) {
                 if (sub == TEXT_RANDOM_PIT) {
-                    if (type == -1 && !on_square && game.champion_count && rand_below(100) < (w >> TEXT_VALUE_SHIFT & 0xff)
-                        && (w & 1) != enter) {
+                    if (type == -1 && !on_square && game.champion_count && rand_below(100) < text_value(t)
+                        && text_is_visible(t) != enter) {
                         sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
                         sensor_schedule_square_event(x, y, 0, EFFECT_CLEAR, game.game_time + 5);
                     }
@@ -353,8 +345,8 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
                     sensor_fall_risk(t, x, y, on_square);
                 }
             } else if (cell == t >> THING_CELL_SHIFT && (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) && !same_item
-                       && (w & 1) != enter && item == item_holder_item(w >> TEXT_VALUE_SHIFT & 0xff)) {
-                set_thing_word(t, TEXT_DATA, (uint16_t)((w & ~1) | (enter & 1)));
+                       && text_is_visible(t) != enter && item == item_holder_item(text_value(t))) {
+                text_set_visible(t, enter & 1);
             }
         }
     }
@@ -631,9 +623,7 @@ void sensor_start_timers(void)
 
 static void text_set_shown(uint16_t text, int effect)
 {
-    uint16_t w = thing_word(text, TEXT_DATA);
-    int shown = effect == EFFECT_TOGGLE ? !(w & TEXT_SHOWN) : effect == EFFECT_SET;
-    set_thing_word(text, TEXT_DATA, (uint16_t)((w & ~TEXT_SHOWN) | shown));
+    text_set_visible(text, effect == EFFECT_TOGGLE ? !text_is_visible(text) : effect == EFFECT_SET);
 }
 
 enum { TEXT_TOGGLED = 5, TEXT_LINKED = 7, TEXT_GENERATOR_SLOW = 0x13, TEXT_GENERATOR_FAST = 0x16, TEXT_SOUND = 0x17 };
@@ -641,8 +631,8 @@ enum { TEXT_TOGGLED = 5, TEXT_LINKED = 7, TEXT_GENERATOR_SLOW = 0x13, TEXT_GENER
 /* A wall text of subtype 7 shows the same state as its twin on the level above or below. */
 static void text_update_linked(const TimelineEvent *e, uint16_t text)
 {
-    uint16_t w = thing_word(text, TEXT_DATA);
-    int delta = gdat_entry_index(draw_gdat(), CAT_ORNAMENT, w >> TEXT_VALUE_SHIFT & 0xff, GDAT_TYPE_VALUE, 0x11) ? -1 : 1;
+    bool visible = text_is_visible(text);
+    int delta = gdat_entry_index(draw_gdat(), CAT_ORNAMENT, text_value(text), GDAT_TYPE_VALUE, 0x11) ? -1 : 1;
     int x = e->data[EVENT_X], y = e->data[EVENT_Y];
     int map = dungeon_location_on_map(game.party_map, delta, &x, &y);
     if (map < 0) return;
@@ -650,9 +640,7 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
     dun_set_current_map(map);
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT || t >> THING_CELL_SHIFT != e->data[EVENT_CELL]) continue;
-        uint16_t tw = thing_word(t, TEXT_DATA);
-        if ((tw & TEXT_KIND_MASK) == TEXT_KIND_DATA && (tw >> TEXT_SUBTYPE_SHIFT & 0x1f) == TEXT_LINKED)
-            set_thing_word(t, TEXT_DATA, (uint16_t)((tw & ~1) | (w & 1)));
+        if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_LINKED) text_set_visible(t, visible);
     }
     dun_set_current_map(saved);
 }
@@ -783,14 +771,13 @@ static void timeline_event_wall_square(TimelineEvent *e)
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (t >> THING_CELL_SHIFT != e->data[EVENT_CELL]) continue;
         if (thing_type(t) == THING_TEXT) {
-            uint16_t w = thing_word(t, TEXT_DATA);
-            if (w & TEXT_KIND_MASK && (w & TEXT_KIND_MASK) != TEXT_KIND_DATA) continue;
-            int sub = w >> TEXT_SUBTYPE_SHIFT & 0x1f;
+            if (text_kind(t) > TEXT_KIND_ORNAMENT) continue;
+            int sub = text_subtype(t);
             if (sub == TEXT_TOGGLED || sub == TEXT_LINKED) {
                 text_set_shown(t, effect);
                 if (sub == TEXT_LINKED) text_update_linked(e, t);
             } else if (sub == TEXT_SOUND && effect == EFFECT_SET) {
-                sound_request(3, party.cur_map + 1, (uint8_t)(w >> TEXT_VALUE_SHIFT), 0x73, 200, x, y, 1);
+                sound_request(3, party.cur_map + 1, text_value(t), 0x73, 200, x, y, 1);
             }
             continue;
         }
@@ -920,28 +907,27 @@ static void timeline_event_floor_square(TimelineEvent *e)
     int x = e->data[EVENT_X], y = e->data[EVENT_Y], effect = e->data[EVENT_EFFECT];
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_TEXT) {
-            uint16_t w = thing_word(t, TEXT_DATA);
-            if (w & TEXT_KIND_MASK && (w & TEXT_KIND_MASK) != TEXT_KIND_DATA) continue;
-            int sub = w >> TEXT_SUBTYPE_SHIFT & 0x1f;
+            if (text_kind(t) > TEXT_KIND_ORNAMENT) continue;
+            int sub = text_subtype(t);
+            bool was_visible = text_is_visible(t);
             if (sub == TEXT_TOGGLED) {
                 text_set_shown(t, effect);
-                uint16_t now = thing_word(t, TEXT_DATA);
-                if (!(now & TEXT_KIND_MASK) && !(w & TEXT_SHOWN) && now & TEXT_SHOWN && dun_on_party_square(x, y)) {
+                if (text_kind(t) == TEXT_KIND_TEXT && !was_visible && text_is_visible(t) && dun_on_party_square(x, y)) {
                     char text[TEXT_SIZE];
                     text_print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
                 }
             } else if ((sub == TEXT_GENERATOR_SLOW || sub == TEXT_GENERATOR_FAST) && effect == EFFECT_SET) {
                 unsigned base = sub == TEXT_GENERATOR_SLOW ? 0x200 : 0x2000;
-                if (w & TEXT_SHOWN) base *= sub == TEXT_GENERATOR_SLOW ? 4 : 2;
+                if (was_visible) base *= sub == TEXT_GENERATOR_SLOW ? 4 : 2;
                 unsigned r = rand_next() & 0xffff;
                 TimelineEvent ev = {.time_map = event_time(base + ((base * 2 - 1) & r) + game.game_time),
                                     .type = EVENT_SPAWN_CREATURE};
                 ev.data[0] = (uint8_t)x;
                 ev.data[1] = (uint8_t)y;
-                ev.data[3] = (uint8_t)(w >> TEXT_VALUE_SHIFT);
+                ev.data[3] = text_value(t);
                 timeline_add_event(&ev);
             } else if (sub == TEXT_SOUND && effect == EFFECT_SET) {
-                sound_request(3, party.cur_map + 1, (uint8_t)(w >> TEXT_VALUE_SHIFT), 0x73, 200, x, y, 1);
+                sound_request(3, party.cur_map + 1, text_value(t), 0x73, 200, x, y, 1);
             }
             continue;
         }
@@ -1288,7 +1274,7 @@ void timeline_event_sensor(TimelineEvent *e)
         door_set_flag(thing, DOOR_BUTTON_PRESSED, false);
         break;
     case EVENT_SET_MARKER:
-        set_thing_word(thing, 2, thing_word(thing, 2) | 1);
+        text_set_visible(thing, true);
         break;
     }
 }
@@ -1315,10 +1301,9 @@ void sensor_process_map_entry(int entering)
                         sensor_start_ambient_sound(t, t, x, y, (uint16_t)sensor_get_ornament_cycle(t, wall), wall);
                     }
                 } else if (thing_type(t) == THING_TEXT && entering) {
-                    uint16_t w = thing_word(t, TEXT_DATA);
-                    if ((w & TEXT_KIND_MASK) == TEXT_KIND_DATA && w >> TEXT_SUBTYPE_SHIFT == 0x15 && !(w & 1)) {
-                        set_thing_word(t, TEXT_DATA, w | 1);
-                        creature_create_group(w >> TEXT_VALUE_SHIFT & 0xff, 7, rand_2bits(), x, y);
+                    if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == 0x15 && !text_is_visible(t)) {
+                        text_set_visible(t, true);
+                        creature_create_group(text_value(t), 7, rand_2bits(), x, y);
                     }
                 }
             }
@@ -1540,12 +1525,12 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
                 sound_play_with_fallback(CAT_ORNAMENT, ornament, 0x88, 0xfe, game.party_x, game.party_y, 1, 0x8c, 0x80);
             sensor_trigger_target(t, effect, extra);
         } else if (actor == THING_NONE && type == THING_TEXT) {
-            uint16_t w = thing_word(t, TEXT_DATA);
-            if ((w & TEXT_KIND_MASK) != TEXT_KIND_DATA || !has_leader) continue;
-            int value = w >> TEXT_VALUE_SHIFT & 0xff, sub = w >> TEXT_SUBTYPE_SHIFT & 0x1f;
+            if (text_kind(t) != TEXT_KIND_ORNAMENT || !has_leader) continue;
+            int value = text_value(t), sub = text_subtype(t);
+            bool visible = text_is_visible(t);
             if (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) {
                 int item = item_holder_item(value);
-                if (w & TEXT_SHOWN) {
+                if (visible) {
                     if (hand != THING_NONE) {
                         done = 1;
                         continue;
@@ -1573,7 +1558,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
                 }
                 party.redraw |= REDRAW_VIEW;
                 done = 1;
-            } else if ((sub == TEXT_LADDER_HIDDEN && !(w & TEXT_SHOWN)) || sub == TEXT_LADDER) {
+            } else if ((sub == TEXT_LADDER_HIDDEN && !visible) || sub == TEXT_LADDER) {
                 if (hand != THING_NONE) continue;
                 int delta = gdat_entry_index(draw_gdat(), CAT_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_LADDER_UP) ? -1 : 1;
                 int lx = game.party_x, ly = game.party_y;
@@ -1583,7 +1568,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
                     input_flush();
                 }
             } else if (sub == TEXT_SWITCH && hand == THING_NONE) {
-                set_thing_word(t, TEXT_DATA, w ^ 1);
+                text_set_visible(t, !visible);
             }
         } else if (type >= THING_SENSOR) {
             break;

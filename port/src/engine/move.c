@@ -40,10 +40,6 @@
 #define SCOPE_PARTY 2
 
 /* Text marker kinds (text record bits 11-15) that the pits read. */
-#define TEXT_KIND_MASK 6
-#define TEXT_KIND_ORNAMENT_DATA 2
-#define TEXT_SUBTYPE_SHIFT 11
-#define TEXT_VALUE_SHIFT 3
 #define MARKER_PIT_TARGET 0x0c          /* a pit square: the marker id of its targets */
 
 /* Champion record values. */
@@ -614,15 +610,14 @@ int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y)
                 for (uint16_t t = dungeon_square_first_thing(map, mx, my); t != THING_ENDOFLIST && thing_type(t) < THING_GROUP;
                      t = dungeon_next_thing(t)) {
                     if (mode < MARKER_FIND_NTH || mode > MARKER_FIND_SET || thing_type(t) != THING_TEXT) continue;
-                    uint16_t w = thing_word(t, TEXT_DATA);
-                    if ((w & TEXT_KIND_MASK) != TEXT_KIND_ORNAMENT_DATA) continue;
-                    int kind = w >> TEXT_SUBTYPE_SHIFT, id = w >> TEXT_VALUE_SHIFT & 0xff, hit = 0;
+                    if (text_kind(t) != TEXT_KIND_ORNAMENT) continue;
+                    int kind = text_subtype(t), id = text_value(t), hit = 0;
                     if (kind == MARKER_TARGET && id == marker) {
                         if (mode == MARKER_COUNT) count++;
                         else hit = --nth == 0;
                     } else if (kind == MARKER_SWITCH) {
-                        if (mode == MARKER_CLEAR_ALL) set_thing_word(t, TEXT_DATA, w & 0xfffe);
-                        else hit = mode == MARKER_FIND_SET && w & 1;
+                        if (mode == MARKER_CLEAR_ALL) text_set_visible(t, false);
+                        else hit = mode == MARKER_FIND_SET && text_is_visible(t);
                     } else if (kind == MARKER_POSITION && id == marker) {
                         *x = (int16_t)mx;
                         *y = (int16_t)my;
@@ -762,9 +757,8 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
                     type = thing_type(t);  /* the original reuses its thing type variable here */
                     if (type > THING_SENSOR) break;
                     if (type != THING_TEXT) continue;
-                    uint16_t w = thing_word(t, TEXT_DATA);
-                    if ((w & TEXT_KIND_MASK) == TEXT_KIND_ORNAMENT_DATA && w >> TEXT_SUBTYPE_SHIFT == MARKER_PIT_TARGET) {
-                        marker = w >> TEXT_VALUE_SHIFT & 0xff;
+                    if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == MARKER_PIT_TARGET) {
+                        marker = text_value(t);
                         break;
                     }
                 }
@@ -1048,9 +1042,6 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
 
 #define SENSOR_KIND_TABLE 0x2c
 #define SENSOR_SHOP_DISPLAY 0x30
-#define TEXT_KIND_BITS 0x0006
-#define TEXT_KIND_ORNAMENT 0x0002
-#define TEXT_SUBTYPE_SHIFT 11
 #define TEXT_KEEPS_SQUARE 4             /* a text ornament subtype that protects the things of its square */
 #define DISCARD_NEAR 5                  /* the things this near to the party on its map stay */
 #define GROUP_DO_NOT_DISCARD 0x0400     /* GROUP_DIR word bit 10 */
@@ -1152,8 +1143,7 @@ static uint16_t discard_scan_map(int type, int subtype, int map, int second)
                             reserved = item_index_gdat_index(w >> ITEM_INDEX_SHIFT);
                     }
                 } else if (tt == THING_TEXT) {
-                    uint16_t w = thing_word(t, TEXT_DATA);
-                    stop = (w & TEXT_KIND_BITS) == TEXT_KIND_ORNAMENT && w >> TEXT_SUBTYPE_SHIFT == TEXT_KEEPS_SQUARE;
+                    stop = text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_KEEPS_SQUARE;
                 } else if (!(tt > THING_SENSOR && near)) {
                     if (tt == type) {
                         if (discard_take(t, type, subtype, map, x, y, holder, &reserved)) return t;

@@ -1199,12 +1199,7 @@ enum ai_command {
 #define ITEM_SKILL_TAKE_CARRIED 0x08
 #define ITEM_SKILL_PLACE 0x77
 #define SENSOR_ITEM_SPOT 0x30           /* floor sensor where a creature places an item */
-#define TEXT_KIND_MASK 6
-#define TEXT_KIND_MARKER 2
-#define TEXT_MARKER_SHIFT 3
-#define TEXT_TRANSFORM 1
-#define TEXT_MARKER_TYPE_SHIFT 8
-#define TEXT_MARKER_TYPE_MASK 0x1f
+#define TEXT_TRANSFORM 1                /* ornament subtype: a transform marker */
 #define LOCATION_NONE 0xffff
 #define MOOD_OP_QUIET 0x10              /* set mood flag: 0 clears, 1 sets, 2 tests; this bit: no rescan */
 #define MOOD_OP_QUIET_LAST 0x12
@@ -1582,11 +1577,8 @@ static int cmd_check_transform(void)
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, ai.event.data[0], ai.event.data[1]);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT) continue;
-        uint16_t w = thing_word(t, TEXT_DATA);
-        if ((w & TEXT_KIND_MASK) != TEXT_KIND_MARKER) continue;
-        uint16_t v = w >> TEXT_MARKER_SHIFT;
-        if ((v >> TEXT_MARKER_TYPE_SHIFT & TEXT_MARKER_TYPE_MASK) != TEXT_TRANSFORM) continue;
-        ai.active->sub = (int8_t)v;
+        if (text_kind(t) != TEXT_KIND_ORNAMENT || text_subtype(t) != TEXT_TRANSFORM) continue;
+        ai.active->sub = (int8_t)text_value(t);
         ai.active->action = ACTION_TRANSFORM;
         return AI_RESULT_DONE;
     }
@@ -1684,10 +1676,10 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
                     *sensor = t;
                     return d;
                 }
-            } else if (type == THING_TEXT && (w & 6) == 2) {
-                uint16_t kind = w >> 11;
+            } else if (type == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
+                int kind = text_subtype(t);
                 if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST) continue;
-                int16_t up = (int16_t)gdat_entry_index(draw_gdat(), 9, (uint8_t)(w >> 3), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
+                int16_t up = (int16_t)gdat_entry_index(draw_gdat(), 9, text_value(t), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
                 if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
                     *sensor = THING_NONE;
                     return d;

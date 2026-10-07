@@ -132,6 +132,38 @@ static inline int door_ornament(uint16_t door) { return thing_word(door, DOOR_DA
 /* A button on the door or the wall switch of the door operates it. */
 static inline bool door_has_button(uint16_t door) { return door_flag(door, DOOR_BUTTON | DOOR_SWITCH_ON); }
 
+/* TEXT_DATA fields. */
+#define TEXT_VISIBLE 0x0001
+#define TEXT_KIND_SHIFT 1
+#define TEXT_KIND_MASK 3
+enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT, TEXT_KIND_AI_MARKER };
+#define TEXT_VALUE_SHIFT 3              /* a text: its offset in the text data; an ornament: its value in bits 3-10 */
+#define TEXT_VALUE_MASK 0xff
+#define TEXT_SUBTYPE_SHIFT 11
+#define TEXT_SUBTYPE_MASK 0x1f
+#define AI_MARKER_ID_SHIFT 3            /* an AI marker: id bits 3-7, kind bits 8-11, level delta bits 12-15 */
+#define AI_MARKER_ID_MASK 0x1f
+#define AI_MARKER_KIND_SHIFT 8
+#define AI_MARKER_KIND_MASK 0xf
+#define AI_MARKER_LEVEL_SHIFT 12
+static inline bool text_is_visible(uint16_t text) { return thing_word(text, TEXT_DATA) & TEXT_VISIBLE; }
+static inline void text_set_visible(uint16_t text, bool visible)
+{
+    uint16_t w = thing_word(text, TEXT_DATA);
+    set_thing_word(text, TEXT_DATA, visible ? w | TEXT_VISIBLE : w & ~TEXT_VISIBLE);
+}
+static inline int text_kind(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_KIND_SHIFT & TEXT_KIND_MASK; }
+/* The ornament subtype: what the ornament does. */
+static inline int text_subtype(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_SUBTYPE_SHIFT & TEXT_SUBTYPE_MASK; }
+/* An ornament: its ornament (GDAT index) or the value that its subtype uses. */
+static inline uint8_t text_value(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_VALUE_SHIFT & TEXT_VALUE_MASK; }
+/* A text: the offset of its words in the text data. */
+static inline uint16_t text_offset(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_VALUE_SHIFT; }
+static inline int ai_marker_id(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_ID_SHIFT & AI_MARKER_ID_MASK; }
+static inline int ai_marker_kind(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_KIND_SHIFT & AI_MARKER_KIND_MASK; }
+/* The level delta that the AI marker is for. */
+static inline int ai_marker_level(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_LEVEL_SHIFT; }
+
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
 int dungeon_load(const char *path);
 /* Reads a dungeon at the file position: DUNGEON.DAT (new_game 1, adds free records) or the image in a save file (new_game 0). */

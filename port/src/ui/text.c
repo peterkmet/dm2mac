@@ -293,12 +293,6 @@ int16_t text_gdat_field(int category, int index, int entry, int field)
 enum { TEXT_SPACE = 26, TEXT_PERIOD = 27, TEXT_NEWLINE = 28, TEXT_ESCAPE_CHAR = 29, TEXT_ESCAPE_WORD = 30, TEXT_END = 31 };
 static const char *const text_escape_words[] = {"x", "y", "THE ", "YOU ", "z", "{", "|", "}", "~", "\x7f"};
 static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
-#define TEXT_VISIBLE 0x0001
-#define TEXT_KIND_SHIFT 1
-#define TEXT_KIND_MASK 3
-#define TEXT_KIND_ORNAMENT 1
-#define TEXT_OFFSET_SHIFT 3
-#define TEXT_SUBTYPE_SHIFT 11
 #define TEXT_SUBTYPE_PLATE 14
 #define SCROLL_TEXT_SHIFT 10       /* scroll word 2: an ornament text id in bits 10-15, else a text thing index */
 #define TEXT_MODE_NEW_LINE 1
@@ -322,18 +316,17 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
         return;
     }
     if (ornament == NO_ORNAMENT_TEXT) {
-        uint16_t w = thing_word(text, TEXT_DATA);
-        int kind = w >> TEXT_KIND_SHIFT & TEXT_KIND_MASK;
-        if (kind && (kind != TEXT_KIND_ORNAMENT || w >> TEXT_SUBTYPE_SHIFT != TEXT_SUBTYPE_PLATE)) return;
-        if (!(w & TEXT_VISIBLE) && !(mode & TEXT_MODE_HIDDEN)) return;
-        if (kind == TEXT_KIND_ORNAMENT) ornament = (uint8_t)(w >> TEXT_OFFSET_SHIFT);
+        int kind = text_kind(text);
+        if (kind && (kind != TEXT_KIND_ORNAMENT || text_subtype(text) != TEXT_SUBTYPE_PLATE)) return;
+        if (!text_is_visible(text) && !(mode & TEXT_MODE_HIDDEN)) return;
+        if (kind == TEXT_KIND_ORNAMENT) ornament = text_value(text);
     }
     if ((mode & TEXT_MODE_MASK) == TEXT_MODE_NEW_LINE && o < end) *o++ = '\n';
     if (ornament != NO_ORNAMENT_TEXT) {
         if (draw_gdat()) gdat_text(draw_gdat(), ORNAMENT_TEXT_CATEGORY, 0, (int)ornament, o, (size_t)(end + 1 - o));
         return;
     }
-    const uint16_t *p = dungeon_text_data() + (thing_word(text, TEXT_DATA) >> TEXT_OFFSET_SHIFT);
+    const uint16_t *p = dungeon_text_data() + text_offset(text);
     const uint16_t *text_end = dungeon_text_data() + dungeon_text_word_count();
     uint16_t word = 0;
     int escape = 0;

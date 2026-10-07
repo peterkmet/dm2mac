@@ -89,12 +89,6 @@ enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNK
 /* Action results that show a failed cast. */
 enum { RESULT_UNKNOWN_SPELL = -3, RESULT_WIZARD_FAILED = -4, RESULT_PRIEST_FAILED = -5 };
 /* Warp marker texts and the marker search modes. */
-#define TEXT_KIND_ORNAMENT_BITS 0x0006
-#define TEXT_KIND_ORNAMENT 0x0002
-#define TEXT_SUBTYPE_SHIFT 11
-#define TEXT_SUBTYPE_MASK 0x1f
-#define TEXT_MARKER_SHIFT 3
-#define TEXT_VISIBLE 0x0001
 enum { SUBTYPE_WARP_ONCE = 15, SUBTYPE_WARP = 16 };
 enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define SOUND_WARP_CATEGORY 10
@@ -504,19 +498,19 @@ int move_party_warp_to_marker(void)
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, game.party_x, game.party_y);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT) continue;
-        uint16_t w = thing_word(t, TEXT_DATA);
-        if ((w & TEXT_KIND_ORNAMENT_BITS) != TEXT_KIND_ORNAMENT) continue;
-        int subtype = w >> TEXT_SUBTYPE_SHIFT & TEXT_SUBTYPE_MASK, mode;
+        if (text_kind(t) != TEXT_KIND_ORNAMENT) continue;
+        int subtype = text_subtype(t), mode;
         if (subtype == SUBTYPE_WARP_ONCE) mode = MARKER_CLEAR_ALL;
         else if (subtype == SUBTYPE_WARP) mode = MARKER_FIND_SET;
         else continue;
         int16_t x, y;
-        int map = dun_find_marker(mode, 0, (uint8_t)(w >> TEXT_MARKER_SHIFT), &x, &y);
+        uint8_t marker = text_value(t);
+        int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0) continue;
         move_party_to(x, y, map, game.party_dir);
-        sound_play_with_fallback(SOUND_WARP_CATEGORY, (uint8_t)(w >> TEXT_MARKER_SHIFT), SOUND_WARP_ENTRY, SOUND_WARP_FALLBACK,
+        sound_play_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_WARP_ENTRY, SOUND_WARP_FALLBACK,
                                  game.party_x, game.party_y, 1, SOUND_WARP_PRIORITY, SOUND_WARP_VOLUME);
-        if (mode == MARKER_CLEAR_ALL) set_thing_word(t, TEXT_DATA, thing_word(t, TEXT_DATA) | TEXT_VISIBLE);
+        if (mode == MARKER_CLEAR_ALL) text_set_visible(t, true);
         return 1;
     }
     return 0;

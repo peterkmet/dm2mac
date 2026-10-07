@@ -123,13 +123,6 @@ enum door_state { DOOR_OPEN, DOOR_DESTROYED = 5 };
 #define SQUARE_TYPE_BITS 0xe0
 
 /* Text and sensor fields of wall and floor things. */
-#define TEXT_VISIBLE 0x01
-#define TEXT_KIND_SHIFT 1
-#define TEXT_KIND_MASK 3
-#define TEXT_ORNAMENT_SHIFT 3
-#define TEXT_SUBTYPE_SHIFT 11
-#define TEXT_SUBTYPE_MASK 0x1f
-enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT };
 /* Subtypes of ornament texts, by what the view does with them (game meanings from docs/skull-notes/range-6.md). */
 enum text_subtype {
     SUBTYPE_STILL = 0,              /* plain ornament */
@@ -727,22 +720,21 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
         uint32_t time = game.game_time;
         uint8_t ornament;
         if (thing_type(thing) == THING_TEXT) {
-            uint16_t w = thing_word(thing, TEXT_DATA);
-            int kind = w >> TEXT_KIND_SHIFT & TEXT_KIND_MASK, subtype = w >> TEXT_SUBTYPE_SHIFT & TEXT_SUBTYPE_MASK;
+            int kind = text_kind(thing), subtype = text_subtype(thing), visible = text_is_visible(thing);
             if (kind == TEXT_KIND_TEXT || (kind == TEXT_KIND_ORNAMENT && subtype == SUBTYPE_PLATE)) {
                 s->side[face] = ORNAMENT_PLATE;
-                if (face == SIDE_FRONT) s->text = w & TEXT_VISIBLE ? thing : THING_TEXT_NONE;
+                if (face == SIDE_FRONT) s->text = visible ? thing : THING_TEXT_NONE;
                 done |= 1 << cell;
                 continue;
             }
             if (kind != TEXT_KIND_ORNAMENT) continue;
-            ornament = (uint8_t)(w >> TEXT_ORNAMENT_SHIFT);
+            ornament = text_value(thing);
             switch (subtype) {
             case SUBTYPE_STILL: case SUBTYPE_STILL_2: break;
             case SUBTYPE_ANIMATED: animated = 1; break;
-            case SUBTYPE_TOGGLE: case SUBTYPE_TOGGLE_2: animated = w & TEXT_VISIBLE; break;
+            case SUBTYPE_TOGGLE: case SUBTYPE_TOGGLE_2: animated = visible; break;
             case SUBTYPE_SWITCH: case SUBTYPE_SWITCH_2: case SUBTYPE_SWITCH_3:
-                frame = w & TEXT_VISIBLE;
+                frame = visible;
                 if (frame) {
                     animated = 1;
                     done |= 1 << cell;
@@ -809,13 +801,12 @@ static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square
         uint32_t time = game.game_time;
         uint8_t ornament;
         if (thing_type(thing) == THING_TEXT) {
-            uint16_t w = thing_word(thing, TEXT_DATA);
-            if ((w & (TEXT_KIND_MASK << TEXT_KIND_SHIFT)) != TEXT_KIND_ORNAMENT << TEXT_KIND_SHIFT) continue;
-            ornament = (uint8_t)(w >> TEXT_ORNAMENT_SHIFT);
-            switch (w >> TEXT_SUBTYPE_SHIFT & TEXT_SUBTYPE_MASK) {
+            if (text_kind(thing) != TEXT_KIND_ORNAMENT) continue;
+            ornament = text_value(thing);
+            switch (text_subtype(thing)) {
             case SUBTYPE_STILL: case SUBTYPE_TRAP_TELEPORT: case SUBTYPE_WARP_MARKER_2: break;
             case SUBTYPE_ANIMATED: animated = 1; break;
-            case SUBTYPE_TOGGLE: animated = w & TEXT_VISIBLE; break;
+            case SUBTYPE_TOGGLE: animated = text_is_visible(thing); break;
             case SUBTYPE_WARP_MARKER: frame = 1; break;
             case SUBTYPE_SQUARE_SWITCH: frame = square_flag(square, SQUARE_FLAG_3); break;
             case SUBTYPE_SHOP_STAND: s->side[SIDE_SHOP_FLAG] = 0; continue;

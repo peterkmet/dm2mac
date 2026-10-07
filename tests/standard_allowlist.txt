@@ -233,17 +233,8 @@ duplicate STEP_JUMP open: module cleanup
 duplicate TARGET_HOME open: module cleanup
 duplicate TARGET_X_SHIFT open: module cleanup
 duplicate TELEPORTER_ROTATION_SHIFT open: module cleanup
-duplicate TEXT_KIND_MARKER open: module cleanup
-duplicate TEXT_KIND_MASK open: module cleanup
-duplicate TEXT_KIND_ORNAMENT open: module cleanup
-duplicate TEXT_KIND_SHIFT open: module cleanup
 duplicate TEXT_LADDER open: module cleanup
 duplicate TEXT_LADDER_HIDDEN open: module cleanup
-duplicate TEXT_MARKER_SHIFT open: module cleanup
-duplicate TEXT_SUBTYPE_MASK open: module cleanup
-duplicate TEXT_SUBTYPE_SHIFT open: module cleanup
-duplicate TEXT_VALUE_SHIFT open: module cleanup
-duplicate TEXT_VISIBLE open: module cleanup
 duplicate TIME_BYTE_WRAP open: module cleanup
 duplicate TYPE_DATA open: module cleanup
 duplicate UI_COLORS_ENTRY open: module cleanup
