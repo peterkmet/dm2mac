@@ -23,6 +23,9 @@
 #define STAT_START_MIN 30
 #define SKILL_EXPERIENCE_BASE 0x40
 #define FOOD_START 1500
+#define FOOD_RANDOM_MASK 0xff       /* a new champion gets up to 255 more food and water */
+#define SUB_SKILL_COUNT 4           /* the sub-skills of each base skill */
+#define LAST_COMMAND_NONE 0xff      /* the hand used no command yet */
 #define CMD_RECRUIT 0x92
 #define CMD_RECRUIT_CANCEL 0x93
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */
@@ -47,12 +50,12 @@ static void champ_add_to_party(int portrait, int index, int dir)
     Champion *c = champion(index);
     memset(c, 0, sizeof *c);
     c->portrait = (uint8_t)portrait;
-    c->last_command[0] = c->last_command[1] = 0xff;
+    c->last_command[0] = c->last_command[1] = LAST_COMMAND_NONE;
     c->damage_event = THING_NONE;
     c->dir = (uint8_t)dir;
     int k = 0;
-    while (champ_get_index_in_cell((k + game.party_dir) & 3) != -1) k++;
-    c->cell = (uint8_t)((k + game.party_dir) & 3);
+    while (champ_get_index_in_cell(dir_turn(game.party_dir, k)) != -1) k++;
+    c->cell = (uint8_t)dir_turn(game.party_dir, k);
     c->unknown_26[2] = (uint8_t)game.party_dir;
     for (int s = 0; s < SLOT_COUNT; s++) c->slots[s] = THING_NONE;
     char text[TEXT_SIZE];
@@ -82,11 +85,11 @@ static void champ_add_to_party(int portrait, int index, int dir)
     }
     for (int b = 0; b < SKILL_BASE_COUNT; b++) {
         uint32_t sum = 0;
-        for (int k2 = 0; k2 < 4; k2++) sum += c->experience[(b + 1) * 4 + k2];
+        for (int k2 = 0; k2 < SUB_SKILL_COUNT; k2++) sum += c->experience[(b + 1) * SUB_SKILL_COUNT + k2];
         c->experience[b] = sum;
     }
-    c->food = (int16_t)((rand_next() & 0xff) + FOOD_START);
-    c->water = (int16_t)((rand_next() & 0xff) + FOOD_START);
+    c->food = (int16_t)((rand_next() & FOOD_RANDOM_MASK) + FOOD_START);
+    c->water = (int16_t)((rand_next() & FOOD_RANDOM_MASK) + FOOD_START);
 }
 
 /* The mirror sensor on the square (x, y) of the current map. */
@@ -118,9 +121,9 @@ int champ_start_recruit(int x, int y, int dir, int map)
     ui.candidate = (uint16_t)(index + 1);
     game.champion_count++;
     if (!index) champ_set_leader(0);
-    int back = (dir + 2) & 3;
+    int back = dir_opposite(dir);
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, fx, fy); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (thing_type(t) > THING_SENSOR && t >> THING_CELL_SHIFT == back) inv_put_object_in_free_slot(index, t);
+        if (thing_type(t) > THING_SENSOR && thing_cell(t) == back) inv_put_object_in_free_slot(index, t);
     if (!recruit_silent) {
         inv_toggle(index);
         input_set_mode(INPUT_MODE_RECRUIT);
