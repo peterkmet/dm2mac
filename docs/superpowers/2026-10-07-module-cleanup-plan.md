@@ -72,3 +72,29 @@ Extra items per task, from the task 0b report:
 - Move each `move:` constant of the reports into its owner header.
 - Remove the `duplicate` and `prefix` entries: one definition per constant, a `Prefixes` line in each header.
 - Run the full suite and the reviewer.
+
+## Task 9 inputs (from the reports of tasks 1 to 8)
+
+**Move into the owner header (one definition, one name):**
+- `engine/dungeon.h`: `DOOR_STATE_*` and `DOOR_CLOSED`/`DOOR_OPEN`/`DOOR_DESTROYED` copies (view.c, automap.c, champ_action.c, sensor.c, move.c, creature.c, ai_move.c), `MAP_RANDOM_WALL_SHIFT`, `MAP_SIDE_MAX`, `CELL_COUNT`, `TELEPORTER_SCOPE_CREATURES`, `TURN_LEFT`/`TURN_RIGHT`, and `DIR_MASK`, `dir_right`, `dir_back`, `dir_left`, `thing_at_cell`, `event_square_dir` (now in `sensor.h`). Use `DIR_MASK` for the `& 3` direction wrap.
+- `engine/dungeon.h` accessors: `dungeon_map_door_type(map, slot)`, the random wall ornament count of a map, the creature type count of a map; replace the local helpers `map_door_type`, `map_random_wall_count`, `cell_of_thing`, `thing_in_cell_of` (view.c), `creature_group_thing`, `move_thing_cell`, `move_set_cell`, `map_creature_type_count` with `thing_cell`/`thing_with_cell` or new accessors.
+- `engine/creature.h`: `ALERT_STARTLED`, `CREATURE_DOOR_SIZE_MASK`, `DOOR_HEIGHT_MASK`, `ANIM_MORE_STEPS`, `ANIM_SEQUENCE_END`, `POSSESSION_SLOT_MASK`, accessors for the nibbles of `CreatureInfo.speed` and the armour in `door_flags` (local macros in ai.c). Pick one name for door-flags bit 0x10 (`CREATURE_RESISTS_NON_FIRE` or `CREATURE_DOOR_HALF_DAMAGE`).
+- `engine/sound_request.h`: one name for 0xfe (`SWALLOW_FALLBACK_INDEX`, `SOUND_FALLBACK`, `SOUND_ANY`), `SOUND_HURT`, `SOUND_PRIORITY_HURT`, `SOUND_VOLUME_NORMAL`, `SOUND_VOLUME_LOUD`, `SOUND_VOLUME`, `SOUND_VOLUME_MAX`, the click sound constants of input.c; one name each for `SOUND_ENTRY_DRINK`/`SOUND_SWALLOW`, `SOUND_PRIORITY_CRUSH`/`SOUND_PRIORITY_STEP`.
+- `engine/champion.h`: `ATTACK_TYPE_SELF`/`ATTACK_SELF`/`DOOR_ATTACK_TYPE`, `BUMP_WOUNDS`, `FALL_WOUNDS`, `DISPLACE_WOUNDS`, `DOOR_WOUNDS`/`WOUND_HEAD`, `LAUNCH_COOLDOWN`/`THROW_COOLDOWN`, names for `Champion.unknown_26[2]` and `[3]` (local `CHAMP_HIT_DIR`, `CHAMP_HIT_DAMAGE` in ai.c), the push and fall sounds now in `creature.h`. Check `SLOT_BODY_FIRST`, `SLOT_BODY_LAST`, `SLOT_BODY_EXTRA` against the slot uses.
+- `engine/item.h`: `ITEM_ATTR_POISON` as `ATTR_POISON`, `ACTION_TEXT_FIRST`/`ACTION_ENTRY_FIRST`.
+- `engine/dungeon.h` text subtypes: `ORNAMENT_ITEM_*` (item.c) and `SUBTYPE_*` (view.c).
+- `engine/sensor.h` names in other modules: `GLOBAL_VAR_*` (weather.c, champ_action.c, magic.c), `SENSOR_KIND_VANISH`/`SENSOR_KIND_ALERT` (creature.c), `sensor_turn_dir` (creature.c), `SENSOR_EVENT_THING` (input.c), `TELEPORT_EVENT_*`, `SPAWN_EVENT_CREATURE` (game.c), `ALTAR_EVENT_STEPS` (damage.c), `SENSOR_NONE`.
+- `engine/save.h`: `save_magic_light()` in `magic.c` and `ai_move.c`; `TIMELINE_EVENT_SIZE`/`EVENT_SIZE`.
+- `engine/projectile.h`: `projectile_dir()` (view.c local `missile_dir`); one name for the event direction word (`EVENT_MISSILE_DIR`/`MISSILE_DIR_SHIFT` in minion.c, `EVENT_DIR_WORD`/`EVENT_DIR_SHIFT` in view.c).
+- `engine/ai_move.h`: `CANDIDATE_MELEE_LINE`, `CANDIDATE_SHOOT_LINE` and the static `TARGET_*` enum of ai_move.c.
+- `ui/input.h`: `CMD_VOLUME_SETTING_*` (dialog.c copies), `CMD_NAME_EDITOR_LAST` (session.c copies); `ui/dialog.h`: `CMD_DIALOG_BUTTON_LAST`; `KEY_ENTER`, `KEY_TAB`, `KEY_BACKSPACE`, `INPUT_MODE_*`, `GDAT_TYPE_VALUE` copies in dialog.c and session.c.
+- `data/gdat.h`: `GDAT_TYPE_REMAP`, one GDAT category name for `CAT_MISC_SOUND` (input.c, creature.c, ai.c), `CAT_MAP_SOUND`/`CAT_DUNGEON`, `CAT_ORNAMENT`; names for the bits per pixel 4 and 8.
+- `ui/view.h`: `DARKEST_LIGHT`; one name for the 5×5 cell grid (`GRID5_*` in move.c, `CELL_GRID_SIDE`/`CELL_CENTER` in view.c); `DISTANCE_MAP_SIDE` -> `ai.h`.
+- One shared `PERCENT` (merchant.c, weather.c, money.c, creature.c, ai.c, view.c, zone.c `PERCENT_FULL`).
+- `dungeon_map_wallset()` in `move.c`, `ai.c` (still `>> 4 & 0xf`).
+- `recruit.c:50` writes 0xff: use `COMMAND_NONE`.
+- `ai.h`: `creature_is_near_party_front` returns `bool` like its definition; remove its `bool` allowlist line.
+
+**Tests:** `restype = ctypes.c_bool` for the `bool` functions that tests call through ctypes (`automap_is_seen`, `item_is_moneybox`, `item_is_chest`, `item_is_minion_map`, the line tests of ai_move.c).
+
+**Flaky:** `tests/test_input.py::test_sleep_and_wake_match_original` failed 3 of 12 parallel runs in the task 1 worktree, once already on its first commit; serial runs pass. Debug it as a separate issue, like the `AiContext` padding.
