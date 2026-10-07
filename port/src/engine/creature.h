@@ -50,6 +50,8 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define CREATURE_TRAIT_TWO_CHAMPIONS 0x20   /* a melee attack hits two champions */
 #define CREATURE_TRAIT_CLOSES_PITS 0x40     /* the creature closes the pit under it while it walks */
 #define PUSH_IMMOVABLE 0xfe
+#define PUSH_WALL 0xff                  /* push resistance: the party bumps into the creature as into a wall */
+#define PUSH_STRENGTH_PARTY 0xfe
 #define CREATURE_FLIES 0x0004
 #define POSSESSIONS_HIDE_CLICKS 0x2000  /* possessions bit: objects under the creature stay clickable */
 #define POSSESSIONS_KIND_MASK 0x000f    /* 0: none shown; 1 or less: carried low */
@@ -61,6 +63,15 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define SOUND_ENTRY_DROP 0x85
 #define SOUND_FALLBACK 0xfe
 #define SOUND_PRIORITY_DROP 0x3a
+/* The sound of a creature that a teleporter moves. */
+#define SOUND_ENTRY_TELEPORT 0x89
+#define SOUND_PRIORITY_MOVE 0x61
+/* The champion sounds of a push: the strain of a push that fails, the cry of a champion that a push or bump hurts. */
+#define SOUND_ENTRY_STRAIN 0x82
+#define SOUND_ENTRY_PUSHED 0x8a
+#define SOUND_PRIORITY_STRAIN 0x69
+#define SOUND_PRIORITY_PUSHED 100
+#define SOUND_VOLUME_PUSH 200
 
 /* An animation frame (GDAT (0x0f, creature type, 7, 0xfd), 8 bytes per frame). */
 enum creature_frame_field {
@@ -180,6 +191,9 @@ void creature_refresh_party_maps(void);
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
 void creature_alert(uint16_t group, int x, int y, int flags, int chance, int damage);
+#define ALERT_ANGER 0x4000                  /* alert flags: the creature may become angry */
+#define ALERT_LOUD 0x2000                   /* the alert wakes the creature */
+#define ALERT_CLEAR 0x8000                  /* the alert clears the mood bit (bits 0-3) instead of setting it */
 void creature_turn_group(uint16_t group, int absolute, int dir);
 /* What a creature that leaves the dungeon drops: its drop items and possessions, its possessions, or nothing. */
 enum drop_mode { DROP_ALL, DROP_POSSESSIONS, DROP_NOTHING };

@@ -798,8 +798,6 @@ void creature_process_event(int x, int y, int type)
 #define DROP_RANDOM_SHIFT 4
 #define DROP_RANDOM_MASK 0x70
 #define DROP_ITEM_SHIFT 7
-#define SOUND_PRIORITY_MOVE 0x61
-#define SOUND_ENTRY_TELEPORT 0x89
 #define SOUND_CATEGORY_MISC 3
 #define CATEGORY_CREATURE 0x0f
 #define SOUND_ENTRY_HURT 9                  /* and 10 */
@@ -808,18 +806,12 @@ void creature_process_event(int x, int y, int type)
 #define AI_CLASS_SCREAMS 0x8000             /* the creature screams when it is hurt */
 #define AI_CLASS_NO_TURN 0x0080             /* an alert does not turn the creature */
 #define AI_CLASS_WAKES 0x0410
-#define ALERT_ANGER 0x4000                  /* alert flags: the creature may become angry */
-#define ALERT_LOUD 0x2000                   /* the alert wakes the creature */
-#define ALERT_CLEAR 0x8000                  /* the alert clears the mood bit (bits 0-3) instead of setting it */
 #define ALERT_MOOD_BIT 0x40
 #define AI_ACTION_FLAG_WAKES 0x02
 #define AI_ACTION_TURN_LEFT 6
 #define AI_ACTION_TURN_RIGHT 7
 #define BOSS_DEATH_WAIT 0xa0                /* timer ticks */
 #define GROUP_MINION 0x8000                 /* creature_create_group: the group links a minion projectile */
-#define MOVE_CREATED (-4)                   /* move_thing: the group is new, or it leaves the dungeon */
-#define MOVE_NEW_ITEM (-1)
-#define MOVE_RETRY (-3)                     /* move_thing: a group that waited enters its square */
 #define GROUP_RETRY_DELAY 5
 #define EVENT_GROUP_WORD 2                  /* group retry event: data bytes 2-3 hold the group */
 #define SCREAM_ROLL_MASK 7                  /* a hurt creature screams with chance 1 in 8 */
@@ -1234,15 +1226,9 @@ int creature_get_party_distance(int x, int y)
 
 /* Pushing creatures. */
 
-#define PUSH_STRENGTH_PARTY 0xfe
 #define PUSH_FAIL_STAMINA 5
 #define PUSH_LIGHT 0x2e                 /* creatures below this resistance are easy to push */
 #define CATEGORY_CHAMPION 0x16
-#define SOUND_ENTRY_STRAIN 0x82
-#define SOUND_ENTRY_PUSHED 0x8a
-#define SOUND_PRIORITY_STRAIN 0x69
-#define SOUND_PRIORITY_PUSHED 100
-#define SOUND_VOLUME_PUSH 200
 #define ALERT_PUSHED 0x4002
 #define PUSH_BASE_STRENGTH 0x28
 #define ACTION_FLAG_PATH 0x04

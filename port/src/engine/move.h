@@ -78,6 +78,9 @@ void move_party_to(int x, int y, int map, int dir);
    pits, teleporters, and stairs; a negative src_x adds it, a negative dst_x removes it. Returns 1 when a
    creature left the dungeon, 2 when a creature must wait. */
 int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
+#define MOVE_NEW_ITEM (-1)
+#define MOVE_RETRY (-3)                     /* move_thing: a group that waited enters its square */
+#define MOVE_CREATED (-4)                   /* move_thing: the group is new, or it leaves the dungeon */
 /* Sets the alternate view position of a party at (x, y) of map beside a seamless passage. */
 void move_compute_map_arrival(int x, int y, int map);
 /* Finds a free square beside (x, y) for thing (THING_NONE: the party); returns 0 when there is none. */
