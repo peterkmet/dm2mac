@@ -20,7 +20,6 @@
 #define MAP_WIDTH_MASK 0x1f
 #define MAP_HEIGHT_SHIFT 11
 #define MISC_RESERVED 3          /* free misc records that only the forced creation of a misc item may use */
-#define SIDE_COUNT 4
 
 enum header_field {
     HEADER_MAP_DATA_SIZE = 2, HEADER_MAP_COUNT = 4, HEADER_TEXT_WORDS = 6, HEADER_PARTY_START = 8,
@@ -34,6 +33,7 @@ enum map_desc_field {
 #define FLOOR_ORNAMENT_SHIFT 8
 #define CREATURE_TYPE_SHIFT 4
 
+/* The record size in bytes of each thing type. */
 static const uint8_t thing_size[THING_TYPE_COUNT] = {4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4};
 /* Free records that a new game adds to each thing type, for things created during play. */
 static const uint8_t thing_slack[THING_TYPE_COUNT] = {0, 0, 0, 0, 75, 100, 60, 0, 12, 5, 200, 0, 0, 0, 60, 50};
@@ -272,7 +272,7 @@ static int teleporter_link_side(int map, int x, int y, uint16_t *teleporter)
     for (uint16_t t = dungeon_next_thing(*teleporter); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_TELEPORTER_LINK) {
             int rotation = teleporter_rotation(*teleporter);
-            return (rotation + 2 & (SIDE_COUNT - 1)) + 1;
+            return dir_opposite(rotation) + 1;
         }
     return 0;
 }
@@ -682,11 +682,11 @@ static void prepare_group(uint16_t group, int x, int y, int map)
     if (group_flag(group, GROUP_KEEP_CELLS)) return;
     uint16_t t = thing_word(group, GROUP_POSSESSIONS);
     if (t == THING_ENDOFLIST) return;
-    set_thing_word(group, GROUP_POSSESSIONS, (uint16_t)((t & THING_ID_MASK) | rand_2bits() << THING_CELL_SHIFT));
+    set_thing_word(group, GROUP_POSSESSIONS, (uint16_t)thing_with_cell(t, rand_2bits()));
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         uint16_t next = dungeon_next_thing(t);
         if (next != THING_ENDOFLIST)
-            set_thing_word(t, THING_NEXT, (uint16_t)((next & THING_ID_MASK) | rand_2bits() << THING_CELL_SHIFT));
+            set_thing_word(t, THING_NEXT, (uint16_t)thing_with_cell(next, rand_2bits()));
     }
 }
 
@@ -703,7 +703,7 @@ static void link_door_flag(uint16_t sensor, int map)
 /* The link pass of a thing on (x, y) of map; returns 0 when the rest of the square is skipped. */
 static int link_thing(uint16_t t, int x, int y, int map)
 {
-    int cell = t >> THING_CELL_SHIFT;
+    int cell = thing_cell(t);
     switch (thing_type(t)) {
     case THING_TELEPORTER:
         return link_teleporters(t, x, y, map);
@@ -770,8 +770,7 @@ void dungeon_read_level_table(void)
     for (int map = 0; map < dun.map_count; map++)
         if (dungeon_map_level(map) > last) last = dungeon_map_level(map);
     dun_set_current_map(0);
-    uint16_t t = dungeon_square_first_thing(0, dun.party_start & LOCATION_COORD_MASK,
-                                            dun.party_start >> LOCATION_Y_SHIFT & LOCATION_COORD_MASK);
+    uint16_t t = dungeon_square_first_thing(0, location_x(dun.party_start), location_y(dun.party_start));
     while (t != THING_ENDOFLIST && thing_type(t) != THING_TEXT) t = dungeon_next_thing(t);
     if (t != THING_ENDOFLIST && text_kind(t) == TEXT_KIND_TEXT)
         text_decode_dungeon(text, sizeof text, t, LEVEL_TEXT_MODE);
