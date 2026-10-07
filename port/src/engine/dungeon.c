@@ -4,6 +4,7 @@
 #include "ai.h"
 #include "draw.h"
 #include "dungeon.h"
+#include "le.h"
 #include "move.h"
 #include "random.h"
 #include "text.h"
@@ -60,17 +61,6 @@ static struct {
     uint8_t level_start[LEVEL_COUNT];
     uint8_t level_maps[LEVEL_COUNT + MAP_COUNT_MAX];
 } dun;
-
-static uint16_t le16(const uint8_t *p)
-{
-    return p[0] | p[1] << 8;
-}
-
-static void put_le16(uint8_t *p, uint16_t value)
-{
-    p[0] = (uint8_t)value;
-    p[1] = value >> 8;
-}
 
 static int read_bytes(FILE *f, void *dst, size_t size)
 {

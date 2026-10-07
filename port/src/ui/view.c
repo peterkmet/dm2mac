@@ -6,6 +6,7 @@
 #include "dungeon.h"
 #include "inventory.h"
 #include "item.h"
+#include "le.h"
 #include "money.h"
 #include "move.h"
 #include "random.h"
@@ -1738,7 +1739,7 @@ static void view_draw_missiles(uint16_t thing, int pos, int position)
             entry = MISSILE_PICTURE_FRONT;
         } else {
             const TimelineEvent *event = timeline.events + thing_word(thing, PROJECTILE_EVENT);
-            int dir = (event->data[EVENT_DIR_WORD] | event->data[EVENT_DIR_WORD + 1] << 8) >> EVENT_DIR_SHIFT & 3;
+            int dir = le16(event->data + EVENT_DIR_WORD) >> EVENT_DIR_SHIFT & 3;
             if ((dir & 1) != (view.party_dir & 1)) {  /* the missile flies across the view */
                 entry = MISSILE_PICTURE_SIDE;
                 if (kind == MISSILE_MIRRORED) {

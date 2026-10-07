@@ -14,6 +14,7 @@
 #include "champ_action.h"
 #include "inventory.h"
 #include "item.h"
+#include "le.h"
 #include "money.h"
 #include "input.h"
 #include "magic.h"
@@ -1169,8 +1170,7 @@ static void view_click_door_button(int x, int y, uint16_t door)
     TimelineEvent e = {.time_map = (game.game_time + 1) | (uint32_t)(uint8_t)party.cur_map << 24,
                        .type = EVENT_CLEAR_THING_FLAG8};
     uint16_t first = dungeon_square_first_thing(party.cur_map, x, y);
-    e.data[0] = (uint8_t)first;
-    e.data[1] = (uint8_t)(first >> 8);
+    put_le16(e.data, first);
     timeline_add_event(&e);
     set_thing_word(door, 2, thing_word(door, 2) | 0x0800);
     input_command_stop = 1;

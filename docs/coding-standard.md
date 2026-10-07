@@ -31,7 +31,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - Types: `PascalCase`. Constants and enum values: `UPPER_CASE`.
    - No event numbers or original addresses in names. Name the game task, not the number.
 8. The source has four layers in subfolders of `port/src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook that `ui/` sets, for an event that must run the user interface inside the rule. Only `platform/` includes SDL.
-9. Little-endian read helpers (`le16`, `le32`) have one definition in one header. Modules do not define their own copies.
+9. Little-endian read and write helpers (`le16`, `le32`, `put_le16`, `put_le32`) have one definition in one header. Modules do not define their own copies.
 
 ## Check before a step is done
 

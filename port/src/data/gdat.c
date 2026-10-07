@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "gdat.h"
+#include "le.h"
 
 /* File header: signature, item count, size of item 0 (u32), sizes of items 1 to count-1 (u16). */
 #define GDAT_SIGNATURE 0x8005
@@ -91,8 +92,6 @@ struct gdat {
     int row_count;
 };
 
-static unsigned le16(const uint8_t *p) { return p[0] | p[1] << 8; }
-static uint32_t le32(const uint8_t *p) { return le16(p) | (uint32_t)le16(p + 2) << 16; }
 static unsigned be16(const uint8_t *p) { return p[0] << 8 | p[1]; }
 
 /* Checks the header, item sizes, and key table, and builds the item offset table. */
