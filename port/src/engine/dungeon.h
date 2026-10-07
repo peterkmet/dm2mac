@@ -37,6 +37,11 @@ enum square_type {
 #define WALL_FACE(dir) (8 >> (dir))
 
 enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
+/* The direction or cell after a number of quarter turns clockwise. */
+#define dir_turn(d, turns) (((d) + (turns)) & (DIR_COUNT - 1))
+#define dir_opposite(d) dir_turn(d, 2)
+/* The direction or cell d seen from a party or creature that looks to facing. */
+#define dir_relative(d, facing) dir_turn(d, -(facing))
 
 #define THING_NONE 0xffff
 #define THING_ENDOFLIST 0xfffe
@@ -52,6 +57,8 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 #define thing_index(t) ((t) & THING_INDEX_MASK)
 #define THING_CELL_SHIFT 14
 #define THING_ID_MASK 0x3fff            /* a thing id without its cell */
+#define thing_cell(t) ((t) >> THING_CELL_SHIFT)
+#define thing_with_cell(t, cell) (((t) & THING_ID_MASK) | (cell) << THING_CELL_SHIFT)
 #define CELL_ANY 0xff                   /* a cell argument: any cell */
 
 /* A location word: x bits 0-4, y bits 5-9, map bits 10-15. */

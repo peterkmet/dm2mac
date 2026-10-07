@@ -18,6 +18,7 @@
 #define MERCHANT_ATTR_FACTOR_B 0xa2
 #define MERCHANT_CLASS_A 0x11       /* the item class sets of the two price factors: 0x11 + list * 3, 0x12 + list * 3 */
 #define MERCHANT_CLASS_B 0x12
+#define MERCHANT_LIST_ATTRS 3       /* creature attributes and class texts of each price list */
 #define DEFAULT_MARGIN 10
 #define PERCENT 100
 /* Item index ranges. */
@@ -34,6 +35,9 @@ static uint16_t *contents_of(uint16_t container)
 {
     return thing_list(container, CONTAINER_CONTENTS);
 }
+
+/* True when the item class set holds item index item. */
+static bool class_set_has(const uint8_t *set, int item) { return set[item / BYTE_BITS] & 1 << item % BYTE_BITS; }
 
 int item_index_to_thing_type(uint16_t item)
 {
@@ -176,7 +180,7 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
     do {
         c = *p++;
         if (c >= '0' && c <= '9') {
-            number = (int16_t)(number * 10 + (c - '0'));
+            number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
             digits = 1;
             continue;
         }
@@ -187,10 +191,10 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
         }
         if (digits) {
             if (low < 0) low = number;
-            for (; low <= number && low < SHOP_CLASS_SET_SIZE * 8; low++) {
+            for (; low <= number && low < SHOP_CLASS_SET_SIZE * BYTE_BITS; low++) {
                 int16_t bit = (int16_t)(low + base);
                 /* fix: the original writes outside the set for bad numbers */
-                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * 8) bitset[bit >> 3] |= (uint8_t)(1 << (bit & 7));
+                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * BYTE_BITS) bitset[bit / BYTE_BITS] |= (uint8_t)(1 << bit % BYTE_BITS);
             }
             number = 0;
             low = base = -1;
@@ -215,7 +219,7 @@ static uint16_t apply_factor(uint16_t price, uint16_t item, int creature, int at
     uint8_t set[SHOP_CLASS_SET_SIZE];
     uint16_t factor = gdat_entry_index(draw_gdat(), CAT_CREATURE, creature, GDAT_TYPE_VALUE, (uint8_t)attr);
     if (!factor || !shop_parse_item_class_set(creature, (int16_t)list, set, 0)) return price;
-    if (!(set[(item & ITEM_INDEX_NONE) >> 3] & 1 << (item & 7))) return price;
+    if (!class_set_has(set, item & ITEM_INDEX_NONE)) return price;
     return (uint16_t)((uint32_t)factor * price / PERCENT);
 }
 
@@ -223,13 +227,13 @@ int shop_get_item_value(uint16_t item, int creature, int list, int buying, int a
 {
     int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
     uint16_t price = gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE);
-    price = apply_factor(price, item, creature, (uint8_t)(list * 3 + MERCHANT_ATTR_FACTOR_B), list * 3 + MERCHANT_CLASS_B);
-    price = apply_factor(price, item, creature, (uint8_t)(list * 3 + MERCHANT_ATTR_FACTOR_A), list * 3 + MERCHANT_CLASS_A);
+    price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_B), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_B);
+    price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_A), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_A);
     if (charges < 0) charges = (int16_t)item_max_charges((uint16_t)(item_index_to_thing_type(item) << THING_TYPE_SHIFT));
     int value = price + gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE_PER_CHARGE) * charges;
     if (apply_margin) {
         uint16_t margin = gdat_entry_index(draw_gdat(), CAT_CREATURE, creature, GDAT_TYPE_VALUE,
-                                           (uint8_t)(list * 3 + MERCHANT_ATTR_MARGIN));
+                                           (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_MARGIN));
         if (!margin) margin = DEFAULT_MARGIN;
         int16_t part = (int16_t)((uint32_t)margin * (uint16_t)value / PERCENT);
         if (buying) value += part;

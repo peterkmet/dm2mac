@@ -1,11 +1,13 @@
 #ifndef TIMELINE_H
 #define TIMELINE_H
+#include <stdbool.h>
 #include <stdint.h>
 
 #define EVENT_NONE 0
 #define EVENT_TIME_MASK 0xffffffu
 #define EVENT_MAP_SHIFT 24
 #define TIMELINE_NO_SLOT (-1)
+#define TIMELINE_EVENT_SIZE 12
 
 /* A scheduled game event. The event handlers read the data bytes. */
 typedef struct {
@@ -18,7 +20,7 @@ typedef struct {
     uint8_t data[6];        /* x, y, cell, effect, or thing, by event type */
 } TimelineEvent;
 
-_Static_assert(sizeof(TimelineEvent) == 12, "the save game stores 12-byte events");
+_Static_assert(sizeof(TimelineEvent) == TIMELINE_EVENT_SIZE, "the save game stores 12-byte events");
 
 /* The time_map value of an event at time on map; the caller masks time when it can pass 24 bits. */
 static inline uint32_t timeline_time_map(uint32_t time, int map)
@@ -64,6 +66,6 @@ void timeline_rebuild_free_list(void);
 /* Moves the events in use to the first count slots and rebuilds the queue. */
 void timeline_compact(void);
 /* True when the next event is due at game_time. */
-int timeline_is_event_due(uint32_t game_time);
+bool timeline_is_event_due(uint32_t game_time);
 
 #endif
