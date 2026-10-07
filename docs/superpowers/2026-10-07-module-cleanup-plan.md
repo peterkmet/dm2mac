@@ -17,7 +17,8 @@ Plus the other open checks of a file: `long`, `bool`, `record`. The `prefix` and
 ## Global constraints
 
 - The behavior does not change. The differential tests prove it. Do not change a test to make it pass.
-- `tools/test-suite` must pass before a task is done. `uv run pytest tests/test_standard.py -q -p no:xdist` must pass.
+- A task agent runs only the tests that cover its change: `uv run pytest tests/test_standard.py -q -p no:xdist` and the test modules that exercise its files. It does not run `tools/test-suite`. The main agent runs the full suite once, after it merges the work of the agents.
+- Do not run the same tests again on unchanged code.
 - `rm -f build/dm2 build/libdm2.dylib && make -C port 2>&1 | grep -c warning` gives 0.
 - Preserve existing comments. New comments are one line and tell the game meaning.
 - A table copied from `SKULL.EXE` (rule 6) keeps its literals. Give the table a one-line comment and an allowlist line with the reason `table: rule 6`.
