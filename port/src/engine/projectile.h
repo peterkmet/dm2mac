@@ -52,6 +52,9 @@ enum spell_thing {
 };
 #define EXPLOSION_AT_CENTER 0xff    /* the cell of an explosion in the middle of its square */
 #define POWER_MAX 0xff              /* the power of a missile or an explosion is a byte */
+/* The sound of an explosion: (CAT_EXPLOSION, explosion type, SOUND_EXPLODE). */
+#define SOUND_EXPLODE 0x81
+#define SOUND_PRIORITY_EXPLODE 0x6c
 
 /* Bytes of a projectile move event: the projectile, then its position word (event_square_dir with the energy step
    in bits 12-15). Bytes of an explosion event: its square, then the explosion. */

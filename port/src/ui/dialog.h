@@ -16,6 +16,8 @@ enum dialog_message { MESSAGE_NONE = 0, MESSAGE_SAVE_FAILED = 0x1b, MESSAGE_GAME
 #define CMD_DIALOG_BUTTON_FIRST 0xdb
 #define CMD_DIALOG_BUTTON_LAST 0xde
 #define ZONE_DIALOG_BACK 4      /* the viewport of the dialog picture */
+#define ZONE_DIALOG_VERSION 0x1c2   /* the version text of the dialogs and of the slot lists */
+#define DIALOG_VERSION_TEXT "V1.0"
 
 typedef struct {
     int screen_mode;            /* 1: the dialogs draw on a black screen; 0: in the game viewport */

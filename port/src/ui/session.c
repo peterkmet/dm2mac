@@ -42,7 +42,7 @@ enum { NOT_SAVED_CANCEL = 3 };
 enum { SLOT_CANCEL = 1, SLOT_OK, SLOT_LIST, SLOT_NAME };
 enum { SLOT_BUTTONS_LOAD = 5, SLOT_BUTTONS_SAVE = 6 };
 enum {
-    ZONE_SLOT_VERSION = 0x1c2, ZONE_SLOT_LIST = 0x1c3, ZONE_SLOT_NAME = 0x1c5, ZONE_SLOT_TEXT_1 = 0x1d2,
+    ZONE_SLOT_LIST = 0x1c3, ZONE_SLOT_NAME = 0x1c5, ZONE_SLOT_TEXT_1 = 0x1d2,
     ZONE_SLOT_TEXT_2 = 0x1d3
 };
 #define SLOT_NAME_TOP 4                 /* the text base line below the top of a slot zone */
@@ -56,7 +56,6 @@ enum {
 };
 /* The characters of a champion name. */
 static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
-static const char version_text[] = "V1.0";
 
 Session session = {.slot = SAVE_SLOT_NONE};
 /* The headers of the save slots in the slot dialogs. */
@@ -191,7 +190,7 @@ void session_open_slot_dialog(int id, int buttons)
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &view_viewport, r, UI_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
     dialog_screen_mode(1);
-    text_draw_in_zone(ZONE_SLOT_VERSION, ui_colors[UI_DARKEST_GRAY], version_text);
+    text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     text_draw_in_zone(ZONE_SLOT_TEXT_1, ui_colors[UI_YELLOW], text[0]);
     text_draw_in_zone(ZONE_SLOT_TEXT_2, ui_colors[UI_YELLOW], text[1]);
     session_list_slots();

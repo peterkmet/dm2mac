@@ -79,8 +79,6 @@ enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNK
 #define FLASK_PICTURE 0x0b
 #define FAILURE_DELAY_BASE 8
 #define FLASK_DELAY_MIN 3
-/* Action results that show a failed cast. */
-enum { RESULT_UNKNOWN_SPELL = -3, RESULT_WIZARD_FAILED = -4, RESULT_PRIEST_FAILED = -5 };
 #define MAGIC_LIGHT_LEVELS 16            /* the light spells reach level 15 */
 #define RUNE_BITS 8                     /* each rune takes one byte of the spell key */
 #define RUNE_SETS 4                     /* the power runes, then the three runes after them */
@@ -304,7 +302,7 @@ static void cast_summon(int type, int skill, int power)
     }
     int dir = game.party_dir;
     int level = (uint16_t)((rand_2bits() + skill * 2) * power / SUMMON_LEVEL_DIVISOR);
-    if (creature_summon_group(type, level, (dir + 2) & DIR_MASK, game.party_x, game.party_y, game.party_map, SUMMON_NO_LINK,
+    if (creature_summon_group(type, level, dir_opposite(dir), game.party_x, game.party_y, game.party_map, SUMMON_NO_LINK,
                               (int8_t)dir) == THING_NONE)
         explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, game.party_x, game.party_y, EXPLOSION_ON_SQUARE);
 }
@@ -318,7 +316,7 @@ static void cast_create_item(void)
         champ_put_object_in_leader_hand(thing, 1);
         return;
     }
-    int cell = (rand_bit() + game.party_dir) & DIR_MASK;
+    int cell = dir_turn(game.party_dir, rand_bit());
     if (thing == THING_NONE) return;  /* fix: the original moves an invalid thing when no record is free */
     move_thing(thing_with_cell(thing, cell), -1, 0, game.party_x, game.party_y);
 }

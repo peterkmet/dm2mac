@@ -47,9 +47,7 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define SMOKE_DURATION 5
 
 #define SOUND_LAUNCH 0x86           /* sound entries of a thing: launched, explodes */
-#define SOUND_EXPLODE 0x81
 #define SOUND_PRIORITY_LAUNCH 0x6e
-#define SOUND_PRIORITY_EXPLODE 0x6c
 #define SOUND_DELAY_HURT 2          /* a champion that a creature hurts screams after the next game step */
 
 /* Sensor types that react to projectiles and explosions. */
@@ -684,7 +682,7 @@ void projectile_process_event(TimelineEvent *event)
     int leaves = dir == cell || dir_turn(dir, TURN_RIGHT) == cell;  /* the projectile is in the front cells: it leaves the square */
     int16_t from_x = x, from_y = y;
     if (leaves && projectile_enter_square(&e, projectile, &x, &y, dir, cell, &leaves)) return;
-    int new_cell = ((dir & 1) == (cell & 1) ? cell - 1 : cell + 1) & DIR_MASK;
+    int new_cell = dir_turn(cell, (dir & 1) == (cell & 1) ? -1 : 1);
     if (leaves) {
         move_thing(thing_with_cell(projectile, new_cell), from_x, from_y, x, y);
         if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && party.cur_map == game.party_map)
@@ -986,7 +984,7 @@ void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e)
         if (first == THING_NONE) return;
         if (!single && (second = item_create_by_index(data)) == THING_NONE) single = 1;
     }
-    if (single) cell = (rand_bit() + cell) & DIR_MASK;
+    if (single) cell = dir_turn(cell, rand_bit());
     x = (int16_t)(x + dir_dx[dir]);
     y = (int16_t)(y + dir_dy[dir]);
     missile_from_sensor = 1;
@@ -999,7 +997,7 @@ void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack
 {
     const Champion *c = champion(champ);
     int dir = c->dir;
-    int cell = (dir + ((((c->cell - dir) + 1) & 2) >> 1)) & DIR_MASK;
+    int cell = dir_turn(dir, (((c->cell - dir) + 1) & 2) >> 1);
     projectile_create(payload, game.party_x, game.party_y, cell, dir, (uint8_t)min16((int16_t)energy, UINT8_MAX),
                       (uint8_t)min16((int16_t)attack, UINT8_MAX), (uint8_t)min16((int16_t)step, UINT8_MAX));
     game.throw_cooldown = THROW_COOLDOWN;

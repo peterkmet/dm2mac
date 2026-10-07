@@ -98,7 +98,7 @@ static inline uint16_t creature_door_size(const CreatureInfo *info)
 /* The sound of an item that a creature drops. */
 #define SOUND_ENTRY_DROP 0x85
 #define SOUND_PRIORITY_DROP 0x3a
-/* The sound of a creature that a teleporter moves. */
+/* The sound of a creature that a teleporter moves or that a generator creates. */
 #define SOUND_ENTRY_TELEPORT 0x89
 #define SOUND_PRIORITY_MOVE 0x61
 

@@ -376,7 +376,7 @@ void champ_drag_click(int cell)
 {
     int finish = !(cell & DRAG_CANCEL);
     if (!finish) cell %= DIR_COUNT;
-    int16_t target = (int16_t)champ_get_index_in_cell((cell + game.party_dir) % DIR_COUNT);
+    int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, game.party_dir));
     if (!input_drag_state) {
         if (target < 0) return;
         input_set_champion_cursor(target);
@@ -385,11 +385,11 @@ void champ_drag_click(int cell)
     }
     int from = input_drag_state - 1;
     input_drag_state = 0;
-    int16_t dragged = (int16_t)champ_get_index_in_cell((game.party_dir + from) % DIR_COUNT);
+    int16_t dragged = (int16_t)champ_get_index_in_cell(dir_turn(game.party_dir, from));
     if (finish) champion(dragged)->dir = (uint8_t)game.party_dir;
     if (from == cell) return;
-    if (target >= 0) champion(target)->cell = (uint8_t)((from + game.party_dir) % DIR_COUNT);
-    champion(dragged)->cell = (uint8_t)((cell + game.party_dir) % DIR_COUNT);
+    if (target >= 0) champion(target)->cell = (uint8_t)dir_turn(from, game.party_dir);
+    champion(dragged)->cell = (uint8_t)dir_turn(cell, game.party_dir);
 }
 
 void champ_drag_cancel(void)
@@ -425,7 +425,7 @@ void champ_kill(int champ)
     c->runes[0] = 0;
     c->dir = (uint8_t)game.party_dir;
     c->hit_damage = 0;
-    if ((cell + DIR_COUNT - game.party_dir) % DIR_COUNT + 1 == input_drag_state) champ_drag_cancel();
+    if (dir_relative(cell, game.party_dir) + 1 == input_drag_state) champ_drag_cancel();
     if (c->poisoned) champ_cure_poison(champ, CURE_ALL);
     int alive = 0;
     while (alive < game.champion_count && !champion(alive)->health) alive++;
@@ -584,8 +584,8 @@ static void champ_place_in_free_cell(int champ)
     c->health = 0;
     if (c->cell == NO_CHAMPION_CELL || champ_get_index_in_cell(c->cell) != -1) {
         int k = 0;
-        while (champ_get_index_in_cell((game.party_dir + k) % DIR_COUNT) != -1) k++;
-        c->cell = (uint8_t)((game.party_dir + k) % DIR_COUNT);
+        while (champ_get_index_in_cell(dir_turn(game.party_dir, k)) != -1) k++;
+        c->cell = (uint8_t)dir_turn(game.party_dir, k);
     }
     c->dir = (uint8_t)game.party_dir;
     c->health = health;

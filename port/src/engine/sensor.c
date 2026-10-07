@@ -33,11 +33,7 @@
 #define ORNAMENT_KEY_SOUND_DELAY 0x88  /* ornament value: the delay of its sound in its animation cycle */
 
 /* Sound arguments (entry, priority) of sound_request_with_fallback and sound_request. */
-#define SOUND_ENTRY_CREATURE_APPEARS 0x89
-#define SOUND_PRIORITY_CREATURE_APPEARS 0x61
 #define SOUND_PRIORITY_MAP_SOUND 0x73
-#define SOUND_ENTRY_DOOR_HIT 0x8a   /* a closing door hits a champion */
-#define SOUND_PRIORITY_DOOR_HIT 100
 #define SOUND_ENTRY_DOOR_MOVE 0x8e
 #define SOUND_ENTRY_DOOR_SHUT 0x8f
 #define SOUND_PRIORITY_DOOR 0x5f
@@ -847,7 +843,7 @@ static void sensor_generate_creature(uint16_t t)
     uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, tx, ty);
     if (sensor_flag(t, SENSOR_INVERTED) && g != THING_NONE) set_thing_word(g, GROUP_ITEM_CLASS, sensor_delay(t));
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_request(CAT_CREATURE_APPEARS, 0, SOUND_ENTRY_CREATURE_APPEARS, SOUND_PRIORITY_CREATURE_APPEARS, SOUND_VOLUME_NORMAL,
+        sound_request(CAT_CREATURE_APPEARS, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL,
                       tx, ty, 1);
 }
 
@@ -1015,7 +1011,7 @@ static void timeline_event_floor_square(TimelineEvent *e)
                 tx = sensor_target_x(t);
                 ty = sensor_target_y(t);
             }
-            int dir = sensor_flag(t, SENSOR_INVERTED) ? sensor_effect(t) : (sensor_effect(t) + game.party_dir) & DIR_MASK;
+            int dir = sensor_flag(t, SENSOR_INVERTED) ? sensor_effect(t) : dir_turn(sensor_effect(t), game.party_dir);
             move_party_to(tx, ty, party.cur_map, dir);
             break;
         }
@@ -1172,8 +1168,8 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
             int hurt = champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
             for (int i = 0; i < CHAMPION_MAX; i++)
                 if (hurt >> i & 1)
-                    sound_request_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_DOOR_HIT, SOUND_FALLBACK, x,
-                                             y, 1, SOUND_PRIORITY_DOOR_HIT, SOUND_VOLUME_LOUD);
+                    sound_request_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x,
+                                             y, 1, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD);
         }
     }
     uint16_t g = creature_group_at(party.cur_map, x, y);
@@ -1560,7 +1556,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, 
         return 0;
     case WALL_CLICK_TELEPORT: {
         if (c->hand != THING_NONE || sensor_flag(t, SENSOR_STATE)) return CLICK_IGNORED;
-        int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : (effect + game.party_dir) & DIR_MASK;
+        int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, game.party_dir);
         move_party_to(sensor_target_x(t), sensor_target_y(t), sensor_data_map(t), dir);
         input_flush();
         return 1;

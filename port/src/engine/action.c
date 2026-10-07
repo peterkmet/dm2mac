@@ -96,12 +96,6 @@ uint16_t action_open_hand_item(void)
     return action.hand_items[action.champion - 1][action.hand];
 }
 
-/* A direction or cell relative to the party direction. */
-static int relative_dir(int dir) { return (dir + DIR_COUNT - game.party_dir) % DIR_COUNT; }
-
-/* The wall set of the party map. */
-static uint8_t map_gfx_set(void) { return dungeon_map_wallset(game.party_map); }
-
 /* Opens the action area bitmap; clear: it starts black and goes to the screen as a whole. */
 static void begin_draw(int clear)
 {
@@ -127,7 +121,7 @@ static void draw_action_result(int16_t value)
         else if (value == RESULT_CANT) entry = ACTION_RESULT_CANT;
         else {
             index = UI_INDEX_SPELL;
-            entry = value == RESULT_FIZZLE ? RESULT_SPELL_FIZZLE : value == RESULT_NEEDS ? RESULT_SPELL_NEEDS
+            entry = value == RESULT_UNKNOWN_SPELL ? RESULT_SPELL_FIZZLE : value == RESULT_WIZARD_FAILED ? RESULT_SPELL_NEEDS
                                                                                         : RESULT_SPELL_OTHER;
         }
     }
@@ -202,7 +196,7 @@ static void draw_hand_icon(int champ, int hand, int flash)
 {
     begin_draw(0);
     const Champion *c = champion(champ);
-    int zone = (hand == SLOT_ACTION_HAND ? ZONE_ACTION_HAND_FIRST : ZONE_READY_HAND_FIRST) + relative_dir(c->cell);
+    int zone = (hand == SLOT_ACTION_HAND ? ZONE_ACTION_HAND_FIRST : ZONE_READY_HAND_FIRST) + dir_relative(c->cell, game.party_dir);
     int16_t r[RECT_SIZE];
     zone_get_rect(zone, r);
     if (!c->health) {
@@ -231,7 +225,7 @@ static void draw_aura(int champ, int zone)
     draw_ctx_init(&a, CAT_INTERFACE, UI_INDEX_AURA, c->aura);
     draw_ctx_prepare(&a);
     a.w = (int16_t)(a.w / AURA_FRAMES);
-    a.x = (int16_t)(relative_dir(c->dir) * a.w);
+    a.x = (int16_t)(dir_relative(c->dir, game.party_dir) * a.w);
     a.h = (int16_t)(a.h / AURA_FRAMES);
     a.y = (int16_t)((game.game_time & (AURA_FRAMES - 1)) * a.h);
     offscreen_draw_ctx(&area, &a, zone, UI_KEY);
@@ -264,7 +258,7 @@ static void draw_party_icons(void)
     Bitmap *face = face_bitmap();
     for (int i = 0; face && i < game.champion_count; i++) {
         const Champion *c = champion(i);
-        int cell = relative_dir(c->cell);
+        int cell = dir_relative(c->cell, game.party_dir);
         if (!c->health || input_drag_state == cell + 1) continue;
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
         int zone = ZONE_PARTY_FACE_FIRST + cell;
@@ -286,7 +280,7 @@ static void draw_spell_icon(int champ, int flash)
 {
     begin_draw(0);
     const Champion *c = champion(champ);
-    int rel = relative_dir(c->cell);
+    int rel = dir_relative(c->cell, game.party_dir);
     int16_t r[RECT_SIZE];
     offscreen_fill_rect(&area, zone_get_rect(ZONE_SPELL_ICON_FIRST + rel, r), ui_colors[UI_BLACK]);
     if (!c->health) return;
@@ -592,7 +586,7 @@ static int party_icons_changed(void)
     int changed = 0;
     for (int i = 0; i < game.champion_count; i++) {
         const Champion *c = champion(i);
-        uint8_t dir = (uint8_t)relative_dir(c->dir), cell = (uint8_t)relative_dir(c->cell);
+        uint8_t dir = (uint8_t)dir_relative(c->dir, game.party_dir), cell = (uint8_t)dir_relative(c->cell, game.party_dir);
         if (!c->health || input_drag_state == cell + 1) cell = NO_CELL;
         if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
             changed = 1;
@@ -602,9 +596,9 @@ static int party_icons_changed(void)
         }
     }
     int invisible = game.magic_light[MAGIC_INVISIBILITY] != 0;
-    if (drawn.gfx_set != map_gfx_set() || game.magic_light[MAGIC_HASTE] || !drawn.invisible != !invisible) {
+    if (drawn.gfx_set != dungeon_map_wallset(game.party_map) || game.magic_light[MAGIC_HASTE] || !drawn.invisible != !invisible) {
         changed = 1;
-        drawn.gfx_set = map_gfx_set();
+        drawn.gfx_set = dungeon_map_wallset(game.party_map);
         drawn.invisible = invisible;
     }
     return changed;

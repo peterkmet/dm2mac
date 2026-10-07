@@ -21,7 +21,6 @@
 #define BUTTON_KEY 7                    /* transparent color of a pressed button picture */
 #define BUTTON_PRESS_VBLANKS 20
 #define ZONE_DIALOG_SCREEN 5            /* where the dialog viewport goes on a black screen */
-#define ZONE_DIALOG_VERSION 0x1c2
 #define ZONE_DIALOG_MESSAGE_WIDE 0x1d5  /* the message zone of a dialog with fewer than 2 buttons */
 #define ZONE_DIALOG_MESSAGE 0x1d7
 #define ZONE_PROGRESS_BAR 0x1da
@@ -31,7 +30,6 @@
 #define MESSAGE_TEXTS 2                 /* the dialog message and the error message under it */
 #define WRAP_MARGIN_SHIFT 3             /* a text wider than 7/8 of the zone wraps */
 #define WRAP_SHRINK_SHIFT 2             /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
-static const char version_text[] = "V1.0";
 /* The zones of the button texts (table of SKULL.EXE); the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
 static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
 
@@ -43,7 +41,7 @@ enum {
     ZONE_MUSIC_LABEL = 0x170, ZONE_MUSIC_BUTTON = 0x171, ZONE_MUSIC_TEXT = 0x179
 };
 /* The test sound of a new sound volume. */
-enum { TEST_SOUND_INDEX = 0, TEST_SOUND_ENTRY = 0x8b, TEST_SOUND_PRIORITY = 0x6c };
+enum { TEST_SOUND_INDEX = 0 };
 
 DialogState dialog = {.screen_mode = 1};
 
@@ -133,7 +131,7 @@ int dialog_draw(int id, int message)
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY), &view_viewport, r, UI_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY));
-    text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], version_text);
+    text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
     for (int i = 0; i < count; i++) text_draw_in_zone(button_text_zones[first + i], ui_colors[UI_YELLOW], texts[i]);
     if (id != DIALOG_VOLUME && zone_get_rect(count < 2 ? ZONE_DIALOG_MESSAGE_WIDE : ZONE_DIALOG_MESSAGE, r)) {
@@ -204,7 +202,7 @@ void sound_set_volume_and_test(int volume, int device)
 {
     if (device == DEVICE_SOUND) {
         game.sound_volume = (uint8_t)volume;
-        sound_request(CAT_DUNGEON, TEST_SOUND_INDEX, TEST_SOUND_ENTRY, TEST_SOUND_PRIORITY, SOUND_VOLUME_LOUD,
+        sound_request(CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD,
                       game.party_x, game.party_y, 0);
         sound_set_volume(volume);
     } else if (device == DEVICE_MUSIC) {

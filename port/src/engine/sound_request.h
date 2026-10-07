@@ -39,6 +39,9 @@ extern int sound_started_count;
 #define SOUND_ENTRY_CLICK 0x84          /* a click on a wall or on a creature that cannot move */
 #define SOUND_ENTRY_ACTIVATE 0x88       /* an ornament, a door button, or a warp marker works */
 #define SOUND_PRIORITY_CLICK 0x8c
+/* Sound (CAT_DUNGEON, 0, SOUND_ENTRY_TRANSFORM): a creature transforms; the volume dialog plays it as its test sound. */
+#define SOUND_ENTRY_TRANSFORM 0x8b
+#define SOUND_PRIORITY_TRANSFORM 0x6c
 
 /* Asks for sound (category, index, entry) at (x, y) of the current map: delay 0 plays it now, 1 at the end of the
    game step, a negative delay at the next sound_flush_requests(1), a longer delay through the timeline. */

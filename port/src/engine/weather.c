@@ -6,6 +6,7 @@
 #include "hooks.h"
 #include "item.h"
 #include "move.h"
+#include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -16,8 +17,6 @@
 
 /* Sound (CAT_EXPLOSION, 0x30, 0x81): a lightning that hits a fixed square. */
 #define LIGHTNING_SOUND_INDEX 0x30
-#define LIGHTNING_SOUND_ENTRY 0x81
-#define LIGHTNING_SOUND_PRIORITY 0x6c
 /* Sound (CAT_SKY, graphics set, 0): the thunder. */
 #define THUNDER_PRIORITY 0x19
 #define THUNDER_VOLUME 0x40
@@ -133,11 +132,9 @@ int16_t light_source_sum, explosion_light_sum;
 
 static int clamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static int gfx_set(void) { return dungeon_map_wallset(game.party_map); }
+static uint16_t map_value(int key) { return gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE, key); }
 
-static uint16_t map_value(int key) { return gdat_entry_index(draw_gdat(), CAT_WALLSET, gfx_set(), GDAT_TYPE_VALUE, key); }
-
-static int sky_has(int entry) { return gdat_exists(draw_gdat(), CAT_SKY, gfx_set(), GDAT_TYPE_IMAGE, entry); }
+static int sky_has(int entry) { return gdat_exists(draw_gdat(), CAT_SKY, dungeon_map_wallset(game.party_map), GDAT_TYPE_IMAGE, entry); }
 
 /* The daylight in % that a window lets in now. */
 static int daylight(void)
@@ -283,8 +280,8 @@ static SkyObject *weather_lightning(SkyObject *o)
         if (target) {
             int x = target >> TARGET_X_SHIFT, y = target & TARGET_Y_MASK;
             sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
-            sound_request_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_FALLBACK,
-                                     x, y, 1, LIGHTNING_SOUND_PRIORITY,
+            sound_request_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE, SOUND_FALLBACK,
+                                     x, y, 1, SOUND_PRIORITY_EXPLODE,
                                      (int16_t)(rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL)); /* the volume: normal plus 0 to 31 */
         } else {
             while (strikes && !lightning_strike()) strikes--;
@@ -308,7 +305,7 @@ static SkyObject *weather_lightning(SkyObject *o)
             else delay = THUNDER_DELAY_BASE - (int16_t)game.storm_intensity
                          / (game.storm_multiplier ? game.storm_multiplier : 1);  /* fix: the original divides by 0 */
             delay = clamp(1, (int16_t)delay, THUNDER_DELAY_MAX);
-            sound_request(CAT_SKY, gfx_set(), 0, THUNDER_PRIORITY, THUNDER_VOLUME, game.party_x, game.party_y, delay);
+            sound_request(CAT_SKY, dungeon_map_wallset(game.party_map), 0, THUNDER_PRIORITY, THUNDER_VOLUME, game.party_x, game.party_y, delay);
             weather.thunder_toggle = 1;
         } else {
             weather.thunder_toggle = 0;

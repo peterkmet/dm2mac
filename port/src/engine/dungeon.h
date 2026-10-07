@@ -215,7 +215,7 @@ enum text_subtype {
     SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
     SUBTYPE_LADDER = 6,             /* a ladder to another level */
     SUBTYPE_LADDER_HIDDEN = 7,      /* a ladder that works while the text is not visible */
-    SUBTYPE_SWITCH_3 = 8,
+    SUBTYPE_SWITCH_3 = 8,           /* the dungeon load makes it visible */
     SUBTYPE_TRAP_TELEPORT = 10,
     SUBTYPE_HAND_SWITCH = 13,       /* a switch that an empty hand operates */
     SUBTYPE_PLATE = 14,             /* a text plate on the wall */

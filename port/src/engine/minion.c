@@ -154,9 +154,6 @@ static int inside_map(int map, int x, int y)
 /* The level digit icons of the current map: what a square outside the maps of a level shows. */
 static int level_icon_set(void) { return dungeon_level_digit(dungeon_map_level(party.cur_map)); }
 
-/* The map icon set of the current map. */
-static int map_icon_set(void) { return dungeon_map_wallset(party.cur_map); }
-
 /* The icons of a wall square: the wall and the ornaments of its 4 faces. */
 static void draw_wall(const ViewSquare *s, const Strip *base, int x, int y, int flags, int fake_seen, int other_map)
 {
@@ -422,7 +419,7 @@ void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx,
     memcpy(minion_map.clip, clip, sizeof saved);
     area = target;
     if (party_item >= 0) draw_party_frame(x, y);
-    ui_map_draw_square(THING_NONE, sx, sy, DIR_NORTH, x, y, map_icon_set(), 0);
+    ui_map_draw_square(THING_NONE, sx, sy, DIR_NORTH, x, y, dungeon_map_wallset(party.cur_map), 0);
     if (party_item >= 0) {
         Strip p = {draw_gdat_image(CAT_CONTAINER, party_item, MAP_ITEM_ICONS),
                    draw_gdat_image_palette(CAT_CONTAINER, party_item, MAP_ITEM_ICONS), 0};
@@ -492,11 +489,11 @@ static int grid_square(int x, int y, int map, int dir, int row, int col, int16_t
     *sy = (int16_t)ly;
     if (square_map < 0) {
         dun_set_current_map(map);
-        *icon_set = square_type(dun_get_square(*sx, *sy)) == SQUARE_UNKNOWN ? level_icon_set() : map_icon_set();
+        *icon_set = square_type(dun_get_square(*sx, *sy)) == SQUARE_UNKNOWN ? level_icon_set() : dungeon_map_wallset(party.cur_map);
         return map;
     }
     dun_set_current_map(square_map);
-    *icon_set = map_icon_set();
+    *icon_set = dungeon_map_wallset(party.cur_map);
     return square_map;
 }
 

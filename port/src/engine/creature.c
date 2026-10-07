@@ -811,7 +811,7 @@ void creature_process_event(int x, int y, int type)
 /* A random cell for an item that a creature drops on (x, y): beside the party on its square. */
 static int drop_cell(int x, int y)
 {
-    if (x == game.party_x && y == game.party_y) return (rand_bit() + game.party_dir) & DIR_MASK;
+    if (x == game.party_x && y == game.party_y) return dir_turn(game.party_dir, rand_bit());
     return rand_2bits();
 }
 
@@ -963,9 +963,9 @@ static int alert_turn(uint16_t group, int x, int y)
     uint16_t mood = group_mood(group);
     int facing = group_dir(group);
     int dir = dun_get_direction_to(x, y, game.party_x, game.party_y);
-    if ((mood & MOOD_FEAR && rand_2bits()) || (dir != facing && !rand_2bits())) dir = (dir + 2) & DIR_MASK;
-    if (facing == ((dir + 2) & DIR_MASK)) return rand_bit() ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
-    if (facing != dir) return facing == ((dir - 1) & DIR_MASK) ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
+    if ((mood & MOOD_FEAR && rand_2bits()) || (dir != facing && !rand_2bits())) dir = dir_opposite(dir);
+    if (facing == dir_opposite(dir)) return rand_bit() ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
+    if (facing != dir) return facing == dir_turn(dir, TURN_LEFT) ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
     if (rand_2bits()) return -1;
     return rand_bit() ? AI_ACTION_TURN_LEFT : AI_ACTION_TURN_RIGHT;
 }
@@ -1103,7 +1103,7 @@ uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int
         if (tries) {
             sx = (int16_t)(x + dir_dx[(int8_t)search_dir]);
             sy = (int16_t)(y + dir_dy[(int8_t)search_dir]);
-            search_dir = (search_dir + turn) & DIR_MASK;
+            search_dir = dir_turn(search_dir, turn);
         }
         if (--tries == -1) break;
     }
@@ -1132,12 +1132,12 @@ void minion_dismiss(uint16_t link)
 void creature_turn_group(uint16_t group, int absolute, int dir)
 {
     int old = group_dir(group);
-    if (!absolute) dir = (dir + old) & DIR_MASK;
+    if (!absolute) dir = dir_turn(dir, old);
     group_set_dir(group, dir);
     if (!(creature_group_info(group)->flags & CREATURE_STATIC)) return;
-    int turn = (dir - old) & DIR_MASK;
+    int turn = dir_relative(dir, old);
     for (uint16_t *link = group_possessions(group); *link != THING_ENDOFLIST; link = thing_list(*link, THING_NEXT))
-        *link = thing_with_cell(*link, (thing_cell(*link) + turn) & DIR_MASK);
+        *link = thing_with_cell(*link, dir_turn(thing_cell(*link), turn));
 }
 
 /* Keeps the position of the projectiles that a group carries. */
@@ -1223,7 +1223,7 @@ bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group)
     uint16_t g = creature_get_group_at(x, y);
     if (g == THING_NONE || creature_group_info(g)->push_resistance >= PUSH_IMMOVABLE) return false;
     PassageEnd end;
-    if (dun_get_linked_teleporter_dest(&end, x, y) && dir == ((end.side + 2) & DIR_MASK)) {
+    if (dun_get_linked_teleporter_dest(&end, x, y) && dir == dir_opposite(end.side)) {
         if (!creature_is_native_to_map(g, end.map)) return false;
         int saved = party.cur_map;
         dun_set_current_map(end.map);
@@ -1285,7 +1285,7 @@ void creature_push_group(int x, int y, int dir, int strength)
             uint16_t flags = creature_group_info(g)->flags;
             if (party.cur_map == party.square_map && nx == party.square_x && ny == party.square_y && !(flags & CREATURE_NOT_SOLID)) {
                 int16_t first, second;
-                move_party_bump_damage(x, y, &first, &second, game.party_dir, (dir + 2) & DIR_MASK);
+                move_party_bump_damage(x, y, &first, &second, game.party_dir, dir_opposite(dir));
             } else {
                 ai_free_cached_data(g);
                 ActiveGroup *a = creature_active(g);
@@ -1314,7 +1314,7 @@ void creature_push_group(int x, int y, int dir, int strength)
     if (!alive) return;
     load = (int16_t)(load / (int16_t)alive + PUSH_BASE_STRENGTH);
     if ((int16_t)strength >= PUSH_STRENGTH_PARTY || load < (int16_t)strength)
-        move_party(((dir - game.party_dir) & DIR_MASK) + CMD_MOVE_FORWARD);
+        move_party(dir_relative(dir, game.party_dir) + CMD_MOVE_FORWARD);
 }
 
 /* The party pushes the creature in front by a push arrow. */
@@ -1326,7 +1326,7 @@ void move_push_creature(int arrow)
     };
     static const int8_t dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, -1};
     if (arrow < 0 || arrow >= PUSH_ARROW_COUNT) return;
-    int dir = (game.party_dir + dirs[arrow]) & DIR_MASK;
+    int dir = dir_turn(game.party_dir, dirs[arrow]);
     int16_t x = (int16_t)(game.party_x + dir_dx[game.party_dir]), y = (int16_t)(game.party_y + dir_dy[game.party_dir]);
     uint16_t g;
     if (!creature_can_be_pushed(x, y, dir, &g)) return;

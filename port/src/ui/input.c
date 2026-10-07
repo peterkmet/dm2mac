@@ -314,7 +314,7 @@ enum {
 /* The champion in the cell relative to the party direction, -1 none. */
 static int champion_in_party_cell(int cell)
 {
-    return champ_get_index_in_cell((cell + game.party_dir) & DIR_MASK);
+    return champ_get_index_in_cell(dir_turn(cell, game.party_dir));
 }
 
 /* The condition of a node with children, tested with the argument of each child. */
@@ -1164,17 +1164,17 @@ static void view_click_wall_sensor(int cell)
     static const int8_t side_turn[DIR_COUNT] = {1, 1, 3, 2};  /* the face that the party sees of each wall, from its direction */
     int dir = game.party_dir, x = game.party_x, y = game.party_y;
     if (cell == WALL_CELL_LEFT) {
-        x += dir_dx[(dir + TURN_LEFT) & DIR_MASK];
-        y += dir_dy[(dir + TURN_LEFT) & DIR_MASK];
+        x += dir_dx[dir_turn(dir, TURN_LEFT)];
+        y += dir_dy[dir_turn(dir, TURN_LEFT)];
     } else if (cell == WALL_CELL_RIGHT) {
-        x += dir_dx[(dir + TURN_RIGHT) & DIR_MASK];
-        y += dir_dy[(dir + TURN_RIGHT) & DIR_MASK];
+        x += dir_dx[dir_turn(dir, TURN_RIGHT)];
+        y += dir_dy[dir_turn(dir, TURN_RIGHT)];
     } else if (cell == WALL_CELL_FRONT) {
         x += dir_dx[dir];
         y += dir_dy[dir];
     }
     if (x < 0 || x >= dungeon_map_width(party.cur_map) || y < 0 || y >= dungeon_map_height(party.cur_map)) return;
-    sensor_process_wall_click(x, y, (dir + side_turn[cell & DIR_MASK]) & DIR_MASK, THING_NONE, game.leader_hand);
+    sensor_process_wall_click(x, y, dir_turn(dir, side_turn[cell & DIR_MASK]), THING_NONE, game.leader_hand);
 }
 
 /* A click on a static creature in front: a push of its middle starts the push arrows, a side turns it. */
@@ -1253,7 +1253,7 @@ static void view_click_take_object(int x, int y, int index)
 static int view_click_drop_object(int x, int y, int cell)
 {
     if ((int16_t)game.leader == -1) return 0;
-    int dir_cell = (game.party_dir + cell) & DIR_MASK;
+    int dir_cell = dir_turn(game.party_dir, cell);
     uint16_t group = creature_group_at(party.cur_map, x, y);
     int possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
     if (group != THING_NONE) {
@@ -1267,7 +1267,7 @@ static int view_click_drop_object(int x, int y, int cell)
     }
     uint16_t thing = champ_remove_object_from_leader_hand();
     if (possession) {
-        dir_cell = (cell - CELL_POSSESSION_FIRST + game.party_dir) & DIR_MASK;
+        dir_cell = dir_turn(cell - CELL_POSSESSION_FIRST, game.party_dir);
         if (group != THING_NONE)
             for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (thing_cell(t) == dir_cell) moneybox_clear_flag(t);
@@ -1283,7 +1283,7 @@ static int view_click_drop_object(int x, int y, int cell)
    it drops into the cell when the click hits no object; pos: the view position of the square (0 or 3). */
 static int view_click_place_object(int x, int y, int sx, int sy, int pos, int cell, int kind)
 {
-    uint16_t hand = thing_with_cell(game.leader_hand, (game.party_dir + cell) & DIR_MASK);
+    uint16_t hand = thing_with_cell(game.leader_hand, dir_turn(game.party_dir, cell));
     uint16_t hit = view_hit_test_object(x, y, pos, sx, sy, hand, kind, 1);
     if (hit == THING_NONE) {
         champ_remove_object_from_leader_hand();
@@ -1318,8 +1318,8 @@ static void view_click_door_button_zone(const ViewSquares *v, const ViewClickZon
     int front = z->cell == POS_FRONT, dx = front ? v->fx : v->px, dy = front ? v->fy : v->py;
     uint16_t door = dungeon_square_first_thing(party.cur_map, dx, dy);
     if (!door_flag(door, DOOR_BUTTON)) {
-        int side = (v->dir + TURN_RIGHT) & DIR_MASK;
-        sensor_process_wall_click(dx + dir_dx[side], dy + dir_dy[side], (v->dir + TURN_LEFT) & DIR_MASK,
+        int side = dir_turn(v->dir, TURN_RIGHT);
+        sensor_process_wall_click(dx + dir_dx[side], dy + dir_dy[side], dir_turn(v->dir, TURN_LEFT),
                                   THING_NONE, hand);
     } else if (hand == THING_NONE) {
         view_click_door_button(dx, dy, door);
@@ -1485,7 +1485,7 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command == CMD_ROTATE_LEFT || command == CMD_ROTATE_RIGHT) {
         if (action.champion) {
             Champion *ch = champion(action.champion - 1);
-            ch->dir = (uint8_t)((ch->dir + (command == CMD_ROTATE_LEFT ? -1 : 1)) & DIR_MASK);
+            ch->dir = (uint8_t)dir_turn(ch->dir, command == CMD_ROTATE_LEFT ? -1 : 1);
         }
         action_update_area(0);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
@@ -1578,7 +1578,7 @@ int command_execute(Command *c)
     int command = c->command;
     int moving = command >= CMD_MOVE_FORWARD && command <= CMD_MOVE_LEFT;
     if ((moving && (game.party_move_cooldown
-                    || (game.throw_cooldown && game.throw_dir == ((command + game.party_dir - CMD_MOVE_FORWARD) & DIR_MASK))))
+                    || (game.throw_cooldown && game.throw_dir == dir_turn(game.party_dir, command - CMD_MOVE_FORWARD))))
         || (party.move_steps && (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT || command == CMD_VIEWPORT))
         || (command == CMD_VIEWPORT && !view_shows_party()) || in.wait) {
         input_command_stop = 1;
@@ -1623,11 +1623,11 @@ void input_update_viewport_arrow(void)
     } else {
         arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
     }
-    int step = (step_dirs[arrow] + game.party_dir) & DIR_MASK;
+    int step = dir_turn(step_dirs[arrow], game.party_dir);
     if (dun_square_blocks_movement(dun_get_square((int16_t)(game.party_x + dir_dx[step]), (int16_t)(game.party_y + dir_dy[step]))))
         return;
     if (!creature_can_be_pushed((int16_t)(game.party_x + dir_dx[game.party_dir]), (int16_t)(game.party_y + dir_dy[game.party_dir]),
-                                (push_dirs[arrow] + game.party_dir) & DIR_MASK, NULL))
+                                dir_turn(push_dirs[arrow], game.party_dir), NULL))
         return;
     ui_draw_move_arrow(entries[arrow], zones[arrow], 1);
     party.push_arrow = (int16_t)arrow;

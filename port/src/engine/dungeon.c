@@ -594,7 +594,6 @@ int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int leve
 
 /* ---- The passes after the load of DUNGEON.DAT ---- */
 
-enum text_ornament_subtype { TEXT_LEVEL_LINK_FIRST = 6, TEXT_LEVEL_LINK_LAST = 7, TEXT_SHOWN_AT_START = 8 };
 enum link_sensor_type {
     SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
 };
@@ -708,9 +707,9 @@ static int link_thing(uint16_t t, int x, int y, int map)
     case THING_TEXT: {
         if (text_kind(t) != TEXT_KIND_ORNAMENT) break;
         int subtype = text_subtype(t);
-        if (subtype >= TEXT_LEVEL_LINK_FIRST && subtype <= TEXT_LEVEL_LINK_LAST)
+        if (subtype == SUBTYPE_LADDER || subtype == SUBTYPE_LADDER_HIDDEN)
             mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
-        else if (subtype == TEXT_SHOWN_AT_START)
+        else if (subtype == SUBTYPE_SWITCH_3)
             text_set_visible(t, true);
         break;
     }

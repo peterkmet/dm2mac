@@ -461,9 +461,9 @@ static int champ_action_melee_attack(int champ, int mode, int x, int y, int skil
     if (champ_action_target == THING_NONE) return 0;
     uint16_t group = creature_group_at(party.cur_map, x, y);
     if (group == THING_NONE) return 0;
-    int rel = (c->cell + DIR_COUNT - c->dir) % DIR_COUNT;
+    int rel = dir_relative(c->cell, c->dir);
     if (rel > 1) {
-        int other = (c->cell + (rel == 2 ? 3 : 1)) % DIR_COUNT;
+        int other = dir_turn(c->cell, rel == 2 ? TURN_LEFT : TURN_RIGHT);
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
             action.result = RESULT_BLOCKED;
@@ -484,7 +484,7 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
                                uint16_t *delay)
 {
     uint16_t group = map_item != THING_NONE ? thing_word(map_item, MINION_MAP_GROUP) : THING_NONE;
-    int type, x = game.party_x, y = game.party_y, map = game.party_map, dir = (game.party_dir + DIR_COUNT / 2) % DIR_COUNT;
+    int type, x = game.party_x, y = game.party_y, map = game.party_map, dir = dir_opposite(game.party_dir);
     int search = (int8_t)champion(champ)->dir;
     switch (command) {
     case COMMAND_MINION_MAP_SET:
@@ -730,7 +730,7 @@ static int champ_run_command(ActionRun *a, int command)
     case COMMAND_SHOOT: return action_shoot(a);
     case COMMAND_HEAL: action_heal(a); return 1;
     case COMMAND_THROW: {
-        int side = a->c->cell == (game.party_dir + 1) % DIR_COUNT || a->c->cell == (game.party_dir + 2) % DIR_COUNT;
+        int side = a->c->cell == dir_turn(game.party_dir, TURN_RIGHT) || a->c->cell == dir_opposite(game.party_dir);
         return champ_throw_object(a->champ, a->hand, side);
     }
     case COMMAND_MINION_MAP_SET: case COMMAND_MINION_GUARD: case COMMAND_MINION_FETCH: case COMMAND_MINION_ATTACK:
@@ -888,7 +888,7 @@ int champ_throw_object(int champ, int hand, int side)
     int attack = clamp16(ATTACK_MIN, (int16_t)((rand_next() & THROW_ATTACK_RANDOM) + level * THROW_ATTACK_PER_LEVEL), ATTACK_MAX);
     int step = item_attr(thing, ATTR_STEP);
     if (!step) step = max16(STEP_MIN, (int16_t)(STEP_BASE - level));
-    projectile_create(thing, game.party_x, game.party_y, (game.party_dir + side) % DIR_COUNT, game.party_dir, (uint8_t)kinetic,
+    projectile_create(thing, game.party_x, game.party_y, dir_turn(game.party_dir, side), game.party_dir, (uint8_t)kinetic,
                       (uint8_t)attack, (uint8_t)step);
     game.throw_cooldown = THROW_COOLDOWN;
     game.throw_dir = game.party_dir;

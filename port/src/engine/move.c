@@ -109,7 +109,7 @@ void dun_move_relative(int dir, int forward, int right, int16_t *x, int16_t *y)
 {
     *x = (int16_t)(*x + dir_dx[dir] * forward);
     *y = (int16_t)(*y + dir_dy[dir] * forward);
-    int side = (dir + 1) & DIR_MASK;
+    int side = dir_turn(dir, TURN_RIGHT);
     *x = (int16_t)(*x + dir_dx[side] * right);
     *y = (int16_t)(*y + dir_dy[side] * right);
 }
@@ -173,13 +173,13 @@ void champ_set_party_direction(int dir)
     if (turn < 0) turn += DIR_COUNT;
     for (int i = 0; i < game.champion_count; i++) {
         Champion *c = champion(i);
-        c->cell = (uint8_t)((c->cell + turn) & DIR_MASK);
-        c->dir = (uint8_t)((c->dir + turn) & DIR_MASK);
+        c->cell = (uint8_t)dir_turn(c->cell, turn);
+        c->dir = (uint8_t)dir_turn(c->dir, turn);
     }
     game.party_dir = (uint16_t)dir;
     party.ref_dir = (int16_t)dir;
     if (party.alt_view_active) {
-        party.alt_view_dir = (int16_t)((turn + party.alt_view_dir) & DIR_MASK);
+        party.alt_view_dir = (int16_t)dir_turn(party.alt_view_dir, turn);
         party.ref_dir = party.alt_view_dir;
     }
 }
@@ -259,7 +259,7 @@ int champ_get_nearest_at(int x, int y, int cell)
     uint8_t cells[DIR_COUNT];
     if (cell == CELL_ANY) {
         /* any cell: the cells from the side toward (x, y) on, the two front and the two back cells in random order */
-        for (int i = 0; i < DIR_COUNT; i++) cells[i] = (uint8_t)((dir + i) & DIR_MASK);
+        for (int i = 0; i < DIR_COUNT; i++) cells[i] = (uint8_t)dir_turn(dir, i);
         if (rand_bit()) {
             uint8_t c = cells[0];
             cells[0] = cells[1];
@@ -287,7 +287,7 @@ int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int di
     int side = step + dir + 2;
     int16_t champs[2];
     champs[0] = *first = (int16_t)champ_get_nearest_at(x, y, side & DIR_MASK);
-    champs[1] = *second = (int16_t)champ_get_nearest_at(x, y, (side + 1) & DIR_MASK);
+    champs[1] = *second = (int16_t)champ_get_nearest_at(x, y, dir_turn(side, TURN_RIGHT));
     if (champs[0] == champs[1]) champs[1] = -1;
     int hurt = 0;
     for (int i = 0; i < 2; i++) {
@@ -322,7 +322,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
         uint16_t g = creature_group_at(party.cur_map, sx, sy);
         if (g != THING_NONE) {
             int size = (int8_t)creature_group_info(g)->hit_size;
-            int zone = view_get_creature_cell_zone(g, -group_dir(g) & DIR_MASK);
+            int zone = view_get_creature_cell_zone(g, dir_relative(DIR_NORTH, group_dir(g)));
             view_grid5_cell_to_xy(sx, sy, (uint16_t)zone, &cx, &cy);
             cx = (int16_t)(cx - px);
             cy = (int16_t)(cy - py);
@@ -347,7 +347,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
 /* True when the creature in front stands on a side cell that blocks the step. */
 static int move_group_side_blocks(uint16_t group, int dir)
 {
-    int side = (group_dir(group) + dir) & DIR_MASK;
+    int side = dir_turn(group_dir(group), dir);
     if (side != DIR_EAST && side != DIR_WEST) return 0;
     return view_get_creature_cell_zone(group, side) % CELL_GRID_SIDE != CELL_GRID_HALF;
 }
@@ -399,7 +399,7 @@ void move_party_turn(int command)
         return;
     }
     sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 0, 0);
-    champ_set_party_direction((game.party_dir + (command == CMD_TURN_RIGHT ? TURN_RIGHT : TURN_LEFT)) & DIR_MASK);
+    champ_set_party_direction(dir_turn(game.party_dir, command == CMD_TURN_RIGHT ? TURN_RIGHT : TURN_LEFT));
     sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 1, 0);
 }
 
@@ -418,7 +418,7 @@ static void move_party_free_step(int map, int step, int on_stairs, int16_t x, in
         return;
     }
     PassageEnd end;
-    if (dun_get_linked_teleporter_dest(&end, x, y) && ((end.target_side + 2) & DIR_MASK) != dir) {
+    if (dun_get_linked_teleporter_dest(&end, x, y) && dir_opposite(end.target_side) != dir) {
         move_party_to(end.x, end.y, end.map, end.target_side);
         return;
     }
@@ -483,7 +483,7 @@ static int move_party_step(int command, uint8_t here, int on_stairs)
         int is_static = creature_group_info(group)->flags & CREATURE_STATIC;
         if (is_static || creature_group_info(group)->push_resistance == PUSH_WALL)
             move_party_bump_damage(x, y, &first, &second, dir, step);
-        int push_dir = (dir + command - CMD_MOVE_FORWARD) & DIR_MASK;
+        int push_dir = dir_turn(dir, command - CMD_MOVE_FORWARD);
         if (!creature_can_be_pushed(x, y, push_dir, &group) || !move_party_can_push_group(group)) {
             if (!is_static) creature_alert(THING_NONE, x, y, ALERT_ANGER | ALERT_MOOD_BORED, BUMP_ALERT_CHANCE, 0);
             return 0;
@@ -573,13 +573,13 @@ void move_compute_map_arrival(int x, int y, int map)
         if (!dun_get_linked_teleporter_dest(&end, x + dir_dx[d], y + dir_dy[d])) continue;
         found = 1;
         turn = end.target_side + 6 - end.side;
-        int side = (d + turn + 2) & DIR_MASK;
+        int side = dir_turn(d, turn + 2);
         party.alt_view_x = (int16_t)(end.x + dir_dx[side]);
         party.alt_view_y = (int16_t)(end.y + dir_dy[side]);
     }
     if (found) {
         party.alt_view_map = end.map;
-        party.alt_view_dir = (int16_t)((turn + game.party_dir) & DIR_MASK);
+        party.alt_view_dir = (int16_t)dir_turn(game.party_dir, turn);
     }
     party.cur_map = -1;
     dun_set_current_map(map);
@@ -591,7 +591,7 @@ int move_find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out_x,
     const uint8_t *order = thing == THING_NONE ? free_square_order_party[row] : free_square_order_thing[row];
     int base = thing == THING_NONE ? game.party_dir : 0;
     for (int i = 0; i < 4; i++) {
-        int dir = (order[i] + base) & DIR_MASK;
+        int dir = dir_turn(order[i], base);
         int nx = (int16_t)(x + dir_dx[dir]), ny = (int16_t)(y + dir_dy[dir]);
         uint8_t square = dun_get_square(nx, ny);
         if (dun_square_blocks_movement(square)) continue;
@@ -662,8 +662,8 @@ static uint16_t move_rotate_through_teleporter(uint16_t teleporter, uint16_t thi
 {
     int rotation = teleporter_rotation(teleporter);
     if (!teleporter_flag(teleporter, TELEPORTER_ABSOLUTE)) {
-        thing = thing_with_cell(thing, (rotation + thing_cell(thing)) & DIR_MASK);
-        rotation = (party.dest_dir + rotation) & DIR_MASK;
+        thing = thing_with_cell(thing, dir_turn(thing_cell(thing), rotation));
+        rotation = dir_turn(party.dest_dir, rotation);
     }
     party.dest_dir = (int16_t)rotation;
     return thing;
@@ -701,7 +701,7 @@ static int transit_teleporter(Transit *t, uint8_t square)
                           game.party_y, -1);
         if (t->start_map != t->map) t->draw_fall = 0;  /* the original keeps it only with its debug flag */
         int base = absolute ? 0 : game.party_dir;
-        champ_set_party_direction((base + rotation) & DIR_MASK);
+        champ_set_party_direction(dir_turn(base, rotation));
     } else if (t->type == THING_GROUP && t->creature_sound) {
         if (audible) {
             if (party.cur_map != t->start_map) {
@@ -717,7 +717,7 @@ static int transit_teleporter(Transit *t, uint8_t square)
     } else if (t->type == THING_PROJECTILE) {
         t->thing = move_rotate_through_teleporter(tele, t->thing);
     } else if (!absolute && t->src_x != -2) {
-        t->thing = thing_with_cell(t->thing, (rotation + thing_cell(t->thing)) & DIR_MASK);
+        t->thing = thing_with_cell(t->thing, dir_turn(thing_cell(t->thing), rotation));
     }
     return !same;
 }
@@ -823,8 +823,8 @@ static void transit_stairs(Transit *t, uint8_t square)
     int dir = dun_get_stairs_exit_direction(t->x, t->y);
     t->x += dir_dx[dir];
     t->y += dir_dy[dir];
-    int back = (dir + 2) & DIR_MASK;
-    int cell = (back + (((thing_cell(t->thing) - back) + 1) & 2) / 2) & DIR_MASK;
+    int back = dir_opposite(dir);
+    int cell = dir_turn(back, (((thing_cell(t->thing) - back) + 1) & 2) / 2);
     t->thing = thing_with_cell(t->thing, cell);
 }
 
