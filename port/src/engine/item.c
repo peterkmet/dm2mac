@@ -29,8 +29,13 @@
 #define COIN_SCAN_COUNT 0x80
 #define MISC_GDAT_CATEGORY GDAT_MISC_CATEGORY
 #define TEXT_CHAMPION_TOKEN 0          /* the miscellaneous item 0 (a champion token) names its champion */
+#define COINS_PER_WEIGHT 5             /* the coins of a money box weigh one unit per 5 coins, rounded up */
+/* Ornament text subtypes that show their ornament as an item (the view names them SUBTYPE_*). */
+enum { ORNAMENT_ITEM_STILL = 0, ORNAMENT_ITEM_ANIMATED = 2, ORNAMENT_ITEM_TOGGLE = 5, ORNAMENT_ITEM_TOGGLE_2 = 13 };
+/* Item index kinds: item index / ITEM_KIND_ITEMS. */
+enum { ITEM_KIND_WEAPON, ITEM_KIND_CLOTHING, ITEM_KIND_MISC };
 
-/* GDAT category of each thing type. */
+/* GDAT category of each thing type, from SKULL.EXE. */
 static const uint8_t thing_gdat_category[THING_TYPE_COUNT] = {
     0x0e, 0x18, GDAT_NO_CATEGORY, GDAT_NO_CATEGORY, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, GDAT_NO_CATEGORY,
     GDAT_NO_CATEGORY, GDAT_NO_CATEGORY, GDAT_NO_CATEGORY, 0x0d
@@ -41,7 +46,7 @@ static const uint16_t item_index_base[THING_TYPE_COUNT] = {
     0x81ff, 0x81ff, 0x81ff, 0x81ff, 0x01b0, 0x0000, 0x0080, 0x81fc, 0x0180, 0x01e0, 0x0100, 0x81ff, 0x81ff, 0x81ff,
     0x81ff, 0x81ff
 };
-/* The slot masks (ATTR_SLOTS bits) of the champion slots 0 to 12. */
+/* The slot masks (ATTR_SLOTS bits) of the champion slots 0 to 12, from SKULL.EXE. */
 static const uint16_t slot_item_masks[] = {
     0x0200, 0x0100, 0x0001, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0040, 0x0040, 0x0002, 0x0020, 0x0080
 };
@@ -81,7 +86,10 @@ uint8_t item_gdat_index(uint16_t thing)
         case THING_TEXT: {
             /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
             int sub = text_subtype(thing);
-            if (text_kind(thing) != TEXT_KIND_ORNAMENT || (sub != 0 && sub != 2 && sub != 5 && sub != 13)) return GDAT_NO_INDEX;
+            if (text_kind(thing) != TEXT_KIND_ORNAMENT
+                || (sub != ORNAMENT_ITEM_STILL && sub != ORNAMENT_ITEM_ANIMATED && sub != ORNAMENT_ITEM_TOGGLE
+                    && sub != ORNAMENT_ITEM_TOGGLE_2))
+                return GDAT_NO_INDEX;
             return text_value(thing);
         }
         case THING_SENSOR: {
@@ -189,20 +197,20 @@ int item_icon_index(uint16_t thing, int slot, int animated)
     }
 }
 
-int item_is_moneybox(uint16_t thing)
+bool item_is_moneybox(uint16_t thing)
 {
     if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || container_kind(thing)) return 0;
     return gdat_find(draw_gdat(), GDAT_CONTAINER_CATEGORY, item_gdat_index(thing), GDAT_TEXT_TYPE, MONEYBOX_TEXT_ENTRY)
            != -1;
 }
 
-int item_is_chest(uint16_t thing)
+bool item_is_chest(uint16_t thing)
 {
     if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || item_is_moneybox(thing)) return 0;
     return !container_kind(thing);
 }
 
-int item_is_minion_map(uint16_t thing)
+bool item_is_minion_map(uint16_t thing)
 {
     return thing != THING_NONE && thing_type(thing) == THING_CONTAINER
            && container_kind(thing) == CONTAINER_MINION_MAP;
@@ -230,7 +238,7 @@ static int item_sum_attr(uint16_t thing, int entry)
             coin_sum += item_attr(t, entry) * stack;
         }
     }
-    if (moneybox) sum += entry == ATTR_WEIGHT ? (coin_sum + 4) / 5 : coin_sum;
+    if (moneybox) sum += entry == ATTR_WEIGHT ? (coin_sum + COINS_PER_WEIGHT - 1) / COINS_PER_WEIGHT : coin_sum;
     return sum;
 }
 
@@ -239,7 +247,7 @@ int item_weight(uint16_t thing) { return item_sum_attr(thing, ATTR_WEIGHT); }
 uint16_t item_get_value(uint16_t thing)
 {
     int v = item_sum_attr(thing, ATTR_COIN_VALUE);
-    return (uint16_t)(v > 0xffff ? 0xffff : v);
+    return (uint16_t)(v > UINT16_MAX ? UINT16_MAX : v);
 }
 
 void item_set_do_not_discard(uint16_t thing, int keep)
@@ -255,7 +263,7 @@ void item_set_do_not_discard(uint16_t thing, int keep)
     }
 }
 
-int item_has_charged_action(uint16_t thing)
+bool item_has_charged_action(uint16_t thing)
 {
     if (thing == THING_NONE) return 0;
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
@@ -312,7 +320,7 @@ int money_coin_type_count(void) { return coins.count; }
 uint16_t money_coin_item(int coin_type) { return coins.items[coin_type]; }
 int16_t money_coin_value(int coin_type) { return coins.values[coin_type]; }
 
-int money_is_coin(uint16_t thing)
+bool money_is_coin(uint16_t thing)
 {
     return thing_type(thing) == THING_MISC && item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_COIN;
 }
@@ -352,7 +360,7 @@ int money_coin_type_for_slot(uint16_t box, int slot)
         for (;;) {
             char c = *p++;
             if (c >= '0' && c <= '9') {
-                number = (int16_t)(number * 10 + (c - '0'));
+                number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
             } else if (c == '-') {
                 low = number;
                 number = 0;
@@ -378,9 +386,9 @@ uint8_t item_index_gdat_index(uint16_t item)
 {
     item &= ITEM_INDEX_NONE;
     switch (item / ITEM_KIND_ITEMS) {
-    case 0: return (uint8_t)item;
-    case 1: return (uint8_t)(item - ITEM_FIRST_CLOTHING);
-    case 2: return (uint8_t)(item - ITEM_FIRST_MISC);
+    case ITEM_KIND_WEAPON: return (uint8_t)item;
+    case ITEM_KIND_CLOTHING: return (uint8_t)(item - ITEM_FIRST_CLOTHING);
+    case ITEM_KIND_MISC: return (uint8_t)(item - ITEM_FIRST_MISC);
     default:
         if (item >= ITEM_SCROLL) return 0;
         if (item >= ITEM_FIRST_CONTAINER) return (uint8_t)(item - ITEM_FIRST_CONTAINER);
@@ -394,7 +402,7 @@ uint8_t item_index_gdat_category(uint16_t item)
     static const uint8_t kind_type[] = {THING_WEAPON, THING_ARMOUR, THING_MISC};
     item &= ITEM_INDEX_NONE;
     int type;
-    if (item < 3 * ITEM_KIND_ITEMS) type = kind_type[item / ITEM_KIND_ITEMS];
+    if (item < ITEM_FIRST_POTION) type = kind_type[item / ITEM_KIND_ITEMS];
     else if (item > ITEM_SCROLL) type = THING_EXPLOSION;  /* the original reads an item index of no type like this */
     else if (item == ITEM_SCROLL) type = THING_SCROLL;
     else if (item >= ITEM_FIRST_CONTAINER) type = THING_CONTAINER;
