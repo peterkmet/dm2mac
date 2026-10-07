@@ -9,21 +9,45 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - No thing: `THING_NONE`, not `0xffff`. End of list: `THING_ENDOFLIST`.
    - Directions, cells, champion slots (`SLOT_HAND_READY`, `SLOT_COUNT`), statistics, skills, square types, sensor types, door states, timeline event types, commands.
    - Message and text numbers: a named constant for each string id, for example `TEXT_RESURRECTED`.
-   - Graphic and layout zone numbers: named constants in `port/src/ids.h`, for example `GFX_WALLSET_FIRST`, `ZONE_VIEWPORT`.
-   - DM2 systems: money types (`COIN_GOLD`), minion types (`MINION_GUARD`), weather states (`WEATHER_RAIN`), and Skullkeep machine states each get named constants. Step 5 fixes the exact names in `docs/skull-symbols.csv`.
-   - Plain numbers are allowed only when the number is obvious: 0, 1, -1, 2 for halves, loop bounds that come from a named constant.
-2. Do not index raw record bytes outside one accessor module. Put field access in small functions or macros with names, for example `sensor_type(t)`, `sensor_disable(t)`, `door_state(t)`, `group_count(t)`. One module (`dungeon.c` or `things.h`) owns the record layout.
+   - Graphic numbers: named constants in `port/src/data/gfx.h`, for example `GFX_WALLSET_FIRST`. Layout zone numbers: named constants in `port/src/ui/ui.h`, for example `ZONE_VIEWPORT`.
+   - DM2 systems: money types (`COIN_GOLD`), minion types (`MINION_GUARD`), weather states (`WEATHER_RAIN`), and Skullkeep machine states each get named constants. `docs/skull-symbols.csv` holds the names.
+   - Plain numbers are allowed only for 0, 1, -1, and 2 when it halves or doubles a value. Every other number is a named constant, also decimal game values such as divisors, limits, and thresholds.
+   - Each constant has one definition, in the header of the module that owns it. Other modules include that header. They do not define the value again under the same or another name.
+2. Do not index raw record bytes outside one accessor module. Put field access in small functions or macros with names, for example `sensor_type(t)`, `sensor_disable(t)`, `door_state(t)`, `group_count(t)`. One module (`dungeon.c` and `dungeon.h`) owns the record layout.
 3. Write C, not decompiler output.
    - No names like `uVar1`, `iVar3`, `local_10`, `param_2`.
-   - No casts that only repeat the x86 operand size of the Watcom code. Keep a cast only where it changes the result (16-bit wrap, sign, truncation). Then add a short comment when the reason is not obvious.
+   - Game values keep the 16-bit types of the original (`int16_t`, `uint16_t`). One value has one type on its whole path: field, parameter, local variable, and return value. Then no cast is needed to pass it on. Use `int` only for values that are not game values, for example sizes, file offsets, and loop counters over C arrays.
+   - No casts that only repeat the x86 operand size of the Watcom code. A cast is allowed only where it changes the result (16-bit wrap, sign, truncation). Add a short comment when the reason is not obvious.
    - Do not copy Watcom register-call artifacts (EAX, EDX, EBX, ECX argument shuffling) into the C code. Use normal named parameters.
+   - Predicates (`is_*`, `has_*`, `can_*`) return `bool` from `<stdbool.h>`. Flags in game records keep their stored type.
    - Use `for`, `while`, `switch`, and early `return`. Do not use `goto`, except for one cleanup label in a function that frees memory.
-   - One function does one game task. Split a long original function when parts have their own meaning.
+   - One function does one game task. Split a long original function when parts have their own meaning. A function longer than 60 lines needs a reason in its comment, or a split.
 4. Each non-trivial function has a one-line comment that tells what it does in game terms. The comment does not repeat the code, and does not give the original address. The address belongs in `docs/skull-symbols.csv`.
 5. Keep original quirks only when they change what the player sees. Fix the original bugs that are clearly bugs (stale registers, overflows), and mark each fix with a short comment.
 6. Read the data files (`DUNGEON.DAT`, `GRAPHICS.DAT`, saves) at run time. Do not copy their content into the source. A table that exists only in `SKULL.EXE` goes into the source as a named `const` array with a one-line comment that tells its game meaning. No unexplained numbers or strings.
+7. Names follow one scheme.
+   - Functions: `<prefix><verb>_<object>` in `snake_case`. Each header states its prefixes in one comment line, for example `/* Prefixes: gfx_ */` in `gfx.h`. A prefix belongs to one header only, and no prefix starts with the prefix of another header.
+   - Global variables: `g_` prefix. Module-private globals and functions are `static`.
+   - Types: `PascalCase`. Constants and enum values: `UPPER_CASE`.
+   - No event numbers or original addresses in names. Name the game task, not the number.
+8. The source has four layers in subfolders of `port/src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook that `ui/` sets, for an event that must run the user interface inside the rule. Only `platform/` includes SDL.
+9. Little-endian read helpers (`le16`, `le32`) have one definition in one header. Modules do not define their own copies.
 
 ## Check before a step is done
 
-- `grep -nE '0x[0-9a-fA-F]{2,}' port/src/<file>.c` shows only named-constant definitions or data addresses in a single table of addresses.
-- A reader who knows Dungeon Master can understand each function without opening the decompiled code.
+`tests/test_standard.py` checks `port/src/` and fails on:
+
+- hex literals outside constant definitions,
+- decimal literals of 10 or more outside constant definitions,
+- constant names defined in more than one file,
+- raw record access (`dungeon_thing_record(...)[`) outside `dungeon.c` and `dungeon.h`,
+- decompiler names,
+- predicates that do not return `bool`,
+- functions longer than 60 lines,
+- headers without a `Prefixes` line, prefix collisions, and functions outside the prefixes of their header,
+- event numbers in function names,
+- includes of a higher layer, and SDL outside `platform/`.
+
+`tests/standard_allowlist.txt` lists the accepted exceptions, one per line with a reason. The reason `open: module cleanup` marks a violation that a later cleanup removes. `opl3.c` and `opl3.h` are vendored code (`opl3-LICENSE`), and the test does not check them.
+
+A reader who knows Dungeon Master II can understand each function without opening the decompiled code.

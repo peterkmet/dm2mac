@@ -268,7 +268,7 @@ The target folder of each existing file in `port/src/`:
 | `numbered` | function name | 7 |
 | `layer` | `path:header` | 8 |
 
-- [ ] **Step 1: Write the new `docs/coding-standard.md`.** Replace the whole file with:
+- [x] **Step 1: Write the new `docs/coding-standard.md`.** Replace the whole file with:
 
   ```markdown
   # C port coding standard
@@ -326,7 +326,7 @@ The target folder of each existing file in `port/src/`:
   A reader who knows Dungeon Master II can understand each function without opening the decompiled code.
   ```
 
-- [ ] **Step 2: Add the checks to `tests/test_standard.py`.** Add `from collections import defaultdict` to the imports. Add these constants after `INCLUDE`:
+- [x] **Step 2: Add the checks to `tests/test_standard.py`.** Add `from collections import defaultdict` to the imports. Add these constants after `INCLUDE`:
 
   ```python
   MAX_FUNCTION_LINES = 60
@@ -464,19 +464,26 @@ The target folder of each existing file in `port/src/`:
       report("long", found)
   ```
 
-- [ ] **Step 3: Run the new checks.** `uv run pytest tests/test_standard.py -q -p no:xdist`. Expected: `test_layers` PASSES. The other checks FAIL with their violation lists, except `test_no_decompiler_names`, which PASSES (no decompiler names today).
-- [ ] **Step 4: Check the test for false hits.** Read 10 sample lines of each failing check. A false hit is a line that the rule does not forbid, for example a hex value in a constant definition over two lines. If a check has more than a few false hits, stop and report the samples. Do not change the rule to hide real violations.
-- [ ] **Step 5: Fill the allowlist.** Run the script of Task 2, Step 8 again. It appends the keys of the new checks. The `layer` keys are already in the allowlist, so they do not come again.
-- [ ] **Step 6: Run the standard test.** `uv run pytest tests/test_standard.py -q -p no:xdist`. Expected: all PASS.
-- [ ] **Step 7: Add the cleanup to `docs/todo.md`.** Append:
+- [x] **Step 3: Run the new checks.** `uv run pytest tests/test_standard.py -q -p no:xdist`. Expected: `test_layers` PASSES. The other checks FAIL with their violation lists, except `test_no_decompiler_names`, which PASSES (no decompiler names today).
+- [x] **Step 4: Check the test for false hits.** Read 10 sample lines of each failing check. A false hit is a line that the rule does not forbid, for example a hex value in a constant definition over two lines. If a check has more than a few false hits, stop and report the samples. Do not change the rule to hide real violations.
+- [x] **Step 5: Fill the allowlist.** Run the script of Task 2, Step 8 again. It appends the keys of the new checks. The `layer` keys are already in the allowlist, so they do not come again.
+- [x] **Step 6: Run the standard test.** `uv run pytest tests/test_standard.py -q -p no:xdist`. Expected: all PASS.
+- [x] **Step 7: Add the cleanup to `docs/todo.md`.** Append:
 
   ```markdown
   - Coding standard cleanup, module by module: remove the `open: module cleanup` entries of `tests/standard_allowlist.txt` (hex and decimal literals, prefixes, long functions, `engine/` includes of `ui/` headers).
   - Rule 9 of `docs/coding-standard.md`: one header for `le16` and `le32`. Today `gdat.c`, `zone.c`, `save.c`, `recruit.c`, and `dungeon.c` each define their own copy.
   ```
 
-- [ ] **Step 8: Run the full suite.** `tools/test-suite`. Expected: `411 passed`.
-- [ ] **Step 9: Commit.** `git add -A && git commit -m "test: coding standard checks with an allowlist of the open violations"`
+- [x] **Step 7a: Update the source paths in the docs.** Decision of the user on 2026-10-07 (Task 2 review). In `docs/` (not `docs/superpowers/`, not `CHANGELOG.md`), replace each `port/src/<file>` with `port/src/<layer>/<file>` per the file map. Get the layer of each file from `find port/src -type f`. Check:
+
+  ```sh
+  grep -rnE 'port/src/[a-z_0-9-]+\.[ch]' docs --exclude-dir=superpowers
+  ```
+
+  Expected: no output.
+- [x] **Step 8: Run the full suite.** `tools/test-suite`. Expected: `411 passed`.
+- [x] **Step 9: Commit.** `git add -A && git commit -m "test: coding standard checks with an allowlist of the open violations"`
 
 ---
 
