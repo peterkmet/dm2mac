@@ -1,5 +1,5 @@
 game
-decomp
+reference/
 build/
 .venv/
 __pycache__/

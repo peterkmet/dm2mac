@@ -10,7 +10,7 @@ Sources in reDM2:
 - Formats: `docs/formats.md`, `docs/savegame.md`.
 - Evidence: `docs/memory.md`, `docs/equiv.md`, `README.md`, and `src/*.c` with `src/*.test.toml` (functions with a differential test).
 
-Our sources: `docs/skull-symbols.csv`, `docs/skull-map.md`, `docs/skull-formats.md`, `decomp/SKULL.c`.
+Our sources: `docs/skull-symbols.csv`, `docs/skull-map.md`, `docs/skull-formats.md`, `reference/decomp/SKULL.c`.
 
 ## Method
 
@@ -55,7 +55,7 @@ All renames are in `docs/skull-symbols.csv`. The function address set did not ch
 | `0x46745` | `champ_reduce_by_stat` | `champ_get_stat_adjusted_attack` | reDM2 matches the body with DM1 `F0307_CHAMPION_GetStatisticAdjustedAttack` and tests it (1035 cases). The function scales an attack value by `170 - stat`. "Reduce" did not tell this. The third argument is now `attack`. |
 | `0x7f8dc` | `g_save_checksum` | `g_save_bit_total` | reDM2: `g_packed_bit_ctr`. `save_write_packed` and `save_read_packed` add the number of stored bits. No code reads the value for a check. |
 
-`decomp/SKULL.c` was exported again with the new names (`tools/decompile-skull.sh`). `docs/skull-map.md` and `docs/skull-notes/` use the new names.
+`reference/decomp/SKULL.c` was exported again with the new names (`tools/decompile-skull.sh`). `docs/skull-map.md` and `docs/skull-notes/` use the new names.
 
 Rejected rename: `0x1f347` `money_is_coin` → `item_is_stackable` (reDM2 `object_is_stackable`). A first pass applied it, because the body only tests "thing type 10 and attribute 0 bit `0x4000`". `money_init_coin_table` (`0x154e0`) builds `g_coin_item_types` from the same attribute bit of the same GDAT entries `(0x15, i, 0x0b, 0)`. Thus the bit marks coins, and `money_is_coin` is correct. The name was restored.
 

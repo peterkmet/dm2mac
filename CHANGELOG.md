@@ -32,6 +32,9 @@ All notable changes to this project are in this file. The format follows [Keep a
 ### Changed
 
 - The test of the way out of the first room takes the real path: the solid key comes from the cabinet of the first room.
+- `port/src/` has the layers `data/`, `engine/`, `ui/`, and `platform/`.
+- `docs/coding-standard.md` has rules 7 to 9 and a check list. `tests/test_standard.py` checks the rules. `tests/standard_allowlist.txt` lists the open violations.
+- The decompiled code is in `reference/decomp/`. `tools/test-suite` replaces `scripts/test-suite`. `docs/todo.md` replaces `TODO.md`.
 
 ### Fixed
 

@@ -77,7 +77,7 @@ Reads the game state.
 | `time` | Game time in game steps (`game.game_time`). It stands still during a pause and in dialogs. |
 | `ticks` | Timer ticks at 60 Hz since the program start (`main_loop.timer_ticks`). `wait` counts these. |
 | `mode` | Input mode: `menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`. |
-| `dialog` | The dialog id (`DialogState.id`, `port/src/dialog.h`) while `mode` is `dialog`, else `null`. |
+| `dialog` | The dialog id (`DialogState.id`, `port/src/ui/dialog.h`) while `mode` is `dialog`, else `null`. |
 | `party` | Map, x, y, and direction (0 north, 1 east, 2 south, 3 west). |
 | `champion_count`, `leader` | Champions in the party; the leader index, -1 for none. |
 | `champions` | Per champion: name, `[current, maximum]` of health, stamina, and mana (stored values; the screen shows stamina in tenths), and the load in 1/10 kg. |

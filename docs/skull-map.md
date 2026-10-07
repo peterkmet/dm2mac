@@ -8,7 +8,7 @@ Related files:
 - `docs/skull-formats.md`: file formats, sound, music, the SVGA option, and the PIT rate.
 - `docs/skull-notes/`: per-range analysis notes (layout, data structures, open questions).
 - `docs/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
-- `decomp/SKULL.c`: Ghidra output with the names from `docs/skull-symbols.csv` (`tools/decompile-skull.sh`).
+- `reference/decomp/SKULL.c`: Ghidra output with the names from `docs/skull-symbols.csv` (`tools/decompile-skull.sh`).
 
 Conventions:
 
@@ -21,7 +21,7 @@ Conventions:
 
 | Item | Count |
 |---|---|
-| Functions (every function start in `decomp/SKULL.c`) | 1362 |
+| Functions (every function start in `reference/decomp/SKULL.c`) | 1362 |
 | Globals | 626 |
 | Low-confidence function names | 221 (see [Low-confidence names](#low-confidence-names)) |
 
@@ -109,7 +109,7 @@ Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga
 
 ## Call graph between subsystems
 
-Each cell counts distinct caller-callee function pairs across two subsystems, computed from the calls in `decomp/SKULL.c`. Calls inside one subsystem are not counted.
+Each cell counts distinct caller-callee function pairs across two subsystems, computed from the calls in `reference/decomp/SKULL.c`. Calls inside one subsystem are not counted.
 
 | Caller | Callees (pair count) |
 |---|---|

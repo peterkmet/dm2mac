@@ -1,8 +1,8 @@
 # SKULL.EXE address layout
 
-Input: `decomp/SKULL.c` (1362 functions), image `build/skull.bin` (code object 0x10000-0x695ac, data object 0x70000-0x828f0).
+Input: `reference/decomp/SKULL.c` (1362 functions), image `build/skull.bin` (code object 0x10000-0x695ac, data object 0x70000-0x828f0).
 
-All 1195 direct call targets in the code are function starts in `decomp/SKULL.c` (one exception: 0x68c0f, inside clib). Functions that are reached only through function pointers can be missing.
+All 1195 direct call targets in the code are function starts in `reference/decomp/SKULL.c` (one exception: 0x68c0f, inside clib). Functions that are reached only through function pointers can be missing.
 
 ## Big blocks
 

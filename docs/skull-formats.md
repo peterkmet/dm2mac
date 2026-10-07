@@ -41,7 +41,7 @@ Impact on the port: apply the same filter when the key table loads. The default 
 
 ### Image compression (Step 8)
 
-Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. We checked the dispatch in `decomp/SKULL.c`.
+Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. We checked the dispatch in `reference/decomp/SKULL.c`.
 
 `gdat_decode_image` (`0x3e867`) reads the first u32 of the raw item as a signed value and shifts it right by 26 (the gate):
 
@@ -75,7 +75,7 @@ reDM2 measurements for the shipped file:
 - Step 12: the 24 image items with other gates are 4-bit images. The gate (top 6 bits of word 1) holds the y offset and the top 6 bits of word 0 hold the x offset of the image (`gdat_get_image_offset`, `0x3eed3`). An 8-bit image holds its offset in bytes 4 and 5. When the top 6 bits of word 0 are `-32`, the offset is the value key `(category, index, 0x0c, entry)`. All 827 4-bit images decode byte-equal.
 - An uncompressed image holds u16 bits per pixel (4 or 8) at item + 4 and the pixels at item + 10. A 4-bit image (compressed or not) ends with its 16-byte color map.
 - The palette item `(1,0,9,254)` has 256 entries of 4 bytes: color index, then 8-bit red, green, blue. The VGA DAC takes 6-bit values, so the port shifts each value right by 2 (`gdat_palette_color`).
-- The layout item `(1,0,4,0)` is raw bytes: u16 magic `0xfc0d`, u16 group count, group ranges, then `{anchor type, parent, x, y}` records (`port/src/zone.h`). `zone_unpack_layout` (`0x19d0e`) reads it.
+- The layout item `(1,0,4,0)` is raw bytes: u16 magic `0xfc0d`, u16 group count, group ranges, then `{anchor type, parent, x, y}` records (`port/src/ui/zone.h`). `zone_unpack_layout` (`0x19d0e`) reads it.
 
 ## 1. Digital sound effects
 
@@ -134,7 +134,7 @@ Disagreement with reDM2: reDM2 (`docs/formats.md`, "There is no audio in GRAPHIC
 
 Impact on the port: load sounds from GDAT type `2`, skip 6 bytes, convert signed to SDL `S8` (or unsigned `U8`), and play at 11025 Hz. Port `FUN_00010877` and the scaling in `FUN_00015ca9` for the Step 18 differential test.
 
-### Deviations of the C port (`port/src/sound.c`, Step 18)
+### Deviations of the C port (`port/src/ui/sound.c`, Step 18)
 
 - Pan ratio overflow fixed. `FUN_00010877` divides `|lateral| << 11` by `|forward|` in 32 bits, but compares only the low 16 bits with `THRESH`. For `|lateral| >= 32` and a small `|forward|`, the ratio wraps and the sound pans near the center (example: lateral 32, forward 1 gives `0x8f00`, not `0xf800`). The port compares the full ratio. The differential test skips these inputs and checks the fix separately.
 - Mixing: the port mixes at 44100 Hz (4 × 11025) in interleaved signed 16-bit stereo. Each sample repeats 4 times. SDL3 converts to the device rate.
@@ -142,7 +142,7 @@ Impact on the port: load sounds from GDAT type `2`, skip 6 bytes, convert signed
 - Voices: 64, as in the original. A new sound takes the first free voice. When all play, the sound is dropped. The priority sort of `FUN_00010573` is not ported yet; it belongs to the request queues.
 - The port keeps the samples signed and skips the XOR `0x80` of `FUN_000104ea`.
 - `sound_party_offset` takes the party direction 0 to 3. For other values the original keeps stale locals; the port treats them as north.
-- The audio output (`port/src/platform.c`) fills the SDL audio stream from `plat_audio_pump` on the main thread, up to 2048 frames ahead. A music source can be added with `plat_audio_music`. It is mixed before the sound effects.
+- The audio output (`port/src/platform/platform.c`) fills the SDL audio stream from `plat_audio_pump` on the main thread, up to 2048 frames ahead. A music source can be added with `plat_audio_music`. It is mixed before the sound effects.
 
 ## 2. HMP songs and SONGLIST.DAT
 
@@ -177,7 +177,7 @@ Impact on the port: read songs from GDAT `(4, n, 3, 0)`. Port `FUN_00010af6` wit
 
 ### HMP player (Step 19)
 
-Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi_midi_send_event` (`0x5e489`), `hmi_midi_send_track_setup` (`0x66fb8`). Port: `port/src/hmp.c`.
+Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi_midi_send_event` (`0x5e489`), `hmi_midi_send_track_setup` (`0x66fb8`). Port: `port/src/data/hmp.c`.
 
 - Header: `+0x20` u32 offset of the loop table, `+0x30` u32 track count, `+0x38` u32 song timer rate (120 Hz). Track chunks start at `+0x388`: u32 track number, u32 chunk size, u32 MIDI channel, then the data.
 - Delta times: 7-bit groups, low group first. The last byte has bit 7 set (the opposite of standard MIDI).
@@ -307,7 +307,7 @@ Impact on the port: decompile the OPL2 driver (`fmmidi.com`) for Step 19 and por
 
 ### OPL2 driver logic (Step 19)
 
-Decompiled with `tools/ghidra/decompile.sh` (without `Watcall.java`: the driver uses `cdecl`) from the driver bytes `file+0x5c .. file+0x31e8` at base 0. Driver offsets below. Port: `port/src/fm.c`. The port reproduces the OPL2 driver `0xa002`.
+Decompiled with `tools/ghidra/decompile.sh` (without `Watcall.java`: the driver uses `cdecl`) from the driver bytes `file+0x5c .. file+0x31e8` at base 0. Driver offsets below. Port: `port/src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002`.
 
 | Offset | Function |
 |---|---|
@@ -383,7 +383,7 @@ reDM2 findings (`docs/memory.md`, "PART 1 — determinism audit", and the `IBMIO
 - Game code reads no clock: all `int 21h` calls are in the Watcom library, and there is no `int 1Ah`. `g_game_time` (`0x7f22c`) counts game steps. Timeline event times are game steps (24 bits).
 - reDM2 did not measure the real rate either. The DOSBox measurement stays open.
 
-Impact on the port: set `PIT_DIVISOR` in `port/src/platform.c` to `4971` (240.02 Hz). Derive the game tick as every 4th PIT tick (60 Hz) and the game step at 8 game ticks. Drive the HMP player at 120 Hz. Confirm the game rate with the DOSBox measurement.
+Impact on the port: set `PIT_DIVISOR` in `port/src/platform/platform.c` to `4971` (240.02 Hz). Derive the game tick as every 4th PIT tick (60 Hz) and the game step at 8 game ticks. Drive the HMP player at 120 Hz. Confirm the game rate with the DOSBox measurement.
 
 ## Other finding: IBMIOP.EXE is a required runtime layer
 
@@ -407,7 +407,7 @@ Source: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x
 
 ## 7. Save file format (Step 10)
 
-Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`0x370d2`) in `decomp/SKULL.c`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
+Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`0x370d2`) in `reference/decomp/SKULL.c`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
 
 ### Container
 
@@ -481,7 +481,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The original treats a short read at the end of the file as success, so it does not find a truncated bit stream.
 - A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again: the things of the shared list are stored under both squares. The original has the same weakness. The C port does not check this yet.
 
-### Deviations of the C port (`port/src/save.c`)
+### Deviations of the C port (`port/src/engine/save.c`)
 
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).
 - Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than room, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.
@@ -556,7 +556,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### UI colors and text formats
 
-- GDAT `(1, 0, 13, 0xfe)` holds 16 palette indices: the UI colors (`enum ui_color` in `port/src/text.h`). The interface draws with UI color indices, not palette indices.
+- GDAT `(1, 0, 13, 0xfe)` holds 16 palette indices: the UI colors (`enum ui_color` in `port/src/ui/text.h`). The interface draws with UI color indices, not palette indices.
 - `text_format` replaces format codes: `.Z` and 3 decimal digits, or byte 1 and the code + 32. The inserted text is formatted again. Codes: 2 and 27 texts `(1, 0xfe, 5, 0)` and `(1, 0xfe, 5, 6)`; 7 a champion name (word `0x7f988`); 10 to 14 the numbers in the words `0x7f996`, `0x7f98a`, `0x7f994`, `0x7f992`, `0x7f986`; 17 the text `(7, 0, 5, byte 0x7f990)`. The other codes (0, 1, 3, 4, 8, 9, 15, 20, 22 to 26, 28) give drive paths, disk sizes, error codes, and save names for the dialogs. An unknown code inserts an empty text.
 - `gdat_get_text` decrypts a text entry and formats it. The inventory sets the numbers before it formats a text, for example `(7, 0, 5, 0x2a)` (load) and `(7, 0, 5, 0x1f)` (weight).
 
@@ -601,7 +601,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### The input tree
 
-- The tables are in `SKULL.EXE` and in `port/src/input.c`: the nodes (condition with bit 7 for a node with children, argument, child list or zone), the child lists (bit 7 starts a list), the root node of each of the 10 input modes, the zones (7 bytes: layout zone with bit 15 for the inventory panel and bit 14 for the action area, command list, key list, cursor area), the command lists at `0x72388` (6 bytes: command with bit 15 to start a list, zone, mouse buttons, flags), and the key lists at `0x729b8` (4 bytes: command with bit 15 to start a list, key code).
+- The tables are in `SKULL.EXE` and in `port/src/ui/input.c`: the nodes (condition with bit 7 for a node with children, argument, child list or zone), the child lists (bit 7 starts a list), the root node of each of the 10 input modes, the zones (7 bytes: layout zone with bit 15 for the inventory panel and bit 14 for the action area, command list, key list, cursor area), the command lists at `0x72388` (6 bytes: command with bit 15 to start a list, zone, mouse buttons, flags), and the key lists at `0x729b8` (4 bytes: command with bit 15 to start a list, key code).
 - A key code is the PC scan code, plus `0x200` for shift, `0x400` for control, `0x800` for alt. The arrow keys give the numpad codes: up `0x4c`, left `0x4b`, right `0x4d`, down `0x50`, shift and left `0x4f`, shift and right `0x51`. Esc (`0x01`) pauses.
 - A click goes down the tree from the root node of the input mode. The first command whose zone holds the click and whose buttons match wins. The matched zone rectangle and the click position stay for the click feedback.
 - The event ring holds 11 events. A new event goes in when fewer than 7 events wait (9 for a released left button and for the area events). A key goes into the ring only when the main loop reads it. `input_flush` keeps only the area events and the released left buttons.
@@ -647,7 +647,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `screen_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
 - Not ported: the enter and leave events of the cursor zones (section 13); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
 - The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
-- Later steps (empty hooks in `port/src/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); sounds (Step 18). Step 17 has ported the weather update, the object transfer of a sensor, and the sound requests (section 11); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
+- Later steps (empty hooks in `port/src/engine/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); sounds (Step 18). Step 17 has ported the weather update, the object transfer of a sensor, and the sound requests (section 11); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
 
 ## 11. Weather, day and night, light, and Skullkeep machines (Step 17)
 
@@ -690,7 +690,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Sound requests
 
-- `sound_request(category, index, entry, priority, volume, x, y, delay)` (`port/src/sound_request.c`): delay 0 plays at once; delay 1 goes to the queue of the game step (20 requests), which `sound_flush_requests(0)` plays at the end of the step; a negative delay goes to the deferred queue (6 requests, `sound_flush_requests(1)`); a longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + delay - 1. A sound with delay above 0 plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
+- `sound_request(category, index, entry, priority, volume, x, y, delay)` (`port/src/engine/sound_request.c`): delay 0 plays at once; delay 1 goes to the queue of the game step (20 requests), which `sound_flush_requests(0)` plays at the end of the step; a negative delay goes to the deferred queue (6 requests, `sound_flush_requests(1)`); a longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + delay - 1. A sound with delay above 0 plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
 - The place of a sound seen by the party (lateral, forward) and the push away by the walking distance are `sound_party_offset` of `sound.c`. A sound that is already in the queue at the same place is not added again. A map change (`gdat_load_map_graphics`, `sound_wait_and_clear_requests`) drops the queue of the step.
 - `sound_play_requests` sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its HMI driver calls (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `sound.c` plays the voices. `sound_play_with_fallback` uses the sound of index fallback when index has none.
 - The ambient sound of an animated ornament (`sensor_start_ambient_sound`) plays at once only when the animation cycle starts now; a wall sound comes from the square in front of the wall. The Step 14 port played it always (the sound was a hook then).
@@ -701,15 +701,15 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_play_delayed` masks the slot to 0 to 7.
 - The port does not check the sound settings of `sound_play_requests` (digital sound on, sound volume not 0). The sound volume setting is Step 20 (dialogs).
 - The walking distance of a sound is `creature_get_party_distance` (the party distance map of Step 16).
-- Kept quirk of the original: the repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `port/src/sensor.c`). Most of these sounds come from far away and do not play. `tests/test_world.py` compares the repeated sounds with the original.
+- Kept quirk of the original: the repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `port/src/engine/sensor.c`). Most of these sounds come from far away and do not play. `tests/test_world.py` compares the repeated sounds with the original.
 
 ## 12. Creatures, projectiles, magic, and minions (Step 16)
 
 ### Creature data
 
-- The creature info table has 36 bytes for each creature type (`creature_infos` in `port/src/creature.c`, generated from `SKULL.EXE`): flags, defense, regeneration, maximum health, attack, poison, dexterity, traits, movement, skills of items, attacks, doors, and actuators, speed, door flags, push resistance, possessions, possession zone, size, and hit size.
+- The creature info table has 36 bytes for each creature type (`creature_infos` in `port/src/engine/creature.c`, generated from `SKULL.EXE`): flags, defense, regeneration, maximum health, attack, poison, dexterity, traits, movement, skills of items, attacks, doors, and actuators, speed, door flags, push resistance, possessions, possession zone, size, and hit size.
 - An active group has 34 bytes: the animation state, the mood, the behavior, the action, the timing of the next update, the destination, and the plan state. The table has room for the groups of the dungeon plus 100. A group is active while the party is on its map.
-- The AI script data is at `0x73020`-`0x74f7e` of `SKULL.EXE`: plan tables, behavior tables, class flags, action flags, the enabled commands, and the plan steps. The links in the data are `SKULL.EXE` addresses. `port/src/ai_data.c` holds a copy.
+- The AI script data is at `0x73020`-`0x74f7e` of `SKULL.EXE`: plan tables, behavior tables, class flags, action flags, the enabled commands, and the plan steps. The links in the data are `SKULL.EXE` addresses. `port/src/engine/ai_data.c` holds a copy.
 - The AI context of the group that updates (`0x7f548`, 0x350 bytes) holds the group, its info, the scan results, the candidates (22 bytes each), the plan cache (14 bytes), and the move flags.
 
 ### Updates
@@ -739,16 +739,16 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original: `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect; a projectile compares directions without a wrap, so only flights to the north and east can face a champion; a projectile move also writes the direction into its freed event; the power that the sensors test after a door spell comes from the door record; `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables.
-- Hooks in `port/src/hooks.c` for later steps; the oracle stubs the originals with the same results:
+- Hooks in `port/src/engine/hooks.c` for later steps; the oracle stubs the originals with the same results:
   - Step 15 (real since the merge with Step 15, section 13): the merchant commands of the AI fail (`0xfd`); `champ_test_luck` fails; `champ_get_dexterity`, `champ_get_stat_adjusted_attack`, and `item_get_value` return 0; `champ_remove_object_from_slot` clears the slot; champion damage is recorded; champion poison has no effect; item creation gives no item; the experience, the action delay, the object in a slot, and the object in the leader hand are recorded.
   - Step 18: the sound driver (the sound requests of Step 17 run). Step 20 (real since the merge with Step 20, section 14): `dungeon_level_digit` returns 0; `dun_get_discarded_thing`.
-- Since the merge with Step 17, `creature_refresh_party_maps` and `creature_ai_search_area` call the real `light_add_square_light` and `light_update_party_light` of `port/src/weather.c`, the lightning of the weather calls the real `explosion_create`, sensor `0x40` calls `shop_parse_item_class_set` of `port/src/ai_move.c`, and the sound requests use `creature_get_party_distance`.
+- Since the merge with Step 17, `creature_refresh_party_maps` and `creature_ai_search_area` call the real `light_add_square_light` and `light_update_party_light` of `port/src/engine/weather.c`, the lightning of the weather calls the real `explosion_create`, sensor `0x40` calls `shop_parse_item_class_set` of `port/src/engine/ai_move.c`, and the sound requests use `creature_get_party_distance`.
 
 ## 13. Champions, inventory, items, money, and shops (Step 15)
 
 ### The leader hand
 
-- `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `leader_hand` (`port/src/inventory.h`) and draws the icon at the mouse pointer.
+- `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `leader_hand` (`port/src/engine/inventory.h`) and draws the icon at the mouse pointer.
 - A click on an object zone of the view takes the object (`view_click_take_object`). With an object in the hand, the click places the object in the cell (`view_click_place_object`), in an alcove, or into an open chest. A click in the upper view throws the hand object (`view_click_throw_object`). The commands `0x14` to `0x41` click the inventory slots, `0xea` to `0xed` put the hand object into a free slot.
 - `champ_apply_item_effects` adds or removes the stat effects of an item in a slot. Mode 0 is the load, 1 adds, -1 removes, 2 and -2 are the timed effects of eaten items, 3 restores. The load applies mode 0 to all slots. Then `save_restore_timed_effects` restores the light power and the timed effects.
 
