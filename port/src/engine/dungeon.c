@@ -253,7 +253,7 @@ uint16_t dungeon_unused_thing(int type)
     type &= THING_TYPE_MASK;
     uint16_t thing = THING_NONE;
     for (int i = 0; i < count && thing == THING_NONE; i++)
-        if (dungeon_next_thing(type << THING_TYPE_SHIFT | i) == THING_NONE) thing = type << THING_TYPE_SHIFT | i;
+        if (dungeon_next_thing(thing_make(type, i)) == THING_NONE) thing = thing_make(type, i);
     if (thing == THING_NONE) thing = dun_get_discarded_thing(type, DISCARD_ANY_KIND);
     if (thing == THING_NONE) return THING_NONE;
     memset(dungeon_thing_record(thing), 0, thing_size[type]);

@@ -29,12 +29,14 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define ITEM_FIRST_CREATURE 0x1b0
 #define ITEM_FIRST_CONTAINER 0x1e0
 #define ITEM_SCROLL 0x1fc
+#define ITEM_BONES 0                /* miscellaneous item 0 (CAT_MISC index): the bones of a champion */
 
 /* Item attribute entries: GDAT value keys (category, index, 0x0b, entry). */
 enum item_attr {
     ATTR_FLAGS = 0, ATTR_WEIGHT = 1, ATTR_VALUE = 2, ATTR_SLOTS = 4, ATTR_ICON_ANIMATION = 6, ATTR_ARMOUR_CLASS = 0x0b,
     ATTR_STRENGTH = 8, ATTR_THROW_POWER = 9, ATTR_WEIGHT_PER_CHARGE = 0x34,
-    ATTR_VALUE_PER_CHARGE = 0x35, ATTR_AMMO = 5, ATTR_POISON = 0x0d,
+    ATTR_VALUE_PER_CHARGE = 0x35, ATTR_AMMO = 5,
+    ATTR_EXTRA_DAMAGE = 0x0d,   /* extra damage of a hit: armour piercing against creatures, poison against champions */
     ATTR_LIGHT_SOURCE = 0xf8    /* item and creature attribute: the light that the thing gives */
 };
 /* ATTR_FLAGS bits. */

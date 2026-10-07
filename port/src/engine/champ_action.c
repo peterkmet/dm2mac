@@ -50,7 +50,6 @@
 #define MELEE_EXPERIENCE_BASE 3
 #define MELEE_STAMINA_HIT 4         /* the stamina cost of a hit: 4 to 7, of a miss: 2 to 3 */
 #define MELEE_STAMINA_MISS 2
-#define ATTR_ANTI_ARMOR 0x0d        /* item attribute: the weapon breaks creature armor */
 #define FRIGHTEN_IMMUNE 0xf
 #define FRIGHTEN_ALERT_FLAGS 0x2005
 #define FRIGHTEN_ALERT_CHANCE 100
@@ -440,7 +439,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
         damage = (int16_t)(damage + rand_2bits() + 1);
         unsigned roll = rand_next() & MELEE_CRITICAL_ROLL;
         if ((uint16_t)champ_get_skill_level(champ, skill, 1) > roll) damage = (int16_t)(damage + damage + MELEE_CRITICAL_BONUS);
-        uint16_t armor = item_attr(c->slots[action.hand], ATTR_ANTI_ARMOR);
+        uint16_t armor = item_attr(c->slots[action.hand], ATTR_EXTRA_DAMAGE);
         if (armor && damage > (int16_t)(rand_next() & MELEE_RANDOM)) damage = (int16_t)(damage + creature_roll_armor_factor(group, armor));
         int worth = creature_experience(info);
         champ_add_experience(champ, skill, (uint32_t)((worth * damage >> MELEE_EXPERIENCE_SHIFT) + MELEE_EXPERIENCE_BASE));

@@ -53,7 +53,6 @@
 #define REDRAW_POISON 0x2800
 #define REDRAW_STATS_SKILLS 0x3000
 #define LUCK_STEP 2
-#define ITEM_BONES 0                /* the miscellaneous item type of the bones of a champion */
 #define CURE_ALL 10000
 #define STRENGTH_ROLL 0xf
 #define DEXTERITY_ROLL 7

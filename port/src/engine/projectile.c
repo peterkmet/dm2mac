@@ -286,7 +286,7 @@ void projectile_destroy(uint16_t projectile, uint16_t *holder, int x, int y)
                     cell = projectile_dir(projectile);
                 move_thing(thing_with_cell(payload, cell), -2, -1, (int16_t)x, (int16_t)y);
             } else {
-                move_thing((uint16_t)((payload & THING_ID_MASK) | (projectile & ~THING_ID_MASK)), -2, 0, (int16_t)x, (int16_t)y);
+                move_thing(thing_with_cell(payload, thing_cell(projectile)), -2, 0, (int16_t)x, (int16_t)y);
             }
         }
         sound_request_with_fallback(item_gdat_category(projectile), item_gdat_index(projectile), SOUND_ENTRY_DROP, SOUND_FALLBACK,
@@ -308,7 +308,7 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
             int factor = (uint16_t)((projectile_hit_chance(projectile) >> THROW_CHANCE_SHIFT) + THROW_FACTOR_BASE);
             power = (uint16_t)((uint16_t)(throw_power + (energy >> 1)) * (factor * factor) >> THROW_POWER_SHIFT);
             projectile_attack_type = ATTACK_TYPE_SHARP;
-            projectile_extra_damage = item_attr(payload, ATTR_POISON);
+            projectile_extra_damage = item_attr(payload, ATTR_EXTRA_DAMAGE);
             if (projectile_extra_damage && (rand_next() & ROLL_POISON) > energy)
                 projectile_extra_damage = (uint16_t)(projectile_extra_damage - rand_below((uint16_t)((projectile_extra_damage >> 1) + 1)));
         }

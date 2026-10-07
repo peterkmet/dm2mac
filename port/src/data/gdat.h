@@ -22,6 +22,7 @@ enum {
     GDAT_TYPE_IMAGE = 1,
     GDAT_TYPE_SOUND = 2,
     GDAT_TYPE_TEXT = 5,
+    /* Type 7 holds a byte table; the category tells its content: a color remap, or the animation tables of a creature. */
     GDAT_TYPE_REMAP = 7,            /* a color remap table, for example a depth shading table */
     GDAT_TYPE_CREATURE_DATA = 7,    /* the animation tables of a creature */
     GDAT_TYPE_TABLE = 8,            /* a word table */

@@ -18,7 +18,6 @@
 #define LIGHTNING_SOUND_INDEX 0x30
 #define LIGHTNING_SOUND_ENTRY 0x81
 #define LIGHTNING_SOUND_PRIORITY 0x6c
-#define LIGHTNING_SOUND_VOLUME 0x80 /* plus 0 to 31 */
 /* Sound (CAT_SKY, graphics set, 0): the thunder. */
 #define THUNDER_PRIORITY 0x19
 #define THUNDER_VOLUME 0x40
@@ -286,7 +285,7 @@ static SkyObject *weather_lightning(SkyObject *o)
             sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
             sound_request_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_FALLBACK,
                                      x, y, 1, LIGHTNING_SOUND_PRIORITY,
-                                     (int16_t)(rand_below(LIGHTNING_RANGE) + LIGHTNING_SOUND_VOLUME));
+                                     (int16_t)(rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL)); /* the volume: normal plus 0 to 31 */
         } else {
             while (strikes && !lightning_strike()) strikes--;
         }

@@ -31,7 +31,6 @@
 #define ORNAMENT_KEY_FRAMES 0x0d    /* ornament value (or text): the frame count of its animation */
 #define ORNAMENT_FRAMES_MASK 0x7fff
 #define ORNAMENT_KEY_SOUND_DELAY 0x88  /* ornament value: the delay of its sound in its animation cycle */
-#define BONES_INDEX 0               /* miscellaneous item 0: the bones of a champion */
 
 /* Sound arguments (entry, priority) of sound_request_with_fallback and sound_request. */
 #define SOUND_ENTRY_CREATURE_APPEARS 0x89
@@ -311,7 +310,7 @@ static int altar_takes_bones(uint16_t t, uint16_t thing)
 {
     return item_gdat_index(t) != GDAT_NO_INDEX
            && gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, item_gdat_index(t), GDAT_TYPE_VALUE, ORNAMENT_KEY_ALTAR)
-           && item_gdat_category(thing) == CAT_MISC && item_gdat_index(thing) == BONES_INDEX;
+           && item_gdat_category(thing) == CAT_MISC && item_gdat_index(thing) == ITEM_BONES;
 }
 
 /* The altar brings back the champion of the bones. */
@@ -720,7 +719,7 @@ static int is_object(uint16_t thing) { return thing_type(thing) >= THING_WEAPON 
 void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
                             int from_creature, int to_possessions)
 {
-    if (item_gdat_category(thing) != CAT_MISC || item_gdat_index(thing) != BONES_INDEX) {
+    if (item_gdat_category(thing) != CAT_MISC || item_gdat_index(thing) != ITEM_BONES) {
         int charges = 0;  /* fix: mode 3 adds an uninitialized amount in the original */
         switch (sensor_effect(sensor)) {
         case TRANSFER_CHARGES_FILL: charges = item_max_charges(thing); break;
@@ -770,7 +769,7 @@ static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uin
                 match = bits[item / BYTE_BITS] >> (item % BYTE_BITS) & 1;
             } else if (item == data) {
                 if (!keep_bones && item_gdat_category(t) == CAT_MISC
-                    && item_gdat_index(t) == BONES_INDEX) {
+                    && item_gdat_index(t) == ITEM_BONES) {
                     /* bones: the champion comes back */
                     if (possessions) dungeon_unlink_thing_from_list(t, possessions);
                     else dungeon_unlink_thing_from_square(t, party.cur_map, fx, fy);

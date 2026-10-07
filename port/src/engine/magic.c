@@ -81,7 +81,6 @@ enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNK
 #define FLASK_DELAY_MIN 3
 /* Action results that show a failed cast. */
 enum { RESULT_UNKNOWN_SPELL = -3, RESULT_WIZARD_FAILED = -4, RESULT_PRIEST_FAILED = -5 };
-#define SOUND_WARP_CATEGORY 10
 #define MAGIC_LIGHT_LEVELS 16            /* the light spells reach level 15 */
 #define RUNE_BITS 8                     /* each rune takes one byte of the spell key */
 #define RUNE_SETS 4                     /* the power runes, then the three runes after them */
@@ -506,7 +505,7 @@ int move_party_warp_to_marker(void)
         int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0) continue;
         move_party_to(x, y, map, game.party_dir);
-        sound_request_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK,
+        sound_request_with_fallback(CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK,
                                  game.party_x, game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
         if (mode == MARKER_CLEAR_ALL) text_set_visible(t, true);
         return 1;
