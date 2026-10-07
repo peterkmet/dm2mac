@@ -5,7 +5,6 @@
 #include "dungeon.h"
 #include "hooks.h"
 #include "item.h"
-#include "le.h"
 #include "move.h"
 #include "random.h"
 #include "save.h"
@@ -99,7 +98,6 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 /* Script variables of the weather. */
 #define VAR_STORM_COUNT 0x40        /* cleared by each lightning of a weak storm */
 #define VAR_STRIKES_SEEN 0x41       /* lightning strikes seen near the party from the inventory or asleep */
-#define MAGIC_LIGHT_BYTE 0          /* game.magic_light bytes 0-1: the light of light spells */
 #define LIGHT_LEVEL_MAX 5
 #define LIGHT_LEVEL_LIT 1
 #define HAND_LIGHT_SHIFT 6          /* the first hand light counts fully, each next one half as much */
@@ -399,7 +397,7 @@ void light_update_party_light(void)
             sum = (int16_t)(sum + ((light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
             if (shift) shift--;
         }
-        int16_t magic = (int16_t)le16(&game.magic_light[MAGIC_LIGHT_BYTE]);
+        int16_t magic = save_magic_light();
         sum = (int16_t)(sum + light_source_sum + magic + map_value(MAP_KEY_LIGHT));
         if (game.weather_visible) sum = (int16_t)(sum + daylight());
         level = 0;

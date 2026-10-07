@@ -42,7 +42,7 @@
 #define FALL_DAMAGE_MAX 0x11
 #define STAMINA_REDRAW_LIMIT 10
 #define LOAD_TIME_DIVISOR 10            /* the step time of a champion for a creature alert: load / 10 */
-#define REDRAW_FLAG_4 0x10              /* champion redraw bit 4: the step time reads it */
+#define REDRAW_SLOW_STEP 0x10           /* champion redraw bit 4: the step time reads it; no code of the port sets it */
 #define WALK_TIME_SLOW 50
 #define WALK_TIME 40
 #define LOAD_HEAVY_PART 5               /* a load above 5/8 of the maximum load slows the champion */
@@ -238,7 +238,7 @@ static int champ_get_move_time(int champ)
     Champion *c = champion(champ);
     if (!c->health) return 0;
     /* kept quirk: the original tests the sum of load / 10 and the flag, not the flag alone */
-    return (uint16_t)champ_get_load(champ) / LOAD_TIME_DIVISOR + (c->redraw & REDRAW_FLAG_4) ? WALK_TIME_SLOW : WALK_TIME;
+    return (uint16_t)champ_get_load(champ) / LOAD_TIME_DIVISOR + (c->redraw & REDRAW_SLOW_STEP) ? WALK_TIME_SLOW : WALK_TIME;
 }
 
 static int champ_get_party_move_time(void)
