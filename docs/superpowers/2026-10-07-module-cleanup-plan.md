@@ -110,6 +110,21 @@ Extra items per task, from the task 0b report:
 - `BYTE_BITS`, `BYTE_MASK`, `NIBBLE_*`, `DECIMAL_BASE` move from `data/gdat.h` to `data/le.h` (control.c, hmp.c, fm.c include gdat.h only for them); rename `le.h` if its name no longer fits.
 - `engine/move.c:550` `party.push_arrow = 6` -> `PUSH_ARROW_NONE`.
 
+**Review of tasks 3 to 7 (engine):**
+- Rule 10 is not complete: call sites pack and unpack the thing cell and the location word with named shifts (`<< THING_CELL_SHIFT`, `LOCATION_*_SHIFT`): sensor.c 14, ai_move.c 14, projectile.c 9, ai.c 7, damage.c 3, save.c 2. Use `thing_cell`, `thing_with_cell`, `location_*`. Widen the `packed` check: a shift by a `*_SHIFT` constant in a `.c` file is a violation, unless the line is in an accessor of the owner module.
+- `action.c:122` `map_gfx_set()` copies `dungeon_map_wallset()`. `move.c:82-83, 902` reads the projectile direction byte by hand (`MISSILE_EVENT_DIR_*`), a third copy of the event direction word.
+- `projectile.h` `ALERT_STARTLED 0x2006`: the comment says mood bits 1 and 2; it is `ALERT_LOUD` plus mood bit 6 (`MOOD_QUICK`). Build it from names.
+- Value 7 of `creature_create_group` count = full health: `GENERATOR_GROUP_SIZE` (sensor.c, wrong comment), `SPAWN_GROUP_COUNT` (game.c), `SPAWN_LEVEL` (ai.c). One name, for example `GROUP_COUNT_FULL_HEALTH`, in `creature.h`.
+- `move.c:45` `REDRAW_FLAG_4`: no code sets bit 0x10 of the champion redraw word. Name it after what is known (the step time reads it, the port never sets it) and add a line to `docs/todo.md`.
+- `champion.c:70` divides by `SKILL_BASE_COUNT`; the divisor is the sub-skills per base skill (`SUB_SKILLS_SHIFT` in magic.c). One name.
+- Direction helpers: one set in `dungeon.h` (`dir_turn`, `dir_opposite`, `dir_relative` or `dir_right`, `dir_back`, `dir_left`), not both.
+- `weather.c:409` reads the magic light by hand: use `save_magic_light()`.
+- `game.c:219` reads the teleport direction with `location_map(word) & TELEPORT_DIR_MASK`: add a reader next to `event_square_dir()`.
+- Trap: `thing_at_cell` masks the cell with `DIR_MASK`; `thing_with_cell` does not. `projectile.c:443` passes -1 or 4. Keep the mask when the two merge.
+- `CELL_COUNT` is 4 in ai.c and sensor.c but 25 in view.c: rename the view.c one (`CELL_GRID_COUNT`) before `CELL_COUNT` moves to `dungeon.h`.
+- One-line helpers with one call site: `side_ornament`, `side_animates` (weather.c), `is_quick_kind` (ai_move.c).
+- `ai_move.c:223` `door_type()` copies `dun_get_door_type()` (sensor.c).
+
 **Tests:** `restype = ctypes.c_bool` for the `bool` functions that tests call through ctypes (`automap_is_seen`, `item_is_moneybox`, `item_is_chest`, `item_is_minion_map`, the line tests of ai_move.c).
 
 **Flaky:** `tests/test_input.py::test_sleep_and_wake_match_original` failed 3 of 12 parallel runs in the task 1 worktree, once already on its first commit; serial runs pass. Debug it as a separate issue, like the `AiContext` padding.
