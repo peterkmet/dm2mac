@@ -15,7 +15,7 @@ MAX_FUNCTION_LINES = 60
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
 DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])")
 DECOMPILER = re.compile(r"\b(?:[uisbcp]Var\d+|local_[0-9a-f]+|arg_[0-9a-f]+|param_\d+|in_[AD][0-7]\w*|CONCAT\d+|DAT_[0-9a-f]+|FUN_[0-9a-f]+)\b")
-RECORD = re.compile(r"dungeon_thing_record\([^()]*\)\s*\[")
+RECORD = re.compile(r"\bdungeon_thing_record\(")
 CONST_DEF = re.compile(r"\s*(?:static\s+)?const\s+\w+\s+[A-Z][A-Z0-9_]*\s*=")
 ENUM = re.compile(r"\benum\b[^{};]*\{([^}]*)\}")
 DEFINE = re.compile(r"^\s*#define\s+([A-Z][A-Z0-9_]*)\b", re.M)

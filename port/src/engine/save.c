@@ -283,7 +283,7 @@ static int write_thing(uint16_t thing)
             return 0;
         break;
     case THING_GROUP:
-        if (!write_value(record[GROUP_CREATURE], CREATURE_MASK)) return 0;
+        if (!write_value(group_creature(thing), CREATURE_MASK)) return 0;
         if (creature_is_static(thing)) mask = static_group_mask;
         io.group_order[thing_index(thing)] = io.group_count++;
         break;
@@ -521,7 +521,7 @@ static int read_thing(uint16_t thing)
     switch (type) {
     case THING_GROUP:
         if (!read_value(&value, CREATURE_MASK)) return 0;
-        record[GROUP_CREATURE] = (uint8_t)value;
+        group_set_creature(thing, (uint8_t)value);
         if (creature_is_static(thing)) mask = static_group_mask;
         break;
     case THING_CONTAINER:

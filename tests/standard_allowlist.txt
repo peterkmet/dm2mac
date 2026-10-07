@@ -382,6 +382,7 @@ bool engine/item.h open: module cleanup
 bool engine/sensor.h open: module cleanup
 bool engine/timeline.h open: module cleanup
 bool ui/automap.h open: module cleanup
+record engine/save.c the save image packs and unpacks whole thing records bit by bit
 packed data/gdat.c open: module cleanup
 packed engine/ai.c open: module cleanup
 packed engine/ai_move.c open: module cleanup

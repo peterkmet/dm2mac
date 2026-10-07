@@ -256,10 +256,10 @@ static uint16_t take_next_missile(int champ, int hand, int throwing)
     if (!ok) {
         uint16_t quiver = c->slots[SLOT_CONTAINER_TEST];
         if (item_is_chest(quiver)) {
-            uint16_t *contents = (uint16_t *)(void *)(dungeon_thing_record(quiver) + CONTAINER_CONTENTS);
+            uint16_t *contents = thing_list(quiver, CONTAINER_CONTENTS);
             for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (throwing ? item_has_action_command(champ, t, COMMAND_THROW) : item_is_ammo_for_hand(champ, hand, t)) {
-                    dungeon_unlink_thing_from_list(t, (uint8_t *)contents);
+                    dungeon_unlink_thing_from_list(t, contents);
                     return t;
                 }
         }
@@ -494,8 +494,7 @@ static int champ_action_melee_attack(int champ, int mode, int x, int y, int skil
 static int champ_action_minion(int champ, int command, uint16_t map_item, int skill, int power, int16_t *experience,
                                uint16_t *delay)
 {
-    uint8_t *map_record = map_item != THING_NONE ? dungeon_thing_record(map_item) : NULL;
-    uint16_t group = map_record ? thing_word(map_item, MINION_MAP_GROUP) : THING_NONE;
+    uint16_t group = map_item != THING_NONE ? thing_word(map_item, MINION_MAP_GROUP) : THING_NONE;
     int type, x = game.party_x, y = game.party_y, map = game.party_map, dir = (game.party_dir + 2) & 3;
     int search = (int8_t)champion(champ)->dir;
     switch (command) {

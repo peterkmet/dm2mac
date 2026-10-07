@@ -72,10 +72,11 @@ uint8_t item_gdat_index(uint16_t thing)
         case THING_WEAPON:
         case THING_ARMOUR:
         case THING_MISC:
-        case THING_EXPLOSION: return item_type(thing);
+            return (uint8_t)item_type(thing);
+        case THING_EXPLOSION: return (uint8_t)explosion_type(thing);
         case THING_SCROLL: return 0;
         case THING_POTION: return potion_type(thing);
-        case THING_CONTAINER: return (uint8_t)(container_type(thing) | container_kind(thing) << 3);
+        case THING_CONTAINER: return (uint8_t)container_gdat_index(thing);
         case THING_PROJECTILE: thing = record_word(thing, PROJECTILE_PAYLOAD); break;
         case THING_TEXT: {
             /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
@@ -103,9 +104,9 @@ int item_charges(uint16_t thing)
 {
     if (thing == THING_NONE) return 0;
     switch (thing_type(thing)) {
-    case THING_WEAPON: return thing_field(thing, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK);
-    case THING_ARMOUR: return thing_field(thing, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK);
-    case THING_MISC: return thing_field(thing, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK);
+    case THING_WEAPON: return weapon_charges(thing);
+    case THING_ARMOUR: return armour_charges(thing);
+    case THING_MISC: return misc_charges(thing);
     default: return 0;
     }
 }
@@ -244,11 +245,8 @@ uint16_t item_get_value(uint16_t thing)
 void item_set_do_not_discard(uint16_t thing, int keep)
 {
     switch (thing_type(thing)) {
-    case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
-        set_thing_bit(thing, ITEM_DATA, ITEM_DO_NOT_DISCARD, keep & 1);
-        break;
-    case THING_POTION:
-        set_thing_bit(thing, ITEM_DATA, POTION_DO_NOT_DISCARD, keep & 1);
+    case THING_WEAPON: case THING_ARMOUR: case THING_MISC: case THING_POTION:
+        item_set_kept(thing, keep & 1);
         break;
     case THING_GROUP:
         group_set_flag(thing, GROUP_DO_NOT_DISCARD, keep & 1);
@@ -275,7 +273,7 @@ const char *item_name(uint16_t thing)
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     text_args.champion = -1;
     if (category == MISC_GDAT_CATEGORY && index == TEXT_CHAMPION_TOKEN) {
-        int champion = thing_field(thing, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK);  /* the champion of the token */
+        int champion = misc_charges(thing);  /* the champion of the token */
         if (champion < game.champion_count) text_args.champion = (int16_t)champion;
     }
     char raw[TEXT_SIZE];
@@ -408,16 +406,15 @@ uint8_t item_index_gdat_category(uint16_t item)
 int item_add_charges(uint16_t thing, int delta)
 {
     if (thing == THING_NONE) return 0;
-    int max, shift;
-    switch (thing_type(thing)) {
-    case THING_WEAPON: max = CHARGES_MASK; shift = WEAPON_CHARGES_SHIFT; break;
-    case THING_ARMOUR: max = CHARGES_MASK; shift = ARMOUR_CHARGES_SHIFT; break;
-    case THING_MISC: max = MISC_CHARGES_MASK; shift = MISC_CHARGES_SHIFT; break;
-    default: return 0;  /* fix: the original returns a register of no meaning */
-    }
-    int n = (int16_t)(thing_field(thing, ITEM_DATA, shift, (uint16_t)max) + delta);
+    int max = item_max_charges(thing);
+    if (!max) return 0;  /* fix: the original returns a register of no meaning */
+    int n = (int16_t)(item_charges(thing) + delta);
     n = n < 0 ? 0 : n > max ? max : n;
-    set_thing_field(thing, ITEM_DATA, shift, (uint16_t)max, (unsigned)n);
+    switch (thing_type(thing)) {
+    case THING_WEAPON: weapon_set_charges(thing, (uint16_t)n); break;
+    case THING_ARMOUR: armour_set_charges(thing, (uint16_t)n); break;
+    default: misc_set_charges(thing, (uint16_t)n); break;
+    }
     return n;
 }
 
@@ -426,12 +423,11 @@ void item_set_gdat_index(uint16_t thing, int index)
     if (thing == THING_NONE || thing >= EXPLOSION_THING_FIRST) return;
     switch (thing_type(thing)) {
     case THING_GROUP: group_set_creature(thing, (uint8_t)index); break;
-    case THING_WEAPON: case THING_ARMOUR: case THING_MISC: set_thing_field(thing, ITEM_DATA, 0, ITEM_TYPE_MASK, index); break;
-    case THING_POTION: set_thing_field(thing, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK, index); break;
+    case THING_WEAPON: case THING_ARMOUR: case THING_MISC: item_set_type(thing, (uint16_t)index); break;
+    case THING_POTION: potion_set_type(thing, (uint16_t)index); break;
     case THING_CONTAINER: {
         int old_kind = container_kind(thing);
-        container_set_kind(thing, index >> 3);  /* the container index: kind in bits 3-4, type in bits 0-2 */
-        container_set_type(thing, index);
+        container_set_gdat_index(thing, (uint16_t)index);
         if (old_kind == CONTAINER_MINION_MAP) set_thing_word(thing, MINION_MAP_LOCATION, THING_NONE);
         break;
     }

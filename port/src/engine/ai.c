@@ -114,7 +114,6 @@ int creature_ai_begin(uint16_t group, int x, int y, int type, AiContext *saved)
     ai.active_flag = 1;
     ai.prepared = 0;
     ai.group_thing = group;
-    ai.group = dungeon_thing_record(group);
     ai.active = creature_active(group);
     ai.info = creature_group_info(group);
     ai.anim = creature_anim_words(group);
@@ -1375,7 +1374,7 @@ static int cmd_take_from_front_group(void)
 /* Plan command: the creature drops what it does not want, then looks for an item of the filter. */
 static int cmd_drop_then_seek(void)
 {
-    uint16_t *list = (uint16_t *)(ai.group + GROUP_POSSESSIONS);
+    uint16_t *list = thing_list(ai.group_thing, GROUP_POSSESSIONS);
     if (ai.arg2 != -2) {
         int16_t filter = ai.arg2 == -1 ? (int16_t)ai.cache.mask : ai.arg2;
         if ((ai.arg2 != -1 || ai.cache.mask != CANDIDATE_MASK_ALL) && *list != THING_ENDOFLIST)
@@ -1519,7 +1518,7 @@ static int cmd_move_relative(void)
 /* Plan command: the creature stands in one of three ways, by its wander mood. */
 static int cmd_set_action_by_flag(void)
 {
-    int roams = group_mood_flag(ai.group_thing, MOOD_WANDERS);
+    bool roams = group_mood_flag(ai.group_thing, MOOD_WANDERS);
     if (!roams && !ai.arg1) return AI_RESULT_FAIL;
     int16_t v = ai.arg1 < 0 ? 0 : ai.arg1 > 2 ? 2 : ai.arg1;
     ai.active->action = (uint8_t)(v + ACTION_STAND);
@@ -1533,13 +1532,12 @@ static int cmd_consume(void)
     if (t == THING_ENDOFLIST) return AI_RESULT_FAIL;
     int used;  /* a creature does not consume an item that the dungeon keeps */
     switch (thing_type(t)) {
-    case THING_WEAPON: case THING_ARMOUR: used = !thing_bit(t, ITEM_DATA, ITEM_DO_NOT_DISCARD); break;
-    case THING_POTION: used = !thing_bit(t, ITEM_DATA, POTION_DO_NOT_DISCARD); break;
-    case THING_MISC: used = !thing_bit(t, ITEM_DATA, ITEM_DO_NOT_DISCARD) || item_attr(t, 3) != 0; break;
+    case THING_WEAPON: case THING_ARMOUR: case THING_POTION: used = !item_is_kept(t); break;
+    case THING_MISC: used = !item_is_kept(t) || item_attr(t, 3) != 0; break;
     default: used = 0;
     }
     if (used) {
-        dungeon_unlink_thing_from_list(t, ai.group + GROUP_POSSESSIONS);
+        dungeon_unlink_thing_from_list(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
         set_thing_word(t, THING_NEXT, THING_NONE);
         ai.active->action = 0;
         return AI_RESULT_DONE;
@@ -1971,7 +1969,7 @@ static int act_steal(void)
         uint16_t t = take_held ? held : ready;
         if (t != THING_NONE && creature_thing_matches_filter(t, ai.active->sub)) {
             uint16_t item = champ_remove_object_from_slot(c, take_held);
-            dungeon_append_thing(item, (uint16_t *)(ai.group + GROUP_POSSESSIONS));
+            dungeon_append_thing(item, thing_list(ai.group_thing, GROUP_POSSESSIONS));
             stolen = 1;
             if (party_sleeping) {
                 party_sleeping = 0;
@@ -2005,7 +2003,7 @@ static int act_pick_up_items(void)
         if (ai.active->cell != CELL_ANY && t >> THING_CELL_SHIFT != ai.active->cell) continue;
         if (!creature_thing_matches_filter(t, ai.active->sub)) continue;
         move_thing(t, ai_dest_x, ai_dest_y, -1, 0);
-        dungeon_append_thing(t, (uint16_t *)(ai.group + GROUP_POSSESSIONS));
+        dungeon_append_thing(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
         n++;
         if (!(ai.active->sub & SUB_REPEAT)) break;
     }
@@ -2045,7 +2043,7 @@ static int act_drop_items(void)
         uint16_t t = creature_find_matching_item(ai.active->sub, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
         if (t == THING_ENDOFLIST) break;
         n++;
-        dungeon_unlink_thing_from_list(t, ai.group + GROUP_POSSESSIONS);
+        dungeon_unlink_thing_from_list(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
         t = (uint16_t)((t & THING_ID_MASK) | ai.active->cell << THING_CELL_SHIFT);
         move_thing(t, -1, 0, ai_dest_x, ai_dest_y);
         drop_sound(t, n);
@@ -2065,7 +2063,7 @@ static int act_throw_item(void)
 {
     uint16_t t = creature_find_matching_item(ai.active->sub, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
     if (t == THING_ENDOFLIST) return 1;
-    dungeon_unlink_thing_from_list(t, ai.group + GROUP_POSSESSIONS);
+    dungeon_unlink_thing_from_list(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
     uint16_t p = (uint16_t)((ai.info->attack >> 2) + 1);
     p = (uint16_t)(p + rand_below(p));
     p = (uint16_t)(p + rand_below(p));
@@ -2094,7 +2092,7 @@ static int act_give_items(void)
         uint16_t t = creature_find_matching_item(ai.active->sub, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
         if (t == THING_ENDOFLIST) break;
         n++;
-        dungeon_unlink_thing_from_list(t, ai.group + GROUP_POSSESSIONS);
+        dungeon_unlink_thing_from_list(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
         int cell = ai.active->cell;
         if (cell == CELL_ANY) cell = rand_2bits();
         t = (uint16_t)((t & THING_ID_MASK) | cell << THING_CELL_SHIFT);
@@ -2116,7 +2114,7 @@ static int act_take_items(void)
         if (t == THING_ENDOFLIST) break;
         n++;
         move_thing(t, ai_dest_x, ai_dest_y, -1, -1);
-        dungeon_append_thing(t & THING_ID_MASK, (uint16_t *)(ai.group + GROUP_POSSESSIONS));
+        dungeon_append_thing(t & THING_ID_MASK, thing_list(ai.group_thing, GROUP_POSSESSIONS));
     } while (ai.active->sub & SUB_REPEAT);
     return !n;
 }
@@ -2132,7 +2130,7 @@ static int act_use_wall_sensor(void)
     if (a->mode != 2 && sub != -1) {
         hand = creature_find_matching_item(sub, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
         if (hand == THING_ENDOFLIST) return 1;
-        dungeon_unlink_thing_from_list(hand, ai.group + GROUP_POSSESSIONS);
+        dungeon_unlink_thing_from_list(hand, thing_list(ai.group_thing, GROUP_POSSESSIONS));
     }
     sensor_process_wall_click(dest_x(), dest_y(), (a->facing + 2) & 3, ai.group_thing, hand);
     return 0;

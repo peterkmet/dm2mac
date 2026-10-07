@@ -41,7 +41,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
 - hex literals outside constant definitions,
 - decimal literals of 10 or more outside constant definitions,
 - constant names defined in more than one file,
-- raw record access (`dungeon_thing_record(...)[`) outside `dungeon.c` and `dungeon.h`,
+- any `dungeon_thing_record(` call outside `dungeon.c` and `dungeon.h` (raw record access),
 - decompiler names,
 - predicates that do not return `bool`,
 - functions longer than 60 lines,

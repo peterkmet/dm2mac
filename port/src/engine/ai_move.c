@@ -699,7 +699,7 @@ int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, 
             if (moving && !opening && !(flags &= (uint16_t)~(DOOR_SKILL_BASH | DOOR_SKILL_BURN)))
                 return command_failed(execute);
             distance = (int16_t)square_distance(x, y, tx, ty);
-            int button = door_has_button(door);
+            bool button = door_has_button(door);
             bool by_magic = door_flag(door, DOOR_BREAKABLE_BY_MAGIC);
             if (distance == 1) {
                 if (!((flags & DOOR_SKILL_BUTTON && button)
@@ -764,7 +764,7 @@ int creature_ai_projectile_incoming(int x, int y)
 {
     for (int16_t d = 0; d < 4; d++) {
         if (!(class_flags() & AI_CLASS_SEES_BEHIND)) {
-            int wanders = group_mood_flag(ai.group_thing, MOOD_WANDERS);
+            bool wanders = group_mood_flag(ai.group_thing, MOOD_WANDERS);
             int behind = !(ai.info->flags & CREATURE_FACES_PARTY) && at_group(x, y) && d == ((group_dir(ai.group_thing) + 2) & 3);
             if ((wanders || behind) && rand_next() & 7) continue;
         }
@@ -1492,20 +1492,19 @@ void creature_remove_matching_items(uint16_t *list_head, int filter, int cell)
         if (!is_item(type) || (cell != CELL_ANY && cell != t >> THING_CELL_SHIFT)) continue;
         int match = creature_thing_matches_filter(t, (int16_t)filter);
         if (type == THING_CONTAINER && (!item_is_moneybox(t) || match)) {
-            uint8_t *record = dungeon_thing_record(t);
-            uint16_t *contents = (uint16_t *)(record + CONTAINER_CONTENTS);
+            uint16_t *contents = thing_list(t, CONTAINER_CONTENTS);
             creature_remove_matching_items(contents, filter, CELL_ANY);
             if (match) {
                 uint16_t c_next;
                 for (uint16_t c = *contents; c != THING_ENDOFLIST; c = c_next) {
                     c_next = dungeon_next_thing(c);
-                    dungeon_unlink_thing_from_list(c, record + CONTAINER_CONTENTS);
+                    dungeon_unlink_thing_from_list(c, contents);
                     dungeon_append_thing((uint16_t)((c & THING_ID_MASK) | cell << THING_CELL_SHIFT), list_head);
                 }
             }
         }
         if (match) {
-            dungeon_unlink_thing_from_list(t, (uint8_t *)list_head);
+            dungeon_unlink_thing_from_list(t, list_head);
             set_thing_word(t, THING_NEXT, THING_NONE);
         }
     }

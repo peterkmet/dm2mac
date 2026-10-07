@@ -284,12 +284,11 @@ void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
 {
     /* the effect ends: a record of the item type stands in for the eaten item, with its kind */
     uint16_t thing = (uint16_t)((e->data[0] | e->data[1] << 8) << THING_TYPE_SHIFT);
-    uint8_t *record = dungeon_thing_record(thing), saved[DUNGEON_RECORD_MAX];
-    int size = dungeon_thing_size(thing_type(thing));
-    memcpy(saved, record, size);
+    uint8_t saved[DUNGEON_RECORD_MAX];
+    dungeon_save_record(thing, saved);
     item_set_gdat_index(thing, e->data[2]);
     champ_apply_item_effects(e->priority, thing, -1, mode);
-    memcpy(record, saved, size);
+    dungeon_restore_record(thing, saved);
 }
 
 /* ---- Eating and drinking ---- */

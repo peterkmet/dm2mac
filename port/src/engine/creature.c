@@ -181,7 +181,7 @@ ActiveGroup *creature_active(uint16_t group)
 uint16_t *creature_anim_words(uint16_t group)
 {
     if (creature_group_info(group)->flags & CREATURE_STATIC)
-        return (uint16_t *)(dungeon_thing_record(group) + GROUP_ANIM_SEQUENCE);
+        return group_anim_words(group);
     return &creature_active(group)->anim_sequence;
 }
 
@@ -211,8 +211,7 @@ static unsigned anim_frame_offset(uint16_t *state)
 
 void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE])
 {
-    uint8_t *record = dungeon_thing_record(group);
-    int type = record[GROUP_CREATURE];
+    int type = group_creature(group);
     uint16_t sequence = 0, state = 0;
     uint16_t *words = NULL;
     if (creature_info(g, type)->flags & CREATURE_STATIC || creature_active(group)) {
@@ -337,17 +336,15 @@ int creature_anim_start(int creature_type, int action, uint16_t *sequence, uint1
 /* The first animation step of the idle sequence of a static creature (creature_reset_animation). */
 static void creature_reset_animation(uint16_t group)
 {
-    uint8_t *record = dungeon_thing_record(group);
     uint16_t *words = creature_anim_words(group);
     const uint8_t *frame;
-    creature_anim_start(record[GROUP_CREATURE], AI_ACTION_IDLE, words, words + 1, &frame, thing_word(group, GROUP_HOME));
+    creature_anim_start(group_creature(group), AI_ACTION_IDLE, words, words + 1, &frame, thing_word(group, GROUP_HOME));
 }
 
 int creature_current_step_acts(uint16_t group)
 {
-    uint8_t *record = dungeon_thing_record(group);
     uint16_t *words = creature_anim_words(group);
-    return anim_current_step(record[GROUP_CREATURE], words[0], words + 1)[STEP_SOUND] >> 7;
+    return anim_current_step(group_creature(group), words[0], words + 1)[STEP_SOUND] >> 7;
 }
 
 uint16_t creature_get_group_at(int x, int y)
@@ -437,7 +434,7 @@ void creature_reset_active_groups(void)
     active_group_count = 0;
     for (int i = 0; i < active_group_max; i++) active_groups[i].group = ACTIVE_FREE;
     for (int i = 0; i < dungeon_thing_count(THING_GROUP); i++)
-        dungeon_thing_record((uint16_t)(THING_GROUP << THING_TYPE_SHIFT | i))[GROUP_ACTIVE] = GROUP_NOT_ACTIVE;
+        group_set_active((uint16_t)(THING_GROUP << THING_TYPE_SHIFT | i), GROUP_NOT_ACTIVE);
     creature_activate_groups_all_maps();
 }
 
@@ -510,8 +507,7 @@ void creature_schedule_update(int x, int y)
 /* Gives a group an active group: its AI state, animation, and first update. */
 void creature_activate_group(uint16_t group, int x, int y)
 {
-    uint8_t *record = dungeon_thing_record(group);
-    if (record[GROUP_ACTIVE] != GROUP_NOT_ACTIVE) return;
+    if (group_active(group) != GROUP_NOT_ACTIVE) return;
     /* the group keeps its record while it looks for a free active group */
     bool kept = group_flag(group, GROUP_DO_NOT_DISCARD);
     group_set_flag(group, GROUP_DO_NOT_DISCARD, true);
@@ -523,7 +519,7 @@ void creature_activate_group(uint16_t group, int x, int y)
             active_group_count++;
             memset(a, 0, sizeof *a);
             a->group = thing_index(group);
-            record[GROUP_ACTIVE] = (uint8_t)i;
+            group_set_active(group, (uint8_t)i);
             a->event = EVENT_NO_SLOT;
             a->action = ACTIVE_ACTION_NONE;
             AiContext saved;
@@ -803,10 +799,9 @@ static int drop_cell(int x, int y)
 void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map)
 {
     if (mode == 2) return;
-    uint8_t *record = dungeon_thing_record(group);
     if (mode == 0) {
         for (int attr = CREATURE_ATTR_DROP_FIRST; attr <= CREATURE_ATTR_DROP_LAST; attr++) {
-            int value = creature_gdat_attr(record[GROUP_CREATURE], attr);
+            int value = creature_gdat_attr(group_creature(group), attr);
             if (!(uint16_t)value) continue;
             int count = (value & DROP_COUNT_MASK) + 1;
             int extra = (value & DROP_RANDOM_MASK) >> DROP_RANDOM_SHIFT;
@@ -854,11 +849,10 @@ void creature_delete_group_at(int x, int y, int mode, int sound_map)
 {
     uint16_t group = creature_get_group_at(x, y);
     if (group == THING_NONE) return;
-    uint8_t *record = dungeon_thing_record(group);
     if (!(creature_group_info(group)->flags & CREATURE_STATIC)) {
-        if (!(ai_class_flags[(int16_t)creature_gdat_attr(record[GROUP_CREATURE], CREATURE_ATTR_CLASS)] & AI_CLASS_NO_HOME_EVENT))
+        if (!(ai_class_flags[(int16_t)creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)] & AI_CLASS_NO_HOME_EVENT))
             creature_home_event(group, 0);
-        if (record[GROUP_ACTIVE] != GROUP_NOT_ACTIVE) active_groups[record[GROUP_ACTIVE]].action = 0;
+        if (group_active(group) != GROUP_NOT_ACTIVE) active_groups[group_active(group)].action = 0;
     }
     move_thing(group, x, y, MOVE_CREATED, 0);
     creature_drop_possessions(group, x, y, mode, sound_map);
@@ -870,12 +864,11 @@ void creature_delete_group_at(int x, int y, int mode, int sound_map)
 int creature_damage_current_group(uint16_t damage)
 {
     const CreatureInfo *info = ai.info;
-    uint8_t *record = ai.group;
     if (info->defense == CREATURE_NO_HURT) return 0;
     int is_static = info->flags & CREATURE_STATIC;
     uint32_t class_flags = 0;
     if (!is_static) {
-        class_flags = ai_class_flags[(uint16_t)creature_gdat_attr(record[GROUP_CREATURE], CREATURE_ATTR_CLASS)];
+        class_flags = ai_class_flags[(uint16_t)creature_gdat_attr(group_creature(ai.group_thing), CREATURE_ATTR_CLASS)];
         if (!(class_flags & AI_CLASS_NO_HOME_EVENT)) creature_home_event(ai.group_thing, 1);
     }
     uint16_t health = thing_word(ai.group_thing, GROUP_HEALTH);
@@ -899,7 +892,7 @@ int creature_damage_current_group(uint16_t damage)
             else scream = !rand_2bits();
         }
         if (scream)
-            sound_request(CATEGORY_CREATURE, record[GROUP_CREATURE], SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_STEP,
+            sound_request(CATEGORY_CREATURE, group_creature(ai.group_thing), SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_STEP,
                           SOUND_VOLUME, ai.event.data[0], ai.event.data[1], 1);
     }
     set_thing_word(ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
@@ -966,9 +959,8 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
     }
     int loud = flags & ALERT_LOUD;
     flags &= ~ALERT_LOUD;
-    uint8_t *record = dungeon_thing_record(group);
     int is_static = creature_group_info(group)->flags & CREATURE_STATIC;
-    if (record[GROUP_ACTIVE] == GROUP_NOT_ACTIVE) {
+    if (group_active(group) == GROUP_NOT_ACTIVE) {
         if (!is_static) return;
         creature_activate_group(group, x, y);
     }
@@ -985,7 +977,7 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
             group_set_mood_flag(group, MOOD_ANGRY, true);
             anger = 1;
         }
-        if (anger && !(ai_class_flags[(uint16_t)creature_gdat_attr(record[GROUP_CREATURE], CREATURE_ATTR_CLASS)] & AI_CLASS_NO_TURN)
+        if (anger && !(ai_class_flags[(uint16_t)creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)] & AI_CLASS_NO_TURN)
             && rand_bit()) {
             int action = alert_turn(group, x, y);
             if (action != -1) creature_set_next_action(group, x, y, action, 0);
@@ -1004,7 +996,7 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
     } else if (changed && ((!clear && mask & ALERT_MOOD_BIT) || loud)) {
         uint8_t f = ai_action_flag((int8_t)a->action);
         if (!(f & AI_ACTION_FLAG_INTERRUPT)) wake = 1;
-        else if (ai_class_flags[(uint16_t)creature_gdat_attr(record[GROUP_CREATURE], CREATURE_ATTR_CLASS)] & AI_CLASS_WAKES
+        else if (ai_class_flags[(uint16_t)creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)] & AI_CLASS_WAKES
                  && f & AI_ACTION_FLAG_WAKES)
             wake = 1;
     }
@@ -1046,14 +1038,13 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
         if (minion) set_thing_word(projectile, THING_NEXT, THING_NONE);
         return THING_NONE;
     }
-    uint8_t *record = dungeon_thing_record(group);
-    record[GROUP_CREATURE] = (uint8_t)creature_type;
+    group_set_creature(group, (uint8_t)creature_type);
     const CreatureInfo *info = creature_info(draw_gdat(), creature_type);
     set_thing_word(group, GROUP_POSSESSIONS, THING_ENDOFLIST);
     group_set_flag(group, GROUP_DO_NOT_DISCARD, false);
     group_set_dir(group, dir);
-    record[GROUP_ACTIVE] = GROUP_NOT_ACTIVE;
-    if (minion) dungeon_append_thing(projectile, (uint16_t *)(record + GROUP_POSSESSIONS));
+    group_set_active(group, GROUP_NOT_ACTIVE);
+    if (minion) dungeon_append_thing(projectile, thing_list(group, GROUP_POSSESSIONS));
     int n = (count < GROUP_SIZE_MAX ? count : GROUP_SIZE_MAX) + 1;
     uint16_t health = (uint16_t)((info->max_health * (uint16_t)n) >> 3);
     health = (uint16_t)(health + rand_below((uint16_t)((health >> 3) + 1)));
@@ -1124,15 +1115,8 @@ void creature_turn_group(uint16_t group, int absolute, int dir)
     group_set_dir(group, dir);
     if (!(creature_group_info(group)->flags & CREATURE_STATIC)) return;
     int turn = (dir - old) & 3;
-    uint8_t *link = dungeon_thing_record(group) + GROUP_POSSESSIONS;
-    for (;;) {
-        uint16_t t = (uint16_t)(link[0] | link[1] << 8);
-        if (t == THING_ENDOFLIST) break;
-        t = (uint16_t)((t & THING_ID_MASK) | ((t >> THING_CELL_SHIFT) + turn & 3) << THING_CELL_SHIFT);
-        link[0] = (uint8_t)t;
-        link[1] = (uint8_t)(t >> 8);
-        link = dungeon_thing_record(t);
-    }
+    for (uint16_t *link = thing_list(group, GROUP_POSSESSIONS); *link != THING_ENDOFLIST; link = thing_list(*link, THING_NEXT))
+        *link = (uint16_t)((*link & THING_ID_MASK) | ((*link >> THING_CELL_SHIFT) + turn & 3) << THING_CELL_SHIFT);
 }
 
 /* Keeps the position of the projectiles that a group carries. */
@@ -1141,7 +1125,7 @@ void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int fl
     for (uint16_t t = thing_word(holder, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_PROJECTILE) continue;
         set_thing_word(t, PROJECTILE_LOCATION, (uint16_t)location_pack(x, y, map));
-        set_thing_bit(t, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, flag & 1);
+        projectile_set_holder_waits(t, flag & 1);
     }
 }
 

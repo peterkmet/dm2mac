@@ -259,7 +259,6 @@ void explosion_create(int type, int power, int x, int y, int cell)
     e.data[1] = (uint8_t)ey;
     set_event_word(&e, 2, t);
     timeline_add_event(&e);
-    /* the power that the sensors test: the original reads it from the door record after a door spell */
     uint16_t power_thing = t;
     switch ((uint16_t)type) {
     case SPELL_LIGHTNING: case SPELL_FIREBALL: case EXPLOSION_STORM_LIGHTNING: case EXPLOSION_STORM_BLAST:
@@ -277,6 +276,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
         break;
     }
     }
+    /* kept quirk: after a door spell the original reads the power from the high byte of the door record word */
     explosion_trigger_sensors((uint16_t)type, x, y, explosion_power(power_thing));
 }
 
@@ -309,8 +309,7 @@ void projectile_destroy(uint16_t projectile, uint16_t *holder, int x, int y)
 
 int projectile_get_attack(uint16_t projectile, uint16_t payload)
 {
-    const uint8_t *record = dungeon_thing_record(projectile);
-    uint16_t energy = record[PROJECTILE_ENERGY];
+    uint16_t energy = projectile_energy(projectile);
     uint16_t power;
     projectile_extra_damage = 0;
     projectile_attack_type = ATTACK_NORMAL;
@@ -318,7 +317,7 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
         uint16_t throw_power = item_attr(payload, ITEM_ATTR_THROW_POWER);
         power = 0;
         if (throw_power) {
-            int factor = (uint16_t)((record[PROJECTILE_HIT_CHANCE] >> 4) + 3);
+            int factor = (uint16_t)((projectile_hit_chance(projectile) >> 4) + 3);
             power = (uint16_t)((int)(uint16_t)(throw_power + (energy >> 1)) * (factor * factor) >> 7);
             projectile_attack_type = ATTACK_THROWN;
             projectile_extra_damage = item_attr(payload, ITEM_ATTR_POISON);
@@ -327,7 +326,7 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
         }
         power = (uint16_t)(power + rand_2bits());
         power = (uint16_t)(power + item_weight(payload));
-        if (record[PROJECTILE_HIT_CHANCE] > (rand_next() & ROLL_DOUBLE_POWER)) power = (uint16_t)(power * 2);
+        if (projectile_hit_chance(projectile) > (rand_next() & ROLL_DOUBLE_POWER)) power = (uint16_t)(power * 2);
     } else if (payload == SPELL_SLIME) {
         uint16_t r = rand_next() & 0xf;
         projectile_extra_damage = (uint16_t)(r + 10);
@@ -349,7 +348,8 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
     uint16_t attack = (uint16_t)(((power + energy) >> 4) + 1);
     uint16_t r = rand_below((uint16_t)((attack >> 1) + 1));
     attack = (uint16_t)(attack + rand_2bits() + r);
-    int16_t a = max16((int16_t)attack, (int16_t)((attack - (HIT_CHANCE_BONUS_BASE - (record[PROJECTILE_HIT_CHANCE] >> 3))) * 2));
+    int bonus = HIT_CHANCE_BONUS_BASE - (projectile_hit_chance(projectile) >> 3);
+    int16_t a = max16((int16_t)attack, (int16_t)((attack - bonus) * 2));
     return min16(a, (int16_t)(energy * 2));
 }
 
@@ -440,7 +440,7 @@ static int projectile_hit_creature(Hit *h, int cell)
             damage = (uint16_t)((int16_t)damage >> 2);
         creature_alert(g, x, y, ALERT_HIT, 100, damage);
         if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS && item_attr(payload, ITEM_ATTR_FLAGS) & ITEM_CAUGHT)
-            h->holder = (uint16_t *)(dungeon_thing_record(g) + GROUP_POSSESSIONS);
+            h->holder = thing_list(g, GROUP_POSSESSIONS);
     }
     if (h->potion_bomb || h->payload_type == THING_WEAPON
         || (h->payload_type == THING_EXPLOSION && payload != SPELL_DOOR_TOGGLE && (payload < SPELL_PUSH || payload > SPELL_MISSILE_WALL)))
@@ -536,7 +536,6 @@ int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile)
     int push_dir = 0;
     if (h.explosive || h.potion_bomb || h.payload == SPELL_POISON_BOLT) {
         uint16_t power;
-        uint8_t *record = dungeon_thing_record(projectile);
         int explode = 1;
         if (h.potion_bomb) {
             set_thing_word(potion, THING_NEXT, THING_NONE);
@@ -544,14 +543,14 @@ int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile)
             h.payload = blast_type;
             power = (uint16_t)blast_power;
         } else {
-            power = record[PROJECTILE_ENERGY];
+            power = projectile_energy(projectile);
             if (h.payload == SPELL_POISON_BOLT && !(power >>= 2)) explode = 0;
             if (h.payload == SPELL_LIGHTNING && !(power >>= 1)) explode = 0;
         }
         if (explode) {
             if (h.payload == SPELL_PUSH || h.payload == SPELL_PULL) {
                 push_dir = projectile_dir(projectile);
-                push_strength = record[PROJECTILE_ENERGY];
+                push_strength = projectile_energy(projectile);
             }
             int at = h.payload == SPELL_POISON_CLOUD || h.payload == SPELL_DOOR_TOGGLE || h.payload == SPELL_DOOR_SET
                      ? EXPLOSION_AT_CENTER : (uint16_t)cell;
@@ -625,7 +624,6 @@ void projectile_process_event(TimelineEvent *event)
 {
     TimelineEvent e = *event;
     uint16_t projectile = event_word(&e, 0);
-    uint8_t *record = dungeon_thing_record(projectile);
     int16_t x = location_x(e.data[PROJECTILE_POSITION]), y = (int16_t)location_y(event_word(&e, PROJECTILE_POSITION));
     if (e.type == EVENT_PROJECTILE_MOVE) {
         e.type = EVENT_PROJECTILE_MOVE_2;  /* the first move: no hit on the launch square */
@@ -636,13 +634,14 @@ void projectile_process_event(TimelineEvent *event)
             if (projectile_hit(PROJECTILE_HIT_CREATURE, x, y, cell, projectile)) return;
         }
         int step = event_word(&e, PROJECTILE_POSITION) >> POSITION_STEP_SHIFT;
-        if (record[PROJECTILE_ENERGY] <= step) {
+        if (projectile_energy(projectile) <= step) {
             dungeon_unlink_thing_from_square(projectile, party.cur_map, x, y);
             projectile_destroy(projectile, NULL, x, y);
             return;
         }
-        record[PROJECTILE_ENERGY] = (uint8_t)(record[PROJECTILE_ENERGY] - step);
-        record[PROJECTILE_HIT_CHANCE] = record[PROJECTILE_HIT_CHANCE] < step ? 0 : (uint8_t)(record[PROJECTILE_HIT_CHANCE] - step);
+        projectile_set_energy(projectile, (uint8_t)(projectile_energy(projectile) - step));
+        uint8_t chance = projectile_hit_chance(projectile);
+        projectile_set_hit_chance(projectile, chance < step ? 0 : (uint8_t)(chance - step));
     }
     projectile = event_word(&e, 0);
     int cell = projectile >> THING_CELL_SHIFT;

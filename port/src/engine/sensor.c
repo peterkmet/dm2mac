@@ -215,7 +215,7 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
         }
     }
     if (!enter && type != -1) {
-        if (holder != THING_NONE) dungeon_unlink_thing_from_list(thing, dungeon_thing_record(holder) + GROUP_POSSESSIONS);
+        if (holder != THING_NONE) dungeon_unlink_thing_from_list(thing, thing_list(holder, GROUP_POSSESSIONS));
         else dungeon_unlink_thing_from_square(thing, party.cur_map, x, y);
     }
     int cell = square_type(dungeon_square(party.cur_map, x, y)) == SQUARE_WALL ? thing >> THING_CELL_SHIFT : -1;
@@ -243,7 +243,7 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
         }
     }
     if (enter && type != -1) {
-        if (holder != THING_NONE) dungeon_append_thing(thing, (uint16_t *)(void *)(dungeon_thing_record(holder) + GROUP_POSSESSIONS));
+        if (holder != THING_NONE) dungeon_append_thing(thing, thing_list(holder, GROUP_POSSESSIONS));
         else dungeon_link_thing_to_square(thing, party.cur_map, x, y);
     }
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
@@ -436,7 +436,8 @@ static void sensor_set_global_flag(const TimelineEvent *e, uint16_t sensor)
 static void sensor_test_global_flag(const TimelineEvent *e, uint16_t sensor)
 {
     int set = dun_get_global_var(sensor_data(sensor)) != 0;
-    int inverted = sensor_flag(sensor, SENSOR_INVERTED), effect = e->data[EVENT_EFFECT];
+    bool inverted = sensor_flag(sensor, SENSOR_INVERTED);
+    int effect = e->data[EVENT_EFFECT];
     if ((set != inverted && (effect == EFFECT_SET || effect == EFFECT_TOGGLE)) || (set == inverted && effect == EFFECT_CLEAR))
         sensor_trigger_target(sensor, sensor_passed_effect(sensor, effect), 0);
 }
@@ -487,7 +488,8 @@ static void sensor_start_ambient_sound(uint16_t sensor, uint16_t thing, int x, i
 /* An animated ornament turns on (it runs) or off (it stops at the end of its cycle). */
 static void sensor_toggle_animation(uint16_t thing, const TimelineEvent *e, uint16_t sensor, int wall)
 {
-    int old = sensor_flag(sensor, SENSOR_STATE), now = sensor_apply_effect(e->data[EVENT_EFFECT], old) & 1;
+    bool old = sensor_flag(sensor, SENSOR_STATE);
+    int now = sensor_apply_effect(e->data[EVENT_EFFECT], old) & 1;
     sensor_set_flag(sensor, SENSOR_STATE, now);
     if (old != now) {
         unsigned cycle = (uint16_t)sensor_get_ornament_cycle(sensor, wall);
@@ -658,7 +660,7 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
    look at, THING_NONE for the square; any_cell: all cells, not only the event cell; use_filter: the item class of
    the sensor data; possessions: the list of the creature that holds the things; first_only: one object only. */
 static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uint16_t first, int any_cell, int use_filter,
-                                    uint8_t *possessions, int reverse, int first_only)
+                                    uint16_t *possessions, int reverse, int first_only)
 {
     uint16_t data = sensor_data(sensor);
     bool keep_bones = sensor_flag(sensor, SENSOR_KEEP_BONES);
@@ -705,7 +707,7 @@ static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uin
             sensor_transfer_object(t, sensor, fx, fy, dx, dy, dcell, possessions != NULL, keep_bones);
             if (first_only) return;
         } else if (!use_filter && thing_type(t) == THING_GROUP) {
-            uint8_t *list = dungeon_thing_record(t) + GROUP_POSSESSIONS;
+            uint16_t *list = thing_list(t, GROUP_POSSESSIONS);
             sensor_transfer_objects(e, sensor, thing_word(t, GROUP_POSSESSIONS), any_cell, 0, list, reverse, first_only);
         }
     }
@@ -1100,7 +1102,8 @@ void timeline_event_door_animation(TimelineEvent *e)
             door_set_flag(door, DOOR_MOVING, false);
             return;
         }
-        int vertical = door_flag(door, DOOR_VERTICAL), hit = 0;
+        bool vertical = door_flag(door, DOOR_VERTICAL);
+        int hit = 0;
         int16_t damage = (int16_t)door_value(door, DOOR_KEY_DAMAGE);
         if (dun_on_party_square(x, y) && state) {
             hit = 1;
@@ -1528,7 +1531,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
         if (give != THING_NONE) champ_put_object_in_leader_hand(give, 1);
         input_command_stop = stop;
     } else {
-        uint16_t *possessions = (uint16_t *)(void *)(dungeon_thing_record(actor) + GROUP_POSSESSIONS);
+        uint16_t *possessions = thing_list(actor, GROUP_POSSESSIONS);
         if (!take && hand_arg != THING_NONE) dungeon_append_thing(hand_arg, possessions);
         if (give != THING_NONE) dungeon_append_thing(give, possessions);
     }

@@ -714,7 +714,8 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
         uint32_t time = game.game_time;
         uint8_t ornament;
         if (thing_type(thing) == THING_TEXT) {
-            int kind = text_kind(thing), subtype = text_subtype(thing), visible = text_is_visible(thing);
+            int kind = text_kind(thing), subtype = text_subtype(thing);
+            bool visible = text_is_visible(thing);
             if (kind == TEXT_KIND_TEXT || (kind == TEXT_KIND_ORNAMENT && subtype == SUBTYPE_PLATE)) {
                 s->side[face] = ORNAMENT_PLATE;
                 if (face == SIDE_FRONT) s->text = visible ? thing : THING_TEXT_NONE;
@@ -739,7 +740,7 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
         } else if (thing_type(thing) == THING_SENSOR) {
             ornament = sensor_ornament(thing, dungeon_map_wall_ornaments(view.map));
             if (ornament == ORNAMENT_NONE) continue;
-            int active = sensor_flag(thing, SENSOR_BUSY), state = sensor_flag(thing, SENSOR_STATE);
+            bool active = sensor_flag(thing, SENSOR_BUSY), state = sensor_flag(thing, SENSOR_STATE);
             switch (sensor_type(thing)) {
             case SENSOR_TOGGLE_ORNAMENT: animated = state; frame = state; break;
             case SENSOR_TIMED_ORNAMENT: case SENSOR_TIMED_ORNAMENT_2: frame = active ^ state; break;
@@ -806,7 +807,8 @@ static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square
             default: continue;
             }
         } else if (thing_type(thing) == THING_SENSOR) {
-            int type = sensor_type(thing), active = sensor_flag(thing, SENSOR_BUSY);
+            int type = sensor_type(thing);
+            bool active = sensor_flag(thing, SENSOR_BUSY);
             if (type == SENSOR_SHOP) s->side[SIDE_SHOP_FLAG] = 0;
             ornament = sensor_ornament(thing, dungeon_map_floor_ornaments(view.map));
             if (ornament == ORNAMENT_NONE) continue;
@@ -1622,8 +1624,7 @@ static int view_draw_creatures(uint16_t thing, int pos, uint32_t cell_mask)
     if (view.walking && pos == POS_PARTY) return 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (thing_type(thing) != THING_GROUP) continue;
-        uint8_t *record = dungeon_thing_record(thing);
-        const CreatureInfo *info = creature_info(draw_gdat(), record[GROUP_CREATURE]);
+        const CreatureInfo *info = creature_info(draw_gdat(), group_creature(thing));
         if (cell_mask & THINGS_STATIC_ONLY && !(info->flags & CREATURE_STATIC)) continue;
         drawn = 1;
         view_draw_creature(pos, depth, thing);
@@ -1800,7 +1801,8 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
         int order_cell = explosion_cell_order[view.party_dir][k];
         for (uint16_t thing = first; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
             if (thing_type(thing) != THING_EXPLOSION) continue;
-            int type = explosion_type(thing), centered = explosion_is_centered(thing);
+            int type = explosion_type(thing);
+            bool centered = explosion_is_centered(thing);
             if (picture_exists(CAT_EXPLOSION, type, EXPLOSION_SPARKLES)) {
                 if (k == 4) view_draw_sparkle_field(pos, CAT_EXPLOSION, type);
                 continue;
@@ -2947,7 +2949,7 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
     case CHEST_HIT_OPEN: container_set_open(chest, true); break;
     case CHEST_HIT_INSIDE: {
         if (placing && item_attr(thing, ATTR_SLOTS) & ATTR_SLOTS_NO_CONTAINER) return THING_ENDOFLIST;
-        uint16_t *contents = (uint16_t *)(void *)(dungeon_thing_record(chest) + CONTAINER_CONTENTS);
+        uint16_t *contents = thing_list(chest, CONTAINER_CONTENTS);
         uint16_t last = *contents;
         int count = 0;
         for (uint16_t c = *contents; c != THING_ENDOFLIST; c = dungeon_next_thing(c), count++) last = c;
@@ -2955,7 +2957,7 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
             if (count >= CHEST_CAPACITY) return THING_ENDOFLIST;
             dungeon_append_thing(thing, contents);
         } else if (count > 0) {
-            dungeon_unlink_thing_from_list(last, (uint8_t *)contents);
+            dungeon_unlink_thing_from_list(last, contents);
             champ_put_object_in_leader_hand(last, 1);
         }
         break;

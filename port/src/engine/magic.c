@@ -293,10 +293,10 @@ static void cast_summon(int type, int skill, int power)
     if (type == SUMMON_RECAST_VANISHES) {
         for (int i = 0; i < dungeon_thing_count(THING_GROUP); i++) {
             uint16_t group = (uint16_t)(THING_GROUP << THING_TYPE_SHIFT | i);
-            const uint8_t *r = dungeon_thing_record(group);
-            if (thing_word(group, THING_NEXT) == THING_NONE || r[GROUP_CREATURE] != type || r[GROUP_ACTIVE] == GROUP_NOT_ACTIVE)
+            if (thing_word(group, THING_NEXT) == THING_NONE || group_creature(group) != type
+                || group_active(group) == GROUP_NOT_ACTIVE)
                 continue;
-            ActiveGroup *a = &active_groups[r[GROUP_ACTIVE]];
+            ActiveGroup *a = &active_groups[group_active(group)];
             if (a->action != CREATURE_ACTION_VANISH) {
                 a->next_action = CREATURE_ACTION_VANISH;
                 return;

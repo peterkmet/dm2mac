@@ -72,7 +72,7 @@ enum thing_field {
     TELEPORTER_TARGET = 2,      /* x bits 0-4, y bits 5-9, rotation bits 10-11, bit 12 absolute, scope bits 13-14 */
     TELEPORTER_MAP = 4,         /* target map in bits 8-15, bit 0 closed, bits 1-2 fixed */
     TEXT_DATA = 2,              /* bit 0 visible, bits 1-2 kind, bits 3-10 ornament, bits 11-15 subtype */
-    DOOR_DATA = 2,              /* bit 0 door type, bits 1-4 ornament ordinal, bit 5 no animation, bit 6 button */
+    DOOR_DATA = 2,              /* bit 0 door type, bits 1-4 ornament ordinal, bits 5-13: see the DOOR_ bits */
     SENSOR_TYPE_DATA = 2,       /* sensor type bits 0-6, data bits 7-15 */
     SENSOR_FLAGS = 4,           /* bit 0 busy, bit 2 state, bits 3-4 effect, bits 7-10 delay, bits 12-15 ornament ordinal */
     SENSOR_TARGET = 6,          /* target square: cell bits 4-5, x bits 6-10, y bits 11-15 */
@@ -101,18 +101,31 @@ enum thing_field {
     EXPLOSION_DATA = 2,         /* explosion type bits 0-6, bit 7 centered on the square, power bits 8-15 */
 };
 
-#define SENSOR_TYPE_MASK 0x7f
-#define SENSOR_DATA_SHIFT 7
-#define SENSOR_DATA_MASK 0x1ff
-#define SENSOR_DATA_SIGN 0x100          /* a counter: the count is below zero */
-#define SENSOR_DATA_SOUND 0x100         /* an animated ornament: its ambient sound runs */
-#define SENSOR_DATA_FRAME_MASK 0xff     /* an animated ornament: the frame offset of its animation */
-#define SENSOR_TELEPORTER_LINK 0x27
-
 uint8_t *dungeon_thing_record(uint16_t thing);
 /* The 16-bit field of a thing record at byte offset field. */
 uint16_t thing_word(uint16_t thing, int field);
 void set_thing_word(uint16_t thing, int field, uint16_t value);
+
+/* Building blocks of the accessors below; other modules call the named accessors. */
+static inline uint8_t thing_byte(uint16_t thing, int field) { return dungeon_thing_record(thing)[field]; }
+static inline void set_thing_byte(uint16_t thing, int field, uint8_t value) { dungeon_thing_record(thing)[field] = value; }
+static inline uint16_t thing_field(uint16_t thing, int field, int shift, uint16_t mask)
+{
+    return (uint16_t)(thing_word(thing, field) >> shift & mask);
+}
+static inline void set_thing_field(uint16_t thing, int field, int shift, uint16_t mask, unsigned value)
+{
+    uint16_t w = thing_word(thing, field);
+    set_thing_word(thing, field, (uint16_t)((w & ~(mask << shift)) | (value & mask) << shift));
+}
+static inline bool thing_bit(uint16_t thing, int field, uint16_t bit) { return (thing_word(thing, field) & bit) != 0; }
+static inline void set_thing_bit(uint16_t thing, int field, uint16_t bit, bool on)
+{
+    uint16_t w = thing_word(thing, field);
+    set_thing_word(thing, field, on ? w | bit : w & ~bit);
+}
+/* The head word of a thing list in a record: possessions, contents, or the link to the next thing. */
+static inline uint16_t *thing_list(uint16_t holder, int field) { return (uint16_t *)(void *)(dungeon_thing_record(holder) + field); }
 
 /* DOOR_DATA bits. */
 #define DOOR_MAP_TYPE 0x0001            /* the door has door type 1 of its map, else door type 0 */
@@ -127,16 +140,12 @@ void set_thing_word(uint16_t thing, int field, uint16_t value);
 #define DOOR_BUTTON_PRESSED 0x0800
 #define DOOR_MARKED 0x1000              /* a creature opened the door; the door clears it when it closes */
 #define DOOR_SWITCH_ON 0x2000           /* the state of sensor 0x46: its wall button and door spells operate the door */
-static inline bool door_flag(uint16_t door, uint16_t bit) { return (thing_word(door, DOOR_DATA) & bit) != 0; }
-static inline void door_set_flag(uint16_t door, uint16_t bit, bool on)
-{
-    uint16_t w = thing_word(door, DOOR_DATA);
-    set_thing_word(door, DOOR_DATA, on ? w | bit : w & ~bit);
-}
+static inline bool door_flag(uint16_t door, uint16_t bit) { return thing_bit(door, DOOR_DATA, bit); }
+static inline void door_set_flag(uint16_t door, uint16_t bit, bool on) { set_thing_bit(door, DOOR_DATA, bit, on); }
 /* The door type of the map that the door uses: 0 or 1. */
-static inline int door_map_type(uint16_t door) { return thing_word(door, DOOR_DATA) & DOOR_MAP_TYPE; }
+static inline uint16_t door_map_type(uint16_t door) { return thing_field(door, DOOR_DATA, 0, DOOR_MAP_TYPE); }
 /* The ordinal of the door ornament in the door ornament list of the map, 0 for none. */
-static inline int door_ornament(uint16_t door) { return thing_word(door, DOOR_DATA) >> DOOR_ORNAMENT_SHIFT & DOOR_ORNAMENT_MASK; }
+static inline uint16_t door_ornament(uint16_t door) { return thing_field(door, DOOR_DATA, DOOR_ORNAMENT_SHIFT, DOOR_ORNAMENT_MASK); }
 /* A button on the door or the wall switch of the door operates it. */
 static inline bool door_has_button(uint16_t door) { return door_flag(door, DOOR_BUTTON | DOOR_SWITCH_ON); }
 
@@ -147,6 +156,7 @@ static inline bool door_has_button(uint16_t door) { return door_flag(door, DOOR_
 enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT, TEXT_KIND_AI_MARKER };
 #define TEXT_VALUE_SHIFT 3              /* a text: its offset in the text data; an ornament: its value in bits 3-10 */
 #define TEXT_VALUE_MASK 0xff
+#define TEXT_OFFSET_MASK 0x1fff
 #define TEXT_SUBTYPE_SHIFT 11
 #define TEXT_SUBTYPE_MASK 0x1f
 #define AI_MARKER_ID_SHIFT 3            /* an AI marker: id bits 3-7, kind bits 8-11, level delta bits 12-15 */
@@ -154,40 +164,44 @@ enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT, TEXT_KIND_AI_MARKER };
 #define AI_MARKER_KIND_SHIFT 8
 #define AI_MARKER_KIND_MASK 0xf
 #define AI_MARKER_LEVEL_SHIFT 12
-static inline bool text_is_visible(uint16_t text) { return thing_word(text, TEXT_DATA) & TEXT_VISIBLE; }
-static inline void text_set_visible(uint16_t text, bool visible)
-{
-    uint16_t w = thing_word(text, TEXT_DATA);
-    set_thing_word(text, TEXT_DATA, visible ? w | TEXT_VISIBLE : w & ~TEXT_VISIBLE);
-}
-static inline int text_kind(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_KIND_SHIFT & TEXT_KIND_MASK; }
+#define AI_MARKER_LEVEL_MASK 0xf
+static inline bool text_is_visible(uint16_t text) { return thing_bit(text, TEXT_DATA, TEXT_VISIBLE); }
+static inline void text_set_visible(uint16_t text, bool visible) { set_thing_bit(text, TEXT_DATA, TEXT_VISIBLE, visible); }
+static inline uint16_t text_kind(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_KIND_SHIFT, TEXT_KIND_MASK); }
 /* The ornament subtype: what the ornament does. */
-static inline int text_subtype(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_SUBTYPE_SHIFT & TEXT_SUBTYPE_MASK; }
+static inline uint16_t text_subtype(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_SUBTYPE_SHIFT, TEXT_SUBTYPE_MASK); }
 /* An ornament: its ornament (GDAT index) or the value that its subtype uses. */
-static inline uint8_t text_value(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_VALUE_SHIFT & TEXT_VALUE_MASK; }
+static inline uint16_t text_value(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_VALUE_SHIFT, TEXT_VALUE_MASK); }
 /* A text: the offset of its words in the text data. */
-static inline uint16_t text_offset(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_VALUE_SHIFT; }
-static inline int ai_marker_id(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_ID_SHIFT & AI_MARKER_ID_MASK; }
-static inline int ai_marker_kind(uint16_t text)
-{
-    return thing_word(text, TEXT_DATA) >> AI_MARKER_KIND_SHIFT & AI_MARKER_KIND_MASK;
-}
+static inline uint16_t text_offset(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_VALUE_SHIFT, TEXT_OFFSET_MASK); }
+static inline uint16_t ai_marker_id(uint16_t text) { return thing_field(text, TEXT_DATA, AI_MARKER_ID_SHIFT, AI_MARKER_ID_MASK); }
+static inline uint16_t ai_marker_kind(uint16_t text) { return thing_field(text, TEXT_DATA, AI_MARKER_KIND_SHIFT, AI_MARKER_KIND_MASK); }
 /* The level delta that the AI marker is for. */
-static inline int ai_marker_level(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_LEVEL_SHIFT; }
-
-static inline int sensor_type(uint16_t sensor) { return thing_word(sensor, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK; }
-/* The value of the sensor type: an item index, a counter, a map, an animation frame. */
-static inline uint16_t sensor_data(uint16_t sensor) { return thing_word(sensor, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT; }
-static inline void sensor_set_data(uint16_t sensor, unsigned data)
+static inline uint16_t ai_marker_level(uint16_t text)
 {
-    set_thing_word(sensor, SENSOR_TYPE_DATA, (uint16_t)(sensor_type(sensor) | (data & SENSOR_DATA_MASK) << SENSOR_DATA_SHIFT));
+    return thing_field(text, TEXT_DATA, AI_MARKER_LEVEL_SHIFT, AI_MARKER_LEVEL_MASK);
 }
-static inline int sensor_frame(uint16_t sensor) { return sensor_data(sensor) & SENSOR_DATA_FRAME_MASK; }
-static inline bool sensor_sound_on(uint16_t sensor) { return sensor_data(sensor) & SENSOR_DATA_SOUND; }
+
+/* SENSOR_TYPE_DATA fields. */
+#define SENSOR_TYPE_MASK 0x7f
+#define SENSOR_DATA_SHIFT 7
+#define SENSOR_DATA_MASK 0x1ff
+#define SENSOR_DATA_SIGN 0x100          /* a counter: the count is below zero */
+#define SENSOR_DATA_SOUND 0x100         /* an animated ornament: its ambient sound runs */
+#define SENSOR_DATA_FRAME_MASK 0xff     /* an animated ornament: the frame offset of its animation */
+#define SENSOR_TELEPORTER_LINK 0x27
+static inline uint16_t sensor_type(uint16_t sensor) { return thing_field(sensor, SENSOR_TYPE_DATA, 0, SENSOR_TYPE_MASK); }
+/* The value of the sensor type: an item index, a counter, a map, an animation frame. */
+static inline uint16_t sensor_data(uint16_t sensor) { return thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK); }
+static inline void sensor_set_data(uint16_t sensor, uint16_t data)
+{
+    set_thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK, data);
+}
+static inline uint16_t sensor_frame(uint16_t sensor) { return sensor_data(sensor) & SENSOR_DATA_FRAME_MASK; }
+static inline bool sensor_sound_on(uint16_t sensor) { return (sensor_data(sensor) & SENSOR_DATA_SOUND) != 0; }
 /* SENSOR_FLAGS bits. */
 #define SENSOR_BUSY 0x0001              /* the sensor ignores triggers until its animation or its wait ends */
-#define SENSOR_STATE_SHIFT 2
-#define SENSOR_STATE (1 << SENSOR_STATE_SHIFT)  /* on; some sensor types use it as an option */
+#define SENSOR_STATE 0x0004             /* on; some sensor types use it as an option */
 #define SENSOR_EFFECT_SHIFT 3
 #define SENSOR_EFFECT_MASK 3
 #define SENSOR_INVERTED 0x0020
@@ -195,47 +209,45 @@ static inline bool sensor_sound_on(uint16_t sensor) { return sensor_data(sensor)
 #define SENSOR_DELAY_SHIFT 7
 #define SENSOR_DELAY_MASK 0xf
 #define SENSOR_ORNAMENT_SHIFT 12
-static inline bool sensor_flag(uint16_t sensor, uint16_t bit) { return (thing_word(sensor, SENSOR_FLAGS) & bit) != 0; }
-static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on)
-{
-    uint16_t w = thing_word(sensor, SENSOR_FLAGS);
-    set_thing_word(sensor, SENSOR_FLAGS, on ? w | bit : w & ~bit);
-}
+#define SENSOR_ORNAMENT_MASK 0xf
+static inline bool sensor_flag(uint16_t sensor, uint16_t bit) { return thing_bit(sensor, SENSOR_FLAGS, bit); }
+static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on) { set_thing_bit(sensor, SENSOR_FLAGS, bit, on); }
 /* The effect on the target: EFFECT_SET, EFFECT_CLEAR, EFFECT_TOGGLE, or EFFECT_HOLD. */
-static inline int sensor_effect(uint16_t sensor)
-{
-    return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_EFFECT_SHIFT & SENSOR_EFFECT_MASK;
-}
+static inline uint16_t sensor_effect(uint16_t sensor) { return thing_field(sensor, SENSOR_FLAGS, SENSOR_EFFECT_SHIFT, SENSOR_EFFECT_MASK); }
 /* The ticks between the trigger and the event on the target. */
-static inline int sensor_delay(uint16_t sensor)
-{
-    return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_DELAY_SHIFT & SENSOR_DELAY_MASK;
-}
+static inline uint16_t sensor_delay(uint16_t sensor) { return thing_field(sensor, SENSOR_FLAGS, SENSOR_DELAY_SHIFT, SENSOR_DELAY_MASK); }
 /* The ordinal of the ornament in the wall or floor ornament list of the map, 0 for none. */
-static inline int sensor_ornament_ordinal(uint16_t sensor) { return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_ORNAMENT_SHIFT; }
+static inline uint16_t sensor_ornament_ordinal(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK);
+}
 /* SENSOR_TARGET fields. */
 #define SENSOR_TARGET_CELL_SHIFT 4
 #define SENSOR_TARGET_CELL_MASK 3
 #define SENSOR_TARGET_X_SHIFT 6
 #define SENSOR_TARGET_Y_SHIFT 11
-static inline int sensor_target_x(uint16_t sensor)
+static inline uint16_t sensor_target_x(uint16_t sensor)
 {
-    return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK;
+    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_X_SHIFT, LOCATION_COORD_MASK);
 }
-static inline int sensor_target_y(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_Y_SHIFT; }
-static inline int sensor_target_cell(uint16_t sensor)
+static inline uint16_t sensor_target_y(uint16_t sensor)
 {
-    return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_CELL_SHIFT & SENSOR_TARGET_CELL_MASK;
+    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_Y_SHIFT, LOCATION_COORD_MASK);
+}
+static inline uint16_t sensor_target_cell(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_CELL_SHIFT, SENSOR_TARGET_CELL_MASK);
 }
 /* A missile launcher: energy in bits 4-11 and step in bits 12-15 of SENSOR_TARGET. */
 #define LAUNCH_ENERGY_SHIFT 4
 #define LAUNCH_ENERGY_MASK 0xff
 #define LAUNCH_STEP_SHIFT 12
-static inline int sensor_launch_energy(uint16_t sensor)
+#define LAUNCH_STEP_MASK 0xf
+static inline uint16_t sensor_launch_energy(uint16_t sensor)
 {
-    return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_ENERGY_SHIFT & LAUNCH_ENERGY_MASK;
+    return thing_field(sensor, SENSOR_TARGET, LAUNCH_ENERGY_SHIFT, LAUNCH_ENERGY_MASK);
 }
-static inline int sensor_launch_step(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_STEP_SHIFT; }
+static inline uint16_t sensor_launch_step(uint16_t sensor) { return thing_field(sensor, SENSOR_TARGET, LAUNCH_STEP_SHIFT, LAUNCH_STEP_MASK); }
 
 /* TELEPORTER_TARGET bits. */
 #define TELEPORTER_ROTATION_SHIFT 10
@@ -248,34 +260,37 @@ static inline int sensor_launch_step(uint16_t sensor) { return thing_word(sensor
 #define TELEPORTER_CLOSED 0x0001
 #define TELEPORTER_FIXED 0x0006         /* both bits: square events do not turn the teleporter on or off */
 #define TELEPORTER_MAP_SHIFT 8
-static inline int teleporter_x(uint16_t teleporter) { return location_x(thing_word(teleporter, TELEPORTER_TARGET)); }
-static inline int teleporter_y(uint16_t teleporter) { return location_y(thing_word(teleporter, TELEPORTER_TARGET)); }
-static inline int teleporter_map(uint16_t teleporter) { return thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT; }
-/* The quarter turns of the direction of the thing that goes through. */
-static inline int teleporter_rotation(uint16_t teleporter)
+#define TELEPORTER_MAP_MASK 0xff
+static inline uint16_t teleporter_x(uint16_t teleporter) { return location_x(thing_word(teleporter, TELEPORTER_TARGET)); }
+static inline uint16_t teleporter_y(uint16_t teleporter) { return location_y(thing_word(teleporter, TELEPORTER_TARGET)); }
+static inline uint16_t teleporter_map(uint16_t teleporter)
 {
-    return thing_word(teleporter, TELEPORTER_TARGET) >> TELEPORTER_ROTATION_SHIFT & TELEPORTER_ROTATION_MASK;
+    return thing_field(teleporter, TELEPORTER_MAP, TELEPORTER_MAP_SHIFT, TELEPORTER_MAP_MASK);
 }
-static inline int teleporter_scope(uint16_t teleporter)
+/* The quarter turns of the direction of the thing that goes through. */
+static inline uint16_t teleporter_rotation(uint16_t teleporter)
 {
-    return thing_word(teleporter, TELEPORTER_TARGET) >> TELEPORTER_SCOPE_SHIFT & TELEPORTER_SCOPE_MASK;
+    return thing_field(teleporter, TELEPORTER_TARGET, TELEPORTER_ROTATION_SHIFT, TELEPORTER_ROTATION_MASK);
+}
+static inline uint16_t teleporter_scope(uint16_t teleporter)
+{
+    return thing_field(teleporter, TELEPORTER_TARGET, TELEPORTER_SCOPE_SHIFT, TELEPORTER_SCOPE_MASK);
 }
 /* A bit of TELEPORTER_TARGET: TELEPORTER_ABSOLUTE or TELEPORTER_AUDIBLE. */
-static inline bool teleporter_flag(uint16_t teleporter, uint16_t bit)
-{
-    return (thing_word(teleporter, TELEPORTER_TARGET) & bit) != 0;
-}
-static inline bool teleporter_is_closed(uint16_t teleporter) { return thing_word(teleporter, TELEPORTER_MAP) & TELEPORTER_CLOSED; }
+static inline bool teleporter_flag(uint16_t teleporter, uint16_t bit) { return thing_bit(teleporter, TELEPORTER_TARGET, bit); }
+static inline bool teleporter_is_closed(uint16_t teleporter) { return thing_bit(teleporter, TELEPORTER_MAP, TELEPORTER_CLOSED); }
 static inline bool teleporter_is_fixed(uint16_t teleporter)
 {
-    return (thing_word(teleporter, TELEPORTER_MAP) & TELEPORTER_FIXED) == TELEPORTER_FIXED;
+    return thing_field(teleporter, TELEPORTER_MAP, 0, TELEPORTER_FIXED) == TELEPORTER_FIXED;
 }
 
-static inline uint8_t group_creature(uint16_t group) { return dungeon_thing_record(group)[GROUP_CREATURE]; }
-static inline void group_set_creature(uint16_t group, uint8_t type) { dungeon_thing_record(group)[GROUP_CREATURE] = type; }
+static inline uint8_t group_creature(uint16_t group) { return thing_byte(group, GROUP_CREATURE); }
+static inline void group_set_creature(uint16_t group, uint8_t type) { set_thing_byte(group, GROUP_CREATURE, type); }
 /* The index of the active group of the group, GROUP_NOT_ACTIVE for none. */
-static inline uint8_t group_active(uint16_t group) { return dungeon_thing_record(group)[GROUP_ACTIVE]; }
-static inline void group_set_active(uint16_t group, uint8_t index) { dungeon_thing_record(group)[GROUP_ACTIVE] = index; }
+static inline uint8_t group_active(uint16_t group) { return thing_byte(group, GROUP_ACTIVE); }
+static inline void group_set_active(uint16_t group, uint8_t index) { set_thing_byte(group, GROUP_ACTIVE, index); }
+/* The animation sequence and state words of a static creature. */
+static inline uint16_t *group_anim_words(uint16_t group) { return thing_list(group, GROUP_ANIM_SEQUENCE); }
 /* GROUP_FLAGS: the mood bits. */
 #define GROUP_SEEN 0x0002               /* the party saw the creature since the last mood update */
 #define MOOD_ANGRY 0x0004
@@ -290,49 +305,21 @@ static inline void group_set_active(uint16_t group, uint8_t index) { dungeon_thi
 #define MOOD_FAR 0x8000                 /* the creature is not on the party map: it moves slowly */
 static inline uint16_t group_mood(uint16_t group) { return thing_word(group, GROUP_FLAGS); }
 static inline void group_set_mood(uint16_t group, uint16_t mood) { set_thing_word(group, GROUP_FLAGS, mood); }
-static inline bool group_mood_flag(uint16_t group, uint16_t bit) { return (group_mood(group) & bit) != 0; }
-static inline void group_set_mood_flag(uint16_t group, uint16_t bit, bool on)
-{
-    group_set_mood(group, on ? group_mood(group) | bit : group_mood(group) & ~bit);
-}
+static inline bool group_mood_flag(uint16_t group, uint16_t bit) { return thing_bit(group, GROUP_FLAGS, bit); }
+static inline void group_set_mood_flag(uint16_t group, uint16_t bit, bool on) { set_thing_bit(group, GROUP_FLAGS, bit, on); }
 /* GROUP_DIR bits. */
 #define GROUP_KEEP_CELLS 0x0080         /* the possessions keep their cells */
 #define GROUP_DIR_SHIFT 8
 #define GROUP_DIR_MASK 3
 #define GROUP_DO_NOT_DISCARD 0x0400     /* the record stays when the dungeon needs free records */
-static inline int group_dir(uint16_t group) { return thing_word(group, GROUP_DIR) >> GROUP_DIR_SHIFT & GROUP_DIR_MASK; }
-static inline void group_set_dir(uint16_t group, int dir)
-{
-    uint16_t w = thing_word(group, GROUP_DIR);
-    set_thing_word(group, GROUP_DIR,
-                   (uint16_t)((w & ~(GROUP_DIR_MASK << GROUP_DIR_SHIFT)) | (dir & GROUP_DIR_MASK) << GROUP_DIR_SHIFT));
-}
+static inline uint16_t group_dir(uint16_t group) { return thing_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK); }
+static inline void group_set_dir(uint16_t group, uint16_t dir) { set_thing_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK, dir); }
 /* A bit of GROUP_DIR: GROUP_KEEP_CELLS or GROUP_DO_NOT_DISCARD. */
-static inline bool group_flag(uint16_t group, uint16_t bit) { return (thing_word(group, GROUP_DIR) & bit) != 0; }
-static inline void group_set_flag(uint16_t group, uint16_t bit, bool on)
-{
-    uint16_t w = thing_word(group, GROUP_DIR);
-    set_thing_word(group, GROUP_DIR, on ? w | bit : w & ~bit);
-}
+static inline bool group_flag(uint16_t group, uint16_t bit) { return thing_bit(group, GROUP_DIR, bit); }
+static inline void group_set_flag(uint16_t group, uint16_t bit, bool on) { set_thing_bit(group, GROUP_DIR, bit, on); }
 
-/* A packed field of a record word: (word >> shift) & mask. */
-static inline uint16_t thing_field(uint16_t thing, int field, int shift, uint16_t mask)
-{
-    return thing_word(thing, field) >> shift & mask;
-}
-static inline void set_thing_field(uint16_t thing, int field, int shift, uint16_t mask, unsigned value)
-{
-    uint16_t w = thing_word(thing, field);
-    set_thing_word(thing, field, (uint16_t)((w & ~(mask << shift)) | (value & mask) << shift));
-}
-static inline bool thing_bit(uint16_t thing, int field, uint16_t bit) { return (thing_word(thing, field) & bit) != 0; }
-static inline void set_thing_bit(uint16_t thing, int field, uint16_t bit, bool on)
-{
-    uint16_t w = thing_word(thing, field);
-    set_thing_word(thing, field, on ? w | bit : w & ~bit);
-}
 /* ITEM_DATA of weapons, armour, and miscellaneous items: type bits 0-6, bit 7 do not discard, charges. */
-#define ITEM_TYPE_MASK 0x7f             /* the GDAT index; also of an explosion */
+#define ITEM_TYPE_MASK 0x7f             /* the GDAT index */
 #define ITEM_DO_NOT_DISCARD 0x0080
 #define WEAPON_CHARGES_SHIFT 10
 #define ARMOUR_CHARGES_SHIFT 9
@@ -348,25 +335,51 @@ static inline void set_thing_bit(uint16_t thing, int field, uint16_t bit, bool o
 #define POTION_DO_NOT_DISCARD 0x8000
 /* ITEM_DATA of scrolls: an ornament text id in bits 10-15, else a text thing index in bits 0-9. */
 #define SCROLL_TEXT_SHIFT 10
+#define SCROLL_TEXT_MASK 0x3f
 /* The ornament text id of a scroll, 0 for a scroll with a text thing. */
-static inline int scroll_ornament_text(uint16_t scroll) { return thing_word(scroll, ITEM_DATA) >> SCROLL_TEXT_SHIFT; }
+static inline uint16_t scroll_ornament_text(uint16_t scroll) { return thing_field(scroll, ITEM_DATA, SCROLL_TEXT_SHIFT, SCROLL_TEXT_MASK); }
 /* The text thing of a scroll without an ornament text. */
 static inline uint16_t scroll_text(uint16_t scroll)
 {
-    return (uint16_t)(THING_TEXT << THING_TYPE_SHIFT | (thing_word(scroll, ITEM_DATA) & THING_INDEX_MASK));
+    return (uint16_t)(THING_TEXT << THING_TYPE_SHIFT | thing_field(scroll, ITEM_DATA, 0, THING_INDEX_MASK));
 }
-static inline uint8_t item_type(uint16_t item) { return thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK); }
-static inline uint8_t potion_power(uint16_t potion) { return thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK); }
-static inline void potion_set_power(uint16_t potion, unsigned power)
+/* The type (GDAT index) of a weapon, armour, or miscellaneous item. */
+static inline uint16_t item_type(uint16_t item) { return thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK); }
+static inline void item_set_type(uint16_t item, uint16_t type) { set_thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK, type); }
+/* The dungeon keeps the item: no record reuse, and creatures do not consume it. */
+static inline bool item_is_kept(uint16_t item)
 {
-    set_thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK, power);
+    return thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD);
 }
-static inline uint8_t potion_type(uint16_t potion) { return thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK); }
+static inline void item_set_kept(uint16_t item, bool kept)
+{
+    set_thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD, kept);
+}
+static inline uint16_t weapon_charges(uint16_t weapon) { return thing_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK); }
+static inline void weapon_set_charges(uint16_t weapon, uint16_t charges)
+{
+    set_thing_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK, charges);
+}
+static inline uint16_t armour_charges(uint16_t armour) { return thing_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK); }
+static inline void armour_set_charges(uint16_t armour, uint16_t charges)
+{
+    set_thing_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK, charges);
+}
+/* The charges of a miscellaneous item; the champion of a champion token or of bones. */
+static inline uint16_t misc_charges(uint16_t misc) { return thing_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK); }
+static inline void misc_set_charges(uint16_t misc, uint16_t charges)
+{
+    set_thing_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK, charges);
+}
 /* The stack size - 1 of a miscellaneous item (coins). */
-static inline int misc_stack(uint16_t misc) { return thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK); }
-static inline void misc_set_stack(uint16_t misc, int count)
+static inline uint16_t misc_stack(uint16_t misc) { return thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK); }
+static inline void misc_set_stack(uint16_t misc, uint16_t count) { set_thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK, count); }
+static inline uint16_t potion_power(uint16_t potion) { return thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK); }
+static inline void potion_set_power(uint16_t potion, uint16_t power) { set_thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK, power); }
+static inline uint16_t potion_type(uint16_t potion) { return thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK); }
+static inline void potion_set_type(uint16_t potion, uint16_t type)
 {
-    set_thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK, count);
+    set_thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK, type);
 }
 /* CONTAINER_KIND fields. */
 #define CONTAINER_OPEN 0x0001
@@ -376,53 +389,58 @@ enum container_kind { CONTAINER_CHEST, CONTAINER_MINION_MAP };  /* a chest or a 
 #define CONTAINER_TYPE_SHIFT 13
 #define CONTAINER_TYPE_MASK 7
 #define MONEYBOX_PLACED 0x0400          /* a creature placed the money box: creatures take it as empty until the party moves it */
-static inline bool container_is_open(uint16_t container) { return thing_word(container, CONTAINER_KIND) & CONTAINER_OPEN; }
-static inline void container_set_open(uint16_t container, bool open)
-{
-    set_thing_field(container, CONTAINER_KIND, 0, CONTAINER_OPEN, open);
-}
-static inline int container_kind(uint16_t container)
+static inline bool container_is_open(uint16_t container) { return thing_bit(container, CONTAINER_KIND, CONTAINER_OPEN); }
+static inline void container_set_open(uint16_t container, bool open) { set_thing_bit(container, CONTAINER_KIND, CONTAINER_OPEN, open); }
+static inline uint16_t container_kind(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK);
 }
-static inline void container_set_kind(uint16_t container, int kind)
+static inline void container_set_kind(uint16_t container, uint16_t kind)
 {
     set_thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK, kind);
 }
 /* The type of the container within its kind. */
-static inline int container_type(uint16_t container)
+static inline uint16_t container_type(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK);
 }
-static inline void container_set_type(uint16_t container, int type)
+static inline void container_set_type(uint16_t container, uint16_t type)
 {
     set_thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK, type);
 }
-static inline bool moneybox_is_placed(uint16_t box) { return thing_word(box, MONEYBOX_FLAGS) & MONEYBOX_PLACED; }
-static inline void moneybox_set_placed(uint16_t box, bool placed)
+/* The GDAT index of a container: its kind in bits 3-4, its type in bits 0-2. */
+#define CONTAINER_INDEX_KIND_SHIFT 3
+static inline uint16_t container_gdat_index(uint16_t container)
 {
-    uint16_t w = thing_word(box, MONEYBOX_FLAGS);
-    set_thing_word(box, MONEYBOX_FLAGS, placed ? w | MONEYBOX_PLACED : w & ~MONEYBOX_PLACED);
+    return (uint16_t)(container_type(container) | container_kind(container) << CONTAINER_INDEX_KIND_SHIFT);
 }
+static inline void container_set_gdat_index(uint16_t container, uint16_t index)
+{
+    container_set_kind(container, index >> CONTAINER_INDEX_KIND_SHIFT);
+    container_set_type(container, index);
+}
+static inline bool moneybox_is_placed(uint16_t box) { return thing_bit(box, MONEYBOX_FLAGS, MONEYBOX_PLACED); }
+static inline void moneybox_set_placed(uint16_t box, bool placed) { set_thing_bit(box, MONEYBOX_FLAGS, MONEYBOX_PLACED, placed); }
 
-static inline uint8_t projectile_energy(uint16_t projectile) { return dungeon_thing_record(projectile)[PROJECTILE_ENERGY]; }
-static inline void projectile_set_energy(uint16_t projectile, uint8_t energy)
-{
-    dungeon_thing_record(projectile)[PROJECTILE_ENERGY] = energy;
-}
-static inline uint8_t projectile_hit_chance(uint16_t projectile) { return dungeon_thing_record(projectile)[PROJECTILE_HIT_CHANCE]; }
+static inline uint8_t projectile_energy(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_ENERGY); }
+static inline void projectile_set_energy(uint16_t projectile, uint8_t energy) { set_thing_byte(projectile, PROJECTILE_ENERGY, energy); }
+static inline uint8_t projectile_hit_chance(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_HIT_CHANCE); }
 static inline void projectile_set_hit_chance(uint16_t projectile, uint8_t chance)
 {
-    dungeon_thing_record(projectile)[PROJECTILE_HIT_CHANCE] = chance;
+    set_thing_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
 }
 #define PROJECTILE_HOLDER_WAITS 0x0001  /* PROJECTILE_CARRIED bit */
+static inline void projectile_set_holder_waits(uint16_t projectile, bool waits)
+{
+    set_thing_bit(projectile, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, waits);
+}
 /* EXPLOSION_DATA fields. */
 #define EXPLOSION_TYPE_MASK 0x7f
 #define EXPLOSION_CENTERED 0x0080       /* the explosion is in the middle of its square, not on a cell */
 #define EXPLOSION_POWER_SHIFT 8
 #define EXPLOSION_POWER_MASK 0xff
-static inline int explosion_type(uint16_t explosion) { return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK); }
-static inline void explosion_set_type(uint16_t explosion, int type)
+static inline uint16_t explosion_type(uint16_t explosion) { return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK); }
+static inline void explosion_set_type(uint16_t explosion, uint16_t type)
 {
     set_thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
 }
@@ -431,11 +449,11 @@ static inline void explosion_set_centered(uint16_t explosion, bool centered)
 {
     set_thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
 }
-static inline uint8_t explosion_power(uint16_t explosion)
+static inline uint16_t explosion_power(uint16_t explosion)
 {
     return thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK);
 }
-static inline void explosion_set_power(uint16_t explosion, unsigned power)
+static inline void explosion_set_power(uint16_t explosion, uint16_t power)
 {
     set_thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);
 }
@@ -465,12 +483,15 @@ const uint16_t *dungeon_square_things(void);
 int dungeon_thing_count(int type);
 int dungeon_thing_size(int type);
 #define DUNGEON_RECORD_MAX 16     /* the largest thing record (a creature group) */
+/* Copies the record of thing to or from buffer (DUNGEON_RECORD_MAX bytes). */
+void dungeon_save_record(uint16_t thing, uint8_t *buffer);
+void dungeon_restore_record(uint16_t thing, const uint8_t *buffer);
 /* True when thing has a record in the loaded dungeon. */
 int dungeon_thing_valid(uint16_t thing);
 uint16_t dungeon_next_thing(uint16_t thing);
 uint8_t *dungeon_square_byte(int map, int x, int y);
-/* Removes thing from the thing list whose first-thing word is at field (a record field). */
-void dungeon_unlink_thing_from_list(uint16_t thing, uint8_t *field);
+/* Removes thing from the thing list whose first-thing word is at list. */
+void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list);
 /* Appends thing at the end of a thing list. */
 void dungeon_append_thing(uint16_t thing, uint16_t *list);
 /* Appends thing at the end of the square's thing list; returns 0 when the first-thing table is full. */

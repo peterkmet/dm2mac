@@ -106,7 +106,7 @@ typedef struct {
 /* The context of a creature update (the 0x350-byte block of SKULL.EXE). */
 typedef struct {
     uint16_t group_thing;
-    uint8_t *group;             /* the group record */
+    void *layout_padding;       /* the place of the old group record pointer: tests/test_ai_move.py reads fixed offsets */
     const CreatureInfo *info;
     ActiveGroup *active;
     const uint8_t *anim_step;   /* the current animation step (4 bytes) */

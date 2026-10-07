@@ -1085,11 +1085,11 @@ static int discard_take(uint16_t t, int type, int subtype, int map, int x, int y
         projectile_destroy(t, NULL, x, y);
         return 1;
     case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
-        if (thing_bit(t, ITEM_DATA, ITEM_DO_NOT_DISCARD)) return 0;
+        if (item_is_kept(t)) return 0;
         kind = item_type(t);
         break;
     case THING_POTION:
-        if (thing_bit(t, ITEM_DATA, POTION_DO_NOT_DISCARD)) return 0;
+        if (item_is_kept(t)) return 0;
         kind = potion_type(t);
         break;
     default:

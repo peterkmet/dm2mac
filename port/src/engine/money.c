@@ -32,7 +32,7 @@
 /* The contents list of a container. */
 static uint16_t *contents_of(uint16_t container)
 {
-    return (uint16_t *)(void *)(dungeon_thing_record(container) + CONTAINER_CONTENTS);
+    return thing_list(container, CONTAINER_CONTENTS);
 }
 
 int item_index_to_thing_type(uint16_t item)
@@ -86,7 +86,7 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type)
     }
     if (found == THING_NONE) return found;
     if (!misc_stack(found)) {
-        dungeon_unlink_thing_from_list(found, (uint8_t *)contents);
+        dungeon_unlink_thing_from_list(found, contents);
         return found;
     }
     misc_set_stack(found, misc_stack(found) - 1);

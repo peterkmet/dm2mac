@@ -55,6 +55,7 @@ enum { SKILL_FIGHTER, SKILL_NINJA, SKILL_PRIEST, SKILL_WIZARD, SKILL_SWING = 4, 
 #define STAT_MIN 10
 #define STAT_MAX 220
 #define LUCK_STEP 2
+#define ITEM_BONES 0                /* the miscellaneous item type of the bones of a champion */
 #define CURE_ALL 10000
 #define WOUND_HAND_BIT(hand) ((hand) ? 2 : 1)
 /* Time effects. */
@@ -393,9 +394,9 @@ void champ_kill(int champ)
     int cell = c->cell;
     uint16_t bones = dungeon_unused_thing(THING_MISC | THING_ANY_RECORD);
     if (bones != THING_NONE) {
-        set_thing_field(bones, ITEM_DATA, 0, ITEM_TYPE_MASK, 0);  /* the bones: miscellaneous item 0 */
-        set_thing_bit(bones, ITEM_DATA, ITEM_DO_NOT_DISCARD, true);
-        set_thing_field(bones, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK, (unsigned)champ);  /* the champion */
+        item_set_type(bones, ITEM_BONES);
+        item_set_kept(bones, true);
+        misc_set_charges(bones, (uint16_t)champ);  /* the champion of the bones */
         move_thing((uint16_t)(bones | cell << THING_CELL_SHIFT), -1, 0, game.party_x, game.party_y);
     }
     c->rune_count = 0;
@@ -573,7 +574,6 @@ enum { REBIRTH_REVIVE, REBIRTH_BONES, REBIRTH_SMOKE };
 #define EXPLOSION_SMOKE 0xffe4
 #define SMOKE_TIME 5
 #define CATEGORY_MISC 0x15
-#define ITEM_BONES 0
 
 void timeline_event_altar_rebirth(TimelineEvent *e)
 {

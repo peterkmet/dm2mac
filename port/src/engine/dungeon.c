@@ -170,13 +170,23 @@ uint16_t dungeon_next_thing(uint16_t thing)
     return thing_word(thing, THING_NEXT);
 }
 
-void dungeon_unlink_thing_from_list(uint16_t thing, uint8_t *field)
+void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list)
 {
-    uint8_t *link = field;
+    uint8_t *link = (uint8_t *)list;
     while (le16(link) != THING_ENDOFLIST && (le16(link) & THING_ID_MASK) != (thing & THING_ID_MASK))
         link = dungeon_thing_record(le16(link)) + THING_NEXT;
     if (le16(link) != THING_ENDOFLIST) put_le16(link, dungeon_next_thing(le16(link)));
     set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+}
+
+void dungeon_save_record(uint16_t thing, uint8_t *buffer)
+{
+    memcpy(buffer, dungeon_thing_record(thing), dungeon_thing_size(thing_type(thing)));
+}
+
+void dungeon_restore_record(uint16_t thing, const uint8_t *buffer)
+{
+    memcpy(dungeon_thing_record(thing), buffer, dungeon_thing_size(thing_type(thing)));
 }
 
 void dungeon_append_thing(uint16_t thing, uint16_t *list)
