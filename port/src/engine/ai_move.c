@@ -53,8 +53,6 @@
 #define EXPLOSION_DOOR_SPELL 0x0d
 #define EXPLOSION_LASTING_CLOUD 0x0e    /* blocks the sight */
 #define EXPLOSION_THING_BASE 0xff80
-#define DOOR_HEIGHT_PASSABLE_SHIFT 6    /* creature flags bits 6-7: how far a door may be closed for the creature */
-#define DOOR_HEIGHT_MASK 3
 
 /* Creature info words. */
 #define info_attack_range(i) ((i)->unknown_14 >> 12)
@@ -95,14 +93,7 @@
 #define AI_ACTION_FLAG_BUSY 0x03
 /* Sub-commands of the shoot action (ActiveGroup.sub). */
 #define SHOT_STEAL 0x0b
-/* Search target kinds (AiCandidate.kind) and their flags (ai_kind_flags). */
-enum {
-    TARGET_ANY, TARGET_HOME, TARGET_PARTY_VIEW, TARGET_ACTIVATION, TARGET_PARTY_RANGE_2, TARGET_FLEE,
-    TARGET_SHOOT_PARTY, TARGET_MELEE_PARTY, TARGET_MELEE_LINE, TARGET_SHOOT_LINE, TARGET_STEAL, TARGET_MARKER,
-    TARGET_NEAR_MARKER, TARGET_WANDER, TARGET_RANDOM, TARGET_ITEM, TARGET_ITEM_2, TARGET_ITEM_WALL,
-    TARGET_GROUP_IN_FRONT, TARGET_GROUP_FACING, TARGET_DAMAGE_GROUP, TARGET_MOVE_TEST, TARGET_ACTUATOR,
-    TARGET_LIGHT, TARGET_AI_MARKER, TARGET_MARKER_SIDE, TARGET_DOOR, TARGET_PARTY_DISTANCE
-};
+/* The flags of the search target kinds (ai_kind_flags). */
 #define KIND_TESTS_OPEN 0x01      /* the kind tests the squares that the search enters */
 #define KIND_TESTS_BLOCKED 0x02   /* ... the squares that it cannot enter */
 #define KIND_FIRST_BEST 0x04      /* a found target may still get a nearer better one */
@@ -228,12 +219,6 @@ static int door_pass_cost(int x, int y)
 }
 
 
-/* The direction in which a projectile flies (its move event). */
-static int projectile_dir(uint16_t projectile)
-{
-    return timeline.events[thing_word(projectile, PROJECTILE_EVENT)].data[3] >> 2 & DIR_MASK;
-}
-
 static int group_x(void) { return ai.event.data[0]; }
 static int group_y(void) { return ai.event.data[1]; }
 
@@ -305,7 +290,7 @@ bool creature_square_blocks_line(int x, int y)
         if (g == THING_NONE) continue;
         uint16_t flags = creature_group_info(g)->flags;
         if (flags & CREATURE_STATIC) {
-            if ((flags >> DOOR_HEIGHT_PASSABLE_SHIFT & DOOR_HEIGHT_MASK) < DOOR_STATE_HALF) return 1;
+            if (creature_door_size(creature_group_info(g)) < DOOR_STATE_HALF) return 1;
         } else if (!(flags & CREATURE_NOT_SEEN_THROUGH)) {
             return 1;
         }
@@ -910,7 +895,7 @@ static uint16_t square_move_flags(int kind, int no_movers, int map_changed, int 
         bool moving = door_flag(door, DOOR_MOVING), opening = door_flag(door, DOOR_OPENING);
         if (no_movers && moving) return opening ? MOVE_FLOOR : MOVE_DOOR | MOVE_LOCKED_DOOR;
         if (moving && !opening) return MOVE_LOCKED_DOOR;
-        int limit = door_flag(door, DOOR_VERTICAL) ? ai.info->flags >> DOOR_HEIGHT_PASSABLE_SHIFT & DOOR_HEIGHT_MASK : 1;
+        int limit = door_flag(door, DOOR_VERTICAL) ? creature_door_size(ai.info) : 1;
         return state > limit ? MOVE_DOOR | MOVE_LOCKED_DOOR : MOVE_FLOOR;
     }
     case SQUARE_TELEPORTER:

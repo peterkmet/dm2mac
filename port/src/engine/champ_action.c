@@ -68,15 +68,11 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define MELEE_WEAK_RANDOM 0xf       /* the random part of the rest of a weak hit */
 #define MELEE_CRITICAL_ROLL 0x3f    /* a skill level above a roll of 0 to 63 doubles the damage plus a bonus */
 #define MELEE_CRITICAL_BONUS 10
-#define CREATURE_EXPERIENCE_SHIFT 8 /* creature info speed bits 8-11: the experience factor of a hit */
-#define CREATURE_EXPERIENCE_MASK 0xf
 #define MELEE_EXPERIENCE_SHIFT 4    /* the experience of a hit: factor * damage / 16 + base */
 #define MELEE_EXPERIENCE_BASE 3
 #define MELEE_STAMINA_HIT 4         /* the stamina cost of a hit: 4 to 7, of a miss: 2 to 3 */
 #define MELEE_STAMINA_MISS 2
 #define ATTR_ANTI_ARMOR 0x0d        /* item attribute: the weapon breaks creature armor */
-#define FRIGHTEN_RESIST_SHIFT 4     /* creature info speed bits 4-7: the resistance to fear, 15 immune */
-#define FRIGHTEN_RESIST_MASK 0xf
 #define FRIGHTEN_IMMUNE 0xf
 #define FRIGHTEN_ALERT_FLAGS 0x2005
 #define FRIGHTEN_ALERT_CHANCE 100
@@ -416,7 +412,7 @@ void champ_add_experience(int champ, int skill, uint32_t amount)
 static int champ_action_frighten(int power, int x, int y)
 {
     if (champ_action_target == THING_NONE) return 0;
-    unsigned resist = creature_group_info(champ_action_target)->speed >> FRIGHTEN_RESIST_SHIFT & FRIGHTEN_RESIST_MASK;
+    unsigned resist = creature_fear_resistance(creature_group_info(champ_action_target));
     if (resist > rand_below((uint16_t)power) || resist == FRIGHTEN_IMMUNE) return 0;
     /* fix: the original passes a leftover register (EDX) as the damage, no defined value; the port passes 0 */
     creature_alert(champ_action_target, x, y, FRIGHTEN_ALERT_FLAGS, FRIGHTEN_ALERT_CHANCE, 0);
@@ -482,7 +478,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
         if ((uint16_t)champ_get_skill_level(champ, skill, 1) > roll) damage = (int16_t)(damage + damage + MELEE_CRITICAL_BONUS);
         uint16_t armor = item_attr(c->slots[action.hand], ATTR_ANTI_ARMOR);
         if (armor && damage > (int16_t)(rand_next() & MELEE_RANDOM)) damage = (int16_t)(damage + creature_roll_armor_factor(group, armor));
-        int worth = info->speed >> CREATURE_EXPERIENCE_SHIFT & CREATURE_EXPERIENCE_MASK;
+        int worth = creature_experience(info);
         champ_add_experience(champ, skill, (uint32_t)((worth * damage >> MELEE_EXPERIENCE_SHIFT) + MELEE_EXPERIENCE_BASE));
         stamina = (int16_t)(rand_2bits() + MELEE_STAMINA_HIT);
     } else {
@@ -490,7 +486,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
         stamina = (int16_t)(rand_bit() + MELEE_STAMINA_MISS);
     }
     champ_decrease_stamina(champ, stamina);
-    if (info->door_flags & CREATURE_DOOR_HALF_DAMAGE && kind != MELEE_KIND_FULL) damage = (int16_t)(damage >> (rand_bit() + 1));
+    if (info->door_flags & CREATURE_RESISTS_NON_FIRE && kind != MELEE_KIND_FULL) damage = (int16_t)(damage >> (rand_bit() + 1));
     creature_alert(group, x, y, MELEE_ALERT_FLAGS, MELEE_ALERT_CHANCE, (uint16_t)damage);
     return damage;
 }

@@ -1193,9 +1193,9 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
     uint16_t g = creature_group_at(party.cur_map, x, y);
     if (g == THING_NONE) return hit;
     const CreatureInfo *info = creature_group_info(g);
-    int height = vertical ? info->flags >> CREATURE_DOOR_SIZE_SHIFT & CREATURE_DOOR_SIZE_MASK : 1;
+    int height = vertical ? creature_door_size(info) : 1;
     if (info->flags & CREATURE_NOT_DOOR_HIT || *state < height) return hit;
-    if (info->door_flags & CREATURE_DOOR_HALF_DAMAGE) {
+    if (info->door_flags & CREATURE_RESISTS_NON_FIRE) {
         damage >>= 1;
         if (damage < 1) damage = 1;
     }

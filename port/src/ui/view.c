@@ -9,6 +9,7 @@
 #include "le.h"
 #include "money.h"
 #include "move.h"
+#include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -414,8 +415,6 @@ enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_B
 #define MISSILE_HALF_POWER_SPELL 0xff82  /* this spell shows half its power plus 0x80 */
 #define MISSILE_HALF_POWER_BASE 0x80
 #define POWER_MAX 0xff
-#define EVENT_DIR_SHIFT 10          /* projectile move event: direction in bits 10-11 of its data word 2 */
-#define EVENT_DIR_WORD 2
 
 /* Thing grids: a cell of 4 x 4 per square, at (lateral + 10, forward) from the eye of the party. */
 #define GRID_STRIDE 17
@@ -1615,7 +1614,7 @@ static void view_draw_objects_in_cell(uint16_t thing, int pos, int cell, uint16_
         } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > CELL_FRONT_RIGHT)) {
             int16_t x = view_squares[pos].x, y = view_squares[pos].y;
             uint16_t g = creature_find_group_near_point(&x, &y, thing_cell(thing));
-            if (g == THING_NONE || creature_is_flying(g) || creature_group_info(g)->possessions & POSSESSIONS_HIDE_CLICKS)
+            if (g == THING_NONE || creature_is_flying(g) || creature_group_info(g)->possessions & POSSESSIONS_FLOOR_CLICKABLE)
                 view_set_click_zone(cell, thing, pos, CLICK_OBJECT);
         }
     }
@@ -1767,18 +1766,11 @@ static int missile_picture_kind(uint16_t thing)
     return MISSILE_FRONT;
 }
 
-/* The flight direction of a missile: from the position word of its move event. */
-static int missile_dir(uint16_t missile)
-{
-    const TimelineEvent *event = timeline.events + thing_word(missile, PROJECTILE_EVENT);
-    return le16(event->data + EVENT_DIR_WORD) >> EVENT_DIR_SHIFT & DIR_MASK;
-}
-
 /* The picture of a missile of picture kind in cell (0 to 3, relative to the party) of a square at lateral, and
    its mirror in *flip: by its flight direction and the parity of its square. */
 static int missile_picture(uint16_t thing, int kind, int cell, int lateral, int spell, int square_parity, int *flip)
 {
-    int dir = missile_dir(thing), entry;
+    int dir = projectile_dir(thing), entry;
     if ((dir & 1) != (view.party_dir & 1)) {  /* the missile flies across the view */
         entry = MISSILE_PICTURE_SIDE;
         if (kind == MISSILE_MIRRORED) {

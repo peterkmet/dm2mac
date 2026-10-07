@@ -70,9 +70,6 @@
 #define PUSH_ALERT_SHIFT 2              /* a creature that another pushes aside: alert damage of a quarter of the push resistance */
 #define HIT_OFFSETS_PER_CELL 2          /* creature_find_group_near_point: the squares to check by cell */
 #define HIT_OFFSETS_READ 4
-/* A projectile event: bits 2-3 of data byte 3 (bits 10-11 of its position word) are its direction. */
-#define MISSILE_EVENT_DIR_BYTE 3
-#define MISSILE_EVENT_DIR_SHIFT 2
 
 const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
 /* Steps of the move commands 3 to 6: forward and right parts. */
@@ -891,8 +888,7 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
         t.scope = SCOPE_ALL;
         if (t.type == THING_GROUP) t.scope = item_attr(thing, ATTR_TELEPORT_SCOPE) ? SCOPE_PARTY : SCOPE_CREATURES;
         else if (t.type == THING_PROJECTILE)
-            party.dest_dir = (int16_t)(timeline.events[thing_word(thing, PROJECTILE_EVENT)].data[MISSILE_EVENT_DIR_BYTE]
-                                       >> MISSILE_EVENT_DIR_SHIFT & DIR_MASK  /* fix: bits 10-11 of the position word */);
+            party.dest_dir = (int16_t)projectile_dir(thing);  /* fix: bits 10-11 of the position word */
     }
     for (int loop = TRANSITION_MAX; --loop;) {
         uint8_t square = dungeon_square(party.cur_map, t.x, t.y);

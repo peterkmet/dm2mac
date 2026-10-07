@@ -33,6 +33,14 @@ enum ai_move_kind {
     MOVE_KIND_SIGHT,            /* the quick test of the light search: no obstacle to the sight */
     MOVE_KIND_COST              /* the quick test of the cost search */
 };
+/* Search target kinds (AiCandidate.kind). */
+enum {
+    TARGET_ANY, TARGET_HOME, TARGET_PARTY_VIEW, TARGET_ACTIVATION, TARGET_PARTY_RANGE_2, TARGET_FLEE,
+    TARGET_SHOOT_PARTY, TARGET_MELEE_PARTY, TARGET_MELEE_LINE, TARGET_SHOOT_LINE, TARGET_STEAL, TARGET_MARKER,
+    TARGET_NEAR_MARKER, TARGET_WANDER, TARGET_RANDOM, TARGET_ITEM, TARGET_ITEM_2, TARGET_ITEM_WALL,
+    TARGET_GROUP_IN_FRONT, TARGET_GROUP_FACING, TARGET_DAMAGE_GROUP, TARGET_MOVE_TEST, TARGET_ACTUATOR,
+    TARGET_LIGHT, TARGET_AI_MARKER, TARGET_MARKER_SIDE, TARGET_DOOR, TARGET_PARTY_DISTANCE
+};
 /* The directions of a move test past the four map directions. */
 #define DIR_LEVEL_UP 4
 #define DIR_LEVEL_DOWN 5

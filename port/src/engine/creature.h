@@ -22,9 +22,9 @@ typedef struct {
     uint16_t door_skills;       /* AI_DOOR_* */
     uint16_t actuator_skills;   /* how the creature uses wall actuators */
     uint16_t unknown_14;
-    uint16_t speed;             /* bits 0-3 think speed, 4-7 mood change, 12-15 turn chance */
+    uint16_t speed;             /* bits 0-3 think speed, 4-7 fear resistance, 8-11 experience, 12-15 turn chance */
     uint8_t unknown_18;
-    uint8_t door_flags;         /* bits 0-3 armor, CREATURE_DOOR_HALF_DAMAGE */
+    uint8_t door_flags;         /* bits 0-3 armor, CREATURE_RESISTS_NON_FIRE */
     uint8_t unknown_1a, unknown_1b, unknown_1c;
     uint8_t push_resistance;    /* against the party strength; 0xfe and 0xff: the creature cannot be pushed */
     uint16_t possessions;       /* how a static creature shows the items it holds */
@@ -42,9 +42,10 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define CREATURE_ATTACKS_RANDOM 0x0010 /* ... random champions */
 #define CREATURE_NOT_DOOR_HIT 0x0020 /* a closing door does not hit the creature */
 #define CREATURE_DOOR_SIZE_SHIFT 6  /* bits 6-7: the door height that the creature blocks */
+#define CREATURE_DOOR_SIZE_MASK 3
 #define CREATURE_WANDERER 0x4000    /* the creature may enter any map */
 #define CREATURE_NOT_SOLID 0x8000   /* the party and objects pass the creature */
-#define CREATURE_DOOR_HALF_DAMAGE 0x10
+#define CREATURE_RESISTS_NON_FIRE 0x10  /* door_flags: doors, melee hits, and spells that are not fire hurt it less */
 #define CREATURE_POSSESSIONS_ON_FLOOR 0x0800 /* possessions bit: a static creature holds what lies on its square */
 #define CREATURE_TRAIT_SHOT_HURTS 0x10      /* a missile that it shoots hurts the creature */
 #define CREATURE_TRAIT_TWO_CHAMPIONS 0x20   /* a melee attack hits two champions */
@@ -53,12 +54,38 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define PUSH_WALL 0xff                  /* push resistance: the party bumps into the creature as into a wall */
 #define PUSH_STRENGTH_PARTY 0xfe
 #define CREATURE_FLIES 0x0004
-#define POSSESSIONS_HIDE_CLICKS 0x2000  /* possessions bit: objects under the creature stay clickable */
+/* Possessions bit: the objects under the creature stay clickable, and a drop goes into the front cells. */
+#define POSSESSIONS_FLOOR_CLICKABLE 0x2000
 #define POSSESSIONS_KIND_MASK 0x000f    /* 0: none shown; 1 or less: carried low */
 #define STATIC_POSSESSIONS_SHOWN 0x400
 #define STATIC_POSSESSIONS_ALL 0x200
 #define CELLS_ALL 0x0f                  /* a cell mask: all four cells */
 #define CREATURE_INFO_COUNT 63
+
+/* The nibbles of CreatureInfo.speed and the armor in door_flags. */
+#define INFO_NIBBLE_MASK 0x0f
+#define SPEED_FEAR_SHIFT 4
+#define SPEED_EXPERIENCE_SHIFT 8
+#define SPEED_TURN_SHIFT 12
+#define ARMOR_IMMUNE INFO_NIBBLE_MASK   /* the armor of a creature that takes no damage */
+static inline uint16_t creature_think_speed(const CreatureInfo *info) { return info->speed & INFO_NIBBLE_MASK; }
+/* The resistance to fear, 15 immune; it also sets how often boredom ends. */
+static inline uint16_t creature_fear_resistance(const CreatureInfo *info)
+{
+    return info->speed >> SPEED_FEAR_SHIFT & INFO_NIBBLE_MASK;
+}
+/* The experience factor of a hit on the creature. */
+static inline uint16_t creature_experience(const CreatureInfo *info)
+{
+    return info->speed >> SPEED_EXPERIENCE_SHIFT & INFO_NIBBLE_MASK;
+}
+static inline uint16_t creature_turn_chance(const CreatureInfo *info) { return info->speed >> SPEED_TURN_SHIFT; }
+static inline uint16_t creature_armor(const CreatureInfo *info) { return info->door_flags & INFO_NIBBLE_MASK; }
+/* The door height that the creature blocks: a closing door above it does not hit the creature. */
+static inline uint16_t creature_door_size(const CreatureInfo *info)
+{
+    return info->flags >> CREATURE_DOOR_SIZE_SHIFT & CREATURE_DOOR_SIZE_MASK;
+}
 /* The sound of an item that a creature drops. */
 #define SOUND_ENTRY_DROP 0x85
 #define SOUND_FALLBACK 0xfe
@@ -160,6 +187,8 @@ uint16_t *creature_anim_words(uint16_t group);
 int creature_anim_start(int creature_type, int action, uint16_t *sequence, uint16_t *state, const uint8_t **frame,
                         uint16_t start);
 int creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame);
+/* The results of creature_anim_next_step: more steps follow, or the sequence ended. */
+enum { ANIM_MORE_STEPS = 1, ANIM_SEQUENCE_END = 2 };
 int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame);
 /* True when the current animation step of a group is a step at which the creature acts. */
 int creature_current_step_acts(uint16_t group);
@@ -192,6 +221,8 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
 #define ALERT_ANGER 0x4000                  /* alert flags: the creature may become angry */
 #define ALERT_LOUD 0x2000                   /* the alert wakes the creature */
 #define ALERT_CLEAR 0x8000                  /* the alert clears the mood bit (bits 0-3) instead of setting it */
+#define ALERT_MOOD_QUICK 6                  /* alert flags: mood bit 6, MOOD_QUICK */
+#define ALERT_STARTLED (ALERT_LOUD | ALERT_MOOD_QUICK)  /* a loud alert that makes the creature hurry */
 void creature_turn_group(uint16_t group, int absolute, int dir);
 /* What a creature that leaves the dungeon drops: its drop items and possessions, its possessions, or nothing. */
 enum drop_mode { DROP_ALL, DROP_POSSESSIONS, DROP_NOTHING };

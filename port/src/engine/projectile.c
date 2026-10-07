@@ -19,7 +19,6 @@ uint16_t projectile_extra_damage, projectile_attack_type;
 int missile_from_sensor;
 
 /* Projectile event position word (event data bytes 2 and 3). */
-#define POSITION_DIR_SHIFT 10
 #define POSITION_STEP_SHIFT 12
 #define POSITION_STEP_MASK 0xf
 #define POSITION_SQUARE_DIR 0x0fff  /* position word: x, y, and direction */
@@ -80,7 +79,6 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define CREATURE_CATCHES_OBJECTS 0x0200     /* flags */
 #define CREATURE_SEES_INVISIBLE 0x0400      /* flags */
 #define CREATURE_IGNORES_LIGHT 0x0800       /* flags */
-#define CREATURE_RESISTS_NON_FIRE 0x10      /* door_flags: only fire hurts it fully */
 #define STATIC_SPELLS_ONLY 0x0100           /* possessions of a static creature: objects fly through it */
 #define POSSESSIONS_DIRECTION 1             /* possessions bits 0-3: a dropped object lies in the flight direction cell */
 #define DODGE_NONE 0x0f                     /* unknown_18 bits 4-7: explosion dodge; 0xf: explosions do not hurt */
@@ -138,16 +136,14 @@ enum { ATTACK_FIRE = 1, ATTACK_NORMAL = 3, ATTACK_THROWN = 4, ATTACK_MAGIC = 5, 
 #define SKILL_DEFENSE 7
 #define STAT_VITALITY 4
 
-/* The flight direction in the position word of a projectile move event. */
-static int event_dir(const TimelineEvent *e)
+int projectile_event_dir(const TimelineEvent *e)
 {
-    return le16(e->data + PROJECTILE_EVENT_POSITION) >> POSITION_DIR_SHIFT & DIR_MASK;
+    return location_dir(le16(e->data + PROJECTILE_EVENT_POSITION));
 }
 
-/* The flight direction bits of the queued move of projectile (they are in the timeline event). */
-static int projectile_dir(uint16_t projectile)
+int projectile_dir(uint16_t projectile)
 {
-    return event_dir(&timeline.events[thing_word(projectile, PROJECTILE_EVENT)]);
+    return projectile_event_dir(&timeline.events[thing_word(projectile, PROJECTILE_EVENT)]);
 }
 
 /* True for the party square on the current map. */
@@ -429,7 +425,7 @@ static int projectile_hit_creature(Hit *h, int cell)
         bounce = info->push_resistance == PUSH_BOUNCES;
     } else {
         if (info->possessions & STATIC_SPELLS_ONLY && payload < SPELL_THING_FIRST) return 0;
-        if ((info->flags >> CREATURE_DOOR_SIZE_SHIFT & CREATURE_DOOR_SIZE_MASK) > 1) return 0;
+        if (creature_door_size(info) > 1) return 0;
         bounce = !(info->possessions & CREATURE_POSSESSIONS_ON_FLOOR);
     }
     if (bounce) {  /* the object falls back on the square that it came from */
@@ -602,7 +598,7 @@ static void set_event_dir(TimelineEvent *e, int dir)
 {
     uint16_t w = le16(e->data + PROJECTILE_EVENT_POSITION);
     put_le16(e->data + PROJECTILE_EVENT_POSITION,
-             (uint16_t)((w & ~(DIR_MASK << POSITION_DIR_SHIFT)) | (dir & DIR_MASK) << POSITION_DIR_SHIFT));
+             (uint16_t)((w & ~POSITION_SQUARE_DIR) | event_square_dir(location_x(w), location_y(w), dir)));
 }
 
 /* The creature on (x, y) may reflect a spell of the projectile; returns 1 when a creature stands there and
@@ -614,7 +610,7 @@ static int projectile_reflect(TimelineEvent *e, uint16_t projectile, int x, int 
         || thing_word(projectile, PROJECTILE_PAYLOAD) < SPELL_THING_FIRST)
         return 0;
     int facing = group_dir(g) & 1;
-    int dir = spell_reflection[facing][(int16_t)(projectile >> THING_CELL_SHIFT) & DIR_MASK][event_dir(e)];
+    int dir = spell_reflection[facing][(int16_t)(projectile >> THING_CELL_SHIFT) & DIR_MASK][projectile_event_dir(e)];
     if (dir < DIR_COUNT) {
         set_event_dir(e, dir);
         /* the original also writes the direction into the freed event of this move */
@@ -661,7 +657,7 @@ static int projectile_enter_square(TimelineEvent *e, uint16_t projectile, int16_
         if (thing_type(t) != THING_EXPLOSION || explosion_type(t) != BLAST_MISSILE_WALL)
             continue;
         TimelineEvent *queued = &timeline.events[thing_word(projectile, PROJECTILE_EVENT)];
-        int back = dir_opposite(event_dir(queued));
+        int back = dir_opposite(projectile_event_dir(queued));
         set_event_dir(e, back);
         set_event_dir(queued, back);
         *x = from_x;
@@ -699,7 +695,7 @@ void projectile_process_event(TimelineEvent *event)
     }
     projectile = le16(e.data + PROJECTILE_EVENT_THING);
     int cell = projectile >> THING_CELL_SHIFT;
-    int dir = event_dir(&e);
+    int dir = projectile_event_dir(&e);
     int leaves = dir == cell || dir_turn(dir, TURN_RIGHT) == cell;  /* the projectile is in the front cells: it leaves the square */
     int16_t from_x = x, from_y = y;
     if (leaves && projectile_enter_square(&e, projectile, &x, &y, dir, cell, &leaves)) return;

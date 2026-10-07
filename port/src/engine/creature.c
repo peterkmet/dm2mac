@@ -319,13 +319,13 @@ int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step
         result = -1;
     } else {
         int jump = steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_JUMP] & STEP_JUMP_MASK;
-        if (!jump) result = 2;
+        if (!jump) result = ANIM_SEQUENCE_END;
         else {
             *step = (uint16_t)(*step + jump);
             result = -1;
         }
     }
-    if (result != 2) result = steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT ? 1 : 0;
+    if (result != ANIM_SEQUENCE_END) result = steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT ? ANIM_MORE_STEPS : 0;
     *frame = steps + ((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE;
     return result;
 }
@@ -818,7 +818,6 @@ void creature_process_event(int x, int y, int type)
 #define ANGER_DAMAGE 30                     /* the damage since the last update that makes a creature angry */
 #define ANGER_DAMAGE_MAYBE 4                /* ... with chance 1 in 4 */
 #define ANGER_HEALTH_PERCENT 15             /* ... or this part of its maximum health */
-#define DOOR_ARMOR_MASK 0x0f                /* door_flags bits 0-3: armor, 15 takes no damage */
 #define ARMOR_FACTOR 8                      /* the armor factor: (amount + 0 to 3) * 8 / (armor + 2) */
 #define ARMOR_BASE 2
 #define GROUP_HEALTH_SHIFT 3                /* each creature of a new group has 1/8 of the maximum health, plus 0 to 1/8 */
@@ -1045,8 +1044,8 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
 int creature_roll_armor_factor(uint16_t group, int amount)
 {
     if (!(uint16_t)amount) return 0;
-    int armor = creature_group_info(group)->door_flags & DOOR_ARMOR_MASK;
-    if (armor == DOOR_ARMOR_MASK) return 0;
+    int armor = creature_armor(creature_group_info(group));
+    if (armor == ARMOR_IMMUNE) return 0;
     int r = rand_2bits();
     return ((uint16_t)amount + (uint16_t)r) * ARMOR_FACTOR / (armor + ARMOR_BASE);
 }

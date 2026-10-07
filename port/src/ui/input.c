@@ -1244,7 +1244,6 @@ static void view_click_door_button(int x, int y, uint16_t door)
     input_command_stop = 1;
 }
 
-#define POSSESSION_SLOT_MASK 0x0f
 #define CELL_POSSESSION_FIRST 4     /* drop cells 4 to 7: the possession cells of a static creature */
 #define CELL_POSSESSION_LAST 7
 
@@ -1285,7 +1284,7 @@ static int view_click_drop_object(int x, int y, int cell)
         const CreatureInfo *info = creature_group_info(group);
         if (info->flags & CREATURE_STATIC) {
             if (possession && !(info->possessions & CREATURE_POSSESSIONS_ON_FLOOR)) return 0;
-            if (cell < CELL_POSSESSION_FIRST && !(info->possessions & POSSESSIONS_HIDE_CLICKS)) return 0;
+            if (cell < CELL_POSSESSION_FIRST && !(info->possessions & POSSESSIONS_FLOOR_CLICKABLE)) return 0;
         } else {
             group = THING_NONE;
         }
@@ -1400,7 +1399,7 @@ static void view_click_with_object(const ViewSquares *v, int x, int y, int front
     uint16_t g = creature_group_at(party.cur_map, v->fx, v->fy);
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
         const CreatureInfo *info = creature_group_info(g);
-        for (int k = 0; k < (info->possessions & POSSESSION_SLOT_MASK); k++) {
+        for (int k = 0; k < (info->possessions & POSSESSIONS_KIND_MASK); k++) {
             if (view_click_place_object(x, y, v->fx, v->fy, POS_FRONT, k + HALF_CELLS, CLICK_POSSESSIONS)) return;
             if (zone_contains_point(info->possession_zone + k, x, y)
                 && view_click_drop_object(v->fx, v->fy, k + HALF_CELLS + CELL_POSSESSION_FIRST))

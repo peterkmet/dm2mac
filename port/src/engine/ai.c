@@ -39,13 +39,6 @@
 #define DEATH_CLOUD_POWER_SMALL 110 /* the death cloud of a creature of hit size 0 */
 #define DEATH_CLOUD_POWER_MEDIUM 190
 #define PERCENT 100
-#define SPEED_MOOD_SHIFT 4
-#define SPEED_TURN_SHIFT 12
-/* The nibbles of the creature info: think speed, mood change speed, turn chance, and armor. */
-#define info_think_speed(i) ((i)->speed & NIBBLE_MASK)
-#define info_mood_speed(i) ((i)->speed >> SPEED_MOOD_SHIFT & NIBBLE_MASK)
-#define info_turn_chance(i) ((i)->speed >> SPEED_TURN_SHIFT)
-#define info_armor(i) ((i)->door_flags & NIBBLE_MASK)
 
 AiContext ai;
 AiPartyView ai_party;
@@ -209,7 +202,7 @@ void creature_ai_prepare(void)
     ai.attr7 = (int16_t)creature_gdat_attr(group_creature(ai.group_thing), CREATURE_ATTR_7);
     int16_t elapsed = (int8_t)((uint8_t)game.game_time - ai.active->last_action_time);
     if (elapsed < 0) elapsed = (int16_t)(elapsed + TIME_BYTE_WRAP);
-    int16_t n = (int16_t)((NIBBLE_MASK - info_think_speed(ai.info)) * 2);
+    int16_t n = (int16_t)((NIBBLE_MASK - creature_think_speed(ai.info)) * 2);
     /* the original tests the address of rand_2bits instead of calling it: the extra delay always applies */
     ai.alert = (int16_t)(rand_below((uint16_t)(n + 1)) + (n >> 2)) <= elapsed;
     int g = thing_index(ai.group_thing);
@@ -259,8 +252,6 @@ void creature_free_cached_ai_data(uint16_t group)
     ai_store[g].path_size = 0;
 }
 
-#define ANIM_MORE_STEPS 1           /* creature_anim_next_step: more steps follow */
-#define ANIM_SEQUENCE_END 2         /* ... the sequence ended */
 
 /* The action that the think event starts: the planned next action, or a new decision. */
 static void creature_ai_take_next_action(void)
@@ -418,7 +409,7 @@ static int creature_ai_update_mood(uint32_t entries)
         mood = (uint16_t)((mood | MOOD_FAR) & ~MOOD_HURRY);
     }
     if (!(mood & MOOD_FAR) && !((uint16_t)r & (mood & MOOD_FEAR ? ROLL_HURRY_FEAR : ROLL_HURRY))) mood ^= MOOD_HURRY;
-    if (!((uint16_t)r % (SPEED_MOOD_STEPS - info_mood_speed(ai.info)))) mood &= ~MOOD_BORED;
+    if (!((uint16_t)r % (SPEED_MOOD_STEPS - creature_fear_resistance(ai.info)))) mood &= ~MOOD_BORED;
     if (ai_class_flags[ai.class_index] & AI_CLASS_BORED) mood |= MOOD_LAZY;
     else if (!(r & ROLL_LAZY)) mood &= ~MOOD_LAZY;
     if (!(r & ROLL_RESTLESS)) mood &= ~MOOD_RESTLESS;
@@ -740,7 +731,7 @@ static int creature_ai_try_flee(uint32_t class_flags)
     if (class_flags & AI_CLASS_NO_FLEE || creature_ai_try_move(ai.search_flags, x, y, x, y, -1)) return 0;
     int flee = (ai.search_flags == MOVE_KIND_SAFE_FLEE && creature_ai_projectile_incoming(x, y)) || !ai.alert
                || !creature_ai_try_attack(ATTACK_MODE_PARTY, x, y, -1, -1, group_dir(ai.group_thing))
-               || rand_below((uint16_t)((info_armor(ai.info) >> 2) + 1)) <= 1;
+               || rand_below((uint16_t)((creature_armor(ai.info) >> 2) + 1)) <= 1;
     return flee && creature_ai_flee(second);
 }
 
@@ -817,7 +808,7 @@ void creature_ai_decide(void)
 #define TARGET_KIND_NO_COUNT 8          /* target kind that the item counts skip */
 #define TARGET_SCAN_ITEMS 0x14          /* candidate kind of the item targets of seek_kind11 */
 #define TARGET_SCAN_KIND11 0x11
-#define TARGET_HOME 6
+#define TARGET_SCAN_HOME 6
 #define TARGET_MINION 7
 #define TARGET_PATH_13 5
 #define TARGET_PATH_5 0x12
@@ -1062,7 +1053,7 @@ static void creature_ai_run_target_scanner(int kind, int arg, int plan, uint32_t
     case SCANNER_HOME: {
         uint16_t home = thing_word(ai.group_thing, GROUP_HOME);
         if (arg && ai.event.data[0] == location_x(home) && ai.event.data[1] == location_y(home) && ai.map == location_map(home)) break;
-        scan_targets(TARGET_HOME, plan, targets, 0, FOUND_NONE);
+        scan_targets(TARGET_SCAN_HOME, plan, targets, 0, FOUND_NONE);
         break;
     }
     case SCANNER_MINION: {
@@ -1282,8 +1273,6 @@ enum { MOOD_OP_CLEAR, MOOD_OP_SET, MOOD_OP_TEST, MOOD_OP_SET_BY_TARGETS, MOOD_OP
 #define TARGET_SCAN_MOOD_SET 0x13       /* the target records that set mood bits; 0x14 clears them */
 #define ATTACK_SKILL_ITEMS 0x08
 #define PLACE_WAIT_CHECKS 3             /* the checks ahead before a creature waits to place its item again */
-#define CANDIDATE_MELEE_LINE 8          /* AiCandidate.kind TARGET_MELEE_LINE of ai_move.c */
-#define CANDIDATE_SHOOT_LINE 9          /* ... TARGET_SHOOT_LINE */
 #define CAT_ORNAMENT 9
 
 static int facing(void) { return group_dir(ai.group_thing); }
@@ -1520,7 +1509,7 @@ static int cmd_set_mood_flag(void)
 static int cmd_go_to_target(void)
 {
     ActiveGroup *a = ai.active;
-    int16_t n = (int16_t)info_turn_chance(ai.info);
+    int16_t n = (int16_t)creature_turn_chance(ai.info);
     int hurry = 0;
     if (n) {
         if (group_mood_flag(ai.group_thing, MOOD_LAZY)) n = (int16_t)(n >> 2);
@@ -1551,8 +1540,8 @@ static int cmd_go_to_target(void)
 static int cmd_follow_path(void)
 {
     AiItemCounts *c = creature_ai_get_item_counts(ai.cache.targets, ai.cache.scan_kind);
-    int mode = ai.cache.kind == CANDIDATE_MELEE_LINE ? ATTACK_MODE_GROUP
-               : ai.cache.kind == CANDIDATE_SHOOT_LINE ? ATTACK_MODE_ANY
+    int mode = ai.cache.kind == TARGET_MELEE_LINE ? ATTACK_MODE_GROUP
+               : ai.cache.kind == TARGET_SHOOT_LINE ? ATTACK_MODE_ANY
                                                        : ATTACK_MODE_PARTY;
     ai.active->sub = (int8_t)ai.cache.item;
     uint16_t saved = ai.attack_flags;
