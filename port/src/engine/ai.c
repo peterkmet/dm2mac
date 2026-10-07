@@ -17,6 +17,7 @@
 #include "merchant.h"
 #include "game.h"
 #include "ui.h"
+#include "le.h"
 
 #define AI_GROUP_KEY_COUNT 1024     /* group record indices */
 #define AI_ACTION_FLAG_PATH 0x04    /* the action follows the cached path */
@@ -35,6 +36,16 @@
 #define TARGET_NO_ITEM 0xffff       /* a target record without an item filter */
 #define CANDIDATE_MASK_ALL 0xffff
 #define POWER_MAX 0xff              /* the power of a missile or an explosion is a byte */
+#define DEATH_CLOUD_POWER_SMALL 110 /* the death cloud of a creature of hit size 0 */
+#define DEATH_CLOUD_POWER_MEDIUM 190
+#define PERCENT 100
+#define SPEED_MOOD_SHIFT 4
+#define SPEED_TURN_SHIFT 12
+/* The nibbles of the creature info: think speed, mood change speed, turn chance, and armor. */
+#define info_think_speed(i) ((i)->speed & NIBBLE_MASK)
+#define info_mood_speed(i) ((i)->speed >> SPEED_MOOD_SHIFT & NIBBLE_MASK)
+#define info_turn_chance(i) ((i)->speed >> SPEED_TURN_SHIFT)
+#define info_armor(i) ((i)->door_flags & NIBBLE_MASK)
 
 AiContext ai;
 AiPartyView ai_party;
@@ -52,38 +63,45 @@ static struct {
 static uint8_t ai_scratch_blocks[SCRATCH_BLOCKS][FILTER_SLOTS * FILTER_BITMAP_SIZE];
 static int ai_scratch_depth;
 
+/* The byte offsets of the fields of the AI table records. */
+enum { STEP_AT_COMMAND, STEP_AT_ON_DONE, STEP_AT_ON_FAIL, STEP_AT_ARG1, STEP_AT_ARG2, STEP_AT_SCAN, STEP_AT_SCAN_ARG };
+enum {
+    TARGET_AT_KIND, TARGET_AT_CONDITION, TARGET_AT_CONDITION_ARG, TARGET_AT_ITEM = 4, TARGET_AT_MASK = 6, TARGET_AT_COST = 8,
+    TARGET_AT_VALUE, TARGET_AT_COUNT_10, TARGET_AT_COUNT_11, TARGET_AT_SCAN, TARGET_AT_MORE
+};
+enum { CHOICE_AT_PLAN, CHOICE_AT_CHANCE, CHOICE_AT_TARGETS, CHOICE_AT_MORE = 6 };
+enum { MOOD_AT_MASK, MOOD_AT_CHOICES = 2 };
+
 static const uint8_t *script(uint32_t addr) { return ai_scripts + (addr - AI_SCRIPTS_BASE); }
 
 /* A step of a plan from the AI tables. */
 PlanStep ai_plan_step(int plan, int step)
 {
-    const uint8_t *p = script(ai_plans[plan] + (uint32_t)(step * 7));
-    return (PlanStep){(int8_t)p[0], (int8_t)p[1], (int8_t)p[2], (int8_t)p[3], (int8_t)p[4], p[5], (int8_t)p[6]};
+    const uint8_t *p = script(ai_plans[plan] + (uint32_t)(step * AI_PLAN_STEP_SIZE));
+    return (PlanStep){(int8_t)p[STEP_AT_COMMAND], (int8_t)p[STEP_AT_ON_DONE], (int8_t)p[STEP_AT_ON_FAIL], (int8_t)p[STEP_AT_ARG1],
+                      (int8_t)p[STEP_AT_ARG2], p[STEP_AT_SCAN], (int8_t)p[STEP_AT_SCAN_ARG]};
 }
 
 /* A target record from the AI tables. */
 AiTarget ai_target(uint32_t addr)
 {
     const uint8_t *p = script(addr);
-    return (AiTarget){(int8_t)p[0], p[1], (int16_t)(p[2] | p[3] << 8), (uint16_t)(p[4] | p[5] << 8),
-                      (uint16_t)(p[6] | p[7] << 8), (int8_t)p[8], p[9], (int8_t)p[10], (int8_t)p[11], (int8_t)p[12], p[13]};
+    return (AiTarget){(int8_t)p[TARGET_AT_KIND], p[TARGET_AT_CONDITION], (int16_t)le16(p + TARGET_AT_CONDITION_ARG),
+                      le16(p + TARGET_AT_ITEM), le16(p + TARGET_AT_MASK), (int8_t)p[TARGET_AT_COST], p[TARGET_AT_VALUE],
+                      (int8_t)p[TARGET_AT_COUNT_10], (int8_t)p[TARGET_AT_COUNT_11], (int8_t)p[TARGET_AT_SCAN], p[TARGET_AT_MORE]};
 }
 
 /* A plan choice from the AI tables. */
 AiChoice ai_choice(uint32_t addr)
 {
     const uint8_t *p = script(addr);
-    return (AiChoice){(int8_t)p[0], (int8_t)p[1], (uint32_t)(p[2] | p[3] << 8 | p[4] << 16 | (uint32_t)p[5] << 24), p[6]};
+    return (AiChoice){(int8_t)p[CHOICE_AT_PLAN], (int8_t)p[CHOICE_AT_CHANCE], le32(p + CHOICE_AT_TARGETS), p[CHOICE_AT_MORE]};
 }
 
-uint16_t ai_mood_mask(uint32_t addr) { return (uint16_t)(script(addr)[0] | script(addr)[1] << 8); }
+uint16_t ai_mood_mask(uint32_t addr) { return le16(script(addr) + MOOD_AT_MASK); }
 
 /* The plan choices of a mood entry. */
-uint32_t ai_mood_choices(uint32_t addr)
-{
-    const uint8_t *p = script(addr);
-    return (uint32_t)(p[2] | p[3] << 8 | p[4] << 16 | (uint32_t)p[5] << 24);
-}
+uint32_t ai_mood_choices(uint32_t addr) { return le32(script(addr) + MOOD_AT_CHOICES); }
 
 /* The flags of an action: how it moves, waits, or follows the path. */
 uint8_t ai_action_flag(int8_t action)
@@ -118,7 +136,7 @@ int creature_ai_begin(uint16_t group, int x, int y, int type, AiContext *saved)
     ai.info = creature_group_info(group);
     ai.anim = creature_anim_words(group);
     ai.map = (uint8_t)map;
-    ai.event = (TimelineEvent){.time_map = (uint32_t)map << 24 | game.game_time};
+    ai.event = (TimelineEvent){.time_map = timeline_time_map(game.game_time, map)};
     ai.event.priority = group_creature(ai.group_thing);
     ai.event.type = (uint8_t)type;
     ai.event.data[0] = (uint8_t)x;
@@ -189,9 +207,9 @@ void creature_ai_prepare(void)
     ai.filter_free = 4;
     ai.plan_flags = 0;
     ai.attr7 = (int16_t)creature_gdat_attr(group_creature(ai.group_thing), CREATURE_ATTR_7);
-    int16_t elapsed = (int8_t)(uint8_t)((uint8_t)game.game_time - ai.active->last_action_time);
+    int16_t elapsed = (int8_t)((uint8_t)game.game_time - ai.active->last_action_time);
     if (elapsed < 0) elapsed = (int16_t)(elapsed + TIME_BYTE_WRAP);
-    int16_t n = (int16_t)((0xf - (ai.info->speed & 0xf)) * 2);
+    int16_t n = (int16_t)((NIBBLE_MASK - info_think_speed(ai.info)) * 2);
     /* the original tests the address of rand_2bits instead of calling it: the extra delay always applies */
     ai.alert = (int16_t)(rand_below((uint16_t)(n + 1)) + (n >> 2)) <= elapsed;
     int g = thing_index(ai.group_thing);
@@ -241,6 +259,85 @@ void creature_free_cached_ai_data(uint16_t group)
     ai_store[g].path_size = 0;
 }
 
+#define ANIM_MORE_STEPS 1           /* creature_anim_next_step: more steps follow */
+#define ANIM_SEQUENCE_END 2         /* ... the sequence ended */
+
+/* The action that the think event starts: the planned next action, or a new decision. */
+static void creature_ai_take_next_action(void)
+{
+    ActiveGroup *a = ai.active;
+    a->action = (uint8_t)a->next_action;
+    if (a->next_action == -1) {
+        creature_ai_decide();
+        return;
+    }
+    a->next_action = -1;
+    if (creature_ai_plan_flags() && (int8_t)a->action != ACTION_VANISH) {
+        a->action = ACTIVE_ACTION_NONE;
+        return;
+    }
+    if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_PATH) {
+        ai.cache.path_left = 0;
+        ai.cache.kind = -1;
+    }
+    int dir = group_dir(ai.group_thing);
+    if (a->action == ACTION_TURN_LEFT) a->facing = (uint8_t)((dir - 1) & 3);
+    else if (a->action == ACTION_TURN_RIGHT) a->facing = (uint8_t)((dir + 1) & 3);
+}
+
+/* The creature starts to vanish: it keeps its animation and leaves a death cloud by its size. */
+static void creature_ai_start_vanish(void)
+{
+    ActiveGroup *a = ai.active;
+    a->counters[0] = (int16_t)ai.anim[0];
+    a->counters[1] = (int16_t)ai.anim[1];
+    if (ai_class_flags[creature_gdat_attr(group_creature(ai.group_thing), CREATURE_ATTR_CLASS)] & AI_CLASS_NO_DEATH_CLOUD) return;
+    int size = ai.info->hit_size;  /* the power of the death cloud by size */
+    explosion_create(CREATURE_DEATH_EXPLOSION, size == 1 ? DEATH_CLOUD_POWER_MEDIUM : size == 2 ? POWER_MAX : DEATH_CLOUD_POWER_SMALL,
+                     ai.event.data[0], ai.event.data[1], EXPLOSION_CENTER);
+}
+
+/* Runs the animation steps of the action: the creature acts at its acting steps; returns the last step result. */
+static int creature_ai_run_animation(int think, int r)
+{
+    ActiveGroup *a = ai.active;
+    for (;;) {
+        if ((think || !a->interrupt || !(ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE)) && ai.anim_step[STEP_JUMP] & STEP_ACTS) {
+            creature_ai_prepare();
+            a->interrupt |= (uint8_t)creature_ai_execute_action();
+        }
+        if (!a->interrupt || !(ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE)) break;
+        r = creature_anim_next_step(group_creature(ai.group_thing), ai.anim[0], ai.anim + 1, &ai.anim_step);
+        if ((uint16_t)r == ANIM_SEQUENCE_END) break;
+    }
+    return r;
+}
+
+/* The next action and its animation; returns 0 when the group left the dungeon. */
+static int creature_ai_act(void)
+{
+    ActiveGroup *a = ai.active;
+    uint16_t *anim = ai.anim;
+    int think = ai.event.type == EVENT_CREATURE_THINK, r;
+    if (think) {
+        creature_ai_take_next_action();
+        if ((int8_t)a->action == ACTION_VANISH) creature_ai_start_vanish();
+        int8_t action = (int8_t)a->action;
+        if (action >= ACTION_WAIT_FIRST && action <= ACTION_WAIT_LAST) {
+            ai.event.time_map = timeline_time_map((uint32_t)(action - ACTION_WAIT_FIRST) + game.game_time, ai.map);
+            return 1;
+        }
+        r = creature_anim_start(group_creature(ai.group_thing), action, anim, anim + 1, &ai.anim_step, 0);
+    } else {
+        r = creature_anim_next_random_step(group_creature(ai.group_thing), anim[0], anim + 1, &ai.anim_step);
+    }
+    r = creature_ai_run_animation(think, r);
+    ai.event.type = (uint16_t)r != ANIM_MORE_STEPS ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
+    if (ai.removed) return 0;
+    ai.event.time_map = timeline_time_map(creature_ai_animate_and_get_next_time(), ai.map);
+    return 1;
+}
+
 /* The update of a creature that acts: the next action and its animation, then the next update event. */
 void creature_ai_update_group(void)
 {
@@ -248,64 +345,8 @@ void creature_ai_update_group(void)
     if (game.magic_light[MAGIC_ACTION_EFFECT] && !(ai.info->flags & CREATURE_FAST_VANISH)
         && a->action != ACTION_VANISH && a->next_action != ACTION_VANISH) {
         ai.event.time_map += ACTION_DELAY_EFFECT;
-    } else {
-        uint16_t *anim = ai.anim;
-        int think = ai.event.type == EVENT_CREATURE_THINK, r;
-        int skip_anim = 0;
-        if (think) {
-            a->action = (uint8_t)a->next_action;
-            if (a->next_action == -1) {
-                creature_ai_decide();
-            } else {
-                a->next_action = -1;
-                if (creature_ai_plan_flags() && (int8_t)a->action != ACTION_VANISH) {
-                    a->action = ACTIVE_ACTION_NONE;
-                } else {
-                    if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_PATH) {
-                        ai.cache.path_left = 0;
-                        ai.cache.kind = -1;
-                    }
-                    int dir = group_dir(ai.group_thing);
-                    if (a->action == ACTION_TURN_LEFT) a->facing = (uint8_t)((dir - 1) & 3);
-                    else if (a->action == ACTION_TURN_RIGHT) a->facing = (uint8_t)((dir + 1) & 3);
-                }
-            }
-            if ((int8_t)a->action == ACTION_VANISH) {
-                a->counters[0] = (int16_t)anim[0];
-                a->counters[1] = (int16_t)anim[1];
-                if (!(ai_class_flags[creature_gdat_attr(group_creature(ai.group_thing), CREATURE_ATTR_CLASS)] & AI_CLASS_NO_DEATH_CLOUD)) {
-                    static const int power[3] = {110, 190, 255};  /* the power of the death cloud by size */
-                    int size = ai.info->hit_size;
-                    explosion_create(CREATURE_DEATH_EXPLOSION, size == 1 ? power[1] : size == 2 ? power[2] : power[0],
-                                     ai.event.data[0], ai.event.data[1], EXPLOSION_CENTER);
-                }
-            }
-            int8_t action = (int8_t)a->action;
-            if (action >= ACTION_WAIT_FIRST && action <= ACTION_WAIT_LAST) {
-                ai.event.time_map = (uint32_t)(action - ACTION_WAIT_FIRST) + game.game_time | (uint32_t)ai.map << 24;
-                skip_anim = 1;
-                r = 0;
-            } else {
-                r = creature_anim_start(group_creature(ai.group_thing), action, anim, anim + 1, &ai.anim_step, 0);
-            }
-        } else {
-            r = creature_anim_next_random_step(group_creature(ai.group_thing), anim[0], anim + 1, &ai.anim_step);
-        }
-        if (!skip_anim) {
-            for (;;) {
-                if ((think || !a->interrupt || !(ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE))
-                    && ai.anim_step[STEP_JUMP] & STEP_ACTS) {
-                    creature_ai_prepare();
-                    a->interrupt |= (uint8_t)creature_ai_execute_action();
-                }
-                if (!a->interrupt || !(ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE)) break;
-                r = creature_anim_next_step(group_creature(ai.group_thing), anim[0], anim + 1, &ai.anim_step);
-                if ((uint16_t)r == 2) break;
-            }
-            ai.event.type = (uint16_t)r != 1 ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
-            if (ai.removed) return;
-            ai.event.time_map = creature_ai_animate_and_get_next_time() | (uint32_t)ai.map << 24;
-        }
+    } else if (!creature_ai_act()) {
+        return;
     }
     if (ai.prepared && (ai.cache.path_length || ai.cache.kind != -1)) ai_store_cache();
     if (ai.active->event != EVENT_NO_SLOT) creature_cancel_update(ai.group_thing);
@@ -354,6 +395,13 @@ DistanceMap party_distance = {.map = -1}, alt_distance = {.map = -1};
 #define SPEED_MOOD_STEPS 0x10           /* speed bits 4-7: 15 changes the bored mood on each update */
 #define FEAR_HEALTH_PERCENT 25
 
+/* The scanner kinds of a plan step (PlanStep.scan bits 0-4). */
+enum ai_scanner {
+    SCANNER_IDLE, SCANNER_TARGETS, SCANNER_ITEMS_SEEN, SCANNER_ITEMS_SEEN_2, SCANNER_ITEM_COUNTS, SCANNER_ITEM_COUNTS_2,
+    SCANNER_ITEMS_SEEN_ATTACK, SCANNER_ITEMS_SEEN_ATTACK_2, SCANNER_PATH_13, SCANNER_HOME, SCANNER_MINION, SCANNER_PATH_5,
+    SCANNER_CARRIED, SCANNER_CARRIED_2, SCANNER_WANDER, SCANNER_ITEM_CLASS, SCANNER_PARTY
+};
+
 static AiCandidate *candidate_at(int i) { return &ai.candidates[i]; }
 
 int creature_ai_class(void);
@@ -370,7 +418,7 @@ static int creature_ai_update_mood(uint32_t entries)
         mood = (uint16_t)((mood | MOOD_FAR) & ~MOOD_HURRY);
     }
     if (!(mood & MOOD_FAR) && !((uint16_t)r & (mood & MOOD_FEAR ? ROLL_HURRY_FEAR : ROLL_HURRY))) mood ^= MOOD_HURRY;
-    if (!((int)(uint16_t)r % (SPEED_MOOD_STEPS - (ai.info->speed >> 4 & 0xf)))) mood &= ~MOOD_BORED;
+    if (!((uint16_t)r % (SPEED_MOOD_STEPS - info_mood_speed(ai.info)))) mood &= ~MOOD_BORED;
     if (ai_class_flags[ai.class_index] & AI_CLASS_BORED) mood |= MOOD_LAZY;
     else if (!(r & ROLL_LAZY)) mood &= ~MOOD_LAZY;
     if (!(r & ROLL_RESTLESS)) mood &= ~MOOD_RESTLESS;
@@ -380,14 +428,14 @@ static int creature_ai_update_mood(uint32_t entries)
     if (!(ai_class_flags[ai.class_index] & AI_CLASS_ONE_FEAR)) n = (((ai.group_thing & 3) + 1) * 2 - 1) * 2;
     if (!rand_below((uint16_t)n)) {
         int max = (int16_t)ai.info->max_health < 1 ? 1 : (int16_t)ai.info->max_health;
-        if (thing_word(ai.group_thing, GROUP_HEALTH) * 100u / (unsigned)max < FEAR_HEALTH_PERCENT) mood |= MOOD_FEAR;
+        if (thing_word(ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / (unsigned)max < FEAR_HEALTH_PERCENT) mood |= MOOD_FEAR;
         else mood &= ~MOOD_FEAR;
     }
     group_set_mood(ai.group_thing, mood & ~GROUP_SEEN);
     int16_t any = -1, all = -1, i = 0;
     uint16_t mask;
     for (;; i++) {
-        mask = ai_mood_mask(entries + (uint32_t)(i * 6));
+        mask = ai_mood_mask(entries + (uint32_t)(i * AI_MOOD_ENTRY_SIZE));
         if (!mask) break;
         if ((mask & MOOD_GLOBAL_TEST) == MOOD_GLOBAL_TEST) {
             if (dun_get_global_var(mask & MOOD_GLOBAL_MASK)) break;
@@ -413,7 +461,7 @@ static void creature_ai_select_behavior(void)
 {
     creature_ai_class();
     ai.mood = (int16_t)creature_ai_update_mood(ai_behaviors[ai.class_index]);
-    ai.mood_entry = ai_behaviors[ai.class_index] + (uint32_t)(ai.mood * 6);
+    ai.mood_entry = ai_behaviors[ai.class_index] + (uint32_t)(ai.mood * AI_MOOD_ENTRY_SIZE);
 }
 
 /* The plan state of a found candidate: its path, kind, and target for the next updates. */
@@ -504,7 +552,7 @@ static void creature_ai_scan_plan_list(uint32_t choices, int plan, int step, int
             creature_ai_run_target_scanner(s.scan, s.scan_arg, c.plan, c.targets);
         }
         if (stop || !c.more) return;
-        choices += 7;
+        choices += AI_CHOICE_SIZE;
     }
 }
 
@@ -590,7 +638,7 @@ static int creature_ai_advance_plan_step(int result)
         return 1;
     }
     int changed = 0;
-    if (next < -4 && next > -9) {
+    if (next <= PLAN_NEXT_FORWARD && next >= PLAN_NEXT_SKIP) {
         if (next != PLAN_NEXT_STAY) {
             if (next == PLAN_NEXT_SKIP) step = (int8_t)(step + 2);
             else step = (int8_t)(step + (next == PLAN_NEXT_FORWARD ? 1 : -1));
@@ -608,9 +656,9 @@ static int creature_ai_advance_plan_step(int result)
 static int plan_scan_goes_on(int first_kind, int first_arg, const PlanStep *s)
 {
     int k = s->scan & PLAN_SCAN_KIND;
-    if (first_kind == k && k != 1) return 1;
-    if (!k) return 1;
-    return first_kind == 1 && k == 1 && s->scan_arg == first_arg;
+    if (first_kind == k && k != SCANNER_TARGETS) return 1;
+    if (k == SCANNER_IDLE) return 1;
+    return first_kind == SCANNER_TARGETS && k == SCANNER_TARGETS && s->scan_arg == first_arg;
 }
 
 /* A creature that wanders: a step forward, a turn, or a wait. */
@@ -667,8 +715,8 @@ static int creature_ai_flee(int second)
         else if (rand_bit()) dir = ((group_dir(ai.group_thing)) + 2) & 3;
         else dir = rand_2bits();
         int turn = rand_bit() ? 1 : -1;
-        for (int tries = 4; tries; tries--) {
-            int command = (second ? 0 : ai.search_flags) | AI_MOVE_TEST;
+        for (int tries = DIR_COUNT; tries; tries--) {
+            int command = (second ? MOVE_KIND_PLAIN : ai.search_flags) | AI_MOVE_TEST;
             if (creature_ai_try_move(command, ai.event.data[0], ai.event.data[1], -1, -1, dir)) {
                 a->plan = -1;
                 a->plan_step = 0;
@@ -683,47 +731,23 @@ static int creature_ai_flee(int second)
 
 int creature_ai_exec_plan_command(int command);
 
-/* The creature chooses what to do next: wander, flee, or follow the best plan. */
-void creature_ai_decide(void)
+/* A creature that cannot stay flees: it sees a missile, is not alert, cannot attack, or by chance by its armor.
+   Returns 1 when it moved. */
+static int creature_ai_try_flee(uint32_t class_flags)
 {
-    ActiveGroup *a = ai.active;
-    creature_ai_select_behavior();
-    uint32_t class_flags = ai_class_flags[ai.class_index];
-    ai.search_flags = class_flags & AI_CLASS_NO_FLEE ? 0 : (uint8_t)(!(class_flags & AI_CLASS_SEARCH_NEAR) + 4);
-    uint32_t choices = ai_mood_choices(ai.mood_entry);
-    if (choices == AI_CHOICES_NONE) {
-        a->action = 0;
-        return;
-    }
-    if (choices == AI_CHOICES_WANDER) {
-        creature_ai_wander();
-        return;
-    }
-    creature_ai_prepare();
-    ai_scratch_push();
     int second = !rand_2bits();
     int x = ai.event.data[0], y = ai.event.data[1];
-    if (!(class_flags & AI_CLASS_NO_FLEE) && !creature_ai_try_move(ai.search_flags, x, y, x, y, -1)) {
-        int flee = (ai.search_flags == 5 && creature_ai_projectile_incoming(x, y)) || !ai.alert
-                   || !creature_ai_try_attack(0, x, y, -1, -1, group_dir(ai.group_thing))
-                   || rand_below((uint16_t)(((ai.info->door_flags & 0xf) >> 2) + 1)) <= 1;
-        if (flee && creature_ai_flee(second)) {
-            ai_scratch_pop();
-            return;
-        }
-    }
-    a->action = ACTIVE_ACTION_NONE;
-    int chosen = (int8_t)creature_ai_choose_plan();
-    if (chosen == (int8_t)AI_RESULT_FAIL) {
-        if (!(ai.plan_flags & PLAN_SCAN_ENDS)) {
-            a->action = 0;
-        } else {
-            if (creature_ai_advance_plan_step(AI_RESULT_FAIL)) ai.cache.path_left = 0;
-            a->action = ACTION_RESCAN;
-        }
-        ai_scratch_pop();
-        return;
-    }
+    if (class_flags & AI_CLASS_NO_FLEE || creature_ai_try_move(ai.search_flags, x, y, x, y, -1)) return 0;
+    int flee = (ai.search_flags == MOVE_KIND_SAFE_FLEE && creature_ai_projectile_incoming(x, y)) || !ai.alert
+               || !creature_ai_try_attack(ATTACK_MODE_PARTY, x, y, -1, -1, group_dir(ai.group_thing))
+               || rand_below((uint16_t)((info_armor(ai.info) >> 2) + 1)) <= 1;
+    return flee && creature_ai_flee(second);
+}
+
+/* Runs the steps of the chosen plan (or of the current plan) while they scan as its first step does. */
+static void creature_ai_run_plan(int chosen)
+{
+    ActiveGroup *a = ai.active;
     int plan, step;
     if (chosen >= 0 && chosen < AI_PLAN_COUNT) {
         plan = a->plan = (int8_t)chosen;
@@ -749,6 +773,42 @@ void creature_ai_decide(void)
         if (n++ > AI_STEP_LIMIT) a->action = 0;
         if ((int8_t)a->action == -1 && r != (int8_t)AI_RESULT_ISSUED && a->plan == -1) a->action = 0;
     } while ((int8_t)a->action == -1);
+}
+
+/* The creature chooses what to do next: wander, flee, or follow the best plan. */
+void creature_ai_decide(void)
+{
+    ActiveGroup *a = ai.active;
+    creature_ai_select_behavior();
+    uint32_t class_flags = ai_class_flags[ai.class_index];
+    ai.search_flags = class_flags & AI_CLASS_NO_FLEE      ? MOVE_KIND_PLAIN
+                      : class_flags & AI_CLASS_SEARCH_NEAR ? MOVE_KIND_SAFE
+                                                           : MOVE_KIND_SAFE_FLEE;
+    uint32_t choices = ai_mood_choices(ai.mood_entry);
+    if (choices == AI_CHOICES_NONE) {
+        a->action = 0;
+        return;
+    }
+    if (choices == AI_CHOICES_WANDER) {
+        creature_ai_wander();
+        return;
+    }
+    creature_ai_prepare();
+    ai_scratch_push();
+    if (creature_ai_try_flee(class_flags)) {
+        ai_scratch_pop();
+        return;
+    }
+    a->action = ACTIVE_ACTION_NONE;
+    int chosen = (int8_t)creature_ai_choose_plan();
+    if (chosen != (int8_t)AI_RESULT_FAIL) {
+        creature_ai_run_plan(chosen);
+    } else if (!(ai.plan_flags & PLAN_SCAN_ENDS)) {
+        a->action = 0;
+    } else {
+        if (creature_ai_advance_plan_step(AI_RESULT_FAIL)) ai.cache.path_left = 0;
+        a->action = ACTION_RESCAN;
+    }
     ai_scratch_pop();
 }
 
@@ -772,6 +832,11 @@ void creature_ai_decide(void)
 #define TARGET_SCAN_CARRIED 0x0f
 #define TARGET_SCAN_CARRIED_2 0x10
 #define TARGET_SCAN_ITEM_CLASS 0x15
+/* The target records of the item scanners: the wanted items and the items seen, counted against them. */
+#define TARGET_SCAN_WANTED 1
+#define TARGET_SCAN_SEEN 2
+#define TARGET_SCAN_WANTED_2 3
+#define TARGET_SCAN_SEEN_2 4
 
 /* Adds a candidate destination for the search, with its cost lowered away from the party map. */
 static void add_candidate(int kind, uint32_t record, const AiTarget *t, int scan_kind, int8_t bonus, uint16_t marker,
@@ -800,6 +865,9 @@ static void add_candidate(int kind, uint32_t record, const AiTarget *t, int scan
     d->targets = record;
 }
 
+/* The bytes of a count entry: the carried items and the items still wanted of each count. */
+enum { COUNT_AT_CARRIED, COUNT_AT_WANTED, COUNT_AT_EXTRA };
+
 /* The item counts of a target list for a scan: how many of each wanted item the creature carries. */
 static AiItemCounts *creature_ai_get_item_counts(uint32_t targets, int scan)
 {
@@ -808,7 +876,7 @@ static AiItemCounts *creature_ai_get_item_counts(uint32_t targets, int scan)
         ai.counts_dirty = 0;
     }
     AiItemCounts *slot = &ai.item_counts[0];
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < AI_COUNT_LISTS; i++) {
         AiItemCounts *e = &ai.item_counts[i];
         if (!e->targets) slot = e;
         else if (e->targets == targets && e->scan_kind == (int16_t)scan) return e;
@@ -818,25 +886,25 @@ static AiItemCounts *creature_ai_get_item_counts(uint32_t targets, int scan)
     slot->total = slot->wanted = slot->extra = 0;
     int8_t *p = slot->counts, *pa = p, *pb = p;
     int16_t want_a = 0, want_b = 0, used_a = 0, used_b = 0;
-    for (int16_t i = 0; i <= 5;) {
+    for (int16_t i = 0; i < AI_COUNT_TARGETS;) {
         AiTarget t = ai_target(targets);
         if (t.scan == (int16_t)scan) {
             if (t.item != TARGET_NO_ITEM && t.kind != TARGET_KIND_NO_COUNT) {
                 if (t.count_10 != -1) {
-                    for (; pa < p; pa += 4) pa[1] = (int8_t)(want_a - used_a);
+                    for (; pa < p; pa += AI_COUNT_ENTRY_SIZE) pa[COUNT_AT_WANTED] = (int8_t)(want_a - used_a);
                     want_a = t.count_10;
                     slot->wanted = (int8_t)(slot->wanted + (int8_t)want_a);
                     used_a = 0;
                 }
                 if (t.count_11 != -1) {
-                    for (; pb < p; pb += 4) pb[2] = (int8_t)(want_b - used_b);
+                    for (; pb < p; pb += AI_COUNT_ENTRY_SIZE) pb[COUNT_AT_EXTRA] = (int8_t)(want_b - used_b);
                     want_b = t.count_11;
                     slot->extra = (int8_t)(slot->extra + (int8_t)want_b);
                     used_b = 0;
                 }
                 int16_t n = (int16_t)creature_count_matching_items((int16_t)t.item, thing_word(ai.group_thing, GROUP_POSSESSIONS),
                                                                    CELL_ANY, 0, 1);
-                p[0] = (int8_t)n;
+                p[COUNT_AT_CARRIED] = (int8_t)n;
                 slot->total = (int8_t)(slot->total + (int8_t)n);
                 int16_t ra = (int16_t)(want_a - used_a), rb = (int16_t)(want_b - used_b);
                 slot->wanted = (int8_t)(slot->wanted - (int8_t)(n < ra ? n : ra));
@@ -844,7 +912,7 @@ static AiItemCounts *creature_ai_get_item_counts(uint32_t targets, int scan)
                 used_a = (int16_t)(used_a + n < want_a ? used_a + n : want_a);
                 used_b = (int16_t)(n + used_b < want_b ? n + used_b : want_b);
             }
-            p += 4;
+            p += AI_COUNT_ENTRY_SIZE;
             i++;
         }
         if (!t.more) break;
@@ -894,7 +962,7 @@ static void scan_item_counts(int arg, int plan, uint32_t list, int n)
         AiTarget t = ai_target(list);
         if (t.scan == (int8_t)n) {
             if (t.item != TARGET_NO_ITEM && creature_ai_test_condition(t.condition, t.condition_arg, plan)) {
-                int8_t bonus = (int8_t)-(t.cost < p[0] ? t.cost : p[0]);
+                int8_t bonus = (int8_t)-(t.cost < p[COUNT_AT_CARRIED] ? t.cost : p[COUNT_AT_CARRIED]);
                 AiTarget copy = t;
                 if (arg) {
                     copy.cost = 0;
@@ -903,7 +971,7 @@ static void scan_item_counts(int arg, int plan, uint32_t list, int n)
                 }
                 add_candidate(t.kind, list, &copy, n, bonus, FOUND_NONE, plan, (int8_t)arg);
             }
-            p += 4;
+            p += AI_COUNT_ENTRY_SIZE;
         }
         if (!t.more) return;
     }
@@ -957,7 +1025,7 @@ static void scan_idle(int arg, int plan, uint32_t list)
 static void scan_random_wander(int arg, int plan, uint32_t list)
 {
     uint16_t mood = group_mood(ai.group_thing);
-    int set = dungeon_map_graphics(ai.map) >> 4 & 0xf;
+    int set = dungeon_map_wallset(ai.map);
     if (gdat_entry_index(draw_gdat(), CAT_MAP_GRAPHICS, set, GDAT_TYPE_VALUE, MAP_GRAPHICS_KEY_FLAGS) & MAP_KEY_NO_WANDER
         || (!(int8_t)arg && mood & MOOD_WANDERS)) {
         group_set_mood(ai.group_thing, mood & ~MOOD_WANDERS);
@@ -980,37 +1048,37 @@ static void creature_ai_run_target_scanner(int kind, int arg, int plan, uint32_t
     arg = (int8_t)arg;
     plan = (int8_t)plan;
     switch (kind & PLAN_SCAN_KIND) {
-    case 0: scan_idle(arg, plan, targets); break;
-    case 1: scan_targets(arg, plan, targets, 0, FOUND_NONE); break;
-    case 2: scan_items_seen(arg, plan, targets, 2, 1, 0); break;
-    case 3: scan_items_seen(arg, plan, targets, 4, 3, 0); break;
-    case 4: scan_item_counts(arg, plan, targets, 1); break;
-    case 5: scan_item_counts(arg, plan, targets, 3); break;
-    case 6: scan_items_seen(arg, plan, targets, 2, 1, 1); break;
-    case 7: scan_items_seen(arg, plan, targets, 4, 3, 1); break;
-    case 8:
+    case SCANNER_IDLE: scan_idle(arg, plan, targets); break;
+    case SCANNER_TARGETS: scan_targets(arg, plan, targets, 0, FOUND_NONE); break;
+    case SCANNER_ITEMS_SEEN: scan_items_seen(arg, plan, targets, TARGET_SCAN_SEEN, TARGET_SCAN_WANTED, 0); break;
+    case SCANNER_ITEMS_SEEN_2: scan_items_seen(arg, plan, targets, TARGET_SCAN_SEEN_2, TARGET_SCAN_WANTED_2, 0); break;
+    case SCANNER_ITEM_COUNTS: scan_item_counts(arg, plan, targets, TARGET_SCAN_WANTED); break;
+    case SCANNER_ITEM_COUNTS_2: scan_item_counts(arg, plan, targets, TARGET_SCAN_WANTED_2); break;
+    case SCANNER_ITEMS_SEEN_ATTACK: scan_items_seen(arg, plan, targets, TARGET_SCAN_SEEN, TARGET_SCAN_WANTED, 1); break;
+    case SCANNER_ITEMS_SEEN_ATTACK_2: scan_items_seen(arg, plan, targets, TARGET_SCAN_SEEN_2, TARGET_SCAN_WANTED_2, 1); break;
+    case SCANNER_PATH_13:
         scan_targets(TARGET_PATH_13, plan, targets, 0, ai.cache.kind == CACHE_KIND_13 ? ai.cache.found : FOUND_NONE);
         break;
-    case 9: {
+    case SCANNER_HOME: {
         uint16_t home = thing_word(ai.group_thing, GROUP_HOME);
         if (arg && ai.event.data[0] == location_x(home) && ai.event.data[1] == location_y(home) && ai.map == location_map(home)) break;
         scan_targets(TARGET_HOME, plan, targets, 0, FOUND_NONE);
         break;
     }
-    case 10: {
+    case SCANNER_MINION: {
         uint16_t p = minion_find_link_projectile(ai.group_thing, THING_NONE);
         if (p && thing_type(thing_word(p, PROJECTILE_PAYLOAD)) == THING_CONTAINER)
             scan_targets(TARGET_MINION, plan, targets, 0, thing_word(thing_word(p, PROJECTILE_PAYLOAD), MINION_MAP_LOCATION));
         break;
     }
-    case 11:
+    case SCANNER_PATH_5:
         scan_targets(TARGET_PATH_5, plan, targets, 0, ai.cache.kind == CACHE_KIND_5 ? ai.cache.found : FOUND_NONE);
         break;
-    case 12: scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED); break;
-    case 13: scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED_2); break;
-    case 14: scan_random_wander(arg, plan, targets); break;
-    case 15: scan_by_condition(arg, plan, targets, TARGET_SCAN_ITEM_CLASS); break;
-    case 16:
+    case SCANNER_CARRIED: scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED); break;
+    case SCANNER_CARRIED_2: scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED_2); break;
+    case SCANNER_WANDER: scan_random_wander(arg, plan, targets); break;
+    case SCANNER_ITEM_CLASS: scan_by_condition(arg, plan, targets, TARGET_SCAN_ITEM_CLASS); break;
+    case SCANNER_PARTY:
         scan_targets(TARGET_PARTY, plan, targets, 0,
                      (uint16_t)location_pack(ai_party.x, ai_party.y, ai_party.map));
         break;
@@ -1031,6 +1099,8 @@ enum ai_condition {
 #define SENSOR_SPECIAL_WALL 0x3f
 #define CREATURE_TYPE_KIND_A 0x34
 #define CREATURE_TYPE_KIND_B 0x31
+#define FEW_OF_TYPE_MAX 4
+#define CELL_COUNT 4
 
 /* The distance between two squares along the axes. */
 static int manhattan(int x1, int y1, int x2, int y2)
@@ -1042,7 +1112,7 @@ static int manhattan(int x1, int y1, int x2, int y2)
 /* True when the wall squares around the party have a sensor of the special type. */
 static int party_beside_special_wall(void)
 {
-    for (int d = 0; d < 4; d++) {
+    for (int d = 0; d < DIR_COUNT; d++) {
         int x = ai_party.x + dir_dx[d], y = ai_party.y + dir_dy[d];
         uint8_t square = dun_get_square(x, y);
         if (square_type(square) || !(square & SQUARE_HAS_THINGS)) continue;
@@ -1053,6 +1123,89 @@ static int party_beside_special_wall(void)
         }
     }
     return 0;
+}
+
+/* True when the party looks at the creature on (x, y): in front of it, or (not front_only) in range and in sight. */
+static int cond_sees_party(int x, int y, int front_only, int16_t range)
+{
+    if (ai.map != ai_party.map || dun_get_direction_to(ai_party.x, ai_party.y, x, y) != ai_party.dir) return 0;
+    if (front_only) return 1;
+    int16_t d = (int16_t)manhattan(ai_party.x, ai_party.y, x, y);
+    if (d <= 1) return 1;
+    return d <= range && !ui.inventory && creature_trace_line(ai_party.x, ai_party.y, x, y, creature_square_is_obstacle) != 0;
+}
+
+/* True when a champion holds an item of FILTER_WEAPON_HANDS in a hand. */
+static int cond_party_holds_weapon(void)
+{
+    for (int cell = 0; cell < CELL_COUNT; cell++) {
+        int ch = champ_get_index_in_cell(cell);
+        if (ch == -1) continue;
+        uint16_t hand = champion(ch)->slots[SLOT_ACTION_HAND];
+        if (hand != THING_NONE && creature_thing_matches_filter(hand, FILTER_WEAPON_HANDS)) return 1;
+        hand = champion(ch)->slots[SLOT_READY_HAND];
+        if (hand != THING_NONE && creature_thing_matches_filter(hand, FILTER_WEAPON_HANDS)) return 1;
+    }
+    return 0;
+}
+
+/* True when the party stands next to the creature on (x, y) with an open pit behind it. */
+static int cond_party_at_pit(int x, int y)
+{
+    if (ai.map != ai_party.map || (x == ai_party.x && y == ai_party.y)) return 0;
+    if (manhattan(x, y, ai_party.x, ai_party.y) > 1) return 0;
+    int d = dun_get_direction_to(x, y, ai_party.x, ai_party.y);
+    uint8_t square = dun_get_square((int16_t)(ai_party.x + dir_dx[d]), (int16_t)(ai_party.y + dir_dy[d]));
+    return square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0);
+}
+
+/* True when the creature on (x, y) can close the door behind it. */
+static int cond_door_behind(int x, int y)
+{
+    int d = ((group_dir(ai.group_thing)) + 2) & 3;
+    if (!(ai.door_flags & DOOR_SKILL_ANY_SIDE)) return 0;
+    if (square_type(dun_get_square((int16_t)(x + dir_dx[d]), (int16_t)(y + dir_dy[d]))) != SQUARE_DOOR) return 0;
+    return creature_ai_try_door_action(DOOR_MODE_CLOSE, x, y, -1, -1, d) != 0;
+}
+
+/* True when a static creature stands in front of the creature on (x, y) and the party is beside a special wall. */
+static int cond_static_ahead(int x, int y)
+{
+    if (ai.map != ai_party.map) return 0;
+    int d = group_dir(ai.group_thing);
+    uint16_t g = creature_get_group_at((uint16_t)(x + dir_dx[d]), (uint16_t)(y + dir_dy[d]));
+    return g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC && party_beside_special_wall();
+}
+
+/* True when the current map has few groups of the creature type: fewer than the other kinds plus one, at most 4. */
+static int cond_few_of_type(int16_t creature_type)
+{
+    int16_t same = 0, others = 0;
+    int map = party.cur_map;
+    for (int sx = 0; sx < dungeon_map_width(map); sx++)
+        for (int sy = 0; sy < dungeon_map_height(map); sy++) {
+            uint16_t g = creature_group_at(map, sx, sy);
+            if (g == THING_NONE) continue;
+            int type = group_creature(g);
+            if (type == (uint16_t)creature_type) same++;
+            else if (type == CREATURE_TYPE_KIND_A || type == CREATURE_TYPE_KIND_B) others++;
+        }
+    return same < (others + 1 < FEW_OF_TYPE_MAX ? others + 1 : FEW_OF_TYPE_MAX);
+}
+
+/* True when the location in plan counter index of the active group is the square (x, y) of the creature. */
+static int cond_at_counter(int x, int y, int16_t index)
+{
+    uint16_t at = 0;  /* fix: the original reads any word of the active group for an argument out of range */
+    int offset = (int)offsetof(ActiveGroup, counters) + (int)sizeof at * index;
+    if (offset >= 0 && offset + (int)sizeof at <= (int)sizeof(ActiveGroup)) memcpy(&at, (uint8_t *)ai.active + offset, sizeof at);
+    return location_x(at) == x && location_y(at) == y && location_map(at) == ai.map;
+}
+
+/* True when the creature carries an item of filter. */
+static int cond_carries(int16_t filter)
+{
+    return creature_find_matching_item(filter, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) != THING_ENDOFLIST;
 }
 
 /* True when the condition of a target record holds for the creature. */
@@ -1068,83 +1221,26 @@ int creature_ai_test_condition(int condition, int arg, int plan)
     c &= COND_MASK;
     int x = ai.event.data[0], y = ai.event.data[1];
     uint16_t home = thing_word(ai.group_thing, GROUP_HOME), mood = group_mood(ai.group_thing);
+    int at_home = ai.map == location_map(home) && x == location_x(home) && y == location_y(home);
     switch (c) {
     case COND_ALWAYS: r = 1; break;
     case COND_SEES_PARTY_FRONT:
-    case COND_SEES_PARTY:
-        if (ai.map != ai_party.map || dun_get_direction_to(ai_party.x, ai_party.y, x, y) != ai_party.dir) break;
-        if (c == COND_SEES_PARTY_FRONT) { r = 1; break; }
-        {
-            int16_t d = (int16_t)manhattan(ai_party.x, ai_party.y, x, y);
-            if (d <= 1) r = 1;
-            else if (d <= a && !ui.inventory) r = creature_trace_line(ai_party.x, ai_party.y, x, y, creature_square_is_obstacle) != 0;
-        }
-        break;
+    case COND_SEES_PARTY: r = cond_sees_party(x, y, c == COND_SEES_PARTY_FRONT, a); break;
     case COND_ON_PARTY_SQUARE: r = ai.map == ai_party.map && x == ai_party.x && y == ai_party.y; break;
-    case COND_CARRIES:
-        r = creature_find_matching_item(a, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) != THING_ENDOFLIST;
-        break;
+    case COND_CARRIES: r = cond_carries(a); break;
     case COND_ALERT: r = ai.alert; break;
-    case COND_AT_HOME:
-    case COND_AT_HOME_CARRIES:
-        if (ai.map != location_map(home) || x != location_x(home) || y != location_y(home)) break;
-        r = c == COND_AT_HOME ? 1
-                              : creature_find_matching_item(a, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) != THING_ENDOFLIST;
-        break;
+    case COND_AT_HOME: r = at_home; break;
+    case COND_AT_HOME_CARRIES: r = at_home && cond_carries(a); break;
     case COND_MOOD_BIT: r = (mood & (1 << (a & SHIFT_COUNT_MASK))) != 0; break;
     case COND_ON_PARTY_MAP: r = ai.map == ai_party.map; break;
-    case COND_PARTY_HOLDS:
-        for (int cell = 0; cell < 4 && !r; cell++) {
-            int ch = champ_get_index_in_cell(cell);
-            if (ch == -1) continue;
-            uint16_t hand = champion(ch)->slots[SLOT_ACTION_HAND];
-            if (hand != THING_NONE && creature_thing_matches_filter(hand, FILTER_WEAPON_HANDS)) r = 1;
-            hand = champion(ch)->slots[SLOT_READY_HAND];
-            if (hand != THING_NONE && creature_thing_matches_filter(hand, FILTER_WEAPON_HANDS)) r = 1;
-        }
-        break;
+    case COND_PARTY_HOLDS: r = cond_party_holds_weapon(); break;
     case COND_PARTY_LEVEL: r = champ_get_party_level() >= a; break;
-    case COND_PARTY_AT_PIT:
-        if (ai.map != ai_party.map || (x == ai_party.x && y == ai_party.y)) break;
-        if (manhattan(x, y, ai_party.x, ai_party.y) > 1) break;
-        {
-            int d = dun_get_direction_to(x, y, ai_party.x, ai_party.y);
-            uint8_t square = dun_get_square((int16_t)(ai_party.x + dir_dx[d]), (int16_t)(ai_party.y + dir_dy[d]));
-            r = square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & 1);
-        }
-        break;
-    case COND_DOOR_BEHIND: {
-        int d = ((group_dir(ai.group_thing)) + 2) & 3;
-        if (!(ai.door_flags & DOOR_SKILL_ANY_SIDE)) break;
-        if (square_type(dun_get_square((int16_t)(x + dir_dx[d]), (int16_t)(y + dir_dy[d]))) != SQUARE_DOOR) break;
-        r = creature_ai_try_door_action(1, x, y, -1, -1, d) != 0;
-        break;
-    }
-    case COND_STATIC_AHEAD: {
-        if (ai.map != ai_party.map) break;
-        int d = group_dir(ai.group_thing);
-        uint16_t g = creature_get_group_at((uint16_t)(x + dir_dx[d]), (uint16_t)(y + dir_dy[d]));
-        if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) r = party_beside_special_wall();
-        break;
-    }
-    case COND_HEALTH_BELOW:
-        r = thing_word(ai.group_thing, GROUP_HEALTH) * 100u / ai.info->max_health <= (unsigned)a;
-        break;
-    case COND_FEW_OF_TYPE: {
-        int16_t same = 0, others = 0;
-        int map = party.cur_map;
-        for (int sx = 0; sx < dungeon_map_width(map); sx++)
-            for (int sy = 0; sy < dungeon_map_height(map); sy++) {
-                uint16_t g = creature_group_at(map, sx, sy);
-                if (g == THING_NONE) continue;
-                int type = group_creature(g);
-                if (type == (uint16_t)a) same++;
-                else if (type == CREATURE_TYPE_KIND_A || type == CREATURE_TYPE_KIND_B) others++;
-            }
-        r = same < (others + 1 < 4 ? others + 1 : 4);
-        break;
-    }
-    case COND_ON_HOME_MAP: r = ai.map == home >> 10; break;
+    case COND_PARTY_AT_PIT: r = cond_party_at_pit(x, y); break;
+    case COND_DOOR_BEHIND: r = cond_door_behind(x, y); break;
+    case COND_STATIC_AHEAD: r = cond_static_ahead(x, y); break;
+    case COND_HEALTH_BELOW: r = thing_word(ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / ai.info->max_health <= (unsigned)a; break;
+    case COND_FEW_OF_TYPE: r = cond_few_of_type(a); break;
+    case COND_ON_HOME_MAP: r = ai.map == location_map(home); break;
     case COND_MARKER:
         creature_ai_cache_square(x, y);
         if (ai_square.square & SQUARE_HAS_THINGS)
@@ -1153,13 +1249,7 @@ int creature_ai_test_condition(int condition, int arg, int plan)
     case COND_ON_GAME_MAP: r = ai.map == game.party_map; break;
     case COND_MOOD_BIT_CLEAR_AWAY: r = !(mood & (1 << (a & SHIFT_COUNT_MASK))) && ai.map != game.party_map; break;
     case COND_MOOD_BIT_ON_GAME_MAP: r = mood & (1 << (a & SHIFT_COUNT_MASK)) && ai.map == game.party_map; break;
-    case COND_AT_COUNTER: {
-        uint16_t at = 0;  /* fix: the original reads any word of the active group for an argument out of range */
-        int offset = (int)offsetof(ActiveGroup, counters) + 2 * a;
-        if (offset >= 0 && offset + 2 <= (int)sizeof(ActiveGroup)) memcpy(&at, (uint8_t *)ai.active + offset, 2);
-        r = location_x(at) == x && location_y(at) == y && location_map(at) == ai.map;
-        break;
-    }
+    case COND_AT_COUNTER: r = cond_at_counter(x, y, a); break;
     }
     if (negate) r = !r;
     return r;
@@ -1185,10 +1275,17 @@ enum ai_command {
 #define SENSOR_ITEM_SPOT 0x30           /* floor sensor where a creature places an item */
 #define TEXT_TRANSFORM 1                /* ornament subtype: a transform marker */
 #define LOCATION_NONE 0xffff
-#define MOOD_OP_QUIET 0x10              /* set mood flag: 0 clears, 1 sets, 2 tests; this bit: no rescan */
+/* The operations of the set mood flag command; MOOD_OP_QUIET: no rescan. */
+enum { MOOD_OP_CLEAR, MOOD_OP_SET, MOOD_OP_TEST, MOOD_OP_SET_BY_TARGETS, MOOD_OP_CLEAR_BY_TARGETS };
+#define MOOD_OP_MASK 0x0f
+#define MOOD_OP_QUIET 0x10
 #define MOOD_OP_QUIET_LAST 0x12
 #define TARGET_SCAN_MOOD_SET 0x13       /* the target records that set mood bits; 0x14 clears them */
 #define ATTACK_SKILL_ITEMS 0x08
+#define PLACE_WAIT_CHECKS 3             /* the checks ahead before a creature waits to place its item again */
+#define CANDIDATE_MELEE_LINE 8          /* AiCandidate.kind TARGET_MELEE_LINE of ai_move.c */
+#define CANDIDATE_SHOOT_LINE 9          /* ... TARGET_SHOOT_LINE */
+#define CAT_ORNAMENT 9
 
 static int facing(void) { return group_dir(ai.group_thing); }
 static int dest_x(void) { return location_x(ai.active->destination); }
@@ -1204,7 +1301,7 @@ static void set_destination(int x, int y)
 /* A floor sensor of a type on (x, y), at cell (CELL_ANY: any); THING_NONE none. */
 static uint16_t dun_find_sensor_on_square(int x, int y, int cell, int type)
 {
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST && thing_type(t) < 4;
+    for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
         if ((thing_type(t) == THING_SENSOR && cell == CELL_ANY) || t >> THING_CELL_SHIFT == cell) {
             if (sensor_type(t) == type) return t;
@@ -1291,7 +1388,7 @@ static int cmd_place_on_sensor(void)
         int16_t c = ai.active->counters[0];
         ai.active->counters[0] = (int16_t)(c - 1);
         if (c <= 0) {
-            ai.active->counters[0] = 3;
+            ai.active->counters[0] = PLACE_WAIT_CHECKS;
             ai.active->action = ACTION_PLACE_WAIT;
         } else {
             ai.active->action = ACTION_CHECK_AHEAD;
@@ -1327,7 +1424,7 @@ int creature_ai_cmd_seek_with_carried_item(void)
     if (creature_find_matching_item(filter, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) == THING_ENDOFLIST)
         return AI_RESULT_FAIL;
     ai.item_flags &= ITEM_SKILL_TAKE_CARRIED;
-    creature_ai_try_take_item(AI_MOVE_TEST | 1, ai.event.data[0], ai.event.data[1], -1, -1, facing(), filter);
+    creature_ai_try_take_item(AI_MOVE_TEST | ITEM_MODE_GIVE, ai.event.data[0], ai.event.data[1], -1, -1, facing(), filter);
     ai.item_flags = saved;
     return ai.command_result;
 }
@@ -1387,7 +1484,7 @@ static int cmd_drop_then_seek(void)
         filter = (int16_t)ai.cache.item;
     }
     if (creature_find_matching_item(filter, *list, CELL_ANY) == THING_ENDOFLIST) return AI_RESULT_FAIL;
-    creature_ai_try_take_item(AI_MOVE_TEST | 1, ai.event.data[0], ai.event.data[1], ai.event.data[0], ai.event.data[1], -1, filter);
+    creature_ai_try_take_item(AI_MOVE_TEST | ITEM_MODE_GIVE, ai.event.data[0], ai.event.data[1], ai.event.data[0], ai.event.data[1], -1, filter);
     return ai.command_result;
 }
 
@@ -1396,16 +1493,16 @@ static int cmd_set_mood_flag(void)
 {
     uint16_t op = (uint16_t)ai.arg2;
     uint16_t old = group_mood(ai.group_thing);
-    if (op < 3 || (op >= MOOD_OP_QUIET && op <= MOOD_OP_QUIET_LAST)) {
+    if (op <= MOOD_OP_TEST || (op >= MOOD_OP_QUIET && op <= MOOD_OP_QUIET_LAST)) {
         uint16_t bit = (uint16_t)(1 << (ai.arg1 & SHIFT_COUNT_MASK));
         int was_set = (old & bit) == bit;
-        if (!(op & 0xf)) group_set_mood(ai.group_thing, old & ~bit);
-        else if ((op & 0xf) == 1) group_set_mood(ai.group_thing, old | bit);
+        if ((op & MOOD_OP_MASK) == MOOD_OP_CLEAR) group_set_mood(ai.group_thing, old & ~bit);
+        else if ((op & MOOD_OP_MASK) == MOOD_OP_SET) group_set_mood(ai.group_thing, old | bit);
         if (!(op & MOOD_OP_QUIET) && old != group_mood(ai.group_thing)) ai.active->action = ACTION_RESCAN;
         return was_set ? AI_RESULT_DONE : AI_RESULT_FAIL;
     }
-    if (op > 4 || !ai.cache.targets) return AI_RESULT_FAIL;
-    int kind = (op != 3) + TARGET_SCAN_MOOD_SET;
+    if (op > MOOD_OP_CLEAR_BY_TARGETS || !ai.cache.targets) return AI_RESULT_FAIL;
+    int kind = (op != MOOD_OP_SET_BY_TARGETS) + TARGET_SCAN_MOOD_SET;
     for (uint32_t list = ai.cache.targets;; list += AI_TARGET_SIZE) {
         AiTarget t = ai_target(list);
         if (t.scan == kind) {
@@ -1424,7 +1521,7 @@ static int cmd_set_mood_flag(void)
 static int cmd_go_to_target(void)
 {
     ActiveGroup *a = ai.active;
-    int16_t n = (int16_t)(ai.info->speed >> 12);
+    int16_t n = (int16_t)info_turn_chance(ai.info);
     int hurry = 0;
     if (n) {
         if (group_mood_flag(ai.group_thing, MOOD_LAZY)) n = (int16_t)(n >> 2);
@@ -1432,7 +1529,7 @@ static int cmd_go_to_target(void)
     }
     if (!creature_ai_next_path_step()) {
         int x = ai.event.data[0], y = ai.event.data[1];
-        if (x == dest_x() && y == dest_y() && a->destination >> 10 == party.cur_map) return AI_RESULT_DONE;
+        if (x == dest_x() && y == dest_y() && location_map(a->destination) == party.cur_map) return AI_RESULT_DONE;
         int dir = dun_get_direction_to(x, y, dest_x(), dest_y());
         if (facing() == dir) return AI_RESULT_DONE;
         if (hurry && rand_bit()) {
@@ -1455,7 +1552,9 @@ static int cmd_go_to_target(void)
 static int cmd_follow_path(void)
 {
     AiItemCounts *c = creature_ai_get_item_counts(ai.cache.targets, ai.cache.scan_kind);
-    int mode = ai.cache.kind == 8 ? 2 : ai.cache.kind == 9 ? 3 : 0;
+    int mode = ai.cache.kind == CANDIDATE_MELEE_LINE ? ATTACK_MODE_GROUP
+               : ai.cache.kind == CANDIDATE_SHOOT_LINE ? ATTACK_MODE_ANY
+                                                       : ATTACK_MODE_PARTY;
     ai.active->sub = (int8_t)ai.cache.item;
     uint16_t saved = ai.attack_flags;
     if (saved & ATTACK_SKILL_ITEMS && c->total <= 0) ai.attack_flags &= ~ATTACK_SKILL_ITEMS;
@@ -1477,7 +1576,7 @@ static int cmd_seek_kind11(void)
         if (!t.more) break;
     }
     if (!ai.candidate_count) return AI_RESULT_FAIL;
-    ai.chosen = (int8_t)creature_ai_search_area(ai.event.data[0], ai.event.data[1], 3, (int8_t)ai.candidate_count,
+    ai.chosen = (int8_t)creature_ai_search_area(ai.event.data[0], ai.event.data[1], MOVE_KIND_OPEN, (int8_t)ai.candidate_count,
                                                 ai.candidates, ai.path);
     return ai.chosen != -1 ? AI_RESULT_DONE : AI_RESULT_FAIL;
 }
@@ -1502,7 +1601,7 @@ static void cmd_shoot_random(void)
     a->action = (uint8_t)((b != 0) + ACTION_SHOOT);
     a->direction = (uint8_t)r;
     a->cell = (uint8_t)((r + b) & 3);
-    a->mode = 0;
+    a->mode = ATTACK_MODE_PARTY;
 }
 
 /* Plan command: the creature moves forward or to the side, through the party and other groups. */
@@ -1510,7 +1609,7 @@ static int cmd_move_relative(void)
 {
     uint16_t saved = ai.move_flags;
     ai.move_flags |= MOVE_PARTY | MOVE_GROUPS;
-    creature_ai_try_move((ai.arg1 ? 6 : 0) | AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], -1, -1, (facing() + ai.arg1) & 3);
+    creature_ai_try_move((ai.arg1 ? MOVE_KIND_STEP_BACK : MOVE_KIND_PLAIN) | AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], -1, -1, (facing() + ai.arg1) & 3);
     ai.move_flags = saved;
     return ai.command_result;
 }
@@ -1543,7 +1642,7 @@ static int cmd_consume(void)
         return AI_RESULT_DONE;
     }
     if (!(rand_next() & 7)) {
-        creature_ai_try_take_item(AI_MOVE_TEST | 1, ai.event.data[0], ai.event.data[1], ai.event.data[0], ai.event.data[1], -1,
+        creature_ai_try_take_item(AI_MOVE_TEST | ITEM_MODE_GIVE, ai.event.data[0], ai.event.data[1], ai.event.data[0], ai.event.data[1], -1,
                                   FILTER_FOOD);
         ai.active->counters[0] = (int16_t)location_pack(ai.event.data[0], ai.event.data[1], ai.map);
     } else if (!(rand_next() & 0xf)) {
@@ -1619,7 +1718,7 @@ int creature_ai_exec_plan_command(int command)
         creature_ai_try_door_action((uint8_t)ai.cache.mask | AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], dest_x(),
                                     dest_y(), -1);
         return ai.command_result;
-    case PLAN_CMD_RANDOM_CHANCE: return ai.arg1 > (int)rand_below(100) ? AI_RESULT_DONE : AI_RESULT_FAIL;
+    case PLAN_CMD_RANDOM_CHANCE: return ai.arg1 > (int)rand_below(PERCENT) ? AI_RESULT_DONE : AI_RESULT_FAIL;
     case PLAN_CMD_CARRIES_ITEM:
         if (creature_find_matching_item(ai.arg1, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) != THING_ENDOFLIST
             || creature_find_matching_item(ai.arg2, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) != THING_ENDOFLIST)
@@ -1658,7 +1757,7 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
             } else if (type == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
                 int kind = text_subtype(t);
                 if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST) continue;
-                int16_t up = (int16_t)gdat_entry_index(draw_gdat(), 9, text_value(t), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
+                int16_t up = (int16_t)gdat_entry_index(draw_gdat(), CAT_ORNAMENT, text_value(t), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
                 if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
                     *sensor = THING_NONE;
                     return d;
@@ -1676,10 +1775,10 @@ int dun_set_pit_or_teleporter_state(int x, int y, int mode)
     uint8_t *square = dungeon_square_byte(party.cur_map, x, y);
     int open = 0;
     if (square_type(*square) == SQUARE_PIT) {
-        open = (*square & 8) != 0;
+        open = (*square & SQUARE_PIT_OPEN) != 0;
     } else if (square_type(*square) == SQUARE_TELEPORTER) {
         if (teleporter_is_fixed(dungeon_square_first_thing(party.cur_map, x, y))) return 0;
-        open = (*square & 8) != 0;
+        open = (*square & SQUARE_TELEPORTER_ON) != 0;
     } else {
         return 0;
     }
@@ -1699,9 +1798,12 @@ int16_t ai_dest_x, ai_dest_y;
 
 #define ACTION_FLAG_MOVES 0x04
 #define CELL_NEAREST 4
-#define MODE_BACKWARD 6
+#define MODE_EXPLODE 0                  /* the modes of the explode or spawn action */
 #define MODE_SPAWN 1
 #define MODE_BECOME 2
+#define SPAWN_LEVEL 7                   /* the level of a spawned creature group */
+#define SPARK_CELLS 5                   /* the four cells and the center */
+#define TRANSFORM_PHASES 3              /* the phases of sparks before the creature becomes the new type */
 #define TRAIT_CLOSES_PITS 0x40
 #define CREATURE_ATTACKS_FIRST 0x0100   /* flags: the creature attacks before it moves */
 #define CREATURE_ATTACKS_ANY_DIR 0x0004
@@ -1715,6 +1817,10 @@ int16_t ai_dest_x, ai_dest_y;
 #define SOUND_CATEGORY_MISC_AI 3
 #define SUB_REPEAT 0x40                 /* item filter bit: the action repeats for all matching items */
 #define PUSH_BY_CREATURE 0xfe
+#define CHAMP_HIT_DIR 2                 /* Champion.unknown_26: the direction of the hardest hit of the turn */
+#define CHAMP_HIT_DAMAGE 3              /* ... its damage */
+#define PUSH_RESISTANCE_HEAVY 100     /* above it a melee hit pushes the creature only now and then */
+#define ROLL_PUSH_HEAVY 0xf             /* random bits: a heavy creature stays only when all are clear and 2 more bits too */
 #define STALE_REGISTER 0x100
 #define SHOT_POWER_MEDIUM 0x10          /* a missile above power 8 flies at speed 2, above this 3 or 4 */
 #define SHOT_POWER_STRONG 0x20          /* ... above this 7 to 10 */
@@ -1822,7 +1928,7 @@ static int act_move_stairs(void)
     int closes = ai.info->traits & TRAIT_CLOSES_PITS;
     if (closes) dun_set_pit_or_teleporter_state(ai.event.data[0], ai.event.data[1], PIT_STATE_CLOSED);
     move_thing(ai.group_thing, ai.event.data[0], ai.event.data[1], -1, 0);
-    creature_ai_set_map(a->destination >> 10);
+    creature_ai_set_map(location_map(a->destination));
     if (a->action == ACTION_STAIRS_UP || a->action == ACTION_STAIRS_DOWN) dir = dun_get_stairs_exit_direction(ai_dest_x, ai_dest_y);
     group_set_dir(ai.group_thing, dir);
     if (move_thing(ai.group_thing, -1, 0, ai_dest_x, ai_dest_y)) ai.removed = 1;
@@ -1847,6 +1953,56 @@ static int act_turn_then_move(void)
     return (int16_t)r;
 }
 
+/* The champions that the creature on (x, y) hits on the party square (dx, dy); returns 1 when it hit one. */
+static int melee_attack_party(int x, int y, int dx, int dy)
+{
+    ActiveGroup *a = ai.active;
+    const CreatureInfo *info = ai.info;
+    game.last_combat_time = game.game_time;
+    int hit = 0, random = info->flags & CREATURE_ATTACKS_RANDOM;
+    int8_t list[CHAMPION_MAX];
+    int16_t n = 0;
+    for (int c = 0; c < game.champion_count; c++)
+        if (champion(c)->health) list[n++] = (int8_t)c;
+    if (!n) return 0;
+    int16_t count;
+    if (info->flags & CREATURE_ATTACKS_ALL) count = random ? (int16_t)(rand_below((uint16_t)n) + 1) : (int16_t)game.champion_count;
+    else count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
+    if (a->cell == CELL_NEAREST) {
+        int c = champ_get_nearest_at(x, y, CELL_ANY);
+        if (c != -1) a->cell = champion(c)->cell;
+    }
+    int cell = a->cell;
+    if (count > (int16_t)game.champion_count) count = (int16_t)game.champion_count;
+    while (--count != -1) {
+        int c;
+        if (random) {
+            int16_t i = (int16_t)rand_below((uint16_t)n);
+            if (list[i] < 0)
+                for (int16_t k = 0; k < n; k++) {
+                    if (++i >= n) i = 0;
+                    if (list[i] >= 0) break;
+                }
+            c = list[i];
+            list[i] = -1;
+        } else {
+            c = champ_get_index_in_cell(cell);
+            int d = dun_get_direction_to(dx, dy, x, y);
+            cell = ((d + cell) & 1 ? cell - 1 : cell + 1) & 3;
+            if (c == -1) c = champ_get_nearest_at(x, y, CELL_ANY);
+            if (c == -1) continue;
+        }
+        hit = 1;
+        int16_t damage = (int16_t)(creature_attack_champion(ai.group_thing, c) + 1);
+        Champion *ch = champion(c);
+        if (damage > ch->unknown_26[CHAMP_HIT_DAMAGE]) {
+            ch->unknown_26[CHAMP_HIT_DAMAGE] = (uint8_t)damage;
+            ch->unknown_26[CHAMP_HIT_DIR] = (uint8_t)((dun_get_direction_to(x, y, ai_party.x, ai_party.y) + 2) & 3);
+        }
+    }
+    return hit;
+}
+
 /* The creature hits the party, a door, or another creature in front of it. */
 static int act_melee_attack(void)
 {
@@ -1854,56 +2010,14 @@ static int act_melee_attack(void)
     const CreatureInfo *info = ai.info;
     int dx = ai_dest_x, dy = ai_dest_y, x = ai.event.data[0], y = ai.event.data[1];
     int dir = facing();
-    if (a->mode == MODE_BACKWARD) dir = (dir + 2) & 3;
+    if (a->mode == MOVE_KIND_STEP_BACK) dir = (dir + 2) & 3;
     int at_self = x == dx && y == dy;
     if (!at_self) {
         if (manhattan(x, y, dx, dy) > 1) return 1;
         if (dun_get_direction_to(x, y, dx, dy) != dir && !(info->flags & CREATURE_ATTACKS_ANY_DIR)) return 1;
     }
     if (party.cur_map == ai_party.map && dx == ai_party.x && dy == ai_party.y) {
-        game.last_combat_time = game.game_time;
-        int hit = 0, random = info->flags & CREATURE_ATTACKS_RANDOM;
-        int8_t list[4];
-        int16_t n = 0;
-        for (int c = 0; c < game.champion_count; c++)
-            if (champion(c)->health) list[n++] = (int8_t)c;
-        if (!n) return 1;
-        int16_t count;
-        if (info->flags & CREATURE_ATTACKS_ALL) count = random ? (int16_t)(rand_below((uint16_t)n) + 1) : (int16_t)game.champion_count;
-        else count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
-        if (a->cell == CELL_NEAREST) {
-            int c = champ_get_nearest_at(x, y, CELL_ANY);
-            if (c != -1) a->cell = champion(c)->cell;
-        }
-        int cell = a->cell;
-        if (count > (int16_t)game.champion_count) count = (int16_t)game.champion_count;
-        while (--count != -1) {
-            int c;
-            if (random) {
-                int16_t i = (int16_t)rand_below((uint16_t)n);
-                if (list[i] < 0)
-                    for (int16_t k = 0; k < n; k++) {
-                        if (++i >= n) i = 0;
-                        if (list[i] >= 0) break;
-                    }
-                c = list[i];
-                list[i] = -1;
-            } else {
-                c = champ_get_index_in_cell(cell);
-                int d = dun_get_direction_to(dx, dy, x, y);
-                cell = ((d + cell) & 1 ? cell - 1 : cell + 1) & 3;
-                if (c == -1) c = champ_get_nearest_at(x, y, CELL_ANY);
-                if (c == -1) continue;
-            }
-            hit = 1;
-            int16_t damage = (int16_t)(creature_attack_champion(ai.group_thing, c) + 1);
-            Champion *ch = champion(c);
-            if (damage > ch->unknown_26[3]) {
-                ch->unknown_26[3] = (uint8_t)damage;
-                ch->unknown_26[2] = (uint8_t)((dun_get_direction_to(x, y, ai_party.x, ai_party.y) + 2) & 3);
-            }
-        }
-        if (!hit) return 1;
+        if (!melee_attack_party(x, y, dx, dy)) return 1;
     } else {
         if (square_type(dun_get_square(dx, dy)) == SQUARE_DOOR) {
             int strength = rand_below((uint16_t)(info->attack + (info->attack >> 1)));
@@ -1914,7 +2028,7 @@ static int act_melee_attack(void)
     }
     if (a->action == ACTION_MELEE_2) {
         int push;
-        if (creature_group_info(ai.group_thing)->push_resistance > 100) push = (rand_next() & 0xf) || rand_2bits();
+        if (creature_group_info(ai.group_thing)->push_resistance > PUSH_RESISTANCE_HEAVY) push = (rand_next() & ROLL_PUSH_HEAVY) || rand_2bits();
         else push = rand_2bits() != 0;
         if (push) creature_push_group(dx, dy, dir, PUSH_BY_CREATURE);
     }
@@ -1926,7 +2040,7 @@ static int act_shoot(void)
 {
     ActiveGroup *a = ai.active;
     const CreatureInfo *info = ai.info;
-    if (a->mode <= 1) game.last_combat_time = game.game_time;
+    if (a->mode <= ATTACK_MODE_PARTY_RANGED) game.last_combat_time = game.game_time;
     if (facing() != (int8_t)a->direction && !(info->flags & CREATURE_ATTACKS_ANY_DIR)) return 1;
     uint16_t p = (uint16_t)((info->attack >> 2) + 1);
     p = (uint16_t)(p + rand_below(p));
@@ -1940,7 +2054,7 @@ static int act_shoot(void)
     else if (power <= SHOT_POWER_MEDIUM) speed = 2;
     else if (power <= SHOT_POWER_STRONG) speed = rand_bit() + 3;
     else speed = rand_2bits() + 7;
-    projectile_create((uint16_t)(int8_t)a->sub, ai.event.data[0], ai.event.data[1], a->cell, (int8_t)a->direction, (uint8_t)power,
+    projectile_create((uint16_t)a->sub, ai.event.data[0], ai.event.data[1], a->cell, (int8_t)a->direction, (uint8_t)power,
                       info->dexterity, (uint8_t)speed);
     if (info->traits & CREATURE_TRAIT_SHOT_HURTS) {
         int hurt = (power >> 1) + rand_bit();
@@ -1961,7 +2075,7 @@ static int act_steal(void)
     Champion *ch = champion(c);
     uint32_t r = rand_next();
     int stolen = 0;
-    if (!champ_test_luck(champion(c), (uint16_t)(100 - champ_get_dexterity(c))) || r & ROLL_STEAL) {
+    if (!champ_test_luck(champion(c), (uint16_t)(PERCENT - champ_get_dexterity(c))) || r & ROLL_STEAL) {
         uint16_t ready = ch->slots[SLOT_READY_HAND], held = ch->slots[SLOT_ACTION_HAND];
         int16_t v0 = ready != THING_NONE && creature_thing_matches_filter(ready, ai.active->sub) ? (int16_t)item_get_value(ready) : -1;
         int16_t v1 = held != THING_NONE && creature_thing_matches_filter(held, ai.active->sub) ? (int16_t)item_get_value(held) : -1;
@@ -2127,7 +2241,7 @@ static int act_use_wall_sensor(void)
     if (!creature_ai_try_use_wall_actuator(a->mode | AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], ai_dest_x, ai_dest_y, facing(), sub))
         return 1;
     uint16_t hand = THING_NONE;
-    if (a->mode != 2 && sub != -1) {
+    if (a->mode != ACTUATOR_MODE_TAKE && sub != -1) {
         hand = creature_find_matching_item(sub, thing_word(ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
         if (hand == THING_ENDOFLIST) return 1;
         dungeon_unlink_thing_from_list(hand, thing_list(ai.group_thing, GROUP_POSSESSIONS));
@@ -2160,12 +2274,12 @@ static void act_transform(void)
     int sound = SOUND_ENTRY_TRANSFORMED;
     if (a->action == ACTION_TRANSFORM) {
         for (int n = rand_2bits() + 1; n; n--) {
-            int cell = rand_below(5);
-            if (cell == 4) cell = EXPLOSION_CENTER;
+            int cell = rand_below(SPARK_CELLS);
+            if (cell == SPARK_CELLS - 1) cell = EXPLOSION_CENTER;
             explosion_create(EXPLOSION_SPARKS, rand_below(SPARK_POWER_RANGE) + SPARK_POWER_MIN, x, y, cell);
         }
         if (phase >= 1) explosion_create(CREATURE_DEATH_EXPLOSION, (uint16_t)(phase * TRANSFORM_POWER_STEP), x, y, EXPLOSION_CENTER);
-        if (phase < 3) {
+        if (phase < TRANSFORM_PHASES) {
             sound = SOUND_ENTRY_TRANSFORM;
         } else {
             a->action = ACTION_MORPH;
@@ -2183,7 +2297,7 @@ static void act_transform(void)
 static int act_explode_or_spawn(void)
 {
     ActiveGroup *a = ai.active;
-    if (a->mode == 0) {
+    if (a->mode == MODE_EXPLODE) {
         uint16_t p = (uint16_t)((ai.info->attack >> 2) + 1);
         p = (uint16_t)(p + rand_below(p));
         p = (uint16_t)(p + rand_below(p));
@@ -2192,7 +2306,7 @@ static int act_explode_or_spawn(void)
         if (a->sub) act_vanish();
     } else if (a->mode == MODE_SPAWN) {
         int dir = rand_2bits();
-        if (creature_summon_group(a->sub, 7, dir, ai.event.data[0], ai.event.data[1], ai.map, -1, (int8_t)facing()) == THING_NONE) return 1;
+        if (creature_summon_group(a->sub, SPAWN_LEVEL, dir, ai.event.data[0], ai.event.data[1], ai.map, -1, (int8_t)facing()) == THING_NONE) return 1;
     } else if (a->mode == MODE_BECOME) {
         a->action = ACTION_IDLE;
         a->phase = 0;

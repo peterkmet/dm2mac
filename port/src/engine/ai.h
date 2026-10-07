@@ -2,6 +2,7 @@
 #define AI_H
 #include <stdint.h>
 #include "creature.h"
+#include "dungeon.h"
 #include "timeline.h"
 
 /* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
@@ -9,15 +10,27 @@
 #define AI_PLAN_COUNT 63
 #define AI_CLASS_COUNT 47
 #define AI_TARGET_SIZE 14
+#define AI_PLAN_STEP_SIZE 7
+#define AI_CHOICE_SIZE 7
+#define AI_MOOD_ENTRY_SIZE 6         /* a mood mask word and the address of its plan choices */
+#define AI_SCRIPTS_SIZE 0x1f5e
+#define AI_ACTION_COUNT 0x56
+#define AI_MOVE_TEST_KINDS 20        /* the move test kinds of ai_command_enabled */
+#define AI_TARGET_KIND_COUNT 28
+#define AI_POSSESSION_KINDS 16       /* the display kinds of possession_cells, with the data after the table */
+#define AI_AFTER_COMMAND_BYTES 60
 #define AI_TARGET_IDLE 0x731d2u      /* the target of a creature that waits or wanders */
 #define AI_CHOICES_NONE 0x73399u     /* the plan choices of a creature that does nothing */
 #define AI_CHOICES_WANDER 0x73392u   /* ... of a creature that wanders at random */
-extern const uint8_t ai_scripts[0x1f5e];
+extern const uint8_t ai_scripts[AI_SCRIPTS_SIZE];
 extern const uint32_t ai_plans[AI_PLAN_COUNT];
 extern const uint32_t ai_class_flags[AI_CLASS_COUNT];
-extern const uint8_t ai_action_flags[0x56];
+extern const uint8_t ai_action_flags[AI_ACTION_COUNT];
 extern const uint32_t ai_behaviors[AI_CLASS_COUNT];
-extern const uint8_t ai_command_enabled[20];
+extern const uint8_t ai_command_enabled[AI_MOVE_TEST_KINDS];
+extern const uint8_t ai_after_command_table[AI_AFTER_COMMAND_BYTES];
+extern const uint8_t ai_kind_flags[AI_TARGET_KIND_COUNT];
+extern const uint8_t ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
 
 /* A step of a plan (7 bytes). */
 typedef struct {
@@ -74,7 +87,8 @@ typedef struct __attribute__((packed)) {
     uint32_t targets;       /* +0x12 address of the target list */
 } AiCandidate;
 
-_Static_assert(sizeof(AiCandidate) == 22, "the candidates of SKULL.EXE have 22 bytes");
+#define AI_CANDIDATE_SIZE 22
+_Static_assert(sizeof(AiCandidate) == AI_CANDIDATE_SIZE, "the candidates of SKULL.EXE have 22 bytes");
 
 #define AI_CANDIDATE_MAX 16
 #define SHIFT_COUNT_MASK 0x1f       /* the x86 shift uses the low 5 bits of the count */
@@ -95,12 +109,16 @@ typedef struct __attribute__((packed)) {
     uint32_t targets;       /* 0x7f7de */
 } AiPlanCache;
 
+#define AI_COUNT_TARGETS 6          /* the target records that a count list holds */
+#define AI_COUNT_ENTRY_SIZE 4       /* per target: carried, still wanted, still wanted extra, unused */
+#define AI_COUNT_LISTS 4            /* the count lists of one creature update */
+
 /* The item counts of a target list (32 bytes in SKULL.EXE). */
 typedef struct {
     uint32_t targets;
     int8_t scan_kind;
     int8_t total, wanted, extra;
-    int8_t counts[24];
+    int8_t counts[AI_COUNT_TARGETS * AI_COUNT_ENTRY_SIZE];
 } AiItemCounts;
 
 /* The context of a creature update (the 0x350-byte block of SKULL.EXE). */
@@ -125,7 +143,7 @@ typedef struct {
     uint32_t mood_entry;        /* address of the mood entry */
     uint8_t counts_dirty;
     uint8_t alert;
-    AiItemCounts item_counts[4];
+    AiItemCounts item_counts[AI_COUNT_LISTS];
     uint8_t path[AI_PATH_BYTES]; /* 0x7f60a: the path of the search (2 bytes per step) */
     uint8_t candidate_count;
     int8_t chosen;
@@ -163,8 +181,10 @@ typedef struct {
 } AiSquare;
 extern AiSquare ai_square;
 
+#define MAP_SIDE_MAX 32             /* the squares of the longest map side */
+
 /* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
-typedef struct { int16_t map, width; uint8_t cells[32 * 32]; } DistanceMap;
+typedef struct { int16_t map, width; uint8_t cells[MAP_SIDE_MAX * MAP_SIDE_MAX]; } DistanceMap;
 #define DISTANCE_NEXT_TO 0x80
 #define DISTANCE_FAR 0x7f
 extern DistanceMap party_distance, alt_distance;

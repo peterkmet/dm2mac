@@ -20,6 +20,31 @@
 #define AI_MOVE_ATTACK_GROUPS 0x20 /* ... a group of filter 9 in the way gets attacked */
 #define AI_MOVE_FLAG_BITS 0xe0  /* ... the bits above the kind */
 #define FILTER_WEAPON_HANDS 0x0b /* item filter of the champion hands that creatures notice */
+#define FILTER_ATTACKED_GROUPS 9 /* item filter of the groups that a creature attacks when they are in its way */
+/* The kinds of a move test (bits 0-4 of the command of creature_ai_try_move). */
+enum ai_move_kind {
+    MOVE_KIND_PLAIN,
+    MOVE_KIND_KEEP_DISTANCE,    /* the creature keeps a distance to the party */
+    MOVE_KIND_NONE,             /* no move: a search tests only its start square */
+    MOVE_KIND_OPEN,             /* the quick test of the search: no wall */
+    MOVE_KIND_SAFE,             /* the creature avoids poison clouds and missiles */
+    MOVE_KIND_SAFE_FLEE,        /* ... and the missiles that fly toward the square */
+    MOVE_KIND_STEP_BACK,
+    MOVE_KIND_SIGHT,            /* the quick test of the light search: no obstacle to the sight */
+    MOVE_KIND_COST              /* the quick test of the cost search */
+};
+/* The directions of a move test past the four map directions. */
+#define DIR_LEVEL_UP 4
+#define DIR_LEVEL_DOWN 5
+#define DIR_KEEP_FACING 6       /* a move to the given square that keeps the facing */
+/* The modes of creature_ai_try_attack. */
+enum ai_attack_mode { ATTACK_MODE_PARTY, ATTACK_MODE_PARTY_RANGED, ATTACK_MODE_GROUP, ATTACK_MODE_ANY, ATTACK_MODE_DOOR };
+/* The modes of creature_ai_try_door_action. */
+enum ai_door_mode { DOOR_MODE_OPEN, DOOR_MODE_CLOSE, DOOR_MODE_CLOSE_MARKED };
+/* The modes of creature_ai_try_take_item. */
+enum ai_item_mode { ITEM_MODE_TAKE, ITEM_MODE_GIVE };
+/* The modes of creature_ai_try_use_wall_actuator. */
+enum ai_actuator_mode { ACTUATOR_MODE_USE, ACTUATOR_MODE_PUT, ACTUATOR_MODE_TAKE };
 
 /* ai.move_flags: the squares that the creature may enter. */
 #define MOVE_WALL 0x0001
@@ -50,8 +75,8 @@
 #define DOOR_SKILL_BUTTON 0x0003
 #define DOOR_SKILL_SHOOT_BUTTON 0x0001
 #define DOOR_SKILL_PRESS_BUTTON 0x0002
-#define DOOR_SKILL_BASH 0x0004
-#define DOOR_SKILL_BURN 0x0008
+#define DOOR_SKILL_SPELL 0x0004        /* breaks a door that magic breaks with a fireball or lightning */
+#define DOOR_SKILL_BASH 0x0008         /* breaks a breakable door with hits */
 #define DOOR_SKILL_MARK 0x0020
 #define DOOR_SKILL_HANDLE 0x0040
 #define DOOR_SKILL_ANY_SIDE 0x0020
@@ -91,11 +116,11 @@ extern int16_t cached_light_sum, cached_explosion_light_sum, last_party_map;
 /* The state of the shift register that picks the first search direction (0x752e8 of SKULL.EXE). */
 extern uint16_t search_direction_bits;
 
-int creature_square_is_obstacle(int x, int y);
-int creature_square_blocks_line(int x, int y);
-int creature_square_blocks_line_to_target(int x, int y);
-int creature_square_blocks_line_except_self(int x, int y);
-int creature_trace_line(int x1, int y1, int x2, int y2, int (*blocked)(int x, int y));
+bool creature_square_is_obstacle(int x, int y);
+bool creature_square_blocks_line(int x, int y);
+bool creature_square_blocks_line_to_target(int x, int y);
+bool creature_square_blocks_line_except_self(int x, int y);
+int creature_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y));
 void creature_ai_cache_square(int x, int y);
 uint16_t creature_ai_cached_first_object(void);
 uint16_t creature_ai_cached_first_group(void);

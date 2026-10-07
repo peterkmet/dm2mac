@@ -220,18 +220,6 @@ duplicate WOUND_FEET open: module cleanup
 duplicate ZONE_DIALOG_BACK open: module cleanup
 duplicate ZONE_PANEL open: module cleanup
 long engine/action.c:ui_update_action_area open: module cleanup
-long engine/ai.c:creature_ai_update_group open: module cleanup
-long engine/ai.c:creature_ai_decide open: module cleanup
-long engine/ai.c:creature_ai_test_condition open: module cleanup
-long engine/ai.c:act_melee_attack open: module cleanup
-long engine/ai_move.c:creature_ai_find_target_in_lines open: module cleanup
-long engine/ai_move.c:creature_ai_try_attack open: module cleanup
-long engine/ai_move.c:creature_ai_try_door_action open: module cleanup
-long engine/ai_move.c:test_move open: module cleanup
-long engine/ai_move.c:creature_ai_try_take_item open: module cleanup
-long engine/ai_move.c:test_entered open: module cleanup
-long engine/ai_move.c:test_blocked open: module cleanup
-long engine/ai_move.c:creature_ai_search_area open: module cleanup
 long engine/champ_action.c:champ_add_experience open: module cleanup
 long engine/champ_action.c:champ_melee_attack_creature open: module cleanup
 long engine/champ_action.c:champ_perform_action open: module cleanup
@@ -311,10 +299,6 @@ prefix ui/video.h open: module cleanup
 prefix ui/view.h open: module cleanup
 prefix ui/zone.h open: module cleanup
 decimal engine/action.c open: module cleanup
-decimal engine/ai.c open: module cleanup
-decimal engine/ai.h open: module cleanup
-decimal engine/ai_data.c open: module cleanup
-decimal engine/ai_move.c open: module cleanup
 decimal engine/champ_action.c open: module cleanup
 decimal engine/creature.c open: module cleanup
 decimal engine/creature.h open: module cleanup
@@ -338,9 +322,7 @@ decimal ui/input.c open: module cleanup
 decimal ui/ui.c open: module cleanup
 decimal ui/view.c open: module cleanup
 decimal ui/view.h open: module cleanup
-hex engine/ai.h open: module cleanup
-hex engine/ai_data.c open: module cleanup
-hex engine/ai_move.c open: module cleanup
+hex engine/ai_data.c table: rule 6
 hex engine/champ_action.c open: module cleanup
 hex engine/creature.c open: module cleanup
 hex engine/game.c open: module cleanup
@@ -361,16 +343,13 @@ hex ui/input.c open: module cleanup
 hex ui/sound.c table: rule 6
 hex ui/ui.c open: module cleanup
 hex ui/view.c open: module cleanup
-bool engine/ai.h open: module cleanup
-bool engine/ai_move.h open: module cleanup
+bool engine/ai.h creature_is_near_party_front is defined in engine/creature.c, which task 5 owns
 bool engine/champ_action.h open: module cleanup
 bool engine/creature.h open: module cleanup
 bool engine/item.h open: module cleanup
 bool engine/sensor.h open: module cleanup
 bool engine/timeline.h open: module cleanup
 record engine/save.c the save image packs and unpacks whole thing records bit by bit
-packed engine/ai.c open: module cleanup
-packed engine/ai_move.c open: module cleanup
 packed engine/champ_action.c open: module cleanup
 packed engine/creature.c open: module cleanup
 packed engine/damage.c open: module cleanup
