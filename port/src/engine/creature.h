@@ -1,5 +1,6 @@
 #ifndef CREATURE_H
 #define CREATURE_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
 #include "gdat.h"
@@ -32,7 +33,8 @@ typedef struct {
     uint8_t hit_size;           /* row of the hit radius table; also the size of its death explosion */
 } CreatureInfo;
 
-_Static_assert(sizeof(CreatureInfo) == 36, "the creature info records of SKULL.EXE have 36 bytes");
+#define CREATURE_INFO_SIZE 36
+_Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info records of SKULL.EXE have 36 bytes");
 
 #define CREATURE_STATIC 0x0001      /* the creature does not act: no active group, animation state in its record */
 #define CREATURE_FACES_PARTY 0x0004 /* the creature always shows its front */
@@ -101,7 +103,8 @@ typedef struct {
     uint8_t interrupt;          /* the action stops its animation */
 } ActiveGroup;
 
-_Static_assert(sizeof(ActiveGroup) == 34, "active groups have 34 bytes");
+#define ACTIVE_GROUP_SIZE 34
+_Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 bytes");
 
 #define ACTIVE_FREE 0xffff
 #define GROUP_NOT_ACTIVE 0xff
@@ -123,11 +126,11 @@ const CreatureInfo *creature_group_info(uint16_t group);
 /* A GDAT value (0x0f, creature type, 0x0b, attr) of a creature type. */
 int creature_gdat_attr(int creature_type, int attr);
 /* True when the creature of group may stay on map: a wanderer, or a creature type of the map. */
-int creature_is_native_to_map(uint16_t group, int map);
+bool creature_is_native_to_map(uint16_t group, int map);
 /* The cells (bits 0 to 3) in which a static creature shows its possessions, from its possessions word. */
 int creature_cell_mask(uint16_t possessions);
 /* True for a creature that flies over pits and does not press floor sensors. */
-int creature_is_flying(uint16_t group);
+bool creature_is_flying(uint16_t group);
 /* The first creature group on the square (x, y) of map, THING_NONE for none. */
 uint16_t creature_group_at(int map, int x, int y);
 /* The creature group on (x, y) of the current map, THING_NONE for none. */
@@ -178,6 +181,8 @@ void creature_refresh_party_maps(void);
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
 void creature_alert(uint16_t group, int x, int y, int flags, int chance, int damage);
 void creature_turn_group(uint16_t group, int absolute, int dir);
+/* What a creature that leaves the dungeon drops: its drop items and possessions, its possessions, or nothing. */
+enum drop_mode { DROP_ALL, DROP_POSSESSIONS, DROP_NOTHING };
 void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map);
 void creature_delete_group_at(int x, int y, int mode, int sound_map);
 uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y);
@@ -192,8 +197,8 @@ void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor);
 void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect);
 
 /* Pushing creatures: the push arrows of the party and the pushes of creatures. */
-int creature_can_be_pushed(int x, int y, int dir, uint16_t *group);
-int move_party_can_push_group(uint16_t group);
+bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group);
+bool move_party_can_push_group(uint16_t group);
 void creature_push_group(int x, int y, int dir, int strength);
 void move_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */

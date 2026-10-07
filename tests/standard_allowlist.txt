@@ -235,7 +235,6 @@ long engine/ai_move.c:creature_ai_search_area open: module cleanup
 long engine/champ_action.c:champ_add_experience open: module cleanup
 long engine/champ_action.c:champ_melee_attack_creature open: module cleanup
 long engine/champ_action.c:champ_perform_action open: module cleanup
-long engine/creature.c:creature_ai_animate_and_get_next_time open: module cleanup
 long engine/damage.c:champ_take_damage open: module cleanup
 long engine/damage.c:champ_apply_time_effects open: module cleanup
 long engine/minion.c:ui_map_draw_square open: module cleanup
@@ -316,8 +315,7 @@ decimal engine/ai.h open: module cleanup
 decimal engine/ai_data.c open: module cleanup
 decimal engine/ai_move.c open: module cleanup
 decimal engine/champ_action.c open: module cleanup
-decimal engine/creature.c open: module cleanup
-decimal engine/creature.h open: module cleanup
+decimal engine/creature.c table: rule 6
 decimal engine/damage.c open: module cleanup
 decimal engine/dungeon.c open: module cleanup
 decimal engine/game.c open: module cleanup
@@ -342,7 +340,7 @@ hex engine/ai.h open: module cleanup
 hex engine/ai_data.c open: module cleanup
 hex engine/ai_move.c open: module cleanup
 hex engine/champ_action.c open: module cleanup
-hex engine/creature.c open: module cleanup
+hex engine/creature.c table: rule 6
 hex engine/game.c open: module cleanup
 hex engine/inventory.c open: module cleanup
 hex engine/item.c open: module cleanup
@@ -364,7 +362,6 @@ hex ui/view.c open: module cleanup
 bool engine/ai.h open: module cleanup
 bool engine/ai_move.h open: module cleanup
 bool engine/champ_action.h open: module cleanup
-bool engine/creature.h open: module cleanup
 bool engine/item.h open: module cleanup
 bool engine/sensor.h open: module cleanup
 bool engine/timeline.h open: module cleanup
@@ -372,7 +369,6 @@ record engine/save.c the save image packs and unpacks whole thing records bit by
 packed engine/ai.c open: module cleanup
 packed engine/ai_move.c open: module cleanup
 packed engine/champ_action.c open: module cleanup
-packed engine/creature.c open: module cleanup
 packed engine/damage.c open: module cleanup
 packed engine/game.c open: module cleanup
 packed engine/inventory.c open: module cleanup
