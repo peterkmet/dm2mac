@@ -28,9 +28,10 @@ enum ui_color {
 };
 
 /* The values that the format codes of a text insert (".Z" and 3 digits, or byte 1 and the code + 32). */
+#define TEXT_ARG_NUMBERS 5
 typedef struct {
     int16_t champion;           /* code 7: the name of this champion, -1 none */
-    int16_t number[5];          /* codes 10 to 14 */
+    int16_t number[TEXT_ARG_NUMBERS];  /* codes 10 to 14 */
     uint8_t entry;              /* code 17: the text (7, 0, entry) */
 } TextArgs;
 

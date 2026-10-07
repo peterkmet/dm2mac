@@ -32,8 +32,11 @@
 #define DIALOG_LINE_GAP 1               /* pixels between two lines */
 #define DIALOG_MESSAGE_TOP 6            /* the message area starts this far into its zone */
 #define PERMILLE 1000
+#define MESSAGE_TEXTS 2                 /* the dialog message and the error message under it */
+#define WRAP_MARGIN_SHIFT 3             /* a text wider than 7/8 of the zone wraps */
+#define WRAP_SHRINK_SHIFT 2             /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
 static const char version_text[] = "V1.0";
-/* The zones of the button texts; the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
+/* The zones of the button texts (table of SKULL.EXE); the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
 static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
 
 /* The volume dialog: the labels, the buttons of the settings 0 to 7, and their texts. */
@@ -86,16 +89,18 @@ void ui_dialog_draw_button(int zone, int highlighted)
 }
 
 /* The message texts of a dialog, centered in rect: each text wraps to a width near the zone width. */
-static void draw_message(const int16_t *rect, char *texts[2], const int colors[2])
+static void draw_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], const int colors[MESSAGE_TEXTS])
 {
-    int16_t widths[2] = {0}, heights[2] = {0};
+    int16_t widths[MESSAGE_TEXTS] = {0}, heights[MESSAGE_TEXTS] = {0};
     int total = 0;
     char line[TEXT_SIZE];
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i]) continue;
         text_measure(texts[i], &widths[i], &heights[i]);
         int w = rect[RECT_W];
-        if (widths[i] > w - (w >> 3)) widths[i] = widths[i] < w + (w >> 2) ? (int16_t)(widths[i] - (widths[i] >> 2)) : (int16_t)w;
+        if (widths[i] > w - (w >> WRAP_MARGIN_SHIFT))
+            widths[i] = widths[i] < w + (w >> WRAP_SHRINK_SHIFT) ? (int16_t)(widths[i] - (widths[i] >> WRAP_SHRINK_SHIFT))
+                                                                 : (int16_t)w;
         for (int16_t pos = 0; texts[i][pos];) {
             text_wrap_line(texts[i], line, &pos, widths[i]);
             total += 2 * DIALOG_LINE_GAP + heights[i] - FONT_BASELINE + 1;
@@ -105,7 +110,7 @@ static void draw_message(const int16_t *rect, char *texts[2], const int colors[2
     if (!(int16_t)total) return;
     int offset = DIALOG_MESSAGE_TOP + ((rect[RECT_H] - ((int16_t)total - 2 * DIALOG_LINE_GAP)) >> 1) - 1;
     int y = rect[RECT_Y] + (offset > 0 ? offset : 0);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i]) continue;
         for (int16_t pos = 0; texts[i][pos];) {
             int w = text_wrap_line(texts[i], line, &pos, widths[i]);
@@ -120,7 +125,7 @@ int ui_dialog_draw(int id, int message)
 {
     const gdat_t *g = draw_gdat();
     int present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
-    if (message && id != DIALOG_ERROR && id != DIALOG_LOADING && gdat_exists(g, CATEGORY_DIALOG, DIALOG_ERROR, 1, 0)) {
+    if (message && id != DIALOG_ERROR && id != DIALOG_LOADING && gdat_exists(g, CATEGORY_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) {
         ui_dialog_run(ui_dialog_draw(DIALOG_ERROR, message));
         message = MESSAGE_NONE;
     }
@@ -138,9 +143,9 @@ int ui_dialog_draw(int id, int message)
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
     for (int i = 0; i < count; i++) text_draw_in_zone(button_text_zones[first + i], ui_colors[UI_YELLOW], texts[i]);
     if (id != DIALOG_VOLUME && zone_get_rect(count < 2 ? ZONE_DIALOG_MESSAGE_WIDE : ZONE_DIALOG_MESSAGE, r)) {
-        static char message_texts[2][TEXT_SIZE];
-        char *shown[2] = {NULL, NULL};
-        int colors[2];
+        static char message_texts[MESSAGE_TEXTS][TEXT_SIZE];
+        char *shown[MESSAGE_TEXTS] = {NULL, NULL};
+        int colors[MESSAGE_TEXTS];
         if (message && id == DIALOG_ERROR) {
             colors[0] = ui_colors[UI_WHITE];
             shown[0] = text_gdat(CATEGORY_DIALOG, DIALOG_ERROR, message, message_texts[0]);
@@ -234,7 +239,7 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 void ui_volume_dialog(void)
 {
     char text[TEXT_SIZE];
-    if (!gdat_exists(draw_gdat(), CATEGORY_DIALOG, DIALOG_VOLUME, 1, 0)) return;
+    if (!gdat_exists(draw_gdat(), CATEGORY_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) return;
     ui_dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
     text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW], text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, VOLUME_SOUND_LABEL, text));
     text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW], text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, VOLUME_MUSIC_LABEL, text));

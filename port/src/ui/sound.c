@@ -24,12 +24,12 @@ enum { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST };
 #define SOUND_VOLUME_MAX 7
 #define PAN_FULL 0x10000
 
-/* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front. */
+/* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front (table of SKULL.EXE). */
 static const uint16_t pan_thresholds[PAN_STEPS / 2] = {
     0x25a0, 0x11f0, 0x0b00, 0x0730, 0x0490, 0x0290, 0x00d0, 0x0000,
 };
 
-/* SOS pan values from full left to full right. */
+/* SOS pan values from full left to full right (table of SKULL.EXE). */
 static const uint16_t pan_values[PAN_STEPS] = {
     0x0800, 0x1700, 0x2600, 0x3500, 0x4400, 0x5300, 0x6200, 0x7100,
     0x8f00, 0x9e00, 0xad00, 0xbc00, 0xcb00, 0xda00, 0xe900, 0xf800,

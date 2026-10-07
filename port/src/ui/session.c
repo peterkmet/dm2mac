@@ -158,8 +158,7 @@ void save_list_slots(void)
             continue;
         }
         snprintf((char *)slots[i] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", i);
-        uint8_t *p = slots[i] + SAVE_HEADER_UNUSED;
-        for (int b = 0; b < 4; b++) p[b] = (uint8_t)(UNUSED_SLOT >> (8 * b));
+        put_le32(slots[i] + SAVE_HEADER_UNUSED, UNUSED_SLOT);
     }
 }
 
@@ -348,7 +347,7 @@ static int load_new_game(void)
     uint16_t start = dungeon_party_start();
     game.party_x = location_x(start);
     game.party_y = location_y(start);
-    game.party_dir = start >> LOCATION_MAP_SHIFT & (DIR_COUNT - 1);
+    game.party_dir = location_map(start) & (DIR_COUNT - 1);  /* the party start keeps the direction in the map bits */
     game.party_map = 0;
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE)
                   + dungeon_thing_count(THING_EXPLOSION));
@@ -551,6 +550,28 @@ void game_end(int party_dead)
 
 /* ---- Champion names ---- */
 
+/* A key of a champion name field other than Enter and Tab: deletes the last character, or adds a character of the
+   name alphabet while the text is shorter than max; *x is the cursor. Returns 1 when the field needs a redraw. */
+static int type_name_key(char *text, int *length, int max, int *x)
+{
+    uint16_t key = input_match.key;
+    if (key == KEY_BACKSPACE) {
+        if (*length > 0) {
+            text[--*length] = '\0';
+            *x -= FONT_ADVANCE;
+        }
+        return 1;
+    }
+    if (*length >= max) return 1;
+    char ch = kbd_key_to_ascii(key);
+    if (ch >= 'a' && ch <= 'z') ch = (char)(ch - 'a' + 'A');
+    if (!ch || !strchr(name_alphabet, ch) || (ch == ' ' && !*length)) return 0;
+    text[(*length)++] = ch;
+    text[*length] = '\0';
+    *x += FONT_ADVANCE;
+    return 1;
+}
+
 /* Removes the spaces at the end of text. */
 static void trim_spaces(char *text)
 {
@@ -600,29 +621,14 @@ void champ_edit_name(Champion *c)
                 field_done = done = 1;
             } else if (!command) {
                 game_wait_frames(1);
-            } else if (input_match.key == KEY_BACKSPACE) {
-                if (length > 0) {
-                    text[--length] = '\0';
-                    x -= FONT_ADVANCE;
-                }
-                redraw = 1;
             } else if (input_match.key == KEY_ENTER || input_match.key == KEY_TAB) {
                 trim_spaces(text);
                 field_done = 1;
                 if (in_name) in_name = 0;
                 else if (input_match.key == KEY_TAB) in_name = 1;
                 else done = 1;
-            } else if (length >= max) {
-                redraw = 1;
             } else {
-                char ch = kbd_key_to_ascii(input_match.key);
-                if (ch >= 'a' && ch <= 'z') ch = (char)(ch - 'a' + 'A');
-                if (ch && strchr(name_alphabet, ch) && (ch != ' ' || length)) {
-                    text[length++] = ch;
-                    text[length] = '\0';
-                    x += FONT_ADVANCE;
-                    redraw = 1;
-                }
+                redraw = type_name_key(text, &length, max, &x);
             }
         }
     }
