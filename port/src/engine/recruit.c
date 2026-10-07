@@ -24,7 +24,6 @@
 #define SKILL_EXPERIENCE_BASE 0x40
 #define FOOD_START 1500
 #define FOOD_RANDOM_MASK 0xff       /* a new champion gets up to 255 more food and water */
-#define SUB_SKILL_COUNT 4           /* the sub-skills of each base skill */
 #define CMD_RECRUIT 0x92
 #define CMD_RECRUIT_CANCEL 0x93
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */

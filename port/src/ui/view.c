@@ -6,7 +6,6 @@
 #include "dungeon.h"
 #include "inventory.h"
 #include "item.h"
-#include "le.h"
 #include "money.h"
 #include "move.h"
 #include "projectile.h"

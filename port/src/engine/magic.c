@@ -63,7 +63,6 @@ enum {
 #define AURA_COST 4
 #define AURA_BIG 50                     /* a champion with a bigger aura makes a new aura a quarter */
 #define AURA_SHIFT 5
-#define CAST_BASE_SKILLS 4              /* skills 4 to 19 are the sub-skills of the base skills 0 to 3 */
 #define SKILL_WIZARD 3
 #define LIGHT_EVENT_STEP 8              /* game ticks between two steps of a fading light */
 #define LIGHT_POWER_MIN 0x20
@@ -119,7 +118,6 @@ enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define HASTE_PER_STEP 8
 #define EXPERIENCE_PER_DIFFICULTY 8
 #define EXPERIENCE_PER_LEVEL 16
-#define SUB_SKILLS_SHIFT 2              /* each base skill has 4 sub-skills */
 #define CAST_SKILL_MASK 0x0f            /* the base skill in a cast result */
 
 /* The spells of SKULL.EXE. */
@@ -383,7 +381,7 @@ static void cast_other(Champion *c, int type, int skill, int power)
 static int cast_failure(int kind, const Spell *spell)
 {
     int skill = spell->skill;
-    return kind | (skill < CAST_BASE_SKILLS ? skill : (skill - CAST_BASE_SKILLS) >> SUB_SKILLS_SHIFT);
+    return kind | champ_base_skill(skill);
 }
 
 int magic_cast_spell(int champ, const Spell *spell, int power)

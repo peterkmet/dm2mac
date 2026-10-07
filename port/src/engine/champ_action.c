@@ -116,8 +116,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define SKILL_HEAL 13
 #define SKILL_THROW 10
 #define SKILL_SHOOT 11
-#define SKILL_SHIFT 2
-#define SKILL_FIRST_SUB 4
 #define SKILL_LAST_FIGHT 11         /* the fighter and ninja sub-skills learn less away from fights */
 #define FIGHT_TIME_LONG 150
 #define FIGHT_TIME_SHORT 40
@@ -388,18 +386,18 @@ static void champ_raise_level(int champ, int base, uint16_t level)
 
 void champ_add_experience(int champ, int skill, uint32_t amount)
 {
-    if (skill >= SKILL_FIRST_SUB && skill <= SKILL_LAST_FIGHT && game.game_time - FIGHT_TIME_LONG > game.last_combat_time)
+    if (skill >= SKILL_BASE_COUNT && skill <= SKILL_LAST_FIGHT && game.game_time - FIGHT_TIME_LONG > game.last_combat_time)
         amount >>= 1;
     if (!amount) return;
     int factor = dungeon_map_difficulty(party.cur_map);
     if (factor) amount *= (uint32_t)factor;
     Champion *c = champion(champ);
-    int base = skill >= SKILL_FIRST_SUB ? (skill - SKILL_FIRST_SUB) >> SKILL_SHIFT : skill;
+    int base = champ_base_skill(skill);
     uint16_t old = (uint16_t)champ_get_skill_level(champ, base, 0);
-    if (skill >= SKILL_FIRST_SUB && (int32_t)(game.game_time - FIGHT_TIME_SHORT) < (int32_t)game.last_combat_time)
+    if (skill >= SKILL_BASE_COUNT && (int32_t)(game.game_time - FIGHT_TIME_SHORT) < (int32_t)game.last_combat_time)
         amount *= 2;
     c->experience[skill] += amount;
-    if (skill >= SKILL_FIRST_SUB) c->experience[base] += amount;
+    if (skill >= SKILL_BASE_COUNT) c->experience[base] += amount;
     uint16_t level = (uint16_t)champ_get_skill_level(champ, base, 0);
     while (old < level) {
         old++;
