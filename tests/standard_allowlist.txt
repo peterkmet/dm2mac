@@ -254,9 +254,6 @@ long engine/sensor.c:timeline_event_floor_square open: module cleanup
 long engine/sensor.c:timeline_event_door_animation open: module cleanup
 long engine/sensor.c:timeline_event_sensor open: module cleanup
 long engine/sensor.c:sensor_process_wall_click open: module cleanup
-long ui/input.c:run_click_feedback open: module cleanup
-long ui/input.c:view_click_in_viewport open: module cleanup
-long ui/input.c:command_execute open: module cleanup
 long ui/view.c:apply_wall_things open: module cleanup
 long ui/view.c:get_square_aspect open: module cleanup
 long ui/view.c:view_draw_creature open: module cleanup
@@ -332,7 +329,7 @@ decimal engine/sound_request.c open: module cleanup
 decimal engine/timeline.h open: module cleanup
 decimal engine/weather.c open: module cleanup
 decimal ui/fm.c table: rule 6
-decimal ui/input.c open: module cleanup
+decimal ui/input.c table: rule 6
 decimal ui/view.c open: module cleanup
 decimal ui/view.h open: module cleanup
 hex engine/ai.h open: module cleanup
@@ -354,7 +351,7 @@ hex platform/control.c table: PC keyboard scan codes of the key names
 hex platform/main.c table: PC keyboard scan codes of the SDL keys
 hex ui/dialog.c table: rule 6
 hex ui/fm.c table: rule 6
-hex ui/input.c open: module cleanup
+hex ui/input.c table: rule 6
 hex ui/sound.c table: rule 6
 hex ui/ui.c table: rule 6
 hex ui/view.c open: module cleanup
@@ -381,5 +378,4 @@ packed engine/save.c open: module cleanup
 packed engine/sensor.c open: module cleanup
 packed engine/sound_request.c open: module cleanup
 packed engine/weather.c open: module cleanup
-packed ui/input.c open: module cleanup
 packed ui/view.c open: module cleanup
