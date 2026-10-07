@@ -111,6 +111,11 @@ def test_each_constant_has_one_definition():
                          if len(paths) > 1 and ("duplicate", name) not in ok])
 
 
+def test_le_helpers_only_in_le_header():
+    report("le", [f"le {rel(path)}  | {name}" for path in sources() if path.name != "le.h"
+                  for _, name in declarations(path) if name.startswith(("le16", "le32", "put_le16", "put_le32", "read_u32"))])
+
+
 def test_headers_state_unique_prefixes():
     ok = allowed()
     owner, found = {}, []

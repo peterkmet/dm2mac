@@ -8,6 +8,7 @@
 #include "draw.h"
 #include "dungeon.h"
 #include "inventory.h"
+#include "le.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -139,11 +140,6 @@ static struct {
     int group_count, container_count;
     const gdat_t *gdat;
 } io;
-
-static uint16_t le16(const uint8_t *p) { return p[0] | p[1] << 8; }
-static uint32_t le32(const uint8_t *p) { return le16(p) | (uint32_t)le16(p + 2) << 16; }
-static void put_le16(uint8_t *p, uint16_t v) { p[0] = (uint8_t)v; p[1] = v >> 8; }
-static void put_le32(uint8_t *p, uint32_t v) { put_le16(p, (uint16_t)v); put_le16(p + 2, v >> 16); }
 
 static void start_io(FILE *f, const gdat_t *gdat)
 {

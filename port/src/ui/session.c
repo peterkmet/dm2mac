@@ -10,6 +10,7 @@
 #include "game.h"
 #include "input.h"
 #include "item.h"
+#include "le.h"
 #include "move.h"
 #include "save.h"
 #include "sensor.h"
@@ -142,8 +143,7 @@ static const char *slot_name(int slot) { return (const char *)slots[slot] + SAVE
 
 static int slot_unused(int slot)
 {
-    const uint8_t *p = slots[slot] + SAVE_HEADER_UNUSED;
-    return (p[0] | p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24) == UNUSED_SLOT;
+    return le32(slots[slot] + SAVE_HEADER_UNUSED) == UNUSED_SLOT;
 }
 
 void save_list_slots(void)

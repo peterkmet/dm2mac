@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hmp.h"
+#include "le.h"
 
 /* HMP header. */
 #define HMP_SIGNATURE "HMIMIDIP013195"
@@ -80,11 +81,6 @@ static uint8_t channel_volume[MIDI_CHANNELS] = {
     MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX,
 };
 
-static uint32_t read_u32(const uint8_t *p)
-{
-    return p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24;
-}
-
 /* Reads a delta time: 7-bit groups, low group first; the last byte has bit 7 set. */
 static uint32_t read_delta(Track *tr)
 {
@@ -142,21 +138,21 @@ int hmp_start(const uint8_t *data, size_t size, HmpSend to_driver)
 {
     hmp_stop();
     if (size < HMP_FIRST_TRACK || memcmp(data, HMP_SIGNATURE, strlen(HMP_SIGNATURE)) ||
-        !read_u32(data + HMP_TICK_RATE))
+        !le32(data + HMP_TICK_RATE))
         return HMP_ERR_FORMAT;
-    uint32_t count = read_u32(data + HMP_TRACK_COUNT), branches = read_u32(data + HMP_BRANCHES);
+    uint32_t count = le32(data + HMP_TRACK_COUNT), branches = le32(data + HMP_BRANCHES);
     if (count < 1 || count > HMP_MAX_TRACKS || branches > size || size - branches < count) return HMP_ERR_FORMAT;
     uint32_t offset = HMP_FIRST_TRACK, record = branches + count;
     for (uint32_t t = 0; t < count; t++) {
         if (size - offset < TRACK_DATA) return HMP_ERR_FORMAT;
-        uint32_t chunk = read_u32(data + offset + TRACK_SIZE);
+        uint32_t chunk = le32(data + offset + TRACK_SIZE);
         if (chunk < TRACK_DATA || chunk > size - offset) return HMP_ERR_FORMAT;
         Track *tr = &tracks[t];
         *tr = (Track){.start = offset + TRACK_DATA, .end = offset + chunk, .branches = record,
                       .branch_count = data[branches + t], .channel = data[offset + TRACK_CHANNEL] & MIDI_CHANNEL_MASK};
         for (int b = 0; b < tr->branch_count; b++, record += BRANCH_SIZE) {
             if (size - BRANCH_SIZE < record) return HMP_ERR_FORMAT;
-            uint32_t ctrls = read_u32(data + record + BRANCH_CTRLS), point = read_u32(data + record + BRANCH_OFFSET);
+            uint32_t ctrls = le32(data + record + BRANCH_CTRLS), point = le32(data + record + BRANCH_OFFSET);
             if (ctrls > size || size - ctrls < data[record + BRANCH_CTRL_BYTES] || point >= chunk - TRACK_DATA)
                 return HMP_ERR_FORMAT;
         }
@@ -188,7 +184,7 @@ void hmp_stop(void)
 
 int hmp_tick_rate(void)
 {
-    return song ? (int)read_u32(song + HMP_TICK_RATE) : 0;
+    return song ? (int)le32(song + HMP_TICK_RATE) : 0;
 }
 
 int hmp_is_playing(void)
@@ -211,14 +207,14 @@ static void jump(int t, int id)
     Track *tr = &tracks[t];
     const uint8_t *rec = find_branch(t, id);
     if (!rec) return;  /* fix: the original searches past the loop records of the track */
-    tr->cursor = tr->start + read_u32(rec + BRANCH_OFFSET);
+    tr->cursor = tr->start + le32(rec + BRANCH_OFFSET);
     tr->delta = read_delta(tr);
     tr->elapsed = 0;
     if (tr->cursor >= tr->end) return;
     int ch = song[tr->cursor] & MIDI_CHANNEL_MASK;
     uint8_t program[3] = {MIDI_PROGRAM | ch, rec[BRANCH_PROGRAM], 0};
     send_event(program);
-    const uint8_t *pairs = song + read_u32(rec + BRANCH_CTRLS);
+    const uint8_t *pairs = song + le32(rec + BRANCH_CTRLS);
     for (int i = 0; i + 1 < rec[BRANCH_CTRL_BYTES]; i += 2) {
         uint8_t event[3] = {MIDI_CONTROL | ch, pairs[i], pairs[i + 1]};
         send_event(event);

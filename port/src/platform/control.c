@@ -18,6 +18,7 @@
 #include "game.h"
 #include "input.h"
 #include "item.h"
+#include "le.h"
 #include "save.h"
 #include "ui.h"
 #include "video.h"
@@ -372,7 +373,9 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
     for (size_t done = 0; done < RAW;) {
         size_t n = RAW - done < STORED_BLOCK_MAX ? RAW - done : STORED_BLOCK_MAX;
         *q++ = done + n == RAW;
-        *q++ = (uint8_t)n, *q++ = (uint8_t)(n >> 8), *q++ = (uint8_t)~n, *q++ = (uint8_t)(~n >> 8);
+        put_le16(q, (uint16_t)n);
+        put_le16(q + 2, (uint16_t)~n);
+        q += 4;
         memcpy(q, raw + done, n);
         for (size_t i = 0; i < n; i++) a = (a + raw[done + i]) % ADLER_MODULUS, b = (b + a) % ADLER_MODULUS;
         q += n;

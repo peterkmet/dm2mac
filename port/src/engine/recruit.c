@@ -9,6 +9,7 @@
 #include "input.h"
 #include "inventory.h"
 #include "item.h"
+#include "le.h"
 #include "move.h"
 #include "random.h"
 #include "sound_request.h"
@@ -40,8 +41,6 @@ static const uint8_t message_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED
 /* The champion of a new game joins without the inventory, the mouth, and the message (the original flag 0x75a29). */
 static int recruit_silent;
 
-static int16_t le16s(const uint8_t *p) { return (int16_t)(p[0] | p[1] << 8); }
-
 /* Makes champion index the champion of portrait, facing dir, in the first free cell. */
 static void champ_add_to_party(int portrait, int index, int dir)
 {
@@ -70,15 +69,15 @@ static void champ_add_to_party(int portrait, int index, int dir)
     const uint8_t *d = gdat_item(draw_gdat(), gdat_find(draw_gdat(), GDAT_CHAMPION_CATEGORY, portrait, PORTRAIT_DATA_TYPE, 0),
                                  &size);
     if (!d) return;  /* fix: the original reads no data */
-    c->health = c->max_health = le16s(d + 2 * DATA_HEALTH);
-    c->stamina = c->max_stamina = le16s(d + 2 * DATA_STAMINA);
-    c->mana = c->max_mana = le16s(d + 2 * DATA_MANA);
+    c->health = c->max_health = (int16_t)le16(d + 2 * DATA_HEALTH);
+    c->stamina = c->max_stamina = (int16_t)le16(d + 2 * DATA_STAMINA);
+    c->mana = c->max_mana = (int16_t)le16(d + 2 * DATA_MANA);
     for (int s = 0; s < STAT_COUNT; s++) {
-        int16_t v = le16s(d + 2 * (DATA_STATS + s));
+        int16_t v = (int16_t)le16(d + 2 * (DATA_STATS + s));
         c->stats[s][0] = c->stats[s][1] = (uint8_t)(v > STAT_START_MIN ? v : STAT_START_MIN);
     }
     for (int s = SKILL_BASE_COUNT; s < SKILL_COUNT; s++) {
-        uint16_t level = (uint16_t)le16s(d + 2 * (DATA_SKILLS + s));
+        uint16_t level = le16(d + 2 * (DATA_SKILLS + s));
         c->experience[s] = level ? (uint32_t)SKILL_EXPERIENCE_BASE << level : 0;
     }
     for (int b = 0; b < SKILL_BASE_COUNT; b++) {

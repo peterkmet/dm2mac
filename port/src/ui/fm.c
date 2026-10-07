@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "fm.h"
+#include "le.h"
 #include "opl3.h"
 
 /* AdLib BNK file: header, 12-byte names, 30-byte instrument records. */
@@ -162,11 +163,6 @@ void fm_reset(uint32_t sample_rate)
     }
 }
 
-static uint32_t read_u32(const uint8_t *p)
-{
-    return p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24;
-}
-
 /* Packs the 13 fields of an operator into its register bytes, in place like the driver. */
 static void pack_operator(uint8_t *op)
 {
@@ -179,8 +175,8 @@ static void pack_operator(uint8_t *op)
 int fm_set_bank(int bank, const uint8_t *data, size_t size)
 {
     if (bank < 0 || bank >= FM_BANK_COUNT || size < BNK_RECORDS + 4) return FM_ERR_BANK;
-    uint32_t names = read_u32(data + BNK_NAMES), records = read_u32(data + BNK_RECORDS);
-    int used = data[BNK_USED] | data[BNK_USED + 1] << 8;
+    uint32_t names = le32(data + BNK_NAMES), records = le32(data + BNK_RECORDS);
+    int used = le16(data + BNK_USED);
     if (used > BNK_INSTRUMENTS || names > size || size - names < BNK_INSTRUMENTS * BNK_NAME_SIZE ||
         records > size || size - records < BNK_INSTRUMENTS * BNK_RECORD_SIZE)
         return FM_ERR_BANK;

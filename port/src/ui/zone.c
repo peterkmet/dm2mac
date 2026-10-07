@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "zone.h"
+#include "le.h"
 #include "move.h"
 
 /* GDAT (1, 0, 4, 0), little-endian words: signature, range count, the first and last zone of each range,
@@ -35,8 +36,6 @@ static struct {
     int start[RANGE_MAX];  /* record index of the first zone of each range */
     int16_t (*records)[ZONE_FIELDS];
 } layout;
-
-static int16_t le16(const uint8_t *p) { return (int16_t)(p[0] | p[1] << 8); }
 
 int zone_load(const gdat_t *gdat)
 {
