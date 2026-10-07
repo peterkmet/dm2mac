@@ -47,8 +47,7 @@ enum {
     CMD_SOUND_VOLUME_FIRST = 0x95, CMD_MUSIC_VOLUME_FIRST = 0x9d, CMD_MUSIC_VOLUME_LAST = 0xa4
 };
 /* The test sound of a new sound volume. */
-enum { TEST_SOUND_CATEGORY = 3, TEST_SOUND_INDEX = 0, TEST_SOUND_ENTRY = 0x8b, TEST_SOUND_PRIORITY = 0x6c,
-       TEST_SOUND_VOLUME = 200 };
+enum { TEST_SOUND_INDEX = 0, TEST_SOUND_ENTRY = 0x8b, TEST_SOUND_PRIORITY = 0x6c };
 
 DialogState dialog = {.screen_mode = 1};
 
@@ -209,7 +208,7 @@ void sound_set_volume_and_test(int volume, int device)
 {
     if (device == DEVICE_SOUND) {
         game.sound_volume = (uint8_t)volume;
-        sound_request(TEST_SOUND_CATEGORY, TEST_SOUND_INDEX, TEST_SOUND_ENTRY, TEST_SOUND_PRIORITY, TEST_SOUND_VOLUME,
+        sound_request(CAT_DUNGEON, TEST_SOUND_INDEX, TEST_SOUND_ENTRY, TEST_SOUND_PRIORITY, SOUND_VOLUME_LOUD,
                       game.party_x, game.party_y, 0);
         sound_set_volume(volume);
     } else if (device == DEVICE_MUSIC) {

@@ -17,11 +17,6 @@
 #include "ui.h"
 #include "weather.h"
 
-/* Attack types of champ_take_damage (bit 15: a parry can block the attack). */
-enum {
-    ATTACK_FIRE = 1, ATTACK_SELF, ATTACK_BLUNT, ATTACK_SHARP, ATTACK_MAGIC, ATTACK_PSYCHIC, ATTACK_LIGHTNING, ATTACK_SELF_2
-};
-#define ATTACK_BLOCKABLE 0x8000
 #define ATTACK_TYPE_MASK 0x7fff
 #define WOUND_LOCATIONS 6           /* the hands, the head, the torso, the legs, the feet */
 #define WOUND_SHARP 0x8000          /* wound location bit: a sharp attack */
@@ -52,8 +47,6 @@ enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };
 #define ARMOUR_DEFENSE_MASK 0xff
 #define SHARP_FACTOR_BASE 4u        /* against a sharp attack: defense * (sharp factor + 4) / 8 */
 #define SHARP_FACTOR_SHIFT 3
-#define ATTR_AMMO 5
-#define ATTR_LAUNCHER 0x8000        /* ATTR_AMMO bit: the weapon shoots */
 #define POISON_EVENT_DELAY 0x24
 #define POISON_MAX 0xc00
 #define POISON_DAMAGE_ROUND 0x1e
@@ -178,7 +171,7 @@ int champ_get_strength(int champ, int hand, int skill)
         } else if (skill == SKILL_NINJA || skill == SKILL_THROW || skill == SKILL_SHOOT) {
             bonus = item_attr(item, ATTR_THROW_POWER);
             /* a launcher adds its power only to shooting, other items only to throwing */
-            if (bonus && !(item_attr(item, ATTR_AMMO) & ATTR_LAUNCHER) != (skill != SKILL_SHOOT)) bonus = 0;
+            if (bonus && !(item_attr(item, ATTR_AMMO) & AMMO_LAUNCHER) != (skill != SKILL_SHOOT)) bonus = 0;
         }
         v = (int16_t)(v + bonus);
     }
@@ -243,7 +236,7 @@ static uint16_t champ_get_mean_defense(int champ, int wound_mask, int type)
     for (int w = 0; w < WOUND_LOCATIONS; w++) {
         if (!((uint16_t)wound_mask & 1 << w)) continue;
         count++;
-        defense = (uint16_t)(defense + champ_get_wound_defense(champ, (uint16_t)((type == ATTACK_SHARP ? WOUND_SHARP : 0) | w)));
+        defense = (uint16_t)(defense + champ_get_wound_defense(champ, (uint16_t)((type == ATTACK_TYPE_SHARP ? WOUND_SHARP : 0) | w)));
     }
     return count ? (uint16_t)(defense / count) : defense;
 }
@@ -269,19 +262,19 @@ static int16_t champ_reduce_damage(int champ, int16_t d, int wound_mask, int att
     }
     int scaled = 1;
     switch (type) {
-    case ATTACK_FIRE:
+    case ATTACK_TYPE_FIRE:
         d = (int16_t)champ_get_stat_adjusted_attack(c, STAT_ANTI_FIRE, (uint16_t)d);
         if (c->aura == AURA_FIRE_SHIELD) d = (int16_t)(d - c->aura_value);
         break;
-    case ATTACK_SELF: case ATTACK_SELF_2:
+    case ATTACK_TYPE_SELF: case ATTACK_TYPE_SELF_2:
         defense = (uint16_t)((defense >> 1) + champ_get_skill_level(champ, SKILL_NINJA, 1));
         break;
-    case ATTACK_MAGIC:
+    case ATTACK_TYPE_MAGIC:
         d = (int16_t)champ_get_stat_adjusted_attack(c, STAT_ANTI_MAGIC, (uint16_t)d);
         if (c->aura == AURA_SPELL_SHIELD) d = (int16_t)(d - c->aura_value);
         scaled = 0;
         break;
-    case ATTACK_PSYCHIC: {
+    case ATTACK_TYPE_PSYCHIC: {
         int16_t left = (int16_t)(PSYCHIC_BASE - champ_get_stat(c, STAT_WISDOM, 0));
         if (left <= 0) return 0;
         d = (int16_t)(mul16(d, left) >> PSYCHIC_SHIFT);
@@ -440,7 +433,7 @@ void champ_kill(int champ)
     c->rune_count = 0;
     c->runes[0] = 0;
     c->dir = (uint8_t)game.party_dir;
-    c->unknown_26[3] = 0;
+    c->hit_damage = 0;
     if ((cell + DIR_COUNT - game.party_dir) % DIR_COUNT + 1 == input_drag_state) champ_drag_cancel();
     if (c->poisoned) champ_cure_poison(champ, CURE_ALL);
     int alive = 0;

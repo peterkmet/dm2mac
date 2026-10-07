@@ -37,7 +37,6 @@
 #define EVENT_TELEPORT_MAP 2                /* teleport party event: data byte of the map */
 #define TELEPORT_DIR_MASK 3                 /* teleport party event: the direction in the map bits of its location word */
 #define EVENT_SPAWN_TYPE 3                  /* spawn creature event: data byte of the creature type */
-#define SPAWN_GROUP_COUNT 7                 /* creature_create_group count of a spawned group: full health */
 
 MainLoop main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
 static int tick_elapsed;
@@ -222,7 +221,7 @@ void timeline_process(void)
         case EVENT_SPAWN_CREATURE: {
             int dir = rand_2bits() ? dun_get_direction_to(e.data[EVENT_X], e.data[EVENT_Y], game.party_x, game.party_y)
                                      : rand_2bits();
-            creature_create_group(e.data[EVENT_SPAWN_TYPE], SPAWN_GROUP_COUNT, dir, e.data[EVENT_X], e.data[EVENT_Y]);
+            creature_create_group(e.data[EVENT_SPAWN_TYPE], GROUP_COUNT_FULL_HEALTH, dir, e.data[EVENT_X], e.data[EVENT_Y]);
             break;
         }
         }

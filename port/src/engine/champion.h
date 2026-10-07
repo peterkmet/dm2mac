@@ -14,6 +14,7 @@ enum {
 enum { STAT_LUCK, STAT_STRENGTH, STAT_DEXTERITY, STAT_WISDOM, STAT_VITALITY, STAT_ANTI_MAGIC, STAT_ANTI_FIRE, STAT_COUNT };
 #define SKILL_COUNT 20
 #define SKILL_BASE_COUNT 4      /* skills 4 to 19 are sub-skills: 4 per base skill */
+#define SUB_SKILL_COUNT 4       /* the sub-skills of each base skill */
 #define CHAMPION_NAME_SIZE 8
 #define CHAMPION_TITLE_SIZE 20
 #define CHAMPION_RUNES_SIZE 4
@@ -29,6 +30,7 @@ enum { STAT_LUCK, STAT_STRENGTH, STAT_DEXTERITY, STAT_WISDOM, STAT_VITALITY, STA
 #define REDRAW_ALL_INVENTORY 0x8000
 #define REDRAW_ALL 0xfc00
 #define REDRAW_KEEP 0x03ff       /* the bits that stay after a redraw */
+#define REDRAW_STEP_TIME 0x0010  /* the step time reads this bit; nothing in the port sets it (docs/todo.md) */
 
 /* Aura types: 0 to 2 shields, 3 to 6 raise a statistic. */
 #define AURA_STAT_FIRST 3
@@ -44,7 +46,9 @@ typedef struct __attribute__((packed)) {
     uint8_t poisoned;
     uint8_t last_command[2];
     char runes[CHAMPION_RUNES_SIZE];
-    uint8_t unknown_26[4];
+    uint8_t unknown_26[2];
+    uint8_t hit_dir;            /* the direction of the hardest hit of the turn */
+    uint8_t hit_damage;         /* its damage */
     uint8_t action_delay[ACTION_DELAY_COUNT];
     uint8_t unknown_2d;
     uint16_t damage_event;      /* timeline event of the damage display, THING_NONE none */
@@ -69,7 +73,25 @@ typedef struct __attribute__((packed)) {
 
 _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record has 263 bytes");
 
+/* Champion.wounds bits: 0x01 and 0x02 the hands, then the head, the torso, the legs, the feet. */
+#define WOUND_HEAD 0x04
+#define WOUND_TORSO 0x08
 #define WOUND_LEGS 0x10
+#define WOUND_FEET 0x20
+#define WOUND_ALL 0x3f
+/* Attack types of champ_take_damage (bit 15: a parry can block the attack). */
+enum {
+    ATTACK_TYPE_FIRE = 1, ATTACK_TYPE_SELF, ATTACK_TYPE_BLUNT, ATTACK_TYPE_SHARP, ATTACK_TYPE_MAGIC, ATTACK_TYPE_PSYCHIC,
+    ATTACK_TYPE_LIGHTNING, ATTACK_TYPE_SELF_2
+};
+#define ATTACK_BLOCKABLE 0x8000
+#define THROW_COOLDOWN 4           /* game.throw_cooldown after a throw or a launch */
+/* Champion sounds (GDAT category CAT_CHAMPION, index portrait): a fall, and a push or bump that hurts. A push that
+   fails plays SOUND_HURT. */
+#define SOUND_ENTRY_FALL 0x87
+#define SOUND_PRIORITY_FALL 0xbe
+#define SOUND_ENTRY_PUSHED 0x8a
+#define SOUND_PRIORITY_PUSHED 100
 #define NO_CHAMPION_CELL 0xff
 #define COMMAND_NONE 0xff          /* last_command of a hand without a command */
 /* Champion slots of the quiver and the pouch. */

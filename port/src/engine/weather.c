@@ -18,7 +18,6 @@
 /* Sound (CAT_EXPLOSION, 0x30, 0x81): a lightning that hits a fixed square. */
 #define LIGHTNING_SOUND_INDEX 0x30
 #define LIGHTNING_SOUND_ENTRY 0x81
-#define SOUND_NO_FALLBACK 0xfe
 #define LIGHTNING_SOUND_PRIORITY 0x6c
 #define LIGHTNING_SOUND_VOLUME 0x80 /* plus 0 to 31 */
 /* Sound (CAT_SKY, graphics set, 0): the thunder. */
@@ -40,7 +39,6 @@ enum {
 #define ORNAMENT_KEY_DAYLIGHT 0x63  /* the ornament is a window: its light follows the hour */
 #define LIGHT_ANIMATED_ONLY 0x8000
 #define LIGHT_AMOUNT_MASK 0x7fff
-#define ITEM_ATTR_LIGHT 0xf8        /* item and creature attribute: light */
 #define ITEM_FLAG_LIGHT 0x10        /* ATTR_FLAGS bit: a torch, its charges give light */
 
 /* Sky objects (GDAT (CAT_SKY, graphics set, entry)) and the weather amounts that show them. */
@@ -96,7 +94,6 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define VAR_STORM_COUNT 0x40        /* cleared by each lightning of a weak storm */
 #define VAR_STRIKES_SEEN 0x41       /* lightning strikes seen near the party from the inventory or asleep */
 enum { VAR_ADD = 3, VAR_ASSIGN = 6 };
-#define MAGIC_LIGHT_BYTE 0          /* game.magic_light bytes 0-1: the light of light spells */
 #define MAP_DARK_BITS 0xf000        /* map object counts: a map without these bits is always lit */
 #define LIGHT_LEVEL_MAX 5
 #define LIGHT_LEVEL_LIT 1
@@ -299,7 +296,7 @@ static SkyObject *weather_lightning(SkyObject *o)
         if (target) {
             int x = target >> TARGET_X_SHIFT, y = target & TARGET_Y_MASK;
             sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
-            sound_play_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_NO_FALLBACK,
+            sound_play_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_FALLBACK,
                                      x, y, 1, LIGHTNING_SOUND_PRIORITY,
                                      (int16_t)(rand_below(LIGHTNING_RANGE) + LIGHTNING_SOUND_VOLUME));
         } else {
@@ -402,7 +399,7 @@ void light_update_party_light(void)
             sum = (int16_t)(sum + ((light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
             if (shift) shift--;
         }
-        int16_t magic = (int16_t)le16(&game.magic_light[MAGIC_LIGHT_BYTE]);
+        int16_t magic = save_magic_light();
         sum = (int16_t)(sum + light_source_sum + magic + map_value(MAP_KEY_LIGHT));
         if (game.weather_visible) sum = (int16_t)(sum + daylight());
         level = 0;
@@ -466,7 +463,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
         }
         if (flags & LIGHT_CREATURES) {
             uint16_t group = creature_group_at(party.cur_map, x, y);
-            if (group != THING_NONE) light = (int16_t)(light + (item_attr(group, ITEM_ATTR_LIGHT) & LIGHT_AMOUNT_MASK));
+            if (group != THING_NONE) light = (int16_t)(light + (item_attr(group, ATTR_LIGHT_SOURCE) & LIGHT_AMOUNT_MASK));
         }
         break;
     }

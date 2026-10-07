@@ -24,7 +24,6 @@
 #define SKILL_EXPERIENCE_BASE 0x40
 #define FOOD_START 1500
 #define FOOD_RANDOM_MASK 0xff       /* a new champion gets up to 255 more food and water */
-#define SUB_SKILL_COUNT 4           /* the sub-skills of each base skill */
 #define LAST_COMMAND_NONE 0xff      /* the hand used no command yet */
 #define CMD_RECRUIT 0x92
 #define CMD_RECRUIT_CANCEL 0x93
@@ -33,7 +32,6 @@
 #define MOUTH_INDEX 0x5b
 #define MOUTH_OPEN 0xfb             /* also the entry of its sound */
 #define MOUTH_SOUND_PRIORITY 0xff
-#define MOUTH_SOUND_VOLUME 200
 #define INPUT_MODE_RECRUIT 7
 #define MESSAGE_COLOR_FIRST UI_GREEN
 enum { DATA_HEALTH, DATA_STAMINA, DATA_MANA, DATA_STATS, DATA_SKILLS = 6 };  /* word indices; skill s at DATA_SKILLS + s */
@@ -56,7 +54,7 @@ static void champ_add_to_party(int portrait, int index, int dir)
     int k = 0;
     while (champ_get_index_in_cell(dir_turn(game.party_dir, k)) != -1) k++;
     c->cell = (uint8_t)dir_turn(game.party_dir, k);
-    c->unknown_26[2] = (uint8_t)game.party_dir;
+    c->hit_dir = (uint8_t)game.party_dir;
     for (int s = 0; s < SLOT_COUNT; s++) c->slots[s] = THING_NONE;
     char text[TEXT_SIZE];
     const char *p = text_gdat(CAT_CHAMPION, portrait, PORTRAIT_TEXT, text);
@@ -157,7 +155,7 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
     if (!recruit_silent) {
         gfx_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
         screen_present_viewport();
-        sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, MOUTH_SOUND_VOLUME, game.party_x,
+        sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD, game.party_x,
                       game.party_y, 0);
     }
     if (hand != THING_NONE) inv_put_object_in_free_slot(champ, hand);

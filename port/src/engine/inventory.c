@@ -34,10 +34,6 @@ enum {
 #define REDRAW_MANA 0x0800          /* REDRAW_BARS */
 #define REDRAW_STATS 0x3000
 #define REDRAW_SKILLS 0x2000
-#define SOUND_SWALLOW 0x83
-#define SWALLOW_FALLBACK_INDEX 0xfe  /* the sound index when the champion has no swallow sound */
-#define SWALLOW_PRIORITY 0x96
-#define SWALLOW_VOLUME 0x80
 /* Data bytes of an item effect event: the thing type and the GDAT index of the consumed item. */
 enum { EFFECT_DATA_TYPE = 0, EFFECT_DATA_INDEX = 2 };
 
@@ -296,7 +292,6 @@ void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
 /* ---- Eating and drinking ---- */
 
 #define ATTR_FOOD 3                 /* item attribute: the food value */
-#define ATTR_REFILLS 0x0001         /* ATTR_FLAGS bit: the item holds water */
 #define FOOD_MAX 0x800
 #define WATER_PER_DRINK 800
 #define WATER_PER_POTION 1600
@@ -325,7 +320,7 @@ static int16_t min16(int a, int b) { return (int16_t)a < (int16_t)b ? (int16_t)a
 
 int item_use_charge(uint16_t thing)
 {
-    if (!(item_attr(thing, ATTR_FLAGS) & ATTR_REFILLS) || !item_charges(thing)) return 0;
+    if (!(item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_REFILLS) || !item_charges(thing)) return 0;
     item_add_charges(thing, -1);
     if (thing == game.leader_hand) champ_put_object_in_leader_hand(thing, 0);
     return 1;
@@ -417,8 +412,8 @@ void champ_consume_object(int champ, uint16_t thing, int slot)
     }
     if (c->stamina > c->max_stamina) c->stamina = c->max_stamina;
     if (c->health > c->max_health) c->health = c->max_health;
-    sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_SWALLOW, SWALLOW_FALLBACK_INDEX, game.party_x, game.party_y, 0,
-                             SWALLOW_PRIORITY, SWALLOW_VOLUME);
+    sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK, game.party_x, game.party_y, 0,
+                             SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL);
     c->redraw |= REDRAW_EATEN;
     if (slot != -1) {
         c->redraw |= REDRAW_STATUS_BOX;

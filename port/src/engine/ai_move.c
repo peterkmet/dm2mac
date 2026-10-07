@@ -1726,7 +1726,7 @@ static void hide_party_target(AiCandidate *c)
     int invisible = game.magic_light[MAGIC_INVISIBILITY] && !(ai.info->flags & CREATURE_SEES_INVISIBLE);
     int dark = 0;
     if (!invisible) {
-        dark = view_light_level && (int16_t)le16(game.magic_light) < 0
+        dark = view_light_level && save_magic_light() < 0
                && !(ai.info->flags & CREATURE_SEES_IN_DARK);
         if (!dark) return;
     }

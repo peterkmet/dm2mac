@@ -35,14 +35,11 @@
 /* Sound arguments (entry, priority) of sound_play_with_fallback and sound_request. */
 #define SOUND_ENTRY_ORNAMENT 0x88
 #define SOUND_PRIORITY_ORNAMENT 0x8c
-#define SOUND_ENTRY_DRINK 0x83
-#define SOUND_PRIORITY_DRINK 0x96
 #define SOUND_ENTRY_CREATURE_APPEARS 0x89
 #define SOUND_PRIORITY_CREATURE_APPEARS 0x61
 #define SOUND_PRIORITY_MAP_SOUND 0x73
 #define SOUND_ENTRY_DOOR_HIT 0x8a   /* a closing door hits a champion */
 #define SOUND_PRIORITY_DOOR_HIT 100
-#define SOUND_PRIORITY_CRUSH 0x46   /* a closing door hits a creature */
 #define SOUND_ENTRY_DOOR_MOVE 0x8e
 #define SOUND_ENTRY_DOOR_SHUT 0x8f
 #define SOUND_PRIORITY_DOOR 0x5f
@@ -83,7 +80,6 @@ enum { DOOR_OPEN = 0, DOOR_CLOSED = 4, DOOR_BROKEN = 5 };
 #define SQUARE_PRIORITY_SET 1
 #define SQUARE_PRIORITY_TOGGLE 2
 #define SQUARE_PRIORITY_CLEAR 3
-#define GENERATOR_GROUP_SIZE 7      /* creature_create_group count: the largest group */
 #define PIT_OPEN_TICKS 5            /* a random pit closes again after 5 ticks */
 #define ALTAR_REBIRTH_STEPS 2
 #define CLICK_EVENT_DELAY 2         /* the ticks before a clicked button turns idle or an item holder shows its marker */
@@ -97,8 +93,6 @@ enum { DOOR_OPEN = 0, DOOR_CLOSED = 4, DOOR_BROKEN = 5 };
 #define GENERATOR_SLOW_DELAY 0x200
 #define GENERATOR_FAST_DELAY 0x2000
 #define GENERATOR_SLOW_SHOWN_FACTOR 4   /* a visible generator text waits longer */
-#define DOOR_WOUNDS 0x04            /* a closing door hurts the head */
-#define DOOR_ATTACK_TYPE 2          /* the attack type of a closing door (champ_damage_party) */
 
 static uint8_t *square_byte(int x, int y)
 {
@@ -865,7 +859,7 @@ static void sensor_generate_creature(uint16_t t)
 {
     int tx = sensor_target_x(t), ty = sensor_target_y(t);
     int dir = sensor_flag(t, SENSOR_STATE) ? rand_2bits() : sensor_effect(t);
-    uint16_t g = creature_create_group(sensor_data(t), GENERATOR_GROUP_SIZE, dir, tx, ty);
+    uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, tx, ty);
     if (sensor_flag(t, SENSOR_INVERTED) && g != THING_NONE) set_thing_word(g, GROUP_ITEM_CLASS, sensor_delay(t));
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sound_request(CAT_CREATURE_APPEARS, 0, SOUND_ENTRY_CREATURE_APPEARS, SOUND_PRIORITY_CREATURE_APPEARS, SOUND_VOLUME_NORMAL,
@@ -1190,7 +1184,7 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
         hit = 1;
         if (game.champion_count) {
             *square &= (uint8_t)~SQUARE_DOOR_STATE;
-            int hurt = champ_damage_party((uint16_t)damage, DOOR_WOUNDS, DOOR_ATTACK_TYPE);
+            int hurt = champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
             for (int i = 0; i < CHAMPION_MAX; i++)
                 if (hurt >> i & 1)
                     sound_play_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_DOOR_HIT, SOUND_FALLBACK, x,
@@ -1209,9 +1203,9 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
     creature_alert(g, x, y, ALERT_STARTLED, ALERT_ALWAYS, (uint16_t)damage);
     *state = *state ? *state - 1 : 0;
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | *state);
-    sound_play_with_fallback(CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CRUSH,
+    sound_play_with_fallback(CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
                              SOUND_VOLUME_NORMAL);
-    sound_play_with_fallback(CAT_MISC, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CRUSH,
+    sound_play_with_fallback(CAT_MISC, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
                              SOUND_VOLUME_NORMAL);
     return 1;
 }
@@ -1375,7 +1369,7 @@ void sensor_process_map_entry(int entering)
                 } else if (thing_type(t) == THING_TEXT && entering) {
                     if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_GENERATOR_ON_ENTRY && !text_is_visible(t)) {
                         text_set_visible(t, true);
-                        creature_create_group(text_value(t), GENERATOR_GROUP_SIZE, rand_2bits(), x, y);
+                        creature_create_group(text_value(t), GROUP_COUNT_FULL_HEALTH, rand_2bits(), x, y);
                     }
                 }
             }
@@ -1391,7 +1385,6 @@ void sensor_process_map_entry(int entering)
 #define WATER_FULL 0x800
 #define ITEM_EMPTY_FLASK 0x194
 #define FLASK_FULL_INDEX 0x0f
-#define ATTR_REFILLS 0x0001          /* item attribute 0 bit: the item takes water */
 enum {
     WALL_CLICK_ANY = 1, WALL_CLICK_EMPTY_HAND, WALL_CLICK_ITEM, WALL_CLICK_CHARGED_ITEM = 0x15, WALL_CLICK_TOGGLE = 0x17,
     WALL_CLICK_BUTTON = 0x18, WALL_CLICK_COUNTED_ITEM = 0x1b, WALL_CLICK_TELEPORT = 0x1c, WALL_CLICK_RESET = 0x3f,
@@ -1484,9 +1477,9 @@ static void wall_click_fountain(WallClick *c)
         if (!c->has_leader) return;
         for (int i = 0; i < CHAMPION_MAX; i++)
             if (champion(i)->health) champion(i)->water = WATER_FULL;
-        sound_play_with_fallback(CAT_CHAMPION, champion(game.leader)->portrait, SOUND_ENTRY_DRINK, SOUND_FALLBACK,
-                                 game.party_x, game.party_y, 0, SOUND_PRIORITY_DRINK, SOUND_VOLUME_NORMAL);
-    } else if (item_attr(hand, ATTR_FLAGS) & ATTR_REFILLS) {
+        sound_play_with_fallback(CAT_CHAMPION, champion(game.leader)->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK,
+                                 game.party_x, game.party_y, 0, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL);
+    } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
         item_add_charges(hand, CHARGES_FULL_AMOUNT);
         c->take = 1;
         c->give = hand;

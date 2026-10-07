@@ -74,8 +74,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define AI_ACTION_FLAG_INTERRUPT 0x10
 #define CREATURE_DEATH_EXPLOSION 0xffa8
 #define EXPLOSION_CENTER 0xff
-#define SOUND_PRIORITY_STEP 0x46
-#define SOUND_VOLUME 0x80
 #define AI_ACTION_JUMP 5
 #define CREATURE_FAST_VANISH 0x1000 /* flags: the creature vanishes quickly in a party action effect */
 #define TIME_BYTE_WRAP 0x100        /* the time bytes of an active group are the low byte of the time */
@@ -734,7 +732,7 @@ uint32_t creature_ai_animate_and_get_next_time(void)
     ai.anim[0] = sequence;
     ai.anim[1] = state;
     if ((step[STEP_SOUND] & STEP_SOUND_MASK) != STEP_NO_SOUND)
-        sound_request(CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_STEP, SOUND_VOLUME,
+        sound_request(CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL,
                       ai.event.data[0], ai.event.data[1], 1);
     int16_t delay = anim_step_delay(step);
     if (own_step) ai.anim_step = NULL;
@@ -853,7 +851,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
                 move_thing(t, MOVE_NEW_ITEM, 0, x, y);
                 if ((int16_t)sound_map >= 0)
                     sound_play_with_fallback(item_gdat_category(item), item_gdat_index(item), SOUND_ENTRY_DROP, SOUND_FALLBACK,
-                                             x, y, (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME);
+                                             x, y, (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
             }
         }
     }
@@ -868,7 +866,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
             move_thing(t, MOVE_NEW_ITEM, 0, x, y);
             if ((int16_t)sound_map >= 0)
                 sound_play_with_fallback(item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y,
-                                         (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME);
+                                         (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
         }
         t = next;
     }
@@ -933,8 +931,8 @@ int creature_damage_current_group(uint16_t damage)
             else scream = !rand_2bits();
         }
         if (scream)
-            sound_request(CAT_CREATURE, group_creature(ai.group_thing), SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_STEP,
-                          SOUND_VOLUME, ai.event.data[0], ai.event.data[1], 1);
+            sound_request(CAT_CREATURE, group_creature(ai.group_thing), SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_CREATURE,
+                          SOUND_VOLUME_NORMAL, ai.event.data[0], ai.event.data[1], 1);
     }
     set_thing_word(ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
     return 0;
@@ -1187,7 +1185,7 @@ void timeline_event_move_group(TimelineEvent *e)
 {
     int x = e->data[0], y = e->data[1];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
-        sound_request(CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, x, y, 1);
+        sound_request(CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL, x, y, 1);
 }
 
 /* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */
@@ -1327,7 +1325,7 @@ void creature_push_group(int x, int y, int dir, int strength)
         Champion *c = champion(i);
         if (!c->health) continue;
         sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
-                                 SOUND_VOLUME_PUSH);
+                                 SOUND_VOLUME_LOUD);
         load = (int16_t)(load + (uint16_t)champ_get_load(i) / LOAD_PUSH_DIVISOR);
         alive++;
     }
@@ -1353,8 +1351,8 @@ void move_push_creature(int arrow)
     if (!move_party_can_push_group(g)) {
         for (int i = 0; i < game.champion_count; i++)
             if (champion(i)->health && (i == game.leader || !rand_2bits()))
-                sound_play_with_fallback(CAT_CHAMPION, i, SOUND_ENTRY_STRAIN, SOUND_FALLBACK, game.party_x, game.party_y, 1,
-                                         SOUND_PRIORITY_STRAIN, SOUND_VOLUME_PUSH);
+                sound_play_with_fallback(CAT_CHAMPION, i, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                                         SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
         return;
     }
     push.x = x;

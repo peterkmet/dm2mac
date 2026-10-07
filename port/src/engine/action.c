@@ -71,7 +71,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define ICON_BPP 8
 #define FACE_BPP 4
 #define JITTER_CENTER 2             /* haste_jitter: a roll of 1 to 3 moves by -1 to 1 */
-#define ACTION_TEXT_FIRST 8         /* GDAT texts 8 to 11 of an item are its actions */
 #define PILE_SLOT_STEP 8            /* the coin pile of each slot starts 8 offsets further */
 
 ActionArea action;
@@ -397,7 +396,7 @@ static void draw_action_name(int i, int highlight)
     const ChampionAction *a = &champ_actions[i];
     if (action.flags) {
         offscreen_draw_gdat_image(&area, CAT_CONTAINER, action.map_item,
-                                  (uint8_t)((a->entry - ACTION_TEXT_FIRST) * 2 + MAP_ACTION_PICTURE_BASE + highlight),
+                                  (uint8_t)((a->entry - ACTION_ENTRY_FIRST) * 2 + MAP_ACTION_PICTURE_BASE + highlight),
                                   ZONE_MAP_ACTION_FIRST + i, UI_OPAQUE);
         return;
     }

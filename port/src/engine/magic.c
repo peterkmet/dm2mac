@@ -63,7 +63,6 @@ enum {
 #define AURA_COST 4
 #define AURA_BIG 50                     /* a champion with a bigger aura makes a new aura a quarter */
 #define AURA_SHIFT 5
-#define CAST_BASE_SKILLS 4              /* skills 4 to 19 are the sub-skills of the base skills 0 to 3 */
 #define SKILL_WIZARD 3
 #define LIGHT_EVENT_STEP 8              /* game ticks between two steps of a fading light */
 #define LIGHT_POWER_MIN 0x20
@@ -92,9 +91,7 @@ enum { SUBTYPE_WARP_ONCE = 15, SUBTYPE_WARP = 16 };
 enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define SOUND_WARP_CATEGORY 10
 #define SOUND_WARP_ENTRY 0x88
-#define SOUND_WARP_FALLBACK 0xfe
 #define SOUND_WARP_PRIORITY 0x8c
-#define SOUND_WARP_VOLUME 0x80
 #define MAGIC_LIGHT_LEVELS 16            /* the light spells reach level 15 */
 #define RUNE_BITS 8                     /* each rune takes one byte of the spell key */
 #define RUNE_SETS 4                     /* the power runes, then the three runes after them */
@@ -119,7 +116,6 @@ enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define HASTE_PER_STEP 8
 #define EXPERIENCE_PER_DIFFICULTY 8
 #define EXPERIENCE_PER_LEVEL 16
-#define SUB_SKILLS_SHIFT 2              /* each base skill has 4 sub-skills */
 #define CAST_SKILL_MASK 0x0f            /* the base skill in a cast result */
 
 /* The spells of SKULL.EXE. */
@@ -149,13 +145,8 @@ static int imin(int a, int b) { return a < b ? a : b; }
 static int imax(int a, int b) { return a > b ? a : b; }
 static int iclamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-/* The magic light: the light sum of the party spells (game.magic_light bytes 0 and 1). */
-static int16_t magic_light_get(void) { return (int16_t)le16(game.magic_light); }
 /* Adds delta to the light of the party spells. */
-static void magic_light_add(int delta)
-{
-    put_le16(game.magic_light, (uint16_t)(magic_light_get() + delta));
-}
+static void magic_light_add(int delta) { save_set_magic_light((int16_t)(save_magic_light() + delta)); }
 
 /* An event of the party map at game time + delay. */
 static TimelineEvent party_event(int type, uint32_t delay)
@@ -383,7 +374,7 @@ static void cast_other(Champion *c, int type, int skill, int power)
 static int cast_failure(int kind, const Spell *spell)
 {
     int skill = spell->skill;
-    return kind | (skill < CAST_BASE_SKILLS ? skill : (skill - CAST_BASE_SKILLS) >> SUB_SKILLS_SHIFT);
+    return kind | (skill < SKILL_BASE_COUNT ? skill : (skill - SKILL_BASE_COUNT) / SUB_SKILL_COUNT);
 }
 
 int magic_cast_spell(int champ, const Spell *spell, int power)
@@ -525,8 +516,8 @@ int move_party_warp_to_marker(void)
         int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0) continue;
         move_party_to(x, y, map, game.party_dir);
-        sound_play_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_WARP_ENTRY, SOUND_WARP_FALLBACK,
-                                 game.party_x, game.party_y, 1, SOUND_WARP_PRIORITY, SOUND_WARP_VOLUME);
+        sound_play_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_WARP_ENTRY, SOUND_FALLBACK,
+                                 game.party_x, game.party_y, 1, SOUND_WARP_PRIORITY, SOUND_VOLUME_NORMAL);
         if (mode == MARKER_CLEAR_ALL) text_set_visible(t, true);
         return 1;
     }

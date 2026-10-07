@@ -1171,8 +1171,6 @@ void ui_release_move_arrow(void)
 enum { WALL_CELL_PARTY, WALL_CELL_LEFT, WALL_CELL_RIGHT, WALL_CELL_FRONT };
 #define CLICK_SOUND_ENTRY 0x84      /* the sound of a click on a wall or on a creature that cannot move */
 #define CLICK_SOUND_PRIORITY 0x8c
-#define CLICK_SOUND_VOLUME 0x80
-#define WALL_SOUND_VOLUME 200
 #define DOOR_BUTTON_SOUND_ENTRY 0x88
 #define PUSH_RESISTANCE_FIXED 0xff  /* a creature that never moves: a click on it only sounds */
 
@@ -1208,7 +1206,7 @@ static void view_click_creature(uint16_t group, int x, int y, int square_x, int 
     if (!view_hit_test_creature(x, y, square_x, square_y, &side)) return;
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
         sound_play_with_fallback(CAT_CREATURE, item_gdat_index(group), CLICK_SOUND_ENTRY, SOUND_FALLBACK, square_x,
-                                 square_y, 0, CLICK_SOUND_PRIORITY, CLICK_SOUND_VOLUME);
+                                 square_y, 0, CLICK_SOUND_PRIORITY, SOUND_VOLUME_NORMAL);
     } else if (!side) {
         party.push_mode = 1;
         ui.push_mode = 1;
@@ -1225,14 +1223,14 @@ static void view_click_front_wall(int passable, int x, int y)
     if (!game.champion_count) return;
     if (!passable)
         sound_play_with_fallback(CAT_WALLSET, dungeon_map_wallset(game.party_map), CLICK_SOUND_ENTRY, SOUND_FALLBACK, x, y,
-                                 0, CLICK_SOUND_PRIORITY, WALL_SOUND_VOLUME);
+                                 0, CLICK_SOUND_PRIORITY, SOUND_VOLUME_LOUD);
     input_command_stop = 1;
 }
 
 /* A door button of the door at (x, y): the door toggles, the button shows pressed until the next game step. */
 static void view_click_door_button(int x, int y, uint16_t door)
 {
-    sound_request(CAT_DUNGEON, 0, DOOR_BUTTON_SOUND_ENTRY, CLICK_SOUND_PRIORITY, CLICK_SOUND_VOLUME, game.party_x,
+    sound_request(CAT_DUNGEON, 0, DOOR_BUTTON_SOUND_ENTRY, CLICK_SOUND_PRIORITY, SOUND_VOLUME_NORMAL, game.party_x,
                   game.party_y, 1);
     sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, game.game_time + 1);
     TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, party.cur_map),

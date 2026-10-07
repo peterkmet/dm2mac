@@ -14,14 +14,8 @@
 #define EXPLOSION_INDEX_BASE 0x80
 #define WEAPON_MAX_CHARGES 15
 #define MISC_MAX_CHARGES 3
-#define POTION_POWER_MAX 0xff
 #define MONEYBOX_TEXT_ENTRY 0x40       /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
-#define ITEM_NAME_ENTRY 0x18
 #define ITEM_ICON_ENTRY 0x18           /* the first icon of an item */
-#define ACTION_ENTRY_FIRST 8           /* GDAT texts 8 to 11 of an item are its actions */
-#define ACTION_ENTRY_LAST 11
-#define FIELD_COMMAND 2
-#define FIELD_CHARGES 8
 #define MISC_ITEM_INDEX_BASE 0x100
 #define ITEM_KIND_ITEMS 0x80           /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
 #define MONEY_SLOT_COUNT 10
@@ -220,11 +214,11 @@ static int item_sum_attr(uint16_t thing, int entry)
 {
     if (thing == THING_NONE) return 0;
     int sum = item_attr(thing, entry);
-    if (entry == ATTR_WEIGHT || entry == ATTR_COIN_VALUE) {
+    if (entry == ATTR_WEIGHT || entry == ATTR_VALUE) {
         uint16_t per_charge = item_attr(thing, entry == ATTR_WEIGHT ? ATTR_WEIGHT_PER_CHARGE : ATTR_VALUE_PER_CHARGE);
         if (per_charge) sum += item_charges(thing) * per_charge;
     }
-    if (entry == ATTR_COIN_VALUE && thing_type(thing) == THING_POTION && sum > 1)
+    if (entry == ATTR_VALUE && thing_type(thing) == THING_POTION && sum > 1)
         sum = (sum >> 1) + (int)(potion_power(thing) * (unsigned)(sum >> 1) / POTION_POWER_MAX);
     if (thing_type(thing) != THING_CONTAINER || container_kind(thing)) return sum;
     int moneybox = item_is_moneybox(thing), coin_sum = 0;
@@ -244,7 +238,7 @@ int item_weight(uint16_t thing) { return item_sum_attr(thing, ATTR_WEIGHT); }
 
 uint16_t item_get_value(uint16_t thing)
 {
-    int v = item_sum_attr(thing, ATTR_COIN_VALUE);
+    int v = item_sum_attr(thing, ATTR_VALUE);
     return (uint16_t)(v > UINT16_MAX ? UINT16_MAX : v);
 }
 
@@ -302,7 +296,7 @@ void money_init_coin_table(void)
     for (int index = 0; index < COIN_SCAN_COUNT; index++) {
         if (!(gdat_entry_index(draw_gdat(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
             continue;
-        int16_t value = (int16_t)gdat_entry_index(draw_gdat(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_COIN_VALUE);
+        int16_t value = (int16_t)gdat_entry_index(draw_gdat(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_VALUE);
         int at = 0;
         while (at < coins.count && coins.values[at] < value) at++;
         if (coins.count == COIN_TYPE_MAX) break;

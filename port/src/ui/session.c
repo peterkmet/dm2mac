@@ -57,7 +57,7 @@ enum {
 };
 #define SLOT_NAME_TOP 4                 /* the text base line below the top of a slot zone */
 /* The sound of the end of the game: the scream of the first champion (fallback: the generic scream). */
-enum { END_SOUND_CATEGORY = 0x16, END_SOUND_ENTRY = 0x87, END_SOUND_FALLBACK = 0xfe, END_SOUND_LOUD = 0xff };
+enum { END_SOUND_ENTRY = 0x87, END_SOUND_PRIORITY = 0xff };
 /* The name and title fields of the inventory while a name changes. */
 enum {
     NAME_PANEL_MODE = 8, ZONE_NAME = 0x229, ZONE_TITLE = 0x273, ZONE_NAME_BUTTON = 0x267, NAME_CATEGORY = 7,
@@ -513,9 +513,9 @@ void game_complete(void)
 void game_end(int party_dead)
 {
     if (party_dead && !session.completed) {
-        int portrait = game.champion_count ? champion(0)->portrait : END_SOUND_FALLBACK;
-        sound_play_with_fallback(END_SOUND_CATEGORY, portrait, END_SOUND_ENTRY, END_SOUND_FALLBACK, game.party_x,
-                                 game.party_y, 0, END_SOUND_LOUD, END_SOUND_LOUD);
+        int portrait = game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
+        sound_play_with_fallback(CAT_CHAMPION, portrait, END_SOUND_ENTRY, SOUND_FALLBACK, game.party_x,
+                                 game.party_y, 0, END_SOUND_PRIORITY, SOUND_VOLUME_MAX);
         game_wait_frames(END_SOUND_VBLANKS);
     }
     dialog.screen_mode = 1;

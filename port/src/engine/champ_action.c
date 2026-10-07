@@ -19,13 +19,6 @@
 #include "ui.h"
 #include "view.h"
 
-/* Fields of an action text (category, index, 5, entry). */
-enum {
-    FIELD_SKILL = 0, FIELD_COMMAND = 2, FIELD_DELAY = 3, FIELD_STAMINA = 4, FIELD_POWER = 5, FIELD_MODE = 6,
-    FIELD_DEFENSE = 7, FIELD_CHARGES = 8, FIELD_EXPERIENCE = 9, FIELD_ATTACK = 10, FIELD_WOUNDS = 11,
-    FIELD_SOUND = 13, FIELD_REPEATS = 14, FIELD_PIERCES = 15,
-    FIELD_MELEE_KIND = 0x10     /* 1: full damage to creatures that take half damage from other hits */
-};
 /* Action commands. */
 enum {
     COMMAND_INVISIBILITY = 2, COMMAND_SPELL_PROJECTILE, COMMAND_MELEE, COMMAND_FRIGHTEN, COMMAND_LIGHT,
@@ -40,11 +33,9 @@ enum {
 enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define ALL_CHARGES 0x0f
 #define ATTR_USED_UP 0x0800         /* ATTR_FLAGS bit: the item vanishes with its last charge */
-#define ATTR_AMMO 5
 #define ATTR_THROW_POWER_SHOOT 9
 #define ATTR_SHOOT_ATTACK 10
 #define ATTR_STEP 12                /* item attribute: the flight step of a missile */
-#define AMMO_LAUNCHER 0x8000        /* ATTR_AMMO bit of a launcher; the low bits are the ammunition kinds */
 #define AMMO_KINDS 0x7fff
 #define FLAGS_KEEP_OPEN 0x0400      /* action.flags bit that the action area clears after an action */
 #define POWER_MIN 0x20
@@ -82,14 +73,11 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define FRIGHTEN_ALERT_FLAGS 0x2005
 #define FRIGHTEN_ALERT_CHANCE 100
 #define SOUND_HIT 0x8d              /* sound entry of a door or creature that a melee action hits */
-#define SOUND_FALLBACK 0xfe
 #define SOUND_HIT_PRIORITY 0x3c
 #define SOUND_ACTION_PRIORITY 0x73
-#define SOUND_VOLUME 200
 #define SPELL_BASE 0x80             /* FIELD_MODE of a projectile spell: the spell is the mode - SPELL_BASE */
 #define THROW_ATTACK_RANDOM 0x1f    /* the random part of the attack of a throw */
 #define THROW_DELAY 4
-#define THROW_COOLDOWN 4
 #define THROW_EXPERIENCE 8
 #define KINETIC_MAX 0xff
 #define ATTACK_MIN 0x28
@@ -631,7 +619,7 @@ static int action_melee(ActionRun *a)
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sound_play_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),
-                                 SOUND_HIT, SOUND_FALLBACK, a->fx, a->fy, 1, SOUND_HIT_PRIORITY, SOUND_VOLUME);
+                                 SOUND_HIT, SOUND_FALLBACK, a->fx, a->fy, 1, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD);
         return 1;
     }
     int done = 1;
@@ -646,7 +634,7 @@ static int action_melee(ActionRun *a)
         }
     }
     if (done && champ_action_target != THING_NONE)
-        sound_request(CAT_CREATURE, item_gdat_index(champ_action_target), SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME,
+        sound_request(CAT_CREATURE, item_gdat_index(champ_action_target), SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD,
                       a->fx, a->fy, 1);
     return done;
 }
@@ -812,7 +800,7 @@ int champ_perform_action(int champ, int index)
     int done = champ_run_command(&a, command);
     if (!a.silent)
         sound_play_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, game.party_x, game.party_y, 0,
-                                 SOUND_ACTION_PRIORITY, SOUND_VOLUME);
+                                 SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD);
     if (!c->health || repeated) return done;
     if (a.delay) champ_add_action_delay(champ, a.delay, hand);
     if (stamina) champ_decrease_stamina(champ, stamina);

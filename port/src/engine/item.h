@@ -15,18 +15,36 @@
 
 /* Item attribute entries: GDAT value keys (category, index, 0x0b, entry). */
 enum item_attr {
-    ATTR_FLAGS = 0, ATTR_WEIGHT = 1, ATTR_COIN_VALUE = 2, ATTR_SLOTS = 4, ATTR_ICON_ANIMATION = 6, ATTR_ARMOUR_CLASS = 0x0b,
+    ATTR_FLAGS = 0, ATTR_WEIGHT = 1, ATTR_VALUE = 2, ATTR_SLOTS = 4, ATTR_ICON_ANIMATION = 6, ATTR_ARMOUR_CLASS = 0x0b,
     ATTR_STRENGTH = 8, ATTR_THROW_POWER = 9, ATTR_WEIGHT_PER_CHARGE = 0x34,
-    ATTR_VALUE_PER_CHARGE = 0x35
+    ATTR_VALUE_PER_CHARGE = 0x35, ATTR_AMMO = 5, ATTR_POISON = 0x0d,
+    ATTR_LIGHT_SOURCE = 0xf8    /* item and creature attribute: the light that the thing gives */
 };
 /* ATTR_FLAGS bits. */
 #define ITEM_FLAG_COIN 0x4000
 #define ITEM_FLAG_ICON_IN_HAND 0x8000   /* the icon changes with the slot */
 #define ITEM_FLAG_SCROLL_INFO 0x20       /* the inventory shows the object info while it is in the hand */
+#define ITEM_FLAG_REFILLS 0x0001         /* the item holds water */
+/* ATTR_AMMO bits. */
+#define AMMO_LAUNCHER 0x8000        /* a launcher; the low bits are the ammunition kinds */
 /* ATTR_SLOTS bits. */
 #define SLOT_MASK_NO_CONTAINER 0x8000   /* the item does not go into a container */
 #define SLOT_MASK_POUCH 0x40
 #define SLOT_MASK_HAND 0x400
+#define POTION_POWER_MAX 0xff
+
+/* GDAT texts (category, index, 5, entry) of an item: its name and its actions. */
+#define ITEM_NAME_ENTRY 0x18
+#define ACTION_ENTRY_FIRST 8
+#define ACTION_ENTRY_LAST 11
+/* Fields of an action text. */
+enum {
+    FIELD_SKILL = 0, FIELD_LEVEL = 1, FIELD_COMMAND = 2, FIELD_DELAY = 3, FIELD_STAMINA = 4, FIELD_POWER = 5,
+    FIELD_MODE = 6, FIELD_DEFENSE = 7, FIELD_CHARGES = 8, FIELD_EXPERIENCE = 9, FIELD_ATTACK = 10, FIELD_WOUNDS = 11,
+    FIELD_SOUND = 13, FIELD_REPEATS = 14, FIELD_PIERCES = 15,
+    FIELD_MELEE_KIND = 0x10,    /* 1: full damage to creatures that take half damage from other hits */
+    FIELD_HAND = 17
+};
 
 /* The GDAT category of a thing; a projectile gives the category of what it carries. */
 uint8_t item_gdat_category(uint16_t thing);

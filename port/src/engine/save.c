@@ -25,7 +25,6 @@
 #define HEADER_NAME 2
 #define SAVE_FORMAT 1
 #define GAME_RECORD_SIZE 60
-#define EVENT_SIZE 12
 #define CHAMPION_SLOTS 0xc3   /* 30 thing words: hands, body, pouches, quiver, backpack */
 #define CHAMPION_DAMAGE_EVENT 0x2e  /* the timeline event that ends the damage display */
 #define SLOT_COUNT 30
@@ -79,7 +78,7 @@ static const uint8_t champion_mask[CHAMPION_SIZE] = {
     [0x101] = 0x3f, 0x0f,
 };
 static const uint8_t magic_light_mask[MAGIC_LIGHT_SIZE] = {0x00, 0x00, 0x00, 0xff, 0xff, 0x00};
-static const uint8_t event_mask[EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00};
+static const uint8_t event_mask[TIMELINE_EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00};
 
 static const uint8_t door_mask[] = {0x00, 0x00, 0x00, 0x3e};
 static const uint8_t text_mask[] = {0x00, 0x00, 0x01, 0x00};
@@ -498,7 +497,7 @@ static int write_state(void)
         || !write_packed((const uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT)
         || !write_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count)
         || !write_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1)
-        || !write_packed((const uint8_t *)timeline.events, event_mask, EVENT_SIZE, timeline.count))
+        || !write_packed((const uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count))
         return 0;
     for (int c = 0; c < game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
@@ -759,7 +758,7 @@ static int read_state(void)
         || !read_packed((uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT, 0)
         || !read_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count, 0)
         || !read_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, 0)
-        || !read_packed((uint8_t *)timeline.events, event_mask, EVENT_SIZE, timeline.count, 0))
+        || !read_packed((uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count, 0))
         return 0;
     for (int i = timeline.count; i < timeline.capacity; i++) timeline.events[i].type = EVENT_NONE;
     timeline_build_queue();

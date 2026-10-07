@@ -2046,7 +2046,6 @@ static uint8_t wall_text_glyph(uint8_t c)
 #define SHOP_PRICE_COINS 6
 #define COIN_WIDTH 8
 #define COIN_HEIGHT 7
-#define ITEM_NAME_ENTRY 0x18
 #define DISPLAY_POS POS_FRONT       /* only the wall in front shows the name and prices */
 
 int16_t view_hit_offset_y;

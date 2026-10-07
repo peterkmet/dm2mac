@@ -10,8 +10,6 @@
 #include "text.h"
 
 #define CREATURE_CLASS_TEXT 0x10    /* GDAT texts (0x0f, creature, 5, 0x10 + list): the item classes of a merchant */
-#define ATTR_VALUE 2                /* item attribute: the price */
-#define ATTR_VALUE_PER_CHARGE 0x35
 #define MERCHANT_ATTR_MARGIN 0xa0   /* creature attributes 0xa0 + list * 3: margin, then two price factors */
 #define MERCHANT_ATTR_FACTOR_A 0xa1
 #define MERCHANT_ATTR_FACTOR_B 0xa2
@@ -20,14 +18,6 @@
 #define MERCHANT_LIST_ATTRS 3       /* creature attributes and class texts of each price list */
 #define DEFAULT_MARGIN 10
 #define PERCENT 100
-/* Item index ranges. */
-#define ITEM_FIRST_CLOTHING 0x80
-#define ITEM_FIRST_MISC 0x100
-#define ITEM_FIRST_POTION 0x180
-#define ITEM_FIRST_CREATURE 0x1b0
-#define ITEM_FIRST_CONTAINER 0x1e0
-#define ITEM_SCROLL 0x1fc
-
 
 /* The contents list of a container. */
 static uint16_t *contents_of(uint16_t container)

@@ -56,7 +56,6 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 #define WEAPON_STRENGTH_MAX 0x50
 #define WEAPON_THROW_MAX 100
 #define ARMOUR_CLASS_MAX 200
-#define POTION_POWER_MAX 0xff
 #define ARMOUR_CLASS_MASK 0xff
 #define DITHER_COLOR_MASK 0x0f      /* the dither pattern holds 4-bit pixels */
 #define GAUGE_CHARGE_COLOR 4

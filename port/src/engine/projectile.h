@@ -20,12 +20,6 @@ enum spell_thing {
 enum { PROJECTILE_EVENT_THING = 0, PROJECTILE_EVENT_POSITION = 2 };
 enum { EXPLOSION_EVENT_X = 0, EXPLOSION_EVENT_Y = 1, EXPLOSION_EVENT_THING = 2 };
 
-/* Sounds of things and champions: the entry, priority, and volume arguments of sound_play_with_fallback. */
-#define SOUND_HURT 0x82
-#define SOUND_PRIORITY_HURT 0x69
-#define SOUND_VOLUME_NORMAL 0x80
-#define SOUND_VOLUME_LOUD 200
-
 /* Alerts of creatures (creature_alert): a loud alert that sets mood bits 1 and 2, and the chance that is sure. */
 #define ALERT_STARTLED 0x2006
 /* The door height that a creature blocks (creature info flags, CREATURE_DOOR_SIZE_SHIFT). */

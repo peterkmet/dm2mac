@@ -61,17 +61,10 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define CREATURE_INFO_COUNT 63
 /* The sound of an item that a creature drops. */
 #define SOUND_ENTRY_DROP 0x85
-#define SOUND_FALLBACK 0xfe
 #define SOUND_PRIORITY_DROP 0x3a
 /* The sound of a creature that a teleporter moves. */
 #define SOUND_ENTRY_TELEPORT 0x89
 #define SOUND_PRIORITY_MOVE 0x61
-/* The champion sounds of a push: the strain of a push that fails, the cry of a champion that a push or bump hurts. */
-#define SOUND_ENTRY_STRAIN 0x82
-#define SOUND_ENTRY_PUSHED 0x8a
-#define SOUND_PRIORITY_STRAIN 0x69
-#define SOUND_PRIORITY_PUSHED 100
-#define SOUND_VOLUME_PUSH 200
 
 /* An animation frame (GDAT (0x0f, creature type, 7, 0xfd), 8 bytes per frame). */
 enum creature_frame_field {
@@ -218,5 +211,8 @@ void creature_push_group(int x, int y, int dir, int strength);
 void move_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */
 void creature_continue_push(int command);
+
+/* creature_create_group count of a new group with the full health of its creature type. */
+#define GROUP_COUNT_FULL_HEALTH 7
 
 #endif

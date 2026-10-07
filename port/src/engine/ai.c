@@ -1799,7 +1799,6 @@ int16_t ai_dest_x, ai_dest_y;
 #define MODE_EXPLODE 0                  /* the modes of the explode or spawn action */
 #define MODE_SPAWN 1
 #define MODE_BECOME 2
-#define SPAWN_LEVEL 7                   /* the level of a spawned creature group */
 #define SPARK_CELLS 5                   /* the four cells and the center */
 #define TRANSFORM_PHASES 3              /* the phases of sparks before the creature becomes the new type */
 #define TRAIT_CLOSES_PITS 0x40
@@ -1811,11 +1810,8 @@ int16_t ai_dest_x, ai_dest_y;
 #define SOUND_ENTRY_TRANSFORM 0x8b
 #define SOUND_ENTRY_TRANSFORMED 0x81
 #define SOUND_PRIORITY_TRANSFORM 0x6c
-#define SOUND_VOLUME_TRANSFORM 200
 #define SUB_REPEAT 0x40                 /* item filter bit: the action repeats for all matching items */
 #define PUSH_BY_CREATURE 0xfe
-#define CHAMP_HIT_DIR 2                 /* Champion.unknown_26: the direction of the hardest hit of the turn */
-#define CHAMP_HIT_DAMAGE 3              /* ... its damage */
 #define PUSH_RESISTANCE_HEAVY 100     /* above it a melee hit pushes the creature only now and then */
 #define ROLL_PUSH_HEAVY 0xf             /* random bits: a heavy creature stays only when all are clear and 2 more bits too */
 #define STALE_REGISTER 0x100
@@ -1823,7 +1819,6 @@ int16_t ai_dest_x, ai_dest_y;
 #define SHOT_POWER_STRONG 0x20          /* ... above this 7 to 10 */
 #define THROW_POWER_MIN 0x14
 #define ROLL_STEAL 0x70                 /* random bits: a steal fails the luck test only when all are clear */
-#define SOUND_VOLUME_DROP 0x80
 #define SPARK_POWER_MIN 100
 #define SPARK_POWER_RANGE 0x9c
 #define TRANSFORM_POWER_STEP 0x55       /* the death cloud of a transform grows by this per phase */
@@ -1992,9 +1987,9 @@ static int melee_attack_party(int x, int y, int dx, int dy)
         hit = 1;
         int16_t damage = (int16_t)(creature_attack_champion(ai.group_thing, c) + 1);
         Champion *ch = champion(c);
-        if (damage > ch->unknown_26[CHAMP_HIT_DAMAGE]) {
-            ch->unknown_26[CHAMP_HIT_DAMAGE] = (uint8_t)damage;
-            ch->unknown_26[CHAMP_HIT_DIR] = (uint8_t)((dun_get_direction_to(x, y, ai_party.x, ai_party.y) + 2) & 3);
+        if (damage > ch->hit_damage) {
+            ch->hit_damage = (uint8_t)damage;
+            ch->hit_dir = (uint8_t)((dun_get_direction_to(x, y, ai_party.x, ai_party.y) + 2) & 3);
         }
     }
     return hit;
@@ -2143,7 +2138,7 @@ static void drop_sound(uint16_t t, int n)
 {
     if (n == 1)
         sound_play_with_fallback(item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP, SOUND_FALLBACK, ai_dest_x, ai_dest_y, 1,
-                                 SOUND_PRIORITY_DROP, SOUND_VOLUME_DROP);
+                                 SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
 }
 
 /* Action: the creature drops its items of the filter on its destination square. */
@@ -2287,7 +2282,7 @@ static void act_transform(void)
     } else {
         explosion_create(CREATURE_DEATH_EXPLOSION, POWER_MAX, x, y, EXPLOSION_CENTER);
     }
-    sound_request(CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_TRANSFORM, x, y, 1);
+    sound_request(CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD, x, y, 1);
 }
 
 /* Action: the creature explodes, spawns a creature, or becomes another creature type. */
@@ -2303,7 +2298,7 @@ static int act_explode_or_spawn(void)
         if (a->sub) act_vanish();
     } else if (a->mode == MODE_SPAWN) {
         int dir = rand_2bits();
-        if (creature_summon_group(a->sub, SPAWN_LEVEL, dir, ai.event.data[0], ai.event.data[1], ai.map, -1, (int8_t)facing()) == THING_NONE) return 1;
+        if (creature_summon_group(a->sub, GROUP_COUNT_FULL_HEALTH, dir, ai.event.data[0], ai.event.data[1], ai.map, -1, (int8_t)facing()) == THING_NONE) return 1;
     } else if (a->mode == MODE_BECOME) {
         a->action = ACTION_IDLE;
         a->phase = 0;
