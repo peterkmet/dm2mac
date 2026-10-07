@@ -218,9 +218,13 @@ void creature_refresh_party_maps(void);
 
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
-#define MINION_ATTACKER 0x32        /* creature types of minions */
-#define MINION_GUARD 0x33
-#define MINION_FETCHER 0x30
+/* Creature types of minions, by the command that makes them. */
+#define MINION_ATTACK 0x30
+#define MINION_SCOUT 0x31
+#define MINION_GUARD 0x32
+#define MINION_FETCH 0x33
+#define MINION_CARRIER 0x34
+#define MINION_ARMY 0x35
 #define ALERT_ALWAYS 100            /* an alert chance in percent */
 void creature_alert(uint16_t group, int x, int y, int flags, int chance, int damage);
 #define ALERT_ANGER 0x4000                  /* alert flags: the creature may become angry */

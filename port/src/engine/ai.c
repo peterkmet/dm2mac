@@ -388,7 +388,6 @@ enum ai_scanner {
 
 static AiCandidate *candidate_at(int i) { return &ai.candidates[i]; }
 
-
 /* The mood entry of the creature: its mood bits change at random, then the first entry that fits them. */
 static int creature_ai_update_mood(uint32_t entries)
 {

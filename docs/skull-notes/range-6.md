@@ -42,7 +42,7 @@ Sensor types seen: 1-3 party/creature/object floor triggers, 4 object type, 0x15
 
 ### Text thing (type 2) as a marker
 
-When `(word2 & 6) == 2`, a text thing is a marker or a simple trigger: bits 3-10 id, bits 11-15 kind. Kind 5/7 wall text toggles, 9 random trigger, 10 trap teleport (event 0x5d), 0x0b/0x0c destination markers for pits and stairs (`dun_find_marker` modes 2-3), 0x0f/0x10 warp markers (`move_party_warp_to_marker`, modes 4-5), 0x13/0x16 creature generator (event 0x5e), 0x15 night generator, 0x17 sound.
+When `(word2 & 6) == 2`, a text thing is a marker or a simple trigger: bits 3-10 id, bits 11-15 kind. Kind 4 item holder, 5 wall text toggle, 7 hidden ladder, 8 item holder that sets a marker, 9 random pit trigger, 10 trap teleport (event 0x5d), 0x0b/0x0c destination markers for pits and stairs (`dun_find_marker` modes 2-3), 0x0f/0x10 warp markers (`move_party_warp_to_marker`, modes 4-5), 0x13/0x16 creature generator (event 0x5e), 0x15 night generator, 0x17 sound.
 
 ### Timeline event types (dispatch in `timeline_process`)
 

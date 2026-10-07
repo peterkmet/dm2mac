@@ -127,8 +127,8 @@ static int minion_map_allows_action(uint16_t thing, int command)
     if (command == COMMAND_MINION_DISMISS) return 1;
     if (type != MINION_MAP_LAST_TYPE) return 0;
     uint8_t creature = group_creature(group);
-    if (creature == MINION_GUARD) return command == COMMAND_MINION_GUARD;
-    if (creature == MINION_ATTACKER) return command == COMMAND_MINION_FETCH;
+    if (creature == MINION_FETCH) return command == COMMAND_MINION_GUARD;
+    if (creature == MINION_GUARD) return command == COMMAND_MINION_FETCH;
     return 0;
 }
 

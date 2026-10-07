@@ -75,9 +75,6 @@
 #define EXPLOSION_SUMMON_POWER 110
 #define CENTER_CELL 0xff
 #define CREATURE_MELEE_REACHES 0x0020   /* creature info flag: mode 1 attacks reach the creature */
-#define MINION_SCOUT 0x31
-#define MINION_CARRIER 0x34
-#define MINION_ARMY 0x35
 #define DOOR_BREAK_DELAY 2
 #define SKILL_INFLUENCE 14
 #define SKILL_HEAL 13
@@ -502,24 +499,24 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
     }
     case COMMAND_MINION_GUARD: case COMMAND_MINION_FETCH:
         if (minion_find_link_projectile(group, map_item)) {
-            group_set_creature(group, command == COMMAND_MINION_GUARD ? MINION_ATTACKER : MINION_GUARD);
+            group_set_creature(group, command == COMMAND_MINION_GUARD ? MINION_GUARD : MINION_FETCH);
             ai_free_cached_data(group);
             return 1;
         }
         if (command == COMMAND_MINION_FETCH) {
             uint16_t target = thing_word(map_item, MINION_MAP_LOCATION);
-            type = MINION_GUARD;
+            type = MINION_FETCH;
             dir = game.party_dir;
             x = location_x(target);
             y = location_y(target);
             map = location_map(target);
             search = -1;
         } else {
-            type = MINION_ATTACKER;
+            type = MINION_GUARD;
         }
         break;
     default:  /* COMMAND_MINION_ATTACK */
-        type = MINION_FETCHER;
+        type = MINION_ATTACK;
         break;
     }
     int level = (uint16_t)champ_get_skill_level(champ, skill, 1);
