@@ -2,8 +2,6 @@
 #include <string.h>
 #include "gfx.h"
 
-#define NIBBLE_BITS 4
-#define NIBBLE_MASK 0xf
 #define HIGH_NIBBLE_MASK 0xf0
 #define FRACTION_BITS 7      /* the scalers step through the source in 1/128 pixel */
 #define BYTE_FRACTION_BITS 8 /* the 8 bpp scaler steps in 1/256 pixel */
@@ -17,6 +15,7 @@
 #define RAMP_ENTRY 2
 #define RAMP_MAX 256
 #define REMAP_TYPE 7         /* GDAT key type of a color remap table */
+#define RAMP_OF_COLOR_SIZE 2 /* the ramp and the step of a color */
 
 static struct {
     int count;
@@ -242,7 +241,7 @@ int pal_load_color_ramps(const gdat_t *gdat)
         p += ramps.length[i];
     }
     ramps.of_color = p;
-    return end - p >= 2 * REMAP_COLORS;
+    return end - p >= RAMP_OF_COLOR_SIZE * REMAP_COLORS;
 }
 
 /* The step of a ramp whose brightness is nearest to target, the lower step on a tie. */
@@ -264,7 +263,7 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
     int identity = *count <= 0;
     if (identity) *count = REMAP_COLORS;
     for (int i = 0; i < *count; i++) {
-        const uint8_t *rs = ramps.of_color + 2 * (identity ? i : table[i]);
+        const uint8_t *rs = ramps.of_color + RAMP_OF_COLOR_SIZE * (identity ? i : table[i]);
         int r = rs[0], last = ramps.length[r] - 1;
         const uint8_t *brightness = ramps.brightness[r], *colors = ramps.colors[r];
         int target = brightness[rs[1]] * light >> DIM_SHIFT;

@@ -10,6 +10,7 @@
 #define HEADER_KEYS_SIZE 4
 #define HEADER_ITEM_SIZES 8
 #define ITEM_KEYS 0
+#define ITEM_SIZE_BYTES 2         /* items 1 to count-1 have u16 sizes */
 
 /* Key table (item 0), big-endian: signature, row count, column count, column descriptors, rows. */
 #define KEYS_SIGNATURE 0x8001
@@ -58,6 +59,9 @@
 #define LZSS_DATA 8
 #define CODEC_LZSS_4_4 2
 #define CODEC_LZSS_5_3 3
+#define LZSS_4_4_LENGTH_BITS 4
+#define LZSS_5_3_LENGTH_BITS 5
+#define LZSS_REF_SIZE 2           /* a back reference takes two bytes */
 #define LZSS_MIN_MATCH 3
 #define FLAG_BITS 8
 
@@ -83,6 +87,7 @@
 #define PALETTE_ENTRY 0xfe
 #define PALETTE_ENTRY_SIZE 4
 #define PALETTE_RED 1
+#define VGA_DAC_SHIFT 2           /* the file holds 8-bit values, the VGA DAC takes 6 bits */
 
 struct gdat {
     uint8_t *file;
@@ -92,7 +97,8 @@ struct gdat {
     int row_count;
 };
 
-static unsigned be16(const uint8_t *p) { return p[0] << 8 | p[1]; }
+/* The key table is big-endian. */
+static unsigned be16(const uint8_t *p) { return p[0] << BYTE_BITS | p[1]; }
 
 /* Checks the header, item sizes, and key table, and builds the item offset table. */
 static int gdat_parse(gdat_t *g, size_t file_size)
@@ -100,13 +106,13 @@ static int gdat_parse(gdat_t *g, size_t file_size)
     const uint8_t *f = g->file;
     if (file_size < HEADER_ITEM_SIZES || le16(f) != GDAT_SIGNATURE) return GDAT_ERR_FORMAT;
     g->count = le16(f + HEADER_COUNT);
-    size_t end = HEADER_ITEM_SIZES + 2 * (size_t)(g->count - 1);
+    size_t end = HEADER_ITEM_SIZES + ITEM_SIZE_BYTES * (size_t)(g->count - 1);
     if (g->count < 1 || end > file_size) return GDAT_ERR_FORMAT;
     g->offset = malloc(g->count * sizeof *g->offset);
     g->size = malloc(g->count * sizeof *g->size);
     if (!g->offset || !g->size) return GDAT_ERR_IO;
     for (int i = 0; i < g->count; i++) {
-        g->size[i] = i == ITEM_KEYS ? le32(f + HEADER_KEYS_SIZE) : le16(f + HEADER_ITEM_SIZES + 2 * (i - 1));
+        g->size[i] = i == ITEM_KEYS ? le32(f + HEADER_KEYS_SIZE) : le16(f + HEADER_ITEM_SIZES + ITEM_SIZE_BYTES * (i - 1));
         g->offset[i] = end;
         end += g->size[i];
     }
@@ -237,7 +243,7 @@ int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[3])
     const uint8_t *palette = gdat_item(g, gdat_find(g, PALETTE_CATEGORY, PALETTE_INDEX, PALETTE_TYPE, PALETTE_ENTRY), &size);
     if (!palette || size < GDAT_PALETTE_COLORS * PALETTE_ENTRY_SIZE) return GDAT_ERR_FORMAT;
     if (color < 0 || color >= GDAT_PALETTE_COLORS) return GDAT_ERR_ITEM;
-    for (int i = 0; i < 3; i++) rgb[i] = palette[color * PALETTE_ENTRY_SIZE + PALETTE_RED + i] >> 2;  /* the file holds 8-bit values, the VGA DAC takes 6 bits */
+    for (int i = 0; i < PALETTE_ENTRY_SIZE - PALETTE_RED; i++) rgb[i] = palette[color * PALETTE_ENTRY_SIZE + PALETTE_RED + i] >> VGA_DAC_SHIFT;
     return GDAT_OK;
 }
 
@@ -254,7 +260,7 @@ static int next_nibble(nibbles_t *n)
         return 0;
     }
     uint8_t b = n->src[n->pos / 2];
-    return n->pos++ & 1 ? b & 0xf : b >> 4;
+    return n->pos++ & 1 ? b & NIBBLE_MASK : b >> NIBBLE_BITS;
 }
 
 /* A run length: 2 to 16 in one nibble, 17 to 271 in two, any 16-bit count in four more. */
@@ -262,20 +268,20 @@ static unsigned run_length(nibbles_t *n)
 {
     unsigned v = next_nibble(n);
     if (v != RUN_LONG) return v + RUN_SHORT_MIN;
-    v = next_nibble(n) << 4;
+    v = next_nibble(n) << NIBBLE_BITS;
     v |= next_nibble(n);
     if (v != RUN_HUGE) return v + RUN_LONG_MIN;
     v = 0;
-    for (int i = 0; i < RUN_HUGE_NIBBLES; i++) v = v << 4 | next_nibble(n);
+    for (int i = 0; i < RUN_HUGE_NIBBLES; i++) v = v << NIBBLE_BITS | next_nibble(n);
     return v;
 }
 
-static int get_pixel(const uint8_t *buf, size_t pos) { return pos & 1 ? buf[pos / 2] & 0xf : buf[pos / 2] >> 4; }
+static int get_pixel(const uint8_t *buf, size_t pos) { return pos & 1 ? buf[pos / 2] & NIBBLE_MASK : buf[pos / 2] >> NIBBLE_BITS; }
 
 static void set_pixel(uint8_t *buf, size_t pos, int color)
 {
     uint8_t *p = buf + pos / 2;
-    *p = pos & 1 ? (*p & 0xf0) | color : (*p & 0x0f) | color << 4;
+    *p = pos & 1 ? (*p & ~NIBBLE_MASK) | color : (*p & NIBBLE_MASK) | color << NIBBLE_BITS;
 }
 
 /* Run-length 4 bpp image: each command sets a run of pixels to a local color, a literal color,
@@ -333,10 +339,10 @@ static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t
             dst[out++] = src[in++];
             continue;
         }
-        if (src_size - in < 2) break;
+        if (src_size - in < LZSS_REF_SIZE) break;
         size_t length = (src[in] & ((1u << length_bits) - 1)) + LZSS_MIN_MATCH;
         size_t distance = (size_t)src[in + 1] << (FLAG_BITS - length_bits) | src[in] >> length_bits;
-        in += 2;
+        in += LZSS_REF_SIZE;
         if (distance == 0 || distance > out || length > dst_size - out) return GDAT_ERR_DATA;
         for (; length > 0; length--, out++) dst[out] = dst[out - distance];
     }
@@ -350,8 +356,8 @@ int image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t 
     if (bytes > dst_size) return GDAT_ERR_SPACE;
     int length_bits;
     switch (src[CODEC_OFFSET]) {
-    case CODEC_LZSS_4_4: length_bits = 4; break;
-    case CODEC_LZSS_5_3: length_bits = 5; break;
+    case CODEC_LZSS_4_4: length_bits = LZSS_4_4_LENGTH_BITS; break;
+    case CODEC_LZSS_5_3: length_bits = LZSS_5_3_LENGTH_BITS; break;
     default: return GDAT_ERR_DATA;
     }
     int out = lzss_decode(src + LZSS_DATA, src_size - LZSS_DATA, dst, bytes, length_bits);
@@ -393,7 +399,7 @@ int text_find_int_field(const char *text, const char *key)
         if (*p == '=') p++;
         int negative = *p == '-';
         if (negative) p++;
-        for (; *p >= '0' && *p <= '9'; p++) value = value * 10 + (*p - '0');
+        for (; *p >= '0' && *p <= '9'; p++) value = value * DECIMAL_BASE + (*p - '0');
         if (negative) value = -value;
     }
     return value;
@@ -413,5 +419,5 @@ int gdat_image_offset(const gdat_t *g, int category, int index, int entry)
     } else if (y == OFFSET_IN_KEYS) {
         y = (int8_t)data[IMAGE_8BPP_OFFSET_Y];  /* an uncompressed image: the high byte of its bpp */
     }
-    return x * 256 + (uint8_t)y;
+    return x * (1 << GDAT_OFFSET_X_SHIFT) + (uint8_t)y;
 }
