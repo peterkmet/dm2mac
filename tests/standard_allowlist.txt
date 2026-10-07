@@ -102,7 +102,6 @@ duplicate CAT_SKY open: module cleanup
 duplicate CAT_WALLSET open: module cleanup
 duplicate CAT_WALL_ORNAMENT open: module cleanup
 duplicate CELL_COUNT open: module cleanup
-duplicate CELL_MASK open: module cleanup
 duplicate CHAMP_DAMAGE_SHOWN open: module cleanup
 duplicate CHARGES_EMPTY open: module cleanup
 duplicate CMD_MINION_MAP open: module cleanup
@@ -154,10 +153,8 @@ duplicate ITEM_FIRST_POTION open: module cleanup
 duplicate ITEM_NAME_ENTRY open: module cleanup
 duplicate ITEM_SCROLL open: module cleanup
 duplicate KEY_ENTER open: module cleanup
-duplicate LOCATION_MAP_SHIFT open: module cleanup
 duplicate MANA_MAX open: module cleanup
 duplicate MAP_DIFFICULTY_SHIFT open: module cleanup
-duplicate MAP_GFX_SET_SHIFT open: module cleanup
 duplicate MAP_KEY_SKY_STATE open: module cleanup
 duplicate MARKER_CLEAR_ALL open: module cleanup
 duplicate MARKER_FIND_SET open: module cleanup
@@ -219,56 +216,6 @@ duplicate VOLUME_SHIFT open: module cleanup
 duplicate WOUND_FEET open: module cleanup
 duplicate ZONE_DIALOG_BACK open: module cleanup
 duplicate ZONE_PANEL open: module cleanup
-long engine/action.c:ui_update_action_area open: module cleanup
-long engine/champ_action.c:champ_add_experience open: module cleanup
-long engine/champ_action.c:champ_melee_attack_creature open: module cleanup
-long engine/champ_action.c:champ_perform_action open: module cleanup
-long engine/damage.c:champ_take_damage open: module cleanup
-long engine/damage.c:champ_apply_time_effects open: module cleanup
-long engine/ai.c:creature_ai_update_group open: module cleanup
-long engine/ai.c:creature_ai_decide open: module cleanup
-long engine/ai.c:creature_ai_test_condition open: module cleanup
-long engine/ai.c:act_melee_attack open: module cleanup
-long engine/ai_move.c:creature_ai_find_target_in_lines open: module cleanup
-long engine/ai_move.c:creature_ai_try_attack open: module cleanup
-long engine/ai_move.c:creature_ai_try_door_action open: module cleanup
-long engine/ai_move.c:test_move open: module cleanup
-long engine/ai_move.c:creature_ai_try_take_item open: module cleanup
-long engine/ai_move.c:test_entered open: module cleanup
-long engine/ai_move.c:test_blocked open: module cleanup
-long engine/ai_move.c:creature_ai_search_area open: module cleanup
-long engine/creature.c:creature_ai_animate_and_get_next_time open: module cleanup
-long engine/minion.c:ui_map_draw_square open: module cleanup
-long engine/minion.c:ui_map_draw_grid open: module cleanup
-long engine/move.c:move_party_step open: module cleanup
-long engine/move.c:move_follow_square_transitions open: module cleanup
-long engine/move.c:move_thing open: module cleanup
-long engine/minion.c:ui_map_draw_square open: module cleanup
-long engine/minion.c:ui_map_draw_grid open: module cleanup
-long engine/projectile.c:projectile_hit open: module cleanup
-long engine/projectile.c:projectile_process_event open: module cleanup
-long engine/projectile.c:creature_attack_champion open: module cleanup
-long engine/save.c:write_thing open: module cleanup
-long engine/save.c:read_thing open: module cleanup
-long engine/sensor.c:sensor_process_floor open: module cleanup
-long engine/sensor.c:timeline_event_wall_square open: module cleanup
-long engine/sensor.c:timeline_event_floor_square open: module cleanup
-long engine/sensor.c:timeline_event_door_animation open: module cleanup
-long engine/sensor.c:timeline_event_sensor open: module cleanup
-long engine/sensor.c:sensor_process_wall_click open: module cleanup
-long ui/input.c:run_click_feedback open: module cleanup
-long ui/input.c:view_click_in_viewport open: module cleanup
-long ui/input.c:command_execute open: module cleanup
-long ui/ui.c:draw_object_info open: module cleanup
-long ui/ui.c:champ_draw_state open: module cleanup
-long ui/view.c:apply_wall_things open: module cleanup
-long ui/view.c:get_square_aspect open: module cleanup
-long ui/view.c:view_draw_creature open: module cleanup
-long ui/view.c:view_draw_missiles open: module cleanup
-long ui/view.c:view_draw_wall_ornament open: module cleanup
-long ui/view.c:view_draw_floor_ornament open: module cleanup
-long ui/view.c:view_draw_door open: module cleanup
-long ui/view.c:view_hit_test_object open: module cleanup
 prefix data/gdat.h open: module cleanup
 prefix data/gfx.h open: module cleanup
 prefix data/hmp.h open: module cleanup
@@ -312,62 +259,23 @@ prefix ui/ui.h open: module cleanup
 prefix ui/video.h open: module cleanup
 prefix ui/view.h open: module cleanup
 prefix ui/zone.h open: module cleanup
-decimal engine/action.c open: module cleanup
-decimal engine/champ_action.c open: module cleanup
-decimal engine/creature.c table: rule 6
-decimal engine/damage.c open: module cleanup
-decimal engine/dungeon.c table: rule 6
-decimal engine/inventory.c open: module cleanup
-decimal engine/item.c open: module cleanup
 decimal engine/action.c table: rule 6 (coin pile offsets of SKULL.EXE)
-decimal engine/ai.c open: module cleanup
-decimal engine/ai.h open: module cleanup
-decimal engine/ai_data.c open: module cleanup
-decimal engine/ai_move.c open: module cleanup
 decimal engine/champ_action.c table: rule 6 (furniture creature infos of SKULL.EXE)
-decimal engine/creature.c open: module cleanup
-decimal engine/creature.h open: module cleanup
+decimal engine/creature.c table: rule 6
 decimal engine/damage.c table: rule 6 (slot drop order of SKULL.EXE)
-decimal engine/dungeon.c open: module cleanup
-decimal engine/game.c open: module cleanup
-decimal engine/magic.c open: module cleanup
-decimal engine/move.c open: module cleanup
+decimal engine/dungeon.c table: rule 6
 decimal engine/magic.c table: rule 6
-decimal engine/minion.c open: module cleanup
-decimal engine/money.c open: module cleanup
-decimal engine/projectile.c open: module cleanup
 decimal engine/save.c table: rule 6 (magic light by power of SKULL.EXE)
-decimal engine/sensor.c open: module cleanup
-decimal engine/weather.c table: rule 6
 decimal engine/sensor.c table: rule 6
-decimal engine/sound_request.c open: module cleanup
-decimal engine/timeline.h open: module cleanup
-decimal engine/weather.c open: module cleanup
+decimal engine/weather.c table: rule 6
 decimal ui/fm.c table: rule 6
 decimal ui/input.c table: rule 6
-decimal ui/view.c open: module cleanup
-decimal ui/view.h open: module cleanup
-hex engine/ai_data.c table: rule 6
-hex engine/champ_action.c open: module cleanup
-hex engine/creature.c open: module cleanup
-hex engine/inventory.c open: module cleanup
-hex engine/item.c open: module cleanup
 decimal ui/view.c table: rule 6
-hex engine/ai.h open: module cleanup
-hex engine/ai_data.c open: module cleanup
-hex engine/ai_move.c open: module cleanup
-hex engine/game.c open: module cleanup
-hex engine/item.c table: rule 6 (GDAT categories, item index bases, and slot masks of SKULL.EXE)
-hex engine/magic.c open: module cleanup
-hex engine/move.c open: module cleanup
+hex engine/ai_data.c table: rule 6
 hex engine/creature.c table: rule 6
-hex engine/game.c open: module cleanup
+hex engine/item.c table: rule 6 (GDAT categories, item index bases, and slot masks of SKULL.EXE)
 hex engine/magic.c table: rule 6
-hex engine/merchant.c open: module cleanup
-hex engine/recruit.c open: module cleanup
 hex engine/save.c table: rule 6 (bit mask tables and sensor types of SKULL.EXE)
-hex engine/sensor.c open: module cleanup
-hex engine/sound_request.c open: module cleanup
 hex platform/control.c table: PC keyboard scan codes of the key names
 hex platform/main.c table: PC keyboard scan codes of the SDL keys
 hex ui/dialog.c table: rule 6
@@ -375,32 +283,6 @@ hex ui/fm.c table: rule 6
 hex ui/input.c table: rule 6
 hex ui/sound.c table: rule 6
 hex ui/ui.c table: rule 6
-hex ui/view.c open: module cleanup
-bool engine/ai.h creature_is_near_party_front is defined in engine/creature.c, which task 5 owns
 hex ui/view.c table: rule 6
-bool engine/ai.h open: module cleanup
-bool engine/ai_move.h open: module cleanup
-bool engine/champ_action.h open: module cleanup
-bool engine/item.h open: module cleanup
-bool engine/sensor.h open: module cleanup
-bool engine/timeline.h open: module cleanup
+bool engine/ai.h creature_is_near_party_front is defined in engine/creature.c, which task 5 owns
 record engine/save.c the save image packs and unpacks whole thing records bit by bit
-packed engine/champ_action.c open: module cleanup
-packed engine/damage.c open: module cleanup
-packed engine/inventory.c open: module cleanup
-bool engine/ai.h open: module cleanup
-bool engine/ai_move.h open: module cleanup
-bool engine/creature.h open: module cleanup
-packed engine/ai.c open: module cleanup
-packed engine/ai_move.c open: module cleanup
-packed engine/creature.c open: module cleanup
-packed engine/game.c open: module cleanup
-packed engine/magic.c open: module cleanup
-packed engine/move.c open: module cleanup
-packed engine/minion.c open: module cleanup
-packed engine/projectile.c open: module cleanup
-packed engine/sensor.c open: module cleanup
-packed engine/sound_request.c open: module cleanup
-packed engine/weather.c open: module cleanup
-packed ui/input.c open: module cleanup
-packed ui/view.c open: module cleanup
