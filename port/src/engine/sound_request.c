@@ -82,7 +82,7 @@ static void sound_request_later(int category, int index, int entry, int priority
     if (slot == DELAYED_MAX) return;
     delayed[slot] = (Delayed){1, (uint8_t)category, (uint8_t)index, (uint8_t)entry, (uint8_t)party.cur_map, (uint8_t)x,
                               (uint8_t)y, (int16_t)priority, (int16_t)volume};
-    TimelineEvent e = {.time_map = ((game.game_time + delay - 1) & 0xffffff) | (uint32_t)(uint8_t)party.cur_map << 24,
+    TimelineEvent e = {.time_map = timeline_time_map((game.game_time + delay - 1) & EVENT_TIME_MASK, party.cur_map),
                        .type = EVENT_DELAYED_SOUND, .priority = (uint8_t)priority};
     e.data[0] = (uint8_t)slot;  /* fix: the original leaves data bytes 2 to 5 uninitialized */
     timeline_add_event(&e);
