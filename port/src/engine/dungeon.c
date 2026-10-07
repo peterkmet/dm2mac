@@ -8,6 +8,7 @@
 #include "move.h"
 #include "random.h"
 #include "text.h"
+#include "sensor.h"
 
 #define HEADER_SIZE 0x2c
 #define MAP_DESC_SIZE 16
@@ -595,7 +596,7 @@ int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int leve
 
 enum text_ornament_subtype { TEXT_LEVEL_LINK_FIRST = 6, TEXT_LEVEL_LINK_LAST = 7, TEXT_SHOWN_AT_START = 8 };
 enum link_sensor_type {
-    SENSOR_LEVEL_LINK = 0x1c, SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
+    SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
 };
 #define WALLSET_PIT_TO_MARKER 0x6a      /* wall set value: its pits lead to a marker, not to the square below */
 #define LEVEL_TEXT_SIZE 200

@@ -19,18 +19,6 @@
 #include "ui.h"
 #include "view.h"
 
-/* Action commands. */
-enum {
-    COMMAND_INVISIBILITY = 2, COMMAND_SPELL_PROJECTILE, COMMAND_MELEE, COMMAND_FRIGHTEN, COMMAND_LIGHT,
-    COMMAND_EXPLOSION, COMMAND_MELEE_2, COMMAND_HASTE, COMMAND_LEVITATE_DOWN, COMMAND_ACTION_EFFECT,
-    COMMAND_AURA_FIRST = 0x0c, COMMAND_AURA_LAST = 0x0f, COMMAND_CONSUME = 0x10, COMMAND_LOAD = 0x11,
-    COMMAND_SHOOT = 0x20, COMMAND_SHIELD_FIRST = 0x21, COMMAND_SHIELD_2, COMMAND_SHIELD_LAST, COMMAND_HEAL,
-    COMMAND_LIGHT_2 = 0x26, COMMAND_LIGHT_3, COMMAND_THROW = 0x2a, COMMAND_MINION_MAP_SET = 0x2c,
-    COMMAND_MINION_GUARD, COMMAND_MINION_FETCH, COMMAND_MINION_ATTACK, COMMAND_MINION_DISMISS,
-    COMMAND_SUMMON_FIRST, COMMAND_SUMMON_2, COMMAND_SUMMON_LAST, COMMAND_WARP = 0x36
-};
-/* Charges of an action text (FIELD_CHARGES). */
-enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define ALL_CHARGES 0x0f
 #define ATTR_USED_UP 0x0800         /* ATTR_FLAGS bit: the item vanishes with its last charge */
 #define ATTR_THROW_POWER_SHOOT 9
@@ -39,11 +27,10 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define AMMO_KINDS 0x7fff
 #define FLAGS_KEEP_OPEN 0x0400      /* action.flags bit that the action area clears after an action */
 #define POWER_MIN 0x20
-#define HASTE_MAX 0xff
 #define ACTION_EFFECT_MAX 200
 #define HEAL_PER_STEP_MAX 10
 #define HEAL_MANA 2
-#define MANA_MAX 900
+#define MAX_MANA_LIMIT 900         /* a level gain raises the maximum mana up to this */
 #define HEALTH_MAX 999
 #define STAMINA_MAX 9999
 #define DELAY_MAX 0xff
@@ -80,8 +67,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define STEP_MIN 5
 #define STEP_BASE 11
 #define RESULT_BLOCKED (-1)         /* action.result: a champion stands in front */
-#define RESULT_NO_AMMO (-2)
-#define RESULT_CANT (-6)
 #define VAR_BLOCKED_COUNT 0x42      /* script variables that count the failed actions */
 #define VAR_NO_AMMO_COUNT 0x43
 #define VAR_CANT_COUNT 0x47
@@ -100,15 +85,11 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define DOOR_BREAK_DELAY 2
 #define SKILL_INFLUENCE 14
 #define SKILL_HEAL 13
-#define SKILL_THROW 10
-#define SKILL_SHOOT 11
 #define SKILL_LAST_FIGHT 11         /* the fighter and ninja sub-skills learn less away from fights */
 #define FIGHT_TIME_LONG 150
 #define FIGHT_TIME_SHORT 40
 #define LEVEL_EXPERIENCE 0x200
 #define REDRAW_LEVEL 0x3800
-#define REDRAW_BARS_FLAG 0x0800
-#define REDRAW_INVENTORY_BOX 0x4000
 #define TEXT_LEVEL_FIRST 6          /* GDAT texts (1, 0, 6 to 9): a champion gains a level of a base skill */
 #define DELAY_EXTRA_SHIFT 2         /* an action delay grows by a quarter */
 #define HASTE_DELAY_SHIFT 2         /* haste cuts the delay to a quarter */
@@ -160,7 +141,7 @@ static int clamp16(int low, int v, int high) { return max16(low, min16(v, high))
 
 static int16_t action_field(int field) { return text_gdat_field(current.category, current.index, current.entry, field); }
 
-void ui_action_area_open_hand(int champ, int hand)
+void action_area_open_hand(int champ, int hand)
 {
     if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand)) return;
     action.flash = (int16_t)(champ + 1);
@@ -170,11 +151,11 @@ void ui_action_area_open_hand(int champ, int hand)
     action.champion = action.flash;
     action.hand = (int16_t)hand;
     champ_drag_cancel();
-    ui_update_action_area(0);
-    champ_draw_state(champ);
+    action_update_area(0);
+    ui_draw_champion_state(champ);
 }
 
-void ui_action_area_open_spells(int champ)
+void action_area_open_spells(int champ)
 {
     if (!champion(champ)->health) return;
     action.hand = ACTION_HAND_SPELL;
@@ -184,7 +165,7 @@ void ui_action_area_open_spells(int champ)
     action.flags = 0;
     action.champion = action.flash;
     champ_drag_cancel();
-    ui_update_action_area(0);
+    action_update_area(0);
 }
 
 void champ_add_action_delay(int champ, int ticks, int hand)
@@ -208,8 +189,8 @@ void champ_add_action_delay(int champ, int ticks, int hand)
 int champ_use_action_charge(int champ)
 {
     int16_t charges = action_field(FIELD_CHARGES);
-    if (charges == CHARGES_ALL) charges = ALL_CHARGES;
-    if (charges != CHARGES_NONE && charges != CHARGES_NONE_2) item_add_charges(champ_action_thing, (int16_t)-charges);
+    if (charges == CHARGES_USE_ALL) charges = ALL_CHARGES;
+    if (charges != CHARGES_USE_NONE && charges != CHARGES_EMPTY) item_add_charges(champ_action_thing, (int16_t)-charges);
     int empty = item_add_charges(champ_action_thing, 0) == 0;
     if (empty && item_attr(champ_action_thing, ATTR_FLAGS) & ATTR_USED_UP) {
         champ_remove_object_from_slot(champ, action.hand);
@@ -255,7 +236,7 @@ static uint16_t take_next_missile(int champ, int hand, int throwing)
     if (!ok) {
         uint16_t quiver = c->slots[SLOT_CONTAINER_TEST];
         if (item_is_chest(quiver)) {
-            uint16_t *contents = thing_list(quiver, CONTAINER_CONTENTS);
+            uint16_t *contents = container_contents(quiver);
             for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (throwing ? item_has_action_command(champ, t, COMMAND_THROW) : item_is_ammo_for_hand(champ, hand, t)) {
                     dungeon_unlink_thing_from_list(t, contents);
@@ -354,7 +335,7 @@ static void champ_raise_level(int champ, int base, uint16_t level)
             c->stats[STAT_WISDOM][1] = (uint8_t)(c->stats[STAT_WISDOM][1] + bit_b);
         }
         c->max_mana = (int16_t)(c->max_mana + min16(rand_2bits(), (int16_t)(level - 1)));
-        if (c->max_mana > MANA_MAX) c->max_mana = MANA_MAX;
+        if (c->max_mana > MAX_MANA_LIMIT) c->max_mana = MAX_MANA_LIMIT;
         c->stats[STAT_ANTI_MAGIC][1] = (uint8_t)(c->stats[STAT_ANTI_MAGIC][1] + rand_2bits());
         break;
     }
@@ -526,7 +507,7 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
     case COMMAND_MINION_GUARD: case COMMAND_MINION_FETCH:
         if (minion_find_link_projectile(group, map_item)) {
             group_set_creature(group, command == COMMAND_MINION_GUARD ? MINION_ATTACKER : MINION_GUARD);
-            creature_free_cached_ai_data(group);
+            ai_free_cached_data(group);
             return 1;
         }
         if (command == COMMAND_MINION_FETCH) {
@@ -582,7 +563,7 @@ typedef struct {
 static void action_invisibility(int16_t power)
 {
     power = (int16_t)max16(POWER_MIN, power);
-    if (!game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory) champion(ui.inventory - 1)->redraw |= REDRAW_INVENTORY_BOX;
+    if (!game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory) champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
     /* fix: the original leaves the priority and the data bytes uninitialized */
     TimelineEvent e = {.time_map = timeline_time_map(game.game_time + power, game.party_map), .type = EVENT_INVISIBILITY};
     timeline_add_event(&e);
@@ -608,7 +589,7 @@ static int action_melee(ActionRun *a)
     if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
-        sound_play_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),
+        sound_request_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),
                                  SOUND_HIT, SOUND_FALLBACK, a->fx, a->fy, 1, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD);
         return 1;
     }
@@ -712,7 +693,7 @@ static void action_heal(ActionRun *a)
         missing = (int16_t)(missing - v);
     } while (missing);
     if (c->mana < 0) c->mana = 0;
-    c->redraw |= REDRAW_BARS_FLAG;
+    c->redraw |= REDRAW_BARS;
 }
 
 /* Runs the command of the action; returns 1 when the action was done. */
@@ -789,7 +770,7 @@ int champ_perform_action(int champ, int index)
     a.front = dun_get_square(a.fx, a.fy);
     int done = champ_run_command(&a, command);
     if (!a.silent)
-        sound_play_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, game.party_x, game.party_y, 0,
+        sound_request_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, game.party_x, game.party_y, 0,
                                  SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD);
     if (!c->health || repeated) return done;
     if (a.delay) champ_add_action_delay(champ, a.delay, hand);
@@ -816,7 +797,7 @@ int champ_execute_selected_action(int index)
     if ((int16_t)index == -1) {
         action.flags = 0;
     } else {
-        champion(champ)->redraw |= REDRAW_BARS_FLAG;
+        champion(champ)->redraw |= REDRAW_BARS;
         done = champ_perform_action(champ, index);
         ActionRepeat *r = action.hand == SLOT_ACTION_HAND || action.hand == SLOT_READY_HAND ? &champ_action_repeat[champ][action.hand]
                                                                                             : NULL;
@@ -826,9 +807,9 @@ int champ_execute_selected_action(int index)
             r->fresh = 0;
         }
     }
-    if (!action.flags) ui_action_area_close();
+    if (!action.flags) action_area_close();
     else action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
-    ui_update_action_area(0);
+    action_update_area(0);
     return done;
 }
 

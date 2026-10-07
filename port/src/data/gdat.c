@@ -389,7 +389,7 @@ char *gdat_text(const gdat_t *g, int category, int index, int entry, char *dst, 
     return dst;
 }
 
-int text_find_int_field(const char *text, const char *key)
+int gdat_text_int_field(const char *text, const char *key)
 {
     int value = 0;  /* like the original, a second match goes on with the digits of the first */
     for (const char *p = strstr(text, key); p; p = strstr(p, key)) {

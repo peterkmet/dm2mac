@@ -4,6 +4,8 @@
 #include "gdat.h"
 #include "gfx.h"
 
+/* Prefixes: zone_ */
+
 /* Layout zones: GDAT (1, 0, 4, 0) holds a record per zone: anchor type, parent zone, x, y. Anchor types 0 to 8
    place the zone at (x, y) of its parent (center, top left, top right, bottom right, bottom left, top, right,
    bottom, left); 9 gives a size (x, y = width, height); 10 to 18 place it relative to the parent's anchor. */
@@ -33,5 +35,13 @@ int16_t *zone_get_rect(int zone, int16_t *rect);
 int zone_interpolate_offset(int from, int to, int percent, int16_t *dx, int16_t *dy);
 /* Clips the next zones to the viewport minus these margins. */
 void zone_set_clip_margins(int left, int top, int right, int bottom);
+
+/* Zones of the interface (ui.c, view.c). */
+/* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame. */
+int16_t *zone_get_icon_rect(int zone, int16_t *rect);
+/* The screen position of zone for a point (1 x 1 pixels). */
+void zone_get_position(int zone, int16_t *x, int16_t *y);
+/* The view zone of grid cell cell (0 to 24, 5 x 5) of view element base, turned by dir. */
+int zone_id_for_view_cell(int base, int cell, int dir);
 
 #endif

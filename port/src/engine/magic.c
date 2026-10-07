@@ -39,7 +39,6 @@ enum {
 #define RUNE_FIRST 0x60                 /* the glyph of the first rune; 6 runes per set */
 #define RUNES_PER_SET 6
 #define POWER_RUNE_BASE 0x5f            /* power = power rune - this */
-#define STAT_WISDOM 3
 #define WISDOM_BONUS 15
 #define WISDOM_CHANCE_MAX 0x73
 #define CAST_ROLL_MASK 0x7f
@@ -56,14 +55,12 @@ enum {
 #define EXPLOSION_POOF_POWER 0x6e
 #define EXPLOSION_ON_SQUARE 0xff
 #define SUMMON_NO_LINK 0xffff
-#define HASTE_MAX 0xff
 #define INVISIBILITY_TICKS_SHIFT 3
 #define LIGHT_TICKS_FACTOR 9
 #define AURA_PARTY 0x0f
 #define AURA_COST 4
 #define AURA_BIG 50                     /* a champion with a bigger aura makes a new aura a quarter */
 #define AURA_SHIFT 5
-#define SKILL_WIZARD 3
 #define LIGHT_EVENT_STEP 8              /* game ticks between two steps of a fading light */
 #define LIGHT_POWER_MIN 0x20
 #define LIGHT_POWER_MAX 0x100
@@ -74,23 +71,17 @@ enum {
 #define SPELL_DELAY_POWER_BASE 0x12     /* the action delay: factor * (power + 18) / 24 */
 #define SPELL_DELAY_DIVISOR 0x18
 #define CAST_KIND_MASK 0xf0
-#define SHIFT_COUNT_MASK 0x1f           /* the x86 shift uses the low 5 bits of the count */
 /* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
 #define SPELL_ITEM_INDEX 0x0f
 #define SPELL_ITEM_KEY 0x42
 /* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
 enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNKNOWN = 0x46 };
 #define FLASK_PICTURE 0x0b
-#define ZONE_PANEL 0x5c
 #define FAILURE_DELAY_BASE 8
 #define FLASK_DELAY_MIN 3
 /* Action results that show a failed cast. */
 enum { RESULT_UNKNOWN_SPELL = -3, RESULT_WIZARD_FAILED = -4, RESULT_PRIEST_FAILED = -5 };
-/* The marker search modes of the warp marker texts. */
-enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define SOUND_WARP_CATEGORY 10
-#define SOUND_WARP_ENTRY 0x88
-#define SOUND_WARP_PRIORITY 0x8c
 #define MAGIC_LIGHT_LEVELS 16            /* the light spells reach level 15 */
 #define RUNE_BITS 8                     /* each rune takes one byte of the spell key */
 #define RUNE_SETS 4                     /* the power runes, then the three runes after them */
@@ -422,10 +413,10 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
 static void draw_in_screen_zone(int category, int index, int entry, int zone)
 {
     DrawCtx d;
-    gfx_ctx_init(&d, category, index, entry);
+    draw_ctx_init(&d, category, index, entry);
     d.transparent = UI_OPAQUE;
     d.zone = (int16_t)zone;
-    gfx_ctx_draw(gfx_ctx_prepare(&d));
+    draw_ctx_draw(draw_ctx_prepare(&d));
 }
 
 void magic_report_cast_failure(int result)
@@ -463,7 +454,7 @@ int magic_cast_entered_runes(void)
     if ((result & CAST_KIND_MASK) != CAST_NEEDS_FLASK) {
         runes[0] = 0;
         c->rune_count = 0;
-        ui_action_area_close();
+        action_area_close();
     }
     return result != 0;
 }
@@ -484,9 +475,9 @@ void magic_add_rune(int rune)
         runes[n + 1] = 0;
     }
     action.redraw_delay = 1;
-    ui_update_action_area(0);
+    action_update_area(0);
     input_refresh_mode();
-    if (added) champ_draw_state(action.champion - 1);
+    if (added) ui_draw_champion_state(action.champion - 1);
 }
 
 /* The champion who casts takes back the last rune. */
@@ -496,7 +487,7 @@ void magic_remove_last_rune(void)
     c->rune_count--;
     champion_runes(c)[c->rune_count] = 0;
     action.redraw_delay = 1;
-    ui_update_action_area(0);
+    action_update_area(0);
     input_refresh_mode();
 }
 
@@ -515,8 +506,8 @@ int move_party_warp_to_marker(void)
         int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0) continue;
         move_party_to(x, y, map, game.party_dir);
-        sound_play_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_WARP_ENTRY, SOUND_FALLBACK,
-                                 game.party_x, game.party_y, 1, SOUND_WARP_PRIORITY, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK,
+                                 game.party_x, game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
         if (mode == MARKER_CLEAR_ALL) text_set_visible(t, true);
         return 1;
     }

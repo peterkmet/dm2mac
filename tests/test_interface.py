@@ -96,7 +96,7 @@ class OriginalUi(OriginalView):
         return buf
 
     def present_viewport(self, x, y):
-        """screen_present_viewport without the walk scaling: the view picture goes to the viewport zone."""
+        """game_present_viewport without the walk scaling: the view picture goes to the viewport zone."""
         view = self.view()
         for row in range(VIEW_H):
             self.emu.write(VGA + (y + row) * SCREEN_W + x, view[row * VIEW_W:(row + 1) * VIEW_W])
@@ -128,7 +128,7 @@ def gdat(lib):
     lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.text_find_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g
     lib.gdat_free(g)
@@ -245,7 +245,7 @@ def test_inventory_matches_original(port, original):
     # Torham's inventory: portrait, values, load, all 30 slots, the food and water panel.
     draw_game_screen(port, original)
     original.emu.call(INV_TOGGLE, 0)
-    port.inv_toggle(0)
+    port.ui_toggle_inventory(0)
     assert len(set(original.view())) > 8
     assert_same_screen_and_view(port, original, "inventory")
 
@@ -255,7 +255,7 @@ def test_inventory_panels_match_original(port, original):
     # potions, containers, money boxes, and miscellaneous items of the dungeon.
     draw_game_screen(port, original)
     original.emu.call(INV_TOGGLE, 0)
-    port.inv_toggle(0)
+    port.ui_toggle_inventory(0)
     lib = port
     lib.item_is_chest.argtypes = lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
     samples = [0xFFFF]
@@ -268,7 +268,7 @@ def test_inventory_panels_match_original(port, original):
         set_eye(lib, original, 1)
         set_leader_hand(lib, original, thing)
         original.emu.call(G_CHAMP_DRAW_STATE, 0)
-        lib.champ_draw_state(0)
+        lib.ui_draw_champion_state(0)
         assert_same_screen_and_view(lib, original, f"eye {thing:#x}")
         pictures.add(original.view())
     assert len(pictures) > 20  # each object draws its own panel
@@ -461,11 +461,11 @@ def set_action(lib, original, **fields):
 
 def update_action_area(lib, original, tick=0):
     original.emu.call(UI_UPDATE_ACTION_AREA, tick)
-    lib.ui_update_action_area(tick)
+    lib.action_update_area(tick)
 
 
 def open_hand(lib, original, hand):
-    # Like ui_action_area_open_hand and ui_action_area_open_spells: the area of champion 0 opens on hand.
+    # Like action_area_open_hand and action_area_open_spells: the area of champion 0 opens on hand.
     set_action(lib, original, champion=1, hand=hand, redraw_delay=1, flags=0, flash=1, flash_hand=hand)
     update_action_area(lib, original)
 
@@ -552,20 +552,20 @@ def test_party_states_match_original(port, original):
         sync_champions(lib, original)
         set_action(lib, original, dirty=1)
         original.emu.call(CHAMP_DRAW_ALL_STATES, 1)
-        lib.champ_draw_all_states(1)
+        lib.ui_draw_all_champion_states(1)
         assert_same_screen_and_view(lib, original, name)
         pictures.add(original.screen())
     # visible and awake go back to a former picture; hungry and poisoned show in the inventory; the busy hands count
     # down on each tick, so the states after busy differ
     assert len(pictures) == 11
     original.emu.call(INV_TOGGLE, 0)
-    lib.inv_toggle(0)
+    lib.ui_toggle_inventory(0)
     assert_same_screen_and_view(lib, original, "inventory")
     champion_bytes(lib, 0, CH_HEALTH, struct.pack("<h", 0))
     champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0xFC00))
     sync_champions(lib, original)
     original.emu.call(CHAMP_DRAW_ALL_STATES, 1)
-    lib.champ_draw_all_states(1)
+    lib.ui_draw_all_champion_states(1)
     assert_same_screen_and_view(lib, original, "dead")
 
 
@@ -579,7 +579,7 @@ def test_draw_text_matches_original(port, original):
     # Random texts in 8 bpp and 4 bpp bitmaps, with and without background, at random positions.
     lib = port
     emu = original.emu
-    lib.gfx_draw_text.argtypes = [u8_p] + [ctypes.c_int] * 5 + [ctypes.c_char_p, ctypes.c_int]
+    lib.text_draw.argtypes = [u8_p] + [ctypes.c_int] * 5 + [ctypes.c_char_p, ctypes.c_int]
     rng = random.Random(13)
     width, height = 96, 40
     src, text = original.alloc(width * height), original.alloc(64)
@@ -596,7 +596,7 @@ def test_draw_text_matches_original(port, original):
         emu.write(text, s + b"\0")
         emu.call(GFX_DRAW_TEXT, src, width, x, y, color, bg, text, bpp)
         mine = (ctypes.c_uint8 * size).from_buffer_copy(fill)
-        lib.gfx_draw_text(mine, width, x, y, color, bg, s, bpp)
+        lib.text_draw(mine, width, x, y, color, bg, s, bpp)
         assert bytes(mine) == emu.read(src, size), (case, s, x, y, color, bg, bpp)
 
 
@@ -748,10 +748,10 @@ def test_skill_raised_acknowledged_like_original(port, original):
     emu = original.emu
     draw_game_screen(lib, original)
     original.emu.call(INV_TOGGLE, 0)
-    lib.inv_toggle(0)
+    lib.ui_toggle_inventory(0)
     set_eye(lib, original, 1)
     original.emu.call(G_CHAMP_DRAW_STATE, 0)
-    lib.champ_draw_state(0)
+    lib.ui_draw_champion_state(0)
     plain = original.view()
     raised = (ctypes.c_uint8 * 16).in_dll(lib, "champ_skill_raised")
     counts = [2, 1, 3, 1]
@@ -761,12 +761,12 @@ def test_skill_raised_acknowledged_like_original(port, original):
     champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0x2000))
     sync_champions(lib, original)
     original.emu.call(G_CHAMP_DRAW_STATE, 0)
-    lib.champ_draw_state(0)
+    lib.ui_draw_champion_state(0)
     assert_same_screen_and_view(lib, original, "raised")
     assert original.view() != plain  # a raised skill shows green
     set_eye(lib, original, 0)
     original.emu.call(INV_TOGGLE, 0)
-    lib.inv_toggle(0)
+    lib.ui_toggle_inventory(0)
     assert bytes(raised) == emu.read(G_SKILL_RAISED, 16)
     assert bytes(raised) != bytes(counts) + bytes(12)
 

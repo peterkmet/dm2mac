@@ -4,6 +4,8 @@
 #include "draw.h"
 #include "gfx.h"
 
+/* Prefixes: ui_ offscreen_ */
+
 /* Layout zones of the screen and the panels. */
 enum ui_zone {
     ZONE_SCREEN = 2, ZONE_VIEWPORT = 7, ZONE_MOVEMENT_ARROWS = 9, ZONE_ACTION_AREA = 11,
@@ -23,11 +25,24 @@ enum ui_zone {
     ZONE_BUTTON_SLEEP = 0x234, ZONE_BUTTON_EXIT = 0x236, ZONE_BUTTON_SOUND = 0x238, ZONE_BUTTON_CLOSE = 0x267,
     ZONE_COIN_TOTAL = 0x239, ZONE_COIN_COUNT_FIRST = 0x26a, ZONE_OBJECT_GAUGE_FIRST = 0x270
 };
+/* Zones of the action area. */
+enum {
+    ZONE_PARTY_ICONS = 0x2f, ZONE_PARTY_FACE_FIRST = 0x35, ZONE_RESULT = 0x39, ZONE_MENU_BACK = 0x3b,
+    ZONE_MENU_HEADER = 0x3c, ZONE_MENU_NAME = 0x3d, ZONE_ACTION_BUTTON_FIRST = 0x3f, ZONE_ACTION_NAME_FIRST = 0x42,
+    ZONE_ACTION_HAND_FIRST = 0x46, ZONE_READY_HAND_FIRST = 0x4a, ZONE_SPELL_ICON_FIRST = 0x4f,
+    ZONE_SPELL_RUNE_ICON_FIRST = 0x53, ZONE_SPELL_HAND_ICON_FIRST = 0x57, ZONE_PANEL = 0x5c, ZONE_FACE_BACK = 0x5d,
+    ZONE_FACE = 0x5e, ZONE_FACE_LEFT = 0x60, ZONE_FACE_RIGHT = 0x61, ZONE_MAP_ACTION_FIRST = 0x6e,
+    ZONE_AMMO_ITEM = 0x7d, ZONE_AMMO_HAND = 0x7e, ZONE_COIN_PILE_FIRST = 0xdd, ZONE_CONTAINER_LID = 0xe3,
+    ZONE_CONTAINER_SLOT_FIRST = 0xe5, ZONE_RUNES_BACK = 0xfc, ZONE_RUNE_CHOICE_FIRST = 0xff,
+    ZONE_RUNE_ENTERED_FIRST = 0x105
+};
 
 /* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
 enum { UI_INDEX_STATUS = 2, UI_INDEX_ARROWS = 3, UI_INDEX_ACTION = 4, UI_INDEX_SPELL = 5, UI_INDEX_FACES = 6 };
 #define UI_KEY 12           /* transparent color of the interface pictures */
 #define UI_OPAQUE (-1)
+#define ICON_SIZE 16                /* item icons are 16 x 16 */
+#define FACE_SIZE 17                /* champion face icons are 17 x 17, one per direction */
 
 /* A bitmap of a screen rectangle that collects drawing and copies the changed parts to the screen. */
 #define OFFSCREEN_DIRTY_MAX 5
@@ -60,18 +75,14 @@ void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, cons
 void offscreen_draw_text_in_zone_with_shadow(Offscreen *o, int zone, int color, int bg, const char *text);
 
 /* Fills every second pixel of rect in dst with UI color ui_color. */
-void gfx_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width);
+void ui_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width);
 /* Copies src into rect of dst from (src_x, src_y). */
-void gfx_blit_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int src_x, int src_y, int transparent,
+void ui_blit_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int src_x, int src_y, int transparent,
                      const uint8_t *colormap);
 /* Draws the GDAT image (category, index, entry) in zone of the view picture, without its GDAT offset. */
-void gfx_draw_gdat_in_viewport_zone(int category, int index, int entry, int zone, int transparent);
+void ui_draw_gdat_in_viewport_zone(int category, int index, int entry, int zone, int transparent);
 /* Fills the screen rectangle of zone with palette color color. */
-void gfx_fill_zone_screen(int zone, int color);
-/* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame. */
-int16_t *zone_get_icon_rect(int zone, int16_t *rect);
-/* The screen position of zone for a point (1 x 1 pixels). */
-void zone_get_position(int zone, int16_t *x, int16_t *y);
+void ui_fill_zone_screen(int zone, int color);
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
 #define FACE_ICON_COLORS 16
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
@@ -95,13 +106,13 @@ void ui_reset(void);
 void ui_draw_game_screen(void);
 void ui_draw_movement_arrows(void);
 /* Draws what changed of the status box (and of the inventory) of champ. */
-void champ_draw_state(int champ);
+void ui_draw_champion_state(int champ);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
-void champ_draw_all_states(int tick);
+void ui_draw_all_champion_states(int tick);
 /* Sets redraw flags on all champions. */
-void champ_set_redraw_flags(uint16_t flags);
+void ui_set_champion_redraw_flags(uint16_t flags);
 /* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
-void inv_toggle(int champ);
+void ui_toggle_inventory(int champ);
 /* Closing the inventory redraws the movement arrows (0 while the party falls asleep). */
 extern int inv_arrows_on_close;
 

@@ -2,6 +2,8 @@
 #define VIDEO_H
 #include <stdint.h>
 
+/* Prefixes: video_ */
+
 #define SCREEN_W 320
 #define SCREEN_H 200
 #define PALETTE_COLORS 256

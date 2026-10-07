@@ -271,7 +271,7 @@ def test_save_start_matches_a_menu_load(start, tmp_path):
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
     lib.input_init()
-    assert lib.game_start_save(str(path).encode()) == 1
+    assert lib.session_start_save(str(path).encode()) == 1
     level = ctypes.c_int.in_dll(lib, "view_light_level")
     loaded = level.value
     levels = range(max(lib.dungeon_map_level(m) for m in range(lib.dungeon_map_count())) + 1)
@@ -297,7 +297,7 @@ def test_save_start_prints_the_hand_object_name_once(tmp_path):
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
     lib.input_init()
-    assert lib.game_start_save(str(path).encode()) == 1
+    assert lib.session_start_save(str(path).encode()) == 1
     expiry = (ctypes.c_uint32 * 3).in_dll(lib, "message_expiry")
     assert sum(t != 0xFFFFFFFF for t in expiry) == 1
     lib.gdat_free(gdat)

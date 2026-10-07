@@ -23,7 +23,7 @@ def original_view_of(lib, gdat, start):
     lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.text_find_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     return OriginalView(lib, gdat, start)
 
 ENDOFLIST, NONE = 0xFFFE, 0xFFFF
@@ -256,7 +256,7 @@ class Scenario(CreatureOracle):
         # ... and from the interface state of the program start: an earlier test can leave a recruit open
         from test_interface import UiState
         ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "ui")), 0, ctypes.sizeof(UiState))
-        # ... and from a running game: the end-game sensor of an earlier test (game_complete) stops all damage
+        # ... and from a running game: the end-game sensor of an earlier test (session_complete) stops all damage
         from test_dialog import Session
         from test_input import MainLoop
         session = Session.in_dll(lib, "session")

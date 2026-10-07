@@ -6,6 +6,8 @@
 #include "gdat.h"
 #include "timeline.h"
 
+/* Prefixes: creature_ */
+
 /* A creature info record of SKULL.EXE (36 bytes, the same layout). */
 typedef struct {
     uint16_t flags;             /* CREATURE_STATIC, CREATURE_FACES_PARTY, ... */
@@ -54,6 +56,13 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define PUSH_WALL 0xff                  /* push resistance: the party bumps into the creature as into a wall */
 #define PUSH_STRENGTH_PARTY 0xfe
 #define CREATURE_FLIES 0x0004
+#define CREATURE_SEES_INVISIBLE 0x0400 /* flags: the party spell of invisibility does not hide the party */
+#define CREATURE_SEES_IN_DARK 0x0800   /* flags: the light does not limit its sight */
+#define CREATURE_FAST_VANISH 0x1000    /* flags: the creature vanishes quickly in a party action effect */
+/* Animation step (4 bytes): the bytes of a step. */
+enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME = 3 };
+#define ANIM_JITTER 7                  /* anim bits: a random picture shift, sideways (bits 0-2) and forward */
+#define TIME_BYTE_WRAP 0x100           /* the time bytes of an active group are the low byte of the game time */
 /* Possessions bit: the objects under the creature stay clickable, and a drop goes into the front cells. */
 #define POSSESSIONS_FLOOR_CLICKABLE 0x2000
 #define POSSESSIONS_KIND_MASK 0x000f    /* 0: none shown; 1 or less: carried low */
@@ -223,25 +232,33 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
 void creature_delete_group_at(int x, int y, int mode, int sound_map);
 #define GROUP_COUNT_FULL_HEALTH 7   /* creature_create_group count: the group starts with full health */
 uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y);
-void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible);
-void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag);
-void timeline_event_move_group(TimelineEvent *e);
-
-/* Creature sensors: a sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */
-void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor);
-/* A sensor reaches the groups of a creature type in the rectangle around (x, y) that (tx, ty) spans: kind 0x0b makes
-   them vanish (power 2), kind 0x28 sets mood bit power (cleared when effect is set). */
-void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect);
 
 /* Pushing creatures: the push arrows of the party and the pushes of creatures. */
 bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group);
-bool move_party_can_push_group(uint16_t group);
 void creature_push_group(int x, int y, int dir, int strength);
-void move_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */
 void creature_continue_push(int command);
 
-/* creature_create_group count of a new group with the full health of its creature type. */
-#define GROUP_COUNT_FULL_HEALTH 7
+/* Creature updates and damage (creature.c). */
+int creature_get_party_distance(int x, int y);
+bool creature_is_near_party_front(int x, int y, int map);
+int creature_attack_group_at(int x, int y);
+uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir);
+/* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
+int creature_roll_armor_factor(uint16_t group, int amount);
+void creature_apply_damage_kind(uint16_t group, int x, int y, int kind);
+int creature_group_jumps(uint16_t group);
+int creature_damage_current_group(uint16_t damage);
+
+/* Creature groups of move.c. */
+/* The creature group whose body covers the point of cell (0xff: any cell) of the square (*x, *y) of the current
+   map or of a square next to it; moves *x, *y to that square. THING_NONE when there is none. */
+uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell);
+
+/* Creature attacks (projectile.c). */
+/* The 4 cells of the party that a creature on (x, y) attacks first to last; cell 0xff: random order. */
+void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell);
+/* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
+int creature_attack_champion(uint16_t group, int champ);
 
 #endif

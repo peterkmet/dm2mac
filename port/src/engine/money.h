@@ -1,14 +1,12 @@
 #ifndef MONEY_H
 #define MONEY_H
 #include <stdint.h>
+#include "item.h"
+
+/* Prefixes: money_ */
 
 #define SHOP_CLASS_SET_SIZE 0x40    /* a bit for each item index */
 
-/* The thing type of an item index, -1 for none. */
-int item_index_to_thing_type(uint16_t item);
-/* A new item of item index item (bit 15: a miscellaneous item may take the kept records); THING_NONE when the
-   dungeon has no free record. */
-uint16_t item_create_by_index(uint16_t item);
 /* Puts coin into the money box; returns 0 when box is no money box or coin no coin. */
 int money_add_coin_to_box(uint16_t box, uint16_t coin);
 /* Takes a coin of coin_type out of the money box; THING_NONE when it has none. */
@@ -20,10 +18,17 @@ int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *
 /* Exchanges the coins of box for the fewest coins of the same value; check_only 1: only tests. Returns 1 when the
    coins change. */
 int money_normalize_coins(int check_only, uint16_t box);
-/* The item class set of list of a merchant creature (its GDAT text 0x10 + list): a bit per item index. */
-int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_containers);
-/* The price of item at a merchant: its price list list (0 to 4), buying or selling, with the margin, charges (-1:
-   the full charges). */
-int shop_get_item_value(uint16_t item, int creature, int list, int buying, int apply_margin, int16_t charges);
+
+/* Coins (item.c). */
+/* Builds the coin table once. */
+void money_init_coin_table(void);
+int money_coin_type_count(void);
+uint16_t money_coin_item(int coin_type);   /* the item index of a coin type */
+int16_t money_coin_value(int coin_type);
+bool money_is_coin(uint16_t thing);
+/* The coins of each coin type in a money box. */
+void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
+/* The coin type that the money box shows in slot (0 to 9), -1 none. */
+int money_coin_type_for_slot(uint16_t box, int slot);
 
 #endif

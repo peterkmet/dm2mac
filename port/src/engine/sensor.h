@@ -5,6 +5,59 @@
 #include "dungeon.h"
 #include "timeline.h"
 
+/* Prefixes: sensor_ */
+
+/* Record fields of the things of this module; dungeon.h holds the record layout. */
+static inline uint16_t sensor_type(uint16_t sensor) { return thing_field(sensor, SENSOR_TYPE_DATA, 0, SENSOR_TYPE_MASK); }
+/* The value of the sensor type: an item index, a counter, a map, an animation frame. */
+static inline uint16_t sensor_data(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK);
+}
+static inline void sensor_set_data(uint16_t sensor, uint16_t data)
+{
+    set_thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK, data);
+}
+static inline uint16_t sensor_frame(uint16_t sensor) { return sensor_data(sensor) & SENSOR_DATA_FRAME_MASK; }
+static inline bool sensor_sound_on(uint16_t sensor) { return (sensor_data(sensor) & SENSOR_DATA_SOUND) != 0; }
+static inline bool sensor_flag(uint16_t sensor, uint16_t bit) { return thing_bit(sensor, SENSOR_FLAGS, bit); }
+static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on) { set_thing_bit(sensor, SENSOR_FLAGS, bit, on); }
+/* The effect on the target: EFFECT_SET, EFFECT_CLEAR, EFFECT_TOGGLE, or EFFECT_HOLD. */
+static inline uint16_t sensor_effect(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_FLAGS, SENSOR_EFFECT_SHIFT, SENSOR_EFFECT_MASK);
+}
+/* The ticks between the trigger and the event on the target. */
+static inline uint16_t sensor_delay(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_FLAGS, SENSOR_DELAY_SHIFT, SENSOR_DELAY_MASK);
+}
+/* The ordinal of the ornament in the wall or floor ornament list of the map, 0 for none. */
+static inline uint16_t sensor_ornament_ordinal(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK);
+}
+static inline uint16_t sensor_target_x(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_X_SHIFT, LOCATION_COORD_MASK);
+}
+static inline uint16_t sensor_target_y(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_Y_SHIFT, LOCATION_COORD_MASK);
+}
+static inline uint16_t sensor_target_cell(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_CELL_SHIFT, SENSOR_TARGET_CELL_MASK);
+}
+static inline uint16_t sensor_launch_energy(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_TARGET, LAUNCH_ENERGY_SHIFT, LAUNCH_ENERGY_MASK);
+}
+static inline uint16_t sensor_launch_step(uint16_t sensor)
+{
+    return thing_field(sensor, SENSOR_TARGET, LAUNCH_STEP_SHIFT, LAUNCH_STEP_MASK);
+}
+
 /* Timeline event types of Step 14. */
 enum event_type {
     EVENT_DOOR_ANIMATION = 1, EVENT_DOOR_DESTRUCTION = 2, EVENT_SQUARE = 4, EVENT_HIDE_DAMAGE = 0x0c,
@@ -59,29 +112,19 @@ void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t t
 void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).
    Returns 1 when the door breaks. */
-/* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
-void move_square_contents_through(int x, int y);
 int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay);
 /* A GDAT value of the door type of a door thing. */
-uint16_t door_value(uint16_t door, int key);
+uint16_t sensor_door_value(uint16_t door, int key);
 /* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
-/* Runs a due square event or door event. */
-void timeline_event_square(TimelineEvent *e);
-void timeline_event_door_animation(TimelineEvent *e);
-void timeline_event_door_destruction(TimelineEvent *e);
 
 /* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
    with hand (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
 void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand);
-/* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
-bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
 /* The party enters (1) or leaves (0) the party map: the map entry sensors and the creature generators. */
 void sensor_process_map_entry(int entering);
 /* A new game starts the timer sensors that are on and stops the others. */
 void sensor_start_timers(void);
-/* Runs a due sensor animation, timer, or busy event. */
-void timeline_event_sensor(TimelineEvent *e);
 /* Moves thing (from (from_x, from_y), -1: a new thing) to the cell to_cell of (to_x, to_y) for a transfer sensor,
    with the charge change of the sensor; on a floor the cell is random. */
 void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
@@ -90,11 +133,18 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
 enum global_var_op {
     GLOBAL_VAR_SET, GLOBAL_VAR_CLEAR, GLOBAL_VAR_TOGGLE, GLOBAL_VAR_ADD, GLOBAL_VAR_SUBTRACT, GLOBAL_VAR_ASSIGN = 6
 };
-int dun_get_global_var(int var);
-int dun_modify_global_var(int var, int value, int op);   /* returns the new value */
-/* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
-int item_party_possesses_type(int type);
-/* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */
-int dun_get_door_type(uint16_t door);
+#define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS)  /* the first byte variable */
+#define GLOBAL_BYTE_MAX 0xff
+
+/* Sensors that act on creatures (creature.c). */
+/* Creature sensors: a sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */
+void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor);
+/* A sensor reaches the groups of a creature type in the rectangle around (x, y) that (tx, ty) spans: kind 0x0b makes
+   them vanish (power 2), kind 0x28 sets mood bit power (cleared when effect is set). */
+void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect);
+
+/* Missile launchers (projectile.c). */
+/* A missile launcher sensor shoots the objects of its square or new objects or spells. */
+void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 
 #endif

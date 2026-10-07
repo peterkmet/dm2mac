@@ -9,6 +9,8 @@
 #include "random.h"
 #include "save.h"
 #include "text.h"
+#include "projectile.h"
+#include "sensor.h"
 
 #define EXPLOSION_THING_FIRST 0xff80   /* thing values of explosion types; the low 7 bits are the GDAT index */
 #define EXPLOSION_INDEX_BASE 0x80
@@ -78,7 +80,7 @@ uint8_t item_gdat_index(uint16_t thing)
             int sub = text_subtype(thing);
             if (text_kind(thing) != TEXT_KIND_ORNAMENT
                 || (sub != SUBTYPE_STILL && sub != SUBTYPE_ANIMATED && sub != SUBTYPE_TOGGLE
-                    && sub != SUBTYPE_TOGGLE_2))
+                    && sub != SUBTYPE_HAND_SWITCH))
                 return GDAT_NO_INDEX;
             return text_value(thing);
         }

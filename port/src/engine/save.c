@@ -804,7 +804,7 @@ int save_write(const char *path, const char *bak_path, const char *name, const g
     start_io(f, gdat);
     io.group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *io.group_order);
     io.container_order = calloc(dungeon_thing_count(THING_CONTAINER) + 1, sizeof *io.container_order);
-    /* the records keep the indices of the active groups; the timeline loses their events (game_save) */
+    /* the records keep the indices of the active groups; the timeline loses their events (session_save) */
     int ok = fwrite(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_write(f);
     creature_deactivate_all_groups();
     ok = ok && write_state() && (game_mode == GAME_MODE_VANILLA || automap_write(f));

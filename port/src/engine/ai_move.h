@@ -8,20 +8,15 @@
 /* Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the
    path search (ai_move.c). The functions work on the AI context (ai.h) and set ai.command_result. */
 
-/* The command results of the AI commands (ai.command_result). */
-#define AI_RESULT_ACTING 0xfc   /* the command set the action of the group */
-#define AI_RESULT_FAILED 0xfd
-#define AI_RESULT_DONE 0xfe     /* nothing to do: the goal is reached */
-/* Bits of the command byte of the AI tests. */
-#define AI_EXECUTE 0x80         /* set the action when the test passes */
+/* Bits of the command byte of the AI tests (AI_EXECUTE in ai.h). */
 #define AI_MODE_MASK 0x7f
-#define AI_MOVE_KIND_MASK 0x1f  /* creature_ai_try_move: the kind of the move */
+#define AI_MOVE_KIND_MASK 0x1f  /* ai_try_move: the kind of the move */
 #define AI_MOVE_NO_MOVERS 0x40  /* ... groups that move do not block */
 #define AI_MOVE_ATTACK_GROUPS 0x20 /* ... a group of filter 9 in the way gets attacked */
 #define AI_MOVE_FLAG_BITS 0xe0  /* ... the bits above the kind */
 #define FILTER_WEAPON_HANDS 0x0b /* item filter of the champion hands that creatures notice */
 #define FILTER_ATTACKED_GROUPS 9 /* item filter of the groups that a creature attacks when they are in its way */
-/* The kinds of a move test (bits 0-4 of the command of creature_ai_try_move). */
+/* The kinds of a move test (bits 0-4 of the command of ai_try_move). */
 enum ai_move_kind {
     MOVE_KIND_PLAIN,
     MOVE_KIND_KEEP_DISTANCE,    /* the creature keeps a distance to the party */
@@ -45,13 +40,13 @@ enum {
 #define DIR_LEVEL_UP 4
 #define DIR_LEVEL_DOWN 5
 #define DIR_KEEP_FACING 6       /* a move to the given square that keeps the facing */
-/* The modes of creature_ai_try_attack. */
+/* The modes of ai_try_attack. */
 enum ai_attack_mode { ATTACK_MODE_PARTY, ATTACK_MODE_PARTY_RANGED, ATTACK_MODE_GROUP, ATTACK_MODE_ANY, ATTACK_MODE_DOOR };
-/* The modes of creature_ai_try_door_action. */
+/* The modes of ai_try_door_action. */
 enum ai_door_mode { DOOR_MODE_OPEN, DOOR_MODE_CLOSE, DOOR_MODE_CLOSE_MARKED };
-/* The modes of creature_ai_try_take_item. */
+/* The modes of ai_try_take_item. */
 enum ai_item_mode { ITEM_MODE_TAKE, ITEM_MODE_GIVE };
-/* The modes of creature_ai_try_use_wall_actuator. */
+/* The modes of ai_try_use_wall_actuator. */
 enum ai_actuator_mode { ACTUATOR_MODE_USE, ACTUATOR_MODE_PUT, ACTUATOR_MODE_TAKE };
 
 /* ai.move_flags: the squares that the creature may enter. */
@@ -106,7 +101,7 @@ enum ai_action {
     ACTION_DODGE = 0x55
 };
 
-/* More of the square that the AI read last (0x7f8b2 to 0x7f8bf of SKULL.EXE); creature_ai_cache_square resets it. */
+/* More of the square that the AI read last (0x7f8b2 to 0x7f8bf of SKULL.EXE); ai_cache_square resets it. */
 typedef struct {
     uint8_t blocking;           /* the square stops the search: a costly wall, a failed move */
     uint8_t passage;            /* the square is a seamless passage; end is its other side */
@@ -124,39 +119,8 @@ extern int16_t cached_light_sum, cached_explosion_light_sum, last_party_map;
 /* The state of the shift register that picks the first search direction (0x752e8 of SKULL.EXE). */
 extern uint16_t search_direction_bits;
 
-bool creature_square_is_obstacle(int x, int y);
-bool creature_square_blocks_line(int x, int y);
-bool creature_square_blocks_line_to_target(int x, int y);
-bool creature_square_blocks_line_except_self(int x, int y);
-int creature_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y));
-void creature_ai_cache_square(int x, int y);
-uint16_t creature_ai_cached_first_object(void);
-uint16_t creature_ai_cached_first_group(void);
-int creature_ai_turn_toward(int dir);
-/* distance_map: the map of the search (4 bytes per square, 32 squares per column); out_location gets the target. */
-int creature_ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_location, int x, int y, int dir, int ranged);
-int creature_ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir);
-int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, int dir);
-int creature_ai_projectile_incoming(int x, int y);
-int creature_ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir);
-int creature_find_matching_item_inside(uint16_t thing, int filter, int side);
-int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
-uint16_t creature_find_wall_actuator_in_cell(uint16_t first_thing, int cell, int mode, int filter);
-int creature_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state);
-int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
-int creature_thing_matches_filter(uint16_t thing, int filter);
 /* The bit set of the item indexes of an item class (GDAT text entry of a creature type, money.h). */
 #define ITEM_CLASS_SET_SIZE SHOP_CLASS_SET_SIZE
-uint16_t creature_find_matching_item(int filter, uint16_t first_thing, int cell);
-void creature_remove_matching_items(uint16_t *list_head, int filter, int cell);
-int creature_count_matching_items(int filter, uint16_t first_thing, int cell, int into_groups, int into_containers);
-int creature_find_ai_marker(int level_delta, uint16_t id_mask);
-int creature_find_ai_marker_by_id(int level_delta, int id);
-/* The breadth-first search from (x, y) with the move command: the nearest of count candidates; returns its index,
-   -1 for none. path gets the steps to it (2 bytes each). */
-int creature_ai_search_area(int x, int y, int command, int count, AiCandidate *candidates, uint8_t *path);
-void creature_ai_load_cached_path(void);
-int creature_ai_next_path_step(void);
-int creature_ai_plan_path(void);
+#define FILTER_BITMAP_SIZE ITEM_CLASS_SET_SIZE  /* the item class bitmap of an item filter */
 
 #endif

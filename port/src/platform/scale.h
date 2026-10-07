@@ -2,6 +2,8 @@
 #define SCALE_H
 #include <stdint.h>
 
+/* Prefixes: scale */
+
 #define SCALE_NONE_FACTOR 1
 #define SCALE2X_FACTOR 2
 #define SCALE3X_FACTOR 3

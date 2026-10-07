@@ -129,7 +129,7 @@ void sound_request(int category, int index, int entry, int priority, int volume,
     else (*count)++;
 }
 
-void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority,
+void sound_request_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority,
                               int volume)
 {
     Sound sound;
@@ -159,7 +159,7 @@ void sound_clear_requests(void)
     request_count = 0;
 }
 
-void sound_play_delayed(int slot)
+void sound_request_delayed(int slot)
 {
     Delayed *d = &delayed[slot & (DELAYED_MAX - 1)];  /* fix: a slot from the save stays in the table */
     int map = (int8_t)d->map;

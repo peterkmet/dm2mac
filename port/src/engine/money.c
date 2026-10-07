@@ -18,12 +18,6 @@
 #define MERCHANT_LIST_ATTRS 3       /* creature attributes and class texts of each price list */
 #define DEFAULT_MARGIN 10
 
-/* The contents list of a container. */
-static uint16_t *contents_of(uint16_t container)
-{
-    return thing_list(container, CONTAINER_CONTENTS);
-}
-
 /* True when the item class set holds item index item. */
 static bool class_set_has(const uint8_t *set, int item) { return set[item / BYTE_BITS] & 1 << item % BYTE_BITS; }
 
@@ -53,7 +47,7 @@ uint16_t item_create_by_index(uint16_t item)
 int money_add_coin_to_box(uint16_t box, uint16_t coin)
 {
     if (!item_is_moneybox(box) || !money_is_coin(coin)) return 0;
-    uint16_t *contents = contents_of(box);
+    uint16_t *contents = container_contents(box);
     for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_MISC) return 0;
         if (item_type(t) == item_type(coin) && misc_stack(t) < MISC_STACK_MASK) {
@@ -71,7 +65,7 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type)
 {
     if (coin_type < 0) return THING_NONE;  /* fix: the original reads before the coin table */
     uint16_t item = money_coin_item(coin_type), found = THING_NONE;
-    uint16_t *contents = contents_of(box);
+    uint16_t *contents = container_contents(box);
     for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_MISC) return THING_NONE;
         if (item_get_index(t) == item) found = t;
@@ -105,7 +99,7 @@ void money_box_click_coin(int slot)
         champ_remove_object_from_leader_hand();
     }
     action.redraw_delay = 1;
-    ui_update_action_area(0);
+    action_update_area(0);
     champ_compute_load(champ);
 }
 

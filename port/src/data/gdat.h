@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Prefixes: gdat_ image_ */
+
 /* GRAPHICS.DAT: a header with item sizes, a key table (item 0), then the items. */
 
 enum {
@@ -86,7 +88,7 @@ int gdat_exists(const gdat_t *g, int category, int index, int type, int entry);
 /* The text entry (category, index, 5, entry), decrypted, in dst; an empty string when it is absent. */
 char *gdat_text(const gdat_t *g, int category, int index, int entry, char *dst, size_t dst_size);
 /* The number after the last key in text, as the original parses "key=number" fields. */
-int text_find_int_field(const char *text, const char *key);
+int gdat_text_int_field(const char *text, const char *key);
 /* The drawing offset of an image: x in the high byte, y in the low byte, each signed. */
 int gdat_image_offset(const gdat_t *g, int category, int index, int entry);
 #define GDAT_OFFSET_X_SHIFT 8

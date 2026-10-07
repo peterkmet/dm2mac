@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "gdat.h"
 
+/* Prefixes: sound_load sound_mix sound_party_ sound_play sound_set_ sound_stop_ sound_volume_ */
+
 #define SOUND_RATE 11025        /* the SOS driver mix rate; the samples play at this rate */
 #define SOUND_OUTPUT_RATE 44100 /* the port mixes at 4 times the sample rate */
 #define SOUND_VOICES 64
@@ -32,5 +34,8 @@ void sound_set_volume(int level);
 void sound_stop_all(void);
 /* Adds the playing voices to frames of interleaved stereo at SOUND_OUTPUT_RATE. */
 void sound_mix(int16_t *stereo, int frames);
+
+/* The volume of the sound setting (dialog.c). */
+void sound_set_volume_and_test(int volume, int device);
 
 #endif

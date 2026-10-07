@@ -53,7 +53,7 @@ class CreatureOracle:
             lib.creature_reset_active_groups()
 
     def state(self):
-        """The save files of both; the original game_save activates the groups again after the file (like the C port)."""
+        """The save files of both; the original session_save activates the groups again after the file (like the C port)."""
         result = self.save_states()
         self.emu.call(CREATURE_ACTIVATE_GROUPS_ALL_MAPS)
         return result

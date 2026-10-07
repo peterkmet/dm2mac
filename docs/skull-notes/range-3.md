@@ -6,7 +6,7 @@
 
 | Range | Content |
 |---|---|
-| 0x1fef6-0x2005b | `game_end`, `game_quit` |
+| 0x1fef6-0x2005b | `session_end`, `session_quit` |
 | 0x200b4-0x2028d | Input condition predicates, function table `g_input_cond_funcs` (0x722a4, 12 entries) |
 | 0x2029e-0x20e41 | Input mode tree, zone and command lookup, event ring, mode stack |
 | 0x20ee0-0x2186c | Click feedback scripts (button press animation), `input_poll` |
@@ -18,7 +18,7 @@
 | 0x26873-0x27bf6 | AI target scanners (table 0x75248, 17 entries) and condition test `creature_ai_test_condition` (23 conditions) |
 | 0x27cd2-0x29caa | AI plan commands 0x3f-0x62 (dispatcher `creature_ai_exec_plan_command`). Merchant commands are in this block. |
 | 0x29d0c-0x2b724 | AI action handlers for active group byte +0x1a |
-| 0x2b75e | `creature_ai_execute_action` (action dispatcher) |
+| 0x2b75e | `ai_execute_action` (action dispatcher) |
 
 ## Key data structures
 
@@ -42,7 +42,7 @@
 
 ### Creature AI context (0x350 bytes at 0x7f548)
 
-`creature_ai_begin` saves an active context to the heap (re-entrant AI), `creature_ai_end` restores it.
+`ai_begin` saves an active context to the heap (re-entrant AI), `ai_end` restores it.
 
 | Address | Content |
 |---|---|
@@ -110,4 +110,4 @@ Correction to notes.md: the AI state starts at +0x14, not +0x17. Ghidra reads by
 
 ## Low-confidence names (45)
 
-input_cond_flag_7f0b4, input_cond_value_757b8, input_cond_dialog_kind, input_cond_action_panel_kind, input_cond_action_champion_mask, input_cond_action_panel_variant, input_cond_no_action_champion_in_cell, view_click_front_wall, view_click_drop_done, move_group_side_blocks, creature_alert, creature_anim_schedule, creature_anim_schedule_alt, creature_ai_scan_idle, creature_ai_scan_kind0, creature_ai_scan_items_seen_2, creature_ai_scan_items_seen_4, creature_ai_scan_item_counts_1, creature_ai_scan_item_counts_3, creature_ai_scan_carried_items_2, creature_ai_scan_carried_items_4, creature_ai_scan_path_kind13, creature_ai_scan_path_kind5, creature_ai_scan_carried_kind_f, creature_ai_scan_carried_kind_10, creature_ai_scan_by_condition_15, creature_ai_cmd_follow_candidate_path, creature_ai_cmd_shoot_random, creature_ai_cmd_seek_item, creature_ai_cmd_seek_with_carried_item, creature_ai_cmd_front_group_carries, creature_ai_cmd_place_item_on_sensor, creature_ai_cmd_drop_then_seek, creature_ai_cmd_set_mood_flag, creature_ai_cmd_seek_kind11_targets, creature_ai_cmd_consume_carried_item, creature_ai_cmd_check_transform_marker, creature_ai_cmd_set_special_action, creature_ai_cmd_path_to_target_alt, creature_ai_act_trigger_square, creature_ai_act_explode_or_spawn, creature_ai_act_cloud_explosion, shop_cmd_wait_for_offer, shop_cmd_count_payment, dun_set_pit_or_teleporter_state.
+input_cond_flag_7f0b4, input_cond_value_757b8, input_cond_dialog_kind, input_cond_action_panel_kind, input_cond_action_champion_mask, input_cond_action_panel_variant, input_cond_no_action_champion_in_cell, view_click_front_wall, view_click_drop_done, move_group_side_blocks, creature_alert, creature_anim_schedule, creature_anim_schedule_alt, creature_ai_scan_idle, creature_ai_scan_kind0, creature_ai_scan_items_seen_2, creature_ai_scan_items_seen_4, creature_ai_scan_item_counts_1, creature_ai_scan_item_counts_3, creature_ai_scan_carried_items_2, creature_ai_scan_carried_items_4, creature_ai_scan_path_kind13, creature_ai_scan_path_kind5, creature_ai_scan_carried_kind_f, creature_ai_scan_carried_kind_10, creature_ai_scan_by_condition_15, creature_ai_cmd_follow_candidate_path, creature_ai_cmd_shoot_random, creature_ai_cmd_seek_item, ai_cmd_seek_with_carried_item, ai_cmd_front_group_carries, creature_ai_cmd_place_item_on_sensor, creature_ai_cmd_drop_then_seek, creature_ai_cmd_set_mood_flag, creature_ai_cmd_seek_kind11_targets, creature_ai_cmd_consume_carried_item, creature_ai_cmd_check_transform_marker, creature_ai_cmd_set_special_action, creature_ai_cmd_path_to_target_alt, creature_ai_act_trigger_square, creature_ai_act_explode_or_spawn, creature_ai_act_cloud_explosion, shop_cmd_wait_for_offer, shop_cmd_count_payment, dun_set_pit_or_teleporter_state.

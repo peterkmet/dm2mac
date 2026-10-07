@@ -4,8 +4,12 @@
 #include "gdat.h"
 #include "gfx.h"
 
+/* Prefixes: draw_ */
+
 #define DRAW_NO_BLIT (-2)       /* transparent value: compute the rectangle, draw nothing */
 #define DRAW_NO_IMAGE (-3)      /* transparent value: do not even load the image */
+#define IMAGE_COLORS 16             /* colors of a 4 bpp picture */
+#define UI_COLORS_ENTRY 0xfe        /* (CAT_INTERFACE, index, GDAT_TYPE_DATA, entry): the interface colors */
 
 /* A picture to draw: an image (or a part of it), where it goes, and how. */
 typedef struct {
@@ -40,12 +44,12 @@ Bitmap *draw_temp_bitmap(int width, int height, int bpp);
 void draw_free_temp(void);
 
 /* Starts a context for the GDAT image (category, index, entry) at its GDAT offset, to the screen. */
-DrawCtx *gfx_ctx_init(DrawCtx *ctx, int category, int index, int entry);
+DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry);
 /* Uses image as the picture of ctx. */
-void gfx_ctx_set_image(DrawCtx *ctx, const Bitmap *image);
+void draw_ctx_set_image(DrawCtx *ctx, const Bitmap *image);
 /* Loads and scales the image of ctx. */
-DrawCtx *gfx_ctx_prepare(DrawCtx *ctx);
+DrawCtx *draw_ctx_prepare(DrawCtx *ctx);
 /* Draws the image of ctx into its destination. */
-void gfx_ctx_draw(DrawCtx *ctx);
+void draw_ctx_draw(DrawCtx *ctx);
 
 #endif

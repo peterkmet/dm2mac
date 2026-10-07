@@ -21,6 +21,7 @@
 #include "input.h"
 #include "text.h"
 #include "view.h"
+#include "merchant.h"
 
 #define CAT_CREATURE_APPEARS 0      /* sound (0, 0, 0x89): a generator creates a creature */
 #define DOOR_KEY_STRENGTH 0x0e      /* door value: the strength that breaks the door */
@@ -32,9 +33,7 @@
 #define ORNAMENT_KEY_SOUND_DELAY 0x88  /* ornament value: the delay of its sound in its animation cycle */
 #define BONES_INDEX 0               /* miscellaneous item 0: the bones of a champion */
 
-/* Sound arguments (entry, priority) of sound_play_with_fallback and sound_request. */
-#define SOUND_ENTRY_ORNAMENT 0x88
-#define SOUND_PRIORITY_ORNAMENT 0x8c
+/* Sound arguments (entry, priority) of sound_request_with_fallback and sound_request. */
 #define SOUND_ENTRY_CREATURE_APPEARS 0x89
 #define SOUND_PRIORITY_CREATURE_APPEARS 0x61
 #define SOUND_PRIORITY_MAP_SOUND 0x73
@@ -46,10 +45,8 @@
 
 #define SENSOR_CREATE_ITEM 0x3c
 #define SENSOR_KEEP_ITEM EFFECT_HOLD  /* the effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse */
-#define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS)  /* script variables: 64 flags, 64 bytes, 64 words */
 #define GLOBAL_WORD_FIRST 0x80
 #define GLOBAL_VAR_END 0xc0
-#define GLOBAL_BYTE_MAX 0xff
 #define GLOBAL_BIT_SHIFT 3          /* a flag variable: its byte, and its bit in the byte */
 #define GLOBAL_BIT_MASK 7
 #define SENSOR_TIMER 0x1e               /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
@@ -108,7 +105,7 @@ static uint32_t event_time(uint32_t time)
 
 int dun_get_door_type(uint16_t door) { return dungeon_map_door_type(party.cur_map, door_map_type(door)); }
 
-uint16_t door_value(uint16_t door, int key)
+uint16_t sensor_door_value(uint16_t door, int key)
 {
     return gdat_entry_index(draw_gdat(), CAT_DOOR, dun_get_door_type(door), GDAT_TYPE_VALUE, key);
 }
@@ -144,8 +141,8 @@ static int sensor_ornament(uint16_t sensor, int wall)
 /* The sound of the ornament of a sensor at (x, y), with delay. */
 static void sensor_play_ornament_sound(uint16_t sensor, int wall, int x, int y, int delay)
 {
-    sound_play_with_fallback(ornament_category(wall), sensor_ornament(sensor, wall), SOUND_ENTRY_ORNAMENT, SOUND_FALLBACK,
-                             x, y, delay, SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL);
+    sound_request_with_fallback(ornament_category(wall), sensor_ornament(sensor, wall), SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK,
+                             x, y, delay, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
 }
 
 /* A wall sound comes from the square in front of the wall side, unless the party stands in the wall square. */
@@ -212,7 +209,7 @@ int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay)
 {
     uint16_t door = first_thing(x, y);
     if (!door_flag(door, magic ? DOOR_BREAKABLE_BY_MAGIC : DOOR_BREAKABLE)) return 0;
-    if ((int16_t)strength < (int16_t)door_value(door, DOOR_KEY_STRENGTH)) return 0;
+    if ((int16_t)strength < (int16_t)sensor_door_value(door, DOOR_KEY_STRENGTH)) return 0;
     uint8_t *square = square_byte(x, y);
     if ((*square & SQUARE_DOOR_STATE) != DOOR_STATE_CLOSED) return 0;
     if (delay) {
@@ -256,10 +253,10 @@ static void sensor_fall_risk(uint16_t text, int x, int y, int on_square)
         timeline_add_event(&e);
         int c = rand_2bits();
         if (!champion(c)->health) c = game.leader;
-        sound_play_with_fallback(CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x,
+        sound_request_with_fallback(CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x,
                                  game.party_y, 1, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
     } else {
-        sound_request(CAT_FLOOR_ORNAMENT, text_value(text), SOUND_ENTRY_ORNAMENT, SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL,
+        sound_request(CAT_FLOOR_ORNAMENT, text_value(text), SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL,
                       game.party_x, game.party_y, 1);
     }
 }
@@ -402,13 +399,13 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
         holder = floor_holder(x, y, enter, possessions);
     }
     if (!enter && m.type != -1) {
-        if (holder != THING_NONE) dungeon_unlink_thing_from_list(thing, thing_list(holder, GROUP_POSSESSIONS));
+        if (holder != THING_NONE) dungeon_unlink_thing_from_list(thing, group_possessions(holder));
         else dungeon_unlink_thing_from_square(thing, party.cur_map, x, y);
     }
     m.cell = square_type(dungeon_square(party.cur_map, x, y)) == SQUARE_WALL ? thing_cell(thing) : -1;
     floor_scan(&m, x, y);
     if (enter && m.type != -1) {
-        if (holder != THING_NONE) dungeon_append_thing(thing, thing_list(holder, GROUP_POSSESSIONS));
+        if (holder != THING_NONE) dungeon_append_thing(thing, group_possessions(holder));
         else dungeon_link_thing_to_square(thing, party.cur_map, x, y);
     }
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
@@ -709,7 +706,7 @@ static int counter_empty(uint16_t sensor)
 }
 
 /* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
-enum { CHARGES_FILL, CHARGES_EMPTY, CHARGES_RANDOM };
+enum { TRANSFER_CHARGES_FILL, TRANSFER_CHARGES_EMPTY, TRANSFER_CHARGES_RANDOM };
 #define CHARGES_EMPTY_AMOUNT (-15)
 #define CHARGES_FULL_AMOUNT CHARGES_MASK  /* fills the charges of an object */
 #define SENSOR_KEEP_BONES SENSOR_STATE  /* sensor flags: bones move like other objects; the moved object goes into
@@ -726,9 +723,9 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
     if (item_gdat_category(thing) != CAT_MISC || item_gdat_index(thing) != BONES_INDEX) {
         int charges = 0;  /* fix: mode 3 adds an uninitialized amount in the original */
         switch (sensor_effect(sensor)) {
-        case CHARGES_FILL: charges = item_max_charges(thing); break;
-        case CHARGES_EMPTY: charges = CHARGES_EMPTY_AMOUNT; break;
-        case CHARGES_RANDOM: charges = rand_below((uint16_t)(item_max_charges(thing) + 1)); break;
+        case TRANSFER_CHARGES_FILL: charges = item_max_charges(thing); break;
+        case TRANSFER_CHARGES_EMPTY: charges = CHARGES_EMPTY_AMOUNT; break;
+        case TRANSFER_CHARGES_RANDOM: charges = rand_below((uint16_t)(item_max_charges(thing) + 1)); break;
         }
         item_add_charges(thing, charges);
     }
@@ -789,7 +786,7 @@ static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uin
             sensor_transfer_object(t, sensor, fx, fy, dx, dy, dcell, possessions != NULL, keep_bones);
             if (first_only) return;
         } else if (!use_filter && thing_type(t) == THING_GROUP) {
-            uint16_t *list = thing_list(t, GROUP_POSSESSIONS);
+            uint16_t *list = group_possessions(t);
             sensor_transfer_objects(e, sensor, thing_word(t, GROUP_POSSESSIONS), any_cell, 0, list, reverse, first_only);
         }
     }
@@ -926,7 +923,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
         sensor_launch_missile(t, e);
         break;
     case SENSOR_MAP_RELAY: sensor_relay_to_map(e, t); break;
-    case SENSOR_GAME_END: game_complete(); break;
+    case SENSOR_GAME_END: session_complete(); break;
     case SENSOR_FRAME_STEP: {  /* an ornament that steps its animation frame */
         unsigned frame = (uint16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
         sensor_set_data(t, frame % (uint16_t)sensor_get_ornament_cycle(t, 1));
@@ -1168,7 +1165,7 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
 {
     bool vertical = door_flag(door, DOOR_VERTICAL);
     int hit = 0;
-    int16_t damage = (int16_t)door_value(door, DOOR_KEY_DAMAGE);
+    int16_t damage = (int16_t)sensor_door_value(door, DOOR_KEY_DAMAGE);
     if (dun_on_party_square(x, y) && *state) {
         hit = 1;
         if (game.champion_count) {
@@ -1176,7 +1173,7 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
             int hurt = champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
             for (int i = 0; i < CHAMPION_MAX; i++)
                 if (hurt >> i & 1)
-                    sound_play_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_DOOR_HIT, SOUND_FALLBACK, x,
+                    sound_request_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_DOOR_HIT, SOUND_FALLBACK, x,
                                              y, 1, SOUND_PRIORITY_DOOR_HIT, SOUND_VOLUME_LOUD);
         }
     }
@@ -1192,9 +1189,9 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
     creature_alert(g, x, y, ALERT_STARTLED, ALERT_ALWAYS, (uint16_t)damage);
     *state = *state ? *state - 1 : 0;
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | *state);
-    sound_play_with_fallback(CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
+    sound_request_with_fallback(CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
                              SOUND_VOLUME_NORMAL);
-    sound_play_with_fallback(CAT_MISC, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
+    sound_request_with_fallback(CAT_MISC, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
                              SOUND_VOLUME_NORMAL);
     return 1;
 }
@@ -1228,7 +1225,7 @@ void timeline_event_door_animation(TimelineEvent *e)
         state += opening ? -1 : 1;
         *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | (state & SQUARE_DOOR_STATE));
         if (opening ? state != DOOR_STATE_OPEN : state != DOOR_STATE_CLOSED) again = 1;
-        sound_play_with_fallback(CAT_DOOR, dun_get_door_type(door), !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT
+        sound_request_with_fallback(CAT_DOOR, dun_get_door_type(door), !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT
                                  : SOUND_ENTRY_DOOR_MOVE, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_DOOR, SOUND_VOLUME_NORMAL);
     }
     if (again) {
@@ -1379,7 +1376,6 @@ enum {
     WALL_CLICK_BUTTON = 0x18, WALL_CLICK_COUNTED_ITEM = 0x1b, WALL_CLICK_TELEPORT = 0x1c, WALL_CLICK_RESET = 0x3f,
     WALL_CLICK_DOOR_BUTTON = 0x46, WALL_CLICK_BUTTON_2 = 0x4a, WALL_CLICK_PORTRAIT = 0x7e
 };
-enum { TEXT_LADDER = 6, TEXT_LADDER_HIDDEN = 7, TEXT_SWITCH = 0x0d };
 #define CLICK_IGNORED (-1)           /* a wall sensor that does not react to the click */
 
 /* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
@@ -1466,7 +1462,7 @@ static void wall_click_fountain(WallClick *c)
         if (!c->has_leader) return;
         for (int i = 0; i < CHAMPION_MAX; i++)
             if (champion(i)->health) champion(i)->water = WATER_FULL;
-        sound_play_with_fallback(CAT_CHAMPION, champion(game.leader)->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK,
+        sound_request_with_fallback(CAT_CHAMPION, champion(game.leader)->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK,
                                  game.party_x, game.party_y, 0, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL);
     } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
         item_add_charges(hand, CHARGES_FULL_AMOUNT);
@@ -1494,8 +1490,8 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
     if (sensor_effect(t) != EFFECT_HOLD) return 0;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_play_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ORNAMENT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
-                                 SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     sensor_trigger_target(t, EFFECT_SET, *extra);
     sensor_trigger_target(t, EFFECT_CLEAR, (int16_t)(data + 1 + *extra));
     return CLICK_IGNORED;
@@ -1594,8 +1590,8 @@ static void wall_click_sensor(WallClick *c, uint16_t t, int side)
     if (skip) return;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_play_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ORNAMENT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
-                                 SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     sensor_trigger_target(t, effect, extra);
 }
 
@@ -1636,7 +1632,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
     bool visible = text_is_visible(t);
     if (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) {
         wall_click_holder_text(c, t, sub, value, visible);
-    } else if ((sub == TEXT_LADDER_HIDDEN && !visible) || sub == TEXT_LADDER) {
+    } else if ((sub == SUBTYPE_LADDER_HIDDEN && !visible) || sub == SUBTYPE_LADDER) {
         if (c->hand != THING_NONE) return;
         int delta = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
         int lx = game.party_x, ly = game.party_y;
@@ -1645,7 +1641,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
             move_party_to(lx, ly, map, game.party_dir);
             input_flush();
         }
-    } else if (sub == TEXT_SWITCH && c->hand == THING_NONE) {
+    } else if (sub == SUBTYPE_HAND_SWITCH && c->hand == THING_NONE) {
         text_set_visible(t, !visible);
     }
 }
@@ -1675,7 +1671,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
         if (c.give != THING_NONE) champ_put_object_in_leader_hand(c.give, 1);
         input_command_stop = c.stop;
     } else {
-        uint16_t *possessions = thing_list(actor, GROUP_POSSESSIONS);
+        uint16_t *possessions = group_possessions(actor);
         if (!c.take && hand != THING_NONE) dungeon_append_thing(hand, possessions);
         if (c.give != THING_NONE) dungeon_append_thing(c.give, possessions);
     }

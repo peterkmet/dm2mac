@@ -14,7 +14,6 @@
 #define FONT_ENTRY 0
 #define FONT_CHARS 128
 #define FONT_SIZE (FONT_GLYPH_HEIGHT * FONT_CHARS)
-#define UI_COLORS_ENTRY 0xfe
 #define GLYPH_BYTES_PER_ROW 3
 #define GLYPH_BIT_FIRST 0x10        /* font bit of the first pixel of a pixel pair */
 #define GLYPH_BIT_SECOND 0x08
@@ -88,7 +87,7 @@ const uint8_t *text_build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
     return glyph;
 }
 
-void gfx_draw_text(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text, int bpp)
+void text_draw(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text, int bpp)
 {
     if (!*text) return;
     int transparent = GFX_OPAQUE;
@@ -156,19 +155,19 @@ void text_draw_with_shadow(uint8_t *dst, int dst_width, int x, int y, int color,
         gfx_fill_rect(dst, box, (uint16_t)bg, dst_width, IMAGE_8BPP);
     }
     int shadow = ui_colors[UI_WHITE] | TEXT_TRANSPARENT;
-    gfx_draw_text(dst, dst_width, x, (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
-    gfx_draw_text(dst, dst_width, (int16_t)(x + 1), (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
-    gfx_draw_text(dst, dst_width, x, y, color, (int16_t)(bg | TEXT_TRANSPARENT), text, IMAGE_8BPP);
+    text_draw(dst, dst_width, x, (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
+    text_draw(dst, dst_width, (int16_t)(x + 1), (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
+    text_draw(dst, dst_width, x, y, color, (int16_t)(bg | TEXT_TRANSPARENT), text, IMAGE_8BPP);
 }
 
 void text_draw_on_screen(int x, int y, int color, int bg, const char *text)
 {
-    gfx_draw_text(draw_screen.pixels, draw_screen.width, x, y, color, bg, text, IMAGE_8BPP);
+    text_draw(draw_screen.pixels, draw_screen.width, x, y, color, bg, text, IMAGE_8BPP);
 }
 
 void text_draw_in_viewport(int x, int y, int color, const char *text)
 {
-    gfx_draw_text(view_viewport.pixels, view_viewport.width, x, y, color, ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT,
+    text_draw(view_viewport.pixels, view_viewport.width, x, y, color, ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT,
                   text, IMAGE_8BPP);
 }
 
@@ -284,7 +283,7 @@ int16_t text_gdat_field(int category, int index, int entry, int field)
 {
     char text[TEXT_SIZE];
     if ((unsigned)field >= FIELD_COUNT || !*text_gdat(category, index, entry, text)) return 0;
-    return (int16_t)text_find_int_field(text, field_names[field]);
+    return (int16_t)gdat_text_int_field(text, field_names[field]);
 }
 
 /* Dungeon texts: 3 codes of 5 bits per word. */
@@ -419,7 +418,7 @@ static void text_message_draw_line(int color, const char *line)
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     if (message.scroll_pending)
-        gfx_draw_text(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, ui_colors[UI_BLACK], line, IMAGE_8BPP);
+        text_draw(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, ui_colors[UI_BLACK], line, IMAGE_8BPP);
     else
         text_draw_on_screen((int16_t)(r[RECT_X] + message.column),
                             (int16_t)(message.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1

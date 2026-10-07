@@ -4,6 +4,8 @@
 #include "gdat.h"
 #include "le.h"
 
+/* Prefixes: save_ */
+
 #define CHAMPION_MAX 4
 #define CHAMPION_SIZE 263
 #define GLOBAL_FLAG_BYTES 8

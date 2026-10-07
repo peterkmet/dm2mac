@@ -1,6 +1,8 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+/* Prefixes: control_ */
+
 /* Control of the running game over a Unix domain socket: one JSON request per line, one JSON reply per line
    (docs/llm-control.md). Plain POSIX, no SDL. */
 

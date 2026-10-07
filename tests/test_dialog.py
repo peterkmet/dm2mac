@@ -110,7 +110,7 @@ def test_dialogs_match_original(ui, original):
     for mode in (1, 0):
         for dialog, message in DIALOGS:
             set_screen_mode(lib, emu, mode)
-            assert lib.ui_dialog_draw(dialog, message) == emu.call(UI_DIALOG_DRAW, dialog, message) & 0xFF
+            assert lib.dialog_draw(dialog, message) == emu.call(UI_DIALOG_DRAW, dialog, message) & 0xFF
             assert len(set(original.view())) > 2
             assert_same(lib, original, (mode, hex(dialog), hex(message)), screen=mode == 1)
 
@@ -118,12 +118,12 @@ def test_dialogs_match_original(ui, original):
 def test_progress_bar_matches_original(ui, original):
     lib, emu = ui, original.emu
     set_screen_mode(lib, emu, 1)
-    lib.ui_dialog_draw(0x0E, 0)
+    lib.dialog_draw(0x0E, 0)
     emu.call(UI_DIALOG_DRAW, 0x0E, 0)
     DialogState.in_dll(lib, "dialog").progress_enabled = 1
     emu.write_u32(0x7F1FC, 1)
     for permille in (0, 1, 120, 500, 999, 1000):
-        lib.ui_draw_progress_bar(permille)
+        lib.dialog_draw_progress_bar(permille)
         emu.call(0x1AA09, permille)
         assert_same(lib, original, permille)
 
@@ -141,7 +141,7 @@ def test_volume_dialog_matches_original(ui, original):
             set_screen_mode(lib, emu, 1)
             game.sound_volume, game.music_volume = sound, music
             emu.write(G_SOUND_VOLUME, struct.pack("<hh", sound, music))
-            lib.ui_volume_dialog()
+            lib.dialog_volume()
             emu.call(UI_VOLUME_DIALOG)
             assert_same(lib, original, (sound, music))
     finally:
@@ -187,19 +187,19 @@ def test_slot_dialogs_match_original(ui, original, tmp_path):
         for chosen in (-1, 0, 3, 7, 9):
             set_screen_mode(lib, emu, 1)
             emu.call(FILE_SEEK, 0, 0)
-            lib.save_open_slot_dialog(dialog, buttons)
+            lib.session_open_slot_dialog(dialog, buttons)
             emu.call(SAVE_OPEN_SLOT_DIALOG, dialog, buttons)
-            lib.save_draw_slot_selection(chosen)
+            lib.session_draw_slot_selection(chosen)
             emu.call(SAVE_DRAW_SLOT_SELECTION, chosen)
-            lib.ui_dialog_present()
+            lib.dialog_present()
             emu.call(UI_DIALOG_PRESENT)
             assert_same(lib, original, (dialog, chosen))
-            lib.save_close_slot_dialog()
+            lib.session_close_slot_dialog()
             emu.call(INPUT_POP_MODE)
     assert len(names) == 100
     for name, cursor in ((b"GAME 4", 0), (b"ABC", 1), (b"", 1), (b"A LONG NAME OF THIRTY ONE CHARS", 1)):
         buf = original.put(name + b"\0")
-        lib.save_draw_name_entry(name, cursor)
+        lib.session_draw_name_entry(name, cursor)
         emu.call(SAVE_DRAW_NAME_ENTRY, buf, cursor)
         assert_same(lib, original, (name, cursor))
 
@@ -265,8 +265,8 @@ def test_champion_name_editor_matches_original(ui, original):
     ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     try:
         game_champions = bytes(champion_records(lib))
-        lib.champ_edit_name.argtypes = [ctypes.c_void_p]
-        lib.champ_edit_name(ctypes.addressof(champion_records(lib)))
+        lib.session_edit_champion_name.argtypes = [ctypes.c_void_p]
+        lib.session_edit_champion_name(ctypes.addressof(champion_records(lib)))
     finally:
         ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
     after = bytes(champion_records(lib))[:28]
@@ -288,20 +288,20 @@ def test_quit_picture_matches_original(ui, original):
 
     def quit_(*_):
         quits.append(1)
-        raise RuntimeError("game_quit")
+        raise RuntimeError("session_quit")
 
     for addr, fn in ((SAVE_CHECK_DISK, None), (GAME_QUIT, quit_),
                      (COMMAND_PROCESS_QUEUE, lambda *_: emu.write(G_DIALOG_VALUE, struct.pack("<H", 0xEF)))):
         stub(original, addr, fn or (lambda *_: 0))
     from dm2tools.emu import EmuError
-    with pytest.raises(EmuError, match="game_quit"):
+    with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, 0)
     hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "input_match"), "value", 0xEF))
     ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     session = Session.in_dll(lib, "session")
     session.restart = session.quit_code = session.completed = 0
     try:
-        lib.game_end(0)
+        lib.session_end(0)
     finally:
         ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
     assert quits == [1] and main_loop_quit(lib).value == 1 and session.exit_code == 0
@@ -326,7 +326,7 @@ def test_pressed_buttons_match_original(ui, original):
         for choice in range(1, buttons + 1):
             for entry in (0, 1):
                 set_screen_mode(lib, emu, 1)
-                lib.ui_dialog_draw(dialog, 0)
+                lib.dialog_draw(dialog, 0)
                 emu.call(UI_DIALOG_DRAW, dialog, 0)
                 state.button_count = buttons
                 find_point(lib, 4, lambda m: m.choice == choice)
@@ -334,7 +334,7 @@ def test_pressed_buttons_match_original(ui, original):
                 emu.write(G_MATCH_RECT, bytes(match.rect))
                 emu.write(G_MATCH_ORIGIN, struct.pack("<h", match.origin))
                 emu.write(G_BUTTON_PICTURE, bytes([0x1A, 0xFE, entry]))
-                lib.ui_dialog_draw_button(match.zone, 1)
+                lib.dialog_draw_button(match.zone, 1)
                 emu.call(UI_DIALOG_DRAW_BUTTON, match.zone, 1)
                 assert_same(lib, original, (dialog, choice, entry), screen=False)
 
@@ -372,5 +372,5 @@ def test_enter_presses_first_button_like_original(ui, original):
     hook = ctypes.CFUNCTYPE(None)(frame)
     ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     set_screen_mode(lib, emu, 1)
-    assert lib.ui_dialog_run(lib.ui_dialog_draw(0x0C, 0)) == theirs == 1
+    assert lib.dialog_run(lib.dialog_draw(0x0C, 0)) == theirs == 1
     assert len(frames) <= 100

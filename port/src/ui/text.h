@@ -5,6 +5,8 @@
 #include "gdat.h"
 #include "gfx.h"
 
+/* Prefixes: text_build_ text_clear_ text_decode_ text_draw text_format text_gdat text_init text_measure text_print_ text_set_message_ text_wrap_ */
+
 /* The font: 6 rows of 128 bytes in GDAT (1, 0, 7, 0), one byte per character and row, 5 pixels in bits 4 to 0. */
 #define FONT_GLYPH_WIDTH 5
 #define FONT_GLYPH_HEIGHT 6
@@ -50,7 +52,7 @@ int text_init(const gdat_t *gdat);
 const uint8_t *text_build_glyph(uint8_t c, uint8_t fg, uint8_t bg);
 /* Draws text with its base line at y. bg with TEXT_TRANSPARENT leaves the background. In an 8 bpp bitmap,
    color and bg are palette colors; in a 4 bpp bitmap, they are pixel values. */
-void gfx_draw_text(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text, int bpp);
+void text_draw(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text, int bpp);
 /* The width and height in pixels of a text line; returns 0 for an empty text. */
 int text_measure(const char *text, int16_t *width, int16_t *height);
 /* Copies the part of text from *pos that fits in max_width pixels into line, broken at a space when it does not

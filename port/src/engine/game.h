@@ -2,6 +2,8 @@
 #define GAME_H
 #include <stdint.h>
 
+/* Prefixes: game_ */
+
 #define STEP_TICKS 8        /* timer ticks (60 Hz) of a game step */
 #define SLEEP_STEP_TICKS 1  /* a sleeping party runs a step on each tick */
 #define TEXT_SLEEPING 0x11  /* GDAT text (1, 0, 0x11): the sleep message */
@@ -16,7 +18,7 @@ typedef struct {
     int running;            /* 0 while the game is paused */
     int view_hidden;        /* the viewport shows no dungeon (pause, sleep) */
     int end;                /* the party died or the player quit: the loop stops (g_game_end_flag) */
-    int quit;               /* the program ends (game_quit) */
+    int quit;               /* the program ends (session_quit) */
 } MainLoop;
 
 extern MainLoop main_loop;
@@ -28,18 +30,14 @@ void game_wait_frames(int count);
 void game_start_session(void);
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int x, int y, int map, int leaving);
-/* Runs the due timeline events. */
-void timeline_process(void);
 /* One timer tick of the main loop: input, commands, and at the end of a step the next game step. */
 void game_tick(void);
 /* Shows the dungeon view again after a pause, sleep, or the inventory. */
-void ui_show_game_view(void);
-/* Hides the dungeon view: the viewport shows a message (pause, sleep) until ui_show_game_view. */
-void ui_hide_game_view(void);
+void game_show_view(void);
+/* Hides the dungeon view: the viewport shows a message (pause, sleep) until game_show_view. */
+void game_hide_view(void);
 /* Copies the view picture to the screen. */
-void screen_present_viewport(void);
-/* The party wakes up. */
-void champ_wake_party(void);
+void game_present_viewport(void);
 /* The party falls asleep. */
 void game_sleep(void);
 

@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "ui.h"
 
+/* Prefixes: minion_ */
+
 /* action.flags while the action area shows a minion map. */
 #define MAP_OPTION_CREATURES 0x0001     /* option button 0: moving creatures */
 #define MAP_OPTION_DETAILS 0x0002       /* option button 1: all ornaments, blinking pits and fake walls */
@@ -38,6 +40,8 @@ typedef struct {
     int16_t clip[4];            /* the grid rectangle */
 } MinionMap;
 
+#define CMD_MINION_MAP 0x55         /* the command of a click on the minion map grid */
+
 extern MinionMap minion_map;
 
 /* The minion map opens in the hand of the open action area: the champion pays 1 mana for it. */
@@ -45,11 +49,11 @@ void minion_map_open(int champ);
 /* One game tick of an open minion map: it takes mana, or it goes dark without mana. */
 void minion_map_drain_mana(void);
 /* Turns option button option (0 to 3) on (for its mana) or off. */
-void ui_toggle_map_option(int option);
+void minion_toggle_map_option(int option);
 /* Draws the option buttons; pressed: the buttons that show pressed (the click feedback). */
-void ui_draw_map_option_buttons(int pressed);
+void minion_draw_map_option_buttons(int pressed);
 /* Draws the minion map panel of the map item thing. */
-void ui_draw_minion_map(uint16_t thing);
+void minion_draw_map(uint16_t thing);
 /* Sets the location of the minion map thing to (x, y) of map; returns 0 outside the map. */
 int minion_map_set_location(uint16_t thing, int x, int y, int map);
 /* A click (command) at (x, y) of the screen on the grid of a minion location map sends its minion there. */
@@ -60,5 +64,10 @@ void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx,
 /* The first map item index of GRAPHICS.DAT with the party icons; -1 none. */
 int minion_map_party_icons_item(void);
 #define MAP_CELL_SIZE 8                 /* pixels per square of a map: a 7 x 7 icon and a 1 pixel gap */
+
+/* Minions of creature.c and item.c. */
+void minion_dismiss(uint16_t group);
+/* The projectile among the possessions of group that carries filter (THING_NONE: any); 0 when none. */
+uint16_t minion_find_link_projectile(uint16_t group, uint16_t filter);
 
 #endif

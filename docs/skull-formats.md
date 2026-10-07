@@ -407,7 +407,7 @@ Source: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x
 
 ## 7. Save file format (Step 10)
 
-Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`0x370d2`) in `reference/decomp/SKULL.c`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
+Source: reDM2 `docs/savegame.md`. We checked the call sequence in `session_load` (`0x370d2`) in `reference/decomp/SKULL.c`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
 
 ### Container
 
@@ -418,8 +418,8 @@ Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`
 | 3 | rest of file | Bit-packed game state |
 
 - Header: `+0x00` u16 = 1 (format marker), `+0x02` 16 bytes save name (`"GAME 0"`, NUL padded). The meaning of `+0x12` to `+0x29` is not known.
-- `game_save` (`0x3502b`) first reads the old header, then changes only `+0x00` and the name, and writes it back. All other header bytes come from the previous save. The port must keep them byte for byte.
-- `game_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
+- `session_save` (`0x3502b`) first reads the old header, then changes only `+0x00` and the name, and writes it back. All other header bytes come from the previous save. The port must keep them byte for byte.
+- `session_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
 - The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with 0, and `DUNGEON.DAT` with 1.
 - The dungeon image has no trailing 16-bit checksum. `DUNGEON.DAT` has one.
 
@@ -452,7 +452,7 @@ Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`
 
 ### Measurement: original load, then original save (Step 10)
 
-Method (`tests/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `game_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `save_restore_timed_effects`, `timeline_relink_events`). Then it runs the file part of `game_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `game_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
+Method (`tests/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `session_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `save_restore_timed_effects`, `timeline_relink_events`). Then it runs the file part of `session_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `session_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
 
 Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
@@ -477,7 +477,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Creature groups whose creature info has flag bit 0 (static creatures, no active group) use the mask at `0x7548b` and store the cell of each possession. Minion maps (container kind 1) use the mask at `0x754b3`. A misc item inside a moneybox uses the mask at `0x754bf`. A projectile inside a creature group uses the mask at `0x754cf`. Minion maps and projectiles in groups are deferred: their link is stored after the squares as the position of the target group or container in the bit stream.
 - A teleporter square whose target is a teleporter with a link sensor (type `0x27`) stores no square bits. When the target map is lower, the things of the square are stored with the target square, not here.
 - Event types with a thing: `0x19` explosion (event `+8`), `0x1d`/`0x1e` projectile move (event `+6`), `0x3c`/`0x3d` move group (event `+8`, a single-thing list that only loads when the header format word is not 0).
-- Header: `game_save` reads the old header from the `.BAK` file (the old `.DAT`, renamed just before). Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The name is copied with `str_copy`: the bytes after the end mark keep the old header bytes.
+- Header: `session_save` reads the old header from the `.BAK` file (the old `.DAT`, renamed just before). Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The name is copied with `str_copy`: the bytes after the end mark keep the old header bytes.
 - The original treats a short read at the end of the file as success, so it does not find a truncated bit stream.
 - A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again: the things of the shared list are stored under both squares. The original has the same weakness. The C port does not check this yet.
 
@@ -549,7 +549,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### Font and text drawing
 
 - The font is GDAT `(1, 0, 7, 0)`: 6 rows of 128 bytes, one byte per character and row. Bits 4 to 0 are the 5 pixels of a glyph row. A character above 127 reads into the next row (the last row reads past the 768 bytes; the port reads zeros there).
-- `text_build_glyph` makes a 4 bpp glyph of 6 × 6 pixels: the foreground value on the set bits, the background value on the other bits and in column 6. `gfx_draw_text` draws one glyph per character, 6 pixels apart, with the glyph rows from `y - 4` to `y + 1` (the base line is at `y`, 1 row of a glyph is below it).
+- `text_build_glyph` makes a 4 bpp glyph of 6 × 6 pixels: the foreground value on the set bits, the background value on the other bits and in column 6. `text_draw` draws one glyph per character, 6 pixels apart, with the glyph rows from `y - 4` to `y + 1` (the base line is at `y`, 1 row of a glyph is below it).
 - In an 8 bpp bitmap the glyph holds 0 and 1, and a 2-entry colormap gives the color and the background. A background with bit `0x4000` is transparent. Text uses `MIRROR_NONE`, so the mirrored 4 bpp quirks of section 8 do not apply.
 - `text_measure` gives the width `6 × length - 1` and the height 5. `text_wrap_line` breaks a line at the last space that fits; a word longer than the line breaks at the width.
 - `text_draw_with_shadow` draws the text in UI color 0 one pixel down, and one pixel down and right, then in the color. A background without bit `0x4000` first fills a box 1 pixel larger than the text.
@@ -570,7 +570,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - An offscreen bitmap (`gfx_offscreen_create`) holds a screen rectangle: the image cache index, the rectangle, and up to 5 changed rectangles. A changed rectangle that holds a new one keeps it; a new one that holds a changed one replaces it; a sixth one first copies the 5 to the screen. `gfx_offscreen_flush` copies the changed rectangles to the screen.
 - The status box of a champion (zones `0xa1` + champion) and the action area (zone 11) draw into offscreen bitmaps. `ui_status_box_begin_draw` with clear 0 draws the box background but forgets it as changed: only the parts that change later go to the screen.
-- `gfx_fill_rect_dithered` fills the pixels whose `x + y` is even (for an even bitmap width) with a UI color: the dimmed hands of a busy or sleeping champion and the portrait of an invisible party.
+- `ui_fill_rect_dithered` fills the pixels whose `x + y` is even (for an even bitmap width) with a UI color: the dimmed hands of a busy or sleeping champion and the portrait of an invisible party.
 
 ### Slots and panels
 
@@ -586,7 +586,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - `text_format`: the dialog codes give an empty text until Step 20.
 - The action area reads the wall set of the party map from the map descriptor; the original reads `g_map_gfx_set`, which `game_enter_map` sets from the same descriptor.
 - `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
-- Later steps: the hand reload countdown of `ui_update_action_area` and the leader hand object of `champ_init_party_state` (Step 15); the minion map panel and its mana (Step 16); input modes (`input_set_mode`, `input_refresh_mode`), the move arrow feedback, and the view redraw when the inventory closes (Step 14); the new game party of `champ_init_party_state` (Step 20).
+- Later steps: the hand reload countdown of `action_update_area` and the leader hand object of `champ_init_party_state` (Step 15); the minion map panel and its mana (Step 16); input modes (`input_set_mode`, `input_refresh_mode`), the move arrow feedback, and the view redraw when the inventory closes (Step 14); the new game party of `champ_init_party_state` (Step 20).
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
 - `text_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `text_decode_raw` in `text.c`. `text_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
 - Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types.
@@ -611,11 +611,11 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Each command has a feedback script: bytecode that draws the pressed button, waits timer ticks, draws the released button, and then queues the command. The low 6 bits are the opcode, bit 6 runs the next opcode at once, bit 7 ends the script.
 - The port runs the opcodes 0 to 7, `0xa`, `0xb`, `0xd`, and `0xe`. The other opcodes draw panels of later steps; the port skips their argument bytes.
 - Opcode `0xa` (rune commands `0x65` to `0x6a`) has no argument. It draws the pressed rune button (GDAT `(1, 5, 8)`, opaque) centered in the button rectangle. Then it draws the rune character of the button in the next rune set (`0x60` + 6 × rune count + command - `0x65`), centered, black on UI color 4 (`gfx_offscreen_draw_text_at`). The changed rectangle of that text starts at its base line.
-- Opcode `0xb` (cast command `0x6c`) has no argument. It draws the entered runes with their background (`ui_draw_entered_runes(1)`).
-- Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`ui_draw_map_option_buttons`). The script draws the pressed button, executes the command, waits 4 ticks, and draws the buttons with argument 0.
+- Opcode `0xb` (cast command `0x6c`) has no argument. It draws the entered runes with their background (`action_draw_entered_runes(1)`).
+- Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`minion_draw_map_option_buttons`). The script draws the pressed button, executes the command, waits 4 ticks, and draws the buttons with argument 0.
 - After opcodes `8`, `9`, `0xb`, `0xc`, and `0xe`, the script copies the action area bitmap to the screen and closes it.
 - The port also runs the opcodes `8` (spell icon), `9` (hand icon), `0xc` (action name), `0xf`, and `0x10` (dialog buttons).
-- The movement arrows show pressed (`ui_draw_move_arrow`) until the move is done (`ui_release_move_arrow`).
+- The movement arrows show pressed (`ui_draw_move_arrow`) until the move is done (`input_release_move_arrow`).
 - Before the script lookup, `input_refine_champion_click` makes the command of a champion click. A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions; else no command. A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center; else it keeps the command when the spell is ready, and else no command.
 
 ### Click zones of the view
@@ -644,7 +644,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones.
 - `creature_cell_mask` reads display kinds 5 to 15 from the bytes after its table in the original. The port keeps those bytes.
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
-- The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `screen_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
+- The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `game_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
 - Not ported: the enter and leave events of the cursor zones (section 13); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
 - The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
 - Later steps (empty hooks in `port/src/engine/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); sounds (Step 18). Step 17 has ported the weather update, the object transfer of a sensor, and the sound requests (section 11); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
@@ -692,13 +692,13 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - `sound_request(category, index, entry, priority, volume, x, y, delay)` (`port/src/engine/sound_request.c`): delay 0 plays at once; delay 1 goes to the queue of the game step (20 requests), which `sound_flush_requests(0)` plays at the end of the step; a negative delay goes to the deferred queue (6 requests, `sound_flush_requests(1)`); a longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + delay - 1. A sound with delay above 0 plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
 - The place of a sound seen by the party (lateral, forward) and the push away by the walking distance are `sound_party_offset` of `sound.c`. A sound that is already in the queue at the same place is not added again. A map change (`gdat_load_map_graphics`, `sound_wait_and_clear_requests`) drops the queue of the step.
-- `sound_play_requests` sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its HMI driver calls (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `sound.c` plays the voices. `sound_play_with_fallback` uses the sound of index fallback when index has none.
+- `sound_play_requests` sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its HMI driver calls (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `sound.c` plays the voices. `sound_request_with_fallback` uses the sound of index fallback when index has none.
 - The ambient sound of an animated ornament (`sensor_start_ambient_sound`) plays at once only when the animation cycle starts now; a wall sound comes from the square in front of the wall. The Step 14 port played it always (the sound was a hook then).
 
 ### Deviations of the sound requests (Step 17)
 
 - Every sound of `GRAPHICS.DAT` counts as loaded. The original plays only the sounds that `gdat_load_map_graphics` loads for the map (`sound_find_loaded`, table from `gdat_load_entry_sets`).
-- Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_play_delayed` masks the slot to 0 to 7.
+- Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_request_delayed` masks the slot to 0 to 7.
 - The port does not check the sound settings of `sound_play_requests` (digital sound on, sound volume not 0). The sound volume setting is Step 20 (dialogs).
 - The walking distance of a sound is `creature_get_party_distance` (the party distance map of Step 16).
 - Kept quirk of the original: the repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `port/src/engine/sensor.c`). Most of these sounds come from far away and do not play. `tests/test_world.py` compares the repeated sounds with the original.
@@ -735,14 +735,14 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range reads 0 (the original reads any word of the active group).
 - The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
 - Bounds fixes: reads past the creature info table, the animation frames, the item filter table, the AI level table, and the candidate records; a square read at the map edge (not a pit); a division by 0 for an animation of length 0 and for a minion map strip of 1 icon; the minion map square read outside the map; a path step read without a stored path (address 0 in the original); a write outside an item class set for a number without a class letter; the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook).
-- `creature_ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
+- `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
 - `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original: `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect; a projectile compares directions without a wrap, so only flights to the north and east can face a champion; a projectile move also writes the direction into its freed event; the power that the sensors test after a door spell comes from the door record; `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables.
 - Hooks in `port/src/engine/hooks.c` for later steps; the oracle stubs the originals with the same results:
   - Step 15 (real since the merge with Step 15, section 13): the merchant commands of the AI fail (`0xfd`); `champ_test_luck` fails; `champ_get_dexterity`, `champ_get_stat_adjusted_attack`, and `item_get_value` return 0; `champ_remove_object_from_slot` clears the slot; champion damage is recorded; champion poison has no effect; item creation gives no item; the experience, the action delay, the object in a slot, and the object in the leader hand are recorded.
   - Step 18: the sound driver (the sound requests of Step 17 run). Step 20 (real since the merge with Step 20, section 14): `dungeon_level_digit` returns 0; `dun_get_discarded_thing`.
-- Since the merge with Step 17, `creature_refresh_party_maps` and `creature_ai_search_area` call the real `light_add_square_light` and `light_update_party_light` of `port/src/engine/weather.c`, the lightning of the weather calls the real `explosion_create`, sensor `0x40` calls `shop_parse_item_class_set` of `port/src/engine/ai_move.c`, and the sound requests use `creature_get_party_distance`.
+- Since the merge with Step 17, `creature_refresh_party_maps` and `ai_search_area` call the real `light_add_square_light` and `light_update_party_light` of `port/src/engine/weather.c`, the lightning of the weather calls the real `explosion_create`, sensor `0x40` calls `shop_parse_item_class_set` of `port/src/engine/ai_move.c`, and the sound requests use `creature_get_party_distance`.
 
 ## 13. Champions, inventory, items, money, and shops (Step 15)
 
@@ -796,7 +796,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The leader hand icon (`g_leader_hand_icon`) starts at 0 in the original (BSS), and a load keeps it. The port starts it at `0xff` (no icon) and sets `0xff` on each load. The screen does not change.
 - Not ported: the mouth animation of `champ_consume_object` when the leader hand feeds a champion (4 frames of GDAT `(7, 0, 0x25/0x26)` in zone `0x221`, 8 vertical retraces each). The food takes effect at once.
 - The eye (command `0x47`, zone `0x222`, `input_hold_right_button`) and the mouth with an empty leader hand (command `0x46`, zone `0x221`) start the mouse capture: they set their flag (`0x7f224`, `0x7f21c`) only while the left button (button bit `0x02`) is down, and hide the pointer. The release of the left button (event type 4) gives command `0xe3`, `input_cancel_mouse_capture`, which clears both flags. The port sends event type 4 only while the eye or the mouth is held, because the `IBMIOP` handler that makes the event is not analyzed. After `input_flush` and `mouse_hide`, the original eye waits 8 vertical retraces (`wait_vblanks(8)`); the port does not wait. `dun_get_discarded_thing`, the reuse of discarded items when the records run out, is real since the merge with Step 20 (section 14).
-- Later steps: the creature parts of the actions, spells, minions, and missiles (Step 16; real since the merge with Step 16); the sound layer behind the sound hooks that `champ_perform_action` calls (Steps 17 and 18); `champ_edit_name` and the party of a new game (Step 20; real since the merge with Step 20, section 14).
+- Later steps: the creature parts of the actions, spells, minions, and missiles (Step 16; real since the merge with Step 16); the sound layer behind the sound hooks that `champ_perform_action` calls (Steps 17 and 18); `session_edit_champion_name` and the party of a new game (Step 20; real since the merge with Step 20, section 14).
 - The table of the first room can be pushed (Step 16). The shelf face (1, 5) behind it shows a sun crest holder (text `0x885c`); while the holder is full, it hides the cabinet with the solid key (text `0x8854`, ornament `0x86`). When the party takes the sun crest, the face shows the cabinet, and its clicks give its items, the solid key last. No other trigger is needed.
 - The coin of `start.DAT`: the gold coin on the table of the first room does not open the door. No wall slot takes it, also in the original. The door opens with the solid key in the keyhole (4, 5) cell 3 and the door button (4, 4) (sensor kind `0x46`), which toggles the door (3, 4).
 
@@ -804,7 +804,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Start of a run
 
-- `game_init` shows the start menu (`menu_run`, input mode 0) until the player chooses a game, then runs `game_load` until it returns 1. The menu commands: `0xd7` new game, `0xd8` new game from `DUNGENB.DAT` (the file does not exist: `DUNGEON.DAT`), `0xd9` load, `0xda` the picture GDAT `(5, 0, 1, 1)` for up to 1800 vertical retraces or until a click (command `0xef` of input mode 1), `0xe0` quit. The title is GDAT `(5, 0, 1, 4)` with its 16 colors in screen zone 2.
+- `session_init` shows the start menu (`menu_run`, input mode 0) until the player chooses a game, then runs `session_load` until it returns 1. The menu commands: `0xd7` new game, `0xd8` new game from `DUNGENB.DAT` (the file does not exist: `DUNGEON.DAT`), `0xd9` load, `0xda` the picture GDAT `(5, 0, 1, 1)` for up to 1800 vertical retraces or until a click (command `0xef` of input mode 1), `0xe0` quit. The title is GDAT `(5, 0, 1, 4)` with its 16 colors in screen zone 2.
 - A new game reads `DUNGEON.DAT` with free records (section 7), puts the party on the start square of the header (map 0), starts the timeline and the weather, and runs the link pass (`dungeon_link_things_after_load`):
   - A teleporter whose target is a teleporter that leads back: the link sensors (`0x27`) of both squares without a number get the map + 1. With two numbered sensors both squares share one thing list: the fixed things of the target square go in reverse order in front of the list of the source square, and the first movable thing of the target square goes to its end; the movable things after it drop out.
   - Level link marks (square bit 1): the square in front of a text ornament of subtype 6 or 7 and of a sensor `0x1c` (cell direction of the thing); the square one level down below a pit, unless the wall set value `(8, set, 0x0b, 0x6a)` is not 0.
@@ -824,20 +824,20 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Dialogs
 
-- A dialog is GDAT `(0x1a, id)`: picture entry 0 in zone 4 (the viewport), text entries 0 to 19 the buttons (zones `0x1ce` to `0x1d3` by button count), text `0x14` the message, wrapped to a width near the message zone width and centered; an error message (dialog 0, entry `0x1b` to `0x1f`) shows below it or first in its own dialog. Screen mode 1 (at the program start, the "GAME LOADED" dialog of a load, and the end) draws on a black screen in zone 5; mode 0 in the game viewport. `game_loop` sets mode 0 at its start; `ui_hide_game_view` and `ui_show_game_view` do nothing in mode 1.
-- `ui_dialog_run` pushes input mode 4; the input conditions 1 and 2 select the button zones by screen mode and button count. The choice is the place of the matched command in its list. Enter clicks the first button.
+- A dialog is GDAT `(0x1a, id)`: picture entry 0 in zone 4 (the viewport), text entries 0 to 19 the buttons (zones `0x1ce` to `0x1d3` by button count), text `0x14` the message, wrapped to a width near the message zone width and centered; an error message (dialog 0, entry `0x1b` to `0x1f`) shows below it or first in its own dialog. Screen mode 1 (at the program start, the "GAME LOADED" dialog of a load, and the end) draws on a black screen in zone 5; mode 0 in the game viewport. `game_loop` sets mode 0 at its start; `game_hide_view` and `game_show_view` do nothing in mode 1.
+- `dialog_run` pushes input mode 4; the input conditions 1 and 2 select the button zones by screen mode and button count. The choice is the place of the matched command in its list. Enter clicks the first button.
 - The pressed button picture is GDAT `(0x1a, 0xfe, 1, 0 or 1)` (click feedback opcodes `0x0f` and `0x10`), color 7 transparent, centered in the button.
 - The volume dialog (`0x87`) sets the sound and music volumes (0 to 7, commands `0x95` to `0xa4`); a new sound volume plays the test sound `(3, 0, 0x8b)`. Both volumes are 7 in a new game and are part of the save.
 
 ### End of game
 
 - The end sensor (wall sensor `0x12`) completes the game: the screen goes black and the program ends with exit code 1 (the DOS launcher then plays the ending).
-- When the last champion dies, `champ_kill` (Step 15) sets the end flag (`g_game_end_flag`, `main_loop.end`); the game step stops before the game time goes on, and `game_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with exit code 2.
+- When the last champion dies, `champ_kill` (Step 15) sets the end flag (`g_game_end_flag`, `main_loop.end`); the game step stops before the game time goes on, and `session_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with exit code 2.
 
 ### Deviations of the C port (Step 20)
 
 - The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`game_wait_frames`, `main.c`); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook (`game_frame_hook`).
-- `game_quit` sets `main_loop.quit` and returns; the main loop then ends (the original exits the process at once). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error). The restart drops `--save PATH`, so the program shows the start menu, as the original does.
+- `session_quit` sets `main_loop.quit` and returns; the main loop then ends (the original exits the process at once). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error). The restart drops `--save PATH`, so the program shows the start menu, as the original does.
 - The drive path codes of the dialog texts (3, 4, 15) give the last folder name of the `--data` path in capitals (the font has no lowercase letters); the error, memory, and file name codes give an empty text.
 - The volume setting scales the mix of the sound voices (0 is silent); the music volume goes to the music player.
 - Fixes: a failed load of the last slot after the death of the party shows the error dialog (the original asks for the game disk); the link pass marks no square when no map lies below a pit (the original writes into map -1); the projectile that `dun_get_discarded_thing` frees is unlinked from its own map (the original unlinks from the current map); the name editor does not read before an empty field; slot names are bounded to 31 characters.

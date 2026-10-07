@@ -65,7 +65,7 @@ static void print_line(const char *text)
     text_print_message(UI_WHITE, line);
 }
 
-/* Writes the game to path (game_save prepares the timeline the same way); returns 0 on an error. */
+/* Writes the game to path (session_save prepares the timeline the same way); returns 0 on an error. */
 static int write_game(const char *path, const char *bak)
 {
     timeline_rebuild_free_list();
@@ -97,13 +97,13 @@ void advanced_quick_load(void)
     }
     Session kept = session;
     session.loaded = session.new_game = 0;  /* game_start_session shows no LOADED dialog and starts no new game */
-    int loaded = game_start_save(path), restored = loaded || game_start_save(keep);
+    int loaded = session_start_save(path), restored = loaded || session_start_save(keep);
     if (restored) remove(keep);  /* else QUICK.TMP keeps the running game */
     session = kept;
     if (!restored) {
         /* the dungeon is empty: the game cannot go on */
         fprintf(stderr, "cannot load %s or the running game in %s\n", path, keep);
-        game_quit();
+        session_quit();
         session.exit_code = EXIT_GAME_LOST;
         return;
     }

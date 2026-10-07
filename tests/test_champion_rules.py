@@ -174,7 +174,7 @@ def test_damage_rules_match_original(rules, lib):
             scenario.set_time(scenario.time() + step if rng.random() < 0.5 else (scenario.time() | 0xFF) + 1)
             lib.champ_apply_time_effects()
             emu.call(CHAMP_APPLY_TIME_EFFECTS)
-            lib.items_burn_held_lights()
+            lib.champ_burn_held_lights()
             emu.call(ITEMS_BURN_HELD_LIGHTS)
         assert ctypes.c_int16(mine).value == ctypes.c_int16(theirs).value, (n, kind)
         rules.assert_same((n, kind))
