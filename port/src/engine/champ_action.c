@@ -75,9 +75,6 @@
 #define EXPLOSION_SUMMON_POWER 110
 #define CENTER_CELL 0xff
 #define CREATURE_MELEE_REACHES 0x0020   /* creature info flag: mode 1 attacks reach the creature */
-#define MINION_ATTACKER 0x32        /* creature types of minions */
-#define MINION_GUARD 0x33
-#define MINION_FETCHER 0x30
 #define MINION_SCOUT 0x31
 #define MINION_CARRIER 0x34
 #define MINION_ARMY 0x35
@@ -439,8 +436,8 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
         damage = (int16_t)(damage + rand_2bits() + 1);
         unsigned roll = rand_next() & MELEE_CRITICAL_ROLL;
         if ((uint16_t)champ_get_skill_level(champ, skill, 1) > roll) damage = (int16_t)(damage + damage + MELEE_CRITICAL_BONUS);
-        uint16_t armor = item_attr(c->slots[action.hand], ATTR_EXTRA_DAMAGE);
-        if (armor && damage > (int16_t)(rand_next() & MELEE_RANDOM)) damage = (int16_t)(damage + creature_roll_armor_factor(group, armor));
+        uint16_t extra = item_attr(c->slots[action.hand], ATTR_EXTRA_DAMAGE);
+        if (extra && damage > (int16_t)(rand_next() & MELEE_RANDOM)) damage = (int16_t)(damage + creature_roll_armor_factor(group, extra));
         int worth = creature_experience(info);
         champ_add_experience(champ, skill, (uint32_t)((worth * damage >> MELEE_EXPERIENCE_SHIFT) + MELEE_EXPERIENCE_BASE));
         stamina = (int16_t)(rand_2bits() + MELEE_STAMINA_HIT);

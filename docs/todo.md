@@ -7,3 +7,4 @@
 - Layer violations: `engine/` includes of `ui/` headers (the `layer` entries of `tests/standard_allowlist.txt`). They need a design for hooks or redraw flags.
 - Flaky test: `tests/test_control.py::test_a_second_client_gets_busy` failed once with `BrokenPipeError` under heavy machine load (7 parallel builds). It waits only `time.sleep(0.05)` for the first client. It passed 5 of 5 runs alone.
 - Champion redraw bit 0x10 (`REDRAW_STEP_TIME` in `engine/champion.h`): the step time of `champ_get_move_time` (`engine/move.c`) reads it, but no code of the port sets it. Find out what sets it in `SKULL.EXE` and name it after its meaning.
+- Names without a verb (rule 7): `dialog_volume`, `ai_class`. `sensor_door_value` reads the GDAT value of a door type, not a sensor value. Functions with one prefix that other modules define (for example `money_*` in `item.c`, `shop_*` in `money.c`) could move to the module of their prefix.

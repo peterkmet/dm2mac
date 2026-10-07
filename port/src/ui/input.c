@@ -1125,7 +1125,7 @@ void input_cancel_push_mode(void)
 }
 
 /* Draws a movement arrow released or pressed. */
-void ui_draw_move_arrow(int entry, int zone, int pressed)
+static void ui_draw_move_arrow(int entry, int zone, int pressed)
 {
     in.arrow_pressed = pressed;
     in.arrow_zone = zone;

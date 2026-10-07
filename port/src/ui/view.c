@@ -695,7 +695,7 @@ static int wall_text_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentS
     case SUBTYPE_STILL: case SUBTYPE_LADDER: break;
     case SUBTYPE_ANIMATED: o->animated = 1; break;
     case SUBTYPE_TOGGLE: case SUBTYPE_HAND_SWITCH: o->animated = visible; break;
-    case SUBTYPE_SWITCH: case SUBTYPE_LADDER_HIDDEN: case SUBTYPE_SWITCH_3:
+    case SUBTYPE_ITEM_HOLDER: case SUBTYPE_LADDER_HIDDEN: case SUBTYPE_ITEM_HOLDER_MARKER:
         o->frame = visible;
         if (o->frame) {
             o->animated = 1;

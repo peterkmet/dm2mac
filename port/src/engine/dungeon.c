@@ -709,7 +709,7 @@ static int link_thing(uint16_t t, int x, int y, int map)
         int subtype = text_subtype(t);
         if (subtype == SUBTYPE_LADDER || subtype == SUBTYPE_LADDER_HIDDEN)
             mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
-        else if (subtype == SUBTYPE_SWITCH_3)
+        else if (subtype == SUBTYPE_ITEM_HOLDER_MARKER)
             text_set_visible(t, true);
         break;
     }

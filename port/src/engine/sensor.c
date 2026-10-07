@@ -62,8 +62,6 @@ enum {
 };
 /* Wall sensor types of objects put on a wall cell. */
 enum { WALL_ITEM_HOLDER = 0x1a, WALL_ANY_ITEM = 0x29, WALL_ITEM = 0x2a, WALL_NOT_ITEM = 0x2b };
-/* Ornament text subtypes. */
-enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_FALL_RISK = 0x0a };
 
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET 1
@@ -369,16 +367,16 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
     if (text_kind(t) != TEXT_KIND_ORNAMENT) return;
     int sub = text_subtype(t);
     if (m->cell == -1) {
-        if (sub == TEXT_RANDOM_PIT) {
+        if (sub == SUBTYPE_RANDOM_PIT) {
             if (m->type == -1 && !m->on_square && game.champion_count && rand_below(PERCENT) < text_value(t)
                 && text_is_visible(t) != m->enter) {
                 sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
                 sensor_schedule_square_event(x, y, 0, EFFECT_CLEAR, game.game_time + PIT_OPEN_TICKS);
             }
-        } else if (sub == TEXT_FALL_RISK && m->type == -1 && !m->enter && game.champion_count) {
+        } else if (sub == SUBTYPE_TRAP_TELEPORT && m->type == -1 && !m->enter && game.champion_count) {
             sensor_fall_risk(t, x, y, m->on_square);
         }
-    } else if (m->cell == thing_cell(t) && (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) && !m->same_item
+    } else if (m->cell == thing_cell(t) && (sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER) && !m->same_item
                && text_is_visible(t) != m->enter && m->item == item_holder_item(text_value(t))) {
         text_set_visible(t, m->enter & 1);
     }
@@ -1602,7 +1600,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
         }
         if (!wall_click_give(c, item)) return;
         c->hand = THING_NONE;
-        if (sub == TEXT_ITEM_HOLDER_2) {
+        if (sub == SUBTYPE_ITEM_HOLDER_MARKER) {
             /* fix: the original leaves 4 data bytes of the event uninitialized */
             uint16_t delay = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE,
                                               ORNAMENT_KEY_MARKER_DELAY);
@@ -1610,7 +1608,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
             put_le16(e.data + SENSOR_EVENT_THING, t);
             timeline_add_event(&e);
         }
-    } else if (sub != TEXT_ITEM_HOLDER_2) {
+    } else if (sub != SUBTYPE_ITEM_HOLDER_MARKER) {
         if (c->hand == THING_NONE || item_get_index(c->hand) != item) return;
         wall_click_put(c);
         c->hand = THING_NONE;
@@ -1625,7 +1623,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
     if (text_kind(t) != TEXT_KIND_ORNAMENT || !c->has_leader) return;
     int value = text_value(t), sub = text_subtype(t);
     bool visible = text_is_visible(t);
-    if (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) {
+    if (sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER) {
         wall_click_holder_text(c, t, sub, value, visible);
     } else if ((sub == SUBTYPE_LADDER_HIDDEN && !visible) || sub == SUBTYPE_LADDER) {
         if (c->hand != THING_NONE) return;

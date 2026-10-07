@@ -1,5 +1,6 @@
 #include "action.h"
 #include "champion.h"
+#include "creature.h"
 #include "champ_action.h"
 #include "draw.h"
 #include "dungeon.h"
@@ -25,8 +26,6 @@
 
 #define MINION_MAP_FIRST_TYPE 1
 #define MINION_MAP_LAST_TYPE 2
-#define CREATURE_MINION_A 0x33
-#define CREATURE_MINION_B 0x32
 #define WOUND_LOAD_SHIFT 3          /* a wounded champion carries 1/8 less, with wounded legs 1/4 less */
 #define WOUND_LEGS_LOAD_SHIFT 2
 
@@ -128,8 +127,8 @@ static int minion_map_allows_action(uint16_t thing, int command)
     if (command == COMMAND_MINION_DISMISS) return 1;
     if (type != MINION_MAP_LAST_TYPE) return 0;
     uint8_t creature = group_creature(group);
-    if (creature == CREATURE_MINION_A) return command == COMMAND_MINION_GUARD;
-    if (creature == CREATURE_MINION_B) return command == COMMAND_MINION_FETCH;
+    if (creature == MINION_GUARD) return command == COMMAND_MINION_GUARD;
+    if (creature == MINION_ATTACKER) return command == COMMAND_MINION_FETCH;
     return 0;
 }
 

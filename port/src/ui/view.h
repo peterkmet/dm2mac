@@ -4,7 +4,7 @@
 #include "draw.h"
 #include "gfx.h"
 
-/* Prefixes: view_ */
+/* Prefixes: view_ cell_grid_ */
 
 /* The dungeon view shows 23 squares: 3 at depth 0 and 1 (the party square, left, right), 5 at depth 2 and 3,
    7 at depth 4, ordered center, left, right, then further out. */

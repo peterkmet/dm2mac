@@ -5,6 +5,8 @@
 #include "draw.h"
 #include "dungeon.h"
 #include "item.h"
+#include "minion.h"
+#include "money.h"
 #include "move.h"
 #include "random.h"
 #include "save.h"

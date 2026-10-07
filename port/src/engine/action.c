@@ -34,7 +34,6 @@ enum { WALLSET_PARTY_BACK = 0xf5, WALLSET_FACE_BACK = 0xf6 };
 #define AMMO_HAND_DEFAULT 0x38
 #define AMMO_HAND_OTHER 0x34
 #define AMMO_ICON 0x18
-#define GDAT_INDEX_NONE 0xff         /* no GDAT index; the ammunition search stops below it */
 #define CONTAINER_PICTURE 0x10
 #define CONTAINER_LID 0x12
 #define CONTAINER_LID_KEY 10
@@ -143,7 +142,7 @@ static void draw_action_result(int16_t value)
     } else if (value == RESULT_NO_AMMO) {
         offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? AMMO_HAND_OTHER : AMMO_HAND_DEFAULT,
                                   ZONE_AMMO_HAND, UI_OPAQUE);
-        for (int index = 0; index < GDAT_INDEX_NONE; index++) {
+        for (int index = 0; index < GDAT_NO_INDEX; index++) {
             uint16_t ammo = gdat_entry_index(draw_gdat(), CAT_WEAPON, index, GDAT_TYPE_VALUE, AMMO_ATTR);
             if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
                 offscreen_draw_gdat_image(&area, CAT_WEAPON, index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);

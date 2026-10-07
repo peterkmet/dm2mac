@@ -6,6 +6,7 @@
 #include "dungeon.h"
 #include "inventory.h"
 #include "item.h"
+#include "merchant.h"
 #include "money.h"
 #include "text.h"
 

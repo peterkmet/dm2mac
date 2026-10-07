@@ -27,7 +27,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
 5. Keep original quirks only when they change what the player sees. Fix the original bugs that are clearly bugs (stale registers, overflows), and mark each fix with a short comment.
 6. Read the data files (`DUNGEON.DAT`, `GRAPHICS.DAT`, saves) at run time. Do not copy their content into the source. A table that exists only in `SKULL.EXE` goes into the source as a named `const` array with a one-line comment that tells its game meaning. No unexplained numbers or strings.
 7. Names follow one scheme.
-   - Functions: `<prefix><verb>_<object>` in `snake_case`. Each header states its prefixes in one comment line, for example `/* Prefixes: gfx_ */` in `gfx.h`. A prefix belongs to one header only, and no prefix starts with the prefix of another header.
+   - Functions: `<prefix><verb>_<object>` in `snake_case`. Each header states its prefixes in one comment line, for example `/* Prefixes: gfx_ */` in `gfx.h`. A prefix belongs to one header only, and no prefix starts with the prefix of another header. The header that owns a prefix declares every function with that prefix, also when another `.c` file of the same layer defines it; the `.c` file includes that header. The `Prefixes` line also covers function-like macros.
    - Global variables: `g_` prefix. Module-private globals and functions are `static`.
    - Types: `PascalCase`. Constants and enum values: `UPPER_CASE`.
    - No event numbers or original addresses in names. Name the game task, not the number.

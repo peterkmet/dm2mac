@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/* Prefixes: dungeon_ thing_ set_thing_ location_ event_ door_ group_ teleporter_ container_ misc_ potion_ scroll_ weapon_ armour_ moneybox_ text_is_ text_kind text_offset text_set_visible text_subtype text_value */
+/* Prefixes: dungeon_ dir_ square_ thing_ set_thing_ location_ event_ door_ group_ teleporter_ container_ misc_ potion_ scroll_ weapon_ armour_ moneybox_ text_is_ text_kind text_offset text_set_visible text_subtype text_value */
 
 enum thing_type {
     THING_DOOR, THING_TELEPORTER, THING_TEXT, THING_SENSOR, THING_GROUP, THING_WEAPON, THING_ARMOUR,
@@ -211,12 +211,13 @@ enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT, TEXT_KIND_AI_MARKER };
 enum text_subtype {
     SUBTYPE_STILL = 0,              /* plain ornament */
     SUBTYPE_ANIMATED = 2,
-    SUBTYPE_SWITCH = 4,             /* frame 1 while visible */
+    SUBTYPE_ITEM_HOLDER = 4,        /* holds an item while visible; the view shows frame 1 */
     SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
     SUBTYPE_LADDER = 6,             /* a ladder to another level */
     SUBTYPE_LADDER_HIDDEN = 7,      /* a ladder that works while the text is not visible */
-    SUBTYPE_SWITCH_3 = 8,           /* the dungeon load makes it visible */
-    SUBTYPE_TRAP_TELEPORT = 0x0a,
+    SUBTYPE_ITEM_HOLDER_MARKER = 8, /* an item holder that sets a marker; the dungeon load makes it visible */
+    SUBTYPE_RANDOM_PIT = 9,         /* a floor trigger that opens the pit at random */
+    SUBTYPE_TRAP_TELEPORT = 0x0a,   /* a floor trap that teleports the party */
     SUBTYPE_HAND_SWITCH = 0x0d,       /* a switch that an empty hand operates */
     SUBTYPE_PLATE = 0x0e,             /* a text plate on the wall */
     SUBTYPE_WARP_ONCE = 0x0f,         /* a warp marker that clears all markers; the view shows frame 1 */
