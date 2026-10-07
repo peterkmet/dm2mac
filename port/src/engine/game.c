@@ -14,6 +14,7 @@
 #include "hooks.h"
 #include "input.h"
 #include "inventory.h"
+#include "le.h"
 #include "magic.h"
 #include "move.h"
 #include "music.h"
@@ -30,6 +31,13 @@
 
 #define REDRAW_INVENTORY_BOX 0x4000
 #define CHAMP_DAMAGE_SHOWN 0xffff
+#define TIME_EFFECTS_PERIOD_MASK 0x3f       /* the champion clocks run each 64 game steps */
+#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x0f /* and each 16 game steps while the party sleeps */
+#define LIGHT_BURN_PERIOD_MASK 0x1ff        /* held lights burn down each 512 game steps */
+#define EVENT_TELEPORT_MAP 2                /* teleport party event: data byte of the map */
+#define TELEPORT_DIR_MASK 3                 /* teleport party event: the direction in the map bits of its location word */
+#define EVENT_SPAWN_TYPE 3                  /* spawn creature event: data byte of the creature type */
+#define SPAWN_GROUP_COUNT 7                 /* creature_create_group count of a spawned group: full health */
 
 MainLoop main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
 static int tick_elapsed;
@@ -169,8 +177,8 @@ void timeline_process(void)
         input_poll();
         TimelineEvent e;
         timeline_pop_first_event(&e);
-        dun_set_current_map((int8_t)(e.time_map >> 24));
-        uint16_t word = (uint16_t)(e.data[0] | e.data[1] << 8);
+        dun_set_current_map((int8_t)timeline_event_map(&e));
+        uint16_t word = le16(e.data);
         switch (e.type) {
         case EVENT_DOOR_ANIMATION: timeline_event_door_animation(&e); break;
         case EVENT_DOOR_DESTRUCTION: timeline_event_door_destruction(&e); break;
@@ -181,7 +189,7 @@ void timeline_process(void)
         case EVENT_DELAYED_SOUND: sound_play_delayed(word); break;
         case EVENT_EXPLOSION: explosion_process_event(&e); break;
         case EVENT_PROJECTILE_MOVE: case EVENT_PROJECTILE_MOVE_2: projectile_process_event(&e); break;
-        case EVENT_CREATURE_ANIMATION: case EVENT_CREATURE_THINK: creature_process_event(e.data[0], e.data[1], e.type); break;
+        case EVENT_CREATURE_ANIMATION: case EVENT_CREATURE_THINK: creature_process_event(e.data[EVENT_X], e.data[EVENT_Y], e.type); break;
         case EVENT_MOVE_GROUP: case EVENT_MOVE_GROUP_2: timeline_event_move_group(&e); break;
         case EVENT_MAGIC_LIGHT:
             dun_set_current_map(game.party_map);
@@ -206,14 +214,15 @@ void timeline_process(void)
             timeline_event_sensor(&e);
             break;
         case EVENT_TELEPORT_PARTY:
-            if (e.data[2] == game.party_map) {
-                move_thing(THING_NONE, game.party_x, game.party_y, word & 0x1f, word >> 5 & 0x1f);
-                champ_set_party_direction(word >> 10 & 3);
+            if (e.data[EVENT_TELEPORT_MAP] == game.party_map) {
+                move_thing(THING_NONE, game.party_x, game.party_y, location_x(word), location_y(word));
+                champ_set_party_direction(location_map(word) & TELEPORT_DIR_MASK);
             }
             break;
         case EVENT_SPAWN_CREATURE: {
-            int dir = rand_2bits() ? dun_get_direction_to(e.data[0], e.data[1], game.party_x, game.party_y) : rand_2bits();
-            creature_create_group(e.data[3], 7, dir, e.data[0], e.data[1]);
+            int dir = rand_2bits() ? dun_get_direction_to(e.data[EVENT_X], e.data[EVENT_Y], game.party_x, game.party_y)
+                                     : rand_2bits();
+            creature_create_group(e.data[EVENT_SPAWN_TYPE], SPAWN_GROUP_COUNT, dir, e.data[EVENT_X], e.data[EVENT_Y]);
             break;
         }
         }
@@ -264,7 +273,7 @@ static void game_step(void)
     sound_flush_requests(0);
     champ_apply_pending_damage();
     if (game.magic_light[MAGIC_HASTE]) game.magic_light[MAGIC_HASTE]--;
-    if (!(game.game_time & (party_sleeping ? 0x0f : 0x3f))) champ_apply_time_effects();
+    if (!(game.game_time & (party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK))) champ_apply_time_effects();
     inv_update_hand_cursor();
     champ_draw_all_states(1);
     if (main_loop.end) {
@@ -272,7 +281,7 @@ static void game_step(void)
         return;
     }
     game.game_time++;
-    if (!(game.game_time & 0x1ff)) items_burn_held_lights();
+    if (!(game.game_time & LIGHT_BURN_PERIOD_MASK)) items_burn_held_lights();
     if (game.magic_light[MAGIC_ACTION_EFFECT]) game.magic_light[MAGIC_ACTION_EFFECT]--;
     if (game.party_move_cooldown) game.party_move_cooldown--;
     if (game.throw_cooldown) game.throw_cooldown--;
