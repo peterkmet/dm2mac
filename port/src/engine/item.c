@@ -19,9 +19,9 @@
 #define MONEYBOX_TEXT_ENTRY 0x40       /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
 #define ITEM_ICON_ENTRY 0x18           /* the first icon of an item */
 #define MISC_ITEM_INDEX_BASE 0x100
-#define ITEM_KIND_ITEMS 0x80           /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
+#define ITEM_KIND_ITEMS 128            /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
 #define MONEY_SLOT_COUNT 10
-#define COIN_SCAN_COUNT 0x80
+#define COIN_SCAN_COUNT 128
 #define TEXT_CHAMPION_TOKEN 0          /* the miscellaneous item 0 (a champion token) names its champion */
 #define COINS_PER_WEIGHT 5             /* the coins of a money box weigh one unit per 5 coins, rounded up */
 /* Item index kinds: item index / ITEM_KIND_ITEMS. */

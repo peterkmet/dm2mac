@@ -365,7 +365,7 @@ DistanceMap party_distance = {.map = -1}, alt_distance = {.map = -1};
 #define PLAN_SCAN_ONLY_PARTY_MAP 0x40
 #define PLAN_SCAN_ENDS 0x80             /* plan flags: a plan that ends when nothing is found */
 #define AI_IDLE_PLAN 0x11
-#define AI_STEP_LIMIT 0x20
+#define AI_STEP_LIMIT 32
 #define SEARCH_FLAGS_FLEE 0x2048        /* mood bits that let the search flee */
 #define CANDIDATE_MASK_NO_ATTACK 0x08
 /* Random bits that must all be clear for a mood change: the more bits, the rarer the change. */
@@ -376,7 +376,7 @@ DistanceMap party_distance = {.map = -1}, alt_distance = {.map = -1};
 #define ROLL_LAZY 0x38
 #define ROLL_RESTLESS 0x3000
 #define ROLL_STAYS 0x8008
-#define SPEED_MOOD_STEPS 0x10           /* speed bits 4-7: 15 changes the bored mood on each update */
+#define SPEED_MOOD_STEPS 16             /* speed bits 4-7: 15 changes the bored mood on each update */
 #define FEAR_HEALTH_PERCENT 25
 
 /* The scanner kinds of a plan step (PlanStep.scan bits 0-4). */
@@ -1792,15 +1792,15 @@ int16_t ai_dest_x, ai_dest_y;
 #define PUSH_RESISTANCE_HEAVY 100     /* above it a melee hit pushes the creature only now and then */
 #define ROLL_PUSH_HEAVY 0xf             /* random bits: a heavy creature stays only when all are clear and 2 more bits too */
 #define STALE_REGISTER 0x100
-#define SHOT_POWER_MEDIUM 0x10          /* a missile above power 8 flies at speed 2, above this 3 or 4 */
-#define SHOT_POWER_STRONG 0x20          /* ... above this 7 to 10 */
-#define THROW_POWER_MIN 0x14
+#define SHOT_POWER_MEDIUM 16            /* a missile above power 8 flies at speed 2, above this 3 or 4 */
+#define SHOT_POWER_STRONG 32            /* ... above this 7 to 10 */
+#define THROW_POWER_MIN 20
 #define ROLL_STEAL 0x70                 /* random bits: a steal fails the luck test only when all are clear */
 #define SPARK_POWER_MIN 100
-#define SPARK_POWER_RANGE 0x9c
-#define TRANSFORM_POWER_STEP 0x55       /* the death cloud of a transform grows by this per phase */
-#define DODGE_CLOUD_POWER_MIN 0x14
-#define DODGE_CLOUD_POWER_RANGE 0x28
+#define SPARK_POWER_RANGE 156
+#define TRANSFORM_POWER_STEP 85         /* the death cloud of a transform grows by this per phase */
+#define DODGE_CLOUD_POWER_MIN 20
+#define DODGE_CLOUD_POWER_RANGE 40
 
 static int act_melee_attack(void);
 

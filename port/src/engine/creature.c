@@ -71,10 +71,10 @@
 #define AI_ACTION_STAND_2 0x25
 #define AI_ACTION_FLAG_INTERRUPT 0x10
 #define AI_ACTION_JUMP 5
-#define ACTION_TIME_LONG_AGO 0x7f   /* a new active group acted this many game steps ago */
-#define GROUP_SIZE_MAX 0x1f         /* creatures of a group - 1 */
+#define ACTION_TIME_LONG_AGO 127    /* a new active group acted this many game steps ago */
+#define GROUP_SIZE_MAX 31           /* creatures of a group - 1 */
 #define ROLL_COMBAT 0x1f            /* the random part of hit, dodge, and defense */
-#define ALERT_HIT_CHANCE 0x3c
+#define ALERT_HIT_CHANCE 60
 #define DAMAGE_KIND_MOOD_FIRST 6    /* damage kinds 6 to 0x15 set mood bit kind - 6 */
 #define DAMAGE_KIND_MOOD_END 0x16
 #define ACTIVE_GROUP_SPARE 100      /* active groups beyond the acting groups of the dungeon */
@@ -772,8 +772,8 @@ void creature_process_event(int x, int y, int type)
 
 /* Group life: creation, damage, death, alerts. */
 
-#define CREATURE_ATTR_DROP_FIRST 10     /* GDAT value keys 10 to 20: the items that a dead creature leaves */
-#define CREATURE_ATTR_DROP_LAST 20
+#define CREATURE_ATTR_DROP_FIRST 0x0a   /* GDAT value keys 10 to 20: the items that a dead creature leaves */
+#define CREATURE_ATTR_DROP_LAST 0x14
 #define DROP_COUNT_MASK 0x0f
 #define DROP_RANDOM_SHIFT 4
 #define DROP_RANDOM_MASK 0x70
@@ -788,7 +788,7 @@ void creature_process_event(int x, int y, int type)
 #define AI_ACTION_FLAG_WAKES 0x02
 #define AI_ACTION_TURN_LEFT 6
 #define AI_ACTION_TURN_RIGHT 7
-#define BOSS_DEATH_WAIT 0xa0                /* timer ticks */
+#define BOSS_DEATH_WAIT 160                 /* timer ticks */
 #define GROUP_MINION 0x8000                 /* creature_create_group: the group links a minion projectile */
 #define GROUP_RETRY_DELAY 5
 #define EVENT_GROUP_WORD 2                  /* group retry event: data bytes 2-3 hold the group */
@@ -1201,9 +1201,9 @@ int creature_get_party_distance(int x, int y)
 /* Pushing creatures. */
 
 #define PUSH_FAIL_STAMINA 5
-#define PUSH_LIGHT 0x2e                 /* creatures below this resistance are easy to push */
+#define PUSH_LIGHT 46                   /* creatures below this resistance are easy to push */
 #define ALERT_PUSHED 0x4002
-#define PUSH_BASE_STRENGTH 0x28
+#define PUSH_BASE_STRENGTH 40
 #define ACTION_FLAG_PATH 0x04
 #define PUSH_LEADER_SHIFT 3             /* the leader pushes with 1/8 more strength */
 #define PUSH_LIGHT_SHIFT 2              /* a light creature: 1/4 more strength */

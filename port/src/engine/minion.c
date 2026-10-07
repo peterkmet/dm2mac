@@ -24,7 +24,7 @@
 #define GAP_X 1
 #define GAP_Y 1
 #define GRID_RADIUS 3
-#define ZONE_MAP_GRID 99
+#define ZONE_MAP_GRID 0x63
 #define ZONE_OPTION_BUTTON_FIRST 0x65
 #define ZONE_OPTION_LABEL_FIRST 0x69
 #define MAP_OPTION_COUNT 4

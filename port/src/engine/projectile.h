@@ -51,7 +51,7 @@ enum spell_thing {
     EXPLOSION_STORM_LIGHTNING = 0xffb0, EXPLOSION_STORM_BLAST = 0xffb1, EXPLOSION_SMOKE = 0xffe4
 };
 #define EXPLOSION_AT_CENTER 0xff    /* the cell of an explosion in the middle of its square */
-#define POWER_MAX 0xff              /* the power of a missile or an explosion is a byte */
+#define POWER_MAX 255               /* the power of a missile or an explosion is a byte */
 /* The sound of an explosion: (CAT_EXPLOSION, explosion type, SOUND_EXPLODE). */
 #define SOUND_EXPLODE 0x81
 #define SOUND_PRIORITY_EXPLODE 0x6c

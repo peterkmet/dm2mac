@@ -8,7 +8,7 @@
 
 /* Layout zones of the screen and the panels. */
 enum ui_zone {
-    ZONE_SCREEN = 2, ZONE_VIEWPORT = 7, ZONE_MOVEMENT_ARROWS = 9, ZONE_ACTION_AREA = 11,
+    ZONE_SCREEN = 2, ZONE_VIEWPORT = 7, ZONE_MOVEMENT_ARROWS = 9, ZONE_ACTION_AREA = 0x0b,
     ZONE_ARROW_FIRST = 0x28, ZONE_ARROW_COUNT = 6,
     ZONE_STATUS_BOX = 0xa1,         /* + champion */
     ZONE_STATUS_NAME = 0xa5,        /* + champion */

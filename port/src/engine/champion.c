@@ -19,7 +19,7 @@
 #define LOAD_PER_STRENGTH 8
 #define LOAD_BASE 100
 #define LOAD_ROUND 10
-#define SKILL_LEVEL_EXPERIENCE 0x200    /* each doubling of the experience above this is one more level */
+#define SKILL_LEVEL_EXPERIENCE 512      /* each doubling of the experience above this is one more level */
 #define NO_SLOT (-1)
 #define SENSOR_START_CHAMPION 0x7e  /* on square (0, 0): the champion of its mirror starts a new game */
 

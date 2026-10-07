@@ -21,7 +21,7 @@
 #define MESSAGE_ROWS 3
 #define MESSAGE_SHOW_TIME 90    /* game ticks until a message row clears */
 #define MESSAGE_INDENT 12       /* pixels: the rest of a wrapped message goes on indented */
-#define ZONE_MESSAGE_AREA 15
+#define ZONE_MESSAGE_AREA 0x0f
 
 /* The 16 UI colors: GDAT (1, 0, 13, 0xfe) maps them to palette colors. */
 enum ui_color {

@@ -17,7 +17,7 @@
 #define TRACK_DATA 12
 
 /* Loop table: a record count per track, then 24-byte records of all tracks in track order. */
-#define BRANCH_SIZE 0x18
+#define BRANCH_SIZE 24
 #define BRANCH_OFFSET 0       /* u32: loop point in the track data */
 #define BRANCH_ID 4
 #define BRANCH_PROGRAM 5
@@ -41,7 +41,7 @@
 #define HMI_LOOP_2 0x70
 #define VARLEN_BITS 7
 #define VARLEN_LAST 0x80
-#define SHIFT_MASK 31
+#define SHIFT_MASK 0x1f
 #define STATUS_NIBBLES 16
 
 /* Event length by status high nibble, and for system events by low nibble (tables of SKULL.EXE). */

@@ -63,11 +63,11 @@ enum { OP_KSL, OP_MULT, OP_FB, OP_AR, OP_SL, OP_EG, OP_DR, OP_RR, OP_TL, OP_AM, 
 #define OP_SUSTAIN_SLOTS 16
 #define SUSTAIN_QUEUE 32
 #define RELEASE_WRITES 5
-#define LEVEL_STEPS 0x40
+#define LEVEL_STEPS 64
 #define LEVEL_SHIFT 7
 #define NOTES_PER_OCTAVE 12
 #define NOTE_FIRST 12        /* the frequency table of the driver starts at note 12 */
-#define FREQ_STEP_MAX 0x2cf  /* a bend step above this crosses a block border */
+#define FREQ_STEP_MAX 719    /* a bend step above this crosses a block border */
 #define FREQ_FNUM_MASK 0x3ff
 #define FREQ_BLOCK_MASK 0x1c00
 #define FREQ_BLOCK_ONE 0x400

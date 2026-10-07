@@ -10,12 +10,12 @@
 #include "text.h"
 #include "sensor.h"
 
-#define HEADER_SIZE 0x2c
+#define HEADER_SIZE 44
 #define MAP_DESC_SIZE 16
 #define COMPRESSED_SIGNATURE 0x8104
 #define SQUARE_THING_SLACK 300
-#define THING_COUNT_MAX 0x400
-#define EXPLOSION_COUNT_MAX 0x300
+#define THING_COUNT_MAX 1024
+#define EXPLOSION_COUNT_MAX 768
 #define MAP_COUNT_MAX 255
 #define MAP_WIDTH_SHIFT 6
 #define MAP_WIDTH_MASK 0x1f

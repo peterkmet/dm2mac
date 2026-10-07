@@ -22,7 +22,7 @@
 #define PORTRAIT_TEXT 0x18          /* GDAT text (0x16, portrait, 5, 0x18): "NAME TITLE" */
 #define PORTRAIT_DATA_TYPE 8        /* GDAT item (0x16, portrait, 8, 0): health, stamina, mana, statistics, skills */
 #define STAT_START_MIN 30
-#define SKILL_EXPERIENCE_BASE 0x40
+#define SKILL_EXPERIENCE_BASE 64
 #define FOOD_START 1500
 #define FOOD_RANDOM_MASK 0xff       /* a new champion gets up to 255 more food and water */
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */

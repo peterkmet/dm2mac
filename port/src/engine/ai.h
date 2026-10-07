@@ -27,8 +27,8 @@ static inline uint16_t ai_marker_level(uint16_t text)
 #define AI_PLAN_STEP_SIZE 7
 #define AI_CHOICE_SIZE 7
 #define AI_MOOD_ENTRY_SIZE 6         /* a mood mask word and the address of its plan choices */
-#define AI_SCRIPTS_SIZE 0x1f5e
-#define AI_ACTION_COUNT 0x56
+#define AI_SCRIPTS_SIZE 8030
+#define AI_ACTION_COUNT 86
 #define AI_MOVE_TEST_KINDS 20        /* the move test kinds of ai_command_enabled */
 #define AI_TARGET_KIND_COUNT 28
 #define AI_POSSESSION_KINDS 16       /* the display kinds of possession_cells, with the data after the table */
@@ -107,9 +107,9 @@ _Static_assert(sizeof(AiCandidate) == AI_CANDIDATE_SIZE, "the candidates of SKUL
 #define AI_CANDIDATE_MAX 16
 #define SHIFT_COUNT_MASK 0x1f       /* the x86 shift uses the low 5 bits of the count */
 #define FOUND_NONE 0xffff           /* a candidate or plan state without a found thing or marker */
-#define AI_PATH_MAX 0x31
-#define AI_PATH_BYTES 0x64          /* a path buffer: 2 bytes per step */
-#define FILTER_SLOTS 0x2a           /* the item filters of a creature update */
+#define AI_PATH_MAX 49
+#define AI_PATH_BYTES 100           /* a path buffer: 2 bytes per step */
+#define FILTER_SLOTS 42             /* the item filters of a creature update */
 
 /* The plan state of a group that lasts from one update to the next: the 14 bytes at 0x7f7d4 of SKULL.EXE. */
 typedef struct __attribute__((packed)) {
@@ -199,7 +199,7 @@ extern AiSquare ai_square;
 #define DISTANCE_MAP_SIDE MAP_SIDE_MAX     /* the cells of a distance map: x * 32 + y */
 typedef struct { int16_t map, width; uint8_t cells[DISTANCE_MAP_SIDE * DISTANCE_MAP_SIDE]; } DistanceMap;
 #define DISTANCE_NEXT_TO 0x80
-#define DISTANCE_FAR 0x7f
+#define DISTANCE_FAR 127
 extern DistanceMap party_distance, alt_distance;
 
 uint8_t ai_action_flag(int8_t action);

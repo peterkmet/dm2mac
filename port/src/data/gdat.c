@@ -75,7 +75,7 @@
 #define CMD_COLOR_NIBBLE 7
 #define RUN_SHORT_MIN 2
 #define RUN_LONG 0xf
-#define RUN_LONG_MIN 0x11
+#define RUN_LONG_MIN 17
 #define RUN_HUGE 0xff
 #define RUN_HUGE_NIBBLES 4
 

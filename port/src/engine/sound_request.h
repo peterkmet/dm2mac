@@ -27,7 +27,7 @@ extern int sound_started_count;
 #define SOUND_FALLBACK 0xfe
 /* Volumes of a sound request. */
 #define SOUND_VOLUME_NORMAL 0x80
-#define SOUND_VOLUME_LOUD 200
+#define SOUND_VOLUME_LOUD 0xc8
 #define SOUND_VOLUME_MAX 0xff
 /* Sounds of champions and creatures: the entry and the priority. */
 #define SOUND_HURT 0x82

@@ -32,7 +32,7 @@
 #define END_SOUND_VBLANKS 240
 #define SAVE_HEADER_UNUSED 0x26         /* the slot list marks an empty slot with UNUSED_SLOT here */
 #define UNUSED_SLOT 0xdeadbeefu
-#define SAVE_NAME_MAX 0x1f              /* characters of a slot name */
+#define SAVE_NAME_MAX 31                /* characters of a slot name */
 #define QUIT_SAFE_TICKS 100             /* a quit within this time after a load or a save needs no question */
 #define CMD_TEXT_KEY_LAST 0xd6
 /* The buttons of the save menu (dialog 0x1b) and of the question before a quit (dialog 0x0c). */

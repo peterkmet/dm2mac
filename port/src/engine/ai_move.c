@@ -116,7 +116,7 @@ static const uint8_t take_actions[] = {ACTION_DROP_HERE, ACTION_DROP_HERE_2, ACT
 #define ROLL_INVISIBLE_HIDDEN 0x4000
 #define ROLL_SIGHT 0xf
 #define ROLL_KEEP_COST 0x70             /* all clear: a hidden party target keeps 1/8 of its cost */
-#define SEARCH_LEVELS 0x33              /* the counts of the cost search, the last one blocks */
+#define SEARCH_LEVELS 51                /* the counts of the cost search, the last one blocks */
 #define SEARCH_CELL_SIZE 4              /* a square of a search map: distance, direction, previous square */
 #define SEARCH_COLUMN_SIZE (MAP_SIDE_MAX * SEARCH_CELL_SIZE)
 #define SEARCH_MAPS 256                 /* one search map per map number (a byte) */
@@ -142,7 +142,7 @@ enum { DOOR_TARGET_PARTY = 1, DOOR_TARGET_NEXT_TO_PARTY };
 /* The kinds of the group in front target (AiCandidate.mask). */
 enum { GROUP_TARGET_ANY = 1, GROUP_TARGET_CARRIES };
 #define SEARCH_FAR 100
-#define SEARCH_FAR_RANGE 0x7f
+#define SEARCH_FAR_RANGE 127
 #define PATH_MAP_CHANGE 0x2000
 #define PATH_KEEP_BITS 0xc000
 /* The move command of the path check of ai_plan_path: the original reads a byte after the path buffer
@@ -2356,7 +2356,7 @@ int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates
 /* ---- Paths ---- */
 
 #define PATH_CHECK_STEPS 5
-#define PARTY_MAP_SEARCH_COST 0x19
+#define PARTY_MAP_SEARCH_COST 25
 
 /* Points ai.cached_path to the stored path of the group; a lost path clears the path state. */
 void ai_load_cached_path(void)

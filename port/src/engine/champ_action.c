@@ -22,23 +22,23 @@
 #define ALL_CHARGES 0x0f
 #define ATTR_USED_UP 0x0800         /* ATTR_FLAGS bit: the item vanishes with its last charge */
 #define ATTR_THROW_POWER_SHOOT 9
-#define ATTR_SHOOT_ATTACK 10
-#define ATTR_STEP 12                /* item attribute: the flight step of a missile */
+#define ATTR_SHOOT_ATTACK 0x0a
+#define ATTR_STEP 0x0c              /* item attribute: the flight step of a missile */
 #define AMMO_KINDS 0x7fff
 #define FLAGS_KEEP_OPEN 0x0400      /* action.flags bit that the action area clears after an action */
-#define POWER_MIN 0x20
+#define POWER_MIN 32
 #define ACTION_EFFECT_MAX 200
 #define HEAL_PER_STEP_MAX 10
 #define HEAL_MANA 2
 #define MAX_MANA_LIMIT 900         /* a level gain raises the maximum mana up to this */
 #define HEALTH_MAX 999
 #define STAMINA_MAX 9999
-#define DELAY_MAX 0xff
+#define DELAY_MAX 255
 #define ACTION_DOOR_DELAY 6
 #define MELEE_PIERCES 0x8000        /* attack bit: the hit reaches creatures that CREATURE_NOT_DOOR_HIT marks */
-#define MELEE_LUCK_BASE 0x4b        /* a missed hit gets a luck test of 75 - attack */
+#define MELEE_LUCK_BASE 75          /* a missed hit gets a luck test of 75 - attack */
 #define MELEE_ALERT_FLAGS 0x6002
-#define MELEE_ALERT_CHANCE 0x5a
+#define MELEE_ALERT_CHANCE 90
 #define DEXTERITY_UNHITTABLE 0xff
 #define MELEE_RANDOM 0x1f           /* the random part of the hit chance, the defense, the damage, and the armor test */
 #define MELEE_CHANCE_BASE 16        /* the hit chance: (random + dexterity + difficulty + 2 * light - base) / 2 */
@@ -60,8 +60,8 @@
 #define THROW_ATTACK_RANDOM 0x1f    /* the random part of the attack of a throw */
 #define THROW_DELAY 4
 #define THROW_EXPERIENCE 8
-#define KINETIC_MAX 0xff
-#define ATTACK_MIN 0x28
+#define KINETIC_MAX 255
+#define ATTACK_MIN 40
 #define ATTACK_MAX 200
 #define STEP_MIN 5
 #define STEP_BASE 11
@@ -72,7 +72,7 @@
 #define RESULT_DELAY_BASE 8
 #define EXPLOSION_SUMMON_FAIL 0xffa8
 #define EXPLOSION_COMMAND 0xff8e
-#define EXPLOSION_SUMMON_POWER 0x6e
+#define EXPLOSION_SUMMON_POWER 110
 #define CENTER_CELL 0xff
 #define CREATURE_MELEE_REACHES 0x0020   /* creature info flag: mode 1 attacks reach the creature */
 #define MINION_ATTACKER 0x32        /* creature types of minions */
@@ -87,7 +87,7 @@
 #define SKILL_LAST_FIGHT 11         /* the fighter and ninja sub-skills learn less away from fights */
 #define FIGHT_TIME_LONG 150
 #define FIGHT_TIME_SHORT 40
-#define LEVEL_EXPERIENCE 0x200
+#define LEVEL_EXPERIENCE 512
 #define REDRAW_LEVEL 0x3800
 #define TEXT_LEVEL_FIRST 6          /* GDAT texts (1, 0, 6 to 9): a champion gains a level of a base skill */
 #define DELAY_EXTRA_SHIFT 2         /* an action delay grows by a quarter */

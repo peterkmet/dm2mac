@@ -94,8 +94,8 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define WOUND_ALL 0x3f
 #define BUMP_WOUNDS (WOUND_TORSO | WOUND_LEGS) /* wound locations of a bump: the torso and the legs */
 #define FALL_WOUNDS (WOUND_LEGS | WOUND_FEET) /* wound locations of a fall: the legs and the feet */
-#define FOOD_MAX 0x800              /* Champion.food and the food gauge */
-#define POISON_MAX 0xc00            /* Champion.poison */
+#define FOOD_MAX 2048               /* Champion.food and the food gauge */
+#define POISON_MAX 3072             /* Champion.poison */
 /* Attack types of champ_take_damage (bit 15: a parry can block the attack). */
 enum {
     ATTACK_TYPE_FIRE = 1, ATTACK_TYPE_SELF, ATTACK_TYPE_BLUNT, ATTACK_TYPE_SHARP, ATTACK_TYPE_MAGIC, ATTACK_TYPE_PSYCHIC,
@@ -108,7 +108,7 @@ enum {
 #define SOUND_ENTRY_SCREAM 0x87
 #define SOUND_PRIORITY_FALL 0xbe
 #define SOUND_ENTRY_PUSHED 0x8a
-#define SOUND_PRIORITY_PUSHED 100
+#define SOUND_PRIORITY_PUSHED 0x64
 #define NO_CHAMPION_CELL 0xff
 #define COMMAND_NONE 0xff          /* last_command of a hand without a command */
 /* Champion slots of the quiver and the pouch. */
@@ -126,7 +126,7 @@ enum {
 
 /* Bytes of game.magic_light: the party spells. */
 enum { MAGIC_INVISIBILITY = 2, MAGIC_ACTION_EFFECT = 3, MAGIC_HASTE = 4 };
-#define HASTE_MAX 0xff              /* the haste byte of game.magic_light */
+#define HASTE_MAX 255               /* the haste byte of game.magic_light */
 
 /* One action of an item in a champion's hand: its GDAT text (category, index, 5, entry). */
 typedef struct {

@@ -21,9 +21,9 @@ enum {
 #define FILTER_MONEY_BOX 0x3e
 #define FILTER_NEW_COINS 0x47       /* ai.arg1 of the carried item search after the change */
 #define ANY_CELL 0xff
-#define COIN_MAX 0x12               /* the most coins of a price */
-#define DISCOUNT_FROM 0x10          /* a price above it gets a random discount of up to 15 % */
-#define HAGGLE_LIMIT 0x4c           /* an offer above 76 % of the price makes the merchant think it over */
+#define COIN_MAX 18                 /* the most coins of a price */
+#define DISCOUNT_FROM 16            /* a price above it gets a random discount of up to 15 % */
+#define HAGGLE_LIMIT 76             /* an offer above 76 % of the price makes the merchant think it over */
 #define HAGGLE_RANDOM 7             /* the random part added to HAGGLE_LIMIT */
 #define LOW_OFFER_CHANCE 5          /* a roll below it over the missing percent marks the offer as low */
 #define WAIT_START 5

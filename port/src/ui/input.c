@@ -30,14 +30,14 @@
 #include "view.h"
 #include "zone.h"
 
-#define INPUT_NODE_COUNT 0x4c
-#define INPUT_CHILD_COUNT 0x53
+#define INPUT_NODE_COUNT 76
+#define INPUT_CHILD_COUNT 83
 #define INPUT_MODE_COUNT 10
-#define INPUT_ZONE_COUNT 0x3e
-#define INPUT_COMMAND_COUNT 0x108
-#define INPUT_KEY_COUNT 0x79
-#define CURSOR_ZONE_COUNT 0x12
-#define CLICK_FEEDBACK_SIZE 0xec
+#define INPUT_ZONE_COUNT 62
+#define INPUT_COMMAND_COUNT 264
+#define INPUT_KEY_COUNT 121
+#define CURSOR_ZONE_COUNT 18
+#define CLICK_FEEDBACK_SIZE 236
 #define LIST_START 0x8000
 #define NODE_HAS_CHILDREN 0x80
 #define NODE_INDEX_MASK 0x7f        /* a child list entry: the node index */
@@ -1599,8 +1599,8 @@ int command_execute(Command *c)
 
 int input_mouse_x = -1, input_mouse_y = -1;
 
-#define ARROW_CENTER_X 0x14     /* half size of the middle part of the viewport, without an arrow */
-#define ARROW_CENTER_Y 0x0f
+#define ARROW_CENTER_X 20       /* half size of the middle part of the viewport, without an arrow */
+#define ARROW_CENTER_Y 15
 
 void input_update_viewport_arrow(void)
 {

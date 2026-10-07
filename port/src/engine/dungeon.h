@@ -8,7 +8,7 @@
 
 enum thing_type {
     THING_DOOR, THING_TELEPORTER, THING_TEXT, THING_SENSOR, THING_GROUP, THING_WEAPON, THING_ARMOUR,
-    THING_SCROLL, THING_POTION, THING_CONTAINER, THING_MISC, THING_PROJECTILE = 14, THING_EXPLOSION,
+    THING_SCROLL, THING_POTION, THING_CONTAINER, THING_MISC, THING_PROJECTILE = 0x0e, THING_EXPLOSION,
     THING_TYPE_COUNT
 };
 
@@ -216,13 +216,13 @@ enum text_subtype {
     SUBTYPE_LADDER = 6,             /* a ladder to another level */
     SUBTYPE_LADDER_HIDDEN = 7,      /* a ladder that works while the text is not visible */
     SUBTYPE_SWITCH_3 = 8,           /* the dungeon load makes it visible */
-    SUBTYPE_TRAP_TELEPORT = 10,
-    SUBTYPE_HAND_SWITCH = 13,       /* a switch that an empty hand operates */
-    SUBTYPE_PLATE = 14,             /* a text plate on the wall */
-    SUBTYPE_WARP_ONCE = 15,         /* a warp marker that clears all markers; the view shows frame 1 */
-    SUBTYPE_WARP = 16,              /* a warp marker that finds the set marker */
-    SUBTYPE_SQUARE_SWITCH = 17,     /* frame from SQUARE_FLAG_3 */
-    SUBTYPE_SHOP_STAND = 20,        /* clears SIDE_SHOP_FLAG */
+    SUBTYPE_TRAP_TELEPORT = 0x0a,
+    SUBTYPE_HAND_SWITCH = 0x0d,       /* a switch that an empty hand operates */
+    SUBTYPE_PLATE = 0x0e,             /* a text plate on the wall */
+    SUBTYPE_WARP_ONCE = 0x0f,         /* a warp marker that clears all markers; the view shows frame 1 */
+    SUBTYPE_WARP = 0x10,              /* a warp marker that finds the set marker */
+    SUBTYPE_SQUARE_SWITCH = 0x11,     /* frame from SQUARE_FLAG_3 */
+    SUBTYPE_SHOP_STAND = 0x14,        /* clears SIDE_SHOP_FLAG */
 };
 static inline bool text_is_visible(uint16_t text) { return thing_bit(text, TEXT_DATA, TEXT_VISIBLE); }
 static inline void text_set_visible(uint16_t text, bool visible) { set_thing_bit(text, TEXT_DATA, TEXT_VISIBLE, visible); }

@@ -5,7 +5,7 @@
 
 /* Prefixes: money_ */
 
-#define SHOP_CLASS_SET_SIZE 0x40    /* a bit for each item index */
+#define SHOP_CLASS_SET_SIZE 64      /* a bit for each item index */
 
 /* Puts coin into the money box; returns 0 when box is no money box or coin no coin. */
 int money_add_coin_to_box(uint16_t box, uint16_t coin);

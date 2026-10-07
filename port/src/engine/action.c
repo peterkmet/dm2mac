@@ -25,9 +25,9 @@ enum {
 enum { WALLSET_PARTY_BACK = 0xf5, WALLSET_FACE_BACK = 0xf6 };
 #define RESULT_SMALL_MAX 15         /* damage up to this shows the small damage star */
 #define RESULT_SCALED_MAX 40
-#define RESULT_SMALL_SCALE 0x1f
-#define RESULT_LARGE_SCALE 0x2f
-#define RESULT_SCALE_Y 0x35
+#define RESULT_SMALL_SCALE 31
+#define RESULT_LARGE_SCALE 47
+#define RESULT_SCALE_Y 53
 #define RESULT_DIGITS 5
 #define AMMO_ATTR 5
 #define AMMO_NOT_AMMO 0x8000

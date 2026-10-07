@@ -68,7 +68,7 @@ enum wall_ornament_kind { KIND_ALCOVE = 1, KIND_SHOP = 2, KIND_PORTRAIT = 3 };
 #define ENTRY_NONE 0xff
 #define ORNAMENT_PLATE 0            /* a text plate instead of a wall ornament */
 #define ORN_OVERLAY 0x0f            /* wall ornament picture drawn over the ornament */
-#define ORN_WET_BACKGROUND 200      /* + entry: the picture behind a wet ornament */
+#define ORN_WET_BACKGROUND 0xc8     /* + entry: the picture behind a wet ornament */
 #define DOOR_DAMAGE 0x41            /* door picture of the damage mask */
 #define PORTRAIT_ENTRY 1
 #define PORTRAIT_OFFSET_ENTRY 0xfd
@@ -104,8 +104,8 @@ static int face_frame_entry(uint16_t w) { return (int8_t)HIGH_BYTE(w); }
 #define DOOR_FRAME_RIGHT 4
 #define DOOR_KEY_DEFAULT 10
 #define ORNAMENT_KEY_DEFAULT 9
-#define DOOR_NEAR_SCALE 0x71
-#define DOOR_SIDE_SCALE 0x2b        /* the door side picture in front of the party */
+#define DOOR_NEAR_SCALE 113
+#define DOOR_SIDE_SCALE 43          /* the door side picture in front of the party */
 #define DOOR_SIDE_DEPTH 2
 #define DOOR_ROW_NEAR 3             /* door ornament rows 3 and 4: the doors at depth 1 and 0 take clicks */
 #define SQUARE_TYPE_BITS 0xe0
@@ -126,10 +126,10 @@ enum sensor_type {
 #define SHADE_FULL 64
 #define SHADE_SHIFT 6               /* SHADE_FULL = 1 << SHADE_SHIFT */
 #define SCALE_ROUND_SHIFT 7         /* a ratio in 1/128, rounded to 1/64 */
-#define WALK_SCALE 0x34             /* the sky shrinks to 52/64 while the party walks */
-#define SCALE_WIDE_SIDE 0x72        /* wall ornament scales at the far sides */
-#define SCALE_FAR_SIDE 0x4c
-#define SCALE_BIG_NEAR 0x60         /* floor ornaments with ORN_KEY_BIG_NEAR beside the party */
+#define WALK_SCALE 52               /* the sky shrinks to 52/64 while the party walks */
+#define SCALE_WIDE_SIDE 114         /* wall ornament scales at the far sides */
+#define SCALE_FAR_SIDE 76
+#define SCALE_BIG_NEAR 96           /* floor ornaments with ORN_KEY_BIG_NEAR beside the party */
 #define RANDOM_ORNAMENT_SLOTS 30    /* random wall ornament hash: one of 30 values picks an ornament of the list */
 #define WALL_TEXT_LINE_GAP 2              /* line gap of wall text */
 #define WALL_TEXT_SIZE 128
@@ -144,9 +144,9 @@ enum sensor_type {
 #define THINGS_DOOR_CELL 0x1000
 
 /* The random wall ornament hash of SKULL.EXE. */
-#define HASH_X_STEP 0x20
+#define HASH_X_STEP 32
 #define HASH_X_BASE 2000
-#define HASH_MAP_STEP 0x40
+#define HASH_MAP_STEP 64
 #define HASH_MAP_BASE 3000
 #define HASH_MULTIPLIER 0x7ab9
 #define HASH_MAP_FACTOR 11
@@ -334,16 +334,16 @@ static const int16_t stairs_front_zone[POS_CEILING_PIT_LAST + 1][2] = {
 /* Explosion types with their own drawing. */
 enum {
     EXPLOSION_GLOBAL_COUNTER = 0x30,  /* counts its views in global bytes 0x40 (away) and 0x41 (party square) */
-    EXPLOSION_ALCOVE_STILL = 100,     /* in an alcove: the still picture 0x0c */
-    EXPLOSION_ALCOVE_SCALED = 101,    /* in an alcove: the explosion picture */
+    EXPLOSION_ALCOVE_STILL = 0x64,     /* in an alcove: the still picture 0x0c */
+    EXPLOSION_ALCOVE_SCALED = 0x65,    /* in an alcove: the explosion picture */
 };
 #define GLOBAL_EXPLOSIONS_AWAY 0x40
 #define GLOBAL_EXPLOSIONS_NEAR 0x41
-#define EXPLOSION_POWER_BIG 0xa0    /* stronger explosions grow and rise */
-#define EXPLOSION_POWER_SIZE 0x30   /* smallest power for the picture size */
+#define EXPLOSION_POWER_BIG 160     /* stronger explosions grow and rise */
+#define EXPLOSION_POWER_SIZE 48     /* smallest power for the picture size */
 #define EXPLOSION_SIZE_SHIFT 8     /* the picture size is the scale times (power + 1) / 256 */
-#define EXPLOSION_GROW_BASE 0xc0
-#define EXPLOSION_GROW_NEAR 0x1e
+#define EXPLOSION_GROW_BASE 192
+#define EXPLOSION_GROW_NEAR 30
 #define EXPLOSION_SPREAD_MIN 10
 #define EXPLOSION_SCALE_MIN 8
 #define EXPLOSION_SCALE_MAX 64
@@ -352,10 +352,10 @@ enum {
 #define VIEWPORT_ZONE 4             /* the layout zone of the whole viewport */
 
 #define MISSILE_DY (-92)            /* missiles fly above the floor */
-#define MISSILE_SCALE_FULL 0x40
+#define MISSILE_SCALE_FULL 64
 #define MISSILE_SCALE_MIN 8
-#define MISSILE_HALF_POWER_SPELL 0xff82  /* this spell shows half its power plus 0x80 */
-#define MISSILE_HALF_POWER_BASE 0x80
+#define MISSILE_HALF_POWER_SPELL 0xff82  /* this spell shows half its power plus 128 */
+#define MISSILE_HALF_POWER_BASE 128
 
 /* Thing grids: a cell of 4 x 4 per square, at (lateral + 10, forward) from the eye of the party. */
 #define GRID_STRIDE 17
@@ -455,10 +455,9 @@ enum { SPARKLE_TILE, SPARKLE_MASK, SPARKLE_WIDTH, SPARKLE_HEIGHT };
 static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 #define RAIN_ALONG 0x71             /* sky pictures 0x71 to 0x74: rain seen along the wind, 0x6d to 0x70 across it */
 #define RAIN_ACROSS 0x6d
-#define RAIN_HEAVY 0x80
-#define RAIN_TILE_TRIM 0x28         /* the rain tile row is the picture minus 40 pixels minus 0 to 31 */
-#define WET_TILE_TRIM 0x3c
-#define WET_TILE_EXTRA 0x10
+#define RAIN_TILE_TRIM 40           /* the rain tile row is the picture minus 40 pixels minus 0 to 31 */
+#define WET_TILE_TRIM 60
+#define WET_TILE_EXTRA 16
 #define RANDOM_BYTE 0xff
 #define RANDOM_TILE_SPREAD 0x1f
 
@@ -1339,7 +1338,7 @@ static void draw_offscreen(DrawCtx *ctx, Bitmap *offscreen, int zone, int anchor
 static int weather_get_rain_image(int *side)
 {
     *side = dir_relative(game.wind_dir, view.party_dir);
-    int level = game.rain_intensity >= RAIN_HEAVY ? 3 : game.rain_intensity >= RAIN_MEDIUM ? 2
+    int level = game.rain_intensity >= RAIN_STRONG ? 3 : game.rain_intensity >= RAIN_MEDIUM ? 2
               : game.rain_intensity >= RAIN_LIGHT ? 1 : 0;
     return (*side == DIR_NORTH || *side == DIR_SOUTH ? RAIN_ALONG : RAIN_ACROSS) + level;
 }
@@ -2911,7 +2910,7 @@ static int view_hit_test_picture(int x, int y, int key)
     return pixel != key;
 }
 
-#define HIT_SIDE_LIMIT 0x4b      /* percent of the half picture width: a click beyond it hits a side */
+#define HIT_SIDE_LIMIT 75        /* percent of the half picture width: a click beyond it hits a side */
 #define HIT_DEPTH 1               /* the depth at which the creature in front is drawn for a hit test */
 
 int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
@@ -2936,7 +2935,7 @@ int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
     return 1;
 }
 
-#define HIT_SMALL_SIZE 0x20         /* a smaller ornament takes every click on its wall */
+#define HIT_SMALL_SIZE 32           /* a smaller ornament takes every click on its wall */
 
 int view_hit_test_wall_ornament(int pos, int x, int y)
 {

@@ -22,10 +22,10 @@
 #define WOUND_LOCATIONS 6           /* the hands, the head, the torso, the legs, the feet */
 #define WOUND_SHARP 0x8000          /* wound location bit: a sharp attack */
 #define COMMAND_PARRY 1             /* the last command of a hand that parries */
-#define DEFENSE_BASE 0x82
-#define PSYCHIC_BASE 0x73
-#define ADJUST_BASE 0xaa
-#define ADJUST_MIN 0x10
+#define DEFENSE_BASE 130
+#define PSYCHIC_BASE 115
+#define ADJUST_BASE 170
+#define ADJUST_MIN 16
 #define WOUND_ROLL_MASK 0x7f
 #define WOUND_ROLL_BASE 10
 #define WOUND_LOCATION_ROLL 7       /* the random wound location of a hit: 0 to 7 */
@@ -46,8 +46,8 @@
 #define ARMOUR_DEFENSE_MASK 0xff
 #define SHARP_FACTOR_BASE 4u        /* against a sharp attack: defense * (sharp factor + 4) / 8 */
 #define SHARP_FACTOR_SHIFT 3
-#define POISON_EVENT_DELAY 0x24
-#define POISON_DAMAGE_ROUND 0x1e
+#define POISON_EVENT_DELAY 36
+#define POISON_DAMAGE_ROUND 30
 #define POISON_DAMAGE_SHIFT 6
 #define DAMAGE_SHOW_TIME 5
 #define REDRAW_POISON 0x2800
@@ -61,16 +61,16 @@
 #define WEIGHT_FREE 12              /* the item weight that does not change the strength */
 #define WOUND_HAND_BIT(hand) ((hand) ? 2 : 1)
 /* Time effects. */
-#define REGEN_STEP 0x38
-#define REGEN_RANGE 0x80
+#define REGEN_STEP 56
+#define REGEN_RANGE 128
 #define MANA_PER_STEP 40
 #define MANA_STAMINA_BASE 16
 #define MANA_STAMINA_MIN 7
 #define HUNGER_BASE 4
 #define HUNGER_STEP_MIN 1
 #define HUNGER_STEP_MAX 6
-#define NEW_PARTY_TIME 0x50         /* game steps after the first recruit: the party gets hungry faster */
-#define NEW_PARTY_TIME_2 0xfa
+#define NEW_PARTY_TIME 80           /* game steps after the first recruit: the party gets hungry faster */
+#define NEW_PARTY_TIME_2 250
 #define HUNGRY (-0x200)
 #define STARVING (-0x400)
 #define HEALTH_REGEN_BASE 12

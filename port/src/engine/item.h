@@ -50,12 +50,12 @@ enum item_attr {
 #define SLOT_MASK_NO_CONTAINER 0x8000   /* the item does not go into a container */
 #define SLOT_MASK_POUCH 0x40
 #define SLOT_MASK_HAND 0x400
-#define POTION_POWER_MAX 0xff
+#define POTION_POWER_MAX 255
 
 /* GDAT texts (category, index, 5, entry) of an item: its name and its actions. */
 #define ITEM_NAME_ENTRY 0x18
 #define ACTION_ENTRY_FIRST 8
-#define ACTION_ENTRY_LAST 11
+#define ACTION_ENTRY_LAST 0x0b
 /* Fields of an action text. */
 enum {
     FIELD_SKILL = 0, FIELD_LEVEL = 1, FIELD_COMMAND = 2, FIELD_DELAY = 3, FIELD_STAMINA = 4, FIELD_POWER = 5,

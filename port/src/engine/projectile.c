@@ -42,7 +42,7 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define POISON_CLOUD_LAST 6         /* a poison cloud lasts while its power is at least this */
 #define POISON_CLOUD_POWER_SHIFT 5  /* the attack of a poison cloud: its power / 32, at most 4, plus a random bit */
 #define POISON_CLOUD_ATTACK_MAX 4
-#define DEATH_CLOUD_DECAY 0x28
+#define DEATH_CLOUD_DECAY 40
 #define DEATH_CLOUD_LAST 0x37
 #define SMOKE_DURATION 5
 
@@ -57,8 +57,8 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define SENSOR_ANY_THING 0x1ff          /* sensor data: any object or explosion type */
 #define SENSOR_STRONG_ONLY SENSOR_STATE  /* flags: explosions of power 0xff (0x7f for lightning) only; a hit stops the object */
 #define SENSOR_EFFECT_ALWAYS EFFECT_HOLD  /* effect: trigger with the inverted match */
-#define STRONG_POWER 0xff               /* the explosion power that a strong-only sensor needs */
-#define STRONG_LIGHTNING_POWER 0x7f
+#define STRONG_POWER 255                /* the explosion power that a strong-only sensor needs */
+#define STRONG_LIGHTNING_POWER 127
 #define ORNAMENT_KEY_CATCH 0x13         /* ornament value: the alcove catches thrown objects */
 #define DOOR_KEY_GRATE 0x10             /* door value: objects and weak spells fly through the door */
 #define ITEM_GRATE_PASSES 0x0002        /* the object can fly through a grate */
@@ -78,8 +78,8 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define ATTACK_KIND_ANY_DEXTERITY 9         /* unknown_1c: melee attack kinds */
 #define ATTACK_KIND_ALWAYS_HITS 8
 #define PUSH_BOUNCES 0xff                   /* push_resistance: objects bounce off the creature */
-#define SPELL_PUSH_MIN 0x28                 /* the strength of a push or pull spell */
-#define SPELL_PUSH_MAX 0xfe
+#define SPELL_PUSH_MIN 40                   /* the strength of a push or pull spell */
+#define SPELL_PUSH_MAX 254
 /* Random parts of the projectile attacks. */
 #define ROLL_POISON 0x7f                    /* poison weakens when this roll is above the energy */
 #define ROLL_GRATE 0x7f                     /* an object flies through a grate when its hit chance beats this roll */
@@ -97,17 +97,17 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define ATTACK_POWER_SHIFT 4                /* the attack of a hit: (power + energy) / 16 + 1 */
 #define POISON_BOLT_ATTACK_SHIFT 3          /* a poison bolt: energy / 8 + 1 */
 #define DEFENSE_SCALE_SHIFT 6               /* the damage to a creature: attack * 64 / defense */
-#define HIT_CHANCE_BONUS_BASE 0x20          /* a high hit chance doubles the attack above this - hit chance / 8 */
+#define HIT_CHANCE_BONUS_BASE 32            /* a high hit chance doubles the attack above this - hit chance / 8 */
 #define HIT_CHANCE_BONUS_SHIFT 3
 #define ROLL_MELEE 0x1f
 #define ROLL_MELEE_POWER 0xf
 #define ROLL_WOUND_LOCATION 0x70            /* all clear: the hit wounds the hands */
 #define WOUND_LOCATION_LAST 3
 #define MELEE_WEAK_POWER_BASE 2             /* a melee attack that armor stops still hits with 2 to 5 */
-#define VISIBILITY_INVISIBLE 0x10           /* the hit bonus against an invisible party */
+#define VISIBILITY_INVISIBLE 16             /* the hit bonus against an invisible party */
 #define DEXTERITY_ALWAYS_HITS 0xff
-#define DEXTERITY_DODGE_MARGIN 0x10
-#define LUCK_DODGE 0x3c
+#define DEXTERITY_DODGE_MARGIN 16
+#define LUCK_DODGE 60
 
 #define WOUND_PROJECTILE (WOUND_HEAD | WOUND_TORSO) /* the wounds of a projectile hit: head and torso */
 

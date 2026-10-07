@@ -9,7 +9,7 @@
 #define SONG_TYPE 3
 #define SONG_ENTRY 0
 #define SONG_VOLUME_FULL 0x7f
-#define FADE_STEPS 0x7f
+#define FADE_STEPS 127
 #define VOLUME_DEFAULT 5
 #define PATH_MAX_LENGTH 1024
 #define STEREO 2
@@ -33,7 +33,7 @@ static long read_file(const char *data_dir, const char *name, uint8_t *buf, long
 
 static int load_bank(const char *data_dir, const char *name, int bank)
 {
-    enum { BANK_MAX = 0x10000 };
+    enum { BANK_MAX = 65536 };
     uint8_t *buf = malloc(BANK_MAX);
     long n = buf ? read_file(data_dir, name, buf, BANK_MAX) : -1;
     int result = n < 0 ? FM_ERR_BANK : fm_set_bank(bank, buf, (size_t)n);

@@ -9,7 +9,7 @@
 
 #define MUSIC_SAMPLE_RATE 44100
 #define MUSIC_NO_SONG 0xff
-#define SONGLIST_MAX 0x3f   /* the game reads at most 63 bytes of SONGLIST.DAT */
+#define SONGLIST_MAX 63     /* the game reads at most 63 bytes of SONGLIST.DAT */
 
 enum {
     MUSIC_OK = 0,

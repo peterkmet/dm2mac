@@ -36,7 +36,7 @@
 /* Champion record values. */
 #define LOAD_PER_STEP_FACTOR 3          /* stamina for a step: 3 * load / max load + 1 */
 #define LOAD_PER_FALL_FACTOR 25
-#define FALL_DAMAGE_MAX 0x11
+#define FALL_DAMAGE_MAX 17
 #define STAMINA_REDRAW_LIMIT 10
 #define LOAD_TIME_DIVISOR 10            /* the step time of a champion for a creature alert: load / 10 */
 #define WALK_TIME_SLOW 50
@@ -49,7 +49,7 @@
 #define OVERLOAD_DELAY_BASE 4
 #define DISPLACE_DAMAGE_ROLL 10         /* the damage of a creature that lands on the party: 0 to 9, plus its push resistance / 8 */
 #define DISPLACE_RESISTANCE_SHIFT 3
-#define FALL_ALERT_DAMAGE 0x14          /* the damage alert of a creature that falls into a pit */
+#define FALL_ALERT_DAMAGE 20            /* the damage alert of a creature that falls into a pit */
 #define BASH_ROLL_MASK 0x0f             /* the random part of the strength of a champion who bashes a door */
 #define ALERT_MOOD_BORED 5              /* alert flags: mood bit 5, MOOD_BORED */
 #define BUMP_ALERT_CHANCE 5

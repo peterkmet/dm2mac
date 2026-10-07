@@ -40,19 +40,19 @@ enum {
 #define RUNES_PER_SET 6
 #define POWER_RUNE_BASE 0x5f            /* power = power rune - this */
 #define WISDOM_BONUS 15
-#define WISDOM_CHANCE_MAX 0x73
+#define WISDOM_CHANCE_MAX 115
 #define CAST_ROLL_MASK 0x7f
 #define EXPERIENCE_ROLL_MASK 7
 #define POTION_ROLL_MASK 0x0f
 #define POTION_POWER_PER_POWER 40
 #define FLASK_EMPTY 0x14                /* GDAT index of the empty flask */
 #define MISSILE_THING_BASE 0xff80       /* the thing of a missile spell type */
-#define MISSILE_POWER_MIN 0x15
-#define MISSILE_POWER_MAX 0xff
-#define MISSILE_ATTACK 0x5a
+#define MISSILE_POWER_MIN 21
+#define MISSILE_POWER_MAX 255
+#define MISSILE_ATTACK 90
 #define MISSILE_STEP_MAX 10
 #define EXPLOSION_POOF (MISSILE_THING_BASE + 0x28)  /* the summon found no room */
-#define EXPLOSION_POOF_POWER 0x6e
+#define EXPLOSION_POOF_POWER 110
 #define EXPLOSION_ON_SQUARE 0xff
 #define SUMMON_NO_LINK 0xffff
 #define INVISIBILITY_TICKS_SHIFT 3
@@ -62,14 +62,14 @@ enum {
 #define AURA_BIG 50                     /* a champion with a bigger aura makes a new aura a quarter */
 #define AURA_SHIFT 5
 #define LIGHT_EVENT_STEP 8              /* game ticks between two steps of a fading light */
-#define LIGHT_POWER_MIN 0x20
-#define LIGHT_POWER_MAX 0x100
+#define LIGHT_POWER_MIN 32
+#define LIGHT_POWER_MAX 256
 #define LIGHT_STRENGTH_MIN 8            /* power / 8, at least this */
 #define DARKNESS_SIGN (-2)              /* darkness takes twice the light of its level */
 #define TORCH_TICKS 2000                /* the base duration of the light spells */
 #define LIGHT_TICKS 10000
-#define SPELL_DELAY_POWER_BASE 0x12     /* the action delay: factor * (power + 18) / 24 */
-#define SPELL_DELAY_DIVISOR 0x18
+#define SPELL_DELAY_POWER_BASE 18       /* the action delay: factor * (power + 18) / 24 */
+#define SPELL_DELAY_DIVISOR 24
 #define CAST_KIND_MASK 0xf0
 /* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
 #define SPELL_ITEM_INDEX 0x0f

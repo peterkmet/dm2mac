@@ -13,7 +13,7 @@
 #define GLOBAL_WORD_COUNT 64
 #define MAGIC_LIGHT_SIZE 6
 #define SAVE_NAME_SIZE 32     /* a slot name of up to 31 characters and its end mark */
-#define SAVE_HEADER_SIZE 0x2a /* the save file header: format word, slot name, empty slot mark */
+#define SAVE_HEADER_SIZE 42   /* the save file header: format word, slot name, empty slot mark */
 #define SAVE_HEADER_NAME 2    /* the offset of the slot name in the header */
 #define EVENT_SLACK 50        /* timeline events beyond one for each group, projectile, and explosion record */
 #define VOLUME_SETTING_START 7 /* the sound and music volumes of a new game */

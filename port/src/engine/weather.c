@@ -20,7 +20,7 @@
 /* Sound (CAT_SKY, graphics set, 0): the thunder. */
 #define THUNDER_PRIORITY 0x19
 #define THUNDER_VOLUME 0x40
-#define HOUR_TICKS 0x555            /* game ticks of one hour */
+#define HOUR_TICKS 1365             /* game ticks of one hour */
 #define HOURS_PER_DAY 24
 #define LAST_HOUR 23
 
@@ -40,20 +40,20 @@ enum {
 /* Sky objects (GDAT (CAT_SKY, graphics set, entry)) and the weather amounts that show them. */
 enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY_RAIN_MEDIUM, SKY_RAIN_HEAVY,
        SKY_CLOUDS_LIGHT, SKY_CLOUDS_MEDIUM, SKY_CLOUDS_HEAVY };
-#define DARKNESS_RAIN 0x10
-#define DARKNESS_MEDIUM 0x40
-#define DARKNESS_HEAVY 0x80
-#define CLOUDS_SHOWN 0x40
-#define CLOUDS_MORE 0x80
-#define CLOUDS_MOST 0xc0
-#define CLOUDS_MAX 0xff
-#define STORM_MAX 0xff
+#define DARKNESS_RAIN 16
+#define DARKNESS_MEDIUM 64
+#define DARKNESS_HEAVY 128
+#define CLOUDS_SHOWN 64
+#define CLOUDS_MORE 128
+#define CLOUDS_MOST 192
+#define CLOUDS_MAX 255
+#define STORM_MAX 255
 #define STORM_STEPS 32
-#define STORM_STRONG 0xcd           /* from this storm intensity on lightning comes more often */
-#define STORM_WEAK 0xb6             /* below this storm intensity lightning does not hit the party */
-#define STORM_LIGHTNING_HITS 0x3c   /* rand_below(storm + 1) from this value: the lightning hits squares */
-#define STORM_STEP_DELAY 0x32       /* plus 0 to 255 ticks between storm steps */
-#define STORM_RANDOM_SPAN 0x100
+#define STORM_STRONG 205            /* from this storm intensity on lightning comes more often */
+#define STORM_WEAK 182              /* below this storm intensity lightning does not hit the party */
+#define STORM_LIGHTNING_HITS 60     /* rand_below(storm + 1) from this value: the lightning hits squares */
+#define STORM_STEP_DELAY 50         /* plus 0 to 255 ticks between storm steps */
+#define STORM_RANDOM_SPAN 256
 #define STORM_FIRST_DELAY 500       /* ticks to the first storm step of a run */
 #define STORM_NEXT_DELAY 8000       /* plus STORM_FIRST_DELAY: ticks to the storm of a new cycle */
 #define CALM_CURVE 3
@@ -62,9 +62,9 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define STRIKE_THRESHOLD_SPAN 4
 #define RAIN_CHANCE_MAX 7           /* rand_below(span) up to this starts rain */
 #define LIGHTNING_CHANCE_WEAK 7
-#define LIGHTNING_CHANCE_STRONG 0x28
-#define LIGHTNING_CHANCE_CALM 0x40  /* 1 in 64 without a storm */
-#define LIGHTNING_RANGE 0x20        /* random squares 0 to 31 */
+#define LIGHTNING_CHANCE_STRONG 40
+#define LIGHTNING_CHANCE_CALM 64    /* 1 in 64 without a storm */
+#define LIGHTNING_RANGE 32          /* random squares 0 to 31 */
 #define LIGHTNING_STRIKES_MASK 7
 #define LIGHTNING_PERCENT 100       /* the bolt stands at 0 to 99 % between its zone and the next zone */
 #define LIGHTNING_EXPLOSION 0xffb0  /* explosion type of a lightning strike */
@@ -74,7 +74,7 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define STRIKE_PARTY_TIME 12000     /* game time before which lightning never hits the party square */
 #define THUNDER_CALM_DELAY 10       /* plus 5: thunder delay without a storm */
 #define THUNDER_CALM_BASE 5
-#define THUNDER_DELAY_BASE 0x4c
+#define THUNDER_DELAY_BASE 76
 #define THUNDER_DELAY_MAX 15
 #define STORM_SPAN_JITTER 0xf      /* plus 0 to 15 on the random span of rain and lightning */
 #define TARGET_X_SHIFT 8            /* lightning target value: x in the high byte, y in the low byte */

@@ -134,7 +134,7 @@ enum global_var_op {
     GLOBAL_VAR_SET, GLOBAL_VAR_CLEAR, GLOBAL_VAR_TOGGLE, GLOBAL_VAR_ADD, GLOBAL_VAR_SUBTRACT, GLOBAL_VAR_ASSIGN = 6
 };
 #define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS)  /* the first byte variable */
-#define GLOBAL_BYTE_MAX 0xff
+#define GLOBAL_BYTE_MAX 255
 
 /* Sensors that act on creatures (creature.c). */
 /* Creature sensors: a sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */

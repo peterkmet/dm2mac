@@ -292,8 +292,8 @@ void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
 #define WATER_PER_DRINK 800
 #define WATER_PER_POTION 1600
 #define MANA_POTION_MAX 900
-#define DIVISOR_POWER_TOP 0x1ff     /* drink_potion: the divisor of the stat gains falls as the power rises */
-#define DIVISOR_POWER_BASE 0x20
+#define DIVISOR_POWER_TOP 511       /* drink_potion: the divisor of the stat gains falls as the power rises */
+#define DIVISOR_POWER_BASE 32
 #define EMPTY_FLASK 0x14            /* the potion kind of an empty flask */
 #define WOUND_TRIES 10
 #define REDRAW_EATEN 0x3800

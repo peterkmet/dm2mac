@@ -63,7 +63,7 @@ enum {
 /* Wall sensor types of objects put on a wall cell. */
 enum { WALL_ITEM_HOLDER = 0x1a, WALL_ANY_ITEM = 0x29, WALL_ITEM = 0x2a, WALL_NOT_ITEM = 0x2b };
 /* Ornament text subtypes. */
-enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_FALL_RISK = 10 };
+enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_FALL_RISK = 0x0a };
 
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET 1
@@ -72,15 +72,15 @@ enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_F
 #define PIT_OPEN_TICKS 5            /* a random pit closes again after 5 ticks */
 #define ALTAR_REBIRTH_STEPS 2
 #define CLICK_EVENT_DELAY 2         /* the ticks before a clicked button turns idle or an item holder shows its marker */
-#define BUTTON_INVERTED_DELAY 0x10  /* an inverted button triggers 16 ticks later */
+#define BUTTON_INVERTED_DELAY 16    /* an inverted button triggers 16 ticks later */
 /* A party that leaves a fall risk square: its chance in percent to fall to the next level. */
 #define FALL_LOAD_FACTOR 10         /* per champion load / half of the maximum load */
-#define FALL_CHANCE_SHOWN 0x32      /* the text is visible */
-#define FALL_CHANCE_HIDDEN 0x19
-#define FALL_CHANCE_MAX 0x5a
+#define FALL_CHANCE_SHOWN 50        /* the text is visible */
+#define FALL_CHANCE_HIDDEN 25
+#define FALL_CHANCE_MAX 90
 /* The delay of the next creature of a generator text: a base and a random part as large. */
-#define GENERATOR_SLOW_DELAY 0x200
-#define GENERATOR_FAST_DELAY 0x2000
+#define GENERATOR_SLOW_DELAY 512
+#define GENERATOR_FAST_DELAY 8192
 #define GENERATOR_SLOW_SHOWN_FACTOR 4   /* a visible generator text waits longer */
 
 static uint8_t *square_byte(int x, int y)

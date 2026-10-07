@@ -45,7 +45,7 @@ enum {
     MISSILE_FRONT,                  /* front picture 8 only */
     MISSILE_NO_SIDE,                /* no side picture 12 */
 };
-enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_BACK = 10, MISSILE_PICTURE_SIDE = 12 };
+enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_BACK = 0x0a, MISSILE_PICTURE_SIDE = 0x0c };
 
 enum view_aspect {
     ASPECT_WALL, ASPECT_FLOOR, ASPECT_PIT, ASPECT_TELEPORTER = 5, ASPECT_HIDDEN = 7,
@@ -54,7 +54,7 @@ enum view_aspect {
 
 extern ViewSquare view_squares[VIEW_SQUARE_COUNT];
 /* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward. */
-#define VIEW_GRID_SIZE 0x166
+#define VIEW_GRID_SIZE 358
 /* The view position of the square that holds each grid cell. */
 extern uint8_t view_creature_grid[VIEW_GRID_SIZE];
 /* The view position of the square of the creature that stands at each grid cell, 0xff for none. */

@@ -53,7 +53,7 @@ enum { PANEL_MODE_NONE, PANEL_MODE_FOOD, PANEL_MODE_SKILLS, PANEL_MODE_OBJECT, P
 /* Object info gauge glyphs and their scales. */
 enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_POTION = 0x75, GLYPH_GAUGE_LEFT = 0x60,
        GLYPH_GAUGE_RIGHT = 0x65 };
-#define WEAPON_STRENGTH_MAX 0x50
+#define WEAPON_STRENGTH_MAX 80
 #define WEAPON_THROW_MAX 100
 #define ARMOUR_CLASS_MAX 200
 #define ARMOUR_CLASS_MASK 0xff
@@ -74,13 +74,13 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 
 /* The slots of the status boxes (champion * 2 + hand), of the inventory (8 + slot), of the object info,
    and of the open container: zone, icon of the empty slot, and the drawn state. */
-#define SLOT_ENTRY_COUNT 0x37
+#define SLOT_ENTRY_COUNT 55
 #define SLOT_STATUS_COUNT 8
 #define SLOT_INVENTORY_FIRST 8
 #define SLOT_INFO 0x2e
 #define SLOT_CONTAINER_INFO_FIRST 0x2f
-#define SLOT_FRAMED_COUNT 0x0e      /* slots that have a frame: the hands and the inventory hands to legs */
-#define SLOT_BACKGROUND_COUNT 0x26  /* slots that redraw their background */
+#define SLOT_FRAMED_COUNT 14        /* slots that have a frame: the hands and the inventory hands to legs */
+#define SLOT_BACKGROUND_COUNT 38    /* slots that redraw their background */
 #define SLOT_WOUND_COUNT 6
 #define SLOT_ACTIVE 0x01
 #define SLOT_WOUNDED 0x02

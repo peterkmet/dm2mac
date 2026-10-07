@@ -30,8 +30,8 @@
 
 /* Format codes. */
 enum {
-    FORMAT_TITLE = 2, FORMAT_DATA_PATH = 3, FORMAT_SAVE_PATH = 4, FORMAT_DISK_PATH = 15, FORMAT_CHAMPION = 7, FORMAT_NUMBER_FIRST = 10, FORMAT_NUMBER_LAST = 14, FORMAT_TEXT = 17,
-    FORMAT_TITLE_2 = 27
+    FORMAT_TITLE = 2, FORMAT_DATA_PATH = 3, FORMAT_SAVE_PATH = 4, FORMAT_DISK_PATH = 0x0f, FORMAT_CHAMPION = 7, FORMAT_NUMBER_FIRST = 0x0a, FORMAT_NUMBER_LAST = 0x0e, FORMAT_TEXT = 0x11,
+    FORMAT_TITLE_2 = 0x1b
 };
 #define FORMAT_TITLE_INDEX 0xfe
 #define FORMAT_TITLE_2_ENTRY 6
@@ -291,7 +291,7 @@ int16_t text_gdat_field(int category, int index, int entry, int field)
 #define TEXT_CODE_MASK 0x1f
 #define TEXT_CODES_PER_WORD 3
 #define TEXT_ESCAPE_WORDS 10
-enum { TEXT_SPACE = 26, TEXT_PERIOD = 27, TEXT_NEWLINE = 28, TEXT_ESCAPE_CHAR = 29, TEXT_ESCAPE_WORD = 30, TEXT_END = 31 };
+enum { TEXT_SPACE = 0x1a, TEXT_PERIOD = 0x1b, TEXT_NEWLINE = 0x1c, TEXT_ESCAPE_CHAR = 0x1d, TEXT_ESCAPE_WORD = 0x1e, TEXT_END = 0x1f };
 static const char *const text_escape_words[TEXT_ESCAPE_WORDS] = {"x", "y", "THE ", "YOU ", "z", "{", "|", "}", "~", "\x7f"};
 static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
 #define TEXT_MODE_NEW_LINE 1
