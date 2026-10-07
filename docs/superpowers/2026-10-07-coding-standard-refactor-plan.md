@@ -492,10 +492,10 @@ The target folder of each existing file in `port/src/`:
 **Files:**
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Add an entry to `CHANGELOG.md`.** Use the format of the existing entries. Content:
+- [x] **Step 1: Add an entry to `CHANGELOG.md`.** Use the format of the existing entries. Content:
   - `port/src/` has the layers `data/`, `engine/`, `ui/`, and `platform/`.
   - `docs/coding-standard.md` has rules 7 to 9 and a check list. `tests/test_standard.py` checks the rules. `tests/standard_allowlist.txt` lists the open violations.
   - The decompiled code is in `reference/decomp/`. `tools/test-suite` replaces `scripts/test-suite`. `docs/todo.md` replaces `TODO.md`.
-- [ ] **Step 2: Run the full suite.** `tools/test-suite`. Expected: the tree already passed, or all pass.
-- [ ] **Step 3: Commit.** `git commit -am "docs: changelog for the coding standard and the source layers"`
+- [x] **Step 2: Run the full suite.** `tools/test-suite`. Expected: the tree already passed, or all pass.
+- [x] **Step 3: Commit.** `git commit -am "docs: changelog for the coding standard and the source layers"`
 - [ ] **Step 4: Wait.** Merge to `main` and push only after the user confirms (CLAUDE.md section 3, step 7).
