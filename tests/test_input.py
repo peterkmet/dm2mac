@@ -174,6 +174,7 @@ def test_cursor_matches_original(tree, lib):
             theirs = emu.call(MOUSE_MOVE_EVENT, x, y, allow_io=True) & 0xFFFF
             assert lib.input_cursor_at(x, y) == theirs, (mode, x, y, hex(hand), leader)
             seen.add((mode, theirs))
+    drag.value = 0  # the library lives through the module: later tests start without a dragged champion
     assert {cursor for _, cursor in seen} == {0, 1, 2, 3}
     assert {mode for mode, cursor in seen if cursor == 2} >= {5, 8}
     assert {mode for mode, cursor in seen if cursor == 3} == {5, 8}

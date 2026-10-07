@@ -127,4 +127,4 @@ Extra items per task, from the task 0b report:
 
 **Tests:** `restype = ctypes.c_bool` for the `bool` functions that tests call through ctypes (`automap_is_seen`, `item_is_moneybox`, `item_is_chest`, `item_is_minion_map`, the line tests of ai_move.c).
 
-**Flaky:** `tests/test_input.py::test_sleep_and_wake_match_original` failed 3 of 12 parallel runs in the task 1 worktree, once already on its first commit; serial runs pass. Debug it as a separate issue, like the `AiContext` padding.
+**Flaky (done):** root cause: `test_cursor_matches_original` left `input_drag_state = 1` in the module-scoped library; a later sleep click on the same xdist worker was not idle and did nothing. The cursor test now resets it. Former item: `tests/test_input.py::test_sleep_and_wake_match_original` failed 3 of 12 parallel runs in the task 1 worktree, once already on its first commit; serial runs pass. Debug it as a separate issue, like the `AiContext` padding.
