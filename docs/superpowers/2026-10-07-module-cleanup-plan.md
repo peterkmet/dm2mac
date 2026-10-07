@@ -95,6 +95,21 @@ Extra items per task, from the task 0b report:
 - `recruit.c:50` writes 0xff: use `COMMAND_NONE`.
 - `ai.h`: `creature_is_near_party_front` returns `bool` like its definition; remove its `bool` allowlist line.
 
+**Names that do not fit their use (review of tasks 1, 2, 8):**
+- `ui/input.c`: `NODE_IF_ACTION_LIST` is the minion map layout condition (node 50 under `NODE_IF_ACTION_MODE` with `ACTION_MODE_MINION_MAP`); rename, for example `NODE_IF_MINION_MAP_LAYOUT`.
+- `engine/creature.h`: `POSSESSIONS_HIDE_CLICKS` (0x2000) means the objects under the creature stay clickable and a drop goes into the front cells; rename, for example `POSSESSIONS_FLOOR_CLICKABLE`.
+- `ui/view.c`: the comment of `CLICK_HALF_SIZE` covers only the width; the code uses it for the height too.
+- `ui/input.c`: `EVENT_CLICK_TYPES` 0x13 is `INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT |` a named bit 0x10.
+- `ui/input.c`: `NODE_INDEX_MASK` as the node condition is `~NODE_HAS_CHILDREN`.
+- `ui/session.c:350`: a `dungeon.h` accessor for the party start direction instead of `location_map(start) & (DIR_COUNT - 1)`.
+- `ui/view.c:3067`: `memset(&s, ORNAMENT_NONE, sizeof s)` fills every byte; say so or set the fields.
+- `ui/input.c`: `DIR_COUNT` used as the cell count (use `CELL_COUNT`), `HALF_CELLS` as the possession cell offset (use `CELL_POSSESSION_FIRST`).
+- `ui/zone.c`: one comment per define for `LAYOUT_RANGE_COUNT` and `LAYOUT_RANGES`.
+- `ui/input.c`: `POS_PARTY_SQUARE`, `POS_FRONT_SQUARE` repeat `POS_PARTY`, `POS_FRONT` of view.c -> `view.h`.
+- One-line helpers with one call site: `face_word`, `map_random_wall_count`, `thing_in_cell_of`, `missile_dir` in view.c; inline them or replace them with owner accessors.
+- `BYTE_BITS`, `BYTE_MASK`, `NIBBLE_*`, `DECIMAL_BASE` move from `data/gdat.h` to `data/le.h` (control.c, hmp.c, fm.c include gdat.h only for them); rename `le.h` if its name no longer fits.
+- `engine/move.c:550` `party.push_arrow = 6` -> `PUSH_ARROW_NONE`.
+
 **Tests:** `restype = ctypes.c_bool` for the `bool` functions that tests call through ctypes (`automap_is_seen`, `item_is_moneybox`, `item_is_chest`, `item_is_minion_map`, the line tests of ai_move.c).
 
 **Flaky:** `tests/test_input.py::test_sleep_and_wake_match_original` failed 3 of 12 parallel runs in the task 1 worktree, once already on its first commit; serial runs pass. Debug it as a separate issue, like the `AiContext` padding.
