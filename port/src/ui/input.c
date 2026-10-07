@@ -40,7 +40,7 @@
 #define CLICK_FEEDBACK_SIZE 0xec
 #define LIST_START 0x8000
 #define NODE_HAS_CHILDREN 0x80
-#define NODE_INDEX_MASK 0x7f        /* a child list entry: the node index; a node condition: the condition */
+#define NODE_INDEX_MASK 0x7f        /* a child list entry: the node index */
 #define COMMAND_MASK 0x7ff
 #define COMMAND_OFF 0x08
 #define ZONE_IN_PANEL 0x8000
@@ -55,7 +55,9 @@
 #define KEY_BUFFER 16
 #define EVENT_ENTER_AREA 0x40
 #define EVENT_LEAVE_AREA 0x60
-#define EVENT_CLICK_TYPES 0x13      /* the mouse event types that find a click command: bits 0, 1, and 4 */
+#define EVENT_CLICK_OTHER 0x10      /* a click type of the original that the port never queues */
+/* the mouse event types that find a click command: bits 0, 1, and 4 */
+#define EVENT_CLICK_TYPES (INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT | EVENT_CLICK_OTHER)
 #define ARROW_W 12
 #define HAND_W 16
 #define CURSOR_H 16
@@ -74,24 +76,6 @@ enum { CURSOR_KIND_HAND = 1, CURSOR_KIND_CHAMPION = 2 };
 typedef struct { uint16_t command, zone; uint8_t buttons, flags; } InputCommand;
 typedef struct { uint16_t command, key; } InputKey;
 
-/* Commands (command_execute). */
-enum {
-    CMD_INVENTORY_FIRST = 7, CMD_INVENTORY_LEADER = 0x0b, CMD_LEADER_FIRST = 0x10, CMD_LEADER_LAST = 0x13,
-    CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41, CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
-    CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
-    CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_SAVE = 0x8c, CMD_VOLUME = 0x8d, CMD_EDIT_CHAMPION_NAME = 0x48,
-    CMD_NEW_GAME = 0xd7, CMD_NEW_GAME_B = 0xd8, CMD_LOAD_GAME = 0xd9, CMD_MENU_PICTURE = 0xda, CMD_CANCEL_PUSH = 0xe1,
-    CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
-    CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
-    CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81,
-    CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_EYE = 0x47, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
-    CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93,
-    CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
-    CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59,
-    CMD_NAME_EDITOR_LAST = 0x4b,    /* the buttons of the name editor follow CMD_EDIT_CHAMPION_NAME */
-    CMD_VOLUME_SETTING_FIRST = 0x95, CMD_VOLUME_SETTING_LAST = 0xa4, CMD_DIALOG_BUTTON_LAST = 0xde,
-    CMD_QUICK_SAVE = CMD_LAST + 1, CMD_QUICK_LOAD, CMD_AUTOMAP  /* the advanced mode: no original command has these numbers */
-};
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
     {0x00, 0, 0}, {0x00, 0, 1}, {0x00, 0, 2}, {0x00, 0, 3}, {0x00, 0, 4}, {0x00, 1, 5},
@@ -324,7 +308,7 @@ void input_init(void)
 enum {
     NODE_IF_ALWAYS, NODE_IF_SCREEN_MODE, NODE_IF_BUTTON_COUNT, NODE_IF_INVENTORY, NODE_IF_CHAMPION_ALIVE,
     NODE_IF_CHAMPION_IN_CELL, NODE_IF_DRAGGING, NODE_IF_ICON_IN_CELL, NODE_IF_ACTION_COUNT, NODE_IF_RUNE_SET,
-    NODE_IF_ACTION_LIST, NODE_IF_ACTION_MODE
+    NODE_IF_MINION_MAP_LAYOUT, NODE_IF_ACTION_MODE
 };
 #define MAP_WITHOUT_OPTIONS 5       /* the condition argument of a minion map without option buttons */
 
@@ -353,7 +337,7 @@ static int input_condition(int cond, int arg)
         return arg >= DIR_COUNT || champion_in_party_cell(arg) >= 0;
     case NODE_IF_ACTION_COUNT: return action.champion && arg == champ_action_count;
     case NODE_IF_RUNE_SET: return action.champion && arg & 1 << champion(action.champion - 1)->rune_count;
-    case NODE_IF_ACTION_LIST:
+    case NODE_IF_MINION_MAP_LAYOUT:
         if (!action.champion) return 0;
         return arg == (action.flags & MAP_HAS_OPTIONS ? champ_action_count : MAP_WITHOUT_OPTIONS);
     case NODE_IF_ACTION_MODE: return arg == action.mode;
@@ -457,7 +441,7 @@ static uint16_t find_click_command(const InputNode *node, int x, int y, int butt
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             command = find_click_command(child, x, y, buttons);
         } else {
@@ -475,7 +459,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             command = find_key_command(child, key);
             if (command) return command;
@@ -525,7 +509,7 @@ static void mark_active_zones(const InputNode *node, uint8_t *active)
 {
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) mark_active_zones(child, active);
         else active[child->link] = 1;
     }
@@ -839,8 +823,8 @@ static const uint8_t *click_feedback_script(Command *c)
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == CMD_VOLUME
         || (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL)
         || (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST)
-        || (command >= CMD_VOLUME_SETTING_FIRST && command <= CMD_VOLUME_SETTING_LAST)
-        || (command >= CMD_EDIT_CHAMPION_NAME && command <= CMD_NAME_EDITOR_LAST))
+        || (command >= CMD_SOUND_VOLUME_FIRST && command <= CMD_MUSIC_VOLUME_LAST)
+        || (command >= CMD_EDIT_CHAMPION_NAME && command <= CMD_EDIT_CANCEL))
         offset = SCRIPT_EXECUTE;
     else if (command <= CMD_MOVE_LEFT) offset = (command - CMD_TURN_LEFT) * SCRIPT_MOVE_SIZE + SCRIPT_MOVE_FIRST;
     else if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST)
@@ -1681,7 +1665,7 @@ static const InputCommand *find_command_entry(const InputNode *node, uint16_t co
 {
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             const InputCommand *e = find_command_entry(child, command);
             if (e) return e;

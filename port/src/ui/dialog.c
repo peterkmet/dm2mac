@@ -18,11 +18,8 @@
 #define DIALOG_MESSAGE_ENTRY 0x14
 #define DIALOG_PICTURE_ENTRY 0
 #define DIALOG_VOLUME_BUTTONS 7
-#define INPUT_MODE_DIALOG 4
-#define KEY_ENTER 0x1c
 #define BUTTON_KEY 7                    /* transparent color of a pressed button picture */
 #define BUTTON_PRESS_VBLANKS 20
-#define ZONE_DIALOG_BACK 4              /* the viewport of the dialog picture */
 #define ZONE_DIALOG_SCREEN 5            /* where the dialog viewport goes on a black screen */
 #define ZONE_DIALOG_VERSION 0x1c2
 #define ZONE_DIALOG_MESSAGE_WIDE 0x1d5  /* the message zone of a dialog with fewer than 2 buttons */
@@ -43,8 +40,7 @@ enum {
     VOLUME_SOUND_LABEL = 0x28, VOLUME_SOUND_OFF = 0x29, VOLUME_MUSIC_LABEL = 0x3c, VOLUME_MUSIC_OFF = 0x3d,
     VOLUME_BUTTON = 2, VOLUME_BUTTON_ON = 3, VOLUME_LEVELS = 8,
     ZONE_SOUND_LABEL = 0x15f, ZONE_SOUND_BUTTON = 0x160, ZONE_SOUND_TEXT = 0x168,
-    ZONE_MUSIC_LABEL = 0x170, ZONE_MUSIC_BUTTON = 0x171, ZONE_MUSIC_TEXT = 0x179,
-    CMD_SOUND_VOLUME_FIRST = 0x95, CMD_MUSIC_VOLUME_FIRST = 0x9d, CMD_MUSIC_VOLUME_LAST = 0xa4
+    ZONE_MUSIC_LABEL = 0x170, ZONE_MUSIC_BUTTON = 0x171, ZONE_MUSIC_TEXT = 0x179
 };
 /* The test sound of a new sound volume. */
 enum { TEST_SOUND_INDEX = 0, TEST_SOUND_ENTRY = 0x8b, TEST_SOUND_PRIORITY = 0x6c };

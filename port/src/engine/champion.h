@@ -86,9 +86,9 @@ enum {
 };
 #define ATTACK_BLOCKABLE 0x8000
 #define THROW_COOLDOWN 4           /* game.throw_cooldown after a throw or a launch */
-/* Champion sounds (GDAT category CAT_CHAMPION, index portrait): a fall, and a push or bump that hurts. A push that
-   fails plays SOUND_HURT. */
-#define SOUND_ENTRY_FALL 0x87
+/* Champion sounds (GDAT category CAT_CHAMPION, index portrait): the scream of a fall or of the end of the game, and
+   a push or bump that hurts. A push that fails plays SOUND_HURT. */
+#define SOUND_ENTRY_SCREAM 0x87
 #define SOUND_PRIORITY_FALL 0xbe
 #define SOUND_ENTRY_PUSHED 0x8a
 #define SOUND_PRIORITY_PUSHED 100

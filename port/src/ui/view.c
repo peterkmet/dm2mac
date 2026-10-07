@@ -1309,7 +1309,7 @@ static void view_add_click_zone(const int16_t *rect, int kind, int cell)
 #define CLICK_MIN_WIDTH 14
 #define CLICK_MIN_HEIGHT 11
 #define CLICK_LOW_HEIGHT 15         /* a lower picture moves its zone up to its middle */
-#define CLICK_HALF_SIZE 7           /* half the minimum width: a small zone is centered on the picture */
+#define CLICK_HALF_SIZE 7           /* a narrow or low zone starts this far before the middle of its picture */
 
 /* Sets click zone index to the rectangle of the last picture (at least 14 x 11 pixels), or widens it. */
 static void view_set_click_zone(int index, uint16_t thing, int cell, int kind)
@@ -3043,7 +3043,7 @@ int view_hit_test_wall_ornament(int pos, int x, int y)
 int view_wall_face_ornament(int map, uint16_t first, int dir)
 {
     ViewSquare s;
-    memset(&s, ORNAMENT_NONE, sizeof s);
+    memset(&s, ORNAMENT_NONE, sizeof s);  /* every byte of the square, not only its ornament fields */
     int saved = view.map;
     view.map = map;
     apply_wall_things(&s, first, dir, 1);

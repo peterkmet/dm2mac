@@ -12,6 +12,8 @@ enum dialog_id {
 enum dialog_message { MESSAGE_NONE = 0, MESSAGE_SAVE_FAILED = 0x1b, MESSAGE_GAME_DAMAGED = 0x1f };
 /* The commands of the dialog buttons: the first button, then the next ones. */
 #define CMD_DIALOG_BUTTON_FIRST 0xdb
+#define CMD_DIALOG_BUTTON_LAST 0xde
+#define ZONE_DIALOG_BACK 4      /* the viewport of the dialog picture */
 
 typedef struct {
     int screen_mode;            /* 1: the dialogs draw on a black screen; 0: in the game viewport */

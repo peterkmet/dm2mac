@@ -4,12 +4,12 @@
 #include "fm.h"
 #include "hmp.h"
 #include "music.h"
+#include "sound.h"
 
 #define SONG_TYPE 3
 #define SONG_ENTRY 0
 #define SONG_VOLUME_FULL 0x7f
 #define FADE_STEPS 0x7f
-#define VOLUME_MAX 7
 #define VOLUME_DEFAULT 5
 #define PATH_MAX_LENGTH 1024
 #define STEREO 2
@@ -124,7 +124,7 @@ void music_update_for_map(int map)
 
 void music_set_volume(int level)
 {
-    level = level < 0 ? 0 : level > VOLUME_MAX ? VOLUME_MAX : level;
+    level = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
     if (music.enabled) {
         hmp_set_master_volume(level * 2 | level << MASTER_VOLUME_SHIFT);  /* 0 to 126 */
         if (music.started) {

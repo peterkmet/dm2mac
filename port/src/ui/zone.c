@@ -10,8 +10,8 @@
 #define LAYOUT_ENTRY 0
 #define LAYOUT_SIGNATURE 0xfc0d
 #define RANGE_MAX 256
-#define LAYOUT_RANGE_COUNT 2    /* byte offsets of the header words */
-#define LAYOUT_RANGES 4
+#define LAYOUT_RANGE_COUNT 2    /* the byte offset of the range count word of the header */
+#define LAYOUT_RANGES 4         /* the byte offset of the first range */
 #define RANGE_SIZE 4            /* the first and the last zone word of a range */
 #define RANGE_LAST 2
 #define WORD_SIZE 2

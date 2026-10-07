@@ -25,14 +25,11 @@
 #define FOOD_START 1500
 #define FOOD_RANDOM_MASK 0xff       /* a new champion gets up to 255 more food and water */
 #define LAST_COMMAND_NONE 0xff      /* the hand used no command yet */
-#define CMD_RECRUIT 0x92
-#define CMD_RECRUIT_CANCEL 0x93
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */
 #define MOUTH_CATEGORY 9
 #define MOUTH_INDEX 0x5b
 #define MOUTH_OPEN 0xfb             /* also the entry of its sound */
 #define MOUTH_SOUND_PRIORITY 0xff
-#define INPUT_MODE_RECRUIT 7
 #define MESSAGE_COLOR_FIRST UI_GREEN
 enum { DATA_HEALTH, DATA_STAMINA, DATA_MANA, DATA_STATS, DATA_SKILLS = 6 };  /* word indices; skill s at DATA_SKILLS + s */
 

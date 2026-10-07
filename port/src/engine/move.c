@@ -756,7 +756,7 @@ static void transit_party_lands(Transit *t)
             int base = c->max_health >> 2;
             if (base > FALL_DAMAGE_MAX) base = FALL_DAMAGE_MAX;
             champ_take_damage(i, (int16_t)((rand_2bits() + base) * t->falls), FALL_WOUNDS, ATTACK_TYPE_SELF);
-            sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_FALL, SOUND_FALLBACK, game.party_x,
+            sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, game.party_x,
                                      game.party_y, -1, SOUND_PRIORITY_FALL, SOUND_VOLUME_MAX);
         }
         t->fell_hurt = 1;
