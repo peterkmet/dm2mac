@@ -2,6 +2,7 @@
 #define SAVE_H
 #include <stdint.h>
 #include "gdat.h"
+#include "le.h"
 
 #define CHAMPION_MAX 4
 #define CHAMPION_SIZE 263
@@ -11,6 +12,7 @@
 #define MAGIC_LIGHT_SIZE 6
 #define SAVE_NAME_SIZE 32     /* a slot name of up to 31 characters and its end mark */
 #define VOLUME_SETTING_START 7 /* the sound and music volumes of a new game */
+#define LEADER_NONE 0xffff     /* game.leader of a party without a leader */
 
 enum {
     SAVE_OK = 0,
@@ -44,6 +46,10 @@ typedef struct {
 } Game;
 
 extern Game game;
+
+/* The magic light of the party: the first word of game.magic_light. */
+static inline int16_t save_magic_light(void) { return (int16_t)le16(game.magic_light); }
+static inline void save_set_magic_light(int16_t light) { put_le16(game.magic_light, (uint16_t)light); }
 
 /* Loads a save file (SKSAVEn.DAT or .BAK) into the dungeon, the timeline, the random seed, and game.
    gdat answers the creature and container questions of the format. On an error the dungeon is empty. */

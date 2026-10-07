@@ -68,6 +68,13 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define NO_CELL 0xff
 #define GFX_SET_SHIFT 4             /* map graphics word: wall set in bits 4-7 */
 #define GFX_SET_MASK 0x0f
+#define GDAT_TYPE_REMAP 7           /* GDAT type of a color remap table */
+#define ICON_COLORS 16              /* the colors of a 4 bpp picture */
+#define ICON_BPP 8
+#define FACE_BPP 4
+#define JITTER_CENTER 2             /* haste_jitter: a roll of 1 to 3 moves by -1 to 1 */
+#define ACTION_TEXT_FIRST 8         /* GDAT texts 8 to 11 of an item are its actions */
+#define PILE_SLOT_STEP 8            /* the coin pile of each slot starts 8 offsets further */
 
 ActionArea action;
 
@@ -104,12 +111,12 @@ void action_reset(void)
 
 uint16_t action_open_hand_item(void)
 {
-    if (action.champion <= 0 || action.hand < 0 || action.hand > 1) return THING_NONE;
+    if (action.champion <= 0 || action.hand < 0 || action.hand > SLOT_ACTION_HAND) return THING_NONE;
     return action.hand_items[action.champion - 1][action.hand];
 }
 
 /* A direction or cell relative to the party direction. */
-static int relative_dir(int dir) { return (dir + DIR_COUNT - game.party_dir) & 3; }
+static int relative_dir(int dir) { return (dir + DIR_COUNT - game.party_dir) % DIR_COUNT; }
 
 /* The wall set of the party map. */
 static uint8_t map_gfx_set(void) { return dungeon_map_graphics(game.party_map) >> GFX_SET_SHIFT & GFX_SET_MASK; }
@@ -154,8 +161,8 @@ static void draw_action_result(int16_t value)
         char digits[RESULT_DIGITS] = {0};
         int at = RESULT_DIGITS - 1;
         do {
-            digits[--at] = (char)('0' + value % 10);
-            value = (int16_t)(value / 10);
+            digits[--at] = (char)('0' + value % DECIMAL_BASE);
+            value = (int16_t)(value / DECIMAL_BASE);
         } while (value);
         offscreen_draw_text_in_zone(&area, ZONE_RESULT, ui_colors[UI_CYAN], ui_colors[UI_BLACK], digits + at);
     } else if (value == RESULT_NO_AMMO) {
@@ -177,7 +184,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
 {
     uint16_t thing = champion(champ)->slots[hand];
     if (!champ_list_actions(champ, thing, hand)) return NULL;
-    Bitmap *icon = draw_temp_bitmap(ICON_SIZE + ICON_OFFSET, ICON_SIZE + ICON_OFFSET, 8);
+    Bitmap *icon = draw_temp_bitmap(ICON_SIZE + ICON_OFFSET, ICON_SIZE + ICON_OFFSET, ICON_BPP);
     if (!icon) return NULL;
     int empty = thing == THING_NONE;
     DrawCtx c;
@@ -187,13 +194,13 @@ static Bitmap *action_hand_icon(int champ, int hand)
     gfx_fill_bitmap(icon, ui_colors[ICON_KEY_COLOR]);
     if (!c.image) return icon;
     if (!empty) {
-        uint8_t shadow[16];
+        uint8_t shadow[ICON_COLORS];
         memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
         shadow[UI_KEY] = ui_colors[ICON_KEY_COLOR];
         const int16_t r[RECT_SIZE] = {ICON_OFFSET, ICON_OFFSET, ICON_SIZE, ICON_SIZE};
         gfx_blit_bitmap(c.image, icon, r, 0, 0, UI_OPAQUE, shadow);
         uint32_t size;
-        const uint8_t *remap = gdat_item(draw_gdat(), gdat_find(draw_gdat(), CAT_INTERFACE, 0, 7, ICON_SHADOW_REMAP),
+        const uint8_t *remap = gdat_item(draw_gdat(), gdat_find(draw_gdat(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, ICON_SHADOW_REMAP),
                                          &size);
         if (remap) {
             if (c.palette_count < 1) {
@@ -242,9 +249,9 @@ static void draw_aura(int champ, int zone)
     DrawCtx a;
     gfx_ctx_init(&a, CAT_INTERFACE, UI_INDEX_AURA, c->aura);
     gfx_ctx_prepare(&a);
-    a.w = (int16_t)(a.w >> 2);
+    a.w = (int16_t)(a.w / AURA_FRAMES);
     a.x = (int16_t)(relative_dir(c->dir) * a.w);
-    a.h = (int16_t)(a.h >> 2);
+    a.h = (int16_t)(a.h / AURA_FRAMES);
     a.y = (int16_t)((game.game_time & (AURA_FRAMES - 1)) * a.h);
     offscreen_draw_ctx(&area, &a, zone, UI_KEY);
 }
@@ -255,15 +262,15 @@ static void haste_jitter(int16_t *r)
     if (!game.magic_light[MAGIC_HASTE]) return;
     int d = rand_2bits();
     if (!d) return;
-    r[RECT_Y] = (int16_t)(r[RECT_Y] + d - 2);
+    r[RECT_Y] = (int16_t)(r[RECT_Y] + d - JITTER_CENTER);
     d = rand_2bits();
-    if (d) r[RECT_X] = (int16_t)(r[RECT_X] + d - 2);
+    if (d) r[RECT_X] = (int16_t)(r[RECT_X] + d - JITTER_CENTER);
 }
 
 /* A cleared bitmap for a champion face icon. */
 static Bitmap *face_bitmap(void)
 {
-    Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, 4);
+    Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, FACE_BPP);
     if (face) memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
     return face;
 }
@@ -282,7 +289,7 @@ static void draw_party_icons(void)
         int zone = ZONE_PARTY_FACE_FIRST + cell;
         if (!zone_compute_rect(face, r, zone, &sx, &sy, ZONE_NO_ANCHOR)) continue;
         haste_jitter(r);
-        uint8_t palette[16];
+        uint8_t palette[ICON_COLORS];
         ui_draw_champion_face_icon(face, i, palette);
         offscreen_blit(&area, face, r, sx, sy, UI_KEY, MIRROR_NONE, palette);
         draw_aura(i, zone);
@@ -346,7 +353,7 @@ static void draw_action_champion_face(void)
     if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy, ZONE_NO_ANCHOR)) {
         haste_jitter(r);
         int champ = action.champion - 1;
-        uint8_t palette[16];
+        uint8_t palette[ICON_COLORS];
         ui_draw_champion_face_icon(face, champ, palette);
         offscreen_blit(&area, face, r, sx, sy, UI_KEY, MIRROR_NONE, palette);
         draw_aura(champ, ZONE_FACE);
@@ -392,7 +399,7 @@ static void draw_action_name(int i, int highlight)
     const ChampionAction *a = &champ_actions[i];
     if (action.flags) {
         offscreen_draw_gdat_image(&area, GDAT_CONTAINER_CATEGORY, action.map_item,
-                                  (uint8_t)((a->entry - 8) * 2 + MAP_ACTION_PICTURE_BASE + highlight),
+                                  (uint8_t)((a->entry - ACTION_TEXT_FIRST) * 2 + MAP_ACTION_PICTURE_BASE + highlight),
                                   ZONE_MAP_ACTION_FIRST + i, UI_OPAQUE);
         return;
     }
@@ -417,7 +424,7 @@ static void draw_action_menu(void)
 /* Draws an open money box with a pile of coins for each coin slot. */
 static void draw_money_box(uint16_t box)
 {
-    /* the offsets of up to 32 coins in a pile */
+    /* the offsets of up to 32 coins in a pile, from SKULL.EXE */
     static const int8_t pile[COIN_PILE_MAX][2] = {
         {-2, 10}, {-8, 3}, {7, -3}, {-6, 10}, {8, -7}, {-8, 11}, {2, -2}, {8, -11}, {0, 0}, {4, 8}, {-8, -10},
         {6, 7}, {2, 2}, {-6, 9}, {-3, -11}, {2, 11}, {0, -11}, {-5, -7}, {-3, 3}, {8, 11}, {0, -5}, {6, -9},
@@ -435,7 +442,7 @@ static void draw_money_box(uint16_t box)
         const uint8_t *colors = draw_gdat_image_palette(category, index, COIN_ICON);
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
         zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy, ZONE_NO_ANCHOR);
-        int n = counts[type], at = slot * 8 + (n > COIN_PILE_MAX ? n - COIN_PILE_MAX : 0);
+        int n = counts[type], at = slot * PILE_SLOT_STEP + (n > COIN_PILE_MAX ? n - COIN_PILE_MAX : 0);
         n = n < COIN_PILE_MAX ? n : COIN_PILE_MAX;
         do {
             at = (at + 1) & COIN_PILE_MASK;
@@ -597,6 +604,102 @@ static void draw_party_hands(int full, int changed)
     if (full || party_changed) draw_party_icons();
 }
 
+/* Tracks the drawn cells and directions of the champions, the wall set, haste, and invisibility; returns 1 when the
+   party icons must redraw. */
+static int party_icons_changed(void)
+{
+    int changed = 0;
+    for (int i = 0; i < game.champion_count; i++) {
+        const Champion *c = champion(i);
+        uint8_t dir = (uint8_t)relative_dir(c->dir), cell = (uint8_t)relative_dir(c->cell);
+        if (!c->health || input_drag_state == cell + 1) cell = NO_CELL;
+        if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
+            changed = 1;
+            if (cell != NO_CELL) action.dirty = 1;
+            drawn.cell[i] = cell;
+            drawn.dir[i] = dir;
+        }
+    }
+    int invisible = game.magic_light[MAGIC_INVISIBILITY] != 0;
+    if (drawn.gfx_set != map_gfx_set() || game.magic_light[MAGIC_HASTE] || !drawn.invisible != !invisible) {
+        changed = 1;
+        drawn.gfx_set = map_gfx_set();
+        drawn.invisible = invisible;
+    }
+    return changed;
+}
+
+/* Draws the panel of the open hand: a minion map, a money box, a chest, or the action menu; with nothing to show,
+   the hand closes. */
+static void draw_hand_panel(void)
+{
+    int champ = action.champion - 1;
+    uint16_t thing = champion(champ)->slots[action.hand];
+    if (item_is_minion_map(thing) && !action.flags) {
+        minion_map_open(champ);
+    } else if (item_is_moneybox(thing)) {
+        action.mode = ACTION_MODE_MONEY_BOX;
+    } else if (item_is_chest(thing) && action.mode != ACTION_MODE_CONTAINER) {
+        open_container(thing);
+        action.mode = ACTION_MODE_CONTAINER;
+    }
+    if (action.mode == ACTION_MODE_MONEY_BOX) {
+        draw_money_box(thing);
+    } else if (action.mode == ACTION_MODE_CONTAINER) {
+        draw_container(thing, 1);
+    } else if (champ_list_actions(champ, thing, action.hand) && action.mode != ACTION_MODE_MINION_MAP) {
+        action.mode = ACTION_MODE_MENU;
+        draw_action_menu();
+    } else if (action.mode == ACTION_MODE_MINION_MAP) {
+        ui_draw_minion_map(thing);
+    } else {
+        action.champion = 0;
+        action.mode = ACTION_MODE_HANDS;
+    }
+}
+
+/* Draws the open hand or spell panel when it changed; returns 0 while the panel waits for its redraw delay. */
+static int draw_open_panel(int full, int party_changed, int tick)
+{
+    if (action.redraw_delay || full || party_changed || (action.mode == ACTION_MODE_MINION_MAP && tick)) {
+        if (action.redraw_delay > 1) {
+            action.redraw_delay--;
+            return 0;
+        }
+        if (action.flags && !action.redraw_delay && !full) {
+            begin_draw(0);
+        } else {
+            begin_draw(1);
+            draw_menu_header();
+            action.flags &= ~FLAGS_MINION_HEADER;
+        }
+        if (action.hand == ACTION_HAND_SPELL) {
+            action.mode = ACTION_MODE_SPELL;
+            draw_spell_panel();
+        } else {
+            draw_hand_panel();
+        }
+        action.redraw_delay = 0;
+    } else if (action.mode == ACTION_MODE_CONTAINER && tick) {
+        begin_draw(0);
+        draw_container(champion(action.champion - 1)->slots[action.hand], 0);
+    }
+    return 1;
+}
+
+/* The face of the champion of the open panel redraws while it has an aura, and once after the aura ends. */
+static void draw_open_face_aura(void)
+{
+    static const uint8_t mode_shows_face[] = {0, 1, 1, 0, 0, 0, 0};
+    if (action.champion <= 0 || action.mode < 0 || !mode_shows_face[action.mode]) return;
+    const Champion *c = champion(action.champion - 1);
+    if (c->aura_value || drawn.aura_mask) {
+        draw_action_champion_face();
+        if (c->aura_value) drawn.aura_mask |= 1 << (action.champion - 1);
+        else drawn.aura_mask &= ~(1 << (action.champion - 1));
+    }
+}
+
 void ui_update_action_area(int tick)
 {
     if (ui.candidate) return;
@@ -627,25 +730,7 @@ void ui_update_action_area(int tick)
     if (action.champion > 0 && action.hand >= 0 && action.hand != ACTION_HAND_SPELL
         && action.hand_items[action.champion - 1][action.hand] != champion(action.champion - 1)->slots[action.hand])
         ui_action_area_close();
-    if (action.champion >= 0) {
-        for (int i = 0; i < game.champion_count; i++) {
-            const Champion *c = champion(i);
-            uint8_t dir = (uint8_t)relative_dir(c->dir), cell = (uint8_t)relative_dir(c->cell);
-            if (!c->health || input_drag_state == cell + 1) cell = NO_CELL;
-            if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
-                party_changed = 1;
-                if (cell != NO_CELL) action.dirty = 1;
-                drawn.cell[i] = cell;
-                drawn.dir[i] = dir;
-            }
-        }
-        int invisible = game.magic_light[MAGIC_INVISIBILITY] != 0;
-        if (drawn.gfx_set != map_gfx_set() || game.magic_light[MAGIC_HASTE] || !drawn.invisible != !invisible) {
-            party_changed = 1;
-            drawn.gfx_set = map_gfx_set();
-            drawn.invisible = invisible;
-        }
-    }
+    if (action.champion >= 0) party_changed = party_icons_changed();
     if (action.dirty) {
         if (action.redraw_delay > 1) {
             action.redraw_delay--;
@@ -657,62 +742,8 @@ void ui_update_action_area(int tick)
     }
     if (!action.champion) draw_party_hands(full, party_changed);
     drawn.leader = (int16_t)game.leader;
-    if (action.champion > 0) {
-        if (action.redraw_delay || full || party_changed || (action.mode == ACTION_MODE_MINION_MAP && tick)) {
-            if (action.redraw_delay > 1) {
-                action.redraw_delay--;
-                goto flush;
-            }
-            if (action.flags && !action.redraw_delay && !full) {
-                begin_draw(0);
-            } else {
-                begin_draw(1);
-                draw_menu_header();
-                action.flags &= ~FLAGS_MINION_HEADER;
-            }
-            if (action.hand == ACTION_HAND_SPELL) {
-                action.mode = ACTION_MODE_SPELL;
-                draw_spell_panel();
-            } else {
-                int champ = action.champion - 1;
-                uint16_t thing = champion(champ)->slots[action.hand];
-                if (item_is_minion_map(thing) && !action.flags) {
-                    minion_map_open(champ);
-                } else if (item_is_moneybox(thing)) {
-                    action.mode = ACTION_MODE_MONEY_BOX;
-                } else if (item_is_chest(thing) && action.mode != ACTION_MODE_CONTAINER) {
-                    open_container(thing);
-                    action.mode = ACTION_MODE_CONTAINER;
-                }
-                if (action.mode == ACTION_MODE_MONEY_BOX) {
-                    draw_money_box(thing);
-                } else if (action.mode == ACTION_MODE_CONTAINER) {
-                    draw_container(thing, 1);
-                } else if (champ_list_actions(champ, thing, action.hand) && action.mode != ACTION_MODE_MINION_MAP) {
-                    action.mode = ACTION_MODE_MENU;
-                    draw_action_menu();
-                } else if (action.mode == ACTION_MODE_MINION_MAP) {
-                    ui_draw_minion_map(thing);
-                } else {
-                    action.champion = 0;
-                    action.mode = ACTION_MODE_HANDS;
-                }
-            }
-            action.redraw_delay = 0;
-        } else if (action.mode == ACTION_MODE_CONTAINER && tick) {
-            begin_draw(0);
-            draw_container(champion(action.champion - 1)->slots[action.hand], 0);
-        }
-    }
-    static const uint8_t mode_shows_face[] = {0, 1, 1, 0, 0, 0, 0};
-    if (action.champion > 0 && action.mode >= 0 && mode_shows_face[action.mode]) {
-        const Champion *c = champion(action.champion - 1);
-        if (c->aura_value || drawn.aura_mask) {
-            draw_action_champion_face();
-            if (c->aura_value) drawn.aura_mask |= 1 << (action.champion - 1);
-            else drawn.aura_mask &= ~(1 << (action.champion - 1));
-        }
-    }
+    if (action.champion > 0 && !draw_open_panel(full, party_changed, tick)) goto flush;
+    draw_open_face_aura();
 flush:
     if (area.bitmap) offscreen_flush(&area, 1);
     draw_free_temp();

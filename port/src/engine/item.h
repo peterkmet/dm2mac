@@ -1,5 +1,6 @@
 #ifndef ITEM_H
 #define ITEM_H
+#include <stdbool.h>
 #include <stdint.h>
 
 /* GDAT categories of the things. */
@@ -57,13 +58,13 @@ int item_fits_slot(uint16_t thing, int slot, int strict);
 /* The icon entry of an item in slot (animated: by its icon animation attribute). */
 int item_icon_index(uint16_t thing, int slot, int animated);
 /* Container kinds: money box (a chest with coin slots), chest, minion map. */
-int item_is_moneybox(uint16_t thing);
-int item_is_chest(uint16_t thing);
-int item_is_minion_map(uint16_t thing);
+bool item_is_moneybox(uint16_t thing);
+bool item_is_chest(uint16_t thing);
+bool item_is_minion_map(uint16_t thing);
 /* The weight of a thing in 1/10 kg, with its contents. */
 int item_weight(uint16_t thing);
 /* True when one of the actions of the item uses charges. */
-int item_has_charged_action(uint16_t thing);
+bool item_has_charged_action(uint16_t thing);
 /* The name of an item: GDAT text (category, index, 0x18) with its format codes. Uses one static buffer. */
 const char *item_name(uint16_t thing);
 /* The projectile among the possessions of group that carries filter (THING_NONE: any); 0 when none. */
@@ -76,7 +77,7 @@ void money_init_coin_table(void);
 int money_coin_type_count(void);
 uint16_t money_coin_item(int coin_type);   /* the item index of a coin type */
 int16_t money_coin_value(int coin_type);
-int money_is_coin(uint16_t thing);
+bool money_is_coin(uint16_t thing);
 /* The coins of each coin type in a money box. */
 void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
 /* The coin type that the money box shows in slot (0 to 9), -1 none. */

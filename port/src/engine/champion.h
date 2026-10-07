@@ -71,12 +71,18 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 
 #define WOUND_LEGS 0x10
 #define NO_CHAMPION_CELL 0xff
+#define COMMAND_NONE 0xff          /* last_command of a hand without a command */
 /* Champion slots of the quiver and the pouch. */
 #define SLOT_QUIVER_FIRST 6         /* the slots that the hands load from: 6, 7 to 9, 11, 12 */
 #define SLOT_QUIVER_LAST 9
 #define SLOT_QUIVER_READY 11
 #define SLOT_QUIVER_ACTION 12
 #define SLOT_POUCH_FIRST 13
+#define SLOT_POUCH_LAST (SLOT_COUNT - 1)
+/* The worn slots that a picked-up item tries before the hands: 2 to 5, then 10. */
+#define SLOT_BODY_FIRST 2
+#define SLOT_BODY_LAST 5
+#define SLOT_BODY_EXTRA 10
 #define DRAG_CANCEL 0x8000
 
 /* Bytes of game.magic_light: the party spells. */
@@ -98,6 +104,11 @@ extern int party_sleeping;
 extern uint8_t champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
 static inline Champion *champion(int index) { return (Champion *)game.champions[index]; }
+/* Adds delta to the move speed bonus, the low byte of move_speed; the high byte stays. */
+static inline void champ_add_move_speed(Champion *c, int delta)
+{
+    c->move_speed = (uint16_t)((c->move_speed & ~BYTE_MASK) | (uint8_t)(c->move_speed + delta));
+}
 
 /* A statistic, current (which 0, with the aura) or maximum (which 1), with its bonus, 10 to 220. */
 int champ_get_stat(Champion *c, int stat, int which);
