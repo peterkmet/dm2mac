@@ -8,9 +8,9 @@
 #include "dungeon.h"
 #include "hooks.h"
 #include "item.h"
-#include "le.h"
 #include "minion.h"
 #include "move.h"
+#include "projectile.h"
 #include "random.h"
 #include "text.h"
 #include "timeline.h"
@@ -55,11 +55,8 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
        ICON_MARKER_BELOW = 0x0a };
 #define MIRROR_X 1
 #define MIRROR_Y 2
-#define DOOR_STATE_OPEN 0
-#define DOOR_STATE_BROKEN 5
 #define FAKE_WALL_SEEN SQUARE_FLAG_0
 #define FLOOR_SHOWS_LEVEL 0x08          /* a floor square shows the level digit instead */
-#define ORN_FRAME_SHIFT 10
 #define FLOOR_FRAME_SHIFT 8
 #define FLOOR_FRAME_STEP 10
 #define ORNAMENT_NONE 0xff
@@ -69,8 +66,6 @@ enum { SIDE_DOOR_STATE, SIDE_DOOR_THING, SIDE_FLOOR_ORNAMENT, SIDE_STAIRS_UP = 0
 enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };
 #define MAP_LOCATION_NONE LOCATION_MAP_MASK  /* map 63: no location */
 #define MINION_MAP_MANA_TICKS 25
-#define EVENT_MISSILE_DIR 2             /* projectile event data word: direction in bits 10-11 */
-#define MISSILE_DIR_SHIFT 10
 #define MISSILE_SIDES_ICON 3
 #define POSSESSIONS_SHOWN 0x0f
 #define ALCOVE_ICON_COUNT 3             /* an item strip with alcove icons: the floor icon, then front and side */
@@ -189,7 +184,7 @@ static void draw_wall(const ViewSquare *s, const Strip *base, int x, int y, int 
         if (!(flags & MAP_OPTION_DETAILS) && detail_only(CAT_WALL_ORNAMENT, ornament)) continue;
         Strip o = map_icon_strip(CAT_WALL_ORNAMENT, ornament);
         if (!o.count) continue;
-        int frame = (int16_t)s->side[side] >> ORN_FRAME_SHIFT;
+        int frame = view_face_frame(s->side[side]);
         int icon = o.count < frame * 2 + 2 ? side & 1 : frame * 2 + (side & 1);
         draw_strip(&o, icon, x, y, mirror_two_sides[side]);
     }
@@ -227,7 +222,7 @@ static void draw_group(uint16_t group, uint16_t map_thing, int dir, int x, int y
             if (!(cflags & CREATURE_STATIC) && c.count / 2) frame = (int)(game.game_time % (uint32_t)(c.count / 2)) * 2;
             int side = dir_relative(dir, group_dir(group));
             draw_strip(&c, frame + (side & 1), x, y, mirror_two_sides[side]);
-        } else if (!(cflags & CREATURE_STATIC) && !(cflags & POSSESSIONS_HIDE_CLICKS)) {
+        } else if (!(cflags & CREATURE_STATIC) && !(cflags & POSSESSIONS_FLOOR_CLICKABLE)) {
             Strip m = map_item_icons(map_thing);
             draw_strip(&m, game.game_time & 1, x, y, 0);
         }
@@ -267,8 +262,7 @@ static void draw_missiles(uint16_t first, int dir, int x, int y)
         if (!m.count) continue;
         int icon = 0, cell = dir_relative(thing_cell(t), dir);
         if (m.count > MISSILE_SIDES_ICON) {
-            const TimelineEvent *e = &timeline.events[thing_word(t, PROJECTILE_EVENT)];
-            int side = dir_relative(le16(&e->data[EVENT_MISSILE_DIR]) >> MISSILE_DIR_SHIFT, dir);
+            int side = dir_relative(projectile_dir(t), dir);
             icon = MISSILE_SIDES_ICON;
             switch (missile_image_kind(t)) {
             case MISSILE_THREE_SIDES: icon = side + MISSILE_SIDES_ICON + missile_side_shift[side][cell]; break;

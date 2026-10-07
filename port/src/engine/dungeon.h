@@ -32,20 +32,32 @@ enum square_type {
 #define SQUARE_LEVEL_LINK 0x02          /* a square with a link to another level */
 #define SQUARE_FLAG_0 0x01              /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
 #define SQUARE_HAS_THINGS 0x10          /* bit 4 of any square: things lie on it */
+/* The values of SQUARE_DOOR_STATE. */
+enum door_state {
+    DOOR_STATE_OPEN,
+    DOOR_STATE_ONE_FOURTH,      /* a door one step down: the party passes under it */
+    DOOR_STATE_HALF, DOOR_STATE_THREE_FOURTHS, DOOR_STATE_CLOSED, DOOR_STATE_BROKEN
+};
 #define square_flag(s, bit) (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
 #define WALL_FACE(dir) (8 >> (dir))
 
 enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
+#define DIR_MASK (DIR_COUNT - 1)        /* directions and cells wrap at 4 */
+#define CELL_COUNT 4                    /* the cells of a square, numbered like the directions */
+#define TURN_RIGHT 1                    /* dir_turn: the direction to the right */
+#define TURN_LEFT 3                     /* dir_turn: the direction to the left */
 /* The direction or cell after a number of quarter turns clockwise. */
-#define dir_turn(d, turns) (((d) + (turns)) & (DIR_COUNT - 1))
+#define dir_turn(d, turns) (((d) + (turns)) & DIR_MASK)
 #define dir_opposite(d) dir_turn(d, 2)
 /* The direction or cell d seen from a party or creature that looks to facing. */
 #define dir_relative(d, facing) dir_turn(d, -(facing))
 
+#define PERCENT 100                     /* the whole of a chance or a ratio in percent */
 #define THING_NONE 0xffff
 #define THING_ENDOFLIST 0xfffe
 #define LEVEL_COUNT 63
+#define MAP_SIDE_MAX 32                 /* the squares of the longest map side */
 #define LEVEL_LIST_END 0xff
 #define MAP_LEVEL_MASK 0x3f             /* the dungeon level in the map size word */
 
@@ -58,7 +70,13 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 #define THING_CELL_SHIFT 14
 #define THING_ID_MASK 0x3fff            /* a thing id without its cell */
 #define thing_cell(t) ((t) >> THING_CELL_SHIFT)
-#define thing_with_cell(t, cell) (((t) & THING_ID_MASK) | (cell) << THING_CELL_SHIFT)
+/* The thing id of thing in cell; the cell wraps at 4. */
+static inline uint16_t thing_with_cell(uint16_t thing, int cell)
+{
+    return (uint16_t)((thing & THING_ID_MASK) | (cell & DIR_MASK) << THING_CELL_SHIFT);
+}
+/* The thing id of the record index of a thing type. */
+static inline uint16_t thing_make(int type, int index) { return (uint16_t)(type << THING_TYPE_SHIFT | index); }
 #define CELL_ANY 0xff                   /* a cell argument: any cell */
 
 /* A location word: x bits 0-4, y bits 5-9, map bits 10-15. */
@@ -72,6 +90,12 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 #define location_map(w) ((w) >> LOCATION_MAP_SHIFT)
 #define location_pack(x, y, map) \
     (((x) & LOCATION_COORD_MASK) | ((y) & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT | ((map) & LOCATION_MAP_MASK) << LOCATION_MAP_SHIFT)
+/* A location word with new x and y; the map bits stay. */
+#define location_set_xy(w, x, y) (((w) & LOCATION_MAP_BITS) | ((x) & LOCATION_COORD_MASK) | ((y) & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT)
+/* A square and direction word of an event: x and y as in a location word, the direction in bits 10-11. */
+static inline uint16_t event_square_dir(int x, int y, int dir) { return (uint16_t)location_pack(x, y, dir & DIR_MASK); }
+/* The direction in the map bits of a square and direction word. */
+static inline uint16_t location_dir(uint16_t word) { return location_map(word) & DIR_MASK; }
 
 /* Byte offsets of thing record fields. Every record starts with the link to the next thing. */
 enum thing_field {
@@ -178,6 +202,23 @@ enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT, TEXT_KIND_AI_MARKER };
 #define AI_MARKER_KIND_MASK 0xf
 #define AI_MARKER_LEVEL_SHIFT 12
 #define AI_MARKER_LEVEL_MASK 0xf
+/* Subtypes of ornament texts, by what the view does with them (game meanings from docs/skull-notes/range-6.md). */
+enum text_subtype {
+    SUBTYPE_STILL = 0,              /* plain ornament */
+    SUBTYPE_ANIMATED = 2,
+    SUBTYPE_SWITCH = 4,             /* frame 1 while visible */
+    SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
+    SUBTYPE_STILL_2 = 6,
+    SUBTYPE_SWITCH_2 = 7,
+    SUBTYPE_SWITCH_3 = 8,
+    SUBTYPE_TRAP_TELEPORT = 10,
+    SUBTYPE_TOGGLE_2 = 13,
+    SUBTYPE_PLATE = 14,             /* a text plate on the wall */
+    SUBTYPE_WARP_ONCE = 15,         /* a warp marker that clears all markers; the view shows frame 1 */
+    SUBTYPE_WARP = 16,              /* a warp marker that finds the set marker */
+    SUBTYPE_SQUARE_SWITCH = 17,     /* frame from SQUARE_FLAG_3 */
+    SUBTYPE_SHOP_STAND = 20,        /* clears SIDE_SHOP_FLAG */
+};
 static inline bool text_is_visible(uint16_t text) { return thing_bit(text, TEXT_DATA, TEXT_VISIBLE); }
 static inline void text_set_visible(uint16_t text, bool visible) { set_thing_bit(text, TEXT_DATA, TEXT_VISIBLE, visible); }
 static inline uint16_t text_kind(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_KIND_SHIFT, TEXT_KIND_MASK); }
@@ -283,6 +324,7 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 #define TELEPORTER_ABSOLUTE 0x1000      /* the rotation sets the direction, it does not add to it */
 #define TELEPORTER_SCOPE_SHIFT 13       /* who uses the teleporter: bit 13 creatures, bit 14 the party and objects */
 #define TELEPORTER_SCOPE_MASK 3
+#define TELEPORTER_SCOPE_CREATURES 1    /* teleporter scope bit: the teleporter moves creatures */
 #define TELEPORTER_AUDIBLE 0x8000
 /* TELEPORTER_MAP bits. */
 #define TELEPORTER_CLOSED 0x0001
@@ -604,8 +646,22 @@ uint16_t dungeon_map_graphics(int map);         /* graphics set bits 4-7, door t
 #define MAP_DOOR_TYPE_1_SHIFT 12
 #define MAP_NIBBLE_MASK 0xf
 #define DOOR_TYPE_NONE 0xff
+#define MAP_RANDOM_WALL_SHIFT 4     /* map ornament counts: random wall ornaments in bits 4-7 */
+#define MAP_CREATURE_TYPES_SHIFT 4  /* map object counts bits 4-7: the number of creature types of the map */
+#define MAP_DIFFICULTY_SHIFT 12     /* map object counts: difficulty bits 12-15, also the experience factor of the map */
 /* The wall set (graphics set) of map. */
 #define dungeon_map_wallset(map) (dungeon_map_graphics(map) >> MAP_WALLSET_SHIFT & MAP_NIBBLE_MASK)
+/* The door type of door slot 0 or 1 of map, DOOR_TYPE_NONE when the map has none. */
+static inline uint8_t dungeon_map_door_type(int map, int slot)
+{
+    if (!(dungeon_map_flags(map) & (slot ? MAP_HAS_DOOR_TYPE_1 : MAP_HAS_DOOR_TYPE_0))) return DOOR_TYPE_NONE;
+    return dungeon_map_graphics(map) >> (slot ? MAP_DOOR_TYPE_1_SHIFT : MAP_DOOR_TYPE_SHIFT) & MAP_NIBBLE_MASK;
+}
+/* The number of random wall ornaments of map. */
+#define dungeon_map_random_wall_count(map) (dungeon_map_ornament_counts(map) >> MAP_RANDOM_WALL_SHIFT & MAP_NIBBLE_MASK)
+/* The number of creature types of map. */
+#define dungeon_map_creature_type_count(map) (dungeon_map_object_counts(map) >> MAP_CREATURE_TYPES_SHIFT & MAP_NIBBLE_MASK)
+#define dungeon_map_difficulty(map) (dungeon_map_object_counts(map) >> MAP_DIFFICULTY_SHIFT)
 /* The creature types of map (count in dungeon_map_object_counts bits 4-7). */
 const uint8_t *dungeon_map_creature_types(int map);
 /* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */

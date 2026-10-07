@@ -52,7 +52,6 @@
 #define SOUND_ENTRY_DOOR_SHUT 0x8f
 #define SOUND_PRIORITY_DOOR 0x5f
 
-#define PERCENT 100
 #define SENSOR_CREATE_ITEM 0x3c
 #define SENSOR_KEEP_ITEM EFFECT_HOLD  /* the effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse */
 #define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS)  /* script variables: 64 flags, 64 bytes, 64 words */
@@ -82,13 +81,10 @@ enum { WALL_ITEM_HOLDER = 0x1a, WALL_ANY_ITEM = 0x29, WALL_ITEM = 0x2a, WALL_NOT
 /* Ornament text subtypes. */
 enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_FALL_RISK = 10 };
 
-enum { DOOR_OPEN = 0, DOOR_CLOSED = 4, DOOR_BROKEN = 5 };
-
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET 1
 #define SQUARE_PRIORITY_TOGGLE 2
 #define SQUARE_PRIORITY_CLEAR 3
-#define GENERATOR_GROUP_SIZE 7      /* creature_create_group count: the largest group */
 #define PIT_OPEN_TICKS 5            /* a random pit closes again after 5 ticks */
 #define ALTAR_REBIRTH_STEPS 2
 #define CLICK_EVENT_DELAY 2         /* the ticks before a clicked button turns idle or an item holder shows its marker */
@@ -120,13 +116,7 @@ static uint32_t event_time(uint32_t time)
     return timeline_time_map(time & EVENT_TIME_MASK, party.cur_map);
 }
 
-int dun_get_door_type(uint16_t door)
-{
-    uint16_t flags = dungeon_map_flags(party.cur_map), graphics = dungeon_map_graphics(party.cur_map);
-    if (!door_map_type(door))
-        return flags & MAP_HAS_DOOR_TYPE_0 ? graphics >> MAP_DOOR_TYPE_SHIFT & MAP_NIBBLE_MASK : DOOR_TYPE_NONE;
-    return flags & MAP_HAS_DOOR_TYPE_1 ? graphics >> MAP_DOOR_TYPE_1_SHIFT : DOOR_TYPE_NONE;
-}
+int dun_get_door_type(uint16_t door) { return dungeon_map_door_type(party.cur_map, door_map_type(door)); }
 
 uint16_t door_value(uint16_t door, int key)
 {
@@ -234,7 +224,7 @@ int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay)
     if (!door_flag(door, magic ? DOOR_BREAKABLE_BY_MAGIC : DOOR_BREAKABLE)) return 0;
     if ((int16_t)strength < (int16_t)door_value(door, DOOR_KEY_STRENGTH)) return 0;
     uint8_t *square = square_byte(x, y);
-    if ((*square & SQUARE_DOOR_STATE) != DOOR_CLOSED) return 0;
+    if ((*square & SQUARE_DOOR_STATE) != DOOR_STATE_CLOSED) return 0;
     if (delay) {
         /* fix: the original leaves 4 data bytes of the event uninitialized */
         TimelineEvent e = {.time_map = event_time((uint16_t)delay + game.game_time), .type = EVENT_DOOR_DESTRUCTION};
@@ -242,7 +232,7 @@ int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay)
         e.data[EVENT_Y] = (uint8_t)y;
         timeline_add_event(&e);
     } else {
-        *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_BROKEN);
+        *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
     }
     return 1;
 }
@@ -321,7 +311,7 @@ static void floor_scan(FloorMove *m, int x, int y)
                 m->same_item |= item_get_index(t) == m->item;
                 m->other_item |= item_get_index(t) != m->item;
             }
-        } else if (m->cell == t >> THING_CELL_SHIFT && tt > THING_GROUP) {
+        } else if (m->cell == thing_cell(t) && tt > THING_GROUP) {
             m->items = 1;
             m->same_item |= item_get_index(t) == m->item;
             m->other_item |= item_get_index(t) != m->item;
@@ -406,7 +396,7 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
         } else if (sub == TEXT_FALL_RISK && m->type == -1 && !m->enter && game.champion_count) {
             sensor_fall_risk(t, x, y, m->on_square);
         }
-    } else if (m->cell == t >> THING_CELL_SHIFT && (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) && !m->same_item
+    } else if (m->cell == thing_cell(t) && (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) && !m->same_item
                && text_is_visible(t) != m->enter && m->item == item_holder_item(text_value(t))) {
         text_set_visible(t, m->enter & 1);
     }
@@ -425,7 +415,7 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
         if (holder != THING_NONE) dungeon_unlink_thing_from_list(thing, thing_list(holder, GROUP_POSSESSIONS));
         else dungeon_unlink_thing_from_square(thing, party.cur_map, x, y);
     }
-    m.cell = square_type(dungeon_square(party.cur_map, x, y)) == SQUARE_WALL ? thing >> THING_CELL_SHIFT : -1;
+    m.cell = square_type(dungeon_square(party.cur_map, x, y)) == SQUARE_WALL ? thing_cell(thing) : -1;
     floor_scan(&m, x, y);
     if (enter && m.type != -1) {
         if (holder != THING_NONE) dungeon_append_thing(thing, thing_list(holder, GROUP_POSSESSIONS));
@@ -441,7 +431,7 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
         if (tt == THING_SENSOR) {
             int kind = sensor_type(t), data = sensor_data(t);
             if (!kind) continue;
-            if (m.cell != -1 && m.cell != t >> THING_CELL_SHIFT) continue;
+            if (m.cell != -1 && m.cell != thing_cell(t)) continue;
             int trigger = m.cell == -1 ? floor_sensor_trigger(&m, kind, data) : wall_sensor_trigger(&m, t, kind, data);
             if (trigger == -1) continue;
             sensor_fire(t, trigger, m.cell == -1, x, y);
@@ -586,7 +576,7 @@ static void sensor_start_ambient_sound(uint16_t sensor, uint16_t thing, int x, i
     timeline_add_event(&e);
     sensor_set_data(sensor, SENSOR_DATA_SOUND | frame);
     if (phase) return;  /* the sound plays now only when the animation cycle starts now */
-    if (wall) sound_square_in_front(&x, &y, thing >> THING_CELL_SHIFT);
+    if (wall) sound_square_in_front(&x, &y, thing_cell(thing));
     sensor_play_ornament_sound(sensor, wall, x, y, 1);
 }
 
@@ -709,7 +699,7 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
     int saved = party.cur_map;
     dun_set_current_map(map);
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (thing_type(t) != THING_TEXT || t >> THING_CELL_SHIFT != e->data[EVENT_CELL]) continue;
+        if (thing_type(t) != THING_TEXT || thing_cell(t) != e->data[EVENT_CELL]) continue;
         if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_LINKED) text_set_visible(t, visible);
     }
     dun_set_current_map(saved);
@@ -737,8 +727,6 @@ enum { CHARGES_FILL, CHARGES_EMPTY, CHARGES_RANDOM };
 #define ITEM_CLASS_SET_MASK 0xff    /* sensor data: the item class set; sensor delay bits: the item class text */
 #define ITEM_CLASS_ENTRY_STEP 3
 #define ITEM_CLASS_ENTRY_FIRST 0x10
-#define CELL_COUNT 4
-
 static int is_object(uint16_t thing) { return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC; }
 
 void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
@@ -755,7 +743,7 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
     }
     if (square_type(*square_byte(to_x, to_y)) != SQUARE_WALL) to_cell = rand_below(CELL_COUNT);
     if (from_x >= 0 && from_y >= 0) move_thing(thing, from_x, from_y, -1, from_creature ? -1 : 0);
-    move_thing(thing_at_cell(thing, to_cell), -1, to_possessions ? -1 : 0, to_x, to_y);
+    move_thing(thing_with_cell(thing, to_cell), -1, to_possessions ? -1 : 0, to_x, to_y);
 }
 
 /* A Skullkeep machine: the objects of the event square (reverse: of the sensor target) that the sensor wants move
@@ -779,14 +767,14 @@ static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uin
     }
     int count = 0;
     for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (is_object(t) && (any_cell || t >> THING_CELL_SHIFT == fcell)) count++;
+        if (is_object(t) && (any_cell || thing_cell(t) == fcell)) count++;
     uint8_t bits[ITEM_CLASS_SET_SIZE];
     if (use_filter)
         shop_parse_item_class_set(data & ITEM_CLASS_SET_MASK, sensor_delay(sensor) * ITEM_CLASS_ENTRY_STEP + ITEM_CLASS_ENTRY_FIRST,
                                   bits, 0);
     for (uint16_t t = first, next; t != THING_ENDOFLIST; t = next) {
         next = dungeon_next_thing(t);
-        if (count > 0 && is_object(t) && (any_cell || t >> THING_CELL_SHIFT == fcell)) {
+        if (count > 0 && is_object(t) && (any_cell || thing_cell(t) == fcell)) {
             count--;
             uint16_t item = item_get_index(t);
             int match;
@@ -869,7 +857,7 @@ static void sensor_generate_creature(uint16_t t)
 {
     int tx = sensor_target_x(t), ty = sensor_target_y(t);
     int dir = sensor_flag(t, SENSOR_STATE) ? rand_2bits() : sensor_effect(t);
-    uint16_t g = creature_create_group(sensor_data(t), GENERATOR_GROUP_SIZE, dir, tx, ty);
+    uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, tx, ty);
     if (sensor_flag(t, SENSOR_INVERTED) && g != THING_NONE) set_thing_word(g, GROUP_ITEM_CLASS, sensor_delay(t));
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sound_request(CAT_CREATURE_APPEARS, 0, SOUND_ENTRY_CREATURE_APPEARS, SOUND_PRIORITY_CREATURE_APPEARS, SOUND_VOLUME_NORMAL,
@@ -967,7 +955,7 @@ static void timeline_event_wall_square(TimelineEvent *e)
 {
     int x = e->data[EVENT_X], y = e->data[EVENT_Y], effect = e->data[EVENT_EFFECT];
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
-        if (t >> THING_CELL_SHIFT != e->data[EVENT_CELL]) continue;
+        if (thing_cell(t) != e->data[EVENT_CELL]) continue;
         if (thing_type(t) == THING_TEXT) {
             if (text_kind(t) > TEXT_KIND_ORNAMENT) continue;
             int sub = text_subtype(t);
@@ -1071,7 +1059,7 @@ void move_square_contents_through(int x, int y)
         if (type == THING_PROJECTILE) {
             TimelineEvent *ev = &timeline.events[thing_word(thing, PROJECTILE_EVENT)];
             projectile_event_set_position(ev, party.dest_x, party.dest_y, party.dest_dir);
-            put_le16(ev->data + PROJECTILE_EVENT_THING, thing_at_cell(thing, party.dest_cell));
+            put_le16(ev->data + PROJECTILE_EVENT_THING, thing_with_cell(thing, party.dest_cell));
             timeline_set_event_map(ev, party.dest_map);
         } else if (type == THING_EXPLOSION) {
             for (int i = 0; i < timeline.used_end; i++) {
@@ -1079,7 +1067,7 @@ void move_square_contents_through(int x, int y)
                 if (ev->type != EVENT_EXPLOSION || le16(ev->data + EXPLOSION_EVENT_THING) != thing) continue;
                 ev->data[EXPLOSION_EVENT_X] = (uint8_t)party.dest_x;
                 ev->data[EXPLOSION_EVENT_Y] = (uint8_t)party.dest_y;
-                put_le16(ev->data + EXPLOSION_EVENT_THING, thing_at_cell(thing, party.dest_cell));
+                put_le16(ev->data + EXPLOSION_EVENT_THING, thing_with_cell(thing, party.dest_cell));
                 timeline_set_event_map(ev, party.dest_map);
             }
         }
@@ -1103,7 +1091,7 @@ static void timeline_event_pit_or_teleporter(TimelineEvent *e, uint8_t on_bit)
 static void timeline_event_door_square(TimelineEvent *e)
 {
     uint8_t state = *square_byte(e->data[EVENT_X], e->data[EVENT_Y]) & SQUARE_DOOR_STATE;
-    if (state == DOOR_BROKEN) return;
+    if (state == DOOR_STATE_BROKEN) return;
     uint16_t door = first_thing(e->data[EVENT_X], e->data[EVENT_Y]);
     int effect = e->data[EVENT_EFFECT];
     if (door_flag(door, DOOR_MOVING)) {
@@ -1113,12 +1101,12 @@ static void timeline_event_door_square(TimelineEvent *e)
         return;
     }
     int move = 0;
-    if (state == DOOR_OPEN) {
+    if (state == DOOR_STATE_OPEN) {
         if (effect == EFFECT_CLEAR || effect == EFFECT_TOGGLE) {
             door_set_flag(door, DOOR_OPENING, false);
             move = 1;
         }
-    } else if (state == DOOR_CLOSED) {
+    } else if (state == DOOR_STATE_CLOSED) {
         if (effect == EFFECT_SET || effect == EFFECT_TOGGLE) {
             door_set_flag(door, DOOR_OPENING, true);
             move = 1;
@@ -1179,7 +1167,7 @@ void timeline_event_square(TimelineEvent *e)
 void timeline_event_door_destruction(TimelineEvent *e)
 {
     uint8_t *square = square_byte(e->data[EVENT_X], e->data[EVENT_Y]);
-    *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_BROKEN);
+    *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
     if (party.cur_map == game.party_map) party.redraw = REDRAW_ALL_VIEW;
 }
 
@@ -1204,9 +1192,9 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
     uint16_t g = creature_group_at(party.cur_map, x, y);
     if (g == THING_NONE) return hit;
     const CreatureInfo *info = creature_group_info(g);
-    int height = vertical ? info->flags >> CREATURE_DOOR_SIZE_SHIFT & CREATURE_DOOR_SIZE_MASK : 1;
+    int height = vertical ? creature_door_size(info) : 1;
     if (info->flags & CREATURE_NOT_DOOR_HIT || *state < height) return hit;
-    if (info->door_flags & CREATURE_DOOR_HALF_DAMAGE) {
+    if (info->door_flags & CREATURE_RESISTS_NON_FIRE) {
         damage >>= 1;
         if (damage < 1) damage = 1;
     }
@@ -1225,7 +1213,7 @@ void timeline_event_door_animation(TimelineEvent *e)
     int x = e->data[EVENT_X], y = e->data[EVENT_Y];
     uint8_t *square = square_byte(x, y);
     int state = *square & SQUARE_DOOR_STATE;
-    if (state == DOOR_BROKEN) return;
+    if (state == DOOR_STATE_BROKEN) return;
     if (party.cur_map == game.party_map) party.redraw = REDRAW_ALL_VIEW;
     uint16_t door = first_thing(x, y);
     if (!door_flag(door, DOOR_MOVING)) return;
@@ -1233,7 +1221,7 @@ void timeline_event_door_animation(TimelineEvent *e)
     e->time_map++;
     int again = 0;
     if (!opening) {
-        if (state == DOOR_CLOSED) {
+        if (state == DOOR_STATE_CLOSED) {
             door_set_flag(door, DOOR_MOVING, false);
             return;
         }
@@ -1248,8 +1236,8 @@ void timeline_event_door_animation(TimelineEvent *e)
     if (!again) {
         state += opening ? -1 : 1;
         *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | (state & SQUARE_DOOR_STATE));
-        if (opening ? state != DOOR_OPEN : state != DOOR_CLOSED) again = 1;
-        sound_play_with_fallback(CAT_DOOR, dun_get_door_type(door), !again && state == DOOR_CLOSED ? SOUND_ENTRY_DOOR_SHUT
+        if (opening ? state != DOOR_STATE_OPEN : state != DOOR_STATE_CLOSED) again = 1;
+        sound_play_with_fallback(CAT_DOOR, dun_get_door_type(door), !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT
                                  : SOUND_ENTRY_DOOR_MOVE, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_DOOR, SOUND_VOLUME_NORMAL);
     }
     if (again) {
@@ -1271,7 +1259,7 @@ static const int16_t ambient_wall_dy[4][4] = {{0, 0, 25675, 60}, {0, 0, 0, 0}, {
 /* A value of an ambient wall table for the sensor thing: by its cell and the index bits 8-9 of its record. */
 static int16_t ambient_wall_step(const int16_t table[4][4], uint16_t thing)
 {
-    return table[thing >> THING_CELL_SHIFT][thing_index(thing) >> BYTE_BITS];
+    return table[thing_cell(thing)][thing_index(thing) >> BYTE_BITS];
 }
 
 /* The repeating sound of an animated ornament plays while it runs on the party map. */
@@ -1379,7 +1367,7 @@ void sensor_process_map_entry(int entering)
                 } else if (thing_type(t) == THING_TEXT && entering) {
                     if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_GENERATOR_ON_ENTRY && !text_is_visible(t)) {
                         text_set_visible(t, true);
-                        creature_create_group(text_value(t), GENERATOR_GROUP_SIZE, rand_2bits(), x, y);
+                        creature_create_group(text_value(t), GROUP_COUNT_FULL_HEALTH, rand_2bits(), x, y);
                     }
                 }
             }
@@ -1411,7 +1399,7 @@ bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
     if (ornament == GDAT_NO_INDEX
         || gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
         return 0;
-    return view_wall_face_ornament(party.cur_map, first, dir_back(thing >> THING_CELL_SHIFT)) == ornament;
+    return view_wall_face_ornament(party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
 }
 
 static int ornament_value(uint16_t thing, int key)
@@ -1429,10 +1417,10 @@ int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
 static uint16_t wall_item(int x, int y, int cell, int item)
 {
     for (uint16_t t = dungeon_square_first_object(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (item_get_index(t) == item && (cell == -1 || t >> THING_CELL_SHIFT == cell)) return t;
+        if (item_get_index(t) == item && (cell == -1 || thing_cell(t) == cell)) return t;
     uint16_t t = item_create_by_index(item);
     if (t == THING_NONE) return t;
-    t = thing_at_cell(t, cell);
+    t = thing_with_cell(t, cell);
     dungeon_link_thing_to_square(t, party.cur_map, x, y);
     return t;
 }
@@ -1461,7 +1449,7 @@ static int wall_click_give(WallClick *c, int item)
 static void wall_click_put(WallClick *c)
 {
     c->take = 1;
-    move_thing(thing_at_cell(c->hand, c->cell), -1, 0, c->x, c->y);
+    move_thing(thing_with_cell(c->hand, c->cell), -1, 0, c->x, c->y);
 }
 
 /* An empty hand takes the last object of an alcove cell; an object in the hand goes into the alcove. */
@@ -1473,7 +1461,7 @@ static void wall_click_alcove(WallClick *c)
     }
     uint16_t object = THING_NONE;
     for (uint16_t o = dungeon_square_first_object(party.cur_map, c->x, c->y); o != THING_ENDOFLIST; o = dungeon_next_thing(o))
-        if (o >> THING_CELL_SHIFT == c->cell) object = o;
+        if (thing_cell(o) == c->cell) object = o;
     if (object != THING_NONE && thing_type(object) >= THING_WEAPON && thing_type(object) <= THING_MISC) {
         move_thing(object, c->x, c->y, -1, 0);
         c->give = object;
@@ -1571,7 +1559,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, 
     case WALL_CLICK_BUTTON: case WALL_CLICK_BUTTON_2:
         return wall_click_button(c, t, ornament, extra);
     case WALL_CLICK_PORTRAIT:
-        if (!sensor_flag(t, SENSOR_STATE) || side != dir_back(game.party_dir)) return 1;
+        if (!sensor_flag(t, SENSOR_STATE) || side != dir_opposite(game.party_dir)) return 1;
         champ_start_recruit(game.party_x, game.party_y, game.party_dir, game.party_map);
         c->done = 1;
         return 0;
@@ -1677,7 +1665,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
     WallClick c = {.x = x, .y = y, .hand = hand, .give = THING_NONE, .has_leader = (int16_t)game.leader != -1};
     uint16_t first = first_thing(x, y);
     for (uint16_t t = first; t != THING_ENDOFLIST && !c.done; t = dungeon_next_thing(t)) {
-        c.cell = t >> THING_CELL_SHIFT;
+        c.cell = thing_cell(t);
         if (c.cell != side) continue;
         if (dun_is_wall_thing_ornament_shown(first, t)) {
             wall_click_alcove(&c);

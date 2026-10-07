@@ -23,7 +23,6 @@ enum {
 #define ANY_CELL 0xff
 #define COIN_MAX 0x12               /* the most coins of a price */
 #define DISCOUNT_FROM 0x10          /* a price above it gets a random discount of up to 15 % */
-#define PERCENT 100
 #define HAGGLE_LIMIT 0x4c           /* an offer above 76 % of the price makes the merchant think it over */
 #define HAGGLE_RANDOM 7             /* the random part added to HAGGLE_LIMIT */
 #define LOW_OFFER_CHANCE 5          /* a roll below it over the missing percent marks the offer as low */

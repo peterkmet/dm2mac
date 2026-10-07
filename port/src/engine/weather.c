@@ -5,7 +5,6 @@
 #include "dungeon.h"
 #include "hooks.h"
 #include "item.h"
-#include "le.h"
 #include "move.h"
 #include "random.h"
 #include "save.h"
@@ -93,16 +92,12 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define STORM_SPAN_JITTER 0xf      /* plus 0 to 15 on the random span of rain and lightning */
 #define TARGET_X_SHIFT 8            /* lightning target value: x in the high byte, y in the low byte */
 #define TARGET_Y_MASK 0xff
-#define PERCENT 100
 #define CLOUD_STEP_TICKS 3          /* clouds change at most each third tick */
 #define CLOUD_SLOW_TICKS_MASK 3     /* any rain grows the clouds each fourth tick */
 #define CREATURE_LIGHTNING_PROOF 0xff
 /* Script variables of the weather. */
 #define VAR_STORM_COUNT 0x40        /* cleared by each lightning of a weak storm */
 #define VAR_STRIKES_SEEN 0x41       /* lightning strikes seen near the party from the inventory or asleep */
-enum { VAR_ADD = 3, VAR_ASSIGN = 6 };
-#define MAGIC_LIGHT_BYTE 0          /* game.magic_light bytes 0-1: the light of light spells */
-#define MAP_DARK_BITS 0xf000        /* map object counts: a map without these bits is always lit */
 #define LIGHT_LEVEL_MAX 5
 #define LIGHT_LEVEL_LIT 1
 #define HAND_LIGHT_SHIFT 6          /* the first hand light counts fully, each next one half as much */
@@ -179,7 +174,7 @@ void weather_init(int keep_state)
         weather.storm_previous = 0;
         if (!game.storm_multiplier) game.storm_multiplier = 1;
     } else {
-        dun_modify_global_var(VAR_STORM_COUNT, 0, VAR_ASSIGN);
+        dun_modify_global_var(VAR_STORM_COUNT, 0, GLOBAL_VAR_ASSIGN);
         game.next_hour_time = game.game_time + HOUR_TICKS;
         game.heavy_rain = 0;
         game.weather_visible = 0;
@@ -255,10 +250,6 @@ static int weather_update_rain(void)
     return sky_has(SKY_LIGHTNING) && rand_below(span) <= chance;
 }
 
-/* The ornament index and the animation frame of a view square side word. */
-static int side_ornament(uint16_t side) { return side & ORNAMENT_MASK; }
-static bool side_animates(uint16_t side) { return side >> BYTE_BITS != 0; }
-
 static int abs16(int v) { return (int16_t)v < 0 ? -(int16_t)v : (int16_t)v; }
 static int max16(int lo, int v) { return (int16_t)v > lo ? (int16_t)v : lo; }
 
@@ -287,7 +278,7 @@ static int lightning_strike(void)
     explosion_create(LIGHTNING_EXPLOSION, game.storm_intensity, x, y, EXPLOSION_ANY_CELL);
     if ((ui.inventory || party_sleeping) && !weak && distance <= STRIKE_SEEN
         && dun_get_direction_to(game.party_x, game.party_y, x, y) == game.party_dir)
-        dun_modify_global_var(VAR_STRIKES_SEEN, 1, VAR_ADD);
+        dun_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
     return 1;
 }
 
@@ -295,7 +286,7 @@ static int lightning_strike(void)
    view flashes. o is the next free sky object; returns the next free one after the bolt. */
 static SkyObject *weather_lightning(SkyObject *o)
 {
-    if ((int16_t)game.storm_intensity < STORM_WEAK) dun_modify_global_var(VAR_STORM_COUNT, 0, VAR_ASSIGN);
+    if ((int16_t)game.storm_intensity < STORM_WEAK) dun_modify_global_var(VAR_STORM_COUNT, 0, GLOBAL_VAR_ASSIGN);
     uint16_t strikes = 0;
     if (rand_below((uint16_t)(game.storm_intensity + 1)) >= STORM_LIGHTNING_HITS) {
         strikes = (uint16_t)((rand_next() & LIGHTNING_STRIKES_MASK) + 1);
@@ -381,7 +372,7 @@ void world_update_day_night(int storm_step)
 void light_update_party_light(void)
 {
     int level;
-    if (!(dungeon_map_object_counts(game.party_map) & MAP_DARK_BITS)) {
+    if (!dungeon_map_difficulty(game.party_map)) {  /* a map without difficulty bits is always lit */
         level = LIGHT_LEVEL_LIT;
     } else {
         int16_t lights[HAND_LIGHTS_MAX] = {0};
@@ -406,7 +397,7 @@ void light_update_party_light(void)
             sum = (int16_t)(sum + ((light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
             if (shift) shift--;
         }
-        int16_t magic = (int16_t)le16(&game.magic_light[MAGIC_LIGHT_BYTE]);
+        int16_t magic = save_magic_light();
         sum = (int16_t)(sum + light_source_sum + magic + map_value(MAP_KEY_LIGHT));
         if (game.weather_visible) sum = (int16_t)(sum + daylight());
         level = 0;
@@ -433,7 +424,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
     ViewSquare s;
     dun_get_square_aspect(&s, dir, x, y);
     /* the front wall ornament, or the floor ornament: index in the low byte, animation frame in the high byte */
-    int ornament = side_ornament(s.side[SIDE_LIGHT]), animated = side_animates(s.side[SIDE_LIGHT]);
+    int ornament = s.side[SIDE_LIGHT] & ORNAMENT_MASK, animated = s.side[SIDE_LIGHT] >> BYTE_BITS != 0;
     int animated_only;
     PassageEnd end;
     switch (s.aspect) {

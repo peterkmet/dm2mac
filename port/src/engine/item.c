@@ -30,8 +30,6 @@
 #define MISC_GDAT_CATEGORY GDAT_MISC_CATEGORY
 #define TEXT_CHAMPION_TOKEN 0          /* the miscellaneous item 0 (a champion token) names its champion */
 #define COINS_PER_WEIGHT 5             /* the coins of a money box weigh one unit per 5 coins, rounded up */
-/* Ornament text subtypes that show their ornament as an item (the view names them SUBTYPE_*). */
-enum { ORNAMENT_ITEM_STILL = 0, ORNAMENT_ITEM_ANIMATED = 2, ORNAMENT_ITEM_TOGGLE = 5, ORNAMENT_ITEM_TOGGLE_2 = 13 };
 /* Item index kinds: item index / ITEM_KIND_ITEMS. */
 enum { ITEM_KIND_WEAPON, ITEM_KIND_CLOTHING, ITEM_KIND_MISC };
 
@@ -87,8 +85,8 @@ uint8_t item_gdat_index(uint16_t thing)
             /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
             int sub = text_subtype(thing);
             if (text_kind(thing) != TEXT_KIND_ORNAMENT
-                || (sub != ORNAMENT_ITEM_STILL && sub != ORNAMENT_ITEM_ANIMATED && sub != ORNAMENT_ITEM_TOGGLE
-                    && sub != ORNAMENT_ITEM_TOGGLE_2))
+                || (sub != SUBTYPE_STILL && sub != SUBTYPE_ANIMATED && sub != SUBTYPE_TOGGLE
+                    && sub != SUBTYPE_TOGGLE_2))
                 return GDAT_NO_INDEX;
             return text_value(thing);
         }

@@ -22,6 +22,11 @@ typedef struct {
 #define VIEW_SQUARE_RECORD_SIZE 18
 _Static_assert(sizeof(ViewSquare) == VIEW_SQUARE_RECORD_SIZE, "the original view square record has 18 bytes");
 
+/* The ornament word of a wall face: the ornament in the low byte, the frame in bits 10-15. */
+#define ORN_FRAME_SHIFT 10
+#define view_face_word(ornament, frame) ((uint16_t)((frame) << ORN_FRAME_SHIFT | (ornament)))
+#define view_face_frame(word) ((int16_t)(word) >> ORN_FRAME_SHIFT)
+
 enum view_aspect {
     ASPECT_WALL, ASPECT_FLOOR, ASPECT_PIT, ASPECT_TELEPORTER = 5, ASPECT_HIDDEN = 7,
     ASPECT_DOOR_SIDE = 0x10, ASPECT_DOOR_FRONT, ASPECT_STAIRS_FRONT, ASPECT_STAIRS_SIDE
@@ -41,6 +46,16 @@ extern uint32_t view_object_masks[VIEW_SQUARE_COUNT];
 extern Bitmap view_viewport;
 /* The party light level, 0 (bright) to 5 (light_update_party_light). */
 extern int view_light_level;
+#define DARKEST_LIGHT 5             /* view_light_level of the darkest view */
+/* The 5 x 5 grid of the cells of a square and its neighbours (view_grid5_cell_to_xy), row by row. */
+#define CELL_GRID_SIDE 5
+#define CELL_GRID_HALF (CELL_GRID_SIDE / 2)  /* the center row and column */
+#define CELL_GRID_COUNT (CELL_GRID_SIDE * CELL_GRID_SIDE)
+#define cell_grid_index(row, col) ((row) * CELL_GRID_SIDE + (col))
+#define CELL_CENTER cell_grid_index(CELL_GRID_HALF, CELL_GRID_HALF)
+/* View positions of the party square and of the square in front of it. */
+#define POS_PARTY 0
+#define POS_FRONT 3
 
 /* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
 typedef struct {

@@ -67,7 +67,7 @@ int champ_get_skill_level(int champ, int skill, int with_bonus)
     const Champion *c = champion(champ);
     uint32_t experience = c->experience[skill];
     if (skill >= SKILL_BASE_COUNT) {
-        int base = (skill - SKILL_BASE_COUNT) / SKILL_BASE_COUNT;
+        int base = champ_base_skill(skill);
         int factor = with_bonus ? c->skill_bonus[base] + 1 : 1;
         experience = (experience + (uint32_t)(factor * (int32_t)c->experience[base])) >> 1;
     }

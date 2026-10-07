@@ -66,8 +66,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define ICON_KEY_COLOR UI_RED       /* the background of a hand icon bitmap; the blit skips it */
 #define UI_INDEX_AURA 7
 #define NO_CELL 0xff
-#define GFX_SET_SHIFT 4             /* map graphics word: wall set in bits 4-7 */
-#define GFX_SET_MASK 0x0f
 #define GDAT_TYPE_REMAP 7           /* GDAT type of a color remap table */
 #define ICON_COLORS 16              /* the colors of a 4 bpp picture */
 #define ICON_BPP 8
@@ -119,7 +117,7 @@ uint16_t action_open_hand_item(void)
 static int relative_dir(int dir) { return (dir + DIR_COUNT - game.party_dir) % DIR_COUNT; }
 
 /* The wall set of the party map. */
-static uint8_t map_gfx_set(void) { return dungeon_map_graphics(game.party_map) >> GFX_SET_SHIFT & GFX_SET_MASK; }
+static uint8_t map_gfx_set(void) { return dungeon_map_wallset(game.party_map); }
 
 /* Opens the action area bitmap; clear: it starts black and goes to the screen as a whole. */
 static void begin_draw(int clear)

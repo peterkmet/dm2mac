@@ -31,7 +31,6 @@ enum map_desc_field {
 };
 #define WALL_ORNAMENT_MASK 0xf
 #define FLOOR_ORNAMENT_SHIFT 8
-#define CREATURE_TYPE_SHIFT 4
 
 /* The record size in bytes of each thing type. */
 static const uint8_t thing_size[THING_TYPE_COUNT] = {4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4};
@@ -319,7 +318,7 @@ const uint8_t *dungeon_map_creature_types(int map)
 
 const uint8_t *dungeon_map_wall_ornaments(int map)
 {
-    return map_extra(map) + (dungeon_map_object_counts(map) >> CREATURE_TYPE_SHIFT & WALL_ORNAMENT_MASK);
+    return map_extra(map) + dungeon_map_creature_type_count(map);
 }
 
 const uint8_t *dungeon_map_floor_ornaments(int map)

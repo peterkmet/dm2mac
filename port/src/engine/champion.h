@@ -14,6 +14,12 @@ enum {
 enum { STAT_LUCK, STAT_STRENGTH, STAT_DEXTERITY, STAT_WISDOM, STAT_VITALITY, STAT_ANTI_MAGIC, STAT_ANTI_FIRE, STAT_COUNT };
 #define SKILL_COUNT 20
 #define SKILL_BASE_COUNT 4      /* skills 4 to 19 are sub-skills: 4 per base skill */
+#define SUB_SKILL_COUNT 4       /* the sub-skills of each base skill */
+/* The base skill of a skill: the skill itself, or the base skill of a sub-skill. */
+static inline int champ_base_skill(int skill)
+{
+    return skill < SKILL_BASE_COUNT ? skill : (skill - SKILL_BASE_COUNT) / SUB_SKILL_COUNT;
+}
 #define CHAMPION_NAME_SIZE 8
 #define CHAMPION_TITLE_SIZE 20
 #define CHAMPION_RUNES_SIZE 4

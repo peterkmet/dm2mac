@@ -63,7 +63,6 @@ enum {
 #define AURA_COST 4
 #define AURA_BIG 50                     /* a champion with a bigger aura makes a new aura a quarter */
 #define AURA_SHIFT 5
-#define CAST_BASE_SKILLS 4              /* skills 4 to 19 are the sub-skills of the base skills 0 to 3 */
 #define SKILL_WIZARD 3
 #define LIGHT_EVENT_STEP 8              /* game ticks between two steps of a fading light */
 #define LIGHT_POWER_MIN 0x20
@@ -81,15 +80,14 @@ enum {
 #define SPELL_ITEM_INDEX 0x0f
 #define SPELL_ITEM_KEY 0x42
 /* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
-enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNKNOWN = 0x46, GLOBAL_OP_ADD = 3 };
+enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNKNOWN = 0x46 };
 #define FLASK_PICTURE 0x0b
 #define ZONE_PANEL 0x5c
 #define FAILURE_DELAY_BASE 8
 #define FLASK_DELAY_MIN 3
 /* Action results that show a failed cast. */
 enum { RESULT_UNKNOWN_SPELL = -3, RESULT_WIZARD_FAILED = -4, RESULT_PRIEST_FAILED = -5 };
-/* Warp marker texts and the marker search modes. */
-enum { SUBTYPE_WARP_ONCE = 15, SUBTYPE_WARP = 16 };
+/* The marker search modes of the warp marker texts. */
 enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define SOUND_WARP_CATEGORY 10
 #define SOUND_WARP_ENTRY 0x88
@@ -120,7 +118,6 @@ enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define HASTE_PER_STEP 8
 #define EXPERIENCE_PER_DIFFICULTY 8
 #define EXPERIENCE_PER_LEVEL 16
-#define SUB_SKILLS_SHIFT 2              /* each base skill has 4 sub-skills */
 #define CAST_SKILL_MASK 0x0f            /* the base skill in a cast result */
 
 /* The spells of SKULL.EXE. */
@@ -312,7 +309,7 @@ static void cast_summon(int type, int skill, int power)
 {
     if (type == SUMMON_RECAST_VANISHES) {
         for (int i = 0; i < dungeon_thing_count(THING_GROUP); i++) {
-            uint16_t group = creature_group_thing(i);
+            uint16_t group = thing_make(THING_GROUP, i);
             if (thing_word(group, THING_NEXT) == THING_NONE || group_creature(group) != type
                 || group_active(group) == GROUP_NOT_ACTIVE)
                 continue;
@@ -325,7 +322,7 @@ static void cast_summon(int type, int skill, int power)
     }
     int dir = game.party_dir;
     int level = (uint16_t)((rand_2bits() + skill * 2) * power / SUMMON_LEVEL_DIVISOR);
-    if (creature_summon_group(type, level, (dir + 2) & 3, game.party_x, game.party_y, game.party_map, SUMMON_NO_LINK,
+    if (creature_summon_group(type, level, (dir + 2) & DIR_MASK, game.party_x, game.party_y, game.party_map, SUMMON_NO_LINK,
                               (int8_t)dir) == THING_NONE)
         explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, game.party_x, game.party_y, EXPLOSION_ON_SQUARE);
 }
@@ -339,9 +336,9 @@ static void cast_create_item(void)
         champ_put_object_in_leader_hand(thing, 1);
         return;
     }
-    int cell = (rand_bit() + game.party_dir) & 3;
+    int cell = (rand_bit() + game.party_dir) & DIR_MASK;
     if (thing == THING_NONE) return;  /* fix: the original moves an invalid thing when no record is free */
-    move_thing(move_set_cell(thing, cell), -1, 0, game.party_x, game.party_y);
+    move_thing(thing_with_cell(thing, cell), -1, 0, game.party_x, game.party_y);
 }
 
 /* The spells that are neither potions, missiles, nor summons. */
@@ -384,7 +381,7 @@ static void cast_other(Champion *c, int type, int skill, int power)
 static int cast_failure(int kind, const Spell *spell)
 {
     int skill = spell->skill;
-    return kind | (skill < CAST_BASE_SKILLS ? skill : (skill - CAST_BASE_SKILLS) >> SUB_SKILLS_SHIFT);
+    return kind | champ_base_skill(skill);
 }
 
 int magic_cast_spell(int champ, const Spell *spell, int power)
@@ -459,7 +456,7 @@ void magic_report_cast_failure(int result)
     default:
         return;
     }
-    int count = dun_modify_global_var(var, 1, GLOBAL_OP_ADD);
+    int count = dun_modify_global_var(var, 1, GLOBAL_VAR_ADD);
     action.redraw_delay = (int16_t)imax(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
 }
 

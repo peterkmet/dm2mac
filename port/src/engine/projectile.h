@@ -26,11 +26,6 @@ enum { EXPLOSION_EVENT_X = 0, EXPLOSION_EVENT_Y = 1, EXPLOSION_EVENT_THING = 2 }
 #define SOUND_VOLUME_NORMAL 0x80
 #define SOUND_VOLUME_LOUD 200
 
-/* Alerts of creatures (creature_alert): a loud alert that sets mood bits 1 and 2, and the chance that is sure. */
-#define ALERT_STARTLED 0x2006
-/* The door height that a creature blocks (creature info flags, CREATURE_DOOR_SIZE_SHIFT). */
-#define CREATURE_DOOR_SIZE_MASK 3
-
 /* The extra damage (poison) and the attack type of the last projectile_get_attack. */
 extern uint16_t projectile_extra_damage, projectile_attack_type;
 /* A sensor launches the next projectiles: they check for hits on their first square. */
@@ -44,6 +39,10 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
 void explosion_create(int type, int power, int x, int y, int cell);
 /* Sets the square and the flight direction of a projectile move event; the energy step stays. */
 void projectile_event_set_position(TimelineEvent *e, int x, int y, int dir);
+/* The flight direction in the position word of a projectile move event. */
+int projectile_event_dir(const TimelineEvent *e);
+/* The flight direction of projectile: the direction of its queued move event. */
+int projectile_dir(uint16_t projectile);
 /* Removes the queued move of a projectile. */
 void projectile_cancel_event(uint16_t projectile);
 /* The projectile ends on (x, y): its object falls there (or into holder, a list of creature possessions). */

@@ -101,7 +101,6 @@ duplicate CAT_ORNAMENT open: module cleanup
 duplicate CAT_SKY open: module cleanup
 duplicate CAT_WALLSET open: module cleanup
 duplicate CAT_WALL_ORNAMENT open: module cleanup
-duplicate CELL_COUNT open: module cleanup
 duplicate CHAMP_DAMAGE_SHOWN open: module cleanup
 duplicate CHARGES_EMPTY open: module cleanup
 duplicate CMD_MINION_MAP open: module cleanup
@@ -118,10 +117,6 @@ duplicate DIR_EAST open: module cleanup
 duplicate DIR_NORTH open: module cleanup
 duplicate DIR_SOUTH open: module cleanup
 duplicate DIR_WEST open: module cleanup
-duplicate DOOR_CLOSED open: module cleanup
-duplicate DOOR_OPEN open: module cleanup
-duplicate DOOR_STATE_BROKEN open: module cleanup
-duplicate DOOR_STATE_OPEN open: module cleanup
 duplicate EVENT_SLACK open: module cleanup
 duplicate EXPLOSION_CENTER open: module cleanup
 duplicate EXPLOSION_SMOKE open: module cleanup
@@ -154,7 +149,6 @@ duplicate ITEM_NAME_ENTRY open: module cleanup
 duplicate ITEM_SCROLL open: module cleanup
 duplicate KEY_ENTER open: module cleanup
 duplicate MANA_MAX open: module cleanup
-duplicate MAP_DIFFICULTY_SHIFT open: module cleanup
 duplicate MAP_KEY_SKY_STATE open: module cleanup
 duplicate MARKER_CLEAR_ALL open: module cleanup
 duplicate MARKER_FIND_SET open: module cleanup
@@ -172,8 +166,6 @@ duplicate MISSILE_NO_SIDE open: module cleanup
 duplicate MOUTH_CATEGORY open: module cleanup
 duplicate MOUTH_INDEX open: module cleanup
 duplicate ORNAMENT_NONE open: module cleanup
-duplicate ORN_FRAME_SHIFT open: module cleanup
-duplicate PERCENT open: module cleanup
 duplicate POISON_MAX open: module cleanup
 duplicate POSSESSIONS_SHOWN open: module cleanup
 duplicate POTION_POWER_MAX open: module cleanup
@@ -205,13 +197,11 @@ duplicate STAT_VITALITY open: module cleanup
 duplicate STAT_WISDOM open: module cleanup
 duplicate STEP_BLOCKED open: module cleanup
 duplicate STEP_JUMP open: module cleanup
-duplicate TARGET_HOME open: module cleanup
 duplicate TEXT_LADDER open: module cleanup
 duplicate TEXT_LADDER_HIDDEN open: module cleanup
 duplicate TIME_BYTE_WRAP open: module cleanup
 duplicate TYPE_DATA open: module cleanup
 duplicate UI_COLORS_ENTRY open: module cleanup
-duplicate VAR_ADD open: module cleanup
 duplicate VOLUME_SHIFT open: module cleanup
 duplicate WOUND_FEET open: module cleanup
 duplicate ZONE_DIALOG_BACK open: module cleanup
@@ -284,5 +274,4 @@ hex ui/input.c table: rule 6
 hex ui/sound.c table: rule 6
 hex ui/ui.c table: rule 6
 hex ui/view.c table: rule 6
-bool engine/ai.h creature_is_near_party_front is defined in engine/creature.c, which task 5 owns
 record engine/save.c the save image packs and unpacks whole thing records bit by bit

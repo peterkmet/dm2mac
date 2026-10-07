@@ -26,7 +26,6 @@ enum {
 #define WOUND_LOCATIONS 6           /* the hands, the head, the torso, the legs, the feet */
 #define WOUND_SHARP 0x8000          /* wound location bit: a sharp attack */
 #define COMMAND_PARRY 1             /* the last command of a hand that parries */
-#define PERCENT_MAX 100
 #define DEFENSE_BASE 0x82
 #define PSYCHIC_BASE 0x73
 #define ADJUST_BASE 0xaa
@@ -184,7 +183,7 @@ int champ_get_strength(int champ, int hand, int skill)
     }
     v = (int16_t)champ_scale_by_stamina(c, v);
     if (c->wounds & WOUND_HAND_BIT(hand)) v = (int16_t)(v >> 1);
-    return clamp16(0, v >> 1, PERCENT_MAX);
+    return clamp16(0, v >> 1, PERCENT);
 }
 
 int champ_get_dexterity(int champ)
@@ -195,14 +194,14 @@ int champ_get_dexterity(int champ)
     v = (int16_t)(v - load / (uint16_t)champ_get_max_load(c));
     if (v < DEXTERITY_MIN) v = DEXTERITY_MIN;
     if (party_sleeping) v = (int16_t)(v >> 1);
-    int high = (int16_t)(PERCENT_MAX - (rand_next() & DEXTERITY_ROLL));
+    int high = (int16_t)(PERCENT - (rand_next() & DEXTERITY_ROLL));
     int low = (int16_t)((rand_next() & DEXTERITY_ROLL) + 1);
     return clamp16(low, v >> 1, high);
 }
 
 int champ_test_luck(Champion *c, int chance)
 {
-    if (rand_bit() && rand_below(PERCENT_MAX) > (uint16_t)chance) return 1;
+    if (rand_bit() && rand_below(PERCENT) > (uint16_t)chance) return 1;
     uint16_t roll = rand_below((uint16_t)(champ_get_stat(c, STAT_LUCK, 0) * 2));
     int max = min16(STAT_MAX, champ_get_stat(c, STAT_LUCK, 1));
     int lucky = roll > (uint16_t)chance;
@@ -232,7 +231,7 @@ static int champ_get_wound_defense(int champ, uint16_t location)
         v = (int16_t)(v + item_armor_defense(item_attr(c->slots[location], ATTR_ARMOUR_CLASS), sharp));
     if (c->wounds & 1 << location) v = (int16_t)(v - (rand_2bits() + WOUNDED_DEFENSE_LOSS));
     if (party_sleeping) v = (int16_t)(v >> 1);
-    return clamp16(0, v >> 1, PERCENT_MAX);
+    return clamp16(0, v >> 1, PERCENT);
 }
 
 /* The mean defense of champ over the wound locations of wound_mask against an attack of type. */
@@ -383,7 +382,7 @@ static void champ_drop_all_objects(int champ)
     for (int i = 0; i < SLOT_COUNT; i++) {
         uint16_t t = champ_remove_object_from_slot(champ, drop_order[i]);
         if (t != THING_NONE)
-            move_thing((uint16_t)((t & THING_ID_MASK) | cell << THING_CELL_SHIFT),
+            move_thing(thing_with_cell(t, cell),
                        -1, 0, game.party_x, game.party_y);
     }
 }
@@ -435,7 +434,7 @@ void champ_kill(int champ)
         item_set_type(bones, ITEM_BONES);
         item_set_kept(bones, true);
         misc_set_charges(bones, (uint16_t)champ);  /* the champion of the bones */
-        move_thing((uint16_t)(bones | cell << THING_CELL_SHIFT), -1, 0, game.party_x, game.party_y);
+        move_thing(thing_with_cell(bones, cell), -1, 0, game.party_x, game.party_y);
     }
     c->rune_count = 0;
     c->runes[0] = 0;
@@ -626,13 +625,11 @@ void champ_revive(int champ)
 enum { REBIRTH_REVIVE, REBIRTH_BONES, REBIRTH_SMOKE };
 #define EXPLOSION_SMOKE 0xffe4
 #define SMOKE_TIME 5
-/* Data bytes of an altar rebirth event. */
-enum { REBIRTH_DATA_X, REBIRTH_DATA_Y, REBIRTH_DATA_CELL, REBIRTH_DATA_STEP };
 
 void timeline_event_altar_rebirth(TimelineEvent *e)
 {
-    int x = e->data[REBIRTH_DATA_X], y = e->data[REBIRTH_DATA_Y], cell = e->data[REBIRTH_DATA_CELL], champ = e->priority;
-    switch (e->data[REBIRTH_DATA_STEP]) {
+    int x = e->data[EVENT_X], y = e->data[EVENT_Y], cell = e->data[EVENT_CELL], champ = e->priority;
+    switch (e->data[ALTAR_EVENT_STEPS]) {
     case REBIRTH_REVIVE:
         champ_revive(champ);
         return;
@@ -643,7 +640,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
     case REBIRTH_BONES: {
         uint16_t t = dungeon_square_first_thing(party.cur_map, x, y);
         for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-            if (t >> THING_CELL_SHIFT == cell && item_gdat_category(t) == GDAT_MISC_CATEGORY && item_gdat_index(t) == ITEM_BONES
+            if (thing_cell(t) == cell && item_gdat_category(t) == GDAT_MISC_CATEGORY && item_gdat_index(t) == ITEM_BONES
                 && (int16_t)item_add_charges(t, 0) == champ)
                 break;
         if (t == THING_ENDOFLIST) return;
@@ -654,6 +651,6 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
     }
     default: return;
     }
-    e->data[REBIRTH_DATA_STEP]--;
+    e->data[ALTAR_EVENT_STEPS]--;
     timeline_add_event(e);
 }

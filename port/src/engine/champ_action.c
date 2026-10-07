@@ -68,16 +68,11 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define MELEE_WEAK_RANDOM 0xf       /* the random part of the rest of a weak hit */
 #define MELEE_CRITICAL_ROLL 0x3f    /* a skill level above a roll of 0 to 63 doubles the damage plus a bonus */
 #define MELEE_CRITICAL_BONUS 10
-#define CREATURE_EXPERIENCE_SHIFT 8 /* creature info speed bits 8-11: the experience factor of a hit */
-#define CREATURE_EXPERIENCE_MASK 0xf
 #define MELEE_EXPERIENCE_SHIFT 4    /* the experience of a hit: factor * damage / 16 + base */
 #define MELEE_EXPERIENCE_BASE 3
 #define MELEE_STAMINA_HIT 4         /* the stamina cost of a hit: 4 to 7, of a miss: 2 to 3 */
 #define MELEE_STAMINA_MISS 2
-#define MAP_DIFFICULTY_SHIFT 12     /* map object counts: difficulty bits 12-15 */
 #define ATTR_ANTI_ARMOR 0x0d        /* item attribute: the weapon breaks creature armor */
-#define FRIGHTEN_RESIST_SHIFT 4     /* creature info speed bits 4-7: the resistance to fear, 15 immune */
-#define FRIGHTEN_RESIST_MASK 0xf
 #define FRIGHTEN_IMMUNE 0xf
 #define FRIGHTEN_ALERT_FLAGS 0x2005
 #define FRIGHTEN_ALERT_CHANCE 100
@@ -104,7 +99,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define VAR_BLOCKED_COUNT 0x42      /* script variables that count the failed actions */
 #define VAR_NO_AMMO_COUNT 0x43
 #define VAR_CANT_COUNT 0x47
-#define VAR_ADD 3
 #define RESULT_DELAY_BASE 8
 #define EXPLOSION_SUMMON_FAIL 0xffa8
 #define EXPLOSION_COMMAND 0xff8e
@@ -117,18 +111,14 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define MINION_SCOUT 0x31
 #define MINION_CARRIER 0x34
 #define MINION_ARMY 0x35
-#define DOOR_CLOSED 4
 #define DOOR_BREAK_DELAY 2
 #define SKILL_INFLUENCE 14
 #define SKILL_HEAL 13
 #define SKILL_THROW 10
 #define SKILL_SHOOT 11
-#define SKILL_SHIFT 2
-#define SKILL_FIRST_SUB 4
 #define SKILL_LAST_FIGHT 11         /* the fighter and ninja sub-skills learn less away from fights */
 #define FIGHT_TIME_LONG 150
 #define FIGHT_TIME_SHORT 40
-#define MAP_EXPERIENCE_SHIFT 12     /* map object counts bits 12-15: the experience factor of the map */
 #define LEVEL_EXPERIENCE 0x200
 #define REDRAW_LEVEL 0x3800
 #define REDRAW_BARS_FLAG 0x0800
@@ -396,18 +386,18 @@ static void champ_raise_level(int champ, int base, uint16_t level)
 
 void champ_add_experience(int champ, int skill, uint32_t amount)
 {
-    if (skill >= SKILL_FIRST_SUB && skill <= SKILL_LAST_FIGHT && game.game_time - FIGHT_TIME_LONG > game.last_combat_time)
+    if (skill >= SKILL_BASE_COUNT && skill <= SKILL_LAST_FIGHT && game.game_time - FIGHT_TIME_LONG > game.last_combat_time)
         amount >>= 1;
     if (!amount) return;
-    int factor = dungeon_map_object_counts(party.cur_map) >> MAP_EXPERIENCE_SHIFT;
+    int factor = dungeon_map_difficulty(party.cur_map);
     if (factor) amount *= (uint32_t)factor;
     Champion *c = champion(champ);
-    int base = skill >= SKILL_FIRST_SUB ? (skill - SKILL_FIRST_SUB) >> SKILL_SHIFT : skill;
+    int base = champ_base_skill(skill);
     uint16_t old = (uint16_t)champ_get_skill_level(champ, base, 0);
-    if (skill >= SKILL_FIRST_SUB && (int32_t)(game.game_time - FIGHT_TIME_SHORT) < (int32_t)game.last_combat_time)
+    if (skill >= SKILL_BASE_COUNT && (int32_t)(game.game_time - FIGHT_TIME_SHORT) < (int32_t)game.last_combat_time)
         amount *= 2;
     c->experience[skill] += amount;
-    if (skill >= SKILL_FIRST_SUB) c->experience[base] += amount;
+    if (skill >= SKILL_BASE_COUNT) c->experience[base] += amount;
     uint16_t level = (uint16_t)champ_get_skill_level(champ, base, 0);
     while (old < level) {
         old++;
@@ -419,7 +409,7 @@ void champ_add_experience(int champ, int skill, uint32_t amount)
 static int champ_action_frighten(int power, int x, int y)
 {
     if (champ_action_target == THING_NONE) return 0;
-    unsigned resist = creature_group_info(champ_action_target)->speed >> FRIGHTEN_RESIST_SHIFT & FRIGHTEN_RESIST_MASK;
+    unsigned resist = creature_fear_resistance(creature_group_info(champ_action_target));
     if (resist > rand_below((uint16_t)power) || resist == FRIGHTEN_IMMUNE) return 0;
     /* fix: the original passes a leftover register (EDX) as the damage, no defined value; the port passes 0 */
     creature_alert(champ_action_target, x, y, FRIGHTEN_ALERT_FLAGS, FRIGHTEN_ALERT_CHANCE, 0);
@@ -456,7 +446,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
                                        uint16_t factor, int skill, int kind)
 {
     if ((uint16_t)champ >= game.champion_count || !c->health) return 0;
-    int difficulty = (dungeon_map_object_counts(party.cur_map) >> MAP_DIFFICULTY_SHIFT) * 2;
+    int difficulty = dungeon_map_difficulty(party.cur_map) * 2;
     const CreatureInfo *info = creature_group_info(group);
     int pierces = attack & MELEE_PIERCES;
     attack &= (uint16_t)~MELEE_PIERCES;
@@ -485,7 +475,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
         if ((uint16_t)champ_get_skill_level(champ, skill, 1) > roll) damage = (int16_t)(damage + damage + MELEE_CRITICAL_BONUS);
         uint16_t armor = item_attr(c->slots[action.hand], ATTR_ANTI_ARMOR);
         if (armor && damage > (int16_t)(rand_next() & MELEE_RANDOM)) damage = (int16_t)(damage + creature_roll_armor_factor(group, armor));
-        int worth = info->speed >> CREATURE_EXPERIENCE_SHIFT & CREATURE_EXPERIENCE_MASK;
+        int worth = creature_experience(info);
         champ_add_experience(champ, skill, (uint32_t)((worth * damage >> MELEE_EXPERIENCE_SHIFT) + MELEE_EXPERIENCE_BASE));
         stamina = (int16_t)(rand_2bits() + MELEE_STAMINA_HIT);
     } else {
@@ -493,7 +483,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
         stamina = (int16_t)(rand_bit() + MELEE_STAMINA_MISS);
     }
     champ_decrease_stamina(champ, stamina);
-    if (info->door_flags & CREATURE_DOOR_HALF_DAMAGE && kind != MELEE_KIND_FULL) damage = (int16_t)(damage >> (rand_bit() + 1));
+    if (info->door_flags & CREATURE_RESISTS_NON_FIRE && kind != MELEE_KIND_FULL) damage = (int16_t)(damage >> (rand_bit() + 1));
     creature_alert(group, x, y, MELEE_ALERT_FLAGS, MELEE_ALERT_CHANCE, (uint16_t)damage);
     return damage;
 }
@@ -511,7 +501,7 @@ static int champ_action_melee_attack(int champ, int mode, int x, int y, int skil
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
             action.result = RESULT_BLOCKED;
-            action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_COUNT, 1, VAR_ADD)));
+            action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_COUNT, 1, GLOBAL_VAR_ADD)));
             return 0;
         }
     }
@@ -585,7 +575,7 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
 /* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
 static void show_failure(int result, int counter)
 {
-    int16_t count = (int16_t)dun_modify_global_var(counter, 1, VAR_ADD);
+    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
     action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - count));
     action.result = (int16_t)result;
 }
@@ -629,7 +619,7 @@ static int action_spell_projectile(ActionRun *a)
 /* A melee action: it bashes a closed door in front, or attacks the creature group in front. */
 static int action_melee(ActionRun *a)
 {
-    if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_CLOSED) {
+    if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sound_play_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),

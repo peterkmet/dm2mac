@@ -33,7 +33,6 @@ enum anchor {
 #define WALK_VIEW_Y 8
 #define WALK_VIEW_W 182
 #define WALK_VIEW_H 110
-#define PERCENT_FULL 100
 
 int16_t zone_clip_rect[RECT_SIZE];
 
@@ -309,8 +308,8 @@ int zone_interpolate_offset(int from, int to, int percent, int16_t *dx, int16_t 
 {
     const int16_t *a = find_zone(from), *b = find_zone(to);
     if (!a || !b) return -1;
-    percent = percent < 0 ? 0 : percent > PERCENT_FULL ? PERCENT_FULL : percent;
-    *dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT_FULL);
-    *dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT_FULL);
+    percent = percent < 0 ? 0 : percent > PERCENT ? PERCENT : percent;
+    *dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT);
+    *dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT);
     return 0;
 }

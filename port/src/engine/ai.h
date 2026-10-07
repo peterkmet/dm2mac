@@ -181,17 +181,17 @@ typedef struct {
 } AiSquare;
 extern AiSquare ai_square;
 
-#define MAP_SIDE_MAX 32             /* the squares of the longest map side */
 
 /* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
-typedef struct { int16_t map, width; uint8_t cells[MAP_SIDE_MAX * MAP_SIDE_MAX]; } DistanceMap;
+#define DISTANCE_MAP_SIDE MAP_SIDE_MAX     /* the cells of a distance map: x * 32 + y */
+typedef struct { int16_t map, width; uint8_t cells[DISTANCE_MAP_SIDE * DISTANCE_MAP_SIDE]; } DistanceMap;
 #define DISTANCE_NEXT_TO 0x80
 #define DISTANCE_FAR 0x7f
 extern DistanceMap party_distance, alt_distance;
 
 uint8_t ai_action_flag(int8_t action);
 int creature_get_party_distance(int x, int y);
-int creature_is_near_party_front(int x, int y, int map);
+bool creature_is_near_party_front(int x, int y, int map);
 int creature_attack_group_at(int x, int y);
 uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir);
 void minion_dismiss(uint16_t group);

@@ -47,7 +47,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
 - functions longer than 60 lines,
 - headers without a `Prefixes` line, prefix collisions, and functions outside the prefixes of their header,
 - event numbers in function names,
-- shifts by 8, 16, or 24 and double integer casts in `.c` files (packed fields at the call site),
+- shifts by 8, 16, or 24, shifts by a `*_SHIFT` constant of the header of another module, and double integer casts in `.c` files (packed fields at the call site),
 - includes of a higher layer, and SDL outside `platform/`.
 
 `tests/standard_allowlist.txt` lists the accepted exceptions, one per line with a reason. The reason `open: module cleanup` marks a violation that a later cleanup removes. `opl3.c` and `opl3.h` are vendored code (`opl3-LICENSE`), and the test does not check them.

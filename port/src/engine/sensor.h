@@ -31,23 +31,9 @@ enum {
     ALTAR_EVENT_STEPS = 3
 };
 
-/* Directions and cells wrap at 4. */
-#define DIR_MASK 3
-#define dir_right(dir) (((dir) + 1) & DIR_MASK)
-#define dir_back(dir) (((dir) + 2) & DIR_MASK)
-#define dir_left(dir) (((dir) + 3) & DIR_MASK)
-
-/* Thing at cell. */
-static inline uint16_t thing_at_cell(uint16_t thing, int cell)
-{
-    return (uint16_t)((thing & THING_ID_MASK) | (cell & DIR_MASK) << THING_CELL_SHIFT);
-}
-
-/* A square and direction word of an event: x and y as in a location word, the direction in bits 10-11. */
-static inline uint16_t event_square_dir(int x, int y, int dir) { return (uint16_t)location_pack(x, y, dir & DIR_MASK); }
-
 /* Sensor types that launch missiles. */
 enum { LAUNCH_ITEM = 7, LAUNCH_SPELL = 8, LAUNCH_ITEMS = 9, LAUNCH_SPELLS = 0x0a, LAUNCH_OBJECT = 0x0e, LAUNCH_OBJECTS = 0x0f };
+#define SENSOR_NONE 0               /* sensor type 0: the sensor does nothing */
 /* Floor sensor types that act on the creatures of an area. */
 enum { SENSOR_VANISH = 0x0b, SENSOR_ALERT = 0x28 };
 
