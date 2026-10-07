@@ -33,7 +33,7 @@ Plus the other open checks of a file: `long`, `bool`, `record`. The `prefix` and
 - Add the shared accessors of the timeline event in `engine/timeline.h`: `EVENT_TIME_MASK`, `EVENT_MAP_SHIFT`, `timeline_time_map(time, map)`, `timeline_event_map(e)`, `timeline_set_event_map(e, map)`. The parallel tasks replace the call sites in their files.
 - Update task 4 in `docs/todo.md` with the three types.
 
-## Task 0b: Thing record accessors (one agent, before the parallel tasks)
+## Task 0b: Thing record accessors (one agent, before the parallel tasks) — done
 
 Rule 2: field access of thing records goes through small named functions or macros in `engine/dungeon.h`. Today the call sites use `thing_word(thing, FIELD)` and `set_thing_word(...)` with masks and shifts, about 400 calls. The modules define the record bits again under different names, for example bit `0x0100` of `DOOR_DATA` is `DOOR_BURNABLE` in `ai_move.c` and `DOOR_BREAKABLE` in `sensor.c`.
 
@@ -44,6 +44,14 @@ Rule 2: field access of thing records goes through small named functions or macr
 - Add a unit test for each non-trivial accessor (a packed field with a shift), or state in the report why the differential tests cover it.
 
 ## Parallel tasks (one agent each, own worktree)
+
+Thing record fields and bits have accessors in `engine/dungeon.h` (task 0b). Use them. Do not define record bits again.
+
+Extra items per task, from the task 0b report:
+- Task 3: the sub-fields of sensor data get accessors in `engine/sensor.h`: sensor 0x16 (map `& 0x3f`, cell `>> 6 & 3`), the wall teleport click (`data & 0x3f`), the creature turn sensor (`& 3`).
+- Task 4: `DOOR_SKILL_BASH` (0x4) and `DOOR_SKILL_BURN` (0x8) in `engine/ai_move.h` look swapped: BASH selects fireball and lightning and tests `DOOR_BREAKABLE_BY_MAGIC`, BURN selects physical hits and tests `DOOR_BREAKABLE`. Read the uses and rename them to the real meaning.
+- Task 7: the local `LOCATION_*` macros in `engine/minion.c` use `location_x()`, `location_y()`, `location_map()`, and `location_pack()` of `engine/dungeon.h`.
+- Task 9: rename `timeline_event_clear_thing_flag8` in `docs/skull-symbols.csv` to the name of `EVENT_DOOR_BUTTON_RELEASE`.
 
 | Task | Files |
 |---|---|
