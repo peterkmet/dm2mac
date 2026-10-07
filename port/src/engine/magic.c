@@ -413,10 +413,10 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
 static void draw_in_screen_zone(int category, int index, int entry, int zone)
 {
     DrawCtx d;
-    gfx_ctx_init(&d, category, index, entry);
+    draw_ctx_init(&d, category, index, entry);
     d.transparent = UI_OPAQUE;
     d.zone = (int16_t)zone;
-    gfx_ctx_draw(gfx_ctx_prepare(&d));
+    draw_ctx_draw(draw_ctx_prepare(&d));
 }
 
 void magic_report_cast_failure(int result)
@@ -454,7 +454,7 @@ int magic_cast_entered_runes(void)
     if ((result & CAST_KIND_MASK) != CAST_NEEDS_FLASK) {
         runes[0] = 0;
         c->rune_count = 0;
-        ui_action_area_close();
+        action_area_close();
     }
     return result != 0;
 }
@@ -475,9 +475,9 @@ void magic_add_rune(int rune)
         runes[n + 1] = 0;
     }
     action.redraw_delay = 1;
-    ui_update_action_area(0);
+    action_update_area(0);
     input_refresh_mode();
-    if (added) champ_draw_state(action.champion - 1);
+    if (added) ui_draw_champion_state(action.champion - 1);
 }
 
 /* The champion who casts takes back the last rune. */
@@ -487,7 +487,7 @@ void magic_remove_last_rune(void)
     c->rune_count--;
     champion_runes(c)[c->rune_count] = 0;
     action.redraw_delay = 1;
-    ui_update_action_area(0);
+    action_update_area(0);
     input_refresh_mode();
 }
 
@@ -506,7 +506,7 @@ int move_party_warp_to_marker(void)
         int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0) continue;
         move_party_to(x, y, map, game.party_dir);
-        sound_play_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK,
+        sound_request_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK,
                                  game.party_x, game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
         if (mode == MARKER_CLEAR_ALL) text_set_visible(t, true);
         return 1;

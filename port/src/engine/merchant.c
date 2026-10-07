@@ -62,14 +62,14 @@ static bool shop_front_customer_has_goods(int cell)
         int type = thing_type(t);
         if (!(type > THING_GROUP && type < THING_PROJECTILE)) continue;
         if (cell != ANY_CELL && cell != thing_cell(t)) continue;
-        if (!creature_thing_matches_filter(t, FILTER_COINS) && !creature_thing_matches_filter(t, FILTER_GOODS)) return true;
+        if (!ai_thing_matches_filter(t, FILTER_COINS) && !ai_thing_matches_filter(t, FILTER_GOODS)) return true;
     }
     return false;
 }
 
 static void sum_thing(uint16_t t, ItemSum *s)
 {
-    if (!creature_thing_matches_filter(t, s->filter)) return;
+    if (!ai_thing_matches_filter(t, s->filter)) return;
     if (s->sum == -1) s->sum = 0;
     int charges = s->charges ? (int16_t)item_add_charges(t, 0) : -1;
     s->sum = (int16_t)(s->sum + shop_get_item_value(item_get_index(t), group_creature(ai.group_thing),
@@ -135,10 +135,10 @@ int shop_cmd_wait_for_offer(void)
     int16_t goods_too = ai.arg1;
     ai.arg1 = FILTER_COINS;
     ai.arg2 = OFFER_CELL;
-    if (creature_ai_cmd_front_group_carries() == AI_RESULT_DONE) return AI_RESULT_DONE;
+    if (ai_cmd_front_group_carries() == AI_RESULT_DONE) return AI_RESULT_DONE;
     if (goods_too) {
         ai.arg1 = FILTER_GOODS;
-        if (creature_ai_cmd_front_group_carries() == AI_RESULT_DONE) return AI_RESULT_DONE;
+        if (ai_cmd_front_group_carries() == AI_RESULT_DONE) return AI_RESULT_DONE;
     }
     if (a->counters[0]-- <= 0) {
         a->counters[0] = WAIT_START;
@@ -238,7 +238,7 @@ int shop_cmd_pay_change(void)
     if (g == THING_NONE) return AI_RESULT_FAIL;
     a->action = MERCHANT_WAIT;
     if (!ai.arg1) {
-        uint16_t box = creature_find_matching_item(FILTER_MONEY_BOX, thing_word(g, GROUP_POSSESSIONS), dir_opposite(dir));
+        uint16_t box = ai_find_matching_item(FILTER_MONEY_BOX, thing_word(g, GROUP_POSSESSIONS), dir_opposite(dir));
         if (box == THING_ENDOFLIST) box = THING_NONE;
         int16_t value = shop_sum_items_value(g, FILTER_COINS, dir_opposite(dir), 0, 1, 1);
         if ((value == 0 || value == -1) && box == THING_NONE) return AI_RESULT_FAIL;
@@ -256,7 +256,7 @@ int shop_cmd_pay_change(void)
     ai.arg1 = FILTER_NEW_COINS;
     int16_t amount = (int16_t)*change;
     if (amount <= 0) {
-        int r = creature_ai_cmd_seek_with_carried_item();
+        int r = ai_cmd_seek_with_carried_item();
         return r == AI_RESULT_ISSUED ? AI_RESULT_ISSUED : AI_RESULT_DONE;
     }
     uint8_t coins[COIN_MAX];
@@ -270,6 +270,6 @@ int shop_cmd_pay_change(void)
         if (box != THING_NONE) money_add_coin_to_box(box, coin);
         else dungeon_append_thing(coin, group_possessions(ai.group_thing));
     }
-    creature_ai_cmd_seek_with_carried_item();
+    ai_cmd_seek_with_carried_item();
     return AI_RESULT_ISSUED;
 }

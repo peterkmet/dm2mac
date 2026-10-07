@@ -147,7 +147,7 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
         if (thing_type(payload) != THING_EXPLOSION) move_thing(thing_with_cell(payload, cell), -1, 0, x, y);
         return;
     }
-    sound_play_with_fallback(item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH, SOUND_FALLBACK, (int16_t)x,
+    sound_request_with_fallback(item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH, SOUND_FALLBACK, (int16_t)x,
                              (int16_t)y, 1, SOUND_PRIORITY_LAUNCH, SOUND_VOLUME_NORMAL);
     t = thing_with_cell(t, cell);
     set_thing_word(t, PROJECTILE_PAYLOAD, payload);
@@ -236,7 +236,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
     explosion_set_power(t, (unsigned)power);
     int volume =
         on_party_square(ex, ey) ? SOUND_VOLUME_MAX : min16(SOUND_VOLUME_MAX, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
-    sound_play_with_fallback(CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_FALLBACK, ex, ey, 1, SOUND_PRIORITY_EXPLODE,
+    sound_request_with_fallback(CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_FALLBACK, ex, ey, 1, SOUND_PRIORITY_EXPLODE,
                              volume);
     dungeon_link_thing_to_square(t, party.cur_map, ex, ey);
     int16_t delay = (uint16_t)type == EXPLOSION_SMOKE ? SMOKE_DURATION
@@ -289,7 +289,7 @@ void projectile_destroy(uint16_t projectile, uint16_t *holder, int x, int y)
                 move_thing((uint16_t)((payload & THING_ID_MASK) | (projectile & ~THING_ID_MASK)), -2, 0, (int16_t)x, (int16_t)y);
             }
         }
-        sound_play_with_fallback(item_gdat_category(projectile), item_gdat_index(projectile), SOUND_ENTRY_DROP, SOUND_FALLBACK,
+        sound_request_with_fallback(item_gdat_category(projectile), item_gdat_index(projectile), SOUND_ENTRY_DROP, SOUND_FALLBACK,
                                  (int16_t)x, (int16_t)y, 1, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
     }
     set_thing_word(projectile, THING_NEXT, THING_NONE);
@@ -462,7 +462,7 @@ static int projectile_hit_door(Hit *h)
     uint16_t door = dungeon_square_first_thing(party.cur_map, h->x, h->y);
     if (state != DOOR_STATE_BROKEN && (h->payload == SPELL_DOOR_TOGGLE || h->payload == SPELL_DOOR_SET)) return 1;
     if (state == DOOR_STATE_BROKEN || state <= DOOR_STATE_ONE_FOURTH) return 0;
-    if (door_value(door, DOOR_KEY_GRATE)) {
+    if (sensor_door_value(door, DOOR_KEY_GRATE)) {
         int passes;
         if (h->payload_type == THING_EXPLOSION) {
             passes = h->payload >= SPELL_HARM_NON_MATERIAL;
@@ -772,7 +772,7 @@ void explosion_process_event(TimelineEvent *e)
             else explosion_set_power(t, (unsigned)(power - DEATH_CLOUD_DECAY));
             break;
         case BLAST_SMOKE:
-            sound_play_with_fallback(CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_EXPLODE,
+            sound_request_with_fallback(CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_EXPLODE,
                                      SOUND_VOLUME_LOUD);
             explosion_set_type(t, explosion_type(t) + 1);
             break;
@@ -891,7 +891,7 @@ int creature_attack_champion(uint16_t group, int champ)
             if (rand_bit()) power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
             damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
             if (damage) {
-                sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y,
+                sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y,
                                          SOUND_DELAY_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
                 int16_t poison;
                 if (info->poison && rand_bit() && (poison = (int16_t)champ_get_stat_adjusted_attack(champion(champ), STAT_VITALITY, info->poison)) != 0)

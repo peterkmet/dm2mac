@@ -283,7 +283,7 @@ def viewport_on_screen(lib):
 def test_recruit_and_cancel(loop, lib):
     # The party walks to the first mirror and recruits its champion; then it walks to the next mirror, takes that
     # champion as a candidate, and sends it back. The candidate panel shows on the screen, as the original
-    # champ_draw_state (0x48890) presents the viewport after it draws the inventory.
+    # ui_draw_champion_state (0x48890) presents the viewport after it draws the inventory.
     from test_interface import UiState, c_view
     ui = UiState.in_dll(lib, "ui")
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")

@@ -45,7 +45,7 @@ void game_wait_frames(int count)
     }
 }
 
-void screen_present_viewport(void)
+void game_present_viewport(void)
 {
     int steps = party.move_steps;
     int16_t r[RECT_SIZE];
@@ -73,12 +73,12 @@ static void ui_draw_sleep_message(void)
     text_draw_in_zone(ZONE_VIEW_TEXT, ui_colors[UI_CYAN], text);
 }
 
-void ui_show_game_view(void)
+void game_show_view(void)
 {
     if (!main_loop.view_hidden || dialog.screen_mode) return;
     if (party_sleeping) {
         ui_draw_sleep_message();
-        screen_present_viewport();
+        game_present_viewport();
         return;
     }
     main_loop.view_hidden = 0;
@@ -87,23 +87,23 @@ void ui_show_game_view(void)
     if (ui.inventory) {
         int champ = ui.inventory - 1;
         ui.inventory = 0;
-        inv_toggle(champ);
+        ui_toggle_inventory(champ);
         return;
     }
     view_clear_viewport();
     ui_draw_movement_arrows();
 }
 
-void ui_hide_game_view(void)
+void game_hide_view(void)
 {
     if (main_loop.view_hidden || dialog.screen_mode) return;
     main_loop.view_hidden = 1;
     if (input_drag_state) {
         champ_drag_cancel();
-        ui_update_action_area(0);
+        action_update_area(0);
     }
     input_cancel_push_mode();
-    ui_release_move_arrow();
+    input_release_move_arrow();
 }
 
 void champ_wake_party(void)
@@ -119,17 +119,17 @@ void game_sleep(void)
 {
     if (ui.candidate) return;
     inv_arrows_on_close = 0;
-    if (ui.inventory) inv_toggle(CHAMPION_MAX);
+    if (ui.inventory) ui_toggle_inventory(CHAMPION_MAX);
     inv_arrows_on_close = 1;
-    ui_action_area_close();
-    ui_hide_game_view();
+    action_area_close();
+    game_hide_view();
     party_sleeping = 1;
     if (party.move_steps) {
         move_party(party.move_command);
         party.move_steps = 0;
     }
     ui_draw_sleep_message();
-    screen_present_viewport();
+    game_present_viewport();
     main_loop.tick_threshold = SLEEP_STEP_TICKS;
     input_set_mode(INPUT_MODE_SLEEP);
     input_flush();
@@ -180,7 +180,7 @@ void timeline_process(void)
         case EVENT_HIDE_DAMAGE: timeline_event_hide_damage(e.priority); break;
         case EVENT_ALTAR_REBIRTH: timeline_event_altar_rebirth(&e); break;
         case EVENT_ITEM_EFFECT: timeline_event_apply_item_effect(&e, EFFECT_MODE_CONSUME_END); break;
-        case EVENT_DELAYED_SOUND: sound_play_delayed(word); break;
+        case EVENT_DELAYED_SOUND: sound_request_delayed(word); break;
         case EVENT_EXPLOSION: explosion_process_event(&e); break;
         case EVENT_PROJECTILE_MOVE: case EVENT_PROJECTILE_MOVE_2: projectile_process_event(&e); break;
         case EVENT_CREATURE_ANIMATION: case EVENT_CREATURE_THINK: creature_process_event(e.data[EVENT_X], e.data[EVENT_Y], e.type); break;
@@ -238,12 +238,12 @@ static int game_step_view(void)
         if (party.new_map != -1) continue;
         world_update_day_night(0);
         if (party_sleeping) return 0;
-        if (!ui.candidate) ui_show_game_view();
+        if (!ui.candidate) game_show_view();
         if (!ui.inventory) {
             if (party.redraw) creature_refresh_party_maps();
             if (party.move_steps) view_draw_dungeon(party.view_dir, party.view_x, party.view_y);
             else view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
-            screen_present_viewport();
+            game_present_viewport();
             if (game_mode == GAME_MODE_ADVANCED) automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir);
         }
         if (!party.move_steps) return 1;
@@ -263,24 +263,24 @@ static void game_step(void)
         input_feedback_busy = 0;
         input_poll();
     }
-    ui_release_move_arrow();
+    input_release_move_arrow();
     sound_flush_requests(0);
     champ_apply_pending_damage();
     if (game.magic_light[MAGIC_HASTE]) game.magic_light[MAGIC_HASTE]--;
     if (!(game.game_time & (party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK))) champ_apply_time_effects();
     inv_update_hand_cursor();
-    champ_draw_all_states(1);
+    ui_draw_all_champion_states(1);
     if (main_loop.end) {
         input_reset_states();
         return;
     }
     game.game_time++;
-    if (!(game.game_time & LIGHT_BURN_PERIOD_MASK)) items_burn_held_lights();
+    if (!(game.game_time & LIGHT_BURN_PERIOD_MASK)) champ_burn_held_lights();
     if (game.magic_light[MAGIC_ACTION_EFFECT]) game.magic_light[MAGIC_ACTION_EFFECT]--;
     if (game.party_move_cooldown) game.party_move_cooldown--;
     if (game.throw_cooldown) game.throw_cooldown--;
     text_clear_expired_rows();
-    ui_release_move_arrow();
+    input_release_move_arrow();
 }
 
 /* The part of a game step after the input wait: a map change, repeated actions, music. */
@@ -305,12 +305,12 @@ void game_start_session(void)
     dialog.progress_enabled = 0;
     advanced_reset();
     if (session.loaded) {
-        gfx_fill_zone_screen(ZONE_SCREEN, 0);
-        ui_dialog_run(ui_dialog_draw(DIALOG_LOADED, MESSAGE_NONE));
-        gfx_fill_zone_screen(ZONE_SCREEN, 0);
+        ui_fill_zone_screen(ZONE_SCREEN, 0);
+        dialog_run(dialog_draw(DIALOG_LOADED, MESSAGE_NONE));
+        ui_fill_zone_screen(ZONE_SCREEN, 0);
     } else if (session.new_game) {
         dialog.screen_mode = 0;
-        gfx_fill_zone_screen(ZONE_SCREEN, 0);
+        ui_fill_zone_screen(ZONE_SCREEN, 0);
     }
     ui_draw_movement_arrows();
     champ_init_party_state();

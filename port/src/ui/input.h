@@ -2,6 +2,8 @@
 #define INPUT_H
 #include <stdint.h>
 
+/* Prefixes: input_ command_ kbd_ rect_ */
+
 /* Input modes: the root of the input tree that maps clicks and keys to commands. */
 enum input_mode {
     INPUT_MODE_MENU = 0, INPUT_MODE_PICTURE = 1, INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_DIALOG = 4,
@@ -134,14 +136,12 @@ extern int input_mouse_x, input_mouse_y;
 /* The push arrow under the mouse in the viewport while the party can push a creature (party.push_arrow). */
 void input_update_viewport_arrow(void);
 /* Redraws the released movement arrow. */
-void ui_release_move_arrow(void);
+void input_release_move_arrow(void);
 /* Executes the queued commands until one stops the processing. */
 void command_process_queue(void);
 /* Executes one command; returns 0 when it must wait. */
 int command_execute(Command *c);
 /* The commands of later steps: hands, slots, spells, recruiting, dialogs (empty until then). */
 void command_execute_later(const Command *c);
-/* A click in the dungeon view: walls, doors, objects, creatures. */
-void view_click_in_viewport(int x, int y);
 
 #endif

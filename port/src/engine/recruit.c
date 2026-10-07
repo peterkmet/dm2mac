@@ -15,6 +15,7 @@
 #include "sound_request.h"
 #include "text.h"
 #include "ui.h"
+#include "sensor.h"
 
 #define SENSOR_MIRROR 0x7e          /* the wall sensor of a champion mirror; its data is the portrait */
 #define SENSOR_MIRROR_ACTIVE SENSOR_STATE  /* the mirror still holds its champion */
@@ -107,8 +108,8 @@ int champ_start_recruit(int x, int y, int dir, int map)
     int portrait = (uint8_t)sensor_data(mirror);
     champ_add_to_party(portrait, index, dir);
     if (index) {
-        ui_action_area_close();
-        ui_update_action_area(0);
+        action_area_close();
+        action_update_area(0);
     }
     ui.candidate = (uint16_t)(index + 1);
     game.champion_count++;
@@ -117,9 +118,9 @@ int champ_start_recruit(int x, int y, int dir, int map)
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, fx, fy); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) > THING_SENSOR && thing_cell(t) == back) inv_put_object_in_free_slot(index, t);
     if (!recruit_silent) {
-        inv_toggle(index);
+        ui_toggle_inventory(index);
         input_set_mode(INPUT_MODE_RECRUIT);
-        ui_hide_game_view();
+        game_hide_view();
     }
     dun_set_current_map(saved);
     champ_compute_load(index);
@@ -135,20 +136,20 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
     uint16_t hand = champ_remove_object_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
         /* the object in the hand is lost, as in the original */
-        inv_toggle(CHAMPION_MAX);
+        ui_toggle_inventory(CHAMPION_MAX);
         if (game.champion_count == 1) champ_set_leader(-1);
         if (ui.candidate >= game.champion_count) game.champion_count--;
         ui.candidate = 0;
         c->health = 0;
         action_reset_champion(champ);
-        gfx_fill_zone_screen(ZONE_STATUS_BOX + champ, ui_colors[UI_BLACK]);
-        ui_show_game_view();
+        ui_fill_zone_screen(ZONE_STATUS_BOX + champ, ui_colors[UI_BLACK]);
+        game_show_view();
         dun_set_current_map(saved);
         return;
     }
     if (!recruit_silent) {
-        gfx_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
-        screen_present_viewport();
+        ui_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
+        game_present_viewport();
         sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD, game.party_x,
                       game.party_y, 0);
     }
@@ -167,8 +168,8 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         char text[TEXT_SIZE];
         text_print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
         if (ui.inventory) {
-            inv_toggle(CHAMPION_MAX);
-            ui_show_game_view();
+            ui_toggle_inventory(CHAMPION_MAX);
+            game_show_view();
         }
     }
     dun_set_current_map(saved);

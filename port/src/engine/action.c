@@ -11,6 +11,7 @@
 #include "ui.h"
 #include "view.h"
 #include "zone.h"
+#include "money.h"
 
 /* Action area pictures (1, 4, entry) and (1, 5, entry). */
 enum {
@@ -109,7 +110,7 @@ static void begin_draw(int clear)
     if (clear) offscreen_fill_rect(&area, area.rect, ui_colors[UI_BLACK]);
 }
 
-Offscreen *ui_action_area_begin_draw(int clear)
+Offscreen *action_area_begin_draw(int clear)
 {
     begin_draw(clear);
     return &area;
@@ -131,12 +132,12 @@ static void draw_action_result(int16_t value)
         }
     }
     DrawCtx c;
-    gfx_ctx_init(&c, CAT_INTERFACE, index, entry);
+    draw_ctx_init(&c, CAT_INTERFACE, index, entry);
     if (value >= 0 && value <= RESULT_SCALED_MAX) {
         c.scale_x = value > RESULT_SMALL_MAX ? RESULT_LARGE_SCALE : RESULT_SMALL_SCALE;
         c.scale_y = RESULT_SCALE_Y;
     }
-    offscreen_draw_ctx(&area, gfx_ctx_prepare(&c), ZONE_RESULT, UI_OPAQUE);
+    offscreen_draw_ctx(&area, draw_ctx_prepare(&c), ZONE_RESULT, UI_OPAQUE);
     if (value >= 0) {
         char digits[RESULT_DIGITS] = {0};
         int at = RESULT_DIGITS - 1;
@@ -168,9 +169,9 @@ static Bitmap *action_hand_icon(int champ, int hand)
     if (!icon) return NULL;
     int empty = thing == THING_NONE;
     DrawCtx c;
-    if (empty) gfx_ctx_init(&c, CAT_INTERFACE, UI_INDEX_STATUS, ACTION_EMPTY_HAND + (hand == SLOT_ACTION_HAND));
-    else gfx_ctx_init(&c, item_gdat_category(thing), item_gdat_index(thing), item_icon_index(thing, -1, 0));
-    gfx_ctx_prepare(&c);
+    if (empty) draw_ctx_init(&c, CAT_INTERFACE, UI_INDEX_STATUS, ACTION_EMPTY_HAND + (hand == SLOT_ACTION_HAND));
+    else draw_ctx_init(&c, item_gdat_category(thing), item_gdat_index(thing), item_icon_index(thing, -1, 0));
+    draw_ctx_prepare(&c);
     gfx_fill_bitmap(icon, ui_colors[ICON_KEY_COLOR]);
     if (!c.image) return icon;
     if (!empty) {
@@ -178,7 +179,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
         memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
         shadow[UI_KEY] = ui_colors[ICON_KEY_COLOR];
         const int16_t r[RECT_SIZE] = {ICON_OFFSET, ICON_OFFSET, ICON_SIZE, ICON_SIZE};
-        gfx_blit_bitmap(c.image, icon, r, 0, 0, UI_OPAQUE, shadow);
+        ui_blit_bitmap(c.image, icon, r, 0, 0, UI_OPAQUE, shadow);
         uint32_t size;
         const uint8_t *remap = gdat_item(draw_gdat(), gdat_find(draw_gdat(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, ICON_SHADOW_REMAP),
                                          &size);
@@ -192,7 +193,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
         }
     }
     const int16_t r[RECT_SIZE] = {0, 0, empty ? c.w : ICON_SIZE, empty ? c.h : ICON_SIZE};
-    gfx_blit_bitmap(c.image, icon, r, 0, 0, UI_KEY, c.palette_count > 0 ? c.palette : NULL);
+    ui_blit_bitmap(c.image, icon, r, 0, 0, UI_KEY, c.palette_count > 0 ? c.palette : NULL);
     return icon;
 }
 
@@ -227,8 +228,8 @@ static void draw_aura(int champ, int zone)
     const Champion *c = champion(champ);
     if (!c->aura_value) return;
     DrawCtx a;
-    gfx_ctx_init(&a, CAT_INTERFACE, UI_INDEX_AURA, c->aura);
-    gfx_ctx_prepare(&a);
+    draw_ctx_init(&a, CAT_INTERFACE, UI_INDEX_AURA, c->aura);
+    draw_ctx_prepare(&a);
     a.w = (int16_t)(a.w / AURA_FRAMES);
     a.x = (int16_t)(relative_dir(c->dir) * a.w);
     a.h = (int16_t)(a.h / AURA_FRAMES);
@@ -295,17 +296,17 @@ static void draw_spell_icon(int champ, int flash)
     if (champ == game.leader) rune++;
     if (flash) hand++;
     DrawCtx d;
-    gfx_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, hand);
+    draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, hand);
     d.flip = (int16_t)mirror;
-    offscreen_draw_ctx(&area, gfx_ctx_prepare(&d), ZONE_SPELL_HAND_ICON_FIRST + rel, UI_CYAN);
+    offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_HAND_ICON_FIRST + rel, UI_CYAN);
     if (party_sleeping || c->action_delay[ACTION_SPELL]) {
         int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]), (int16_t)(d.rect[RECT_Y] + area.rect[RECT_Y]),
                                 d.rect[RECT_W], d.rect[RECT_H]};
         offscreen_fill_rect_dithered(&area, s, UI_BLACK);
     }
-    gfx_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, rune);
+    draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, rune);
     d.flip = (int16_t)mirror;
-    offscreen_draw_ctx(&area, gfx_ctx_prepare(&d), ZONE_SPELL_RUNE_ICON_FIRST + rel, UI_CYAN);
+    offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_RUNE_ICON_FIRST + rel, UI_CYAN);
     if (party_sleeping) {
         int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]), (int16_t)(d.rect[RECT_Y] + area.rect[RECT_Y]),
                                 d.rect[RECT_W], d.rect[RECT_H]};
@@ -343,7 +344,7 @@ static void draw_action_champion_face(void)
 }
 
 /* Draws the runes that the champion entered in the spell panel. */
-void ui_draw_entered_runes(int clear)
+void action_draw_entered_runes(int clear)
 {
     begin_draw(0);
     if (clear) offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNES_BACK, ZONE_RUNES_BACK, UI_OPAQUE);
@@ -368,7 +369,7 @@ static void draw_spell_panel(void)
                                         ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
         }
     }
-    ui_draw_entered_runes(0);
+    action_draw_entered_runes(0);
     draw_action_champion_face();
 }
 
@@ -390,9 +391,9 @@ static void draw_action_name(int i, int highlight)
                                             text_gdat_label(a->category, a->index, a->entry));
 }
 
-void ui_draw_action_name(int i, int highlight) { draw_action_name(i, highlight); }
-void ui_draw_hand_icon(int champ, int hand, int flash) { draw_hand_icon(champ, hand, flash); }
-void ui_draw_spell_icon(int champ, int flash) { draw_spell_icon(champ, flash); }
+void action_draw_name(int i, int highlight) { draw_action_name(i, highlight); }
+void action_draw_hand_icon(int champ, int hand, int flash) { draw_hand_icon(champ, hand, flash); }
+void action_draw_spell_icon(int champ, int flash) { draw_spell_icon(champ, flash); }
 
 /* Draws the action menu of the open hand. */
 static void draw_action_menu(void)
@@ -515,7 +516,7 @@ static void close_container(void)
 }
 
 /* Closes the open hand or spell panel. */
-void ui_action_area_close(void)
+void action_area_close(void)
 {
     if (!action.champion) return;
     if (!action.result || action.redraw_delay < 2) action.redraw_delay = 0;
@@ -631,7 +632,7 @@ static void draw_hand_panel(void)
         action.mode = ACTION_MODE_MENU;
         draw_action_menu();
     } else if (action.mode == ACTION_MODE_MINION_MAP) {
-        ui_draw_minion_map(thing);
+        minion_draw_map(thing);
     } else {
         action.champion = 0;
         action.mode = ACTION_MODE_HANDS;
@@ -680,7 +681,7 @@ static void draw_open_face_aura(void)
     }
 }
 
-void ui_update_action_area(int tick)
+void action_update_area(int tick)
 {
     if (ui.candidate) return;
     int full = 0, party_changed = 0;
@@ -709,7 +710,7 @@ void ui_update_action_area(int tick)
     }
     if (action.champion > 0 && action.hand >= 0 && action.hand != ACTION_HAND_SPELL
         && action.hand_items[action.champion - 1][action.hand] != champion(action.champion - 1)->slots[action.hand])
-        ui_action_area_close();
+        action_area_close();
     if (action.champion >= 0) party_changed = party_icons_changed();
     if (action.dirty) {
         if (action.redraw_delay > 1) {

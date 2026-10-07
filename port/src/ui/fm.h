@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Prefixes: fm_ */
+
 /* The OPL2 FM music driver of HMIMDRV.386 (fmmidi.com, device 0xa002) on an emulated OPL3 chip. */
 
 enum { FM_BANK_MELODIC, FM_BANK_DRUM, FM_BANK_COUNT };

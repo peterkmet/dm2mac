@@ -382,7 +382,7 @@ static void draw_pit_above(const Strip *base, int sx, int sy, int x, int y)
 static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int x, int y, int icon_set, int flags)
 {
     ViewSquare s;
-    dun_get_square_aspect(&s, dir, sx, sy);
+    view_get_square_aspect(&s, dir, sx, sy);
     Strip base = map_icon_strip(CAT_WALLSET, icon_set);
     if (flags & MAP_PARTY) draw_party_frame(x, y);
     int fake_seen = square_type(s.square) == SQUARE_FAKE_WALL && s.square & FAKE_WALL_SEEN;
@@ -404,13 +404,13 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
         other_map = 1;
         saved_map = party.cur_map;
         dun_set_current_map(m);
-        dun_get_square_aspect(&s, dir, sx, sy);
+        view_get_square_aspect(&s, dir, sx, sy);
     }
     if (other_map) {
         sx = saved_x;
         sy = saved_y;
         dun_set_current_map(saved_map);
-        dun_get_square_aspect(&s, dir, sx, sy);
+        view_get_square_aspect(&s, dir, sx, sy);
     }
     draw_pit_above(&base, sx, sy, x, y);
 }
@@ -545,7 +545,7 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
     }
     mm->marker_state = MARKER_NONE;
     int saved_map = party.cur_map;
-    area = ui_action_area_begin_draw(0);
+    area = action_area_begin_draw(0);
     offscreen_fill_rect(area, zone_get_rect(ZONE_MAP_GRID, mm->clip), ui_colors[UI_BLACK]);
     mm->clip[RECT_X] += GAP_X;
     mm->clip[RECT_Y] += GAP_Y;
@@ -574,9 +574,9 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
     dun_set_current_map(saved_map);
 }
 
-void ui_draw_map_option_buttons(int pressed)
+void minion_draw_map_option_buttons(int pressed)
 {
-    area = ui_action_area_begin_draw(0);
+    area = action_area_begin_draw(0);
     if (action.champion <= 0 || !(action.flags & MAP_HAS_OPTIONS)) return;
     int down = (pressed ^ action.flags) & MAP_OPTIONS;
     for (int i = 0; i < MAP_OPTION_COUNT; i++, down >>= 1) {
@@ -588,7 +588,7 @@ void ui_draw_map_option_buttons(int pressed)
     }
 }
 
-void ui_draw_minion_map(uint16_t thing)
+void minion_draw_map(uint16_t thing)
 {
     action.map_item = item_gdat_index(thing);
     action.flags |= MAP_STATIC_CREATURES | MAP_PARTY;
@@ -602,11 +602,11 @@ void ui_draw_minion_map(uint16_t thing)
             else if (action.flags & MAP_MINION) action.flags &= ~(MAP_MINION | MAP_PANEL_DRAWN);
         }
     }
-    area = ui_action_area_begin_draw(0);
+    area = action_area_begin_draw(0);
     if (!(action.flags & MAP_PANEL_DRAWN)) {
         offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, MAP_PANEL_PICTURE, ZONE_PANEL, UI_OPAQUE);
-        for (int i = 0; i < champ_action_count; i++) ui_draw_action_name(i, 0);
-        ui_draw_map_option_buttons(0);
+        for (int i = 0; i < champ_action_count; i++) action_draw_name(i, 0);
+        minion_draw_map_option_buttons(0);
         action.flags |= MAP_PANEL_DRAWN;
     }
     int x = game.party_x, y = game.party_y, map = game.party_map, x_offset = 0, y_offset = 0;
@@ -622,7 +622,7 @@ void ui_draw_minion_map(uint16_t thing)
                 y = location_y(w);
                 map = location_map(w);
                 int dir = game.party_dir;
-                int cell = creature_get_view_cell_zone(group, dir_turn(creature_side_dir[group_dir(group)], dir));
+                int cell = view_get_creature_cell_zone(group, dir_turn(creature_side_dir[group_dir(group)], dir));
                 int col = (int16_t)cell % VIEW_CELL_ROW, row = (int16_t)cell / VIEW_CELL_ROW;
                 if (col > VIEW_CELL_ROW / 2) {
                     x += dir_dx[dir_turn(dir, 1)];
@@ -649,7 +649,7 @@ void ui_draw_minion_map(uint16_t thing)
     }
 }
 
-void ui_toggle_map_option(int option)
+void minion_toggle_map_option(int option)
 {
     int mana = option_mana[option], bit = 1 << option;
     if (!(action.flags & bit)) {
@@ -747,8 +747,8 @@ void minion_map_click_set_destination(int command, int x, int y)
             }
         }
         minion_map_set_location(thing, sx, sy, map);
-        creature_free_cached_ai_data(group);
-        ui_update_action_area(0);
+        ai_free_cached_data(group);
+        action_update_area(0);
     }
     dun_set_current_map(saved);
 }

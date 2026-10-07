@@ -4,6 +4,8 @@
 #include "save.h"
 #include "timeline.h"
 
+/* Prefixes: champ_ champion */
+
 /* Champion slots: the hands, the body and pack slots (to 29), then the slots of an open container. */
 enum {
     SLOT_READY_HAND, SLOT_ACTION_HAND, SLOT_HAND_COUNT, SLOT_CONTAINER_TEST = 12, SLOT_COUNT = 30,
@@ -197,11 +199,9 @@ void champ_kill(int champ);
 /* Mana, food, water, stamina, health, and statistics change with the time. */
 void champ_apply_time_effects(void);
 /* The torches in the hands burn down. */
-void items_burn_held_lights(void);
+void champ_burn_held_lights(void);
 /* Brings champ back to life in a free cell, without items, with less maximum health. */
 void champ_revive(int champ);
-/* A step of an altar rebirth (event 0x0d). */
-void timeline_event_altar_rebirth(TimelineEvent *e);
 /* A click on the face of a champion in cell (bit 15: cancel the drag): the first click takes the face, the second
    swaps it with the champion of the second cell. */
 void champ_drag_click(int cell);
@@ -217,5 +217,63 @@ void champ_recruit_start_champion(int x, int y, int dir, int map);
 
 /* Prepares the party of a loaded game for the screen: redraw flags, drawn hand state, the leader. */
 void champ_init_party_state(void);
+
+/* Champion actions (champ_action.c). */
+/* Runs action (0 to 2, -1: none) of the open action menu; returns 1 when the action was done. */
+int champ_execute_selected_action(int action);
+/* Champ performs action (an index in champ_actions, bit 15: a repeat) with the item in the open hand. */
+int champ_perform_action(int champ, int action);
+/* Makes the hand (-1: both hands and the spell) of champ busy for about ticks game steps. */
+void champ_add_action_delay(int champ, int ticks, int hand);
+/* Takes the charges of the current action from its item; returns 1 when the item has no charges left. */
+int champ_use_action_charge(int champ);
+/* The hand of champ is free again: a shooter or a thrower takes the next ammunition or throwing item. */
+void champ_reload_hand(int champ, int hand);
+/* The repeats of the actions of all champions. */
+void champ_process_repeated_actions(void);
+/* Adds experience in skill; each new level raises the statistics and prints a message. */
+void champ_add_experience(int champ, int skill, uint32_t amount);
+/* The level of the whole party: from the sum of the base skill experience of all champions. */
+int champ_get_party_level(void);
+/* Champ throws the item in hand (-1: the leader hand object) to the left or right side; returns 1 when it flies. */
+int champ_throw_object(int champ, int hand, int side);
+/* The leader throws the object in the leader hand. */
+int champ_throw_leader_hand_object(int side);
+
+/* The party wakes up (game.c). */
+void champ_wake_party(void);
+
+/* Champion objects and statistics (inventory.c). */
+/* Puts thing into the hand of the leader; defer_cursor: the original changes the mouse cursor later. */
+void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor);
+/* Takes the object out of the hand of the leader; THING_NONE when the hand is empty. */
+uint16_t champ_remove_object_from_leader_hand(void);
+/* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
+void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode);
+/* Computes the load of the champion: its slots and the items of its open chest. */
+void champ_compute_load(int champ);
+/* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
+void champ_adjust_stat(uint8_t *stat, int delta);
+/* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
+uint16_t champ_remove_object_from_slot(int champ, int slot);
+/* Puts thing into slot of champ. */
+void champ_add_object_to_slot(int champ, uint16_t thing, int slot);
+/* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
+   champion of the open inventory (a click on the mouth). */
+void champ_consume_object(int champ, uint16_t thing, int slot);
+
+/* Champion movement (move.c). */
+/* Turns the party to dir; the champions turn with it. */
+void champ_set_party_direction(int dir);
+/* The number of game steps that the champion needs for a move (load, wounds, haste). */
+int champ_get_move_delay(int champ);
+/* The champion nearest to the square (x, y) next to the party, seen from cell (0xff: any); -1 none. */
+int champ_get_nearest_at(int x, int y, int cell);
+/* Takes stamina from a champion. */
+void champ_decrease_stamina(int champ, int amount);
+
+/* Champion launches (projectile.c). */
+/* A champion throws or casts payload from the party square. */
+void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step);
 
 #endif

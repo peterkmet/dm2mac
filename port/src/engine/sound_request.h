@@ -2,6 +2,8 @@
 #define SOUND_REQUEST_H
 #include <stdint.h>
 
+/* Prefixes: sound_clear_ sound_flush_ sound_request sound_reset_ */
+
 /* A sound that the game asks for: the GDAT sound (category, index, entry), its priority, its volume, and its place
    seen by the party (lateral: right is positive). */
 typedef struct {
@@ -42,7 +44,7 @@ extern int sound_started_count;
    game step, a negative delay at the next sound_flush_requests(1), a longer delay through the timeline. */
 void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay);
 /* sound_request with the sound of index fallback when index has no such sound. */
-void sound_play_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority,
+void sound_request_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay, int priority,
                               int volume);
 /* Plays the requests of the game step (queue 0) or the deferred requests (queue 1). */
 void sound_flush_requests(int queue);
@@ -51,6 +53,6 @@ void sound_reset_requests(void);
 /* Drops the requests of the game step: a map change loads other sounds. */
 void sound_clear_requests(void);
 /* A delayed sound (timeline event 0x15) is due: it plays when the party is still on its map. */
-void sound_play_delayed(int slot);
+void sound_request_delayed(int slot);
 
 #endif

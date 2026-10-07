@@ -22,6 +22,7 @@
 #include "video.h"
 #include "view.h"
 #include "zone.h"
+#include "sound.h"
 
 #define WINDOW_SCALE 3
 #define ICON_MAX_PIXELS (128 * 128)
@@ -70,7 +71,7 @@ static void set_icon(void)
 /* Loads a save and starts its game at once; returns 0 with a message on an error. */
 static int show_save(const char *path)
 {
-    if (!game_start_save(path)) {
+    if (!session_start_save(path)) {
         fprintf(stderr, "cannot load the save %s\n", path);
         return 0;
     }
@@ -203,13 +204,13 @@ int main(int argc, char **argv)
         sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     }
     game_frame_hook = modal_frame;
-    if (!save && !game_init()) main_loop.quit = 1;
+    if (!save && !session_init()) main_loop.quit = 1;
     for (int pit = 0; !main_loop.quit;) {
         pump_events();
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
             game_tick();
-            if (main_loop.end && !main_loop.quit) game_end(main_loop.end);
+            if (main_loop.end && !main_loop.quit) session_end(main_loop.end);
             present_with_cursor();
         }
         plat_wait_tick();

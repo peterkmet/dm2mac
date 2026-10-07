@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "gdat.h"
 
+/* Prefixes: weather_ light_ world_ */
+
 /* Weather and day state that the save file does not keep (the saved part is in game). */
 typedef struct {
     int16_t strike_threshold;   /* lightning strikes the party square only when global byte 0x40 is above it */

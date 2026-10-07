@@ -10,6 +10,8 @@
 #include "session.h"
 #include "text.h"
 #include "ui.h"
+#include "minion.h"
+#include "sensor.h"
 
 #define AURA_MAX 100
 #define AURA_STAT_SHIFT 7
@@ -190,7 +192,7 @@ static void champ_add_start_champion(void)
             continue;
         champ_recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
         champion(0)->dir = champion(0)->cell = (uint8_t)game.party_dir;
-        champ_set_redraw_flags(REDRAW_STATUS_BOX);
+        ui_set_champion_redraw_flags(REDRAW_STATUS_BOX);
         champ_set_leader(0);
         return;
     }
@@ -214,7 +216,7 @@ void champ_init_party_state(void)
         champion(i)->redraw &= REDRAW_KEEP;
         action_reset_champion(i);
     }
-    champ_set_redraw_flags(REDRAW_STATUS_BOX);
+    ui_set_champion_redraw_flags(REDRAW_STATUS_BOX);
     int leader = (int16_t)game.leader;
     if (leader != -1) {
         game.leader = (uint16_t)-1;

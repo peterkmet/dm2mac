@@ -9,6 +9,8 @@
 #include "random.h"
 #include "save.h"
 #include "text.h"
+#include "projectile.h"
+#include "sensor.h"
 
 #define EXPLOSION_THING_FIRST 0xff80   /* thing values of explosion types; the low 7 bits are the GDAT index */
 #define EXPLOSION_INDEX_BASE 0x80

@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Prefixes: hmp_ */
+
 /* HMP song player of the HMI SOS MIDI library in SKULL.EXE: tracks, delta times, HMI loops, volumes. */
 
 enum {

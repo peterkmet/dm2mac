@@ -4,6 +4,8 @@
 #include "save.h"
 #include "ui.h"
 
+/* Prefixes: action_ */
+
 /* What the action area shows. */
 enum action_mode {
     ACTION_MODE_HANDS, ACTION_MODE_MENU, ACTION_MODE_SPELL, ACTION_MODE_MINION_MAP, ACTION_MODE_MONEY_BOX,
@@ -43,18 +45,24 @@ void action_reset_champion(int champ);
 /* The item in the open hand, as the action area shows it. */
 uint16_t action_open_hand_item(void);
 /* Closes the open hand or spell panel. */
-void ui_action_area_close(void);
+void action_area_close(void);
 /* Redraws what changed in the action area (tick: one game tick passed). */
-void ui_update_action_area(int tick);
+void action_update_area(int tick);
 /* Opens the action area bitmap (clear: it starts black) and returns it. */
-Offscreen *ui_action_area_begin_draw(int clear);
+Offscreen *action_area_begin_draw(int clear);
 /* Draws the runes that the champion entered in the spell panel (clear: their background first). */
-void ui_draw_entered_runes(int clear);
+void action_draw_entered_runes(int clear);
 /* Draws the button and the name of action i of the action menu or of a minion map. */
-void ui_draw_action_name(int i, int highlight);
+void action_draw_name(int i, int highlight);
 /* Draws the hand icon of champ in the action area (flash: pressed). */
-void ui_draw_hand_icon(int champ, int hand, int flash);
+void action_draw_hand_icon(int champ, int hand, int flash);
 /* Draws the spell icon of champ in the party icons (flash: pressed). */
-void ui_draw_spell_icon(int champ, int flash);
+void action_draw_spell_icon(int champ, int flash);
+
+/* The action area of a hand or of the spells (champ_action.c). */
+/* Opens the action menu of a hand of champ (0 to 3) in the action area. */
+void action_area_open_hand(int champ, int hand);
+/* Opens the spell panel of champ in the action area. */
+void action_area_open_spells(int champ);
 
 #endif

@@ -401,17 +401,17 @@ void champ_drag_cancel(void)
 void champ_kill(int champ)
 {
     Champion *c = champion(champ);
-    if (champ == action.champion - 1) ui_action_area_close();
+    if (champ == action.champion - 1) action_area_close();
     c->health = 0;
     c->action_delay[0] = c->action_delay[1] = c->action_delay[ACTION_SPELL] = 0;
     c->redraw |= REDRAW_STATUS_BOX;
     if (champ + 1 == ui.inventory) {
         if (ui.eye) {
             ui.eye = 0;
-            if (game.leader_hand != THING_NONE) ui_show_object_name(game.leader_hand);
+            if (game.leader_hand != THING_NONE) inv_show_object_name(game.leader_hand);
         }
         ui.mouth = 0;
-        inv_toggle(CHAMPION_MAX);
+        ui_toggle_inventory(CHAMPION_MAX);
     }
     champ_drop_all_objects(champ);
     int cell = c->cell;
@@ -562,7 +562,7 @@ void champ_apply_time_effects(void)
     }
 }
 
-void items_burn_held_lights(void)
+void champ_burn_held_lights(void)
 {
     int burned = 0, count = game.champion_count - (ui.candidate != 0);
     for (int i = 0; i < count; i++) {

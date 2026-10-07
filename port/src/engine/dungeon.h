@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* Prefixes: dungeon_ thing_ set_thing_ location_ event_ door_ group_ teleporter_ container_ misc_ potion_ scroll_ weapon_ armour_ moneybox_ text_is_ text_kind text_offset text_set_visible text_subtype text_value */
+
 enum thing_type {
     THING_DOOR, THING_TELEPORTER, THING_TEXT, THING_SENSOR, THING_GROUP, THING_WEAPON, THING_ARMOUR,
     THING_SCROLL, THING_POTION, THING_CONTAINER, THING_MISC, THING_PROJECTILE = 14, THING_EXPLOSION,
@@ -231,16 +233,6 @@ static inline uint16_t text_subtype(uint16_t text) { return thing_field(text, TE
 static inline uint16_t text_value(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_VALUE_SHIFT, TEXT_VALUE_MASK); }
 /* A text: the offset of its words in the text data. */
 static inline uint16_t text_offset(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_VALUE_SHIFT, TEXT_OFFSET_MASK); }
-static inline uint16_t ai_marker_id(uint16_t text) { return thing_field(text, TEXT_DATA, AI_MARKER_ID_SHIFT, AI_MARKER_ID_MASK); }
-static inline uint16_t ai_marker_kind(uint16_t text)
-{
-    return thing_field(text, TEXT_DATA, AI_MARKER_KIND_SHIFT, AI_MARKER_KIND_MASK);
-}
-/* The level delta that the AI marker is for. */
-static inline uint16_t ai_marker_level(uint16_t text)
-{
-    return thing_field(text, TEXT_DATA, AI_MARKER_LEVEL_SHIFT, AI_MARKER_LEVEL_MASK);
-}
 
 /* SENSOR_TYPE_DATA fields. */
 #define SENSOR_TYPE_MASK 0x7f
@@ -251,18 +243,6 @@ static inline uint16_t ai_marker_level(uint16_t text)
 #define SENSOR_DATA_SOUND 0x100         /* an animated ornament: its ambient sound runs */
 #define SENSOR_DATA_FRAME_MASK 0xff     /* an animated ornament: the frame offset of its animation */
 #define SENSOR_TELEPORTER_LINK 0x27
-static inline uint16_t sensor_type(uint16_t sensor) { return thing_field(sensor, SENSOR_TYPE_DATA, 0, SENSOR_TYPE_MASK); }
-/* The value of the sensor type: an item index, a counter, a map, an animation frame. */
-static inline uint16_t sensor_data(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK);
-}
-static inline void sensor_set_data(uint16_t sensor, uint16_t data)
-{
-    set_thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK, data);
-}
-static inline uint16_t sensor_frame(uint16_t sensor) { return sensor_data(sensor) & SENSOR_DATA_FRAME_MASK; }
-static inline bool sensor_sound_on(uint16_t sensor) { return (sensor_data(sensor) & SENSOR_DATA_SOUND) != 0; }
 /* SENSOR_FLAGS bits. */
 #define SENSOR_BUSY 0x0001              /* the sensor ignores triggers until its animation or its wait ends */
 #define SENSOR_STATE 0x0004             /* on; some sensor types use it as an option */
@@ -274,53 +254,16 @@ static inline bool sensor_sound_on(uint16_t sensor) { return (sensor_data(sensor
 #define SENSOR_DELAY_MASK 0xf
 #define SENSOR_ORNAMENT_SHIFT 12
 #define SENSOR_ORNAMENT_MASK 0xf
-static inline bool sensor_flag(uint16_t sensor, uint16_t bit) { return thing_bit(sensor, SENSOR_FLAGS, bit); }
-static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on) { set_thing_bit(sensor, SENSOR_FLAGS, bit, on); }
-/* The effect on the target: EFFECT_SET, EFFECT_CLEAR, EFFECT_TOGGLE, or EFFECT_HOLD. */
-static inline uint16_t sensor_effect(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_FLAGS, SENSOR_EFFECT_SHIFT, SENSOR_EFFECT_MASK);
-}
-/* The ticks between the trigger and the event on the target. */
-static inline uint16_t sensor_delay(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_FLAGS, SENSOR_DELAY_SHIFT, SENSOR_DELAY_MASK);
-}
-/* The ordinal of the ornament in the wall or floor ornament list of the map, 0 for none. */
-static inline uint16_t sensor_ornament_ordinal(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK);
-}
 /* SENSOR_TARGET fields. */
 #define SENSOR_TARGET_CELL_SHIFT 4
 #define SENSOR_TARGET_CELL_MASK 3
 #define SENSOR_TARGET_X_SHIFT 6
 #define SENSOR_TARGET_Y_SHIFT 11
-static inline uint16_t sensor_target_x(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_X_SHIFT, LOCATION_COORD_MASK);
-}
-static inline uint16_t sensor_target_y(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_Y_SHIFT, LOCATION_COORD_MASK);
-}
-static inline uint16_t sensor_target_cell(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_CELL_SHIFT, SENSOR_TARGET_CELL_MASK);
-}
 /* A missile launcher: energy in bits 4-11 and step in bits 12-15 of SENSOR_TARGET. */
 #define LAUNCH_ENERGY_SHIFT 4
 #define LAUNCH_ENERGY_MASK 0xff
 #define LAUNCH_STEP_SHIFT 12
 #define LAUNCH_STEP_MASK 0xf
-static inline uint16_t sensor_launch_energy(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_TARGET, LAUNCH_ENERGY_SHIFT, LAUNCH_ENERGY_MASK);
-}
-static inline uint16_t sensor_launch_step(uint16_t sensor)
-{
-    return thing_field(sensor, SENSOR_TARGET, LAUNCH_STEP_SHIFT, LAUNCH_STEP_MASK);
-}
 
 /* TELEPORTER_TARGET bits. */
 #define TELEPORTER_ROTATION_SHIFT 10
@@ -423,18 +366,6 @@ static inline uint16_t scroll_text(uint16_t scroll)
 {
     return (uint16_t)(THING_TEXT << THING_TYPE_SHIFT | thing_field(scroll, ITEM_DATA, 0, THING_INDEX_MASK));
 }
-/* The type (GDAT index) of a weapon, armour, or miscellaneous item. */
-static inline uint16_t item_type(uint16_t item) { return thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK); }
-static inline void item_set_type(uint16_t item, uint16_t type) { set_thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK, type); }
-/* The dungeon keeps the item: no record reuse, and creatures do not consume it. */
-static inline bool item_is_kept(uint16_t item)
-{
-    return thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD);
-}
-static inline void item_set_kept(uint16_t item, bool kept)
-{
-    set_thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD, kept);
-}
 static inline uint16_t weapon_charges(uint16_t weapon)
 {
     return thing_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK);
@@ -517,44 +448,12 @@ static inline void container_set_gdat_index(uint16_t container, uint16_t index)
 static inline bool moneybox_is_placed(uint16_t box) { return thing_bit(box, MONEYBOX_FLAGS, MONEYBOX_PLACED); }
 static inline void moneybox_set_placed(uint16_t box, bool placed) { set_thing_bit(box, MONEYBOX_FLAGS, MONEYBOX_PLACED, placed); }
 
-static inline uint8_t projectile_energy(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_ENERGY); }
-static inline void projectile_set_energy(uint16_t projectile, uint8_t energy)
-{
-    set_thing_byte(projectile, PROJECTILE_ENERGY, energy);
-}
-static inline uint8_t projectile_hit_chance(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_HIT_CHANCE); }
-static inline void projectile_set_hit_chance(uint16_t projectile, uint8_t chance)
-{
-    set_thing_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
-}
 #define PROJECTILE_HOLDER_WAITS 0x0001  /* PROJECTILE_CARRIED bit */
-static inline void projectile_set_holder_waits(uint16_t projectile, bool waits)
-{
-    set_thing_bit(projectile, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, waits);
-}
 /* EXPLOSION_DATA fields. */
 #define EXPLOSION_TYPE_MASK 0x7f
 #define EXPLOSION_CENTERED 0x0080       /* the explosion is in the middle of its square, not on a cell */
 #define EXPLOSION_POWER_SHIFT 8
 #define EXPLOSION_POWER_MASK 0xff
-static inline uint16_t explosion_type(uint16_t explosion) { return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK); }
-static inline void explosion_set_type(uint16_t explosion, uint16_t type)
-{
-    set_thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
-}
-static inline bool explosion_is_centered(uint16_t explosion) { return thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED); }
-static inline void explosion_set_centered(uint16_t explosion, bool centered)
-{
-    set_thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
-}
-static inline uint16_t explosion_power(uint16_t explosion)
-{
-    return thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK);
-}
-static inline void explosion_set_power(uint16_t explosion, uint16_t power)
-{
-    set_thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);
-}
 
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
 int dungeon_load(const char *path);
@@ -601,12 +500,9 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
    the records that the dungeon keeps for the game. */
 #define THING_ANY_RECORD 0x8000
 uint16_t dungeon_unused_thing(int type);
-/* Frees a record of type for reuse when the table is full: removes a thing of kind subtype (DISCARD_ANY_KIND:
-   any) that may go, away from the party; THING_NONE when there is none. */
-#define DISCARD_ANY_KIND 0xff
+#define DISCARD_ANY_KIND 0xff        /* dun_get_discarded_thing (move.h): a thing of any kind */
 /* The map where the last search for each thing type ended; the next search starts there. */
 extern uint8_t last_discarded_map[THING_TYPE_COUNT];
-uint16_t dun_get_discarded_thing(int type, int subtype);
 /* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
 int dungeon_teleporter_link_map(int map, int x, int y);
 /* The square byte of map at (x, y). Away from the map it gives the edge walls: a wall (with the bit of the
@@ -624,9 +520,6 @@ int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *
 #define TRANSFER_PIT 0x008
 #define TRANSFER_FALL_INTO 0x010
 #define TRANSFER_STAIRS 0x100
-/* The map one level up (level_delta -1) or down (1) that the square (*x, *y) of map leads to by its stairs, its open
-   pit (TRANSFER_PIT), or a level link; *x, *y become the square there. -1 none. Leaves map current. */
-int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags);
 
 /* A pair of teleporters with link sensors: a seamless passage to another map. */
 typedef struct {

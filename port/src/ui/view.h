@@ -4,6 +4,8 @@
 #include "draw.h"
 #include "gfx.h"
 
+/* Prefixes: view_ */
+
 /* The dungeon view shows 23 squares: 3 at depth 0 and 1 (the party square, left, right), 5 at depth 2 and 3,
    7 at depth 4, ordered center, left, right, then further out. */
 #define VIEW_SQUARE_COUNT 23
@@ -86,9 +88,9 @@ typedef struct {
 /* The weather sky objects that the view draws, ended by SKY_OBJECT_END (world_update_day_night fills them). */
 SkyObject *view_sky_objects(void);
 /* Reads the sky object entry of the map graphics into object; returns 0 when the map has none. */
-int weather_load_sky_object(SkyObject *object);
+int view_load_sky_object(SkyObject *object);
 /* What the party looking to dir sees of the square (x, y) of the current map. */
-void dun_get_square_aspect(ViewSquare *s, int dir, int x, int y);
+void view_get_square_aspect(ViewSquare *s, int dir, int x, int y);
 /* Sets up the map graphics of map for the view: the view part of entering a map. */
 void view_enter_map(int map);
 /* Loads the view square at view position pos for the party at (x, y) looking to dir. */
@@ -134,12 +136,10 @@ void view_draw_dungeon(int dir, int x, int y);
 const uint8_t *view_get_shaded_palette(int category, int index, int entry, int key);
 /* Copies a bitmap mirrored left to right. */
 void view_copy_image_mode1(const Bitmap *src, Bitmap *dst);
-/* The view zone of grid cell cell (0 to 24, 5 x 5) of view element base, turned by dir. */
-int zone_id_for_view_cell(int base, int cell, int dir);
 /* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else key. */
 void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key);
 /* The grid cell (0 to 24) of a creature in its square, turned by dir quarter turns. */
-int creature_get_view_cell_zone(uint16_t group, int dir);
+int view_get_creature_cell_zone(uint16_t group, int dir);
 /* Turns a cell of a 5 x 5 grid around its center by dir quarter turns. */
 int view_rotate_grid5_cell(int cell, int dir);
 /* The thing grid position of cell (0 to 24) of the square (base_x, base_y) of the map. */
@@ -152,5 +152,9 @@ extern int view_arrows_enabled;
 /* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *side:
    0 its middle, 1 its right, 3 its left. */
 int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
+
+/* Clicks in the viewport (input.c). */
+/* A click in the dungeon view: walls, doors, objects, creatures. */
+void view_click_in_viewport(int x, int y);
 
 #endif

@@ -16,7 +16,7 @@
 | Offset | Use |
 |---|---|
 | +0, +1 | map x, y (int8) |
-| +2 | aspect type from `dun_get_square_aspect` (0 wall, 1 floor, 2 pit, 5 teleporter, 7 hidden, 0x10 door side, 0x11 door front, 0x12 stairs front, 0x13 stairs side) |
+| +2 | aspect type from `view_get_square_aspect` (0 wall, 1 floor, 2 pit, 5 teleporter, 7 hidden, 0x10 door side, 0x11 door front, 0x12 stairs front, 0x13 stairs side) |
 | +4 | aspect flags |
 | +6 | first thing on the square |
 | +8 | stairs up/down or pit flag (depends on type) |
@@ -38,7 +38,7 @@ Set by `view_setup_picture` through 0x1b3e8 and flushed by `view_flush_picture` 
 
 +2 bits 0-6 sensor type, bits 7-15 data (object type, count, delay); +4 bit 0 active/busy, bit 2 state, bit 5 inverted, bits 3-4 effect (`0x18` = hold), bit 6 audible, bits 7-10 extra delay; +6 target: bits 4-5 cell, bits 6-10 x, bits 11-15 y. `sensor_trigger_target` schedules a type-4 square event at the target.
 
-Sensor types seen: 1-3 party/creature/object floor triggers, 4 object type, 0x15 object with charges, 0x17 toggle, 0x18/0x46/0x4a timed, 0x1a object-holder (alcove that keeps an item), 0x1c teleport party, 0x1e/0x33-0x37 timers (`sensor_schedule_timer`), 0x20/0x45 relay, 0x21 day/night trigger, 0x27 flip state, 0x29-0x2b floor object tests, 0x2c animated ornament, 0x2e teleport party, 0x30 shop display, 0x32 activation with sound, 0x3a creature generator area, 0x3b/0x40/0x47-0x49 object transfer, 0x3d forward, 0x42 turn creatures, 0x43 set global flag, 0x44 test global flag, 0x7e resurrection altar. Wall square events add creature generator (0x30ba6), counter, random, missile launcher, cross-map event, item creator, and an end-of-game sensor (`iop_set_video_state(0)`, `g_game_completed = 1`, `game_quit`).
+Sensor types seen: 1-3 party/creature/object floor triggers, 4 object type, 0x15 object with charges, 0x17 toggle, 0x18/0x46/0x4a timed, 0x1a object-holder (alcove that keeps an item), 0x1c teleport party, 0x1e/0x33-0x37 timers (`sensor_schedule_timer`), 0x20/0x45 relay, 0x21 day/night trigger, 0x27 flip state, 0x29-0x2b floor object tests, 0x2c animated ornament, 0x2e teleport party, 0x30 shop display, 0x32 activation with sound, 0x3a creature generator area, 0x3b/0x40/0x47-0x49 object transfer, 0x3d forward, 0x42 turn creatures, 0x43 set global flag, 0x44 test global flag, 0x7e resurrection altar. Wall square events add creature generator (0x30ba6), counter, random, missile launcher, cross-map event, item creator, and an end-of-game sensor (`iop_set_video_state(0)`, `g_game_completed = 1`, `session_quit`).
 
 ### Text thing (type 2) as a marker
 
@@ -54,7 +54,7 @@ When `(word2 & 6) == 2`, a text thing is a marker or a simple trigger: bits 3-10
 | 0x0c | `timeline_event_hide_damage` |
 | 0x0d | `timeline_event_altar_rebirth` (bones item = item category 0x15 index 0, charges = champion) |
 | 0x0e | `timeline_event_apply_item_effect` |
-| 0x15 | `sound_play_delayed` |
+| 0x15 | `sound_request_delayed` |
 | 0x19 | 0x18395 (explosion) |
 | 0x1d, 0x1e | 0x17a7b (missile move) |
 | 0x21, 0x22 | 0x257cc (creature) |
@@ -95,7 +95,7 @@ The queue is a binary heap of event indices (`g_timeline_queue` 0x80420); `timel
 
 ## Low-confidence names
 
-`move_update_carried_missiles`, `move_check_missiles_hit_party` (detail), `creature_get_view_cell_zone`, `dun_map_gfx_flag20_clear`, `view_copy_image_mode1`, `view_draw_wet_image`, `view_draw_sparkle_field`, `view_offset_creature_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `view_draw_stairs_side`/`view_draw_stairs_front` (may be swapped), `view_draw_ceiling_pit`/`view_draw_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_door_button_release`, `sensor_schedule_timer`, `sensor_play_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker` (subsystem magic is a guess).
+`move_update_carried_missiles`, `move_check_missiles_hit_party` (detail), `view_get_creature_cell_zone`, `dun_map_gfx_flag20_clear`, `view_copy_image_mode1`, `view_draw_wet_image`, `view_draw_sparkle_field`, `view_offset_creature_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `view_draw_stairs_side`/`view_draw_stairs_front` (may be swapped), `view_draw_ceiling_pit`/`view_draw_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_door_button_release`, `sensor_schedule_timer`, `sensor_play_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker` (subsystem magic is a guess).
 
 ## Open questions
 

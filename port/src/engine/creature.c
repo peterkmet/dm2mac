@@ -16,6 +16,7 @@
 #include "save.h"
 #include "ui.h"
 #include "sensor.h"
+#include "minion.h"
 
 #define CREATURE_KEY_INFO 5         /* value key: index of the creature info record */
 #define CREATURE_KEY_CLASS 1        /* value key: the AI class */
@@ -416,7 +417,7 @@ void creature_free_active_groups(void)
     free(active_groups);
     active_groups = NULL;
     active_group_max = active_group_count = 0;
-    creature_ai_forget_all();
+    ai_forget_all();
 }
 
 void creature_alloc_active_groups(void)
@@ -527,7 +528,7 @@ void creature_activate_group(uint16_t group, int x, int y)
             a->event = EVENT_NO_SLOT;
             a->action = ACTIVE_ACTION_NONE;
             AiContext saved;
-            int restored = creature_ai_begin(group, x, y, EVENT_CREATURE_THINK, &saved);
+            int restored = ai_begin(group, x, y, EVENT_CREATURE_THINK, &saved);
             ai.active->plan = -1;
             ai.active->plan_step = 0;
             a->regeneration_time = (uint8_t)((game.game_time >> REGEN_TIME_SHIFT) - 1);
@@ -544,7 +545,7 @@ void creature_activate_group(uint16_t group, int x, int y)
                 group_set_mood_flag(ai.group_thing, MOOD_HURRY, false);
                 creature_ai_animate_and_get_next_time();
             }
-            creature_ai_end(restored, &saved);
+            ai_end(restored, &saved);
             return;
         }
         /* no free entry: the original discards a creature group of the dungeon and tries again; the port
@@ -639,12 +640,12 @@ void creature_update_anim_at(int x, int y, int alt)
     if (creature_group_info(group)->flags & CREATURE_STATIC && group_active(group) == GROUP_NOT_ACTIVE)
         creature_activate_group(group, x, y);
     AiContext saved;
-    int restored = creature_ai_begin(group, x, y, EVENT_CREATURE_ANIMATION, &saved);
+    int restored = ai_begin(group, x, y, EVENT_CREATURE_ANIMATION, &saved);
     if (ai.active) {
         if (!alt) creature_anim_schedule();
         else creature_anim_schedule_alt();
     }
-    creature_ai_end(restored, &saved);
+    ai_end(restored, &saved);
 }
 
 /* A random picture shift of up to range - 1 to either side, in the 3 bits of an anim bits field. */
@@ -729,7 +730,7 @@ void creature_process_event(int x, int y, int type)
     uint16_t group = creature_get_group_at(x, y);
     if (group == THING_NONE) return;
     AiContext saved;
-    int restored = creature_ai_begin(group, x, y, type, &saved);
+    int restored = ai_begin(group, x, y, type, &saved);
     ActiveGroup *a = ai.active;
     const CreatureInfo *info = ai.info;
     a->event = EVENT_NO_SLOT;
@@ -755,18 +756,18 @@ void creature_process_event(int x, int y, int type)
     if (damage > 0) {
         if (!(info->flags & CREATURE_STATIC)) group_set_mood_flag(ai.group_thing, MOOD_FAR, false);
         if (creature_damage_current_group((uint16_t)damage)) {
-            creature_ai_end(restored, &saved);
+            ai_end(restored, &saved);
             return;
         }
     }
     if (!(info->flags & CREATURE_STATIC)) {
-        creature_ai_update_group();
+        ai_update_group();
     } else {
         if (ai.anim[1] & ANIM_STILL) creature_anim_schedule();
         else if (ai.anim[1] & ANIM_LOOP_ALT) creature_anim_schedule_alt();
         if (a->event == EVENT_NO_SLOT) creature_deactivate_group(group_active(ai.group_thing));
     }
-    creature_ai_end(restored, &saved);
+    ai_end(restored, &saved);
 }
 
 /* Group life: creation, damage, death, alerts. */
@@ -831,7 +832,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
                 uint16_t t = thing_with_cell(item, drop_cell(x, y));
                 move_thing(t, MOVE_NEW_ITEM, 0, x, y);
                 if ((int16_t)sound_map >= 0)
-                    sound_play_with_fallback(item_gdat_category(item), item_gdat_index(item), SOUND_ENTRY_DROP, SOUND_FALLBACK,
+                    sound_request_with_fallback(item_gdat_category(item), item_gdat_index(item), SOUND_ENTRY_DROP, SOUND_FALLBACK,
                                              x, y, (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
             }
         }
@@ -846,7 +847,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
         } else {
             move_thing(t, MOVE_NEW_ITEM, 0, x, y);
             if ((int16_t)sound_map >= 0)
-                sound_play_with_fallback(item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y,
+                sound_request_with_fallback(item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y,
                                          (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
         }
         t = next;
@@ -875,7 +876,7 @@ void creature_delete_group_at(int x, int y, int mode, int sound_map)
     }
     move_thing(group, x, y, MOVE_CREATED, 0);
     creature_drop_possessions(group, x, y, mode, sound_map);
-    creature_free_cached_ai_data(group);
+    ai_free_cached_data(group);
     set_thing_word(group, THING_NEXT, THING_NONE);
 }
 
@@ -1286,7 +1287,7 @@ void creature_push_group(int x, int y, int dir, int strength)
                 int16_t first, second;
                 move_party_bump_damage(x, y, &first, &second, game.party_dir, (dir + 2) & DIR_MASK);
             } else {
-                creature_free_cached_ai_data(g);
+                ai_free_cached_data(g);
                 ActiveGroup *a = creature_active(g);
                 if (a && (int8_t)a->action != -1 && (int8_t)a->action != AI_ACTION_VANISH
                     && ai_action_flag((int8_t)a->action) & ACTION_FLAG_PATH) {
@@ -1305,7 +1306,7 @@ void creature_push_group(int x, int y, int dir, int strength)
     for (int i = 0; i < CHAMPION_MAX; i++) {
         Champion *c = champion(i);
         if (!c->health) continue;
-        sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
+        sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
                                  SOUND_VOLUME_LOUD);
         load = (int16_t)(load + (uint16_t)champ_get_load(i) / LOAD_PUSH_DIVISOR);
         alive++;
@@ -1332,7 +1333,7 @@ void move_push_creature(int arrow)
     if (!move_party_can_push_group(g)) {
         for (int i = 0; i < game.champion_count; i++)
             if (champion(i)->health && (i == game.leader || !rand_2bits()))
-                sound_play_with_fallback(CAT_CHAMPION, i, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                sound_request_with_fallback(CAT_CHAMPION, i, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
                                          SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
         return;
     }

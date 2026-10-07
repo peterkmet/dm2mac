@@ -10,11 +10,11 @@ from dm2tools.le import load_image
 START = ROOT / "tests" / "saves" / "start.DAT"
 GRAPHICS = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 
-# The file part of game_load: header, dungeon image, game state, things, timed effects, event links.
+# The file part of session_load: header, dungeon image, game state, things, timed effects, event links.
 LOAD_BEGIN, LOAD_END = 0x372D6, 0x37586
-# The file part of game_save, from the header in its stack frame to the last flushed bit.
+# The file part of session_save, from the header in its stack frame to the last flushed bit.
 SAVE_BEGIN, SAVE_END = 0x35236, 0x35674
-SAVE_HEADER_LOCAL = 0x3C  # ESP offset of the 42-byte header buffer in game_save
+SAVE_HEADER_LOCAL = 0x3C  # ESP offset of the 42-byte header buffer in session_save
 G_SAVE_NAME = 0x7F8FE
 MEM_ALLOC = 0x3BBBA
 GDAT_ENTRY_INDEX = 0x3C5D3

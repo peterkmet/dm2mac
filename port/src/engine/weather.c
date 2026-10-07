@@ -250,7 +250,7 @@ static int lightning_strike(void)
     int x = rand_below(LIGHTNING_RANGE), y = rand_below(LIGHTNING_RANGE);
     if (x >= dungeon_map_width(party.cur_map) || y >= dungeon_map_height(party.cur_map)) return 0;
     ViewSquare s;
-    dun_get_square_aspect(&s, DIR_NORTH, x, y);
+    view_get_square_aspect(&s, DIR_NORTH, x, y);
     PassageEnd end;
     if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, x, y)) return 0;
     int weak = (int16_t)game.storm_intensity < STORM_WEAK;
@@ -284,7 +284,7 @@ static SkyObject *weather_lightning(SkyObject *o)
         if (target) {
             int x = target >> TARGET_X_SHIFT, y = target & TARGET_Y_MASK;
             sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
-            sound_play_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_FALLBACK,
+            sound_request_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_FALLBACK,
                                      x, y, 1, LIGHTNING_SOUND_PRIORITY,
                                      (int16_t)(rand_below(LIGHTNING_RANGE) + LIGHTNING_SOUND_VOLUME));
         } else {
@@ -294,7 +294,7 @@ static SkyObject *weather_lightning(SkyObject *o)
     int bolt = 0;
     if (!strikes && rand_bit()) {
         o->entry = (uint8_t)(SKY_LIGHTNING + rand_below(SKY_LIGHTNING_KINDS));
-        if (weather_load_sky_object(o)) {
+        if (view_load_sky_object(o)) {
             bolt = 1;
             int percent = (int16_t)rand_below(LIGHTNING_PERCENT);
             zone_interpolate_offset(o->zone, (int16_t)(o->zone + 1), percent, &o->dx, &o->dy);
@@ -349,11 +349,11 @@ void world_update_day_night(int storm_step)
     if (sky_has(SKY_RAIN_LIGHT) && game.sky_darkness >= DARKNESS_RAIN) {
         if (game.sky_darkness >= DARKNESS_HEAVY) game.heavy_rain = 1;
         o->entry = (uint8_t)sky_entry(game.sky_darkness, DARKNESS_MEDIUM, DARKNESS_HEAVY, SKY_RAIN_LIGHT);
-        if (weather_load_sky_object(o)) o++;
+        if (view_load_sky_object(o)) o++;
     }
     if (sky_has(SKY_CLOUDS_LIGHT) && game.cloud_cover >= CLOUDS_SHOWN) {
         o->entry = (uint8_t)sky_entry(game.cloud_cover, CLOUDS_MORE, CLOUDS_MOST, SKY_CLOUDS_LIGHT);
-        if (weather_load_sky_object(o)) o++;
+        if (view_load_sky_object(o)) o++;
     }
     if (lightning) o = weather_lightning(o);
     o->entry = SKY_OBJECT_END;
@@ -412,7 +412,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
 {
     int16_t window = 0, light = 0, missiles = 0;
     ViewSquare s;
-    dun_get_square_aspect(&s, dir, x, y);
+    view_get_square_aspect(&s, dir, x, y);
     /* the front wall ornament, or the floor ornament: index in the low byte, animation frame in the high byte */
     int ornament = s.side[SIDE_LIGHT] & ORNAMENT_MASK, animated = s.side[SIDE_LIGHT] >> BYTE_BITS != 0;
     int animated_only;

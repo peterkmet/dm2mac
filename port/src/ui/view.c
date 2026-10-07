@@ -20,6 +20,8 @@
 #include "weather.h"
 #include "input.h"
 #include "zone.h"
+#include "champion.h"
+#include "merchant.h"
 
 #define REMAP_WALK_BASE 9           /* + depth: the depth shading table of the walking view */
 /* Value keys of two bytes: the first value in the high byte, the second in the low byte. */
@@ -547,14 +549,14 @@ static void move_relative(int dir, int forward, int right, int *x, int *y)
 
 /* ---- Map graphics and sky objects ---- */
 
-int weather_load_sky_object(SkyObject *object)
+int view_load_sky_object(SkyObject *object)
 {
     char text[WALL_TEXT_SIZE];
     gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, object->entry, text, sizeof text);
     if (!text[0]) return 0;
-    object->zone = (int16_t)text_find_int_field(text, "cd");
+    object->zone = (int16_t)gdat_text_int_field(text, "cd");
     object->dx = object->dy = 0;
-    object->flip = (uint8_t)text_find_int_field(text, "fw");
+    object->flip = (uint8_t)gdat_text_int_field(text, "fw");
     object->scale_x = object->scale_y = SCALE_FULL;
     return 1;
 }
@@ -921,7 +923,7 @@ static void get_square_aspect(ViewSquare *s, int dir, int x, int y)
     s->first_thing = floor_things ? apply_floor_things(s, thing, square) : skip_wall_things(thing);
 }
 
-void dun_get_square_aspect(ViewSquare *s, int dir, int x, int y)
+void view_get_square_aspect(ViewSquare *s, int dir, int x, int y)
 {
     int map = view.map;
     view.map = party.cur_map;
@@ -948,7 +950,7 @@ static int creature_picture_exists(int type, int entry)
 }
 
 /* The grid cell of a creature in its square, turned by dir: the cell of its animation frame. */
-int creature_get_view_cell_zone(uint16_t group, int dir)
+int view_get_creature_cell_zone(uint16_t group, int dir)
 {
     if (!gdat_exists(draw_gdat(), CAT_CREATURE, group_creature(group), GDAT_TYPE_CREATURE_DATA,
                      CREATURE_FRAMES))
@@ -963,7 +965,7 @@ static int view_get_thing_position(uint16_t thing, int dir)
 {
     int cell = CELL_CENTER;
     switch (thing_type(thing)) {
-    case THING_GROUP: return creature_get_view_cell_zone(thing, (dir - creature_dir(thing)) & DIR_MASK);
+    case THING_GROUP: return view_get_creature_cell_zone(thing, (dir - creature_dir(thing)) & DIR_MASK);
     case THING_EXPLOSION:
         if (explosion_is_centered(thing)) break;
         /* fall through */
@@ -1195,7 +1197,7 @@ static void view_get_depth_shading(uint8_t *palette, int depth, int key1, int ke
 static void view_setup_picture(int flip, int scale_x, int scale_y, int dx, int dy, int depth, int zone, int anchor,
                                int key, int key2, int category, int index, int entry)
 {
-    DrawCtx *c = gfx_ctx_init(&view.ctx, category, index, entry);
+    DrawCtx *c = draw_ctx_init(&view.ctx, category, index, entry);
     if (scale_x != scale_y && (depth == DEPTH_MIDDLE || depth == DEPTH_FAR)) {
         uint16_t v = value_key(category, index, depth == DEPTH_MIDDLE ? ORN_KEY_WIDTH_SCALE_2 : ORN_KEY_WIDTH_SCALE_3);
         if (LOW_BYTE(v)) scale_x = rounded_scale((int)HIGH_BYTE(v), LOW_BYTE(v));  /* fix: the original divides by 0 */
@@ -1210,10 +1212,10 @@ static void view_setup_picture(int flip, int scale_x, int scale_y, int dx, int d
     c->dst = &view_viewport;
     c->transparent = (int16_t)key;
     view_get_depth_shading(c->palette, depth, key, key2, &c->palette_count);
-    gfx_ctx_prepare(c);
+    draw_ctx_prepare(c);
 }
 
-static void view_flush_picture(void) { gfx_ctx_draw(&view.ctx); }
+static void view_flush_picture(void) { draw_ctx_draw(&view.ctx); }
 
 static int imax(int a, int b) { return a > b ? a : b; }
 static int imin(int a, int b) { return a < b ? a : b; }
@@ -1289,7 +1291,7 @@ void view_copy_image_mode1(const Bitmap *src, Bitmap *dst)
 static void view_draw_picture_in_zone(int category, int index, int entry, int zone, int key, int flip)
 {
     DrawCtx c;
-    gfx_ctx_init(&c, category, index, entry);
+    draw_ctx_init(&c, category, index, entry);
     pal_apply_dim_remap(c.palette, (uint8_t)view.shade, key, NO_KEY, &c.palette_count);
     c.transparent = (int16_t)key;
     c.dst = &view_viewport;
@@ -1297,8 +1299,8 @@ static void view_draw_picture_in_zone(int category, int index, int entry, int zo
     if (view.walking && (zone == ZONE_CEILING || zone == ZONE_FLOOR))
         c.src_y = (int16_t)(c.src_y + (zone == ZONE_CEILING ? WALK_CEILING_DY : WALK_FLOOR_DY));
     c.zone = (int16_t)zone;
-    gfx_ctx_prepare(&c);
-    gfx_ctx_draw(&c);
+    draw_ctx_prepare(&c);
+    draw_ctx_draw(&c);
 }
 
 /* Prepares the picture of view_setup_picture into an offscreen bitmap of its size, for pictures that are put
@@ -1327,8 +1329,8 @@ static void draw_offscreen(DrawCtx *ctx, Bitmap *offscreen, int zone, int anchor
     ctx->zone = (int16_t)zone;
     ctx->anchor = (int16_t)anchor;
     ctx->palette_count = 0;
-    gfx_ctx_set_image(ctx, offscreen);
-    gfx_ctx_draw(ctx);
+    draw_ctx_set_image(ctx, offscreen);
+    draw_ctx_draw(ctx);
 }
 
 /* ---- Rain ---- */
@@ -1780,7 +1782,7 @@ static void view_setup_explosion_picture(int type, int size, int flip, int zone)
 {
     int scale = (int16_t)(size & ~1);
     scale = scale < EXPLOSION_SCALE_MIN ? EXPLOSION_SCALE_MIN : scale > EXPLOSION_SCALE_MAX ? EXPLOSION_SCALE_MAX : scale;
-    DrawCtx *c = gfx_ctx_init(&view.ctx, CAT_EXPLOSION, type, EXPLOSION_PICTURE);
+    DrawCtx *c = draw_ctx_init(&view.ctx, CAT_EXPLOSION, type, EXPLOSION_PICTURE);
     c->src_x = (int16_t)(c->src_x + c->dx);
     c->src_y = (int16_t)(c->src_y + c->dy);
     c->dx = c->dy = 0;
@@ -1791,7 +1793,7 @@ static void view_setup_explosion_picture(int type, int size, int flip, int zone)
     c->flip = (int16_t)flip;
     c->scale_x = c->scale_y = (int16_t)scale;
     pal_apply_dim_remap(c->palette, (uint8_t)view.shade, THING_KEY, NO_KEY, &c->palette_count);
-    gfx_ctx_prepare(c);
+    draw_ctx_prepare(c);
 }
 
 /* Adds 1 to a global byte variable of the game, up to 255. */
@@ -2064,9 +2066,9 @@ static void shop_draw_price(int amount, uint8_t ornament, int depth, int zone, i
     if (!view.ctx.image) return;
     int16_t rect[RECT_SIZE] = {0, 0, COIN_WIDTH, COIN_HEIGHT};
     for (int i = 0; i < count; i++, rect[RECT_X] += COIN_WIDTH)
-        gfx_blit_bitmap(view.ctx.image, strip, rect, coins[i] * COIN_WIDTH, 0, NO_KEY, NULL);
+        ui_blit_bitmap(view.ctx.image, strip, rect, coins[i] * COIN_WIDTH, 0, NO_KEY, NULL);
     if (zone_compute_rect(strip, rect, zone | ZONE_RELATIVE, &x, &y, anchor))
-        gfx_blit_bitmap(strip, &view_viewport, rect, 0, 0, key, view.ctx.palette);
+        ui_blit_bitmap(strip, &view_viewport, rect, 0, 0, key, view.ctx.palette);
 }
 
 /* Draws the shop display of the wall sensor shop with the shop ornament: the item, its name and prices in front. */
@@ -2124,7 +2126,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
 static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int depth, int zone, int anchor, int key)
 {
     DrawCtx plate;
-    gfx_ctx_init(&plate, CAT_WALLSET, view.gfx_set, entry);
+    draw_ctx_init(&plate, CAT_WALLSET, view.gfx_set, entry);
     const Bitmap *plate_image = draw_gdat_image(CAT_WALLSET, view.gfx_set, entry);
     const Bitmap *font = draw_gdat_image(CAT_WALLSET, view.gfx_set, MAP_FONT);
     if (!plate_image || !font) return;
@@ -2152,9 +2154,9 @@ static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int dep
         if (!*p++) break;
     }
     DrawCtx c;
-    gfx_ctx_init(&c, CAT_NONE, 0, 0);
+    draw_ctx_init(&c, CAT_NONE, 0, 0);
     c.item = -1;
-    gfx_ctx_set_image(&c, bitmap);
+    draw_ctx_set_image(&c, bitmap);
     c.scale_x = (int16_t)scale_x;
     c.scale_y = (int16_t)scale_y;
     if (font_palette) memcpy(c.palette, font_palette, IMAGE_COLORS);
@@ -2166,8 +2168,8 @@ static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int dep
     c.src_x = plate.dx;
     c.src_y = plate.dy;
     c.transparent = (int16_t)key;
-    gfx_ctx_prepare(&c);
-    gfx_ctx_draw(&c);
+    draw_ctx_prepare(&c);
+    draw_ctx_draw(&c);
 }
 
 /* Where and how a wall ornament picture shows. */
@@ -2220,7 +2222,7 @@ static void draw_wet_wall_ornament(uint8_t ornament, int entry, const OrnamentPl
                                                       (int16_t)value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_OFFSCREEN_COLOR));
     if (offscreen) {
         view_draw_wet_image(&c, offscreen, p->key);
-        gfx_ctx_draw(&c);
+        draw_ctx_draw(&c);
         draw_offscreen(&c, offscreen, p->zone, p->anchor, mapped_key(&c, p->key));
     }
     memcpy(click_rect, c.rect, sizeof c.rect);  /* the wet picture gives the click zone */
@@ -2363,7 +2365,7 @@ static void draw_floor_ornament_offscreen(uint8_t ornament, int entry, const Orn
     int transparent = mapped_key(&c, p->key);
     if (wet) view_draw_wet_image(&c, offscreen, p->key);
     else gfx_fill_bitmap(offscreen, transparent);
-    gfx_ctx_draw(&c);
+    draw_ctx_draw(&c);
     draw_offscreen(&c, offscreen, p->zone, p->anchor, transparent);
 }
 
@@ -2555,7 +2557,7 @@ static void compose_door(uint8_t type, int ornament, int destroyed, int entry, i
     DrawCtx c;
     Bitmap *offscreen = view_render_picture_offscreen(&c, CAT_DOOR, type, entry, scale, scale, shade_depth, 0, key, NO_KEY);
     if (!offscreen) return;
-    gfx_ctx_draw(&c);
+    draw_ctx_draw(&c);
     int scale_x = scale, scale_y = scale;
     if (scale == SCALE_FULL) {
         const Bitmap *near = draw_gdat_image(CAT_DOOR, type, 0);
@@ -2583,7 +2585,7 @@ static void compose_door(uint8_t type, int ornament, int destroyed, int entry, i
     }
     c.transparent = (int16_t)mapped_key(&c, key);
     c.palette_count = 0;
-    gfx_ctx_set_image(&c, offscreen);
+    draw_ctx_set_image(&c, offscreen);
     view.ctx = c;
     view.ctx.dst = &view_viewport;
 }
@@ -2686,17 +2688,17 @@ static int outdoor_relative_distance(int dir, int16_t *x, int16_t *y, int x2, in
 static int outdoor_place_sky_object(SkyObject *o, const char *definition, int dir, int x, int y)
 {
     o->dx = o->dy = 0;
-    int move = (int16_t)text_find_int_field(definition, "mv");
+    int move = (int16_t)gdat_text_int_field(definition, "mv");
     if (move == SKY_FIXED) {
         o->scale_x = o->scale_y = SCALE_FULL;
         return 1;
     }
     if (move != SKY_LANDMARK) return 0;
     int16_t px = (int16_t)(x + dungeon_map_offset_x(view.map)), py = (int16_t)(y + dungeon_map_offset_y(view.map));
-    int lx = (int16_t)text_find_int_field(definition, "xl"), ly = (int16_t)text_find_int_field(definition, "yl");
+    int lx = (int16_t)gdat_text_int_field(definition, "xl"), ly = (int16_t)gdat_text_int_field(definition, "yl");
     int distance = outdoor_relative_distance(dir, &px, &py, lx, ly);
     if (py < 1) return 0;
-    int16_t near = (int16_t)(SHADE_FULL - (distance - text_find_int_field(definition, "fd")));
+    int16_t near = (int16_t)(SHADE_FULL - (distance - gdat_text_int_field(definition, "fd")));
     int scale = near > 1 ? near : 1;
     o->dx = (int16_t)(px * SKY_LANDMARK_DISTANCE / distance);
     o->scale_x = o->scale_y = (uint8_t)rounded_scale(scale, SHADE_FULL);
@@ -2754,8 +2756,8 @@ static void outdoor_draw_sky(int dir, int x, int y)
         gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, e, text, sizeof text);
         if (!outdoor_place_sky_object(o, text, dir, x, y)) continue;
         o->entry = (uint8_t)e;
-        o->zone = (int16_t)text_find_int_field(text, "cd");
-        o->flip = (uint8_t)text_find_int_field(text, "fw");
+        o->zone = (int16_t)gdat_text_int_field(text, "cd");
+        o->flip = (uint8_t)gdat_text_int_field(text, "fw");
         outdoor_draw_sky_object(o, dir, x, y);
     }
 }

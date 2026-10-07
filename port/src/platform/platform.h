@@ -2,6 +2,8 @@
 #define PLATFORM_H
 #include <stdint.h>
 
+/* Prefixes: plat_ */
+
 enum { PLAT_QUIT, PLAT_KEY, PLAT_MOUSE, PLAT_MOUSE_UP };
 
 typedef struct {

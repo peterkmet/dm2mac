@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* Prefixes: timeline_ */
+
 #define EVENT_NONE 0
 #define EVENT_TIME_MASK 0xffffffu
 #define EVENT_MAP_SHIFT 24
@@ -67,5 +69,23 @@ void timeline_rebuild_free_list(void);
 void timeline_compact(void);
 /* True when the next event is due at game_time. */
 bool timeline_is_event_due(uint32_t game_time);
+
+/* The event loop (game.c) and the event handlers of other modules. */
+/* A step of an altar rebirth (event 0x0d). */
+void timeline_event_altar_rebirth(TimelineEvent *e);
+void timeline_event_move_group(TimelineEvent *e);
+/* Runs the due timeline events. */
+void timeline_process(void);
+/* The timed effect of an eaten item (event 0x0e) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
+   for a loaded game. */
+void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
+/* A magic light event: the light fades one level. */
+void timeline_event_magic_light(TimelineEvent *e);
+/* Runs a due square event or door event. */
+void timeline_event_square(TimelineEvent *e);
+void timeline_event_door_animation(TimelineEvent *e);
+void timeline_event_door_destruction(TimelineEvent *e);
+/* Runs a due sensor animation, timer, or busy event. */
+void timeline_event_sensor(TimelineEvent *e);
 
 #endif

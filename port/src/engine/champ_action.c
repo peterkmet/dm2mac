@@ -141,7 +141,7 @@ static int clamp16(int low, int v, int high) { return max16(low, min16(v, high))
 
 static int16_t action_field(int field) { return text_gdat_field(current.category, current.index, current.entry, field); }
 
-void ui_action_area_open_hand(int champ, int hand)
+void action_area_open_hand(int champ, int hand)
 {
     if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand)) return;
     action.flash = (int16_t)(champ + 1);
@@ -151,11 +151,11 @@ void ui_action_area_open_hand(int champ, int hand)
     action.champion = action.flash;
     action.hand = (int16_t)hand;
     champ_drag_cancel();
-    ui_update_action_area(0);
-    champ_draw_state(champ);
+    action_update_area(0);
+    ui_draw_champion_state(champ);
 }
 
-void ui_action_area_open_spells(int champ)
+void action_area_open_spells(int champ)
 {
     if (!champion(champ)->health) return;
     action.hand = ACTION_HAND_SPELL;
@@ -165,7 +165,7 @@ void ui_action_area_open_spells(int champ)
     action.flags = 0;
     action.champion = action.flash;
     champ_drag_cancel();
-    ui_update_action_area(0);
+    action_update_area(0);
 }
 
 void champ_add_action_delay(int champ, int ticks, int hand)
@@ -507,7 +507,7 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
     case COMMAND_MINION_GUARD: case COMMAND_MINION_FETCH:
         if (minion_find_link_projectile(group, map_item)) {
             group_set_creature(group, command == COMMAND_MINION_GUARD ? MINION_ATTACKER : MINION_GUARD);
-            creature_free_cached_ai_data(group);
+            ai_free_cached_data(group);
             return 1;
         }
         if (command == COMMAND_MINION_FETCH) {
@@ -589,7 +589,7 @@ static int action_melee(ActionRun *a)
     if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
-        sound_play_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),
+        sound_request_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),
                                  SOUND_HIT, SOUND_FALLBACK, a->fx, a->fy, 1, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD);
         return 1;
     }
@@ -770,7 +770,7 @@ int champ_perform_action(int champ, int index)
     a.front = dun_get_square(a.fx, a.fy);
     int done = champ_run_command(&a, command);
     if (!a.silent)
-        sound_play_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, game.party_x, game.party_y, 0,
+        sound_request_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, game.party_x, game.party_y, 0,
                                  SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD);
     if (!c->health || repeated) return done;
     if (a.delay) champ_add_action_delay(champ, a.delay, hand);
@@ -807,9 +807,9 @@ int champ_execute_selected_action(int index)
             r->fresh = 0;
         }
     }
-    if (!action.flags) ui_action_area_close();
+    if (!action.flags) action_area_close();
     else action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
-    ui_update_action_area(0);
+    action_update_area(0);
     return done;
 }
 

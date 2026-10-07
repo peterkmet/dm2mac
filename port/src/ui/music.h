@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "gdat.h"
 
+/* Prefixes: music_ */
+
 /* Game music: the song of each map from SONGLIST.DAT, played by the HMP player on the FM driver. */
 
 #define MUSIC_SAMPLE_RATE 44100

@@ -617,7 +617,7 @@ void input_set_champion_cursor(int champ)
     Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
     memset(champion_cursor, UI_KEY, sizeof champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
-    gfx_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, palette);
+    ui_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, palette);
     champion_cursor_key = palette[UI_KEY];
     draw_free_temp();
 }
@@ -635,8 +635,8 @@ CursorImage input_cursor_image(int cursor)
         Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
-        gfx_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
-        gfx_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
+        ui_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
+        ui_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
         return (CursorImage){object_cursor, NULL, IMAGE_8BPP, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
                              OBJECT_HOT, OBJECT_HOT, key};
     }
@@ -932,7 +932,7 @@ static void feedback_rune_button(Feedback *f)
 /* Copies the drawn action area to the screen. */
 static void action_area_present(void)
 {
-    offscreen_flush(ui_action_area_begin_draw(0), 1);
+    offscreen_flush(action_area_begin_draw(0), 1);
 }
 
 /* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
@@ -943,7 +943,7 @@ static void feedback_hand_icon(int icon)
         if (in.current.command < CMD_HAND_FIRST || in.current.command > CMD_HAND_LAST) return;
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
-    ui_draw_hand_icon(champ, icon, 1);
+    action_draw_hand_icon(champ, icon, 1);
     action_area_present();
 }
 
@@ -952,7 +952,7 @@ static void feedback_spell_icon(int cell)
 {
     int champ = champion_in_party_cell(cell);
     if (champ < 0) return;
-    ui_draw_spell_icon(champ, 1);
+    action_draw_spell_icon(champ, 1);
     action_area_present();
 }
 
@@ -983,21 +983,21 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
     case FB_SPELL_ICON: feedback_spell_icon(*p++); break;
     case FB_HAND_ICON: feedback_hand_icon(*p++); break;
     case FB_ACTION_NAME:
-        ui_draw_action_name(*p++, 1);
+        action_draw_name(*p++, 1);
         action_area_present();
         break;
     case FB_ENTERED_RUNES:
-        ui_draw_entered_runes(1);
+        action_draw_entered_runes(1);
         action_area_present();
         break;
     case FB_MAP_OPTION_BUTTONS:
-        ui_draw_map_option_buttons(*p++);
+        minion_draw_map_option_buttons(*p++);
         action_area_present();
         break;
     case FB_INVENTORY_BUTTON:
         if (ui.inventory) {
             ui.buttons |= *p;
-            champ_draw_state(ui.inventory - 1);
+            ui_draw_champion_state(ui.inventory - 1);
         }
         p++;
         break;
@@ -1006,9 +1006,9 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         dialog.button_index = p[PICTURE_INDEX];
         dialog.button_entry = p[PICTURE_ENTRY];
         p += DIALOG_BUTTON_ARGS;
-        ui_dialog_draw_button(input_match.zone, 1);
+        dialog_draw_button(input_match.zone, 1);
         f->opened = 0;  /* the original forgets the open feedback bitmap */
-        ui_dialog_present();
+        dialog_present();
         break;
     default:
         break;
@@ -1138,7 +1138,7 @@ void ui_draw_move_arrow(int entry, int zone, int pressed)
     draw_free_temp();
 }
 
-void ui_release_move_arrow(void)
+void input_release_move_arrow(void)
 {
     if (in.arrow_pressed) ui_draw_move_arrow(in.arrow_entry, in.arrow_zone, 0);
 }
@@ -1183,7 +1183,7 @@ static void view_click_creature(uint16_t group, int x, int y, int square_x, int 
     int side;
     if (!view_hit_test_creature(x, y, square_x, square_y, &side)) return;
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
-        sound_play_with_fallback(CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK, SOUND_FALLBACK, square_x,
+        sound_request_with_fallback(CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK, SOUND_FALLBACK, square_x,
                                  square_y, 0, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     } else if (!side) {
         party.push_mode = 1;
@@ -1200,7 +1200,7 @@ static void view_click_front_wall(int passable, int x, int y)
 {
     if (!game.champion_count) return;
     if (!passable)
-        sound_play_with_fallback(CAT_WALLSET, dungeon_map_wallset(game.party_map), SOUND_ENTRY_CLICK, SOUND_FALLBACK, x, y,
+        sound_request_with_fallback(CAT_WALLSET, dungeon_map_wallset(game.party_map), SOUND_ENTRY_CLICK, SOUND_FALLBACK, x, y,
                                  0, SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD);
     input_command_stop = 1;
 }
@@ -1425,11 +1425,11 @@ static void game_pause(void)
 {
     char text[TEXT_SIZE];
     main_loop.running = 0;
-    ui_hide_game_view();
+    game_hide_view();
     gfx_fill_bitmap(&view_viewport, ui_colors[UI_BLACK]);
     gdat_text(draw_gdat(), CAT_INTERFACE, 0, TEXT_PAUSED, text, sizeof text);
     text_draw_in_zone(ZONE_VIEW_TEXT, ui_colors[UI_CYAN], text);
-    screen_present_viewport();
+    game_present_viewport();
     input_push_mode(INPUT_MODE_PAUSE);
     input_flush();
     music_pause();
@@ -1442,13 +1442,13 @@ static void command_execute_session(int command)
     case CMD_SAVE:
         if (game.champion_count && !ui.candidate) {
             in.disabled--;
-            game_save();
+            session_save();
             in.disabled++;
         }
         break;
     case CMD_VOLUME:
-        ui_volume_dialog();
-        if (ui.inventory) champ_draw_state(ui.inventory - 1);
+        dialog_volume();
+        if (ui.inventory) ui_draw_champion_state(ui.inventory - 1);
         break;
     case CMD_NEW_GAME:
         session.new_game = 1;
@@ -1464,7 +1464,7 @@ static void command_execute_session(int command)
         menu_show_picture_and_wait();
         break;
     case CMD_QUIT:
-        game_quit();
+        session_quit();
         break;
     }
 }
@@ -1487,16 +1487,16 @@ static int command_execute_party(const Command *c, int idle)
             Champion *ch = champion(action.champion - 1);
             ch->dir = (uint8_t)((ch->dir + (command == CMD_ROTATE_LEFT ? -1 : 1)) & DIR_MASK);
         }
-        ui_update_action_area(0);
+        action_update_area(0);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
         champ_set_leader(champion_in_party_cell(command - CMD_LEADER_FIRST));
-        champ_draw_all_states(0);
+        ui_draw_all_champion_states(0);
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
         int champ = command - CMD_INVENTORY_FIRST;
         if (ui.candidate) champ_finish_recruit(game.party_x, game.party_y, game.party_dir, game.party_map, CMD_RECRUIT_CANCEL);
-        else if (champ == CHAMPION_MAX || champ < game.champion_count) inv_toggle(champ);
+        else if (champ == CHAMPION_MAX || champ < game.champion_count) ui_toggle_inventory(champ);
     } else if (command == CMD_LEADER_INVENTORY) {
-        if ((int16_t)game.leader != -1) inv_toggle(game.leader);
+        if ((int16_t)game.leader != -1) ui_toggle_inventory(game.leader);
     } else if (command == CMD_VIEWPORT) {
         view_click_in_viewport(c->x, c->y);
     } else if (command == CMD_CAST_SPELL) {
@@ -1508,13 +1508,13 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command == CMD_MINION_MAP) {
         minion_map_click_set_destination(command, c->x, c->y);
     } else if (command >= CMD_MAP_OPTION_FIRST && command <= CMD_MAP_OPTION_LAST) {
-        ui_toggle_map_option(command - CMD_MAP_OPTION_FIRST);
+        minion_toggle_map_option(command - CMD_MAP_OPTION_FIRST);
     } else if (command == CMD_PAUSE) {
         game_pause();
     } else if (command == CMD_RESUME) {
         if (!main_loop.running) {
             main_loop.running = 1;
-            ui_show_game_view();
+            game_show_view();
             input_pop_mode();
             input_flush();
         }
@@ -1537,10 +1537,10 @@ static int command_execute_champion(int command, int idle)
     } else if (command > CMD_ACTION_CANCEL && command <= CMD_ACTION_LAST) {
         input_command_stop = champ_execute_selected_action(command - CMD_ACTION_CANCEL - 1);
     } else if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
-        ui_action_area_open_hand((command - CMD_HAND_FIRST) / SLOT_HAND_COUNT, (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT);
+        action_area_open_hand((command - CMD_HAND_FIRST) / SLOT_HAND_COUNT, (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT);
     } else if (command >= CMD_PARTY_ICON_FIRST && command <= CMD_PARTY_ICON_LAST) {
         int champ = champion_in_party_cell(command - CMD_PARTY_ICON_FIRST);
-        if (champ >= 0) ui_action_area_open_spells(champ);
+        if (champ >= 0) action_area_open_spells(champ);
     } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
         money_box_click_coin(command - CMD_COIN_FIRST);
     } else if ((command == CMD_RECRUIT || command == CMD_RECRUIT_CANCEL) && idle) {
@@ -1558,7 +1558,7 @@ static int command_execute_champion(int command, int idle)
         if (command == CMD_DRAG_CANCEL) champ_drag_cancel();
         else champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
-        ui_update_action_area(0);
+        action_update_area(0);
     } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
         if (game.champion_count && !ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE) advanced_quick_save();
@@ -1566,7 +1566,7 @@ static int command_execute_champion(int command, int idle)
             else advanced_open_automap();
         }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
-        if (ui.inventory) champ_edit_name(champion(ui.inventory - 1));
+        if (ui.inventory) session_edit_champion_name(champion(ui.inventory - 1));
     } else {
         return 0;
     }

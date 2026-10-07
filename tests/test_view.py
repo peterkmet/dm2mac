@@ -318,8 +318,8 @@ class OriginalView:
             entry = entries[sum(amount >= limit for limit in limits)]
             self.lib.gdat_text(self.gdat, 0x17, gfx_set, entry, text, 128)
             if text.value:
-                out += struct.pack("<BBhhhBB", entry, self.lib.text_find_int_field(text.value, b"fw") & 0xFF,
-                                   self.lib.text_find_int_field(text.value, b"cd"), 0, 0, 0x40, 0x40)
+                out += struct.pack("<BBhhhBB", entry, self.lib.gdat_text_int_field(text.value, b"fw") & 0xFF,
+                                   self.lib.gdat_text_int_field(text.value, b"cd"), 0, 0, 0x40, 0x40)
         return out + b"\xff" + bytes(9)
 
 
@@ -333,7 +333,7 @@ def original_view(lib, gdat, start):
     lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.text_find_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
     return OriginalView(lib, gdat, start)
@@ -966,7 +966,7 @@ def test_walking_view_matches_original(lib, loaded, original_view):
 
 
 def present_viewport(lib, gdat, walking):
-    """The screen viewport rect after screen_present_viewport of a view whose walk rectangle holds the values 2 up."""
+    """The screen viewport rect after game_present_viewport of a view whose walk rectangle holds the values 2 up."""
     walk = (ctypes.c_int16 * 4).in_dll(lib, "walk_view_rect")
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_load(gdat) == 1
@@ -981,7 +981,7 @@ def present_viewport(lib, gdat, walking):
     viewport = Bitmap.in_dll(lib, "view_viewport")
     ctypes.memmove(viewport.pixels, bytes(view), len(view))
     PartyHead.in_dll(lib, "party").move_steps = walking
-    lib.screen_present_viewport()
+    lib.game_present_viewport()
     PartyHead.in_dll(lib, "party").move_steps = 0
     screen = Bitmap.in_dll(lib, "draw_screen")
     shown = [ctypes.string_at(ctypes.addressof(screen.pixels.contents) + (rect[1] + y) * screen.width + rect[0], VIEW_W) for y in range(VIEW_H)]

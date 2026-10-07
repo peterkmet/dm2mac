@@ -8,6 +8,7 @@
 #include "move.h"
 #include "random.h"
 #include "text.h"
+#include "sensor.h"
 
 #define HEADER_SIZE 0x2c
 #define MAP_DESC_SIZE 16

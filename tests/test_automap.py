@@ -283,7 +283,7 @@ def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
     state = Session.in_dll(lib, "session")
     state.new_game = 1
     try:
-        assert lib.game_load() == 1
+        assert lib.session_load() == 1
     finally:
         state.new_game = 0
     assert not any(seen_squares(lib, m) for m in range(lib.dungeon_map_count()))
@@ -316,9 +316,9 @@ def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automa
     press(lib, KEY_TAB)
     set_mode(lib, ADVANCED)
     assert not flag(lib, "advanced_automap_open").value
-    lib.inv_toggle(0)
+    lib.ui_toggle_inventory(0)
     press(lib, KEY_TAB)
-    lib.inv_toggle(0)
+    lib.ui_toggle_inventory(0)
     press(lib, KEY_PAUSE)
     press(lib, KEY_M)
     press(lib, KEY_PAUSE)

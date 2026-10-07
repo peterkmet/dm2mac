@@ -96,7 +96,7 @@ static void add_offset(DrawCtx *ctx, int packed)
     ctx->dy += gdat_offset_y(packed);
 }
 
-DrawCtx *gfx_ctx_init(DrawCtx *ctx, int category, int index, int entry)
+DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
 {
     memset(ctx, 0, sizeof *ctx);
     ctx->category = (uint8_t)category;
@@ -117,7 +117,7 @@ DrawCtx *gfx_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     return ctx;
 }
 
-void gfx_ctx_set_image(DrawCtx *ctx, const Bitmap *image)
+void draw_ctx_set_image(DrawCtx *ctx, const Bitmap *image)
 {
     ctx->image = image;
     ctx->x = ctx->y = 0;
@@ -125,7 +125,7 @@ void gfx_ctx_set_image(DrawCtx *ctx, const Bitmap *image)
     ctx->h = image ? image->height : 0;
 }
 
-DrawCtx *gfx_ctx_prepare(DrawCtx *ctx)
+DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
 {
     int scaled = ctx->scale_x != SCALE_FULL || ctx->scale_y != SCALE_FULL;
     int given = ctx->item == -1 && ctx->image;
@@ -137,7 +137,7 @@ DrawCtx *gfx_ctx_prepare(DrawCtx *ctx)
     if (ctx->transparent == DRAW_NO_IMAGE) return ctx;
     const Bitmap *src = given ? ctx->image : draw_gdat_image(ctx->category, ctx->index, ctx->entry);
     if (!scaled || !src) {
-        gfx_ctx_set_image(ctx, src);
+        draw_ctx_set_image(ctx, src);
         return ctx;
     }
     int16_t w = gfx_scale_64(src->width, ctx->scale_x), h = gfx_scale_64(src->height, ctx->scale_y);
@@ -150,7 +150,7 @@ DrawCtx *gfx_ctx_prepare(DrawCtx *ctx)
     if (!out) return ctx;
     if (src->bpp == IMAGE_8BPP) gfx_blit_scaled_8bpp(src->pixels, out->pixels, src->width, src->height, w, h);
     else gfx_blit_scaled_4bpp(src->pixels, out->pixels, src->width, src->height, w, h, NULL);
-    gfx_ctx_set_image(ctx, out);
+    draw_ctx_set_image(ctx, out);
     return ctx;
 }
 
@@ -161,7 +161,7 @@ static int16_t mirrored_start(int16_t start, int16_t size, int16_t image_size, i
     return mirrored && image_size > end ? (int16_t)(image_size - end) : 0;
 }
 
-void gfx_ctx_draw(DrawCtx *ctx)
+void draw_ctx_draw(DrawCtx *ctx)
 {
     if (ctx->w <= 0 || ctx->h <= 0 || !ctx->image) return;
     const Bitmap *image = ctx->image;

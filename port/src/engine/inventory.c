@@ -141,13 +141,13 @@ static void render_hand_icon(void)
     memset(leader_hand.cursor, HAND_ICON_KEY, sizeof leader_hand.cursor);
     const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
     if (image && colors) {
-        gfx_blit_bitmap(image, &cursor, r, 0, 0, UI_OPAQUE, identity);
+        ui_blit_bitmap(image, &cursor, r, 0, 0, UI_OPAQUE, identity);
         memcpy(leader_hand.palette, colors, sizeof leader_hand.palette);
     }
     draw_free_temp();
 }
 
-void ui_show_object_name(uint16_t thing)
+void inv_show_object_name(uint16_t thing)
 {
     text_print_newline();
     text_print_message(MESSAGE_OBJECT_NAME, item_name(thing));
@@ -161,7 +161,7 @@ void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)
     leader_hand.weight = (uint16_t)item_weight(thing);
     game.leader_hand = thing;
     render_hand_icon();
-    ui_show_object_name(thing);
+    inv_show_object_name(thing);
     (void)defer_cursor;  /* the port draws the cursor each frame (inv_cursor_object) */
     champ_apply_item_effects((int16_t)game.leader, thing, -1, EFFECT_MODE_ADD);
     sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 1, 0);
@@ -202,7 +202,7 @@ uint16_t champ_remove_object_from_slot(int champ, int slot)
     uint16_t *at = slot_of(champ, slot), thing = *at;
     *at = THING_NONE;
     if (thing != THING_NONE) {
-        if (champ == action.champion - 1 && slot < SLOT_HAND_COUNT && slot == action.hand) ui_action_area_close();
+        if (champ == action.champion - 1 && slot < SLOT_HAND_COUNT && slot == action.hand) action_area_close();
         champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_REMOVE);
     }
     return thing;
@@ -240,11 +240,11 @@ void inv_click_slot(int slot)
         champ_put_object_in_leader_hand(thing, 1);
     }
     if (hand != THING_NONE) champ_add_object_to_slot(champ, hand, slot);
-    champ_draw_all_states(0);
+    ui_draw_all_champion_states(0);
     if (slot == SLOT_QUIVER_READY || slot == SLOT_QUIVER_FIRST || slot == SLOT_QUIVER_ACTION
         || (slot > SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot >= SLOT_COUNT) {
         action.redraw_delay = 1;
-        ui_update_action_area(0);
+        action_update_area(0);
     }
 }
 
@@ -407,7 +407,7 @@ void champ_consume_object(int champ, uint16_t thing, int slot)
     }
     if (c->stamina > c->max_stamina) c->stamina = c->max_stamina;
     if (c->health > c->max_health) c->health = c->max_health;
-    sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK, game.party_x, game.party_y, 0,
+    sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK, game.party_x, game.party_y, 0,
                              SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL);
     c->redraw |= REDRAW_EATEN;
     if (slot != -1) {

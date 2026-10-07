@@ -4,6 +4,8 @@
 #include "draw.h"
 #include "gfx.h"
 
+/* Prefixes: ui_ offscreen_ */
+
 /* Layout zones of the screen and the panels. */
 enum ui_zone {
     ZONE_SCREEN = 2, ZONE_VIEWPORT = 7, ZONE_MOVEMENT_ARROWS = 9, ZONE_ACTION_AREA = 11,
@@ -73,18 +75,14 @@ void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, cons
 void offscreen_draw_text_in_zone_with_shadow(Offscreen *o, int zone, int color, int bg, const char *text);
 
 /* Fills every second pixel of rect in dst with UI color ui_color. */
-void gfx_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width);
+void ui_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width);
 /* Copies src into rect of dst from (src_x, src_y). */
-void gfx_blit_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int src_x, int src_y, int transparent,
+void ui_blit_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int src_x, int src_y, int transparent,
                      const uint8_t *colormap);
 /* Draws the GDAT image (category, index, entry) in zone of the view picture, without its GDAT offset. */
-void gfx_draw_gdat_in_viewport_zone(int category, int index, int entry, int zone, int transparent);
+void ui_draw_gdat_in_viewport_zone(int category, int index, int entry, int zone, int transparent);
 /* Fills the screen rectangle of zone with palette color color. */
-void gfx_fill_zone_screen(int zone, int color);
-/* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame. */
-int16_t *zone_get_icon_rect(int zone, int16_t *rect);
-/* The screen position of zone for a point (1 x 1 pixels). */
-void zone_get_position(int zone, int16_t *x, int16_t *y);
+void ui_fill_zone_screen(int zone, int color);
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
 #define FACE_ICON_COLORS 16
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
@@ -108,13 +106,13 @@ void ui_reset(void);
 void ui_draw_game_screen(void);
 void ui_draw_movement_arrows(void);
 /* Draws what changed of the status box (and of the inventory) of champ. */
-void champ_draw_state(int champ);
+void ui_draw_champion_state(int champ);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
-void champ_draw_all_states(int tick);
+void ui_draw_all_champion_states(int tick);
 /* Sets redraw flags on all champions. */
-void champ_set_redraw_flags(uint16_t flags);
+void ui_set_champion_redraw_flags(uint16_t flags);
 /* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
-void inv_toggle(int champ);
+void ui_toggle_inventory(int champ);
 /* Closing the inventory redraws the movement arrows (0 while the party falls asleep). */
 extern int inv_arrows_on_close;
 

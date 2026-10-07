@@ -99,7 +99,7 @@ void money_box_click_coin(int slot)
         champ_remove_object_from_leader_hand();
     }
     action.redraw_delay = 1;
-    ui_update_action_area(0);
+    action_update_area(0);
     champ_compute_load(champ);
 }
 

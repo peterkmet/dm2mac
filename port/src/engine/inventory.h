@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "timeline.h"
 
+/* Prefixes: inv_ */
+
 /* Modes of champ_apply_item_effects: how an item changes the champion that holds it. */
 enum item_effect_mode {
     EFFECT_MODE_LOAD = 0,       /* a loaded game: the bonuses of the items that the champion holds */
@@ -31,24 +33,10 @@ typedef struct {
 extern LeaderHand leader_hand;
 #define HAND_ICON_KEY 12
 
-/* Puts thing into the hand of the leader; defer_cursor: the original changes the mouse cursor later. */
-void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor);
-/* Takes the object out of the hand of the leader; THING_NONE when the hand is empty. */
-uint16_t champ_remove_object_from_leader_hand(void);
-/* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
-void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode);
-/* Computes the load of the champion: its slots and the items of its open chest. */
-void champ_compute_load(int champ);
-/* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
-void champ_adjust_stat(uint8_t *stat, int delta);
 /* Prints the name of thing in the message area. */
-void ui_show_object_name(uint16_t thing);
+void inv_show_object_name(uint16_t thing);
 /* Updates the cursor when the icon of the animated leader hand object changes. */
 void inv_update_hand_cursor(void);
-/* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
-uint16_t champ_remove_object_from_slot(int champ, int slot);
-/* Puts thing into slot of champ. */
-void champ_add_object_to_slot(int champ, uint16_t thing, int slot);
 /* A click on a slot: 0 to 7 the hands in the status boxes, then the inventory slots, then the open chest. The leader
    hand object and the item in the slot change places. */
 void inv_click_slot(int slot);
@@ -56,14 +44,6 @@ void inv_click_slot(int slot);
 void inv_store_leader_hand_object(int champ);
 /* Puts thing into the first free slot of champ that takes it. */
 void inv_put_object_in_free_slot(int champ, uint16_t thing);
-/* The timed effect of an eaten item (event 0x0e) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
-   for a loaded game. */
-void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
-/* Uses a charge of an item that holds water; returns 1 when it had one. */
-int item_use_charge(uint16_t thing);
-/* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
-   champion of the open inventory (a click on the mouth). */
-void champ_consume_object(int champ, uint16_t thing, int slot);
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
 

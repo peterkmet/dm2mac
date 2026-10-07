@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include "ui.h"
 
+/* Prefixes: automap_ */
+
 /* The automap of the advanced mode: the squares that the dungeon view has shown, one byte per square of every map. */
 
 /* Forgets every seen square and sizes the storage from the loaded dungeon. */
