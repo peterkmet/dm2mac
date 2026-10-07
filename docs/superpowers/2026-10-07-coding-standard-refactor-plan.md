@@ -464,7 +464,7 @@ The target folder of each existing file in `port/src/`:
       report("long", found)
   ```
 
-- [x] **Step 3: Run the new checks.** `uv run pytest tests/test_standard.py -q -p no:xdist`. Expected: `test_layers` PASSES. The other checks FAIL with their violation lists, except `test_no_decompiler_names`, which PASSES (no decompiler names today).
+- [x] **Step 3: Run the new checks.** `uv run pytest tests/test_standard.py -q -p no:xdist`. Expected: `test_layers` PASSES. The other checks FAIL with their violation lists, except `test_no_decompiler_names`, which PASSES (no decompiler names today). Result on 2026-10-07: `test_no_event_numbers_in_function_names` also PASSES. No function name has an event number.
 - [x] **Step 4: Check the test for false hits.** Read 10 sample lines of each failing check. A false hit is a line that the rule does not forbid, for example a hex value in a constant definition over two lines. If a check has more than a few false hits, stop and report the samples. Do not change the rule to hide real violations.
 - [x] **Step 5: Fill the allowlist.** Run the script of Task 2, Step 8 again. It appends the keys of the new checks. The `layer` keys are already in the allowlist, so they do not come again.
 - [x] **Step 6: Run the standard test.** `uv run pytest tests/test_standard.py -q -p no:xdist`. Expected: all PASS.
