@@ -23,7 +23,7 @@ def pytest_configure(config):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    # records the git tree of a green full run of a clean checkout; scripts/test-suite skips a rerun of that tree
+    # records the git tree of a green full run of a clean checkout; tools/test-suite skips a rerun of that tree
     if hasattr(session.config, "workerinput") or exitstatus != 0 or session.config.args != ["tests"]:
         return
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True).stdout.strip()

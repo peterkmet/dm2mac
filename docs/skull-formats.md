@@ -41,7 +41,7 @@ Impact on the port: apply the same filter when the key table loads. The default 
 
 ### Image compression (Step 8)
 
-Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. We checked the dispatch in `decomp/SKULL.c`.
+Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. We checked the dispatch in `reference/decomp/SKULL.c`.
 
 `gdat_decode_image` (`0x3e867`) reads the first u32 of the raw item as a signed value and shifts it right by 26 (the gate):
 
@@ -407,7 +407,7 @@ Source: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x
 
 ## 7. Save file format (Step 10)
 
-Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`0x370d2`) in `decomp/SKULL.c`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
+Source: reDM2 `docs/savegame.md`. We checked the call sequence in `game_load` (`0x370d2`) in `reference/decomp/SKULL.c`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
 
 ### Container
 
