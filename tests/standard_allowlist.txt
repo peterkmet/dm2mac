@@ -261,6 +261,14 @@ long ui/input.c:view_click_in_viewport open: module cleanup
 long ui/input.c:command_execute open: module cleanup
 long ui/ui.c:draw_object_info open: module cleanup
 long ui/ui.c:champ_draw_state open: module cleanup
+long ui/view.c:apply_wall_things open: module cleanup
+long ui/view.c:get_square_aspect open: module cleanup
+long ui/view.c:view_draw_creature open: module cleanup
+long ui/view.c:view_draw_missiles open: module cleanup
+long ui/view.c:view_draw_wall_ornament open: module cleanup
+long ui/view.c:view_draw_floor_ornament open: module cleanup
+long ui/view.c:view_draw_door open: module cleanup
+long ui/view.c:view_hit_test_object open: module cleanup
 prefix data/gdat.h open: module cleanup
 prefix data/gfx.h open: module cleanup
 prefix data/hmp.h open: module cleanup
@@ -336,8 +344,7 @@ decimal engine/sound_request.c open: module cleanup
 decimal engine/timeline.h open: module cleanup
 decimal engine/weather.c open: module cleanup
 decimal ui/fm.c table: rule 6
-decimal ui/input.c open: module cleanup
-decimal ui/ui.c open: module cleanup
+decimal ui/input.c table: rule 6
 decimal ui/view.c open: module cleanup
 decimal ui/view.h open: module cleanup
 hex engine/ai_data.c table: rule 6
@@ -365,9 +372,9 @@ hex platform/control.c table: PC keyboard scan codes of the key names
 hex platform/main.c table: PC keyboard scan codes of the SDL keys
 hex ui/dialog.c table: rule 6
 hex ui/fm.c table: rule 6
-hex ui/input.c open: module cleanup
+hex ui/input.c table: rule 6
 hex ui/sound.c table: rule 6
-hex ui/ui.c open: module cleanup
+hex ui/ui.c table: rule 6
 hex ui/view.c open: module cleanup
 bool engine/ai.h creature_is_near_party_front is defined in engine/creature.c, which task 5 owns
 hex ui/view.c table: rule 6
@@ -396,3 +403,4 @@ packed engine/sensor.c open: module cleanup
 packed engine/sound_request.c open: module cleanup
 packed engine/weather.c open: module cleanup
 packed ui/input.c open: module cleanup
+packed ui/view.c open: module cleanup

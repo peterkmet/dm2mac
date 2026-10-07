@@ -74,6 +74,7 @@ int16_t *zone_get_icon_rect(int zone, int16_t *rect);
 /* The screen position of zone for a point (1 x 1 pixels). */
 void zone_get_position(int zone, int16_t *x, int16_t *y);
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
+#define FACE_ICON_COLORS 16
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
 
 /* Interface state that the drawing reads. Later steps change it (Step 14: input, Step 15: champions). */
