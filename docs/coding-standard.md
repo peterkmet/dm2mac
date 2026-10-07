@@ -12,8 +12,9 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - Graphic numbers: named constants in `port/src/data/gfx.h`, for example `GFX_WALLSET_FIRST`. Layout zone numbers: named constants in `port/src/ui/ui.h`, for example `ZONE_VIEWPORT`.
    - DM2 systems: money types (`COIN_GOLD`), minion types (`MINION_GUARD`), weather states (`WEATHER_RAIN`), and Skullkeep machine states each get named constants. `docs/skull-symbols.csv` holds the names.
    - Plain numbers are allowed only for 0, 1, -1, and 2 when it halves or doubles a value. Every other number is a named constant, also decimal game values such as divisors, limits, and thresholds.
+   - Notation: hex for bit masks and flags, for ids from the data files and from `SKULL.EXE` (GDAT categories and entries, sound entries, priorities and volumes, event types, command codes, key codes), and for byte values of file formats. Decimal for counts, sizes, times in ticks, percentages, distances, divisors, and thresholds.
    - Each constant has one definition, in the header of the module that owns it. Other modules include that header. They do not define the value again under the same or another name.
-2. Do not index raw record bytes outside one accessor module. Put field access in small functions or macros with names, for example `sensor_type(t)`, `sensor_disable(t)`, `door_state(t)`, `group_count(t)`. One module (`dungeon.c` and `dungeon.h`) owns the record layout.
+2. Do not index raw record bytes outside one accessor module. Put field access in small functions or macros with names, for example `sensor_type(t)`, `sensor_disable(t)`, `door_state(t)`, `group_count(t)`. `engine/dungeon.h` owns the record layout: the field offsets and bits. The named accessors of a thing type can be in the header of its module (`sensor.h`, `projectile.h`, `item.h`, `ai.h`). They use the field constants of `dungeon.h`.
 3. Write C, not decompiler output.
    - No names like `uVar1`, `iVar3`, `local_10`, `param_2`.
    - Game values keep the 16-bit types of the original (`int16_t`, `uint16_t`). One value has one type on its whole path: field, parameter, local variable, and return value. Then no cast is needed to pass it on. Use `int` only for values that are not game values, for example sizes, file offsets, and loop counters over C arrays.
@@ -32,7 +33,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - No event numbers or original addresses in names. Name the game task, not the number.
 8. The source has four layers in subfolders of `port/src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook that `ui/` sets, for an event that must run the user interface inside the rule. Only `platform/` includes SDL.
 9. Little-endian read and write helpers (`le16`, `le32`, `put_le16`, `put_le32`) have one definition in one header. Modules do not define their own copies.
-10. A packed field (two or more values in one word) has accessor functions or macros in the header of the module that owns it, for example `timeline_time_map()` and `timeline_event_map()` in `engine/timeline.h`. Call sites do not shift, mask, or cast to pack or unpack it.
+10. A packed field (two or more values in one word) has accessor functions or macros in the header of the module that owns it, for example `timeline_time_map()` and `timeline_event_map()` in `engine/timeline.h`. Call sites do not shift, mask, or cast to pack or unpack it. A shift by a named `*_SHIFT` constant is allowed only in the module that owns the field. Other modules call its accessors.
 
 ## Check before a step is done
 
@@ -47,7 +48,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
 - functions longer than 60 lines,
 - headers without a `Prefixes` line, prefix collisions, and functions outside the prefixes of their header,
 - event numbers in function names,
-- shifts by 8, 16, or 24, shifts by a `*_SHIFT` constant of the header of another module, and double integer casts in `.c` files (packed fields at the call site),
+- shifts by 8, 16, or 24, shifts by a `*_SHIFT` constant outside the module that owns it (the owner files are exempt), and double integer casts in `.c` files (packed fields at the call site),
 - includes of a higher layer, and SDL outside `platform/`.
 
 `tests/standard_allowlist.txt` lists the accepted exceptions, one per line with a reason. The reason `open: module cleanup` marks a violation that a later cleanup removes. `opl3.c` and `opl3.h` are vendored code (`opl3-LICENSE`), and the test does not check them.
