@@ -38,12 +38,8 @@ enum { CHARGES_ONE_A = 0x10, CHARGES_ONE_B = 0x11, CHARGES_EMPTY = 0x12 };
 #define MINION_MAP_LAST_TYPE 2
 #define CREATURE_MINION_A 0x33
 #define CREATURE_MINION_B 0x32
-/* The slots that the hands load ammunition from. */
-#define ACTION_HAND_SOURCE 12
-#define ACTION_HAND_SOURCE_FIRST 7
-#define ACTION_HAND_SOURCE_LAST 9
-#define READY_HAND_SOURCE 11
-#define READY_HAND_SOURCE_2 6
+#define WOUND_LOAD_SHIFT 3          /* a wounded champion carries 1/8 less, with wounded legs 1/4 less */
+#define WOUND_LEGS_LOAD_SHIFT 2
 
 ChampionAction champ_actions[CHAMPION_ACTION_MAX];
 int champ_action_count;
@@ -71,7 +67,7 @@ int champ_get_skill_level(int champ, int skill, int with_bonus)
     const Champion *c = champion(champ);
     uint32_t experience = c->experience[skill];
     if (skill >= SKILL_BASE_COUNT) {
-        int base = (skill - SKILL_BASE_COUNT) >> 2;
+        int base = (skill - SKILL_BASE_COUNT) / SKILL_BASE_COUNT;
         int factor = with_bonus ? c->skill_bonus[base] + 1 : 1;
         experience = (experience + (uint32_t)(factor * (int32_t)c->experience[base])) >> 1;
     }
@@ -98,7 +94,7 @@ int champ_get_max_load(Champion *c)
 {
     int strength = champ_get_stat(c, STAT_STRENGTH, 0);
     uint16_t load = (uint16_t)champ_scale_by_stamina(c, (int16_t)(strength * LOAD_PER_STRENGTH + LOAD_BASE));
-    if (c->wounds) load = (uint16_t)(load - (load >> ((c->wounds & WOUND_LEGS) == 0 ? 3 : 2)));
+    if (c->wounds) load = (uint16_t)(load - (load >> ((c->wounds & WOUND_LEGS) == 0 ? WOUND_LOAD_SHIFT : WOUND_LEGS_LOAD_SHIFT)));
     uint16_t rounded = (uint16_t)(load + LOAD_ROUND - 1);
     return (uint16_t)(rounded - rounded % LOAD_ROUND);
 }
@@ -116,12 +112,12 @@ int champ_find_hand_source_slot(int champ, int hand)
 {
     const Champion *c = champion(champ);
     if (hand == SLOT_ACTION_HAND) {
-        if (c->slots[ACTION_HAND_SOURCE] != THING_NONE) return ACTION_HAND_SOURCE;
-        for (int s = ACTION_HAND_SOURCE_FIRST; s <= ACTION_HAND_SOURCE_LAST; s++)
+        if (c->slots[SLOT_QUIVER_ACTION] != THING_NONE) return SLOT_QUIVER_ACTION;
+        for (int s = SLOT_QUIVER_FIRST + 1; s <= SLOT_QUIVER_LAST; s++)
             if (c->slots[s] != THING_NONE) return s;
     } else if (hand == SLOT_READY_HAND) {
-        if (c->slots[READY_HAND_SOURCE] != THING_NONE) return READY_HAND_SOURCE;
-        if (c->slots[READY_HAND_SOURCE_2] != THING_NONE) return READY_HAND_SOURCE_2;
+        if (c->slots[SLOT_QUIVER_READY] != THING_NONE) return SLOT_QUIVER_READY;
+        if (c->slots[SLOT_QUIVER_FIRST] != THING_NONE) return SLOT_QUIVER_FIRST;
     }
     return NO_SLOT;
 }
