@@ -19,13 +19,12 @@
 #include "zone.h"
 
 /* The grid: 7 x 7 squares (9 x 9 when the grid is shifted) of 7 x 7 pixel icons with 1 pixel gaps. */
-#define ICON_W 7
-#define ICON_H 7
+#define MAP_ICON_W 7
+#define MAP_ICON_H 7
 #define GAP_X 1
 #define GAP_Y 1
 #define GRID_RADIUS 3
 #define ZONE_MAP_GRID 99
-#define ZONE_PANEL 0x5c
 #define ZONE_OPTION_BUTTON_FIRST 0x65
 #define ZONE_OPTION_LABEL_FIRST 0x69
 #define MAP_OPTION_COUNT 4
@@ -34,7 +33,7 @@
 #define OPTION_BUTTON_DOWN 0x4a
 #define OPTION_LABEL_FIRST 'r'
 #define ICON_KEY 10
-/* Icon strips: GDAT image (category, index, 1, 0xf9), ICON_W pixels per icon; the value (category, index, 0x0b,
+/* Icon strips: GDAT image (category, index, 1, 0xf9), MAP_ICON_W pixels per icon; the value (category, index, 0x0b,
    0xf9) set: the thing shows only with MAP_OPTION_DETAILS. */
 #define STRIP_ENTRY 0xf9
 #define STRIP_DETAIL_KEY 0xf9
@@ -52,20 +51,13 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
 #define MIRROR_Y 2
 #define FAKE_WALL_SEEN SQUARE_FLAG_0
 #define FLOOR_SHOWS_LEVEL 0x08          /* a floor square shows the level digit instead */
-#define FLOOR_FRAME_SHIFT 8
-#define FLOOR_FRAME_STEP 10
-#define ORNAMENT_NONE 0xff
-#define ORNAMENT_INDEX_MASK 0xff
-enum { SIDE_DOOR_STATE, SIDE_DOOR_THING, SIDE_FLOOR_ORNAMENT, SIDE_STAIRS_UP = 0, SIDE_PIT_VARIANT = 0 };
 /* Minion map kinds: the container type of a minion map. */
 enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };
 #define MAP_LOCATION_NONE LOCATION_MAP_MASK  /* map 63: no location */
 #define MINION_MAP_MANA_TICKS 25
 #define MISSILE_SIDES_ICON 3
-#define POSSESSIONS_SHOWN 0x0f
 #define ALCOVE_ICON_COUNT 3             /* an item strip with alcove icons: the floor icon, then front and side */
 #define VIEW_CELL_ROW 5
-#define CMD_MINION_MAP 0x55
 
 MinionMap minion_map;
 
@@ -98,7 +90,7 @@ static Strip map_icon_strip(int category, int index)
     if (!gdat_exists(draw_gdat(), category, index, GDAT_TYPE_IMAGE, STRIP_ENTRY)) return s;
     s.image = draw_gdat_image(category, index, STRIP_ENTRY);
     s.palette = draw_gdat_image_palette(category, index, STRIP_ENTRY);
-    s.count = s.image ? s.image->width / ICON_W : 0;
+    s.count = s.image ? s.image->width / MAP_ICON_W : 0;
     return s;
 }
 
@@ -141,11 +133,11 @@ static int rect_clip(int16_t *rect, const int16_t *clip, int16_t *dx, int16_t *d
 static void draw_icon(const Bitmap *image, const uint8_t *palette, int icon, int x, int y, int mirror)
 {
     if (!image) return;
-    int16_t r[RECT_SIZE] = {(int16_t)x, (int16_t)y, ICON_W, ICON_H}, dx, dy;
+    int16_t r[RECT_SIZE] = {(int16_t)x, (int16_t)y, MAP_ICON_W, MAP_ICON_H}, dx, dy;
     if (!rect_clip(r, minion_map.clip, &dx, &dy)) return;
-    if (ICON_W - r[RECT_W] && mirror & MIRROR_X) dx = dx ? 0 : (int16_t)(ICON_W - r[RECT_W]);
-    if (ICON_H - r[RECT_H] && mirror & MIRROR_Y) dy = dy ? 0 : (int16_t)(ICON_H - r[RECT_H]);
-    offscreen_blit(area, image, r, (int16_t)(icon * ICON_W + dx), dy, ICON_KEY, mirror, palette);
+    if (MAP_ICON_W - r[RECT_W] && mirror & MIRROR_X) dx = dx ? 0 : (int16_t)(MAP_ICON_W - r[RECT_W]);
+    if (MAP_ICON_H - r[RECT_H] && mirror & MIRROR_Y) dy = dy ? 0 : (int16_t)(MAP_ICON_H - r[RECT_H]);
+    offscreen_blit(area, image, r, (int16_t)(icon * MAP_ICON_W + dx), dy, ICON_KEY, mirror, palette);
 }
 
 static void draw_strip(const Strip *s, int icon, int x, int y, int mirror)
@@ -193,7 +185,7 @@ static void draw_floor(const ViewSquare *s, const Strip *base, int x, int y, int
     if (ornament != ORNAMENT_NONE && (flags & MAP_OPTION_DETAILS || !detail_only(CAT_FLOOR_ORNAMENT, ornament))) {
         Strip o = map_icon_strip(CAT_FLOOR_ORNAMENT, ornament);
         if (o.count) {
-            int frame = (int8_t)(s->side[SIDE_FLOOR_ORNAMENT] >> FLOOR_FRAME_SHIFT) / FLOOR_FRAME_STEP;
+            int frame = view_floor_frame(s->side[SIDE_FLOOR_ORNAMENT]);
             draw_strip(&o, o.count < frame + 1 ? 0 : frame, x, y, 0);
         }
     }
@@ -223,7 +215,7 @@ static void draw_group(uint16_t group, uint16_t map_thing, int dir, int x, int y
         }
     }
     if (!(cflags & CREATURE_STATIC) || !(flags & MAP_OPTION_ITEMS)) return;
-    if (!(creature_group_info(group)->possessions & POSSESSIONS_SHOWN)) return;
+    if (!(creature_group_info(group)->possessions & POSSESSIONS_KIND_MASK)) return;
     for (uint16_t t = dungeon_next_thing(group); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) < THING_WEAPON || thing_type(t) > THING_MISC) continue;
         Strip o = map_icon_strip(item_gdat_category(t), item_gdat_index(t));
@@ -231,21 +223,17 @@ static void draw_group(uint16_t group, uint16_t map_thing, int dir, int x, int y
     }
 }
 
-/* The missile kinds of item_get_image_kind: which pictures a missile has. */
-/* The flying pictures of a GDAT entry whose presence selects the missile kind. */
-enum { MISSILE_IMAGE_ANY = 8, MISSILE_IMAGE_MIRRORED = 9, MISSILE_IMAGE_THREE_SIDES = 10, MISSILE_IMAGE_SIDE = 12 };
-enum { MISSILE_NONE = -1, MISSILE_FRONT_MIRRORED, MISSILE_THREE_SIDES, MISSILE_FRONT_ONLY, MISSILE_NO_SIDE };
 
 /* How the pictures of a flying object show its sides: from the images that exist in its GDAT entry. */
 static int missile_image_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     const gdat_t *g = draw_gdat();
-    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_IMAGE_ANY)) return MISSILE_NONE;
-    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_IMAGE_SIDE)) return MISSILE_NO_SIDE;
-    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_IMAGE_THREE_SIDES)) return MISSILE_THREE_SIDES;
-    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_IMAGE_MIRRORED)) return MISSILE_FRONT_MIRRORED;
-    return MISSILE_FRONT_ONLY;
+    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_FRONT)) return MISSILE_NO_PICTURE;
+    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_SIDE)) return MISSILE_NO_SIDE;
+    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_BACK)) return MISSILE_FRONT_BACK;
+    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_FRONT_2)) return MISSILE_MIRRORED;
+    return MISSILE_FRONT;
 }
 
 /* The icons of the missiles of a thing list from first. */
@@ -260,7 +248,7 @@ static void draw_missiles(uint16_t first, int dir, int x, int y)
             int side = dir_relative(projectile_dir(t), dir);
             icon = MISSILE_SIDES_ICON;
             switch (missile_image_kind(t)) {
-            case MISSILE_THREE_SIDES: icon = side + MISSILE_SIDES_ICON + missile_side_shift[side][cell]; break;
+            case MISSILE_FRONT_BACK: icon = side + MISSILE_SIDES_ICON + missile_side_shift[side][cell]; break;
             case MISSILE_NO_SIDE: break;
             default: icon = 0; break;
             }
@@ -311,7 +299,7 @@ static void draw_things(const ViewSquare *s, uint16_t map_thing, int dir, int x,
 /* The red frame around the party square at (x, y) of the screen. */
 static void draw_party_frame(int x, int y)
 {
-    int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + ICON_W, GAP_Y * 2 + ICON_H}, dx, dy;
+    int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + MAP_ICON_W, GAP_Y * 2 + MAP_ICON_H}, dx, dy;
     rect_clip(r, minion_map.clip, &dx, &dy);
     offscreen_fill_rect(area, r, ui_colors[UI_RED]);
 }
@@ -358,7 +346,7 @@ static bool draw_square_base(const ViewSquare *s, const Strip *base, int sx, int
     }
     case ASPECT_PIT: {
         int icon = ICON_PIT;
-        if (s->side[SIDE_PIT_VARIANT]) icon = flags & MAP_OPTION_DETAILS && game.game_time & 1 ? ICON_PIT_BLINK : ICON_PIT_VARIANT;
+        if (s->side[SIDE_PIT_UP]) icon = flags & MAP_OPTION_DETAILS && game.game_time & 1 ? ICON_PIT_BLINK : ICON_PIT_VARIANT;
         draw_strip(base, icon, x, y, 0);
         break;
     }
@@ -579,9 +567,9 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
             int16_t m16 = (int16_t)grid_square(x, y, map, dir, row, col, &sx, &sy, &icon_set);
             flags = grid_square_flags(&ms, sx, sy, m16, flags, show);
             ui_map_draw_square(thing, sx, sy, dir, col_x, row_y, icon_set, flags);
-            col_x = (int16_t)(col_x + ICON_W + GAP_X);
+            col_x = (int16_t)(col_x + MAP_ICON_W + GAP_X);
         }
-        row_y = (int16_t)(row_y + ICON_H + GAP_Y);
+        row_y = (int16_t)(row_y + MAP_ICON_H + GAP_Y);
     }
     dun_set_current_map(saved_map);
 }
@@ -644,8 +632,8 @@ void ui_draw_minion_map(uint16_t thing)
                     x += dir_dx[dir_opposite(dir)];
                     y += dir_dy[dir_opposite(dir)];
                 }
-                x_offset = (GAP_X * 2 + ICON_W + 1) / VIEW_CELL_ROW * cell_shift[col];
-                y_offset = (GAP_Y * 2 + ICON_H + 1) / VIEW_CELL_ROW * cell_shift[row];
+                x_offset = (GAP_X * 2 + MAP_ICON_W + 1) / VIEW_CELL_ROW * cell_shift[col];
+                y_offset = (GAP_Y * 2 + MAP_ICON_H + 1) / VIEW_CELL_ROW * cell_shift[row];
             }
         } else if (action.flags & MAP_MARKER) {
             uint16_t w = thing_word(thing, MINION_MAP_LOCATION);
@@ -730,10 +718,10 @@ void minion_map_click_set_destination(int command, int x, int y)
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MAP_GRID, r);
     int16_t px = (int16_t)(x - (r[RECT_X] - minion_map.x_offset)), py = (int16_t)(y - (r[RECT_Y] - minion_map.y_offset));
-    if (px % (ICON_W + GAP_X) < GAP_X || py % (ICON_H + GAP_Y) < GAP_Y) return;
+    if (px % (MAP_ICON_W + GAP_X) < GAP_X || py % (MAP_ICON_H + GAP_Y) < GAP_Y) return;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!minion_find_link_projectile(group, thing)) return;
-    int col = px / (ICON_W + GAP_X), row = py / (ICON_H + GAP_Y);
+    int col = px / (MAP_ICON_W + GAP_X), row = py / (MAP_ICON_H + GAP_Y);
     int16_t sx = minion_map.x, sy = minion_map.y;
     dun_move_relative(minion_map.dir, GRID_RADIUS - row, col - GRID_RADIUS, &sx, &sy);
     int lx = sx, ly = sy;

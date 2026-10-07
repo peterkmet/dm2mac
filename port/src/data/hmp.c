@@ -27,23 +27,12 @@
 #define LOOPS_FOREVER 0xff
 
 /* MIDI and HMI events. */
-#define MIDI_STATUS_MASK 0xf0
-#define MIDI_CHANNEL_MASK 0x0f
-#define MIDI_CONTROL 0xb0
-#define MIDI_PROGRAM 0xc0
-#define MIDI_PITCH_BEND 0xe0
 #define MIDI_SYSTEM 0xf0
 #define MIDI_META 0xff
 #define META_END_OF_TRACK 0x2f
 #define META_TEMPO 0x51
 #define META_TEMPO_LENGTH 5
-#define MIDI_CTRL_VOLUME 7
-#define MIDI_CTRL_RESET 0x79
-#define MIDI_CTRL_NOTES_OFF 0x7b
-#define MIDI_CHANNELS 16
-#define MIDI_MAX 127
-#define BEND_CENTER 0x40
-#define VOLUME_SHIFT 7
+#define MIDI_VOLUME_SHIFT 7
 #define HMI_FIRST 0x67        /* controllers 0x67 to 0x79 are HMI commands, never sent to the driver */
 #define HMI_LAST 0x79
 #define HMI_SET_LOOPS 0x6d    /* the value of the next event (an 0x6e controller) sets the loop count */
@@ -101,7 +90,7 @@ static void send_event(const uint8_t *event)
         return;
     }
     channel_volume[event[MIDI_STATUS] & MIDI_CHANNEL_MASK] = event[MIDI_DATA2];
-    int volume = master_volume * (event[MIDI_DATA2] * song_volume >> VOLUME_SHIFT) >> VOLUME_SHIFT;
+    int volume = master_volume * (event[MIDI_DATA2] * song_volume >> MIDI_VOLUME_SHIFT) >> MIDI_VOLUME_SHIFT;
     uint8_t scaled[MIDI_EVENT_SIZE] = {event[MIDI_STATUS], event[MIDI_DATA1], (uint8_t)(muted ? 0 : volume)};
     send(scaled);
 }

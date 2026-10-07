@@ -12,17 +12,6 @@
 #include "view.h"
 #include "zone.h"
 
-/* Zones of the action area. */
-enum {
-    ZONE_PARTY_ICONS = 0x2f, ZONE_PARTY_FACE_FIRST = 0x35, ZONE_RESULT = 0x39, ZONE_MENU_BACK = 0x3b,
-    ZONE_MENU_HEADER = 0x3c, ZONE_MENU_NAME = 0x3d, ZONE_ACTION_BUTTON_FIRST = 0x3f, ZONE_ACTION_NAME_FIRST = 0x42,
-    ZONE_ACTION_HAND_FIRST = 0x46, ZONE_READY_HAND_FIRST = 0x4a, ZONE_SPELL_ICON_FIRST = 0x4f,
-    ZONE_SPELL_RUNE_ICON_FIRST = 0x53, ZONE_SPELL_HAND_ICON_FIRST = 0x57, ZONE_PANEL = 0x5c, ZONE_FACE_BACK = 0x5d,
-    ZONE_FACE = 0x5e, ZONE_FACE_LEFT = 0x60, ZONE_FACE_RIGHT = 0x61, ZONE_MAP_ACTION_FIRST = 0x6e,
-    ZONE_AMMO_ITEM = 0x7d, ZONE_AMMO_HAND = 0x7e, ZONE_COIN_PILE_FIRST = 0xdd, ZONE_CONTAINER_LID = 0xe3,
-    ZONE_CONTAINER_SLOT_FIRST = 0xe5, ZONE_RUNES_BACK = 0xfc, ZONE_RUNE_CHOICE_FIRST = 0xff,
-    ZONE_RUNE_ENTERED_FIRST = 0x105
-};
 /* Action area pictures (1, 4, entry) and (1, 5, entry). */
 enum {
     ACTION_HAND_BACK_FIRST = 2, ACTION_EMPTY_HAND = 7, ACTION_MENU_BACK = 0x0e, ACTION_FACE_LEFT = 0x10,
@@ -33,8 +22,6 @@ enum {
 };
 /* Wall set pictures (8, set, entry) behind the party and the action champion. */
 enum { WALLSET_PARTY_BACK = 0xf5, WALLSET_FACE_BACK = 0xf6 };
-/* Results of an action (action.result < 0). */
-enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEEDS = -4, RESULT_CANT = -6 };
 #define RESULT_SMALL_MAX 15         /* damage up to this shows the small damage star */
 #define RESULT_SCALED_MAX 40
 #define RESULT_SMALL_SCALE 0x1f
@@ -46,7 +33,7 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define AMMO_HAND_DEFAULT 0x38
 #define AMMO_HAND_OTHER 0x34
 #define AMMO_ICON 0x18
-#define GDAT_INDEX_COUNT 0xff
+#define GDAT_INDEX_NONE 0xff         /* no GDAT index; the ammunition search stops below it */
 #define CONTAINER_PICTURE 0x10
 #define CONTAINER_LID 0x12
 #define CONTAINER_LID_KEY 10
@@ -57,9 +44,7 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define MAP_ACTION_PICTURE_BASE 0x41
 #define SPELL_RUNE_SETS 4           /* the rune sets 0 to 3; the panel of set 4 has no runes */
 #define AURA_FRAMES 4               /* the aura picture holds 4 x 4 frames: direction by game time */
-#define ICON_SIZE 16
 #define ICON_OFFSET 1               /* the icon of an item in a hand casts a shadow 1 pixel up and left */
-#define FACE_SIZE 17
 #define ICON_SHADOW_REMAP 1         /* GDAT (1, 0, 7, 1): the colors of an item icon in a hand */
 #define FLAGS_MINION_HEADER 0x0400
 #define ICON_KEY_COLOR UI_RED       /* the background of a hand icon bitmap; the blit skips it */
@@ -163,7 +148,7 @@ static void draw_action_result(int16_t value)
     } else if (value == RESULT_NO_AMMO) {
         offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? AMMO_HAND_OTHER : AMMO_HAND_DEFAULT,
                                   ZONE_AMMO_HAND, UI_OPAQUE);
-        for (int index = 0; index < GDAT_INDEX_COUNT; index++) {
+        for (int index = 0; index < GDAT_INDEX_NONE; index++) {
             uint16_t ammo = gdat_entry_index(draw_gdat(), CAT_WEAPON, index, GDAT_TYPE_VALUE, AMMO_ATTR);
             if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
                 offscreen_draw_gdat_image(&area, CAT_WEAPON, index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);

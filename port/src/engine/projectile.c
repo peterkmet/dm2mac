@@ -74,8 +74,6 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define CREATURE_REFLECTS_SPELLS 0x0002     /* flags */
 #define CREATURE_NON_MATERIAL CREATURE_NOT_DOOR_HIT
 #define CREATURE_CATCHES_OBJECTS 0x0200     /* flags */
-#define CREATURE_SEES_INVISIBLE 0x0400      /* flags */
-#define CREATURE_IGNORES_LIGHT 0x0800       /* flags */
 #define STATIC_SPELLS_ONLY 0x0100           /* possessions of a static creature: objects fly through it */
 #define POSSESSIONS_DIRECTION 1             /* possessions bits 0-3: a dropped object lies in the flight direction cell */
 #define DODGE_NONE 0x0f                     /* unknown_18 bits 4-7: explosion dodge; 0xf: explosions do not hurt */
@@ -122,8 +120,6 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define ALERT_CHANCE_WEAK 30
 #define ALERT_CHANCE_STRONG 95
 
-#define SKILL_DEFENSE 7
-#define STAT_VITALITY 4
 
 int projectile_event_dir(const TimelineEvent *e)
 {
@@ -842,7 +838,7 @@ static int creature_attack_missed(const CreatureInfo *info, int champ, uint16_t 
 {
     int visibility;
     if (game.magic_light[MAGIC_INVISIBILITY] && !(info->flags & CREATURE_SEES_INVISIBLE)) visibility = VISIBILITY_INVISIBLE;
-    else if (info->flags & CREATURE_IGNORES_LIGHT) visibility = 0;
+    else if (info->flags & CREATURE_SEES_IN_DARK) visibility = 0;
     else visibility = view_light_level * 2;
     if (party_sleeping || dexterity == DEXTERITY_ALWAYS_HITS) return 0;
     int threshold = (uint16_t)visibility + (int16_t)((rand_next() & ROLL_MELEE) + dexterity + difficulty);
@@ -879,7 +875,7 @@ int creature_attack_champion(uint16_t group, int champ)
         int16_t power = (int16_t)(info->attack + min16(info->attack, (int16_t)((rand_next() & ROLL_MELEE_POWER) + difficulty)));
         int skipped = 0;
         if (kind != ATTACK_KIND_ALWAYS_HITS) {
-            power = (int16_t)(power - champ_get_skill_level(champ, SKILL_DEFENSE, 1) * 2);
+            power = (int16_t)(power - champ_get_skill_level(champ, SKILL_PARRY, 1) * 2);
             if (power <= 1) {
                 if (rand_bit()) skipped = 1;
                 else power = (int16_t)(rand_2bits() + MELEE_WEAK_POWER_BASE);

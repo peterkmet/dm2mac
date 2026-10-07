@@ -38,6 +38,8 @@ typedef struct {
     int16_t clip[4];            /* the grid rectangle */
 } MinionMap;
 
+#define CMD_MINION_MAP 0x55         /* the command of a click on the minion map grid */
+
 extern MinionMap minion_map;
 
 /* The minion map opens in the hand of the open action area: the champion pays 1 mana for it. */

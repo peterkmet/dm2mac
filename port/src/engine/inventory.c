@@ -27,11 +27,8 @@ enum {
 #define MODIFIER_CONSUMED 0x4000    /* the modifier counts only when the item is consumed */
 #define MODIFIER_ANY_SLOT 0x8000    /* the modifier counts in any slot */
 #define MANA_MAX 999
-#define STAT_MIN 10
-#define STAT_MAX 220
 #define STAT_STEP 20                /* a statistic change shrinks by a quarter for each step away from the maximum */
 #define MESSAGE_OBJECT_NAME 13      /* the message color of an object name */
-#define REDRAW_MANA 0x0800          /* REDRAW_BARS */
 #define REDRAW_STATS 0x3000
 #define REDRAW_SKILLS 0x2000
 /* Data bytes of an item effect event: the thing type and the GDAT index of the consumed item. */
@@ -93,7 +90,7 @@ void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode)
                 if ((m = item_stat_modifier(thing, ATTR_MAX_MANA, equipped, mode))) {
                     if (mode == EFFECT_MODE_ADD || mode == EFFECT_MODE_REMOVE) c->max_mana = (int16_t)(c->max_mana + m);
                     else if (mode == EFFECT_MODE_CONSUME) c->mana = clamp16(0, (int16_t)(m + c->mana), MANA_MAX);
-                    c->redraw |= REDRAW_MANA;
+                    c->redraw |= REDRAW_BARS;
                 }
                 for (int s = 0; s < STAT_COUNT; s++) {
                     if (!(m = item_stat_modifier(thing, ATTR_STAT_FIRST + s, equipped, mode))) continue;
@@ -292,7 +289,6 @@ void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
 /* ---- Eating and drinking ---- */
 
 #define ATTR_FOOD 3                 /* item attribute: the food value */
-#define FOOD_MAX 0x800
 #define WATER_PER_DRINK 800
 #define WATER_PER_POTION 1600
 #define MANA_POTION_MAX 900
@@ -305,7 +301,6 @@ enum {
     POTION_DEXTERITY = 6, POTION_STRENGTH, POTION_WISDOM, POTION_VITALITY, POTION_ANTIDOTE, POTION_STAMINA,
     POTION_DEFENSE, POTION_MANA, POTION_HEALTH, POTION_WATER
 };
-#define AURA_DEFENSE 2
 /* Potion gains by power: a statistic gains power / 25 + 8, strength power / 35 + 5. */
 #define POTION_GAIN_DIVISOR 25
 #define POTION_GAIN_BASE 8

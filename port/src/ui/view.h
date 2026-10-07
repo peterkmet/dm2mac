@@ -26,6 +26,24 @@ _Static_assert(sizeof(ViewSquare) == VIEW_SQUARE_RECORD_SIZE, "the original view
 #define ORN_FRAME_SHIFT 10
 #define view_face_word(ornament, frame) ((uint16_t)((frame) << ORN_FRAME_SHIFT | (ornament)))
 #define view_face_frame(word) ((int16_t)(word) >> ORN_FRAME_SHIFT)
+/* The ornament word of a floor: the ornament in the low byte, frame * 10 in the high byte. */
+#define FLOOR_FRAME_SHIFT 8
+#define FLOOR_FRAME_STEP 10
+#define view_floor_word(ornament, frame) ((uint16_t)((ornament) | (frame) * FLOOR_FRAME_STEP << FLOOR_FRAME_SHIFT))
+#define view_floor_frame(word) ((int8_t)((word) >> FLOOR_FRAME_SHIFT) / FLOOR_FRAME_STEP)
+#define ORNAMENT_NONE 0xff
+#define ORNAMENT_INDEX_MASK 0xff
+/* View square sides by aspect. */
+enum { SIDE_DOOR_STATE = 0, SIDE_DOOR_THING = 1, SIDE_FLOOR_ORNAMENT = 2, SIDE_STAIRS_UP = 0, SIDE_PIT_UP = 0 };
+/* Picture kinds of a missile, by the pictures of its payload. */
+enum {
+    MISSILE_NO_PICTURE = -1,
+    MISSILE_MIRRORED,               /* front pictures 8 and 9, mirrored by the cell */
+    MISSILE_FRONT_BACK,             /* front picture 8, back picture 10 */
+    MISSILE_FRONT,                  /* front picture 8 only */
+    MISSILE_NO_SIDE,                /* no side picture 12 */
+};
+enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_BACK = 10, MISSILE_PICTURE_SIDE = 12 };
 
 enum view_aspect {
     ASPECT_WALL, ASPECT_FLOOR, ASPECT_PIT, ASPECT_TELEPORTER = 5, ASPECT_HIDDEN = 7,

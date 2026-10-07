@@ -90,6 +90,8 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
 enum global_var_op {
     GLOBAL_VAR_SET, GLOBAL_VAR_CLEAR, GLOBAL_VAR_TOGGLE, GLOBAL_VAR_ADD, GLOBAL_VAR_SUBTRACT, GLOBAL_VAR_ASSIGN = 6
 };
+#define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS)  /* the first byte variable */
+#define GLOBAL_BYTE_MAX 0xff
 int dun_get_global_var(int var);
 int dun_modify_global_var(int var, int value, int op);   /* returns the new value */
 /* True when a living champion, the open container, or the leader hand holds an item of the item index type. */

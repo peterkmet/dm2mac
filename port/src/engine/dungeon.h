@@ -208,11 +208,11 @@ enum text_subtype {
     SUBTYPE_ANIMATED = 2,
     SUBTYPE_SWITCH = 4,             /* frame 1 while visible */
     SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
-    SUBTYPE_STILL_2 = 6,
-    SUBTYPE_SWITCH_2 = 7,
+    SUBTYPE_LADDER = 6,             /* a ladder to another level */
+    SUBTYPE_LADDER_HIDDEN = 7,      /* a ladder that works while the text is not visible */
     SUBTYPE_SWITCH_3 = 8,
     SUBTYPE_TRAP_TELEPORT = 10,
-    SUBTYPE_TOGGLE_2 = 13,
+    SUBTYPE_HAND_SWITCH = 13,       /* a switch that an empty hand operates */
     SUBTYPE_PLATE = 14,             /* a text plate on the wall */
     SUBTYPE_WARP_ONCE = 15,         /* a warp marker that clears all markers; the view shows frame 1 */
     SUBTYPE_WARP = 16,              /* a warp marker that finds the set marker */
@@ -241,6 +241,7 @@ static inline uint16_t ai_marker_level(uint16_t text)
 
 /* SENSOR_TYPE_DATA fields. */
 #define SENSOR_TYPE_MASK 0x7f
+#define SENSOR_LEVEL_LINK 0x1c          /* sensor type: a link to the square of another level */
 #define SENSOR_DATA_SHIFT 7
 #define SENSOR_DATA_MASK 0x1ff
 #define SENSOR_DATA_SIGN 0x100          /* a counter: the count is below zero */

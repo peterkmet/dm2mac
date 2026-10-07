@@ -25,8 +25,6 @@
 #define FOOD_START 1500
 #define FOOD_RANDOM_MASK 0xff       /* a new champion gets up to 255 more food and water */
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */
-#define MOUTH_CATEGORY 9
-#define MOUTH_INDEX 0x5b
 #define MOUTH_OPEN 0xfb             /* also the entry of its sound */
 #define MOUTH_SOUND_PRIORITY 0xff
 #define MESSAGE_COLOR_FIRST UI_GREEN

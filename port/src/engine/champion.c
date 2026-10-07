@@ -1,5 +1,6 @@
 #include "action.h"
 #include "champion.h"
+#include "champ_action.h"
 #include "draw.h"
 #include "dungeon.h"
 #include "inventory.h"
@@ -10,10 +11,8 @@
 #include "text.h"
 #include "ui.h"
 
-#define STAT_MIN 10
-#define STAT_MAX 220
 #define AURA_MAX 100
-#define AURA_SHIFT 7
+#define AURA_STAT_SHIFT 7
 #define AURA_BASE 4
 #define LOAD_PER_STRENGTH 8
 #define LOAD_BASE 100
@@ -22,13 +21,6 @@
 #define NO_SLOT (-1)
 #define SENSOR_START_CHAMPION 0x7e  /* on square (0, 0): the champion of its mirror starts a new game */
 
-/* Action commands that the action list treats specially. */
-enum {
-    COMMAND_SHOOT = 0x11, COMMAND_SUMMON_FIRST = 0x2c, COMMAND_SUMMON_2 = 0x2d, COMMAND_SUMMON_3 = 0x2e,
-    COMMAND_SUMMON_4 = 0x2f, COMMAND_MINION_RECALL = 0x30
-};
-/* Charge requirements of an action text. */
-enum { CHARGES_ONE_A = 0x10, CHARGES_ONE_B = 0x11, CHARGES_EMPTY = 0x12 };
 #define MINION_MAP_FIRST_TYPE 1
 #define MINION_MAP_LAST_TYPE 2
 #define CREATURE_MINION_A 0x33
@@ -51,7 +43,7 @@ int champ_get_stat(Champion *c, int stat, int which)
     if (!which && c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST
         && stat == c->aura - AURA_STAT_OFFSET) {
         int aura = c->aura_value > AURA_MAX ? AURA_MAX : c->aura_value;
-        v = (uint16_t)(v + rand_below((uint16_t)((aura * v >> AURA_SHIFT) + 1)) + AURA_BASE);
+        v = (uint16_t)(v + rand_below((uint16_t)((aura * v >> AURA_STAT_SHIFT) + 1)) + AURA_BASE);
     }
     return clamp(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
 }
@@ -127,15 +119,15 @@ static int minion_map_allows_action(uint16_t thing, int command)
     if (type < MINION_MAP_FIRST_TYPE || type > MINION_MAP_LAST_TYPE) return 0;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!minion_find_link_projectile(group, thing)) {
-        if (command == COMMAND_SUMMON_4 || command == COMMAND_SUMMON_FIRST) return 1;
+        if (command == COMMAND_MINION_ATTACK || command == COMMAND_MINION_MAP_SET) return 1;
         if (thing_word(thing, MINION_MAP_LOCATION) == THING_NONE) return 0;
-        return command == COMMAND_SUMMON_2 || command == COMMAND_SUMMON_3;
+        return command == COMMAND_MINION_GUARD || command == COMMAND_MINION_FETCH;
     }
-    if (command == COMMAND_MINION_RECALL) return 1;
+    if (command == COMMAND_MINION_DISMISS) return 1;
     if (type != MINION_MAP_LAST_TYPE) return 0;
     uint8_t creature = group_creature(group);
-    if (creature == CREATURE_MINION_A) return command == COMMAND_SUMMON_2;
-    if (creature == CREATURE_MINION_B) return command == COMMAND_SUMMON_3;
+    if (creature == CREATURE_MINION_A) return command == COMMAND_MINION_GUARD;
+    if (creature == CREATURE_MINION_B) return command == COMMAND_MINION_FETCH;
     return 0;
 }
 
@@ -158,14 +150,14 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
         int16_t needs_hand = text_gdat_field(category, index, entry, FIELD_HAND);
         if (needs_hand && needs_hand - 1 != hand) continue;
         if (thing == THING_NONE) {
-            if (command == COMMAND_SHOOT && champ_find_hand_source_slot(champ, hand) < 0) continue;
+            if (command == COMMAND_LOAD && champ_find_hand_source_slot(champ, hand) < 0) continue;
         } else {
             if (!minion_map_allows_action(thing, command)) continue;
             int16_t needs = text_gdat_field(category, index, entry, FIELD_CHARGES);
             if (needs == CHARGES_EMPTY) {
                 if (item_charges(thing)) continue;
             } else {
-                if (needs == CHARGES_ONE_A || needs == CHARGES_ONE_B) needs = 1;
+                if (needs == CHARGES_USE_ALL || needs == CHARGES_USE_NONE) needs = 1;
                 if (needs && (int16_t)item_charges(thing) < needs) continue;
             }
         }

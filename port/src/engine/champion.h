@@ -12,6 +12,11 @@ enum {
 /* SLOT_CONTAINER_TEST: when the open hand item fits this slot, container slots take only pouch items. */
 
 enum { STAT_LUCK, STAT_STRENGTH, STAT_DEXTERITY, STAT_WISDOM, STAT_VITALITY, STAT_ANTI_MAGIC, STAT_ANTI_FIRE, STAT_COUNT };
+#define STAT_MIN 10
+#define STAT_MAX 220
+/* Skills: the four base skills, then their sub-skills. */
+enum { SKILL_FIGHTER, SKILL_NINJA, SKILL_PRIEST, SKILL_WIZARD, SKILL_SWING = 4, SKILL_PARRY = 7, SKILL_STEAL = 8,
+       SKILL_FIGHT = 9, SKILL_THROW = 10, SKILL_SHOOT = 11 };
 #define SKILL_COUNT 20
 #define SKILL_BASE_COUNT 4      /* skills 4 to 19 are sub-skills: 4 per base skill */
 #define SUB_SKILL_COUNT 4       /* the sub-skills of each base skill */
@@ -38,6 +43,7 @@ static inline int champ_base_skill(int skill)
 #define REDRAW_STEP_TIME 0x0010  /* the step time reads this bit; nothing in the port sets it (docs/todo.md) */
 
 /* Aura types: 0 to 2 shields, 3 to 6 raise a statistic. */
+enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };
 #define AURA_STAT_FIRST 3
 #define AURA_STAT_LAST 6
 #define AURA_STAT_OFFSET 2      /* aura type - 2 is the statistic */
@@ -84,6 +90,8 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define WOUND_LEGS 0x10
 #define WOUND_FEET 0x20
 #define WOUND_ALL 0x3f
+#define FOOD_MAX 0x800              /* Champion.food and the food gauge */
+#define POISON_MAX 0xc00            /* Champion.poison */
 /* Attack types of champ_take_damage (bit 15: a parry can block the attack). */
 enum {
     ATTACK_TYPE_FIRE = 1, ATTACK_TYPE_SELF, ATTACK_TYPE_BLUNT, ATTACK_TYPE_SHARP, ATTACK_TYPE_MAGIC, ATTACK_TYPE_PSYCHIC,
@@ -114,6 +122,7 @@ enum {
 
 /* Bytes of game.magic_light: the party spells. */
 enum { MAGIC_INVISIBILITY = 2, MAGIC_ACTION_EFFECT = 3, MAGIC_HASTE = 4 };
+#define HASTE_MAX 0xff              /* the haste byte of game.magic_light */
 
 /* One action of an item in a champion's hand: its GDAT text (category, index, 5, entry). */
 typedef struct {

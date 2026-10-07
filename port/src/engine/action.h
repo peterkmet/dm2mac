@@ -12,6 +12,8 @@ enum action_mode {
 #define ACTION_HAND_SPELL 2
 #define SPELL_RUNES_PER_SET 6
 #define SPELL_RUNE_GLYPH_FIRST 0x60   /* the font character of the first rune */
+/* Results of an action (action.result < 0). */
+enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEEDS = -4, RESULT_CANT = -6 };
 
 /* Action area state; Step 14 (clicks) and Step 15 (actions) change it. */
 typedef struct {

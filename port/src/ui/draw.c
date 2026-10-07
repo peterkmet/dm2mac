@@ -7,7 +7,6 @@
 #define OFFSET_ENTRY 0xfe        /* value key (category, index, 0x0c, 0xfe): offset of all images of an index */
 #define PLACEHOLDER_INDEX 0xfe
 #define PLACEHOLDER_ENTRY 0xfe
-#define IMAGE_COLORS 16
 #define NO_PALETTE (-1)
 
 Bitmap draw_screen = {&fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};

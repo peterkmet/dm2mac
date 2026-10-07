@@ -88,6 +88,8 @@ void move_compute_map_arrival(int x, int y, int map);
 /* Finds a free square beside (x, y) for thing (THING_NONE: the party); returns 0 when there is none. */
 int move_find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out_x, int16_t *out_y);
 /* Marker search over all maps; see the mode values in move.c. */
+/* Marker modes of dun_find_marker. */
+enum { MARKER_FIND_NTH = 2, MARKER_COUNT = 3, MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y);
 /* The number of game steps that the champion needs for a move (load, wounds, haste). */
 int champ_get_move_delay(int champ);

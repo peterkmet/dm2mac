@@ -8,12 +8,7 @@
 /* Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the
    path search (ai_move.c). The functions work on the AI context (ai.h) and set ai.command_result. */
 
-/* The command results of the AI commands (ai.command_result). */
-#define AI_RESULT_ACTING 0xfc   /* the command set the action of the group */
-#define AI_RESULT_FAILED 0xfd
-#define AI_RESULT_DONE 0xfe     /* nothing to do: the goal is reached */
-/* Bits of the command byte of the AI tests. */
-#define AI_EXECUTE 0x80         /* set the action when the test passes */
+/* Bits of the command byte of the AI tests (AI_EXECUTE in ai.h). */
 #define AI_MODE_MASK 0x7f
 #define AI_MOVE_KIND_MASK 0x1f  /* creature_ai_try_move: the kind of the move */
 #define AI_MOVE_NO_MOVERS 0x40  /* ... groups that move do not block */
@@ -147,6 +142,7 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
 int creature_thing_matches_filter(uint16_t thing, int filter);
 /* The bit set of the item indexes of an item class (GDAT text entry of a creature type, money.h). */
 #define ITEM_CLASS_SET_SIZE SHOP_CLASS_SET_SIZE
+#define FILTER_BITMAP_SIZE ITEM_CLASS_SET_SIZE  /* the item class bitmap of an item filter */
 uint16_t creature_find_matching_item(int filter, uint16_t first_thing, int cell);
 void creature_remove_matching_items(uint16_t *list_head, int filter, int cell);
 int creature_count_matching_items(int filter, uint16_t first_thing, int cell, int into_groups, int into_containers);

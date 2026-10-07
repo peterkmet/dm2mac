@@ -15,6 +15,22 @@ typedef struct {
 
 extern ActionRepeat champ_action_repeat[CHAMPION_MAX][2];
 
+/* Action commands (FIELD_COMMAND of an action text). */
+enum {
+    COMMAND_INVISIBILITY = 2, COMMAND_SPELL_PROJECTILE, COMMAND_MELEE, COMMAND_FRIGHTEN, COMMAND_LIGHT,
+    COMMAND_EXPLOSION, COMMAND_MELEE_2, COMMAND_HASTE, COMMAND_LEVITATE_DOWN, COMMAND_ACTION_EFFECT,
+    COMMAND_AURA_FIRST = 0x0c, COMMAND_AURA_LAST = 0x0f, COMMAND_CONSUME = 0x10, COMMAND_LOAD = 0x11,
+    COMMAND_SHOOT = 0x20, COMMAND_SHIELD_FIRST = 0x21, COMMAND_SHIELD_2, COMMAND_SHIELD_LAST, COMMAND_HEAL,
+    COMMAND_LIGHT_2 = 0x26, COMMAND_LIGHT_3, COMMAND_THROW = 0x2a, COMMAND_MINION_MAP_SET = 0x2c,
+    COMMAND_MINION_GUARD, COMMAND_MINION_FETCH, COMMAND_MINION_ATTACK, COMMAND_MINION_DISMISS,
+    COMMAND_SUMMON_FIRST, COMMAND_SUMMON_2, COMMAND_SUMMON_LAST, COMMAND_WARP = 0x36
+};
+/* Charges of an action text (FIELD_CHARGES) above a charge count. */
+enum {
+    CHARGES_USE_ALL = 0x10,     /* the action needs a charge and uses all charges */
+    CHARGES_USE_NONE = 0x11,    /* the action needs a charge and uses none */
+    CHARGES_EMPTY = 0x12        /* the action needs an item without charges */
+};
 #define ACTION_REPEATED 0x8000  /* champ_perform_action flag: a repeat; no delay, stamina, experience */
 
 /* Opens the action menu of a hand of champ (0 to 3) in the action area. */

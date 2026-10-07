@@ -14,6 +14,7 @@ enum spell_thing {
     EXPLOSION_STORM_LIGHTNING = 0xffb0, EXPLOSION_STORM_BLAST = 0xffb1, EXPLOSION_SMOKE = 0xffe4
 };
 #define EXPLOSION_AT_CENTER 0xff    /* the cell of an explosion in the middle of its square */
+#define POWER_MAX 0xff              /* the power of a missile or an explosion is a byte */
 
 /* Bytes of a projectile move event: the projectile, then its position word (event_square_dir with the energy step
    in bits 12-15). Bytes of an explosion event: its square, then the explosion. */

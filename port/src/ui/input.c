@@ -61,7 +61,6 @@
 #define ARROW_W 12
 #define HAND_W 16
 #define CURSOR_H 16
-#define FACE_SIZE 17
 #define FACE_CURSOR_SKIP 4  /* color 4 of the face keeps the fill color of the dragged champion cursor */
 #define FACE_HOT_X 8
 #define FACE_HOT_Y 6

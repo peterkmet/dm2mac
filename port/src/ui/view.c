@@ -17,11 +17,11 @@
 #include "timeline.h"
 #include "ui.h"
 #include "view.h"
+#include "weather.h"
 #include "input.h"
 #include "zone.h"
 
 #define REMAP_WALK_BASE 9           /* + depth: the depth shading table of the walking view */
-#define UI_COLORS_ENTRY 0xfe        /* (CAT_INTERFACE, 0, GDAT_TYPE_DATA, entry): the interface colors */
 /* Value keys of two bytes: the first value in the high byte, the second in the low byte. */
 #define LOW_BYTE(v) ((v) & BYTE_MASK)
 #define HIGH_BYTE(v) ((v) >> BYTE_BITS)
@@ -61,7 +61,6 @@ enum {
 };
 enum { ORN_PICTURE_SIDE, ORN_PICTURE_FRONT, ORN_PICTURE_RIGHT };  /* wall ornament pictures of a frame */
 enum wall_ornament_kind { KIND_ALCOVE = 1, KIND_SHOP = 2, KIND_PORTRAIT = 3 };
-#define ORNAMENT_NONE 0xff
 #define FRAMES_FROM_ONE 0x8000
 #define FLOOR_ORNAMENT_ANIMATED 0x8000
 #define ENTRY_NONE 0xff
@@ -88,15 +87,9 @@ enum { CELL_FRONT_LEFT, CELL_FRONT_RIGHT, CELL_BACK_RIGHT, CELL_BACK_LEFT };
 #define ANCHOR_DOOR_RIGHT 4
 #define ANCHOR_DOOR_LEFT 3
 
-/* View square sides by aspect. */
-enum { SIDE_DOOR_STATE = 0, SIDE_DOOR_THING = 1, SIDE_FLOOR_ORNAMENT = 2, SIDE_STAIRS_UP = 0, SIDE_PIT_UP = 0 };
 #define SIDE_SHOP_FLAG 3            /* floor: a shop display there sets it to 0 (read by the things drawing, 12b) */
 #define FAKE_WALL_FLOOR_SQUARE 1    /* the square byte that the floor things see on an open fake wall */
 #define SIDE_FRONT 2                /* the wall face that looks at the party */
-#define ORN_INDEX_MASK 0xff
-#define FLOOR_FRAME_STEP 0xa00      /* floor ornament words: frame * 10 in the high byte */
-/* The ornament word of a floor: the ornament in the low byte, frame * 10 in the high byte. */
-static uint16_t floor_word(int ornament, int frame) { return (uint16_t)(ornament | frame * FLOOR_FRAME_STEP); }
 static uint8_t word_ornament(uint16_t w) { return (uint8_t)w; }
 /* The picture entry offset of the frame of a wall face word: 4 pictures per frame. */
 static int face_frame_entry(uint16_t w) { return (int8_t)HIGH_BYTE(w); }
@@ -139,7 +132,6 @@ enum sensor_type {
 #define WALL_TEXT_LINE_GAP 2              /* line gap of wall text */
 #define WALL_TEXT_SIZE 128
 #define NO_KEY (-1)
-#define IMAGE_COLORS 16             /* colors of a 4 bpp picture */
 
 /* Cell masks of the things drawing: bit n is cell n of the 5 x 5 grid of a square, row 0 the far row. */
 #define THINGS_ALL 0x1ffffff
@@ -327,7 +319,6 @@ static const int16_t stairs_front_zone[POS_CEILING_PIT_LAST + 1][2] = {
 #define OBJECT_PICTURE_OPEN 4
 #define ALCOVE_STILL_PICTURE 0x0c
 /* Animation bits of an active group (Step 16): a random shift of the picture and a mirror. */
-#define ANIM_JITTER 7
 #define ANIM_JITTER_Y_SHIFT 3
 #define ANIM_MIRROR 0x40
 /* Mirror bits of a creature frame: 2 bits per side, west side in bits 0-1. */
@@ -346,8 +337,6 @@ enum {
 };
 #define GLOBAL_EXPLOSIONS_AWAY 0x40
 #define GLOBAL_EXPLOSIONS_NEAR 0x41
-#define GLOBAL_BYTE_FIRST 0x40
-#define GLOBAL_BYTE_MAX 0xff
 #define EXPLOSION_POWER_BIG 0xa0    /* stronger explosions grow and rise */
 #define EXPLOSION_POWER_SIZE 0x30   /* smallest power for the picture size */
 #define EXPLOSION_SIZE_SHIFT 8     /* the picture size is the scale times (power + 1) / 256 */
@@ -360,21 +349,11 @@ enum {
 #define EXPLOSION_TINT_LEVELS 3
 #define VIEWPORT_ZONE 4             /* the layout zone of the whole viewport */
 
-/* Picture kinds of a missile, by the pictures of its payload. */
-enum {
-    MISSILE_NO_PICTURE = -1,
-    MISSILE_MIRRORED,               /* front pictures 8 and 9, mirrored by the cell */
-    MISSILE_FRONT_BACK,             /* front picture 8, back picture 10 */
-    MISSILE_FRONT,                  /* front picture 8 only */
-    MISSILE_NO_SIDE,                /* no side picture 12 */
-};
-enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_BACK = 10, MISSILE_PICTURE_SIDE = 12 };
 #define MISSILE_DY (-92)            /* missiles fly above the floor */
 #define MISSILE_SCALE_FULL 0x40
 #define MISSILE_SCALE_MIN 8
 #define MISSILE_HALF_POWER_SPELL 0xff82  /* this spell shows half its power plus 0x80 */
 #define MISSILE_HALF_POWER_BASE 0x80
-#define POWER_MAX 0xff
 
 /* Thing grids: a cell of 4 x 4 per square, at (lateral + 10, forward) from the eye of the party. */
 #define GRID_STRIDE 17
@@ -392,7 +371,6 @@ enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_B
 
 /* Possessions of a static creature (CreatureInfo.possessions). */
 #define POSSESSIONS_CELLS_MASK 0x00f0
-#define POSSESSIONS_SHOWN 0x0400
 #define POSSESSIONS_LOW_KIND 1
 
 /* Positions whose things the drawing shows; 9 and 10 show none, the explosions show to depth 4. */
@@ -472,12 +450,9 @@ enum { SPARKLE_TILE, SPARKLE_MASK, SPARKLE_WIDTH, SPARKLE_HEIGHT };
 #define SPARKLE_TILE_STEP 16
 
 /* Rain: the sky state of the map graphics (CAT_WALLSET, graphics set, 0x0b, 0x66) tells if rain shows. */
-#define MAP_KEY_SKY_STATE 0x66
 static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 #define RAIN_ALONG 0x71             /* sky pictures 0x71 to 0x74: rain seen along the wind, 0x6d to 0x70 across it */
 #define RAIN_ACROSS 0x6d
-#define RAIN_LIGHT 0x10             /* rain levels from the rain intensity */
-#define RAIN_MEDIUM 0x40
 #define RAIN_HEAVY 0x80
 #define RAIN_TILE_TRIM 0x28         /* the rain tile row is the picture minus 40 pixels minus 0 to 31 */
 #define WET_TILE_TRIM 0x3c
@@ -716,10 +691,10 @@ static int wall_text_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentS
     if (kind != TEXT_KIND_ORNAMENT) return 0;
     o->ornament = text_value(thing);
     switch (subtype) {
-    case SUBTYPE_STILL: case SUBTYPE_STILL_2: break;
+    case SUBTYPE_STILL: case SUBTYPE_LADDER: break;
     case SUBTYPE_ANIMATED: o->animated = 1; break;
-    case SUBTYPE_TOGGLE: case SUBTYPE_TOGGLE_2: o->animated = visible; break;
-    case SUBTYPE_SWITCH: case SUBTYPE_SWITCH_2: case SUBTYPE_SWITCH_3:
+    case SUBTYPE_TOGGLE: case SUBTYPE_HAND_SWITCH: o->animated = visible; break;
+    case SUBTYPE_SWITCH: case SUBTYPE_LADDER_HIDDEN: case SUBTYPE_SWITCH_3:
         o->frame = visible;
         if (o->frame) {
             o->animated = 1;
@@ -837,7 +812,7 @@ static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square
             continue;
         }
         if (animated) frame = ornament_frame(CAT_FLOOR_ORNAMENT, ornament, time, offset);
-        s->side[SIDE_FLOOR_ORNAMENT] = floor_word(ornament, frame);
+        s->side[SIDE_FLOOR_ORNAMENT] = view_floor_word(ornament, frame);
     }
     return thing;
 }
@@ -881,8 +856,8 @@ static void set_map_floor_ornament(ViewSquare *s)
 {
     uint16_t v = value_key(CAT_WALLSET, dungeon_map_wallset(view.map), MAP_KEY_FLOOR_ORNAMENT);
     if (!v) return;
-    int frame = v & FLOOR_ORNAMENT_ANIMATED ? ornament_frame(CAT_FLOOR_ORNAMENT, v & ORN_INDEX_MASK, game.game_time, 0) : 0;
-    s->side[SIDE_FLOOR_ORNAMENT] = floor_word(v & ORN_INDEX_MASK, frame);
+    int frame = v & FLOOR_ORNAMENT_ANIMATED ? ornament_frame(CAT_FLOOR_ORNAMENT, v & ORNAMENT_INDEX_MASK, game.game_time, 0) : 0;
+    s->side[SIDE_FLOOR_ORNAMENT] = view_floor_word(v & ORNAMENT_INDEX_MASK, frame);
 }
 
 /* What the party looking to dir sees of the square (x, y) of the current map. */
@@ -1556,7 +1531,7 @@ static void view_draw_objects_in_cell(uint16_t thing, int pos, int cell, uint16_
     int ordinal = 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (!is_item(thing) || ((thing_cell(thing) - view.party_dir) & DIR_MASK) != cell) continue;
-        if (info && !(info->possessions & POSSESSIONS_SHOWN) && !(info->possessions & POSSESSIONS_CELLS_MASK)) {
+        if (info && !(info->possessions & STATIC_POSSESSIONS_SHOWN) && !(info->possessions & POSSESSIONS_CELLS_MASK)) {
             /* a creature that hides what it holds: one click zone for all of it */
             if (view_click_zone_count < VIEW_CLICK_ZONE_MAX) {
                 ViewClickZone *z = &view_click_zones[view_click_zone_count++];

@@ -78,7 +78,7 @@ uint8_t item_gdat_index(uint16_t thing)
             int sub = text_subtype(thing);
             if (text_kind(thing) != TEXT_KIND_ORNAMENT
                 || (sub != SUBTYPE_STILL && sub != SUBTYPE_ANIMATED && sub != SUBTYPE_TOGGLE
-                    && sub != SUBTYPE_TOGGLE_2))
+                    && sub != SUBTYPE_HAND_SWITCH))
                 return GDAT_NO_INDEX;
             return text_value(thing);
         }

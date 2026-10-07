@@ -14,7 +14,6 @@
 #define FONT_ENTRY 0
 #define FONT_CHARS 128
 #define FONT_SIZE (FONT_GLYPH_HEIGHT * FONT_CHARS)
-#define UI_COLORS_ENTRY 0xfe
 #define GLYPH_BYTES_PER_ROW 3
 #define GLYPH_BIT_FIRST 0x10        /* font bit of the first pixel of a pixel pair */
 #define GLYPH_BIT_SECOND 0x08

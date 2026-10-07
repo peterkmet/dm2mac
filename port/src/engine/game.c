@@ -29,8 +29,6 @@
 #include "weather.h"
 #include "zone.h"
 
-#define REDRAW_INVENTORY_BOX 0x4000
-#define CHAMP_DAMAGE_SHOWN 0xffff
 #define TIME_EFFECTS_PERIOD_MASK 0x3f       /* the champion clocks run each 64 game steps */
 #define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x0f /* and each 16 game steps while the party sleeps */
 #define LIGHT_BURN_PERIOD_MASK 0x1ff        /* held lights burn down each 512 game steps */
@@ -153,7 +151,7 @@ void game_enter_map(int x, int y, int map, int leaving)
 static void timeline_event_hide_damage(int champ)
 {
     Champion *c = champion(champ);
-    c->damage_event = CHAMP_DAMAGE_SHOWN;
+    c->damage_event = THING_NONE;
     if (c->health) c->redraw |= REDRAW_BARS;
 }
 
@@ -194,7 +192,7 @@ void timeline_process(void)
             break;
         case EVENT_INVISIBILITY:  /* invisibility ends */
             if (!--game.magic_light[MAGIC_INVISIBILITY] && ui.inventory)
-                champion(ui.inventory - 1)->redraw |= REDRAW_INVENTORY_BOX;
+                champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
             break;
         case EVENT_AURA: timeline_event_aura(e.priority, (int16_t)word); break;
         case EVENT_POISON: {

@@ -5,6 +5,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "input.h"
+#include "inventory.h"
 #include "item.h"
 #include "save.h"
 #include "text.h"
@@ -13,9 +14,7 @@
 #include "view.h"
 #include "zone.h"
 
-#define ICON_SIZE 16                /* item icons are 16 x 16 */
 #define ICON_FRAME 1                /* the slot frame around an icon */
-#define FACE_SIZE 17                /* champion face icons are 17 x 17, one per direction */
 #define FACE_INVISIBLE_FRAMES 4     /* the faces of an invisible party follow the 4 normal faces */
 #define BAR_SHADOW 1                /* the status bars have a shadow 1 pixel down and right */
 #define GAUGE_SHADOW 2
@@ -61,8 +60,6 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 #define GAUGE_CHARGE_COLOR 4
 #define GAUGE_VALUE_COLOR 5
 #define FOOD_MIN (-0x400)
-#define FOOD_MAX 0x800
-#define POISON_MAX 0xc00
 #define GAUGE_STARVING (-0x200)
 #define DESCRIPTION_LINE 18         /* longer description lines break at a space up to this column */
 #define DESCRIPTION_BREAK 17
@@ -800,7 +797,7 @@ static void draw_food_water_panel(void)
 /* Draws the closed mouth of the inventory panel while a champion is recruited. */
 static void draw_mouth_picture(void)
 {
-    enum { MOUTH_CATEGORY = 9, MOUTH_INDEX = 0x5b, MOUTH_CLOSED = 0xfa };
+    enum { MOUTH_CLOSED = 0xfa };
     gfx_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_CLOSED, ZONE_INVENTORY_PANEL, UI_OPAQUE);
     ui.panel_mode = PANEL_MODE_MOUTH;
 }

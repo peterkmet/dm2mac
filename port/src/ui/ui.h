@@ -23,11 +23,24 @@ enum ui_zone {
     ZONE_BUTTON_SLEEP = 0x234, ZONE_BUTTON_EXIT = 0x236, ZONE_BUTTON_SOUND = 0x238, ZONE_BUTTON_CLOSE = 0x267,
     ZONE_COIN_TOTAL = 0x239, ZONE_COIN_COUNT_FIRST = 0x26a, ZONE_OBJECT_GAUGE_FIRST = 0x270
 };
+/* Zones of the action area. */
+enum {
+    ZONE_PARTY_ICONS = 0x2f, ZONE_PARTY_FACE_FIRST = 0x35, ZONE_RESULT = 0x39, ZONE_MENU_BACK = 0x3b,
+    ZONE_MENU_HEADER = 0x3c, ZONE_MENU_NAME = 0x3d, ZONE_ACTION_BUTTON_FIRST = 0x3f, ZONE_ACTION_NAME_FIRST = 0x42,
+    ZONE_ACTION_HAND_FIRST = 0x46, ZONE_READY_HAND_FIRST = 0x4a, ZONE_SPELL_ICON_FIRST = 0x4f,
+    ZONE_SPELL_RUNE_ICON_FIRST = 0x53, ZONE_SPELL_HAND_ICON_FIRST = 0x57, ZONE_PANEL = 0x5c, ZONE_FACE_BACK = 0x5d,
+    ZONE_FACE = 0x5e, ZONE_FACE_LEFT = 0x60, ZONE_FACE_RIGHT = 0x61, ZONE_MAP_ACTION_FIRST = 0x6e,
+    ZONE_AMMO_ITEM = 0x7d, ZONE_AMMO_HAND = 0x7e, ZONE_COIN_PILE_FIRST = 0xdd, ZONE_CONTAINER_LID = 0xe3,
+    ZONE_CONTAINER_SLOT_FIRST = 0xe5, ZONE_RUNES_BACK = 0xfc, ZONE_RUNE_CHOICE_FIRST = 0xff,
+    ZONE_RUNE_ENTERED_FIRST = 0x105
+};
 
 /* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
 enum { UI_INDEX_STATUS = 2, UI_INDEX_ARROWS = 3, UI_INDEX_ACTION = 4, UI_INDEX_SPELL = 5, UI_INDEX_FACES = 6 };
 #define UI_KEY 12           /* transparent color of the interface pictures */
 #define UI_OPAQUE (-1)
+#define ICON_SIZE 16                /* item icons are 16 x 16 */
+#define FACE_SIZE 17                /* champion face icons are 17 x 17, one per direction */
 
 /* A bitmap of a screen rectangle that collects drawing and copies the changed parts to the screen. */
 #define OFFSCREEN_DIRTY_MAX 5

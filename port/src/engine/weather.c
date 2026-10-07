@@ -31,7 +31,6 @@ enum {
     MAP_KEY_LIGHT = 0x67,           /* light added to the party light */
     MAP_KEY_MIN_LIGHT_LEVEL = 0x68, /* the party light level is at least this */
     MAP_KEY_LIGHTNING_TARGET = 0x6c, /* x in the high byte, y in the low byte: the square that lightning hits */
-    MAP_KEY_SKY_STATE = 0x66
 };
 /* Ornament value keys. */
 #define ORNAMENT_KEY_LIGHT 0xf8     /* light of the ornament; bit 15: only while it animates */
@@ -50,9 +49,6 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define CLOUDS_MORE 0x80
 #define CLOUDS_MOST 0xc0
 #define CLOUDS_MAX 0xff
-#define RAIN_STRONG 0x80            /* rain intensities that grow the clouds faster */
-#define RAIN_MEDIUM 0x40
-#define RAIN_LIGHT 0x10
 #define STORM_MAX 0xff
 #define STORM_STEPS 32
 #define STORM_STRONG 0xcd           /* from this storm intensity on lightning comes more often */

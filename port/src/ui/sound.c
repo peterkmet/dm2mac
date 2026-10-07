@@ -1,10 +1,9 @@
 #include <stdlib.h>
+#include "dungeon.h"
 #include "sound.h"
 
 #define SAMPLE_HEADER 6 /* u16 rate, then 08 01 00 00 */
 #define UPSAMPLE (SOUND_OUTPUT_RATE / SOUND_RATE)
-
-enum { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST };
 
 /* Distance scaling and volume in 10-bit and 8-bit fixed point. */
 #define SCALE_SHIFT 10

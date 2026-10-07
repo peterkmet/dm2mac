@@ -10,6 +10,7 @@
 #include "inventory.h"
 #include "item.h"
 #include "move.h"
+#include "projectile.h"
 #include "random.h"
 #include "sensor.h"
 #include "session.h"
@@ -39,7 +40,6 @@
 #define VITALITY_DEFENSE_SHIFT 3
 #define WOUNDED_DEFENSE_LOSS 8      /* a wounded location loses 8 to 11 defense */
 #define PARTY_SPREAD_SHIFT 3        /* party damage varies by an eighth around its value */
-enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };
 #define ATTR_DEFENDS 0x8000         /* ATTR_ARMOUR_CLASS bit of a hand item: it defends */
 #define ARMOUR_SHARP_SHIFT 8
 #define ARMOUR_SHARP_MASK 7
@@ -47,17 +47,11 @@ enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };
 #define SHARP_FACTOR_BASE 4u        /* against a sharp attack: defense * (sharp factor + 4) / 8 */
 #define SHARP_FACTOR_SHIFT 3
 #define POISON_EVENT_DELAY 0x24
-#define POISON_MAX 0xc00
 #define POISON_DAMAGE_ROUND 0x1e
 #define POISON_DAMAGE_SHIFT 6
 #define DAMAGE_SHOW_TIME 5
-#define CHAMP_DAMAGE_SHOWN 0xffff
 #define REDRAW_POISON 0x2800
 #define REDRAW_STATS_SKILLS 0x3000
-enum { SKILL_FIGHTER, SKILL_NINJA, SKILL_PRIEST, SKILL_WIZARD, SKILL_SWING = 4, SKILL_PARRY = 7, SKILL_STEAL = 8,
-       SKILL_FIGHT = 9, SKILL_THROW = 10, SKILL_SHOOT = 11 };
-#define STAT_MIN 10
-#define STAT_MAX 220
 #define LUCK_STEP 2
 #define ITEM_BONES 0                /* the miscellaneous item type of the bones of a champion */
 #define CURE_ALL 10000
@@ -91,7 +85,6 @@ enum { SKILL_FIGHTER, SKILL_NINJA, SKILL_PRIEST, SKILL_WIZARD, SKILL_SWING = 4, 
 #define REVIVE_HEALTH_MIN 25
 #define STATS_TIME_MASK 0xff
 #define STATS_TIME_MASK_ASLEEP 0x3f
-#define REDRAW_BARS_FLAG 0x0800
 /* Lights. */
 #define ATTR_LIGHT_FLAG 0x10        /* ATTR_FLAGS bit: the item gives light */
 
@@ -466,8 +459,8 @@ void champ_apply_pending_damage(void)
         }
         c->health = health;
         c->damage = (uint16_t)d;
-        c->redraw |= REDRAW_BARS_FLAG;
-        if (c->damage_event == CHAMP_DAMAGE_SHOWN) {
+        c->redraw |= REDRAW_BARS;
+        if (c->damage_event == THING_NONE) {
             /* fix: the original leaves the data bytes uninitialized */
             TimelineEvent e = party_event(DAMAGE_SHOW_TIME, EVENT_HIDE_DAMAGE, i);
             c->damage_event = (uint16_t)timeline_add_event(&e);
@@ -564,7 +557,7 @@ void champ_apply_time_effects(void)
                 else if (v[0] > v[1]) v[0] = (uint8_t)(v[0] - v[0] / v[1]);
             }
         }
-        c->redraw |= REDRAW_BARS_FLAG;
+        c->redraw |= REDRAW_BARS;
         if (i + 1 == ui.inventory) c->redraw |= REDRAW_STATS_SKILLS;
     }
 }
@@ -616,7 +609,6 @@ void champ_revive(int champ)
 
 /* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */
 enum { REBIRTH_REVIVE, REBIRTH_BONES, REBIRTH_SMOKE };
-#define EXPLOSION_SMOKE 0xffe4
 #define SMOKE_TIME 5
 
 void timeline_event_altar_rebirth(TimelineEvent *e)

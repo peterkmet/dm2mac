@@ -6,6 +6,8 @@
 
 #define DRAW_NO_BLIT (-2)       /* transparent value: compute the rectangle, draw nothing */
 #define DRAW_NO_IMAGE (-3)      /* transparent value: do not even load the image */
+#define IMAGE_COLORS 16             /* colors of a 4 bpp picture */
+#define UI_COLORS_ENTRY 0xfe        /* (CAT_INTERFACE, index, GDAT_TYPE_DATA, entry): the interface colors */
 
 /* A picture to draw: an image (or a part of it), where it goes, and how. */
 typedef struct {

@@ -29,9 +29,6 @@
 #define WALLSET_KEY_LIGHT 0x6d          /* ... the light radius of the map */
 #define WALL_COST_BLOCKING 0x32
 #define LIGHT_RADIUS_MAX 8
-#define TEXT_LADDER 6
-#define TEXT_LADDER_HIDDEN 7
-#define SENSOR_LEVEL_LINK 0x1c
 #define SENSOR_CREATURE_SLOT 0x26       /* a wall slot that a creature type uses */
 #define SLOT_STATE_BUSY 2               /* the state of a creature slot (its sensor effect bits): 2 and 3 busy */
 #define ACTUATOR_SKILL_USE 0x0001      /* ai.actuator_flags: the creature uses wall actuators */
@@ -52,8 +49,6 @@
 /* Creature info words. */
 #define info_attack_range(i) ((i)->unknown_14 >> 12)
 #define info_sight(i) ((i)->unknown_14 & 0xf)
-#define CREATURE_SEES_INVISIBLE 0x0400
-#define CREATURE_SEES_IN_DARK 0x0800
 #define CREATURE_NOT_SEEN_THROUGH CREATURE_NOT_DOOR_HIT /* flag 0x20: a creature that hides the squares behind it */
 /* The AI class flags (ai_class_flags). */
 #define AI_CLASS_SEES_ALL_SIDES 0x0100
@@ -403,7 +398,7 @@ int creature_ai_turn_toward(int dir)
     }
     ai.active->facing = (uint8_t)((facing + turn) & DIR_MASK);
     ai.active->action = (uint8_t)(ACTION_TURN_LEFT + (turn != -1));
-    ai.command_result = AI_RESULT_ACTING;
+    ai.command_result = AI_RESULT_ISSUED;
     return 1;
 }
 
@@ -527,7 +522,7 @@ static uint32_t random_set_bit(uint32_t bits)
 /* Fails the command: with AI_EXECUTE the creature reports the failure. */
 static int command_failed(int execute)
 {
-    if (execute) ai.command_result = AI_RESULT_FAILED;
+    if (execute) ai.command_result = AI_RESULT_FAIL;
     return 0;
 }
 
@@ -639,7 +634,7 @@ int creature_ai_try_attack(int mode, int x, int y, int target_x, int target_y, i
     if (ai.active->action == ACTION_STEAL) cell = steal_cell;
     ai.active->cell = (uint8_t)cell;
     ai.active->mode = (uint8_t)mode;
-    ai.command_result = AI_RESULT_ACTING;
+    ai.command_result = AI_RESULT_ISSUED;
     return 1;
 }
 
@@ -713,7 +708,7 @@ static int start_door_action(int mode, uint16_t flags, uint16_t door, int x, int
     ai.active->direction = (uint8_t)d;
     ai.active->cell = (uint8_t)((rand_bit() + d) & DIR_MASK);
     ai.active->mode = (uint8_t)mode;
-    ai.command_result = AI_RESULT_ACTING;
+    ai.command_result = AI_RESULT_ISSUED;
     return 1;
 }
 
@@ -768,7 +763,7 @@ int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, 
     }
     if (state == DOOR_TEST_SPELL_ON_WAY) {
         ai.active->action = ACTION_NONE;
-        ai.command_result = AI_RESULT_ACTING;
+        ai.command_result = AI_RESULT_ISSUED;
         return 1;
     }
     if (creature_ai_turn_toward(d)) return 1;
@@ -1125,7 +1120,7 @@ static int test_move(Move *m, int command)
 static void execute_move(Move *m)
 {
     if (!m->result) {
-        ai.command_result = AI_RESULT_FAILED;
+        ai.command_result = AI_RESULT_FAIL;
         return;
     }
     if (m->same) {
@@ -1165,7 +1160,7 @@ static void execute_move(Move *m)
     ai.active->facing = (uint8_t)m->facing;
     ai.active->mode = (uint8_t)m->kind;
     ai.active->action = (uint8_t)m->action;
-    ai.command_result = AI_RESULT_ACTING;
+    ai.command_result = AI_RESULT_ISSUED;
 }
 
 /* Tests (and with AI_EXECUTE starts) a move (MOVE_KIND_*) of the group from (x, y) to (dest_x, dest_y) (-1: the
@@ -1389,7 +1384,7 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
     ai.active->sub = (int8_t)filter;
     ai.active->mode = (uint8_t)mode;
     ai.active->action = (uint8_t)action;
-    ai.command_result = AI_RESULT_ACTING;
+    ai.command_result = AI_RESULT_ISSUED;
     return 1;
 }
 
@@ -1475,7 +1470,7 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
         ai.active->sub = (int8_t)filter;
         ai.active->mode = (uint8_t)mode;
         ai.active->action = (uint8_t)(ACTION_USE_ACTUATOR + (mode > ACTUATOR_MODE_TAKE ? ACTUATOR_MODE_TAKE : mode));
-        ai.command_result = mode == ACTUATOR_MODE_USE && slot_state < SLOT_STATE_BUSY ? AI_RESULT_ACTING : AI_RESULT_DONE;
+        ai.command_result = mode == ACTUATOR_MODE_USE && slot_state < SLOT_STATE_BUSY ? AI_RESULT_ISSUED : AI_RESULT_DONE;
     }
     return 1;
 }
@@ -1490,7 +1485,6 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
 #define FILTER_BY_VARIANT_END 0x13
 #define FILTER_VARIANTS 3
 #define FILTER_MONEYBOX_OR_VARIANT 0x28
-#define FILTER_BITMAP_SIZE ITEM_CLASS_SET_SIZE
 
 /* The item class bitmap of filter for the group in the AI context: parsed once per update into the scratch block.
    Returns NULL when the creature has no class text for it. */
@@ -2170,7 +2164,7 @@ static void search_enter_map(Search *s, int map)
     s->map = s->maps[map];
 }
 
-enum { STEP_SKIP, STEP_BLOCKED, STEP_ENTERED };
+enum { SEARCH_STEP_SKIP, SEARCH_STEP_BLOCKED, SEARCH_STEP_ENTERED };
 
 /* Tries the step of the search in s->dir (DIR_LEVEL_UP, DIR_LEVEL_DOWN: the level changes) from the square it left. */
 static int search_step(Search *s)
@@ -2178,10 +2172,10 @@ static int search_step(Search *s)
     search_enter_map(s, s->from_map);
     if (s->levels && s->steps_left <= 2) {
         if (s->steps_left == 2) {
-            if (!s->down_ok) return STEP_SKIP;
+            if (!s->down_ok) return SEARCH_STEP_SKIP;
             s->dir = DIR_LEVEL_DOWN;
         } else {
-            if (!s->up_ok) return STEP_SKIP;
+            if (!s->up_ok) return SEARCH_STEP_SKIP;
             s->dir = DIR_LEVEL_UP;
         }
         s->x = s->from_x;
@@ -2189,7 +2183,7 @@ static int search_step(Search *s)
     } else {
         s->x = (int16_t)(s->from_x + dir_dx[s->dir]);
         s->y = (int16_t)(s->from_y + dir_dy[s->dir]);
-        if (!on_map(s->x, s->y)) return STEP_SKIP;
+        if (!on_map(s->x, s->y)) return SEARCH_STEP_SKIP;
     }
     ai_square_scan.blocking = 0;
     s->visit = search_cell(s->map, s->x, s->y)[SEARCH_AT_DIST];
@@ -2218,11 +2212,11 @@ static int search_step(Search *s)
             s->visit = 0;
         }
     }
-    if (s->visit) return s->visit == VISIT_BLOCKED && s->dir < DIR_LEVEL_UP ? STEP_BLOCKED : STEP_SKIP;
+    if (s->visit) return s->visit == VISIT_BLOCKED && s->dir < DIR_LEVEL_UP ? SEARCH_STEP_BLOCKED : SEARCH_STEP_SKIP;
     s->x = ai_square.x;
     s->y = ai_square.y;
-    if (search_cell(s->map, s->x, s->y)[SEARCH_AT_DIST]) return STEP_SKIP;
-    return STEP_ENTERED;
+    if (search_cell(s->map, s->x, s->y)[SEARCH_AT_DIST]) return SEARCH_STEP_SKIP;
+    return SEARCH_STEP_ENTERED;
 }
 
 /* Takes the next square from the queue; returns 0 when the search ends. */
@@ -2343,8 +2337,8 @@ int creature_ai_search_area(int x, int y, int command, int count, AiCandidate *c
         s->dir = (int16_t)((s->dir + s->turn) & DIR_MASK);
         if (--s->steps_left && ((s->tail + 1) & SEARCH_QUEUE_MASK) != s->head) {
             int step = search_step(s);
-            if (step == STEP_ENTERED) found = search_entered(s);
-            else if (step == STEP_BLOCKED) found = search_blocked(s);
+            if (step == SEARCH_STEP_ENTERED) found = search_entered(s);
+            else if (step == SEARCH_STEP_BLOCKED) found = search_blocked(s);
             continue;
         }
         if (!search_next_square(s)) break;

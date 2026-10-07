@@ -610,8 +610,6 @@ int move_find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out_x,
     return 0;
 }
 
-/* Marker modes of dun_find_marker. */
-enum { MARKER_FIND_NTH = 2, MARKER_COUNT = 3, MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define MARKER_TARGET 0x0b      /* a pit target marker of a marker id */
 #define MARKER_SWITCH 0x0f      /* a marker with an on bit */
 #define MARKER_POSITION 0x10    /* the last marker of an id wins */

@@ -50,23 +50,12 @@ enum { OP_KSL, OP_MULT, OP_FB, OP_AR, OP_SL, OP_EG, OP_DR, OP_RR, OP_TL, OP_AM, 
 #define OPL_FB_SHIFT 1
 
 /* MIDI messages. */
-#define MIDI_STATUS_MASK 0xf0
-#define MIDI_CHANNEL_MASK 0x0f
 #define MIDI_DATA_MASK 0x7f
 #define MIDI_NOTE_OFF 0x80
 #define MIDI_NOTE_ON 0x90
-#define MIDI_CONTROL 0xb0
-#define MIDI_PROGRAM 0xc0
-#define MIDI_PITCH_BEND 0xe0
-#define MIDI_CTRL_VOLUME 7
 #define MIDI_CTRL_SUSTAIN 0x40
 #define MIDI_CTRL_BEND_RANGE 0x66 /* HMI: pitch bend range in semitones */
-#define MIDI_CTRL_RESET 0x79
-#define MIDI_CTRL_NOTES_OFF 0x7b
-#define MIDI_CHANNELS 16
 #define MIDI_DRUM_CHANNEL 9
-#define MIDI_MAX 127
-#define BEND_CENTER 0x40
 #define BEND_RANGE_DEFAULT 2
 
 #define VOICES 9

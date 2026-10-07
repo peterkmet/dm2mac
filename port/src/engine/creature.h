@@ -54,6 +54,13 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define PUSH_WALL 0xff                  /* push resistance: the party bumps into the creature as into a wall */
 #define PUSH_STRENGTH_PARTY 0xfe
 #define CREATURE_FLIES 0x0004
+#define CREATURE_SEES_INVISIBLE 0x0400 /* flags: the party spell of invisibility does not hide the party */
+#define CREATURE_SEES_IN_DARK 0x0800   /* flags: the light does not limit its sight */
+#define CREATURE_FAST_VANISH 0x1000    /* flags: the creature vanishes quickly in a party action effect */
+/* Animation step (4 bytes): the bytes of a step. */
+enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME = 3 };
+#define ANIM_JITTER 7                  /* anim bits: a random picture shift, sideways (bits 0-2) and forward */
+#define TIME_BYTE_WRAP 0x100           /* the time bytes of an active group are the low byte of the game time */
 /* Possessions bit: the objects under the creature stay clickable, and a drop goes into the front cells. */
 #define POSSESSIONS_FLOOR_CLICKABLE 0x2000
 #define POSSESSIONS_KIND_MASK 0x000f    /* 0: none shown; 1 or less: carried low */
@@ -241,7 +248,5 @@ void move_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */
 void creature_continue_push(int command);
 
-/* creature_create_group count of a new group with the full health of its creature type. */
-#define GROUP_COUNT_FULL_HEALTH 7
 
 #endif

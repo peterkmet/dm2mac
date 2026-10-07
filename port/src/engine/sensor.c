@@ -46,10 +46,8 @@
 
 #define SENSOR_CREATE_ITEM 0x3c
 #define SENSOR_KEEP_ITEM EFFECT_HOLD  /* the effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse */
-#define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS)  /* script variables: 64 flags, 64 bytes, 64 words */
 #define GLOBAL_WORD_FIRST 0x80
 #define GLOBAL_VAR_END 0xc0
-#define GLOBAL_BYTE_MAX 0xff
 #define GLOBAL_BIT_SHIFT 3          /* a flag variable: its byte, and its bit in the byte */
 #define GLOBAL_BIT_MASK 7
 #define SENSOR_TIMER 0x1e               /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
@@ -709,7 +707,7 @@ static int counter_empty(uint16_t sensor)
 }
 
 /* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
-enum { CHARGES_FILL, CHARGES_EMPTY, CHARGES_RANDOM };
+enum { TRANSFER_CHARGES_FILL, TRANSFER_CHARGES_EMPTY, TRANSFER_CHARGES_RANDOM };
 #define CHARGES_EMPTY_AMOUNT (-15)
 #define CHARGES_FULL_AMOUNT CHARGES_MASK  /* fills the charges of an object */
 #define SENSOR_KEEP_BONES SENSOR_STATE  /* sensor flags: bones move like other objects; the moved object goes into
@@ -726,9 +724,9 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
     if (item_gdat_category(thing) != CAT_MISC || item_gdat_index(thing) != BONES_INDEX) {
         int charges = 0;  /* fix: mode 3 adds an uninitialized amount in the original */
         switch (sensor_effect(sensor)) {
-        case CHARGES_FILL: charges = item_max_charges(thing); break;
-        case CHARGES_EMPTY: charges = CHARGES_EMPTY_AMOUNT; break;
-        case CHARGES_RANDOM: charges = rand_below((uint16_t)(item_max_charges(thing) + 1)); break;
+        case TRANSFER_CHARGES_FILL: charges = item_max_charges(thing); break;
+        case TRANSFER_CHARGES_EMPTY: charges = CHARGES_EMPTY_AMOUNT; break;
+        case TRANSFER_CHARGES_RANDOM: charges = rand_below((uint16_t)(item_max_charges(thing) + 1)); break;
         }
         item_add_charges(thing, charges);
     }
@@ -1379,7 +1377,6 @@ enum {
     WALL_CLICK_BUTTON = 0x18, WALL_CLICK_COUNTED_ITEM = 0x1b, WALL_CLICK_TELEPORT = 0x1c, WALL_CLICK_RESET = 0x3f,
     WALL_CLICK_DOOR_BUTTON = 0x46, WALL_CLICK_BUTTON_2 = 0x4a, WALL_CLICK_PORTRAIT = 0x7e
 };
-enum { TEXT_LADDER = 6, TEXT_LADDER_HIDDEN = 7, TEXT_SWITCH = 0x0d };
 #define CLICK_IGNORED (-1)           /* a wall sensor that does not react to the click */
 
 /* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
@@ -1636,7 +1633,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
     bool visible = text_is_visible(t);
     if (sub == TEXT_ITEM_HOLDER || sub == TEXT_ITEM_HOLDER_2) {
         wall_click_holder_text(c, t, sub, value, visible);
-    } else if ((sub == TEXT_LADDER_HIDDEN && !visible) || sub == TEXT_LADDER) {
+    } else if ((sub == SUBTYPE_LADDER_HIDDEN && !visible) || sub == SUBTYPE_LADDER) {
         if (c->hand != THING_NONE) return;
         int delta = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
         int lx = game.party_x, ly = game.party_y;
@@ -1645,7 +1642,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
             move_party_to(lx, ly, map, game.party_dir);
             input_flush();
         }
-    } else if (sub == TEXT_SWITCH && c->hand == THING_NONE) {
+    } else if (sub == SUBTYPE_HAND_SWITCH && c->hand == THING_NONE) {
         text_set_visible(t, !visible);
     }
 }

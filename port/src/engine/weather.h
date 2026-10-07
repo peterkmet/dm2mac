@@ -22,6 +22,10 @@ extern int16_t light_source_sum, explosion_light_sum;
 
 /* light_add_square_light flags: what of the square gives light. */
 enum { LIGHT_FLOOR = 1, LIGHT_CREATURES = 2, LIGHT_WALLS = 4 };
+#define MAP_KEY_SKY_STATE 0x66      /* map graphics value key (CAT_WALLSET, set, 0x0b, key): the sky */
+#define RAIN_STRONG 0x80            /* rain intensities: strong rain grows the clouds faster */
+#define RAIN_MEDIUM 0x40
+#define RAIN_LIGHT 0x10
 
 /* Queues the next storm step delay ticks from now. */
 void weather_schedule_event(int32_t delay);

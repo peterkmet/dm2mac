@@ -165,8 +165,8 @@ extern AiContext ai;
 /* Command results (ai.command_result and the plan commands). */
 #define AI_RESULT_ISSUED 0xfc       /* an action was set: the update ends */
 #define AI_RESULT_FAIL 0xfd
-#define AI_RESULT_DONE 0xfe
-#define AI_MOVE_TEST 0x80           /* creature_ai_try_* mode bit: only test and set the action */
+#define AI_RESULT_DONE 0xfe         /* nothing to do: the goal is reached */
+#define AI_EXECUTE 0x80             /* creature_ai_try_* mode bit: set the action when the test passes */
 
 /* The party position as the current map sees it (g_ai_target_* of SKULL.EXE). */
 typedef struct { int16_t x, y, map, dir; } AiPartyView;

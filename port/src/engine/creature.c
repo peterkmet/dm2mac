@@ -36,9 +36,8 @@
 #define ANIM_SINGLE_LOOP 0x8001     /* a looping sequence of one frame */
 #define ANIM_STEP_NONE 0xffff       /* no step of the sequence shown yet */
 
-/* Animation step (4 bytes). */
+/* Animation step. */
 #define ANIM_STEP_SIZE 4
-enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME = 3 };
 #define STEP_SOUND_MASK 0x7f
 #define STEP_NO_SOUND 0x7f
 #define STEP_ACTS_SHIFT 7           /* sound byte bit 7: the creature acts at this step */
@@ -54,7 +53,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 
 #define ANIM_BIT_MIRROR 0x40
 #define ANIM_BIT_KEEP 0xc0
-#define ANIM_JITTER 7
 #define ANIM_BIT_SHIFT_Y 3          /* anim bits 0-2: sideways picture shift, bits 3-5: forward shift */
 #define TRAIT_SHIFT_MASK 3          /* traits bits 0-1: sideways random shift, bits 2-3: forward random shift */
 #define TRAIT_SHIFT_Y 2
@@ -71,11 +69,7 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define AI_ACTION_STAND_1 0x23
 #define AI_ACTION_STAND_2 0x25
 #define AI_ACTION_FLAG_INTERRUPT 0x10
-#define CREATURE_DEATH_EXPLOSION 0xffa8
-#define EXPLOSION_CENTER 0xff
 #define AI_ACTION_JUMP 5
-#define CREATURE_FAST_VANISH 0x1000 /* flags: the creature vanishes quickly in a party action effect */
-#define TIME_BYTE_WRAP 0x100        /* the time bytes of an active group are the low byte of the time */
 #define ACTION_TIME_LONG_AGO 0x7f   /* a new active group acted this many game steps ago */
 #define GROUP_SIZE_MAX 0x1f         /* creatures of a group - 1 */
 #define ROLL_COMBAT 0x1f            /* the random part of hit, dodge, and defense */

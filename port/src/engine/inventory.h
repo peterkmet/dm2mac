@@ -16,6 +16,8 @@ enum item_effect_mode {
 #define HAND_ICON_SIZE 16
 #define HAND_ICON_NONE 0xff
 #define HAND_ICON_COLORS 16
+#define MOUTH_CATEGORY 9            /* the mouth picture of the inventory: GDAT (9, 0x5b, 1, entry) */
+#define MOUTH_INDEX 0x5b
 
 /* The leader hand object as the original keeps it beside game.leader_hand. */
 typedef struct {
