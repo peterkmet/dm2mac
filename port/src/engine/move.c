@@ -27,14 +27,7 @@
 #define ATTR_TELEPORT_SCOPE 0x1e    /* creature attribute: teleporters that move the creature */
 #define TRANSITION_MAX 50           /* the loop limit of move_follow_square_transitions */
 
-/* Teleporter record bits. */
-#define TELEPORTER_ROTATION_SHIFT 10
-#define TELEPORTER_ABSOLUTE 0x1000      /* the rotation sets the direction, it does not add to it */
-#define TELEPORTER_SCOPE_SHIFT 13       /* bits 13-14: who uses the teleporter */
-#define TELEPORTER_SCOPE_MASK 3
-#define TELEPORTER_CREATURES_ONLY 0x2000
-#define TELEPORTER_AUDIBLE 0x8000
-#define TELEPORTER_FLAG_SHIFT 15
+/* Teleporter scopes: who uses the teleporter. */
 #define SCOPE_ALL 3
 #define SCOPE_CREATURES 1
 #define SCOPE_PARTY 2
@@ -649,9 +642,8 @@ static int move_thing_is_flying(uint16_t thing)
 /* A projectile through a teleporter: its cell and flight direction turn with the teleporter. */
 static uint16_t move_rotate_through_teleporter(uint16_t teleporter, uint16_t thing)
 {
-    uint16_t w = thing_word(teleporter, TELEPORTER_TARGET);
-    int rotation = w >> TELEPORTER_ROTATION_SHIFT & 3;
-    if (!(w & TELEPORTER_ABSOLUTE)) {
+    int rotation = teleporter_rotation(teleporter);
+    if (!teleporter_flag(teleporter, TELEPORTER_ABSOLUTE)) {
         thing = (uint16_t)(((rotation + (thing >> THING_CELL_SHIFT)) & 3) << THING_CELL_SHIFT | (thing & 0x3fff));
         rotation = (party.dest_dir + rotation) & 3;
     }
@@ -692,24 +684,25 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
         if (square_kind == SQUARE_TELEPORTER) {
             if (!(square & SQUARE_TELEPORTER_ON)) break;
             uint16_t tele = first_thing(x, y);
-            uint16_t w = thing_word(tele, TELEPORTER_TARGET), m = thing_word(tele, TELEPORTER_MAP);
-            if ((w & 0x6000) == TELEPORTER_CREATURES_ONLY && type != THING_GROUP) break;
-            if (scope != SCOPE_ALL && !((w >> TELEPORTER_SCOPE_SHIFT & TELEPORTER_SCOPE_MASK) & scope)) break;
-            int tx = w & 0x1f, ty = w >> 5 & 0x1f, tmap = m >> 8;
+            int tele_scope = teleporter_scope(tele), rotation = teleporter_rotation(tele);
+            bool absolute = teleporter_flag(tele, TELEPORTER_ABSOLUTE), audible = teleporter_flag(tele, TELEPORTER_AUDIBLE);
+            if (tele_scope == SCOPE_CREATURES && type != THING_GROUP) break;
+            if (scope != SCOPE_ALL && !(tele_scope & scope)) break;
+            int tx = teleporter_x(tele), ty = teleporter_y(tele), tmap = teleporter_map(tele);
             int same = tx == x && ty == y && tmap == map;
             x = tx;
             y = ty;
-            party.teleporter_flag = w >> TELEPORTER_FLAG_SHIFT;
+            party.teleporter_flag = audible;
             map = tmap;
             dun_set_current_map(map);
             if (thing == THING_NONE) {
                 move_set_party_position(x, y);
-                if (w & TELEPORTER_AUDIBLE) sound_request(0x18, 0, 0x89, 0x61, 0x80, game.party_x, game.party_y, -1);
+                if (audible) sound_request(0x18, 0, 0x89, 0x61, 0x80, game.party_x, game.party_y, -1);
                 if (start_map != map) draw_fall = 0;  /* the original keeps it only with its debug flag */
-                int base = w & TELEPORTER_ABSOLUTE ? 0 : game.party_dir;
-                champ_set_party_direction((base + (w >> TELEPORTER_ROTATION_SHIFT & 3)) & 3);
+                int base = absolute ? 0 : game.party_dir;
+                champ_set_party_direction((base + rotation) & 3);
             } else if (type == THING_GROUP && creature_sound) {
-                if (w & TELEPORTER_AUDIBLE) {
+                if (audible) {
                     if (party.cur_map != start_map) {
                         int saved = party.cur_map;
                         dun_set_current_map(start_map);
@@ -718,11 +711,11 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
                     }
                     sound_request(0x18, 0, 0x89, 0x61, 0x80, x, y, 1);
                 }
-                creature_turn_group(thing, w >> 12 & 1, w >> TELEPORTER_ROTATION_SHIFT & 3);
+                creature_turn_group(thing, absolute, rotation);
             } else if (type == THING_PROJECTILE) {
                 thing = move_rotate_through_teleporter(tele, thing);
-            } else if (!(w & TELEPORTER_ABSOLUTE) && src_x != -2) {
-                int cell = ((w >> TELEPORTER_ROTATION_SHIFT & 3) + (thing >> THING_CELL_SHIFT)) & 3;
+            } else if (!absolute && src_x != -2) {
+                int cell = (rotation + (thing >> THING_CELL_SHIFT)) & 3;
                 thing = (uint16_t)((thing & 0x3fff) | cell << THING_CELL_SHIFT);
             }
             if (same) break;

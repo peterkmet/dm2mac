@@ -69,8 +69,8 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 /* Byte offsets of thing record fields. Every record starts with the link to the next thing. */
 enum thing_field {
     THING_NEXT = 0,
-    TELEPORTER_TARGET = 2,      /* x bits 0-4, y bits 5-9, rotation bits 10-11 */
-    TELEPORTER_MAP = 4,         /* target map in bits 8-15, bit 0 closed */
+    TELEPORTER_TARGET = 2,      /* x bits 0-4, y bits 5-9, rotation bits 10-11, bit 12 absolute, scope bits 13-14 */
+    TELEPORTER_MAP = 4,         /* target map in bits 8-15, bit 0 closed, bits 1-2 fixed */
     TEXT_DATA = 2,              /* bit 0 visible, bits 1-2 kind, bits 3-10 ornament, bits 11-15 subtype */
     DOOR_DATA = 2,              /* bit 0 door type, bits 1-4 ornament ordinal, bit 5 no animation, bit 6 button */
     SENSOR_TYPE_DATA = 2,       /* sensor type bits 0-6, data bits 7-15 */
@@ -100,7 +100,6 @@ enum thing_field {
 #define EXPLOSION_CENTERED 0x0080
 #define EXPLOSION_POWER_SHIFT 8
 
-#define TELEPORTER_CLOSED 0x0001
 #define SENSOR_TYPE_MASK 0x7f
 #define SENSOR_DATA_SHIFT 7
 #define SENSOR_DATA_MASK 0x1ff
@@ -220,6 +219,37 @@ static inline int sensor_target_cell(uint16_t sensor)
 #define LAUNCH_STEP_SHIFT 12
 static inline int sensor_launch_energy(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_ENERGY_SHIFT & LAUNCH_ENERGY_MASK; }
 static inline int sensor_launch_step(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_STEP_SHIFT; }
+
+/* TELEPORTER_TARGET bits. */
+#define TELEPORTER_ROTATION_SHIFT 10
+#define TELEPORTER_ROTATION_MASK 3
+#define TELEPORTER_ABSOLUTE 0x1000      /* the rotation sets the direction, it does not add to it */
+#define TELEPORTER_SCOPE_SHIFT 13       /* who uses the teleporter: bit 13 creatures, bit 14 the party and objects */
+#define TELEPORTER_SCOPE_MASK 3
+#define TELEPORTER_AUDIBLE 0x8000
+/* TELEPORTER_MAP bits. */
+#define TELEPORTER_CLOSED 0x0001
+#define TELEPORTER_FIXED 0x0006         /* both bits: square events do not turn the teleporter on or off */
+#define TELEPORTER_MAP_SHIFT 8
+static inline int teleporter_x(uint16_t teleporter) { return location_x(thing_word(teleporter, TELEPORTER_TARGET)); }
+static inline int teleporter_y(uint16_t teleporter) { return location_y(thing_word(teleporter, TELEPORTER_TARGET)); }
+static inline int teleporter_map(uint16_t teleporter) { return thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT; }
+/* The quarter turns of the direction of the thing that goes through. */
+static inline int teleporter_rotation(uint16_t teleporter)
+{
+    return thing_word(teleporter, TELEPORTER_TARGET) >> TELEPORTER_ROTATION_SHIFT & TELEPORTER_ROTATION_MASK;
+}
+static inline int teleporter_scope(uint16_t teleporter)
+{
+    return thing_word(teleporter, TELEPORTER_TARGET) >> TELEPORTER_SCOPE_SHIFT & TELEPORTER_SCOPE_MASK;
+}
+/* A bit of TELEPORTER_TARGET: TELEPORTER_ABSOLUTE or TELEPORTER_AUDIBLE. */
+static inline bool teleporter_flag(uint16_t teleporter, uint16_t bit) { return (thing_word(teleporter, TELEPORTER_TARGET) & bit) != 0; }
+static inline bool teleporter_is_closed(uint16_t teleporter) { return thing_word(teleporter, TELEPORTER_MAP) & TELEPORTER_CLOSED; }
+static inline bool teleporter_is_fixed(uint16_t teleporter)
+{
+    return (thing_word(teleporter, TELEPORTER_MAP) & TELEPORTER_FIXED) == TELEPORTER_FIXED;
+}
 
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
 int dungeon_load(const char *path);

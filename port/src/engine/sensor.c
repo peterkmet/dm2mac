@@ -1068,7 +1068,7 @@ void timeline_event_square(TimelineEvent *e)
         break;
     case SQUARE_DOOR: timeline_event_door_square(e); break;
     case SQUARE_TELEPORTER:
-        if ((thing_word(first_thing(e->data[EVENT_X], e->data[EVENT_Y]), TELEPORTER_MAP) & 6) != 6)
+        if (!teleporter_is_fixed(first_thing(e->data[EVENT_X], e->data[EVENT_Y])))
             timeline_event_pit_or_teleporter(e, SQUARE_TELEPORTER_ON);
         timeline_event_floor_square(e);
         break;

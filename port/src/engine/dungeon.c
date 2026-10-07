@@ -20,11 +20,6 @@
 #define MAP_WIDTH_MASK 0x1f
 #define MAP_HEIGHT_SHIFT 11
 #define MISC_RESERVED 3          /* free misc records that only the forced creation of a misc item may use */
-#define TELEPORTER_X_MASK 0x1f
-#define TELEPORTER_Y_SHIFT 5
-#define TELEPORTER_Y_MASK 0x1f
-#define TELEPORTER_ROTATION_SHIFT 10
-#define TELEPORTER_MAP_SHIFT 8
 #define SIDE_COUNT 4
 
 enum header_field {
@@ -266,7 +261,7 @@ static int teleporter_link_side(int map, int x, int y, uint16_t *teleporter)
     if (*teleporter == THING_ENDOFLIST) return 0;  /* fix: the original reads a record of the end mark */
     for (uint16_t t = dungeon_next_thing(*teleporter); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_TELEPORTER_LINK) {
-            int rotation = thing_word(*teleporter, TELEPORTER_TARGET) >> TELEPORTER_ROTATION_SHIFT & (SIDE_COUNT - 1);
+            int rotation = teleporter_rotation(*teleporter);
             return (rotation + 2 & (SIDE_COUNT - 1)) + 1;
         }
     return 0;
@@ -277,10 +272,9 @@ int dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link)
     uint16_t teleporter, other;
     int side = teleporter_link_side(map, x, y, &teleporter);
     if (!side) return 0;
-    uint16_t target = thing_word(teleporter, TELEPORTER_TARGET);
-    int target_map = thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT;
+    int target_map = teleporter_map(teleporter);
     if (target_map >= dun.map_count) return 0;  /* fix: the original uses a map outside the dungeon */
-    int tx = target & TELEPORTER_X_MASK, ty = target >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK;
+    int tx = teleporter_x(teleporter), ty = teleporter_y(teleporter);
     int target_side = teleporter_link_side(target_map, tx, ty, &other);
     if (!target_side) return 0;
     *link = (TeleporterLink){side - 1, target_side - 1, tx, ty, target_map};
@@ -332,7 +326,7 @@ const uint8_t *dungeon_map_door_ornaments(int map)
 static int teleporter_closed(int map, int x, int y)
 {
     uint16_t t = dungeon_square_first_thing(map, x, y);
-    return t != THING_ENDOFLIST && thing_word(t, TELEPORTER_MAP) & TELEPORTER_CLOSED;  /* fix: the original reads the end mark */
+    return t != THING_ENDOFLIST && teleporter_is_closed(t);  /* fix: the original reads the end mark */
 }
 
 /* True for a square that the party can see into: not a wall, not unknown, not a closed teleporter. */
@@ -647,15 +641,11 @@ static uint16_t merge_object_lists(uint16_t a, uint16_t b)
    numbered sensors both squares share one thing list. Returns 0 when the rest of the square is skipped. */
 static int link_teleporters(uint16_t teleporter, int x, int y, int map)
 {
-    int target_map = thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT;
-    uint16_t target = thing_word(teleporter, TELEPORTER_TARGET);
+    int target_map = teleporter_map(teleporter);
     dun_set_current_map(target_map);
-    uint16_t other = dungeon_square_first_thing(target_map, target & TELEPORTER_X_MASK,
-                                                target >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK);
+    uint16_t other = dungeon_square_first_thing(target_map, teleporter_x(teleporter), teleporter_y(teleporter));
     if (other == THING_ENDOFLIST || thing_type(other) != THING_TELEPORTER) return 1;
-    uint16_t back = thing_word(other, TELEPORTER_TARGET);
-    if ((back & TELEPORTER_X_MASK) != x || (back >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK) != y
-        || thing_word(other, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT != map)
+    if (teleporter_x(other) != x || teleporter_y(other) != y || teleporter_map(other) != map)
         return 1;
     int numbered = 0;
     int found = number_linked_actuators(other, target_map, &numbered);

@@ -56,7 +56,6 @@
 #define DOOR_STATE_CLOSED 4
 #define DOOR_STATE_BROKEN 5
 #define DOOR_HEIGHT_PASSABLE_SHIFT 6    /* creature flags bits 6-7: how far a door may be closed for the creature */
-#define TELEPORTER_TARGET_KIND_SHIFT 13
 
 /* Creature info words. */
 #define info_attack_range(i) ((i)->unknown_14 >> 12)
@@ -833,15 +832,13 @@ static int search_square_test(int command, int x, int y)
                 && !dun_get_linked_teleporter_dest(&end, x, y + 1) && !dun_get_linked_teleporter_dest(&end, x, y - 1))
                 return 1;
             link = first_thing(x, y);
-            uint16_t target = thing_word(link, TELEPORTER_TARGET);
-            if (end.map != thing_word(link, TELEPORTER_MAP) >> 8
-                || square_distance(end.x, end.y, location_x(target), location_y(target)) != 1)
+            if (end.map != teleporter_map(link) || square_distance(end.x, end.y, teleporter_x(link), teleporter_y(link)) != 1)
                 return 1;
-            int map = thing_word(link, TELEPORTER_MAP) >> 8;
+            int map = teleporter_map(link);
             if (map != game.party_map && map != party.alt_view_map) return 1;
             int saved = party.cur_map;
             creature_ai_set_map(map);
-            int tx = location_x(target), ty = location_y(target);
+            int tx = teleporter_x(link), ty = teleporter_y(link);
             int r = creature_ai_try_move(command, tx, ty, tx, ty, 6);
             creature_ai_set_map(saved);
             return r;
@@ -883,7 +880,7 @@ static uint16_t square_move_flags(int kind, int no_movers, int map_changed, int 
             ai_square_scan.passage = 1;
             return creature_is_native_to_map(ai.group_thing, ai_square_scan.end.map) ? MOVE_LEVELS : 0;
         } else {
-            int target_kind = thing_word(cached_first_thing(), TELEPORTER_TARGET) >> TELEPORTER_TARGET_KIND_SHIFT & 3;
+            int target_kind = teleporter_scope(cached_first_thing());
             return target_kind == 1 || target_kind == 3 ? MOVE_TELEPORTER : MOVE_FLOOR;
         }
     case SQUARE_FAKE_WALL:

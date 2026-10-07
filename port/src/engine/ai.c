@@ -1653,7 +1653,6 @@ int creature_ai_exec_plan_command(int command)
 #define TEXT_LINK_FIRST 6               /* text kinds 6 and 7: stairs markers */
 #define TEXT_LINK_LAST 7
 #define WALL_ORNAMENT_GOES_UP 0x11      /* GDAT value (9, ornament, 0x0b, 0x11) */
-#define TELEPORTER_FIXED 6
 #define PIT_STATE_OPEN 0
 #define PIT_STATE_CLOSED 1
 #define PIT_STATE_SAME 2
@@ -1696,7 +1695,7 @@ int dun_set_pit_or_teleporter_state(int x, int y, int mode)
     if (square_type(*square) == SQUARE_PIT) {
         open = (*square & 8) != 0;
     } else if (square_type(*square) == SQUARE_TELEPORTER) {
-        if ((thing_word(dungeon_square_first_thing(party.cur_map, x, y), TELEPORTER_MAP) & 6) == TELEPORTER_FIXED) return 0;
+        if (teleporter_is_fixed(dungeon_square_first_thing(party.cur_map, x, y))) return 0;
         open = (*square & 8) != 0;
     } else {
         return 0;
