@@ -20,6 +20,11 @@ enum { GDAT_TYPE_IMAGE = 1, GDAT_TYPE_VALUE = 0x0b, GDAT_TYPE_VALUE2 = 0x0c };
 
 #define GDAT_PALETTE_COLORS 256
 #define GDAT_NO_ITEM 0xffff
+#define BYTE_BITS 8
+#define BYTE_MASK 0xff
+#define NIBBLE_BITS 4           /* a 4 bpp pixel */
+#define NIBBLE_MASK 0xf
+#define DECIMAL_BASE 10
 
 typedef struct gdat gdat_t;
 
@@ -50,6 +55,9 @@ char *gdat_text(const gdat_t *g, int category, int index, int entry, char *dst, 
 int text_find_int_field(const char *text, const char *key);
 /* The drawing offset of an image: x in the high byte, y in the low byte, each signed. */
 int gdat_image_offset(const gdat_t *g, int category, int index, int entry);
+#define GDAT_OFFSET_X_SHIFT 8
+static inline int8_t gdat_offset_x(int offset) { return (int8_t)(offset >> GDAT_OFFSET_X_SHIFT); }
+static inline int8_t gdat_offset_y(int offset) { return (int8_t)offset; }
 
 /* A 4 bpp image stream; with base, nibble command 5 copies pixels from the same place of base. */
 int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst, size_t dst_size);

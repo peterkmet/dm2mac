@@ -5,6 +5,7 @@
 #include "dungeon.h"
 #include "save.h"
 #include "text.h"
+#include "video.h"
 #include "view.h"
 #include "zone.h"
 
@@ -19,13 +20,14 @@
 #define GLYPH_BYTES_PER_ROW 3
 #define GLYPH_BIT_FIRST 0x10        /* font bit of the first pixel of a pixel pair */
 #define GLYPH_BIT_SECOND 0x08
+#define GLYPH_PAIR_BITS 2
 #define FORMAT_CODE_BYTE 1          /* a format code: this byte, then the code + FORMAT_CODE_BASE */
 #define FORMAT_CODE_BASE 0x20
 #define FORMAT_CODE_DIGITS 3        /* or ".Z" and 3 decimal digits */
+#define FORMAT_CODE_PREFIX 2        /* the format code byte and the code, or ".Z" */
 #define FIELD_COUNT 18
 #define NUMBER_SIZE 12
-#define SCREEN_WIDTH_PIXELS 320
-#define MESSAGE_WIDTH SCREEN_WIDTH_PIXELS
+#define MESSAGE_WIDTH SCREEN_W
 #define MESSAGE_SCROLL_HEIGHT 7     /* rows the message area moves up for a new row */
 #define MESSAGE_LINE_BASE (TEXT_LINE_HEIGHT - FONT_BASELINE - 2)  /* base line of the text in the new row bitmap */
 
@@ -54,9 +56,9 @@ static struct {
     int16_t row;
     int16_t top;                /* y of the first row in the message area */
     int16_t scroll_pending;     /* the new row is in the row bitmap; the area scrolls before the next text */
-    uint8_t line[TEXT_LINE_HEIGHT * SCREEN_WIDTH_PIXELS];
+    uint8_t line[TEXT_LINE_HEIGHT * SCREEN_W];
 } message;
-static Bitmap message_line = {message.line, SCREEN_WIDTH_PIXELS, TEXT_LINE_HEIGHT, 8};
+static Bitmap message_line = {message.line, SCREEN_W, TEXT_LINE_HEIGHT, 8};
 
 int text_init(const gdat_t *gdat)
 {
@@ -80,9 +82,9 @@ const uint8_t *text_build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
     uint8_t *out = glyph;
     for (int row = 0; row < FONT_GLYPH_HEIGHT; row++) {
         uint8_t bits = font[row * FONT_CHARS + c];
-        for (int pair = 0; pair < GLYPH_BYTES_PER_ROW; pair++, bits = (uint8_t)(bits << 2)) {
+        for (int pair = 0; pair < GLYPH_BYTES_PER_ROW; pair++, bits = (uint8_t)(bits << GLYPH_PAIR_BITS)) {
             uint8_t first = bits & GLYPH_BIT_FIRST ? fg : bg, second = bits & GLYPH_BIT_SECOND ? fg : bg;
-            *out++ = (uint8_t)(first << 4 | second);
+            *out++ = (uint8_t)(first << NIBBLE_BITS | second);
         }
     }
     return glyph;
@@ -204,7 +206,7 @@ const char *text_format_number(unsigned value, int pad, int width)
     *end = '\0';
     value = (uint16_t)value;
     if (!value) *--p = '0';
-    for (; value; value /= 10) *--p = (char)('0' + value % 10);
+    for (; value; value /= DECIMAL_BASE) *--p = (char)('0' + value % DECIMAL_BASE);
     return pad ? end - (uint16_t)width : p;
 }
 
@@ -230,10 +232,10 @@ char *text_format(const char *fmt, char *dst)
         int code = 0;
         if (c == FORMAT_CODE_BYTE) {
             code = (unsigned char)fmt[1] - FORMAT_CODE_BASE;
-            fmt += 2;
+            fmt += FORMAT_CODE_PREFIX;
         } else {
-            fmt += 2;
-            for (int i = 0; i < FORMAT_CODE_DIGITS; i++) code = code * 10 + (*fmt++ - '0');
+            fmt += FORMAT_CODE_PREFIX;
+            for (int i = 0; i < FORMAT_CODE_DIGITS; i++) code = code * DECIMAL_BASE + (*fmt++ - '0');
         }
         *out = '\0';
         char value[TEXT_SIZE] = "", inner[TEXT_SIZE];
@@ -290,8 +292,10 @@ int16_t text_gdat_field(int category, int index, int entry, int field)
 /* Dungeon texts: 3 codes of 5 bits per word. */
 #define TEXT_CODE_BITS 5
 #define TEXT_CODE_MASK 0x1f
+#define TEXT_CODES_PER_WORD 3
+#define TEXT_ESCAPE_WORDS 10
 enum { TEXT_SPACE = 26, TEXT_PERIOD = 27, TEXT_NEWLINE = 28, TEXT_ESCAPE_CHAR = 29, TEXT_ESCAPE_WORD = 30, TEXT_END = 31 };
-static const char *const text_escape_words[] = {"x", "y", "THE ", "YOU ", "z", "{", "|", "}", "~", "\x7f"};
+static const char *const text_escape_words[TEXT_ESCAPE_WORDS] = {"x", "y", "THE ", "YOU ", "z", "{", "|", "}", "~", "\x7f"};
 static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
 #define TEXT_SUBTYPE_PLATE 14
 #define TEXT_MODE_NEW_LINE 1
@@ -328,14 +332,14 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
     const uint16_t *text_end = dungeon_text_data() + dungeon_text_word_count();
     uint16_t word = 0;
     int escape = 0;
-    for (int phase = 0;; phase = (phase + 1) % 3) {
+    for (int phase = 0;; phase = (phase + 1) % TEXT_CODES_PER_WORD) {
         if (phase == 0) {
             if (p >= text_end) break;  /* fix: the original reads past the text of a damaged dungeon */
             word = *p++;
         }
-        int code = word >> (TEXT_CODE_BITS * (2 - phase)) & TEXT_CODE_MASK;
+        int code = word >> (TEXT_CODE_BITS * (TEXT_CODES_PER_WORD - 1 - phase)) & TEXT_CODE_MASK;
         if (escape) {
-            const char *s = escape == TEXT_ESCAPE_WORD ? (code < 10 ? text_escape_words[code] : "")
+            const char *s = escape == TEXT_ESCAPE_WORD ? (code < TEXT_ESCAPE_WORDS ? text_escape_words[code] : "")
                                                        : (char[]){text_escape_chars[code], '\0'};
             while (*s && o < end) *o++ = *s++;
             escape = 0;

@@ -11,6 +11,11 @@
 #define LAYOUT_ENTRY 0
 #define LAYOUT_SIGNATURE 0xfc0d
 #define RANGE_MAX 256
+#define LAYOUT_RANGE_COUNT 2    /* byte offsets of the header words */
+#define LAYOUT_RANGES 4
+#define RANGE_SIZE 4            /* the first and the last zone word of a range */
+#define RANGE_LAST 2
+#define WORD_SIZE 2
 
 enum { ZONE_TYPE, ZONE_PARENT, ZONE_X, ZONE_Y, ZONE_FIELDS };
 #define SIZE_W ZONE_X           /* a size zone (type 9) holds the width and height in x and y */
@@ -24,11 +29,16 @@ enum anchor {
 #define CLIP_FAR (-10000)
 #define CLIP_SIZE 20000
 #define WALK_PARENT 3           /* the parent zone of the dungeon view pictures */
+#define WALK_VIEW_X 21
+#define WALK_VIEW_Y 8
+#define WALK_VIEW_W 182
+#define WALK_VIEW_H 110
+#define PERCENT_FULL 100
 
 int16_t zone_clip_rect[RECT_SIZE];
 
 /* The view part that stays visible while the party walks. */
-const int16_t walk_view_rect[RECT_SIZE] = {21, 8, 182, 110};
+const int16_t walk_view_rect[RECT_SIZE] = {WALK_VIEW_X, WALK_VIEW_Y, WALK_VIEW_W, WALK_VIEW_H};
 
 static struct {
     int count;
@@ -44,22 +54,22 @@ int zone_load(const gdat_t *gdat)
     free(layout.records);
     layout.records = NULL;
     layout.count = 0;
-    if (!p || size < 4 || (uint16_t)le16(p) != LAYOUT_SIGNATURE) return 0;
-    int count = le16(p + 2), zones = 0;
-    if (count < 0 || count > RANGE_MAX || 4 + 4 * (uint32_t)count > size) return 0;
+    if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE) return 0;
+    int count = le16(p + LAYOUT_RANGE_COUNT), zones = 0;
+    if (count < 0 || count > RANGE_MAX || LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count > size) return 0;
     for (int i = 0; i < count; i++) {
-        layout.first[i] = le16(p + 4 + 4 * i);
-        layout.last[i] = le16(p + 6 + 4 * i);
+        layout.first[i] = le16(p + LAYOUT_RANGES + RANGE_SIZE * i);
+        layout.last[i] = le16(p + LAYOUT_RANGES + RANGE_LAST + RANGE_SIZE * i);
         layout.start[i] = zones;
         if (layout.last[i] < layout.first[i]) return 0;
         zones += layout.last[i] - layout.first[i] + 1;
     }
-    const uint8_t *r = p + 4 + 4 * count;
-    if (r + 2 * ZONE_FIELDS * (size_t)zones > p + size) return 0;
+    const uint8_t *r = p + LAYOUT_RANGES + RANGE_SIZE * count;
+    if (r + WORD_SIZE * ZONE_FIELDS * (size_t)zones > p + size) return 0;
     layout.records = malloc(sizeof *layout.records * (zones ? zones : 1));
     if (!layout.records) return 0;
     for (int i = 0; i < zones; i++)
-        for (int f = 0; f < ZONE_FIELDS; f++) layout.records[i][f] = le16(r + 2 * (ZONE_FIELDS * i + f));
+        for (int f = 0; f < ZONE_FIELDS; f++) layout.records[i][f] = le16(r + WORD_SIZE * (ZONE_FIELDS * i + f));
     layout.count = count;
     return 1;
 }
@@ -108,10 +118,118 @@ static int half(int v) { return (v + 1) >> 1; }
 /* The offset from the anchor point of a w x h box to its top left corner, by anchor type. */
 static void anchor_offset(int anchor, int w, int h, int *dx, int *dy)
 {
-    static const int8_t kind_x[ANCHOR_SIZE] = {1, 0, 2, 2, 0, 1, 2, 1, 0};  /* 0 none, 1 half, 2 all */
-    static const int8_t kind_y[ANCHOR_SIZE] = {1, 0, 0, 2, 2, 0, 1, 2, 1};
-    *dx = kind_x[anchor] == 1 ? half(w) : kind_x[anchor] == 2 ? w - 1 : 0;
-    *dy = kind_y[anchor] == 1 ? half(h) : kind_y[anchor] == 2 ? h - 1 : 0;
+    enum { NONE, HALF, ALL };  /* the part of the size that the offset takes */
+    static const int8_t kind_x[ANCHOR_SIZE] = {HALF, NONE, ALL, ALL, NONE, HALF, ALL, HALF, NONE};
+    static const int8_t kind_y[ANCHOR_SIZE] = {HALF, NONE, NONE, ALL, ALL, NONE, HALF, ALL, HALF};
+    *dx = kind_x[anchor] == HALF ? half(w) : kind_x[anchor] == ALL ? w - 1 : 0;
+    *dy = kind_y[anchor] == HALF ? half(h) : kind_y[anchor] == ALL ? h - 1 : 0;
+}
+
+/* Places a zone relative to the anchor of its parent, inside the parent's size zone: adds the offsets to (x, y),
+   limits clip, and returns the size zone; NULL when a zone is missing, with *bad set when the parent cannot place it. */
+static const int16_t *place_relative(const int16_t *rec, int child, int16_t *clip, int16_t *x, int16_t *y,
+                                     int *last_parent, int *bad)
+{
+    const int16_t *p = find_zone(rec[ZONE_PARENT]);
+    if (!p) return NULL;
+    int16_t dx = p[ZONE_X], dy = p[ZONE_Y];
+    int parent_anchor = (uint16_t)p[ZONE_TYPE];
+    *last_parent = p[ZONE_PARENT];
+    const int16_t *size = find_zone(p[ZONE_PARENT]);
+    if (!size) return NULL;
+    if (parent_anchor > ANCHOR_LEFT) {
+        *bad = 1;
+        return NULL;
+    }
+    int ox, oy;
+    anchor_offset(parent_anchor, size[SIZE_W], size[SIZE_H], &ox, &oy);
+    dx -= ox;
+    dy -= oy;
+    clip[RECT_X] += dx;
+    clip[RECT_Y] += dy;
+    clip_to_parent(clip, dx, dy, size[SIZE_W], size[SIZE_H]);
+    anchor_offset(child - ANCHOR_RELATIVE, size[SIZE_W], size[SIZE_H], &ox, &oy);
+    dx += ox + rec[ZONE_X];
+    dy += oy;
+    *x += dx;
+    *y += dy + rec[ZONE_Y];
+    return size;
+}
+
+/* Adds the offsets of the parent zones of rec to (x, y) and limits clip to them; *last_parent gets the last parent.
+   Returns 0 when a parent cannot place the zone. */
+static int place_in_parents(const int16_t *rec, int16_t *clip, int16_t *x, int16_t *y, int *last_parent)
+{
+    int pending = 0;
+    *last_parent = 0;
+    while (rec[ZONE_PARENT]) {
+        int child = (uint16_t)rec[ZONE_TYPE];
+        if (child >= ANCHOR_RELATIVE && child <= ANCHOR_RELATIVE_LAST) {
+            int bad = 0;
+            rec = place_relative(rec, child, clip, x, y, last_parent, &bad);
+            if (bad) return 0;
+            if (!rec) break;
+            continue;
+        }
+        const int16_t *p = find_zone(rec[ZONE_PARENT]);
+        if (!p) break;
+        *last_parent = rec[ZONE_PARENT];
+        int16_t dx = p[SIZE_W], dy = p[SIZE_H];
+        int parent_type = (uint16_t)p[ZONE_TYPE];
+        if (parent_type == ANCHOR_TOP_LEFT) {
+            *x += dx;
+            *y += dy;
+            clip[RECT_X] += dx;
+            clip[RECT_Y] += dy;
+        } else if (parent_type == ANCHOR_SIZE) {
+            if (child <= ANCHOR_LEFT) {
+                int ox, oy;
+                anchor_offset(child, p[SIZE_W], p[SIZE_H], &ox, &oy);
+                dx = (int16_t)(rec[ZONE_X] - ox);
+                dy = (int16_t)(rec[ZONE_Y] - oy);
+            }
+            if (pending) {
+                pending = 0;
+                *x += dx;
+                *y += dy;
+                clip[RECT_X] += dx;
+                clip[RECT_Y] += dy;
+            }
+            clip_to_parent(clip, dx, dy, p[SIZE_W], p[SIZE_H]);
+        } else if (parent_type <= ANCHOR_LEFT) {
+            pending = 1;
+        }
+        rec = p;
+    }
+    return 1;
+}
+
+/* Clips the width x height box at rect to clip; *w and *h get the clipped left and top pixel counts. */
+static int16_t *clip_placed(int16_t *rect, const int16_t *clip, int16_t width, int16_t height, int16_t *w, int16_t *h)
+{
+    int16_t d = (int16_t)(clip[RECT_X] - rect[RECT_X]), limit;
+    if (d <= 0) {
+        *w = 0;
+        limit = (int16_t)(clip[RECT_W] + d);
+    } else {
+        *w = d;
+        rect[RECT_X] = clip[RECT_X];
+        width -= d;
+        limit = clip[RECT_W];
+    }
+    rect[RECT_W] = width < limit ? width : limit;
+    d = (int16_t)(clip[RECT_Y] - rect[RECT_Y]);
+    if (d <= 0) {
+        *h = 0;
+        limit = (int16_t)(clip[RECT_H] + d);
+    } else {
+        *h = d;
+        rect[RECT_Y] = clip[RECT_Y];
+        height -= d;
+        limit = clip[RECT_H];
+    }
+    rect[RECT_H] = height < limit ? height : limit;
+    return rect[RECT_W] > 0 && rect[RECT_H] > 0 ? rect : NULL;
 }
 
 int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t *w, int16_t *h, int anchor)
@@ -143,64 +261,8 @@ int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t
         *h = 0;
     }
     if (!image && (*w <= 0 || *h <= 0)) return NULL;
-    int pending = 0, last_parent = 0;
-    while (rec[ZONE_PARENT]) {
-        int child = (uint16_t)rec[ZONE_TYPE];
-        if (child >= ANCHOR_RELATIVE && child <= ANCHOR_RELATIVE_LAST) {
-            /* placed relative to the anchor of the parent, inside the parent's size zone */
-            const int16_t *p = find_zone(rec[ZONE_PARENT]);
-            if (!p) break;
-            int16_t dx = p[ZONE_X], dy = p[ZONE_Y];
-            int parent_anchor = (uint16_t)p[ZONE_TYPE];
-            last_parent = p[ZONE_PARENT];
-            const int16_t *size = find_zone(p[ZONE_PARENT]);
-            if (!size) break;
-            if (parent_anchor > ANCHOR_LEFT) return NULL;
-            int ox, oy;
-            anchor_offset(parent_anchor, size[SIZE_W], size[SIZE_H], &ox, &oy);
-            dx -= ox;
-            dy -= oy;
-            clip[RECT_X] += dx;
-            clip[RECT_Y] += dy;
-            clip_to_parent(clip, dx, dy, size[SIZE_W], size[SIZE_H]);
-            anchor_offset(child - ANCHOR_RELATIVE, size[SIZE_W], size[SIZE_H], &ox, &oy);
-            dx += ox + rec[ZONE_X];
-            dy += oy;
-            x += dx;
-            y += dy + rec[ZONE_Y];
-            rec = size;
-            continue;
-        }
-        const int16_t *p = find_zone(rec[ZONE_PARENT]);
-        if (!p) break;
-        last_parent = rec[ZONE_PARENT];
-        int16_t dx = p[SIZE_W], dy = p[SIZE_H];
-        int parent_type = (uint16_t)p[ZONE_TYPE];
-        if (parent_type == ANCHOR_TOP_LEFT) {
-            x += dx;
-            y += dy;
-            clip[RECT_X] += dx;
-            clip[RECT_Y] += dy;
-        } else if (parent_type == ANCHOR_SIZE) {
-            if (child <= ANCHOR_LEFT) {
-                int ox, oy;
-                anchor_offset(child, p[SIZE_W], p[SIZE_H], &ox, &oy);
-                dx = (int16_t)(rec[ZONE_X] - ox);
-                dy = (int16_t)(rec[ZONE_Y] - oy);
-            }
-            if (pending) {
-                pending = 0;
-                x += dx;
-                y += dy;
-                clip[RECT_X] += dx;
-                clip[RECT_Y] += dy;
-            }
-            clip_to_parent(clip, dx, dy, p[SIZE_W], p[SIZE_H]);
-        } else if (parent_type <= ANCHOR_LEFT) {
-            pending = 1;
-        }
-        rec = p;
-    }
+    int last_parent;
+    if (!place_in_parents(rec, clip, &x, &y, &last_parent)) return NULL;
     int16_t width = *w ? *w : image->width, height = *h ? *h : image->height;
     if ((unsigned)type > ANCHOR_LEFT) return NULL;
     int ox, oy;
@@ -211,29 +273,7 @@ int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t
         for (int i = 0; i < RECT_SIZE; i++) clip[i] = zone_clip_rect[i];
     }
     if (party.move_steps && last_parent == WALK_PARENT && !rect_clip(clip, walk_view_rect)) return NULL;
-    int16_t d = (int16_t)(clip[RECT_X] - rect[RECT_X]), limit;
-    if (d <= 0) {
-        *w = 0;
-        limit = (int16_t)(clip[RECT_W] + d);
-    } else {
-        *w = d;
-        rect[RECT_X] = clip[RECT_X];
-        width -= d;
-        limit = clip[RECT_W];
-    }
-    rect[RECT_W] = width < limit ? width : limit;
-    d = (int16_t)(clip[RECT_Y] - rect[RECT_Y]);
-    if (d <= 0) {
-        *h = 0;
-        limit = (int16_t)(clip[RECT_H] + d);
-    } else {
-        *h = d;
-        rect[RECT_Y] = clip[RECT_Y];
-        height -= d;
-        limit = clip[RECT_H];
-    }
-    rect[RECT_H] = height < limit ? height : limit;
-    return rect[RECT_W] > 0 && rect[RECT_H] > 0 ? rect : NULL;
+    return clip_placed(rect, clip, width, height, w, h);
 }
 
 int16_t *zone_get_rect_clipped(int zone, int16_t *rect, unsigned w_scale, unsigned h_scale)
@@ -269,8 +309,8 @@ int zone_interpolate_offset(int from, int to, int percent, int16_t *dx, int16_t 
 {
     const int16_t *a = find_zone(from), *b = find_zone(to);
     if (!a || !b) return -1;
-    percent = percent < 0 ? 0 : percent > 100 ? 100 : percent;
-    *dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / 100);
-    *dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / 100);
+    percent = percent < 0 ? 0 : percent > PERCENT_FULL ? PERCENT_FULL : percent;
+    *dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT_FULL);
+    *dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT_FULL);
     return 0;
 }

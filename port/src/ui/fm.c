@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "fm.h"
+#include "gdat.h"
+#include "hmp.h"
 #include "le.h"
 #include "opl3.h"
 
@@ -40,7 +42,13 @@ enum { OP_KSL, OP_MULT, OP_FB, OP_AR, OP_SL, OP_EG, OP_DR, OP_RR, OP_TL, OP_AM, 
 #define OPL_TL_MASK 0x3f
 #define OPL_KSL_MASK 0xc0
 #define OPL_ADDITIVE 0x01
-#define BYTE_BITS 8
+#define OPL_AM_SHIFT 7       /* the bit positions of the operator fields in their registers */
+#define OPL_VIB_SHIFT 6
+#define OPL_EG_SHIFT 5
+#define OPL_KSR_SHIFT 4
+#define OPL_KSL_SHIFT 6
+#define OPL_HIGH_NIBBLE_SHIFT 4
+#define OPL_FB_SHIFT 1
 
 /* MIDI messages. */
 #define MIDI_STATUS_MASK 0xf0
@@ -80,7 +88,7 @@ enum { OP_KSL, OP_MULT, OP_FB, OP_AR, OP_SL, OP_EG, OP_DR, OP_RR, OP_TL, OP_AM, 
 #define BEND_SCALE 1000
 #define BEND_SHIFT 6
 
-/* Operator offsets of the 9 voices. */
+/* Operator offsets of the 9 voices (OPL2 register layout). */
 static const uint8_t op_modulator[VOICES] = {0, 1, 2, 8, 9, 10, 16, 17, 18};
 static const uint8_t op_carrier[VOICES] = {3, 4, 5, 11, 12, 13, 19, 20, 21};
 
@@ -126,12 +134,14 @@ static uint8_t op_level[OPERATORS];  /* instrument bytes of register 0x40 */
 static uint8_t op_sustain[OP_SUSTAIN_SLOTS + VOICES];
 static int ch_program[MIDI_CHANNELS], ch_volume[MIDI_CHANNELS], ch_bend[MIDI_CHANNELS];
 static int ch_bend_used[MIDI_CHANNELS], ch_bend_range[MIDI_CHANNELS], ch_sustain[MIDI_CHANNELS];
-static uint8_t sustain_queue[MIDI_CHANNELS][SUSTAIN_QUEUE][3];
+/* A note off that waits for the sustain pedal. */
+enum { QUEUED_NOTE, QUEUED_VELOCITY, QUEUED_CHANNEL, QUEUED_SIZE };
+static uint8_t sustain_queue[MIDI_CHANNELS][SUSTAIN_QUEUE][QUEUED_SIZE];
 static int sustain_count[MIDI_CHANNELS];
 
 static void opl_write(int reg, int value)
 {
-    if (write_hook) write_hook(reg, value & 0xff);
+    if (write_hook) write_hook(reg, value & BYTE_MASK);
     OPL3_WriteRegBuffered(&chip, (uint16_t)reg, (uint8_t)value);
 }
 
@@ -166,15 +176,16 @@ void fm_reset(uint32_t sample_rate)
 /* Packs the 13 fields of an operator into its register bytes, in place like the driver. */
 static void pack_operator(uint8_t *op)
 {
-    op[OP_AM] = (uint8_t)(op[OP_AM] << 7 | op[OP_VIB] << 6 | op[OP_EG] << 5 | op[OP_KSR] << 4 | op[OP_MULT]);
-    op[OP_KSL] = (uint8_t)(op[OP_KSL] << 6 | op[OP_TL]);
-    op[OP_AR] = (uint8_t)(op[OP_AR] << 4 | op[OP_DR]);
-    op[OP_SL] = (uint8_t)(op[OP_SL] << 4 | op[OP_RR]);
+    op[OP_AM] = (uint8_t)(op[OP_AM] << OPL_AM_SHIFT | op[OP_VIB] << OPL_VIB_SHIFT | op[OP_EG] << OPL_EG_SHIFT |
+                          op[OP_KSR] << OPL_KSR_SHIFT | op[OP_MULT]);
+    op[OP_KSL] = (uint8_t)(op[OP_KSL] << OPL_KSL_SHIFT | op[OP_TL]);
+    op[OP_AR] = (uint8_t)(op[OP_AR] << OPL_HIGH_NIBBLE_SHIFT | op[OP_DR]);
+    op[OP_SL] = (uint8_t)(op[OP_SL] << OPL_HIGH_NIBBLE_SHIFT | op[OP_RR]);
 }
 
 int fm_set_bank(int bank, const uint8_t *data, size_t size)
 {
-    if (bank < 0 || bank >= FM_BANK_COUNT || size < BNK_RECORDS + 4) return FM_ERR_BANK;
+    if (bank < 0 || bank >= FM_BANK_COUNT || size < BNK_RECORDS + sizeof(uint32_t)) return FM_ERR_BANK;
     uint32_t names = le32(data + BNK_NAMES), records = le32(data + BNK_RECORDS);
     int used = le16(data + BNK_USED);
     if (used > BNK_INSTRUMENTS || names > size || size - names < BNK_INSTRUMENTS * BNK_NAME_SIZE ||
@@ -186,7 +197,7 @@ int fm_set_bank(int bank, const uint8_t *data, size_t size)
     for (int i = 0; i < used - BNK_UNPACKED; i++) {
         uint8_t *rec = copy + records + i * BNK_RECORD_SIZE;
         pack_operator(rec + REC_MODULATOR);
-        rec[REC_MODULATOR + OP_CON] = (uint8_t)(rec[REC_MODULATOR + OP_FB] << 1 | rec[REC_MODULATOR + OP_CON]);
+        rec[REC_MODULATOR + OP_CON] = (uint8_t)(rec[REC_MODULATOR + OP_FB] << OPL_FB_SHIFT | rec[REC_MODULATOR + OP_CON]);
         pack_operator(rec + REC_CARRIER);
     }
     free(banks[bank]);
@@ -266,7 +277,7 @@ static void op_write_level(int op, int attenuation)
 {
     int tl = (2 * LEVEL_STEPS * LEVEL_STEPS -
               (LEVEL_STEPS - attenuation) * 2 * (LEVEL_STEPS - (op_level[op] & OPL_TL_MASK))) >> LEVEL_SHIFT;
-    opl_write(OPL_LEVEL + op, (tl & 0xff) | (op_level[op] & OPL_KSL_MASK));
+    opl_write(OPL_LEVEL + op, (tl & BYTE_MASK) | (op_level[op] & OPL_KSL_MASK));
 }
 
 /* Sets the loudness of a voice from its velocity and the channel volume. */
@@ -274,7 +285,7 @@ static void voice_set_level(int v)
 {
     int ch = voice_channel[v];
     int level = (ch_volume[ch] << LEVEL_SHIFT) / MIDI_MAX * voice_velocity[v] >> LEVEL_SHIFT;
-    int attenuation = level_attenuation[(level & 0xff) >> 1];
+    int attenuation = level_attenuation[(level & BYTE_MASK) >> 1];
     /* The driver checks the melodic instrument of the channel, also for drums. */
     if (instrument(FM_BANK_MELODIC, ch_program[ch])[REC_MODULATOR + OP_CON] & OPL_ADDITIVE)
         op_write_level(op_modulator[v], attenuation);
@@ -286,7 +297,7 @@ static void voice_set_freq(int v, uint32_t freq, int retrigger)
 {
     op_sustain[OP_SUSTAIN_SLOTS + v] = (uint8_t)freq;
     voice_key_block[v] = (uint8_t)(freq >> BYTE_BITS) | OPL_KEY_ON;
-    opl_write(OPL_FNUM_LOW + v, freq & 0xff);
+    opl_write(OPL_FNUM_LOW + v, freq & BYTE_MASK);
     if (retrigger) opl_write(OPL_KEY_BLOCK + v, voice_key_block[v] & ~OPL_KEY_ON);
     opl_write(OPL_KEY_BLOCK + v, voice_key_block[v]);
 }
@@ -335,9 +346,9 @@ static void note_off(int note, int velocity, int channel)
 {
     if (ch_sustain[channel] && sustain_count[channel] < SUSTAIN_QUEUE) {
         uint8_t *q = sustain_queue[channel][sustain_count[channel]++];
-        q[0] = (uint8_t)note;
-        q[1] = (uint8_t)velocity;
-        q[2] = (uint8_t)channel;
+        q[QUEUED_NOTE] = (uint8_t)note;
+        q[QUEUED_VELOCITY] = (uint8_t)velocity;
+        q[QUEUED_CHANNEL] = (uint8_t)channel;
         return;
     }
     for (int v = 0; v < VOICES; v++)
@@ -372,7 +383,7 @@ static void control(int channel, int number, int value)
         ch_sustain[channel] = value;
         while (!value && sustain_count[channel]) {
             const uint8_t *q = sustain_queue[channel][--sustain_count[channel]];
-            note_off(q[0], q[1], q[2]);
+            note_off(q[QUEUED_NOTE], q[QUEUED_VELOCITY], q[QUEUED_CHANNEL]);
         }
         break;
     case MIDI_CTRL_BEND_RANGE: ch_bend_range[channel] = value; break;
@@ -394,9 +405,9 @@ static void pitch_bend(int channel, int bend)
 void fm_send(const uint8_t *event)
 {
     if (!banks[FM_BANK_MELODIC] || !banks[FM_BANK_DRUM]) return;
-    int channel = event[0] & MIDI_CHANNEL_MASK;
-    int data1 = event[1] & MIDI_DATA_MASK, data2 = event[2] & MIDI_DATA_MASK;  /* fix: the driver does not mask */
-    switch (event[0] & MIDI_STATUS_MASK) {
+    int channel = event[MIDI_STATUS] & MIDI_CHANNEL_MASK;
+    int data1 = event[MIDI_DATA1] & MIDI_DATA_MASK, data2 = event[MIDI_DATA2] & MIDI_DATA_MASK;  /* fix: the driver does not mask */
+    switch (event[MIDI_STATUS] & MIDI_STATUS_MASK) {
     case MIDI_NOTE_OFF: note_off(data1, data2, channel); break;
     case MIDI_NOTE_ON:
         if (data2) note_on(data1, data2, channel);

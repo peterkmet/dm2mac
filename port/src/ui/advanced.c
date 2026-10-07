@@ -17,16 +17,14 @@
 
 #define QUICK_SAVE_NAME "QUICK SAVE"    /* the name in the header of QUICK.DAT */
 
-/* PC scan codes of the letter keys and the keypad keys that move and turn the party. */
+/* PC scan codes of the letter keys that move and turn the party. */
 enum { SCAN_Q = 0x10, SCAN_W = 0x11, SCAN_E = 0x12, SCAN_A = 0x1e, SCAN_S = 0x1f, SCAN_D = 0x20 };
-enum {
-    KEYPAD_TURN_LEFT = 0x4b, KEYPAD_FORWARD = 0x4c, KEYPAD_TURN_RIGHT = 0x4d, KEYPAD_LEFT = 0x4f, KEYPAD_BACK = 0x50,
-    KEYPAD_RIGHT = 0x51
-};
 
 /* PC scan codes of the keys on the open automap. */
 enum { SCAN_ESCAPE = 0x01, SCAN_I = 0x17, SCAN_F = 0x21, SCAN_L = 0x26 };
 #define READOUT_MARGIN 2                /* pixels between the viewport edge and the readout */
+/* The rows of the readout. */
+enum { READOUT_POSITION, READOUT_DIRECTION, READOUT_IMMORTAL, READOUT_FOOD, READOUT_LIGHT };
 
 int game_mode = GAME_MODE_VANILLA;
 const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced"};
@@ -134,14 +132,14 @@ void advanced_draw_automap(void)
     if (!o.bitmap) return;
     automap_draw(&o, o.rect);
     snprintf(line, sizeof line, "LEVEL %d  X %d  Y %d", dungeon_map_level(game.party_map), game.party_x, game.party_y);
-    draw_readout_line(&o, 0, line);
-    draw_readout_line(&o, 1, direction_names[game.party_dir & (DIR_COUNT - 1)]);
+    draw_readout_line(&o, READOUT_POSITION, line);
+    draw_readout_line(&o, READOUT_DIRECTION, direction_names[game.party_dir & (DIR_COUNT - 1)]);
     snprintf(line, sizeof line, "I IMMORTAL %s", on_off(cheat_immortal));
-    draw_readout_line(&o, 2, line);
+    draw_readout_line(&o, READOUT_IMMORTAL, line);
     snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(cheat_food));
-    draw_readout_line(&o, 3, line);
+    draw_readout_line(&o, READOUT_FOOD, line);
     snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(cheat_light));
-    draw_readout_line(&o, 4, line);
+    draw_readout_line(&o, READOUT_LIGHT, line);
     offscreen_flush(&o, 1);
     draw_free_temp();
 }

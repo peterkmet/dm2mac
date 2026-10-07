@@ -104,10 +104,10 @@ static uint16_t pc_key_code(int scancode, int mod)
     };
     int shift = mod & SDL_KMOD_SHIFT;
     switch (scancode) {
-    case SDL_SCANCODE_UP: return 0x4c;
-    case SDL_SCANCODE_DOWN: return 0x50;
-    case SDL_SCANCODE_LEFT: return shift ? 0x4f : 0x4b;
-    case SDL_SCANCODE_RIGHT: return shift ? 0x51 : 0x4d;
+    case SDL_SCANCODE_UP: return KEYPAD_FORWARD;
+    case SDL_SCANCODE_DOWN: return KEYPAD_BACK;
+    case SDL_SCANCODE_LEFT: return shift ? KEYPAD_LEFT : KEYPAD_TURN_LEFT;
+    case SDL_SCANCODE_RIGHT: return shift ? KEYPAD_RIGHT : KEYPAD_TURN_RIGHT;
     }
     for (size_t i = 0; i < sizeof scan / sizeof scan[0]; i++)
         if (scan[i].sdl == scancode)
@@ -148,9 +148,10 @@ static void modal_frame(void)
     for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
 }
 
-int main(int argc, char **argv)
+/* Reads the values of the command line options; returns 0 with a message when an option has no value. */
+static int read_options(int argc, char **argv, const char **data, const char **filter, const char **save,
+                        const char **control, const char **mode)
 {
-    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced";
     for (int i = 1; i < argc; i++) {
         int is_data = !strcmp(argv[i], "--data"), is_filter = !strcmp(argv[i], "--filter");
         int is_save = !strcmp(argv[i], "--save"), is_control = !strcmp(argv[i], "--control");
@@ -158,14 +159,21 @@ int main(int argc, char **argv)
         if (!is_data && !is_filter && !is_save && !is_control && !is_mode) continue;
         if (i + 1 == argc) {
             fprintf(stderr, "%s needs a value\n", argv[i]);
-            return EXIT_USAGE;
+            return 0;
         }
-        if (is_data) data = argv[++i];
-        else if (is_filter) filter = argv[++i];
-        else if (is_save) save = argv[++i];
-        else if (is_mode) mode = argv[++i];
-        else control = argv[++i];
+        if (is_data) *data = argv[++i];
+        else if (is_filter) *filter = argv[++i];
+        else if (is_save) *save = argv[++i];
+        else if (is_mode) *mode = argv[++i];
+        else *control = argv[++i];
     }
+    return 1;
+}
+
+int main(int argc, char **argv)
+{
+    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced";
+    if (!read_options(argc, argv, &data, &filter, &save, &control, &mode)) return EXIT_USAGE;
     for (game_mode = 0; game_mode < GAME_MODE_COUNT && strcmp(mode, game_mode_names[game_mode]); game_mode++) {}
     if (game_mode == GAME_MODE_COUNT) {
         fprintf(stderr, "unknown mode %s: use vanilla or advanced\n", mode);

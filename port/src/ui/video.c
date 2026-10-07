@@ -2,7 +2,6 @@
 
 #define VGA_BITS 6
 #define CHANNEL_BITS 8
-#define ARGB_OPAQUE 0xff000000u
 
 uint8_t fb[SCREEN_H][SCREEN_W] = { 0 }; /* initialized: keeps it out of __common, which ld warns about */
 uint8_t palette[PALETTE_COLORS][RGB_CHANNELS];
@@ -16,8 +15,7 @@ uint8_t video_vga_to_8bit(uint8_t v)
 uint32_t video_argb(uint8_t c)
 {
     const uint8_t *p = palette[c];
-    return ARGB_OPAQUE | (uint32_t)video_vga_to_8bit(p[0]) << 16 | (uint32_t)video_vga_to_8bit(p[1]) << 8 |
-           video_vga_to_8bit(p[2]);
+    return video_argb_pack(video_vga_to_8bit(p[0]), video_vga_to_8bit(p[1]), video_vga_to_8bit(p[2]));
 }
 
 void video_layout(int out_w, int out_h, int *scale, int *ox, int *oy)

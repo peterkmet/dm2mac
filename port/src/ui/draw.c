@@ -94,8 +94,8 @@ void draw_free_temp(void)
 /* Adds a packed offset (x in the high byte, y in the low byte) to the offset of ctx. */
 static void add_offset(DrawCtx *ctx, int packed)
 {
-    ctx->dx += (int8_t)(packed >> 8);
-    ctx->dy += (int8_t)packed;
+    ctx->dx += gdat_offset_x(packed);
+    ctx->dy += gdat_offset_y(packed);
 }
 
 DrawCtx *gfx_ctx_init(DrawCtx *ctx, int category, int index, int entry)

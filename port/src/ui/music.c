@@ -14,6 +14,7 @@
 #define VOLUME_DEFAULT 5
 #define PATH_MAX_LENGTH 1024
 #define STEREO 2
+#define MASTER_VOLUME_SHIFT 4  /* the master volume repeats the level in its high bits */
 
 Music music = {.requested_song = -1, .current_song = MUSIC_NO_SONG};
 static const gdat_t *gdat;
@@ -126,7 +127,7 @@ void music_set_volume(int level)
 {
     level = level < 0 ? 0 : level > VOLUME_MAX ? VOLUME_MAX : level;
     if (music.enabled) {
-        hmp_set_master_volume(level * 2 | level << 4);  /* 0 to 126 */
+        hmp_set_master_volume(level * 2 | level << MASTER_VOLUME_SHIFT);  /* 0 to 126 */
         if (music.started) {
             if (!level) {
                 music_stop();
