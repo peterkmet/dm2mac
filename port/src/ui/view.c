@@ -140,17 +140,13 @@ enum text_subtype {
     SUBTYPE_SQUARE_SWITCH = 17,     /* frame from SQUARE_FLAG_3 */
     SUBTYPE_SHOP_STAND = 20,        /* clears SIDE_SHOP_FLAG */
 };
-#define SENSOR_ACTIVE_BIT 0         /* bits of SENSOR_FLAGS */
-#define SENSOR_STATE_BIT 2
-#define SENSOR_ORNAMENT_SHIFT 12
 enum sensor_type {
     SENSOR_TOGGLE_ORNAMENT = 0x17, SENSOR_TIMED_ORNAMENT = 0x18, SENSOR_HOLDER = 0x1a, SENSOR_STATE_MATCH = 0x1b,
     SENSOR_LINK = 0x27, SENSOR_ANIMATED = 0x2c, SENSOR_SHOP = 0x30, SENSOR_SOUND_ANIMATION = 0x32,
     SENSOR_WALL_TEXT = 0x3f, SENSOR_FRAME_DATA = 0x41, SENSOR_FRAME_STATE = 0x46, SENSOR_TIMED_ORNAMENT_2 = 0x4a,
     SENSOR_ALTAR = 0x7e,
 };
-#define SENSOR_ALTAR_SHOWN 0x0004
-#define SENSOR_DATA_BYTE 0xff
+#define SENSOR_ALTAR_SHOWN SENSOR_STATE
 
 #define GAME_TIME_FRAMES 7          /* bits of the game time that animate pictures */
 #define HALF_TIME_FRAMES 4
@@ -702,11 +698,9 @@ static int ornament_frame(int category, int ornament, uint32_t time, int offset)
 /* The wall ornament of a sensor: an entry of the wall ornament list of the current map. */
 static uint8_t sensor_ornament(uint16_t sensor, const uint8_t *list)
 {
-    int ordinal = thing_word(sensor, SENSOR_FLAGS) >> SENSOR_ORNAMENT_SHIFT;
+    int ordinal = sensor_ornament_ordinal(sensor);
     return ordinal ? list[ordinal - 1] : ORNAMENT_NONE;
 }
-
-static int sensor_bit(uint16_t sensor, int bit) { return thing_word(sensor, SENSOR_FLAGS) >> bit & 1; }
 
 /* Applies the wall things (texts, sensors) to the faces of s; only_front limits them to the front face.
    Returns the first thing that is not a wall thing. */
@@ -745,9 +739,8 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
         } else if (thing_type(thing) == THING_SENSOR) {
             ornament = sensor_ornament(thing, dungeon_map_wall_ornaments(view.map));
             if (ornament == ORNAMENT_NONE) continue;
-            uint16_t data = thing_word(thing, SENSOR_TYPE_DATA);
-            int active = sensor_bit(thing, SENSOR_ACTIVE_BIT), state = sensor_bit(thing, SENSOR_STATE_BIT);
-            switch (data & SENSOR_TYPE_MASK) {
+            int active = sensor_flag(thing, SENSOR_BUSY), state = sensor_flag(thing, SENSOR_STATE);
+            switch (sensor_type(thing)) {
             case SENSOR_TOGGLE_ORNAMENT: animated = state; frame = state; break;
             case SENSOR_TIMED_ORNAMENT: case SENSOR_TIMED_ORNAMENT_2: frame = active ^ state; break;
             case SENSOR_HOLDER:
@@ -763,22 +756,22 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
                 break;
             case SENSOR_ANIMATED:
                 if (active) {
-                    offset = data >> SENSOR_DATA_SHIFT & SENSOR_DATA_BYTE;
+                    offset = sensor_frame(thing);
                     animated = 1;
                 }
                 break;
             case SENSOR_SOUND_ANIMATION:
                 if (active) {
-                    time = data >> SENSOR_DATA_SHIFT;
+                    time = sensor_data(thing);
                     animated = 1;
                 }
                 break;
             case SENSOR_WALL_TEXT: s->text = face == SIDE_FRONT ? thing : THING_TEXT_NONE; break;
-            case SENSOR_FRAME_DATA: frame = data >> SENSOR_DATA_SHIFT; break;
+            case SENSOR_FRAME_DATA: frame = sensor_data(thing); break;
             case SENSOR_FRAME_STATE: frame = active; break;
             case SENSOR_ALTAR:
-                if (thing_word(thing, SENSOR_FLAGS) & SENSOR_ALTAR_SHOWN) {
-                    if (face == SIDE_FRONT) s->text = data >> SENSOR_DATA_SHIFT;
+                if (sensor_flag(thing, SENSOR_ALTAR_SHOWN)) {
+                    if (face == SIDE_FRONT) s->text = sensor_data(thing);
                     done |= 1 << cell;
                     animated = 1;
                 }
@@ -813,19 +806,18 @@ static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square
             default: continue;
             }
         } else if (thing_type(thing) == THING_SENSOR) {
-            uint16_t data = thing_word(thing, SENSOR_TYPE_DATA);
-            int type = data & SENSOR_TYPE_MASK, active = sensor_bit(thing, SENSOR_ACTIVE_BIT);
+            int type = sensor_type(thing), active = sensor_flag(thing, SENSOR_BUSY);
             if (type == SENSOR_SHOP) s->side[SIDE_SHOP_FLAG] = 0;
             ornament = sensor_ornament(thing, dungeon_map_floor_ornaments(view.map));
             if (ornament == ORNAMENT_NONE) continue;
             if (type == SENSOR_LINK) {
-                if ((data >> SENSOR_DATA_SHIFT) - 1 != view.map) continue;
+                if (sensor_data(thing) - 1 != view.map) continue;
                 animated = active;
             } else if (type == SENSOR_ANIMATED && active) {
-                offset = data >> SENSOR_DATA_SHIFT & SENSOR_DATA_BYTE;
+                offset = sensor_frame(thing);
                 animated = 1;
             } else if (type == SENSOR_SOUND_ANIMATION && active) {
-                time = data >> SENSOR_DATA_SHIFT;
+                time = sensor_data(thing);
                 animated = 1;
             }
         } else {
@@ -1929,10 +1921,8 @@ static uint8_t wall_text_glyph(uint8_t c)
 
 /* Shops: a wall sensor (SENSOR_WALL_TEXT with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
    on its target square, with the item name and the merchant prices in coins. */
-#define SHOP_SHOWN 0x0001           /* SENSOR_FLAGS of the shop and display: the display item is chosen */
-#define SHOP_STEP_FORWARD 0x0004    /* SENSOR_FLAGS of the shop: the next click goes to the next item */
-#define SHOP_LIST_SHIFT 7           /* SENSOR_FLAGS of the shop: bits 7-10 the price list */
-#define SHOP_LIST_MASK 0x0f
+#define SHOP_SHOWN SENSOR_BUSY          /* SENSOR_FLAGS of the shop and display: the display item is chosen */
+#define SHOP_STEP_FORWARD SENSOR_STATE  /* SENSOR_FLAGS of the shop: the next click goes to the next item */
 #define SHOP_CLASS_TEXT 0x10        /* + list * 3: the class set of the items of the list */
 #define ITEM_FLAG_UNIQUE 0x1000     /* ATTR_FLAGS: the shop shows the item only when it exists */
 #define ORN_SHOP_EMPTY 0x11         /* the picture of a display without its item */
@@ -1946,7 +1936,6 @@ static uint8_t wall_text_glyph(uint8_t c)
 #define SHOP_PRICE_COINS 6
 #define COIN_WIDTH 8
 #define COIN_HEIGHT 7
-#define SHOP_TARGET 6               /* sensor record word: target x bits 6-10, y bits 11-15 */
 #define ITEM_NAME_ENTRY 0x18
 #define DISPLAY_POS POS_FRONT       /* only the wall in front shows the name and prices */
 
@@ -1954,9 +1943,8 @@ int16_t view_hit_offset_y;
 
 static void record_target(uint16_t record, int *x, int *y)
 {
-    uint16_t target = thing_word(record, SHOP_TARGET);
-    *x = target >> 6 & 0x1f;
-    *y = target >> 11;
+    *x = sensor_target_x(record);
+    *y = sensor_target_y(record);
 }
 
 /* True when the target square of the sensor record holds an item of the item index type: in the possessions of a
@@ -2001,17 +1989,17 @@ static const uint16_t *shop_table(uint8_t ornament, int *count)
 /* Chooses the item that the display shows: the next or the last item of the price list that the merchant sells. */
 static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, int creature)
 {
-    uint16_t flags = thing_word(shop, SENSOR_FLAGS);
-    uint16_t item = thing_word(display, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT;
+    bool forward = sensor_flag(shop, SHOP_STEP_FORWARD);
+    uint16_t item = sensor_data(display);
     uint8_t set[SHOP_CLASS_SET_SIZE];
-    int list = flags >> SHOP_LIST_SHIFT & SHOP_LIST_MASK;
+    int list = sensor_delay(shop);  /* the delay bits of a shop: its price list */
     if (shop_parse_item_class_set(creature, list * 3 + SHOP_CLASS_TEXT, set, 0)) {
         int count, at = item;
         const uint16_t *table = shop_table(ornament, &count);
         if (table) for (at = 0; at < count && (table[at] & ITEM_INDEX_NONE) != item; at++) {}
         /* fix: the original loops for ever when the merchant sells no item of the list */
         for (int tries = 0; tries <= ITEM_INDEX_NONE; tries++) {
-            at += flags & SHOP_STEP_FORWARD || view_hit_offset_y < 0 ? 1 : -1;
+            at += forward || view_hit_offset_y < 0 ? 1 : -1;
             if (table) {
                 if (at < 0) at = count - 1;
                 else if (at >= count) at = 0;
@@ -2028,12 +2016,11 @@ static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, 
                 continue;
             break;
         }
-        flags &= ~SHOP_STEP_FORWARD;
+        sensor_set_flag(shop, SHOP_STEP_FORWARD, false);
     }
-    set_thing_word(shop, SENSOR_FLAGS, flags | SHOP_SHOWN);
-    set_thing_word(display, SENSOR_FLAGS, thing_word(display, SENSOR_FLAGS) | SHOP_SHOWN);
-    uint16_t data = thing_word(display, SENSOR_TYPE_DATA);
-    set_thing_word(display, SENSOR_TYPE_DATA, (uint16_t)((data & SENSOR_TYPE_MASK) | (item & ITEM_INDEX_NONE) << SENSOR_DATA_SHIFT));
+    sensor_set_flag(shop, SHOP_SHOWN, true);
+    sensor_set_flag(display, SHOP_SHOWN, true);
+    sensor_set_data(display, item & ITEM_INDEX_NONE);
 }
 
 /* Draws amount as coins at the offset of key from zone. */
@@ -2065,15 +2052,14 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     record_target(shop, &x, &y);
     uint16_t display = THING_ENDOFLIST;
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t))
-        if (thing_type(t) == THING_SENSOR && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_SHOP) {
+        if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_SHOP) {
             display = t;
             break;
         }
     if (display == THING_ENDOFLIST) return;  /* fix: the original reads a NULL record */
-    int creature = (uint8_t)(thing_word(shop, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT);
-    uint16_t flags = thing_word(shop, SENSOR_FLAGS);
-    if (!(flags & SHOP_SHOWN) || flags & SHOP_STEP_FORWARD) shop_choose_item(shop, display, ornament, creature);
-    uint16_t item = thing_word(display, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT;
+    int creature = (uint8_t)sensor_data(shop);
+    if (!sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD)) shop_choose_item(shop, display, ornament, creature);
+    uint16_t item = sensor_data(display);
     int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
     uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_ALCOVE_ITEMS);
     view_setup_picture(0, scale_x, scale_y, (int8_t)HIGH_BYTE(offset), (int8_t)LOW_BYTE(offset), depth, zone, anchor,
@@ -2102,7 +2088,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     char raw[TEXT_SIZE], name[TEXT_SIZE];
     view_draw_centered_label(lx + (int8_t)HIGH_BYTE(place), ly + (int8_t)LOW_BYTE(place),
                              text_format(text_gdat(category, index, ITEM_NAME_ENTRY, raw), name));
-    int list = flags >> SHOP_LIST_SHIFT & SHOP_LIST_MASK;
+    int list = sensor_delay(shop);
     int buy = shop_get_item_value(item, creature, list, 1, 1, -1);
     int sell = shop_get_item_value(item, creature, list, 0, 1, -1);
     shop_draw_price(sell, ornament, depth, zone, anchor, key, ORN_KEY_SHOP_SELL);

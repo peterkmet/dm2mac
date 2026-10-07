@@ -1048,7 +1048,6 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
 #define ITEM_DO_NOT_DISCARD 0x80        /* weapon, armour, misc: bit 7 of the data word; potion: bit 15 */
 #define ITEM_KIND_MASK 0x7f
 #define POTION_KIND_SHIFT 8
-#define ITEM_INDEX_SHIFT 7
 
 #define DELETE_GROUP_DISCARD 1
 /* The sensor kinds whose square keeps its things. */
@@ -1134,13 +1133,11 @@ static uint16_t discard_scan_map(int type, int subtype, int map, int second)
             for (;;) {
                 int tt = thing_type(t), stop = 0;
                 if (tt == THING_SENSOR) {
-                    uint16_t w = thing_word(t, SENSOR_TYPE_DATA);
-                    int kind = w & SENSOR_TYPE_MASK;
+                    int kind = sensor_type(t);
                     if (kind < SENSOR_KIND_TABLE && sensor_blocks_discard[kind]) stop = 1;
                     else if (second && near && kind == SENSOR_SHOP_DISPLAY) {
                         near = 0;
-                        if (item_index_to_thing_type((uint16_t)(w >> ITEM_INDEX_SHIFT)) == type)
-                            reserved = item_index_gdat_index(w >> ITEM_INDEX_SHIFT);
+                        if (item_index_to_thing_type(sensor_data(t)) == type) reserved = item_index_gdat_index(sensor_data(t));
                     }
                 } else if (tt == THING_TEXT) {
                     stop = text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_KEEPS_SQUARE;

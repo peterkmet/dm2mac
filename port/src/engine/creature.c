@@ -78,8 +78,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define SOUND_PRIORITY_STEP 0x46
 #define SOUND_VOLUME 0x80
 #define AI_ACTION_JUMP 5
-#define GROUP_HEALTH 6              /* group record word: health */
-#define GROUP_ITEM_CLASS 8          /* group record word: the item class of a creature that acts, -1 while it is created */
 #define CREATURE_FAST_VANISH 0x1000 /* flags: the creature vanishes quickly in a party action effect */
 #define TIME_BYTE_WRAP 0x100        /* the time bytes of an active group are the low byte of the time */
 #define ACTION_TIME_LONG_AGO 0x7f   /* a new active group acted this many game steps ago */
@@ -89,8 +87,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define ALERT_HIT_CHANCE 0x3c
 #define DAMAGE_KIND_MOOD_FIRST 6    /* damage kinds 6 to 0x15 set mood bit kind - 6 */
 #define DAMAGE_KIND_MOOD_END 0x16
-#define SENSOR_TARGET_X_SHIFT 6     /* sensor target word: x bits 6-10, y bits 11-15 */
-#define SENSOR_TARGET_Y_SHIFT 11
 
 ActiveGroup *active_groups;
 int active_group_max, active_group_count;
@@ -1375,19 +1371,16 @@ void creature_continue_push(int command)
 
 /* Creature sensors. */
 
-#define SENSOR_TURN_ON_SET 0x20         /* sensor flags: the sensor turns on effect 1 instead of 0 */
-#define SENSOR_TARGET_WORD 6            /* sensor record word: target x bits 6-10, y bits 11-15 */
 #define SENSOR_KIND_VANISH 0x0b
 #define SENSOR_KIND_ALERT 0x28
 #define VANISH_POWER 2
 
 void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
 {
-    int on_set = thing_word(sensor, SENSOR_FLAGS) & SENSOR_TURN_ON_SET;
-    if (e->data[3] != (on_set ? 1 : 0)) return;
-    uint16_t target = thing_word(sensor, SENSOR_TARGET_WORD);
-    uint16_t g = creature_get_group_at(target >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK, target >> SENSOR_TARGET_Y_SHIFT);
-    if (g != THING_NONE) creature_turn_group(g, 1, thing_word(sensor, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT & 3);
+    /* an inverted sensor turns the creatures on effect 1 instead of 0 */
+    if (e->data[3] != (sensor_flag(sensor, SENSOR_INVERTED) ? 1 : 0)) return;
+    uint16_t g = creature_get_group_at(sensor_target_x(sensor), sensor_target_y(sensor));
+    if (g != THING_NONE) creature_turn_group(g, 1, sensor_data(sensor) & 3);
 }
 
 void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect)

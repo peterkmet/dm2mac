@@ -209,7 +209,7 @@ static void champ_add_start_champion(void)
     game.leader_hand = THING_NONE;
     leader_hand.icon = HAND_ICON_NONE;
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, 0, 0); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (thing_type(t) != THING_SENSOR || (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) != SENSOR_START_CHAMPION)
+        if (thing_type(t) != THING_SENSOR || sensor_type(t) != SENSOR_START_CHAMPION)
             continue;
         champ_recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
         champion(0)->dir = champion(0)->cell = (uint8_t)game.party_dir;

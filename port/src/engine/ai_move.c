@@ -36,10 +36,7 @@
 #define TEXT_LADDER_HIDDEN 7
 #define SENSOR_LEVEL_LINK 0x1c
 #define SENSOR_CREATURE_SLOT 0x26       /* a wall slot that a creature type uses */
-#define SENSOR_FLAG_ACTIVE 0x0004       /* sensor word +4 */
-#define SENSOR_STATE_SHIFT 3            /* sensor word +4 bits 3-4: state */
-#define SENSOR_STATE_MASK 0x18
-#define SENSOR_STATE_BUSY 0x10
+#define SLOT_STATE_BUSY 2               /* the state of a creature slot (its sensor effect bits): 2 and 3 busy */
 #define ACTUATOR_SWITCH 1
 #define ACTUATOR_ANY_ITEM 2
 #define ACTUATOR_ITEM 3
@@ -146,9 +143,6 @@ static const uint8_t after_command_table[60] = {
 #define GROUP_ASLEEP 0x80               /* group record byte +0x0a */
 #define COMMAND_PAST_TABLE 0x14         /* the first command past the enabled table: it reads globals */
 #define COMMAND_AFTER_GLOBALS 0x20      /* ... the commands that read the bytes after the globals */
-#define SENSOR_LINK_TARGET 6            /* level link sensor word: x bits 6-10, y bits 11-15 */
-#define LINK_TARGET_X_SHIFT 6
-#define LINK_TARGET_Y_SHIFT 11
 #define PATH_X_SHIFT 3                  /* path step: direction bits 0-2, x bits 3-7, y bits 8-12 */
 #define PATH_Y_SHIFT 8
 #define PATH_MAP_CHANGE_SHIFT 13
@@ -931,10 +925,9 @@ static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing,
     if (!(ai.move_flags & need)) return -1;
     int map, nx = (int16_t)x, ny = (int16_t)y;
     if (link != THING_NONE && (*action == ACTION_LINK_UP || *action == ACTION_LINK_UP + 1)) {
-        uint16_t target = thing_word(link, SENSOR_LINK_TARGET);
-        nx = target >> LINK_TARGET_X_SHIFT & LOCATION_COORD_MASK;
-        ny = target >> LINK_TARGET_Y_SHIFT;
-        map = thing_word(link, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT;
+        nx = sensor_target_x(link);
+        ny = sensor_target_y(link);
+        map = sensor_data(link);
     } else {
         map = dungeon_location_on_map(party.cur_map, dir == 4 ? -1 : 1, &nx, &ny);
         if ((int16_t)map < 0) return -1;
@@ -1329,11 +1322,11 @@ uint16_t creature_find_wall_actuator_in_cell(uint16_t first_thing, int cell, int
         int type = thing_type(t);
         if (type > THING_SENSOR) break;
         if (type != THING_SENSOR || t >> THING_CELL_SHIFT != (int16_t)cell) continue;
-        int kind = thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK;
+        int kind = sensor_type(t);
         if (kind == 0 || kind == SENSOR_CREATURE_SLOT) continue;
         found = t;
         if (kind != ACTUATOR_SLOT) continue;
-        int wanted = thing_word(t, SENSOR_FLAGS) & SENSOR_FLAG_ACTIVE ? 2 : 1;
+        int wanted = sensor_flag(t, SENSOR_STATE) ? 2 : 1;
         if ((int16_t)mode == wanted && creature_thing_matches_filter(t, (int16_t)filter)) break;
     }
     return found;
@@ -1344,7 +1337,7 @@ uint16_t creature_find_wall_actuator_in_cell(uint16_t first_thing, int cell, int
 int creature_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state)
 {
     if (actuator == THING_ENDOFLIST || actuator == THING_NONE) return 0;
-    int kind = thing_word(actuator, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK;
+    int kind = sensor_type(actuator);
     mode = (int16_t)mode;
     switch (kind) {
     case ACTUATOR_SWITCH:
@@ -1352,12 +1345,12 @@ int creature_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int 
     case ACTUATOR_BUTTON_2: return mode == 0;
     case ACTUATOR_ANY_ITEM: return mode == 0 && (int16_t)filter != -1;
     case ACTUATOR_ITEM: return mode == 0 && creature_thing_matches_filter(actuator, (int16_t)filter);
-    case ACTUATOR_TOGGLE: return mode == 0 && (int16_t)state != !(thing_word(actuator, SENSOR_FLAGS) & SENSOR_FLAG_ACTIVE);
+    case ACTUATOR_TOGGLE: return mode == 0 && (int16_t)state != !sensor_flag(actuator, SENSOR_STATE);
     case ACTUATOR_SLOT:
-        if (thing_word(actuator, SENSOR_FLAGS) & SENSOR_FLAG_ACTIVE ? mode != 2 : mode != 1) return 0;
+        if (sensor_flag(actuator, SENSOR_STATE) ? mode != 2 : mode != 1) return 0;
         return creature_thing_matches_filter(actuator, (int16_t)filter);
     case ACTUATOR_COUNTED_ITEM:
-        if (mode != 1 || !(thing_word(actuator, SENSOR_TYPE_DATA) & ~SENSOR_TYPE_MASK)) return 0;
+        if (mode != 1 || !sensor_data(actuator)) return 0;
         return creature_thing_matches_filter(actuator, (int16_t)filter);
     default: return 0;
     }
@@ -1384,18 +1377,17 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
     uint16_t slot = THING_NONE;
     for (uint16_t t = cached_first_thing(); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_SENSOR && t >> THING_CELL_SHIFT == ((d + 2) & 3)
-            && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_CREATURE_SLOT) {
+            && sensor_type(t) == SENSOR_CREATURE_SLOT) {
             slot = t;
             break;
         }
     }
-    if (slot == THING_NONE || thing_word(slot, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT != ai.group[GROUP_CREATURE]
-        || !(thing_word(slot, SENSOR_FLAGS) & SENSOR_FLAG_ACTIVE))
+    if (slot == THING_NONE || sensor_data(slot) != ai.group[GROUP_CREATURE] || !sensor_flag(slot, SENSOR_STATE))
         return command_failed(execute);
     uint16_t actuator = creature_find_wall_actuator_in_cell(cached_first_thing(), (d + 2) & 3, mode, filter);
     if (actuator == THING_NONE) return command_failed(execute);
-    uint16_t slot_flags = thing_word(slot, SENSOR_FLAGS);
-    if (!creature_wall_actuator_accepts(actuator, mode, filter, (slot_flags & SENSOR_STATE_MASK) >> SENSOR_STATE_SHIFT)) return command_failed(execute);
+    int slot_state = sensor_effect(slot);
+    if (!creature_wall_actuator_accepts(actuator, mode, filter, slot_state)) return command_failed(execute);
     if (execute && !creature_ai_turn_toward(d)) {
         set_action_destination(tx, ty);
         ai.active->facing = (uint8_t)d;
@@ -1403,7 +1395,7 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
         ai.active->sub = (int8_t)filter;
         ai.active->mode = (uint8_t)mode;
         ai.active->action = (uint8_t)(ACTION_USE_ACTUATOR + (mode > 1 ? 2 : mode));
-        ai.command_result = mode == 0 && (slot_flags & SENSOR_STATE_MASK) < SENSOR_STATE_BUSY ? AI_RESULT_ACTING : AI_RESULT_DONE;
+        ai.command_result = mode == 0 && slot_state < SLOT_STATE_BUSY ? AI_RESULT_ACTING : AI_RESULT_DONE;
     }
     return 1;
 }
@@ -1469,8 +1461,8 @@ int creature_thing_matches_filter(uint16_t thing, int filter)
     if (type == THING_GROUP) {
         value = dungeon_thing_record(thing)[GROUP_CREATURE];
     } else if (type == THING_SENSOR) {
-        int kind = thing_word(thing, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK;
-        if (kind == ACTUATOR_COUNTED_ITEM && !(thing_word(thing, SENSOR_TYPE_DATA) & ~SENSOR_TYPE_MASK)) return 0;
+        int kind = sensor_type(thing);
+        if (kind == ACTUATOR_COUNTED_ITEM && !sensor_data(thing)) return 0;
         if (kind == ACTUATOR_SLOT || kind == ACTUATOR_COUNTED_ITEM)
             value = (int16_t)gdat_entry_index(draw_gdat(), CAT_ORNAMENT, item_gdat_index(thing), GDAT_TYPE_VALUE, ORNAMENT_KEY_TARGET);
         else

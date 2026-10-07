@@ -28,7 +28,6 @@
 #define STEP_JUMP 2
 #define STEP_INTERRUPTIBLE 0x40     /* jump byte: the step may end the animation at an interrupt */
 #define STEP_ACTS 0x80              /* jump byte: the creature acts at this step */
-#define GROUP_HEALTH 6              /* group record word: health */
 #define ACTION_DELAY_EFFECT 4       /* game steps that a party action effect delays a creature */
 #define SCRATCH_BLOCKS 4            /* nested creature updates that hold a scratch block */
 #define FILTER_BITMAP_SIZE 0x40
@@ -777,7 +776,6 @@ void creature_ai_decide(void)
 #define TARGET_PARTY 0x16
 #define CACHE_KIND_13 0x0d
 #define CACHE_KIND_5 5
-#define GROUP_ITEM_CLASS_WORD 8         /* group record word: the item class of the creature */
 #define MINION_MAP_LOCATION 6           /* minion map record word: x bits 0-4, y bits 5-9, map bits 10-15 */
 #define WANDER_BIT 0x0080               /* mood: the creature wanders */
 #define MAP_KEY_NO_WANDER 0x20          /* GDAT (8, map graphics set, 0x0b, 0x65) bit: creatures do not wander */
@@ -954,7 +952,7 @@ static void scan_by_condition(int arg, int plan, uint32_t list, int n)
         AiTarget t = ai_target(list);
         if (t.scan == (int8_t)n && creature_ai_test_condition(t.condition, t.condition_arg, plan)) {
             AiTarget copy = t;
-            copy.mask = thing_word(ai.group_thing, GROUP_ITEM_CLASS_WORD);
+            copy.mask = thing_word(ai.group_thing, GROUP_ITEM_CLASS);
             if (arg) copy.cost = 0, copy.value_9 = 0;
             add_candidate(t.kind, list, &copy, n, 0, FOUND_NONE, plan, (int8_t)arg);
         }
@@ -1064,7 +1062,7 @@ static int party_beside_special_wall(void)
         if (square_type(square) || !(square & SQUARE_HAS_THINGS)) continue;
         for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
             int type = thing_type(t);
-            if (type == THING_SENSOR && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_SPECIAL_WALL) return 1;
+            if (type == THING_SENSOR && sensor_type(t) == SENSOR_SPECIAL_WALL) return 1;
             if (type > THING_SENSOR) break;
         }
     }
@@ -1164,7 +1162,7 @@ int creature_ai_test_condition(int condition, int arg, int plan)
     case COND_MARKER:
         creature_ai_cache_square(x, y);
         if (ai_square.square & SQUARE_HAS_THINGS)
-            r = !creature_find_ai_marker_by_id(a, (int16_t)thing_word(ai.group_thing, GROUP_ITEM_CLASS_WORD));
+            r = !creature_find_ai_marker_by_id(a, (int16_t)thing_word(ai.group_thing, GROUP_ITEM_CLASS));
         break;
     case COND_ON_GAME_MAP: r = ai.map == game.party_map; break;
     case COND_MOOD_BIT_CLEAR_AWAY: r = !(mood & (1 << (a & SHIFT_COUNT_MASK))) && ai.map != game.party_map; break;
@@ -1224,7 +1222,7 @@ static uint16_t dun_find_sensor_on_square(int x, int y, int cell, int type)
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST && thing_type(t) < 4;
          t = dungeon_next_thing(t)) {
         if ((thing_type(t) == THING_SENSOR && cell == CELL_ANY) || t >> THING_CELL_SHIFT == cell) {
-            if ((thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == type) return t;
+            if (sensor_type(t) == type) return t;
         }
     }
     return THING_NONE;
@@ -1277,7 +1275,7 @@ static int cmd_place_on_sensor(void)
     int sx = ai.arg1 ? ai.event.data[0] : dest_x(), sy = ai.arg1 ? ai.event.data[1] : dest_y();
     uint16_t sensor = dun_find_sensor_on_square(sx, sy, CELL_ANY, SENSOR_ITEM_SPOT);
     if (sensor == THING_NONE) return AI_RESULT_FAIL;
-    uint16_t item = thing_word(sensor, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT;
+    uint16_t item = sensor_data(sensor);
     if (ai.arg2 == 2) {
         int f = facing();
         uint16_t g = creature_get_group_at((uint16_t)(ai.event.data[0] + dir_dx[f]), (uint16_t)(ai.event.data[1] + dir_dy[f]));
@@ -1651,7 +1649,7 @@ int creature_ai_exec_plan_command(int command)
 /* Level links and pits for the creature moves. */
 
 #define SENSOR_LEVEL_LINK 0x1c
-#define SENSOR_LINK_FIXED 0x20          /* link sensor word +4: the exit direction does not turn with the link */
+#define SENSOR_LINK_FIXED SENSOR_INVERTED  /* a link sensor: the exit direction does not turn with the link */
 #define TEXT_LINK_FIRST 6               /* text kinds 6 and 7: stairs markers */
 #define TEXT_LINK_LAST 7
 #define WALL_ORNAMENT_GOES_UP 0x11      /* GDAT value (9, ornament, 0x0b, 0x11) */
@@ -1668,11 +1666,10 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
         for (uint16_t t = dungeon_square_first_thing(party.cur_map, sx, sy); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
             int type = thing_type(t);
             if (type > THING_SENSOR) break;
-            uint16_t w = thing_word(t, SENSOR_TYPE_DATA);
             if (type == THING_SENSOR) {
-                if ((w & SENSOR_TYPE_MASK) == SENSOR_LEVEL_LINK
+                if (sensor_type(t) == SENSOR_LEVEL_LINK
                     && level_delta
-                           == (dungeon_map_level(w >> SENSOR_DATA_SHIFT) & MAP_LEVEL_MASK) - (dungeon_map_level(party.cur_map) & MAP_LEVEL_MASK)) {
+                           == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) - (dungeon_map_level(party.cur_map) & MAP_LEVEL_MASK)) {
                     *sensor = t;
                     return d;
                 }
@@ -1832,8 +1829,8 @@ static int act_move_stairs(void)
         uint16_t sensor;
         int d = dun_find_adjacent_level_link(ai.event.data[0], ai.event.data[1], delta, &sensor);
         if (sensor != THING_NONE) {
-            int exit = thing_word(sensor, SENSOR_FLAGS) >> 3 & 3;
-            dir = thing_word(sensor, SENSOR_FLAGS) & SENSOR_LINK_FIXED ? exit : (exit + (int16_t)d) & 3;
+            int exit = sensor_effect(sensor);
+            dir = sensor_flag(sensor, SENSOR_LINK_FIXED) ? exit : (exit + (int16_t)d) & 3;
         } else {
             int x = ai.event.data[0], y = ai.event.data[1], saved = party.cur_map;
             dun_set_current_map(dungeon_location_on_map(saved, delta, &x, &y));

@@ -66,16 +66,8 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define SENSOR_PROJECTILE_PORTAL 0x23   /* the object goes through the wall to the target square */
 #define SENSOR_EXPLOSION 0x26           /* the floor sensor triggers on an explosion */
 #define SENSOR_ANY_THING 0x1ff          /* sensor data: any object or explosion type */
-#define SENSOR_STRONG_ONLY 0x0004       /* flags: explosions of power 0xff (0x7f for lightning) only; a hit stops the object */
-#define SENSOR_INVERTED_BIT 5
-#define SENSOR_EFFECT_SHIFT 3
-#define SENSOR_EFFECT_ALWAYS 0x18       /* effect bits: trigger with the inverted match */
-#define SENSOR_TARGET 6                 /* target word: cell bits 4-5, x bits 6-10, y bits 11-15 */
-#define TARGET_CELL_SHIFT 4
-#define TARGET_X_SHIFT 6
-#define TARGET_Y_SHIFT 11
-#define LAUNCH_ENERGY_SHIFT 4           /* missile launcher target word: energy bits 4-11, step bits 12-15 */
-#define LAUNCH_STEP_SHIFT 12
+#define SENSOR_STRONG_ONLY SENSOR_STATE  /* flags: explosions of power 0xff (0x7f for lightning) only; a hit stops the object */
+#define SENSOR_EFFECT_ALWAYS EFFECT_HOLD  /* effect: trigger with the inverted match */
 #define STRONG_POWER 0xff               /* the explosion power that a strong-only sensor needs */
 #define STRONG_LIGHTNING_POWER 0x7f
 #define ORNAMENT_KEY_CATCH 0x13         /* ornament value: the alcove catches thrown objects */
@@ -202,14 +194,13 @@ static void explosion_trigger_sensors(int type, int x, int y, int power)
 {
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR) continue;
-        uint16_t w = thing_word(t, SENSOR_TYPE_DATA), flags = thing_word(t, SENSOR_FLAGS);
-        if ((w & SENSOR_TYPE_MASK) != SENSOR_EXPLOSION) continue;
-        int match = (w >> SENSOR_DATA_SHIFT) == SENSOR_ANY_THING || (w >> SENSOR_DATA_SHIFT) == (uint16_t)(type - SPELL_THING_FIRST);
-        match ^= flags >> SENSOR_INVERTED_BIT & 1;
-        if (flags & SENSOR_STRONG_ONLY && (int16_t)power < ((uint16_t)type == SPELL_LIGHTNING ? STRONG_LIGHTNING_POWER : STRONG_POWER))
+        if (sensor_type(t) != SENSOR_EXPLOSION) continue;
+        int match = sensor_data(t) == SENSOR_ANY_THING || sensor_data(t) == (uint16_t)(type - SPELL_THING_FIRST);
+        match ^= sensor_flag(t, SENSOR_INVERTED);
+        if (sensor_flag(t, SENSOR_STRONG_ONLY) && (int16_t)power < ((uint16_t)type == SPELL_LIGHTNING ? STRONG_LIGHTNING_POWER : STRONG_POWER))
             match = 0;
-        if ((flags & SENSOR_EFFECT_ALWAYS) == SENSOR_EFFECT_ALWAYS) sensor_trigger_target(t, !match, 0);
-        else if (match) sensor_trigger_target(t, flags >> SENSOR_EFFECT_SHIFT & 3, 0);
+        if (sensor_effect(t) == SENSOR_EFFECT_ALWAYS) sensor_trigger_target(t, !match, 0);
+        else if (match) sensor_trigger_target(t, sensor_effect(t), 0);
     }
 }
 
@@ -390,23 +381,21 @@ static int projectile_hit_wall_sensors(int wall_x, int wall_y, int x, int y, int
             dungeon_unlink_thing_from_square(projectile, party.cur_map, x, y);
             projectile = with_cell(projectile, cell);
         } else if (thing_type(t) == THING_SENSOR && object) {
-            uint16_t w = thing_word(t, SENSOR_TYPE_DATA), flags = thing_word(t, SENSOR_FLAGS);
-            uint16_t data = w >> SENSOR_DATA_SHIFT;
-            int kind = w & SENSOR_TYPE_MASK;
+            uint16_t data = sensor_data(t);
+            int kind = sensor_type(t);
             if (kind == SENSOR_PROJECTILE_HIT) {
                 int match = data == SENSOR_ANY_THING || data == item_get_index(payload);
-                match ^= flags >> SENSOR_INVERTED_BIT & 1;
+                match ^= sensor_flag(t, SENSOR_INVERTED);
                 if (!match) continue;
-                sensor_trigger_target(t, (flags & SENSOR_EFFECT_ALWAYS) == SENSOR_EFFECT_ALWAYS ? 0 : flags >> SENSOR_EFFECT_SHIFT & 3, 0);
-                if (done || !(flags & SENSOR_STRONG_ONLY)) continue;
+                sensor_trigger_target(t, sensor_effect(t) == SENSOR_EFFECT_ALWAYS ? 0 : sensor_effect(t), 0);
+                if (done || !sensor_flag(t, SENSOR_STRONG_ONLY)) continue;
                 dungeon_unlink_thing_from_square(projectile, party.cur_map, x, y);
                 projectile = with_cell(projectile, side);
             } else if (kind == SENSOR_PROJECTILE_PORTAL && !done && (data == SENSOR_ANY_THING || data == item_get_index(payload))) {
                 dungeon_unlink_thing_from_square(projectile, party.cur_map, x, y);
-                uint16_t target = thing_word(t, SENSOR_TARGET);
-                to_x = target >> TARGET_X_SHIFT & LOCATION_COORD_MASK;
-                to_y = target >> TARGET_Y_SHIFT;
-                int to_cell = square_type(dun_get_square(to_x, to_y)) == SQUARE_WALL ? target >> TARGET_CELL_SHIFT & 3 : flags >> SENSOR_EFFECT_SHIFT & 3;
+                to_x = sensor_target_x(t);
+                to_y = sensor_target_y(t);
+                int to_cell = square_type(dun_get_square(to_x, to_y)) == SQUARE_WALL ? sensor_target_cell(t) : sensor_effect(t);
                 projectile = with_cell(projectile, to_cell);
             } else {
                 continue;
@@ -975,10 +964,9 @@ void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e)
 {
     int16_t x = e->data[0], y = e->data[1];
     int dir = e->data[2], cell = (dir + 2) & 3;
-    uint16_t w = thing_word(sensor, SENSOR_TYPE_DATA), target = thing_word(sensor, SENSOR_TARGET);
-    int kind = w & SENSOR_TYPE_MASK;
-    uint16_t data = w >> SENSOR_DATA_SHIFT;
-    int energy = (uint8_t)(target >> LAUNCH_ENERGY_SHIFT), step = target >> LAUNCH_STEP_SHIFT;
+    int kind = sensor_type(sensor);
+    uint16_t data = sensor_data(sensor);
+    int energy = sensor_launch_energy(sensor), step = sensor_launch_step(sensor);
     int single = kind == LAUNCH_ITEM || kind == LAUNCH_SPELL || kind == LAUNCH_OBJECT;
     uint16_t first, second = (uint16_t)(data + SPELL_THING_FIRST);
     if (kind == LAUNCH_OBJECT || kind == LAUNCH_OBJECTS) {

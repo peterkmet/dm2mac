@@ -74,10 +74,13 @@ enum thing_field {
     TEXT_DATA = 2,              /* bit 0 visible, bits 1-2 kind, bits 3-10 ornament, bits 11-15 subtype */
     DOOR_DATA = 2,              /* bit 0 door type, bits 1-4 ornament ordinal, bit 5 no animation, bit 6 button */
     SENSOR_TYPE_DATA = 2,       /* sensor type bits 0-6, data bits 7-15 */
-    SENSOR_FLAGS = 4,           /* bit 0 active, bit 2 state, bits 12-15 ornament ordinal */
+    SENSOR_FLAGS = 4,           /* bit 0 busy, bit 2 state, bits 3-4 effect, bits 7-10 delay, bits 12-15 ornament ordinal */
+    SENSOR_TARGET = 6,          /* target square: cell bits 4-5, x bits 6-10, y bits 11-15 */
     GROUP_POSSESSIONS = 2,
     GROUP_CREATURE = 4,         /* byte: creature type */
     GROUP_ACTIVE = 5,           /* byte: active group index, 0xff none */
+    GROUP_HEALTH = 6,
+    GROUP_ITEM_CLASS = 8,       /* the item class of a creature that acts, -1 while it is created */
     GROUP_ANIM_SEQUENCE = 8,    /* static creatures: first frame of the animation sequence */
     GROUP_FLAGS = 0x0a,         /* byte: bit 1 seen by the party */
     GROUP_ANIM_STATE = 0x0a,    /* static creatures: animation state word */
@@ -100,6 +103,10 @@ enum thing_field {
 #define TELEPORTER_CLOSED 0x0001
 #define SENSOR_TYPE_MASK 0x7f
 #define SENSOR_DATA_SHIFT 7
+#define SENSOR_DATA_MASK 0x1ff
+#define SENSOR_DATA_SIGN 0x100          /* a counter: the count is below zero */
+#define SENSOR_DATA_SOUND 0x100         /* an animated ornament: its ambient sound runs */
+#define SENSOR_DATA_FRAME_MASK 0xff     /* an animated ornament: the frame offset of its animation */
 #define SENSOR_TELEPORTER_LINK 0x27
 
 /* The 16-bit field of a thing record at byte offset field. */
@@ -163,6 +170,56 @@ static inline int ai_marker_id(uint16_t text) { return thing_word(text, TEXT_DAT
 static inline int ai_marker_kind(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_KIND_SHIFT & AI_MARKER_KIND_MASK; }
 /* The level delta that the AI marker is for. */
 static inline int ai_marker_level(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_LEVEL_SHIFT; }
+
+static inline int sensor_type(uint16_t sensor) { return thing_word(sensor, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK; }
+/* The value of the sensor type: an item index, a counter, a map, an animation frame. */
+static inline uint16_t sensor_data(uint16_t sensor) { return thing_word(sensor, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT; }
+static inline void sensor_set_data(uint16_t sensor, unsigned data)
+{
+    set_thing_word(sensor, SENSOR_TYPE_DATA, (uint16_t)(sensor_type(sensor) | (data & SENSOR_DATA_MASK) << SENSOR_DATA_SHIFT));
+}
+static inline int sensor_frame(uint16_t sensor) { return sensor_data(sensor) & SENSOR_DATA_FRAME_MASK; }
+static inline bool sensor_sound_on(uint16_t sensor) { return sensor_data(sensor) & SENSOR_DATA_SOUND; }
+/* SENSOR_FLAGS bits. */
+#define SENSOR_BUSY 0x0001              /* the sensor ignores triggers until its animation or its wait ends */
+#define SENSOR_STATE_SHIFT 2
+#define SENSOR_STATE (1 << SENSOR_STATE_SHIFT)  /* on; some sensor types use it as an option */
+#define SENSOR_EFFECT_SHIFT 3
+#define SENSOR_EFFECT_MASK 3
+#define SENSOR_INVERTED 0x0020
+#define SENSOR_AUDIBLE 0x0040
+#define SENSOR_DELAY_SHIFT 7
+#define SENSOR_DELAY_MASK 0xf
+#define SENSOR_ORNAMENT_SHIFT 12
+static inline bool sensor_flag(uint16_t sensor, uint16_t bit) { return (thing_word(sensor, SENSOR_FLAGS) & bit) != 0; }
+static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on)
+{
+    uint16_t w = thing_word(sensor, SENSOR_FLAGS);
+    set_thing_word(sensor, SENSOR_FLAGS, on ? w | bit : w & ~bit);
+}
+/* The effect on the target: EFFECT_SET, EFFECT_CLEAR, EFFECT_TOGGLE, or EFFECT_HOLD. */
+static inline int sensor_effect(uint16_t sensor) { return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_EFFECT_SHIFT & SENSOR_EFFECT_MASK; }
+/* The ticks between the trigger and the event on the target. */
+static inline int sensor_delay(uint16_t sensor) { return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_DELAY_SHIFT & SENSOR_DELAY_MASK; }
+/* The ordinal of the ornament in the wall or floor ornament list of the map, 0 for none. */
+static inline int sensor_ornament_ordinal(uint16_t sensor) { return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_ORNAMENT_SHIFT; }
+/* SENSOR_TARGET fields. */
+#define SENSOR_TARGET_CELL_SHIFT 4
+#define SENSOR_TARGET_CELL_MASK 3
+#define SENSOR_TARGET_X_SHIFT 6
+#define SENSOR_TARGET_Y_SHIFT 11
+static inline int sensor_target_x(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK; }
+static inline int sensor_target_y(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_Y_SHIFT; }
+static inline int sensor_target_cell(uint16_t sensor)
+{
+    return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_CELL_SHIFT & SENSOR_TARGET_CELL_MASK;
+}
+/* A missile launcher: energy in bits 4-11 and step in bits 12-15 of SENSOR_TARGET. */
+#define LAUNCH_ENERGY_SHIFT 4
+#define LAUNCH_ENERGY_MASK 0xff
+#define LAUNCH_STEP_SHIFT 12
+static inline int sensor_launch_energy(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_ENERGY_SHIFT & LAUNCH_ENERGY_MASK; }
+static inline int sensor_launch_step(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_STEP_SHIFT; }
 
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
 int dungeon_load(const char *path);

@@ -39,7 +39,6 @@
 #define CREATURE_MASK 0x7f
 #define CONTAINER_KIND_MASK 0x3
 #define SPELL_MASK 0x7f
-#define SENSOR_DATA_MASK 0x1ff
 #define INDEX_MASK 0x3ff
 #define SPELL_THING_BASE 0xff80   /* a projectile payload that is a spell, not a thing record */
 
@@ -227,7 +226,7 @@ static void set_champion_slot(int champion, int slot, uint16_t thing)
 
 static int sensor_has_data(uint16_t sensor)
 {
-    int type = thing_word(sensor, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK;
+    int type = sensor_type(sensor);
     for (size_t i = 0; i < sizeof sensors_with_data; i++)
         if (sensors_with_data[i] == type) return 1;
     return 0;
@@ -289,7 +288,7 @@ static int write_thing(uint16_t thing)
     int carried = 0;  /* minion map, or projectile in a creature: the reference follows at the end */
     switch (type) {
     case THING_SENSOR:
-        if (sensor_has_data(thing) && !write_value(thing_word(thing, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT, SENSOR_DATA_MASK))
+        if (sensor_has_data(thing) && !write_value(sensor_data(thing), SENSOR_DATA_MASK))
             return 0;
         break;
     case THING_GROUP:
@@ -650,7 +649,7 @@ static int read_squares(void)
                     uint16_t data;
                     if (type == THING_SENSOR && sensor_has_data(t)) {
                         if (!read_value(&data, SENSOR_DATA_MASK)) return 0;
-                        set_thing_word(t, SENSOR_TYPE_DATA, (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) | data << SENSOR_DATA_SHIFT);
+                        sensor_set_data(t, data);
                     }
                     if (!read_packed(dungeon_thing_record(t), thing_masks[type], dungeon_thing_size(type), 1, 1)) return 0;
                 }

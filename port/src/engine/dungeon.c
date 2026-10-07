@@ -265,7 +265,7 @@ static int teleporter_link_side(int map, int x, int y, uint16_t *teleporter)
     *teleporter = dungeon_square_first_thing(map, x, y);
     if (*teleporter == THING_ENDOFLIST) return 0;  /* fix: the original reads a record of the end mark */
     for (uint16_t t = dungeon_next_thing(*teleporter); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (thing_type(t) == THING_SENSOR && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_TELEPORTER_LINK) {
+        if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_TELEPORTER_LINK) {
             int rotation = thing_word(*teleporter, TELEPORTER_TARGET) >> TELEPORTER_ROTATION_SHIFT & (SIDE_COUNT - 1);
             return (rotation + 2 & (SIDE_COUNT - 1)) + 1;
         }
@@ -594,12 +594,6 @@ enum text_ornament_subtype { TEXT_LEVEL_LINK_FIRST = 6, TEXT_LEVEL_LINK_LAST = 7
 enum link_sensor_type {
     SENSOR_LEVEL_LINK = 0x1c, SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
 };
-#define SENSOR_FLAG_BUSY 0x01
-#define SENSOR_FLAG_STATE 0x04
-#define SENSOR_TARGET_WORD 6            /* x bits 6-10, y bits 11-15 */
-#define SENSOR_TARGET_X_SHIFT 6
-#define SENSOR_TARGET_Y_SHIFT 11
-#define GROUP_HEALTH 6
 #define GROUP_ANIM_STEP 8
 #define GROUP_KEEP_CELLS 0x80           /* byte GROUP_DIR bit 7: the possessions keep their cells */
 #define GDAT_CATEGORY_WALLSET 8
@@ -623,11 +617,10 @@ static int number_linked_actuators(uint16_t thing, int map, int *numbered)
     int found = 0;
     for (thing = dungeon_next_thing(thing); thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (thing_type(thing) != THING_SENSOR) continue;
-        uint16_t w = thing_word(thing, SENSOR_TYPE_DATA);
-        if ((w & SENSOR_TYPE_MASK) != SENSOR_TELEPORTER_LINK) continue;
+        if (sensor_type(thing) != SENSOR_TELEPORTER_LINK) continue;
         found = 1;
-        if (w >> SENSOR_DATA_SHIFT) continue;
-        set_thing_word(thing, SENSOR_TYPE_DATA, (uint16_t)((w & SENSOR_TYPE_MASK) | (map + 1) << SENSOR_DATA_SHIFT));
+        if (sensor_data(thing)) continue;
+        sensor_set_data(thing, map + 1);
         ++*numbered;
     }
     return found;
@@ -703,11 +696,10 @@ static void prepare_group(uint16_t group, int x, int y, int map)
 static void link_door_flag(uint16_t sensor, int map)
 {
     dun_set_current_map(map);
-    uint16_t target = thing_word(sensor, SENSOR_TARGET_WORD);
-    int tx = target >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK, ty = target >> SENSOR_TARGET_Y_SHIFT;
+    int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor);
     if (square_type(dun_get_square(tx, ty)) != SQUARE_DOOR) return;
     uint16_t door = dungeon_square_first_thing(map, tx, ty);
-    door_set_flag(door, DOOR_SWITCH_ON, dungeon_thing_record(sensor)[SENSOR_FLAGS] & SENSOR_FLAG_STATE);
+    door_set_flag(door, DOOR_SWITCH_ON, sensor_flag(sensor, SENSOR_STATE));
 }
 
 /* The link pass of a thing on (x, y) of map; returns 0 when the rest of the square is skipped. */
@@ -727,16 +719,16 @@ static int link_thing(uint16_t t, int x, int y, int map)
         break;
     }
     case THING_SENSOR: {
-        uint8_t *flags = dungeon_thing_record(t) + SENSOR_FLAGS;
-        switch (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) {
+        switch (sensor_type(t)) {
         case SENSOR_LEVEL_LINK:
             mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
             break;
         case SENSOR_TELEPORTER_LINK: case SENSOR_ANIMATED_ORNAMENT:
-            if (*flags & SENSOR_FLAG_STATE) *flags |= SENSOR_FLAG_BUSY;
+            if (sensor_flag(t, SENSOR_STATE)) sensor_set_flag(t, SENSOR_BUSY, true);
             break;
         case SENSOR_STARTS_ON:
-            *flags = (uint8_t)((*flags & ~(SENSOR_FLAG_BUSY | SENSOR_FLAG_STATE)) | SENSOR_FLAG_STATE);
+            sensor_set_flag(t, SENSOR_BUSY, false);
+            sensor_set_flag(t, SENSOR_STATE, true);
             break;
         case SENSOR_DOOR_FLAG:
             link_door_flag(t, map);

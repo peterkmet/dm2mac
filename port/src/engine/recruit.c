@@ -17,7 +17,7 @@
 #include "ui.h"
 
 #define SENSOR_MIRROR 0x7e          /* the wall sensor of a champion mirror; its data is the portrait */
-#define SENSOR_MIRROR_ACTIVE 0x0004 /* sensor flags bit: the mirror still holds its champion */
+#define SENSOR_MIRROR_ACTIVE SENSOR_STATE  /* the mirror still holds its champion */
 #define PORTRAIT_TEXT 0x18          /* GDAT text (0x16, portrait, 5, 0x18): "NAME TITLE" */
 #define PORTRAIT_DATA_TYPE 8        /* GDAT item (0x16, portrait, 8, 0): health, stamina, mana, statistics, skills */
 #define STAT_START_MIN 30
@@ -93,7 +93,7 @@ static void champ_add_to_party(int portrait, int index, int dir)
 static uint16_t mirror_sensor(int x, int y)
 {
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (thing_type(t) == THING_SENSOR && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_MIRROR) return t;
+        if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_MIRROR) return t;
     return THING_NONE;
 }
 
@@ -109,7 +109,7 @@ int champ_start_recruit(int x, int y, int dir, int map)
         dun_set_current_map(saved);
         return 0;
     }
-    int portrait = (uint8_t)(thing_word(mirror, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT);
+    int portrait = (uint8_t)sensor_data(mirror);
     champ_add_to_party(portrait, index, dir);
     if (index) {
         ui_action_area_close();
@@ -164,7 +164,7 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         if (c->slots[s] != THING_NONE) dungeon_unlink_thing_from_square(c->slots[s], party.cur_map, fx, fy);
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror != THING_NONE)
-        set_thing_word(mirror, SENSOR_FLAGS, thing_word(mirror, SENSOR_FLAGS) & (uint16_t)~SENSOR_MIRROR_ACTIVE);
+        sensor_set_flag(mirror, SENSOR_MIRROR_ACTIVE, false);
     if (game.champion_count == 1) game.first_recruit_time = game.game_time;
     if (!recruit_silent) {
         text_args.champion = (int16_t)champ;
