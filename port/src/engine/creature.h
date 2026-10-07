@@ -1,6 +1,7 @@
 #ifndef CREATURE_H
 #define CREATURE_H
 #include <stdint.h>
+#include "dungeon.h"
 #include "gdat.h"
 #include "timeline.h"
 
@@ -106,6 +107,9 @@ _Static_assert(sizeof(ActiveGroup) == 34, "active groups have 34 bytes");
 #define GROUP_NOT_ACTIVE 0xff
 #define ACTIVE_ACTION_NONE 0xff     /* an active group without a chosen action */
 #define EVENT_NO_SLOT (-1)
+
+/* The thing id of the creature group with record index. */
+static inline uint16_t creature_group_thing(int index) { return (uint16_t)(THING_GROUP << THING_TYPE_SHIFT | index); }
 
 extern ActiveGroup *active_groups;
 extern int active_group_max, active_group_count;

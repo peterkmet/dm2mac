@@ -323,7 +323,7 @@ decimal engine/dungeon.c open: module cleanup
 decimal engine/game.c open: module cleanup
 decimal engine/inventory.c open: module cleanup
 decimal engine/item.c open: module cleanup
-decimal engine/magic.c open: module cleanup
+decimal engine/magic.c table: rule 6
 decimal engine/minion.c open: module cleanup
 decimal engine/money.c open: module cleanup
 decimal engine/move.c open: module cleanup
@@ -346,7 +346,7 @@ hex engine/creature.c open: module cleanup
 hex engine/game.c open: module cleanup
 hex engine/inventory.c open: module cleanup
 hex engine/item.c open: module cleanup
-hex engine/magic.c open: module cleanup
+hex engine/magic.c table: rule 6
 hex engine/merchant.c open: module cleanup
 hex engine/move.c open: module cleanup
 hex engine/recruit.c open: module cleanup
@@ -376,7 +376,6 @@ packed engine/creature.c open: module cleanup
 packed engine/damage.c open: module cleanup
 packed engine/game.c open: module cleanup
 packed engine/inventory.c open: module cleanup
-packed engine/magic.c open: module cleanup
 packed engine/minion.c open: module cleanup
 packed engine/move.c open: module cleanup
 packed engine/projectile.c open: module cleanup
