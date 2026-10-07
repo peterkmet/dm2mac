@@ -110,12 +110,6 @@ enum { SIDE_DOOR_STATE = 0, SIDE_DOOR_THING = 1, SIDE_FLOOR_ORNAMENT = 2, SIDE_S
 #define FLOOR_FRAME_STEP 0xa00      /* floor ornament words: frame * 10 in the high byte */
 
 enum door_state { DOOR_OPEN, DOOR_DESTROYED = 5 };
-#define DOOR_TYPE_BIT 0x01          /* door record bits */
-#define DOOR_ORNAMENT_SHIFT 1
-#define DOOR_ORNAMENT_MASK 0xf
-#define DOOR_NO_SLIDE 0x20          /* the door moves as a whole, not in two halves */
-#define DOOR_BUTTON 0x40
-#define DOOR_BUTTON_PRESSED_SHIFT 11
 #define DOOR_BUTTON_FRAMES 5
 #define DOOR_HALF_OFFSET 6          /* zone of the right door half, relative to the door zone */
 #define DOOR_LEFT_OFFSET 3
@@ -584,7 +578,7 @@ static int picture_exists(int category, int index, int entry)
 /* The door type of a door thing on the current map, 0xff for none. */
 static uint8_t door_type(uint16_t door)
 {
-    return view.door_types[thing_word(door, DOOR_DATA) & DOOR_TYPE_BIT];
+    return view.door_types[door_map_type(door)];
 }
 
 static void move_relative(int dir, int forward, int right, int *x, int *y)
@@ -2499,9 +2493,8 @@ static void view_draw_door_frame(int pos, int parts)
     view_setup_picture(1, SCALE_FULL, SCALE_FULL, 0, 0, 0, zone_id_for_view_cell(pos, 14, 0), ANCHOR_DOOR_LEFT,
                        view.wall_key, NO_KEY, CAT_MAP, view.gfx_set, entry);
     view_flush_picture();
-    uint16_t data = thing_word(door, DOOR_DATA);
-    if (data & DOOR_BUTTON) {
-        view_draw_door_ornament(CAT_DOOR_BUTTON, 0, (data >> DOOR_BUTTON_PRESSED_SHIFT & 1) * DOOR_BUTTON_FRAMES, pos);
+    if (door_flag(door, DOOR_BUTTON)) {
+        view_draw_door_ornament(CAT_DOOR_BUTTON, 0, door_flag(door, DOOR_BUTTON_PRESSED) * DOOR_BUTTON_FRAMES, pos);
     } else if (view_squares[pos].side[SIDE_FLOOR_ORNAMENT] != ORNAMENT_NONE) {
         uint16_t w = view_squares[pos].side[SIDE_FLOOR_ORNAMENT];
         view_draw_door_ornament(CAT_WALL_ORNAMENT, (uint8_t)w, (uint8_t)((int8_t)(w >> 8) + 1), pos);
@@ -2516,7 +2509,7 @@ static void view_draw_door(int pos, int frame_before, int frame_after, uint32_t 
     int state = s->side[SIDE_DOOR_STATE], depth = view_depth[pos];
     int row = depth <= 3 ? door_depth_row[depth] : -1, zone = door_zone[pos];
     if (state != DOOR_OPEN && depth <= 3 && row >= 0 && zone >= 0) {
-        uint16_t door = s->side[SIDE_DOOR_THING], data = thing_word(door, DOOR_DATA);
+        uint16_t door = s->side[SIDE_DOOR_THING];
         uint8_t type = door_type(door);
         int key = (int16_t)value_key(CAT_DOOR, type, ORN_KEY_COLOR);
         if (!key) key = DOOR_KEY_DEFAULT;
@@ -2530,7 +2523,7 @@ static void view_draw_door(int pos, int frame_before, int frame_after, uint32_t 
             }
             entry = 0;
         }
-        int ornament = data >> DOOR_ORNAMENT_SHIFT & DOOR_ORNAMENT_MASK;
+        int ornament = door_ornament(door);
         if (!ornament && state != DOOR_DESTROYED) {
             view_setup_picture(0, scale, scale, 0, 0, shade_depth, ZONE_NONE, ZONE_NO_ANCHOR, key, NO_KEY, CAT_DOOR, type,
                                entry);
@@ -2577,7 +2570,7 @@ static void view_draw_door(int pos, int frame_before, int frame_after, uint32_t 
         }
         if (state < 4) {
             zone += state;
-            if (!(data & DOOR_NO_SLIDE)) {
+            if (!door_flag(door, DOOR_VERTICAL)) {
                 /* the two halves slide apart: the right half first */
                 int16_t half = (int16_t)(view.ctx.w >> 1);
                 view.ctx.w = half;

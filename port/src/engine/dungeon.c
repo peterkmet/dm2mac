@@ -603,7 +603,6 @@ enum link_sensor_type {
 #define SENSOR_TARGET_WORD 6            /* x bits 6-10, y bits 11-15 */
 #define SENSOR_TARGET_X_SHIFT 6
 #define SENSOR_TARGET_Y_SHIFT 11
-#define DOOR_SENSOR_FLAG 0x2000         /* door data bit 13: the flag that sensor 0x46 copies from its state */
 #define GROUP_HEALTH 6
 #define GROUP_ANIM_STEP 8
 #define GROUP_KEEP_CELLS 0x80           /* byte GROUP_DIR bit 7: the possessions keep their cells */
@@ -712,8 +711,7 @@ static void link_door_flag(uint16_t sensor, int map)
     int tx = target >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK, ty = target >> SENSOR_TARGET_Y_SHIFT;
     if (square_type(dun_get_square(tx, ty)) != SQUARE_DOOR) return;
     uint16_t door = dungeon_square_first_thing(map, tx, ty);
-    uint16_t flag = dungeon_thing_record(sensor)[SENSOR_FLAGS] & SENSOR_FLAG_STATE ? DOOR_SENSOR_FLAG : 0;
-    set_thing_word(door, DOOR_DATA, (uint16_t)((thing_word(door, DOOR_DATA) & ~DOOR_SENSOR_FLAG) | flag));
+    door_set_flag(door, DOOR_SWITCH_ON, dungeon_thing_record(sensor)[SENSOR_FLAGS] & SENSOR_FLAG_STATE);
 }
 
 /* The link pass of a thing on (x, y) of map; returns 0 when the rest of the square is skipped. */

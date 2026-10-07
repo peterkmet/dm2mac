@@ -201,7 +201,7 @@ void timeline_process(void)
             break;
         }
         case EVENT_WEATHER: world_update_day_night(1); break;
-        case EVENT_SENSOR_ANIMATION_STEP: case EVENT_SENSOR_TIMER: case EVENT_SENSOR_IDLE: case EVENT_CLEAR_THING_FLAG8:
+        case EVENT_SENSOR_ANIMATION_STEP: case EVENT_SENSOR_TIMER: case EVENT_SENSOR_IDLE: case EVENT_DOOR_BUTTON_RELEASE:
         case EVENT_SENSOR_ANIMATION_END: case EVENT_SENSOR_AMBIENT_SOUND: case EVENT_SENSOR_READY: case EVENT_SET_MARKER:
             timeline_event_sensor(&e);
             break;

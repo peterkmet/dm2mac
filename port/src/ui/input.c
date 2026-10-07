@@ -1168,11 +1168,11 @@ static void view_click_door_button(int x, int y, uint16_t door)
     sound_request(3, 0, 0x88, 0x8c, 0x80, game.party_x, game.party_y, 1);
     sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, game.game_time + 1);
     TimelineEvent e = {.time_map = (game.game_time + 1) | (uint32_t)(uint8_t)party.cur_map << 24,
-                       .type = EVENT_CLEAR_THING_FLAG8};
+                       .type = EVENT_DOOR_BUTTON_RELEASE};
     uint16_t first = dungeon_square_first_thing(party.cur_map, x, y);
     put_le16(e.data, first);
     timeline_add_event(&e);
-    set_thing_word(door, 2, thing_word(door, 2) | 0x0800);
+    door_set_flag(door, DOOR_BUTTON_PRESSED, true);
     input_command_stop = 1;
 }
 
@@ -1307,7 +1307,7 @@ void view_click_in_viewport(int x, int y)
             if ((int16_t)game.leader == -1) break;
             int dx = z->cell == 3 ? fx : px, dy = z->cell == 3 ? fy : py;
             uint16_t door = dungeon_square_first_thing(party.cur_map, dx, dy);
-            if (!(thing_word(door, 2) & 0x0040)) {
+            if (!door_flag(door, DOOR_BUTTON)) {
                 int side = (dir + 1) & 3;
                 sensor_process_wall_click(dx + dir_dx[side], dy + dir_dy[side], (dir + 3) & 3, THING_NONE, hand);
             } else if (hand == THING_NONE) {

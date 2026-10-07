@@ -123,9 +123,6 @@ duplicate DIR_EAST open: module cleanup
 duplicate DIR_NORTH open: module cleanup
 duplicate DIR_SOUTH open: module cleanup
 duplicate DIR_WEST open: module cleanup
-duplicate DOOR_BREAKABLE open: module cleanup
-duplicate DOOR_BREAKABLE_BY_MAGIC open: module cleanup
-duplicate DOOR_BUTTON open: module cleanup
 duplicate DOOR_CLOSED open: module cleanup
 duplicate DOOR_OPEN open: module cleanup
 duplicate DOOR_STATE_BROKEN open: module cleanup

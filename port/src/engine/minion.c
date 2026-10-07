@@ -54,8 +54,6 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
        ICON_MARKER_BELOW = 0x0a };
 #define MIRROR_X 1
 #define MIRROR_Y 2
-#define DOOR_BUTTON 0x0040              /* door record word 2 */
-#define DOOR_NO_ANIMATION 0x2000
 #define DOOR_STATE_OPEN 0
 #define DOOR_STATE_BROKEN 5
 #define FAKE_WALL_SEEN SQUARE_FLAG_0
@@ -367,8 +365,7 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
         case ASPECT_TELEPORTER: draw_floor(&s, &base, x, y, flags); break;
         case ASPECT_DOOR_SIDE: case ASPECT_DOOR_FRONT: {
             int icon = s.aspect == ASPECT_DOOR_SIDE ? ICON_DOOR_SIDE : ICON_DOOR_FRONT;
-            const uint8_t *door = dungeon_thing_record(s.side[SIDE_DOOR_THING]);
-            if (!(door[2] & DOOR_BUTTON) && !(door[3] & DOOR_NO_ANIMATION >> 8)) icon += ICON_DOOR_NO_BUTTON;
+            if (!door_has_button(s.side[SIDE_DOOR_THING])) icon += ICON_DOOR_NO_BUTTON;
             if (s.side[SIDE_DOOR_STATE] == DOOR_STATE_OPEN || s.side[SIDE_DOOR_STATE] == DOOR_STATE_BROKEN) icon += ICON_DOOR_OPEN;
             draw_strip(&base, icon, x, y, 0);
             break;

@@ -61,13 +61,6 @@ enum { WALL_ITEM_HOLDER = 0x1a, WALL_ANY_ITEM = 0x29, WALL_ITEM = 0x2a, WALL_NOT
 #define TEXT_SUBTYPE_SHIFT 11
 enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_FALL_RISK = 10 };
 
-/* Door record bits. */
-#define DOOR_BREAKABLE_BY_MAGIC 0x0080
-#define DOOR_BREAKABLE 0x0100
-#define DOOR_OPENING 0x0200
-#define DOOR_MOVING 0x0400
-#define DOOR_ACTIVE 0x1000
-#define DOOR_TALL 0x0020                /* a closing door hits creatures of any height */
 enum { DOOR_OPEN = 0, DOOR_CLOSED = 4, DOOR_BROKEN = 5 };
 
 static uint8_t *square_byte(int x, int y)
@@ -88,7 +81,7 @@ static uint32_t event_time(uint32_t time)
 int dun_get_door_type(uint16_t door)
 {
     uint16_t flags = dungeon_map_flags(party.cur_map), graphics = dungeon_map_graphics(party.cur_map);
-    if (!(thing_word(door, DOOR_DATA) & 1)) return flags & 0x80 ? graphics >> 8 & 0xf : 0xff;
+    if (!door_map_type(door)) return flags & 0x80 ? graphics >> 8 & 0xf : 0xff;
     return flags & 0x100 ? graphics >> 12 : 0xff;
 }
 
@@ -168,8 +161,7 @@ void sensor_trigger_target(uint16_t sensor, int effect, int delay)
 int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay)
 {
     uint16_t door = first_thing(x, y);
-    uint16_t w = thing_word(door, DOOR_DATA);
-    if (!(magic ? w & DOOR_BREAKABLE_BY_MAGIC : w & DOOR_BREAKABLE)) return 0;
+    if (!door_flag(door, magic ? DOOR_BREAKABLE_BY_MAGIC : DOOR_BREAKABLE)) return 0;
     if ((int16_t)strength < (int16_t)door_value(door, DOOR_KEY_STRENGTH)) return 0;
     uint8_t *square = square_byte(x, y);
     if ((*square & SQUARE_DOOR_STATE) != DOOR_CLOSED) return 0;
@@ -914,11 +906,9 @@ static void timeline_event_wall_square(TimelineEvent *e)
             break;
         case 0x46: {  /* sets bit 13 of the door at the target */
             uint16_t door = first_thing(target >> 6 & 0x1f, target >> 11);
-            uint16_t d = thing_word(door, DOOR_DATA);
-            if (effect == EFFECT_SET) d |= 0x2000;
-            else if (effect == EFFECT_CLEAR) d &= ~0x2000;
-            else if (effect == EFFECT_TOGGLE) d = (uint16_t)((d & ~0x2000) | (~d & 0x2000));
-            set_thing_word(door, DOOR_DATA, d);
+            if (effect == EFFECT_SET) door_set_flag(door, DOOR_SWITCH_ON, true);
+            else if (effect == EFFECT_CLEAR) door_set_flag(door, DOOR_SWITCH_ON, false);
+            else if (effect == EFFECT_TOGGLE) door_set_flag(door, DOOR_SWITCH_ON, !door_flag(door, DOOR_SWITCH_ON));
             break;
         }
         }
@@ -1071,39 +1061,34 @@ static void timeline_event_door_square(TimelineEvent *e)
     uint8_t state = *square_byte(e->data[EVENT_X], e->data[EVENT_Y]) & SQUARE_DOOR_STATE;
     if (state == DOOR_BROKEN) return;
     uint16_t door = first_thing(e->data[EVENT_X], e->data[EVENT_Y]);
-    uint16_t w = thing_word(door, DOOR_DATA);
     int effect = e->data[EVENT_EFFECT];
-    if (w & DOOR_MOVING) {
-        int opening = sensor_apply_effect(effect, w >> 9 & 1) & 1;
-        w = (uint16_t)((w & ~DOOR_OPENING) | opening << 9);
-        if (!opening) w &= ~DOOR_ACTIVE;
-        set_thing_word(door, DOOR_DATA, w);
+    if (door_flag(door, DOOR_MOVING)) {
+        int opening = sensor_apply_effect(effect, door_flag(door, DOOR_OPENING)) & 1;
+        door_set_flag(door, DOOR_OPENING, opening);
+        if (!opening) door_set_flag(door, DOOR_MARKED, false);
         return;
     }
     int move = 0;
     if (state == DOOR_OPEN) {
         if (effect == EFFECT_CLEAR || effect == EFFECT_TOGGLE) {
-            w &= ~DOOR_OPENING;
+            door_set_flag(door, DOOR_OPENING, false);
             move = 1;
         }
     } else if (state == DOOR_CLOSED) {
         if (effect == EFFECT_SET || effect == EFFECT_TOGGLE) {
-            w |= DOOR_OPENING;
+            door_set_flag(door, DOOR_OPENING, true);
             move = 1;
         }
     } else {
-        w = (uint16_t)((w & ~DOOR_OPENING) | (effect == EFFECT_SET) << 9);
+        door_set_flag(door, DOOR_OPENING, effect == EFFECT_SET);
         move = 1;
     }
-    w = (uint16_t)((w & ~DOOR_MOVING) | move << 10);
+    door_set_flag(door, DOOR_MOVING, move);
     if (move) {
-        if (!(w & DOOR_OPENING)) w &= ~DOOR_ACTIVE;
-        set_thing_word(door, DOOR_DATA, w);
+        if (!door_flag(door, DOOR_OPENING)) door_set_flag(door, DOOR_MARKED, false);
         e->type = EVENT_DOOR_ANIMATION;
         timeline_add_event(e);
-        return;
     }
-    set_thing_word(door, DOOR_DATA, w);
 }
 
 static void timeline_event_fake_wall_square(TimelineEvent *e)
@@ -1162,16 +1147,16 @@ void timeline_event_door_animation(TimelineEvent *e)
     if (state == DOOR_BROKEN) return;
     if (party.cur_map == game.party_map) party.redraw = REDRAW_ALL_VIEW;
     uint16_t door = first_thing(x, y);
-    uint16_t w = thing_word(door, DOOR_DATA);
-    if (!(w & DOOR_MOVING)) return;
+    if (!door_flag(door, DOOR_MOVING)) return;
+    bool opening = door_flag(door, DOOR_OPENING);
     e->time_map++;
     int again = 0;
-    if (!(w & DOOR_OPENING)) {
+    if (!opening) {
         if (state == DOOR_CLOSED) {
-            set_thing_word(door, DOOR_DATA, w & ~DOOR_MOVING);
+            door_set_flag(door, DOOR_MOVING, false);
             return;
         }
-        int tall = (w & DOOR_TALL) != 0, hit = 0;
+        int vertical = door_flag(door, DOOR_VERTICAL), hit = 0;
         int16_t damage = (int16_t)door_value(door, DOOR_KEY_DAMAGE);
         if (dun_on_party_square(x, y) && state) {
             hit = 1;
@@ -1186,7 +1171,7 @@ void timeline_event_door_animation(TimelineEvent *e)
         uint16_t g = creature_group_at(party.cur_map, x, y);
         if (g != THING_NONE) {
             const CreatureInfo *info = creature_group_info(g);
-            int height = tall ? info->flags >> CREATURE_DOOR_SIZE_SHIFT & 3 : 1;
+            int height = vertical ? info->flags >> CREATURE_DOOR_SIZE_SHIFT & 3 : 1;
             if (!(info->flags & CREATURE_NOT_DOOR_HIT) && state >= height) {
                 if (info->door_flags & CREATURE_DOOR_HALF_DAMAGE) {
                     damage >>= 1;
@@ -1205,22 +1190,22 @@ void timeline_event_door_animation(TimelineEvent *e)
             e->time_map++;
         }
     } else if (!state) {
-        set_thing_word(door, DOOR_DATA, w & ~DOOR_MOVING);
+        door_set_flag(door, DOOR_MOVING, false);
         return;
     }
     if (!again) {
-        state += w & DOOR_OPENING ? -1 : 1;
+        state += opening ? -1 : 1;
         *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | (state & SQUARE_DOOR_STATE));
-        if (w & DOOR_OPENING ? state != DOOR_OPEN : state != DOOR_CLOSED) again = 1;
+        if (opening ? state != DOOR_OPEN : state != DOOR_CLOSED) again = 1;
         sound_play_with_fallback(CAT_DOOR, dun_get_door_type(door), !again && state == DOOR_CLOSED ? 0x8f : 0x8e, 0xfe, x, y, 1, 0x5f,
                                  0x80);
     }
     if (again) {
-        set_thing_word(door, DOOR_DATA, thing_word(door, DOOR_DATA) | DOOR_MOVING);
+        door_set_flag(door, DOOR_MOVING, true);
         timeline_add_event(e);
         return;
     }
-    set_thing_word(door, DOOR_DATA, thing_word(door, DOOR_DATA) & ~DOOR_MOVING);
+    door_set_flag(door, DOOR_MOVING, false);
 }
 
 /* ---- Sensor timeline events ---- */
@@ -1299,8 +1284,8 @@ void timeline_event_sensor(TimelineEvent *e)
     case EVENT_SENSOR_IDLE: case EVENT_SENSOR_READY:
         set_sensor_flags(thing, thing_word(thing, SENSOR_FLAGS) & ~SENSOR_BUSY);
         break;
-    case EVENT_CLEAR_THING_FLAG8:
-        set_thing_word(thing, 2, thing_word(thing, 2) & ~0x0800);
+    case EVENT_DOOR_BUTTON_RELEASE:
+        door_set_flag(thing, DOOR_BUTTON_PRESSED, false);
         break;
     case EVENT_SET_MARKER:
         set_thing_word(thing, 2, thing_word(thing, 2) | 1);
@@ -1469,7 +1454,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
             }
             case WALL_CLICK_DOOR_BUTTON: {
                 uint16_t target = thing_word(t, SENSOR_TARGET);
-                if (!(thing_word(first_thing(target >> 6 & 0x1f, target >> 11), DOOR_DATA) & 0x2000)) continue;
+                if (!door_flag(first_thing(target >> 6 & 0x1f, target >> 11), DOOR_SWITCH_ON)) continue;
             }
                 /* fall through */
             case WALL_CLICK_BUTTON: case WALL_CLICK_BUTTON_2: {

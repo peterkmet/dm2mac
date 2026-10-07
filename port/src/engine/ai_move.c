@@ -59,13 +59,6 @@
 #define EXPLOSION_LASTING_CLOUD 0x0e    /* blocks the sight */
 #define EXPLOSION_THING_BASE 0xff80
 /* Door record word +2 bits that the AI reads. */
-#define DOOR_BUTTON 0x0040
-#define DOOR_BREAKABLE 0x0080
-#define DOOR_BURNABLE 0x0100
-#define DOOR_LOCK_OPEN 0x0200
-#define DOOR_LOCKED 0x0400
-#define DOOR_MARKED 0x1000
-#define DOOR_OPENER 0x2000
 #define DOOR_STATE_OPEN 0
 #define DOOR_STATE_ONE_FOURTH 1
 #define DOOR_STATE_HALF 2
@@ -231,7 +224,7 @@ static int square_distance(int x1, int y1, int x2, int y2)
 static int door_type(uint16_t door)
 {
     uint16_t flags = dungeon_map_flags(party.cur_map), graphics = dungeon_map_graphics(party.cur_map);
-    if (!(thing_word(door, DOOR_DATA) & 1))
+    if (!door_map_type(door))
         return flags & MAP_HAS_DOOR_TYPE_0 ? graphics >> MAP_DOOR_TYPE_SHIFT & MAP_NIBBLE_MASK : DOOR_TYPE_NONE;
     return flags & MAP_HAS_DOOR_TYPE_1 ? graphics >> MAP_DOOR_TYPE_1_SHIFT : DOOR_TYPE_NONE;
 }
@@ -698,7 +691,7 @@ int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, 
     int16_t tx = (int16_t)door_x, ty = (int16_t)door_y, d = (int16_t)dir;
     int state = 0;  /* 1: the door is as wanted; 2: a spell is on the way */
     int16_t distance = 0;
-    uint8_t *door = NULL;
+    uint16_t door = THING_NONE;
     if (!flags) return command_failed(execute);
     if (tx == -1) {
         tx = (int16_t)(x + dir_dx[d]);
@@ -717,24 +710,25 @@ int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, 
     } else if (mode != 0 && door_state == DOOR_STATE_BROKEN) {
         return command_failed(execute);
     } else {
-        door = dungeon_thing_record(cached_first_thing());
-        uint16_t bits = (uint16_t)(door[2] | door[3] << 8);
-        if (mode == 2 && !(bits & DOOR_MARKED)) return command_failed(execute);
-        if (bits & DOOR_LOCKED && (bits & DOOR_LOCK_OPEN ? mode == 0 : mode != 0)) {
+        door = cached_first_thing();
+        bool moving = door_flag(door, DOOR_MOVING), opening = door_flag(door, DOOR_OPENING);
+        if (mode == 2 && !door_flag(door, DOOR_MARKED)) return command_failed(execute);
+        if (moving && (opening ? mode == 0 : mode != 0)) {
             state = 2;
         } else {
-            if (bits & DOOR_LOCKED && !(bits & DOOR_LOCK_OPEN) && !(flags &= (uint16_t)~(DOOR_SKILL_BASH | DOOR_SKILL_BURN)))
+            if (moving && !opening && !(flags &= (uint16_t)~(DOOR_SKILL_BASH | DOOR_SKILL_BURN)))
                 return command_failed(execute);
             distance = (int16_t)square_distance(x, y, tx, ty);
-            int button = (bits & DOOR_BUTTON) || (bits & DOOR_OPENER);
+            int button = door_has_button(door);
+            bool by_magic = door_flag(door, DOOR_BREAKABLE_BY_MAGIC);
             if (distance == 1) {
                 if (!((flags & DOOR_SKILL_BUTTON && button)
-                      || (mode == 0 && ((flags & DOOR_SKILL_BASH && bits & DOOR_BREAKABLE) || (flags & DOOR_SKILL_BURN && bits & DOOR_BURNABLE)))
+                      || (mode == 0 && ((flags & DOOR_SKILL_BASH && by_magic) || (flags & DOOR_SKILL_BURN && door_flag(door, DOOR_BREAKABLE))))
                       || flags & DOOR_SKILL_HANDLE))
                     return command_failed(execute);
             } else {
                 if (distance > info_attack_range(ai.info)) return command_failed(execute);
-                if (!((flags & DOOR_SKILL_SHOOT_BUTTON && button) || (mode == 0 && flags & DOOR_SKILL_BASH && bits & DOOR_BREAKABLE)))
+                if (!((flags & DOOR_SKILL_SHOOT_BUTTON && button) || (mode == 0 && flags & DOOR_SKILL_BASH && by_magic)))
                     return command_failed(execute);
                 if (!(int16_t)creature_trace_line(x, y, tx, ty, creature_square_blocks_line)) return command_failed(execute);
             }
@@ -756,7 +750,7 @@ int creature_ai_try_door_action(int mode, int x, int y, int door_x, int door_y, 
     if (creature_ai_turn_toward(d)) return 1;
     if (flags & DOOR_SKILL_MARK) {
         flags &= (uint16_t)~DOOR_SKILL_MARK;
-        if (mode == 0) door[3] |= DOOR_MARKED >> 8;
+        if (mode == 0) door_set_flag(door, DOOR_MARKED, true);
     }
     if (distance > 1) flags &= 5;
     if (flags & (DOOR_SKILL_HANDLE | DOOR_SKILL_PRESS_BUTTON)
@@ -876,8 +870,6 @@ static int search_square_test(int command, int x, int y)
 }
 
 
-#define DOOR_LOW 0x0020                 /* door word +2: the door blocks only creatures taller than its state */
-
 /* The move flags that the square in the AI cache needs; 0: the creature cannot enter it. */
 static uint16_t square_move_flags(int kind, int no_movers, int map_changed, int x, int y)
 {
@@ -894,10 +886,11 @@ static uint16_t square_move_flags(int kind, int no_movers, int map_changed, int 
         int state = square & SQUARE_DOOR_STATE;
         if ((state == DOOR_STATE_OPEN && kind != 4 && kind != 5) || state == DOOR_STATE_BROKEN) return MOVE_FLOOR;
         if (state == DOOR_STATE_CLOSED) return MOVE_DOOR | MOVE_LOCKED_DOOR;
-        uint16_t bits = thing_word(cached_first_thing(), DOOR_DATA);
-        if (no_movers && bits & DOOR_LOCKED) return bits & DOOR_LOCK_OPEN ? MOVE_FLOOR : MOVE_DOOR | MOVE_LOCKED_DOOR;
-        if (bits & DOOR_LOCKED && !(bits & DOOR_LOCK_OPEN)) return MOVE_LOCKED_DOOR;
-        int limit = bits & DOOR_LOW ? ai.info->flags >> DOOR_HEIGHT_PASSABLE_SHIFT & 3 : 1;
+        uint16_t door = cached_first_thing();
+        bool moving = door_flag(door, DOOR_MOVING), opening = door_flag(door, DOOR_OPENING);
+        if (no_movers && moving) return opening ? MOVE_FLOOR : MOVE_DOOR | MOVE_LOCKED_DOOR;
+        if (moving && !opening) return MOVE_LOCKED_DOOR;
+        int limit = door_flag(door, DOOR_VERTICAL) ? ai.info->flags >> DOOR_HEIGHT_PASSABLE_SHIFT & 3 : 1;
         return state > limit ? MOVE_DOOR | MOVE_LOCKED_DOOR : MOVE_FLOOR;
     }
     case SQUARE_TELEPORTER:
@@ -1960,9 +1953,9 @@ static int test_blocked(Search *s, int i)
         creature_ai_cache_square(x, y);
         if (c->mask == 0 && !(ai_square.square & SQUARE_DOOR_STATE)) return 0;
         if (c->mask == 1 && (ai_square.square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) return 0;
-        uint8_t bits = dungeon_thing_record(cached_first_thing())[3];
-        if (!(bits & DOOR_LOCKED >> 8)) return 1;
-        if (bits & DOOR_LOCK_OPEN >> 8) return c->mask != 0;
+        uint16_t door = cached_first_thing();
+        if (!door_flag(door, DOOR_MOVING)) return 1;
+        if (door_flag(door, DOOR_OPENING)) return c->mask != 0;
         return c->mask != 1;
     }
     case TARGET_PARTY_DISTANCE: {

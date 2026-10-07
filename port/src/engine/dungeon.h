@@ -1,5 +1,6 @@
 #ifndef DUNGEON_H
 #define DUNGEON_H
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -101,6 +102,36 @@ enum thing_field {
 #define SENSOR_DATA_SHIFT 7
 #define SENSOR_TELEPORTER_LINK 0x27
 
+/* The 16-bit field of a thing record at byte offset field. */
+uint16_t thing_word(uint16_t thing, int field);
+void set_thing_word(uint16_t thing, int field, uint16_t value);
+
+/* DOOR_DATA bits. */
+#define DOOR_MAP_TYPE 0x0001            /* the door has door type 1 of its map, else door type 0 */
+#define DOOR_ORNAMENT_SHIFT 1
+#define DOOR_ORNAMENT_MASK 0xf
+#define DOOR_VERTICAL 0x0020            /* the door moves up and down as a whole: small creatures pass under it */
+#define DOOR_BUTTON 0x0040
+#define DOOR_BREAKABLE_BY_MAGIC 0x0080
+#define DOOR_BREAKABLE 0x0100           /* by force */
+#define DOOR_OPENING 0x0200             /* the moving door opens, else it closes */
+#define DOOR_MOVING 0x0400
+#define DOOR_BUTTON_PRESSED 0x0800
+#define DOOR_MARKED 0x1000              /* a creature opened the door; the door clears it when it closes */
+#define DOOR_SWITCH_ON 0x2000           /* the state of sensor 0x46: its wall button and door spells operate the door */
+static inline bool door_flag(uint16_t door, uint16_t bit) { return (thing_word(door, DOOR_DATA) & bit) != 0; }
+static inline void door_set_flag(uint16_t door, uint16_t bit, bool on)
+{
+    uint16_t w = thing_word(door, DOOR_DATA);
+    set_thing_word(door, DOOR_DATA, on ? w | bit : w & ~bit);
+}
+/* The door type of the map that the door uses: 0 or 1. */
+static inline int door_map_type(uint16_t door) { return thing_word(door, DOOR_DATA) & DOOR_MAP_TYPE; }
+/* The ordinal of the door ornament in the door ornament list of the map, 0 for none. */
+static inline int door_ornament(uint16_t door) { return thing_word(door, DOOR_DATA) >> DOOR_ORNAMENT_SHIFT & DOOR_ORNAMENT_MASK; }
+/* A button on the door or the wall switch of the door operates it. */
+static inline bool door_has_button(uint16_t door) { return door_flag(door, DOOR_BUTTON | DOOR_SWITCH_ON); }
+
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
 int dungeon_load(const char *path);
 /* Reads a dungeon at the file position: DUNGEON.DAT (new_game 1, adds free records) or the image in a save file (new_game 0). */
@@ -129,9 +160,6 @@ int dungeon_thing_size(int type);
 uint8_t *dungeon_thing_record(uint16_t thing);
 /* True when thing has a record in the loaded dungeon. */
 int dungeon_thing_valid(uint16_t thing);
-/* The 16-bit field of a thing record at byte offset field. */
-uint16_t thing_word(uint16_t thing, int field);
-void set_thing_word(uint16_t thing, int field, uint16_t value);
 uint16_t dungeon_next_thing(uint16_t thing);
 uint8_t *dungeon_square_byte(int map, int x, int y);
 /* Removes thing from the thing list whose first-thing word is at field (a record field). */

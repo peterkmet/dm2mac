@@ -80,9 +80,6 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define STRONG_LIGHTNING_POWER 0x7f
 #define ORNAMENT_KEY_CATCH 0x13         /* ornament value: the alcove catches thrown objects */
 #define DOOR_KEY_GRATE 0x10             /* door value: objects and weak spells fly through the door */
-#define DOOR_BUTTON 0x0040
-#define DOOR_SPELL_OPENS 0x2000
-#define DOOR_BREAKABLE_BY_MAGIC 0x0080
 #define DOOR_STATE_BROKEN 5
 #define DOOR_STATE_ALMOST_OPEN 1
 #define ITEM_ATTR_FLAGS 0               /* item value 0: ITEM_* flags */
@@ -295,7 +292,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
         if (square_type(square) != SQUARE_DOOR || (square & SQUARE_DOOR_STATE) == DOOR_STATE_BROKEN) break;
         uint16_t door = dungeon_square_first_thing(party.cur_map, ex, ey);
         power_record = dungeon_thing_record(door);
-        if (thing_word(door, DOOR_DATA) & (DOOR_BUTTON | DOOR_SPELL_OPENS))
+        if (door_has_button(door))
             sensor_schedule_square_event(ex, ey, 0, (uint16_t)type == SPELL_DOOR_TOGGLE ? EFFECT_TOGGLE : EFFECT_SET,
                                          game.game_time + 1);
         break;
@@ -748,7 +745,7 @@ int explosion_get_attack(uint16_t explosion, uint16_t target)
         attack = (uint16_t)((int16_t)attack >> 1);
         /* fall through */
     case BLAST_FIREBALL:
-        if (kind == THING_DOOR && !(thing_word(target, DOOR_DATA) & DOOR_BREAKABLE_BY_MAGIC)) return 0;
+        if (kind == THING_DOOR && !door_flag(target, DOOR_BREAKABLE_BY_MAGIC)) return 0;
         return attack;
     case BLAST_HARM_NON_MATERIAL:
         return creature_group_info(target)->flags & CREATURE_NON_MATERIAL ? attack : 0;
