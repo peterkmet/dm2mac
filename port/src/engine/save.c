@@ -730,8 +730,7 @@ static void save_restore_timed_effects(void)
         case EVENT_ITEM_EFFECT: timeline_event_apply_item_effect(e, EFFECT_MODE_RESTORE); break;
         case EVENT_MAGIC_LIGHT:
             if (v && v > -LIGHT_POWER_COUNT && v < LIGHT_POWER_COUNT) {
-                uint16_t light = le16(game.magic_light);
-                put_le16(game.magic_light, (uint16_t)(light + (v < 0 ? light_power[-v] : light_power[v] * -2)));
+                save_set_magic_light((int16_t)(save_magic_light() + (v < 0 ? light_power[-v] : light_power[v] * -2)));
             }
             break;
         case EVENT_INVISIBILITY: game.magic_light[MAGIC_INVISIBILITY]++; break;
