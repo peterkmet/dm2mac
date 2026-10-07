@@ -19,7 +19,8 @@ typedef struct {
     uint16_t text;                /* wall text thing or portrait index */
 } ViewSquare;
 
-_Static_assert(sizeof(ViewSquare) == 18, "the original view square record has 18 bytes");
+#define VIEW_SQUARE_RECORD_SIZE 18
+_Static_assert(sizeof(ViewSquare) == VIEW_SQUARE_RECORD_SIZE, "the original view square record has 18 bytes");
 
 enum view_aspect {
     ASPECT_WALL, ASPECT_FLOOR, ASPECT_PIT, ASPECT_TELEPORTER = 5, ASPECT_HIDDEN = 7,
