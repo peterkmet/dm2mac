@@ -23,6 +23,7 @@ DECL = re.compile(r"^((?:(?:static|inline|const|struct|unsigned)\s+)*[A-Za-z_]\w
 PREFIXES = re.compile(r"^/\* Prefixes: ([\w ]+?) \*/$", re.M)
 NUMBERED = re.compile(r"events?_?\d|_\d+_to_\d+")
 PREDICATE = re.compile(r"(?:^|_)(?:is|has|can)_")
+PACKED = re.compile(r"(?:<<|>>)\s*(?:8|16|24)\b|\((?:u?int(?:8|16|32)_t|unsigned|int)\)\s*\((?:u?int(?:8|16|32)_t|unsigned|int)\)")
 FUNC_START = re.compile(r"^(?:static\s+)?[A-Za-z_][\w *]*?\b([a-z_]\w*)\s*\([^;]*$")
 
 
@@ -109,6 +110,15 @@ def test_each_constant_has_one_definition():
     ok = allowed()
     report("duplicate", [f"duplicate {name}  | {sorted(paths)}" for name, paths in sorted(where.items())
                          if len(paths) > 1 and ("duplicate", name) not in ok])
+
+
+def test_no_packed_fields_at_call_sites():
+    ok = allowed()
+    found = []
+    for path in sources():
+        if path.suffix == ".c" and ("packed", rel(path)) not in ok:
+            found += [f"packed {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path) if PACKED.search(line)]
+    report("packed", found)
 
 
 def test_le_helpers_only_in_le_header():

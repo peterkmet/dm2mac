@@ -24,7 +24,6 @@ int missile_from_sensor;
 #define PROJECTILE_HIT_CHANCE 5     /* record byte */
 #define CELL_MASK 3
 #define POSITION_SQUARE_DIR 0x0fff  /* position word: x, y, and direction */
-#define EVENT_TIME_MASK 0xffffff    /* event time_map: the game time below the map byte */
 /* A coordinate above a byte: the low byte is the square, the high byte the stop square + 1. */
 #define COORD_STOP_SHIFT 8
 #define COORD_STOP_ONE 0x100

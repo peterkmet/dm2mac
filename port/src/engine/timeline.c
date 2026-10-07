@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include "timeline.h"
 
-#define EVENT_TIME_MASK 0xffffffu
 #define END_OF_FREE_LIST (-1)
 
 Timeline timeline;

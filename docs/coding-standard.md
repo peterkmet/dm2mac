@@ -32,6 +32,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - No event numbers or original addresses in names. Name the game task, not the number.
 8. The source has four layers in subfolders of `port/src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook that `ui/` sets, for an event that must run the user interface inside the rule. Only `platform/` includes SDL.
 9. Little-endian read and write helpers (`le16`, `le32`, `put_le16`, `put_le32`) have one definition in one header. Modules do not define their own copies.
+10. A packed field (two or more values in one word) has accessor functions or macros in the header of the module that owns it, for example `timeline_time_map()` and `timeline_event_map()` in `engine/timeline.h`. Call sites do not shift, mask, or cast to pack or unpack it.
 
 ## Check before a step is done
 
@@ -46,6 +47,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
 - functions longer than 60 lines,
 - headers without a `Prefixes` line, prefix collisions, and functions outside the prefixes of their header,
 - event numbers in function names,
+- shifts by 8, 16, or 24 and double integer casts in `.c` files (packed fields at the call site),
 - includes of a higher layer, and SDL outside `platform/`.
 
 `tests/standard_allowlist.txt` lists the accepted exceptions, one per line with a reason. The reason `open: module cleanup` marks a violation that a later cleanup removes. `opl3.c` and `opl3.h` are vendored code (`opl3-LICENSE`), and the test does not check them.
