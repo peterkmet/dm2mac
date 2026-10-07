@@ -228,7 +228,7 @@ int shop_get_item_value(uint16_t item, int creature, int list, int buying, int a
     uint16_t price = gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE);
     price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_B), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_B);
     price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_A), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_A);
-    if (charges < 0) charges = (int16_t)item_max_charges((uint16_t)(item_index_to_thing_type(item) << THING_TYPE_SHIFT));
+    if (charges < 0) charges = (int16_t)item_max_charges(thing_make(item_index_to_thing_type(item), 0));
     int value = price + gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE_PER_CHARGE) * charges;
     if (apply_margin) {
         uint16_t margin = gdat_entry_index(draw_gdat(), CAT_CREATURE, creature, GDAT_TYPE_VALUE,

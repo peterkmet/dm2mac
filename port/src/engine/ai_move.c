@@ -422,7 +422,7 @@ static int wall_shows_shoot_target(int x, int y, int side, int filter)
 {
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         int type = thing_type(t);
-        if ((type != THING_SENSOR && type != THING_TEXT) || t >> THING_CELL_SHIFT != side) continue;
+        if ((type != THING_SENSOR && type != THING_TEXT) || thing_cell(t) != side) continue;
         int ornament = item_gdat_index(t);
         if (ornament != GDAT_NO_INDEX
             && gdat_entry_index(draw_gdat(), CAT_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_SHOOT_TARGET) == (uint16_t)filter)
@@ -1205,7 +1205,7 @@ int creature_find_matching_item_inside(uint16_t thing, int filter, int side)
     uint16_t list;
     int mask = CELLS_ALL;
     if (ai.item_flags & ITEM_SKILL_CHESTS && item_is_chest(thing)) {
-        found_cell = (int16_t)(thing >> THING_CELL_SHIFT);
+        found_cell = (int16_t)thing_cell(thing);
         list = thing_word(thing, CONTAINER_CONTENTS);
     } else {
         if (thing_type(thing) != THING_GROUP || !(ai.item_flags & (ITEM_SKILL_STATIC | ITEM_SKILL_GROUPS))) return -1;
@@ -1217,9 +1217,9 @@ int creature_find_matching_item_inside(uint16_t thing, int filter, int side)
         if (is_static) mask = possession_cell_mask(info->possessions, side);
     }
     for (uint16_t t = list; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (!(mask >> (t >> THING_CELL_SHIFT) & 1)) continue;
+        if (!(mask >> thing_cell(t) & 1)) continue;
         if (creature_thing_matches_filter(t, (int16_t)filter) || (int16_t)creature_find_matching_item_inside(t, filter, side) != -1) {
-            if (found_cell == POSSESSION_CELL_BASE) found_cell = (int16_t)(POSSESSION_CELL_BASE + (t >> THING_CELL_SHIFT));
+            if (found_cell == POSSESSION_CELL_BASE) found_cell = (int16_t)(POSSESSION_CELL_BASE + thing_cell(t));
             return found_cell;
         }
     }
@@ -1233,7 +1233,7 @@ static void scan_wall_ornaments(int side)
     uint16_t first = cached_first_thing(), t = first;
     for (; t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (!dun_is_wall_thing_ornament_shown(first, t)) continue;
-        if (t >> THING_CELL_SHIFT == ai_square_scan.cells[0]) ai_square_scan.facing_ornament = 1;
+        if (thing_cell(t) == ai_square_scan.cells[0]) ai_square_scan.facing_ornament = 1;
         else ai_square_scan.items_elsewhere = 1;
     }
     ai_square.first_object = t;
@@ -1244,7 +1244,7 @@ static int alcove_has_item(int16_t cell, int d, int filter)
 {
     for (uint16_t t = ai_square.first_object; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         int type = thing_type(t);
-        if ((uint16_t)(t >> THING_CELL_SHIFT) != (uint16_t)cell || type == THING_GROUP || type >= THING_PROJECTILE) continue;
+        if ((uint16_t)thing_cell(t) != (uint16_t)cell || type == THING_GROUP || type >= THING_PROJECTILE) continue;
         if (creature_thing_matches_filter(t, (int16_t)filter) || (int16_t)creature_find_matching_item_inside(t, filter, d) != -1)
             return 1;
     }
@@ -1256,7 +1256,7 @@ static int alcove_has_item(int16_t cell, int d, int filter)
 static int floor_item_in_reach(int same, int d, int filter, int16_t *action, int16_t *cell)
 {
     for (uint16_t t = creature_ai_cached_first_object(); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        *cell = (int16_t)(t >> THING_CELL_SHIFT);
+        *cell = (int16_t)thing_cell(t);
         int type = thing_type(t);
         if (type < THING_GROUP || type >= THING_PROJECTILE) continue;
         if (!(type != THING_GROUP && creature_thing_matches_filter(t, (int16_t)filter))) {
@@ -1405,7 +1405,7 @@ uint16_t creature_find_wall_actuator_in_cell(uint16_t first_thing, int cell, int
     for (uint16_t t = first_thing; t != THING_ENDOFLIST && t != THING_NONE; t = dungeon_next_thing(t)) {
         int type = thing_type(t);
         if (type > THING_SENSOR) break;
-        if (type != THING_SENSOR || t >> THING_CELL_SHIFT != (int16_t)cell) continue;
+        if (type != THING_SENSOR || thing_cell(t) != (int16_t)cell) continue;
         int kind = sensor_type(t);
         if (kind == SENSOR_NONE || kind == SENSOR_CREATURE_SLOT) continue;
         found = t;
@@ -1460,7 +1460,7 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
     if (!(ai_square.square & SQUARE_HAS_THINGS)) return command_failed(execute);
     uint16_t slot = THING_NONE;
     for (uint16_t t = cached_first_thing(); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
-        if (thing_type(t) == THING_SENSOR && t >> THING_CELL_SHIFT == ((d + 2) & DIR_MASK)
+        if (thing_type(t) == THING_SENSOR && thing_cell(t) == ((d + 2) & DIR_MASK)
             && sensor_type(t) == SENSOR_CREATURE_SLOT) {
             slot = t;
             break;
@@ -1565,7 +1565,7 @@ uint16_t creature_find_matching_item(int filter, uint16_t first_thing, int cell)
 {
     uint16_t t = first_thing;
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (is_item(thing_type(t)) && ((uint8_t)cell == CELL_ANY || (uint8_t)cell == t >> THING_CELL_SHIFT)
+        if (is_item(thing_type(t)) && ((uint8_t)cell == CELL_ANY || (uint8_t)cell == thing_cell(t))
             && creature_thing_matches_filter(t, (int16_t)filter))
             break;
     return t;
@@ -1580,7 +1580,7 @@ void creature_remove_matching_items(uint16_t *list_head, int filter, int cell)
     for (uint16_t t = *list_head; t != THING_ENDOFLIST; t = next) {
         next = dungeon_next_thing(t);
         int type = thing_type(t);
-        if (!is_item(type) || (cell != CELL_ANY && cell != t >> THING_CELL_SHIFT)) continue;
+        if (!is_item(type) || (cell != CELL_ANY && cell != thing_cell(t))) continue;
         int match = creature_thing_matches_filter(t, (int16_t)filter);
         if (type == THING_CONTAINER && (!item_is_moneybox(t) || match)) {
             uint16_t *contents = thing_list(t, CONTAINER_CONTENTS);
@@ -1590,7 +1590,7 @@ void creature_remove_matching_items(uint16_t *list_head, int filter, int cell)
                 for (uint16_t c = *contents; c != THING_ENDOFLIST; c = c_next) {
                     c_next = dungeon_next_thing(c);
                     dungeon_unlink_thing_from_list(c, contents);
-                    dungeon_append_thing((uint16_t)((c & THING_ID_MASK) | cell << THING_CELL_SHIFT), list_head);
+                    dungeon_append_thing(thing_with_cell(c, cell), list_head);
                 }
             }
         }
@@ -1611,7 +1611,7 @@ int creature_count_matching_items(int filter, uint16_t first_thing, int cell, in
         int type = thing_type(t);
         if ((into_groups && type == THING_GROUP) || (into_containers && item_is_chest(t)))
             count += creature_count_matching_items(filter, thing_word(t, CONTAINER_CONTENTS), cell, into_groups, into_containers);
-        if (type > THING_GROUP && type < THING_PROJECTILE && (cell == CELL_ANY || cell == t >> THING_CELL_SHIFT)
+        if (type > THING_GROUP && type < THING_PROJECTILE && (cell == CELL_ANY || cell == thing_cell(t))
             && creature_thing_matches_filter(t, (int16_t)filter))
             count++;
     }
@@ -1993,7 +1993,7 @@ static int blocked_group_in_front(Search *s, const AiCandidate *c, int16_t x, in
     if (c->mask == GROUP_TARGET_ANY) return 1;
     if (c->mask == GROUP_TARGET_CARRIES) {
         for (uint16_t t = thing_word(g, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-            if (thing_type(t) != THING_PROJECTILE && t >> THING_CELL_SHIFT != s->dir) return 1;
+            if (thing_type(t) != THING_PROJECTILE && thing_cell(t) != s->dir) return 1;
         return 0;
     }
     int16_t nx = (int16_t)(x + dir_dx[s->dir]), ny = (int16_t)(y + dir_dy[s->dir]);

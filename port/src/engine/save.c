@@ -359,7 +359,7 @@ static int write_thing_list(uint16_t thing, int with_cell, int follow)
         int type = thing_type(thing);
         if (type > THING_SENSOR) {
             if (!write_value(1, MORE_MASK) || !write_value(type, TYPE_MASK)) return 0;
-            if (with_cell && type != THING_GROUP && !write_value(thing >> THING_CELL_SHIFT, CELL_MASK)) return 0;
+            if (with_cell && type != THING_GROUP && !write_value(thing_cell(thing), CELL_MASK)) return 0;
         }
         if (type == THING_EXPLOSION && io.in_projectile) {
             if (!write_value(thing, SPELL_MASK)) return 0;
@@ -377,7 +377,7 @@ static int write_thing_list(uint16_t thing, int with_cell, int follow)
 static uint8_t square_mask(int map, int x, int y, int *skip)
 {
     *skip = 0;
-    switch (dungeon_square(map, x, y) >> SQUARE_TYPE_SHIFT) {
+    switch (square_type(dungeon_square(map, x, y))) {
     case SQUARE_PIT: return PIT_SAVED_BITS;
     case SQUARE_DOOR: return DOOR_SAVED_BITS;
     case SQUARE_FAKE_WALL: return FAKE_WALL_SAVED_BITS;
@@ -624,7 +624,7 @@ static int read_thing_list(int map, int x, int y, uint16_t *list, int with_cell,
         }
         uint16_t thing = dungeon_unused_thing(type);
         if (thing == THING_NONE) return 0;
-        thing |= cell << THING_CELL_SHIFT;
+        thing = thing_with_cell(thing, cell);
         if (list) dungeon_append_thing(thing, list);
         else if (!dungeon_link_thing_to_square(thing, map, x, y)) return 0;
         if (thing_masks[type] && !read_thing(thing)) return 0;
@@ -645,7 +645,7 @@ static void free_movable_things(void)
                         break;
                     }
     for (int type = THING_GROUP; type < THING_TYPE_COUNT; type++)
-        for (int i = 0; i < dungeon_thing_count(type); i++) set_thing_word(type << THING_TYPE_SHIFT | i, THING_NEXT, THING_NONE);
+        for (int i = 0; i < dungeon_thing_count(type); i++) set_thing_word(thing_make(type, i), THING_NEXT, THING_NONE);
 }
 
 /* Reads the saved bits of each square, the bits of its fixed things, and its movable things. */
@@ -680,7 +680,7 @@ static int read_deferred(void)
         uint16_t index, thing = io.deferred[i];
         if (!read_value(&index, INDEX_MASK)) return 0;
         int target_type = thing_type(thing) == THING_CONTAINER ? THING_GROUP : THING_CONTAINER;
-        uint16_t target = target_type << THING_TYPE_SHIFT | index;
+        uint16_t target = thing_make(target_type, index);
         if (!dungeon_thing_valid(target)) return 0;
         set_thing_word(thing, CONTAINER_CONTENTS, target);
     }

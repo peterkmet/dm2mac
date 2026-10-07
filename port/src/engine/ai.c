@@ -667,7 +667,7 @@ static void creature_ai_wander(void)
     int dir = group_dir(ai.group_thing);
     a->direction = (uint8_t)dir;
     int x = (ai.event.data[0] + dir_dx[dir]) & LOCATION_COORD_MASK, y = (ai.event.data[1] + dir_dy[dir]) & LOCATION_COORD_MASK;
-    a->destination = (uint16_t)((a->destination & LOCATION_MAP_BITS) | x | y << LOCATION_Y_SHIFT);
+    a->destination = (uint16_t)location_set_xy(a->destination, x, y);
     int type = square_type(dun_get_square(x, y));
     if (type == SQUARE_WALL || type == SQUARE_UNKNOWN) {
         a->action = 0;
@@ -1281,8 +1281,7 @@ static int dest_y(void) { return location_y(ai.active->destination); }
 /* Sets the destination square of the action on the current map. */
 static void set_destination(int x, int y)
 {
-    ai.active->destination =
-        (uint16_t)((ai.active->destination & LOCATION_MAP_BITS) | (x & LOCATION_COORD_MASK) | (y & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT);
+    ai.active->destination = (uint16_t)location_set_xy(ai.active->destination, x, y);
 }
 
 /* A floor sensor of a type on (x, y), at cell (CELL_ANY: any); THING_NONE none. */
@@ -1290,7 +1289,7 @@ static uint16_t dun_find_sensor_on_square(int x, int y, int cell, int type)
 {
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
-        if ((thing_type(t) == THING_SENSOR && cell == CELL_ANY) || t >> THING_CELL_SHIFT == cell) {
+        if ((thing_type(t) == THING_SENSOR && cell == CELL_ANY) || thing_cell(t) == cell) {
             if (sensor_type(t) == type) return t;
         }
     }
@@ -1302,7 +1301,7 @@ static int item_find_in_possessions(uint16_t group, int item, int cell)
 {
     if (group == THING_NONE) return 0;
     for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST && t != THING_NONE; t = dungeon_next_thing(t))
-        if ((cell == CELL_ANY || t >> THING_CELL_SHIFT == cell) && ((int16_t)item == -2 || item_get_index(t) == (uint16_t)item)) return 1;
+        if ((cell == CELL_ANY || thing_cell(t) == cell) && ((int16_t)item == -2 || item_get_index(t) == (uint16_t)item)) return 1;
     return 0;
 }
 
@@ -2100,7 +2099,7 @@ static int act_pick_up_items(void)
     int n = 0;
     for (uint16_t t = dungeon_square_first_object(party.cur_map, ai_dest_x, ai_dest_y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_GROUP) continue;
-        if (ai.active->cell != CELL_ANY && t >> THING_CELL_SHIFT != ai.active->cell) continue;
+        if (ai.active->cell != CELL_ANY && thing_cell(t) != ai.active->cell) continue;
         if (!creature_thing_matches_filter(t, ai.active->sub)) continue;
         move_thing(t, ai_dest_x, ai_dest_y, -1, 0);
         dungeon_append_thing(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
@@ -2144,7 +2143,7 @@ static int act_drop_items(void)
         if (t == THING_ENDOFLIST) break;
         n++;
         dungeon_unlink_thing_from_list(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
-        t = (uint16_t)((t & THING_ID_MASK) | ai.active->cell << THING_CELL_SHIFT);
+        t = thing_with_cell(t, ai.active->cell);
         move_thing(t, -1, 0, ai_dest_x, ai_dest_y);
         drop_sound(t, n);
     } while (ai.active->sub & SUB_REPEAT);
@@ -2195,7 +2194,7 @@ static int act_give_items(void)
         dungeon_unlink_thing_from_list(t, thing_list(ai.group_thing, GROUP_POSSESSIONS));
         int cell = ai.active->cell;
         if (cell == CELL_ANY) cell = rand_2bits();
-        t = (uint16_t)((t & THING_ID_MASK) | cell << THING_CELL_SHIFT);
+        t = thing_with_cell(t, cell);
         if (item_is_moneybox(t)) moneybox_set_placed(t, true);
         move_thing(t, -1, -1, ai_dest_x, ai_dest_y);
         drop_sound(t, n);

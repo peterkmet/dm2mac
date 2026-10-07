@@ -164,7 +164,7 @@ void ui_show_object_name(uint16_t thing)
 void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)
 {
     if (thing == THING_NONE) return;
-    thing &= THING_INDEX_MASK | THING_TYPE_MASK << THING_TYPE_SHIFT;
+    thing &= THING_ID_MASK;
     leader_hand.attr = item_attr(thing, ATTR_FLAGS);
     leader_hand.weight = (uint16_t)item_weight(thing);
     game.leader_hand = thing;
@@ -219,7 +219,7 @@ uint16_t champ_remove_object_from_slot(int champ, int slot)
 void champ_add_object_to_slot(int champ, uint16_t thing, int slot)
 {
     if (thing == THING_NONE) return;
-    thing &= THING_INDEX_MASK | THING_TYPE_MASK << THING_TYPE_SHIFT;
+    thing &= THING_ID_MASK;
     *slot_of(champ, slot) = thing;
     champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_ADD);
 }
@@ -286,7 +286,7 @@ void inv_put_object_in_free_slot(int champ, uint16_t thing)
 void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
 {
     /* the effect ends: a record of the item type stands in for the eaten item, with its kind */
-    uint16_t thing = (uint16_t)(le16(e->data + EFFECT_DATA_TYPE) << THING_TYPE_SHIFT);
+    uint16_t thing = thing_make(le16(e->data + EFFECT_DATA_TYPE), 0);
     uint8_t saved[DUNGEON_RECORD_MAX];
     dungeon_save_record(thing, saved);
     item_set_gdat_index(thing, e->data[EFFECT_DATA_INDEX]);
