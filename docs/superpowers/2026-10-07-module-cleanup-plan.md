@@ -51,6 +51,8 @@ Extra items per task, from the task 0b report:
 - Task 3: the sub-fields of sensor data get accessors in `engine/sensor.h`: sensor 0x16 (map `& 0x3f`, cell `>> 6 & 3`), the wall teleport click (`data & 0x3f`), the creature turn sensor (`& 3`).
 - Task 4: `DOOR_SKILL_BASH` (0x4) and `DOOR_SKILL_BURN` (0x8) in `engine/ai_move.h` look swapped: BASH selects fireball and lightning and tests `DOOR_BREAKABLE_BY_MAGIC`, BURN selects physical hits and tests `DOOR_BREAKABLE`. Read the uses and rename them to the real meaning.
 - Task 7: the local `LOCATION_*` macros in `engine/minion.c` use `location_x()`, `location_y()`, `location_map()`, and `location_pack()` of `engine/dungeon.h`.
+- Task 9: named list-head accessors (for example `group_possessions(g)`, `container_contents(c)`) instead of `thing_list(x, FIELD)` at the call sites.
+- Separate fix after task 9: `void *layout_padding` in `AiContext` (`engine/ai.h`). Without it, and with the offsets of `tests/test_ai_move.py` shifted to the real `offsetof` values, 3 tests fail (`test_try_move_changes_level`, `test_door_spells_on_the_way`, `test_merchant_commands`). Find the root cause with systematic debugging.
 - Task 9: rename `timeline_event_clear_thing_flag8` in `docs/skull-symbols.csv` to the name of `EVENT_DOOR_BUTTON_RELEASE`.
 
 | Task | Files |
