@@ -148,7 +148,7 @@ static int minion_map_allows_action(uint16_t thing, int command)
     }
     if (command == COMMAND_MINION_RECALL) return 1;
     if (type != MINION_MAP_LAST_TYPE) return 0;
-    uint8_t creature = dungeon_thing_record(group)[GROUP_CREATURE];
+    uint8_t creature = group_creature(group);
     if (creature == CREATURE_MINION_A) return command == COMMAND_SUMMON_2;
     if (creature == CREATURE_MINION_B) return command == COMMAND_SUMMON_3;
     return 0;

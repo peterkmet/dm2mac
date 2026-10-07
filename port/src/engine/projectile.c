@@ -603,7 +603,7 @@ static int projectile_reflect(TimelineEvent *e, uint16_t projectile, int x, int 
     if (g == THING_NONE || !(creature_group_info(g)->flags & CREATURE_REFLECTS_SPELLS)
         || thing_word(projectile, PROJECTILE_PAYLOAD) < SPELL_THING_FIRST)
         return 0;
-    int facing = thing_word(g, GROUP_DIR) >> GROUP_DIR_SHIFT & 1;
+    int facing = group_dir(g) & 1;
     int dir = spell_reflection[facing][(int16_t)(projectile >> THING_CELL_SHIFT) & 3][event_word(e, PROJECTILE_POSITION) >> POSITION_DIR_SHIFT & 3];
     if (dir < 4) {
         set_event_dir(e, dir);

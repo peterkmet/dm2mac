@@ -139,7 +139,6 @@ static const uint8_t after_command_table[60] = {
 #define CELLS_NEAR 0x03                 /* ... the two cells on the near side */
 #define CELLS_FAR 0x0c
 #define SLOPE_VERTICAL 0x80             /* line slope: the main delta is 0 */
-#define GROUP_ASLEEP 0x80               /* group record byte +0x0a */
 #define COMMAND_PAST_TABLE 0x14         /* the first command past the enabled table: it reads globals */
 #define COMMAND_AFTER_GLOBALS 0x20      /* ... the commands that read the bytes after the globals */
 #define PATH_X_SHIFT 3                  /* path step: direction bits 0-2, x bits 3-7, y bits 8-12 */
@@ -234,7 +233,6 @@ static int projectile_dir(uint16_t projectile)
     return timeline.events[thing_word(projectile, PROJECTILE_EVENT)].data[3] >> 2 & 3;
 }
 
-static int group_dir(void) { return ai.group[GROUP_DIR + 1] & 3; }
 static int group_x(void) { return ai.event.data[0]; }
 static int group_y(void) { return ai.event.data[1]; }
 
@@ -412,7 +410,7 @@ uint16_t creature_ai_cached_first_group(void)
 /* Turns the group toward dir (action turn left or right); returns 0 when it already faces dir. */
 int creature_ai_turn_toward(int dir)
 {
-    int facing = group_dir(), turn;
+    int facing = group_dir(ai.group_thing), turn;
     if (facing == ((dir + 2) & 3)) {
         turn = rand_bit() ? 1 : -1;
     } else if (facing == (int16_t)dir) {
@@ -767,9 +765,9 @@ int creature_ai_projectile_incoming(int x, int y)
 {
     for (int16_t d = 0; d < 4; d++) {
         if (!(class_flags() & AI_CLASS_SEES_BEHIND)) {
-            int asleep = ai.group[GROUP_FLAGS] & GROUP_ASLEEP;
-            int behind = !(ai.info->flags & CREATURE_FACES_PARTY) && at_group(x, y) && d == ((group_dir() + 2) & 3);
-            if ((asleep || behind) && rand_next() & 7) continue;
+            int wanders = group_mood_flag(ai.group_thing, MOOD_WANDERS);
+            int behind = !(ai.info->flags & CREATURE_FACES_PARTY) && at_group(x, y) && d == ((group_dir(ai.group_thing) + 2) & 3);
+            if ((wanders || behind) && rand_next() & 7) continue;
         }
         int16_t sx = (int16_t)x, sy = (int16_t)y;
         for (int16_t n = 0; n < 3; n++) {
@@ -900,7 +898,7 @@ static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing,
     if (type == SQUARE_PIT && dir == 5 && square & SQUARE_PIT_OPEN && !(square & 1)) {
         need = MOVE_OPEN_PIT;
         *action = ACTION_PIT;
-        *facing = (int16_t)group_dir();
+        *facing = (int16_t)group_dir(ai.group_thing);
     } else if (type == SQUARE_FLOOR || type == SQUARE_PIT || type == SQUARE_TELEPORTER || type == SQUARE_FAKE_WALL) {
         if (square & 2) {
             int16_t side = (int16_t)dun_find_adjacent_level_link(x, y, dir == 4 ? -1 : 1, &link);
@@ -911,7 +909,7 @@ static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing,
             } else {
                 *action = ACTION_FALL_IN_PIT;
                 need = MOVE_FALL;
-                *facing = (int16_t)group_dir();
+                *facing = (int16_t)group_dir(ai.group_thing);
             }
         }
     } else if (type == SQUARE_STAIRS && (square & SQUARE_STAIRS_UP ? dir == 4 : dir == 5)) {
@@ -955,7 +953,7 @@ static int test_move(Move *m, int command)
     int enabled = command_enabled(m->kind);
     if (!enabled && !ai.move_flags) return 1;
     if (m->d == 6) {
-        m->facing = (int16_t)group_dir();
+        m->facing = (int16_t)group_dir(ai.group_thing);
     } else if (m->d >= 4) {
         if (!(ai.move_flags & MOVE_LEVELS)) return 1;
         int map = level_change(m->sx, m->sy, m->d, &m->action, &m->facing, &m->tx, &m->ty);
@@ -1094,7 +1092,7 @@ static void execute_move(Move *m)
     } else if (m->action == -1) {
         m->action = abs16(m->sx - m->tx) + abs16(m->sy - m->ty) <= 1 ? ACTION_MOVE_NEAR : ACTION_MOVE;
     }
-    int current = group_dir();
+    int current = group_dir(ai.group_thing);
     if (current != m->facing && (current == ((m->facing + 2) & 3) || m->action != ACTION_MOVE_NEAR)) {
         if ((m->kind == 4 || m->kind == 5) && !(class_flags() & AI_CLASS_SEES_ALL_SIDES) && rand_2bits()) {
             m->action = ACTION_TURN_BACK;
@@ -1261,7 +1259,7 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
         }
     }
     if (!execute) return 1;
-    if (d == -1) d = (int16_t)group_dir();
+    if (d == -1) d = (int16_t)group_dir(ai.group_thing);
     if (!same && creature_ai_turn_toward(d)) return 1;
     ai.active->facing = (uint8_t)d;
     if (mode == 1) {
@@ -1295,7 +1293,7 @@ int creature_ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, in
             action = (int16_t)(ACTION_TAKE_LEFT + (side >= 2));
             if (side == 0) ai.active->facing = (uint8_t)((ai.active->facing - 1) & 3);
             else if (side == 3) ai.active->facing = (uint8_t)((ai.active->facing + 1) & 3);
-            if (class_flags() & AI_CLASS_TURNS_TO_TAKE && ai.active->facing != group_dir()) {
+            if (class_flags() & AI_CLASS_TURNS_TO_TAKE && ai.active->facing != group_dir(ai.group_thing)) {
                 creature_ai_turn_toward(ai.active->facing);
                 return 1;
             }
@@ -1379,7 +1377,7 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
             break;
         }
     }
-    if (slot == THING_NONE || sensor_data(slot) != ai.group[GROUP_CREATURE] || !sensor_flag(slot, SENSOR_STATE))
+    if (slot == THING_NONE || sensor_data(slot) != group_creature(ai.group_thing) || !sensor_flag(slot, SENSOR_STATE))
         return command_failed(execute);
     uint16_t actuator = creature_find_wall_actuator_in_cell(cached_first_thing(), (d + 2) & 3, mode, filter);
     if (actuator == THING_NONE) return command_failed(execute);
@@ -1408,7 +1406,6 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
 #define FILTER_MONEYBOX_OR_VARIANT 0x28
 #define FILTER_BITMAP_SIZE ITEM_CLASS_SET_SIZE
 #define MONEYBOX_EMPTY 0x04             /* container record byte 7 */
-#define GROUP_VARIANT 8                 /* group word +8: the variant of the item sets */
 
 /* True when a money box holds no coin. */
 static int moneybox_empty(uint16_t box) { return dungeon_thing_record(box)[7] & MONEYBOX_EMPTY; }
@@ -1450,13 +1447,13 @@ int creature_thing_matches_filter(uint16_t thing, int filter)
             if (item_is_moneybox(thing) && !moneybox_empty(thing)) return !invert;
             f = FILTER_BY_VARIANT;
         }
-        f = (int16_t)(f + (int16_t)(ai.group[GROUP_VARIANT] | ai.group[GROUP_VARIANT + 1] << 8) * 3);
+        f = (int16_t)(f + (int16_t)thing_word(ai.group_thing, GROUP_ITEM_CLASS) * 3);
     }
-    uint8_t *bitmap = filter_bitmap(f, ai.group[GROUP_CREATURE], type == THING_GROUP);
+    uint8_t *bitmap = filter_bitmap(f, group_creature(ai.group_thing), type == THING_GROUP);
     if (!bitmap) return 0;
     int16_t value;
     if (type == THING_GROUP) {
-        value = dungeon_thing_record(thing)[GROUP_CREATURE];
+        value = group_creature(thing);
     } else if (type == THING_SENSOR) {
         int kind = sensor_type(thing);
         if (kind == ACTUATOR_COUNTED_ITEM && !sensor_data(thing)) return 0;
@@ -1623,7 +1620,7 @@ static void hide_party_target(AiCandidate *c)
     uint32_t r = rand_next();
     if (!(r & ROLL_CHECK_ADJACENT)) {
         if (dist == 0) return;
-        if (dist == 1 && dun_get_direction_to(group_x(), group_y(), ai_party.x, ai_party.y) == group_dir()) return;
+        if (dist == 1 && dun_get_direction_to(group_x(), group_y(), ai_party.x, ai_party.y) == group_dir(ai.group_thing)) return;
     }
     int hide = dist > 4;
     if (!hide) {
@@ -1648,7 +1645,7 @@ static void search_setup(Search *s)
         uint8_t flags = kind < sizeof kind_flags ? kind_flags[kind] : 0;
         c->unknown_10 = flags;
         s->or_flags |= flags;
-        uint16_t home = (uint16_t)(ai.group[GROUP_HOME] | ai.group[GROUP_HOME + 1] << 8);
+        uint16_t home = thing_word(ai.group_thing, GROUP_HOME);
         switch (kind) {
         case TARGET_HOME:
             s->home_x = location_x(home);
@@ -1795,7 +1792,7 @@ static int test_entered(Search *s, int i)
     case TARGET_STEAL: {
         if (!on_party_map || ai_action_flag((int8_t)ai.previous_action) & AI_ACTION_FLAG_BUSY) return 0;
         ai.attack_flags &= c->mask;
-        int r = creature_ai_try_attack(0, x, y, -1, -1, group_dir());
+        int r = creature_ai_try_attack(0, x, y, -1, -1, group_dir(ai.group_thing));
         ai.attack_flags = s->saved_attack;
         return r;
     }
@@ -1885,11 +1882,11 @@ static int test_blocked(Search *s, int i)
         return r;
     }
     case TARGET_GROUP_FACING:
-        if (group_dir() != s->dir) return 0;
+        if (group_dir(ai.group_thing) != s->dir) return 0;
         /* fall through */
     case TARGET_GROUP_IN_FRONT: {
         uint16_t g = creature_ai_cached_first_group();
-        if (g == THING_ENDOFLIST || dungeon_thing_record(g)[GROUP_CREATURE] != c->item) return 0;
+        if (g == THING_ENDOFLIST || group_creature(g) != c->item) return 0;
         if (c->mask == 1) return 1;
         if (c->mask == 2) {
             for (uint16_t t = thing_word(g, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))

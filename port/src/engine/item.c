@@ -29,7 +29,6 @@
 #define POTION_POWER_MASK 0xff
 #define POTION_POWER_MAX 0xff
 #define POTION_DO_NOT_DISCARD 0x8000
-#define GROUP_DO_NOT_DISCARD 0x0400  /* in word GROUP_DIR */
 #define MONEYBOX_TEXT_ENTRY 0x40       /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
 #define ITEM_NAME_ENTRY 0x18
 #define ITEM_ICON_ENTRY 0x18           /* the first icon of an item */
@@ -85,7 +84,7 @@ uint8_t item_gdat_index(uint16_t thing)
         if (thing >= EXPLOSION_THING_FIRST) return (uint8_t)(thing - EXPLOSION_INDEX_BASE);
         uint16_t w2 = record_word(thing, 2), w4 = record_word(thing, 4);
         switch (thing_type(thing)) {
-        case THING_GROUP: return dungeon_thing_record(thing)[GROUP_CREATURE];
+        case THING_GROUP: return group_creature(thing);
         case THING_WEAPON:
         case THING_ARMOUR:
         case THING_MISC:
@@ -273,7 +272,7 @@ void item_set_do_not_discard(uint16_t thing, int keep)
         set_thing_word(thing, 2, (uint16_t)((thing_word(thing, 2) & ~POTION_DO_NOT_DISCARD) | (keep & 1) << 15));
         break;
     case THING_GROUP:
-        set_thing_word(thing, GROUP_DIR, (uint16_t)((thing_word(thing, GROUP_DIR) & ~GROUP_DO_NOT_DISCARD) | (keep & 1) << 10));
+        group_set_flag(thing, GROUP_DO_NOT_DISCARD, keep & 1);
         break;
     default: break;
     }

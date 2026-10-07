@@ -303,9 +303,8 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
     for (int i = 0; i <= 4; i++) {
         uint16_t g = creature_group_at(party.cur_map, sx, sy);
         if (g != THING_NONE) {
-            const uint8_t *r = dungeon_thing_record(g);
             int size = (int8_t)creature_group_info(g)->hit_size;
-            int zone = creature_get_view_cell_zone(g, -(r[GROUP_DIR + 1] & 3) & 3);
+            int zone = creature_get_view_cell_zone(g, -group_dir(g) & 3);
             view_grid5_cell_to_xy(sx, sy, (uint16_t)zone, &cx, &cy);
             cx = (int16_t)(cx - px);
             cy = (int16_t)(cy - py);
@@ -330,8 +329,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
 /* True when the creature in front stands on a side cell that blocks the step. */
 static int move_group_side_blocks(uint16_t group, int dir)
 {
-    const uint8_t *r = dungeon_thing_record(group);
-    int side = ((r[GROUP_DIR + 1] & 3) + dir) & 3;
+    int side = (group_dir(group) + dir) & 3;
     if (side != DIR_EAST && side != DIR_WEST) return 0;
     return creature_get_view_cell_zone(group, side) % 5 != 2;
 }
@@ -923,7 +921,7 @@ static int move_group_meet_square(uint16_t thing, int map, int dst_x, int dst_y)
 static int move_group_arrive(uint16_t thing, int map, int dst_x, int dst_y, int flying)
 {
     dun_set_current_map(map);
-    int active = dungeon_thing_record(thing)[GROUP_ACTIVE];
+    int active = group_active(thing);
     int arrival = move_group_meet_square(thing, map, dst_x, dst_y);
     if (arrival == ARRIVAL_WAIT) {
         if (active != 0xff) creature_deactivate_group(active);
@@ -1010,7 +1008,7 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
             if (flying) dungeon_unlink_thing_from_square(thing, party.cur_map, src_x, src_y);
             else sensor_process_floor(src_x, src_y, thing, dun_on_party_square(src_x, src_y), 0, dst_x < 0 && dst_y < 0);
             if (type == THING_GROUP && dst_x < -1) {
-                int a = dungeon_thing_record(thing)[GROUP_ACTIVE];
+                int a = group_active(thing);
                 if (a != 0xff) creature_deactivate_group(a);
             }
         }
@@ -1037,7 +1035,6 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
 #define SENSOR_SHOP_DISPLAY 0x30
 #define TEXT_KEEPS_SQUARE 4             /* a text ornament subtype that protects the things of its square */
 #define DISCARD_NEAR 5                  /* the things this near to the party on its map stay */
-#define GROUP_DO_NOT_DISCARD 0x0400     /* GROUP_DIR word bit 10 */
 #define ITEM_DO_NOT_DISCARD 0x80        /* weapon, armour, misc: bit 7 of the data word; potion: bit 15 */
 #define ITEM_KIND_MASK 0x7f
 #define POTION_KIND_SHIFT 8
@@ -1079,7 +1076,7 @@ static int discard_take(uint16_t t, int type, int subtype, int map, int x, int y
     int kind;
     switch (type) {
     case THING_GROUP:
-        if (thing_word(t, GROUP_DIR) & GROUP_DO_NOT_DISCARD || thing_word(t, GROUP_POSSESSIONS) != THING_ENDOFLIST
+        if (group_flag(t, GROUP_DO_NOT_DISCARD) || thing_word(t, GROUP_POSSESSIONS) != THING_ENDOFLIST
             || (subtype != DISCARD_ANY_KIND && subtype != r[GROUP_CREATURE]))
             return 0;
         dun_set_current_map(map);

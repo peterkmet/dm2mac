@@ -144,8 +144,6 @@ duplicate GDAT_TYPE_TEXT open: module cleanup
 duplicate GDAT_TYPE_VALUE open: module cleanup
 duplicate GLOBAL_BYTE_FIRST open: module cleanup
 duplicate GLOBAL_BYTE_MAX open: module cleanup
-duplicate GROUP_DIR_SHIFT open: module cleanup
-duplicate GROUP_DO_NOT_DISCARD open: module cleanup
 duplicate HASTE_MAX open: module cleanup
 duplicate HEADER_SIZE open: module cleanup
 duplicate ICON_H open: module cleanup
@@ -398,13 +396,7 @@ bool engine/timeline.h open: module cleanup
 bool ui/automap.h open: module cleanup
 record engine/ai.c open: module cleanup
 record engine/ai_move.c open: module cleanup
-record engine/champ_action.c open: module cleanup
-record engine/champion.c open: module cleanup
-record engine/creature.c open: module cleanup
-record engine/item.c open: module cleanup
-record engine/move.c open: module cleanup
 record engine/projectile.c open: module cleanup
-record engine/save.c open: module cleanup
 record engine/weather.c open: module cleanup
 record ui/view.c open: module cleanup
 packed data/gdat.c open: module cleanup

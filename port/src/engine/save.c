@@ -234,7 +234,7 @@ static int sensor_has_data(uint16_t sensor)
 
 static int creature_is_static(uint16_t group)
 {
-    int info = gdat_find(io.gdat, GDAT_CREATURE_CATEGORY, dungeon_thing_record(group)[GROUP_CREATURE], GDAT_TYPE_VALUE,
+    int info = gdat_find(io.gdat, GDAT_CREATURE_CATEGORY, group_creature(group), GDAT_TYPE_VALUE,
                          GDAT_CREATURE_INFO_ENTRY);
     if (info == -1) info = 0;  /* a missing value key reads as 0 */
     const CreatureInfo *record = creature_info_at(info);

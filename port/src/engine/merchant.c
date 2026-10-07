@@ -20,7 +20,6 @@ enum {
 #define FILTER_MONEY_BOX 0x3e
 #define FILTER_NEW_COINS 0x47       /* ai.arg1 of the carried item search after the change */
 #define ANY_CELL 0xff
-#define GROUP_DIR_SHIFT 8           /* GROUP_DIR bits 8-9: the direction the group faces */
 #define COIN_MAX 0x12               /* the most coins of a price */
 #define DISCOUNT_FROM 0x10          /* a price above it gets a random discount of up to 15 % */
 #define PERCENT 100
@@ -40,7 +39,7 @@ typedef struct {
     int filter, buying, margin, charges;
 } ItemSum;
 
-static int facing(void) { return thing_word(ai.group_thing, GROUP_DIR) >> GROUP_DIR_SHIFT & 3; }
+static int facing(void) { return group_dir(ai.group_thing); }
 
 static uint16_t front_group(void)
 {
@@ -69,7 +68,7 @@ static void sum_thing(uint16_t t, ItemSum *s)
     if (!creature_thing_matches_filter(t, s->filter)) return;
     if (s->sum == -1) s->sum = 0;
     int charges = s->charges ? (int16_t)item_add_charges(t, 0) : -1;
-    s->sum = (int16_t)(s->sum + shop_get_item_value(item_get_index(t), ai.group[GROUP_CREATURE],
+    s->sum = (int16_t)(s->sum + shop_get_item_value(item_get_index(t), group_creature(ai.group_thing),
                                                      (int16_t)thing_word(ai.group_thing, GROUP_ANIM_SEQUENCE), s->buying,
                                                      s->margin, (int16_t)charges));
 }

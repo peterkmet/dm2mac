@@ -944,7 +944,7 @@ static int is_item(uint16_t thing)
 
 static int creature_dir(uint16_t group)
 {
-    return thing_word(group, GROUP_DIR) >> GROUP_DIR_SHIFT & 3;
+    return group_dir(group);
 }
 
 static int creature_picture_exists(int type, int entry)
@@ -955,7 +955,7 @@ static int creature_picture_exists(int type, int entry)
 /* The grid cell of a creature in its square, turned by dir: the cell of its animation frame. */
 int creature_get_view_cell_zone(uint16_t group, int dir)
 {
-    if (!gdat_exists(draw_gdat(), CAT_CREATURE, dungeon_thing_record(group)[GROUP_CREATURE], TYPE_CREATURE_DATA,
+    if (!gdat_exists(draw_gdat(), CAT_CREATURE, group_creature(group), TYPE_CREATURE_DATA,
                      CREATURE_FRAMES))
         return CELL_CENTER;
     uint8_t frame[CREATURE_FRAME_SIZE];
@@ -1045,7 +1045,7 @@ static void load_square_things(int pos, int dir, int party_x, int party_y, int x
             view_grid5_cell_to_xy(x, y, (uint16_t)view_get_thing_position(thing, DIR_NORTH), &cx, &cy);
             if (pos != POS_PARTY)
                 view_offset_creature_toward_party(eye_x, eye_y,
-                                                  (int8_t)creature_info(draw_gdat(), dungeon_thing_record(thing)[GROUP_CREATURE])->size,
+                                                  (int8_t)creature_info(draw_gdat(), group_creature(thing))->size,
                                                   &cx, &cy);
             int16_t lateral, forward;
             switch (dir) {
@@ -1454,7 +1454,7 @@ static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordina
     const gdat_t *g = draw_gdat();
     int cell = CELL_CENTER, row, zone;
     if (group != THING_NONE) {
-        int type = dungeon_thing_record(group)[GROUP_CREATURE];
+        int type = group_creature(group);
         int low = (creature_info(g, type)->possessions & POSSESSIONS_KIND_MASK) <= POSSESSIONS_LOW_KIND;
         int16_t lift = (int16_t)gdat_entry_index(g, CAT_CREATURE, type, GDAT_TYPE_VALUE, CREATURE_KEY_POSSESSION_LIFT);
         dy -= lift ? lift : possession_lift[low];
@@ -1512,7 +1512,7 @@ static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordina
 static void view_draw_objects_in_cell(uint16_t thing, int pos, int cell, uint16_t group)
 {
     if (thing == THING_ENDOFLIST || view_depth[pos] > 3) return;
-    const CreatureInfo *info = group != THING_NONE ? creature_info(draw_gdat(), dungeon_thing_record(group)[GROUP_CREATURE])
+    const CreatureInfo *info = group != THING_NONE ? creature_info(draw_gdat(), group_creature(group))
                                                   : NULL;
     int ordinal = 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
@@ -1545,7 +1545,7 @@ static void view_draw_objects_in_cell(uint16_t thing, int pos, int cell, uint16_
 static void view_draw_creature(int pos, int depth, uint16_t group)
 {
     const gdat_t *g = draw_gdat();
-    int type = dungeon_thing_record(group)[GROUP_CREATURE];
+    int type = group_creature(group);
     uint8_t frame[CREATURE_FRAME_SIZE];
     creature_anim_frame(g, group, frame);
     /* a vanishing creature keeps the cell, size, and shift of the frame where it stopped */
@@ -1629,7 +1629,7 @@ static int view_draw_creatures(uint16_t thing, int pos, uint32_t cell_mask)
         view_draw_creature(pos, depth, thing);
         view_flush_picture();
         if (!(info->flags & CREATURE_STATIC)) {
-            record[GROUP_FLAGS] |= GROUP_SEEN;
+            group_set_mood_flag(thing, GROUP_SEEN, true);
         } else if (info->possessions & POSSESSIONS_KIND_MASK && depth <= 3) {
             if (view_squares[pos].aspect == ASPECT_DOOR_FRONT) cell_mask = THINGS_NEAR;  /* like the original, kept */
             view_draw_creature_possessions(thing_word(thing, GROUP_POSSESSIONS), pos, cell_mask, thing);

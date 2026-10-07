@@ -588,8 +588,6 @@ enum text_ornament_subtype { TEXT_LEVEL_LINK_FIRST = 6, TEXT_LEVEL_LINK_LAST = 7
 enum link_sensor_type {
     SENSOR_LEVEL_LINK = 0x1c, SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
 };
-#define GROUP_ANIM_STEP 8
-#define GROUP_KEEP_CELLS 0x80           /* byte GROUP_DIR bit 7: the possessions keep their cells */
 #define GDAT_CATEGORY_WALLSET 8
 #define GDAT_TYPE_VALUE 0x0b
 #define WALLSET_PIT_TO_MARKER 0x6a      /* wall set value: its pits lead to a marker, not to the square below */
@@ -663,15 +661,15 @@ static int link_teleporters(uint16_t teleporter, int x, int y, int map)
    possessions. */
 static void prepare_group(uint16_t group, int x, int y, int map)
 {
-    const CreatureInfo *info = creature_info(draw_gdat(), dungeon_thing_record(group)[GROUP_CREATURE]);
+    const CreatureInfo *info = creature_info(draw_gdat(), group_creature(group));
     set_thing_word(group, GROUP_HEALTH, info->max_health);
-    set_thing_word(group, GROUP_FLAGS, 0);
+    group_set_mood(group, 0);
     if (!(info->flags & CREATURE_STATIC)) {
         set_thing_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, map));
         return;
     }
-    set_thing_word(group, GROUP_ANIM_STEP, 0);
-    if (dungeon_thing_record(group)[GROUP_DIR] & GROUP_KEEP_CELLS) return;
+    set_thing_word(group, GROUP_ANIM_SEQUENCE, 0);
+    if (group_flag(group, GROUP_KEEP_CELLS)) return;
     uint16_t t = thing_word(group, GROUP_POSSESSIONS);
     if (t == THING_ENDOFLIST) return;
     set_thing_word(group, GROUP_POSSESSIONS, (uint16_t)((t & THING_ID_MASK) | rand_2bits() << THING_CELL_SHIFT));

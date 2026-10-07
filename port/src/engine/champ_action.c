@@ -519,7 +519,7 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
     }
     case COMMAND_MINION_GUARD: case COMMAND_MINION_FETCH:
         if (minion_find_link_projectile(group, map_item)) {
-            dungeon_thing_record(group)[GROUP_CREATURE] = command == COMMAND_MINION_GUARD ? MINION_ATTACKER : MINION_GUARD;
+            group_set_creature(group, command == COMMAND_MINION_GUARD ? MINION_ATTACKER : MINION_GUARD);
             creature_free_cached_ai_data(group);
             return 1;
         }

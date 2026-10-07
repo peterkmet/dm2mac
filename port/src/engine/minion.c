@@ -230,7 +230,7 @@ static void draw_group(uint16_t group, uint16_t map_thing, int dir, int x, int y
             int frame = 0;
             /* fix: a strip of 1 icon divides by zero in the original */
             if (!(cflags & CREATURE_STATIC) && c.count / 2) frame = (int)(game.game_time % (uint32_t)(c.count / 2)) * 2;
-            int side = (dir - (thing_word(group, GROUP_DIR) >> GROUP_DIR_SHIFT & 3)) & 3;
+            int side = (dir - (group_dir(group))) & 3;
             draw_strip(&c, frame + (side & 1), x, y, mirror_two_sides[side]);
         } else if (!(cflags & CREATURE_STATIC) && !(cflags & POSSESSIONS_HIDE_CLICKS)) {
             Strip m = map_item_icons(map_thing);
@@ -603,7 +603,7 @@ void ui_draw_minion_map(uint16_t thing)
                 y = LOCATION_Y(w);
                 map = LOCATION_MAP(w);
                 int dir = game.party_dir;
-                int cell = creature_get_view_cell_zone(group, (creature_side_dir[thing_word(group, GROUP_DIR) >> GROUP_DIR_SHIFT & 3] + dir) & 3);
+                int cell = creature_get_view_cell_zone(group, (creature_side_dir[group_dir(group)] + dir) & 3);
                 int col = (int16_t)cell % VIEW_CELL_ROW, row = (int16_t)cell / VIEW_CELL_ROW;
                 if (col > 2) {
                     x += dir_dx[(dir + 1) & 3];

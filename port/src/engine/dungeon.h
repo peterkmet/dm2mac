@@ -82,10 +82,10 @@ enum thing_field {
     GROUP_HEALTH = 6,
     GROUP_ITEM_CLASS = 8,       /* the item class of a creature that acts, -1 while it is created */
     GROUP_ANIM_SEQUENCE = 8,    /* static creatures: first frame of the animation sequence */
-    GROUP_FLAGS = 0x0a,         /* byte: bit 1 seen by the party */
+    GROUP_FLAGS = 0x0a,         /* the mood bits of the group */
     GROUP_ANIM_STATE = 0x0a,    /* static creatures: animation state word */
     GROUP_HOME = 0x0c,          /* home square: x bits 0-4, y bits 5-9, map bits 10-15 */
-    GROUP_DIR = 0x0e,           /* bits 8-9: direction the creature faces */
+    GROUP_DIR = 0x0e,           /* bit 7 keep cells, bits 8-9 direction the creature faces, bit 10 do not discard */
     CONTAINER_CONTENTS = 2,
     CONTAINER_KIND = 4,         /* bit 0 open, bits 1-2 container kind, bits 13-15 subtype */
     PROJECTILE_PAYLOAD = 2,
@@ -93,8 +93,6 @@ enum thing_field {
     PROJECTILE_EVENT = 6,       /* timeline event that moves the projectile */
     EXPLOSION_DATA = 2,         /* explosion type bits 0-6, bit 7 centered on the square, power bits 8-15 */
 };
-#define GROUP_SEEN 0x02
-#define GROUP_DIR_SHIFT 8
 #define CONTAINER_OPEN 0x0001
 #define EXPLOSION_TYPE_MASK 0x7f
 #define EXPLOSION_CENTERED 0x0080
@@ -108,6 +106,7 @@ enum thing_field {
 #define SENSOR_DATA_FRAME_MASK 0xff     /* an animated ornament: the frame offset of its animation */
 #define SENSOR_TELEPORTER_LINK 0x27
 
+uint8_t *dungeon_thing_record(uint16_t thing);
 /* The 16-bit field of a thing record at byte offset field. */
 uint16_t thing_word(uint16_t thing, int field);
 void set_thing_word(uint16_t thing, int field, uint16_t value);
@@ -251,6 +250,49 @@ static inline bool teleporter_is_fixed(uint16_t teleporter)
     return (thing_word(teleporter, TELEPORTER_MAP) & TELEPORTER_FIXED) == TELEPORTER_FIXED;
 }
 
+static inline uint8_t group_creature(uint16_t group) { return dungeon_thing_record(group)[GROUP_CREATURE]; }
+static inline void group_set_creature(uint16_t group, uint8_t type) { dungeon_thing_record(group)[GROUP_CREATURE] = type; }
+/* The index of the active group of the group, GROUP_NOT_ACTIVE for none. */
+static inline uint8_t group_active(uint16_t group) { return dungeon_thing_record(group)[GROUP_ACTIVE]; }
+static inline void group_set_active(uint16_t group, uint8_t index) { dungeon_thing_record(group)[GROUP_ACTIVE] = index; }
+/* GROUP_FLAGS: the mood bits. */
+#define GROUP_SEEN 0x0002               /* the party saw the creature since the last mood update */
+#define MOOD_ANGRY 0x0004
+#define MOOD_FEAR 0x0008
+#define MOOD_RESTLESS 0x0010
+#define MOOD_BORED 0x0020
+#define MOOD_QUICK 0x0040               /* the creature hurries */
+#define MOOD_WANDERS 0x0080
+#define MOOD_STAYS 0x1000
+#define MOOD_LAZY 0x2000
+#define MOOD_HURRY 0x4000
+#define MOOD_FAR 0x8000                 /* the creature is not on the party map: it moves slowly */
+static inline uint16_t group_mood(uint16_t group) { return thing_word(group, GROUP_FLAGS); }
+static inline void group_set_mood(uint16_t group, uint16_t mood) { set_thing_word(group, GROUP_FLAGS, mood); }
+static inline bool group_mood_flag(uint16_t group, uint16_t bit) { return (group_mood(group) & bit) != 0; }
+static inline void group_set_mood_flag(uint16_t group, uint16_t bit, bool on)
+{
+    group_set_mood(group, on ? group_mood(group) | bit : group_mood(group) & ~bit);
+}
+/* GROUP_DIR bits. */
+#define GROUP_KEEP_CELLS 0x0080         /* the possessions keep their cells */
+#define GROUP_DIR_SHIFT 8
+#define GROUP_DIR_MASK 3
+#define GROUP_DO_NOT_DISCARD 0x0400     /* the record stays when the dungeon needs free records */
+static inline int group_dir(uint16_t group) { return thing_word(group, GROUP_DIR) >> GROUP_DIR_SHIFT & GROUP_DIR_MASK; }
+static inline void group_set_dir(uint16_t group, int dir)
+{
+    uint16_t w = thing_word(group, GROUP_DIR);
+    set_thing_word(group, GROUP_DIR, (uint16_t)((w & ~(GROUP_DIR_MASK << GROUP_DIR_SHIFT)) | (dir & GROUP_DIR_MASK) << GROUP_DIR_SHIFT));
+}
+/* A bit of GROUP_DIR: GROUP_KEEP_CELLS or GROUP_DO_NOT_DISCARD. */
+static inline bool group_flag(uint16_t group, uint16_t bit) { return (thing_word(group, GROUP_DIR) & bit) != 0; }
+static inline void group_set_flag(uint16_t group, uint16_t bit, bool on)
+{
+    uint16_t w = thing_word(group, GROUP_DIR);
+    set_thing_word(group, GROUP_DIR, on ? w | bit : w & ~bit);
+}
+
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
 int dungeon_load(const char *path);
 /* Reads a dungeon at the file position: DUNGEON.DAT (new_game 1, adds free records) or the image in a save file (new_game 0). */
@@ -276,7 +318,6 @@ const uint16_t *dungeon_square_things(void);
 int dungeon_thing_count(int type);
 int dungeon_thing_size(int type);
 #define DUNGEON_RECORD_MAX 16     /* the largest thing record (a creature group) */
-uint8_t *dungeon_thing_record(uint16_t thing);
 /* True when thing has a record in the loaded dungeon. */
 int dungeon_thing_valid(uint16_t thing);
 uint16_t dungeon_next_thing(uint16_t thing);
