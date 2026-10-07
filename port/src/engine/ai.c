@@ -281,8 +281,8 @@ static void creature_ai_take_next_action(void)
         ai.cache.kind = -1;
     }
     int dir = group_dir(ai.group_thing);
-    if (a->action == ACTION_TURN_LEFT) a->facing = (uint8_t)((dir - 1) & 3);
-    else if (a->action == ACTION_TURN_RIGHT) a->facing = (uint8_t)((dir + 1) & 3);
+    if (a->action == ACTION_TURN_LEFT) a->facing = (uint8_t)((dir - 1) & DIR_MASK);
+    else if (a->action == ACTION_TURN_RIGHT) a->facing = (uint8_t)((dir + 1) & DIR_MASK);
 }
 
 /* The creature starts to vanish: it keeps its animation and leaves a death cloud by its size. */
@@ -671,7 +671,7 @@ static void creature_ai_wander(void)
         return;
     }
     if (!r) {
-        creature_ai_turn_toward(game.game_time & 3);
+        creature_ai_turn_toward(game.game_time & DIR_MASK);
         return;
     }
     int dir = group_dir(ai.group_thing);
@@ -712,7 +712,7 @@ static int creature_ai_flee(int second)
         }
         int dir;
         if (creature_ai_next_path_step() > 0) dir = a->direction;
-        else if (rand_bit()) dir = ((group_dir(ai.group_thing)) + 2) & 3;
+        else if (rand_bit()) dir = ((group_dir(ai.group_thing)) + 2) & DIR_MASK;
         else dir = rand_2bits();
         int turn = rand_bit() ? 1 : -1;
         for (int tries = DIR_COUNT; tries; tries--) {
@@ -722,7 +722,7 @@ static int creature_ai_flee(int second)
                 a->plan_step = 0;
                 return 1;
             }
-            dir = (dir + turn) & 3;
+            dir = (dir + turn) & DIR_MASK;
         }
         second++;
         if (second != 1 || !rand_bit()) return 0;
@@ -1100,7 +1100,6 @@ enum ai_condition {
 #define CREATURE_TYPE_KIND_A 0x34
 #define CREATURE_TYPE_KIND_B 0x31
 #define FEW_OF_TYPE_MAX 4
-#define CELL_COUNT 4
 
 /* The distance between two squares along the axes. */
 static int manhattan(int x1, int y1, int x2, int y2)
@@ -1162,7 +1161,7 @@ static int cond_party_at_pit(int x, int y)
 /* True when the creature on (x, y) can close the door behind it. */
 static int cond_door_behind(int x, int y)
 {
-    int d = ((group_dir(ai.group_thing)) + 2) & 3;
+    int d = ((group_dir(ai.group_thing)) + 2) & DIR_MASK;
     if (!(ai.door_flags & DOOR_SKILL_ANY_SIDE)) return 0;
     if (square_type(dun_get_square((int16_t)(x + dir_dx[d]), (int16_t)(y + dir_dy[d]))) != SQUARE_DOOR) return 0;
     return creature_ai_try_door_action(DOOR_MODE_CLOSE, x, y, -1, -1, d) != 0;
@@ -1330,9 +1329,9 @@ static int cmd_move_forward(void)
 static void cmd_turn_sideways(void)
 {
     int turn = rand_bit() ? 1 : -1, f = facing();
-    int first = (turn + f) & 3;
+    int first = (turn + f) & DIR_MASK;
     if (creature_ai_try_move(AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], -1, -1, first)) return;
-    if (creature_ai_try_move(AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], -1, -1, (f - turn) & 3)) return;
+    if (creature_ai_try_move(AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], -1, -1, (f - turn) & DIR_MASK)) return;
     creature_ai_turn_toward(first);
 }
 
@@ -1362,7 +1361,7 @@ static int cmd_place_on_sensor(void)
         int f = facing();
         uint16_t g = creature_get_group_at((uint16_t)(ai.event.data[0] + dir_dx[f]), (uint16_t)(ai.event.data[1] + dir_dy[f]));
         if (g == THING_NONE) return AI_RESULT_FAIL;
-        return item_find_in_possessions(g, item, (f + 2) & 3) ? AI_RESULT_DONE : AI_RESULT_FAIL;
+        return item_find_in_possessions(g, item, (f + 2) & DIR_MASK) ? AI_RESULT_DONE : AI_RESULT_FAIL;
     }
     int found = 0;
     uint16_t t = dungeon_square_first_object(party.cur_map, sx, sy);
@@ -1406,7 +1405,7 @@ int creature_ai_cmd_front_group_carries(void)
 {
     if (ai.arg1 == -1) return AI_RESULT_FAIL;
     int cell = (uint8_t)ai.arg2;
-    if (cell != CELL_ANY) cell = (cell + facing() + 2) & 3;
+    if (cell != CELL_ANY) cell = (cell + facing() + 2) & DIR_MASK;
     int f = facing();
     uint16_t g = creature_get_group_at((uint16_t)(ai.event.data[0] + dir_dx[f]), (uint16_t)(ai.event.data[1] + dir_dy[f]));
     if (g == THING_NONE) return AI_RESULT_FAIL;
@@ -1457,7 +1456,7 @@ static int cmd_take_from_front_group(void)
     int16_t filter = ai.arg1 == -1 ? FILTER_ANY_ITEM : ai.arg1;
     int f = facing();
     set_destination(ai.event.data[0], ai.event.data[1]);
-    ai.active->cell = (uint8_t)((f + 2) & 3);
+    ai.active->cell = (uint8_t)((f + 2) & DIR_MASK);
     ai.active->sub = (int8_t)filter;
     set_destination(dest_x() + dir_dx[f], dest_y() + dir_dy[f]);
     uint16_t g = creature_get_group_at(dest_x(), dest_y());
@@ -1600,7 +1599,7 @@ static void cmd_shoot_random(void)
     a->sub = (int8_t)SHOT_KIND_RANDOM;
     a->action = (uint8_t)((b != 0) + ACTION_SHOOT);
     a->direction = (uint8_t)r;
-    a->cell = (uint8_t)((r + b) & 3);
+    a->cell = (uint8_t)((r + b) & DIR_MASK);
     a->mode = ATTACK_MODE_PARTY;
 }
 
@@ -1609,7 +1608,7 @@ static int cmd_move_relative(void)
 {
     uint16_t saved = ai.move_flags;
     ai.move_flags |= MOVE_PARTY | MOVE_GROUPS;
-    creature_ai_try_move((ai.arg1 ? MOVE_KIND_STEP_BACK : MOVE_KIND_PLAIN) | AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], -1, -1, (facing() + ai.arg1) & 3);
+    creature_ai_try_move((ai.arg1 ? MOVE_KIND_STEP_BACK : MOVE_KIND_PLAIN) | AI_MOVE_TEST, ai.event.data[0], ai.event.data[1], -1, -1, (facing() + ai.arg1) & DIR_MASK);
     ai.move_flags = saved;
     return ai.command_result;
 }
@@ -1801,7 +1800,6 @@ int16_t ai_dest_x, ai_dest_y;
 #define MODE_EXPLODE 0                  /* the modes of the explode or spawn action */
 #define MODE_SPAWN 1
 #define MODE_BECOME 2
-#define SPAWN_LEVEL 7                   /* the level of a spawned creature group */
 #define SPARK_CELLS 5                   /* the four cells and the center */
 #define TRANSFORM_PHASES 3              /* the phases of sparks before the creature becomes the new type */
 #define TRAIT_CLOSES_PITS 0x40
@@ -1839,7 +1837,7 @@ static int act_melee_attack(void);
 static void act_turn(void)
 {
     int f = ai.active->facing;
-    if (((facing() - f) & 3) == 2) f = (f + (rand_next() & 2) + 1) & 3;
+    if (((facing() - f) & DIR_MASK) == 2) f = (f + (rand_next() & 2) + 1) & DIR_MASK;
     group_set_dir(ai.group_thing, f);
 }
 
@@ -1916,7 +1914,7 @@ static int act_move_stairs(void)
         int d = dun_find_adjacent_level_link(ai.event.data[0], ai.event.data[1], delta, &sensor);
         if (sensor != THING_NONE) {
             int exit = sensor_effect(sensor);
-            dir = sensor_flag(sensor, SENSOR_LINK_FIXED) ? exit : (exit + (int16_t)d) & 3;
+            dir = sensor_flag(sensor, SENSOR_LINK_FIXED) ? exit : (exit + (int16_t)d) & DIR_MASK;
         } else {
             int x = ai.event.data[0], y = ai.event.data[1], saved = party.cur_map;
             dun_set_current_map(dungeon_location_on_map(saved, delta, &x, &y));
@@ -1988,7 +1986,7 @@ static int melee_attack_party(int x, int y, int dx, int dy)
         } else {
             c = champ_get_index_in_cell(cell);
             int d = dun_get_direction_to(dx, dy, x, y);
-            cell = ((d + cell) & 1 ? cell - 1 : cell + 1) & 3;
+            cell = ((d + cell) & 1 ? cell - 1 : cell + 1) & DIR_MASK;
             if (c == -1) c = champ_get_nearest_at(x, y, CELL_ANY);
             if (c == -1) continue;
         }
@@ -1997,7 +1995,7 @@ static int melee_attack_party(int x, int y, int dx, int dy)
         Champion *ch = champion(c);
         if (damage > ch->unknown_26[CHAMP_HIT_DAMAGE]) {
             ch->unknown_26[CHAMP_HIT_DAMAGE] = (uint8_t)damage;
-            ch->unknown_26[CHAMP_HIT_DIR] = (uint8_t)((dun_get_direction_to(x, y, ai_party.x, ai_party.y) + 2) & 3);
+            ch->unknown_26[CHAMP_HIT_DIR] = (uint8_t)((dun_get_direction_to(x, y, ai_party.x, ai_party.y) + 2) & DIR_MASK);
         }
     }
     return hit;
@@ -2010,7 +2008,7 @@ static int act_melee_attack(void)
     const CreatureInfo *info = ai.info;
     int dx = ai_dest_x, dy = ai_dest_y, x = ai.event.data[0], y = ai.event.data[1];
     int dir = facing();
-    if (a->mode == MOVE_KIND_STEP_BACK) dir = (dir + 2) & 3;
+    if (a->mode == MOVE_KIND_STEP_BACK) dir = (dir + 2) & DIR_MASK;
     int at_self = x == dx && y == dy;
     if (!at_self) {
         if (manhattan(x, y, dx, dy) > 1) return 1;
@@ -2246,7 +2244,7 @@ static int act_use_wall_sensor(void)
         if (hand == THING_ENDOFLIST) return 1;
         dungeon_unlink_thing_from_list(hand, thing_list(ai.group_thing, GROUP_POSSESSIONS));
     }
-    sensor_process_wall_click(dest_x(), dest_y(), (a->facing + 2) & 3, ai.group_thing, hand);
+    sensor_process_wall_click(dest_x(), dest_y(), (a->facing + 2) & DIR_MASK, ai.group_thing, hand);
     return 0;
 }
 
@@ -2306,7 +2304,7 @@ static int act_explode_or_spawn(void)
         if (a->sub) act_vanish();
     } else if (a->mode == MODE_SPAWN) {
         int dir = rand_2bits();
-        if (creature_summon_group(a->sub, SPAWN_LEVEL, dir, ai.event.data[0], ai.event.data[1], ai.map, -1, (int8_t)facing()) == THING_NONE) return 1;
+        if (creature_summon_group(a->sub, GROUP_COUNT_FULL_HEALTH, dir, ai.event.data[0], ai.event.data[1], ai.map, -1, (int8_t)facing()) == THING_NONE) return 1;
     } else if (a->mode == MODE_BECOME) {
         a->action = ACTION_IDLE;
         a->phase = 0;

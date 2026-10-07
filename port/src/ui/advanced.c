@@ -133,7 +133,7 @@ void advanced_draw_automap(void)
     automap_draw(&o, o.rect);
     snprintf(line, sizeof line, "LEVEL %d  X %d  Y %d", dungeon_map_level(game.party_map), game.party_x, game.party_y);
     draw_readout_line(&o, READOUT_POSITION, line);
-    draw_readout_line(&o, READOUT_DIRECTION, direction_names[game.party_dir & (DIR_COUNT - 1)]);
+    draw_readout_line(&o, READOUT_DIRECTION, direction_names[game.party_dir & DIR_MASK]);
     snprintf(line, sizeof line, "I IMMORTAL %s", on_off(cheat_immortal));
     draw_readout_line(&o, READOUT_IMMORTAL, line);
     snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(cheat_food));

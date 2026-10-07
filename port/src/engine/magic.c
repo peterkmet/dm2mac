@@ -312,7 +312,7 @@ static void cast_summon(int type, int skill, int power)
 {
     if (type == SUMMON_RECAST_VANISHES) {
         for (int i = 0; i < dungeon_thing_count(THING_GROUP); i++) {
-            uint16_t group = creature_group_thing(i);
+            uint16_t group = thing_make(THING_GROUP, i);
             if (thing_word(group, THING_NEXT) == THING_NONE || group_creature(group) != type
                 || group_active(group) == GROUP_NOT_ACTIVE)
                 continue;
@@ -325,7 +325,7 @@ static void cast_summon(int type, int skill, int power)
     }
     int dir = game.party_dir;
     int level = (uint16_t)((rand_2bits() + skill * 2) * power / SUMMON_LEVEL_DIVISOR);
-    if (creature_summon_group(type, level, (dir + 2) & 3, game.party_x, game.party_y, game.party_map, SUMMON_NO_LINK,
+    if (creature_summon_group(type, level, (dir + 2) & DIR_MASK, game.party_x, game.party_y, game.party_map, SUMMON_NO_LINK,
                               (int8_t)dir) == THING_NONE)
         explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, game.party_x, game.party_y, EXPLOSION_ON_SQUARE);
 }
@@ -339,9 +339,9 @@ static void cast_create_item(void)
         champ_put_object_in_leader_hand(thing, 1);
         return;
     }
-    int cell = (rand_bit() + game.party_dir) & 3;
+    int cell = (rand_bit() + game.party_dir) & DIR_MASK;
     if (thing == THING_NONE) return;  /* fix: the original moves an invalid thing when no record is free */
-    move_thing(move_set_cell(thing, cell), -1, 0, game.party_x, game.party_y);
+    move_thing(thing_with_cell(thing, cell), -1, 0, game.party_x, game.party_y);
 }
 
 /* The spells that are neither potions, missiles, nor summons. */

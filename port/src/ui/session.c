@@ -347,7 +347,7 @@ static int load_new_game(void)
     uint16_t start = dungeon_party_start();
     game.party_x = location_x(start);
     game.party_y = location_y(start);
-    game.party_dir = location_map(start) & (DIR_COUNT - 1);  /* the party start keeps the direction in the map bits */
+    game.party_dir = location_dir(start);  /* the party start keeps the direction in the map bits */
     game.party_map = 0;
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE)
                   + dungeon_thing_count(THING_EXPLOSION));

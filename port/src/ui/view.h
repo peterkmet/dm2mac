@@ -41,6 +41,16 @@ extern uint32_t view_object_masks[VIEW_SQUARE_COUNT];
 extern Bitmap view_viewport;
 /* The party light level, 0 (bright) to 5 (light_update_party_light). */
 extern int view_light_level;
+#define DARKEST_LIGHT 5             /* view_light_level of the darkest view */
+/* The 5 x 5 grid of the cells of a square and its neighbours (view_grid5_cell_to_xy), row by row. */
+#define CELL_GRID_SIDE 5
+#define CELL_GRID_HALF (CELL_GRID_SIDE / 2)  /* the center row and column */
+#define CELL_GRID_COUNT (CELL_GRID_SIDE * CELL_GRID_SIDE)
+#define cell_grid_index(row, col) ((row) * CELL_GRID_SIDE + (col))
+#define CELL_CENTER cell_grid_index(CELL_GRID_HALF, CELL_GRID_HALF)
+/* View positions of the party square and of the square in front of it. */
+#define POS_PARTY 0
+#define POS_FRONT 3
 
 /* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
 typedef struct {

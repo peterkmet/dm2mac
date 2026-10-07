@@ -181,10 +181,10 @@ typedef struct {
 } AiSquare;
 extern AiSquare ai_square;
 
-#define MAP_SIDE_MAX 32             /* the squares of the longest map side */
 
 /* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
-typedef struct { int16_t map, width; uint8_t cells[MAP_SIDE_MAX * MAP_SIDE_MAX]; } DistanceMap;
+#define DISTANCE_MAP_SIDE MAP_SIDE_MAX     /* the cells of a distance map: x * 32 + y */
+typedef struct { int16_t map, width; uint8_t cells[DISTANCE_MAP_SIDE * DISTANCE_MAP_SIDE]; } DistanceMap;
 #define DISTANCE_NEXT_TO 0x80
 #define DISTANCE_FAR 0x7f
 extern DistanceMap party_distance, alt_distance;

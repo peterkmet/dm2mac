@@ -13,8 +13,6 @@
 enum { VIEW_DEPTHS = 5, VIEW_HALF_WIDTH = 3, VIEW_WIDTH = 2 * VIEW_HALF_WIDTH + 1 };
 /* The side squares of each row of the dungeon view: 3 squares at depth 0 and 1, 5 at depth 2 and 3, 7 at depth 4. */
 static const int8_t row_half_width[VIEW_DEPTHS] = {1, 1, 2, 2, 3};
-#define DOOR_CLOSED 4               /* SQUARE_DOOR_STATE of a closed door */
-#define DARKEST_LIGHT 5             /* view_light_level of the darkest view */
 #define ICON_GAP 1                  /* the gap left of and above each square icon */
 static const char save_magic[] = "AMAP";
 /* The block header: the magic, the version byte, the map count byte; then the width and height byte of each map. */
@@ -74,7 +72,7 @@ static int blocks_sight(int map, int x, int y)
     switch (square_type(square)) {
     case SQUARE_WALL: return 1;
     case SQUARE_FAKE_WALL: return !(square & SQUARE_FAKE_WALL_OPEN);
-    case SQUARE_DOOR: return (square & SQUARE_DOOR_STATE) == DOOR_CLOSED;
+    case SQUARE_DOOR: return (square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED;
     default: return 0;
     }
 }

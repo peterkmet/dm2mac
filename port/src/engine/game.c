@@ -34,10 +34,6 @@
 #define TIME_EFFECTS_PERIOD_MASK 0x3f       /* the champion clocks run each 64 game steps */
 #define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x0f /* and each 16 game steps while the party sleeps */
 #define LIGHT_BURN_PERIOD_MASK 0x1ff        /* held lights burn down each 512 game steps */
-#define EVENT_TELEPORT_MAP 2                /* teleport party event: data byte of the map */
-#define TELEPORT_DIR_MASK 3                 /* teleport party event: the direction in the map bits of its location word */
-#define EVENT_SPAWN_TYPE 3                  /* spawn creature event: data byte of the creature type */
-#define SPAWN_GROUP_COUNT 7                 /* creature_create_group count of a spawned group: full health */
 
 MainLoop main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
 static int tick_elapsed;
@@ -214,15 +210,15 @@ void timeline_process(void)
             timeline_event_sensor(&e);
             break;
         case EVENT_TELEPORT_PARTY:
-            if (e.data[EVENT_TELEPORT_MAP] == game.party_map) {
+            if (e.data[TELEPORT_EVENT_MAP] == game.party_map) {
                 move_thing(THING_NONE, game.party_x, game.party_y, location_x(word), location_y(word));
-                champ_set_party_direction(location_map(word) & TELEPORT_DIR_MASK);
+                champ_set_party_direction(location_dir(word));
             }
             break;
         case EVENT_SPAWN_CREATURE: {
             int dir = rand_2bits() ? dun_get_direction_to(e.data[EVENT_X], e.data[EVENT_Y], game.party_x, game.party_y)
                                      : rand_2bits();
-            creature_create_group(e.data[EVENT_SPAWN_TYPE], SPAWN_GROUP_COUNT, dir, e.data[EVENT_X], e.data[EVENT_Y]);
+            creature_create_group(e.data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir, e.data[EVENT_X], e.data[EVENT_Y]);
             break;
         }
         }

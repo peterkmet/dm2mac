@@ -122,9 +122,6 @@ _Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 
 #define ACTIVE_ACTION_NONE 0xff     /* an active group without a chosen action */
 #define EVENT_NO_SLOT (-1)
 
-/* The thing id of the creature group with record index. */
-static inline uint16_t creature_group_thing(int index) { return (uint16_t)(THING_GROUP << THING_TYPE_SHIFT | index); }
-
 extern ActiveGroup *active_groups;
 extern int active_group_max, active_group_count;
 
@@ -200,6 +197,7 @@ void creature_turn_group(uint16_t group, int absolute, int dir);
 enum drop_mode { DROP_ALL, DROP_POSSESSIONS, DROP_NOTHING };
 void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map);
 void creature_delete_group_at(int x, int y, int mode, int sound_map);
+#define GROUP_COUNT_FULL_HEALTH 7   /* creature_create_group count: the group starts with full health */
 uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y);
 void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible);
 void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag);

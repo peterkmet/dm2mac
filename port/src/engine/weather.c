@@ -102,7 +102,6 @@ enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY
 #define VAR_STRIKES_SEEN 0x41       /* lightning strikes seen near the party from the inventory or asleep */
 enum { VAR_ADD = 3, VAR_ASSIGN = 6 };
 #define MAGIC_LIGHT_BYTE 0          /* game.magic_light bytes 0-1: the light of light spells */
-#define MAP_DARK_BITS 0xf000        /* map object counts: a map without these bits is always lit */
 #define LIGHT_LEVEL_MAX 5
 #define LIGHT_LEVEL_LIT 1
 #define HAND_LIGHT_SHIFT 6          /* the first hand light counts fully, each next one half as much */
@@ -381,7 +380,7 @@ void world_update_day_night(int storm_step)
 void light_update_party_light(void)
 {
     int level;
-    if (!(dungeon_map_object_counts(game.party_map) & MAP_DARK_BITS)) {
+    if (!dungeon_map_difficulty(game.party_map)) {  /* a map without difficulty bits is always lit */
         level = LIGHT_LEVEL_LIT;
     } else {
         int16_t lights[HAND_LIGHTS_MAX] = {0};

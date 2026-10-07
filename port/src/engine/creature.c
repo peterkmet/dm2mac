@@ -88,8 +88,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define ALERT_HIT_CHANCE 0x3c
 #define DAMAGE_KIND_MOOD_FIRST 6    /* damage kinds 6 to 0x15 set mood bit kind - 6 */
 #define DAMAGE_KIND_MOOD_END 0x16
-#define MAP_CREATURE_TYPES_SHIFT 4  /* map object counts bits 4-7: the number of creature types of the map */
-#define MAP_CREATURE_TYPES_MASK 0x0f
 #define ACTIVE_GROUP_SPARE 100      /* active groups beyond the acting groups of the dungeon */
 #define REGEN_TIME_SHIFT 2          /* regeneration counts in game time / 4 */
 #define VANISH_DELAY_FACTOR 3       /* a vanish in a party action effect is 3 times slower */
@@ -379,18 +377,12 @@ uint16_t creature_group_at(int map, int x, int y)
     return THING_NONE;
 }
 
-/* The number of creature types of map. */
-static int map_creature_type_count(int map)
-{
-    return dungeon_map_object_counts(map) >> MAP_CREATURE_TYPES_SHIFT & MAP_CREATURE_TYPES_MASK;
-}
-
 bool creature_is_native_to_map(uint16_t group, int map)
 {
     if (creature_group_info(group)->flags & CREATURE_WANDERER) return true;
     uint8_t type = group_creature(group);
     const uint8_t *types = dungeon_map_creature_types(map);
-    for (int i = 0; i < map_creature_type_count(map); i++)
+    for (int i = 0; i < dungeon_map_creature_type_count(map); i++)
         if (types[i] == type) return true;
     return false;
 }
@@ -444,7 +436,7 @@ void creature_alloc_active_groups(void)
 {
     int n = 0, count = dungeon_thing_count(THING_GROUP);
     for (int i = 0; i < count; i++) {
-        uint16_t g = creature_group_thing(i);
+        uint16_t g = thing_make(THING_GROUP, i);
         if (thing_word(g, THING_NEXT) != THING_NONE && !(creature_group_info(g)->flags & CREATURE_STATIC)) n++;
     }
     active_group_max = n + ACTIVE_GROUP_SPARE < count ? n + ACTIVE_GROUP_SPARE : count;
@@ -459,7 +451,7 @@ void creature_reset_active_groups(void)
     active_group_count = 0;
     for (int i = 0; i < active_group_max; i++) active_groups[i].group = ACTIVE_FREE;
     for (int i = 0; i < dungeon_thing_count(THING_GROUP); i++)
-        group_set_active(creature_group_thing(i), GROUP_NOT_ACTIVE);
+        group_set_active(thing_make(THING_GROUP, i), GROUP_NOT_ACTIVE);
     creature_activate_groups_all_maps();
 }
 
@@ -581,7 +573,7 @@ void creature_deactivate_group(int active_index)
     if (active_index > active_group_max) return;
     ActiveGroup *a = active_groups + active_index;
     if (a->group == ACTIVE_FREE) return;
-    uint16_t group = creature_group_thing(a->group);
+    uint16_t group = thing_make(THING_GROUP, a->group);
     int vanish = !(creature_group_info(group)->flags & CREATURE_STATIC) && a->action == AI_ACTION_VANISH;
     int x = 0, y = 0;
     if (vanish) {
@@ -830,13 +822,11 @@ void creature_process_event(int x, int y, int type)
 #define ARMOR_FACTOR 8                      /* the armor factor: (amount + 0 to 3) * 8 / (armor + 2) */
 #define ARMOR_BASE 2
 #define GROUP_HEALTH_SHIFT 3                /* each creature of a new group has 1/8 of the maximum health, plus 0 to 1/8 */
-#define DOOR_STATE_BROKEN 5
-#define DISTANCE_MAP_SIDE 32                /* the cells of a distance map: x * 32 + y */
 
 /* A random cell for an item that a creature drops on (x, y): beside the party on its square. */
 static int drop_cell(int x, int y)
 {
-    if (x == game.party_x && y == game.party_y) return (rand_bit() + game.party_dir) & 3;
+    if (x == game.party_x && y == game.party_y) return (rand_bit() + game.party_dir) & DIR_MASK;
     return rand_2bits();
 }
 
@@ -854,7 +844,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
             while ((int16_t)--count != -1) {
                 uint16_t item = item_create_by_index((uint16_t)value >> DROP_ITEM_SHIFT);
                 if (item == THING_NONE) break;
-                uint16_t t = move_set_cell(item, drop_cell(x, y));
+                uint16_t t = thing_with_cell(item, drop_cell(x, y));
                 move_thing(t, MOVE_NEW_ITEM, 0, x, y);
                 if ((int16_t)sound_map >= 0)
                     sound_play_with_fallback(item_gdat_category(item), item_gdat_index(item), SOUND_ENTRY_DROP, SOUND_FALLBACK,
@@ -866,7 +856,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
     while (t != THING_ENDOFLIST) {
         uint16_t next = dungeon_next_thing(t);
         if (!(creature_group_info(group)->flags & CREATURE_STATIC))
-            t = move_set_cell(t, drop_cell(x, y));
+            t = thing_with_cell(t, drop_cell(x, y));
         if (thing_type(t) == THING_PROJECTILE) {
             set_thing_word(t, THING_NEXT, THING_NONE);
         } else {
@@ -988,9 +978,9 @@ static int alert_turn(uint16_t group, int x, int y)
     uint16_t mood = group_mood(group);
     int facing = group_dir(group);
     int dir = dun_get_direction_to(x, y, game.party_x, game.party_y);
-    if ((mood & MOOD_FEAR && rand_2bits()) || (dir != facing && !rand_2bits())) dir = (dir + 2) & 3;
-    if (facing == ((dir + 2) & 3)) return rand_bit() ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
-    if (facing != dir) return facing == ((dir - 1) & 3) ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
+    if ((mood & MOOD_FEAR && rand_2bits()) || (dir != facing && !rand_2bits())) dir = (dir + 2) & DIR_MASK;
+    if (facing == ((dir + 2) & DIR_MASK)) return rand_bit() ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
+    if (facing != dir) return facing == ((dir - 1) & DIR_MASK) ? AI_ACTION_TURN_RIGHT : AI_ACTION_TURN_LEFT;
     if (rand_2bits()) return -1;
     return rand_bit() ? AI_ACTION_TURN_LEFT : AI_ACTION_TURN_RIGHT;
 }
@@ -1128,7 +1118,7 @@ uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int
         if (tries) {
             sx = (int16_t)(x + dir_dx[(int8_t)search_dir]);
             sy = (int16_t)(y + dir_dy[(int8_t)search_dir]);
-            search_dir = (search_dir + turn) & 3;
+            search_dir = (search_dir + turn) & DIR_MASK;
         }
         if (--tries == -1) break;
     }
@@ -1157,12 +1147,12 @@ void minion_dismiss(uint16_t link)
 void creature_turn_group(uint16_t group, int absolute, int dir)
 {
     int old = group_dir(group);
-    if (!absolute) dir = (dir + old) & 3;
+    if (!absolute) dir = (dir + old) & DIR_MASK;
     group_set_dir(group, dir);
     if (!(creature_group_info(group)->flags & CREATURE_STATIC)) return;
-    int turn = (dir - old) & 3;
+    int turn = (dir - old) & DIR_MASK;
     for (uint16_t *link = thing_list(group, GROUP_POSSESSIONS); *link != THING_ENDOFLIST; link = thing_list(*link, THING_NEXT))
-        *link = move_set_cell(*link, (move_thing_cell(*link) + turn) & 3);
+        *link = thing_with_cell(*link, (thing_cell(*link) + turn) & DIR_MASK);
 }
 
 /* Keeps the position of the projectiles that a group carries. */
@@ -1249,7 +1239,7 @@ bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group)
     uint16_t g = creature_get_group_at(x, y);
     if (g == THING_NONE || creature_group_info(g)->push_resistance >= PUSH_IMMOVABLE) return false;
     PassageEnd end;
-    if (dun_get_linked_teleporter_dest(&end, x, y) && dir == ((end.side + 2) & 3)) {
+    if (dun_get_linked_teleporter_dest(&end, x, y) && dir == ((end.side + 2) & DIR_MASK)) {
         if (!creature_is_native_to_map(g, end.map)) return false;
         int saved = party.cur_map;
         dun_set_current_map(end.map);
@@ -1311,7 +1301,7 @@ void creature_push_group(int x, int y, int dir, int strength)
             uint16_t flags = creature_group_info(g)->flags;
             if (party.cur_map == party.square_map && nx == party.square_x && ny == party.square_y && !(flags & CREATURE_NOT_SOLID)) {
                 int16_t first, second;
-                move_party_bump_damage(x, y, &first, &second, game.party_dir, (dir + 2) & 3);
+                move_party_bump_damage(x, y, &first, &second, game.party_dir, (dir + 2) & DIR_MASK);
             } else {
                 creature_free_cached_ai_data(g);
                 ActiveGroup *a = creature_active(g);
@@ -1340,7 +1330,7 @@ void creature_push_group(int x, int y, int dir, int strength)
     if (!alive) return;
     load = (int16_t)(load / (int16_t)alive + PUSH_BASE_STRENGTH);
     if ((int16_t)strength >= PUSH_STRENGTH_PARTY || load < (int16_t)strength)
-        move_party(((dir - game.party_dir) & 3) + CMD_MOVE_FORWARD);
+        move_party(((dir - game.party_dir) & DIR_MASK) + CMD_MOVE_FORWARD);
 }
 
 /* The party pushes the creature in front by a push arrow. */
@@ -1352,7 +1342,7 @@ void move_push_creature(int arrow)
     };
     static const int8_t dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, -1};
     if (arrow < 0 || arrow >= PUSH_ARROW_COUNT) return;
-    int dir = (game.party_dir + dirs[arrow]) & 3;
+    int dir = (game.party_dir + dirs[arrow]) & DIR_MASK;
     int16_t x = (int16_t)(game.party_x + dir_dx[game.party_dir]), y = (int16_t)(game.party_y + dir_dy[game.party_dir]);
     uint16_t g;
     if (!creature_can_be_pushed(x, y, dir, &g)) return;
@@ -1404,7 +1394,7 @@ void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
     /* an inverted sensor turns the creatures on effect 1 instead of 0 */
     if (e->data[EVENT_EFFECT] != (sensor_flag(sensor, SENSOR_INVERTED) ? 1 : 0)) return;
     uint16_t g = creature_get_group_at(sensor_target_x(sensor), sensor_target_y(sensor));
-    if (g != THING_NONE) creature_turn_group(g, 1, sensor_data(sensor) & 3);
+    if (g != THING_NONE) creature_turn_group(g, 1, sensor_data(sensor) & DIR_MASK);
 }
 
 void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect)

@@ -39,10 +39,6 @@ typedef struct {
     int16_t push_arrow;
 } Party;
 
-/* The cell of a thing id and the thing id moved to another cell of its square. */
-static inline uint16_t move_thing_cell(uint16_t thing) { return thing >> THING_CELL_SHIFT; }
-static inline uint16_t move_set_cell(uint16_t thing, int cell) { return (uint16_t)((thing & THING_ID_MASK) | cell << THING_CELL_SHIFT); }
-
 extern Party party;
 /* The square step of each direction. */
 extern const int8_t dir_dx[4], dir_dy[4];

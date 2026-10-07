@@ -55,8 +55,6 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
        ICON_MARKER_BELOW = 0x0a };
 #define MIRROR_X 1
 #define MIRROR_Y 2
-#define DOOR_STATE_OPEN 0
-#define DOOR_STATE_BROKEN 5
 #define FAKE_WALL_SEEN SQUARE_FLAG_0
 #define FLOOR_SHOWS_LEVEL 0x08          /* a floor square shows the level digit instead */
 #define ORN_FRAME_SHIFT 10

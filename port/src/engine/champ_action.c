@@ -74,7 +74,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define MELEE_EXPERIENCE_BASE 3
 #define MELEE_STAMINA_HIT 4         /* the stamina cost of a hit: 4 to 7, of a miss: 2 to 3 */
 #define MELEE_STAMINA_MISS 2
-#define MAP_DIFFICULTY_SHIFT 12     /* map object counts: difficulty bits 12-15 */
 #define ATTR_ANTI_ARMOR 0x0d        /* item attribute: the weapon breaks creature armor */
 #define FRIGHTEN_RESIST_SHIFT 4     /* creature info speed bits 4-7: the resistance to fear, 15 immune */
 #define FRIGHTEN_RESIST_MASK 0xf
@@ -117,7 +116,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define MINION_SCOUT 0x31
 #define MINION_CARRIER 0x34
 #define MINION_ARMY 0x35
-#define DOOR_CLOSED 4
 #define DOOR_BREAK_DELAY 2
 #define SKILL_INFLUENCE 14
 #define SKILL_HEAL 13
@@ -128,7 +126,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define SKILL_LAST_FIGHT 11         /* the fighter and ninja sub-skills learn less away from fights */
 #define FIGHT_TIME_LONG 150
 #define FIGHT_TIME_SHORT 40
-#define MAP_EXPERIENCE_SHIFT 12     /* map object counts bits 12-15: the experience factor of the map */
 #define LEVEL_EXPERIENCE 0x200
 #define REDRAW_LEVEL 0x3800
 #define REDRAW_BARS_FLAG 0x0800
@@ -399,7 +396,7 @@ void champ_add_experience(int champ, int skill, uint32_t amount)
     if (skill >= SKILL_FIRST_SUB && skill <= SKILL_LAST_FIGHT && game.game_time - FIGHT_TIME_LONG > game.last_combat_time)
         amount >>= 1;
     if (!amount) return;
-    int factor = dungeon_map_object_counts(party.cur_map) >> MAP_EXPERIENCE_SHIFT;
+    int factor = dungeon_map_difficulty(party.cur_map);
     if (factor) amount *= (uint32_t)factor;
     Champion *c = champion(champ);
     int base = skill >= SKILL_FIRST_SUB ? (skill - SKILL_FIRST_SUB) >> SKILL_SHIFT : skill;
@@ -456,7 +453,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
                                        uint16_t factor, int skill, int kind)
 {
     if ((uint16_t)champ >= game.champion_count || !c->health) return 0;
-    int difficulty = (dungeon_map_object_counts(party.cur_map) >> MAP_DIFFICULTY_SHIFT) * 2;
+    int difficulty = dungeon_map_difficulty(party.cur_map) * 2;
     const CreatureInfo *info = creature_group_info(group);
     int pierces = attack & MELEE_PIERCES;
     attack &= (uint16_t)~MELEE_PIERCES;
@@ -629,7 +626,7 @@ static int action_spell_projectile(ActionRun *a)
 /* A melee action: it bashes a closed door in front, or attacks the creature group in front. */
 static int action_melee(ActionRun *a)
 {
-    if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_CLOSED) {
+    if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sound_play_with_fallback(CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),

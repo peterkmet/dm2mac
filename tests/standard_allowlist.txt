@@ -101,7 +101,6 @@ duplicate CAT_ORNAMENT open: module cleanup
 duplicate CAT_SKY open: module cleanup
 duplicate CAT_WALLSET open: module cleanup
 duplicate CAT_WALL_ORNAMENT open: module cleanup
-duplicate CELL_COUNT open: module cleanup
 duplicate CHAMP_DAMAGE_SHOWN open: module cleanup
 duplicate CHARGES_EMPTY open: module cleanup
 duplicate CMD_MINION_MAP open: module cleanup
@@ -118,10 +117,6 @@ duplicate DIR_EAST open: module cleanup
 duplicate DIR_NORTH open: module cleanup
 duplicate DIR_SOUTH open: module cleanup
 duplicate DIR_WEST open: module cleanup
-duplicate DOOR_CLOSED open: module cleanup
-duplicate DOOR_OPEN open: module cleanup
-duplicate DOOR_STATE_BROKEN open: module cleanup
-duplicate DOOR_STATE_OPEN open: module cleanup
 duplicate EVENT_SLACK open: module cleanup
 duplicate EXPLOSION_CENTER open: module cleanup
 duplicate EXPLOSION_SMOKE open: module cleanup
@@ -154,7 +149,6 @@ duplicate ITEM_NAME_ENTRY open: module cleanup
 duplicate ITEM_SCROLL open: module cleanup
 duplicate KEY_ENTER open: module cleanup
 duplicate MANA_MAX open: module cleanup
-duplicate MAP_DIFFICULTY_SHIFT open: module cleanup
 duplicate MAP_KEY_SKY_STATE open: module cleanup
 duplicate MARKER_CLEAR_ALL open: module cleanup
 duplicate MARKER_FIND_SET open: module cleanup
