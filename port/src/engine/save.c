@@ -50,10 +50,7 @@
 
 enum event_data { EVENT_THING = 0, EVENT_VALUE = 0, EVENT_THING2 = 2 };  /* byte offsets in TimelineEvent.data */
 
-#define GDAT_CREATURE_CATEGORY 0x0f
 #define GDAT_CREATURE_INFO_ENTRY 5
-#define GDAT_CONTAINER_CATEGORY 0x14
-#define GDAT_TYPE_TEXT 5
 #define GDAT_MONEYBOX_ENTRY 0x40
 
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
@@ -230,7 +227,7 @@ static int sensor_has_data(uint16_t sensor)
 
 static int creature_is_static(uint16_t group)
 {
-    int info = gdat_find(io.gdat, GDAT_CREATURE_CATEGORY, group_creature(group), GDAT_TYPE_VALUE,
+    int info = gdat_find(io.gdat, CAT_CREATURE, group_creature(group), GDAT_TYPE_VALUE,
                          GDAT_CREATURE_INFO_ENTRY);
     if (info == -1) info = 0;  /* a missing value key reads as 0 */
     const CreatureInfo *record = creature_info_at(info);
@@ -242,7 +239,7 @@ static int container_is_moneybox(uint16_t container)
 {
     if (container_kind(container) != CONTAINER_CHEST) return 0;
     int item = container_type(container);
-    return gdat_find(io.gdat, GDAT_CONTAINER_CATEGORY, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
+    return gdat_find(io.gdat, CAT_CONTAINER, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
 }
 
 static int defer_thing(uint16_t thing)

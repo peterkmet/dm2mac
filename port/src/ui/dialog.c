@@ -18,7 +18,6 @@
 #define DIALOG_MESSAGE_ENTRY 0x14
 #define DIALOG_PICTURE_ENTRY 0
 #define DIALOG_VOLUME_BUTTONS 7
-#define GDAT_TYPE_VALUE 0x0b
 #define INPUT_MODE_DIALOG 4
 #define KEY_ENTER 0x1c
 #define BUTTON_KEY 7                    /* transparent color of a pressed button picture */
@@ -125,7 +124,7 @@ int ui_dialog_draw(int id, int message)
 {
     const gdat_t *g = draw_gdat();
     int present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
-    if (message && id != DIALOG_ERROR && id != DIALOG_LOADING && gdat_exists(g, CATEGORY_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) {
+    if (message && id != DIALOG_ERROR && id != DIALOG_LOADING && gdat_exists(g, CAT_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) {
         ui_dialog_run(ui_dialog_draw(DIALOG_ERROR, message));
         message = MESSAGE_NONE;
     }
@@ -134,11 +133,11 @@ int ui_dialog_draw(int id, int message)
     static char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
     int count = 0;
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++)
-        if (*text_gdat(CATEGORY_DIALOG, id, e, texts[count])) count++;
+        if (*text_gdat(CAT_DIALOG, id, e, texts[count])) count++;
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CATEGORY_DIALOG, id, DIALOG_PICTURE_ENTRY), &view_viewport, r, UI_OPAQUE,
-                           draw_gdat_image_palette(CATEGORY_DIALOG, id, DIALOG_PICTURE_ENTRY));
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY), &view_viewport, r, UI_OPAQUE,
+                           draw_gdat_image_palette(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY));
     text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], version_text);
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
     for (int i = 0; i < count; i++) text_draw_in_zone(button_text_zones[first + i], ui_colors[UI_YELLOW], texts[i]);
@@ -148,13 +147,13 @@ int ui_dialog_draw(int id, int message)
         int colors[MESSAGE_TEXTS];
         if (message && id == DIALOG_ERROR) {
             colors[0] = ui_colors[UI_WHITE];
-            shown[0] = text_gdat(CATEGORY_DIALOG, DIALOG_ERROR, message, message_texts[0]);
+            shown[0] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[0]);
         } else {
             colors[0] = ui_colors[UI_YELLOW];
-            shown[0] = text_gdat(CATEGORY_DIALOG, id, DIALOG_MESSAGE_ENTRY, message_texts[0]);
+            shown[0] = text_gdat(CAT_DIALOG, id, DIALOG_MESSAGE_ENTRY, message_texts[0]);
             if (message) {
                 colors[1] = ui_colors[UI_WHITE];
-                shown[1] = text_gdat(CATEGORY_DIALOG, DIALOG_ERROR, message, message_texts[1]);
+                shown[1] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[1]);
             }
         }
         draw_message(r, shown, colors);
@@ -174,9 +173,9 @@ int ui_dialog_run(int id)
     int count = 0;
     char text[TEXT_SIZE];
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++) {
-        if (!*gdat_text(g, CATEGORY_DIALOG, id, e, text, sizeof text)) continue;
+        if (!*gdat_text(g, CAT_DIALOG, id, e, text, sizeof text)) continue;
         /* ponytail: the high byte (a default button of the original) only feeds a check that is always 0 */
-        uint8_t value = (uint8_t)gdat_entry_index(g, CATEGORY_DIALOG, id, GDAT_TYPE_VALUE, e);
+        uint8_t value = (uint8_t)gdat_entry_index(g, CAT_DIALOG, id, GDAT_TYPE_VALUE, e);
         values[count++] = value ? value : (uint8_t)e;
     }
     dialog.button_count = id == DIALOG_VOLUME ? DIALOG_VOLUME_BUTTONS : count;
@@ -224,13 +223,13 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 {
     char text[TEXT_SIZE];
     for (int level = VOLUME_LEVELS - 1; level >= 0; level--) {
-        gfx_draw_gdat_in_viewport_zone(CATEGORY_DIALOG, DIALOG_VOLUME, level == setting ? VOLUME_BUTTON_ON : VOLUME_BUTTON,
+        gfx_draw_gdat_in_viewport_zone(CAT_DIALOG, DIALOG_VOLUME, level == setting ? VOLUME_BUTTON_ON : VOLUME_BUTTON,
                                        button_zone + level, UI_OPAQUE);
         if (level) {
             text[0] = (char)('0' + level);
             text[1] = '\0';
         } else {
-            text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, off_entry, text);
+            text_gdat(CAT_DIALOG, DIALOG_VOLUME, off_entry, text);
         }
         text_draw_in_zone(text_zone + level, ui_colors[UI_YELLOW], text);
     }
@@ -239,10 +238,10 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 void ui_volume_dialog(void)
 {
     char text[TEXT_SIZE];
-    if (!gdat_exists(draw_gdat(), CATEGORY_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) return;
+    if (!gdat_exists(draw_gdat(), CAT_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) return;
     ui_dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
-    text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW], text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, VOLUME_SOUND_LABEL, text));
-    text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW], text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, VOLUME_MUSIC_LABEL, text));
+    text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW], text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_SOUND_LABEL, text));
+    text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW], text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_MUSIC_LABEL, text));
     for (;;) {
         draw_volume_buttons(game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, VOLUME_SOUND_OFF);
         draw_volume_buttons(game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, VOLUME_MUSIC_OFF);

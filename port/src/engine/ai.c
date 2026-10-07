@@ -825,7 +825,6 @@ void creature_ai_decide(void)
 #define CACHE_KIND_13 0x0d
 #define CACHE_KIND_5 5
 #define MAP_KEY_NO_WANDER 0x20          /* GDAT (8, map graphics set, 0x0b, 0x65) bit: creatures do not wander */
-#define CAT_MAP_GRAPHICS 8
 #define MAP_GRAPHICS_KEY_FLAGS 0x65
 #define ROLL_WANDER_START 0x3f          /* random bits: a creature starts to wander in 1 of 64 updates */
 #define ROLL_WANDER_STOP 0x1f
@@ -1026,7 +1025,7 @@ static void scan_random_wander(int arg, int plan, uint32_t list)
 {
     uint16_t mood = group_mood(ai.group_thing);
     int set = dungeon_map_wallset(ai.map);
-    if (gdat_entry_index(draw_gdat(), CAT_MAP_GRAPHICS, set, GDAT_TYPE_VALUE, MAP_GRAPHICS_KEY_FLAGS) & MAP_KEY_NO_WANDER
+    if (gdat_entry_index(draw_gdat(), CAT_WALLSET, set, GDAT_TYPE_VALUE, MAP_GRAPHICS_KEY_FLAGS) & MAP_KEY_NO_WANDER
         || (!(int8_t)arg && mood & MOOD_WANDERS)) {
         group_set_mood(ai.group_thing, mood & ~MOOD_WANDERS);
         return;
@@ -1285,7 +1284,6 @@ enum { MOOD_OP_CLEAR, MOOD_OP_SET, MOOD_OP_TEST, MOOD_OP_SET_BY_TARGETS, MOOD_OP
 #define PLACE_WAIT_CHECKS 3             /* the checks ahead before a creature waits to place its item again */
 #define CANDIDATE_MELEE_LINE 8          /* AiCandidate.kind TARGET_MELEE_LINE of ai_move.c */
 #define CANDIDATE_SHOOT_LINE 9          /* ... TARGET_SHOOT_LINE */
-#define CAT_ORNAMENT 9
 
 static int facing(void) { return group_dir(ai.group_thing); }
 static int dest_x(void) { return location_x(ai.active->destination); }
@@ -1757,7 +1755,7 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
             } else if (type == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
                 int kind = text_subtype(t);
                 if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST) continue;
-                int16_t up = (int16_t)gdat_entry_index(draw_gdat(), CAT_ORNAMENT, text_value(t), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
+                int16_t up = (int16_t)gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, text_value(t), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
                 if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
                     *sensor = THING_NONE;
                     return d;
@@ -1814,7 +1812,6 @@ int16_t ai_dest_x, ai_dest_y;
 #define SOUND_ENTRY_TRANSFORMED 0x81
 #define SOUND_PRIORITY_TRANSFORM 0x6c
 #define SOUND_VOLUME_TRANSFORM 200
-#define SOUND_CATEGORY_MISC_AI 3
 #define SUB_REPEAT 0x40                 /* item filter bit: the action repeats for all matching items */
 #define PUSH_BY_CREATURE 0xfe
 #define CHAMP_HIT_DIR 2                 /* Champion.unknown_26: the direction of the hardest hit of the turn */
@@ -2290,7 +2287,7 @@ static void act_transform(void)
     } else {
         explosion_create(CREATURE_DEATH_EXPLOSION, POWER_MAX, x, y, EXPLOSION_CENTER);
     }
-    sound_request(SOUND_CATEGORY_MISC_AI, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_TRANSFORM, x, y, 1);
+    sound_request(CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_TRANSFORM, x, y, 1);
 }
 
 /* Action: the creature explodes, spawns a creature, or becomes another creature type. */

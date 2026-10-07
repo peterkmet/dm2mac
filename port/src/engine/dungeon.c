@@ -598,8 +598,6 @@ enum text_ornament_subtype { TEXT_LEVEL_LINK_FIRST = 6, TEXT_LEVEL_LINK_LAST = 7
 enum link_sensor_type {
     SENSOR_LEVEL_LINK = 0x1c, SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
 };
-#define GDAT_CATEGORY_WALLSET 8
-#define GDAT_TYPE_VALUE 0x0b
 #define WALLSET_PIT_TO_MARKER 0x6a      /* wall set value: its pits lead to a marker, not to the square below */
 #define LEVEL_TEXT_SIZE 200
 #define LEVEL_TEXT_FILL '1'             /* the level digit of the levels that the start text does not name */
@@ -751,7 +749,7 @@ void dungeon_link_things_after_load(void)
                     for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                         if (!link_thing(t, x, y, map)) break;
                 if (square_type(square) != SQUARE_PIT
-                    || gdat_entry_index(draw_gdat(), GDAT_CATEGORY_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
+                    || gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
                                         WALLSET_PIT_TO_MARKER))
                     continue;
                 int bx = x, by = y;

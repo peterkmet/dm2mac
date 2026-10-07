@@ -3,11 +3,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* GDAT categories of the things. */
-enum gdat_category {
-    GDAT_CHAMPION_CATEGORY = 0x16, GDAT_CONTAINER_CATEGORY = 0x14, GDAT_MISC_CATEGORY = 0x15,
-    GDAT_SCROLL_CATEGORY = 0x12, GDAT_NO_CATEGORY = 0xff
-};
 #define GDAT_NO_INDEX 0xff
 #define ITEM_INDEX_NONE 0x1ff   /* item index of no thing */
 /* Item index ranges. */

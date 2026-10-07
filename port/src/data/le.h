@@ -3,6 +3,12 @@
 #include <stdint.h>
 
 #define LE16_BITS 16
+/* Bit sizes and masks of bytes and nibbles, and the base of decimal numbers in texts. */
+#define BYTE_BITS 8
+#define BYTE_MASK 0xff
+#define NIBBLE_BITS 4 /* a 4 bpp pixel */
+#define NIBBLE_MASK 0xf
+#define DECIMAL_BASE 10
 
 /* Prefixes: le16 le32 put_le16 put_le32 */
 

@@ -9,7 +9,6 @@
 #include "money.h"
 #include "text.h"
 
-#define CAT_CREATURE 0x0f
 #define CREATURE_CLASS_TEXT 0x10    /* GDAT texts (0x0f, creature, 5, 0x10 + list): the item classes of a merchant */
 #define ATTR_VALUE 2                /* item attribute: the price */
 #define ATTR_VALUE_PER_CHARGE 0x35

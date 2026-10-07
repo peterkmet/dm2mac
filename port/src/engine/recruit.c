@@ -59,7 +59,7 @@ static void champ_add_to_party(int portrait, int index, int dir)
     c->unknown_26[2] = (uint8_t)game.party_dir;
     for (int s = 0; s < SLOT_COUNT; s++) c->slots[s] = THING_NONE;
     char text[TEXT_SIZE];
-    const char *p = text_gdat(GDAT_CHAMPION_CATEGORY, portrait, PORTRAIT_TEXT, text);
+    const char *p = text_gdat(CAT_CHAMPION, portrait, PORTRAIT_TEXT, text);
     char ch;
     /* the name ends at a space or after 7 characters; the title follows (the 8th character of a long name is lost) */
     for (int i = 0;; i++) {
@@ -69,7 +69,7 @@ static void champ_add_to_party(int portrait, int index, int dir)
     }
     for (int i = 0; ch && (ch = *p++) && i < CHAMPION_TITLE_SIZE - 1; i++) c->title[i] = ch;
     uint32_t size;
-    const uint8_t *d = gdat_item(draw_gdat(), gdat_find(draw_gdat(), GDAT_CHAMPION_CATEGORY, portrait, PORTRAIT_DATA_TYPE, 0),
+    const uint8_t *d = gdat_item(draw_gdat(), gdat_find(draw_gdat(), CAT_CHAMPION, portrait, PORTRAIT_DATA_TYPE, 0),
                                  &size);
     if (!d) return;  /* fix: the original reads no data */
     c->health = c->max_health = (int16_t)le16(d + 2 * DATA_HEALTH);

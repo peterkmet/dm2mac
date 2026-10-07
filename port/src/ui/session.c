@@ -23,10 +23,8 @@
 #include "weather.h"
 #include "zone.h"
 
-#define CAT_MENU 5
 #define MENU_PICTURE 1                  /* GDAT (5, 0, 1, 1): the picture of the menu command 0xda */
 #define MENU_TITLE 4                    /* GDAT (5, 0, 1, 4): the title picture */
-#define CAT_END 6
 #define END_PICTURE 1                   /* GDAT (6, 0, 1, 1): the picture after the player quits */
 #define MENU_PICTURE_VBLANKS 1800
 #define END_SOUND_VBLANKS 240
@@ -181,14 +179,14 @@ void save_draw_name_entry(const char *name, int cursor)
 {
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_SLOT_NAME, r)) return;
-    gfx_blit_bitmap(draw_gdat_image(CATEGORY_DIALOG, DIALOG_SAVE_SLOTS, 0), &view_viewport, r, r[RECT_X], r[RECT_Y],
-                    UI_OPAQUE, draw_gdat_image_palette(CATEGORY_DIALOG, DIALOG_SAVE_SLOTS, 0));
+    gfx_blit_bitmap(draw_gdat_image(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0), &view_viewport, r, r[RECT_X], r[RECT_Y],
+                    UI_OPAQUE, draw_gdat_image_palette(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0));
     text_draw_in_viewport(r[RECT_X], r[RECT_Y] + SLOT_NAME_TOP, ui_colors[UI_WHITE], name);
     if (cursor) {
         r[RECT_X] = (int16_t)(r[RECT_X] + (int)strlen(name) * FONT_ADVANCE);
         r[RECT_W] = FONT_ADVANCE;
         r[RECT_H] = (int16_t)(r[RECT_H] - SLOT_NAME_TOP);
-        gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_YELLOW], view_viewport.width, 8);
+        gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_YELLOW], view_viewport.width, IMAGE_8BPP);
     }
     ui_dialog_present();
 }
@@ -196,12 +194,12 @@ void save_draw_name_entry(const char *name, int cursor)
 void save_open_slot_dialog(int id, int buttons)
 {
     char text[2][TEXT_SIZE];
-    text_gdat(CATEGORY_DIALOG, id, 0, text[0]);
-    text_gdat(CATEGORY_DIALOG, id, 1, text[1]);
+    text_gdat(CAT_DIALOG, id, 0, text[0]);
+    text_gdat(CAT_DIALOG, id, 1, text[1]);
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CATEGORY_DIALOG, id, 0), &view_viewport, r, UI_OPAQUE,
-                           draw_gdat_image_palette(CATEGORY_DIALOG, id, 0));
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &view_viewport, r, UI_OPAQUE,
+                           draw_gdat_image_palette(CAT_DIALOG, id, 0));
     ui_dialog_screen_mode(1);
     text_draw_in_zone(ZONE_SLOT_VERSION, ui_colors[UI_DARKEST_GRAY], version_text);
     text_draw_in_zone(ZONE_SLOT_TEXT_1, ui_colors[UI_YELLOW], text[0]);

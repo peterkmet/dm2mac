@@ -5,7 +5,6 @@
 
 /* GDAT (1, 0, 4, 0), little-endian words: signature, range count, the first and last zone of each range,
    then 4 words per zone of each range. */
-#define LAYOUT_CATEGORY 1
 #define LAYOUT_INDEX 0
 #define LAYOUT_TYPE 4
 #define LAYOUT_ENTRY 0
@@ -50,7 +49,7 @@ static struct {
 int zone_load(const gdat_t *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, LAYOUT_CATEGORY, LAYOUT_INDEX, LAYOUT_TYPE, LAYOUT_ENTRY), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, LAYOUT_ENTRY), &size);
     free(layout.records);
     layout.records = NULL;
     layout.count = 0;

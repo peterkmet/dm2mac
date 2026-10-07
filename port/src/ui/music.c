@@ -5,7 +5,6 @@
 #include "hmp.h"
 #include "music.h"
 
-#define SONG_CATEGORY 4
 #define SONG_TYPE 3
 #define SONG_ENTRY 0
 #define SONG_VOLUME_FULL 0x7f
@@ -71,7 +70,7 @@ void music_play_song(int song)
 {
     if (music.enabled && song && music.volume > 0) {
         music_stop();
-        int item = gdat_find(gdat, SONG_CATEGORY, song, SONG_TYPE, SONG_ENTRY);
+        int item = gdat_find(gdat, CAT_MUSIC, song, SONG_TYPE, SONG_ENTRY);
         uint32_t size;
         const uint8_t *data = item < 0 ? NULL : gdat_item(gdat, item, &size);
         if (!data || hmp_start(data, size, fm_send) != HMP_OK) return;

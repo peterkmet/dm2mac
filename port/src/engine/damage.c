@@ -643,7 +643,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
     case REBIRTH_BONES: {
         uint16_t t = dungeon_square_first_thing(party.cur_map, x, y);
         for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-            if (t >> THING_CELL_SHIFT == cell && item_gdat_category(t) == GDAT_MISC_CATEGORY && item_gdat_index(t) == ITEM_BONES
+            if (t >> THING_CELL_SHIFT == cell && item_gdat_category(t) == CAT_MISC && item_gdat_index(t) == ITEM_BONES
                 && (int16_t)item_add_charges(t, 0) == champ)
                 break;
         if (t == THING_ENDOFLIST) return;

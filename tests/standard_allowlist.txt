@@ -91,16 +91,6 @@ duplicate ATTR_VALUE_PER_CHARGE open: module cleanup
 duplicate AURA_DEFENSE open: module cleanup
 duplicate AURA_SHIFT open: module cleanup
 duplicate BEND_CENTER open: module cleanup
-duplicate CAT_CREATURE open: module cleanup
-duplicate CAT_DOOR open: module cleanup
-duplicate CAT_EXPLOSION open: module cleanup
-duplicate CAT_FLOOR_ORNAMENT open: module cleanup
-duplicate CAT_INTERFACE open: module cleanup
-duplicate CAT_MAP open: module cleanup
-duplicate CAT_ORNAMENT open: module cleanup
-duplicate CAT_SKY open: module cleanup
-duplicate CAT_WALLSET open: module cleanup
-duplicate CAT_WALL_ORNAMENT open: module cleanup
 duplicate CELL_COUNT open: module cleanup
 duplicate CHAMP_DAMAGE_SHOWN open: module cleanup
 duplicate CHARGES_EMPTY open: module cleanup
@@ -132,11 +122,7 @@ duplicate FIELD_SKILL open: module cleanup
 duplicate FILTER_BITMAP_SIZE open: module cleanup
 duplicate FLOOR_FRAME_STEP open: module cleanup
 duplicate FOOD_MAX open: module cleanup
-duplicate GDAT_CONTAINER_CATEGORY open: module cleanup
 duplicate GDAT_INDEX_COUNT open: module cleanup
-duplicate GDAT_TEXT_TYPE open: module cleanup
-duplicate GDAT_TYPE_TEXT open: module cleanup
-duplicate GDAT_TYPE_VALUE open: module cleanup
 duplicate GLOBAL_BYTE_FIRST open: module cleanup
 duplicate GLOBAL_BYTE_MAX open: module cleanup
 duplicate HASTE_MAX open: module cleanup
@@ -209,7 +195,6 @@ duplicate TARGET_HOME open: module cleanup
 duplicate TEXT_LADDER open: module cleanup
 duplicate TEXT_LADDER_HIDDEN open: module cleanup
 duplicate TIME_BYTE_WRAP open: module cleanup
-duplicate TYPE_DATA open: module cleanup
 duplicate UI_COLORS_ENTRY open: module cleanup
 duplicate VAR_ADD open: module cleanup
 duplicate VOLUME_SHIFT open: module cleanup

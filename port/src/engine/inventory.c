@@ -38,7 +38,6 @@ enum {
 #define SWALLOW_FALLBACK_INDEX 0xfe  /* the sound index when the champion has no swallow sound */
 #define SWALLOW_PRIORITY 0x96
 #define SWALLOW_VOLUME 0x80
-#define HAND_ICON_BPP 8
 /* Data bytes of an item effect event: the thing type and the GDAT index of the consumed item. */
 enum { EFFECT_DATA_TYPE = 0, EFFECT_DATA_INDEX = 2 };
 
@@ -145,7 +144,7 @@ static void render_hand_icon(void)
     int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
     const Bitmap *image = draw_gdat_image(category, index, entry);
     const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
-    Bitmap cursor = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, HAND_ICON_BPP};
+    Bitmap cursor = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
     memset(leader_hand.cursor, HAND_ICON_KEY, sizeof leader_hand.cursor);
     const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
     if (image && colors) {
@@ -418,7 +417,7 @@ void champ_consume_object(int champ, uint16_t thing, int slot)
     }
     if (c->stamina > c->max_stamina) c->stamina = c->max_stamina;
     if (c->health > c->max_health) c->health = c->max_health;
-    sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, c->portrait, SOUND_SWALLOW, SWALLOW_FALLBACK_INDEX, game.party_x, game.party_y, 0,
+    sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_SWALLOW, SWALLOW_FALLBACK_INDEX, game.party_x, game.party_y, 0,
                              SWALLOW_PRIORITY, SWALLOW_VOLUME);
     c->redraw |= REDRAW_EATEN;
     if (slot != -1) {

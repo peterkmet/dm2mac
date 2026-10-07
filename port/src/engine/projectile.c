@@ -47,7 +47,6 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define DEATH_CLOUD_LAST 0x37
 #define SMOKE_DURATION 5
 
-#define CAT_EXPLOSION 0x0d
 #define SOUND_LAUNCH 0x86           /* sound entries of a thing: launched, explodes */
 #define SOUND_EXPLODE 0x81
 #define SOUND_PRIORITY_LAUNCH 0x6e
@@ -913,7 +912,7 @@ int creature_attack_champion(uint16_t group, int champ)
             if (rand_bit()) power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
             damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
             if (damage) {
-                sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, c->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y,
+                sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y,
                                          SOUND_DELAY_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
                 int16_t poison;
                 if (info->poison && rand_bit() && (poison = (int16_t)champ_get_stat_adjusted_attack(champion(champ), STAT_VITALITY, info->poison)) != 0)

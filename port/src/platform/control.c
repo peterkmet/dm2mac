@@ -15,7 +15,6 @@
 #include "champion.h"
 #include "dialog.h"
 #include "dungeon.h"
-#include "gdat.h"
 #include "game.h"
 #include "input.h"
 #include "item.h"

@@ -77,7 +77,6 @@ enum {
 #define CAST_KIND_MASK 0xf0
 #define SHIFT_COUNT_MASK 0x1f           /* the x86 shift uses the low 5 bits of the count */
 /* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
-#define CAT_SPELL_ITEM 0x0d
 #define SPELL_ITEM_INDEX 0x0f
 #define SPELL_ITEM_KEY 0x42
 /* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
@@ -333,7 +332,7 @@ static void cast_summon(int type, int skill, int power)
 /* The spell that the item spell creates goes into the leader hand, or onto the party square. */
 static void cast_create_item(void)
 {
-    uint16_t thing = item_create_by_index(gdat_entry_index(draw_gdat(), CAT_SPELL_ITEM, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
+    uint16_t thing = item_create_by_index(gdat_entry_index(draw_gdat(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
                                                            SPELL_ITEM_KEY));
     if (game.leader_hand == THING_NONE) {
         champ_put_object_in_leader_hand(thing, 1);

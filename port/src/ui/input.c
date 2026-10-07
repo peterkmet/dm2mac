@@ -626,12 +626,12 @@ static uint8_t champion_cursor_key;
 
 void input_set_champion_cursor(int champ)
 {
-    Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, NIBBLE_BITS);
+    Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, IMAGE_4BPP);
     if (!face) return;
     memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
     uint8_t palette[FACE_ICON_COLORS];
     ui_draw_champion_face_icon(face, champ, palette);
-    Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, BYTE_BITS};
+    Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
     memset(champion_cursor, UI_KEY, sizeof champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     gfx_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, palette);
@@ -642,25 +642,25 @@ void input_set_champion_cursor(int champ)
 CursorImage input_cursor_image(int cursor)
 {
     switch (cursor) {
-    case CURSOR_HAND: return (CursorImage){cursor_hand, ui_colors, NIBBLE_BITS, HAND_W, CURSOR_H, 0, 0, UI_KEY};
+    case CURSOR_HAND: return (CursorImage){cursor_hand, ui_colors, IMAGE_4BPP, HAND_W, CURSOR_H, 0, 0, UI_KEY};
     case CURSOR_OBJECT: {
         static uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE];
         uint8_t key = leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
         memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
         memset(object_cursor, key, sizeof object_cursor);
-        const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, BYTE_BITS};
-        Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, BYTE_BITS};
+        const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
+        Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
         gfx_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
         gfx_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
-        return (CursorImage){object_cursor, NULL, BYTE_BITS, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
+        return (CursorImage){object_cursor, NULL, IMAGE_8BPP, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
                              OBJECT_HOT, OBJECT_HOT, key};
     }
     case CURSOR_CHAMPION:
-        return (CursorImage){champion_cursor, NULL, BYTE_BITS, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
+        return (CursorImage){champion_cursor, NULL, IMAGE_8BPP, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
                              champion_cursor_key};
-    default: return (CursorImage){cursor_arrow, ui_colors, NIBBLE_BITS, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
+    default: return (CursorImage){cursor_arrow, ui_colors, IMAGE_4BPP, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
     }
 }
 
@@ -672,7 +672,7 @@ void input_draw_cursor(uint8_t *dst, int x, int y)
         for (int cx = 0; cx < c.width; cx++) {
             int sx = x - c.hot_x + cx, sy = y - c.hot_y + cy, i = cy * c.width + cx;
             if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
-            int n = c.bpp == NIBBLE_BITS ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BITS)) & NIBBLE_MASK : c.bits[i];
+            int n = c.bpp == IMAGE_4BPP ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BITS)) & NIBBLE_MASK : c.bits[i];
             if (n != c.key) dst[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
         }
 }
@@ -1162,7 +1162,6 @@ void ui_release_move_arrow(void)
 
 /* ---- Clicks in the dungeon view ---- */
 
-#define CAT_CREATURE_SOUND 0x0f
 #define ZONE_FRONT_WALL_LOW 0x2fd   /* the parts of the view that show the wall in front of the party */
 #define ZONE_FRONT_WALL_HIGH 0x2fe
 #define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
@@ -1174,7 +1173,6 @@ enum { WALL_CELL_PARTY, WALL_CELL_LEFT, WALL_CELL_RIGHT, WALL_CELL_FRONT };
 #define CLICK_SOUND_PRIORITY 0x8c
 #define CLICK_SOUND_VOLUME 0x80
 #define WALL_SOUND_VOLUME 200
-#define CAT_MISC_SOUND 3
 #define DOOR_BUTTON_SOUND_ENTRY 0x88
 #define PUSH_RESISTANCE_FIXED 0xff  /* a creature that never moves: a click on it only sounds */
 
@@ -1209,7 +1207,7 @@ static void view_click_creature(uint16_t group, int x, int y, int square_x, int 
     int side;
     if (!view_hit_test_creature(x, y, square_x, square_y, &side)) return;
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
-        sound_play_with_fallback(CAT_CREATURE_SOUND, item_gdat_index(group), CLICK_SOUND_ENTRY, SOUND_FALLBACK, square_x,
+        sound_play_with_fallback(CAT_CREATURE, item_gdat_index(group), CLICK_SOUND_ENTRY, SOUND_FALLBACK, square_x,
                                  square_y, 0, CLICK_SOUND_PRIORITY, CLICK_SOUND_VOLUME);
     } else if (!side) {
         party.push_mode = 1;
@@ -1234,7 +1232,7 @@ static void view_click_front_wall(int passable, int x, int y)
 /* A door button of the door at (x, y): the door toggles, the button shows pressed until the next game step. */
 static void view_click_door_button(int x, int y, uint16_t door)
 {
-    sound_request(CAT_MISC_SOUND, 0, DOOR_BUTTON_SOUND_ENTRY, CLICK_SOUND_PRIORITY, CLICK_SOUND_VOLUME, game.party_x,
+    sound_request(CAT_DUNGEON, 0, DOOR_BUTTON_SOUND_ENTRY, CLICK_SOUND_PRIORITY, CLICK_SOUND_VOLUME, game.party_x,
                   game.party_y, 1);
     sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, game.game_time + 1);
     TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, party.cur_map),

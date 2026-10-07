@@ -21,7 +21,6 @@
 #include "view.h"
 #include "weather.h"
 
-#define CAT_WALLSET 8
 #define MAP_KEY_PIT_TO_MARKER 0x6a  /* map graphics value: pits lead to a random marker, not one level down */
 #define ATTR_LIGHT 0xf8             /* item attribute: the item gives light */
 #define ATTR_TELEPORT_SCOPE 0x1e    /* creature attribute: teleporters that move the creature */
@@ -61,7 +60,6 @@
 #define SOUND_PRIORITY_FALL 0xbe
 #define SOUND_VOLUME_MAX 0xff
 #define SOUND_VOLUME 0x80
-#define SOUND_CATEGORY_TELEPORT 0x18
 #define FALL_ALERT_DAMAGE 0x14          /* the damage alert of a creature that falls into a pit */
 #define BASH_ROLL_MASK 0x0f             /* the random part of the strength of a champion who bashes a door */
 #define ALERT_MOOD_BORED 5              /* alert flags: mood bit 5, MOOD_BORED */
@@ -318,7 +316,7 @@ int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int di
         if (champs[i] < 0) continue;
         if (champ_take_damage(champs[i], 1, BUMP_WOUNDS, ATTACK_TYPE_SELF)) {
             hurt = 1;
-            sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, champion(champs[i])->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y,
+            sound_play_with_fallback(CAT_CHAMPION, champion(champs[i])->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y,
                                      1, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_PUSH);
         }
     }
@@ -723,7 +721,7 @@ static int transit_teleporter(Transit *t, uint8_t square)
     if (t->thing == THING_NONE) {
         move_set_party_position(t->x, t->y);
         if (audible)
-            sound_request(SOUND_CATEGORY_TELEPORT, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, game.party_x,
+            sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, game.party_x,
                           game.party_y, -1);
         if (t->start_map != t->map) t->draw_fall = 0;  /* the original keeps it only with its debug flag */
         int base = absolute ? 0 : game.party_dir;
@@ -733,11 +731,11 @@ static int transit_teleporter(Transit *t, uint8_t square)
             if (party.cur_map != t->start_map) {
                 int saved = party.cur_map;
                 dun_set_current_map(t->start_map);
-                sound_request(SOUND_CATEGORY_TELEPORT, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, t->src_x,
+                sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, t->src_x,
                               t->src_y, 1);
                 dun_set_current_map(saved);
             }
-            sound_request(SOUND_CATEGORY_TELEPORT, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, t->x, t->y, 1);
+            sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, t->x, t->y, 1);
         }
         creature_turn_group(t->thing, absolute, rotation);
     } else if (t->type == THING_PROJECTILE) {
@@ -767,7 +765,7 @@ static void transit_party_lands(Transit *t)
             int base = c->max_health >> 2;
             if (base > FALL_DAMAGE_MAX) base = FALL_DAMAGE_MAX;
             champ_take_damage(i, (int16_t)((rand_2bits() + base) * t->falls), FALL_WOUNDS, ATTACK_TYPE_SELF);
-            sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, c->portrait, SOUND_ENTRY_FALL, SOUND_FALLBACK, game.party_x,
+            sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_FALL, SOUND_FALLBACK, game.party_x,
                                      game.party_y, -1, SOUND_PRIORITY_FALL, SOUND_VOLUME_MAX);
         }
         t->fell_hurt = 1;
@@ -870,7 +868,7 @@ static void transit_finish(const Transit *t)
     dun_set_party_location(t->x, t->y, t->map);
     for (int i = 0; i < game.champion_count; i++)
         if (champion(i)->health)
-            sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, champion(i)->portrait, SOUND_ENTRY_STRAIN, SOUND_FALLBACK, t->x, t->y,
+            sound_play_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_STRAIN, SOUND_FALLBACK, t->x, t->y,
                                      2, SOUND_PRIORITY_STRAIN, SOUND_VOLUME_PUSH);
     dun_set_party_location(px, py, pmap);
     dun_set_current_map(saved_map);
@@ -928,7 +926,7 @@ static int creature_displaces_party(uint16_t thing, int x, int y)
     if (!move_find_free_adjacent_square(THING_NONE, x, y, &nx, &ny)) return 0;
     int damage = rand_below(DISPLACE_DAMAGE_ROLL) + (creature_group_info(thing)->push_resistance >> DISPLACE_RESISTANCE_SHIFT);
     champ_damage_party((uint16_t)damage, DISPLACE_WOUNDS, ATTACK_TYPE_SELF);
-    sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, SOUND_FALLBACK, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
+    sound_play_with_fallback(CAT_CHAMPION, SOUND_FALLBACK, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
                              SOUND_VOLUME_PUSH);
     move_thing(THING_NONE, x, y, nx, ny);
     return 1;

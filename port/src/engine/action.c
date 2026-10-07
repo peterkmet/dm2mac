@@ -41,7 +41,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define RESULT_LARGE_SCALE 0x2f
 #define RESULT_SCALE_Y 0x35
 #define RESULT_DIGITS 5
-#define AMMO_WEAPON_CATEGORY 0x10
 #define AMMO_ATTR 5
 #define AMMO_NOT_AMMO 0x8000
 #define AMMO_HAND_DEFAULT 0x38
@@ -68,7 +67,6 @@ enum { RESULT_NOTHING = -1, RESULT_NO_AMMO = -2, RESULT_FIZZLE = -3, RESULT_NEED
 #define NO_CELL 0xff
 #define GFX_SET_SHIFT 4             /* map graphics word: wall set in bits 4-7 */
 #define GFX_SET_MASK 0x0f
-#define GDAT_TYPE_REMAP 7           /* GDAT type of a color remap table */
 #define ICON_COLORS 16              /* the colors of a 4 bpp picture */
 #define ICON_BPP 8
 #define FACE_BPP 4
@@ -169,9 +167,9 @@ static void draw_action_result(int16_t value)
         offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? AMMO_HAND_OTHER : AMMO_HAND_DEFAULT,
                                   ZONE_AMMO_HAND, UI_OPAQUE);
         for (int index = 0; index < GDAT_INDEX_COUNT; index++) {
-            uint16_t ammo = gdat_entry_index(draw_gdat(), AMMO_WEAPON_CATEGORY, index, GDAT_TYPE_VALUE, AMMO_ATTR);
+            uint16_t ammo = gdat_entry_index(draw_gdat(), CAT_WEAPON, index, GDAT_TYPE_VALUE, AMMO_ATTR);
             if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
-                offscreen_draw_gdat_image(&area, AMMO_WEAPON_CATEGORY, index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
+                offscreen_draw_gdat_image(&area, CAT_WEAPON, index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
                 return;
             }
         }
@@ -398,7 +396,7 @@ static void draw_action_name(int i, int highlight)
     begin_draw(0);
     const ChampionAction *a = &champ_actions[i];
     if (action.flags) {
-        offscreen_draw_gdat_image(&area, GDAT_CONTAINER_CATEGORY, action.map_item,
+        offscreen_draw_gdat_image(&area, CAT_CONTAINER, action.map_item,
                                   (uint8_t)((a->entry - ACTION_TEXT_FIRST) * 2 + MAP_ACTION_PICTURE_BASE + highlight),
                                   ZONE_MAP_ACTION_FIRST + i, UI_OPAQUE);
         return;
@@ -430,7 +428,7 @@ static void draw_money_box(uint16_t box)
         {6, 7}, {2, 2}, {-6, 9}, {-3, -11}, {2, 11}, {0, -11}, {-5, -7}, {-3, 3}, {8, 11}, {0, -5}, {6, -9},
         {-7, 3}, {5, 1}, {4, -7}, {-8, -3}, {8, 3}, {-3, -2}, {0, 7}, {-3, -4}, {-4, 0}, {2, -11}
     };
-    offscreen_draw_gdat_image(&area, GDAT_CONTAINER_CATEGORY, item_gdat_index(box), MONEY_PICTURE, ZONE_PANEL, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_CONTAINER, item_gdat_index(box), MONEY_PICTURE, ZONE_PANEL, UI_OPAQUE);
     int16_t counts[COIN_TYPE_MAX];
     money_count_coins_in_box(box, counts);
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
@@ -475,8 +473,8 @@ static void draw_container(uint16_t container, int full)
     int index = item_gdat_index(container);
     int16_t back[RECT_SIZE] = {0};
     if (full) {
-        offscreen_draw_gdat_image(&area, GDAT_CONTAINER_CATEGORY, index, CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
-        offscreen_draw_gdat_image(&area, GDAT_CONTAINER_CATEGORY, index, CONTAINER_LID, ZONE_CONTAINER_LID,
+        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
+        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, CONTAINER_LID, ZONE_CONTAINER_LID,
                                   CONTAINER_LID_KEY);
     } else {
         zone_get_rect(ZONE_PANEL, back);
@@ -488,9 +486,9 @@ static void draw_container(uint16_t container, int full)
         if (!full) {
             int16_t r[RECT_SIZE];
             zone_get_rect(zone, r);
-            offscreen_blit(&area, draw_gdat_image(GDAT_CONTAINER_CATEGORY, index, CONTAINER_PICTURE), r,
+            offscreen_blit(&area, draw_gdat_image(CAT_CONTAINER, index, CONTAINER_PICTURE), r,
                            (int16_t)(r[RECT_X] - back[RECT_X]), (int16_t)(r[RECT_Y] - back[RECT_Y]), UI_OPAQUE, MIRROR_NONE,
-                           draw_gdat_image_palette(GDAT_CONTAINER_CATEGORY, index, CONTAINER_PICTURE));
+                           draw_gdat_image_palette(CAT_CONTAINER, index, CONTAINER_PICTURE));
         }
         int icon = item_icon_index(t, SLOT_CONTAINER_FIRST + i, 1);
         offscreen_draw_gdat_image(&area, item_gdat_category(t), item_gdat_index(t), icon, zone, UI_KEY);

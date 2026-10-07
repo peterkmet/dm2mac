@@ -71,10 +71,8 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 #define SCROLL_TEXT_MODE 0x8002     /* decode a scroll text: no leading new line, also when the text is hidden */
 #define SCROLL_LETTER_FIRST 1       /* the scroll font has its letters at 1 to 26 */
 #define SCROLL_HIGH_SHIFT 0xa0      /* characters above 'z' move by this */
-#define SCROLL_PICTURE_CATEGORY 0x12
 #define SCROLL_PICTURE_ENTRY 0x10
 #define OBJECT_PICTURE_ENTRY 0x11   /* (category, index, 1, 0x11): the big picture of an item */
-#define GDAT_IMAGE_TYPE 1
 #define TITLE_NO_SPACE ",;-"        /* a title that starts with one of these follows the name without a space */
 
 /* The slots of the status boxes (champion * 2 + hand), of the inventory (8 + slot), of the object info,
@@ -156,7 +154,7 @@ void gfx_draw_gdat_in_viewport_zone(int category, int index, int entry, int zone
 void gfx_fill_zone_screen(int zone, int color)
 {
     int16_t r[RECT_SIZE];
-    if (zone_get_rect(zone, r)) gfx_fill_rect(draw_screen.pixels, r, color, draw_screen.width, BYTE_BITS);
+    if (zone_get_rect(zone, r)) gfx_fill_rect(draw_screen.pixels, r, color, draw_screen.width, IMAGE_8BPP);
 }
 
 int16_t *zone_get_icon_rect(int zone, int16_t *rect)
@@ -194,7 +192,7 @@ void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette)
 void offscreen_create(Offscreen *o, int zone, int mark_dirty)
 {
     if ((int16_t)zone != -1) zone_get_rect(zone, o->rect);
-    o->bitmap = draw_temp_bitmap(o->rect[RECT_W], o->rect[RECT_H], BYTE_BITS);
+    o->bitmap = draw_temp_bitmap(o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP);
     o->dirty_count = 0;
     if (mark_dirty) offscreen_add_dirty_rect(o, o->rect);
 }
@@ -204,8 +202,8 @@ void offscreen_flush(Offscreen *o, int close)
     for (int i = 0; i < o->dirty_count; i++) {
         const int16_t *d = o->dirty[i];
         gfx_blit(o->bitmap->pixels, draw_screen.pixels, d, (int16_t)(d[RECT_X] - o->rect[RECT_X]),
-                 (int16_t)(d[RECT_Y] - o->rect[RECT_Y]), o->rect[RECT_W], draw_screen.width, GFX_OPAQUE, MIRROR_NONE, BYTE_BITS,
-                 BYTE_BITS, NULL);
+                 (int16_t)(d[RECT_Y] - o->rect[RECT_Y]), o->rect[RECT_W], draw_screen.width, GFX_OPAQUE, MIRROR_NONE, IMAGE_8BPP,
+                 IMAGE_8BPP, NULL);
     }
     o->dirty_count = 0;
     if (close) o->bitmap = NULL;  /* draw_free_temp frees it */
@@ -270,7 +268,7 @@ void offscreen_fill_rect(Offscreen *o, const int16_t *rect, int color)
     if (!rect) return;
     int16_t r[RECT_SIZE];
     local_rect(o, rect, r);
-    gfx_fill_rect(o->bitmap->pixels, r, (uint16_t)color, o->rect[RECT_W], BYTE_BITS);
+    gfx_fill_rect(o->bitmap->pixels, r, (uint16_t)color, o->rect[RECT_W], IMAGE_8BPP);
     offscreen_add_dirty_rect(o, rect);
 }
 
@@ -290,7 +288,7 @@ void offscreen_blit(Offscreen *o, const Bitmap *src, const int16_t *rect, int sr
     int16_t r[RECT_SIZE];
     local_rect(o, rect, r);
     gfx_blit(src->pixels, o->bitmap->pixels, r, (int16_t)src_x, (int16_t)src_y, src->width, o->rect[RECT_W],
-             (int16_t)transparent, (uint16_t)mirror, src->bpp, BYTE_BITS, colormap);
+             (int16_t)transparent, (uint16_t)mirror, src->bpp, IMAGE_8BPP, colormap);
     offscreen_add_dirty_rect(o, rect);
 }
 
@@ -328,7 +326,7 @@ void offscreen_draw_text_at(Offscreen *o, int x, int y, int color, int bg, const
     int16_t w, h;
     if (!text_measure(text, &w, &h)) return;
     gfx_draw_text(o->bitmap->pixels, o->rect[RECT_W], (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]),
-                  (uint16_t)color, (uint16_t)bg, text, BYTE_BITS);
+                  (uint16_t)color, (uint16_t)bg, text, IMAGE_8BPP);
     /* like the original, the changed rect starts at the base line */
     const int16_t r[RECT_SIZE] = {[RECT_X] = (int16_t)x, [RECT_Y] = (int16_t)y, [RECT_W] = w, [RECT_H] = h};
     offscreen_add_dirty_rect(o, r);
@@ -347,7 +345,7 @@ void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, cons
     int16_t r[RECT_SIZE];
     if (!text_rect_in_zone(zone, text, r)) return;
     gfx_draw_text(o->bitmap->pixels, o->rect[RECT_W], (int16_t)(r[RECT_X] - o->rect[RECT_X]),
-                  (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), (uint16_t)color, (uint16_t)bg, text, BYTE_BITS);
+                  (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), (uint16_t)color, (uint16_t)bg, text, IMAGE_8BPP);
     offscreen_add_dirty_rect(o, r);
 }
 
@@ -467,7 +465,7 @@ static void draw_panel_icon(int icon, int zone)
 /* Draws the portrait of the champion with the open inventory, dimmed while the party is invisible. */
 static void draw_champion_portrait(int champ)
 {
-    offscreen_draw_gdat_image(&status_box, GDAT_CHAMPION_CATEGORY, champion(champ)->portrait, 0,
+    offscreen_draw_gdat_image(&status_box, CAT_CHAMPION, champion(champ)->portrait, 0,
                               ZONE_STATUS_PORTRAIT + champ, UI_OPAQUE);
     if (game.magic_light[MAGIC_INVISIBILITY]) {
         int16_t r[RECT_SIZE];
@@ -622,7 +620,7 @@ static void draw_scroll(uint16_t scroll)
     text_decode_dungeon(text, sizeof text, scroll, SCROLL_TEXT_MODE);
     ui.panel_mode = PANEL_MODE_SCROLL;
     gfx_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_PANEL, ZONE_INVENTORY_PANEL, UI_OPAQUE);
-    gfx_draw_gdat_in_viewport_zone(SCROLL_PICTURE_CATEGORY, 0, SCROLL_PICTURE_ENTRY, ZONE_INVENTORY_PANEL, UI_KEY);
+    gfx_draw_gdat_in_viewport_zone(CAT_SCROLL, 0, SCROLL_PICTURE_ENTRY, ZONE_INVENTORY_PANEL, UI_KEY);
     int newlines = 0;
     size_t n = strlen(text);
     for (size_t i = 0; i < n; i++) newlines += text[i] == '\n';
@@ -663,9 +661,9 @@ static void draw_gauge_bar(int value, int zone, int color, int low, int high, in
     }
     shadow[RECT_X] = (int16_t)(shadow[RECT_X] + GAUGE_SHADOW);
     shadow[RECT_Y] = (int16_t)(shadow[RECT_Y] + GAUGE_SHADOW);
-    gfx_fill_rect(view_viewport.pixels, shadow, ui_colors[UI_BLACK], view_viewport.width, BYTE_BITS);
-    gfx_fill_rect(view_viewport.pixels, bar, ui_colors[color], view_viewport.width, BYTE_BITS);
-    if (split) gfx_fill_rect(view_viewport.pixels, full, ui_colors[split], view_viewport.width, BYTE_BITS);
+    gfx_fill_rect(view_viewport.pixels, shadow, ui_colors[UI_BLACK], view_viewport.width, IMAGE_8BPP);
+    gfx_fill_rect(view_viewport.pixels, bar, ui_colors[color], view_viewport.width, IMAGE_8BPP);
+    if (split) gfx_fill_rect(view_viewport.pixels, full, ui_colors[split], view_viewport.width, IMAGE_8BPP);
 }
 
 /* An object gauge: the bar with its glyph left of it and the end marks. */
@@ -765,7 +763,7 @@ static int draw_object_info(uint16_t thing, int full)
     if (!full) return 0;
     gfx_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_PANEL, ZONE_INVENTORY_PANEL, UI_OPAQUE);
     int index = item_gdat_index(thing), category = item_gdat_category(thing);
-    if (gdat_exists(draw_gdat(), category, index, GDAT_IMAGE_TYPE, OBJECT_PICTURE_ENTRY))
+    if (gdat_exists(draw_gdat(), category, index, GDAT_TYPE_IMAGE, OBJECT_PICTURE_ENTRY))
         gfx_draw_gdat_in_viewport_zone(category, index, OBJECT_PICTURE_ENTRY, ZONE_INVENTORY_PANEL, UI_KEY);
     gfx_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_OBJECT_NAME, ZONE_OBJECT_NAME_BACK, UI_KEY);
     text_draw_in_zone(ZONE_OBJECT_NAME, ui_colors[UI_LIGHT_GRAY], item_name(thing));

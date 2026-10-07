@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include "sound.h"
 
-#define GDAT_TYPE_SOUND 2
 #define SAMPLE_HEADER 6 /* u16 rate, then 08 01 00 00 */
 #define UPSAMPLE (SOUND_OUTPUT_RATE / SOUND_RATE)
 

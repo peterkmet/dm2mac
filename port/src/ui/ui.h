@@ -25,7 +25,6 @@ enum ui_zone {
 };
 
 /* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
-enum { CAT_INTERFACE = 1, CAT_PANEL = 7, CAT_WALLSET = 8 };
 enum { UI_INDEX_STATUS = 2, UI_INDEX_ARROWS = 3, UI_INDEX_ACTION = 4, UI_INDEX_SPELL = 5, UI_INDEX_FACES = 6 };
 #define UI_KEY 12           /* transparent color of the interface pictures */
 #define UI_OPAQUE (-1)

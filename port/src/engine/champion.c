@@ -21,7 +21,6 @@
 #define SKILL_LEVEL_EXPERIENCE 0x200    /* each doubling of the experience above this is one more level */
 #define ACTION_ENTRY_FIRST 8
 #define ACTION_ENTRY_LAST 11
-#define GDAT_TEXT_TYPE 5
 #define NO_SLOT (-1)
 #define SENSOR_START_CHAMPION 0x7e  /* on square (0, 0): the champion of its mirror starts a new game */
 
@@ -148,7 +147,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
 {
     int category, index;
     if (thing == THING_NONE) {
-        category = GDAT_CHAMPION_CATEGORY;
+        category = CAT_CHAMPION;
         index = champion(champ)->portrait;
     } else {
         if (item_is_moneybox(thing) || item_is_chest(thing)) return 1;
@@ -157,7 +156,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
     }
     int count = 0;
     for (int entry = ACTION_ENTRY_FIRST; entry <= ACTION_ENTRY_LAST && count < CHAMPION_ACTION_MAX; entry++) {
-        if (!gdat_exists(draw_gdat(), category, index, GDAT_TEXT_TYPE, entry)) continue;
+        if (!gdat_exists(draw_gdat(), category, index, GDAT_TYPE_TEXT, entry)) continue;
         int command = text_gdat_field(category, index, entry, FIELD_COMMAND);
         if (!command) continue;
         int16_t needs_hand = text_gdat_field(category, index, entry, FIELD_HAND);

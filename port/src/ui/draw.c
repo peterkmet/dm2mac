@@ -5,13 +5,12 @@
 #include "zone.h"
 
 #define OFFSET_ENTRY 0xfe        /* value key (category, index, 0x0c, 0xfe): offset of all images of an index */
-#define PLACEHOLDER_CATEGORY 0x15  /* the image that stands in for a missing image */
 #define PLACEHOLDER_INDEX 0xfe
 #define PLACEHOLDER_ENTRY 0xfe
 #define IMAGE_COLORS 16
 #define NO_PALETTE (-1)
 
-Bitmap draw_screen = {&fb[0][0], SCREEN_W, SCREEN_H, 8};
+Bitmap draw_screen = {&fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
 
 static const gdat_t *gdat;
 static Bitmap *images;   /* decoded images by GDAT item */
@@ -58,7 +57,7 @@ static const Bitmap *decoded(int item)
 static int image_item(int category, int index, int entry)
 {
     int item = gdat_find(gdat, category, index, GDAT_TYPE_IMAGE, entry);
-    return item >= 0 ? item : gdat_find(gdat, PLACEHOLDER_CATEGORY, PLACEHOLDER_INDEX, GDAT_TYPE_IMAGE, PLACEHOLDER_ENTRY);
+    return item >= 0 ? item : gdat_find(gdat, CAT_MISC, PLACEHOLDER_INDEX, GDAT_TYPE_IMAGE, PLACEHOLDER_ENTRY);
 }
 
 const Bitmap *draw_gdat_image(int category, int index, int entry)
@@ -73,7 +72,7 @@ const uint8_t *draw_gdat_image_palette(int category, int index, int entry)
 
 Bitmap *draw_temp_bitmap(int width, int height, int bpp)
 {
-    size_t size = bpp == 4 ? (size_t)(width + 1) / 2 * height : (size_t)width * height;
+    size_t size = bpp == IMAGE_4BPP ? (size_t)(width + 1) / 2 * height : (size_t)width * height;
     Temp *t = malloc(sizeof *t + (size ? size : 1));
     if (!t) return NULL;
     t->bitmap = (Bitmap){(uint8_t *)(t + 1), (int16_t)width, (int16_t)height, (uint8_t)bpp};
@@ -109,7 +108,7 @@ DrawCtx *gfx_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->anchor = ZONE_NO_ANCHOR;
     ctx->dst = &draw_screen;
     ctx->transparent = GFX_OPAQUE;
-    if ((uint8_t)category == CATEGORY_NONE || !gdat) return ctx;
+    if ((uint8_t)category == CAT_NONE || !gdat) return ctx;
     ctx->item = (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_IMAGE, entry);
     add_offset(ctx, (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_VALUE2, OFFSET_ENTRY));
     add_offset(ctx, (int16_t)gdat_image_offset(gdat, category, index, entry));
@@ -150,7 +149,7 @@ DrawCtx *gfx_ctx_prepare(DrawCtx *ctx)
     }
     Bitmap *out = draw_temp_bitmap(w, h, src->bpp);
     if (!out) return ctx;
-    if (src->bpp == 8) gfx_blit_scaled_8bpp(src->pixels, out->pixels, src->width, src->height, w, h);
+    if (src->bpp == IMAGE_8BPP) gfx_blit_scaled_8bpp(src->pixels, out->pixels, src->width, src->height, w, h);
     else gfx_blit_scaled_4bpp(src->pixels, out->pixels, src->width, src->height, w, h, NULL);
     gfx_ctx_set_image(ctx, out);
     return ctx;

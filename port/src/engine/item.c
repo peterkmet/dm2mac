@@ -22,12 +22,10 @@
 #define ACTION_ENTRY_LAST 11
 #define FIELD_COMMAND 2
 #define FIELD_CHARGES 8
-#define GDAT_TEXT_TYPE 5
 #define MISC_ITEM_INDEX_BASE 0x100
 #define ITEM_KIND_ITEMS 0x80           /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
 #define MONEY_SLOT_COUNT 10
 #define COIN_SCAN_COUNT 0x80
-#define MISC_GDAT_CATEGORY GDAT_MISC_CATEGORY
 #define TEXT_CHAMPION_TOKEN 0          /* the miscellaneous item 0 (a champion token) names its champion */
 #define COINS_PER_WEIGHT 5             /* the coins of a money box weigh one unit per 5 coins, rounded up */
 /* Ornament text subtypes that show their ornament as an item (the view names them SUBTYPE_*). */
@@ -37,8 +35,8 @@ enum { ITEM_KIND_WEAPON, ITEM_KIND_CLOTHING, ITEM_KIND_MISC };
 
 /* GDAT category of each thing type, from SKULL.EXE. */
 static const uint8_t thing_gdat_category[THING_TYPE_COUNT] = {
-    0x0e, 0x18, GDAT_NO_CATEGORY, GDAT_NO_CATEGORY, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, GDAT_NO_CATEGORY,
-    GDAT_NO_CATEGORY, GDAT_NO_CATEGORY, GDAT_NO_CATEGORY, 0x0d
+    0x0e, 0x18, CAT_NONE, CAT_NONE, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, CAT_NONE,
+    CAT_NONE, CAT_NONE, CAT_NONE, 0x0d
 };
 /* The first item index of each thing type; ITEM_BASE_FIXED marks the types whose GDAT index is not added. */
 #define ITEM_BASE_FIXED 0x8000
@@ -64,7 +62,7 @@ static uint16_t record_word(uint16_t thing, int offset) { return thing_word(thin
 uint8_t item_gdat_category(uint16_t thing)
 {
     while (thing != THING_NONE && thing_type(thing) == THING_PROJECTILE) thing = record_word(thing, PROJECTILE_PAYLOAD);
-    return thing == THING_NONE ? GDAT_NO_CATEGORY : thing_gdat_category[thing_type(thing)];
+    return thing == THING_NONE ? CAT_NONE : thing_gdat_category[thing_type(thing)];
 }
 
 uint8_t item_gdat_index(uint16_t thing)
@@ -200,7 +198,7 @@ int item_icon_index(uint16_t thing, int slot, int animated)
 bool item_is_moneybox(uint16_t thing)
 {
     if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || container_kind(thing)) return 0;
-    return gdat_find(draw_gdat(), GDAT_CONTAINER_CATEGORY, item_gdat_index(thing), GDAT_TEXT_TYPE, MONEYBOX_TEXT_ENTRY)
+    return gdat_find(draw_gdat(), CAT_CONTAINER, item_gdat_index(thing), GDAT_TYPE_TEXT, MONEYBOX_TEXT_ENTRY)
            != -1;
 }
 
@@ -268,7 +266,7 @@ bool item_has_charged_action(uint16_t thing)
     if (thing == THING_NONE) return 0;
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     for (int entry = ACTION_ENTRY_FIRST; entry <= ACTION_ENTRY_LAST; entry++)
-        if (gdat_exists(draw_gdat(), category, index, GDAT_TEXT_TYPE, entry)
+        if (gdat_exists(draw_gdat(), category, index, GDAT_TYPE_TEXT, entry)
             && text_gdat_field(category, index, entry, FIELD_COMMAND)
             && text_gdat_field(category, index, entry, FIELD_CHARGES))
             return 1;
@@ -280,7 +278,7 @@ const char *item_name(uint16_t thing)
     static char name[TEXT_SIZE];
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     text_args.champion = -1;
-    if (category == MISC_GDAT_CATEGORY && index == TEXT_CHAMPION_TOKEN) {
+    if (category == CAT_MISC && index == TEXT_CHAMPION_TOKEN) {
         int champion = misc_charges(thing);  /* the champion of the token */
         if (champion < game.champion_count) text_args.champion = (int16_t)champion;
     }
@@ -302,9 +300,9 @@ void money_init_coin_table(void)
     if (coins.ready) return;
     coins.ready = 1;
     for (int index = 0; index < COIN_SCAN_COUNT; index++) {
-        if (!(gdat_entry_index(draw_gdat(), MISC_GDAT_CATEGORY, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
+        if (!(gdat_entry_index(draw_gdat(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
             continue;
-        int16_t value = (int16_t)gdat_entry_index(draw_gdat(), MISC_GDAT_CATEGORY, index, GDAT_TYPE_VALUE, ATTR_COIN_VALUE);
+        int16_t value = (int16_t)gdat_entry_index(draw_gdat(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_COIN_VALUE);
         int at = 0;
         while (at < coins.count && coins.values[at] < value) at++;
         if (coins.count == COIN_TYPE_MAX) break;
@@ -351,7 +349,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
 int money_coin_type_for_slot(uint16_t box, int slot)
 {
     char text[TEXT_SIZE];
-    const char *p = text_gdat(GDAT_CONTAINER_CATEGORY, item_gdat_index(box), MONEYBOX_TEXT_ENTRY, text);
+    const char *p = text_gdat(CAT_CONTAINER, item_gdat_index(box), MONEYBOX_TEXT_ENTRY, text);
     if (!*p) return -1;
     /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */
     int16_t number = 0, counter = 0;

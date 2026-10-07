@@ -81,8 +81,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define FRIGHTEN_IMMUNE 0xf
 #define FRIGHTEN_ALERT_FLAGS 0x2005
 #define FRIGHTEN_ALERT_CHANCE 100
-#define CAT_DOOR 0x0e
-#define CAT_CREATURE 0x0f
 #define SOUND_HIT 0x8d              /* sound entry of a door or creature that a melee action hits */
 #define SOUND_FALLBACK 0xfe
 #define SOUND_HIT_PRIORITY 0x3c
