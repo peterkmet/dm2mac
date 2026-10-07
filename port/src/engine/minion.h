@@ -19,6 +19,9 @@
 #define MAP_HAS_OPTIONS 0x0800
 #define MAP_OPEN 0x8000
 
+/* MinionMap.marker_state: the grid shows the marker square, or the square it leads to one level up or down. */
+enum { MARKER_NONE, MARKER_SHOWN, MARKER_ABOVE, MARKER_BELOW };
+
 /* The state of the minion map panel (the original globals 0x7fb4a to 0x7fb9f). */
 typedef struct {
     int16_t marker_state;       /* 0 none, 1 the marker square shows, 2 its level above, 3 its level below */
