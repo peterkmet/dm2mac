@@ -8,24 +8,19 @@
 #include "move.h"
 #include "random.h"
 #include "text.h"
+#include "sensor.h"
 
-#define HEADER_SIZE 0x2c
+#define HEADER_SIZE 44
 #define MAP_DESC_SIZE 16
 #define COMPRESSED_SIGNATURE 0x8104
 #define SQUARE_THING_SLACK 300
-#define THING_COUNT_MAX 0x400
-#define EXPLOSION_COUNT_MAX 0x300
+#define THING_COUNT_MAX 1024
+#define EXPLOSION_COUNT_MAX 768
 #define MAP_COUNT_MAX 255
 #define MAP_WIDTH_SHIFT 6
 #define MAP_WIDTH_MASK 0x1f
 #define MAP_HEIGHT_SHIFT 11
 #define MISC_RESERVED 3          /* free misc records that only the forced creation of a misc item may use */
-#define TELEPORTER_X_MASK 0x1f
-#define TELEPORTER_Y_SHIFT 5
-#define TELEPORTER_Y_MASK 0x1f
-#define TELEPORTER_ROTATION_SHIFT 10
-#define TELEPORTER_MAP_SHIFT 8
-#define SIDE_COUNT 4
 
 enum header_field {
     HEADER_MAP_DATA_SIZE = 2, HEADER_MAP_COUNT = 4, HEADER_TEXT_WORDS = 6, HEADER_PARTY_START = 8,
@@ -37,8 +32,8 @@ enum map_desc_field {
 };
 #define WALL_ORNAMENT_MASK 0xf
 #define FLOOR_ORNAMENT_SHIFT 8
-#define CREATURE_TYPE_SHIFT 4
 
+/* The record size in bytes of each thing type. */
 static const uint8_t thing_size[THING_TYPE_COUNT] = {4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4};
 /* Free records that a new game adds to each thing type, for things created during play. */
 static const uint8_t thing_slack[THING_TYPE_COUNT] = {0, 0, 0, 0, 75, 100, 60, 0, 12, 5, 200, 0, 0, 0, 60, 50};
@@ -175,13 +170,23 @@ uint16_t dungeon_next_thing(uint16_t thing)
     return thing_word(thing, THING_NEXT);
 }
 
-void dungeon_unlink_thing_from_list(uint16_t thing, uint8_t *field)
+void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list)
 {
-    uint8_t *link = field;
+    uint8_t *link = (uint8_t *)list;
     while (le16(link) != THING_ENDOFLIST && (le16(link) & THING_ID_MASK) != (thing & THING_ID_MASK))
         link = dungeon_thing_record(le16(link)) + THING_NEXT;
     if (le16(link) != THING_ENDOFLIST) put_le16(link, dungeon_next_thing(le16(link)));
     set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+}
+
+void dungeon_save_record(uint16_t thing, uint8_t *buffer)
+{
+    memcpy(buffer, dungeon_thing_record(thing), dungeon_thing_size(thing_type(thing)));
+}
+
+void dungeon_restore_record(uint16_t thing, const uint8_t *buffer)
+{
+    memcpy(dungeon_thing_record(thing), buffer, dungeon_thing_size(thing_type(thing)));
 }
 
 void dungeon_append_thing(uint16_t thing, uint16_t *list)
@@ -248,7 +253,7 @@ uint16_t dungeon_unused_thing(int type)
     type &= THING_TYPE_MASK;
     uint16_t thing = THING_NONE;
     for (int i = 0; i < count && thing == THING_NONE; i++)
-        if (dungeon_next_thing(type << THING_TYPE_SHIFT | i) == THING_NONE) thing = type << THING_TYPE_SHIFT | i;
+        if (dungeon_next_thing(thing_make(type, i)) == THING_NONE) thing = thing_make(type, i);
     if (thing == THING_NONE) thing = dun_get_discarded_thing(type, DISCARD_ANY_KIND);
     if (thing == THING_NONE) return THING_NONE;
     memset(dungeon_thing_record(thing), 0, thing_size[type]);
@@ -265,9 +270,9 @@ static int teleporter_link_side(int map, int x, int y, uint16_t *teleporter)
     *teleporter = dungeon_square_first_thing(map, x, y);
     if (*teleporter == THING_ENDOFLIST) return 0;  /* fix: the original reads a record of the end mark */
     for (uint16_t t = dungeon_next_thing(*teleporter); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (thing_type(t) == THING_SENSOR && (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) == SENSOR_TELEPORTER_LINK) {
-            int rotation = thing_word(*teleporter, TELEPORTER_TARGET) >> TELEPORTER_ROTATION_SHIFT & (SIDE_COUNT - 1);
-            return (rotation + 2 & (SIDE_COUNT - 1)) + 1;
+        if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_TELEPORTER_LINK) {
+            int rotation = teleporter_rotation(*teleporter);
+            return dir_opposite(rotation) + 1;
         }
     return 0;
 }
@@ -277,10 +282,9 @@ int dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link)
     uint16_t teleporter, other;
     int side = teleporter_link_side(map, x, y, &teleporter);
     if (!side) return 0;
-    uint16_t target = thing_word(teleporter, TELEPORTER_TARGET);
-    int target_map = thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT;
+    int target_map = teleporter_map(teleporter);
     if (target_map >= dun.map_count) return 0;  /* fix: the original uses a map outside the dungeon */
-    int tx = target & TELEPORTER_X_MASK, ty = target >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK;
+    int tx = teleporter_x(teleporter), ty = teleporter_y(teleporter);
     int target_side = teleporter_link_side(target_map, tx, ty, &other);
     if (!target_side) return 0;
     *link = (TeleporterLink){side - 1, target_side - 1, tx, ty, target_map};
@@ -315,7 +319,7 @@ const uint8_t *dungeon_map_creature_types(int map)
 
 const uint8_t *dungeon_map_wall_ornaments(int map)
 {
-    return map_extra(map) + (dungeon_map_object_counts(map) >> CREATURE_TYPE_SHIFT & WALL_ORNAMENT_MASK);
+    return map_extra(map) + dungeon_map_creature_type_count(map);
 }
 
 const uint8_t *dungeon_map_floor_ornaments(int map)
@@ -332,7 +336,7 @@ const uint8_t *dungeon_map_door_ornaments(int map)
 static int teleporter_closed(int map, int x, int y)
 {
     uint16_t t = dungeon_square_first_thing(map, x, y);
-    return t != THING_ENDOFLIST && thing_word(t, TELEPORTER_MAP) & TELEPORTER_CLOSED;  /* fix: the original reads the end mark */
+    return t != THING_ENDOFLIST && teleporter_is_closed(t);  /* fix: the original reads the end mark */
 }
 
 /* True for a square that the party can see into: not a wall, not unknown, not a closed teleporter. */
@@ -590,25 +594,9 @@ int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int leve
 
 /* ---- The passes after the load of DUNGEON.DAT ---- */
 
-#define TEXT_KIND_MASK 0x0006
-#define TEXT_KIND_ORNAMENT 0x0002
-#define TEXT_SUBTYPE_SHIFT 11
-#define TEXT_VISIBLE 0x0001
-enum text_ornament_subtype { TEXT_LEVEL_LINK_FIRST = 6, TEXT_LEVEL_LINK_LAST = 7, TEXT_SHOWN_AT_START = 8 };
 enum link_sensor_type {
-    SENSOR_LEVEL_LINK = 0x1c, SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
+    SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46
 };
-#define SENSOR_FLAG_BUSY 0x01
-#define SENSOR_FLAG_STATE 0x04
-#define SENSOR_TARGET_WORD 6            /* x bits 6-10, y bits 11-15 */
-#define SENSOR_TARGET_X_SHIFT 6
-#define SENSOR_TARGET_Y_SHIFT 11
-#define DOOR_SENSOR_FLAG 0x2000         /* door data bit 13: the flag that sensor 0x46 copies from its state */
-#define GROUP_HEALTH 6
-#define GROUP_ANIM_STEP 8
-#define GROUP_KEEP_CELLS 0x80           /* byte GROUP_DIR bit 7: the possessions keep their cells */
-#define GDAT_CATEGORY_WALLSET 8
-#define GDAT_TYPE_VALUE 0x0b
 #define WALLSET_PIT_TO_MARKER 0x6a      /* wall set value: its pits lead to a marker, not to the square below */
 #define LEVEL_TEXT_SIZE 200
 #define LEVEL_TEXT_FILL '1'             /* the level digit of the levels that the start text does not name */
@@ -628,11 +616,10 @@ static int number_linked_actuators(uint16_t thing, int map, int *numbered)
     int found = 0;
     for (thing = dungeon_next_thing(thing); thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (thing_type(thing) != THING_SENSOR) continue;
-        uint16_t w = thing_word(thing, SENSOR_TYPE_DATA);
-        if ((w & SENSOR_TYPE_MASK) != SENSOR_TELEPORTER_LINK) continue;
+        if (sensor_type(thing) != SENSOR_TELEPORTER_LINK) continue;
         found = 1;
-        if (w >> SENSOR_DATA_SHIFT) continue;
-        set_thing_word(thing, SENSOR_TYPE_DATA, (uint16_t)((w & SENSOR_TYPE_MASK) | (map + 1) << SENSOR_DATA_SHIFT));
+        if (sensor_data(thing)) continue;
+        sensor_set_data(thing, map + 1);
         ++*numbered;
     }
     return found;
@@ -659,15 +646,11 @@ static uint16_t merge_object_lists(uint16_t a, uint16_t b)
    numbered sensors both squares share one thing list. Returns 0 when the rest of the square is skipped. */
 static int link_teleporters(uint16_t teleporter, int x, int y, int map)
 {
-    int target_map = thing_word(teleporter, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT;
-    uint16_t target = thing_word(teleporter, TELEPORTER_TARGET);
+    int target_map = teleporter_map(teleporter);
     dun_set_current_map(target_map);
-    uint16_t other = dungeon_square_first_thing(target_map, target & TELEPORTER_X_MASK,
-                                                target >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK);
+    uint16_t other = dungeon_square_first_thing(target_map, teleporter_x(teleporter), teleporter_y(teleporter));
     if (other == THING_ENDOFLIST || thing_type(other) != THING_TELEPORTER) return 1;
-    uint16_t back = thing_word(other, TELEPORTER_TARGET);
-    if ((back & TELEPORTER_X_MASK) != x || (back >> TELEPORTER_Y_SHIFT & TELEPORTER_Y_MASK) != y
-        || thing_word(other, TELEPORTER_MAP) >> TELEPORTER_MAP_SHIFT != map)
+    if (teleporter_x(other) != x || teleporter_y(other) != y || teleporter_map(other) != map)
         return 1;
     int numbered = 0;
     int found = number_linked_actuators(other, target_map, &numbered);
@@ -685,22 +668,22 @@ static int link_teleporters(uint16_t teleporter, int x, int y, int map)
    possessions. */
 static void prepare_group(uint16_t group, int x, int y, int map)
 {
-    const CreatureInfo *info = creature_info(draw_gdat(), dungeon_thing_record(group)[GROUP_CREATURE]);
+    const CreatureInfo *info = creature_info(draw_gdat(), group_creature(group));
     set_thing_word(group, GROUP_HEALTH, info->max_health);
-    set_thing_word(group, GROUP_FLAGS, 0);
+    group_set_mood(group, 0);
     if (!(info->flags & CREATURE_STATIC)) {
         set_thing_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, map));
         return;
     }
-    set_thing_word(group, GROUP_ANIM_STEP, 0);
-    if (dungeon_thing_record(group)[GROUP_DIR] & GROUP_KEEP_CELLS) return;
+    set_thing_word(group, GROUP_ANIM_SEQUENCE, 0);
+    if (group_flag(group, GROUP_KEEP_CELLS)) return;
     uint16_t t = thing_word(group, GROUP_POSSESSIONS);
     if (t == THING_ENDOFLIST) return;
-    set_thing_word(group, GROUP_POSSESSIONS, (uint16_t)((t & THING_ID_MASK) | rand_2bits() << THING_CELL_SHIFT));
+    set_thing_word(group, GROUP_POSSESSIONS, (uint16_t)thing_with_cell(t, rand_2bits()));
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         uint16_t next = dungeon_next_thing(t);
         if (next != THING_ENDOFLIST)
-            set_thing_word(t, THING_NEXT, (uint16_t)((next & THING_ID_MASK) | rand_2bits() << THING_CELL_SHIFT));
+            set_thing_word(t, THING_NEXT, (uint16_t)thing_with_cell(next, rand_2bits()));
     }
 }
 
@@ -708,42 +691,39 @@ static void prepare_group(uint16_t group, int x, int y, int map)
 static void link_door_flag(uint16_t sensor, int map)
 {
     dun_set_current_map(map);
-    uint16_t target = thing_word(sensor, SENSOR_TARGET_WORD);
-    int tx = target >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK, ty = target >> SENSOR_TARGET_Y_SHIFT;
+    int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor);
     if (square_type(dun_get_square(tx, ty)) != SQUARE_DOOR) return;
     uint16_t door = dungeon_square_first_thing(map, tx, ty);
-    uint16_t flag = dungeon_thing_record(sensor)[SENSOR_FLAGS] & SENSOR_FLAG_STATE ? DOOR_SENSOR_FLAG : 0;
-    set_thing_word(door, DOOR_DATA, (uint16_t)((thing_word(door, DOOR_DATA) & ~DOOR_SENSOR_FLAG) | flag));
+    door_set_flag(door, DOOR_SWITCH_ON, sensor_flag(sensor, SENSOR_STATE));
 }
 
 /* The link pass of a thing on (x, y) of map; returns 0 when the rest of the square is skipped. */
 static int link_thing(uint16_t t, int x, int y, int map)
 {
-    int cell = t >> THING_CELL_SHIFT;
+    int cell = thing_cell(t);
     switch (thing_type(t)) {
     case THING_TELEPORTER:
         return link_teleporters(t, x, y, map);
     case THING_TEXT: {
-        uint16_t w = thing_word(t, TEXT_DATA);
-        if ((w & TEXT_KIND_MASK) != TEXT_KIND_ORNAMENT) break;
-        int subtype = w >> TEXT_SUBTYPE_SHIFT;
-        if (subtype >= TEXT_LEVEL_LINK_FIRST && subtype <= TEXT_LEVEL_LINK_LAST)
+        if (text_kind(t) != TEXT_KIND_ORNAMENT) break;
+        int subtype = text_subtype(t);
+        if (subtype == SUBTYPE_LADDER || subtype == SUBTYPE_LADDER_HIDDEN)
             mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
-        else if (subtype == TEXT_SHOWN_AT_START)
-            set_thing_word(t, TEXT_DATA, w | TEXT_VISIBLE);
+        else if (subtype == SUBTYPE_ITEM_HOLDER_MARKER)
+            text_set_visible(t, true);
         break;
     }
     case THING_SENSOR: {
-        uint8_t *flags = dungeon_thing_record(t) + SENSOR_FLAGS;
-        switch (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) {
+        switch (sensor_type(t)) {
         case SENSOR_LEVEL_LINK:
             mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
             break;
         case SENSOR_TELEPORTER_LINK: case SENSOR_ANIMATED_ORNAMENT:
-            if (*flags & SENSOR_FLAG_STATE) *flags |= SENSOR_FLAG_BUSY;
+            if (sensor_flag(t, SENSOR_STATE)) sensor_set_flag(t, SENSOR_BUSY, true);
             break;
         case SENSOR_STARTS_ON:
-            *flags = (uint8_t)((*flags & ~(SENSOR_FLAG_BUSY | SENSOR_FLAG_STATE)) | SENSOR_FLAG_STATE);
+            sensor_set_flag(t, SENSOR_BUSY, false);
+            sensor_set_flag(t, SENSOR_STATE, true);
             break;
         case SENSOR_DOOR_FLAG:
             link_door_flag(t, map);
@@ -768,7 +748,7 @@ void dungeon_link_things_after_load(void)
                     for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                         if (!link_thing(t, x, y, map)) break;
                 if (square_type(square) != SQUARE_PIT
-                    || gdat_entry_index(draw_gdat(), GDAT_CATEGORY_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
+                    || gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
                                         WALLSET_PIT_TO_MARKER))
                     continue;
                 int bx = x, by = y;
@@ -787,10 +767,9 @@ void dungeon_read_level_table(void)
     for (int map = 0; map < dun.map_count; map++)
         if (dungeon_map_level(map) > last) last = dungeon_map_level(map);
     dun_set_current_map(0);
-    uint16_t t = dungeon_square_first_thing(0, dun.party_start & LOCATION_COORD_MASK,
-                                            dun.party_start >> LOCATION_Y_SHIFT & LOCATION_COORD_MASK);
+    uint16_t t = dungeon_square_first_thing(0, location_x(dun.party_start), location_y(dun.party_start));
     while (t != THING_ENDOFLIST && thing_type(t) != THING_TEXT) t = dungeon_next_thing(t);
-    if (t != THING_ENDOFLIST && !(thing_word(t, TEXT_DATA) & TEXT_KIND_MASK))
+    if (t != THING_ENDOFLIST && text_kind(t) == TEXT_KIND_TEXT)
         text_decode_dungeon(text, sizeof text, t, LEVEL_TEXT_MODE);
     const char *p = text;
     for (int level = 0; level <= last; level++) {

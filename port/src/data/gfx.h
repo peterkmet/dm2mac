@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "gdat.h"
 
+/* Prefixes: gfx_ pal_ */
+
 /* Rectangle fields: int16_t rect[RECT_SIZE] = x, y, width, height. */
 enum { RECT_X, RECT_Y, RECT_W, RECT_H, RECT_SIZE };
 

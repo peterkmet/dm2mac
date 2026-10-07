@@ -390,7 +390,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
             results.add((mine, champion_records(lib)[CH_RUNE_COUNT] > 0))
             what = ("cast", mine)
         else:
-            lib.ui_action_area_close()
+            lib.action_area_close()
             emu.call(UI_ACTION_AREA_CLOSE)
             what = ("close",)
         update_action_area(lib, original)
@@ -434,7 +434,7 @@ def test_icon_click_feedback_matches_original(port, cast_ui):
     lib.input_init()
 
     def close():
-        lib.ui_action_area_close()
+        lib.action_area_close()
         emu.call(UI_ACTION_AREA_CLOSE)
         update_action_area(lib, original)
 
@@ -817,7 +817,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
             dark += not ActionArea.in_dll(lib, "action").flags & 0x200
             markers.add(MinionMap.in_dll(lib, "minion_map").marker_state)
             assert_map_state(lib, original, (n, k, hex(thing), kind))
-        lib.ui_action_area_close()
+        lib.action_area_close()
         emu.call(UI_ACTION_AREA_CLOSE)
         update_action_area(lib, original)
         assert_map_state(lib, original, (n, "close"))

@@ -1,12 +1,25 @@
 #ifndef ITEM_H
 #define ITEM_H
+#include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 
-/* GDAT categories of the things. */
-enum gdat_category {
-    GDAT_CHAMPION_CATEGORY = 0x16, GDAT_CONTAINER_CATEGORY = 0x14, GDAT_MISC_CATEGORY = 0x15,
-    GDAT_SCROLL_CATEGORY = 0x12, GDAT_NO_CATEGORY = 0xff
-};
+/* Prefixes: item_ */
+
+/* Record fields of the things of this module; dungeon.h holds the record layout. */
+/* The type (GDAT index) of a weapon, armour, or miscellaneous item. */
+static inline uint16_t item_type(uint16_t item) { return thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK); }
+static inline void item_set_type(uint16_t item, uint16_t type) { set_thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK, type); }
+/* The dungeon keeps the item: no record reuse, and creatures do not consume it. */
+static inline bool item_is_kept(uint16_t item)
+{
+    return thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD);
+}
+static inline void item_set_kept(uint16_t item, bool kept)
+{
+    set_thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD, kept);
+}
+
 #define GDAT_NO_INDEX 0xff
 #define ITEM_INDEX_NONE 0x1ff   /* item index of no thing */
 /* Item index ranges. */
@@ -16,23 +29,41 @@ enum gdat_category {
 #define ITEM_FIRST_CREATURE 0x1b0
 #define ITEM_FIRST_CONTAINER 0x1e0
 #define ITEM_SCROLL 0x1fc
+#define ITEM_BONES 0                /* miscellaneous item 0 (CAT_MISC index): the bones of a champion */
 
 /* Item attribute entries: GDAT value keys (category, index, 0x0b, entry). */
 enum item_attr {
-    ATTR_FLAGS = 0, ATTR_WEIGHT = 1, ATTR_COIN_VALUE = 2, ATTR_SLOTS = 4, ATTR_ICON_ANIMATION = 6, ATTR_ARMOUR_CLASS = 0x0b,
+    ATTR_FLAGS = 0, ATTR_WEIGHT = 1, ATTR_VALUE = 2, ATTR_SLOTS = 4, ATTR_ICON_ANIMATION = 6, ATTR_ARMOUR_CLASS = 0x0b,
     ATTR_STRENGTH = 8, ATTR_THROW_POWER = 9, ATTR_WEIGHT_PER_CHARGE = 0x34,
-    ATTR_VALUE_PER_CHARGE = 0x35
+    ATTR_VALUE_PER_CHARGE = 0x35, ATTR_AMMO = 5,
+    ATTR_EXTRA_DAMAGE = 0x0d,   /* extra damage of a hit: armour piercing against creatures, poison against champions */
+    ATTR_LIGHT_SOURCE = 0xf8    /* item and creature attribute: the light that the thing gives */
 };
-/* Weapon, clothing, and misc item word 2: the bit that keeps a thing from being reused. */
-#define DO_NOT_DISCARD 0x0080
 /* ATTR_FLAGS bits. */
 #define ITEM_FLAG_COIN 0x4000
 #define ITEM_FLAG_ICON_IN_HAND 0x8000   /* the icon changes with the slot */
 #define ITEM_FLAG_SCROLL_INFO 0x20       /* the inventory shows the object info while it is in the hand */
+#define ITEM_FLAG_REFILLS 0x0001         /* the item holds water */
+/* ATTR_AMMO bits. */
+#define AMMO_LAUNCHER 0x8000        /* a launcher; the low bits are the ammunition kinds */
 /* ATTR_SLOTS bits. */
 #define SLOT_MASK_NO_CONTAINER 0x8000   /* the item does not go into a container */
 #define SLOT_MASK_POUCH 0x40
 #define SLOT_MASK_HAND 0x400
+#define POTION_POWER_MAX 255
+
+/* GDAT texts (category, index, 5, entry) of an item: its name and its actions. */
+#define ITEM_NAME_ENTRY 0x18
+#define ACTION_ENTRY_FIRST 8
+#define ACTION_ENTRY_LAST 0x0b
+/* Fields of an action text. */
+enum {
+    FIELD_SKILL = 0, FIELD_LEVEL = 1, FIELD_COMMAND = 2, FIELD_DELAY = 3, FIELD_STAMINA = 4, FIELD_POWER = 5,
+    FIELD_MODE = 6, FIELD_DEFENSE = 7, FIELD_CHARGES = 8, FIELD_EXPERIENCE = 9, FIELD_ATTACK = 10, FIELD_WOUNDS = 11,
+    FIELD_SOUND = 13, FIELD_REPEATS = 14, FIELD_PIERCES = 15,
+    FIELD_MELEE_KIND = 0x10,    /* 1: full damage to creatures that take half damage from other hits */
+    FIELD_HAND = 17
+};
 
 /* The GDAT category of a thing; a projectile gives the category of what it carries. */
 uint8_t item_gdat_category(uint16_t thing);
@@ -59,32 +90,41 @@ int item_fits_slot(uint16_t thing, int slot, int strict);
 /* The icon entry of an item in slot (animated: by its icon animation attribute). */
 int item_icon_index(uint16_t thing, int slot, int animated);
 /* Container kinds: money box (a chest with coin slots), chest, minion map. */
-int item_is_moneybox(uint16_t thing);
-int item_is_chest(uint16_t thing);
-int item_is_minion_map(uint16_t thing);
+bool item_is_moneybox(uint16_t thing);
+bool item_is_chest(uint16_t thing);
+bool item_is_minion_map(uint16_t thing);
 /* The weight of a thing in 1/10 kg, with its contents. */
 int item_weight(uint16_t thing);
 /* True when one of the actions of the item uses charges. */
-int item_has_charged_action(uint16_t thing);
+bool item_has_charged_action(uint16_t thing);
 /* The name of an item: GDAT text (category, index, 0x18) with its format codes. Uses one static buffer. */
 const char *item_name(uint16_t thing);
-/* The projectile among the possessions of group that carries filter (THING_NONE: any); 0 when none. */
-uint16_t minion_find_link_projectile(uint16_t group, uint16_t filter);
 
 /* Money: the coin types are the miscellaneous items with ITEM_FLAG_COIN, by value. */
 #define COIN_TYPE_MAX 10
-/* Builds the coin table once. */
-void money_init_coin_table(void);
-int money_coin_type_count(void);
-uint16_t money_coin_item(int coin_type);   /* the item index of a coin type */
-int16_t money_coin_value(int coin_type);
-int money_is_coin(uint16_t thing);
-/* The coins of each coin type in a money box. */
-void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
-/* The coin type that the money box shows in slot (0 to 9), -1 none. */
-int money_coin_type_for_slot(uint16_t box, int slot);
 /* GDAT index and category of an item index. */
 uint8_t item_index_gdat_index(uint16_t item);
 uint8_t item_index_gdat_category(uint16_t item);
+
+/* Items of the champion actions (champ_action.c). */
+/* True when thing is ammunition for the launcher in hand of champ. */
+bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing);
+/* True when thing has an action with command for champ. */
+bool item_has_action_command(int champ, uint16_t thing, int command);
+
+/* Item charges (inventory.c). */
+/* Uses a charge of an item that holds water; returns 1 when it had one. */
+int item_use_charge(uint16_t thing);
+
+/* Items by item index (money.c). */
+/* The thing type of an item index, -1 for none. */
+int item_index_to_thing_type(uint16_t item);
+/* A new item of item index item (bit 15: a miscellaneous item may take the kept records); THING_NONE when the
+   dungeon has no free record. */
+uint16_t item_create_by_index(uint16_t item);
+
+/* Items of the party (sensor.c). */
+/* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
+int item_party_possesses_type(int type);
 
 #endif

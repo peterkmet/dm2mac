@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -std=c11 -Wall -Wextra -O2 -g
+CFLAGS = -std=c11 -Wall -Wextra -Wmissing-prototypes -O2 -g
 SDL = $(shell brew --prefix sdl3)
 B = ../build
 LAYERS = data engine ui platform

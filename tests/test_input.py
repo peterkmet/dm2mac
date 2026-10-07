@@ -174,6 +174,7 @@ def test_cursor_matches_original(tree, lib):
             theirs = emu.call(MOUSE_MOVE_EVENT, x, y, allow_io=True) & 0xFFFF
             assert lib.input_cursor_at(x, y) == theirs, (mode, x, y, hex(hand), leader)
             seen.add((mode, theirs))
+    drag.value = 0  # the library lives through the module: later tests start without a dragged champion
     assert {cursor for _, cursor in seen} == {0, 1, 2, 3}
     assert {mode for mode, cursor in seen if cursor == 2} >= {5, 8}
     assert {mode for mode, cursor in seen if cursor == 3} == {5, 8}
@@ -271,7 +272,7 @@ def test_save_start_matches_a_menu_load(start, tmp_path):
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
     lib.input_init()
-    assert lib.game_start_save(str(path).encode()) == 1
+    assert lib.session_start_save(str(path).encode()) == 1
     level = ctypes.c_int.in_dll(lib, "view_light_level")
     loaded = level.value
     levels = range(max(lib.dungeon_map_level(m) for m in range(lib.dungeon_map_count())) + 1)
@@ -297,7 +298,7 @@ def test_save_start_prints_the_hand_object_name_once(tmp_path):
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
     lib.input_init()
-    assert lib.game_start_save(str(path).encode()) == 1
+    assert lib.session_start_save(str(path).encode()) == 1
     expiry = (ctypes.c_uint32 * 3).in_dll(lib, "message_expiry")
     assert sum(t != 0xFFFFFFFF for t in expiry) == 1
     lib.gdat_free(gdat)

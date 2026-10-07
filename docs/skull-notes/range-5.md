@@ -73,7 +73,7 @@
 ## DM2-specific systems in this range
 
 - Money: `money_box_click_coin` (0x42a35) and `ui_draw_money_box` (0x4534f). Coin piles are drawn with offset table 0x71756. Coin logic itself is in range 2 (0x1f2ab-0x1f50d).
-- Minions: the minion map (container subtype, `item_is_minion_map` 0x1fa8f in range 2) shows a map panel: `ui_draw_minion_map` (0x44fc6), `ui_map_draw_grid` (0x449be), `ui_map_draw_square` (0x43a7c). It drains mana while open (`g_map_mana_timer`). Option buttons (`ui_toggle_map_option`) cost mana from 0x757fa. Actions 0x2c-0x30 summon, guide, or dismiss minions (0x30944, 0x30b3d in range 4).
+- Minions: the minion map (container subtype, `item_is_minion_map` 0x1fa8f in range 2) shows a map panel: `minion_draw_map` (0x44fc6), `ui_map_draw_grid` (0x449be), `ui_map_draw_square` (0x43a7c). It drains mana while open (`g_map_mana_timer`). Option buttons (`minion_toggle_map_option`) cost mana from 0x757fa. Actions 0x2c-0x30 summon, guide, or dismiss minions (0x30944, 0x30b3d in range 4).
 - Weather, outdoor view, shops, Skullkeep machines: not in this range. Action 0x36 calls 0x4bfd4 (range 6, sensor block), probably a machine.
 
 ## Open questions

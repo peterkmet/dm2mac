@@ -1,11 +1,9 @@
 #include <stdlib.h>
+#include "dungeon.h"
 #include "sound.h"
 
-#define GDAT_TYPE_SOUND 2
 #define SAMPLE_HEADER 6 /* u16 rate, then 08 01 00 00 */
 #define UPSAMPLE (SOUND_OUTPUT_RATE / SOUND_RATE)
-
-enum { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST };
 
 /* Distance scaling and volume in 10-bit and 8-bit fixed point. */
 #define SCALE_SHIFT 10
@@ -21,15 +19,14 @@ enum { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST };
 #define SAMPLE_TO_S16 8
 
 #define PAN_STEPS 16
-#define SOUND_VOLUME_MAX 7
 #define PAN_FULL 0x10000
 
-/* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front. */
+/* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front (table of SKULL.EXE). */
 static const uint16_t pan_thresholds[PAN_STEPS / 2] = {
     0x25a0, 0x11f0, 0x0b00, 0x0730, 0x0490, 0x0290, 0x00d0, 0x0000,
 };
 
-/* SOS pan values from full left to full right. */
+/* SOS pan values from full left to full right (table of SKULL.EXE). */
 static const uint16_t pan_values[PAN_STEPS] = {
     0x0800, 0x1700, 0x2600, 0x3500, 0x4400, 0x5300, 0x6200, 0x7100,
     0x8f00, 0x9e00, 0xad00, 0xbc00, 0xcb00, 0xda00, 0xe900, 0xf800,
@@ -133,11 +130,11 @@ static int16_t clamp16(int s)
     return s < INT16_MIN ? INT16_MIN : s > INT16_MAX ? INT16_MAX : s;
 }
 
-static int master_volume = SOUND_VOLUME_MAX;
+static int master_volume = VOLUME_SETTING_MAX;
 
 void sound_set_volume(int level)
 {
-    master_volume = level < 0 ? 0 : level > SOUND_VOLUME_MAX ? SOUND_VOLUME_MAX : level;
+    master_volume = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
 }
 
 void sound_mix(int16_t *stereo, int frames)
@@ -147,7 +144,7 @@ void sound_mix(int16_t *stereo, int frames)
         for (int i = 0; i < SOUND_VOICES; i++) {
             Voice *v = &voices[i];
             if (!v->data) continue;
-            int s = (v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16) * master_volume / SOUND_VOLUME_MAX;
+            int s = (v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16) * master_volume / VOLUME_SETTING_MAX;
             left += s * v->left >> GAIN_SHIFT;
             right += s * v->right >> GAIN_SHIFT;
             if (++v->pos == v->end) v->data = NULL;

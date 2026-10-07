@@ -5,6 +5,8 @@
 #include "gdat.h"
 #include "gfx.h"
 
+/* Prefixes: text_build_ text_clear_ text_decode_ text_draw text_format text_gdat text_init text_measure text_print_ text_set_message_ text_wrap_ */
+
 /* The font: 6 rows of 128 bytes in GDAT (1, 0, 7, 0), one byte per character and row, 5 pixels in bits 4 to 0. */
 #define FONT_GLYPH_WIDTH 5
 #define FONT_GLYPH_HEIGHT 6
@@ -19,7 +21,7 @@
 #define MESSAGE_ROWS 3
 #define MESSAGE_SHOW_TIME 90    /* game ticks until a message row clears */
 #define MESSAGE_INDENT 12       /* pixels: the rest of a wrapped message goes on indented */
-#define ZONE_MESSAGE_AREA 15
+#define ZONE_MESSAGE_AREA 0x0f
 
 /* The 16 UI colors: GDAT (1, 0, 13, 0xfe) maps them to palette colors. */
 enum ui_color {
@@ -28,9 +30,10 @@ enum ui_color {
 };
 
 /* The values that the format codes of a text insert (".Z" and 3 digits, or byte 1 and the code + 32). */
+#define TEXT_ARG_NUMBERS 5
 typedef struct {
     int16_t champion;           /* code 7: the name of this champion, -1 none */
-    int16_t number[5];          /* codes 10 to 14 */
+    int16_t number[TEXT_ARG_NUMBERS];  /* codes 10 to 14 */
     uint8_t entry;              /* code 17: the text (7, 0, entry) */
 } TextArgs;
 
@@ -49,7 +52,7 @@ int text_init(const gdat_t *gdat);
 const uint8_t *text_build_glyph(uint8_t c, uint8_t fg, uint8_t bg);
 /* Draws text with its base line at y. bg with TEXT_TRANSPARENT leaves the background. In an 8 bpp bitmap,
    color and bg are palette colors; in a 4 bpp bitmap, they are pixel values. */
-void gfx_draw_text(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text, int bpp);
+void text_draw(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text, int bpp);
 /* The width and height in pixels of a text line; returns 0 for an empty text. */
 int text_measure(const char *text, int16_t *width, int16_t *height);
 /* Copies the part of text from *pos that fits in max_width pixels into line, broken at a space when it does not

@@ -2,8 +2,13 @@
 #define INPUT_H
 #include <stdint.h>
 
+/* Prefixes: input_ command_ kbd_ rect_ */
+
 /* Input modes: the root of the input tree that maps clicks and keys to commands. */
-enum input_mode { INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_MOVE = 5, INPUT_MODE_PUSH = 6, INPUT_MODE_INVENTORY = 8 };
+enum input_mode {
+    INPUT_MODE_MENU = 0, INPUT_MODE_PICTURE = 1, INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_DIALOG = 4,
+    INPUT_MODE_MOVE = 5, INPUT_MODE_PUSH = 6, INPUT_MODE_RECRUIT = 7, INPUT_MODE_INVENTORY = 8, INPUT_MODE_NAME = 9
+};
 /* Mouse event types: buttons (bit 1 left, bit 0 right), a released left button (only while the eye or the mouth is
    held or the automap is open), a key. */
 enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_LEFT_RELEASED = 4, INPUT_KEY = 0x20 };
@@ -12,6 +17,30 @@ enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_LEFT_RELEASED = 4, I
 #define KEY_SHIFT 0x0200
 #define KEY_CONTROL 0x0400
 #define KEY_ALT 0x0800
+/* Scan codes of the keys that edit a text. */
+#define KEY_BACKSPACE 0x0e
+#define KEY_TAB 0x0f
+#define KEY_ENTER 0x1c
+
+/* Commands (command_execute). */
+enum {
+    CMD_INVENTORY_FIRST = 7, CMD_INVENTORY_LEADER = 0x0b, CMD_LEADER_FIRST = 0x10, CMD_LEADER_LAST = 0x13,
+    CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41, CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
+    CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
+    CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_SAVE = 0x8c, CMD_VOLUME = 0x8d, CMD_EDIT_CHAMPION_NAME = 0x48,
+    CMD_NEW_GAME = 0xd7, CMD_NEW_GAME_B = 0xd8, CMD_LOAD_GAME = 0xd9, CMD_MENU_PICTURE = 0xda, CMD_CANCEL_PUSH = 0xe1,
+    CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
+    CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
+    CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81,
+    CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_EYE = 0x47, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
+    CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93,
+    CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
+    CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59,
+    CMD_EDIT_NAME = 0x49, CMD_EDIT_TITLE = 0x4a, CMD_EDIT_CANCEL = 0x4b,  /* the buttons of the name editor */
+    CMD_SOUND_VOLUME_FIRST = 0x95, CMD_MUSIC_VOLUME_FIRST = 0x9d, CMD_MUSIC_VOLUME_LAST = 0xa4,  /* settings 0 to 7 */
+    CMD_PICTURE_CLICK = 0xef,       /* a click on a picture of INPUT_MODE_PICTURE */
+    CMD_QUICK_SAVE = CMD_LAST + 1, CMD_QUICK_LOAD, CMD_AUTOMAP  /* the advanced mode: no original command has these numbers */
+};
 
 /* A command and the click that made it: position and the rectangle of its zone. */
 typedef struct {
@@ -107,14 +136,12 @@ extern int input_mouse_x, input_mouse_y;
 /* The push arrow under the mouse in the viewport while the party can push a creature (party.push_arrow). */
 void input_update_viewport_arrow(void);
 /* Redraws the released movement arrow. */
-void ui_release_move_arrow(void);
+void input_release_move_arrow(void);
 /* Executes the queued commands until one stops the processing. */
 void command_process_queue(void);
 /* Executes one command; returns 0 when it must wait. */
 int command_execute(Command *c);
 /* The commands of later steps: hands, slots, spells, recruiting, dialogs (empty until then). */
 void command_execute_later(const Command *c);
-/* A click in the dungeon view: walls, doors, objects, creatures. */
-void view_click_in_viewport(int x, int y);
 
 #endif

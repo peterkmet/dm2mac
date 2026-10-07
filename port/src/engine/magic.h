@@ -4,6 +4,8 @@
 #include "champion.h"
 #include "timeline.h"
 
+/* Prefixes: magic_ */
+
 /* A spell of the spell table. */
 typedef struct {
     uint32_t runes;             /* power rune in bits 24-31 (0: any power), then up to 3 runes, first rune highest */
@@ -39,10 +41,6 @@ void magic_add_party_aura(int mask, int type, int16_t value, uint16_t duration);
 int magic_cast_party_aura(Champion *c, int type, uint16_t value, int pay);
 /* Champion champ shoots the missile thing with power for cost mana; returns 0 without the mana. */
 int magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost);
-/* The party on a warp marker text moves to the marker of its id; returns 1 when it moved. */
-int move_party_warp_to_marker(void);
-/* A magic light event: the light fades one level. */
-void timeline_event_magic_light(TimelineEvent *e);
 
 /* Projectiles (port/src/projectile.c): champion c launches thing from the party square. */
 

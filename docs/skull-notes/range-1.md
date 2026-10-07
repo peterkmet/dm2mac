@@ -8,7 +8,7 @@
 - `0x13a87` is the real "present rectangle" (IOP 0x103, 8-byte rectangle). It now carries the name `screen_present_rect`. `0x13b7c` (`screen_present_zone`) calls it.
 - `sound_request` (0x15ca9): the anchor signature swaps volume and priority. Correct order: `(category, index, entry, priority, volume, x, y, delay)`. Byte +4 of the request gets argument 4 (priority). Byte +5 gets argument 5 (volume, halved while the party sleeps). Example: `sound_set_volume_and_test` calls `(3, 0, 0x8b, 0x6c, 200, party_x, party_y, 0)`.
 - `explosion_create` (0x16746): the anchor signature order is wrong. Correct order: `(type, attack, x, y, cell)`. `cell == 0xff` = centered explosion (bit 7 of byte +2). If `x > 0xff`, the high byte holds `x + 1` and the low bytes of x and y are cells or offsets (packed form).
-- `screen_present_viewport` (0x138d9) takes no argument. It reads zone 7, checks if the mouse pointer (IOP 0x0e) is inside, hides it, calls IOP 0x109 with flags 8 or 0x8008.
+- `game_present_viewport` (0x138d9) takes no argument. It reads zone 7, checks if the mouse pointer (IOP 0x0e) is inside, hides it, calls IOP 0x109 with flags 8 or 0x8008.
 - IOP table in `notes.md`: function 0x1b is not a disk call. It converts a key code to an ASCII character (`kbd_key_to_ascii`, 0x114c5; used by name entry). Function 0x15 (`disk_query_drive_info`, 0x111db) is missing from the table. Function 0x28 (`disk_get_drive_path`, 0x113fa) returns 3 bytes for a drive (written to 0x70528 and 0x7052c).
 - Ghidra boundaries: 0x113ad is the shared tail of 0x113a5 (IOP 0x12) and `kbd_key_available`. 0x113dd-0x113f6 is a hidden function (save disk status == 3); Ghidra shows only its tail 0x113f7 (`return 0`). 0x114d2 is a hidden helper that prints one character through `iop_print_message`. 0x14c93 (mouse set position, IOP 0x0d) is inside 0x14c87. 0x149a2 is a separate entry in front of 0x149ba.
 
@@ -36,12 +36,12 @@ Both decoders use the nibble reader `image_read_nibble` (0x12d7a, position `g_de
 - 4-bpp rows are `(width + 1) & ~1` pixels. 4->4 transparent copies use the mask table `g_nibble_transparent_masks` (0x70550, 16 x 256 bytes).
 - Scaling: `gfx_blit_scaled_4bpp` / `gfx_blit_scaled_8bpp` (7.7 fixed point, row reuse when the source row repeats). Callers near 0x1b8xx (picture drawing).
 - Tiled fill: `gfx_blit_tiled_4to8_masked` repeats a 4-bpp pattern with wrap, optional 1-bit mask; used by the dungeon view (0x4f..0x51).
-- `gfx_fill_rect_dithered` draws a checkerboard of one color (disabled UI look).
+- `ui_fill_rect_dithered` draws a checkerboard of one color (disabled UI look).
 - `gfx_alloc_dos_bitmap`: image buffer header is 6 bytes (bpp at -6, width at -4, height at -2), as in `notes.md`.
 
 ## Text glyphs
 
-`text_build_glyph(ch, fg, bg)` builds a 6 x 6 pixel 4-bpp glyph (18 bytes at 0x7efb4) from the font at `g_font_bitmap` (0x80414): 6 rows of 0x80 bytes, one byte per character per row. Bit 4 of a font byte selects fg or bg for the high nibble, bit 3 for the low nibble (2 pixels per step, 3 steps per row). `gfx_draw_text` blits each glyph with `gfx_blit` (src width 5, src bpp 4).
+`text_build_glyph(ch, fg, bg)` builds a 6 x 6 pixel 4-bpp glyph (18 bytes at 0x7efb4) from the font at `g_font_bitmap` (0x80414): 6 rows of 0x80 bytes, one byte per character per row. Bit 4 of a font byte selects fg or bg for the high nibble, bit 3 for the low nibble (2 pixels per step, 3 steps per row). `text_draw` blits each glyph with `gfx_blit` (src width 5, src bpp 4).
 
 ## Mouse areas
 
@@ -79,8 +79,8 @@ Both decoders use the nibble reader `image_read_nibble` (0x12d7a, position `g_de
 
 - Sound table entry (7 bytes, `g_sound_table` 0x7f18c): +0 sample descriptor index, +2 category, +3 index, +4 entry, +5 raw GDAT entry (0xffff = not loaded). `sound_register` adds entries; `sound_load_registered` loads them; `sound_unload_all` frees them.
 - Sample descriptor (16 bytes, `g_sample_descs` 0x7f194): +0 data pointer, +4 length, +6 rate, +8 next prepared sample.
-- Delayed sound (14 bytes, `g_delayed_sounds` 0x7f188, 8 entries): +0 used, +4 category, +5 index, +6 entry, +7 map, +8 x, +9 y, +0x0a priority, +0x0c volume. Timeline event type 0x15 plays it (`sound_play_delayed`).
-- `sound_play_with_fallback` (0x15baa, Ghidra failed): uses `index` if `(category, index, entry)` is registered, else `fallback_index` (usually 0xfe = default sound set). Stack arguments: x, y, delay, priority, volume.
+- Delayed sound (14 bytes, `g_delayed_sounds` 0x7f188, 8 entries): +0 used, +4 category, +5 index, +6 entry, +7 map, +8 x, +9 y, +0x0a priority, +0x0c volume. Timeline event type 0x15 plays it (`sound_request_delayed`).
+- `sound_request_with_fallback` (0x15baa, Ghidra failed): uses `index` if `(category, index, entry)` is registered, else `fallback_index` (usually 0xfe = default sound set). Stack arguments: x, y, delay, priority, volume.
 
 ## Champion position drag (0x149a2, 0x149ba)
 
@@ -88,7 +88,7 @@ Clicking a champion cell in the party formation picks the champion (`champ_get_i
 
 ## Open questions
 
-- Low-confidence names: `disk_query_drive_info` (IOP 0x15), `disk_get_drive_path` (IOP 0x28), `disk_prompt_stub` (empty, called before save disk prompts), `input_stub_return_zero` (always 0, called with a key code in the dialog loop 0x1a1e0), `mouse_capture_begin` / `mouse_capture_end` (IOP 0x06 / 0x07, used while the right button is held), `iop_input_lock` / `iop_input_unlock` (IOP 0x04 / 0x05, around mouse area list changes), `dun_get_global_var` / `dun_modify_global_var` (subsystem), `item_get_image_kind` (checks GDAT types 8, 9, 0x0a, 0x0c of an item), `creature_get_cell_mask`, `money_get_coin_type_for_slot`, `champ_melee_attack_creature` (argument roles after the third), `gfx_fill_rect_dithered`, `system_init_stub`.
+- Low-confidence names: `disk_query_drive_info` (IOP 0x15), `disk_get_drive_path` (IOP 0x28), `disk_prompt_stub` (empty, called before save disk prompts), `input_stub_return_zero` (always 0, called with a key code in the dialog loop 0x1a1e0), `mouse_capture_begin` / `mouse_capture_end` (IOP 0x06 / 0x07, used while the right button is held), `iop_input_lock` / `iop_input_unlock` (IOP 0x04 / 0x05, around mouse area list changes), `dun_get_global_var` / `dun_modify_global_var` (subsystem), `item_get_image_kind` (checks GDAT types 8, 9, 0x0a, 0x0c of an item), `creature_get_cell_mask`, `money_get_coin_type_for_slot`, `champ_melee_attack_creature` (argument roles after the third), `ui_fill_rect_dithered`, `system_init_stub`.
 - Merchant price formula: the role of `list` (0 or the shop list index from `(item >> 7) & 0x0f`) needs range 6 (merchant panel code at 0x4e...).
 - `g_samples_have_rate` (0x71698) comes from GDAT flag 0x20 (see `docs/skull-formats.md`); its writer is outside this range.
 - 0x7f27a/0x7f27c/0x7f27e are compared as a map and position in projectile and explosion code (probably the party square for damage checks). Not named here.

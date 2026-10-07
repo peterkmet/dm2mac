@@ -117,7 +117,7 @@ def test_save_and_load_through_the_dialogs(play, lib, gdat, tmp_path):
     # C port, also from the backup file.
     sc = play
     with Player(lib, [click_choice(1), click_slot(2), click_choice(4), key(0x1E), key(0x30), key(0x1C), click_choice(2)]):
-        lib.game_save()
+        lib.session_save()
     saved = (tmp_path / "DATA" / "SKSAVE2.DAT").read_bytes()
     assert saved[2:0x12].split(b"\0")[0] == b"GAME 2AB"
     header = saved[:0x2A]
@@ -138,7 +138,7 @@ def test_save_and_load_through_the_dialogs(play, lib, gdat, tmp_path):
             (tmp_path / "DATA" / "SKSAVE2.DAT").rename(tmp_path / "DATA" / "SKSAVE2.BAK")
         session.loaded, session.new_game = restore, 0
         with Player(lib, [] if restore else [click_slot(2), click_choice(2)]):
-            assert lib.game_load() == 1
+            assert lib.session_load() == 1
         assert (session.loaded, session.slot) == (1, 2)
         again = tmp_path / "again.DAT"
         assert lib.save_write(str(again).encode(), str(tmp_path / "again.BAK").encode(), b"GAME 2AB", gdat) == 0
@@ -151,19 +151,19 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
     session = Session.in_dll(lib, "session")
     for actions in ([click_slot(5), click_choice(2)], [click_choice(1)]):
         with Player(lib, actions):
-            assert lib.game_load() == -1
+            assert lib.session_load() == -1
         assert (session.slot, session.loaded) == (0, 0)
 
 
 def test_hide_game_view_cancels_the_champion_drag(lib):
-    # The original ui_hide_game_view cancels a champion drag inside its guard (SKULL.c:54260).
+    # The original game_hide_view cancels a champion drag inside its guard (SKULL.c:54260).
     drag = ctypes.c_int.in_dll(lib, "input_drag_state")
     hidden = ctypes.c_int.from_address(ctypes.addressof(main_loop_quit(lib)) - 8)  # MainLoop.view_hidden
     DialogState.in_dll(lib, "dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
-    lib.ui_hide_game_view()
+    lib.game_hide_view()
     assert (hidden.value, drag.value) == (1, 0)
     drag.value = 1
-    lib.ui_hide_game_view()  # already hidden: the guard keeps the drag
+    lib.game_hide_view()  # already hidden: the guard keeps the drag
     assert drag.value == 1
     drag.value = hidden.value = 0
 
@@ -189,7 +189,7 @@ def test_end_sensor_completes_the_game(play, lib):
 
 
 def test_party_death_ends_the_game_like_original(play, lib):
-    # game_end after the death of the party: the scream of the first champion, the end dialog, QUIT GAME: the program
+    # session_end after the death of the party: the scream of the first champion, the end dialog, QUIT GAME: the program
     # ends with the exit code of a dead party in both.
     sc = play
     emu = sc.emu
@@ -201,14 +201,14 @@ def test_party_death_ends_the_game_like_original(play, lib):
 
     def quit_(*_):
         quits.append(emu.read(G_QUIT_EXIT_CODE, 2))
-        raise RuntimeError("game_quit")  # the original never returns from game_quit
+        raise RuntimeError("session_quit")  # the original never returns from session_quit
 
     emu.stub(GAME_QUIT, quit_)
     emu.write_u32(G_END_OFFER_RESTORE, 1)
     Session.in_dll(lib, "session").offer_restore = 1
     with Player(lib, [click_choice(2)], every=300):
-        lib.game_end(1)
-    with pytest.raises(EmuError, match="game_quit"):
+        lib.session_end(1)
+    with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, 1)
     assert dialogs == [(0x10, 0)]
     assert quits == [b"\x01\x00"]
@@ -221,7 +221,7 @@ def test_party_death_ends_the_game_like_original(play, lib):
 def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
     # After a save, the end dialog's RESTART GAME loads the last slot again without the load dialog.
     with Player(lib, [click_choice(1), click_slot(4), click_choice(2)]):
-        lib.game_save()
+        lib.session_save()
     from test_move import GameRecord
     game = GameRecord.in_dll(lib, "game")
     saved_state = (game.game_time, game.party_x, game.party_y, game.party_dir, game.party_map)
@@ -230,7 +230,7 @@ def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
     session = Session.in_dll(lib, "session")
     session.offer_restore = 1
     with Player(lib, [click_choice(1), click_choice(1)], every=300):  # RESTART GAME, then OK of "GAME LOADED"
-        lib.game_end(1)
+        lib.session_end(1)
     assert main_loop_quit(lib).value == 0
     assert (session.loaded, session.slot) == (0, 4)
     # the game of the save, and the first game step of the new session
@@ -239,7 +239,7 @@ def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
 
 
 GAME_SAVE, G_LOAD_TIME, G_SAVE_TIME, G_DISK_NO_SWAP = 0x3502B, 0x7F218, 0x7F8F4, 0x7054A
-# game_save calls that this test leaves out: the action area, the game view, the free list of the timeline, and the
+# session_save calls that this test leaves out: the action area, the game view, the free list of the timeline, and the
 # disk check (the scenario stubs the mouse)
 GAME_SAVE_STUBS = (0x3FD17, 0x3FE68, 0x54E41, 0x54EAC, 0x56030, SAVE_CHECK_DISK)
 
@@ -269,7 +269,7 @@ def test_quit_asks_when_not_saved_like_original(play, lib, since_load, since_sav
     pick = lambda lib: setattr(InputMatch.in_dll(lib, "input_match"), "value", 0xEF)  # a click on the end picture
     actions = [click_choice(2), click_choice(2), click_choice(4)] if asked else [click_choice(2), pick]
     with Player(lib, actions) as player:
-        lib.game_save()
+        lib.session_save()
     assert not player.actions and player.frames < 100 * player.every
     assert main_loop_quit(lib).value == (0 if asked else 1)
 
@@ -410,7 +410,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     ctypes.memset(ctypes.addressof(party), 0, ctypes.sizeof(party))
     party.cur_map, party.new_map, party.push_pending_group = -1, -1, 0xFFFF
     with Player(lib, [click_command(0, 0xD7)]):
-        assert lib.game_init() == 1
+        assert lib.session_init() == 1
     assert (session.new_game, session.loaded) == (1, 0)
     party_start = lib.dungeon_party_start()
     assert (game.party_map, game.party_x, game.party_y) == (0, party_start & 0x1F, party_start >> 5 & 0x1F)
@@ -419,7 +419,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     session.new_game = 0
     DialogState.in_dll(lib, "dialog").screen_mode = 1  # the program start state, reset on the load path
     with Player(lib, [click_command(0, 0xD9), click_slot(0), click_choice(2), click_choice(1)]):
-        assert lib.game_init() == 1
+        assert lib.session_init() == 1
     assert (session.new_game, session.loaded, session.slot) == (0, 1, 0)
     assert DialogState.in_dll(lib, "dialog").screen_mode == 0  # the game after "GAME LOADED"
     mine = (game.game_time - 1, game.party_map, game.party_x, game.party_y)
@@ -485,7 +485,7 @@ CHAMP_APPLY_PENDING_DAMAGE, G_GAME_END_FLAG, G_PENDING_DAMAGE = 0x47113, 0x7F24C
 
 def test_dead_party_ends_the_game_like_original(play, lib, request):
     # The damage of a step kills the last champion: champ_kill sets the end flag in both (main_loop.end and
-    # g_game_end_flag), drops the objects and the bones. Then game_end with that flag, as main.c and the original main
+    # g_game_end_flag), drops the objects and the bones. Then session_end with that flag, as main.c and the original main
     # call it: the scream of the dead champion, the end dialog, QUIT GAME: the exit code of a dead party.
     sc = play
     emu = sc.emu
@@ -509,7 +509,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
 
     def quit_(*_):
         quits.append(emu.read(G_QUIT_EXIT_CODE, 2))
-        raise RuntimeError("game_quit")
+        raise RuntimeError("session_quit")
 
     emu.stub(GAME_QUIT, quit_)
     emu.write_u32(G_END_OFFER_RESTORE, 1)
@@ -517,9 +517,9 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     state = DialogState.in_dll(lib, "dialog")
     state.id = -1
     with Player(lib, [click_choice(2)], every=300):
-        lib.game_end(loop.end)
+        lib.session_end(loop.end)
     assert state.id == 0x10
-    with pytest.raises(EmuError, match="game_quit"):
+    with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, struct.unpack("<h", emu.read(G_GAME_END_FLAG, 2))[0])
     assert dialogs == [(0x10, 0)] and quits == [b"\x01\x00"]
     assert (Session.in_dll(lib, "session").exit_code, main_loop_quit(lib).value) == (2, 1)
@@ -533,8 +533,8 @@ HAND_OFFSET, MAGIC_LIGHT_OFFSET = 252 + 4 * 263, 252 + 4 * 263 + 2  # offsetof(G
 
 def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tmp_path):
     # A save with an object in the leader hand and timed effects (magic light, invisibility, aura, poison, an eaten
-    # item): the load and the start of its session in both (save_load and game_start_session, as game_load and
-    # game_init run them) give the same light, champions, and leader hand (object, weight, icon).
+    # item): the load and the start of its session in both (save_load and game_start_session, as session_load and
+    # session_init run them) give the same light, champions, and leader hand (object, weight, icon).
     from test_champions import LeaderHand
     from test_input import Loop
     from test_save import Event, Game

@@ -2,6 +2,8 @@
 #define RANDOM_H
 #include <stdint.h>
 
+/* Prefixes: rand_ */
+
 /* The state of the random number generator; the save game stores it. */
 extern uint32_t random_seed;
 

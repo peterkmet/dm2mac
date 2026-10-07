@@ -18,22 +18,19 @@
 #define DIALOG_MESSAGE_ENTRY 0x14
 #define DIALOG_PICTURE_ENTRY 0
 #define DIALOG_VOLUME_BUTTONS 7
-#define GDAT_TYPE_VALUE 0x0b
-#define INPUT_MODE_DIALOG 4
-#define KEY_ENTER 0x1c
 #define BUTTON_KEY 7                    /* transparent color of a pressed button picture */
 #define BUTTON_PRESS_VBLANKS 20
-#define ZONE_DIALOG_BACK 4              /* the viewport of the dialog picture */
 #define ZONE_DIALOG_SCREEN 5            /* where the dialog viewport goes on a black screen */
-#define ZONE_DIALOG_VERSION 0x1c2
 #define ZONE_DIALOG_MESSAGE_WIDE 0x1d5  /* the message zone of a dialog with fewer than 2 buttons */
 #define ZONE_DIALOG_MESSAGE 0x1d7
 #define ZONE_PROGRESS_BAR 0x1da
 #define DIALOG_LINE_GAP 1               /* pixels between two lines */
 #define DIALOG_MESSAGE_TOP 6            /* the message area starts this far into its zone */
 #define PERMILLE 1000
-static const char version_text[] = "V1.0";
-/* The zones of the button texts; the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
+#define MESSAGE_TEXTS 2                 /* the dialog message and the error message under it */
+#define WRAP_MARGIN_SHIFT 3             /* a text wider than 7/8 of the zone wraps */
+#define WRAP_SHRINK_SHIFT 2             /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
+/* The zones of the button texts (table of SKULL.EXE); the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
 static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
 
 /* The volume dialog: the labels, the buttons of the settings 0 to 7, and their texts. */
@@ -41,32 +38,30 @@ enum {
     VOLUME_SOUND_LABEL = 0x28, VOLUME_SOUND_OFF = 0x29, VOLUME_MUSIC_LABEL = 0x3c, VOLUME_MUSIC_OFF = 0x3d,
     VOLUME_BUTTON = 2, VOLUME_BUTTON_ON = 3, VOLUME_LEVELS = 8,
     ZONE_SOUND_LABEL = 0x15f, ZONE_SOUND_BUTTON = 0x160, ZONE_SOUND_TEXT = 0x168,
-    ZONE_MUSIC_LABEL = 0x170, ZONE_MUSIC_BUTTON = 0x171, ZONE_MUSIC_TEXT = 0x179,
-    CMD_SOUND_VOLUME_FIRST = 0x95, CMD_MUSIC_VOLUME_FIRST = 0x9d, CMD_MUSIC_VOLUME_LAST = 0xa4
+    ZONE_MUSIC_LABEL = 0x170, ZONE_MUSIC_BUTTON = 0x171, ZONE_MUSIC_TEXT = 0x179
 };
 /* The test sound of a new sound volume. */
-enum { TEST_SOUND_CATEGORY = 3, TEST_SOUND_INDEX = 0, TEST_SOUND_ENTRY = 0x8b, TEST_SOUND_PRIORITY = 0x6c,
-       TEST_SOUND_VOLUME = 200 };
+enum { TEST_SOUND_INDEX = 0 };
 
 DialogState dialog = {.screen_mode = 1};
 
-void ui_dialog_screen_mode(int begin)
+void dialog_screen_mode(int begin)
 {
-    if (dialog.screen_mode && begin) gfx_fill_zone_screen(ZONE_SCREEN, 0);
+    if (dialog.screen_mode && begin) ui_fill_zone_screen(ZONE_SCREEN, 0);
 }
 
-void ui_dialog_present(void)
+void dialog_present(void)
 {
     if (!dialog.screen_mode) {
-        screen_present_viewport();
+        game_present_viewport();
         return;
     }
     int16_t r[RECT_SIZE], x = 0, y = 0;
     if (zone_compute_rect(&view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y, ZONE_NO_ANCHOR))
-        gfx_blit_bitmap(&view_viewport, &draw_screen, r, x, y, UI_OPAQUE, NULL);
+        ui_blit_bitmap(&view_viewport, &draw_screen, r, x, y, UI_OPAQUE, NULL);
 }
 
-void ui_dialog_draw_button(int zone, int highlighted)
+void dialog_draw_button(int zone, int highlighted)
 {
     (void)zone;
     if (!highlighted) return;
@@ -86,16 +81,18 @@ void ui_dialog_draw_button(int zone, int highlighted)
 }
 
 /* The message texts of a dialog, centered in rect: each text wraps to a width near the zone width. */
-static void draw_message(const int16_t *rect, char *texts[2], const int colors[2])
+static void draw_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], const int colors[MESSAGE_TEXTS])
 {
-    int16_t widths[2] = {0}, heights[2] = {0};
+    int16_t widths[MESSAGE_TEXTS] = {0}, heights[MESSAGE_TEXTS] = {0};
     int total = 0;
     char line[TEXT_SIZE];
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i]) continue;
         text_measure(texts[i], &widths[i], &heights[i]);
         int w = rect[RECT_W];
-        if (widths[i] > w - (w >> 3)) widths[i] = widths[i] < w + (w >> 2) ? (int16_t)(widths[i] - (widths[i] >> 2)) : (int16_t)w;
+        if (widths[i] > w - (w >> WRAP_MARGIN_SHIFT))
+            widths[i] = widths[i] < w + (w >> WRAP_SHRINK_SHIFT) ? (int16_t)(widths[i] - (widths[i] >> WRAP_SHRINK_SHIFT))
+                                                                 : (int16_t)w;
         for (int16_t pos = 0; texts[i][pos];) {
             text_wrap_line(texts[i], line, &pos, widths[i]);
             total += 2 * DIALOG_LINE_GAP + heights[i] - FONT_BASELINE + 1;
@@ -105,7 +102,7 @@ static void draw_message(const int16_t *rect, char *texts[2], const int colors[2
     if (!(int16_t)total) return;
     int offset = DIALOG_MESSAGE_TOP + ((rect[RECT_H] - ((int16_t)total - 2 * DIALOG_LINE_GAP)) >> 1) - 1;
     int y = rect[RECT_Y] + (offset > 0 ? offset : 0);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i]) continue;
         for (int16_t pos = 0; texts[i][pos];) {
             int w = text_wrap_line(texts[i], line, &pos, widths[i]);
@@ -116,62 +113,62 @@ static void draw_message(const int16_t *rect, char *texts[2], const int colors[2
     }
 }
 
-int ui_dialog_draw(int id, int message)
+int dialog_draw(int id, int message)
 {
     const gdat_t *g = draw_gdat();
     int present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
-    if (message && id != DIALOG_ERROR && id != DIALOG_LOADING && gdat_exists(g, CATEGORY_DIALOG, DIALOG_ERROR, 1, 0)) {
-        ui_dialog_run(ui_dialog_draw(DIALOG_ERROR, message));
+    if (message && id != DIALOG_ERROR && id != DIALOG_LOADING && gdat_exists(g, CAT_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) {
+        dialog_run(dialog_draw(DIALOG_ERROR, message));
         message = MESSAGE_NONE;
     }
     dialog.id = id;
-    if (present) ui_dialog_screen_mode(1);
+    if (present) dialog_screen_mode(1);
     static char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
     int count = 0;
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++)
-        if (*text_gdat(CATEGORY_DIALOG, id, e, texts[count])) count++;
+        if (*text_gdat(CAT_DIALOG, id, e, texts[count])) count++;
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CATEGORY_DIALOG, id, DIALOG_PICTURE_ENTRY), &view_viewport, r, UI_OPAQUE,
-                           draw_gdat_image_palette(CATEGORY_DIALOG, id, DIALOG_PICTURE_ENTRY));
-    text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], version_text);
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY), &view_viewport, r, UI_OPAQUE,
+                           draw_gdat_image_palette(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY));
+    text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
     for (int i = 0; i < count; i++) text_draw_in_zone(button_text_zones[first + i], ui_colors[UI_YELLOW], texts[i]);
     if (id != DIALOG_VOLUME && zone_get_rect(count < 2 ? ZONE_DIALOG_MESSAGE_WIDE : ZONE_DIALOG_MESSAGE, r)) {
-        static char message_texts[2][TEXT_SIZE];
-        char *shown[2] = {NULL, NULL};
-        int colors[2];
+        static char message_texts[MESSAGE_TEXTS][TEXT_SIZE];
+        char *shown[MESSAGE_TEXTS] = {NULL, NULL};
+        int colors[MESSAGE_TEXTS];
         if (message && id == DIALOG_ERROR) {
             colors[0] = ui_colors[UI_WHITE];
-            shown[0] = text_gdat(CATEGORY_DIALOG, DIALOG_ERROR, message, message_texts[0]);
+            shown[0] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[0]);
         } else {
             colors[0] = ui_colors[UI_YELLOW];
-            shown[0] = text_gdat(CATEGORY_DIALOG, id, DIALOG_MESSAGE_ENTRY, message_texts[0]);
+            shown[0] = text_gdat(CAT_DIALOG, id, DIALOG_MESSAGE_ENTRY, message_texts[0]);
             if (message) {
                 colors[1] = ui_colors[UI_WHITE];
-                shown[1] = text_gdat(CATEGORY_DIALOG, DIALOG_ERROR, message, message_texts[1]);
+                shown[1] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[1]);
             }
         }
         draw_message(r, shown, colors);
     }
     if (present) {
-        ui_dialog_present();
-        ui_dialog_screen_mode(0);
+        dialog_present();
+        dialog_screen_mode(0);
     }
     ui.screen_needs_refresh = 1;
     return id;
 }
 
-int ui_dialog_run(int id)
+int dialog_run(int id)
 {
     const gdat_t *g = draw_gdat();
     uint8_t values[DIALOG_TEXT_COUNT];
     int count = 0;
     char text[TEXT_SIZE];
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++) {
-        if (!*gdat_text(g, CATEGORY_DIALOG, id, e, text, sizeof text)) continue;
+        if (!*gdat_text(g, CAT_DIALOG, id, e, text, sizeof text)) continue;
         /* ponytail: the high byte (a default button of the original) only feeds a check that is always 0 */
-        uint8_t value = (uint8_t)gdat_entry_index(g, CATEGORY_DIALOG, id, GDAT_TYPE_VALUE, e);
+        uint8_t value = (uint8_t)gdat_entry_index(g, CAT_DIALOG, id, GDAT_TYPE_VALUE, e);
         values[count++] = value ? value : (uint8_t)e;
     }
     dialog.button_count = id == DIALOG_VOLUME ? DIALOG_VOLUME_BUTTONS : count;
@@ -190,22 +187,22 @@ int ui_dialog_run(int id)
     return result;
 }
 
-void ui_draw_progress_bar(int permille)
+void dialog_draw_progress_bar(int permille)
 {
     int16_t r[RECT_SIZE];
     if (!dialog.progress_enabled || !zone_get_rect(ZONE_PROGRESS_BAR, r)) return;
     r[RECT_W] = (int16_t)(r[RECT_W] * permille / PERMILLE);
     if (r[RECT_W] <= 0 || r[RECT_W] == dialog.progress_width) return;
     dialog.progress_width = r[RECT_W];
-    gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_GOLD], view_viewport.width, 8);
-    ui_dialog_present();
+    gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_GOLD], view_viewport.width, IMAGE_8BPP);
+    dialog_present();
 }
 
 void sound_set_volume_and_test(int volume, int device)
 {
     if (device == DEVICE_SOUND) {
         game.sound_volume = (uint8_t)volume;
-        sound_request(TEST_SOUND_CATEGORY, TEST_SOUND_INDEX, TEST_SOUND_ENTRY, TEST_SOUND_PRIORITY, TEST_SOUND_VOLUME,
+        sound_request(CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD,
                       game.party_x, game.party_y, 0);
         sound_set_volume(volume);
     } else if (device == DEVICE_MUSIC) {
@@ -219,30 +216,30 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 {
     char text[TEXT_SIZE];
     for (int level = VOLUME_LEVELS - 1; level >= 0; level--) {
-        gfx_draw_gdat_in_viewport_zone(CATEGORY_DIALOG, DIALOG_VOLUME, level == setting ? VOLUME_BUTTON_ON : VOLUME_BUTTON,
+        ui_draw_gdat_in_viewport_zone(CAT_DIALOG, DIALOG_VOLUME, level == setting ? VOLUME_BUTTON_ON : VOLUME_BUTTON,
                                        button_zone + level, UI_OPAQUE);
         if (level) {
             text[0] = (char)('0' + level);
             text[1] = '\0';
         } else {
-            text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, off_entry, text);
+            text_gdat(CAT_DIALOG, DIALOG_VOLUME, off_entry, text);
         }
         text_draw_in_zone(text_zone + level, ui_colors[UI_YELLOW], text);
     }
 }
 
-void ui_volume_dialog(void)
+void dialog_volume(void)
 {
     char text[TEXT_SIZE];
-    if (!gdat_exists(draw_gdat(), CATEGORY_DIALOG, DIALOG_VOLUME, 1, 0)) return;
-    ui_dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
-    text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW], text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, VOLUME_SOUND_LABEL, text));
-    text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW], text_gdat(CATEGORY_DIALOG, DIALOG_VOLUME, VOLUME_MUSIC_LABEL, text));
+    if (!gdat_exists(draw_gdat(), CAT_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) return;
+    dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
+    text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW], text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_SOUND_LABEL, text));
+    text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW], text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_MUSIC_LABEL, text));
     for (;;) {
         draw_volume_buttons(game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, VOLUME_SOUND_OFF);
         draw_volume_buttons(game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, VOLUME_MUSIC_OFF);
-        ui_dialog_present();
-        int command = ui_dialog_run(DIALOG_VOLUME);
+        dialog_present();
+        int command = dialog_run(DIALOG_VOLUME);
         if (command == CMD_DIALOG_BUTTON_FIRST || main_loop.quit) return;
         if (command >= CMD_MUSIC_VOLUME_FIRST && command <= CMD_MUSIC_VOLUME_LAST)
             sound_set_volume_and_test(command - CMD_MUSIC_VOLUME_FIRST, DEVICE_MUSIC);

@@ -20,7 +20,7 @@ int16[4]: x, y, w, h. `rect_temp` returns one of 4 rotating buffers at 0x7f1a8.
 
 +0 pixel pointer, +4 source flags (4 = GRAPHICS.DAT, 8 = image cache), +8 category, +9 index, +0x0b entry, +0x0c cache id, +0x0e x, +0x10 y, +0x12 width, +0x14 height, +0x16 bpp.
 
-### Draw context (`draw_ctx_t`, 0x13a bytes, `gfx_ctx_init`)
+### Draw context (`draw_ctx_t`, 0x13a bytes, `draw_ctx_init`)
 
 Starts with an `image_ref_t`. +6 GRAPHICS.DAT entry index of the image, +0x12 w, +0x14 h, +0x18 zone (0xffff = none), +0x1a anchor override, +0x1c/+0x1e offset x/y (from type 0x0c entry 0xfe and `0x3eed3`), +0x20/+0x22 position, +0x24 rect (8 bytes), +0x2c destination bitmap (default `g_screen_bitmap`), +0x30 transparent color, +0x32 flags (bit 0 mirror x, bit 1 mirror y, bit 4 extra), +0x34/+0x36 scale (64 = 100%), +0x38 palette remap count (16 or -1), +0x3a remap table (16 bytes). `gfx_ctx_cache_key` packs scale and entry index into a cache key for scaled images (`0x3f186`).
 
@@ -28,7 +28,7 @@ Starts with an `image_ref_t`. +6 GRAPHICS.DAT entry index of the image, +0x12 w,
 
 +0 image cache id, +2 rect (x, y, w, h on screen), +0x0a dirty rect count (maximum 5, then flush), +0x0c dirty rects (8 bytes each). `gfx_offscreen_flush` blits the dirty rects to `g_screen_bitmap`.
 
-### Square aspect (`dun_get_square_aspect`, uint16[8])
+### Square aspect (`view_get_square_aspect`, uint16[8])
 
 +0 element type (square type, 0x10/0x11 door front/side, 0x12/0x13 stairs), +2 raw square byte, +4 first object thing, +6..+0x0c wall ornament per side (front, right, back, left; 0xff none; bits 10+ animation frame), +0x0e ornament thing or 0xffff. Floor: +0x0a floor ornament. Random wall ornaments use the DM hash (x * 31417 / 2 + y * 11 + dungeon seed) / 4 mod 30.
 
@@ -70,4 +70,4 @@ Starts with an `image_ref_t`. +6 GRAPHICS.DAT entry index of the image, +0x12 w,
 - Sensor types 0x1c (level link used by creature AI), 0x27 (teleporter link), 0x2c, 0x30, 0x32, 0x3f, 0x41, 0x46, 0x4a, 0x7e have wall-view effects in `dun_apply_wall_things_to_aspect`.
 - `gfx_offscreen_fill_rect_alt` calls 0x13745 (range 1); its difference from `gfx_fill_rect` is open.
 - 0x1b2be did not decompile; the signature comes from the disassembly (4 stack args, `ret 0x10`).
-- `ui_dialog_screen_mode` / `g_dialog_screen_mode` (0x717bc): the flag switches between direct screen drawing and the viewport path. Its source is open.
+- `dialog_screen_mode` / `g_dialog_screen_mode` (0x717bc): the flag switches between direct screen drawing and the viewport path. Its source is open.

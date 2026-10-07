@@ -48,8 +48,8 @@ void scale3x(const uint8_t *src, int w, int h, uint8_t *dst)
 
 int scale_filter_factor(const char *name)
 {
-    if (!strcmp(name, "none")) return 1;
-    if (!strcmp(name, "scale2x")) return 2;
-    if (!strcmp(name, "scale3x")) return 3;
+    if (!strcmp(name, "none")) return SCALE_NONE_FACTOR;
+    if (!strcmp(name, "scale2x")) return SCALE2X_FACTOR;
+    if (!strcmp(name, "scale3x")) return SCALE3X_FACTOR;
     return 0;
 }

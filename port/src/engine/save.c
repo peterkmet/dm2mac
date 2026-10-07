@@ -20,26 +20,19 @@
    Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. In the advanced mode the AMAP block
    of the automap follows the bit stream (automap.h); the original loader ignores it. */
 
-#define HEADER_SIZE 0x2a
 #define HEADER_FORMAT 0
-#define HEADER_NAME 2
 #define SAVE_FORMAT 1
 #define GAME_RECORD_SIZE 60
-#define EVENT_SIZE 12
 #define CHAMPION_SLOTS 0xc3   /* 30 thing words: hands, body, pouches, quiver, backpack */
 #define CHAMPION_DAMAGE_EVENT 0x2e  /* the timeline event that ends the damage display */
-#define SLOT_COUNT 30
-#define DEFERRED_MAX 100
-#define EVENT_SLACK 50        /* timeline events beyond one for each group, projectile, and explosion record */
+#define DEFERRED_THINGS_MAX 100
 
 /* Bit widths of the values between the records, as masks. */
 #define MORE_MASK 0x1
 #define TYPE_MASK 0xf
 #define CELL_MASK 0x3
 #define CREATURE_MASK 0x7f
-#define CONTAINER_KIND_MASK 0x3
 #define SPELL_MASK 0x7f
-#define SENSOR_DATA_MASK 0x1ff
 #define INDEX_MASK 0x3ff
 #define SPELL_THING_BASE 0xff80   /* a projectile payload that is a spell, not a thing record */
 
@@ -49,16 +42,10 @@
 #define FAKE_WALL_SAVED_BITS 0x04
 #define TELEPORTER_SAVED_BITS 0x08   /* only for a teleporter without a linked teleporter */
 
-#define CONTAINER_KIND_SHIFT 1
-#define CONTAINER_ITEM_SHIFT 13
-enum container_kind { CONTAINER_CHEST = 0, CONTAINER_MINION_MAP = 1 };
 
-enum event_data { EVENT_THING = 0, EVENT_THING2 = 2 };  /* byte offsets in TimelineEvent.data */
+enum event_data { EVENT_THING = 0, EVENT_VALUE = 0, EVENT_THING2 = 2 };  /* byte offsets in TimelineEvent.data */
 
-#define GDAT_CREATURE_CATEGORY 0x0f
 #define GDAT_CREATURE_INFO_ENTRY 5
-#define GDAT_CONTAINER_CATEGORY 0x14
-#define GDAT_TYPE_TEXT 5
 #define GDAT_MONEYBOX_ENTRY 0x40
 
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
@@ -87,7 +74,7 @@ static const uint8_t champion_mask[CHAMPION_SIZE] = {
     [0x101] = 0x3f, 0x0f,
 };
 static const uint8_t magic_light_mask[MAGIC_LIGHT_SIZE] = {0x00, 0x00, 0x00, 0xff, 0xff, 0x00};
-static const uint8_t event_mask[EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00};
+static const uint8_t event_mask[TIMELINE_EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00};
 
 static const uint8_t door_mask[] = {0x00, 0x00, 0x00, 0x3e};
 static const uint8_t text_mask[] = {0x00, 0x00, 0x01, 0x00};
@@ -122,7 +109,7 @@ enum game_record_field {
 #define VOLUME_MASK 0xf
 #define MUSIC_VOLUME_SHIFT 4
 
-Game game = {.leader = 0xffff, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START};  /* no leader */
+Game game = {.leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START};  /* no leader */
 
 /* State of one load or write. */
 static struct {
@@ -133,7 +120,7 @@ static struct {
     int in_group;               /* inside the possessions of a creature group */
     int in_projectile;          /* inside the payload of a projectile */
     const uint8_t *misc_mask;   /* moneybox_misc_mask inside a moneybox */
-    uint16_t deferred[DEFERRED_MAX];
+    uint16_t deferred[DEFERRED_THINGS_MAX];
     int deferred_count;
     uint16_t *group_order;      /* written: position of each group record in the bit stream */
     uint16_t *container_order;  /* written: position of each container record in the bit stream */
@@ -227,7 +214,7 @@ static void set_champion_slot(int champion, int slot, uint16_t thing)
 
 static int sensor_has_data(uint16_t sensor)
 {
-    int type = thing_word(sensor, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK;
+    int type = sensor_type(sensor);
     for (size_t i = 0; i < sizeof sensors_with_data; i++)
         if (sensors_with_data[i] == type) return 1;
     return 0;
@@ -235,29 +222,24 @@ static int sensor_has_data(uint16_t sensor)
 
 static int creature_is_static(uint16_t group)
 {
-    int info = gdat_find(io.gdat, GDAT_CREATURE_CATEGORY, dungeon_thing_record(group)[GROUP_CREATURE], GDAT_TYPE_VALUE,
+    int info = gdat_find(io.gdat, CAT_CREATURE, group_creature(group), GDAT_TYPE_VALUE,
                          GDAT_CREATURE_INFO_ENTRY);
     if (info == -1) info = 0;  /* a missing value key reads as 0 */
     const CreatureInfo *record = creature_info_at(info);
     return record && record->flags & CREATURE_STATIC;  /* fix: no read past the table */
 }
 
-static int container_kind(uint16_t container)
-{
-    return thing_word(container, CONTAINER_KIND) >> CONTAINER_KIND_SHIFT & CONTAINER_KIND_MASK;
-}
-
 /* A chest whose item has the moneybox text holds coins. */
 static int container_is_moneybox(uint16_t container)
 {
     if (container_kind(container) != CONTAINER_CHEST) return 0;
-    int item = thing_word(container, CONTAINER_KIND) >> CONTAINER_ITEM_SHIFT;
-    return gdat_find(io.gdat, GDAT_CONTAINER_CATEGORY, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
+    int item = container_type(container);
+    return gdat_find(io.gdat, CAT_CONTAINER, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
 }
 
 static int defer_thing(uint16_t thing)
 {
-    if (io.deferred_count == DEFERRED_MAX) return 0;  /* fix: the original writes past its buffer */
+    if (io.deferred_count == DEFERRED_THINGS_MAX) return 0;  /* fix: the original writes past its buffer */
     io.deferred[io.deferred_count++] = thing;
     return 1;
 }
@@ -280,41 +262,44 @@ static void timeline_relink_events(void)
 
 static int write_thing_list(uint16_t thing, int with_cell, int follow);
 
-/* Writes what the record of thing stores beside its mask, the record, and the things that it holds. */
-static int write_thing(uint16_t thing)
+/* Writes what the record of thing stores beside its mask; returns the mask of the record, NULL on a write error. */
+static const uint8_t *write_thing_head(uint16_t thing, int *carried)
 {
     int type = thing_type(thing);
-    uint8_t *record = dungeon_thing_record(thing);
     const uint8_t *mask = type == THING_MISC ? io.misc_mask : thing_masks[type];
-    int carried = 0;  /* minion map, or projectile in a creature: the reference follows at the end */
+    *carried = 0;  /* minion map, or projectile in a creature: the reference follows at the end */
     switch (type) {
     case THING_SENSOR:
-        if (sensor_has_data(thing) && !write_value(thing_word(thing, SENSOR_TYPE_DATA) >> SENSOR_DATA_SHIFT, SENSOR_DATA_MASK))
-            return 0;
+        if (sensor_has_data(thing) && !write_value(sensor_data(thing), SENSOR_DATA_MASK))
+            return NULL;
         break;
     case THING_GROUP:
-        if (!write_value(record[GROUP_CREATURE], CREATURE_MASK)) return 0;
+        if (!write_value(group_creature(thing), CREATURE_MASK)) return NULL;
         if (creature_is_static(thing)) mask = static_group_mask;
         io.group_order[thing_index(thing)] = io.group_count++;
         break;
     case THING_CONTAINER:
-        if (!write_value(container_kind(thing), CONTAINER_KIND_MASK)) return 0;
+        if (!write_value(container_kind(thing), CONTAINER_KIND_MASK)) return NULL;
         if (container_kind(thing) == CONTAINER_MINION_MAP) {
             mask = minion_map_mask;
-            carried = 1;
+            *carried = 1;
         }
         io.container_order[thing_index(thing)] = io.container_count++;
         break;
     case THING_PROJECTILE:
         if (io.in_group) {
             mask = carried_projectile_mask;
-            carried = 1;
+            *carried = 1;
         }
         break;
     }
-    if (!write_packed(record, mask, dungeon_thing_size(type), 1)) return 0;
+    return mask;
+}
 
-    switch (type) {
+/* Writes the things that thing holds after its record: possessions, contents, payload, or the explosion event. */
+static int write_held_things(uint16_t thing, const uint8_t *mask, int carried)
+{
+    switch (thing_type(thing)) {
     case THING_GROUP: {
         io.in_group = 1;
         int ok = write_thing_list(thing_word(thing, GROUP_POSSESSIONS), mask != group_mask, 1);
@@ -349,6 +334,15 @@ static int write_thing(uint16_t thing)
     return 1;
 }
 
+/* Writes what the record of thing stores beside its mask, the record, and the things that it holds. */
+static int write_thing(uint16_t thing)
+{
+    int carried;
+    const uint8_t *mask = write_thing_head(thing, &carried);
+    return mask && write_packed(dungeon_thing_record(thing), mask, dungeon_thing_size(thing_type(thing)), 1)
+           && write_held_things(thing, mask, carried);
+}
+
 /* Writes a thing list: one thing without follow, else up to the end of the list. Things above
    the sensors start with a 1 bit and their type; a 0 bit ends a list. */
 static int write_thing_list(uint16_t thing, int with_cell, int follow)
@@ -357,7 +351,7 @@ static int write_thing_list(uint16_t thing, int with_cell, int follow)
         int type = thing_type(thing);
         if (type > THING_SENSOR) {
             if (!write_value(1, MORE_MASK) || !write_value(type, TYPE_MASK)) return 0;
-            if (with_cell && type != THING_GROUP && !write_value(thing >> THING_CELL_SHIFT, CELL_MASK)) return 0;
+            if (with_cell && type != THING_GROUP && !write_value(thing_cell(thing), CELL_MASK)) return 0;
         }
         if (type == THING_EXPLOSION && io.in_projectile) {
             if (!write_value(thing, SPELL_MASK)) return 0;
@@ -375,7 +369,7 @@ static int write_thing_list(uint16_t thing, int with_cell, int follow)
 static uint8_t square_mask(int map, int x, int y, int *skip)
 {
     *skip = 0;
-    switch (dungeon_square(map, x, y) >> SQUARE_TYPE_SHIFT) {
+    switch (square_type(dungeon_square(map, x, y))) {
     case SQUARE_PIT: return PIT_SAVED_BITS;
     case SQUARE_DOOR: return DOOR_SAVED_BITS;
     case SQUARE_FAKE_WALL: return FAKE_WALL_SAVED_BITS;
@@ -499,7 +493,7 @@ static int write_state(void)
         || !write_packed((const uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT)
         || !write_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count)
         || !write_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1)
-        || !write_packed((const uint8_t *)timeline.events, event_mask, EVENT_SIZE, timeline.count))
+        || !write_packed((const uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count))
         return 0;
     for (int c = 0; c < game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
@@ -520,39 +514,42 @@ static int set_event_thing(uint16_t event, int offset, uint16_t thing)
     return 1;
 }
 
-/* Reads what the record of a new thing stores beside its mask, the record, and the things that it holds. */
-static int read_thing(uint16_t thing)
+/* Reads what the record of a new thing stores beside its mask; returns the mask of the record, NULL on a read error. */
+static const uint8_t *read_thing_head(uint16_t thing, int *carried)
 {
     int type = thing_type(thing);
-    uint8_t *record = dungeon_thing_record(thing);
     const uint8_t *mask = type == THING_MISC ? io.misc_mask : thing_masks[type];
-    int carried = 0;
     uint16_t value;
+    *carried = 0;
     switch (type) {
     case THING_GROUP:
-        if (!read_value(&value, CREATURE_MASK)) return 0;
-        record[GROUP_CREATURE] = (uint8_t)value;
+        if (!read_value(&value, CREATURE_MASK)) return NULL;
+        group_set_creature(thing, (uint8_t)value);
         if (creature_is_static(thing)) mask = static_group_mask;
         break;
     case THING_CONTAINER:
-        if (!read_value(&value, CONTAINER_KIND_MASK)) return 0;
-        set_thing_word(thing, CONTAINER_KIND, (thing_word(thing, CONTAINER_KIND) & ~(CONTAINER_KIND_MASK << CONTAINER_KIND_SHIFT))
-                                                  | value << CONTAINER_KIND_SHIFT);
+        if (!read_value(&value, CONTAINER_KIND_MASK)) return NULL;
+        container_set_kind(thing, value);
         if (value == CONTAINER_MINION_MAP) {
             mask = minion_map_mask;
-            carried = 1;
+            *carried = 1;
         }
         break;
     case THING_PROJECTILE:
         if (io.in_group) {
             mask = carried_projectile_mask;
-            carried = 1;
+            *carried = 1;
         }
         break;
     }
-    if (!read_packed(record, mask, dungeon_thing_size(type), 1, 1)) return 0;
+    return mask;
+}
 
-    switch (type) {
+/* Reads the things that a new thing holds after its record: possessions, contents, payload, or the explosion event. */
+static int read_held_things(uint16_t thing, const uint8_t *mask, int carried)
+{
+    uint16_t value;
+    switch (thing_type(thing)) {
     case THING_GROUP: {
         uint16_t possessions = THING_ENDOFLIST;
         io.in_group = 1;
@@ -593,6 +590,15 @@ static int read_thing(uint16_t thing)
     return 1;
 }
 
+/* Reads what the record of a new thing stores beside its mask, the record, and the things that it holds. */
+static int read_thing(uint16_t thing)
+{
+    int carried;
+    const uint8_t *mask = read_thing_head(thing, &carried);
+    return mask && read_packed(dungeon_thing_record(thing), mask, dungeon_thing_size(thing_type(thing)), 1, 1)
+           && read_held_things(thing, mask, carried);
+}
+
 /* Reads a thing list into new records: onto the square (x, y) of map, or with list onto the end of *list. */
 static int read_thing_list(int map, int x, int y, uint16_t *list, int with_cell, int follow)
 {
@@ -610,7 +616,7 @@ static int read_thing_list(int map, int x, int y, uint16_t *list, int with_cell,
         }
         uint16_t thing = dungeon_unused_thing(type);
         if (thing == THING_NONE) return 0;
-        thing |= cell << THING_CELL_SHIFT;
+        thing = thing_with_cell(thing, cell);
         if (list) dungeon_append_thing(thing, list);
         else if (!dungeon_link_thing_to_square(thing, map, x, y)) return 0;
         if (thing_masks[type] && !read_thing(thing)) return 0;
@@ -631,7 +637,7 @@ static void free_movable_things(void)
                         break;
                     }
     for (int type = THING_GROUP; type < THING_TYPE_COUNT; type++)
-        for (int i = 0; i < dungeon_thing_count(type); i++) set_thing_word(type << THING_TYPE_SHIFT | i, THING_NEXT, THING_NONE);
+        for (int i = 0; i < dungeon_thing_count(type); i++) set_thing_word(thing_make(type, i), THING_NEXT, THING_NONE);
 }
 
 /* Reads the saved bits of each square, the bits of its fixed things, and its movable things. */
@@ -650,7 +656,7 @@ static int read_squares(void)
                     uint16_t data;
                     if (type == THING_SENSOR && sensor_has_data(t)) {
                         if (!read_value(&data, SENSOR_DATA_MASK)) return 0;
-                        set_thing_word(t, SENSOR_TYPE_DATA, (thing_word(t, SENSOR_TYPE_DATA) & SENSOR_TYPE_MASK) | data << SENSOR_DATA_SHIFT);
+                        sensor_set_data(t, data);
                     }
                     if (!read_packed(dungeon_thing_record(t), thing_masks[type], dungeon_thing_size(type), 1, 1)) return 0;
                 }
@@ -666,7 +672,7 @@ static int read_deferred(void)
         uint16_t index, thing = io.deferred[i];
         if (!read_value(&index, INDEX_MASK)) return 0;
         int target_type = thing_type(thing) == THING_CONTAINER ? THING_GROUP : THING_CONTAINER;
-        uint16_t target = target_type << THING_TYPE_SHIFT | index;
+        uint16_t target = thing_make(target_type, index);
         if (!dungeon_thing_valid(target)) return 0;
         set_thing_word(thing, CONTAINER_CONTENTS, target);
     }
@@ -701,8 +707,8 @@ static int read_things(void)
 }
 
 /* The light of a magic light event by its power (event data), from SKULL.EXE. */
-static const int8_t light_power[16] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 #define LIGHT_POWER_COUNT 16
+static const int8_t light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 
 /* The magic effects that the timeline holds come back: magic light, invisibility, auras, poison, eaten items; then
    the champion loads. */
@@ -711,15 +717,12 @@ static void save_restore_timed_effects(void)
     memset(game.magic_light, 0, sizeof game.magic_light);
     for (int i = 0; i < timeline.used_end; i++) {
         const TimelineEvent *e = &timeline.events[i];
-        int16_t v = (int16_t)(e->data[0] | e->data[1] << 8);
+        int16_t v = (int16_t)le16(e->data + EVENT_VALUE);
         switch (e->type) {
         case EVENT_ITEM_EFFECT: timeline_event_apply_item_effect(e, EFFECT_MODE_RESTORE); break;
         case EVENT_MAGIC_LIGHT:
             if (v && v > -LIGHT_POWER_COUNT && v < LIGHT_POWER_COUNT) {
-                uint16_t light = (uint16_t)(game.magic_light[0] | game.magic_light[1] << 8);
-                light = (uint16_t)(light + (v < 0 ? light_power[-v] : light_power[v] * -2));
-                game.magic_light[0] = (uint8_t)light;
-                game.magic_light[1] = (uint8_t)(light >> 8);
+                save_set_magic_light((int16_t)(save_magic_light() + (v < 0 ? light_power[-v] : light_power[v] * -2)));
             }
             break;
         case EVENT_INVISIBILITY: game.magic_light[MAGIC_INVISIBILITY]++; break;
@@ -751,7 +754,7 @@ static int read_state(void)
         || !read_packed((uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT, 0)
         || !read_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count, 0)
         || !read_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, 0)
-        || !read_packed((uint8_t *)timeline.events, event_mask, EVENT_SIZE, timeline.count, 0))
+        || !read_packed((uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count, 0))
         return 0;
     for (int i = timeline.count; i < timeline.capacity; i++) timeline.events[i].type = EVENT_NONE;
     timeline_build_queue();
@@ -766,9 +769,9 @@ int save_load(const char *path, const gdat_t *gdat)
     FILE *f = fopen(path, "rb");
     if (!f) return SAVE_ERR_IO;
     creature_free_active_groups();
-    uint8_t header[HEADER_SIZE];
+    uint8_t header[SAVE_HEADER_SIZE];
     int result = SAVE_ERR_FORMAT;
-    if (fread(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_read(f, 0)) {
+    if (fread(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_read(f, 0)) {
         start_io(f, gdat);
         if (draw_gdat() != gdat) draw_init(gdat);  /* the item effects of the champions read the item attributes */
         champ_reset_step_state();
@@ -783,26 +786,26 @@ int save_load(const char *path, const gdat_t *gdat)
 
 int save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat)
 {
-    uint8_t header[HEADER_SIZE] = {0};  /* fix: without an old file the original writes uninitialized bytes */
+    uint8_t header[SAVE_HEADER_SIZE] = {0};  /* fix: without an old file the original writes uninitialized bytes */
     remove(bak_path);
     rename(path, bak_path);
     FILE *old = fopen(bak_path, "rb");
     if (old) {
-        if (fread(header, 1, HEADER_SIZE, old) != HEADER_SIZE) memset(header, 0, HEADER_SIZE);
+        if (fread(header, 1, SAVE_HEADER_SIZE, old) != SAVE_HEADER_SIZE) memset(header, 0, SAVE_HEADER_SIZE);
         fclose(old);
     }
     put_le16(header + HEADER_FORMAT, SAVE_FORMAT);
     size_t n = strnlen(name, SAVE_NAME_SIZE - 1);
-    memcpy(header + HEADER_NAME, name, n);  /* the name bytes after its end mark keep the old header bytes */
-    header[HEADER_NAME + n] = 0;
+    memcpy(header + SAVE_HEADER_NAME, name, n);  /* the name bytes after its end mark keep the old header bytes */
+    header[SAVE_HEADER_NAME + n] = 0;
 
     FILE *f = fopen(path, "wb");
     if (!f) return SAVE_ERR_IO;
     start_io(f, gdat);
     io.group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *io.group_order);
     io.container_order = calloc(dungeon_thing_count(THING_CONTAINER) + 1, sizeof *io.container_order);
-    /* the records keep the indices of the active groups; the timeline loses their events (game_save) */
-    int ok = fwrite(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_write(f);
+    /* the records keep the indices of the active groups; the timeline loses their events (session_save) */
+    int ok = fwrite(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_write(f);
     creature_deactivate_all_groups();
     ok = ok && write_state() && (game_mode == GAME_MODE_VANILLA || automap_write(f));
     free(io.group_order);

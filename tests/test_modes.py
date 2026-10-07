@@ -254,10 +254,10 @@ def test_quick_keys_work_only_in_the_dungeon_view(lib, advanced):
     for mode in range(10):
         if mode != INPUT_MODE_MOVE:
             assert key_command(lib, mode, KEY_F5) == key_command(lib, mode, KEY_F9) == 0, mode
-    lib.inv_toggle(0)
+    lib.ui_toggle_inventory(0)
     assert lib.input_get_mode() == INPUT_MODE_INVENTORY
     press(lib, KEY_F5)
-    lib.inv_toggle(0)
+    lib.ui_toggle_inventory(0)
     press(lib, KEY_PAUSE)
     press(lib, KEY_F5)
     press(lib, KEY_PAUSE)

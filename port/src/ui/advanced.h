@@ -2,6 +2,8 @@
 #define ADVANCED_H
 #include <stdint.h>
 
+/* Prefixes: advanced_ */
+
 /* The game modes: vanilla is the original game; advanced adds the W A S D Q E keys, the quick save (F5) and quick
    load (F9), the automap (Tab or M), and its cheats. Without the cheats the game rules are the same in both modes. */
 enum { GAME_MODE_VANILLA, GAME_MODE_ADVANCED, GAME_MODE_COUNT };
@@ -9,6 +11,11 @@ enum { GAME_MODE_VANILLA, GAME_MODE_ADVANCED, GAME_MODE_COUNT };
 enum { KEY_QUICK_SAVE = 0x3f, KEY_QUICK_LOAD = 0x43 };   /* F5, F9 */
 /* PC scan codes of the keys that open the automap. */
 enum { KEY_AUTOMAP = 0x0f, KEY_AUTOMAP_M = 0x32 };      /* Tab, M */
+/* PC scan codes of the numeric keypad keys that move and turn the party. */
+enum {
+    KEYPAD_TURN_LEFT = 0x4b, KEYPAD_FORWARD = 0x4c, KEYPAD_TURN_RIGHT = 0x4d, KEYPAD_LEFT = 0x4f, KEYPAD_BACK = 0x50,
+    KEYPAD_RIGHT = 0x51
+};
 
 extern int game_mode;                   /* GAME_MODE_VANILLA in the library; main.c sets the --mode value */
 extern const char *const game_mode_names[GAME_MODE_COUNT];

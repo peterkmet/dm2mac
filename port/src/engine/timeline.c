@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include "timeline.h"
 
-#define EVENT_TIME_MASK 0xffffffu
 #define END_OF_FREE_LIST (-1)
 
 Timeline timeline;
@@ -177,7 +176,7 @@ void timeline_pop_first_event(TimelineEvent *event)
     timeline_delete_event(index);
 }
 
-int timeline_is_event_due(uint32_t game_time)
+bool timeline_is_event_due(uint32_t game_time)
 {
     fix_pending_slot();
     return timeline.count != 0 && event_time(timeline.queue[0]) <= game_time;

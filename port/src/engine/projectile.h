@@ -2,6 +2,43 @@
 #define PROJECTILE_H
 #include <stdint.h>
 #include "timeline.h"
+#include "dungeon.h"
+
+/* Prefixes: projectile_ explosion_ */
+
+/* Record fields of the things of this module; dungeon.h holds the record layout. */
+static inline uint8_t projectile_energy(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_ENERGY); }
+static inline void projectile_set_energy(uint16_t projectile, uint8_t energy)
+{
+    set_thing_byte(projectile, PROJECTILE_ENERGY, energy);
+}
+static inline uint8_t projectile_hit_chance(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_HIT_CHANCE); }
+static inline void projectile_set_hit_chance(uint16_t projectile, uint8_t chance)
+{
+    set_thing_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
+}
+static inline void projectile_set_holder_waits(uint16_t projectile, bool waits)
+{
+    set_thing_bit(projectile, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, waits);
+}
+static inline uint16_t explosion_type(uint16_t explosion) { return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK); }
+static inline void explosion_set_type(uint16_t explosion, uint16_t type)
+{
+    set_thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
+}
+static inline bool explosion_is_centered(uint16_t explosion) { return thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED); }
+static inline void explosion_set_centered(uint16_t explosion, bool centered)
+{
+    set_thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
+}
+static inline uint16_t explosion_power(uint16_t explosion)
+{
+    return thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK);
+}
+static inline void explosion_set_power(uint16_t explosion, uint16_t power)
+{
+    set_thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);
+}
 
 /* Projectiles (thrown objects, spell missiles, missiles of sensors) and explosions. */
 
@@ -14,6 +51,16 @@ enum spell_thing {
     EXPLOSION_STORM_LIGHTNING = 0xffb0, EXPLOSION_STORM_BLAST = 0xffb1, EXPLOSION_SMOKE = 0xffe4
 };
 #define EXPLOSION_AT_CENTER 0xff    /* the cell of an explosion in the middle of its square */
+#define POWER_MAX 255               /* the power of a missile or an explosion is a byte */
+/* The sound of an explosion: (CAT_EXPLOSION, explosion type, SOUND_EXPLODE). */
+#define SOUND_EXPLODE 0x81
+#define SOUND_PRIORITY_EXPLODE 0x6c
+
+/* Bytes of a projectile move event: the projectile, then its position word (event_square_dir with the energy step
+   in bits 12-15). Bytes of an explosion event: its square, then the explosion. */
+enum { PROJECTILE_EVENT_THING = 0, PROJECTILE_EVENT_POSITION = 2 };
+enum { EXPLOSION_EVENT_X = 0, EXPLOSION_EVENT_Y = 1, EXPLOSION_EVENT_THING = 2 };
+
 
 /* The extra damage (poison) and the attack type of the last projectile_get_attack. */
 extern uint16_t projectile_extra_damage, projectile_attack_type;
@@ -26,6 +73,12 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
 /* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle); an x
    above 0xff packs the square of a hit (low bytes) and the square of the explosion (high bytes, x + 1). */
 void explosion_create(int type, int power, int x, int y, int cell);
+/* Sets the square and the flight direction of a projectile move event; the energy step stays. */
+void projectile_event_set_position(TimelineEvent *e, int x, int y, int dir);
+/* The flight direction in the position word of a projectile move event. */
+int projectile_event_dir(const TimelineEvent *e);
+/* The flight direction of projectile: the direction of its queued move event. */
+int projectile_dir(uint16_t projectile);
 /* Removes the queued move of a projectile. */
 void projectile_cancel_event(uint16_t projectile);
 /* The projectile ends on (x, y): its object falls there (or into holder, a list of creature possessions). */
@@ -39,15 +92,5 @@ void projectile_process_event(TimelineEvent *e);
 /* The damage of an explosion on target: a door, a creature group, or THING_NONE for the party. */
 int explosion_get_attack(uint16_t explosion, uint16_t target);
 void explosion_process_event(TimelineEvent *e);
-/* The 4 cells of the party that a creature on (x, y) attacks first to last; cell 0xff: random order. */
-void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell);
-/* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
-int creature_attack_champion(uint16_t group, int champ);
-/* The party moves from (from_x, from_y) to (to_x, to_y): the projectiles there hit the champions. */
-void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
-/* A missile launcher sensor shoots the objects of its square or new objects or spells. */
-void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
-/* A champion throws or casts payload from the party square. */
-void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step);
 
 #endif

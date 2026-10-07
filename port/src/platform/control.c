@@ -33,7 +33,7 @@
 #define KEY_CODE_MAX 0xffff
 #define HEX_DIGITS 4                  /* the digits of a \uXXXX escape */
 #define HEX_BASE 16
-#define DECIMAL_BASE 10              /* the value of hex digit a */
+#define UNICODE_ESCAPE_PREFIX 2       /* the backslash and the u of \uXXXX */
 #define UTF8_ONE_BYTE_END 0x80        /* the first code point of 2, 3, and 4 UTF-8 bytes */
 #define UTF8_TWO_BYTES_END 0x800
 #define UTF8_THREE_BYTES_END 0x10000
@@ -68,13 +68,11 @@ static struct {
     uint32_t start, ticks;
 } waiting;
 
-/* The input modes that only their modules name (session.c, dialog.c, recruit.c). */
-enum { MODE_MENU = 0, MODE_PICTURE = 1, MODE_DIALOG = 4, MODE_RECRUIT = 7, MODE_NAME = 9 };
 /* The input modes by number (the roots of the input tree in input.c). */
 static const char *const mode_names[] = {
-    [MODE_MENU] = "menu", [MODE_PICTURE] = "picture", [INPUT_MODE_SLEEP] = "sleep", [INPUT_MODE_PAUSE] = "pause",
-    [MODE_DIALOG] = "dialog", [INPUT_MODE_MOVE] = "move", [INPUT_MODE_PUSH] = "push", [MODE_RECRUIT] = "recruit",
-    [INPUT_MODE_INVENTORY] = "inventory", [MODE_NAME] = "name",
+    [INPUT_MODE_MENU] = "menu", [INPUT_MODE_PICTURE] = "picture", [INPUT_MODE_SLEEP] = "sleep", [INPUT_MODE_PAUSE] = "pause",
+    [INPUT_MODE_DIALOG] = "dialog", [INPUT_MODE_MOVE] = "move", [INPUT_MODE_PUSH] = "push", [INPUT_MODE_RECRUIT] = "recruit",
+    [INPUT_MODE_INVENTORY] = "inventory", [INPUT_MODE_NAME] = "name",
 };
 #define MODE_COUNT ((int)(sizeof mode_names / sizeof mode_names[0]))
 
@@ -85,7 +83,8 @@ static const struct { const char *name; uint16_t code; } key_names[] = {
     {"f8", 0x42}, {"f9", 0x43}, {"f10", 0x44},
     {"kp7", 0x47}, {"kp8", 0x48}, {"kp9", 0x49}, {"kp-", 0x4a}, {"kp4", 0x4b}, {"kp5", 0x4c}, {"kp6", 0x4d},
     {"kp+", 0x4e}, {"kp1", 0x4f}, {"kp2", 0x50}, {"kp3", 0x51}, {"kp0", 0x52}, {"kp.", 0x53},
-    {"up", 0x4c}, {"down", 0x50}, {"left", 0x4b}, {"right", 0x4d}, {"shift+left", 0x4f}, {"shift+right", 0x51},
+    {"up", KEYPAD_FORWARD}, {"down", KEYPAD_BACK}, {"left", KEYPAD_TURN_LEFT}, {"right", KEYPAD_TURN_RIGHT},
+    {"shift+left", KEYPAD_LEFT}, {"shift+right", KEYPAD_RIGHT},
 };
 static const struct { const char *prefix; uint16_t bit; } key_modifiers[] = {
     {"shift+", KEY_SHIFT}, {"ctrl+", KEY_CONTROL}, {"alt+", KEY_ALT},
@@ -132,7 +131,7 @@ static long hex4(const char *p)
     long value = 0;
     for (int i = 0; i < HEX_DIGITS; i++) {
         if (!isxdigit((unsigned char)p[i])) return -1;
-        value = value * HEX_BASE + (isdigit((unsigned char)p[i]) ? p[i] - '0' : tolower((unsigned char)p[i]) - 'a' + DECIMAL_BASE);
+        value = value * HEX_BASE + (isdigit((unsigned char)p[i]) ? p[i] - '0' : tolower((unsigned char)p[i]) - 'a' + DECIMAL_BASE);  /* a to f follow the ten digits */
     }
     return value;
 }
@@ -172,10 +171,10 @@ static int get_string(const char *line, const char *key, char *out, size_t size)
             else {
                 p += HEX_DIGITS;
                 if (c >= SURROGATE_HIGH && c < SURROGATE_LOW && p[0] == '\\' && p[1] == 'u') { /* a surrogate pair */
-                    long low = hex4(p + 2);
+                    long low = hex4(p + UNICODE_ESCAPE_PREFIX);
                     if (low < SURROGATE_LOW || low >= SURROGATE_END) return 0;
                     c = UTF8_THREE_BYTES_END + ((c - SURROGATE_HIGH) << SURROGATE_BITS) + (low - SURROGATE_LOW);
-                    p += 2 + HEX_DIGITS;
+                    p += UNICODE_ESCAPE_PREFIX + HEX_DIGITS;
                 }
                 if (!c || (c >= SURROGATE_HIGH && c < SURROGATE_END)) return 0;
                 if (!put_utf8(out, size, &n, c)) return 0;
@@ -194,7 +193,7 @@ static long get_int(const char *line, const char *key, long missing)
     const char *p = find_value(line, key);
     char *end;
     if (!p) return missing;
-    long value = strtol(p, &end, 10);
+    long value = strtol(p, &end, DECIMAL_BASE);
     return end == p ? missing : value;
 }
 
@@ -274,7 +273,7 @@ static void send_state(void)
     const char *mode_name = mode >= 0 && mode < MODE_COUNT ? mode_names[mode] : "unknown";
     put("{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
         mode_name);
-    if (mode != MODE_DIALOG) put("null");
+    if (mode != INPUT_MODE_DIALOG) put("null");
     else put("%d", dialog.id);
     put(",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
         game.party_map, game.party_x, game.party_y, game.party_dir, game.champion_count, (int16_t)game.leader);
@@ -306,7 +305,6 @@ static void send_state(void)
 #define ZLIB_METHOD 0x78               /* deflate, 32 KB window */
 #define ZLIB_FLAGS 0x01                /* no dictionary; header check bits */
 #define STORED_BLOCK_MAX 65535
-#define BYTE_MASK 0xff
 #define PNG_BIT_DEPTH 8
 #define PNG_COLOR_RGB 2
 #define PNG_SIGNATURE "\x89PNG\r\n\x1a\n"
@@ -319,7 +317,8 @@ static void send_state(void)
 #define STORED_BLOCK_HEADER_SIZE 5     /* the last block flag, the length, and its complement */
 #define ADLER_SIZE 4
 #define CRC_TABLE_SIZE 256
-#define BITS_PER_BYTE 8
+#define ADLER_SUM_SHIFT 16             /* the Adler-32 checksum: the second sum in the high half */
+#define SOCKET_DIR_MODE 0700
 
 static uint32_t crc_table[CRC_TABLE_SIZE];
 
@@ -328,17 +327,18 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
     if (!crc_table[1])
         for (uint32_t i = 0; i < CRC_TABLE_SIZE; i++) {
             uint32_t c = i;
-            for (int k = 0; k < BITS_PER_BYTE; k++) c = c & 1 ? CRC32_POLYNOMIAL ^ c >> 1 : c >> 1;
+            for (int k = 0; k < BYTE_BITS; k++) c = c & 1 ? CRC32_POLYNOMIAL ^ c >> 1 : c >> 1;
             crc_table[i] = c;
         }
     crc = ~crc;
-    while (n--) crc = crc_table[(crc ^ *p++) & BYTE_MASK] ^ crc >> 8;
+    while (n--) crc = crc_table[(crc ^ *p++) & BYTE_MASK] ^ crc >> BYTE_BITS;
     return ~crc;
 }
 
+/* PNG numbers are big-endian. */
 static void be32(uint8_t *p, uint32_t v)
 {
-    p[0] = (uint8_t)(v >> 24), p[1] = (uint8_t)(v >> 16), p[2] = (uint8_t)(v >> 8), p[3] = (uint8_t)v;
+    for (int i = (int)sizeof v - 1; i >= 0; i--, v >>= BYTE_BITS) p[i] = (uint8_t)v;
 }
 
 static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n)
@@ -364,7 +364,7 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
         *p++ = 0; /* filter: none */
         for (int x = 0; x < SCREEN_W; x++) {
             uint32_t argb = video_argb(screen[y][x]);
-            *p++ = (uint8_t)(argb >> 16), *p++ = (uint8_t)(argb >> 8), *p++ = (uint8_t)argb;
+            *p++ = video_argb_red(argb), *p++ = video_argb_green(argb), *p++ = video_argb_blue(argb);
         }
     }
     uint8_t *q = z;
@@ -374,14 +374,14 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
         size_t n = RAW - done < STORED_BLOCK_MAX ? RAW - done : STORED_BLOCK_MAX;
         *q++ = done + n == RAW;
         put_le16(q, (uint16_t)n);
-        put_le16(q + 2, (uint16_t)~n);
-        q += 4;
+        put_le16(q + sizeof(uint16_t), (uint16_t)~n);
+        q += 2 * sizeof(uint16_t);
         memcpy(q, raw + done, n);
         for (size_t i = 0; i < n; i++) a = (a + raw[done + i]) % ADLER_MODULUS, b = (b + a) % ADLER_MODULUS;
         q += n;
         done += n;
     }
-    be32(q, b << 16 | a);
+    be32(q, b << ADLER_SUM_SHIFT | a);
     q += ADLER_SIZE;
     uint8_t ihdr[IHDR_SIZE] = { 0 };
     be32(ihdr, SCREEN_W);
@@ -574,7 +574,7 @@ int control_open(const char *path)
     char *slash = strrchr(dir, '/');
     if (slash && slash != dir) {
         *slash = 0;
-        mkdir(dir, 0700);
+        mkdir(dir, SOCKET_DIR_MODE);
     }
     snprintf(address.sun_path, sizeof address.sun_path, "%s", path);
     snprintf(socket_path, sizeof socket_path, "%s", path);

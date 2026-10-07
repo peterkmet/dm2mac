@@ -15,7 +15,7 @@ MAX_FUNCTION_LINES = 60
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
 DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])")
 DECOMPILER = re.compile(r"\b(?:[uisbcp]Var\d+|local_[0-9a-f]+|arg_[0-9a-f]+|param_\d+|in_[AD][0-7]\w*|CONCAT\d+|DAT_[0-9a-f]+|FUN_[0-9a-f]+)\b")
-RECORD = re.compile(r"dungeon_thing_record\([^()]*\)\s*\[")
+RECORD = re.compile(r"\bdungeon_thing_record\(")
 CONST_DEF = re.compile(r"\s*(?:static\s+)?const\s+\w+\s+[A-Z][A-Z0-9_]*\s*=")
 ENUM = re.compile(r"\benum\b[^{};]*\{([^}]*)\}")
 DEFINE = re.compile(r"^\s*#define\s+([A-Z][A-Z0-9_]*)\b", re.M)
@@ -23,6 +23,8 @@ DECL = re.compile(r"^((?:(?:static|inline|const|struct|unsigned)\s+)*[A-Za-z_]\w
 PREFIXES = re.compile(r"^/\* Prefixes: ([\w ]+?) \*/$", re.M)
 NUMBERED = re.compile(r"events?_?\d|_\d+_to_\d+")
 PREDICATE = re.compile(r"(?:^|_)(?:is|has|can)_")
+NAMED_SHIFT = re.compile(r"(?:<<|>>)\s*([A-Z][A-Z0-9_]*_SHIFT)\b")
+PACKED = re.compile(r"(?:<<|>>)\s*(?:8|16|24)\b|\((?:u?int(?:8|16|32)_t|unsigned|int)\)\s*\((?:u?int(?:8|16|32)_t|unsigned|int)\)")
 FUNC_START = re.compile(r"^(?:static\s+)?[A-Za-z_][\w *]*?\b([a-z_]\w*)\s*\([^;]*$")
 
 
@@ -109,6 +111,19 @@ def test_each_constant_has_one_definition():
     ok = allowed()
     report("duplicate", [f"duplicate {name}  | {sorted(paths)}" for name, paths in sorted(where.items())
                          if len(paths) > 1 and ("duplicate", name) not in ok])
+
+
+def test_no_packed_fields_at_call_sites():
+    """Also a shift by a *_SHIFT constant of a header in a .c file of another module: the accessor belongs to the owner."""
+    ok = allowed()
+    owner = {name: path.stem for path in sources() if path.suffix == ".h"
+             for name in DEFINE.findall(strip(path.read_text(errors="replace"))) if name.endswith("_SHIFT")}
+    found = []
+    for path in sources():
+        if path.suffix == ".c" and ("packed", rel(path)) not in ok:
+            found += [f"packed {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path)
+                      if PACKED.search(line) or any(owner.get(name, path.stem) != path.stem for name in NAMED_SHIFT.findall(line))]
+    report("packed", found)
 
 
 def test_le_helpers_only_in_le_header():

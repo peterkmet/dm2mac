@@ -11,7 +11,7 @@ _Static_assert(MUSIC_SAMPLE_RATE == SOUND_OUTPUT_RATE, "the audio stream plays t
 #define PIT_DIVISOR 4971     /* 240 Hz, see docs/skull-formats.md section 6 */
 #define TICK_NS ((Uint64)SDL_NS_PER_SECOND * PIT_DIVISOR / PIT_CLOCK_HZ)
 #define ARGB_BYTES 4
-#define FILTER_MAX 3
+#define FILTER_MAX SCALE3X_FACTOR
 #define AUDIO_CHANNELS 2
 #define AUDIO_QUEUE_FRAMES 2048 /* about 46 ms at 44100 Hz */
 
@@ -59,9 +59,9 @@ void plat_present(void)
 {
     uint32_t pal[PALETTE_COLORS], *px;
     int pitch, w, h, s, ox, oy, tw = SCREEN_W * filter;
-    const uint8_t *src = filter == 1 ? &fb[0][0] : &big[0][0];
-    if (filter == 2) scale2x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
-    if (filter == 3) scale3x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
+    const uint8_t *src = filter == SCALE_NONE_FACTOR ? &fb[0][0] : &big[0][0];
+    if (filter == SCALE2X_FACTOR) scale2x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
+    if (filter == SCALE3X_FACTOR) scale3x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
     for (int i = 0; i < PALETTE_COLORS; i++) pal[i] = video_argb((uint8_t)i);
     if (!SDL_LockTexture(tex, NULL, (void **)&px, &pitch)) return;
     int stride = pitch / ARGB_BYTES;

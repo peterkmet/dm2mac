@@ -4,16 +4,16 @@
 #include "fm.h"
 #include "hmp.h"
 #include "music.h"
+#include "sound.h"
 
-#define SONG_CATEGORY 4
 #define SONG_TYPE 3
 #define SONG_ENTRY 0
 #define SONG_VOLUME_FULL 0x7f
-#define FADE_STEPS 0x7f
-#define VOLUME_MAX 7
+#define FADE_STEPS 127
 #define VOLUME_DEFAULT 5
 #define PATH_MAX_LENGTH 1024
 #define STEREO 2
+#define MASTER_VOLUME_SHIFT 4  /* the master volume repeats the level in its high bits */
 
 Music music = {.requested_song = -1, .current_song = MUSIC_NO_SONG};
 static const gdat_t *gdat;
@@ -33,7 +33,7 @@ static long read_file(const char *data_dir, const char *name, uint8_t *buf, long
 
 static int load_bank(const char *data_dir, const char *name, int bank)
 {
-    enum { BANK_MAX = 0x10000 };
+    enum { BANK_MAX = 65536 };
     uint8_t *buf = malloc(BANK_MAX);
     long n = buf ? read_file(data_dir, name, buf, BANK_MAX) : -1;
     int result = n < 0 ? FM_ERR_BANK : fm_set_bank(bank, buf, (size_t)n);
@@ -70,7 +70,7 @@ void music_play_song(int song)
 {
     if (music.enabled && song && music.volume > 0) {
         music_stop();
-        int item = gdat_find(gdat, SONG_CATEGORY, song, SONG_TYPE, SONG_ENTRY);
+        int item = gdat_find(gdat, CAT_MUSIC, song, SONG_TYPE, SONG_ENTRY);
         uint32_t size;
         const uint8_t *data = item < 0 ? NULL : gdat_item(gdat, item, &size);
         if (!data || hmp_start(data, size, fm_send) != HMP_OK) return;
@@ -124,9 +124,9 @@ void music_update_for_map(int map)
 
 void music_set_volume(int level)
 {
-    level = level < 0 ? 0 : level > VOLUME_MAX ? VOLUME_MAX : level;
+    level = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
     if (music.enabled) {
-        hmp_set_master_volume(level * 2 | level << 4);  /* 0 to 126 */
+        hmp_set_master_volume(level * 2 | level << MASTER_VOLUME_SHIFT);  /* 0 to 126 */
         if (music.started) {
             if (!level) {
                 music_stop();

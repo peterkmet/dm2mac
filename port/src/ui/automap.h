@@ -1,8 +1,11 @@
 #ifndef AUTOMAP_H
 #define AUTOMAP_H
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include "ui.h"
+
+/* Prefixes: automap_ */
 
 /* The automap of the advanced mode: the squares that the dungeon view has shown, one byte per square of every map. */
 
@@ -10,7 +13,7 @@
 void automap_reset(void);
 /* Marks the squares that the dungeon view shows to a party at (x, y) of map looking to dir. */
 void automap_mark_seen(int map, int x, int y, int dir);
-int automap_is_seen(int map, int x, int y);
+bool automap_is_seen(int map, int x, int y);
 /* Writes the AMAP block ("AMAP", version, map count, width and height of each map, one byte per square) to f;
    returns 0 on an error. */
 int automap_write(FILE *f);

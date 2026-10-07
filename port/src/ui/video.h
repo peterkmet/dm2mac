@@ -2,10 +2,15 @@
 #define VIDEO_H
 #include <stdint.h>
 
+/* Prefixes: video_ */
+
 #define SCREEN_W 320
 #define SCREEN_H 200
 #define PALETTE_COLORS 256
 #define RGB_CHANNELS 3
+#define ARGB_OPAQUE 0xff000000u
+#define ARGB_RED_SHIFT 16
+#define ARGB_GREEN_SHIFT 8
 
 /* The game screen: one palette index per pixel. */
 extern uint8_t fb[SCREEN_H][SCREEN_W];
@@ -20,5 +25,14 @@ uint32_t video_argb(uint8_t c);
 void video_layout(int out_w, int out_h, int *scale, int *ox, int *oy);
 /* Maps output pixel coordinates to game coordinates, clamped to the screen. */
 void video_map_mouse(int out_w, int out_h, int x, int y, int *gx, int *gy);
+
+/* An opaque ARGB8888 pixel of 8-bit red, green, and blue, and its channels. */
+static inline uint32_t video_argb_pack(uint32_t red, uint32_t green, uint32_t blue)
+{
+    return ARGB_OPAQUE | red << ARGB_RED_SHIFT | green << ARGB_GREEN_SHIFT | blue;
+}
+static inline uint8_t video_argb_red(uint32_t argb) { return (uint8_t)(argb >> ARGB_RED_SHIFT); }
+static inline uint8_t video_argb_green(uint32_t argb) { return (uint8_t)(argb >> ARGB_GREEN_SHIFT); }
+static inline uint8_t video_argb_blue(uint32_t argb) { return (uint8_t)argb; }
 
 #endif

@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include "gdat.h"
 
+/* Prefixes: weather_ light_ world_ */
+
 /* Weather and day state that the save file does not keep (the saved part is in game). */
 typedef struct {
     int16_t strike_threshold;   /* lightning strikes the party square only when global byte 0x40 is above it */
@@ -22,6 +24,10 @@ extern int16_t light_source_sum, explosion_light_sum;
 
 /* light_add_square_light flags: what of the square gives light. */
 enum { LIGHT_FLOOR = 1, LIGHT_CREATURES = 2, LIGHT_WALLS = 4 };
+#define MAP_KEY_SKY_STATE 0x66      /* map graphics value key (CAT_WALLSET, set, 0x0b, key): the sky */
+#define RAIN_STRONG 128             /* rain intensities: strong rain grows the clouds faster */
+#define RAIN_MEDIUM 64
+#define RAIN_LIGHT 16
 
 /* Queues the next storm step delay ticks from now. */
 void weather_schedule_event(int32_t delay);

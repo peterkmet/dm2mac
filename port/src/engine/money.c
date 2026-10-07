@@ -6,44 +6,21 @@
 #include "dungeon.h"
 #include "inventory.h"
 #include "item.h"
+#include "merchant.h"
 #include "money.h"
 #include "text.h"
 
-#define MISC_STACK_SHIFT 8          /* miscellaneous item word 2: stack count - 1 in bits 8-13 */
-#define MISC_STACK_MASK 0x3f
-#define MISC_KIND_MASK 0x7f
-#define CAT_CREATURE 0x0f
 #define CREATURE_CLASS_TEXT 0x10    /* GDAT texts (0x0f, creature, 5, 0x10 + list): the item classes of a merchant */
-#define ATTR_VALUE 2                /* item attribute: the price */
-#define ATTR_VALUE_PER_CHARGE 0x35
 #define MERCHANT_ATTR_MARGIN 0xa0   /* creature attributes 0xa0 + list * 3: margin, then two price factors */
 #define MERCHANT_ATTR_FACTOR_A 0xa1
 #define MERCHANT_ATTR_FACTOR_B 0xa2
 #define MERCHANT_CLASS_A 0x11       /* the item class sets of the two price factors: 0x11 + list * 3, 0x12 + list * 3 */
 #define MERCHANT_CLASS_B 0x12
+#define MERCHANT_LIST_ATTRS 3       /* creature attributes and class texts of each price list */
 #define DEFAULT_MARGIN 10
-#define PERCENT 100
-/* Item index ranges. */
-#define ITEM_FIRST_CLOTHING 0x80
-#define ITEM_FIRST_MISC 0x100
-#define ITEM_FIRST_POTION 0x180
-#define ITEM_FIRST_CREATURE 0x1b0
-#define ITEM_FIRST_CONTAINER 0x1e0
-#define ITEM_SCROLL 0x1fc
 
-static uint16_t stack_count(uint16_t coin) { return thing_word(coin, 2) >> MISC_STACK_SHIFT & MISC_STACK_MASK; }
-
-static void set_stack_count(uint16_t coin, int count)
-{
-    uint16_t w = thing_word(coin, 2);
-    set_thing_word(coin, 2, (uint16_t)((w & ~(MISC_STACK_MASK << MISC_STACK_SHIFT)) | (count & MISC_STACK_MASK) << MISC_STACK_SHIFT));
-}
-
-/* The contents list of a container. */
-static uint16_t *contents_of(uint16_t container)
-{
-    return (uint16_t *)(void *)(dungeon_thing_record(container) + CONTAINER_CONTENTS);
-}
+/* True when the item class set holds item index item. */
+static bool class_set_has(const uint8_t *set, int item) { return set[item / BYTE_BITS] & 1 << item % BYTE_BITS; }
 
 int item_index_to_thing_type(uint16_t item)
 {
@@ -71,16 +48,16 @@ uint16_t item_create_by_index(uint16_t item)
 int money_add_coin_to_box(uint16_t box, uint16_t coin)
 {
     if (!item_is_moneybox(box) || !money_is_coin(coin)) return 0;
-    uint16_t *contents = contents_of(box);
+    uint16_t *contents = container_contents(box);
     for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_MISC) return 0;
-        if ((thing_word(t, 2) & MISC_KIND_MASK) == (thing_word(coin, 2) & MISC_KIND_MASK) && stack_count(t) < MISC_STACK_MASK) {
-            set_stack_count(t, stack_count(t) + 1);
+        if (item_type(t) == item_type(coin) && misc_stack(t) < MISC_STACK_MASK) {
+            misc_set_stack(t, misc_stack(t) + 1);
             set_thing_word(coin, THING_NEXT, THING_NONE);
             return 1;
         }
     }
-    set_stack_count(coin, 0);
+    misc_set_stack(coin, 0);
     dungeon_append_thing(coin, contents);
     return 1;
 }
@@ -89,17 +66,17 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type)
 {
     if (coin_type < 0) return THING_NONE;  /* fix: the original reads before the coin table */
     uint16_t item = money_coin_item(coin_type), found = THING_NONE;
-    uint16_t *contents = contents_of(box);
+    uint16_t *contents = container_contents(box);
     for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_MISC) return THING_NONE;
         if (item_get_index(t) == item) found = t;
     }
     if (found == THING_NONE) return found;
-    if (!stack_count(found)) {
-        dungeon_unlink_thing_from_list(found, (uint8_t *)contents);
+    if (!misc_stack(found)) {
+        dungeon_unlink_thing_from_list(found, contents);
         return found;
     }
-    set_stack_count(found, stack_count(found) - 1);
+    misc_set_stack(found, misc_stack(found) - 1);
     return item_create_by_index(item);
 }
 
@@ -123,7 +100,7 @@ void money_box_click_coin(int slot)
         champ_remove_object_from_leader_hand();
     }
     action.redraw_delay = 1;
-    ui_update_action_area(0);
+    action_update_area(0);
     champ_compute_load(champ);
 }
 
@@ -186,7 +163,7 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
     do {
         c = *p++;
         if (c >= '0' && c <= '9') {
-            number = (int16_t)(number * 10 + (c - '0'));
+            number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
             digits = 1;
             continue;
         }
@@ -197,10 +174,10 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
         }
         if (digits) {
             if (low < 0) low = number;
-            for (; low <= number && low < SHOP_CLASS_SET_SIZE * 8; low++) {
+            for (; low <= number && low < SHOP_CLASS_SET_SIZE * BYTE_BITS; low++) {
                 int16_t bit = (int16_t)(low + base);
                 /* fix: the original writes outside the set for bad numbers */
-                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * 8) bitset[bit >> 3] |= (uint8_t)(1 << (bit & 7));
+                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * BYTE_BITS) bitset[bit / BYTE_BITS] |= (uint8_t)(1 << bit % BYTE_BITS);
             }
             number = 0;
             low = base = -1;
@@ -225,7 +202,7 @@ static uint16_t apply_factor(uint16_t price, uint16_t item, int creature, int at
     uint8_t set[SHOP_CLASS_SET_SIZE];
     uint16_t factor = gdat_entry_index(draw_gdat(), CAT_CREATURE, creature, GDAT_TYPE_VALUE, (uint8_t)attr);
     if (!factor || !shop_parse_item_class_set(creature, (int16_t)list, set, 0)) return price;
-    if (!(set[(item & ITEM_INDEX_NONE) >> 3] & 1 << (item & 7))) return price;
+    if (!class_set_has(set, item & ITEM_INDEX_NONE)) return price;
     return (uint16_t)((uint32_t)factor * price / PERCENT);
 }
 
@@ -233,13 +210,13 @@ int shop_get_item_value(uint16_t item, int creature, int list, int buying, int a
 {
     int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
     uint16_t price = gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE);
-    price = apply_factor(price, item, creature, (uint8_t)(list * 3 + MERCHANT_ATTR_FACTOR_B), list * 3 + MERCHANT_CLASS_B);
-    price = apply_factor(price, item, creature, (uint8_t)(list * 3 + MERCHANT_ATTR_FACTOR_A), list * 3 + MERCHANT_CLASS_A);
-    if (charges < 0) charges = (int16_t)item_max_charges((uint16_t)(item_index_to_thing_type(item) << THING_TYPE_SHIFT));
+    price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_B), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_B);
+    price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_A), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_A);
+    if (charges < 0) charges = (int16_t)item_max_charges(thing_make(item_index_to_thing_type(item), 0));
     int value = price + gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE_PER_CHARGE) * charges;
     if (apply_margin) {
         uint16_t margin = gdat_entry_index(draw_gdat(), CAT_CREATURE, creature, GDAT_TYPE_VALUE,
-                                           (uint8_t)(list * 3 + MERCHANT_ATTR_MARGIN));
+                                           (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_MARGIN));
         if (!margin) margin = DEFAULT_MARGIN;
         int16_t part = (int16_t)((uint32_t)margin * (uint16_t)value / PERCENT);
         if (buying) value += part;

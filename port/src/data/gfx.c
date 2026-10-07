@@ -1,9 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "gfx.h"
+#include "le.h"
 
-#define NIBBLE_BITS 4
-#define NIBBLE_MASK 0xf
 #define HIGH_NIBBLE_MASK 0xf0
 #define FRACTION_BITS 7      /* the scalers step through the source in 1/128 pixel */
 #define BYTE_FRACTION_BITS 8 /* the 8 bpp scaler steps in 1/256 pixel */
@@ -11,12 +10,11 @@
 
 /* The color ramps: GDAT (1, 0, 7, 2) holds the ramp count, the length of each ramp, the brightness steps
    and the colors of each ramp, then the ramp and step of each of the 256 palette colors. */
-#define RAMP_CATEGORY 1
 #define RAMP_INDEX 0
 #define RAMP_TYPE 7
 #define RAMP_ENTRY 2
 #define RAMP_MAX 256
-#define REMAP_TYPE 7         /* GDAT key type of a color remap table */
+#define RAMP_OF_COLOR_SIZE 2 /* the ramp and the step of a color */
 
 static struct {
     int count;
@@ -30,13 +28,13 @@ static int even(int width) { return (width + 1) & ~1; }
 
 static int get_pixel(const uint8_t *p, int bpp, int i)
 {
-    if (bpp == 8) return p[i];
+    if (bpp == IMAGE_8BPP) return p[i];
     return i & 1 ? p[i >> 1] & NIBBLE_MASK : p[i >> 1] >> NIBBLE_BITS;
 }
 
 static void put_pixel(uint8_t *p, int bpp, int i, int color)
 {
-    if (bpp == 8) {
+    if (bpp == IMAGE_8BPP) {
         p[i] = (uint8_t)color;
         return;
     }
@@ -48,14 +46,14 @@ void gfx_blit(const uint8_t *src, uint8_t *dst, const int16_t *rect, int src_x, 
               int dst_width, int transparent, int mirror, int src_bpp, int dst_bpp, const uint8_t *colormap)
 {
     if (!rect || rect[RECT_W] <= 0 || rect[RECT_H] <= 0) return;
-    if (src_bpp == 4) {
+    if (src_bpp == IMAGE_4BPP) {
         src_width = even(src_width);
-        if (dst_bpp == 4) {
+        if (dst_bpp == IMAGE_4BPP) {
             dst_width = even(dst_width);
             colormap = NULL;
         }
     } else {
-        dst_bpp = 8;  /* the original treats the destination of an 8 bpp source as 8 bpp */
+        dst_bpp = IMAGE_8BPP;  /* the original treats the destination of an 8 bpp source as 8 bpp */
     }
     if (mirror > MIRROR_HV) mirror = MIRROR_NONE;
     int w = rect[RECT_W], h = rect[RECT_H];
@@ -202,7 +200,7 @@ void gfx_blit_image(const Bitmap *src, Bitmap *dst, int mirror)
 
 void gfx_blit_to_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int transparent, const uint8_t *colormap)
 {
-    gfx_blit(src->pixels, dst->pixels, rect, 0, 0, src->width, dst->width, transparent, MIRROR_NONE, src->bpp, 8, colormap);
+    gfx_blit(src->pixels, dst->pixels, rect, 0, 0, src->width, dst->width, transparent, MIRROR_NONE, src->bpp, IMAGE_8BPP, colormap);
 }
 
 void gfx_fill_rect(uint8_t *dst, const int16_t *rect, int color, int dst_width, int bpp)
@@ -214,7 +212,7 @@ void gfx_fill_rect(uint8_t *dst, const int16_t *rect, int color, int dst_width, 
 
 void gfx_fill_bitmap(Bitmap *dst, int color)
 {
-    int width = dst->bpp == 4 ? even(dst->width) : dst->width;
+    int width = dst->bpp == IMAGE_4BPP ? even(dst->width) : dst->width;
     int16_t rect[RECT_SIZE] = {0, 0, (int16_t)width, dst->height};
     gfx_fill_rect(dst->pixels, rect, color, width, dst->bpp);
 }
@@ -227,7 +225,7 @@ int16_t gfx_scale_64(int16_t value, int16_t scale)
 int pal_load_color_ramps(const gdat_t *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, RAMP_CATEGORY, RAMP_INDEX, RAMP_TYPE, RAMP_ENTRY), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, RAMP_TYPE, RAMP_ENTRY), &size);
     if (!p || size < 1) return 0;
     const uint8_t *end = p + size;
     ramps.count = *p++;
@@ -242,7 +240,7 @@ int pal_load_color_ramps(const gdat_t *gdat)
         p += ramps.length[i];
     }
     ramps.of_color = p;
-    return end - p >= 2 * REMAP_COLORS;
+    return end - p >= RAMP_OF_COLOR_SIZE * REMAP_COLORS;
 }
 
 /* The step of a ramp whose brightness is nearest to target, the lower step on a tie. */
@@ -264,7 +262,7 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
     int identity = *count <= 0;
     if (identity) *count = REMAP_COLORS;
     for (int i = 0; i < *count; i++) {
-        const uint8_t *rs = ramps.of_color + 2 * (identity ? i : table[i]);
+        const uint8_t *rs = ramps.of_color + RAMP_OF_COLOR_SIZE * (identity ? i : table[i]);
         int r = rs[0], last = ramps.length[r] - 1;
         const uint8_t *brightness = ramps.brightness[r], *colors = ramps.colors[r];
         int target = brightness[rs[1]] * light >> DIM_SHIFT;
@@ -287,7 +285,7 @@ uint8_t *pal_get_dimmed_remap(const gdat_t *gdat, uint8_t *table, int category, 
                               int key1, int key2, int16_t *count)
 {
     uint32_t size;
-    const uint8_t *remap = gdat_item(gdat, gdat_find(gdat, category, index, REMAP_TYPE, entry), &size);
+    const uint8_t *remap = gdat_item(gdat, gdat_find(gdat, category, index, GDAT_TYPE_REMAP, entry), &size);
     if (remap && size >= REMAP_COLORS) {
         if (*count < 1) {
             *count = REMAP_COLORS;
