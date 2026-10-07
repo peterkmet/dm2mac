@@ -257,8 +257,6 @@ long engine/sensor.c:sensor_process_wall_click open: module cleanup
 long ui/input.c:run_click_feedback open: module cleanup
 long ui/input.c:view_click_in_viewport open: module cleanup
 long ui/input.c:command_execute open: module cleanup
-long ui/ui.c:draw_object_info open: module cleanup
-long ui/ui.c:champ_draw_state open: module cleanup
 long ui/view.c:apply_wall_things open: module cleanup
 long ui/view.c:get_square_aspect open: module cleanup
 long ui/view.c:view_draw_creature open: module cleanup
@@ -335,7 +333,6 @@ decimal engine/timeline.h open: module cleanup
 decimal engine/weather.c open: module cleanup
 decimal ui/fm.c table: rule 6
 decimal ui/input.c open: module cleanup
-decimal ui/ui.c open: module cleanup
 decimal ui/view.c open: module cleanup
 decimal ui/view.h open: module cleanup
 hex engine/ai.h open: module cleanup
@@ -359,7 +356,7 @@ hex ui/dialog.c table: rule 6
 hex ui/fm.c table: rule 6
 hex ui/input.c open: module cleanup
 hex ui/sound.c table: rule 6
-hex ui/ui.c open: module cleanup
+hex ui/ui.c table: rule 6
 hex ui/view.c open: module cleanup
 bool engine/ai.h open: module cleanup
 bool engine/ai_move.h open: module cleanup
