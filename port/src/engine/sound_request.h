@@ -33,6 +33,10 @@ extern int sound_started_count;
 #define SOUND_ENTRY_SWALLOW 0x83        /* a champion eats or drinks */
 #define SOUND_PRIORITY_SWALLOW 0x96
 #define SOUND_PRIORITY_CREATURE 0x46    /* the steps and cries of a creature, a creature that a door crushes */
+/* Sounds of clicks and switches: the entry and the priority. */
+#define SOUND_ENTRY_CLICK 0x84          /* a click on a wall or on a creature that cannot move */
+#define SOUND_ENTRY_ACTIVATE 0x88       /* an ornament, a door button, or a warp marker works */
+#define SOUND_PRIORITY_CLICK 0x8c
 
 /* Asks for sound (category, index, entry) at (x, y) of the current map: delay 0 plays it now, 1 at the end of the
    game step, a negative delay at the next sound_flush_requests(1), a longer delay through the timeline. */

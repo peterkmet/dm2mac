@@ -90,6 +90,8 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define WOUND_LEGS 0x10
 #define WOUND_FEET 0x20
 #define WOUND_ALL 0x3f
+#define BUMP_WOUNDS (WOUND_TORSO | WOUND_LEGS) /* wound locations of a bump: the torso and the legs */
+#define FALL_WOUNDS (WOUND_LEGS | WOUND_FEET) /* wound locations of a fall: the legs and the feet */
 #define FOOD_MAX 0x800              /* Champion.food and the food gauge */
 #define POISON_MAX 0xc00            /* Champion.poison */
 /* Attack types of champ_take_damage (bit 15: a parry can block the attack). */

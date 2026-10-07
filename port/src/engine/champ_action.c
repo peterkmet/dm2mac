@@ -236,7 +236,7 @@ static uint16_t take_next_missile(int champ, int hand, int throwing)
     if (!ok) {
         uint16_t quiver = c->slots[SLOT_CONTAINER_TEST];
         if (item_is_chest(quiver)) {
-            uint16_t *contents = thing_list(quiver, CONTAINER_CONTENTS);
+            uint16_t *contents = container_contents(quiver);
             for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (throwing ? item_has_action_command(champ, t, COMMAND_THROW) : item_is_ammo_for_hand(champ, hand, t)) {
                     dungeon_unlink_thing_from_list(t, contents);

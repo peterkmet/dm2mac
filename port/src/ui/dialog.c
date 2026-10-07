@@ -196,7 +196,7 @@ void ui_draw_progress_bar(int permille)
     r[RECT_W] = (int16_t)(r[RECT_W] * permille / PERMILLE);
     if (r[RECT_W] <= 0 || r[RECT_W] == dialog.progress_width) return;
     dialog.progress_width = r[RECT_W];
-    gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_GOLD], view_viewport.width, 8);
+    gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_GOLD], view_viewport.width, IMAGE_8BPP);
     ui_dialog_present();
 }
 

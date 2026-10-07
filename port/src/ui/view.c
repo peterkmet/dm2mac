@@ -1312,7 +1312,7 @@ static Bitmap *view_render_picture_offscreen(DrawCtx *ctx, int category, int ind
     ctx->transparent = (int16_t)key2;
     int16_t r[RECT_SIZE] = {0, 0, ctx->w, ctx->h};
     memcpy(ctx->rect, r, sizeof r);
-    ctx->dst = draw_temp_bitmap(ctx->w > 0 ? ctx->w : 1, ctx->h > 0 ? ctx->h : 1, 8);
+    ctx->dst = draw_temp_bitmap(ctx->w > 0 ? ctx->w : 1, ctx->h > 0 ? ctx->h : 1, IMAGE_8BPP);
     return ctx->dst;
 }
 
@@ -1372,7 +1372,7 @@ void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
     }
     int side, entry = weather_get_rain_image(&side);
     const Bitmap *rain = draw_gdat_image(CAT_SKY, view.gfx_set, entry);
-    Bitmap *drops = rain ? draw_temp_bitmap(ctx->rect[RECT_W], rain->height, 4) : NULL;
+    Bitmap *drops = rain ? draw_temp_bitmap(ctx->rect[RECT_W], rain->height, IMAGE_4BPP) : NULL;
     const uint8_t *shaded = view_get_shaded_palette(CAT_SKY, view.gfx_set, entry, 0);
     if (!drops || !shaded) return;
     int16_t r[RECT_SIZE] = {0, 0, (int16_t)((ctx->rect[RECT_W] + 1) & ~1), rain->height};
@@ -1409,7 +1409,7 @@ static void view_draw_sparkle_field(int pos, int category, int index)
         if (!picture) return;
         mask = picture->pixels;
         if (field[SPARKLE_MASK] & SPARKLE_MASK_MIRRORED) {
-            Bitmap *mirrored = draw_temp_bitmap(picture->width, picture->height, 4);
+            Bitmap *mirrored = draw_temp_bitmap(picture->width, picture->height, IMAGE_4BPP);
             if (!mirrored) return;
             gfx_fill_bitmap(mirrored, 0);  /* fix: the original leaves the last column of an odd width undefined */
             int16_t r[RECT_SIZE] = {0, 0, (int16_t)(picture->width - (picture->width & 1)), picture->height};
@@ -1934,7 +1934,7 @@ static void view_draw_alcove_contents(int pos)
 
 void view_clear_viewport(void)
 {
-    if (view.clear) gfx_fill_rect(view_viewport.pixels, view.clear_rect, view.clear_color, VIEWPORT_WIDTH, 8);
+    if (view.clear) gfx_fill_rect(view_viewport.pixels, view.clear_rect, view.clear_color, VIEWPORT_WIDTH, IMAGE_8BPP);
 }
 
 /* ---- Walls ---- */
@@ -2057,7 +2057,7 @@ static void shop_draw_price(int amount, uint8_t ornament, int depth, int zone, i
     if (!(uint16_t)amount) return;
     money_split_amount(amount, SHOP_PRICE_COINS, coins, &count);
     if (count <= 0) return;
-    Bitmap *strip = draw_temp_bitmap(count * COIN_WIDTH, COIN_HEIGHT, 4);
+    Bitmap *strip = draw_temp_bitmap(count * COIN_WIDTH, COIN_HEIGHT, IMAGE_4BPP);
     if (!strip) return;
     view_setup_picture(0, SCALE_FULL, SCALE_FULL, 0, 0, depth, ZONE_NONE, anchor, NO_KEY, NO_KEY, CAT_WALL_ORNAMENT,
                        ornament, ORN_SHOP_COINS);
@@ -2133,7 +2133,7 @@ static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int dep
     int lines = 1;
     for (const char *p = text; *p; p++) lines += *p == '\n';
     int line_height = GLYPH_SIZE + WALL_TEXT_LINE_GAP;
-    Bitmap *bitmap = draw_temp_bitmap(plate_image->width, plate_image->height, 4);
+    Bitmap *bitmap = draw_temp_bitmap(plate_image->width, plate_image->height, IMAGE_4BPP);
     if (!bitmap) return;
     gfx_fill_bitmap(bitmap, key);
     const uint8_t *font_palette = draw_gdat_image_palette(CAT_WALLSET, view.gfx_set, MAP_FONT);
@@ -2986,7 +2986,7 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
     case CHEST_HIT_OPEN: container_set_open(chest, true); break;
     case CHEST_HIT_INSIDE: {
         if (placing && item_attr(thing, ATTR_SLOTS) & ATTR_SLOTS_NO_CONTAINER) return THING_ENDOFLIST;
-        uint16_t *contents = thing_list(chest, CONTAINER_CONTENTS);
+        uint16_t *contents = container_contents(chest);
         uint16_t last = *contents;
         int count = 0;
         for (uint16_t c = *contents; c != THING_ENDOFLIST; c = dungeon_next_thing(c), count++) last = c;

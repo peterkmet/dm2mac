@@ -47,8 +47,6 @@
 #define MOVE_DELAY_LIGHT 2
 #define OVERLOAD_DELAY_FACTOR 4         /* an overloaded champion: (load - max) * 4 / max + 4 */
 #define OVERLOAD_DELAY_BASE 4
-#define BUMP_WOUNDS (WOUND_TORSO | WOUND_LEGS) /* wound locations of a bump: the torso and the legs */
-#define FALL_WOUNDS (WOUND_LEGS | WOUND_FEET) /* wound locations of a fall: the legs and the feet */
 #define DISPLACE_DAMAGE_ROLL 10         /* the damage of a creature that lands on the party: 0 to 9, plus its push resistance / 8 */
 #define DISPLACE_RESISTANCE_SHIFT 3
 #define FALL_ALERT_DAMAGE 0x14          /* the damage alert of a creature that falls into a pit */

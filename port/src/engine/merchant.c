@@ -268,7 +268,7 @@ int shop_cmd_pay_change(void)
         uint16_t coin = item_create_by_index(money_coin_item(coins[i]));
         if (coin == THING_NONE) break;
         if (box != THING_NONE) money_add_coin_to_box(box, coin);
-        else dungeon_append_thing(coin, thing_list(ai.group_thing, GROUP_POSSESSIONS));
+        else dungeon_append_thing(coin, group_possessions(ai.group_thing));
     }
     creature_ai_cmd_seek_with_carried_item();
     return AI_RESULT_ISSUED;

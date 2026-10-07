@@ -33,8 +33,6 @@
 #define BONES_INDEX 0               /* miscellaneous item 0: the bones of a champion */
 
 /* Sound arguments (entry, priority) of sound_play_with_fallback and sound_request. */
-#define SOUND_ENTRY_ORNAMENT 0x88
-#define SOUND_PRIORITY_ORNAMENT 0x8c
 #define SOUND_ENTRY_CREATURE_APPEARS 0x89
 #define SOUND_PRIORITY_CREATURE_APPEARS 0x61
 #define SOUND_PRIORITY_MAP_SOUND 0x73
@@ -142,8 +140,8 @@ static int sensor_ornament(uint16_t sensor, int wall)
 /* The sound of the ornament of a sensor at (x, y), with delay. */
 static void sensor_play_ornament_sound(uint16_t sensor, int wall, int x, int y, int delay)
 {
-    sound_play_with_fallback(ornament_category(wall), sensor_ornament(sensor, wall), SOUND_ENTRY_ORNAMENT, SOUND_FALLBACK,
-                             x, y, delay, SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL);
+    sound_play_with_fallback(ornament_category(wall), sensor_ornament(sensor, wall), SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK,
+                             x, y, delay, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
 }
 
 /* A wall sound comes from the square in front of the wall side, unless the party stands in the wall square. */
@@ -257,7 +255,7 @@ static void sensor_fall_risk(uint16_t text, int x, int y, int on_square)
         sound_play_with_fallback(CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x,
                                  game.party_y, 1, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
     } else {
-        sound_request(CAT_FLOOR_ORNAMENT, text_value(text), SOUND_ENTRY_ORNAMENT, SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL,
+        sound_request(CAT_FLOOR_ORNAMENT, text_value(text), SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL,
                       game.party_x, game.party_y, 1);
     }
 }
@@ -400,13 +398,13 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
         holder = floor_holder(x, y, enter, possessions);
     }
     if (!enter && m.type != -1) {
-        if (holder != THING_NONE) dungeon_unlink_thing_from_list(thing, thing_list(holder, GROUP_POSSESSIONS));
+        if (holder != THING_NONE) dungeon_unlink_thing_from_list(thing, group_possessions(holder));
         else dungeon_unlink_thing_from_square(thing, party.cur_map, x, y);
     }
     m.cell = square_type(dungeon_square(party.cur_map, x, y)) == SQUARE_WALL ? thing_cell(thing) : -1;
     floor_scan(&m, x, y);
     if (enter && m.type != -1) {
-        if (holder != THING_NONE) dungeon_append_thing(thing, thing_list(holder, GROUP_POSSESSIONS));
+        if (holder != THING_NONE) dungeon_append_thing(thing, group_possessions(holder));
         else dungeon_link_thing_to_square(thing, party.cur_map, x, y);
     }
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
@@ -787,7 +785,7 @@ static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uin
             sensor_transfer_object(t, sensor, fx, fy, dx, dy, dcell, possessions != NULL, keep_bones);
             if (first_only) return;
         } else if (!use_filter && thing_type(t) == THING_GROUP) {
-            uint16_t *list = thing_list(t, GROUP_POSSESSIONS);
+            uint16_t *list = group_possessions(t);
             sensor_transfer_objects(e, sensor, thing_word(t, GROUP_POSSESSIONS), any_cell, 0, list, reverse, first_only);
         }
     }
@@ -1491,8 +1489,8 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
     if (sensor_effect(t) != EFFECT_HOLD) return 0;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_play_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ORNAMENT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
-                                 SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL);
+        sound_play_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     sensor_trigger_target(t, EFFECT_SET, *extra);
     sensor_trigger_target(t, EFFECT_CLEAR, (int16_t)(data + 1 + *extra));
     return CLICK_IGNORED;
@@ -1591,8 +1589,8 @@ static void wall_click_sensor(WallClick *c, uint16_t t, int side)
     if (skip) return;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_play_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ORNAMENT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
-                                 SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL);
+        sound_play_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     sensor_trigger_target(t, effect, extra);
 }
 
@@ -1672,7 +1670,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
         if (c.give != THING_NONE) champ_put_object_in_leader_hand(c.give, 1);
         input_command_stop = c.stop;
     } else {
-        uint16_t *possessions = thing_list(actor, GROUP_POSSESSIONS);
+        uint16_t *possessions = group_possessions(actor);
         if (!c.take && hand != THING_NONE) dungeon_append_thing(hand, possessions);
         if (c.give != THING_NONE) dungeon_append_thing(c.give, possessions);
     }

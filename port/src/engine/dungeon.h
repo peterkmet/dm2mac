@@ -160,6 +160,9 @@ static inline uint16_t *thing_list(uint16_t holder, int field)
 {
     return (uint16_t *)(void *)(dungeon_thing_record(holder) + field);
 }
+/* The possessions of a group and the contents of a container. */
+static inline uint16_t *group_possessions(uint16_t group) { return thing_list(group, GROUP_POSSESSIONS); }
+static inline uint16_t *container_contents(uint16_t container) { return thing_list(container, CONTAINER_CONTENTS); }
 
 /* DOOR_DATA bits. */
 #define DOOR_MAP_TYPE 0x0001            /* the door has door type 1 of its map, else door type 0 */

@@ -1064,7 +1064,7 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
     group_set_flag(group, GROUP_DO_NOT_DISCARD, false);
     group_set_dir(group, dir);
     group_set_active(group, GROUP_NOT_ACTIVE);
-    if (minion) dungeon_append_thing(projectile, thing_list(group, GROUP_POSSESSIONS));
+    if (minion) dungeon_append_thing(projectile, group_possessions(group));
     int n = (count < GROUP_SIZE_MAX ? count : GROUP_SIZE_MAX) + 1;
     uint16_t health = (uint16_t)((info->max_health * (uint16_t)n) >> GROUP_HEALTH_SHIFT);
     health = (uint16_t)(health + rand_below((uint16_t)((health >> GROUP_HEALTH_SHIFT) + 1)));
@@ -1135,7 +1135,7 @@ void creature_turn_group(uint16_t group, int absolute, int dir)
     group_set_dir(group, dir);
     if (!(creature_group_info(group)->flags & CREATURE_STATIC)) return;
     int turn = (dir - old) & DIR_MASK;
-    for (uint16_t *link = thing_list(group, GROUP_POSSESSIONS); *link != THING_ENDOFLIST; link = thing_list(*link, THING_NEXT))
+    for (uint16_t *link = group_possessions(group); *link != THING_ENDOFLIST; link = thing_list(*link, THING_NEXT))
         *link = thing_with_cell(*link, (thing_cell(*link) + turn) & DIR_MASK);
 }
 

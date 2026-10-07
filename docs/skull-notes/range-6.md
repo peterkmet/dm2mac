@@ -67,7 +67,7 @@ When `(word2 & 6) == 2`, a text thing is a marker or a simple trigger: bits 3-10
 | 0x55 | `timeline_event_sensor_animation_step` |
 | 0x56 | `timeline_event_sensor_timer` |
 | 0x57, 0x5b | clear sensor busy bit |
-| 0x58 | `timeline_event_clear_thing_flag8` |
+| 0x58 | `timeline_event_door_button_release` |
 | 0x59 | `timeline_event_sensor_animation_end` |
 | 0x5a | `timeline_event_sensor_ambient_sound` |
 | 0x5c | set bit 0 of a text marker |
@@ -95,7 +95,7 @@ The queue is a binary heap of event indices (`g_timeline_queue` 0x80420); `timel
 
 ## Low-confidence names
 
-`move_update_carried_missiles`, `move_check_missiles_hit_party` (detail), `creature_get_view_cell_zone`, `dun_map_gfx_flag20_clear`, `view_copy_image_mode1`, `view_draw_wet_image`, `view_draw_sparkle_field`, `view_offset_creature_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `view_draw_stairs_side`/`view_draw_stairs_front` (may be swapped), `view_draw_ceiling_pit`/`view_draw_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_clear_thing_flag8`, `sensor_schedule_timer`, `sensor_play_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker` (subsystem magic is a guess).
+`move_update_carried_missiles`, `move_check_missiles_hit_party` (detail), `creature_get_view_cell_zone`, `dun_map_gfx_flag20_clear`, `view_copy_image_mode1`, `view_draw_wet_image`, `view_draw_sparkle_field`, `view_offset_creature_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `view_draw_stairs_side`/`view_draw_stairs_front` (may be swapped), `view_draw_ceiling_pit`/`view_draw_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_door_button_release`, `sensor_schedule_timer`, `sensor_play_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker` (subsystem magic is a guess).
 
 ## Open questions
 

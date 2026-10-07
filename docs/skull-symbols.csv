@@ -1027,7 +1027,7 @@ address,name,signature,subsystem
 0x000592fa,sensor_schedule_timer,"void sensor_schedule_timer(uint8_t *sensor, uint16_t sensor_thing)",Skullkeep machines
 0x000593cf,timeline_event_sensor_timer,void timeline_event_sensor_timer(uint8_t *event),Skullkeep machines
 0x000594a1,sensor_start_timers,void sensor_start_timers(void),Skullkeep machines
-0x00059608,timeline_event_clear_thing_flag8,void timeline_event_clear_thing_flag8(uint8_t *event),timeline
+0x00059608,timeline_event_door_button_release,void timeline_event_door_button_release(uint8_t *event),timeline
 0x0005961b,timeline_event_sensor_animation_end,void timeline_event_sensor_animation_end(uint8_t *event),Skullkeep machines
 0x0005964e,timeline_event_sensor_ambient_sound,void timeline_event_sensor_ambient_sound(uint8_t *event),Skullkeep machines
 0x00059785,sensor_process_map_entry,void sensor_process_map_entry(int night),Skullkeep machines

@@ -1573,7 +1573,7 @@ void creature_remove_matching_items(uint16_t *list_head, int filter, int cell)
         if (!is_item(type) || (cell != CELL_ANY && cell != thing_cell(t))) continue;
         int match = creature_thing_matches_filter(t, (int16_t)filter);
         if (type == THING_CONTAINER && (!item_is_moneybox(t) || match)) {
-            uint16_t *contents = thing_list(t, CONTAINER_CONTENTS);
+            uint16_t *contents = container_contents(t);
             creature_remove_matching_items(contents, filter, CELL_ANY);
             if (match) {
                 uint16_t c_next;

@@ -428,7 +428,7 @@ static int projectile_hit_creature(Hit *h, int cell)
             damage = (uint16_t)((int16_t)damage >> 2);
         creature_alert(g, x, y, ALERT_HIT, ALERT_ALWAYS, damage);
         if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS && item_attr(payload, ATTR_FLAGS) & ITEM_CAUGHT)
-            h->holder = thing_list(g, GROUP_POSSESSIONS);
+            h->holder = group_possessions(g);
     }
     if (h->potion_bomb || h->payload_type == THING_WEAPON
         || (h->payload_type == THING_EXPLOSION && payload != SPELL_DOOR_TOGGLE && (payload < SPELL_PUSH || payload > SPELL_MISSILE_WALL)))
