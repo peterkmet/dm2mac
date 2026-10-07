@@ -13,6 +13,21 @@ The user and LLM test agents over the control socket (`docs/llm-control.md`) ran
 
 The fixes that the manual test found are in `CHANGELOG.md`.
 
+## Smoke test after the module cleanup (2026-10-07)
+
+The cleanup does not change the behavior, and the automated tests pass. This short test checks the game paths that the cleanup touched most. Start `build/dm2 --save game/DATA/SKSAVE0.DAT` or a new game.
+
+- [ ] S1. Walk, turn, and push against a wall: the view and the bump sound are as before.
+- [ ] S2. Open the inventory, eat and drink, sleep with the sleep button, and wake with a key.
+- [ ] S3. Press a door button: the button shows pressed for one step, and the door moves.
+- [ ] S4. Put an item into a wall alcove and take it back.
+- [ ] S5. Fight a creature with a weapon and with a spell: damage, sounds, and the creature reaction.
+- [ ] S6. Throw an item and shoot a missile; a projectile hits a door and a creature.
+- [ ] S7. Buy and sell at a shop; the money box shows the coins.
+- [ ] S8. Summon a minion, open the minion map, and give a command.
+- [ ] S9. Open the automap (Tab), then save and load a slot game and the quick save (F5, F9).
+- [ ] S10. Music and sound effects play; the volume dialog works.
+
 ## Prerequisites
 
 - macOS with SDL3 from Homebrew: `brew install sdl3`.

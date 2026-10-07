@@ -35,10 +35,14 @@ All notable changes to this project are in this file. The format follows [Keep a
 - `port/src/` has the layers `data/`, `engine/`, `ui/`, and `platform/`.
 - `docs/coding-standard.md` has rules 7 to 9 and a check list. `tests/test_standard.py` checks the rules. `tests/standard_allowlist.txt` lists the open violations.
 - `port/src/data/le.h` has the one definition of `le16`, `le32`, `put_le16`, and `put_le32` (rule 9 of `docs/coding-standard.md`). `tests/test_standard.py` checks it.
+- Module cleanup of the C port (`docs/superpowers/2026-10-07-module-cleanup-plan.md`): named constants instead of literals, named accessors for the thing records and the packed fields (rule 10), one definition per constant in the header of its owner, a `Prefixes` line in each header with 104 renamed functions, function splits of all functions over 60 lines, and `bool` predicates. `tests/standard_allowlist.txt` keeps only tables of `SKULL.EXE`, the save record packing, and the layer violations.
+- `docs/coding-standard.md`: rule 10 (packed fields), the notation of constants (hex or decimal), accessor headers (rule 2), and prefix owners (rule 7). The build uses `-Wmissing-prototypes`.
 - The decompiled code is in `reference/decomp/`. `tools/test-suite` replaces `scripts/test-suite`. `docs/todo.md` replaces `TODO.md`.
 
 ### Fixed
 
+- `test_sleep_and_wake_match_original` failed on some parallel runs: the cursor test left a dragged champion in the shared test library.
+- `tests/test_ai_move.py` reads the `AiContext` fields at named offsets, so the struct needs no padding field.
 - The inventory and the candidate panel of a recruit reach the screen.
 - Dialogs after a load (screen mode) leave no remnants, and the input works.
 - Cursor: the held object shows only over the cursor zones of the original. The original arrow, hand, held object with its shadow, and dragged champion images show.
