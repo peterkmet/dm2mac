@@ -50,11 +50,13 @@ F = {
 }
 # The fields of the AI context: (C offset, original offset, size).
 AI_FIELDS = {
-    "command_result": (61, 0x23, 1), "map": (63, 0x25, 1), "flags": (68, 0x2A, 12), "attr7": (80, 0x36, 4),
-    "path": (224, 0xC2, 0x64), "candidate_count": (324, 0x128, 2), "candidates": (326, 0x12C, 16 * 22),
-    "cache": (678, 0x28C, 14), "filter_free": (1048, 0x34A, 2),
+    "command_result": (53, 0x23, 1), "map": (55, 0x25, 1), "flags": (60, 0x2A, 12), "attr7": (72, 0x36, 4),
+    "path": (216, 0xC2, 0x64), "candidate_count": (316, 0x128, 2), "candidates": (318, 0x12C, 16 * 22),
+    "cache": (670, 0x28C, 14), "filter_free": (1040, 0x34A, 2),
 }
-AI_SIZE = 1072
+AI_SIZE = 1064
+AI_ACTIVE_FLAG_C = 696  # offset of active_flag in the C AI context
+AI_ARGS_C = 56  # offset of arg1 and arg2 in the C AI context
 ENDOFLIST, NONE = 0xFFFE, 0xFFFF
 THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 
@@ -94,7 +96,7 @@ class Ai:
         lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
-        ctypes.c_uint8.from_address(self.ai + 704).value = 0
+        ctypes.c_uint8.from_address(self.ai + AI_ACTIVE_FLAG_C).value = 0
         # the C library lives through the tests: its AI state starts from the state of the original
         for c_off, o_off, size in AI_FIELDS.values():
             ctypes.memmove(self.ai + c_off, emu.read(G_AI + o_off, size), size)
@@ -318,7 +320,7 @@ def test_try_move(ai):
     assert moved > 100 and acted > 30
 
 
-AI_MOVE_FLAGS_C, AI_MOVE_FLAGS_ORIGINAL = 68, 0x2A  # offset of the move flags in the AI context
+AI_MOVE_FLAGS_C, AI_MOVE_FLAGS_ORIGINAL = AI_FIELDS["flags"][0], 0x2A  # offset of the move flags in the AI context
 MOVE_OPEN_PIT, MOVE_FALL, MOVE_STAIRS, MOVE_LEVELS = 0x0008, 0x0010, 0x0100, 0x2000
 G_THINGS, GROUP_SIZE, GROUP_CREATURE = 0x7F288, 16, 4
 
@@ -916,14 +918,14 @@ def test_door_spells_on_the_way(ai):
         payload = rng.choice((0xFF8D, 0xFF84, 0xFF80))
         add_projectile(ai, payload, rng.choice((d, (d + 2) & 3)), m, x, y, rng.randrange(4))
         ai.begin(g, x, y, m)
-        flags = struct.unpack("<H", ctypes.string_at(ai.ai + 68 + 4, 2))[0]
-        ctypes.memmove(ai.ai + 68 + 4, struct.pack("<H", flags | 1), 2)  # the door skill of shooting at the button
+        flags = struct.unpack("<H", ctypes.string_at(ai.ai + AI_MOVE_FLAGS_C + 4, 2))[0]
+        ctypes.memmove(ai.ai + AI_MOVE_FLAGS_C + 4, struct.pack("<H", flags | 1), 2)  # the door skill of shooting at the button
         ai.emu.write(G_AI + 0x2A + 4, struct.pack("<H", flags | 1))
         for mode in (0, 1, 0x80, 0x81):
             mine, theirs = ai.call("ai_try_door_action", mode, x, y, tx, ty, -1)
             assert mine == theirs, (g, x, y, mode)
             ai.check((g, mode))
-            waits += mine and mode & 0x80 and ctypes.string_at(ai.ai + 61, 1)[0] == 0xFC
+            waits += mine and mode & 0x80 and ctypes.string_at(ai.ai + AI_FIELDS["command_result"][0], 1)[0] == 0xFC
         ai.end()
     assert waits > 3
 
@@ -1020,11 +1022,11 @@ def test_merchant_commands(ai):
         for k in range(4):
             name = rng.choice(list(MERCHANT_COMMANDS))
             args = struct.pack("<hh", rng.choice((0, 0, 1, 2, 3)), rng.choice((0, 2)))
-            ctypes.memmove(ai.ai + 64, args, 4)
+            ctypes.memmove(ai.ai + AI_ARGS_C, args, 4)
             ai.emu.write(G_AI + 0x26, args)
             mine, theirs = getattr(lib, name)() & 0xFF, ai.emu.call(MERCHANT_COMMANDS[name]) & 0xFF
             assert mine == theirs, (n, k, name)
-            assert ctypes.string_at(ai.ai + 64, 4) == ai.emu.read(G_AI + 0x26, 4), (n, k, name)
+            assert ctypes.string_at(ai.ai + AI_ARGS_C, 4) == ai.emu.read(G_AI + 0x26, 4), (n, k, name)
             ai.check((n, k, name), dungeon=True)
             results.setdefault(name, set()).add(mine)
         ai.end()
