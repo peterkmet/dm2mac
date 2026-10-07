@@ -58,7 +58,6 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
 #define MIRROR_Y 2
 #define FAKE_WALL_SEEN SQUARE_FLAG_0
 #define FLOOR_SHOWS_LEVEL 0x08          /* a floor square shows the level digit instead */
-#define ORN_FRAME_SHIFT 10
 #define FLOOR_FRAME_SHIFT 8
 #define FLOOR_FRAME_STEP 10
 #define ORNAMENT_NONE 0xff
@@ -186,7 +185,7 @@ static void draw_wall(const ViewSquare *s, const Strip *base, int x, int y, int 
         if (!(flags & MAP_OPTION_DETAILS) && detail_only(CAT_WALL_ORNAMENT, ornament)) continue;
         Strip o = map_icon_strip(CAT_WALL_ORNAMENT, ornament);
         if (!o.count) continue;
-        int frame = (int16_t)s->side[side] >> ORN_FRAME_SHIFT;
+        int frame = view_face_frame(s->side[side]);
         int icon = o.count < frame * 2 + 2 ? side & 1 : frame * 2 + (side & 1);
         draw_strip(&o, icon, x, y, mirror_two_sides[side]);
     }

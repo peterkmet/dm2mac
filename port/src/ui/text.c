@@ -297,7 +297,6 @@ int16_t text_gdat_field(int category, int index, int entry, int field)
 enum { TEXT_SPACE = 26, TEXT_PERIOD = 27, TEXT_NEWLINE = 28, TEXT_ESCAPE_CHAR = 29, TEXT_ESCAPE_WORD = 30, TEXT_END = 31 };
 static const char *const text_escape_words[TEXT_ESCAPE_WORDS] = {"x", "y", "THE ", "YOU ", "z", "{", "|", "}", "~", "\x7f"};
 static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
-#define TEXT_SUBTYPE_PLATE 14
 #define TEXT_MODE_NEW_LINE 1
 #define TEXT_MODE_HIDDEN 0x8000
 #define TEXT_MODE_MASK 0x7fff
@@ -319,7 +318,7 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
     }
     if (ornament == NO_ORNAMENT_TEXT) {
         int kind = text_kind(text);
-        if (kind && (kind != TEXT_KIND_ORNAMENT || text_subtype(text) != TEXT_SUBTYPE_PLATE)) return;
+        if (kind && (kind != TEXT_KIND_ORNAMENT || text_subtype(text) != SUBTYPE_PLATE)) return;
         if (!text_is_visible(text) && !(mode & TEXT_MODE_HIDDEN)) return;
         if (kind == TEXT_KIND_ORNAMENT) ornament = text_value(text);
     }

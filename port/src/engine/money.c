@@ -20,7 +20,6 @@
 #define MERCHANT_CLASS_B 0x12
 #define MERCHANT_LIST_ATTRS 3       /* creature attributes and class texts of each price list */
 #define DEFAULT_MARGIN 10
-#define PERCENT 100
 /* Item index ranges. */
 #define ITEM_FIRST_CLOTHING 0x80
 #define ITEM_FIRST_MISC 0x100

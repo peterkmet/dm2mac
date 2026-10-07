@@ -52,7 +52,6 @@
 #define SOUND_ENTRY_DOOR_SHUT 0x8f
 #define SOUND_PRIORITY_DOOR 0x5f
 
-#define PERCENT 100
 #define SENSOR_CREATE_ITEM 0x3c
 #define SENSOR_KEEP_ITEM EFFECT_HOLD  /* the effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse */
 #define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS)  /* script variables: 64 flags, 64 bytes, 64 words */

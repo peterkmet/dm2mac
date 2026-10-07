@@ -191,7 +191,7 @@ extern DistanceMap party_distance, alt_distance;
 
 uint8_t ai_action_flag(int8_t action);
 int creature_get_party_distance(int x, int y);
-int creature_is_near_party_front(int x, int y, int map);
+bool creature_is_near_party_front(int x, int y, int map);
 int creature_attack_group_at(int x, int y);
 uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir);
 void minion_dismiss(uint16_t group);

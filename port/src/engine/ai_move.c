@@ -39,7 +39,6 @@
 #define SENSOR_CREATURE_SLOT 0x26       /* a wall slot that a creature type uses */
 #define SLOT_STATE_BUSY 2               /* the state of a creature slot (its sensor effect bits): 2 and 3 busy */
 #define ACTUATOR_SKILL_USE 0x0001      /* ai.actuator_flags: the creature uses wall actuators */
-#define SENSOR_NONE 0
 #define ACTUATOR_SWITCH 1
 #define ACTUATOR_ANY_ITEM 2
 #define ACTUATOR_ITEM 3
@@ -992,9 +991,6 @@ static int move_target(Move *m)
     return on_map(m->tx, m->ty);
 }
 
-/* The quick tests of the searches: no wall, no obstacle to the sight, or the cost search. */
-static int is_quick_kind(int kind) { return kind == MOVE_KIND_OPEN || kind == MOVE_KIND_SIGHT || kind == MOVE_KIND_COST; }
-
 /* The result of a quick test of the search on the target square. */
 static int quick_test(Move *m)
 {
@@ -1091,7 +1087,8 @@ static int test_move(Move *m, int command)
     int enabled = command_enabled(m->kind);
     if (!enabled && !ai.move_flags) return 1;
     if (!move_target(m)) return 1;
-    if (enabled && is_quick_kind(m->kind)) {
+    /* the quick tests of the searches: no wall, no obstacle to the sight, or the cost search */
+    if (enabled && (m->kind == MOVE_KIND_OPEN || m->kind == MOVE_KIND_SIGHT || m->kind == MOVE_KIND_COST)) {
         m->result = quick_test(m);
         return 0;
     }

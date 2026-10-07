@@ -33,6 +33,7 @@ enum {
 
 /* Sensor types that launch missiles. */
 enum { LAUNCH_ITEM = 7, LAUNCH_SPELL = 8, LAUNCH_ITEMS = 9, LAUNCH_SPELLS = 0x0a, LAUNCH_OBJECT = 0x0e, LAUNCH_OBJECTS = 0x0f };
+#define SENSOR_NONE 0               /* sensor type 0: the sensor does nothing */
 /* Floor sensor types that act on the creatures of an area. */
 enum { SENSOR_VANISH = 0x0b, SENSOR_ALERT = 0x28 };
 

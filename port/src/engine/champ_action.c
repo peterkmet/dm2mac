@@ -99,7 +99,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define VAR_BLOCKED_COUNT 0x42      /* script variables that count the failed actions */
 #define VAR_NO_AMMO_COUNT 0x43
 #define VAR_CANT_COUNT 0x47
-#define VAR_ADD 3
 #define RESULT_DELAY_BASE 8
 #define EXPLOSION_SUMMON_FAIL 0xffa8
 #define EXPLOSION_COMMAND 0xff8e
@@ -504,7 +503,7 @@ static int champ_action_melee_attack(int champ, int mode, int x, int y, int skil
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
             action.result = RESULT_BLOCKED;
-            action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_COUNT, 1, VAR_ADD)));
+            action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_COUNT, 1, GLOBAL_VAR_ADD)));
             return 0;
         }
     }
@@ -578,7 +577,7 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
 /* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
 static void show_failure(int result, int counter)
 {
-    int16_t count = (int16_t)dun_modify_global_var(counter, 1, VAR_ADD);
+    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
     action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - count));
     action.result = (int16_t)result;
 }

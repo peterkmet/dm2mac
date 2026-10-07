@@ -22,6 +22,11 @@ typedef struct {
 #define VIEW_SQUARE_RECORD_SIZE 18
 _Static_assert(sizeof(ViewSquare) == VIEW_SQUARE_RECORD_SIZE, "the original view square record has 18 bytes");
 
+/* The ornament word of a wall face: the ornament in the low byte, the frame in bits 10-15. */
+#define ORN_FRAME_SHIFT 10
+#define view_face_word(ornament, frame) ((uint16_t)((frame) << ORN_FRAME_SHIFT | (ornament)))
+#define view_face_frame(word) ((int16_t)(word) >> ORN_FRAME_SHIFT)
+
 enum view_aspect {
     ASPECT_WALL, ASPECT_FLOOR, ASPECT_PIT, ASPECT_TELEPORTER = 5, ASPECT_HIDDEN = 7,
     ASPECT_DOOR_SIDE = 0x10, ASPECT_DOOR_FRONT, ASPECT_STAIRS_FRONT, ASPECT_STAIRS_SIDE

@@ -110,10 +110,7 @@ enum { SIDE_DOOR_STATE = 0, SIDE_DOOR_THING = 1, SIDE_FLOOR_ORNAMENT = 2, SIDE_S
 #define FAKE_WALL_FLOOR_SQUARE 1    /* the square byte that the floor things see on an open fake wall */
 #define SIDE_FRONT 2                /* the wall face that looks at the party */
 #define ORN_INDEX_MASK 0xff
-#define ORN_FRAME_SHIFT 10          /* wall ornament words: frame in bits 10-15 */
 #define FLOOR_FRAME_STEP 0xa00      /* floor ornament words: frame * 10 in the high byte */
-/* The ornament word of a wall face: the ornament in the low byte, the frame in bits 10-15. */
-static uint16_t face_word(int ornament, int frame) { return (uint16_t)(frame << ORN_FRAME_SHIFT | ornament); }
 /* The ornament word of a floor: the ornament in the low byte, frame * 10 in the high byte. */
 static uint16_t floor_word(int ornament, int frame) { return (uint16_t)(ornament | frame * FLOOR_FRAME_STEP); }
 static uint8_t word_ornament(uint16_t w) { return (uint8_t)w; }
@@ -135,23 +132,6 @@ static int face_frame_entry(uint16_t w) { return (int8_t)HIGH_BYTE(w); }
 #define SQUARE_TYPE_BITS 0xe0
 
 /* Text and sensor fields of wall and floor things. */
-/* Subtypes of ornament texts, by what the view does with them (game meanings from docs/skull-notes/range-6.md). */
-enum text_subtype {
-    SUBTYPE_STILL = 0,              /* plain ornament */
-    SUBTYPE_ANIMATED = 2,
-    SUBTYPE_SWITCH = 4,             /* frame 1 while visible */
-    SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
-    SUBTYPE_STILL_2 = 6,
-    SUBTYPE_SWITCH_2 = 7,
-    SUBTYPE_SWITCH_3 = 8,
-    SUBTYPE_TRAP_TELEPORT = 10,
-    SUBTYPE_TOGGLE_2 = 13,
-    SUBTYPE_PLATE = 14,             /* a text plate on the wall */
-    SUBTYPE_WARP_MARKER = 15,       /* frame 1 */
-    SUBTYPE_WARP_MARKER_2 = 16,
-    SUBTYPE_SQUARE_SWITCH = 17,     /* frame from SQUARE_FLAG_3 */
-    SUBTYPE_SHOP_STAND = 20,        /* clears SIDE_SHOP_FLAG */
-};
 enum sensor_type {
     SENSOR_TOGGLE_ORNAMENT = 0x17, SENSOR_TIMED_ORNAMENT = 0x18, SENSOR_HOLDER = 0x1a, SENSOR_STATE_MATCH = 0x1b,
     SENSOR_LINK = 0x27, SENSOR_ANIMATED = 0x2c, SENSOR_SHOP = 0x30, SENSOR_SOUND_ANIMATION = 0x32,
@@ -833,7 +813,7 @@ static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int on
         if (last) done |= 1 << cell;
         if (!shows) continue;
         if (o.animated) o.frame = ornament_frame(CAT_WALL_ORNAMENT, o.ornament, o.time, o.offset);
-        s->side[face] = face_word(o.ornament, o.frame);
+        s->side[face] = view_face_word(o.ornament, o.frame);
     }
     return thing;
 }
@@ -849,10 +829,10 @@ static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square
             if (text_kind(thing) != TEXT_KIND_ORNAMENT) continue;
             ornament = text_value(thing);
             switch (text_subtype(thing)) {
-            case SUBTYPE_STILL: case SUBTYPE_TRAP_TELEPORT: case SUBTYPE_WARP_MARKER_2: break;
+            case SUBTYPE_STILL: case SUBTYPE_TRAP_TELEPORT: case SUBTYPE_WARP: break;
             case SUBTYPE_ANIMATED: animated = 1; break;
             case SUBTYPE_TOGGLE: animated = text_is_visible(thing); break;
-            case SUBTYPE_WARP_MARKER: frame = 1; break;
+            case SUBTYPE_WARP_ONCE: frame = 1; break;
             case SUBTYPE_SQUARE_SWITCH: frame = square_flag(square, SQUARE_FLAG_3); break;
             case SUBTYPE_SHOP_STAND: s->side[SIDE_SHOP_FLAG] = 0; continue;
             default: continue;
@@ -2954,7 +2934,6 @@ void view_draw_dungeon(int dir, int x, int y)
 
 /* ---- Clicks ---- */
 
-#define PERCENT 100
 
 /* True when the last picture has a pixel other than key at (x, y) of the viewport. */
 static int view_hit_test_picture(int x, int y, int key)

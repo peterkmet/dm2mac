@@ -536,7 +536,7 @@ int move_party(int command)
     } else if (party.push_pending_group != THING_NONE) {
         creature_continue_push(command);
         party.push_pending_group = THING_NONE;
-        if (!party.push_mode) party.push_arrow = 6;
+        if (!party.push_mode) party.push_arrow = PUSH_ARROW_NONE;
         return 1;
     } else if (!move_party_step(command, here, on_stairs)) {
         input_flush();

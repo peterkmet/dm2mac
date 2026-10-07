@@ -81,15 +81,14 @@ enum {
 #define SPELL_ITEM_INDEX 0x0f
 #define SPELL_ITEM_KEY 0x42
 /* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
-enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNKNOWN = 0x46, GLOBAL_OP_ADD = 3 };
+enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNKNOWN = 0x46 };
 #define FLASK_PICTURE 0x0b
 #define ZONE_PANEL 0x5c
 #define FAILURE_DELAY_BASE 8
 #define FLASK_DELAY_MIN 3
 /* Action results that show a failed cast. */
 enum { RESULT_UNKNOWN_SPELL = -3, RESULT_WIZARD_FAILED = -4, RESULT_PRIEST_FAILED = -5 };
-/* Warp marker texts and the marker search modes. */
-enum { SUBTYPE_WARP_ONCE = 15, SUBTYPE_WARP = 16 };
+/* The marker search modes of the warp marker texts. */
 enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define SOUND_WARP_CATEGORY 10
 #define SOUND_WARP_ENTRY 0x88
@@ -459,7 +458,7 @@ void magic_report_cast_failure(int result)
     default:
         return;
     }
-    int count = dun_modify_global_var(var, 1, GLOBAL_OP_ADD);
+    int count = dun_modify_global_var(var, 1, GLOBAL_VAR_ADD);
     action.redraw_delay = (int16_t)imax(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
 }
 

@@ -38,7 +38,6 @@
 #define POWER_MAX 0xff              /* the power of a missile or an explosion is a byte */
 #define DEATH_CLOUD_POWER_SMALL 110 /* the death cloud of a creature of hit size 0 */
 #define DEATH_CLOUD_POWER_MEDIUM 190
-#define PERCENT 100
 
 AiContext ai;
 AiPartyView ai_party;

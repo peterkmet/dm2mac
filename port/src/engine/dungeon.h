@@ -53,6 +53,7 @@ enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
 /* The direction or cell d seen from a party or creature that looks to facing. */
 #define dir_relative(d, facing) dir_turn(d, -(facing))
 
+#define PERCENT 100                     /* the whole of a chance or a ratio in percent */
 #define THING_NONE 0xffff
 #define THING_ENDOFLIST 0xfffe
 #define LEVEL_COUNT 63
@@ -201,6 +202,23 @@ enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT, TEXT_KIND_AI_MARKER };
 #define AI_MARKER_KIND_MASK 0xf
 #define AI_MARKER_LEVEL_SHIFT 12
 #define AI_MARKER_LEVEL_MASK 0xf
+/* Subtypes of ornament texts, by what the view does with them (game meanings from docs/skull-notes/range-6.md). */
+enum text_subtype {
+    SUBTYPE_STILL = 0,              /* plain ornament */
+    SUBTYPE_ANIMATED = 2,
+    SUBTYPE_SWITCH = 4,             /* frame 1 while visible */
+    SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
+    SUBTYPE_STILL_2 = 6,
+    SUBTYPE_SWITCH_2 = 7,
+    SUBTYPE_SWITCH_3 = 8,
+    SUBTYPE_TRAP_TELEPORT = 10,
+    SUBTYPE_TOGGLE_2 = 13,
+    SUBTYPE_PLATE = 14,             /* a text plate on the wall */
+    SUBTYPE_WARP_ONCE = 15,         /* a warp marker that clears all markers; the view shows frame 1 */
+    SUBTYPE_WARP = 16,              /* a warp marker that finds the set marker */
+    SUBTYPE_SQUARE_SWITCH = 17,     /* frame from SQUARE_FLAG_3 */
+    SUBTYPE_SHOP_STAND = 20,        /* clears SIDE_SHOP_FLAG */
+};
 static inline bool text_is_visible(uint16_t text) { return thing_bit(text, TEXT_DATA, TEXT_VISIBLE); }
 static inline void text_set_visible(uint16_t text, bool visible) { set_thing_bit(text, TEXT_DATA, TEXT_VISIBLE, visible); }
 static inline uint16_t text_kind(uint16_t text) { return thing_field(text, TEXT_DATA, TEXT_KIND_SHIFT, TEXT_KIND_MASK); }

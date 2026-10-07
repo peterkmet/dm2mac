@@ -25,7 +25,6 @@
 #define FOOD_START 1500
 #define FOOD_RANDOM_MASK 0xff       /* a new champion gets up to 255 more food and water */
 #define SUB_SKILL_COUNT 4           /* the sub-skills of each base skill */
-#define LAST_COMMAND_NONE 0xff      /* the hand used no command yet */
 #define CMD_RECRUIT 0x92
 #define CMD_RECRUIT_CANCEL 0x93
 #define TEXT_JOINED 0x0e            /* GDAT text (1, 0, 0x0e): a champion joins the party */
@@ -50,7 +49,7 @@ static void champ_add_to_party(int portrait, int index, int dir)
     Champion *c = champion(index);
     memset(c, 0, sizeof *c);
     c->portrait = (uint8_t)portrait;
-    c->last_command[0] = c->last_command[1] = LAST_COMMAND_NONE;
+    c->last_command[0] = c->last_command[1] = COMMAND_NONE;
     c->damage_event = THING_NONE;
     c->dir = (uint8_t)dir;
     int k = 0;

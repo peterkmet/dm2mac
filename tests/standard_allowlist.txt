@@ -166,8 +166,6 @@ duplicate MISSILE_NO_SIDE open: module cleanup
 duplicate MOUTH_CATEGORY open: module cleanup
 duplicate MOUTH_INDEX open: module cleanup
 duplicate ORNAMENT_NONE open: module cleanup
-duplicate ORN_FRAME_SHIFT open: module cleanup
-duplicate PERCENT open: module cleanup
 duplicate POISON_MAX open: module cleanup
 duplicate POSSESSIONS_SHOWN open: module cleanup
 duplicate POTION_POWER_MAX open: module cleanup
@@ -204,7 +202,6 @@ duplicate TEXT_LADDER_HIDDEN open: module cleanup
 duplicate TIME_BYTE_WRAP open: module cleanup
 duplicate TYPE_DATA open: module cleanup
 duplicate UI_COLORS_ENTRY open: module cleanup
-duplicate VAR_ADD open: module cleanup
 duplicate VOLUME_SHIFT open: module cleanup
 duplicate WOUND_FEET open: module cleanup
 duplicate ZONE_DIALOG_BACK open: module cleanup
@@ -277,5 +274,4 @@ hex ui/input.c table: rule 6
 hex ui/sound.c table: rule 6
 hex ui/ui.c table: rule 6
 hex ui/view.c table: rule 6
-bool engine/ai.h creature_is_near_party_front is defined in engine/creature.c, which task 5 owns
 record engine/save.c the save image packs and unpacks whole thing records bit by bit

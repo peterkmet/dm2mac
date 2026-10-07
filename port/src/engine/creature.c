@@ -12,7 +12,6 @@
 #include "le.h"
 #include "money.h"
 #include "move.h"
-#include "move.h"
 #include "random.h"
 #include "save.h"
 #include "ui.h"
@@ -94,7 +93,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define FAR_DELAY_FACTOR 4          /* a creature away from the party and unseen is 4 times slower */
 #define FEAR_DELAY_PERCENT 75       /* a frightened creature is faster */
 #define FEAR_HURRY_DELAY 2          /* a frightened creature in a hurry keeps delays up to this */
-#define PERCENT 100
 
 ActiveGroup *active_groups;
 int active_group_max, active_group_count;
@@ -935,12 +933,12 @@ int creature_damage_current_group(uint16_t damage)
 }
 
 /* True when (x, y) of map is near the party, in front of it, and the party sees it. */
-int creature_is_near_party_front(int x, int y, int map)
+bool creature_is_near_party_front(int x, int y, int map)
 {
-    if (map != ai_party.map || party_sleeping || ui.inventory) return 0;
+    if (map != ai_party.map || party_sleeping || ui.inventory) return false;
     int dx = abs(ai_party.x - x), dy = abs(ai_party.y - y);
-    if (dx == dy) return 0;
-    if (dun_get_direction_to(ai_party.x, ai_party.y, x, y) != ai_party.dir) return 0;
+    if (dx == dy) return false;
+    if (dun_get_direction_to(ai_party.x, ai_party.y, x, y) != ai_party.dir) return false;
     return dx < NEAR_PARTY_DISTANCE && dy < NEAR_PARTY_DISTANCE;
 }
 
@@ -1384,8 +1382,6 @@ void creature_continue_push(int command)
 
 /* Creature sensors. */
 
-#define SENSOR_KIND_VANISH 0x0b
-#define SENSOR_KIND_ALERT 0x28
 #define VANISH_POWER 2
 
 void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
@@ -1393,7 +1389,7 @@ void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
     /* an inverted sensor turns the creatures on effect 1 instead of 0 */
     if (e->data[EVENT_EFFECT] != (sensor_flag(sensor, SENSOR_INVERTED) ? 1 : 0)) return;
     uint16_t g = creature_get_group_at(sensor_target_x(sensor), sensor_target_y(sensor));
-    if (g != THING_NONE) creature_turn_group(g, 1, sensor_data(sensor) & DIR_MASK);
+    if (g != THING_NONE) creature_turn_group(g, 1, sensor_turn_dir(sensor));
 }
 
 void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect)
@@ -1406,12 +1402,12 @@ void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y,
             if (sx < 0 || sx >= dungeon_map_width(party.cur_map) || sy < 0 || sy >= dungeon_map_height(party.cur_map)) continue;
             uint16_t g = creature_get_group_at(sx, sy);
             if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != (uint16_t)creature_type) continue;
-            if (kind == SENSOR_KIND_VANISH) {
+            if (kind == SENSOR_VANISH) {
                 if ((uint16_t)power > 1) {
                     if ((uint16_t)power != VANISH_POWER) return;
                     creature_set_next_action(g, sx, sy, CREATURE_ACTION_VANISH, 1);
                 }
-            } else if (kind == SENSOR_KIND_ALERT) {
+            } else if (kind == SENSOR_ALERT) {
                 creature_alert(g, sx, sy, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
             }
         }

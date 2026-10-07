@@ -350,7 +350,7 @@ static int input_condition(int cond, int arg)
     case NODE_IF_DRAGGING: return arg ? input_drag_state != 0 : input_drag_state == 0;
     case NODE_IF_ICON_IN_CELL:
         if (action.champion) return 0;
-        return arg >= DIR_COUNT || champion_in_party_cell(arg) >= 0;
+        return arg >= CELL_COUNT || champion_in_party_cell(arg) >= 0;
     case NODE_IF_ACTION_COUNT: return action.champion && arg == champ_action_count;
     case NODE_IF_RUNE_SET: return action.champion && arg & 1 << champion(action.champion - 1)->rune_count;
     case NODE_IF_ACTION_LIST:
@@ -1238,7 +1238,7 @@ static void view_click_door_button(int x, int y, uint16_t door)
     TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, party.cur_map),
                        .type = EVENT_DOOR_BUTTON_RELEASE};
     uint16_t first = dungeon_square_first_thing(party.cur_map, x, y);
-    put_le16(e.data, first);
+    put_le16(e.data + SENSOR_EVENT_THING, first);
     timeline_add_event(&e);
     door_set_flag(door, DOOR_BUTTON_PRESSED, true);
     input_command_stop = 1;
@@ -1392,7 +1392,7 @@ static void view_click_with_object(const ViewSquares *v, int x, int y, int front
         if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(v->px, v->py, k)) return;
     }
     if (front_blocked) return;
-    for (int k = HALF_CELLS; k < DIR_COUNT; k++) {
+    for (int k = HALF_CELLS; k < CELL_COUNT; k++) {
         if (view_click_place_object(x, y, v->fx, v->fy, POS_FRONT, k, CLICK_OBJECT)) return;
         if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(v->fx, v->fy, k)) return;
     }
