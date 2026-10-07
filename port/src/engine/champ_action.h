@@ -1,5 +1,6 @@
 #ifndef CHAMP_ACTION_H
 #define CHAMP_ACTION_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "save.h"
 
@@ -33,9 +34,9 @@ void champ_reload_hand(int champ, int hand);
 /* The repeats of the actions of all champions. */
 void champ_process_repeated_actions(void);
 /* True when thing is ammunition for the launcher in hand of champ. */
-int item_is_ammo_for_hand(int champ, int hand, uint16_t thing);
+bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing);
 /* True when thing has an action with command for champ. */
-int item_has_action_command(int champ, uint16_t thing, int command);
+bool item_has_action_command(int champ, uint16_t thing, int command);
 /* Adds experience in skill; each new level raises the statistics and prints a message. */
 void champ_add_experience(int champ, int skill, uint32_t amount);
 /* The level of the whole party: from the sum of the base skill experience of all champions. */
