@@ -112,8 +112,6 @@ enum { VAR_ADD = 3, VAR_ASSIGN = 6 };
 #define MISSILE_FALLOFF 3
 #define MISSILE_SPELL 0xff80        /* projectile payload of a spell */
 enum { EXPLOSION_FIRE = 0, EXPLOSION_LIGHT = 2, EXPLOSION_GLOW = 0x30 };
-#define EXPLOSION_TYPE_BITS 0x7f
-#define EXPLOSION_LIGHT_SHIFT 9     /* half of the explosion power */
 #define SIDE_LIGHT 2                /* the view square side of the front wall ornament or of the floor ornament */
 #define ORNAMENT_MASK 0xff          /* ornament index in a side word; 0xff: no ornament */
 
@@ -453,12 +451,11 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
             }
             for (uint16_t t = s.first_thing; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
                 if (thing_type(t) == THING_EXPLOSION) {
-                    uint16_t w = thing_word(t, EXPLOSION_DATA);
-                    int kind = w & EXPLOSION_TYPE_BITS;
+                    int kind = explosion_type(t);
                     if (kind == EXPLOSION_LIGHT || kind == EXPLOSION_FIRE || kind == EXPLOSION_GLOW)
-                        missiles = (int16_t)(missiles + (w >> EXPLOSION_LIGHT_SHIFT));
+                        missiles = (int16_t)(missiles + (explosion_power(t) >> 1));
                 } else if (thing_type(t) == THING_PROJECTILE && thing_word(t, PROJECTILE_PAYLOAD) == MISSILE_SPELL) {
-                    missiles = (int16_t)(missiles + (dungeon_thing_record(t)[PROJECTILE_POWER] >> 1)
+                    missiles = (int16_t)(missiles + (projectile_energy(t) >> 1)
                                          - light_falloff[MISSILE_FALLOFF]);
                 }
             }

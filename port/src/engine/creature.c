@@ -791,8 +791,6 @@ void creature_process_event(int x, int y, int type)
 #define MOVE_NEW_ITEM (-1)
 #define MOVE_RETRY (-3)                     /* move_thing: a group that waited enters its square */
 #define GROUP_RETRY_DELAY 5
-#define CARRIED_MISSILE_POSITION 4          /* projectile record word: x bits 0-4, y bits 5-9, map bits 10-15 */
-#define CARRIED_MISSILE_FLAG 6              /* projectile record word bit 0 */
 
 /* A random cell for an item that a creature drops on (x, y): beside the party on its square. */
 static int drop_cell(int x, int y)
@@ -1112,7 +1110,7 @@ void minion_dismiss(uint16_t link)
     uint16_t projectile = minion_find_link_projectile(link, THING_NONE);
     int saved = party.cur_map;
     if (!projectile) return;
-    uint16_t at = thing_word(projectile, CARRIED_MISSILE_POSITION);
+    uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
     dun_set_current_map(location_map(at));
     creature_set_next_action(link, location_x(at), location_y(at), AI_ACTION_VANISH, 1);
     dun_set_current_map(saved);
@@ -1142,8 +1140,8 @@ void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int fl
 {
     for (uint16_t t = thing_word(holder, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_PROJECTILE) continue;
-        set_thing_word(t, CARRIED_MISSILE_POSITION, (uint16_t)location_pack(x, y, map));
-        set_thing_word(t, CARRIED_MISSILE_FLAG, (uint16_t)((thing_word(t, CARRIED_MISSILE_FLAG) & ~1) | (flag & 1)));
+        set_thing_word(t, PROJECTILE_LOCATION, (uint16_t)location_pack(x, y, map));
+        set_thing_bit(t, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, flag & 1);
     }
 }
 

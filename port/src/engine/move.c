@@ -1035,9 +1035,6 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
 #define SENSOR_SHOP_DISPLAY 0x30
 #define TEXT_KEEPS_SQUARE 4             /* a text ornament subtype that protects the things of its square */
 #define DISCARD_NEAR 5                  /* the things this near to the party on its map stay */
-#define ITEM_DO_NOT_DISCARD 0x80        /* weapon, armour, misc: bit 7 of the data word; potion: bit 15 */
-#define ITEM_KIND_MASK 0x7f
-#define POTION_KIND_SHIFT 8
 
 #define DELETE_GROUP_DISCARD 1
 /* The sensor kinds whose square keeps its things. */
@@ -1072,12 +1069,11 @@ static int discard_next_map(int map, int stop, int *alt)
    none) when it may go; returns 1 then, and *reserved drops the item kind that a shop display keeps. */
 static int discard_take(uint16_t t, int type, int subtype, int map, int x, int y, uint16_t holder, int *reserved)
 {
-    const uint8_t *r = dungeon_thing_record(t);
     int kind;
     switch (type) {
     case THING_GROUP:
         if (group_flag(t, GROUP_DO_NOT_DISCARD) || thing_word(t, GROUP_POSSESSIONS) != THING_ENDOFLIST
-            || (subtype != DISCARD_ANY_KIND && subtype != r[GROUP_CREATURE]))
+            || (subtype != DISCARD_ANY_KIND && subtype != group_creature(t)))
             return 0;
         dun_set_current_map(map);
         creature_delete_group_at(x, y, DELETE_GROUP_DISCARD, -1);
@@ -1089,12 +1085,12 @@ static int discard_take(uint16_t t, int type, int subtype, int map, int x, int y
         projectile_destroy(t, NULL, x, y);
         return 1;
     case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
-        if (r[2] & ITEM_DO_NOT_DISCARD) return 0;
-        kind = r[2] & ITEM_KIND_MASK;
+        if (thing_bit(t, ITEM_DATA, ITEM_DO_NOT_DISCARD)) return 0;
+        kind = item_type(t);
         break;
     case THING_POTION:
-        if (r[3] & ITEM_DO_NOT_DISCARD) return 0;
-        kind = thing_word(t, 2) >> POTION_KIND_SHIFT & ITEM_KIND_MASK;
+        if (thing_bit(t, ITEM_DATA, POTION_DO_NOT_DISCARD)) return 0;
+        kind = potion_type(t);
         break;
     default:
         return 1;  /* kept quirk: the original returns the other types without taking them from their square */

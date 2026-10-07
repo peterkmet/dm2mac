@@ -765,7 +765,6 @@ void creature_ai_decide(void)
 #define TARGET_PARTY 0x16
 #define CACHE_KIND_13 0x0d
 #define CACHE_KIND_5 5
-#define MINION_MAP_LOCATION 6           /* minion map record word: x bits 0-4, y bits 5-9, map bits 10-15 */
 #define MAP_KEY_NO_WANDER 0x20          /* GDAT (8, map graphics set, 0x0b, 0x65) bit: creatures do not wander */
 #define CAT_MAP_GRAPHICS 8
 #define MAP_GRAPHICS_KEY_FLAGS 0x65
@@ -1190,7 +1189,6 @@ enum ai_command {
 #define MOOD_OP_QUIET 0x10              /* set mood flag: 0 clears, 1 sets, 2 tests; this bit: no rescan */
 #define MOOD_OP_QUIET_LAST 0x12
 #define TARGET_SCAN_MOOD_SET 0x13       /* the target records that set mood bits; 0x14 clears them */
-#define ITEM_IMPORTANT 0x80             /* item record byte: the creature does not consume the item */
 #define ATTACK_SKILL_ITEMS 0x08
 
 static int facing(void) { return group_dir(ai.group_thing); }
@@ -1533,12 +1531,11 @@ static int cmd_consume(void)
 {
     uint16_t t = thing_word(ai.group_thing, GROUP_POSSESSIONS);
     if (t == THING_ENDOFLIST) return AI_RESULT_FAIL;
-    const uint8_t *r = dungeon_thing_record(t);
-    int used;
+    int used;  /* a creature does not consume an item that the dungeon keeps */
     switch (thing_type(t)) {
-    case THING_WEAPON: case THING_ARMOUR: used = !(r[2] & ITEM_IMPORTANT); break;
-    case THING_POTION: used = !(r[3] & ITEM_IMPORTANT); break;
-    case THING_MISC: used = !(r[2] & ITEM_IMPORTANT) || item_attr(t, 3) != 0; break;
+    case THING_WEAPON: case THING_ARMOUR: used = !thing_bit(t, ITEM_DATA, ITEM_DO_NOT_DISCARD); break;
+    case THING_POTION: used = !thing_bit(t, ITEM_DATA, POTION_DO_NOT_DISCARD); break;
+    case THING_MISC: used = !thing_bit(t, ITEM_DATA, ITEM_DO_NOT_DISCARD) || item_attr(t, 3) != 0; break;
     default: used = 0;
     }
     if (used) {
@@ -1720,7 +1717,6 @@ int16_t ai_dest_x, ai_dest_y;
 #define SOUND_CATEGORY_MISC_AI 3
 #define SUB_REPEAT 0x40                 /* item filter bit: the action repeats for all matching items */
 #define PUSH_BY_CREATURE 0xfe
-#define CONTAINER_KEEPS 0x04            /* moneybox byte +7: it stays closed */
 #define STALE_REGISTER 0x100
 #define SHOT_POWER_MEDIUM 0x10          /* a missile above power 8 flies at speed 2, above this 3 or 4 */
 #define SHOT_POWER_STRONG 0x20          /* ... above this 7 to 10 */
@@ -2102,7 +2098,7 @@ static int act_give_items(void)
         int cell = ai.active->cell;
         if (cell == CELL_ANY) cell = rand_2bits();
         t = (uint16_t)((t & THING_ID_MASK) | cell << THING_CELL_SHIFT);
-        if (item_is_moneybox(t)) dungeon_thing_record(t)[7] |= CONTAINER_KEEPS;
+        if (item_is_moneybox(t)) moneybox_set_placed(t, true);
         move_thing(t, -1, -1, ai_dest_x, ai_dest_y);
         drop_sound(t, n);
     } while (ai.active->sub & SUB_REPEAT);

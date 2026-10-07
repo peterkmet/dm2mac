@@ -48,8 +48,6 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 #define WEAPON_THROW_MAX 100
 #define ARMOUR_CLASS_MAX 200
 #define POTION_POWER_MAX 0xff
-#define POTION_DATA 2              /* potion word 2: power in bits 0-7 */
-#define POTION_POWER_MASK 0xff
 #define ARMOUR_CLASS_MASK 0xff
 #define DITHER_COLOR_MASK 0x0f      /* the dither pattern holds 4-bit pixels */
 #define GAUGE_CHARGE_COLOR 4
@@ -758,7 +756,7 @@ static int draw_object_info(uint16_t thing, int full)
         high = ARMOUR_CLASS_MAX;
     } else if (type == THING_POTION) {
         glyph = GLYPH_POTION;
-        value = thing_word(thing, POTION_DATA) & POTION_POWER_MASK;
+        value = potion_power(thing);
         high = POTION_POWER_MAX;
     } else {
         return 1;

@@ -45,7 +45,6 @@ enum {
 #define EXPERIENCE_ROLL_MASK 7
 #define POTION_ROLL_MASK 0x0f
 #define POTION_POWER_PER_POWER 40
-#define POTION_DATA 2                   /* potion record byte: its power */
 #define FLASK_EMPTY 0x14                /* GDAT index of the empty flask */
 #define MISSILE_THING_BASE 0xff80       /* the thing of a missile spell type */
 #define MISSILE_POWER_MIN 0x15
@@ -390,8 +389,7 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
         if (hand < 0) return cast_failure(CAST_NEEDS_FLASK, spell);
         uint16_t flask = champ_remove_object_from_slot(champ, hand);
         item_set_gdat_index(flask, type);
-        uint8_t *potion = dungeon_thing_record(flask);
-        potion[POTION_DATA] = (uint8_t)(power * POTION_POWER_PER_POWER + (int)(rand_next() & POTION_ROLL_MASK));
+        potion_set_power(flask, (unsigned)(power * POTION_POWER_PER_POWER + (int)(rand_next() & POTION_ROLL_MASK)));
         champ_add_object_to_slot(champ, flask, hand);
         break;
     }

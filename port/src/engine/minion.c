@@ -64,12 +64,9 @@ enum { ICON_MINION_FIRST = 3, ICON_PARTY_FIRST = 5, ICON_PARTY_INVISIBLE = 9, IC
 #define ORNAMENT_NONE 0xff
 #define ORNAMENT_INDEX_MASK 0xff
 enum { SIDE_DOOR_STATE, SIDE_DOOR_THING, SIDE_FLOOR_ORNAMENT, SIDE_STAIRS_UP = 0, SIDE_PIT_VARIANT = 0 };
-#define MAP_KIND_SHIFT 13               /* container word 4: the kind of minion map */
+/* Minion map kinds: the container type of a minion map. */
 enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };
-#define MAP_LOCATION 6                  /* minion map record word: x bits 0-4, y bits 5-9, map bits 10-15 */
-#define MAP_LOCATION_NONE 0xfc00        /* map 63: no location */
-#define MAP_CONTENTS 2                  /* the minion group of the map */
-#define PROJECTILE_LOCATION 4           /* a link projectile: where the minion goes */
+#define MAP_LOCATION_NONE LOCATION_MAP_MASK  /* map 63: no location */
 #define LOCATION_X(w) ((w) & 0x1f)
 #define LOCATION_Y(w) ((w) >> 5 & 0x1f)
 #define LOCATION_MAP(w) ((w) >> 10)
@@ -491,7 +488,7 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
     int show_party = flags & MAP_PARTY, show_minion = flags & MAP_MINION, show_marker = flags & MAP_MARKER;
     if (flags & (MAP_MINION | MAP_MARKER)) {
         if (flags & MAP_MINION) {
-            uint16_t w = thing_word(minion_find_link_projectile(thing_word(thing, MAP_CONTENTS), thing), PROJECTILE_LOCATION);
+            uint16_t w = thing_word(minion_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing), PROJECTILE_LOCATION);
             minion_x = LOCATION_X(w);
             minion_y = LOCATION_Y(w);
             minion_map_index = LOCATION_MAP(w);
@@ -504,7 +501,7 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
             }
         }
         if (flags & MAP_MARKER) {
-            uint16_t w = thing_word(thing, MAP_LOCATION);
+            uint16_t w = thing_word(thing, MINION_MAP_LOCATION);
             ui_map_set_marker(LOCATION_X(w), LOCATION_Y(w), LOCATION_MAP(w));
         }
     }
@@ -573,8 +570,8 @@ void ui_draw_minion_map(uint16_t thing)
 {
     action.map_item = item_gdat_index(thing);
     action.flags |= MAP_STATIC_CREATURES | MAP_PARTY;
-    int kind = thing_word(thing, CONTAINER_KIND) >> MAP_KIND_SHIFT;
-    uint16_t group = thing_word(thing, MAP_CONTENTS), link = 0;
+    int kind = container_type(thing);
+    uint16_t group = thing_word(thing, MINION_MAP_GROUP), link = 0;
     if (kind != MAP_KIND_NO_OPTIONS) {
         action.flags |= MAP_HAS_OPTIONS;
         if (kind != MAP_KIND_PLAIN) {
@@ -592,7 +589,7 @@ void ui_draw_minion_map(uint16_t thing)
     }
     int x = game.party_x, y = game.party_y, map = game.party_map, x_offset = 0, y_offset = 0;
     if (kind != MAP_KIND_PLAIN && kind != MAP_KIND_NO_OPTIONS) {
-        if ((thing_word(thing, MAP_LOCATION) & MAP_LOCATION_NONE) != MAP_LOCATION_NONE) action.flags |= MAP_MARKER;
+        if (location_map(thing_word(thing, MINION_MAP_LOCATION)) != MAP_LOCATION_NONE) action.flags |= MAP_MARKER;
         if (kind == MAP_KIND_MINION) {
             if (!link) {
                 action.flags &= ~MAP_MARKER;
@@ -617,7 +614,7 @@ void ui_draw_minion_map(uint16_t thing)
                 y_offset = (GAP_Y * 2 + ICON_H + 1) / VIEW_CELL_ROW * cell_shift[row];
             }
         } else if (action.flags & MAP_MARKER) {
-            uint16_t w = thing_word(thing, MAP_LOCATION);
+            uint16_t w = thing_word(thing, MINION_MAP_LOCATION);
             x = LOCATION_X(w);
             y = LOCATION_Y(w);
             map = LOCATION_MAP(w);
@@ -687,7 +684,7 @@ int minion_map_set_location(uint16_t thing, int x, int y, int map)
     int saved = party.cur_map;
     dun_set_current_map(map);
     int inside = x >= 0 && x < dungeon_map_width(party.cur_map) && y >= 0 && y < dungeon_map_height(party.cur_map);
-    if (inside) set_thing_word(thing, MAP_LOCATION, LOCATION(x, y, map));
+    if (inside) set_thing_word(thing, MINION_MAP_LOCATION, LOCATION(x, y, map));
     dun_set_current_map(saved);
     return inside;
 }
@@ -695,12 +692,12 @@ int minion_map_set_location(uint16_t thing, int x, int y, int map)
 void minion_map_click_set_destination(int command, int x, int y)
 {
     uint16_t thing = champion(action.champion - 1)->slots[action.hand];
-    if (command != CMD_MINION_MAP || (thing_word(thing, CONTAINER_KIND) >> MAP_KIND_SHIFT) != MAP_KIND_MINION) return;
+    if (command != CMD_MINION_MAP || container_type(thing) != MAP_KIND_MINION) return;
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MAP_GRID, r);
     int16_t px = (int16_t)(x - (r[RECT_X] - minion_map.x_offset)), py = (int16_t)(y - (r[RECT_Y] - minion_map.y_offset));
     if (px % (ICON_W + GAP_X) < GAP_X || py % (ICON_H + GAP_Y) < GAP_Y) return;
-    uint16_t group = thing_word(thing, MAP_CONTENTS);
+    uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!minion_find_link_projectile(group, thing)) return;
     int col = px / (ICON_W + GAP_X), row = py / (ICON_H + GAP_Y);
     int16_t sx = minion_map.x, sy = minion_map.y;

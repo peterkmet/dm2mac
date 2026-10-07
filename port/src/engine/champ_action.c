@@ -111,8 +111,6 @@ enum { CHARGES_ALL = 0x10, CHARGES_NONE = 0x11, CHARGES_NONE_2 = 0x12 };
 #define EXPLOSION_SUMMON_POWER 0x6e
 #define CENTER_CELL 0xff
 #define CREATURE_MELEE_REACHES 0x0020   /* creature info flag: mode 1 attacks reach the creature */
-#define MINION_MAP_GROUP 2          /* minion map word 2: its minion group */
-#define MINION_MAP_TARGET 6         /* minion map word 6: the target location */
 #define MINION_ATTACKER 0x32        /* creature types of minions */
 #define MINION_GUARD 0x33
 #define MINION_FETCHER 0x30
@@ -524,7 +522,7 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
             return 1;
         }
         if (command == COMMAND_MINION_FETCH) {
-            uint16_t target = thing_word(map_item, MINION_MAP_TARGET);
+            uint16_t target = thing_word(map_item, MINION_MAP_LOCATION);
             type = MINION_GUARD;
             dir = game.party_dir;
             x = target & LOCATION_X_MASK;

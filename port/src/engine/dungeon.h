@@ -86,17 +86,20 @@ enum thing_field {
     GROUP_ANIM_STATE = 0x0a,    /* static creatures: animation state word */
     GROUP_HOME = 0x0c,          /* home square: x bits 0-4, y bits 5-9, map bits 10-15 */
     GROUP_DIR = 0x0e,           /* bit 7 keep cells, bits 8-9 direction the creature faces, bit 10 do not discard */
+    ITEM_DATA = 2,              /* weapons, armour, scrolls, potions, and miscellaneous items: see the ITEM_ bits */
     CONTAINER_CONTENTS = 2,
+    MINION_MAP_GROUP = 2,       /* a minion map: its minion group */
     CONTAINER_KIND = 4,         /* bit 0 open, bits 1-2 container kind, bits 13-15 subtype */
+    MINION_MAP_LOCATION = 6,    /* a minion map: its target location, THING_NONE for none */
+    MONEYBOX_FLAGS = 6,         /* a money box: bit 10 placed by a creature */
     PROJECTILE_PAYLOAD = 2,
-    PROJECTILE_POWER = 4,       /* byte: power of a spell, 0xff for none */
+    PROJECTILE_ENERGY = 4,      /* byte: the range and power left */
+    PROJECTILE_HIT_CHANCE = 5,  /* byte */
+    PROJECTILE_LOCATION = 4,    /* a minion link projectile or a missile that a creature carries: its location word */
     PROJECTILE_EVENT = 6,       /* timeline event that moves the projectile */
+    PROJECTILE_CARRIED = 6,     /* a missile that a creature carries: bit 0 the creature waits to enter its location */
     EXPLOSION_DATA = 2,         /* explosion type bits 0-6, bit 7 centered on the square, power bits 8-15 */
 };
-#define CONTAINER_OPEN 0x0001
-#define EXPLOSION_TYPE_MASK 0x7f
-#define EXPLOSION_CENTERED 0x0080
-#define EXPLOSION_POWER_SHIFT 8
 
 #define SENSOR_TYPE_MASK 0x7f
 #define SENSOR_DATA_SHIFT 7
@@ -165,7 +168,10 @@ static inline uint8_t text_value(uint16_t text) { return thing_word(text, TEXT_D
 /* A text: the offset of its words in the text data. */
 static inline uint16_t text_offset(uint16_t text) { return thing_word(text, TEXT_DATA) >> TEXT_VALUE_SHIFT; }
 static inline int ai_marker_id(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_ID_SHIFT & AI_MARKER_ID_MASK; }
-static inline int ai_marker_kind(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_KIND_SHIFT & AI_MARKER_KIND_MASK; }
+static inline int ai_marker_kind(uint16_t text)
+{
+    return thing_word(text, TEXT_DATA) >> AI_MARKER_KIND_SHIFT & AI_MARKER_KIND_MASK;
+}
 /* The level delta that the AI marker is for. */
 static inline int ai_marker_level(uint16_t text) { return thing_word(text, TEXT_DATA) >> AI_MARKER_LEVEL_SHIFT; }
 
@@ -196,9 +202,15 @@ static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on)
     set_thing_word(sensor, SENSOR_FLAGS, on ? w | bit : w & ~bit);
 }
 /* The effect on the target: EFFECT_SET, EFFECT_CLEAR, EFFECT_TOGGLE, or EFFECT_HOLD. */
-static inline int sensor_effect(uint16_t sensor) { return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_EFFECT_SHIFT & SENSOR_EFFECT_MASK; }
+static inline int sensor_effect(uint16_t sensor)
+{
+    return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_EFFECT_SHIFT & SENSOR_EFFECT_MASK;
+}
 /* The ticks between the trigger and the event on the target. */
-static inline int sensor_delay(uint16_t sensor) { return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_DELAY_SHIFT & SENSOR_DELAY_MASK; }
+static inline int sensor_delay(uint16_t sensor)
+{
+    return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_DELAY_SHIFT & SENSOR_DELAY_MASK;
+}
 /* The ordinal of the ornament in the wall or floor ornament list of the map, 0 for none. */
 static inline int sensor_ornament_ordinal(uint16_t sensor) { return thing_word(sensor, SENSOR_FLAGS) >> SENSOR_ORNAMENT_SHIFT; }
 /* SENSOR_TARGET fields. */
@@ -206,7 +218,10 @@ static inline int sensor_ornament_ordinal(uint16_t sensor) { return thing_word(s
 #define SENSOR_TARGET_CELL_MASK 3
 #define SENSOR_TARGET_X_SHIFT 6
 #define SENSOR_TARGET_Y_SHIFT 11
-static inline int sensor_target_x(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK; }
+static inline int sensor_target_x(uint16_t sensor)
+{
+    return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_X_SHIFT & LOCATION_COORD_MASK;
+}
 static inline int sensor_target_y(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> SENSOR_TARGET_Y_SHIFT; }
 static inline int sensor_target_cell(uint16_t sensor)
 {
@@ -216,7 +231,10 @@ static inline int sensor_target_cell(uint16_t sensor)
 #define LAUNCH_ENERGY_SHIFT 4
 #define LAUNCH_ENERGY_MASK 0xff
 #define LAUNCH_STEP_SHIFT 12
-static inline int sensor_launch_energy(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_ENERGY_SHIFT & LAUNCH_ENERGY_MASK; }
+static inline int sensor_launch_energy(uint16_t sensor)
+{
+    return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_ENERGY_SHIFT & LAUNCH_ENERGY_MASK;
+}
 static inline int sensor_launch_step(uint16_t sensor) { return thing_word(sensor, SENSOR_TARGET) >> LAUNCH_STEP_SHIFT; }
 
 /* TELEPORTER_TARGET bits. */
@@ -243,7 +261,10 @@ static inline int teleporter_scope(uint16_t teleporter)
     return thing_word(teleporter, TELEPORTER_TARGET) >> TELEPORTER_SCOPE_SHIFT & TELEPORTER_SCOPE_MASK;
 }
 /* A bit of TELEPORTER_TARGET: TELEPORTER_ABSOLUTE or TELEPORTER_AUDIBLE. */
-static inline bool teleporter_flag(uint16_t teleporter, uint16_t bit) { return (thing_word(teleporter, TELEPORTER_TARGET) & bit) != 0; }
+static inline bool teleporter_flag(uint16_t teleporter, uint16_t bit)
+{
+    return (thing_word(teleporter, TELEPORTER_TARGET) & bit) != 0;
+}
 static inline bool teleporter_is_closed(uint16_t teleporter) { return thing_word(teleporter, TELEPORTER_MAP) & TELEPORTER_CLOSED; }
 static inline bool teleporter_is_fixed(uint16_t teleporter)
 {
@@ -283,7 +304,8 @@ static inline int group_dir(uint16_t group) { return thing_word(group, GROUP_DIR
 static inline void group_set_dir(uint16_t group, int dir)
 {
     uint16_t w = thing_word(group, GROUP_DIR);
-    set_thing_word(group, GROUP_DIR, (uint16_t)((w & ~(GROUP_DIR_MASK << GROUP_DIR_SHIFT)) | (dir & GROUP_DIR_MASK) << GROUP_DIR_SHIFT));
+    set_thing_word(group, GROUP_DIR,
+                   (uint16_t)((w & ~(GROUP_DIR_MASK << GROUP_DIR_SHIFT)) | (dir & GROUP_DIR_MASK) << GROUP_DIR_SHIFT));
 }
 /* A bit of GROUP_DIR: GROUP_KEEP_CELLS or GROUP_DO_NOT_DISCARD. */
 static inline bool group_flag(uint16_t group, uint16_t bit) { return (thing_word(group, GROUP_DIR) & bit) != 0; }
@@ -291,6 +313,131 @@ static inline void group_set_flag(uint16_t group, uint16_t bit, bool on)
 {
     uint16_t w = thing_word(group, GROUP_DIR);
     set_thing_word(group, GROUP_DIR, on ? w | bit : w & ~bit);
+}
+
+/* A packed field of a record word: (word >> shift) & mask. */
+static inline uint16_t thing_field(uint16_t thing, int field, int shift, uint16_t mask)
+{
+    return thing_word(thing, field) >> shift & mask;
+}
+static inline void set_thing_field(uint16_t thing, int field, int shift, uint16_t mask, unsigned value)
+{
+    uint16_t w = thing_word(thing, field);
+    set_thing_word(thing, field, (uint16_t)((w & ~(mask << shift)) | (value & mask) << shift));
+}
+static inline bool thing_bit(uint16_t thing, int field, uint16_t bit) { return (thing_word(thing, field) & bit) != 0; }
+static inline void set_thing_bit(uint16_t thing, int field, uint16_t bit, bool on)
+{
+    uint16_t w = thing_word(thing, field);
+    set_thing_word(thing, field, on ? w | bit : w & ~bit);
+}
+/* ITEM_DATA of weapons, armour, and miscellaneous items: type bits 0-6, bit 7 do not discard, charges. */
+#define ITEM_TYPE_MASK 0x7f             /* the GDAT index; also of an explosion */
+#define ITEM_DO_NOT_DISCARD 0x0080
+#define WEAPON_CHARGES_SHIFT 10
+#define ARMOUR_CHARGES_SHIFT 9
+#define CHARGES_MASK 0xf
+#define MISC_CHARGES_SHIFT 14           /* also the champion of a champion token or of bones */
+#define MISC_CHARGES_MASK 3
+#define MISC_STACK_SHIFT 8              /* a miscellaneous item: the stack size - 1 in bits 8-13 */
+#define MISC_STACK_MASK 0x3f
+/* ITEM_DATA of potions: power bits 0-7, type bits 8-14, bit 15 do not discard. */
+#define POTION_POWER_MASK 0xff
+#define POTION_TYPE_SHIFT 8
+#define POTION_TYPE_MASK 0x7f
+#define POTION_DO_NOT_DISCARD 0x8000
+/* ITEM_DATA of scrolls: an ornament text id in bits 10-15, else a text thing index in bits 0-9. */
+#define SCROLL_TEXT_SHIFT 10
+/* The ornament text id of a scroll, 0 for a scroll with a text thing. */
+static inline int scroll_ornament_text(uint16_t scroll) { return thing_word(scroll, ITEM_DATA) >> SCROLL_TEXT_SHIFT; }
+/* The text thing of a scroll without an ornament text. */
+static inline uint16_t scroll_text(uint16_t scroll)
+{
+    return (uint16_t)(THING_TEXT << THING_TYPE_SHIFT | (thing_word(scroll, ITEM_DATA) & THING_INDEX_MASK));
+}
+static inline uint8_t item_type(uint16_t item) { return thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK); }
+static inline uint8_t potion_power(uint16_t potion) { return thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK); }
+static inline void potion_set_power(uint16_t potion, unsigned power)
+{
+    set_thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK, power);
+}
+static inline uint8_t potion_type(uint16_t potion) { return thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK); }
+/* The stack size - 1 of a miscellaneous item (coins). */
+static inline int misc_stack(uint16_t misc) { return thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK); }
+static inline void misc_set_stack(uint16_t misc, int count)
+{
+    set_thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK, count);
+}
+/* CONTAINER_KIND fields. */
+#define CONTAINER_OPEN 0x0001
+#define CONTAINER_KIND_SHIFT 1
+#define CONTAINER_KIND_MASK 3
+enum container_kind { CONTAINER_CHEST, CONTAINER_MINION_MAP };  /* a chest or a money box, a minion map */
+#define CONTAINER_TYPE_SHIFT 13
+#define CONTAINER_TYPE_MASK 7
+#define MONEYBOX_PLACED 0x0400          /* a creature placed the money box: creatures take it as empty until the party moves it */
+static inline bool container_is_open(uint16_t container) { return thing_word(container, CONTAINER_KIND) & CONTAINER_OPEN; }
+static inline void container_set_open(uint16_t container, bool open)
+{
+    set_thing_field(container, CONTAINER_KIND, 0, CONTAINER_OPEN, open);
+}
+static inline int container_kind(uint16_t container)
+{
+    return thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK);
+}
+static inline void container_set_kind(uint16_t container, int kind)
+{
+    set_thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK, kind);
+}
+/* The type of the container within its kind. */
+static inline int container_type(uint16_t container)
+{
+    return thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK);
+}
+static inline void container_set_type(uint16_t container, int type)
+{
+    set_thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK, type);
+}
+static inline bool moneybox_is_placed(uint16_t box) { return thing_word(box, MONEYBOX_FLAGS) & MONEYBOX_PLACED; }
+static inline void moneybox_set_placed(uint16_t box, bool placed)
+{
+    uint16_t w = thing_word(box, MONEYBOX_FLAGS);
+    set_thing_word(box, MONEYBOX_FLAGS, placed ? w | MONEYBOX_PLACED : w & ~MONEYBOX_PLACED);
+}
+
+static inline uint8_t projectile_energy(uint16_t projectile) { return dungeon_thing_record(projectile)[PROJECTILE_ENERGY]; }
+static inline void projectile_set_energy(uint16_t projectile, uint8_t energy)
+{
+    dungeon_thing_record(projectile)[PROJECTILE_ENERGY] = energy;
+}
+static inline uint8_t projectile_hit_chance(uint16_t projectile) { return dungeon_thing_record(projectile)[PROJECTILE_HIT_CHANCE]; }
+static inline void projectile_set_hit_chance(uint16_t projectile, uint8_t chance)
+{
+    dungeon_thing_record(projectile)[PROJECTILE_HIT_CHANCE] = chance;
+}
+#define PROJECTILE_HOLDER_WAITS 0x0001  /* PROJECTILE_CARRIED bit */
+/* EXPLOSION_DATA fields. */
+#define EXPLOSION_TYPE_MASK 0x7f
+#define EXPLOSION_CENTERED 0x0080       /* the explosion is in the middle of its square, not on a cell */
+#define EXPLOSION_POWER_SHIFT 8
+#define EXPLOSION_POWER_MASK 0xff
+static inline int explosion_type(uint16_t explosion) { return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK); }
+static inline void explosion_set_type(uint16_t explosion, int type)
+{
+    set_thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
+}
+static inline bool explosion_is_centered(uint16_t explosion) { return thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED); }
+static inline void explosion_set_centered(uint16_t explosion, bool centered)
+{
+    set_thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
+}
+static inline uint8_t explosion_power(uint16_t explosion)
+{
+    return thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK);
+}
+static inline void explosion_set_power(uint16_t explosion, unsigned power)
+{
+    set_thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);
 }
 
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */

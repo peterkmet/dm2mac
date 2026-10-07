@@ -20,8 +20,6 @@ int missile_from_sensor;
 #define PROJECTILE_POSITION 2
 #define POSITION_DIR_SHIFT 10
 #define POSITION_STEP_SHIFT 12
-#define PROJECTILE_ENERGY 4         /* record byte: the range and power left */
-#define PROJECTILE_HIT_CHANCE 5     /* record byte */
 #define CELL_MASK 3
 #define POSITION_SQUARE_DIR 0x0fff  /* position word: x, y, and direction */
 /* A coordinate above a byte: the low byte is the square, the high byte the stop square + 1. */
@@ -41,11 +39,10 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
     BLAST_PARTY | BLAST_CREATURES
 };
 #define POISON_CLOUD_DECAY 3        /* power that a poison cloud loses per step */
-#define POISON_CLOUD_LAST 0x600     /* a poison cloud lasts while its power word part is at least this */
+#define POISON_CLOUD_LAST 6         /* a poison cloud lasts while its power is at least this */
 #define DEATH_CLOUD_DECAY 0x28
-#define DEATH_CLOUD_LAST 0x3700
+#define DEATH_CLOUD_LAST 0x37
 #define SMOKE_DURATION 5
-#define EXPLOSION_POWER_BITS 0xff00
 
 #define CAT_EXPLOSION 0x0d
 #define CAT_CHAMPION 0x16
@@ -83,9 +80,6 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 /* Potions that explode on a hit. */
 #define POTION_VEN_BOMB 3
 #define POTION_FIRE_BOMB 0x13
-#define POTION_TYPE_MASK 0x7fff
-#define POTION_TYPE_SHIFT 8
-#define POTION_POWER_MASK 0xff
 
 /* Creature info bits that projectiles test. */
 #define CREATURE_REFLECTS_SPELLS 0x0002     /* flags */
@@ -174,10 +168,9 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
     sound_play_with_fallback(item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH, SOUND_ANY, (int16_t)x,
                              (int16_t)y, 1, SOUND_PRIORITY_LAUNCH, SOUND_VOLUME_NORMAL);
     t = with_cell(t, cell);
-    uint8_t *record = dungeon_thing_record(t);
     set_thing_word(t, PROJECTILE_PAYLOAD, payload);
-    record[PROJECTILE_ENERGY] = (uint8_t)energy;
-    record[PROJECTILE_HIT_CHANCE] = (uint8_t)attack;
+    projectile_set_energy(t, (uint8_t)energy);
+    projectile_set_hit_chance(t, (uint8_t)attack);
     dungeon_link_thing_to_square(t, party.cur_map, x, y);
     if (payload == SPELL_FIREBALL && party.cur_map == game.party_map) party.redraw |= REDRAW_VIEW;
     TimelineEvent e = {.time_map = (game.game_time + 1) | (uint32_t)(uint8_t)party.cur_map << 24};
@@ -249,19 +242,14 @@ void explosion_create(int type, int power, int x, int y, int cell)
         ex = (int16_t)(((uint16_t)ex >> COORD_STOP_SHIFT) - 1);
         ey = (int16_t)((uint16_t)ey >> COORD_STOP_SHIFT);
     }
-    uint16_t w = thing_word(t, EXPLOSION_DATA);
-    if ((uint16_t)cell == EXPLOSION_AT_CENTER) {
-        w |= EXPLOSION_CENTERED;
-    } else {
-        w &= ~EXPLOSION_CENTERED;
-        t = with_cell(t, cell);
-    }
-    w = (uint16_t)((w & EXPLOSION_CENTERED) | ((type - SPELL_THING_FIRST) & EXPLOSION_TYPE_MASK)
-                   | (uint8_t)power << EXPLOSION_POWER_SHIFT);
-    set_thing_word(t, EXPLOSION_DATA, w);
+    int centered = (uint16_t)cell == EXPLOSION_AT_CENTER;
+    if (!centered) t = with_cell(t, cell);
+    explosion_set_type(t, type - SPELL_THING_FIRST);
+    explosion_set_centered(t, centered);
+    explosion_set_power(t, (unsigned)power);
     int volume =
         on_party_square(ex, ey) ? SOUND_VOLUME_MAX : min16(SOUND_VOLUME_MAX, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
-    sound_play_with_fallback(CAT_EXPLOSION, w & EXPLOSION_TYPE_MASK, SOUND_EXPLODE, SOUND_ANY, ex, ey, 1, SOUND_PRIORITY_EXPLODE,
+    sound_play_with_fallback(CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_ANY, ex, ey, 1, SOUND_PRIORITY_EXPLODE,
                              volume);
     dungeon_link_thing_to_square(t, party.cur_map, ex, ey);
     int16_t delay = (uint16_t)type == EXPLOSION_SMOKE ? SMOKE_DURATION
@@ -272,7 +260,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
     set_event_word(&e, 2, t);
     timeline_add_event(&e);
     /* the power that the sensors test: the original reads it from the door record after a door spell */
-    const uint8_t *power_record = dungeon_thing_record(t);
+    uint16_t power_thing = t;
     switch ((uint16_t)type) {
     case SPELL_LIGHTNING: case SPELL_FIREBALL: case EXPLOSION_STORM_LIGHTNING: case EXPLOSION_STORM_BLAST:
         explosion_blast((uint16_t)type, power, x, y, cell);
@@ -282,14 +270,14 @@ void explosion_create(int type, int power, int x, int y, int cell)
         uint8_t square = dun_get_square(ex, ey);
         if (square_type(square) != SQUARE_DOOR || (square & SQUARE_DOOR_STATE) == DOOR_STATE_BROKEN) break;
         uint16_t door = dungeon_square_first_thing(party.cur_map, ex, ey);
-        power_record = dungeon_thing_record(door);
+        power_thing = door;
         if (door_has_button(door))
             sensor_schedule_square_event(ex, ey, 0, (uint16_t)type == SPELL_DOOR_TOGGLE ? EFFECT_TOGGLE : EFFECT_SET,
                                          game.game_time + 1);
         break;
     }
     }
-    explosion_trigger_sensors((uint16_t)type, x, y, power_record[EXPLOSION_DATA + 1]);
+    explosion_trigger_sensors((uint16_t)type, x, y, explosion_power(power_thing));
 }
 
 void projectile_cancel_event(uint16_t projectile)
@@ -490,7 +478,7 @@ static int projectile_hit_door(Hit *h)
         if (h->payload_type == THING_EXPLOSION) {
             passes = h->payload >= SPELL_HARM_NON_MATERIAL;
         } else {
-            passes = dungeon_thing_record(h->projectile)[PROJECTILE_HIT_CHANCE] > (rand_next() & ROLL_GRATE)
+            passes = projectile_hit_chance(h->projectile) > (rand_next() & ROLL_GRATE)
                      && item_attr(h->payload, ITEM_ATTR_FLAGS) & ITEM_GRATE_PASSES;
         }
         if (passes) return 0;
@@ -507,12 +495,11 @@ int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile)
     uint16_t blast_type = 0, potion = 0;
     int blast_power = 0;
     if (h.payload_type == THING_POTION) {
-        uint16_t w = thing_word(h.payload, 2);
-        int kind = (w & POTION_TYPE_MASK) >> POTION_TYPE_SHIFT;
+        int kind = potion_type(h.payload);
         if (kind == POTION_VEN_BOMB || kind == POTION_FIRE_BOMB) {
             blast_type = kind == POTION_VEN_BOMB ? SPELL_POISON_CLOUD : SPELL_FIREBALL;
             h.potion_bomb = 1;
-            blast_power = w & POTION_POWER_MASK;
+            blast_power = potion_power(h.payload);
             potion = h.payload;
         }
     }
@@ -672,7 +659,7 @@ void projectile_process_event(TimelineEvent *event)
             && projectile_hit(type, from_x, from_y, cell, projectile))
             return;
         for (uint16_t t = dungeon_square_first_object(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-            if (thing_type(t) != THING_EXPLOSION || (thing_word(t, EXPLOSION_DATA) & EXPLOSION_TYPE_MASK) != BLAST_MISSILE_WALL)
+            if (thing_type(t) != THING_EXPLOSION || explosion_type(t) != BLAST_MISSILE_WALL)
                 continue;
             TimelineEvent *queued = &timeline.events[thing_word(projectile, PROJECTILE_EVENT)];
             int back = ((event_word(queued, PROJECTILE_POSITION) >> POSITION_DIR_SHIFT & 3) + 2) & 3;
@@ -709,8 +696,7 @@ void projectile_process_event(TimelineEvent *event)
 
 int explosion_get_attack(uint16_t explosion, uint16_t target)
 {
-    uint16_t w = thing_word(explosion, EXPLOSION_DATA);
-    int type = w & EXPLOSION_TYPE_MASK;
+    int type = explosion_type(explosion);
     if (type >= BLAST_TYPE_COUNT) return 0;
     uint8_t flags = explosion_attack_flags[type];
     if (!flags) return 0;
@@ -722,11 +708,11 @@ int explosion_get_attack(uint16_t explosion, uint16_t target)
         kind = thing_type(target);
         if (!(kind == THING_DOOR && flags & BLAST_DOORS) && !(kind == THING_GROUP && flags & BLAST_CREATURES)) return 0;
     }
-    uint16_t attack = w >> EXPLOSION_POWER_SHIFT;
+    uint16_t attack = explosion_power(explosion);
     if (kind == THING_GROUP && creature_group_info(target)->door_flags & CREATURE_RESISTS_NON_FIRE && type != BLAST_FIREBALL)
         attack = (uint16_t)((int16_t)attack >> 2);
     if (flags & BLAST_RANDOM) {
-        attack = (uint16_t)(((w >> EXPLOSION_POWER_SHIFT) >> 1) + 1);
+        attack = (uint16_t)((explosion_power(explosion) >> 1) + 1);
         attack = (uint16_t)(attack + rand_below(attack) + 1);
     }
     switch (type) {
@@ -739,7 +725,7 @@ int explosion_get_attack(uint16_t explosion, uint16_t target)
     case BLAST_HARM_NON_MATERIAL:
         return creature_group_info(target)->flags & CREATURE_NON_MATERIAL ? attack : 0;
     case BLAST_POISON_CLOUD:
-        attack = (uint16_t)max16(1, (int16_t)(min16((int16_t)((w >> EXPLOSION_POWER_SHIFT) >> 5), 4) + rand_bit()));
+        attack = (uint16_t)max16(1, (int16_t)(min16((int16_t)(explosion_power(explosion) >> 5), 4) + rand_bit()));
         if (kind == THING_GROUP) attack = (uint16_t)creature_roll_armor_factor(target, attack);
         return attack;
     default:
@@ -756,7 +742,7 @@ void explosion_process_event(TimelineEvent *e)
         int16_t attack = (int16_t)explosion_get_attack(t, dungeon_square_first_thing(party.cur_map, x, y));
         if (attack) sensor_door_try_destroy(x, y, attack, 1, 0);
     }
-    int type = thing_word(t, EXPLOSION_DATA) & EXPLOSION_TYPE_MASK;
+    int type = explosion_type(t);
     if (type != BLAST_MISSILE_WALL && type != BLAST_FIREBALL && type != BLAST_LIGHTNING) {
         uint16_t attack;
         if (on_party_square(x, y) && (attack = (uint16_t)explosion_get_attack(t, THING_NONE)))
@@ -764,34 +750,32 @@ void explosion_process_event(TimelineEvent *e)
         uint16_t g = creature_get_group_at(x, y);
         if (g != THING_NONE && !creature_current_step_acts(g) && (attack = (uint16_t)explosion_get_attack(t, g)))
             creature_alert(g, x, y, ALERT_HIT, 100, attack);
-        uint16_t w = thing_word(t, EXPLOSION_DATA);
-        int lasts = 1;
-        switch (w & EXPLOSION_TYPE_MASK) {
+        int lasts = 1, power = explosion_power(t);
+        switch (explosion_type(t)) {
         case BLAST_POISON_CLOUD:
-            if ((w & EXPLOSION_POWER_BITS) < POISON_CLOUD_LAST) lasts = 0;
-            else w = (uint16_t)((uint8_t)w | (uint8_t)((w >> EXPLOSION_POWER_SHIFT) - POISON_CLOUD_DECAY) << EXPLOSION_POWER_SHIFT);
+            if (power < POISON_CLOUD_LAST) lasts = 0;
+            else explosion_set_power(t, (unsigned)(power - POISON_CLOUD_DECAY));
             break;
         case BLAST_DEATH_CLOUD:
-            if ((w & EXPLOSION_POWER_BITS) <= DEATH_CLOUD_LAST) lasts = 0;
-            else w = (uint16_t)((uint8_t)w | (uint8_t)((w >> EXPLOSION_POWER_SHIFT) - DEATH_CLOUD_DECAY) << EXPLOSION_POWER_SHIFT);
+            if (power <= DEATH_CLOUD_LAST) lasts = 0;
+            else explosion_set_power(t, (unsigned)(power - DEATH_CLOUD_DECAY));
             break;
         case BLAST_SMOKE:
-            sound_play_with_fallback(CAT_EXPLOSION, w & EXPLOSION_TYPE_MASK, SOUND_EXPLODE, SOUND_ANY, x, y, 1, SOUND_PRIORITY_EXPLODE,
+            sound_play_with_fallback(CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_ANY, x, y, 1, SOUND_PRIORITY_EXPLODE,
                                      SOUND_VOLUME_LOUD);
-            w = (uint16_t)((w & ~EXPLOSION_TYPE_MASK) | ((w + 1) & EXPLOSION_TYPE_MASK));
+            explosion_set_type(t, explosion_type(t) + 1);
             break;
         default:
             lasts = 0;
         }
         if (lasts) {
-            set_thing_word(t, EXPLOSION_DATA, w);
             TimelineEvent next = *e;
             next.time_map++;
             timeline_add_event(&next);
             return;
         }
     }
-    type = thing_word(t, EXPLOSION_DATA) & EXPLOSION_TYPE_MASK;
+    type = explosion_type(t);
     if (party.cur_map == game.party_map && (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_FADING))
         party.redraw |= REDRAW_VIEW;
     dungeon_unlink_thing_from_square(t, party.cur_map, x, y);

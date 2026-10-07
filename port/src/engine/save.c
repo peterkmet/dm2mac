@@ -37,7 +37,6 @@
 #define TYPE_MASK 0xf
 #define CELL_MASK 0x3
 #define CREATURE_MASK 0x7f
-#define CONTAINER_KIND_MASK 0x3
 #define SPELL_MASK 0x7f
 #define INDEX_MASK 0x3ff
 #define SPELL_THING_BASE 0xff80   /* a projectile payload that is a spell, not a thing record */
@@ -48,9 +47,6 @@
 #define FAKE_WALL_SAVED_BITS 0x04
 #define TELEPORTER_SAVED_BITS 0x08   /* only for a teleporter without a linked teleporter */
 
-#define CONTAINER_KIND_SHIFT 1
-#define CONTAINER_ITEM_SHIFT 13
-enum container_kind { CONTAINER_CHEST = 0, CONTAINER_MINION_MAP = 1 };
 
 enum event_data { EVENT_THING = 0, EVENT_THING2 = 2 };  /* byte offsets in TimelineEvent.data */
 
@@ -241,16 +237,11 @@ static int creature_is_static(uint16_t group)
     return record && record->flags & CREATURE_STATIC;  /* fix: no read past the table */
 }
 
-static int container_kind(uint16_t container)
-{
-    return thing_word(container, CONTAINER_KIND) >> CONTAINER_KIND_SHIFT & CONTAINER_KIND_MASK;
-}
-
 /* A chest whose item has the moneybox text holds coins. */
 static int container_is_moneybox(uint16_t container)
 {
     if (container_kind(container) != CONTAINER_CHEST) return 0;
-    int item = thing_word(container, CONTAINER_KIND) >> CONTAINER_ITEM_SHIFT;
+    int item = container_type(container);
     return gdat_find(io.gdat, GDAT_CONTAINER_CATEGORY, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
 }
 
@@ -535,8 +526,7 @@ static int read_thing(uint16_t thing)
         break;
     case THING_CONTAINER:
         if (!read_value(&value, CONTAINER_KIND_MASK)) return 0;
-        set_thing_word(thing, CONTAINER_KIND, (thing_word(thing, CONTAINER_KIND) & ~(CONTAINER_KIND_MASK << CONTAINER_KIND_SHIFT))
-                                                  | value << CONTAINER_KIND_SHIFT);
+        container_set_kind(thing, value);
         if (value == CONTAINER_MINION_MAP) {
             mask = minion_map_mask;
             carried = 1;

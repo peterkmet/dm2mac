@@ -36,11 +36,6 @@ enum {
 enum { CHARGES_ONE_A = 0x10, CHARGES_ONE_B = 0x11, CHARGES_EMPTY = 0x12 };
 #define MINION_MAP_FIRST_TYPE 1
 #define MINION_MAP_LAST_TYPE 2
-#define CONTAINER_TYPE_SHIFT 13
-#define CONTAINER_KIND_BITS 0x0006
-#define CONTAINER_KIND_MINION_MAP 2
-#define MINION_MAP_GROUP 2              /* container word 2: the minion group */
-#define MINION_MAP_TARGET 6             /* container word 6: the target position, THING_NONE none */
 #define CREATURE_MINION_A 0x33
 #define CREATURE_MINION_B 0x32
 /* The slots that the hands load ammunition from. */
@@ -136,14 +131,13 @@ static int minion_map_allows_action(uint16_t thing, int command)
 {
     if (thing == THING_NONE) return 0;
     if (thing_type(thing) != THING_CONTAINER) return 1;
-    uint16_t kind = thing_word(thing, CONTAINER_KIND);
-    if ((kind & CONTAINER_KIND_BITS) != CONTAINER_KIND_MINION_MAP) return 1;
-    int type = kind >> CONTAINER_TYPE_SHIFT;
+    if (container_kind(thing) != CONTAINER_MINION_MAP) return 1;
+    int type = container_type(thing);
     if (type < MINION_MAP_FIRST_TYPE || type > MINION_MAP_LAST_TYPE) return 0;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!minion_find_link_projectile(group, thing)) {
         if (command == COMMAND_SUMMON_4 || command == COMMAND_SUMMON_FIRST) return 1;
-        if (thing_word(thing, MINION_MAP_TARGET) == THING_NONE) return 0;
+        if (thing_word(thing, MINION_MAP_LOCATION) == THING_NONE) return 0;
         return command == COMMAND_SUMMON_2 || command == COMMAND_SUMMON_3;
     }
     if (command == COMMAND_MINION_RECALL) return 1;

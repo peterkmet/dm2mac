@@ -9,9 +9,6 @@
 #include "money.h"
 #include "text.h"
 
-#define MISC_STACK_SHIFT 8          /* miscellaneous item word 2: stack count - 1 in bits 8-13 */
-#define MISC_STACK_MASK 0x3f
-#define MISC_KIND_MASK 0x7f
 #define CAT_CREATURE 0x0f
 #define CREATURE_CLASS_TEXT 0x10    /* GDAT texts (0x0f, creature, 5, 0x10 + list): the item classes of a merchant */
 #define ATTR_VALUE 2                /* item attribute: the price */
@@ -31,13 +28,6 @@
 #define ITEM_FIRST_CONTAINER 0x1e0
 #define ITEM_SCROLL 0x1fc
 
-static uint16_t stack_count(uint16_t coin) { return thing_word(coin, 2) >> MISC_STACK_SHIFT & MISC_STACK_MASK; }
-
-static void set_stack_count(uint16_t coin, int count)
-{
-    uint16_t w = thing_word(coin, 2);
-    set_thing_word(coin, 2, (uint16_t)((w & ~(MISC_STACK_MASK << MISC_STACK_SHIFT)) | (count & MISC_STACK_MASK) << MISC_STACK_SHIFT));
-}
 
 /* The contents list of a container. */
 static uint16_t *contents_of(uint16_t container)
@@ -74,13 +64,13 @@ int money_add_coin_to_box(uint16_t box, uint16_t coin)
     uint16_t *contents = contents_of(box);
     for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_MISC) return 0;
-        if ((thing_word(t, 2) & MISC_KIND_MASK) == (thing_word(coin, 2) & MISC_KIND_MASK) && stack_count(t) < MISC_STACK_MASK) {
-            set_stack_count(t, stack_count(t) + 1);
+        if (item_type(t) == item_type(coin) && misc_stack(t) < MISC_STACK_MASK) {
+            misc_set_stack(t, misc_stack(t) + 1);
             set_thing_word(coin, THING_NEXT, THING_NONE);
             return 1;
         }
     }
-    set_stack_count(coin, 0);
+    misc_set_stack(coin, 0);
     dungeon_append_thing(coin, contents);
     return 1;
 }
@@ -95,11 +85,11 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type)
         if (item_get_index(t) == item) found = t;
     }
     if (found == THING_NONE) return found;
-    if (!stack_count(found)) {
+    if (!misc_stack(found)) {
         dungeon_unlink_thing_from_list(found, (uint8_t *)contents);
         return found;
     }
-    set_stack_count(found, stack_count(found) - 1);
+    misc_set_stack(found, misc_stack(found) - 1);
     return item_create_by_index(item);
 }
 

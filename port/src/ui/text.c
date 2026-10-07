@@ -294,7 +294,6 @@ enum { TEXT_SPACE = 26, TEXT_PERIOD = 27, TEXT_NEWLINE = 28, TEXT_ESCAPE_CHAR = 
 static const char *const text_escape_words[] = {"x", "y", "THE ", "YOU ", "z", "{", "|", "}", "~", "\x7f"};
 static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
 #define TEXT_SUBTYPE_PLATE 14
-#define SCROLL_TEXT_SHIFT 10       /* scroll word 2: an ornament text id in bits 10-15, else a text thing index */
 #define TEXT_MODE_NEW_LINE 1
 #define TEXT_MODE_HIDDEN 0x8000
 #define TEXT_MODE_MASK 0x7fff
@@ -309,9 +308,8 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
     uint16_t text = thing;
     *o = '\0';
     if (thing_type(thing) == THING_SCROLL) {
-        uint16_t w = thing_word(thing, 2);
-        if (w >> SCROLL_TEXT_SHIFT) ornament = (uint8_t)(w >> SCROLL_TEXT_SHIFT);
-        else text = (uint16_t)(THING_TEXT << THING_TYPE_SHIFT | (w & THING_INDEX_MASK));
+        if (scroll_ornament_text(thing)) ornament = (uint8_t)scroll_ornament_text(thing);
+        else text = scroll_text(thing);
     } else if (thing_type(thing) != THING_TEXT) {
         return;
     }

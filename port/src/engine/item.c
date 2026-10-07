@@ -12,23 +12,9 @@
 
 #define EXPLOSION_THING_FIRST 0xff80   /* thing values of explosion types; the low 7 bits are the GDAT index */
 #define EXPLOSION_INDEX_BASE 0x80
-#define ITEM_TYPE_MASK 0x7f
-#define POTION_TYPE_SHIFT 8
-#define CONTAINER_KIND_BITS 0x0006     /* container record word 4 */
-#define CONTAINER_KIND_SHIFT 1
-#define CONTAINER_TYPE_SHIFT 13
-#define CONTAINER_KIND_MINION_MAP 2    /* (word 4 & CONTAINER_KIND_BITS) of a minion map */
-#define MISC_STACK_SHIFT 8             /* miscellaneous item word 2: stack count - 1 in bits 8-13 */
-#define MISC_STACK_MASK 0x3f
-#define WEAPON_CHARGES_SHIFT 10
-#define ARMOUR_CHARGES_SHIFT 9
-#define MISC_CHARGES_SHIFT 14
-#define CHARGES_MASK 0x0f
 #define WEAPON_MAX_CHARGES 15
 #define MISC_MAX_CHARGES 3
-#define POTION_POWER_MASK 0xff
 #define POTION_POWER_MAX 0xff
-#define POTION_DO_NOT_DISCARD 0x8000
 #define MONEYBOX_TEXT_ENTRY 0x40       /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
 #define ITEM_NAME_ENTRY 0x18
 #define ITEM_ICON_ENTRY 0x18           /* the first icon of an item */
@@ -43,7 +29,6 @@
 #define COIN_SCAN_COUNT 0x80
 #define MISC_GDAT_CATEGORY GDAT_MISC_CATEGORY
 #define TEXT_CHAMPION_TOKEN 0          /* the miscellaneous item 0 (a champion token) names its champion */
-#define TOKEN_CHAMPION_SHIFT 14
 
 /* GDAT category of each thing type. */
 static const uint8_t thing_gdat_category[THING_TYPE_COUNT] = {
@@ -82,26 +67,24 @@ uint8_t item_gdat_index(uint16_t thing)
     for (;;) {
         if (thing == THING_NONE) return GDAT_NO_INDEX;
         if (thing >= EXPLOSION_THING_FIRST) return (uint8_t)(thing - EXPLOSION_INDEX_BASE);
-        uint16_t w2 = record_word(thing, 2), w4 = record_word(thing, 4);
         switch (thing_type(thing)) {
         case THING_GROUP: return group_creature(thing);
         case THING_WEAPON:
         case THING_ARMOUR:
         case THING_MISC:
-        case THING_EXPLOSION: return w2 & ITEM_TYPE_MASK;
+        case THING_EXPLOSION: return item_type(thing);
         case THING_SCROLL: return 0;
-        case THING_POTION: return (uint8_t)((uint16_t)(w2 << 1) >> 9);
-        case THING_CONTAINER:
-            return (uint8_t)((w4 >> CONTAINER_TYPE_SHIFT) | ((w4 & CONTAINER_KIND_BITS) >> CONTAINER_KIND_SHIFT) << 3);
-        case THING_PROJECTILE: thing = w2; break;
+        case THING_POTION: return potion_type(thing);
+        case THING_CONTAINER: return (uint8_t)(container_type(thing) | container_kind(thing) << 3);
+        case THING_PROJECTILE: thing = record_word(thing, PROJECTILE_PAYLOAD); break;
         case THING_TEXT: {
             /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
-            int sub = w2 >> 11;
-            if ((w2 & 6) != 2 || (sub != 0 && sub != 2 && sub != 5 && sub != 13)) return GDAT_NO_INDEX;
-            return (uint8_t)(w2 >> 3);
+            int sub = text_subtype(thing);
+            if (text_kind(thing) != TEXT_KIND_ORNAMENT || (sub != 0 && sub != 2 && sub != 5 && sub != 13)) return GDAT_NO_INDEX;
+            return text_value(thing);
         }
         case THING_SENSOR: {
-            int ordinal = w4 >> 12;
+            int ordinal = sensor_ornament_ordinal(thing);
             return ordinal && party.cur_map >= 0 ? dungeon_map_wall_ornaments(party.cur_map)[ordinal - 1] : GDAT_NO_INDEX;
         }
         default: return GDAT_NO_INDEX;
@@ -119,11 +102,10 @@ uint16_t item_attr(uint16_t thing, int entry)
 int item_charges(uint16_t thing)
 {
     if (thing == THING_NONE) return 0;
-    uint16_t w = record_word(thing, 2);
     switch (thing_type(thing)) {
-    case THING_WEAPON: return w >> WEAPON_CHARGES_SHIFT & CHARGES_MASK;
-    case THING_ARMOUR: return w >> ARMOUR_CHARGES_SHIFT & CHARGES_MASK;
-    case THING_MISC: return w >> MISC_CHARGES_SHIFT;
+    case THING_WEAPON: return thing_field(thing, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK);
+    case THING_ARMOUR: return thing_field(thing, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK);
+    case THING_MISC: return thing_field(thing, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK);
     default: return 0;
     }
 }
@@ -206,12 +188,9 @@ int item_icon_index(uint16_t thing, int slot, int animated)
     }
 }
 
-/* The kind bits of a container: chest or money box, minion map. */
-static int container_kind_bits(uint16_t thing) { return record_word(thing, CONTAINER_KIND) & CONTAINER_KIND_BITS; }
-
 int item_is_moneybox(uint16_t thing)
 {
-    if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || container_kind_bits(thing)) return 0;
+    if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || container_kind(thing)) return 0;
     return gdat_find(draw_gdat(), GDAT_CONTAINER_CATEGORY, item_gdat_index(thing), GDAT_TEXT_TYPE, MONEYBOX_TEXT_ENTRY)
            != -1;
 }
@@ -219,13 +198,13 @@ int item_is_moneybox(uint16_t thing)
 int item_is_chest(uint16_t thing)
 {
     if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || item_is_moneybox(thing)) return 0;
-    return !container_kind_bits(thing);
+    return !container_kind(thing);
 }
 
 int item_is_minion_map(uint16_t thing)
 {
     return thing != THING_NONE && thing_type(thing) == THING_CONTAINER
-           && container_kind_bits(thing) == CONTAINER_KIND_MINION_MAP;
+           && container_kind(thing) == CONTAINER_MINION_MAP;
 }
 
 /* The sum of attribute entry over thing and its contents; a money box counts coins by their stack size.
@@ -239,14 +218,14 @@ static int item_sum_attr(uint16_t thing, int entry)
         if (per_charge) sum += item_charges(thing) * per_charge;
     }
     if (entry == ATTR_COIN_VALUE && thing_type(thing) == THING_POTION && sum > 1)
-        sum = (sum >> 1) + (int)((record_word(thing, 2) & POTION_POWER_MASK) * (unsigned)(sum >> 1) / POTION_POWER_MAX);
-    if (thing_type(thing) != THING_CONTAINER || container_kind_bits(thing)) return sum;
+        sum = (sum >> 1) + (int)(potion_power(thing) * (unsigned)(sum >> 1) / POTION_POWER_MAX);
+    if (thing_type(thing) != THING_CONTAINER || container_kind(thing)) return sum;
     int moneybox = item_is_moneybox(thing), coin_sum = 0;
     for (uint16_t t = record_word(thing, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!moneybox || thing_type(t) != THING_MISC) {
             sum += item_sum_attr(t, entry);
         } else {
-            int stack = (record_word(t, 2) >> MISC_STACK_SHIFT & MISC_STACK_MASK) + 1;
+            int stack = misc_stack(t) + 1;
             coin_sum += item_attr(t, entry) * stack;
         }
     }
@@ -266,10 +245,10 @@ void item_set_do_not_discard(uint16_t thing, int keep)
 {
     switch (thing_type(thing)) {
     case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
-        set_thing_word(thing, 2, (uint16_t)((thing_word(thing, 2) & ~DO_NOT_DISCARD) | (keep & 1) << 7));
+        set_thing_bit(thing, ITEM_DATA, ITEM_DO_NOT_DISCARD, keep & 1);
         break;
     case THING_POTION:
-        set_thing_word(thing, 2, (uint16_t)((thing_word(thing, 2) & ~POTION_DO_NOT_DISCARD) | (keep & 1) << 15));
+        set_thing_bit(thing, ITEM_DATA, POTION_DO_NOT_DISCARD, keep & 1);
         break;
     case THING_GROUP:
         group_set_flag(thing, GROUP_DO_NOT_DISCARD, keep & 1);
@@ -296,7 +275,7 @@ const char *item_name(uint16_t thing)
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     text_args.champion = -1;
     if (category == MISC_GDAT_CATEGORY && index == TEXT_CHAMPION_TOKEN) {
-        int champion = record_word(thing, 2) >> TOKEN_CHAMPION_SHIFT;
+        int champion = thing_field(thing, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK);  /* the champion of the token */
         if (champion < game.champion_count) text_args.champion = (int16_t)champion;
     }
     char raw[TEXT_SIZE];
@@ -359,7 +338,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
         if (!money_is_coin(t)) continue;
         uint16_t item = item_get_index(t);
         for (int c = 0; c < coins.count; c++)
-            if (item == coins.items[c]) counts[c] += (record_word(t, 2) >> MISC_STACK_SHIFT & MISC_STACK_MASK) + 1;
+            if (item == coins.items[c]) counts[c] += misc_stack(t) + 1;
     }
 }
 
@@ -429,34 +408,32 @@ uint8_t item_index_gdat_category(uint16_t item)
 int item_add_charges(uint16_t thing, int delta)
 {
     if (thing == THING_NONE) return 0;
-    uint16_t w = record_word(thing, 2);
-    int charges, max, shift;
+    int max, shift;
     switch (thing_type(thing)) {
-    case THING_WEAPON: charges = w >> 10 & 0xf; max = 0xf; shift = 10; break;
-    case THING_ARMOUR: charges = w >> 9 & 0xf; max = 0xf; shift = 9; break;
-    case THING_MISC: charges = w >> 14; max = 3; shift = 14; break;
+    case THING_WEAPON: max = CHARGES_MASK; shift = WEAPON_CHARGES_SHIFT; break;
+    case THING_ARMOUR: max = CHARGES_MASK; shift = ARMOUR_CHARGES_SHIFT; break;
+    case THING_MISC: max = MISC_CHARGES_MASK; shift = MISC_CHARGES_SHIFT; break;
     default: return 0;  /* fix: the original returns a register of no meaning */
     }
-    int n = (int16_t)(charges + delta);
+    int n = (int16_t)(thing_field(thing, ITEM_DATA, shift, (uint16_t)max) + delta);
     n = n < 0 ? 0 : n > max ? max : n;
-    set_thing_word(thing, 2, (uint16_t)((w & ~(max << shift)) | n << shift));
+    set_thing_field(thing, ITEM_DATA, shift, (uint16_t)max, (unsigned)n);
     return n;
 }
 
 void item_set_gdat_index(uint16_t thing, int index)
 {
     if (thing == THING_NONE || thing >= EXPLOSION_THING_FIRST) return;
-    uint8_t *r = dungeon_thing_record(thing);
-    uint16_t w2 = record_word(thing, 2), w4 = record_word(thing, 4);
     switch (thing_type(thing)) {
-    case THING_GROUP: r[GROUP_CREATURE] = (uint8_t)index; break;
-    case THING_WEAPON: case THING_ARMOUR: case THING_MISC:
-        set_thing_word(thing, 2, (uint16_t)((w2 & ~0x7f) | (index & 0x7f)));
+    case THING_GROUP: group_set_creature(thing, (uint8_t)index); break;
+    case THING_WEAPON: case THING_ARMOUR: case THING_MISC: set_thing_field(thing, ITEM_DATA, 0, ITEM_TYPE_MASK, index); break;
+    case THING_POTION: set_thing_field(thing, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK, index); break;
+    case THING_CONTAINER: {
+        int old_kind = container_kind(thing);
+        container_set_kind(thing, index >> 3);  /* the container index: kind in bits 3-4, type in bits 0-2 */
+        container_set_type(thing, index);
+        if (old_kind == CONTAINER_MINION_MAP) set_thing_word(thing, MINION_MAP_LOCATION, THING_NONE);
         break;
-    case THING_POTION: set_thing_word(thing, 2, (uint16_t)((w2 & ~0x7f00) | (index & 0x7f) << 8)); break;
-    case THING_CONTAINER:
-        set_thing_word(thing, 4, (uint16_t)((w4 & 0x1ff9) | (index >> 3 & 3) << 1 | (index & 7) << 13));
-        if ((w4 & 6) == 2) set_thing_word(thing, 6, THING_NONE);
-        break;
+    }
     }
 }

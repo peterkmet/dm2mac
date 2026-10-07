@@ -1176,10 +1176,8 @@ static void view_click_door_button(int x, int y, uint16_t door)
     input_command_stop = 1;
 }
 
-#define MONEYBOX_WORD 6
 #define POS_FRONT_SQUARE 3          /* click zone cell: the square in front of the party */
 #define POSSESSION_SLOT_MASK 0x0f
-#define MONEYBOX_FLAG 0x0400        /* a money box flag that clears when the party takes or drops the box */
 #define CELL_POSSESSION_FIRST 4     /* drop cells 4 to 7: the possession cells of a static creature */
 #define CELL_POSSESSION_LAST 7
 #define POSSESSIONS_DROP_ON_CELLS 0x0800
@@ -1187,7 +1185,7 @@ static void view_click_door_button(int x, int y, uint16_t door)
 
 static void moneybox_clear_flag(uint16_t thing)
 {
-    if (item_is_moneybox(thing)) set_thing_word(thing, MONEYBOX_WORD, thing_word(thing, MONEYBOX_WORD) & ~MONEYBOX_FLAG);
+    if (item_is_moneybox(thing)) moneybox_set_placed(thing, false);
 }
 
 /* A click with an empty hand on the object of click zone index: the leader takes the object. */

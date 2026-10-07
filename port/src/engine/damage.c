@@ -55,8 +55,6 @@ enum { SKILL_FIGHTER, SKILL_NINJA, SKILL_PRIEST, SKILL_WIZARD, SKILL_SWING = 4, 
 #define STAT_MIN 10
 #define STAT_MAX 220
 #define LUCK_STEP 2
-#define BONES_KEEP 0x3f80           /* bones word 2: keeps the stack count and the do-not-discard bit */
-#define ITEM_DATA_SHIFT 14          /* bones word 2: the champion in the charge bits */
 #define CURE_ALL 10000
 #define WOUND_HAND_BIT(hand) ((hand) ? 2 : 1)
 /* Time effects. */
@@ -395,8 +393,9 @@ void champ_kill(int champ)
     int cell = c->cell;
     uint16_t bones = dungeon_unused_thing(THING_MISC | THING_ANY_RECORD);
     if (bones != THING_NONE) {
-        uint16_t w = (uint16_t)((thing_word(bones, 2) | DO_NOT_DISCARD) & BONES_KEEP);
-        set_thing_word(bones, 2, (uint16_t)(w | (champ & 3) << ITEM_DATA_SHIFT));
+        set_thing_field(bones, ITEM_DATA, 0, ITEM_TYPE_MASK, 0);  /* the bones: miscellaneous item 0 */
+        set_thing_bit(bones, ITEM_DATA, ITEM_DO_NOT_DISCARD, true);
+        set_thing_field(bones, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK, (unsigned)champ);  /* the champion */
         move_thing((uint16_t)(bones | cell << THING_CELL_SHIFT), -1, 0, game.party_x, game.party_y);
     }
     c->rune_count = 0;

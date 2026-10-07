@@ -225,7 +225,6 @@ static int door_pass_cost(int x, int y)
     return door_value_at(x, y, DOOR_KEY_SOMETIMES_SEEN) ? 1 : DOOR_DEFAULT_PASS_COST;
 }
 
-static int explosion_type(uint16_t t) { return thing_word(t, EXPLOSION_DATA) & EXPLOSION_TYPE_MASK; }
 
 /* The direction in which a projectile flies (its move event). */
 static int projectile_dir(uint16_t projectile)
@@ -1405,10 +1404,6 @@ int creature_ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int de
 #define FILTER_BY_VARIANT_END 0x13
 #define FILTER_MONEYBOX_OR_VARIANT 0x28
 #define FILTER_BITMAP_SIZE ITEM_CLASS_SET_SIZE
-#define MONEYBOX_EMPTY 0x04             /* container record byte 7 */
-
-/* True when a money box holds no coin. */
-static int moneybox_empty(uint16_t box) { return dungeon_thing_record(box)[7] & MONEYBOX_EMPTY; }
 
 /* The item class bitmap of filter for the group in the AI context: parsed once per update into the scratch block.
    Returns NULL when the creature has no class text for it. */
@@ -1436,15 +1431,15 @@ int creature_thing_matches_filter(uint16_t thing, int filter)
     int f = filter & FILTER_MASK;
     if (f == FILTER_ANY) return !invert;
     if (f == FILTER_FULL_MONEYBOX)
-        return item_is_moneybox(thing) && !moneybox_empty(thing) ? !invert : invert;
+        return item_is_moneybox(thing) && !moneybox_is_placed(thing) ? !invert : invert;
     if (f == FILTER_EMPTY_MONEYBOX) {
-        if (item_is_moneybox(thing)) return moneybox_empty(thing) ? !invert : invert;
+        if (item_is_moneybox(thing)) return moneybox_is_placed(thing) ? !invert : invert;
         f = FILTER_EMPTY_MONEYBOX_ELSE;
     }
     int type = thing_type(thing);
     if ((f >= FILTER_BY_VARIANT && f < FILTER_BY_VARIANT_END) || f == FILTER_MONEYBOX_OR_VARIANT) {
         if (f == FILTER_MONEYBOX_OR_VARIANT) {
-            if (item_is_moneybox(thing) && !moneybox_empty(thing)) return !invert;
+            if (item_is_moneybox(thing) && !moneybox_is_placed(thing)) return !invert;
             f = FILTER_BY_VARIANT;
         }
         f = (int16_t)(f + (int16_t)thing_word(ai.group_thing, GROUP_ITEM_CLASS) * 3);

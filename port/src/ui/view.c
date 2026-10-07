@@ -970,7 +970,7 @@ static int view_get_thing_position(uint16_t thing, int dir)
     switch (thing_type(thing)) {
     case THING_GROUP: return creature_get_view_cell_zone(thing, (dir - creature_dir(thing)) & 3);
     case THING_EXPLOSION:
-        if (thing_word(thing, EXPLOSION_DATA) & EXPLOSION_CENTERED) break;
+        if (explosion_is_centered(thing)) break;
         /* fall through */
     case THING_WEAPON: case THING_ARMOUR: case THING_SCROLL: case THING_POTION: case THING_CONTAINER: case THING_MISC:
     case THING_PROJECTILE:
@@ -1480,7 +1480,7 @@ static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordina
     }
     uint8_t category = item_gdat_category(thing), index = item_gdat_index(thing);
     int chest = category == CAT_CONTAINER && index < CHEST_KINDS;
-    if (chest && !open_state) open_state = thing_word(thing, CONTAINER_KIND) & CONTAINER_OPEN;
+    if (chest && !open_state) open_state = container_is_open(thing);
     int entry = object_picture[open_state][0], flip = 0, lateral = view_lateral[pos];
     if (lateral != 0) {
         flip = chest && lateral == 1;
@@ -1697,7 +1697,7 @@ static void view_draw_missiles(uint16_t thing, int pos, int position)
             continue;
         }
         int category = item_gdat_category(thing), index = item_gdat_index(thing);
-        int spell = category == CAT_EXPLOSION, power = dungeon_thing_record(thing)[PROJECTILE_POWER];
+        int spell = category == CAT_EXPLOSION, power = projectile_energy(thing);
         int scale, offset_scale;
         if ((!spell || power == POWER_MAX) && depth == 0) {
             scale = offset_scale = MISSILE_SCALE_FULL;
@@ -1800,8 +1800,7 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
         int order_cell = explosion_cell_order[view.party_dir][k];
         for (uint16_t thing = first; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
             if (thing_type(thing) != THING_EXPLOSION) continue;
-            uint16_t data = thing_word(thing, EXPLOSION_DATA);
-            int type = data & EXPLOSION_TYPE_MASK, centered = data & EXPLOSION_CENTERED;
+            int type = explosion_type(thing), centered = explosion_is_centered(thing);
             if (picture_exists(CAT_EXPLOSION, type, EXPLOSION_SPARKLES)) {
                 if (k == 4) view_draw_sparkle_field(pos, CAT_EXPLOSION, type);
                 continue;
@@ -1809,7 +1808,7 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
             if (order_cell != (centered ? -1 : thing >> THING_CELL_SHIFT)) continue;
             int flip = rand_2bits() & gdat_entry_index(draw_gdat(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FLIP);
             int power = gdat_entry_index(draw_gdat(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FIXED_POWER)
-                        ? POWER_MAX : data >> EXPLOSION_POWER_SHIFT;
+                        ? POWER_MAX : explosion_power(thing);
             int near = pos == POS_PARTY;
             if (near) {
                 if (type != EXPLOSION_GLOBAL_COUNTER) {
@@ -1891,7 +1890,7 @@ static void view_draw_alcove_contents(int pos)
             continue;
         }
         if (thing_type(thing) != THING_EXPLOSION || !(ALCOVE_EXPLOSION_POSITIONS & POS_BIT(pos))) continue;
-        int type = thing_word(thing, EXPLOSION_DATA) & EXPLOSION_TYPE_MASK, flip = rand_2bits();
+        int type = explosion_type(thing), flip = rand_2bits();
         int zone = zone_id_for_view_element(pos, CELL_CENTER, 0);
         if (type == EXPLOSION_ALCOVE_STILL) {
             int scale = alcove_explosion_scale[depth];
@@ -2916,7 +2915,7 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
         uint16_t this_chest = THING_NONE;
         if (item_is_chest(t) && gdat_exists(draw_gdat(), CAT_CONTAINER, item_gdat_index(t), 1, CHEST_OPEN_PICTURE)) {
             this_chest = t;
-            if (thing_word(t, CONTAINER_KIND) & CONTAINER_OPEN) state = CHEST_HIT_INSIDE;
+            if (container_is_open(t)) state = CHEST_HIT_INSIDE;
             else if (!placing) state = CHEST_HIT_OPEN;
         }
         for (;;) {
@@ -2939,14 +2938,13 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
     }
     draw_free_temp();
     if (chest == THING_NONE) return hit != THING_NONE ? hit : thing;
-    uint16_t kind_word = thing_word(chest, CONTAINER_KIND);
     switch (hit_state) {
     case CHEST_HIT_NONE:
         if (placing) return THING_ENDOFLIST;
-        if (!(kind_word & CONTAINER_OPEN)) return hit;
-        set_thing_word(chest, CONTAINER_KIND, kind_word & ~CONTAINER_OPEN);
+        if (!container_is_open(chest)) return hit;
+        container_set_open(chest, false);
         break;
-    case CHEST_HIT_OPEN: set_thing_word(chest, CONTAINER_KIND, kind_word | CONTAINER_OPEN); break;
+    case CHEST_HIT_OPEN: container_set_open(chest, true); break;
     case CHEST_HIT_INSIDE: {
         if (placing && item_attr(thing, ATTR_SLOTS) & ATTR_SLOTS_NO_CONTAINER) return THING_ENDOFLIST;
         uint16_t *contents = (uint16_t *)(void *)(dungeon_thing_record(chest) + CONTAINER_CONTENTS);

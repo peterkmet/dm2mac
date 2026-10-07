@@ -111,10 +111,6 @@ duplicate CMD_RECRUIT_CANCEL open: module cleanup
 duplicate COMMAND_SHOOT open: module cleanup
 duplicate COMMAND_SUMMON_2 open: module cleanup
 duplicate COMMAND_SUMMON_FIRST open: module cleanup
-duplicate CONTAINER_KIND_BITS open: module cleanup
-duplicate CONTAINER_KIND_MINION_MAP open: module cleanup
-duplicate CONTAINER_KIND_SHIFT open: module cleanup
-duplicate CONTAINER_TYPE_SHIFT open: module cleanup
 duplicate CREATURE_DEATH_EXPLOSION open: module cleanup
 duplicate CREATURE_FAST_VANISH open: module cleanup
 duplicate CREATURE_SEES_INVISIBLE open: module cleanup
@@ -175,10 +171,6 @@ duplicate MIDI_MAX open: module cleanup
 duplicate MIDI_PITCH_BEND open: module cleanup
 duplicate MIDI_PROGRAM open: module cleanup
 duplicate MIDI_STATUS_MASK open: module cleanup
-duplicate MINION_MAP_GROUP open: module cleanup
-duplicate MINION_MAP_TARGET open: module cleanup
-duplicate MISC_STACK_MASK open: module cleanup
-duplicate MISC_STACK_SHIFT open: module cleanup
 duplicate MISSILE_NO_SIDE open: module cleanup
 duplicate MOUTH_CATEGORY open: module cleanup
 duplicate MOUTH_INDEX open: module cleanup
@@ -187,11 +179,7 @@ duplicate ORN_FRAME_SHIFT open: module cleanup
 duplicate PERCENT open: module cleanup
 duplicate POISON_MAX open: module cleanup
 duplicate POSSESSIONS_SHOWN open: module cleanup
-duplicate POTION_DATA open: module cleanup
-duplicate POTION_POWER_MASK open: module cleanup
 duplicate POTION_POWER_MAX open: module cleanup
-duplicate POTION_TYPE_MASK open: module cleanup
-duplicate POTION_TYPE_SHIFT open: module cleanup
 duplicate POWER_MAX open: module cleanup
 duplicate RAIN_LIGHT open: module cleanup
 duplicate RAIN_MEDIUM open: module cleanup
@@ -394,11 +382,6 @@ bool engine/item.h open: module cleanup
 bool engine/sensor.h open: module cleanup
 bool engine/timeline.h open: module cleanup
 bool ui/automap.h open: module cleanup
-record engine/ai.c open: module cleanup
-record engine/ai_move.c open: module cleanup
-record engine/projectile.c open: module cleanup
-record engine/weather.c open: module cleanup
-record ui/view.c open: module cleanup
 packed data/gdat.c open: module cleanup
 packed engine/ai.c open: module cleanup
 packed engine/ai_move.c open: module cleanup
@@ -407,7 +390,6 @@ packed engine/creature.c open: module cleanup
 packed engine/damage.c open: module cleanup
 packed engine/game.c open: module cleanup
 packed engine/inventory.c open: module cleanup
-packed engine/item.c open: module cleanup
 packed engine/magic.c open: module cleanup
 packed engine/minion.c open: module cleanup
 packed engine/move.c open: module cleanup
