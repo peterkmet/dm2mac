@@ -1177,11 +1177,6 @@ enum { WALL_CELL_PARTY, WALL_CELL_LEFT, WALL_CELL_RIGHT, WALL_CELL_FRONT };
 #define CAT_MISC_SOUND 3
 #define DOOR_BUTTON_SOUND_ENTRY 0x88
 #define PUSH_RESISTANCE_FIXED 0xff  /* a creature that never moves: a click on it only sounds */
-/* The push arrows (party.push_arrow) by the part of the viewport under the mouse. */
-enum {
-    PUSH_ARROW_UP, PUSH_ARROW_RIGHT, PUSH_ARROW_DOWN_RIGHT, PUSH_ARROW_DOWN, PUSH_ARROW_DOWN_LEFT, PUSH_ARROW_LEFT,
-    PUSH_ARROW_COUNT, PUSH_ARROW_NONE = PUSH_ARROW_COUNT
-};
 
 static int zone_contains_point(int zone, int x, int y)
 {
@@ -1256,18 +1251,6 @@ static void view_click_door_button(int x, int y, uint16_t door)
 #define CELL_POSSESSION_FIRST 4     /* drop cells 4 to 7: the possession cells of a static creature */
 #define CELL_POSSESSION_LAST 7
 
-/* The cell of a thing id. */
-static int thing_cell(uint16_t thing)
-{
-    return thing >> THING_CELL_SHIFT;
-}
-
-/* The thing id without a cell, placed in cell. */
-static uint16_t thing_in_cell(uint16_t thing, int cell)
-{
-    return (uint16_t)((thing & THING_ID_MASK) | cell << THING_CELL_SHIFT);
-}
-
 static void moneybox_clear_flag(uint16_t thing)
 {
     if (item_is_moneybox(thing)) moneybox_set_placed(thing, false);
@@ -1316,9 +1299,9 @@ static int view_click_drop_object(int x, int y, int cell)
         if (group != THING_NONE)
             for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (thing_cell(t) == dir_cell) moneybox_clear_flag(t);
-        move_thing(thing_in_cell(thing, dir_cell), -1, -1, x, y);
+        move_thing(thing_with_cell(thing, dir_cell), -1, -1, x, y);
     } else {
-        move_thing(thing_in_cell(thing, dir_cell), -1, 0, x, y);
+        move_thing(thing_with_cell(thing, dir_cell), -1, 0, x, y);
     }
     input_command_stop = 1;
     return 1;
@@ -1328,7 +1311,7 @@ static int view_click_drop_object(int x, int y, int cell)
    it drops into the cell when the click hits no object; pos: the view position of the square (0 or 3). */
 static int view_click_place_object(int x, int y, int sx, int sy, int pos, int cell, int kind)
 {
-    uint16_t hand = thing_in_cell(game.leader_hand, (game.party_dir + cell) & (DIR_COUNT - 1));
+    uint16_t hand = thing_with_cell(game.leader_hand, (game.party_dir + cell) & (DIR_COUNT - 1));
     uint16_t hit = view_hit_test_object(x, y, pos, sx, sy, hand, kind, 1);
     if (hit == THING_NONE) {
         champ_remove_object_from_leader_hand();

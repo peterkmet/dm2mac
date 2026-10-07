@@ -14,6 +14,12 @@ enum move_command {
 #define REDRAW_ALL_VIEW 0x03
 
 /* Movement state of the party and of the dungeon reads (the original globals). */
+/* The push arrows (party.push_arrow) by the part of the viewport under the mouse. */
+enum {
+    PUSH_ARROW_UP, PUSH_ARROW_RIGHT, PUSH_ARROW_DOWN_RIGHT, PUSH_ARROW_DOWN, PUSH_ARROW_DOWN_LEFT, PUSH_ARROW_LEFT,
+    PUSH_ARROW_COUNT, PUSH_ARROW_NONE = PUSH_ARROW_COUNT
+};
+
 typedef struct {
     int16_t cur_map;            /* the map that the square reads of the original use, -1 none */
     int16_t square_x, square_y, square_map; /* the party position as the current map sees it */

@@ -819,14 +819,13 @@ void creature_process_event(int x, int y, int type)
 #define SCREAM_HEALTH_PERCENT 5             /* ... or of its health */
 #define NEAR_PARTY_DISTANCE 3
 #define ATTACK_ROLL_MASK 0x0f
-#define DEFENSE_SHIFT 3                     /* the defense of a creature counts in eighths */
+#define CREATURE_DEFENSE_SHIFT 3                     /* the defense of a creature counts in eighths */
 #define ATTACK_DAMAGE_SHIFT 2               /* the damage of a creature hit is a quarter of the rolls */
 #define ATTACK_MIN_DAMAGE 2
 #define ALERT_SET_ANGRY 2                   /* alert flags: set mood bit 2, MOOD_ANGRY */
 #define ANGER_DAMAGE 30                     /* the damage since the last update that makes a creature angry */
 #define ANGER_DAMAGE_MAYBE 4                /* ... with chance 1 in 4 */
 #define ANGER_HEALTH_PERCENT 15             /* ... or this part of its maximum health */
-#define ALERT_ALWAYS 100                    /* an alert chance in percent */
 #define DOOR_ARMOR_MASK 0x0f                /* door_flags bits 0-3: armor, 15 takes no damage */
 #define ARMOR_FACTOR 8                      /* the armor factor: (amount + 0 to 3) * 8 / (armor + 2) */
 #define ARMOR_BASE 2
@@ -966,7 +965,7 @@ int creature_attack_group_at(int x, int y)
     int16_t hit = (int16_t)((rand_next() & ROLL_COMBAT) + attacker->dexterity);
     int16_t dodge = (int16_t)(target->dexterity + (rand_next() & ROLL_COMBAT));
     if (dodge > hit && rand_2bits()) return 0;
-    int defense = (target->defense + (uint16_t)(rand_next() & ROLL_COMBAT)) >> DEFENSE_SHIFT;
+    int defense = (target->defense + (uint16_t)(rand_next() & ROLL_COMBAT)) >> CREATURE_DEFENSE_SHIFT;
     int r = rand_next() & ATTACK_ROLL_MASK;
     int16_t damage = (int16_t)(attacker->attack + (attacker->attack < r ? attacker->attack : r) - defense);
     if (damage <= 1) {
@@ -1239,7 +1238,6 @@ int creature_get_party_distance(int x, int y)
 #define PUSH_STOP_SHIFT 2               /* a weak push stops with chance 1 in (resistance - strength) / 4 + 1 */
 #define ALERT_PUSHED_CHANCE 10
 #define LOAD_PUSH_DIVISOR 10            /* the push strength of the party: its load / 10 per champion */
-#define PUSH_ARROW_COUNT 6
 
 /* The push that waits for the slow move of the party. */
 static struct {

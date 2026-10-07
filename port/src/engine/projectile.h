@@ -28,7 +28,6 @@ enum { EXPLOSION_EVENT_X = 0, EXPLOSION_EVENT_Y = 1, EXPLOSION_EVENT_THING = 2 }
 
 /* Alerts of creatures (creature_alert): a loud alert that sets mood bits 1 and 2, and the chance that is sure. */
 #define ALERT_STARTLED 0x2006
-#define ALERT_ALWAYS 100
 /* The door height that a creature blocks (creature info flags, CREATURE_DOOR_SIZE_SHIFT). */
 #define CREATURE_DOOR_SIZE_MASK 3
 

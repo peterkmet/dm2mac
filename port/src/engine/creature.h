@@ -190,6 +190,7 @@ void creature_refresh_party_maps(void);
 
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
+#define ALERT_ALWAYS 100            /* an alert chance in percent */
 void creature_alert(uint16_t group, int x, int y, int flags, int chance, int damage);
 #define ALERT_ANGER 0x4000                  /* alert flags: the creature may become angry */
 #define ALERT_LOUD 0x2000                   /* the alert wakes the creature */
