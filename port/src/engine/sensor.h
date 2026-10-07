@@ -1,6 +1,8 @@
 #ifndef SENSOR_H
 #define SENSOR_H
+#include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 #include "timeline.h"
 
 /* Timeline event types of Step 14. */
@@ -19,6 +21,47 @@ enum event_type {
 enum sensor_effect { EFFECT_SET, EFFECT_CLEAR, EFFECT_TOGGLE, EFFECT_HOLD };
 /* Bytes of a square event. */
 enum { EVENT_X, EVENT_Y, EVENT_CELL, EVENT_EFFECT };
+/* Bytes of the other events of this module: a sensor event holds its sensor thing (an ambient sound or animation end
+   event after its square), then the wall flag or the timer factor and phase; a party teleport holds the target word
+   and the map; a creature spawn holds the square and the creature type; an altar rebirth holds a square event with
+   the steps left in place of the effect. */
+enum {
+    SENSOR_EVENT_THING = 0, SENSOR_EVENT_WALL = 2, SENSOR_EVENT_TIMER_FACTOR = 2, SENSOR_EVENT_TIMER_PHASE = 3,
+    SENSOR_EVENT_SQUARE_THING = 2, TELEPORT_EVENT_TARGET = 0, TELEPORT_EVENT_MAP = 2, SPAWN_EVENT_CREATURE = 3,
+    ALTAR_EVENT_STEPS = 3
+};
+
+/* Directions and cells wrap at 4. */
+#define DIR_MASK 3
+#define dir_right(dir) (((dir) + 1) & DIR_MASK)
+#define dir_back(dir) (((dir) + 2) & DIR_MASK)
+#define dir_left(dir) (((dir) + 3) & DIR_MASK)
+
+/* Thing at cell. */
+static inline uint16_t thing_at_cell(uint16_t thing, int cell)
+{
+    return (uint16_t)((thing & THING_ID_MASK) | (cell & DIR_MASK) << THING_CELL_SHIFT);
+}
+
+/* A square and direction word of an event: x and y as in a location word, the direction in bits 10-11. */
+static inline uint16_t event_square_dir(int x, int y, int dir) { return (uint16_t)location_pack(x, y, dir & DIR_MASK); }
+
+/* Sensor types that launch missiles. */
+enum { LAUNCH_ITEM = 7, LAUNCH_SPELL = 8, LAUNCH_ITEMS = 9, LAUNCH_SPELLS = 0x0a, LAUNCH_OBJECT = 0x0e, LAUNCH_OBJECTS = 0x0f };
+/* Floor sensor types that act on the creatures of an area. */
+enum { SENSOR_VANISH = 0x0b, SENSOR_ALERT = 0x28 };
+
+/* Sensor data sub-fields: the target map (bits 0-5) and wall cell (bits 6-7) of a map relay and a teleport button,
+   the direction of a creature turn sensor, and the power (bits 0-3) and creature type of an area sensor. */
+#define SENSOR_MAP_MASK 0x3f
+#define SENSOR_CELL_SHIFT 6
+#define AREA_POWER_MASK 0xf
+#define AREA_CREATURE_SHIFT 4
+static inline uint16_t sensor_data_map(uint16_t sensor) { return sensor_data(sensor) & SENSOR_MAP_MASK; }
+static inline uint16_t sensor_data_cell(uint16_t sensor) { return sensor_data(sensor) >> SENSOR_CELL_SHIFT & DIR_MASK; }
+static inline uint16_t sensor_turn_dir(uint16_t sensor) { return sensor_data(sensor) & DIR_MASK; }
+static inline uint16_t sensor_area_power(uint16_t sensor) { return sensor_data(sensor) & AREA_POWER_MASK; }
+static inline uint16_t sensor_area_creature(uint16_t sensor) { return sensor_data(sensor) >> AREA_CREATURE_SHIFT; }
 
 /* A thing (THING_NONE: the party) leaves (enter 0) or enters (enter 1) the square (x, y) of the current map:
    the floor sensors and texts of the square react. on_square: the party stands there (for the party: the
@@ -46,7 +89,7 @@ void timeline_event_door_destruction(TimelineEvent *e);
    with hand (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
 void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand);
 /* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
-int dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
+bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
 /* The party enters (1) or leaves (0) the party map: the map entry sensors and the creature generators. */
 void sensor_process_map_entry(int entering);
 /* A new game starts the timer sensors that are on and stops the others. */
@@ -58,6 +101,9 @@ void timeline_event_sensor(TimelineEvent *e);
 void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
                             int from_creature, int to_possessions);
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
+enum global_var_op {
+    GLOBAL_VAR_SET, GLOBAL_VAR_CLEAR, GLOBAL_VAR_TOGGLE, GLOBAL_VAR_ADD, GLOBAL_VAR_SUBTRACT, GLOBAL_VAR_ASSIGN = 6
+};
 int dun_get_global_var(int var);
 int dun_modify_global_var(int var, int value, int op);   /* returns the new value */
 /* True when a living champion, the open container, or the leader hand holds an item of the item index type. */

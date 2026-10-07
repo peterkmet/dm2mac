@@ -15,6 +15,23 @@ enum spell_thing {
 };
 #define EXPLOSION_AT_CENTER 0xff    /* the cell of an explosion in the middle of its square */
 
+/* Bytes of a projectile move event: the projectile, then its position word (event_square_dir with the energy step
+   in bits 12-15). Bytes of an explosion event: its square, then the explosion. */
+enum { PROJECTILE_EVENT_THING = 0, PROJECTILE_EVENT_POSITION = 2 };
+enum { EXPLOSION_EVENT_X = 0, EXPLOSION_EVENT_Y = 1, EXPLOSION_EVENT_THING = 2 };
+
+/* Sounds of things and champions: the entry, priority, and volume arguments of sound_play_with_fallback. */
+#define SOUND_HURT 0x82
+#define SOUND_PRIORITY_HURT 0x69
+#define SOUND_VOLUME_NORMAL 0x80
+#define SOUND_VOLUME_LOUD 200
+
+/* Alerts of creatures (creature_alert): a loud alert that sets mood bits 1 and 2, and the chance that is sure. */
+#define ALERT_STARTLED 0x2006
+#define ALERT_ALWAYS 100
+/* The door height that a creature blocks (creature info flags, CREATURE_DOOR_SIZE_SHIFT). */
+#define CREATURE_DOOR_SIZE_MASK 3
+
 /* The extra damage (poison) and the attack type of the last projectile_get_attack. */
 extern uint16_t projectile_extra_damage, projectile_attack_type;
 /* A sensor launches the next projectiles: they check for hits on their first square. */
@@ -26,6 +43,8 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
 /* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle); an x
    above 0xff packs the square of a hit (low bytes) and the square of the explosion (high bytes, x + 1). */
 void explosion_create(int type, int power, int x, int y, int cell);
+/* Sets the square and the flight direction of a projectile move event; the energy step stays. */
+void projectile_event_set_position(TimelineEvent *e, int x, int y, int dir);
 /* Removes the queued move of a projectile. */
 void projectile_cancel_event(uint16_t projectile);
 /* The projectile ends on (x, y): its object falls there (or into holder, a list of creature possessions). */

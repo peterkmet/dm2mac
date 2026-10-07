@@ -241,17 +241,8 @@ long engine/damage.c:champ_apply_time_effects open: module cleanup
 long engine/move.c:move_party_step open: module cleanup
 long engine/move.c:move_follow_square_transitions open: module cleanup
 long engine/move.c:move_thing open: module cleanup
-long engine/projectile.c:projectile_hit open: module cleanup
-long engine/projectile.c:projectile_process_event open: module cleanup
-long engine/projectile.c:creature_attack_champion open: module cleanup
 long engine/save.c:write_thing open: module cleanup
 long engine/save.c:read_thing open: module cleanup
-long engine/sensor.c:sensor_process_floor open: module cleanup
-long engine/sensor.c:timeline_event_wall_square open: module cleanup
-long engine/sensor.c:timeline_event_floor_square open: module cleanup
-long engine/sensor.c:timeline_event_door_animation open: module cleanup
-long engine/sensor.c:timeline_event_sensor open: module cleanup
-long engine/sensor.c:sensor_process_wall_click open: module cleanup
 long ui/input.c:run_click_feedback open: module cleanup
 long ui/input.c:view_click_in_viewport open: module cleanup
 long ui/input.c:command_execute open: module cleanup
@@ -322,10 +313,13 @@ decimal engine/inventory.c open: module cleanup
 decimal engine/item.c open: module cleanup
 decimal engine/magic.c open: module cleanup
 decimal engine/move.c open: module cleanup
-decimal engine/projectile.c open: module cleanup
 decimal engine/save.c open: module cleanup
 decimal engine/sensor.c open: module cleanup
 decimal engine/weather.c table: rule 6
+decimal engine/sensor.c table: rule 6
+decimal engine/sound_request.c open: module cleanup
+decimal engine/timeline.h open: module cleanup
+decimal engine/weather.c open: module cleanup
 decimal ui/fm.c table: rule 6
 decimal ui/input.c open: module cleanup
 decimal ui/ui.c open: module cleanup
@@ -342,6 +336,7 @@ hex engine/magic.c open: module cleanup
 hex engine/move.c open: module cleanup
 hex engine/save.c open: module cleanup
 hex engine/sensor.c open: module cleanup
+hex engine/sound_request.c open: module cleanup
 hex platform/control.c table: PC keyboard scan codes of the key names
 hex platform/main.c table: PC keyboard scan codes of the SDL keys
 hex ui/dialog.c table: rule 6
@@ -356,6 +351,7 @@ bool engine/champ_action.h open: module cleanup
 bool engine/creature.h open: module cleanup
 bool engine/item.h open: module cleanup
 bool engine/sensor.h open: module cleanup
+bool engine/timeline.h open: module cleanup
 record engine/save.c the save image packs and unpacks whole thing records bit by bit
 packed engine/ai.c open: module cleanup
 packed engine/ai_move.c open: module cleanup
@@ -365,8 +361,9 @@ packed engine/damage.c open: module cleanup
 packed engine/inventory.c open: module cleanup
 packed engine/magic.c open: module cleanup
 packed engine/move.c open: module cleanup
-packed engine/projectile.c open: module cleanup
 packed engine/save.c open: module cleanup
 packed engine/sensor.c open: module cleanup
+packed engine/sound_request.c open: module cleanup
+packed engine/weather.c open: module cleanup
 packed ui/input.c open: module cleanup
 packed ui/view.c open: module cleanup
