@@ -4,13 +4,12 @@
 #include "fm.h"
 #include "hmp.h"
 #include "music.h"
+#include "sound.h"
 
-#define SONG_CATEGORY 4
 #define SONG_TYPE 3
 #define SONG_ENTRY 0
 #define SONG_VOLUME_FULL 0x7f
 #define FADE_STEPS 0x7f
-#define VOLUME_MAX 7
 #define VOLUME_DEFAULT 5
 #define PATH_MAX_LENGTH 1024
 #define STEREO 2
@@ -71,7 +70,7 @@ void music_play_song(int song)
 {
     if (music.enabled && song && music.volume > 0) {
         music_stop();
-        int item = gdat_find(gdat, SONG_CATEGORY, song, SONG_TYPE, SONG_ENTRY);
+        int item = gdat_find(gdat, CAT_MUSIC, song, SONG_TYPE, SONG_ENTRY);
         uint32_t size;
         const uint8_t *data = item < 0 ? NULL : gdat_item(gdat, item, &size);
         if (!data || hmp_start(data, size, fm_send) != HMP_OK) return;
@@ -125,7 +124,7 @@ void music_update_for_map(int map)
 
 void music_set_volume(int level)
 {
-    level = level < 0 ? 0 : level > VOLUME_MAX ? VOLUME_MAX : level;
+    level = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
     if (music.enabled) {
         hmp_set_master_volume(level * 2 | level << MASTER_VOLUME_SHIFT);  /* 0 to 126 */
         if (music.started) {

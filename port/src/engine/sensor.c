@@ -22,11 +22,6 @@
 #include "text.h"
 #include "view.h"
 
-#define CAT_MAP_SOUND 3             /* sound (3, map + 1, entry): a sound of a map */
-#define CAT_WALL_ORNAMENT 9
-#define CAT_FLOOR_ORNAMENT 0x0a
-#define CAT_DOOR 0x0e
-#define CAT_CREATURE 0x0f
 #define CAT_CREATURE_APPEARS 0      /* sound (0, 0, 0x89): a generator creates a creature */
 #define DOOR_KEY_STRENGTH 0x0e      /* door value: the strength that breaks the door */
 #define DOOR_KEY_DAMAGE 0x0f        /* door value: the damage of a closing door */
@@ -40,14 +35,11 @@
 /* Sound arguments (entry, priority) of sound_play_with_fallback and sound_request. */
 #define SOUND_ENTRY_ORNAMENT 0x88
 #define SOUND_PRIORITY_ORNAMENT 0x8c
-#define SOUND_ENTRY_DRINK 0x83
-#define SOUND_PRIORITY_DRINK 0x96
 #define SOUND_ENTRY_CREATURE_APPEARS 0x89
 #define SOUND_PRIORITY_CREATURE_APPEARS 0x61
 #define SOUND_PRIORITY_MAP_SOUND 0x73
 #define SOUND_ENTRY_DOOR_HIT 0x8a   /* a closing door hits a champion */
 #define SOUND_PRIORITY_DOOR_HIT 100
-#define SOUND_PRIORITY_CRUSH 0x46   /* a closing door hits a creature */
 #define SOUND_ENTRY_DOOR_MOVE 0x8e
 #define SOUND_ENTRY_DOOR_SHUT 0x8f
 #define SOUND_PRIORITY_DOOR 0x5f
@@ -98,8 +90,6 @@ enum { TEXT_ITEM_HOLDER = 4, TEXT_ITEM_HOLDER_2 = 8, TEXT_RANDOM_PIT = 9, TEXT_F
 #define GENERATOR_SLOW_DELAY 0x200
 #define GENERATOR_FAST_DELAY 0x2000
 #define GENERATOR_SLOW_SHOWN_FACTOR 4   /* a visible generator text waits longer */
-#define DOOR_WOUNDS 0x04            /* a closing door hurts the head */
-#define DOOR_ATTACK_TYPE 2          /* the attack type of a closing door (champ_damage_party) */
 
 static uint8_t *square_byte(int x, int y)
 {
@@ -266,7 +256,7 @@ static void sensor_fall_risk(uint16_t text, int x, int y, int on_square)
         timeline_add_event(&e);
         int c = rand_2bits();
         if (!champion(c)->health) c = game.leader;
-        sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, champion(c)->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x,
+        sound_play_with_fallback(CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x,
                                  game.party_y, 1, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
     } else {
         sound_request(CAT_FLOOR_ORNAMENT, text_value(text), SOUND_ENTRY_ORNAMENT, SOUND_PRIORITY_ORNAMENT, SOUND_VOLUME_NORMAL,
@@ -324,7 +314,7 @@ static int altar_takes_bones(uint16_t t, uint16_t thing)
 {
     return item_gdat_index(t) != GDAT_NO_INDEX
            && gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, item_gdat_index(t), GDAT_TYPE_VALUE, ORNAMENT_KEY_ALTAR)
-           && item_gdat_category(thing) == GDAT_MISC_CATEGORY && item_gdat_index(thing) == BONES_INDEX;
+           && item_gdat_category(thing) == CAT_MISC && item_gdat_index(thing) == BONES_INDEX;
 }
 
 /* The altar brings back the champion of the bones. */
@@ -708,7 +698,8 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
 /* A text with a sound plays it on a set event. */
 static void text_play_sound(uint16_t text, int x, int y)
 {
-    sound_request(CAT_MAP_SOUND, party.cur_map + 1, text_value(text), SOUND_PRIORITY_MAP_SOUND, SOUND_VOLUME_LOUD, x, y, 1);
+    /* sound (CAT_DUNGEON, map + 1, entry): a sound of a map */
+    sound_request(CAT_DUNGEON, party.cur_map + 1, text_value(text), SOUND_PRIORITY_MAP_SOUND, SOUND_VOLUME_LOUD, x, y, 1);
 }
 
 /* A counter sensor reaches zero (or leaves it): returns 1 when its count is zero or below. */
@@ -732,7 +723,7 @@ static int is_object(uint16_t thing) { return thing_type(thing) >= THING_WEAPON 
 void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
                             int from_creature, int to_possessions)
 {
-    if (item_gdat_category(thing) != GDAT_MISC_CATEGORY || item_gdat_index(thing) != BONES_INDEX) {
+    if (item_gdat_category(thing) != CAT_MISC || item_gdat_index(thing) != BONES_INDEX) {
         int charges = 0;  /* fix: mode 3 adds an uninitialized amount in the original */
         switch (sensor_effect(sensor)) {
         case CHARGES_FILL: charges = item_max_charges(thing); break;
@@ -781,7 +772,7 @@ static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uin
             if (use_filter) {
                 match = bits[item / BYTE_BITS] >> (item % BYTE_BITS) & 1;
             } else if (item == data) {
-                if (!keep_bones && item_gdat_category(t) == GDAT_MISC_CATEGORY
+                if (!keep_bones && item_gdat_category(t) == CAT_MISC
                     && item_gdat_index(t) == BONES_INDEX) {
                     /* bones: the champion comes back */
                     if (possessions) dungeon_unlink_thing_from_list(t, possessions);
@@ -1182,10 +1173,10 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
         hit = 1;
         if (game.champion_count) {
             *square &= (uint8_t)~SQUARE_DOOR_STATE;
-            int hurt = champ_damage_party((uint16_t)damage, DOOR_WOUNDS, DOOR_ATTACK_TYPE);
+            int hurt = champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
             for (int i = 0; i < CHAMPION_MAX; i++)
                 if (hurt >> i & 1)
-                    sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, champion(i)->portrait, SOUND_ENTRY_DOOR_HIT, SOUND_FALLBACK, x,
+                    sound_play_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_DOOR_HIT, SOUND_FALLBACK, x,
                                              y, 1, SOUND_PRIORITY_DOOR_HIT, SOUND_VOLUME_LOUD);
         }
     }
@@ -1201,9 +1192,9 @@ static int door_hit_blockers(uint16_t door, int x, int y, uint8_t *square, int *
     creature_alert(g, x, y, ALERT_STARTLED, ALERT_ALWAYS, (uint16_t)damage);
     *state = *state ? *state - 1 : 0;
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | *state);
-    sound_play_with_fallback(CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CRUSH,
+    sound_play_with_fallback(CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
                              SOUND_VOLUME_NORMAL);
-    sound_play_with_fallback(GDAT_MISC_CATEGORY, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CRUSH,
+    sound_play_with_fallback(CAT_MISC, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_CREATURE,
                              SOUND_VOLUME_NORMAL);
     return 1;
 }
@@ -1383,7 +1374,6 @@ void sensor_process_map_entry(int entering)
 #define WATER_FULL 0x800
 #define ITEM_EMPTY_FLASK 0x194
 #define FLASK_FULL_INDEX 0x0f
-#define ATTR_REFILLS 0x0001          /* item attribute 0 bit: the item takes water */
 enum {
     WALL_CLICK_ANY = 1, WALL_CLICK_EMPTY_HAND, WALL_CLICK_ITEM, WALL_CLICK_CHARGED_ITEM = 0x15, WALL_CLICK_TOGGLE = 0x17,
     WALL_CLICK_BUTTON = 0x18, WALL_CLICK_COUNTED_ITEM = 0x1b, WALL_CLICK_TELEPORT = 0x1c, WALL_CLICK_RESET = 0x3f,
@@ -1476,9 +1466,9 @@ static void wall_click_fountain(WallClick *c)
         if (!c->has_leader) return;
         for (int i = 0; i < CHAMPION_MAX; i++)
             if (champion(i)->health) champion(i)->water = WATER_FULL;
-        sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, champion(game.leader)->portrait, SOUND_ENTRY_DRINK, SOUND_FALLBACK,
-                                 game.party_x, game.party_y, 0, SOUND_PRIORITY_DRINK, SOUND_VOLUME_NORMAL);
-    } else if (item_attr(hand, ATTR_FLAGS) & ATTR_REFILLS) {
+        sound_play_with_fallback(CAT_CHAMPION, champion(game.leader)->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK,
+                                 game.party_x, game.party_y, 0, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL);
+    } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
         item_add_charges(hand, CHARGES_FULL_AMOUNT);
         c->take = 1;
         c->give = hand;

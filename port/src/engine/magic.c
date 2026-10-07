@@ -76,7 +76,6 @@ enum {
 #define CAST_KIND_MASK 0xf0
 #define SHIFT_COUNT_MASK 0x1f           /* the x86 shift uses the low 5 bits of the count */
 /* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
-#define CAT_SPELL_ITEM 0x0d
 #define SPELL_ITEM_INDEX 0x0f
 #define SPELL_ITEM_KEY 0x42
 /* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
@@ -91,9 +90,7 @@ enum { RESULT_UNKNOWN_SPELL = -3, RESULT_WIZARD_FAILED = -4, RESULT_PRIEST_FAILE
 enum { MARKER_CLEAR_ALL = 4, MARKER_FIND_SET = 5 };
 #define SOUND_WARP_CATEGORY 10
 #define SOUND_WARP_ENTRY 0x88
-#define SOUND_WARP_FALLBACK 0xfe
 #define SOUND_WARP_PRIORITY 0x8c
-#define SOUND_WARP_VOLUME 0x80
 #define MAGIC_LIGHT_LEVELS 16            /* the light spells reach level 15 */
 #define RUNE_BITS 8                     /* each rune takes one byte of the spell key */
 #define RUNE_SETS 4                     /* the power runes, then the three runes after them */
@@ -147,13 +144,8 @@ static int imin(int a, int b) { return a < b ? a : b; }
 static int imax(int a, int b) { return a > b ? a : b; }
 static int iclamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-/* The magic light: the light sum of the party spells (game.magic_light bytes 0 and 1). */
-static int16_t magic_light_get(void) { return (int16_t)le16(game.magic_light); }
 /* Adds delta to the light of the party spells. */
-static void magic_light_add(int delta)
-{
-    put_le16(game.magic_light, (uint16_t)(magic_light_get() + delta));
-}
+static void magic_light_add(int delta) { save_set_magic_light((int16_t)(save_magic_light() + delta)); }
 
 /* An event of the party map at game time + delay. */
 static TimelineEvent party_event(int type, uint32_t delay)
@@ -330,7 +322,7 @@ static void cast_summon(int type, int skill, int power)
 /* The spell that the item spell creates goes into the leader hand, or onto the party square. */
 static void cast_create_item(void)
 {
-    uint16_t thing = item_create_by_index(gdat_entry_index(draw_gdat(), CAT_SPELL_ITEM, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
+    uint16_t thing = item_create_by_index(gdat_entry_index(draw_gdat(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
                                                            SPELL_ITEM_KEY));
     if (game.leader_hand == THING_NONE) {
         champ_put_object_in_leader_hand(thing, 1);
@@ -523,8 +515,8 @@ int move_party_warp_to_marker(void)
         int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0) continue;
         move_party_to(x, y, map, game.party_dir);
-        sound_play_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_WARP_ENTRY, SOUND_WARP_FALLBACK,
-                                 game.party_x, game.party_y, 1, SOUND_WARP_PRIORITY, SOUND_WARP_VOLUME);
+        sound_play_with_fallback(SOUND_WARP_CATEGORY, marker, SOUND_WARP_ENTRY, SOUND_FALLBACK,
+                                 game.party_x, game.party_y, 1, SOUND_WARP_PRIORITY, SOUND_VOLUME_NORMAL);
         if (mode == MARKER_CLEAR_ALL) text_set_visible(t, true);
         return 1;
     }

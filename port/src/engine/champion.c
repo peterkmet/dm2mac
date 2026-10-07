@@ -19,14 +19,9 @@
 #define LOAD_BASE 100
 #define LOAD_ROUND 10
 #define SKILL_LEVEL_EXPERIENCE 0x200    /* each doubling of the experience above this is one more level */
-#define ACTION_ENTRY_FIRST 8
-#define ACTION_ENTRY_LAST 11
-#define GDAT_TEXT_TYPE 5
 #define NO_SLOT (-1)
 #define SENSOR_START_CHAMPION 0x7e  /* on square (0, 0): the champion of its mirror starts a new game */
 
-/* Fields of an action text. */
-enum { FIELD_SKILL = 0, FIELD_LEVEL = 1, FIELD_COMMAND = 2, FIELD_CHARGES = 8, FIELD_HAND = 17 };
 /* Action commands that the action list treats specially. */
 enum {
     COMMAND_SHOOT = 0x11, COMMAND_SUMMON_FIRST = 0x2c, COMMAND_SUMMON_2 = 0x2d, COMMAND_SUMMON_3 = 0x2e,
@@ -67,7 +62,7 @@ int champ_get_skill_level(int champ, int skill, int with_bonus)
     const Champion *c = champion(champ);
     uint32_t experience = c->experience[skill];
     if (skill >= SKILL_BASE_COUNT) {
-        int base = champ_base_skill(skill);
+        int base = (skill - SKILL_BASE_COUNT) / SUB_SKILL_COUNT;
         int factor = with_bonus ? c->skill_bonus[base] + 1 : 1;
         experience = (experience + (uint32_t)(factor * (int32_t)c->experience[base])) >> 1;
     }
@@ -148,7 +143,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
 {
     int category, index;
     if (thing == THING_NONE) {
-        category = GDAT_CHAMPION_CATEGORY;
+        category = CAT_CHAMPION;
         index = champion(champ)->portrait;
     } else {
         if (item_is_moneybox(thing) || item_is_chest(thing)) return 1;
@@ -157,7 +152,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
     }
     int count = 0;
     for (int entry = ACTION_ENTRY_FIRST; entry <= ACTION_ENTRY_LAST && count < CHAMPION_ACTION_MAX; entry++) {
-        if (!gdat_exists(draw_gdat(), category, index, GDAT_TEXT_TYPE, entry)) continue;
+        if (!gdat_exists(draw_gdat(), category, index, GDAT_TYPE_TEXT, entry)) continue;
         int command = text_gdat_field(category, index, entry, FIELD_COMMAND);
         if (!command) continue;
         int16_t needs_hand = text_gdat_field(category, index, entry, FIELD_HAND);

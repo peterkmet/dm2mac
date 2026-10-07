@@ -52,7 +52,6 @@
 #define FLAGS_ENTRY 0
 #define FLAG_ENCRYPTED_TEXT 0x08
 #define TEXT_INVERT 0xff           /* encrypted text: byte = (stored ^ 0xff) - position */
-#define GDAT_TYPE_TEXT 5
 
 /* 8 bpp stream: codec byte, then the LZSS data. */
 #define CODEC_OFFSET 6
@@ -81,7 +80,6 @@
 #define RUN_HUGE_NIBBLES 4
 
 /* The game palette: key (1, 0, 9, 254), 256 entries of color index, red, green, blue. */
-#define PALETTE_CATEGORY 1
 #define PALETTE_INDEX 0
 #define PALETTE_TYPE 9
 #define PALETTE_ENTRY 0xfe
@@ -184,7 +182,7 @@ static unsigned image_dim(const uint8_t *src, int field) { return le16(src + fie
 /* Decoded byte size of a width x height image; 4 bpp rows hold an even pixel count. */
 static size_t image_bytes(unsigned width, unsigned height, int bpp)
 {
-    return bpp == 8 ? (size_t)width * height : (size_t)(width + 1) / 2 * height;
+    return bpp == IMAGE_8BPP ? (size_t)width * height : (size_t)(width + 1) / 2 * height;
 }
 
 /* Reads the image header of an item; returns its format or an error. */
@@ -196,11 +194,11 @@ static int image_header(const gdat_t *g, int item, const uint8_t **data, uint32_
     int format = (*data)[IMAGE_FORMAT_BYTE] >> IMAGE_FORMAT_SHIFT;
     *width = image_dim(*data, IMAGE_WIDTH);
     *height = image_dim(*data, IMAGE_HEIGHT);
-    if (format == FORMAT_8BPP) *bpp = 8;
+    if (format == FORMAT_8BPP) *bpp = IMAGE_8BPP;
     else if (format == FORMAT_RAW && *size >= RAW_PIXELS) *bpp = le16(*data + RAW_BPP);
     else if (format == FORMAT_RAW) return GDAT_ERR_NOT_IMAGE;
-    else *bpp = 4;  /* the format bits of a 4 bpp image can hold its y offset (gdat_image_offset) */
-    if (*bpp != 4 && *bpp != 8) return GDAT_ERR_NOT_IMAGE;
+    else *bpp = IMAGE_4BPP;  /* the format bits of a 4 bpp image can hold its y offset (gdat_image_offset) */
+    if (*bpp != IMAGE_4BPP && *bpp != IMAGE_8BPP) return GDAT_ERR_NOT_IMAGE;
     return format;
 }
 
@@ -233,14 +231,14 @@ const uint8_t *gdat_image_colormap(const gdat_t *g, int item)
     const uint8_t *data;
     uint32_t size;
     int width, height, bpp;
-    if (image_header(g, item, &data, &size, &width, &height, &bpp) < 0 || bpp != 4 || size < COLORMAP_SIZE) return NULL;
+    if (image_header(g, item, &data, &size, &width, &height, &bpp) < 0 || bpp != IMAGE_4BPP || size < COLORMAP_SIZE) return NULL;
     return data + size - COLORMAP_SIZE;
 }
 
 int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[3])
 {
     uint32_t size;
-    const uint8_t *palette = gdat_item(g, gdat_find(g, PALETTE_CATEGORY, PALETTE_INDEX, PALETTE_TYPE, PALETTE_ENTRY), &size);
+    const uint8_t *palette = gdat_item(g, gdat_find(g, CAT_INTERFACE, PALETTE_INDEX, PALETTE_TYPE, PALETTE_ENTRY), &size);
     if (!palette || size < GDAT_PALETTE_COLORS * PALETTE_ENTRY_SIZE) return GDAT_ERR_FORMAT;
     if (color < 0 || color >= GDAT_PALETTE_COLORS) return GDAT_ERR_ITEM;
     for (int i = 0; i < PALETTE_ENTRY_SIZE - PALETTE_RED; i++) rgb[i] = palette[color * PALETTE_ENTRY_SIZE + PALETTE_RED + i] >> VGA_DAC_SHIFT;

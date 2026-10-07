@@ -46,12 +46,10 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define DEATH_CLOUD_LAST 0x37
 #define SMOKE_DURATION 5
 
-#define CAT_EXPLOSION 0x0d
 #define SOUND_LAUNCH 0x86           /* sound entries of a thing: launched, explodes */
 #define SOUND_EXPLODE 0x81
 #define SOUND_PRIORITY_LAUNCH 0x6e
 #define SOUND_PRIORITY_EXPLODE 0x6c
-#define SOUND_VOLUME_MAX 0xff
 #define SOUND_DELAY_HURT 2          /* a champion that a creature hurts screams after the next game step */
 
 /* Sensor types that react to projectiles and explosions. */
@@ -65,7 +63,6 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define STRONG_LIGHTNING_POWER 0x7f
 #define ORNAMENT_KEY_CATCH 0x13         /* ornament value: the alcove catches thrown objects */
 #define DOOR_KEY_GRATE 0x10             /* door value: objects and weak spells fly through the door */
-#define ITEM_ATTR_POISON 0x0d
 #define ITEM_GRATE_PASSES 0x0002        /* the object can fly through a grate */
 #define ITEM_CAUGHT 0x0040              /* a creature that catches objects catches it */
 
@@ -115,16 +112,8 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {
 #define DEXTERITY_ALWAYS_HITS 0xff
 #define DEXTERITY_DODGE_MARGIN 0x10
 #define LUCK_DODGE 0x3c
-#define LAUNCH_COOLDOWN 4
 
-/* Projectile attack types (champ_take_damage). */
-enum { ATTACK_FIRE = 1, ATTACK_NORMAL = 3, ATTACK_THROWN = 4, ATTACK_MAGIC = 5, ATTACK_LIGHTNING = 7 };
-#define ATTACK_FACING 0x8000                /* the champion faces the projectile */
-#define WOUND_PROJECTILE 0x0c               /* the wounds of a projectile hit: head and torso */
-#define WOUND_EXPLOSION 0x3f
-#define WOUND_HEAD 0x04
-#define WOUND_TORSO 0x08
-#define WOUND_FEET 0x20
+#define WOUND_PROJECTILE (WOUND_HEAD | WOUND_TORSO) /* the wounds of a projectile hit: head and torso */
 
 /* Alert flags (creature_alert). */
 #define ALERT_HIT 0x200d
@@ -209,7 +198,7 @@ static void explosion_blast(int type, int power, int x, int y, int cell)
         damage >>= 1;
         if (!damage) return;
     }
-    if (on_party_square(x, y)) champ_damage_party(damage, WOUND_EXPLOSION, ATTACK_FIRE);
+    if (on_party_square(x, y)) champ_damage_party(damage, WOUND_ALL, ATTACK_TYPE_FIRE);
     int16_t nx = (int16_t)x, ny = (int16_t)y, hx = (int16_t)x, hy = (int16_t)y;
     uint16_t g = creature_get_group_at(x, y);
     for (int first = 1;; first = 0) {
@@ -315,15 +304,15 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
     uint16_t energy = projectile_energy(projectile);
     uint16_t power;
     projectile_extra_damage = 0;
-    projectile_attack_type = ATTACK_NORMAL;
+    projectile_attack_type = ATTACK_TYPE_BLUNT;
     if (thing_type(payload) != THING_EXPLOSION) {
         uint16_t throw_power = item_attr(payload, ATTR_THROW_POWER);
         power = 0;
         if (throw_power) {
             int factor = (uint16_t)((projectile_hit_chance(projectile) >> THROW_CHANCE_SHIFT) + THROW_FACTOR_BASE);
             power = (uint16_t)((uint16_t)(throw_power + (energy >> 1)) * (factor * factor) >> THROW_POWER_SHIFT);
-            projectile_attack_type = ATTACK_THROWN;
-            projectile_extra_damage = item_attr(payload, ITEM_ATTR_POISON);
+            projectile_attack_type = ATTACK_TYPE_SHARP;
+            projectile_extra_damage = item_attr(payload, ATTR_POISON);
             if (projectile_extra_damage && (rand_next() & ROLL_POISON) > energy)
                 projectile_extra_damage = (uint16_t)(projectile_extra_damage - rand_below((uint16_t)((projectile_extra_damage >> 1) + 1)));
         }
@@ -335,16 +324,16 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
         projectile_extra_damage = (uint16_t)(r + SLIME_POISON_BASE);
         power = (uint16_t)(r + (rand_next() & ROLL_SLIME));
     } else if (payload >= SPELL_HARM_NON_MATERIAL) {
-        projectile_attack_type = ATTACK_MAGIC;
+        projectile_attack_type = ATTACK_TYPE_MAGIC;
         if (payload != SPELL_POISON_BOLT) return 0;
         projectile_extra_damage = energy;
         return (energy >> POISON_BOLT_ATTACK_SHIFT) + 1;
     } else {
-        projectile_attack_type = ATTACK_FIRE;
+        projectile_attack_type = ATTACK_TYPE_FIRE;
         power = rand_next() & ROLL_FIRE;
         power = (uint16_t)(power + (rand_next() & ROLL_FIRE) + FIRE_POWER_BASE);
         if (payload == SPELL_LIGHTNING) {
-            projectile_attack_type = ATTACK_LIGHTNING;
+            projectile_attack_type = ATTACK_TYPE_LIGHTNING;
             power = (uint16_t)(power * LIGHTNING_POWER_FACTOR + energy);
         }
     }
@@ -439,7 +428,7 @@ static int projectile_hit_creature(Hit *h, int cell)
     h->damage = (uint16_t)((uint16_t)(attack << DEFENSE_SCALE_SHIFT) / info->defense);
     if (h->damage) {
         uint16_t damage = (uint16_t)(creature_roll_armor_factor(g, projectile_extra_damage) + h->damage);
-        if (info->door_flags & CREATURE_RESISTS_NON_FIRE && projectile_attack_type != ATTACK_FIRE)
+        if (info->door_flags & CREATURE_RESISTS_NON_FIRE && projectile_attack_type != ATTACK_TYPE_FIRE)
             damage = (uint16_t)((int16_t)damage >> 2);
         creature_alert(g, x, y, ALERT_HIT, ALERT_ALWAYS, damage);
         if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS && item_attr(payload, ATTR_FLAGS) & ITEM_CAUGHT)
@@ -462,7 +451,7 @@ static int projectile_hit_champion(Hit *h, int cell)
     if (!attack) return 1;
     if (h->payload == SPELL_POISON_BOLT) projectile_extra_damage = (uint16_t)(projectile_extra_damage * 2);
     /* the original compares without a wrap: only flights to the north and east can face a champion */
-    if (champion(champ)->dir == projectile_dir(h->projectile) + 2) projectile_attack_type |= ATTACK_FACING;
+    if (champion(champ)->dir == projectile_dir(h->projectile) + 2) projectile_attack_type |= ATTACK_BLOCKABLE;  /* the champion faces it */
     if ((int16_t)champ_take_damage(champ, (int16_t)attack, WOUND_PROJECTILE, projectile_attack_type) && projectile_extra_damage
         && rand_next() & ROLL_POISON_CHAMPION)
         champ_poison(champ, projectile_extra_damage);
@@ -906,7 +895,7 @@ int creature_attack_champion(uint16_t group, int champ)
             if (rand_bit()) power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
             damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
             if (damage) {
-                sound_play_with_fallback(GDAT_CHAMPION_CATEGORY, c->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y,
+                sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y,
                                          SOUND_DELAY_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
                 int16_t poison;
                 if (info->poison && rand_bit() && (poison = (int16_t)champ_get_stat_adjusted_attack(champion(champ), STAT_VITALITY, info->poison)) != 0)
@@ -1017,6 +1006,6 @@ void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack
     int cell = (dir + ((((c->cell - dir) + 1) & 2) >> 1)) & DIR_MASK;
     projectile_create(payload, game.party_x, game.party_y, cell, dir, (uint8_t)min16((int16_t)energy, UINT8_MAX),
                       (uint8_t)min16((int16_t)attack, UINT8_MAX), (uint8_t)min16((int16_t)step, UINT8_MAX));
-    game.throw_cooldown = LAUNCH_COOLDOWN;
+    game.throw_cooldown = THROW_COOLDOWN;
     game.throw_dir = (uint16_t)dir;
 }

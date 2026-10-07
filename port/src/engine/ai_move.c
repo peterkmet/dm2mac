@@ -18,10 +18,6 @@
 #include "weather.h"
 #include "le.h"
 
-#define CAT_WALLSET 8
-#define CAT_ORNAMENT 9
-#define CAT_DOOR 0x0e
-#define CAT_CREATURE 0x0f
 #define DOOR_KEY_SEE_THROUGH 0x0d       /* door value: creatures see through the closed door */
 #define DOOR_KEY_SOMETIMES_SEEN 0x10    /* ... creatures see through the moving door half of the time */
 #define DOOR_KEY_PASS_COST 0x11         /* ... the search cost of a door square */
@@ -425,7 +421,7 @@ static int wall_shows_shoot_target(int x, int y, int side, int filter)
         if ((type != THING_SENSOR && type != THING_TEXT) || thing_cell(t) != side) continue;
         int ornament = item_gdat_index(t);
         if (ornament != GDAT_NO_INDEX
-            && gdat_entry_index(draw_gdat(), CAT_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_SHOOT_TARGET) == (uint16_t)filter)
+            && gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_SHOOT_TARGET) == (uint16_t)filter)
             return 1;
     }
     return 0;
@@ -1544,7 +1540,7 @@ int creature_thing_matches_filter(uint16_t thing, int filter)
         int kind = sensor_type(thing);
         if (kind == ACTUATOR_COUNTED_ITEM && !sensor_data(thing)) return 0;
         if (kind == ACTUATOR_SLOT || kind == ACTUATOR_COUNTED_ITEM)
-            value = (int16_t)gdat_entry_index(draw_gdat(), CAT_ORNAMENT, item_gdat_index(thing), GDAT_TYPE_VALUE, ORNAMENT_KEY_TARGET);
+            value = (int16_t)gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, item_gdat_index(thing), GDAT_TYPE_VALUE, ORNAMENT_KEY_TARGET);
         else
             value = (int16_t)kind;
     } else if (type >= THING_WEAPON && type <= THING_MISC) {
@@ -1696,7 +1692,7 @@ static void hide_party_target(AiCandidate *c)
     int invisible = game.magic_light[MAGIC_INVISIBILITY] && !(ai.info->flags & CREATURE_SEES_INVISIBLE);
     int dark = 0;
     if (!invisible) {
-        dark = view_light_level && (int16_t)le16(game.magic_light) < 0
+        dark = view_light_level && save_magic_light() < 0
                && !(ai.info->flags & CREATURE_SEES_IN_DARK);
         if (!dark) return;
     }

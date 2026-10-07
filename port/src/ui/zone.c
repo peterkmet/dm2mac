@@ -5,14 +5,13 @@
 
 /* GDAT (1, 0, 4, 0), little-endian words: signature, range count, the first and last zone of each range,
    then 4 words per zone of each range. */
-#define LAYOUT_CATEGORY 1
 #define LAYOUT_INDEX 0
 #define LAYOUT_TYPE 4
 #define LAYOUT_ENTRY 0
 #define LAYOUT_SIGNATURE 0xfc0d
 #define RANGE_MAX 256
-#define LAYOUT_RANGE_COUNT 2    /* byte offsets of the header words */
-#define LAYOUT_RANGES 4
+#define LAYOUT_RANGE_COUNT 2    /* the byte offset of the range count word of the header */
+#define LAYOUT_RANGES 4         /* the byte offset of the first range */
 #define RANGE_SIZE 4            /* the first and the last zone word of a range */
 #define RANGE_LAST 2
 #define WORD_SIZE 2
@@ -49,7 +48,7 @@ static struct {
 int zone_load(const gdat_t *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, LAYOUT_CATEGORY, LAYOUT_INDEX, LAYOUT_TYPE, LAYOUT_ENTRY), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, LAYOUT_ENTRY), &size);
     free(layout.records);
     layout.records = NULL;
     layout.count = 0;

@@ -1,4 +1,5 @@
 import ctypes
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -38,4 +39,9 @@ def lib(tmp_path_factory):
     # a copy per test module gives each module fresh globals; dlopen of one path returns one shared image
     path = tmp_path_factory.mktemp("lib") / "libdm2.dylib"
     shutil.copyfile(ROOT / "build" / "libdm2.dylib", path)
-    return ctypes.CDLL(str(path))
+    lib = ctypes.CDLL(str(path))
+    # a C bool fills only the low byte of the return register
+    for header in (ROOT / "port" / "src").rglob("*.h"):
+        for name in re.findall(r"^bool (\w+)\(", header.read_text(), re.M):
+            getattr(lib, name).restype = ctypes.c_bool
+    return lib

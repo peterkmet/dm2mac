@@ -20,17 +20,12 @@
    Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. In the advanced mode the AMAP block
    of the automap follows the bit stream (automap.h); the original loader ignores it. */
 
-#define HEADER_SIZE 0x2a
 #define HEADER_FORMAT 0
-#define HEADER_NAME 2
 #define SAVE_FORMAT 1
 #define GAME_RECORD_SIZE 60
-#define EVENT_SIZE 12
 #define CHAMPION_SLOTS 0xc3   /* 30 thing words: hands, body, pouches, quiver, backpack */
 #define CHAMPION_DAMAGE_EVENT 0x2e  /* the timeline event that ends the damage display */
-#define SLOT_COUNT 30
-#define DEFERRED_MAX 100
-#define EVENT_SLACK 50        /* timeline events beyond one for each group, projectile, and explosion record */
+#define DEFERRED_THINGS_MAX 100
 
 /* Bit widths of the values between the records, as masks. */
 #define MORE_MASK 0x1
@@ -50,10 +45,7 @@
 
 enum event_data { EVENT_THING = 0, EVENT_VALUE = 0, EVENT_THING2 = 2 };  /* byte offsets in TimelineEvent.data */
 
-#define GDAT_CREATURE_CATEGORY 0x0f
 #define GDAT_CREATURE_INFO_ENTRY 5
-#define GDAT_CONTAINER_CATEGORY 0x14
-#define GDAT_TYPE_TEXT 5
 #define GDAT_MONEYBOX_ENTRY 0x40
 
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
@@ -82,7 +74,7 @@ static const uint8_t champion_mask[CHAMPION_SIZE] = {
     [0x101] = 0x3f, 0x0f,
 };
 static const uint8_t magic_light_mask[MAGIC_LIGHT_SIZE] = {0x00, 0x00, 0x00, 0xff, 0xff, 0x00};
-static const uint8_t event_mask[EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00};
+static const uint8_t event_mask[TIMELINE_EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00};
 
 static const uint8_t door_mask[] = {0x00, 0x00, 0x00, 0x3e};
 static const uint8_t text_mask[] = {0x00, 0x00, 0x01, 0x00};
@@ -128,7 +120,7 @@ static struct {
     int in_group;               /* inside the possessions of a creature group */
     int in_projectile;          /* inside the payload of a projectile */
     const uint8_t *misc_mask;   /* moneybox_misc_mask inside a moneybox */
-    uint16_t deferred[DEFERRED_MAX];
+    uint16_t deferred[DEFERRED_THINGS_MAX];
     int deferred_count;
     uint16_t *group_order;      /* written: position of each group record in the bit stream */
     uint16_t *container_order;  /* written: position of each container record in the bit stream */
@@ -230,7 +222,7 @@ static int sensor_has_data(uint16_t sensor)
 
 static int creature_is_static(uint16_t group)
 {
-    int info = gdat_find(io.gdat, GDAT_CREATURE_CATEGORY, group_creature(group), GDAT_TYPE_VALUE,
+    int info = gdat_find(io.gdat, CAT_CREATURE, group_creature(group), GDAT_TYPE_VALUE,
                          GDAT_CREATURE_INFO_ENTRY);
     if (info == -1) info = 0;  /* a missing value key reads as 0 */
     const CreatureInfo *record = creature_info_at(info);
@@ -242,12 +234,12 @@ static int container_is_moneybox(uint16_t container)
 {
     if (container_kind(container) != CONTAINER_CHEST) return 0;
     int item = container_type(container);
-    return gdat_find(io.gdat, GDAT_CONTAINER_CATEGORY, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
+    return gdat_find(io.gdat, CAT_CONTAINER, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
 }
 
 static int defer_thing(uint16_t thing)
 {
-    if (io.deferred_count == DEFERRED_MAX) return 0;  /* fix: the original writes past its buffer */
+    if (io.deferred_count == DEFERRED_THINGS_MAX) return 0;  /* fix: the original writes past its buffer */
     io.deferred[io.deferred_count++] = thing;
     return 1;
 }
@@ -501,7 +493,7 @@ static int write_state(void)
         || !write_packed((const uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT)
         || !write_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count)
         || !write_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1)
-        || !write_packed((const uint8_t *)timeline.events, event_mask, EVENT_SIZE, timeline.count))
+        || !write_packed((const uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count))
         return 0;
     for (int c = 0; c < game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
@@ -762,7 +754,7 @@ static int read_state(void)
         || !read_packed((uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT, 0)
         || !read_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count, 0)
         || !read_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, 0)
-        || !read_packed((uint8_t *)timeline.events, event_mask, EVENT_SIZE, timeline.count, 0))
+        || !read_packed((uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count, 0))
         return 0;
     for (int i = timeline.count; i < timeline.capacity; i++) timeline.events[i].type = EVENT_NONE;
     timeline_build_queue();
@@ -777,9 +769,9 @@ int save_load(const char *path, const gdat_t *gdat)
     FILE *f = fopen(path, "rb");
     if (!f) return SAVE_ERR_IO;
     creature_free_active_groups();
-    uint8_t header[HEADER_SIZE];
+    uint8_t header[SAVE_HEADER_SIZE];
     int result = SAVE_ERR_FORMAT;
-    if (fread(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_read(f, 0)) {
+    if (fread(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_read(f, 0)) {
         start_io(f, gdat);
         if (draw_gdat() != gdat) draw_init(gdat);  /* the item effects of the champions read the item attributes */
         champ_reset_step_state();
@@ -794,18 +786,18 @@ int save_load(const char *path, const gdat_t *gdat)
 
 int save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat)
 {
-    uint8_t header[HEADER_SIZE] = {0};  /* fix: without an old file the original writes uninitialized bytes */
+    uint8_t header[SAVE_HEADER_SIZE] = {0};  /* fix: without an old file the original writes uninitialized bytes */
     remove(bak_path);
     rename(path, bak_path);
     FILE *old = fopen(bak_path, "rb");
     if (old) {
-        if (fread(header, 1, HEADER_SIZE, old) != HEADER_SIZE) memset(header, 0, HEADER_SIZE);
+        if (fread(header, 1, SAVE_HEADER_SIZE, old) != SAVE_HEADER_SIZE) memset(header, 0, SAVE_HEADER_SIZE);
         fclose(old);
     }
     put_le16(header + HEADER_FORMAT, SAVE_FORMAT);
     size_t n = strnlen(name, SAVE_NAME_SIZE - 1);
-    memcpy(header + HEADER_NAME, name, n);  /* the name bytes after its end mark keep the old header bytes */
-    header[HEADER_NAME + n] = 0;
+    memcpy(header + SAVE_HEADER_NAME, name, n);  /* the name bytes after its end mark keep the old header bytes */
+    header[SAVE_HEADER_NAME + n] = 0;
 
     FILE *f = fopen(path, "wb");
     if (!f) return SAVE_ERR_IO;
@@ -813,7 +805,7 @@ int save_write(const char *path, const char *bak_path, const char *name, const g
     io.group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *io.group_order);
     io.container_order = calloc(dungeon_thing_count(THING_CONTAINER) + 1, sizeof *io.container_order);
     /* the records keep the indices of the active groups; the timeline loses their events (game_save) */
-    int ok = fwrite(header, 1, HEADER_SIZE, f) == HEADER_SIZE && dungeon_write(f);
+    int ok = fwrite(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_write(f);
     creature_deactivate_all_groups();
     ok = ok && write_state() && (game_mode == GAME_MODE_VANILLA || automap_write(f));
     free(io.group_order);

@@ -7,6 +7,7 @@
 #define SOUND_OUTPUT_RATE 44100 /* the port mixes at 4 times the sample rate */
 #define SOUND_VOICES 64
 #define SOUND_PAN_CENTER 0x8000
+#define VOLUME_SETTING_MAX 7   /* the sound and music volume settings: 0 to 7 */
 
 /* Signed 8-bit mono PCM of a GDAT sound item. */
 typedef struct {

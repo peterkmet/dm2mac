@@ -17,9 +17,6 @@
 #include "ui.h"
 #include "sensor.h"
 
-#define CAT_CREATURE 0x0f
-#define TYPE_DATA 7                 /* GDAT key type of raw data */
-#define TYPE_TABLE 8                /* GDAT key type of a word table */
 #define CREATURE_KEY_INFO 5         /* value key: index of the creature info record */
 #define CREATURE_KEY_CLASS 1        /* value key: the AI class */
 #define CREATURE_FRAMES_ENTRY 0xfd  /* data: the animation frames */
@@ -76,8 +73,6 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define AI_ACTION_FLAG_INTERRUPT 0x10
 #define CREATURE_DEATH_EXPLOSION 0xffa8
 #define EXPLOSION_CENTER 0xff
-#define SOUND_PRIORITY_STEP 0x46
-#define SOUND_VOLUME 0x80
 #define AI_ACTION_JUMP 5
 #define CREATURE_FAST_VANISH 0x1000 /* flags: the creature vanishes quickly in a party action effect */
 #define TIME_BYTE_WRAP 0x100        /* the time bytes of an active group are the low byte of the time */
@@ -243,7 +238,7 @@ void creature_anim_frame_of(const gdat_t *g, int type, uint16_t sequence, uint16
 {
     unsigned index = (uint16_t)(anim_frame_offset(&state) + sequence);
     uint32_t size;
-    const uint8_t *data = gdat_item(g, gdat_find(g, CAT_CREATURE, type, TYPE_DATA, CREATURE_FRAMES_ENTRY), &size);
+    const uint8_t *data = gdat_item(g, gdat_find(g, CAT_CREATURE, type, GDAT_TYPE_CREATURE_DATA, CREATURE_FRAMES_ENTRY), &size);
     memset(frame, 0, CREATURE_FRAME_SIZE);
     if (data && (index + 1) * CREATURE_FRAME_SIZE <= size)  /* fix: the original reads past the frames */
         memcpy(frame, data + index * CREATURE_FRAME_SIZE, CREATURE_FRAME_SIZE);
@@ -258,14 +253,14 @@ int creature_anim_bits(uint16_t group)
 /* The 4-byte step of a creature animation at its current state (creature_get_anim_step). */
 static const uint8_t *anim_current_step(int creature_type, uint16_t sequence, uint16_t *state)
 {
-    const uint8_t *steps = creature_data(creature_type, TYPE_DATA, CREATURE_STEPS_ENTRY, NULL);
+    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL);
     return steps + (uint16_t)(anim_frame_offset(state) + sequence) * ANIM_STEP_SIZE;
 }
 
 /* The number of steps of the animation sequence that starts at sequence. */
 static int anim_sequence_length(int creature_type, uint16_t sequence)
 {
-    const uint8_t *step = creature_data(creature_type, TYPE_DATA, CREATURE_STEPS_ENTRY, NULL) + sequence * ANIM_STEP_SIZE;
+    const uint8_t *step = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL) + sequence * ANIM_STEP_SIZE;
     int n = 1;
     while (step[STEP_NEXT] >> STEP_NEXT_SHIFT) {
         n++;
@@ -278,7 +273,7 @@ static int anim_sequence_length(int creature_type, uint16_t sequence)
    Returns 1 when the step has a duration. */
 int creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
 {
-    const uint8_t *steps = creature_data(creature_type, TYPE_DATA, CREATURE_STEPS_ENTRY, NULL);
+    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL);
     unsigned s = *step, result = 0;
     int ended = 0;
     if (s == ANIM_STEP_NONE) {
@@ -310,7 +305,7 @@ int creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_
 /* Moves *step by the jump of the current step; returns 2 at the end of the sequence, 1 when more steps follow. */
 int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
 {
-    const uint8_t *steps = creature_data(creature_type, TYPE_DATA, CREATURE_STEPS_ENTRY, NULL);
+    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL);
     int result;
     if (*step == ANIM_STEP_NONE) {
         *step = 0;
@@ -331,7 +326,7 @@ int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step
 int creature_anim_start(int creature_type, int action, uint16_t *sequence, uint16_t *state, const uint8_t **frame,
                         uint16_t start)
 {
-    const uint8_t *table = creature_data(creature_type, TYPE_TABLE, CREATURE_SEQUENCES_ENTRY, NULL);
+    const uint8_t *table = creature_data(creature_type, GDAT_TYPE_TABLE, CREATURE_SEQUENCES_ENTRY, NULL);
     for (;; table += SEQUENCE_ENTRY_SIZE) {
         int16_t a = (int16_t)le16(table);
         if (a == SEQUENCE_END || a == (int16_t)action) break;
@@ -727,7 +722,7 @@ uint32_t creature_ai_animate_and_get_next_time(void)
     ai.anim[0] = sequence;
     ai.anim[1] = state;
     if ((step[STEP_SOUND] & STEP_SOUND_MASK) != STEP_NO_SOUND)
-        sound_request(CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_STEP, SOUND_VOLUME,
+        sound_request(CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL,
                       ai.event.data[0], ai.event.data[1], 1);
     int16_t delay = anim_step_delay(step);
     if (own_step) ai.anim_step = NULL;
@@ -788,8 +783,6 @@ void creature_process_event(int x, int y, int type)
 #define DROP_RANDOM_SHIFT 4
 #define DROP_RANDOM_MASK 0x70
 #define DROP_ITEM_SHIFT 7
-#define SOUND_CATEGORY_MISC 3
-#define CATEGORY_CREATURE 0x0f
 #define SOUND_ENTRY_HURT 9                  /* and 10 */
 #define AI_CLASS_NO_HOME_EVENT 0x0004       /* class flag: the home square gets no event when the creature is hurt */
 #define AI_CLASS_DIES_NEAR_PARTY 0x0800     /* the creature dies only in front of the party; the commands wait */
@@ -845,7 +838,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
                 move_thing(t, MOVE_NEW_ITEM, 0, x, y);
                 if ((int16_t)sound_map >= 0)
                     sound_play_with_fallback(item_gdat_category(item), item_gdat_index(item), SOUND_ENTRY_DROP, SOUND_FALLBACK,
-                                             x, y, (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME);
+                                             x, y, (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
             }
         }
     }
@@ -860,7 +853,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
             move_thing(t, MOVE_NEW_ITEM, 0, x, y);
             if ((int16_t)sound_map >= 0)
                 sound_play_with_fallback(item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP, SOUND_FALLBACK, x, y,
-                                         (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME);
+                                         (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
         }
         t = next;
     }
@@ -925,8 +918,8 @@ int creature_damage_current_group(uint16_t damage)
             else scream = !rand_2bits();
         }
         if (scream)
-            sound_request(CATEGORY_CREATURE, group_creature(ai.group_thing), SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_STEP,
-                          SOUND_VOLUME, ai.event.data[0], ai.event.data[1], 1);
+            sound_request(CAT_CREATURE, group_creature(ai.group_thing), SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_CREATURE,
+                          SOUND_VOLUME_NORMAL, ai.event.data[0], ai.event.data[1], 1);
     }
     set_thing_word(ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
     return 0;
@@ -1179,7 +1172,7 @@ void timeline_event_move_group(TimelineEvent *e)
 {
     int x = e->data[0], y = e->data[1];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
-        sound_request(SOUND_CATEGORY_MISC, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME, x, y, 1);
+        sound_request(CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL, x, y, 1);
 }
 
 /* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */
@@ -1214,7 +1207,6 @@ int creature_get_party_distance(int x, int y)
 
 #define PUSH_FAIL_STAMINA 5
 #define PUSH_LIGHT 0x2e                 /* creatures below this resistance are easy to push */
-#define CATEGORY_CHAMPION 0x16
 #define ALERT_PUSHED 0x4002
 #define PUSH_BASE_STRENGTH 0x28
 #define ACTION_FLAG_PATH 0x04
@@ -1319,8 +1311,8 @@ void creature_push_group(int x, int y, int dir, int strength)
     for (int i = 0; i < CHAMPION_MAX; i++) {
         Champion *c = champion(i);
         if (!c->health) continue;
-        sound_play_with_fallback(CATEGORY_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
-                                 SOUND_VOLUME_PUSH);
+        sound_play_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_PUSHED,
+                                 SOUND_VOLUME_LOUD);
         load = (int16_t)(load + (uint16_t)champ_get_load(i) / LOAD_PUSH_DIVISOR);
         alive++;
     }
@@ -1346,8 +1338,8 @@ void move_push_creature(int arrow)
     if (!move_party_can_push_group(g)) {
         for (int i = 0; i < game.champion_count; i++)
             if (champion(i)->health && (i == game.leader || !rand_2bits()))
-                sound_play_with_fallback(CATEGORY_CHAMPION, i, SOUND_ENTRY_STRAIN, SOUND_FALLBACK, game.party_x, game.party_y, 1,
-                                         SOUND_PRIORITY_STRAIN, SOUND_VOLUME_PUSH);
+                sound_play_with_fallback(CAT_CHAMPION, i, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
+                                         SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
         return;
     }
     push.x = x;

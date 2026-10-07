@@ -38,11 +38,6 @@
    0xf9) set: the thing shows only with MAP_OPTION_DETAILS. */
 #define STRIP_ENTRY 0xf9
 #define STRIP_DETAIL_KEY 0xf9
-#define CAT_MAP_ICONS 8                 /* by wall set: the square icons */
-#define CAT_WALL_ORNAMENT 9
-#define CAT_FLOOR_ORNAMENT 10
-#define CAT_CREATURE 0x0f
-#define CAT_TELEPORTER 0x18
 #define MAP_ITEM_ICONS 0x40             /* the image of the map item with the party, minion, and marker icons */
 #define GDAT_INDEX_COUNT 256            /* GDAT indices are bytes */
 /* Icons of the square strip. */
@@ -341,7 +336,7 @@ static bool draw_square_base(const ViewSquare *s, const Strip *base, int sx, int
     case ASPECT_WALL: case ASPECT_HIDDEN: draw_wall(s, base, x, y, flags, fake_seen, other_map); break;
     case ASPECT_FLOOR:
         if (s->square & FLOOR_SHOWS_LEVEL) {
-            Strip digits = map_icon_strip(CAT_MAP_ICONS, level_icon_set());
+            Strip digits = map_icon_strip(CAT_WALLSET, level_icon_set());
             draw_strip(&digits, 0, x, y, 0);
             return false;
         }
@@ -400,7 +395,7 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
 {
     ViewSquare s;
     dun_get_square_aspect(&s, dir, sx, sy);
-    Strip base = map_icon_strip(CAT_MAP_ICONS, icon_set);
+    Strip base = map_icon_strip(CAT_WALLSET, icon_set);
     if (flags & MAP_PARTY) draw_party_frame(x, y);
     int fake_seen = square_type(s.square) == SQUARE_FAKE_WALL && s.square & FAKE_WALL_SEEN;
     int other_map = 0, saved_map = 0, saved_x, saved_y;
@@ -441,8 +436,8 @@ void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx,
     if (party_item >= 0) draw_party_frame(x, y);
     ui_map_draw_square(THING_NONE, sx, sy, DIR_NORTH, x, y, map_icon_set(), 0);
     if (party_item >= 0) {
-        Strip p = {draw_gdat_image(GDAT_CONTAINER_CATEGORY, party_item, MAP_ITEM_ICONS),
-                   draw_gdat_image_palette(GDAT_CONTAINER_CATEGORY, party_item, MAP_ITEM_ICONS), 0};
+        Strip p = {draw_gdat_image(CAT_CONTAINER, party_item, MAP_ITEM_ICONS),
+                   draw_gdat_image_palette(CAT_CONTAINER, party_item, MAP_ITEM_ICONS), 0};
         draw_party_icons(&p, x, y, DIR_NORTH);
     }
     memcpy(minion_map.clip, saved, sizeof saved);
@@ -451,7 +446,7 @@ void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx,
 int minion_map_party_icons_item(void)
 {
     for (int index = 0; index < GDAT_INDEX_COUNT; index++)
-        if (gdat_exists(draw_gdat(), GDAT_CONTAINER_CATEGORY, index, GDAT_TYPE_IMAGE, MAP_ITEM_ICONS)) return index;
+        if (gdat_exists(draw_gdat(), CAT_CONTAINER, index, GDAT_TYPE_IMAGE, MAP_ITEM_ICONS)) return index;
     return -1;
 }
 
@@ -597,7 +592,7 @@ void ui_draw_map_option_buttons(int pressed)
     if (action.champion <= 0 || !(action.flags & MAP_HAS_OPTIONS)) return;
     int down = (pressed ^ action.flags) & MAP_OPTIONS;
     for (int i = 0; i < MAP_OPTION_COUNT; i++, down >>= 1) {
-        offscreen_draw_gdat_image(area, GDAT_CONTAINER_CATEGORY, action.map_item, down & 1 ? OPTION_BUTTON_DOWN : OPTION_BUTTON_UP,
+        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, down & 1 ? OPTION_BUTTON_DOWN : OPTION_BUTTON_UP,
                                   ZONE_OPTION_BUTTON_FIRST + i, UI_OPAQUE);
         char label[2] = {(char)(OPTION_LABEL_FIRST + i), '\0'};
         offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i, ui_colors[UI_BLACK], ui_colors[UI_GRAY] | TEXT_TRANSPARENT,
@@ -621,7 +616,7 @@ void ui_draw_minion_map(uint16_t thing)
     }
     area = ui_action_area_begin_draw(0);
     if (!(action.flags & MAP_PANEL_DRAWN)) {
-        offscreen_draw_gdat_image(area, GDAT_CONTAINER_CATEGORY, action.map_item, MAP_PANEL_PICTURE, ZONE_PANEL, UI_OPAQUE);
+        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, MAP_PANEL_PICTURE, ZONE_PANEL, UI_OPAQUE);
         for (int i = 0; i < champ_action_count; i++) ui_draw_action_name(i, 0);
         ui_draw_map_option_buttons(0);
         action.flags |= MAP_PANEL_DRAWN;

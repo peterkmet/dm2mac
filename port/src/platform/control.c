@@ -15,7 +15,6 @@
 #include "champion.h"
 #include "dialog.h"
 #include "dungeon.h"
-#include "gdat.h"
 #include "game.h"
 #include "input.h"
 #include "item.h"
@@ -69,13 +68,11 @@ static struct {
     uint32_t start, ticks;
 } waiting;
 
-/* The input modes that only their modules name (session.c, dialog.c, recruit.c). */
-enum { MODE_MENU = 0, MODE_PICTURE = 1, MODE_DIALOG = 4, MODE_RECRUIT = 7, MODE_NAME = 9 };
 /* The input modes by number (the roots of the input tree in input.c). */
 static const char *const mode_names[] = {
-    [MODE_MENU] = "menu", [MODE_PICTURE] = "picture", [INPUT_MODE_SLEEP] = "sleep", [INPUT_MODE_PAUSE] = "pause",
-    [MODE_DIALOG] = "dialog", [INPUT_MODE_MOVE] = "move", [INPUT_MODE_PUSH] = "push", [MODE_RECRUIT] = "recruit",
-    [INPUT_MODE_INVENTORY] = "inventory", [MODE_NAME] = "name",
+    [INPUT_MODE_MENU] = "menu", [INPUT_MODE_PICTURE] = "picture", [INPUT_MODE_SLEEP] = "sleep", [INPUT_MODE_PAUSE] = "pause",
+    [INPUT_MODE_DIALOG] = "dialog", [INPUT_MODE_MOVE] = "move", [INPUT_MODE_PUSH] = "push", [INPUT_MODE_RECRUIT] = "recruit",
+    [INPUT_MODE_INVENTORY] = "inventory", [INPUT_MODE_NAME] = "name",
 };
 #define MODE_COUNT ((int)(sizeof mode_names / sizeof mode_names[0]))
 
@@ -276,7 +273,7 @@ static void send_state(void)
     const char *mode_name = mode >= 0 && mode < MODE_COUNT ? mode_names[mode] : "unknown";
     put("{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
         mode_name);
-    if (mode != MODE_DIALOG) put("null");
+    if (mode != INPUT_MODE_DIALOG) put("null");
     else put("%d", dialog.id);
     put(",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
         game.party_map, game.party_x, game.party_y, game.party_dir, game.champion_count, (int16_t)game.leader);

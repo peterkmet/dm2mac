@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "fm.h"
-#include "gdat.h"
 #include "hmp.h"
 #include "le.h"
 #include "opl3.h"

@@ -4,7 +4,6 @@
 #include "gdat.h"
 #include "gfx.h"
 
-#define CATEGORY_NONE 0xff      /* a draw context without a GDAT image */
 #define DRAW_NO_BLIT (-2)       /* transparent value: compute the rectangle, draw nothing */
 #define DRAW_NO_IMAGE (-3)      /* transparent value: do not even load the image */
 

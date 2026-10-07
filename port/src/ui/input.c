@@ -40,7 +40,7 @@
 #define CLICK_FEEDBACK_SIZE 0xec
 #define LIST_START 0x8000
 #define NODE_HAS_CHILDREN 0x80
-#define NODE_INDEX_MASK 0x7f        /* a child list entry: the node index; a node condition: the condition */
+#define NODE_INDEX_MASK 0x7f        /* a child list entry: the node index */
 #define COMMAND_MASK 0x7ff
 #define COMMAND_OFF 0x08
 #define ZONE_IN_PANEL 0x8000
@@ -55,7 +55,9 @@
 #define KEY_BUFFER 16
 #define EVENT_ENTER_AREA 0x40
 #define EVENT_LEAVE_AREA 0x60
-#define EVENT_CLICK_TYPES 0x13      /* the mouse event types that find a click command: bits 0, 1, and 4 */
+#define EVENT_CLICK_OTHER 0x10      /* a click type of the original that the port never queues */
+/* the mouse event types that find a click command: bits 0, 1, and 4 */
+#define EVENT_CLICK_TYPES (INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT | EVENT_CLICK_OTHER)
 #define ARROW_W 12
 #define HAND_W 16
 #define CURSOR_H 16
@@ -74,24 +76,6 @@ enum { CURSOR_KIND_HAND = 1, CURSOR_KIND_CHAMPION = 2 };
 typedef struct { uint16_t command, zone; uint8_t buttons, flags; } InputCommand;
 typedef struct { uint16_t command, key; } InputKey;
 
-/* Commands (command_execute). */
-enum {
-    CMD_INVENTORY_FIRST = 7, CMD_INVENTORY_LEADER = 0x0b, CMD_LEADER_FIRST = 0x10, CMD_LEADER_LAST = 0x13,
-    CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41, CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
-    CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
-    CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_SAVE = 0x8c, CMD_VOLUME = 0x8d, CMD_EDIT_CHAMPION_NAME = 0x48,
-    CMD_NEW_GAME = 0xd7, CMD_NEW_GAME_B = 0xd8, CMD_LOAD_GAME = 0xd9, CMD_MENU_PICTURE = 0xda, CMD_CANCEL_PUSH = 0xe1,
-    CMD_CANCEL_CAPTURE = 0xe3, CMD_TEXT_FIRST = 0xa5,
-    CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
-    CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81,
-    CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_EYE = 0x47, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
-    CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93,
-    CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
-    CMD_MINION_MAP = 0x55, CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59,
-    CMD_NAME_EDITOR_LAST = 0x4b,    /* the buttons of the name editor follow CMD_EDIT_CHAMPION_NAME */
-    CMD_VOLUME_SETTING_FIRST = 0x95, CMD_VOLUME_SETTING_LAST = 0xa4, CMD_DIALOG_BUTTON_LAST = 0xde,
-    CMD_QUICK_SAVE = CMD_LAST + 1, CMD_QUICK_LOAD, CMD_AUTOMAP  /* the advanced mode: no original command has these numbers */
-};
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
     {0x00, 0, 0}, {0x00, 0, 1}, {0x00, 0, 2}, {0x00, 0, 3}, {0x00, 0, 4}, {0x00, 1, 5},
@@ -324,7 +308,7 @@ void input_init(void)
 enum {
     NODE_IF_ALWAYS, NODE_IF_SCREEN_MODE, NODE_IF_BUTTON_COUNT, NODE_IF_INVENTORY, NODE_IF_CHAMPION_ALIVE,
     NODE_IF_CHAMPION_IN_CELL, NODE_IF_DRAGGING, NODE_IF_ICON_IN_CELL, NODE_IF_ACTION_COUNT, NODE_IF_RUNE_SET,
-    NODE_IF_ACTION_LIST, NODE_IF_ACTION_MODE
+    NODE_IF_MINION_MAP_LAYOUT, NODE_IF_ACTION_MODE
 };
 #define MAP_WITHOUT_OPTIONS 5       /* the condition argument of a minion map without option buttons */
 
@@ -353,7 +337,7 @@ static int input_condition(int cond, int arg)
         return arg >= CELL_COUNT || champion_in_party_cell(arg) >= 0;
     case NODE_IF_ACTION_COUNT: return action.champion && arg == champ_action_count;
     case NODE_IF_RUNE_SET: return action.champion && arg & 1 << champion(action.champion - 1)->rune_count;
-    case NODE_IF_ACTION_LIST:
+    case NODE_IF_MINION_MAP_LAYOUT:
         if (!action.champion) return 0;
         return arg == (action.flags & MAP_HAS_OPTIONS ? champ_action_count : MAP_WITHOUT_OPTIONS);
     case NODE_IF_ACTION_MODE: return arg == action.mode;
@@ -457,7 +441,7 @@ static uint16_t find_click_command(const InputNode *node, int x, int y, int butt
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             command = find_click_command(child, x, y, buttons);
         } else {
@@ -475,7 +459,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             command = find_key_command(child, key);
             if (command) return command;
@@ -525,7 +509,7 @@ static void mark_active_zones(const InputNode *node, uint8_t *active)
 {
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) mark_active_zones(child, active);
         else active[child->link] = 1;
     }
@@ -626,12 +610,12 @@ static uint8_t champion_cursor_key;
 
 void input_set_champion_cursor(int champ)
 {
-    Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, NIBBLE_BITS);
+    Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, IMAGE_4BPP);
     if (!face) return;
     memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
     uint8_t palette[FACE_ICON_COLORS];
     ui_draw_champion_face_icon(face, champ, palette);
-    Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, BYTE_BITS};
+    Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
     memset(champion_cursor, UI_KEY, sizeof champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     gfx_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, palette);
@@ -642,25 +626,25 @@ void input_set_champion_cursor(int champ)
 CursorImage input_cursor_image(int cursor)
 {
     switch (cursor) {
-    case CURSOR_HAND: return (CursorImage){cursor_hand, ui_colors, NIBBLE_BITS, HAND_W, CURSOR_H, 0, 0, UI_KEY};
+    case CURSOR_HAND: return (CursorImage){cursor_hand, ui_colors, IMAGE_4BPP, HAND_W, CURSOR_H, 0, 0, UI_KEY};
     case CURSOR_OBJECT: {
         static uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE];
         uint8_t key = leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
         memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
         memset(object_cursor, key, sizeof object_cursor);
-        const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, BYTE_BITS};
-        Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, BYTE_BITS};
+        const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
+        Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
         gfx_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
         gfx_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
-        return (CursorImage){object_cursor, NULL, BYTE_BITS, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
+        return (CursorImage){object_cursor, NULL, IMAGE_8BPP, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
                              OBJECT_HOT, OBJECT_HOT, key};
     }
     case CURSOR_CHAMPION:
-        return (CursorImage){champion_cursor, NULL, BYTE_BITS, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
+        return (CursorImage){champion_cursor, NULL, IMAGE_8BPP, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
                              champion_cursor_key};
-    default: return (CursorImage){cursor_arrow, ui_colors, NIBBLE_BITS, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
+    default: return (CursorImage){cursor_arrow, ui_colors, IMAGE_4BPP, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
     }
 }
 
@@ -672,7 +656,7 @@ void input_draw_cursor(uint8_t *dst, int x, int y)
         for (int cx = 0; cx < c.width; cx++) {
             int sx = x - c.hot_x + cx, sy = y - c.hot_y + cy, i = cy * c.width + cx;
             if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H) continue;
-            int n = c.bpp == NIBBLE_BITS ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BITS)) & NIBBLE_MASK : c.bits[i];
+            int n = c.bpp == IMAGE_4BPP ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BITS)) & NIBBLE_MASK : c.bits[i];
             if (n != c.key) dst[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
         }
 }
@@ -839,8 +823,8 @@ static const uint8_t *click_feedback_script(Command *c)
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == CMD_VOLUME
         || (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL)
         || (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST)
-        || (command >= CMD_VOLUME_SETTING_FIRST && command <= CMD_VOLUME_SETTING_LAST)
-        || (command >= CMD_EDIT_CHAMPION_NAME && command <= CMD_NAME_EDITOR_LAST))
+        || (command >= CMD_SOUND_VOLUME_FIRST && command <= CMD_MUSIC_VOLUME_LAST)
+        || (command >= CMD_EDIT_CHAMPION_NAME && command <= CMD_EDIT_CANCEL))
         offset = SCRIPT_EXECUTE;
     else if (command <= CMD_MOVE_LEFT) offset = (command - CMD_TURN_LEFT) * SCRIPT_MOVE_SIZE + SCRIPT_MOVE_FIRST;
     else if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST)
@@ -1162,7 +1146,6 @@ void ui_release_move_arrow(void)
 
 /* ---- Clicks in the dungeon view ---- */
 
-#define CAT_CREATURE_SOUND 0x0f
 #define ZONE_FRONT_WALL_LOW 0x2fd   /* the parts of the view that show the wall in front of the party */
 #define ZONE_FRONT_WALL_HIGH 0x2fe
 #define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
@@ -1170,9 +1153,6 @@ void ui_release_move_arrow(void)
 enum { WALL_CELL_PARTY, WALL_CELL_LEFT, WALL_CELL_RIGHT, WALL_CELL_FRONT };
 #define CLICK_SOUND_ENTRY 0x84      /* the sound of a click on a wall or on a creature that cannot move */
 #define CLICK_SOUND_PRIORITY 0x8c
-#define CLICK_SOUND_VOLUME 0x80
-#define WALL_SOUND_VOLUME 200
-#define CAT_MISC_SOUND 3
 #define DOOR_BUTTON_SOUND_ENTRY 0x88
 #define PUSH_RESISTANCE_FIXED 0xff  /* a creature that never moves: a click on it only sounds */
 
@@ -1207,8 +1187,8 @@ static void view_click_creature(uint16_t group, int x, int y, int square_x, int 
     int side;
     if (!view_hit_test_creature(x, y, square_x, square_y, &side)) return;
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
-        sound_play_with_fallback(CAT_CREATURE_SOUND, item_gdat_index(group), CLICK_SOUND_ENTRY, SOUND_FALLBACK, square_x,
-                                 square_y, 0, CLICK_SOUND_PRIORITY, CLICK_SOUND_VOLUME);
+        sound_play_with_fallback(CAT_CREATURE, item_gdat_index(group), CLICK_SOUND_ENTRY, SOUND_FALLBACK, square_x,
+                                 square_y, 0, CLICK_SOUND_PRIORITY, SOUND_VOLUME_NORMAL);
     } else if (!side) {
         party.push_mode = 1;
         ui.push_mode = 1;
@@ -1225,14 +1205,14 @@ static void view_click_front_wall(int passable, int x, int y)
     if (!game.champion_count) return;
     if (!passable)
         sound_play_with_fallback(CAT_WALLSET, dungeon_map_wallset(game.party_map), CLICK_SOUND_ENTRY, SOUND_FALLBACK, x, y,
-                                 0, CLICK_SOUND_PRIORITY, WALL_SOUND_VOLUME);
+                                 0, CLICK_SOUND_PRIORITY, SOUND_VOLUME_LOUD);
     input_command_stop = 1;
 }
 
 /* A door button of the door at (x, y): the door toggles, the button shows pressed until the next game step. */
 static void view_click_door_button(int x, int y, uint16_t door)
 {
-    sound_request(CAT_MISC_SOUND, 0, DOOR_BUTTON_SOUND_ENTRY, CLICK_SOUND_PRIORITY, CLICK_SOUND_VOLUME, game.party_x,
+    sound_request(CAT_DUNGEON, 0, DOOR_BUTTON_SOUND_ENTRY, CLICK_SOUND_PRIORITY, SOUND_VOLUME_NORMAL, game.party_x,
                   game.party_y, 1);
     sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, game.game_time + 1);
     TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, party.cur_map),
@@ -1680,7 +1660,7 @@ static const InputCommand *find_command_entry(const InputNode *node, uint16_t co
 {
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & NODE_INDEX_MASK, child->arg)) continue;
+        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg)) continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             const InputCommand *e = find_command_entry(child, command);
             if (e) return e;

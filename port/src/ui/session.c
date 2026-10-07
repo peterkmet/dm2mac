@@ -23,29 +23,15 @@
 #include "weather.h"
 #include "zone.h"
 
-#define CAT_MENU 5
 #define MENU_PICTURE 1                  /* GDAT (5, 0, 1, 1): the picture of the menu command 0xda */
 #define MENU_TITLE 4                    /* GDAT (5, 0, 1, 4): the title picture */
-#define CAT_END 6
 #define END_PICTURE 1                   /* GDAT (6, 0, 1, 1): the picture after the player quits */
 #define MENU_PICTURE_VBLANKS 1800
 #define END_SOUND_VBLANKS 240
-#define INPUT_MODE_MENU 0
-#define INPUT_MODE_PICTURE 1
-#define INPUT_MODE_DIALOG 4
-#define INPUT_MODE_NAME 9
-#define CMD_PICTURE_CLICK 0xef          /* a click on a picture of input mode 1 */
-#define SAVE_HEADER_SIZE 0x2a
-#define SAVE_HEADER_NAME 2
 #define SAVE_HEADER_UNUSED 0x26         /* the slot list marks an empty slot with UNUSED_SLOT here */
 #define UNUSED_SLOT 0xdeadbeefu
 #define SAVE_NAME_MAX 0x1f              /* characters of a slot name */
 #define QUIT_SAFE_TICKS 100             /* a quit within this time after a load or a save needs no question */
-#define EVENT_SLACK 50                  /* timeline events beyond one per group, projectile, and explosion record */
-#define KEY_BACKSPACE 0x0e
-#define KEY_TAB 0x0f
-#define KEY_ENTER 0x1c
-#define CMD_TEXT_KEY_FIRST 0xa5         /* the commands of the keys that type text */
 #define CMD_TEXT_KEY_LAST 0xd6
 /* The buttons of the save menu (dialog 0x1b) and of the question before a quit (dialog 0x0c). */
 enum { SAVE_MENU_SAVE, SAVE_MENU_QUIT, SAVE_MENU_RESTART, SAVE_MENU_RESUME };
@@ -55,15 +41,15 @@ enum { SLOT_CANCEL = 1, SLOT_OK, SLOT_LIST, SLOT_NAME };
 enum { SLOT_BUTTONS_LOAD = 5, SLOT_BUTTONS_SAVE = 6 };
 enum {
     ZONE_SLOT_VERSION = 0x1c2, ZONE_SLOT_LIST = 0x1c3, ZONE_SLOT_NAME = 0x1c5, ZONE_SLOT_TEXT_1 = 0x1d2,
-    ZONE_SLOT_TEXT_2 = 0x1d3, ZONE_DIALOG_BACK = 4
+    ZONE_SLOT_TEXT_2 = 0x1d3
 };
 #define SLOT_NAME_TOP 4                 /* the text base line below the top of a slot zone */
 /* The sound of the end of the game: the scream of the first champion (fallback: the generic scream). */
-enum { END_SOUND_CATEGORY = 0x16, END_SOUND_ENTRY = 0x87, END_SOUND_FALLBACK = 0xfe, END_SOUND_LOUD = 0xff };
+enum { END_SOUND_PRIORITY = 0xff };
 /* The name and title fields of the inventory while a name changes. */
 enum {
-    NAME_PANEL_MODE = 8, ZONE_NAME = 0x229, ZONE_TITLE = 0x273, ZONE_NAME_BUTTON = 0x267, NAME_CATEGORY = 7,
-    NAME_BUTTON_UP = 0x13, NAME_BUTTON_DOWN = 0x14, CMD_EDIT_NAME = 0x49, CMD_EDIT_TITLE = 0x4a, CMD_EDIT_CANCEL = 0x4b,
+    NAME_PANEL_MODE = 8, ZONE_NAME = 0x229, ZONE_TITLE = 0x273, ZONE_NAME_BUTTON = 0x267,
+    NAME_BUTTON_UP = 0x13, NAME_BUTTON_DOWN = 0x14,
     CHAMP_NAME_MAX = 7, CHAMP_TITLE_MAX = 15
 };
 /* The characters of a champion name. */
@@ -181,14 +167,14 @@ void save_draw_name_entry(const char *name, int cursor)
 {
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_SLOT_NAME, r)) return;
-    gfx_blit_bitmap(draw_gdat_image(CATEGORY_DIALOG, DIALOG_SAVE_SLOTS, 0), &view_viewport, r, r[RECT_X], r[RECT_Y],
-                    UI_OPAQUE, draw_gdat_image_palette(CATEGORY_DIALOG, DIALOG_SAVE_SLOTS, 0));
+    gfx_blit_bitmap(draw_gdat_image(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0), &view_viewport, r, r[RECT_X], r[RECT_Y],
+                    UI_OPAQUE, draw_gdat_image_palette(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0));
     text_draw_in_viewport(r[RECT_X], r[RECT_Y] + SLOT_NAME_TOP, ui_colors[UI_WHITE], name);
     if (cursor) {
         r[RECT_X] = (int16_t)(r[RECT_X] + (int)strlen(name) * FONT_ADVANCE);
         r[RECT_W] = FONT_ADVANCE;
         r[RECT_H] = (int16_t)(r[RECT_H] - SLOT_NAME_TOP);
-        gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_YELLOW], view_viewport.width, 8);
+        gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_YELLOW], view_viewport.width, IMAGE_8BPP);
     }
     ui_dialog_present();
 }
@@ -196,12 +182,12 @@ void save_draw_name_entry(const char *name, int cursor)
 void save_open_slot_dialog(int id, int buttons)
 {
     char text[2][TEXT_SIZE];
-    text_gdat(CATEGORY_DIALOG, id, 0, text[0]);
-    text_gdat(CATEGORY_DIALOG, id, 1, text[1]);
+    text_gdat(CAT_DIALOG, id, 0, text[0]);
+    text_gdat(CAT_DIALOG, id, 1, text[1]);
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CATEGORY_DIALOG, id, 0), &view_viewport, r, UI_OPAQUE,
-                           draw_gdat_image_palette(CATEGORY_DIALOG, id, 0));
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &view_viewport, r, UI_OPAQUE,
+                           draw_gdat_image_palette(CAT_DIALOG, id, 0));
     ui_dialog_screen_mode(1);
     text_draw_in_zone(ZONE_SLOT_VERSION, ui_colors[UI_DARKEST_GRAY], version_text);
     text_draw_in_zone(ZONE_SLOT_TEXT_1, ui_colors[UI_YELLOW], text[0]);
@@ -322,7 +308,7 @@ static int save_choose_save_slot(void)
             }
             break;
         }
-        if (editing && input_match.value >= CMD_TEXT_KEY_FIRST && input_match.value <= CMD_TEXT_KEY_LAST)
+        if (editing && input_match.value >= CMD_TEXT_FIRST && input_match.value <= CMD_TEXT_KEY_LAST)
             type_slot_name_key(name, &length);
         input_match.choice = 0;
         input_match.value = 0;
@@ -515,9 +501,9 @@ void game_complete(void)
 void game_end(int party_dead)
 {
     if (party_dead && !session.completed) {
-        int portrait = game.champion_count ? champion(0)->portrait : END_SOUND_FALLBACK;
-        sound_play_with_fallback(END_SOUND_CATEGORY, portrait, END_SOUND_ENTRY, END_SOUND_FALLBACK, game.party_x,
-                                 game.party_y, 0, END_SOUND_LOUD, END_SOUND_LOUD);
+        int portrait = game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
+        sound_play_with_fallback(CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, game.party_x,
+                                 game.party_y, 0, END_SOUND_PRIORITY, SOUND_VOLUME_MAX);
         game_wait_frames(END_SOUND_VBLANKS);
     }
     dialog.screen_mode = 1;
@@ -598,7 +584,7 @@ void champ_edit_name(Champion *c)
         int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE, y = in_name ? name_y : title_y;
         for (int field_done = 0, redraw = 1; !field_done && !main_loop.quit;) {
             if (redraw) {
-                gfx_draw_gdat_in_viewport_zone(NAME_CATEGORY, 0, NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, UI_OPAQUE);
+                gfx_draw_gdat_in_viewport_zone(CAT_PANEL, 0, NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, UI_OPAQUE);
                 text_draw_in_zone(ZONE_NAME, ui_colors[UI_YELLOW], c->name);
                 text_draw_in_zone(ZONE_TITLE, ui_colors[UI_YELLOW], c->title);
                 text_draw_in_viewport(x, y, ui_colors[UI_GOLD], "_");
@@ -633,7 +619,7 @@ void champ_edit_name(Champion *c)
         }
     }
     editing = 0;
-    gfx_draw_gdat_in_viewport_zone(NAME_CATEGORY, 0, NAME_BUTTON_UP, ZONE_NAME_BUTTON, UI_OPAQUE);
+    gfx_draw_gdat_in_viewport_zone(CAT_PANEL, 0, NAME_BUTTON_UP, ZONE_NAME_BUTTON, UI_OPAQUE);
     c->redraw |= REDRAW_NAME;
     champ_draw_state(ui.inventory - 1);
     ui_show_game_view();

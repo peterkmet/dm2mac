@@ -14,25 +14,19 @@
 #include "weather.h"
 #include "zone.h"
 
-#define CAT_DUNGEON 3               /* (3, 0, 0x0b, 0): the hour of the day at the start of the dungeon */
-#define CAT_MAP 8
-#define CAT_WALL_ORNAMENT 9
-#define CAT_FLOOR_ORNAMENT 0x0a
-#define CAT_SKY 0x17
-#define CAT_THUNDER 0x17            /* sound (0x17, graphics set, 0): the thunder */
-#define CAT_LIGHTNING_SOUND 0x0d    /* sound (0x0d, 0x30, 0x81): a lightning that hits a fixed square */
+/* Sound (CAT_EXPLOSION, 0x30, 0x81): a lightning that hits a fixed square. */
 #define LIGHTNING_SOUND_INDEX 0x30
 #define LIGHTNING_SOUND_ENTRY 0x81
-#define SOUND_NO_FALLBACK 0xfe
 #define LIGHTNING_SOUND_PRIORITY 0x6c
 #define LIGHTNING_SOUND_VOLUME 0x80 /* plus 0 to 31 */
+/* Sound (CAT_SKY, graphics set, 0): the thunder. */
 #define THUNDER_PRIORITY 0x19
 #define THUNDER_VOLUME 0x40
 #define HOUR_TICKS 0x555            /* game ticks of one hour */
 #define HOURS_PER_DAY 24
 #define LAST_HOUR 23
 
-/* Map graphics value keys (CAT_MAP, graphics set, 0x0b, key). */
+/* Map graphics value keys (CAT_WALLSET, graphics set, 0x0b, key). */
 enum {
     MAP_KEY_LIGHT = 0x67,           /* light added to the party light */
     MAP_KEY_MIN_LIGHT_LEVEL = 0x68, /* the party light level is at least this */
@@ -44,7 +38,6 @@ enum {
 #define ORNAMENT_KEY_DAYLIGHT 0x63  /* the ornament is a window: its light follows the hour */
 #define LIGHT_ANIMATED_ONLY 0x8000
 #define LIGHT_AMOUNT_MASK 0x7fff
-#define ITEM_ATTR_LIGHT 0xf8        /* item and creature attribute: light */
 #define ITEM_FLAG_LIGHT 0x10        /* ATTR_FLAGS bit: a torch, its charges give light */
 
 /* Sky objects (GDAT (CAT_SKY, graphics set, entry)) and the weather amounts that show them. */
@@ -147,7 +140,7 @@ static int clamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; 
 
 static int gfx_set(void) { return dungeon_map_wallset(game.party_map); }
 
-static uint16_t map_value(int key) { return gdat_entry_index(draw_gdat(), CAT_MAP, gfx_set(), GDAT_TYPE_VALUE, key); }
+static uint16_t map_value(int key) { return gdat_entry_index(draw_gdat(), CAT_WALLSET, gfx_set(), GDAT_TYPE_VALUE, key); }
 
 static int sky_has(int entry) { return gdat_exists(draw_gdat(), CAT_SKY, gfx_set(), GDAT_TYPE_IMAGE, entry); }
 
@@ -204,6 +197,7 @@ void weather_init(int keep_state)
 
 void weather_load(const gdat_t *g)
 {
+    /* (CAT_DUNGEON, 0, 0x0b, 0): the hour of the day at the start of the dungeon */
     int hour = clamp(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);
     weather.day_time_offset = (uint32_t)hour * HOUR_TICKS;
     weather_init(weather.dungeon_loaded);
@@ -294,7 +288,7 @@ static SkyObject *weather_lightning(SkyObject *o)
         if (target) {
             int x = target >> TARGET_X_SHIFT, y = target & TARGET_Y_MASK;
             sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
-            sound_play_with_fallback(CAT_LIGHTNING_SOUND, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_NO_FALLBACK,
+            sound_play_with_fallback(CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, LIGHTNING_SOUND_ENTRY, SOUND_FALLBACK,
                                      x, y, 1, LIGHTNING_SOUND_PRIORITY,
                                      (int16_t)(rand_below(LIGHTNING_RANGE) + LIGHTNING_SOUND_VOLUME));
         } else {
@@ -319,7 +313,7 @@ static SkyObject *weather_lightning(SkyObject *o)
             else delay = THUNDER_DELAY_BASE - (int16_t)game.storm_intensity
                          / (game.storm_multiplier ? game.storm_multiplier : 1);  /* fix: the original divides by 0 */
             delay = clamp(1, (int16_t)delay, THUNDER_DELAY_MAX);
-            sound_request(CAT_THUNDER, gfx_set(), 0, THUNDER_PRIORITY, THUNDER_VOLUME, game.party_x, game.party_y, delay);
+            sound_request(CAT_SKY, gfx_set(), 0, THUNDER_PRIORITY, THUNDER_VOLUME, game.party_x, game.party_y, delay);
             weather.thunder_toggle = 1;
         } else {
             weather.thunder_toggle = 0;
@@ -461,7 +455,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
         }
         if (flags & LIGHT_CREATURES) {
             uint16_t group = creature_group_at(party.cur_map, x, y);
-            if (group != THING_NONE) light = (int16_t)(light + (item_attr(group, ITEM_ATTR_LIGHT) & LIGHT_AMOUNT_MASK));
+            if (group != THING_NONE) light = (int16_t)(light + (item_attr(group, ATTR_LIGHT_SOURCE) & LIGHT_AMOUNT_MASK));
         }
         break;
     }

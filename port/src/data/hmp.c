@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include "gdat.h"
 #include "hmp.h"
 #include "le.h"
 

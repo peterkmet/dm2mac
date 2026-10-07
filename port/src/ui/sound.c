@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include "sound.h"
 
-#define GDAT_TYPE_SOUND 2
 #define SAMPLE_HEADER 6 /* u16 rate, then 08 01 00 00 */
 #define UPSAMPLE (SOUND_OUTPUT_RATE / SOUND_RATE)
 
@@ -21,7 +20,6 @@ enum { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST };
 #define SAMPLE_TO_S16 8
 
 #define PAN_STEPS 16
-#define SOUND_VOLUME_MAX 7
 #define PAN_FULL 0x10000
 
 /* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front (table of SKULL.EXE). */
@@ -133,11 +131,11 @@ static int16_t clamp16(int s)
     return s < INT16_MIN ? INT16_MIN : s > INT16_MAX ? INT16_MAX : s;
 }
 
-static int master_volume = SOUND_VOLUME_MAX;
+static int master_volume = VOLUME_SETTING_MAX;
 
 void sound_set_volume(int level)
 {
-    master_volume = level < 0 ? 0 : level > SOUND_VOLUME_MAX ? SOUND_VOLUME_MAX : level;
+    master_volume = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
 }
 
 void sound_mix(int16_t *stereo, int frames)
@@ -147,7 +145,7 @@ void sound_mix(int16_t *stereo, int frames)
         for (int i = 0; i < SOUND_VOICES; i++) {
             Voice *v = &voices[i];
             if (!v->data) continue;
-            int s = (v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16) * master_volume / SOUND_VOLUME_MAX;
+            int s = (v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16) * master_volume / VOLUME_SETTING_MAX;
             left += s * v->left >> GAIN_SHIFT;
             right += s * v->right >> GAIN_SHIFT;
             if (++v->pos == v->end) v->data = NULL;

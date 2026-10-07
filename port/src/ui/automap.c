@@ -16,8 +16,8 @@ static const int8_t row_half_width[VIEW_DEPTHS] = {1, 1, 2, 2, 3};
 #define ICON_GAP 1                  /* the gap left of and above each square icon */
 static const char save_magic[] = "AMAP";
 /* The block header: the magic, the version byte, the map count byte; then the width and height byte of each map. */
-enum { SAVE_MAGIC_SIZE = sizeof save_magic - 1, SAVE_VERSION = 1, SAVE_COUNT_AT = SAVE_MAGIC_SIZE + 1,
-       SAVE_HEADER_SIZE = SAVE_MAGIC_SIZE + 2, SAVE_MAP_SIZE = 2 };
+enum { AMAP_MAGIC_SIZE = sizeof save_magic - 1, AMAP_VERSION = 1, AMAP_COUNT_AT = AMAP_MAGIC_SIZE + 1,
+       AMAP_HEADER_SIZE = AMAP_MAGIC_SIZE + 2, AMAP_MAP_SIZE = 2 };
 
 /* One byte per square of every map, the maps one after another, each map column by column. */
 static uint8_t *seen;
@@ -114,10 +114,10 @@ int automap_write(FILE *f)
 {
     if (!sized()) return 0;
     int count = dungeon_map_count();
-    uint8_t header[SAVE_HEADER_SIZE];
-    memcpy(header, save_magic, SAVE_MAGIC_SIZE);
-    header[SAVE_MAGIC_SIZE] = SAVE_VERSION;
-    header[SAVE_COUNT_AT] = (uint8_t)count;
+    uint8_t header[AMAP_HEADER_SIZE];
+    memcpy(header, save_magic, AMAP_MAGIC_SIZE);
+    header[AMAP_MAGIC_SIZE] = AMAP_VERSION;
+    header[AMAP_COUNT_AT] = (uint8_t)count;
     int ok = fwrite(header, 1, sizeof header, f) == sizeof header;
     for (int map = 0; ok && map < count; map++)
         ok = fputc(dungeon_map_width(map), f) != EOF && fputc(dungeon_map_height(map), f) != EOF;
@@ -128,13 +128,13 @@ void automap_read(FILE *f)
 {
     automap_reset();
     int count = dungeon_map_count();
-    size_t size = SAVE_HEADER_SIZE + SAVE_MAP_SIZE * (size_t)count + seen_size;
+    size_t size = AMAP_HEADER_SIZE + AMAP_MAP_SIZE * (size_t)count + seen_size;
     uint8_t *block = malloc(size + 1);
     /* the block ends the file: one byte more must not come */
-    int ok = seen && block && fread(block, 1, size + 1, f) == size && !memcmp(block, save_magic, SAVE_MAGIC_SIZE)
-             && block[SAVE_MAGIC_SIZE] == SAVE_VERSION && block[SAVE_COUNT_AT] == count;
-    const uint8_t *p = block + SAVE_HEADER_SIZE;
-    for (int map = 0; ok && map < count; map++, p += SAVE_MAP_SIZE) ok = p[0] == dungeon_map_width(map) && p[1] == dungeon_map_height(map);
+    int ok = seen && block && fread(block, 1, size + 1, f) == size && !memcmp(block, save_magic, AMAP_MAGIC_SIZE)
+             && block[AMAP_MAGIC_SIZE] == AMAP_VERSION && block[AMAP_COUNT_AT] == count;
+    const uint8_t *p = block + AMAP_HEADER_SIZE;
+    for (int map = 0; ok && map < count; map++, p += AMAP_MAP_SIZE) ok = p[0] == dungeon_map_width(map) && p[1] == dungeon_map_height(map);
     for (size_t i = 0; ok && i < seen_size; i++) ok = p[i] <= 1;
     if (ok) memcpy(seen, p, seen_size);
     free(block);

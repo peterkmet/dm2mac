@@ -9,13 +9,11 @@
 #include "view.h"
 #include "zone.h"
 
-#define FONT_CATEGORY 1
 #define FONT_INDEX 0
 #define FONT_TYPE 7
 #define FONT_ENTRY 0
 #define FONT_CHARS 128
 #define FONT_SIZE (FONT_GLYPH_HEIGHT * FONT_CHARS)
-#define UI_COLORS_TYPE 0x0d
 #define UI_COLORS_ENTRY 0xfe
 #define GLYPH_BYTES_PER_ROW 3
 #define GLYPH_BIT_FIRST 0x10        /* font bit of the first pixel of a pixel pair */
@@ -58,13 +56,13 @@ static struct {
     int16_t scroll_pending;     /* the new row is in the row bitmap; the area scrolls before the next text */
     uint8_t line[TEXT_LINE_HEIGHT * SCREEN_W];
 } message;
-static Bitmap message_line = {message.line, SCREEN_W, TEXT_LINE_HEIGHT, 8};
+static Bitmap message_line = {message.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8BPP};
 
 int text_init(const gdat_t *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, FONT_CATEGORY, FONT_INDEX, FONT_TYPE, FONT_ENTRY), &size);
-    const uint8_t *colors = gdat_item(gdat, gdat_find(gdat, FONT_CATEGORY, FONT_INDEX, UI_COLORS_TYPE, UI_COLORS_ENTRY),
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, FONT_TYPE, FONT_ENTRY), &size);
+    const uint8_t *colors = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, UI_COLORS_ENTRY),
                                       &size);
     if (!p || !colors) return 0;
     memcpy(font, p, FONT_SIZE);
@@ -99,7 +97,7 @@ void gfx_draw_text(uint8_t *dst, int dst_width, int x, int y, int color, int bg,
         transparent = (int16_t)bg;
     }
     uint8_t colormap[2] = {(uint8_t)color, (uint8_t)bg};
-    if (bpp != 4) {  /* the glyph holds 0 and 1, the colormap gives the colors */
+    if (bpp != IMAGE_4BPP) {  /* the glyph holds 0 and 1, the colormap gives the colors */
         color = 0;
         bg = 1;
         if (transparent != GFX_OPAQUE) transparent = 1;
@@ -108,7 +106,7 @@ void gfx_draw_text(uint8_t *dst, int dst_width, int x, int y, int color, int bg,
                                FONT_GLYPH_HEIGHT};
     for (; *text; text++, rect[RECT_X] += FONT_ADVANCE)
         gfx_blit(text_build_glyph((uint8_t)*text, (uint8_t)color, (uint8_t)bg), dst, rect, 0, 0, FONT_GLYPH_WIDTH,
-                 dst_width, transparent, MIRROR_NONE, 4, bpp, colormap);
+                 dst_width, transparent, MIRROR_NONE, IMAGE_4BPP, bpp, colormap);
 }
 
 int text_measure(const char *text, int16_t *width, int16_t *height)
@@ -155,23 +153,23 @@ void text_draw_with_shadow(uint8_t *dst, int dst_width, int x, int y, int color,
     if (!text_measure(text, &w, &h)) return;
     if (!(bg & TEXT_TRANSPARENT)) {
         int16_t box[RECT_SIZE] = {(int16_t)(x - 1), (int16_t)(y - h), (int16_t)(w + 2), (int16_t)(h + 2)};
-        gfx_fill_rect(dst, box, (uint16_t)bg, dst_width, 8);
+        gfx_fill_rect(dst, box, (uint16_t)bg, dst_width, IMAGE_8BPP);
     }
     int shadow = ui_colors[UI_WHITE] | TEXT_TRANSPARENT;
-    gfx_draw_text(dst, dst_width, x, (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, 8);
-    gfx_draw_text(dst, dst_width, (int16_t)(x + 1), (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, 8);
-    gfx_draw_text(dst, dst_width, x, y, color, (int16_t)(bg | TEXT_TRANSPARENT), text, 8);
+    gfx_draw_text(dst, dst_width, x, (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
+    gfx_draw_text(dst, dst_width, (int16_t)(x + 1), (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
+    gfx_draw_text(dst, dst_width, x, y, color, (int16_t)(bg | TEXT_TRANSPARENT), text, IMAGE_8BPP);
 }
 
 void text_draw_on_screen(int x, int y, int color, int bg, const char *text)
 {
-    gfx_draw_text(draw_screen.pixels, draw_screen.width, x, y, color, bg, text, 8);
+    gfx_draw_text(draw_screen.pixels, draw_screen.width, x, y, color, bg, text, IMAGE_8BPP);
 }
 
 void text_draw_in_viewport(int x, int y, int color, const char *text)
 {
     gfx_draw_text(view_viewport.pixels, view_viewport.width, x, y, color, ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT,
-                  text, 8);
+                  text, IMAGE_8BPP);
 }
 
 /* The base line start of text placed in zone; returns 0 when it is not visible. */
@@ -247,7 +245,7 @@ char *text_format(const char *fmt, char *dst)
         } else if (code == FORMAT_TEXT) {
             text_gdat(FORMAT_TEXT_CATEGORY, 0, text_args.entry, value);
         } else if (code == FORMAT_TITLE || code == FORMAT_TITLE_2) {
-            text_gdat(FONT_CATEGORY, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : FORMAT_TITLE_2_ENTRY, value);
+            text_gdat(CAT_INTERFACE, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : FORMAT_TITLE_2_ENTRY, value);
         } else if (code == FORMAT_DATA_PATH || code == FORMAT_SAVE_PATH || code == FORMAT_DISK_PATH) {
             size_t len = strlen(text_drive_path);
             while (len > 1 && text_drive_path[len - 1] == '/') len--;
@@ -300,7 +298,6 @@ static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
 #define TEXT_MODE_NEW_LINE 1
 #define TEXT_MODE_HIDDEN 0x8000
 #define TEXT_MODE_MASK 0x7fff
-#define ORNAMENT_TEXT_CATEGORY 3
 #define NO_ORNAMENT_TEXT 0xff
 
 /* The text of a scroll or a text thing as stored, with its format codes; see text_decode_dungeon for mode. */
@@ -324,7 +321,7 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
     }
     if ((mode & TEXT_MODE_MASK) == TEXT_MODE_NEW_LINE && o < end) *o++ = '\n';
     if (ornament != NO_ORNAMENT_TEXT) {
-        if (draw_gdat()) gdat_text(draw_gdat(), ORNAMENT_TEXT_CATEGORY, 0, (int)ornament, o, (size_t)(end + 1 - o));
+        if (draw_gdat()) gdat_text(draw_gdat(), CAT_DUNGEON, 0, (int)ornament, o, (size_t)(end + 1 - o));
         return;
     }
     const uint16_t *p = dungeon_text_data() + text_offset(text);
@@ -381,7 +378,7 @@ void text_clear_expired_rows(void)
         if (message_expiry[i] == MESSAGE_NEVER || message_expiry[i] > game.game_time) continue;
         int16_t row[RECT_SIZE] = {r[RECT_X], (int16_t)(message.top + TEXT_LINE_HEIGHT * i + r[RECT_Y]), r[RECT_W],
                                   FONT_GLYPH_HEIGHT};
-        gfx_fill_rect(draw_screen.pixels, row, ui_colors[UI_BLACK], draw_screen.width, 8);
+        gfx_fill_rect(draw_screen.pixels, row, ui_colors[UI_BLACK], draw_screen.width, IMAGE_8BPP);
         message_expiry[i] = MESSAGE_NEVER;
     }
 }
@@ -397,7 +394,7 @@ static void text_scroll_message_area(void)
                draw_screen.pixels + (y + MESSAGE_SCROLL_HEIGHT) * draw_screen.width + r[RECT_X], r[RECT_W]);
     r[RECT_Y] = (int16_t)(r[RECT_Y] + r[RECT_H] - FONT_GLYPH_HEIGHT);
     r[RECT_H] = FONT_GLYPH_HEIGHT;
-    gfx_blit(message.line, draw_screen.pixels, r, 0, 0, MESSAGE_WIDTH, draw_screen.width, GFX_OPAQUE, MIRROR_NONE, 8, 8,
+    gfx_blit(message.line, draw_screen.pixels, r, 0, 0, MESSAGE_WIDTH, draw_screen.width, GFX_OPAQUE, MIRROR_NONE, IMAGE_8BPP, IMAGE_8BPP,
              NULL);
 }
 
@@ -422,7 +419,7 @@ static void text_message_draw_line(int color, const char *line)
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     if (message.scroll_pending)
-        gfx_draw_text(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, ui_colors[UI_BLACK], line, 8);
+        gfx_draw_text(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, ui_colors[UI_BLACK], line, IMAGE_8BPP);
     else
         text_draw_on_screen((int16_t)(r[RECT_X] + message.column),
                             (int16_t)(message.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1
