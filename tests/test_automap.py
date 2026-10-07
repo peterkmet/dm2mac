@@ -1,4 +1,4 @@
-"""The automap of the advanced mode (port/src/automap.c, advanced.c): the seen squares, the AMAP save block, the map in
+"""The automap of the advanced mode (port/src/ui/automap.c, ui/advanced.c): the seen squares, the AMAP save block, the map in
 the viewport, and the cheats of the open automap."""
 
 import ctypes
