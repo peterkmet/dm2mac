@@ -1,13 +1,10 @@
 /* The automap of the advanced mode: the map picture. */
-#include <stdlib.h>
-#include <string.h>
 #include "advanced.h"
 #include "automap.h"
 #include "dungeon.h"
 #include "minion.h"
 #include "minion_map.h"
 #include "move.h"
-#include "save.h"
 #include "text.h"
 #include "view.h"
 

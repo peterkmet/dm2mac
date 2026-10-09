@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "draw.h"
-#include "dungeon.h"
 #include "save.h"
 #include "text.h"
 #include "video.h"

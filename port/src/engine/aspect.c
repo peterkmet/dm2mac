@@ -25,7 +25,7 @@
 #define HASH_MULTIPLIER 0x7ab9
 #define HASH_MAP_FACTOR 11
 
-/* Random wall ornaments: the list of the party map (aspect_enter_map). */
+/* Random wall ornaments: the list of the map that view_enter_map entered last. */
 static const uint8_t *wall_ornaments;
 
 void aspect_enter_map(int map)

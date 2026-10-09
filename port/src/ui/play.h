@@ -1,6 +1,5 @@
 #ifndef PLAY_H
 #define PLAY_H
-#include "game.h"
 
 /* Prefixes: play_ */
 
