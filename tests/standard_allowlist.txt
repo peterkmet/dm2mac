@@ -35,7 +35,6 @@ layer engine/recruit.c:ui.h open: module cleanup
 layer engine/sensor.c:session.h open: module cleanup
 layer engine/sensor.c:input.h open: module cleanup
 layer engine/sensor.c:view.h open: module cleanup
-layer engine/sound_request.c:sound.h open: module cleanup
 layer engine/weather.c:view.h open: module cleanup
 layer engine/weather.c:zone.h open: module cleanup
 decimal engine/action.c table: rule 6 (coin pile offsets of SKULL.EXE)
@@ -60,7 +59,7 @@ hex platform/main.c table: PC keyboard scan codes of the SDL keys
 hex ui/dialog.c table: rule 6
 hex ui/fm.c table: rule 6
 hex ui/input.c table: rule 6
-hex ui/sound.c table: rule 6
+hex engine/sound_request.c table: rule 6
 hex ui/ui.c table: rule 6
 hex ui/view.c table: rule 6
 record engine/save.c the save image packs and unpacks whole thing records bit by bit

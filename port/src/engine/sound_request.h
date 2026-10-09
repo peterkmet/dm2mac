@@ -1,9 +1,25 @@
 #ifndef SOUND_REQUEST_H
 #define SOUND_REQUEST_H
 #include <stdint.h>
+#include "gdat.h"
 
-/* Prefixes: sound_clear_ sound_flush_ sound_request sound_reset_ */
+/* Prefixes: sound_clear_ sound_flush_ sound_load sound_party_ sound_request sound_reset_ sound_volume_ */
 
+/* Signed 8-bit mono PCM of a GDAT sound item. */
+typedef struct {
+    const int8_t *data;
+    uint32_t length;
+} Sound;
+
+/* Finds sound (category, index, entry) in GRAPHICS.DAT; the data stays in g. */
+int sound_load(const gdat_t *g, int category, int index, int entry, Sound *out);
+/* The position of a sound at (x, y) seen by the party: lateral (right is positive) and forward.
+   A sound that comes around walls (path_distance above the straight distance) is pushed further away.
+   path_distance is the party distance map value at the original (x, y); returns 0 when it is negative (no path). */
+int sound_party_offset(int x, int y, int party_x, int party_y, int party_dir, int path_distance,
+                       int *lateral, int *forward);
+/* The loudness (0-255) and stereo pan (0x0800 left to 0xf800 right) of a sound at lateral, forward. */
+void sound_volume_pan(uint8_t volume, int8_t lateral, int8_t forward, int *loudness, int *pan);
 /* A sound that the game asks for: the GDAT sound (category, index, entry), its priority, its volume, and its place
    seen by the party (lateral: right is positive). */
 typedef struct {
@@ -22,6 +38,8 @@ typedef struct {
 } SoundStart;
 extern SoundStart sound_started[SOUND_PLAYED_MAX];
 extern int sound_started_count;
+
+#define SOUND_PAN_CENTER 0x8000
 
 /* The GDAT index of the generic sound of a category: it plays when an index has no sound of its own. */
 #define SOUND_FALLBACK 0xfe

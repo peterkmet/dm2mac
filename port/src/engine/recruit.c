@@ -13,7 +13,6 @@
 #include "le.h"
 #include "move.h"
 #include "random.h"
-#include "sound_request.h"
 #include "text.h"
 #include "ui.h"
 #include "sensor.h"
