@@ -293,7 +293,7 @@ def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
 def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa: F811
     # A control click gives the press and the release: moving the pointer afterwards does not scroll the map.
     path, game, _ = control
-    lib.automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir)
+    lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(7, rect)  # the viewport
     x, y, w, h = rect
