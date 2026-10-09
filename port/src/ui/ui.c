@@ -760,7 +760,7 @@ static int draw_object_info(uint16_t thing, int full)
     if (!full) return 0;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_PANEL, ZONE_INVENTORY_PANEL, UI_OPAQUE);
     int index = item_gdat_index(thing), category = item_gdat_category(thing);
-    if (gdat_exists(draw_gdat(), category, index, GDAT_TYPE_IMAGE, OBJECT_PICTURE_ENTRY))
+    if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, OBJECT_PICTURE_ENTRY))
         ui_draw_gdat_in_viewport_zone(category, index, OBJECT_PICTURE_ENTRY, ZONE_INVENTORY_PANEL, UI_KEY);
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_OBJECT_NAME, ZONE_OBJECT_NAME_BACK, UI_KEY);
     text_draw_in_zone(ZONE_OBJECT_NAME, ui_colors[UI_LIGHT_GRAY], item_name(thing));

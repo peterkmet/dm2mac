@@ -1,7 +1,7 @@
 /* Weather, day and night, and the party light. */
 #include "champion.h"
 #include "creature.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "sound_request.h"
 #include "projectile.h"
@@ -133,9 +133,9 @@ int16_t light_source_sum, explosion_light_sum;
 
 static int clamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static uint16_t map_value(int key) { return gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE, key); }
+static uint16_t map_value(int key) { return gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE, key); }
 
-static int sky_has(int entry) { return gdat_exists(draw_gdat(), CAT_SKY, dungeon_map_wallset(game.party_map), GDAT_TYPE_IMAGE, entry); }
+static int sky_has(int entry) { return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(game.party_map), GDAT_TYPE_IMAGE, entry); }
 
 /* The daylight in % that a window lets in now. */
 static int daylight(void)
@@ -400,7 +400,7 @@ void light_update_party_light(void)
 /* The light value of an ornament (0: none); *animated_only: it shines only while it animates. */
 static uint16_t ornament_light(int category, int ornament, int *animated_only)
 {
-    uint16_t v = gdat_entry_index(draw_gdat(), category, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_LIGHT);
+    uint16_t v = gdat_entry_index(gdat_current(), category, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_LIGHT);
     *animated_only = (v & LIGHT_ANIMATED_ONLY) != 0;
     return v & LIGHT_AMOUNT_MASK;
 }
@@ -419,7 +419,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
         if (!(flags & LIGHT_WALLS) || ornament == ORNAMENT_MASK) break;
         uint16_t v = ornament_light(CAT_WALL_ORNAMENT, ornament, &animated_only);
         if (!v && !animated_only) break;
-        if (gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_DAYLIGHT))
+        if (gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_DAYLIGHT))
             window = (int16_t)(window + v * daylight() / PERCENT);
         else if (!animated_only || animated) light = (int16_t)(light + v);
         break;

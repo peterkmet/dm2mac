@@ -56,14 +56,6 @@ enum item_attr {
 #define ITEM_NAME_ENTRY 0x18
 #define ACTION_ENTRY_FIRST 8
 #define ACTION_ENTRY_LAST 0x0b
-/* Fields of an action text. */
-enum {
-    FIELD_SKILL = 0, FIELD_LEVEL = 1, FIELD_COMMAND = 2, FIELD_DELAY = 3, FIELD_STAMINA = 4, FIELD_POWER = 5,
-    FIELD_MODE = 6, FIELD_DEFENSE = 7, FIELD_CHARGES = 8, FIELD_EXPERIENCE = 9, FIELD_ATTACK = 10, FIELD_WOUNDS = 11,
-    FIELD_SOUND = 13, FIELD_REPEATS = 14, FIELD_PIERCES = 15,
-    FIELD_MELEE_KIND = 0x10,    /* 1: full damage to creatures that take half damage from other hits */
-    FIELD_HAND = 17
-};
 
 /* The GDAT category of a thing; a projectile gives the category of what it carries. */
 uint8_t item_gdat_category(uint16_t thing);

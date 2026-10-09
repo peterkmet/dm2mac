@@ -11,7 +11,7 @@
 
 Bitmap draw_screen = {&fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
 
-static const gdat_t *gdat;
+static const gdat_t *cache_owner;  /* the GRAPHICS.DAT of the decoded images */
 static Bitmap *images;   /* decoded images by GDAT item */
 static int image_count;
 
@@ -22,27 +22,39 @@ typedef struct Temp {
 } Temp;
 static Temp *temps;
 
-void draw_init(const gdat_t *g)
+/* Drops the decoded images and makes an empty image cache for the selected GRAPHICS.DAT. */
+static void rebuild_cache(void)
 {
     for (int i = 0; i < image_count; i++) free(images[i].pixels);
     free(images);
-    gdat = g;
-    image_count = g ? gdat_item_count(g) : 0;
+    cache_owner = gdat_current();
+    image_count = cache_owner ? gdat_item_count(cache_owner) : 0;
     images = calloc(image_count ? image_count : 1, sizeof *images);
     if (!images) image_count = 0;
 }
 
-const gdat_t *draw_gdat(void) { return gdat; }
+/* Rebuilds the image cache when another GRAPHICS.DAT is selected. */
+static void follow_gdat(void)
+{
+    if (gdat_current() != cache_owner) rebuild_cache();
+}
+
+void draw_init(const gdat_t *g)
+{
+    gdat_select(g);
+    rebuild_cache();
+}
 
 static const Bitmap *decoded(int item)
 {
+    follow_gdat();
     if (item < 0 || item >= image_count) return NULL;
     Bitmap *b = images + item;
     if (b->pixels) return b;
     int w, h, bpp;
-    int size = gdat_image_size(gdat, item, &w, &h, &bpp);
+    int size = gdat_image_size(cache_owner, item, &w, &h, &bpp);
     if (size < 0 || !(b->pixels = malloc(size ? size : 1))) return NULL;
-    if (gdat_decode_image(gdat, item, b->pixels, size) != GDAT_OK) {
+    if (gdat_decode_image(cache_owner, item, b->pixels, size) != GDAT_OK) {
         free(b->pixels);
         b->pixels = NULL;
         return NULL;
@@ -55,17 +67,19 @@ static const Bitmap *decoded(int item)
 
 static int image_item(int category, int index, int entry)
 {
+    const gdat_t *gdat = gdat_current();
     int item = gdat_find(gdat, category, index, GDAT_TYPE_IMAGE, entry);
     return item >= 0 ? item : gdat_find(gdat, CAT_MISC, PLACEHOLDER_INDEX, GDAT_TYPE_IMAGE, PLACEHOLDER_ENTRY);
 }
 
 const Bitmap *draw_gdat_image(int category, int index, int entry)
 {
-    return gdat ? decoded(image_item(category, index, entry)) : NULL;
+    return gdat_current() ? decoded(image_item(category, index, entry)) : NULL;
 }
 
 const uint8_t *draw_gdat_image_palette(int category, int index, int entry)
 {
+    const gdat_t *gdat = gdat_current();
     return gdat ? gdat_image_colormap(gdat, image_item(category, index, entry)) : NULL;
 }
 
@@ -107,6 +121,7 @@ DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->anchor = ZONE_NO_ANCHOR;
     ctx->dst = &draw_screen;
     ctx->transparent = GFX_OPAQUE;
+    const gdat_t *gdat = gdat_current();
     if ((uint8_t)category == CAT_NONE || !gdat) return ctx;
     ctx->item = (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_IMAGE, entry);
     add_offset(ctx, (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_VALUE2, OFFSET_ENTRY));

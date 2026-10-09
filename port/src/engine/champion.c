@@ -2,14 +2,14 @@
 #include "champion.h"
 #include "creature.h"
 #include "champ_action.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "inventory.h"
 #include "item.h"
 #include "move.h"
 #include "random.h"
 #include "session.h"
-#include "text.h"
+#include "game_text.h"
 #include "ui.h"
 #include "minion.h"
 #include "sensor.h"
@@ -145,7 +145,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
     }
     int count = 0;
     for (int entry = ACTION_ENTRY_FIRST; entry <= ACTION_ENTRY_LAST && count < CHAMPION_ACTION_MAX; entry++) {
-        if (!gdat_exists(draw_gdat(), category, index, GDAT_TYPE_TEXT, entry)) continue;
+        if (!gdat_exists(gdat_current(), category, index, GDAT_TYPE_TEXT, entry)) continue;
         int command = text_gdat_field(category, index, entry, FIELD_COMMAND);
         if (!command) continue;
         int16_t needs_hand = text_gdat_field(category, index, entry, FIELD_HAND);

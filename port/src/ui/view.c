@@ -526,12 +526,12 @@ static uint16_t first_thing(int x, int y)
 
 static uint16_t value_key(int category, int index, int entry)
 {
-    return gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, entry);
+    return gdat_entry_index(gdat_current(), category, index, GDAT_TYPE_VALUE, entry);
 }
 
 static int picture_exists(int category, int index, int entry)
 {
-    return gdat_exists(draw_gdat(), category, index, GDAT_TYPE_IMAGE, entry);
+    return gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, entry);
 }
 
 /* The door type of a door thing on the current map, 0xff for none. */
@@ -551,7 +551,7 @@ static void move_relative(int dir, int forward, int right, int *x, int *y)
 int view_load_sky_object(SkyObject *object)
 {
     char text[WALL_TEXT_SIZE];
-    gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, object->entry, text, sizeof text);
+    gdat_text(gdat_current(), CAT_SKY, view.gfx_set, object->entry, text, sizeof text);
     if (!text[0]) return 0;
     object->zone = (int16_t)gdat_text_int_field(text, "cd");
     object->dx = object->dy = 0;
@@ -564,7 +564,7 @@ SkyObject *view_sky_objects(void) { return view.sky; }
 
 void view_enter_map(int map)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     sound_clear_requests();
     view.map = view.party_map = map;
     view.gfx_set = dungeon_map_wallset(map);
@@ -647,7 +647,7 @@ static int ornament_frame(int category, int ornament, uint32_t time, int offset)
     int first = 0;
     const char *sequence = NULL;
     if (!frames) {
-        gdat_text(draw_gdat(), category, ornament, ORN_KEY_FRAMES, text, sizeof text);
+        gdat_text(gdat_current(), category, ornament, ORN_KEY_FRAMES, text, sizeof text);
         if (!text[0]) return 1;
         sequence = text;
         frames = (uint16_t)strlen(text);
@@ -951,11 +951,11 @@ static int creature_picture_exists(int type, int entry)
 /* The grid cell of a creature in its square, turned by dir: the cell of its animation frame. */
 int view_get_creature_cell_zone(uint16_t group, int dir)
 {
-    if (!gdat_exists(draw_gdat(), CAT_CREATURE, group_creature(group), GDAT_TYPE_CREATURE_DATA,
+    if (!gdat_exists(gdat_current(), CAT_CREATURE, group_creature(group), GDAT_TYPE_CREATURE_DATA,
                      CREATURE_FRAMES))
         return CELL_CENTER;
     uint8_t frame[CREATURE_FRAME_SIZE];
-    creature_anim_frame(draw_gdat(), group, frame);
+    creature_anim_frame(gdat_current(), group, frame);
     return view_rotate_grid5_cell(frame[FRAME_CELL], dir);
 }
 
@@ -1041,7 +1041,7 @@ static void load_square_things(int pos, int dir, int party_x, int party_y, int x
             view_grid5_cell_to_xy(x, y, (uint16_t)view_get_thing_position(thing, DIR_NORTH), &cx, &cy);
             if (pos != POS_PARTY)
                 view_offset_creature_toward_party(eye_x, eye_y,
-                                                  (int8_t)creature_info(draw_gdat(), group_creature(thing))->size,
+                                                  (int8_t)creature_info(gdat_current(), group_creature(thing))->size,
                                                   &cx, &cy);
             int16_t lateral, forward;
             switch (dir) {
@@ -1185,8 +1185,8 @@ static void view_get_depth_shading(uint8_t *palette, int depth, int key1, int ke
         light = walk_light[depth];
         entry = depth + REMAP_WALK_BASE;
     }
-    if (gdat_exists(draw_gdat(), CAT_WALLSET, view.gfx_set, GDAT_TYPE_REMAP, entry))
-        pal_get_dimmed_remap(draw_gdat(), palette, CAT_WALLSET, view.gfx_set, entry, view.shade, key1, key2, count);
+    if (gdat_exists(gdat_current(), CAT_WALLSET, view.gfx_set, GDAT_TYPE_REMAP, entry))
+        pal_get_dimmed_remap(gdat_current(), palette, CAT_WALLSET, view.gfx_set, entry, view.shade, key1, key2, count);
     else
         pal_apply_dim_remap(palette, SHADE_FULL - ((SHADE_FULL - light) * (SHADE_FULL - view.shade) >> SHADE_SHIFT), key1, key2,
                             count);
@@ -1466,7 +1466,7 @@ static int view_shift_object_cell(int *pos, int *cell, int columns, int rows)
 static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordinal, uint16_t group, int record_click,
                              int open_state, int in_alcove)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     int cell = CELL_CENTER, row, zone;
     if (group != THING_NONE) {
         int type = group_creature(group);
@@ -1527,7 +1527,7 @@ static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordina
 static void view_draw_objects_in_cell(uint16_t thing, int pos, int cell, uint16_t group)
 {
     if (thing == THING_ENDOFLIST || view_depth[pos] > DEPTH_FAR) return;
-    const CreatureInfo *info = group != THING_NONE ? creature_info(draw_gdat(), group_creature(group))
+    const CreatureInfo *info = group != THING_NONE ? creature_info(gdat_current(), group_creature(group))
                                                   : NULL;
     int ordinal = 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
@@ -1596,7 +1596,7 @@ static int creature_side_picture(int type, const uint8_t *frame, int side, int a
 /* Draws a creature group of the square at pos at depth: its animation frame, from the side it shows. */
 static void view_draw_creature(int pos, int depth, uint16_t group)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     int type = group_creature(group);
     uint8_t frame[CREATURE_FRAME_SIZE];
     creature_anim_frame(g, group, frame);
@@ -1647,7 +1647,7 @@ static int view_draw_creatures(uint16_t thing, int pos, uint32_t cell_mask)
     if (view.walking && pos == POS_PARTY) return 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (thing_type(thing) != THING_GROUP) continue;
-        const CreatureInfo *info = creature_info(draw_gdat(), group_creature(thing));
+        const CreatureInfo *info = creature_info(gdat_current(), group_creature(thing));
         if (cell_mask & THINGS_STATIC_ONLY && !(info->flags & CREATURE_STATIC)) continue;
         drawn = 1;
         view_draw_creature(pos, depth, thing);
@@ -1766,7 +1766,7 @@ static void view_draw_missiles(uint16_t thing, int pos, int position)
         }
         int flip = 0, entry = kind == MISSILE_NO_SIDE ? MISSILE_PICTURE_FRONT
                                                        : missile_picture(thing, kind, cell, lateral, spell, square_parity, &flip);
-        int flips = spell ? gdat_entry_index(draw_gdat(), CAT_EXPLOSION, index, GDAT_TYPE_VALUE, EXPLOSION_KEY_MISSILE_FLIP)
+        int flips = spell ? gdat_entry_index(gdat_current(), CAT_EXPLOSION, index, GDAT_TYPE_VALUE, EXPLOSION_KEY_MISSILE_FLIP)
                           : MIRROR_HV;
         view_setup_picture(flips & flip, scale, scale, 0, 0, depth, (int16_t)(zone | ZONE_RELATIVE), 0, THING_KEY, NO_KEY,
                            category, index, entry);
@@ -1834,8 +1834,8 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
                 continue;
             }
             if (order_cell != (centered ? -1 : thing_cell(thing))) continue;
-            int flip = rand_2bits() & gdat_entry_index(draw_gdat(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FLIP);
-            int power = gdat_entry_index(draw_gdat(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FIXED_POWER)
+            int flip = rand_2bits() & gdat_entry_index(gdat_current(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FLIP);
+            int power = gdat_entry_index(gdat_current(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FIXED_POWER)
                         ? POWER_MAX : explosion_power(thing);
             int near = pos == POS_PARTY;
             if (near) {
@@ -2005,9 +2005,9 @@ static void view_draw_centered_label(int x, int y, const char *text)
 
 static const uint16_t *shop_table(uint8_t ornament, int *count)
 {
-    int item = gdat_find(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, ORN_SHOP_TABLE);
+    int item = gdat_find(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, ORN_SHOP_TABLE);
     uint32_t size = 0;
-    const uint8_t *data = item < 0 ? NULL : gdat_item(draw_gdat(), item, &size);
+    const uint8_t *data = item < 0 ? NULL : gdat_item(gdat_current(), item, &size);
     *count = (int)(size / 2);
     return (const uint16_t *)data;
 }
@@ -2035,7 +2035,7 @@ static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, 
                 item = (uint16_t)at;
             }
             if (!(set[item / BYTE_BITS] & 1 << (item % BYTE_BITS))) continue;
-            if (gdat_entry_index(draw_gdat(), item_index_gdat_category(item), item_index_gdat_index(item),
+            if (gdat_entry_index(gdat_current(), item_index_gdat_category(item), item_index_gdat_index(item),
                                  GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_UNIQUE
                 && !shop_square_has_object_type(shop, item, 1) && !shop_square_has_object_type(display, item, 0)
                 && !item_party_possesses_type(item))
@@ -2052,7 +2052,7 @@ static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, 
 /* Draws amount as coins at the offset of key from zone. */
 static void shop_draw_price(int amount, uint8_t ornament, int depth, int zone, int anchor, int key, int offset_key)
 {
-    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, offset_key);
+    uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, offset_key);
     int16_t x = gdat_offset_x(offset), y = gdat_offset_y(offset), count;
     uint8_t coins[SHOP_PRICE_COINS];
     if (!(uint16_t)amount) return;
@@ -2087,7 +2087,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     if (!sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD)) shop_choose_item(shop, display, ornament, creature);
     uint16_t item = sensor_data(display);
     int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
-    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_ALCOVE_ITEMS);
+    uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_ALCOVE_ITEMS);
     view_setup_picture(0, scale_x, scale_y, gdat_offset_x(offset), gdat_offset_y(offset), depth, zone, anchor,
                        key, NO_KEY, category, index, 0);
     view_flush_picture();
@@ -2110,7 +2110,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     if (pos != DISPLAY_POS) return;
     int16_t lx, ly;
     zone_get_position(zone, &lx, &ly);
-    uint16_t place = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
+    uint16_t place = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
     char raw[TEXT_SIZE], name[TEXT_SIZE];
     view_draw_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
                              text_format(text_gdat(category, index, ITEM_NAME_ENTRY, raw), name));
@@ -2179,7 +2179,7 @@ typedef struct {
 /* Draws the champion portrait of a portrait ornament on the front wall at pos; a click on the front wall finds it. */
 static void draw_wall_portrait(int pos, uint8_t ornament, const OrnamentPlace *p, int record_click)
 {
-    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, PORTRAIT_OFFSET_ENTRY);
+    uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, PORTRAIT_OFFSET_ENTRY);
     view_setup_picture(0, p->scale_y, p->scale_y, gdat_offset_x(offset), gdat_offset_y(offset), p->depth, p->zone,
                        p->anchor, NO_KEY, NO_KEY, CAT_CHAMPION, (uint8_t)view_squares[pos].text, PORTRAIT_ENTRY);
     if (!record_click) view.ctx.transparent = DRAW_NO_BLIT;
@@ -2742,7 +2742,7 @@ static void outdoor_draw_sky(int dir, int x, int y)
         view.no_landmarks = 1;
         memset(view.landmarks, 0, sizeof view.landmarks);
         for (int e = 0; e < SKY_LANDMARK_MAX; e++)
-            if (picture_exists(CAT_SKY, view.gfx_set, e) && *gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, e, text, sizeof text)) {
+            if (picture_exists(CAT_SKY, view.gfx_set, e) && *gdat_text(gdat_current(), CAT_SKY, view.gfx_set, e, text, sizeof text)) {
                 view.landmarks[e / BYTE_BITS] |= (uint8_t)(1 << (e % BYTE_BITS));
                 view.no_landmarks = 0;
             }
@@ -2752,7 +2752,7 @@ static void outdoor_draw_sky(int dir, int x, int y)
     SkyObject *o = view.sky;
     for (int e = 0; e < SKY_LANDMARK_MAX; e++) {
         if (!(view.landmarks[e / BYTE_BITS] & 1 << (e % BYTE_BITS))) continue;
-        gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, e, text, sizeof text);
+        gdat_text(gdat_current(), CAT_SKY, view.gfx_set, e, text, sizeof text);
         if (!outdoor_place_sky_object(o, text, dir, x, y)) continue;
         o->entry = (uint8_t)e;
         o->zone = (int16_t)gdat_text_int_field(text, "cd");
@@ -3021,7 +3021,7 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
         if (!is_item(t) || thing_cell(t) != thing_cell(thing)) continue;
         int state = CHEST_HIT_NONE;
         uint16_t this_chest = THING_NONE;
-        if (item_is_chest(t) && gdat_exists(draw_gdat(), CAT_CONTAINER, item_gdat_index(t), GDAT_TYPE_IMAGE, CHEST_OPEN_PICTURE)) {
+        if (item_is_chest(t) && gdat_exists(gdat_current(), CAT_CONTAINER, item_gdat_index(t), GDAT_TYPE_IMAGE, CHEST_OPEN_PICTURE)) {
             this_chest = t;
             if (container_is_open(t)) state = CHEST_HIT_INSIDE;
             else if (!placing) state = CHEST_HIT_OPEN;

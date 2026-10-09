@@ -338,7 +338,7 @@ static int load_new_game(void)
     game.party_map = 0;
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE)
                   + dungeon_thing_count(THING_EXPLOSION));
-    weather_load(draw_gdat());
+    weather_load(gdat_current());
     dungeon_link_things_after_load();
     if (first) dungeon_read_level_table();
     return 1;
@@ -350,7 +350,7 @@ static int load_slot(const char *path)
     game.champion_count = 0;
     game.leader_hand = THING_NONE;
     int first = !weather.dungeon_loaded;
-    if (save_load(path, draw_gdat()) != SAVE_OK) return 0;
+    if (save_load(path, gdat_current()) != SAVE_OK) return 0;
     if (first) dungeon_read_level_table();
     session.new_game = 0;
     session.load_time = game.game_time;
@@ -403,7 +403,7 @@ int session_load(void)
 static int save_into_slot(int slot)
 {
     char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
-    if (save_write(session_save_path(path, slot, 0), session_save_path(bak, slot, 1), session.save_name, draw_gdat())
+    if (save_write(session_save_path(path, slot, 0), session_save_path(bak, slot, 1), session.save_name, gdat_current())
         != SAVE_OK)
         return 0;
     session.new_game = 0;
@@ -472,7 +472,7 @@ int session_init(void)
 int session_start_save(const char *path)
 {
     int first = !weather.dungeon_loaded;
-    if (save_load(path, draw_gdat()) != SAVE_OK) return 0;
+    if (save_load(path, gdat_current()) != SAVE_OK) return 0;
     if (first) dungeon_read_level_table();
     ui_reset();
     money_init_coin_table();

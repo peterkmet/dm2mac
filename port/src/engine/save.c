@@ -5,7 +5,7 @@
 #include "automap.h"
 #include "champion.h"
 #include "creature.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "inventory.h"
 #include "le.h"
@@ -773,7 +773,7 @@ int save_load(const char *path, const gdat_t *gdat)
     int result = SAVE_ERR_FORMAT;
     if (fread(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_read(f, 0)) {
         start_io(f, gdat);
-        if (draw_gdat() != gdat) draw_init(gdat);  /* the item effects of the champions read the item attributes */
+        if (gdat_current() != gdat) gdat_select(gdat);  /* the item effects of the champions read the item attributes */
         champ_reset_step_state();
         io.format = le16(header + HEADER_FORMAT);
         result = read_state() ? SAVE_OK : SAVE_ERR_DATA;

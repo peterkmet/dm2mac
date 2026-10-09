@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ai.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "le.h"
 #include "move.h"
 #include "random.h"
-#include "text.h"
+#include "game_text.h"
 #include "sensor.h"
 
 #define HEADER_SIZE 44
@@ -668,7 +668,7 @@ static int link_teleporters(uint16_t teleporter, int x, int y, int map)
    possessions. */
 static void prepare_group(uint16_t group, int x, int y, int map)
 {
-    const CreatureInfo *info = creature_info(draw_gdat(), group_creature(group));
+    const CreatureInfo *info = creature_info(gdat_current(), group_creature(group));
     set_thing_word(group, GROUP_HEALTH, info->max_health);
     group_set_mood(group, 0);
     if (!(info->flags & CREATURE_STATIC)) {
@@ -748,7 +748,7 @@ void dungeon_link_things_after_load(void)
                     for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                         if (!link_thing(t, x, y, map)) break;
                 if (square_type(square) != SQUARE_PIT
-                    || gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
+                    || gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
                                         WALLSET_PIT_TO_MARKER))
                     continue;
                 int bx = x, by = y;

@@ -34,7 +34,6 @@ extern Bitmap draw_screen;
 
 /* Selects the GRAPHICS.DAT of the images; frees the decoded images of the last file. */
 void draw_init(const gdat_t *gdat);
-const gdat_t *draw_gdat(void);
 /* The decoded image (category, index, 1, entry); a missing image gives the GDAT placeholder image. */
 const Bitmap *draw_gdat_image(int category, int index, int entry);
 /* The 16 colors of a 4 bpp image, NULL for an 8 bpp image. */

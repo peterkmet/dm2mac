@@ -5,7 +5,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
-#include "draw.h"
+#include "gdat.h"
 #include "sound_request.h"
 #include "projectile.h"
 #include "input.h"
@@ -162,7 +162,7 @@ const CreatureInfo *creature_info_at(int index)
 
 int creature_gdat_attr(int creature_type, int attr)
 {
-    return gdat_entry_index(draw_gdat(), CAT_CREATURE, creature_type, GDAT_TYPE_VALUE, attr);
+    return gdat_entry_index(gdat_current(), CAT_CREATURE, creature_type, GDAT_TYPE_VALUE, attr);
 }
 
 const CreatureInfo *creature_info(const gdat_t *g, int creature_type)
@@ -174,7 +174,7 @@ const CreatureInfo *creature_info(const gdat_t *g, int creature_type)
 
 const CreatureInfo *creature_group_info(uint16_t group)
 {
-    return creature_info(draw_gdat(), group_creature(group));
+    return creature_info(gdat_current(), group_creature(group));
 }
 
 ActiveGroup *creature_active(uint16_t group)
@@ -194,7 +194,7 @@ uint16_t *creature_anim_words(uint16_t group)
 /* The raw GDAT data (0x0f, creature type, type, entry). */
 static const uint8_t *creature_data(int creature_type, int type, int entry, uint32_t *size)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     uint32_t n = 0;
     const uint8_t *data = gdat_item(g, gdat_find(g, CAT_CREATURE, creature_type, type, entry), &n);
     if (size) *size = n;
@@ -329,7 +329,7 @@ int creature_anim_start(int creature_type, int action, uint16_t *sequence, uint1
     }
     uint16_t first = le16(table + SEQUENCE_FIRST_STEP);
     *sequence = first;
-    if (!(creature_info(draw_gdat(), creature_type)->flags & CREATURE_STATIC)) {
+    if (!(creature_info(gdat_current(), creature_type)->flags & CREATURE_STATIC)) {
         *state = ANIM_STEP_NONE;
         return creature_anim_next_random_step(creature_type, first, state, frame);
     }
@@ -1061,7 +1061,7 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
         return THING_NONE;
     }
     group_set_creature(group, (uint8_t)creature_type);
-    const CreatureInfo *info = creature_info(draw_gdat(), creature_type);
+    const CreatureInfo *info = creature_info(gdat_current(), creature_type);
     set_thing_word(group, GROUP_POSSESSIONS, THING_ENDOFLIST);
     group_set_flag(group, GROUP_DO_NOT_DISCARD, false);
     group_set_dir(group, dir);

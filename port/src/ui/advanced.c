@@ -69,7 +69,7 @@ static void print_line(const char *text)
 static int write_game(const char *path, const char *bak)
 {
     timeline_rebuild_free_list();
-    return save_write(path, bak, QUICK_SAVE_NAME, draw_gdat()) == SAVE_OK;
+    return save_write(path, bak, QUICK_SAVE_NAME, gdat_current()) == SAVE_OK;
 }
 
 void advanced_quick_save(void)

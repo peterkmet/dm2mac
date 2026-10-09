@@ -5,7 +5,7 @@
 #include "ai_move.h"
 #include "champion.h"
 #include "creature.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "projectile.h"
 #include "item.h"
@@ -198,7 +198,7 @@ static int square_distance(int x1, int y1, int x2, int y2)
 /* A GDAT value of the door type on (x, y). */
 static int door_value_at(int x, int y, int key)
 {
-    return gdat_entry_index(draw_gdat(), CAT_DOOR, dun_get_door_type(first_thing(x, y)), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dun_get_door_type(first_thing(x, y)), GDAT_TYPE_VALUE, key);
 }
 
 /* The search cost of the door on (x, y). */
@@ -417,7 +417,7 @@ static int wall_shows_shoot_target(int x, int y, int side, int filter)
         if ((type != THING_SENSOR && type != THING_TEXT) || thing_cell(t) != side) continue;
         int ornament = item_gdat_index(t);
         if (ornament != GDAT_NO_INDEX
-            && gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_SHOOT_TARGET) == (uint16_t)filter)
+            && gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_SHOOT_TARGET) == (uint16_t)filter)
             return 1;
     }
     return 0;
@@ -821,7 +821,7 @@ static int search_square_test(int command, int x, int y)
         if (square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0)) return 1;
         /* fall through: a closed fake wall costs like a wall */
     case SQUARE_WALL: {
-        int cost = gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(game.party_map),
+        int cost = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map),
                                     GDAT_TYPE_VALUE, WALLSET_KEY_WALL_COST);
         if (!cost) cost = 1;
         if (cost >= WALL_COST_BLOCKING) {
@@ -1535,7 +1535,7 @@ int ai_thing_matches_filter(uint16_t thing, int filter)
         int kind = sensor_type(thing);
         if (kind == ACTUATOR_COUNTED_ITEM && !sensor_data(thing)) return 0;
         if (kind == ACTUATOR_SLOT || kind == ACTUATOR_COUNTED_ITEM)
-            value = (int16_t)gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, item_gdat_index(thing), GDAT_TYPE_VALUE, ORNAMENT_KEY_TARGET);
+            value = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, item_gdat_index(thing), GDAT_TYPE_VALUE, ORNAMENT_KEY_TARGET);
         else
             value = (int16_t)kind;
     } else if (type >= THING_WEAPON && type <= THING_MISC) {
@@ -2464,7 +2464,7 @@ void creature_refresh_party_maps(void)
     }
     if (party.redraw & REDRAW_VIEW) {
         int changed = game.party_map != last_party_map;
-        int radius = gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(game.party_map),
+        int radius = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map),
                                       GDAT_TYPE_VALUE, WALLSET_KEY_LIGHT);
         if (!radius) {
             light_source_sum = explosion_light_sum = 0;

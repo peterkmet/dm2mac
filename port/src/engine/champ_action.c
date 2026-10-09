@@ -16,7 +16,7 @@
 #include "projectile.h"
 #include "random.h"
 #include "sensor.h"
-#include "text.h"
+#include "game_text.h"
 #include "ui.h"
 #include "view.h"
 

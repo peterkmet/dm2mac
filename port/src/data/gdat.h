@@ -68,6 +68,9 @@ typedef struct gdat gdat_t;
 /* Reads the whole file; *out is NULL on error. */
 int gdat_load(const char *path, gdat_t **out);
 void gdat_free(gdat_t *g);
+/* The GRAPHICS.DAT that the game reads; NULL before the first gdat_select. */
+const gdat_t *gdat_current(void);
+void gdat_select(const gdat_t *g);
 int gdat_item_count(const gdat_t *g);
 /* The raw bytes of an item, NULL for a bad item number. */
 const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *size);

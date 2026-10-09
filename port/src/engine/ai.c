@@ -1008,7 +1008,7 @@ static void scan_random_wander(int arg, int plan, uint32_t list)
 {
     uint16_t mood = group_mood(ai.group_thing);
     int set = dungeon_map_wallset(ai.map);
-    if (gdat_entry_index(draw_gdat(), CAT_WALLSET, set, GDAT_TYPE_VALUE, MAP_GRAPHICS_KEY_FLAGS) & MAP_KEY_NO_WANDER
+    if (gdat_entry_index(gdat_current(), CAT_WALLSET, set, GDAT_TYPE_VALUE, MAP_GRAPHICS_KEY_FLAGS) & MAP_KEY_NO_WANDER
         || (!(int8_t)arg && mood & MOOD_WANDERS)) {
         group_set_mood(ai.group_thing, mood & ~MOOD_WANDERS);
         return;
@@ -1733,7 +1733,7 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
             } else if (type == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
                 int kind = text_subtype(t);
                 if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST) continue;
-                int16_t up = (int16_t)gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, text_value(t), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
+                int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, text_value(t), GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
                 if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
                     *sensor = THING_NONE;
                     return d;
@@ -2222,7 +2222,7 @@ static int act_use_wall_sensor(void)
 static void creature_become(int type)
 {
     group_set_creature(ai.group_thing, (uint8_t)type);
-    ai.info = creature_info(draw_gdat(), type);
+    ai.info = creature_info(gdat_current(), type);
     int16_t max = (int16_t)ai.info->max_health;
     set_thing_word(ai.group_thing, GROUP_HEALTH, (uint16_t)(max + rand_below((uint16_t)((max >> 3) + 1))));
     creature_anim_start(type, (int8_t)ai.active->action, ai.anim, ai.anim + 1, &ai.anim_step, 0);

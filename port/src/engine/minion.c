@@ -4,7 +4,7 @@
 #include "ai.h"
 #include "champion.h"
 #include "creature.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "projectile.h"
 #include "item.h"
@@ -86,7 +86,7 @@ static Offscreen *area;
 static Strip map_icon_strip(int category, int index)
 {
     Strip s = {0};
-    if (!gdat_exists(draw_gdat(), category, index, GDAT_TYPE_IMAGE, STRIP_ENTRY)) return s;
+    if (!gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, STRIP_ENTRY)) return s;
     s.image = draw_gdat_image(category, index, STRIP_ENTRY);
     s.palette = draw_gdat_image_palette(category, index, STRIP_ENTRY);
     s.count = s.image ? s.image->width / MAP_ICON_W : 0;
@@ -103,7 +103,7 @@ static Strip map_item_icons(uint16_t thing)
 /* True when the GDAT key has the detail value: it shows only with MAP_OPTION_DETAILS. */
 static int detail_only(int category, int index)
 {
-    return gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, STRIP_DETAIL_KEY) != 0;
+    return gdat_entry_index(gdat_current(), category, index, GDAT_TYPE_VALUE, STRIP_DETAIL_KEY) != 0;
 }
 
 /* Clips rect to clip; *dx, *dy: the pixels cut at the left and top. Returns 0 when nothing is left. */
@@ -224,7 +224,7 @@ static void draw_group(uint16_t group, uint16_t map_thing, int dir, int x, int y
 static int missile_image_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_FRONT)) return MISSILE_NO_PICTURE;
     if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_SIDE)) return MISSILE_NO_SIDE;
     if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_BACK)) return MISSILE_FRONT_BACK;
@@ -261,7 +261,7 @@ static void draw_things(const ViewSquare *s, uint16_t map_thing, int dir, int x,
         int type = thing_type(t);
         if (type == THING_GROUP) {
             uint16_t cflags = creature_group_info(t)->flags;
-            if (gdat_entry_index(draw_gdat(), CAT_CREATURE, item_gdat_index(t), GDAT_TYPE_VALUE, STRIP_DETAIL_KEY)
+            if (gdat_entry_index(gdat_current(), CAT_CREATURE, item_gdat_index(t), GDAT_TYPE_VALUE, STRIP_DETAIL_KEY)
                 || flags & (cflags & CREATURE_STATIC ? MAP_STATIC_CREATURES : MAP_OPTION_CREATURES | MAP_MINION))
                 group = t;
         } else if (flags & MAP_OPTION_ITEMS) {
@@ -430,7 +430,7 @@ void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx,
 int minion_map_party_icons_item(void)
 {
     for (int index = 0; index < GDAT_INDEX_COUNT; index++)
-        if (gdat_exists(draw_gdat(), CAT_CONTAINER, index, GDAT_TYPE_IMAGE, MAP_ITEM_ICONS)) return index;
+        if (gdat_exists(gdat_current(), CAT_CONTAINER, index, GDAT_TYPE_IMAGE, MAP_ITEM_ICONS)) return index;
     return -1;
 }
 

@@ -4,7 +4,6 @@
 #include "ai_move.h"
 #include "champion.h"
 #include "creature.h"
-#include "draw.h"
 #include "dungeon.h"
 #include "gdat.h"
 #include "hooks.h"
@@ -21,7 +20,7 @@
 #include "session.h"
 #include "sensor.h"
 #include "input.h"
-#include "text.h"
+#include "game_text.h"
 #include "view.h"
 #include "merchant.h"
 
@@ -102,12 +101,12 @@ int dun_get_door_type(uint16_t door) { return dungeon_map_door_type(party.cur_ma
 
 uint16_t sensor_door_value(uint16_t door, int key)
 {
-    return gdat_entry_index(draw_gdat(), CAT_DOOR, dun_get_door_type(door), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dun_get_door_type(door), GDAT_TYPE_VALUE, key);
 }
 
 static int item_holder_item(int ornament)
 {
-    return gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ITEM);
+    return gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ITEM);
 }
 
 /* The wall ornament (GDAT index) of a sensor, 0xff none. */
@@ -305,7 +304,7 @@ static void floor_scan(FloorMove *m, int x, int y)
 static int altar_takes_bones(uint16_t t, uint16_t thing)
 {
     return item_gdat_index(t) != GDAT_NO_INDEX
-           && gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, item_gdat_index(t), GDAT_TYPE_VALUE, ORNAMENT_KEY_ALTAR)
+           && gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, item_gdat_index(t), GDAT_TYPE_VALUE, ORNAMENT_KEY_ALTAR)
            && item_gdat_category(thing) == CAT_MISC && item_gdat_index(thing) == ITEM_BONES;
 }
 
@@ -534,10 +533,10 @@ static unsigned sensor_get_ornament_cycle(uint16_t sensor, int wall)
     int category = ornament_category(wall);
     int ornament = sensor_ornament(sensor, wall);
     if (ornament == GDAT_NO_INDEX) return 1;
-    uint16_t frames = gdat_entry_index(draw_gdat(), category, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_FRAMES);
+    uint16_t frames = gdat_entry_index(gdat_current(), category, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_FRAMES);
     if (frames) return frames & ORNAMENT_FRAMES_MASK;
     char text[TEXT_SIZE];
-    gdat_text(draw_gdat(), category, ornament, ORNAMENT_KEY_FRAMES, text, sizeof text);
+    gdat_text(gdat_current(), category, ornament, ORNAMENT_KEY_FRAMES, text, sizeof text);
     return text[0] && strlen(text) ? (uint16_t)strlen(text) : 1;
 }
 
@@ -547,7 +546,7 @@ static void sensor_start_ambient_sound(uint16_t sensor, uint16_t thing, int x, i
     if (!sensor_flag(sensor, SENSOR_AUDIBLE) || sensor_sound_on(sensor)) return;
     int frame = sensor_frame(sensor);
     uint32_t start = game.game_time + frame;
-    uint16_t offset = gdat_entry_index(draw_gdat(), ornament_category(wall), sensor_ornament(sensor, wall), GDAT_TYPE_VALUE,
+    uint16_t offset = gdat_entry_index(gdat_current(), ornament_category(wall), sensor_ornament(sensor, wall), GDAT_TYPE_VALUE,
                                        ORNAMENT_KEY_SOUND_DELAY);
     unsigned phase = (offset + start) % cycle;
     TimelineEvent e = {.time_map = event_time(cycle - phase + game.game_time),
@@ -608,7 +607,7 @@ static void sensor_play_activation(const TimelineEvent *e, uint16_t sensor, uint
         if (sensor_flag(sensor, SENSOR_AUDIBLE)) {
             int x = e->data[EVENT_X], y = e->data[EVENT_Y];
             if (wall) sound_square_in_front(&x, &y, e->data[EVENT_EFFECT] & DIR_MASK);
-            int delay = (int16_t)(gdat_entry_index(draw_gdat(), ornament_category(wall), sensor_ornament(sensor, wall),
+            int delay = (int16_t)(gdat_entry_index(gdat_current(), ornament_category(wall), sensor_ornament(sensor, wall),
                                                    GDAT_TYPE_VALUE, ORNAMENT_KEY_SOUND_DELAY) + 1);
             sensor_play_ornament_sound(sensor, wall, x, y, delay);
         }
@@ -674,7 +673,7 @@ enum { TEXT_TOGGLED = 5, TEXT_LINKED = 7, TEXT_GENERATOR_SLOW = 0x13, TEXT_GENER
 static void text_update_linked(const TimelineEvent *e, uint16_t text)
 {
     bool visible = text_is_visible(text);
-    int delta = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, text_value(text), GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
+    int delta = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, text_value(text), GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
     int x = e->data[EVENT_X], y = e->data[EVENT_Y];
     int map = dungeon_location_on_map(game.party_map, delta, &x, &y);
     if (map < 0) return;
@@ -1378,7 +1377,7 @@ bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
 {
     int ornament = item_gdat_index(thing);
     if (ornament == GDAT_NO_INDEX
-        || gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
+        || gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
         return 0;
     return view_wall_face_ornament(party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
 }
@@ -1386,7 +1385,7 @@ bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
 static int ornament_value(uint16_t thing, int key)
 {
     int ornament = item_gdat_index(thing);
-    return ornament == GDAT_NO_INDEX ? 0 : gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
+    return ornament == GDAT_NO_INDEX ? 0 : gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
 }
 
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
@@ -1604,7 +1603,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
         c->hand = THING_NONE;
         if (sub == SUBTYPE_ITEM_HOLDER_MARKER) {
             /* fix: the original leaves 4 data bytes of the event uninitialized */
-            uint16_t delay = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE,
+            uint16_t delay = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE,
                                               ORNAMENT_KEY_MARKER_DELAY);
             TimelineEvent e = {.time_map = event_time(game.game_time + delay + CLICK_EVENT_DELAY), .type = EVENT_SET_MARKER};
             put_le16(e.data + SENSOR_EVENT_THING, t);
@@ -1629,7 +1628,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
         wall_click_holder_text(c, t, sub, value, visible);
     } else if ((sub == SUBTYPE_LADDER_HIDDEN && !visible) || sub == SUBTYPE_LADDER) {
         if (c->hand != THING_NONE) return;
-        int delta = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
+        int delta = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
         int lx = game.party_x, ly = game.party_y;
         int map = dungeon_location_on_map(game.party_map, delta, &lx, &ly);
         if (map >= 0) {

@@ -4,7 +4,7 @@
 #include <string.h>
 #include "champion.h"
 #include "ai.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "sound_request.h"
 #include "move.h"
@@ -93,7 +93,7 @@ void sound_request(int category, int index, int entry, int priority, int volume,
     if (delay > 0 && party.cur_map != party.square_map && party.cur_map != party.alt_view_map) return;
     if (request_count == REQUESTS_MAX) return;
     Sound sound;
-    if (sound_load(draw_gdat(), category, index, entry, &sound) != GDAT_OK) return;
+    if (sound_load(gdat_current(), category, index, entry, &sound) != GDAT_OK) return;
     volume = (int16_t)volume;
     if (party_sleeping) volume >>= 1;
     if (delay > DELAY_STEP) {
@@ -132,7 +132,7 @@ void sound_request_with_fallback(int category, int index, int entry, int fallbac
                               int volume)
 {
     Sound sound;
-    if (sound_load(draw_gdat(), category, index, entry, &sound) != GDAT_OK) index = fallback;
+    if (sound_load(gdat_current(), category, index, entry, &sound) != GDAT_OK) index = fallback;
     sound_request(category, index, entry, priority, volume, x, y, delay);
 }
 

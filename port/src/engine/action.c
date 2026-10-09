@@ -143,7 +143,7 @@ static void draw_action_result(int16_t value)
         offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? AMMO_HAND_OTHER : AMMO_HAND_DEFAULT,
                                   ZONE_AMMO_HAND, UI_OPAQUE);
         for (int index = 0; index < GDAT_NO_INDEX; index++) {
-            uint16_t ammo = gdat_entry_index(draw_gdat(), CAT_WEAPON, index, GDAT_TYPE_VALUE, AMMO_ATTR);
+            uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, index, GDAT_TYPE_VALUE, AMMO_ATTR);
             if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
                 offscreen_draw_gdat_image(&area, CAT_WEAPON, index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
                 return;
@@ -174,7 +174,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
         const int16_t r[RECT_SIZE] = {ICON_OFFSET, ICON_OFFSET, ICON_SIZE, ICON_SIZE};
         ui_blit_bitmap(c.image, icon, r, 0, 0, UI_OPAQUE, shadow);
         uint32_t size;
-        const uint8_t *remap = gdat_item(draw_gdat(), gdat_find(draw_gdat(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, ICON_SHADOW_REMAP),
+        const uint8_t *remap = gdat_item(gdat_current(), gdat_find(gdat_current(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, ICON_SHADOW_REMAP),
                                          &size);
         if (remap) {
             if (c.palette_count < 1) {

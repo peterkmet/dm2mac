@@ -3,7 +3,8 @@
 #include "action.h"
 #include "ai.h"
 #include "creature.h"
-#include "draw.h"
+#include "gdat.h"
+#include "game_text.h"
 #include "dungeon.h"
 #include "sound_request.h"
 #include "projectile.h"
@@ -311,7 +312,7 @@ static void cast_summon(int type, int skill, int power)
 /* The spell that the item spell creates goes into the leader hand, or onto the party square. */
 static void cast_create_item(void)
 {
-    uint16_t thing = item_create_by_index(gdat_entry_index(draw_gdat(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
+    uint16_t thing = item_create_by_index(gdat_entry_index(gdat_current(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
                                                            SPELL_ITEM_KEY));
     if (game.leader_hand == THING_NONE) {
         champ_put_object_in_leader_hand(thing, 1);

@@ -2,7 +2,7 @@
 #include <string.h>
 #include "action.h"
 #include "champion.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "game.h"
 #include "hooks.h"
@@ -63,7 +63,7 @@ static void champ_add_to_party(int portrait, int index, int dir)
     }
     for (int i = 0; ch && (ch = *p++) && i < CHAMPION_TITLE_SIZE - 1; i++) c->title[i] = ch;
     uint32_t size;
-    const uint8_t *d = gdat_item(draw_gdat(), gdat_find(draw_gdat(), CAT_CHAMPION, portrait, PORTRAIT_DATA_TYPE, 0),
+    const uint8_t *d = gdat_item(gdat_current(), gdat_find(gdat_current(), CAT_CHAMPION, portrait, PORTRAIT_DATA_TYPE, 0),
                                  &size);
     if (!d) return;  /* fix: the original reads no data */
     c->health = c->max_health = (int16_t)le16(d + 2 * DATA_HEALTH);

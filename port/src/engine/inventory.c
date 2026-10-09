@@ -2,7 +2,6 @@
 #include <string.h>
 #include "action.h"
 #include "champion.h"
-#include "draw.h"
 #include "dungeon.h"
 #include "hooks.h"
 #include "sound_request.h"
@@ -12,7 +11,7 @@
 #include "random.h"
 #include "move.h"
 #include "sensor.h"
-#include "text.h"
+#include "game_text.h"
 #include "ui.h"
 #include "magic.h"
 #include "weather.h"

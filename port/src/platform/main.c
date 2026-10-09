@@ -65,7 +65,7 @@ static void set_icon(void)
 {
     static uint32_t argb[ICON_MAX_PIXELS];
     int w, h;
-    if (icon_build(draw_gdat(), argb, ICON_MAX_PIXELS, &w, &h)) plat_set_icon(argb, w, h);
+    if (icon_build(gdat_current(), argb, ICON_MAX_PIXELS, &w, &h)) plat_set_icon(argb, w, h);
 }
 
 /* Loads a save and starts its game at once; returns 0 with a message on an error. */
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "cannot open the control socket %s\n", control);
         return 1;
     }
-    if (music_init(draw_gdat(), data) != MUSIC_OK) SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
+    if (music_init(gdat_current(), data) != MUSIC_OK) SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
     plat_audio_music(music_render);
     if (save) {
         sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);

@@ -153,6 +153,11 @@ void gdat_free(gdat_t *g)
     free(g);
 }
 
+static const gdat_t *current;
+
+const gdat_t *gdat_current(void) { return current; }
+void gdat_select(const gdat_t *g) { current = g; }
+
 int gdat_item_count(const gdat_t *g) { return g->count; }
 
 const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *size)

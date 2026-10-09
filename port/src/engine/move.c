@@ -3,7 +3,6 @@
 #include <string.h>
 #include "champion.h"
 #include "creature.h"
-#include "draw.h"
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
@@ -771,7 +770,7 @@ static void transit_pit_marker(Transit *t)
 /* An open pit at (x, y): the thing falls to the map below or to a pit target marker; a creature of a marker pit goes home. */
 static void transit_pit(Transit *t)
 {
-    int to_marker = gdat_entry_index(draw_gdat(), CAT_WALLSET, dungeon_map_wallset(party.cur_map), GDAT_TYPE_VALUE,
+    int to_marker = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(party.cur_map), GDAT_TYPE_VALUE,
                                      MAP_KEY_PIT_TO_MARKER);
     if (to_marker && t->type == THING_GROUP) {
         uint16_t home = thing_word(t->thing, GROUP_HOME);
