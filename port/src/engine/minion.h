@@ -1,9 +1,19 @@
 #ifndef MINION_H
 #define MINION_H
 #include <stdint.h>
-#include "ui.h"
 
 /* Prefixes: minion_ */
+
+/* The grid: 7 x 7 squares (9 x 9 when the grid is shifted) of 7 x 7 pixel icons with 1 pixel gaps. */
+#define MAP_ICON_W 7
+#define MAP_ICON_H 7
+#define GAP_X 1
+#define GAP_Y 1
+#define GRID_RADIUS 3
+#define ZONE_MAP_GRID 0x63
+#define MAP_OPTION_COUNT 4
+/* Minion map kinds: the container type of a minion map. */
+enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };
 
 /* action.flags while the action area shows a minion map. */
 #define MAP_OPTION_CREATURES 0x0001     /* option button 0: moving creatures */
@@ -50,19 +60,10 @@ void minion_map_open(int champ);
 void minion_map_drain_mana(void);
 /* Turns option button option (0 to 3) on (for its mana) or off. */
 void minion_toggle_map_option(int option);
-/* Draws the option buttons; pressed: the buttons that show pressed (the click feedback). */
-void minion_draw_map_option_buttons(int pressed);
-/* Draws the minion map panel of the map item thing. */
-void minion_draw_map(uint16_t thing);
 /* Sets the location of the minion map thing to (x, y) of map; returns 0 outside the map. */
 int minion_map_set_location(uint16_t thing, int x, int y, int map);
 /* A click (command) at (x, y) of the screen on the grid of a minion location map sends its minion there. */
 void minion_map_click_set_destination(int command, int x, int y);
-/* The square icon of (sx, sy) of the current map at (x, y) of the screen in target, north up, clipped to clip, without
-   things; party_item >= 0: the party stands there, with the party icons of the map item party_item (category 0x14). */
-void minion_map_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int sy, int x, int y, int party_item);
-/* The first map item index of GRAPHICS.DAT with the party icons; -1 none. */
-int minion_map_party_icons_item(void);
 #define MAP_CELL_SIZE 8                 /* pixels per square of a map: a 7 x 7 icon and a 1 pixel gap */
 
 /* Minions of creature.c and item.c. */

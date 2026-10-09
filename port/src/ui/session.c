@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "action.h"
+#include "action_area.h"
 #include "creature.h"
 #include "dialog.h"
 #include "draw.h"
@@ -435,7 +436,7 @@ void session_save(void)
     int quit = 0;
     session.restart = 0;
     action_area_close();
-    action_update_area(0);
+    area_update(0);
     game_hide_view();
     timeline_rebuild_free_list();
     int slot = save_menu(&quit);

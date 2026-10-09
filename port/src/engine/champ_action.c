@@ -14,7 +14,6 @@
 #include "magic.h"
 #include "minion.h"
 #include "move.h"
-#include "projectile.h"
 #include "random.h"
 #include "sensor.h"
 #include "game_text.h"
@@ -146,7 +145,7 @@ void action_area_open_hand(int champ, int hand)
     action.champion = action.flash;
     action.hand = (int16_t)hand;
     champ_drag_cancel();
-    action_update_area(0);
+    g_hooks.update_action_area(0);
     ui_draw_champion_state(champ);
 }
 
@@ -160,7 +159,7 @@ void action_area_open_spells(int champ)
     action.flags = 0;
     action.champion = action.flash;
     champ_drag_cancel();
-    action_update_area(0);
+    g_hooks.update_action_area(0);
 }
 
 void champ_add_action_delay(int champ, int ticks, int hand)
@@ -804,7 +803,7 @@ int champ_execute_selected_action(int index)
     }
     if (!action.flags) action_area_close();
     else action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
-    action_update_area(0);
+    g_hooks.update_action_area(0);
     return done;
 }
 

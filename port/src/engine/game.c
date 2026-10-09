@@ -8,6 +8,7 @@
 #include "dialog.h"
 #include "dungeon.h"
 #include "game.h"
+#include "hooks.h"
 #include "gdat.h"
 #include "seen.h"
 #include "sound_request.h"
@@ -106,7 +107,7 @@ void game_hide_view(void)
     main_loop.view_hidden = 1;
     if (input_drag_state) {
         champ_drag_cancel();
-        action_update_area(0);
+        g_hooks.update_action_area(0);
     }
     input_cancel_push_mode();
     input_release_move_arrow();

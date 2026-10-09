@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "action.h"
+#include "action_area.h"
 #include "advanced.h"
 #include "champion.h"
 #include "draw.h"
@@ -19,6 +20,7 @@
 #include "input.h"
 #include "magic.h"
 #include "minion.h"
+#include "minion_map.h"
 #include "move.h"
 #include "music.h"
 #include "save.h"
@@ -928,7 +930,7 @@ static void feedback_rune_button(Feedback *f)
 /* Copies the drawn action area to the screen. */
 static void action_area_present(void)
 {
-    offscreen_flush(action_area_begin_draw(0), 1);
+    offscreen_flush(area_begin_draw(0), 1);
 }
 
 /* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
@@ -939,7 +941,7 @@ static void feedback_hand_icon(int icon)
         if (in.current.command < CMD_HAND_FIRST || in.current.command > CMD_HAND_LAST) return;
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
-    action_draw_hand_icon(champ, icon, 1);
+    area_draw_hand_icon(champ, icon, 1);
     action_area_present();
 }
 
@@ -948,7 +950,7 @@ static void feedback_spell_icon(int cell)
 {
     int champ = champion_in_party_cell(cell);
     if (champ < 0) return;
-    action_draw_spell_icon(champ, 1);
+    area_draw_spell_icon(champ, 1);
     action_area_present();
 }
 
@@ -979,15 +981,15 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
     case FB_SPELL_ICON: feedback_spell_icon(*p++); break;
     case FB_HAND_ICON: feedback_hand_icon(*p++); break;
     case FB_ACTION_NAME:
-        action_draw_name(*p++, 1);
+        area_draw_name(*p++, 1);
         action_area_present();
         break;
     case FB_ENTERED_RUNES:
-        action_draw_entered_runes(1);
+        area_draw_entered_runes(1);
         action_area_present();
         break;
     case FB_MAP_OPTION_BUTTONS:
-        minion_draw_map_option_buttons(*p++);
+        mmap_draw_option_buttons(*p++);
         action_area_present();
         break;
     case FB_INVENTORY_BUTTON:
@@ -1483,7 +1485,7 @@ static int command_execute_party(const Command *c, int idle)
             Champion *ch = champion(action.champion - 1);
             ch->dir = (uint8_t)dir_turn(ch->dir, command == CMD_ROTATE_LEFT ? -1 : 1);
         }
-        action_update_area(0);
+        area_update(0);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
         champ_set_leader(champion_in_party_cell(command - CMD_LEADER_FIRST));
         ui_draw_all_champion_states(0);
@@ -1554,7 +1556,7 @@ static int command_execute_champion(int command, int idle)
         if (command == CMD_DRAG_CANCEL) champ_drag_cancel();
         else champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
-        action_update_area(0);
+        area_update(0);
     } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
         if (game.champion_count && !ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE) advanced_quick_save();

@@ -109,7 +109,7 @@ int champ_start_recruit(int x, int y, int dir, int map)
     champ_add_to_party(portrait, index, dir);
     if (index) {
         action_area_close();
-        action_update_area(0);
+        g_hooks.update_action_area(0);
     }
     ui.candidate = (uint16_t)(index + 1);
     game.champion_count++;

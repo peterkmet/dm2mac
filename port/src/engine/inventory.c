@@ -128,25 +128,6 @@ void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode)
     if (mode) champ_compute_load(champ);
 }
 
-/* Draws the icon of the leader hand object into the cursor: its 4 bpp color numbers and its palette colors. */
-static void render_hand_icon(void)
-{
-    uint8_t identity[HAND_ICON_COLORS];  /* the icon keeps its color numbers */
-    for (int i = 0; i < HAND_ICON_COLORS; i++) identity[i] = (uint8_t)i;
-    uint16_t t = game.leader_hand;
-    int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
-    const Bitmap *image = draw_gdat_image(category, index, entry);
-    const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
-    Bitmap cursor = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
-    memset(leader_hand.cursor, HAND_ICON_KEY, sizeof leader_hand.cursor);
-    const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
-    if (image && colors) {
-        ui_blit_bitmap(image, &cursor, r, 0, 0, UI_OPAQUE, identity);
-        memcpy(leader_hand.palette, colors, sizeof leader_hand.palette);
-    }
-    draw_free_temp();
-}
-
 void inv_show_object_name(uint16_t thing)
 {
     g_hooks.print_newline();
@@ -160,7 +141,7 @@ void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)
     leader_hand.attr = item_attr(thing, ATTR_FLAGS);
     leader_hand.weight = (uint16_t)item_weight(thing);
     game.leader_hand = thing;
-    render_hand_icon();
+    g_hooks.render_hand_icon();
     inv_show_object_name(thing);
     (void)defer_cursor;  /* the port draws the cursor each frame (inv_cursor_object) */
     champ_apply_item_effects((int16_t)game.leader, thing, -1, EFFECT_MODE_ADD);
@@ -185,7 +166,7 @@ void inv_update_hand_cursor(void)
     if (game.leader_hand == THING_NONE || !(item_attr(game.leader_hand, ATTR_FLAGS) & ITEM_FLAG_ICON_IN_HAND)) return;
     uint8_t icon = (uint8_t)item_icon_index(game.leader_hand, -1, 1);
     if (icon == leader_hand.icon) return;
-    render_hand_icon();
+    g_hooks.render_hand_icon();
     leader_hand.icon = icon;
 }
 
@@ -244,7 +225,7 @@ void inv_click_slot(int slot)
     if (slot == SLOT_QUIVER_READY || slot == SLOT_QUIVER_FIRST || slot == SLOT_QUIVER_ACTION
         || (slot > SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot >= SLOT_COUNT) {
         action.redraw_delay = 1;
-        action_update_area(0);
+        g_hooks.update_action_area(0);
     }
 }
 

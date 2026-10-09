@@ -87,6 +87,10 @@ void ui_fill_zone_screen(int zone, int color);
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
 #define FACE_ICON_COLORS 16
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
+/* Draws the icon of the leader hand object into the cursor: its 4 bpp color numbers and its palette colors. */
+void ui_render_hand_icon(void);
+/* Draws a GDAT image of the interface in zone of the screen. */
+void ui_draw_interface_image(int category, int index, int entry, int zone);
 
 /* Clears the interface caches for a new screen. */
 void ui_reset(void);

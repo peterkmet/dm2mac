@@ -4,6 +4,7 @@
 #include "champion.h"
 #include "gdat.h"
 #include "dungeon.h"
+#include "hooks.h"
 #include "inventory.h"
 #include "item.h"
 #include "merchant.h"
@@ -100,7 +101,7 @@ void money_box_click_coin(int slot)
         champ_remove_object_from_leader_hand();
     }
     action.redraw_delay = 1;
-    action_update_area(0);
+    g_hooks.update_action_area(0);
     champ_compute_load(champ);
 }
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "action.h"
+#include "action_area.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
@@ -181,6 +182,33 @@ void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette)
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     /* the original skips color 2 of the face picture */
     ui_blit_bitmap(draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champ), dst, r, FACE_SIZE * frame, 0, FACE_SKIP_COLOR, NULL);
+}
+
+void ui_render_hand_icon(void)
+{
+    uint8_t identity[HAND_ICON_COLORS];  /* the icon keeps its color numbers */
+    for (int i = 0; i < HAND_ICON_COLORS; i++) identity[i] = (uint8_t)i;
+    uint16_t t = game.leader_hand;
+    int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
+    const Bitmap *image = draw_gdat_image(category, index, entry);
+    const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
+    Bitmap cursor = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
+    memset(leader_hand.cursor, HAND_ICON_KEY, sizeof leader_hand.cursor);
+    const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
+    if (image && colors) {
+        ui_blit_bitmap(image, &cursor, r, 0, 0, UI_OPAQUE, identity);
+        memcpy(leader_hand.palette, colors, sizeof leader_hand.palette);
+    }
+    draw_free_temp();
+}
+
+void ui_draw_interface_image(int category, int index, int entry, int zone)
+{
+    DrawCtx d;
+    draw_ctx_init(&d, category, index, entry);
+    d.transparent = UI_OPAQUE;
+    d.zone = (int16_t)zone;
+    draw_ctx_draw(draw_ctx_prepare(&d));
 }
 
 /* ---- Offscreen bitmaps ---- */
@@ -1045,7 +1073,7 @@ void ui_draw_all_champion_states(int tick)
             c->redraw |= !ui.eye || game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
         ui_draw_champion_state(ui.inventory - 1);
     }
-    action_update_area(tick);
+    area_update(tick);
 }
 
 void ui_toggle_inventory(int champ)

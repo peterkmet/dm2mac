@@ -5,6 +5,7 @@
 #include "automap.h"
 #include "dungeon.h"
 #include "minion.h"
+#include "minion_map.h"
 #include "move.h"
 #include "save.h"
 #include "text.h"
@@ -44,12 +45,12 @@ void automap_draw(Offscreen *o, const int16_t *clip)
     draw_middle(&middle_x, &middle_y);
     int left = clip[RECT_X] + (clip[RECT_W] - MAP_CELL_SIZE) / 2 + ICON_GAP - middle_x * MAP_CELL_SIZE;
     int top = clip[RECT_Y] + (clip[RECT_H] - MAP_CELL_SIZE) / 2 + ICON_GAP - middle_y * MAP_CELL_SIZE;
-    int saved = party.cur_map, party_item = minion_map_party_icons_item();
+    int saved = party.cur_map, party_item = mmap_party_icons_item();
     dun_set_current_map(map);
     for (int x = 0; x < dungeon_map_width(map); x++)
         for (int y = 0; y < dungeon_map_height(map); y++)
             if (seen_is_seen(map, x, y))
-                minion_map_draw_square_icon(o, clip, x, y, left + x * MAP_CELL_SIZE, top + y * MAP_CELL_SIZE,
+                mmap_draw_square_icon(o, clip, x, y, left + x * MAP_CELL_SIZE, top + y * MAP_CELL_SIZE,
                                             x == game.party_x && y == game.party_y ? party_item : -1);
     dun_set_current_map(saved);
 }

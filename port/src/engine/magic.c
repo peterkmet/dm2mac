@@ -5,6 +5,7 @@
 #include "creature.h"
 #include "game.h"
 #include "gdat.h"
+#include "hooks.h"
 #include "game_text.h"
 #include "dungeon.h"
 #include "sound_request.h"
@@ -16,7 +17,6 @@
 #include "le.h"
 #include "money.h"
 #include "magic.h"
-#include "projectile.h"
 #include "move.h"
 #include "random.h"
 #include "sensor.h"
@@ -409,16 +409,6 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
     return 0;
 }
 
-/* Draws a GDAT image of the interface in zone of the screen. */
-static void draw_in_screen_zone(int category, int index, int entry, int zone)
-{
-    DrawCtx d;
-    draw_ctx_init(&d, category, index, entry);
-    d.transparent = UI_OPAQUE;
-    d.zone = (int16_t)zone;
-    draw_ctx_draw(draw_ctx_prepare(&d));
-}
-
 void magic_report_cast_failure(int result)
 {
     int min_delay = 1, var;
@@ -432,7 +422,7 @@ void magic_report_cast_failure(int result)
         var = GLOBAL_SPELL_UNKNOWN;
         break;
     case CAST_NEEDS_FLASK:
-        draw_in_screen_zone(CAT_INTERFACE, UI_INDEX_SPELL, FLASK_PICTURE, ZONE_PANEL);
+        g_hooks.draw_interface_image(CAT_INTERFACE, UI_INDEX_SPELL, FLASK_PICTURE, ZONE_PANEL);
         var = GLOBAL_FLASK_MISSING;
         min_delay = FLASK_DELAY_MIN;
         break;
@@ -475,7 +465,7 @@ void magic_add_rune(int rune)
         runes[n + 1] = 0;
     }
     action.redraw_delay = 1;
-    action_update_area(0);
+    g_hooks.update_action_area(0);
     input_refresh_mode();
     if (added) ui_draw_champion_state(action.champion - 1);
 }
@@ -487,7 +477,7 @@ void magic_remove_last_rune(void)
     c->rune_count--;
     champion_runes(c)[c->rune_count] = 0;
     action.redraw_delay = 1;
-    action_update_area(0);
+    g_hooks.update_action_area(0);
     input_refresh_mode();
 }
 
