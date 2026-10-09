@@ -5,6 +5,7 @@
 #include "draw.h"
 #include "dungeon.h"
 #include "hooks.h"
+#include "sound_request.h"
 #include "input.h"
 #include "inventory.h"
 #include "item.h"
@@ -12,7 +13,6 @@
 #include "move.h"
 #include "sensor.h"
 #include "text.h"
-#include "timeline.h"
 #include "ui.h"
 #include "magic.h"
 #include "weather.h"
@@ -149,8 +149,8 @@ static void render_hand_icon(void)
 
 void inv_show_object_name(uint16_t thing)
 {
-    text_print_newline();
-    text_print_message(MESSAGE_OBJECT_NAME, item_name(thing));
+    g_hooks.print_newline();
+    g_hooks.print_message(MESSAGE_OBJECT_NAME, item_name(thing));
 }
 
 void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)

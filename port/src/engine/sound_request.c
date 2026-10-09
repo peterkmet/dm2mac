@@ -6,13 +6,12 @@
 #include "ai.h"
 #include "draw.h"
 #include "dungeon.h"
-#include "hooks.h"
+#include "sound_request.h"
 #include "move.h"
 #include "save.h"
 #include "sensor.h"
 #include "sound.h"
 #include "sound_request.h"
-#include "timeline.h"
 
 #define REQUESTS_MAX 20         /* requests of a game step */
 #define DEFERRED_MAX 6

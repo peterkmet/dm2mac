@@ -10,7 +10,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
-#include "hooks.h"
+#include "sound_request.h"
 #include "champ_action.h"
 #include "inventory.h"
 #include "item.h"
@@ -1572,6 +1572,9 @@ static int command_execute_champion(int command, int idle)
     }
     return 1;
 }
+
+/* A command that the original runs later; the port runs none. */
+static void command_execute_later(const Command *c) { (void)c; }
 
 int command_execute(Command *c)
 {

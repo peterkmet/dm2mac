@@ -36,7 +36,6 @@ layer engine/game.c:text.h open: module cleanup
 layer engine/game.c:ui.h open: module cleanup
 layer engine/game.c:view.h open: module cleanup
 layer engine/game.c:zone.h open: module cleanup
-layer engine/hooks.c:input.h open: module cleanup
 layer engine/inventory.c:draw.h open: module cleanup
 layer engine/inventory.c:input.h open: module cleanup
 layer engine/inventory.c:text.h open: module cleanup

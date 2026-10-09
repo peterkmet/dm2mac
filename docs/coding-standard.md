@@ -31,7 +31,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - Global variables: `g_` prefix. Module-private globals and functions are `static`.
    - Types: `PascalCase`. Constants and enum values: `UPPER_CASE`.
    - No event numbers or original addresses in names. Name the game task, not the number.
-8. The source has four layers in subfolders of `port/src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook that `ui/` sets, for an event that must run the user interface inside the rule. Only `platform/` includes SDL.
+8. The source has four layers in subfolders of `port/src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook, a member of `g_hooks` (`engine/hooks.h`) that `ui/hook_table.c` sets, for an event that must run the user interface inside the rule. Only `platform/` includes SDL.
 9. Little-endian read and write helpers (`le16`, `le32`, `put_le16`, `put_le32`) have one definition in one header. Modules do not define their own copies.
 10. A packed field (two or more values in one word) has accessor functions or macros in the header of the module that owns it, for example `timeline_time_map()` and `timeline_event_map()` in `engine/timeline.h`. Call sites do not shift, mask, or cast to pack or unpack it. A shift by a named `*_SHIFT` constant is allowed only in the module that owns the field. Other modules call its accessors.
 

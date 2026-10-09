@@ -5,7 +5,7 @@
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
-#include "hooks.h"
+#include "projectile.h"
 #include "input.h"
 #include "inventory.h"
 #include "item.h"
@@ -14,7 +14,6 @@
 #include "random.h"
 #include "sensor.h"
 #include "session.h"
-#include "timeline.h"
 #include "ui.h"
 #include "weather.h"
 

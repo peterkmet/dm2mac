@@ -8,6 +8,8 @@
 #include "dungeon.h"
 #include "gdat.h"
 #include "hooks.h"
+#include "sound_request.h"
+#include "projectile.h"
 #include "inventory.h"
 #include "le.h"
 #include "money.h"
@@ -284,7 +286,7 @@ static void floor_scan(FloorMove *m, int x, int y)
             } else if (tt == THING_TEXT && m->type == -1 && m->enter && !m->on_square) {
                 if (text_kind(t) == TEXT_KIND_TEXT && text_is_visible(t)) {
                     char text[TEXT_SIZE];
-                    text_print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
+                    g_hooks.print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
                 }
             } else if (tt > THING_GROUP && tt < THING_PROJECTILE) {
                 m->items = 1;
@@ -976,7 +978,7 @@ static void floor_text_event(uint16_t t, int effect, int x, int y)
         text_set_shown(t, effect);
         if (text_kind(t) == TEXT_KIND_TEXT && !was_visible && text_is_visible(t) && dun_on_party_square(x, y)) {
             char text[TEXT_SIZE];
-            text_print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
+            g_hooks.print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
         }
     } else if ((sub == TEXT_GENERATOR_SLOW || sub == TEXT_GENERATOR_FAST) && effect == EFFECT_SET) {
         text_schedule_spawn(t, sub, was_visible, x, y);

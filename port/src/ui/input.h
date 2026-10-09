@@ -141,7 +141,5 @@ void input_release_move_arrow(void);
 void command_process_queue(void);
 /* Executes one command; returns 0 when it must wait. */
 int command_execute(Command *c);
-/* The commands of later steps: hands, slots, spells, recruiting, dialogs (empty until then). */
-void command_execute_later(const Command *c);
 
 #endif

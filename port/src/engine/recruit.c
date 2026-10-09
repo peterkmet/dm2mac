@@ -6,6 +6,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "hooks.h"
+#include "sound_request.h"
 #include "input.h"
 #include "inventory.h"
 #include "item.h"
@@ -164,9 +165,9 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
     if (game.champion_count == 1) game.first_recruit_time = game.game_time;
     if (!recruit_silent) {
         text_args.champion = (int16_t)champ;
-        text_print_newline();
+        g_hooks.print_newline();
         char text[TEXT_SIZE];
-        text_print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
+        g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
         if (ui.inventory) {
             ui_toggle_inventory(CHAMPION_MAX);
             game_show_view();

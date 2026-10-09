@@ -7,7 +7,7 @@
 #include "creature.h"
 #include "draw.h"
 #include "dungeon.h"
-#include "hooks.h"
+#include "projectile.h"
 #include "item.h"
 #include "move.h"
 #include "projectile.h"

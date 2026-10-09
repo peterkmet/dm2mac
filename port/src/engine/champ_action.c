@@ -6,6 +6,8 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "hooks.h"
+#include "sound_request.h"
+#include "projectile.h"
 #include "inventory.h"
 #include "item.h"
 #include "magic.h"
@@ -15,7 +17,6 @@
 #include "random.h"
 #include "sensor.h"
 #include "text.h"
-#include "timeline.h"
 #include "ui.h"
 #include "view.h"
 
@@ -338,10 +339,10 @@ static void champ_raise_level(int champ, int base, uint16_t level)
     if (c->max_stamina > STAMINA_MAX) c->max_stamina = STAMINA_MAX;
     c->redraw |= REDRAW_LEVEL;
     champ_skill_raised[champ][base]++;
-    text_print_newline();
+    g_hooks.print_newline();
     text_args.champion = (int16_t)champ;
     char line[TEXT_SIZE];
-    text_print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, text, line));
+    g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, text, line));
 }
 
 void champ_add_experience(int champ, int skill, uint32_t amount)

@@ -1,11 +1,13 @@
 #ifndef HOOKS_H
 #define HOOKS_H
-#include <stdint.h>
-#include "sound_request.h"
-#include "timeline.h"
-#include "projectile.h"
 
-/* Calls of the movement, sensor, and main loop code into systems of later steps. Each hook is empty or
-   returns the "nothing happened" value until its step ports it; the step then moves it to its module. */
+/* Calls of the game rules into the user interface, for events that must run the interface inside the rule.
+   ui/hook_table.c sets every member. */
+typedef struct {
+    void (*print_message)(int color, const char *text);  /* a line in the message area */
+    void (*print_newline)(void);                         /* the next message starts on a new row */
+} Hooks;
+
+extern Hooks g_hooks;
 
 #endif
