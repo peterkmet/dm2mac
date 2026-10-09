@@ -12,6 +12,7 @@
 #include "item.h"
 #include "le.h"
 #include "move.h"
+#include "play.h"
 #include "save.h"
 #include "seen.h"
 #include "sensor.h"
@@ -104,7 +105,7 @@ void menu_show_picture_and_wait(void)
     for (int n = MENU_PICTURE_VBLANKS; n && !main_loop.quit; n--) {
         command_process_queue();
         if (input_match.value == CMD_PICTURE_CLICK) break;
-        game_wait_frames(1);
+        play_wait_frames(1);
     }
     session.new_game = MENU_REDRAW;
     input_set_mode(INPUT_MODE_MENU);
@@ -119,7 +120,7 @@ void menu_run(void)
         session.new_game = MENU_WAITING;
         while (session.new_game == MENU_WAITING && !main_loop.quit) {
             command_process_queue();
-            game_wait_frames(1);
+            play_wait_frames(1);
         }
     } while (session.new_game == MENU_REDRAW && !main_loop.quit);
 }
@@ -239,7 +240,7 @@ static int save_choose_load_slot(void)
             dialog_present();
         }
         input_match.choice = -1;
-        if (!done) game_wait_frames(1);
+        if (!done) play_wait_frames(1);
     }
     session_close_slot_dialog();
     return chosen;
@@ -313,7 +314,7 @@ static int save_choose_save_slot(void)
             type_slot_name_key(name, &length);
         input_match.choice = 0;
         input_match.value = 0;
-        if (!done) game_wait_frames(1);
+        if (!done) play_wait_frames(1);
     }
     session_close_slot_dialog();
     return chosen;
@@ -437,7 +438,7 @@ void session_save(void)
     session.restart = 0;
     action_area_close();
     area_update(0);
-    game_hide_view();
+    play_hide_view();
     timeline_rebuild_free_list();
     int slot = save_menu(&quit);
     if (slot >= 0) {
@@ -450,7 +451,7 @@ void session_save(void)
         session_end(0);
         return;
     }
-    game_show_view();
+    play_show_view();
 }
 
 int session_init(void)
@@ -464,7 +465,7 @@ int session_init(void)
     sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     ui_reset();
     money_init_coin_table();
-    game_start_session();
+    play_start_session();
     input_flush();
     return 1;
 }
@@ -476,10 +477,10 @@ int session_start_save(const char *path)
     if (first) dungeon_read_level_table();
     ui_reset();
     money_init_coin_table();
-    ui_fill_zone_screen(ZONE_SCREEN, 0);  /* game_start_session runs champ_init_party_state */
+    ui_fill_zone_screen(ZONE_SCREEN, 0);  /* play_start_session runs champ_init_party_state */
     move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
     party.redraw = REDRAW_ALL_VIEW;
-    game_start_session();
+    play_start_session();
     return 1;
 }
 
@@ -505,7 +506,7 @@ void session_end(int party_dead)
         int portrait = game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
         sound_request_with_fallback(CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, game.party_x,
                                  game.party_y, 0, END_SOUND_PRIORITY, SOUND_VOLUME_MAX);
-        game_wait_frames(END_SOUND_VBLANKS);
+        play_wait_frames(END_SOUND_VBLANKS);
     }
     dialog.screen_mode = 1;
     if (party_dead) {
@@ -513,7 +514,7 @@ void session_end(int party_dead)
         if (session.offer_restore) {
             session.loaded = dialog_run(dialog_draw(DIALOG_THE_END, MESSAGE_NONE)) == 0;
             if (session.loaded && session_load() != -1) {
-                game_start_session();
+                play_start_session();
                 session.loaded = 0;
                 input_flush();
                 return;
@@ -530,7 +531,7 @@ void session_end(int party_dead)
     input_set_mode(INPUT_MODE_PICTURE);
     do {
         command_process_queue();
-        game_wait_frames(1);
+        play_wait_frames(1);
     } while (input_match.value != CMD_PICTURE_CLICK && !main_loop.quit);
     session_quit();
 }
@@ -577,7 +578,7 @@ void session_edit_champion_name(Champion *c)
     zone_get_position(ZONE_TITLE, &title_x, &title_y);
     input_push_mode(INPUT_MODE_NAME);
     editing = 1;
-    game_hide_view();
+    play_hide_view();
     int in_name = 1, done = 0;
     while (!done && !main_loop.quit) {
         char *text = in_name ? c->name : c->title;
@@ -589,7 +590,7 @@ void session_edit_champion_name(Champion *c)
                 text_draw_in_zone(ZONE_NAME, ui_colors[UI_YELLOW], c->name);
                 text_draw_in_zone(ZONE_TITLE, ui_colors[UI_YELLOW], c->title);
                 text_draw_in_viewport(x, y, ui_colors[UI_GOLD], "_");
-                game_present_viewport();
+                play_present_viewport();
             }
             redraw = 0;
             input_match.choice = 0;
@@ -607,7 +608,7 @@ void session_edit_champion_name(Champion *c)
                 memcpy(c->title, title, sizeof title);
                 field_done = done = 1;
             } else if (!command) {
-                game_wait_frames(1);
+                play_wait_frames(1);
             } else if (input_match.key == KEY_ENTER || input_match.key == KEY_TAB) {
                 trim_spaces(text);
                 field_done = 1;
@@ -623,7 +624,7 @@ void session_edit_champion_name(Champion *c)
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, NAME_BUTTON_UP, ZONE_NAME_BUTTON, UI_OPAQUE);
     c->redraw |= REDRAW_NAME;
     ui_draw_champion_state(ui.inventory - 1);
-    game_show_view();
+    play_show_view();
     input_pop_mode();
 }
 

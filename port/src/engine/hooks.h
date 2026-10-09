@@ -16,6 +16,14 @@ typedef struct {
     void (*reset_action_champion)(int champ);            /* clears the drawn state of the action area for a champion */
     void (*render_hand_icon)(void);                      /* draws the leader hand object into the cursor */
     void (*draw_interface_image)(int category, int index, int entry, int zone);  /* an interface picture in a screen zone */
+    void (*enter_map_view)(int map);                     /* the view loads the graphics of the map that the party enters */
+    void (*flush_input)(void);                           /* drops the waiting clicks and keys */
+    void (*poll_input)(void);                            /* reads the clicks and keys that came since the last read */
+    void (*clear_viewport)(void);                        /* fills the cleared band of the viewport */
+    void (*set_input_mode)(int mode);                    /* the clicks and keys map to the commands of an INPUT_MODE_* */
+    void (*show_view)(void);                             /* shows the dungeon view again (recruit) */
+    void (*hide_view)(void);                             /* hides the dungeon view (recruit) */
+    void (*present_viewport)(void);                      /* copies the view picture to the screen */
 } Hooks;
 
 extern Hooks g_hooks;

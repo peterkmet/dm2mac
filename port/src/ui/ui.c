@@ -8,6 +8,7 @@
 #include "input.h"
 #include "inventory.h"
 #include "item.h"
+#include "play.h"
 #include "save.h"
 #include "text.h"
 #include "ui.h"
@@ -1052,7 +1053,7 @@ void ui_draw_champion_state(int champ)
     if (d.box_drawn) offscreen_flush(&status_box, 1);
     if (d.present) {
         ui.screen_needs_refresh = 0;
-        game_present_viewport();
+        play_present_viewport();
     }
     c->redraw &= REDRAW_KEEP;
     draw_free_temp();

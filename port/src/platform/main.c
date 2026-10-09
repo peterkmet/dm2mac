@@ -14,6 +14,7 @@
 #include "item.h"
 #include "music.h"
 #include "platform.h"
+#include "play.h"
 #include "save.h"
 #include "session.h"
 #include "scale.h"
@@ -203,13 +204,13 @@ int main(int argc, char **argv)
         sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
         sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     }
-    game_frame_hook = modal_frame;
+    play_frame_hook = modal_frame;
     if (!save && !session_init()) main_loop.quit = 1;
     for (int pit = 0; !main_loop.quit;) {
         pump_events();
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
-            game_tick();
+            play_tick();
             if (main_loop.end && !main_loop.quit) session_end(main_loop.end);
             present_with_cursor();
         }

@@ -94,7 +94,7 @@ void advanced_quick_load(void)
         return;
     }
     Session kept = session;
-    session.loaded = session.new_game = 0;  /* game_start_session shows no LOADED dialog and starts no new game */
+    session.loaded = session.new_game = 0;  /* play_start_session shows no LOADED dialog and starts no new game */
     int loaded = session_start_save(path), restored = loaded || session_start_save(keep);
     if (restored) remove(keep);  /* else QUICK.TMP keeps the running game */
     session = kept;

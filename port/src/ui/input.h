@@ -5,11 +5,6 @@
 
 /* Prefixes: input_ command_ kbd_ rect_ */
 
-/* Input modes: the root of the input tree that maps clicks and keys to commands. */
-enum input_mode {
-    INPUT_MODE_MENU = 0, INPUT_MODE_PICTURE = 1, INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_DIALOG = 4,
-    INPUT_MODE_MOVE = 5, INPUT_MODE_PUSH = 6, INPUT_MODE_RECRUIT = 7, INPUT_MODE_INVENTORY = 8, INPUT_MODE_NAME = 9
-};
 /* Mouse event types: buttons (bit 1 left, bit 0 right), a released left button (only while the eye or the mouth is
    held or the automap is open), a key. */
 enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_LEFT_RELEASED = 4, INPUT_KEY = 0x20 };

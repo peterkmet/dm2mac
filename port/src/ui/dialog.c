@@ -6,6 +6,7 @@
 #include "gdat.h"
 #include "input.h"
 #include "music.h"
+#include "play.h"
 #include "save.h"
 #include "sound.h"
 #include "sound_request.h"
@@ -53,7 +54,7 @@ void dialog_screen_mode(int begin)
 void dialog_present(void)
 {
     if (!dialog.screen_mode) {
-        game_present_viewport();
+        play_present_viewport();
         return;
     }
     int16_t r[RECT_SIZE], x = 0, y = 0;
@@ -77,7 +78,7 @@ void dialog_draw_button(int zone, int highlighted)
     }
     gfx_blit_to_bitmap(image, &view_viewport, r, BUTTON_KEY,
                        draw_gdat_image_palette(dialog.button_category, dialog.button_index, dialog.button_entry));
-    game_wait_frames(BUTTON_PRESS_VBLANKS);
+    play_wait_frames(BUTTON_PRESS_VBLANKS);
 }
 
 /* The message texts of a dialog, centered in rect: each text wraps to a width near the zone width. */
@@ -176,7 +177,7 @@ int dialog_run(int id)
     input_match.choice = DIALOG_NO_CHOICE;
     do {
         command_process_queue();
-        game_wait_frames(1);
+        play_wait_frames(1);
         if (input_match.choice == DIALOG_NO_CHOICE && input_read_key() == KEY_ENTER)
             input_simulate_command_click(CMD_DIALOG_BUTTON_FIRST);
     } while (input_match.choice == DIALOG_NO_CHOICE && !main_loop.quit);

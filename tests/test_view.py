@@ -966,7 +966,7 @@ def test_walking_view_matches_original(lib, loaded, original_view):
 
 
 def present_viewport(lib, gdat, walking):
-    """The screen viewport rect after game_present_viewport of a view whose walk rectangle holds the values 2 up."""
+    """The screen viewport rect after play_present_viewport of a view whose walk rectangle holds the values 2 up."""
     walk = (ctypes.c_int16 * 4).in_dll(lib, "walk_view_rect")
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_load(gdat) == 1
@@ -981,7 +981,7 @@ def present_viewport(lib, gdat, walking):
     viewport = Bitmap.in_dll(lib, "view_viewport")
     ctypes.memmove(viewport.pixels, bytes(view), len(view))
     PartyHead.in_dll(lib, "party").move_steps = walking
-    lib.game_present_viewport()
+    lib.play_present_viewport()
     PartyHead.in_dll(lib, "party").move_steps = 0
     screen = Bitmap.in_dll(lib, "draw_screen")
     shown = [ctypes.string_at(ctypes.addressof(screen.pixels.contents) + (rect[1] + y) * screen.width + rect[0], VIEW_W) for y in range(VIEW_H)]

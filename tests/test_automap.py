@@ -504,6 +504,6 @@ def test_new_or_loaded_game_turns_the_cheats_off(lib, automap):
     press(lib, KEY_F9)
     assert not any(flag(lib, n).value for n in ("cheat_immortal", "cheat_food", "cheat_light"))
     flag(lib, "advanced_automap_open").value = 1
-    lib.game_start_session()
+    lib.play_start_session()
     assert not flag(lib, "advanced_automap_open").value
 

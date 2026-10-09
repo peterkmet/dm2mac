@@ -5,14 +5,6 @@ layer engine/champion.c:ui.h open: module cleanup
 layer engine/creature.c:input.h open: module cleanup
 layer engine/damage.c:input.h open: module cleanup
 layer engine/damage.c:ui.h open: module cleanup
-layer engine/game.c:advanced.h open: module cleanup
-layer engine/game.c:dialog.h open: module cleanup
-layer engine/game.c:input.h open: module cleanup
-layer engine/game.c:music.h open: module cleanup
-layer engine/game.c:text.h open: module cleanup
-layer engine/game.c:ui.h open: module cleanup
-layer engine/game.c:view.h open: module cleanup
-layer engine/game.c:zone.h open: module cleanup
 layer engine/inventory.c:input.h open: module cleanup
 layer engine/inventory.c:ui.h open: module cleanup
 layer engine/magic.c:input.h open: module cleanup

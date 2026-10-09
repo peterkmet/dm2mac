@@ -6,10 +6,6 @@
 /* Prefixes: game_ */
 
 #define STEP_TICKS 8        /* timer ticks (60 Hz) of a game step */
-#define SLEEP_STEP_TICKS 1  /* a sleeping party runs a step on each tick */
-#define TEXT_SLEEPING 0x11  /* GDAT text (1, 0, 0x11): the sleep message */
-#define TEXT_PAUSED 0x12    /* GDAT text (1, 0, 0x12): the pause message */
-#define ZONE_VIEW_TEXT 6    /* the layout zone of a message in the viewport */
 
 /* Main loop state. */
 typedef struct {
@@ -37,6 +33,11 @@ typedef struct {
 
 extern UiState ui;
 
+/* Input modes: the root of the input tree that maps clicks and keys to commands. */
+enum input_mode {
+    INPUT_MODE_MENU = 0, INPUT_MODE_PICTURE = 1, INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_DIALOG = 4,
+    INPUT_MODE_MOVE = 5, INPUT_MODE_PUSH = 6, INPUT_MODE_RECRUIT = 7, INPUT_MODE_INVENTORY = 8, INPUT_MODE_NAME = 9
+};
 /* The last command stops the command processing of this tick (the original g_command_stop). */
 extern int input_command_stop;
 /* A champion portrait or an object is dragged (Step 15), 0 none. */
@@ -72,22 +73,7 @@ extern int cheat_light;                 /* the dungeon view draws in full light;
 extern int cheat_immortal;              /* the health of a champion stops at 1 */
 extern int cheat_food;                  /* food and water do not go down */
 
-/* One timer tick of a modal loop (menu, dialog): the platform reads the input and shows the screen. */
-extern void (*game_frame_hook)(void);
-void game_wait_frames(int count);
-/* Prepares a loaded game for play: input mode, map, screen (the original game_start_session). */
-void game_start_session(void);
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int x, int y, int map, int leaving);
-/* One timer tick of the main loop: input, commands, and at the end of a step the next game step. */
-void game_tick(void);
-/* Shows the dungeon view again after a pause, sleep, or the inventory. */
-void game_show_view(void);
-/* Hides the dungeon view: the viewport shows a message (pause, sleep) until game_show_view. */
-void game_hide_view(void);
-/* Copies the view picture to the screen. */
-void game_present_viewport(void);
-/* The party falls asleep. */
-void game_sleep(void);
 
 #endif

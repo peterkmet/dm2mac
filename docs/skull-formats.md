@@ -596,7 +596,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### Timing and the game step
 
 - The PIT runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`main_loop.tick_threshold`), every timer tick while the party sleeps.
-- `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it: `game_step` (the timeline, the view, the party clocks) and `game_step_end` (a map change, repeated actions, music). `game_tick` runs one timer tick: the input, the click feedback, the command queue, and a game step when it is due.
+- `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `ui/play.c`: `game_step` (the timeline, the view, the party clocks) and `game_step_end` (a map change, repeated actions, music). `play_tick` runs one timer tick: the input, the click feedback, the command queue, and a game step when it is due.
 - Pause (`game_pause`) stops the game time until the resume command. The port keeps the main loop running and clears `main_loop.running`.
 
 ### The input tree
@@ -644,7 +644,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones.
 - `creature_cell_mask` reads display kinds 5 to 15 from the bytes after its table in the original. The port keeps those bytes.
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
-- The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `game_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
+- The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
 - Not ported: the enter and leave events of the cursor zones (section 13); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
 - The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
 - Later steps (empty hooks in `port/src/engine/hooks.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); sounds (Step 18). Step 17 has ported the weather update, the object transfer of a sensor, and the sound requests (section 11); the end of the game, the dialogs (also the dialog after a load in `game_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
@@ -836,7 +836,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Deviations of the C port (Step 20)
 
-- The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`game_wait_frames`, `main.c`); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook (`game_frame_hook`).
+- The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`play_wait_frames` in `ui/play.c` calls `play_frame_hook`, which `platform/main.c` sets); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook (`play_frame_hook`).
 - `session_quit` sets `main_loop.quit` and returns; the main loop then ends (the original exits the process at once). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error). The restart drops `--save PATH`, so the program shows the start menu, as the original does.
 - The drive path codes of the dialog texts (3, 4, 15) give the last folder name of the `--data` path in capitals (the font has no lowercase letters); the error, memory, and file name codes give an empty text.
 - The volume setting scales the mix of the sound voices (0 is silent); the music volume goes to the music player.

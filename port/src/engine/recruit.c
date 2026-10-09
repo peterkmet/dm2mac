@@ -120,7 +120,7 @@ int champ_start_recruit(int x, int y, int dir, int map)
     if (!recruit_silent) {
         ui_toggle_inventory(index);
         input_set_mode(INPUT_MODE_RECRUIT);
-        game_hide_view();
+        g_hooks.hide_view();
     }
     dun_set_current_map(saved);
     champ_compute_load(index);
@@ -143,13 +143,13 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         c->health = 0;
         action_reset_champion(champ);
         ui_fill_zone_screen(ZONE_STATUS_BOX + champ, ui_colors[UI_BLACK]);
-        game_show_view();
+        g_hooks.show_view();
         dun_set_current_map(saved);
         return;
     }
     if (!recruit_silent) {
         ui_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
-        game_present_viewport();
+        g_hooks.present_viewport();
         sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD, game.party_x,
                       game.party_y, 0);
     }
@@ -169,7 +169,7 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
         if (ui.inventory) {
             ui_toggle_inventory(CHAMPION_MAX);
-            game_show_view();
+            g_hooks.show_view();
         }
     }
     dun_set_current_map(saved);

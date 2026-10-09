@@ -328,7 +328,7 @@ def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
         lib.input_key_down(SCAN_W)
         for _ in range(STEP_TICKS):
             loop.tick_count = loop.tick_threshold  # each tick is due for a game step
-            lib.game_tick()
+            lib.play_tick()
             if loop.quit:
                 break
         due = loop.tick_count >= loop.tick_threshold  # a game step resets the tick count
