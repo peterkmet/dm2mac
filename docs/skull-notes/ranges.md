@@ -22,7 +22,7 @@ Watcom links object files in order, and libraries after them. The game code call
 | 0x10d9f-0x110ff | Text drawing into a bitmap, `mem_copy`/`mem_zero`, file wrappers | `text_draw`, `file_open`, `file_read`, `file_write` |
 | 0x1105f-0x114e9 | Drive and save disk check, keyboard via IOP, IOP message | `disk_detect_drives`, `disk_check_save_disk`, `kbd_read_key` |
 | 0x11504-0x13745 | Blitters (4 and 8 bpp, flip, transparency, scaling), fill; 0x12e4f and 0x13258 are probably image decoders | `gfx_blit`, `gfx_fill_rect` |
-| 0x13887-0x13be5 | VGA retrace, palette and present through IOP | `vga_wait_vblank`, `pal_set_palette`, `game_present_viewport` |
+| 0x13887-0x13be5 | VGA retrace, palette and present through IOP | `vga_wait_vblank`, `pal_set_palette`, `play_present_viewport` |
 | 0x13ee3-0x14d39 | Mouse cursor images, input ISR, mouse hide/show/state | `input_event_isr`, `input_init`, `mouse_hide`, `mouse_show`, `mouse_get_state` |
 | 0x14cf2-0x163c2 | Creature and item sound selection from GRAPHICS.DAT, sound request queue | `sound_request`, `sound_flush_requests`, 0x15baa (sound play wrapper, decompile failed) |
 | 0x16457-0x18d9e | Projectiles and explosions (create, move, hit), distance and direction helpers | `projectile_create`, `explosion_create`, 0x1861b, 0x1863d |
@@ -62,7 +62,7 @@ DM2-specific subsystems without a confirmed location: outdoor view, weather, min
 
 | # | Range (start inclusive, end exclusive) | Functions | Content | Key anchors |
 |---|---|---|---|---|
-| 1 | 0x00010000-0x00018e7f | 173 | Platform glue (sound, music, timer, file I/O, disk, keyboard), blitters, screen and palette, mouse and input ISR, sound requests, projectiles and explosions | `sound_init`, `music_play_song`, `timer_isr`, `file_read`, `gfx_blit`, `pal_set_palette`, `game_present_viewport`, `input_event_isr`, `sound_request`, `projectile_create` |
+| 1 | 0x00010000-0x00018e7f | 173 | Platform glue (sound, music, timer, file I/O, disk, keyboard), blitters, screen and palette, mouse and input ISR, sound requests, projectiles and explosions | `sound_init`, `music_play_song`, `timer_isr`, `file_read`, `gfx_blit`, `pal_set_palette`, `play_present_viewport`, `input_event_isr`, `sound_request`, `projectile_create` |
 | 2 | 0x00018e7f-0x0001fef6 | 166 | Rectangles and zones, dialogs, picture drawing, string/math/random, system error, dungeon data access, item and creature info | `zone_get_rect`, `rand_below`, `system_error`, `dun_get_thing_data`, `dun_set_current_map`, `dun_get_unused_thing`, `creature_get_info` |
 | 3 | 0x0001fef6-0x0002b96a | 181 | End of game, input and commands, party movement, main loop, `main`, creature AI part 1 (group update, AI command dispatcher 0x2b75e and its handlers) | `session_end`, `input_mouse_click`, `command_execute`, `command_process_queue`, `game_loop`, `main` |
 | 4 | 0x0002b96a-0x0003ba23 | 145 | Creature AI part 2 (movement, attack), creature groups and damage, save and load, dungeon loader, save slots, start menu pictures, light, text format | `creature_get_group_at`, `session_save`, `session_load`, `dungeon_load`, `light_update_party_light`, `text_format` |

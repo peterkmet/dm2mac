@@ -9,7 +9,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - No thing: `THING_NONE`, not `0xffff`. End of list: `THING_ENDOFLIST`.
    - Directions, cells, champion slots (`SLOT_HAND_READY`, `SLOT_COUNT`), statistics, skills, square types, sensor types, door states, timeline event types, commands.
    - Message and text numbers: a named constant for each string id, for example `TEXT_RESURRECTED`.
-   - Graphic numbers: named constants in `port/src/data/gfx.h`, for example `GFX_WALLSET_FIRST`. Layout zone numbers: named constants in `port/src/ui/ui.h`, for example `ZONE_VIEWPORT`.
+   - Graphic numbers: named constants in `port/src/data/gfx.h`, for example `GFX_WALLSET_FIRST`. Layout zone numbers: named constants in `port/src/ui/ui.h`, for example `ZONE_VIEWPORT`. A zone that a rule passes to a hook is a named constant in the engine header of that rule.
    - DM2 systems: money types (`COIN_GOLD`), minion types (`MINION_GUARD`), weather states (`WEATHER_RAIN`), and Skullkeep machine states each get named constants. `docs/skull-symbols.csv` holds the names.
    - Plain numbers are allowed only for 0, 1, -1, and 2 when it halves or doubles a value. Every other number is a named constant, also decimal game values such as divisors, limits, and thresholds.
    - Notation: hex for bit masks and flags, for ids from the data files and from `SKULL.EXE` (GDAT categories and entries, sound entries, priorities and volumes, event types, command codes, key codes), and for byte values of file formats. Decimal for counts, sizes, times in ticks, percentages, distances, divisors, and thresholds.

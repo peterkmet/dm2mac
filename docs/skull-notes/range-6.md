@@ -16,7 +16,7 @@
 | Offset | Use |
 |---|---|
 | +0, +1 | map x, y (int8) |
-| +2 | aspect type from `view_get_square_aspect` (0 wall, 1 floor, 2 pit, 5 teleporter, 7 hidden, 0x10 door side, 0x11 door front, 0x12 stairs front, 0x13 stairs side) |
+| +2 | aspect type from `aspect_get` (0 wall, 1 floor, 2 pit, 5 teleporter, 7 hidden, 0x10 door side, 0x11 door front, 0x12 stairs front, 0x13 stairs side) |
 | +4 | aspect flags |
 | +6 | first thing on the square |
 | +8 | stairs up/down or pit flag (depends on type) |
@@ -95,7 +95,7 @@ The queue is a binary heap of event indices (`g_timeline_queue` 0x80420); `timel
 
 ## Low-confidence names
 
-`move_update_carried_missiles`, `move_check_missiles_hit_party` (detail), `view_get_creature_cell_zone`, `dun_map_gfx_flag20_clear`, `view_copy_image_mode1`, `view_draw_wet_image`, `view_draw_sparkle_field`, `view_offset_creature_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `view_draw_stairs_side`/`view_draw_stairs_front` (may be swapped), `view_draw_ceiling_pit`/`view_draw_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_door_button_release`, `sensor_schedule_timer`, `sensor_play_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker` (subsystem magic is a guess).
+`move_update_carried_missiles`, `move_check_missiles_hit_party` (detail), `aspect_creature_cell`, `dun_map_gfx_flag20_clear`, `view_copy_image_mode1`, `view_draw_wet_image`, `view_draw_sparkle_field`, `view_offset_creature_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `view_draw_stairs_side`/`view_draw_stairs_front` (may be swapped), `view_draw_ceiling_pit`/`view_draw_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_door_button_release`, `sensor_schedule_timer`, `sensor_play_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker` (subsystem magic is a guess).
 
 ## Open questions
 
