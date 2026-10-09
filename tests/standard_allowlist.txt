@@ -10,7 +10,6 @@ layer engine/creature.c:input.h open: module cleanup
 layer engine/damage.c:input.h open: module cleanup
 layer engine/damage.c:ui.h open: module cleanup
 layer engine/game.c:advanced.h open: module cleanup
-layer engine/game.c:automap.h open: module cleanup
 layer engine/game.c:dialog.h open: module cleanup
 layer engine/game.c:input.h open: module cleanup
 layer engine/game.c:music.h open: module cleanup
@@ -33,7 +32,6 @@ layer engine/move.c:view.h open: module cleanup
 layer engine/recruit.c:input.h open: module cleanup
 layer engine/recruit.c:text.h open: module cleanup
 layer engine/recruit.c:ui.h open: module cleanup
-layer engine/save.c:automap.h open: module cleanup
 layer engine/sensor.c:session.h open: module cleanup
 layer engine/sensor.c:input.h open: module cleanup
 layer engine/sensor.c:view.h open: module cleanup
