@@ -18,7 +18,6 @@
 #include "item.h"
 #include "merchant.h"
 #include "game.h"
-#include "ui.h"
 #include "le.h"
 #include "minion.h"
 

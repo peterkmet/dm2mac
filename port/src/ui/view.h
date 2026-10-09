@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "draw.h"
 #include "gfx.h"
+#include "weather.h"
 
 /* Prefixes: view_ cell_grid_ */
 
@@ -64,9 +65,6 @@ extern uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
 extern uint32_t view_object_masks[VIEW_SQUARE_COUNT];
 /* The view picture, 224 x 136 pixels. */
 extern Bitmap view_viewport;
-/* The party light level, 0 (bright) to 5 (light_update_party_light). */
-extern int view_light_level;
-#define DARKEST_LIGHT 5             /* view_light_level of the darkest view */
 /* The 5 x 5 grid of the cells of a square and its neighbours (view_grid5_cell_to_xy), row by row. */
 #define CELL_GRID_SIDE 5
 #define CELL_GRID_HALF (CELL_GRID_SIDE / 2)  /* the center row and column */

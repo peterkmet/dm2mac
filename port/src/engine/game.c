@@ -21,7 +21,6 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include "session.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
@@ -35,6 +34,14 @@
 MainLoop main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
 static int tick_elapsed;
 void (*game_frame_hook)(void);
+UiState ui;
+int input_command_stop;
+int input_drag_state;
+int input_mouse_buttons;
+Session session = {.slot = SAVE_SLOT_NONE};
+int game_mode = GAME_MODE_VANILLA;
+const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced"};
+int cheat_light, cheat_immortal, cheat_food;
 
 void game_wait_frames(int count)
 {

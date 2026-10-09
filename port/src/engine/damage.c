@@ -1,7 +1,6 @@
 /* Champion statistics in fights, damage, wounds, poison, death, and the effects of time. */
 #include <string.h>
 #include "action.h"
-#include "advanced.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
@@ -13,7 +12,6 @@
 #include "projectile.h"
 #include "random.h"
 #include "sensor.h"
-#include "session.h"
 #include "ui.h"
 #include "weather.h"
 

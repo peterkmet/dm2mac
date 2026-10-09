@@ -18,6 +18,9 @@ typedef struct {
 } Weather;
 
 extern Weather weather;
+/* The party light level, 0 (bright) to 5 (light_update_party_light). */
+extern int view_light_level;
+#define DARKEST_LIGHT 5             /* view_light_level of the darkest view */
 /* The light of the squares around the party and of the explosions near it; creature_refresh_party_maps (Step 16)
    clears them and adds each square with light_add_square_light. */
 extern int16_t light_source_sum, explosion_light_sum;

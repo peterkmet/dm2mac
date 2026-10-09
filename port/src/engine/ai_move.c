@@ -14,7 +14,6 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include "view.h"
 #include "weather.h"
 #include "le.h"
 #include "merchant.h"

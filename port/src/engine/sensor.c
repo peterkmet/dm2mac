@@ -5,6 +5,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "game.h"
 #include "gdat.h"
 #include "hooks.h"
 #include "sound_request.h"

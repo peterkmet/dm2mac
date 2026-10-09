@@ -14,7 +14,7 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include "view.h"
+#include "weather.h"
 
 uint16_t projectile_extra_damage, projectile_attack_type;
 int missile_from_sensor;

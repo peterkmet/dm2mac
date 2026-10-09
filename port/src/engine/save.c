@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "advanced.h"
 #include "automap.h"
 #include "champion.h"
 #include "creature.h"
+#include "game.h"
 #include "gdat.h"
 #include "dungeon.h"
 #include "inventory.h"

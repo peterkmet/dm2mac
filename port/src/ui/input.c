@@ -282,9 +282,7 @@ static struct {
     int cursor_count;
 } in;
 
-int input_command_stop;
 int input_feedback_busy;
-int input_drag_state;
 
 void input_init(void)
 {
@@ -713,8 +711,6 @@ void input_mouse_click(int x, int y, int type)
         in.dropped_left = 1;
     }
 }
-
-int input_mouse_buttons;
 
 void input_mouse_down(int x, int y, int button)
 {

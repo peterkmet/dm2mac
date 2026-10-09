@@ -5,6 +5,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "game.h"
 #include "hooks.h"
 #include "sound_request.h"
 #include "projectile.h"
@@ -18,7 +19,7 @@
 #include "sensor.h"
 #include "game_text.h"
 #include "ui.h"
-#include "view.h"
+#include "weather.h"
 
 #define ALL_CHARGES 0x0f
 #define ATTR_USED_UP 0x0800         /* ATTR_FLAGS bit: the item vanishes with its last charge */

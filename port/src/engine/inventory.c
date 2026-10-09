@@ -3,6 +3,7 @@
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
+#include "game.h"
 #include "hooks.h"
 #include "sound_request.h"
 #include "input.h"

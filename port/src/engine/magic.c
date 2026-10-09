@@ -3,6 +3,7 @@
 #include "action.h"
 #include "ai.h"
 #include "creature.h"
+#include "game.h"
 #include "gdat.h"
 #include "game_text.h"
 #include "dungeon.h"

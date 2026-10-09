@@ -57,7 +57,6 @@ enum {
 /* The characters of a champion name. */
 static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
 
-Session session = {.slot = SAVE_SLOT_NONE};
 /* The headers of the save slots in the slot dialogs. */
 static uint8_t slots[SAVE_SLOT_COUNT][SAVE_HEADER_SIZE + 1];
 static int editing;                     /* the player types the slot name or a champion name */

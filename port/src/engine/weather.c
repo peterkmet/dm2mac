@@ -1,6 +1,7 @@
 /* Weather, day and night, and the party light. */
 #include "champion.h"
 #include "creature.h"
+#include "game.h"
 #include "gdat.h"
 #include "dungeon.h"
 #include "sound_request.h"
@@ -11,7 +12,6 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include "ui.h"
 #include "view.h"
 #include "weather.h"
 #include "zone.h"
@@ -355,6 +355,8 @@ void world_update_day_night(int storm_step)
     if (lightning) o = weather_lightning(o);
     o->entry = SKY_OBJECT_END;
 }
+
+int view_light_level;
 
 void light_update_party_light(void)
 {

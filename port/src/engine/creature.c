@@ -5,6 +5,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "game.h"
 #include "gdat.h"
 #include "sound_request.h"
 #include "projectile.h"
@@ -15,7 +16,6 @@
 #include "move.h"
 #include "random.h"
 #include "save.h"
-#include "ui.h"
 #include "sensor.h"
 #include "minion.h"
 

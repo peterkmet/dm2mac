@@ -2,6 +2,7 @@
 #define UI_H
 #include <stdint.h>
 #include "draw.h"
+#include "game.h"
 #include "gfx.h"
 
 /* Prefixes: ui_ offscreen_ */
@@ -86,19 +87,6 @@ void ui_fill_zone_screen(int zone, int color);
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
 #define FACE_ICON_COLORS 16
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
-
-/* Interface state that the drawing reads. Later steps change it (Step 14: input, Step 15: champions). */
-typedef struct {
-    int16_t inventory;          /* champion ordinal (champion + 1) of the open inventory, 0 none */
-    uint16_t candidate;         /* champion ordinal of a champion that is being recruited, 0 none */
-    int16_t screen_needs_refresh;
-    uint16_t buttons;           /* inventory buttons that show pressed */
-    int16_t eye, mouth;         /* the eye or the mouth of the inventory is held */
-    int16_t push_mode;          /* the movement arrows show the push arrows */
-    int16_t panel_mode;         /* what the inventory panel shows */
-} UiState;
-
-extern UiState ui;
 
 /* Clears the interface caches for a new screen. */
 void ui_reset(void);

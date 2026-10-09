@@ -1,6 +1,7 @@
 #ifndef INPUT_H
 #define INPUT_H
 #include <stdint.h>
+#include "game.h"
 
 /* Prefixes: input_ command_ kbd_ rect_ */
 
@@ -63,12 +64,8 @@ typedef struct {
 } InputMatch;
 extern InputMatch input_match;
 
-/* The last command stops the command processing of this tick (the original g_command_stop). */
-extern int input_command_stop;
 /* A click feedback script waits for the next game step. */
 extern int input_feedback_busy;
-/* A champion portrait or an object is dragged (Step 15), 0 none. */
-extern int input_drag_state;
 
 /* Builds the input tables; call once. */
 void input_init(void);
@@ -105,8 +102,6 @@ void input_mouse_click(int x, int y, int type);
    mouse capture of the eye or the mouth (the original event 4). */
 void input_mouse_down(int x, int y, int button);
 void input_mouse_up(int x, int y, int button);
-/* The mouse buttons that are down: INPUT_BUTTON_* bits (the original mouse_get_state). */
-extern int input_mouse_buttons;
 /* A key press of the keyboard (key code with KEY_* bits); input_poll reads it. */
 void input_key_down(uint16_t key);
 /* Clears the pending keys, clicks, and commands. */

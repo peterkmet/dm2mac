@@ -26,9 +26,7 @@ enum { SCAN_ESCAPE = 0x01, SCAN_I = 0x17, SCAN_F = 0x21, SCAN_L = 0x26 };
 /* The rows of the readout. */
 enum { READOUT_POSITION, READOUT_DIRECTION, READOUT_IMMORTAL, READOUT_FOOD, READOUT_LIGHT };
 
-int game_mode = GAME_MODE_VANILLA;
-const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced"};
-int advanced_automap_open, cheat_light, cheat_immortal, cheat_food;
+int advanced_automap_open;
 
 static struct {
     int active;

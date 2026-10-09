@@ -478,7 +478,6 @@ enum {
 ViewSquare view_squares[VIEW_SQUARE_COUNT];
 static uint8_t viewport_pixels[VIEWPORT_WIDTH * VIEWPORT_HEIGHT];
 Bitmap view_viewport = {viewport_pixels, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, IMAGE_8BPP};
-int view_light_level;
 
 static struct {
     int map;                    /* the map of the squares that the view reads now */
