@@ -79,6 +79,13 @@ The table shows the parts of `ui/` that `engine/` uses. The plan classifies each
 | Tests | No new tests for moves and renames. The differential tests and `test_standard.py` cover them. A test changes only for a new name, a new import path, or a moved struct field: the ctypes mirrors `Session`, `UiState`, and `MainLoop` follow the new layouts. `MainLoop` keeps its field order. A hook gets no unit test. | CLAUDE.md §2 test list: wiring is not on it. |
 | Order | Group 1 first, then group 2, then group 3, then group 4. | Groups 2 to 4 need the state of group 1 in `engine/`. |
 | Docs | `docs/coding-standard.md` rule 8 names `g_hooks` as the hook form. `docs/skull-formats.md` and `docs/skull-symbols.csv` follow the new names. The plan removes the `layer` item from `docs/todo.md`. | One source of truth for the hook form. |
+| Hooks without a caller | A hook exists only where an `engine/` caller remains. The drawing functions that only `ui/` calls after the split get no member. | A member without a caller is dead wiring. Ruling of the run, 2026-10-09. |
+| Random wall ornaments | `engine/aspect.c` keeps the ornament list of the map that `view_enter_map` entered last; `view_enter_map` sets it with `aspect_enter_map`. | The original reads one global list; reading the list of the map argument changes linked squares and the minion map. Kept quirk in `docs/skull-formats.md`. |
+| Shared aspect helpers | `aspect_first_thing`, `aspect_value_key`, and the constants that `view.c` and `aspect.c` both use have one definition in `engine/aspect.h`. | One definition per item. |
+| Allowlist table lines | A `hex` or `decimal` table line moves with its table to the new file. | The same exception for the same table, not a new one. |
+| Action area | `area_update` and `draw_hand_panel` in `ui/action_area.c` still write some rule state. A split is an item in `docs/todo.md`. | The plan moved the whole `action_update_area`; the interleaved order needs many hooks. Behavior does not change. |
+| Zone constants | A zone that a rule passes to a hook is a named constant in the engine header of that rule (coding standard rule 1). | One definition; `engine/` does not include `ui/ui.h`. |
+| AI move without a direction | `engine/ai_move.c` maps direction -1 to north before it reads the step tables. | The original reads out of bounds; north is the step it reads. A data layout change of the cleanup exposed the read. Bounds fix in `docs/skull-formats.md`. |
 
 ## Known consequences
 
