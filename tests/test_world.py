@@ -28,7 +28,7 @@ INDOOR_MAPS = (2, 5, 11, 20, 38)  # no weather: the hour does not update the lig
 @pytest.fixture
 def world(lib, gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
-    lib.view_sky_objects.restype = ctypes.c_void_p
+    lib.weather_sky_objects.restype = ctypes.c_void_p
     lib.item_attr.restype = ctypes.c_uint16
     lib.dungeon_thing_record.restype = ctypes.c_void_p
     lib.dungeon_square_first_thing.restype = ctypes.c_uint16

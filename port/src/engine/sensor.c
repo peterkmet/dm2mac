@@ -2,6 +2,7 @@
 #include <string.h>
 #include "action.h"
 #include "ai_move.h"
+#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -9,7 +10,6 @@
 #include "gdat.h"
 #include "hooks.h"
 #include "sound_request.h"
-#include "projectile.h"
 #include "inventory.h"
 #include "le.h"
 #include "money.h"
@@ -22,7 +22,6 @@
 #include "sensor.h"
 #include "input.h"
 #include "game_text.h"
-#include "view.h"
 #include "merchant.h"
 
 #define CAT_CREATURE_APPEARS 0      /* sound (0, 0, 0x89): a generator creates a creature */
@@ -1380,7 +1379,7 @@ bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
     if (ornament == GDAT_NO_INDEX
         || gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
         return 0;
-    return view_wall_face_ornament(party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
+    return aspect_wall_face_ornament(party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
 }
 
 static int ornament_value(uint16_t thing, int key)

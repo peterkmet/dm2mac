@@ -9,6 +9,7 @@ typedef struct {
     void (*print_message)(int color, const char *text);  /* a line in the message area */
     void (*print_newline)(void);                         /* the next message starts on a new row */
     int (*play_sound)(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward);  /* starts a sound in a free voice */
+    int (*zone_offset)(int from, int to, int percent, int16_t *dx, int16_t *dy);  /* the offset percent of the way between two layout zones */
 } Hooks;
 
 extern Hooks g_hooks;

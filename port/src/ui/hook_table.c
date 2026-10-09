@@ -2,9 +2,11 @@
 #include "hooks.h"
 #include "sound.h"
 #include "text.h"
+#include "zone.h"
 
 Hooks g_hooks = {
     .print_message = text_print_message,
     .print_newline = text_print_newline,
     .play_sound = sound_play,
+    .zone_offset = zone_interpolate_offset,
 };

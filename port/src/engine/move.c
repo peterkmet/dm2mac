@@ -1,13 +1,13 @@
 /* Party movement and thing movement through pits, teleporters, and stairs. */
 #include <stdlib.h>
 #include <string.h>
+#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
 #include "sound_request.h"
-#include "projectile.h"
 #include "input.h"
 #include "item.h"
 #include "money.h"
@@ -316,13 +316,13 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
     /* the centers of the four cells of the square in the 5 x 5 grid */
     static const uint16_t cell_grid[DIR_COUNT] = {cell_grid_index(1, 1), cell_grid_index(1, 3), cell_grid_index(3, 3), cell_grid_index(3, 1)};
     int16_t sx = *x, sy = *y, px, py, cx, cy;
-    view_grid5_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell], &px, &py);
+    aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell], &px, &py);
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
         uint16_t g = creature_group_at(party.cur_map, sx, sy);
         if (g != THING_NONE) {
             int size = (int8_t)creature_group_info(g)->hit_size;
-            int zone = view_get_creature_cell_zone(g, dir_relative(DIR_NORTH, group_dir(g)));
-            view_grid5_cell_to_xy(sx, sy, (uint16_t)zone, &cx, &cy);
+            int zone = aspect_creature_cell(g, dir_relative(DIR_NORTH, group_dir(g)));
+            aspect_cell_to_xy(sx, sy, (uint16_t)zone, &cx, &cy);
             cx = (int16_t)(cx - px);
             cy = (int16_t)(cy - py);
             if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size]) {
@@ -348,7 +348,7 @@ static int move_group_side_blocks(uint16_t group, int dir)
 {
     int side = dir_turn(group_dir(group), dir);
     if (side != DIR_EAST && side != DIR_WEST) return 0;
-    return view_get_creature_cell_zone(group, side) % CELL_GRID_SIDE != CELL_GRID_HALF;
+    return aspect_creature_cell(group, side) % CELL_GRID_SIDE != CELL_GRID_HALF;
 }
 
 /* What a step from a square (here) to the square (x, y) with the byte ahead meets. */

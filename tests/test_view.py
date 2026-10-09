@@ -353,8 +353,8 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     lib.dun_set_party_location(x, y, map_)
     lib.view_enter_map(map_)
     if sky is not None:  # the weather sky objects that world_update_day_night builds
-        lib.view_sky_objects.restype = ctypes.c_void_p
-        ctypes.memmove(lib.view_sky_objects(), sky, len(sky))
+        lib.weather_sky_objects.restype = ctypes.c_void_p
+        ctypes.memmove(lib.weather_sky_objects(), sky, len(sky))
     ctypes.c_int.in_dll(lib, "view_light_level").value = light
     ctypes.c_uint32.in_dll(lib, "random_seed").value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "view_viewport")
@@ -482,14 +482,14 @@ def read_xy(emu):
 
 
 def test_grid5_cell_to_xy_matches_original(lib, image_emu):
-    lib.view_grid5_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_uint16, i16_p, i16_p]
+    lib.aspect_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_uint16, i16_p, i16_p]
     rng = random.Random(21)
     x, y = ctypes.c_int16(), ctypes.c_int16()
     for _ in range(1000):
         base_x, base_y = rng.randrange(-40, 40), rng.randrange(-40, 40)
         cell = rng.randrange(25) if rng.random() < 0.8 else rng.randrange(0x10000)
         image_emu.call(VIEW_GRID5_CELL_TO_XY, base_x, base_y, cell, OUT_X, OUT_Y)
-        lib.view_grid5_cell_to_xy(base_x, base_y, cell, ctypes.byref(x), ctypes.byref(y))
+        lib.aspect_cell_to_xy(base_x, base_y, cell, ctypes.byref(x), ctypes.byref(y))
         assert (x.value, y.value) == read_xy(image_emu), (base_x, base_y, cell)
 
 
@@ -497,7 +497,7 @@ def test_rotate_grid5_cell_matches_original(lib, image_emu):
     for cell in range(25):
         for direction in range(4):
             original = struct.unpack("<h", struct.pack("<H", image_emu.call(VIEW_ROTATE_GRID5_CELL, cell, direction) & 0xFFFF))[0]
-            assert lib.view_rotate_grid5_cell(cell, direction) == original, (cell, direction)
+            assert lib.aspect_rotate_cell(cell, direction) == original, (cell, direction)
 
 
 def test_offset_creature_toward_party_matches_original(lib, image_emu):

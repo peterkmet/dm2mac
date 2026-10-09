@@ -1,20 +1,20 @@
 /* Weather, day and night, and the party light. */
+#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "game.h"
 #include "gdat.h"
+#include "gfx.h"
+#include "hooks.h"
 #include "dungeon.h"
 #include "sound_request.h"
-#include "projectile.h"
 #include "item.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include "view.h"
 #include "weather.h"
-#include "zone.h"
 
 /* Sound (CAT_EXPLOSION, 0x30, 0x81): a lightning that hits a fixed square. */
 #define LIGHTNING_SOUND_INDEX 0x30
@@ -41,6 +41,7 @@ enum {
 /* Sky objects (GDAT (CAT_SKY, graphics set, entry)) and the weather amounts that show them. */
 enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY_RAIN_MEDIUM, SKY_RAIN_HEAVY,
        SKY_CLOUDS_LIGHT, SKY_CLOUDS_MEDIUM, SKY_CLOUDS_HEAVY };
+#define SKY_OBJECT_MAX 5            /* sky objects of the weather, with the end mark */
 #define DARKNESS_RAIN 16
 #define DARKNESS_MEDIUM 64
 #define DARKNESS_HEAVY 128
@@ -136,6 +137,23 @@ static int clamp(int lo, int v, int hi) { return v < lo ? lo : v > hi ? hi : v; 
 static uint16_t map_value(int key) { return gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE, key); }
 
 static int sky_has(int entry) { return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(game.party_map), GDAT_TYPE_IMAGE, entry); }
+
+/* The sky objects of the weather, ended by SKY_OBJECT_END. */
+static SkyObject sky_objects[SKY_OBJECT_MAX] = {{.entry = SKY_OBJECT_END}};
+
+SkyObject *weather_sky_objects(void) { return sky_objects; }
+
+int weather_load_sky_object(SkyObject *object)
+{
+    char text[WALL_TEXT_SIZE];
+    gdat_text(gdat_current(), CAT_SKY, dungeon_map_wallset(game.party_map), object->entry, text, sizeof text);
+    if (!text[0]) return 0;
+    object->zone = (int16_t)gdat_text_int_field(text, "cd");
+    object->dx = object->dy = 0;
+    object->flip = (uint8_t)gdat_text_int_field(text, "fw");
+    object->scale_x = object->scale_y = SCALE_FULL;
+    return 1;
+}
 
 /* The daylight in % that a window lets in now. */
 static int daylight(void)
@@ -247,7 +265,7 @@ static int lightning_strike(void)
     int x = rand_below(LIGHTNING_RANGE), y = rand_below(LIGHTNING_RANGE);
     if (x >= dungeon_map_width(party.cur_map) || y >= dungeon_map_height(party.cur_map)) return 0;
     ViewSquare s;
-    view_get_square_aspect(&s, DIR_NORTH, x, y);
+    aspect_get(&s, party.cur_map, DIR_NORTH, x, y);
     PassageEnd end;
     if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, x, y)) return 0;
     int weak = (int16_t)game.storm_intensity < STORM_WEAK;
@@ -291,10 +309,10 @@ static SkyObject *weather_lightning(SkyObject *o)
     int bolt = 0;
     if (!strikes && rand_bit()) {
         o->entry = (uint8_t)(SKY_LIGHTNING + rand_below(SKY_LIGHTNING_KINDS));
-        if (view_load_sky_object(o)) {
+        if (weather_load_sky_object(o)) {
             bolt = 1;
             int percent = (int16_t)rand_below(LIGHTNING_PERCENT);
-            zone_interpolate_offset(o->zone, (int16_t)(o->zone + 1), percent, &o->dx, &o->dy);
+            g_hooks.zone_offset(o->zone, (int16_t)(o->zone + 1), percent, &o->dx, &o->dy);
             o->flip = (uint8_t)rand_2bits();
             o++;
         }
@@ -342,15 +360,15 @@ void world_update_day_night(int storm_step)
         weather.lightning_flash = 0;
         light_update_party_light();
     }
-    SkyObject *o = view_sky_objects();
+    SkyObject *o = weather_sky_objects();
     if (sky_has(SKY_RAIN_LIGHT) && game.sky_darkness >= DARKNESS_RAIN) {
         if (game.sky_darkness >= DARKNESS_HEAVY) game.heavy_rain = 1;
         o->entry = (uint8_t)sky_entry(game.sky_darkness, DARKNESS_MEDIUM, DARKNESS_HEAVY, SKY_RAIN_LIGHT);
-        if (view_load_sky_object(o)) o++;
+        if (weather_load_sky_object(o)) o++;
     }
     if (sky_has(SKY_CLOUDS_LIGHT) && game.cloud_cover >= CLOUDS_SHOWN) {
         o->entry = (uint8_t)sky_entry(game.cloud_cover, CLOUDS_MORE, CLOUDS_MOST, SKY_CLOUDS_LIGHT);
-        if (view_load_sky_object(o)) o++;
+        if (weather_load_sky_object(o)) o++;
     }
     if (lightning) o = weather_lightning(o);
     o->entry = SKY_OBJECT_END;
@@ -411,7 +429,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
 {
     int16_t window = 0, light = 0, missiles = 0;
     ViewSquare s;
-    view_get_square_aspect(&s, dir, x, y);
+    aspect_get(&s, party.cur_map, dir, x, y);
     /* the front wall ornament, or the floor ornament: index in the low byte, animation frame in the high byte */
     int ornament = s.side[SIDE_LIGHT] & ORNAMENT_MASK, animated = s.side[SIDE_LIGHT] >> BYTE_BITS != 0;
     int animated_only;

@@ -2,11 +2,11 @@
 #include <string.h>
 #include "action.h"
 #include "ai.h"
+#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "gdat.h"
 #include "dungeon.h"
-#include "projectile.h"
 #include "item.h"
 #include "minion.h"
 #include "move.h"
@@ -167,7 +167,7 @@ static void draw_wall(const ViewSquare *s, const Strip *base, int x, int y, int 
         if (!(flags & MAP_OPTION_DETAILS) && detail_only(CAT_WALL_ORNAMENT, ornament)) continue;
         Strip o = map_icon_strip(CAT_WALL_ORNAMENT, ornament);
         if (!o.count) continue;
-        int frame = view_face_frame(s->side[side]);
+        int frame = aspect_face_frame(s->side[side]);
         int icon = o.count < frame * 2 + 2 ? side & 1 : frame * 2 + (side & 1);
         draw_strip(&o, icon, x, y, mirror_two_sides[side]);
     }
@@ -181,7 +181,7 @@ static void draw_floor(const ViewSquare *s, const Strip *base, int x, int y, int
     if (ornament != ORNAMENT_NONE && (flags & MAP_OPTION_DETAILS || !detail_only(CAT_FLOOR_ORNAMENT, ornament))) {
         Strip o = map_icon_strip(CAT_FLOOR_ORNAMENT, ornament);
         if (o.count) {
-            int frame = view_floor_frame(s->side[SIDE_FLOOR_ORNAMENT]);
+            int frame = aspect_floor_frame(s->side[SIDE_FLOOR_ORNAMENT]);
             draw_strip(&o, o.count < frame + 1 ? 0 : frame, x, y, 0);
         }
     }
@@ -378,7 +378,7 @@ static void draw_pit_above(const Strip *base, int sx, int sy, int x, int y)
 static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int x, int y, int icon_set, int flags)
 {
     ViewSquare s;
-    view_get_square_aspect(&s, dir, sx, sy);
+    aspect_get(&s, party.cur_map, dir, sx, sy);
     Strip base = map_icon_strip(CAT_WALLSET, icon_set);
     if (flags & MAP_PARTY) draw_party_frame(x, y);
     int fake_seen = square_type(s.square) == SQUARE_FAKE_WALL && s.square & FAKE_WALL_SEEN;
@@ -400,13 +400,13 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
         other_map = 1;
         saved_map = party.cur_map;
         dun_set_current_map(m);
-        view_get_square_aspect(&s, dir, sx, sy);
+        aspect_get(&s, party.cur_map, dir, sx, sy);
     }
     if (other_map) {
         sx = saved_x;
         sy = saved_y;
         dun_set_current_map(saved_map);
-        view_get_square_aspect(&s, dir, sx, sy);
+        aspect_get(&s, party.cur_map, dir, sx, sy);
     }
     draw_pit_above(&base, sx, sy, x, y);
 }
@@ -618,7 +618,7 @@ void minion_draw_map(uint16_t thing)
                 y = location_y(w);
                 map = location_map(w);
                 int dir = game.party_dir;
-                int cell = view_get_creature_cell_zone(group, dir_turn(creature_side_dir[group_dir(group)], dir));
+                int cell = aspect_creature_cell(group, dir_turn(creature_side_dir[group_dir(group)], dir));
                 int col = (int16_t)cell % VIEW_CELL_ROW, row = (int16_t)cell / VIEW_CELL_ROW;
                 if (col > VIEW_CELL_ROW / 2) {
                     x += dir_dx[dir_turn(dir, 1)];
