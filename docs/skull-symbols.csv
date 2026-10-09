@@ -963,7 +963,7 @@ address,name,signature,subsystem
 0x00054f5a,mem_config_stub,void mem_config_stub(void),memory
 0x00054f5b,mem_parse_config_entry,"int mem_parse_config_entry(uint8_t **cursor, int32_t *size, int16_t *extra)",memory
 0x00055045,mem_test_all_maps,"int mem_test_all_maps(int fatal, int32_t reserve)",memory
-0x000551d4,game_start_session,void game_start_session(void),main loop
+0x000551d4,play_start_session,void play_start_session(void),main loop
 0x00055310,session_init,void session_init(void),main loop
 0x000554ab,text_measure,"int text_measure(const char *text, int16_t *width, int16_t *height)",text
 0x000554fc,text_wrap_line,"int text_wrap_line(const char *text, char *line, int16_t *pos, int16_t max_width)",text
