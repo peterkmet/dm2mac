@@ -10,7 +10,6 @@
 #include "dungeon.h"
 #include "sound_request.h"
 #include "projectile.h"
-#include "input.h"
 #include "champ_action.h"
 #include "inventory.h"
 #include "item.h"
@@ -20,7 +19,6 @@
 #include "move.h"
 #include "random.h"
 #include "sensor.h"
-#include "ui.h"
 #include "weather.h"
 
 #define SPELL_COUNT 34
@@ -466,8 +464,8 @@ void magic_add_rune(int rune)
     }
     action.redraw_delay = 1;
     g_hooks.update_action_area(0);
-    input_refresh_mode();
-    if (added) ui_draw_champion_state(action.champion - 1);
+    g_hooks.refresh_input_mode();
+    if (added) g_hooks.draw_champion_state(action.champion - 1);
 }
 
 /* The champion who casts takes back the last rune. */
@@ -478,7 +476,7 @@ void magic_remove_last_rune(void)
     champion_runes(c)[c->rune_count] = 0;
     action.redraw_delay = 1;
     g_hooks.update_action_area(0);
-    input_refresh_mode();
+    g_hooks.refresh_input_mode();
 }
 
 int move_party_warp_to_marker(void)

@@ -22,7 +22,6 @@
 #define MESSAGE_SCROLL_HEIGHT 7     /* rows the message area moves up for a new row */
 #define MESSAGE_LINE_BASE (TEXT_LINE_HEIGHT - FONT_BASELINE - 2)  /* base line of the text in the new row bitmap */
 
-const uint8_t *ui_colors;
 uint32_t message_expiry[MESSAGE_ROWS];
 
 static uint8_t font[FONT_SIZE + FONT_CHARS];   /* characters 128 to 255 of the last row read past the font: zeros */

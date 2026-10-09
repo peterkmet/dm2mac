@@ -1059,11 +1059,6 @@ void ui_draw_champion_state(int champ)
     draw_free_temp();
 }
 
-void ui_set_champion_redraw_flags(uint16_t flags)
-{
-    for (int i = 0; i < game.champion_count; i++) champion(i)->redraw |= flags;
-}
-
 void ui_draw_all_champion_states(int tick)
 {
     for (int i = 0; i < game.champion_count; i++)

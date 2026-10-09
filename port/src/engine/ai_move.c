@@ -10,7 +10,6 @@
 #include "projectile.h"
 #include "item.h"
 #include "move.h"
-#include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"

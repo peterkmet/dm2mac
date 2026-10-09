@@ -23,6 +23,7 @@ enum {
 
 TextArgs text_args = {-1, {0}, 0};
 char text_drive_path[TEXT_SIZE];
+const uint8_t *ui_colors;
 
 static const char field_names[FIELD_COUNT][3] = {
     "SK", "LV", "CM", "BZ", "TR", "ST", "PA", "TA", "NC", "EX", "PB", "DM", "MS", "SD", "RP", "HN", "AT", "WH"

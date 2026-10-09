@@ -862,7 +862,7 @@ address,name,signature,subsystem
 0x000487f9,ui_draw_champion_portrait,void ui_draw_champion_portrait(uint16_t champ),interface
 0x00048863,ui_draw_inventory_button,"void ui_draw_inventory_button(uint8_t icon, int16_t zone, uint16_t mask)",interface
 0x00048890,ui_draw_champion_state,void ui_draw_champion_state(uint16_t champ),interface
-0x00049020,ui_set_champion_redraw_flags,void ui_set_champion_redraw_flags(uint16_t flags),interface
+0x00049020,champ_set_redraw_flags,void champ_set_redraw_flags(uint16_t flags),interface
 0x0004904f,ui_draw_all_champion_states,void ui_draw_all_champion_states(int tick),interface
 0x0004910b,inv_update_hand_cursor,void inv_update_hand_cursor(void),inventory
 0x0004916b,inv_put_object_in_free_slot,"void inv_put_object_in_free_slot(uint16_t champ, uint16_t thing)",inventory

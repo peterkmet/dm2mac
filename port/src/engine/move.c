@@ -7,8 +7,8 @@
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
+#include "hooks.h"
 #include "sound_request.h"
-#include "input.h"
 #include "item.h"
 #include "money.h"
 #include "move.h"
@@ -16,8 +16,6 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include "ui.h"
-#include "view.h"
 #include "weather.h"
 
 #define MAP_KEY_PIT_TO_MARKER 0x6a  /* map graphics value: pits lead to a random marker, not one level down */
@@ -525,7 +523,7 @@ int move_party(int command)
         if (!party.push_mode) party.push_arrow = PUSH_ARROW_NONE;
         return 1;
     } else if (!move_party_step(command, here, on_stairs)) {
-        input_flush();
+        g_hooks.flush_input();
         input_command_stop = 0;
         return 0;
     }
@@ -784,12 +782,12 @@ static void transit_pit(Transit *t)
         t->draw_fall = 0;
         if (t->falls) {
             dun_set_party_location(t->x, t->y, t->map);
-            view_enter_map(t->map);
+            g_hooks.enter_map_view(t->map);
             world_update_day_night(0);
         }
         int steps = party.move_steps;
         party.move_steps = 0;
-        view_draw_dungeon(game.party_dir, t->x, t->y);
+        g_hooks.draw_dungeon(game.party_dir, t->x, t->y);
         party.move_steps = (int16_t)steps;
     }
     if (to_marker) {
@@ -860,7 +858,7 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
         if (party.push_mode) {
             party.push_mode = 0;
             ui.push_mode = 0;
-            ui_draw_movement_arrows();
+            g_hooks.draw_movement_arrows();
         }
         move_set_party_position(x, y);
         t.scope = SCOPE_PARTY;

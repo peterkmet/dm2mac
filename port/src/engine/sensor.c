@@ -18,9 +18,7 @@
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
-#include "session.h"
 #include "sensor.h"
-#include "input.h"
 #include "game_text.h"
 #include "merchant.h"
 
@@ -917,7 +915,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
         sensor_launch_missile(t, e);
         break;
     case SENSOR_MAP_RELAY: sensor_relay_to_map(e, t); break;
-    case SENSOR_GAME_END: session_complete(); break;
+    case SENSOR_GAME_END: g_hooks.complete_game(); break;
     case SENSOR_FRAME_STEP: {  /* an ornament that steps its animation frame */
         unsigned frame = (uint16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
         sensor_set_data(t, frame % (uint16_t)sensor_get_ornament_cycle(t, 1));
@@ -1557,7 +1555,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, 
         if (c->hand != THING_NONE || sensor_flag(t, SENSOR_STATE)) return CLICK_IGNORED;
         int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, game.party_dir);
         move_party_to(sensor_target_x(t), sensor_target_y(t), sensor_data_map(t), dir);
-        input_flush();
+        g_hooks.flush_input();
         return 1;
     }
     case WALL_CLICK_RESET:
@@ -1633,7 +1631,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
         int map = dungeon_location_on_map(game.party_map, delta, &lx, &ly);
         if (map >= 0) {
             move_party_to(lx, ly, map, game.party_dir);
-            input_flush();
+            g_hooks.flush_input();
         }
     } else if (sub == SUBTYPE_HAND_SWITCH && c->hand == THING_NONE) {
         text_set_visible(t, !visible);

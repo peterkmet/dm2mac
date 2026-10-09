@@ -9,7 +9,6 @@
 #include "sound_request.h"
 #include "projectile.h"
 #include "move.h"
-#include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"

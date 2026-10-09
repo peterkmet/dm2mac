@@ -10,7 +10,6 @@
 #include "move.h"
 #include "random.h"
 #include "game_text.h"
-#include "ui.h"
 #include "minion.h"
 #include "sensor.h"
 
@@ -181,6 +180,11 @@ void champ_set_leader(int champ)
     if (champ != -1 && champ + 1 != ui.candidate) champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
 }
 
+void champ_set_redraw_flags(uint16_t flags)
+{
+    for (int i = 0; i < game.champion_count; i++) champion(i)->redraw |= flags;
+}
+
 /* A new game: the champion of the start square (map square (0, 0) with sensor 0x7e) joins the party. */
 static void champ_add_start_champion(void)
 {
@@ -191,7 +195,7 @@ static void champ_add_start_champion(void)
             continue;
         champ_recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
         champion(0)->dir = champion(0)->cell = (uint8_t)game.party_dir;
-        ui_set_champion_redraw_flags(REDRAW_STATUS_BOX);
+        champ_set_redraw_flags(REDRAW_STATUS_BOX);
         champ_set_leader(0);
         return;
     }
@@ -215,7 +219,7 @@ void champ_init_party_state(void)
         champion(i)->redraw &= REDRAW_KEEP;
         action_reset_champion(i);
     }
-    ui_set_champion_redraw_flags(REDRAW_STATUS_BOX);
+    champ_set_redraw_flags(REDRAW_STATUS_BOX);
     int leader = (int16_t)game.leader;
     if (leader != -1) {
         game.leader = (uint16_t)-1;

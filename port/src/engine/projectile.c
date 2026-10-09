@@ -6,7 +6,6 @@
 #include "game.h"
 #include "gdat.h"
 #include "sound_request.h"
-#include "projectile.h"
 #include "item.h"
 #include "le.h"
 #include "money.h"

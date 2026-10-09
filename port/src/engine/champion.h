@@ -43,6 +43,7 @@ static inline int champ_base_skill(int skill)
 #define REDRAW_ALL 0xfc00
 #define REDRAW_KEEP 0x03ff       /* the bits that stay after a redraw */
 #define REDRAW_STEP_TIME 0x0010  /* the step time reads this bit; nothing in the port sets it (docs/todo.md) */
+#define ZONE_STATUS_BOX 0xa1     /* the status box of a champion: + champion */
 
 /* Aura types: 0 to 2 shields, 3 to 6 raise a statistic. */
 enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };
@@ -207,6 +208,8 @@ void champ_revive(int champ);
 void champ_drag_click(int cell);
 void champ_drag_cancel(void);
 
+/* The commands of the recruit buttons: the candidate joins, or goes back to its mirror. */
+enum { CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93 };
 /* Recruiting (recruit.c): the champion of the mirror in front of (x, y) of map joins as a candidate; returns its
    ordinal, 0 when the party is full or the leader holds an object. */
 int champ_start_recruit(int x, int y, int dir, int map);
@@ -215,6 +218,8 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command);
 /* The champion of the mirror in front of (x, y) of map joins at once, without the inventory and the message. */
 void champ_recruit_start_champion(int x, int y, int dir, int map);
 
+/* Sets redraw flags on all champions. */
+void champ_set_redraw_flags(uint16_t flags);
 /* Prepares the party of a loaded game for the screen: redraw flags, drawn hand state, the leader. */
 void champ_init_party_state(void);
 

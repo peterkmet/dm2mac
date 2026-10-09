@@ -42,6 +42,9 @@ enum input_mode {
 extern int input_command_stop;
 /* A champion portrait or an object is dragged (Step 15), 0 none. */
 extern int input_drag_state;
+/* Mouse event types: buttons (bit 1 left, bit 0 right), a released left button (only while the eye or the mouth is
+   held or the automap is open), a key. */
+enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_LEFT_RELEASED = 4, INPUT_KEY = 0x20 };
 /* The mouse buttons that are down: INPUT_BUTTON_* bits (the original mouse_get_state). */
 extern int input_mouse_buttons;
 

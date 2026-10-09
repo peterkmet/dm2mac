@@ -6,14 +6,12 @@
 #include "game.h"
 #include "hooks.h"
 #include "sound_request.h"
-#include "input.h"
 #include "inventory.h"
 #include "item.h"
 #include "random.h"
 #include "move.h"
 #include "sensor.h"
 #include "game_text.h"
-#include "ui.h"
 #include "magic.h"
 #include "weather.h"
 
@@ -221,7 +219,7 @@ void inv_click_slot(int slot)
         champ_put_object_in_leader_hand(thing, 1);
     }
     if (hand != THING_NONE) champ_add_object_to_slot(champ, hand, slot);
-    ui_draw_all_champion_states(0);
+    g_hooks.draw_all_champion_states(0);
     if (slot == SLOT_QUIVER_READY || slot == SLOT_QUIVER_FIRST || slot == SLOT_QUIVER_ACTION
         || (slot > SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot >= SLOT_COUNT) {
         action.redraw_delay = 1;

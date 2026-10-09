@@ -12,6 +12,9 @@ enum ui_color {
     UI_BLACK, UI_DARK_GRAY, UI_GRAY, UI_DARK_BROWN, UI_CYAN, UI_BROWN, UI_DARK_GREEN, UI_GREEN, UI_RED, UI_GOLD,
     UI_TAN, UI_YELLOW, UI_DARKEST_GRAY, UI_LIGHT_GRAY, UI_BLUE, UI_WHITE, UI_COLOR_COUNT
 };
+#define UI_OPAQUE (-1)              /* a picture without a transparent color */
+/* The palette colors of the UI colors (text_init reads them). */
+extern const uint8_t *ui_colors;
 
 /* The values that the format codes of a text insert (".Z" and 3 digits, or byte 1 and the code + 32). */
 #define TEXT_ARG_NUMBERS 5

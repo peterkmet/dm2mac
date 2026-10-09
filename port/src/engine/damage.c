@@ -4,15 +4,13 @@
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
+#include "hooks.h"
 #include "projectile.h"
-#include "input.h"
 #include "inventory.h"
 #include "item.h"
 #include "move.h"
-#include "projectile.h"
 #include "random.h"
 #include "sensor.h"
-#include "ui.h"
 #include "weather.h"
 
 #define ATTACK_TYPE_MASK 0x7fff
@@ -376,7 +374,7 @@ void champ_drag_click(int cell)
     int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, game.party_dir));
     if (!input_drag_state) {
         if (target < 0) return;
-        input_set_champion_cursor(target);
+        g_hooks.set_champion_cursor(target);
         input_drag_state = cell + 1;
         return;
     }
@@ -407,7 +405,7 @@ void champ_kill(int champ)
             if (game.leader_hand != THING_NONE) inv_show_object_name(game.leader_hand);
         }
         ui.mouth = 0;
-        ui_toggle_inventory(CHAMPION_MAX);
+        g_hooks.toggle_inventory(CHAMPION_MAX);
     }
     champ_drop_all_objects(champ);
     int cell = c->cell;
@@ -428,13 +426,13 @@ void champ_kill(int champ)
     while (alive < game.champion_count && !champion(alive)->health) alive++;
     if (alive == game.champion_count) {
         main_loop.end = 1;
-        input_flush();
+        g_hooks.flush_input();
         party_sleeping = 0;
         main_loop.view_hidden = 0;
     } else if (champ == (int16_t)game.leader) {
         champ_set_leader(alive);
     }
-    input_refresh_mode();
+    g_hooks.refresh_input_mode();
 }
 
 void champ_apply_pending_damage(void)
@@ -600,7 +598,7 @@ void champ_revive(int champ)
     c->redraw |= REDRAW_STATUS_BOX;
     c->aura = 0;
     c->aura_value = 0;
-    input_refresh_mode();
+    g_hooks.refresh_input_mode();
 }
 
 /* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */

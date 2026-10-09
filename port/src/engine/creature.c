@@ -7,9 +7,9 @@
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
+#include "hooks.h"
 #include "sound_request.h"
 #include "projectile.h"
-#include "input.h"
 #include "item.h"
 #include "le.h"
 #include "money.h"
@@ -898,7 +898,7 @@ int creature_damage_current_group(uint16_t damage)
         if (!is_static) {
             if (class_flags & AI_CLASS_DIES_NEAR_PARTY) {
                 if (!creature_is_near_party_front(ai.event.data[0], ai.event.data[1], ai.map)) return 0;
-                input_set_wait(BOSS_DEATH_WAIT);
+                g_hooks.set_wait(BOSS_DEATH_WAIT);
             }
             creature_set_next_action(ai.group_thing, ai.event.data[0], ai.event.data[1], AI_ACTION_VANISH, 1);
             return 0;

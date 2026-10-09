@@ -3,6 +3,7 @@
 #include "hooks.h"
 #include "input.h"
 #include "play.h"
+#include "session.h"
 #include "sound.h"
 #include "text.h"
 #include "ui.h"
@@ -28,4 +29,15 @@ Hooks g_hooks = {
     .show_view = play_show_view,
     .hide_view = play_hide_view,
     .present_viewport = play_present_viewport,
+    .refresh_input_mode = input_refresh_mode,
+    .set_wait = input_set_wait,
+    .set_champion_cursor = input_set_champion_cursor,
+    .toggle_inventory = ui_toggle_inventory,
+    .draw_champion_state = ui_draw_champion_state,
+    .draw_all_champion_states = ui_draw_all_champion_states,
+    .draw_movement_arrows = ui_draw_movement_arrows,
+    .fill_screen_zone = ui_fill_zone_screen,
+    .draw_viewport_image = ui_draw_gdat_in_viewport_zone,
+    .complete_game = session_complete,
+    .draw_dungeon = view_draw_dungeon,
 };

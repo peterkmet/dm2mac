@@ -5,16 +5,14 @@
 #include "gdat.h"
 #include "dungeon.h"
 #include "game.h"
+#include "game_text.h"
 #include "hooks.h"
 #include "sound_request.h"
-#include "input.h"
 #include "inventory.h"
 #include "item.h"
 #include "le.h"
 #include "move.h"
 #include "random.h"
-#include "text.h"
-#include "ui.h"
 #include "sensor.h"
 
 #define SENSOR_MIRROR 0x7e          /* the wall sensor of a champion mirror; its data is the portrait */
@@ -118,8 +116,8 @@ int champ_start_recruit(int x, int y, int dir, int map)
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, fx, fy); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) > THING_SENSOR && thing_cell(t) == back) inv_put_object_in_free_slot(index, t);
     if (!recruit_silent) {
-        ui_toggle_inventory(index);
-        input_set_mode(INPUT_MODE_RECRUIT);
+        g_hooks.toggle_inventory(index);
+        g_hooks.set_input_mode(INPUT_MODE_RECRUIT);
         g_hooks.hide_view();
     }
     dun_set_current_map(saved);
@@ -136,19 +134,19 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
     uint16_t hand = champ_remove_object_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
         /* the object in the hand is lost, as in the original */
-        ui_toggle_inventory(CHAMPION_MAX);
+        g_hooks.toggle_inventory(CHAMPION_MAX);
         if (game.champion_count == 1) champ_set_leader(-1);
         if (ui.candidate >= game.champion_count) game.champion_count--;
         ui.candidate = 0;
         c->health = 0;
         action_reset_champion(champ);
-        ui_fill_zone_screen(ZONE_STATUS_BOX + champ, ui_colors[UI_BLACK]);
+        g_hooks.fill_screen_zone(ZONE_STATUS_BOX + champ, ui_colors[UI_BLACK]);
         g_hooks.show_view();
         dun_set_current_map(saved);
         return;
     }
     if (!recruit_silent) {
-        ui_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
+        g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
         g_hooks.present_viewport();
         sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD, game.party_x,
                       game.party_y, 0);
@@ -168,7 +166,7 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         char text[TEXT_SIZE];
         g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
         if (ui.inventory) {
-            ui_toggle_inventory(CHAMPION_MAX);
+            g_hooks.toggle_inventory(CHAMPION_MAX);
             g_hooks.show_view();
         }
     }

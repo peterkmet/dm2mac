@@ -17,7 +17,6 @@
 #include "random.h"
 #include "sensor.h"
 #include "game_text.h"
-#include "ui.h"
 #include "weather.h"
 
 #define ALL_CHARGES 0x0f
@@ -146,7 +145,7 @@ void action_area_open_hand(int champ, int hand)
     action.hand = (int16_t)hand;
     champ_drag_cancel();
     g_hooks.update_action_area(0);
-    ui_draw_champion_state(champ);
+    g_hooks.draw_champion_state(champ);
 }
 
 void action_area_open_spells(int champ)
