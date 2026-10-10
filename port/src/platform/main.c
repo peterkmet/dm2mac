@@ -179,6 +179,7 @@ static void present_movie(void)
 /* Plays a script of the launcher with the movie sound instead of the music, until its end or a quit. */
 static void play_movies(int script)
 {
+    if (game_mode == GAME_MODE_TURNBASED) return;  /* the turn-based mode plays no movie */
     if (!movie_start(script, session.data_dir, SDL_GetTicksNS())) return;
     plat_audio_music(movie_render_audio);
     for (int pit = 0; movie_is_playing() && !main_loop.quit;) {
