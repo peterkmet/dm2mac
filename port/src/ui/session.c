@@ -470,6 +470,25 @@ int session_init(void)
     return 1;
 }
 
+int session_start_new_game(void)
+{
+    session.new_game = 1;
+    session.use_dungenb = 0;
+    if (!load_new_game()) return 0;
+    sensor_start_timers();
+    main_loop.end = 0;
+    session.completed = 0;
+    move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
+    party.redraw = REDRAW_ALL_VIEW;
+    sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
+    sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
+    ui_reset();
+    money_init_coin_table();
+    play_start_session();
+    input_flush();
+    return 1;
+}
+
 int session_start_save(const char *path)
 {
     int first = !weather.dungeon_loaded;

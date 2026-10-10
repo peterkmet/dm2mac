@@ -37,6 +37,10 @@ void session_draw_name_entry(const char *name, int cursor);
 void session_save(void);
 /* The start of a run: the menu until a game loads, then the session of that game. Returns 0 when the player quit. */
 int session_init(void);
+
+/* Starts a new game from DUNGEON.DAT at once, as the menu choice NEW GAME does, without the menu. Returns 0 when the
+   dungeon does not load. */
+int session_start_new_game(void);
 /* Loads the save file at path and starts its game at once, with the party view and light of a menu load. Returns 0
    when the file does not load. */
 int session_start_save(const char *path);

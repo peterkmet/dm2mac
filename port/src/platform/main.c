@@ -217,15 +217,44 @@ static int read_options(int argc, char **argv, const char **data, const char **f
     return 1;
 }
 
+/* Sets game_mode from its name; returns 0 with a message for an unknown name. */
+static int select_mode(const char *mode)
+{
+    for (game_mode = 0; game_mode < GAME_MODE_COUNT && strcmp(mode, game_mode_names[game_mode]); game_mode++) {}
+    if (game_mode < GAME_MODE_COUNT) return 1;
+    fprintf(stderr, "unknown mode %s: use vanilla, advanced, or turnbased\n", mode);
+    return 0;
+}
+
+/* Builds the default control socket path $HOME/.dm2/control.sock of the turn-based mode; returns 0 without HOME. */
+static int default_control_path(const char **control)
+{
+    static char path[PATH_SIZE];
+    const char *home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "HOME is not set: use --control PATH\n");
+        return 0;
+    }
+    snprintf(path, sizeof path, "%s/.dm2/control.sock", home);
+    *control = path;
+    return 1;
+}
+
+/* Starts the new game of the turn-based mode or the start menu of the other modes; returns 0 to end the program. */
+static int start_game(const char *data)
+{
+    if (game_mode != GAME_MODE_TURNBASED) return session_init();
+    if (session_start_new_game()) return 1;
+    fprintf(stderr, "cannot start a new game from %s/DATA/DUNGEON.DAT\n", data);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced", *saves = NULL;
     if (!read_options(argc, argv, &data, &filter, &save, &control, &mode, &saves)) return EXIT_USAGE;
-    for (game_mode = 0; game_mode < GAME_MODE_COUNT && strcmp(mode, game_mode_names[game_mode]); game_mode++) {}
-    if (game_mode == GAME_MODE_COUNT) {
-        fprintf(stderr, "unknown mode %s: use vanilla, advanced, or turnbased\n", mode);
-        return EXIT_USAGE;
-    }
+    if (!select_mode(mode)) return EXIT_USAGE;
+    if (game_mode == GAME_MODE_TURNBASED && !control && !default_control_path(&control)) return EXIT_USAGE;
     int factor = filter ? scale_filter_factor(filter) : 1;
     if (!factor) {
         fprintf(stderr, "unknown filter %s: use none, scale2x, or scale3x\n", filter);
@@ -252,7 +281,10 @@ int main(int argc, char **argv)
     }
     play_frame_hook = modal_frame;
     if (!save && !getenv(RESTART_ENV)) play_movies(MOVIE_SCRIPT_START);
-    if (!save && !main_loop.quit && !session_init()) main_loop.quit = 1;
+    if (!save && !main_loop.quit && !start_game(data)) {
+        if (game_mode == GAME_MODE_TURNBASED) return 1;
+        main_loop.quit = 1;
+    }
     for (int pit = 0; !main_loop.quit;) {
         pump_events();
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
