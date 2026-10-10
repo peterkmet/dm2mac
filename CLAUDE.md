@@ -8,6 +8,7 @@ Native C11/SDL3 macOS port of Dungeon Master II (PC DOS `SKULL.EXE`), built from
 ## Commands
 - Build: `make -C port` (0 warnings).
 - Run: `build/dm2` starts a new game; `build/dm2 --save game/DATA/SKSAVE0.DAT` loads a save.
+- Turn-based mode: `build/dm2 --mode turnbased --saves DIR`; `uv run dm2-play --brief get_state` (`docs/turnbased-mode.md`).
 - One test file: `uv run pytest -q tests/test_x.py`.
 - Full suite: `tools/test-suite` (parallel; skips a clean tree that already passed; log in `build/test-suite.log`).
 

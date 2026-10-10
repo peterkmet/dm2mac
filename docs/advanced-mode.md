@@ -14,7 +14,9 @@ build/dm2 --mode vanilla
 build/dm2 --mode advanced
 ```
 
-Without `--mode`, the mode is `advanced`. A different value stops the program with exit code 2 and the message `unknown mode VALUE: use vanilla or advanced`. RESTART keeps the mode.
+Without `--mode`, the mode is `advanced`. A different value stops the program with exit code 2 and the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. RESTART keeps the mode.
+
+The turn-based mode (`--mode turnbased`, `docs/turnbased-mode.md`) is a third mode for play through the control socket. It shares the seen squares and the AMAP block with the advanced mode, but it has no extra keys and no cheats.
 
 The control socket state (`docs/llm-control.md`) gives the mode in the field `game_mode`.
 
@@ -44,7 +46,7 @@ The dungeon view is the movement input mode with at least one champion: no inven
 
 ## Quick save and quick load
 
-The quick save has one slot: `<data>/DATA/QUICK.DAT`. `<data>` is the `--data` folder (default `game`). The file has the format of the save slots.
+The quick save has one slot: `<data>/DATA/QUICK.DAT`. `<data>` is the `--data` folder (default `game`). With `--saves DIR` the file is `DIR/QUICK.DAT` in all modes. The file has the format of the save slots.
 
 `F5` writes the game to `QUICK.DAT`. The message area shows one of these lines:
 

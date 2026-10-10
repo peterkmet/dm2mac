@@ -2,7 +2,9 @@
 
 `build/dm2 --control PATH` opens a Unix domain socket. A client sends raw input to the running game, reads a small game state, and saves screenshots. Use it for manual-style UI tests that an LLM (for example Claude Code through Bash) drives.
 
-The game runs in real time. The control does not stop the game time. Each request runs on the main thread between two timer ticks: in the game loop and in the modal loops (start menu, dialogs).
+The game has three modes (`vanilla`, `advanced`, `turnbased`). In the `vanilla` and `advanced` modes the game runs in real time and the control does not stop the game time. In the `turnbased` mode the time stands still between requests, and the commands are `get_state`, `get_view`, `get_map`, `act`, `act_many`, `wait`, `save`, `load`, and `new_game`: see `docs/turnbased-mode.md`. The turn-based mode refuses the direct commands `key`, `click`, `press`, `release`, `command`, and `move` with `use act in turnbased mode`; `state`, `screenshot`, and `quit` work in all modes.
+
+This page describes the real-time commands. Each request runs on the main thread between two timer ticks: in the game loop and in the modal loops (start menu, dialogs).
 
 ## Start the game
 
@@ -85,7 +87,7 @@ Reads the game state.
 | `hand` | The leader hand object: `{"thing": n, "name": "..."}`, or `null`. |
 | `sound_volume`, `music_volume` | Volume settings 0 to 7. |
 | `end`, `quit` | The end flag of the game (party dead or quit) and the program end flag. |
-| `game_mode` | The game mode: `vanilla` or `advanced` (`docs/advanced-mode.md`). |
+| `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` (`docs/advanced-mode.md`, `docs/turnbased-mode.md`). |
 | `automap` | 1 while the automap is open, else 0. |
 | `cheat_immortal`, `cheat_food`, `cheat_light` | 1 while the cheat is on, else 0. |
 
