@@ -770,4 +770,5 @@ void control_close(void)
         unlink(socket_path);
     }
     listen_fd = -1;
+    game_lost = 0;
 }
