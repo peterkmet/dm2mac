@@ -2,6 +2,7 @@
 version. No reference decoder: the tests check the stream format against a parse of the files (PRD Current state)."""
 
 import ctypes
+import random
 from collections import Counter
 
 import pytest
@@ -92,3 +93,28 @@ def test_cut_stream_ends_with_an_error(lib, game_dir, keep):
     assert movie.opened == MVE_OK
     counts = movie.run()
     assert counts[MVE_ERROR] == 1 and counts[MVE_SHOW] < 66
+
+
+DISTINCT_COLORS_MIN = 1  # a frame that the decode does not draw stays black: 1 color
+
+
+@pytest.mark.parametrize("name, frames, audio, frame_us", MOVIES)
+def test_all_pictures_decode_inside_the_frame(lib, game_dir, name, frames, audio, frame_us):
+    movie = Movie(lib, (game_dir / name).read_bytes())
+    colors = []
+    counts = movie.run(lambda mv: colors.append(len(set(mv.pixels()))) if mv.m.frames == frames // 2 else None)
+    assert counts[MVE_ERROR] == 0 and movie.m.bad_blocks == 0
+    assert colors[0] > DISTINCT_COLORS_MIN
+
+
+def test_damaged_video_data_ends_without_a_crash(lib, game_dir):
+    data = (game_dir / "FTL").read_bytes()
+    start = data.rfind(b"Interplay MVE File\x1a\x00")
+    rng = random.Random(0)
+    for _ in range(20):
+        damaged = bytearray(data)
+        for _ in range(200):
+            damaged[rng.randrange(start + 26, len(data))] = rng.randrange(256)
+        movie = Movie(lib, bytes(damaged))
+        counts = movie.run()
+        assert counts[MVE_END] + counts[MVE_ERROR] == 1

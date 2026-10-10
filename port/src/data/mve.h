@@ -51,5 +51,7 @@ int mve_open(MveStream *m, const uint8_t *file, size_t size);
 int mve_step(MveStream *m);
 /* The picture of the last MVE_SHOW: width × height palette indexes. */
 const uint8_t *mve_pixels(const MveStream *m);
+/* Decodes the blocks of one video data opcode into the current frame; false when the data is too short. */
+bool mve_decode_video(MveStream *m, const uint8_t *video, int size);
 
 #endif

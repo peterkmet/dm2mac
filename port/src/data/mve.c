@@ -145,6 +145,7 @@ static int run_opcode(MveStream *m, int type, int version, const uint8_t *body, 
     case OP_DECODING_MAP:
         m->map = body, m->map_size = size;
         return MVE_OK;
+    case OP_VIDEO_DATA: return mve_decode_video(m, body, size) ? MVE_OK : MVE_ERROR;
     default: return MVE_OK;  /* end of chunk, block statistics (0x13), and opcodes that the movies of DM2 do not use */
     }
 }
