@@ -36,7 +36,6 @@
 #define BATCH_ITEM_SIZE 1024          /* one item of an act_many list, a name or an object */
 #define DROP_FRONT_CELL_FIRST 2       /* drop_object cells 2 and 3 are on the square ahead */
 #define DROP_ALCOVE_CELL CELL_COUNT   /* drop_object cell 4: the alcove ahead */
-#define ALCOVE_CLICK_ZONE (VIEW_CLICK_ZONE_FIXED - 1)
 #define CORNER_INSET 1                /* a click on a corner of a spell icon goes one pixel inside */
 
 typedef enum { INPUT_KEY_PRESS, INPUT_CLICK, INPUT_PRESS, INPUT_RELEASE, INPUT_COMMAND } TurnInputKind;
@@ -415,7 +414,7 @@ static const ViewClickZone *front_click_zone(void)
         const ViewClickZone *z = &view_click_zones[i];
         if (z->cell == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON)) return z;
     }
-    const ViewClickZone *alcove = &view_click_zones[ALCOVE_CLICK_ZONE];
+    const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
     return alcove->kind == CLICK_ALCOVE ? alcove : NULL;
 }
 
@@ -470,7 +469,7 @@ static const char *drop_object(const char *r)
     if (hand_is_empty()) return HAND_EMPTY;
     if (!has_leader()) return "no leader";
     if (cell == DROP_ALCOVE_CELL) {
-        const ViewClickZone *alcove = &view_click_zones[ALCOVE_CLICK_ZONE];
+        const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
         if (alcove->kind != CLICK_ALCOVE) return "no alcove ahead";
         return add_view_click(alcove->rect) ? NULL : "the view takes no click now";
     }

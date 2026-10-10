@@ -1004,7 +1004,7 @@ static void piles_json(Json *j)
         if (view_click_zones[k].kind == CLICK_OBJECT && zone_top(&view_click_zones[k], &x, &y) != THING_NONE)
             pile_json(j, &view_click_zones[k], k);
     json_close(j, ']');
-    const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_FIXED - 1];
+    const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
     bool has_alcove = shown && alcove->kind == CLICK_ALCOVE;
     json_key(j, "alcove");
     if (has_alcove && zone_top(alcove, &x, &y) != THING_NONE) pile_json(j, alcove, PILE_ALCOVE);

@@ -58,6 +58,7 @@ enum view_click_kind {
 };
 #define VIEW_CLICK_ZONE_MAX 32
 #define VIEW_CLICK_ZONE_FIXED 9     /* zones 0 to 7: the cells of the party square and of the square in front; 8: an alcove */
+#define VIEW_CLICK_ZONE_ALCOVE (VIEW_CLICK_ZONE_FIXED - 1)  /* the click zone of the alcove ahead */
 extern ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 extern int view_click_zone_count;
 /* The object of a click at (x, y) of the viewport among the objects in the cell of thing (the cell bits) on the

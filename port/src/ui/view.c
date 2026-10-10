@@ -1507,7 +1507,7 @@ static void view_draw_alcove_contents(int pos)
         if (is_item(thing)) {
             view_draw_object(thing, pos, 0, 0, ordinal, THING_NONE, 1, 0, 1);
             if (++ordinal >= ALCOVE_ORDINAL_END) ordinal = ALCOVE_FIRST_ORDINAL;
-            if (pos == POS_FRONT) view_set_click_zone(VIEW_CLICK_ZONE_FIXED - 1, thing, POS_FRONT, CLICK_ALCOVE);
+            if (pos == POS_FRONT) view_set_click_zone(VIEW_CLICK_ZONE_ALCOVE, thing, POS_FRONT, CLICK_ALCOVE);
             continue;
         }
         if (thing_type(thing) != THING_EXPLOSION || !(ALCOVE_EXPLOSION_POSITIONS & POS_BIT(pos))) continue;
