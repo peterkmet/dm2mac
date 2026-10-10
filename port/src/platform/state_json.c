@@ -316,6 +316,21 @@ static void hands_json(Json *j, int champ)
     champ_action_thing = saved_thing;
 }
 
+int state_json_hand_action_count(int champ, int hand)
+{
+    ChampionAction saved[CHAMPION_ACTION_MAX];
+    int saved_count = champ_action_count, count = 0;
+    uint16_t saved_thing = champ_action_thing;
+    memcpy(saved, champ_actions, sizeof saved);
+    champ_action_count = 0;
+    if (champion(champ)->health) champ_list_actions(champ, champion(champ)->slots[hand], hand);
+    count = champ_action_count;
+    memcpy(champ_actions, saved, sizeof saved);
+    champ_action_count = saved_count;
+    champ_action_thing = saved_thing;
+    return count;
+}
+
 /* The bars, food, water, load, and place of a champion. */
 static void champion_values_json(Json *j, int champ)
 {

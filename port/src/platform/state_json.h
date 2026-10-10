@@ -34,6 +34,9 @@ enum { STATE_JSON_STATE, STATE_JSON_VIEW, STATE_JSON_MAP };
 void state_json_state(Json *j);
 /* A part of the game state as a new JSON text (free it with free); an unknown part gives null. */
 char *state_json_string(int part);
+/* The count of the actions in the action menu of a hand of a champion, as champions[].hands lists them; the open
+   action menu stays as it is. */
+int state_json_hand_action_count(int champ, int hand);
 /* The party died or finished the game. */
 bool state_json_game_over(void);
 /* The name of an input mode (the roots of the input tree in input.c), "unknown" for another number. */

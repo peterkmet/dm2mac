@@ -33,7 +33,6 @@
 #define NAME_SIZE 32
 #define WAIT_MAX_TICKS 6000
 #define SCAN_CODE_COUNT 256           /* the low byte of a key code */
-#define KEY_CODE_MAX 0xffff
 #define HEX_DIGITS 4                  /* the digits of a \uXXXX escape */
 #define HEX_BASE 16
 #define UNICODE_ESCAPE_PREFIX 2       /* the backslash and the u of \uXXXX */
@@ -84,14 +83,14 @@ static const struct { const char *prefix; uint16_t bit; } key_modifiers[] = {
 };
 
 /* The key code of a key name: a name of key_names, a character of the US layout, with modifier prefixes; 0 none. */
-static uint16_t key_code(const char *name)
+uint16_t control_key_code(const char *name)
 {
     for (size_t i = 0; i < sizeof key_names / sizeof key_names[0]; i++)
         if (!strcmp(name, key_names[i].name)) return key_names[i].code;
     for (size_t i = 0; i < sizeof key_modifiers / sizeof key_modifiers[0]; i++) {
         size_t n = strlen(key_modifiers[i].prefix);
         if (strncmp(name, key_modifiers[i].prefix, n)) continue;
-        uint16_t code = key_code(name + n);
+        uint16_t code = control_key_code(name + n);
         return code ? code | key_modifiers[i].bit : 0;
     }
     if (!name[0] || name[1]) return 0;
@@ -414,7 +413,7 @@ static void handle_key(const char *request)
 {
     char name[NAME_SIZE];
     long code = control_get_int(request, "key", 0);
-    if (control_get_string(request, "key", name, sizeof name)) code = key_code(name);
+    if (control_get_string(request, "key", name, sizeof name)) code = control_key_code(name);
     if (code <= 0 || code > KEY_CODE_MAX) {
         send_error("unknown key");
         return;
@@ -459,10 +458,15 @@ static void send_part(const char *key, void (*part)(Json *))
     send_reply();
 }
 
-/* Sends the error of a turn request, or nothing when the turn started (the reply comes at its end). */
+/* Sends the error of a turn request, or nothing when the turn started (the reply comes at its end). A batch that
+   ended before its first turn gets its reply now. */
 static void start_turn_or_fail(const char *error)
 {
     if (error) send_error(error);
+    else if (!turn_is_pending()) {
+        turn_reply(&reply);
+        send_reply();
+    }
 }
 
 /* The commands of the turn-based mode: turns, the parts of the game state, and the refusal of the direct input
@@ -482,6 +486,7 @@ static bool handle_turnbased_request(const char *request, const char *cmd)
             return true;
         }
     if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request));
+    else if (!strcmp(cmd, "act_many")) start_turn_or_fail(turn_act_many(request));
     else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request));
     else if (!strcmp(cmd, "get_state")) send_part("state", state_json_state);
     else if (!strcmp(cmd, "get_view")) send_part("view", state_json_view);

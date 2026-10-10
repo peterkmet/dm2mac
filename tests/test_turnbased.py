@@ -21,6 +21,10 @@ TURN_WAIT_MAX_TICKS = 5000
 POISON_AMOUNT = 200  # a poison that hurts now and again within the wait
 FACINGS = 4
 LEAVE_WAIT_TICKS = 2000
+CMD_VOLUME, CMD_DIALOG_BUTTON_FIRST = 0x8D, 0xDB
+STILL_CREATURE = 27  # a creature type that map 0 of start.DAT takes and that stands still
+GROUP_DISTANCE = 6  # the view shows 4 rows ahead: the group comes into view after the second step
+NORTH = 0
 
 
 @pytest.fixture
@@ -33,6 +37,8 @@ def tb(lib, gdat, session):  # noqa: F811
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     mode = ctypes.c_int.in_dll(lib, "game_mode")
     mode.value = TURNBASED
+    hook = ctypes.c_void_p.in_dll(lib, "play_frame_hook")
+    hook.value = ctypes.cast(lib.control_poll, ctypes.c_void_p).value  # a dialog polls the socket, as main.c does
     folder = tempfile.mkdtemp(prefix="dm2t", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "control.sock")
     lib.control_open.argtypes = [ctypes.c_char_p]
@@ -56,6 +62,7 @@ def tb(lib, gdat, session):  # noqa: F811
         thread.join()
         while pending():  # a turn that the test left runs to its end: the next test starts without one
             frame()
+        hook.value = None
         loop.end = 0
         lib.control_close()
         mode.value = VANILLA
@@ -190,3 +197,135 @@ def test_client_that_leaves_during_a_turn_frees_the_turn(tb, lib):
     r = request({"cmd": "get_state"}, path, timeout=60)
     assert r["ok"] and "ticks" not in r and "state" in r and not lib.control_turn_pending()
     assert r["state"]["time"] == before + LEAVE_WAIT_TICKS
+
+
+def act(path, action, **args):
+    return request({"cmd": "act", "action": action, **args}, path, timeout=30)
+
+
+def command_rect(lib, command):
+    """The screen rect (x, y, w, h) of the zone of command in the current input mode."""
+    rect = (ctypes.c_int16 * 4)()
+    lib.input_command_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
+    lib.input_command_rect.restype = ctypes.c_bool
+    assert lib.input_command_rect(command, rect), hex(command)
+    return tuple(rect)
+
+
+def center(rect):
+    x, y, w, h = rect
+    return x + w // 2, y + h // 2
+
+
+def test_act_many_stops_on_a_new_creature(tb, lib):
+    """Five moves up the corridor of the start; a creature group 6 squares ahead comes into view after the second
+    move: ran 2, stopped creature."""
+    path, game, _ = tb
+    assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
+    lib.creature_create_group.restype = ctypes.c_uint16
+    lib.dun_set_current_map(game.party_map)
+    assert lib.creature_create_group(STILL_CREATURE, 0, NORTH, game.party_x, game.party_y - GROUP_DISTANCE) != 0xFFFF
+    r = request({"cmd": "act_many", "actions": ["move_forward"] * 5}, path, timeout=30)
+    assert r["ok"] and r["ran"] == 2 and r["stopped"] == "creature" and "error" not in r
+    assert r["state"]["party"]["y"] == 6 and r["ticks"] >= 4
+
+
+def test_act_many_parses_names_and_objects(tb, lib):
+    """["turn_left", {"action": "turn_right"}] runs both: ran 2, stopped done, facing back to the start."""
+    path, game, _ = tb
+    facing = request({"cmd": "get_state"}, path)["state"]["party"]["facing"]
+    r = request({"cmd": "act_many", "actions": ["turn_left", {"action": "turn_right", "args": {}}]}, path, timeout=30)
+    assert r["ok"] and r["ran"] == 2 and r["stopped"] == "done" and r["state"]["party"]["facing"] == facing
+
+
+def test_act_many_bad_item_fails_without_running_it(tb, lib):
+    """["turn_left", 7]: ran 1, stopped failed, an error text; a bad first item runs nothing."""
+    path, game, _ = tb
+    r = request({"cmd": "act_many", "actions": ["turn_left", 7]}, path, timeout=30)
+    assert r["ok"] and r["ran"] == 1 and r["stopped"] == "failed" and r["error"]
+    before = game.game_time
+    r = request({"cmd": "act_many", "actions": ["fly", "turn_left"]}, path, timeout=30)
+    assert r["ok"] and r["ran"] == 0 and r["stopped"] == "failed" and r["error"] == "unknown action"
+    assert game.game_time == before and r["ticks"] == 0
+    assert request({"cmd": "act_many", "actions": "turn_left"}, path) == {"ok": False, "error": "actions must be a list"}
+
+
+def test_act_many_stops_on_bump(tb, lib):
+    """["move_forward", "move_forward"] facing a wall: ran 1, stopped bumped."""
+    path, *_ = tb
+    face(path, lambda square: square["element"] == "wall")
+    r = request({"cmd": "act_many", "actions": ["move_forward", "move_forward"]}, path, timeout=30)
+    assert r["ok"] and r["ran"] == 1 and r["stopped"] == "bumped" and r["bumped"] is True
+
+
+def test_raw_click_runs_a_turn_in_a_dialog(tb, lib):
+    """act click on the volume button of an open inventory opens the volume dialog (state.mode dialog); act click on
+    its first button closes it (state.mode inventory)."""
+    path, *_ = tb
+    assert act(path, "open_inventory", champion=0)["state"]["mode"] == "inventory"
+    x, y = center(command_rect(lib, CMD_VOLUME))
+    r = act(path, "click", x=x, y=y)
+    assert r["ok"] and r["state"]["mode"] == "dialog"
+    x, y = center(command_rect(lib, CMD_DIALOG_BUTTON_FIRST))
+    r = act(path, "click", x=x, y=y, button="left")
+    assert r["ok"] and r["state"]["mode"] == "inventory"
+    assert act(path, "click", x=-1, y=0) == {"ok": False, "error": "x must be 0-319 and y 0-199"}
+    assert act(path, "key", key="nokey") == {"ok": False, "error": "unknown key"}
+
+
+def test_recruit_join_adds_the_candidate(tb, lib):
+    """The mirror of the start corridor: three steps north, a turn left, click_wall_ahead shows the candidate; another
+    named action is refused; act recruit choice join adds the candidate to state.champions."""
+    path, game, _ = tb
+    assert act(path, "recruit", choice="join")["error"].startswith("no candidate")
+    for name in ("move_forward", "move_forward", "move_forward", "turn_left"):
+        assert act(path, name)["ok"]
+    assert ahead_square(request({"cmd": "get_view"}, path)["view"])["front_face"]["mirror"] is True
+    r = act(path, "click_wall_ahead")
+    assert r["ok"] and r["state"]["candidate"] is not None and len(r["state"]["champions"]) == 1
+    before = game.game_time
+    assert act(path, "turn_right") == {"ok": False, "error": "a candidate is shown: answer with recruit first"}
+    assert act(path, "recruit", choice="stay") == {"ok": False, "error": "choice must be join or cancel"}
+    assert game.game_time == before
+    r = act(path, "recruit", choice="join")
+    assert r["ok"] and r["state"]["candidate"] is None and len(r["state"]["champions"]) == 2
+
+
+def test_choose_action_with_both_hands(tb, lib):
+    """act choose_action champion 0 hand ready index 0 runs the action: the reply has action_damage (>= 0 or a
+    failure code); an index out of the menu is refused."""
+    path, *_ = tb
+    assert act(path, "choose_action", champion=0, hand="ready", index=9)["error"].startswith("index out of range")
+    r = act(path, "choose_action", champion=0, hand="ready", index=0)
+    assert r["ok"] and isinstance(r["action_damage"], int)
+    r = request({"cmd": "act_many", "actions": [{"action": "choose_action",
+                                                 "args": {"champion": 0, "hand": "action", "index": 0}}]}, path, timeout=30)
+    assert r["ok"] and r["ran"] == 1 and len(r["action_damage"]) == 1
+
+
+def test_take_coin_moves_a_coin_to_the_hand(tb, lib):
+    """The first money box of start.DAT (it holds coins) in the ready hand; choose_action on that hand opens it: act
+    take_coin on a slot with coins -> state.leader_hand is that coin, one coin less in the box."""
+    from test_interface import things_of
+    path, *_ = tb
+    lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
+    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
+    lib.champ_remove_object_from_slot(0, 0)
+    lib.champ_add_object_to_slot(0, things_of(lib, 9, 1, lib.item_is_moneybox)[0], 0)
+    lib.area_update(0)  # the hand icons show the box, as after a click that puts it into the hand
+    assert act(path, "take_coin", slot=0)["error"].startswith("open a money box first")
+    r = act(path, "choose_action", champion=0, hand="ready")
+    assert r["ok"] and r["state"]["money_box"], r["state"]
+    pile = next(p for p in r["state"]["money_box"] if p["count"])
+    assert act(path, "take_coin", slot=6) == {"ok": False, "error": "slot must be 0-5"}
+    r = act(path, "take_coin", slot=pile["slot"])
+    assert r["ok"] and r["state"]["leader_hand"]["name"] == pile["coin"]
+    assert next(p for p in r["state"]["money_box"] if p["slot"] == pile["slot"])["count"] == pile["count"] - 1
+
+
+def test_put_in_slot_needs_an_object_in_hand(tb, lib):
+    """put_in_slot with an empty leader hand: ok false, nothing changes."""
+    path, game, _ = tb
+    before = request({"cmd": "get_state"}, path)["state"]
+    assert act(path, "put_in_slot", champion=0, slot=1) == {"ok": False, "error": "the leader hand is empty"}
+    assert request({"cmd": "get_state"}, path)["state"] == before

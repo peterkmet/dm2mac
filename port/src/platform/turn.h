@@ -11,6 +11,8 @@
 bool turn_is_pending(void);
 /* Each starts a turn, or returns the reason why it cannot (the game does not change then). */
 const char *turn_act(const char *request);
+/* A batch of act turns; a batch that ends before its first turn has its reply ready at once (no turn is pending). */
+const char *turn_act_many(const char *request);
 const char *turn_wait(const char *request);
 /* One frame of the pending turn: gives the next input when the input is idle, records what the party sees, and checks
    the end. Returns true when the reply is ready (turn_reply writes it). */

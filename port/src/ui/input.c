@@ -1685,6 +1685,12 @@ void input_simulate_command_click(uint16_t command)
     if (e && input_get_zone_rect(e->zone, r)) input_mouse_click(r[RECT_X], r[RECT_Y], e->buttons);
 }
 
+bool input_command_rect(uint16_t command, int16_t *rect)
+{
+    const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
+    return e && input_get_zone_rect(e->zone, rect);
+}
+
 uint16_t input_read_key(void)
 {
     if (!in.key_count) return 0;

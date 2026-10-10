@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 /* Prefixes: control_ */
 
@@ -28,6 +29,10 @@ const char *control_find_value(const char *line, const char *key);
 int control_get_string(const char *line, const char *key, char *out, size_t size);
 /* The integer value of key; missing when the key is absent or not a number. */
 long control_get_int(const char *line, const char *key, long missing);
+#define KEY_CODE_MAX 0xffff          /* the largest key code of a request */
+/* The key code of a key name (docs/llm-control.md): a key name, a character of the US layout, with modifier prefixes;
+   0 none. */
+uint16_t control_key_code(const char *name);
 /* Closes the sockets and removes the socket file. */
 void control_close(void);
 
