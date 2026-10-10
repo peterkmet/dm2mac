@@ -228,7 +228,7 @@ uv run dm2-play new_game
 
 The goal of the runs is to measure how much an LLM player gets better: from session to session, and against earlier runs. To finish the game is the long-term goal, not the measure of one run. A person (the coordinator) starts the sessions and keeps the records.
 
-The repository has no player instructions and no run template yet. The folder layout below is the convention that the call log and the commands expect.
+The player manual is `docs/llm-playbook.md`. The agents are `.claude/agents/dm2-coordinator.md` and `.claude/agents/dm2-player.md`. The template of the player files is `playthroughs/template/`. The folder layout below is the convention that the call log and the commands expect.
 
 ```text
 playthroughs/

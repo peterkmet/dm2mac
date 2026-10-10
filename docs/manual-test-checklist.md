@@ -294,21 +294,21 @@ Start `build/dm2` without `--save` unless an item says otherwise. Use a window w
 - [ ] M13. With the control socket (`docs/llm-control.md`, section "Movies"): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
 - [ ] M14. Optional, DOSBox (`tools/dosbox-dm2.conf`): compare the size and the position of the `INTRO` picture with the port.
 
-## M. Turn-based mode
+## T. Turn-based mode
 
 Details: `docs/turnbased-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
 
-- [ ] M1. Start the game. Expected: no start menu and no movie; the dungeon view shows at once; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
-- [ ] M2. Send `new_game`. Expected: the party is on the start square (map 0, x 1, y 8, facing north); the reply has `state`.
-- [ ] M3. Send `act nothing`. Expected: the error `unknown action`; the game time and the screen do not change.
-- [ ] M4. Send `uv run dm2-play act take_object '{"cell": 2}'` and `uv run dm2-play act_many '["turn_left", "turn_right"]'`. Expected: the game gets the action and its args (an error text about the cell or the view, or the turn), and the batch runs two turns (`ran` 2).
-- [ ] M5. Watch the window during `act move_forward` and `act turn_left`. Expected: the party walks and turns on the screen; the window ignores the keyboard and the mouse.
-- [ ] M6. Open an inventory and send `act look '{"champion": 0, "slot": 0}'`. Expected: `look` has the same name and lines as the eye panel shows for that object.
-- [ ] M7. Walk to a dialog or a mirror and use `act click` on its buttons. Expected: the dialog closes; `save`, `load`, and `new_game` give `close the dialog first (act click or act key)` while it is open.
-- [ ] M8. Send `save`, walk some squares, then send `load`. Expected: the party is back on the saved square; the game time is the saved time plus 1. Send `new_game`. Expected: a new game.
-- [ ] M9. Let the party die. Expected: the reply has `game_over` true; `act`, `wait`, and `save` give `game over`; `load` restores the game.
-- [ ] M10. Run `uv run dm2-play --brief get_state`. Expected: a short text with the party, the champions, and the squares ahead.
-- [ ] M11. Create `playthroughs/current/coordinator/`, run some `dm2-play` calls without `DM2_PLAY_LOG_DIR`, and read `calls.log`. Expected: one line per call. Remove the folder and call again. Expected: no log file is written.
+- [ ] T1. Start the game. Expected: no start menu and no movie; the dungeon view shows at once; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
+- [ ] T2. Send `new_game`. Expected: the party is on the start square (map 0, x 1, y 8, facing north); the reply has `state`.
+- [ ] T3. Send `act nothing`. Expected: the error `unknown action`; the game time and the screen do not change.
+- [ ] T4. Send `uv run dm2-play act take_object '{"cell": 2}'` and `uv run dm2-play act_many '["turn_left", "turn_right"]'`. Expected: the game gets the action and its args (an error text about the cell or the view, or the turn), and the batch runs two turns (`ran` 2).
+- [ ] T5. Watch the window during `act move_forward` and `act turn_left`. Expected: the party walks and turns on the screen; the window ignores the keyboard and the mouse.
+- [ ] T6. Open an inventory and send `act look '{"champion": 0, "slot": 0}'`. Expected: `look` has the same name and lines as the eye panel shows for that object.
+- [ ] T7. Walk to a dialog or a mirror and use `act click` on its buttons. Expected: the dialog closes; `save`, `load`, and `new_game` give `close the dialog first (act click or act key)` while it is open.
+- [ ] T8. Send `save`, walk some squares, then send `load`. Expected: the party is back on the saved square; the game time is the saved time plus 1. Send `new_game`. Expected: a new game.
+- [ ] T9. Let the party die. Expected: the reply has `game_over` true; `act`, `wait`, and `save` give `game over`; `load` restores the game.
+- [ ] T10. Run `uv run dm2-play --brief get_state`. Expected: a short text with the party, the champions, and the squares ahead.
+- [ ] T11. Create `playthroughs/current/coordinator/`, run some `dm2-play` calls without `DM2_PLAY_LOG_DIR`, and read `calls.log`. Expected: one line per call. Remove the folder and call again. Expected: no log file is written.
 
 ## Known deviations
 
