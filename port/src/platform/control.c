@@ -509,7 +509,7 @@ static void handle_request(const char *request)
         if (!get_string(request, "path", path, sizeof path)) send_error("missing path");
         else screenshot(path);
     } else if (!strcmp(cmd, "quit")) {
-        main_loop.quit = 1;
+        main_loop.quit = main_loop.closed = 1;
         send_ok();
     } else {
         send_error("unknown cmd");

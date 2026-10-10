@@ -16,6 +16,7 @@ typedef struct {
     int view_hidden;        /* the viewport shows no dungeon (pause, sleep) */
     int end;                /* the party died or the player quit: the loop stops (g_game_end_flag) */
     int quit;               /* the program ends (session_quit) */
+    int closed;             /* the platform ended the program (closed window, control quit): no end movies */
 } MainLoop;
 
 extern MainLoop main_loop;

@@ -130,7 +130,7 @@ static void pump_events(void)
     PlatEvent e;
     while (plat_poll(&e)) {
         if (e.type == PLAT_QUIT) {
-            main_loop.quit = 1;
+            main_loop.quit = main_loop.closed = 1;
         } else if (e.type == PLAT_KEY) {
             uint16_t key = pc_key_code(e.scancode, e.mod);
             if (key) input_key_down(key);
@@ -158,7 +158,7 @@ static void pump_movie_events(void)
 {
     PlatEvent e;
     while (plat_poll(&e)) {
-        if (e.type == PLAT_QUIT) main_loop.quit = 1;
+        if (e.type == PLAT_QUIT) main_loop.quit = main_loop.closed = 1;
         else if (e.type == PLAT_MOUSE) movie_click();
     }
     control_poll();
@@ -262,7 +262,7 @@ int main(int argc, char **argv)
         plat_wait_tick();
     }
     main_loop.quit = 0;  /* the end movies run until their end, a closed window, or a quit request */
-    play_movies(movie_script_after(session.exit_code));
+    if (!main_loop.closed) play_movies(movie_script_after(session.exit_code));
     control_close();
     music_quit();
     plat_quit();
