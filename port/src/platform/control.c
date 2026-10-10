@@ -193,6 +193,7 @@ long control_get_int(const char *line, const char *key, long missing)
 /* Replies: JSON text in reply. */
 
 /* Appends a short formatted piece to reply. */
+/* Each piece stays under REPLY_LINE_SIZE; text of the game or the request goes through json_strn (put_string). */
 static void put(const char *format, ...)
 {
     char piece[REPLY_LINE_SIZE];
