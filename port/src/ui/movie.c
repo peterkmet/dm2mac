@@ -218,6 +218,10 @@ bool movie_shows_splash(void)
 
 void movie_picture(MoviePicture *p)
 {
+    if (!mv.playing || mv.step == MOVIE_STEP_SPLASH) {
+        *p = (MoviePicture){ 0 };
+        return;
+    }
     const Step *s = &steps[mv.step];
     p->pixels = mve_pixels(&mv.mve);
     p->width = mv.mve.width, p->height = mv.mve.height;
