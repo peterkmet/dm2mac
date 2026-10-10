@@ -22,7 +22,8 @@ DEFAULT_SOCKET = "~/.dm2/control.sock"
 TIMEOUT = 150.0  # a wait of 6000 ticks takes 100 seconds
 LOG_DIR = os.environ.get("DM2_PLAY_LOG_DIR", "playthroughs/current/coordinator")
 LANE = ["here", "ahead", "ahead 2", "ahead 3", "ahead 4"]
-FAR_SIDE = 2  # the squares at this distance from the lane and beyond are "far"
+FAR_SIDE = 2  # the squares at this distance from the lane and beyond show only when they are not a wall
+SIDE_WORDS = {1: "", 2: "far ", 3: "outer "}  # the word of each distance from the lane
 WALL_FEATURES = ("mirror", "switch", "lock", "alcove", "fountain", "shop", "ornament")
 
 
@@ -77,8 +78,7 @@ def square_text(square: dict) -> str:
 
 
 def side_name(side: int) -> str:
-    far = "far " if abs(side) >= FAR_SIDE else ""
-    return far + ("left" if side < 0 else "right")
+    return SIDE_WORDS[abs(side)] + ("left" if side < 0 else "right")
 
 
 def view_lines(view: dict) -> list[str]:
@@ -105,10 +105,12 @@ def view_lines(view: dict) -> list[str]:
 
 
 def place_text(at: dict) -> str:
-    """A seen place: the lane name and the side word of the reply (left_2 is far left)."""
-    side = at["side"]
-    words = "" if side == "center" else " " + ("far " if "_" in side else "") + side.split("_")[0]
-    return LANE[at["depth"]] + words
+    """A seen place: the lane name and the side word of the reply (left_2 is far left, left_3 outer left)."""
+    if at["side"] == "center":
+        return LANE[at["depth"]]
+    word, _, distance = at["side"].partition("_")
+    side = int(distance or 1)
+    return f"{LANE[at['depth']]} {side_name(-side if word == 'left' else side)}"
 
 
 def seen_text(seen: dict) -> str:

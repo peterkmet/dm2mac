@@ -59,6 +59,13 @@ def test_brief_of_the_stops_and_the_look():
     assert "seen: fireball at ahead 2 left; a group of 3 4 at ahead was killed" in text
 
 
+def test_side_words_tell_each_distance_apart():
+    assert [cc.side_name(s) for s in (-3, -2, -1, 1, 2, 3)] == [
+        "outer left", "far left", "left", "right", "far right", "outer right"]
+    assert [cc.place_text({"depth": 1, "side": w}) for w in ("left_3", "left_2", "left", "right_3")] == [
+        "ahead outer left", "ahead far left", "ahead left", "ahead outer right"]
+
+
 def test_brief_of_an_error():
     assert cc.brief({"ok": False, "error": "game over"}) == "error: game over"
 

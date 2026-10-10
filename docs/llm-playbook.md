@@ -224,7 +224,7 @@ uv run dm2-play act look '{"champion": 0, "slot": 1}'
 - `CANDIDATE (not recruited)` while a mirror shows a champion.
 - One line per champion: health (`HP`), stamina (`ST`), mana (`MA`), food, water, `poisoned`, `DEAD`.
 - The open action menu, spell panel, money box, minion map, and dialog; the messages.
-- The view: `here`, `ahead`, `ahead 2` to `ahead 4`, the side squares that hold something, the side passages, the piles (top first), the alcove, and `wall ahead: clickable`.
+- The view: `here`, `ahead`, `ahead 2` to `ahead 4`, the side squares that hold something and the side passages (`left` or `right`, then `far left` or `far right` at 2 squares from the lane, `outer left` or `outer right` at 3 squares), the piles (top first), the alcove, and `wall ahead: clickable`.
 - For `get_map`: the `grid`.
 
 Each call appends a line to `playthroughs/current/coordinator/calls.log`.
@@ -401,7 +401,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 ### View fields
 
 - `facing`, `darkness`.
-- `squares[]`: the visible squares. `depth` is 0 (the party row) to 4. `side` is a number from -3 (far left) to 3 (far right); 0 is the lane of the party. Each square has `x`, `y`, and `element` (`wall`, `floor`, `door`, `pit`, `stairs_up`, `stairs_down`, `teleporter`).
+- `squares[]`: the visible squares. `depth` is 0 (the party row) to 4. `side` is a number from -3 (outer left) to 3 (outer right); 0 is the lane of the party. Each square has `x`, `y`, and `element` (`wall`, `floor`, `door`, `pit`, `stairs_up`, `stairs_down`, `teleporter`).
 - A square that is not a wall has `creatures[]` (`type`, `count`), `objects[]` (`cell`, `name`), and `flying[]`. A door square has `door` (`open`, `closed`, `partly_open`, `broken`) and `button` (`true` when it has a door button). A floor square can have `floor_ornament`: the number of its picture (for example a pressure pad). Record what each number means.
 - `creatures[].type` is the number of the creature type: the game data has no creature names. Give each number a name in `bestiary.md`. A merchant is a creature too.
 - A `flying` entry is `{kind, name}`. A projectile has `kind` `projectile` and the object name, or `spell`. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. Another type gives its number as `name`.
