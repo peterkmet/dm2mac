@@ -43,6 +43,13 @@ enum {
     ZONE_FRONT_WALL_HIGH = 0x2fe
 };
 
+/* What the inventory panel shows (ui.panel_mode). */
+enum { PANEL_MODE_NONE, PANEL_MODE_FOOD, PANEL_MODE_SKILLS, PANEL_MODE_OBJECT, PANEL_MODE_SCROLL = 5,
+       PANEL_MODE_MOUTH = 7 };
+#define STAMINA_DISPLAY_UNIT 10     /* the screen shows the stamina divided by this */
+#define WEIGHT_TENTHS 10            /* weights and loads are in tenths of a kilogram */
+#define SCROLL_TEXT_MODE 0x8002     /* decode a scroll text: no leading new line, also when the text is hidden */
+
 /* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
 enum { UI_INDEX_STATUS = 2, UI_INDEX_ARROWS = 3, UI_INDEX_ACTION = 4, UI_INDEX_FACES = 6 };
 #define UI_KEY 12           /* transparent color of the interface pictures */
@@ -112,6 +119,9 @@ void ui_toggle_inventory(int champ);
 #define OBJECT_INFO_LINES 8
 #define OBJECT_INFO_SIZE 64
 int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE]);
+/* The rank text of a base skill as the skills panel shows it (for example "NOVICE FIGHTER"), in dst (TEXT_SIZE bytes).
+   The master ranks start with a power rune glyph of the font. */
+char *ui_skill_rank_text(int champ, int skill, char *dst);
 /* Closing the inventory redraws the movement arrows (0 while the party falls asleep). */
 extern int inv_arrows_on_close;
 

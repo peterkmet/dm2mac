@@ -42,12 +42,6 @@ enum {
 enum { SKY_LIGHTNING = 0x64, SKY_LIGHTNING_KINDS = 3, SKY_RAIN_LIGHT = 0x67, SKY_RAIN_MEDIUM, SKY_RAIN_HEAVY,
        SKY_CLOUDS_LIGHT, SKY_CLOUDS_MEDIUM, SKY_CLOUDS_HEAVY };
 #define SKY_OBJECT_MAX 5            /* sky objects of the weather, with the end mark */
-#define DARKNESS_RAIN 16
-#define DARKNESS_MEDIUM 64
-#define DARKNESS_HEAVY 128
-#define CLOUDS_SHOWN 64
-#define CLOUDS_MORE 128
-#define CLOUDS_MOST 192
 #define CLOUDS_MAX 255
 #define STORM_MAX 255
 #define STORM_STEPS 32

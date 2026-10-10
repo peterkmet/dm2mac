@@ -67,14 +67,6 @@ static struct {
     uint32_t start, ticks;
 } waiting;
 
-/* The input modes by number (the roots of the input tree in input.c). */
-static const char *const mode_names[] = {
-    [INPUT_MODE_MENU] = "menu", [INPUT_MODE_PICTURE] = "picture", [INPUT_MODE_SLEEP] = "sleep", [INPUT_MODE_PAUSE] = "pause",
-    [INPUT_MODE_DIALOG] = "dialog", [INPUT_MODE_MOVE] = "move", [INPUT_MODE_PUSH] = "push", [INPUT_MODE_RECRUIT] = "recruit",
-    [INPUT_MODE_INVENTORY] = "inventory", [INPUT_MODE_NAME] = "name",
-};
-#define MODE_COUNT ((int)(sizeof mode_names / sizeof mode_names[0]))
-
 /* PC scan codes of the keys without a character; the arrows give the keypad codes that main.c gives them. */
 static const struct { const char *name; uint16_t code; } key_names[] = {
     {"esc", 0x01}, {"backspace", 0x0e}, {"tab", 0x0f}, {"enter", 0x1c}, {"space", 0x39},
@@ -257,7 +249,7 @@ static void send_state(void)
 {
     int mode = input_get_mode();
     bool movie = movie_is_playing();
-    const char *mode_name = movie ? "movie" : mode >= 0 && mode < MODE_COUNT ? mode_names[mode] : "unknown";
+    const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
     put("{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
         mode_name);
     if (movie || mode != INPUT_MODE_DIALOG) put("null");

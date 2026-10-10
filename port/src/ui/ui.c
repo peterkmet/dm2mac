@@ -24,7 +24,6 @@
 #define GAUGE_SHADOW 2
 #define BAR_COUNT 3
 #define SCALE_PARTS 10000
-#define TENTHS 10
 #define FACE_SKIP_COLOR 2           /* the original skips color 2 of the face picture */
 #define DAMAGE_STAR_KEY 10          /* transparent color of the damage star */
 #define NUMBER_DIGITS 3             /* the values of the status boxes and of the inventory have 3 digits */
@@ -50,9 +49,6 @@ enum {
 enum { TEXT_WEIGHT = 0x1f, TEXT_STAT_FIRST = 0x20, TEXT_LOAD = 0x2a };
 /* Inventory buttons: bits of ui.buttons. */
 enum { BUTTON_CLOSE = 1, BUTTON_EXIT = 2, BUTTON_SLEEP = 4, BUTTON_SAVE = 8, BUTTON_SOUND = 0x10, BUTTON_ALL = 0x1f };
-/* Inventory panel modes. */
-enum { PANEL_MODE_NONE, PANEL_MODE_FOOD, PANEL_MODE_SKILLS, PANEL_MODE_OBJECT, PANEL_MODE_SCROLL = 5,
-       PANEL_MODE_MOUTH = 7 };
 /* Object info gauge glyphs and their scales. */
 enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_POTION = 0x75, GLYPH_GAUGE_LEFT = 0x60,
        GLYPH_GAUGE_RIGHT = 0x65 };
@@ -68,7 +64,6 @@ enum { GLYPH_CHARGES = 0x71, GLYPH_STRENGTH = 0x72, GLYPH_THROW = 0x73, GLYPH_PO
 #define DESCRIPTION_LINE 18         /* longer description lines break at a space up to this column */
 #define DESCRIPTION_BREAK 17
 #define SKILL_LEVEL_MAX 16
-#define SCROLL_TEXT_MODE 0x8002     /* decode a scroll text: no leading new line, also when the text is hidden */
 #define SCROLL_LETTER_FIRST 1       /* the scroll font has its letters at 1 to 26 */
 #define SCROLL_HIGH_SHIFT 0xa0      /* characters above 'z' move by this */
 #define SCROLL_PICTURE_ENTRY 0x10
@@ -475,7 +470,8 @@ static void draw_value_pair(int zone, unsigned value, unsigned maximum)
 static void draw_champion_values(const Champion *c)
 {
     draw_value_pair(ZONE_HEALTH_VALUE, (uint16_t)c->health, (uint16_t)c->max_health);
-    draw_value_pair(ZONE_STAMINA_VALUE, (uint16_t)(c->stamina / TENTHS), (uint16_t)(c->max_stamina / TENTHS));
+    draw_value_pair(ZONE_STAMINA_VALUE, (uint16_t)(c->stamina / STAMINA_DISPLAY_UNIT),
+                    (uint16_t)(c->max_stamina / STAMINA_DISPLAY_UNIT));
     draw_value_pair(ZONE_MANA_VALUE, (uint16_t)c->mana, (uint16_t)c->max_mana);
 }
 
@@ -800,8 +796,8 @@ static int draw_object_info(uint16_t thing, int full)
     text_draw_in_zone(ZONE_OBJECT_NAME, ui_colors[UI_LIGHT_GRAY], item_name(thing));
     draw_slot(thing, SLOT_INFO, 0, 0, 0);
     uint16_t weight = (uint16_t)item_weight(thing);
-    text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / TENTHS);
-    text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % TENTHS);
+    text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
+    text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
     char text[TEXT_SIZE];
     draw_description_text(text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_CONTAINER) {
@@ -886,8 +882,8 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
     int type = thing_type(thing);
     int count = info_add(lines, 0, "%s", item_name(thing));
     uint16_t weight = (uint16_t)item_weight(thing);
-    text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / TENTHS);
-    text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % TENTHS);
+    text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
+    text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
     char text[TEXT_SIZE * 2];
     count = info_add_text(lines, count, text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_SCROLL)
@@ -927,6 +923,14 @@ static void draw_mouth_picture(void)
     ui.panel_mode = PANEL_MODE_MOUTH;
 }
 
+char *ui_skill_rank_text(int champ, int skill, char *dst)
+{
+    int level = champ_get_skill_level(champ, skill, 1);
+    if (level > SKILL_LEVEL_MAX) level = SKILL_LEVEL_MAX;
+    text_args.entry = (uint8_t)skill;
+    return text_gdat(CAT_PANEL, 0, skill_level_texts[level], dst);
+}
+
 /* Draws the skill levels and the statistics of the champion in the inventory panel. */
 static void draw_skills_and_statistics(void)
 {
@@ -938,11 +942,8 @@ static void draw_skills_and_statistics(void)
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_PANEL, ZONE_INVENTORY_PANEL, UI_OPAQUE);
     zone_get_position(ZONE_SKILLS, &x, &y);
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
-        int level = champ_get_skill_level(champ, skill, 1);
-        if (level > SKILL_LEVEL_MAX) level = SKILL_LEVEL_MAX;
-        if (level == 1) continue;
-        text_args.entry = (uint8_t)skill;
-        text_gdat(CAT_PANEL, 0, skill_level_texts[level], text);
+        if (champ_get_skill_level(champ, skill, 1) == 1) continue;
+        ui_skill_rank_text(champ, skill, text);
         text_draw_in_viewport(x, y, ui_colors[champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
         cache.shown_raised[skill] = champ_skill_raised[champ][skill];
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
@@ -978,9 +979,9 @@ static void draw_load(int champ)
     uint16_t load = (uint16_t)champ_get_load(champ);
     int16_t max_load = (int16_t)champ_get_max_load(champion(champ));
     int color = load > max_load ? UI_RED : load * LOAD_HIGH_WHOLE > max_load * LOAD_HIGH_PARTS ? UI_YELLOW : UI_LIGHT_GRAY;
-    text_args.number[ARG_LOAD_KG] = (int16_t)(load / TENTHS);
-    text_args.number[ARG_LOAD_TENTHS] = (int16_t)(load % TENTHS);
-    text_args.number[ARG_LOAD_MAX_KG] = (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / TENTHS);
+    text_args.number[ARG_LOAD_KG] = (int16_t)(load / WEIGHT_TENTHS);
+    text_args.number[ARG_LOAD_TENTHS] = (int16_t)(load % WEIGHT_TENTHS);
+    text_args.number[ARG_LOAD_MAX_KG] = (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS);
     char text[TEXT_SIZE];
     text_draw_in_zone_with_shadow(ZONE_LOAD, ui_colors[color], ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
                                   text_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
