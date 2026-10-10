@@ -231,7 +231,7 @@ Feature: Turn-based mode
 | Window input | Only the quit event. | As in `dm`: the window is for watching. |
 | Start | A new game without the start menu; `--save` loads. | As in `dm`: a run starts without clicks on menus. |
 | Save slot | One slot, `QUICK.DAT` in `--saves DIR`, with the quick save code. | As in `dm` (one slot). The quick save code already keeps the AMAP block and the run needs its own folder. |
-| Start of a run | `new_game`, then `save`; the player recruits the champions. | DM2 has no start party in the game files. The recruits are part of the play; the template has no save file. |
+| Start of a run | `new_game`, then `save`; the player recruits the other champions. | A new DM2 game starts with one champion (Torham). The recruits are part of the play; the template has no save file. |
 | Game completed | `game_over` with `dead` false; the program stays. | As in `dm`. The coordinator reads the result and ends the run. |
 | Cheats and automap keys | Off. | As in `dm`: the runs measure the player, not the cheats. `get_map` gives the automap. |
 | Turn end | `game.party_move_cooldown`, `party.move_steps`, and `in.wait` are 0 after at least 2 game steps; at most 64 game steps. | As in `dm` with the DM2 counters: the party square changes only at the end of the walk (`party.move_steps`). The plan checks the limits. |
@@ -241,6 +241,14 @@ Feature: Turn-based mode
 | Reply size | One growing buffer for all replies; `reply too long` goes away. | A state with four champions and a view is longer than 4096 bytes. One buffer is less state than two; a reply that fits keeps its bytes. |
 | Names in the JSON | Objects: `item_name` (GDAT). Creatures, explosions, floor and wall ornaments: a named `const` table in `platform/state_json.c`, as in `dm`; an entry without a name gives the index. | The original shows only pictures; a table is one place to extend. |
 | `recruit` | `choice` `join` or `cancel`. | DM2 has two recruit buttons (`CMD_RECRUIT`, `CMD_RECRUIT_CANCEL`), not the resurrect and reincarnate of DM. |
+| Slot names | `ready_quiver_1/2`, `action_quiver_1-4`, `neck`, `backpack_1` to `backpack_17`; chest slots 30-37. | From the run: the names follow the DM2 inventory picture and the hand load order of `champion.h`; DM2 has no pouch slots. |
+| What the view shows | `get_view` uses the wall face table and the per-square limits of the DM2 view, with the square aspect (far row, door front, the party square during a walk). | From the run: the rule of `dm` shows things that the DM2 view does not draw (Invariant 4). The exceptions are in `docs/skull-formats.md`. |
+| Reads keep the game | `get_state` saves and restores `random_seed`; `weather` shows rain and clouds only when the sky has their picture, and `wind` only while rain shows. | From the run: a stat aura makes `champ_get_stat` draw a random number (Invariant 1); the wind is visible only in the rain (Invariant 4). |
+| Failed load | A failed `load` of a damaged `QUICK.DAT` advances one game step. | From the run: the restore from `QUICK.TMP` runs the session start of the advanced mode. A fix changes the advanced mode. Recorded in `docs/skull-formats.md`. |
+| `save` while asleep or paused | Allowed; the load gives an awake party in move mode. | From the run: the save has no sleep state. The playbook says it. |
+| Reconnect after a reply | A client that connects right after a reply is not `busy`. | From the run: `dm2-play` connects once per call; the old check refused it when the game had not yet read the end of the last client. Fixed in all modes. |
+| Call log folder | `dm2-play` writes the call log only when its folder exists; the coordinator creates the run folders first. | From the run. |
+| Player commands | The player does not send `quit` or `new_game`. | From the run: the coordinator owns the game process and the start of a run. |
 
 ## Known consequences
 
