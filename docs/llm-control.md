@@ -229,7 +229,6 @@ To reach the start menu fast: `click` until `state` gives another mode. In the `
 | `request line too long` | A line of more than 4095 bytes before its newline. |
 | `request line has a NUL byte` | The line has a byte 0. |
 | `busy` | Another client is connected. |
-| `reply too long` | The reply does not fit in 4096 bytes. |
 
 ## View a screenshot as an LLM
 

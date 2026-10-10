@@ -357,17 +357,18 @@ def test_bad_unicode_escapes_are_not_hex_digits(control, lib):
         assert raw_lines(path, data, 2) == [{"ok": False, "error": "unknown key"}] * 2
 
 
-def test_too_long_reply_is_one_error_line(control, lib, tmp_path):
-    path, *_ = control
-    folder = tmp_path
-    for _ in range(4):  # 800 control characters, each 6 bytes as a JSON escape: more than a reply holds
-        folder = folder / ("\x01" * 200)
-    folder.mkdir(parents=True)
-    raw_path = str(folder / "a.png").encode()  # raw bytes 1 in the request: it stays short
-    data = b'{"cmd": "screenshot", "path": "' + raw_path + b'"}\n{"cmd": "state"}\n'
-    with pumped(lib, ticks=False):
-        too_long, state = raw_lines(path, data, 2)
-    assert too_long == {"ok": False, "error": "reply too long"} and state["ok"]
+def test_a_long_reply_arrives_whole(lib):
+    """The JSON writer grows past 4096 bytes and keeps valid JSON (no reply size limit)."""
+    class Json(ctypes.Structure):
+        _fields_ = [("s", ctypes.c_void_p), ("len", ctypes.c_size_t), ("cap", ctypes.c_size_t)]
+    j = Json()
+    lib.json_open(ctypes.byref(j), ord("["))
+    for _ in range(1000):
+        lib.json_str(ctypes.byref(j), "caf\u00e9 \"q\"\n".encode())
+    lib.json_close(ctypes.byref(j), ord("]"))
+    text = ctypes.string_at(j.s, j.len).decode()
+    assert len(text) > 4096 and json.loads(text) == ["caf\u00e9 \"q\"\n"] * 1000
+    ctypes.CDLL(None).free(ctypes.c_void_p(j.s))
 
 
 def test_open_replaces_a_stale_socket(control, lib):

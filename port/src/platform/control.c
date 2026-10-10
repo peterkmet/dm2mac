@@ -21,12 +21,12 @@
 #include "le.h"
 #include "movie.h"
 #include "save.h"
+#include "state_json.h"
 #include "ui.h"
 #include "video.h"
 
 #define INPUT_SIZE 4096               /* a request line up to its newline */
-#define REPLY_SIZE 4096
-#define REPLY_RESERVE 2               /* the newline and the end mark of a reply */
+#define REPLY_LINE_SIZE 256           /* one piece of a reply written by put */
 #define ERROR_SIZE 64
 #define NAME_SIZE 32
 #define WAIT_MAX_TICKS 6000
@@ -59,9 +59,7 @@ static char socket_path[sizeof(((struct sockaddr_un *)0)->sun_path)];
 static char input[INPUT_SIZE];
 static size_t input_length;
 static int discarding;                /* the rest of a too long line goes up to its newline */
-static char reply[REPLY_SIZE];
-static size_t reply_length;
-static int reply_overflow;
+static Json reply;
 
 /* A wait request: the reply goes out when main_loop.timer_ticks reached start + ticks. */
 static struct {
@@ -112,7 +110,7 @@ static uint16_t key_code(const char *name)
 
 /* Requests: a flat search for "key": value. */
 
-static const char *find_value(const char *line, const char *key)
+const char *control_find_value(const char *line, const char *key)
 {
     char pattern[NAME_SIZE + 2];
     snprintf(pattern, sizeof pattern, "\"%s\"", key);
@@ -156,10 +154,10 @@ static int put_utf8(char *out, size_t size, size_t *n, long c)
 
 /* The JSON string value of key, decoded (escapes, \uXXXX to UTF-8); 0 when it is missing, bad, too long, or has a
    NUL character. */
-static int get_string(const char *line, const char *key, char *out, size_t size)
+int control_get_string(const char *line, const char *key, char *out, size_t size)
 {
     static const char escapes[] = "\"\"\\\\//b\bf\fn\nr\rt\t";
-    const char *p = find_value(line, key);
+    const char *p = control_find_value(line, key);
     size_t n = 0;
     if (!p || *p++ != '"') return 0;
     while (*p != '"') {
@@ -189,9 +187,9 @@ static int get_string(const char *line, const char *key, char *out, size_t size)
     return 1;
 }
 
-static long get_int(const char *line, const char *key, long missing)
+long control_get_int(const char *line, const char *key, long missing)
 {
-    const char *p = find_value(line, key);
+    const char *p = control_find_value(line, key);
     char *end;
     if (!p) return missing;
     long value = strtol(p, &end, DECIMAL_BASE);
@@ -200,30 +198,22 @@ static long get_int(const char *line, const char *key, long missing)
 
 /* Replies: JSON text in reply. */
 
-/* Appends to reply; a reply that does not fit becomes an error reply in send_reply. */
+/* Appends a short formatted piece to reply. */
 static void put(const char *format, ...)
 {
-    size_t room = sizeof reply - reply_length - REPLY_RESERVE + 1;
+    char piece[REPLY_LINE_SIZE];
     va_list args;
     va_start(args, format);
-    int n = vsnprintf(reply + reply_length, room, format, args);
+    vsnprintf(piece, sizeof piece, format, args);
     va_end(args);
-    if (n < 0 || (size_t)n >= room) reply_overflow = 1;
-    else reply_length += (size_t)n;
+    json_raw(&reply, piece);
 }
 
 /* A JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). The game
    texts of GRAPHICS.DAT (701 entries) are ASCII, so only request text can bring other bytes. */
 static void put_string(const char *text, size_t n)
 {
-    put("\"");
-    for (size_t i = 0; i < n && text[i]; i++) {
-        unsigned char c = (unsigned char)text[i];
-        if (c == '"' || c == '\\') put("\\%c", c);
-        else if (c < ' ') put("\\u%04x", c);
-        else put("%c", c);
-    }
-    put("\"");
+    json_strn(&reply, text, n);
 }
 
 static void close_client(void)
@@ -238,18 +228,13 @@ static void close_client(void)
 /* Sends reply as one line and clears it. */
 static void send_reply(void)
 {
-    if (reply_overflow) {
-        reply_overflow = 0;
-        reply_length = 0;
-        put("{\"ok\":false,\"error\":\"reply too long\"}");
-    }
-    reply[reply_length++] = '\n';
-    for (size_t sent = 0; client_fd >= 0 && sent < reply_length;) {
-        ssize_t n = send(client_fd, reply + sent, reply_length - sent, SEND_FLAGS);
+    json_raw(&reply, "\n");
+    for (size_t sent = 0; client_fd >= 0 && sent < reply.len;) {
+        ssize_t n = send(client_fd, reply.s + sent, reply.len - sent, SEND_FLAGS);
         if (n <= 0) close_client();
         else sent += (size_t)n;
     }
-    reply_length = 0;
+    reply.len = 0;
 }
 
 static void send_ok(void)
@@ -419,7 +404,7 @@ static void screenshot(const char *path)
 /* A screen position of a request; 0 with an error reply when it is missing or off the screen. */
 static int get_position(const char *request, int *x, int *y)
 {
-    long px = get_int(request, "x", -1), py = get_int(request, "y", -1);
+    long px = control_get_int(request, "x", -1), py = control_get_int(request, "y", -1);
     char error[ERROR_SIZE];
     if (px >= 0 && py >= 0 && px < SCREEN_W && py < SCREEN_H) {
         *x = (int)px, *y = (int)py;
@@ -433,8 +418,8 @@ static int get_position(const char *request, int *x, int *y)
 static void handle_key(const char *request)
 {
     char name[NAME_SIZE];
-    long code = get_int(request, "key", 0);
-    if (get_string(request, "key", name, sizeof name)) code = key_code(name);
+    long code = control_get_int(request, "key", 0);
+    if (control_get_string(request, "key", name, sizeof name)) code = key_code(name);
     if (code <= 0 || code > KEY_CODE_MAX) {
         send_error("unknown key");
         return;
@@ -450,7 +435,7 @@ static void handle_button(const char *request, int down, int up)
     char button[NAME_SIZE] = "left";
     int x, y;
     if (!get_position(request, &x, &y)) return;
-    get_string(request, "button", button, sizeof button);
+    control_get_string(request, "button", button, sizeof button);
     int right = !strcmp(button, "right");
     if (!right && strcmp(button, "left")) {
         send_error("button must be left or right");
@@ -471,7 +456,7 @@ static void handle_request(const char *request)
 {
     char cmd[NAME_SIZE], path[PATH_MAX];
     int x, y;
-    if (!get_string(request, "cmd", cmd, sizeof cmd)) {
+    if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         send_error("missing cmd");
     } else if (!strcmp(cmd, "state")) {
         send_state();
@@ -488,14 +473,14 @@ static void handle_request(const char *request)
         input_mouse_x = x, input_mouse_y = y;
         send_ok();
     } else if (!strcmp(cmd, "command")) {
-        long id = get_int(request, "id", -1);
+        long id = control_get_int(request, "id", -1);
         if (id < 0 || id > KEY_CODE_MAX) send_error("missing id");
         else {
             if (!movie_is_playing()) input_simulate_command_click((uint16_t)id);
             send_ok();
         }
     } else if (!strcmp(cmd, "wait")) {
-        long ticks = get_int(request, "ticks", 0);
+        long ticks = control_get_int(request, "ticks", 0);
         if (ticks < 1 || ticks > WAIT_MAX_TICKS) {
             char error[ERROR_SIZE];
             snprintf(error, sizeof error, "ticks must be 1-%d", WAIT_MAX_TICKS);
@@ -506,7 +491,7 @@ static void handle_request(const char *request)
             waiting.ticks = (uint32_t)ticks;
         }
     } else if (!strcmp(cmd, "screenshot")) {
-        if (!get_string(request, "path", path, sizeof path)) send_error("missing path");
+        if (!control_get_string(request, "path", path, sizeof path)) send_error("missing path");
         else screenshot(path);
     } else if (!strcmp(cmd, "quit")) {
         main_loop.quit = main_loop.closed = 1;
