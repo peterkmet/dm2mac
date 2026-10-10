@@ -9,7 +9,6 @@
 #include "sensor.h"
 
 #define FAKE_WALL_FLOOR_SQUARE 1    /* the square byte that the floor things see on an open fake wall */
-#define SIDE_FRONT 2                /* the wall face that looks at the party */
 #define MAP_KEY_FLOOR_ORNAMENT 0x6b /* (CAT_WALLSET, graphics set, 0x0b, key): ornament on every floor square, bit 15: animated */
 #define ORN_KEY_FRAMES 0x0d         /* (category, ornament, 0x0b, key): animation frames, bit 15: frames start at 1 */
 #define FRAMES_FROM_ONE 0x8000

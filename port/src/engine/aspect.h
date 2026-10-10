@@ -35,6 +35,7 @@ static inline uint8_t aspect_word_ornament(uint16_t w) { return (uint8_t)w; }
 #define ORNAMENT_PLATE 0            /* a text plate instead of a wall ornament */
 /* View square sides by aspect. */
 enum { SIDE_DOOR_STATE = 0, SIDE_DOOR_THING = 1, SIDE_FLOOR_ORNAMENT = 2, SIDE_STAIRS_UP = 0, SIDE_PIT_UP = 0 };
+#define SIDE_FRONT 2                /* the wall face that looks at the party */
 #define SIDE_SHOP_FLAG 3            /* floor: a shop display there sets it to 0 (read by the things drawing, 12b) */
 /* Value of a view square that the original reads as "no thing" or "none". */
 #define THING_TEXT_NONE 0xffff
@@ -53,6 +54,8 @@ enum sensor_type {
 };
 #define SENSOR_ALTAR_SHOWN SENSOR_STATE
 #define ORN_KEY_KIND 0x0a           /* (category, ornament, 0x0b, key): wall ornament kind; door: zone row of the damage picture */
+/* The values of ORN_KEY_KIND of a wall ornament: what the ornament holds. */
+enum wall_ornament_kind { KIND_ALCOVE = 1, KIND_SHOP = 2, KIND_PORTRAIT = 3 };
 #define WALL_TEXT_SIZE 128          /* a GDAT text of the map or ornament pictures */
 
 /* The 5 x 5 grid of the cells of a square and its neighbours (aspect_cell_to_xy), row by row. */

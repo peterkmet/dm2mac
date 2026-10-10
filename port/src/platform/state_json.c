@@ -4,7 +4,9 @@
 #include <string.h>
 #include "state_json.h"
 #include "action.h"
+#include "aspect.h"
 #include "champion.h"
+#include "creature.h"
 #include "dialog.h"
 #include "dungeon.h"
 #include "game.h"
@@ -14,10 +16,14 @@
 #include "item.h"
 #include "magic.h"
 #include "minion.h"
+#include "minion_map.h"
 #include "money.h"
+#include "projectile.h"
 #include "random.h"
 #include "move.h"
 #include "save.h"
+#include "seen.h"
+#include "sensor.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
@@ -30,6 +36,8 @@
 #define RUNE_NAME_COUNT (CHAMPION_RUNES_SIZE * SPELL_RUNES_PER_SET)   /* the power runes and three rune sets */
 #define RUNE_NAME_MAX 4               /* the letters of the longest rune name */
 #define SCROLL_TEXT_SIZE (TEXT_SIZE * 2)   /* a decoded scroll text, as the scroll panel holds it */
+#define MAP_GRID_PREFIX 3             /* the "yy " in front of each grid row */
+#define PILE_ALCOVE CELL_COUNT        /* the cell number of the alcove pile, after the 4 floor cells */
 
 /* Appends n bytes; the buffer doubles when they do not fit. */
 static void put(Json *j, const char *text, size_t n)
@@ -603,10 +611,478 @@ void state_json_state(Json *j)
     random_seed = seed;
 }
 
+/* ---- The view and the map ---- */
+
+/* The view sides from the far left to the far right. */
+static const char *const side_names[VIEW_WIDTH] = {"left_3", "left_2", "left", "center", "right", "right_2", "right_3"};
+/* Explosion names by explosion type (the spell things from SPELL_THING_FIRST). */
+static const char *const explosion_names[] = {
+    [SPELL_FIREBALL - SPELL_THING_FIRST] = "fireball", [SPELL_SLIME - SPELL_THING_FIRST] = "slime",
+    [SPELL_LIGHTNING - SPELL_THING_FIRST] = "lightning",
+    [SPELL_HARM_NON_MATERIAL - SPELL_THING_FIRST] = "harm_non_material",
+    [SPELL_DOOR_TOGGLE - SPELL_THING_FIRST] = "door_toggle", [SPELL_POISON_BOLT - SPELL_THING_FIRST] = "poison_bolt",
+    [SPELL_POISON_CLOUD - SPELL_THING_FIRST] = "poison_cloud", [SPELL_PUSH - SPELL_THING_FIRST] = "push",
+    [SPELL_PULL - SPELL_THING_FIRST] = "pull", [SPELL_DOOR_SET - SPELL_THING_FIRST] = "door_set",
+    [SPELL_MISSILE_WALL - SPELL_THING_FIRST] = "missile_wall", [EXPLOSION_DEATH_CLOUD - SPELL_THING_FIRST] = "death_cloud",
+    [EXPLOSION_STORM_LIGHTNING - SPELL_THING_FIRST] = "storm_lightning",
+    [EXPLOSION_STORM_BLAST - SPELL_THING_FIRST] = "storm_blast", [EXPLOSION_SMOKE - SPELL_THING_FIRST] = "smoke",
+};
+#define EXPLOSION_NAME_COUNT (sizeof explosion_names / sizeof explosion_names[0])
+/* Creature names by creature type: no names in the game data; add a name here when a player names it. */
+static const char *const creature_names[CREATURE_INFO_COUNT] = {0};
+
+const char *state_json_side_name(int side)
+{
+    return side >= -VIEW_HALF_WIDTH && side <= VIEW_HALF_WIDTH ? side_names[side + VIEW_HALF_WIDTH] : "unknown";
+}
+
+void state_json_explosion_name(Json *j, uint16_t type)
+{
+    if (type < EXPLOSION_NAME_COUNT && explosion_names[type]) json_str(j, explosion_names[type]);
+    else json_int(j, type);
+}
+
+void state_json_creature_name(Json *j, uint16_t type)
+{
+    if (type < CREATURE_INFO_COUNT && creature_names[type]) json_str(j, creature_names[type]);
+    else json_int(j, type);
+}
+
+/* Where the view stands: the party square, or the walk position while the party walks. */
+static void view_place(int *x, int *y, int *dir)
+{
+    *x = party.move_steps ? party.view_x : game.party_x;
+    *y = party.move_steps ? party.view_y : game.party_y;
+    *dir = (party.move_steps ? party.view_dir : game.party_dir) & DIR_MASK;
+}
+
+/* The squares that the view shows now (seen_visible); returns the count. */
+static int visible_squares(SeenSquare out[SEEN_VISIBLE_MAX])
+{
+    int x, y, dir;
+    view_place(&x, &y, &dir);
+    return seen_visible(game.party_map, x, y, dir, out, SEEN_VISIBLE_MAX);
+}
+
+static bool on_party_map(int x, int y)
+{
+    return x >= 0 && y >= 0 && x < dungeon_map_width(game.party_map) && y < dungeon_map_height(game.party_map);
+}
+
+/* The look of a square: a fake wall is a wall until it opens; a closed pit and a teleporter that is off or not
+   visible are floor; a square off the map is a wall. */
+static const char *element_name(int x, int y)
+{
+    if (!on_party_map(x, y)) return "wall";
+    uint8_t square = dungeon_square(game.party_map, x, y);
+    switch (square_type(square)) {
+    case SQUARE_FLOOR: return "floor";
+    case SQUARE_PIT: return square & SQUARE_PIT_OPEN ? "pit" : "floor";
+    case SQUARE_STAIRS: return square & SQUARE_STAIRS_UP ? "stairs_up" : "stairs_down";
+    case SQUARE_DOOR: return "door";
+    case SQUARE_TELEPORTER:
+        return square & SQUARE_TELEPORTER_ON && square & SQUARE_TELEPORTER_VISIBLE ? "teleporter" : "floor";
+    case SQUARE_FAKE_WALL: return square & SQUARE_FAKE_WALL_OPEN ? "floor" : "wall";
+    }
+    return "wall";
+}
+
+static bool is_wall(int x, int y) { return !strcmp(element_name(x, y), "wall"); }
+
+static const char *door_state_name(int state)
+{
+    switch (state) {
+    case DOOR_STATE_OPEN: return "open";
+    case DOOR_STATE_CLOSED: return "closed";
+    case DOOR_STATE_BROKEN: return "broken";
+    }
+    return "partly_open";
+}
+
+static bool is_object(uint16_t thing) { return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC; }
+
+/* True when the view draws thing on the square at view position pos. */
+static bool thing_shown(uint16_t thing, int pos)
+{
+    unsigned draws = view_draws(pos);
+    switch (thing_type(thing)) {
+    case THING_GROUP: return (draws & VIEW_DRAWS_CREATURES) != 0;
+    case THING_PROJECTILE: return (draws & VIEW_DRAWS_MISSILES) != 0;
+    case THING_EXPLOSION: return (draws & VIEW_DRAWS_EXPLOSIONS) != 0;
+    }
+    return is_object(thing) && draws & VIEW_DRAWS_OBJECTS;
+}
+
+int state_json_visible_things(uint16_t type, StateJsonSeenThing *out, int max)
+{
+    SeenSquare squares[SEEN_VISIBLE_MAX];
+    int count = visible_squares(squares), n = 0;
+    for (int i = 0; i < count; i++) {
+        const SeenSquare *q = &squares[i];
+        int pos = view_position(q->depth, q->side);
+        if (is_wall(q->x, q->y)) continue;
+        for (uint16_t t = dungeon_square_first_thing(game.party_map, q->x, q->y); t != THING_ENDOFLIST;
+             t = dungeon_next_thing(t))
+            if (thing_type(t) == type && thing_shown(t, pos) && n < max)
+                out[n++] = (StateJsonSeenThing){q->depth, q->side, q->x, q->y, t};
+    }
+    return n;
+}
+
+int state_json_visible_groups(uint16_t groups[STATE_JSON_VISIBLE_GROUPS_MAX])
+{
+    StateJsonSeenThing things[STATE_JSON_VISIBLE_GROUPS_MAX];
+    int count = state_json_visible_things(THING_GROUP, things, STATE_JSON_VISIBLE_GROUPS_MAX);
+    for (int i = 0; i < count; i++) groups[i] = things[i].thing;
+    return count;
+}
+
+/* A flying thing: a projectile with the name of its object ("spell" for a spell), or an explosion with its type. */
+static void flying_json(Json *j, uint16_t thing)
+{
+    json_open(j, '{');
+    if (thing_type(thing) == THING_PROJECTILE) {
+        uint16_t payload = thing_word(thing, PROJECTILE_PAYLOAD);
+        key_str(j, "kind", "projectile");
+        json_key(j, "name");
+        if (payload < SPELL_THING_FIRST && is_object(payload)) trimmed(j, item_name(payload), TEXT_SIZE);
+        else json_str(j, "spell");
+    } else {
+        key_str(j, "kind", "explosion");
+        key_int(j, "type", explosion_type(thing));
+        json_key(j, "name");
+        state_json_explosion_name(j, explosion_type(thing));
+    }
+    json_close(j, '}');
+}
+
+/* Appends list (a JSON array text) under key and frees it. */
+static void key_list(Json *j, const char *key, Json *list)
+{
+    json_close(list, ']');
+    json_key(j, key);
+    json_raw(j, list->s);
+    free(list->s);
+}
+
+/* The creature groups (one creature each), the objects by cell (seen from the party), and the flying things that
+   the view draws on the square at view position pos. */
+static void square_things_json(Json *j, int pos, int x, int y, int dir)
+{
+    Json creatures = {0}, objects = {0}, flying = {0};
+    json_open(&creatures, '[');
+    json_open(&objects, '[');
+    json_open(&flying, '[');
+    for (uint16_t t = dungeon_square_first_thing(game.party_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+        if (!thing_shown(t, pos)) continue;
+        if (thing_type(t) == THING_GROUP) {
+            json_open(&creatures, '{');
+            json_key(&creatures, "type");
+            state_json_creature_name(&creatures, group_creature(t));
+            key_int(&creatures, "count", 1);
+            json_close(&creatures, '}');
+        } else if (is_object(t)) {
+            json_open(&objects, '{');
+            key_str(&objects, "cell", party_cell_names[dir_relative(thing_cell(t), dir)]);
+            json_key(&objects, "name");
+            trimmed(&objects, item_name(t), TEXT_SIZE);
+            json_close(&objects, '}');
+        } else {
+            flying_json(&flying, t);
+        }
+    }
+    key_list(j, "creatures", &creatures);
+    key_list(j, "objects", &objects);
+    key_list(j, "flying", &flying);
+}
+
+/* The door state, and the door button when the view draws the door. */
+static void door_json(Json *j, int pos, int x, int y)
+{
+    key_str(j, "door", door_state_name(dungeon_square(game.party_map, x, y) & SQUARE_DOOR_STATE));
+    uint16_t door = dungeon_square_first_thing(game.party_map, x, y);
+    if (view_draws(pos) & VIEW_DRAWS_DOOR && door != THING_ENDOFLIST && thing_type(door) == THING_DOOR)
+        key_bool(j, "button", door_has_button(door));
+}
+
+/* The item that the display of a shown wall shop holds, as {"shop": name}; true when no item is chosen. */
+static void shop_json(Json *j, uint16_t shop)
+{
+    json_key(j, "shop");
+    if (thing_type(shop) != THING_SENSOR || !sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD)) {
+        json_bool(j, 1);
+        return;
+    }
+    int x = sensor_target_x(shop), y = sensor_target_y(shop);
+    for (uint16_t t = aspect_first_thing(game.party_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
+         t = dungeon_next_thing(t)) {
+        if (thing_type(t) != THING_SENSOR || sensor_type(t) != SENSOR_SHOP) continue;
+        uint16_t item = sensor_data(t);
+        char name[TEXT_SIZE];
+        trimmed(j, text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), ITEM_NAME_ENTRY, name),
+                TEXT_SIZE);
+        return;
+    }
+    json_bool(j, 1);
+}
+
+/* A wall sensor or ornament text on the face: "switch" for a click switch, "lock" (the ornament) for one that takes
+   an object. Returns false when the face has neither. */
+static bool wall_sensors_json(Json *j, int ornament, int face, int x, int y)
+{
+    bool click = false, takes = false;
+    for (uint16_t t = aspect_first_thing(game.party_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
+         t = dungeon_next_thing(t)) {
+        if (thing_cell(t) != face) continue;
+        if (thing_type(t) == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
+            int sub = text_subtype(t);
+            click |= sub == SUBTYPE_HAND_SWITCH;
+            takes |= sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER;
+        }
+        if (thing_type(t) != THING_SENSOR || !sensor_ornament_ordinal(t)) continue;
+        switch (sensor_type(t)) {
+        case WALL_CLICK_ANY: case WALL_CLICK_EMPTY_HAND: case WALL_CLICK_TOGGLE: case WALL_CLICK_BUTTON:
+        case WALL_CLICK_BUTTON_2: case WALL_CLICK_DOOR_BUTTON: case WALL_CLICK_TELEPORT:
+            click = true;
+            break;
+        case WALL_CLICK_ITEM: case WALL_CLICK_CHARGED_ITEM: case WALL_CLICK_COUNTED_ITEM: case WALL_ITEM_HOLDER:
+        case WALL_ANY_ITEM: case WALL_ITEM: case WALL_NOT_ITEM:
+            takes = true;
+            break;
+        }
+    }
+    if (click) key_bool(j, "switch", 1);
+    if (takes) key_int(j, "lock", ornament);
+    return click || takes;
+}
+
+/* What a wall ornament on the face holds: a mirror, an alcove, a shop, a fountain, a switch or a lock; else the
+   ornament index. */
+static void wall_ornament_json(Json *j, const ViewSquare *s, int k, int face, int x, int y)
+{
+    int ornament = aspect_word_ornament(s->side[k]);
+    int kind = aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_KIND);
+    if (kind == KIND_PORTRAIT) key_bool(j, "mirror", 1);
+    else if (kind == KIND_ALCOVE) key_bool(j, "alcove", 1);
+    else if (kind == KIND_SHOP) shop_json(j, k == SIDE_FRONT ? s->text : THING_TEXT_NONE);
+    else if (aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORNAMENT_KEY_TOUCH)) key_bool(j, "fountain", 1);
+    else if (!wall_sensors_json(j, ornament, face, x, y)) key_int(j, "ornament", ornament);
+}
+
+/* The wall face k of s (a view side word: TURN_RIGHT, SIDE_FRONT, TURN_LEFT) under key, when it shows something. A
+   text plate gives its text on the front face (null where the view draws no text). */
+static void wall_face_json(Json *j, const char *key, const ViewSquare *s, int k, int dir, int x, int y)
+{
+    int ornament = aspect_word_ornament(s->side[k]), face = dir_turn(dir, k);
+    if (ornament == ORNAMENT_NONE) return;
+    json_key(j, key);
+    json_open(j, '{');
+    key_str(j, "facing", direction_names[face]);
+    if (ornament != ORNAMENT_PLATE) {
+        wall_ornament_json(j, s, k, face, x, y);
+    } else if (k == SIDE_FRONT && thing_type(s->text) == THING_TEXT) {
+        char text[SCROLL_TEXT_SIZE];
+        key_str(j, "text", text_decode_dungeon(text, sizeof text, s->text, 0));
+    } else {
+        json_key(j, "text");
+        json_null(j);
+    }
+    json_close(j, '}');
+}
+
+/* The wall faces that the view draws on the wall square at view position pos and side. */
+static void wall_faces_json(Json *j, int pos, int side, int dir, int x, int y)
+{
+    ViewSquare s;
+    aspect_get(&s, game.party_map, dir, x, y);
+    unsigned draws = view_draws(pos);
+    if (draws & VIEW_DRAWS_SIDE_FACE) wall_face_json(j, "side_face", &s, side < 0 ? TURN_RIGHT : TURN_LEFT, dir, x, y);
+    if (draws & VIEW_DRAWS_FRONT_FACE) wall_face_json(j, "front_face", &s, SIDE_FRONT, dir, x, y);
+}
+
+/* The floor ornament index of a floor, pit, or teleporter square; ORNAMENT_NONE for none. */
+static int floor_ornament(int dir, int x, int y)
+{
+    ViewSquare s;
+    aspect_get(&s, game.party_map, dir, x, y);
+    if (s.aspect != ASPECT_FLOOR && s.aspect != ASPECT_PIT && s.aspect != ASPECT_TELEPORTER) return ORNAMENT_NONE;
+    return aspect_word_ornament(s.side[SIDE_FLOOR_ORNAMENT]);
+}
+
+/* A square of the view: row, side, position, element, and what the view draws on it. */
+static void view_square_json(Json *j, const SeenSquare *q, int dir)
+{
+    int pos = view_position(q->depth, q->side);
+    json_open(j, '{');
+    key_int(j, "depth", q->depth);
+    key_int(j, "side", q->side);
+    key_int(j, "x", q->x);
+    key_int(j, "y", q->y);
+    key_str(j, "element", element_name(q->x, q->y));
+    if (is_wall(q->x, q->y)) {
+        wall_faces_json(j, pos, q->side, dir, q->x, q->y);
+    } else {
+        if (square_type(dungeon_square(game.party_map, q->x, q->y)) == SQUARE_DOOR) door_json(j, pos, q->x, q->y);
+        int ornament = floor_ornament(dir, q->x, q->y);
+        if (view_shows_floor_ornament(pos, ornament)) key_int(j, "floor_ornament", ornament);
+        square_things_json(j, pos, q->x, q->y, dir);
+    }
+    json_close(j, '}');
+}
+
+/* The square of a click zone on the party square or the square ahead, and the top object in the cell of the zone
+   thing; THING_NONE when the zone holds no object. */
+static uint16_t zone_top(const ViewClickZone *z, int *x, int *y)
+{
+    uint16_t top = THING_NONE;
+    *x = game.party_x;
+    *y = game.party_y;
+    if (z->cell == POS_FRONT) {
+        *x += dir_dx[game.party_dir & DIR_MASK];
+        *y += dir_dy[game.party_dir & DIR_MASK];
+    }
+    if (z->thing == THING_NONE || (z->cell != POS_PARTY && z->cell != POS_FRONT) || !on_party_map(*x, *y)) return top;
+    for (uint16_t t = dungeon_square_first_thing(game.party_map, *x, *y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+        if (is_object(t) && thing_cell(t) == thing_cell(z->thing)) top = t;
+    return top;
+}
+
+/* The pile of a click zone as {cell, top, objects}, the objects top first. */
+static void pile_json(Json *j, const ViewClickZone *z, int cell)
+{
+    int x, y, n = 0, at = thing_cell(z->thing);
+    uint16_t top = zone_top(z, &x, &y), first = dungeon_square_first_thing(game.party_map, x, y);
+    json_open(j, '{');
+    key_int(j, "cell", cell);
+    json_key(j, "top");
+    trimmed(j, item_name(top), TEXT_SIZE);
+    json_key(j, "objects");
+    json_open(j, '[');
+    for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) n += is_object(t) && thing_cell(t) == at;
+    for (int k = n - 1; k >= 0; k--) {
+        int i = 0;
+        for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+            if (is_object(t) && thing_cell(t) == at && i++ == k) trimmed(j, item_name(t), TEXT_SIZE);
+    }
+    json_close(j, ']');
+    json_close(j, '}');
+}
+
+/* The object piles of the click zones of the last drawn view (cells 0 to 3, seen from the party), the alcove ahead,
+   and whether a click on the wall ahead reaches something; none while the inventory hides the view. */
+static void piles_json(Json *j)
+{
+    bool shown = !ui.inventory;
+    int x, y;
+    json_key(j, "piles");
+    json_open(j, '[');
+    for (int k = 0; shown && k < CELL_COUNT; k++)
+        if (view_click_zones[k].kind == CLICK_OBJECT && zone_top(&view_click_zones[k], &x, &y) != THING_NONE)
+            pile_json(j, &view_click_zones[k], k);
+    json_close(j, ']');
+    const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_FIXED - 1];
+    bool has_alcove = shown && alcove->kind == CLICK_ALCOVE;
+    json_key(j, "alcove");
+    if (has_alcove && zone_top(alcove, &x, &y) != THING_NONE) pile_json(j, alcove, PILE_ALCOVE);
+    else json_null(j);
+    bool clickable = has_alcove;
+    for (int i = VIEW_CLICK_ZONE_FIXED; shown && i < view_click_zone_count; i++) {
+        const ViewClickZone *z = &view_click_zones[i];
+        clickable |= z->cell == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON);
+    }
+    key_bool(j, "wall_ahead_clickable", clickable);
+}
+
+void state_json_view(Json *j)
+{
+    SeenSquare squares[SEEN_VISIBLE_MAX];
+    int x, y, dir, count = visible_squares(squares);
+    view_place(&x, &y, &dir);
+    json_open(j, '{');
+    key_str(j, "facing", direction_names[dir]);
+    key_int(j, "darkness", view_light_level);
+    json_key(j, "squares");
+    json_open(j, '[');
+    for (int i = 0; i < count; i++) view_square_json(j, &squares[i], dir);
+    json_close(j, ']');
+    piles_json(j);
+    json_close(j, '}');
+}
+
+/* The map glyph of an explored square by its look; '_' marks a floor with a floor ornament that the map draws. */
+static char map_char(int x, int y)
+{
+    const char *name = element_name(x, y);
+    uint8_t square = dungeon_square(game.party_map, x, y);
+    int state = square & SQUARE_DOOR_STATE;
+    if (!strcmp(name, "wall")) return '#';
+    if (!strcmp(name, "pit")) return 'O';
+    if (!strcmp(name, "stairs_up")) return '<';
+    if (!strcmp(name, "stairs_down")) return '>';
+    if (!strcmp(name, "teleporter")) return 'T';
+    if (!strcmp(name, "door")) return state == DOOR_STATE_OPEN || state == DOOR_STATE_BROKEN ? 'd' : 'D';
+    return mmap_shows_floor_ornament(floor_ornament(game.party_dir & DIR_MASK, x, y)) ? '_' : '.';
+}
+
+/* Map row y in out: one glyph per square, '@' for the party, a space for a square not explored and not in view. */
+static void map_row(int y, int w, const SeenSquare *squares, int count, char *out)
+{
+    for (int x = 0; x < w; x++) {
+        bool seen = seen_is_seen(game.party_map, x, y);
+        for (int i = 0; i < count && !seen; i++) seen = squares[i].x == x && squares[i].y == y;
+        out[x] = x == game.party_x && y == game.party_y ? '@' : seen ? map_char(x, y) : ' ';
+    }
+    out[w] = 0;
+}
+
+/* The map rows under key; with a grid, the x digits above and the y numbers in front. */
+static void map_rows_json(Json *j, const char *key, bool grid)
+{
+    SeenSquare squares[SEEN_VISIBLE_MAX];
+    int w = dungeon_map_width(game.party_map), h = dungeon_map_height(game.party_map), count = visible_squares(squares);
+    int prefix = grid ? MAP_GRID_PREFIX : 0;
+    char line[MAP_GRID_PREFIX + MAP_SIDE_MAX + 1];
+    if (w > MAP_SIDE_MAX) w = MAP_SIDE_MAX;
+    json_key(j, key);
+    json_open(j, '[');
+    if (grid) {
+        memset(line, ' ', MAP_GRID_PREFIX);
+        for (int x = 0; x < w; x++) line[MAP_GRID_PREFIX + x] = (char)('0' + x % DECIMAL_BASE);
+        line[MAP_GRID_PREFIX + w] = 0;
+        json_str(j, line);
+    }
+    for (int y = 0; y < h; y++) {
+        snprintf(line, sizeof line, "%2d ", y);
+        map_row(y, w, squares, count, line + prefix);
+        json_str(j, line);
+    }
+    json_close(j, ']');
+}
+
+void state_json_map(Json *j)
+{
+    json_open(j, '{');
+    key_int(j, "map", game.party_map);
+    key_int(j, "level", dungeon_map_level(game.party_map));
+    key_int(j, "width", dungeon_map_width(game.party_map));
+    key_int(j, "height", dungeon_map_height(game.party_map));
+    pair(j, "party", game.party_x, game.party_y);
+    key_str(j, "facing", direction_names[game.party_dir & DIR_MASK]);
+    key_str(j, "legend", "row index = y (north at the top), column = x; @ party, # wall, . floor, D closed door, "
+                         "d open door, < stairs up, > stairs down, O pit, T teleporter, "
+                         "_ floor ornament (for example a pressure pad), space not explored; "
+                         "grid: the rows with x mod 10 above and y in front");
+    map_rows_json(j, "rows", false);
+    map_rows_json(j, "grid", true);
+    json_close(j, '}');
+}
+
 char *state_json_string(int part)
 {
     Json j = {0};
     if (part == STATE_JSON_STATE) state_json_state(&j);
+    else if (part == STATE_JSON_VIEW) state_json_view(&j);
+    else if (part == STATE_JSON_MAP) state_json_map(&j);
     else json_null(&j);
     return j.s;
 }

@@ -102,6 +102,16 @@ static inline uint16_t sensor_turn_dir(uint16_t sensor) { return sensor_data(sen
 static inline uint16_t sensor_area_power(uint16_t sensor) { return sensor_data(sensor) & AREA_POWER_MASK; }
 static inline uint16_t sensor_area_creature(uint16_t sensor) { return sensor_data(sensor) >> AREA_CREATURE_SHIFT; }
 
+/* Wall sensor types of objects put on a wall cell. */
+enum { WALL_ITEM_HOLDER = 0x1a, WALL_ANY_ITEM = 0x29, WALL_ITEM = 0x2a, WALL_NOT_ITEM = 0x2b };
+/* Wall sensor types of a click on a wall cell. */
+enum {
+    WALL_CLICK_ANY = 1, WALL_CLICK_EMPTY_HAND, WALL_CLICK_ITEM, WALL_CLICK_CHARGED_ITEM = 0x15, WALL_CLICK_TOGGLE = 0x17,
+    WALL_CLICK_BUTTON = 0x18, WALL_CLICK_COUNTED_ITEM = 0x1b, WALL_CLICK_TELEPORT = 0x1c, WALL_CLICK_RESET = 0x3f,
+    WALL_CLICK_DOOR_BUTTON = 0x46, WALL_CLICK_BUTTON_2 = 0x4a, WALL_CLICK_PORTRAIT = 0x7e
+};
+#define ORNAMENT_KEY_TOUCH 0x0b      /* ornament value: touching the ornament fills the water (a fountain) */
+
 /* A thing (THING_NONE: the party) leaves (enter 0) or enters (enter 1) the square (x, y) of the current map:
    the floor sensors and texts of the square react. on_square: the party stands there (for the party: the
    move ends on the same square); possessions: an item goes into the possessions of a static creature. */

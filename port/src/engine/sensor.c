@@ -59,8 +59,6 @@ enum {
 enum {
     FLOOR_ANY = 1, FLOOR_PARTY_OR_CREATURE, FLOOR_PARTY, FLOOR_ITEM, FLOOR_CREATURE = 7, FLOOR_PARTY_POSSESSES
 };
-/* Wall sensor types of objects put on a wall cell. */
-enum { WALL_ITEM_HOLDER = 0x1a, WALL_ANY_ITEM = 0x29, WALL_ITEM = 0x2a, WALL_NOT_ITEM = 0x2b };
 
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET 1
@@ -1357,17 +1355,11 @@ void sensor_process_map_entry(int entering)
 
 /* ---- Wall clicks ---- */
 
-#define ORNAMENT_KEY_TOUCH 0x0b      /* ornament value: touching the ornament fills the water (a fountain) */
 #define ORNAMENT_KEY_ALCOVE 0x0a     /* ornament value 1: an alcove */
 #define ORNAMENT_KEY_MARKER_DELAY 0x12
 #define WATER_FULL 0x800
 #define ITEM_EMPTY_FLASK 0x194
 #define FLASK_FULL_INDEX 0x0f
-enum {
-    WALL_CLICK_ANY = 1, WALL_CLICK_EMPTY_HAND, WALL_CLICK_ITEM, WALL_CLICK_CHARGED_ITEM = 0x15, WALL_CLICK_TOGGLE = 0x17,
-    WALL_CLICK_BUTTON = 0x18, WALL_CLICK_COUNTED_ITEM = 0x1b, WALL_CLICK_TELEPORT = 0x1c, WALL_CLICK_RESET = 0x3f,
-    WALL_CLICK_DOOR_BUTTON = 0x46, WALL_CLICK_BUTTON_2 = 0x4a, WALL_CLICK_PORTRAIT = 0x7e
-};
 #define CLICK_IGNORED (-1)           /* a wall sensor that does not react to the click */
 
 /* True when the thing on a wall cell is the alcove ornament that the wall face shows. */

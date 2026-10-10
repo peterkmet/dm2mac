@@ -133,3 +133,119 @@ def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):  # noqa: F811
     assert {"clouds", "rain"} <= set(state["weather"]) <= {"clouds", "rain", "wind"}
     assert ("wind" in state["weather"]) == lib.view_rain_shows()
     assert state["day_time"] in ("day", "dawn_dusk", "night")
+
+
+class SeenSquare(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_int16) for name in ("depth", "side", "x", "y")]
+
+
+class ViewSquare(ctypes.Structure):
+    """aspect.h ViewSquare: what the view shows of one square (18 bytes)."""
+    _fields_ = [("x", ctypes.c_int8), ("y", ctypes.c_int8), ("aspect", ctypes.c_uint16), ("square", ctypes.c_uint16),
+                ("first_thing", ctypes.c_uint16), ("side", ctypes.c_uint16 * 4), ("text", ctypes.c_uint16)]
+
+
+SEEN_VISIBLE_MAX = 35
+SQUARE_TYPE_SHIFT = 5
+SQUARE_WALL, SQUARE_FLOOR, SQUARE_PIT, SQUARE_STAIRS, SQUARE_DOOR, SQUARE_TELEPORTER, SQUARE_FAKE_WALL = range(7)
+PIT_OPEN, STAIRS_UP, DOOR_STATE, TELEPORTER_ON, TELEPORTER_VISIBLE, FAKE_WALL_OPEN = 0x08, 0x04, 0x07, 0x08, 0x04, 0x04
+DOOR_STATE_OPEN, DOOR_STATE_BROKEN = 0, 5
+SIDE_FLOOR_ORNAMENT, ORNAMENT_MASK = 2, 0xFF
+
+
+def visible(lib, game):
+    """The squares of the seen rule for the party (seen_visible) as {(depth, side, x, y)}."""
+    out = (SeenSquare * SEEN_VISIBLE_MAX)()
+    count = lib.seen_visible(game.party_map, game.party_x, game.party_y, game.party_dir, out, SEEN_VISIBLE_MAX)
+    return {(s.depth, s.side, s.x, s.y) for s in out[:count]}
+
+
+def test_view_shows_only_the_seen_squares(lib, game):
+    """The view squares are exactly the squares of the seen rule from the party square (seen_visible)."""
+    view = part(lib, VIEW)
+    squares = {(s["depth"], s["side"], s["x"], s["y"]) for s in view["squares"]}
+    assert squares == visible(lib, game) and len(view["squares"]) == len(squares)
+    assert view["facing"] == DIRECTIONS[game.party_dir]
+
+
+def test_view_square_fields(lib, game):
+    view = part(lib, VIEW)
+    assert set(view) >= {"facing", "darkness", "squares", "piles", "wall_ahead_clickable"}
+    for s in view["squares"]:
+        assert 0 <= s["depth"] <= 4 and -3 <= s["side"] <= 3
+        assert s["element"] in {"wall", "floor", "pit", "stairs_up", "stairs_down", "door", "teleporter"}
+        if s["element"] == "door":
+            assert s["door"] in {"open", "partly_open", "closed", "broken"}
+        if s["element"] == "wall":
+            assert not {"creatures", "objects", "flying", "floor_ornament"} & set(s)
+        else:
+            assert isinstance(s["creatures"], list) and isinstance(s["objects"], list)
+            assert isinstance(s["flying"], list)
+            assert all(o["cell"] in {"front_left", "front_right", "back_right", "back_left"} for o in s["objects"])
+            assert all(o["name"] == o["name"].rstrip() for o in s["objects"])
+    for pile in view["piles"]:
+        assert 0 <= pile["cell"] <= 3 and pile["objects"][0] == pile["top"]
+
+
+def mark_whole_map(lib, game):
+    """Marks as seen every square that the view shows from any open square of the party map, in every direction."""
+    lib.dungeon_square.restype = ctypes.c_uint8
+    m = game.party_map
+    for x in range(lib.dungeon_map_width(m)):
+        for y in range(lib.dungeon_map_height(m)):
+            if lib.dungeon_square(m, x, y) >> SQUARE_TYPE_SHIFT != SQUARE_WALL:
+                for d in range(4):
+                    lib.seen_mark(m, x, y, d)
+
+
+def expected_glyph(lib, m, x, y):
+    """The glyph of a square by the get_map legend."""
+    square = lib.dungeon_square(m, x, y)
+    kind = square >> SQUARE_TYPE_SHIFT
+    if kind == SQUARE_WALL or (kind == SQUARE_FAKE_WALL and not square & FAKE_WALL_OPEN):
+        return "#"
+    if kind == SQUARE_PIT and square & PIT_OPEN:
+        return "O"
+    if kind == SQUARE_STAIRS:
+        return "<" if square & STAIRS_UP else ">"
+    if kind == SQUARE_DOOR:
+        return "d" if square & DOOR_STATE in (DOOR_STATE_OPEN, DOOR_STATE_BROKEN) else "D"
+    if kind == SQUARE_TELEPORTER and square & TELEPORTER_ON and square & TELEPORTER_VISIBLE:
+        return "T"
+    s = ViewSquare()
+    lib.mmap_shows_floor_ornament.restype = ctypes.c_bool
+    lib.aspect_get(ctypes.byref(s), m, 0, x, y)
+    return "_" if lib.mmap_shows_floor_ornament(s.side[SIDE_FLOOR_ORNAMENT] & ORNAMENT_MASK) else "."
+
+
+def test_map_rows_show_only_seen_squares(lib, game):
+    """get_map: a square that seen_is_seen does not know and that is not in view is a space; @ is the party."""
+    m = part(lib, MAP)
+    assert (m["map"], m["width"], m["height"]) == (game.party_map, lib.dungeon_map_width(game.party_map),
+                                                   lib.dungeon_map_height(game.party_map))
+    assert m["party"] == [game.party_x, game.party_y] and m["facing"] == DIRECTIONS[game.party_dir]
+    in_view = {(x, y) for _, _, x, y in visible(lib, game)}
+    lib.seen_is_seen.restype = ctypes.c_bool
+    assert len(m["rows"]) == m["height"] and len(m["grid"]) == m["height"] + 1
+    for y, row in enumerate(m["rows"]):
+        assert len(row) == m["width"] and m["grid"][y + 1].endswith(row)
+        for x, char in enumerate(row):
+            if (x, y) == (game.party_x, game.party_y):
+                assert char == "@"
+            else:
+                assert (char != " ") == (bool(lib.seen_is_seen(game.party_map, x, y)) or (x, y) in in_view)
+
+
+def test_map_glyphs(lib, game):
+    """Each glyph follows the square type: # wall, . floor, D closed door, d open door, < > stairs, O open pit,
+    T visible teleporter, _ a floor with a floor ornament that the automap draws; a closed fake wall is #, an open one
+    is ."""
+    mark_whole_map(lib, game)
+    m = part(lib, MAP)
+    shown = set()
+    for y, row in enumerate(m["rows"]):
+        for x, char in enumerate(row):
+            if char not in " @":
+                assert char == expected_glyph(lib, game.party_map, x, y), (x, y)
+                shown.add(char)
+    assert {"#", "."} <= shown
