@@ -22,6 +22,7 @@
 #include "movie.h"
 #include "play.h"
 #include "save.h"
+#include "session.h"
 #include "state_json.h"
 #include "turn.h"
 #include "ui.h"
@@ -469,30 +470,120 @@ static void start_turn_or_fail(const char *error)
     }
 }
 
-/* The commands of the turn-based mode: turns, the parts of the game state, and the refusal of the direct input
-   commands. Returns false for a command that the other modes share (state, screenshot, quit) or do not know. */
+static int game_lost;                 /* a damaged save and a failed restore left no game to play */
+
+/* The input modes in which the game runs a modal loop: save, load, and a new game wait until it closes. */
+static bool modal_mode(void)
+{
+    int mode = input_get_mode();
+    return mode == INPUT_MODE_MENU || mode == INPUT_MODE_PICTURE || mode == INPUT_MODE_DIALOG || mode == INPUT_MODE_NAME;
+}
+
+/* Replies the error and returns true while a modal loop of the game runs. */
+static bool refuse_in_modal_loop(void)
+{
+    if (!modal_mode()) return false;
+    send_error("close the dialog first (act click or act key)");
+    return true;
+}
+
+/* After a load or a new game: the end of the last game is over. */
+static void game_restarts(void)
+{
+    main_loop.end = 0;
+    session.completed = 0;
+    game_lost = 0;
+}
+
+/* Loads QUICK.DAT of the save folder; a missing or damaged file keeps the game, a failed restore loses it. */
+static void handle_load(void)
+{
+    if (refuse_in_modal_loop()) return;
+    int end = main_loop.end;
+    main_loop.end = 0;  /* the loaded game starts with a full game step, as after the load of a slot */
+    int result = advanced_quick_load();
+    if (result == QUICK_LOST) game_lost = 1;
+    if (result != QUICK_LOADED) {
+        main_loop.end = end;
+        send_error(result == QUICK_MISSING ? "no saved game (use save first)"
+                   : result == QUICK_BLOCKED ? "cannot write QUICK.TMP: nothing loaded" : "the saved game is damaged");
+        return;
+    }
+    game_restarts();
+    send_part("state", state_json_state);
+}
+
+/* Starts a new game from DUNGEON.DAT, as the menu choice NEW GAME does. */
+static void handle_new_game(void)
+{
+    if (refuse_in_modal_loop()) return;
+    if (!session_start_new_game()) {
+        game_lost = 1;
+        send_error("cannot start the new game");
+        return;
+    }
+    game_restarts();
+    send_part("state", state_json_state);
+}
+
+/* Writes the game to QUICK.DAT of the save folder; the old file stays on an error. */
+static void handle_save(void)
+{
+    if (refuse_in_modal_loop()) return;
+    if (ui.candidate) send_error("answer the candidate first (act recruit)");
+    else if (!advanced_quick_save()) send_error("cannot write the save file");
+    else send_ok();
+}
+
+/* The commands of a running game in the turn-based mode: the parts of the game state, and after a game over only
+   those; save and the turns. Returns false for a command that the other modes share (state, screenshot) or do not
+   know. */
+static bool handle_turnbased_game_request(const char *request, const char *cmd)
+{
+    static const char *const turns[] = { "act", "act_many", "wait", "save" };
+    if (!strcmp(cmd, "get_state")) send_part("state", state_json_state);
+    else if (!strcmp(cmd, "get_view")) send_part("view", state_json_view);
+    else if (!strcmp(cmd, "get_map")) send_part("map", state_json_map);
+    else {
+        for (size_t i = 0; i < sizeof turns / sizeof turns[0] && state_json_game_over(); i++)
+            if (!strcmp(cmd, turns[i])) {
+                send_error("game over");
+                return true;
+            }
+        if (!strcmp(cmd, "save")) handle_save();
+        else if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request));
+        else if (!strcmp(cmd, "act_many")) start_turn_or_fail(turn_act_many(request));
+        else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request));
+        else return false;
+    }
+    return true;
+}
+
+/* The commands of the turn-based mode: load and new_game also after a game over or a lost game, the refusal of every
+   other command after a lost game and of the direct input commands. Returns false for quit, state, screenshot, and
+   the commands that no mode knows. */
 static bool handle_turnbased_request(const char *request, const char *cmd)
 {
     static const char *const direct[] = { "key", "click", "press", "release", "command", "move" };
-    static const char *const turns[] = { "act", "act_many", "wait", "save" };
+    if (!strcmp(cmd, "quit")) return false;
+    if (!strcmp(cmd, "load")) {
+        handle_load();
+        return true;
+    }
+    if (!strcmp(cmd, "new_game")) {
+        handle_new_game();
+        return true;
+    }
+    if (game_lost) {
+        send_error("no game is running: use load or new_game");
+        return true;
+    }
     for (size_t i = 0; i < sizeof direct / sizeof direct[0]; i++)
         if (!strcmp(cmd, direct[i])) {
             send_error("use act in turnbased mode");
             return true;
         }
-    for (size_t i = 0; i < sizeof turns / sizeof turns[0] && state_json_game_over(); i++)
-        if (!strcmp(cmd, turns[i])) {
-            send_error("game over");
-            return true;
-        }
-    if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request));
-    else if (!strcmp(cmd, "act_many")) start_turn_or_fail(turn_act_many(request));
-    else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request));
-    else if (!strcmp(cmd, "get_state")) send_part("state", state_json_state);
-    else if (!strcmp(cmd, "get_view")) send_part("view", state_json_view);
-    else if (!strcmp(cmd, "get_map")) send_part("map", state_json_map);
-    else return false;
-    return true;
+    return handle_turnbased_game_request(request, cmd);
 }
 
 static void handle_request(const char *request)

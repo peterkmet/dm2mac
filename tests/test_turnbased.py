@@ -11,8 +11,10 @@ import time
 
 import pytest
 
+from conftest import ROOT
 from dm2tools.control_client import request
 from test_control import PALETTE_COLORS, RGB, GameWithChampions
+from test_dialog import Session
 from test_input import session  # noqa: F401 (a fixture)
 from test_move import gdat, start  # noqa: F401 (gdat and start are fixtures)
 
@@ -356,3 +358,169 @@ def test_drop_object_ahead_of_a_floor_hiding_creature_is_refused(tb, lib):
     assert act(path, "drop_object", cell=2) == {"ok": False, "error": "no floor to drop on ahead"}
     after = request({"cmd": "get_state"}, path)["state"]
     assert after["leader_hand"] is not None and game.game_time == before
+
+
+NO_GAME = {"ok": False, "error": "no game is running: use load or new_game"}
+CLOSE_DIALOG = {"ok": False, "error": "close the dialog first (act click or act key)"}
+DAMAGED_SAVE = b"\0" * 300
+LOST_UMASK = 0o477  # QUICK.TMP gets no read rights: the restore of the running game fails
+SESSION_START_STEPS = 1  # the start of a loaded game runs one game step (play_start_session)
+
+
+@pytest.fixture
+def saves(tb, lib, tmp_path):
+    """The save folder of the turn-based mode in tmp_path and the game folder for new_game; both go back after the
+    test, with the session flags that new_game and a completed game set."""
+    state = Session.in_dll(lib, "session")
+    data_dir, save_dir = state.data_dir, state.save_dir
+    folder = tmp_path / "saves"  # tmp_path holds the SKSAVE0.DAT of the session fixture
+    folder.mkdir()
+    state.data_dir, state.save_dir = str(ROOT / "game").encode(), str(folder).encode()
+    try:
+        yield folder
+    finally:
+        state.data_dir, state.save_dir = data_dir, save_dir
+        state.new_game = state.completed = 0
+
+
+def place(r, steps=0):
+    """The party square and the game time of a reply, the time less steps."""
+    return r["state"]["party"]["x"], r["state"]["party"]["y"], r["state"]["time"] - steps
+
+
+def lose_the_game(path, folder):
+    """A damaged QUICK.DAT and a failed restore of the running game: load replies the damage and no game is left."""
+    (folder / "QUICK.DAT").write_bytes(DAMAGED_SAVE)
+    old = os.umask(LOST_UMASK)
+    try:
+        assert request({"cmd": "load"}, path, timeout=30) == {"ok": False, "error": "the saved game is damaged"}
+    finally:
+        os.umask(old)
+        (folder / "QUICK.TMP").chmod(0o644)
+
+
+def test_save_move_load_returns_to_the_save(tb, lib, saves):
+    """save, act move_forward, load: the party square and the game time are those of the save (and the game step of
+    the start of the loaded game)."""
+    path, *_ = tb
+    saved = place(request({"cmd": "get_state"}, path))
+    assert request({"cmd": "save"}, path, timeout=30) == {"ok": True}
+    assert (saves / "QUICK.DAT").exists()
+    face(path, open_floor)
+    assert place(act(path, "move_forward"))[:2] != saved[:2]
+    r = request({"cmd": "load"}, path, timeout=30)
+    assert r["ok"] and place(r, SESSION_START_STEPS) == saved
+
+
+def test_load_without_a_save(tb, lib, saves):
+    """No QUICK.DAT: error "no saved game (use save first)", nothing changes."""
+    path, *_ = tb
+    before = request({"cmd": "get_state"}, path)["state"]
+    assert request({"cmd": "load"}, path) == {"ok": False, "error": "no saved game (use save first)"}
+    assert place({"state": before}) == place(request({"cmd": "get_state"}, path))
+    assert list(saves.iterdir()) == []
+
+
+def test_load_of_a_damaged_save_keeps_the_game(tb, lib, saves):
+    """A damaged QUICK.DAT: error "the saved game is damaged", the square stays and the game time too (but for the
+    game step of the start of the restored game)."""
+    path, *_ = tb
+    face(path, open_floor)
+    before = place(act(path, "move_forward"))
+    (saves / "QUICK.DAT").write_bytes(DAMAGED_SAVE)
+    assert request({"cmd": "load"}, path, timeout=30) == {"ok": False, "error": "the saved game is damaged"}
+    assert place(request({"cmd": "get_state"}, path), SESSION_START_STEPS) == before
+    assert act(path, "turn_left")["ok"]
+
+
+def test_lost_game_allows_only_load_and_new_game(tb, lib, saves):
+    """A damaged QUICK.DAT and a failed restore: get_state, act, save reply "no game is running: use load or
+    new_game"; new_game starts a game and get_state works again; the program does not quit."""
+    path, _, loop = tb
+    lose_the_game(path, saves)
+    for cmd in ({"cmd": "get_state"}, {"cmd": "get_view"}, {"cmd": "state"}, {"cmd": "act", "action": "turn_left"},
+                {"cmd": "act_many", "actions": ["turn_left"]}, {"cmd": "wait", "ticks": 5}, {"cmd": "save"},
+                {"cmd": "key", "key": "up"}):
+        assert request(cmd, path) == NO_GAME, cmd
+    assert loop.quit == 0
+    r = request({"cmd": "new_game"}, path, timeout=30)
+    assert r["ok"] and len(r["state"]["champions"]) == 1
+    assert request({"cmd": "get_state"}, path)["ok"] and act(path, "turn_left")["ok"]
+    assert loop.quit == 0
+
+
+def test_load_after_a_lost_game_plays_again(tb, lib, saves):
+    """A lost game, then a valid QUICK.DAT: load replies ok and get_state works again."""
+    path, *_ = tb
+    saved = place(request({"cmd": "get_state"}, path))
+    assert request({"cmd": "save"}, path, timeout=30) == {"ok": True}
+    good = (saves / "QUICK.DAT").read_bytes()
+    lose_the_game(path, saves)
+    assert request({"cmd": "get_state"}, path) == NO_GAME
+    (saves / "QUICK.DAT").write_bytes(good)
+    r = request({"cmd": "load"}, path, timeout=30)
+    assert r["ok"] and place(r, SESSION_START_STEPS) == saved
+    assert request({"cmd": "get_state"}, path)["ok"] and act(path, "turn_left")["ok"]
+
+
+def test_load_after_game_over_plays_again(tb, lib, saves):
+    """save; set main_loop.end = 1; act -> "game over"; load -> ok, game_over false, the start of the loaded game
+    runs its full game step; act turn_left works."""
+    path, _, loop = tb
+    saved = place(request({"cmd": "get_state"}, path))
+    assert request({"cmd": "save"}, path, timeout=30) == {"ok": True}
+    loop.end = 1
+    assert act(path, "turn_left") == {"ok": False, "error": "game over"}
+    r = request({"cmd": "load"}, path, timeout=30)
+    assert r["ok"] and r["state"]["party"]["dead"] is False and loop.end == 0
+    assert place(r, SESSION_START_STEPS) == saved
+    r = act(path, "turn_left")
+    assert r["ok"] and r["game_over"] is False
+
+
+def test_new_game_after_game_over_plays_again(tb, lib, saves):
+    """main_loop.end = 1, then new_game: a new game with one champion; act turn_left works."""
+    path, _, loop = tb
+    loop.end = 1
+    r = request({"cmd": "new_game"}, path, timeout=30)
+    assert r["ok"] and r["state"]["party"]["dead"] is False and len(r["state"]["champions"]) == 1
+    r = act(path, "turn_left")
+    assert r["ok"] and r["game_over"] is False
+
+
+def test_turn_in_a_dialog_ends_and_the_dialog_stays(tb, lib, saves):
+    """A turn that opens a dialog (act click on the volume button) ends; state.mode is dialog; save, load, and
+    new_game reply "close the dialog first (act click or act key)"; act key enter closes it."""
+    path, *_ = tb  # the tb fixture sets play_frame_hook to control_poll: the dialog serves the requests
+    assert act(path, "open_inventory", champion=0)["state"]["mode"] == "inventory"
+    x, y = center(command_rect(lib, CMD_VOLUME))
+    r = act(path, "click", x=x, y=y)
+    assert r["ok"] and r["state"]["mode"] == "dialog"
+    try:
+        for cmd in ("save", "load", "new_game"):
+            assert request({"cmd": cmd}, path) == CLOSE_DIALOG, cmd
+        assert list(saves.iterdir()) == []
+        r = act(path, "key", key="enter")
+        assert r["ok"] and r["state"]["mode"] == "inventory"
+    finally:  # the pump thread runs the dialog loop until the dialog closes
+        if request({"cmd": "get_state"}, path)["state"]["mode"] == "dialog":
+            x, y = center(command_rect(lib, CMD_DIALOG_BUTTON_FIRST))
+            act(path, "click", x=x, y=y)
+
+
+def test_completed_game_is_game_over_and_the_program_stays(tb, lib, saves):
+    """session_complete during a wait in the turn-based mode: the turn ends with game_over true, state.party.dead
+    false, main_loop.quit 0; act replies "game over"."""
+    path, _, loop = tb
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.connect(path)
+        s.sendall(b'{"cmd": "wait", "ticks": %d}\n' % TURN_WAIT_MAX_TICKS)
+        deadline = time.monotonic() + 10
+        while not lib.control_turn_pending() and time.monotonic() < deadline:
+            time.sleep(0.001)
+        lib.session_complete()
+        reply = s.makefile().readline()
+    r = __import__("json").loads(reply)
+    assert r["ok"] and r["game_over"] is True and r["ticks"] < TURN_WAIT_MAX_TICKS
+    assert r["state"]["party"]["dead"] is False and loop.quit == 0
+    assert act(path, "turn_left") == {"ok": False, "error": "game over"}
