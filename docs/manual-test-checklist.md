@@ -32,17 +32,19 @@ The cleanup does not change the behavior, and the automated tests pass. This sho
 
 The cleanup moves code between the layers and does not change the behavior; the automated tests pass. This short test checks the paths that now go through `g_hooks` or `ui/play.c`. Start `build/dm2 --save game/DATA/SKSAVE0.DAT` or a new game.
 
-- [ ] L1. Start a new game and load a save from the start menu: the view, the champions, and the music start as before.
-- [ ] L2. Walk onto a floor text and press a wall text: the message prints in the message area, with a new row for the next message.
-- [ ] L3. Fall into a pit and take stairs: the view of the new map shows at once, and no key press from before the move is still pending.
-- [ ] L4. Recruit a champion from a mirror: the view hides and shows again, and the recruit buttons work.
-- [ ] L5. Sleep and wake (key and damage): "sleeping" shows, the view clears, and the move arrows come back after waking.
-- [ ] L6. Use the action hands and cast a spell; let a cast fail: the hand icons count down, the spell panel shows the runes, and the flask picture shows on the failed cast.
-- [ ] L7. Hit and get hit by a creature: the champion damage boxes and the bars update at once.
-- [ ] L8. Open a container from the action hand and the minion map of a summoned minion; click a destination on the map.
-- [ ] L9. Outdoors, wait for rain and lightning: the sky objects, the thunder sound, and the light change are as before.
+The items marked "control socket" ran over `docs/llm-control.md` with the saves of `tests/saves/`, on this branch and on `main` side by side with the same input; the states and the screenshots are equal.
+
+- [x] L1. Start a new game and load a save from the start menu: the view, the champions, and the music start as before. Passed (control socket, 2026-10-10). The music is not checked (dummy audio).
+- [x] L2. Take an object into the leader hand two times: its name prints in the message area, with a new row for the next message. `DUNGEON.DAT` has no visible floor text and no wall text with a message. Passed (control socket, 2026-10-10).
+- [x] L3. Fall into a pit and take stairs: the view of the new map shows at once, and no key press from before the move is still pending. Passed (control socket, 2026-10-10).
+- [x] L4. Recruit a champion from a mirror: the view hides and shows again, and the recruit buttons work. Passed (control socket, 2026-10-10).
+- [x] L5. Sleep and wake (Enter, a click, and damage): "WAKE UP" shows, the view clears, and the move arrows come back after waking. Other keys do not wake the party, as in `main`. Passed (control socket, 2026-10-10).
+- [x] L6. Use the action hands and cast a spell; let a cast fail: the hand icons count down, the spell panel shows the runes, and the flask picture shows on the failed cast. Passed (control socket, 2026-10-10).
+- [x] L7. Hit and get hit by a creature: the champion damage boxes and the bars update at once. Passed (control socket, 2026-10-10).
+- [x] L8. Open a container from the action hand and the minion map of a summoned minion; click a destination on the map. Passed (control socket, 2026-10-10).
+- [x] L9. Outdoors, wait for rain and lightning: the sky objects, the thunder sound, and the light change are as before. Passed (control socket, 2026-10-10). The thunder sound is not checked (dummy audio).
 - [ ] L10. Walk next to creatures and doors: sounds come from the right side and fade with distance.
-- [ ] L11. Advanced mode: open the automap (Tab); the seen squares are kept after save and load.
+- [x] L11. Advanced mode: open the automap (Tab); the seen squares are kept after save and load. Passed (control socket, 2026-10-10).
 - [ ] L12. Finish the game with the end sensor (or a DOS save near the end): the end sequence runs.
 
 ## Prerequisites
