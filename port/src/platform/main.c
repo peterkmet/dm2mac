@@ -297,6 +297,14 @@ static int start_game(const char *data)
     return 0;
 }
 
+/* Closes the control socket, the music, and SDL. */
+static void close_platform(void)
+{
+    control_close();
+    music_quit();
+    plat_quit();
+}
+
 int main(int argc, char **argv)
 {
     const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced", *saves = NULL;
@@ -330,7 +338,10 @@ int main(int argc, char **argv)
     play_frame_hook = game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!save && !getenv(RESTART_ENV)) play_movies(MOVIE_SCRIPT_START);
     if (!save && !main_loop.quit && !start_game(data)) {
-        if (game_mode == GAME_MODE_TURNBASED) return 1;
+        if (game_mode == GAME_MODE_TURNBASED) {
+            close_platform();
+            return 1;
+        }
         main_loop.quit = 1;
     }
     if (game_mode == GAME_MODE_TURNBASED) run_turnbased();  /* the turn-based mode never calls session_end */
@@ -338,9 +349,7 @@ int main(int argc, char **argv)
     main_loop.quit = 0;  /* the end movies run until their end, a closed window, or a quit request */
     sound_stop_all();
     if (!main_loop.closed) play_movies(movie_script_after(session.exit_code));
-    control_close();
-    music_quit();
-    plat_quit();
+    close_platform();
     if (session.exit_code == EXIT_RESTART) {
         args_drop_save(argc, argv);  /* the original always restarts into the start menu */
         setenv(RESTART_ENV, "1", 1);
