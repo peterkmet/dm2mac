@@ -48,7 +48,7 @@ Python code can use `dm2tools.control_client.request(payload, path=None, timeout
 
 ## Protocol
 
-- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection.
+- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte.
 - A client sends one JSON object per line and gets one JSON object per line.
 - A line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error.
 - String values can use the JSON escapes, also `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is.

@@ -284,6 +284,21 @@ def test_a_second_client_gets_busy(control, lib):
         assert request({"cmd": "state"}, path, timeout=5) == {"ok": False, "error": "busy"}
 
 
+def test_a_client_that_reconnects_after_a_reply_is_not_busy(control, lib):
+    path, *_ = control
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as first, socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as second:
+        first.connect(path)
+        first.sendall(b'{"cmd": "state"}\n')
+        first.shutdown(socket.SHUT_WR)
+        lib.control_poll()  # accepts the first client
+        second.connect(path)
+        second.sendall(b'{"cmd": "state"}\n')
+        lib.control_poll()  # answers the first client, then accepts the second
+        assert json.loads(first.makefile().readline())["ok"]
+        lib.control_poll()
+        assert json.loads(second.makefile().readline())["ok"]
+
+
 def test_long_line_and_nul_byte_get_one_error_each(control, lib):
     path, *_ = control
     data = b"x" * LONG_LINE + b"\n" + b'{"cmd": "state"\0}\n' + b'{"cmd": "state"}\n'

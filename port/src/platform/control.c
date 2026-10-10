@@ -526,12 +526,22 @@ static void prepare_connection(int fd)
 #endif
 }
 
+/* Closes the client when it closed its connection and has no unread byte. */
+static void drop_closed_client(void)
+{
+    char next;
+    if (client_fd < 0) return;
+    ssize_t n = recv(client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
+    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) close_client(); /* the client left */
+}
+
 /* Takes the waiting connections: the first becomes the client, the others get a busy error. */
 static void accept_clients(void)
 {
     static const char busy[] = "{\"ok\":false,\"error\":\"busy\"}\n";
     for (int fd; (fd = accept(listen_fd, NULL, NULL)) >= 0;) {
         prepare_connection(fd);
+        drop_closed_client();
         if (client_fd < 0) {
             client_fd = fd;
             continue;
@@ -598,11 +608,7 @@ int control_open(const char *path)
 void control_poll(void)
 {
     if (listen_fd < 0) return;
-    if (waiting.pending) {
-        char next;
-        ssize_t n = recv(client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
-        if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) close_client(); /* the client left */
-    }
+    if (waiting.pending) drop_closed_client();
     if (waiting.pending) {
         uint32_t ran = main_loop.timer_ticks - waiting.start;
         if (ran >= waiting.ticks) {
