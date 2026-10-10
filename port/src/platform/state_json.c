@@ -701,10 +701,17 @@ static const char *door_state_name(int state)
 
 static bool is_object(uint16_t thing) { return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC; }
 
-/* True when the view draws thing on the square at view position pos. */
-static bool thing_shown(uint16_t thing, int pos)
+/* What the view draws on the square (x, y) at view position pos, seen to dir: VIEW_DRAWS_* bits. */
+static unsigned square_draws(int pos, int dir, int x, int y)
 {
-    unsigned draws = view_draws(pos);
+    ViewSquare s;
+    aspect_get(&s, game.party_map, dir, x, y);
+    return view_draws(pos, s.aspect);
+}
+
+/* True when the view draws thing on a square that draws (VIEW_DRAWS_* bits). */
+static bool thing_shown(uint16_t thing, unsigned draws)
+{
     switch (thing_type(thing)) {
     case THING_GROUP: return (draws & VIEW_DRAWS_CREATURES) != 0;
     case THING_PROJECTILE: return (draws & VIEW_DRAWS_MISSILES) != 0;
@@ -716,14 +723,15 @@ static bool thing_shown(uint16_t thing, int pos)
 int state_json_visible_things(uint16_t type, StateJsonSeenThing *out, int max)
 {
     SeenSquare squares[SEEN_VISIBLE_MAX];
-    int count = visible_squares(squares), n = 0;
+    int x, y, dir, count = visible_squares(squares), n = 0;
+    view_place(&x, &y, &dir);
     for (int i = 0; i < count; i++) {
         const SeenSquare *q = &squares[i];
-        int pos = view_position(q->depth, q->side);
         if (is_wall(q->x, q->y)) continue;
+        unsigned draws = square_draws(view_position(q->depth, q->side), dir, q->x, q->y);
         for (uint16_t t = dungeon_square_first_thing(game.party_map, q->x, q->y); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t))
-            if (thing_type(t) == type && thing_shown(t, pos) && n < max)
+            if (thing_type(t) == type && thing_shown(t, draws) && n < max)
                 out[n++] = (StateJsonSeenThing){q->depth, q->side, q->x, q->y, t};
     }
     return n;
@@ -766,15 +774,15 @@ static void key_list(Json *j, const char *key, Json *list)
 }
 
 /* The creature groups (one creature each), the objects by cell (seen from the party), and the flying things that
-   the view draws on the square at view position pos. */
-static void square_things_json(Json *j, int pos, int x, int y, int dir)
+   the view draws on the square (draws: VIEW_DRAWS_* bits). */
+static void square_things_json(Json *j, unsigned draws, int x, int y, int dir)
 {
     Json creatures = {0}, objects = {0}, flying = {0};
     json_open(&creatures, '[');
     json_open(&objects, '[');
     json_open(&flying, '[');
     for (uint16_t t = dungeon_square_first_thing(game.party_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (!thing_shown(t, pos)) continue;
+        if (!thing_shown(t, draws)) continue;
         if (thing_type(t) == THING_GROUP) {
             json_open(&creatures, '{');
             json_key(&creatures, "type");
@@ -797,11 +805,11 @@ static void square_things_json(Json *j, int pos, int x, int y, int dir)
 }
 
 /* The door state, and the door button when the view draws the door. */
-static void door_json(Json *j, int pos, int x, int y)
+static void door_json(Json *j, unsigned draws, int x, int y)
 {
     key_str(j, "door", door_state_name(dungeon_square(game.party_map, x, y) & SQUARE_DOOR_STATE));
     uint16_t door = dungeon_square_first_thing(game.party_map, x, y);
-    if (view_draws(pos) & VIEW_DRAWS_DOOR && door != THING_ENDOFLIST && thing_type(door) == THING_DOOR)
+    if (draws & VIEW_DRAWS_DOOR && door != THING_ENDOFLIST && thing_type(door) == THING_DOOR)
         key_bool(j, "button", door_has_button(door));
 }
 
@@ -895,7 +903,7 @@ static void wall_faces_json(Json *j, int pos, int side, int dir, int x, int y)
 {
     ViewSquare s;
     aspect_get(&s, game.party_map, dir, x, y);
-    unsigned draws = view_draws(pos);
+    unsigned draws = view_draws(pos, ASPECT_WALL);
     if (draws & VIEW_DRAWS_SIDE_FACE) wall_face_json(j, "side_face", &s, side < 0 ? TURN_RIGHT : TURN_LEFT, dir, x, y);
     if (draws & VIEW_DRAWS_FRONT_FACE) wall_face_json(j, "front_face", &s, SIDE_FRONT, dir, x, y);
 }
@@ -922,24 +930,25 @@ static void view_square_json(Json *j, const SeenSquare *q, int dir)
     if (is_wall(q->x, q->y)) {
         wall_faces_json(j, pos, q->side, dir, q->x, q->y);
     } else {
-        if (square_type(dungeon_square(game.party_map, q->x, q->y)) == SQUARE_DOOR) door_json(j, pos, q->x, q->y);
+        unsigned draws = square_draws(pos, dir, q->x, q->y);
+        if (square_type(dungeon_square(game.party_map, q->x, q->y)) == SQUARE_DOOR) door_json(j, draws, q->x, q->y);
         int ornament = floor_ornament(dir, q->x, q->y);
         if (view_shows_floor_ornament(pos, ornament)) key_int(j, "floor_ornament", ornament);
-        square_things_json(j, pos, q->x, q->y, dir);
+        square_things_json(j, draws, q->x, q->y, dir);
     }
     json_close(j, '}');
 }
 
-/* The square of a click zone on the party square or the square ahead, and the top object in the cell of the zone
+/* The square of a click zone on the square of the view or the square ahead of it, and the top object in the cell of the zone
    thing; THING_NONE when the zone holds no object. */
 static uint16_t zone_top(const ViewClickZone *z, int *x, int *y)
 {
     uint16_t top = THING_NONE;
-    *x = game.party_x;
-    *y = game.party_y;
+    int dir;
+    view_place(x, y, &dir);
     if (z->cell == POS_FRONT) {
-        *x += dir_dx[game.party_dir & DIR_MASK];
-        *y += dir_dy[game.party_dir & DIR_MASK];
+        *x += dir_dx[dir];
+        *y += dir_dy[dir];
     }
     if (z->thing == THING_NONE || (z->cell != POS_PARTY && z->cell != POS_FRONT) || !on_party_map(*x, *y)) return top;
     for (uint16_t t = dungeon_square_first_thing(game.party_map, *x, *y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))

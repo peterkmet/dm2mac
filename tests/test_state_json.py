@@ -249,3 +249,34 @@ def test_map_glyphs(lib, game):
                 assert char == expected_glyph(lib, game.party_map, x, y), (x, y)
                 shown.add(char)
     assert {"#", "."} <= shown
+
+
+THING_GROUP, THING_MISC, THING_NONE = 4, 10, 0xFFFF
+STAIRS_DOWN_SQUARE = SQUARE_STAIRS << SQUARE_TYPE_SHIFT
+DOOR_ALONG_X, DOOR_STATE_CLOSED, SQUARE_HAS_THINGS = 0x08, 4, 0x10
+DOOR_FRONT_SQUARE = SQUARE_DOOR << SQUARE_TYPE_SHIFT | DOOR_ALONG_X | DOOR_STATE_CLOSED  # seen from the front facing north
+
+
+def view_square(lib, depth, side):
+    return next(s for s in part(lib, VIEW)["squares"] if (s["depth"], s["side"]) == (depth, side))
+
+
+def test_view_lists_only_the_things_that_the_view_draws(lib, game):
+    """The view draws no creature on stairs in the far row and nothing on a door seen from the front beside the
+    party (door_front_shown); the same things on a floor are in the view."""
+    assert game.party_dir == 0
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
+    far, near = view_square(lib, 4, 0), view_square(lib, 0, 1)
+    assert far["element"] == "floor" and near["element"] == "floor"
+    group, item = lib.dungeon_unused_thing(THING_GROUP), lib.dungeon_unused_thing(THING_MISC)
+    assert THING_NONE not in (group, item)
+    assert lib.dungeon_link_thing_to_square(group, game.party_map, far["x"], far["y"])
+    assert lib.dungeon_link_thing_to_square(item, game.party_map, near["x"], near["y"])
+    assert len(view_square(lib, 4, 0)["creatures"]) == 1 and len(view_square(lib, 0, 1)["objects"]) == 1
+    for square, kind in ((far, STAIRS_DOWN_SQUARE), (near, DOOR_FRONT_SQUARE)):
+        byte = lib.dungeon_square_byte(game.party_map, square["x"], square["y"])
+        byte[0] = byte[0] & SQUARE_HAS_THINGS | kind
+    far, near = view_square(lib, 4, 0), view_square(lib, 0, 1)
+    assert far["element"] == "stairs_down" and far["creatures"] == []
+    assert near["element"] == "door" and near["objects"] == []

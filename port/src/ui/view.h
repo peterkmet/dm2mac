@@ -97,14 +97,14 @@ void view_click_in_viewport(int x, int y);
 
 /* The view position of the square at depth (0 to 4) and side (negative to the left), -1 when the view has none. */
 int view_position(int depth, int side);
-/* What the view draws of the square at a view position: VIEW_DRAWS_* bits. */
+/* What the view draws of the square at a view position with an aspect (enum view_aspect): VIEW_DRAWS_* bits. */
 enum {
     VIEW_DRAWS_FRONT_FACE = 1, VIEW_DRAWS_SIDE_FACE = 2,   /* the wall faces of a wall square */
     VIEW_DRAWS_CREATURES = 4, VIEW_DRAWS_OBJECTS = 8, VIEW_DRAWS_MISSILES = 0x10, VIEW_DRAWS_EXPLOSIONS = 0x20,
     VIEW_DRAWS_FLOOR_ORNAMENT = 0x40, VIEW_DRAWS_DOOR = 0x80,   /* the door picture with its button */
 };
-unsigned view_draws(int pos);
-/* True when the view draws the floor ornament (an ornament index) on the square at a view position. */
+unsigned view_draws(int pos, int aspect);
+/* True when the view draws the floor ornament (an ornament index) on a floor square at a view position. */
 bool view_shows_floor_ornament(int pos, int ornament);
 /* SENSOR_FLAGS of a wall shop sensor and its display sensor. */
 #define SHOP_SHOWN SENSOR_BUSY          /* the display item is chosen */

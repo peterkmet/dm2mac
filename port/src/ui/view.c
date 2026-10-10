@@ -2434,14 +2434,20 @@ int view_position(int depth, int side)
     return -1;
 }
 
-unsigned view_draws(int pos)
+unsigned view_draws(int pos, int aspect)
 {
     if (pos < 0 || pos >= VIEW_SQUARE_COUNT) return 0;
     unsigned draws = wall_faces[pos];
-    if (pos >= POS_FAR_ROW) return pos < POS_DRAWN ? draws | VIEW_DRAWS_CREATURES : draws;
+    if (aspect == ASPECT_WALL) return draws;
+    bool creatures = !(party.move_steps && pos == POS_PARTY);  /* the walking view hides the party square creatures */
+    if (pos >= POS_FAR_ROW) {
+        bool floor = aspect == ASPECT_FLOOR || aspect == ASPECT_PIT || aspect == ASPECT_TELEPORTER;
+        return pos < POS_DRAWN && (floor || aspect == ASPECT_DOOR_FRONT) ? draws | VIEW_DRAWS_CREATURES : draws;
+    }
+    if (aspect == ASPECT_DOOR_FRONT && !door_front_shown[pos]) return draws;
     draws |= VIEW_DRAWS_FLOOR_ORNAMENT | VIEW_DRAWS_DOOR;
     if (!square_things_shown[pos]) return draws;
-    draws |= VIEW_DRAWS_CREATURES | VIEW_DRAWS_OBJECTS;
+    draws |= VIEW_DRAWS_OBJECTS | (creatures ? VIEW_DRAWS_CREATURES : 0);
     if (MISSILE_POSITIONS & POS_BIT(pos)) draws |= VIEW_DRAWS_MISSILES;
     if (EXPLOSION_POSITIONS & POS_BIT(pos)) draws |= VIEW_DRAWS_EXPLOSIONS;
     return draws;
@@ -2449,7 +2455,7 @@ unsigned view_draws(int pos)
 
 bool view_shows_floor_ornament(int pos, int ornament)
 {
-    if (!(view_draws(pos) & VIEW_DRAWS_FLOOR_ORNAMENT) || ornament == ORNAMENT_NONE || !ornament) return false;
+    if (!(view_draws(pos, ASPECT_FLOOR) & VIEW_DRAWS_FLOOR_ORNAMENT) || ornament == ORNAMENT_NONE || !ornament) return false;
     return !((pos == POS_FAR_SIDE_1 || pos == POS_FAR_SIDE_2) && aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NOT_FAR_SIDE));
 }
 
