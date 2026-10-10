@@ -1,6 +1,7 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /* Prefixes: control_ */
@@ -16,6 +17,10 @@ int control_open(const char *path);
    closes with nothing unread during a wait frees the socket at once; one that sent more lines keeps it until the wait
    ends. */
 void control_poll(void);
+/* One frame of the turn-based main loop: the requests, and one game step while a turn runs. */
+void control_frame(void);
+/* A turn of the turn-based mode runs: the game ticks, and the client waits for the reply. */
+bool control_turn_pending(void);
 /* The text after "key": in a request line; 0 when the key is missing. */
 const char *control_find_value(const char *line, const char *key);
 /* The JSON string value of key, decoded (escapes, \uXXXX to UTF-8); 0 when it is missing, bad, too long, or has a

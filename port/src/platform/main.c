@@ -153,6 +153,53 @@ static void modal_frame(void)
     for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
 }
 
+/* The window in the turn-based mode: only the quit event; keys, clicks, and the pointer do not reach the game. */
+static void pump_quit_events(void)
+{
+    PlatEvent e;
+    while (plat_poll(&e))
+        if (e.type == PLAT_QUIT) main_loop.quit = main_loop.closed = 1;
+}
+
+/* One frame of a modal loop (menu, dialog) in the turn-based mode: the requests and the screen; no wait while a turn
+   runs. */
+static void turnbased_modal_frame(void)
+{
+    pump_quit_events();
+    control_poll();
+    present_with_cursor();
+    if (!control_turn_pending())
+        for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
+}
+
+/* The main loop of the turn-based mode: the game runs only during a turn, one game step per frame. */
+static void run_turnbased(void)
+{
+    while (!main_loop.quit) {
+        pump_quit_events();
+        control_frame();
+        present_with_cursor();
+        if (!control_turn_pending())
+            for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
+    }
+}
+
+/* The main loop of the vanilla and advanced modes: the input on each PIT tick, a game tick on every fourth, the end
+   of the game, and the screen. */
+static void run_realtime(void)
+{
+    for (int pit = 0; !main_loop.quit;) {
+        pump_events();
+        if (++pit == PIT_TICKS_PER_GAME_TICK) {
+            pit = 0;
+            play_tick();
+            if (main_loop.end && !main_loop.quit) session_end(main_loop.end);
+            present_with_cursor();
+        }
+        plat_wait_tick();
+    }
+}
+
 /* The events of a movie: a click skips by the rules of the mode, a closed window ends the program. */
 static void pump_movie_events(void)
 {
@@ -280,22 +327,14 @@ int main(int argc, char **argv)
         sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
         sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     }
-    play_frame_hook = modal_frame;
+    play_frame_hook = game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!save && !getenv(RESTART_ENV)) play_movies(MOVIE_SCRIPT_START);
     if (!save && !main_loop.quit && !start_game(data)) {
         if (game_mode == GAME_MODE_TURNBASED) return 1;
         main_loop.quit = 1;
     }
-    for (int pit = 0; !main_loop.quit;) {
-        pump_events();
-        if (++pit == PIT_TICKS_PER_GAME_TICK) {
-            pit = 0;
-            play_tick();
-            if (main_loop.end && !main_loop.quit) session_end(main_loop.end);
-            present_with_cursor();
-        }
-        plat_wait_tick();
-    }
+    if (game_mode == GAME_MODE_TURNBASED) run_turnbased();  /* the turn-based mode never calls session_end */
+    else run_realtime();
     main_loop.quit = 0;  /* the end movies run until their end, a closed window, or a quit request */
     sound_stop_all();
     if (!main_loop.closed) play_movies(movie_script_after(session.exit_code));

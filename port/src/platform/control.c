@@ -20,8 +20,10 @@
 #include "item.h"
 #include "le.h"
 #include "movie.h"
+#include "play.h"
 #include "save.h"
 #include "state_json.h"
+#include "turn.h"
 #include "ui.h"
 #include "video.h"
 
@@ -215,6 +217,7 @@ static void close_client(void)
     input_length = 0;
     discarding = 0;
     waiting.pending = 0;
+    if (turn_is_pending()) turn_drop_reply();
 }
 
 /* Sends reply as one line and clears it. */
@@ -444,12 +447,57 @@ static void handle_button(const char *request, int down, int up)
     send_ok();
 }
 
+/* A reply {"ok":true,"<key>":<part>} with a part of the game state. */
+static void send_part(const char *key, void (*part)(Json *))
+{
+    json_open(&reply, '{');
+    json_key(&reply, "ok");
+    json_bool(&reply, 1);
+    json_key(&reply, key);
+    part(&reply);
+    json_close(&reply, '}');
+    send_reply();
+}
+
+/* Sends the error of a turn request, or nothing when the turn started (the reply comes at its end). */
+static void start_turn_or_fail(const char *error)
+{
+    if (error) send_error(error);
+}
+
+/* The commands of the turn-based mode: turns, the parts of the game state, and the refusal of the direct input
+   commands. Returns false for a command that the other modes share (state, screenshot, quit) or do not know. */
+static bool handle_turnbased_request(const char *request, const char *cmd)
+{
+    static const char *const direct[] = { "key", "click", "press", "release", "command", "move" };
+    static const char *const turns[] = { "act", "act_many", "wait", "save" };
+    for (size_t i = 0; i < sizeof direct / sizeof direct[0]; i++)
+        if (!strcmp(cmd, direct[i])) {
+            send_error("use act in turnbased mode");
+            return true;
+        }
+    for (size_t i = 0; i < sizeof turns / sizeof turns[0] && state_json_game_over(); i++)
+        if (!strcmp(cmd, turns[i])) {
+            send_error("game over");
+            return true;
+        }
+    if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request));
+    else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request));
+    else if (!strcmp(cmd, "get_state")) send_part("state", state_json_state);
+    else if (!strcmp(cmd, "get_view")) send_part("view", state_json_view);
+    else if (!strcmp(cmd, "get_map")) send_part("map", state_json_map);
+    else return false;
+    return true;
+}
+
 static void handle_request(const char *request)
 {
     char cmd[NAME_SIZE], path[PATH_MAX];
     int x, y;
     if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         send_error("missing cmd");
+    } else if (game_mode == GAME_MODE_TURNBASED && handle_turnbased_request(request, cmd)) {
+        return;
     } else if (!strcmp(cmd, "state")) {
         send_state();
     } else if (!strcmp(cmd, "key")) {
@@ -539,7 +587,7 @@ static void read_requests(void)
     }
     if (n > 0) input_length += (size_t)n;
     char *end;
-    while (client_fd >= 0 && !waiting.pending && (end = memchr(input, '\n', input_length))) {
+    while (client_fd >= 0 && !waiting.pending && !turn_is_pending() && (end = memchr(input, '\n', input_length))) {
         size_t used = (size_t)(end + 1 - input);
         *end = 0;
         if (discarding) discarding = 0;
@@ -582,6 +630,15 @@ int control_open(const char *path)
     return 1;
 }
 
+/* One frame of the pending turn: a client that left gets no reply; the reply goes out when the turn ends. */
+static void poll_turn(void)
+{
+    drop_closed_client();
+    if (!turn_poll()) return;
+    turn_reply(&reply);
+    send_reply();
+}
+
 void control_poll(void)
 {
     if (listen_fd < 0) return;
@@ -594,9 +651,20 @@ void control_poll(void)
             send_reply();
         }
     }
-    if (!waiting.pending) read_requests();
+    if (!waiting.pending && !turn_is_pending()) read_requests();
+    if (turn_is_pending()) poll_turn();
     accept_clients();
 }
+
+void control_frame(void)
+{
+    control_poll();
+    if (!turn_is_pending()) return;
+    uint32_t time = game.game_time;
+    for (int i = 0; i < STEP_TICKS && game.game_time == time && !main_loop.end && !main_loop.quit; i++) play_tick();
+}
+
+bool control_turn_pending(void) { return turn_is_pending(); }
 
 void control_close(void)
 {
