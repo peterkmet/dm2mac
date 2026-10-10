@@ -286,7 +286,7 @@ Start `build/dm2` without `--save` unless an item says otherwise. Use a window w
 - [ ] M6. Complete the game (the end sensor). Expected: the screen goes black, `END` plays, then `CREDITS`, then the program ends with exit code 1. A click in `END` starts `CREDITS`.
 - [ ] M7. Let the party die and choose QUIT GAME. Expected: `CREDITS` plays, then the program ends with exit code 2.
 - [ ] M8. Close the window during `INTRO`, and during `CREDITS` of M7. Expected: the program ends at once (exit code 0 and 2); no start menu. Send `quit` over the control socket during `INTRO`. Expected: the same.
-- [ ] M8b. Let the party die. Close the window (or send `quit`) during the "THE END" dialog. Expected: `CREDITS` plays; a second close stops it; the exit code is 2.
+- [ ] M8b. Let the party die. Close the window (or send `quit`) during the "THE END" dialog. Expected: the program ends at once with exit code 2; no `CREDITS`.
 - [ ] M9. Choose RESTART in the save menu. Expected: the start menu, no movie.
 - [ ] M10. Resize the window during a movie. Expected: the picture stays 4:3 with black borders.
 - [ ] M11. Watch `INTRO`, `END`, and `CREDITS` to the end. Expected: clean pictures without broken blocks; the sound fits the picture.

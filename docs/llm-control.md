@@ -209,7 +209,7 @@ Without `--save`, the program shows the splash picture (3 seconds), then the mov
 - `click` and `press` skip: in the `advanced` mode always; in the `vanilla` mode only `INTRO`, `END`, and `CREDITS`. `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
 - `wait` counts game timer ticks. They stand still during a movie, so the reply comes after the movies.
 - `screenshot` saves the game screen (320 × 200), not the movie.
-- `quit` stops the movies and ends the program. A `quit` during "THE END" of a dead party ends the game with exit code 2, and `CREDITS` then plays: send `quit` again to stop it.
+- `quit` stops the movies and ends the program.
 
 To reach the start menu fast: `click` until `state` gives another mode. In the `vanilla` mode, the splash and `FTL` take about 8.5 seconds.
 

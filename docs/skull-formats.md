@@ -892,9 +892,10 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - The VGA movies and `CREDITS.PCX` of the VGA script are not played.
 - The movie screen is the largest 4:3 rectangle of the window with black borders and linear filtering: the scale is not an integer, and no scale filter applies.
-- A click skips (the player and the splash program of DOS also take keys); a key does not skip. In the vanilla mode a click does not stop the splash picture: the script gives it a fixed 3 seconds.
+- A click skips; a key does not skip. In the vanilla mode a click does not stop the splash picture: the script gives it a fixed 3 seconds.
 - The movie sound plays at full volume through the sound output of the port at 44100 Hz: each sample repeats two times. Another audio format plays the movie without sound.
 - A missing file, damaged data, a splash picture of another size than 320 × 200, or a movie whose mode is not 640 × 480 is a failed step: the script goes on with the next step. Damage in the middle of a movie stops it there.
 - A block whose source is outside the frame, or with encoding 6, stays unchanged.
 - `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. A RESTART starts the program again with the environment variable `DM2_RESTARTED`: no start movies, as the launcher starts only the game step again.
+- A closed window or a control `quit` ends the program without the end movies; QUIT GAME plays them.
 - The control socket gives `"mode": "movie"` during a movie; `wait` counts the game timer ticks, which stand still (`docs/llm-control.md`).
