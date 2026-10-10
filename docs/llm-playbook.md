@@ -39,9 +39,9 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Food, water, sleep
 
-- The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is above 0, the champion gets stamina back. Below -512, the champion loses stamina, and at 0 stamina it loses health.
+- The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
 - Sleep doubles the use of food and water.
-- Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Kill creatures that drop food when you meet them, and note where they live.
+- Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
 - Before you go to a new level, each champion has food above a quarter (512), or the packs hold food for each champion below that.
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
 - To eat or drink: put the food or the drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then `eat` or `drink`.
@@ -58,7 +58,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## Skills and training
 
 - Each champion has 4 base skills: `fighter`, `ninja`, `priest`, and `wizard`. `skills` gives the `level` and the `rank` text of each. A skill gets a new level when the champion uses it. A new level prints a message.
-- Each base skill has 4 sub-skills. The state does not show them; a sub-skill grows with its base skill. Known from the code: fighter has swing and parry; ninja has steal, fight, throw, and shoot; priest has heal and influence; wizard has the four element skills. Hint: the other fighter and priest sub-skills are as in Dungeon Master (thrust, club; identify, defend).
+- Each base skill has 4 sub-skills. The state does not show them; a sub-skill grows with its base skill. Known from the code: fighter has swing and parry; ninja has steal, fight, throw, and shoot. Hint: the other sub-skills are as in Dungeon Master: fighter thrust and club; priest identify, heal, influence, and defend; wizard fire, air, earth, and water.
 - Fighter: hand-to-hand attacks. Ninja: fast attacks, throwing, shooting, stealing. Priest: healing, potions, protection. Wizard: attack spells.
 - A new level gives more health, stamina, or mana and better statistics.
 - Before the way to a new level, follow the training rule in `progress.md`.
@@ -86,8 +86,8 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Each champion attacks with the object in a hand. `hands` gives the action menu of the `ready` hand and of the `action` hand. `choose_action` with `champion`, `hand`, and `index` (the place in the list) runs the action.
 - `action_damage` gives the result: above 0 the damage, 0 no damage, -1 nothing (for example a champion is in front), -2 no ammunition, -6 the action cannot work. -3 to -5 is a failed spell.
 - `busy` gives `[ready hand, action hand, spell]`: `true` while the champion must wait before it acts with it again.
-- Some creatures take damage only from magic or special weapons.
-- A closed door blocks creatures. A door that closes on a creature hurts it.
+- Hint: some creatures take damage only from magic or special weapons.
+- A closed door blocks creatures. Hint: a door that closes on a creature hurts it.
 - Before a fight with a creature type that is in `bestiary.md`, read its section again. Use what works against it, and avoid what does not work.
 - Before a timed action (a timed switch, a door that closes, a run past a trap), check `wounds`, health, and stamina of each champion. Heal first.
 
@@ -127,7 +127,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Some items and spells give minions: creatures that work for the party.
 - A minion map is an item. Hold it in a hand and send `choose_action` for that hand: the minion map opens as a panel. `state.minion_map` gives `powered` (whether its mana is paid) and `options[]` (`option` 0-3, `name`: `creatures`, `details`, `items`, `hold`; `on`).
 - `minion_map_option` with `option` 0-3 turns an option on or off. `pass` closes the map.
-- The open minion map takes mana every tick. Close it when you do not use it.
+- The minion map takes 1 mana of the champion when it opens; a champion without mana opens it not powered. While it is open and powered, it takes 1 mana every 25 ticks. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the 25 ticks are divided by 1 plus the mana of the options that are on. When the champion has no mana left, the map loses its power. Close it when you do not use it.
 - A click on the grid of the map sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
 - Hint: the action menu of a minion item (`hands`) gives the minion commands. Test each command and write it in `lessons.md`.
 
@@ -308,7 +308,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 |---|---|---|
 | `move_forward`, `move_back`, `move_left`, `move_right` | none | Left and right step to the side. The inventory must be closed. |
 | `turn_left`, `turn_right` | none | The inventory must be closed. |
-| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, shop, or alcove ahead; else touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
+| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead (Hint: also a shop display); else touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
 | `take_object` | `cell` 0-3 | The leader takes the top object of the cell. The leader hand must be empty. See `view.piles`. |
 | `drop_object` | `cell` 0-4 | The leader drops the hand object: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
 | `open_inventory` | `champion` | |
@@ -408,7 +408,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of another picture). `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists every object of the pile, top first. `take_object` takes `objects[0]`, the same object as `top`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
-- `wall_ahead_clickable`: `click_wall_ahead` reaches a switch, a lock, a mirror, a door button, a shop, or an alcove.
+- `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
 - While the inventory is open, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is `false`.
 
 Visibility rule: the view has the party row and the rows ahead up to the first center square that blocks sight (a wall, a closed fake wall, or a closed door). The row of that square is in the view, with its side squares. Nothing behind it is in the view. A square outside the map is a wall.
