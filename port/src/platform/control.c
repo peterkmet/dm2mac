@@ -19,6 +19,7 @@
 #include "input.h"
 #include "item.h"
 #include "le.h"
+#include "movie.h"
 #include "save.h"
 #include "ui.h"
 #include "video.h"
@@ -265,15 +266,16 @@ static void send_error(const char *error)
     send_reply();
 }
 
-/* The state of the game: time, party, champions, input mode, open dialog and panels, hand, volumes, end, game mode,
-   automap, cheats. */
+/* The state of the game: time, party, champions, input mode (`movie` while a movie plays), open dialog and panels,
+   hand, volumes, end, game mode, automap, cheats. */
 static void send_state(void)
 {
     int mode = input_get_mode();
-    const char *mode_name = mode >= 0 && mode < MODE_COUNT ? mode_names[mode] : "unknown";
+    bool movie = movie_is_playing();
+    const char *mode_name = movie ? "movie" : mode >= 0 && mode < MODE_COUNT ? mode_names[mode] : "unknown";
     put("{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
         mode_name);
-    if (mode != INPUT_MODE_DIALOG) put("null");
+    if (movie || mode != INPUT_MODE_DIALOG) put("null");
     else put("%d", dialog.id);
     put(",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
         game.party_map, game.party_x, game.party_y, game.party_dir, game.champion_count, (int16_t)game.leader);
@@ -437,7 +439,7 @@ static void handle_key(const char *request)
         send_error("unknown key");
         return;
     }
-    input_key_down((uint16_t)code);
+    if (!movie_is_playing()) input_key_down((uint16_t)code);  /* a key does not skip a movie */
     send_ok();
 }
 
@@ -455,9 +457,13 @@ static void handle_button(const char *request, int down, int up)
         return;
     }
     int bit = right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT;
-    input_mouse_x = x, input_mouse_y = y;
-    if (down) input_mouse_down(x, y, bit);
-    if (up) input_mouse_up(x, y, bit);
+    if (movie_is_playing()) {
+        if (down) movie_click();  /* a movie takes only clicks; the game input stays empty */
+    } else {
+        input_mouse_x = x, input_mouse_y = y;
+        if (down) input_mouse_down(x, y, bit);
+        if (up) input_mouse_up(x, y, bit);
+    }
     send_ok();
 }
 
@@ -485,7 +491,7 @@ static void handle_request(const char *request)
         long id = get_int(request, "id", -1);
         if (id < 0 || id > KEY_CODE_MAX) send_error("missing id");
         else {
-            input_simulate_command_click((uint16_t)id);
+            if (!movie_is_playing()) input_simulate_command_click((uint16_t)id);
             send_ok();
         }
     } else if (!strcmp(cmd, "wait")) {

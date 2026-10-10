@@ -2,8 +2,15 @@
 the failed steps, and the game screen after the movies."""
 
 import ctypes
+import os
+import shutil
+import tempfile
+import threading
+import time
 
 import pytest
+
+from dm2tools.control_client import request
 
 SCRIPT_NONE, SCRIPT_START, SCRIPT_COMPLETED, SCRIPT_PARTY_DEAD = range(4)
 STEP_NONE, SPLASH, FTL, INTRO, END, CREDITS = -1, 0, 1, 2, 3, 4
@@ -151,3 +158,36 @@ def test_script_end_restores_the_game_screen(lib, movies):
         lib.movie_click()
         lib.movie_update(1)
     assert (bytes(fb), bytes(pal)) == (screen, colors)
+
+
+def test_control_state_and_click_during_a_movie(lib, movies):
+    folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")  # sun_path holds about 100 bytes
+    path = os.path.join(folder, "control.sock")
+    lib.control_open.argtypes = [ctypes.c_char_p]
+    assert lib.control_open(path.encode())
+    stop = threading.Event()
+
+    def loop():
+        while not stop.is_set():
+            lib.control_poll()
+            time.sleep(0.0005)
+
+    thread = threading.Thread(target=loop)
+    thread.start()
+    try:
+        assert movies(SCRIPT_START, ADVANCED)
+        state = request({"cmd": "state"}, path)
+        assert state["ok"] and state["mode"] == "movie" and state["dialog"] is None
+        assert request({"cmd": "key", "key": "esc"}, path) == {"ok": True}
+        lib.movie_update(1)
+        assert lib.movie_current_step() == SPLASH  # a key does not skip
+        assert request({"cmd": "click", "x": 10, "y": 10}, path) == {"ok": True}
+        lib.movie_update(1)
+        assert lib.movie_current_step() == FTL
+        lib.movie_stop()
+        assert request({"cmd": "state"}, path)["mode"] != "movie"
+    finally:
+        stop.set()
+        thread.join()
+        lib.control_close()
+        shutil.rmtree(folder)

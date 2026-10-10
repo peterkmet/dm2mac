@@ -1,6 +1,7 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 #include <stdint.h>
+#include "movie.h"
 
 /* Prefixes: plat_ */
 
@@ -18,6 +19,8 @@ int plat_init(int scale, int filter);
 void plat_quit(void);
 /* Shows fb with the palette, scaled into the window. */
 void plat_present(void);
+/* Shows a movie picture on the screen of its player, in the largest 4:3 rectangle of the window. */
+void plat_present_movie(const MoviePicture *p);
 /* Returns 1 with the next key, mouse button, or quit event; mouse motion only moves the pointer. */
 int plat_poll(PlatEvent *e);
 /* Mouse position in game screen pixels. */

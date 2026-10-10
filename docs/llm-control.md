@@ -19,7 +19,7 @@ The game runs in real time. The control does not stop the game time. Each reques
    ```
 
    - `--control PATH`: the socket file. The game replaces an old socket at `PATH`. When `PATH` is another file, the game does not start and the file stays. The game makes the last folder level of `PATH` only, not the folders above it. The socket path must be shorter than about 100 bytes.
-   - `--save PATH`: optional. Without it, the game starts with the start menu.
+   - `--save PATH`: optional. Without it, the game shows the splash picture and the movies `FTL` and `INTRO`, then the start menu (see "Movies").
    - Without the two `SDL_*_DRIVER` variables, the window and the sound stay on.
 
 3. Send requests with `dm2-play`.
@@ -76,7 +76,7 @@ Reads the game state.
 | --- | --- |
 | `time` | Game time in game steps (`game.game_time`). It stands still during a pause and in dialogs. |
 | `ticks` | Timer ticks at 60 Hz since the program start (`main_loop.timer_ticks`). `wait` counts these. |
-| `mode` | Input mode: `menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`. |
+| `mode` | Input mode: `menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`; `movie` while the splash picture or a movie plays (see "Movies"). |
 | `dialog` | The dialog id (`DialogState.id`, `port/src/ui/dialog.h`) while `mode` is `dialog`, else `null`. |
 | `party` | Map, x, y, and direction (0 north, 1 east, 2 south, 3 west). |
 | `champion_count`, `leader` | Champions in the party; the leader index, -1 for none. |
@@ -200,6 +200,18 @@ Ends the program the same way as a closed window. The exit code is 0 in the game
 ```json
 {"ok":true}
 ```
+
+## Movies
+
+Without `--save`, the program shows the splash picture (3 seconds), then the movies `FTL` and `INTRO`, then the start menu. After a completed game it plays `END` and `CREDITS`; after QUIT GAME of a dead party it plays `CREDITS` (`docs/skull-formats.md` section 15). While one of them plays:
+
+- `state` gives `"mode": "movie"` and `"dialog": null`.
+- `click` and `press` skip: in the `advanced` mode always; in the `vanilla` mode only `INTRO`, `END`, and `CREDITS`. `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
+- `wait` counts game timer ticks. They stand still during a movie, so the reply comes after the movies.
+- `screenshot` saves the game screen (320 × 200), not the movie.
+- `quit` stops the movies and ends the program. A `quit` during "THE END" of a dead party ends the game with exit code 2, and `CREDITS` then plays: send `quit` again to stop it.
+
+To reach the start menu fast: `click` until `state` gives another mode. In the `vanilla` mode, the splash and `FTL` take about 8.5 seconds.
 
 ## Errors
 

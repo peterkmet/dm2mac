@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <SDL3/SDL.h>
@@ -12,6 +13,7 @@
 #include "icon.h"
 #include "input.h"
 #include "item.h"
+#include "movie.h"
 #include "music.h"
 #include "platform.h"
 #include "play.h"
@@ -30,6 +32,7 @@
 #define EXIT_USAGE 2
 #define PATH_SIZE 1024
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
+#define RESTART_ENV "DM2_RESTARTED"   /* set for the program that a RESTART starts: the launcher plays no start movies */
 
 /* Shows fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
 static void present_with_cursor(void)
@@ -150,6 +153,47 @@ static void modal_frame(void)
     for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
 }
 
+/* The events of a movie: a click skips by the rules of the mode, a closed window ends the program. */
+static void pump_movie_events(void)
+{
+    PlatEvent e;
+    while (plat_poll(&e)) {
+        if (e.type == PLAT_QUIT) main_loop.quit = 1;
+        else if (e.type == PLAT_MOUSE) movie_click();
+    }
+    control_poll();
+}
+
+/* Shows the splash on the game screen or the movie picture on the screen of its player. */
+static void present_movie(void)
+{
+    MoviePicture picture;
+    if (movie_shows_splash()) {
+        plat_present();
+        return;
+    }
+    movie_picture(&picture);
+    plat_present_movie(&picture);
+}
+
+/* Plays a script of the launcher with the movie sound instead of the music, until its end or a quit. */
+static void play_movies(int script)
+{
+    if (!movie_start(script, session.data_dir, SDL_GetTicksNS())) return;
+    plat_audio_music(movie_render_audio);
+    for (int pit = 0; movie_is_playing() && !main_loop.quit;) {
+        pump_movie_events();
+        if (++pit == PIT_TICKS_PER_GAME_TICK) {
+            pit = 0;
+            movie_update(SDL_GetTicksNS());
+            if (movie_is_playing()) present_movie();
+        }
+        plat_wait_tick();
+    }
+    movie_stop();
+    plat_audio_music(music_render);
+}
+
 /* Reads the values of the command line options; returns 0 with a message when an option has no value. */
 static int read_options(int argc, char **argv, const char **data, const char **filter, const char **save,
                         const char **control, const char **mode)
@@ -205,7 +249,8 @@ int main(int argc, char **argv)
         sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     }
     play_frame_hook = modal_frame;
-    if (!save && !session_init()) main_loop.quit = 1;
+    if (!save && !getenv(RESTART_ENV)) play_movies(MOVIE_SCRIPT_START);
+    if (!save && !main_loop.quit && !session_init()) main_loop.quit = 1;
     for (int pit = 0; !main_loop.quit;) {
         pump_events();
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
@@ -216,11 +261,14 @@ int main(int argc, char **argv)
         }
         plat_wait_tick();
     }
+    main_loop.quit = 0;  /* the end movies run until their end, a closed window, or a quit request */
+    play_movies(movie_script_after(session.exit_code));
     control_close();
     music_quit();
     plat_quit();
     if (session.exit_code == EXIT_RESTART) {
         args_drop_save(argc, argv);  /* the original always restarts into the start menu */
+        setenv(RESTART_ENV, "1", 1);
         execvp(argv[0], argv);  /* the DOS launcher starts the game again */
         fprintf(stderr, "cannot restart %s\n", argv[0]);
     }

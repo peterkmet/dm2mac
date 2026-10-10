@@ -1,4 +1,5 @@
 #include <SDL3/SDL.h>
+#include "movie.h"
 #include "music.h"
 #include "platform.h"
 #include "scale.h"
@@ -14,6 +15,8 @@ _Static_assert(MUSIC_SAMPLE_RATE == SOUND_OUTPUT_RATE, "the audio stream plays t
 #define FILTER_MAX SCALE3X_FACTOR
 #define AUDIO_CHANNELS 2
 #define AUDIO_QUEUE_FRAMES 2048 /* about 46 ms at 44100 Hz */
+#define SCREEN_ASPECT_W 4             /* a VGA monitor shows every mode on a 4:3 tube */
+#define SCREEN_ASPECT_H 3
 
 static SDL_Window *win;
 static SDL_Renderer *ren;
@@ -24,6 +27,8 @@ static int filter = 1; /* upscale factor: 1 none, 2 Scale2x, 3 Scale3x */
 static uint8_t big[SCREEN_H * FILTER_MAX][SCREEN_W * FILTER_MAX];
 static SDL_AudioStream *audio;
 static PlatMixer *music_mixer;
+static SDL_Texture *movie_tex;
+static int movie_tex_w, movie_tex_h;
 
 int plat_init(int scale, int filter_factor)
 {
@@ -75,6 +80,44 @@ void plat_present(void)
     SDL_SetRenderDrawColor(ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(ren);
     SDL_RenderTexture(ren, tex, NULL, &dst);
+    SDL_RenderPresent(ren);
+}
+
+/* The largest 4:3 rectangle in the middle of the window: the tube of a VGA monitor. */
+static SDL_FRect movie_screen(int w, int h)
+{
+    float sw = (float)w, sh = (float)w * SCREEN_ASPECT_H / SCREEN_ASPECT_W;
+    if (sh > h) sh = (float)h, sw = (float)h * SCREEN_ASPECT_W / SCREEN_ASPECT_H;
+    return (SDL_FRect){ (w - sw) / 2, (h - sh) / 2, sw, sh };
+}
+
+void plat_present_movie(const MoviePicture *p)
+{
+    uint32_t pal[PALETTE_COLORS], *px;
+    int pitch, w, h;
+    if (!movie_tex || movie_tex_w != p->width || movie_tex_h != p->height) {
+        if (movie_tex) SDL_DestroyTexture(movie_tex);
+        movie_tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, p->width, p->height);
+        if (!movie_tex) return;
+        movie_tex_w = p->width, movie_tex_h = p->height;
+        SDL_SetTextureScaleMode(movie_tex, SDL_SCALEMODE_LINEAR);
+    }
+    for (int i = 0; i < PALETTE_COLORS; i++)
+        pal[i] = video_argb_pack(video_vga_to_8bit(p->palette[i][0]), video_vga_to_8bit(p->palette[i][1]),
+                                 video_vga_to_8bit(p->palette[i][2]));
+    if (!SDL_LockTexture(movie_tex, NULL, (void **)&px, &pitch)) return;
+    for (int y = 0; y < p->height; y++)
+        for (int x = 0; x < p->width; x++) px[y * (pitch / ARGB_BYTES) + x] = pal[p->pixels[y * p->width + x]];
+    SDL_UnlockTexture(movie_tex);
+
+    SDL_GetCurrentRenderOutputSize(ren, &w, &h);
+    SDL_FRect screen = movie_screen(w, h);
+    float kx = screen.w / p->screen_width, ky = screen.h / p->screen_height;
+    SDL_FRect dst = { screen.x + (p->screen_width - p->shown_width) / 2 * kx,
+                      screen.y + (p->screen_height - p->height) / 2 * ky, p->shown_width * kx, p->height * ky };
+    SDL_SetRenderDrawColor(ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(ren);
+    SDL_RenderTexture(ren, movie_tex, NULL, &dst);
     SDL_RenderPresent(ren);
 }
 
