@@ -28,6 +28,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 - Game modes: `--mode vanilla|advanced`, default `advanced`. The advanced mode adds W A S D Q E for movement and F5 and F9 for a quick save and quick load in `DATA/QUICK.DAT`. The control state gives the mode in `game_mode`. Details: `docs/advanced-mode.md`.
 - Automap in the advanced mode: Tab or M opens a map of the seen squares of the party map in the viewport, with the minion map icons and a readout of the position and the cheats. The game time stops while it is open; a mouse drag scrolls it. Slot saves and `QUICK.DAT` keep the seen squares in an AMAP block after the original save data.
 - Cheats on the open automap: I immortal, F food and water, L full light. A new or loaded game turns them off. The control state gives `automap`, `cheat_immortal`, `cheat_food`, and `cheat_light`.
+- Movies of the PC version, in the order of the DOS launcher: the splash picture `INTRPLAY.PCX`, then the SVGA movies `FTL` and `INTRO` before the start menu; `END` and `CREDITS` after a completed game; `CREDITS` after QUIT GAME of a dead party. A start with `--save` and a restart play no start movies. A click skips a movie; in the vanilla mode a click does not stop the splash and `FTL`. The movies show on a 4:3 screen with black borders. A missing or damaged movie is skipped. The control state gives `"mode": "movie"` while a movie plays. Details: `docs/skull-formats.md` section 15.
 
 ### Changed
 
