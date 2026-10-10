@@ -20,6 +20,7 @@ VANILLA, TURNBASED = 0, 2
 TURN_WAIT_MAX_TICKS = 5000
 POISON_AMOUNT = 200  # a poison that hurts now and again within the wait
 FACINGS = 4
+LEAVE_WAIT_TICKS = 2000
 
 
 @pytest.fixture
@@ -53,6 +54,8 @@ def tb(lib, gdat, session):  # noqa: F811
     finally:
         stop.set()
         thread.join()
+        while pending():  # a turn that the test left runs to its end: the next test starts without one
+            frame()
         loop.end = 0
         lib.control_close()
         mode.value = VANILLA
@@ -173,15 +176,17 @@ def test_move_during_cooldown_runs_in_the_same_turn(tb, lib):
 
 
 def test_client_that_leaves_during_a_turn_frees_the_turn(tb, lib):
-    """A client sends wait 2000 and closes: the turn ends without a reply; a new client gets get_state."""
+    """A client sends wait 2000 and closes: the turn runs all its ticks without a reply (a quiet place: no news); a
+    new client gets the get_state reply, not the wait reply."""
     path, game, _ = tb
     before = game.game_time
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
         s.connect(path)
-        s.sendall(b'{"cmd": "wait", "ticks": 2000}\n')
+        s.sendall(b'{"cmd": "wait", "ticks": %d}\n' % LEAVE_WAIT_TICKS)
         deadline = time.monotonic() + 10
         while not lib.control_turn_pending() and time.monotonic() < deadline:
             time.sleep(0.001)
         assert lib.control_turn_pending()
     r = request({"cmd": "get_state"}, path, timeout=60)
-    assert r["ok"] and not lib.control_turn_pending() and r["state"]["time"] > before
+    assert r["ok"] and "ticks" not in r and "state" in r and not lib.control_turn_pending()
+    assert r["state"]["time"] == before + LEAVE_WAIT_TICKS
