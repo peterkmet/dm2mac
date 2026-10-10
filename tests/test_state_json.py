@@ -20,6 +20,7 @@ CH_NAME, CH_HEALTH, CH_STAMINA, CH_MANA = 0x00, 0x36, 0x3A, 0x3E
 STAMINA_DISPLAY_UNIT = 10
 ACTION_MODE_MENU, SLOT_READY_HAND = 1, 0
 CHAMPION_ACTION_MAX, CHAMPION_ACTION_SIZE = 3, 3
+CH_AURA, AURA_STRENGTH, AURA_VALUE = 0x102, 3, 50  # an aura that raises the strength
 
 
 def part(lib, which):
@@ -94,6 +95,16 @@ def test_state_matches_the_game_record(lib, game):
     assert names and all(name == name.rstrip() for name in names)
 
 
+def test_reading_the_state_keeps_the_random_seed(lib, game):
+    """A stat aura makes champ_get_stat draw a random number; reading the state must not change the later game."""
+    struct.pack_into("<Bh", game.champions[0], CH_AURA, AURA_STRENGTH, AURA_VALUE)
+    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    before = seed.value
+    part(lib, STATE)
+    part(lib, STATE)
+    assert seed.value == before
+
+
 def test_hand_menus_do_not_change_the_open_menu(lib, game):
     """Listing the action menus of both hands for the state keeps the open menu of the action area."""
     lib.action_area_open_hand(0, SLOT_READY_HAND)
@@ -119,5 +130,6 @@ def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):  # noqa: F811
     load(lib, gdat, OUTSIDE.read_bytes(), tmp_path)
     state = part(lib, STATE)
     assert state["outdoor"] is True
-    assert set(state["weather"]) == {"clouds", "rain", "wind"}
+    assert {"clouds", "rain"} <= set(state["weather"]) <= {"clouds", "rain", "wind"}
+    assert ("wind" in state["weather"]) == lib.view_rain_shows()
     assert state["day_time"] in ("day", "dawn_dusk", "night")

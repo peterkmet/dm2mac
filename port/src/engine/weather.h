@@ -1,5 +1,6 @@
 #ifndef WEATHER_H
 #define WEATHER_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "gdat.h"
 
@@ -53,6 +54,9 @@ typedef struct {
 
 /* The weather sky objects that the view draws, ended by SKY_OBJECT_END (world_update_day_night fills them). */
 SkyObject *weather_sky_objects(void);
+/* The sky set of the party map has rain pictures, cloud pictures. */
+bool weather_sky_has_rain(void);
+bool weather_sky_has_clouds(void);
 /* Reads the sky object entry of the map graphics into object; returns 0 when the map has none. */
 int weather_load_sky_object(SkyObject *object);
 /* Queues the next storm step delay ticks from now. */

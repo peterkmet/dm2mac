@@ -935,10 +935,12 @@ static int weather_get_rain_image(int *side)
     return (*side == DIR_NORTH || *side == DIR_SOUTH ? RAIN_ALONG : RAIN_ACROSS) + level;
 }
 
+bool view_rain_shows(void) { return game.rain_intensity && view.rain_shown; }
+
 /* Draws the rain over the view: a random part of the rain picture, tiled. */
 static void weather_draw_rain(void)
 {
-    if (!game.rain_intensity || !view.rain_shown) return;
+    if (!view_rain_shows()) return;
     int16_t rect[RECT_SIZE], w = VIEWPORT_WIDTH, h = VIEWPORT_HEIGHT;
     if (!zone_compute_rect(NULL, rect, ZONE_WALL, &w, &h, ZONE_NO_ANCHOR)) return;
     int side, entry = weather_get_rain_image(&side);

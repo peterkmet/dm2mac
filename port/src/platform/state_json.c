@@ -15,10 +15,12 @@
 #include "magic.h"
 #include "minion.h"
 #include "money.h"
+#include "random.h"
 #include "move.h"
 #include "save.h"
 #include "text.h"
 #include "ui.h"
+#include "view.h"
 #include "weather.h"
 
 #define JSON_START_SIZE 1024          /* the first size of the text buffer */
@@ -551,16 +553,19 @@ static const char *amount_name(int value, int light, int medium, int heavy)
     return amount_names[(value >= light) + (value >= medium) + (value >= heavy)];
 }
 
-/* Whether the party sees the sky; outside also the weather and the time of day. */
+/* Whether the party sees the sky; outside also the weather that the sky shows and the time of day. The wind shows
+   only as the slant of the falling rain. */
 static void outdoor_json(Json *j)
 {
     key_bool(j, "outdoor", game.weather_visible != 0);
     if (!game.weather_visible) return;
     json_key(j, "weather");
     json_open(j, '{');
-    key_str(j, "clouds", amount_name(game.cloud_cover, CLOUDS_SHOWN, CLOUDS_MORE, CLOUDS_MOST));
-    key_str(j, "rain", amount_name(game.sky_darkness, DARKNESS_RAIN, DARKNESS_MEDIUM, DARKNESS_HEAVY));
-    key_str(j, "wind", direction_names[game.wind_dir & DIR_MASK]);
+    const char *clouds = amount_name(game.cloud_cover, CLOUDS_SHOWN, CLOUDS_MORE, CLOUDS_MOST);
+    const char *rain = amount_name(game.sky_darkness, DARKNESS_RAIN, DARKNESS_MEDIUM, DARKNESS_HEAVY);
+    key_str(j, "clouds", weather_sky_has_clouds() ? clouds : amount_names[0]);
+    key_str(j, "rain", weather_sky_has_rain() ? rain : amount_names[0]);
+    if (view_rain_shows()) key_str(j, "wind", direction_names[game.wind_dir & DIR_MASK]);
     json_close(j, '}');
     key_str(j, "day_time", weather.hour_light <= HOUR_LIGHT_DAY ? "day"
                            : weather.hour_light >= HOUR_LIGHT_NIGHT ? "night" : "dawn_dusk");
@@ -568,6 +573,7 @@ static void outdoor_json(Json *j)
 
 void state_json_state(Json *j)
 {
+    uint32_t seed = random_seed;    /* a stat aura draws a random number in champ_get_stat: the read changes no game */
     int mode = input_get_mode();
     json_open(j, '{');
     key_int(j, "time", (long)game.game_time);
@@ -594,6 +600,7 @@ void state_json_state(Json *j)
     json_close(j, ']');
     outdoor_json(j);
     json_close(j, '}');
+    random_seed = seed;
 }
 
 char *state_json_string(int part)

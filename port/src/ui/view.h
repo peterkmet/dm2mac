@@ -1,5 +1,6 @@
 #ifndef VIEW_H
 #define VIEW_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "aspect.h"
 #include "draw.h"
@@ -93,5 +94,8 @@ int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
 /* Clicks in the viewport (input.c). */
 /* A click in the dungeon view: walls, doors, objects, creatures. */
 void view_click_in_viewport(int x, int y);
+
+/* Falling rain shows over the view: its slant shows the wind. */
+bool view_rain_shows(void);
 
 #endif

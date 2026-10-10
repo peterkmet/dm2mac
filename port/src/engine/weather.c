@@ -136,6 +136,8 @@ static int sky_has(int entry) { return gdat_exists(gdat_current(), CAT_SKY, dung
 static SkyObject sky_objects[SKY_OBJECT_MAX] = {{.entry = SKY_OBJECT_END}};
 
 SkyObject *weather_sky_objects(void) { return sky_objects; }
+bool weather_sky_has_rain(void) { return sky_has(SKY_RAIN_LIGHT); }
+bool weather_sky_has_clouds(void) { return sky_has(SKY_CLOUDS_LIGHT); }
 
 int weather_load_sky_object(SkyObject *object)
 {
