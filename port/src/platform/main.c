@@ -262,6 +262,7 @@ int main(int argc, char **argv)
         plat_wait_tick();
     }
     main_loop.quit = 0;  /* the end movies run until their end, a closed window, or a quit request */
+    sound_stop_all();
     if (!main_loop.closed) play_movies(movie_script_after(session.exit_code));
     control_close();
     music_quit();
