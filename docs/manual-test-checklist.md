@@ -65,7 +65,7 @@ The items marked "control socket" ran over `docs/llm-control.md` with the saves 
 
    Expected result: `build/dm2` and `build/libdm2.dylib`, no warnings.
 
-2. Start the port with the start menu:
+2. Start the port: the splash picture, the movies `FTL` and `INTRO`, then the start menu:
 
    ```sh
    build/dm2
@@ -98,7 +98,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 
 ## A. Program start and window
 
-- [x] A1. Run `build/dm2`. Expected: a window at scale 3 shows the start menu title; the log shows `data folder: game`. Passed (manual, 2026-10-06).
+- [x] A1. Run `build/dm2`. Expected: a window at scale 3 shows the splash picture and the movies, then the start menu title; the log shows `data folder: game`. Passed (manual, 2026-10-06).
 - [x] A2. Run `build/dm2 --filter scale2x`, then `--filter scale3x`. Expected: the image is smoothed by the filter; the game is the same. Passed (manual, 2026-10-06).
 - [x] A3. Run `DM2_FILTER=scale2x build/dm2 --filter none`. Expected: no filter (the option wins). Passed (manual, 2026-10-06).
 - [x] A4. Run `build/dm2 --filter bad`. Expected: an error message and exit code 2. Passed (manual, 2026-10-06).
@@ -234,7 +234,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] J13. Let the whole party die. Expected: the scream, then "THE END"; RESTART GAME loads the last save; QUIT GAME ends with exit code 2. Passed (manual, 2026-10-06).
 - [x] J14. Load or save slot 0. While the game runs, rename `SKSAVE0.DAT` and keep `SKSAVE0.BAK`. Let the party die and choose RESTART GAME. Expected: the `.BAK` file loads and is renamed back to `SKSAVE0.DAT`. (The slot list reads only `.DAT` files, as in the original; a slot with only a `.BAK` shows UNUSED.) Passed (manual, 2026-10-06).
 - [x] J15. Load a damaged save. Expected: "THE GAME IS DAMAGED!"; no crash. Passed (manual, 2026-10-06).
-- [ ] J16. Optional: load a save near the end and complete the final task (end sensor). Expected: the screen goes black and the program ends with exit code 1 (PRD Epic 5; the ending movie is out of scope). Not run (needs long play).
+- [ ] J16. Optional: load a save near the end and complete the final task (end sensor). Expected: the screen goes black and the program ends with exit code 1 after the movies `END` and `CREDITS` (M6). Not run (needs long play).
 
 ## K. DOS cross-checks
 
@@ -274,12 +274,32 @@ Details: `docs/advanced-mode.md`.
 - [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
 - [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
 
+## Movies (2026-10-10)
+
+Start `build/dm2` without `--save` unless an item says otherwise. Use a window with sound.
+
+- [ ] M1. Start. Expected: the Interplay picture for 3 seconds, then `FTL` with sound, then `INTRO` with sound, then the start menu with its music and its colors.
+- [ ] M2. Look at the size of the pictures. Expected: `FTL` small in the middle of a 4:3 area; `INTRO` fills about 90 % of the 4:3 area; black borders on the sides of a wide window.
+- [ ] M3. `--mode vanilla`: click during the splash and during `FTL`. Expected: they go on. Click during `INTRO`. Expected: the start menu shows.
+- [ ] M4. `--mode advanced`: click during the splash, `FTL`, and `INTRO`. Expected: each stops at once. Press keys during a movie. Expected: nothing; the start menu does not get the keys.
+- [ ] M5. Start with `--save game/DATA/SKSAVE0.DAT`. Expected: no movie; the game starts at once.
+- [ ] M6. Complete the game (the end sensor). Expected: the screen goes black, `END` plays, then `CREDITS`, then the program ends with exit code 1. A click in `END` starts `CREDITS`.
+- [ ] M7. Let the party die and choose QUIT GAME. Expected: `CREDITS` plays, then the program ends with exit code 2.
+- [ ] M8. Close the window during `INTRO`, and during `CREDITS` of M7. Expected: the program ends at once (exit code 0 and 2); no start menu. Send `quit` over the control socket during `INTRO`. Expected: the same.
+- [ ] M8b. Let the party die. Close the window (or send `quit`) during the "THE END" dialog. Expected: `CREDITS` plays; a second close stops it; the exit code is 2.
+- [ ] M9. Choose RESTART in the save menu. Expected: the start menu, no movie.
+- [ ] M10. Resize the window during a movie. Expected: the picture stays 4:3 with black borders.
+- [ ] M11. Watch `INTRO`, `END`, and `CREDITS` to the end. Expected: clean pictures without broken blocks; the sound fits the picture.
+- [ ] M12. Rename `game/FTL` and start. Expected: the splash, then `INTRO`, then the start menu. Rename it back.
+- [ ] M13. With the control socket (`docs/llm-control.md`, section "Movies"): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
+- [ ] M14. Optional, DOSBox (`tools/dosbox-dm2.conf`): compare the size and the position of the `INTRO` picture with the port.
+
 ## Known deviations
 
 Do not report these documented deviations as bugs. Details are in `docs/skull-formats.md`.
 
 - The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/advanced-mode.md`).
-- No intro, ending movie, or credits; a completed game ends the program with exit code 1 (PRD scope; section 14).
+- Only the SVGA movies; the movie screen is the largest 4:3 rectangle of the window with linear filtering; a key does not skip a movie; RESTART plays no movies (section 15).
 - No DOS layer: no disk, drive, or memory dialogs; menus and dialogs wait without busy loops (section 14).
 - `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).
 - RESTART starts the program again; the dialog texts show the last folder of the `--data` path in capitals as the drive path (section 14).

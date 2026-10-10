@@ -204,10 +204,11 @@ Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi
 - MVE opcode `0x0a` (set video mode) in each movie: `INTRO`, `END`, `FTL`, `CREDITS` = `(640, 480, 0x101)`. `*.VGA` = `(320, 200, 0x13)`.
 - `IBMIOP.EXE` (decompressed `0x19fe`): `int 10h` with `AX=0x0013`. `SKULL.EXE` has no `int 10h` and no VESA call.
 - `IBMIOP.EXE` script tables at decompressed `0x3f62` (SVGA) and `0x40a0` (VGA).
+- The script records and the arguments of the movie player: section 15.
 
 Confidence: high for the effect. Medium for the exact ` +VS` usage.
 
-Impact on the port: the SVGA option gives no better game image. The port implements no SVGA mode. Movies are out of scope.
+Impact on the port: the SVGA option gives no better game image. The port implements no SVGA mode for the game. The port plays the SVGA movies (section 15).
 
 ## 4. DUNGENB.DAT and GRAPHIC2.DAT
 
@@ -843,3 +844,57 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Fixes: a failed load of the last slot after the death of the party shows the error dialog (the original asks for the game disk); the link pass marks no square when no map lies below a pit (the original writes into map -1); the projectile that `dun_get_discarded_thing` frees is unlinked from its own map (the original unlinks from the current map); the name editor does not read before an empty field; slot names are bounded to 31 characters.
 - Kept quirks: `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square; a RESTART that the question of dialog `0x0c` cancels stays set for the next quit; a cancelled load leaves slot 0.
 - The `--save PATH` option starts the game of PATH at once, without the menu and without the dialog after a load.
+
+## 15. Movies
+
+### Launcher script (`IBMIOP.EXE`)
+
+- The SVGA script table at the decompressed offset `0x3f62` has one record of 53 bytes per step: the program name (14 bytes; `@1` is the game), the arguments (32 bytes), two flag bytes, the highest exit code that the record handles (offset `0x30`), and the next step for each exit code (offset `0x31`, 1-based; 0 ends the launcher). An exit code above the highest gives the next step of exit code 0 (code at `0x3cea`-`0x3d17`).
+- Steps: 1 `splash intrplay.pcx 3`, 2 `ftl noabort`, 3 `intro 640x350 wide`, 4 the game, 5 `end 640x350 wide`, 6 `credits 640x350 wide`.
+- The game: exit code 0 (quit) ends; 1 (completed) goes to `END`, then `CREDITS`; 2 (QUIT GAME of a dead party) goes to `CREDITS`; 3 (RESTART) starts the game step again; every other code ends.
+
+### Movie player
+
+- Each SVGA movie file is the same DOS player program with the MVE data after it. The last `Interplay MVE File` signature of the file starts the data.
+- Arguments (the 32-bit code of the player): a first argument that names a screen size replaces the video mode of the movie (`640x350`: a 640 × 350 screen). `wide` shows the video 4/3 wider (432 → 576 pixels). `noabort` turns off the stop by the player. The player centers the video on its screen.
+- `FTL` plays on 640 × 480 (VESA `0x101`, from its opcode `0x0a`): the 432 × 320 video fills about 67 % of the width and the height of a 4:3 monitor. `INTRO`, `END`, and `CREDITS` play on 640 × 350, 576 × 320 wide: about 90 %.
+
+### MVE stream
+
+- File header: the signature `Interplay MVE File\x1a\0` (20 bytes) and the words `0x001a`, `0x0100`, `0x1133`.
+- Chunks: a word length and a word type, then opcodes up to the length. Opcode: a word length, a type byte, a version byte, then the body.
+- Opcodes of the DM2 movies:
+
+| Opcode | Body | Port |
+|---|---|---|
+| `0x00` | - | End of stream. |
+| `0x01` | - | End of chunk. |
+| `0x02` | dword µs per subdivision, word subdivisions | Time of one picture: 83.328 ms (`FTL`, `INTRO`, `END`), 100 ms (`CREDITS`). |
+| `0x03` v0 | word ?, word flags, word rate, word buffer size | Bit 0 stereo, bit 1 16-bit, bit 2 compressed (version 1 only). The movies: 22050 Hz, stereo, unsigned 8-bit. |
+| `0x04` | - | Starts the sound. |
+| `0x05` v2 | word width, word height in blocks of 8 × 8 | 54 × 40 blocks: 432 × 320. |
+| `0x07` v1 | word first color, word count, word ? | Shows the picture. |
+| `0x08`, `0x09` | word sequence, word stream mask, word length, samples (`0x08` only) | Audio and silence; the port plays stream mask bit 0. |
+| `0x0a` | word width, word height, word VESA mode | `(640, 480, 0x101)`; the VGA movies `(320, 200, 0x13)`. |
+| `0x0c` | word first color, word count, 6-bit RGB | Palette. |
+| `0x0f` | 4 bits per block | Decoding map of the next video data. |
+| `0x11` v3 | 14-byte header (word flags at 12), block data | Video data; flag bit 0 swaps the frames before the decode. |
+| `0x13` | 132 bytes | Block statistics: counts of the encodings. Skipped. |
+
+- The 8-bit video codec: the table of encodings `0x0` to `0xf` is in `docs/superpowers/2026-10-10-movies-plan.md` Task 3 and in `port/src/data/mve_video.c`.
+- The first audio frames come before the first picture (about 1 second); the sound starts with the first picture.
+
+### Splash picture
+
+- `INTRPLAY.PCX`: PCX version 5, RLE, 8 bits per pixel, 1 plane, 320 × 200, a 256-color palette of 8-bit values after the byte `0x0c` at the end of the file. The port shows it for 3 seconds on the game screen with its palette (values shifted right by 2).
+
+### Deviations of the C port
+
+- The VGA movies and `CREDITS.PCX` of the VGA script are not played.
+- The movie screen is the largest 4:3 rectangle of the window with black borders and linear filtering: the scale is not an integer, and no scale filter applies.
+- A click skips (the player and the splash program of DOS also take keys); a key does not skip. In the vanilla mode a click does not stop the splash picture: the script gives it a fixed 3 seconds.
+- The movie sound plays at full volume through the sound output of the port at 44100 Hz: each sample repeats two times. Another audio format plays the movie without sound.
+- A missing file, damaged data, a splash picture of another size than 320 × 200, or a movie whose mode is not 640 × 480 is a failed step: the script goes on with the next step. Damage in the middle of a movie stops it there.
+- A block whose source is outside the frame, or with encoding 6, stays unchanged.
+- `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. A RESTART starts the program again with the environment variable `DM2_RESTARTED`: no start movies, as the launcher starts only the game step again.
+- The control socket gives `"mode": "movie"` during a movie; `wait` counts the game timer ticks, which stand still (`docs/llm-control.md`).
