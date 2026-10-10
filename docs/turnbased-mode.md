@@ -285,4 +285,4 @@ In the turn-based mode, `main.c` does these steps:
 uv run pytest -q -n auto tests/test_state_json.py tests/test_turnbased.py tests/test_play_client.py
 ```
 
-The manual checks are in section M of [manual-test-checklist.md](manual-test-checklist.md).
+The manual checks are in section T of [manual-test-checklist.md](manual-test-checklist.md).
