@@ -28,6 +28,8 @@ int magic_find_flask_in_hands(const Champion *c);
 int magic_cast_spell(int champ, const Spell *spell, int power);
 /* The champion of the open spell panel casts the entered runes; returns 1 when the cast failed. */
 int magic_cast_entered_runes(void);
+/* The mana that rune (0 to 5) of the next rune set costs champion champ now. */
+uint16_t magic_rune_mana_cost(int champ, int rune);
 /* Adds rune 0 to 5 of the next rune set to the runes of the open spell panel when the mana suffices. */
 void magic_add_rune(int rune);
 void magic_remove_last_rune(void);

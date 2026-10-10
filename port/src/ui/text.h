@@ -6,7 +6,7 @@
 #include "game_text.h"
 #include "gfx.h"
 
-/* Prefixes: text_build_ text_clear_ text_draw text_init text_measure text_print_ text_set_message_ text_wrap_ */
+/* Prefixes: text_build_ text_clear_ text_draw text_init text_measure text_message_ text_print_ text_set_message_ text_wrap_ */
 
 /* The font: 6 rows of 128 bytes in GDAT (1, 0, 7, 0), one byte per character and row, 5 pixels in bits 4 to 0. */
 #define FONT_GLYPH_WIDTH 5
@@ -26,6 +26,8 @@
 /* Game time at which each message row clears, MESSAGE_NEVER when it is clear. */
 #define MESSAGE_NEVER 0xffffffffu
 extern uint32_t message_expiry[MESSAGE_ROWS];
+/* The characters of a message row (53 fit in the screen width) and the end. */
+#define MESSAGE_TEXT_SIZE 64
 
 /* Loads the font and the UI colors and clears the message area state; returns 0 when they are missing. */
 int text_init(const gdat_t *gdat);
@@ -50,6 +52,8 @@ void text_draw_in_zone(int zone, int color, const char *text);
 void text_draw_in_zone_with_shadow(int zone, int color, int bg, const char *text);
 /* Message area. color is a UI color. */
 void text_set_message_cursor(int column, int row);
+/* The text of message row (0 at the top to MESSAGE_ROWS - 1); "" when the row is clear. */
+const char *text_message_row(int row);
 /* Clears the message rows whose show time is over. */
 void text_clear_expired_rows(void);
 /* Prints a message, a character, a number and a space, or a new line at the message cursor. */

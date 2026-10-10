@@ -1,5 +1,6 @@
 #ifndef INPUT_H
 #define INPUT_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "game.h"
 
@@ -57,6 +58,10 @@ extern InputMatch input_match;
 
 /* A click feedback script waits for the next game step. */
 extern int input_feedback_busy;
+/* A command waits (in.wait) after the last one: the input queue takes no new command. */
+bool input_is_waiting(void);
+/* No pending key, mouse event, deferred click, queued command, or running click feedback script. */
+bool input_is_idle(void);
 
 /* Builds the input tables; call once. */
 void input_init(void);

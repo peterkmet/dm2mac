@@ -287,6 +287,14 @@ static struct {
 
 int input_feedback_busy;
 
+bool input_is_waiting(void) { return in.wait != 0; }
+
+bool input_is_idle(void)
+{
+    return !in.key_count && !in.event_count && !in.deferred && in.queue_head == in.queue_tail && !in.script
+           && !in.feedback_waiting && !input_feedback_busy;
+}
+
 void input_init(void)
 {
     int n = 0;
@@ -1144,9 +1152,6 @@ void input_release_move_arrow(void)
 
 /* ---- Clicks in the dungeon view ---- */
 
-#define ZONE_FRONT_WALL_LOW 0x2fd   /* the parts of the view that show the wall in front of the party */
-#define ZONE_FRONT_WALL_HIGH 0x2fe
-#define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
 /* The squares of a wall ornament click: the party square, left, right, front. */
 enum { WALL_CELL_PARTY, WALL_CELL_LEFT, WALL_CELL_RIGHT, WALL_CELL_FRONT };
 #define PUSH_RESISTANCE_FIXED 0xff  /* a creature that never moves: a click on it only sounds */

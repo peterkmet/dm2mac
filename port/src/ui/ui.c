@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include "action.h"
@@ -735,6 +736,31 @@ static void draw_container_contents(uint16_t container)
         draw_slot(t, SLOT_CONTAINER_INFO_FIRST + i, 0, 0, 0);
 }
 
+/* A value gauge of the object info: its glyph, value, scale, and the word that the text of the panel gives it. */
+typedef struct {
+    uint8_t glyph;
+    int value, high;
+    const char *label;
+} ObjectGauge;
+
+/* The value gauge of an object of type: the strength or throw power of a weapon, the armour class of an armour, or
+   the power of a potion; returns 0 when the object shows none. */
+static int object_value_gauge(uint16_t thing, int type, ObjectGauge *g)
+{
+    if (type == THING_WEAPON) {
+        *g = (ObjectGauge){GLYPH_STRENGTH, item_attr(thing, ATTR_STRENGTH), WEAPON_STRENGTH_MAX, "strength"};
+        if (!g->value) *g = (ObjectGauge){GLYPH_THROW, item_attr(thing, ATTR_THROW_POWER), WEAPON_THROW_MAX, "throw"};
+    } else if (type == THING_ARMOUR) {
+        *g = (ObjectGauge){GLYPH_STRENGTH, item_attr(thing, ATTR_ARMOUR_CLASS) & ARMOUR_CLASS_MASK, ARMOUR_CLASS_MAX,
+                           "armour"};
+    } else if (type == THING_POTION) {
+        *g = (ObjectGauge){GLYPH_POTION, potion_power(thing), POTION_POWER_MAX, "power"};
+    } else {
+        return 0;
+    }
+    return (uint16_t)g->value != 0;
+}
+
 /* Draws the gauges of an object of type in the object info: its charges, and the strength or throw power of a
    weapon, the armour class of an armour, or the power of a potion. */
 static void draw_object_gauges(uint16_t thing, int type)
@@ -748,29 +774,9 @@ static void draw_object_gauges(uint16_t thing, int type)
             gauge = 1;
         }
     }
-    uint8_t glyph;
-    int value, high;
-    if (type == THING_WEAPON) {
-        glyph = GLYPH_STRENGTH;
-        high = WEAPON_STRENGTH_MAX;
-        value = item_attr(thing, ATTR_STRENGTH);
-        if (!value) {
-            value = item_attr(thing, ATTR_THROW_POWER);
-            glyph = GLYPH_THROW;
-            high = WEAPON_THROW_MAX;
-        }
-    } else if (type == THING_ARMOUR) {
-        glyph = GLYPH_STRENGTH;
-        value = item_attr(thing, ATTR_ARMOUR_CLASS) & ARMOUR_CLASS_MASK;
-        high = ARMOUR_CLASS_MAX;
-    } else if (type == THING_POTION) {
-        glyph = GLYPH_POTION;
-        value = potion_power(thing);
-        high = POTION_POWER_MAX;
-    } else {
-        return;
-    }
-    if ((uint16_t)value) draw_object_gauge(gauge_zones[gauge], (int16_t)value, high, glyph, GAUGE_VALUE_COLOR);
+    ObjectGauge g;
+    if (object_value_gauge(thing, type, &g))
+        draw_object_gauge(gauge_zones[gauge], (int16_t)g.value, g.high, g.glyph, GAUGE_VALUE_COLOR);
 }
 
 /* Draws the info panel of an object (full: its picture, name, weight, and gauges; else only a scroll);
@@ -805,6 +811,96 @@ static int draw_object_info(uint16_t thing, int full)
     }
     draw_object_gauges(thing, type);
     return 1;
+}
+
+/* Adds a formatted line to the object info lines; a full list takes no more lines. Returns the new count. */
+static int info_add(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, const char *fmt, ...)
+{
+    if (count >= OBJECT_INFO_LINES) return count;
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(lines[count], OBJECT_INFO_SIZE, fmt, args);
+    va_end(args);
+    return count + 1;
+}
+
+/* Adds each non-empty line of text (lines end at a new line) to the object info lines. */
+static int info_add_text(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, const char *text)
+{
+    for (const char *p = text; *p;) {
+        int n = (int)strcspn(p, "\n");
+        if (n) count = info_add(lines, count, "%.*s", n, p);
+        p += n;
+        if (*p) p++;
+    }
+    return count;
+}
+
+/* Appends item to line after a comma; a line that has no room for it goes to the object info lines first. */
+static int info_append(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, char *line, const char *item)
+{
+    static const char separator[] = ", ";
+    size_t used = strlen(line);
+    if (used && used + strlen(separator) + strlen(item) >= OBJECT_INFO_SIZE) {
+        count = info_add(lines, count, "%s", line);
+        used = 0;
+    }
+    snprintf(line + used, OBJECT_INFO_SIZE - used, "%s%s", used ? separator : "", item);
+    return count;
+}
+
+/* Adds the names of the items of a chest, as many to a line as fit. */
+static int info_add_contents(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t container)
+{
+    char line[OBJECT_INFO_SIZE] = "";
+    uint16_t t = thing_word(container, CONTAINER_CONTENTS);
+    for (int i = 0; t != THING_ENDOFLIST && i < CONTAINER_SLOTS; i++, t = dungeon_next_thing(t))
+        count = info_append(lines, count, line, item_name(t));
+    return *line ? info_add(lines, count, "%s", line) : count;
+}
+
+/* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
+   total value. */
+static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
+{
+    int16_t counts[COIN_TYPE_MAX];
+    money_count_coins_in_box(box, counts);
+    int total = 0;
+    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
+    for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
+        int type = money_coin_type_for_slot(box, slot);
+        if (type < 0) continue;
+        total += money_coin_value(type) * counts[type];
+        uint16_t item = money_coin_item(type);
+        text_format(text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), ITEM_NAME_ENTRY, raw), name);
+        snprintf(coin, sizeof coin, "%s %d", name, counts[type]);
+        count = info_append(lines, count, line, coin);
+    }
+    if (*line) count = info_add(lines, count, "%s", line);
+    return info_add(lines, count, "total %d", total);
+}
+
+int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE])
+{
+    if (thing == THING_NONE) return 0;
+    int type = thing_type(thing);
+    int count = info_add(lines, 0, "%s", item_name(thing));
+    uint16_t weight = (uint16_t)item_weight(thing);
+    text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / TENTHS);
+    text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % TENTHS);
+    char text[TEXT_SIZE * 2];
+    count = info_add_text(lines, count, text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
+    if (type == THING_SCROLL)
+        return info_add_text(lines, count, text_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
+    if (type == THING_CONTAINER) {
+        if (item_is_chest(thing)) return info_add_contents(lines, count, thing);
+        return item_is_moneybox(thing) ? info_add_coins(lines, count, thing) : count;
+    }
+    if (item_has_charged_action(thing) && (int16_t)item_charges(thing))
+        count = info_add(lines, count, "charges %d/%d", (int16_t)item_charges(thing), (int16_t)item_max_charges(thing));
+    ObjectGauge g;
+    if (object_value_gauge(thing, type, &g)) count = info_add(lines, count, "%s %d/%d", g.label, (int16_t)g.value, g.high);
+    return count;
 }
 
 /* Draws the food and water gauges (and the poison gauge) of the inventory panel. */

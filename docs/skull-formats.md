@@ -899,3 +899,11 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. A RESTART starts the program again with the environment variable `DM2_RESTARTED`: no start movies, as the launcher starts only the game step again.
 - A closed window or a control `quit` ends the program without the end movies; QUIT GAME plays them.
 - The control socket gives `"mode": "movie"` during a movie; `wait` counts the game timer ticks, which stand still (`docs/llm-control.md`).
+
+## 16. Turn-based mode
+
+### Deviations of the C port
+
+- The port keeps the text of each message row next to its pixels (`text_message_row`). The original has only the pixels and the expiry time of each row. The text moves up and clears with the row.
+- `ui_object_info_lines` gives the eye panel of an object as text lines. The panel shows some parts only as pictures; the text uses these English words for them: `charges` (charges gauge), `strength` (weapon strength gauge), `throw` (weapon throw power gauge), `armour` (armour class gauge), `power` (potion power gauge), and `total` (the total value of a money box). A gauge line is `<word> <value>/<maximum>`.
+- In these lines, the items of a chest and the coin counts of a money box (`<coin name> <count>`) go after each other, separated by a comma, as many to a line as fit. The panel shows them as icons and numbers in slots. A scroll gives its name and weight before its text; the panel shows only the text. More than 8 lines are cut off.

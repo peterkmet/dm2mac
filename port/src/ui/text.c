@@ -22,6 +22,8 @@
 #define MESSAGE_LINE_BASE (TEXT_LINE_HEIGHT - FONT_BASELINE - 2)  /* base line of the text in the new row bitmap */
 
 uint32_t message_expiry[MESSAGE_ROWS];
+/* The text of each message row, as its pixels show it. */
+static char message_text[MESSAGE_ROWS][MESSAGE_TEXT_SIZE];
 
 static uint8_t font[FONT_SIZE + FONT_CHARS];   /* characters 128 to 255 of the last row read past the font: zeros */
 static uint8_t glyph[FONT_GLYPH_HEIGHT * GLYPH_BYTES_PER_ROW];
@@ -45,7 +47,10 @@ int text_init(const gdat_t *gdat)
     memcpy(font, p, FONT_SIZE);
     ui_colors = colors;
     text_set_message_cursor(0, MESSAGE_ROWS - 1);
-    for (int i = 0; i < MESSAGE_ROWS; i++) message_expiry[i] = MESSAGE_NEVER;
+    for (int i = 0; i < MESSAGE_ROWS; i++) {
+        message_expiry[i] = MESSAGE_NEVER;
+        message_text[i][0] = '\0';
+    }
     int16_t r[RECT_SIZE] = {0};
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     message.top = (int16_t)((r[RECT_H] - (TEXT_LINE_HEIGHT * MESSAGE_ROWS - FONT_SPACING)) >> 1);
@@ -191,8 +196,11 @@ void text_clear_expired_rows(void)
                                   FONT_GLYPH_HEIGHT};
         gfx_fill_rect(draw_screen.pixels, row, ui_colors[UI_BLACK], draw_screen.width, IMAGE_8BPP);
         message_expiry[i] = MESSAGE_NEVER;
+        message_text[i][0] = '\0';
     }
 }
+
+const char *text_message_row(int row) { return row >= 0 && row < MESSAGE_ROWS ? message_text[row] : ""; }
 
 /* Moves the message area up by one row and shows the new row from the row bitmap at its bottom. */
 static void text_scroll_message_area(void)
@@ -220,8 +228,12 @@ static void text_message_new_line(void)
     if (message.scroll_pending) text_scroll_message_area();
     gfx_fill_bitmap(&message_line, ui_colors[UI_BLACK]);
     message.scroll_pending = 1;
-    for (int i = 0; i < MESSAGE_ROWS - 1; i++) message_expiry[i] = message_expiry[i + 1];
+    for (int i = 0; i < MESSAGE_ROWS - 1; i++) {
+        message_expiry[i] = message_expiry[i + 1];
+        memcpy(message_text[i], message_text[i + 1], MESSAGE_TEXT_SIZE);
+    }
     message_expiry[MESSAGE_ROWS - 1] = MESSAGE_NEVER;
+    message_text[MESSAGE_ROWS - 1][0] = '\0';
 }
 
 /* Draws a message line at the cursor (or into the pending row) and starts its show time. */
@@ -237,6 +249,9 @@ static void text_message_draw_line(int color, const char *line)
                                       + message.top),
                             color, ui_colors[UI_BLACK], line);
     message_expiry[message.row] = game.game_time + MESSAGE_SHOW_TIME;
+    char *text = message_text[message.row];
+    size_t length = strlen(text);
+    snprintf(text + length, MESSAGE_TEXT_SIZE - length, "%s", line);
 }
 
 /* Shows the row bitmap of a new row that is still pending. */

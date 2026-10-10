@@ -112,6 +112,8 @@
 enum { BASE_FIGHTER, BASE_NINJA, BASE_PRIEST, BASE_WIZARD };
 
 ActionRepeat champ_action_repeat[CHAMPION_MAX][2];
+/* action.result after the last champ_perform_action (damage >= 0, failure < 0). */
+int16_t champ_action_result;
 /* The creature group in front of the champion of the current action. */
 static uint16_t champ_action_target = THING_NONE;
 /* The creature info records of things that a blow does not hurt (static, without the bytes 2 and 8 of a fighter), from SKULL.EXE. */
@@ -792,6 +794,7 @@ int champ_execute_selected_action(int index)
     } else {
         champion(champ)->redraw |= REDRAW_BARS;
         done = champ_perform_action(champ, index);
+        champ_action_result = action.result;
         ActionRepeat *r = action.hand == SLOT_ACTION_HAND || action.hand == SLOT_READY_HAND ? &champ_action_repeat[champ][action.hand]
                                                                                             : NULL;
         int use = !r || !r->left || (r->fresh && !rand_below((uint16_t)(r->count + 1)));

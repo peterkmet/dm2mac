@@ -36,6 +36,12 @@ enum {
     ZONE_CONTAINER_SLOT_FIRST = 0xe5, ZONE_RUNES_BACK = 0xfc, ZONE_RUNE_CHOICE_FIRST = 0xff,
     ZONE_RUNE_ENTERED_FIRST = 0x105
 };
+/* Zones of the dungeon view. */
+enum {
+    ZONE_DROP_CELL_FIRST = 0x2f8,   /* + cell: where a click drops an object */
+    ZONE_FRONT_WALL_LOW = 0x2fd,    /* the parts of the view that show the wall in front of the party */
+    ZONE_FRONT_WALL_HIGH = 0x2fe
+};
 
 /* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
 enum { UI_INDEX_STATUS = 2, UI_INDEX_ARROWS = 3, UI_INDEX_ACTION = 4, UI_INDEX_FACES = 6 };
@@ -101,6 +107,11 @@ void ui_draw_champion_state(int champ);
 void ui_draw_all_champion_states(int tick);
 /* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
 void ui_toggle_inventory(int champ);
+/* The text lines of the eye panel for an object: its name, its weight, and its gauges ("<label> <value>/<max>"), a
+   scroll's text, a chest's item names, or a money box's coin counts. Returns the count. */
+#define OBJECT_INFO_LINES 8
+#define OBJECT_INFO_SIZE 64
+int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE]);
 /* Closing the inventory redraws the movement arrows (0 while the party falls asleep). */
 extern int inv_arrows_on_close;
 
