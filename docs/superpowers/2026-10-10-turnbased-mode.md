@@ -62,7 +62,7 @@ Feature: Turn-based mode
     Then the reply has "stopped": "damage" and the ticks that ran
 
   Scenario: raw click as a turn
-    Given a merchant dialog is open
+    Given the volume dialog is open
     When the client sends act click with x and y of a button
     Then the game gets the click and the turn runs
 
@@ -193,12 +193,12 @@ Feature: Turn-based mode
 
     DM2 additions:
     - `game_mode`, and the input mode and the dialog id as in `state`.
-    - A dialog or a merchant panel: its id and the texts of its buttons.
+    - The open dialog: its id and the texts of its buttons. DM2 has no merchant panel: a merchant is a creature in the view (`get_view`).
     - The open money box: each slot with its coin name and count.
     - The open minion map and its options.
     - `outdoor`: the party map has a sky. `weather` and `day_time` only when `outdoor` is true, because the player sees them only in the sky.
 20. **get_view.** The squares of the view by the seen rule of the automap (`docs/advanced-mode.md`: party row and 4 rows ahead, light limit). `depth` is 0 to 4; `side` is the column offset from the party lane, -3 to 3 (0 is the center). Each square has its element, door and its state, objects with their cell, flying objects and explosions, creatures (type and count; a merchant is a creature with its type), floor ornaments, and the wall faces (text, switch, lock, alcove, fountain, ornament) with names (see Decisions: names in the JSON); else the index. `piles[]` lists every object of each reachable cell, top first.
-21. **get_map.** The seen squares of the party map as `rows` and `grid` (the format of `dm`): walls, floors, doors with their state, stairs, pits, teleporters, pressure pads. No wall features.
+21. **get_map.** The seen squares of the party map as `rows` and `grid` (the format of `dm`): walls, floors, doors with their state, stairs, pits, teleporters, and floor squares with a floor ornament that the automap draws (for example a pressure pad). No wall features, no floor sensor without an ornament.
 22. **Size.** A reply can be longer than 4096 bytes. All replies use one buffer that grows; the request lines keep their limit. The error `reply too long` goes away.
 
 ### dm2-play
@@ -221,7 +221,9 @@ Feature: Turn-based mode
 |---|---|---|
 | MCP server | None. | User choice: the LLM uses the socket through `dm2-play`. |
 | Run structure | The playbook, the agents, and `playthroughs/` as in `dm`. | User choice. |
-| Action set | The actions of `dm`, adapted to DM2, plus both hands, the money box, and the minion map; `act click` and `act key` for the rest. | User choice. Merchants and dialogs have many screens; a raw click covers them with less code. |
+| Action set | The actions of `dm`, adapted to DM2, plus both hands, the money box, and the minion map; `act click` and `act key` for the rest. | User choice. Dialogs have many screens; a raw click covers them with less code. |
+| Merchants | No merchant panel in the state; a merchant is a creature of the view. | User choice. DM2 has no merchant panel: the trade puts goods and coins on the cell in front of the merchant; a shop is a wall with a display. |
+| Floor marks in `get_map` | `_` marks a floor square with a floor ornament that the automap draws; no glyph for a floor sensor. | User choice. DM2 shows a pressure pad only by its floor ornament; the map shows what the automap shows (Invariant 4). |
 | Socket | The existing `--control` socket; the turn-based mode adds the new commands to it. | One protocol and one client for UI tests and turns. |
 | Command names | `get_state`, `get_view`, `get_map`, `act`, `act_many`, `save`, `load`, `new_game` as in `dm`; `state`, `screenshot`, `quit` stay. | The playbook and the agents of `dm` carry over with few changes. `state` stays for the UI tests. |
 | `wait` | In the turn-based mode, `wait` is the turn wait with stops (1-5000 ticks). | The real-time wait has no meaning when the time stands still. |
@@ -250,6 +252,6 @@ Feature: Turn-based mode
 
 ## Risks
 
-- DM2 screens without a named action (merchants, dialogs) need `act click` with positions. The player needs a screenshot or the button texts of the state to find them.
+- DM2 screens without a named action (dialogs) and the trade with merchants need `act click` with positions or the drop actions. The player needs a screenshot or the button texts of the state to find them.
 - The rules of the turn end and the stops come from DM. A DM2 action with a long animation (for example a minion) can need more than 64 ticks. The plan measures it.
 - The name table of creatures and ornaments starts small. The view gives the index where no name exists.
