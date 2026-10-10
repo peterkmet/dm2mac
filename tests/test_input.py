@@ -203,13 +203,13 @@ def session(lib, gdat, start, tmp_path):
     lib.money_init_coin_table()
     lib.ui_draw_game_screen()
     lib.input_init()
-    lib.game_start_session()
+    lib.play_start_session()
     return game, MainLoop.in_dll(lib, "main_loop")
 
 
 def run_ticks(lib, n):
     for _ in range(n):
-        lib.game_tick()
+        lib.play_tick()
 
 
 KEY_FORWARD, KEY_TURN_RIGHT, KEY_PAUSE = 0x4C, 0x4D, 0x01
@@ -347,14 +347,14 @@ class Loop(Scenario):
         lib.ui_draw_game_screen()
         lib.input_init()
         lib.input_key_down.argtypes = [ctypes.c_uint16]
-        lib.game_start_session()
+        lib.play_start_session()
         emu.call(GAME_START_SESSION)
         emu.run(LOOP_START, LOOP_STEP)
         emu.run(LOOP_STEP, LOOP_WAIT)
 
     def tick(self):
         """One timer tick in both."""
-        self.lib.game_tick()
+        self.lib.play_tick()
         emu = self.emu
         emu.run(TIMER_ISR_BODY, TIMER_ISR_END)
         emu.run(LOOP_WAIT, LOOP_WAIT_END)

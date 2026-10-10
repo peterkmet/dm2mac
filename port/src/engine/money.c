@@ -2,13 +2,14 @@
 #include <string.h>
 #include "action.h"
 #include "champion.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
+#include "hooks.h"
 #include "inventory.h"
 #include "item.h"
 #include "merchant.h"
 #include "money.h"
-#include "text.h"
+#include "game_text.h"
 
 #define CREATURE_CLASS_TEXT 0x10    /* GDAT texts (0x0f, creature, 5, 0x10 + list): the item classes of a merchant */
 #define MERCHANT_ATTR_MARGIN 0xa0   /* creature attributes 0xa0 + list * 3: margin, then two price factors */
@@ -100,7 +101,7 @@ void money_box_click_coin(int slot)
         champ_remove_object_from_leader_hand();
     }
     action.redraw_delay = 1;
-    action_update_area(0);
+    g_hooks.update_action_area(0);
     champ_compute_load(champ);
 }
 
@@ -200,7 +201,7 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
 static uint16_t apply_factor(uint16_t price, uint16_t item, int creature, int attr, int list)
 {
     uint8_t set[SHOP_CLASS_SET_SIZE];
-    uint16_t factor = gdat_entry_index(draw_gdat(), CAT_CREATURE, creature, GDAT_TYPE_VALUE, (uint8_t)attr);
+    uint16_t factor = gdat_entry_index(gdat_current(), CAT_CREATURE, creature, GDAT_TYPE_VALUE, (uint8_t)attr);
     if (!factor || !shop_parse_item_class_set(creature, (int16_t)list, set, 0)) return price;
     if (!class_set_has(set, item & ITEM_INDEX_NONE)) return price;
     return (uint16_t)((uint32_t)factor * price / PERCENT);
@@ -209,13 +210,13 @@ static uint16_t apply_factor(uint16_t price, uint16_t item, int creature, int at
 int shop_get_item_value(uint16_t item, int creature, int list, int buying, int apply_margin, int16_t charges)
 {
     int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
-    uint16_t price = gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE);
+    uint16_t price = gdat_entry_index(gdat_current(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE);
     price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_B), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_B);
     price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_A), list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_A);
     if (charges < 0) charges = (int16_t)item_max_charges(thing_make(item_index_to_thing_type(item), 0));
-    int value = price + gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE_PER_CHARGE) * charges;
+    int value = price + gdat_entry_index(gdat_current(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE_PER_CHARGE) * charges;
     if (apply_margin) {
-        uint16_t margin = gdat_entry_index(draw_gdat(), CAT_CREATURE, creature, GDAT_TYPE_VALUE,
+        uint16_t margin = gdat_entry_index(gdat_current(), CAT_CREATURE, creature, GDAT_TYPE_VALUE,
                                            (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_MARGIN));
         if (!margin) margin = DEFAULT_MARGIN;
         int16_t part = (int16_t)((uint32_t)margin * (uint16_t)value / PERCENT);

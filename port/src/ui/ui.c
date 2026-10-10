@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 #include "action.h"
+#include "action_area.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
 #include "input.h"
 #include "inventory.h"
 #include "item.h"
+#include "play.h"
 #include "save.h"
 #include "text.h"
 #include "ui.h"
@@ -102,7 +104,6 @@ static const uint8_t skill_level_texts[SKILL_LEVEL_MAX + 1] = {
     0x01, 0x00, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12
 };
 
-UiState ui;
 int inv_arrows_on_close = 1;
 
 static struct {
@@ -182,6 +183,33 @@ void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette)
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     /* the original skips color 2 of the face picture */
     ui_blit_bitmap(draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champ), dst, r, FACE_SIZE * frame, 0, FACE_SKIP_COLOR, NULL);
+}
+
+void ui_render_hand_icon(void)
+{
+    uint8_t identity[HAND_ICON_COLORS];  /* the icon keeps its color numbers */
+    for (int i = 0; i < HAND_ICON_COLORS; i++) identity[i] = (uint8_t)i;
+    uint16_t t = game.leader_hand;
+    int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
+    const Bitmap *image = draw_gdat_image(category, index, entry);
+    const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
+    Bitmap cursor = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
+    memset(leader_hand.cursor, HAND_ICON_KEY, sizeof leader_hand.cursor);
+    const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
+    if (image && colors) {
+        ui_blit_bitmap(image, &cursor, r, 0, 0, UI_OPAQUE, identity);
+        memcpy(leader_hand.palette, colors, sizeof leader_hand.palette);
+    }
+    draw_free_temp();
+}
+
+void ui_draw_interface_image(int category, int index, int entry, int zone)
+{
+    DrawCtx d;
+    draw_ctx_init(&d, category, index, entry);
+    d.transparent = UI_OPAQUE;
+    d.zone = (int16_t)zone;
+    draw_ctx_draw(draw_ctx_prepare(&d));
 }
 
 /* ---- Offscreen bitmaps ---- */
@@ -760,7 +788,7 @@ static int draw_object_info(uint16_t thing, int full)
     if (!full) return 0;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_PANEL, ZONE_INVENTORY_PANEL, UI_OPAQUE);
     int index = item_gdat_index(thing), category = item_gdat_category(thing);
-    if (gdat_exists(draw_gdat(), category, index, GDAT_TYPE_IMAGE, OBJECT_PICTURE_ENTRY))
+    if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, OBJECT_PICTURE_ENTRY))
         ui_draw_gdat_in_viewport_zone(category, index, OBJECT_PICTURE_ENTRY, ZONE_INVENTORY_PANEL, UI_KEY);
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_OBJECT_NAME, ZONE_OBJECT_NAME_BACK, UI_KEY);
     text_draw_in_zone(ZONE_OBJECT_NAME, ui_colors[UI_LIGHT_GRAY], item_name(thing));
@@ -1025,15 +1053,10 @@ void ui_draw_champion_state(int champ)
     if (d.box_drawn) offscreen_flush(&status_box, 1);
     if (d.present) {
         ui.screen_needs_refresh = 0;
-        game_present_viewport();
+        play_present_viewport();
     }
     c->redraw &= REDRAW_KEEP;
     draw_free_temp();
-}
-
-void ui_set_champion_redraw_flags(uint16_t flags)
-{
-    for (int i = 0; i < game.champion_count; i++) champion(i)->redraw |= flags;
 }
 
 void ui_draw_all_champion_states(int tick)
@@ -1046,7 +1069,7 @@ void ui_draw_all_champion_states(int tick)
             c->redraw |= !ui.eye || game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
         ui_draw_champion_state(ui.inventory - 1);
     }
-    action_update_area(tick);
+    area_update(tick);
 }
 
 void ui_toggle_inventory(int champ)

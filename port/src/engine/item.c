@@ -2,7 +2,7 @@
 #include <string.h>
 #include "action.h"
 #include "champion.h"
-#include "draw.h"
+#include "gdat.h"
 #include "dungeon.h"
 #include "item.h"
 #include "minion.h"
@@ -10,7 +10,7 @@
 #include "move.h"
 #include "random.h"
 #include "save.h"
-#include "text.h"
+#include "game_text.h"
 #include "projectile.h"
 #include "sensor.h"
 
@@ -98,7 +98,7 @@ uint8_t item_gdat_index(uint16_t thing)
 uint16_t item_attr(uint16_t thing, int entry)
 {
     if (thing == THING_NONE) return 0;
-    return gdat_entry_index(draw_gdat(), item_gdat_category(thing), item_gdat_index(thing), GDAT_TYPE_VALUE,
+    return gdat_entry_index(gdat_current(), item_gdat_category(thing), item_gdat_index(thing), GDAT_TYPE_VALUE,
                             (uint8_t)entry);
 }
 
@@ -194,7 +194,7 @@ int item_icon_index(uint16_t thing, int slot, int animated)
 bool item_is_moneybox(uint16_t thing)
 {
     if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || container_kind(thing)) return 0;
-    return gdat_find(draw_gdat(), CAT_CONTAINER, item_gdat_index(thing), GDAT_TYPE_TEXT, MONEYBOX_TEXT_ENTRY)
+    return gdat_find(gdat_current(), CAT_CONTAINER, item_gdat_index(thing), GDAT_TYPE_TEXT, MONEYBOX_TEXT_ENTRY)
            != -1;
 }
 
@@ -262,7 +262,7 @@ bool item_has_charged_action(uint16_t thing)
     if (thing == THING_NONE) return 0;
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     for (int entry = ACTION_ENTRY_FIRST; entry <= ACTION_ENTRY_LAST; entry++)
-        if (gdat_exists(draw_gdat(), category, index, GDAT_TYPE_TEXT, entry)
+        if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_TEXT, entry)
             && text_gdat_field(category, index, entry, FIELD_COMMAND)
             && text_gdat_field(category, index, entry, FIELD_CHARGES))
             return 1;
@@ -296,9 +296,9 @@ void money_init_coin_table(void)
     if (coins.ready) return;
     coins.ready = 1;
     for (int index = 0; index < COIN_SCAN_COUNT; index++) {
-        if (!(gdat_entry_index(draw_gdat(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
+        if (!(gdat_entry_index(gdat_current(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
             continue;
-        int16_t value = (int16_t)gdat_entry_index(draw_gdat(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_VALUE);
+        int16_t value = (int16_t)gdat_entry_index(gdat_current(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_VALUE);
         int at = 0;
         while (at < coins.count && coins.values[at] < value) at++;
         if (coins.count == COIN_TYPE_MAX) break;

@@ -28,7 +28,7 @@ Starts with an `image_ref_t`. +6 GRAPHICS.DAT entry index of the image, +0x12 w,
 
 +0 image cache id, +2 rect (x, y, w, h on screen), +0x0a dirty rect count (maximum 5, then flush), +0x0c dirty rects (8 bytes each). `gfx_offscreen_flush` blits the dirty rects to `g_screen_bitmap`.
 
-### Square aspect (`view_get_square_aspect`, uint16[8])
+### Square aspect (`aspect_get`, uint16[8])
 
 +0 element type (square type, 0x10/0x11 door front/side, 0x12/0x13 stairs), +2 raw square byte, +4 first object thing, +6..+0x0c wall ornament per side (front, right, back, left; 0xff none; bits 10+ animation frame), +0x0e ornament thing or 0xffff. Floor: +0x0a floor ornament. Random wall ornaments use the DM hash (x * 31417 / 2 + y * 11 + dungeon seed) / 4 mod 30.
 

@@ -26,9 +26,7 @@ enum { SCAN_ESCAPE = 0x01, SCAN_I = 0x17, SCAN_F = 0x21, SCAN_L = 0x26 };
 /* The rows of the readout. */
 enum { READOUT_POSITION, READOUT_DIRECTION, READOUT_IMMORTAL, READOUT_FOOD, READOUT_LIGHT };
 
-int game_mode = GAME_MODE_VANILLA;
-const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced"};
-int advanced_automap_open, cheat_light, cheat_immortal, cheat_food;
+int advanced_automap_open;
 
 static struct {
     int active;
@@ -69,7 +67,7 @@ static void print_line(const char *text)
 static int write_game(const char *path, const char *bak)
 {
     timeline_rebuild_free_list();
-    return save_write(path, bak, QUICK_SAVE_NAME, draw_gdat()) == SAVE_OK;
+    return save_write(path, bak, QUICK_SAVE_NAME, gdat_current()) == SAVE_OK;
 }
 
 void advanced_quick_save(void)
@@ -96,7 +94,7 @@ void advanced_quick_load(void)
         return;
     }
     Session kept = session;
-    session.loaded = session.new_game = 0;  /* game_start_session shows no LOADED dialog and starts no new game */
+    session.loaded = session.new_game = 0;  /* play_start_session shows no LOADED dialog and starts no new game */
     int loaded = session_start_save(path), restored = loaded || session_start_save(keep);
     if (restored) remove(keep);  /* else QUICK.TMP keeps the running game */
     session = kept;

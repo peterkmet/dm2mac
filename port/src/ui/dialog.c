@@ -6,6 +6,7 @@
 #include "gdat.h"
 #include "input.h"
 #include "music.h"
+#include "play.h"
 #include "save.h"
 #include "sound.h"
 #include "sound_request.h"
@@ -53,7 +54,7 @@ void dialog_screen_mode(int begin)
 void dialog_present(void)
 {
     if (!dialog.screen_mode) {
-        game_present_viewport();
+        play_present_viewport();
         return;
     }
     int16_t r[RECT_SIZE], x = 0, y = 0;
@@ -77,7 +78,7 @@ void dialog_draw_button(int zone, int highlighted)
     }
     gfx_blit_to_bitmap(image, &view_viewport, r, BUTTON_KEY,
                        draw_gdat_image_palette(dialog.button_category, dialog.button_index, dialog.button_entry));
-    game_wait_frames(BUTTON_PRESS_VBLANKS);
+    play_wait_frames(BUTTON_PRESS_VBLANKS);
 }
 
 /* The message texts of a dialog, centered in rect: each text wraps to a width near the zone width. */
@@ -115,7 +116,7 @@ static void draw_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], const 
 
 int dialog_draw(int id, int message)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     int present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
     if (message && id != DIALOG_ERROR && id != DIALOG_LOADING && gdat_exists(g, CAT_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) {
         dialog_run(dialog_draw(DIALOG_ERROR, message));
@@ -161,7 +162,7 @@ int dialog_draw(int id, int message)
 
 int dialog_run(int id)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     uint8_t values[DIALOG_TEXT_COUNT];
     int count = 0;
     char text[TEXT_SIZE];
@@ -176,7 +177,7 @@ int dialog_run(int id)
     input_match.choice = DIALOG_NO_CHOICE;
     do {
         command_process_queue();
-        game_wait_frames(1);
+        play_wait_frames(1);
         if (input_match.choice == DIALOG_NO_CHOICE && input_read_key() == KEY_ENTER)
             input_simulate_command_click(CMD_DIALOG_BUTTON_FIRST);
     } while (input_match.choice == DIALOG_NO_CHOICE && !main_loop.quit);
@@ -231,7 +232,7 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 void dialog_volume(void)
 {
     char text[TEXT_SIZE];
-    if (!gdat_exists(draw_gdat(), CAT_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) return;
+    if (!gdat_exists(gdat_current(), CAT_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) return;
     dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
     text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW], text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_SOUND_LABEL, text));
     text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW], text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_MUSIC_LABEL, text));

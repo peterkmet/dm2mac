@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "action.h"
+#include "action_area.h"
 #include "advanced.h"
 #include "champion.h"
 #include "draw.h"
@@ -10,7 +11,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
-#include "hooks.h"
+#include "sound_request.h"
 #include "champ_action.h"
 #include "inventory.h"
 #include "item.h"
@@ -19,8 +20,10 @@
 #include "input.h"
 #include "magic.h"
 #include "minion.h"
+#include "minion_map.h"
 #include "move.h"
 #include "music.h"
+#include "play.h"
 #include "save.h"
 #include "sensor.h"
 #include "session.h"
@@ -282,9 +285,7 @@ static struct {
     int cursor_count;
 } in;
 
-int input_command_stop;
 int input_feedback_busy;
-int input_drag_state;
 
 void input_init(void)
 {
@@ -714,8 +715,6 @@ void input_mouse_click(int x, int y, int type)
     }
 }
 
-int input_mouse_buttons;
-
 void input_mouse_down(int x, int y, int button)
 {
     input_mouse_buttons |= button;
@@ -932,7 +931,7 @@ static void feedback_rune_button(Feedback *f)
 /* Copies the drawn action area to the screen. */
 static void action_area_present(void)
 {
-    offscreen_flush(action_area_begin_draw(0), 1);
+    offscreen_flush(area_begin_draw(0), 1);
 }
 
 /* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
@@ -943,7 +942,7 @@ static void feedback_hand_icon(int icon)
         if (in.current.command < CMD_HAND_FIRST || in.current.command > CMD_HAND_LAST) return;
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
-    action_draw_hand_icon(champ, icon, 1);
+    area_draw_hand_icon(champ, icon, 1);
     action_area_present();
 }
 
@@ -952,7 +951,7 @@ static void feedback_spell_icon(int cell)
 {
     int champ = champion_in_party_cell(cell);
     if (champ < 0) return;
-    action_draw_spell_icon(champ, 1);
+    area_draw_spell_icon(champ, 1);
     action_area_present();
 }
 
@@ -983,15 +982,15 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
     case FB_SPELL_ICON: feedback_spell_icon(*p++); break;
     case FB_HAND_ICON: feedback_hand_icon(*p++); break;
     case FB_ACTION_NAME:
-        action_draw_name(*p++, 1);
+        area_draw_name(*p++, 1);
         action_area_present();
         break;
     case FB_ENTERED_RUNES:
-        action_draw_entered_runes(1);
+        area_draw_entered_runes(1);
         action_area_present();
         break;
     case FB_MAP_OPTION_BUTTONS:
-        minion_draw_map_option_buttons(*p++);
+        mmap_draw_option_buttons(*p++);
         action_area_present();
         break;
     case FB_INVENTORY_BUTTON:
@@ -1425,11 +1424,11 @@ static void game_pause(void)
 {
     char text[TEXT_SIZE];
     main_loop.running = 0;
-    game_hide_view();
+    play_hide_view();
     gfx_fill_bitmap(&view_viewport, ui_colors[UI_BLACK]);
-    gdat_text(draw_gdat(), CAT_INTERFACE, 0, TEXT_PAUSED, text, sizeof text);
+    gdat_text(gdat_current(), CAT_INTERFACE, 0, TEXT_PAUSED, text, sizeof text);
     text_draw_in_zone(ZONE_VIEW_TEXT, ui_colors[UI_CYAN], text);
-    game_present_viewport();
+    play_present_viewport();
     input_push_mode(INPUT_MODE_PAUSE);
     input_flush();
     music_pause();
@@ -1487,7 +1486,7 @@ static int command_execute_party(const Command *c, int idle)
             Champion *ch = champion(action.champion - 1);
             ch->dir = (uint8_t)dir_turn(ch->dir, command == CMD_ROTATE_LEFT ? -1 : 1);
         }
-        action_update_area(0);
+        area_update(0);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
         champ_set_leader(champion_in_party_cell(command - CMD_LEADER_FIRST));
         ui_draw_all_champion_states(0);
@@ -1514,12 +1513,12 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command == CMD_RESUME) {
         if (!main_loop.running) {
             main_loop.running = 1;
-            game_show_view();
+            play_show_view();
             input_pop_mode();
             input_flush();
         }
     } else if (command == CMD_SLEEP && idle) {
-        game_sleep();
+        play_sleep();
     } else if (command == CMD_WAKE && idle) {
         champ_wake_party();
     } else {
@@ -1558,7 +1557,7 @@ static int command_execute_champion(int command, int idle)
         if (command == CMD_DRAG_CANCEL) champ_drag_cancel();
         else champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
-        action_update_area(0);
+        area_update(0);
     } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
         if (game.champion_count && !ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE) advanced_quick_save();
@@ -1572,6 +1571,9 @@ static int command_execute_champion(int command, int idle)
     }
     return 1;
 }
+
+/* A command that the original runs later; the port runs none. */
+static void command_execute_later(const Command *c) { (void)c; }
 
 int command_execute(Command *c)
 {

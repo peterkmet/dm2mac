@@ -2,6 +2,7 @@
 #define SESSION_H
 #include <stdint.h>
 #include "champion.h"
+#include "game.h"
 #include "save.h"
 
 /* Prefixes: session_ args_ menu_ */
@@ -10,26 +11,8 @@
 #define MENU_WAITING 99                 /* session.new_game while the start menu waits */
 #define MENU_REDRAW 0xda                /* session.new_game: the menu shows its title again */
 #define SAVE_SLOT_COUNT 10
-#define SAVE_SLOT_NONE (-1)
-#define SAVE_PATH_SIZE 1024
 /* Exit codes of the program (the original system_shutdown): the launcher of the DOS game reads them. */
 enum { EXIT_QUIT = 0, EXIT_COMPLETED = 1, EXIT_PARTY_DEAD = 2, EXIT_RESTART = 3, EXIT_GAME_LOST = 4 };
-
-typedef struct {
-    int new_game;               /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot */
-    int use_dungenb;            /* the new game reads DUNGENB.DAT when it exists */
-    int loaded;                 /* a game is in memory: the end of the game can load the last slot again */
-    int completed;              /* the party finished the game */
-    int restart;                /* the player chose to restart the program */
-    int offer_restore;          /* the end of the game offers the load of the last slot */
-    int quit_code;              /* the exit code that session_quit gives a non-zero value: the party died */
-    int slot;                   /* the slot of the last load or save, SAVE_SLOT_NONE */
-    uint32_t load_time, save_time; /* the game time of the last load and save */
-    int exit_code;
-    char save_name[SAVE_NAME_SIZE]; /* the name of the slot in the save dialog */
-    char data_dir[SAVE_PATH_SIZE];  /* the game folder: DATA holds the dungeon and the saves */
-} Session;
-extern Session session;
 
 /* The path of slot in the save folder; bak: the backup file. */
 char *session_save_path(char *path, int slot, int bak);

@@ -5,7 +5,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "gdat.h"
-#include "hooks.h"
+#include "sound_request.h"
 #include "item.h"
 #include "le.h"
 #include "money.h"
@@ -13,7 +13,7 @@
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include "view.h"
+#include "weather.h"
 
 uint16_t projectile_extra_damage, projectile_attack_type;
 int missile_from_sensor;

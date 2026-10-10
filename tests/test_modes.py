@@ -293,7 +293,7 @@ def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
 def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa: F811
     # A control click gives the press and the release: moving the pointer afterwards does not scroll the map.
     path, game, _ = control
-    lib.automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir)
+    lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(7, rect)  # the viewport
     x, y, w, h = rect
@@ -328,7 +328,7 @@ def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
         lib.input_key_down(SCAN_W)
         for _ in range(STEP_TICKS):
             loop.tick_count = loop.tick_threshold  # each tick is due for a game step
-            lib.game_tick()
+            lib.play_tick()
             if loop.quit:
                 break
         due = loop.tick_count >= loop.tick_threshold  # a game step resets the tick count

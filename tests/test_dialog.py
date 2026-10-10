@@ -47,7 +47,7 @@ def reset_session(lib):
     state = DialogState.in_dll(lib, "dialog")
     state.screen_mode, state.button_count = 1, 0
     ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 0  # MainLoop.quit
-    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+    ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = None
 
 
 @pytest.fixture(autouse=True)
@@ -133,7 +133,7 @@ def test_volume_dialog_matches_original(ui, original):
     lib, emu = ui, original.emu
     run = emu.stub(UI_DIALOG_RUN, lambda *_: 0xDB)
     frame = ctypes.CFUNCTYPE(None)(lambda: close_dialog(lib))
-    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
+    ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
     try:
         from test_move import WorldGame
         game = WorldGame.in_dll(lib, "game")
@@ -145,7 +145,7 @@ def test_volume_dialog_matches_original(ui, original):
             emu.call(UI_VOLUME_DIALOG)
             assert_same(lib, original, (sound, music))
     finally:
-        ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+        ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = None
         emu.uc.hook_del(run)
 
 
@@ -262,13 +262,13 @@ def test_champion_name_editor_matches_original(ui, original):
             lib.input_key_down(port_keys.pop(0))
 
     hook = ctypes.CFUNCTYPE(None)(frame)
-    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
+    ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     try:
         game_champions = bytes(champion_records(lib))
         lib.session_edit_champion_name.argtypes = [ctypes.c_void_p]
         lib.session_edit_champion_name(ctypes.addressof(champion_records(lib)))
     finally:
-        ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+        ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = None
     after = bytes(champion_records(lib))[:28]
     assert after == emu.read(G_CHAMPIONS, 28)
     assert after != game_champions[:28]
@@ -297,13 +297,13 @@ def test_quit_picture_matches_original(ui, original):
     with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, 0)
     hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "input_match"), "value", 0xEF))
-    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
+    ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     session = Session.in_dll(lib, "session")
     session.restart = session.quit_code = session.completed = 0
     try:
         lib.session_end(0)
     finally:
-        ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = None
+        ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = None
     assert quits == [1] and main_loop_quit(lib).value == 1 and session.exit_code == 0
     main_loop_quit(lib).value = 0
     mine, theirs = c_screen(lib), original.screen()
@@ -370,7 +370,7 @@ def test_enter_presses_first_button_like_original(ui, original):
             ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 1
 
     hook = ctypes.CFUNCTYPE(None)(frame)
-    ctypes.c_void_p.in_dll(lib, "game_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
+    ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     set_screen_mode(lib, emu, 1)
     assert lib.dialog_run(lib.dialog_draw(0x0C, 0)) == theirs == 1
     assert len(frames) <= 100

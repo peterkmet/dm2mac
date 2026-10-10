@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "advanced.h"
+#include "aspect.h"
 #include "creature.h"
 #include "draw.h"
 #include "dungeon.h"
@@ -32,7 +33,6 @@
 enum {
     MAP_KEY_WALL_COLOR = 0x64,      /* transparent color of the map pictures */
     MAP_KEY_FLIP_FLAGS = 0x65,
-    MAP_KEY_FLOOR_ORNAMENT = 0x6b,  /* ornament on every floor square, bit 15: animated */
     MAP_KEY_WALL_MARGINS = 0x6e,    /* + 1 beyond depth 1: left and right clip margins of a wall beside open squares */
     MAP_KEY_NEAR_MARGINS = 0x70,    /* ceiling and floor clip margins when the squares of depth 1 are walls */
     MAP_KEY_FAR_MARGINS = 0x71,     /* the same for the squares of depth 2 */
@@ -50,8 +50,6 @@ enum {
     ORN_KEY_PLACE = 5,              /* anchor in the high byte, grid cell + 1 in the low byte */
     ORN_KEY_NO_FLIP = 7,
     ORN_KEY_ZONE_ROW = 8,           /* door ornaments and buttons: zone row */
-    ORN_KEY_KIND = 0x0a,            /* wall ornament kind; door: zone row of the damage picture */
-    ORN_KEY_FRAMES = 0x0d,          /* animation frames, bit 15: frames start at 1 */
     ORN_KEY_WIDTH_SCALE_2 = 0x14,   /* width : height of the picture at depth 2, as 2 bytes */
     ORN_KEY_WIDTH_SCALE_3 = 0x15,
     ORN_KEY_OFFSCREEN_COLOR = 0x11, /* transparent color of the picture in its offscreen bitmap */
@@ -63,10 +61,7 @@ enum {
 };
 enum { ORN_PICTURE_SIDE, ORN_PICTURE_FRONT, ORN_PICTURE_RIGHT };  /* wall ornament pictures of a frame */
 enum wall_ornament_kind { KIND_ALCOVE = 1, KIND_SHOP = 2, KIND_PORTRAIT = 3 };
-#define FRAMES_FROM_ONE 0x8000
-#define FLOOR_ORNAMENT_ANIMATED 0x8000
 #define ENTRY_NONE 0xff
-#define ORNAMENT_PLATE 0            /* a text plate instead of a wall ornament */
 #define ORN_OVERLAY 0x0f            /* wall ornament picture drawn over the ornament */
 #define ORN_WET_BACKGROUND 0xc8     /* + entry: the picture behind a wet ornament */
 #define DOOR_DAMAGE 0x41            /* door picture of the damage mask */
@@ -89,10 +84,6 @@ enum { CELL_FRONT_LEFT, CELL_FRONT_RIGHT, CELL_BACK_RIGHT, CELL_BACK_LEFT };
 #define ANCHOR_DOOR_RIGHT 4
 #define ANCHOR_DOOR_LEFT 3
 
-#define SIDE_SHOP_FLAG 3            /* floor: a shop display there sets it to 0 (read by the things drawing, 12b) */
-#define FAKE_WALL_FLOOR_SQUARE 1    /* the square byte that the floor things see on an open fake wall */
-#define SIDE_FRONT 2                /* the wall face that looks at the party */
-static uint8_t word_ornament(uint16_t w) { return (uint8_t)w; }
 /* The picture entry offset of the frame of a wall face word: 4 pictures per frame. */
 static int face_frame_entry(uint16_t w) { return (int8_t)HIGH_BYTE(w); }
 
@@ -110,15 +101,6 @@ static int face_frame_entry(uint16_t w) { return (int8_t)HIGH_BYTE(w); }
 #define DOOR_ROW_NEAR 3             /* door ornament rows 3 and 4: the doors at depth 1 and 0 take clicks */
 #define SQUARE_TYPE_BITS 0xe0
 
-/* Text and sensor fields of wall and floor things. */
-enum sensor_type {
-    SENSOR_TOGGLE_ORNAMENT = 0x17, SENSOR_TIMED_ORNAMENT = 0x18, SENSOR_HOLDER = 0x1a, SENSOR_STATE_MATCH = 0x1b,
-    SENSOR_LINK = 0x27, SENSOR_ANIMATED = 0x2c, SENSOR_SHOP = 0x30, SENSOR_SOUND_ANIMATION = 0x32,
-    SENSOR_WALL_TEXT = 0x3f, SENSOR_FRAME_DATA = 0x41, SENSOR_FRAME_STATE = 0x46, SENSOR_TIMED_ORNAMENT_2 = 0x4a,
-    SENSOR_ALTAR = 0x7e,
-};
-#define SENSOR_ALTAR_SHOWN SENSOR_STATE
-
 #define GAME_TIME_FRAMES 7          /* bits of the game time that animate pictures */
 #define HALF_TIME_FRAMES 4
 #define LIGHT_STEP 10               /* view shade per light level */
@@ -130,9 +112,7 @@ enum sensor_type {
 #define SCALE_WIDE_SIDE 114         /* wall ornament scales at the far sides */
 #define SCALE_FAR_SIDE 76
 #define SCALE_BIG_NEAR 96           /* floor ornaments with ORN_KEY_BIG_NEAR beside the party */
-#define RANDOM_ORNAMENT_SLOTS 30    /* random wall ornament hash: one of 30 values picks an ornament of the list */
 #define WALL_TEXT_LINE_GAP 2              /* line gap of wall text */
-#define WALL_TEXT_SIZE 128
 #define NO_KEY (-1)
 
 /* Cell masks of the things drawing: bit n is cell n of the 5 x 5 grid of a square, row 0 the far row. */
@@ -142,17 +122,6 @@ enum sensor_type {
 #define THINGS_STATIC_ONLY 0x40000000   /* only static creatures: the creatures behind a closed door */
 #define THINGS_BEHIND_DOOR 0x40001000
 #define THINGS_DOOR_CELL 0x1000
-
-/* The random wall ornament hash of SKULL.EXE. */
-#define HASH_X_STEP 32
-#define HASH_X_BASE 2000
-#define HASH_MAP_STEP 64
-#define HASH_MAP_BASE 3000
-#define HASH_MULTIPLIER 0x7ab9
-#define HASH_MAP_FACTOR 11
-
-/* Value of a view square that the original reads as "no thing" or "none". */
-#define THING_TEXT_NONE 0xffff
 
 /* View positions (SKULL.EXE tables 0x75acc to 0x76025). */
 #define POS_DEPTH_MAX 4
@@ -304,7 +273,6 @@ static const int16_t stairs_front_zone[POS_CEILING_PIT_LAST + 1][2] = {
 #define CHEST_KINDS 8               /* container GDAT indices below 8 are chests that open */
 #define CREATURE_KEY_COLOR 4        /* creature value keys */
 #define CREATURE_KEY_POSSESSION_LIFT 0x41
-#define CREATURE_FRAMES 0xfd        /* creature data: the animation frames */
 #define CREATURE_SIZES 0xfe         /* creature data: picture scale by frame size row and side */
 #define CREATURE_SIDE_ENTRY 0xfa    /* pictures 0xfa to 0xfd: the creature seen from each side */
 #define CREATURE_ANY_SIDE 0xfc
@@ -362,7 +330,6 @@ enum {
 #define GRID_LATERAL_CENTER 10
 #define GRID_LATERAL_LIMIT 10
 #define GRID_FORWARD_LIMIT 17
-#define GRID_SQUARE_CELLS 4         /* grid cells per square side; the 5 x 5 cells of neighbour squares overlap */
 #define NO_POSITION 0xff
 #define PARTY_CELL_LAST 14          /* the party square draws the things of its 3 far rows */
 #define JITTER_COUNT 16
@@ -462,7 +429,6 @@ static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 #define RANDOM_TILE_SPREAD 0x1f
 
 /* Sky objects: clouds, rain, and the landmarks of an outdoor map. */
-#define SKY_OBJECT_MAX 5
 #define SKY_LANDMARK_MAX 100
 #define SKY_LANDMARK_DISTANCE 210   /* screen offset per square of lateral distance */
 enum sky_flip { SKY_FLIP_FLOOR = 8, SKY_FLIP_CEILING = 2, SKY_FLIP_FLOOR_2 = 0x40, SKY_FLIP_CEILING_2 = 0x20 };
@@ -478,7 +444,6 @@ enum {
 ViewSquare view_squares[VIEW_SQUARE_COUNT];
 static uint8_t viewport_pixels[VIEWPORT_WIDTH * VIEWPORT_HEIGHT];
 Bitmap view_viewport = {viewport_pixels, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, IMAGE_8BPP};
-int view_light_level;
 
 static struct {
     int map;                    /* the map of the squares that the view reads now */
@@ -491,11 +456,9 @@ static struct {
     uint8_t door_types[2];
     int16_t wall_key;
     uint16_t flip_flags;
-    const uint8_t *wall_ornaments; /* random wall ornaments: the list of the party map */
     int clear;                  /* fill clear_rect before drawing: floor and ceiling leave a gap */
     int16_t clear_rect[RECT_SIZE];
     uint8_t clear_color;
-    SkyObject sky[SKY_OBJECT_MAX];
     int landmark_set;           /* graphics set of the landmark bits, -1: none yet */
     int no_landmarks;
     uint8_t landmarks[(SKY_LANDMARK_MAX + BYTE_BITS - 1) / BYTE_BITS];
@@ -507,7 +470,7 @@ static struct {
         uint16_t group;
         uint32_t cells;
     } pending;
-} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST, .sky[0].entry = SKY_OBJECT_END};
+} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST};
 
 ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 int view_click_zone_count;
@@ -517,21 +480,9 @@ uint8_t view_object_grid[VIEW_GRID_SIZE];
 uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
 uint32_t view_object_masks[VIEW_SQUARE_COUNT];
 
-/* The first thing of the square (x, y) of the current map, THING_ENDOFLIST away from the map. */
-static uint16_t first_thing(int x, int y)
-{
-    if (x < 0 || x >= dungeon_map_width(view.map) || y < 0 || y >= dungeon_map_height(view.map)) return THING_ENDOFLIST;
-    return dungeon_square_first_thing(view.map, x, y);
-}
-
-static uint16_t value_key(int category, int index, int entry)
-{
-    return gdat_entry_index(draw_gdat(), category, index, GDAT_TYPE_VALUE, entry);
-}
-
 static int picture_exists(int category, int index, int entry)
 {
-    return gdat_exists(draw_gdat(), category, index, GDAT_TYPE_IMAGE, entry);
+    return gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, entry);
 }
 
 /* The door type of a door thing on the current map, 0xff for none. */
@@ -546,34 +497,20 @@ static void move_relative(int dir, int forward, int right, int *x, int *y)
     *y += dir_dy[dir & DIR_MASK] * forward + dir_dy[dir_turn(dir, TURN_RIGHT)] * right;
 }
 
-/* ---- Map graphics and sky objects ---- */
-
-int view_load_sky_object(SkyObject *object)
-{
-    char text[WALL_TEXT_SIZE];
-    gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, object->entry, text, sizeof text);
-    if (!text[0]) return 0;
-    object->zone = (int16_t)gdat_text_int_field(text, "cd");
-    object->dx = object->dy = 0;
-    object->flip = (uint8_t)gdat_text_int_field(text, "fw");
-    object->scale_x = object->scale_y = SCALE_FULL;
-    return 1;
-}
-
-SkyObject *view_sky_objects(void) { return view.sky; }
+/* ---- Map graphics ---- */
 
 void view_enter_map(int map)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     sound_clear_requests();
     view.map = view.party_map = map;
     view.gfx_set = dungeon_map_wallset(map);
     view.door_types[0] = dungeon_map_door_type(map, 0);
     view.door_types[1] = dungeon_map_door_type(map, 1);
-    view.wall_key = (int16_t)value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_WALL_COLOR);
-    view.flip_flags = value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_FLIP_FLAGS);
-    view.wall_ornaments = dungeon_map_wall_ornaments(map);
-    uint16_t sky_state = value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_SKY_STATE);
+    view.wall_key = (int16_t)aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_WALL_COLOR);
+    view.flip_flags = aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_FLIP_FLAGS);
+    aspect_enter_map(map);
+    uint16_t sky_state = aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_SKY_STATE);
     view.rain_shown = sky_state < sizeof sky_state_rain && sky_state_rain[sky_state];  /* fix: no read past the table */
     /* floor and ceiling pictures that do not fill the viewport leave a band that is cleared */
     const Bitmap *floor = draw_gdat_image(CAT_WALLSET, view.gfx_set, MAP_FLOOR);
@@ -613,323 +550,6 @@ static int view_get_flip_parity(int kind, int dir, int x, int y)
     return parity;
 }
 
-/* ---- Square aspects ---- */
-
-/* A random wall ornament for a wall face, ORNAMENT_NONE when the face shows none. */
-static uint8_t random_ornament(int allowed, int count, int x, int factor)
-{
-    if (!allowed) return ORNAMENT_NONE;
-    int map_size = dungeon_map_width(view.map) + dungeon_map_height(view.map);
-    uint16_t a = (uint16_t)(x * HASH_X_STEP + HASH_X_BASE + (int16_t)factor);
-    uint16_t b = (uint16_t)(view.map * HASH_MAP_STEP + HASH_MAP_BASE + map_size);
-    int16_t hash = (int16_t)(((((a * HASH_MULTIPLIER) >> 1) + b * HASH_MAP_FACTOR + dungeon_ornament_seed()) >> 2)
-                             % RANDOM_ORNAMENT_SLOTS);
-    return hash < count ? view.wall_ornaments[hash] : ORNAMENT_NONE;
-}
-
-static void set_random_wall_ornaments(ViewSquare *s, const int allowed[4], int dir, int x, int y)
-{
-    int count = dungeon_map_random_wall_count(view.map);
-    for (int k = 0; k < VIEW_SIDE_COUNT; k++)
-        s->side[k] = random_ornament(allowed[k], count, x, ((dir + k & DIR_MASK) + 1) * (y + 1));
-    /* an edge wall away from the map keeps no ornament that has a kind */
-    if (x >= 0 && x < dungeon_map_width(view.map) && y >= 0 && y < dungeon_map_height(view.map)) return;
-    for (int k = 0; k < VIEW_SIDE_COUNT; k++)
-        if (word_ornament(s->side[k]) != ORNAMENT_NONE && value_key(CAT_WALL_ORNAMENT, word_ornament(s->side[k]), ORN_KEY_KIND))
-            s->side[k] = ORNAMENT_NONE;
-}
-
-/* The animation frame of an ornament at time + offset: from its frame count, or from its frame text. */
-static int ornament_frame(int category, int ornament, uint32_t time, int offset)
-{
-    uint16_t frames = value_key(category, ornament, ORN_KEY_FRAMES);
-    char text[WALL_TEXT_SIZE];
-    int first = 0;
-    const char *sequence = NULL;
-    if (!frames) {
-        gdat_text(draw_gdat(), category, ornament, ORN_KEY_FRAMES, text, sizeof text);
-        if (!text[0]) return 1;
-        sequence = text;
-        frames = (uint16_t)strlen(text);
-    } else if (frames & FRAMES_FROM_ONE) {
-        first = 1;
-        frames &= ~FRAMES_FROM_ONE;
-    }
-    int frame = (int)((time + (uint32_t)offset) % frames) + first;
-    if (!sequence) return frame;
-    int c = (uint8_t)sequence[(uint16_t)frame];
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'A' && c <= 'Z') return c - 'K';  /* as in SKULL.EXE: 'K' is frame 0 */
-    return c;
-}
-
-/* The wall ornament of a sensor: an entry of the wall ornament list of the current map. */
-static uint8_t sensor_ornament(uint16_t sensor, const uint8_t *list)
-{
-    int ordinal = sensor_ornament_ordinal(sensor);
-    return ordinal ? list[ordinal - 1] : ORNAMENT_NONE;
-}
-
-/* How a wall or floor thing shows its ornament: a fixed frame, or an animation at time + offset. */
-typedef struct {
-    uint8_t ornament;
-    int animated, frame, offset;
-    uint32_t time;
-} OrnamentState;
-
-/* The ornament of a wall text on face of s; a text plate goes on the face at once. Sets *last when the things
-   behind it in its cell do not show. Returns 0 when the text shows no ornament. */
-static int wall_text_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentState *o, int *last)
-{
-    int kind = text_kind(thing), subtype = text_subtype(thing);
-    bool visible = text_is_visible(thing);
-    if (kind == TEXT_KIND_TEXT || (kind == TEXT_KIND_ORNAMENT && subtype == SUBTYPE_PLATE)) {
-        s->side[face] = ORNAMENT_PLATE;
-        if (face == SIDE_FRONT) s->text = visible ? thing : THING_TEXT_NONE;
-        *last = 1;
-        return 0;
-    }
-    if (kind != TEXT_KIND_ORNAMENT) return 0;
-    o->ornament = text_value(thing);
-    switch (subtype) {
-    case SUBTYPE_STILL: case SUBTYPE_LADDER: break;
-    case SUBTYPE_ANIMATED: o->animated = 1; break;
-    case SUBTYPE_TOGGLE: case SUBTYPE_HAND_SWITCH: o->animated = visible; break;
-    case SUBTYPE_ITEM_HOLDER: case SUBTYPE_LADDER_HIDDEN: case SUBTYPE_ITEM_HOLDER_MARKER:
-        o->frame = visible;
-        if (o->frame) {
-            o->animated = 1;
-            *last = 1;
-        }
-        break;
-    default: return 0;
-    }
-    return 1;
-}
-
-/* The ornament of a wall sensor on face of s by its sensor type; wall text and altar sensors set the text of s.
-   Sets *last when the things behind it in its cell do not show. Returns 0 when the sensor has no ornament. */
-static int wall_sensor_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentState *o, int *last)
-{
-    o->ornament = sensor_ornament(thing, dungeon_map_wall_ornaments(view.map));
-    if (o->ornament == ORNAMENT_NONE) return 0;
-    bool active = sensor_flag(thing, SENSOR_BUSY), state = sensor_flag(thing, SENSOR_STATE);
-    switch (sensor_type(thing)) {
-    case SENSOR_TOGGLE_ORNAMENT: o->animated = state; o->frame = state; break;
-    case SENSOR_TIMED_ORNAMENT: case SENSOR_TIMED_ORNAMENT_2: o->frame = active ^ state; break;
-    case SENSOR_HOLDER:
-        o->frame = state;
-        if (o->frame) {
-            o->animated = 1;
-            *last = 1;
-        }
-        break;
-    case SENSOR_STATE_MATCH:
-        if (active == state) o->animated = 1;
-        else o->frame = active;
-        break;
-    case SENSOR_ANIMATED:
-        if (active) {
-            o->offset = sensor_frame(thing);
-            o->animated = 1;
-        }
-        break;
-    case SENSOR_SOUND_ANIMATION:
-        if (active) {
-            o->time = sensor_data(thing);
-            o->animated = 1;
-        }
-        break;
-    case SENSOR_WALL_TEXT: s->text = face == SIDE_FRONT ? thing : THING_TEXT_NONE; break;
-    case SENSOR_FRAME_DATA: o->frame = sensor_data(thing); break;
-    case SENSOR_FRAME_STATE: o->frame = active; break;
-    case SENSOR_ALTAR:
-        if (sensor_flag(thing, SENSOR_ALTAR_SHOWN)) {
-            if (face == SIDE_FRONT) s->text = sensor_data(thing);
-            *last = 1;
-            o->animated = 1;
-        }
-        break;
-    }
-    return 1;
-}
-
-/* Applies the wall things (texts, sensors) to the faces of s; only_front limits them to the front face.
-   Returns the first thing that is not a wall thing. */
-static uint16_t apply_wall_things(ViewSquare *s, uint16_t thing, int dir, int only_front)
-{
-    int done = 0;
-    for (; thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR; thing = dungeon_next_thing(thing)) {
-        int cell = thing_cell(thing), face = dir_relative(cell, dir);
-        if (done & 1 << cell || (only_front && face != SIDE_FRONT)) continue;
-        OrnamentState o = {.time = game.game_time};
-        int last = 0, shows = 0;
-        if (thing_type(thing) == THING_TEXT) shows = wall_text_ornament(s, thing, face, &o, &last);
-        else if (thing_type(thing) == THING_SENSOR) shows = wall_sensor_ornament(s, thing, face, &o, &last);
-        if (last) done |= 1 << cell;
-        if (!shows) continue;
-        if (o.animated) o.frame = ornament_frame(CAT_WALL_ORNAMENT, o.ornament, o.time, o.offset);
-        s->side[face] = view_face_word(o.ornament, o.frame);
-    }
-    return thing;
-}
-
-/* The floor ornament of the floor things of a square: texts and sensors with ornaments. */
-static uint16_t apply_floor_things(ViewSquare *s, uint16_t thing, uint8_t square)
-{
-    for (; thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR; thing = dungeon_next_thing(thing)) {
-        int animated = 0, frame = 0, offset = 0;
-        uint32_t time = game.game_time;
-        uint8_t ornament;
-        if (thing_type(thing) == THING_TEXT) {
-            if (text_kind(thing) != TEXT_KIND_ORNAMENT) continue;
-            ornament = text_value(thing);
-            switch (text_subtype(thing)) {
-            case SUBTYPE_STILL: case SUBTYPE_TRAP_TELEPORT: case SUBTYPE_WARP: break;
-            case SUBTYPE_ANIMATED: animated = 1; break;
-            case SUBTYPE_TOGGLE: animated = text_is_visible(thing); break;
-            case SUBTYPE_WARP_ONCE: frame = 1; break;
-            case SUBTYPE_SQUARE_SWITCH: frame = square_flag(square, SQUARE_FLAG_3); break;
-            case SUBTYPE_SHOP_STAND: s->side[SIDE_SHOP_FLAG] = 0; continue;
-            default: continue;
-            }
-        } else if (thing_type(thing) == THING_SENSOR) {
-            int type = sensor_type(thing);
-            bool active = sensor_flag(thing, SENSOR_BUSY);
-            if (type == SENSOR_SHOP) s->side[SIDE_SHOP_FLAG] = 0;
-            ornament = sensor_ornament(thing, dungeon_map_floor_ornaments(view.map));
-            if (ornament == ORNAMENT_NONE) continue;
-            if (type == SENSOR_LINK) {
-                if (sensor_data(thing) - 1 != view.map) continue;
-                animated = active;
-            } else if (type == SENSOR_ANIMATED && active) {
-                offset = sensor_frame(thing);
-                animated = 1;
-            } else if (type == SENSOR_SOUND_ANIMATION && active) {
-                time = sensor_data(thing);
-                animated = 1;
-            }
-        } else {
-            continue;
-        }
-        if (animated) frame = ornament_frame(CAT_FLOOR_ORNAMENT, ornament, time, offset);
-        s->side[SIDE_FLOOR_ORNAMENT] = view_floor_word(ornament, frame);
-    }
-    return thing;
-}
-
-static uint16_t skip_wall_things(uint16_t thing)
-{
-    while (thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR) thing = dungeon_next_thing(thing);
-    return thing;
-}
-
-/* The aspect of a wall or a closed fake wall: its ornaments and wall things. Things show on a fake wall only in
-   the row or column of the party. */
-static void wall_square_aspect(ViewSquare *s, uint8_t square, int fake, uint16_t thing, int dir, int x, int y)
-{
-    if (fake) {
-        s->aspect = ASPECT_WALL;
-    } else {
-        int allowed[VIEW_SIDE_COUNT];
-        for (int k = 0; k < VIEW_SIDE_COUNT; k++) allowed[k] = square & WALL_FACE(dir_turn(dir, k));
-        set_random_wall_ornaments(s, allowed, dir, x, y);
-    }
-    thing = apply_wall_things(s, thing, dir, 0);
-    if (fake) {
-        /* a closed fake wall away from the party row and column hides its things */
-        if (game.party_x != x && game.party_y != y) {
-            s->first_thing = THING_ENDOFLIST;
-            return;
-        }
-    } else {
-        for (int k = 0; k < VIEW_SIDE_COUNT; k++) {
-            int d = dir_turn(dir, k);
-            if (square_type(dungeon_square_edge(view.map, x + dir_dx[d], y + dir_dy[d])) == SQUARE_DOOR)
-                s->side[k] = ORNAMENT_NONE;
-        }
-    }
-    s->first_thing = thing;
-}
-
-/* The floor ornament of every floor square of the current map, if the map graphics have one. */
-static void set_map_floor_ornament(ViewSquare *s)
-{
-    uint16_t v = value_key(CAT_WALLSET, dungeon_map_wallset(view.map), MAP_KEY_FLOOR_ORNAMENT);
-    if (!v) return;
-    int frame = v & FLOOR_ORNAMENT_ANIMATED ? ornament_frame(CAT_FLOOR_ORNAMENT, v & ORNAMENT_INDEX_MASK, game.game_time, 0) : 0;
-    s->side[SIDE_FLOOR_ORNAMENT] = view_floor_word(v & ORNAMENT_INDEX_MASK, frame);
-}
-
-/* What the party looking to dir sees of the square (x, y) of the current map. */
-static void get_square_aspect(ViewSquare *s, int dir, int x, int y)
-{
-    s->side[0] = s->side[1] = s->side[2] = s->side[3] = ORNAMENT_NONE;
-    s->text = 0;
-    uint8_t square = dungeon_square_edge(view.map, x, y);
-    s->square = square;
-    uint16_t thing = first_thing(x, y);
-    int type = square_type(square);
-    s->aspect = (uint16_t)type;
-    int floor_ornament = 0, floor_things = 1;
-    switch (type) {
-    case SQUARE_WALL:
-    case SQUARE_FAKE_WALL:
-        if (type == SQUARE_FAKE_WALL && square_flag(square, SQUARE_FAKE_WALL_OPEN)) {
-            square = FAKE_WALL_FLOOR_SQUARE;  /* an open fake wall is a floor */
-            s->aspect = ASPECT_FLOOR;
-            floor_ornament = 1;
-            break;
-        }
-        wall_square_aspect(s, square, type == SQUARE_FAKE_WALL, thing, dir, x, y);
-        return;
-    case SQUARE_FLOOR: floor_ornament = 1; break;
-    case SQUARE_PIT:
-        if (square_flag(square, SQUARE_PIT_OPEN)) s->side[SIDE_PIT_UP] = square & SQUARE_PIT_VARIANT;
-        else {
-            s->aspect = ASPECT_FLOOR;
-            floor_ornament = 1;
-        }
-        break;
-    case SQUARE_STAIRS:
-        s->aspect = (uint16_t)(ASPECT_STAIRS_FRONT + (square_flag(square, SQUARE_STAIRS_ALONG_X) != (dir & 1)));
-        s->side[SIDE_STAIRS_UP] = square & SQUARE_STAIRS_UP;
-        floor_things = 0;
-        break;
-    case SQUARE_DOOR:
-        s->side[SIDE_DOOR_STATE] = square & SQUARE_DOOR_STATE;
-        s->side[SIDE_DOOR_THING] = first_thing(x, y);
-        if (square_flag(square, SQUARE_DOOR_ALONG_X) == (dir & 1)) {
-            s->aspect = ASPECT_DOOR_SIDE;
-        } else {
-            s->aspect = ASPECT_DOOR_FRONT;
-            int d = dir_turn(dir, TURN_RIGHT);
-            apply_wall_things(s, first_thing(x + dir_dx[d], y + dir_dy[d]), d, 1);
-        }
-        floor_things = 0;
-        break;
-    case SQUARE_TELEPORTER:
-        if (!square_flag(square, SQUARE_TELEPORTER_ON) || !square_flag(square, SQUARE_TELEPORTER_VISIBLE)) {
-            s->aspect = ASPECT_FLOOR;
-            s->square &= ~SQUARE_TELEPORTER_ON;
-        }
-        break;
-    default:
-        s->first_thing = thing;
-        return;
-    }
-    if (floor_ornament) set_map_floor_ornament(s);
-    s->first_thing = floor_things ? apply_floor_things(s, thing, square) : skip_wall_things(thing);
-}
-
-void view_get_square_aspect(ViewSquare *s, int dir, int x, int y)
-{
-    int map = view.map;
-    view.map = party.cur_map;
-    get_square_aspect(s, dir, x, y);
-    view.map = map;
-}
-
 /* ---- Things of the view squares ---- */
 
 static bool is_item(uint16_t thing)
@@ -948,23 +568,12 @@ static int creature_picture_exists(int type, int entry)
     return picture_exists(CAT_CREATURE, type, (uint8_t)entry);
 }
 
-/* The grid cell of a creature in its square, turned by dir: the cell of its animation frame. */
-int view_get_creature_cell_zone(uint16_t group, int dir)
-{
-    if (!gdat_exists(draw_gdat(), CAT_CREATURE, group_creature(group), GDAT_TYPE_CREATURE_DATA,
-                     CREATURE_FRAMES))
-        return CELL_CENTER;
-    uint8_t frame[CREATURE_FRAME_SIZE];
-    creature_anim_frame(draw_gdat(), group, frame);
-    return view_rotate_grid5_cell(frame[FRAME_CELL], dir);
-}
-
 /* The grid cell of a thing in its square for the party looking to dir. */
 static int view_get_thing_position(uint16_t thing, int dir)
 {
     int cell = CELL_CENTER;
     switch (thing_type(thing)) {
-    case THING_GROUP: return view_get_creature_cell_zone(thing, dir_relative(dir, creature_dir(thing)));
+    case THING_GROUP: return aspect_creature_cell(thing, dir_relative(dir, creature_dir(thing)));
     case THING_EXPLOSION:
         if (explosion_is_centered(thing)) break;
         /* fall through */
@@ -973,7 +582,7 @@ static int view_get_thing_position(uint16_t thing, int dir)
         cell = cell_view_position[thing_cell(thing)];
         break;
     }
-    return view_rotate_grid5_cell(cell, dir);
+    return aspect_rotate_cell(cell, dir);
 }
 
 /* The cell (0 to 3) of a grid cell that holds objects, -1 for the others. */
@@ -982,12 +591,6 @@ static int view_position_to_cell(int position)
     for (int cell = 0; cell < DIR_COUNT; cell++)
         if (cell_view_position[cell] == position) return cell;
     return position == CELL_CENTER ? DIR_COUNT : -1;
-}
-
-void view_grid5_cell_to_xy(int base_x, int base_y, uint16_t cell, int16_t *x, int16_t *y)
-{
-    *x = (int16_t)(cell % CELL_GRID_SIDE + base_x * GRID_SQUARE_CELLS);
-    *y = (int16_t)(cell / CELL_GRID_SIDE + base_y * GRID_SQUARE_CELLS);
 }
 
 void view_offset_creature_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y)
@@ -1026,7 +629,7 @@ static void load_square_things(int pos, int dir, int party_x, int party_y, int x
     uint16_t thing = s->first_thing;
     if (thing == THING_ENDOFLIST) return;
     int16_t eye_x, eye_y;
-    view_grid5_cell_to_xy(party_x, party_y, eye_cell[dir], &eye_x, &eye_y);
+    aspect_cell_to_xy(party_x, party_y, eye_cell[dir], &eye_x, &eye_y);
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         int type = thing_type(thing);
         if (type == THING_PROJECTILE) {
@@ -1038,10 +641,10 @@ static void load_square_things(int pos, int dir, int party_x, int party_y, int x
         } else if (type == THING_GROUP) {
             int16_t cx, cy;
             /* Step 14 adds the cell of the push arrow for a creature in front of the party */
-            view_grid5_cell_to_xy(x, y, (uint16_t)view_get_thing_position(thing, DIR_NORTH), &cx, &cy);
+            aspect_cell_to_xy(x, y, (uint16_t)view_get_thing_position(thing, DIR_NORTH), &cx, &cy);
             if (pos != POS_PARTY)
                 view_offset_creature_toward_party(eye_x, eye_y,
-                                                  (int8_t)creature_info(draw_gdat(), group_creature(thing))->size,
+                                                  (int8_t)creature_info(gdat_current(), group_creature(thing))->size,
                                                   &cx, &cy);
             int16_t lateral, forward;
             switch (dir) {
@@ -1099,7 +702,7 @@ void view_load_square(int x, int y, int pos, int dir)
     ViewSquare *s = view_squares + pos;
     s->x = (int8_t)square_x;
     s->y = (int8_t)square_y;
-    get_square_aspect(s, dir, square_x, square_y);
+    aspect_get(s, view.map, dir, square_x, square_y);
     if (view.walking && pos == POS_PARTY) load_walking_party_square(s);
     load_square_things(pos, dir, x, y, square_x, square_y);
 }
@@ -1148,20 +751,9 @@ void view_mark_hidden_squares(void)
 
 /* ---- Pictures ---- */
 
-int view_rotate_grid5_cell(int cell, int dir)
-{
-    int x = cell % CELL_GRID_SIDE - CELL_GRID_HALF, y = cell / CELL_GRID_SIDE - CELL_GRID_HALF, t;
-    switch (dir) {
-    case DIR_EAST: t = x; x = y; y = -t; break;
-    case DIR_SOUTH: x = -x; y = -y; break;
-    case DIR_WEST: t = x; x = -y; y = t; break;
-    }
-    return (y + CELL_GRID_HALF) * CELL_GRID_SIDE + x + CELL_GRID_HALF;
-}
-
 int zone_id_for_view_cell(int base, int cell, int dir)
 {
-    return base * ZONE_CELL_GRID + view_rotate_grid5_cell(cell, dir) + ZONE_VIEW_CELLS;
+    return base * ZONE_CELL_GRID + aspect_rotate_cell(cell, dir) + ZONE_VIEW_CELLS;
 }
 
 static int zone_id_for_view_element(int element, int offset, int use_table)
@@ -1185,8 +777,8 @@ static void view_get_depth_shading(uint8_t *palette, int depth, int key1, int ke
         light = walk_light[depth];
         entry = depth + REMAP_WALK_BASE;
     }
-    if (gdat_exists(draw_gdat(), CAT_WALLSET, view.gfx_set, GDAT_TYPE_REMAP, entry))
-        pal_get_dimmed_remap(draw_gdat(), palette, CAT_WALLSET, view.gfx_set, entry, view.shade, key1, key2, count);
+    if (gdat_exists(gdat_current(), CAT_WALLSET, view.gfx_set, GDAT_TYPE_REMAP, entry))
+        pal_get_dimmed_remap(gdat_current(), palette, CAT_WALLSET, view.gfx_set, entry, view.shade, key1, key2, count);
     else
         pal_apply_dim_remap(palette, SHADE_FULL - ((SHADE_FULL - light) * (SHADE_FULL - view.shade) >> SHADE_SHIFT), key1, key2,
                             count);
@@ -1198,7 +790,7 @@ static void view_setup_picture(int flip, int scale_x, int scale_y, int dx, int d
 {
     DrawCtx *c = draw_ctx_init(&view.ctx, category, index, entry);
     if (scale_x != scale_y && (depth == DEPTH_MIDDLE || depth == DEPTH_FAR)) {
-        uint16_t v = value_key(category, index, depth == DEPTH_MIDDLE ? ORN_KEY_WIDTH_SCALE_2 : ORN_KEY_WIDTH_SCALE_3);
+        uint16_t v = aspect_value_key(category, index, depth == DEPTH_MIDDLE ? ORN_KEY_WIDTH_SCALE_2 : ORN_KEY_WIDTH_SCALE_3);
         if (LOW_BYTE(v)) scale_x = rounded_scale((int)HIGH_BYTE(v), LOW_BYTE(v));  /* fix: the original divides by 0 */
     }
     c->flip = (int16_t)flip;
@@ -1466,7 +1058,7 @@ static int view_shift_object_cell(int *pos, int *cell, int columns, int rows)
 static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordinal, uint16_t group, int record_click,
                              int open_state, int in_alcove)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     int cell = CELL_CENTER, row, zone;
     if (group != THING_NONE) {
         int type = group_creature(group);
@@ -1527,7 +1119,7 @@ static void view_draw_object(uint16_t thing, int pos, int dx, int dy, int ordina
 static void view_draw_objects_in_cell(uint16_t thing, int pos, int cell, uint16_t group)
 {
     if (thing == THING_ENDOFLIST || view_depth[pos] > DEPTH_FAR) return;
-    const CreatureInfo *info = group != THING_NONE ? creature_info(draw_gdat(), group_creature(group))
+    const CreatureInfo *info = group != THING_NONE ? creature_info(gdat_current(), group_creature(group))
                                                   : NULL;
     int ordinal = 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
@@ -1596,7 +1188,7 @@ static int creature_side_picture(int type, const uint8_t *frame, int side, int a
 /* Draws a creature group of the square at pos at depth: its animation frame, from the side it shows. */
 static void view_draw_creature(int pos, int depth, uint16_t group)
 {
-    const gdat_t *g = draw_gdat();
+    const gdat_t *g = gdat_current();
     int type = group_creature(group);
     uint8_t frame[CREATURE_FRAME_SIZE];
     creature_anim_frame(g, group, frame);
@@ -1647,7 +1239,7 @@ static int view_draw_creatures(uint16_t thing, int pos, uint32_t cell_mask)
     if (view.walking && pos == POS_PARTY) return 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (thing_type(thing) != THING_GROUP) continue;
-        const CreatureInfo *info = creature_info(draw_gdat(), group_creature(thing));
+        const CreatureInfo *info = creature_info(gdat_current(), group_creature(thing));
         if (cell_mask & THINGS_STATIC_ONLY && !(info->flags & CREATURE_STATIC)) continue;
         drawn = 1;
         view_draw_creature(pos, depth, thing);
@@ -1766,7 +1358,7 @@ static void view_draw_missiles(uint16_t thing, int pos, int position)
         }
         int flip = 0, entry = kind == MISSILE_NO_SIDE ? MISSILE_PICTURE_FRONT
                                                        : missile_picture(thing, kind, cell, lateral, spell, square_parity, &flip);
-        int flips = spell ? gdat_entry_index(draw_gdat(), CAT_EXPLOSION, index, GDAT_TYPE_VALUE, EXPLOSION_KEY_MISSILE_FLIP)
+        int flips = spell ? gdat_entry_index(gdat_current(), CAT_EXPLOSION, index, GDAT_TYPE_VALUE, EXPLOSION_KEY_MISSILE_FLIP)
                           : MIRROR_HV;
         view_setup_picture(flips & flip, scale, scale, 0, 0, depth, (int16_t)(zone | ZONE_RELATIVE), 0, THING_KEY, NO_KEY,
                            category, index, entry);
@@ -1834,8 +1426,8 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
                 continue;
             }
             if (order_cell != (centered ? -1 : thing_cell(thing))) continue;
-            int flip = rand_2bits() & gdat_entry_index(draw_gdat(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FLIP);
-            int power = gdat_entry_index(draw_gdat(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FIXED_POWER)
+            int flip = rand_2bits() & gdat_entry_index(gdat_current(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FLIP);
+            int power = gdat_entry_index(gdat_current(), CAT_EXPLOSION, type, GDAT_TYPE_VALUE, EXPLOSION_KEY_FIXED_POWER)
                         ? POWER_MAX : explosion_power(thing);
             int near = pos == POS_PARTY;
             if (near) {
@@ -1849,7 +1441,7 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
                 if (depth == 0 && k >= 3) continue;
             }
             int position = centered ? CELL_CENTER : cell_view_position[thing_cell(thing)];
-            int turned = view_rotate_grid5_cell(position, view.party_dir);
+            int turned = aspect_rotate_cell(position, view.party_dir);
             if (!(cell_mask & 1u << turned)) continue;
             int scale = thing_scale[depth * GRID_SQUARE_CELLS + EXPLOSION_SCALE_START - turned / CELL_GRID_SIDE];
             int zone = zone_id_for_view_cell(pos, position, game.party_dir) | ZONE_RELATIVE;
@@ -1979,7 +1571,7 @@ static bool shop_square_has_object_type(uint16_t record, int type, int loose)
 {
     int x, y;
     record_target(record, &x, &y);
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    for (uint16_t t = aspect_first_thing(view.map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         int kind = thing_type(t);
         if (loose && kind >= THING_WEAPON && kind <= THING_MISC) {
             if (item_get_index(t) == type) return true;
@@ -2005,9 +1597,9 @@ static void view_draw_centered_label(int x, int y, const char *text)
 
 static const uint16_t *shop_table(uint8_t ornament, int *count)
 {
-    int item = gdat_find(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, ORN_SHOP_TABLE);
+    int item = gdat_find(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, ORN_SHOP_TABLE);
     uint32_t size = 0;
-    const uint8_t *data = item < 0 ? NULL : gdat_item(draw_gdat(), item, &size);
+    const uint8_t *data = item < 0 ? NULL : gdat_item(gdat_current(), item, &size);
     *count = (int)(size / 2);
     return (const uint16_t *)data;
 }
@@ -2035,7 +1627,7 @@ static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, 
                 item = (uint16_t)at;
             }
             if (!(set[item / BYTE_BITS] & 1 << (item % BYTE_BITS))) continue;
-            if (gdat_entry_index(draw_gdat(), item_index_gdat_category(item), item_index_gdat_index(item),
+            if (gdat_entry_index(gdat_current(), item_index_gdat_category(item), item_index_gdat_index(item),
                                  GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_UNIQUE
                 && !shop_square_has_object_type(shop, item, 1) && !shop_square_has_object_type(display, item, 0)
                 && !item_party_possesses_type(item))
@@ -2052,7 +1644,7 @@ static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, 
 /* Draws amount as coins at the offset of key from zone. */
 static void shop_draw_price(int amount, uint8_t ornament, int depth, int zone, int anchor, int key, int offset_key)
 {
-    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, offset_key);
+    uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, offset_key);
     int16_t x = gdat_offset_x(offset), y = gdat_offset_y(offset), count;
     uint8_t coins[SHOP_PRICE_COINS];
     if (!(uint16_t)amount) return;
@@ -2077,7 +1669,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     int x, y;
     record_target(shop, &x, &y);
     uint16_t display = THING_ENDOFLIST;
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t))
+    for (uint16_t t = aspect_first_thing(view.map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_SHOP) {
             display = t;
             break;
@@ -2087,7 +1679,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     if (!sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD)) shop_choose_item(shop, display, ornament, creature);
     uint16_t item = sensor_data(display);
     int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
-    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_ALCOVE_ITEMS);
+    uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_ALCOVE_ITEMS);
     view_setup_picture(0, scale_x, scale_y, gdat_offset_x(offset), gdat_offset_y(offset), depth, zone, anchor,
                        key, NO_KEY, category, index, 0);
     view_flush_picture();
@@ -2110,7 +1702,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     if (pos != DISPLAY_POS) return;
     int16_t lx, ly;
     zone_get_position(zone, &lx, &ly);
-    uint16_t place = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
+    uint16_t place = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
     char raw[TEXT_SIZE], name[TEXT_SIZE];
     view_draw_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
                              text_format(text_gdat(category, index, ITEM_NAME_ENTRY, raw), name));
@@ -2179,7 +1771,7 @@ typedef struct {
 /* Draws the champion portrait of a portrait ornament on the front wall at pos; a click on the front wall finds it. */
 static void draw_wall_portrait(int pos, uint8_t ornament, const OrnamentPlace *p, int record_click)
 {
-    uint16_t offset = gdat_entry_index(draw_gdat(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, PORTRAIT_OFFSET_ENTRY);
+    uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, PORTRAIT_OFFSET_ENTRY);
     view_setup_picture(0, p->scale_y, p->scale_y, gdat_offset_x(offset), gdat_offset_y(offset), p->depth, p->zone,
                        p->anchor, NO_KEY, NO_KEY, CAT_CHAMPION, (uint8_t)view_squares[pos].text, PORTRAIT_ENTRY);
     if (!record_click) view.ctx.transparent = DRAW_NO_BLIT;
@@ -2218,7 +1810,7 @@ static void draw_wet_wall_ornament(uint8_t ornament, int entry, const OrnamentPl
     DrawCtx c;
     Bitmap *offscreen = view_render_picture_offscreen(&c, CAT_WALL_ORNAMENT, ornament, entry, p->scale_x, p->scale_y,
                                                       p->depth, p->flip, p->key,
-                                                      (int16_t)value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_OFFSCREEN_COLOR));
+                                                      (int16_t)aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_OFFSCREEN_COLOR));
     if (offscreen) {
         view_draw_wet_image(&c, offscreen, p->key);
         draw_ctx_draw(&c);
@@ -2252,14 +1844,14 @@ static int view_draw_wall_ornament(int pos, int side, int record_click)
     int face = side < 0 ? 0 : side > 0 ? 2 : 1;  /* the side words of the left, front, right faces */
     uint16_t w = view_squares[pos].side[face + 1];
     int frame = face_frame_entry(w), depth = view_depth[pos];
-    uint8_t ornament = word_ornament(w);
+    uint8_t ornament = aspect_word_ornament(w);
     if (ornament == ORNAMENT_NONE) return -1;
     int plate = ornament == ORNAMENT_PLATE;
-    int kind = value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_KIND);
-    int key = plate ? 0 : value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_COLOR);
+    int kind = aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_KIND);
+    int key = plate ? 0 : aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_COLOR);
     if (!key) key = view.wall_key;
     int cell = CELL_CENTER, anchor = 0;
-    uint16_t place = plate ? 0 : value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_PLACE);
+    uint16_t place = plate ? 0 : aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_PLACE);
     if (place) {
         anchor = HIGH_BYTE(place);
         cell = LOW_BYTE(place) - 1;
@@ -2290,7 +1882,7 @@ static int view_draw_wall_ornament(int pos, int side, int record_click)
         }
     }
     entry = (uint8_t)(entry + frame);
-    if (side == 0 && value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_WET)) {
+    if (side == 0 && aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_WET)) {
         draw_wet_wall_ornament(ornament, entry, &p, record_click, click_rect);
     } else {
         view_setup_picture(p.flip, p.scale_x, p.scale_y, 0, 0, depth, p.zone, anchor, key, NO_KEY, CAT_WALL_ORNAMENT,
@@ -2310,7 +1902,7 @@ static int view_draw_wall_ornament(int pos, int side, int record_click)
 static void view_draw_wall_block(int pos)
 {
     int lateral = view_lateral[pos], depth = view_depth[pos];
-    uint16_t margins = value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_WALL_MARGINS + (depth > DEPTH_FRONT));
+    uint16_t margins = aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_WALL_MARGINS + (depth > DEPTH_FRONT));
     int left = 0, right = 0;
     if (depth > DEPTH_FRONT) {
         if (view_squares[POS_FRONT_LEFT].aspect == ASPECT_WALL) left = HIGH_BYTE(margins);
@@ -2358,7 +1950,7 @@ static void draw_floor_ornament_offscreen(uint8_t ornament, int entry, const Orn
     DrawCtx c;
     Bitmap *offscreen = view_render_picture_offscreen(&c, CAT_FLOOR_ORNAMENT, ornament, entry, p->scale_x, p->scale_y,
                                                       p->depth, p->flip, p->key,
-                                                      (int16_t)value_key(CAT_FLOOR_ORNAMENT, ornament,
+                                                      (int16_t)aspect_value_key(CAT_FLOOR_ORNAMENT, ornament,
                                                                          ORN_KEY_OFFSCREEN_COLOR));
     if (!offscreen) return;
     int transparent = mapped_key(&c, p->key);
@@ -2400,20 +1992,20 @@ static int view_draw_floor_ornament(int pos)
     uint16_t w = s->side[SIDE_FLOOR_ORNAMENT];
     int frame = HIGH_BYTE(w);
     entry = (uint8_t)(entry + frame);
-    uint8_t ornament = word_ornament(w);
+    uint8_t ornament = aspect_word_ornament(w);
     if (ornament == ORNAMENT_NONE || ornament == 0) return 0;
-    if ((pos == POS_FAR_SIDE_1 || pos == POS_FAR_SIDE_2) && value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NOT_FAR_SIDE))
+    if ((pos == POS_FAR_SIDE_1 || pos == POS_FAR_SIDE_2) && aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NOT_FAR_SIDE))
         return 0;
     int flip = 0;
     if (view_lateral[pos] == 0) {
-        if (!value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NO_FLIP)) flip = view.flip ^ !(depth & 1);
+        if (!aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NO_FLIP)) flip = view.flip ^ !(depth & 1);
     } else if (view_lateral[pos] >= 1) {
         flip = 1;
     }
-    int key = value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_COLOR);
+    int key = aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_COLOR);
     if (!key) key = view.wall_key;
     int cell = CELL_CENTER, anchor = 0;
-    uint16_t place = value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_PLACE);
+    uint16_t place = aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_PLACE);
     if (place) {
         anchor = HIGH_BYTE(place);
         cell = LOW_BYTE(place) - 1;
@@ -2423,9 +2015,9 @@ static int view_draw_floor_ornament(int pos)
         entry = (uint8_t)(floor_ornament_scaled_entry[pos] + frame);
         scale = depth_scale[depth];
     }
-    if ((pos == POS_NEAR_SIDE_1 || pos == POS_NEAR_SIDE_2) && value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_BIG_NEAR))
+    if ((pos == POS_NEAR_SIDE_1 || pos == POS_NEAR_SIDE_2) && aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_BIG_NEAR))
         scale = SCALE_BIG_NEAR;
-    int wet = depth ? value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_WET) : 0;
+    int wet = depth ? aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_WET) : 0;
     if (!depth || (!linked && !wet)) {
         view_setup_picture(flip, scale, scale, 0, 0, depth, zone, anchor, key, NO_KEY, CAT_FLOOR_ORNAMENT, ornament, entry);
         view_flush_picture();
@@ -2509,10 +2101,10 @@ static void view_draw_door_ornament(int category, int ornament, int entry, int p
     if (row < 0 || ornament == ORNAMENT_NONE) return;
     int depth = view_depth[pos], scale = depth_scale[depth], base = 0, key;
     if (category == CAT_DOOR_BUTTON) {
-        base = value_key(CAT_DOOR_BUTTON, ornament, ORN_KEY_ZONE_ROW) * DOOR_BUTTON_FRAMES;
+        base = aspect_value_key(CAT_DOOR_BUTTON, ornament, ORN_KEY_ZONE_ROW) * DOOR_BUTTON_FRAMES;
         key = view.wall_key;
     } else {
-        key = (int16_t)value_key(category, ornament, ORN_KEY_COLOR);
+        key = (int16_t)aspect_value_key(category, ornament, ORN_KEY_COLOR);
         if (!key) key = view.wall_key;
     }
     view_setup_picture(0, scale, scale, 0, 0, depth, base + ZONE_DOOR_ORNAMENT + row, ZONE_NO_ANCHOR, key, NO_KEY,
@@ -2524,7 +2116,7 @@ static void view_draw_door_ornament(int category, int ornament, int entry, int p
 static void view_draw_door_frame(int pos, int parts)
 {
     uint16_t door = view_squares[pos].side[SIDE_DOOR_THING];
-    if (value_key(CAT_DOOR, door_type(door), DOOR_KEY_NO_FRAME)) return;
+    if (aspect_value_key(CAT_DOOR, door_type(door), DOOR_KEY_NO_FRAME)) return;
     if (parts & DOOR_FRAME_TOP && pos < DOOR_TOP_POSITIONS && door_top_frame[pos] >= 0)
         view_draw_picture_in_zone(CAT_WALLSET, view.gfx_set, door_top_frame[pos], door_top_zone[pos], view.wall_key, 0);
     int mpos = view.flip ? view_mirror[pos] : pos, left = view.flip ? 1 : 0;
@@ -2543,7 +2135,7 @@ static void view_draw_door_frame(int pos, int parts)
         view_draw_door_ornament(CAT_DOOR_BUTTON, 0, door_flag(door, DOOR_BUTTON_PRESSED) * DOOR_BUTTON_FRAMES, pos);
     } else if (view_squares[pos].side[SIDE_FLOOR_ORNAMENT] != ORNAMENT_NONE) {
         uint16_t w = view_squares[pos].side[SIDE_FLOOR_ORNAMENT];
-        view_draw_door_ornament(CAT_WALL_ORNAMENT, word_ornament(w), (uint8_t)(face_frame_entry(w) + 1), pos);
+        view_draw_door_ornament(CAT_WALL_ORNAMENT, aspect_word_ornament(w), (uint8_t)(face_frame_entry(w) + 1), pos);
     }
 }
 
@@ -2567,17 +2159,17 @@ static void compose_door(uint8_t type, int ornament, int destroyed, int entry, i
     }
     if (ornament) {
         uint8_t o = dungeon_map_door_ornaments(view.party_map)[ornament - 1];
-        int okey = (int16_t)value_key(CAT_DOOR_ORNAMENT, o, ORN_KEY_COLOR);
+        int okey = (int16_t)aspect_value_key(CAT_DOOR_ORNAMENT, o, ORN_KEY_COLOR);
         if (!okey) okey = ORNAMENT_KEY_DEFAULT;
-        int ozone = value_key(CAT_DOOR_ORNAMENT, o, ORN_KEY_ZONE_ROW) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + row;
+        int ozone = aspect_value_key(CAT_DOOR_ORNAMENT, o, ORN_KEY_ZONE_ROW) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + row;
         view_setup_picture(0, scale_x, scale_y, 0, 0, depth, ozone, ZONE_NO_ANCHOR, okey, NO_KEY, CAT_DOOR_ORNAMENT, o, 0);
         view.ctx.dst = offscreen;
         view_flush_picture();
     }
     if (destroyed) {
-        int dkey = (int16_t)value_key(CAT_DOOR, type, ORN_KEY_DAMAGE_COLOR);
+        int dkey = (int16_t)aspect_value_key(CAT_DOOR, type, ORN_KEY_DAMAGE_COLOR);
         if (!dkey) dkey = ORNAMENT_KEY_DEFAULT;
-        int dzone = value_key(CAT_DOOR, type, ORN_KEY_KIND) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + row;
+        int dzone = aspect_value_key(CAT_DOOR, type, ORN_KEY_KIND) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + row;
         view_setup_picture(0, scale_x, scale_y, 0, 0, depth, dzone, ZONE_NO_ANCHOR, dkey, key, CAT_DOOR, type, DOOR_DAMAGE);
         view.ctx.dst = offscreen;
         view_flush_picture();
@@ -2599,7 +2191,7 @@ static void view_draw_door(int pos, int frame_before, int frame_after, uint32_t 
     if (state != DOOR_STATE_OPEN && depth <= DEPTH_FAR && row >= 0 && zone >= 0) {
         uint16_t door = s->side[SIDE_DOOR_THING];
         uint8_t type = door_type(door);
-        int key = (int16_t)value_key(CAT_DOOR, type, ORN_KEY_COLOR);
+        int key = (int16_t)aspect_value_key(CAT_DOOR, type, ORN_KEY_COLOR);
         if (!key) key = DOOR_KEY_DEFAULT;
         int entry = depth - 1, scale = SCALE_FULL, shade_depth = 0;
         if (depth == 0 || !picture_exists(CAT_DOOR, type, entry)) {
@@ -2735,24 +2327,24 @@ static void outdoor_draw_sky_object(const SkyObject *o, int dir, int x, int y)
 static void outdoor_draw_sky(int dir, int x, int y)
 {
     if (game.weather_visible)
-        for (const SkyObject *o = view.sky; o->entry != SKY_OBJECT_END; o++) outdoor_draw_sky_object(o, dir, x, y);
+        for (const SkyObject *o = weather_sky_objects(); o->entry != SKY_OBJECT_END; o++) outdoor_draw_sky_object(o, dir, x, y);
     char text[WALL_TEXT_SIZE];
     if (view.landmark_set != view.gfx_set) {
         view.landmark_set = view.gfx_set;
         view.no_landmarks = 1;
         memset(view.landmarks, 0, sizeof view.landmarks);
         for (int e = 0; e < SKY_LANDMARK_MAX; e++)
-            if (picture_exists(CAT_SKY, view.gfx_set, e) && *gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, e, text, sizeof text)) {
+            if (picture_exists(CAT_SKY, view.gfx_set, e) && *gdat_text(gdat_current(), CAT_SKY, view.gfx_set, e, text, sizeof text)) {
                 view.landmarks[e / BYTE_BITS] |= (uint8_t)(1 << (e % BYTE_BITS));
                 view.no_landmarks = 0;
             }
     }
     if (view.no_landmarks) return;
     /* like the original, the landmarks use the first sky object as their record */
-    SkyObject *o = view.sky;
+    SkyObject *o = weather_sky_objects();
     for (int e = 0; e < SKY_LANDMARK_MAX; e++) {
         if (!(view.landmarks[e / BYTE_BITS] & 1 << (e % BYTE_BITS))) continue;
-        gdat_text(draw_gdat(), CAT_SKY, view.gfx_set, e, text, sizeof text);
+        gdat_text(gdat_current(), CAT_SKY, view.gfx_set, e, text, sizeof text);
         if (!outdoor_place_sky_object(o, text, dir, x, y)) continue;
         o->entry = (uint8_t)e;
         o->zone = (int16_t)gdat_text_int_field(text, "cd");
@@ -2789,7 +2381,7 @@ static void view_draw_far_squares(void)
         case ASPECT_TELEPORTER:
         case ASPECT_DOOR_SIDE:
             if (aspect == ASPECT_DOOR_SIDE && pos == POS_FRONT
-                && !value_key(CAT_DOOR, door_type(view_squares[POS_FRONT].side[SIDE_DOOR_THING]), DOOR_KEY_NO_FRAME)) {
+                && !aspect_value_key(CAT_DOOR, door_type(view_squares[POS_FRONT].side[SIDE_DOOR_THING]), DOOR_KEY_NO_FRAME)) {
                 view_setup_picture(view.flip, DOOR_SIDE_SCALE, DOOR_SIDE_SCALE, 0, 0, DOOR_SIDE_DEPTH,
                                    zone_id_for_view_cell(POS_FRONT, CELL_FAR_MIDDLE, 0), ZONE_NO_ANCHOR, view.wall_key, NO_KEY,
                                    CAT_WALLSET, view.gfx_set, MAP_DOOR_SIDE);
@@ -2815,7 +2407,7 @@ static void view_draw_party_square(void)
         if (aspect == ASPECT_PIT) {
             view_draw_floor_pit(POS_PARTY);
         } else if (aspect == ASPECT_DOOR_SIDE) {
-            if (!value_key(CAT_DOOR, door_type(view_squares[POS_PARTY].side[SIDE_DOOR_THING]), DOOR_KEY_NO_FRAME))
+            if (!aspect_value_key(CAT_DOOR, door_type(view_squares[POS_PARTY].side[SIDE_DOOR_THING]), DOOR_KEY_NO_FRAME))
                 view_draw_picture_in_zone(CAT_WALLSET, view.gfx_set, MAP_DOOR_SIDE, zone_id_for_view_cell(POS_PARTY, CELL_FAR_MIDDLE, 0),
                                           view.wall_key, view.flip);
         } else if (aspect == ASPECT_STAIRS_SIDE) {
@@ -2868,7 +2460,7 @@ void view_draw_dungeon(int dir, int x, int y)
     if (view_squares[POS_FRONT_LEFT].aspect == ASPECT_WALL && view_squares[POS_FRONT].aspect == ASPECT_WALL
         && view_squares[POS_FRONT_RIGHT].aspect == ASPECT_WALL)
         margins = MAP_KEY_NEAR_MARGINS;
-    uint16_t m = margins < 0 ? 0 : value_key(CAT_WALLSET, view.gfx_set, margins);
+    uint16_t m = margins < 0 ? 0 : aspect_value_key(CAT_WALLSET, view.gfx_set, margins);
     zone_set_clip_margins(0, 0, 0, LOW_BYTE(m));
     view_draw_picture_in_zone(CAT_WALLSET, view.gfx_set, MAP_CEILING, ZONE_CEILING, NO_KEY,
                               view_get_flip_parity(PARITY_CEILING, dir, x, y) != 0);
@@ -2946,7 +2538,7 @@ int view_hit_test_wall_ornament(int pos, int x, int y)
     move_relative(view.party_dir, view_offset[pos][1], view_offset[pos][0], &sx, &sy);
     view_squares[pos].x = (int8_t)sx;
     view_squares[pos].y = (int8_t)sy;
-    get_square_aspect(&view_squares[pos], view.party_dir, sx, sy);
+    aspect_get(&view_squares[pos], view.map, view.party_dir, sx, sy);
     int hit = 0, key = view_draw_wall_ornament(pos, face_of_pos[pos], 0);
     if (key >= 0) hit = view_hit_test_picture(x, y, key);
     if (pos == POS_FRONT || view.ctx.w < HIT_SMALL_SIZE || view.ctx.h < HIT_SMALL_SIZE) hit = 1;
@@ -2955,17 +2547,6 @@ int view_hit_test_wall_ornament(int pos, int x, int y)
     return hit;
 }
 
-
-int view_wall_face_ornament(int map, uint16_t first, int dir)
-{
-    ViewSquare s;
-    memset(&s, ORNAMENT_NONE, sizeof s);  /* every byte of the square, not only its ornament fields */
-    int saved = view.map;
-    view.map = map;
-    apply_wall_things(&s, first, dir, 1);
-    view.map = saved;
-    return word_ornament(s.side[SIDE_FRONT]);
-}
 
 /* Chest pictures and states of a hit test. */
 #define CHEST_OPEN_PICTURE 0x48
@@ -3021,7 +2602,7 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
         if (!is_item(t) || thing_cell(t) != thing_cell(thing)) continue;
         int state = CHEST_HIT_NONE;
         uint16_t this_chest = THING_NONE;
-        if (item_is_chest(t) && gdat_exists(draw_gdat(), CAT_CONTAINER, item_gdat_index(t), GDAT_TYPE_IMAGE, CHEST_OPEN_PICTURE)) {
+        if (item_is_chest(t) && gdat_exists(gdat_current(), CAT_CONTAINER, item_gdat_index(t), GDAT_TYPE_IMAGE, CHEST_OPEN_PICTURE)) {
             this_chest = t;
             if (container_is_open(t)) state = CHEST_HIT_INSIDE;
             else if (!placing) state = CHEST_HIT_OPEN;

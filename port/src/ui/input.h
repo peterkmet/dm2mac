@@ -1,17 +1,10 @@
 #ifndef INPUT_H
 #define INPUT_H
 #include <stdint.h>
+#include "game.h"
 
 /* Prefixes: input_ command_ kbd_ rect_ */
 
-/* Input modes: the root of the input tree that maps clicks and keys to commands. */
-enum input_mode {
-    INPUT_MODE_MENU = 0, INPUT_MODE_PICTURE = 1, INPUT_MODE_SLEEP = 2, INPUT_MODE_PAUSE = 3, INPUT_MODE_DIALOG = 4,
-    INPUT_MODE_MOVE = 5, INPUT_MODE_PUSH = 6, INPUT_MODE_RECRUIT = 7, INPUT_MODE_INVENTORY = 8, INPUT_MODE_NAME = 9
-};
-/* Mouse event types: buttons (bit 1 left, bit 0 right), a released left button (only while the eye or the mouth is
-   held or the automap is open), a key. */
-enum { INPUT_BUTTON_RIGHT = 1, INPUT_BUTTON_LEFT = 2, INPUT_LEFT_RELEASED = 4, INPUT_KEY = 0x20 };
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
 #define KEY_EXTENDED 0x1000
 #define KEY_SHIFT 0x0200
@@ -33,7 +26,6 @@ enum {
     CMD_TEXT_LAST = 0xc6, CMD_LAST = 0xf2, CMD_PARTY_ICON_FIRST = 0x5f, CMD_PARTY_ICON_LAST = 0x62, CMD_HAND_FIRST = 0x74,
     CMD_HAND_LAST = 0x7b, CMD_STORE_FIRST = 0xea, CMD_STORE_LAST = 0xed, CMD_DRAG_FIRST = 0x7d, CMD_DRAG_CANCEL = 0x81,
     CMD_ACTION_CANCEL = 0x70, CMD_ACTION_LAST = 0x73, CMD_MOUTH = 0x46, CMD_EYE = 0x47, CMD_COIN_FIRST = 0xe4, CMD_COIN_LAST = 0xe9,
-    CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93,
     CMD_RUNE_FIRST = 0x65, CMD_RUNE_LAST = 0x6a, CMD_REMOVE_RUNE = 0x6b, CMD_CAST_SPELL = 0x6c,
     CMD_MAP_OPTION_FIRST = 0x56, CMD_MAP_OPTION_LAST = 0x59,
     CMD_EDIT_NAME = 0x49, CMD_EDIT_TITLE = 0x4a, CMD_EDIT_CANCEL = 0x4b,  /* the buttons of the name editor */
@@ -63,12 +55,8 @@ typedef struct {
 } InputMatch;
 extern InputMatch input_match;
 
-/* The last command stops the command processing of this tick (the original g_command_stop). */
-extern int input_command_stop;
 /* A click feedback script waits for the next game step. */
 extern int input_feedback_busy;
-/* A champion portrait or an object is dragged (Step 15), 0 none. */
-extern int input_drag_state;
 
 /* Builds the input tables; call once. */
 void input_init(void);
@@ -105,8 +93,6 @@ void input_mouse_click(int x, int y, int type);
    mouse capture of the eye or the mouth (the original event 4). */
 void input_mouse_down(int x, int y, int button);
 void input_mouse_up(int x, int y, int button);
-/* The mouse buttons that are down: INPUT_BUTTON_* bits (the original mouse_get_state). */
-extern int input_mouse_buttons;
 /* A key press of the keyboard (key code with KEY_* bits); input_poll reads it. */
 void input_key_down(uint16_t key);
 /* Clears the pending keys, clicks, and commands. */
@@ -141,7 +127,5 @@ void input_release_move_arrow(void);
 void command_process_queue(void);
 /* Executes one command; returns 0 when it must wait. */
 int command_execute(Command *c);
-/* The commands of later steps: hands, slots, spells, recruiting, dialogs (empty until then). */
-void command_execute_later(const Command *c);
 
 #endif

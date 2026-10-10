@@ -130,8 +130,8 @@ def c_weather(lib):
 
 def c_sky(lib):
     """The C sky objects up to the end mark."""
-    lib.view_sky_objects.restype = ctypes.c_void_p
-    return sky_list(ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
+    lib.weather_sky_objects.restype = ctypes.c_void_p
+    return sky_list(ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
 
 
 def sky_list(raw):
@@ -424,8 +424,8 @@ class Scenario(CreatureOracle):
         emu.write(G_MAP_LIGHT, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x6D)))
         emu.write(G_MAP_WALL_COST, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x72) or 1))
         emu.write(tv.G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
-        lib.view_sky_objects.restype = ctypes.c_void_p
-        emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE))
+        lib.weather_sky_objects.restype = ctypes.c_void_p
+        emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
         emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
         for addr, entry in ((G_GFX_HAS_CLOUDS, 0x6A), (G_GFX_HAS_RAIN, 0x67), (G_GFX_HAS_LIGHTNING, 0x64)):
             emu.write(addr, bytes([lib.gdat_exists(self.gdat, 0x17, gfx_set, 1, entry)]))
@@ -894,8 +894,8 @@ def test_clicks_in_the_view(scenario, lib):
     clicked = 0
     for n, (map_, x, y, d) in enumerate(places[::2]):
         scenario.place(map_, x, y, d)
-        lib.view_sky_objects.restype = ctypes.c_void_p
-        sky = ctypes.string_at(lib.view_sky_objects(), SKY_OBJECTS_SIZE)  # the weather of the C port in both
+        lib.weather_sky_objects.restype = ctypes.c_void_p
+        sky = ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE)  # the weather of the C port in both
         scenario.view.draw(map_, x, y, d, ctypes.c_int.in_dll(lib, "view_light_level").value, sky)
         seed.value = tv.VIEW_SEED
         lib.view_draw_dungeon(d, x, y)

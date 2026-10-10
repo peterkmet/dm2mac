@@ -35,11 +35,11 @@ class Player:
             main_loop_quit(self.lib).value = 1
 
     def __enter__(self):
-        ctypes.c_void_p.in_dll(self.lib, "game_frame_hook").value = ctypes.cast(self.hook, ctypes.c_void_p).value
+        ctypes.c_void_p.in_dll(self.lib, "play_frame_hook").value = ctypes.cast(self.hook, ctypes.c_void_p).value
         return self
 
     def __exit__(self, *_):
-        ctypes.c_void_p.in_dll(self.lib, "game_frame_hook").value = None
+        ctypes.c_void_p.in_dll(self.lib, "play_frame_hook").value = None
 
 
 def find_point(lib, mode, test):
@@ -160,10 +160,10 @@ def test_hide_game_view_cancels_the_champion_drag(lib):
     drag = ctypes.c_int.in_dll(lib, "input_drag_state")
     hidden = ctypes.c_int.from_address(ctypes.addressof(main_loop_quit(lib)) - 8)  # MainLoop.view_hidden
     DialogState.in_dll(lib, "dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
-    lib.game_hide_view()
+    lib.play_hide_view()
     assert (hidden.value, drag.value) == (1, 0)
     drag.value = 1
-    lib.game_hide_view()  # already hidden: the guard keeps the drag
+    lib.play_hide_view()  # already hidden: the guard keeps the drag
     assert drag.value == 1
     drag.value = hidden.value = 0
 
@@ -533,7 +533,7 @@ HAND_OFFSET, MAGIC_LIGHT_OFFSET = 252 + 4 * 263, 252 + 4 * 263 + 2  # offsetof(G
 
 def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tmp_path):
     # A save with an object in the leader hand and timed effects (magic light, invisibility, aura, poison, an eaten
-    # item): the load and the start of its session in both (save_load and game_start_session, as session_load and
+    # item): the load and the start of its session in both (save_load and play_start_session, as session_load and
     # session_init run them) give the same light, champions, and leader hand (object, weight, icon).
     from test_champions import LeaderHand
     from test_input import Loop

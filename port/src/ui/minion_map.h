@@ -1,0 +1,18 @@
+#ifndef MINION_MAP_H
+#define MINION_MAP_H
+#include <stdint.h>
+#include "ui.h"
+
+/* Prefixes: mmap_ */
+
+/* Draws the option buttons; pressed: the buttons that show pressed (the click feedback). */
+void mmap_draw_option_buttons(int pressed);
+/* Draws the minion map panel of the map item thing. */
+void mmap_draw(uint16_t thing);
+/* The square icon of (sx, sy) of the current map at (x, y) of the screen in target, north up, clipped to clip, without
+   things; party_item >= 0: the party stands there, with the party icons of the map item party_item (category 0x14). */
+void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int sy, int x, int y, int party_item);
+/* The first map item index of GRAPHICS.DAT with the party icons; -1 none. */
+int mmap_party_icons_item(void);
+
+#endif

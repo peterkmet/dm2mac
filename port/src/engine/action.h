@@ -2,7 +2,6 @@
 #define ACTION_H
 #include <stdint.h>
 #include "save.h"
-#include "ui.h"
 
 /* Prefixes: action_ */
 
@@ -12,6 +11,8 @@ enum action_mode {
     ACTION_MODE_CONTAINER, ACTION_MODE_RESULT, ACTION_MODE_NONE = -1
 };
 #define ACTION_HAND_SPELL 2
+#define ZONE_PANEL 0x5c             /* the panel of the action area */
+#define UI_INDEX_SPELL 5            /* the spell panel pictures: GDAT (1, 5, 1, entry) */
 #define SPELL_RUNES_PER_SET 6
 #define SPELL_RUNE_GLYPH_FIRST 0x60   /* the font character of the first rune */
 /* Results of an action (action.result < 0). */
@@ -49,18 +50,10 @@ void action_reset_champion(int champ);
 uint16_t action_open_hand_item(void);
 /* Closes the open hand or spell panel. */
 void action_area_close(void);
-/* Redraws what changed in the action area (tick: one game tick passed). */
-void action_update_area(int tick);
-/* Opens the action area bitmap (clear: it starts black) and returns it. */
-Offscreen *action_area_begin_draw(int clear);
-/* Draws the runes that the champion entered in the spell panel (clear: their background first). */
-void action_draw_entered_runes(int clear);
-/* Draws the button and the name of action i of the action menu or of a minion map. */
-void action_draw_name(int i, int highlight);
-/* Draws the hand icon of champ in the action area (flash: pressed). */
-void action_draw_hand_icon(int champ, int hand, int flash);
-/* Draws the spell icon of champ in the party icons (flash: pressed). */
-void action_draw_spell_icon(int champ, int flash);
+/* Takes the items out of the chest container into the open container slots. */
+void action_open_container(uint16_t container);
+/* One game tick: the busy hands count down; a free hand reloads. */
+void action_tick_hands(void);
 
 /* The action area of a hand or of the spells (champ_action.c). */
 /* Opens the action menu of a hand of champ (0 to 3) in the action area. */

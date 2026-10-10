@@ -18,6 +18,9 @@ typedef struct {
 } Weather;
 
 extern Weather weather;
+/* The party light level, 0 (bright) to 5 (light_update_party_light). */
+extern int view_light_level;
+#define DARKEST_LIGHT 5             /* view_light_level of the darkest view */
 /* The light of the squares around the party and of the explosions near it; creature_refresh_party_maps (Step 16)
    clears them and adds each square with light_add_square_light. */
 extern int16_t light_source_sum, explosion_light_sum;
@@ -29,6 +32,19 @@ enum { LIGHT_FLOOR = 1, LIGHT_CREATURES = 2, LIGHT_WALLS = 4 };
 #define RAIN_MEDIUM 64
 #define RAIN_LIGHT 16
 
+/* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
+typedef struct {
+    uint8_t entry;              /* GDAT entry (0x17, graphics set, entry) */
+    uint8_t flip;               /* how the picture mirrors */
+    int16_t zone, dx, dy;       /* layout zone and offset */
+    uint8_t scale_x, scale_y;
+} SkyObject;
+#define SKY_OBJECT_END 0xff
+
+/* The weather sky objects that the view draws, ended by SKY_OBJECT_END (world_update_day_night fills them). */
+SkyObject *weather_sky_objects(void);
+/* Reads the sky object entry of the map graphics into object; returns 0 when the map has none. */
+int weather_load_sky_object(SkyObject *object);
 /* Queues the next storm step delay ticks from now. */
 void weather_schedule_event(int32_t delay);
 /* Starts a new weather cycle (keep_state 0) or keeps the loaded weather (1); sets the light of the hour. */

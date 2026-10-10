@@ -5,19 +5,19 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "game.h"
 #include "hooks.h"
+#include "sound_request.h"
+#include "projectile.h"
 #include "inventory.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"
 #include "move.h"
-#include "projectile.h"
 #include "random.h"
 #include "sensor.h"
-#include "text.h"
-#include "timeline.h"
-#include "ui.h"
-#include "view.h"
+#include "game_text.h"
+#include "weather.h"
 
 #define ALL_CHARGES 0x0f
 #define ATTR_USED_UP 0x0800         /* ATTR_FLAGS bit: the item vanishes with its last charge */
@@ -144,8 +144,8 @@ void action_area_open_hand(int champ, int hand)
     action.champion = action.flash;
     action.hand = (int16_t)hand;
     champ_drag_cancel();
-    action_update_area(0);
-    ui_draw_champion_state(champ);
+    g_hooks.update_action_area(0);
+    g_hooks.draw_champion_state(champ);
 }
 
 void action_area_open_spells(int champ)
@@ -158,7 +158,7 @@ void action_area_open_spells(int champ)
     action.flags = 0;
     action.champion = action.flash;
     champ_drag_cancel();
-    action_update_area(0);
+    g_hooks.update_action_area(0);
 }
 
 void champ_add_action_delay(int champ, int ticks, int hand)
@@ -338,10 +338,10 @@ static void champ_raise_level(int champ, int base, uint16_t level)
     if (c->max_stamina > STAMINA_MAX) c->max_stamina = STAMINA_MAX;
     c->redraw |= REDRAW_LEVEL;
     champ_skill_raised[champ][base]++;
-    text_print_newline();
+    g_hooks.print_newline();
     text_args.champion = (int16_t)champ;
     char line[TEXT_SIZE];
-    text_print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, text, line));
+    g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, text, line));
 }
 
 void champ_add_experience(int champ, int skill, uint32_t amount)
@@ -802,7 +802,7 @@ int champ_execute_selected_action(int index)
     }
     if (!action.flags) action_area_close();
     else action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
-    action_update_area(0);
+    g_hooks.update_action_area(0);
     return done;
 }
 

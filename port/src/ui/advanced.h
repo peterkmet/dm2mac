@@ -1,12 +1,10 @@
 #ifndef ADVANCED_H
 #define ADVANCED_H
 #include <stdint.h>
+#include "game.h"
 
 /* Prefixes: advanced_ */
 
-/* The game modes: vanilla is the original game; advanced adds the W A S D Q E keys, the quick save (F5) and quick
-   load (F9), the automap (Tab or M), and its cheats. Without the cheats the game rules are the same in both modes. */
-enum { GAME_MODE_VANILLA, GAME_MODE_ADVANCED, GAME_MODE_COUNT };
 /* PC scan codes of the quick save and quick load keys. */
 enum { KEY_QUICK_SAVE = 0x3f, KEY_QUICK_LOAD = 0x43 };   /* F5, F9 */
 /* PC scan codes of the keys that open the automap. */
@@ -17,13 +15,7 @@ enum {
     KEYPAD_RIGHT = 0x51
 };
 
-extern int game_mode;                   /* GAME_MODE_VANILLA in the library; main.c sets the --mode value */
-extern const char *const game_mode_names[GAME_MODE_COUNT];
 extern int advanced_automap_open;       /* 1: the automap covers the viewport and the game time stops */
-/* The cheats, switched on the automap. Not saved; a new or loaded game turns them off. */
-extern int cheat_light;                 /* the dungeon view draws in full light; the creatures keep the real light */
-extern int cheat_immortal;              /* the health of a champion stops at 1 */
-extern int cheat_food;                  /* food and water do not go down */
 
 /* The keypad key that a letter key W S A D Q E stands for in the advanced mode; 0 for other keys and in vanilla. */
 uint16_t advanced_movement_key(uint16_t key);

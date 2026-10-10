@@ -3,21 +3,22 @@
 #include "action.h"
 #include "ai.h"
 #include "creature.h"
-#include "draw.h"
-#include "dungeon.h"
+#include "game.h"
+#include "gdat.h"
 #include "hooks.h"
-#include "input.h"
+#include "game_text.h"
+#include "dungeon.h"
+#include "sound_request.h"
+#include "projectile.h"
 #include "champ_action.h"
 #include "inventory.h"
 #include "item.h"
 #include "le.h"
 #include "money.h"
 #include "magic.h"
-#include "projectile.h"
 #include "move.h"
 #include "random.h"
 #include "sensor.h"
-#include "ui.h"
 #include "weather.h"
 
 #define SPELL_COUNT 34
@@ -310,7 +311,7 @@ static void cast_summon(int type, int skill, int power)
 /* The spell that the item spell creates goes into the leader hand, or onto the party square. */
 static void cast_create_item(void)
 {
-    uint16_t thing = item_create_by_index(gdat_entry_index(draw_gdat(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
+    uint16_t thing = item_create_by_index(gdat_entry_index(gdat_current(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE,
                                                            SPELL_ITEM_KEY));
     if (game.leader_hand == THING_NONE) {
         champ_put_object_in_leader_hand(thing, 1);
@@ -406,16 +407,6 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
     return 0;
 }
 
-/* Draws a GDAT image of the interface in zone of the screen. */
-static void draw_in_screen_zone(int category, int index, int entry, int zone)
-{
-    DrawCtx d;
-    draw_ctx_init(&d, category, index, entry);
-    d.transparent = UI_OPAQUE;
-    d.zone = (int16_t)zone;
-    draw_ctx_draw(draw_ctx_prepare(&d));
-}
-
 void magic_report_cast_failure(int result)
 {
     int min_delay = 1, var;
@@ -429,7 +420,7 @@ void magic_report_cast_failure(int result)
         var = GLOBAL_SPELL_UNKNOWN;
         break;
     case CAST_NEEDS_FLASK:
-        draw_in_screen_zone(CAT_INTERFACE, UI_INDEX_SPELL, FLASK_PICTURE, ZONE_PANEL);
+        g_hooks.draw_interface_image(CAT_INTERFACE, UI_INDEX_SPELL, FLASK_PICTURE, ZONE_PANEL);
         var = GLOBAL_FLASK_MISSING;
         min_delay = FLASK_DELAY_MIN;
         break;
@@ -472,9 +463,9 @@ void magic_add_rune(int rune)
         runes[n + 1] = 0;
     }
     action.redraw_delay = 1;
-    action_update_area(0);
-    input_refresh_mode();
-    if (added) ui_draw_champion_state(action.champion - 1);
+    g_hooks.update_action_area(0);
+    g_hooks.refresh_input_mode();
+    if (added) g_hooks.draw_champion_state(action.champion - 1);
 }
 
 /* The champion who casts takes back the last rune. */
@@ -484,8 +475,8 @@ void magic_remove_last_rune(void)
     c->rune_count--;
     champion_runes(c)[c->rune_count] = 0;
     action.redraw_delay = 1;
-    action_update_area(0);
-    input_refresh_mode();
+    g_hooks.update_action_area(0);
+    g_hooks.refresh_input_mode();
 }
 
 int move_party_warp_to_marker(void)

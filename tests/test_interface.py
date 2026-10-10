@@ -96,7 +96,7 @@ class OriginalUi(OriginalView):
         return buf
 
     def present_viewport(self, x, y):
-        """game_present_viewport without the walk scaling: the view picture goes to the viewport zone."""
+        """play_present_viewport without the walk scaling: the view picture goes to the viewport zone."""
         view = self.view()
         for row in range(VIEW_H):
             self.emu.write(VGA + (y + row) * SCREEN_W + x, view[row * VIEW_W:(row + 1) * VIEW_W])
@@ -461,7 +461,7 @@ def set_action(lib, original, **fields):
 
 def update_action_area(lib, original, tick=0):
     original.emu.call(UI_UPDATE_ACTION_AREA, tick)
-    lib.action_update_area(tick)
+    lib.area_update(tick)
 
 
 def open_hand(lib, original, hand):

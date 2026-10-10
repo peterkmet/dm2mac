@@ -32,7 +32,7 @@ def automap(lib, advanced):  # noqa: F811
     for name in ("view_light_level", "cheat_light", "cheat_immortal", "cheat_food"):
         flag(lib, name).value = 0
     game, _ = advanced
-    lib.automap_mark_seen(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
+    lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
     yield advanced
     for name in ("cheat_light", "cheat_immortal", "cheat_food", "advanced_automap_open"):
         flag(lib, name).value = 0
@@ -81,7 +81,7 @@ def expected(lib, m, x, y, d):
 
 def seen_squares(lib, m):
     return {(x, y) for x in range(lib.dungeon_map_width(m)) for y in range(lib.dungeon_map_height(m))
-            if lib.automap_is_seen(m, x, y)}
+            if lib.seen_is_seen(m, x, y)}
 
 
 def floor_views(lib, m):
@@ -93,9 +93,9 @@ def floor_views(lib, m):
 def test_marks_start_and_squares_ahead(lib, automap):
     game, _ = automap
     m, x, y, d = game.party_map, game.party_x, game.party_y, game.party_dir
-    lib.automap_reset()
+    lib.seen_reset()
     assert not seen_squares(lib, m)
-    lib.automap_mark_seen(m, x, y, d)
+    lib.seen_mark(m, x, y, d)
     assert (x, y) in seen_squares(lib, m) and ahead(x, y, d, 1) in seen_squares(lib, m)
     assert seen_squares(lib, m) == expected(lib, m, x, y, d)
 
@@ -105,7 +105,7 @@ def test_vanilla_marks_no_square(lib, session):  # noqa: F811
     game, _ = session
     set_mode(lib, VANILLA)
     lib.input_key_down.argtypes = [ctypes.c_uint16]
-    lib.automap_reset()
+    lib.seen_reset()
     x, y = game.party_x, game.party_y
     run_ticks(lib, 20)
     press(lib, 0x4C)  # forward
@@ -130,8 +130,8 @@ def test_walls_stop_the_view_and_hide_the_side_squares(lib, automap):
     game, _ = automap
     m, stopped, hidden = game.party_map, 0, 0
     for x, y, d in floor_views(lib, m):
-        lib.automap_reset()
-        lib.automap_mark_seen(m, x, y, d)
+        lib.seen_reset()
+        lib.seen_mark(m, x, y, d)
         seen = seen_squares(lib, m)
         assert seen == expected(lib, m, x, y, d), (x, y, d)
         if blocks(lib, m, *ahead(x, y, d, 1)) and on_map(lib, m, *ahead(x, y, d, 2)):
@@ -150,8 +150,8 @@ def test_side_squares_beside_open_squares_are_seen(lib, automap):
     for x, y, d in floor_views(lib, m):
         if blocks(lib, m, *ahead(x, y, d, 1)):
             continue
-        lib.automap_reset()
-        lib.automap_mark_seen(m, x, y, d)
+        lib.seen_reset()
+        lib.seen_mark(m, x, y, d)
         for side in (-1, 1):
             if on_map(lib, m, *ahead(x, y, d, 1, side)):
                 assert ahead(x, y, d, 1, side) in seen_squares(lib, m)
@@ -166,8 +166,8 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
     x, y, d = long_view
     for level, light, depth in ((0, 0, 4), (4, 0, 3), (5, 0, 2), (5, 1, 4)):
         flag(lib, "view_light_level").value, flag(lib, "cheat_light").value = level, light
-        lib.automap_reset()
-        lib.automap_mark_seen(m, x, y, d)
+        lib.seen_reset()
+        lib.seen_mark(m, x, y, d)
         seen = seen_squares(lib, m)
         assert ahead(x, y, d, depth) in seen and ahead(x, y, d, depth + 1) not in seen, (level, light)
 
@@ -215,7 +215,7 @@ def test_advanced_save_appends_the_amap_block(lib, saves):
 
 def test_amap_block_round_trip(lib, gdat, saves, tmp_path):  # noqa: F811
     game, seen, vanilla, mine = saves
-    lib.automap_reset()
+    lib.seen_reset()
     assert load(lib, gdat, tmp_path / "L.DAT", mine) == SAVE_OK
     assert seen_squares(lib, game.party_map) == seen
     assert load(lib, gdat, tmp_path / "L.DAT", vanilla) == SAVE_OK
@@ -258,7 +258,7 @@ def test_quick_save_keeps_the_automap(lib, automap):
     seen = seen_squares(lib, game.party_map)
     press(lib, KEY_F5)
     assert (data / "QUICK.DAT").read_bytes()[-block_size(lib):][:4] == b"AMAP"
-    lib.automap_reset()
+    lib.seen_reset()
     press(lib, KEY_F9)
     assert seen_squares(lib, game.party_map) >= seen
 
@@ -504,6 +504,6 @@ def test_new_or_loaded_game_turns_the_cheats_off(lib, automap):
     press(lib, KEY_F9)
     assert not any(flag(lib, n).value for n in ("cheat_immortal", "cheat_food", "cheat_light"))
     flag(lib, "advanced_automap_open").value = 1
-    lib.game_start_session()
+    lib.play_start_session()
     assert not flag(lib, "advanced_automap_open").value
 

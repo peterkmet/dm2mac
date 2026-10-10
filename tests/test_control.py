@@ -69,7 +69,7 @@ def pumped(lib, ticks=True):
         while not stop.is_set():
             lib.control_poll()
             if ticks:
-                lib.game_tick()
+                lib.play_tick()
             time.sleep(0.0005)
 
     thread = threading.Thread(target=loop)
