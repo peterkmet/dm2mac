@@ -37,7 +37,7 @@ static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH",
 
 uint16_t advanced_movement_key(uint16_t key)
 {
-    if (game_mode == GAME_MODE_VANILLA) return 0;
+    if (game_mode != GAME_MODE_ADVANCED) return 0;
     switch (key) {
     case SCAN_W: return KEYPAD_FORWARD;
     case SCAN_S: return KEYPAD_BACK;
@@ -49,9 +49,11 @@ uint16_t advanced_movement_key(uint16_t key)
     return 0;
 }
 
+/* <save folder>/QUICK.<extension>: the --saves folder, else the DATA folder of the game. */
 static char *quick_path(char *path, const char *extension)
 {
-    snprintf(path, SAVE_PATH_SIZE, "%s/DATA/QUICK.%s", session.data_dir, extension);
+    if (session.save_dir[0]) snprintf(path, SAVE_PATH_SIZE, "%s/QUICK.%s", session.save_dir, extension);
+    else snprintf(path, SAVE_PATH_SIZE, "%s/DATA/QUICK.%s", session.data_dir, extension);
     return path;
 }
 
@@ -70,47 +72,57 @@ static int write_game(const char *path, const char *bak)
     return save_write(path, bak, QUICK_SAVE_NAME, gdat_current()) == SAVE_OK;
 }
 
-void advanced_quick_save(void)
+int advanced_quick_save(void)
 {
     char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
     int ok = write_game(quick_path(path, "DAT"), quick_path(bak, "BAK"));
     if (ok) remove(bak);
     else rename(bak, path);  /* the old quick save stays */
     print_line(ok ? "GAME SAVED" : "UNABLE TO SAVE");
+    return ok;
 }
 
-void advanced_quick_load(void)
+/* 1 after a quick load lost the game: there is no running game to keep. */
+static int lost;
+
+int advanced_quick_load(void)
 {
     char path[SAVE_PATH_SIZE], keep[SAVE_PATH_SIZE];
     FILE *f = fopen(quick_path(path, "DAT"), "rb");
     if (!f) {
         print_line("NO QUICK SAVE");
-        return;
+        return QUICK_MISSING;
     }
     fclose(f);
     /* the running game goes to QUICK.TMP first: a damaged quick save loads it back (the same path: no backup) */
-    if (!write_game(quick_path(keep, "TMP"), keep)) {
+    quick_path(keep, "TMP");
+    if (!lost && !write_game(keep, keep)) {
         print_line("UNABLE TO SAVE");
-        return;
+        return QUICK_BLOCKED;
     }
     Session kept = session;
     session.loaded = session.new_game = 0;  /* play_start_session shows no LOADED dialog and starts no new game */
-    int loaded = session_start_save(path), restored = loaded || session_start_save(keep);
+    int loaded = session_start_save(path), restored = loaded || (!lost && session_start_save(keep));
     if (restored) remove(keep);  /* else QUICK.TMP keeps the running game */
     session = kept;
     if (!restored) {
         /* the dungeon is empty: the game cannot go on */
         fprintf(stderr, "cannot load %s or the running game in %s\n", path, keep);
-        session_quit();
-        session.exit_code = EXIT_GAME_LOST;
-        return;
+        if (game_mode != GAME_MODE_TURNBASED) {
+            session_quit();
+            session.exit_code = EXIT_GAME_LOST;
+        }
+        lost = 1;
+        return QUICK_LOST;
     }
+    lost = 0;
     if (loaded) {
         session.load_time = session.save_time = 0;  /* a quick load is not a saved game for the QUIT question */
         sound_set_volume(game.sound_volume);
         music_set_volume(game.music_volume);
     }
     print_line(loaded ? "GAME LOADED" : "QUICK SAVE DAMAGED");
+    return loaded ? QUICK_LOADED : QUICK_DAMAGED;
 }
 
 /* Line row of the readout at the top left of the viewport, in white on black. */
@@ -151,6 +163,7 @@ static void close_automap(void)
 void advanced_reset(void)
 {
     close_automap();
+    lost = 0;
     cheat_light = cheat_immortal = cheat_food = 0;
 }
 

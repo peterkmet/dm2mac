@@ -497,7 +497,7 @@ void session_quit(void)
 void session_complete(void)
 {
     session.completed = 1;
-    session_quit();
+    if (game_mode != GAME_MODE_TURNBASED) session_quit();  /* the turn-based mode stays for the next load or new game */
 }
 
 void session_end(int party_dead)
@@ -633,7 +633,8 @@ int args_drop_save(int argc, char **argv)
     int out = 1;
     for (int i = 1; i < argc; i++) {
         int is_value_option = !strcmp(argv[i], "--data") || !strcmp(argv[i], "--filter") || !strcmp(argv[i], "--save")
-                              || !strcmp(argv[i], "--control") || !strcmp(argv[i], "--mode");
+                              || !strcmp(argv[i], "--control") || !strcmp(argv[i], "--mode")
+                              || !strcmp(argv[i], "--saves");
         if (is_value_option && i + 1 < argc) {
             if (strcmp(argv[i], "--save")) {
                 argv[out++] = argv[i];

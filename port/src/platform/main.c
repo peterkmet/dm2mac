@@ -196,13 +196,13 @@ static void play_movies(int script)
 
 /* Reads the values of the command line options; returns 0 with a message when an option has no value. */
 static int read_options(int argc, char **argv, const char **data, const char **filter, const char **save,
-                        const char **control, const char **mode)
+                        const char **control, const char **mode, const char **saves)
 {
     for (int i = 1; i < argc; i++) {
         int is_data = !strcmp(argv[i], "--data"), is_filter = !strcmp(argv[i], "--filter");
         int is_save = !strcmp(argv[i], "--save"), is_control = !strcmp(argv[i], "--control");
-        int is_mode = !strcmp(argv[i], "--mode");
-        if (!is_data && !is_filter && !is_save && !is_control && !is_mode) continue;
+        int is_mode = !strcmp(argv[i], "--mode"), is_saves = !strcmp(argv[i], "--saves");
+        if (!is_data && !is_filter && !is_save && !is_control && !is_mode && !is_saves) continue;
         if (i + 1 == argc) {
             fprintf(stderr, "%s needs a value\n", argv[i]);
             return 0;
@@ -211,6 +211,7 @@ static int read_options(int argc, char **argv, const char **data, const char **f
         else if (is_filter) *filter = argv[++i];
         else if (is_save) *save = argv[++i];
         else if (is_mode) *mode = argv[++i];
+        else if (is_saves) *saves = argv[++i];
         else *control = argv[++i];
     }
     return 1;
@@ -218,11 +219,11 @@ static int read_options(int argc, char **argv, const char **data, const char **f
 
 int main(int argc, char **argv)
 {
-    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced";
-    if (!read_options(argc, argv, &data, &filter, &save, &control, &mode)) return EXIT_USAGE;
+    const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced", *saves = NULL;
+    if (!read_options(argc, argv, &data, &filter, &save, &control, &mode, &saves)) return EXIT_USAGE;
     for (game_mode = 0; game_mode < GAME_MODE_COUNT && strcmp(mode, game_mode_names[game_mode]); game_mode++) {}
     if (game_mode == GAME_MODE_COUNT) {
-        fprintf(stderr, "unknown mode %s: use vanilla or advanced\n", mode);
+        fprintf(stderr, "unknown mode %s: use vanilla, advanced, or turnbased\n", mode);
         return EXIT_USAGE;
     }
     int factor = filter ? scale_filter_factor(filter) : 1;
@@ -232,6 +233,7 @@ int main(int argc, char **argv)
     }
     SDL_Log("data folder: %s, mode %s", data, mode);
     snprintf(session.data_dir, sizeof session.data_dir, "%s", data);
+    if (saves) snprintf(session.save_dir, sizeof session.save_dir, "%s", saves);
     snprintf(text_drive_path, sizeof text_drive_path, "%s", data);
 
     if (!load_graphics(data)) return 1;

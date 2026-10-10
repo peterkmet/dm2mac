@@ -488,7 +488,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 static uint16_t key_command(int mode, uint16_t key)
 {
     uint16_t command = find_key_command(&input_mode_roots[mode], key);
-    if (command || game_mode == GAME_MODE_VANILLA) return command;
+    if (command || game_mode != GAME_MODE_ADVANCED) return command;
     if (mode == INPUT_MODE_MOVE && (key == KEY_QUICK_SAVE || key == KEY_QUICK_LOAD))
         return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
     if (mode == INPUT_MODE_MOVE && (key == KEY_AUTOMAP || key == KEY_AUTOMAP_M)) return CMD_AUTOMAP;

@@ -35,7 +35,8 @@ class Session(ctypes.Structure):
     _fields_ = [(n, ctypes.c_int) for n in ("new_game", "use_dungenb", "loaded", "completed", "restart", "offer_restore",
                                             "quit_code", "slot")] + [
         ("load_time", ctypes.c_uint32), ("save_time", ctypes.c_uint32), ("exit_code", ctypes.c_int),
-        ("save_name", ctypes.c_char * 32), ("data_dir", ctypes.c_char * 1024)]
+        ("save_name", ctypes.c_char * 32), ("data_dir", ctypes.c_char * 1024),
+        ("save_dir", ctypes.c_char * 1024)]
 
 
 def reset_session(lib):
