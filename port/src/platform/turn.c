@@ -6,6 +6,7 @@
 #include "advanced.h"
 #include "champion.h"
 #include "control.h"
+#include "creature.h"
 #include "dungeon.h"
 #include "game.h"
 #include "input.h"
@@ -447,6 +448,16 @@ static const char *take_object(const char *r)
     return add_view_click(z->rect) ? NULL : "the view takes no click now";
 }
 
+/* A static creature ahead whose floor takes no click hides the floor: a click there throws the object. */
+static bool front_floor_clickable(void)
+{
+    int x = game.party_x + dir_dx[game.party_dir], y = game.party_y + dir_dy[game.party_dir];
+    uint16_t group = creature_group_at(game.party_map, x, y);
+    if (group == THING_NONE) return true;
+    const CreatureInfo *info = creature_group_info(group);
+    return !(info->flags & CREATURE_STATIC) || info->possessions & POSSESSIONS_FLOOR_CLICKABLE;
+}
+
 /* The leader drops the hand object into a cell of the party square (0, 1), of the square ahead (2, 3), or into the
    alcove ahead (4). */
 static const char *drop_object(const char *r)
@@ -457,12 +468,14 @@ static const char *drop_object(const char *r)
     if (error) return error;
     if (cell < 0 || cell > DROP_ALCOVE_CELL) return "cell must be 0-4";
     if (hand_is_empty()) return HAND_EMPTY;
+    if (!has_leader()) return "no leader";
     if (cell == DROP_ALCOVE_CELL) {
         const ViewClickZone *alcove = &view_click_zones[ALCOVE_CLICK_ZONE];
         if (alcove->kind != CLICK_ALCOVE) return "no alcove ahead";
         return add_view_click(alcove->rect) ? NULL : "the view takes no click now";
     }
     if (cell >= DROP_FRONT_CELL_FIRST && wall_ahead()) return "no floor ahead";
+    if (cell >= DROP_FRONT_CELL_FIRST && !front_floor_clickable()) return "no floor to drop on ahead";
     if (!zone_get_rect(ZONE_DROP_CELL_FIRST + (int)cell, zone) || !add_view_click(zone)) return "the view takes no click now";
     return NULL;
 }

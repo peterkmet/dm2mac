@@ -23,6 +23,8 @@ FACINGS = 4
 LEAVE_WAIT_TICKS = 2000
 CMD_VOLUME, CMD_DIALOG_BUTTON_FIRST = 0x8D, 0xDB
 STILL_CREATURE = 27  # a creature type that map 0 of start.DAT takes and that stands still
+FLOOR_HIDING_CREATURE = 1  # a static creature type whose floor takes no click
+GROUP_CREATURE = 4  # the byte of the creature type in a group record
 GROUP_DISTANCE = 6  # the view shows 4 rows ahead: the group comes into view after the second step
 NORTH = 0
 
@@ -293,11 +295,13 @@ def test_recruit_join_adds_the_candidate(tb, lib):
 
 def test_choose_action_with_both_hands(tb, lib):
     """act choose_action champion 0 hand ready index 0 runs the action: the reply has action_damage (>= 0 or a
-    failure code); an index out of the menu is refused."""
+    failure code) and the ready hand is busy; an index out of the menu is refused."""
     path, *_ = tb
     assert act(path, "choose_action", champion=0, hand="ready", index=9)["error"].startswith("index out of range")
+    assert request({"cmd": "get_state"}, path)["state"]["champions"][0]["busy"][0] is False
     r = act(path, "choose_action", champion=0, hand="ready", index=0)
     assert r["ok"] and isinstance(r["action_damage"], int)
+    assert r["state"]["champions"][0]["busy"][0] is True
     r = request({"cmd": "act_many", "actions": [{"action": "choose_action",
                                                  "args": {"champion": 0, "hand": "action", "index": 0}}]}, path, timeout=30)
     assert r["ok"] and r["ran"] == 1 and len(r["action_damage"]) == 1
@@ -329,3 +333,26 @@ def test_put_in_slot_needs_an_object_in_hand(tb, lib):
     before = request({"cmd": "get_state"}, path)["state"]
     assert act(path, "put_in_slot", champion=0, slot=1) == {"ok": False, "error": "the leader hand is empty"}
     assert request({"cmd": "get_state"}, path)["state"] == before
+
+
+def test_drop_object_ahead_of_a_floor_hiding_creature_is_refused(tb, lib):
+    """A static creature whose floor takes no click stands ahead: drop_object cell 2 is refused and the object stays
+    in the leader hand (a click there throws it)."""
+    from test_interface import things_of
+    path, game, _ = tb
+    assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
+    lib.creature_create_group.restype = ctypes.c_uint16
+    lib.dun_set_current_map(game.party_map)
+    group = lib.creature_create_group(STILL_CREATURE, 0, NORTH, game.party_x, game.party_y - 1)
+    assert group != 0xFFFF
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
+    lib.dungeon_thing_record(group)[GROUP_CREATURE] = FLOOR_HIDING_CREATURE  # map 0 takes no static creature type
+    lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
+    lib.champ_put_object_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
+    lib.champ_put_object_in_leader_hand(thing, 0)
+    before = game.game_time
+    assert act(path, "drop_object", cell=2) == {"ok": False, "error": "no floor to drop on ahead"}
+    after = request({"cmd": "get_state"}, path)["state"]
+    assert after["leader_hand"] is not None and game.game_time == before
