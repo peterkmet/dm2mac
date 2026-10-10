@@ -79,7 +79,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Chosen runes stay after a failed cast. Before you add runes, check `state.spell.chosen` and send `delete_rune` until it is empty.
 - The spell kinds are potions, projectiles, party auras, summons, and others. Hint: a potion spell needs an empty flask in a hand.
 - Scrolls (`text` of the object) and wall texts teach spells. Write each spell in `spells.md`.
-- `set_caster` and `swap_champions` need the action menu or panel closed: send `pass` first.
+- `set_caster`, `set_leader`, and `swap_champions` need the action menu or panel closed: send `pass` first.
 
 ## Fights
 
@@ -145,6 +145,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Do not save while a champion is poisoned, starving, or below 25 health, or when the party is in a fight: you cannot undo a bad save.
 - Use only `save` and `load` of `dm2-play`. Do not click the save button of the game: it opens the save menu of the game.
 - `save` gives `answer the candidate first (act recruit)` while a candidate shows.
+- The save does not keep the sleep or the pause: a game saved while the party sleeps or while the game is paused loads with an awake party in move mode.
 - The coordinator keeps a checkpoint after each session. When the save is bad or the party cannot survive from it, ask in your report for the checkpoint of an earlier game time.
 
 ## When you are stuck
@@ -361,7 +362,7 @@ A chest in a hand opens with `choose_action` on that hand. `state.chest` lists t
 
 ### Look
 
-The response of `look` has `look: {name, lines}`: the texts of the eye panel. `name` is the object name; `lines` are the description lines, for example the weight and the gauges as `<word> <value>/<maximum>`: `charges`, `strength`, `throw`, `armour`, `power`. A money box gives the coin counts and `total`; a chest gives its items. A scroll gives its name and weight; the scroll text is in the state (`text` of the object).
+The response of `look` has `look: {name, lines}`: the texts of the eye panel. `name` is the object name; `lines` are the description lines, for example the weight and the gauges as `<word> <value>/<maximum>`: `charges`, `strength`, `throw`, `armour`, `power`. A money box gives the coin counts and `total`; a chest gives its items. A scroll gives its name, its weight, and its text; the scroll text is also in the state (`text` of the object).
 
 `health_lost`: a list with one value for each champion: the health that the champion lost since the start of the request. It is only in the response when a champion lost health.
 

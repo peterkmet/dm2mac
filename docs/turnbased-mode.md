@@ -186,8 +186,8 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 | `eat`, `drink` | none | The champion of the open inventory takes the hand object in its mouth. | `open the inventory of the champion who eats or drinks first`, `take the food or drink in the leader hand first` |
 | `choose_action` | `champion`, `hand` (`ready` or `action`), `index` | Opens the action menu of the hand and runs the action `index`. A money box, a chest, or a minion map opens its panel instead. | `hand must be ready or action`, `this champion cannot act now`, `index out of range of the action menu (see state champions hands)`, `another champion's action menu is open: use pass first`, `close the open panel first (pass)` |
 | `pass` | none | Closes the open action menu or panel. | `the open panel has no close button` |
-| `set_caster` | `champion` | Chooses the caster of the spell panel. | `this champion cannot cast now`, `close the open panel first (pass)` |
-| `set_leader` | `champion` | Chooses the leader. | `no living champion with this index` |
+| `set_caster` | `champion` | Chooses the caster of the spell panel. | `no living champion with this index`, `close the open panel first (pass)`, `this champion cannot cast now`, `the spell icons take no click now` |
+| `set_leader` | `champion` | Chooses the leader. | `no living champion with this index`, `close the open panel first (pass)`, `the spell icons take no click now` |
 | `add_rune` | `symbol` 0-5 | Adds a rune to the spell. | `symbol must be 0-5`, `no spell panel (set_caster)`, `the spell has four runes`, `not enough mana for this rune` |
 | `delete_rune` | none | Deletes the last rune. | `no spell panel (set_caster)`, `no rune` |
 | `cast` | none | Casts the spell. | same |

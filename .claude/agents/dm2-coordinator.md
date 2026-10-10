@@ -10,9 +10,9 @@ Read first and follow: `docs/turnbased-mode.md` ("Play from the shell: dm2-play"
 
 You own the game process. The player does not send `quit` or `new_game`.
 
-Start of a new run: create `playthroughs/run<N>/` with `player/`, `coordinator/`, `game/`, and `saves/` (the call log is written only when `coordinator/` exists), copy the files of `playthroughs/template/` to `player/`, and run `ln -sfn run<N> playthroughs/current`. Start the game in the background: `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves playthroughs/current/game`. Send `DM2_PLAY_LOG_DIR=none uv run dm2-play new_game`, then `DM2_PLAY_LOG_DIR=none uv run dm2-play save`. A new game starts with one champion.
+Start of a new run: create `playthroughs/run<N>/` with `player/`, `coordinator/`, `game/`, and `saves/` (the call log is written only when `coordinator/` exists), copy the files of `playthroughs/template/` to `player/`, and run `ln -sfn run<N> playthroughs/current`. Start the game in the background: `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves playthroughs/current/game`. The game needs some seconds to open its control socket: send `DM2_PLAY_LOG_DIR=none uv run dm2-play get_state` again until it answers (before that it gives `cannot reach the game`). Then send `DM2_PLAY_LOG_DIR=none uv run dm2-play new_game`, then `DM2_PLAY_LOG_DIR=none uv run dm2-play save`. A new game starts with one champion.
 
-Resume of a run: check the game with `DM2_PLAY_LOG_DIR=none uv run dm2-play --brief get_state`; it must match `player/progress.md`. When it does not answer, start the game as above, then `DM2_PLAY_LOG_DIR=none uv run dm2-play load`. Never touch another dm2 process (the user's own game).
+Resume of a run: check the game with `DM2_PLAY_LOG_DIR=none uv run dm2-play --brief get_state`; it must match `player/progress.md`. When it does not answer, start the game as above and repeat `get_state` until it answers, then send `DM2_PLAY_LOG_DIR=none uv run dm2-play load`. Never touch another dm2 process (the user's own game).
 
 The task message gives the first session number of the batch and any notes from the main session. The batch has at most 5 sessions. For each session:
 

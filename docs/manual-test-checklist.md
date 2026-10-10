@@ -309,6 +309,7 @@ Details: `docs/turnbased-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy bui
 - [ ] T9. Let the party die. Expected: the reply has `game_over` true; `act`, `wait`, and `save` give `game over`; `load` restores the game.
 - [ ] T10. Run `uv run dm2-play --brief get_state`. Expected: a short text with the party, the champions, and the squares ahead.
 - [ ] T11. Create `playthroughs/current/coordinator/`, run some `dm2-play` calls without `DM2_PLAY_LOG_DIR`, and read `calls.log`. Expected: one line per call. Remove the folder and call again. Expected: no log file is written.
+- [ ] T12. Open a dialog (T7), then run `uv run dm2-play wait '{"ticks": 5000}'` and measure the time until the reply. Expected: the game does not tick, so the turn ends after 16 frames per tick (80000 frames). Note the time and whether `dm2-play` stops with a timeout (its limit is 150 seconds).
 
 ## Known deviations
 
