@@ -35,7 +35,7 @@ void seen_reset(void)
     if (!seen) os_fatal("out of memory");
 }
 
-/* The storage fits the loaded dungeon; returns 0 when memory is out. */
+/* Makes the storage fit the loaded dungeon; always 1, because seen_reset ends the program when memory is out. */
 static int sized(void)
 {
     if (!seen || seen_size != map_first_square(dungeon_map_count())) seen_reset();
