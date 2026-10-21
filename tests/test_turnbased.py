@@ -35,22 +35,24 @@ NORTH = 0
 def tb(lib, gdat, session):  # noqa: F811
     """start.DAT in the turn-based mode with the control socket open and a thread that runs control_frame as the turn
     loop of main.c does; yields the socket path, the game record, the main loop."""
-    frame, pending = lib.control_frame, lib.control_turn_pending
+    poll, frame, pending = lib.transport_poll, lib.control_frame, lib.control_is_turn_pending
     palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "palette")
     for c in range(PALETTE_COLORS):
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     mode = ctypes.c_int.in_dll(lib, "game_mode")
     mode.value = TURNBASED
     hook = ctypes.c_void_p.in_dll(lib, "play_frame_hook")
-    hook.value = ctypes.cast(lib.control_poll, ctypes.c_void_p).value  # a dialog polls the socket, as main.c does
+    hook.value = ctypes.cast(lib.transport_poll, ctypes.c_void_p).value  # a dialog polls the socket, as main.c does
     folder = tempfile.mkdtemp(prefix="dm2t", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "control.sock")
-    lib.control_open.argtypes = [ctypes.c_char_p]
-    assert lib.control_open(path.encode())
+    lib.transport_open.argtypes = [ctypes.c_char_p]
+    lib.transport_open.restype = ctypes.c_bool
+    assert lib.transport_open(path.encode())
     stop = threading.Event()
 
     def pump():
         while not stop.is_set():
+            poll()
             frame()
             if not pending():
                 time.sleep(0.0005)
@@ -65,10 +67,11 @@ def tb(lib, gdat, session):  # noqa: F811
         stop.set()
         thread.join()
         while pending():  # a turn that the test left runs to its end: the next test starts without one
+            poll()
             frame()
         hook.value = None
         loop.end = 0
-        lib.control_close()
+        lib.transport_close()
         mode.value = VANILLA
         shutil.rmtree(folder)
 
@@ -195,11 +198,11 @@ def test_client_that_leaves_during_a_turn_frees_the_turn(tb, lib):
         s.connect(path)
         s.sendall(b'{"cmd": "wait", "ticks": %d}\n' % LEAVE_WAIT_TICKS)
         deadline = time.monotonic() + 10
-        while not lib.control_turn_pending() and time.monotonic() < deadline:
+        while not lib.control_is_turn_pending() and time.monotonic() < deadline:
             time.sleep(0.001)
-        assert lib.control_turn_pending()
+        assert lib.control_is_turn_pending()
     r = request({"cmd": "get_state"}, path, timeout=60)
-    assert r["ok"] and "ticks" not in r and "state" in r and not lib.control_turn_pending()
+    assert r["ok"] and "ticks" not in r and "state" in r and not lib.control_is_turn_pending()
     assert r["state"]["time"] == before + LEAVE_WAIT_TICKS
 
 
@@ -491,7 +494,7 @@ def test_new_game_after_game_over_plays_again(tb, lib, saves):
 def test_turn_in_a_dialog_ends_and_the_dialog_stays(tb, lib, saves):
     """A turn that opens a dialog (act click on the volume button) ends; state.mode is dialog; save, load, and
     new_game reply "close the dialog first (act click or act key)"; act key enter closes it."""
-    path, *_ = tb  # the tb fixture sets play_frame_hook to control_poll: the dialog serves the requests
+    path, *_ = tb  # the tb fixture sets play_frame_hook to transport_poll: the dialog serves the requests
     assert act(path, "open_inventory", champion=0)["state"]["mode"] == "inventory"
     x, y = center(command_rect(lib, CMD_VOLUME))
     r = act(path, "click", x=x, y=y)
@@ -516,7 +519,7 @@ def test_completed_game_is_game_over_and_the_program_stays(tb, lib, saves):
         s.connect(path)
         s.sendall(b'{"cmd": "wait", "ticks": %d}\n' % TURN_WAIT_MAX_TICKS)
         deadline = time.monotonic() + 10
-        while not lib.control_turn_pending() and time.monotonic() < deadline:
+        while not lib.control_is_turn_pending() and time.monotonic() < deadline:
             time.sleep(0.001)
         lib.session_complete()
         reply = s.makefile().readline()

@@ -250,15 +250,15 @@ playthroughs/
 
 ## C API
 
-`control.h` (plain POSIX, in `build/libdm2.dylib`):
+`transport.h` (the socket, plain POSIX) and `control.h` (the line protocol), both in `build/libdm2.dylib`:
 
 | Function | Purpose |
 |---|---|
-| `control_open(path)` | Listens on the socket. Replaces an old socket file. Returns 1 on success. |
-| `control_poll()` | One call per frame: accepts a client, answers requests, and ends turns. |
-| `control_frame()` | `control_poll`, then one game step of the pending turn. |
-| `control_turn_pending()` | `true` while a turn runs. |
-| `control_close()` | Closes the sockets and removes the socket file. |
+| `transport_open(path)` | Listens on the socket. Replaces an old socket file. Returns `true` on success. |
+| `transport_poll()` | One call per frame: accepts a client, answers requests, and ends turns. |
+| `control_frame()` | One game step of the pending turn. |
+| `control_is_turn_pending()` | `true` while a turn runs. |
+| `transport_close()` | Closes the sockets and removes the socket file. |
 
 `turn.h`: `turn_is_pending`, `turn_act`, `turn_act_many`, `turn_wait`, `turn_poll`, `turn_reply`, and `turn_drop_reply`. The action table is in `turn.c`, one function per action.
 
@@ -271,7 +271,7 @@ In the turn-based mode, `main.c` does these steps:
 1. It opens the control socket before the main loop (the default path if `--control` is missing) and stops with an error when this fails.
 2. It starts a new game, or loads `--save`, without the start menu and without a movie.
 3. The window events keep only the quit event. Keys and clicks do not reach the input queue.
-4. Each frame calls `control_frame()`: it answers requests and runs one game step while a turn is pending. The window shows each frame.
+4. Each frame calls `transport_poll()` and `control_frame()`: they answer requests and run one game step while a turn is pending. The window shows each frame.
 5. In a modal loop (menu, dialog), the frame hook polls the control socket and does not wait for a timer tick while a turn runs.
 6. The program never ends the session by itself; `load` and `new_game` start the next game.
 

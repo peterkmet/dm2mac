@@ -1,15 +1,9 @@
 #include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/un.h>
-#include <unistd.h>
 #include "control.h"
 #include "advanced.h"
 #include "champion.h"
@@ -29,7 +23,6 @@
 #include "ui.h"
 #include "video.h"
 
-#define INPUT_SIZE 4096               /* a request line up to its newline */
 #define REPLY_LINE_SIZE 256           /* one piece of a reply written by put */
 #define ERROR_SIZE 64
 #define NAME_SIZE 32
@@ -50,19 +43,6 @@
 #define SURROGATE_LOW 0xdc00
 #define SURROGATE_END 0xe000
 #define SURROGATE_BITS 10
-
-#ifdef MSG_NOSIGNAL
-#define SEND_FLAGS MSG_NOSIGNAL       /* a closed client does not raise SIGPIPE (Linux) */
-#else
-#define SEND_FLAGS 0                  /* SO_NOSIGPIPE does the same (macOS) */
-#endif
-
-static int listen_fd = -1, client_fd = -1;
-static char socket_path[sizeof(((struct sockaddr_un *)0)->sun_path)];
-static char input[INPUT_SIZE];
-static size_t input_length;
-static int discarding;                /* the rest of a too long line goes up to its newline */
-static Json reply;
 
 /* A wait request: the reply goes out when main_loop.timer_ticks reached start + ticks. */
 static struct {
@@ -195,91 +175,66 @@ long control_get_int(const char *line, const char *key, long missing)
 
 /* Appends a short formatted piece to reply. */
 /* Each piece stays under REPLY_LINE_SIZE; text of the game or the request goes through json_strn (put_string). */
-static void put(const char *format, ...)
+static void put(Json *reply, const char *format, ...)
 {
     char piece[REPLY_LINE_SIZE];
     va_list args;
     va_start(args, format);
     vsnprintf(piece, sizeof piece, format, args);
     va_end(args);
-    json_raw(&reply, piece);
+    json_raw(reply, piece);
 }
 
 /* A JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). The game
    texts of GRAPHICS.DAT (701 entries) are ASCII, so only request text can bring other bytes. */
-static void put_string(const char *text, size_t n)
+static void put_string(Json *reply, const char *text, size_t n)
 {
-    json_strn(&reply, text, n);
+    json_strn(reply, text, n);
 }
 
-static void close_client(void)
+static void put_ok(Json *reply)
 {
-    if (client_fd >= 0) close(client_fd);
-    client_fd = -1;
-    input_length = 0;
-    discarding = 0;
-    waiting.pending = 0;
-    if (turn_is_pending()) turn_drop_reply();
+    put(reply, "{\"ok\":true}");
 }
 
-/* Sends reply as one line and clears it. */
-static void send_reply(void)
+static void put_error(Json *reply, const char *error)
 {
-    json_raw(&reply, "\n");
-    for (size_t sent = 0; client_fd >= 0 && sent < reply.len;) {
-        ssize_t n = send(client_fd, reply.s + sent, reply.len - sent, SEND_FLAGS);
-        if (n <= 0) close_client();
-        else sent += (size_t)n;
-    }
-    reply.len = 0;
-}
-
-static void send_ok(void)
-{
-    put("{\"ok\":true}");
-    send_reply();
-}
-
-static void send_error(const char *error)
-{
-    put("{\"ok\":false,\"error\":");
-    put_string(error, strlen(error));
-    put("}");
-    send_reply();
+    put(reply, "{\"ok\":false,\"error\":");
+    put_string(reply, error, strlen(error));
+    put(reply, "}");
 }
 
 /* The state of the game: time, party, champions, input mode (`movie` while a movie plays), open dialog and panels,
    hand, volumes, end, game mode, automap, cheats. */
-static void send_state(void)
+static void put_state(Json *reply)
 {
     int mode = input_get_mode();
     bool movie = movie_is_playing();
     const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
-    put("{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
+    put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
         mode_name);
-    if (movie || mode != INPUT_MODE_DIALOG) put("null");
-    else put("%d", dialog.id);
-    put(",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
+    if (movie || mode != INPUT_MODE_DIALOG) put(reply, "null");
+    else put(reply, "%d", dialog.id);
+    put(reply, ",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
         game.party_map, game.party_x, game.party_y, game.party_dir, game.champion_count, (int16_t)game.leader);
     for (int i = 0; i < game.champion_count && i < CHAMPION_MAX; i++) {
         const Champion *c = champion(i);
-        put("%s{\"name\":", i ? "," : "");
-        put_string(c->name, CHAMPION_NAME_SIZE);
-        put(",\"health\":[%d,%d],\"stamina\":[%d,%d],\"mana\":[%d,%d],\"load\":%d}", c->health, c->max_health,
+        put(reply, "%s{\"name\":", i ? "," : "");
+        put_string(reply, c->name, CHAMPION_NAME_SIZE);
+        put(reply, ",\"health\":[%d,%d],\"stamina\":[%d,%d],\"mana\":[%d,%d],\"load\":%d}", c->health, c->max_health,
             c->stamina, c->max_stamina, c->mana, c->max_mana, champ_get_load(i));
     }
-    put("],\"inventory\":%d,\"candidate\":%d,\"hand\":", ui.inventory - 1, (int)ui.candidate - 1);
-    if (!game.champion_count || game.leader_hand == THING_NONE) put("null");
+    put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", ui.inventory - 1, (int)ui.candidate - 1);
+    if (!game.champion_count || game.leader_hand == THING_NONE) put(reply, "null");
     else {
         const char *name = item_name(game.leader_hand);
-        put("{\"thing\":%u,\"name\":", game.leader_hand);
-        put_string(name, strlen(name));
-        put("}");
+        put(reply, "{\"thing\":%u,\"name\":", game.leader_hand);
+        put_string(reply, name, strlen(name));
+        put(reply, "}");
     }
-    put(",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d", game.sound_volume,
+    put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d", game.sound_volume,
         game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode], advanced_automap_open);
-    put(",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", cheat_immortal, cheat_food, cheat_light);
-    send_reply();
+    put(reply, ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", cheat_immortal, cheat_food, cheat_light);
 }
 
 /* Screenshots: the screen with the pointer, as a PNG file. */
@@ -303,7 +258,6 @@ static void send_state(void)
 #define CRC_TABLE_SIZE 256
 #define ADLER_SUM_SHIFT 16             /* the Adler-32 checksum: the second sum in the high half */
 #define FULL_PATH_SIZE 1024            /* the absolute path of a screenshot, as PATH_MAX of macOS */
-#define SOCKET_DIR_MODE 0700
 
 static uint32_t crc_table[CRC_TABLE_SIZE];
 
@@ -377,24 +331,23 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 }
 
 /* The screen as the window shows it, with the cursor image at the pointer (none while the pointer is unset). */
-static void screenshot(const char *path)
+static void screenshot(const char *path, Json *reply)
 {
     static uint8_t screen[SCREEN_H][SCREEN_W];
     char absolute[FULL_PATH_SIZE];
     memcpy(screen, fb, sizeof screen);
     if (input_mouse_x >= 0 && input_mouse_y >= 0) input_draw_cursor(&screen[0][0], input_mouse_x, input_mouse_y);
     if (!write_png(path, screen) || !os_get_full_path(path, absolute, sizeof absolute)) {
-        send_error("cannot write the PNG file");
+        put_error(reply, "cannot write the PNG file");
         return;
     }
-    put("{\"ok\":true,\"path\":");
-    put_string(absolute, strlen(absolute));
-    put("}");
-    send_reply();
+    put(reply, "{\"ok\":true,\"path\":");
+    put_string(reply, absolute, strlen(absolute));
+    put(reply, "}");
 }
 
 /* A screen position of a request; 0 with an error reply when it is missing or off the screen. */
-static int get_position(const char *request, int *x, int *y)
+static int get_position(const char *request, int *x, int *y, Json *reply)
 {
     long px = control_get_int(request, "x", -1), py = control_get_int(request, "y", -1);
     char error[ERROR_SIZE];
@@ -403,34 +356,34 @@ static int get_position(const char *request, int *x, int *y)
         return 1;
     }
     snprintf(error, sizeof error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
-    send_error(error);
+    put_error(reply, error);
     return 0;
 }
 
-static void handle_key(const char *request)
+static void handle_key(const char *request, Json *reply)
 {
     char name[NAME_SIZE];
     long code = control_get_int(request, "key", 0);
     if (control_get_string(request, "key", name, sizeof name)) code = control_key_code(name);
     if (code <= 0 || code > KEY_CODE_MAX) {
-        send_error("unknown key");
+        put_error(reply, "unknown key");
         return;
     }
     if (!movie_is_playing()) input_key_down((uint16_t)code);  /* a key does not skip a movie */
-    send_ok();
+    put_ok(reply);
 }
 
 /* A click, a press, or a release of a mouse button moves the pointer there, like the mouse. A click presses and
    releases the button; a press holds it down until a release. */
-static void handle_button(const char *request, int down, int up)
+static void handle_button(const char *request, int down, int up, Json *reply)
 {
     char button[NAME_SIZE] = "left";
     int x, y;
-    if (!get_position(request, &x, &y)) return;
+    if (!get_position(request, &x, &y, reply)) return;
     control_get_string(request, "button", button, sizeof button);
     int right = !strcmp(button, "right");
     if (!right && strcmp(button, "left")) {
-        send_error("button must be left or right");
+        put_error(reply, "button must be left or right");
         return;
     }
     int bit = right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT;
@@ -441,29 +394,27 @@ static void handle_button(const char *request, int down, int up)
         if (down) input_mouse_down(x, y, bit);
         if (up) input_mouse_up(x, y, bit);
     }
-    send_ok();
+    put_ok(reply);
 }
 
 /* A reply {"ok":true,"<key>":<part>} with a part of the game state. */
-static void send_part(const char *key, void (*part)(Json *))
+static void put_part(Json *reply, const char *key, void (*part)(Json *))
 {
-    json_open(&reply, '{');
-    json_key(&reply, "ok");
-    json_bool(&reply, 1);
-    json_key(&reply, key);
-    part(&reply);
-    json_close(&reply, '}');
-    send_reply();
+    json_open(reply, '{');
+    json_key(reply, "ok");
+    json_bool(reply, 1);
+    json_key(reply, key);
+    part(reply);
+    json_close(reply, '}');
 }
 
-/* Sends the error of a turn request, or nothing when the turn started (the reply comes at its end). A batch that
+/* Writes the error of a turn request, or nothing when the turn started (the reply comes at its end). A batch that
    ended before its first turn gets its reply now. */
-static void start_turn_or_fail(const char *error)
+static void start_turn_or_fail(const char *error, Json *reply)
 {
-    if (error) send_error(error);
+    if (error) put_error(reply, error);
     else if (!turn_is_pending()) {
-        turn_reply(&reply);
-        send_reply();
+        turn_reply(reply);
     }
 }
 
@@ -477,10 +428,10 @@ static bool modal_mode(void)
 }
 
 /* Replies the error and returns true while a modal loop of the game runs. */
-static bool refuse_in_modal_loop(void)
+static bool refuse_in_modal_loop(Json *reply)
 {
     if (!modal_mode()) return false;
-    send_error("close the dialog first (act click or act key)");
+    put_error(reply, "close the dialog first (act click or act key)");
     return true;
 }
 
@@ -493,64 +444,64 @@ static void game_restarts(void)
 }
 
 /* Loads QUICK.DAT of the save folder; a missing or damaged file keeps the game, a failed restore loses it. */
-static void handle_load(void)
+static void handle_load(Json *reply)
 {
-    if (refuse_in_modal_loop()) return;
+    if (refuse_in_modal_loop(reply)) return;
     int end = main_loop.end;
     main_loop.end = 0;  /* the loaded game starts with a full game step, as after the load of a slot */
     int result = advanced_quick_load();
     if (result == QUICK_LOST) game_lost = 1;
     if (result != QUICK_LOADED) {
         main_loop.end = end;
-        send_error(result == QUICK_MISSING ? "no saved game (use save first)"
+        put_error(reply, result == QUICK_MISSING ? "no saved game (use save first)"
                    : result == QUICK_BLOCKED ? "cannot write QUICK.TMP: nothing loaded" : "the saved game is damaged");
         return;
     }
     game_restarts();
-    send_part("state", state_json_state);
+    put_part(reply, "state", state_json_state);
 }
 
 /* Starts a new game from DUNGEON.DAT, as the menu choice NEW GAME does. */
-static void handle_new_game(void)
+static void handle_new_game(Json *reply)
 {
-    if (refuse_in_modal_loop()) return;
+    if (refuse_in_modal_loop(reply)) return;
     if (!session_start_new_game()) {
         game_lost = 1;
-        send_error("cannot start the new game");
+        put_error(reply, "cannot start the new game");
         return;
     }
     game_restarts();
-    send_part("state", state_json_state);
+    put_part(reply, "state", state_json_state);
 }
 
 /* Writes the game to QUICK.DAT of the save folder; the old file stays on an error. */
-static void handle_save(void)
+static void handle_save(Json *reply)
 {
-    if (refuse_in_modal_loop()) return;
-    if (ui.candidate) send_error("answer the candidate first (act recruit)");
-    else if (!advanced_quick_save()) send_error("cannot write the save file");
-    else send_ok();
+    if (refuse_in_modal_loop(reply)) return;
+    if (ui.candidate) put_error(reply, "answer the candidate first (act recruit)");
+    else if (!advanced_quick_save()) put_error(reply, "cannot write the save file");
+    else put_ok(reply);
 }
 
 /* The commands of a running game in the turn-based mode: the parts of the game state, and after a game over only
    those; save and the turns. Returns false for a command that the other modes share (state, screenshot) or do not
    know. */
-static bool handle_turnbased_game_request(const char *request, const char *cmd)
+static bool handle_turnbased_game_request(const char *request, const char *cmd, Json *reply)
 {
     static const char *const turns[] = { "act", "act_many", "wait", "save" };
-    if (!strcmp(cmd, "get_state")) send_part("state", state_json_state);
-    else if (!strcmp(cmd, "get_view")) send_part("view", state_json_view);
-    else if (!strcmp(cmd, "get_map")) send_part("map", state_json_map);
+    if (!strcmp(cmd, "get_state")) put_part(reply, "state", state_json_state);
+    else if (!strcmp(cmd, "get_view")) put_part(reply, "view", state_json_view);
+    else if (!strcmp(cmd, "get_map")) put_part(reply, "map", state_json_map);
     else {
         for (size_t i = 0; i < sizeof turns / sizeof turns[0] && state_json_game_over(); i++)
             if (!strcmp(cmd, turns[i])) {
-                send_error("game over");
+                put_error(reply, "game over");
                 return true;
             }
-        if (!strcmp(cmd, "save")) handle_save();
-        else if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request));
-        else if (!strcmp(cmd, "act_many")) start_turn_or_fail(turn_act_many(request));
-        else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request));
+        if (!strcmp(cmd, "save")) handle_save(reply);
+        else if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request), reply);
+        else if (!strcmp(cmd, "act_many")) start_turn_or_fail(turn_act_many(request), reply);
+        else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request), reply);
         else return false;
     }
     return true;
@@ -559,213 +510,114 @@ static bool handle_turnbased_game_request(const char *request, const char *cmd)
 /* The commands of the turn-based mode: load and new_game also after a game over or a lost game, the refusal of every
    other command after a lost game and of the direct input commands. Returns false for quit, state, screenshot, and
    the commands that no mode knows. */
-static bool handle_turnbased_request(const char *request, const char *cmd)
+static bool handle_turnbased_request(const char *request, const char *cmd, Json *reply)
 {
     static const char *const direct[] = { "key", "click", "press", "release", "command", "move" };
     if (!strcmp(cmd, "quit")) return false;
     if (!strcmp(cmd, "load")) {
-        handle_load();
+        handle_load(reply);
         return true;
     }
     if (!strcmp(cmd, "new_game")) {
-        handle_new_game();
+        handle_new_game(reply);
         return true;
     }
     if (game_lost) {
-        send_error("no game is running: use load or new_game");
+        put_error(reply, "no game is running: use load or new_game");
         return true;
     }
     for (size_t i = 0; i < sizeof direct / sizeof direct[0]; i++)
         if (!strcmp(cmd, direct[i])) {
-            send_error("use act in turnbased mode");
+            put_error(reply, "use act in turnbased mode");
             return true;
         }
-    return handle_turnbased_game_request(request, cmd);
+    return handle_turnbased_game_request(request, cmd, reply);
 }
 
-static void handle_request(const char *request)
+static void handle_request(const char *request, Json *reply)
 {
     char cmd[NAME_SIZE], path[PATH_MAX];
     int x, y;
     if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
-        send_error("missing cmd");
-    } else if (game_mode == GAME_MODE_TURNBASED && handle_turnbased_request(request, cmd)) {
+        put_error(reply, "missing cmd");
+    } else if (game_mode == GAME_MODE_TURNBASED && handle_turnbased_request(request, cmd, reply)) {
         return;
     } else if (!strcmp(cmd, "state")) {
-        send_state();
+        put_state(reply);
     } else if (!strcmp(cmd, "key")) {
-        handle_key(request);
+        handle_key(request, reply);
     } else if (!strcmp(cmd, "click")) {
-        handle_button(request, 1, 1);
+        handle_button(request, 1, 1, reply);
     } else if (!strcmp(cmd, "press")) {
-        handle_button(request, 1, 0);
+        handle_button(request, 1, 0, reply);
     } else if (!strcmp(cmd, "release")) {
-        handle_button(request, 0, 1);
+        handle_button(request, 0, 1, reply);
     } else if (!strcmp(cmd, "move")) {
-        if (!get_position(request, &x, &y)) return;
+        if (!get_position(request, &x, &y, reply)) return;
         input_mouse_x = x, input_mouse_y = y;
-        send_ok();
+        put_ok(reply);
     } else if (!strcmp(cmd, "command")) {
         long id = control_get_int(request, "id", -1);
-        if (id < 0 || id > KEY_CODE_MAX) send_error("missing id");
+        if (id < 0 || id > KEY_CODE_MAX) put_error(reply, "missing id");
         else {
             if (!movie_is_playing()) input_simulate_command_click((uint16_t)id);
-            send_ok();
+            put_ok(reply);
         }
     } else if (!strcmp(cmd, "wait")) {
         long ticks = control_get_int(request, "ticks", 0);
         if (ticks < 1 || ticks > WAIT_MAX_TICKS) {
             char error[ERROR_SIZE];
             snprintf(error, sizeof error, "ticks must be 1-%d", WAIT_MAX_TICKS);
-            send_error(error);
+            put_error(reply, error);
         } else {
             waiting.pending = 1;
             waiting.start = main_loop.timer_ticks;
             waiting.ticks = (uint32_t)ticks;
         }
     } else if (!strcmp(cmd, "screenshot")) {
-        if (!control_get_string(request, "path", path, sizeof path)) send_error("missing path");
-        else screenshot(path);
+        if (!control_get_string(request, "path", path, sizeof path)) put_error(reply, "missing path");
+        else screenshot(path, reply);
     } else if (!strcmp(cmd, "quit")) {
         main_loop.quit = main_loop.closed = 1;
-        send_ok();
+        put_ok(reply);
     } else {
-        send_error("unknown cmd");
+        put_error(reply, "unknown cmd");
     }
 }
 
-/* A connection that does not raise SIGPIPE when the client is gone, with blocking writes (reads use MSG_DONTWAIT). */
-static void prepare_connection(int fd)
+bool control_handle_line(const char *line, Json *reply)
 {
-    fcntl(fd, F_SETFL, 0);
-#ifdef SO_NOSIGPIPE
-    int on = 1;
-    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof on);
-#endif
+    handle_request(line, reply);
+    return reply->len > 0;
 }
 
-/* Closes the client when it closed its connection and has no unread byte. */
-static void drop_closed_client(void)
+bool control_end_turn(Json *reply)
 {
-    char next;
-    if (client_fd < 0) return;
-    ssize_t n = recv(client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
-    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) close_client(); /* the client left */
-}
-
-/* Takes the waiting connections: the first becomes the client, the others get a busy error. */
-static void accept_clients(void)
-{
-    static const char busy[] = "{\"ok\":false,\"error\":\"busy\"}\n";
-    for (int fd; (fd = accept(listen_fd, NULL, NULL)) >= 0;) {
-        prepare_connection(fd);
-        drop_closed_client();
-        if (client_fd < 0) {
-            client_fd = fd;
-            continue;
-        }
-        send(fd, busy, sizeof busy - 1, SEND_FLAGS);
-        close(fd);
-    }
-}
-
-/* Reads the bytes of the client and answers its complete lines; a too long line gets one error reply. */
-static void read_requests(void)
-{
-    if (client_fd < 0) return;
-    ssize_t n = recv(client_fd, input + input_length, sizeof input - input_length, MSG_DONTWAIT);
-    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
-        close_client();
-        return;
-    }
-    if (n > 0) input_length += (size_t)n;
-    char *end;
-    while (client_fd >= 0 && !waiting.pending && !turn_is_pending() && (end = memchr(input, '\n', input_length))) {
-        size_t used = (size_t)(end + 1 - input);
-        *end = 0;
-        if (discarding) discarding = 0;
-        else if (memchr(input, 0, used - 1)) send_error("request line has a NUL byte");
-        else if (end > input) handle_request(input);
-        if (client_fd < 0) return;
-        memmove(input, end + 1, input_length - used);
-        input_length -= used;
-    }
-    if (input_length == sizeof input) {
-        if (!discarding) send_error("request line too long");
-        discarding = 1;
-        input_length = 0;
-    }
-}
-
-int control_open(const char *path)
-{
-    struct sockaddr_un address = { .sun_family = AF_UNIX };
-    struct stat old;
-    char dir[sizeof socket_path];
-    if (strlen(path) >= sizeof address.sun_path) return 0;
-    if (!lstat(path, &old) && !S_ISSOCK(old.st_mode)) return 0; /* never remove another file */
-    snprintf(dir, sizeof dir, "%s", path);
-    char *slash = strrchr(dir, '/');
-    if (slash && slash != dir) {
-        *slash = 0;
-        mkdir(dir, SOCKET_DIR_MODE);
-    }
-    snprintf(address.sun_path, sizeof address.sun_path, "%s", path);
-    snprintf(socket_path, sizeof socket_path, "%s", path);
-    unlink(path);
-    listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (listen_fd < 0) return 0;
-    if (bind(listen_fd, (struct sockaddr *)&address, sizeof address) || listen(listen_fd, 1) ||
-        fcntl(listen_fd, F_SETFL, O_NONBLOCK)) {
-        control_close();
-        return 0;
-    }
-    return 1;
-}
-
-/* One frame of the pending turn: a client that left gets no reply; the reply goes out when the turn ends. */
-static void poll_turn(void)
-{
-    drop_closed_client();
-    if (!turn_poll()) return;
-    turn_reply(&reply);
-    send_reply();
-}
-
-void control_poll(void)
-{
-    if (listen_fd < 0) return;
-    if (waiting.pending) drop_closed_client();
     if (waiting.pending) {
         uint32_t ran = main_loop.timer_ticks - waiting.start;
-        if (ran >= waiting.ticks) {
-            waiting.pending = 0;
-            put("{\"ok\":true,\"ticks\":%u}", ran);
-            send_reply();
-        }
+        if (ran < waiting.ticks) return false;
+        waiting.pending = 0;
+        put(reply, "{\"ok\":true,\"ticks\":%u}", ran);
+        return true;
     }
-    if (!waiting.pending && !turn_is_pending()) read_requests();
-    if (turn_is_pending()) poll_turn();
-    accept_clients();
+    if (!turn_poll()) return false;
+    turn_reply(reply);
+    return true;
 }
+
+bool control_is_turn_pending(void) { return turn_is_pending(); }
+
+void control_drop_client(void)
+{
+    waiting.pending = 0;
+    if (turn_is_pending()) turn_drop_reply();
+}
+
+void control_reset(void) { game_lost = 0; }
 
 void control_frame(void)
 {
-    control_poll();
     if (!turn_is_pending()) return;
     uint32_t time = game.game_time;
     for (int i = 0; i < STEP_TICKS && game.game_time == time && !main_loop.end && !main_loop.quit; i++) play_tick();
-}
-
-bool control_turn_pending(void) { return turn_is_pending(); }
-
-void control_close(void)
-{
-    close_client();
-    if (listen_fd >= 0) {
-        close(listen_fd);
-        unlink(socket_path);
-    }
-    listen_fd = -1;
-    game_lost = 0;
 }

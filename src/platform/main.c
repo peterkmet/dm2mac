@@ -23,6 +23,7 @@
 #include "session.h"
 #include "scale.h"
 #include "text.h"
+#include "transport.h"
 #include "ui.h"
 #include "video.h"
 #include "view.h"
@@ -144,7 +145,7 @@ static void pump_events(void)
     }
     plat_mouse_position(&x, &y);
     if (x != window_x || y != window_y) input_mouse_x = window_x = x, input_mouse_y = window_y = y;
-    control_poll();
+    transport_poll();
 }
 
 /* One timer tick of a modal loop (menu, dialog): the input, the screen, and the wait. */
@@ -168,9 +169,9 @@ static void pump_quit_events(void)
 static void turnbased_modal_frame(void)
 {
     pump_quit_events();
-    control_poll();
+    transport_poll();
     present_with_cursor();
-    if (!control_turn_pending())
+    if (!control_is_turn_pending())
         for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
 }
 
@@ -179,9 +180,10 @@ static void run_turnbased(void)
 {
     while (!main_loop.quit) {
         pump_quit_events();
+        transport_poll();
         control_frame();
         present_with_cursor();
-        if (!control_turn_pending())
+        if (!control_is_turn_pending())
             for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++) plat_wait_tick();
     }
 }
@@ -210,7 +212,7 @@ static void pump_movie_events(void)
         if (e.type == PLAT_QUIT) main_loop.quit = main_loop.closed = 1;
         else if (e.type == PLAT_MOUSE) movie_click();
     }
-    control_poll();
+    transport_poll();
 }
 
 /* Shows the splash on the game screen or the movie picture on the screen of its player. */
@@ -311,7 +313,7 @@ static bool full_path(const char *path, char *full, size_t size)
 /* Closes the control socket, the music, and SDL. */
 static void close_platform(void)
 {
-    control_close();
+    transport_close();
     music_quit();
     plat_quit();
 }
@@ -337,7 +339,7 @@ int main(int argc, char **argv)
     if (!plat_init(WINDOW_SCALE, factor)) return 1;
     set_icon();
     g_os_full_path_hook = full_path;
-    if (control && !control_open(control)) {
+    if (control && !transport_open(control)) {
         fprintf(stderr, "cannot open the control socket %s\n", control);
         return 1;
     }

@@ -163,13 +163,14 @@ def test_script_end_restores_the_game_screen(lib, movies):
 def test_control_state_and_click_during_a_movie(lib, movies):
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "control.sock")
-    lib.control_open.argtypes = [ctypes.c_char_p]
-    assert lib.control_open(path.encode())
+    lib.transport_open.argtypes = [ctypes.c_char_p]
+    lib.transport_open.restype = ctypes.c_bool
+    assert lib.transport_open(path.encode())
     stop = threading.Event()
 
     def loop():
         while not stop.is_set():
-            lib.control_poll()
+            lib.transport_poll()
             time.sleep(0.0005)
 
     thread = threading.Thread(target=loop)
@@ -189,5 +190,5 @@ def test_control_state_and_click_during_a_movie(lib, movies):
     finally:
         stop.set()
         thread.join()
-        lib.control_close()
+        lib.transport_close()
         shutil.rmtree(folder)

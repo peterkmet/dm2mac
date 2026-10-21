@@ -52,10 +52,11 @@ def control(lib, gdat, session):  # noqa: F811
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "sub", "control.sock")
-    lib.control_open.argtypes = [ctypes.c_char_p]
-    assert lib.control_open(path.encode())
+    lib.transport_open.argtypes = [ctypes.c_char_p]
+    lib.transport_open.restype = ctypes.c_bool
+    assert lib.transport_open(path.encode())
     yield (path, *session)
-    lib.control_close()
+    lib.transport_close()
     assert not os.path.exists(path)
     shutil.rmtree(folder)
 
@@ -67,7 +68,7 @@ def pumped(lib, ticks=True):
 
     def loop():
         while not stop.is_set():
-            lib.control_poll()
+            lib.transport_poll()
             if ticks:
                 lib.play_tick()
             time.sleep(0.0005)
@@ -259,8 +260,9 @@ def test_open_keeps_a_file_that_is_not_a_socket(lib):
     path = os.path.join(folder, "start.DAT")
     with open(path, "wb") as f:
         f.write(b"save")
-    lib.control_open.argtypes = [ctypes.c_char_p]
-    assert not lib.control_open(path.encode())
+    lib.transport_open.argtypes = [ctypes.c_char_p]
+    lib.transport_open.restype = ctypes.c_bool
+    assert not lib.transport_open(path.encode())
     assert open(path, "rb").read() == b"save"
     shutil.rmtree(folder)
 
@@ -293,12 +295,12 @@ def test_a_client_that_reconnects_after_a_reply_is_not_busy(control, lib):
         first.connect(path)
         first.sendall(b'{"cmd": "state"}\n')
         first.shutdown(socket.SHUT_WR)
-        lib.control_poll()  # accepts the first client
+        lib.transport_poll()  # accepts the first client
         second.connect(path)
         second.sendall(b'{"cmd": "state"}\n')
-        lib.control_poll()  # answers the first client, then accepts the second
+        lib.transport_poll()  # answers the first client, then accepts the second
         assert json.loads(first.makefile().readline())["ok"]
-        lib.control_poll()
+        lib.transport_poll()
         assert json.loads(second.makefile().readline())["ok"]
 
 
@@ -376,10 +378,10 @@ def test_a_long_reply_arrives_whole(lib):
 
 def test_open_replaces_a_stale_socket(control, lib):
     path, *_ = control
-    lib.control_close()
+    lib.transport_close()
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as stale:
         stale.bind(path)
     assert os.path.exists(path)
-    assert lib.control_open(path.encode())
+    assert lib.transport_open(path.encode())
     with pumped(lib, ticks=False):
         assert request({"cmd": "state"}, path, timeout=5)["ok"]
