@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The start menu, new games, the load and save dialogs, and the end of the game. */
 #include "session.h"
+#include "ids.h"
 #include "le.h"
 #include "action.h"
 #include "creature.h"
@@ -44,21 +45,11 @@ enum { NOT_SAVED_CANCEL = 3 };
 /* The choices of the slot dialogs: the list of input mode 4 with 5 or 6 buttons. */
 enum { SLOT_CANCEL = 1, SLOT_OK, SLOT_LIST, SLOT_NAME };
 enum { SLOT_BUTTONS_LOAD = 5, SLOT_BUTTONS_SAVE = 6 };
-enum { ZONE_SLOT_LIST = 0x1c3, ZONE_SLOT_NAME = 0x1c5, ZONE_SLOT_TEXT_1 = 0x1d2, ZONE_SLOT_TEXT_2 = 0x1d3 };
 #define SLOT_NAME_TOP 4 /* the text base line below the top of a slot zone */
 /* The sound of the end of the game: the scream of the first champion (fallback: the generic scream). */
 enum { END_SOUND_PRIORITY = 0xff };
 /* The name and title fields of the inventory while a name changes. */
-enum {
-    NAME_PANEL_MODE = 8,
-    ZONE_NAME = 0x229,
-    ZONE_TITLE = 0x273,
-    ZONE_NAME_BUTTON = 0x267,
-    NAME_BUTTON_UP = 0x13,
-    NAME_BUTTON_DOWN = 0x14,
-    CHAMP_NAME_MAX = 7,
-    CHAMP_TITLE_MAX = 15
-};
+enum { NAME_PANEL_MODE = 8, NAME_BUTTON_UP = 0x13, NAME_BUTTON_DOWN = 0x14, CHAMP_NAME_MAX = 7, CHAMP_TITLE_MAX = 15 };
 /* The characters of a champion name. */
 static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
 

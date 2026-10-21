@@ -10,85 +10,8 @@
 #include "draw.h"
 #include <stdint.h>
 
-/* Layout zones of the screen and the panels. */
-enum ui_zone {
-    ZONE_SCREEN = 2,
-    ZONE_VIEWPORT = 7,
-    ZONE_MOVEMENT_ARROWS = 9,
-    ZONE_ACTION_AREA = 0x0b,
-    ZONE_ARROW_FIRST = 0x28,
-    ZONE_ARROW_COUNT = 6,
-    ZONE_STATUS_NAME = 0xa5,      /* + champion */
-    ZONE_STATUS_PORTRAIT = 0xad,  /* + champion */
-    ZONE_STATUS_DAMAGE = 0xb1,    /* + champion */
-    ZONE_STATUS_BARS = 0xb9,      /* + champion */
-    ZONE_STATUS_BAR_FIRST = 0xc1, /* + champion + 4 * bar */
-    ZONE_INVENTORY_BACK = 4,
-    ZONE_FOOD_GAUGE = 0x1f0,
-    ZONE_WATER_GAUGE = 0x1f1,
-    ZONE_POISON_GAUGE = 0x1f3,
-    ZONE_FOOD_LABEL = 0x1f4,
-    ZONE_WATER_LABEL = 0x1f5,
-    ZONE_POISON_LABEL = 0x1f6,
-    ZONE_OBJECT_NAME_BACK = 0x1f8,
-    ZONE_OBJECT_NAME = 0x1fa,
-    ZONE_EYE = 0x221,
-    ZONE_MOUTH = 0x222,
-    ZONE_VALUES_BACK = 0x225,
-    ZONE_HEALTH_VALUE = 0x226,
-    ZONE_STAMINA_VALUE = 0x227,
-    ZONE_MANA_VALUE = 0x228,
-    ZONE_INVENTORY_TITLE = 0x229,
-    ZONE_LOAD_BACK = 0x22a,
-    ZONE_LOAD = 0x22b,
-    ZONE_DESCRIPTION = 0x22c,
-    ZONE_SKILLS = 0x22d,
-    ZONE_STATS = 0x22f,
-    ZONE_SCROLL_TEXT = 0x230,
-    ZONE_BUTTON_SAVE = 0x232,
-    ZONE_BUTTON_SLEEP = 0x234,
-    ZONE_BUTTON_EXIT = 0x236,
-    ZONE_BUTTON_SOUND = 0x238,
-    ZONE_BUTTON_CLOSE = 0x267,
-    ZONE_COIN_TOTAL = 0x239,
-    ZONE_COIN_COUNT_FIRST = 0x26a,
-    ZONE_OBJECT_GAUGE_FIRST = 0x270
-};
-/* Zones of the action area. */
-enum {
-    ZONE_PARTY_ICONS = 0x2f,
-    ZONE_PARTY_FACE_FIRST = 0x35,
-    ZONE_RESULT = 0x39,
-    ZONE_MENU_BACK = 0x3b,
-    ZONE_MENU_HEADER = 0x3c,
-    ZONE_MENU_NAME = 0x3d,
-    ZONE_ACTION_BUTTON_FIRST = 0x3f,
-    ZONE_ACTION_NAME_FIRST = 0x42,
-    ZONE_ACTION_HAND_FIRST = 0x46,
-    ZONE_READY_HAND_FIRST = 0x4a,
-    ZONE_SPELL_ICON_FIRST = 0x4f,
-    ZONE_SPELL_RUNE_ICON_FIRST = 0x53,
-    ZONE_SPELL_HAND_ICON_FIRST = 0x57,
-    ZONE_FACE_BACK = 0x5d,
-    ZONE_FACE = 0x5e,
-    ZONE_FACE_LEFT = 0x60,
-    ZONE_FACE_RIGHT = 0x61,
-    ZONE_MAP_ACTION_FIRST = 0x6e,
-    ZONE_AMMO_ITEM = 0x7d,
-    ZONE_AMMO_HAND = 0x7e,
-    ZONE_COIN_PILE_FIRST = 0xdd,
-    ZONE_CONTAINER_LID = 0xe3,
-    ZONE_CONTAINER_SLOT_FIRST = 0xe5,
-    ZONE_RUNES_BACK = 0xfc,
-    ZONE_RUNE_CHOICE_FIRST = 0xff,
-    ZONE_RUNE_ENTERED_FIRST = 0x105
-};
-/* Zones of the dungeon view. */
-enum {
-    ZONE_DROP_CELL_FIRST = 0x2f8, /* + cell: where a click drops an object */
-    ZONE_FRONT_WALL_LOW = 0x2fd,  /* the parts of the view that show the wall in front of the party */
-    ZONE_FRONT_WALL_HIGH = 0x2fe
-};
+/* The number of movement arrow zones. */
+#define ZONE_ARROW_COUNT 6
 
 /* What the inventory panel shows (ui.panel_mode). */
 enum {

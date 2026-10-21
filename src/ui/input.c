@@ -2,6 +2,7 @@
 /* Mouse and keyboard input: the input tree of SKULL.EXE maps clicks and keys to commands; the command queue. */
 #include "input.h"
 #include "gdat.h"
+#include "ids.h"
 #include "le.h"
 #include "action.h"
 #include "champ_action.h"
@@ -50,8 +51,6 @@
 #define ZONE_IN_PANEL       0x8000
 #define ZONE_IN_ACTION_AREA 0x4000
 #define ZONE_ID_MASK        0x3fff
-#define ZONE_PANEL_ORIGIN   7
-#define ZONE_ACTION_ORIGIN  0x12
 #define EVENT_RING          11
 #define EVENT_LIMIT         7
 #define EVENT_LIMIT_SPECIAL 9
@@ -860,7 +859,7 @@ static int input_get_zone_rect(uint16_t zone, int16_t *rect)
         return 0;
     if (zone & (ZONE_IN_PANEL | ZONE_IN_ACTION_AREA)) {
         int16_t x, y;
-        zone_get_position(zone & ZONE_IN_PANEL ? ZONE_PANEL_ORIGIN : ZONE_ACTION_ORIGIN, &x, &y);
+        zone_get_position(zone & ZONE_IN_PANEL ? ZONE_VIEWPORT : ZONE_ACTION_ORIGIN, &x, &y);
         rect[RECT_X] = (int16_t)(rect[RECT_X] + x);
         rect[RECT_Y] = (int16_t)(rect[RECT_Y] + y);
     }
@@ -878,13 +877,13 @@ static const InputCommand *node_commands(const InputNode *node)
     return list == -1 ? NULL : &input_commands[command_list_start[list]];
 }
 
-InputMatch input_match = {.zone = ZONE_NONE_ID, .origin = -1};
+InputMatch input_match = {.zone = ZONE_NONE, .origin = -1};
 
 /* The zone that the position of a command zone is relative to: the inventory panel, the action area, or none. */
 static int16_t zone_origin(uint16_t zone)
 {
     if (zone & ZONE_IN_PANEL)
-        return ZONE_PANEL_ORIGIN;
+        return ZONE_VIEWPORT;
     if (zone & ZONE_IN_ACTION_AREA)
         return ZONE_ACTION_ORIGIN;
     return -1;
@@ -933,7 +932,7 @@ static void select_command_in_list(uint16_t command, const InputCommand *list)
             }
     if (list)
         in.rect[RECT_W] = in.rect[RECT_H] = 0;
-    input_match.zone = ZONE_NONE_ID;
+    input_match.zone = ZONE_NONE;
     input_match.x = input_match.y = 0;
     input_match.value = command;
     input_match.choice = 0;
@@ -1288,7 +1287,7 @@ void input_flush(void)
     in.disabled = 0;
     in.queue_head = in.queue_tail = 0;
     in.rect[RECT_W] = in.rect[RECT_H] = 0;
-    input_match.zone = ZONE_NONE_ID;
+    input_match.zone = ZONE_NONE;
     input_match.origin = -1;
     input_match.x = input_match.y = 0;
     input_match.value = 0;

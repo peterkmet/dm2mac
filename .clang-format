@@ -15,7 +15,7 @@ PointerAlignment: Right
 SortIncludes: CaseSensitive
 IncludeBlocks: Merge
 IncludeCategories:
-  - Regex: '^"(gdat|gfx|hmp|le|mve|os|pcx|mve_internal)\.h"$'
+  - Regex: '^"(gdat|gfx|hmp|ids|le|mve|os|pcx|mve_internal)\.h"$'
     Priority: 1
   - Regex: '^"(action|ai|ai_move|aspect|champ_action|champion|creature|dungeon|game|game_text|hooks|inventory|item|magic|merchant|minion|money|move|projectile|random|save|seen|sensor|sound_request|timeline|weather|ai_move_internal)\.h"$'
     Priority: 2

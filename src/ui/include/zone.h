@@ -11,7 +11,6 @@
 #include "gfx.h"
 #include <stdint.h>
 
-#define ZONE_NONE       0xffff
 #define ZONE_RELATIVE   0x8000 /* zone flag: add the offsets in *w and *h to the zone position */
 #define ZONE_NO_ANCHOR  (-1)   /* anchor override that keeps the anchor of the zone record */
 #define ZONE_SCALE_FULL 10000  /* scale of zone_get_rect_clipped, in 1/10000 */

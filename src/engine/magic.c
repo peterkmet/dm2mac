@@ -2,6 +2,7 @@
 /* Magic: runes, spell casting, magic light, party auras, and missile spells. */
 #include "magic.h"
 #include "gdat.h"
+#include "ids.h"
 #include "le.h"
 #include "action.h"
 #include "ai.h"

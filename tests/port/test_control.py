@@ -32,7 +32,7 @@ def lib():
 KEY_SHIFT, KEY_ALT = 0x200, 0x800
 SCAN_A, SCAN_ENTER = 0x1E, 0x1C
 ZONE_TURN_RIGHT = 0x29
-ZONE_EYE_CLICK, ZONE_PANEL_ORIGIN, CMD_EYE, INPUT_MODE_INVENTORY = 0x222, 7, 0x47, 8  # the eye zone is in the panel
+ZONE_EYE_CLICK, ZONE_VIEWPORT, CMD_EYE, INPUT_MODE_INVENTORY = 0x222, 7, 0x47, 8  # the eye zone is in the panel
 PANEL_MODE_SKILLS, PANEL_MODE_SCROLL, THING_SCROLL = 2, 5, 7
 ZONE_MOUTH_CLICK, CMD_MOUTH = 0x221, 0x46
 INPUT_MODE_MOVE, LEFT = 5, 2
@@ -161,7 +161,7 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
         assert request({"cmd": "key", "key": "1"}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
         origin_x, origin_y = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(ZONE_PANEL_ORIGIN, ctypes.byref(origin_x), ctypes.byref(origin_y))
+        lib.zone_get_position(ZONE_VIEWPORT, ctypes.byref(origin_x), ctypes.byref(origin_y))
         x, y = arrow_center(lib, ZONE_EYE_CLICK)
         x, y = x + origin_x.value, y + origin_y.value
         assert lib.input_find_command(INPUT_MODE_INVENTORY, x, y, LEFT, 0, (ctypes.c_int16 * 4)()) == CMD_EYE

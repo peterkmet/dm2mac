@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "view.h"
+#include "ids.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
@@ -77,19 +78,6 @@ enum { ORN_PICTURE_SIDE, ORN_PICTURE_FRONT, ORN_PICTURE_RIGHT }; /* wall ornamen
 #define PORTRAIT_ENTRY        1
 #define PORTRAIT_OFFSET_ENTRY 0xfd
 
-/* Layout zones of the view. */
-enum {
-    ZONE_CEILING = 700,
-    ZONE_FLOOR = 701,
-    ZONE_WALL = 702,
-    ZONE_DOOR_ORNAMENT = 1950,
-    ZONE_ORNAMENT_ROWS = 2000,
-    ZONE_VIEW_ELEMENTS = 3100,
-    ZONE_VIEW_CELLS = 5000,
-    ZONE_SKY_HIGH = 6001,
-    ZONE_PARTY_STAIRS_UP = 811,
-    ZONE_PARTY_STAIRS_DOWN = 824,
-};
 #define ZONE_ROW_SIZE     4  /* zones of one ornament row */
 #define ZONE_CELL_GRID    25 /* zones of the 5 x 5 grid of a view element */
 #define CELL_FAR_MIDDLE   2  /* the middle cell of the far row */

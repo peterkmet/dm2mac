@@ -2,6 +2,7 @@
 /* The minion map panel in the action area: the grid of square icons around the party, a minion, or a marker. */
 #include "minion_map.h"
 #include "gdat.h"
+#include "ids.h"
 #include "action.h"
 #include "aspect.h"
 #include "champion.h"
@@ -19,51 +20,28 @@
 #include "zone.h"
 #include <string.h>
 
-#define ZONE_OPTION_BUTTON_FIRST 0x65
-#define ZONE_OPTION_LABEL_FIRST  0x69
-#define MAP_PANEL_PICTURE        0x10
-#define OPTION_BUTTON_UP         0x49
-#define OPTION_BUTTON_DOWN       0x4a
-#define OPTION_LABEL_FIRST       'r'
-#define ICON_KEY                 10
+#define MAP_PANEL_PICTURE   0x10
+#define OPTION_BUTTON_UP    0x49
+#define OPTION_BUTTON_DOWN  0x4a
+#define OPTION_LABEL_FIRST  'r'
+#define ICON_KEY            10
 /* Icon strips: GDAT image (category, index, 1, 0xf9), MAP_ICON_W pixels per icon; the value (category, index, 0x0b,
    0xf9) set: the thing shows only with MAP_OPTION_DETAILS. */
-#define STRIP_ENTRY              0xf9
-#define STRIP_DETAIL_KEY         0xf9
-#define MAP_ITEM_ICONS           0x40 /* the image of the map item with the party, minion, and marker icons */
-#define GDAT_INDEX_COUNT         256  /* GDAT indices are bytes */
-/* Icons of the square strip. */
-enum {
-    ICON_WALL,
-    ICON_FAKE_WALL_BLINK,
-    ICON_FLOOR,
-    ICON_PIT,
-    ICON_PIT_VARIANT,
-    ICON_PIT_BLINK,
-    ICON_STAIRS_FIRST,
-    ICON_DOOR_FRONT = 0x0a,
-    ICON_DOOR_SIDE = 0x0b,
-    ICON_DOOR_NO_BUTTON = 2,
-    ICON_DOOR_OPEN = 4,
-    ICON_PIT_ABOVE = 0x12
-};
-/* Icons of the map item strip. */
-enum {
-    ICON_MINION_FIRST = 3,
-    ICON_PARTY_FIRST = 5,
-    ICON_PARTY_INVISIBLE = 9,
-    ICON_MARKER = 2,
-    ICON_MARKER_ABOVE = 0x0b,
-    ICON_MARKER_BELOW = 0x0a
-};
-#define MIRROR_X           1
-#define MIRROR_Y           2
-#define FAKE_WALL_SEEN     SQUARE_FLAG_0
-#define FLOOR_SHOWS_LEVEL  0x08              /* a floor square shows the level digit instead */
-#define MAP_LOCATION_NONE  LOCATION_MAP_MASK /* map 63: no location */
-#define MISSILE_SIDES_ICON 3
-#define ALCOVE_ICON_COUNT  3 /* an item strip with alcove icons: the floor icon, then front and side */
-#define VIEW_CELL_ROW      5
+#define STRIP_ENTRY         0xf9
+#define STRIP_DETAIL_KEY    0xf9
+#define MAP_ITEM_ICONS      0x40 /* the image of the map item with the party, minion, and marker icons */
+#define GDAT_INDEX_COUNT    256  /* GDAT indices are bytes */
+/* Offsets added to a door icon of the square strip. */
+#define ICON_DOOR_NO_BUTTON 2
+#define ICON_DOOR_OPEN      4
+#define MIRROR_X            1
+#define MIRROR_Y            2
+#define FAKE_WALL_SEEN      SQUARE_FLAG_0
+#define FLOOR_SHOWS_LEVEL   0x08              /* a floor square shows the level digit instead */
+#define MAP_LOCATION_NONE   LOCATION_MAP_MASK /* map 63: no location */
+#define MISSILE_SIDES_ICON  3
+#define ALCOVE_ICON_COUNT   3 /* an item strip with alcove icons: the floor icon, then front and side */
+#define VIEW_CELL_ROW       5
 
 /* Mirror of an icon by the relative direction: icons with 2 sides (front, side), icons with 1 side. */
 static const uint8_t mirror_two_sides[DIR_COUNT] = {0, 0, 3, 3};

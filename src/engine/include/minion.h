@@ -13,7 +13,6 @@
 #define GAP_X            1
 #define GAP_Y            1
 #define GRID_RADIUS      3
-#define ZONE_MAP_GRID    0x63
 #define MAP_OPTION_COUNT 4
 /* Minion map kinds: the container type of a minion map. */
 enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };

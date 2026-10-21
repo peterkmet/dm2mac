@@ -2,6 +2,7 @@
 /* Minion maps: the mana of the map panel, its option buttons, and the clicks that send a minion. */
 #include "minion.h"
 #include "gfx.h"
+#include "ids.h"
 #include "action.h"
 #include "ai.h"
 #include "champion.h"

@@ -2,6 +2,7 @@
 /* Dialogs: messages, questions, progress, and the volume settings. */
 #include "dialog.h"
 #include "gdat.h"
+#include "ids.h"
 #include "game.h"
 #include "save.h"
 #include "sound_request.h"
@@ -16,21 +17,17 @@
 #include "zone.h"
 #include <string.h>
 
-#define DIALOG_MESSAGE_ENTRY     0x14
-#define DIALOG_PICTURE_ENTRY     0
-#define DIALOG_VOLUME_BUTTONS    7
-#define BUTTON_KEY               7 /* transparent color of a pressed button picture */
-#define BUTTON_PRESS_VBLANKS     20
-#define ZONE_DIALOG_SCREEN       5     /* where the dialog viewport goes on a black screen */
-#define ZONE_DIALOG_MESSAGE_WIDE 0x1d5 /* the message zone of a dialog with fewer than 2 buttons */
-#define ZONE_DIALOG_MESSAGE      0x1d7
-#define ZONE_PROGRESS_BAR        0x1da
-#define DIALOG_LINE_GAP          1 /* pixels between two lines */
-#define DIALOG_MESSAGE_TOP       6 /* the message area starts this far into its zone */
-#define PERMILLE                 1000
-#define MESSAGE_TEXTS            2 /* the dialog message and the error message under it */
-#define WRAP_MARGIN_SHIFT        3 /* a text wider than 7/8 of the zone wraps */
-#define WRAP_SHRINK_SHIFT        2 /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
+#define DIALOG_MESSAGE_ENTRY  0x14
+#define DIALOG_PICTURE_ENTRY  0
+#define DIALOG_VOLUME_BUTTONS 7
+#define BUTTON_KEY            7 /* transparent color of a pressed button picture */
+#define BUTTON_PRESS_VBLANKS  20
+#define DIALOG_LINE_GAP       1 /* pixels between two lines */
+#define DIALOG_MESSAGE_TOP    6 /* the message area starts this far into its zone */
+#define PERMILLE              1000
+#define MESSAGE_TEXTS         2 /* the dialog message and the error message under it */
+#define WRAP_MARGIN_SHIFT     3 /* a text wider than 7/8 of the zone wraps */
+#define WRAP_SHRINK_SHIFT     2 /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
 /* The zones of the button texts (table of SKULL.EXE); the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
 static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
 
@@ -42,13 +39,7 @@ enum {
     VOLUME_MUSIC_OFF = 0x3d,
     VOLUME_BUTTON = 2,
     VOLUME_BUTTON_ON = 3,
-    VOLUME_LEVELS = 8,
-    ZONE_SOUND_LABEL = 0x15f,
-    ZONE_SOUND_BUTTON = 0x160,
-    ZONE_SOUND_TEXT = 0x168,
-    ZONE_MUSIC_LABEL = 0x170,
-    ZONE_MUSIC_BUTTON = 0x171,
-    ZONE_MUSIC_TEXT = 0x179
+    VOLUME_LEVELS = 8
 };
 /* The test sound of a new sound volume. */
 enum { TEST_SOUND_INDEX = 0 };

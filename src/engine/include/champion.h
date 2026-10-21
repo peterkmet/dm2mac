@@ -70,7 +70,6 @@ static inline int champ_base_skill(int skill)
 #define REDRAW_ALL           0xfc00
 #define REDRAW_KEEP          0x03ff /* the bits that stay after a redraw */
 #define REDRAW_STEP_TIME     0x0010 /* the step time reads this bit; nothing in the port sets it (docs/todo.md) */
-#define ZONE_STATUS_BOX      0xa1   /* the status box of a champion: + champion */
 
 /* Aura types: 0 to 2 shields, 3 to 6 raise a statistic. */
 enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };

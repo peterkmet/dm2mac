@@ -20,8 +20,7 @@ enum action_mode {
     ACTION_MODE_NONE = -1
 };
 #define ACTION_HAND_SPELL      2
-#define ZONE_PANEL             0x5c /* the panel of the action area */
-#define UI_INDEX_SPELL         5    /* the spell panel pictures: GDAT (1, 5, 1, entry) */
+#define UI_INDEX_SPELL         5 /* the spell panel pictures: GDAT (1, 5, 1, entry) */
 #define SPELL_RUNES_PER_SET    6
 #define SPELL_RUNE_GLYPH_FIRST 0x60 /* the font character of the first rune */
 /* Results of an action (action.result < 0). */

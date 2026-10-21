@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "ui.h"
+#include "ids.h"
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
@@ -1165,7 +1166,7 @@ static uint16_t draw_changed_buttons(uint16_t changed)
         draw_inventory_button(PANEL_BUTTON_SOUND, ZONE_BUTTON_SOUND, BUTTON_SOUND);
     if (!ui.candidate) {
         if (changed & BUTTON_CLOSE) {
-            draw_inventory_button(PANEL_BUTTON_CLOSE, ZONE_BUTTON_CLOSE, BUTTON_CLOSE);
+            draw_inventory_button(PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, BUTTON_CLOSE);
             flags |= REDRAW_NAME;
         }
         if (changed & BUTTON_SAVE)
@@ -1189,7 +1190,7 @@ static void draw_inventory_frame(ChampionRedraw *d)
     } else if (!d->inv) {
         cache.drawn_inventory = 0;
     } else {
-        ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_BACK, ZONE_INVENTORY_BACK, UI_OPAQUE);
+        ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_BACK, ZONE_DIALOG_BACK, UI_OPAQUE);
         d->force_inventory = d->present = 1;
         cache.drawn_inventory = ui.inventory;
         buttons_changed = BUTTON_ALL;
@@ -1264,8 +1265,7 @@ static void draw_champion_name(int champ, ChampionRedraw *d)
     if (!c->title[0] || !strchr(TITLE_NO_SPACE, c->title[0]))
         strcat(title, " ");
     strncat(title, c->title, CHAMPION_TITLE_SIZE);
-    text_draw_in_zone_with_shadow(ZONE_INVENTORY_TITLE, color,
-                                  ui.candidate ? ui_colors[UI_DARK_GRAY] : TEXT_TRANSPARENT, title);
+    text_draw_in_zone_with_shadow(ZONE_NAME, color, ui.candidate ? ui_colors[UI_DARK_GRAY] : TEXT_TRANSPARENT, title);
     d->present = 1;
 }
 

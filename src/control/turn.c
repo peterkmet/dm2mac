@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "turn.h"
+#include "ids.h"
 #include "os.h"
 #include "action.h"
 #include "champion.h"

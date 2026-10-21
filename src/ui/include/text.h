@@ -24,7 +24,6 @@
 #define MESSAGE_ROWS      3
 #define MESSAGE_SHOW_TIME 90 /* game ticks until a message row clears */
 #define MESSAGE_INDENT    12 /* pixels: the rest of a wrapped message goes on indented */
-#define ZONE_MESSAGE_AREA 0x0f
 
 /* Game time at which each message row clears, MESSAGE_NEVER when it is clear. */
 #define MESSAGE_NEVER 0xffffffffu

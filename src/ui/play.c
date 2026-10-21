@@ -2,6 +2,7 @@
 /* The main loop: timer ticks, game steps, the view of the party, sleep. */
 #include "play.h"
 #include "gdat.h"
+#include "ids.h"
 #include "action.h"
 #include "champion.h"
 #include "creature.h"

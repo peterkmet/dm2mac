@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The advanced mode: the movement letter keys, the quick save and quick load, the automap, and the cheats. */
 #include "advanced.h"
+#include "ids.h"
 #include "os.h"
 #include "dungeon.h"
 #include "minion.h"

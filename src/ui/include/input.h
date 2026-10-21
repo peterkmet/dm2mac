@@ -90,10 +90,9 @@ typedef struct {
 } Command;
 
 /* The last matched command entry: the dialogs read it. */
-#define ZONE_NONE_ID     0xffff
 #define DIALOG_NO_CHOICE 0xff /* a dialog waits while its choice has this value */
 typedef struct {
-    uint16_t zone;   /* the zone of the entry, ZONE_NONE_ID none */
+    uint16_t zone;   /* the zone of the entry, ZONE_NONE none */
     int16_t origin;  /* the zone that the entry zone is relative to, -1 none */
     uint16_t key;    /* the key code of a key command, 0 for a click */
     int16_t choice;  /* the place of the command in its list, from 1; 0 none */

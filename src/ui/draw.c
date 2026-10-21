@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "draw.h"
+#include "ids.h"
 #include "video.h"
 #include "zone.h"
 #include <stdlib.h>

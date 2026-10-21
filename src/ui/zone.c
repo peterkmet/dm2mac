@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "zone.h"
+#include "ids.h"
 #include "le.h"
 #include "move.h"
 #include <stdlib.h>
