@@ -33,7 +33,7 @@ POSIX_ONLY   = src/platform/transport.c
 GAME_SOURCES = $(filter-out $(WINDOWS_ONLY),$(SOURCES))
 LIB_SOURCES  = $(filter-out $(SDL_SOURCES) $(WINDOWS_ONLY),$(SOURCES))
 WIN_SOURCES  = $(filter-out $(POSIX_ONLY),$(SOURCES))
-C_FILES      = $(wildcard src/*/*.[ch] src/*/include/*.h src/third_party/*/*.[ch])
+C_FILES      = $(wildcard src/*/*.[ch] src/*/include/*.h)
 
 objects = $(patsubst src/%.c,$(1)/%.o,$(2))
 
@@ -104,4 +104,7 @@ clean:
 
 FORCE:
 
-.PHONY: all lib windows test clean FORCE
+.PHONY: all lib windows test clean format FORCE
+
+format:
+	uv run clang-format -i $(C_FILES)
