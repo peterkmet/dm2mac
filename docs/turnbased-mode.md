@@ -277,12 +277,12 @@ In the turn-based mode, `main.c` does these steps:
 
 ## Tests
 
-- `tests/test_state_json.py`: the JSON of the state, the view, and the map.
-- `tests/test_turnbased.py`: the protocol, the turn end rules, the stops, `act_many`, `save`, `load`, and `new_game`.
-- `tests/test_play_client.py`: `dm2-play` (the act forms, `--brief`, the call log).
+- `tests/port/test_state_json.py`: the JSON of the state, the view, and the map.
+- `tests/port/test_turnbased.py`: the protocol, the turn end rules, the stops, `act_many`, `save`, `load`, and `new_game`.
+- `tests/tools/test_play_client.py`: `dm2-play` (the act forms, `--brief`, the call log).
 
 ```sh
-uv run pytest -q -n auto tests/test_state_json.py tests/test_turnbased.py tests/test_play_client.py
+uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
 ```
 
 The manual checks are in section T of [manual-test-checklist.md](manual-test-checklist.md).

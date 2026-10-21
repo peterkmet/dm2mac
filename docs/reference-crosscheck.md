@@ -100,7 +100,7 @@ We keep our name in each case. The reason is in the last column.
 
 ## Function boundaries
 
-`tests/test_symbols.py` requires that our function addresses are the Ghidra function starts. We keep them. reDM2 has 79 starts inside our functions, and 34 of our starts have no reDM2 start.
+`tests/tools/test_symbols.py` requires that our function addresses are the Ghidra function starts. We keep them. reDM2 has 79 starts inside our functions, and 34 of our starts have no reDM2 start.
 
 reDM2 starts inside our functions (79):
 

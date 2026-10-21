@@ -71,7 +71,7 @@ reDM2 measurements for the shipped file:
 - No shipped image uses codec 1 (LZW). Do not port it first.
 - The delta table key `(0,0,8,0)` is absent. `g_gdat_base_image_count` (`0x7fabe`) stays 0. Thus `image_decode_4bpp_delta` does not run with the shipped file.
 - 1442 items have a gate outside `{0, 31, -32}` and are not images. The decode entry does not reject them. Do not decode them in the Step 8 test.
-- Step 8 sweep (`tests/test_gdat.py`): the English image keys (type 1) point to 803 4-bit, 3166 8-bit, and 6 uncompressed images, and to 24 items with other gates. All 3969 compressed images decode byte-equal to the original decoders. 167 gate-0 items of types 2, 4, 7, 8, and 9 are not valid 4-bit streams.
+- Step 8 sweep (`tests/differential/test_gdat.py`): the English image keys (type 1) point to 803 4-bit, 3166 8-bit, and 6 uncompressed images, and to 24 items with other gates. All 3969 compressed images decode byte-equal to the original decoders. 167 gate-0 items of types 2, 4, 7, 8, and 9 are not valid 4-bit streams.
 - Step 12: the 24 image items with other gates are 4-bit images. The gate (top 6 bits of word 1) holds the y offset and the top 6 bits of word 0 hold the x offset of the image (`gdat_get_image_offset`, `0x3eed3`). An 8-bit image holds its offset in bytes 4 and 5. When the top 6 bits of word 0 are `-32`, the offset is the value key `(category, index, 0x0c, entry)`. All 827 4-bit images decode byte-equal.
 - An uncompressed image holds u16 bits per pixel (4 or 8) at item + 4 and the pixels at item + 10. A 4-bit image (compressed or not) ends with its 16-byte color map.
 - The palette item `(1,0,9,254)` has 256 entries of 4 bytes: color index, then 8-bit red, green, blue. The VGA DAC takes 6-bit values, so the port shifts each value right by 2 (`gdat_palette_color`).
@@ -326,7 +326,7 @@ Decompiled with `tools/ghidra/decompile.sh` (without `Watcall.java`: the driver 
 - Level: `level = ((volume << 7) / 127) * velocity >> 7`, `a = table_0x2f00[level >> 1]`, `TL = 64 - (64 - a) * (64 - instrument TL) / 64` with the instrument KSL. The modulator gets it too when the melodic instrument of the channel program is additive (also on the drum channel).
 - Start state: channel volume 127, pitch bend 64, bend range 2, program 0, voice velocity 127.
 - The sustain bytes of operators 16 to 21 share memory with the low F-number bytes of voices 0 to 5. Controller `0x79` sets the velocity of the voice with the number of the channel.
-- Differential test (`tests/test_music.py`): the driver runs in Unicorn and gets the same events as the port. All 115842 note, controller, program, and bend events of the 29 songs give the same OPL register writes. The test uses the first 1000 events of each song and a list of edge events.
+- Differential test (`tests/differential/test_music.py`): the driver runs in Unicorn and gets the same events as the port. All 115842 note, controller, program, and bend events of the 29 songs give the same OPL register writes. The test uses the first 1000 events of each song and a list of edge events.
 
 ### Deviations of the C port (Step 19)
 
@@ -453,7 +453,7 @@ Source: reDM2 `docs/savegame.md`. We checked the call sequence in `session_load`
 
 ### Measurement: original load, then original save (Step 10)
 
-Method (`tests/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `session_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `save_restore_timed_effects`, `timeline_relink_events`). Then it runs the file part of `session_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `session_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
+Method (`tests/differential/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `session_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `save_restore_timed_effects`, `timeline_relink_events`). Then it runs the file part of `session_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `session_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
 
 Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
@@ -468,7 +468,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The original round trip is not byte-equal: 4292 of 50452 bytes differ, all in the dungeon image. The file size and the bit stream stay equal. The load creates the groups and items again in the first free records, so the first-thing table and the link words change.
 - A second round trip of the original output is byte-equal (a fixed point).
 - The C port gives the same bytes as the original writer for `start.DAT`, and for the original output.
-- A second test (`link_things` in `tests/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets another bit stream position than its record index, so the deferred links use the written positions.
+- A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets another bit stream position than its record index, so the deferred links use the written positions.
 
 ### Details found while porting (Step 10)
 
@@ -539,7 +539,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Deviations of the C port (Step 12b)
 
-- Step 16 removes this deviation: the active groups animate the creatures that are not static (frame, random shift, mirror). `tests/test_creature.py` compares the views of running creatures with the original. The view tests of Step 12 still give the original a zeroed active group, because they draw without active groups.
+- Step 16 removes this deviation: the active groups animate the creatures that are not static (frame, random shift, mirror). `tests/differential/test_creature.py` compares the views of running creatures with the original. The view tests of Step 12 still give the original a zeroed active group, because they draw without active groups.
 - Not ported until their steps: the push arrow cell and scale of a creature in front of the party, and all click zones (Step 14); `view_draw_centered_label`, whose only caller is the shop display (Step 15), and which needs the text drawing (Step 13).
 - Explosion types 100 and 101 in alcoves are ported, but GRAPHICS.DAT has no pictures for them.
 - Fixes: the mirrored sparkle mask of an odd width has an undefined last column in the original (an image cache bitmap that is not cleared); the port clears it. The rain bitmap of a wet ornament is rect width x rain height (all rain pictures are 224 x 20). Its tile row is that area - 16 - 0 to 31 pixels, from a start of `rand_below(area - 60)` (16-bit). When the tile row is not longer than its start, for example a wet ornament 1 or 2 pixels wide, the original tiles from past the end of the rain bitmap; the port then fills the background with the color key. Reads past tables (creature info, animation frames, creature sizes) and a division by 0 for a looping animation of length 0 are guarded.
@@ -707,7 +707,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Event `0x15` keeps its data bytes 2 to 5 at 0 (uninitialized in the original). `sound_request_delayed` masks the slot to 0 to 7.
 - The port does not check the sound settings of `sound_play_requests` (digital sound on, sound volume not 0). The sound volume setting is Step 20 (dialogs).
 - The walking distance of a sound is `creature_get_party_distance` (the party distance map of Step 16).
-- Kept quirk of the original: the repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `src/engine/sensor.c`). Most of these sounds come from far away and do not play. `tests/test_world.py` compares the repeated sounds with the original.
+- Kept quirk of the original: the repeated ambient sound of a wall sensor (event `0x5a`, `timeline_event_sensor_ambient_sound`): the original takes the step to the square in front of the wall from `g_dir_dx` and `g_dir_dy` with the high byte of the sensor thing as the index, so it reads the constant data after those tables (thing sizes, text escape words, creature info). The port uses the same values (`ambient_wall_dx` and `ambient_wall_dy` in `src/engine/sensor.c`). Most of these sounds come from far away and do not play. `tests/differential/test_world.py` compares the repeated sounds with the original.
 
 ## 12. Creatures, projectiles, magic, and minions (Step 16)
 
