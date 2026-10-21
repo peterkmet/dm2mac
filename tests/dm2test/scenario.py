@@ -9,11 +9,11 @@ from dm2test.markers import ROOT
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, Event, Timeline, original_save
 from dm2tools.emu import SCRATCH
-from test_view import OriginalView
+from dm2test.view import OriginalView
 
 
 def original_view_of(lib, gdat, start):
-    """The original code after loading start, with the GDAT data of the C port (test_view.OriginalView)."""
+    """The original code after loading start, with the GDAT data of the C port (dm2test.view.OriginalView)."""
     lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
     lib.gdat_item.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
@@ -34,7 +34,7 @@ SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
 # Functions of later steps and of the DOS layer: (address, stack arguments, result).
 STUBS = {
     0x138D9: (0, 0),                                                         # screen
-    0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (test_view stubs the poll)
+    0x209E0: (0, 0), 0x14C55: (0, 0), 0x14C68: (0, 0),                     # input flush, mouse (dm2test.view stubs the poll)
     0x5599F: (0, 0),                                                         # message area
     0x14B4F: (0, 0), 0x14C0E: (0, 0),                                       # mouse areas of an input mode (not ported)
     0x13A87: (0, 0), 0x13B7C: (0, 0),                                       # screen presents
@@ -227,7 +227,7 @@ class Scenario(CreatureOracle):
         assert lib.text_init(gdat)  # the messages of the leader hand
         view = original_view_of(lib, gdat, start)
         self.emu = emu = view.emu
-        from test_interface import G_FONT_BITMAP, G_UI_COLORS, VGA
+        from dm2test.interface import G_FONT_BITMAP, G_UI_COLORS, VGA
         from unicorn import UC_PROT_ALL
         emu.uc.mem_map(VGA, 0x10000, UC_PROT_ALL)  # the screen of the pressed buttons, messages, and panels
         emu.write_u32(G_UI_COLORS, view.entry_data(1, 0, 0x0D, 0xFE))
@@ -253,11 +253,11 @@ class Scenario(CreatureOracle):
         ctypes.memset(ctypes.addressof(self.party), 0, ctypes.sizeof(self.party))
         self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         # ... and from the interface state of the program start: an earlier test can leave a recruit open
-        from test_interface import UiState
+        from dm2test.interface import UiState
         ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "ui")), 0, ctypes.sizeof(UiState))
         # ... and from a running game: the end-game sensor of an earlier test (session_complete) stops all damage
-        from test_dialog import Session
-        from test_input import MainLoop
+        from dm2test.dialog import Session
+        from dm2test.input import MainLoop
         session = Session.in_dll(lib, "session")
         session.completed = session.exit_code = 0
         MainLoop.in_dll(lib, "main_loop").quit = 0
@@ -410,7 +410,7 @@ class Scenario(CreatureOracle):
 
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
-        import test_view as tv
+        from dm2test import view as tv
         lib, emu, view = self.lib, self.emu, self.view
         map_ = struct.unpack("<h", emu.read(0x7F262, 2))[0]
         graphics, flags = lib.dungeon_map_graphics(map_), lib.dungeon_map_flags(map_)
@@ -606,7 +606,7 @@ class Scenario(CreatureOracle):
     @property
     def damage(self):
         """True when a champion has pending damage or lost health since the last read (the coverage of a test)."""
-        from test_interface import champion_records
+        from dm2test.interface import champion_records
         records = bytes(champion_records(self.lib))
         health = tuple(struct.unpack_from("<h", records, i * CHAMPION_SIZE + 0x36)[0] for i in range(4))
         last, self._health = getattr(self, "_health", health), health
@@ -614,7 +614,7 @@ class Scenario(CreatureOracle):
 
     def champion_records(self):
         """(C, original) champion records without the redraw flags."""
-        from test_interface import champion_records
+        from dm2test.interface import champion_records
         mine, theirs = bytearray(champion_records(self.lib)), bytearray(self.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE))
         for record in (mine, theirs):
             for i in range(4):

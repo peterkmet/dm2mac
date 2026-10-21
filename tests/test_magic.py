@@ -11,9 +11,10 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.creature import CreatureScenario
-from test_interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, Game, c_screen, champion_bytes, champion_records,
-                            diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
-from test_interface import gdat, original, port  # noqa: F401 (fixtures)
+from dm2test.interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, c_screen, champion_bytes, champion_records,
+                               diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
+from dm2test.interface import gdat, original, port  # noqa: F401 (fixtures)
+from dm2test.save import Game
 from dm2test.scenario import start  # noqa: F401 (fixture)
 from dm2test.lib import load_lib
 
@@ -238,7 +239,7 @@ def spell_ui(original):
     emu.stub(INV_RENDER_HAND_ICON, lambda *_: 0)  # the hand icon bitmap of the mouse cursor (not set up here)
     # the name of a new object in the leader hand scrolls the message area: the IBMIOP move as in test_interface;
     # the restore of the interface clears g_iop_buffer, so it is set at each scroll
-    from test_interface import G_IOP_BUFFER, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W, VGA, ZONE_GET_RECT
+    from dm2test.interface import G_IOP_BUFFER, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W, VGA, ZONE_GET_RECT
     from unicorn import UC_HOOK_CODE
     from unicorn.x86_const import UC_X86_REG_EIP
     buffer = original.alloc(0x400)
@@ -283,7 +284,7 @@ def click_feedback(lib, original, cmd, where):
     """A left click on the button of command cmd in the port; the original starts the click feedback script of the
     same command and rect. Both run the script tick by tick until it ends; the screens must be equal after each
     tick. The queued commands and the disabled input are cleared after the script."""
-    from test_input import MainLoop
+    from dm2test.input import MainLoop
     emu = original.emu
     if cmd not in button_clicks:
         rect = (ctypes.c_int16 * 4)()
@@ -325,7 +326,7 @@ def spell_kind(index):
 def cast_ui(spell_ui):
     """spell_ui; the heap of the original (the dungeon) goes back after the test, so the missiles of the casts do not
     stay. The port fixture puts the globals back."""
-    from test_view import HEAP
+    from dm2test.view import HEAP
     heap = spell_ui.emu.read(HEAP, spell_ui.top - HEAP)
     yield spell_ui
     spell_ui.emu.write(HEAP, heap)
@@ -810,7 +811,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
                 assert command(lib, emu, 0x56 + rng.randrange(4)) == (1, 1)
             elif r < 0.25 and kind == 1:
                 rect = original.alloc(8)
-                from test_interface import ZONE_GET_RECT
+                from dm2test.interface import ZONE_GET_RECT
                 emu.call(ZONE_GET_RECT, 99, rect)
                 zx, zy, zw, zh = struct.unpack("<4h", emu.read(rect, 8))
                 before = word(lib, thing, 6)

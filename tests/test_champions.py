@@ -5,7 +5,7 @@ import struct
 
 import pytest
 
-from test_input import Loop
+from dm2test.input import Loop
 from dm2test.scenario import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
@@ -248,7 +248,7 @@ def test_drink_and_hand_actions(loop, lib):
     # The inventory of the first champion: the bota of the pouch goes into the leader hand, a click on the mouth
     # drinks from it, and it goes back into the pouch. Then the action menu of the ready hand and its first action,
     # several times, with the busy hand counting down between them.
-    from test_interface import champion_records
+    from dm2test.interface import champion_records
     run(loop, [("k", KEY_INVENTORY), ("t", 16)], "inventory")
     pouch = find_click(lib, MODE_INVENTORY, CMD_SLOT_FIRST + 13)
     run(loop, [("c", *pouch), ("t", 8)], "take bota")
@@ -279,7 +279,7 @@ G_CANDIDATE, G_INVENTORY = 0x7F284, 0x7F972
 
 def viewport_on_screen(lib):
     """The viewport zone (7) of the C screen."""
-    from test_interface import SCREEN_W, VIEW_W, VIEW_H, c_screen
+    from dm2test.interface import SCREEN_W, VIEW_W, VIEW_H, c_screen
     rect = (ctypes.c_int16 * 4)()
     lib.zone_get_rect(7, rect)
     screen = c_screen(lib)
@@ -290,7 +290,7 @@ def test_recruit_and_cancel(loop, lib):
     # The party walks to the first mirror and recruits its champion; then it walks to the next mirror, takes that
     # champion as a candidate, and sends it back. The candidate panel shows on the screen, as the original
     # ui_draw_champion_state (0x48890) presents the viewport after it draws the inventory.
-    from test_interface import UiState, c_view
+    from dm2test.interface import UiState, c_view
     ui = UiState.in_dll(lib, "ui")
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")
     for n, command in enumerate((CMD_RECRUIT, CMD_RECRUIT_CANCEL)):

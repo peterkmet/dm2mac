@@ -9,7 +9,7 @@ import pytest
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
-from test_dialog import program_start_after  # noqa: F401 (an autouse fixture)
+from dm2test.dialog import program_start_after  # noqa: F401 (an autouse fixture)
 from dm2test.save import GDAT_VALUE_TYPES, GRAPHICS
 from dm2test.lib import load_lib
 

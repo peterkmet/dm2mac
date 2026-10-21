@@ -5,10 +5,10 @@ import ctypes
 
 import pytest
 
-from test_interface import VIEW_H, VIEW_W, c_view
+from dm2test.interface import VIEW_H, VIEW_W, c_view
 from test_modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                         VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
-from test_input import run_ticks, session  # noqa: F401 (session is a fixture)
+from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
 from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
@@ -281,7 +281,7 @@ def test_damaged_quick_save_keeps_the_automap(lib, automap):
 
 def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
     game, data = automap
-    from test_dialog import Session
+    from dm2test.dialog import Session
     run_ticks(lib, 20)
     assert seen_squares(lib, game.party_map)
     (data / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
@@ -458,7 +458,7 @@ def test_cheat_keys_work_only_on_the_advanced_automap(lib, automap):
 
 
 def champion_word(lib, offset, value=None):
-    from test_interface import champion_records
+    from dm2test.interface import champion_records
     word = ctypes.c_int16.from_buffer(champion_records(lib), offset)
     if value is not None:
         word.value = value

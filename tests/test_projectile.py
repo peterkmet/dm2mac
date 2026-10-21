@@ -10,7 +10,7 @@ import pytest
 
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
-from test_input import CHAMPION_UNCOMPARED  # redraw flags
+from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
 from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
@@ -70,7 +70,7 @@ def flying(s):
 def assert_saves(s, where):
     """The full check: the quick check and the champion records. (The save file comparison of test_move does not fit
     the creature scenario: the original save deactivates the creature groups of its active group table.)"""
-    from test_interface import champion_records
+    from dm2test.interface import champion_records
     check(s, where)
     mine, theirs = bytearray(champion_records(s.lib)), bytearray(s.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE))
     for champ in range(4):
@@ -152,7 +152,7 @@ def place_near(s, rng, map_, x, y):
 
 def four_champions(s, rng):
     """Four champions (copies of the first) in random cells, in both."""
-    from test_interface import champion_bytes, champion_records, sync_champions
+    from dm2test.interface import champion_bytes, champion_records, sync_champions
     lib = s.lib
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     s.game.champion_count = 4
@@ -380,7 +380,7 @@ def test_champions_throw(pj, lib):
 def test_creature_attacks_champions(pj, lib):
     # creature_attack_champion for every creature group of the dungeon on random champions, awake and asleep,
     # visible and invisible, in light and darkness: the damage hook arguments and the random numbers.
-    from test_interface import set_magic
+    from dm2test.interface import set_magic
     rng = random.Random(166)
     light = ctypes.c_int.in_dll(lib, "view_light_level")
     sleeping = ctypes.c_int.in_dll(lib, "party_sleeping")

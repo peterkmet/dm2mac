@@ -8,8 +8,8 @@ import pytest
 
 from dm2test.markers import ROOT
 from test_control import GameWithChampions
-from test_input import MainLoop
-from test_interface import ActionArea
+from dm2test.input import MainLoop
+from dm2test.interface import ActionArea
 from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
@@ -47,7 +47,7 @@ def turnbased(lib):
 
 
 def load(lib, gdat, data, tmp_path):  # noqa: F811
-    """A save ready to play, as build/dm2 --save starts it (test_input.session); returns the game record."""
+    """A save ready to play, as build/dm2 --save starts it (dm2test.input.session); returns the game record."""
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(data)
     assert lib.save_load(str(path).encode(), gdat) == 0

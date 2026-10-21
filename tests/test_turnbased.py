@@ -14,8 +14,8 @@ import pytest
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from test_control import PALETTE_COLORS, RGB, GameWithChampions
-from test_dialog import Session
-from test_input import session  # noqa: F401 (a fixture)
+from dm2test.dialog import Session
+from dm2test.input import session  # noqa: F401 (a fixture)
 from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
@@ -321,7 +321,7 @@ def test_choose_action_with_both_hands(tb, lib):
 def test_take_coin_moves_a_coin_to_the_hand(tb, lib):
     """The first money box of start.DAT (it holds coins) in the ready hand; choose_action on that hand opens it: act
     take_coin on a slot with coins -> state.leader_hand is that coin, one coin less in the box."""
-    from test_interface import things_of
+    from dm2test.interface import things_of
     path, *_ = tb
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
     lib.champ_add_object_to_slot.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
@@ -349,7 +349,7 @@ def test_put_in_slot_needs_an_object_in_hand(tb, lib):
 def test_drop_object_ahead_of_a_floor_hiding_creature_is_refused(tb, lib):
     """A static creature whose floor takes no click stands ahead: drop_object cell 2 is refused and the object stays
     in the leader hand (a click there throws it)."""
-    from test_interface import things_of
+    from dm2test.interface import things_of
     path, game, _ = tb
     assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
     lib.creature_create_group.restype = ctypes.c_uint16

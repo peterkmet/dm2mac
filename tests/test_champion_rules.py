@@ -8,7 +8,7 @@ import struct
 
 import pytest
 
-from test_interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
+from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
 from dm2test.scenario import Scenario, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
@@ -413,7 +413,7 @@ def test_money_and_prices_match_original(rules, lib):
     # Coins into and out of a money box (also through clicks on its panel with the leader hand), the exchange of
     # coins, the split of an amount into coins, the item class sets of the merchants, and their prices.
     from dm2tools.emu import SCRATCH
-    from test_interface import G_LEADER_HAND
+    from dm2test.interface import G_LEADER_HAND
     rng, emu, scenario = rules.rng, rules.emu, rules.s
     lib.money_init_coin_table()
     emu.call(MONEY_INIT_COIN_TABLE)

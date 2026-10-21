@@ -8,7 +8,7 @@ import struct
 
 import pytest
 
-from test_interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
+from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
 from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
     Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
@@ -126,7 +126,7 @@ def test_storm_steps_match_original(world):
 
 def draw_both(sc):
     """The view of the party in both, each with its own light level and sky objects."""
-    import test_view as tv
+    from dm2test import view as tv
     lib, emu, game = sc.lib, sc.emu, sc.game
     light = struct.unpack("<h", emu.read(WEATHER["light_level"][0], 2))[0]
     sky = emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)
@@ -541,8 +541,8 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
     # on each tick; weather, light, random seed, sky objects, sounds, dungeon, and the view picture after each fall.
     # (The second fall view of a pit below a pit, with its own map change and weather update, needs the debug flag
     # g_debug_flag_g of the original: it never runs in the game.)
-    import test_view as tv
-    from test_input import KEY_FORWARD, Loop
+    from dm2test import view as tv
+    from dm2test.input import KEY_FORWARD, Loop
     from dm2test.scenario import approaches
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     sc = Loop(lib, gdat, start, tmp_path)

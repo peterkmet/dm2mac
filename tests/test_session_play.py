@@ -6,7 +6,7 @@ import struct
 
 import pytest
 
-from test_dialog import DialogState, InputMatch, Session, program_start_after  # noqa: F401 (an autouse fixture)
+from dm2test.dialog import DialogState, InputMatch, Session, program_start_after  # noqa: F401 (an autouse fixture)
 from dm2test.scenario import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
@@ -446,8 +446,8 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     # once with the objects on that square, faces the party, and leads; no inventory, no mouth, no message. start.DAT
     # is the game after this join: both take the champion out of the party and put its objects back on the square.
     from test_champions import LeaderHand
-    from test_input import Loop
-    from test_interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records, UiState
+    from dm2test.input import Loop
+    from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records, UiState
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     loop = Loop(lib, gdat, start, tmp_path)
     emu, game = loop.emu, loop.game
@@ -495,7 +495,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     # call it: the scream of the dead champion, the end dialog, QUIT GAME: the exit code of a dead party.
     sc = play
     emu = sc.emu
-    from test_input import MainLoop
+    from dm2test.input import MainLoop
     loop = MainLoop.in_dll(lib, "main_loop")
     request.addfinalizer(lambda: setattr(loop, "end", 0))  # the next tests start with a running loop
     assert sc.game.champion_count == 1 and not loop.end
@@ -542,7 +542,7 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     # item): the load and the start of its session in both (save_load and play_start_session, as session_load and
     # session_init run them) give the same light, champions, and leader hand (object, weight, icon).
     from test_champions import LeaderHand
-    from test_input import Loop
+    from dm2test.input import Loop
     from dm2test.save import Event, Game
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
@@ -582,8 +582,8 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
     # build/dm2 --save start.DAT: Alt+S opens the save menu over the game; RESUME, or SAVE into slot 2, closes it. The
     # game screen outside the viewport is as before the menu (no dialog parts, the status boxes), and the forward key
     # moves the party.
-    from test_input import KEY_FORWARD, run_ticks, session
-    from test_view import Bitmap
+    from dm2test.input import KEY_FORWARD, run_ticks, session
+    from dm2test.view import Bitmap
     game, _ = session.__wrapped__(lib, gdat, start, tmp_path)
     (tmp_path / "DATA").mkdir()
     Session.in_dll(lib, "session").data_dir = str(tmp_path).encode()
@@ -617,8 +617,8 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
 def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_path, held):
     # The original runs sleep (0x8e) and the save menu (0x8c, Alt+S) only while neither the eye (0x7f224) nor the
     # mouth (0x7f21c) is held.
-    from test_input import run_ticks, session
-    from test_interface import UiState
+    from dm2test.input import run_ticks, session
+    from dm2test.interface import UiState
     from dm2test.scenario import Command
     session.__wrapped__(lib, gdat, start, tmp_path)
     lib.input_key_down.argtypes = [ctypes.c_uint16]

@@ -1,5 +1,5 @@
 """Step 20: the dialogs, the slot dialogs, the start menu picture, and the name editor against the original drawing in
-dm2tools.emu (the harness of test_interface.py)."""
+dm2tools.emu (the harness of dm2test.interface)."""
 
 import ctypes
 import struct
@@ -7,7 +7,11 @@ import struct
 import pytest
 from unicorn import UC_PROT_ALL
 
-from test_interface import (  # noqa: F401 (gdat, original, and port are fixtures)
+from dm2test.dialog import (  # noqa: F401 (program_start_after is an autouse fixture)
+    G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch, Session,
+    program_start_after,
+)
+from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixtures)
     SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff, gdat, original, port,
 )
 from dm2test.lib import load_lib
@@ -22,45 +26,12 @@ SAVE_OPEN_SLOT_DIALOG, SAVE_DRAW_SLOT_SELECTION, SAVE_DRAW_NAME_ENTRY = 0x37AB0,
 MENU_DRAW_TITLE = 0x3867B
 WAIT_VBLANKS, FILE_OPEN, FILE_CLOSE, FILE_SEEK, KBD_KEY_AVAILABLE = 0x1C660, 0x10F7E, 0x10F9E, 0x10F5D, 0x114B8
 INPUT_POP_MODE, IOP_SET_VIDEO_STATE, MEM_FREE_PICTURE, G_MOUSE_HIDE_COUNT = 0x2075D, 0x138C7, 0x3BCC6, 0x71558
-G_DIALOG_SCREEN_MODE, G_SCREEN_BITMAP, G_DISK_PATH_KIND, G_DATA_PATH, G_SAVE_PATH = 0x717BC, 0x71550, 0x7F98C, 0x70536, 0x7053A
 G_SOUND_VOLUME, G_MUSIC_VOLUME, G_TITLE_PICTURE, G_TITLE_PALETTE, G_MENU_PICTURE = 0x7169C, 0x7169E, 0x7F950, 0x756F0, 0x7F94C
 G_SAVE_SLOTS, G_INV_PANEL_MODE, G_FORMAT_BUFFERS = 0x7F8F0, 0x756F8, 0x7F978
 G_GDAT_LOADED, G_IMAGE_CACHE_ENABLED = 0x7FA84, 0x7FA6C
 DRIVE_PATH = b"GAME"
 DIALOGS = [(0x1B, 0), (0x0C, 0), (0x0D, 0), (0x0E, 0), (0x10, 0), (0x06, 0), (0x00, 0x1B), (0x00, 0x1F), (0x00, 0x1C),
            (0x11, 0), (0x12, 0), (0x0E, 0x1F)]
-
-
-class DialogState(ctypes.Structure):
-    _fields_ = [("screen_mode", ctypes.c_int), ("button_count", ctypes.c_int), ("button_category", ctypes.c_uint8),
-                ("button_index", ctypes.c_uint8), ("button_entry", ctypes.c_uint8), ("progress_enabled", ctypes.c_int),
-                ("progress_width", ctypes.c_int16), ("id", ctypes.c_int)]
-
-
-class Session(ctypes.Structure):
-    _fields_ = [(n, ctypes.c_int) for n in ("new_game", "use_dungenb", "loaded", "completed", "restart", "offer_restore",
-                                            "quit_code", "slot")] + [
-        ("load_time", ctypes.c_uint32), ("save_time", ctypes.c_uint32), ("exit_code", ctypes.c_int),
-        ("save_name", ctypes.c_char * 32), ("data_dir", ctypes.c_char * 1024),
-        ("save_dir", ctypes.c_char * 1024)]
-
-
-def reset_session(lib):
-    """The session state of the program start, so that later tests start from it."""
-    session = Session.in_dll(lib, "session")
-    for name in ("new_game", "use_dungenb", "loaded", "completed", "restart", "offer_restore", "quit_code", "exit_code"):
-        setattr(session, name, 0)
-    session.slot = -1
-    state = DialogState.in_dll(lib, "dialog")
-    state.screen_mode, state.button_count = 1, 0
-    ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 0  # MainLoop.quit
-    ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = None
-
-
-@pytest.fixture(autouse=True)
-def program_start_after(lib):
-    yield
-    reset_session(lib)
 
 
 @pytest.fixture()
@@ -158,14 +129,8 @@ def test_volume_dialog_matches_original(ui, original):
 
 def close_dialog(lib):
     """A frame hook: the player clicks the first button of the open dialog."""
-    import test_dialog
-    match = test_dialog.InputMatch.in_dll(lib, "input_match")
+    match = InputMatch.in_dll(lib, "input_match")
     match.choice, match.value = 1, 0xDB
-
-
-class InputMatch(ctypes.Structure):
-    _fields_ = [("zone", ctypes.c_uint16), ("origin", ctypes.c_int16), ("key", ctypes.c_uint16), ("choice", ctypes.c_int16),
-                ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("value", ctypes.c_uint16), ("rect", ctypes.c_int16 * 4)]
 
 
 def test_slot_dialogs_match_original(ui, original, tmp_path):
@@ -237,7 +202,7 @@ NAME_KEYS = [0x2D, 0x0E, 0x10, 0x02, 0x39, 0x1C, 0x0E, 0x0E, 0x0E, 0x2C, 0x0F, 0
 def test_champion_name_editor_matches_original(ui, original):
     # The name editor of the inventory: the name and title fields with the cursor after each key, and the new name and
     # title of the champion.
-    from test_interface import G_CHAMPIONS, UiState, champion_records
+    from dm2test.interface import G_CHAMPIONS, UiState, champion_records
     lib, emu = ui, original.emu
     lib.input_init()
     lib.input_key_down.argtypes = [ctypes.c_uint16]

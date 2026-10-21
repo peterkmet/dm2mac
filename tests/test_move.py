@@ -63,7 +63,7 @@ def test_bump_damage_hits_the_champions_of_the_bump_side(scenario, lib):
     # Four champions (copies of the first) in random cells, random places and directions, moves in all four
     # directions: on a bump into a wall the champions of the two cells on that side take the damage.
     import random
-    from test_interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+    from dm2test.interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
     rng = random.Random(15)
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     scenario.game.champion_count = 4
@@ -169,7 +169,7 @@ def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
 def test_clicks_in_the_view(scenario, lib):
     # The party faces walls with sensors (and doors); both draw the view, then a click goes to the center of each
     # click zone of the view (wall ornaments, door buttons, objects) and to the front wall.
-    import test_view as tv
+    from dm2test import view as tv
     scenario.lib.view_draw_dungeon.argtypes = [ctypes.c_int] * 3
     zones = (ctypes.c_uint8 * (32 * 12)).in_dll(lib, "view_click_zones")
     count = ctypes.c_int.in_dll(lib, "view_click_zone_count")

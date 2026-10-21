@@ -17,10 +17,10 @@ from contextlib import contextmanager
 import pytest
 
 from dm2tools.control_client import request
-from test_input import session  # noqa: F401 (a fixture)
+from dm2test.input import session  # noqa: F401 (a fixture)
 from dm2test.markers import ROOT
 from dm2test.scenario import WorldGame, gdat, start  # noqa: F401 (gdat and start are fixtures)
-from test_interface import UiState, things_of
+from dm2test.interface import UiState, things_of
 from dm2test.lib import load_lib
 
 
