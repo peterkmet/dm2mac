@@ -11,7 +11,7 @@ This page describes the real-time commands. Each request runs on the main thread
 1. Build the port.
 
    ```bash
-   make -C port
+   make
    ```
 
 2. Start the game with the socket. The dummy drivers run it without a window and without sound.

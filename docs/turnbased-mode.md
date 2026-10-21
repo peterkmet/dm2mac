@@ -9,7 +9,7 @@ This page is a run guide and a reference. The other modes and the raw commands a
 1. Build the port.
 
    ```sh
-   make -C port
+   make
    ```
 
 2. Start the game in the turn-based mode. A run plays without sound.

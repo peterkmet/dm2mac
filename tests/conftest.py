@@ -20,7 +20,11 @@ def game_dir():
 def pytest_configure(config):
     # builds once in the main process, before the xdist workers start
     if not hasattr(config, "workerinput"):
-        subprocess.run(["make", "-C", "port"], cwd=ROOT, check=True, capture_output=True)
+        sdl = subprocess.run(["brew", "--prefix", "sdl3"], capture_output=True, text=True)
+        have_sdl = sdl.returncode == 0 and (Path(sdl.stdout.strip()) / "include/SDL3/SDL.h").exists()
+        result = subprocess.run(["make", "all" if have_sdl else "lib"], cwd=ROOT, capture_output=True, text=True)
+        if result.returncode:
+            raise pytest.UsageError("make failed:\n" + result.stderr[-4000:])
 
 
 def pytest_sessionfinish(session, exitstatus):

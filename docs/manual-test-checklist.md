@@ -52,7 +52,7 @@ The items marked "control socket" ran over `docs/llm-control.md` with the saves 
 - macOS with SDL3 from Homebrew: `brew install sdl3`.
 - The game files of Dungeon Master II (PC DOS, English, 1995) in `game/`, with `game/DATA/GRAPHICS.DAT`, `game/DATA/DUNGEON.DAT`, `game/DATA/SONGLIST.DAT`, `game/MELODIC.BNK`, and `game/DRUM.BNK`.
 - DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
-- `make -C port` and `uv run pytest` pass (plan Step 21).
+- `make` and `uv run pytest` pass (plan Step 21).
 - Optional: a DOS save near the end of the game, for the end sensor (item J16).
 
 ## Build and start
@@ -60,7 +60,7 @@ The items marked "control socket" ran over `docs/llm-control.md` with the saves 
 1. Build the program and the test library:
 
    ```sh
-   make -C port
+   make
    ```
 
    Expected result: `build/dm2` and `build/libdm2.dylib`, no warnings.
