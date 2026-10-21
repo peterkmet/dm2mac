@@ -1,12 +1,13 @@
-#ifndef MVE_H
-#define MVE_H
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_DATA_MVE_H
+#define DM2_DATA_MVE_H
 /* Prefixes: mve_ */
 
 /* Interplay MVE movies: chunks, opcodes, 8-bit video, audio (docs/skull-formats.md section 15); from memory only. */
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define MVE_BLOCK_SIZE 8            /* pixels per side of a video block */
 #define MVE_WIDTH_MAX 640
@@ -54,4 +55,4 @@ const uint8_t *mve_pixels(const MveStream *m);
 /* Decodes the blocks of one video data opcode into the current frame; false when the data is too short. */
 bool mve_decode_video(MveStream *m, const uint8_t *video, int size);
 
-#endif
+#endif /* DM2_DATA_MVE_H */

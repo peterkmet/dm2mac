@@ -1,9 +1,12 @@
-#ifndef GFX_H
-#define GFX_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_DATA_GFX_H
+#define DM2_DATA_GFX_H
+/* Prefixes: gfx_ pal_ */
+
+/* Blitting, scaling, and palette handling of 8 bpp pictures and the screen. */
+
 #include <stdint.h>
 #include "gdat.h"
-
-/* Prefixes: gfx_ pal_ */
 
 /* Rectangle fields: int16_t rect[RECT_SIZE] = x, y, width, height. */
 enum { RECT_X, RECT_Y, RECT_W, RECT_H, RECT_SIZE };
@@ -58,4 +61,4 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
 uint8_t *pal_get_dimmed_remap(const gdat_t *gdat, uint8_t *table, int category, int index, int entry, int dim,
                               int key1, int key2, int16_t *count);
 
-#endif
+#endif /* DM2_DATA_GFX_H */

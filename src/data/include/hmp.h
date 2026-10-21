@@ -1,12 +1,13 @@
-#ifndef HMP_H
-#define HMP_H
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_DATA_HMP_H
+#define DM2_DATA_HMP_H
 /* Prefixes: hmp_ */
 
 /* HMP song player of the HMI SOS MIDI library in SKULL.EXE: tracks, delta times, HMI loops, volumes. */
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 enum {
     HMP_OK = 0,
@@ -50,4 +51,4 @@ void hmp_pause(void);
 void hmp_resume(void);
 void hmp_unmute(void);
 
-#endif
+#endif /* DM2_DATA_HMP_H */

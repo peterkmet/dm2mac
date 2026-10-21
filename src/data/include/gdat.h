@@ -1,11 +1,12 @@
-#ifndef GDAT_H
-#define GDAT_H
-#include <stddef.h>
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_DATA_GDAT_H
+#define DM2_DATA_GDAT_H
 /* Prefixes: gdat_ image_ */
 
 /* GRAPHICS.DAT: a header with item sizes, a key table (item 0), then the items. */
+
+#include <stddef.h>
+#include <stdint.h>
 
 enum {
     GDAT_OK = 0,
@@ -104,4 +105,4 @@ int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, 
 /* An 8 bpp image stream: header, codec byte, LZSS data. */
 int image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size);
 
-#endif
+#endif /* DM2_DATA_GDAT_H */

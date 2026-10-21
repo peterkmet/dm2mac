@@ -1,5 +1,10 @@
-#ifndef LE_H
-#define LE_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_DATA_LE_H
+#define DM2_DATA_LE_H
+/* Prefixes: le16 le32 put_le16 put_le32 */
+
+/* Little-endian reads and writes of the DOS file formats. */
+
 #include <stdint.h>
 
 #define LE16_BITS 16
@@ -10,9 +15,6 @@
 #define NIBBLE_MASK 0xf
 #define DECIMAL_BASE 10
 
-/* Prefixes: le16 le32 put_le16 put_le32 */
-
-/* Little-endian reads and writes of the DOS file formats. */
 static inline uint16_t le16(const uint8_t *p) { return p[0] | p[1] << 8; }
 static inline uint32_t le32(const uint8_t *p) { return le16(p) | (uint32_t)le16(p + 2) << LE16_BITS; }
 
@@ -28,4 +30,4 @@ static inline void put_le32(uint8_t *p, uint32_t value)
     put_le16(p + 2, value >> LE16_BITS);
 }
 
-#endif
+#endif /* DM2_DATA_LE_H */
