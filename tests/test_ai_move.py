@@ -438,7 +438,6 @@ def test_try_attack(ai):
     # Attacks from the squares near walls, doors, and other squares on the squares in lines around them: the party
     # (modes 0, 1), groups (2), anything (3), with and without the action; the attack skills of each creature type.
     rng = random.Random(19)
-    lib = ai.lib
     attacked = 0
     for g, x, y, m in places(ai, rng):
         ai.begin(g, x, y, m)

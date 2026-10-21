@@ -242,7 +242,7 @@ def test_drink_and_hand_actions(loop, lib):
     # The inventory of the first champion: the bota of the pouch goes into the leader hand, a click on the mouth
     # drinks from it, and it goes back into the pouch. Then the action menu of the ready hand and its first action,
     # several times, with the busy hand counting down between them.
-    from test_interface import CHAMPION_SIZE, champion_records
+    from test_interface import champion_records
     run(loop, [("k", KEY_INVENTORY), ("t", 16)], "inventory")
     pouch = find_click(lib, MODE_INVENTORY, CMD_SLOT_FIRST + 13)
     run(loop, [("c", *pouch), ("t", 8)], "take bota")

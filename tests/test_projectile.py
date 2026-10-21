@@ -9,7 +9,7 @@ import struct
 import pytest
 
 import test_creature as tc
-from test_move import COMMAND_RECORD, ENDOFLIST, TIMELINE_ADD_EVENT, sensor_squares, square_event, squares
+from test_move import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from test_input import CHAMPION_UNCOMPARED  # redraw flags
 from test_move import gdat, start  # noqa: F401 (fixtures)
 

@@ -5,7 +5,6 @@ import ctypes
 
 import pytest
 
-from conftest import ROOT
 from test_interface import VIEW_H, VIEW_W, c_view
 from test_modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                         VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
