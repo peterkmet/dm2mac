@@ -9,6 +9,7 @@ from unicorn.x86_const import (
     UC_X86_REG_ESP, UC_X86_REG_FS, UC_X86_REG_GDTR, UC_X86_REG_GS, UC_X86_REG_SS,
 )
 
+from dm2test import constants as C
 from dm2test.audio import Music
 from dm2test.markers import ROOT
 from dm2test.lib import load_lib
@@ -22,9 +23,8 @@ GAME = ROOT / "game"
 SONG_COUNT = 29
 SONG_TEST_HMP = 10  # game/TEST.HMP is song 10
 SONG_GAME = 2       # the song of map 0
-SAMPLE_RATE = 44100
+SAMPLE_RATE = C.MUSIC_SAMPLE_RATE
 TICK_RATE = 120
-OK = 0
 # SONGLIST.DAT bytes 0 to 45 (docs/skull-formats.md, section 2)
 SONGLIST = [2, 17, 14, 27, 4, 12, 12, 18, 15, 13, 12, 12, 16, 6, 21, 14, 17, 17, 17, 17, 3, 8, 17, 14, 2, 23, 22,
             20, 17, 0, 2, 2, 2, 9, 2, 3, 14, 16, 28, 22, 19, 9, 22, 3, 17, 2]
@@ -64,7 +64,7 @@ def gd(lib):
     lib.music_init.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     lib.music_render.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
     handle = ctypes.c_void_p()
-    assert lib.gdat_load(str(GAME / "DATA" / "GRAPHICS.DAT").encode(), ctypes.byref(handle)) == OK
+    assert lib.gdat_load(str(GAME / "DATA" / "GRAPHICS.DAT").encode(), ctypes.byref(handle)) == C.GDAT_OK
     yield handle
     lib.gdat_free(handle)
 
@@ -75,8 +75,8 @@ def music(lib, gd):
     state = Music.in_dll(lib, "music")
     lib.music_quit()
     ctypes.memset(ctypes.byref(state), 0, ctypes.sizeof(state))
-    state.requested_song, state.current_song = -1, 0xFF
-    assert lib.music_init(gd, str(GAME).encode()) == OK
+    state.requested_song, state.current_song = -1, C.MUSIC_NO_SONG
+    assert lib.music_init(gd, str(GAME).encode()) == C.MUSIC_OK
     yield state
     lib.music_quit()
 
@@ -165,7 +165,7 @@ class Recorder:
         self.lib, self.events, self.tick = lib, [], 0
         self.send = SEND(lambda p: self.events.append((self.tick, normalized(ctypes.string_at(p, 3)))))
         _callbacks.append(self.send)
-        assert lib.hmp_start(data, len(data), ctypes.cast(self.send, ctypes.c_void_p)) == OK
+        assert lib.hmp_start(data, len(data), ctypes.cast(self.send, ctypes.c_void_p)) == C.HMP_OK
         lib.hmp_set_master_volume(127)
         lib.hmp_set_song_volume(127)
         lib.hmp_unmute()
@@ -235,7 +235,7 @@ def rms(samples):
 def test_render_first_seconds_not_silent(lib, gd, music, name):
     if name == "TEST.HMP":
         data = (GAME / "TEST.HMP").read_bytes()
-        assert lib.hmp_start(data, len(data), ctypes.cast(lib.fm_send, ctypes.c_void_p)) == OK
+        assert lib.hmp_start(data, len(data), ctypes.cast(lib.fm_send, ctypes.c_void_p)) == C.HMP_OK
         lib.hmp_set_song_volume(127)
         lib.hmp_unmute()
     else:
@@ -257,9 +257,9 @@ def test_render_without_banks_is_silent(lib, gd, music):
 # Song selection: music_update_for_map (FUN_00010af6) once per game step.
 
 def test_songlist_gives_the_song_of_each_map(music):
-    assert music.songlist_loaded and music.songlist_size == 63
+    assert music.songlist_loaded and music.songlist_size == C.SONGLIST_MAX
     assert list(music.songlist[:len(SONGLIST)]) == SONGLIST
-    assert set(music.songlist[len(SONGLIST):]) == {0xFF}
+    assert set(music.songlist[len(SONGLIST):]) == {C.MUSIC_NO_SONG}
 
 
 def test_first_map_starts_its_song_now(lib, music):
@@ -395,8 +395,8 @@ def test_fm_driver_writes_like_the_original(lib, gd):
     melodic, drum = (GAME / "MELODIC.BNK").read_bytes(), (GAME / "DRUM.BNK").read_bytes()
     driver = Driver(blob, melodic, drum)
     lib.fm_reset(SAMPLE_RATE)
-    assert lib.fm_set_bank(0, melodic, len(melodic)) == OK
-    assert lib.fm_set_bank(1, drum, len(drum)) == OK
+    assert lib.fm_set_bank(C.FM_BANK_MELODIC, melodic, len(melodic)) == C.FM_OK
+    assert lib.fm_set_bank(C.FM_BANK_DRUM, drum, len(drum)) == C.FM_OK
     writes = []
     hook = WRITE_HOOK(lambda reg, value: writes.append((reg, value)))
     lib.fm_set_write_hook(ctypes.cast(hook, ctypes.c_void_p))

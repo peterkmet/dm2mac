@@ -8,6 +8,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
@@ -25,11 +26,14 @@ CREATURE_GET_ORDERED_ATTACK_CELLS, DUN_UNLINK_THING, DUN_LINK_THING = 0x1869A, 0
 G_SQUARE_FIRST_THINGS = 0x7F388
 G_THINGS, G_CHAMPIONS, G_CHAMPION_COUNT, G_PARTY_SLEEPING = 0x7F288, 0x7FBD0, 0x7F276, 0x7F234
 CHAMP_WAKE_PARTY, G_LIGHT_LEVEL = 0x46D9C, 0x7F282
-CHAMPION_SIZE, CHAMPION_CELL, CHAMPION_EXPERIENCE = 0x107, 29, 0x5F
+CHAMPION_SIZE, CHAMPION_CELL, CHAMPION_EXPERIENCE = C.CHAMPION_SIZE, 29, 0x5F
 SCRATCH_OUT = COMMAND_RECORD + 0x40
-EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2 = 0x19, 0x1D, 0x1E
-SPELLS = (0xFF80, 0xFF81, 0xFF82, 0xFF83, 0xFF84, 0xFF86, 0xFF87, 0xFF89, 0xFF8A, 0xFF8D, 0xFF8E)
-EXPLOSIONS = SPELLS + (0xFFA8, 0xFFB0, 0xFFB1, 0xFFE4)
+EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2 = C.EVENT_EXPLOSION, C.EVENT_PROJECTILE_MOVE, C.EVENT_PROJECTILE_MOVE_2
+SPELLS = (C.SPELL_FIREBALL, C.SPELL_SLIME, C.SPELL_LIGHTNING, C.SPELL_HARM_NON_MATERIAL, C.SPELL_DOOR_TOGGLE,
+          C.SPELL_POISON_BOLT, C.SPELL_POISON_CLOUD, C.SPELL_PUSH, C.SPELL_PULL, C.SPELL_DOOR_SET,
+          C.SPELL_MISSILE_WALL)
+EXPLOSIONS = SPELLS + (C.EXPLOSION_DEATH_CLOUD, C.EXPLOSION_STORM_LIGHTNING, C.EXPLOSION_STORM_BLAST,
+                       C.EXPLOSION_SMOKE)
 
 
 @pytest.fixture
@@ -63,8 +67,8 @@ def flying(s):
     """The number of projectile and explosion events in the C timeline."""
     from dm2test.save import Timeline
     tl = Timeline.in_dll(s.lib, "timeline")
-    raw = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
-    return sum(raw[i * 12 + 4] in (EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2) for i in range(tl.capacity))
+    raw = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * C.TIMELINE_EVENT_SIZE)
+    return sum(raw[i * C.TIMELINE_EVENT_SIZE + 4] in (EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2) for i in range(tl.capacity))
 
 
 def assert_saves(s, where):
@@ -72,8 +76,8 @@ def assert_saves(s, where):
     the creature scenario: the original save deactivates the creature groups of its active group table.)"""
     from dm2test.interface import champion_records
     check(s, where)
-    mine, theirs = bytearray(champion_records(s.lib)), bytearray(s.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE))
-    for champ in range(4):
+    mine, theirs = bytearray(champion_records(s.lib)), bytearray(s.emu.read(G_CHAMPIONS, C.CHAMPION_MAX * CHAMPION_SIZE))
+    for champ in range(C.CHAMPION_MAX):
         for at, size in CHAMPION_UNCOMPARED:
             for i in range(champ * CHAMPION_SIZE + at, champ * CHAMPION_SIZE + at + size):
                 mine[i] = theirs[i] = 0
@@ -104,10 +108,10 @@ def run_out(s, where, limit=120, every=40):
 def objects(lib):
     """(map, x, y, thing) of the objects on open squares: weapons, clothes, scrolls, potions, containers, misc."""
     out = []
-    for map_, x, y, _ in squares(lib, (1,)):
+    for map_, x, y, _ in squares(lib, (C.SQUARE_FLOOR,)):
         t = lib.dungeon_square_first_thing(map_, x, y)
         while t != ENDOFLIST:
-            if 5 <= t >> 10 & 15 <= 10:
+            if C.THING_WEAPON <= t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK <= C.THING_MISC:
                 out.append((map_, x, y, t))
             t = lib.dungeon_next_thing(t)
     return out
@@ -121,7 +125,7 @@ def groups(lib):
             for y in range(lib.dungeon_map_height(map_)):
                 t = lib.dungeon_square_first_thing(map_, x, y)
                 while t != ENDOFLIST:
-                    if t >> 10 & 15 == 4:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_GROUP:
                         out.append((map_, x, y, t))
                     t = lib.dungeon_next_thing(t)
     return out
@@ -144,10 +148,10 @@ def place_near(s, rng, map_, x, y):
     for _ in range(20):
         px, py = x + rng.randrange(-3, 4), y + rng.randrange(-3, 4)
         if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \
-                and lib.dungeon_square(map_, px, py) >> 5 == 1:
-            s.place(map_, px, py, rng.randrange(4))
+                and lib.dungeon_square(map_, px, py) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_FLOOR:
+            s.place(map_, px, py, rng.randrange(C.DIR_COUNT))
             return
-    s.place(map_, x, y, rng.randrange(4))
+    s.place(map_, x, y, rng.randrange(C.DIR_COUNT))
 
 
 def four_champions(s, rng):
@@ -155,13 +159,13 @@ def four_champions(s, rng):
     from dm2test.interface import champion_bytes, champion_records, sync_champions
     lib = s.lib
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
-    s.game.champion_count = 4
-    s.emu.write(G_CHAMPION_COUNT, struct.pack("<H", 4))
-    for champ, cell in enumerate(rng.sample(range(4), 4)):
+    s.game.champion_count = C.CHAMPION_MAX
+    s.emu.write(G_CHAMPION_COUNT, struct.pack("<H", C.CHAMPION_MAX))
+    for champ, cell in enumerate(rng.sample(range(C.CELL_COUNT), C.CHAMPION_MAX)):
         champion_bytes(lib, champ, 0, first)
         champion_bytes(lib, champ, CHAMPION_CELL, [cell])
-        champion_bytes(lib, champ, CHAMPION_CELL - 1, [rng.randrange(4)])  # direction
-        experience = b"".join(struct.pack("<I", rng.choice((0, 600, 5000, 40000, 300000))) for _ in range(20))
+        champion_bytes(lib, champ, CHAMPION_CELL - 1, [rng.randrange(C.DIR_COUNT)])  # direction
+        experience = b"".join(struct.pack("<I", rng.choice((0, 600, 5000, 40000, 300000))) for _ in range(C.SKILL_COUNT))
         champion_bytes(lib, champ, CHAMPION_EXPERIENCE, experience)
     sync_champions(lib, s)
 
@@ -196,13 +200,13 @@ def test_spell_missiles(pj, lib, part):
     # door spells, push and pull, hits on creatures and champions.
     rng = random.Random(160 + part)
     four_champions(pj, rng)
-    places = [p[:3] for p in groups(lib)] * 2 + [p[:3] for p in squares(lib, (1,))]
+    places = [p[:3] for p in groups(lib)] * 2 + [p[:3] for p in squares(lib, (C.SQUARE_FLOOR,))]
     for n in range(150):
         map_, x, y = rng.choice(places)
         place_near(pj, rng, map_, x, y)
         sx, sy = x + rng.randrange(-3, 4), y + rng.randrange(-3, 4)
         if not (0 <= sx < lib.dungeon_map_width(map_) and 0 <= sy < lib.dungeon_map_height(map_)) \
-                or lib.dungeon_square(map_, sx, sy) >> 5 != 1:
+                or lib.dungeon_square(map_, sx, sy) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR:
             sx, sy = pj.game.party_x, pj.game.party_y
         spell = SPELLS[(n + part) % len(SPELLS)] if n % 3 else rng.choice(SPELLS)
         direction = toward(sx, sy, x, y) if (sx, sy) != (x, y) else rng.randrange(4)
@@ -217,14 +221,14 @@ def test_explosions(pj, lib):
     # Explosions of every type, centered or in a cell, on creatures, on the party, on doors, and on open squares.
     rng = random.Random(161)
     four_champions(pj, rng)
-    places = [p[:3] for p in groups(lib)] + [p[:3] for p in squares(lib, (1, 4))]
+    places = [p[:3] for p in groups(lib)] + [p[:3] for p in squares(lib, (C.SQUARE_FLOOR, C.SQUARE_DOOR))]
     for n in range(200):
         map_, x, y = rng.choice(places)
         place_near(pj, rng, map_, x, y)
         if n % 5 == 0:
             x, y = pj.game.party_x, pj.game.party_y
         kind = EXPLOSIONS[n % len(EXPLOSIONS)]
-        cell = rng.choice((0, 1, 2, 3, 0xFF))
+        cell = rng.choice((0, 1, 2, 3, C.EXPLOSION_AT_CENTER))
         both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(256), x, y, cell)
         check(pj, ("create", n))
         run_out(pj, ("explosion", n, map_, x, y, hex(kind)), limit=300)
@@ -235,15 +239,17 @@ def test_explosions(pj, lib):
 
 def safe_command(s, rng):
     """A random move or turn; no move onto pits, stairs, and teleporters (the creature scenario draws no fall)."""
-    command = rng.choice((1, 2, 3, 3, 4, 5, 6))
-    if command < 3:
+    command = rng.choice((C.CMD_TURN_LEFT, C.CMD_TURN_RIGHT, C.CMD_MOVE_FORWARD, C.CMD_MOVE_FORWARD, C.CMD_MOVE_RIGHT,
+                          C.CMD_MOVE_BACK, C.CMD_MOVE_LEFT))
+    if command in (C.CMD_TURN_LEFT, C.CMD_TURN_RIGHT):
         return command
     lib, g = s.lib, s.game
-    d = (g.party_dir + (0, 1, 2, 3)[command - 3]) & 3
+    d = (g.party_dir + (0, 1, 2, 3)[command - C.CMD_MOVE_FORWARD]) & C.DIR_MASK
     x, y = g.party_x + (0, 1, 0, -1)[d], g.party_y + (-1, 0, 1, 0)[d]
     m = g.party_map
-    if 0 <= x < lib.dungeon_map_width(m) and 0 <= y < lib.dungeon_map_height(m) and lib.dungeon_square(m, x, y) >> 5 in (2, 3, 5):
-        return 1
+    if 0 <= x < lib.dungeon_map_width(m) and 0 <= y < lib.dungeon_map_height(m) and lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT in (
+            C.SQUARE_PIT, C.SQUARE_STAIRS, C.SQUARE_TELEPORTER):
+        return C.CMD_TURN_LEFT
     return command
 
 
@@ -251,7 +257,7 @@ def test_party_walks_into_missiles(pj, lib):
     # Missiles fly toward the party from up to 3 squares; the party walks and turns meanwhile, into the missiles
     # and out of their way (move_check_missiles_hit_party in move_thing), and the missiles hit the party square.
     rng = random.Random(162)
-    places = squares(lib, (1,))
+    places = squares(lib, (C.SQUARE_FLOOR,))
     things = objects(lib)
     rng.shuffle(things)
     hits = 0
@@ -263,7 +269,7 @@ def test_party_walks_into_missiles(pj, lib):
         dist = rng.randrange(1, 4)
         sx, sy = x + (0, 1, 0, -1)[d] * dist, y + (-1, 0, 1, 0)[d] * dist
         if not (0 <= sx < lib.dungeon_map_width(map_) and 0 <= sy < lib.dungeon_map_height(map_)) \
-                or lib.dungeon_square(map_, sx, sy) >> 5 != 1:
+                or lib.dungeon_square(map_, sx, sy) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR:
             sx, sy = x, y
         if n % 2 and things:
             tm, tx, ty, payload = things.pop()
@@ -290,7 +296,7 @@ def test_missiles_hit_party_on_moves(pj, lib):
     # move_check_missiles_hit_party directly: projectiles in all cells of the square that the party leaves and of the
     # square that it enters, with 1 to 4 champions in random cells.
     rng = random.Random(163)
-    places = squares(lib, (1,))
+    places = squares(lib, (C.SQUARE_FLOOR,))
     hit = 0
     for n in range(150):
         random_champions(pj, rng)
@@ -299,7 +305,7 @@ def test_missiles_hit_party_on_moves(pj, lib):
         d = rng.randrange(4)
         tx, ty = x + (0, 1, 0, -1)[d], y + (-1, 0, 1, 0)[d]
         if not (0 <= tx < lib.dungeon_map_width(map_) and 0 <= ty < lib.dungeon_map_height(map_)) \
-                or lib.dungeon_square(map_, tx, ty) >> 5 != 1:
+                or lib.dungeon_square(map_, tx, ty) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR:
             tx, ty = x, y  # projectiles start only on open squares
         for _ in range(rng.randrange(1, 5)):
             sx, sy = rng.choice(((x, y), (tx, ty)))
@@ -316,7 +322,7 @@ def test_missiles_hit_party_on_moves(pj, lib):
     assert_saves(pj, "end")
 
 
-LAUNCHER_TYPES = (7, 8, 9, 0x0A, 0x0E, 0x0F)
+LAUNCHER_TYPES = (C.LAUNCH_ITEM, C.LAUNCH_SPELL, C.LAUNCH_ITEMS, C.LAUNCH_SPELLS, C.LAUNCH_OBJECT, C.LAUNCH_OBJECTS)
 
 
 def launchers(lib):
@@ -325,7 +331,7 @@ def launchers(lib):
     for map_, x, y, cell in sensor_squares(lib):
         t = lib.dungeon_square_first_thing(map_, x, y)
         while t != ENDOFLIST:
-            if t >> 10 & 15 == 3 and t >> 14 == cell and lib.thing_word(t, 2) & 0x7F in LAUNCHER_TYPES:
+            if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and t >> C.THING_CELL_SHIFT == cell and lib.thing_word(t, 2) & 0x7F in LAUNCHER_TYPES:
                 out.append((map_, x, y, cell))
                 break
             t = lib.dungeon_next_thing(t)
@@ -345,7 +351,7 @@ def test_missile_launchers(pj, lib):
                 if pool.get(map_):
                     ox, oy, t = pool[map_].pop()
                     take(pj, ox, oy, t)
-                    t = t & 0x3FFF | (cell + rng.randrange(2)) % 4 << 14
+                    t = t & C.THING_ID_MASK | (cell + rng.randrange(2)) % C.CELL_COUNT << C.THING_CELL_SHIFT
                     lib.dungeon_link_thing_to_square(t, map_, x, y)
                     pj.emu.call(DUN_LINK_THING, t, 0, x, y)
             square_event(pj, map_, x, y, cell, rng.randrange(4), rng.randrange(2))
@@ -395,7 +401,7 @@ def test_creature_attacks_champions(pj, lib):
         pj.emu.write(G_PARTY_SLEEPING, struct.pack("<i", asleep))
         woken = pj.woken
         champ = rng.randrange(5)
-        record = pj.emu.read_u32(G_THINGS + 4 * 4) + (g & 0x3FF) * 16
+        record = pj.emu.read_u32(G_THINGS + 4 * 4) + (g & C.THING_INDEX_MASK) * 16
         mine = ctypes.c_int16(lib.creature_attack_champion(g, champ)).value
         theirs = ctypes.c_int16(pj.emu.call(CREATURE_ATTACK_CHAMPION, record, champ)).value
         assert mine == theirs, (n, g, champ)
@@ -414,7 +420,7 @@ def test_ordered_attack_cells(pj, lib):
     for n in range(400):
         x, y = rng.randrange(32), rng.randrange(32)
         px, py = x + rng.randrange(-2, 3), y + rng.randrange(-2, 3)
-        cell = rng.choice((0, 1, 2, 3, 0xFF))
+        cell = rng.choice((0, 1, 2, 3, C.CELL_ANY))
         lib.creature_get_ordered_attack_cells(order, x, y, px, py, cell)
         pj.emu.call(CREATURE_GET_ORDERED_ATTACK_CELLS, SCRATCH_OUT, x, y, px, py, cell)
         assert bytes(order) == pj.emu.read(SCRATCH_OUT, 4), (n, x, y, px, py, cell)
@@ -434,7 +440,7 @@ def objects_by_map(lib):
 
 def open_square(lib, map_, x, y):
     return 0 <= x < lib.dungeon_map_width(map_) and 0 <= y < lib.dungeon_map_height(map_) \
-        and lib.dungeon_square(map_, x, y) >> 5 == 1
+        and lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_FLOOR
 
 
 def payload_for(s, rng, pool, map_, n):
@@ -472,7 +478,7 @@ def test_projectiles_at_creatures(pj, lib):
 
 
 CREATURE_ALERT, ALERT_HIT = 0x24E62, 0x200D  # the alert of a projectile hit
-INFO_DOOR_FLAGS, RESISTS_NON_FIRE = 0x19, 0x10  # creature info byte and its flag: only fire hurts the creature fully
+INFO_DOOR_FLAGS, RESISTS_NON_FIRE = 0x19, C.CREATURE_RESISTS_NON_FIRE  # creature info byte and its flag: only fire hurts the creature fully
 
 
 def group_square(lib, map_, group):
@@ -481,7 +487,7 @@ def group_square(lib, map_, group):
         for y in range(lib.dungeon_map_height(map_)):
             t = lib.dungeon_square_first_thing(map_, x, y)
             while t != ENDOFLIST:
-                if t & 0x3FFF == group & 0x3FFF:
+                if t & C.THING_ID_MASK == group & C.THING_ID_MASK:
                     return x, y
                 t = lib.dungeon_next_thing(t)
     return None
@@ -498,11 +504,11 @@ def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
     targets = [t for t in groups(lib) if lib.creature_group_info(t[3])[INFO_DOOR_FLAGS] & RESISTS_NON_FIRE]
     assert targets
     hits = [0]
-    resisting = {t[3] & 0x3FFF for t in targets}
+    resisting = {t[3] & C.THING_ID_MASK for t in targets}
 
     def alert(uc, *_):  # creature_alert(group, x, y, flags, chance, damage) of the original
         damage = struct.unpack("<h", pj.emu.read(uc.reg_read(UC_X86_REG_ESP) + 8, 2))[0]
-        if uc.reg_read(UC_X86_REG_EAX) & 0x3FFF in resisting and uc.reg_read(UC_X86_REG_ECX) & 0xFFFF == ALERT_HIT and damage > 0:
+        if uc.reg_read(UC_X86_REG_EAX) & C.THING_ID_MASK in resisting and uc.reg_read(UC_X86_REG_ECX) & 0xFFFF == ALERT_HIT and damage > 0:
             hits[0] += 1
 
     from unicorn import UC_HOOK_CODE
@@ -510,8 +516,8 @@ def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
     pj.emu.uc.hook_add(UC_HOOK_CODE, alert, begin=CREATURE_ALERT, end=CREATURE_ALERT)
     for n, (map_, x, y, g) in enumerate(targets * (40 // len(targets))):
         place_near(pj, rng, map_, x, y)
-        kind = rng.choice((0xFF82, 0xFFB1, 0xFF87, 0xFFA8))  # lightning, storm blast, poison cloud, death cloud
-        both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(64, 256), x, y, rng.choice((0, 1, 2, 3, 0xFF)))
+        kind = rng.choice((C.SPELL_LIGHTNING, C.EXPLOSION_STORM_BLAST, C.SPELL_POISON_CLOUD, C.EXPLOSION_DEATH_CLOUD))  # lightning, storm blast, poison cloud, death cloud
+        both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(64, 256), x, y, rng.choice((0, 1, 2, 3, C.EXPLOSION_AT_CENTER)))
         check(pj, ("create", n))
         run_out(pj, ("resists", n, map_, x, y, hex(g), hex(kind)))
         at = group_square(lib, map_, g)  # the group moves: aim at its square now
@@ -523,7 +529,7 @@ def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
         if dist and not open_square(lib, map_, sx, sy):
             sx, sy = gx, gy
         place_near(pj, rng, map_, gx, gy)
-        launch(pj, 0xFF82, sx, sy, rng.randrange(4), d, 200, 200, 1)
+        launch(pj, C.SPELL_LIGHTNING, sx, sy, rng.randrange(4), d, 200, 200, 1)
         check(pj, ("bolt", n))
         run_out(pj, ("bolt", n, map_, sx, sy, d))
     assert_saves(pj, "end")
@@ -548,7 +554,7 @@ def test_projectiles_at_doors(pj, lib):
     for p in pool.values():
         rng.shuffle(p)
     shots = 0
-    for n, (map_, x, y, square) in enumerate(squares(lib, (4,)) * 2):
+    for n, (map_, x, y, square) in enumerate(squares(lib, (C.SQUARE_DOOR,)) * 2):
         set_square(pj, map_, x, y, square & ~7 | rng.randrange(6))
         d = rng.randrange(4)
         dist = rng.randrange(1, 3)
@@ -561,8 +567,9 @@ def test_projectiles_at_doors(pj, lib):
             shots += 1
         else:
             place_near(pj, rng, map_, x, y)
-            both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((0xFF80, 0xFF82, 0xFF84, 0xFF8D, 0xFFB0)),
-                 rng.randrange(256), x, y, 0xFF)
+            both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((C.SPELL_FIREBALL, C.SPELL_LIGHTNING, C.SPELL_DOOR_TOGGLE, C.SPELL_DOOR_SET,
+                         C.EXPLOSION_STORM_LIGHTNING)),
+                 rng.randrange(256), x, y, C.EXPLOSION_AT_CENTER)
         check(pj, ("launch", n))
         run_out(pj, ("door", n, map_, x, y, hex(square)))
     assert shots > 25
@@ -578,7 +585,7 @@ def test_projectiles_at_wall_sensors(pj, lib):
         rng.shuffle(p)
     wanted = [(m, x, y, t) for m, x, y, t in objects(lib) if lib.item_get_index(t) == 0x13A]  # the item of the sensors
     shots = 0
-    for n, (map_, x, y, cell) in enumerate(c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> 5 == 0):
+    for n, (map_, x, y, cell) in enumerate(c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL):
         dist = rng.randrange(1, 3)
         sx, sy = x + DIRS[cell][0] * dist, y + DIRS[cell][1] * dist
         if not open_square(lib, map_, sx, sy):
@@ -609,7 +616,7 @@ def test_missile_walls_and_packed_explosions(pj, lib):
     # hit (x above 0xff: the hit square in the low bytes, the explosion square in the high bytes).
     rng = random.Random(171)
     four_champions(pj, rng)
-    places = squares(lib, (1,))
+    places = squares(lib, (C.SQUARE_FLOOR,))
     for n in range(120):
         map_, x, y, _ = rng.choice(places)
         d = rng.randrange(4)
@@ -618,11 +625,12 @@ def test_missile_walls_and_packed_explosions(pj, lib):
             continue
         place_near(pj, rng, map_, sx, sy)
         if n % 2:
-            both(pj, lib.explosion_create, EXPLOSION_CREATE, 0xFF8E, rng.randrange(20, 256), x, y, 0xFF)
+            both(pj, lib.explosion_create, EXPLOSION_CREATE, C.SPELL_MISSILE_WALL, rng.randrange(20, 256), x, y, C.EXPLOSION_AT_CENTER)
             launch(pj, rng.choice(SPELLS), sx, sy, rng.randrange(4), d, rng.randrange(1, 256), rng.randrange(256), 1)
         else:
             hx, hy = x - DIRS[d][0], y - DIRS[d][1]
-            both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((0xFF80, 0xFF82, 0xFFB0, 0xFFB1, 0xFF87)),
+            both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((C.SPELL_FIREBALL, C.SPELL_LIGHTNING, C.EXPLOSION_STORM_LIGHTNING, C.EXPLOSION_STORM_BLAST,
+                         C.SPELL_POISON_CLOUD)),
                  rng.randrange(256), hx | (x + 1) << 8, hy | y << 8, rng.randrange(4))
         check(pj, ("start", n))
         run_out(pj, ("wall", n, map_, x, y), limit=300)

@@ -3,6 +3,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.lib import load_lib
 from dm2test.markers import ROOT
 from dm2test.save import (
@@ -25,7 +26,7 @@ def gdat(lib):
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
     g = ctypes.c_void_p()
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
+    assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == C.GDAT_OK
     yield g
     lib.gdat_free(g)
 
@@ -135,7 +136,7 @@ def test_damaged_save(lib, gdat, start, tmp_path, name):
 
 
 def test_missing_file(lib, gdat, tmp_path):
-    assert lib.save_load(str(tmp_path / "none.DAT").encode(), gdat) == -1
+    assert lib.save_load(str(tmp_path / "none.DAT").encode(), gdat) == C.SAVE_ERR_IO
 
 
 def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
@@ -148,18 +149,18 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
     lib.thing_word.restype = ctypes.c_uint16
 
-    projectile = lib.dungeon_unused_thing(14)
-    lib.set_thing_word(projectile, 2, 0xFF80 | 5)  # payload: a spell
+    projectile = lib.dungeon_unused_thing(C.THING_PROJECTILE)
+    lib.set_thing_word(projectile, 2, C.SPELL_FIREBALL | 5)  # payload: a spell
     lib.set_thing_word(projectile, 4, 0x1234)
-    move = Event(game.game_time + 10, 0x1D, 0, (ctypes.c_uint8 * 6)(*struct.pack("<H4x", projectile | 1 << 14)))
+    move = Event(game.game_time + 10, C.EVENT_PROJECTILE_MOVE, 0, (ctypes.c_uint8 * 6)(*struct.pack("<H4x", projectile | 1 << C.THING_CELL_SHIFT)))
     lib.set_thing_word(projectile, 6, lib.timeline_add_event(ctypes.byref(move)))
-    assert lib.dungeon_link_thing_to_square(projectile | 1 << 14, *square) == 1
+    assert lib.dungeon_link_thing_to_square(projectile | 1 << C.THING_CELL_SHIFT, *square) == 1
 
-    explosion = lib.dungeon_unused_thing(15)
-    lib.set_thing_word(explosion, 2, 0xFF87)
-    step = Event(game.game_time + 3, 0x19, 0, (ctypes.c_uint8 * 6)(*struct.pack("<2xH2x", explosion | 2 << 14)))
+    explosion = lib.dungeon_unused_thing(C.THING_EXPLOSION)
+    lib.set_thing_word(explosion, 2, C.SPELL_POISON_CLOUD)
+    step = Event(game.game_time + 3, C.EVENT_EXPLOSION, 0, (ctypes.c_uint8 * 6)(*struct.pack("<2xH2x", explosion | 2 << C.THING_CELL_SHIFT)))
     lib.timeline_add_event(ctypes.byref(step))
-    assert lib.dungeon_link_thing_to_square(explosion | 2 << 14, *square) == 1
+    assert lib.dungeon_link_thing_to_square(explosion | 2 << C.THING_CELL_SHIFT, *square) == 1
 
     assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == SAVE_OK
     first = path.read_bytes()
@@ -170,23 +171,24 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     lib.dungeon_square_first_thing.restype = ctypes.c_uint16
     lib.dungeon_next_thing.restype = ctypes.c_uint16
     thing = lib.dungeon_square_first_thing(*square)
-    while thing != 0xFFFE:
+    while thing != C.THING_ENDOFLIST:
         things.append(thing)
         thing = lib.dungeon_next_thing(thing)
-    loaded = [t for t in things if t >> 10 & 0xF in (14, 15)]
-    assert [(t >> 10 & 0xF, t >> 14) for t in loaded] == [(14, 1), (15, 2)]
-    assert lib.thing_word(loaded[0], 2) == 0xFF85 and lib.thing_word(loaded[0], 4) == 0x1234
+    loaded = [t for t in things if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK in (C.THING_PROJECTILE, C.THING_EXPLOSION)]
+    assert [(t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK, t >> C.THING_CELL_SHIFT) for t in loaded] == [
+        (C.THING_PROJECTILE, 1), (C.THING_EXPLOSION, 2)]
+    assert lib.thing_word(loaded[0], 2) == C.SPELL_FIREBALL | 5 and lib.thing_word(loaded[0], 4) == 0x1234
     events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "timeline"), ctypes.POINTER(Event))
     move_index = lib.thing_word(loaded[0], 6)
-    assert events[move_index].type == 0x1D and bytes(events[move_index].data[:2]) == struct.pack("<H", loaded[0])
+    assert events[move_index].type == C.EVENT_PROJECTILE_MOVE and bytes(events[move_index].data[:2]) == struct.pack("<H", loaded[0])
     explosion_index = 4  # after the 3 events of start.DAT and the projectile move
-    assert events[explosion_index].type == 0x19 and bytes(events[explosion_index].data[2:4]) == struct.pack("<H", loaded[1])
+    assert events[explosion_index].type == C.EVENT_EXPLOSION and bytes(events[explosion_index].data[2:4]) == struct.pack("<H", loaded[1])
     assert [bytes(events[i])[4:] for i in range(timeline.capacity)] == written_events
     assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == SAVE_OK
     assert path.read_bytes() == first
 
 
-G_CHAMPIONS, CHAMPION_SIZE, CHAMPION_DAMAGE_EVENT = 0x7FBD0, 263, 0x2E
+G_CHAMPIONS, CHAMPION_SIZE, CHAMPION_DAMAGE_EVENT = 0x7FBD0, C.CHAMPION_SIZE, 0x2E
 
 
 def test_load_relinks_champion_damage_events_like_original(lib, gdat, start, tmp_path):
@@ -196,16 +198,16 @@ def test_load_relinks_champion_damage_events_like_original(lib, gdat, start, tmp
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
     game = Game.in_dll(lib, "game")
-    for delay, type_, priority in ((40, 0x0D, 0), (20, 0x0C, 0), (90, 0x0C, 0)):
+    for delay, type_, priority in ((40, C.EVENT_ALTAR_REBIRTH, 0), (20, C.EVENT_HIDE_DAMAGE, 0), (90, C.EVENT_HIDE_DAMAGE, 0)):
         event = Event(game.game_time + delay | game.party_map << 24, type_, priority, (ctypes.c_uint8 * 6)())
         lib.timeline_add_event(ctypes.byref(event))
     assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == SAVE_OK
     saved = path.read_bytes()
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
-    records = ctypes.string_at(ctypes.addressof(game) + 252, 4 * CHAMPION_SIZE)  # offsetof(Game, champions)
-    mine = [records[c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT:][:2] for c in range(4)]
+    records = ctypes.string_at(ctypes.addressof(game) + 252, C.CHAMPION_MAX * CHAMPION_SIZE)  # offsetof(Game, champions)
+    mine = [records[c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT:][:2] for c in range(C.CHAMPION_MAX)]
     emu = original_load(lib, gdat, saved)
-    theirs = [emu.read(G_CHAMPIONS + c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT, 2) for c in range(4)]
+    theirs = [emu.read(G_CHAMPIONS + c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT, 2) for c in range(C.CHAMPION_MAX)]
     assert mine == theirs
     assert struct.unpack("<H", mine[0])[0] not in (0, 0xFFFF) and mine[1:] == [b"\xff\xff"] * 3
 
@@ -215,8 +217,8 @@ G_TIMELINE_EVENTS = 0x760E8
 G_TIMELINE_EVENT_MAX = 0x80428
 G_TIMELINE_EVENT_COUNT = 0x8042A
 THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
-GROUP, CONTAINER, MISC, PROJECTILE, EXPLOSION = 4, 9, 10, 14, 15
-ENDOFLIST, NONE = 0xFFFE, 0xFFFF
+GROUP, CONTAINER, MISC, PROJECTILE, EXPLOSION = C.THING_GROUP, C.THING_CONTAINER, C.THING_MISC, C.THING_PROJECTILE, C.THING_EXPLOSION
+ENDOFLIST, NONE = C.THING_ENDOFLIST, C.THING_NONE
 
 
 def c_records(lib, type_):
@@ -247,22 +249,22 @@ def link_things(lib, game):
     lib.thing_word.restype = ctypes.c_uint16
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
     square, group = next((sq, t) for sq, things in square_lists(lib) for t in things[1:]
-                         if t >> 10 & 0xF == GROUP and t & 0x3FF)
+                         if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == GROUP and t & C.THING_INDEX_MASK)
     minion_map = next(CONTAINER << 10 | i for i in range(lib.dungeon_thing_count(CONTAINER))
                       if lib.thing_word(CONTAINER << 10 | i, 0) != NONE and lib.thing_word(CONTAINER << 10 | i, 4) >> 1 & 3 == 1)
     lib.set_thing_word(minion_map, 2, GROUP << 10)
 
-    gap = add_event(lib, 0x01, game.game_time + 1, bytes(6))
+    gap = add_event(lib, C.EVENT_DOOR_ANIMATION, game.game_time + 1, bytes(6))
     lib.dungeon_unlink_thing_from_square(group, *square)
-    add_event(lib, 0x3C, game.game_time + 2, struct.pack("<2xH2x", group))
+    add_event(lib, C.EVENT_MOVE_GROUP, game.game_time + 2, struct.pack("<2xH2x", group))
     projectile = lib.dungeon_unused_thing(PROJECTILE)
-    lib.set_thing_word(projectile, 2, 0xFF80 | 5)
-    lib.set_thing_word(projectile, 6, add_event(lib, 0x1D, game.game_time + 10, struct.pack("<H4x", projectile | 1 << 14)))
-    assert lib.dungeon_link_thing_to_square(projectile | 1 << 14, *square) == 1
+    lib.set_thing_word(projectile, 2, C.SPELL_FIREBALL | 5)
+    lib.set_thing_word(projectile, 6, add_event(lib, C.EVENT_PROJECTILE_MOVE, game.game_time + 10, struct.pack("<H4x", projectile | 1 << C.THING_CELL_SHIFT)))
+    assert lib.dungeon_link_thing_to_square(projectile | 1 << C.THING_CELL_SHIFT, *square) == 1
     explosion = lib.dungeon_unused_thing(EXPLOSION)
-    lib.set_thing_word(explosion, 2, 0xFF87)
-    add_event(lib, 0x19, game.game_time + 3, struct.pack("<2xH2x", explosion | 2 << 14))
-    assert lib.dungeon_link_thing_to_square(explosion | 2 << 14, *square) == 1
+    lib.set_thing_word(explosion, 2, C.SPELL_POISON_CLOUD)
+    add_event(lib, C.EVENT_EXPLOSION, game.game_time + 3, struct.pack("<2xH2x", explosion | 2 << C.THING_CELL_SHIFT))
+    assert lib.dungeon_link_thing_to_square(explosion | 2 << C.THING_CELL_SHIFT, *square) == 1
     lib.timeline_delete_event(gap)
 
 
@@ -275,7 +277,7 @@ def linked(lib, gdat, start, tmp_path_factory):
     path = tmp_path_factory.mktemp("linked") / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
-    bases = {t: emu.read_u32(G_THING_DATA + 4 * t) for t in range(16) if THING_SIZES[t]}
+    bases = {t: emu.read_u32(G_THING_DATA + 4 * t) for t in range(C.THING_TYPE_COUNT) if THING_SIZES[t]}
     for t, base in bases.items():
         records = c_records(lib, t)
         assert emu.read(base, len(records)) == records
@@ -283,7 +285,7 @@ def linked(lib, gdat, start, tmp_path_factory):
     link_things(lib, Game.in_dll(lib, "game"))
     timeline = Timeline.in_dll(lib, "timeline")
     assert timeline.used_end <= int.from_bytes(emu.read(G_TIMELINE_EVENT_MAX, 2), "little")
-    emu.write(emu.read_u32(G_TIMELINE_EVENTS), ctypes.string_at(timeline.events, timeline.used_end * 12))
+    emu.write(emu.read_u32(G_TIMELINE_EVENTS), ctypes.string_at(timeline.events, timeline.used_end * C.TIMELINE_EVENT_SIZE))
     emu.write(G_TIMELINE_EVENT_COUNT, struct.pack("<H", timeline.count))
     for t, base in bases.items():
         emu.write(base, c_records(lib, t))
