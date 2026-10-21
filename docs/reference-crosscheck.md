@@ -167,7 +167,7 @@ Risk for Step 10: a load moves things of types 4-15 to new slots. A "load, then 
 
 ## Test methods worth adopting
 
-reDM2 verifies by functional equivalence, not by byte matching (`README.md`, "How verification works"; `docs/equiv.md`). These methods map to our `dm2tools.emu` oracle (`src/dm2tools/emu.py`).
+reDM2 verifies by functional equivalence, not by byte matching (`README.md`, "How verification works"; `docs/equiv.md`). These methods map to our `dm2tools.emu` oracle (`tools/dm2tools/emu.py`).
 
 | reDM2 method | What it does | How we use it with `dm2tools.emu` |
 |---|---|---|

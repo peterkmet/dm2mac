@@ -1,4 +1,4 @@
-"""The text summary and the call log of dm2-play (src/dm2tools/control_client.py)."""
+"""The text summary and the call log of dm2-play (tools/dm2tools/control_client.py)."""
 
 from dm2tools import control_client as cc
 

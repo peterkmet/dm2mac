@@ -1,4 +1,4 @@
-"""The game modes (port/src/ui/advanced.c): vanilla is the original game; advanced adds the W A S D Q E keys and the quick
+"""The game modes (src/ui/advanced.c): vanilla is the original game; advanced adds the W A S D Q E keys and the quick
 save (F5) and quick load (F9)."""
 
 import ctypes

@@ -9,7 +9,7 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - No thing: `THING_NONE`, not `0xffff`. End of list: `THING_ENDOFLIST`.
    - Directions, cells, champion slots (`SLOT_HAND_READY`, `SLOT_COUNT`), statistics, skills, square types, sensor types, door states, timeline event types, commands.
    - Message and text numbers: a named constant for each string id, for example `TEXT_RESURRECTED`.
-   - Graphic numbers: named constants in `port/src/data/gfx.h`, for example `GFX_WALLSET_FIRST`. Layout zone numbers: named constants in `port/src/ui/ui.h`, for example `ZONE_VIEWPORT`. A zone that a rule passes to a hook is a named constant in the engine header of that rule.
+   - Graphic numbers: named constants in `src/data/include/gfx.h`, for example `GFX_WALLSET_FIRST`. Layout zone numbers: named constants in `src/ui/include/ui.h`, for example `ZONE_VIEWPORT`. A zone that a rule passes to a hook is a named constant in the engine header of that rule.
    - DM2 systems: money types (`COIN_GOLD`), minion types (`MINION_GUARD`), weather states (`WEATHER_RAIN`), and Skullkeep machine states each get named constants. `docs/skull-symbols.csv` holds the names.
    - Plain numbers are allowed only for 0, 1, -1, and 2 when it halves or doubles a value. Every other number is a named constant, also decimal game values such as divisors, limits, and thresholds.
    - Notation: hex for bit masks and flags, for ids from the data files and from `SKULL.EXE` (GDAT categories and entries, sound entries, priorities and volumes, event types, command codes, key codes), and for byte values of file formats. Decimal for counts, sizes, times in ticks, percentages, distances, divisors, and thresholds.
@@ -31,13 +31,13 @@ The C port is a readable reimplementation of the game. It is not a cleaned-up de
    - Global variables: `g_` prefix. Module-private globals and functions are `static`.
    - Types: `PascalCase`. Constants and enum values: `UPPER_CASE`.
    - No event numbers or original addresses in names. Name the game task, not the number.
-8. The source has four layers in subfolders of `port/src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook, a member of `g_hooks` (`engine/hooks.h`) that `ui/hook_table.c` sets, for an event that must run the user interface inside the rule. Exception: the action area (`ui/action_area.c`: `area_update`, `draw_open_panel`, `draw_hand_panel`, `haste_jitter`) keeps the order of the original, which mixes rules and drawing. It writes `action.mode` and `action.result`, closes the open hand, opens a chest or a minion map when the panel redraws, and `haste_jitter` takes `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Only `platform/` includes SDL.
+8. The source has four layers in subfolders of `src/`: `data/`, `engine/`, `ui/`, and `platform/`. A file includes only headers of its own layer and of the layers before it in this list. Game rules in `engine/` do not call the user interface: they set redraw flags. Exception: a hook, a member of `g_hooks` (`engine/hooks.h`) that `ui/hook_table.c` sets, for an event that must run the user interface inside the rule. Exception: the action area (`ui/action_area.c`: `area_update`, `draw_open_panel`, `draw_hand_panel`, `haste_jitter`) keeps the order of the original, which mixes rules and drawing. It writes `action.mode` and `action.result`, closes the open hand, opens a chest or a minion map when the panel redraws, and `haste_jitter` takes `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Only `platform/` includes SDL.
 9. Little-endian read and write helpers (`le16`, `le32`, `put_le16`, `put_le32`) have one definition in one header. Modules do not define their own copies.
 10. A packed field (two or more values in one word) has accessor functions or macros in the header of the module that owns it, for example `timeline_time_map()` and `timeline_event_map()` in `engine/timeline.h`. Call sites do not shift, mask, or cast to pack or unpack it. A shift by a named `*_SHIFT` constant is allowed only in the module that owns the field. Other modules call its accessors.
 
 ## Check before a step is done
 
-`tests/test_standard.py` checks `port/src/` and fails on:
+`tests/test_standard.py` checks `src/` and fails on:
 
 - hex literals outside constant definitions,
 - decimal literals of 10 or more outside constant definitions,

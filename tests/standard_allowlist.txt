@@ -1,5 +1,5 @@
 # Open exceptions of tests/test_standard.py. One per line: <check> <target> <reason>.
-# Targets are paths relative to port/src/, path:header, constant names, or function names.
+# Targets are paths relative to src/, path:header, constant names, or function names.
 decimal ui/action_area.c table: rule 6 (coin pile offsets of SKULL.EXE)
 decimal engine/champ_action.c table: rule 6 (furniture creature infos of SKULL.EXE)
 decimal engine/creature.c table: rule 6
@@ -17,7 +17,7 @@ hex engine/creature.c table: rule 6
 hex engine/item.c table: rule 6 (GDAT categories, item index bases, and slot masks of SKULL.EXE)
 hex engine/magic.c table: rule 6
 hex engine/save.c table: rule 6 (bit mask tables and sensor types of SKULL.EXE)
-hex platform/control.c table: PC keyboard scan codes of the key names
+hex control/control.c table: PC keyboard scan codes of the key names
 hex platform/main.c table: PC keyboard scan codes of the SDL keys
 hex ui/dialog.c table: rule 6
 hex ui/fm.c table: rule 6

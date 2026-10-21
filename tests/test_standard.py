@@ -1,14 +1,13 @@
-"""Checks port/src against docs/coding-standard.md. Open exceptions: tests/standard_allowlist.txt."""
+"""Checks src/ against docs/coding-standard.md. Open exceptions: tests/standard_allowlist.txt."""
 
 import re
 from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "port" / "src"
+SRC = ROOT / "src"
 ALLOWLIST = Path(__file__).with_name("standard_allowlist.txt")
-VENDORED = {"opl3.c", "opl3.h"}
-LAYERS = ["data", "engine", "ui", "platform"]
+LAYERS = ["data", "engine", "ui", "control", "platform"]
 INCLUDE = re.compile(r'^\s*#include\s+"([\w./]+)"', re.M)
 MAX_FUNCTION_LINES = 60
 
@@ -29,7 +28,7 @@ FUNC_START = re.compile(r"^(?:static\s+)?[A-Za-z_][\w *]*?\b([a-z_]\w*)\s*\([^;]
 
 
 def sources():
-    return sorted(p for p in SRC.rglob("*.[ch]") if p.name not in VENDORED)
+    return sorted(p for p in SRC.rglob("*.[ch]") if "third_party" not in p.parts)
 
 
 def rel(path):
@@ -187,10 +186,10 @@ def test_functions_are_short():
 
 def test_layers():
     ok = allowed()
-    home = {p.name: p.parent.name for p in SRC.rglob("*.h")}
+    home = {p.name: p.relative_to(SRC).parts[0] for p in SRC.rglob("*.h") if "third_party" not in p.parts}
     found = []
     for path in sources():
-        layer = path.parent.name
+        layer = path.relative_to(SRC).parts[0]
         assert layer in LAYERS, f"{rel(path)} is not in a layer folder"
         text = path.read_text(errors="replace")
         for header in INCLUDE.findall(text):

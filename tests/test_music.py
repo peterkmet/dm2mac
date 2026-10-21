@@ -22,7 +22,7 @@ OK = 0
 SONGLIST = [2, 17, 14, 27, 4, 12, 12, 18, 15, 13, 12, 12, 16, 6, 21, 14, 17, 17, 17, 17, 3, 8, 17, 14, 2, 23, 22,
             20, 17, 0, 2, 2, 2, 9, 2, 3, 14, 16, 28, 22, 19, 9, 22, 3, 17, 2]
 
-# HMP layout (port/src/data/hmp.c)
+# HMP layout (src/data/hmp.c)
 HMP_BRANCHES, HMP_TRACK_COUNT, HMP_FIRST_TRACK, TRACK_DATA, BRANCH_SIZE = 0x20, 0x30, 0x388, 12, 0x18
 EVENT_LENGTH = {0x8: 3, 0x9: 3, 0xA: 3, 0xB: 3, 0xC: 2, 0xD: 2, 0xE: 3}
 HMI_FIRST, HMI_LAST, HMI_LOOP = 0x67, 0x79, 0x6F

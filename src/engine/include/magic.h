@@ -44,6 +44,6 @@ int magic_cast_party_aura(Champion *c, int type, uint16_t value, int pay);
 /* Champion champ shoots the missile thing with power for cost mana; returns 0 without the mana. */
 int magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost);
 
-/* Projectiles (port/src/projectile.c): champion c launches thing from the party square. */
+/* Projectiles (src/engine/projectile.c): champion c launches thing from the party square. */
 
 #endif

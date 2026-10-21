@@ -1,4 +1,4 @@
-"""The movie script of the DOS launcher (port/src/ui/movie.c): the order of the steps, the skip rules of the modes,
+"""The movie script of the DOS launcher (src/ui/movie.c): the order of the steps, the skip rules of the modes,
 the failed steps, and the game screen after the movies."""
 
 import ctypes

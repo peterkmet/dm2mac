@@ -1,4 +1,4 @@
-"""The PCX decoder (port/src/data/pcx.c): the splash picture INTRPLAY.PCX of the DOS launcher."""
+"""The PCX decoder (src/data/pcx.c): the splash picture INTRPLAY.PCX of the DOS launcher."""
 
 import ctypes
 

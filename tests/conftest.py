@@ -41,7 +41,7 @@ def lib(tmp_path_factory):
     shutil.copyfile(ROOT / "build" / "libdm2.dylib", path)
     lib = ctypes.CDLL(str(path))
     # a C bool fills only the low byte of the return register
-    for header in (ROOT / "port" / "src").rglob("*.h"):
+    for header in (ROOT / "src").rglob("*.h"):
         for name in re.findall(r"^bool (\w+)\(", header.read_text(), re.M):
             getattr(lib, name).restype = ctypes.c_bool
     return lib

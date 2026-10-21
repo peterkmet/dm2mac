@@ -1,4 +1,4 @@
-"""The game state as JSON (port/src/platform/state_json.c): what the turn-based mode tells the player."""
+"""The game state as JSON (src/control/state_json.c): what the turn-based mode tells the player."""
 
 import ctypes
 import json

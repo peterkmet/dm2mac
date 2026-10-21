@@ -1,4 +1,4 @@
-"""The MVE decoder (port/src/data/mve.c and mve_video.c): the SVGA movies FTL, INTRO, END, and CREDITS of the PC
+"""The MVE decoder (src/data/mve.c and mve_video.c): the SVGA movies FTL, INTRO, END, and CREDITS of the PC
 version. No reference decoder: the tests check the stream format against a parse of the files (PRD Current state)."""
 
 import ctypes

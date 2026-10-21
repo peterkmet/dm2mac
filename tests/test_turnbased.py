@@ -1,4 +1,4 @@
-"""The turns of the turn-based mode (port/src/platform/turn.c): act and wait run the game over the control socket until
+"""The turns of the turn-based mode (src/control/turn.c): act and wait run the game over the control socket until
 the party can act again, or until news stops a wait."""
 
 import ctypes

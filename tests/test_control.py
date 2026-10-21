@@ -1,4 +1,4 @@
-"""The control socket (port/src/platform/control.c): requests over a Unix domain socket give input to the game and read its
+"""The control socket (src/control/control.c): requests over a Unix domain socket give input to the game and read its
 state and screen; the program starts it with --control."""
 
 import ctypes
