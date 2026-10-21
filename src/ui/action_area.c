@@ -18,30 +18,6 @@
 #include "zone.h"
 #include <string.h>
 
-/* Action area pictures (1, 4, entry) and (1, 5, entry). */
-enum {
-    ACTION_HAND_BACK_FIRST = 2,
-    ACTION_EMPTY_HAND = 7,
-    ACTION_MENU_BACK = 0x0e,
-    ACTION_FACE_LEFT = 0x10,
-    ACTION_FACE_RIGHT = 0x12,
-    ACTION_MENU_HEADER = 0x14,
-    ACTION_BUTTON = 0x15,
-    ACTION_SPELL_HAND_LEFT = 6,
-    ACTION_SPELL_HAND_RIGHT = 8,
-    ACTION_SPELL_RUNE_LEFT = 0x0a,
-    ACTION_SPELL_RUNE_RIGHT = 0x0c,
-    SPELL_RUNES_BACK = 9,
-    ACTION_RESULT_MISS = 0x17,
-    ACTION_RESULT_NOTHING = 0x18,
-    ACTION_RESULT_CANT = 0x19,
-    ACTION_RESULT_DAMAGE = 1,
-    RESULT_SPELL_FIZZLE = 0x0e,
-    RESULT_SPELL_NEEDS = 0x0c,
-    RESULT_SPELL_OTHER = 0x0d
-};
-/* Wall set pictures (8, set, entry) behind the party and the action champion. */
-enum { WALLSET_PARTY_BACK = 0xf5, WALLSET_FACE_BACK = 0xf6 };
 #define RESULT_SMALL_MAX    15 /* damage up to this shows the small damage star */
 #define RESULT_SCALED_MAX   40
 #define RESULT_SMALL_SCALE  31
@@ -50,16 +26,12 @@ enum { WALLSET_PARTY_BACK = 0xf5, WALLSET_FACE_BACK = 0xf6 };
 #define RESULT_DIGITS       5
 #define AMMO_ATTR           5
 #define AMMO_NOT_AMMO       0x8000
-#define AMMO_HAND_DEFAULT   0x38
-#define AMMO_HAND_OTHER     0x34
-#define CONTAINER_LID       0x12
 #define CONTAINER_LID_KEY   10
 #define COIN_PILE_MAX       32 /* the most coins of a type that a pile shows */
 #define COIN_PILE_MASK      0x1f
 #define SPELL_RUNE_SETS     4 /* the rune sets 0 to 3; the panel of set 4 has no runes */
 #define AURA_FRAMES         4 /* the aura picture holds 4 x 4 frames: direction by game time */
 #define ICON_OFFSET         1 /* the icon of an item in a hand casts a shadow 1 pixel up and left */
-#define ICON_SHADOW_REMAP   1 /* GDAT (1, 0, 7, 1): the colors of an item icon in a hand */
 #define FLAGS_MINION_HEADER 0x0400
 #define ICON_KEY_COLOR      UI_RED /* the background of a hand icon bitmap; the blit skips it */
 #define UI_INDEX_AURA       7
@@ -116,19 +88,19 @@ Offscreen *area_begin_draw(int clear)
 static void draw_action_result(int16_t value)
 {
     begin_draw(1);
-    int index = UI_INDEX_ACTION, entry = ACTION_RESULT_DAMAGE;
+    int index = UI_INDEX_ACTION, entry = GFX_ACTION_RESULT_DAMAGE;
     if (value < 0) {
         if (value == RESULT_NOTHING)
-            entry = ACTION_RESULT_NOTHING;
+            entry = GFX_ACTION_RESULT_NOTHING;
         else if (value == RESULT_NO_AMMO)
-            entry = ACTION_RESULT_MISS;
+            entry = GFX_ACTION_RESULT_MISS;
         else if (value == RESULT_CANT)
-            entry = ACTION_RESULT_CANT;
+            entry = GFX_ACTION_RESULT_CANT;
         else {
             index = UI_INDEX_SPELL;
-            entry = value == RESULT_UNKNOWN_SPELL   ? RESULT_SPELL_FIZZLE
-                    : value == RESULT_WIZARD_FAILED ? RESULT_SPELL_NEEDS
-                                                    : RESULT_SPELL_OTHER;
+            entry = value == RESULT_UNKNOWN_SPELL   ? GFX_RESULT_SPELL_FIZZLE
+                    : value == RESULT_WIZARD_FAILED ? GFX_RESULT_SPELL_NEEDS
+                                                    : GFX_RESULT_SPELL_OTHER;
         }
     }
     DrawCtx c;
@@ -147,7 +119,7 @@ static void draw_action_result(int16_t value)
         } while (value);
         offscreen_draw_text_in_zone(&area, ZONE_RESULT, ui_colors[UI_CYAN], ui_colors[UI_BLACK], digits + at);
     } else if (value == RESULT_NO_AMMO) {
-        offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? AMMO_HAND_OTHER : AMMO_HAND_DEFAULT,
+        offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? GFX_AMMO_HAND_OTHER : GFX_AMMO_HAND_DEFAULT,
                                   ZONE_AMMO_HAND, UI_OPAQUE);
         for (int slot_index = 0; slot_index < GDAT_NO_INDEX; slot_index++) {
             uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, slot_index, GDAT_TYPE_VALUE, AMMO_ATTR);
@@ -172,7 +144,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
     int empty = thing == THING_NONE;
     DrawCtx c;
     if (empty)
-        draw_ctx_init(&c, CAT_INTERFACE, UI_INDEX_STATUS, ACTION_EMPTY_HAND + (hand == SLOT_ACTION_HAND));
+        draw_ctx_init(&c, CAT_INTERFACE, UI_INDEX_STATUS, GFX_ACTION_EMPTY_HAND + (hand == SLOT_ACTION_HAND));
     else
         draw_ctx_init(&c, item_gdat_category(thing), item_gdat_index(thing), item_icon_index(thing, -1, 0));
     draw_ctx_prepare(&c);
@@ -187,7 +159,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
         ui_blit_bitmap(c.image, icon, r, 0, 0, UI_OPAQUE, shadow);
         uint32_t size;
         const uint8_t *remap = gdat_item(
-            gdat_current(), gdat_find(gdat_current(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, ICON_SHADOW_REMAP), &size);
+            gdat_current(), gdat_find(gdat_current(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, GFX_ICON_SHADOW_REMAP), &size);
         if (remap) {
             if (c.palette_count < 1) {
                 memcpy(c.palette, remap, REMAP_COLORS);
@@ -217,7 +189,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
         return;
     }
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION,
-                              (uint8_t)(hand * 2 + ACTION_HAND_BACK_FIRST + flash), zone, UI_OPAQUE);
+                              (uint8_t)(hand * 2 + GFX_ACTION_HAND_BACK_FIRST + flash), zone, UI_OPAQUE);
     Bitmap *icon = action_hand_icon(champ, hand);
     if (icon) {
         int16_t centered[RECT_SIZE] = {(int16_t)(((r[RECT_W] - icon->width + 1) >> 1) + r[RECT_X]),
@@ -272,7 +244,7 @@ static Bitmap *face_bitmap(void)
 static void draw_party_icons(void)
 {
     begin_draw(0);
-    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, WALLSET_PARTY_BACK, ZONE_PARTY_ICONS, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_PARTY_BACK, ZONE_PARTY_ICONS, UI_OPAQUE);
     Bitmap *face = face_bitmap();
     for (int i = 0; face && i < game.champion_count; i++) {
         const Champion *c = champion(i);
@@ -306,8 +278,8 @@ void area_draw_spell_icon(int champ, int flash)
     if (!c->health)
         return;
     int mirror = rel == 1 || rel == 2;
-    int rune = rel <= 1 ? ACTION_SPELL_RUNE_LEFT : ACTION_SPELL_RUNE_RIGHT;
-    int hand = rel <= 1 ? ACTION_SPELL_HAND_LEFT : ACTION_SPELL_HAND_RIGHT;
+    int rune = rel <= 1 ? GFX_ACTION_SPELL_RUNE_LEFT : GFX_ACTION_SPELL_RUNE_RIGHT;
+    int hand = rel <= 1 ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
     if (champ == game.leader)
         rune++;
     if (flash)
@@ -334,8 +306,9 @@ void area_draw_spell_icon(int champ, int flash)
 /* Draws the header of an open hand or spell panel with the champion name. */
 static void draw_menu_header(void)
 {
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_MENU_HEADER, ZONE_MENU_HEADER, UI_OPAQUE);
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_MENU_BACK, ZONE_MENU_BACK, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_HEADER, ZONE_MENU_HEADER,
+                              UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK, ZONE_MENU_BACK, UI_OPAQUE);
     int champ = action.champion - 1;
     offscreen_draw_text_in_zone_with_shadow(&area, ZONE_MENU_NAME, ui_colors[champ == game.leader ? UI_GOLD : UI_WHITE],
                                             ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
@@ -345,7 +318,7 @@ static void draw_menu_header(void)
 static void draw_action_champion_face(void)
 {
     begin_draw(0);
-    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, WALLSET_FACE_BACK, ZONE_FACE_BACK, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_FACE_BACK, ZONE_FACE_BACK, UI_OPAQUE);
     Bitmap *face = face_bitmap();
     int16_t r[RECT_SIZE], sx = 0, sy = 0;
     if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy, ZONE_NO_ANCHOR)) {
@@ -356,8 +329,8 @@ static void draw_action_champion_face(void)
         offscreen_blit(&area, face, r, sx, sy, UI_KEY, MIRROR_NONE, palette);
         draw_aura(champ, ZONE_FACE);
     }
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_FACE_LEFT, ZONE_FACE_LEFT, UI_OPAQUE);
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_FACE_RIGHT, ZONE_FACE_RIGHT, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_LEFT, ZONE_FACE_LEFT, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_RIGHT, ZONE_FACE_RIGHT, UI_OPAQUE);
 }
 
 /* Draws the runes that the champion entered in the spell panel. */
@@ -365,7 +338,8 @@ void area_draw_entered_runes(int clear)
 {
     begin_draw(0);
     if (clear)
-        offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNES_BACK, ZONE_RUNES_BACK, UI_OPAQUE);
+        offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNES_BACK, ZONE_RUNES_BACK,
+                                  UI_OPAQUE);
     const Champion *c = champion(action.champion - 1);
     size_t n = strnlen(c->runes, CHAMPION_SIZE - offsetof(Champion, runes));
     for (size_t i = 0; i < n; i++) {
@@ -403,7 +377,7 @@ void area_draw_name(int i, int highlight)
             ZONE_MAP_ACTION_FIRST + i, UI_OPAQUE);
         return;
     }
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_BUTTON + highlight,
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_BUTTON + highlight,
                               ZONE_ACTION_BUTTON_FIRST + i, UI_OPAQUE);
     offscreen_draw_text_in_zone_with_shadow(&area, ZONE_ACTION_NAME_FIRST + i, ui_colors[UI_WHITE],
                                             ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
@@ -505,7 +479,8 @@ static void draw_container(uint16_t container, int full)
     int16_t back[RECT_SIZE] = {0};
     if (full) {
         offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, GFX_CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
-        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, CONTAINER_LID, ZONE_CONTAINER_LID, CONTAINER_LID_KEY);
+        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, GFX_CONTAINER_LID, ZONE_CONTAINER_LID,
+                                  CONTAINER_LID_KEY);
     } else {
         zone_get_rect(ZONE_PANEL, back);
     }

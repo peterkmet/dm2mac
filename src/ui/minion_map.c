@@ -20,15 +20,12 @@
 #include "zone.h"
 #include <string.h>
 
-#define OPTION_BUTTON_UP    0x49
-#define OPTION_BUTTON_DOWN  0x4a
 #define OPTION_LABEL_FIRST  'r'
 #define ICON_KEY            10
 /* Icon strips: GDAT image (category, index, 1, 0xf9), MAP_ICON_W pixels per icon; the value (category, index, 0x0b,
    0xf9) set: the thing shows only with MAP_OPTION_DETAILS. */
 #define STRIP_DETAIL_KEY    0xf9
-#define MAP_ITEM_ICONS      0x40 /* the image of the map item with the party, minion, and marker icons */
-#define GDAT_INDEX_COUNT    256  /* GDAT indices are bytes */
+#define GDAT_INDEX_COUNT    256 /* GDAT indices are bytes */
 /* Offsets added to a door icon of the square strip. */
 #define ICON_DOOR_NO_BUTTON 2
 #define ICON_DOOR_OPEN      4
@@ -80,8 +77,8 @@ static Strip map_icon_strip(int category, int index)
 static Strip map_item_icons(uint16_t thing)
 {
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
-    return (Strip){draw_gdat_image(category, index, MAP_ITEM_ICONS),
-                   draw_gdat_image_palette(category, index, MAP_ITEM_ICONS), 0};
+    return (Strip){draw_gdat_image(category, index, GFX_MAP_ITEM_ICONS),
+                   draw_gdat_image_palette(category, index, GFX_MAP_ITEM_ICONS), 0};
 }
 
 /* True when the GDAT key has the detail value: it shows only with MAP_OPTION_DETAILS. */
@@ -233,13 +230,13 @@ static int missile_image_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     const gdat_t *g = gdat_current();
-    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_FRONT))
+    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_FRONT))
         return MISSILE_NO_PICTURE;
-    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_SIDE))
+    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_SIDE))
         return MISSILE_NO_SIDE;
-    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_BACK))
+    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_BACK))
         return MISSILE_FRONT_BACK;
-    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, MISSILE_PICTURE_FRONT_2))
+    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_FRONT_2))
         return MISSILE_MIRRORED;
     return MISSILE_FRONT;
 }
@@ -470,8 +467,8 @@ void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int s
         draw_party_frame(x, y);
     ui_map_draw_square(THING_NONE, sx, sy, DIR_NORTH, x, y, dungeon_map_wallset(party.cur_map), 0);
     if (party_item >= 0) {
-        Strip p = {draw_gdat_image(CAT_CONTAINER, party_item, MAP_ITEM_ICONS),
-                   draw_gdat_image_palette(CAT_CONTAINER, party_item, MAP_ITEM_ICONS), 0};
+        Strip p = {draw_gdat_image(CAT_CONTAINER, party_item, GFX_MAP_ITEM_ICONS),
+                   draw_gdat_image_palette(CAT_CONTAINER, party_item, GFX_MAP_ITEM_ICONS), 0};
         draw_party_icons(&p, x, y, DIR_NORTH);
     }
     memcpy(minion_map.clip, saved, sizeof saved);
@@ -480,7 +477,7 @@ void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int s
 int mmap_party_icons_item(void)
 {
     for (int index = 0; index < GDAT_INDEX_COUNT; index++)
-        if (gdat_exists(gdat_current(), CAT_CONTAINER, index, GDAT_TYPE_IMAGE, MAP_ITEM_ICONS))
+        if (gdat_exists(gdat_current(), CAT_CONTAINER, index, GDAT_TYPE_IMAGE, GFX_MAP_ITEM_ICONS))
             return index;
     return -1;
 }
@@ -633,8 +630,8 @@ void mmap_draw_option_buttons(int pressed)
     int down = (pressed ^ action.flags) & MAP_OPTIONS;
     for (int i = 0; i < MAP_OPTION_COUNT; i++, down >>= 1) {
         offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item,
-                                  down & 1 ? OPTION_BUTTON_DOWN : OPTION_BUTTON_UP, ZONE_OPTION_BUTTON_FIRST + i,
-                                  UI_OPAQUE);
+                                  down & 1 ? GFX_OPTION_BUTTON_DOWN : GFX_OPTION_BUTTON_UP,
+                                  ZONE_OPTION_BUTTON_FIRST + i, UI_OPAQUE);
         char label[2] = {(char)(OPTION_LABEL_FIRST + i), '\0'};
         offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i, ui_colors[UI_BLACK],
                                     ui_colors[UI_GRAY] | TEXT_TRANSPARENT, label);

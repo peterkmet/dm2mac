@@ -2,6 +2,7 @@
 /* Coins in money boxes, the money box panel, new items, and the prices of the shops. */
 #include "money.h"
 #include "gdat.h"
+#include "ids.h"
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
@@ -12,7 +13,6 @@
 #include "merchant.h"
 #include <string.h>
 
-#define CREATURE_CLASS_TEXT    0x10 /* GDAT texts (0x0f, creature, 5, 0x10 + list): the item classes of a merchant */
 #define MERCHANT_ATTR_MARGIN   0xa0 /* creature attributes 0xa0 + list * 3: margin, then two price factors */
 #define MERCHANT_ATTR_FACTOR_A 0xa1
 #define MERCHANT_ATTR_FACTOR_B 0xa2
@@ -181,7 +181,7 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
 {
     char text[TEXT_SIZE];
     memset(bitset, 0, SHOP_CLASS_SET_SIZE);
-    const char *p = text_gdat(CAT_CREATURE, creature, (uint8_t)(list + CREATURE_CLASS_TEXT), text);
+    const char *p = text_gdat(CAT_CREATURE, creature, (uint8_t)(list + GFX_CREATURE_CLASS_TEXT), text);
     if (!*p)
         return 0;
     int16_t number = 0, low = -1, base = -1;

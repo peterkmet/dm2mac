@@ -29,16 +29,8 @@
 /* The zones of the button texts (table of SKULL.EXE); the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
 static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
 
-/* The volume dialog: the labels, the buttons of the settings 0 to 7, and their texts. */
-enum {
-    VOLUME_SOUND_LABEL = 0x28,
-    VOLUME_SOUND_OFF = 0x29,
-    VOLUME_MUSIC_LABEL = 0x3c,
-    VOLUME_MUSIC_OFF = 0x3d,
-    VOLUME_BUTTON = 2,
-    VOLUME_BUTTON_ON = 3,
-    VOLUME_LEVELS = 8
-};
+/* The volume settings 0 to 7 of the volume dialog. */
+#define VOLUME_LEVELS 8
 /* The test sound of a new sound volume. */
 enum { TEST_SOUND_INDEX = 0 };
 
@@ -231,8 +223,9 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 {
     char text[TEXT_SIZE];
     for (int level = VOLUME_LEVELS - 1; level >= 0; level--) {
-        ui_draw_gdat_in_viewport_zone(CAT_DIALOG, DIALOG_VOLUME, level == setting ? VOLUME_BUTTON_ON : VOLUME_BUTTON,
-                                      button_zone + level, UI_OPAQUE);
+        ui_draw_gdat_in_viewport_zone(CAT_DIALOG, DIALOG_VOLUME,
+                                      level == setting ? GFX_VOLUME_BUTTON_ON : GFX_VOLUME_BUTTON, button_zone + level,
+                                      UI_OPAQUE);
         if (level) {
             text[0] = (char)('0' + level);
             text[1] = '\0';
@@ -250,12 +243,12 @@ void dialog_volume(void)
         return;
     dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
     text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW],
-                      text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_SOUND_LABEL, text));
+                      text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_SOUND_LABEL, text));
     text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW],
-                      text_gdat(CAT_DIALOG, DIALOG_VOLUME, VOLUME_MUSIC_LABEL, text));
+                      text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_MUSIC_LABEL, text));
     for (;;) {
-        draw_volume_buttons(game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, VOLUME_SOUND_OFF);
-        draw_volume_buttons(game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, VOLUME_MUSIC_OFF);
+        draw_volume_buttons(game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, GFX_VOLUME_SOUND_OFF);
+        draw_volume_buttons(game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, GFX_VOLUME_MUSIC_OFF);
         dialog_present();
         int command = dialog_run(DIALOG_VOLUME);
         if (command == CMD_DIALOG_BUTTON_FIRST || main_loop.quit)

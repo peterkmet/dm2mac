@@ -19,13 +19,11 @@
 
 #define SENSOR_MIRROR         0x7e         /* the wall sensor of a champion mirror; its data is the portrait */
 #define SENSOR_MIRROR_ACTIVE  SENSOR_STATE /* the mirror still holds its champion */
-#define PORTRAIT_TEXT         0x18         /* GDAT text (0x16, portrait, 5, 0x18): "NAME TITLE" */
 #define PORTRAIT_DATA_TYPE    8 /* GDAT item (0x16, portrait, 8, 0): health, stamina, mana, statistics, skills */
 #define STAT_START_MIN        30
 #define SKILL_EXPERIENCE_BASE 64
 #define FOOD_START            1500
 #define FOOD_RANDOM_MASK      0xff /* a new champion gets up to 255 more food and water */
-#define MOUTH_OPEN            0xfb /* also the entry of its sound */
 #define MOUTH_SOUND_PRIORITY  0xff
 #define MESSAGE_COLOR_FIRST   UI_GREEN
 enum {
@@ -59,7 +57,7 @@ static void champ_add_to_party(int portrait, int index, int dir)
     for (int s = 0; s < SLOT_COUNT; s++)
         c->slots[s] = THING_NONE;
     char text[TEXT_SIZE];
-    const char *p = text_gdat(CAT_CHAMPION, portrait, PORTRAIT_TEXT, text);
+    const char *p = text_gdat(CAT_CHAMPION, portrait, GFX_PORTRAIT_TEXT, text);
     char ch;
     /* the name ends at a space or after 7 characters; the title follows (the 8th character of a long name is lost) */
     for (int i = 0;; i++) {
@@ -166,10 +164,10 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         return;
     }
     if (!recruit_silent) {
-        g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
+        g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
         g_hooks.present_viewport();
-        sound_request(MOUTH_CATEGORY, MOUTH_INDEX, MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD, game.party_x,
-                      game.party_y, 0);
+        sound_request(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD,
+                      game.party_x, game.party_y, 0);
     }
     if (hand != THING_NONE)
         inv_put_object_in_free_slot(champ, hand);

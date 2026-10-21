@@ -9,9 +9,10 @@
 /* The interface layout (CAT_INTERFACE, 0, 4, entry). */
 #define GFX_LAYOUT 0x00
 
-/* The interface data of type 7 (CAT_INTERFACE, 0, 7, entry). */
-#define GFX_FONT 0x00
-#define GFX_RAMP 0x02
+/* The interface data of type 7 (CAT_INTERFACE, 0, 7, entry): the font and the color remaps. */
+#define GFX_FONT              0x00
+#define GFX_ICON_SHADOW_REMAP 0x01 /* GDAT (1, 0, 7, 1): the colors of an item icon in a hand */
+#define GFX_RAMP              0x02
 
 /* The palette (CAT_INTERFACE, 0, 9, entry). */
 #define GFX_PALETTE 0xfe
@@ -19,48 +20,154 @@
 /* The interface raw data (CAT_INTERFACE, index, GDAT_TYPE_DATA, entry). */
 #define GFX_UI_COLORS 0xfe /* (CAT_INTERFACE, index, GDAT_TYPE_DATA, entry): the interface colors */
 
-/* The interface pictures (CAT_INTERFACE, index, GDAT_TYPE_IMAGE, entry). */
-#define GFX_FLASK_PICTURE 0x0b
+/* Status box pictures (1, 2, 1, entry); the slot frames are also the eye and mouth icons of the inventory. */
+#define GFX_BOX_ALIVE         0x00
+#define GFX_BOX_DEAD          0x01
+#define GFX_BOX_DAMAGE        0x03
+#define GFX_BOX_SLOT_FRAME    0x04
+#define GFX_BOX_SLOT_WOUNDED  0x05
+#define GFX_BOX_SLOT_ACTIVE   0x06
+#define GFX_ACTION_EMPTY_HAND 0x07
+#define GFX_BOX_INVENTORY     0x09
+
+/* The movement arrows (1, 3, 1, entry). */
+#define GFX_ARROWS      0x02
+#define GFX_PUSH_ARROWS 0x0e
+
+/* Action area pictures (1, 4, 1, entry). */
+#define GFX_ACTION_RESULT_DAMAGE    0x01
+#define GFX_ACTION_HAND_BACK_FIRST  0x02
+#define GFX_ACTION_SPELL_HAND_LEFT  0x06
+#define GFX_ACTION_SPELL_HAND_RIGHT 0x08
+#define GFX_ACTION_SPELL_RUNE_LEFT  0x0a
+#define GFX_ACTION_SPELL_RUNE_RIGHT 0x0c
+#define GFX_ACTION_MENU_BACK        0x0e
+#define GFX_ACTION_FACE_LEFT        0x10
+#define GFX_ACTION_FACE_RIGHT       0x12
+#define GFX_ACTION_MENU_HEADER      0x14
+#define GFX_ACTION_BUTTON           0x15
+#define GFX_ACTION_RESULT_MISS      0x17
+#define GFX_ACTION_RESULT_NOTHING   0x18
+#define GFX_ACTION_RESULT_CANT      0x19
+
+/* Spell area pictures (1, 5, 1, entry). */
+#define GFX_SPELL_RUNE_PRESSED  0x08 /* GDAT (1, 5, 8): the pressed rune button */
+#define GFX_SPELL_RUNES_BACK    0x09
+#define GFX_FLASK_PICTURE       0x0b
+#define GFX_RESULT_SPELL_NEEDS  0x0c
+#define GFX_RESULT_SPELL_OTHER  0x0d
+#define GFX_RESULT_SPELL_FIZZLE 0x0e
 
 /* The interface texts of index 0xfe (CAT_INTERFACE, 0xfe, GDAT_TYPE_TEXT, entry). */
 #define GFX_FORMAT_TITLE_2 0x06
 
+/* Inventory panel pictures (7, 0, 1, entry); the close button is also the button of the name entry. */
+#define GFX_PANEL_BACK         0x00
+#define GFX_PANEL_PANEL        0x01
+#define GFX_PANEL_OBJECT_NAME  0x05
+#define GFX_PANEL_FOOD         0x06
+#define GFX_PANEL_WATER        0x07
+#define GFX_PANEL_POISON       0x08
+#define GFX_PANEL_BUTTON_EXIT  0x0b
+#define GFX_PANEL_BUTTON_SLEEP 0x0d
+#define GFX_PANEL_BUTTON_SAVE  0x0f
+#define GFX_PANEL_BUTTON_SOUND 0x11
+#define GFX_PANEL_BUTTON_CLOSE 0x13
+#define GFX_NAME_BUTTON_DOWN   0x14
+#define GFX_PANEL_MOUTH        0x20
+#define GFX_PANEL_EYE          0x25
+#define GFX_AMMO_HAND_OTHER    0x34
+#define GFX_AMMO_HAND_DEFAULT  0x38
+
 /* The menu pictures (CAT_MENU, 0, GDAT_TYPE_IMAGE, entry). */
 #define GFX_MENU_PICTURE 0x01 /* GDAT (5, 0, 1, 1): the picture of the menu command 0xda */
+#define GFX_MENU_TITLE   0x04 /* GDAT (5, 0, 1, 4): the title picture */
 
 /* The end pictures (CAT_END, 0, GDAT_TYPE_IMAGE, entry). */
 #define GFX_END_PICTURE 0x01 /* GDAT (6, 0, 1, 1): the picture after the player quits */
 
+/* Wall set pictures (CAT_WALLSET, graphics set, 1, entry). */
+#define GFX_MAP_FLOOR            0x00
+#define GFX_MAP_CEILING          0x01
+#define GFX_MAP_FONT             0x03
+#define GFX_MAP_DOOR_SIDE        0x06
+#define GFX_MAP_WALL             0x22
+#define GFX_MAP_FAR_WALL         0x32
+#define GFX_MAP_STAIRS_SIDE_UP   0x39
+#define GFX_MAP_STAIRS_SIDE_DOWN 0x4d
+#define GFX_MAP_WALL_FLIPPED     0xb0
+#define GFX_WALLSET_PARTY_BACK   0xf5 /* behind the party */
+#define GFX_WALLSET_FACE_BACK    0xf6 /* behind the action champion */
+#define GFX_MAP_PLATE_FRONT      0xfc
+#define GFX_MAP_PLATE_SIDE       0xfd
+#define GFX_MAP_PLATE_RIGHT      0xfe
+
+/* Wall set color remaps (CAT_WALLSET, graphics set, GDAT_TYPE_REMAP, entry). */
+#define GFX_REMAP_WALK_BASE 0x09 /* + depth: the depth shading table of the walking view */
+
+/* Ornament pictures (CAT_WALL_ORNAMENT, ornament, 1, entry); the wet background also of floor ornaments. */
+#define GFX_ORN_OVERLAY        0x0f /* wall ornament picture drawn over the ornament */
+#define GFX_ORN_SHOP_COINS     0x10 /* a strip of coin pictures, COIN_WIDTH wide each */
+#define GFX_ORN_SHOP_EMPTY     0x11 /* the picture of a display without its item */
+#define GFX_ORN_WET_BACKGROUND 0xc8 /* + entry: the picture behind a wet ornament */
+#define GFX_MOUTH_CLOSED       0xfa /* the mouth of the inventory: ornament 0x5b */
+#define GFX_MOUTH_OPEN         0xfb /* also the entry of its sound */
+
+/* Ornament tables (CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, entry). */
+#define GFX_ORN_SHOP_TABLE 0x13 /* (CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, 0x13): the item order */
+
+/* Door pictures (CAT_DOOR, door, GDAT_TYPE_IMAGE, entry). */
+#define GFX_DOOR_DAMAGE 0x41 /* door picture of the damage mask */
+
 /* The pictures of a dialog (CAT_DIALOG, dialog, GDAT_TYPE_IMAGE, entry). */
-#define GFX_DIALOG_PICTURE 0x00
+#define GFX_DIALOG_PICTURE   0x00
+#define GFX_VOLUME_BUTTON    0x02 /* the volume dialog: a setting button, and the button of the current setting */
+#define GFX_VOLUME_BUTTON_ON 0x03
 
 /* The texts of a dialog (CAT_DIALOG, dialog, GDAT_TYPE_TEXT, entry). */
-#define GFX_DIALOG_MESSAGE 0x14
+#define GFX_DIALOG_MESSAGE     0x14
+#define GFX_VOLUME_SOUND_LABEL 0x28 /* the volume dialog: the labels and the texts of setting 0 */
+#define GFX_VOLUME_SOUND_OFF   0x29
+#define GFX_VOLUME_MUSIC_LABEL 0x3c
+#define GFX_VOLUME_MUSIC_OFF   0x3d
 
 /* The pictures of a creature (CAT_CREATURE, creature, GDAT_TYPE_IMAGE, entry). */
-#define GFX_ICON          0x09 /* the front view */
-#define GFX_CREATURE_SIDE 0xfa /* pictures 0xfa to 0xfd: the creature seen from each side */
+#define GFX_ICON              0x09 /* the front view */
+#define GFX_CREATURE_SIDE     0xfa /* pictures 0xfa to 0xfd: the creature seen from each side */
+#define GFX_CREATURE_ANY_SIDE 0xfc
 
 /* The animation data of a creature (CAT_CREATURE, creature, GDAT_TYPE_CREATURE_DATA, entry). */
 #define GFX_CREATURE_STEPS  0xfc /* data: the animation steps (4 bytes each) */
 #define GFX_CREATURE_FRAMES 0xfd /* data: the animation frames */
+#define GFX_CREATURE_SIZES  0xfe /* creature data: picture scale by frame size row and side */
 
 /* The animation table of a creature (CAT_CREATURE, creature, GDAT_TYPE_TABLE, entry). */
 #define GFX_CREATURE_SEQUENCES 0xfb /* table: (action, first step) pairs, ended by -1 */
+
+/* The texts of a creature (CAT_CREATURE, creature, GDAT_TYPE_TEXT, entry). */
+#define GFX_CREATURE_CLASS_TEXT 0x10 /* GDAT texts (0x0f, creature, 5, 0x10 + list): the item classes of a merchant */
 
 /* The pictures of an explosion (CAT_EXPLOSION, type, GDAT_TYPE_IMAGE, entry); the sparkles also of a teleporter. */
 #define GFX_ALCOVE_STILL_PICTURE 0x0c
 #define GFX_SPARKLE_PICTURE      0x14 /* an explosion with this picture is a sparkle field */
 #define GFX_EXPLOSION_PICTURE    0x41
+#define GFX_EXPLOSION_TINT       0x42 /* pictures 0x42 to 0x44: the tint of an explosion on the party square */
 
 /* The pictures of a champion (CAT_CHAMPION, champion, GDAT_TYPE_IMAGE, entry). */
 #define GFX_PORTRAIT 0x01
 
+/* The texts of a champion (CAT_CHAMPION, portrait, GDAT_TYPE_TEXT, entry). */
+#define GFX_PORTRAIT_TEXT 0x18 /* GDAT text (0x16, portrait, 5, 0x18): "NAME TITLE" */
+
 /* The pictures of every item (item category, index, GDAT_TYPE_IMAGE, entry). */
-#define GFX_OBJECT_PICTURE_CLOSED 0x00 /* object pictures by the open state of a chest: side view, front view */
-#define GFX_OBJECT_PICTURE_OPEN   0x04
-#define GFX_OBJECT_PICTURE        0x11 /* (category, index, 1, 0x11): the big picture of an item */
-#define GFX_ITEM_ICON             0x18 /* the first icon of an item */
+#define GFX_OBJECT_PICTURE_CLOSED   0x00 /* object pictures by the open state of a chest: side view, front view */
+#define GFX_OBJECT_PICTURE_OPEN     0x04
+#define GFX_MISSILE_PICTURE_FRONT   0x08 /* the pictures of an item in flight */
+#define GFX_MISSILE_PICTURE_FRONT_2 0x09
+#define GFX_MISSILE_PICTURE_BACK    0x0a
+#define GFX_MISSILE_PICTURE_SIDE    0x0c
+#define GFX_OBJECT_PICTURE          0x11 /* (category, index, 1, 0x11): the big picture of an item */
+#define GFX_ITEM_ICON               0x18 /* the first icon of an item */
 
 /* GDAT texts (category, index, 5, entry) of an item: its name and its actions. */
 #define GFX_ACTION_FIRST 0x08
@@ -72,11 +179,24 @@
 
 /* The pictures of a container: a chest, a money box, a minion map (CAT_CONTAINER, index, GDAT_TYPE_IMAGE, entry). */
 #define GFX_CONTAINER_PICTURE       0x10
+#define GFX_CONTAINER_LID           0x12
+#define GFX_MAP_ITEM_ICONS          0x40 /* the image of the map item with the party, minion, and marker icons */
 #define GFX_MAP_ACTION_PICTURE_BASE 0x41
 #define GFX_CHEST_OPEN_PICTURE      0x48
+#define GFX_OPTION_BUTTON_UP        0x49
+#define GFX_OPTION_BUTTON_DOWN      0x4a
 
 /* The texts of a container (CAT_CONTAINER, index, GDAT_TYPE_TEXT, entry). */
 #define GFX_MONEYBOX_TEXT 0x40 /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
+
+/* Sky objects (CAT_SKY, graphics set, GDAT_TYPE_IMAGE, entry). */
+#define GFX_SKY_LIGHTNING     0x64
+#define GFX_SKY_RAIN_LIGHT    0x67
+#define GFX_SKY_RAIN_MEDIUM   0x68
+#define GFX_SKY_RAIN_HEAVY    0x69
+#define GFX_SKY_CLOUDS_LIGHT  0x6a
+#define GFX_SKY_CLOUDS_MEDIUM 0x6b
+#define GFX_SKY_CLOUDS_HEAVY  0x6c
 
 /* The minion map icon strip of a thing (category, index, GDAT_TYPE_IMAGE, entry). */
 #define GFX_STRIP 0xf9

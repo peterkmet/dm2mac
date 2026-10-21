@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MENU_TITLE           4 /* GDAT (5, 0, 1, 4): the title picture */
 #define MENU_PICTURE_VBLANKS 1800
 #define END_SOUND_VBLANKS    240
 #define SAVE_HEADER_UNUSED   0x26 /* the slot list marks an empty slot with UNUSED_SLOT here */
@@ -47,7 +46,7 @@ enum { SLOT_BUTTONS_LOAD = 5, SLOT_BUTTONS_SAVE = 6 };
 /* The sound of the end of the game: the scream of the first champion (fallback: the generic scream). */
 enum { END_SOUND_PRIORITY = 0xff };
 /* The name and title fields of the inventory while a name changes. */
-enum { NAME_PANEL_MODE = 8, NAME_BUTTON_UP = 0x13, NAME_BUTTON_DOWN = 0x14, CHAMP_NAME_MAX = 7, CHAMP_TITLE_MAX = 15 };
+enum { NAME_PANEL_MODE = 8, CHAMP_NAME_MAX = 7, CHAMP_TITLE_MAX = 15 };
 /* The characters of a champion name. */
 static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
 
@@ -88,7 +87,7 @@ static void draw_screen_picture(int category, int index, int entry)
 
 void menu_draw_title(void)
 {
-    draw_screen_picture(CAT_MENU, 0, MENU_TITLE);
+    draw_screen_picture(CAT_MENU, 0, GFX_MENU_TITLE);
 }
 
 void menu_show_picture_and_wait(void)
@@ -645,7 +644,7 @@ void session_edit_champion_name(Champion *c)
         int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE, y = in_name ? name_y : title_y;
         for (int field_done = 0, redraw = 1; !field_done && !main_loop.quit;) {
             if (redraw) {
-                ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, UI_OPAQUE);
+                ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, UI_OPAQUE);
                 text_draw_in_zone(ZONE_NAME, ui_colors[UI_YELLOW], c->name);
                 text_draw_in_zone(ZONE_TITLE, ui_colors[UI_YELLOW], c->title);
                 text_draw_in_viewport(x, y, ui_colors[UI_GOLD], "_");
@@ -683,7 +682,7 @@ void session_edit_champion_name(Champion *c)
         }
     }
     editing = 0;
-    ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, NAME_BUTTON_UP, ZONE_NAME_BUTTON, UI_OPAQUE);
+    ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, UI_OPAQUE);
     c->redraw |= REDRAW_NAME;
     ui_draw_champion_state(ui.inventory - 1);
     play_show_view();

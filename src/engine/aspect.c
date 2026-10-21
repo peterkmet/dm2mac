@@ -2,6 +2,7 @@
 /* What the party sees of a square: its aspect, ornaments, and first thing; the 5 x 5 cell grid of a square. */
 #include "aspect.h"
 #include "gdat.h"
+#include "ids.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "move.h"
@@ -15,8 +16,7 @@
 #define ORN_KEY_FRAMES          0x0d /* (category, ornament, 0x0b, key): animation frames, bit 15: frames start at 1 */
 #define FRAMES_FROM_ONE         0x8000
 #define FLOOR_ORNAMENT_ANIMATED 0x8000
-#define CREATURE_FRAMES         0xfd /* creature data: the animation frames */
-#define RANDOM_ORNAMENT_SLOTS   30   /* random wall ornament hash: one of 30 values picks an ornament of the list */
+#define RANDOM_ORNAMENT_SLOTS   30 /* random wall ornament hash: one of 30 values picks an ornament of the list */
 
 /* The random wall ornament hash of SKULL.EXE. */
 #define HASH_X_STEP     32
@@ -458,7 +458,7 @@ int aspect_rotate_cell(int cell, int dir)
 /* The grid cell of a creature in its square, turned by dir: the cell of its animation frame. */
 int aspect_creature_cell(uint16_t group, int dir)
 {
-    if (!gdat_exists(gdat_current(), CAT_CREATURE, group_creature(group), GDAT_TYPE_CREATURE_DATA, CREATURE_FRAMES))
+    if (!gdat_exists(gdat_current(), CAT_CREATURE, group_creature(group), GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_FRAMES))
         return CELL_CENTER;
     uint8_t frame[CREATURE_FRAME_SIZE];
     creature_anim_frame(gdat_current(), group, frame);

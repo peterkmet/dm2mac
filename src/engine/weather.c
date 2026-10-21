@@ -3,6 +3,7 @@
 #include "weather.h"
 #include "gdat.h"
 #include "gfx.h"
+#include "ids.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
@@ -39,17 +40,8 @@ enum {
 #define LIGHT_AMOUNT_MASK     0x7fff
 #define ITEM_FLAG_LIGHT       0x10 /* ATTR_FLAGS bit: a torch, its charges give light */
 
-/* Sky objects (GDAT (CAT_SKY, graphics set, entry)) and the weather amounts that show them. */
-enum {
-    SKY_LIGHTNING = 0x64,
-    SKY_LIGHTNING_KINDS = 3,
-    SKY_RAIN_LIGHT = 0x67,
-    SKY_RAIN_MEDIUM,
-    SKY_RAIN_HEAVY,
-    SKY_CLOUDS_LIGHT,
-    SKY_CLOUDS_MEDIUM,
-    SKY_CLOUDS_HEAVY
-};
+/* The number of lightning pictures from GFX_SKY_LIGHTNING. */
+#define SKY_LIGHTNING_KINDS      3
 #define SKY_OBJECT_MAX           5 /* sky objects of the weather, with the end mark */
 #define CLOUDS_MAX               255
 #define STORM_MAX                255
@@ -160,11 +152,11 @@ SkyObject *weather_sky_objects(void)
 }
 bool weather_sky_has_rain(void)
 {
-    return sky_has(SKY_RAIN_LIGHT);
+    return sky_has(GFX_SKY_RAIN_LIGHT);
 }
 bool weather_sky_has_clouds(void)
 {
-    return sky_has(SKY_CLOUDS_LIGHT);
+    return sky_has(GFX_SKY_CLOUDS_LIGHT);
 }
 
 int weather_load_sky_object(SkyObject *object)
@@ -279,7 +271,7 @@ static int weather_update_rain(void)
             (rain >= RAIN_LIGHT && game.game_time % CLOUD_STEP_TICKS == 0) || !(game.game_time & CLOUD_SLOW_TICKS_MASK))
             game.cloud_cover++;
     }
-    return sky_has(SKY_LIGHTNING) && rand_below(span) <= chance;
+    return sky_has(GFX_SKY_LIGHTNING) && rand_below(span) <= chance;
 }
 
 static int abs16(int v)
@@ -346,7 +338,7 @@ static SkyObject *weather_lightning(SkyObject *o)
     }
     int bolt = 0;
     if (!strikes && rand_bit()) {
-        o->entry = (uint8_t)(SKY_LIGHTNING + rand_below(SKY_LIGHTNING_KINDS));
+        o->entry = (uint8_t)(GFX_SKY_LIGHTNING + rand_below(SKY_LIGHTNING_KINDS));
         if (weather_load_sky_object(o)) {
             bolt = 1;
             int percent = (int16_t)rand_below(LIGHTNING_PERCENT);
@@ -405,15 +397,15 @@ void world_update_day_night(int storm_step)
         light_update_party_light();
     }
     SkyObject *o = weather_sky_objects();
-    if (sky_has(SKY_RAIN_LIGHT) && game.sky_darkness >= DARKNESS_RAIN) {
+    if (sky_has(GFX_SKY_RAIN_LIGHT) && game.sky_darkness >= DARKNESS_RAIN) {
         if (game.sky_darkness >= DARKNESS_HEAVY)
             game.heavy_rain = 1;
-        o->entry = (uint8_t)sky_entry(game.sky_darkness, DARKNESS_MEDIUM, DARKNESS_HEAVY, SKY_RAIN_LIGHT);
+        o->entry = (uint8_t)sky_entry(game.sky_darkness, DARKNESS_MEDIUM, DARKNESS_HEAVY, GFX_SKY_RAIN_LIGHT);
         if (weather_load_sky_object(o))
             o++;
     }
-    if (sky_has(SKY_CLOUDS_LIGHT) && game.cloud_cover >= CLOUDS_SHOWN) {
-        o->entry = (uint8_t)sky_entry(game.cloud_cover, CLOUDS_MORE, CLOUDS_MOST, SKY_CLOUDS_LIGHT);
+    if (sky_has(GFX_SKY_CLOUDS_LIGHT) && game.cloud_cover >= CLOUDS_SHOWN) {
+        o->entry = (uint8_t)sky_entry(game.cloud_cover, CLOUDS_MORE, CLOUDS_MOST, GFX_SKY_CLOUDS_LIGHT);
         if (weather_load_sky_object(o))
             o++;
     }

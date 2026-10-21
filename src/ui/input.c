@@ -1404,10 +1404,9 @@ enum {
     FB_DIALOG_BUTTON,
     FB_DIALOG_BUTTON_2
 };
-#define SPELL_RUNE_PRESSED 8 /* GDAT (1, 5, 8): the pressed rune button */
-#define FB_OP_MASK         0x3f
-#define FB_RUN_ON          0x40
-#define FB_END             0x80
+#define FB_OP_MASK 0x3f
+#define FB_RUN_ON  0x40
+#define FB_END     0x80
 
 static void queue_current(void)
 {
@@ -1457,13 +1456,13 @@ static void feedback_picture(Feedback *f, const uint8_t *p)
 /* Draws the pressed rune button with the rune of the pressed button in the next rune set. */
 static void feedback_rune_button(Feedback *f)
 {
-    const Bitmap *image = draw_gdat_image(CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNE_PRESSED);
+    const Bitmap *image = draw_gdat_image(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED);
     if (!image)
         return;
     int16_t r[RECT_SIZE], w, h;
     feedback_init_rect(f, r, image->width, image->height);
     offscreen_blit(&f->o, image, r, 0, 0, UI_OPAQUE, 0,
-                   draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, SPELL_RUNE_PRESSED));
+                   draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED));
     /* the rune of the pressed button in the next rune set */
     int set = champion(action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
     char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};

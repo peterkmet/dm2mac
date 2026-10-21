@@ -24,12 +24,6 @@ enum {
     MISSILE_FRONT,      /* front picture 8 only */
     MISSILE_NO_SIDE,    /* no side picture 12 */
 };
-enum {
-    MISSILE_PICTURE_FRONT = 8,
-    MISSILE_PICTURE_FRONT_2 = 9,
-    MISSILE_PICTURE_BACK = 0x0a,
-    MISSILE_PICTURE_SIDE = 0x0c
-};
 
 extern ViewSquare view_squares[VIEW_SQUARE_COUNT];
 /* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward. */
