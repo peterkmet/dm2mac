@@ -4,6 +4,8 @@ import ctypes
 
 import pytest
 
+from dm2test import constants as C
+
 
 G_DIALOG_SCREEN_MODE, G_SCREEN_BITMAP, G_DISK_PATH_KIND, G_DATA_PATH, G_SAVE_PATH = 0x717BC, 0x71550, 0x7F98C, 0x70536, 0x7053A
 
@@ -55,8 +57,8 @@ def find_point(lib, mode, test):
     rect = (ctypes.c_int16 * 4)()
     match = InputMatch.in_dll(lib, "input_match")
     lib.input_find_command.restype = ctypes.c_uint16
-    for y in range(1, 200, 2):
-        for x in range(1, 320, 2):
+    for y in range(1, C.SCREEN_H, 2):
+        for x in range(1, C.SCREEN_W, 2):
             if lib.input_find_command(mode, x, y, 2, 0, rect) and test(match):
                 return x, y
     raise AssertionError("no such click point")

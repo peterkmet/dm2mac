@@ -5,6 +5,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, Event, Timeline, original_save
@@ -166,7 +167,7 @@ class GameRecord(ctypes.Structure):
                 ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
 
 
-G_PENDING_WOUNDS, G_PENDING_DAMAGE, G_CHAMPIONS, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, 0x7FBD0, 263
+G_PENDING_WOUNDS, G_PENDING_DAMAGE, G_CHAMPIONS, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, 0x7FBD0, C.CHAMPION_SIZE
 CHAMPION_REDRAW = 0x32  # the redraw flags: the original status box drawing does not run in these tests
 
 
@@ -402,10 +403,10 @@ class Scenario(CreatureOracle):
             self.lib.gdat_image_size(self.gdat, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
             sizes.append((w.value, h.value))
         (fw, fh), (cw, ch) = sizes
-        floor, rest = fw * fh & 0xFFFF, (224 * 136 - cw * ch) & 0xFFFF
+        floor, rest = fw * fh & 0xFFFF, (C.VIEWPORT_WIDTH * C.VIEWPORT_HEIGHT - cw * ch) & 0xFFFF
         if floor >= rest:
             return 0
-        self.emu.write(G_VIEW_CLEAR_RECT, struct.pack("<4h", 0, ch, 224, 136 - (ch + fh)))
+        self.emu.write(G_VIEW_CLEAR_RECT, struct.pack("<4h", 0, ch, C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT - (ch + fh)))
         return rest - floor
 
     def load_map_graphics(self):

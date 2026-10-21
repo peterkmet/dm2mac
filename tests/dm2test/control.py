@@ -10,11 +10,12 @@ from contextlib import contextmanager
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.scenario import WorldGame
 
 
-SCREEN_W, SCREEN_H, PALETTE_COLORS, RGB = 320, 200, 256, 3
-CHAMPION_SIZE, NAME_SIZE, SCAN_QUOTE = 263, 8, 0x28
+SCREEN_W, SCREEN_H, PALETTE_COLORS, RGB = C.SCREEN_W, C.SCREEN_H, C.PALETTE_COLORS, 3
+CHAMPION_SIZE, NAME_SIZE, SCAN_QUOTE = C.CHAMPION_SIZE, C.CHAMPION_NAME_SIZE, 0x28
 
 
 class GameWithChampions(WorldGame):

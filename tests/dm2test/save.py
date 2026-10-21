@@ -2,6 +2,7 @@
 
 import ctypes
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
@@ -20,7 +21,7 @@ MEM_ALLOC = 0x3BBBA
 GDAT_ENTRY_INDEX = 0x3C5D3
 WEATHER_INIT = 0x59F38
 READ_LEVEL_TABLE = 0x367DA
-GDAT_VALUE_TYPES = (0x0B, 0x0C)
+GDAT_VALUE_TYPES = (C.GDAT_TYPE_VALUE, C.GDAT_TYPE_VALUE2)
 # Globals of the game record: (address, size) by Game field.
 RECORD_GLOBALS = {"game_time": (0x7F22C, 4), "random_seed": (0x70518, 4), "champion_count": (0x7F276, 2),
                   "party_x": (0x7F26C, 2), "party_y": (0x7F26E, 2), "party_dir": (0x7F254, 2), "party_map": (0x7F262, 2)}

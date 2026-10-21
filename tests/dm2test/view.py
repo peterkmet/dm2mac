@@ -3,6 +3,7 @@
 import ctypes
 import struct
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.save import Game
 
@@ -20,12 +21,12 @@ G_PARTY_X, G_PARTY_DIR, G_PUSH_MODE, G_PUSH_PENDING_GROUP = 0x7F26C, 0x7F254, 0x
 # The original functions that the C port does not have: the image cache, the GDAT index, and the memory manager are served from the C port and Python; the viewport arrow (Step 16) does nothing.
 NO_OPS = (0x3F3C2, 0x3F406, 0x3F352, 0x3F422, 0x3F49D, 0x3BCA5, 0x3BC8E, 0x3BCBA, 0x210DC, 0x50BF4)
 G_ACTIVE_GROUPS, G_RANDOM_SEED, G_SKY_STATE, G_RAIN_INTENSITY = 0x7F898, 0x70518, 0x8046E, 0x8047E
-ACTIVE_GROUP_SIZE, ACTIVE_GROUP_MAX = 0x22, 256
+ACTIVE_GROUP_SIZE, ACTIVE_GROUP_MAX = C.ACTIVE_GROUP_SIZE, 256
 G_VIEW_HIT_OFFSET = 0x802D4  # int16 y, x: the place of the last view hit test, in percent
 VIEW_SEED = 0x2F6B1D35  # the random numbers of sparkles, rain, and explosions start from it in each view
 MOVE_THING, VIEW_SEED_ADDR = 0x4B108, 0x70518
 HEAP, HEAP_SIZE = 0x01000000, 0x02000000
-VIEW_W, VIEW_H = 224, 136
+VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 
@@ -111,7 +112,7 @@ class OriginalView:
 
     def entry_index(self, category, index, type_, entry):
         value = self.lib.gdat_find(self.gdat, category & 0xFF, index & 0xFF, type_ & 0xFF, entry & 0xFF)
-        return max(value, 0) if type_ & 0xFF in (0x0B, 0x0C) else value & 0xFFFF
+        return max(value, 0) if type_ & 0xFF in (C.GDAT_TYPE_VALUE, C.GDAT_TYPE_VALUE2) else value & 0xFFFF
 
     def image_item(self, category, index, entry):
         item = self.lib.gdat_find(self.gdat, category & 0xFF, index & 0xFF, 1, entry & 0xFF)

@@ -8,16 +8,17 @@ import pytest
 from unicorn import UC_PROT_ALL
 from unicorn.x86_const import UC_X86_REG_ESP
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.save import GRAPHICS, START, Game
 from dm2test.view import OriginalView, u8_p
 
 
-SCREEN_W, SCREEN_H = 320, 200
+SCREEN_W, SCREEN_H = C.SCREEN_W, C.SCREEN_H
 DATA_START, DATA_END = 0x70000, 0x828F0  # the data object of SKULL.EXE
 VGA = 0xA0000
-VIEW_W, VIEW_H = 224, 136
-CHAMPION_SIZE = 263
+VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
+CHAMPION_SIZE = C.CHAMPION_SIZE
 GAME_CHAMPIONS = 252  # offsetof(Game, champions) in save.h
 
 # Original functions.
@@ -65,8 +66,8 @@ class OriginalUi(OriginalView):
         emu.write_u32(G_UI_COLORS, self.entry_data(1, 0, 0x0D, 0xFE))
         font = self.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300]
         emu.write_u32(G_FONT_BITMAP, self.put(font + bytes(0x80)))
-        self.message_line = self.alloc(320 * 7 + 6) + 6
-        emu.write(self.message_line - 6, struct.pack("<BBhh", 8, 0, 320, 7))
+        self.message_line = self.alloc(C.SCREEN_W * C.TEXT_LINE_HEIGHT + 6) + 6
+        emu.write(self.message_line - 6, struct.pack("<BBhh", 8, 0, C.SCREEN_W, C.TEXT_LINE_HEIGHT))
         emu.write_u32(G_MESSAGE_LINE, self.message_line)
         rect = self.alloc(8)
         emu.call(ZONE_GET_RECT, 15, rect)
