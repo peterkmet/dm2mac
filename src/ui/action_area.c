@@ -132,10 +132,10 @@ static void draw_action_result(int16_t value)
     } else if (value == RESULT_NO_AMMO) {
         offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? AMMO_HAND_OTHER : AMMO_HAND_DEFAULT,
                                   ZONE_AMMO_HAND, UI_OPAQUE);
-        for (int index = 0; index < GDAT_NO_INDEX; index++) {
-            uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, index, GDAT_TYPE_VALUE, AMMO_ATTR);
+        for (int slot_index = 0; slot_index < GDAT_NO_INDEX; slot_index++) {
+            uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, slot_index, GDAT_TYPE_VALUE, AMMO_ATTR);
             if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
-                offscreen_draw_gdat_image(&area, CAT_WEAPON, index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
+                offscreen_draw_gdat_image(&area, CAT_WEAPON, slot_index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
                 return;
             }
         }

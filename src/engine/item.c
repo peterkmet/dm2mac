@@ -170,7 +170,9 @@ int item_icon_index(uint16_t thing, int slot, int animated)
     int32_t time = (int32_t)game.game_time;
     int mode = attr >> ICON_MODE_SHIFT & ICON_MODE_MASK;
     switch (mode) {
-    case ICON_BY_TIME_PER_ITEM: time += thing & THING_INDEX_MASK; /* fall through */
+    case ICON_BY_TIME_PER_ITEM:
+        time += thing & THING_INDEX_MASK;
+        __attribute__((fallthrough));
     case ICON_BY_TIME: return (uint8_t)(icon + time % frames);
     case ICON_RANDOM: return (uint8_t)(icon + rand_below(frames));
     case ICON_BY_PARTY_DIR: return (uint8_t)(icon + game.party_dir);
@@ -179,7 +181,9 @@ int item_icon_index(uint16_t thing, int slot, int animated)
         if (!charges) return icon;
         return (uint8_t)(icon + charges * frames / (item_max_charges(thing) + 1) + 1);
     }
-    case ICON_BY_CHARGES_AND_TIME_PER_ITEM: time += thing & THING_INDEX_MASK; /* fall through */
+    case ICON_BY_CHARGES_AND_TIME_PER_ITEM:
+        time += thing & THING_INDEX_MASK;
+        __attribute__((fallthrough));
     case ICON_BY_CHARGES_AND_TIME: {
         int step = (attr & ICON_STEP_MASK) >> ICON_STEP_SHIFT;
         int charges = item_charges(thing);

@@ -621,13 +621,13 @@ void input_set_champion_cursor(int champ)
     Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, IMAGE_4BPP);
     if (!face) return;
     memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
-    uint8_t palette[FACE_ICON_COLORS];
-    ui_draw_champion_face_icon(face, champ, palette);
+    uint8_t colors[FACE_ICON_COLORS];
+    ui_draw_champion_face_icon(face, champ, colors);
     Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
     memset(champion_cursor, UI_KEY, sizeof champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
-    ui_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, palette);
-    champion_cursor_key = palette[UI_KEY];
+    ui_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, colors);
+    champion_cursor_key = colors[UI_KEY];
     draw_free_temp();
 }
 
@@ -641,11 +641,11 @@ CursorImage input_cursor_image(int cursor)
         memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
         memset(object_cursor, key, sizeof object_cursor);
         const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
-        Bitmap cursor = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
+        Bitmap image = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
-        ui_blit_bitmap(&icon, &cursor, s, 0, 0, HAND_ICON_KEY, shadow);
-        ui_blit_bitmap(&icon, &cursor, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
+        ui_blit_bitmap(&icon, &image, s, 0, 0, HAND_ICON_KEY, shadow);
+        ui_blit_bitmap(&icon, &image, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
         return (CursorImage){object_cursor, NULL, IMAGE_8BPP, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE,
                              OBJECT_HOT, OBJECT_HOT, key};
     }

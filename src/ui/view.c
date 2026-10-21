@@ -535,16 +535,16 @@ static int view_get_flip_parity(int kind, int dir, int x, int y)
 {
     int parity = (y + x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map)
                   + dungeon_map_level(view.map)) & 1;
-    int party = game.party_dir & 1, time = game.game_time & GAME_TIME_FRAMES;
+    int party_parity = game.party_dir & 1, time = game.game_time & GAME_TIME_FRAMES;
     uint16_t flags = view.flip_flags;
     if (kind == PARITY_FLOOR) {
-        if (!(flags & FLIP_FLOOR_BY_SQUARE)) return flags & FLIP_FLOOR_BY_PARTY ? party : 0;
+        if (!(flags & FLIP_FLOOR_BY_SQUARE)) return flags & FLIP_FLOOR_BY_PARTY ? party_parity : 0;
         if (flags & FLIP_FLOOR_BY_TIME) return time >= HALF_TIME_FRAMES;
         return parity;
     }
     if (kind == PARITY_CEILING) {
         if (flags & FLIP_CEILING_BY_SQUARE) return flags & FLIP_CEILING_BY_TIME ? time < HALF_TIME_FRAMES : !parity;
-        return flags & FLIP_CEILING_BY_PARTY ? party : 0;
+        return flags & FLIP_CEILING_BY_PARTY ? party_parity : 0;
     }
     return parity;
 }
@@ -575,7 +575,7 @@ static int view_get_thing_position(uint16_t thing, int dir)
     case THING_GROUP: return aspect_creature_cell(thing, dir_relative(dir, creature_dir(thing)));
     case THING_EXPLOSION:
         if (explosion_is_centered(thing)) break;
-        /* fall through */
+        __attribute__((fallthrough));
     case THING_WEAPON: case THING_ARMOUR: case THING_SCROLL: case THING_POTION: case THING_CONTAINER: case THING_MISC:
     case THING_PROJECTILE:
         cell = cell_view_position[thing_cell(thing)];
@@ -1936,7 +1936,9 @@ static void view_draw_wall_square(int pos)
     view_draw_wall_block(pos);
     switch (wall_faces[pos]) {
     case WALL_SHOWS_FRONT: view_draw_wall_ornament(pos, 0, 1); break;
-    case WALL_SHOWS_BOTH: view_draw_wall_ornament(pos, 0, 1); /* fall through */
+    case WALL_SHOWS_BOTH:
+        view_draw_wall_ornament(pos, 0, 1);
+        __attribute__((fallthrough));
     case WALL_SHOWS_SIDE: view_draw_wall_ornament(pos, view_lateral[pos], 1); break;
     }
 }
@@ -2375,7 +2377,9 @@ static void view_draw_far_squares(void)
         case ASPECT_DOOR_FRONT: view_draw_door_front(pos); continue;
         case ASPECT_STAIRS_FRONT: view_draw_stairs_front(pos); break;
         case ASPECT_STAIRS_SIDE: view_draw_stairs_side(pos); break;
-        case ASPECT_PIT: view_draw_floor_pit(pos); /* fall through */
+        case ASPECT_PIT:
+            view_draw_floor_pit(pos);
+            __attribute__((fallthrough));
         case ASPECT_FLOOR:
         case ASPECT_TELEPORTER:
         case ASPECT_DOOR_SIDE:

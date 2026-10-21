@@ -726,7 +726,7 @@ int explosion_get_attack(uint16_t explosion, uint16_t target)
     switch (type) {
     case BLAST_LIGHTNING:
         attack = (uint16_t)((int16_t)attack >> 1);
-        /* fall through */
+        __attribute__((fallthrough));
     case BLAST_FIREBALL:
         if (kind == THING_DOOR && !door_flag(target, DOOR_BREAKABLE_BY_MAGIC)) return 0;
         return attack;

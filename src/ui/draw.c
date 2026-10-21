@@ -126,9 +126,9 @@ DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->item = (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_IMAGE, entry);
     add_offset(ctx, (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_VALUE2, OFFSET_ENTRY));
     add_offset(ctx, (int16_t)gdat_image_offset(gdat, category, index, entry));
-    const uint8_t *palette = draw_gdat_image_palette(category, index, entry);
-    ctx->palette_count = palette ? IMAGE_COLORS : NO_PALETTE;
-    if (palette) memcpy(ctx->palette, palette, IMAGE_COLORS);
+    const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
+    ctx->palette_count = colors ? IMAGE_COLORS : NO_PALETTE;
+    if (colors) memcpy(ctx->palette, colors, IMAGE_COLORS);
     return ctx;
 }
 

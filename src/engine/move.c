@@ -466,7 +466,7 @@ static int move_party_step(int command, uint8_t here, int on_stairs)
         game.party_x = (uint16_t)x;
         game.party_y = (uint16_t)y;
         here = ahead;
-        /* fall through */
+        __attribute__((fallthrough));
     case STEP_STAIRS_HERE:
         move_party_take_stairs(here & SQUARE_STAIRS_UP);
         return 1;

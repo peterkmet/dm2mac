@@ -170,12 +170,12 @@ void zone_get_position(int zone, int16_t *x, int16_t *y)
     *y = r[RECT_Y];
 }
 
-void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette)
+void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *face_colors)
 {
     const Champion *c = champion(champ);
     int frame = dir_relative(c->dir, game.party_dir) + (game.magic_light[MAGIC_INVISIBILITY] ? FACE_INVISIBLE_FRAMES : 0);
     const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_FACES, champ);
-    if (colors) memcpy(palette, colors, FACE_ICON_COLORS);
+    if (colors) memcpy(face_colors, colors, FACE_ICON_COLORS);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     /* the original skips color 2 of the face picture */
     ui_blit_bitmap(draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champ), dst, r, FACE_SIZE * frame, 0, FACE_SKIP_COLOR, NULL);

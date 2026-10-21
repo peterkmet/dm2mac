@@ -1513,7 +1513,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, 
         return (c->hand == THING_NONE) != sensor_flag(t, SENSOR_INVERTED);
     case WALL_CLICK_CHARGED_ITEM:
         if (!item_add_charges(c->hand, 0)) return 1;
-        /* fall through */
+        __attribute__((fallthrough));
     case WALL_CLICK_ITEM: {
         int match = item_get_index(c->hand) == data;
         if (match && sensor_flag(t, SENSOR_STATE)) set_thing_word(champ_remove_object_from_leader_hand(), THING_NEXT, THING_NONE);  /* frees it */

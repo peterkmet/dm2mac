@@ -822,8 +822,8 @@ static int search_square_test(int command, int x, int y)
     uint8_t square = ai_square.square;
     switch (square_type(square)) {
     case SQUARE_FAKE_WALL:
-        if (square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0)) return 1;
-        /* fall through: a closed fake wall costs like a wall */
+        if (square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0)) return 1; /* a closed fake wall costs like a wall */
+        __attribute__((fallthrough));
     case SQUARE_WALL: {
         int cost = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map),
                                     GDAT_TYPE_VALUE, WALLSET_KEY_WALL_COST);
@@ -2025,7 +2025,7 @@ static int test_blocked(Search *s, int i)
     case TARGET_ACTIVATION: return at_party(x, y);
     case TARGET_MELEE_LINE:
         if (square_type(ai_square.square) == SQUARE_WALL) return 0;
-        /* fall through */
+        __attribute__((fallthrough));
     case TARGET_SHOOT_LINE: return line_target(s, c, s->from_x, s->from_y, s->dir, 0);
     case TARGET_ITEM:
     case TARGET_ITEM_WALL: {
@@ -2035,7 +2035,7 @@ static int test_blocked(Search *s, int i)
     }
     case TARGET_GROUP_FACING:
         if (group_dir(ai.group_thing) != s->dir) return 0;
-        /* fall through */
+        __attribute__((fallthrough));
     case TARGET_GROUP_IN_FRONT: return blocked_group_in_front(s, c, x, y);
     case TARGET_DAMAGE_GROUP: return damage_group_at(c, x, y);
     case TARGET_ACTUATOR: {
