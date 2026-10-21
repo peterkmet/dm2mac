@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "video.h"
 
-#define VGA_BITS 6
+#define VGA_BITS     6
 #define CHANNEL_BITS 8
 
-uint8_t fb[SCREEN_H][SCREEN_W] = { 0 }; /* initialized: keeps it out of __common, which ld warns about */
+uint8_t fb[SCREEN_H][SCREEN_W] = {0}; /* initialized: keeps it out of __common, which ld warns about */
 uint8_t palette[PALETTE_COLORS][RGB_CHANNELS];
 
 /* Repeats the high bits in the low bits, so 0 gives 0 and 63 gives 255; DOSBox uses the same v<<2|v>>4. */
@@ -23,13 +23,17 @@ void video_layout(int out_w, int out_h, int *scale, int *ox, int *oy)
 {
     int sx = out_w / SCREEN_W, sy = out_h / SCREEN_H;
     int s = sx < sy ? sx : sy;
-    if (s < 1) s = 1;
+    if (s < 1)
+        s = 1;
     *scale = s;
     *ox = (out_w - SCREEN_W * s) / 2;
     *oy = (out_h - SCREEN_H * s) / 2;
 }
 
-static int clamp(int v, int max) { return v < 0 ? 0 : v > max ? max : v; }
+static int clamp(int v, int max)
+{
+    return v < 0 ? 0 : v > max ? max : v;
+}
 
 void video_map_mouse(int out_w, int out_h, int x, int y, int *gx, int *gy)
 {

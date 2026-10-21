@@ -5,13 +5,13 @@
 
 /* Sound output: the sample mixer, the voices and the volume settings. */
 
-#include <stdint.h>
 #include "sound_request.h"
+#include <stdint.h>
 
-#define SOUND_RATE 11025        /* the SOS driver mix rate; the samples play at this rate */
-#define SOUND_OUTPUT_RATE 44100 /* the port mixes at 4 times the sample rate */
-#define SOUND_VOICES 64
-#define VOLUME_SETTING_MAX 7   /* the sound and music volume settings: 0 to 7 */
+#define SOUND_RATE         11025 /* the SOS driver mix rate; the samples play at this rate */
+#define SOUND_OUTPUT_RATE  44100 /* the port mixes at 4 times the sample rate */
+#define SOUND_VOICES       64
+#define VOLUME_SETTING_MAX 7 /* the sound and music volume settings: 0 to 7 */
 
 /* Starts a sound in the first free voice; returns 0 when all voices play. */
 int sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward);

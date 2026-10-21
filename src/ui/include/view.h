@@ -5,12 +5,12 @@
 
 /* The dungeon view: the squares in sight and their drawing. */
 
+#include "gfx.h"
+#include "aspect.h"
+#include "weather.h"
+#include "draw.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "aspect.h"
-#include "draw.h"
-#include "gfx.h"
-#include "weather.h"
 
 /* The dungeon view shows 23 squares: 3 at depth 0 and 1 (the party square, left, right), 5 at depth 2 and 3,
    7 at depth 4, ordered center, left, right, then further out. */
@@ -19,12 +19,17 @@
 /* Picture kinds of a missile, by the pictures of its payload. */
 enum {
     MISSILE_NO_PICTURE = -1,
-    MISSILE_MIRRORED,               /* front pictures 8 and 9, mirrored by the cell */
-    MISSILE_FRONT_BACK,             /* front picture 8, back picture 10 */
-    MISSILE_FRONT,                  /* front picture 8 only */
-    MISSILE_NO_SIDE,                /* no side picture 12 */
+    MISSILE_MIRRORED,   /* front pictures 8 and 9, mirrored by the cell */
+    MISSILE_FRONT_BACK, /* front picture 8, back picture 10 */
+    MISSILE_FRONT,      /* front picture 8 only */
+    MISSILE_NO_SIDE,    /* no side picture 12 */
 };
-enum { MISSILE_PICTURE_FRONT = 8, MISSILE_PICTURE_FRONT_2 = 9, MISSILE_PICTURE_BACK = 0x0a, MISSILE_PICTURE_SIDE = 0x0c };
+enum {
+    MISSILE_PICTURE_FRONT = 8,
+    MISSILE_PICTURE_FRONT_2 = 9,
+    MISSILE_PICTURE_BACK = 0x0a,
+    MISSILE_PICTURE_SIDE = 0x0c
+};
 
 extern ViewSquare view_squares[VIEW_SQUARE_COUNT];
 /* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward. */
@@ -52,16 +57,22 @@ void view_mark_hidden_squares(void);
 /* A click zone of the view: where an object, an ornament, a door button, or creature possessions show. */
 typedef struct {
     int16_t rect[RECT_SIZE];
-    uint16_t thing;             /* THING_NONE: the zone is not set */
-    uint8_t cell;               /* view position or cell, by kind */
-    uint8_t kind;               /* enum view_click_kind */
+    uint16_t thing; /* THING_NONE: the zone is not set */
+    uint8_t cell;   /* view position or cell, by kind */
+    uint8_t kind;   /* enum view_click_kind */
 } ViewClickZone;
 enum view_click_kind {
-    CLICK_NONE, CLICK_OBJECT, CLICK_POSSESSIONS, CLICK_ALCOVE, CLICK_DOOR_BUTTON, CLICK_WALL_ORNAMENT = 6
+    CLICK_NONE,
+    CLICK_OBJECT,
+    CLICK_POSSESSIONS,
+    CLICK_ALCOVE,
+    CLICK_DOOR_BUTTON,
+    CLICK_WALL_ORNAMENT = 6
 };
 #define VIEW_CLICK_ZONE_MAX 32
-#define VIEW_CLICK_ZONE_FIXED 9     /* zones 0 to 7: the cells of the party square and of the square in front; 8: an alcove */
-#define VIEW_CLICK_ZONE_ALCOVE (VIEW_CLICK_ZONE_FIXED - 1)  /* the click zone of the alcove ahead */
+#define VIEW_CLICK_ZONE_FIXED                                                                                          \
+    9 /* zones 0 to 7: the cells of the party square and of the square in front; 8: an alcove */
+#define VIEW_CLICK_ZONE_ALCOVE (VIEW_CLICK_ZONE_FIXED - 1) /* the click zone of the alcove ahead */
 extern ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 extern int view_click_zone_count;
 /* The object of a click at (x, y) of the viewport among the objects in the cell of thing (the cell bits) on the
@@ -103,16 +114,21 @@ void view_click_in_viewport(int x, int y);
 int view_position(int depth, int side);
 /* What the view draws of the square at a view position with an aspect (enum view_aspect): VIEW_DRAWS_* bits. */
 enum {
-    VIEW_DRAWS_FRONT_FACE = 1, VIEW_DRAWS_SIDE_FACE = 2,   /* the wall faces of a wall square */
-    VIEW_DRAWS_CREATURES = 4, VIEW_DRAWS_OBJECTS = 8, VIEW_DRAWS_MISSILES = 0x10, VIEW_DRAWS_EXPLOSIONS = 0x20,
-    VIEW_DRAWS_FLOOR_ORNAMENT = 0x40, VIEW_DRAWS_DOOR = 0x80,   /* the door picture with its button */
+    VIEW_DRAWS_FRONT_FACE = 1,
+    VIEW_DRAWS_SIDE_FACE = 2, /* the wall faces of a wall square */
+    VIEW_DRAWS_CREATURES = 4,
+    VIEW_DRAWS_OBJECTS = 8,
+    VIEW_DRAWS_MISSILES = 0x10,
+    VIEW_DRAWS_EXPLOSIONS = 0x20,
+    VIEW_DRAWS_FLOOR_ORNAMENT = 0x40,
+    VIEW_DRAWS_DOOR = 0x80, /* the door picture with its button */
 };
 unsigned view_draws(int pos, int aspect);
 /* True when the view draws the floor ornament (an ornament index) on a floor square at a view position. */
 bool view_shows_floor_ornament(int pos, int ornament);
 /* SENSOR_FLAGS of a wall shop sensor and its display sensor. */
-#define SHOP_SHOWN SENSOR_BUSY          /* the display item is chosen */
-#define SHOP_STEP_FORWARD SENSOR_STATE  /* the shop: the next click goes to the next item */
+#define SHOP_SHOWN        SENSOR_BUSY  /* the display item is chosen */
+#define SHOP_STEP_FORWARD SENSOR_STATE /* the shop: the next click goes to the next item */
 
 /* Falling rain shows over the view: its slant shows the wind. */
 bool view_rain_shows(void);

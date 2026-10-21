@@ -8,21 +8,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define EVENT_NONE 0
-#define EVENT_TIME_MASK 0xffffffu
-#define EVENT_MAP_SHIFT 24
-#define TIMELINE_NO_SLOT (-1)
+#define EVENT_NONE          0
+#define EVENT_TIME_MASK     0xffffffu
+#define EVENT_MAP_SHIFT     24
+#define TIMELINE_NO_SLOT    (-1)
 #define TIMELINE_EVENT_SIZE 12
 
 /* A scheduled game event. The event handlers read the data bytes. */
 typedef struct {
     union {
-        uint32_t time_map;  /* time in bits 0-23, map in bits 24-31 */
-        int16_t next_free;  /* a free event links the next free event, -1 ends the list */
+        uint32_t time_map; /* time in bits 0-23, map in bits 24-31 */
+        int16_t next_free; /* a free event links the next free event, -1 ends the list */
     };
-    uint8_t type;           /* EVENT_NONE marks a free event */
+    uint8_t type; /* EVENT_NONE marks a free event */
     uint8_t priority;
-    uint8_t data[6];        /* x, y, cell, effect, or thing, by event type */
+    uint8_t data[6]; /* x, y, cell, effect, or thing, by event type */
 } TimelineEvent;
 
 _Static_assert(sizeof(TimelineEvent) == TIMELINE_EVENT_SIZE, "the save game stores 12-byte events");
@@ -34,7 +34,10 @@ static inline uint32_t timeline_time_map(uint32_t time, int map)
 }
 
 /* The map of an event. */
-static inline uint8_t timeline_event_map(const TimelineEvent *e) { return (uint8_t)(e->time_map >> EVENT_MAP_SHIFT); }
+static inline uint8_t timeline_event_map(const TimelineEvent *e)
+{
+    return (uint8_t)(e->time_map >> EVENT_MAP_SHIFT);
+}
 
 /* Moves an event to map and keeps its time. */
 static inline void timeline_set_event_map(TimelineEvent *e, int map)
@@ -44,12 +47,12 @@ static inline void timeline_set_event_map(TimelineEvent *e, int map)
 
 typedef struct {
     TimelineEvent *events;
-    uint16_t *queue;        /* binary heap of event indices, the next event in queue[0] */
-    int16_t fix_slot;       /* queue slot whose heap order the next operation restores, or TIMELINE_NO_SLOT */
-    int16_t first_free;     /* first free event, -1 when all are in use */
+    uint16_t *queue;    /* binary heap of event indices, the next event in queue[0] */
+    int16_t fix_slot;   /* queue slot whose heap order the next operation restores, or TIMELINE_NO_SLOT */
+    int16_t first_free; /* first free event, -1 when all are in use */
     uint16_t capacity;
     uint16_t count;
-    int16_t used_end;       /* one past the highest event index in use */
+    int16_t used_end; /* one past the highest event index in use */
 } Timeline;
 
 extern Timeline timeline;

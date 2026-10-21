@@ -5,8 +5,8 @@
 
 /* The action area: the hands and spell icons of the party, and the panels that open in it. */
 
-#include <stdint.h>
 #include "ui.h"
+#include <stdint.h>
 
 /* Clears the drawn state of the action area and its bitmap. */
 void area_reset(void);

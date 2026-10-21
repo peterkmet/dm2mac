@@ -5,52 +5,52 @@
 
 /* Weather, day and night, and the party light. */
 
+#include "gdat.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "gdat.h"
 
 /* Weather and day state that the save file does not keep (the saved part is in game). */
 typedef struct {
-    int16_t strike_threshold;   /* lightning strikes the party square only when global byte 0x40 is above it */
-    uint16_t storm_previous;    /* the storm intensity before the last storm step */
-    int16_t hour_light;         /* the darkness of the hour: 1 (day) to 5 (night) */
-    uint32_t day_time_offset;   /* the game time that the day starts with */
-    int first_init;             /* the first weather_init of the run: a short calm start */
-    int thunder_toggle;         /* only every second lightning bolt thunders */
-    int lightning_flash;        /* a lightning shows in this step: full light */
-    int dungeon_loaded;         /* a dungeon load happened in this run: a load keeps the weather */
+    int16_t strike_threshold; /* lightning strikes the party square only when global byte 0x40 is above it */
+    uint16_t storm_previous;  /* the storm intensity before the last storm step */
+    int16_t hour_light;       /* the darkness of the hour: 1 (day) to 5 (night) */
+    uint32_t day_time_offset; /* the game time that the day starts with */
+    int first_init;           /* the first weather_init of the run: a short calm start */
+    int thunder_toggle;       /* only every second lightning bolt thunders */
+    int lightning_flash;      /* a lightning shows in this step: full light */
+    int dungeon_loaded;       /* a dungeon load happened in this run: a load keeps the weather */
 } Weather;
 
 extern Weather weather;
 /* The party light level, 0 (bright) to 5 (light_update_party_light). */
 extern int view_light_level;
-#define DARKEST_LIGHT 5             /* view_light_level of the darkest view */
+#define DARKEST_LIGHT 5 /* view_light_level of the darkest view */
 /* The light of the squares around the party and of the explosions near it; creature_refresh_party_maps (Step 16)
    clears them and adds each square with light_add_square_light. */
 extern int16_t light_source_sum, explosion_light_sum;
 
 /* light_add_square_light flags: what of the square gives light. */
 enum { LIGHT_FLOOR = 1, LIGHT_CREATURES = 2, LIGHT_WALLS = 4 };
-#define MAP_KEY_SKY_STATE 0x66      /* map graphics value key (CAT_WALLSET, set, 0x0b, key): the sky */
-#define RAIN_STRONG 128             /* rain intensities: strong rain grows the clouds faster */
-#define RAIN_MEDIUM 64
-#define RAIN_LIGHT 16
+#define MAP_KEY_SKY_STATE 0x66 /* map graphics value key (CAT_WALLSET, set, 0x0b, key): the sky */
+#define RAIN_STRONG       128  /* rain intensities: strong rain grows the clouds faster */
+#define RAIN_MEDIUM       64
+#define RAIN_LIGHT        16
 /* The sky darkness (game.sky_darkness) from which the rain shows light, medium, heavy; the cloud cover
    (game.cloud_cover) from which the clouds show light, medium, heavy. */
-#define DARKNESS_RAIN 16
-#define DARKNESS_MEDIUM 64
-#define DARKNESS_HEAVY 128
-#define CLOUDS_SHOWN 64
-#define CLOUDS_MORE 128
-#define CLOUDS_MOST 192
-#define HOUR_LIGHT_DAY 1            /* weather.hour_light of the day */
-#define HOUR_LIGHT_NIGHT 5          /* weather.hour_light of the night; between them dawn and dusk */
+#define DARKNESS_RAIN     16
+#define DARKNESS_MEDIUM   64
+#define DARKNESS_HEAVY    128
+#define CLOUDS_SHOWN      64
+#define CLOUDS_MORE       128
+#define CLOUDS_MOST       192
+#define HOUR_LIGHT_DAY    1 /* weather.hour_light of the day */
+#define HOUR_LIGHT_NIGHT  5 /* weather.hour_light of the night; between them dawn and dusk */
 
 /* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
 typedef struct {
-    uint8_t entry;              /* GDAT entry (0x17, graphics set, entry) */
-    uint8_t flip;               /* how the picture mirrors */
-    int16_t zone, dx, dy;       /* layout zone and offset */
+    uint8_t entry;        /* GDAT entry (0x17, graphics set, entry) */
+    uint8_t flip;         /* how the picture mirrors */
+    int16_t zone, dx, dy; /* layout zone and offset */
     uint8_t scale_x, scale_y;
 } SkyObject;
 #define SKY_OBJECT_END 0xff

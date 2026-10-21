@@ -1,38 +1,51 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <string.h>
 #include "le.h"
 #include "mve.h"
 #include "mve_internal.h"
+#include <string.h>
 
-#define VIDEO_HEADER_SIZE 14            /* frame numbers, position, size, and flags before the blocks */
-#define VIDEO_FLAGS 12
-#define VIDEO_FLAG_SWAP 0x0001          /* the shown frame becomes the previous frame before the decode */
-#define ENCODINGS_PER_BYTE 2            /* the decoding map holds 4 bits per block */
-#define HALF_BLOCK (MVE_BLOCK_SIZE / 2)
-#define BLOCK_PIXELS (MVE_BLOCK_SIZE * MVE_BLOCK_SIZE)
-#define CELLS_PER_ROW 4                 /* 2 × 2 cells in a block row */
-#define CELLS_PER_BLOCK (CELLS_PER_ROW * CELLS_PER_ROW)
-#define QUADRANT_COUNT 4
-#define TWO_COLORS 2
-#define FOUR_COLORS 4
-#define FOUR_COLOR_BITS 2               /* bits per pixel or cell for one of four colors */
-#define NEAR_MOTION_LIMIT 56            /* encodings 2 and 3: a smaller byte reaches the next 7 columns */
-#define NEAR_MOTION_COLUMNS 7
-#define FAR_MOTION_COLUMNS 29
-#define FAR_MOTION_LEFT 14
-#define PREVIOUS_MOTION_CENTER 8        /* encoding 4: a nibble 0-15 gives -8 to 7 */
+#define VIDEO_HEADER_SIZE      14 /* frame numbers, position, size, and flags before the blocks */
+#define VIDEO_FLAGS            12
+#define VIDEO_FLAG_SWAP        0x0001 /* the shown frame becomes the previous frame before the decode */
+#define ENCODINGS_PER_BYTE     2      /* the decoding map holds 4 bits per block */
+#define HALF_BLOCK             (MVE_BLOCK_SIZE / 2)
+#define BLOCK_PIXELS           (MVE_BLOCK_SIZE * MVE_BLOCK_SIZE)
+#define CELLS_PER_ROW          4 /* 2 × 2 cells in a block row */
+#define CELLS_PER_BLOCK        (CELLS_PER_ROW * CELLS_PER_ROW)
+#define QUADRANT_COUNT         4
+#define TWO_COLORS             2
+#define FOUR_COLORS            4
+#define FOUR_COLOR_BITS        2  /* bits per pixel or cell for one of four colors */
+#define NEAR_MOTION_LIMIT      56 /* encodings 2 and 3: a smaller byte reaches the next 7 columns */
+#define NEAR_MOTION_COLUMNS    7
+#define FAR_MOTION_COLUMNS     29
+#define FAR_MOTION_LEFT        14
+#define PREVIOUS_MOTION_CENTER 8 /* encoding 4: a nibble 0-15 gives -8 to 7 */
 
 enum {
-    ENC_PREVIOUS, ENC_UNCHANGED, ENC_NEAR_AHEAD, ENC_NEAR_BEHIND, ENC_PREVIOUS_NEAR, ENC_PREVIOUS_FAR, ENC_UNUSED,
-    ENC_TWO_COLORS, ENC_TWO_COLOR_PARTS, ENC_FOUR_COLORS, ENC_FOUR_COLOR_PARTS, ENC_RAW, ENC_CELLS, ENC_QUADRANTS,
-    ENC_SOLID, ENC_DITHER,
+    ENC_PREVIOUS,
+    ENC_UNCHANGED,
+    ENC_NEAR_AHEAD,
+    ENC_NEAR_BEHIND,
+    ENC_PREVIOUS_NEAR,
+    ENC_PREVIOUS_FAR,
+    ENC_UNUSED,
+    ENC_TWO_COLORS,
+    ENC_TWO_COLOR_PARTS,
+    ENC_FOUR_COLORS,
+    ENC_FOUR_COLOR_PARTS,
+    ENC_RAW,
+    ENC_CELLS,
+    ENC_QUADRANTS,
+    ENC_SOLID,
+    ENC_DITHER,
 };
 
 /* The quadrants of encodings 8 and 10 in column order, and of encoding 13 in row order. */
-static const int column_quadrant_x[QUADRANT_COUNT] = { 0, 0, HALF_BLOCK, HALF_BLOCK };
-static const int column_quadrant_y[QUADRANT_COUNT] = { 0, HALF_BLOCK, 0, HALF_BLOCK };
-static const int row_quadrant_x[QUADRANT_COUNT] = { 0, HALF_BLOCK, 0, HALF_BLOCK };
-static const int row_quadrant_y[QUADRANT_COUNT] = { 0, 0, HALF_BLOCK, HALF_BLOCK };
+static const int column_quadrant_x[QUADRANT_COUNT] = {0, 0, HALF_BLOCK, HALF_BLOCK};
+static const int column_quadrant_y[QUADRANT_COUNT] = {0, HALF_BLOCK, 0, HALF_BLOCK};
+static const int row_quadrant_x[QUADRANT_COUNT] = {0, HALF_BLOCK, 0, HALF_BLOCK};
+static const int row_quadrant_y[QUADRANT_COUNT] = {0, 0, HALF_BLOCK, HALF_BLOCK};
 
 /* The block data of one video opcode; a read past its end gives 0 and marks the data short. */
 typedef struct {
@@ -44,8 +57,8 @@ typedef struct {
 typedef struct {
     MveStream *m;
     Reader r;
-    uint8_t *dst;   /* its top left pixel in the current frame */
-    int x, y;       /* its position in pixels */
+    uint8_t *dst; /* its top left pixel in the current frame */
+    int x, y;     /* its position in pixels */
 } Block;
 
 /* Cells of cell_w × cell_h pixels in cols × rows from (x, y) of a block. */
@@ -66,18 +79,21 @@ static uint8_t get8(Reader *r)
 static uint64_t get_bits(Reader *r, int count)
 {
     uint64_t bits = 0;
-    for (int i = 0; i < count; i++) bits |= (uint64_t)get8(r) << (i * BYTE_BITS);
+    for (int i = 0; i < count; i++)
+        bits |= (uint64_t)get8(r) << (i * BYTE_BITS);
     return bits;
 }
 
 static void get_colors(Reader *r, uint8_t *colors, int count)
 {
-    for (int i = 0; i < count; i++) colors[i] = get8(r);
+    for (int i = 0; i < count; i++)
+        colors[i] = get8(r);
 }
 
 static void fill(Block *b, int x, int y, int w, int h, uint8_t color)
 {
-    for (int row = y; row < y + h; row++) memset(b->dst + row * b->m->width + x, color, w);
+    for (int row = y; row < y + h; row++)
+        memset(b->dst + row * b->m->width + x, color, w);
 }
 
 /* Gives each cell of the grid the color that the next bits_per_cell bits select. */
@@ -93,10 +109,12 @@ static void pattern(Block *b, Grid g, const uint8_t *colors, uint64_t bits, int 
 static void halves(Block *b, bool vertical, const uint8_t *first, uint64_t first_bits, const uint8_t *second,
                    uint64_t second_bits, int bits_per_cell)
 {
-    Grid g = vertical ? (Grid){ 0, 0, HALF_BLOCK, MVE_BLOCK_SIZE, 1, 1 } : (Grid){ 0, 0, MVE_BLOCK_SIZE, HALF_BLOCK, 1, 1 };
+    Grid g = vertical ? (Grid){0, 0, HALF_BLOCK, MVE_BLOCK_SIZE, 1, 1} : (Grid){0, 0, MVE_BLOCK_SIZE, HALF_BLOCK, 1, 1};
     pattern(b, g, first, first_bits, bits_per_cell);
-    if (vertical) g.x = HALF_BLOCK;
-    else g.y = HALF_BLOCK;
+    if (vertical)
+        g.x = HALF_BLOCK;
+    else
+        g.y = HALF_BLOCK;
     pattern(b, g, second, second_bits, bits_per_cell);
 }
 
@@ -130,8 +148,10 @@ static void two_colors(Block *b)
 {
     uint8_t p[TWO_COLORS];
     get_colors(&b->r, p, TWO_COLORS);
-    if (p[0] <= p[1]) pattern(b, (Grid){ 0, 0, MVE_BLOCK_SIZE, MVE_BLOCK_SIZE, 1, 1 }, p, get_bits(&b->r, sizeof(uint64_t)), 1);
-    else pattern(b, (Grid){ 0, 0, CELLS_PER_ROW, CELLS_PER_ROW, 2, 2 }, p, get_bits(&b->r, sizeof(uint16_t)), 1);
+    if (p[0] <= p[1])
+        pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, MVE_BLOCK_SIZE, 1, 1}, p, get_bits(&b->r, sizeof(uint64_t)), 1);
+    else
+        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, 2, 2}, p, get_bits(&b->r, sizeof(uint16_t)), 1);
 }
 
 /* Encoding 8: two colors per quadrant, or per half of the block. */
@@ -141,8 +161,9 @@ static void two_color_parts(Block *b)
     get_colors(&b->r, p, TWO_COLORS);
     if (p[0] <= p[1]) {
         for (int q = 0; q < QUADRANT_COUNT; q++) {
-            if (q) get_colors(&b->r, p, TWO_COLORS);
-            Grid g = { column_quadrant_x[q], column_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, 1, 1 };
+            if (q)
+                get_colors(&b->r, p, TWO_COLORS);
+            Grid g = {column_quadrant_x[q], column_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, 1, 1};
             pattern(b, g, p, get_bits(&b->r, sizeof(uint16_t)), 1);
         }
         return;
@@ -157,16 +178,19 @@ static void four_colors(Block *b)
 {
     uint8_t p[FOUR_COLORS];
     get_colors(&b->r, p, FOUR_COLORS);
-    bool second_low = p[TWO_COLORS] <= p[TWO_COLORS + 1];  /* the order of P2 and P3 */
+    bool second_low = p[TWO_COLORS] <= p[TWO_COLORS + 1]; /* the order of P2 and P3 */
     if (p[0] <= p[1] && second_low) {
         uint64_t top = get_bits(&b->r, sizeof(uint64_t));
         halves(b, false, p, top, p, get_bits(&b->r, sizeof(uint64_t)), FOUR_COLOR_BITS);
     } else if (p[0] <= p[1]) {
-        pattern(b, (Grid){ 0, 0, CELLS_PER_ROW, CELLS_PER_ROW, 2, 2 }, p, get_bits(&b->r, sizeof(uint32_t)), FOUR_COLOR_BITS);
+        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, 2, 2}, p, get_bits(&b->r, sizeof(uint32_t)),
+                FOUR_COLOR_BITS);
     } else if (second_low) {
-        pattern(b, (Grid){ 0, 0, CELLS_PER_ROW, MVE_BLOCK_SIZE, 2, 1 }, p, get_bits(&b->r, sizeof(uint64_t)), FOUR_COLOR_BITS);
+        pattern(b, (Grid){0, 0, CELLS_PER_ROW, MVE_BLOCK_SIZE, 2, 1}, p, get_bits(&b->r, sizeof(uint64_t)),
+                FOUR_COLOR_BITS);
     } else {
-        pattern(b, (Grid){ 0, 0, MVE_BLOCK_SIZE, CELLS_PER_ROW, 1, 2 }, p, get_bits(&b->r, sizeof(uint64_t)), FOUR_COLOR_BITS);
+        pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, CELLS_PER_ROW, 1, 2}, p, get_bits(&b->r, sizeof(uint64_t)),
+                FOUR_COLOR_BITS);
     }
 }
 
@@ -177,8 +201,9 @@ static void four_color_parts(Block *b)
     get_colors(&b->r, p, FOUR_COLORS);
     if (p[0] <= p[1]) {
         for (int q = 0; q < QUADRANT_COUNT; q++) {
-            if (q) get_colors(&b->r, p, FOUR_COLORS);
-            Grid g = { column_quadrant_x[q], column_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, 1, 1 };
+            if (q)
+                get_colors(&b->r, p, FOUR_COLORS);
+            Grid g = {column_quadrant_x[q], column_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, 1, 1};
             pattern(b, g, p, get_bits(&b->r, sizeof(uint32_t)), FOUR_COLOR_BITS);
         }
         return;
@@ -195,16 +220,21 @@ static void plain_colors(Block *b, int encoding)
     uint8_t p[QUADRANT_COUNT];
     switch (encoding) {
     case ENC_RAW:
-        for (int i = 0; i < BLOCK_PIXELS; i++) fill(b, i % MVE_BLOCK_SIZE, i / MVE_BLOCK_SIZE, 1, 1, get8(&b->r));
+        for (int i = 0; i < BLOCK_PIXELS; i++)
+            fill(b, i % MVE_BLOCK_SIZE, i / MVE_BLOCK_SIZE, 1, 1, get8(&b->r));
         break;
     case ENC_CELLS:
-        for (int i = 0; i < CELLS_PER_BLOCK; i++) fill(b, i % CELLS_PER_ROW * 2, i / CELLS_PER_ROW * 2, 2, 2, get8(&b->r));
+        for (int i = 0; i < CELLS_PER_BLOCK; i++)
+            fill(b, i % CELLS_PER_ROW * 2, i / CELLS_PER_ROW * 2, 2, 2, get8(&b->r));
         break;
     case ENC_QUADRANTS:
-        for (int q = 0; q < QUADRANT_COUNT; q++) fill(b, row_quadrant_x[q], row_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, get8(&b->r));
+        for (int q = 0; q < QUADRANT_COUNT; q++)
+            fill(b, row_quadrant_x[q], row_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, get8(&b->r));
         break;
-    case ENC_SOLID: fill(b, 0, 0, MVE_BLOCK_SIZE, MVE_BLOCK_SIZE, get8(&b->r)); break;
-    default:  /* ENC_DITHER */
+    case ENC_SOLID:
+        fill(b, 0, 0, MVE_BLOCK_SIZE, MVE_BLOCK_SIZE, get8(&b->r));
+        break;
+    default: /* ENC_DITHER */
         get_colors(&b->r, p, TWO_COLORS);
         for (int i = 0; i < BLOCK_PIXELS; i++) {
             int x = i % MVE_BLOCK_SIZE, y = i / MVE_BLOCK_SIZE;
@@ -221,12 +251,16 @@ static void decode_block(Block *b, int encoding)
     int dx, dy;
     uint8_t v;
     switch (encoding) {
-    case ENC_PREVIOUS: copy_from(b, previous, 0, 0); break;
-    case ENC_UNCHANGED: break;
+    case ENC_PREVIOUS:
+        copy_from(b, previous, 0, 0);
+        break;
+    case ENC_UNCHANGED:
+        break;
     case ENC_NEAR_AHEAD:
     case ENC_NEAR_BEHIND:
         near_motion(get8(&b->r), &dx, &dy);
-        if (encoding == ENC_NEAR_BEHIND) dx = -dx, dy = -dy;
+        if (encoding == ENC_NEAR_BEHIND)
+            dx = -dx, dy = -dy;
         copy_from(b, current, dx, dy);
         break;
     case ENC_PREVIOUS_NEAR:
@@ -238,21 +272,36 @@ static void decode_block(Block *b, int encoding)
         dy = (int8_t)get8(&b->r);
         copy_from(b, previous, dx, dy);
         break;
-    case ENC_UNUSED: m->bad_blocks++; break;
-    case ENC_TWO_COLORS: two_colors(b); break;
-    case ENC_TWO_COLOR_PARTS: two_color_parts(b); break;
-    case ENC_FOUR_COLORS: four_colors(b); break;
-    case ENC_FOUR_COLOR_PARTS: four_color_parts(b); break;
-    default: plain_colors(b, encoding);
+    case ENC_UNUSED:
+        m->bad_blocks++;
+        break;
+    case ENC_TWO_COLORS:
+        two_colors(b);
+        break;
+    case ENC_TWO_COLOR_PARTS:
+        two_color_parts(b);
+        break;
+    case ENC_FOUR_COLORS:
+        four_colors(b);
+        break;
+    case ENC_FOUR_COLOR_PARTS:
+        four_color_parts(b);
+        break;
+    default:
+        plain_colors(b, encoding);
     }
 }
 
 bool mve_decode_video(MveStream *m, const uint8_t *video, int size)
 {
     int columns = m->width / MVE_BLOCK_SIZE, rows = m->height / MVE_BLOCK_SIZE;
-    if (size < VIDEO_HEADER_SIZE || !columns || m->map_size * ENCODINGS_PER_BYTE < columns * rows) return false;
-    if (le16(video + VIDEO_FLAGS) & VIDEO_FLAG_SWAP) m->current ^= 1;
-    Block b = { .m = m, .r = { video + VIDEO_HEADER_SIZE, video + size, false } };
+    if (size < VIDEO_HEADER_SIZE || !columns || m->map_size * ENCODINGS_PER_BYTE < columns * rows)
+        return false;
+    if (le16(video + VIDEO_FLAGS) & VIDEO_FLAG_SWAP)
+        m->current ^= 1;
+    Block b = {
+        .m = m, .r = {video + VIDEO_HEADER_SIZE, video + size, false}
+    };
     for (int i = 0; i < columns * rows && !b.r.short_data; i++) {
         b.x = i % columns * MVE_BLOCK_SIZE, b.y = i / columns * MVE_BLOCK_SIZE;
         b.dst = m->buffers[m->current] + b.y * m->width + b.x;

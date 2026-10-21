@@ -5,20 +5,24 @@
 
 /* The advanced mode: quick save and load, the automap key and the movement letter keys. */
 
-#include <stdint.h>
 #include "game.h"
+#include <stdint.h>
 
 /* PC scan codes of the quick save and quick load keys. */
-enum { KEY_QUICK_SAVE = 0x3f, KEY_QUICK_LOAD = 0x43 };   /* F5, F9 */
+enum { KEY_QUICK_SAVE = 0x3f, KEY_QUICK_LOAD = 0x43 }; /* F5, F9 */
 /* PC scan codes of the keys that open the automap. */
-enum { KEY_AUTOMAP = 0x0f, KEY_AUTOMAP_M = 0x32 };      /* Tab, M */
+enum { KEY_AUTOMAP = 0x0f, KEY_AUTOMAP_M = 0x32 }; /* Tab, M */
 /* PC scan codes of the numeric keypad keys that move and turn the party. */
 enum {
-    KEYPAD_TURN_LEFT = 0x4b, KEYPAD_FORWARD = 0x4c, KEYPAD_TURN_RIGHT = 0x4d, KEYPAD_LEFT = 0x4f, KEYPAD_BACK = 0x50,
+    KEYPAD_TURN_LEFT = 0x4b,
+    KEYPAD_FORWARD = 0x4c,
+    KEYPAD_TURN_RIGHT = 0x4d,
+    KEYPAD_LEFT = 0x4f,
+    KEYPAD_BACK = 0x50,
     KEYPAD_RIGHT = 0x51
 };
 
-extern int advanced_automap_open;       /* 1: the automap covers the viewport and the game time stops */
+extern int advanced_automap_open; /* 1: the automap covers the viewport and the game time stops */
 
 /* The keypad key that a letter key W S A D Q E stands for in the advanced mode; 0 for other keys and outside the advanced mode. */
 uint16_t advanced_movement_key(uint16_t key);

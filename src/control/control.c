@@ -1,49 +1,49 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
+#include "control.h"
+#include "le.h"
+#include "os.h"
+#include "champion.h"
+#include "dungeon.h"
+#include "game.h"
+#include "item.h"
+#include "save.h"
+#include "advanced.h"
+#include "dialog.h"
+#include "input.h"
+#include "movie.h"
+#include "play.h"
+#include "session.h"
+#include "ui.h"
+#include "video.h"
+#include "state_json.h"
+#include "turn.h"
 #include <ctype.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "control.h"
-#include "advanced.h"
-#include "champion.h"
-#include "dialog.h"
-#include "dungeon.h"
-#include "game.h"
-#include "input.h"
-#include "item.h"
-#include "le.h"
-#include "movie.h"
-#include "os.h"
-#include "play.h"
-#include "save.h"
-#include "session.h"
-#include "state_json.h"
-#include "turn.h"
-#include "ui.h"
-#include "video.h"
 
-#define REPLY_LINE_SIZE 256           /* one piece of a reply written by put */
-#define ERROR_SIZE 64
-#define NAME_SIZE 32
-#define WAIT_MAX_TICKS 6000
-#define SCAN_CODE_COUNT 256           /* the low byte of a key code */
-#define HEX_DIGITS 4                  /* the digits of a \uXXXX escape */
-#define HEX_BASE 16
-#define UNICODE_ESCAPE_PREFIX 2       /* the backslash and the u of \uXXXX */
-#define UTF8_ONE_BYTE_END 0x80        /* the first code point of 2, 3, and 4 UTF-8 bytes */
-#define UTF8_TWO_BYTES_END 0x800
-#define UTF8_THREE_BYTES_END 0x10000
-#define UTF8_CONTINUATION 0x80        /* the marker and the payload of a continuation byte */
-#define UTF8_PAYLOAD_MASK 0x3f
-#define UTF8_PAYLOAD_BITS 6
-#define UTF8_LEAD_MARKERS 0xf00       /* shifted right by the byte count: the high bits of a lead byte */
-#define UTF8_MAX_BYTES 4
-#define SURROGATE_HIGH 0xd800
-#define SURROGATE_LOW 0xdc00
-#define SURROGATE_END 0xe000
-#define SURROGATE_BITS 10
+#define REPLY_LINE_SIZE       256 /* one piece of a reply written by put */
+#define ERROR_SIZE            64
+#define NAME_SIZE             32
+#define WAIT_MAX_TICKS        6000
+#define SCAN_CODE_COUNT       256 /* the low byte of a key code */
+#define HEX_DIGITS            4   /* the digits of a \uXXXX escape */
+#define HEX_BASE              16
+#define UNICODE_ESCAPE_PREFIX 2    /* the backslash and the u of \uXXXX */
+#define UTF8_ONE_BYTE_END     0x80 /* the first code point of 2, 3, and 4 UTF-8 bytes */
+#define UTF8_TWO_BYTES_END    0x800
+#define UTF8_THREE_BYTES_END  0x10000
+#define UTF8_CONTINUATION     0x80 /* the marker and the payload of a continuation byte */
+#define UTF8_PAYLOAD_MASK     0x3f
+#define UTF8_PAYLOAD_BITS     6
+#define UTF8_LEAD_MARKERS     0xf00 /* shifted right by the byte count: the high bits of a lead byte */
+#define UTF8_MAX_BYTES        4
+#define SURROGATE_HIGH        0xd800
+#define SURROGATE_LOW         0xdc00
+#define SURROGATE_END         0xe000
+#define SURROGATE_BITS        10
 
 /* A wait request: the reply goes out when main_loop.timer_ticks reached start + ticks. */
 static struct {
@@ -52,34 +52,74 @@ static struct {
 } waiting;
 
 /* PC scan codes of the keys without a character; the arrows give the keypad codes that main.c gives them. */
-static const struct { const char *name; uint16_t code; } key_names[] = {
-    {"esc", 0x01}, {"backspace", 0x0e}, {"tab", 0x0f}, {"enter", 0x1c}, {"space", 0x39},
-    {"f1", 0x3b}, {"f2", 0x3c}, {"f3", 0x3d}, {"f4", 0x3e}, {"f5", 0x3f}, {"f6", 0x40}, {"f7", 0x41},
-    {"f8", 0x42}, {"f9", 0x43}, {"f10", 0x44},
-    {"kp7", 0x47}, {"kp8", 0x48}, {"kp9", 0x49}, {"kp-", 0x4a}, {"kp4", 0x4b}, {"kp5", 0x4c}, {"kp6", 0x4d},
-    {"kp+", 0x4e}, {"kp1", 0x4f}, {"kp2", 0x50}, {"kp3", 0x51}, {"kp0", 0x52}, {"kp.", 0x53},
-    {"up", KEYPAD_FORWARD}, {"down", KEYPAD_BACK}, {"left", KEYPAD_TURN_LEFT}, {"right", KEYPAD_TURN_RIGHT},
-    {"shift+left", KEYPAD_LEFT}, {"shift+right", KEYPAD_RIGHT},
+static const struct {
+    const char *name;
+    uint16_t code;
+} key_names[] = {
+    {"esc",         0x01             },
+    {"backspace",   0x0e             },
+    {"tab",         0x0f             },
+    {"enter",       0x1c             },
+    {"space",       0x39             },
+    {"f1",          0x3b             },
+    {"f2",          0x3c             },
+    {"f3",          0x3d             },
+    {"f4",          0x3e             },
+    {"f5",          0x3f             },
+    {"f6",          0x40             },
+    {"f7",          0x41             },
+    {"f8",          0x42             },
+    {"f9",          0x43             },
+    {"f10",         0x44             },
+    {"kp7",         0x47             },
+    {"kp8",         0x48             },
+    {"kp9",         0x49             },
+    {"kp-",         0x4a             },
+    {"kp4",         0x4b             },
+    {"kp5",         0x4c             },
+    {"kp6",         0x4d             },
+    {"kp+",         0x4e             },
+    {"kp1",         0x4f             },
+    {"kp2",         0x50             },
+    {"kp3",         0x51             },
+    {"kp0",         0x52             },
+    {"kp.",         0x53             },
+    {"up",          KEYPAD_FORWARD   },
+    {"down",        KEYPAD_BACK      },
+    {"left",        KEYPAD_TURN_LEFT },
+    {"right",       KEYPAD_TURN_RIGHT},
+    {"shift+left",  KEYPAD_LEFT      },
+    {"shift+right", KEYPAD_RIGHT     },
 };
-static const struct { const char *prefix; uint16_t bit; } key_modifiers[] = {
-    {"shift+", KEY_SHIFT}, {"ctrl+", KEY_CONTROL}, {"alt+", KEY_ALT},
+static const struct {
+    const char *prefix;
+    uint16_t bit;
+} key_modifiers[] = {
+    {"shift+", KEY_SHIFT  },
+    {"ctrl+",  KEY_CONTROL},
+    {"alt+",   KEY_ALT    },
 };
 
 /* The key code of a key name: a name of key_names, a character of the US layout, with modifier prefixes; 0 none. */
 uint16_t control_key_code(const char *name)
 {
     for (size_t i = 0; i < sizeof key_names / sizeof key_names[0]; i++)
-        if (!strcmp(name, key_names[i].name)) return key_names[i].code;
+        if (!strcmp(name, key_names[i].name))
+            return key_names[i].code;
     for (size_t i = 0; i < sizeof key_modifiers / sizeof key_modifiers[0]; i++) {
         size_t n = strlen(key_modifiers[i].prefix);
-        if (strncmp(name, key_modifiers[i].prefix, n)) continue;
+        if (strncmp(name, key_modifiers[i].prefix, n))
+            continue;
         uint16_t code = control_key_code(name + n);
         return code ? code | key_modifiers[i].bit : 0;
     }
-    if (!name[0] || name[1]) return 0;
+    if (!name[0] || name[1])
+        return 0;
     for (uint16_t scan = 1; scan < SCAN_CODE_COUNT; scan++) {
-        if (kbd_key_to_ascii(scan) == name[0]) return scan;
-        if (kbd_key_to_ascii(scan | KEY_SHIFT) == name[0]) return scan | KEY_SHIFT;
+        if (kbd_key_to_ascii(scan) == name[0])
+            return scan;
+        if (kbd_key_to_ascii(scan | KEY_SHIFT) == name[0])
+            return scan | KEY_SHIFT;
     }
     return 0;
 }
@@ -92,9 +132,12 @@ const char *control_find_value(const char *line, const char *key)
     snprintf(pattern, sizeof pattern, "\"%s\"", key);
     for (const char *p = strstr(line, pattern); p; p = strstr(p, pattern)) {
         p += strlen(pattern);
-        while (*p == ' ') p++;
-        if (*p != ':') continue; /* a string value equal to the key, for example "cmd": "key" */
-        for (p++; *p == ' ';) p++;
+        while (*p == ' ')
+            p++;
+        if (*p != ':')
+            continue; /* a string value equal to the key, for example "cmd": "key" */
+        for (p++; *p == ' ';)
+            p++;
         return p;
     }
     return NULL;
@@ -105,8 +148,11 @@ static long hex4(const char *p)
 {
     long value = 0;
     for (int i = 0; i < HEX_DIGITS; i++) {
-        if (!isxdigit((unsigned char)p[i])) return -1;
-        value = value * HEX_BASE + (isdigit((unsigned char)p[i]) ? p[i] - '0' : tolower((unsigned char)p[i]) - 'a' + DECIMAL_BASE);  /* a to f follow the ten digits */
+        if (!isxdigit((unsigned char)p[i]))
+            return -1;
+        value = value * HEX_BASE + (isdigit((unsigned char)p[i]) ? p[i] - '0'
+                                                                 : tolower((unsigned char)p[i]) - 'a' +
+                                                                       DECIMAL_BASE); /* a to f follow the ten digits */
     }
     return value;
 }
@@ -116,13 +162,15 @@ static int put_utf8(char *out, size_t size, size_t *n, long c)
 {
     char bytes[UTF8_MAX_BYTES];
     int count = c < UTF8_ONE_BYTE_END ? 1 : c < UTF8_TWO_BYTES_END ? 2 : c < UTF8_THREE_BYTES_END ? 3 : UTF8_MAX_BYTES;
-    if (count == 1) bytes[0] = (char)c;
+    if (count == 1)
+        bytes[0] = (char)c;
     else {
         for (int i = count - 1; i > 0; i--, c >>= UTF8_PAYLOAD_BITS)
             bytes[i] = (char)(UTF8_CONTINUATION | (c & UTF8_PAYLOAD_MASK));
         bytes[0] = (char)((UTF8_LEAD_MARKERS >> count) | c);
     }
-    if (*n + count >= size) return 0;
+    if (*n + count >= size)
+        return 0;
     memcpy(out + *n, bytes, count);
     *n += count;
     return 1;
@@ -135,28 +183,36 @@ int control_get_string(const char *line, const char *key, char *out, size_t size
     static const char escapes[] = "\"\"\\\\//b\bf\fn\nr\rt\t";
     const char *p = control_find_value(line, key);
     size_t n = 0;
-    if (!p || *p++ != '"') return 0;
+    if (!p || *p++ != '"')
+        return 0;
     while (*p != '"') {
         long c = (unsigned char)*p++;
-        if (!c) return 0;
+        if (!c)
+            return 0;
         if (c == '\\') {
             const char *e = *p ? strchr(escapes, *p) : NULL;
-            if (e && (e - escapes) % 2 == 0) c = e[1], p++;
-            else if (*p++ != 'u' || (c = hex4(p)) < 0) return 0;
+            if (e && (e - escapes) % 2 == 0)
+                c = e[1], p++;
+            else if (*p++ != 'u' || (c = hex4(p)) < 0)
+                return 0;
             else {
                 p += HEX_DIGITS;
                 if (c >= SURROGATE_HIGH && c < SURROGATE_LOW && p[0] == '\\' && p[1] == 'u') { /* a surrogate pair */
                     long low = hex4(p + UNICODE_ESCAPE_PREFIX);
-                    if (low < SURROGATE_LOW || low >= SURROGATE_END) return 0;
+                    if (low < SURROGATE_LOW || low >= SURROGATE_END)
+                        return 0;
                     c = UTF8_THREE_BYTES_END + ((c - SURROGATE_HIGH) << SURROGATE_BITS) + (low - SURROGATE_LOW);
                     p += UNICODE_ESCAPE_PREFIX + HEX_DIGITS;
                 }
-                if (!c || (c >= SURROGATE_HIGH && c < SURROGATE_END)) return 0;
-                if (!put_utf8(out, size, &n, c)) return 0;
+                if (!c || (c >= SURROGATE_HIGH && c < SURROGATE_END))
+                    return 0;
+                if (!put_utf8(out, size, &n, c))
+                    return 0;
                 continue;
             }
         }
-        if (n + 1 >= size) return 0;
+        if (n + 1 >= size)
+            return 0;
         out[n++] = (char)c;
     }
     out[n] = 0;
@@ -167,7 +223,8 @@ long control_get_int(const char *line, const char *key, long missing)
 {
     const char *p = control_find_value(line, key);
     char *end;
-    if (!p) return missing;
+    if (!p)
+        return missing;
     long value = strtol(p, &end, DECIMAL_BASE);
     return end == p ? missing : value;
 }
@@ -212,11 +269,14 @@ static void put_state(Json *reply)
     int mode = input_get_mode();
     bool movie = movie_is_playing();
     const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
-    put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
-        mode_name);
-    if (movie || mode != INPUT_MODE_DIALOG) put(reply, "null");
-    else put(reply, "%d", dialog.id);
-    put(reply, ",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
+    put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time,
+        main_loop.timer_ticks, mode_name);
+    if (movie || mode != INPUT_MODE_DIALOG)
+        put(reply, "null");
+    else
+        put(reply, "%d", dialog.id);
+    put(reply,
+        ",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
         game.party_map, game.party_x, game.party_y, game.party_dir, game.champion_count, (int16_t)game.leader);
     for (int i = 0; i < game.champion_count && i < CHAMPION_MAX; i++) {
         const Champion *c = champion(i);
@@ -226,39 +286,41 @@ static void put_state(Json *reply)
             c->stamina, c->max_stamina, c->mana, c->max_mana, champ_get_load(i));
     }
     put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", ui.inventory - 1, (int)ui.candidate - 1);
-    if (!game.champion_count || game.leader_hand == THING_NONE) put(reply, "null");
+    if (!game.champion_count || game.leader_hand == THING_NONE)
+        put(reply, "null");
     else {
         const char *name = item_name(game.leader_hand);
         put(reply, "{\"thing\":%u,\"name\":", game.leader_hand);
         put_string(reply, name, strlen(name));
         put(reply, "}");
     }
-    put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d", game.sound_volume,
-        game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode], advanced_automap_open);
+    put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d",
+        game.sound_volume, game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode],
+        advanced_automap_open);
     put(reply, ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", cheat_immortal, cheat_food, cheat_light);
 }
 
 /* Screenshots: the screen with the pointer, as a PNG file. */
 
-#define CRC32_POLYNOMIAL 0xedb88320u   /* reflected CRC-32 of PNG */
-#define ADLER_MODULUS 65521
-#define ZLIB_METHOD 0x78               /* deflate, 32 KB window */
-#define ZLIB_FLAGS 0x01                /* no dictionary; header check bits */
-#define STORED_BLOCK_MAX 65535
-#define PNG_BIT_DEPTH 8
-#define PNG_COLOR_RGB 2
-#define PNG_SIGNATURE "\x89PNG\r\n\x1a\n"
-#define PNG_SIGNATURE_SIZE 8
-#define CHUNK_FIELD_SIZE 4             /* the length, the type, and the CRC of a chunk */
-#define IHDR_SIZE 13
-#define IHDR_BIT_DEPTH 8               /* the offsets of the fields after the width and the height */
-#define IHDR_COLOR_TYPE 9
-#define ZLIB_HEADER_SIZE 2
-#define STORED_BLOCK_HEADER_SIZE 5     /* the last block flag, the length, and its complement */
-#define ADLER_SIZE 4
-#define CRC_TABLE_SIZE 256
-#define ADLER_SUM_SHIFT 16             /* the Adler-32 checksum: the second sum in the high half */
-#define FULL_PATH_SIZE 1024            /* the absolute path of a screenshot, as PATH_MAX of macOS */
+#define CRC32_POLYNOMIAL         0xedb88320u /* reflected CRC-32 of PNG */
+#define ADLER_MODULUS            65521
+#define ZLIB_METHOD              0x78 /* deflate, 32 KB window */
+#define ZLIB_FLAGS               0x01 /* no dictionary; header check bits */
+#define STORED_BLOCK_MAX         65535
+#define PNG_BIT_DEPTH            8
+#define PNG_COLOR_RGB            2
+#define PNG_SIGNATURE            "\x89PNG\r\n\x1a\n"
+#define PNG_SIGNATURE_SIZE       8
+#define CHUNK_FIELD_SIZE         4 /* the length, the type, and the CRC of a chunk */
+#define IHDR_SIZE                13
+#define IHDR_BIT_DEPTH           8 /* the offsets of the fields after the width and the height */
+#define IHDR_COLOR_TYPE          9
+#define ZLIB_HEADER_SIZE         2
+#define STORED_BLOCK_HEADER_SIZE 5 /* the last block flag, the length, and its complement */
+#define ADLER_SIZE               4
+#define CRC_TABLE_SIZE           256
+#define ADLER_SUM_SHIFT          16   /* the Adler-32 checksum: the second sum in the high half */
+#define FULL_PATH_SIZE           1024 /* the absolute path of a screenshot, as PATH_MAX of macOS */
 
 static uint32_t crc_table[CRC_TABLE_SIZE];
 
@@ -267,11 +329,13 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
     if (!crc_table[1])
         for (uint32_t i = 0; i < CRC_TABLE_SIZE; i++) {
             uint32_t c = i;
-            for (int k = 0; k < BYTE_BITS; k++) c = c & 1 ? CRC32_POLYNOMIAL ^ c >> 1 : c >> 1;
+            for (int k = 0; k < BYTE_BITS; k++)
+                c = c & 1 ? CRC32_POLYNOMIAL ^ c >> 1 : c >> 1;
             crc_table[i] = c;
         }
     crc = ~crc;
-    while (n--) crc = crc_table[(crc ^ *p++) & BYTE_MASK] ^ crc >> BYTE_BITS;
+    while (n--)
+        crc = crc_table[(crc ^ *p++) & BYTE_MASK] ^ crc >> BYTE_BITS;
     return ~crc;
 }
 
@@ -282,7 +346,8 @@ static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n
     memcpy(head + CHUNK_FIELD_SIZE, type, CHUNK_FIELD_SIZE);
     uint32_t crc = crc32_update(crc32_update(0, head + CHUNK_FIELD_SIZE, CHUNK_FIELD_SIZE), data, n);
     fwrite(head, 1, sizeof head, f);
-    if (n) fwrite(data, 1, n, f);
+    if (n)
+        fwrite(data, 1, n, f);
     put_be32(head, crc);
     fwrite(head, 1, CHUNK_FIELD_SIZE, f);
 }
@@ -291,7 +356,10 @@ static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n
 static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 {
     enum { ROW = 1 + RGB_CHANNELS * SCREEN_W, RAW = ROW * SCREEN_H };
-    enum { BLOCKS = (RAW + STORED_BLOCK_MAX - 1) / STORED_BLOCK_MAX, ZLIB = ZLIB_HEADER_SIZE + RAW + STORED_BLOCK_HEADER_SIZE * BLOCKS + ADLER_SIZE };
+    enum {
+        BLOCKS = (RAW + STORED_BLOCK_MAX - 1) / STORED_BLOCK_MAX,
+        ZLIB = ZLIB_HEADER_SIZE + RAW + STORED_BLOCK_HEADER_SIZE * BLOCKS + ADLER_SIZE
+    };
     static uint8_t raw[RAW], z[ZLIB];
     for (int y = 0; y < SCREEN_H; y++) {
         uint8_t *p = raw + y * ROW;
@@ -311,19 +379,21 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
         put_le16(q + sizeof(uint16_t), (uint16_t)~n);
         q += 2 * sizeof(uint16_t);
         memcpy(q, raw + done, n);
-        for (size_t i = 0; i < n; i++) a = (a + raw[done + i]) % ADLER_MODULUS, b = (b + a) % ADLER_MODULUS;
+        for (size_t i = 0; i < n; i++)
+            a = (a + raw[done + i]) % ADLER_MODULUS, b = (b + a) % ADLER_MODULUS;
         q += n;
         done += n;
     }
     put_be32(q, b << ADLER_SUM_SHIFT | a);
     q += ADLER_SIZE;
-    uint8_t ihdr[IHDR_SIZE] = { 0 };
+    uint8_t ihdr[IHDR_SIZE] = {0};
     put_be32(ihdr, SCREEN_W);
     put_be32(ihdr + CHUNK_FIELD_SIZE, SCREEN_H);
     ihdr[IHDR_BIT_DEPTH] = PNG_BIT_DEPTH;
     ihdr[IHDR_COLOR_TYPE] = PNG_COLOR_RGB;
     FILE *f = fopen(path, "wb");
-    if (!f) return 0;
+    if (!f)
+        return 0;
     fwrite(PNG_SIGNATURE, 1, PNG_SIGNATURE_SIZE, f);
     png_chunk(f, "IHDR", ihdr, sizeof ihdr);
     png_chunk(f, "IDAT", z, (uint32_t)(q - z));
@@ -337,7 +407,8 @@ static void screenshot(const char *path, Json *reply)
     static uint8_t screen[SCREEN_H][SCREEN_W];
     char absolute[FULL_PATH_SIZE];
     memcpy(screen, fb, sizeof screen);
-    if (input_mouse_x >= 0 && input_mouse_y >= 0) input_draw_cursor(&screen[0][0], input_mouse_x, input_mouse_y);
+    if (input_mouse_x >= 0 && input_mouse_y >= 0)
+        input_draw_cursor(&screen[0][0], input_mouse_x, input_mouse_y);
     if (!write_png(path, screen) || !os_get_full_path(path, absolute, sizeof absolute)) {
         put_error(reply, "cannot write the PNG file");
         return;
@@ -365,12 +436,14 @@ static void handle_key(const char *request, Json *reply)
 {
     char name[NAME_SIZE];
     long code = control_get_int(request, "key", 0);
-    if (control_get_string(request, "key", name, sizeof name)) code = control_key_code(name);
+    if (control_get_string(request, "key", name, sizeof name))
+        code = control_key_code(name);
     if (code <= 0 || code > KEY_CODE_MAX) {
         put_error(reply, "unknown key");
         return;
     }
-    if (!movie_is_playing()) input_key_down((uint16_t)code);  /* a key does not skip a movie */
+    if (!movie_is_playing())
+        input_key_down((uint16_t)code); /* a key does not skip a movie */
     put_ok(reply);
 }
 
@@ -380,7 +453,8 @@ static void handle_button(const char *request, int down, int up, Json *reply)
 {
     char button[NAME_SIZE] = "left";
     int x, y;
-    if (!get_position(request, &x, &y, reply)) return;
+    if (!get_position(request, &x, &y, reply))
+        return;
     control_get_string(request, "button", button, sizeof button);
     int right = !strcmp(button, "right");
     if (!right && strcmp(button, "left")) {
@@ -389,11 +463,14 @@ static void handle_button(const char *request, int down, int up, Json *reply)
     }
     int bit = right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT;
     if (movie_is_playing()) {
-        if (down) movie_click();  /* a movie takes only clicks; the game input stays empty */
+        if (down)
+            movie_click(); /* a movie takes only clicks; the game input stays empty */
     } else {
         input_mouse_x = x, input_mouse_y = y;
-        if (down) input_mouse_down(x, y, bit);
-        if (up) input_mouse_up(x, y, bit);
+        if (down)
+            input_mouse_down(x, y, bit);
+        if (up)
+            input_mouse_up(x, y, bit);
     }
     put_ok(reply);
 }
@@ -413,25 +490,28 @@ static void put_part(Json *reply, const char *key, void (*part)(Json *))
    ended before its first turn gets its reply now. */
 static void start_turn_or_fail(const char *error, Json *reply)
 {
-    if (error) put_error(reply, error);
+    if (error)
+        put_error(reply, error);
     else if (!turn_is_pending()) {
         turn_reply(reply);
     }
 }
 
-static int game_lost;                 /* a damaged save and a failed restore left no game to play */
+static int game_lost; /* a damaged save and a failed restore left no game to play */
 
 /* The input modes in which the game runs a modal loop: save, load, and a new game wait until it closes. */
 static bool modal_mode(void)
 {
     int mode = input_get_mode();
-    return mode == INPUT_MODE_MENU || mode == INPUT_MODE_PICTURE || mode == INPUT_MODE_DIALOG || mode == INPUT_MODE_NAME;
+    return mode == INPUT_MODE_MENU || mode == INPUT_MODE_PICTURE || mode == INPUT_MODE_DIALOG ||
+           mode == INPUT_MODE_NAME;
 }
 
 /* Replies the error and returns true while a modal loop of the game runs. */
 static bool refuse_in_modal_loop(Json *reply)
 {
-    if (!modal_mode()) return false;
+    if (!modal_mode())
+        return false;
     put_error(reply, "close the dialog first (act click or act key)");
     return true;
 }
@@ -447,15 +527,18 @@ static void game_restarts(void)
 /* Loads QUICK.DAT of the save folder; a missing or damaged file keeps the game, a failed restore loses it. */
 static void handle_load(Json *reply)
 {
-    if (refuse_in_modal_loop(reply)) return;
+    if (refuse_in_modal_loop(reply))
+        return;
     int end = main_loop.end;
-    main_loop.end = 0;  /* the loaded game starts with a full game step, as after the load of a slot */
+    main_loop.end = 0; /* the loaded game starts with a full game step, as after the load of a slot */
     int result = advanced_quick_load();
-    if (result == QUICK_LOST) game_lost = 1;
+    if (result == QUICK_LOST)
+        game_lost = 1;
     if (result != QUICK_LOADED) {
         main_loop.end = end;
-        put_error(reply, result == QUICK_MISSING ? "no saved game (use save first)"
-                   : result == QUICK_BLOCKED ? "cannot write QUICK.TMP: nothing loaded" : "the saved game is damaged");
+        put_error(reply, result == QUICK_MISSING   ? "no saved game (use save first)"
+                         : result == QUICK_BLOCKED ? "cannot write QUICK.TMP: nothing loaded"
+                                                   : "the saved game is damaged");
         return;
     }
     game_restarts();
@@ -465,7 +548,8 @@ static void handle_load(Json *reply)
 /* Starts a new game from DUNGEON.DAT, as the menu choice NEW GAME does. */
 static void handle_new_game(Json *reply)
 {
-    if (refuse_in_modal_loop(reply)) return;
+    if (refuse_in_modal_loop(reply))
+        return;
     if (!session_start_new_game()) {
         game_lost = 1;
         put_error(reply, "cannot start the new game");
@@ -478,10 +562,14 @@ static void handle_new_game(Json *reply)
 /* Writes the game to QUICK.DAT of the save folder; the old file stays on an error. */
 static void handle_save(Json *reply)
 {
-    if (refuse_in_modal_loop(reply)) return;
-    if (ui.candidate) put_error(reply, "answer the candidate first (act recruit)");
-    else if (!advanced_quick_save()) put_error(reply, "cannot write the save file");
-    else put_ok(reply);
+    if (refuse_in_modal_loop(reply))
+        return;
+    if (ui.candidate)
+        put_error(reply, "answer the candidate first (act recruit)");
+    else if (!advanced_quick_save())
+        put_error(reply, "cannot write the save file");
+    else
+        put_ok(reply);
 }
 
 /* The commands of a running game in the turn-based mode: the parts of the game state, and after a game over only
@@ -489,21 +577,29 @@ static void handle_save(Json *reply)
    know. */
 static bool handle_turnbased_game_request(const char *request, const char *cmd, Json *reply)
 {
-    static const char *const turns[] = { "act", "act_many", "wait", "save" };
-    if (!strcmp(cmd, "get_state")) put_part(reply, "state", state_json_state);
-    else if (!strcmp(cmd, "get_view")) put_part(reply, "view", state_json_view);
-    else if (!strcmp(cmd, "get_map")) put_part(reply, "map", state_json_map);
+    static const char *const turns[] = {"act", "act_many", "wait", "save"};
+    if (!strcmp(cmd, "get_state"))
+        put_part(reply, "state", state_json_state);
+    else if (!strcmp(cmd, "get_view"))
+        put_part(reply, "view", state_json_view);
+    else if (!strcmp(cmd, "get_map"))
+        put_part(reply, "map", state_json_map);
     else {
         for (size_t i = 0; i < sizeof turns / sizeof turns[0] && state_json_game_over(); i++)
             if (!strcmp(cmd, turns[i])) {
                 put_error(reply, "game over");
                 return true;
             }
-        if (!strcmp(cmd, "save")) handle_save(reply);
-        else if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request), reply);
-        else if (!strcmp(cmd, "act_many")) start_turn_or_fail(turn_act_many(request), reply);
-        else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request), reply);
-        else return false;
+        if (!strcmp(cmd, "save"))
+            handle_save(reply);
+        else if (!strcmp(cmd, "act"))
+            start_turn_or_fail(turn_act(request), reply);
+        else if (!strcmp(cmd, "act_many"))
+            start_turn_or_fail(turn_act_many(request), reply);
+        else if (!strcmp(cmd, "wait"))
+            start_turn_or_fail(turn_wait(request), reply);
+        else
+            return false;
     }
     return true;
 }
@@ -513,8 +609,9 @@ static bool handle_turnbased_game_request(const char *request, const char *cmd, 
    the commands that no mode knows. */
 static bool handle_turnbased_request(const char *request, const char *cmd, Json *reply)
 {
-    static const char *const direct[] = { "key", "click", "press", "release", "command", "move" };
-    if (!strcmp(cmd, "quit")) return false;
+    static const char *const direct[] = {"key", "click", "press", "release", "command", "move"};
+    if (!strcmp(cmd, "quit"))
+        return false;
     if (!strcmp(cmd, "load")) {
         handle_load(reply);
         return true;
@@ -554,14 +651,17 @@ static void handle_request(const char *request, Json *reply)
     } else if (!strcmp(cmd, "release")) {
         handle_button(request, 0, 1, reply);
     } else if (!strcmp(cmd, "move")) {
-        if (!get_position(request, &x, &y, reply)) return;
+        if (!get_position(request, &x, &y, reply))
+            return;
         input_mouse_x = x, input_mouse_y = y;
         put_ok(reply);
     } else if (!strcmp(cmd, "command")) {
         long id = control_get_int(request, "id", -1);
-        if (id < 0 || id > KEY_CODE_MAX) put_error(reply, "missing id");
+        if (id < 0 || id > KEY_CODE_MAX)
+            put_error(reply, "missing id");
         else {
-            if (!movie_is_playing()) input_simulate_command_click((uint16_t)id);
+            if (!movie_is_playing())
+                input_simulate_command_click((uint16_t)id);
             put_ok(reply);
         }
     } else if (!strcmp(cmd, "wait")) {
@@ -576,8 +676,10 @@ static void handle_request(const char *request, Json *reply)
             waiting.ticks = (uint32_t)ticks;
         }
     } else if (!strcmp(cmd, "screenshot")) {
-        if (!control_get_string(request, "path", path, sizeof path)) put_error(reply, "missing path");
-        else screenshot(path, reply);
+        if (!control_get_string(request, "path", path, sizeof path))
+            put_error(reply, "missing path");
+        else
+            screenshot(path, reply);
     } else if (!strcmp(cmd, "quit")) {
         main_loop.quit = main_loop.closed = 1;
         put_ok(reply);
@@ -596,29 +698,40 @@ bool control_end_turn(Json *reply)
 {
     if (waiting.pending) {
         uint32_t ran = main_loop.timer_ticks - waiting.start;
-        if (ran < waiting.ticks) return false;
+        if (ran < waiting.ticks)
+            return false;
         waiting.pending = 0;
         put(reply, "{\"ok\":true,\"ticks\":%u}", ran);
         return true;
     }
-    if (!turn_poll()) return false;
+    if (!turn_poll())
+        return false;
     turn_reply(reply);
     return true;
 }
 
-bool control_is_turn_pending(void) { return turn_is_pending(); }
+bool control_is_turn_pending(void)
+{
+    return turn_is_pending();
+}
 
 void control_drop_client(void)
 {
     waiting.pending = 0;
-    if (turn_is_pending()) turn_drop_reply();
+    if (turn_is_pending())
+        turn_drop_reply();
 }
 
-void control_reset(void) { game_lost = 0; }
+void control_reset(void)
+{
+    game_lost = 0;
+}
 
 void control_frame(void)
 {
-    if (!turn_is_pending()) return;
+    if (!turn_is_pending())
+        return;
     uint32_t time = game.game_time;
-    for (int i = 0; i < STEP_TICKS && game.game_time == time && !main_loop.end && !main_loop.quit; i++) play_tick();
+    for (int i = 0; i < STEP_TICKS && game.game_time == time && !main_loop.end && !main_loop.quit; i++)
+        play_tick();
 }

@@ -8,31 +8,31 @@
 #include <stdint.h>
 
 /* The grid: 7 x 7 squares (9 x 9 when the grid is shifted) of 7 x 7 pixel icons with 1 pixel gaps. */
-#define MAP_ICON_W 7
-#define MAP_ICON_H 7
-#define GAP_X 1
-#define GAP_Y 1
-#define GRID_RADIUS 3
-#define ZONE_MAP_GRID 0x63
+#define MAP_ICON_W       7
+#define MAP_ICON_H       7
+#define GAP_X            1
+#define GAP_Y            1
+#define GRID_RADIUS      3
+#define ZONE_MAP_GRID    0x63
 #define MAP_OPTION_COUNT 4
 /* Minion map kinds: the container type of a minion map. */
 enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };
 
 /* action.flags while the action area shows a minion map. */
-#define MAP_OPTION_CREATURES 0x0001     /* option button 0: moving creatures */
-#define MAP_OPTION_DETAILS 0x0002       /* option button 1: all ornaments, blinking pits and fake walls */
-#define MAP_OPTION_ITEMS 0x0004         /* option button 2: items, missiles, explosions, possessions */
-#define MAP_OPTION_HOLD 0x0008          /* option button 3: the map keeps its last center */
-#define MAP_OPTIONS 0x000f
-#define MAP_PARTY 0x0010                /* the square shows the party */
-#define MAP_MINION 0x0020               /* the map shows its minion instead of its creature picture */
-#define MAP_MARKER 0x0040               /* the map has a location: its marker shows */
+#define MAP_OPTION_CREATURES 0x0001 /* option button 0: moving creatures */
+#define MAP_OPTION_DETAILS   0x0002 /* option button 1: all ornaments, blinking pits and fake walls */
+#define MAP_OPTION_ITEMS     0x0004 /* option button 2: items, missiles, explosions, possessions */
+#define MAP_OPTION_HOLD      0x0008 /* option button 3: the map keeps its last center */
+#define MAP_OPTIONS          0x000f
+#define MAP_PARTY            0x0010 /* the square shows the party */
+#define MAP_MINION           0x0020 /* the map shows its minion instead of its creature picture */
+#define MAP_MARKER           0x0040 /* the map has a location: its marker shows */
 #define MAP_STATIC_CREATURES 0x0080
-#define MAP_DIMMED 0x0100
-#define MAP_POWERED 0x0200              /* the champion paid the mana: the map is not dimmed */
-#define MAP_PANEL_DRAWN 0x0400
-#define MAP_HAS_OPTIONS 0x0800
-#define MAP_OPEN 0x8000
+#define MAP_DIMMED           0x0100
+#define MAP_POWERED          0x0200 /* the champion paid the mana: the map is not dimmed */
+#define MAP_PANEL_DRAWN      0x0400
+#define MAP_HAS_OPTIONS      0x0800
+#define MAP_OPEN             0x8000
 
 /* MinionMap.marker_state: the grid shows the marker square, or the square it leads to one level up or down. */
 enum { MARKER_NONE, MARKER_SHOWN, MARKER_ABOVE, MARKER_BELOW };
@@ -47,13 +47,13 @@ typedef struct {
     int16_t below_map;
     int16_t above_x, above_y;
     int16_t marker_x, marker_y;
-    int8_t map, x, y, dir;      /* the center of the last grid */
-    int16_t mana_divisor;       /* 1 + the mana of the options that are on */
-    int16_t mana_timer;         /* game ticks until the next mana point */
-    int16_t clip[4];            /* the grid rectangle */
+    int8_t map, x, y, dir; /* the center of the last grid */
+    int16_t mana_divisor;  /* 1 + the mana of the options that are on */
+    int16_t mana_timer;    /* game ticks until the next mana point */
+    int16_t clip[4];       /* the grid rectangle */
 } MinionMap;
 
-#define CMD_MINION_MAP 0x55         /* the command of a click on the minion map grid */
+#define CMD_MINION_MAP 0x55 /* the command of a click on the minion map grid */
 
 extern MinionMap minion_map;
 
@@ -67,7 +67,7 @@ void minion_toggle_map_option(int option);
 int minion_map_set_location(uint16_t thing, int x, int y, int map);
 /* A click (command) at (x, y) of the screen on the grid of a minion location map sends its minion there. */
 void minion_map_click_set_destination(int command, int x, int y);
-#define MAP_CELL_SIZE 8                 /* pixels per square of a map: a 7 x 7 icon and a 1 pixel gap */
+#define MAP_CELL_SIZE 8 /* pixels per square of a map: a 7 x 7 icon and a 1 pixel gap */
 
 /* Minions of creature.c and item.c. */
 void minion_dismiss(uint16_t group);

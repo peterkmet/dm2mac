@@ -5,10 +5,10 @@
 
 /* The main loop: timer ticks, game steps, the view of the party and sleep. */
 
-#define SLEEP_STEP_TICKS 1  /* a sleeping party runs a step on each tick */
-#define TEXT_SLEEPING 0x11  /* GDAT text (1, 0, 0x11): the sleep message */
-#define TEXT_PAUSED 0x12    /* GDAT text (1, 0, 0x12): the pause message */
-#define ZONE_VIEW_TEXT 6    /* the layout zone of a message in the viewport */
+#define SLEEP_STEP_TICKS 1    /* a sleeping party runs a step on each tick */
+#define TEXT_SLEEPING    0x11 /* GDAT text (1, 0, 0x11): the sleep message */
+#define TEXT_PAUSED      0x12 /* GDAT text (1, 0, 0x12): the pause message */
+#define ZONE_VIEW_TEXT   6    /* the layout zone of a message in the viewport */
 
 /* One timer tick of a modal loop (menu, dialog): the platform reads the input and shows the screen. */
 extern void (*play_frame_hook)(void);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <stdlib.h>
 #include "sound.h"
+#include <stdlib.h>
 
 #define UPSAMPLE (SOUND_OUTPUT_RATE / SOUND_RATE)
 
@@ -8,13 +8,13 @@
 
 /* SOS volume (0-0x7fff) from loudness, and the mixer gain shift for 8-bit samples. */
 #define SOS_VOLUME_SHIFT 7
-#define GAIN_SHIFT 15
-#define SAMPLE_TO_S16 8
+#define GAIN_SHIFT       15
+#define SAMPLE_TO_S16    8
 
 typedef struct {
     const int8_t *data;
-    uint32_t end;  /* length in output frames */
-    uint32_t pos;  /* output frame */
+    uint32_t end; /* length in output frames */
+    uint32_t pos; /* output frame */
     int left, right;
 } Voice;
 
@@ -26,7 +26,8 @@ int sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
     sound_volume_pan(volume, lateral, forward, &loudness, &pan);
     for (int i = 0; i < SOUND_VOICES; i++) {
         Voice *v = &voices[i];
-        if (v->data) continue;
+        if (v->data)
+            continue;
         int sos_volume = loudness << SOS_VOLUME_SHIFT | loudness >> 1;
         /* Linear balance: the center plays at full volume on both sides. */
         int half = PAN_FULL / 2;
@@ -42,7 +43,8 @@ int sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
 
 void sound_stop_all(void)
 {
-    for (int i = 0; i < SOUND_VOICES; i++) voices[i].data = NULL;
+    for (int i = 0; i < SOUND_VOICES; i++)
+        voices[i].data = NULL;
 }
 
 static int16_t clamp16(int s)
@@ -63,11 +65,13 @@ void sound_mix(int16_t *stereo, int frames)
         int left = stereo[2 * f], right = stereo[2 * f + 1];
         for (int i = 0; i < SOUND_VOICES; i++) {
             Voice *v = &voices[i];
-            if (!v->data) continue;
+            if (!v->data)
+                continue;
             int s = (v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16) * master_volume / VOLUME_SETTING_MAX;
             left += s * v->left >> GAIN_SHIFT;
             right += s * v->right >> GAIN_SHIFT;
-            if (++v->pos == v->end) v->data = NULL;
+            if (++v->pos == v->end)
+                v->data = NULL;
         }
         stereo[2 * f] = clamp16(left);
         stereo[2 * f + 1] = clamp16(right);

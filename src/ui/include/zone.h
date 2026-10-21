@@ -7,15 +7,15 @@
    place the zone at (x, y) of its parent (center, top left, top right, bottom right, bottom left, top, right,
    bottom, left); 9 gives a size (x, y = width, height); 10 to 18 place it relative to the parent's anchor. */
 
-#include <stdint.h>
 #include "gdat.h"
 #include "gfx.h"
+#include <stdint.h>
 
-#define ZONE_NONE 0xffff
-#define ZONE_RELATIVE 0x8000    /* zone flag: add the offsets in *w and *h to the zone position */
-#define ZONE_NO_ANCHOR (-1)     /* anchor override that keeps the anchor of the zone record */
-#define ZONE_SCALE_FULL 10000   /* scale of zone_get_rect_clipped, in 1/10000 */
-#define VIEWPORT_WIDTH 224
+#define ZONE_NONE       0xffff
+#define ZONE_RELATIVE   0x8000 /* zone flag: add the offsets in *w and *h to the zone position */
+#define ZONE_NO_ANCHOR  (-1)   /* anchor override that keeps the anchor of the zone record */
+#define ZONE_SCALE_FULL 10000  /* scale of zone_get_rect_clipped, in 1/10000 */
+#define VIEWPORT_WIDTH  224
 #define VIEWPORT_HEIGHT 136
 
 /* The view part that stays visible while the party walks. */

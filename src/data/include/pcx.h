@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 #define PCX_PALETTE_COLORS 256
-#define PCX_RGB 3
+#define PCX_RGB            3
 
 enum { PCX_OK, PCX_ERR_DATA };
 

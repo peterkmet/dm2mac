@@ -8,8 +8,8 @@
 #include <stdint.h>
 
 #define SCALE_NONE_FACTOR 1
-#define SCALE2X_FACTOR 2
-#define SCALE3X_FACTOR 3
+#define SCALE2X_FACTOR    2
+#define SCALE3X_FACTOR    3
 
 /* AdvMAME Scale2x/Scale3x on palette indices; dst is (w*n) x (h*n), edges replicate. */
 void scale2x(const uint8_t *src, int w, int h, uint8_t *dst);

@@ -12,19 +12,34 @@
 
 /* The 16 UI colors: GDAT (1, 0, 13, 0xfe) maps them to palette colors. */
 enum ui_color {
-    UI_BLACK, UI_DARK_GRAY, UI_GRAY, UI_DARK_BROWN, UI_CYAN, UI_BROWN, UI_DARK_GREEN, UI_GREEN, UI_RED, UI_GOLD,
-    UI_TAN, UI_YELLOW, UI_DARKEST_GRAY, UI_LIGHT_GRAY, UI_BLUE, UI_WHITE, UI_COLOR_COUNT
+    UI_BLACK,
+    UI_DARK_GRAY,
+    UI_GRAY,
+    UI_DARK_BROWN,
+    UI_CYAN,
+    UI_BROWN,
+    UI_DARK_GREEN,
+    UI_GREEN,
+    UI_RED,
+    UI_GOLD,
+    UI_TAN,
+    UI_YELLOW,
+    UI_DARKEST_GRAY,
+    UI_LIGHT_GRAY,
+    UI_BLUE,
+    UI_WHITE,
+    UI_COLOR_COUNT
 };
-#define UI_OPAQUE (-1)              /* a picture without a transparent color */
+#define UI_OPAQUE (-1) /* a picture without a transparent color */
 /* The palette colors of the UI colors (text_init reads them). */
 extern const uint8_t *ui_colors;
 
 /* The values that the format codes of a text insert (".Z" and 3 digits, or byte 1 and the code + 32). */
 #define TEXT_ARG_NUMBERS 5
 typedef struct {
-    int16_t champion;           /* code 7: the name of this champion, -1 none */
-    int16_t number[TEXT_ARG_NUMBERS];  /* codes 10 to 14 */
-    uint8_t entry;              /* code 17: the text (7, 0, entry) */
+    int16_t champion;                 /* code 7: the name of this champion, -1 none */
+    int16_t number[TEXT_ARG_NUMBERS]; /* codes 10 to 14 */
+    uint8_t entry;                    /* code 17: the text (7, 0, entry) */
 } TextArgs;
 
 extern TextArgs text_args;
@@ -33,10 +48,22 @@ extern char text_drive_path[TEXT_SIZE];
 
 /* Fields of an action text. */
 enum {
-    FIELD_SKILL = 0, FIELD_LEVEL = 1, FIELD_COMMAND = 2, FIELD_DELAY = 3, FIELD_STAMINA = 4, FIELD_POWER = 5,
-    FIELD_MODE = 6, FIELD_DEFENSE = 7, FIELD_CHARGES = 8, FIELD_EXPERIENCE = 9, FIELD_ATTACK = 10, FIELD_WOUNDS = 11,
-    FIELD_SOUND = 13, FIELD_REPEATS = 14, FIELD_PIERCES = 15,
-    FIELD_MELEE_KIND = 0x10,    /* 1: full damage to creatures that take half damage from other hits */
+    FIELD_SKILL = 0,
+    FIELD_LEVEL = 1,
+    FIELD_COMMAND = 2,
+    FIELD_DELAY = 3,
+    FIELD_STAMINA = 4,
+    FIELD_POWER = 5,
+    FIELD_MODE = 6,
+    FIELD_DEFENSE = 7,
+    FIELD_CHARGES = 8,
+    FIELD_EXPERIENCE = 9,
+    FIELD_ATTACK = 10,
+    FIELD_WOUNDS = 11,
+    FIELD_SOUND = 13,
+    FIELD_REPEATS = 14,
+    FIELD_PIERCES = 15,
+    FIELD_MELEE_KIND = 0x10, /* 1: full damage to creatures that take half damage from other hits */
     FIELD_HAND = 17
 };
 

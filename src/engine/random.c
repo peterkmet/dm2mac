@@ -2,11 +2,11 @@
 #include "random.h"
 
 /* Linear congruential generator; reDM2 src/rng_next.c finds the same constants. */
-#define RANDOM_MULTIPLIER 0xbb40e62du
-#define RANDOM_INCREMENT 11u
+#define RANDOM_MULTIPLIER         0xbb40e62du
+#define RANDOM_INCREMENT          11u
 #define RANDOM_DISCARDED_LOW_BITS 8
-#define ONE_BIT_MASK 1u
-#define TWO_BITS_MASK 3u
+#define ONE_BIT_MASK              1u
+#define TWO_BITS_MASK             3u
 
 uint32_t random_seed;
 
@@ -18,7 +18,8 @@ uint32_t rand_next(void)
 
 uint16_t rand_below(uint16_t n)
 {
-    if (n == 0) return 0;
+    if (n == 0)
+        return 0;
     return (uint16_t)rand_next() % n;
 }
 

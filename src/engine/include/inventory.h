@@ -5,33 +5,33 @@
 
 /* The leader hand and the champion slots, and the effects of the items that a champion holds. */
 
-#include <stdint.h>
 #include "timeline.h"
+#include <stdint.h>
 
 /* Modes of champ_apply_item_effects: how an item changes the champion that holds it. */
 enum item_effect_mode {
-    EFFECT_MODE_LOAD = 0,       /* a loaded game: the bonuses of the items that the champion holds */
-    EFFECT_MODE_ADD = 1,        /* the item goes into a slot or the hand */
-    EFFECT_MODE_REMOVE = -1,    /* the item leaves a slot or the hand */
-    EFFECT_MODE_CONSUME = 2,    /* the champion eats or drinks the item */
+    EFFECT_MODE_LOAD = 0,         /* a loaded game: the bonuses of the items that the champion holds */
+    EFFECT_MODE_ADD = 1,          /* the item goes into a slot or the hand */
+    EFFECT_MODE_REMOVE = -1,      /* the item leaves a slot or the hand */
+    EFFECT_MODE_CONSUME = 2,      /* the champion eats or drinks the item */
     EFFECT_MODE_CONSUME_END = -2, /* the timed effect of a consumed item ends */
-    EFFECT_MODE_RESTORE = 3     /* a loaded game: a timed effect of a consumed item */
+    EFFECT_MODE_RESTORE = 3       /* a loaded game: a timed effect of a consumed item */
 };
 
-#define HAND_ICON_SIZE 16
-#define HAND_ICON_NONE 0xff
-#define HAND_ICON_COLORS 16
-#define MOUTH_CATEGORY 9            /* the mouth picture of the inventory: GDAT (9, 0x5b, 1, entry) */
-#define MOUTH_INDEX 0x5b
-#define ZONE_INVENTORY_PANEL 0x1ee  /* the picture panel of the inventory */
+#define HAND_ICON_SIZE       16
+#define HAND_ICON_NONE       0xff
+#define HAND_ICON_COLORS     16
+#define MOUTH_CATEGORY       9 /* the mouth picture of the inventory: GDAT (9, 0x5b, 1, entry) */
+#define MOUTH_INDEX          0x5b
+#define ZONE_INVENTORY_PANEL 0x1ee /* the picture panel of the inventory */
 
 /* The leader hand object as the original keeps it beside game.leader_hand. */
 typedef struct {
-    uint16_t attr;              /* item attribute 0 (flags) of the object */
-    uint16_t weight;            /* its weight when it went into the hand */
-    uint8_t icon;               /* the icon entry that the cursor shows, HAND_ICON_NONE none */
-    uint8_t cursor[HAND_ICON_SIZE * HAND_ICON_SIZE];  /* the icon: color numbers 0 to 15, HAND_ICON_KEY clear */
-    uint8_t palette[HAND_ICON_COLORS];  /* the palette colors of the color numbers */
+    uint16_t attr;                                   /* item attribute 0 (flags) of the object */
+    uint16_t weight;                                 /* its weight when it went into the hand */
+    uint8_t icon;                                    /* the icon entry that the cursor shows, HAND_ICON_NONE none */
+    uint8_t cursor[HAND_ICON_SIZE * HAND_ICON_SIZE]; /* the icon: color numbers 0 to 15, HAND_ICON_KEY clear */
+    uint8_t palette[HAND_ICON_COLORS];               /* the palette colors of the color numbers */
 } LeaderHand;
 
 extern LeaderHand leader_hand;

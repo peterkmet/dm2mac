@@ -5,16 +5,16 @@
 
 /* Magic: the spell table, runes, spell casting, and the magic light. */
 
-#include <stdint.h>
 #include "champion.h"
 #include "timeline.h"
+#include <stdint.h>
 
 /* A spell of the spell table. */
 typedef struct {
-    uint32_t runes;             /* power rune in bits 24-31 (0: any power), then up to 3 runes, first rune highest */
+    uint32_t runes; /* power rune in bits 24-31 (0: any power), then up to 3 runes, first rune highest */
     uint8_t difficulty;
-    uint8_t skill;              /* the skill that casts it and that gains the experience */
-    uint16_t effect;            /* kind in bits 0-3, type in bits 4-9, action delay factor in bits 10-15 */
+    uint8_t skill;   /* the skill that casts it and that gains the experience */
+    uint16_t effect; /* kind in bits 0-3, type in bits 4-9, action delay factor in bits 10-15 */
 } Spell;
 
 /* Results of a cast: 0 success, else a failure kind ORed with the base skill (0 to 3). */

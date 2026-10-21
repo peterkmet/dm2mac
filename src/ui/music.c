@@ -1,20 +1,20 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
+#include "music.h"
+#include "hmp.h"
+#include "fm.h"
+#include "sound.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "fm.h"
-#include "hmp.h"
-#include "music.h"
-#include "sound.h"
 
-#define SONG_TYPE 3
-#define SONG_ENTRY 0
-#define SONG_VOLUME_FULL 0x7f
-#define FADE_STEPS 127
-#define VOLUME_DEFAULT 5
-#define PATH_MAX_LENGTH 1024
-#define STEREO 2
-#define MASTER_VOLUME_SHIFT 4  /* the master volume repeats the level in its high bits */
+#define SONG_TYPE           3
+#define SONG_ENTRY          0
+#define SONG_VOLUME_FULL    0x7f
+#define FADE_STEPS          127
+#define VOLUME_DEFAULT      5
+#define PATH_MAX_LENGTH     1024
+#define STEREO              2
+#define MASTER_VOLUME_SHIFT 4 /* the master volume repeats the level in its high bits */
 
 Music music = {.requested_song = -1, .current_song = MUSIC_NO_SONG};
 static const gdat_t *gdat;
@@ -26,7 +26,8 @@ static long read_file(const char *data_dir, const char *name, uint8_t *buf, long
     char path[PATH_MAX_LENGTH];
     snprintf(path, sizeof path, "%s/%s", data_dir, name);
     FILE *f = fopen(path, "rb");
-    if (!f) return -1;
+    if (!f)
+        return -1;
     long n = (long)fread(buf, 1, (size_t)max, f);
     fclose(f);
     return n;
@@ -74,7 +75,8 @@ void music_play_song(int song)
         int item = gdat_find(gdat, CAT_MUSIC, song, SONG_TYPE, SONG_ENTRY);
         uint32_t size;
         const uint8_t *data = item < 0 ? NULL : gdat_item(gdat, item, &size);
-        if (!data || hmp_start(data, size, fm_send) != HMP_OK) return;
+        if (!data || hmp_start(data, size, fm_send) != HMP_OK)
+            return;
         hmp_set_song_volume(SONG_VOLUME_FULL);
         hmp_unmute();
         music.started = 1;
@@ -85,7 +87,8 @@ void music_play_song(int song)
 
 void music_stop(void)
 {
-    if (!music.enabled || !music.playing) return;
+    if (!music.enabled || !music.playing)
+        return;
     hmp_stop();
     music.playing = 0;
     music.paused = 0;
@@ -94,14 +97,16 @@ void music_stop(void)
 
 void music_pause(void)
 {
-    if (!music.enabled || !music.playing) return;
+    if (!music.enabled || !music.playing)
+        return;
     hmp_pause();
     music.paused = 1;
 }
 
 void music_update_for_map(int map)
 {
-    if (!music.enabled || !music.songlist_loaded) return;
+    if (!music.enabled || !music.songlist_loaded)
+        return;
     if (music.paused) {
         hmp_resume();
         music.paused = 0;
@@ -115,11 +120,15 @@ void music_update_for_map(int map)
         music.fade = 0;
         return;
     }
-    if (map < 0 || map >= music.songlist_size) return;  /* fix: the original reads past SONGLIST.DAT */
+    if (map < 0 || map >= music.songlist_size)
+        return; /* fix: the original reads past SONGLIST.DAT */
     music.next_song = music.songlist[map];
-    if (music.current_song == music.next_song) return;
-    if (music.playing && !music.fade) music.fade = FADE_STEPS;
-    else music_play_song(music.next_song);
+    if (music.current_song == music.next_song)
+        return;
+    if (music.playing && !music.fade)
+        music.fade = FADE_STEPS;
+    else
+        music_play_song(music.next_song);
     music.current_song = music.next_song;
 }
 
@@ -127,7 +136,7 @@ void music_set_volume(int level)
 {
     level = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
     if (music.enabled) {
-        hmp_set_master_volume(level * 2 | level << MASTER_VOLUME_SHIFT);  /* 0 to 126 */
+        hmp_set_master_volume(level * 2 | level << MASTER_VOLUME_SHIFT); /* 0 to 126 */
         if (music.started) {
             if (!level) {
                 music_stop();

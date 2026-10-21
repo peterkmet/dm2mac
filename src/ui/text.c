@@ -1,39 +1,39 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <stdio.h>
-#include <string.h>
-#include "draw.h"
-#include "save.h"
 #include "text.h"
+#include "save.h"
+#include "draw.h"
 #include "video.h"
 #include "view.h"
 #include "zone.h"
+#include <stdio.h>
+#include <string.h>
 
-#define FONT_INDEX 0
-#define FONT_TYPE 7
-#define FONT_ENTRY 0
-#define FONT_CHARS 128
-#define FONT_SIZE (FONT_GLYPH_HEIGHT * FONT_CHARS)
-#define GLYPH_BYTES_PER_ROW 3
-#define GLYPH_BIT_FIRST 0x10        /* font bit of the first pixel of a pixel pair */
-#define GLYPH_BIT_SECOND 0x08
-#define GLYPH_PAIR_BITS 2
-#define NUMBER_SIZE 12
-#define MESSAGE_WIDTH SCREEN_W
-#define MESSAGE_SCROLL_HEIGHT 7     /* rows the message area moves up for a new row */
-#define MESSAGE_LINE_BASE (TEXT_LINE_HEIGHT - FONT_BASELINE - 2)  /* base line of the text in the new row bitmap */
+#define FONT_INDEX            0
+#define FONT_TYPE             7
+#define FONT_ENTRY            0
+#define FONT_CHARS            128
+#define FONT_SIZE             (FONT_GLYPH_HEIGHT * FONT_CHARS)
+#define GLYPH_BYTES_PER_ROW   3
+#define GLYPH_BIT_FIRST       0x10 /* font bit of the first pixel of a pixel pair */
+#define GLYPH_BIT_SECOND      0x08
+#define GLYPH_PAIR_BITS       2
+#define NUMBER_SIZE           12
+#define MESSAGE_WIDTH         SCREEN_W
+#define MESSAGE_SCROLL_HEIGHT 7                                      /* rows the message area moves up for a new row */
+#define MESSAGE_LINE_BASE     (TEXT_LINE_HEIGHT - FONT_BASELINE - 2) /* base line of the text in the new row bitmap */
 
 uint32_t message_expiry[MESSAGE_ROWS];
 /* The text of each message row, as its pixels show it. */
 static char message_text[MESSAGE_ROWS][MESSAGE_TEXT_SIZE];
 
-static uint8_t font[FONT_SIZE + FONT_CHARS];   /* characters 128 to 255 of the last row read past the font: zeros */
+static uint8_t font[FONT_SIZE + FONT_CHARS]; /* characters 128 to 255 of the last row read past the font: zeros */
 static uint8_t glyph[FONT_GLYPH_HEIGHT * GLYPH_BYTES_PER_ROW];
 
 static struct {
-    int16_t column;             /* pixel column of the next text */
+    int16_t column; /* pixel column of the next text */
     int16_t row;
-    int16_t top;                /* y of the first row in the message area */
-    int16_t scroll_pending;     /* the new row is in the row bitmap; the area scrolls before the next text */
+    int16_t top;            /* y of the first row in the message area */
+    int16_t scroll_pending; /* the new row is in the row bitmap; the area scrolls before the next text */
     uint8_t line[TEXT_LINE_HEIGHT * SCREEN_W];
 } message;
 static Bitmap message_line = {message.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8BPP};
@@ -42,9 +42,10 @@ int text_init(const gdat_t *gdat)
 {
     uint32_t size;
     const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, FONT_TYPE, FONT_ENTRY), &size);
-    const uint8_t *colors = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, UI_COLORS_ENTRY),
-                                      &size);
-    if (!p || !colors) return 0;
+    const uint8_t *colors =
+        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, UI_COLORS_ENTRY), &size);
+    if (!p || !colors)
+        return 0;
     memcpy(font, p, FONT_SIZE);
     ui_colors = colors;
     text_set_message_cursor(0, MESSAGE_ROWS - 1);
@@ -73,17 +74,19 @@ const uint8_t *text_build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
 
 void text_draw(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text, int bpp)
 {
-    if (!*text) return;
+    if (!*text)
+        return;
     int transparent = GFX_OPAQUE;
     if (bg & TEXT_TRANSPARENT) {
         bg &= ~TEXT_TRANSPARENT;
         transparent = (int16_t)bg;
     }
     uint8_t colormap[2] = {(uint8_t)color, (uint8_t)bg};
-    if (bpp != IMAGE_4BPP) {  /* the glyph holds 0 and 1, the colormap gives the colors */
+    if (bpp != IMAGE_4BPP) { /* the glyph holds 0 and 1, the colormap gives the colors */
         color = 0;
         bg = 1;
-        if (transparent != GFX_OPAQUE) transparent = 1;
+        if (transparent != GFX_OPAQUE)
+            transparent = 1;
     }
     int16_t rect[RECT_SIZE] = {(int16_t)x, (int16_t)(y + FONT_BASELINE - (FONT_GLYPH_HEIGHT - 1)), FONT_ADVANCE,
                                FONT_GLYPH_HEIGHT};
@@ -94,10 +97,13 @@ void text_draw(uint8_t *dst, int dst_width, int x, int y, int color, int bg, con
 
 int text_measure(const char *text, int16_t *width, int16_t *height)
 {
-    if (!text) return 0;
+    if (!text)
+        return 0;
     int16_t w = -FONT_SPACING;
-    for (; *text; text++) w += FONT_ADVANCE;
-    if (w <= 0) return 0;
+    for (; *text; text++)
+        w += FONT_ADVANCE;
+    if (w <= 0)
+        return 0;
     *width = w;
     *height = FONT_GLYPH_HEIGHT - FONT_BASELINE;
     return 1;
@@ -110,19 +116,22 @@ int text_wrap_line(const char *text, char *line, int16_t *pos, int max_width)
     for (;;) {
         line[out] = '\0';
         char c = text[p];
-        if (c == '\n' || c == '\0') break;
+        if (c == '\n' || c == '\0')
+            break;
         if (c == ' ') {
             space = p;
             space_out = out;
             space_width = width;
         }
         if (width + FONT_ADVANCE > (int16_t)max_width) {
-            if (space == -1) break;
+            if (space == -1)
+                break;
             *pos = (int16_t)(space + 1);
             line[space_out] = '\0';
             return space_width;
         }
-        if (width == 0) width = -FONT_SPACING;
+        if (width == 0)
+            width = -FONT_SPACING;
         width += FONT_ADVANCE;
         line[out++] = text[p++];
     }
@@ -133,7 +142,8 @@ int text_wrap_line(const char *text, char *line, int16_t *pos, int max_width)
 void text_draw_with_shadow(uint8_t *dst, int dst_width, int x, int y, int color, int bg, const char *text)
 {
     int16_t w, h;
-    if (!text_measure(text, &w, &h)) return;
+    if (!text_measure(text, &w, &h))
+        return;
     if (!(bg & TEXT_TRANSPARENT)) {
         int16_t box[RECT_SIZE] = {(int16_t)(x - 1), (int16_t)(y - h), (int16_t)(w + 2), (int16_t)(h + 2)};
         gfx_fill_rect(dst, box, (uint16_t)bg, dst_width, IMAGE_8BPP);
@@ -152,14 +162,15 @@ void text_draw_on_screen(int x, int y, int color, int bg, const char *text)
 void text_draw_in_viewport(int x, int y, int color, const char *text)
 {
     text_draw(view_viewport.pixels, view_viewport.width, x, y, color, ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT,
-                  text, IMAGE_8BPP);
+              text, IMAGE_8BPP);
 }
 
 /* The base line start of text placed in zone; returns 0 when it is not visible. */
 static int text_zone_position(int zone, const char *text, int16_t *x, int16_t *y)
 {
     int16_t w, h, r[RECT_SIZE];
-    if (!text_measure(text, &w, &h) || !zone_compute_rect(NULL, r, (int16_t)zone, &w, &h, ZONE_NO_ANCHOR)) return 0;
+    if (!text_measure(text, &w, &h) || !zone_compute_rect(NULL, r, (int16_t)zone, &w, &h, ZONE_NO_ANCHOR))
+        return 0;
     *x = r[RECT_X];
     *y = (int16_t)(r[RECT_Y] + r[RECT_H] - 1);
     return 1;
@@ -168,7 +179,8 @@ static int text_zone_position(int zone, const char *text, int16_t *x, int16_t *y
 void text_draw_in_zone(int zone, int color, const char *text)
 {
     int16_t x, y;
-    if (text_zone_position(zone, text, &x, &y)) text_draw_in_viewport(x, y, (uint16_t)color, text);
+    if (text_zone_position(zone, text, &x, &y))
+        text_draw_in_viewport(x, y, (uint16_t)color, text);
 }
 
 void text_draw_in_zone_with_shadow(int zone, int color, int bg, const char *text)
@@ -180,7 +192,8 @@ void text_draw_in_zone_with_shadow(int zone, int color, int bg, const char *text
 
 void text_set_message_cursor(int column, int row)
 {
-    if (column < 0) column = 0;
+    if (column < 0)
+        column = 0;
     int16_t x = (int16_t)(column * FONT_ADVANCE), limit = MESSAGE_WIDTH - FONT_ADVANCE;
     message.column = x < limit ? x : limit;
     message.row = (int16_t)(row < 0 ? 0 : row > MESSAGE_ROWS - 1 ? MESSAGE_ROWS - 1 : row);
@@ -192,7 +205,8 @@ void text_clear_expired_rows(void)
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     for (int i = 0; i < MESSAGE_ROWS; i++) {
-        if (message_expiry[i] == MESSAGE_NEVER || message_expiry[i] > game.game_time) continue;
+        if (message_expiry[i] == MESSAGE_NEVER || message_expiry[i] > game.game_time)
+            continue;
         int16_t row[RECT_SIZE] = {r[RECT_X], (int16_t)(message.top + TEXT_LINE_HEIGHT * i + r[RECT_Y]), r[RECT_W],
                                   FONT_GLYPH_HEIGHT};
         gfx_fill_rect(draw_screen.pixels, row, ui_colors[UI_BLACK], draw_screen.width, IMAGE_8BPP);
@@ -201,7 +215,10 @@ void text_clear_expired_rows(void)
     }
 }
 
-const char *text_message_row(int row) { return row >= 0 && row < MESSAGE_ROWS ? message_text[row] : ""; }
+const char *text_message_row(int row)
+{
+    return row >= 0 && row < MESSAGE_ROWS ? message_text[row] : "";
+}
 
 /* Moves the message area up by one row and shows the new row from the row bitmap at its bottom. */
 static void text_scroll_message_area(void)
@@ -214,8 +231,8 @@ static void text_scroll_message_area(void)
                draw_screen.pixels + (y + MESSAGE_SCROLL_HEIGHT) * draw_screen.width + r[RECT_X], r[RECT_W]);
     r[RECT_Y] = (int16_t)(r[RECT_Y] + r[RECT_H] - FONT_GLYPH_HEIGHT);
     r[RECT_H] = FONT_GLYPH_HEIGHT;
-    gfx_blit(message.line, draw_screen.pixels, r, 0, 0, MESSAGE_WIDTH, draw_screen.width, GFX_OPAQUE, MIRROR_NONE, IMAGE_8BPP, IMAGE_8BPP,
-             NULL);
+    gfx_blit(message.line, draw_screen.pixels, r, 0, 0, MESSAGE_WIDTH, draw_screen.width, GFX_OPAQUE, MIRROR_NONE,
+             IMAGE_8BPP, IMAGE_8BPP, NULL);
 }
 
 /* Goes to the next message row; at the bottom row the new row waits in the row bitmap. */
@@ -226,7 +243,8 @@ static void text_message_new_line(void)
         message.row++;
         return;
     }
-    if (message.scroll_pending) text_scroll_message_area();
+    if (message.scroll_pending)
+        text_scroll_message_area();
     gfx_fill_bitmap(&message_line, ui_colors[UI_BLACK]);
     message.scroll_pending = 1;
     for (int i = 0; i < MESSAGE_ROWS - 1; i++) {
@@ -243,12 +261,13 @@ static void text_message_draw_line(int color, const char *line)
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     if (message.scroll_pending)
-        text_draw(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, ui_colors[UI_BLACK], line, IMAGE_8BPP);
+        text_draw(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, ui_colors[UI_BLACK], line,
+                  IMAGE_8BPP);
     else
-        text_draw_on_screen((int16_t)(r[RECT_X] + message.column),
-                            (int16_t)(message.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1
-                                      + message.top),
-                            color, ui_colors[UI_BLACK], line);
+        text_draw_on_screen(
+            (int16_t)(r[RECT_X] + message.column),
+            (int16_t)(message.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1 + message.top),
+            color, ui_colors[UI_BLACK], line);
     message_expiry[message.row] = game.game_time + MESSAGE_SHOW_TIME;
     char *text = message_text[message.row];
     size_t length = strlen(text);
@@ -258,7 +277,8 @@ static void text_message_draw_line(int color, const char *line)
 /* Shows the row bitmap of a new row that is still pending. */
 static void flush_pending_row(void)
 {
-    if (!message.scroll_pending) return;
+    if (!message.scroll_pending)
+        return;
     text_scroll_message_area();
     gfx_fill_bitmap(&message_line, ui_colors[UI_BLACK]);
     message.scroll_pending = 0;
@@ -303,4 +323,7 @@ void text_print_number(int color, int32_t value)
     text_print_message(color, " ");
 }
 
-void text_print_newline(void) { text_print_message(UI_BLACK, "\n"); }
+void text_print_newline(void)
+{
+    text_print_message(UI_BLACK, "\n");
+}

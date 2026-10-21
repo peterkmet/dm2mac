@@ -1,32 +1,32 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The main loop: timer ticks, game steps, the view of the party, sleep. */
-#include <string.h>
+#include "play.h"
+#include "gdat.h"
 #include "action.h"
-#include "action_area.h"
-#include "advanced.h"
 #include "champion.h"
 #include "creature.h"
-#include "dialog.h"
-#include "draw.h"
 #include "game.h"
-#include "gdat.h"
-#include "input.h"
 #include "inventory.h"
 #include "move.h"
-#include "music.h"
-#include "play.h"
 #include "seen.h"
 #include "sound_request.h"
-#include "text.h"
 #include "timeline.h"
+#include "weather.h"
+#include "action_area.h"
+#include "advanced.h"
+#include "dialog.h"
+#include "draw.h"
+#include "input.h"
+#include "music.h"
+#include "text.h"
 #include "ui.h"
 #include "view.h"
-#include "weather.h"
 #include "zone.h"
+#include <string.h>
 
-#define TIME_EFFECTS_PERIOD_MASK 0x3f       /* the champion clocks run each 64 game steps */
-#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x0f /* and each 16 game steps while the party sleeps */
-#define LIGHT_BURN_PERIOD_MASK 0x1ff        /* held lights burn down each 512 game steps */
+#define TIME_EFFECTS_PERIOD_MASK       0x3f  /* the champion clocks run each 64 game steps */
+#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x0f  /* and each 16 game steps while the party sleeps */
+#define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
 
 static int tick_elapsed;
 void (*play_frame_hook)(void);
@@ -35,7 +35,8 @@ void play_wait_frames(int count)
 {
     while (count-- > 0) {
         main_loop.timer_ticks++;
-        if (play_frame_hook) play_frame_hook();
+        if (play_frame_hook)
+            play_frame_hook();
     }
 }
 
@@ -46,7 +47,8 @@ void play_present_viewport(void)
     party.move_steps = 0;
     int ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
     party.move_steps = (int16_t)steps;
-    if (!ok) return;
+    if (!ok)
+        return;
     for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
         uint8_t *dst = draw_screen.pixels + (r[RECT_Y] + y) * draw_screen.width + r[RECT_X];
         if (!steps) {
@@ -54,8 +56,10 @@ void play_present_viewport(void)
             continue;
         }
         /* While the party walks, the visible part of the view fills the whole viewport (nearest neighbour). */
-        const uint8_t *src = view_viewport.pixels + (walk_view_rect[RECT_Y] + y * walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
-        for (int x = 0; x < VIEWPORT_WIDTH; x++) dst[x] = src[walk_view_rect[RECT_X] + x * walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
+        const uint8_t *src = view_viewport.pixels +
+                             (walk_view_rect[RECT_Y] + y * walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
+        for (int x = 0; x < VIEWPORT_WIDTH; x++)
+            dst[x] = src[walk_view_rect[RECT_X] + x * walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
     }
 }
 
@@ -69,15 +73,18 @@ static void draw_sleep_message(void)
 
 void play_show_view(void)
 {
-    if (!main_loop.view_hidden || dialog.screen_mode) return;
+    if (!main_loop.view_hidden || dialog.screen_mode)
+        return;
     if (party_sleeping) {
         draw_sleep_message();
         play_present_viewport();
         return;
     }
     main_loop.view_hidden = 0;
-    if (!action.champion) action.dirty = 1;
-    else action.redraw_delay = 1;
+    if (!action.champion)
+        action.dirty = 1;
+    else
+        action.redraw_delay = 1;
     if (ui.inventory) {
         int champ = ui.inventory - 1;
         ui.inventory = 0;
@@ -90,7 +97,8 @@ void play_show_view(void)
 
 void play_hide_view(void)
 {
-    if (main_loop.view_hidden || dialog.screen_mode) return;
+    if (main_loop.view_hidden || dialog.screen_mode)
+        return;
     main_loop.view_hidden = 1;
     if (input_drag_state) {
         champ_drag_cancel();
@@ -102,9 +110,11 @@ void play_hide_view(void)
 
 void play_sleep(void)
 {
-    if (ui.candidate) return;
+    if (ui.candidate)
+        return;
     inv_arrows_on_close = 0;
-    if (ui.inventory) ui_toggle_inventory(CHAMPION_MAX);
+    if (ui.inventory)
+        ui_toggle_inventory(CHAMPION_MAX);
     inv_arrows_on_close = 1;
     action_area_close();
     play_hide_view();
@@ -131,22 +141,32 @@ static int game_step_view(void)
             party.new_map = -1;
         }
         timeline_process();
-        if (party.new_map != -1) continue;
+        if (party.new_map != -1)
+            continue;
         world_update_day_night(0);
-        if (party_sleeping) return 0;
-        if (!ui.candidate) play_show_view();
+        if (party_sleeping)
+            return 0;
+        if (!ui.candidate)
+            play_show_view();
         if (!ui.inventory) {
-            if (party.redraw) creature_refresh_party_maps();
-            if (party.move_steps) view_draw_dungeon(party.view_dir, party.view_x, party.view_y);
-            else view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
+            if (party.redraw)
+                creature_refresh_party_maps();
+            if (party.move_steps)
+                view_draw_dungeon(party.view_dir, party.view_x, party.view_y);
+            else
+                view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
             play_present_viewport();
-            if (game_mode != GAME_MODE_VANILLA) seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir);
+            if (game_mode != GAME_MODE_VANILLA)
+                seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir);
         }
-        if (!party.move_steps) return 1;
-        if (party.move_steps == 1) move_party(party.move_command);
+        if (!party.move_steps)
+            return 1;
+        if (party.move_steps == 1)
+            move_party(party.move_command);
         int map = party.new_map;
         party.move_steps--;
-        if (map == -1) return 1;
+        if (map == -1)
+            return 1;
     }
 }
 
@@ -162,8 +182,10 @@ static void game_step(void)
     input_release_move_arrow();
     sound_flush_requests(0);
     champ_apply_pending_damage();
-    if (game.magic_light[MAGIC_HASTE]) game.magic_light[MAGIC_HASTE]--;
-    if (!(game.game_time & (party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK))) champ_apply_time_effects();
+    if (game.magic_light[MAGIC_HASTE])
+        game.magic_light[MAGIC_HASTE]--;
+    if (!(game.game_time & (party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK)))
+        champ_apply_time_effects();
     inv_update_hand_cursor();
     ui_draw_all_champion_states(1);
     if (main_loop.end) {
@@ -171,10 +193,14 @@ static void game_step(void)
         return;
     }
     game.game_time++;
-    if (!(game.game_time & LIGHT_BURN_PERIOD_MASK)) champ_burn_held_lights();
-    if (game.magic_light[MAGIC_ACTION_EFFECT]) game.magic_light[MAGIC_ACTION_EFFECT]--;
-    if (game.party_move_cooldown) game.party_move_cooldown--;
-    if (game.throw_cooldown) game.throw_cooldown--;
+    if (!(game.game_time & LIGHT_BURN_PERIOD_MASK))
+        champ_burn_held_lights();
+    if (game.magic_light[MAGIC_ACTION_EFFECT])
+        game.magic_light[MAGIC_ACTION_EFFECT]--;
+    if (game.party_move_cooldown)
+        game.party_move_cooldown--;
+    if (game.throw_cooldown)
+        game.throw_cooldown--;
     text_clear_expired_rows();
     input_release_move_arrow();
 }
@@ -183,9 +209,11 @@ static void game_step(void)
 static void game_step_end(void)
 {
     int saved = party.cur_map;
-    if (party.new_map != -1) dun_set_current_map(party.new_map);
+    if (party.new_map != -1)
+        dun_set_current_map(party.new_map);
     champ_process_repeated_actions();
-    if (party.new_map != -1) dun_set_current_map(saved);
+    if (party.new_map != -1)
+        dun_set_current_map(saved);
     music_update_for_map(game.party_map);
 }
 
@@ -213,19 +241,23 @@ void play_start_session(void)
     session.offer_restore = 1;
     creature_refresh_party_maps();
     creature_reset_active_groups();
-    if (session.new_game) move_thing(THING_NONE, -1, 0, game.party_x, game.party_y);
+    if (session.new_game)
+        move_thing(THING_NONE, -1, 0, game.party_x, game.party_y);
     dialog.screen_mode = 0;
     game_step();
 }
 
 void play_tick(void)
 {
-    if (main_loop.end || main_loop.quit) return;
+    if (main_loop.end || main_loop.quit)
+        return;
     main_loop.timer_ticks++;
-    if (++main_loop.tick_count >= main_loop.tick_threshold) tick_elapsed = 1;
+    if (++main_loop.tick_count >= main_loop.tick_threshold)
+        tick_elapsed = 1;
     command_process_queue();
     /* the automap stops the game time; a quit (a lost game) ends all game work */
-    if (!tick_elapsed || !main_loop.running || advanced_automap_open || main_loop.quit) return;
+    if (!tick_elapsed || !main_loop.running || advanced_automap_open || main_loop.quit)
+        return;
     game_step_end();
     game_step();
 }

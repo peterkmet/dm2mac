@@ -6,10 +6,10 @@
 /* The line protocol of the control of the running game: one JSON request per line, one JSON reply per line
    (docs/llm-control.md). platform/transport.c carries the lines over the socket; no socket, no SDL. */
 
+#include "state_json.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "state_json.h"
 
 /* Answers one request line in reply; false when a wait or a turn holds the reply (control_end_turn gives it). */
 bool control_handle_line(const char *line, Json *reply);
@@ -30,7 +30,7 @@ const char *control_find_value(const char *line, const char *key);
 int control_get_string(const char *line, const char *key, char *out, size_t size);
 /* The integer value of key; missing when the key is absent or not a number. */
 long control_get_int(const char *line, const char *key, long missing);
-#define KEY_CODE_MAX 0xffff          /* the largest key code of a request */
+#define KEY_CODE_MAX 0xffff /* the largest key code of a request */
 /* The key code of a key name (docs/llm-control.md): a key name, a character of the US layout, with modifier prefixes;
    0 none. */
 uint16_t control_key_code(const char *name);

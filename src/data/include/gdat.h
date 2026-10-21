@@ -24,45 +24,45 @@ enum {
     GDAT_TYPE_SOUND = 2,
     GDAT_TYPE_TEXT = 5,
     /* Type 7 holds a byte table; the category tells its content: a color remap, or the animation tables of a creature. */
-    GDAT_TYPE_REMAP = 7,            /* a color remap table, for example a depth shading table */
-    GDAT_TYPE_CREATURE_DATA = 7,    /* the animation tables of a creature */
-    GDAT_TYPE_TABLE = 8,            /* a word table */
+    GDAT_TYPE_REMAP = 7,         /* a color remap table, for example a depth shading table */
+    GDAT_TYPE_CREATURE_DATA = 7, /* the animation tables of a creature */
+    GDAT_TYPE_TABLE = 8,         /* a word table */
     GDAT_TYPE_VALUE = 0x0b,
     GDAT_TYPE_VALUE2 = 0x0c,
-    GDAT_TYPE_DATA = 0x0d           /* raw data, for example the interface colors */
+    GDAT_TYPE_DATA = 0x0d /* raw data, for example the interface colors */
 };
 
 /* GDAT categories: the first part of a key (category, index, type, entry). */
 enum gdat_category {
-    CAT_INTERFACE = 1,          /* the interface pictures, the font, the palette, the layout */
-    CAT_DUNGEON = 3,            /* index 0: the dungeon (sounds, texts, the start hour); index map + 1: a map */
+    CAT_INTERFACE = 1, /* the interface pictures, the font, the palette, the layout */
+    CAT_DUNGEON = 3,   /* index 0: the dungeon (sounds, texts, the start hour); index map + 1: a map */
     CAT_MUSIC = 4,
     CAT_MENU = 5,
     CAT_END = 6,
-    CAT_PANEL = 7,              /* the inventory panel pictures */
-    CAT_WALLSET = 8,            /* index: graphics set of the map */
+    CAT_PANEL = 7,   /* the inventory panel pictures */
+    CAT_WALLSET = 8, /* index: graphics set of the map */
     CAT_WALL_ORNAMENT = 9,
     CAT_FLOOR_ORNAMENT = 0x0a,
     CAT_DOOR_ORNAMENT = 0x0b,
     CAT_DOOR_BUTTON = 0x0c,
-    CAT_EXPLOSION = 0x0d,       /* missiles, explosions, and spells */
+    CAT_EXPLOSION = 0x0d, /* missiles, explosions, and spells */
     CAT_DOOR = 0x0e,
     CAT_CREATURE = 0x0f,
     CAT_WEAPON = 0x10,
     CAT_SCROLL = 0x12,
     CAT_CONTAINER = 0x14,
-    CAT_MISC = 0x15,            /* miscellaneous items; also the image that stands in for a missing image */
+    CAT_MISC = 0x15, /* miscellaneous items; also the image that stands in for a missing image */
     CAT_CHAMPION = 0x16,
-    CAT_SKY = 0x17,             /* index: graphics set; the sky objects and the thunder sound */
-    CAT_TELEPORTER = 0x18,      /* index 0: the sparkles and the sound of a teleporter */
+    CAT_SKY = 0x17,        /* index: graphics set; the sky objects and the thunder sound */
+    CAT_TELEPORTER = 0x18, /* index 0: the sparkles and the sound of a teleporter */
     CAT_DIALOG = 0x1a,
-    CAT_NONE = 0xff             /* no GDAT image, for example a draw context without one */
+    CAT_NONE = 0xff /* no GDAT image, for example a draw context without one */
 };
 
 #define GDAT_PALETTE_COLORS 256
-#define GDAT_NO_ITEM 0xffff
-#define IMAGE_4BPP 4            /* bits per pixel of a 16-color image */
-#define IMAGE_8BPP 8            /* bits per pixel of a 256-color image */
+#define GDAT_NO_ITEM        0xffff
+#define IMAGE_4BPP          4 /* bits per pixel of a 16-color image */
+#define IMAGE_8BPP          8 /* bits per pixel of a 256-color image */
 
 typedef struct gdat gdat_t;
 
@@ -97,8 +97,14 @@ int gdat_text_int_field(const char *text, const char *key);
 /* The drawing offset of an image: x in the high byte, y in the low byte, each signed. */
 int gdat_image_offset(const gdat_t *g, int category, int index, int entry);
 #define GDAT_OFFSET_X_SHIFT 8
-static inline int8_t gdat_offset_x(int offset) { return (int8_t)(offset >> GDAT_OFFSET_X_SHIFT); }
-static inline int8_t gdat_offset_y(int offset) { return (int8_t)offset; }
+static inline int8_t gdat_offset_x(int offset)
+{
+    return (int8_t)(offset >> GDAT_OFFSET_X_SHIFT);
+}
+static inline int8_t gdat_offset_y(int offset)
+{
+    return (int8_t)offset;
+}
 
 /* A 4 bpp image stream; with base, nibble command 5 copies pixels from the same place of base. */
 int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst, size_t dst_size);

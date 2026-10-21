@@ -7,12 +7,12 @@
 
 #include <stdint.h>
 
-#define SCREEN_W 320
-#define SCREEN_H 200
-#define PALETTE_COLORS 256
-#define RGB_CHANNELS 3
-#define ARGB_OPAQUE 0xff000000u
-#define ARGB_RED_SHIFT 16
+#define SCREEN_W         320
+#define SCREEN_H         200
+#define PALETTE_COLORS   256
+#define RGB_CHANNELS     3
+#define ARGB_OPAQUE      0xff000000u
+#define ARGB_RED_SHIFT   16
 #define ARGB_GREEN_SHIFT 8
 
 /* The game screen: one palette index per pixel. */
@@ -34,8 +34,17 @@ static inline uint32_t video_argb_pack(uint32_t red, uint32_t green, uint32_t bl
 {
     return ARGB_OPAQUE | red << ARGB_RED_SHIFT | green << ARGB_GREEN_SHIFT | blue;
 }
-static inline uint8_t video_argb_red(uint32_t argb) { return (uint8_t)(argb >> ARGB_RED_SHIFT); }
-static inline uint8_t video_argb_green(uint32_t argb) { return (uint8_t)(argb >> ARGB_GREEN_SHIFT); }
-static inline uint8_t video_argb_blue(uint32_t argb) { return (uint8_t)argb; }
+static inline uint8_t video_argb_red(uint32_t argb)
+{
+    return (uint8_t)(argb >> ARGB_RED_SHIFT);
+}
+static inline uint8_t video_argb_green(uint32_t argb)
+{
+    return (uint8_t)(argb >> ARGB_GREEN_SHIFT);
+}
+static inline uint8_t video_argb_blue(uint32_t argb)
+{
+    return (uint8_t)argb;
+}
 
 #endif /* DM2_UI_VIDEO_H */

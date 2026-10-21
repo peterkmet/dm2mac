@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#include <stdlib.h>
-#include <string.h>
 #include "draw.h"
 #include "video.h"
 #include "zone.h"
+#include <stdlib.h>
+#include <string.h>
 
-#define OFFSET_ENTRY 0xfe        /* value key (category, index, 0x0c, 0xfe): offset of all images of an index */
+#define OFFSET_ENTRY      0xfe /* value key (category, index, 0x0c, 0xfe): offset of all images of an index */
 #define PLACEHOLDER_INDEX 0xfe
 #define PLACEHOLDER_ENTRY 0xfe
-#define NO_PALETTE (-1)
+#define NO_PALETTE        (-1)
 
 Bitmap draw_screen = {&fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
 
-static const gdat_t *cache_owner;  /* the GRAPHICS.DAT of the decoded images */
-static Bitmap *images;   /* decoded images by GDAT item */
+static const gdat_t *cache_owner; /* the GRAPHICS.DAT of the decoded images */
+static Bitmap *images;            /* decoded images by GDAT item */
 static int image_count;
 
 /* Temporary bitmaps of one frame, freed together. */
@@ -26,18 +26,21 @@ static Temp *temps;
 /* Drops the decoded images and makes an empty image cache for the selected GRAPHICS.DAT. */
 static void rebuild_cache(void)
 {
-    for (int i = 0; i < image_count; i++) free(images[i].pixels);
+    for (int i = 0; i < image_count; i++)
+        free(images[i].pixels);
     free(images);
     cache_owner = gdat_current();
     image_count = cache_owner ? gdat_item_count(cache_owner) : 0;
     images = calloc(image_count ? image_count : 1, sizeof *images);
-    if (!images) image_count = 0;
+    if (!images)
+        image_count = 0;
 }
 
 /* Rebuilds the image cache when another GRAPHICS.DAT is selected. */
 static void follow_gdat(void)
 {
-    if (gdat_current() != cache_owner) rebuild_cache();
+    if (gdat_current() != cache_owner)
+        rebuild_cache();
 }
 
 void draw_init(const gdat_t *g)
@@ -49,12 +52,15 @@ void draw_init(const gdat_t *g)
 static const Bitmap *decoded(int item)
 {
     follow_gdat();
-    if (item < 0 || item >= image_count) return NULL;
+    if (item < 0 || item >= image_count)
+        return NULL;
     Bitmap *b = images + item;
-    if (b->pixels) return b;
+    if (b->pixels)
+        return b;
     int w, h, bpp;
     int size = gdat_image_size(cache_owner, item, &w, &h, &bpp);
-    if (size < 0 || !(b->pixels = malloc(size ? size : 1))) return NULL;
+    if (size < 0 || !(b->pixels = malloc(size ? size : 1)))
+        return NULL;
     if (gdat_decode_image(cache_owner, item, b->pixels, size) != GDAT_OK) {
         free(b->pixels);
         b->pixels = NULL;
@@ -88,7 +94,8 @@ Bitmap *draw_temp_bitmap(int width, int height, int bpp)
 {
     size_t size = bpp == IMAGE_4BPP ? (size_t)(width + 1) / 2 * height : (size_t)width * height;
     Temp *t = malloc(sizeof *t + (size ? size : 1));
-    if (!t) return NULL;
+    if (!t)
+        return NULL;
     t->bitmap = (Bitmap){(uint8_t *)(t + 1), (int16_t)width, (int16_t)height, (uint8_t)bpp};
     t->next = temps;
     temps = t;
@@ -123,13 +130,15 @@ DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->dst = &draw_screen;
     ctx->transparent = GFX_OPAQUE;
     const gdat_t *gdat = gdat_current();
-    if ((uint8_t)category == CAT_NONE || !gdat) return ctx;
+    if ((uint8_t)category == CAT_NONE || !gdat)
+        return ctx;
     ctx->item = (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_IMAGE, entry);
     add_offset(ctx, (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_VALUE2, OFFSET_ENTRY));
     add_offset(ctx, (int16_t)gdat_image_offset(gdat, category, index, entry));
     const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
     ctx->palette_count = colors ? IMAGE_COLORS : NO_PALETTE;
-    if (colors) memcpy(ctx->palette, colors, IMAGE_COLORS);
+    if (colors)
+        memcpy(ctx->palette, colors, IMAGE_COLORS);
     return ctx;
 }
 
@@ -149,8 +158,10 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
         ctx->dx = gfx_scale_64(ctx->dx, ctx->scale_x);
         ctx->dy = gfx_scale_64(ctx->dy, ctx->scale_y);
     }
-    if (ctx->flip & MIRROR_H) ctx->dx = (int16_t)-ctx->dx;
-    if (ctx->transparent == DRAW_NO_IMAGE) return ctx;
+    if (ctx->flip & MIRROR_H)
+        ctx->dx = (int16_t)-ctx->dx;
+    if (ctx->transparent == DRAW_NO_IMAGE)
+        return ctx;
     const Bitmap *src = given ? ctx->image : draw_gdat_image(ctx->category, ctx->index, ctx->entry);
     if (!scaled || !src) {
         draw_ctx_set_image(ctx, src);
@@ -163,9 +174,12 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
         return ctx;
     }
     Bitmap *out = draw_temp_bitmap(w, h, src->bpp);
-    if (!out) return ctx;
-    if (src->bpp == IMAGE_8BPP) gfx_blit_scaled_8bpp(src->pixels, out->pixels, src->width, src->height, w, h);
-    else gfx_blit_scaled_4bpp(src->pixels, out->pixels, src->width, src->height, w, h, NULL);
+    if (!out)
+        return ctx;
+    if (src->bpp == IMAGE_8BPP)
+        gfx_blit_scaled_8bpp(src->pixels, out->pixels, src->width, src->height, w, h);
+    else
+        gfx_blit_scaled_4bpp(src->pixels, out->pixels, src->width, src->height, w, h, NULL);
     draw_ctx_set_image(ctx, out);
     return ctx;
 }
@@ -179,7 +193,8 @@ static int16_t mirrored_start(int16_t start, int16_t size, int16_t image_size, i
 
 void draw_ctx_draw(DrawCtx *ctx)
 {
-    if (ctx->w <= 0 || ctx->h <= 0 || !ctx->image) return;
+    if (ctx->w <= 0 || ctx->h <= 0 || !ctx->image)
+        return;
     const Bitmap *image = ctx->image;
     int zone = (uint16_t)ctx->zone;
     int16_t sx = ctx->src_x, sy = ctx->src_y;
@@ -192,15 +207,18 @@ void draw_ctx_draw(DrawCtx *ctx)
             sx = (int16_t)(sx + ctx->dx);
             sy = (int16_t)(sy + ctx->dy);
         }
-        if (!zone_compute_rect(image, ctx->rect, zone, &sx, &sy, ctx->anchor)) return;
+        if (!zone_compute_rect(image, ctx->rect, zone, &sx, &sy, ctx->anchor))
+            return;
     }
     sx = (int16_t)(sx + ctx->x);
     sy = (int16_t)(sy + ctx->y);
     int16_t fx = mirrored_start(sx, ctx->rect[RECT_W], image->width, ctx->flip & MIRROR_H);
-    if (ctx->flip & MIRROR_H) sx = 0;
+    if (ctx->flip & MIRROR_H)
+        sx = 0;
     sx = (int16_t)(sx + fx);
     int16_t fy = mirrored_start(sy, ctx->rect[RECT_H], image->height, ctx->flip & MIRROR_V);
-    if (ctx->flip & MIRROR_V) sy = 0;
+    if (ctx->flip & MIRROR_V)
+        sy = 0;
     sy = (int16_t)(sy + fy);
     if (ctx->transparent != DRAW_NO_BLIT)
         gfx_blit(image->pixels, ctx->dst->pixels, ctx->rect, sx, sy, image->width, ctx->dst->width, ctx->transparent,

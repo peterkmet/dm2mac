@@ -5,9 +5,9 @@
 
 /* The minion map panel of the action area. */
 
+#include "ui.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "ui.h"
 
 /* Draws the option buttons; pressed: the buttons that show pressed (the click feedback). */
 void mmap_draw_option_buttons(int pressed);

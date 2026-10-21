@@ -5,54 +5,78 @@
 
 /* The champions: their slots, statistics, wounds, and the effects of their actions. */
 
-#include <stdint.h>
 #include "save.h"
 #include "timeline.h"
+#include <stdint.h>
 
 /* Champion slots: the hands, the body and pack slots (to 29), then the slots of an open container. */
 enum {
-    SLOT_READY_HAND, SLOT_ACTION_HAND, SLOT_HAND_COUNT, SLOT_CONTAINER_TEST = 12, SLOT_COUNT = 30,
-    SLOT_CONTAINER_FIRST = SLOT_COUNT, CONTAINER_SLOTS = 8
+    SLOT_READY_HAND,
+    SLOT_ACTION_HAND,
+    SLOT_HAND_COUNT,
+    SLOT_CONTAINER_TEST = 12,
+    SLOT_COUNT = 30,
+    SLOT_CONTAINER_FIRST = SLOT_COUNT,
+    CONTAINER_SLOTS = 8
 };
 /* SLOT_CONTAINER_TEST: when the open hand item fits this slot, container slots take only pouch items. */
 
-enum { STAT_LUCK, STAT_STRENGTH, STAT_DEXTERITY, STAT_WISDOM, STAT_VITALITY, STAT_ANTI_MAGIC, STAT_ANTI_FIRE, STAT_COUNT };
+enum {
+    STAT_LUCK,
+    STAT_STRENGTH,
+    STAT_DEXTERITY,
+    STAT_WISDOM,
+    STAT_VITALITY,
+    STAT_ANTI_MAGIC,
+    STAT_ANTI_FIRE,
+    STAT_COUNT
+};
 #define STAT_MIN 10
 #define STAT_MAX 220
 /* Skills: the four base skills, then their sub-skills. */
-enum { SKILL_FIGHTER, SKILL_NINJA, SKILL_PRIEST, SKILL_WIZARD, SKILL_SWING = 4, SKILL_PARRY = 7, SKILL_STEAL = 8,
-       SKILL_FIGHT = 9, SKILL_THROW = 10, SKILL_SHOOT = 11 };
-#define SKILL_COUNT 20
-#define SKILL_BASE_COUNT 4      /* skills 4 to 19 are sub-skills: 4 per base skill */
-#define SUB_SKILL_COUNT 4       /* the sub-skills of each base skill */
+enum {
+    SKILL_FIGHTER,
+    SKILL_NINJA,
+    SKILL_PRIEST,
+    SKILL_WIZARD,
+    SKILL_SWING = 4,
+    SKILL_PARRY = 7,
+    SKILL_STEAL = 8,
+    SKILL_FIGHT = 9,
+    SKILL_THROW = 10,
+    SKILL_SHOOT = 11
+};
+#define SKILL_COUNT      20
+#define SKILL_BASE_COUNT 4 /* skills 4 to 19 are sub-skills: 4 per base skill */
+#define SUB_SKILL_COUNT  4 /* the sub-skills of each base skill */
 /* The base skill of a skill: the skill itself, or the base skill of a sub-skill. */
 static inline int champ_base_skill(int skill)
 {
     return skill < SKILL_BASE_COUNT ? skill : (skill - SKILL_BASE_COUNT) / SUB_SKILL_COUNT;
 }
-#define CHAMPION_NAME_SIZE 8
+#define CHAMPION_NAME_SIZE  8
 #define CHAMPION_TITLE_SIZE 20
 #define CHAMPION_RUNES_SIZE 4
-#define ACTION_DELAY_COUNT 3    /* the two hands and the spell */
-#define ACTION_SPELL 2
+#define ACTION_DELAY_COUNT  3 /* the two hands and the spell */
+#define ACTION_SPELL        2
 
 /* Champion redraw flags. */
-#define REDRAW_LOAD 0x1000
-#define REDRAW_TITLE_ALL 0x2000
-#define REDRAW_STATUS_BOX 0x4000
-#define REDRAW_BARS 0x0800
-#define REDRAW_NAME 0x0400
+#define REDRAW_LOAD          0x1000
+#define REDRAW_TITLE_ALL     0x2000
+#define REDRAW_STATUS_BOX    0x4000
+#define REDRAW_BARS          0x0800
+#define REDRAW_NAME          0x0400
 #define REDRAW_ALL_INVENTORY 0x8000
-#define REDRAW_ALL 0xfc00
-#define REDRAW_KEEP 0x03ff       /* the bits that stay after a redraw */
-#define REDRAW_STEP_TIME 0x0010  /* the step time reads this bit; nothing in the port sets it (docs/todo.md) */
-#define ZONE_STATUS_BOX 0xa1     /* the status box of a champion: + champion */
+#define REDRAW_ALL           0xfc00
+#define REDRAW_KEEP          0x03ff /* the bits that stay after a redraw */
+#define REDRAW_STEP_TIME     0x0010 /* the step time reads this bit; nothing in the port sets it (docs/todo.md) */
+#define ZONE_STATUS_BOX      0xa1   /* the status box of a champion: + champion */
 
 /* Aura types: 0 to 2 shields, 3 to 6 raise a statistic. */
 enum { AURA_FIRE_SHIELD, AURA_SPELL_SHIELD, AURA_DEFENSE };
-#define AURA_STAT_FIRST 3
-#define AURA_STAT_LAST 6
-#define AURA_STAT_OFFSET 2      /* aura type - 2 is the statistic */
+#define AURA_STAT_FIRST  3
+#define AURA_STAT_LAST   6
+#define AURA_STAT_OFFSET 2 /* aura type - 2 is the statistic */
 
 /* The champion record of the original (263 bytes). */
 typedef struct __attribute__((packed)) {
@@ -64,11 +88,11 @@ typedef struct __attribute__((packed)) {
     uint8_t last_command[2];
     char runes[CHAMPION_RUNES_SIZE];
     uint8_t unknown_26[2];
-    uint8_t hit_dir;            /* the direction of the hardest hit of the turn */
-    uint8_t hit_damage;         /* its damage */
+    uint8_t hit_dir;    /* the direction of the hardest hit of the turn */
+    uint8_t hit_damage; /* its damage */
     uint8_t action_delay[ACTION_DELAY_COUNT];
     uint8_t unknown_2d;
-    uint16_t damage_event;      /* timeline event of the damage display, THING_NONE none */
+    uint16_t damage_event; /* timeline event of the damage display, THING_NONE none */
     uint16_t damage;
     uint16_t redraw;
     uint16_t wounds;
@@ -76,7 +100,7 @@ typedef struct __attribute__((packed)) {
     int8_t defense[2];
     int16_t food, water;
     int16_t poison;
-    uint8_t stats[STAT_COUNT][2];   /* current, maximum */
+    uint8_t stats[STAT_COUNT][2]; /* current, maximum */
     int8_t stat_bonus[STAT_COUNT];
     uint32_t experience[SKILL_COUNT];
     int8_t skill_bonus[SKILL_COUNT];
@@ -91,46 +115,52 @@ typedef struct __attribute__((packed)) {
 _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record has 263 bytes");
 
 /* Champion.wounds bits: 0x01 and 0x02 the hands, then the head, the torso, the legs, the feet. */
-#define WOUND_HEAD 0x04
+#define WOUND_HEAD  0x04
 #define WOUND_TORSO 0x08
-#define WOUND_LEGS 0x10
-#define WOUND_FEET 0x20
-#define WOUND_ALL 0x3f
+#define WOUND_LEGS  0x10
+#define WOUND_FEET  0x20
+#define WOUND_ALL   0x3f
 #define BUMP_WOUNDS (WOUND_TORSO | WOUND_LEGS) /* wound locations of a bump: the torso and the legs */
-#define FALL_WOUNDS (WOUND_LEGS | WOUND_FEET) /* wound locations of a fall: the legs and the feet */
-#define FOOD_MAX 2048               /* Champion.food and the food gauge */
-#define POISON_MAX 3072             /* Champion.poison */
+#define FALL_WOUNDS (WOUND_LEGS | WOUND_FEET)  /* wound locations of a fall: the legs and the feet */
+#define FOOD_MAX    2048                       /* Champion.food and the food gauge */
+#define POISON_MAX  3072                       /* Champion.poison */
 /* Attack types of champ_take_damage (bit 15: a parry can block the attack). */
 enum {
-    ATTACK_TYPE_FIRE = 1, ATTACK_TYPE_SELF, ATTACK_TYPE_BLUNT, ATTACK_TYPE_SHARP, ATTACK_TYPE_MAGIC, ATTACK_TYPE_PSYCHIC,
-    ATTACK_TYPE_LIGHTNING, ATTACK_TYPE_SELF_2
+    ATTACK_TYPE_FIRE = 1,
+    ATTACK_TYPE_SELF,
+    ATTACK_TYPE_BLUNT,
+    ATTACK_TYPE_SHARP,
+    ATTACK_TYPE_MAGIC,
+    ATTACK_TYPE_PSYCHIC,
+    ATTACK_TYPE_LIGHTNING,
+    ATTACK_TYPE_SELF_2
 };
-#define ATTACK_BLOCKABLE 0x8000
-#define THROW_COOLDOWN 4           /* game.throw_cooldown after a throw or a launch */
+#define ATTACK_BLOCKABLE      0x8000
+#define THROW_COOLDOWN        4 /* game.throw_cooldown after a throw or a launch */
 /* Champion sounds (GDAT category CAT_CHAMPION, index portrait): the scream of a fall or of the end of the game, and
    a push, a bump, or a closing door that hurts. A push that fails plays SOUND_HURT. */
-#define SOUND_ENTRY_SCREAM 0x87
-#define SOUND_PRIORITY_FALL 0xbe
-#define SOUND_ENTRY_PUSHED 0x8a
+#define SOUND_ENTRY_SCREAM    0x87
+#define SOUND_PRIORITY_FALL   0xbe
+#define SOUND_ENTRY_PUSHED    0x8a
 #define SOUND_PRIORITY_PUSHED 0x64
-#define NO_CHAMPION_CELL 0xff
-#define COMMAND_NONE 0xff          /* last_command of a hand without a command */
+#define NO_CHAMPION_CELL      0xff
+#define COMMAND_NONE          0xff /* last_command of a hand without a command */
 /* Champion slots of the quiver and the pouch. */
-#define SLOT_QUIVER_FIRST 6         /* the slots that the hands load from: 6, 7 to 9, 11, 12 */
-#define SLOT_QUIVER_LAST 9
-#define SLOT_QUIVER_READY 11
-#define SLOT_QUIVER_ACTION 12
-#define SLOT_POUCH_FIRST 13
-#define SLOT_POUCH_LAST (SLOT_COUNT - 1)
+#define SLOT_QUIVER_FIRST     6 /* the slots that the hands load from: 6, 7 to 9, 11, 12 */
+#define SLOT_QUIVER_LAST      9
+#define SLOT_QUIVER_READY     11
+#define SLOT_QUIVER_ACTION    12
+#define SLOT_POUCH_FIRST      13
+#define SLOT_POUCH_LAST       (SLOT_COUNT - 1)
 /* The worn slots that a picked-up item tries before the hands: 2 to 5, then 10. */
-#define SLOT_BODY_FIRST 2
-#define SLOT_BODY_LAST 5
-#define SLOT_BODY_EXTRA 10
-#define DRAG_CANCEL 0x8000
+#define SLOT_BODY_FIRST       2
+#define SLOT_BODY_LAST        5
+#define SLOT_BODY_EXTRA       10
+#define DRAG_CANCEL           0x8000
 
 /* Bytes of game.magic_light: the party spells. */
 enum { MAGIC_INVISIBILITY = 2, MAGIC_ACTION_EFFECT = 3, MAGIC_HASTE = 4 };
-#define HASTE_MAX 255               /* the haste byte of game.magic_light */
+#define HASTE_MAX 255 /* the haste byte of game.magic_light */
 
 /* One action of an item in a champion's hand: its GDAT text (category, index, 5, entry). */
 typedef struct {
@@ -147,7 +177,10 @@ extern int party_sleeping;
    and closing it takes back the counts that it showed. Step 15 sets them. */
 extern uint8_t champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
-static inline Champion *champion(int index) { return (Champion *)game.champions[index]; }
+static inline Champion *champion(int index)
+{
+    return (Champion *)game.champions[index];
+}
 /* Adds delta to the move speed bonus, the low byte of move_speed; the high byte stays. */
 static inline void champ_add_move_speed(Champion *c, int delta)
 {
@@ -174,9 +207,9 @@ int champ_get_index_in_cell(int cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
 /* Damage, poison, and death (damage.c). */
-extern int16_t champ_pending_damage[CHAMPION_MAX];   /* the damage of this game step, applied at its end */
+extern int16_t champ_pending_damage[CHAMPION_MAX]; /* the damage of this game step, applied at its end */
 extern uint16_t champ_pending_wounds[CHAMPION_MAX];
-extern uint16_t champ_regen_counter;                 /* steps the regeneration of mana and health */
+extern uint16_t champ_regen_counter; /* steps the regeneration of mana and health */
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
 int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack);
 /* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100. */

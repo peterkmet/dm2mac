@@ -5,17 +5,23 @@
 
 /* Projectiles and explosions: their record fields and their timeline events. */
 
-#include <stdint.h>
-#include "timeline.h"
 #include "dungeon.h"
+#include "timeline.h"
+#include <stdint.h>
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
-static inline uint8_t projectile_energy(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_ENERGY); }
+static inline uint8_t projectile_energy(uint16_t projectile)
+{
+    return thing_byte(projectile, PROJECTILE_ENERGY);
+}
 static inline void projectile_set_energy(uint16_t projectile, uint8_t energy)
 {
     set_thing_byte(projectile, PROJECTILE_ENERGY, energy);
 }
-static inline uint8_t projectile_hit_chance(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_HIT_CHANCE); }
+static inline uint8_t projectile_hit_chance(uint16_t projectile)
+{
+    return thing_byte(projectile, PROJECTILE_HIT_CHANCE);
+}
 static inline void projectile_set_hit_chance(uint16_t projectile, uint8_t chance)
 {
     set_thing_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
@@ -24,12 +30,18 @@ static inline void projectile_set_holder_waits(uint16_t projectile, bool waits)
 {
     set_thing_bit(projectile, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, waits);
 }
-static inline uint16_t explosion_type(uint16_t explosion) { return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK); }
+static inline uint16_t explosion_type(uint16_t explosion)
+{
+    return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK);
+}
 static inline void explosion_set_type(uint16_t explosion, uint16_t type)
 {
     set_thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
 }
-static inline bool explosion_is_centered(uint16_t explosion) { return thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED); }
+static inline bool explosion_is_centered(uint16_t explosion)
+{
+    return thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED);
+}
 static inline void explosion_set_centered(uint16_t explosion, bool centered)
 {
     set_thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
@@ -48,15 +60,26 @@ static inline void explosion_set_power(uint16_t explosion, uint16_t power)
 /* The payload of a spell missile and the type of an explosion: SPELL_THING_FIRST + the explosion type. */
 #define SPELL_THING_FIRST 0xff80
 enum spell_thing {
-    SPELL_FIREBALL = 0xff80, SPELL_SLIME = 0xff81, SPELL_LIGHTNING = 0xff82, SPELL_HARM_NON_MATERIAL = 0xff83,
-    SPELL_DOOR_TOGGLE = 0xff84, SPELL_POISON_BOLT = 0xff86, SPELL_POISON_CLOUD = 0xff87, SPELL_PUSH = 0xff89,
-    SPELL_PULL = 0xff8a, SPELL_DOOR_SET = 0xff8d, SPELL_MISSILE_WALL = 0xff8e, EXPLOSION_DEATH_CLOUD = 0xffa8,
-    EXPLOSION_STORM_LIGHTNING = 0xffb0, EXPLOSION_STORM_BLAST = 0xffb1, EXPLOSION_SMOKE = 0xffe4
+    SPELL_FIREBALL = 0xff80,
+    SPELL_SLIME = 0xff81,
+    SPELL_LIGHTNING = 0xff82,
+    SPELL_HARM_NON_MATERIAL = 0xff83,
+    SPELL_DOOR_TOGGLE = 0xff84,
+    SPELL_POISON_BOLT = 0xff86,
+    SPELL_POISON_CLOUD = 0xff87,
+    SPELL_PUSH = 0xff89,
+    SPELL_PULL = 0xff8a,
+    SPELL_DOOR_SET = 0xff8d,
+    SPELL_MISSILE_WALL = 0xff8e,
+    EXPLOSION_DEATH_CLOUD = 0xffa8,
+    EXPLOSION_STORM_LIGHTNING = 0xffb0,
+    EXPLOSION_STORM_BLAST = 0xffb1,
+    EXPLOSION_SMOKE = 0xffe4
 };
-#define EXPLOSION_AT_CENTER 0xff    /* the cell of an explosion in the middle of its square */
-#define POWER_MAX 255               /* the power of a missile or an explosion is a byte */
+#define EXPLOSION_AT_CENTER    0xff /* the cell of an explosion in the middle of its square */
+#define POWER_MAX              255  /* the power of a missile or an explosion is a byte */
 /* The sound of an explosion: (CAT_EXPLOSION, explosion type, SOUND_EXPLODE). */
-#define SOUND_EXPLODE 0x81
+#define SOUND_EXPLODE          0x81
 #define SOUND_PRIORITY_EXPLODE 0x6c
 
 /* Bytes of a projectile move event: the projectile, then its position word (event_square_dir with the energy step

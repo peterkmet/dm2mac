@@ -5,25 +5,25 @@
 
 /* Text: the font, message wrapping and printing into the screen. */
 
+#include "gdat.h"
+#include "gfx.h"
+#include "game_text.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "gdat.h"
-#include "game_text.h"
-#include "gfx.h"
 
 /* The font: 6 rows of 128 bytes in GDAT (1, 0, 7, 0), one byte per character and row, 5 pixels in bits 4 to 0. */
-#define FONT_GLYPH_WIDTH 5
+#define FONT_GLYPH_WIDTH  5
 #define FONT_GLYPH_HEIGHT 6
-#define FONT_SPACING 1          /* the gap after a glyph */
-#define FONT_BASELINE 1         /* rows of a glyph below the base line */
-#define FONT_ADVANCE 6          /* glyph width plus spacing */
-#define TEXT_LINE_HEIGHT 7
-#define TEXT_TRANSPARENT 0x4000 /* flag of a background color: draw the text without its background */
+#define FONT_SPACING      1 /* the gap after a glyph */
+#define FONT_BASELINE     1 /* rows of a glyph below the base line */
+#define FONT_ADVANCE      6 /* glyph width plus spacing */
+#define TEXT_LINE_HEIGHT  7
+#define TEXT_TRANSPARENT  0x4000 /* flag of a background color: draw the text without its background */
 
 /* Message area: 3 rows at the bottom of the screen. More rows scroll the area up. */
-#define MESSAGE_ROWS 3
-#define MESSAGE_SHOW_TIME 90    /* game ticks until a message row clears */
-#define MESSAGE_INDENT 12       /* pixels: the rest of a wrapped message goes on indented */
+#define MESSAGE_ROWS      3
+#define MESSAGE_SHOW_TIME 90 /* game ticks until a message row clears */
+#define MESSAGE_INDENT    12 /* pixels: the rest of a wrapped message goes on indented */
 #define ZONE_MESSAGE_AREA 0x0f
 
 /* Game time at which each message row clears, MESSAGE_NEVER when it is clear. */

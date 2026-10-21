@@ -5,9 +5,9 @@
 
 /* The automap of the advanced mode: the map picture of the squares that the dungeon view has shown (seen.h). */
 
-#include <stdint.h>
 #include "seen.h"
 #include "ui.h"
+#include <stdint.h>
 
 /* Draws the seen squares of the party map into the screen rect clip of o, with the party square at the middle, moved
    by the scroll. */

@@ -5,42 +5,46 @@
 
 /* Party movement and thing movement: the movement commands, the redraw flags, and the doors. */
 
-#include <stdint.h>
 #include "dungeon.h"
+#include <stdint.h>
 
 /* Movement commands: turn left and right, then step forward, right, back, and left. */
-enum move_command {
-    CMD_TURN_LEFT = 1, CMD_TURN_RIGHT, CMD_MOVE_FORWARD, CMD_MOVE_RIGHT, CMD_MOVE_BACK, CMD_MOVE_LEFT
-};
+enum move_command { CMD_TURN_LEFT = 1, CMD_TURN_RIGHT, CMD_MOVE_FORWARD, CMD_MOVE_RIGHT, CMD_MOVE_BACK, CMD_MOVE_LEFT };
 
 /* g_view_redraw_flags: the view squares and the creature maps change. */
-#define REDRAW_VIEW 0x01
-#define REDRAW_SQUARES 0x02
+#define REDRAW_VIEW     0x01
+#define REDRAW_SQUARES  0x02
 #define REDRAW_ALL_VIEW 0x03
 
 /* Movement state of the party and of the dungeon reads (the original globals). */
 /* The push arrows (party.push_arrow) by the part of the viewport under the mouse. */
 enum {
-    PUSH_ARROW_UP, PUSH_ARROW_RIGHT, PUSH_ARROW_DOWN_RIGHT, PUSH_ARROW_DOWN, PUSH_ARROW_DOWN_LEFT, PUSH_ARROW_LEFT,
-    PUSH_ARROW_COUNT, PUSH_ARROW_NONE = PUSH_ARROW_COUNT
+    PUSH_ARROW_UP,
+    PUSH_ARROW_RIGHT,
+    PUSH_ARROW_DOWN_RIGHT,
+    PUSH_ARROW_DOWN,
+    PUSH_ARROW_DOWN_LEFT,
+    PUSH_ARROW_LEFT,
+    PUSH_ARROW_COUNT,
+    PUSH_ARROW_NONE = PUSH_ARROW_COUNT
 };
 
 typedef struct {
-    int16_t cur_map;            /* the map that the square reads of the original use, -1 none */
+    int16_t cur_map;                        /* the map that the square reads of the original use, -1 none */
     int16_t square_x, square_y, square_map; /* the party position as the current map sees it */
-    int16_t ref_dir;            /* the party direction as the current map sees it */
-    int16_t move_steps;         /* game steps until a slow party move ends */
-    uint16_t move_command;      /* the move that ends the walk */
-    int16_t view_x, view_y, view_dir; /* where the view stands while the party walks */
-    int alt_view_active;        /* the party stands at a seamless passage to another map */
+    int16_t ref_dir;                        /* the party direction as the current map sees it */
+    int16_t move_steps;                     /* game steps until a slow party move ends */
+    uint16_t move_command;                  /* the move that ends the walk */
+    int16_t view_x, view_y, view_dir;       /* where the view stands while the party walks */
+    int alt_view_active;                    /* the party stands at a seamless passage to another map */
     int16_t alt_view_x, alt_view_y, alt_view_dir, alt_view_map; /* the party position on the other map */
-    int16_t new_map;            /* the map that the party entered in this step, -1 none */
-    int16_t fell;               /* the party falls without damage (a levitation action) */
+    int16_t new_map;                                       /* the map that the party entered in this step, -1 none */
+    int16_t fell;                                          /* the party falls without damage (a levitation action) */
     int16_t dest_x, dest_y, dest_map, dest_cell, dest_dir; /* where move_thing put the last thing */
-    int teleporter_flag;        /* the last teleporter had its bit 15 set */
-    uint32_t redraw;            /* REDRAW_* */
-    uint16_t push_pending_group;/* creature group that a push waits for, THING_NONE none */
-    int push_mode;              /* the movement arrows show the push arrows */
+    int teleporter_flag;                                   /* the last teleporter had its bit 15 set */
+    uint32_t redraw;                                       /* REDRAW_* */
+    uint16_t push_pending_group;                           /* creature group that a push waits for, THING_NONE none */
+    int push_mode;                                         /* the movement arrows show the push arrows */
     int16_t push_arrow;
 } Party;
 
@@ -81,8 +85,8 @@ void move_party_to(int x, int y, int map, int dir);
    creature left the dungeon, 2 when a creature must wait. */
 int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
 #define MOVE_NEW_ITEM (-1)
-#define MOVE_RETRY (-3)                     /* move_thing: a group that waited enters its square */
-#define MOVE_CREATED (-4)                   /* move_thing: the group is new, or it leaves the dungeon */
+#define MOVE_RETRY    (-3) /* move_thing: a group that waited enters its square */
+#define MOVE_CREATED  (-4) /* move_thing: the group is new, or it leaves the dungeon */
 /* Sets the alternate view position of a party at (x, y) of map beside a seamless passage. */
 void move_compute_map_arrival(int x, int y, int map);
 /* Finds a free square beside (x, y) for thing (THING_NONE: the party); returns 0 when there is none. */
@@ -131,7 +135,7 @@ void move_square_contents_through(int x, int y);
 /* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
 bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
 int dun_get_global_var(int var);
-int dun_modify_global_var(int var, int value, int op);   /* returns the new value */
+int dun_modify_global_var(int var, int value, int op); /* returns the new value */
 /* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */
 int dun_get_door_type(uint16_t door);
 

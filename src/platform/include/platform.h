@@ -5,16 +5,16 @@
 
 /* The window, the sound output and the input events: the SDL3 side of the game screen. */
 
-#include <stdint.h>
 #include "movie.h"
+#include <stdint.h>
 
 enum { PLAT_QUIT, PLAT_KEY, PLAT_MOUSE, PLAT_MOUSE_UP };
 
 typedef struct {
     int type;
-    int key;          /* SDL keycode for PLAT_KEY */
+    int key;           /* SDL keycode for PLAT_KEY */
     int scancode, mod; /* SDL scancode and modifier keys for PLAT_KEY */
-    int button, x, y; /* PLAT_MOUSE and PLAT_MOUSE_UP, x and y in game screen pixels */
+    int button, x, y;  /* PLAT_MOUSE and PLAT_MOUSE_UP, x and y in game screen pixels */
 } PlatEvent;
 
 /* Opens the window at scale times the game screen; filter is the upscale factor of scale_filter_factor. */

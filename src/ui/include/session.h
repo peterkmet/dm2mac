@@ -5,13 +5,13 @@
 
 /* The start menu, new games, loads and saves through the slot dialogs, and the end of the game. */
 
-#include <stdint.h>
 #include "champion.h"
 #include "game.h"
 #include "save.h"
+#include <stdint.h>
 
-#define MENU_WAITING 99                 /* session.new_game while the start menu waits */
-#define MENU_REDRAW 0xda                /* session.new_game: the menu shows its title again */
+#define MENU_WAITING    99   /* session.new_game while the start menu waits */
+#define MENU_REDRAW     0xda /* session.new_game: the menu shows its title again */
 #define SAVE_SLOT_COUNT 10
 /* Exit codes of the program (the original system_shutdown): the launcher of the DOS game reads them. */
 enum { EXIT_QUIT = 0, EXIT_COMPLETED = 1, EXIT_PARTY_DEAD = 2, EXIT_RESTART = 3, EXIT_GAME_LOST = 4 };

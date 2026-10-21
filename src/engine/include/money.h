@@ -5,10 +5,10 @@
 
 /* Coins in money boxes, the money box panel, and new items. */
 
-#include <stdint.h>
 #include "item.h"
+#include <stdint.h>
 
-#define SHOP_CLASS_SET_SIZE 64      /* a bit for each item index */
+#define SHOP_CLASS_SET_SIZE 64 /* a bit for each item index */
 
 /* Puts coin into the money box; returns 0 when box is no money box or coin no coin. */
 int money_add_coin_to_box(uint16_t box, uint16_t coin);
@@ -26,7 +26,7 @@ int money_normalize_coins(int check_only, uint16_t box);
 /* Builds the coin table once. */
 void money_init_coin_table(void);
 int money_coin_type_count(void);
-uint16_t money_coin_item(int coin_type);   /* the item index of a coin type */
+uint16_t money_coin_item(int coin_type); /* the item index of a coin type */
 int16_t money_coin_value(int coin_type);
 bool money_is_coin(uint16_t thing);
 /* The coins of each coin type in a money box. */

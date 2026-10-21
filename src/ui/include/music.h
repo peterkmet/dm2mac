@@ -5,28 +5,28 @@
 
 /* Game music: the song of each map from SONGLIST.DAT, played by the HMP player on the FM driver. */
 
-#include <stdint.h>
 #include "gdat.h"
+#include <stdint.h>
 
 #define MUSIC_SAMPLE_RATE 44100
-#define MUSIC_NO_SONG 0xff
-#define SONGLIST_MAX 63     /* the game reads at most 63 bytes of SONGLIST.DAT */
+#define MUSIC_NO_SONG     0xff
+#define SONGLIST_MAX      63 /* the game reads at most 63 bytes of SONGLIST.DAT */
 
 enum {
     MUSIC_OK = 0,
-    MUSIC_ERR_FILES = -1,   /* MELODIC.BNK or DRUM.BNK is missing or bad; music stays off */
+    MUSIC_ERR_FILES = -1, /* MELODIC.BNK or DRUM.BNK is missing or bad; music stays off */
 };
 
 typedef struct {
-    int enabled;              /* the FM driver has its banks */
+    int enabled; /* the FM driver has its banks */
     int songlist_loaded;
-    uint8_t songlist[SONGLIST_MAX];   /* song number of each map */
+    uint8_t songlist[SONGLIST_MAX]; /* song number of each map */
     int songlist_size;
-    int16_t fade;             /* game steps left of the fade-out before the next song; 0: no fade */
+    int16_t fade; /* game steps left of the fade-out before the next song; 0: no fade */
     int paused, playing, started;
-    int16_t requested_song;   /* last song asked for, -1 at start */
+    int16_t requested_song; /* last song asked for, -1 at start */
     uint8_t current_song, next_song;
-    int16_t volume;           /* music volume setting, 0 to 7 */
+    int16_t volume; /* music volume setting, 0 to 7 */
 } Music;
 
 extern Music music;

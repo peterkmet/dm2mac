@@ -5,20 +5,20 @@
 
 /* The movie script of the DOS launcher IBMIOP.EXE; platform/main.c drives it (docs/skull-formats.md section 15). */
 
+#include "mve.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "mve.h"
 
 enum { MOVIE_SCRIPT_NONE, MOVIE_SCRIPT_START, MOVIE_SCRIPT_COMPLETED, MOVIE_SCRIPT_PARTY_DEAD };
 enum { MOVIE_STEP_NONE = -1, MOVIE_STEP_SPLASH, MOVIE_STEP_FTL, MOVIE_STEP_INTRO, MOVIE_STEP_END, MOVIE_STEP_CREDITS };
 
 /* The picture of a movie and the screen of the original player that shows it. */
 typedef struct {
-    const uint8_t *pixels;                   /* width × height palette indexes */
+    const uint8_t *pixels; /* width × height palette indexes */
     int width, height;
-    int shown_width;                         /* the width on the screen: 4/3 of width for a wide movie */
-    int screen_width, screen_height;         /* the screen of the player */
-    const uint8_t (*palette)[MVE_RGB];       /* 6-bit VGA values */
+    int shown_width;                   /* the width on the screen: 4/3 of width for a wide movie */
+    int screen_width, screen_height;   /* the screen of the player */
+    const uint8_t (*palette)[MVE_RGB]; /* 6-bit VGA values */
 } MoviePicture;
 
 /* The script that the launcher runs after the game ends with exit_code. */

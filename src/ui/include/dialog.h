@@ -9,27 +9,34 @@
 
 /* Dialogs: a picture of GDAT category 0x1a in the viewport with up to 4 buttons and a message. */
 enum dialog_id {
-    DIALOG_ERROR = 0x00, DIALOG_LOADED = 0x06, DIALOG_NOT_SAVED = 0x0c, DIALOG_SAVING = 0x0d, DIALOG_LOADING = 0x0e,
-    DIALOG_THE_END = 0x10, DIALOG_SAVE_MENU = 0x1b, DIALOG_LOAD_SLOTS = 0x80, DIALOG_SAVE_SLOTS = 0x81,
+    DIALOG_ERROR = 0x00,
+    DIALOG_LOADED = 0x06,
+    DIALOG_NOT_SAVED = 0x0c,
+    DIALOG_SAVING = 0x0d,
+    DIALOG_LOADING = 0x0e,
+    DIALOG_THE_END = 0x10,
+    DIALOG_SAVE_MENU = 0x1b,
+    DIALOG_LOAD_SLOTS = 0x80,
+    DIALOG_SAVE_SLOTS = 0x81,
     DIALOG_VOLUME = 0x87
 };
 /* Error messages: text entries of dialog 0. */
 enum dialog_message { MESSAGE_NONE = 0, MESSAGE_SAVE_FAILED = 0x1b, MESSAGE_GAME_DAMAGED = 0x1f };
 /* The commands of the dialog buttons: the first button, then the next ones. */
 #define CMD_DIALOG_BUTTON_FIRST 0xdb
-#define CMD_DIALOG_BUTTON_LAST 0xde
-#define ZONE_DIALOG_BACK 4      /* the viewport of the dialog picture */
-#define ZONE_DIALOG_VERSION 0x1c2   /* the version text of the dialogs and of the slot lists */
-#define DIALOG_VERSION_TEXT "V1.0"
-#define DIALOG_TEXT_COUNT 20            /* text entries 0 to 19: the buttons */
+#define CMD_DIALOG_BUTTON_LAST  0xde
+#define ZONE_DIALOG_BACK        4     /* the viewport of the dialog picture */
+#define ZONE_DIALOG_VERSION     0x1c2 /* the version text of the dialogs and of the slot lists */
+#define DIALOG_VERSION_TEXT     "V1.0"
+#define DIALOG_TEXT_COUNT       20 /* text entries 0 to 19: the buttons */
 
 typedef struct {
-    int screen_mode;            /* 1: the dialogs draw on a black screen; 0: in the game viewport */
-    int button_count;           /* the buttons of the open dialog (7 for the volume dialog) */
+    int screen_mode;  /* 1: the dialogs draw on a black screen; 0: in the game viewport */
+    int button_count; /* the buttons of the open dialog (7 for the volume dialog) */
     uint8_t button_category, button_index, button_entry; /* the picture of a pressed button */
     int progress_enabled;
     int16_t progress_width;
-    int id;                     /* the dialog of the last dialog_draw */
+    int id; /* the dialog of the last dialog_draw */
 } DialogState;
 extern DialogState dialog;
 
