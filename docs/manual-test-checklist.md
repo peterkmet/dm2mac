@@ -50,6 +50,7 @@ The items marked "control socket" ran over `docs/llm-control.md` with the saves 
 ## Prerequisites
 
 - macOS with SDL3 from Homebrew: `brew install sdl3`.
+- For the Windows build (section W): MinGW-w64 (`brew install mingw-w64`) and the SDL3 MinGW package 3.4.18 in `../dm/build/sdl-mingw/` (`make windows DM_DIR=PATH` names another `dm` folder). The Wine settings of the plan: `WINE="/Users/lego/github/wine-cross/dist/Wine CX.app/Contents/Resources/wine/bin/wine"` with the prefix `WINEPREFIX=/Users/lego/github/dm2/build/wineprefix` (first use: `wineboot --init` from the same `bin/` folder).
 - The game files of Dungeon Master II (PC DOS, English, 1995) in `game/`, with `game/DATA/GRAPHICS.DAT`, `game/DATA/DUNGEON.DAT`, `game/DATA/SONGLIST.DAT`, `game/MELODIC.BNK`, and `game/DRUM.BNK`.
 - DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
 - `make` and `uv run pytest` pass (plan Step 21).
@@ -64,6 +65,14 @@ The items marked "control socket" ran over `docs/llm-control.md` with the saves 
    ```
 
    Expected result: `build/dm2` and `build/libdm2.dylib`, no warnings.
+
+   Build the Windows program:
+
+   ```sh
+   make windows
+   ```
+
+   Expected result: `build/dm2.exe`, no warnings; `file build/dm2.exe` says `PE32+ executable (GUI) x86-64`.
 
 2. Start the port: the splash picture, the movies `FTL` and `INTRO`, then the start menu:
 
@@ -310,6 +319,14 @@ Details: `docs/turnbased-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy bui
 - [ ] T10. Run `uv run dm2-play --brief get_state`. Expected: a short text with the party, the champions, and the squares ahead.
 - [ ] T11. Create `playthroughs/current/coordinator/`, run some `dm2-play` calls without `DM2_PLAY_LOG_DIR`, and read `calls.log`. Expected: one line per call. Remove the folder and call again. Expected: no log file is written.
 - [ ] T12. Open a dialog (T7), then run `uv run dm2-play wait '{"ticks": 5000}'` and measure the time until the reply. Expected: the game does not tick, so the turn ends after 16 frames per tick (80000 frames). Note the time and whether `dm2-play` stops with a timeout (its limit is 150 seconds).
+
+## W. Windows
+
+Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`. Start the program from the repo root with the Wine settings of the Prerequisites.
+
+- [ ] W1. Remove `SDL3.dll` from `build/` and run `"$WINE" build/dm2.exe`. Expected: Windows reports the missing `SDL3.dll`. Copy it back.
+- [ ] W2. Run `"$WINE" build/dm2.exe`. Expected: the program starts a new game with `game/`: the splash picture, the movies, and the start menu, with image and sound.
+- [ ] W3. Run `"$WINE" build/dm2.exe --mode turnbased`. Expected: the program stops with exit code 1; `game/dm2.log` holds the line `the turn-based mode and --control need macOS`.
 
 ## Known deviations
 

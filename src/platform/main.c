@@ -3,7 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <process.h>
+#else
 #include <unistd.h>
+#endif
 #include <SDL3/SDL.h>
 #include "advanced.h"
 #include "control.h"
@@ -37,6 +41,7 @@
 #define PATH_SIZE 1024
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 #define RESTART_ENV "DM2_RESTARTED"   /* set for the program that a RESTART starts: the launcher plays no start movies */
+#define LOG_FILE "dm2.log"            /* the messages of the Windows build, in the game folder */
 
 /* Shows fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
 static void present_with_cursor(void)
@@ -55,11 +60,11 @@ static int load_graphics(const char *data)
     snprintf(graphics, sizeof graphics, "%s/DATA/GRAPHICS.DAT", data);
     static gdat_t *gdat;
     if (gdat_load(graphics, &gdat) != GDAT_OK) {
-        fprintf(stderr, "cannot read %s\n", graphics);
+        os_log("cannot read %s", graphics);
         return 0;
     }
     if (!zone_load(gdat) || !pal_load_color_ramps(gdat) || !text_init(gdat)) {
-        fprintf(stderr, "%s has no screen layout, color ramps, or font\n", graphics);
+        os_log("%s has no screen layout, color ramps, or font", graphics);
         return 0;
     }
     for (int c = 0; c < PALETTE_COLORS; c++) gdat_palette_color(gdat, c, palette[c]);
@@ -80,7 +85,7 @@ static void set_icon(void)
 static int show_save(const char *path)
 {
     if (!session_start_save(path)) {
-        fprintf(stderr, "cannot load the save %s\n", path);
+        os_log("cannot load the save %s", path);
         return 0;
     }
     return 1;
@@ -257,7 +262,7 @@ static int read_options(int argc, char **argv, const char **data, const char **f
         int is_mode = !strcmp(argv[i], "--mode"), is_saves = !strcmp(argv[i], "--saves");
         if (!is_data && !is_filter && !is_save && !is_control && !is_mode && !is_saves) continue;
         if (i + 1 == argc) {
-            fprintf(stderr, "%s needs a value\n", argv[i]);
+            os_log("%s needs a value", argv[i]);
             return 0;
         }
         if (is_data) *data = argv[++i];
@@ -275,7 +280,7 @@ static int select_mode(const char *mode)
 {
     for (game_mode = 0; game_mode < GAME_MODE_COUNT && strcmp(mode, game_mode_names[game_mode]); game_mode++) {}
     if (game_mode < GAME_MODE_COUNT) return 1;
-    fprintf(stderr, "unknown mode %s: use vanilla, advanced, or turnbased\n", mode);
+    os_log("unknown mode %s: use vanilla, advanced, or turnbased", mode);
     return 0;
 }
 
@@ -285,7 +290,7 @@ static int default_control_path(const char **control)
     static char path[PATH_SIZE];
     const char *home = getenv("HOME");
     if (!home) {
-        fprintf(stderr, "HOME is not set: use --control PATH\n");
+        os_log("HOME is not set: use --control PATH");
         return 0;
     }
     snprintf(path, sizeof path, "%s/.dm2/control.sock", home);
@@ -298,7 +303,7 @@ static int start_game(const char *data)
 {
     if (game_mode != GAME_MODE_TURNBASED) return session_init();
     if (session_start_new_game()) return 1;
-    fprintf(stderr, "cannot start a new game from %s/DATA/DUNGEON.DAT\n", data);
+    os_log("cannot start a new game from %s/DATA/DUNGEON.DAT", data);
     return 0;
 }
 
@@ -306,10 +311,35 @@ static int start_game(const char *data)
 static bool full_path(const char *path, char *full, size_t size)
 {
     char resolved[PATH_MAX];
+#ifdef _WIN32
+    if (!_fullpath(resolved, path, sizeof resolved) || strlen(resolved) >= size) return false;
+#else
     if (!realpath(path, resolved) || strlen(resolved) >= size) return false;
+#endif
     memcpy(full, resolved, strlen(resolved) + 1);
     return true;
 }
+
+#ifdef _WIN32
+static FILE *log_file;  /* dm2.log; NULL when it cannot open */
+
+/* The log and fatal error hook of the Windows build: a line of dm2.log, as the build has no console. */
+static void log_to_file(const char *message)
+{
+    fprintf(log_file, "%s\n", message);
+    fflush(log_file);
+}
+
+/* Opens dm2.log in the game folder and sends the messages to it. */
+static void open_log(const char *data)
+{
+    char path[PATH_SIZE];
+    snprintf(path, sizeof path, "%s/%s", data, LOG_FILE);
+    if (!(log_file = fopen(path, "w"))) return;
+    g_os_log_hook = log_to_file;
+    g_os_fatal_hook = log_to_file;
+}
+#endif
 
 /* Closes the control socket, the music, and SDL. */
 static void close_platform(void)
@@ -319,15 +349,36 @@ static void close_platform(void)
     plat_quit();
 }
 
+/* Starts the program again for a RESTART of the game; returns only with a message when it cannot start. */
+static void restart(int argc, char **argv)
+{
+    args_drop_save(argc, argv);  /* the original always restarts into the start menu */
+#ifdef _WIN32
+    _putenv_s(RESTART_ENV, "1");
+    _execvp(argv[0], (const char *const *)argv);  /* the DOS launcher starts the game again */
+#else
+    setenv(RESTART_ENV, "1", 1);
+    execvp(argv[0], argv);  /* the DOS launcher starts the game again */
+#endif
+    os_log("cannot restart %s", argv[0]);
+}
+
 int main(int argc, char **argv)
 {
     const char *data = "game", *filter = SDL_getenv("DM2_FILTER"), *save = NULL, *control = NULL, *mode = "advanced", *saves = NULL;
     if (!read_options(argc, argv, &data, &filter, &save, &control, &mode, &saves)) return EXIT_USAGE;
+#ifdef _WIN32
+    open_log(data);
+#endif
     if (!select_mode(mode)) return EXIT_USAGE;
+    if (!transport_is_available() && (game_mode == GAME_MODE_TURNBASED || control)) {
+        os_log("the turn-based mode and --control need macOS");
+        return 1;
+    }
     if (game_mode == GAME_MODE_TURNBASED && !control && !default_control_path(&control)) return EXIT_USAGE;
     int factor = filter ? scale_filter_factor(filter) : 1;
     if (!factor) {
-        fprintf(stderr, "unknown filter %s: use none, scale2x, or scale3x\n", filter);
+        os_log("unknown filter %s: use none, scale2x, or scale3x", filter);
         return EXIT_USAGE;
     }
     SDL_Log("data folder: %s, mode %s", data, mode);
@@ -341,7 +392,7 @@ int main(int argc, char **argv)
     set_icon();
     g_os_full_path_hook = full_path;
     if (control && !transport_open(control)) {
-        fprintf(stderr, "cannot open the control socket %s\n", control);
+        os_log("cannot open the control socket %s", control);
         return 1;
     }
     if (music_init(gdat_current(), data) != MUSIC_OK) SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
@@ -365,11 +416,6 @@ int main(int argc, char **argv)
     sound_stop_all();
     if (!main_loop.closed) play_movies(movie_script_after(session.exit_code));
     close_platform();
-    if (session.exit_code == EXIT_RESTART) {
-        args_drop_save(argc, argv);  /* the original always restarts into the start menu */
-        setenv(RESTART_ENV, "1", 1);
-        execvp(argv[0], argv);  /* the DOS launcher starts the game again */
-        fprintf(stderr, "cannot restart %s\n", argv[0]);
-    }
+    if (session.exit_code == EXIT_RESTART) restart(argc, argv);
     return session.exit_code;
 }

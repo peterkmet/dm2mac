@@ -1,4 +1,4 @@
-# The Dungeon Master II port: the game and the test library.
+# The Dungeon Master II port: the game, the test library, and the Windows build.
 CC          = clang
 BASE_CFLAGS = -std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla \
               -Wimplicit-fallthrough -O2 -g
@@ -28,7 +28,11 @@ OBJ = $(B)/obj
 
 SOURCES      = $(wildcard src/*/*.c src/third_party/*/*.c)
 SDL_SOURCES  = src/platform/main.c src/platform/platform.c
-LIB_SOURCES  = $(filter-out $(SDL_SOURCES),$(SOURCES))
+WINDOWS_ONLY = src/platform/transport_none.c
+POSIX_ONLY   = src/platform/transport.c
+GAME_SOURCES = $(filter-out $(WINDOWS_ONLY),$(SOURCES))
+LIB_SOURCES  = $(filter-out $(SDL_SOURCES) $(WINDOWS_ONLY),$(SOURCES))
+WIN_SOURCES  = $(filter-out $(POSIX_ONLY),$(SOURCES))
 C_FILES      = $(wildcard src/*/*.[ch] src/*/include/*.h src/third_party/*/*.[ch])
 
 objects = $(patsubst src/%.c,$(1)/%.o,$(2))
@@ -55,19 +59,52 @@ $(OBJ)/%.o: src/%.c Makefile $(OBJ)/flags.txt
 
 $(call objects,$(OBJ),$(SDL_SOURCES)): CPPFLAGS += -I$(SDL_PREFIX)/include
 
-$(B)/dm2: $(call objects,$(OBJ),$(SOURCES))
+$(B)/dm2: $(call objects,$(OBJ),$(GAME_SOURCES))
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -L$(SDL_PREFIX)/lib -lSDL3
 
 $(B)/libdm2.dylib: $(call objects,$(OBJ),$(LIB_SOURCES))
 	$(CC) $(CFLAGS) $(LDFLAGS) -dynamiclib -o $@ $^
+
+# Windows: cross-build with MinGW-w64 (brew install mingw-w64) and the SDL3 MinGW package, copied into build/ from
+# the dm port. Windows has no control socket: transport_none.c replaces transport.c. -mwindows: no console window; the
+# messages go to dm2.log in the game folder.
+WIN_CC            = x86_64-w64-mingw32-gcc
+WIN_OBJ           = $(B)/obj-win
+DM_DIR           ?= ../dm
+SDL_MINGW_VERSION = 3.4.18
+SDL_MINGW         = $(B)/sdl-mingw/SDL3-$(SDL_MINGW_VERSION)/x86_64-w64-mingw32
+# GCC warns on each snprintf that can cut a path or a text; the port cuts them to the buffer on purpose.
+WIN_CFLAGS        = $(BASE_CFLAGS) -Wno-format-truncation
+
+WIN_OBJ_FLAGS := $(strip $(WIN_CC) $(CPPFLAGS) $(WIN_CFLAGS))
+
+windows: $(B)/dm2.exe
+
+ifneq ($(WIN_OBJ_FLAGS),$(call stamp,$(WIN_OBJ)/flags.txt))
+$(WIN_OBJ)/flags.txt: FORCE
+endif
+$(WIN_OBJ)/flags.txt:
+	$(call write_flags,$(WIN_OBJ_FLAGS))
+
+$(WIN_OBJ)/%.o: src/%.c Makefile $(WIN_OBJ)/flags.txt | $(SDL_MINGW)
+	@mkdir -p $(@D)
+	$(WIN_CC) $(CPPFLAGS) $(call layer_inc,$<) -I$(SDL_MINGW)/include $(WIN_CFLAGS) -c -o $@ $<
+
+$(B)/dm2.exe: $(call objects,$(WIN_OBJ),$(WIN_SOURCES))
+	$(WIN_CC) $(WIN_CFLAGS) -mwindows -o $@ $^ -L$(SDL_MINGW)/lib -lSDL3
+
+$(SDL_MINGW):
+	@test -d $(DM_DIR)/build/sdl-mingw || { echo "copy the SDL3 MinGW package to build/sdl-mingw"; exit 1; }
+	@mkdir -p $(B)
+	cp -R $(DM_DIR)/build/sdl-mingw $(B)/
 
 test: ; tools/test-suite
 
 clean:
 	rm -rf $(B)
 
--include $(wildcard $(OBJ)/*/*.d $(OBJ)/*/*/*.d)
+-include $(wildcard $(OBJ)/*/*.d $(OBJ)/*/*/*.d $(WIN_OBJ)/*/*.d $(WIN_OBJ)/*/*/*.d)
 
 FORCE:
 
-.PHONY: all lib test clean FORCE
+.PHONY: all lib windows test clean FORCE

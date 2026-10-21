@@ -374,7 +374,7 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
     Strip base = map_icon_strip(CAT_WALLSET, icon_set);
     if (flags & MAP_PARTY) draw_party_frame(x, y);
     int fake_seen = square_type(s.square) == SQUARE_FAKE_WALL && s.square & FAKE_WALL_SEEN;
-    int other_map = 0, saved_map = 0, saved_x, saved_y;
+    int other_map = 0, saved_map = 0, saved_x = 0, saved_y = 0;
     for (;;) {
         if (!draw_square_base(&s, &base, sx, sy, dir, x, y, flags, fake_seen, other_map)) return;
         draw_party_and_marker(map_thing, x, y, dir, flags);

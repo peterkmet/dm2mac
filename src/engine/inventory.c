@@ -171,16 +171,23 @@ void inv_update_hand_cursor(void)
 
 uint16_t inv_cursor_object(void) { return game.leader_hand; }
 
-/* The slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
-static uint16_t *slot_of(int champ, int slot)
+/* The thing in the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
+static uint16_t slot_thing(int champ, int slot)
 {
-    return slot < SLOT_COUNT ? &champion(champ)->slots[slot] : &action.open_items[slot - SLOT_CONTAINER_FIRST];
+    return slot < SLOT_COUNT ? champion(champ)->slots[slot] : action.open_items[slot - SLOT_CONTAINER_FIRST];
+}
+
+/* Puts thing into the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
+static void set_slot_thing(int champ, int slot, uint16_t thing)
+{
+    if (slot < SLOT_COUNT) champion(champ)->slots[slot] = thing;
+    else action.open_items[slot - SLOT_CONTAINER_FIRST] = thing;
 }
 
 uint16_t champ_remove_object_from_slot(int champ, int slot)
 {
-    uint16_t *at = slot_of(champ, slot), thing = *at;
-    *at = THING_NONE;
+    uint16_t thing = slot_thing(champ, slot);
+    set_slot_thing(champ, slot, THING_NONE);
     if (thing != THING_NONE) {
         if (champ == action.champion - 1 && slot < SLOT_HAND_COUNT && slot == action.hand) action_area_close();
         champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_REMOVE);
@@ -192,7 +199,7 @@ void champ_add_object_to_slot(int champ, uint16_t thing, int slot)
 {
     if (thing == THING_NONE) return;
     thing &= THING_ID_MASK;
-    *slot_of(champ, slot) = thing;
+    set_slot_thing(champ, slot, thing);
     champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_ADD);
 }
 
@@ -211,7 +218,7 @@ void inv_click_slot(int slot)
         slot -= CLICK_STATUS_HANDS;
         champ = (slot < SLOT_COUNT ? ui.inventory : action.champion) - 1;
     }
-    uint16_t thing = *slot_of(champ, slot);
+    uint16_t thing = slot_thing(champ, slot);
     if (thing == THING_NONE && hand == THING_NONE) return;
     if (hand != THING_NONE && !item_fits_slot(hand, slot, 0)) return;
     if (hand != THING_NONE) champ_remove_object_from_leader_hand();
