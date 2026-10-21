@@ -19,10 +19,19 @@ packages = ["tools/dm2tools"]
 
 [dependency-groups]
 dev = [
+    "clang-format>=23.1,<24",
     "pytest>=8",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
+    "ruff>=0.17.1",
 ]
+
+[tool.ruff]
+line-length = 160
+src = ["tests", "tools/dm2tools"]
+
+[tool.ruff.lint]
+select = ["E4", "E9", "F"]
 
 [tool.pytest.ini_options]
 timeout = 120
