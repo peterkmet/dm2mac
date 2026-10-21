@@ -10,12 +10,18 @@ import time
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from test_control import control, pumped  # noqa: F401 (control is a fixture)
 from test_dialog import DialogState, Session
 from test_input import run_ticks, session  # noqa: F401 (session is a fixture)
 from test_move import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 VANILLA, ADVANCED = 0, 1
 SCAN_Q, SCAN_W, SCAN_E, SCAN_A, SCAN_S, SCAN_D = 0x10, 0x11, 0x12, 0x1E, 0x1F, 0x20

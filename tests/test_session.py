@@ -6,11 +6,17 @@ import struct
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from test_dialog import program_start_after  # noqa: F401 (an autouse fixture)
 from test_save import GDAT_VALUE_TYPES, GRAPHICS
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 DUNGEON = ROOT / "game" / "DATA" / "DUNGEON.DAT"
 DUNGEON_LOAD, MEM_ALLOC, GDAT_ENTRY_INDEX, WEATHER_INIT = 0x36909, 0x3BBBA, 0x3C5D3, 0x59F38

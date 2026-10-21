@@ -11,6 +11,12 @@ import pytest
 from creature_oracle import G_RANDOM_SEED
 from test_creature import creatures  # noqa: F401 (fixture)
 from test_move import gdat, start  # noqa: F401 (fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 AI_BEGIN, AI_PREPARE, AI_END = 0x24A88, 0x24BFC, 0x24D88
 DUN_SET_CURRENT_MAP = 0x1C724

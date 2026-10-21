@@ -10,6 +10,12 @@ import pytest
 
 from test_interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
 from test_move import Scenario, gdat, start  # noqa: F401 (fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 G_RANDOM_SEED, G_PARTY_SLEEPING, G_REGEN_COUNTER, G_CHAMPION_COUNT = 0x70518, 0x7F234, 0x7FFF4, 0x7F276
 G_THING_DATA = 0x7F288

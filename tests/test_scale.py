@@ -4,7 +4,13 @@ import subprocess
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 
 def run(lib, n, rows):

@@ -6,6 +6,12 @@ import random
 from collections import Counter
 
 import pytest
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 MVE_ERROR, MVE_OK, MVE_END, MVE_AUDIO, MVE_SHOW = -1, 0, 1, 2, 3
 WIDTH_MAX, HEIGHT_MAX, COLORS, RGB = 640, 480, 256, 3

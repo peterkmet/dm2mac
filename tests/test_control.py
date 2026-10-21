@@ -18,9 +18,15 @@ import pytest
 
 from dm2tools.control_client import request
 from test_input import session  # noqa: F401 (a fixture)
-from conftest import ROOT
+from dm2test.markers import ROOT
 from test_move import WorldGame, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from test_interface import UiState, things_of
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 KEY_SHIFT, KEY_ALT = 0x200, 0x800
 SCAN_A, SCAN_ENTER = 0x1E, 0x1C

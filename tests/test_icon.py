@@ -4,6 +4,12 @@ import ctypes
 import pytest
 
 from test_gdat import OK, c_int_p, gd  # noqa: F401
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 ICON_W, ICON_H = 77, 81
 ITEM_KEY = (0x0F, 0x26, 1, 9)

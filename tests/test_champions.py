@@ -7,6 +7,12 @@ import pytest
 
 from test_input import Loop
 from test_move import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAP_COLUMNS = 0x7FBB4, 0x7FBCE, 0x7F3C8
 HAND_OFFSET = 252 + 4 * 263  # offsetof(Game, leader_hand) in save.h

@@ -10,6 +10,12 @@ from test_dialog import DialogState, InputMatch, Session, program_start_after  #
 from test_move import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 from dm2tools.emu import EmuError
 from test_save import original_load, original_save
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 GAME_QUIT, IOP_SET_VIDEO_STATE, GAME_END, COMMAND_EXECUTE = 0x2005B, 0x138C7, 0x1FEF6, 0x21D6C
 UI_DIALOG_DRAW, UI_DIALOG_RUN, SAVE_CHECK_DISK, WAIT_VBLANKS, GFX_FILL_ZONE_SCREEN = 0x1A37D, 0x1A0A4, 0x346D1, 0x1C660, 0x13B4D
@@ -387,7 +393,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     # The start of a run in the C port: the menu, NEW GAME: DUNGEON.DAT with the party on its start square; then the
     # menu again, LOAD, slot 0 (start.DAT), LOAD, and OK of "GAME LOADED": the game of start.DAT.
     from test_move import GameRecord
-    from conftest import ROOT
+    from dm2test.markers import ROOT
     data = tmp_path / "game"
     (data / "DATA").mkdir(parents=True)
     (data / "DATA" / "DUNGEON.DAT").write_bytes((ROOT / "game" / "DATA" / "DUNGEON.DAT").read_bytes())

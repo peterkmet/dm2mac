@@ -3,10 +3,16 @@ import random
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from test_move import Party
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 GRAPHICS = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 ZONE_UNPACK_LAYOUT, ZONE_ALLOC_RECORD, ZONE_GET_RECT_CLIPPED = 0x19D0E, 0x19F29, 0x19BF2

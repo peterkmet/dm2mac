@@ -6,11 +6,17 @@ import struct
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from test_control import GameWithChampions
 from test_input import MainLoop
 from test_interface import ActionArea
 from test_move import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 STATE, VIEW, MAP = 0, 1, 2
 VANILLA, TURNBASED = 0, 2

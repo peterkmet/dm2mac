@@ -39,5 +39,6 @@ select = ["E4", "E9", "F"]
 [tool.pytest.ini_options]
 timeout = 120
 testpaths = ["tests"]
-addopts = "-m 'not network'"
+addopts = "-m 'not network' --dist loadfile --import-mode=importlib"
+pythonpath = ["tests"]
 markers = ["network: tests that need network access"]

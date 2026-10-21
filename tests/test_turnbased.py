@@ -11,12 +11,18 @@ import time
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from test_control import PALETTE_COLORS, RGB, GameWithChampions
 from test_dialog import Session
 from test_input import session  # noqa: F401 (a fixture)
 from test_move import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 VANILLA, TURNBASED = 0, 2
 TURN_WAIT_MAX_TICKS = 5000

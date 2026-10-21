@@ -10,6 +10,12 @@ from test_modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5,
                         VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
 from test_input import run_ticks, session  # noqa: F401 (session is a fixture)
 from test_move import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 NORTH, EAST, SOUTH, WEST = range(4)
 STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}

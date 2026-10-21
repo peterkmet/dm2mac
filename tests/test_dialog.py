@@ -10,6 +10,12 @@ from unicorn import UC_PROT_ALL
 from test_interface import (  # noqa: F401 (gdat, original, and port are fixtures)
     SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff, gdat, original, port,
 )
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 UI_DIALOG_DRAW, UI_DIALOG_PRESENT, UI_DIALOG_RUN, UI_VOLUME_DIALOG = 0x1A37D, 0x1A001, 0x1A0A4, 0x1AA75
 SAVE_OPEN_SLOT_DIALOG, SAVE_DRAW_SLOT_SELECTION, SAVE_DRAW_NAME_ENTRY = 0x37AB0, 0x37D9F, 0x37C33

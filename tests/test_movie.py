@@ -11,6 +11,12 @@ import time
 import pytest
 
 from dm2tools.control_client import request
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 SCRIPT_NONE, SCRIPT_START, SCRIPT_COMPLETED, SCRIPT_PARTY_DEAD = range(4)
 STEP_NONE, SPLASH, FTL, INTRO, END, CREDITS = -1, 0, 1, 2, 3, 4

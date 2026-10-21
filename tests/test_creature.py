@@ -7,6 +7,12 @@ import struct
 import pytest
 
 from test_move import Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 CreatureScenario = Scenario  # the scenario harness runs the creatures since Step 16
 

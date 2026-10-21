@@ -7,9 +7,15 @@ import struct
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from test_save import GRAPHICS
 from test_move import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 INPUT_INIT_TABLES, INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND = 0x20847, 0x203A3, 0x2048A
 MOUSE_AREA_ALLOC_NODE = 0x14B1F
@@ -26,7 +32,7 @@ class ActionArea(ctypes.Structure):
 @pytest.fixture(scope="module")
 def keys():
     """Every key code of the key lists of SKULL.EXE."""
-    from conftest import ROOT
+    from dm2test.markers import ROOT
     from dm2tools.le import load_image
     image = load_image(ROOT / "game" / "SKULL.EXE")
     data = image.data[0x729B8 - image.base:0x72B9C - image.base]
@@ -263,8 +269,7 @@ def test_clicks_on_the_movement_arrows(session, lib):
 def test_save_start_matches_a_menu_load(start, tmp_path):
     # build/dm2 --save starts start.DAT as the menu load does: the first view has the party light of the save, not the
     # light level of the program start, and the level digits come from the dungeon (the first load reads them).
-    shutil.copyfile(ROOT / "build" / "libdm2.dylib", tmp_path / "libdm2.dylib")
-    lib = ctypes.CDLL(str(tmp_path / "libdm2.dylib"))  # its own copy: the globals of the program start
+    lib = load_lib()  # its own copy: the globals of the program start
     gdat = ctypes.c_void_p()
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(gdat)) == 0
     path = tmp_path / "SKSAVE0.DAT"
@@ -289,8 +294,7 @@ def test_save_start_prints_the_hand_object_name_once(tmp_path):
     shell = ROOT / "tests" / "saves" / "shell.DAT"
     if not shell.exists():
         pytest.skip("tests/saves/shell.DAT missing")
-    shutil.copyfile(ROOT / "build" / "libdm2.dylib", tmp_path / "libdm2.dylib")
-    lib = ctypes.CDLL(str(tmp_path / "libdm2.dylib"))
+    lib = load_lib()
     gdat = ctypes.c_void_p()
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(gdat)) == 0
     path = tmp_path / "SKSAVE0.DAT"

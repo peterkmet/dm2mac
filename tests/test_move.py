@@ -6,11 +6,17 @@ import struct
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from test_save import GRAPHICS, START, original_save
 from test_view import OriginalView
 from creature_oracle import CreatureOracle
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 
 def original_view_of(lib, gdat, start):

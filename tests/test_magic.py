@@ -7,7 +7,7 @@ import struct
 
 import pytest
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from test_creature import CreatureScenario
@@ -15,6 +15,12 @@ from test_interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, Game, c
                             diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
 from test_interface import gdat, original, port  # noqa: F401 (fixtures)
 from test_move import start  # noqa: F401 (fixture)
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 # Original functions.
 MAGIC_FIND_SPELL, MAGIC_CAST_SPELL, TIMELINE_ADD_EVENT = 0x421FD, 0x422F5, 0x56390

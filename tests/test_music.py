@@ -9,7 +9,13 @@ from unicorn.x86_const import (
     UC_X86_REG_ESP, UC_X86_REG_FS, UC_X86_REG_GDTR, UC_X86_REG_GS, UC_X86_REG_SS,
 )
 
-from conftest import ROOT
+from dm2test.markers import ROOT
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 GAME = ROOT / "game"
 SONG_COUNT = 29

@@ -14,6 +14,12 @@ from test_move import (  # noqa: F401 (gdat and start are fixtures)
     Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
 )
 from test_save import Game, Timeline
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 WEATHER_INIT, TIMELINE_DELETE_EVENT, LIGHT_ADD_SQUARE_LIGHT, ZONE_INTERPOLATE_OFFSET = 0x59F38, 0x562FF, 0x38C46, 0x19234
 MOVE_THING, VIEW_SEED_ADDR = 0x4B108, 0x70518

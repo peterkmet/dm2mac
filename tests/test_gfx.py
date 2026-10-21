@@ -5,6 +5,12 @@ import pytest
 
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 GFX_BLIT, GFX_BLIT_SCALED_4BPP, GFX_BLIT_SCALED_8BPP = 0x12AD2, 0x1410D, 0x1424B
 GFX_BLIT_TILED_4TO8_MASKED = 0x13BE5
@@ -82,7 +88,7 @@ def test_blit_4bpp_to_4bpp(lib):
 
 @pytest.fixture(scope="module")
 def emu():
-    from conftest import ROOT
+    from dm2test.markers import ROOT
     exe = ROOT / "game" / "SKULL.EXE"
     if not exe.exists():
         pytest.skip("game/SKULL.EXE missing")
@@ -183,7 +189,7 @@ RAMP_DATA, RAMP_RECORDS, TABLE, COUNT, CACHE = (SCRATCH + 0x40000, SCRATCH + 0x5
 
 
 def test_dim_remap_matches_original(lib, emu):
-    from conftest import ROOT
+    from dm2test.markers import ROOT
     graphics = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
     if not graphics.exists():
         pytest.skip("game/DATA/GRAPHICS.DAT missing")

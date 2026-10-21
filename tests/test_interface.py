@@ -7,9 +7,15 @@ import pytest
 from unicorn import UC_HOOK_CODE, UC_PROT_ALL
 from unicorn.x86_const import UC_X86_REG_EIP, UC_X86_REG_ESP
 
-from conftest import ROOT
+from dm2test.markers import ROOT
 from test_save import GRAPHICS, START, Game
 from test_view import OriginalView, u8_p
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 SCREEN_W, SCREEN_H = 320, 200
 DATA_START, DATA_END = 0x70000, 0x828F0  # the data object of SKULL.EXE

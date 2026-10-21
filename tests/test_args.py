@@ -3,6 +3,12 @@
 import ctypes
 
 import pytest
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 
 @pytest.mark.parametrize("args, expected", [

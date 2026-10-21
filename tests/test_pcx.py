@@ -3,6 +3,12 @@
 import ctypes
 
 import pytest
+from dm2test.lib import load_lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    return load_lib()
 
 PCX_OK, PCX_ERR_DATA = 0, 1
 WIDTH, HEIGHT, COLORS, RGB = 320, 200, 256, 3
