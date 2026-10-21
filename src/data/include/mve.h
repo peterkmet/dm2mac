@@ -9,7 +9,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MVE_BLOCK_SIZE 8            /* pixels per side of a video block */
 #define MVE_WIDTH_MAX 640
 #define MVE_HEIGHT_MAX 480
 #define MVE_PIXELS_MAX (MVE_WIDTH_MAX * MVE_HEIGHT_MAX)

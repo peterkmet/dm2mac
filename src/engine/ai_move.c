@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ai_move.h"
+#include "ai_move_internal.h"
 #include "champion.h"
 #include "creature.h"
 #include "gdat.h"

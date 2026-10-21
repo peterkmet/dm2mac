@@ -2,6 +2,7 @@
 #include <string.h>
 #include "le.h"
 #include "mve.h"
+#include "mve_internal.h"
 
 #define VIDEO_HEADER_SIZE 14            /* frame numbers, position, size, and flags before the blocks */
 #define VIDEO_FLAGS 12

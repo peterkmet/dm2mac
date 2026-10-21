@@ -2,6 +2,7 @@
 #include <string.h>
 #include "le.h"
 #include "mve.h"
+#include "mve_internal.h"
 
 #define MVE_SIGNATURE "Interplay MVE File\x1a"
 #define SIGNATURE_SIZE (sizeof MVE_SIGNATURE)    /* with its 0 byte */

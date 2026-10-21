@@ -4,7 +4,7 @@
 #include "fm.h"
 #include "hmp.h"
 #include "le.h"
-#include "opl3.h"
+#include <opl3/opl3.h>
 
 /* AdLib BNK file: header, 12-byte names, 30-byte instrument records. */
 #define BNK_USED 0x08

@@ -39,10 +39,6 @@ enum {
     TARGET_GROUP_IN_FRONT, TARGET_GROUP_FACING, TARGET_DAMAGE_GROUP, TARGET_MOVE_TEST, TARGET_ACTUATOR,
     TARGET_LIGHT, TARGET_AI_MARKER, TARGET_MARKER_SIDE, TARGET_DOOR, TARGET_PARTY_DISTANCE
 };
-/* The directions of a move test past the four map directions. */
-#define DIR_LEVEL_UP 4
-#define DIR_LEVEL_DOWN 5
-#define DIR_KEEP_FACING 6       /* a move to the given square that keeps the facing */
 /* The modes of ai_try_attack. */
 enum ai_attack_mode { ATTACK_MODE_PARTY, ATTACK_MODE_PARTY_RANGED, ATTACK_MODE_GROUP, ATTACK_MODE_ANY, ATTACK_MODE_DOOR };
 /* The modes of ai_try_door_action. */
@@ -103,19 +99,6 @@ enum ai_action {
     ACTION_TRANSFORM = 0x3b, ACTION_MORPH = 0x3c, ACTION_SPECIAL = 0x3d, ACTION_SPECIAL_LAST = 0x40,
     ACTION_DODGE = 0x55
 };
-
-/* More of the square that the AI read last (0x7f8b2 to 0x7f8bf of SKULL.EXE); ai_cache_square resets it. */
-typedef struct {
-    uint8_t blocking;           /* the square stops the search: a costly wall, a failed move */
-    uint8_t passage;            /* the square is a seamless passage; end is its other side */
-    PassageEnd end;
-    uint8_t unused;
-    int8_t items_elsewhere;     /* -1 not read; 1: items or ornaments that the creature cannot reach */
-    uint8_t facing_ornament;    /* a wall: the face toward the creature shows an alcove */
-    int8_t cells[4];            /* a floor: the cells that the creature reaches (cells[0] 0xff: not read);
-                                   a wall: cells[0] is the face toward the creature */
-} AiSquareScan;
-extern AiSquareScan ai_square_scan;
 
 /* The light sums of the light search (Step 17 moves them to its module). */
 extern int16_t cached_light_sum, cached_explosion_light_sum, last_party_map;
