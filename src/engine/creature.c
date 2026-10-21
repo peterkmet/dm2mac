@@ -15,6 +15,7 @@
 #include "le.h"
 #include "money.h"
 #include "move.h"
+#include "os.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -432,6 +433,7 @@ void creature_alloc_active_groups(void)
     active_group_max = n + ACTIVE_GROUP_SPARE < count ? n + ACTIVE_GROUP_SPARE : count;
     free(active_groups);
     active_groups = calloc(active_group_max ? active_group_max : 1, sizeof *active_groups);
+    if (!active_groups) os_fatal("out of memory");
 }
 
 /* Frees all active groups and activates the groups of all maps (a new game or a load). */

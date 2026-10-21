@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 #include "item.h"
 #include "movie.h"
 #include "music.h"
+#include "os.h"
 #include "platform.h"
 #include "play.h"
 #include "save.h"
@@ -297,6 +299,15 @@ static int start_game(const char *data)
     return 0;
 }
 
+/* The absolute path of an existing file, for the screenshot reply of the control socket. */
+static bool full_path(const char *path, char *full, size_t size)
+{
+    char resolved[PATH_MAX];
+    if (!realpath(path, resolved) || strlen(resolved) >= size) return false;
+    memcpy(full, resolved, strlen(resolved) + 1);
+    return true;
+}
+
 /* Closes the control socket, the music, and SDL. */
 static void close_platform(void)
 {
@@ -325,6 +336,7 @@ int main(int argc, char **argv)
     if (save && !show_save(save)) return 1;
     if (!plat_init(WINDOW_SCALE, factor)) return 1;
     set_icon();
+    g_os_full_path_hook = full_path;
     if (control && !control_open(control)) {
         fprintf(stderr, "cannot open the control socket %s\n", control);
         return 1;

@@ -15,6 +15,7 @@
 #include "minion.h"
 #include "money.h"
 #include "move.h"
+#include "os.h"
 #include "projectile.h"
 #include "text.h"
 #include "ui.h"
@@ -921,7 +922,7 @@ const char *turn_act_many(const char *request)
     if (!list || *list != '[') return "actions must be a list";
     batch_clear();
     batch.actions = strdup(list + 1);
-    if (!batch.actions) abort();
+    if (!batch.actions) os_fatal("out of memory");
     batch.next = batch.actions;
     batch.active = true;
     batch.start_time = game.game_time;

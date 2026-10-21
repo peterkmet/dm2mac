@@ -20,6 +20,7 @@
 #include "item.h"
 #include "le.h"
 #include "movie.h"
+#include "os.h"
 #include "play.h"
 #include "save.h"
 #include "session.h"
@@ -301,6 +302,7 @@ static void send_state(void)
 #define ADLER_SIZE 4
 #define CRC_TABLE_SIZE 256
 #define ADLER_SUM_SHIFT 16             /* the Adler-32 checksum: the second sum in the high half */
+#define FULL_PATH_SIZE 1024            /* the absolute path of a screenshot, as PATH_MAX of macOS */
 #define SOCKET_DIR_MODE 0700
 
 static uint32_t crc_table[CRC_TABLE_SIZE];
@@ -318,21 +320,15 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
     return ~crc;
 }
 
-/* PNG numbers are big-endian. */
-static void be32(uint8_t *p, uint32_t v)
-{
-    for (int i = (int)sizeof v - 1; i >= 0; i--, v >>= BYTE_BITS) p[i] = (uint8_t)v;
-}
-
 static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n)
 {
     uint8_t head[2 * CHUNK_FIELD_SIZE];
-    be32(head, n);
+    put_be32(head, n);
     memcpy(head + CHUNK_FIELD_SIZE, type, CHUNK_FIELD_SIZE);
     uint32_t crc = crc32_update(crc32_update(0, head + CHUNK_FIELD_SIZE, CHUNK_FIELD_SIZE), data, n);
     fwrite(head, 1, sizeof head, f);
     if (n) fwrite(data, 1, n, f);
-    be32(head, crc);
+    put_be32(head, crc);
     fwrite(head, 1, CHUNK_FIELD_SIZE, f);
 }
 
@@ -364,11 +360,11 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
         q += n;
         done += n;
     }
-    be32(q, b << ADLER_SUM_SHIFT | a);
+    put_be32(q, b << ADLER_SUM_SHIFT | a);
     q += ADLER_SIZE;
     uint8_t ihdr[IHDR_SIZE] = { 0 };
-    be32(ihdr, SCREEN_W);
-    be32(ihdr + CHUNK_FIELD_SIZE, SCREEN_H);
+    put_be32(ihdr, SCREEN_W);
+    put_be32(ihdr + CHUNK_FIELD_SIZE, SCREEN_H);
     ihdr[IHDR_BIT_DEPTH] = PNG_BIT_DEPTH;
     ihdr[IHDR_COLOR_TYPE] = PNG_COLOR_RGB;
     FILE *f = fopen(path, "wb");
@@ -384,10 +380,10 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 static void screenshot(const char *path)
 {
     static uint8_t screen[SCREEN_H][SCREEN_W];
-    char absolute[PATH_MAX];
+    char absolute[FULL_PATH_SIZE];
     memcpy(screen, fb, sizeof screen);
     if (input_mouse_x >= 0 && input_mouse_y >= 0) input_draw_cursor(&screen[0][0], input_mouse_x, input_mouse_y);
-    if (!write_png(path, screen) || !realpath(path, absolute)) {
+    if (!write_png(path, screen) || !os_get_full_path(path, absolute, sizeof absolute)) {
         send_error("cannot write the PNG file");
         return;
     }

@@ -7,6 +7,7 @@
 #include "dungeon.h"
 #include "le.h"
 #include "move.h"
+#include "os.h"
 #include "random.h"
 #include "game_text.h"
 #include "sensor.h"
@@ -435,6 +436,7 @@ static int read_things(FILE *f, int type, int count_in_file, int new_game)
     dun.thing_count[type] = count;
     put_le16(dun.header + HEADER_THING_COUNTS + 2 * type, count);
     dun.things[type] = calloc(count, thing_size[type]);
+    if (!dun.things[type]) os_fatal("out of memory");
     if (!read_bytes(f, dun.things[type], (size_t)thing_size[type] * count_in_file)) return 0;
     for (int i = count_in_file; i < count; i++)  /* fix: the original writes free records past the cap */
         put_le16(dun.things[type] + i * thing_size[type], THING_NONE);  /* a free record has THING_NONE as link */
@@ -490,9 +492,11 @@ static int read_dungeon(FILE *f, int new_game)
     dun.party_start = le16(header + HEADER_PARTY_START);
     dun.map_count = header[HEADER_MAP_COUNT];
     dun.map_descs = malloc(dun.map_count * MAP_DESC_SIZE);
+    if (!dun.map_descs) os_fatal("out of memory");
     if (!read_bytes(f, dun.map_descs, dun.map_count * MAP_DESC_SIZE)) return 0;
 
     dun.map_first_column = malloc(dun.map_count * sizeof(uint16_t));
+    if (!dun.map_first_column) os_fatal("out of memory");
     int column_count = 0;
     for (int map = 0; map < dun.map_count; map++) {
         dun.map_first_column[map] = column_count;

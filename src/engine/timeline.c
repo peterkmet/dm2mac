@@ -1,7 +1,11 @@
 #include <stdlib.h>
+#include "os.h"
 #include "timeline.h"
 
 #define END_OF_FREE_LIST (-1)
+/* System error codes of the original: an event missing from the queue, a full timeline. */
+#define SYSTEM_ERROR_NO_QUEUE_SLOT 70
+#define SYSTEM_ERROR_TIMELINE_FULL 45
 
 Timeline timeline;
 
@@ -55,7 +59,7 @@ static int find_queue_slot(uint16_t index)
 {
     int slot = 0;
     while (slot < timeline.used_end && timeline.queue[slot] != index) slot++;
-    if (slot == timeline.used_end) abort(); /* the original stops with a system error */
+    if (slot == timeline.used_end) os_fatal("SYSTEM ERROR %d", SYSTEM_ERROR_NO_QUEUE_SLOT); /* the original stops with a system error */
     return slot;
 }
 
@@ -65,6 +69,7 @@ void timeline_init(uint16_t capacity)
     free(timeline.queue);
     timeline.events = calloc(capacity, sizeof *timeline.events);
     timeline.queue = calloc(capacity, sizeof *timeline.queue);
+    if (!timeline.events || !timeline.queue) os_fatal("out of memory");
     for (int i = 0; i < capacity; i++) timeline.events[i].next_free = i + 1;
     timeline.events[capacity - 1].next_free = END_OF_FREE_LIST;
     timeline.capacity = capacity;
@@ -135,7 +140,7 @@ void timeline_compact(void)
 int timeline_add_event(const TimelineEvent *event)
 {
     if (event->type == EVENT_NONE) return -1;
-    if (timeline.count == timeline.capacity) abort(); /* the original stops with a system error */
+    if (timeline.count == timeline.capacity) os_fatal("SYSTEM ERROR %d", SYSTEM_ERROR_TIMELINE_FULL); /* the original stops with a system error */
     int index = timeline.first_free;
     timeline.first_free = timeline.events[index].next_free;
     timeline.events[index] = *event;

@@ -11,6 +11,7 @@
 #include "projectile.h"
 #include "item.h"
 #include "move.h"
+#include "os.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -2203,6 +2204,7 @@ static int search_step(Search *s)
             s->passage_y = s->y;
             if (ai_square.map != party.cur_map) {
                 if (!s->maps[ai_square.map]) s->maps[ai_square.map] = calloc(MAP_SIDE_MAX, SEARCH_COLUMN_SIZE);
+                if (!s->maps[ai_square.map]) os_fatal("out of memory");
                 if (dir < DIR_LEVEL_UP) s->passage_map = party.cur_map;
                 ai_set_map(ai_square.map);
                 s->map = s->maps[party.cur_map];
@@ -2307,6 +2309,7 @@ static void search_start(Search *s, int x, int y, int command, int count, AiCand
     }
     /* fix: the original clears the first search map only for line targets or a cost; the port always clears it */
     s->maps[party.cur_map] = s->map = calloc(MAP_SIDE_MAX, SEARCH_COLUMN_SIZE);
+    if (!s->map) os_fatal("out of memory");
     s->cost_search = (s->command & AI_MOVE_KIND_MASK) == MOVE_KIND_COST;
     if (s->cost_search) s->counts[SEARCH_LEVELS - 1] = SEARCH_LEVEL_BLOCKED;
     s->from_map = s->check_map = party.cur_map;
@@ -2331,6 +2334,7 @@ int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates
         return 0;
     }
     Search *s = calloc(1, sizeof *s);
+    if (!s) os_fatal("out of memory");
     int8_t marks[SEARCH_MARKS][MARK_SIZE];
     s->marks = marks;
     search_start(s, x, y, command, count, candidates);

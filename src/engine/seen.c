@@ -5,6 +5,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "move.h"
+#include "os.h"
 #include "seen.h"
 #include "weather.h"
 
@@ -31,6 +32,7 @@ void seen_reset(void)
     free(seen);
     seen_size = map_first_square(dungeon_map_count());
     seen = calloc(seen_size ? seen_size : 1, 1);
+    if (!seen) os_fatal("out of memory");
 }
 
 /* The storage fits the loaded dungeon; returns 0 when memory is out. */

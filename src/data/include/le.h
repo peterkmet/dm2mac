@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_DATA_LE_H
 #define DM2_DATA_LE_H
-/* Prefixes: le16 le32 put_le16 put_le32 */
+/* Prefixes: le16 le32 put_le16 put_le32 put_be32 */
 
 /* Little-endian reads and writes of the DOS file formats. */
 
@@ -28,6 +28,12 @@ static inline void put_le32(uint8_t *p, uint32_t value)
 {
     put_le16(p, (uint16_t)value);
     put_le16(p + 2, value >> LE16_BITS);
+}
+
+/* Big-endian writes of the PNG files. */
+static inline void put_be32(uint8_t *p, uint32_t value)
+{
+    for (int i = (int)sizeof value - 1; i >= 0; i--, value >>= BYTE_BITS) p[i] = (uint8_t)value;
 }
 
 #endif /* DM2_DATA_LE_H */

@@ -7,6 +7,7 @@
 #include "input.h"
 #include "minion.h"
 #include "music.h"
+#include "os.h"
 #include "save.h"
 #include "session.h"
 #include "sound.h"
@@ -107,7 +108,7 @@ int advanced_quick_load(void)
     session = kept;
     if (!restored) {
         /* the dungeon is empty: the game cannot go on */
-        fprintf(stderr, "cannot load %s or the running game in %s\n", path, keep);
+        os_log("cannot load %s or the running game in %s", path, keep);
         if (game_mode != GAME_MODE_TURNBASED) {
             session_quit();
             session.exit_code = EXIT_GAME_LOST;

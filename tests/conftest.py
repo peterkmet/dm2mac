@@ -1,4 +1,5 @@
 import ctypes
+import os
 import re
 import shutil
 import subprocess
@@ -38,6 +39,20 @@ def pytest_sessionfinish(session, exitstatus):
         f.write(git("rev-parse", "HEAD^{tree}") + "\n")
 
 
+# full is a c_void_p: a c_char_p argument reaches the callback as a copy in a bytes object
+FULL_PATH = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_char_p, ctypes.c_void_p, ctypes.c_size_t)
+
+
+@FULL_PATH
+def full_path(path, full, size):
+    # the full path hook of data/os.c, which main.c sets with realpath
+    resolved = os.path.realpath(path)
+    if len(resolved) >= size:
+        return False
+    ctypes.memmove(full, resolved + b"\0", len(resolved) + 1)
+    return True
+
+
 @pytest.fixture(scope="module")
 def lib(tmp_path_factory):
     # a copy per test module gives each module fresh globals; dlopen of one path returns one shared image
@@ -48,4 +63,5 @@ def lib(tmp_path_factory):
     for header in (ROOT / "src").rglob("*.h"):
         for name in re.findall(r"^bool (\w+)\(", header.read_text(), re.M):
             getattr(lib, name).restype = ctypes.c_bool
+    ctypes.c_void_p.in_dll(lib, "g_os_full_path_hook").value = ctypes.cast(full_path, ctypes.c_void_p).value
     return lib

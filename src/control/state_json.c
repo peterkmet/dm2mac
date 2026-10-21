@@ -13,6 +13,7 @@
 #include "game_text.h"
 #include "gdat.h"
 #include "input.h"
+#include "os.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"
@@ -46,7 +47,7 @@ static void put(Json *j, const char *text, size_t n)
         size_t cap = j->cap ? j->cap : JSON_START_SIZE;
         while (cap < j->len + n + 1) cap *= 2;
         char *s = realloc(j->s, cap);
-        if (!s) abort();
+        if (!s) os_fatal("out of memory");
         j->s = s;
         j->cap = cap;
     }
