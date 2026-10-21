@@ -114,7 +114,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 7. Graphic, zone, icon and string numbers live in `data/ids.h`, grouped by kind (`GFX_` for the graphic entry
    numbers of `GRAPHICS.DAT`, `ZONE_`, `ICON_`, `TEXT_`), sorted by value, one name per value. A zone that a
    rule passes to a hook is in `data/ids.h` too; `engine/` includes it. The categories of the file format
-   (`CAT_`, `GDAT_`) stay in `data/gdat.h`. [duplicate; one name per value: review only]
+   (`CAT_`, `GDAT_`) stay in `data/gdat.h`. `GFX_` names every entry number of `GRAPHICS.DAT`, the text entries
+   included; `TEXT_` names the string ids; one block per id space (category and type). [duplicate; one name per
+   value: review only]
 8. No byte offset, event number or original address in a name. [numbered]
 9. A packed field (two or more values in one word) has one accessor in the module that owns it
    (`timeline_time_map()`, `timeline_event_map()` in `engine/timeline.h`). No shift by 8, 16 or 24 at a call
