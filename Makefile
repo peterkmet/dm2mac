@@ -73,10 +73,7 @@ WIN_OBJ           = $(B)/obj-win
 DM_DIR           ?= ../dm
 SDL_MINGW_VERSION = 3.4.18
 SDL_MINGW         = $(B)/sdl-mingw/SDL3-$(SDL_MINGW_VERSION)/x86_64-w64-mingw32
-# GCC warns on each snprintf that can cut a path or a text; the port cuts them to the buffer on purpose.
-WIN_CFLAGS        = $(BASE_CFLAGS) -Wno-format-truncation
-
-WIN_OBJ_FLAGS := $(strip $(WIN_CC) $(CPPFLAGS) $(WIN_CFLAGS))
+WIN_OBJ_FLAGS := $(strip $(WIN_CC) $(CPPFLAGS) $(BASE_CFLAGS))
 
 windows: $(B)/dm2.exe
 
@@ -88,10 +85,10 @@ $(WIN_OBJ)/flags.txt:
 
 $(WIN_OBJ)/%.o: src/%.c Makefile $(WIN_OBJ)/flags.txt | $(SDL_MINGW)
 	@mkdir -p $(@D)
-	$(WIN_CC) $(CPPFLAGS) $(call layer_inc,$<) -I$(SDL_MINGW)/include $(WIN_CFLAGS) -c -o $@ $<
+	$(WIN_CC) $(CPPFLAGS) $(call layer_inc,$<) -I$(SDL_MINGW)/include $(BASE_CFLAGS) -c -o $@ $<
 
 $(B)/dm2.exe: $(call objects,$(WIN_OBJ),$(WIN_SOURCES))
-	$(WIN_CC) $(WIN_CFLAGS) -mwindows -o $@ $^ -L$(SDL_MINGW)/lib -lSDL3
+	$(WIN_CC) $(BASE_CFLAGS) -mwindows -o $@ $^ -L$(SDL_MINGW)/lib -lSDL3
 
 $(SDL_MINGW):
 	@test -d $(DM_DIR)/build/sdl-mingw || { echo "copy the SDL3 MinGW package to build/sdl-mingw"; exit 1; }

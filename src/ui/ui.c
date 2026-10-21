@@ -856,6 +856,8 @@ static int info_add_contents(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], in
     return *line ? info_add(lines, count, "%s", line) : count;
 }
 
+#define COIN_TEXT_SIZE (TEXT_SIZE + 7)  /* a coin name, a space, and an int16_t count of up to 6 characters */
+
 /* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
    total value. */
 static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
@@ -863,7 +865,7 @@ static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int c
     int16_t counts[COIN_TYPE_MAX];
     money_count_coins_in_box(box, counts);
     int total = 0;
-    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
+    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[COIN_TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
         int type = money_coin_type_for_slot(box, slot);
         if (type < 0) continue;
