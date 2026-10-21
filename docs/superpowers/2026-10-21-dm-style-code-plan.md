@@ -39,7 +39,7 @@ Test list (CLAUDE.md §2). Write a test only for: a check against a reference (o
 
 In this plan the existing differential, port and golden tests prove the same behavior. New tests: the constant parser of `dm2test.constants` (Task 19, a parser) and the checks of `tests/standard/test_standard.py` (Tasks 29-30, which are themselves the standard check). Build targets, hooks, the Windows start and the scripts are wiring: the manual test checklist covers them (Task 72).
 
-**Weakened assertions:** none planned. The new `tests/standard/test_standard.py` replaces `tests/test_standard.py`; Task 30 maps each old check to a new check that is at least as strict (table in Task 30). Approved by the user on 2026-10-21 (the empty list).
+**Weakened assertions:** none planned. The new `tests/standard/test_standard.py` replaces `tests/test_standard.py`; Task 30 maps each old check to a new check that is at least as strict (table in Task 30). Approved by the user on 2026-10-21 (the empty list). Added during the run and approved by the user on 2026-10-21: after the format commit (Task 21), the old `tests/standard_allowlist.txt` gets the moved `hex` and `decimal` keys and the functions that the format made longer than the limit of `test_functions_are_short`, with the reason `open: module cleanup`; Task 29 replaces the file, wave 7 splits the functions, Task 72 checks that no `open:` line remains.
 
 ## Parallel run
 
