@@ -11,6 +11,7 @@ import time
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from dm2test.control import PALETTE_COLORS, RGB, GameWithChampions
@@ -24,17 +25,17 @@ from dm2test.lib import load_lib
 def lib():
     return load_lib()
 
-VANILLA, TURNBASED = 0, 2
+VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED
 TURN_WAIT_MAX_TICKS = 5000
 POISON_AMOUNT = 200  # a poison that hurts now and again within the wait
-FACINGS = 4
+FACINGS = C.DIR_COUNT
 LEAVE_WAIT_TICKS = 2000
-CMD_VOLUME, CMD_DIALOG_BUTTON_FIRST = 0x8D, 0xDB
+CMD_VOLUME, CMD_DIALOG_BUTTON_FIRST = C.CMD_VOLUME, C.CMD_DIALOG_BUTTON_FIRST
 STILL_CREATURE = 27  # a creature type that map 0 of start.DAT takes and that stands still
-FLOOR_HIDING_CREATURE = 1  # a static creature type whose floor takes no click
-GROUP_CREATURE = 4  # the byte of the creature type in a group record
+FLOOR_HIDING_CREATURE = C.CREATURE_STATIC  # a static creature type whose floor takes no click
+GROUP_CREATURE = C.GROUP_CREATURE  # the byte of the creature type in a group record
 GROUP_DISTANCE = 6  # the view shows 4 rows ahead: the group comes into view after the second step
-NORTH = 0
+NORTH = C.DIR_NORTH
 
 
 @pytest.fixture

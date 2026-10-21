@@ -3,6 +3,7 @@
 import ctypes
 
 import pytest
+from dm2test import constants as C
 from dm2test.lib import load_lib
 
 
@@ -10,8 +11,8 @@ from dm2test.lib import load_lib
 def lib():
     return load_lib()
 
-PCX_OK, PCX_ERR_DATA = 0, 1
-WIDTH, HEIGHT, COLORS, RGB = 320, 200, 256, 3
+PCX_OK, PCX_ERR_DATA = C.PCX_OK, C.PCX_ERR_DATA
+WIDTH, HEIGHT, COLORS, RGB = C.SCREEN_W, C.SCREEN_H, C.PCX_PALETTE_COLORS, C.PCX_RGB
 HEADER = 128
 PALETTE_SIZE = 1 + COLORS * RGB  # the marker byte and the colors
 

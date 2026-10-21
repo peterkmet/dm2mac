@@ -15,6 +15,7 @@ import zlib
 import pytest
 
 from dm2tools.control_client import request
+from dm2test import constants as C
 from dm2test.control import (  # noqa: F401 (control is a fixture)
     NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, GameWithChampions, control, pumped,
 )
@@ -29,13 +30,13 @@ from dm2test.lib import load_lib
 def lib():
     return load_lib()
 
-KEY_SHIFT, KEY_ALT = 0x200, 0x800
-SCAN_A, SCAN_ENTER = 0x1E, 0x1C
+KEY_SHIFT, KEY_ALT = C.KEY_SHIFT, C.KEY_ALT
+SCAN_A, SCAN_ENTER = 0x1E, C.KEY_ENTER
 ZONE_TURN_RIGHT = 0x29
-ZONE_EYE_CLICK, ZONE_VIEWPORT, CMD_EYE, INPUT_MODE_INVENTORY = 0x222, 7, 0x47, 8  # the eye zone is in the panel
-PANEL_MODE_SKILLS, PANEL_MODE_SCROLL, THING_SCROLL = 2, 5, 7
-ZONE_MOUTH_CLICK, CMD_MOUTH = 0x221, 0x46
-INPUT_MODE_MOVE, LEFT = 5, 2
+ZONE_EYE_CLICK, ZONE_VIEWPORT, CMD_EYE, INPUT_MODE_INVENTORY = 0x222, 7, C.CMD_EYE, C.INPUT_MODE_INVENTORY  # the eye zone is in the panel
+PANEL_MODE_SKILLS, PANEL_MODE_SCROLL, THING_SCROLL = C.PANEL_MODE_SKILLS, C.PANEL_MODE_SCROLL, C.THING_SCROLL
+ZONE_MOUTH_CLICK, CMD_MOUTH = 0x221, C.CMD_MOUTH
+INPUT_MODE_MOVE, LEFT = C.INPUT_MODE_MOVE, C.INPUT_BUTTON_LEFT
 DIRECTIONS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 PNG_ROW = 1 + RGB * SCREEN_W  # the filter byte and the pixels of a row
 LONG_LINE = 5000  # more than the request buffer of 4096 bytes
@@ -203,7 +204,7 @@ def test_screenshot_is_the_screen_with_the_pointer(control, lib, tmp_path):
     screen = screen_rgb(lib)
     assert read_png(tmp_path / "a.png") == screen and len({rgb for row in screen for rgb in row}) > 16
     pointed = read_png(tmp_path / "b.png")
-    changed = {(x, y) for y in range(200) for x in range(320) if pointed[y][x] != screen[y][x]}
+    changed = {(x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W) if pointed[y][x] != screen[y][x]}
     assert changed and all(100 <= x < 116 and 100 <= y < 116 for x, y in changed)  # a 16 x 16 cursor, hot spot (0, 0)
 
 
@@ -306,7 +307,7 @@ def test_program_with_control_answers_and_quits(start, tmp_path):  # noqa: F811
         moved = request({"cmd": "state"}, path, timeout=10)["party"]
         assert (moved["x"], moved["y"]) != (state["party"]["x"], state["party"]["y"])
         shot = request({"cmd": "screenshot", "path": str(tmp_path / "s.png")}, path, timeout=10)
-        assert len(read_png(shot["path"])) == 200
+        assert len(read_png(shot["path"])) == C.SCREEN_H
         assert request({"cmd": "quit"}, path, timeout=10) == {"ok": True}
         assert program.wait(timeout=10) == 0
         assert not os.path.exists(path)

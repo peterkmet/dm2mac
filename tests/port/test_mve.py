@@ -6,6 +6,7 @@ import random
 from collections import Counter
 
 import pytest
+from dm2test import constants as C
 from dm2test.lib import load_lib
 
 
@@ -13,8 +14,8 @@ from dm2test.lib import load_lib
 def lib():
     return load_lib()
 
-MVE_ERROR, MVE_OK, MVE_END, MVE_AUDIO, MVE_SHOW = -1, 0, 1, 2, 3
-WIDTH_MAX, HEIGHT_MAX, COLORS, RGB = 640, 480, 256, 3
+MVE_ERROR, MVE_OK, MVE_END, MVE_AUDIO, MVE_SHOW = C.MVE_ERROR, C.MVE_OK, C.MVE_END, C.MVE_AUDIO, C.MVE_SHOW
+WIDTH_MAX, HEIGHT_MAX, COLORS, RGB = C.MVE_WIDTH_MAX, C.MVE_HEIGHT_MAX, C.MVE_PALETTE_COLORS, C.MVE_RGB
 VGA_MAX = 63
 STEP_LIMIT = 1000000  # more mve_step calls than any stream needs (an opcode has at least 4 bytes)
 
@@ -72,7 +73,7 @@ def test_movie_streams_have_their_frames_and_audio(lib, game_dir, name, frames, 
     counts = movie.run()
     m = movie.m
     assert counts == {MVE_SHOW: frames, MVE_AUDIO: audio, MVE_END: 1}
-    assert (m.frames, m.frame_us, m.mode_width, m.mode_height, m.width, m.height) == (frames, frame_us, 640, 480,
+    assert (m.frames, m.frame_us, m.mode_width, m.mode_height, m.width, m.height) == (frames, frame_us, WIDTH_MAX, HEIGHT_MAX,
                                                                                        432, 320)
     assert (m.audio_rate, m.audio_stereo, m.audio_16bit, m.audio_compressed, m.audio_started) == (22050, True, False,
                                                                                                    False, True)
@@ -84,7 +85,7 @@ def test_vga_movie_sets_its_mode(lib, game_dir):
     assert movie.opened == MVE_OK
     while movie.step() == MVE_AUDIO:
         pass
-    assert (movie.m.mode_width, movie.m.mode_height) == (320, 200)
+    assert (movie.m.mode_width, movie.m.mode_height) == (C.SCREEN_W, C.SCREEN_H)
 
 
 @pytest.mark.parametrize("data", [b"", b"MZ" + bytes(1000), b"Interplay MVE File\x1a\x00" + bytes(6)])

@@ -10,6 +10,7 @@ import time
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from dm2test.control import control, pumped  # noqa: F401 (control is a fixture)
@@ -29,14 +30,15 @@ def lib():
     return load_lib()
 
 # the keypad key of each letter: turn left, forward, turn right, strafe left, back, strafe right
-LETTER_KEYPAD = {SCAN_Q: 0x4B, SCAN_W: 0x4C, SCAN_E: 0x4D, SCAN_A: 0x4F, SCAN_S: 0x50, SCAN_D: 0x51}
+LETTER_KEYPAD = {SCAN_Q: C.KEYPAD_TURN_LEFT, SCAN_W: C.KEYPAD_FORWARD, SCAN_E: C.KEYPAD_TURN_RIGHT, SCAN_A: C.KEYPAD_LEFT,
+                 SCAN_S: C.KEYPAD_BACK, SCAN_D: C.KEYPAD_RIGHT}
 SLOT_BUTTONS_SAVE = 6
 
 
 def last_message_row(lib):
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(ZONE_MESSAGE_AREA, rect)
-    fb = (ctypes.c_uint8 * (SCREEN_W * 200)).in_dll(lib, "fb")
+    fb = (ctypes.c_uint8 * (SCREEN_W * C.SCREEN_H)).in_dll(lib, "fb")
     top = rect[1] + rect[3] - TEXT_LINE_HEIGHT
     return [bytes(fb[y * SCREEN_W + rect[0]:y * SCREEN_W + rect[0] + rect[2]]) for y in range(top, top + TEXT_LINE_HEIGHT)]
 
@@ -274,7 +276,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa:
     assert lib.zone_get_rect(7, rect)  # the viewport
     x, y, w, h = rect
     middle = (y + (h - 8) // 2) * SCREEN_W + x + (w - 8) // 2  # the top left pixel of the party frame
-    fb = (ctypes.c_uint8 * (SCREEN_W * 200)).in_dll(lib, "fb")
+    fb = (ctypes.c_uint8 * (SCREEN_W * C.SCREEN_H)).in_dll(lib, "fb")
     set_mode(lib, ADVANCED)
     try:
         with pumped(lib):
@@ -322,7 +324,7 @@ def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
         loop.quit, state.exit_code = 0, 0
 
 
-TURNBASED = 2
+TURNBASED = C.GAME_MODE_TURNBASED
 
 
 def test_quick_save_goes_to_the_save_folder(lib, advanced, tmp_path):
