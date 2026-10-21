@@ -287,6 +287,14 @@ static struct {
 
 int input_feedback_busy;
 
+bool input_is_waiting(void) { return in.wait != 0; }
+
+bool input_is_idle(void)
+{
+    return !in.key_count && !in.event_count && !in.deferred && in.queue_head == in.queue_tail && !in.script
+           && !in.feedback_waiting && !input_feedback_busy;
+}
+
 void input_init(void)
 {
     int n = 0;
@@ -488,7 +496,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 static uint16_t key_command(int mode, uint16_t key)
 {
     uint16_t command = find_key_command(&input_mode_roots[mode], key);
-    if (command || game_mode == GAME_MODE_VANILLA) return command;
+    if (command || game_mode != GAME_MODE_ADVANCED) return command;
     if (mode == INPUT_MODE_MOVE && (key == KEY_QUICK_SAVE || key == KEY_QUICK_LOAD))
         return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
     if (mode == INPUT_MODE_MOVE && (key == KEY_AUTOMAP || key == KEY_AUTOMAP_M)) return CMD_AUTOMAP;
@@ -1144,9 +1152,6 @@ void input_release_move_arrow(void)
 
 /* ---- Clicks in the dungeon view ---- */
 
-#define ZONE_FRONT_WALL_LOW 0x2fd   /* the parts of the view that show the wall in front of the party */
-#define ZONE_FRONT_WALL_HIGH 0x2fe
-#define ZONE_DROP_CELL_FIRST 0x2f8  /* + cell: where a click drops an object */
 /* The squares of a wall ornament click: the party square, left, right, front. */
 enum { WALL_CELL_PARTY, WALL_CELL_LEFT, WALL_CELL_RIGHT, WALL_CELL_FRONT };
 #define PUSH_RESISTANCE_FIXED 0xff  /* a creature that never moves: a click on it only sounds */
@@ -1678,6 +1683,12 @@ void input_simulate_command_click(uint16_t command)
     const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
     int16_t r[RECT_SIZE];
     if (e && input_get_zone_rect(e->zone, r)) input_mouse_click(r[RECT_X], r[RECT_Y], e->buttons);
+}
+
+bool input_command_rect(uint16_t command, int16_t *rect)
+{
+    const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
+    return e && input_get_zone_rect(e->zone, rect);
 }
 
 uint16_t input_read_key(void)

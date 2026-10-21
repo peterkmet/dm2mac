@@ -261,7 +261,7 @@ Details: `docs/advanced-mode.md`.
 - [ ] L9. Press F5 and F9 with an open inventory, during the pause (Esc), during the sleep, and in the save menu. Expected: nothing happens.
 - [ ] L10. Load a slot, play more than 100 ticks, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
 - [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
-- [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla or advanced" and exit code 2.
+- [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla, advanced, or turnbased" and exit code 2.
 - [ ] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, the direction, and the three cheats OFF. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.
 - [ ] L14. Walk through some rooms and open the automap. Expected: the squares that the view showed are drawn with the minion map icons; squares behind walls and closed doors stay black.
 - [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the close).
@@ -293,6 +293,23 @@ Start `build/dm2` without `--save` unless an item says otherwise. Use a window w
 - [ ] M12. Rename `game/FTL` and start. Expected: the splash, then `INTRO`, then the start menu. Rename it back.
 - [ ] M13. With the control socket (`docs/llm-control.md`, section "Movies"): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
 - [ ] M14. Optional, DOSBox (`tools/dosbox-dm2.conf`): compare the size and the position of the `INTRO` picture with the port.
+
+## T. Turn-based mode
+
+Details: `docs/turnbased-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
+
+- [ ] T1. Start the game. Expected: no start menu and no movie; the dungeon view shows at once; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
+- [ ] T2. Send `new_game`. Expected: the party is on the start square (map 0, x 1, y 8, facing north); the reply has `state`.
+- [ ] T3. Send `act nothing`. Expected: the error `unknown action`; the game time and the screen do not change.
+- [ ] T4. Send `uv run dm2-play act take_object '{"cell": 2}'` and `uv run dm2-play act_many '["turn_left", "turn_right"]'`. Expected: the game gets the action and its args (an error text about the cell or the view, or the turn), and the batch runs two turns (`ran` 2).
+- [ ] T5. Watch the window during `act move_forward` and `act turn_left`. Expected: the party walks and turns on the screen; the window ignores the keyboard and the mouse.
+- [ ] T6. Open an inventory and send `act look '{"champion": 0, "slot": 0}'`. Expected: `look` has the same name and lines as the eye panel shows for that object.
+- [ ] T7. Walk to a dialog or a mirror and use `act click` on its buttons. Expected: the dialog closes; `save`, `load`, and `new_game` give `close the dialog first (act click or act key)` while it is open.
+- [ ] T8. Send `save`, walk some squares, then send `load`. Expected: the party is back on the saved square; the game time is the saved time plus 1. Send `new_game`. Expected: a new game.
+- [ ] T9. Let the party die. Expected: the reply has `game_over` true; `act`, `wait`, and `save` give `game over`; `load` restores the game.
+- [ ] T10. Run `uv run dm2-play --brief get_state`. Expected: a short text with the party, the champions, and the squares ahead.
+- [ ] T11. Create `playthroughs/current/coordinator/`, run some `dm2-play` calls without `DM2_PLAY_LOG_DIR`, and read `calls.log`. Expected: one line per call. Remove the folder and call again. Expected: no log file is written.
+- [ ] T12. Open a dialog (T7), then run `uv run dm2-play wait '{"ticks": 5000}'` and measure the time until the reply. Expected: the game does not tick, so the turn ends after 16 frames per tick (80000 frames). Note the time and whether `dm2-play` stops with a timeout (its limit is 150 seconds).
 
 ## Known deviations
 

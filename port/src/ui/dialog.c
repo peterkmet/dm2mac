@@ -15,7 +15,6 @@
 #include "view.h"
 #include "zone.h"
 
-#define DIALOG_TEXT_COUNT 20            /* text entries 0 to 19: the buttons */
 #define DIALOG_MESSAGE_ENTRY 0x14
 #define DIALOG_PICTURE_ENTRY 0
 #define DIALOG_VOLUME_BUTTONS 7

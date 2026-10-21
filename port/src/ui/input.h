@@ -1,5 +1,6 @@
 #ifndef INPUT_H
 #define INPUT_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "game.h"
 
@@ -18,7 +19,9 @@
 /* Commands (command_execute). */
 enum {
     CMD_INVENTORY_FIRST = 7, CMD_INVENTORY_LEADER = 0x0b, CMD_LEADER_FIRST = 0x10, CMD_LEADER_LAST = 0x13,
-    CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41, CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
+    CMD_SLOT_FIRST = 0x14, CMD_SLOT_LAST = 0x41,
+    CMD_SLOT_INVENTORY_FIRST = 0x1c,    /* + slot: a slot of the open inventory, after the hands of the 4 status boxes */
+    CMD_SLOT_CHEST_FIRST = 0x3a,        /* + slot - SLOT_CONTAINER_FIRST: a slot of the open chest */ CMD_VIEWPORT = 0x50, CMD_LEADER_INVENTORY = 0x52,
     CMD_ROTATE_LEFT = 0x5d, CMD_ROTATE_RIGHT = 0x5e, CMD_SLEEP = 0x8e, CMD_WAKE = 0x8f, CMD_PAUSE = 0x90,
     CMD_RESUME = 0x91, CMD_QUIT = 0xe0, CMD_SAVE = 0x8c, CMD_VOLUME = 0x8d, CMD_EDIT_CHAMPION_NAME = 0x48,
     CMD_NEW_GAME = 0xd7, CMD_NEW_GAME_B = 0xd8, CMD_LOAD_GAME = 0xd9, CMD_MENU_PICTURE = 0xda, CMD_CANCEL_PUSH = 0xe1,
@@ -57,6 +60,10 @@ extern InputMatch input_match;
 
 /* A click feedback script waits for the next game step. */
 extern int input_feedback_busy;
+/* A command waits (in.wait) after the last one: the input queue takes no new command. */
+bool input_is_waiting(void);
+/* No pending key, mouse event, deferred click, queued command, or running click feedback script. */
+bool input_is_idle(void);
 
 /* Builds the input tables; call once. */
 void input_init(void);
@@ -103,6 +110,9 @@ void input_flush(void);
 void input_refine_champion_click(Command *c);
 /* A left or right click on the zone of command in the current mode, as if the player clicked it. */
 void input_simulate_command_click(uint16_t command);
+/* The screen rect of the zone that input_simulate_command_click clicks for command; false when the current mode has
+   none. */
+bool input_command_rect(uint16_t command, int16_t *rect);
 /* Takes a key from the keys that the input has not read yet; 0 for none. */
 uint16_t input_read_key(void);
 /* The character of a key code (US layout), 0 for none. */

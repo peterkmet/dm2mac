@@ -92,6 +92,11 @@ static int detail_only(int category, int index)
     return gdat_entry_index(gdat_current(), category, index, GDAT_TYPE_VALUE, STRIP_DETAIL_KEY) != 0;
 }
 
+bool mmap_shows_floor_ornament(int ornament)
+{
+    return ornament != ORNAMENT_NONE && !detail_only(CAT_FLOOR_ORNAMENT, ornament);
+}
+
 /* Clips rect to clip; *dx, *dy: the pixels cut at the left and top. Returns 0 when nothing is left. */
 static int rect_clip(int16_t *rect, const int16_t *clip, int16_t *dx, int16_t *dy)
 {
@@ -164,7 +169,7 @@ static void draw_floor(const ViewSquare *s, const Strip *base, int x, int y, int
 {
     draw_strip(base, ICON_FLOOR, x, y, 0);
     int ornament = s->side[SIDE_FLOOR_ORNAMENT] & ORNAMENT_INDEX_MASK;
-    if (ornament != ORNAMENT_NONE && (flags & MAP_OPTION_DETAILS || !detail_only(CAT_FLOOR_ORNAMENT, ornament))) {
+    if (flags & MAP_OPTION_DETAILS ? ornament != ORNAMENT_NONE : mmap_shows_floor_ornament(ornament)) {
         Strip o = map_icon_strip(CAT_FLOOR_ORNAMENT, ornament);
         if (o.count) {
             int frame = aspect_floor_frame(s->side[SIDE_FLOOR_ORNAMENT]);

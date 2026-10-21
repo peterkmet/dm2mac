@@ -470,6 +470,25 @@ int session_init(void)
     return 1;
 }
 
+int session_start_new_game(void)
+{
+    session.new_game = 1;
+    session.use_dungenb = 0;
+    if (!load_new_game()) return 0;
+    sensor_start_timers();
+    main_loop.end = 0;
+    session.completed = 0;
+    move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
+    party.redraw = REDRAW_ALL_VIEW;
+    sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
+    sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
+    ui_reset();
+    money_init_coin_table();
+    play_start_session();
+    input_flush();
+    return 1;
+}
+
 int session_start_save(const char *path)
 {
     int first = !weather.dungeon_loaded;
@@ -497,7 +516,7 @@ void session_quit(void)
 void session_complete(void)
 {
     session.completed = 1;
-    session_quit();
+    if (game_mode != GAME_MODE_TURNBASED) session_quit();  /* the turn-based mode stays for the next load or new game */
 }
 
 void session_end(int party_dead)
@@ -633,7 +652,8 @@ int args_drop_save(int argc, char **argv)
     int out = 1;
     for (int i = 1; i < argc; i++) {
         int is_value_option = !strcmp(argv[i], "--data") || !strcmp(argv[i], "--filter") || !strcmp(argv[i], "--save")
-                              || !strcmp(argv[i], "--control") || !strcmp(argv[i], "--mode");
+                              || !strcmp(argv[i], "--control") || !strcmp(argv[i], "--mode")
+                              || !strcmp(argv[i], "--saves");
         if (is_value_option && i + 1 < argc) {
             if (strcmp(argv[i], "--save")) {
                 argv[out++] = argv[i];

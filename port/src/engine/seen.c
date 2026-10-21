@@ -7,7 +7,6 @@
 #include "seen.h"
 #include "weather.h"
 
-enum { VIEW_DEPTHS = 5, VIEW_HALF_WIDTH = 3, VIEW_WIDTH = 2 * VIEW_HALF_WIDTH + 1 };
 /* The side squares of each row of the dungeon view: 3 squares at depth 0 and 1, 5 at depth 2 and 3, 7 at depth 4. */
 static const int8_t row_half_width[VIEW_DEPTHS] = {1, 1, 2, 2, 3};
 static const char save_magic[] = "AMAP";
@@ -83,10 +82,10 @@ static int light_depths(void)
     return VIEW_DEPTHS;
 }
 
-void seen_mark(int map, int x, int y, int dir)
+int seen_visible(int map, int x, int y, int dir, SeenSquare *out, int max)
 {
     uint8_t open[VIEW_DEPTHS][VIEW_WIDTH] = {{0}};  /* seen, and the view looks on through it */
-    int depths = light_depths();
+    int depths = light_depths(), count = 0;
     for (int depth = 0; depth < depths; depth++) {
         for (int side = 0; side <= row_half_width[depth]; side++)
             for (int sign = 1; sign >= -1; sign -= 2) {
@@ -97,11 +96,21 @@ void seen_mark(int map, int x, int y, int dir)
                 if (!visible) continue;
                 int16_t sx = (int16_t)x, sy = (int16_t)y;
                 dun_move_relative(dir, depth, side * sign, &sx, &sy);
-                uint8_t *square = seen_square(map, sx, sy);
-                if (square) *square = 1;
+                if (count < max) out[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), sx, sy};
                 open[depth][column] = !blocks_sight(map, sx, sy);
             }
         if (!open[depth][VIEW_HALF_WIDTH]) break;  /* the view ends at the first middle square that blocks sight */
+    }
+    return count;
+}
+
+void seen_mark(int map, int x, int y, int dir)
+{
+    SeenSquare squares[SEEN_VISIBLE_MAX];
+    int count = seen_visible(map, x, y, dir, squares, SEEN_VISIBLE_MAX);
+    for (int i = 0; i < count; i++) {
+        uint8_t *square = seen_square(map, squares[i].x, squares[i].y);
+        if (square) *square = 1;
     }
 }
 

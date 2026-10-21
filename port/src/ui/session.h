@@ -37,20 +37,25 @@ void session_draw_name_entry(const char *name, int cursor);
 void session_save(void);
 /* The start of a run: the menu until a game loads, then the session of that game. Returns 0 when the player quit. */
 int session_init(void);
+
+/* Starts a new game from DUNGEON.DAT at once, as the menu choice NEW GAME does, without the menu. Returns 0 when the
+   dungeon does not load. */
+int session_start_new_game(void);
 /* Loads the save file at path and starts its game at once, with the party view and light of a menu load. Returns 0
    when the file does not load. */
 int session_start_save(const char *path);
 /* The end of a game: the party died (party_dead 1) or the player quit (0). Offers the load of the last slot; returns
    when a game loaded again, else quits. */
 void session_end(int party_dead);
-/* The party finished the game: the screen goes black and the program ends. */
+/* The party finished the game: the screen goes black and the program ends; the turn-based mode only sets
+   session.completed. */
 void session_complete(void);
 /* Ends the program with the exit code of the session. */
 void session_quit(void);
 /* The player edits the name and the title of a champion in the inventory. */
 void session_edit_champion_name(Champion *c);
 
-/* Removes every "--save PATH" pair from argv, walking it like the option parser (--mode and the other options stay);
+/* Removes every "--save PATH" pair from argv, walking it like the option parser (--mode, --saves and the other options stay);
    returns the new argc. */
 int args_drop_save(int argc, char **argv);
 

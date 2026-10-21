@@ -718,6 +718,28 @@ def test_message_area_scrolls(port):
     assert rows(after, y + h - 6, 6) != rows(before, y + h - 6, 6)
 
 
+MESSAGE_SHOW_TIME = 90
+
+
+def test_message_rows_follow_print_scroll_and_expiry(port):
+    """Four printed lines: the first scrolls out; each row clears at its expiry time."""
+    lib = port
+    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
+    lib.text_message_row.restype = ctypes.c_char_p
+    game = Game.in_dll(lib, "game")
+    start = 1000
+    for step, message in enumerate([b"\nONE", b"\nTWO", b"\nTHREE", b"\nFOUR"]):
+        game.game_time = start + step
+        lib.text_print_message(15, message)
+    assert [lib.text_message_row(i) for i in range(3)] == [b"TWO", b"THREE", b"FOUR"]
+    game.game_time = start + 1 + MESSAGE_SHOW_TIME
+    lib.text_clear_expired_rows()
+    assert [lib.text_message_row(i) for i in range(3)] == [b"", b"THREE", b"FOUR"]
+    game.game_time = start + 3 + MESSAGE_SHOW_TIME
+    lib.text_clear_expired_rows()
+    assert [lib.text_message_row(i) for i in range(3)] == [b"", b"", b""]
+
+
 def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port

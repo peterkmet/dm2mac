@@ -20,18 +20,20 @@
 #include "item.h"
 #include "le.h"
 #include "movie.h"
+#include "play.h"
 #include "save.h"
+#include "session.h"
+#include "state_json.h"
+#include "turn.h"
 #include "ui.h"
 #include "video.h"
 
 #define INPUT_SIZE 4096               /* a request line up to its newline */
-#define REPLY_SIZE 4096
-#define REPLY_RESERVE 2               /* the newline and the end mark of a reply */
+#define REPLY_LINE_SIZE 256           /* one piece of a reply written by put */
 #define ERROR_SIZE 64
 #define NAME_SIZE 32
 #define WAIT_MAX_TICKS 6000
 #define SCAN_CODE_COUNT 256           /* the low byte of a key code */
-#define KEY_CODE_MAX 0xffff
 #define HEX_DIGITS 4                  /* the digits of a \uXXXX escape */
 #define HEX_BASE 16
 #define UNICODE_ESCAPE_PREFIX 2       /* the backslash and the u of \uXXXX */
@@ -59,23 +61,13 @@ static char socket_path[sizeof(((struct sockaddr_un *)0)->sun_path)];
 static char input[INPUT_SIZE];
 static size_t input_length;
 static int discarding;                /* the rest of a too long line goes up to its newline */
-static char reply[REPLY_SIZE];
-static size_t reply_length;
-static int reply_overflow;
+static Json reply;
 
 /* A wait request: the reply goes out when main_loop.timer_ticks reached start + ticks. */
 static struct {
     int pending;
     uint32_t start, ticks;
 } waiting;
-
-/* The input modes by number (the roots of the input tree in input.c). */
-static const char *const mode_names[] = {
-    [INPUT_MODE_MENU] = "menu", [INPUT_MODE_PICTURE] = "picture", [INPUT_MODE_SLEEP] = "sleep", [INPUT_MODE_PAUSE] = "pause",
-    [INPUT_MODE_DIALOG] = "dialog", [INPUT_MODE_MOVE] = "move", [INPUT_MODE_PUSH] = "push", [INPUT_MODE_RECRUIT] = "recruit",
-    [INPUT_MODE_INVENTORY] = "inventory", [INPUT_MODE_NAME] = "name",
-};
-#define MODE_COUNT ((int)(sizeof mode_names / sizeof mode_names[0]))
 
 /* PC scan codes of the keys without a character; the arrows give the keypad codes that main.c gives them. */
 static const struct { const char *name; uint16_t code; } key_names[] = {
@@ -92,14 +84,14 @@ static const struct { const char *prefix; uint16_t bit; } key_modifiers[] = {
 };
 
 /* The key code of a key name: a name of key_names, a character of the US layout, with modifier prefixes; 0 none. */
-static uint16_t key_code(const char *name)
+uint16_t control_key_code(const char *name)
 {
     for (size_t i = 0; i < sizeof key_names / sizeof key_names[0]; i++)
         if (!strcmp(name, key_names[i].name)) return key_names[i].code;
     for (size_t i = 0; i < sizeof key_modifiers / sizeof key_modifiers[0]; i++) {
         size_t n = strlen(key_modifiers[i].prefix);
         if (strncmp(name, key_modifiers[i].prefix, n)) continue;
-        uint16_t code = key_code(name + n);
+        uint16_t code = control_key_code(name + n);
         return code ? code | key_modifiers[i].bit : 0;
     }
     if (!name[0] || name[1]) return 0;
@@ -112,7 +104,7 @@ static uint16_t key_code(const char *name)
 
 /* Requests: a flat search for "key": value. */
 
-static const char *find_value(const char *line, const char *key)
+const char *control_find_value(const char *line, const char *key)
 {
     char pattern[NAME_SIZE + 2];
     snprintf(pattern, sizeof pattern, "\"%s\"", key);
@@ -156,10 +148,10 @@ static int put_utf8(char *out, size_t size, size_t *n, long c)
 
 /* The JSON string value of key, decoded (escapes, \uXXXX to UTF-8); 0 when it is missing, bad, too long, or has a
    NUL character. */
-static int get_string(const char *line, const char *key, char *out, size_t size)
+int control_get_string(const char *line, const char *key, char *out, size_t size)
 {
     static const char escapes[] = "\"\"\\\\//b\bf\fn\nr\rt\t";
-    const char *p = find_value(line, key);
+    const char *p = control_find_value(line, key);
     size_t n = 0;
     if (!p || *p++ != '"') return 0;
     while (*p != '"') {
@@ -189,9 +181,9 @@ static int get_string(const char *line, const char *key, char *out, size_t size)
     return 1;
 }
 
-static long get_int(const char *line, const char *key, long missing)
+long control_get_int(const char *line, const char *key, long missing)
 {
-    const char *p = find_value(line, key);
+    const char *p = control_find_value(line, key);
     char *end;
     if (!p) return missing;
     long value = strtol(p, &end, DECIMAL_BASE);
@@ -200,30 +192,23 @@ static long get_int(const char *line, const char *key, long missing)
 
 /* Replies: JSON text in reply. */
 
-/* Appends to reply; a reply that does not fit becomes an error reply in send_reply. */
+/* Appends a short formatted piece to reply. */
+/* Each piece stays under REPLY_LINE_SIZE; text of the game or the request goes through json_strn (put_string). */
 static void put(const char *format, ...)
 {
-    size_t room = sizeof reply - reply_length - REPLY_RESERVE + 1;
+    char piece[REPLY_LINE_SIZE];
     va_list args;
     va_start(args, format);
-    int n = vsnprintf(reply + reply_length, room, format, args);
+    vsnprintf(piece, sizeof piece, format, args);
     va_end(args);
-    if (n < 0 || (size_t)n >= room) reply_overflow = 1;
-    else reply_length += (size_t)n;
+    json_raw(&reply, piece);
 }
 
 /* A JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). The game
    texts of GRAPHICS.DAT (701 entries) are ASCII, so only request text can bring other bytes. */
 static void put_string(const char *text, size_t n)
 {
-    put("\"");
-    for (size_t i = 0; i < n && text[i]; i++) {
-        unsigned char c = (unsigned char)text[i];
-        if (c == '"' || c == '\\') put("\\%c", c);
-        else if (c < ' ') put("\\u%04x", c);
-        else put("%c", c);
-    }
-    put("\"");
+    json_strn(&reply, text, n);
 }
 
 static void close_client(void)
@@ -233,23 +218,19 @@ static void close_client(void)
     input_length = 0;
     discarding = 0;
     waiting.pending = 0;
+    if (turn_is_pending()) turn_drop_reply();
 }
 
 /* Sends reply as one line and clears it. */
 static void send_reply(void)
 {
-    if (reply_overflow) {
-        reply_overflow = 0;
-        reply_length = 0;
-        put("{\"ok\":false,\"error\":\"reply too long\"}");
-    }
-    reply[reply_length++] = '\n';
-    for (size_t sent = 0; client_fd >= 0 && sent < reply_length;) {
-        ssize_t n = send(client_fd, reply + sent, reply_length - sent, SEND_FLAGS);
+    json_raw(&reply, "\n");
+    for (size_t sent = 0; client_fd >= 0 && sent < reply.len;) {
+        ssize_t n = send(client_fd, reply.s + sent, reply.len - sent, SEND_FLAGS);
         if (n <= 0) close_client();
         else sent += (size_t)n;
     }
-    reply_length = 0;
+    reply.len = 0;
 }
 
 static void send_ok(void)
@@ -272,7 +253,7 @@ static void send_state(void)
 {
     int mode = input_get_mode();
     bool movie = movie_is_playing();
-    const char *mode_name = movie ? "movie" : mode >= 0 && mode < MODE_COUNT ? mode_names[mode] : "unknown";
+    const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
     put("{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time, main_loop.timer_ticks,
         mode_name);
     if (movie || mode != INPUT_MODE_DIALOG) put("null");
@@ -419,7 +400,7 @@ static void screenshot(const char *path)
 /* A screen position of a request; 0 with an error reply when it is missing or off the screen. */
 static int get_position(const char *request, int *x, int *y)
 {
-    long px = get_int(request, "x", -1), py = get_int(request, "y", -1);
+    long px = control_get_int(request, "x", -1), py = control_get_int(request, "y", -1);
     char error[ERROR_SIZE];
     if (px >= 0 && py >= 0 && px < SCREEN_W && py < SCREEN_H) {
         *x = (int)px, *y = (int)py;
@@ -433,8 +414,8 @@ static int get_position(const char *request, int *x, int *y)
 static void handle_key(const char *request)
 {
     char name[NAME_SIZE];
-    long code = get_int(request, "key", 0);
-    if (get_string(request, "key", name, sizeof name)) code = key_code(name);
+    long code = control_get_int(request, "key", 0);
+    if (control_get_string(request, "key", name, sizeof name)) code = control_key_code(name);
     if (code <= 0 || code > KEY_CODE_MAX) {
         send_error("unknown key");
         return;
@@ -450,7 +431,7 @@ static void handle_button(const char *request, int down, int up)
     char button[NAME_SIZE] = "left";
     int x, y;
     if (!get_position(request, &x, &y)) return;
-    get_string(request, "button", button, sizeof button);
+    control_get_string(request, "button", button, sizeof button);
     int right = !strcmp(button, "right");
     if (!right && strcmp(button, "left")) {
         send_error("button must be left or right");
@@ -467,12 +448,153 @@ static void handle_button(const char *request, int down, int up)
     send_ok();
 }
 
+/* A reply {"ok":true,"<key>":<part>} with a part of the game state. */
+static void send_part(const char *key, void (*part)(Json *))
+{
+    json_open(&reply, '{');
+    json_key(&reply, "ok");
+    json_bool(&reply, 1);
+    json_key(&reply, key);
+    part(&reply);
+    json_close(&reply, '}');
+    send_reply();
+}
+
+/* Sends the error of a turn request, or nothing when the turn started (the reply comes at its end). A batch that
+   ended before its first turn gets its reply now. */
+static void start_turn_or_fail(const char *error)
+{
+    if (error) send_error(error);
+    else if (!turn_is_pending()) {
+        turn_reply(&reply);
+        send_reply();
+    }
+}
+
+static int game_lost;                 /* a damaged save and a failed restore left no game to play */
+
+/* The input modes in which the game runs a modal loop: save, load, and a new game wait until it closes. */
+static bool modal_mode(void)
+{
+    int mode = input_get_mode();
+    return mode == INPUT_MODE_MENU || mode == INPUT_MODE_PICTURE || mode == INPUT_MODE_DIALOG || mode == INPUT_MODE_NAME;
+}
+
+/* Replies the error and returns true while a modal loop of the game runs. */
+static bool refuse_in_modal_loop(void)
+{
+    if (!modal_mode()) return false;
+    send_error("close the dialog first (act click or act key)");
+    return true;
+}
+
+/* After a load or a new game: the end of the last game is over. */
+static void game_restarts(void)
+{
+    main_loop.end = 0;
+    session.completed = 0;
+    game_lost = 0;
+}
+
+/* Loads QUICK.DAT of the save folder; a missing or damaged file keeps the game, a failed restore loses it. */
+static void handle_load(void)
+{
+    if (refuse_in_modal_loop()) return;
+    int end = main_loop.end;
+    main_loop.end = 0;  /* the loaded game starts with a full game step, as after the load of a slot */
+    int result = advanced_quick_load();
+    if (result == QUICK_LOST) game_lost = 1;
+    if (result != QUICK_LOADED) {
+        main_loop.end = end;
+        send_error(result == QUICK_MISSING ? "no saved game (use save first)"
+                   : result == QUICK_BLOCKED ? "cannot write QUICK.TMP: nothing loaded" : "the saved game is damaged");
+        return;
+    }
+    game_restarts();
+    send_part("state", state_json_state);
+}
+
+/* Starts a new game from DUNGEON.DAT, as the menu choice NEW GAME does. */
+static void handle_new_game(void)
+{
+    if (refuse_in_modal_loop()) return;
+    if (!session_start_new_game()) {
+        game_lost = 1;
+        send_error("cannot start the new game");
+        return;
+    }
+    game_restarts();
+    send_part("state", state_json_state);
+}
+
+/* Writes the game to QUICK.DAT of the save folder; the old file stays on an error. */
+static void handle_save(void)
+{
+    if (refuse_in_modal_loop()) return;
+    if (ui.candidate) send_error("answer the candidate first (act recruit)");
+    else if (!advanced_quick_save()) send_error("cannot write the save file");
+    else send_ok();
+}
+
+/* The commands of a running game in the turn-based mode: the parts of the game state, and after a game over only
+   those; save and the turns. Returns false for a command that the other modes share (state, screenshot) or do not
+   know. */
+static bool handle_turnbased_game_request(const char *request, const char *cmd)
+{
+    static const char *const turns[] = { "act", "act_many", "wait", "save" };
+    if (!strcmp(cmd, "get_state")) send_part("state", state_json_state);
+    else if (!strcmp(cmd, "get_view")) send_part("view", state_json_view);
+    else if (!strcmp(cmd, "get_map")) send_part("map", state_json_map);
+    else {
+        for (size_t i = 0; i < sizeof turns / sizeof turns[0] && state_json_game_over(); i++)
+            if (!strcmp(cmd, turns[i])) {
+                send_error("game over");
+                return true;
+            }
+        if (!strcmp(cmd, "save")) handle_save();
+        else if (!strcmp(cmd, "act")) start_turn_or_fail(turn_act(request));
+        else if (!strcmp(cmd, "act_many")) start_turn_or_fail(turn_act_many(request));
+        else if (!strcmp(cmd, "wait")) start_turn_or_fail(turn_wait(request));
+        else return false;
+    }
+    return true;
+}
+
+/* The commands of the turn-based mode: load and new_game also after a game over or a lost game, the refusal of every
+   other command after a lost game and of the direct input commands. Returns false for quit, state, screenshot, and
+   the commands that no mode knows. */
+static bool handle_turnbased_request(const char *request, const char *cmd)
+{
+    static const char *const direct[] = { "key", "click", "press", "release", "command", "move" };
+    if (!strcmp(cmd, "quit")) return false;
+    if (!strcmp(cmd, "load")) {
+        handle_load();
+        return true;
+    }
+    if (!strcmp(cmd, "new_game")) {
+        handle_new_game();
+        return true;
+    }
+    if (game_lost) {
+        send_error("no game is running: use load or new_game");
+        return true;
+    }
+    for (size_t i = 0; i < sizeof direct / sizeof direct[0]; i++)
+        if (!strcmp(cmd, direct[i])) {
+            send_error("use act in turnbased mode");
+            return true;
+        }
+    return handle_turnbased_game_request(request, cmd);
+}
+
 static void handle_request(const char *request)
 {
     char cmd[NAME_SIZE], path[PATH_MAX];
     int x, y;
-    if (!get_string(request, "cmd", cmd, sizeof cmd)) {
+    if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         send_error("missing cmd");
+    } else if (game_mode == GAME_MODE_TURNBASED && handle_turnbased_request(request, cmd)) {
+        return;
     } else if (!strcmp(cmd, "state")) {
         send_state();
     } else if (!strcmp(cmd, "key")) {
@@ -488,14 +610,14 @@ static void handle_request(const char *request)
         input_mouse_x = x, input_mouse_y = y;
         send_ok();
     } else if (!strcmp(cmd, "command")) {
-        long id = get_int(request, "id", -1);
+        long id = control_get_int(request, "id", -1);
         if (id < 0 || id > KEY_CODE_MAX) send_error("missing id");
         else {
             if (!movie_is_playing()) input_simulate_command_click((uint16_t)id);
             send_ok();
         }
     } else if (!strcmp(cmd, "wait")) {
-        long ticks = get_int(request, "ticks", 0);
+        long ticks = control_get_int(request, "ticks", 0);
         if (ticks < 1 || ticks > WAIT_MAX_TICKS) {
             char error[ERROR_SIZE];
             snprintf(error, sizeof error, "ticks must be 1-%d", WAIT_MAX_TICKS);
@@ -506,7 +628,7 @@ static void handle_request(const char *request)
             waiting.ticks = (uint32_t)ticks;
         }
     } else if (!strcmp(cmd, "screenshot")) {
-        if (!get_string(request, "path", path, sizeof path)) send_error("missing path");
+        if (!control_get_string(request, "path", path, sizeof path)) send_error("missing path");
         else screenshot(path);
     } else if (!strcmp(cmd, "quit")) {
         main_loop.quit = main_loop.closed = 1;
@@ -526,12 +648,22 @@ static void prepare_connection(int fd)
 #endif
 }
 
+/* Closes the client when it closed its connection and has no unread byte. */
+static void drop_closed_client(void)
+{
+    char next;
+    if (client_fd < 0) return;
+    ssize_t n = recv(client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
+    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) close_client(); /* the client left */
+}
+
 /* Takes the waiting connections: the first becomes the client, the others get a busy error. */
 static void accept_clients(void)
 {
     static const char busy[] = "{\"ok\":false,\"error\":\"busy\"}\n";
     for (int fd; (fd = accept(listen_fd, NULL, NULL)) >= 0;) {
         prepare_connection(fd);
+        drop_closed_client();
         if (client_fd < 0) {
             client_fd = fd;
             continue;
@@ -552,7 +684,7 @@ static void read_requests(void)
     }
     if (n > 0) input_length += (size_t)n;
     char *end;
-    while (client_fd >= 0 && !waiting.pending && (end = memchr(input, '\n', input_length))) {
+    while (client_fd >= 0 && !waiting.pending && !turn_is_pending() && (end = memchr(input, '\n', input_length))) {
         size_t used = (size_t)(end + 1 - input);
         *end = 0;
         if (discarding) discarding = 0;
@@ -595,14 +727,19 @@ int control_open(const char *path)
     return 1;
 }
 
+/* One frame of the pending turn: a client that left gets no reply; the reply goes out when the turn ends. */
+static void poll_turn(void)
+{
+    drop_closed_client();
+    if (!turn_poll()) return;
+    turn_reply(&reply);
+    send_reply();
+}
+
 void control_poll(void)
 {
     if (listen_fd < 0) return;
-    if (waiting.pending) {
-        char next;
-        ssize_t n = recv(client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
-        if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) close_client(); /* the client left */
-    }
+    if (waiting.pending) drop_closed_client();
     if (waiting.pending) {
         uint32_t ran = main_loop.timer_ticks - waiting.start;
         if (ran >= waiting.ticks) {
@@ -611,9 +748,20 @@ void control_poll(void)
             send_reply();
         }
     }
-    if (!waiting.pending) read_requests();
+    if (!waiting.pending && !turn_is_pending()) read_requests();
+    if (turn_is_pending()) poll_turn();
     accept_clients();
 }
+
+void control_frame(void)
+{
+    control_poll();
+    if (!turn_is_pending()) return;
+    uint32_t time = game.game_time;
+    for (int i = 0; i < STEP_TICKS && game.game_time == time && !main_loop.end && !main_loop.quit; i++) play_tick();
+}
+
+bool control_turn_pending(void) { return turn_is_pending(); }
 
 void control_close(void)
 {
@@ -623,4 +771,5 @@ void control_close(void)
         unlink(socket_path);
     }
     listen_fd = -1;
+    game_lost = 0;
 }

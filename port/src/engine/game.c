@@ -23,7 +23,7 @@ int input_drag_state;
 int input_mouse_buttons;
 Session session = {.slot = SAVE_SLOT_NONE};
 int game_mode = GAME_MODE_VANILLA;
-const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced"};
+const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
 int cheat_light, cheat_immortal, cheat_food;
 
 void champ_wake_party(void)

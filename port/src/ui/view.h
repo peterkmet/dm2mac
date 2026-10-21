@@ -1,5 +1,6 @@
 #ifndef VIEW_H
 #define VIEW_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "aspect.h"
 #include "draw.h"
@@ -57,6 +58,7 @@ enum view_click_kind {
 };
 #define VIEW_CLICK_ZONE_MAX 32
 #define VIEW_CLICK_ZONE_FIXED 9     /* zones 0 to 7: the cells of the party square and of the square in front; 8: an alcove */
+#define VIEW_CLICK_ZONE_ALCOVE (VIEW_CLICK_ZONE_FIXED - 1)  /* the click zone of the alcove ahead */
 extern ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
 extern int view_click_zone_count;
 /* The object of a click at (x, y) of the viewport among the objects in the cell of thing (the cell bits) on the
@@ -93,5 +95,23 @@ int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
 /* Clicks in the viewport (input.c). */
 /* A click in the dungeon view: walls, doors, objects, creatures. */
 void view_click_in_viewport(int x, int y);
+
+/* The view position of the square at depth (0 to 4) and side (negative to the left), -1 when the view has none. */
+int view_position(int depth, int side);
+/* What the view draws of the square at a view position with an aspect (enum view_aspect): VIEW_DRAWS_* bits. */
+enum {
+    VIEW_DRAWS_FRONT_FACE = 1, VIEW_DRAWS_SIDE_FACE = 2,   /* the wall faces of a wall square */
+    VIEW_DRAWS_CREATURES = 4, VIEW_DRAWS_OBJECTS = 8, VIEW_DRAWS_MISSILES = 0x10, VIEW_DRAWS_EXPLOSIONS = 0x20,
+    VIEW_DRAWS_FLOOR_ORNAMENT = 0x40, VIEW_DRAWS_DOOR = 0x80,   /* the door picture with its button */
+};
+unsigned view_draws(int pos, int aspect);
+/* True when the view draws the floor ornament (an ornament index) on a floor square at a view position. */
+bool view_shows_floor_ornament(int pos, int ornament);
+/* SENSOR_FLAGS of a wall shop sensor and its display sensor. */
+#define SHOP_SHOWN SENSOR_BUSY          /* the display item is chosen */
+#define SHOP_STEP_FORWARD SENSOR_STATE  /* the shop: the next click goes to the next item */
+
+/* Falling rain shows over the view: its slant shows the wind. */
+bool view_rain_shows(void);
 
 #endif

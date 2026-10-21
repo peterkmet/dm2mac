@@ -447,13 +447,22 @@ int magic_cast_entered_runes(void)
     return result != 0;
 }
 
+uint16_t magic_rune_mana_cost(int champ, int rune)
+{
+    Champion *c = champion(champ);
+    uint8_t *runes = champion_runes(c);
+    int n = c->rune_count;
+    uint16_t mana = rune_mana[n * RUNES_PER_SET + rune];
+    if (n) mana = (uint16_t)(mana * power_rune_mana_factor[runes[0] - RUNE_FIRST] >> POWER_RUNE_FACTOR_SHIFT);
+    return mana;
+}
+
 void magic_add_rune(int rune)
 {
     Champion *c = champion(action.champion - 1);
     uint8_t *runes = champion_runes(c);
     int n = c->rune_count;
-    uint16_t mana = rune_mana[n * RUNES_PER_SET + rune];
-    if (n) mana = (uint16_t)(mana * power_rune_mana_factor[runes[0] - RUNE_FIRST] >> POWER_RUNE_FACTOR_SHIFT);
+    uint16_t mana = magic_rune_mana_cost(action.champion - 1, rune);
     int added = mana <= c->mana;
     if (added) {
         c->mana = (int16_t)(c->mana - mana);

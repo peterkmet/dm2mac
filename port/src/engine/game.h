@@ -64,12 +64,15 @@ typedef struct {
     int exit_code;
     char save_name[SAVE_NAME_SIZE]; /* the name of the slot in the save dialog */
     char data_dir[SAVE_PATH_SIZE];  /* the game folder: DATA holds the dungeon and the saves */
+    char save_dir[SAVE_PATH_SIZE];  /* the folder of QUICK.DAT (--saves); empty: <data_dir>/DATA */
 } Session;
 extern Session session;
 
 /* The game modes: vanilla is the original game; advanced adds the W A S D Q E keys, the quick save (F5) and quick
-   load (F9), the automap (Tab or M), and its cheats. Without the cheats the game rules are the same in both modes. */
-enum { GAME_MODE_VANILLA, GAME_MODE_ADVANCED, GAME_MODE_COUNT };
+   load (F9), the automap (Tab or M), and its cheats; turnbased plays turn by turn over the control socket, with the
+   seen squares and the AMAP block of advanced, without its keys and cheats. Without the cheats the game rules are the
+   same in all modes. */
+enum { GAME_MODE_VANILLA, GAME_MODE_ADVANCED, GAME_MODE_TURNBASED, GAME_MODE_COUNT };
 extern int game_mode;                   /* GAME_MODE_VANILLA in the library; main.c sets the --mode value */
 extern const char *const game_mode_names[GAME_MODE_COUNT];
 /* The cheats, switched on the automap. Not saved; a new or loaded game turns them off. */

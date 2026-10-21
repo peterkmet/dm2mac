@@ -224,6 +224,8 @@ void champ_set_redraw_flags(uint16_t flags);
 void champ_init_party_state(void);
 
 /* Champion actions (champ_action.c). */
+/* action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
+extern int16_t champ_action_result;
 /* Runs action (0 to 2, -1: none) of the open action menu; returns 1 when the action was done. */
 int champ_execute_selected_action(int action);
 /* Champ performs action (an index in champ_actions, bit 15: a repeat) with the item in the open hand. */

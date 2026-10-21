@@ -346,6 +346,59 @@ def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
         loop.quit, state.exit_code = 0, 0
 
 
+TURNBASED = 2
+
+
+def test_quick_save_goes_to_the_save_folder(lib, advanced, tmp_path):
+    """--saves: QUICK.DAT goes to the save folder, not to <data>/DATA."""
+    saves = tmp_path / "saves"
+    saves.mkdir()
+    state = Session.in_dll(lib, "session")
+    state.save_dir = str(saves).encode()
+    try:
+        assert lib.advanced_quick_save() == 1
+        assert (saves / "QUICK.DAT").exists() and not (tmp_path / "DATA" / "QUICK.DAT").exists()
+    finally:
+        state.save_dir = b""
+
+
+@pytest.mark.parametrize("case, result", [("missing", 1), ("damaged", 2), ("blocked", 3)])
+def test_quick_load_results(lib, advanced, case, result):
+    """No QUICK.DAT gives QUICK_MISSING, a damaged one QUICK_DAMAGED, an unwritable QUICK.TMP (a folder of that name)
+    QUICK_BLOCKED; the game goes on in all three (a restore may add one game step)."""
+    game, data = advanced
+    if case == "damaged":
+        (data / "QUICK.DAT").write_bytes(b"\0" * 300)
+    elif case == "blocked":
+        (data / "QUICK.DAT").write_bytes(b"\0" * 300)
+        (data / "QUICK.TMP").mkdir()
+        (data / "QUICK.TMP" / "file").write_bytes(b"")
+    time = game.game_time
+    assert lib.advanced_quick_load() == result
+    assert time <= game.game_time <= time + 1
+
+
+def test_lost_game_stays_in_the_turnbased_mode(lib, advanced):
+    """A damaged quick save whose restore also fails: QUICK_LOST; the turn-based mode does not quit."""
+    from test_input import MainLoop
+    _, data = advanced
+    loop, state = MainLoop.in_dll(lib, "main_loop"), Session.in_dll(lib, "session")
+    (data / "QUICK.DAT").write_bytes(b"\0" * 300)
+    set_mode(lib, TURNBASED)
+    old = os.umask(0o477)
+    try:
+        result = lib.advanced_quick_load()
+    finally:
+        os.umask(old)
+        (data / "QUICK.TMP").chmod(0o644)
+    try:
+        assert result == 4 and loop.quit == 0 and state.exit_code == 0
+        assert lib.advanced_quick_load() == 4, "a lost game stays lost"
+    finally:
+        lib.advanced_reset()
+        loop.quit, state.exit_code = 0, 0
+
+
 def test_bad_mode_stops_the_program():
     result = subprocess.run([str(ROOT / "build" / "dm2"), "--mode", "turbo"], capture_output=True, text=True, timeout=10)
     assert result.returncode == 2 and "unknown mode turbo" in result.stderr

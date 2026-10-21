@@ -2,7 +2,9 @@
 
 `build/dm2 --control PATH` opens a Unix domain socket. A client sends raw input to the running game, reads a small game state, and saves screenshots. Use it for manual-style UI tests that an LLM (for example Claude Code through Bash) drives.
 
-The game runs in real time. The control does not stop the game time. Each request runs on the main thread between two timer ticks: in the game loop and in the modal loops (start menu, dialogs).
+The game has three modes (`vanilla`, `advanced`, `turnbased`). In the `vanilla` and `advanced` modes the game runs in real time and the control does not stop the game time. In the `turnbased` mode the time stands still between requests, and the commands are `get_state`, `get_view`, `get_map`, `act`, `act_many`, `wait`, `save`, `load`, and `new_game`: see `docs/turnbased-mode.md`. The turn-based mode refuses the direct commands `key`, `click`, `press`, `release`, `command`, and `move` with `use act in turnbased mode`; `state`, `screenshot`, and `quit` work in all modes.
+
+This page describes the real-time commands. Each request runs on the main thread between two timer ticks: in the game loop and in the modal loops (start menu, dialogs).
 
 ## Start the game
 
@@ -48,7 +50,7 @@ Python code can use `dm2tools.control_client.request(payload, path=None, timeout
 
 ## Protocol
 
-- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection.
+- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte.
 - A client sends one JSON object per line and gets one JSON object per line.
 - A line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error.
 - String values can use the JSON escapes, also `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is.
@@ -85,7 +87,7 @@ Reads the game state.
 | `hand` | The leader hand object: `{"thing": n, "name": "..."}`, or `null`. |
 | `sound_volume`, `music_volume` | Volume settings 0 to 7. |
 | `end`, `quit` | The end flag of the game (party dead or quit) and the program end flag. |
-| `game_mode` | The game mode: `vanilla` or `advanced` (`docs/advanced-mode.md`). |
+| `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` (`docs/advanced-mode.md`, `docs/turnbased-mode.md`). |
 | `automap` | 1 while the automap is open, else 0. |
 | `cheat_immortal`, `cheat_food`, `cheat_light` | 1 while the cheat is on, else 0. |
 
@@ -229,7 +231,6 @@ To reach the start menu fast: `click` until `state` gives another mode. In the `
 | `request line too long` | A line of more than 4095 bytes before its newline. |
 | `request line has a NUL byte` | The line has a byte 0. |
 | `busy` | Another client is connected. |
-| `reply too long` | The reply does not fit in 4096 bytes. |
 
 ## View a screenshot as an LLM
 

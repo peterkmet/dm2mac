@@ -60,7 +60,6 @@ enum {
     ORN_KEY_WET = 0x63,             /* drawn wet by the rain */
 };
 enum { ORN_PICTURE_SIDE, ORN_PICTURE_FRONT, ORN_PICTURE_RIGHT };  /* wall ornament pictures of a frame */
-enum wall_ornament_kind { KIND_ALCOVE = 1, KIND_SHOP = 2, KIND_PORTRAIT = 3 };
 #define ENTRY_NONE 0xff
 #define ORN_OVERLAY 0x0f            /* wall ornament picture drawn over the ornament */
 #define ORN_WET_BACKGROUND 0xc8     /* + entry: the picture behind a wet ornament */
@@ -176,7 +175,7 @@ static const int8_t walk_back_light[POS_DEPTH_MAX + 1] = {-1, 0, -7, -9, -10};
 /* The far squares in drawing order. */
 static const uint8_t far_order[POS_DRAWN] = {19, 20, 17, 18, 16, 14, 15, 12, 13, 11, 9, 10, 7, 8, 6, 4, 5, 3, 1, 2};
 /* The wall faces that a wall square shows: 1 front, 2 side, 3 both. */
-enum { WALL_SHOWS_FRONT = 1, WALL_SHOWS_SIDE = 2, WALL_SHOWS_BOTH = 3 };
+enum { WALL_SHOWS_FRONT = VIEW_DRAWS_FRONT_FACE, WALL_SHOWS_SIDE = VIEW_DRAWS_SIDE_FACE, WALL_SHOWS_BOTH = 3 };
 static const uint8_t wall_faces[VIEW_SQUARE_COUNT] = {
     0, 2, 2, 1, 3, 3, 1, 3, 3, 2, 2, 1, 3, 3, 3, 3, 1, 1, 1, 1, 1, 0, 0,
 };
@@ -935,10 +934,12 @@ static int weather_get_rain_image(int *side)
     return (*side == DIR_NORTH || *side == DIR_SOUTH ? RAIN_ALONG : RAIN_ACROSS) + level;
 }
 
+bool view_rain_shows(void) { return game.rain_intensity && view.rain_shown; }
+
 /* Draws the rain over the view: a random part of the rain picture, tiled. */
 static void weather_draw_rain(void)
 {
-    if (!game.rain_intensity || !view.rain_shown) return;
+    if (!view_rain_shows()) return;
     int16_t rect[RECT_SIZE], w = VIEWPORT_WIDTH, h = VIEWPORT_HEIGHT;
     if (!zone_compute_rect(NULL, rect, ZONE_WALL, &w, &h, ZONE_NO_ANCHOR)) return;
     int side, entry = weather_get_rain_image(&side);
@@ -1506,7 +1507,7 @@ static void view_draw_alcove_contents(int pos)
         if (is_item(thing)) {
             view_draw_object(thing, pos, 0, 0, ordinal, THING_NONE, 1, 0, 1);
             if (++ordinal >= ALCOVE_ORDINAL_END) ordinal = ALCOVE_FIRST_ORDINAL;
-            if (pos == POS_FRONT) view_set_click_zone(VIEW_CLICK_ZONE_FIXED - 1, thing, POS_FRONT, CLICK_ALCOVE);
+            if (pos == POS_FRONT) view_set_click_zone(VIEW_CLICK_ZONE_ALCOVE, thing, POS_FRONT, CLICK_ALCOVE);
             continue;
         }
         if (thing_type(thing) != THING_EXPLOSION || !(ALCOVE_EXPLOSION_POSITIONS & POS_BIT(pos))) continue;
@@ -1540,8 +1541,6 @@ static uint8_t wall_text_glyph(uint8_t c)
 
 /* Shops: a wall sensor (SENSOR_WALL_TEXT with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
    on its target square, with the item name and the merchant prices in coins. */
-#define SHOP_SHOWN SENSOR_BUSY          /* SENSOR_FLAGS of the shop and display: the display item is chosen */
-#define SHOP_STEP_FORWARD SENSOR_STATE  /* SENSOR_FLAGS of the shop: the next click goes to the next item */
 #define SHOP_CLASS_TEXT 0x10        /* + list * 3: the class set of the items of the list */
 #define SHOP_CLASS_TEXT_STEP 3
 #define ITEM_FLAG_UNIQUE 0x1000     /* ATTR_FLAGS: the shop shows the item only when it exists */
@@ -2426,6 +2425,38 @@ static void view_draw_party_square(void)
     weather_draw_rain();
     if (linked) view_draw_floor_ornament(POS_PARTY);
     view_draw_explosions(view_squares[POS_PARTY].first_thing, POS_PARTY, THINGS_ALL);
+}
+
+int view_position(int depth, int side)
+{
+    for (int pos = 0; pos < VIEW_SQUARE_COUNT; pos++)
+        if (view_depth[pos] == depth && view_lateral[pos] == side) return pos;
+    return -1;
+}
+
+unsigned view_draws(int pos, int aspect)
+{
+    if (pos < 0 || pos >= VIEW_SQUARE_COUNT) return 0;
+    unsigned draws = wall_faces[pos];
+    if (aspect == ASPECT_WALL) return draws;
+    bool creatures = !(party.move_steps && pos == POS_PARTY);  /* the walking view hides the party square creatures */
+    if (pos >= POS_FAR_ROW) {
+        bool floor = aspect == ASPECT_FLOOR || aspect == ASPECT_PIT || aspect == ASPECT_TELEPORTER;
+        return pos < POS_DRAWN && (floor || aspect == ASPECT_DOOR_FRONT) ? draws | VIEW_DRAWS_CREATURES : draws;
+    }
+    if (aspect == ASPECT_DOOR_FRONT && !door_front_shown[pos]) return draws;
+    draws |= VIEW_DRAWS_FLOOR_ORNAMENT | VIEW_DRAWS_DOOR;
+    if (!square_things_shown[pos]) return draws;
+    draws |= VIEW_DRAWS_OBJECTS | (creatures ? VIEW_DRAWS_CREATURES : 0);
+    if (MISSILE_POSITIONS & POS_BIT(pos)) draws |= VIEW_DRAWS_MISSILES;
+    if (EXPLOSION_POSITIONS & POS_BIT(pos)) draws |= VIEW_DRAWS_EXPLOSIONS;
+    return draws;
+}
+
+bool view_shows_floor_ornament(int pos, int ornament)
+{
+    if (!(view_draws(pos, ASPECT_FLOOR) & VIEW_DRAWS_FLOOR_ORNAMENT) || ornament == ORNAMENT_NONE || !ornament) return false;
+    return !((pos == POS_FAR_SIDE_1 || pos == POS_FAR_SIDE_2) && aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NOT_FAR_SIDE));
 }
 
 int view_shows_party(void)

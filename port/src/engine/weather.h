@@ -1,5 +1,6 @@
 #ifndef WEATHER_H
 #define WEATHER_H
+#include <stdbool.h>
 #include <stdint.h>
 #include "gdat.h"
 
@@ -31,6 +32,16 @@ enum { LIGHT_FLOOR = 1, LIGHT_CREATURES = 2, LIGHT_WALLS = 4 };
 #define RAIN_STRONG 128             /* rain intensities: strong rain grows the clouds faster */
 #define RAIN_MEDIUM 64
 #define RAIN_LIGHT 16
+/* The sky darkness (game.sky_darkness) from which the rain shows light, medium, heavy; the cloud cover
+   (game.cloud_cover) from which the clouds show light, medium, heavy. */
+#define DARKNESS_RAIN 16
+#define DARKNESS_MEDIUM 64
+#define DARKNESS_HEAVY 128
+#define CLOUDS_SHOWN 64
+#define CLOUDS_MORE 128
+#define CLOUDS_MOST 192
+#define HOUR_LIGHT_DAY 1            /* weather.hour_light of the day */
+#define HOUR_LIGHT_NIGHT 5          /* weather.hour_light of the night; between them dawn and dusk */
 
 /* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
 typedef struct {
@@ -43,6 +54,9 @@ typedef struct {
 
 /* The weather sky objects that the view draws, ended by SKY_OBJECT_END (world_update_day_night fills them). */
 SkyObject *weather_sky_objects(void);
+/* The sky set of the party map has rain pictures, cloud pictures. */
+bool weather_sky_has_rain(void);
+bool weather_sky_has_clouds(void);
 /* Reads the sky object entry of the map graphics into object; returns 0 when the map has none. */
 int weather_load_sky_object(SkyObject *object);
 /* Queues the next storm step delay ticks from now. */

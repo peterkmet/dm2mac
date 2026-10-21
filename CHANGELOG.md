@@ -29,9 +29,13 @@ All notable changes to this project are in this file. The format follows [Keep a
 - Automap in the advanced mode: Tab or M opens a map of the seen squares of the party map in the viewport, with the minion map icons and a readout of the position and the cheats. The game time stops while it is open; a mouse drag scrolls it. Slot saves and `QUICK.DAT` keep the seen squares in an AMAP block after the original save data.
 - Cheats on the open automap: I immortal, F food and water, L full light. A new or loaded game turns them off. The control state gives `automap`, `cheat_immortal`, `cheat_food`, and `cheat_light`.
 - Movies of the PC version, in the order of the DOS launcher: the splash picture `INTRPLAY.PCX`, then the SVGA movies `FTL` and `INTRO` before the start menu; `END` and `CREDITS` after a completed game; `CREDITS` after QUIT GAME of a dead party. A start with `--save` and a restart play no start movies. A click skips a movie; in the vanilla mode a click does not stop the splash and `FTL`. The movies show on a 4:3 screen with black borders. A missing or damaged movie is skipped. The control state gives `"mode": "movie"` while a movie plays. Details: `docs/skull-formats.md` section 15.
+- Turn-based mode: `--mode turnbased` plays through the control socket with the commands `get_state`, `get_view`, `get_map`, `act`, `act_many`, `wait`, `save`, `load`, and `new_game`. The game time stands still between requests; a turn runs until the party can act again. Details: `docs/turnbased-mode.md`.
+- `--saves DIR` sets the folder of `QUICK.DAT` in all modes.
+- `dm2-play`: the forms `act <action> [args]` and `act_many <list>`, `--brief` for a short text summary, and a call log in `playthroughs/current/coordinator/calls.log` (`DM2_PLAY_LOG_DIR`).
 
 ### Changed
 
+- Control replies have no size limit; the error `reply too long` is gone.
 - The test of the way out of the first room takes the real path: the solid key comes from the cabinet of the first room.
 - `port/src/` has the layers `data/`, `engine/`, `ui/`, and `platform/`.
 - `docs/coding-standard.md` has rules 7 to 9 and a check list. `tests/test_standard.py` checks the rules. `tests/standard_allowlist.txt` lists the open violations.
