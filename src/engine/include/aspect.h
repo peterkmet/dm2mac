@@ -76,8 +76,8 @@ enum sensor_type {
     SENSOR_ALTAR = 0x7e,
 };
 #define SENSOR_ALTAR_SHOWN SENSOR_STATE
-#define ORN_KEY_KIND                                                                                                   \
-    0x0a /* (category, ornament, 0x0b, key): wall ornament kind; door: zone row of the damage picture */
+/* (category, ornament, 0x0b, key): wall ornament kind; door: zone row of the damage picture */
+#define ORN_KEY_KIND       0x0a
 /* The values of ORN_KEY_KIND of a wall ornament: what the ornament holds. */
 enum wall_ornament_kind { KIND_ALCOVE = 1, KIND_SHOP = 2, KIND_PORTRAIT = 3 };
 #define WALL_TEXT_SIZE 128 /* a GDAT text of the map or ornament pictures */

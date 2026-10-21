@@ -68,12 +68,12 @@ enum anim_step_field { STEP_SOUND = 0, STEP_NEXT = 1, STEP_JUMP = 2, STEP_TIME =
 #define TIME_BYTE_WRAP              0x100 /* the time bytes of an active group are the low byte of the game time */
 /* Possessions bit: the objects under the creature stay clickable, and a drop goes into the front cells. */
 #define POSSESSIONS_FLOOR_CLICKABLE 0x2000
-#define POSSESSIONS_KIND_MASK                                                                                          \
-    0x000f /* the display kind (0: none shown; 1 or less: carried low); a static creature: the possession cell count */
-#define STATIC_POSSESSIONS_SHOWN 0x400
-#define STATIC_POSSESSIONS_ALL   0x200
-#define CELLS_ALL                0x0f /* a cell mask: all four cells */
-#define CREATURE_INFO_COUNT      63
+/* the display kind (0: none shown; 1 or less: carried low); a static creature: the possession cell count */
+#define POSSESSIONS_KIND_MASK       0x000f
+#define STATIC_POSSESSIONS_SHOWN    0x400
+#define STATIC_POSSESSIONS_ALL      0x200
+#define CELLS_ALL                   0x0f /* a cell mask: all four cells */
+#define CREATURE_INFO_COUNT         63
 
 /* The nibbles of CreatureInfo.speed and the armor in door_flags. */
 #define INFO_NIBBLE_MASK       0x0f

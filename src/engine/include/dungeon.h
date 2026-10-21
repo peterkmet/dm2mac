@@ -551,8 +551,8 @@ static inline void potion_set_type(uint16_t potion, uint16_t type)
 enum container_kind { CONTAINER_CHEST, CONTAINER_MINION_MAP }; /* a chest or a money box, a minion map */
 #define CONTAINER_TYPE_SHIFT 13
 #define CONTAINER_TYPE_MASK  7
-#define MONEYBOX_PLACED                                                                                                \
-    0x0400 /* a creature placed the money box: creatures take it as empty until the party moves it */
+/* a creature placed the money box: creatures take it as empty until the party moves it */
+#define MONEYBOX_PLACED      0x0400
 static inline bool container_is_open(uint16_t container)
 {
     return thing_bit(container, CONTAINER_KIND, CONTAINER_OPEN);

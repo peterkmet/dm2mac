@@ -9,9 +9,9 @@
 #include "sensor.h"
 #include <string.h>
 
-#define FAKE_WALL_FLOOR_SQUARE 1 /* the square byte that the floor things see on an open fake wall */
-#define MAP_KEY_FLOOR_ORNAMENT                                                                                         \
-    0x6b /* (CAT_WALLSET, graphics set, 0x0b, key): ornament on every floor square, bit 15: animated */
+#define FAKE_WALL_FLOOR_SQUARE  1 /* the square byte that the floor things see on an open fake wall */
+/* (CAT_WALLSET, graphics set, 0x0b, key): ornament on every floor square, bit 15: animated */
+#define MAP_KEY_FLOOR_ORNAMENT  0x6b
 #define ORN_KEY_FRAMES          0x0d /* (category, ornament, 0x0b, key): animation frames, bit 15: frames start at 1 */
 #define FRAMES_FROM_ONE         0x8000
 #define FLOOR_ORNAMENT_ANIMATED 0x8000

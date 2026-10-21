@@ -32,21 +32,21 @@
 #define MARKER_PIT_TARGET 0x0c /* a pit square: the marker id of its targets */
 
 /* Champion record values. */
-#define LOAD_PER_STEP_FACTOR  3 /* stamina for a step: 3 * load / max load + 1 */
-#define LOAD_PER_FALL_FACTOR  25
-#define FALL_DAMAGE_MAX       17
-#define STAMINA_REDRAW_LIMIT  10
-#define LOAD_TIME_DIVISOR     10 /* the step time of a champion for a creature alert: load / 10 */
-#define WALK_TIME_SLOW        50
-#define WALK_TIME             40
-#define LOAD_HEAVY_PART       5 /* a load above 5/8 of the maximum load slows the champion */
-#define LOAD_HEAVY_EIGHTHS    8
-#define MOVE_DELAY_HEAVY      3
-#define MOVE_DELAY_LIGHT      2
-#define OVERLOAD_DELAY_FACTOR 4 /* an overloaded champion: (load - max) * 4 / max + 4 */
-#define OVERLOAD_DELAY_BASE   4
-#define DISPLACE_DAMAGE_ROLL                                                                                           \
-    10 /* the damage of a creature that lands on the party: 0 to 9, plus its push resistance / 8 */
+#define LOAD_PER_STEP_FACTOR      3 /* stamina for a step: 3 * load / max load + 1 */
+#define LOAD_PER_FALL_FACTOR      25
+#define FALL_DAMAGE_MAX           17
+#define STAMINA_REDRAW_LIMIT      10
+#define LOAD_TIME_DIVISOR         10 /* the step time of a champion for a creature alert: load / 10 */
+#define WALK_TIME_SLOW            50
+#define WALK_TIME                 40
+#define LOAD_HEAVY_PART           5 /* a load above 5/8 of the maximum load slows the champion */
+#define LOAD_HEAVY_EIGHTHS        8
+#define MOVE_DELAY_HEAVY          3
+#define MOVE_DELAY_LIGHT          2
+#define OVERLOAD_DELAY_FACTOR     4 /* an overloaded champion: (load - max) * 4 / max + 4 */
+#define OVERLOAD_DELAY_BASE       4
+/* the damage of a creature that lands on the party: 0 to 9, plus its push resistance / 8 */
+#define DISPLACE_DAMAGE_ROLL      10
 #define DISPLACE_RESISTANCE_SHIFT 3
 #define FALL_ALERT_DAMAGE         20   /* the damage alert of a creature that falls into a pit */
 #define BASH_ROLL_MASK            0x0f /* the random part of the strength of a champion who bashes a door */
