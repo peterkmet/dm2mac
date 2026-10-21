@@ -9,6 +9,7 @@ from unicorn.x86_const import (
     UC_X86_REG_ESP, UC_X86_REG_FS, UC_X86_REG_GDTR, UC_X86_REG_GS, UC_X86_REG_SS,
 )
 
+from dm2test.audio import Music
 from dm2test.markers import ROOT
 from dm2test.lib import load_lib
 
@@ -45,13 +46,6 @@ MELODIC_AT, DRUM_AT, EVENT_AT = DATA + 0x1000, DATA + 0x3000, DATA + 0x10
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 SEND = ctypes.CFUNCTYPE(None, u8_p)
 WRITE_HOOK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int)
-
-
-class Music(ctypes.Structure):
-    _fields_ = [("enabled", ctypes.c_int), ("songlist_loaded", ctypes.c_int), ("songlist", ctypes.c_uint8 * 63),
-                ("songlist_size", ctypes.c_int), ("fade", ctypes.c_int16), ("paused", ctypes.c_int),
-                ("playing", ctypes.c_int), ("started", ctypes.c_int), ("requested_song", ctypes.c_int16),
-                ("current_song", ctypes.c_uint8), ("next_song", ctypes.c_uint8), ("volume", ctypes.c_int16)]
 
 
 @pytest.fixture(scope="module")

@@ -108,7 +108,7 @@ def test_animated_creature_views(creatures, lib):
     # The views of the creature groups while they run: the frames, the random shift and mirror, and the moves of the
     # active groups must draw the same pictures as the original.
     import random
-    from test_world import draw_both
+    from dm2test.view import draw_both
     rng = random.Random(18)
     fronts = creature_fronts(lib)
     shown = 0

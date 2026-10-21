@@ -6,6 +6,7 @@ import struct
 import pytest
 
 from dm2test.input import Loop
+from dm2test.interface import LeaderHand
 from dm2test.scenario import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
@@ -22,10 +23,6 @@ GOLD_COIN = 0x108
 TABLE_COIN = 0xA8B8  # the gold coin on the table of the first room (map 22)
 DUN_LINK_THING_TO_SQUARE, DUN_UNLINK_THING_FROM_SQUARE = 0x1D3DB, 0x1D542
 DOOR_STATE, DOOR_OPEN, DOOR_CLOSED = 7, 0, 4
-
-
-class LeaderHand(ctypes.Structure):
-    _fields_ = [("attr", ctypes.c_uint16), ("weight", ctypes.c_uint16), ("icon", ctypes.c_uint8)]
 
 
 @pytest.fixture

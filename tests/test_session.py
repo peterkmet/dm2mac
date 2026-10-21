@@ -11,6 +11,7 @@ from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.dialog import program_start_after  # noqa: F401 (an autouse fixture)
 from dm2test.save import GDAT_VALUE_TYPES, GRAPHICS
+from dm2test.scenario import square_things
 from dm2test.lib import load_lib
 
 
@@ -168,16 +169,6 @@ def test_timer_sensors_start_like_original(lib, new_game):
     theirs = emu.read(emu.read_u32(G_TIMELINE_EVENTS), tl.capacity * 12)
     assert mine == theirs
     assert dungeon_differences(lib, emu) == []
-
-
-def square_things(lib, map_, x, y):
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    out, t = [], lib.dungeon_square_first_thing(map_, x, y)
-    while t not in (0xFFFE, 0xFFFF):
-        out.append(t)
-        t = lib.dungeon_next_thing(t)
-    return out
 
 
 def test_shared_teleporter_list_keeps_first_movable_thing(lib, gdat):

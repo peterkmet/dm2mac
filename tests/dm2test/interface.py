@@ -267,3 +267,7 @@ def open_hand(lib, original, hand):
 
 
 G_IOP_BUFFER, IOP_SCROLL_CALL, IOP_SCROLL_NEXT = 0x8048C, 0x13A28, 0x13A2A
+
+
+class LeaderHand(ctypes.Structure):
+    _fields_ = [("attr", ctypes.c_uint16), ("weight", ctypes.c_uint16), ("icon", ctypes.c_uint8)]

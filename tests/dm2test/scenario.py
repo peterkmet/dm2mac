@@ -721,3 +721,13 @@ def approaches(lib, kind, condition=lambda s: True, limit=60):
                 out.append((map_, px, py, d))
                 break
     return out[:limit]
+
+
+def square_things(lib, map_, x, y):
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    out, t = [], lib.dungeon_square_first_thing(map_, x, y)
+    while t not in (0xFFFE, 0xFFFF):
+        out.append(t)
+        t = lib.dungeon_next_thing(t)
+    return out

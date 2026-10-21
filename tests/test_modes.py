@@ -12,7 +12,12 @@ import pytest
 
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
-from test_control import control, pumped  # noqa: F401 (control is a fixture)
+from dm2test.control import control, pumped  # noqa: F401 (control is a fixture)
+from dm2test.modes import (  # noqa: F401 (advanced is a fixture)
+    ADVANCED, INPUT_MODE_DIALOG, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, INPUT_MODE_NAME, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_A,
+    SCAN_D, SCAN_E, SCAN_Q, SCAN_S, SCAN_W, SCREEN_W, STEP_TICKS, TEXT_LINE_HEIGHT, UI_WHITE, VANILLA, ZONE_MESSAGE_AREA,
+    advanced, key_command, press, set_mode,
+)
 from dm2test.dialog import DialogState, Session
 from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
 from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
@@ -23,38 +28,9 @@ from dm2test.lib import load_lib
 def lib():
     return load_lib()
 
-VANILLA, ADVANCED = 0, 1
-SCAN_Q, SCAN_W, SCAN_E, SCAN_A, SCAN_S, SCAN_D = 0x10, 0x11, 0x12, 0x1E, 0x1F, 0x20
-KEY_F5, KEY_F9, KEY_PAUSE = 0x3F, 0x43, 0x01
 # the keypad key of each letter: turn left, forward, turn right, strafe left, back, strafe right
 LETTER_KEYPAD = {SCAN_Q: 0x4B, SCAN_W: 0x4C, SCAN_E: 0x4D, SCAN_A: 0x4F, SCAN_S: 0x50, SCAN_D: 0x51}
-INPUT_MODE_DIALOG, INPUT_MODE_MOVE, INPUT_MODE_INVENTORY, INPUT_MODE_NAME = 4, 5, 8, 9
 SLOT_BUTTONS_SAVE = 6
-ZONE_MESSAGE_AREA, TEXT_LINE_HEIGHT, SCREEN_W, UI_WHITE = 15, 7, 320, 15
-STEP_TICKS = 40  # enough timer ticks for a key to give its command and the party to finish a step
-
-
-def set_mode(lib, mode):
-    ctypes.c_int.in_dll(lib, "game_mode").value = mode
-
-
-@pytest.fixture
-def advanced(lib, session, tmp_path):  # noqa: F811
-    """start.DAT in the advanced mode, with the game folder in tmp_path; vanilla again after the test."""
-    (tmp_path / "DATA").mkdir()
-    state = Session.in_dll(lib, "session")
-    state.data_dir = str(tmp_path).encode()
-    state.slot, state.loaded, state.new_game = -1, 0, 0
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
-    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
-    set_mode(lib, ADVANCED)
-    yield session[0], tmp_path / "DATA"
-    set_mode(lib, VANILLA)
-
-
-def press(lib, key):
-    lib.input_key_down(key)
-    run_ticks(lib, STEP_TICKS)
 
 
 def last_message_row(lib):
@@ -70,12 +46,6 @@ def shows(lib, text):
     before = last_message_row(lib)
     lib.text_print_message(UI_WHITE, b"\n" + text)
     return before == last_message_row(lib) and len({p for row in before for p in row}) > 1
-
-
-def key_command(lib, mode, key):
-    lib.input_find_command.restype = ctypes.c_uint16
-    rect = (ctypes.c_int16 * 4)()
-    return lib.input_find_command(mode, 0, 0, 0, key, rect)
 
 
 def test_vanilla_letter_keys_and_quick_keys_do_nothing(lib, session, tmp_path):  # noqa: F811
@@ -165,7 +135,7 @@ def test_quick_save_and_quick_load(lib, advanced):
 
 def sound_level(lib):
     """The mixed level of a sample of 100 at full volume: the master volume of the sounds."""
-    from test_sound import UPSAMPLE, Sound, mix
+    from dm2test.audio import UPSAMPLE, Sound, mix
     lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
     lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
     lib.sound_stop_all()
@@ -178,7 +148,7 @@ def sound_level(lib):
 
 def test_quick_load_sets_the_loaded_volumes(lib, advanced):
     from dm2test.scenario import WorldGame
-    from test_music import Music
+    from dm2test.audio import Music
     game = WorldGame.in_dll(lib, "game")
     music = Music.in_dll(lib, "music")
     game.sound_volume, game.music_volume = 5, 3

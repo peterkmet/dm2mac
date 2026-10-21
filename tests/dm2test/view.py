@@ -23,6 +23,7 @@ G_ACTIVE_GROUPS, G_RANDOM_SEED, G_SKY_STATE, G_RAIN_INTENSITY = 0x7F898, 0x70518
 ACTIVE_GROUP_SIZE, ACTIVE_GROUP_MAX = 0x22, 256
 G_VIEW_HIT_OFFSET = 0x802D4  # int16 y, x: the place of the last view hit test, in percent
 VIEW_SEED = 0x2F6B1D35  # the random numbers of sparkles, rain, and explosions start from it in each view
+MOVE_THING, VIEW_SEED_ADDR = 0x4B108, 0x70518
 HEAP, HEAP_SIZE = 0x01000000, 0x02000000
 VIEW_W, VIEW_H = 224, 136
 u8_p = ctypes.POINTER(ctypes.c_uint8)
@@ -212,3 +213,28 @@ class OriginalView:
                 out += struct.pack("<BBhhhBB", entry, self.lib.gdat_text_int_field(text.value, b"fw") & 0xFF,
                                    self.lib.gdat_text_int_field(text.value, b"cd"), 0, 0, 0x40, 0x40)
         return out + b"\xff" + bytes(9)
+
+
+def draw_both(sc):
+    """The view of the party in both, each with its own light level and sky objects."""
+    from dm2test import view as tv
+    from dm2test.scenario import SKY_OBJECTS_SIZE, WEATHER
+    lib, emu, game = sc.lib, sc.emu, sc.game
+    light = struct.unpack("<h", emu.read(WEATHER["light_level"][0], 2))[0]
+    sky = emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)
+    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    saved = seed.value
+    kept = [(addr, emu.read(addr, 4)) for addr in (tv.G_PARTY_MOVE_STEPS, tv.G_PUSH_MODE, tv.G_PUSH_PENDING_GROUP)]
+    steps, sc.party.move_steps = sc.party.move_steps, 0  # the view of the party square, not of a walk
+    theirs = sc.view.draw(game.party_map, game.party_x, game.party_y, game.party_dir, light, sky)
+    for addr, data in kept:
+        emu.write(addr, data)
+    seed.value = tv.VIEW_SEED
+    viewport = tv.Bitmap.in_dll(lib, "view_viewport")
+    ctypes.memset(viewport.pixels, 0, tv.VIEW_W * tv.VIEW_H)
+    lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
+    mine = ctypes.string_at(viewport.pixels, tv.VIEW_W * tv.VIEW_H)
+    sc.party.move_steps = steps
+    seed.value = saved
+    emu.write_u32(VIEW_SEED_ADDR, saved)
+    return mine, theirs

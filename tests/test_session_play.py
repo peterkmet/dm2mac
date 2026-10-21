@@ -6,7 +6,7 @@ import struct
 
 import pytest
 
-from dm2test.dialog import DialogState, InputMatch, Session, program_start_after  # noqa: F401 (an autouse fixture)
+from dm2test.dialog import DialogState, InputMatch, Session, find_point, main_loop_quit, program_start_after  # noqa: F401 (an autouse fixture)
 from dm2test.scenario import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
@@ -46,18 +46,6 @@ class Player:
 
     def __exit__(self, *_):
         ctypes.c_void_p.in_dll(self.lib, "play_frame_hook").value = None
-
-
-def find_point(lib, mode, test):
-    """A screen point whose left click in input mode gives a match that test accepts."""
-    rect = (ctypes.c_int16 * 4)()
-    match = InputMatch.in_dll(lib, "input_match")
-    lib.input_find_command.restype = ctypes.c_uint16
-    for y in range(1, 200, 2):
-        for x in range(1, 320, 2):
-            if lib.input_find_command(mode, x, y, 2, 0, rect) and test(match):
-                return x, y
-    raise AssertionError("no such click point")
 
 
 def click_choice(choice):
@@ -109,11 +97,6 @@ def play(lib, gdat, start, tmp_path):
     main_loop_quit(lib).value = 0
     DialogState.in_dll(lib, "dialog").screen_mode = 0
     return sc
-
-
-def main_loop_quit(lib):
-    """MainLoop.quit (after tick_threshold, tick_count, timer_ticks, running, view_hidden, end)."""
-    return ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24)
 
 
 def test_save_and_load_through_the_dialogs(play, lib, gdat, tmp_path):
@@ -347,7 +330,7 @@ def test_discarded_things_match_original(play, lib, place):
 def test_discard_keeps_things_within_5_squares(play, lib, distance):
     # One weapon that may go, on a square without sensors and texts; the party on its map, 5 or 6 squares beside it.
     # At 5 squares the weapon stays and no record comes free; at 6 squares it goes, in both.
-    from test_session import square_things
+    from dm2test.scenario import square_things
     sc = play
     lib.dungeon_thing_record.restype = ctypes.c_void_p
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
@@ -445,7 +428,7 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     # champ_init_party_state of a new game: the champion of the mirror (sensor 0x7e) on square (0, 0) of map 0 joins at
     # once with the objects on that square, faces the party, and leads; no inventory, no mouth, no message. start.DAT
     # is the game after this join: both take the champion out of the party and put its objects back on the square.
-    from test_champions import LeaderHand
+    from dm2test.interface import LeaderHand
     from dm2test.input import Loop
     from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records, UiState
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
@@ -541,7 +524,7 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     # A save with an object in the leader hand and timed effects (magic light, invisibility, aura, poison, an eaten
     # item): the load and the start of its session in both (save_load and play_start_session, as session_load and
     # session_init run them) give the same light, champions, and leader hand (object, weight, icon).
-    from test_champions import LeaderHand
+    from dm2test.interface import LeaderHand
     from dm2test.input import Loop
     from dm2test.save import Event, Game
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]

@@ -43,3 +43,20 @@ def program_start_after(lib):
 class InputMatch(ctypes.Structure):
     _fields_ = [("zone", ctypes.c_uint16), ("origin", ctypes.c_int16), ("key", ctypes.c_uint16), ("choice", ctypes.c_int16),
                 ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("value", ctypes.c_uint16), ("rect", ctypes.c_int16 * 4)]
+
+
+def main_loop_quit(lib):
+    """MainLoop.quit (after tick_threshold, tick_count, timer_ticks, running, view_hidden, end)."""
+    return ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24)
+
+
+def find_point(lib, mode, test):
+    """A screen point whose left click in input mode gives a match that test accepts."""
+    rect = (ctypes.c_int16 * 4)()
+    match = InputMatch.in_dll(lib, "input_match")
+    lib.input_find_command.restype = ctypes.c_uint16
+    for y in range(1, 200, 2):
+        for x in range(1, 320, 2):
+            if lib.input_find_command(mode, x, y, 2, 0, rect) and test(match):
+                return x, y
+    raise AssertionError("no such click point")

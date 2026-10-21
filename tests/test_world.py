@@ -14,6 +14,7 @@ from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
 )
 from dm2test.save import Game, Timeline
+from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, draw_both
 from dm2test.lib import load_lib
 
 
@@ -22,7 +23,6 @@ def lib():
     return load_lib()
 
 WEATHER_INIT, TIMELINE_DELETE_EVENT, LIGHT_ADD_SQUARE_LIGHT, ZONE_INTERPOLATE_OFFSET = 0x59F38, 0x562FF, 0x38C46, 0x19234
-MOVE_THING, VIEW_SEED_ADDR = 0x4B108, 0x70518
 G_GLOBAL_BYTES, G_INVENTORY, G_PARTY_SLEEPING, G_MAGIC_LIGHT = 0x7F0C0, 0x7F972, 0x7F234, 0x7FFEC
 G_THINGS, THING_SIZES = 0x7F288, (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 EVENT_WEATHER, CHAMPION_HANDS = 0x54, 0xC3
@@ -122,30 +122,6 @@ def test_storm_steps_match_original(world):
         assert_world(world, n)
         delete_weather_events(world)
     world.assert_equal("end")
-
-
-def draw_both(sc):
-    """The view of the party in both, each with its own light level and sky objects."""
-    from dm2test import view as tv
-    lib, emu, game = sc.lib, sc.emu, sc.game
-    light = struct.unpack("<h", emu.read(WEATHER["light_level"][0], 2))[0]
-    sky = emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
-    saved = seed.value
-    kept = [(addr, emu.read(addr, 4)) for addr in (tv.G_PARTY_MOVE_STEPS, tv.G_PUSH_MODE, tv.G_PUSH_PENDING_GROUP)]
-    steps, sc.party.move_steps = sc.party.move_steps, 0  # the view of the party square, not of a walk
-    theirs = sc.view.draw(game.party_map, game.party_x, game.party_y, game.party_dir, light, sky)
-    for addr, data in kept:
-        emu.write(addr, data)
-    seed.value = tv.VIEW_SEED
-    viewport = tv.Bitmap.in_dll(lib, "view_viewport")
-    ctypes.memset(viewport.pixels, 0, tv.VIEW_W * tv.VIEW_H)
-    lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
-    mine = ctypes.string_at(viewport.pixels, tv.VIEW_W * tv.VIEW_H)
-    sc.party.move_steps = steps
-    seed.value = saved
-    emu.write_u32(VIEW_SEED_ADDR, saved)
-    return mine, theirs
 
 
 @pytest.mark.parametrize("part", range(3))

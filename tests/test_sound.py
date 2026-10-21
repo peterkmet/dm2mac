@@ -4,6 +4,7 @@ import struct
 
 import pytest
 
+from dm2test.audio import UPSAMPLE, Sound, mix
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
@@ -23,12 +24,7 @@ CREATURE_GET_PARTY_DISTANCE = 0x2FACC
 G_PARTY_DIR, G_PARTY_X, G_PARTY_Y, G_REQUEST_COUNT = 0x7F254, 0x7F26C, 0x7F26E, 0x71690
 # sound_request locals, offsets from ESP
 L_X, L_Y, L_MODE, L_LATERAL, L_FORWARD = 0x44, 0x48, 0x4C, 0x18, 0x1C
-UPSAMPLE = 4
 PAN_LEFT, PAN_CENTER, PAN_RIGHT = 0x0800, 0x8000, 0xF800
-
-
-class Sound(ctypes.Structure):
-    _fields_ = [("data", ctypes.POINTER(ctypes.c_int8)), ("length", ctypes.c_uint32)]
 
 
 @pytest.fixture(scope="module")
@@ -131,12 +127,6 @@ def test_sound_load_sample_count(snd):
     assert ctypes.string_at(ctypes.addressof(s.data.contents) - 6, 6) == bytes.fromhex("772b08010000")
     assert snd.sound_load(g, 3, 0, 250, ctypes.byref(s)) != 0
     snd.gdat_free(g)
-
-
-def mix(lib, frames):
-    buf = (ctypes.c_int16 * (2 * frames))()
-    lib.sound_mix(buf, frames)
-    return list(buf)
 
 
 def test_mix_upsamples_and_pans(snd):

@@ -7,7 +7,7 @@ import struct
 import pytest
 
 from dm2test.markers import ROOT
-from test_control import GameWithChampions
+from dm2test.control import GameWithChampions
 from dm2test.input import MainLoop
 from dm2test.interface import ActionArea
 from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)

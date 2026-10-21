@@ -3,7 +3,7 @@ import ctypes
 
 import pytest
 
-from test_gdat import OK, c_int_p, gd  # noqa: F401
+from dm2test.gdat import OK, c_int_p, gd  # noqa: F401
 from dm2test.lib import load_lib
 
 

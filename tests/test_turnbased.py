@@ -13,7 +13,7 @@ import pytest
 
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
-from test_control import PALETTE_COLORS, RGB, GameWithChampions
+from dm2test.control import PALETTE_COLORS, RGB, GameWithChampions
 from dm2test.dialog import Session
 from dm2test.input import session  # noqa: F401 (a fixture)
 from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)

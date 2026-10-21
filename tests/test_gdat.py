@@ -3,6 +3,7 @@ import struct
 
 import pytest
 
+from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE, GDAT, OK, gd  # noqa: F401 (gd is a fixture)
 from dm2test.markers import ROOT
 from dm2tools.emu import Emu
 from dm2tools.le import load_image
@@ -13,41 +14,13 @@ from dm2test.lib import load_lib
 def lib():
     return load_lib()
 
-GDAT = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 IMAGE_DECODE_4BPP = 0x12E4F
 IMAGE_DECODE_4BPP_DELTA = 0x13258
 IMAGE_DECODE_8BPP = 0x3F71C
 SRC, BASE, DST = 0x01000000, 0x01100000, 0x01200000  # extra emulator buffers: item, delta base, output
 MARGIN = 64  # bytes after the image that a decoder must not write
 POISON = 0xA5
-OK, ERR_IO, ERR_FORMAT, ERR_NOT_IMAGE, ERR_DATA, ERR_SPACE = 0, -1, -2, -4, -5, -6
 FORMAT_4BPP, FORMAT_8BPP, FORMAT_RAW = 0x00, 0x1F, 0x20
-
-c_int_p = ctypes.POINTER(ctypes.c_int)
-u8_p = ctypes.POINTER(ctypes.c_uint8)
-
-
-@pytest.fixture(scope="module")
-def gd(lib):
-    if not GDAT.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
-    lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
-    lib.gdat_free.argtypes = [ctypes.c_void_p]
-    lib.gdat_item_count.argtypes = [ctypes.c_void_p]
-    lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
-    lib.gdat_item.restype = u8_p
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int, c_int_p, c_int_p, c_int_p]
-    lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
-    lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.gdat_image_colormap.restype = u8_p
-    lib.gdat_palette_color.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p]
-    lib.image_decode_4bpp.argtypes = [u8_p, ctypes.c_size_t, u8_p, u8_p, ctypes.c_size_t]
-    lib.image_decode_8bpp.argtypes = [u8_p, ctypes.c_size_t, u8_p, ctypes.c_size_t]
-    handle = ctypes.c_void_p()
-    assert lib.gdat_load(str(GDAT).encode(), ctypes.byref(handle)) == OK
-    yield handle
-    lib.gdat_free(handle)
 
 
 @pytest.fixture(scope="module")

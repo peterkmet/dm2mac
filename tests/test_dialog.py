@@ -254,7 +254,7 @@ GAME_END, GAME_QUIT, SAVE_CHECK_DISK = 0x1FEF6, 0x2005B, 0x346D1
 
 def test_quit_picture_matches_original(ui, original):
     # The end after the QUIT button of the save menu: the picture GDAT (6, 0, 1, 1) until a click, then the end.
-    from test_session_play import main_loop_quit
+    from dm2test.dialog import main_loop_quit
     lib, emu = ui, original.emu
     quits = []
 
@@ -289,7 +289,7 @@ UI_DIALOG_DRAW_BUTTON, G_MATCH_RECT, G_MATCH_ORIGIN, G_BUTTON_PICTURE = 0x1A270,
 def test_pressed_buttons_match_original(ui, original):
     # The click feedback of a dialog button (opcodes 0x0f and 0x10: GDAT (0x1a, 0xfe, 1, 0 or 1)) over each button of
     # the save menu and of the end dialog.
-    from test_session_play import find_point
+    from dm2test.dialog import find_point
     lib, emu = ui, original.emu
     lib.input_init()
     match = InputMatch.in_dll(lib, "input_match")

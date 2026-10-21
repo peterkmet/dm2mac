@@ -6,8 +6,8 @@ import ctypes
 import pytest
 
 from dm2test.interface import VIEW_H, VIEW_W, c_view
-from test_modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
-                        VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
+from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
+                           VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
 from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
 from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib

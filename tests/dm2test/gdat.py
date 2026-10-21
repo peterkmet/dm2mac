@@ -1,0 +1,37 @@
+"""GRAPHICS.DAT loaded in the C port."""
+
+import ctypes
+
+import pytest
+
+from dm2test.markers import ROOT
+
+
+GDAT = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
+OK, ERR_IO, ERR_FORMAT, ERR_NOT_IMAGE, ERR_DATA, ERR_SPACE = 0, -1, -2, -4, -5, -6
+
+c_int_p = ctypes.POINTER(ctypes.c_int)
+u8_p = ctypes.POINTER(ctypes.c_uint8)
+
+
+@pytest.fixture(scope="module")
+def gd(lib):
+    if not GDAT.exists():
+        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
+    lib.gdat_free.argtypes = [ctypes.c_void_p]
+    lib.gdat_item_count.argtypes = [ctypes.c_void_p]
+    lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
+    lib.gdat_item.restype = u8_p
+    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int, c_int_p, c_int_p, c_int_p]
+    lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
+    lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    lib.gdat_image_colormap.restype = u8_p
+    lib.gdat_palette_color.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p]
+    lib.image_decode_4bpp.argtypes = [u8_p, ctypes.c_size_t, u8_p, u8_p, ctypes.c_size_t]
+    lib.image_decode_8bpp.argtypes = [u8_p, ctypes.c_size_t, u8_p, ctypes.c_size_t]
+    handle = ctypes.c_void_p()
+    assert lib.gdat_load(str(GDAT).encode(), ctypes.byref(handle)) == OK
+    yield handle
+    lib.gdat_free(handle)
