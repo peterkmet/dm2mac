@@ -5,9 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from dm2test.markers import ROOT
 from dm2tools.le import load_image
-
-ROOT = Path(__file__).parent.parent
 
 
 def ghidra_installed():

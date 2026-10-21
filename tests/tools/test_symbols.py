@@ -1,10 +1,10 @@
 import csv
 import re
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).parent.parent
+from dm2test.markers import ROOT
+
 CODE_END = 0x70000  # data object starts here
 SUBSYSTEMS = {
     "runtime library", "memory", "file I/O", "graphics", "palette", "text", "input", "sound", "music",

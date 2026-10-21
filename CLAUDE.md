@@ -10,13 +10,13 @@ Native C11/SDL3 macOS port of Dungeon Master II (PC DOS `SKULL.EXE`), built from
 - Windows build: `make windows` builds `build/dm2.exe` with MinGW-w64 and the SDL3 MinGW package of `../dm` (in a worktree: `make windows DM_DIR=/Users/lego/github/dm`).
 - Run: `build/dm2` starts a new game; `build/dm2 --save game/DATA/SKSAVE0.DAT` loads a save.
 - Turn-based mode: `build/dm2 --mode turnbased --saves DIR`; `uv run dm2-play --brief get_state` (`docs/turnbased-mode.md`).
-- One test file: `uv run pytest -q tests/test_x.py`.
+- One test file: `uv run pytest -q tests/<folder>/test_x.py`.
 - Full suite: `tools/test-suite` (parallel; skips a clean tree that already passed; log in `build/test-suite.log`).
 
 ## Layout
 - `src/`: the C port in five layers (`data/`, `engine/`, `ui/`, `control/`, `platform/`; headers in `<layer>/include/`, vendored OPL3 in `third_party/opl3/`); the root `Makefile` builds `build/dm2` and `build/libdm2.dylib`, and with `make windows` `build/dm2.exe`.
 - `tools/dm2tools/`: Python tools: LE loader, emulator harness (unicorn), data formats.
-- `tests/`: differential tests against the original in `dm2tools.emu`; `tests/test_standard.py` checks the coding standard.
+- `tests/`: `differential/` (the port against the original in `dm2tools.emu`), `port/` (port only), `tools/` (the Python tools), `standard/` (`test_standard.py` checks the coding standard); `dm2test/` holds the shared helpers.
 - Git-ignored data: `game/` (original files), `reference/` (incl. `reference/decomp/SKULL.c`, the Ghidra output of `tools/decompile-skull.sh`), `tests/saves/`. Link them into a new worktree.
 
 ## Conventions

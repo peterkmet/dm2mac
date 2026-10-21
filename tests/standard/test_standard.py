@@ -1,12 +1,13 @@
-"""Checks src/ against docs/coding-standard.md. Open exceptions: tests/standard_allowlist.txt."""
+"""Checks src/ against docs/coding-standard.md. Open exceptions: tests/standard/allowlist.txt."""
 
 import re
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+from dm2test.markers import ROOT
+
 SRC = ROOT / "src"
-ALLOWLIST = Path(__file__).with_name("standard_allowlist.txt")
+ALLOWLIST = Path(__file__).with_name("allowlist.txt")
 LAYERS = ["data", "engine", "ui", "control", "platform"]
 INCLUDE = re.compile(r'^\s*#include\s+"([\w./]+)"', re.M)
 MAX_FUNCTION_LINES = 60
