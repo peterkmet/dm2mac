@@ -1,11 +1,12 @@
-#ifndef FM_H
-#define FM_H
-#include <stddef.h>
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_FM_H
+#define DM2_UI_FM_H
 /* Prefixes: fm_ */
 
 /* The OPL2 FM music driver of HMIMDRV.386 (fmmidi.com, device 0xa002) on an emulated OPL3 chip. */
+
+#include <stddef.h>
+#include <stdint.h>
 
 enum { FM_BANK_MELODIC, FM_BANK_DRUM, FM_BANK_COUNT };
 
@@ -26,4 +27,4 @@ void fm_render(int16_t *out, int frames);
 /* Test hook: hook sees each OPL register write; NULL removes it. */
 void fm_set_write_hook(void (*hook)(int reg, int value));
 
-#endif
+#endif /* DM2_UI_FM_H */

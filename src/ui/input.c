@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Mouse and keyboard input: the input tree of SKULL.EXE maps clicks and keys to commands; the command queue. */
 #include <stdlib.h>
 #include <string.h>

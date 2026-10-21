@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The automap of the advanced mode: the map picture. */
 #include "advanced.h"
 #include "automap.h"

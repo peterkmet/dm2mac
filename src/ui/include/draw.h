@@ -1,10 +1,13 @@
-#ifndef DRAW_H
-#define DRAW_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_DRAW_H
+#define DM2_UI_DRAW_H
+/* Prefixes: draw_ */
+
+/* Drawing of GDAT images into the frame buffer: blits, transparency and the interface colors. */
+
 #include <stdint.h>
 #include "gdat.h"
 #include "gfx.h"
-
-/* Prefixes: draw_ */
 
 #define DRAW_NO_BLIT (-2)       /* transparent value: compute the rectangle, draw nothing */
 #define DRAW_NO_IMAGE (-3)      /* transparent value: do not even load the image */
@@ -51,4 +54,4 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx);
 /* Draws the image of ctx into its destination. */
 void draw_ctx_draw(DrawCtx *ctx);
 
-#endif
+#endif /* DM2_UI_DRAW_H */

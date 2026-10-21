@@ -1,8 +1,11 @@
-#ifndef VIDEO_H
-#define VIDEO_H
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_VIDEO_H
+#define DM2_UI_VIDEO_H
 /* Prefixes: video_ */
+
+/* The frame buffer and the palette of the 320x200 screen. */
+
+#include <stdint.h>
 
 #define SCREEN_W 320
 #define SCREEN_H 200
@@ -35,4 +38,4 @@ static inline uint8_t video_argb_red(uint32_t argb) { return (uint8_t)(argb >> A
 static inline uint8_t video_argb_green(uint32_t argb) { return (uint8_t)(argb >> ARGB_GREEN_SHIFT); }
 static inline uint8_t video_argb_blue(uint32_t argb) { return (uint8_t)argb; }
 
-#endif
+#endif /* DM2_UI_VIDEO_H */

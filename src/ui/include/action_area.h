@@ -1,9 +1,12 @@
-#ifndef ACTION_AREA_H
-#define ACTION_AREA_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_ACTION_AREA_H
+#define DM2_UI_ACTION_AREA_H
+/* Prefixes: area_ */
+
+/* The action area: the hands and spell icons of the party, and the panels that open in it. */
+
 #include <stdint.h>
 #include "ui.h"
-
-/* Prefixes: area_ */
 
 /* Clears the drawn state of the action area and its bitmap. */
 void area_reset(void);
@@ -22,4 +25,4 @@ void area_draw_hand_icon(int champ, int hand, int flash);
 /* Draws the spell icon of champ in the party icons (flash: pressed). */
 void area_draw_spell_icon(int champ, int flash);
 
-#endif
+#endif /* DM2_UI_ACTION_AREA_H */

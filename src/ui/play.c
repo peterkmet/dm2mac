@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The main loop: timer ticks, game steps, the view of the party, sleep. */
 #include <string.h>
 #include "action.h"

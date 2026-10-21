@@ -1,11 +1,14 @@
-#ifndef UI_H
-#define UI_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_UI_H
+#define DM2_UI_UI_H
+/* Prefixes: ui_ offscreen_ */
+
+/* The screen layout zones and the offscreen bitmaps shared by the panels. */
+
 #include <stdint.h>
 #include "draw.h"
 #include "game.h"
 #include "gfx.h"
-
-/* Prefixes: ui_ offscreen_ */
 
 /* Layout zones of the screen and the panels. */
 enum ui_zone {
@@ -125,4 +128,4 @@ char *ui_skill_rank_text(int champ, int skill, char *dst);
 /* Closing the inventory redraws the movement arrows (0 while the party falls asleep). */
 extern int inv_arrows_on_close;
 
-#endif
+#endif /* DM2_UI_UI_H */

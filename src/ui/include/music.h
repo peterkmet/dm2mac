@@ -1,11 +1,12 @@
-#ifndef MUSIC_H
-#define MUSIC_H
-#include <stdint.h>
-#include "gdat.h"
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_MUSIC_H
+#define DM2_UI_MUSIC_H
 /* Prefixes: music_ */
 
 /* Game music: the song of each map from SONGLIST.DAT, played by the HMP player on the FM driver. */
+
+#include <stdint.h>
+#include "gdat.h"
 
 #define MUSIC_SAMPLE_RATE 44100
 #define MUSIC_NO_SONG 0xff
@@ -44,4 +45,4 @@ void music_set_volume(int level);
 /* Renders frames of stereo samples at MUSIC_SAMPLE_RATE and runs the song timer. */
 void music_render(int16_t *out, int frames);
 
-#endif
+#endif /* DM2_UI_MUSIC_H */

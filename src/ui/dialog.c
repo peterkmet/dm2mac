@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Dialogs: messages, questions, progress, and the volume settings. */
 #include <string.h>
 #include "dialog.h"

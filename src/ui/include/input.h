@@ -1,10 +1,13 @@
-#ifndef INPUT_H
-#define INPUT_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_INPUT_H
+#define DM2_UI_INPUT_H
+/* Prefixes: input_ command_ kbd_ rect_ */
+
+/* Mouse and keyboard input: key codes, rectangles and the command queue. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "game.h"
-
-/* Prefixes: input_ command_ kbd_ rect_ */
 
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
 #define KEY_EXTENDED 0x1000
@@ -138,4 +141,4 @@ void command_process_queue(void);
 /* Executes one command; returns 0 when it must wait. */
 int command_execute(Command *c);
 
-#endif
+#endif /* DM2_UI_INPUT_H */

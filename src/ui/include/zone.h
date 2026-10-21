@@ -1,14 +1,15 @@
-#ifndef ZONE_H
-#define ZONE_H
-#include <stdint.h>
-#include "gdat.h"
-#include "gfx.h"
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_ZONE_H
+#define DM2_UI_ZONE_H
 /* Prefixes: zone_ */
 
 /* Layout zones: GDAT (1, 0, 4, 0) holds a record per zone: anchor type, parent zone, x, y. Anchor types 0 to 8
    place the zone at (x, y) of its parent (center, top left, top right, bottom right, bottom left, top, right,
    bottom, left); 9 gives a size (x, y = width, height); 10 to 18 place it relative to the parent's anchor. */
+
+#include <stdint.h>
+#include "gdat.h"
+#include "gfx.h"
 
 #define ZONE_NONE 0xffff
 #define ZONE_RELATIVE 0x8000    /* zone flag: add the offsets in *w and *h to the zone position */
@@ -44,4 +45,4 @@ void zone_get_position(int zone, int16_t *x, int16_t *y);
 /* The view zone of grid cell cell (0 to 24, 5 x 5) of view element base, turned by dir. */
 int zone_id_for_view_cell(int base, int cell, int dir);
 
-#endif
+#endif /* DM2_UI_ZONE_H */

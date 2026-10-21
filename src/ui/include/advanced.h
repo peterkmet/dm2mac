@@ -1,9 +1,12 @@
-#ifndef ADVANCED_H
-#define ADVANCED_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_ADVANCED_H
+#define DM2_UI_ADVANCED_H
+/* Prefixes: advanced_ */
+
+/* The advanced mode: quick save and load, the automap key and the movement letter keys. */
+
 #include <stdint.h>
 #include "game.h"
-
-/* Prefixes: advanced_ */
 
 /* PC scan codes of the quick save and quick load keys. */
 enum { KEY_QUICK_SAVE = 0x3f, KEY_QUICK_LOAD = 0x43 };   /* F5, F9 */
@@ -40,4 +43,4 @@ void advanced_automap_event(int type, int x, int y);
 /* The mouse is at (x, y): during a drag the map follows it in whole squares. */
 void advanced_automap_drag(int x, int y);
 
-#endif
+#endif /* DM2_UI_ADVANCED_H */

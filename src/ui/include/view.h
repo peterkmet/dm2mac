@@ -1,13 +1,16 @@
-#ifndef VIEW_H
-#define VIEW_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_VIEW_H
+#define DM2_UI_VIEW_H
+/* Prefixes: view_ */
+
+/* The dungeon view: the squares in sight and their drawing. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "aspect.h"
 #include "draw.h"
 #include "gfx.h"
 #include "weather.h"
-
-/* Prefixes: view_ */
 
 /* The dungeon view shows 23 squares: 3 at depth 0 and 1 (the party square, left, right), 5 at depth 2 and 3,
    7 at depth 4, ordered center, left, right, then further out. */
@@ -114,4 +117,4 @@ bool view_shows_floor_ornament(int pos, int ornament);
 /* Falling rain shows over the view: its slant shows the wind. */
 bool view_rain_shows(void);
 
-#endif
+#endif /* DM2_UI_VIEW_H */

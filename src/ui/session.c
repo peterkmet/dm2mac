@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The start menu, new games, the load and save dialogs, and the end of the game. */
 #include <stdio.h>
 #include <string.h>

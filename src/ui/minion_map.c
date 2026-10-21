@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The minion map panel in the action area: the grid of square icons around the party, a minion, or a marker. */
 #include <string.h>
 #include "action.h"

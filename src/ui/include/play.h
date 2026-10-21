@@ -1,7 +1,9 @@
-#ifndef PLAY_H
-#define PLAY_H
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_PLAY_H
+#define DM2_UI_PLAY_H
 /* Prefixes: play_ */
+
+/* The main loop: timer ticks, game steps, the view of the party and sleep. */
 
 #define SLEEP_STEP_TICKS 1  /* a sleeping party runs a step on each tick */
 #define TEXT_SLEEPING 0x11  /* GDAT text (1, 0, 0x11): the sleep message */
@@ -24,4 +26,4 @@ void play_present_viewport(void);
 /* The party falls asleep. */
 void play_sleep(void);
 
-#endif
+#endif /* DM2_UI_PLAY_H */

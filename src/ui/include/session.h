@@ -1,13 +1,15 @@
-#ifndef SESSION_H
-#define SESSION_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_SESSION_H
+#define DM2_UI_SESSION_H
+/* Prefixes: session_ args_ menu_ */
+
+/* The start menu, new games, loads and saves through the slot dialogs, and the end of the game. */
+
 #include <stdint.h>
 #include "champion.h"
 #include "game.h"
 #include "save.h"
 
-/* Prefixes: session_ args_ menu_ */
-
-/* The start menu, new games, loads and saves through the slot dialogs, and the end of the game. */
 #define MENU_WAITING 99                 /* session.new_game while the start menu waits */
 #define MENU_REDRAW 0xda                /* session.new_game: the menu shows its title again */
 #define SAVE_SLOT_COUNT 10
@@ -59,4 +61,4 @@ void session_edit_champion_name(Champion *c);
    returns the new argc. */
 int args_drop_save(int argc, char **argv);
 
-#endif
+#endif /* DM2_UI_SESSION_H */

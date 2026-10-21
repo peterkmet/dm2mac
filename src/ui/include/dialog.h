@@ -1,8 +1,11 @@
-#ifndef DIALOG_H
-#define DIALOG_H
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_DIALOG_H
+#define DM2_UI_DIALOG_H
 /* Prefixes: dialog_ */
+
+/* Dialogs: message, question and progress pictures with buttons, and the volume settings. */
+
+#include <stdint.h>
 
 /* Dialogs: a picture of GDAT category 0x1a in the viewport with up to 4 buttons and a message. */
 enum dialog_id {
@@ -48,4 +51,4 @@ void dialog_volume(void);
 /* Sets the sound (DEVICE_SOUND, plays a test sound) or music (DEVICE_MUSIC) volume setting, 0 to 7. */
 enum { DEVICE_SOUND = 0, DEVICE_MUSIC = 10 };
 
-#endif
+#endif /* DM2_UI_DIALOG_H */

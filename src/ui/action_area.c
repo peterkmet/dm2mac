@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The action area: the hands and the spell icons of the party, the open hand or spell panel, and the result of
    an action. */
 #include <string.h>

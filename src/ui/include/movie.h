@@ -1,12 +1,13 @@
-#ifndef MOVIE_H
-#define MOVIE_H
-#include <stdbool.h>
-#include <stdint.h>
-#include "mve.h"
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_MOVIE_H
+#define DM2_UI_MOVIE_H
 /* Prefixes: movie_ */
 
 /* The movie script of the DOS launcher IBMIOP.EXE; platform/main.c drives it (docs/skull-formats.md section 15). */
+
+#include <stdbool.h>
+#include <stdint.h>
+#include "mve.h"
 
 enum { MOVIE_SCRIPT_NONE, MOVIE_SCRIPT_START, MOVIE_SCRIPT_COMPLETED, MOVIE_SCRIPT_PARTY_DEAD };
 enum { MOVIE_STEP_NONE = -1, MOVIE_STEP_SPLASH, MOVIE_STEP_FTL, MOVIE_STEP_INTRO, MOVIE_STEP_END, MOVIE_STEP_CREDITS };
@@ -39,4 +40,4 @@ void movie_picture(MoviePicture *p);
 /* The audio mixer during a movie: the movie sound at full volume, 16-bit stereo at SOUND_OUTPUT_RATE. */
 void movie_render_audio(int16_t *stereo, int frames);
 
-#endif
+#endif /* DM2_UI_MOVIE_H */

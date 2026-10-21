@@ -1,12 +1,15 @@
-#ifndef TEXT_H
-#define TEXT_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_TEXT_H
+#define DM2_UI_TEXT_H
+/* Prefixes: text_build_ text_clear_ text_draw text_init text_measure text_message_ text_print_ text_set_message_ text_wrap_ */
+
+/* Text: the font, message wrapping and printing into the screen. */
+
 #include <stddef.h>
 #include <stdint.h>
 #include "gdat.h"
 #include "game_text.h"
 #include "gfx.h"
-
-/* Prefixes: text_build_ text_clear_ text_draw text_init text_measure text_message_ text_print_ text_set_message_ text_wrap_ */
 
 /* The font: 6 rows of 128 bytes in GDAT (1, 0, 7, 0), one byte per character and row, 5 pixels in bits 4 to 0. */
 #define FONT_GLYPH_WIDTH 5
@@ -62,4 +65,4 @@ void text_print_char(int color, char c);
 void text_print_number(int color, int32_t value);
 void text_print_newline(void);
 
-#endif
+#endif /* DM2_UI_TEXT_H */
