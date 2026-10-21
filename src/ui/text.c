@@ -11,7 +11,6 @@
 
 #define FONT_INDEX            0
 #define FONT_TYPE             7
-#define FONT_ENTRY            0
 #define FONT_CHARS            128
 #define FONT_SIZE             (FONT_GLYPH_HEIGHT * FONT_CHARS)
 #define GLYPH_BYTES_PER_ROW   3
@@ -42,9 +41,9 @@ static Bitmap message_line = {message.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8B
 int text_init(const gdat_t *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, FONT_TYPE, FONT_ENTRY), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, FONT_TYPE, GFX_FONT), &size);
     const uint8_t *colors =
-        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, UI_COLORS_ENTRY), &size);
+        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &size);
     if (!p || !colors)
         return 0;
     memcpy(font, p, FONT_SIZE);

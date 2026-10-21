@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "gfx.h"
+#include "ids.h"
 #include "le.h"
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +14,6 @@
    and the colors of each ramp, then the ramp and step of each of the 256 palette colors. */
 #define RAMP_INDEX         0
 #define RAMP_TYPE          7
-#define RAMP_ENTRY         2
 #define RAMP_MAX           256
 #define RAMP_OF_COLOR_SIZE 2 /* the ramp and the step of a color */
 
@@ -241,7 +241,7 @@ int16_t gfx_scale_64(int16_t value, int16_t scale)
 int pal_load_color_ramps(const gdat_t *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, RAMP_TYPE, RAMP_ENTRY), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, RAMP_TYPE, GFX_RAMP), &size);
     if (!p || size < 1)
         return 0;
     const uint8_t *end = p + size;

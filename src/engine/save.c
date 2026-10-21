@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "save.h"
 #include "gdat.h"
+#include "ids.h"
 #include "le.h"
 #include "os.h"
 #include "champion.h"
@@ -47,7 +48,6 @@
 enum event_data { EVENT_THING = 0, EVENT_VALUE = 0, EVENT_THING2 = 2 }; /* byte offsets in TimelineEvent.data */
 
 #define GDAT_CREATURE_INFO_ENTRY 5
-#define GDAT_MONEYBOX_ENTRY      0x40
 
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
    animated ornament (0x2c), shop display (0x30), activation with sound (0x32), and four of unknown use. */
@@ -267,7 +267,7 @@ static int container_is_moneybox(uint16_t container)
     if (container_kind(container) != CONTAINER_CHEST)
         return 0;
     int item = container_type(container);
-    return gdat_find(io.gdat, CAT_CONTAINER, item, GDAT_TYPE_TEXT, GDAT_MONEYBOX_ENTRY) != -1;
+    return gdat_find(io.gdat, CAT_CONTAINER, item, GDAT_TYPE_TEXT, GFX_MONEYBOX_TEXT) != -1;
 }
 
 static int defer_thing(uint16_t thing)

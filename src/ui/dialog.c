@@ -17,8 +17,6 @@
 #include "zone.h"
 #include <string.h>
 
-#define DIALOG_MESSAGE_ENTRY  0x14
-#define DIALOG_PICTURE_ENTRY  0
 #define DIALOG_VOLUME_BUTTONS 7
 #define BUTTON_KEY            7 /* transparent color of a pressed button picture */
 #define BUTTON_PRESS_VBLANKS  20
@@ -128,7 +126,7 @@ int dialog_draw(int id, int message)
     const gdat_t *g = gdat_current();
     int present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
     if (message && id != DIALOG_ERROR && id != DIALOG_LOADING &&
-        gdat_exists(g, CAT_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY)) {
+        gdat_exists(g, CAT_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, GFX_DIALOG_PICTURE)) {
         dialog_run(dialog_draw(DIALOG_ERROR, message));
         message = MESSAGE_NONE;
     }
@@ -142,8 +140,8 @@ int dialog_draw(int id, int message)
             count++;
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY), &view_viewport, r, UI_OPAQUE,
-                           draw_gdat_image_palette(CAT_DIALOG, id, DIALOG_PICTURE_ENTRY));
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, GFX_DIALOG_PICTURE), &view_viewport, r, UI_OPAQUE,
+                           draw_gdat_image_palette(CAT_DIALOG, id, GFX_DIALOG_PICTURE));
     text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
     for (int i = 0; i < count; i++)
@@ -157,7 +155,7 @@ int dialog_draw(int id, int message)
             shown[0] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[0]);
         } else {
             colors[0] = ui_colors[UI_YELLOW];
-            shown[0] = text_gdat(CAT_DIALOG, id, DIALOG_MESSAGE_ENTRY, message_texts[0]);
+            shown[0] = text_gdat(CAT_DIALOG, id, GFX_DIALOG_MESSAGE, message_texts[0]);
             if (message) {
                 colors[1] = ui_colors[UI_WHITE];
                 shown[1] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[1]);
@@ -248,7 +246,7 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 void dialog_volume(void)
 {
     char text[TEXT_SIZE];
-    if (!gdat_exists(gdat_current(), CAT_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, DIALOG_PICTURE_ENTRY))
+    if (!gdat_exists(gdat_current(), CAT_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, GFX_DIALOG_PICTURE))
         return;
     dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
     text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW],

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The actions of the champions: the action menu, the actions, their delays and repeats, experience, throwing. */
 #include "champ_action.h"
+#include "ids.h"
 #include "action.h"
 #include "ai.h"
 #include "champion.h"
@@ -84,7 +85,6 @@
 #define FIGHT_TIME_SHORT       40
 #define LEVEL_EXPERIENCE       512
 #define REDRAW_LEVEL           0x3800
-#define TEXT_LEVEL_FIRST       6 /* GDAT texts (1, 0, 6 to 9): a champion gains a level of a base skill */
 #define DELAY_EXTRA_SHIFT      2 /* an action delay grows by a quarter */
 #define HASTE_DELAY_SHIFT      2 /* haste cuts the delay to a quarter */
 #define DELAY_BASE             2

@@ -9,7 +9,6 @@
    then 4 words per zone of each range. */
 #define LAYOUT_INDEX       0
 #define LAYOUT_TYPE        4
-#define LAYOUT_ENTRY       0
 #define LAYOUT_SIGNATURE   0xfc0d
 #define RANGE_MAX          256
 #define LAYOUT_RANGE_COUNT 2 /* the byte offset of the range count word of the header */
@@ -59,7 +58,7 @@ static struct {
 int zone_load(const gdat_t *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, LAYOUT_ENTRY), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);
     free(layout.records);
     layout.records = NULL;
     layout.count = 0;

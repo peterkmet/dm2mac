@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "item.h"
 #include "gdat.h"
+#include "ids.h"
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
@@ -19,8 +20,6 @@
 #define EXPLOSION_INDEX_BASE  0x80
 #define WEAPON_MAX_CHARGES    15
 #define MISC_MAX_CHARGES      3
-#define MONEYBOX_TEXT_ENTRY   0x40 /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
-#define ITEM_ICON_ENTRY       0x18 /* the first icon of an item */
 #define MISC_ITEM_INDEX_BASE  0x100
 #define ITEM_KIND_ITEMS       128 /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
 #define MONEY_SLOT_COUNT      10
@@ -181,7 +180,7 @@ enum {
 
 int item_icon_index(uint16_t thing, int slot, int animated)
 {
-    uint8_t icon = ITEM_ICON_ENTRY;
+    uint8_t icon = GFX_ITEM_ICON;
     if (!animated)
         return icon;
     uint16_t attr = item_attr(thing, ATTR_ICON_ANIMATION);
@@ -240,7 +239,7 @@ bool item_is_moneybox(uint16_t thing)
 {
     if (thing == THING_NONE || thing_type(thing) != THING_CONTAINER || container_kind(thing))
         return 0;
-    return gdat_find(gdat_current(), CAT_CONTAINER, item_gdat_index(thing), GDAT_TYPE_TEXT, MONEYBOX_TEXT_ENTRY) != -1;
+    return gdat_find(gdat_current(), CAT_CONTAINER, item_gdat_index(thing), GDAT_TYPE_TEXT, GFX_MONEYBOX_TEXT) != -1;
 }
 
 bool item_is_chest(uint16_t thing)
@@ -318,7 +317,7 @@ bool item_has_charged_action(uint16_t thing)
     if (thing == THING_NONE)
         return 0;
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
-    for (int entry = ACTION_ENTRY_FIRST; entry <= ACTION_ENTRY_LAST; entry++)
+    for (int entry = GFX_ACTION_FIRST; entry <= GFX_ACTION_LAST; entry++)
         if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_TEXT, entry) &&
             text_gdat_field(category, index, entry, FIELD_COMMAND) &&
             text_gdat_field(category, index, entry, FIELD_CHARGES))
@@ -337,7 +336,7 @@ const char *item_name(uint16_t thing)
             text_args.champion = (int16_t)champion;
     }
     char raw[TEXT_SIZE];
-    return text_format(text_gdat(category, index, ITEM_NAME_ENTRY, raw), name);
+    return text_format(text_gdat(category, index, GFX_ITEM_NAME, raw), name);
 }
 
 uint16_t minion_find_link_projectile(uint16_t group, uint16_t filter)
@@ -419,7 +418,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
 int money_coin_type_for_slot(uint16_t box, int slot)
 {
     char text[TEXT_SIZE];
-    const char *p = text_gdat(CAT_CONTAINER, item_gdat_index(box), MONEYBOX_TEXT_ENTRY, text);
+    const char *p = text_gdat(CAT_CONTAINER, item_gdat_index(box), GFX_MONEYBOX_TEXT, text);
     if (!*p)
         return -1;
     /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */

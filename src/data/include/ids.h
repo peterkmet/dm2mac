@@ -3,7 +3,86 @@
 #define DM2_DATA_IDS_H
 /* Prefixes: GFX_ ZONE_ ICON_ TEXT_ */
 
-/* Layout zone numbers and minion map icon numbers, one block per kind, sorted by value. */
+/* Graphic entry numbers of GRAPHICS.DAT (one block per category and item type), layout zone numbers, minion map
+   icon numbers and string numbers, one block per kind, sorted by value. */
+
+/* The interface layout (CAT_INTERFACE, 0, 4, entry). */
+#define GFX_LAYOUT 0x00
+
+/* The interface data of type 7 (CAT_INTERFACE, 0, 7, entry). */
+#define GFX_FONT 0x00
+#define GFX_RAMP 0x02
+
+/* The palette (CAT_INTERFACE, 0, 9, entry). */
+#define GFX_PALETTE 0xfe
+
+/* The interface raw data (CAT_INTERFACE, index, GDAT_TYPE_DATA, entry). */
+#define GFX_UI_COLORS 0xfe /* (CAT_INTERFACE, index, GDAT_TYPE_DATA, entry): the interface colors */
+
+/* The interface pictures (CAT_INTERFACE, index, GDAT_TYPE_IMAGE, entry). */
+#define GFX_FLASK_PICTURE 0x0b
+
+/* The interface texts of index 0xfe (CAT_INTERFACE, 0xfe, GDAT_TYPE_TEXT, entry). */
+#define GFX_FORMAT_TITLE_2 0x06
+
+/* The menu pictures (CAT_MENU, 0, GDAT_TYPE_IMAGE, entry). */
+#define GFX_MENU_PICTURE 0x01 /* GDAT (5, 0, 1, 1): the picture of the menu command 0xda */
+
+/* The end pictures (CAT_END, 0, GDAT_TYPE_IMAGE, entry). */
+#define GFX_END_PICTURE 0x01 /* GDAT (6, 0, 1, 1): the picture after the player quits */
+
+/* The pictures of a dialog (CAT_DIALOG, dialog, GDAT_TYPE_IMAGE, entry). */
+#define GFX_DIALOG_PICTURE 0x00
+
+/* The texts of a dialog (CAT_DIALOG, dialog, GDAT_TYPE_TEXT, entry). */
+#define GFX_DIALOG_MESSAGE 0x14
+
+/* The pictures of a creature (CAT_CREATURE, creature, GDAT_TYPE_IMAGE, entry). */
+#define GFX_ICON          0x09 /* the front view */
+#define GFX_CREATURE_SIDE 0xfa /* pictures 0xfa to 0xfd: the creature seen from each side */
+
+/* The animation data of a creature (CAT_CREATURE, creature, GDAT_TYPE_CREATURE_DATA, entry). */
+#define GFX_CREATURE_STEPS  0xfc /* data: the animation steps (4 bytes each) */
+#define GFX_CREATURE_FRAMES 0xfd /* data: the animation frames */
+
+/* The animation table of a creature (CAT_CREATURE, creature, GDAT_TYPE_TABLE, entry). */
+#define GFX_CREATURE_SEQUENCES 0xfb /* table: (action, first step) pairs, ended by -1 */
+
+/* The pictures of an explosion (CAT_EXPLOSION, type, GDAT_TYPE_IMAGE, entry); the sparkles also of a teleporter. */
+#define GFX_ALCOVE_STILL_PICTURE 0x0c
+#define GFX_SPARKLE_PICTURE      0x14 /* an explosion with this picture is a sparkle field */
+#define GFX_EXPLOSION_PICTURE    0x41
+
+/* The pictures of a champion (CAT_CHAMPION, champion, GDAT_TYPE_IMAGE, entry). */
+#define GFX_PORTRAIT 0x01
+
+/* The pictures of every item (item category, index, GDAT_TYPE_IMAGE, entry). */
+#define GFX_OBJECT_PICTURE_CLOSED 0x00 /* object pictures by the open state of a chest: side view, front view */
+#define GFX_OBJECT_PICTURE_OPEN   0x04
+#define GFX_OBJECT_PICTURE        0x11 /* (category, index, 1, 0x11): the big picture of an item */
+#define GFX_ITEM_ICON             0x18 /* the first icon of an item */
+
+/* GDAT texts (category, index, 5, entry) of an item: its name and its actions. */
+#define GFX_ACTION_FIRST 0x08
+#define GFX_ACTION_LAST  0x0b
+#define GFX_ITEM_NAME    0x18
+
+/* The pictures of a scroll (CAT_SCROLL, 0, GDAT_TYPE_IMAGE, entry). */
+#define GFX_SCROLL_PICTURE 0x10
+
+/* The pictures of a container: a chest, a money box, a minion map (CAT_CONTAINER, index, GDAT_TYPE_IMAGE, entry). */
+#define GFX_CONTAINER_PICTURE       0x10
+#define GFX_MAP_ACTION_PICTURE_BASE 0x41
+#define GFX_CHEST_OPEN_PICTURE      0x48
+
+/* The texts of a container (CAT_CONTAINER, index, GDAT_TYPE_TEXT, entry). */
+#define GFX_MONEYBOX_TEXT 0x40 /* GDAT text (0x14, index, 5, 0x40): the coin slots of a money box */
+
+/* The minion map icon strip of a thing (category, index, GDAT_TYPE_IMAGE, entry). */
+#define GFX_STRIP 0xf9
+
+/* The image that stands in for a missing image (CAT_MISC, 0xfe, GDAT_TYPE_IMAGE, entry). */
+#define GFX_PLACEHOLDER 0xfe
 
 /* Layout zones of the screen, the panels, the dialogs and the view. */
 #define ZONE_SCREEN                0x02
@@ -131,5 +210,16 @@
 #define ICON_PARTY_INVISIBLE 0x09
 #define ICON_MARKER_BELOW    0x0a
 #define ICON_MARKER_ABOVE    0x0b
+
+/* String numbers of the interface (CAT_INTERFACE, 0, GDAT_TYPE_TEXT, entry). */
+#define TEXT_LEVEL_FIRST 0x06 /* GDAT texts (1, 0, 6 to 9): a champion gains a level of a base skill */
+#define TEXT_JOINED      0x0e /* GDAT text (1, 0, 0x0e): a champion joins the party */
+#define TEXT_SLEEPING    0x11 /* GDAT text (1, 0, 0x11): the sleep message */
+#define TEXT_PAUSED      0x12 /* GDAT text (1, 0, 0x12): the pause message */
+
+/* Inventory texts (7, 0, 5, entry). */
+#define TEXT_WEIGHT     0x1f
+#define TEXT_STAT_FIRST 0x20
+#define TEXT_LOAD       0x2a
 
 #endif /* DM2_DATA_IDS_H */

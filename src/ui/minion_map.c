@@ -20,14 +20,12 @@
 #include "zone.h"
 #include <string.h>
 
-#define MAP_PANEL_PICTURE   0x10
 #define OPTION_BUTTON_UP    0x49
 #define OPTION_BUTTON_DOWN  0x4a
 #define OPTION_LABEL_FIRST  'r'
 #define ICON_KEY            10
 /* Icon strips: GDAT image (category, index, 1, 0xf9), MAP_ICON_W pixels per icon; the value (category, index, 0x0b,
    0xf9) set: the thing shows only with MAP_OPTION_DETAILS. */
-#define STRIP_ENTRY         0xf9
 #define STRIP_DETAIL_KEY    0xf9
 #define MAP_ITEM_ICONS      0x40 /* the image of the map item with the party, minion, and marker icons */
 #define GDAT_INDEX_COUNT    256  /* GDAT indices are bytes */
@@ -70,10 +68,10 @@ static Offscreen *area;
 static Strip map_icon_strip(int category, int index)
 {
     Strip s = {0};
-    if (!gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, STRIP_ENTRY))
+    if (!gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, GFX_STRIP))
         return s;
-    s.image = draw_gdat_image(category, index, STRIP_ENTRY);
-    s.palette = draw_gdat_image_palette(category, index, STRIP_ENTRY);
+    s.image = draw_gdat_image(category, index, GFX_STRIP);
+    s.palette = draw_gdat_image_palette(category, index, GFX_STRIP);
     s.count = s.image ? s.image->width / MAP_ICON_W : 0;
     return s;
 }
@@ -661,7 +659,7 @@ void mmap_draw(uint16_t thing)
     }
     area = area_begin_draw(0);
     if (!(action.flags & MAP_PANEL_DRAWN)) {
-        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, MAP_PANEL_PICTURE, ZONE_PANEL, UI_OPAQUE);
+        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, GFX_CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
         for (int i = 0; i < champ_action_count; i++)
             area_draw_name(i, 0);
         mmap_draw_option_buttons(0);

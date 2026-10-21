@@ -42,38 +42,33 @@ enum {
 };
 /* Wall set pictures (8, set, entry) behind the party and the action champion. */
 enum { WALLSET_PARTY_BACK = 0xf5, WALLSET_FACE_BACK = 0xf6 };
-#define RESULT_SMALL_MAX        15 /* damage up to this shows the small damage star */
-#define RESULT_SCALED_MAX       40
-#define RESULT_SMALL_SCALE      31
-#define RESULT_LARGE_SCALE      47
-#define RESULT_SCALE_Y          53
-#define RESULT_DIGITS           5
-#define AMMO_ATTR               5
-#define AMMO_NOT_AMMO           0x8000
-#define AMMO_HAND_DEFAULT       0x38
-#define AMMO_HAND_OTHER         0x34
-#define AMMO_ICON               0x18
-#define CONTAINER_PICTURE       0x10
-#define CONTAINER_LID           0x12
-#define CONTAINER_LID_KEY       10
-#define MONEY_PICTURE           0x10
-#define COIN_PILE_MAX           32 /* the most coins of a type that a pile shows */
-#define COIN_PILE_MASK          0x1f
-#define COIN_ICON               0x18
-#define MAP_ACTION_PICTURE_BASE 0x41
-#define SPELL_RUNE_SETS         4 /* the rune sets 0 to 3; the panel of set 4 has no runes */
-#define AURA_FRAMES             4 /* the aura picture holds 4 x 4 frames: direction by game time */
-#define ICON_OFFSET             1 /* the icon of an item in a hand casts a shadow 1 pixel up and left */
-#define ICON_SHADOW_REMAP       1 /* GDAT (1, 0, 7, 1): the colors of an item icon in a hand */
-#define FLAGS_MINION_HEADER     0x0400
-#define ICON_KEY_COLOR          UI_RED /* the background of a hand icon bitmap; the blit skips it */
-#define UI_INDEX_AURA           7
-#define NO_CELL                 0xff
-#define ICON_COLORS             16 /* the colors of a 4 bpp picture */
-#define ICON_BPP                8
-#define FACE_BPP                4
-#define JITTER_CENTER           2 /* haste_jitter: a roll of 1 to 3 moves by -1 to 1 */
-#define PILE_SLOT_STEP          8 /* the coin pile of each slot starts 8 offsets further */
+#define RESULT_SMALL_MAX    15 /* damage up to this shows the small damage star */
+#define RESULT_SCALED_MAX   40
+#define RESULT_SMALL_SCALE  31
+#define RESULT_LARGE_SCALE  47
+#define RESULT_SCALE_Y      53
+#define RESULT_DIGITS       5
+#define AMMO_ATTR           5
+#define AMMO_NOT_AMMO       0x8000
+#define AMMO_HAND_DEFAULT   0x38
+#define AMMO_HAND_OTHER     0x34
+#define CONTAINER_LID       0x12
+#define CONTAINER_LID_KEY   10
+#define COIN_PILE_MAX       32 /* the most coins of a type that a pile shows */
+#define COIN_PILE_MASK      0x1f
+#define SPELL_RUNE_SETS     4 /* the rune sets 0 to 3; the panel of set 4 has no runes */
+#define AURA_FRAMES         4 /* the aura picture holds 4 x 4 frames: direction by game time */
+#define ICON_OFFSET         1 /* the icon of an item in a hand casts a shadow 1 pixel up and left */
+#define ICON_SHADOW_REMAP   1 /* GDAT (1, 0, 7, 1): the colors of an item icon in a hand */
+#define FLAGS_MINION_HEADER 0x0400
+#define ICON_KEY_COLOR      UI_RED /* the background of a hand icon bitmap; the blit skips it */
+#define UI_INDEX_AURA       7
+#define NO_CELL             0xff
+#define ICON_COLORS         16 /* the colors of a 4 bpp picture */
+#define ICON_BPP            8
+#define FACE_BPP            4
+#define JITTER_CENTER       2 /* haste_jitter: a roll of 1 to 3 moves by -1 to 1 */
+#define PILE_SLOT_STEP      8 /* the coin pile of each slot starts 8 offsets further */
 
 static Offscreen area;
 static struct {
@@ -157,7 +152,7 @@ static void draw_action_result(int16_t value)
         for (int slot_index = 0; slot_index < GDAT_NO_INDEX; slot_index++) {
             uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, slot_index, GDAT_TYPE_VALUE, AMMO_ATTR);
             if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
-                offscreen_draw_gdat_image(&area, CAT_WEAPON, slot_index, AMMO_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
+                offscreen_draw_gdat_image(&area, CAT_WEAPON, slot_index, GFX_ITEM_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
                 return;
             }
         }
@@ -402,9 +397,10 @@ void area_draw_name(int i, int highlight)
     begin_draw(0);
     const ChampionAction *a = &champ_actions[i];
     if (action.flags) {
-        offscreen_draw_gdat_image(&area, CAT_CONTAINER, action.map_item,
-                                  (uint8_t)((a->entry - ACTION_ENTRY_FIRST) * 2 + MAP_ACTION_PICTURE_BASE + highlight),
-                                  ZONE_MAP_ACTION_FIRST + i, UI_OPAQUE);
+        offscreen_draw_gdat_image(
+            &area, CAT_CONTAINER, action.map_item,
+            (uint8_t)((a->entry - GFX_ACTION_FIRST) * 2 + GFX_MAP_ACTION_PICTURE_BASE + highlight),
+            ZONE_MAP_ACTION_FIRST + i, UI_OPAQUE);
         return;
     }
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, ACTION_BUTTON + highlight,
@@ -460,7 +456,7 @@ static void draw_money_box(uint16_t box)
         {-4, 0  },
         {2,  -11}
     };
-    offscreen_draw_gdat_image(&area, CAT_CONTAINER, item_gdat_index(box), MONEY_PICTURE, ZONE_PANEL, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_CONTAINER, item_gdat_index(box), GFX_CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
     int16_t counts[COIN_TYPE_MAX];
     money_count_coins_in_box(box, counts);
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
@@ -469,8 +465,8 @@ static void draw_money_box(uint16_t box)
             continue;
         uint16_t item = money_coin_item(type);
         int index = item_index_gdat_index(item), category = item_index_gdat_category(item);
-        const Bitmap *image = draw_gdat_image(category, index, COIN_ICON);
-        const uint8_t *colors = draw_gdat_image_palette(category, index, COIN_ICON);
+        const Bitmap *image = draw_gdat_image(category, index, GFX_ITEM_ICON);
+        const uint8_t *colors = draw_gdat_image_palette(category, index, GFX_ITEM_ICON);
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
         zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy, ZONE_NO_ANCHOR);
         int n = counts[type], at = slot * PILE_SLOT_STEP + (n > COIN_PILE_MAX ? n - COIN_PILE_MAX : 0);
@@ -508,7 +504,7 @@ static void draw_container(uint16_t container, int full)
     int index = item_gdat_index(container);
     int16_t back[RECT_SIZE] = {0};
     if (full) {
-        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
+        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, GFX_CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
         offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, CONTAINER_LID, ZONE_CONTAINER_LID, CONTAINER_LID_KEY);
     } else {
         zone_get_rect(ZONE_PANEL, back);
@@ -521,9 +517,9 @@ static void draw_container(uint16_t container, int full)
         if (!full) {
             int16_t r[RECT_SIZE];
             zone_get_rect(zone, r);
-            offscreen_blit(&area, draw_gdat_image(CAT_CONTAINER, index, CONTAINER_PICTURE), r,
+            offscreen_blit(&area, draw_gdat_image(CAT_CONTAINER, index, GFX_CONTAINER_PICTURE), r,
                            (int16_t)(r[RECT_X] - back[RECT_X]), (int16_t)(r[RECT_Y] - back[RECT_Y]), UI_OPAQUE,
-                           MIRROR_NONE, draw_gdat_image_palette(CAT_CONTAINER, index, CONTAINER_PICTURE));
+                           MIRROR_NONE, draw_gdat_image_palette(CAT_CONTAINER, index, GFX_CONTAINER_PICTURE));
         }
         int icon = item_icon_index(t, SLOT_CONTAINER_FIRST + i, 1);
         offscreen_draw_gdat_image(&area, item_gdat_category(t), item_gdat_index(t), icon, zone, UI_KEY);

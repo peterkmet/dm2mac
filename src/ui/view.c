@@ -75,7 +75,6 @@ enum { ORN_PICTURE_SIDE, ORN_PICTURE_FRONT, ORN_PICTURE_RIGHT }; /* wall ornamen
 #define ORN_OVERLAY           0x0f /* wall ornament picture drawn over the ornament */
 #define ORN_WET_BACKGROUND    0xc8 /* + entry: the picture behind a wet ornament */
 #define DOOR_DAMAGE           0x41 /* door picture of the damage mask */
-#define PORTRAIT_ENTRY        1
 #define PORTRAIT_OFFSET_ENTRY 0xfd
 
 #define ZONE_ROW_SIZE     4  /* zones of one ornament row */
@@ -391,20 +390,13 @@ static const int16_t stairs_front_zone[POS_CEILING_PIT_LAST + 1][2] = {
 #define CREATURE_KEY_COLOR 4    /* creature value keys */
 #define CREATURE_KEY_POSSESSION_LIFT 0x41
 #define CREATURE_SIZES               0xfe /* creature data: picture scale by frame size row and side */
-#define CREATURE_SIDE_ENTRY          0xfa /* pictures 0xfa to 0xfd: the creature seen from each side */
 #define CREATURE_ANY_SIDE            0xfc
 #define ORN_KEY_ALCOVE_ITEMS       0xfd /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offset of the items in an alcove */
 #define EXPLOSION_KEY_FLIP         0 /* explosion value keys: random mirror mask, fixed power, side flip of a missile */
 #define EXPLOSION_KEY_FIXED_POWER  0x41
 #define EXPLOSION_KEY_MISSILE_FLIP 1
-#define EXPLOSION_PICTURE          0x41
 #define EXPLOSION_TINT             0x42 /* pictures 0x42 to 0x44: the tint of an explosion on the party square */
-#define EXPLOSION_SPARKLES         0x14 /* an explosion with this picture is a sparkle field */
-#define SPARKLE_PICTURE            0x14
-#define THING_KEY                  10 /* transparent color of thing pictures */
-#define OBJECT_PICTURE_CLOSED      0  /* object pictures by the open state of a chest: side view, front view */
-#define OBJECT_PICTURE_OPEN        4
-#define ALCOVE_STILL_PICTURE       0x0c
+#define THING_KEY                  10   /* transparent color of thing pictures */
 /* Animation bits of an active group (Step 16): a random shift of the picture and a mirror. */
 #define ANIM_JITTER_Y_SHIFT        3
 #define ANIM_MIRROR                0x40
@@ -525,8 +517,8 @@ static const uint8_t jitter[JITTER_COUNT][2] = {
 static const int8_t jitter_offset[8] = {0, 1, 2, 3, 0, -3, -2, -1};
 /* Object pictures by the open state of a chest: side view, front view. */
 static const uint8_t object_picture[2][2] = {
-    {OBJECT_PICTURE_CLOSED, OBJECT_PICTURE_CLOSED + 1},
-    {OBJECT_PICTURE_OPEN,   OBJECT_PICTURE_OPEN + 1  }
+    {GFX_OBJECT_PICTURE_CLOSED, GFX_OBJECT_PICTURE_CLOSED + 1},
+    {GFX_OBJECT_PICTURE_OPEN,   GFX_OBJECT_PICTURE_OPEN + 1  }
 };
 /* The possessions of a static creature: lift above the floor, and their cell shift by the side they lie on,
    for creatures that carry them high (0) and low (1). */
@@ -704,7 +696,7 @@ void view_enter_map(int map)
         }
     }
     uint32_t size;
-    const uint8_t *colors = gdat_item(g, gdat_find(g, CAT_INTERFACE, 0, GDAT_TYPE_DATA, UI_COLORS_ENTRY), &size);
+    const uint8_t *colors = gdat_item(g, gdat_find(g, CAT_INTERFACE, 0, GDAT_TYPE_DATA, GFX_UI_COLORS), &size);
     view.clear_color = colors && size ? colors[0] : 0;
 }
 
@@ -1261,10 +1253,10 @@ static void view_draw_sparkle_field(int pos, int category, int index)
             mask = mirrored->pixels;
         }
     }
-    const Bitmap *sparkles = draw_gdat_image(category, index, SPARKLE_PICTURE);
+    const Bitmap *sparkles = draw_gdat_image(category, index, GFX_SPARKLE_PICTURE);
     if (!sparkles)
         return;
-    const uint8_t *palette = view_get_shaded_palette(category, index, SPARKLE_PICTURE, 0);
+    const uint8_t *palette = view_get_shaded_palette(category, index, GFX_SPARKLE_PICTURE, 0);
     int offset = rand_next() & RANDOM_BYTE;
     int width = (int16_t)((rand_bit() + field[SPARKLE_TILE]) * SPARKLE_TILE_STEP);
     gfx_blit_tiled_4to8(sparkles->pixels, view_viewport.pixels, mask, rect, width, offset, VIEWPORT_WIDTH, 0, palette);
@@ -1432,9 +1424,9 @@ static int creature_side_picture(int type, const uint8_t *frame, int side, int a
     if (!creature_picture_exists(type, entry)) {
         int saved = *flip;
         *flip = 0;
-        entry = (uint8_t)(CREATURE_SIDE_ENTRY + side);
+        entry = (uint8_t)(GFX_CREATURE_SIDE + side);
         if (!creature_picture_exists(type, entry)) {
-            int other = (uint8_t)(CREATURE_SIDE_ENTRY + dir_opposite(side));
+            int other = (uint8_t)(GFX_CREATURE_SIDE + dir_opposite(side));
             if (side & 1 && creature_picture_exists(type, other)) {
                 *flip = *mirrored = 1;
                 entry = other;
@@ -1671,7 +1663,7 @@ static void view_setup_explosion_picture(int type, int size, int flip, int zone)
     scale = scale < EXPLOSION_SCALE_MIN   ? EXPLOSION_SCALE_MIN
             : scale > EXPLOSION_SCALE_MAX ? EXPLOSION_SCALE_MAX
                                           : scale;
-    DrawCtx *c = draw_ctx_init(&view.ctx, CAT_EXPLOSION, type, EXPLOSION_PICTURE);
+    DrawCtx *c = draw_ctx_init(&view.ctx, CAT_EXPLOSION, type, GFX_EXPLOSION_PICTURE);
     c->src_x = (int16_t)(c->src_x + c->dx);
     c->src_y = (int16_t)(c->src_y + c->dy);
     c->dx = c->dy = 0;
@@ -1723,7 +1715,7 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
                 continue;
             int type = explosion_type(thing);
             bool centered = explosion_is_centered(thing);
-            if (picture_exists(CAT_EXPLOSION, type, EXPLOSION_SPARKLES)) {
+            if (picture_exists(CAT_EXPLOSION, type, GFX_SPARKLE_PICTURE)) {
                 if (k == EXPLOSION_ORDER_LAST)
                     view_draw_sparkle_field(pos, CAT_EXPLOSION, type);
                 continue;
@@ -1838,7 +1830,7 @@ static void view_draw_alcove_contents(int pos)
         if (type == EXPLOSION_ALCOVE_STILL) {
             int scale = alcove_explosion_scale[depth];
             view_setup_picture(flip, scale, scale, 0, 0, 0, zone, ZONE_NO_ANCHOR, THING_KEY, NO_KEY, CAT_EXPLOSION,
-                               type, ALCOVE_STILL_PICTURE);
+                               type, GFX_ALCOVE_STILL_PICTURE);
         } else if (type == EXPLOSION_ALCOVE_SCALED) {
             view_setup_explosion_picture(type, alcove_explosion_size[depth], flip, zone);
         } else {
@@ -2049,7 +2041,7 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
     char raw[TEXT_SIZE], name[TEXT_SIZE];
     view_draw_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
-                             text_format(text_gdat(category, index, ITEM_NAME_ENTRY, raw), name));
+                             text_format(text_gdat(category, index, GFX_ITEM_NAME, raw), name));
     int list = sensor_delay(shop);
     int buy = shop_get_item_value(item, creature, list, 1, 1, -1);
     int sell = shop_get_item_value(item, creature, list, 0, 1, -1);
@@ -2125,7 +2117,7 @@ static void draw_wall_portrait(int pos, uint8_t ornament, const OrnamentPlace *p
     uint16_t offset =
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, PORTRAIT_OFFSET_ENTRY);
     view_setup_picture(0, p->scale_y, p->scale_y, gdat_offset_x(offset), gdat_offset_y(offset), p->depth, p->zone,
-                       p->anchor, NO_KEY, NO_KEY, CAT_CHAMPION, (uint8_t)view_squares[pos].text, PORTRAIT_ENTRY);
+                       p->anchor, NO_KEY, NO_KEY, CAT_CHAMPION, (uint8_t)view_squares[pos].text, GFX_PORTRAIT);
     if (!record_click)
         view.ctx.transparent = DRAW_NO_BLIT;
     view_flush_picture();
@@ -3072,8 +3064,7 @@ int view_hit_test_wall_ornament(int pos, int x, int y)
     return hit;
 }
 
-/* Chest pictures and states of a hit test. */
-#define CHEST_OPEN_PICTURE 0x48
+/* States of a hit test on a chest. */
 enum { CHEST_HIT_NONE, CHEST_HIT_OPEN = 2, CHEST_HIT_INSIDE = 3 };
 #define CHEST_CAPACITY          8
 #define HIT_KEY                 10
@@ -3136,7 +3127,7 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
         int state = CHEST_HIT_NONE;
         uint16_t this_chest = THING_NONE;
         if (item_is_chest(t) &&
-            gdat_exists(gdat_current(), CAT_CONTAINER, item_gdat_index(t), GDAT_TYPE_IMAGE, CHEST_OPEN_PICTURE)) {
+            gdat_exists(gdat_current(), CAT_CONTAINER, item_gdat_index(t), GDAT_TYPE_IMAGE, GFX_CHEST_OPEN_PICTURE)) {
             this_chest = t;
             if (container_is_open(t))
                 state = CHEST_HIT_INSIDE;

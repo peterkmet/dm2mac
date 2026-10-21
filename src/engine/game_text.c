@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "game_text.h"
 #include "gdat.h"
+#include "ids.h"
 #include "dungeon.h"
 #include "save.h"
 #include <ctype.h>
@@ -26,7 +27,6 @@ enum {
     FORMAT_TITLE_2 = 0x1b
 };
 #define FORMAT_TITLE_INDEX   0xfe
-#define FORMAT_TITLE_2_ENTRY 6
 #define FORMAT_TEXT_CATEGORY 7
 
 TextArgs text_args = {-1, {0}, 0};
@@ -92,7 +92,7 @@ char *text_format(const char *fmt, char *dst)
         } else if (code == FORMAT_TEXT) {
             text_gdat(FORMAT_TEXT_CATEGORY, 0, text_args.entry, value);
         } else if (code == FORMAT_TITLE || code == FORMAT_TITLE_2) {
-            text_gdat(CAT_INTERFACE, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : FORMAT_TITLE_2_ENTRY, value);
+            text_gdat(CAT_INTERFACE, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : GFX_FORMAT_TITLE_2, value);
         } else if (code == FORMAT_DATA_PATH || code == FORMAT_SAVE_PATH || code == FORMAT_DISK_PATH) {
             size_t len = strlen(text_drive_path);
             while (len > 1 && text_drive_path[len - 1] == '/')

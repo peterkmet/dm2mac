@@ -8,7 +8,6 @@
 
 #define OFFSET_ENTRY      0xfe /* value key (category, index, 0x0c, 0xfe): offset of all images of an index */
 #define PLACEHOLDER_INDEX 0xfe
-#define PLACEHOLDER_ENTRY 0xfe
 #define NO_PALETTE        (-1)
 
 Bitmap draw_screen = {&fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
@@ -77,7 +76,7 @@ static int image_item(int category, int index, int entry)
 {
     const gdat_t *gdat = gdat_current();
     int item = gdat_find(gdat, category, index, GDAT_TYPE_IMAGE, entry);
-    return item >= 0 ? item : gdat_find(gdat, CAT_MISC, PLACEHOLDER_INDEX, GDAT_TYPE_IMAGE, PLACEHOLDER_ENTRY);
+    return item >= 0 ? item : gdat_find(gdat, CAT_MISC, PLACEHOLDER_INDEX, GDAT_TYPE_IMAGE, GFX_PLACEHOLDER);
 }
 
 const Bitmap *draw_gdat_image(int category, int index, int entry)

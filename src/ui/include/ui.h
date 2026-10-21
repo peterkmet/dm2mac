@@ -3,7 +3,7 @@
 #define DM2_UI_UI_H
 /* Prefixes: ui_ offscreen_ */
 
-/* The screen layout zones and the offscreen bitmaps shared by the panels. */
+/* The offscreen bitmaps shared by the panels and the drawing of the interface pictures. */
 
 #include "gfx.h"
 #include "game.h"

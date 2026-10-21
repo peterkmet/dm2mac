@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "champion.h"
 #include "gdat.h"
+#include "ids.h"
 #include "action.h"
 #include "champ_action.h"
 #include "creature.h"
@@ -167,7 +168,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
         index = item_gdat_index(thing);
     }
     int count = 0;
-    for (int entry = ACTION_ENTRY_FIRST; entry <= ACTION_ENTRY_LAST && count < CHAMPION_ACTION_MAX; entry++) {
+    for (int entry = GFX_ACTION_FIRST; entry <= GFX_ACTION_LAST && count < CHAMPION_ACTION_MAX; entry++) {
         if (!gdat_exists(gdat_current(), category, index, GDAT_TYPE_TEXT, entry))
             continue;
         int command = text_gdat_field(category, index, entry, FIELD_COMMAND);

@@ -29,9 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MENU_PICTURE         1 /* GDAT (5, 0, 1, 1): the picture of the menu command 0xda */
 #define MENU_TITLE           4 /* GDAT (5, 0, 1, 4): the title picture */
-#define END_PICTURE          1 /* GDAT (6, 0, 1, 1): the picture after the player quits */
 #define MENU_PICTURE_VBLANKS 1800
 #define END_SOUND_VBLANKS    240
 #define SAVE_HEADER_UNUSED   0x26 /* the slot list marks an empty slot with UNUSED_SLOT here */
@@ -95,7 +93,7 @@ void menu_draw_title(void)
 
 void menu_show_picture_and_wait(void)
 {
-    draw_screen_picture(CAT_MENU, 0, MENU_PICTURE);
+    draw_screen_picture(CAT_MENU, 0, GFX_MENU_PICTURE);
     input_set_mode(INPUT_MODE_PICTURE);
     for (int n = MENU_PICTURE_VBLANKS; n && !main_loop.quit; n--) {
         command_process_queue();
@@ -584,7 +582,7 @@ void session_end(int party_dead)
         session_quit();
         return;
     }
-    draw_screen_picture(CAT_END, 0, END_PICTURE);
+    draw_screen_picture(CAT_END, 0, GFX_END_PICTURE);
     input_set_mode(INPUT_MODE_PICTURE);
     do {
         command_process_queue();

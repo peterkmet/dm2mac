@@ -65,8 +65,6 @@ enum {
     PANEL_ICON_GOOD = 4,
     PANEL_ICON_BAD = 5
 };
-/* Inventory texts (7, 0, 5, entry). */
-enum { TEXT_WEIGHT = 0x1f, TEXT_STAT_FIRST = 0x20, TEXT_LOAD = 0x2a };
 /* Inventory buttons: bits of ui.buttons. */
 enum { BUTTON_CLOSE = 1, BUTTON_EXIT = 2, BUTTON_SLEEP = 4, BUTTON_SAVE = 8, BUTTON_SOUND = 0x10, BUTTON_ALL = 0x1f };
 /* Object info gauge glyphs and their scales. */
@@ -78,23 +76,21 @@ enum {
     GLYPH_GAUGE_LEFT = 0x60,
     GLYPH_GAUGE_RIGHT = 0x65
 };
-#define WEAPON_STRENGTH_MAX  80
-#define WEAPON_THROW_MAX     100
-#define ARMOUR_CLASS_MAX     200
-#define ARMOUR_CLASS_MASK    0xff
-#define DITHER_COLOR_MASK    0x0f /* the dither pattern holds 4-bit pixels */
-#define GAUGE_CHARGE_COLOR   4
-#define GAUGE_VALUE_COLOR    5
-#define FOOD_MIN             (-0x400)
-#define GAUGE_STARVING       (-0x200)
-#define DESCRIPTION_LINE     18 /* longer description lines break at a space up to this column */
-#define DESCRIPTION_BREAK    17
-#define SKILL_LEVEL_MAX      16
-#define SCROLL_LETTER_FIRST  1    /* the scroll font has its letters at 1 to 26 */
-#define SCROLL_HIGH_SHIFT    0xa0 /* characters above 'z' move by this */
-#define SCROLL_PICTURE_ENTRY 0x10
-#define OBJECT_PICTURE_ENTRY 0x11  /* (category, index, 1, 0x11): the big picture of an item */
-#define TITLE_NO_SPACE       ",;-" /* a title that starts with one of these follows the name without a space */
+#define WEAPON_STRENGTH_MAX 80
+#define WEAPON_THROW_MAX    100
+#define ARMOUR_CLASS_MAX    200
+#define ARMOUR_CLASS_MASK   0xff
+#define DITHER_COLOR_MASK   0x0f /* the dither pattern holds 4-bit pixels */
+#define GAUGE_CHARGE_COLOR  4
+#define GAUGE_VALUE_COLOR   5
+#define FOOD_MIN            (-0x400)
+#define GAUGE_STARVING      (-0x200)
+#define DESCRIPTION_LINE    18 /* longer description lines break at a space up to this column */
+#define DESCRIPTION_BREAK   17
+#define SKILL_LEVEL_MAX     16
+#define SCROLL_LETTER_FIRST 1     /* the scroll font has its letters at 1 to 26 */
+#define SCROLL_HIGH_SHIFT   0xa0  /* characters above 'z' move by this */
+#define TITLE_NO_SPACE      ",;-" /* a title that starts with one of these follows the name without a space */
 
 /* The slots of the status boxes (champion * 2 + hand), of the inventory (8 + slot), of the object info,
    and of the open container: zone, icon of the empty slot, and the drawn state. */
@@ -773,7 +769,7 @@ static void draw_scroll(uint16_t scroll)
     text_decode_dungeon(text, sizeof text, scroll, SCROLL_TEXT_MODE);
     ui.panel_mode = PANEL_MODE_SCROLL;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_PANEL, ZONE_INVENTORY_PANEL, UI_OPAQUE);
-    ui_draw_gdat_in_viewport_zone(CAT_SCROLL, 0, SCROLL_PICTURE_ENTRY, ZONE_INVENTORY_PANEL, UI_KEY);
+    ui_draw_gdat_in_viewport_zone(CAT_SCROLL, 0, GFX_SCROLL_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
     int newlines = 0;
     size_t n = strlen(text);
     for (size_t i = 0; i < n; i++)
@@ -934,8 +930,8 @@ static int draw_object_info(uint16_t thing, int full)
         return 0;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_PANEL, ZONE_INVENTORY_PANEL, UI_OPAQUE);
     int index = item_gdat_index(thing), category = item_gdat_category(thing);
-    if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, OBJECT_PICTURE_ENTRY))
-        ui_draw_gdat_in_viewport_zone(category, index, OBJECT_PICTURE_ENTRY, ZONE_INVENTORY_PANEL, UI_KEY);
+    if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, GFX_OBJECT_PICTURE))
+        ui_draw_gdat_in_viewport_zone(category, index, GFX_OBJECT_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, PANEL_OBJECT_NAME, ZONE_OBJECT_NAME_BACK, UI_KEY);
     text_draw_in_zone(ZONE_OBJECT_NAME, ui_colors[UI_LIGHT_GRAY], item_name(thing));
     draw_slot(thing, SLOT_INFO, 0, 0, 0);
@@ -1020,7 +1016,7 @@ static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int c
             continue;
         total += money_coin_value(type) * counts[type];
         uint16_t item = money_coin_item(type);
-        text_format(text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), ITEM_NAME_ENTRY, raw), name);
+        text_format(text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, raw), name);
         snprintf(coin, sizeof coin, "%s %d", name, counts[type]);
         count = info_append(lines, count, line, coin);
     }

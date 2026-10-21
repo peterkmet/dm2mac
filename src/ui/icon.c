@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "icon.h"
+#include "ids.h"
 #include "video.h"
 
 #define ICON_INDEX       0x26 /* the mummy */
-#define ICON_ENTRY       9    /* the front view */
 #define ICON_TRANSPARENT 47   /* the see-through color of the creature graphics */
 #define ICON_MAX_BYTES   (256 * 256)
 
 int icon_build(const gdat_t *g, uint32_t *argb, int max, int *w, int *h)
 {
     static uint8_t px[ICON_MAX_BYTES];
-    int bpp, item = gdat_find(g, CAT_CREATURE, ICON_INDEX, GDAT_TYPE_IMAGE, ICON_ENTRY);
+    int bpp, item = gdat_find(g, CAT_CREATURE, ICON_INDEX, GDAT_TYPE_IMAGE, GFX_ICON);
     if (item < 0 || gdat_image_size(g, item, w, h, &bpp) < 0 || bpp != IMAGE_8BPP)
         return 0;
     if (*w * *h > max || *w * *h > ICON_MAX_BYTES || gdat_decode_image(g, item, px, sizeof px) < 0)

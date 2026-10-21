@@ -91,7 +91,6 @@ enum {
 #define SPELL_ITEM_KEY           0x42
 /* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
 enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNKNOWN = 0x46 };
-#define FLASK_PICTURE             0x0b
 #define FAILURE_DELAY_BASE        8
 #define FLASK_DELAY_MIN           3
 #define MAGIC_LIGHT_LEVELS        16 /* the light spells reach level 15 */
@@ -522,7 +521,7 @@ void magic_report_cast_failure(int result)
         var = GLOBAL_SPELL_UNKNOWN;
         break;
     case CAST_NEEDS_FLASK:
-        g_hooks.draw_interface_image(CAT_INTERFACE, UI_INDEX_SPELL, FLASK_PICTURE, ZONE_PANEL);
+        g_hooks.draw_interface_image(CAT_INTERFACE, UI_INDEX_SPELL, GFX_FLASK_PICTURE, ZONE_PANEL);
         var = GLOBAL_FLASK_MISSING;
         min_delay = FLASK_DELAY_MIN;
         break;

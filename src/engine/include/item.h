@@ -70,11 +70,6 @@ enum item_attr {
 #define SLOT_MASK_HAND         0x400
 #define POTION_POWER_MAX       255
 
-/* GDAT texts (category, index, 5, entry) of an item: its name and its actions. */
-#define ITEM_NAME_ENTRY    0x18
-#define ACTION_ENTRY_FIRST 8
-#define ACTION_ENTRY_LAST  0x0b
-
 /* The GDAT category of a thing; a projectile gives the category of what it carries. */
 uint8_t item_gdat_category(uint16_t thing);
 /* The GDAT index of an item or creature; a projectile gives the index of what it carries. */

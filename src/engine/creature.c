@@ -2,6 +2,7 @@
 /* Creature groups: creature info, animation, active groups, and the creature update events. */
 #include "creature.h"
 #include "gdat.h"
+#include "ids.h"
 #include "le.h"
 #include "os.h"
 #include "ai.h"
@@ -21,11 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CREATURE_KEY_INFO        5    /* value key: index of the creature info record */
-#define CREATURE_KEY_CLASS       1    /* value key: the AI class */
-#define CREATURE_FRAMES_ENTRY    0xfd /* data: the animation frames */
-#define CREATURE_STEPS_ENTRY     0xfc /* data: the animation steps (4 bytes each) */
-#define CREATURE_SEQUENCES_ENTRY 0xfb /* table: (action, first step) pairs, ended by -1 */
+#define CREATURE_KEY_INFO  5 /* value key: index of the creature info record */
+#define CREATURE_KEY_CLASS 1 /* value key: the AI class */
 
 /* Animation state word. */
 #define ANIM_STILL         0x4000 /* the creature shows the first frame of its sequence */
@@ -304,7 +302,7 @@ void creature_anim_frame_of(const gdat_t *g, int type, uint16_t sequence, uint16
     unsigned index = (uint16_t)(anim_frame_offset(&state) + sequence);
     uint32_t size;
     const uint8_t *data =
-        gdat_item(g, gdat_find(g, CAT_CREATURE, type, GDAT_TYPE_CREATURE_DATA, CREATURE_FRAMES_ENTRY), &size);
+        gdat_item(g, gdat_find(g, CAT_CREATURE, type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_FRAMES), &size);
     memset(frame, 0, CREATURE_FRAME_SIZE);
     if (data && (index + 1) * CREATURE_FRAME_SIZE <= size) /* fix: the original reads past the frames */
         memcpy(frame, data + index * CREATURE_FRAME_SIZE, CREATURE_FRAME_SIZE);
@@ -319,7 +317,7 @@ int creature_anim_bits(uint16_t group)
 /* The 4-byte step of a creature animation at its current state (creature_get_anim_step). */
 static const uint8_t *anim_current_step(int creature_type, uint16_t sequence, uint16_t *state)
 {
-    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL);
+    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
     return steps + (uint16_t)(anim_frame_offset(state) + sequence) * ANIM_STEP_SIZE;
 }
 
@@ -327,7 +325,7 @@ static const uint8_t *anim_current_step(int creature_type, uint16_t sequence, ui
 static int anim_sequence_length(int creature_type, uint16_t sequence)
 {
     const uint8_t *step =
-        creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL) + sequence * ANIM_STEP_SIZE;
+        creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL) + sequence * ANIM_STEP_SIZE;
     int n = 1;
     while (step[STEP_NEXT] >> STEP_NEXT_SHIFT) {
         n++;
@@ -340,7 +338,7 @@ static int anim_sequence_length(int creature_type, uint16_t sequence)
    Returns 1 when the step has a duration. */
 int creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
 {
-    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL);
+    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
     unsigned s = *step, result = 0;
     int ended = 0;
     if (s == ANIM_STEP_NONE) {
@@ -375,7 +373,7 @@ int creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_
 /* Moves *step by the jump of the current step; returns 2 at the end of the sequence, 1 when more steps follow. */
 int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
 {
-    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, CREATURE_STEPS_ENTRY, NULL);
+    const uint8_t *steps = creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
     int result;
     if (*step == ANIM_STEP_NONE) {
         *step = 0;
@@ -399,7 +397,7 @@ int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step
 int creature_anim_start(int creature_type, int action, uint16_t *sequence, uint16_t *state, const uint8_t **frame,
                         uint16_t start)
 {
-    const uint8_t *table = creature_data(creature_type, GDAT_TYPE_TABLE, CREATURE_SEQUENCES_ENTRY, NULL);
+    const uint8_t *table = creature_data(creature_type, GDAT_TYPE_TABLE, GFX_CREATURE_SEQUENCES, NULL);
     for (;; table += SEQUENCE_ENTRY_SIZE) {
         int16_t a = (int16_t)le16(table);
         if (a == SEQUENCE_END || a == (int16_t)action)

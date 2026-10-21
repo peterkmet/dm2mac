@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "state_json.h"
 #include "gdat.h"
+#include "ids.h"
 #include "os.h"
 #include "action.h"
 #include "aspect.h"
@@ -641,7 +642,7 @@ static void money_box_json(Json *j)
         json_open(j, '{');
         key_int(j, "slot", slot);
         json_key(j, "coin");
-        trimmed(j, text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), ITEM_NAME_ENTRY, name),
+        trimmed(j, text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, name),
                 TEXT_SIZE);
         key_int(j, "count", counts[type]);
         json_close(j, '}');
@@ -983,7 +984,7 @@ static void shop_json(Json *j, uint16_t shop)
             continue;
         uint16_t item = sensor_data(t);
         char name[TEXT_SIZE];
-        trimmed(j, text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), ITEM_NAME_ENTRY, name),
+        trimmed(j, text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, name),
                 TEXT_SIZE);
         return;
     }
