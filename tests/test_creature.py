@@ -2,24 +2,18 @@
 magic, and minions run in the C port and in the original code from start.DAT; then the game state must be equal."""
 
 import ctypes
-import struct
 
 import pytest
 
-from test_move import Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.creature import CreatureScenario, creatures, random_champions  # noqa: F401 (creatures is a fixture)
 from dm2test.lib import load_lib
+from dm2test.markers import ROOT
+from dm2test.scenario import ENDOFLIST, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 
 
 @pytest.fixture(scope="module")
 def lib():
     return load_lib()
-
-CreatureScenario = Scenario  # the scenario harness runs the creatures since Step 16
-
-@pytest.fixture
-def creatures(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
-    return CreatureScenario(lib, gdat, start, tmp_path)
 
 
 def test_activation_after_load(creatures):
@@ -38,7 +32,6 @@ def test_creature_updates(creatures):
 
 def creature_sensor_cells(lib, kinds):
     """(map, x, y, cell) of each sensor of the kinds."""
-    from test_move import ENDOFLIST
     lib.dungeon_square_first_thing.restype = ctypes.c_uint16
     lib.dungeon_next_thing.restype = ctypes.c_uint16
     lib.thing_word.restype = ctypes.c_uint16
@@ -58,7 +51,6 @@ def test_creature_sensors(creatures, lib):
     # Square events on the sensors that turn creatures (0x42), alert them or make them vanish (0x28, 0x0b), and
     # animate static creatures (0x3a); then the creature updates that follow.
     import random
-    from test_move import square_event
     rng = random.Random(16)
     cells = creature_sensor_cells(lib, (0x0B, 0x28, 0x42, 0x3A))
     assert len(cells) > 5
@@ -90,28 +82,6 @@ def creature_fronts(lib):
 
 
 MOVE_PUSH_CREATURE = 0x23F9B
-
-
-CH_CELL, CH_HEALTH, CH_STAMINA, CH_MAX_STAMINA, CH_STRENGTH = 0x1D, 0x36, 0x3A, 0x3C, 0x4C
-G_CHAMPION_COUNT = 0x7F276
-
-
-def random_champions(s, rng):
-    """1 to 4 champions (copies of the first) with random strength, stamina, and health (some dead), in both."""
-    from test_interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
-    lib = s.lib
-    first = bytes(champion_records(lib)[:CHAMPION_SIZE])
-    count = rng.randrange(1, 5)
-    s.game.champion_count = count
-    s.emu.write(G_CHAMPION_COUNT, struct.pack("<H", count))
-    for champ, cell in enumerate(rng.sample(range(4), count)):
-        champion_bytes(lib, champ, 0, first)
-        champion_bytes(lib, champ, CH_CELL, [cell])
-        max_stamina = rng.randrange(200, 2000)
-        champion_bytes(lib, champ, CH_HEALTH, struct.pack("<h", 0 if champ and rng.random() < 0.2 else 50))
-        champion_bytes(lib, champ, CH_STAMINA, struct.pack("<hh", rng.randrange(max_stamina + 1), max_stamina))
-        champion_bytes(lib, champ, CH_STRENGTH, bytes([rng.randrange(5, 100)] * 2))
-    sync_champions(lib, s)
 
 
 def test_push_creatures(creatures, lib):
@@ -156,7 +126,6 @@ def test_animated_creature_views(creatures, lib):
 def test_merchant_at_the_counter(lib, gdat, tmp_path):
     # shop.DAT: the party stands still in front of the counter of the dwarf merchant (map 28). The merchant puts the
     # item of the shop display on the counter, then waits for an offer: the same actions, sounds, and counter in both.
-    from test_move import ROOT
     shop = ROOT / "tests" / "saves" / "shop.DAT"
     if not shop.exists():
         pytest.skip("tests/saves/shop.DAT missing")

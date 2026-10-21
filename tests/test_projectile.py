@@ -8,10 +8,10 @@ import struct
 
 import pytest
 
-import test_creature as tc
-from test_move import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
+from dm2test.creature import CreatureScenario, random_champions
+from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from test_input import CHAMPION_UNCOMPARED  # redraw flags
-from test_move import gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -35,7 +35,7 @@ EXPLOSIONS = SPELLS + (0xFFA8, 0xFFB0, 0xFFB1, 0xFFE4)
 @pytest.fixture
 def pj(lib, gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
-    s = tc.CreatureScenario(lib, gdat, start, tmp_path)
+    s = CreatureScenario(lib, gdat, start, tmp_path)
     emu = s.emu
     s.woken = 0
     emu.stub(CHAMP_WAKE_PARTY, lambda *_: wake(s))
@@ -61,8 +61,8 @@ def both(s, c_fn, addr, *args):
 
 def flying(s):
     """The number of projectile and explosion events in the C timeline."""
-    import test_save
-    tl = test_save.Timeline.in_dll(s.lib, "timeline")
+    from dm2test.save import Timeline
+    tl = Timeline.in_dll(s.lib, "timeline")
     raw = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
     return sum(raw[i * 12 + 4] in (EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2) for i in range(tl.capacity))
 
@@ -293,7 +293,7 @@ def test_missiles_hit_party_on_moves(pj, lib):
     places = squares(lib, (1,))
     hit = 0
     for n in range(150):
-        tc.random_champions(pj, rng)
+        random_champions(pj, rng)
         map_, x, y, _ = rng.choice(places)
         pj.place(map_, x, y, rng.randrange(4))
         d = rng.randrange(4)

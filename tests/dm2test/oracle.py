@@ -3,6 +3,8 @@
 import ctypes
 import struct
 
+from dm2test.save import Timeline
+
 ACTIVE_GROUP_SIZE = 0x22
 G_ACTIVE_GROUPS, G_ACTIVE_GROUP_COUNT, G_ACTIVE_GROUP_MAX = 0x7F898, 0x7301C, 0x7F89C
 G_RANDOM_SEED = 0x70518
@@ -16,7 +18,7 @@ G_AI_ACTIVE_GROUP = 0x7F552
 
 
 class CreatureOracle:
-    """The creature parts of the scenario harness (a mixin of test_move.Scenario): the active groups in both, the
+    """The creature parts of the scenario harness (a mixin of dm2test.scenario.Scenario): the active groups in both, the
     image cache keys and the memory blocks of the creature AI."""
 
     @staticmethod
@@ -127,8 +129,7 @@ class CreatureOracle:
         assert ctypes.c_int.in_dll(self.lib, "active_group_count").value == \
             struct.unpack("<H", self.emu.read(G_ACTIVE_GROUP_COUNT, 2))[0], where
         assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
-        import test_save
-        tl = test_save.Timeline.in_dll(self.lib, "timeline")
+        tl = Timeline.in_dll(self.lib, "timeline")
         theirs = struct.unpack("<hhHH", self.emu.read(G_TIMELINE_FIX_SLOT, 8))
         assert (tl.fix_slot, tl.first_free, tl.capacity, tl.count) == theirs, (where, "timeline")
         mine_q = ctypes.string_at(tl.queue, tl.count * 2)

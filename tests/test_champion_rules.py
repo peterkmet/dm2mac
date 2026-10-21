@@ -9,7 +9,7 @@ import struct
 import pytest
 
 from test_interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
-from test_move import Scenario, gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Scenario, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -265,7 +265,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     # Potions of all kinds and powers, food, water from flasks, and every action of random items in the hands of
     # random champions at random places: the actions, their charges, the reload of a free hand, and the repeats. Then
     # every action of every weapon kind.
-    from test_move import squares
+    from dm2test.scenario import squares
     rng, emu, scenario = rules.rng, rules.emu, rules.s
     lib.champ_list_actions.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
     potions = [lib.dungeon_unused_thing(POTION) for _ in range(4)]
@@ -547,7 +547,7 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
     # poison, and the timed effects of eaten items (34 and 50 have skill modifiers that count when consumed): the
     # load restores the light, the invisibility, the aura value (not on a dead champion), the poison, and the item
     # effects, in the C port and in the original.
-    from test_save import Event, Game, original_load
+    from dm2test.save import Event, Game, original_load
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0

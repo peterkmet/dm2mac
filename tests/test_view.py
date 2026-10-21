@@ -6,7 +6,7 @@ import pytest
 
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
-from test_save import GRAPHICS, START, Game, original_load
+from dm2test.save import GRAPHICS, START, Game, original_load
 from dm2test.lib import load_lib
 
 

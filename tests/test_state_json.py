@@ -10,7 +10,7 @@ from dm2test.markers import ROOT
 from test_control import GameWithChampions
 from test_input import MainLoop
 from test_interface import ActionArea
-from test_move import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 

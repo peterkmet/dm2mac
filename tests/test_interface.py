@@ -8,7 +8,7 @@ from unicorn import UC_HOOK_CODE, UC_PROT_ALL
 from unicorn.x86_const import UC_X86_REG_EIP, UC_X86_REG_ESP
 
 from dm2test.markers import ROOT
-from test_save import GRAPHICS, START, Game
+from dm2test.save import GRAPHICS, START, Game
 from test_view import OriginalView, u8_p
 from dm2test.lib import load_lib
 

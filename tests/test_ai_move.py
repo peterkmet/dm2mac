@@ -8,9 +8,9 @@ import struct
 
 import pytest
 
-from creature_oracle import G_RANDOM_SEED
-from test_creature import creatures  # noqa: F401 (fixture)
-from test_move import gdat, start  # noqa: F401 (fixtures)
+from dm2test.oracle import G_RANDOM_SEED
+from dm2test.creature import creatures  # noqa: F401 (fixture)
+from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -81,7 +81,7 @@ class Ai:
         for addr in (0x3BCA5, 0x3F406, 0x3F3C2):
             if addr in sc.view.no_ops:
                 emu.uc.hook_del(sc.view.no_ops.pop(addr))
-        if F["creature_refresh_party_maps"] in sc.stubs:  # test_move.STUBS: the hook of Step 14
+        if F["creature_refresh_party_maps"] in sc.stubs:  # dm2test.scenario.STUBS: the hook of Step 14
             emu.uc.hook_del(sc.stubs.pop(F["creature_refresh_party_maps"]))
         emu.write_u32(G_MEM_FREE_BYTES, 0x7FFFFFFF)
         self.fix_cell_mask()
@@ -857,11 +857,11 @@ def add_thing(ai, type_, words, map_, x, y, cell):
 
 def add_projectile(ai, payload, direction, map_, x, y, cell):
     """A projectile with its move event (the direction in data byte 3) in both."""
-    import test_save
+    from dm2test.save import Event
     lib, emu = ai.lib, ai.emu
     thing = add_thing(ai, 14, (payload, 0x40, 0), map_, x, y, cell)
-    event = test_save.Event((ai.sc.time() + 50) | map_ << 24, 0x1D, 0,
-                            (ctypes.c_uint8 * 6)(*struct.pack("<HBB2x", thing, 0, direction << 2)))
+    event = Event((ai.sc.time() + 50) | map_ << 24, 0x1D, 0,
+                  (ctypes.c_uint8 * 6)(*struct.pack("<HBB2x", thing, 0, direction << 2)))
     buf = ai.sc.view.alloc(12)
     emu.write(buf, bytes(event))
     index = lib.timeline_add_event(ctypes.byref(event))

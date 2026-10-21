@@ -8,8 +8,8 @@ import struct
 import pytest
 
 from dm2test.markers import ROOT
-from test_save import GRAPHICS
-from test_move import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.save import GRAPHICS
+from dm2test.scenario import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 
@@ -97,7 +97,7 @@ def test_champion_clicks_match_original(tree, lib):
     # Clicks on the champion hands (status boxes) and on the champion icons (party icons): 1 to 4 champions in
     # random cells and party directions, busy hands and spells, empty hands, random points in the icon.
     from test_interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
-    from test_move import CHAMPION_CELL, COMMAND_RECORD, G_CHAMPION_COUNT, Command
+    from dm2test.scenario import CHAMPION_CELL, COMMAND_RECORD, G_CHAMPION_COUNT, Command
     rng = random.Random(16)
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     results = set()
@@ -195,14 +195,14 @@ class MainLoop(ctypes.Structure):
 @pytest.fixture
 def session(lib, gdat, start, tmp_path):
     """start.DAT ready to play, as build/dm2 --save starts it."""
-    from test_move import GameRecord
+    from dm2test.scenario import GameRecord, Party
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
     game = GameRecord.in_dll(lib, "game")
-    party = __import__("test_move").Party.in_dll(lib, "party")
+    party = Party.in_dll(lib, "party")
     party.cur_map, party.new_map, party.move_steps, party.push_pending_group = -1, -1, 0, 0xFFFF
     lib.view_enter_map(game.party_map)
     lib.ui_reset()
@@ -376,7 +376,7 @@ class Loop(Scenario):
 
     def assert_tick(self, where):
         """The main loop state, the game time, the cooldowns, the movement state, the pending damage, and the champions."""
-        from test_move import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale
+        from dm2test.scenario import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale
         game = self.game
         mine = {name: getattr(self.loop, name) for name in LOOP_GLOBALS}
         mine |= {"sleeping": ctypes.c_int.in_dll(self.lib, "party_sleeping").value, "time": game.game_time,
@@ -485,7 +485,7 @@ EVENT_HIDE_DAMAGE, EVENT_AURA = 0x0C, 0x48
 def test_damage_and_aura_events_match_original(loop, lib):
     # The timeline of the main loop: the damage display of a champion ends (event 0x0c); the aura of a champion
     # weakens twice (event 0x48), the second time below 0.
-    import test_save
+    from dm2test.save import Event
     from test_interface import champion_bytes, sync_champions
     champion_bytes(lib, 0, CHAMPION_AURA, [3, 50, 0])
     champion_bytes(lib, 0, CHAMPION_DAMAGE_EVENT, [0, 0])  # the damage display shows, its event is the first one
@@ -493,7 +493,7 @@ def test_damage_and_aura_events_match_original(loop, lib):
     now, map_ = loop.game.game_time, loop.game.party_map
     for delay, type_, priority, data in ((2, EVENT_HIDE_DAMAGE, 0, (0,) * 6), (3, EVENT_AURA, 1, (7, 0, 0, 0, 0, 0)),
                                          (5, EVENT_AURA, 1, (60, 0, 0, 0, 0, 0))):
-        e = test_save.Event((now + delay) | map_ << 24, type_, priority, (ctypes.c_uint8 * 6)(*data))
+        e = Event((now + delay) | map_ << 24, type_, priority, (ctypes.c_uint8 * 6)(*data))
         loop.emu.write(COMMAND_RECORD, bytes(e))
         lib.timeline_add_event(ctypes.byref(e))
         loop.emu.call(TIMELINE_ADD_EVENT, COMMAND_RECORD)

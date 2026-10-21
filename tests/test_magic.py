@@ -10,11 +10,11 @@ import pytest
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
-from test_creature import CreatureScenario
+from dm2test.creature import CreatureScenario
 from test_interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, Game, c_screen, champion_bytes, champion_records,
                             diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
 from test_interface import gdat, original, port  # noqa: F401 (fixtures)
-from test_move import start  # noqa: F401 (fixture)
+from dm2test.scenario import start  # noqa: F401 (fixture)
 from dm2test.lib import load_lib
 
 
@@ -264,7 +264,7 @@ COMMAND_EXECUTE, G_COMMAND_STOP = 0x21D6C, 0x7F484
 
 def command(lib, emu, cmd, x=0, y=0):
     """Executes a command in both; returns the two results."""
-    from test_move import COMMAND_RECORD, Command
+    from dm2test.scenario import COMMAND_RECORD, Command
     c = Command(x, y, cmd)
     emu.write(COMMAND_RECORD, bytes(c))
     return lib.command_execute(ctypes.byref(c)), emu.call(COMMAND_EXECUTE, COMMAND_RECORD)
@@ -410,8 +410,8 @@ def test_runes_and_casts_match_original(port, cast_ui):
             assert getattr(action, field) == struct.unpack("<h", emu.read(addr, 2))[0], (where, field)
         game = Game.in_dll(lib, "game")
         assert bytes((ctypes.c_uint8 * 6).from_address(ctypes.addressof(game) + GAME_MAGIC)) == emu.read(G_MAGIC_LIGHT, 6), where
-        import test_save
-        tl = test_save.Timeline.in_dll(lib, "timeline")
+        from dm2test.save import Timeline
+        tl = Timeline.in_dll(lib, "timeline")
         events = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
         assert events == emu.read(emu.read_u32(G_TIMELINE_EVENTS), tl.capacity * 12), where
     assert added > 60
@@ -471,14 +471,14 @@ TIMELINE_EVENT_MAGIC_LIGHT = 0x5917D
 
 def test_magic_light_events_match_original(magic):
     # The light and darkness events of every level: the magic light changes and the next event of the fading light.
-    import test_save
-    from test_move import COMMAND_RECORD
+    from dm2test.save import Event
+    from dm2test.scenario import COMMAND_RECORD
     lib, emu = magic.lib, magic.emu
     lib.timeline_event_magic_light.argtypes = [ctypes.c_void_p]
     rng = random.Random(18)
     for level in range(-15, 16):
         magic.set_magic(struct.pack("<h", rng.randrange(-300, 300)) + bytes(4))
-        e = test_save.Event(magic.time() | magic.game.party_map << 24, 0x46, 0, (ctypes.c_uint8 * 6)(*struct.pack("<h", level), 0, 0, 0, 0))
+        e = Event(magic.time() | magic.game.party_map << 24, 0x46, 0, (ctypes.c_uint8 * 6)(*struct.pack("<h", level), 0, 0, 0, 0))
         emu.write(COMMAND_RECORD, bytes(e))
         lib.timeline_event_magic_light(ctypes.byref(e))
         emu.call(TIMELINE_EVENT_MAGIC_LIGHT, COMMAND_RECORD)
@@ -586,7 +586,7 @@ def map_ui(spell_ui, lib):
 
 
 def place_party(lib, emu, map_, x, y, d):
-    from test_move import GameRecord, Party
+    from dm2test.scenario import GameRecord, Party
     Party.in_dll(lib, "party").cur_map = -1
     emu.write(G_CUR_MAP, struct.pack("<h", -1))
     GameRecord.in_dll(lib, "game").party_dir = d

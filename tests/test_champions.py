@@ -6,7 +6,7 @@ import struct
 import pytest
 
 from test_input import Loop
-from test_move import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
+from dm2test.scenario import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 

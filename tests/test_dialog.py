@@ -142,7 +142,7 @@ def test_volume_dialog_matches_original(ui, original):
     frame = ctypes.CFUNCTYPE(None)(lambda: close_dialog(lib))
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
     try:
-        from test_move import WorldGame
+        from dm2test.scenario import WorldGame
         game = WorldGame.in_dll(lib, "game")
         for sound, music in ((7, 7), (0, 3), (5, 0)):
             set_screen_mode(lib, emu, 1)
@@ -174,7 +174,7 @@ def test_slot_dialogs_match_original(ui, original, tmp_path):
     lib, emu = ui, original.emu
     # the original reads the slot headers in order from the served file (start.DAT from byte 0): give the C port the
     # same headers
-    from test_save import START
+    from dm2test.save import START
     start = START.read_bytes()
     (tmp_path / "DATA").mkdir()
     for n, slot in enumerate((0, 3)):

@@ -10,7 +10,7 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from test_dialog import program_start_after  # noqa: F401 (an autouse fixture)
-from test_save import GDAT_VALUE_TYPES, GRAPHICS
+from dm2test.save import GDAT_VALUE_TYPES, GRAPHICS
 from dm2test.lib import load_lib
 
 
@@ -143,7 +143,7 @@ def test_level_digits_match_original(lib, new_game):
 def test_timer_sensors_start_like_original(lib, new_game):
     # sensor_start_timers of a new game. DUNGEON.DAT has 18 timer sensors, all off: every second one is turned on
     # (state bit) and busy in both, at a game time that is not 0; then the timer events and the busy bits match.
-    import test_save
+    from dm2test.save import Timeline
     emu = new_game.emu
     lib.dungeon_thing_record.restype = ctypes.c_void_p
     base = emu.read_u32(G_THING_DATA + 12)
@@ -162,7 +162,7 @@ def test_timer_sensors_start_like_original(lib, new_game):
     emu.write_u32(G_GAME_TIME, 1234)
     lib.sensor_start_timers()
     emu.call(SENSOR_START_TIMERS)
-    tl = test_save.Timeline.in_dll(lib, "timeline")
+    tl = Timeline.in_dll(lib, "timeline")
     assert tl.count == struct.unpack("<H", emu.read(G_TIMELINE_COUNT, 2))[0] == 9
     mine = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
     theirs = emu.read(emu.read_u32(G_TIMELINE_EVENTS), tl.capacity * 12)

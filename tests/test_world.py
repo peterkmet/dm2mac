@@ -1,5 +1,5 @@
 """Step 17 tests with the emulator oracle: weather, day and night, the party light, and the object transfer sensors
-(Skullkeep machines). start.DAT goes into the C port and into the original code (test_move.Scenario); both run the
+(Skullkeep machines). start.DAT goes into the C port and into the original code (dm2test.scenario.Scenario); both run the
 same calls; then the weather, the light, the sky objects, the dungeon, and the timeline must be equal."""
 
 import ctypes
@@ -9,11 +9,11 @@ import struct
 import pytest
 
 from test_interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
-from test_move import (  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
     Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
 )
-from test_save import Game, Timeline
+from dm2test.save import Game, Timeline
 from dm2test.lib import load_lib
 
 
@@ -46,7 +46,7 @@ def world(lib, gdat, start, tmp_path):
 
 
 def set_weather(sc, **values):
-    """Writes weather globals (names of test_move.WEATHER) into both."""
+    """Writes weather globals (names of dm2test.scenario.WEATHER) into both."""
     lib, emu = sc.lib, sc.emu
     game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "weather")
     for name, value in values.items():
@@ -543,7 +543,7 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
     # g_debug_flag_g of the original: it never runs in the game.)
     import test_view as tv
     from test_input import KEY_FORWARD, Loop
-    from test_move import approaches
+    from dm2test.scenario import approaches
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     sc = Loop(lib, gdat, start, tmp_path)
     sc.emu.uc.hook_del(sc.view.weather_init_stub)
@@ -575,7 +575,7 @@ DUN_UNLINK_THING_FROM_SQUARE, DUN_LINK_THING_TO_SQUARE = 0x1D542, 0x1D3DB
 
 def sound_keys(lib, gdat):
     """GDAT sounds of the kinds that the game requests."""
-    from test_move import Sound
+    from dm2test.scenario import Sound
     s = Sound()
     keys = []
     for category in (3, 9, 10, 0x0D, 0x0F, 0x16, 0x17, 0x18):

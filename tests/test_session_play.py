@@ -1,4 +1,4 @@
-"""Step 20 scenarios with the emulator oracle (test_move.Scenario on start.DAT): a save through the save dialogs and its
+"""Step 20 scenarios with the emulator oracle (dm2test.scenario.Scenario on start.DAT): a save through the save dialogs and its
 load through the load dialog, the end of the game by the end sensor, and the end after the death of the party."""
 
 import ctypes
@@ -7,9 +7,9 @@ import struct
 import pytest
 
 from test_dialog import DialogState, InputMatch, Session, program_start_after  # noqa: F401 (an autouse fixture)
-from test_move import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 from dm2tools.emu import EmuError
-from test_save import original_load, original_save
+from dm2test.save import original_load, original_save
 from dm2test.lib import load_lib
 
 
@@ -131,7 +131,7 @@ def test_save_and_load_through_the_dialogs(play, lib, gdat, tmp_path):
     theirs = original_save(sc.emu, header)
     assert saved == theirs
     # the port-written file loads in the original as in the port: both write the same file of it
-    from test_save import c_round_trip
+    from dm2test.save import c_round_trip
     expected = original_save(original_load(lib, gdat, saved), header)
     assert c_round_trip(lib, gdat, saved, tmp_path) == expected
     session = Session.in_dll(lib, "session")
@@ -228,7 +228,7 @@ def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
     # After a save, the end dialog's RESTART GAME loads the last slot again without the load dialog.
     with Player(lib, [click_choice(1), click_slot(4), click_choice(2)]):
         lib.session_save()
-    from test_move import GameRecord
+    from dm2test.scenario import GameRecord
     game = GameRecord.in_dll(lib, "game")
     saved_state = (game.game_time, game.party_x, game.party_y, game.party_dir, game.party_map)
     for _ in range(20):
@@ -282,7 +282,7 @@ def test_quit_asks_when_not_saved_like_original(play, lib, since_load, since_sav
 
 def test_menu_commands_match_original(play, lib):
     # The commands of the start menu: new game, new game from DUNGENB.DAT, load.
-    from test_move import COMMAND_RECORD, Command
+    from dm2test.scenario import COMMAND_RECORD, Command
     sc = play
     session = Session.in_dll(lib, "session")
     for command in (0xD7, 0xD9, 0xD8):
@@ -392,7 +392,7 @@ def click_command(mode, command):
 def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     # The start of a run in the C port: the menu, NEW GAME: DUNGEON.DAT with the party on its start square; then the
     # menu again, LOAD, slot 0 (start.DAT), LOAD, and OK of "GAME LOADED": the game of start.DAT.
-    from test_move import GameRecord
+    from dm2test.scenario import GameRecord
     from dm2test.markers import ROOT
     data = tmp_path / "game"
     (data / "DATA").mkdir(parents=True)
@@ -407,7 +407,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     main_loop_quit(lib).value = 0
     game = GameRecord.in_dll(lib, "game")
     # the state of the program start (the tests before leave theirs): no game, the start values
-    from test_move import Party, WorldGame
+    from dm2test.scenario import Party, WorldGame
     ctypes.memset(ctypes.addressof(game), 0, GAME_SIZE)
     world = WorldGame.in_dll(lib, "game")
     world.leader, world.sound_volume, world.music_volume = 0xFFFF, 7, 7
@@ -543,7 +543,7 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     # session_init run them) give the same light, champions, and leader hand (object, weight, icon).
     from test_champions import LeaderHand
     from test_input import Loop
-    from test_save import Event, Game
+    from dm2test.save import Event, Game
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
     path.write_bytes(start)
@@ -619,7 +619,7 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
     # mouth (0x7f21c) is held.
     from test_input import run_ticks, session
     from test_interface import UiState
-    from test_move import Command
+    from dm2test.scenario import Command
     session.__wrapped__(lib, gdat, start, tmp_path)
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     run_ticks(lib, 16)

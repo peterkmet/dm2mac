@@ -15,7 +15,7 @@ from dm2tools.control_client import request
 from test_control import control, pumped  # noqa: F401 (control is a fixture)
 from test_dialog import DialogState, Session
 from test_input import run_ticks, session  # noqa: F401 (session is a fixture)
-from test_move import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 
@@ -177,7 +177,7 @@ def sound_level(lib):
 
 
 def test_quick_load_sets_the_loaded_volumes(lib, advanced):
-    from test_move import WorldGame
+    from dm2test.scenario import WorldGame
     from test_music import Music
     game = WorldGame.in_dll(lib, "game")
     music = Music.in_dll(lib, "music")
