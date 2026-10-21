@@ -97,6 +97,12 @@ $(SDL_MINGW):
 
 test: ; tools/test-suite
 
+# Lint, the coding standard check, then the full suite.
+check:
+	uv run ruff check tests tools/dm2tools
+	uv run pytest -q tests/standard
+	$(MAKE) test
+
 clean:
 	rm -rf $(B)
 
@@ -104,7 +110,7 @@ clean:
 
 FORCE:
 
-.PHONY: all lib windows test clean format FORCE
+.PHONY: all lib windows test check clean format FORCE
 
 format:
 	uv run clang-format -i $(C_FILES)

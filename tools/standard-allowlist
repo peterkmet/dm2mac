@@ -1,0 +1,27 @@
+#!/bin/bash
+# Regenerates tests/standard/allowlist.txt from the violations that the standard check finds.
+# A pair that the old file lists keeps its reason; a new pair gets "open: module cleanup".
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+list=tests/standard/allowlist.txt
+dump=$(mktemp)
+old=$(mktemp)
+new=$(mktemp)
+trap 'rm -f "$dump" "$old" "$new"' EXIT
+cp "$list" "$old"
+DM2_STANDARD_IGNORE_ALLOWLIST=1 DM2_STANDARD_DUMP="$dump" uv run pytest -q -p no:cacheprovider tests/standard/test_standard.py >/dev/null || true
+if [ ! -s "$dump" ]; then
+    echo "the standard check wrote no violations; $list not changed" >&2
+    exit 1
+fi
+head -n 2 "$old" >"$new"
+# The allowlist check reports the allowlist file itself; its pairs are not entries.
+awk '$1 != "allowlist" { print $1, $2 }' "$dump" | LC_ALL=C sort -u |
+    awk 'NR == FNR { if ($0 !~ /^#/ && NF >= 3) { k = $1 " " $2; r[k] = substr($0, length(k) + 2) } next }
+         { k = $1 " " $2; if (k in r) print k, r[k]; else { print k, "open: module cleanup"; print k > "/dev/stderr" } }' "$old" - >>"$new" 2>"$dump.added"
+cp "$new" "$list"
+echo "open: $(grep -c ' open: module cleanup$' "$list")"
+echo "added: $(wc -l <"$dump.added" | tr -d ' ')"
+cat "$dump.added"
+rm -f "$dump.added"
