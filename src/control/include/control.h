@@ -1,15 +1,15 @@
-#ifndef CONTROL_H
-#define CONTROL_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_CONTROL_CONTROL_H
+#define DM2_CONTROL_CONTROL_H
+/* Prefixes: control_ */
+
+/* The line protocol of the control of the running game: one JSON request per line, one JSON reply per line
+   (docs/llm-control.md). platform/transport.c carries the lines over the socket; no socket, no SDL. */
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "state_json.h"
-
-/* Prefixes: control_ */
-
-/* The line protocol of the control of the running game: one JSON request per line, one JSON reply per line
-   (docs/llm-control.md). platform/transport.c carries the lines over the socket; no socket, no SDL. */
 
 /* Answers one request line in reply; false when a wait or a turn holds the reply (control_end_turn gives it). */
 bool control_handle_line(const char *line, Json *reply);
@@ -35,4 +35,4 @@ long control_get_int(const char *line, const char *key, long missing);
    0 none. */
 uint16_t control_key_code(const char *name);
 
-#endif
+#endif /* DM2_CONTROL_CONTROL_H */

@@ -1,8 +1,11 @@
-#ifndef SCALE_H
-#define SCALE_H
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_PLATFORM_SCALE_H
+#define DM2_PLATFORM_SCALE_H
 /* Prefixes: scale */
+
+/* The pixel upscale filters of the window: none, Scale2x and Scale3x. */
+
+#include <stdint.h>
 
 #define SCALE_NONE_FACTOR 1
 #define SCALE2X_FACTOR 2
@@ -14,4 +17,4 @@ void scale3x(const uint8_t *src, int w, int h, uint8_t *dst);
 /* The upscale factor of a filter name: "none" 1, "scale2x" 2, "scale3x" 3; 0 for an unknown name. */
 int scale_filter_factor(const char *name);
 
-#endif
+#endif /* DM2_PLATFORM_SCALE_H */

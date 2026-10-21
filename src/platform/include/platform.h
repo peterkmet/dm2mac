@@ -1,9 +1,12 @@
-#ifndef PLATFORM_H
-#define PLATFORM_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_PLATFORM_PLATFORM_H
+#define DM2_PLATFORM_PLATFORM_H
+/* Prefixes: plat_ */
+
+/* The window, the sound output and the input events: the SDL3 side of the game screen. */
+
 #include <stdint.h>
 #include "movie.h"
-
-/* Prefixes: plat_ */
 
 enum { PLAT_QUIT, PLAT_KEY, PLAT_MOUSE, PLAT_MOUSE_UP };
 
@@ -36,4 +39,4 @@ void plat_audio_music(PlatMixer *mix);
 /* Feeds the mixed music and sound effects to the audio device; plat_wait_tick calls it. */
 void plat_audio_pump(void);
 
-#endif
+#endif /* DM2_PLATFORM_PLATFORM_H */

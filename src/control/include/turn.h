@@ -1,13 +1,14 @@
-#ifndef TURN_H
-#define TURN_H
-
-#include <stdbool.h>
-#include "state_json.h"
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_CONTROL_TURN_H
+#define DM2_CONTROL_TURN_H
 /* Prefixes: turn_ */
 
 /* Turns of the turn-based mode: an action gives its inputs to the input queue, the game runs one game step per frame
    until the party can act again; a batch runs a list of actions and a wait runs game steps, both stop on news. */
+
+#include <stdbool.h>
+#include "state_json.h"
+
 bool turn_is_pending(void);
 /* Each starts a turn, or returns the reason why it cannot (the game does not change then). */
 const char *turn_act(const char *request);
@@ -22,4 +23,4 @@ void turn_reply(Json *j);
 /* The client left: the turn runs on to its end without a reply. */
 void turn_drop_reply(void);
 
-#endif
+#endif /* DM2_CONTROL_TURN_H */

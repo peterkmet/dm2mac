@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 #include <SDL3/SDL.h>
 #include "movie.h"
 #include "music.h"

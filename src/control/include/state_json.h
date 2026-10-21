@@ -1,12 +1,14 @@
-#ifndef STATE_JSON_H
-#define STATE_JSON_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_CONTROL_STATE_JSON_H
+#define DM2_CONTROL_STATE_JSON_H
+/* Prefixes: json_ state_json_ */
+
+/* The JSON text writer of the control replies, and the state of the game as JSON: party, champions, view, map. */
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "seen.h"
-
-/* Prefixes: json_ state_json_ */
 
 /* A growing JSON text. Start with {0}; free s when done. */
 typedef struct {
@@ -64,4 +66,4 @@ void state_json_explosion_name(Json *j, uint16_t type);
 /* Appends the name of a creature type, or its number when the name table has none. */
 void state_json_creature_name(Json *j, uint16_t type);
 
-#endif
+#endif /* DM2_CONTROL_STATE_JSON_H */
