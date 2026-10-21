@@ -1,8 +1,11 @@
-#ifndef ASPECT_H
-#define ASPECT_H
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_ASPECT_H
+#define DM2_ENGINE_ASPECT_H
 /* Prefixes: aspect_ cell_grid_ */
+
+/* What the party sees of a square: its aspect, and the cell grid of a square. */
+
+#include <stdint.h>
 
 #define VIEW_SIDE_COUNT 4
 
@@ -84,4 +87,4 @@ int aspect_rotate_cell(int cell, int dir);
 /* The thing grid position of cell (0 to 24) of the square (base_x, base_y) of the map. */
 void aspect_cell_to_xy(int base_x, int base_y, uint16_t cell, int16_t *x, int16_t *y);
 
-#endif
+#endif /* DM2_ENGINE_ASPECT_H */

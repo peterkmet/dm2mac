@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Recruiting a champion from its mirror: the candidate joins the party or goes back. */
 #include <string.h>
 #include "action.h"

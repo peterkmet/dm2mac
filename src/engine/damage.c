@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Champion statistics in fights, damage, wounds, poison, death, and the effects of time. */
 #include <string.h>
 #include "action.h"

@@ -1,5 +1,10 @@
-#ifndef CHAMP_ACTION_H
-#define CHAMP_ACTION_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_CHAMP_ACTION_H
+#define DM2_ENGINE_CHAMP_ACTION_H
+/* Prefixes: ActionRepeat */
+
+/* The actions of the champions: the commands, the charges, and the repeats of an action. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "save.h"
@@ -33,4 +38,4 @@ enum {
 };
 #define ACTION_REPEATED 0x8000  /* champ_perform_action flag: a repeat; no delay, stamina, experience */
 
-#endif
+#endif /* DM2_ENGINE_CHAMP_ACTION_H */

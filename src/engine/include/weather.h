@@ -1,10 +1,13 @@
-#ifndef WEATHER_H
-#define WEATHER_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_WEATHER_H
+#define DM2_ENGINE_WEATHER_H
+/* Prefixes: weather_ light_ world_ */
+
+/* Weather, day and night, and the party light. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "gdat.h"
-
-/* Prefixes: weather_ light_ world_ */
 
 /* Weather and day state that the save file does not keep (the saved part is in game). */
 typedef struct {
@@ -73,4 +76,4 @@ void light_update_party_light(void);
 /* Adds the light of the square (x, y) of the current map, distance squares from the party, seen from dir. */
 void light_add_square_light(int distance, int dir, int x, int y, unsigned flags);
 
-#endif
+#endif /* DM2_ENGINE_WEATHER_H */

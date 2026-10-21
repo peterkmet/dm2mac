@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "random.h"
 
 /* Linear congruential generator; reDM2 src/rng_next.c finds the same constants. */

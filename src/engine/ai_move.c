@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Creature perception and movement: what blocks a square or a line of sight, the item filters, the tests of the AI
    commands (move, attack, doors, items, wall actuators), and the path search. */
 #include <stdlib.h>

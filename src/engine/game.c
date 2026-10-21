@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The rules of the main loop: the timeline, map changes, the wake of the party. */
 #include "champ_action.h"
 #include "champion.h"

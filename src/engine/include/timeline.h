@@ -1,9 +1,12 @@
-#ifndef TIMELINE_H
-#define TIMELINE_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_TIMELINE_H
+#define DM2_ENGINE_TIMELINE_H
+/* Prefixes: timeline_ */
+
+/* The timeline of the game: the scheduled events and their handlers. */
+
 #include <stdbool.h>
 #include <stdint.h>
-
-/* Prefixes: timeline_ */
 
 #define EVENT_NONE 0
 #define EVENT_TIME_MASK 0xffffffu
@@ -88,4 +91,4 @@ void timeline_event_door_destruction(TimelineEvent *e);
 /* Runs a due sensor animation, timer, or busy event. */
 void timeline_event_sensor(TimelineEvent *e);
 
-#endif
+#endif /* DM2_ENGINE_TIMELINE_H */

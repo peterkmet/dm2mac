@@ -1,10 +1,13 @@
-#ifndef MAGIC_H
-#define MAGIC_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_MAGIC_H
+#define DM2_ENGINE_MAGIC_H
+/* Prefixes: magic_ */
+
+/* Magic: the spell table, runes, spell casting, and the magic light. */
+
 #include <stdint.h>
 #include "champion.h"
 #include "timeline.h"
-
-/* Prefixes: magic_ */
 
 /* A spell of the spell table. */
 typedef struct {
@@ -46,4 +49,4 @@ int magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost);
 
 /* Projectiles (src/engine/projectile.c): champion c launches thing from the party square. */
 
-#endif
+#endif /* DM2_ENGINE_MAGIC_H */

@@ -1,9 +1,12 @@
-#ifndef MONEY_H
-#define MONEY_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_MONEY_H
+#define DM2_ENGINE_MONEY_H
+/* Prefixes: money_ */
+
+/* Coins in money boxes, the money box panel, and new items. */
+
 #include <stdint.h>
 #include "item.h"
-
-/* Prefixes: money_ */
 
 #define SHOP_CLASS_SET_SIZE 64      /* a bit for each item index */
 
@@ -31,4 +34,4 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
 /* The coin type that the money box shows in slot (0 to 9), -1 none. */
 int money_coin_type_for_slot(uint16_t box, int slot);
 
-#endif
+#endif /* DM2_ENGINE_MONEY_H */

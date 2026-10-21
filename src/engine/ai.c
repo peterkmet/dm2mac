@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Creature AI: the update context, moods, plans, and the update of a creature that acts. */
 #include <stddef.h>
 #include <string.h>

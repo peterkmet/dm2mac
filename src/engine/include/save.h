@@ -1,10 +1,13 @@
-#ifndef SAVE_H
-#define SAVE_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_SAVE_H
+#define DM2_ENGINE_SAVE_H
+/* Prefixes: save_ */
+
+/* The save game: its blocks, its layout, and reading and writing the file. */
+
 #include <stdint.h>
 #include "gdat.h"
 #include "le.h"
-
-/* Prefixes: save_ */
 
 #define CHAMPION_MAX 4
 #define CHAMPION_SIZE 263
@@ -63,4 +66,4 @@ int save_load(const char *path, const gdat_t *gdat);
    keeps the header bytes after the name from it; name goes into the header. */
 int save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat);
 
-#endif
+#endif /* DM2_ENGINE_SAVE_H */

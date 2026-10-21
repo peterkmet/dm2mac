@@ -1,10 +1,13 @@
-#ifndef ITEM_H
-#define ITEM_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_ITEM_H
+#define DM2_ENGINE_ITEM_H
+/* Prefixes: item_ */
+
+/* The items: their record fields, their GDAT types, and what the party possesses. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
-
-/* Prefixes: item_ */
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 /* The type (GDAT index) of a weapon, armour, or miscellaneous item. */
@@ -119,4 +122,4 @@ uint16_t item_create_by_index(uint16_t item);
 /* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
 int item_party_possesses_type(int type);
 
-#endif
+#endif /* DM2_ENGINE_ITEM_H */

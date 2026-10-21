@@ -1,9 +1,12 @@
-#ifndef GAME_H
-#define GAME_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_GAME_H
+#define DM2_ENGINE_GAME_H
+/* Prefixes: game_ */
+
+/* The main loop state of the game rules: the step timing, the map changes, and the party wake. */
+
 #include <stdint.h>
 #include "save.h"
-
-/* Prefixes: game_ */
 
 #define STEP_TICKS 8        /* timer ticks (60 Hz) of a game step */
 
@@ -83,4 +86,4 @@ extern int cheat_food;                  /* food and water do not go down */
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int x, int y, int map, int leaving);
 
-#endif
+#endif /* DM2_ENGINE_GAME_H */

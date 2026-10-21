@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* What the party sees of a square: its aspect, ornaments, and first thing; the 5 x 5 cell grid of a square. */
 #include <string.h>
 #include "aspect.h"

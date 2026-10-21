@@ -1,9 +1,12 @@
-#ifndef INVENTORY_H
-#define INVENTORY_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_INVENTORY_H
+#define DM2_ENGINE_INVENTORY_H
+/* Prefixes: inv_ */
+
+/* The leader hand and the champion slots, and the effects of the items that a champion holds. */
+
 #include <stdint.h>
 #include "timeline.h"
-
-/* Prefixes: inv_ */
 
 /* Modes of champ_apply_item_effects: how an item changes the champion that holds it. */
 enum item_effect_mode {
@@ -48,4 +51,4 @@ void inv_put_object_in_free_slot(int champ, uint16_t thing);
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
 
-#endif
+#endif /* DM2_ENGINE_INVENTORY_H */

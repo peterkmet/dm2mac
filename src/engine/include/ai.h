@@ -1,11 +1,14 @@
-#ifndef AI_H
-#define AI_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_AI_H
+#define DM2_ENGINE_AI_H
+/* Prefixes: ai_ */
+
+/* The creature AI: its update context, the plan commands, and the record fields of the AI markers. */
+
 #include <stdint.h>
 #include "creature.h"
 #include "dungeon.h"
 #include "timeline.h"
-
-/* Prefixes: ai_ */
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint16_t ai_marker_id(uint16_t text) { return thing_field(text, TEXT_DATA, AI_MARKER_ID_SHIFT, AI_MARKER_ID_MASK); }
@@ -264,4 +267,4 @@ void ai_load_cached_path(void);
 int ai_next_path_step(void);
 int ai_plan_path(void);
 
-#endif
+#endif /* DM2_ENGINE_AI_H */

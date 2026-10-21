@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The creature AI tables of SKULL.EXE: behaviors, plan choices, plans, and targets. Generated from the
    data object of SKULL.EXE; the records keep their original layout and link each other by their address. */
 #include "ai.h"

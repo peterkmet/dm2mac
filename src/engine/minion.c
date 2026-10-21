@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Minion maps: the mana of the map panel, its option buttons, and the clicks that send a minion. */
 #include "action.h"
 #include "ai.h"

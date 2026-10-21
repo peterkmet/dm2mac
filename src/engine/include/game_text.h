@@ -1,9 +1,12 @@
-#ifndef GAME_TEXT_H
-#define GAME_TEXT_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_GAME_TEXT_H
+#define DM2_ENGINE_GAME_TEXT_H
+/* Prefixes: text_decode_ text_format text_gdat */
+
+/* The game texts and the UI colors: decoding, formatting, and GDAT text items. */
+
 #include <stddef.h>
 #include <stdint.h>
-
-/* Prefixes: text_decode_ text_format text_gdat */
 
 #define TEXT_SIZE 256
 
@@ -54,4 +57,4 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size);
    also gives a hidden text. */
 char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);
 
-#endif
+#endif /* DM2_ENGINE_GAME_TEXT_H */

@@ -1,7 +1,11 @@
-#ifndef MERCHANT_H
-#define MERCHANT_H
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_MERCHANT_H
+#define DM2_ENGINE_MERCHANT_H
 /* Prefixes: shop_ */
+
+#include <stdint.h>
+
+/* The merchant commands of the creature AI plans and the prices of the goods. */
 
 /* The merchant commands of the creature AI plans; they return AI_RESULT_*. */
 int shop_cmd_wait_for_offer(void);       /* waits until the customer shows coins or goods */
@@ -16,4 +20,4 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
    the full charges). */
 int shop_get_item_value(uint16_t item, int creature, int list, int buying, int apply_margin, int16_t charges);
 
-#endif
+#endif /* DM2_ENGINE_MERCHANT_H */

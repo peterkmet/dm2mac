@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Magic: runes, spell casting, magic light, party auras, and missile spells. */
 #include <stddef.h>
 #include "action.h"

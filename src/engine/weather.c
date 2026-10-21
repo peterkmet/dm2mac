@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Weather, day and night, and the party light. */
 #include "aspect.h"
 #include "champion.h"

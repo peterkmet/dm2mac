@@ -1,9 +1,12 @@
-#ifndef ACTION_H
-#define ACTION_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_ACTION_H
+#define DM2_ENGINE_ACTION_H
+/* Prefixes: action_ */
+
+/* The action area of the panel: its modes, the action hands, and the spell and money box views. */
+
 #include <stdint.h>
 #include "save.h"
-
-/* Prefixes: action_ */
 
 /* What the action area shows. */
 enum action_mode {
@@ -61,4 +64,4 @@ void action_area_open_hand(int champ, int hand);
 /* Opens the spell panel of champ in the action area. */
 void action_area_open_spells(int champ);
 
-#endif
+#endif /* DM2_ENGINE_ACTION_H */

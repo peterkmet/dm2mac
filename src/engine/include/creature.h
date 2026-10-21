@@ -1,12 +1,15 @@
-#ifndef CREATURE_H
-#define CREATURE_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_CREATURE_H
+#define DM2_ENGINE_CREATURE_H
+/* Prefixes: creature_ */
+
+/* Creature groups: the creature info records and the update of the groups. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
 #include "gdat.h"
 #include "timeline.h"
-
-/* Prefixes: creature_ */
 
 /* A creature info record of SKULL.EXE (36 bytes, the same layout). */
 typedef struct {
@@ -268,4 +271,4 @@ void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party
 /* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
 int creature_attack_champion(uint16_t group, int champ);
 
-#endif
+#endif /* DM2_ENGINE_CREATURE_H */

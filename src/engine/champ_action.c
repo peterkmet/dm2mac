@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The actions of the champions: the action menu, the actions, their delays and repeats, experience, throwing. */
 #include "action.h"
 #include "ai.h"

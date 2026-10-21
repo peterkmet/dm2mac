@@ -1,10 +1,13 @@
-#ifndef CHAMPION_H
-#define CHAMPION_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_CHAMPION_H
+#define DM2_ENGINE_CHAMPION_H
+/* Prefixes: champ_ champion */
+
+/* The champions: their slots, statistics, wounds, and the effects of their actions. */
+
 #include <stdint.h>
 #include "save.h"
 #include "timeline.h"
-
-/* Prefixes: champ_ champion */
 
 /* Champion slots: the hands, the body and pack slots (to 29), then the slots of an open container. */
 enum {
@@ -283,4 +286,4 @@ void champ_decrease_stamina(int champ, int amount);
 /* A champion throws or casts payload from the party square. */
 void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step);
 
-#endif
+#endif /* DM2_ENGINE_CHAMPION_H */

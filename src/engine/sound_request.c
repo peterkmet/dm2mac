@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The sound requests of the game: the queues of a game step, delayed sounds, and the place of a sound seen by the
    party. sound.c plays them. */
 #include <stdlib.h>

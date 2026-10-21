@@ -1,10 +1,13 @@
-#ifndef DUNGEON_H
-#define DUNGEON_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_DUNGEON_H
+#define DM2_ENGINE_DUNGEON_H
+/* Prefixes: dungeon_ dir_ square_ thing_ set_thing_ location_ event_ door_ group_ teleporter_ container_ misc_ potion_ scroll_ weapon_ armour_ moneybox_ text_is_ text_kind text_offset text_set_visible text_subtype text_value */
+
+/* The dungeon: the things, their record layout, the squares, and the maps. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-
-/* Prefixes: dungeon_ dir_ square_ thing_ set_thing_ location_ event_ door_ group_ teleporter_ container_ misc_ potion_ scroll_ weapon_ armour_ moneybox_ text_is_ text_kind text_offset text_set_visible text_subtype text_value */
 
 enum thing_type {
     THING_DOOR, THING_TELEPORTER, THING_TEXT, THING_SENSOR, THING_GROUP, THING_WEAPON, THING_ARMOUR,
@@ -582,4 +585,4 @@ const uint16_t *dungeon_text_data(void);
 /* The maps of a level, ended by LEVEL_LIST_END. */
 const uint8_t *dungeon_level_maps(int level);
 
-#endif
+#endif /* DM2_ENGINE_DUNGEON_H */

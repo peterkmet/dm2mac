@@ -1,8 +1,11 @@
-#ifndef RANDOM_H
-#define RANDOM_H
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_RANDOM_H
+#define DM2_ENGINE_RANDOM_H
 /* Prefixes: rand_ */
+
+/* The random number generator of the game rules. */
+
+#include <stdint.h>
 
 /* The state of the random number generator; the save game stores it. */
 extern uint32_t random_seed;
@@ -16,4 +19,4 @@ uint16_t rand_bit(void);
 /* A random number from 0 to 3. */
 uint16_t rand_2bits(void);
 
-#endif
+#endif /* DM2_ENGINE_RANDOM_H */

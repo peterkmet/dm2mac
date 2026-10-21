@@ -1,8 +1,11 @@
-#ifndef MINION_H
-#define MINION_H
-#include <stdint.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_MINION_H
+#define DM2_ENGINE_MINION_H
 /* Prefixes: minion_ */
+
+/* Minion maps: the grid, the mana of the map panel, and the clicks that send a minion. */
+
+#include <stdint.h>
 
 /* The grid: 7 x 7 squares (9 x 9 when the grid is shifted) of 7 x 7 pixel icons with 1 pixel gaps. */
 #define MAP_ICON_W 7
@@ -71,4 +74,4 @@ void minion_dismiss(uint16_t group);
 /* The projectile among the possessions of group that carries filter (THING_NONE: any); 0 when none. */
 uint16_t minion_find_link_projectile(uint16_t group, uint16_t filter);
 
-#endif
+#endif /* DM2_ENGINE_MINION_H */

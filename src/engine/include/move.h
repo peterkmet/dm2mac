@@ -1,9 +1,12 @@
-#ifndef MOVE_H
-#define MOVE_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_MOVE_H
+#define DM2_ENGINE_MOVE_H
+/* Prefixes: move_ dun_ */
+
+/* Party movement and thing movement: the movement commands, the redraw flags, and the doors. */
+
 #include <stdint.h>
 #include "dungeon.h"
-
-/* Prefixes: move_ dun_ */
 
 /* Movement commands: turn left and right, then step forward, right, back, and left. */
 enum move_command {
@@ -132,4 +135,4 @@ int dun_modify_global_var(int var, int value, int op);   /* returns the new valu
 /* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */
 int dun_get_door_type(uint16_t door);
 
-#endif
+#endif /* DM2_ENGINE_MOVE_H */

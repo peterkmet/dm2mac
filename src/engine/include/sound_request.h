@@ -1,9 +1,12 @@
-#ifndef SOUND_REQUEST_H
-#define SOUND_REQUEST_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_SOUND_REQUEST_H
+#define DM2_ENGINE_SOUND_REQUEST_H
+/* Prefixes: sound_clear_ sound_flush_ sound_load sound_party_ sound_request sound_reset_ sound_volume_ */
+
+/* The sound requests of the game rules: the queues of a game step and the delayed sounds. */
+
 #include <stdint.h>
 #include "gdat.h"
-
-/* Prefixes: sound_clear_ sound_flush_ sound_load sound_party_ sound_request sound_reset_ sound_volume_ */
 
 /* Signed 8-bit mono PCM of a GDAT sound item. */
 typedef struct {
@@ -76,4 +79,4 @@ void sound_clear_requests(void);
 /* A delayed sound (timeline event 0x15) is due: it plays when the party is still on its map. */
 void sound_request_delayed(int slot);
 
-#endif
+#endif /* DM2_ENGINE_SOUND_REQUEST_H */

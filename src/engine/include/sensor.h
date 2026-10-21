@@ -1,11 +1,14 @@
-#ifndef SENSOR_H
-#define SENSOR_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_SENSOR_H
+#define DM2_ENGINE_SENSOR_H
+/* Prefixes: sensor_ */
+
+/* Floor and wall sensors: their record fields, their timeline events, and the missiles. */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
 #include "timeline.h"
-
-/* Prefixes: sensor_ */
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint16_t sensor_type(uint16_t sensor) { return thing_field(sensor, SENSOR_TYPE_DATA, 0, SENSOR_TYPE_MASK); }
@@ -157,4 +160,4 @@ void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y,
 /* A missile launcher sensor shoots the objects of its square or new objects or spells. */
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 
-#endif
+#endif /* DM2_ENGINE_SENSOR_H */

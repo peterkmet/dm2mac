@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Coins in money boxes, the money box panel, new items, and the prices of the shops. */
 #include <string.h>
 #include "action.h"

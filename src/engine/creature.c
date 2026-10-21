@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Creature groups: creature info, animation, active groups, and the creature update events. */
 #include <stdlib.h>
 #include <string.h>

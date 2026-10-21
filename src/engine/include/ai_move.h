@@ -1,12 +1,15 @@
-#ifndef AI_MOVE_H
-#define AI_MOVE_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_AI_MOVE_H
+#define DM2_ENGINE_AI_MOVE_H
+/* Prefixes: AI_MOVE_ MOVE_KIND_ */
+
+/* Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the
+   path search (ai_move.c). The functions work on the AI context (ai.h) and set ai.command_result. */
+
 #include <stdint.h>
 #include "money.h"
 #include "ai.h"
 #include "move.h"
-
-/* Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the
-   path search (ai_move.c). The functions work on the AI context (ai.h) and set ai.command_result. */
 
 /* Bits of the command byte of the AI tests (AI_EXECUTE in ai.h). */
 #define AI_MODE_MASK 0x7f
@@ -123,4 +126,4 @@ extern uint16_t search_direction_bits;
 #define ITEM_CLASS_SET_SIZE SHOP_CLASS_SET_SIZE
 #define FILTER_BITMAP_SIZE ITEM_CLASS_SET_SIZE  /* the item class bitmap of an item filter */
 
-#endif
+#endif /* DM2_ENGINE_AI_MOVE_H */

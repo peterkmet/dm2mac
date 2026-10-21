@@ -1,12 +1,13 @@
-#ifndef SEEN_H
-#define SEEN_H
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_SEEN_H
+#define DM2_ENGINE_SEEN_H
 /* Prefixes: seen_ */
 
 /* The squares of the automap that the dungeon view has shown, one byte per square of every map. */
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 /* The rows of the dungeon view and the squares of each row (the middle one and 3 to each side). */
 enum { VIEW_DEPTHS = 5, VIEW_HALF_WIDTH = 3, VIEW_WIDTH = 2 * VIEW_HALF_WIDTH + 1 };
@@ -31,4 +32,4 @@ int seen_write(FILE *f);
 /* Reads the AMAP block from the rest of f; a missing or damaged block gives an empty automap. */
 void seen_read(FILE *f);
 
-#endif
+#endif /* DM2_ENGINE_SEEN_H */

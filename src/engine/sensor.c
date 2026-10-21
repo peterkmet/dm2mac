@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Floor and wall sensors, square events, doors, pits, teleporters, and fake walls. */
 #include <string.h>
 #include "action.h"

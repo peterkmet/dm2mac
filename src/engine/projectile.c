@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "projectile.h"
 #include "ai.h"
 #include "champion.h"

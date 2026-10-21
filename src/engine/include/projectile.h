@@ -1,10 +1,13 @@
-#ifndef PROJECTILE_H
-#define PROJECTILE_H
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_PROJECTILE_H
+#define DM2_ENGINE_PROJECTILE_H
+/* Prefixes: projectile_ explosion_ */
+
+/* Projectiles and explosions: their record fields and their timeline events. */
+
 #include <stdint.h>
 #include "timeline.h"
 #include "dungeon.h"
-
-/* Prefixes: projectile_ explosion_ */
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint8_t projectile_energy(uint16_t projectile) { return thing_byte(projectile, PROJECTILE_ENERGY); }
@@ -61,7 +64,6 @@ enum spell_thing {
 enum { PROJECTILE_EVENT_THING = 0, PROJECTILE_EVENT_POSITION = 2 };
 enum { EXPLOSION_EVENT_X = 0, EXPLOSION_EVENT_Y = 1, EXPLOSION_EVENT_THING = 2 };
 
-
 /* The extra damage (poison) and the attack type of the last projectile_get_attack. */
 extern uint16_t projectile_extra_damage, projectile_attack_type;
 /* A sensor launches the next projectiles: they check for hits on their first square. */
@@ -93,4 +95,4 @@ void projectile_process_event(TimelineEvent *e);
 int explosion_get_attack(uint16_t explosion, uint16_t target);
 void explosion_process_event(TimelineEvent *e);
 
-#endif
+#endif /* DM2_ENGINE_PROJECTILE_H */

@@ -1,10 +1,14 @@
-#ifndef HOOKS_H
-#define HOOKS_H
-#include <stdint.h>
-#include "sound_request.h"
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_ENGINE_HOOKS_H
+#define DM2_ENGINE_HOOKS_H
+/* Prefixes: Hooks */
 
 /* Calls of the game rules into the user interface, for events that must run the interface inside the rule.
    ui/hook_table.c sets every member. */
+
+#include <stdint.h>
+#include "sound_request.h"
+
 typedef struct {
     void (*print_message)(int color, const char *text);  /* a line in the message area */
     void (*print_newline)(void);                         /* the next message starts on a new row */
@@ -39,4 +43,4 @@ typedef struct {
 
 extern Hooks g_hooks;
 
-#endif
+#endif /* DM2_ENGINE_HOOKS_H */
