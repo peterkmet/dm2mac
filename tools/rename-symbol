@@ -2,11 +2,18 @@
 # Renames a public symbol (whole word) in the sources, tests and docs.
 # Usage: tools/rename-symbol OLD NEW
 #        tools/rename-symbol --files FILE... OLD NEW   (named files only, no check of NEW)
-cd "$(dirname "$0")/.." || exit 1
+root=$(git rev-parse --show-toplevel) || exit 1
 files=()
 if [ "$1" = "--files" ]; then
     shift
-    while [ $# -gt 2 ]; do files+=("$1"); shift; done
+    while [ $# -gt 2 ]; do
+        if [ ! -f "$1" ]; then
+            echo "error: no such file: $1" >&2
+            exit 1
+        fi
+        files+=("$(cd "$(dirname "$1")" && pwd)/$(basename "$1")")
+        shift
+    done
 fi
 if [ $# -ne 2 ]; then
     echo "usage: tools/rename-symbol [--files FILE...] OLD NEW" >&2
@@ -14,8 +21,9 @@ if [ $# -ne 2 ]; then
 fi
 old=$1
 new=$2
+cd "$root" || exit 1
 if [ ${#files[@]} -eq 0 ]; then
-    if git ls-files 'src/*.c' 'src/*.h' ':!src/third_party' | grep -v '^src/third_party/' |
+    if git ls-files 'src/*.c' 'src/*.h' | grep -v '^src/third_party/' |
         xargs grep -lw -- "$new" 2>/dev/null | grep -q .; then
         echo "error: $new already occurs as a word in src/" >&2
         exit 1
