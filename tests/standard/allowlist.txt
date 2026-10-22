@@ -459,10 +459,7 @@ include ui/view.c:timeline.h open: module cleanup
 long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
-long engine/ai_move.c:ai_find_target_in_lines open: module cleanup
-long engine/ai_move.c:ai_try_attack open: module cleanup
-long engine/ai_move.c:search_setup open: module cleanup
-long engine/ai_move.c:test_entered open: module cleanup
+long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
 long engine/aspect.c:apply_floor_things open: module cleanup
 long engine/aspect.c:aspect_get open: module cleanup
 long engine/champ_action.c:champ_action_minion open: module cleanup
