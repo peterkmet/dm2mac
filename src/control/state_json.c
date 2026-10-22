@@ -28,13 +28,14 @@
 #include "ui.h"
 #include "view.h"
 #include <ctype.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* Sizes of the JSON text and of the texts of the game state. */
 #define JSON_START_SIZE  1024                                        /* the first size of the text buffer */
-#define LONG_TEXT_SIZE   24                                          /* the digits and sign of a long */
+#define INT64_TEXT_SIZE  24                                          /* the digits and sign of an int64_t */
 #define ESCAPE_SIZE      8                                           /* a \u00XX escape and its end mark */
 #define ESCAPE_LENGTH    6                                           /* the length of a \u00XX escape */
 #define RUNE_NAME_COUNT  (CHAMPION_RUNES_SIZE * SPELL_RUNES_PER_SET) /* the power runes and three rune sets */
@@ -91,17 +92,17 @@ void json_close(Json *j, char bracket)
 {
     put(j, &bracket, 1);
 }
-void json_bool(Json *j, bool value)
+void json_bool(Json *j, bool flag)
 {
     separate(j);
-    json_raw(j, value ? "true" : "false");
+    json_raw(j, flag ? "true" : "false");
 }
 
-void json_int(Json *j, long value)
+void json_int(Json *j, int64_t value)
 {
-    char buf[LONG_TEXT_SIZE];
+    char buf[INT64_TEXT_SIZE];
     separate(j);
-    snprintf(buf, sizeof buf, "%ld", value);
+    snprintf(buf, sizeof buf, "%" PRId64, value);
     json_raw(j, buf);
 }
 
@@ -220,7 +221,7 @@ static void put_null(Json *j)
     json_raw(j, "null");
 }
 
-static void key_int(Json *j, const char *key, long value)
+static void key_int(Json *j, const char *key, int64_t value)
 {
     json_key(j, key);
     json_int(j, value);
@@ -246,7 +247,7 @@ static void trimmed(Json *j, const char *text, size_t n)
 }
 
 /* Appends "key": [a, b]. */
-static void pair(Json *j, const char *key, long a, long b)
+static void pair(Json *j, const char *key, int64_t a, int64_t b)
 {
     json_key(j, key);
     json_open(j, '[');
@@ -256,11 +257,11 @@ static void pair(Json *j, const char *key, long a, long b)
 }
 
 /* A weight in tenths of a kilogram as a decimal number, as the load line shows it. */
-static void tenths(Json *j, long value)
+static void tenths(Json *j, int64_t value)
 {
-    char buf[LONG_TEXT_SIZE];
+    char buf[INT64_TEXT_SIZE];
     separate(j);
-    snprintf(buf, sizeof buf, "%ld.%ld", value / WEIGHT_TENTHS, value % WEIGHT_TENTHS);
+    snprintf(buf, sizeof buf, "%" PRId64 ".%" PRId64, value / WEIGHT_TENTHS, value % WEIGHT_TENTHS);
     json_raw(j, buf);
 }
 
@@ -717,7 +718,7 @@ void state_json_state(Json *j)
     uint32_t seed = g_random_seed; /* a stat aura draws a random number in champ_get_stat: the read changes no game */
     int mode = input_get_mode();
     json_open(j, '{');
-    key_int(j, "time", (long)g_game.game_time);
+    key_int(j, "time", g_game.game_time);
     key_str(j, "game_mode", g_game_mode_names[g_game_mode]);
     key_str(j, "mode", state_json_mode_name(mode));
     json_key(j, "dialog");
@@ -882,7 +883,7 @@ static bool is_drawn(uint16_t thing, unsigned draws)
     return is_object(thing) && draws & VIEW_DRAWS_OBJECTS;
 }
 
-int state_json_visible_things(uint16_t type, StateJsonSeenThing *out, int max)
+int state_json_visible_things(uint16_t type, StateJsonSeenThing *things, int max)
 {
     SeenSquare squares[SEEN_VISIBLE_MAX];
     int count = visible_squares(squares);
@@ -897,7 +898,7 @@ int state_json_visible_things(uint16_t type, StateJsonSeenThing *out, int max)
         for (uint16_t t = dungeon_square_first_thing(g_game.party_map, q->x, q->y); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t))
             if (thing_type(t) == type && is_drawn(t, draws) && n < max)
-                out[n++] = (StateJsonSeenThing){q->depth, q->side, q->x, q->y, t};
+                things[n++] = (StateJsonSeenThing){q->depth, q->side, q->x, q->y, t};
     }
     return n;
 }

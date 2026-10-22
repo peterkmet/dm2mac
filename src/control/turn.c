@@ -1314,7 +1314,7 @@ void turn_reply(Json *j)
     json_key(j, "ok");
     json_bool(j, true);
     json_key(j, "ticks");
-    json_int(j, (long)(g_game.game_time - (batch.active ? batch.start_time : turn.start_time)));
+    json_int(j, g_game.game_time - (batch.active ? batch.start_time : turn.start_time));
     stop_json(j);
     json_key(j, "game_over");
     json_bool(j, state_json_game_over());

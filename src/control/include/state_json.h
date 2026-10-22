@@ -39,9 +39,9 @@ void json_open(Json *j, char bracket);
 /* Closes an object or a list with its bracket. */
 void json_close(Json *j, char bracket);
 /* Appends true or false. */
-void json_bool(Json *j, bool value);
+void json_bool(Json *j, bool flag);
 /* Appends an integer. */
-void json_int(Json *j, long value);
+void json_int(Json *j, int64_t value);
 /* Appends a JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). */
 void json_strn(Json *j, const char *text, size_t n);
 /* Appends a JSON string of text. */
@@ -69,9 +69,9 @@ const char *state_json_side_name(int side);
 void state_json_explosion_name(Json *j, uint16_t type);
 /* Appends the name of a creature type, or its number when the name table has none. */
 void state_json_creature_name(Json *j, uint16_t type);
-/* Writes to out (at most max) the things of a thing type that the view draws on the visible non-wall squares, in
+/* Writes to things (at most max) the things of a thing type that the view draws on the visible non-wall squares, in
    view order; returns the count. */
-int state_json_visible_things(uint16_t type, StateJsonSeenThing *out, int max);
+int state_json_visible_things(uint16_t type, StateJsonSeenThing *things, int max);
 /* Writes the creature groups that the view draws to groups; returns the count. */
 int state_json_visible_groups(uint16_t groups[STATE_JSON_VISIBLE_GROUPS_MAX]);
 /* The squares that the party sees now (the seen rule), their things, and the wall faces that the view draws. */
