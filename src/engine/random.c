@@ -12,6 +12,11 @@
 
 uint32_t g_random_seed;
 
+void rand_set_seed(uint32_t seed)
+{
+    g_random_seed = seed;
+}
+
 uint32_t rand_next(void)
 {
     g_random_seed = g_random_seed * RANDOM_MULTIPLIER + RANDOM_INCREMENT;

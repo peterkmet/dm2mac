@@ -628,6 +628,9 @@ static const uint8_t sky_state_rain[5] = {0, 1, 0, 0, 1};
 #define FLIP_CEILING_BY_PARTY  0x20
 #define FLIP_FLOOR_BY_PARTY    0x40
 
+/* The projectiles of one view whose flight the views between game steps show. */
+#define FLIGHT_TRACK_MAX 32
+
 ViewSquare g_view_squares[VIEW_SQUARE_COUNT];
 static uint8_t viewport_pixels[VIEWPORT_WIDTH * VIEWPORT_HEIGHT];
 Bitmap g_view_viewport = {viewport_pixels, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, IMAGE_8BPP};
@@ -646,6 +649,7 @@ typedef struct {
     bool record_click;
     int open_state;
     bool in_alcove;
+    uint16_t projectile; /* the projectile that carries the object in flight, 0 for none */
 } ObjectLook;
 
 /* The eye of the party in the thing grid: the direction it looks to and its grid point. */
@@ -673,6 +677,13 @@ typedef struct {
 typedef struct {
     int entry, flip;
 } ThingPicture;
+
+/* A projectile of a view (its thing id without the cell) and the picture corner in the views of the game step before
+   and of the last game step. */
+typedef struct {
+    uint16_t thing;
+    ViewPoint from, to;
+} FlightTrack;
 
 static struct {
     int16_t map; /* the map of the squares that the view reads now */
@@ -708,6 +719,17 @@ int g_view_arrows_enabled;
 uint8_t g_view_object_grid[VIEW_GRID_SIZE];
 uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT];
 uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];
+
+/* Smooth projectile flight of the advanced mode (no rule change): the projectiles of the last view of a game step and
+   of the view of the game step before, and the timer tick of a view between game steps. */
+static struct {
+    FlightTrack tracks[FLIGHT_TRACK_MAX], last[FLIGHT_TRACK_MAX];
+    int count, last_count;
+    int16_t map, x, y, dir; /* the party view of the tracks */
+    bool walking;
+    uint32_t time;        /* the game time of the tracks */
+    int tick, step_ticks; /* the timer tick of a view between game steps; 0 step_ticks: a view of a game step */
+} flight = {.map = -1};
 
 /* The picture entry offset of the frame of a wall face word: 4 pictures per frame. */
 static int face_frame_entry(uint16_t w)
@@ -1417,6 +1439,49 @@ static ThingPicture pick_object_picture(uint16_t thing, int pos, int cell, int o
     return pic;
 }
 
+/* The track of the projectile thing in a list of tracks, NULL for none; the cell bits of a projectile change in flight. */
+static const FlightTrack *find_track(const FlightTrack *list, int count, uint16_t thing)
+{
+    for (int i = 0; i < count; i++)
+        if (list[i].thing == (thing & THING_ID_MASK))
+            return &list[i];
+    return NULL;
+}
+
+/* The top left corner of the view picture without the clip of its zone; false when it does not show. */
+static bool picture_corner(ViewPoint *corner)
+{
+    const DrawCtx *c = &view.ctx;
+    int16_t rect[RECT_SIZE];
+    int16_t sx = (int16_t)(c->src_x + c->dx);
+    int16_t sy = (int16_t)(c->src_y + c->dy);
+    if (c->w <= 0 || c->h <= 0 || !c->image ||
+        !zone_compute_anchored_rect(c->image, rect, (AnchoredZone){c->zone | ZONE_RELATIVE, c->anchor}, &sx, &sy))
+        return false;
+    corner->x = (int16_t)(rect[RECT_X] - sx);
+    corner->y = (int16_t)(rect[RECT_Y] - sy);
+    return true;
+}
+
+/* Draws the view picture of the projectile thing (0: a picture of no projectile). A view of a game step keeps its
+   corner; a view between game steps draws it part of the way back to its corner of the game step before. */
+static void flush_projectile(uint16_t thing)
+{
+    ViewPoint corner;
+    if (thing && picture_corner(&corner)) {
+        if (flight.step_ticks) {
+            const FlightTrack *t = find_track(flight.tracks, flight.count, thing);
+            ViewPoint shift = t ? view_flight_shift(t->from, t->to, flight.tick, flight.step_ticks) : (ViewPoint){0, 0};
+            view.ctx.src_x = (int16_t)(view.ctx.src_x + shift.x);
+            view.ctx.src_y = (int16_t)(view.ctx.src_y + shift.y);
+        } else if (flight.count < FLIGHT_TRACK_MAX) {
+            const FlightTrack *last = find_track(flight.last, flight.last_count, thing);
+            flight.tracks[flight.count++] = (FlightTrack){thing & THING_ID_MASK, last ? last->to : corner, corner};
+        }
+    }
+    flush_picture();
+}
+
 /* Draws an object at its cell of the square at pos, as look tells. */
 static void show_object(uint16_t thing, int pos, const ObjectLook *look)
 {
@@ -1474,7 +1539,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
                   category, index, pic.entry);
     if (!look->record_click)
         view.ctx.transparent = DRAW_NO_BLIT;
-    flush_picture();
+    flush_projectile(look->projectile);
 }
 
 /* Draws the objects of a thing list in cell (0 to 3, relative to the party) of the square at pos; with group,
@@ -1746,8 +1811,10 @@ static void show_missiles(uint16_t thing, int pos, int position)
         uint16_t payload = thing_word(thing, PROJECTILE_PAYLOAD);
         if (kind == MISSILE_NO_PICTURE) {
             uint16_t object = thing_with_cell(payload, thing_cell(thing));
-            show_object(object, pos,
-                        &(ObjectLook){.dy = MISSILE_DY, .spot = -1, .group = THING_NONE, .record_click = true});
+            show_object(
+                object, pos,
+                &(ObjectLook){
+                    .dy = MISSILE_DY, .spot = -1, .group = THING_NONE, .record_click = true, .projectile = thing});
             continue;
         }
         int category = item_gdat_category(thing), index = item_gdat_index(thing);
@@ -1785,7 +1852,7 @@ static void show_missiles(uint16_t thing, int pos, int position)
                       category, index, pic.entry);
         view.ctx.src_x = (int16_t)(view.ctx.src_x + gfx_scale_64(0, (int16_t)offset_scale));
         view.ctx.src_y = (int16_t)(view.ctx.src_y + gfx_scale_64(MISSILE_DY, (int16_t)offset_scale));
-        flush_picture();
+        flush_projectile(thing);
     }
 }
 
@@ -1814,6 +1881,8 @@ static void setup_explosion_picture(int type, int size, int flip, int zone)
 static void global_byte_add(int var)
 {
     uint8_t *value = g_game.global_bytes + var - GLOBAL_BYTE_FIRST;
+    if (flight.step_ticks)
+        return; /* a view between game steps changes no game state */
     if (*value < GLOBAL_BYTE_MAX)
         ++*value;
 }
@@ -2178,7 +2247,8 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
     if (display == THING_ENDOFLIST)
         return; /* fix: the original reads a NULL record */
     int creature = (uint8_t)sensor_data(shop);
-    if (!sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD))
+    /* a view between game steps changes no game state: it shows the item of the last view */
+    if (!flight.step_ticks && (!sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD)))
         choose_shop_item(shop, display, ornament, creature);
     uint16_t item = sensor_data(display);
     int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
@@ -2197,7 +2267,9 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
         if (table)
             for (; at < count && (table[at] & ITEM_INDEX_NONE) != item; at++) {
             }
-        uint16_t made = table && at < count && table[at] & SHOP_TABLE_CREATE ? item_create_by_index(item) : THING_NONE;
+        uint16_t made = !flight.step_ticks && table && at < count && table[at] & SHOP_TABLE_CREATE
+                            ? item_create_by_index(item)
+                            : THING_NONE;
         if (made != THING_NONE) {
             dungeon_link_thing_to_square(made, view.map, x, y);
         } else {
@@ -3296,6 +3368,29 @@ bool view_shows_party(void)
            view.party_dir == g_game.party_dir;
 }
 
+/* A view of a game step starts new projectile tracks; the tracks of the view of the game step just before stay when the
+   party view is the same. Another view in the same game step keeps them. */
+static void start_tracks(int dir, int16_t x, int16_t y)
+{
+    if (flight.step_ticks)
+        return;
+    bool same = flight.map == view.map && flight.x == x && flight.y == y && flight.dir == dir &&
+                flight.walking == (view.walking != 0);
+    if (same && flight.time + 1 == g_game.game_time) {
+        memcpy(flight.last, flight.tracks, sizeof flight.tracks[0] * (size_t)flight.count);
+        flight.last_count = flight.count;
+    } else if (!same || flight.time != g_game.game_time) {
+        flight.last_count = 0;
+    }
+    flight.count = 0;
+    flight.map = view.map;
+    flight.x = x;
+    flight.y = y;
+    flight.dir = (int16_t)dir;
+    flight.walking = view.walking != 0;
+    flight.time = g_game.game_time;
+}
+
 void view_draw_dungeon(int dir, int16_t x, int16_t y)
 {
     view.map = view.party_map = g_game.party_map;
@@ -3306,6 +3401,7 @@ void view_draw_dungeon(int dir, int16_t x, int16_t y)
                      ? 0
                      : g_view_light_level * LIGHT_STEP; /* the creature rules keep g_view_light_level */
     view.walking = g_party.move_steps != 0;
+    start_tracks(dir, x, y);
     g_view_click_zone_count = VIEW_CLICK_ZONE_FIXED;
     for (int i = 0; i < VIEW_CLICK_ZONE_FIXED; i++) {
         g_view_click_zones[i].thing = THING_NONE;
@@ -3340,6 +3436,31 @@ void view_draw_dungeon(int dir, int16_t x, int16_t y)
     show_far_squares();
     show_party_square();
     draw_free_temp();
+}
+
+/* ---- Projectile flight ---- */
+
+ViewPoint view_flight_shift(ViewPoint old_corner, ViewPoint new_corner, int tick, int step_ticks)
+{
+    if (step_ticks <= 0 || tick >= step_ticks)
+        return (ViewPoint){0, 0};
+    int rest = step_ticks - tick;
+    return (ViewPoint){(int16_t)((old_corner.x - new_corner.x) * rest / step_ticks),
+                       (int16_t)((old_corner.y - new_corner.y) * rest / step_ticks)};
+}
+
+void view_set_flight_tick(int tick, int step_ticks)
+{
+    flight.tick = tick;
+    flight.step_ticks = step_ticks;
+}
+
+bool view_has_moving_projectiles(void)
+{
+    for (int i = 0; i < flight.count; i++)
+        if (flight.tracks[i].from.x != flight.tracks[i].to.x || flight.tracks[i].from.y != flight.tracks[i].to.y)
+            return true;
+    return false;
 }
 
 /* ---- Clicks ---- */

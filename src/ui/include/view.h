@@ -73,6 +73,11 @@ typedef struct {
     int kind;
 } ViewObjectClick;
 
+/* A pixel point of the viewport. */
+typedef struct {
+    int16_t x, y;
+} ViewPoint;
+
 /* ---- Map graphics ---- */
 
 /* Sets up the map graphics of map for the view: the view part of entering a map. */
@@ -123,6 +128,18 @@ bool view_shows_floor_ornament(int pos, int ornament);
 bool view_shows_party(void);
 /* Draws the view of the party at (x, y) of the party map looking to dir into g_view_viewport. */
 void view_draw_dungeon(int dir, int16_t x, int16_t y);
+
+/* ---- Projectile flight ---- */
+
+/* The shift of a projectile picture whose corner moved from old_corner to new_corner in the last game step, at timer
+   tick tick of a game step of step_ticks ticks: the part of the way back to old_corner that is still left (all of it
+   at tick 0); exported for the tests. */
+ViewPoint view_flight_shift(ViewPoint old_corner, ViewPoint new_corner, int tick, int step_ticks);
+/* The next views draw each projectile at timer tick tick of a game step of step_ticks ticks, part of the way from its
+   place of the game step before; 0 step_ticks: the views of a game step, at the places of the projectiles. */
+void view_set_flight_tick(int tick, int step_ticks);
+/* True when a projectile of the last view moved since the view of the game step before. */
+bool view_has_moving_projectiles(void);
 
 /* ---- Clicks ---- */
 

@@ -159,6 +159,15 @@ A click on a spell line (or Return) casts the spell and closes the screen. The c
 
 The damage star of a hit stays one game step longer in the action area than in the original game. A left click in the action area during this extra step ends it and draws the hand icons; the click then acts as usual. The action delay and the timing of the champion do not change. Failures and hits of zero damage keep the original time.
 
+## Smooth projectile flight
+
+A projectile moves one cell (half a square) per game step, as in the original game. In the advanced mode the dungeon view shows the flight between the game steps: on each timer tick (60 Hz) the view is drawn again with each projectile part of the way from its place in the view of the game step before to its place now. At the game step the projectile shows at its old place; at the end of the step it reaches its new place. The flight shows one game step later than the game rules move the projectile.
+
+- A projectile that is new or was not in the view of the game step before shows at its place now.
+- The flight shows only when the party view is the same as at the step before: the same map, square, and direction. It does not show while the party walks or after a turn.
+- It does not show in the inventory, during the sleep or the pause, while the automap, the cheat screen, or the options menu is open, and in the vanilla and turn-based modes.
+- The extra views change no game state: the random seed stays, explosions do not count again, and a shop display does not choose or create an item.
+
 ## Options menu
 
 `Esc` in the dungeon view opens the options menu in the viewport. The game time stops while it is open. The title is cyan, the rows are white, the selected row is yellow. The volume stays in the volume dialog of the original game.
