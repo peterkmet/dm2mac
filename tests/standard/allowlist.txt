@@ -23,7 +23,6 @@ block ui/include/session.h open: module cleanup
 block ui/include/sound.h open: module cleanup
 block ui/include/ui.h open: module cleanup
 block ui/include/video.h open: module cleanup
-block ui/include/view.h open: module cleanup
 block ui/include/zone.h open: module cleanup
 block ui/input.c open: module cleanup
 block ui/minion_map.c open: module cleanup
@@ -35,7 +34,6 @@ block ui/sound.c open: module cleanup
 block ui/text.c open: module cleanup
 block ui/ui.c open: module cleanup
 block ui/video.c open: module cleanup
-block ui/view.c open: module cleanup
 block ui/zone.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
@@ -83,10 +81,6 @@ bool ui/ui.c:draw_inventory_panel open: module cleanup
 bool ui/ui.c:draw_object_info open: module cleanup
 bool ui/ui.c:object_value_gauge open: module cleanup
 bool ui/ui.c:text_rect_in_zone open: module cleanup
-bool ui/view.c open: module cleanup
-bool ui/view.c:outdoor_place_sky_object open: module cleanup
-bool ui/view.c:view_draw_creatures open: module cleanup
-bool ui/view.c:view_shift_object_cell open: module cleanup
 bool ui/zone.c:place_in_parents open: module cleanup
 comment control/control.c open: module cleanup
 comment control/include/control.h open: module cleanup
@@ -111,13 +105,11 @@ comment ui/include/session.h open: module cleanup
 comment ui/include/text.h open: module cleanup
 comment ui/include/ui.h open: module cleanup
 comment ui/include/video.h open: module cleanup
-comment ui/include/view.h open: module cleanup
 comment ui/include/zone.h open: module cleanup
 comment ui/input.c open: module cleanup
 comment ui/music.c open: module cleanup
 comment ui/play.c open: module cleanup
 comment ui/session.c open: module cleanup
-comment ui/view.c open: module cleanup
 dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
@@ -212,12 +204,10 @@ enum ui/include/movie.h open: module cleanup
 enum ui/include/music.h open: module cleanup
 enum ui/include/session.h open: module cleanup
 enum ui/include/ui.h open: module cleanup
-enum ui/include/view.h open: module cleanup
 enum ui/input.c open: module cleanup
 enum ui/music.c open: module cleanup
 enum ui/session.c open: module cleanup
 enum ui/ui.c open: module cleanup
-enum ui/view.c open: module cleanup
 enum ui/zone.c open: module cleanup
 event-comment ui/include/input.h open: module cleanup
 global ui/include/advanced.h open: module cleanup
@@ -261,10 +251,7 @@ include ui/include/session.h:game.h open: module cleanup
 include ui/include/session.h:save.h open: module cleanup
 include ui/include/text.h:game_text.h open: module cleanup
 include ui/include/ui.h:game.h open: module cleanup
-include ui/include/view.h:weather.h open: module cleanup
 include ui/session.c:item.h open: module cleanup
-include ui/view.c:advanced.h open: module cleanup
-include ui/view.c:timeline.h open: module cleanup
 long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
@@ -322,7 +309,6 @@ notation ui/session.c open: module cleanup
 notation ui/text.c open: module cleanup
 notation ui/ui.c open: module cleanup
 notation ui/video.c open: module cleanup
-notation ui/view.c open: module cleanup
 notation ui/zone.c open: module cleanup
 order control/control.c open: module cleanup
 order control/state_json.c open: module cleanup
@@ -342,11 +328,7 @@ order ui/session.c open: module cleanup
 order ui/sound.c open: module cleanup
 order ui/text.c open: module cleanup
 order ui/ui.c open: module cleanup
-order ui/view.c open: module cleanup
 order ui/zone.c open: module cleanup
-ordinal ALCOVE_FIRST_ORDINAL open: module cleanup
-ordinal ALCOVE_ORDINAL_END open: module cleanup
-ordinal ordinal open: module cleanup
 params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
