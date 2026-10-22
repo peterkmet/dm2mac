@@ -5,24 +5,24 @@
 
 /* The leader hand and the champion slots, and the effects of the items that a champion holds. */
 
-#include "timeline.h"
 #include <stdint.h>
 
 /* Modes of champ_apply_item_effects: how an item changes the champion that holds it. */
-enum item_effect_mode {
-    EFFECT_MODE_LOAD = 0,         /* a loaded game: the bonuses of the items that the champion holds */
-    EFFECT_MODE_ADD = 1,          /* the item goes into a slot or the hand */
-    EFFECT_MODE_REMOVE = -1,      /* the item leaves a slot or the hand */
-    EFFECT_MODE_CONSUME = 2,      /* the champion eats or drinks the item */
-    EFFECT_MODE_CONSUME_END = -2, /* the timed effect of a consumed item ends */
-    EFFECT_MODE_RESTORE = 3       /* a loaded game: a timed effect of a consumed item */
-};
-
-#define HAND_ICON_SIZE   16
-#define HAND_ICON_NONE   0xff
-#define HAND_ICON_COLORS 16
-#define MOUTH_CATEGORY   9 /* the mouth picture of the inventory: GDAT (9, 0x5b, 1, entry) */
-#define MOUTH_INDEX      0x5b
+#define EFFECT_MODE_LOAD        0    /* a loaded game: the bonuses of the items that the champion holds */
+#define EFFECT_MODE_ADD         1    /* the item goes into a slot or the hand */
+#define EFFECT_MODE_REMOVE      (-1) /* the item leaves a slot or the hand */
+#define EFFECT_MODE_CONSUME     2    /* the champion eats or drinks the item */
+#define EFFECT_MODE_CONSUME_END (-2) /* the timed effect of a consumed item ends */
+#define EFFECT_MODE_RESTORE     3    /* a loaded game: a timed effect of a consumed item */
+/* The leader hand icon: its size in pixels, its color numbers, and the color number that stays clear. */
+#define HAND_ICON_SIZE          16
+#define HAND_ICON_COLORS        16
+#define HAND_ICON_KEY           12
+/* The icon entry of no leader hand icon. */
+#define HAND_ICON_NONE          0xff
+/* The mouth picture of the inventory: GDAT (9, 0x5b, 1, entry). */
+#define MOUTH_CATEGORY          0x09
+#define MOUTH_INDEX             0x5b
 
 /* The leader hand object as the original keeps it beside game.leader_hand. */
 typedef struct {
@@ -33,9 +33,10 @@ typedef struct {
     uint8_t palette[HAND_ICON_COLORS];               /* the palette colors of the color numbers */
 } LeaderHand;
 
-extern LeaderHand leader_hand;
-#define HAND_ICON_KEY 12
+extern LeaderHand g_leader_hand;
 
+/* The object of the leader hand that the cursor shows, THING_NONE none. */
+uint16_t inv_cursor_object(void);
 /* Prints the name of thing in the message area. */
 void inv_show_object_name(uint16_t thing);
 /* Updates the cursor when the icon of the animated leader hand object changes. */
@@ -46,8 +47,6 @@ void inv_click_slot(int slot);
 /* Puts the leader hand object into the first free pouch or pack slot of champ. */
 void inv_store_leader_hand_object(int champ);
 /* Puts thing into the first free slot of champ that takes it. */
-void inv_put_object_in_free_slot(int champ, uint16_t thing);
-/* The object of the leader hand that the cursor shows, THING_NONE none. */
-uint16_t inv_cursor_object(void);
+void inv_put_in_free_slot(int champ, uint16_t thing);
 
 #endif /* DM2_ENGINE_INVENTORY_H */

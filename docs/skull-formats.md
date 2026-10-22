@@ -754,7 +754,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### The leader hand
 
-- `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `leader_hand` (`src/engine/include/inventory.h`) and draws the icon at the mouse pointer.
+- `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `g_leader_hand` (`src/engine/include/inventory.h`) and draws the icon at the mouse pointer.
 - A click on an object zone of the view takes the object (`view_click_take_object`). With an object in the hand, the click places the object in the cell (`view_click_place_object`), in an alcove, or into an open chest. A click in the upper view throws the hand object (`view_click_throw_object`). The commands `0x14` to `0x41` click the inventory slots, `0xea` to `0xed` put the hand object into a free slot.
 - `champ_apply_item_effects` adds or removes the stat effects of an item in a slot. Mode 0 is the load, 1 adds, -1 removes, 2 and -2 are the timed effects of eaten items, 3 restores. The load applies mode 0 to all slots. Then `save_restore_timed_effects` restores the light power and the timed effects.
 

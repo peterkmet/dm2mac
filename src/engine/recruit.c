@@ -137,7 +137,7 @@ bool recruit_start(int x, int y, int dir, int map)
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, fx, fy); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
         if (thing_type(t) > THING_SENSOR && thing_cell(t) == back)
-            inv_put_object_in_free_slot(index, t);
+            inv_put_in_free_slot(index, t);
     if (!recruit_silent) {
         g_hooks.toggle_inventory(index);
         g_hooks.set_input_mode(INPUT_MODE_RECRUIT);
@@ -177,7 +177,7 @@ void recruit_finish(int x, int y, int dir, int map, int command)
                       game.party_x, game.party_y, 0);
     }
     if (hand != THING_NONE)
-        inv_put_object_in_free_slot(champ, hand);
+        inv_put_in_free_slot(champ, hand);
     ui.candidate = 0;
     int fx = x + dir_dx[dir], fy = y + dir_dy[dir];
     for (int s = 0; s < SLOT_COUNT; s++)

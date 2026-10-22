@@ -865,7 +865,7 @@ address,name,signature,subsystem
 0x00049020,set_redraw_flags,void set_redraw_flags(uint16_t flags),champions
 0x0004904f,ui_draw_all_champion_states,void ui_draw_all_champion_states(int tick),interface
 0x0004910b,inv_update_hand_cursor,void inv_update_hand_cursor(void),inventory
-0x0004916b,inv_put_object_in_free_slot,"void inv_put_object_in_free_slot(uint16_t champ, uint16_t thing)",inventory
+0x0004916b,inv_put_in_free_slot,"void inv_put_in_free_slot(uint16_t champ, uint16_t thing)",inventory
 0x00049242,add_to_party,"void add_to_party(uint8_t portrait, int16_t index, uint8_t dir)",champions
 0x000494fb,recruit_start,"int recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)",champions
 0x000496e5,session_edit_champion_name,void session_edit_champion_name(char *champ_name),champions

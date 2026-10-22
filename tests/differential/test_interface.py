@@ -95,7 +95,7 @@ def test_hand_icon_matches_original(port, original):
     # The cursor icon of objects in the leader hand: the 4 bpp color numbers of the original inv_render_hand_icon
     # (high nibble first) and its 16 palette colors.
     lib, emu = port, original.emu
-    hand = LeaderHand.in_dll(lib, "leader_hand")
+    hand = LeaderHand.in_dll(lib, "g_leader_hand")
     bitmap = original.alloc(4 + HAND_ICON_SIZE ** 2 // 2) + 4
     emu.write(bitmap - 4, struct.pack("<hh", HAND_ICON_SIZE, HAND_ICON_SIZE))
     icon = original.alloc(6 + 16)

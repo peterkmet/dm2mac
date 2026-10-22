@@ -1133,15 +1133,15 @@ CursorImage input_cursor_image(int cursor)
         return (CursorImage){cursor_hand, ui_colors, IMAGE_4BPP, HAND_W, CURSOR_H, 0, 0, UI_KEY};
     case CURSOR_OBJECT: {
         static uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE];
-        uint8_t key = leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
+        uint8_t key = g_leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
         memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
         memset(object_cursor, key, sizeof object_cursor);
-        const Bitmap icon = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
+        const Bitmap icon = {g_leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
         Bitmap image = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
         ui_blit_bitmap(&icon, &image, s, 0, 0, HAND_ICON_KEY, shadow);
-        ui_blit_bitmap(&icon, &image, r, 0, 0, HAND_ICON_KEY, leader_hand.palette);
+        ui_blit_bitmap(&icon, &image, r, 0, 0, HAND_ICON_KEY, g_leader_hand.palette);
         return (CursorImage){object_cursor,      NULL,       IMAGE_8BPP, OBJECT_CURSOR_SIZE,
                              OBJECT_CURSOR_SIZE, OBJECT_HOT, OBJECT_HOT, key};
     }

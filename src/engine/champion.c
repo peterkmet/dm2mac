@@ -54,7 +54,7 @@ static void set_redraw_flags(uint16_t flags)
 static void add_start_champion(void)
 {
     game.leader_hand = THING_NONE;
-    leader_hand.icon = HAND_ICON_NONE;
+    g_leader_hand.icon = HAND_ICON_NONE;
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, 0, 0); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_type(t) != WALL_CLICK_PORTRAIT)
@@ -75,7 +75,7 @@ void champ_init_party_state(void)
         return;
     }
     if (game.leader_hand == THING_NONE) {
-        leader_hand.icon = HAND_ICON_NONE;
+        g_leader_hand.icon = HAND_ICON_NONE;
     } else {
         uint16_t leader = game.leader;
         game.leader = (uint16_t)-1;
@@ -161,7 +161,7 @@ int champ_get_load(int champ)
         return 0;
     uint16_t load = c->load;
     if (champ == game.leader)
-        load = (uint16_t)(load + leader_hand.weight);
+        load = (uint16_t)(load + g_leader_hand.weight);
     return load;
 }
 

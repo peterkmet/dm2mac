@@ -118,8 +118,8 @@ bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing);
 bool item_has_action_command(int champ, uint16_t thing, int command);
 
 /* Item charges (inventory.c). */
-/* Uses a charge of an item that holds water; returns 1 when it had one. */
-int item_use_charge(uint16_t thing);
+/* Uses a charge of an item that holds water; true when it had one. */
+bool item_use_charge(uint16_t thing);
 
 /* Items by item index (money.c). */
 /* The thing type of an item index, -1 for none. */

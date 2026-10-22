@@ -468,7 +468,7 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     theirs = tuple(struct.unpack("<H", emu.read(addr, 2))[0] for addr in (G_CHAMPION_COUNT, G_LEADER, G_CANDIDATE,
                                                                          G_INVENTORY))
     assert mine == theirs == (1, 0, 0, 0)
-    assert LeaderHand.in_dll(lib, "leader_hand").icon == emu.read(G_LEADER_HAND_ICON, 1)[0] == 0xFF
+    assert LeaderHand.in_dll(lib, "g_leader_hand").icon == emu.read(G_LEADER_HAND_ICON, 1)[0] == 0xFF
     assert sorted(t for t in struct.unpack_from(f"<{C.SLOT_COUNT}H", bytes(records), CH_SLOTS) if t != C.THING_NONE) == sorted(slots)
     loop.assert_loop("new game")
 
@@ -555,7 +555,7 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     # the hand icon is not compared: only inv_update_hand_cursor sets it, for an object with the icon flag; the load
     # of the port clears it (champ_reset_step_state), the original keeps the value of the program start
     mine = (ctypes.c_uint16.from_address(ctypes.addressof(game) + HAND_OFFSET).value,
-            LeaderHand.in_dll(lib, "leader_hand").weight)
+            LeaderHand.in_dll(lib, "g_leader_hand").weight)
     theirs = (struct.unpack("<H", emu.read(G_LEADER_HAND, 2))[0], struct.unpack("<H", emu.read(G_LEADER_HAND_WEIGHT, 2))[0])
     assert mine == theirs and mine[0] != C.THING_NONE and mine[1]
     loop.assert_loop("load")

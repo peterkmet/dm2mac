@@ -35,7 +35,7 @@ def loop(lib, gdat, start, tmp_path):  # noqa: F811
 def hands(loop):
     """(C, original): the leader hand object and its weight."""
     game = ctypes.addressof(loop.game)
-    mine = (ctypes.c_uint16.from_address(game + HAND_OFFSET).value, LeaderHand.in_dll(loop.lib, "leader_hand").weight)
+    mine = (ctypes.c_uint16.from_address(game + HAND_OFFSET).value, LeaderHand.in_dll(loop.lib, "g_leader_hand").weight)
     theirs = struct.unpack("<H", loop.emu.read(G_LEADER_HAND, 2)) + struct.unpack("<H", loop.emu.read(G_LEADER_HAND_WEIGHT, 2))
     return mine, theirs
 

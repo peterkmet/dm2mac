@@ -11,14 +11,12 @@ block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
-block engine/include/inventory.h open: module cleanup
 block engine/include/item.h open: module cleanup
 block engine/include/money.h open: module cleanup
 block engine/include/move.h open: module cleanup
 block engine/include/projectile.h open: module cleanup
 block engine/include/save.h open: module cleanup
 block engine/include/sound_request.h open: module cleanup
-block engine/inventory.c open: module cleanup
 block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
 block engine/money.c open: module cleanup
@@ -62,7 +60,6 @@ bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
 bool engine/aspect.c:wall_sensor_ornament open: module cleanup
 bool engine/aspect.c:wall_text_ornament open: module cleanup
-bool engine/include/item.h:item_use_charge open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
 bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
 bool engine/include/magic.h:magic_cast_projectile_spell open: module cleanup
@@ -75,7 +72,6 @@ bool engine/include/move.h:move_party_warp_to_marker open: module cleanup
 bool engine/include/move.h:move_thing open: module cleanup
 bool engine/include/projectile.h:projectile_hit open: module cleanup
 bool engine/include/sound_request.h:sound_party_offset open: module cleanup
-bool engine/inventory.c open: module cleanup
 bool engine/magic.c open: module cleanup
 bool engine/move.c open: module cleanup
 bool engine/move.c:discard_take open: module cleanup
@@ -290,13 +286,11 @@ enum engine/include/action.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
 enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
-enum engine/include/inventory.h open: module cleanup
 enum engine/include/item.h open: module cleanup
 enum engine/include/magic.h open: module cleanup
 enum engine/include/move.h open: module cleanup
 enum engine/include/projectile.h open: module cleanup
 enum engine/include/save.h open: module cleanup
-enum engine/inventory.c open: module cleanup
 enum engine/item.c open: module cleanup
 enum engine/magic.c open: module cleanup
 enum engine/move.c open: module cleanup
@@ -326,7 +320,6 @@ event-comment ui/include/input.h open: module cleanup
 global engine/include/action.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
-global engine/include/inventory.h open: module cleanup
 global engine/include/move.h open: module cleanup
 global engine/include/projectile.h open: module cleanup
 global engine/include/save.h open: module cleanup
@@ -359,10 +352,7 @@ include control/control.c:ui.h open: module cleanup
 include engine/action.c:game.h open: module cleanup
 include engine/game.c:magic.h open: module cleanup
 include engine/include/creature.h:timeline.h open: module cleanup
-include engine/include/inventory.h:timeline.h open: module cleanup
 include engine/include/magic.h:timeline.h open: module cleanup
-include engine/inventory.c:game_text.h open: module cleanup
-include engine/inventory.c:move.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
 include engine/move.c:money.h open: module cleanup
@@ -387,7 +377,6 @@ include ui/include/ui.h:game.h open: module cleanup
 include ui/include/view.h:weather.h open: module cleanup
 include ui/session.c:item.h open: module cleanup
 include ui/view.c:advanced.h open: module cleanup
-include ui/view.c:inventory.h open: module cleanup
 include ui/view.c:timeline.h open: module cleanup
 long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
@@ -397,8 +386,6 @@ long engine/aspect.c:apply_floor_things open: module cleanup
 long engine/aspect.c:aspect_get open: module cleanup
 long engine/game.c:timeline_process open: module cleanup
 long engine/game_text.c:text_decode_raw open: module cleanup
-long engine/inventory.c:champ_apply_item_effects open: module cleanup
-long engine/inventory.c:drink_potion open: module cleanup
 long engine/move.c:move_party_step open: module cleanup
 long engine/move.c:move_thing open: module cleanup
 long platform/main.c:main open: module cleanup
@@ -416,8 +403,6 @@ long ui/view.c:view_draw_object open: module cleanup
 long ui/view.c:view_draw_wall_ornament open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
-name engine/include/inventory.h:inv_put_object_in_free_slot open: module cleanup
-name engine/inventory.c:inv_put_object_in_free_slot open: module cleanup
 name engine/move.c:champ_get_party_move_time open: module cleanup
 name engine/move.c:champ_sync_directions_to_party open: module cleanup
 name ui/include/text.h:text_draw_in_zone_with_shadow open: module cleanup
@@ -440,12 +425,10 @@ notation engine/aspect.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
-notation engine/include/inventory.h open: module cleanup
 notation engine/include/item.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
 notation engine/include/save.h open: module cleanup
 notation engine/include/sound_request.h open: module cleanup
-notation engine/inventory.c open: module cleanup
 notation engine/item.c open: module cleanup
 notation engine/magic.c open: module cleanup
 notation engine/money.c open: module cleanup
@@ -481,7 +464,6 @@ order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
 order engine/action.c open: module cleanup
 order engine/aspect.c open: module cleanup
-order engine/inventory.c open: module cleanup
 order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
 order engine/move.c open: module cleanup
@@ -622,7 +604,6 @@ static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix engine/aspect.c:sensor_ornament open: module cleanup
 static-prefix engine/game.c:timeline_event_aura open: module cleanup
 static-prefix engine/game.c:timeline_event_hide_damage open: module cleanup
-static-prefix engine/inventory.c:item_stat_modifier open: module cleanup
 static-prefix engine/item.c:item_sum_attr open: module cleanup
 static-prefix engine/magic.c:champion_runes open: module cleanup
 static-prefix engine/magic.c:event_word open: module cleanup

@@ -12,7 +12,6 @@
 #include "game.h"
 #include "game_text.h"
 #include "hooks.h"
-#include "inventory.h"
 #include "item.h"
 #include "merchant.h"
 #include "move.h"

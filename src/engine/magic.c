@@ -11,7 +11,6 @@
 #include "game.h"
 #include "game_text.h"
 #include "hooks.h"
-#include "inventory.h"
 #include "item.h"
 #include "money.h"
 #include "move.h"

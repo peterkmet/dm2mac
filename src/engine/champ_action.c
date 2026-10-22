@@ -10,7 +10,6 @@
 #include "game.h"
 #include "game_text.h"
 #include "hooks.h"
-#include "inventory.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"

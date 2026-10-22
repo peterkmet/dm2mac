@@ -141,7 +141,7 @@ void champ_reset_step_state(void)
     memset(g_champ_pending_damage, 0, sizeof g_champ_pending_damage);
     memset(g_champ_pending_wounds, 0, sizeof g_champ_pending_wounds);
     g_champ_regen_counter = 0;
-    leader_hand = (LeaderHand){.icon = HAND_ICON_NONE};
+    g_leader_hand = (LeaderHand){.icon = HAND_ICON_NONE};
     ui.candidate = 0;
 }
 

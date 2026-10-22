@@ -252,12 +252,12 @@ void ui_render_hand_icon(void)
     int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
     const Bitmap *image = draw_gdat_image(category, index, entry);
     const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
-    Bitmap cursor = {leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
-    memset(leader_hand.cursor, HAND_ICON_KEY, sizeof leader_hand.cursor);
+    Bitmap cursor = {g_leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
+    memset(g_leader_hand.cursor, HAND_ICON_KEY, sizeof g_leader_hand.cursor);
     const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
     if (image && colors) {
         ui_blit_bitmap(image, &cursor, r, 0, 0, GFX_OPAQUE, identity);
-        memcpy(leader_hand.palette, colors, sizeof leader_hand.palette);
+        memcpy(g_leader_hand.palette, colors, sizeof g_leader_hand.palette);
     }
     draw_free_temp();
 }
