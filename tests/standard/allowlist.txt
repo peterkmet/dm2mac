@@ -1,7 +1,5 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
-block control/control.c open: module cleanup
-block control/include/control.h open: module cleanup
 block control/include/state_json.h open: module cleanup
 block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
@@ -9,7 +7,6 @@ block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
-bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
@@ -20,8 +17,6 @@ bool platform/main.c:select_mode open: module cleanup
 bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
 bool platform/scale.c open: module cleanup
-comment control/control.c open: module cleanup
-comment control/include/control.h open: module cleanup
 comment control/include/state_json.h open: module cleanup
 comment control/include/turn.h open: module cleanup
 comment control/state_json.c open: module cleanup
@@ -31,7 +26,6 @@ comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
 dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
-dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
@@ -58,7 +52,6 @@ engine-write ui/play.c open: module cleanup
 engine-write ui/session.c open: module cleanup
 engine-write ui/text.c open: module cleanup
 engine-write ui/ui.c open: module cleanup
-enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
@@ -87,10 +80,7 @@ long engine/ai_move.c:test_entered rule 5.8: one short case for each search targ
 long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
-notation control/control.c open: module cleanup
-notation control/include/control.h open: module cleanup
 notation platform/transport.c open: module cleanup
-order control/control.c open: module cleanup
 order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
 order platform/platform.c open: module cleanup
@@ -100,7 +90,6 @@ params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
 params platform/main.c:read_options open: module cleanup
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
-static-prefix control/control.c:game_restarts open: module cleanup
 static-prefix control/state_json.c:action_menu_json open: module cleanup
 static-prefix control/state_json.c:action_names_json open: module cleanup
 static-prefix control/state_json.c:champion_json open: module cleanup

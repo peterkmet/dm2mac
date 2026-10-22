@@ -23,32 +23,74 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define REPLY_LINE_SIZE       256 /* one piece of a reply written by put */
-#define ERROR_SIZE            64
-#define NAME_SIZE             32
-#define WAIT_MAX_TICKS        6000
-#define SCAN_CODE_COUNT       256 /* the low byte of a key code */
-#define HEX_DIGITS            4   /* the digits of a \uXXXX escape */
+/* Sizes and limits of the requests and the replies. */
+#define REPLY_LINE_SIZE 256 /* one piece of a reply written by put */
+#define ERROR_SIZE      64
+#define NAME_SIZE       32
+#define WAIT_MAX_TICKS  6000
+#define SCAN_CODE_COUNT 256 /* the low byte of a key code */
+
+/* Counts of a \uXXXX escape and of the UTF-8 bytes of a request string. */
+#define HEX_DIGITS            4 /* the digits of a \uXXXX escape */
 #define HEX_BASE              16
-#define UNICODE_ESCAPE_PREFIX 2    /* the backslash and the u of \uXXXX */
-#define UTF8_ONE_BYTE_END     0x80 /* the first code point of 2, 3, and 4 UTF-8 bytes */
-#define UTF8_TWO_BYTES_END    0x800
-#define UTF8_THREE_BYTES_END  0x10000
-#define UTF8_CONTINUATION     0x80 /* the marker and the payload of a continuation byte */
-#define UTF8_PAYLOAD_MASK     0x3f
-#define UTF8_PAYLOAD_BITS     6
-#define UTF8_LEAD_MARKERS     0xf00 /* shifted right by the byte count: the high bits of a lead byte */
+#define UNICODE_ESCAPE_PREFIX 2 /* the backslash and the u of \uXXXX */
+#define UTF8_PAYLOAD_SHIFT    6
 #define UTF8_MAX_BYTES        4
-#define SURROGATE_HIGH        0xd800
-#define SURROGATE_LOW         0xdc00
-#define SURROGATE_END         0xe000
-#define SURROGATE_BITS        10
+#define SURROGATE_SHIFT       10
+
+/* The first code point of 2, 3, and 4 UTF-8 bytes. */
+#define UTF8_ONE_BYTE_END   0x00080
+#define UTF8_TWO_BYTE_END   0x00800
+#define UTF8_THREE_BYTE_END 0x10000
+
+/* The bits of a UTF-8 byte: the marker and the payload of a continuation byte, the lead markers. */
+#define UTF8_CONTINUATION 0x080
+#define UTF8_PAYLOAD_MASK 0x03f
+#define UTF8_LEAD_MARKERS 0xf00 /* shifted right by the byte count: the high bits of a lead byte */
+
+/* The UTF-16 surrogates of a \uXXXX pair. */
+#define SURROGATE_HIGH 0xd800
+#define SURROGATE_LOW  0xdc00
+#define SURROGATE_END  0xe000
+
+/* The reflected CRC-32 polynomial of PNG. */
+#define CRC32_POLYNOMIAL 0xedb88320u
+
+/* Format bytes of the zlib stream and the PNG header. */
+#define ZLIB_METHOD   0x78 /* deflate, 32 KB window */
+#define ZLIB_FLAGS    0x01 /* no dictionary; header check bits */
+#define PNG_COLOR_RGB 0x02
+
+/* Sizes and offsets of the PNG file of a screenshot. */
+#define ADLER_MODULUS            65521
+#define STORED_BLOCK_MAX         65535
+#define PNG_BIT_DEPTH            8
+#define PNG_SIGNATURE            "\x89PNG\r\n\x1a\n"
+#define PNG_SIGNATURE_SIZE       8
+#define CHUNK_FIELD_SIZE         4 /* the length, the type, and the CRC of a chunk */
+#define IHDR_SIZE                13
+#define IHDR_BIT_DEPTH           8 /* the offsets of the fields after the width and the height */
+#define IHDR_COLOR_TYPE          9
+#define ZLIB_HEADER_SIZE         2
+#define STORED_BLOCK_HEADER_SIZE 5 /* the last block flag, the length, and its complement */
+#define ADLER_SIZE               4
+#define CRC_TABLE_SIZE           256
+#define ADLER_SUM_SHIFT          16   /* the Adler-32 checksum: the second sum in the high half */
+#define FULL_PATH_SIZE           1024 /* the absolute path of a screenshot, as PATH_MAX of macOS */
+#define PNG_ROW_SIZE             (1 + RGB_CHANNELS * SCREEN_W) /* the filter byte and the pixels of a row */
+#define PNG_RAW_SIZE             (PNG_ROW_SIZE * SCREEN_H)
+#define STORED_BLOCK_COUNT       ((PNG_RAW_SIZE + STORED_BLOCK_MAX - 1) / STORED_BLOCK_MAX)
+#define ZLIB_SIZE (ZLIB_HEADER_SIZE + PNG_RAW_SIZE + STORED_BLOCK_HEADER_SIZE * STORED_BLOCK_COUNT + ADLER_SIZE)
 
 /* A wait request: the reply goes out when g_main_loop.timer_ticks reached start + ticks. */
 static struct {
-    int pending;
+    bool pending;
     uint32_t start, ticks;
 } waiting;
+
+static uint32_t crc_table[CRC_TABLE_SIZE];
+
+static bool game_lost; /* a damaged save and a failed restore left no game to play */
 
 /* PC scan codes of the keys without a character; the arrows give the keypad codes that main.c gives them. */
 static const struct {
@@ -99,28 +141,11 @@ static const struct {
     {"alt+",   KEY_ALT    },
 };
 
-/* The key code of a key name: a name of key_names, a character of the US layout, with modifier prefixes; 0 none. */
-uint16_t control_key_code(const char *name)
+/* Setup */
+
+void control_reset(void)
 {
-    for (size_t i = 0; i < sizeof key_names / sizeof key_names[0]; i++)
-        if (!strcmp(name, key_names[i].name))
-            return key_names[i].code;
-    for (size_t i = 0; i < sizeof key_modifiers / sizeof key_modifiers[0]; i++) {
-        size_t n = strlen(key_modifiers[i].prefix);
-        if (strncmp(name, key_modifiers[i].prefix, n))
-            continue;
-        uint16_t code = control_key_code(name + n);
-        return code ? code | key_modifiers[i].bit : 0;
-    }
-    if (!name[0] || name[1])
-        return 0;
-    for (uint16_t scan = 1; scan < SCAN_CODE_COUNT; scan++) {
-        if (kbd_key_to_ascii(scan) == name[0])
-            return scan;
-        if (kbd_key_to_ascii(scan | KEY_SHIFTED) == name[0])
-            return scan | KEY_SHIFTED;
-    }
-    return 0;
+    game_lost = false;
 }
 
 /* Requests: a flat search for "key": value. */
@@ -156,66 +181,85 @@ static long hex4(const char *p)
     return value;
 }
 
-/* Appends code point c as UTF-8; 0 when it does not fit. */
-static int put_utf8(char *out, size_t size, size_t *n, long c)
+/* Appends code point c as UTF-8; false when it does not fit. */
+static bool put_utf8(char *out, size_t size, size_t *n, long c)
 {
     char bytes[UTF8_MAX_BYTES];
-    int count = c < UTF8_ONE_BYTE_END ? 1 : c < UTF8_TWO_BYTES_END ? 2 : c < UTF8_THREE_BYTES_END ? 3 : UTF8_MAX_BYTES;
+    int count = c < UTF8_ONE_BYTE_END ? 1 : c < UTF8_TWO_BYTE_END ? 2 : c < UTF8_THREE_BYTE_END ? 3 : UTF8_MAX_BYTES;
     if (count == 1)
         bytes[0] = (char)c;
     else {
-        for (int i = count - 1; i > 0; i--, c >>= UTF8_PAYLOAD_BITS)
+        for (int i = count - 1; i > 0; i--, c >>= UTF8_PAYLOAD_SHIFT)
             bytes[i] = (char)(UTF8_CONTINUATION | (c & UTF8_PAYLOAD_MASK));
         bytes[0] = (char)((UTF8_LEAD_MARKERS >> count) | c);
     }
     if (*n + count >= size)
-        return 0;
+        return false;
     memcpy(out + *n, bytes, count);
     *n += count;
-    return 1;
+    return true;
 }
 
-/* The JSON string value of key, decoded (escapes, \uXXXX to UTF-8); 0 when it is missing, bad, too long, or has a
-   NUL character. */
-int control_get_string(const char *line, const char *key, char *out, size_t size)
+/* The character that a backslash and c stand for in a JSON string; 0 for \u and a bad escape. */
+static char unescape(char c)
 {
-    static const char escapes[] = "\"\"\\\\//b\bf\fn\nr\rt\t";
+    static const struct {
+        char escaped, plain;
+    } escapes[] = {
+        {'"',  '"' },
+        {'\\', '\\'},
+        {'/',  '/' },
+        {'b',  '\b'},
+        {'f',  '\f'},
+        {'n',  '\n'},
+        {'r',  '\r'},
+        {'t',  '\t'},
+    };
+    for (size_t i = 0; i < sizeof escapes / sizeof escapes[0]; i++)
+        if (c == escapes[i].escaped)
+            return escapes[i].plain;
+    return 0;
+}
+
+bool control_get_string(const char *line, const char *key, char *out, size_t size)
+{
     const char *p = control_find_value(line, key);
     size_t n = 0;
     if (!p || *p++ != '"')
-        return 0;
+        return false;
     while (*p != '"') {
         long c = (unsigned char)*p++;
         if (!c)
-            return 0;
+            return false;
         if (c == '\\') {
-            const char *e = *p ? strchr(escapes, *p) : NULL;
-            if (e && (e - escapes) % 2 == 0)
-                c = e[1], p++;
-            else if (*p++ != 'u' || (c = hex4(p)) < 0)
-                return 0;
+            char plain = unescape(*p);
+            if (plain) {
+                c = plain;
+                p++;
+            } else if (*p++ != 'u' || (c = hex4(p)) < 0)
+                return false;
             else {
                 p += HEX_DIGITS;
                 if (c >= SURROGATE_HIGH && c < SURROGATE_LOW && p[0] == '\\' && p[1] == 'u') { /* a surrogate pair */
                     long low = hex4(p + UNICODE_ESCAPE_PREFIX);
                     if (low < SURROGATE_LOW || low >= SURROGATE_END)
-                        return 0;
-                    c = UTF8_THREE_BYTES_END + ((c - SURROGATE_HIGH) << SURROGATE_BITS) + (low - SURROGATE_LOW);
+                        return false;
+                    c = UTF8_THREE_BYTE_END + ((c - SURROGATE_HIGH) << SURROGATE_SHIFT) + (low - SURROGATE_LOW);
                     p += UNICODE_ESCAPE_PREFIX + HEX_DIGITS;
                 }
                 if (!c || (c >= SURROGATE_HIGH && c < SURROGATE_END))
-                    return 0;
+                    return false;
                 if (!put_utf8(out, size, &n, c))
-                    return 0;
+                    return false;
                 continue;
             }
         }
         if (n + 1 >= size)
-            return 0;
+            return false;
         out[n++] = (char)c;
     }
     out[n] = 0;
-    return 1;
+    return true;
 }
 
 long control_get_int(const char *line, const char *key, long missing)
@@ -228,7 +272,30 @@ long control_get_int(const char *line, const char *key, long missing)
     return end == p ? missing : value;
 }
 
-/* Replies: JSON text in reply. */
+uint16_t control_key_code(const char *name)
+{
+    for (size_t i = 0; i < sizeof key_names / sizeof key_names[0]; i++)
+        if (!strcmp(name, key_names[i].name))
+            return key_names[i].code;
+    for (size_t i = 0; i < sizeof key_modifiers / sizeof key_modifiers[0]; i++) {
+        size_t n = strlen(key_modifiers[i].prefix);
+        if (strncmp(name, key_modifiers[i].prefix, n))
+            continue;
+        uint16_t code = control_key_code(name + n);
+        return code ? code | key_modifiers[i].bit : 0;
+    }
+    if (!name[0] || name[1])
+        return 0;
+    for (uint16_t scan = 1; scan < SCAN_CODE_COUNT; scan++) {
+        if (kbd_key_to_ascii(scan) == name[0])
+            return scan;
+        if (kbd_key_to_ascii(scan | KEY_SHIFTED) == name[0])
+            return scan | KEY_SHIFTED;
+    }
+    return 0;
+}
+
+/* Replies and turns: JSON text in reply. */
 
 /* Appends a short formatted piece to reply. */
 /* Each piece stays under REPLY_LINE_SIZE; text of the game or the request goes through json_strn (put_string). */
@@ -249,11 +316,13 @@ static void put_string(Json *reply, const char *text, size_t n)
     json_strn(reply, text, n);
 }
 
+/* The reply of a request that succeeded. */
 static void put_ok(Json *reply)
 {
     put(reply, "{\"ok\":true}");
 }
 
+/* The reply of a request that failed, with its reason. */
 static void put_error(Json *reply, const char *error)
 {
     put(reply, "{\"ok\":false,\"error\":");
@@ -303,28 +372,7 @@ static void put_state(Json *reply)
 
 /* Screenshots: the screen with the pointer, as a PNG file. */
 
-#define CRC32_POLYNOMIAL         0xedb88320u /* reflected CRC-32 of PNG */
-#define ADLER_MODULUS            65521
-#define ZLIB_METHOD              0x78 /* deflate, 32 KB window */
-#define ZLIB_FLAGS               0x01 /* no dictionary; header check bits */
-#define STORED_BLOCK_MAX         65535
-#define PNG_BIT_DEPTH            8
-#define PNG_COLOR_RGB            2
-#define PNG_SIGNATURE            "\x89PNG\r\n\x1a\n"
-#define PNG_SIGNATURE_SIZE       8
-#define CHUNK_FIELD_SIZE         4 /* the length, the type, and the CRC of a chunk */
-#define IHDR_SIZE                13
-#define IHDR_BIT_DEPTH           8 /* the offsets of the fields after the width and the height */
-#define IHDR_COLOR_TYPE          9
-#define ZLIB_HEADER_SIZE         2
-#define STORED_BLOCK_HEADER_SIZE 5 /* the last block flag, the length, and its complement */
-#define ADLER_SIZE               4
-#define CRC_TABLE_SIZE           256
-#define ADLER_SUM_SHIFT          16   /* the Adler-32 checksum: the second sum in the high half */
-#define FULL_PATH_SIZE           1024 /* the absolute path of a screenshot, as PATH_MAX of macOS */
-
-static uint32_t crc_table[CRC_TABLE_SIZE];
-
+/* The CRC-32 of PNG after n more bytes at p. */
 static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
 {
     if (!crc_table[1])
@@ -340,6 +388,7 @@ static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
     return ~crc;
 }
 
+/* Writes a PNG chunk: its length, its type, its data, and its CRC. */
 static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n)
 {
     uint8_t head[2 * CHUNK_FIELD_SIZE];
@@ -354,34 +403,35 @@ static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n
 }
 
 /* Writes screen with the palette as an RGB PNG with stored (not compressed) deflate blocks. */
-static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
+static bool write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 {
-    enum { ROW = 1 + RGB_CHANNELS * SCREEN_W, RAW = ROW * SCREEN_H };
-    enum {
-        BLOCKS = (RAW + STORED_BLOCK_MAX - 1) / STORED_BLOCK_MAX,
-        ZLIB = ZLIB_HEADER_SIZE + RAW + STORED_BLOCK_HEADER_SIZE * BLOCKS + ADLER_SIZE
-    };
-    static uint8_t raw[RAW], z[ZLIB];
+    static uint8_t raw[PNG_RAW_SIZE], z[ZLIB_SIZE];
     for (int y = 0; y < SCREEN_H; y++) {
-        uint8_t *p = raw + y * ROW;
+        uint8_t *p = raw + y * PNG_ROW_SIZE;
         *p++ = 0; /* filter: none */
         for (int x = 0; x < SCREEN_W; x++) {
             uint32_t argb = video_argb(screen[y][x]);
-            *p++ = video_argb_red(argb), *p++ = video_argb_green(argb), *p++ = video_argb_blue(argb);
+            *p++ = video_argb_red(argb);
+            *p++ = video_argb_green(argb);
+            *p++ = video_argb_blue(argb);
         }
     }
     uint8_t *q = z;
-    *q++ = ZLIB_METHOD, *q++ = ZLIB_FLAGS;
-    uint32_t a = 1, b = 0;
-    for (size_t done = 0; done < RAW;) {
-        size_t n = RAW - done < STORED_BLOCK_MAX ? RAW - done : STORED_BLOCK_MAX;
-        *q++ = done + n == RAW;
+    *q++ = ZLIB_METHOD;
+    *q++ = ZLIB_FLAGS;
+    uint32_t a = 1;
+    uint32_t b = 0;
+    for (size_t done = 0; done < PNG_RAW_SIZE;) {
+        size_t n = PNG_RAW_SIZE - done < STORED_BLOCK_MAX ? PNG_RAW_SIZE - done : STORED_BLOCK_MAX;
+        *q++ = done + n == PNG_RAW_SIZE;
         put_le16(q, (uint16_t)n);
         put_le16(q + sizeof(uint16_t), (uint16_t)~n);
         q += 2 * sizeof(uint16_t);
         memcpy(q, raw + done, n);
-        for (size_t i = 0; i < n; i++)
-            a = (a + raw[done + i]) % ADLER_MODULUS, b = (b + a) % ADLER_MODULUS;
+        for (size_t i = 0; i < n; i++) {
+            a = (a + raw[done + i]) % ADLER_MODULUS;
+            b = (b + a) % ADLER_MODULUS;
+        }
         q += n;
         done += n;
     }
@@ -394,7 +444,7 @@ static int write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
     ihdr[IHDR_COLOR_TYPE] = PNG_COLOR_RGB;
     FILE *f = fopen(path, "wb");
     if (!f)
-        return 0;
+        return false;
     fwrite(PNG_SIGNATURE, 1, PNG_SIGNATURE_SIZE, f);
     png_chunk(f, "IHDR", ihdr, sizeof ihdr);
     png_chunk(f, "IDAT", z, (uint32_t)(q - z));
@@ -419,20 +469,23 @@ static void screenshot(const char *path, Json *reply)
     put(reply, "}");
 }
 
-/* A screen position of a request; 0 with an error reply when it is missing or off the screen. */
-static int get_position(const char *request, int *x, int *y, Json *reply)
+/* A screen position of a request; false with an error reply when it is missing or off the screen. */
+static bool get_position(const char *request, int *x, int *y, Json *reply)
 {
-    long px = control_get_int(request, "x", -1), py = control_get_int(request, "y", -1);
+    long px = control_get_int(request, "x", -1);
+    long py = control_get_int(request, "y", -1);
     char error[ERROR_SIZE];
     if (px >= 0 && py >= 0 && px < SCREEN_W && py < SCREEN_H) {
-        *x = (int)px, *y = (int)py;
-        return 1;
+        *x = (int)px;
+        *y = (int)py;
+        return true;
     }
     snprintf(error, sizeof error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
     put_error(reply, error);
-    return 0;
+    return false;
 }
 
+/* A key press of a request, by key name or key code; a movie ignores it. */
 static void handle_key(const char *request, Json *reply)
 {
     char name[NAME_SIZE];
@@ -450,14 +503,14 @@ static void handle_key(const char *request, Json *reply)
 
 /* A click, a press, or a release of a mouse button moves the pointer there, like the mouse. A click presses and
    releases the button; a press holds it down until a release. */
-static void handle_button(const char *request, int down, int up, Json *reply)
+static void handle_button(const char *request, bool down, bool up, Json *reply)
 {
     char button[NAME_SIZE] = "left";
     int x, y;
     if (!get_position(request, &x, &y, reply))
         return;
     control_get_string(request, "button", button, sizeof button);
-    int right = !strcmp(button, "right");
+    bool right = !strcmp(button, "right");
     if (!right && strcmp(button, "left")) {
         put_error(reply, "button must be left or right");
         return;
@@ -467,7 +520,8 @@ static void handle_button(const char *request, int down, int up, Json *reply)
         if (down)
             movie_click(); /* a movie takes only clicks; the game input stays empty */
     } else {
-        g_input_mouse_x = x, g_input_mouse_y = y;
+        g_input_mouse_x = x;
+        g_input_mouse_y = y;
         if (down)
             input_mouse_down(x, y, bit);
         if (up)
@@ -498,8 +552,6 @@ static void start_turn_or_fail(const char *error, Json *reply)
     }
 }
 
-static int game_lost; /* a damaged save and a failed restore left no game to play */
-
 /* The input modes in which the game runs a modal loop: save, load, and a new game wait until it closes. */
 static bool modal_mode(void)
 {
@@ -518,11 +570,11 @@ static bool refuse_in_modal_loop(Json *reply)
 }
 
 /* After a load or a new game: the end of the last game is over. */
-static void game_restarts(void)
+static void forget_game_end(void)
 {
     g_main_loop.end = 0;
     g_session.completed = 0;
-    game_lost = 0;
+    game_lost = false;
 }
 
 /* Loads QUICK.DAT of the save folder; a missing or damaged file keeps the game, a failed restore loses it. */
@@ -534,7 +586,7 @@ static void handle_load(Json *reply)
     g_main_loop.end = 0; /* the loaded game starts with a full game step, as after the load of a slot */
     enum QuickLoadResult result = advanced_quick_load();
     if (result == QUICK_LOST)
-        game_lost = 1;
+        game_lost = true;
     if (result != QUICK_LOADED) {
         g_main_loop.end = end;
         put_error(reply, result == QUICK_MISSING   ? "no saved game (use save first)"
@@ -542,7 +594,7 @@ static void handle_load(Json *reply)
                                                    : "the saved game is damaged");
         return;
     }
-    game_restarts();
+    forget_game_end();
     put_part(reply, "state", state_json_state);
 }
 
@@ -552,11 +604,11 @@ static void handle_new_game(Json *reply)
     if (refuse_in_modal_loop(reply))
         return;
     if (!session_start_new_game()) {
-        game_lost = 1;
+        game_lost = true;
         put_error(reply, "cannot start the new game");
         return;
     }
-    game_restarts();
+    forget_game_end();
     put_part(reply, "state", state_json_state);
 }
 
@@ -633,6 +685,7 @@ static bool handle_turnbased_request(const char *request, const char *cmd, Json 
     return handle_turnbased_game_request(request, cmd, reply);
 }
 
+/* Answers one request of the real-time and the turn-based mode; no reply while a wait or a turn holds it. */
 static void handle_request(const char *request, Json *reply)
 {
     char cmd[NAME_SIZE], path[PATH_MAX];
@@ -646,15 +699,16 @@ static void handle_request(const char *request, Json *reply)
     } else if (!strcmp(cmd, "key")) {
         handle_key(request, reply);
     } else if (!strcmp(cmd, "click")) {
-        handle_button(request, 1, 1, reply);
+        handle_button(request, true, true, reply);
     } else if (!strcmp(cmd, "press")) {
-        handle_button(request, 1, 0, reply);
+        handle_button(request, true, false, reply);
     } else if (!strcmp(cmd, "release")) {
-        handle_button(request, 0, 1, reply);
+        handle_button(request, false, true, reply);
     } else if (!strcmp(cmd, "move")) {
         if (!get_position(request, &x, &y, reply))
             return;
-        g_input_mouse_x = x, g_input_mouse_y = y;
+        g_input_mouse_x = x;
+        g_input_mouse_y = y;
         put_ok(reply);
     } else if (!strcmp(cmd, "command")) {
         long id = control_get_int(request, "id", -1);
@@ -672,7 +726,7 @@ static void handle_request(const char *request, Json *reply)
             snprintf(error, sizeof error, "ticks must be 1-%d", WAIT_MAX_TICKS);
             put_error(reply, error);
         } else {
-            waiting.pending = 1;
+            waiting.pending = true;
             waiting.start = g_main_loop.timer_ticks;
             waiting.ticks = (uint32_t)ticks;
         }
@@ -682,7 +736,8 @@ static void handle_request(const char *request, Json *reply)
         else
             screenshot(path, reply);
     } else if (!strcmp(cmd, "quit")) {
-        g_main_loop.quit = g_main_loop.closed = 1;
+        g_main_loop.quit = 1;
+        g_main_loop.closed = 1;
         put_ok(reply);
     } else {
         put_error(reply, "unknown cmd");
@@ -692,7 +747,7 @@ static void handle_request(const char *request, Json *reply)
 bool control_handle_line(const char *line, Json *reply)
 {
     handle_request(line, reply);
-    return reply->len > 0;
+    return !waiting.pending && !turn_is_pending();
 }
 
 bool control_end_turn(Json *reply)
@@ -701,7 +756,7 @@ bool control_end_turn(Json *reply)
         uint32_t ran = g_main_loop.timer_ticks - waiting.start;
         if (ran < waiting.ticks)
             return false;
-        waiting.pending = 0;
+        waiting.pending = false;
         put(reply, "{\"ok\":true,\"ticks\":%u}", ran);
         return true;
     }
@@ -718,14 +773,9 @@ bool control_is_turn_pending(void)
 
 void control_drop_client(void)
 {
-    waiting.pending = 0;
+    waiting.pending = false;
     if (turn_is_pending())
         turn_drop_reply();
-}
-
-void control_reset(void)
-{
-    game_lost = 0;
 }
 
 void control_frame(void)

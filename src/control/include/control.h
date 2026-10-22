@@ -11,6 +11,29 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* The limits of a request. */
+#define KEY_CODE_MAX 65535 /* the largest key code of a request */
+
+/* Setup */
+
+/* The socket closed: a lost game is forgotten. */
+void control_reset(void);
+
+/* Requests */
+
+/* The text after "key": in a request line; 0 when the key is missing. */
+const char *control_find_value(const char *line, const char *key);
+/* The JSON string value of key, decoded (escapes, \uXXXX to UTF-8); false when it is missing, bad, too long, or has
+   a NUL character. */
+bool control_get_string(const char *line, const char *key, char *out, size_t size);
+/* The integer value of key; missing when the key is absent or not a number. */
+long control_get_int(const char *line, const char *key, long missing);
+/* The key code of a key name (docs/llm-control.md): a key name, a character of the US layout, with modifier prefixes;
+   0 none. */
+uint16_t control_key_code(const char *name);
+
+/* Replies and turns */
+
 /* Answers one request line in reply; false when a wait or a turn holds the reply (control_end_turn gives it). */
 bool control_handle_line(const char *line, Json *reply);
 /* One frame of the wait or the turn that holds the reply: true when it ended and reply holds the answer. */
@@ -19,20 +42,7 @@ bool control_end_turn(Json *reply);
 bool control_is_turn_pending(void);
 /* The client is gone: a wait ends, a pending turn runs on without a reply. */
 void control_drop_client(void);
-/* The socket closed: a lost game is forgotten. */
-void control_reset(void);
 /* One frame of the turn-based main loop: one game step while a turn runs. */
 void control_frame(void);
-/* The text after "key": in a request line; 0 when the key is missing. */
-const char *control_find_value(const char *line, const char *key);
-/* The JSON string value of key, decoded (escapes, \uXXXX to UTF-8); 0 when it is missing, bad, too long, or has a
-   NUL character. */
-int control_get_string(const char *line, const char *key, char *out, size_t size);
-/* The integer value of key; missing when the key is absent or not a number. */
-long control_get_int(const char *line, const char *key, long missing);
-#define KEY_CODE_MAX 0xffff /* the largest key code of a request */
-/* The key code of a key name (docs/llm-control.md): a key name, a character of the US layout, with modifier prefixes;
-   0 none. */
-uint16_t control_key_code(const char *name);
 
 #endif /* DM2_CONTROL_CONTROL_H */
