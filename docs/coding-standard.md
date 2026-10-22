@@ -31,7 +31,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    interface inside the rule (`g_hooks.print_message`, `g_hooks.play_sound`). `ui/ui_hooks.c` sets every
    member. [layer]
 5. `ui/` changes game state only through engine functions. Exceptions: redraw flags and hooks. Exception: the
-   action area (`ui/action_area.c`: `area_update`, `draw_open_panel`, `draw_hand_panel`, `haste_jitter`) keeps
+   action area (`ui/action_area.c`: `area_update`, `show_open_panel`, `show_hand_panel`, `haste_jitter`) keeps
    the order of the original, which mixes rules and drawing. It writes `g_action.mode` and `g_action.result`,
    closes the open hand, opens a chest or a minion map when the panel redraws, and `haste_jitter` takes
    `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its

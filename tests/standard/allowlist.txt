@@ -9,7 +9,6 @@ block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
-block ui/action_area.c open: module cleanup
 block ui/advanced.c open: module cleanup
 block ui/dialog.c open: module cleanup
 block ui/fm.c open: module cleanup
@@ -33,9 +32,6 @@ bool platform/main.c:select_mode open: module cleanup
 bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
 bool platform/scale.c open: module cleanup
-bool ui/action_area.c open: module cleanup
-bool ui/action_area.c:draw_open_panel open: module cleanup
-bool ui/action_area.c:party_icons_changed open: module cleanup
 bool ui/advanced.c open: module cleanup
 bool ui/dialog.c open: module cleanup
 bool ui/fm.c open: module cleanup
@@ -59,7 +55,6 @@ comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
 comment ui/fm.c open: module cleanup
-comment ui/include/action_area.h open: module cleanup
 comment ui/include/fm.h open: module cleanup
 comment ui/include/movie.h open: module cleanup
 comment ui/include/music.h open: module cleanup
@@ -160,15 +155,12 @@ long engine/ai.c:test_condition rule 5.8: one short case for each target conditi
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
 long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
-long ui/action_area.c:draw_money_box open: module cleanup
-long ui/action_area.c:draw_party_hands open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
 notation platform/transport.c open: module cleanup
-notation ui/action_area.c open: module cleanup
 notation ui/fm.c open: module cleanup
 notation ui/include/dialog.h open: module cleanup
 notation ui/include/music.h open: module cleanup
@@ -182,7 +174,6 @@ order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
-order ui/action_area.c open: module cleanup
 order ui/advanced.c open: module cleanup
 order ui/dialog.c open: module cleanup
 order ui/fm.c open: module cleanup
@@ -229,20 +220,6 @@ static-prefix control/turn.c:turn_left open: module cleanup
 static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix platform/main.c:play_movies open: module cleanup
 static-prefix platform/platform.c:movie_screen open: module cleanup
-static-prefix ui/action_area.c:action_hand_icon open: module cleanup
-static-prefix ui/action_area.c:draw_action_champion_face open: module cleanup
-static-prefix ui/action_area.c:draw_action_menu open: module cleanup
-static-prefix ui/action_area.c:draw_action_result open: module cleanup
-static-prefix ui/action_area.c:draw_aura open: module cleanup
-static-prefix ui/action_area.c:draw_container open: module cleanup
-static-prefix ui/action_area.c:draw_hand_panel open: module cleanup
-static-prefix ui/action_area.c:draw_menu_header open: module cleanup
-static-prefix ui/action_area.c:draw_money_box open: module cleanup
-static-prefix ui/action_area.c:draw_open_face_aura open: module cleanup
-static-prefix ui/action_area.c:draw_open_panel open: module cleanup
-static-prefix ui/action_area.c:draw_party_hands open: module cleanup
-static-prefix ui/action_area.c:draw_party_icons open: module cleanup
-static-prefix ui/action_area.c:draw_spell_panel open: module cleanup
 static-prefix ui/advanced.c:draw_readout_line open: module cleanup
 static-prefix ui/dialog.c:draw_message open: module cleanup
 static-prefix ui/dialog.c:draw_volume_buttons open: module cleanup

@@ -1562,7 +1562,7 @@ static void feedback_rune_button(Feedback *f)
 /* Copies the drawn action area to the screen. */
 static void present_action_area(void)
 {
-    offscreen_flush(area_begin_draw(0), true);
+    offscreen_flush(area_begin_draw(false), true);
 }
 
 /* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
@@ -1610,7 +1610,7 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         present_action_area();
         break;
     case FB_ENTERED_RUNES:
-        area_draw_entered_runes(1);
+        area_draw_entered_runes(true);
         present_action_area();
         break;
     case FB_MAP_OPTION_BUTTONS:

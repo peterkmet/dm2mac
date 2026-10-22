@@ -642,7 +642,7 @@ static void show_grid(uint16_t thing, const GridView *view, int flags)
     }
     mm->marker_state = MARKER_NONE;
     int saved_map = g_party.cur_map;
-    area = area_begin_draw(0);
+    area = area_begin_draw(false);
     offscreen_fill_rect(area, zone_get_rect(ZONE_MAP_GRID, mm->clip), g_ui_colors[UI_BLACK]);
     mm->clip[RECT_X] += GAP_X;
     mm->clip[RECT_Y] += GAP_Y;
@@ -673,7 +673,7 @@ static void show_grid(uint16_t thing, const GridView *view, int flags)
 
 void mmap_draw_option_buttons(int pressed)
 {
-    area = area_begin_draw(0);
+    area = area_begin_draw(false);
     if (g_action.champion <= 0 || !(g_action.flags & MAP_HAS_OPTIONS))
         return;
     int down = (pressed ^ g_action.flags) & MAP_OPTIONS;
@@ -725,7 +725,7 @@ void mmap_draw(uint16_t thing)
                 g_action.flags &= ~(MAP_MINION | MAP_PANEL_DRAWN);
         }
     }
-    area = area_begin_draw(0);
+    area = area_begin_draw(false);
     if (!(g_action.flags & MAP_PANEL_DRAWN)) {
         offscreen_draw_gdat_image(area, (GdatKey){CAT_CONTAINER, g_action.map_item, GFX_CONTAINER_PICTURE}, ZONE_PANEL,
                                   GFX_OPAQUE);
