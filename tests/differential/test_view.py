@@ -4,6 +4,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, Game, original_load
@@ -23,7 +24,7 @@ VIEW_UNHIDE_LINKED_SQUARES, VIEW_MARK_HIDDEN_SQUARES = 0x54ABD, 0x5497E
 G_VIEW_SQUARES, G_VIEW_CREATURE_GRID, G_VIEW_OBJECT_GRID = 0x80040, 0x80044, 0x8004C
 G_VIEW_MISSILE_MASKS, G_VIEW_OBJECT_MASKS = 0x80034, 0x80048
 VIEW_BUFFERS = SCRATCH + 0xF0000
-SQUARE_COUNT, SQUARE_SIZE = 23, 18
+SQUARE_COUNT, SQUARE_SIZE = C.VIEW_SQUARE_COUNT, C.VIEW_SQUARE_RECORD_SIZE
 
 
 @pytest.fixture(scope="module")
@@ -117,7 +118,7 @@ def test_view_squares_on_all_maps_match_original(lib, emu, loaded):
         width, height = lib.dungeon_map_width(map_), lib.dungeon_map_height(map_)
         for square in range(0, width * height, 7):
             x, y = divmod(square, height)
-            for direction in range(4):
+            for direction in range(C.DIR_COUNT):
                 original = original_view_squares(emu, x, y, direction, (x, y, map_))
                 assert c_view_squares(lib, x, y, direction) == original, (map_, x, y, direction)
                 views += 1
@@ -180,8 +181,8 @@ def test_view_picture_matches_original(lib, loaded, original_view):
     while len(views) < 120:
         map_ = rng.randrange(lib.dungeon_map_count())
         x, y = rng.randrange(lib.dungeon_map_width(map_)), rng.randrange(lib.dungeon_map_height(map_))
-        if lib.dungeon_square(map_, x, y) >> 5:  # not inside a wall
-            views.append((map_, x, y, rng.randrange(4), rng.choice([0, 2, 5])))
+        if lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:  # not inside a wall
+            views.append((map_, x, y, rng.randrange(C.DIR_COUNT), rng.choice([0, 2, 5])))
     pictures = 0
     for map_, x, y, direction, light in views:
         original = original_view.draw(map_, x, y, direction, light, b"\xff" + bytes(9))
@@ -198,7 +199,7 @@ def test_outdoor_sky_matches_original(lib, loaded, original_view):
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible, game.sky_darkness,
              game.cloud_cover)
     outdoor = [m for m in range(lib.dungeon_map_count())
-               if lib.gdat_exists(original_view.gdat, 0x17, lib.dungeon_map_graphics(m) >> 4 & 0xF, 1, 0x6A)]
+               if lib.gdat_exists(original_view.gdat, C.CAT_SKY, lib.dungeon_map_graphics(m) >> 4 & 0xF, C.GDAT_TYPE_IMAGE, 0x6A)]
     assert outdoor
     original_view.emu.write(G_WEATHER_VISIBLE, b"\1")
     rng = random.Random(8)
@@ -206,10 +207,10 @@ def test_outdoor_sky_matches_original(lib, loaded, original_view):
     while views < 40:
         map_ = rng.choice(outdoor)
         x, y = rng.randrange(lib.dungeon_map_width(map_)), rng.randrange(lib.dungeon_map_height(map_))
-        if not lib.dungeon_square(map_, x, y) >> 5:
+        if not lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
             continue
         game.weather_visible, game.sky_darkness, game.cloud_cover = 1, rng.choice([0, 0x20, 0x50, 0x90]), rng.choice([0, 0x50, 0x90, 0xD0])
-        direction = rng.randrange(4)
+        direction = rng.randrange(C.DIR_COUNT)
         sky = original_view.sky_objects(lib.dungeon_map_graphics(map_) >> 4 & 0xF, game.sky_darkness, game.cloud_cover)
         mine = c_view(lib, map_, x, y, direction, 0, sky)
         assert mine == original_view.draw(map_, x, y, direction, 0, sky), (map_, x, y, direction)
@@ -241,12 +242,12 @@ def test_door_states_match_original(lib, loaded, original_view):
         lib.view_enter_map(map_)
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
-                for direction in range(4):
-                    if len(doors) == 10 or not lib.dungeon_square(map_, x, y) >> 5:
+                for direction in range(C.DIR_COUNT):
+                    if len(doors) == 10 or not lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
                         continue
                     c_view_squares(lib, x, y, direction)
                     door = (ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "view_squares")[3 * SQUARE_SIZE:]
-                    if struct.unpack_from("<H", bytes(door), 2)[0] == 0x11:  # a door front ahead
+                    if struct.unpack_from("<H", bytes(door), 2)[0] == C.ASPECT_DOOR_FRONT:  # a door front ahead
                         doors.append((map_, x, y, direction, door[0], door[1]))
     assert len(doors) == 10
     for map_, x, y, direction, door_x, door_y in doors:
@@ -254,8 +255,8 @@ def test_door_states_match_original(lib, loaded, original_view):
         columns = emu.read_u32(emu.read_u32(G_MAP_COLUMNS) + 4 * map_)
         original_square = emu.read_u32(columns + 4 * door_x) + door_y
         saved_square = square[0]
-        for state in (1, 2, 3, 5):  # three half open states, broken
-            square[0] = saved_square & ~7 | state
+        for state in (C.DOOR_STATE_ONE_FOURTH, C.DOOR_STATE_HALF, C.DOOR_STATE_THREE_FOURTHS, C.DOOR_STATE_BROKEN):  # three half open states, broken
+            square[0] = saved_square & ~C.SQUARE_DOOR_STATE | state
             emu.write(original_square, bytes([square[0]]))
             mine = c_view(lib, map_, x, y, direction, 0)
             assert mine == original_view.draw(map_, x, y, direction, 0, b"\xff" + bytes(9)), (map_, x, y, direction, state)
@@ -269,7 +270,7 @@ def test_door_states_match_original(lib, loaded, original_view):
 
 VIEW_GRID5_CELL_TO_XY, VIEW_ROTATE_GRID5_CELL, VIEW_OFFSET_CREATURE = 0x18E7F, 0x19B0B, 0x52A88
 OUT_X, OUT_Y = SCRATCH, SCRATCH + 4
-GRID_SIZE, MASKS_SIZE = 0x166, 4 * SQUARE_COUNT
+GRID_SIZE, MASKS_SIZE = C.VIEW_GRID_SIZE, 4 * SQUARE_COUNT
 i16_p = ctypes.POINTER(ctypes.c_int16)
 
 
@@ -292,15 +293,15 @@ def test_grid5_cell_to_xy_matches_original(lib, image_emu):
     x, y = ctypes.c_int16(), ctypes.c_int16()
     for _ in range(1000):
         base_x, base_y = rng.randrange(-40, 40), rng.randrange(-40, 40)
-        cell = rng.randrange(25) if rng.random() < 0.8 else rng.randrange(0x10000)
+        cell = rng.randrange(C.CELL_GRID_COUNT) if rng.random() < 0.8 else rng.randrange(0x10000)
         image_emu.call(VIEW_GRID5_CELL_TO_XY, base_x, base_y, cell, OUT_X, OUT_Y)
         lib.aspect_cell_to_xy(base_x, base_y, cell, ctypes.byref(x), ctypes.byref(y))
         assert (x.value, y.value) == read_xy(image_emu), (base_x, base_y, cell)
 
 
 def test_rotate_grid5_cell_matches_original(lib, image_emu):
-    for cell in range(25):
-        for direction in range(4):
+    for cell in range(C.CELL_GRID_COUNT):
+        for direction in range(C.DIR_COUNT):
             original = struct.unpack("<h", struct.pack("<H", image_emu.call(VIEW_ROTATE_GRID5_CELL, cell, direction) & 0xFFFF))[0]
             assert lib.aspect_rotate_cell(cell, direction) == original, (cell, direction)
 
@@ -362,8 +363,8 @@ def views_with_things(lib, count, seed):
     while len(views) < count:
         map_ = rng.randrange(lib.dungeon_map_count())
         x, y = rng.randrange(lib.dungeon_map_width(map_)), rng.randrange(lib.dungeon_map_height(map_))
-        direction = rng.randrange(4)
-        if not lib.dungeon_square(map_, x, y) >> 5:
+        direction = rng.randrange(C.DIR_COUNT)
+        if not lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
             continue
         lib.view_enter_map(map_)
         c_view_squares(lib, x, y, direction)
@@ -387,7 +388,7 @@ def test_thing_grids_match_original(lib, loaded, original_view):
 
 
 DUN_GET_THING_DATA, G_TIMELINE_EVENTS = 0x1D2DA, 0x760E8
-THING_END, CAT_WEAPON = 0xFFFE, 0x10
+THING_END, CAT_WEAPON = C.THING_ENDOFLIST, C.CAT_WEAPON
 THING_SCALE = [0x13, 0x60, 0x57, 0x4E, 0x47, 0x40, 0x3A, 0x34, 0x2F, 0x2B, 0x27, 0x23, 0x1F, 0x1C, 0x1A, 0x17, 0x15, 0x13, 0x11]
 
 
@@ -416,23 +417,23 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
     g = gdat
-    index = next(i for i in range(128) if lib.gdat_find(g, CAT_WEAPON, i, 1, 0) >= 0)
+    index = next(i for i in range(128) if lib.gdat_find(g, CAT_WEAPON, i, C.GDAT_TYPE_IMAGE, 0) >= 0)
     map_ = game.party_map
     lib.view_enter_map(map_)
     view = None
     for x in range(lib.dungeon_map_width(map_)):
         for y in range(lib.dungeon_map_height(map_)):
-            if view or not lib.dungeon_square(map_, x, y) >> 5:
+            if view or not lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
                 continue
             grid = (ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "view_object_grid")
             ctypes.memset(grid, 0xFF, GRID_SIZE)
             squares = c_view_squares(lib, x, y, 0)
             front = struct.unpack_from("<bbHHH", squares, 3 * SQUARE_SIZE)
-            if front[2] == 1 and front[4] == THING_END and all(v == 0xFF for v in grid):
+            if front[2] == C.ASPECT_FLOOR and front[4] == THING_END and all(v == 0xFF for v in grid):
                 view = (x, y, front[0], front[1])
     assert view
     x, y, front_x, front_y = view
-    thing = lib.dungeon_unused_thing(5) & 0xFFFF | 3 << 14  # south west: the near left cell for a party looking north
+    thing = lib.dungeon_unused_thing(C.THING_WEAPON) & 0xFFFF | 3 << C.THING_CELL_SHIFT  # south west: the near left cell for a party looking north
     lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     lib.set_thing_word(thing, 2, index)
     assert lib.dungeon_link_thing_to_square(thing, map_, front_x, front_y)
@@ -444,16 +445,16 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     # cell 16 of the square at depth 1: row 1, scale THING_SCALE[1 * 4 + 1 + 2]; offset of ordinal 0 is (2, -3)
     scale = THING_SCALE[7]
     w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
-    lib.gdat_image_size(g, lib.gdat_find(g, CAT_WEAPON, index, 1, 0), ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
+    lib.gdat_image_size(g, lib.gdat_find(g, CAT_WEAPON, index, C.GDAT_TYPE_IMAGE, 0), ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
     picture = Bitmap(None, lib.gfx_scale_64(w.value, scale), lib.gfx_scale_64(h.value, scale), bpp.value)
     dx, dy = 2, -3
-    for packed in (lib.gdat_entry_index(g, CAT_WEAPON, index, 0x0C, 0xFE), lib.gdat_image_offset(g, CAT_WEAPON, index, 0),
-                   lib.gdat_entry_index(g, CAT_WEAPON, 0xFE, 0x0C, 0)):
+    for packed in (lib.gdat_entry_index(g, CAT_WEAPON, index, C.GDAT_TYPE_VALUE2, 0xFE), lib.gdat_image_offset(g, CAT_WEAPON, index, 0),
+                   lib.gdat_entry_index(g, CAT_WEAPON, 0xFE, C.GDAT_TYPE_VALUE2, 0)):
         dx += struct.unpack("b", bytes([packed >> 8 & 0xFF]))[0]
         dy += struct.unpack("b", bytes([packed & 0xFF]))[0]
     sx, sy = ctypes.c_int16(lib.gfx_scale_64(dx, scale)), ctypes.c_int16(lib.gfx_scale_64(dy, scale))
     rect = (ctypes.c_int16 * 4)()
-    zone = 5000 + 3 * 25 + 16 | 0x8000
+    zone = 5000 + 3 * 25 + 16 | C.ZONE_RELATIVE
     assert lib.zone_compute_rect(ctypes.byref(picture), rect, zone, ctypes.byref(sx), ctypes.byref(sy), 0)
     rx, ry, rw, rh = rect
     assert all(rx <= col < rx + rw and ry <= row < ry + rh for row, col in changed), (rect[:], changed[:5])
@@ -463,7 +464,8 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
 
 SPELL_MISSILES = (0, 2, 3, 4, 6, 7, 9, 10, 13, 49)
 EXPLOSION_TYPES = (0, 2, 3, 4, 6, 7, 9, 10, 13, 14, 40, 48, 49)
-THING_GROUP, THING_PROJECTILE, THING_EXPLOSION, EVENT_SIZE = 4, 14, 15, 12
+THING_GROUP, THING_PROJECTILE, THING_EXPLOSION, EVENT_SIZE = (C.THING_GROUP, C.THING_PROJECTILE, C.THING_EXPLOSION,
+                                                                C.TIMELINE_EVENT_SIZE)
 HIDDEN_POSSESSION_TYPES = (19, 26, 37)  # creature infos 7, 10, 39: static, possessions not shown
 
 
@@ -504,22 +506,24 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
     game = WeatherGame.in_dll(lib, "game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     things = Things(lib, original_view.emu)
-    weapons = [t for t in range(lib.dungeon_thing_count(5)) if lib.dungeon_thing_valid(5 << 10 | t)]
+    weapons = [t for t in range(lib.dungeon_thing_count(C.THING_WEAPON))
+               if lib.dungeon_thing_valid(C.THING_WEAPON << C.THING_TYPE_SHIFT | t)]
     saved_event = things.read_event(0)
-    free_groups = [t for t in range(lib.dungeon_thing_count(THING_GROUP)) if lib.thing_word(THING_GROUP << 10 | t, 0) == 0xFFFF]
-    free_weapons = [t for t in range(lib.dungeon_thing_count(5)) if lib.thing_word(5 << 10 | t, 0) == 0xFFFF]
-    creature_types = [t for t in range(256) if lib.gdat_exists(original_view.gdat, 0x0F, t, 7, 0xFD)]
+    free_groups = [t for t in range(lib.dungeon_thing_count(THING_GROUP)) if lib.thing_word(THING_GROUP << C.THING_TYPE_SHIFT | t, 0) == C.THING_NONE]
+    free_weapons = [t for t in range(lib.dungeon_thing_count(C.THING_WEAPON))
+                    if lib.thing_word(C.THING_WEAPON << C.THING_TYPE_SHIFT | t, 0) == C.THING_NONE]
+    creature_types = [t for t in range(256) if lib.gdat_exists(original_view.gdat, C.CAT_CREATURE, t, C.GDAT_TYPE_CREATURE_DATA, 0xFD)]
     assert free_groups and free_weapons and creature_types
     lib.creature_info.restype = ctypes.POINTER(CreatureInfo)
     lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
     size = ctypes.c_uint32()
 
     def frame_data(creature):
-        item = lib.gdat_find(original_view.gdat, 0x0F, creature, 7, 0xFD)
+        item = lib.gdat_find(original_view.gdat, C.CAT_CREATURE, creature, C.GDAT_TYPE_CREATURE_DATA, 0xFD)
         return ctypes.string_at(lib.gdat_item(original_view.gdat, item, ctypes.byref(size)), size.value)
 
     def frame_count(creature):
-        return len(frame_data(creature)) // 8
+        return len(frame_data(creature)) // C.CREATURE_FRAME_SIZE
 
     hidden_cases = shifted_cases = 0
     shifted_types = [t for t in creature_types if frame_count(t) and frame_data(t)[6]]  # moving in their first frame
@@ -533,38 +537,40 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
         if not positions:
             continue
         last = thing_list(lib, struct.unpack_from("<H", squares, rng.choice(positions) * SQUARE_SIZE + 6)[0])[-1]
-        cell = rng.randrange(4) << 14
+        cell = rng.randrange(C.CELL_COUNT) << C.THING_CELL_SHIFT
         kind = rng.random()
         if kind < 0.4:
-            thing = THING_PROJECTILE << 10 | rng.randrange(lib.dungeon_thing_count(THING_PROJECTILE)) | cell
-            payload = 0xFF80 + rng.choice(SPELL_MISSILES) if rng.random() < 0.7 else 5 << 10 | rng.choice(weapons)
+            thing = THING_PROJECTILE << C.THING_TYPE_SHIFT | rng.randrange(lib.dungeon_thing_count(THING_PROJECTILE)) | cell
+            payload = (C.SPELL_THING_FIRST + rng.choice(SPELL_MISSILES) if rng.random() < 0.7
+                       else C.THING_WEAPON << C.THING_TYPE_SHIFT | rng.choice(weapons))
             power = rng.choice([0xFF, rng.randrange(256)])
             things.write(thing, 0, struct.pack("<HHBBH", THING_END, payload, power, 0, 0))
-            things.write_event(0, 8, struct.pack("<H", rng.randrange(4) << 10))
+            things.write_event(0, 8, struct.pack("<H", rng.randrange(C.DIR_COUNT) << 10))
         elif kind < 0.75:
-            thing = THING_GROUP << 10 | rng.choice(free_groups) | cell
+            thing = THING_GROUP << C.THING_TYPE_SHIFT | rng.choice(free_groups) | cell
             hidden = rng.random() < 0.3  # creatures that show no possessions
             shifted = rng.random() < 0.2
             creature = rng.choice(HIDDEN_POSSESSION_TYPES if hidden else shifted_types if shifted else creature_types)
             possessions = THING_END
             if hidden or rng.random() < 0.7:
-                possessions = 5 << 10 | rng.choice(free_weapons) | rng.randrange(4) << 14
+                possessions = (C.THING_WEAPON << C.THING_TYPE_SHIFT | rng.choice(free_weapons)
+                           | rng.randrange(C.CELL_COUNT) << C.THING_CELL_SHIFT)
                 things.write(possessions, 0, struct.pack("<HH", THING_END, rng.randrange(40)))
             sequence = state = 0
             flags = lib.creature_info(original_view.gdat, creature).contents.flags
             frames = frame_count(creature)
-            if flags & 1 and frames:  # a static creature keeps its animation in the record: a still frame
+            if flags & C.CREATURE_STATIC and frames:  # a static creature keeps its animation in the record: a still frame
                 sequence = rng.randrange(frames)
                 state = rng.randrange(min(64, frames - sequence))
-            creature_dir = rng.randrange(4)
+            creature_dir = rng.randrange(C.DIR_COUNT)
             record = struct.pack("<HHBBHHHHH", THING_END, possessions, creature, 0xFF, 100, sequence, state, 0,
                                  creature_dir << 8)
             things.write(thing, 0, record)
             hidden_cases += hidden
-            side = 2 if flags & 4 else (direction - creature_dir) & 3
-            shifted_cases += frame_data(creature)[(sequence + state) * 8 + 6] != 0 and side in (0, 2)
+            side = 2 if flags & C.CREATURE_FACES_PARTY else (direction - creature_dir) & C.DIR_MASK
+            shifted_cases += frame_data(creature)[(sequence + state) * C.CREATURE_FRAME_SIZE + 6] != 0 and side in (0, 2)
         else:
-            thing = THING_EXPLOSION << 10 | rng.randrange(lib.dungeon_thing_count(THING_EXPLOSION)) | cell
+            thing = THING_EXPLOSION << C.THING_TYPE_SHIFT | rng.randrange(lib.dungeon_thing_count(THING_EXPLOSION)) | cell
             data = rng.choice(EXPLOSION_TYPES) | rng.choice([0, 0x80]) | rng.randrange(256) << 8
             things.write(thing, 0, struct.pack("<HH", THING_END, data))
         things.write(last, 0, struct.pack("<H", thing))
@@ -611,11 +617,11 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
                 t = lib.dungeon_square_first_thing(map_, x, y)
-                while t != 0xFFFE:
+                while t != C.THING_ENDOFLIST:
                     flags = lib.thing_word(t, 4)
-                    if t >> 10 & 15 == 3 and lib.thing_word(t, 2) & 0x7F == 0x3F and flags >> 12:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and lib.thing_word(t, 2) & 0x7F == 0x3F and flags >> 12:
                         ornament = lib.dungeon_map_wall_ornaments(map_)[(flags >> 12) - 1]
-                        if lib.gdat_entry_index(gdat, 9, ornament, 0x0B, 0x0A) == 2:
+                        if lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, 0x0A) == 2:
                             shops.append((map_, x, y, t >> 14, t))
                     t = lib.dungeon_next_thing(t)
     assert len(shops) == 8
@@ -626,11 +632,11 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
         items = []
         for step, (light, offset) in enumerate(((0, None), (3, None), (2, 50), (0, -50), (5, 0))):
             if offset is not None:  # a click with an empty hand below or above the center clears the shown flag
-                Things(lib, emu).write(shop, 4, struct.pack("<H", lib.thing_word(shop, 4) & ~1))
+                Things(lib, emu).write(shop, 4, struct.pack("<H", lib.thing_word(shop, 4) & ~C.SHOP_SHOWN))
                 ctypes.c_int16.in_dll(lib, "view_hit_offset_y").value = offset
                 emu.write(G_VIEW_HIT_OFFSET, struct.pack("<h", offset))
-            original = original_view.draw(map_, party_x, party_y, (cell + 2) & 3, light, b"\xff" + bytes(9))
-            assert c_view(lib, map_, party_x, party_y, (cell + 2) & 3, light) == original, (map_, x, y, step)
+            original = original_view.draw(map_, party_x, party_y, (cell + 2) & C.DIR_MASK, light, b"\xff" + bytes(9))
+            assert c_view(lib, map_, party_x, party_y, (cell + 2) & C.DIR_MASK, light) == original, (map_, x, y, step)
             items.append(lib.thing_word(display, 2) >> 7)
             assert struct.unpack("<H", emu.read(emu.call(DUN_GET_THING_DATA, display) + 2, 2))[0] >> 7 == items[-1]
         assert items[0] == items[1] == items[3] != items[2] == items[4], (map_, x, y)
@@ -646,9 +652,9 @@ def test_wet_image_matches_original(lib, loaded, original_view):
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.rain_intensity, game.wind_dir)
     gdat, emu = original_view.gdat, original_view.emu
     map_ = next(m for m in range(lib.dungeon_map_count())
-                if lib.gdat_exists(gdat, 0x17, lib.dungeon_map_graphics(m) >> 4 & 0xF, 1, 0x71))
+                if lib.gdat_exists(gdat, C.CAT_SKY, lib.dungeon_map_graphics(m) >> 4 & 0xF, C.GDAT_TYPE_IMAGE, 0x71))
     x, y = next((x, y) for x in range(lib.dungeon_map_width(map_)) for y in range(lib.dungeon_map_height(map_))
-                if lib.dungeon_square(map_, x, y) >> 5)
+                if lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT)
     lib.view_draw_wet_image.argtypes = [ctypes.POINTER(DrawCtx), ctypes.POINTER(Bitmap), ctypes.c_int]
     lib.rand_below.restype = ctypes.c_uint16
     lib.rand_below.argtypes = [ctypes.c_uint16]
@@ -658,8 +664,8 @@ def test_wet_image_matches_original(lib, loaded, original_view):
     ctx_addr = original_view.alloc(CTX_SIZE)
     drawn = filled = small_drawn = 0
     for case in range(400):
-        direction, light = rng.randrange(4), rng.choice([0, 3])
-        game.rain_intensity, game.wind_dir = rng.choice([5, 0x20, 0x50, 0x90]), rng.randrange(4)
+        direction, light = rng.randrange(C.DIR_COUNT), rng.choice([0, 3])
+        game.rain_intensity, game.wind_dir = rng.choice([5, 0x20, 0x50, 0x90]), rng.randrange(C.DIR_COUNT)
         c_view(lib, map_, x, y, direction, light)
         emu.write(G_MAP_GFX_SET_BYTE, bytes([lib.dungeon_map_graphics(map_) >> 4 & 0xF]))
         emu.write(G_VIEW_PARTY_DIR, struct.pack("<h", direction))
@@ -725,15 +731,15 @@ def test_view_click_zones_match_original(lib, loaded, original_view):
     game.weather_visible = 0
     emu = original_view.emu
     count = ctypes.c_int.in_dll(lib, "view_click_zone_count")
-    zones = (ctypes.c_uint8 * (32 * CLICK_ZONE_SIZE)).in_dll(lib, "view_click_zones")
+    zones = (ctypes.c_uint8 * (C.VIEW_CLICK_ZONE_MAX * CLICK_ZONE_SIZE)).in_dll(lib, "view_click_zones")
     rng = random.Random(21)
     views = with_zones = 0
     while views < 300:
         map_ = rng.randrange(lib.dungeon_map_count())
         x, y = rng.randrange(lib.dungeon_map_width(map_)), rng.randrange(lib.dungeon_map_height(map_))
-        if not lib.dungeon_square(map_, x, y) >> 5:
+        if not lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
             continue
-        direction = rng.randrange(4)
+        direction = rng.randrange(C.DIR_COUNT)
         c_view(lib, map_, x, y, direction, 0)
         original_view.draw(map_, x, y, direction, 0, b"\xff" + bytes(9))
         n = struct.unpack("<h", emu.read(G_VIEW_CLICK_ZONE_COUNT, 2))[0]
@@ -758,8 +764,8 @@ def test_walking_view_matches_original(lib, loaded, original_view):
     while len(views) < 60:
         map_ = rng.randrange(lib.dungeon_map_count())
         x, y = rng.randrange(lib.dungeon_map_width(map_)), rng.randrange(lib.dungeon_map_height(map_))
-        if lib.dungeon_square(map_, x, y) >> 5:
-            views.append((map_, x, y, rng.randrange(4), rng.choice([0, 2, 5])))
+        if lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
+            views.append((map_, x, y, rng.randrange(C.DIR_COUNT), rng.choice([0, 2, 5])))
     pictures = 0
     for map_, x, y, direction, light in views:
         original = original_view.draw(map_, x, y, direction, light, b"\xff" + bytes(9), walking=1)
@@ -777,7 +783,7 @@ def present_viewport(lib, gdat, walking):
     assert lib.zone_load(gdat) == 1
     PartyHead.in_dll(lib, "party").move_steps = 0
     lib.zone_get_rect.restype = ctypes.c_void_p
-    assert lib.zone_get_rect(7, rect)  # ZONE_VIEWPORT
+    assert lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
     wx, wy, ww, wh = walk
     view = bytearray([1]) * (VIEW_W * VIEW_H)  # 1: outside the walk rectangle
     for y in range(wh):

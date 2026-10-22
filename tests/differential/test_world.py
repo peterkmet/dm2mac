@@ -8,6 +8,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
 from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
@@ -25,7 +26,7 @@ def lib():
 WEATHER_INIT, TIMELINE_DELETE_EVENT, LIGHT_ADD_SQUARE_LIGHT, ZONE_INTERPOLATE_OFFSET = 0x59F38, 0x562FF, 0x38C46, 0x19234
 G_GLOBAL_BYTES, G_INVENTORY, G_PARTY_SLEEPING, G_MAGIC_LIGHT = 0x7F0C0, 0x7F972, 0x7F234, 0x7FFEC
 G_THINGS, THING_SIZES = 0x7F288, (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
-EVENT_WEATHER, CHAMPION_HANDS = 0x54, 0xC3
+EVENT_WEATHER, CHAMPION_HANDS = C.EVENT_WEATHER, 0xC3
 OUTDOOR_MAPS = (1, 14, 15, 16, 17, 25, 27, 29, 30, 33, 39, 41, 42)  # sky state 1 or 4: the weather shows
 MAP_LIGHTNING_TARGET = 1  # its graphics set gives a fixed square that lightning hits
 INDOOR_MAPS = (2, 5, 11, 20, 38)  # no weather: the hour does not update the light
@@ -89,11 +90,11 @@ def delete_weather_events(sc):
 
 
 def random_weather(rng):
-    return dict(heavy_rain=rng.randrange(2), wind_dir=rng.randrange(4), rain_intensity=rng.choice((0, 0, 1, 0x20, 0x90)),
+    return dict(heavy_rain=rng.randrange(2), wind_dir=rng.randrange(C.DIR_COUNT), rain_intensity=rng.choice((0, 0, 1, 0x20, 0x90)),
                 sky_darkness=rng.randrange(256), cloud_cover=rng.choice((0, 0x30, 0x50, 0x90, 0xD0, 0xFF)),
                 storm_multiplier=rng.randrange(1, 4), storm_step=rng.randrange(32), storm_curve=rng.randrange(4),
                 storm_intensity=rng.choice((0, 0, rng.randrange(256), 0xB5, 0xB6, 0xCC, 0xCD, 0xD0, 0xFF)),
-                hour_light=rng.randrange(1, 6), thunder_toggle=rng.randrange(2), lightning_flash=rng.randrange(2))
+                hour_light=rng.randrange(C.HOUR_LIGHT_DAY, C.HOUR_LIGHT_NIGHT + 1), thunder_toggle=rng.randrange(2), lightning_flash=rng.randrange(2))
 
 
 def test_weather_init_matches_original(world):
@@ -134,12 +135,12 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
     strikes = bolts = pictures = 0
     for n in range(14):
         map_ = MAP_LIGHTNING_TARGET if n % 5 == 0 else rng.choice(OUTDOOR_MAPS) if n % 4 else rng.choice(INDOOR_MAPS)
-        _, x, y, _ = rng.choice([s for s in squares(lib, (1,)) if s[0] == map_])
-        sc.place(map_, x, y, rng.randrange(4))
+        _, x, y, _ = rng.choice([s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_])
+        sc.place(map_, x, y, rng.randrange(C.DIR_COUNT))
         sc.set_time(rng.choice((rng.randrange(12000), 12000 + rng.randrange(1 << 20))))
         weather = random_weather(rng)
         weather["next_hour_time"] = sc.time() + rng.randrange(-5, 40)
-        set_weather(sc, strike_threshold=rng.randrange(4, 8), light_level=rng.randrange(6), **weather)
+        set_weather(sc, strike_threshold=rng.randrange(4, 8), light_level=rng.randrange(C.DARKEST_LIGHT + 1), **weather)
         set_global(sc, 0x40, rng.choice((0, 3, 9, 30)))
         inventory, sleeping = rng.random() < 0.3, rng.random() < 0.3
         ctypes.c_int16.in_dll(lib, "ui").value = inventory  # UiState.inventory
@@ -149,7 +150,8 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
         for i in range(40):
             sc.step()
             if rng.random() < 0.1:
-                command = rng.choice((1, 2, 3, 4, 5, 6))
+                command = rng.choice((C.CMD_TURN_LEFT, C.CMD_TURN_RIGHT, C.CMD_MOVE_FORWARD, C.CMD_MOVE_RIGHT, C.CMD_MOVE_BACK,
+                                      C.CMD_MOVE_LEFT))
                 mine, theirs = sc.command(command)
                 assert mine == theirs, (n, i, command)
             strikes += len(sc.explosions)
@@ -172,7 +174,7 @@ def thing_records(lib, types):
     out = []
     for t in types:
         for i in range(lib.dungeon_thing_count(t)):
-            thing = t << 10 | i
+            thing = t << C.THING_TYPE_SHIFT | i
             if lib.thing_word(thing, 0) != NONE:
                 out.append(thing)
     return out
@@ -180,9 +182,10 @@ def thing_records(lib, types):
 
 def sync_thing(sc, thing):
     """Copies the C thing record into the original."""
-    t, size = thing >> 10 & 15, THING_SIZES[thing >> 10 & 15]
+    t = thing >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK
+    size = THING_SIZES[t]
     record = ctypes.string_at(sc.lib.dungeon_thing_record(thing), size)
-    sc.emu.write(sc.emu.read_u32(G_THINGS + 4 * t) + (thing & 0x3FF) * size, record)
+    sc.emu.write(sc.emu.read_u32(G_THINGS + 4 * t) + (thing & C.THING_INDEX_MASK) * size, record)
 
 
 def test_party_light_matches_original(world, lib):
@@ -190,8 +193,8 @@ def test_party_light_matches_original(world, lib):
     # explosion light, magic light, dark and lit maps, the hour, heavy rain, the weather, and the lightning flash.
     rng = random.Random(173)
     sc = world
-    torches = [t for t in thing_records(lib, range(5, 11)) if lib.item_attr(t, 0) & 0x10]
-    others = thing_records(lib, (5, 6, 10))[:200]
+    torches = [t for t in thing_records(lib, range(C.THING_WEAPON, C.THING_MISC + 1)) if lib.item_attr(t, 0) & 0x10]
+    others = thing_records(lib, (C.THING_WEAPON, C.THING_ARMOUR, C.THING_MISC))[:200]
     assert len(torches) > 5
     game = Game.in_dll(lib, "game")
     magic = (ctypes.c_uint8 * 2).from_address(ctypes.addressof(game) + GAME_MAGIC)
@@ -200,8 +203,8 @@ def test_party_light_matches_original(world, lib):
     for n in range(400):
         if n % 20 == 0:
             map_ = rng.randrange(lib.dungeon_map_count())
-            _, x, y, _ = rng.choice([s for s in squares(lib, (1,)) if s[0] == map_] or [(0, 0, 0, 0)])
-            sc.place(map_, x, y, rng.randrange(4))
+            _, x, y, _ = rng.choice([s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_] or [(0, 0, 0, 0)])
+            sc.place(map_, x, y, rng.randrange(C.DIR_COUNT))
         count = rng.randrange(1, 5)
         sc.game.champion_count = count
         sc.emu.write(0x7F276, struct.pack("<H", count))
@@ -220,14 +223,14 @@ def test_party_light_matches_original(world, lib):
         light = rng.choice((0, 0, 5, 30, 120, -20))
         magic[0], magic[1] = light & 0xFF, light >> 8 & 0xFF
         sc.emu.write(G_MAGIC_LIGHT, struct.pack("<h", light))
-        set_weather(sc, weather_visible=rng.randrange(2), heavy_rain=rng.randrange(2), hour_light=rng.randrange(1, 6),
+        set_weather(sc, weather_visible=rng.randrange(2), heavy_rain=rng.randrange(2), hour_light=rng.randrange(C.HOUR_LIGHT_DAY, C.HOUR_LIGHT_NIGHT + 1),
                     lightning_flash=rng.randrange(2), light_source_sum=rng.choice((0, 0, 10, 60, 200)),
                     explosion_light_sum=rng.choice((0, 0, 12, 13, 40)))
         lib.light_update_party_light()
         sc.emu.call(LIGHT_UPDATE_PARTY_LIGHT)
         sc.assert_same_weather(n)
         levels.add(ctypes.c_int.in_dll(lib, "view_light_level").value)
-    assert levels == set(range(6))
+    assert levels == set(range(C.DARKEST_LIGHT + 1))
 
 
 def test_square_light_matches_original(world, lib):
@@ -237,17 +240,17 @@ def test_square_light_matches_original(world, lib):
     sc = world
     nonzero = 0
     for map_ in range(lib.dungeon_map_count()):
-        places = [s for s in squares(lib, (1,)) if s[0] == map_]
+        places = [s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_]
         if not places:
             continue
         _, px, py, _ = rng.choice(places)
-        sc.place(map_, px, py, rng.randrange(4))
+        sc.place(map_, px, py, rng.randrange(C.DIR_COUNT))
         cells = [(x, y) for x in range(lib.dungeon_map_width(map_)) for y in range(lib.dungeon_map_height(map_))]
         for x, y in cells if map_ % 3 == 0 or map_ in OUTDOOR_MAPS else rng.sample(cells, 40):
-            for d in range(4):
+            for d in range(C.DIR_COUNT):
                 args = (rng.randrange(10), d, x, y, rng.choice((7, 7, rng.randrange(8))))
                 set_weather(sc, light_source_sum=0, explosion_light_sum=0, heavy_rain=rng.randrange(2),
-                            hour_light=rng.randrange(1, 6))
+                            hour_light=rng.randrange(C.HOUR_LIGHT_DAY, C.HOUR_LIGHT_NIGHT + 1))
                 lib.light_add_square_light(*args)
                 sc.emu.call(LIGHT_ADD_SQUARE_LIGHT, *args[:4], args[4])
                 sc.assert_same_weather((map_, args))
@@ -281,9 +284,9 @@ def transfer_sensors(lib):
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
                 t = lib.dungeon_square_first_thing(map_, x, y)
-                while t != 0xFFFE:
-                    kind = lib.thing_word(t, 2) & 0x7F
-                    if t >> 10 & 15 == 3 and kind in (0x3B, 0x40, 0x47, 0x48, 0x49):
+                while t != C.THING_ENDOFLIST:
+                    kind = lib.thing_word(t, 2) & C.SENSOR_TYPE_MASK
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and kind in (0x3B, 0x40, 0x47, 0x48, 0x49):
                         out.append((map_, x, y, t >> 14, t))
                     t = lib.dungeon_next_thing(t)
     return out
@@ -295,8 +298,8 @@ def objects_on_map(lib, map_):
     for x in range(lib.dungeon_map_width(map_)):
         for y in range(lib.dungeon_map_height(map_)):
             t = lib.dungeon_square_first_thing(map_, x, y)
-            while t != 0xFFFE:
-                if 5 <= t >> 10 & 15 <= 10:
+            while t != C.THING_ENDOFLIST:
+                if C.THING_WEAPON <= t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK <= C.THING_MISC:
                     out.append((t, x, y))
                 t = lib.dungeon_next_thing(t)
     return out
@@ -317,9 +320,9 @@ def test_object_transfer_sensors_match_original(world, lib):
     sc = world
     moved = recharged = 0
     for n, (map_, x, y, cell, sensor) in enumerate(transfer_sensors(lib) * 3):
-        places = [s for s in squares(lib, (1,)) if s[0] == map_]
+        places = [s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_]
         _, px, py, _ = rng.choice(places)
-        sc.place(map_, px, py, rng.randrange(4))
+        sc.place(map_, px, py, rng.randrange(C.DIR_COUNT))
         data, flags = lib.thing_word(sensor, 2), lib.thing_word(sensor, 4)
         if n >= len(transfer_sensors(lib)):
             kind = rng.choice((0x3B, 0x40, 0x47, 0x48, 0x49))
@@ -328,17 +331,17 @@ def test_object_transfer_sensors_match_original(world, lib):
             set_word(sc, sensor, 4, flags & ~0x3C | rng.randrange(4) << 3 | rng.randrange(2) << 2 | rng.randrange(2) << 5)
             if rng.random() < 0.3:
                 set_word(sc, sensor, 6, lib.thing_word(sensor, 6) & 0xF | cell << 4 | x << 6 | y << 11)
-        kind, target = lib.thing_word(sensor, 2) & 0x7F, lib.thing_word(sensor, 6)
+        kind, target = lib.thing_word(sensor, 2) & C.SENSOR_TYPE_MASK, lib.thing_word(sensor, 6)
         sx, sy, scell = (target >> 6 & 31, target >> 11, target >> 4 & 3) if kind in (0x47, 0x49) else (x, y, cell)
-        wall = lib.dungeon_square(map_, sx, sy) >> 5 == 0
+        wall = lib.dungeon_square(map_, sx, sy) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL
         for _ in range(4):
             for _ in range(rng.randrange(1, 4)):
                 things = [o for o in objects_on_map(lib, map_) if (o[1], o[2]) != (sx, sy)]
                 if not things:
                     break
                 thing, ox, oy = rng.choice(things)
-                c = scell if wall or rng.random() < 0.5 else rng.randrange(4)
-                arg = (thing & 0x3FFF) | c << 14
+                c = scell if wall or rng.random() < 0.5 else rng.randrange(C.CELL_COUNT)
+                arg = (thing & C.THING_ID_MASK) | c << C.THING_CELL_SHIFT
                 lib.move_thing(arg, ox, oy, sx, sy)
                 sc.emu.call(MOVE_THING, arg, ox, oy, sx, sy)
             before = sc.differences()
@@ -390,21 +393,21 @@ def test_lightning_strikes_match_original(world, lib):
     sc = world
     groups = {}
     for map_ in OUTDOOR_MAPS[1:]:
-        for _, x, y, _ in [s for s in squares(lib, (1,)) if s[0] == map_]:
+        for _, x, y, _ in [s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_]:
             t = lib.dungeon_square_first_thing(map_, x, y)
-            while t != 0xFFFE:
-                if t >> 10 & 15 == 4:
+            while t != C.THING_ENDOFLIST:
+                if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_GROUP:
                     groups.setdefault(map_, []).append((x, y))
                 t = lib.dungeon_next_thing(t)
     party_hits = creature_hits = seen = 0
     for n in range(240):
         case = n % 3
         map_ = rng.choice(sorted(groups))
-        floors = [(x, y) for m, x, y, _ in squares(lib, (1,)) if m == map_]
+        floors = [(x, y) for m, x, y, _ in squares(lib, (C.SQUARE_FLOOR,)) if m == map_]
         target = rng.choice(groups[map_]) if case == 1 else rng.choice(floors)
         near = [(x, y) for x, y in floors if 1 <= abs(x - target[0]) + abs(y - target[1]) <= 4] or floors
         party = target if case == 0 else rng.choice(near)
-        sc.place(map_, *party, rng.randrange(4))
+        sc.place(map_, *party, rng.randrange(C.DIR_COUNT))
         storm = rng.choice((0xB0, 0xB6, 0xF0))
         sc.set_time(rng.choice((11999, 12000, 40000)))
         set_weather(sc, rain_intensity=1, storm_intensity=storm, storm_multiplier=1, next_hour_time=sc.time() + 100,
@@ -435,15 +438,16 @@ def test_lightning_sounds_match_original(world, lib):
     sc.sounds_seen = []
     lib.gdat_entry_index.restype = ctypes.c_uint16
     lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    target = lib.gdat_entry_index(sc.gdat, 8, lib.dungeon_map_graphics(MAP_LIGHTNING_TARGET) >> 4 & 0xF, 0x0B, 0x6C)
+    target = lib.gdat_entry_index(sc.gdat, C.CAT_WALLSET, lib.dungeon_map_graphics(MAP_LIGHTNING_TARGET) >> 4 & 0xF,
+                                    C.GDAT_TYPE_VALUE, 0x6C)
     tx, ty = target >> 8, target & 0xFF
     for n in range(30):
         map_ = MAP_LIGHTNING_TARGET if n % 3 == 0 else rng.choice(OUTDOOR_MAPS)
-        floors = [s for s in squares(lib, (1,)) if s[0] == map_]
+        floors = [s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_]
         if map_ == MAP_LIGHTNING_TARGET:  # next to the fixed square: no walking distance, the sound plays
             floors = [s for s in floors if abs(s[1] - tx) + abs(s[2] - ty) <= 1] or floors
         _, x, y, _ = rng.choice(floors)
-        sc.place(map_, x, y, rng.randrange(4))
+        sc.place(map_, x, y, rng.randrange(C.DIR_COUNT))
         set_weather(sc, rain_intensity=1, storm_intensity=rng.choice((0, 0x40, 0xC0, 0xF0)),
                     storm_multiplier=rng.randrange(1, 4), next_hour_time=sc.time() + 1000)
         set_party_state(sc, 0, int(rng.random() < 0.3))
@@ -451,8 +455,8 @@ def test_lightning_sounds_match_original(world, lib):
             sc.step()
             assert_world(sc, (n, map_, i))
     set_party_state(sc, 0, 0)
-    thunder = sum(s[0] == 0x17 for s in sc.sounds_seen)
-    fixed = sum(s[:3] == (0x0D, 0x30, 0x81) for s in sc.sounds_seen)
+    thunder = sum(s[0] == C.CAT_SKY for s in sc.sounds_seen)
+    fixed = sum(s[:3] == (C.CAT_EXPLOSION, 0x30, C.SOUND_EXPLODE) for s in sc.sounds_seen)
     assert thunder > 5 and fixed > 2, (thunder, fixed)
 
 
@@ -462,45 +466,49 @@ def test_square_light_of_added_things_matches_original(world, lib, gdat):
     # (with or without a floor ornament), then both add the light of the square.
     rng = random.Random(178)
     sc = world
-    free = {t: [i for i in range(lib.dungeon_thing_count(t)) if lib.thing_word(t << 10 | i, 0) == NONE] for t in (4, 14, 15)}
-    glowing = [c for c in range(256) if lib.gdat_entry_index(gdat, 0x0F, c, 0x0B, 0xF8)]
-    assert free[4] and free[14] and free[15] and glowing
+    free = {t: [i for i in range(lib.dungeon_thing_count(t)) if lib.thing_word(t << C.THING_TYPE_SHIFT | i, 0) == NONE]
+            for t in (C.THING_GROUP, C.THING_PROJECTILE, C.THING_EXPLOSION)}
+    glowing = [c for c in range(256) if lib.gdat_entry_index(gdat, C.CAT_CREATURE, c, C.GDAT_TYPE_VALUE, 0xF8)]
+    assert free[C.THING_GROUP] and free[C.THING_PROJECTILE] and free[C.THING_EXPLOSION] and glowing
     lib.gdat_entry_index.restype = ctypes.c_uint16
     lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     lit = 0
     for map_ in range(lib.dungeon_map_count()):
-        cells = [(x, y) for m, x, y, _ in squares(lib, (1, 2, 5)) if m == map_]
+        cells = [(x, y) for m, x, y, _ in squares(lib, (C.SQUARE_FLOOR, C.SQUARE_PIT, C.SQUARE_TELEPORTER)) if m == map_]
         if not cells:
             continue
-        sc.place(map_, *rng.choice(cells), rng.randrange(4))
+        sc.place(map_, *rng.choice(cells), rng.randrange(C.DIR_COUNT))
         for x, y in rng.sample(cells, min(len(cells), 25)):
             last = lib.dungeon_square_first_thing(map_, x, y)
-            if last == 0xFFFE:
+            if last == C.THING_ENDOFLIST:
                 continue
-            while lib.dungeon_next_thing(last) != 0xFFFE:
+            while lib.dungeon_next_thing(last) != C.THING_ENDOFLIST:
                 last = lib.dungeon_next_thing(last)
             kind = rng.randrange(3)
             if kind == 0:
-                thing = 15 << 10 | rng.choice(free[15]) | rng.randrange(4) << 14
+                thing = (C.THING_EXPLOSION << C.THING_TYPE_SHIFT | rng.choice(free[C.THING_EXPLOSION])
+                         | rng.randrange(C.CELL_COUNT) << C.THING_CELL_SHIFT)
                 data = rng.choice((0, 2, 0x30, 0x30, 1, 7)) | rng.randrange(2) << 7 | rng.randrange(256) << 8
-                record = struct.pack("<HH", 0xFFFE, data)
+                record = struct.pack("<HH", C.THING_ENDOFLIST, data)
             elif kind == 1:
-                thing = 14 << 10 | rng.choice(free[14]) | rng.randrange(4) << 14
-                payload = 0xFF80 if rng.random() < 0.8 else 0xFF81
-                record = struct.pack("<HHBBH", 0xFFFE, payload, rng.randrange(256), 0, 0)
+                thing = (C.THING_PROJECTILE << C.THING_TYPE_SHIFT | rng.choice(free[C.THING_PROJECTILE])
+                         | rng.randrange(C.CELL_COUNT) << C.THING_CELL_SHIFT)
+                payload = C.SPELL_FIREBALL if rng.random() < 0.8 else C.SPELL_SLIME
+                record = struct.pack("<HHBBH", C.THING_ENDOFLIST, payload, rng.randrange(256), 0, 0)
             else:
-                thing = 4 << 10 | rng.choice(free[4]) | rng.randrange(4) << 14
-                record = struct.pack("<HHBBHHHHH", 0xFFFE, 0xFFFE, rng.choice(glowing), 0, 100, 0, 0, 0, 0)
+                thing = (C.THING_GROUP << C.THING_TYPE_SHIFT | rng.choice(free[C.THING_GROUP])
+                         | rng.randrange(C.CELL_COUNT) << C.THING_CELL_SHIFT)
+                record = struct.pack("<HHBBHHHHH", C.THING_ENDOFLIST, C.THING_ENDOFLIST, rng.choice(glowing), 0, 100, 0, 0, 0, 0)
             write_record(sc, thing, record)
             set_word(sc, last, 0, thing)
-            for d in range(4):
+            for d in range(C.DIR_COUNT):
                 args = (rng.randrange(10), d, x, y, rng.choice((1, 3, 7)))
                 set_weather(sc, light_source_sum=0, explosion_light_sum=0)
                 lib.light_add_square_light(*args)
                 sc.emu.call(LIGHT_ADD_SQUARE_LIGHT, *args[:4], args[4])
                 sc.assert_same_weather((map_, hex(thing), args))
                 lit += ctypes.c_int16.in_dll(lib, "explosion_light_sum").value != 0
-            set_word(sc, last, 0, 0xFFFE)
+            set_word(sc, last, 0, C.THING_ENDOFLIST)
             write_record(sc, thing, struct.pack("<H", NONE) + bytes(len(record) - 2))
     assert lit > 100
 
@@ -554,7 +562,8 @@ def sound_keys(lib, gdat):
     from dm2test.scenario import Sound
     s = Sound()
     keys = []
-    for category in (3, 9, 10, 0x0D, 0x0F, 0x16, 0x17, 0x18):
+    for category in (C.CAT_DUNGEON, C.CAT_WALL_ORNAMENT, C.CAT_FLOOR_ORNAMENT, C.CAT_EXPLOSION, C.CAT_CREATURE, C.CAT_CHAMPION,
+                     C.CAT_SKY, C.CAT_TELEPORTER):
         for index in range(64):
             for entry in (0, 1, 2, 0x81, 0x82, 0x88, 0x89, 0x8A):
                 if lib.sound_load(gdat, category, index, entry, ctypes.byref(s)) == 0:
@@ -572,12 +581,12 @@ def test_sound_requests_match_original(world, lib, gdat):
     sc = world
     keys = sound_keys(lib, gdat)
     assert len(keys) > 50
-    maps = [m for m in range(lib.dungeon_map_count()) if any(s[0] == m for s in squares(lib, (1,)))]
-    floors = squares(lib, (1,))
+    maps = [m for m in range(lib.dungeon_map_count()) if any(s[0] == m for s in squares(lib, (C.SQUARE_FLOOR,)))]
+    floors = squares(lib, (C.SQUARE_FLOOR,))
     delayed = moved_away = several = 0
     for n in range(150):
         map_, x, y, _ = rng.choice(floors)
-        sc.place(map_, x, y, rng.randrange(4))
+        sc.place(map_, x, y, rng.randrange(C.DIR_COUNT))
         set_party_state(sc, 0, int(rng.random() < 0.2))
         other = rng.choice(maps)
         passage = rng.random() < 0.3
@@ -592,7 +601,7 @@ def test_sound_requests_match_original(world, lib, gdat):
             source = other if passage and rng.random() < 0.6 else map_
             lib.dun_set_current_map(source)
             sc.emu.call(DUN_SET_CURRENT_MAP, source)
-            args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, 0x80, 0xC8, 0xFF, rng.randrange(256))),
+            args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, C.SOUND_VOLUME_NORMAL, C.SOUND_VOLUME_LOUD, C.SOUND_VOLUME_MAX, rng.randrange(256))),
                     x + rng.randrange(-5, 6), y + rng.randrange(-5, 6), delay)
             if last and rng.random() < 0.4:  # the same sound again, at the same place or one square away
                 step = rng.choice(((0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)))
@@ -612,7 +621,7 @@ def test_sound_requests_match_original(world, lib, gdat):
         if rng.random() < 0.3:  # the party leaves before the delayed sounds play
             moved_away += 1
             m2, x2, y2, _ = rng.choice([f for f in floors if f[0] != map_])
-            sc.place(m2, x2, y2, rng.randrange(4))
+            sc.place(m2, x2, y2, rng.randrange(C.DIR_COUNT))
         for i in range(10):
             sc.step()
             assert_world(sc, (n, map_, i))
@@ -629,20 +638,20 @@ def ambient_wall_sensors(lib, gdat):
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
-                if lib.dungeon_square(map_, x, y) >> 5:
+                if lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
                     continue
                 t = lib.dungeon_square_first_thing(map_, x, y)
-                while t != 0xFFFE and t >> 10 & 15 <= 3:
+                while t != C.THING_ENDOFLIST and t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK <= C.THING_SENSOR:
                     data, flags = lib.thing_word(t, 2), lib.thing_word(t, 4)
-                    if t >> 10 & 15 == 3 and data & 0x7F == 0x2C and flags & 0x40 and flags >> 12:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and data & C.SENSOR_TYPE_MASK == C.SENSOR_ANIMATED and flags & 0x40 and flags >> 12:
                         ornament = lib.dungeon_map_wall_ornaments(map_)[(flags >> 12) - 1]
-                        frames = lib.gdat_entry_index(gdat, 9, ornament, 0x0B, 0x0D)
+                        frames = lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, 0x0D)
                         if frames:
                             cycle = frames & 0x7FFF
                         else:
-                            lib.gdat_text(gdat, 9, ornament, 0x0D, text, 128)
+                            lib.gdat_text(gdat, C.CAT_WALL_ORNAMENT, ornament, 0x0D, text, 128)
                             cycle = len(text.value) or 1
-                        offset = lib.gdat_entry_index(gdat, 9, ornament, 0x0B, 0x88)
+                        offset = lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, 0x88)
                         out.append((map_, x, y, t >> 14, t, cycle, offset))
                     t = lib.dungeon_next_thing(t)
     return out
@@ -650,7 +659,7 @@ def ambient_wall_sensors(lib, gdat):
 
 def turn_wall_thing(sc, thing, x, y, cell):
     """Moves a wall thing of the current map to the wall face cell (to the end of its square list) in both."""
-    turned = (thing & 0x3FFF) | cell << 14
+    turned = (thing & C.THING_ID_MASK) | cell << C.THING_CELL_SHIFT
     map_ = sc.party.cur_map
     sc.lib.dungeon_unlink_thing_from_square(thing, map_, x, y)
     sc.emu.call(DUN_UNLINK_THING_FROM_SQUARE, thing, 0, x, y)
@@ -670,14 +679,14 @@ def test_repeated_ambient_wall_sounds_match_original(world, lib, gdat):
     lib.gdat_text.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_char_p, ctypes.c_size_t]
     sensors = ambient_wall_sensors(lib, gdat)
     rng = random.Random(183)
-    all_floors = squares(lib, (1,))
+    all_floors = squares(lib, (C.SQUARE_FLOOR,))
     events = played = 0
-    cases = [(s, cell) for s in sensors for cell in range(4)]
+    cases = [(s, cell) for s in sensors for cell in range(C.CELL_COUNT)]
     for n, ((map_, x, y, _, sensor, cycle, offset), cell) in enumerate(rng.sample(cases, min(32, len(cases)))):
         near = [(sx, sy) for m, sx, sy, _ in all_floors if m == map_ and abs(sx - x) + abs(sy - y) <= 2]
         if not near:
             continue
-        sc.place(map_, *rng.choice(near), rng.randrange(4))
+        sc.place(map_, *rng.choice(near), rng.randrange(C.DIR_COUNT))
         sensor = turn_wall_thing(sc, sensor, x, y, cell)
         data = lib.thing_word(sensor, 2) & 0x7FFF  # not started yet
         set_word(sc, sensor, 2, data)
@@ -691,10 +700,10 @@ def test_repeated_ambient_wall_sounds_match_original(world, lib, gdat):
             sc.step()
             before = len(getattr(sc, "sounds_seen", []))
             assert_world(sc, (n, map_, x, y, cell, i))
-            played += any(s[0] == 9 for s in sc.sounds_seen[before:])
+            played += any(s[0] == C.CAT_WALL_ORNAMENT for s in sc.sounds_seen[before:])
         tl = Timeline.in_dll(lib, "timeline")
         for i in range(tl.capacity):
-            if tl.events[i].type == 0x5A:
+            if tl.events[i].type == C.EVENT_SENSOR_AMBIENT_SOUND:
                 events += 1
                 lib.timeline_delete_event(i)
                 sc.emu.call(TIMELINE_DELETE_EVENT, i)
@@ -715,21 +724,21 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
     rng = random.Random(182)
     dirs = ((0, -1), (1, 0), (0, 1), (-1, 0))
     played = {"front": 0, "elsewhere": 0}
-    all_floors = squares(lib, (1,))
-    cases = [(s, cell, front) for s in sensors for cell in range(4) for front in (True, False)]
+    all_floors = squares(lib, (C.SQUARE_FLOOR,))
+    cases = [(s, cell, front) for s in sensors for cell in range(C.CELL_COUNT) for front in (True, False)]
     for n, ((map_, x, y, _, sensor, cycle, offset), cell, front) in enumerate(cases):
         fx, fy = x + dirs[cell][0], y + dirs[cell][1]
         floors = [(sx, sy) for m, sx, sy, _ in all_floors if m == map_ and (sx, sy) != (fx, fy)]
         if front:
             if not (0 <= fx < lib.dungeon_map_width(map_) and 0 <= fy < lib.dungeon_map_height(map_)) \
-                    or lib.dungeon_square(map_, fx, fy) >> 5 != 1:
+                    or lib.dungeon_square(map_, fx, fy) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR:
                 continue
             party = (fx, fy)
         elif floors:  # near the wall: the walking distance lets the sound through
             party = rng.choice([(sx, sy) for sx, sy in floors if abs(sx - x) + abs(sy - y) <= 4] or floors)
         else:
             continue
-        sc.place(map_, *party, rng.randrange(4))
+        sc.place(map_, *party, rng.randrange(C.DIR_COUNT))
         sensor = turn_wall_thing(sc, sensor, x, y, cell)
         data = lib.thing_word(sensor, 2) & 0x7FFF  # not started yet
         set_word(sc, sensor, 2, data)
@@ -739,11 +748,11 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
         lib.sensor_process_map_entry(1)
         sc.emu.call(0x59785, 1)
         sc.flush_sounds()
-        played["front" if front else "elsewhere"] += any(s[0] == 9 for s in sc.sounds)
+        played["front" if front else "elsewhere"] += any(s[0] == C.CAT_WALL_ORNAMENT for s in sc.sounds)
         assert_world(sc, (n, map_, x, y, cell, party))
         tl = Timeline.in_dll(lib, "timeline")
         for i in range(tl.capacity):  # the ambient sound events of this test
-            if tl.events[i].type == 0x5A:
+            if tl.events[i].type == C.EVENT_SENSOR_AMBIENT_SOUND:
                 lib.timeline_delete_event(i)
                 sc.emu.call(TIMELINE_DELETE_EVENT, i)
     assert played["front"] > 3 and played["elsewhere"] > 3, played

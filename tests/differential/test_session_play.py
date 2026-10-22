@@ -6,6 +6,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.dialog import DialogState, InputMatch, Session, find_point, main_loop_quit, program_start_after  # noqa: F401 (an autouse fixture)
 from dm2test.scenario import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 from dm2tools.emu import EmuError
@@ -20,9 +21,11 @@ def lib():
 GAME_QUIT, IOP_SET_VIDEO_STATE, GAME_END, COMMAND_EXECUTE = 0x2005B, 0x138C7, 0x1FEF6, 0x21D6C
 UI_DIALOG_DRAW, UI_DIALOG_RUN, SAVE_CHECK_DISK, WAIT_VBLANKS, GFX_FILL_ZONE_SCREEN = 0x1A37D, 0x1A0A4, 0x346D1, 0x1C660, 0x13B4D
 G_GAME_COMPLETED, G_QUIT_EXIT_CODE, G_NEW_GAME, G_USE_DUNGENB, G_END_OFFER_RESTORE = 0x7F23C, 0x7F434, 0x7F280, 0x803F8, 0x803F0
-INPUT_MODE_DIALOG = 4
+INPUT_MODE_DIALOG = C.INPUT_MODE_DIALOG
 GAME_SIZE = 252 + 4 * 263 + 2 + 6  # sizeof(Game) in save.h
-WALK = [3, 3, 3, 2, 3, 3, 1, 1, 6, 5, 5, 4, 3, 3]
+WALK = [C.CMD_MOVE_FORWARD, C.CMD_MOVE_FORWARD, C.CMD_MOVE_FORWARD, C.CMD_TURN_RIGHT, C.CMD_MOVE_FORWARD,
+        C.CMD_MOVE_FORWARD, C.CMD_TURN_LEFT, C.CMD_TURN_LEFT, C.CMD_MOVE_LEFT, C.CMD_MOVE_BACK, C.CMD_MOVE_BACK,
+        C.CMD_MOVE_RIGHT, C.CMD_MOVE_FORWARD, C.CMD_MOVE_FORWARD]
 FRAME = ctypes.CFUNCTYPE(None)
 
 
@@ -199,7 +202,7 @@ def test_party_death_ends_the_game_like_original(play, lib):
         lib.session_end(1)
     with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, 1)
-    assert dialogs == [(0x10, 0)]
+    assert dialogs == [(C.DIALOG_THE_END, 0)]
     assert quits == [b"\x01\x00"]
     session = Session.in_dll(lib, "session")
     assert (session.quit_code, session.exit_code, main_loop_quit(lib).value) == (1, 2, 1)
@@ -244,18 +247,18 @@ def test_quit_asks_when_not_saved_like_original(play, lib, since_load, since_sav
     emu.write(G_DISK_NO_SWAP, struct.pack("<H", 1))
     dialogs, ends = [], []
     emu.stub(UI_DIALOG_DRAW, lambda d, *_: dialogs.append(d & 0xFF) or d & 0xFF)
-    emu.stub(UI_DIALOG_RUN, lambda d, *_: 3 if d & 0xFF == 0x0C or dialogs.count(0x1B) > 1 else 1)  # QUIT, CANCEL, RESUME
+    emu.stub(UI_DIALOG_RUN, lambda d, *_: 3 if d & 0xFF == C.DIALOG_NOT_SAVED or dialogs.count(C.DIALOG_SAVE_MENU) > 1 else 1)  # QUIT, CANCEL, RESUME
     emu.stub(GAME_END, lambda *_: ends.append(1))
     for addr in GAME_SAVE_STUBS:
         emu.stub(addr, lambda *_: 0)
     emu.call(GAME_SAVE)
-    asked = 0x0C in dialogs
+    asked = C.DIALOG_NOT_SAVED in dialogs
     assert asked == (since_load > 100 and since_save > 100)
-    assert dialogs == ([0x1B, 0x0C, 0x1B] if asked else [0x1B]) and ends == ([] if asked else [1])
+    assert dialogs == ([C.DIALOG_SAVE_MENU, C.DIALOG_NOT_SAVED, C.DIALOG_SAVE_MENU] if asked else [C.DIALOG_SAVE_MENU]) and ends == ([] if asked else [1])
 
     session = Session.in_dll(lib, "session")
     session.load_time, session.save_time = now - since_load, now - since_save
-    pick = lambda lib: setattr(InputMatch.in_dll(lib, "input_match"), "value", 0xEF)  # a click on the end picture
+    pick = lambda lib: setattr(InputMatch.in_dll(lib, "input_match"), "value", C.CMD_PICTURE_CLICK)  # a click on the end picture
     actions = [click_choice(2), click_choice(2), click_choice(4)] if asked else [click_choice(2), pick]
     with Player(lib, actions) as player:
         lib.session_save()
@@ -268,7 +271,7 @@ def test_menu_commands_match_original(play, lib):
     from dm2test.scenario import COMMAND_RECORD, Command
     sc = play
     session = Session.in_dll(lib, "session")
-    for command in (0xD7, 0xD9, 0xD8):
+    for command in (C.CMD_NEW_GAME, C.CMD_LOAD_GAME, C.CMD_NEW_GAME_B):
         c = Command(0, 0, command)
         sc.emu.write(COMMAND_RECORD, bytes(c))
         lib.command_execute(ctypes.byref(c))
@@ -282,7 +285,8 @@ THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 
 
 # The "do not discard" bit by thing type: (byte offset, bit). start.DAT sets it on all its weapons, clothes, and potions.
-KEEP_BITS = {4: (0x0F, 0x04), 5: (2, 0x80), 6: (2, 0x80), 8: (3, 0x80), 10: (2, 0x80)}
+KEEP_BITS = {C.THING_GROUP: (0x0F, 0x04), C.THING_WEAPON: (2, 0x80), C.THING_ARMOUR: (2, 0x80), C.THING_POTION: (3, 0x80),
+             C.THING_MISC: (2, 0x80)}
 
 
 def fill_table(sc, lib, kind):
@@ -292,10 +296,10 @@ def fill_table(sc, lib, kind):
     base = sc.emu.read_u32(0x7F288 + 4 * kind)
     offset, bit = KEEP_BITS[kind]
     for i in range(lib.dungeon_thing_count(kind)):
-        rec = lib.dungeon_thing_record(kind << 10 | i)
+        rec = lib.dungeon_thing_record(kind << C.THING_TYPE_SHIFT | i)
         link = ctypes.c_uint16.from_address(rec)
-        if link.value == 0xFFFF:
-            link.value = 0xFFFE
+        if link.value == C.THING_NONE:
+            link.value = C.THING_ENDOFLIST
         elif i % 3:
             ctypes.c_uint8.from_address(rec + offset).value &= ~bit
         sc.emu.write(base + THING_SIZES[kind] * i, ctypes.string_at(rec, THING_SIZES[kind]))
@@ -310,17 +314,17 @@ def test_discarded_things_match_original(play, lib, place):
     if place:
         sc.place(*place)
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    last = (ctypes.c_uint8 * 16).in_dll(lib, "last_discarded_map")
-    ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, 16), 16)  # both from the program start
+    last = (ctypes.c_uint8 * C.THING_TYPE_COUNT).in_dll(lib, "last_discarded_map")
+    ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, C.THING_TYPE_COUNT), C.THING_TYPE_COUNT)  # both from the program start
     found = {}
-    for kind in (5, 6, 10, 8, 4):
+    for kind in (C.THING_WEAPON, C.THING_ARMOUR, C.THING_MISC, C.THING_POTION, C.THING_GROUP):
         fill_table(sc, lib, kind)
         for n in range(4):
             mine = lib.dungeon_unused_thing(kind)
             theirs = sc.emu.call(DUN_GET_UNUSED_THING, kind) & 0xFFFF
             assert mine == theirs, (kind, n)
-            assert bytes(last) == sc.emu.read(G_LAST_DISCARDED_MAP, 16), (kind, n)
-            found[kind] = found.get(kind, 0) + (mine != 0xFFFF)
+            assert bytes(last) == sc.emu.read(G_LAST_DISCARDED_MAP, C.THING_TYPE_COUNT), (kind, n)
+            found[kind] = found.get(kind, 0) + (mine != C.THING_NONE)
             sc.assert_same((kind, n))
     assert all(found.values()), found
 
@@ -341,26 +345,26 @@ def test_discard_keeps_things_within_5_squares(play, lib, distance):
             for x in range(width):
                 for y in range(lib.dungeon_map_height(map_)):
                     things = square_things(lib, map_, x, y)
-                    if (x >= 6 or x + 6 < width) and not any(2 <= t >> 10 <= 3 for t in things):
-                        yield from ((t, map_, x, y) for t in things if t >> 10 == 5)
+                    if (x >= 6 or x + 6 < width) and not any(C.THING_TEXT <= t >> C.THING_TYPE_SHIFT <= C.THING_SENSOR for t in things):
+                        yield from ((t, map_, x, y) for t in things if t >> C.THING_TYPE_SHIFT == C.THING_WEAPON)
 
     target, map_, x, y = next(loose_weapons())
-    base = sc.emu.read_u32(0x7F288 + 4 * 5)
-    offset, bit = KEEP_BITS[5]
-    for i in range(lib.dungeon_thing_count(5)):
-        rec = lib.dungeon_thing_record(5 << 10 | i)
+    base = sc.emu.read_u32(0x7F288 + 4 * C.THING_WEAPON)
+    offset, bit = KEEP_BITS[C.THING_WEAPON]
+    for i in range(lib.dungeon_thing_count(C.THING_WEAPON)):
+        rec = lib.dungeon_thing_record(C.THING_WEAPON << C.THING_TYPE_SHIFT | i)
         link = ctypes.c_uint16.from_address(rec)
-        if link.value == 0xFFFF:
-            link.value = 0xFFFE
+        if link.value == C.THING_NONE:
+            link.value = C.THING_ENDOFLIST
         keep = ctypes.c_uint8.from_address(rec + offset)
-        keep.value = keep.value & ~bit if 5 << 10 | i == target else keep.value | bit
+        keep.value = keep.value & ~bit if C.THING_WEAPON << C.THING_TYPE_SHIFT | i == target else keep.value | bit
         sc.emu.write(base + 4 * i, ctypes.string_at(rec, 4))
-    last = (ctypes.c_uint8 * 16).in_dll(lib, "last_discarded_map")
-    ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, 16), 16)
+    last = (ctypes.c_uint8 * C.THING_TYPE_COUNT).in_dll(lib, "last_discarded_map")
+    ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, C.THING_TYPE_COUNT), C.THING_TYPE_COUNT)
     sc.place(map_, x - distance if x >= 6 else x + distance, y, 0)
-    mine = lib.dungeon_unused_thing(5)
-    assert mine == sc.emu.call(DUN_GET_UNUSED_THING, 5) & 0xFFFF
-    assert mine == (target if distance == 6 else 0xFFFF)
+    mine = lib.dungeon_unused_thing(C.THING_WEAPON)
+    assert mine == sc.emu.call(DUN_GET_UNUSED_THING, C.THING_WEAPON) & 0xFFFF
+    assert mine == (target if distance == 6 else C.THING_NONE)
     sc.assert_same(distance)
 
 
@@ -393,12 +397,12 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     from dm2test.scenario import Party, WorldGame
     ctypes.memset(ctypes.addressof(game), 0, GAME_SIZE)
     world = WorldGame.in_dll(lib, "game")
-    world.leader, world.sound_volume, world.music_volume = 0xFFFF, 7, 7
+    world.leader, world.sound_volume, world.music_volume = C.LEADER_NONE, C.VOLUME_SETTING_START, C.VOLUME_SETTING_START
     ctypes.c_uint32.in_dll(lib, "random_seed").value = 0
     party = Party.in_dll(lib, "party")
     ctypes.memset(ctypes.addressof(party), 0, ctypes.sizeof(party))
     party.cur_map, party.new_map, party.push_pending_group = -1, -1, 0xFFFF
-    with Player(lib, [click_command(0, 0xD7)]):
+    with Player(lib, [click_command(C.INPUT_MODE_MENU, C.CMD_NEW_GAME)]):
         assert lib.session_init() == 1
     assert (session.new_game, session.loaded) == (1, 0)
     party_start = lib.dungeon_party_start()
@@ -407,7 +411,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
 
     session.new_game = 0
     DialogState.in_dll(lib, "dialog").screen_mode = 1  # the program start state, reset on the load path
-    with Player(lib, [click_command(0, 0xD9), click_slot(0), click_choice(2), click_choice(1)]):
+    with Player(lib, [click_command(C.INPUT_MODE_MENU, C.CMD_LOAD_GAME), click_slot(0), click_choice(2), click_choice(1)]):
         assert lib.session_init() == 1
     assert (session.new_game, session.loaded, session.slot) == (0, 1, 0)
     assert DialogState.in_dll(lib, "dialog").screen_mode == 0  # the game after "GAME LOADED"
@@ -436,14 +440,14 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     emu, game = loop.emu, loop.game
     assert (game.party_map, game.champion_count) == (0, 1)
     records = champion_records(lib)
-    slots = [t for t in struct.unpack_from("<30H", bytes(records), CH_SLOTS) if t != 0xFFFF]
+    slots = [t for t in struct.unpack_from(f"<{C.SLOT_COUNT}H", bytes(records), CH_SLOTS) if t != C.THING_NONE]
     assert slots
     for t in slots:
-        assert lib.dungeon_link_thing_to_square(t | 2 << 14, 0, 0, 0) == 1
-        emu.call(DUN_LINK_THING_TO_SQUARE, t | 2 << 14, 0, 0, 0)
-    ctypes.memset(records, 0, 4 * CHAMPION_SIZE)
-    emu.write(G_CHAMPIONS, bytes(4 * CHAMPION_SIZE))
-    game.champion_count, game.leader = 0, 0xFFFF
+        assert lib.dungeon_link_thing_to_square(t | 2 << C.THING_CELL_SHIFT, 0, 0, 0) == 1
+        emu.call(DUN_LINK_THING_TO_SQUARE, t | 2 << C.THING_CELL_SHIFT, 0, 0, 0)
+    ctypes.memset(records, 0, C.CHAMPION_MAX * CHAMPION_SIZE)
+    emu.write(G_CHAMPIONS, bytes(C.CHAMPION_MAX * CHAMPION_SIZE))
+    game.champion_count, game.leader = 0, C.LEADER_NONE
     emu.write(G_CHAMPION_COUNT, bytes(2))
     emu.write(G_LEADER, struct.pack("<h", -1))
     Session.in_dll(lib, "session").new_game = 1
@@ -465,7 +469,7 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
                                                                          G_INVENTORY))
     assert mine == theirs == (1, 0, 0, 0)
     assert LeaderHand.in_dll(lib, "leader_hand").icon == emu.read(G_LEADER_HAND_ICON, 1)[0] == 0xFF
-    assert sorted(t for t in struct.unpack_from("<30H", bytes(records), CH_SLOTS) if t != 0xFFFF) == sorted(slots)
+    assert sorted(t for t in struct.unpack_from(f"<{C.SLOT_COUNT}H", bytes(records), CH_SLOTS) if t != C.THING_NONE) == sorted(slots)
     loop.assert_loop("new game")
 
 
@@ -507,10 +511,10 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     state.id = -1
     with Player(lib, [click_choice(2)], every=300):
         lib.session_end(loop.end)
-    assert state.id == 0x10
+    assert state.id == C.DIALOG_THE_END
     with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, struct.unpack("<h", emu.read(G_GAME_END_FLAG, 2))[0])
-    assert dialogs == [(0x10, 0)] and quits == [b"\x01\x00"]
+    assert dialogs == [(C.DIALOG_THE_END, 0)] and quits == [b"\x01\x00"]
     assert (Session.in_dll(lib, "session").exit_code, main_loop_quit(lib).value) == (2, 1)
     sc.flush_sounds()
     sc.assert_same_sounds("scream")
@@ -534,10 +538,11 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     lib.draw_init(gdat)
     game = Game.in_dll(lib, "game")
     lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
-    hand = next(t for t in (lib.champ_remove_object_from_slot(0, s) for s in range(30)) if t != 0xFFFF)
+    hand = next(t for t in (lib.champ_remove_object_from_slot(0, s) for s in range(C.SLOT_COUNT)) if t != C.THING_NONE)
     ctypes.c_uint16.from_address(ctypes.addressof(game) + HAND_OFFSET).value = hand
-    events = [(0x46, 0, struct.pack("<h", 3)), (0x46, 0, struct.pack("<h", -5)), (0x47, 0, b""),
-              (0x48, 1, struct.pack("<h", 7)), (0x4B, 0, struct.pack("<h", 30)), (0x0E, 0, bytes([10, 0, 34]))]
+    events = [(C.EVENT_MAGIC_LIGHT, 0, struct.pack("<h", 3)), (C.EVENT_MAGIC_LIGHT, 0, struct.pack("<h", -5)),
+              (C.EVENT_INVISIBILITY, 0, b""), (C.EVENT_AURA, 1, struct.pack("<h", 7)),
+              (C.EVENT_POISON, 0, struct.pack("<h", 30)), (C.EVENT_ITEM_EFFECT, 0, bytes([10, 0, 34]))]
     for n, (type_, priority, data) in enumerate(events):
         event = Event(game.game_time + 50 + n | game.party_map << 24, type_, priority,
                       (ctypes.c_uint8 * 6)(*data.ljust(6, b"\0")))
@@ -552,7 +557,7 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     mine = (ctypes.c_uint16.from_address(ctypes.addressof(game) + HAND_OFFSET).value,
             LeaderHand.in_dll(lib, "leader_hand").weight)
     theirs = (struct.unpack("<H", emu.read(G_LEADER_HAND, 2))[0], struct.unpack("<H", emu.read(G_LEADER_HAND_WEIGHT, 2))[0])
-    assert mine == theirs and mine[0] != 0xFFFF and mine[1]
+    assert mine == theirs and mine[0] != C.THING_NONE and mine[1]
     loop.assert_loop("load")
 
 
@@ -573,7 +578,7 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     screen = Bitmap.in_dll(lib, "draw_screen")
     view = (ctypes.c_int16 * 4)()
-    assert lib.zone_get_rect(7, view)
+    assert lib.zone_get_rect(C.ZONE_VIEWPORT, view)
 
     def outside_viewport():
         rows = ctypes.string_at(screen.pixels, screen.width * screen.height)
@@ -610,6 +615,6 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
     with Player(lib, []) as player:
         lib.input_key_down(KEY_SAVE_MENU)
         run_ticks(lib, 16)
-        lib.command_execute(ctypes.byref(Command(0, 0, 0x8E)))
+        lib.command_execute(ctypes.byref(Command(0, 0, C.CMD_SLEEP)))
     assert player.frames < player.every
     assert ctypes.c_int.in_dll(lib, "party_sleeping").value == 0

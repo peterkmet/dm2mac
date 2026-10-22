@@ -3,6 +3,7 @@ import random
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
@@ -19,7 +20,7 @@ ZONE_UNPACK_LAYOUT, ZONE_ALLOC_RECORD, ZONE_GET_RECT_CLIPPED = 0x19D0E, 0x19F29,
 MEM_ALLOC = 0x3BBBA
 G_ZONE_LIST = 0x71796
 LAYOUT, RECT, HEAP = SCRATCH, SCRATCH + 0x8000, SCRATCH + 0x10000
-SCALES = [10000, 5000, 1, 0, 2500, 7777, 12000, 65535]
+SCALES = [C.ZONE_SCALE_FULL, 5000, 1, 0, 2500, 7777, 12000, 65535]
 
 
 @pytest.fixture(scope="module")
@@ -82,7 +83,7 @@ def test_zone_rect_matches_original(lib, gdat, emu, margins):
     emu.write(G_ZONE_CLIP_RECT, bytes(clip))
     found_count = 0
     for zone in zones + [0, -1, 0x7FFF]:
-        for w_scale, h_scale in [(10000, 10000)] + [(rng.choice(SCALES), rng.choice(SCALES)) for _ in range(3)]:
+        for w_scale, h_scale in [(C.ZONE_SCALE_FULL, C.ZONE_SCALE_FULL)] + [(rng.choice(SCALES), rng.choice(SCALES)) for _ in range(3)]:
             emu.write(RECT, bytes(8))
             found = emu.call(ZONE_GET_RECT_CLIPPED, zone, RECT, w_scale, h_scale)
             rect = (ctypes.c_int16 * 4)()
