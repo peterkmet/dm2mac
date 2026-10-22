@@ -11,7 +11,6 @@ block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
-block engine/magic.c open: module cleanup
 block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
@@ -48,10 +47,6 @@ bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
 bool engine/aspect.c:wall_sensor_ornament open: module cleanup
 bool engine/aspect.c:wall_text_ornament open: module cleanup
-bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
-bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
-bool engine/include/magic.h:magic_cast_projectile_spell open: module cleanup
-bool engine/magic.c open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
 bool platform/main.c:default_control_path open: module cleanup
@@ -112,7 +107,6 @@ comment engine/game.c open: module cleanup
 comment engine/include/action.h open: module cleanup
 comment engine/include/aspect.h open: module cleanup
 comment engine/include/game_text.h open: module cleanup
-comment engine/include/magic.h open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
@@ -141,10 +135,6 @@ dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
-dead-api engine/include/magic.h:magic_cast_spell open: module cleanup
-dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
-dead-api engine/include/magic.h:magic_find_spell open: module cleanup
-dead-api engine/include/magic.h:magic_report_cast_failure open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 dead-api ui/include/advanced.h:advanced_draw_automap open: module cleanup
 dead-api ui/include/dialog.h:dialog_draw_progress_bar open: module cleanup
@@ -226,8 +216,6 @@ enum engine/include/action.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
 enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
-enum engine/include/magic.h open: module cleanup
-enum engine/magic.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 enum ui/advanced.c open: module cleanup
 enum ui/dialog.c open: module cleanup
@@ -277,11 +265,7 @@ hex ui/ui.c rule 3.12: a table of SKULL.EXE
 hex ui/view.c rule 3.12: a table of SKULL.EXE
 include control/control.c:ui.h open: module cleanup
 include engine/action.c:game.h open: module cleanup
-include engine/game.c:magic.h open: module cleanup
 include engine/include/creature.h:timeline.h open: module cleanup
-include engine/include/magic.h:timeline.h open: module cleanup
-include engine/magic.c:game_text.h open: module cleanup
-include engine/magic.c:money.h open: module cleanup
 include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
 include platform/main.c:ui.h open: module cleanup
@@ -344,7 +328,6 @@ notation engine/aspect.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
-notation engine/magic.c open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
 notation ui/draw.c open: module cleanup
@@ -374,7 +357,6 @@ order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
 order engine/action.c open: module cleanup
 order engine/aspect.c open: module cleanup
-order engine/magic.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
 order ui/action_area.c open: module cleanup
@@ -485,9 +467,6 @@ static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix engine/aspect.c:sensor_ornament open: module cleanup
 static-prefix engine/game.c:timeline_event_aura open: module cleanup
 static-prefix engine/game.c:timeline_event_hide_damage open: module cleanup
-static-prefix engine/magic.c:champion_runes open: module cleanup
-static-prefix engine/magic.c:event_word open: module cleanup
-static-prefix engine/magic.c:magic_light_add open: module cleanup
 static-prefix platform/main.c:play_movies open: module cleanup
 static-prefix platform/platform.c:movie_screen open: module cleanup
 static-prefix ui/action_area.c:action_hand_icon open: module cleanup

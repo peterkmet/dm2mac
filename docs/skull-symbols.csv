@@ -775,7 +775,7 @@ address,name,signature,subsystem
 0x000412e1,magic_add_light,"void magic_add_light(uint16_t spell, int16_t power)",magic
 0x000414a5,champ_perform_action,"int champ_perform_action(uint16_t champ, uint16_t action)",champions
 0x000421fd,magic_find_spell,uint32_t *magic_find_spell(const uint8_t *runes),magic
-0x0004225e,magic_find_flask_in_hands,int16_t magic_find_flask_in_hands(uint8_t *champ),magic
+0x0004225e,find_flask_in_hands,int16_t find_flask_in_hands(uint8_t *champ),magic
 0x000422f5,magic_cast_spell,"uint16_t magic_cast_spell(uint16_t champ, const uint8_t *spell, int16_t power)",magic
 0x000428a2,magic_cast_entered_runes,int magic_cast_entered_runes(void),magic
 0x00042924,magic_add_rune,void magic_add_rune(int16_t symbol),magic
@@ -793,7 +793,7 @@ address,name,signature,subsystem
 0x00043686,ui_draw_spell_panel,void ui_draw_spell_panel(void),interface
 0x00043759,area_draw_name,void area_draw_name(uint16_t index),interface
 0x00043827,ui_draw_action_menu,void ui_draw_action_menu(void),interface
-0x0004384b,magic_report_cast_failure,void magic_report_cast_failure(uint16_t result),magic
+0x0004384b,report_cast_failure,void report_cast_failure(uint16_t result),magic
 0x000438fa,gdat_get_map_icon_strip,"int16_t gdat_get_map_icon_strip(uint8_t category, uint8_t index, uint8_t **image, uint8_t *palette)",graphics
 0x00043970,ui_map_draw_icon,"void ui_map_draw_icon(uint8_t *image, int16_t frame, int16_t x, int16_t y, uint16_t flags, uint8_t *palette)",interface
 0x00043a7c,ui_map_draw_square,"void ui_map_draw_square(uint16_t map_item, int16_t x, int16_t y, int16_t dir, int16_t screen_x, int16_t screen_y, uint8_t wallset, uint8_t flags)",interface

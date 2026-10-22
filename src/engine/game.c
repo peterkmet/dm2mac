@@ -7,7 +7,6 @@
 #include "dungeon.h"
 #include "hooks.h"
 #include "inventory.h"
-#include "magic.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"

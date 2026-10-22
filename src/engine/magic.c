@@ -9,113 +9,148 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
-#include "game_text.h"
 #include "hooks.h"
 #include "item.h"
-#include "money.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
 #include "sensor.h"
 #include "sound_request.h"
 #include "weather.h"
+#include <stdbool.h>
 #include <stddef.h>
 
-#define SPELL_COUNT            34
-#define SPELL_KIND_MASK        0x0f
+/* The size of the spell table. */
+#define SPELL_COUNT 34
+
+/* Masks of the effect word of a spell. */
+#define SPELL_KIND_MASK  0x0f
+#define SPELL_TYPE_MASK  0x3f
+#define SPELL_DELAY_MASK 0x3f
+
+/* The rune key of a spell: the runes after the power rune. */
+#define SPELL_RUNES_MASK 0x00ffffff
+
+/* Shifts of the effect word and the rune key of a spell. */
 #define SPELL_TYPE_SHIFT       4
-#define SPELL_TYPE_MASK        0x3f
 #define SPELL_DELAY_SHIFT      10
-#define SPELL_DELAY_MASK       0x3f
 #define SPELL_POWER_RUNE_SHIFT 24
-#define SPELL_RUNES_MASK       0x00ffffff /* the runes after the power rune */
-enum spell_kind { SPELL_POTION = 1, SPELL_MISSILE, SPELL_OTHER, SPELL_SUMMON };
+#define RUNE_KEY_SHIFT         8 /* each rune takes one byte of the spell key */
+
+/* Kinds of spells. */
+#define SPELL_POTION  0x01
+#define SPELL_MISSILE 0x02
+#define SPELL_OTHER   0x03
+#define SPELL_SUMMON  0x04
+
 /* Types of the SPELL_OTHER spells. */
-enum {
-    OTHER_LIGHT,
-    OTHER_DARKNESS,
-    OTHER_AURA_1,
-    OTHER_INVISIBILITY,
-    OTHER_AURA_2,
-    OTHER_TORCH,
-    OTHER_AURA_5,
-    OTHER_AURA_4,
-    OTHER_AURA_0,
-    OTHER_AURA_6,
-    OTHER_AURA_3,
-    OTHER_HASTE,
-    OTHER_EXPLOSION = 14,
-    OTHER_CREATE_ITEM
-};
-#define MISSILE_DOUBLE_SKILL     4    /* this missile spell counts the skill twice */
-#define SUMMON_RECAST_VANISHES   0x35 /* a cast of this summon makes a summoned one vanish instead */
-#define RUNE_FIRST               0x60 /* the glyph of the first rune; 6 runes per set */
-#define RUNES_PER_SET            6
-#define POWER_RUNE_BASE          0x5f /* power = power rune - this */
-#define WISDOM_BONUS             15
-#define WISDOM_CHANCE_MAX        115
-#define CAST_ROLL_MASK           0x7f
-#define EXPERIENCE_ROLL_MASK     7
-#define POTION_ROLL_MASK         0x0f
-#define POTION_POWER_PER_POWER   40
-#define FLASK_EMPTY              0x14   /* GDAT index of the empty flask */
-#define MISSILE_THING_BASE       0xff80 /* the thing of a missile spell type */
+#define OTHER_LIGHT        0x00
+#define OTHER_DARKNESS     0x01
+#define OTHER_AURA_1       0x02
+#define OTHER_INVISIBILITY 0x03
+#define OTHER_AURA_2       0x04
+#define OTHER_TORCH        0x05
+#define OTHER_AURA_5       0x06
+#define OTHER_AURA_4       0x07
+#define OTHER_AURA_0       0x08
+#define OTHER_AURA_6       0x09
+#define OTHER_AURA_3       0x0a
+#define OTHER_HASTE        0x0b
+#define OTHER_EXPLOSION    0x0e
+#define OTHER_CREATE_ITEM  0x0f
+
+/* Spell types and ids that the rules single out. */
+#define MISSILE_DOUBLE_SKILL   0x04 /* this missile spell counts the skill twice */
+#define SUMMON_RECAST_VANISHES 0x35 /* a cast of this summon makes a summoned one vanish instead */
+#define FLASK_EMPTY            0x14 /* GDAT index of the empty flask */
+
+/* Rune glyphs. */
+#define RUNE_FIRST      0x60 /* the glyph of the first rune; 6 runes per set */
+#define POWER_RUNE_BASE 0x5f /* power = power rune - this */
+
+/* Rune counts. */
+#define RUNES_PER_SET           6
+#define RUNE_SETS               4 /* the power runes, then the three runes after them */
+#define POWER_RUNE_FACTOR_SHIFT 3 /* the mana factor of a power rune is in eighths */
+
+/* The cast roll. */
+#define WISDOM_BONUS      15
+#define WISDOM_CHANCE_MAX 115
+
+/* Masks of the random rolls of a cast. */
+#define CAST_ROLL_MASK       0x7f
+#define EXPERIENCE_ROLL_MASK 0x07
+#define POTION_ROLL_MASK     0x0f
+
+/* Potion and experience amounts. */
+#define POTION_POWER_PER_POWER    40
+#define SPELL_DELAY_POWER_BASE    18 /* the action delay: factor * (power + 18) / 24 */
+#define SPELL_DELAY_DIVISOR       24
+#define EXPERIENCE_PER_DIFFICULTY 8
+#define EXPERIENCE_PER_LEVEL      16
+
+/* The thing of a missile spell type, and the explosion that a failed summon makes. */
+#define MISSILE_THING_BASE  0xff80
+#define EXPLOSION_POOF      (MISSILE_THING_BASE + 0x28) /* the summon found no room */
+#define EXPLOSION_ON_SQUARE 0x00ff
+#define SUMMON_NO_LINK      0xffff
+
+/* Missile and summon amounts. */
 #define MISSILE_POWER_MIN        21
 #define MISSILE_POWER_MAX        255
 #define MISSILE_ATTACK           90
 #define MISSILE_STEP_MAX         10
-#define EXPLOSION_POOF           (MISSILE_THING_BASE + 0x28) /* the summon found no room */
 #define EXPLOSION_POOF_POWER     110
-#define EXPLOSION_ON_SQUARE      0xff
-#define SUMMON_NO_LINK           0xffff
-#define INVISIBILITY_TICKS_SHIFT 3
-#define LIGHT_TICKS_FACTOR       9
-#define AURA_PARTY               0x0f
-#define AURA_COST                4
-#define AURA_BIG                 50 /* a champion with a bigger aura makes a new aura a quarter */
-#define AURA_SHIFT               5
-#define LIGHT_EVENT_STEP         8 /* game ticks between two steps of a fading light */
-#define LIGHT_POWER_MIN          32
-#define LIGHT_POWER_MAX          256
-#define LIGHT_STRENGTH_MIN       8    /* power / 8, at least this */
-#define DARKNESS_SIGN            (-2) /* darkness takes twice the light of its level */
-#define TORCH_TICKS              2000 /* the base duration of the light spells */
-#define LIGHT_TICKS              10000
-#define SPELL_DELAY_POWER_BASE   18 /* the action delay: factor * (power + 18) / 24 */
-#define SPELL_DELAY_DIVISOR      24
-#define CAST_KIND_MASK           0xf0
-/* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
-#define SPELL_ITEM_INDEX         0x0f
-#define SPELL_ITEM_KEY           0x42
-/* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
-enum { GLOBAL_FLASK_MISSING = 0x44, GLOBAL_SPELL_FAILED = 0x45, GLOBAL_SPELL_UNKNOWN = 0x46 };
-#define FAILURE_DELAY_BASE        8
-#define FLASK_DELAY_MIN           3
+#define MISSILE_STEP_MANA_SHIFT  5 /* each 32 points of maximum mana make the missile fly one step farther */
+#define MISSILE_STEP_BONUS_MAX   6
+#define MISSILE_POWER_PER_STEP   4 /* a weak missile gets this power more and flies power / 4 steps */
+#define MISSILE_POWER_STEP_SHIFT 2
+#define MISSILE_SKILL_BASE       4 /* the missile strength: (skill * 2 + 4) * (power + 2) */
+#define MISSILE_POWER_BASE       2
+#define SUMMON_LEVEL_DIVISOR     6 /* the summon level: (random 0 to 3 + skill * 2) * power / 6 */
+
+/* Light, aura and haste amounts of the other spells. */
+#define INVISIBILITY_TICKS_SHIFT  3
+#define RUNE_KEY_SHIFT            8 /* each rune takes one byte of the spell key */
+#define LIGHT_TICKS_FACTOR        9
+#define AURA_COST                 4
+#define AURA_BIG                  50 /* a champion with a bigger aura makes a new aura a quarter */
+#define AURA_SHIFT                5
+#define AURA_BIG_SHIFT            2
+#define LIGHT_EVENT_STEP          8 /* game ticks between two steps of a fading light */
+#define LIGHT_POWER_MIN           32
+#define LIGHT_POWER_MAX           256
+#define LIGHT_STRENGTH_MIN        8    /* power / 8, at least this */
+#define DARKNESS_SIGN             (-2) /* darkness takes twice the light of its level */
+#define TORCH_TICKS               2000 /* the base duration of the light spells */
+#define LIGHT_TICKS               10000
 #define MAGIC_LIGHT_LEVELS        16 /* the light spells reach level 15 */
-#define RUNE_BITS                 8  /* each rune takes one byte of the spell key */
-#define RUNE_SETS                 4  /* the power runes, then the three runes after them */
-#define POWER_RUNE_FACTOR_SHIFT   3  /* the mana factor of a power rune is in eighths */
 #define LIGHT_POWER_SHIFT         3  /* the light strength is power / 8 */
 #define DARKNESS_TICKS            16 /* the duration of darkness: this per strength above the minimum, plus this */
 #define TORCH_TICKS_STRENGTH_BASE 3
 #define TORCH_TICKS_PER_STRENGTH  128
 #define TORCH_LEVEL_SHIFT         2 /* the torch level is a quarter of the strength, plus 1 */
 #define LIGHT_TICKS_PER_STRENGTH  512
-#define AURA_BIG_SHIFT            2
-#define MISSILE_STEP_MANA_SHIFT   5 /* each 32 points of maximum mana make the missile fly one step farther */
-#define MISSILE_STEP_BONUS_MAX    6
-#define MISSILE_POWER_PER_STEP    4 /* a weak missile gets this power more and flies power / 4 steps */
-#define MISSILE_POWER_STEP_SHIFT  2
-#define MISSILE_SKILL_BASE        4 /* the missile strength: (skill * 2 + 4) * (power + 2) */
-#define MISSILE_POWER_BASE        2
-#define SUMMON_LEVEL_DIVISOR      6 /* the summon level: (random 0 to 3 + skill * 2) * power / 6 */
 #define OTHER_STEPS_PER_POWER     4
 #define AURA_STRONG_BASE          100 /* the two strong auras start at this value */
 #define AURA_STEPS_BASE           3
 #define HASTE_PER_STEP            8
-#define EXPERIENCE_PER_DIFFICULTY 8
-#define EXPERIENCE_PER_LEVEL      16
-#define CAST_SKILL_MASK           0x0f /* the base skill in a cast result */
+#define FAILURE_DELAY_BASE        8
+#define FLASK_DELAY_MIN           3
+
+/* The party of an aura cast, and the cast result masks. */
+#define AURA_PARTY      0x0f
+#define CAST_KIND_MASK  0xf0
+#define CAST_SKILL_MASK 0x0f /* the base skill in a cast result */
+
+/* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
+#define SPELL_ITEM_INDEX 0x0f
+#define SPELL_ITEM_KEY   0x42
+
+/* Global variables that count the failed casts; the cast failure picture GDAT (1, 5, 0x0b). */
+#define GLOBAL_FLASK_MISSING 0x44
+#define GLOBAL_SPELL_FAILED  0x45
+#define GLOBAL_SPELL_UNKNOWN 0x46
 
 /* The spells of SKULL.EXE. */
 static const Spell spells[SPELL_COUNT] = {
@@ -176,7 +211,7 @@ static int iclamp(int lo, int v, int hi)
 }
 
 /* Adds delta to the light of the party spells. */
-static void magic_light_add(int delta)
+static void add_spell_light(int delta)
 {
     save_set_magic_light((int16_t)(save_magic_light() + delta));
 }
@@ -190,7 +225,7 @@ static TimelineEvent party_event(int type, uint32_t delay)
     return e;
 }
 
-static uint16_t event_word(const TimelineEvent *e)
+static uint16_t read_event_word(const TimelineEvent *e)
 {
     return le16(e->data);
 }
@@ -200,7 +235,7 @@ static void set_event_word(TimelineEvent *e, uint16_t v)
 }
 
 /* The runes of a champion with the byte after them (the end mark of 4 runes). */
-static uint8_t *champion_runes(Champion *c)
+static uint8_t *runes_of(Champion *c)
 {
     return (uint8_t *)c + offsetof(Champion, runes);
 }
@@ -210,7 +245,7 @@ const Spell *magic_find_spell(const uint8_t *runes)
     if (!runes[1])
         return NULL;
     uint32_t key = 0;
-    for (int shift = SPELL_POWER_RUNE_SHIFT; shift >= 0; shift -= RUNE_BITS) {
+    for (int shift = SPELL_POWER_RUNE_SHIFT; shift >= 0; shift -= RUNE_KEY_SHIFT) {
         key |= (uint32_t)*runes++ << shift;
         if (!*runes)
             break;
@@ -221,16 +256,6 @@ const Spell *magic_find_spell(const uint8_t *runes)
             return s;
     }
     return NULL;
-}
-
-int magic_find_flask_in_hands(const Champion *c)
-{
-    for (int hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
-        uint16_t t = c->slots[hand];
-        if (thing_type(t) == THING_POTION && item_gdat_index(t) == FLASK_EMPTY)
-            return hand;
-    }
-    return -1;
 }
 
 void magic_add_light(int kind, int power)
@@ -253,13 +278,13 @@ void magic_add_light(int kind, int power)
     TimelineEvent e = party_event(EVENT_MAGIC_LIGHT, ticks);
     set_event_word(&e, (uint16_t)(kind == LIGHT_DARKNESS ? level : -level));
     timeline_add_event(&e);
-    magic_light_add(light_power[level] * sign);
+    add_spell_light(light_power[level] * sign);
     light_update_party_light();
 }
 
 void timeline_event_magic_light(TimelineEvent *e)
 {
-    int16_t level = (int16_t)event_word(e);
+    int16_t level = (int16_t)read_event_word(e);
     if (!level)
         return;
     int fading_light = level < 0; /* light events count up from minus the level, darkness events down */
@@ -273,7 +298,7 @@ void timeline_event_magic_light(TimelineEvent *e)
     } else {
         delta *= 2;
     }
-    magic_light_add(delta);
+    add_spell_light(delta);
     if (!next)
         return;
     TimelineEvent fade = party_event(EVENT_MAGIC_LIGHT, LIGHT_EVENT_STEP);
@@ -322,16 +347,16 @@ void magic_add_party_aura(int mask, int type, int16_t value, uint16_t duration)
     timeline_add_event(&e);
 }
 
-int magic_cast_party_aura(Champion *c, int type, uint16_t value, int pay)
+bool magic_cast_party_aura(Champion *c, int type, uint16_t value, bool pay)
 {
-    int paid = 1;
+    bool paid = true;
     if (pay) {
         if (!c->mana)
-            return 0;
+            return false;
         if (c->mana < AURA_COST) {
             value >>= 1;
             c->mana = 0;
-            paid = 0;
+            paid = false;
         } else {
             c->mana -= AURA_COST;
         }
@@ -340,11 +365,11 @@ int magic_cast_party_aura(Champion *c, int type, uint16_t value, int pay)
     return paid;
 }
 
-int magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
+bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
 {
     Champion *c = champion(champ);
     if (c->mana < cost)
-        return 0;
+        return false;
     c->mana = (int16_t)(c->mana - cost);
     c->redraw |= REDRAW_BARS;
     int step = MISSILE_STEP_MAX - imin(MISSILE_STEP_BONUS_MAX, c->max_mana >> MISSILE_STEP_MANA_SHIFT);
@@ -353,7 +378,7 @@ int magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
         step = (int16_t)power >> MISSILE_POWER_STEP_SHIFT;
     }
     champ_launch_projectile((int)(c - champion(0)), thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
-    return 1;
+    return true;
 }
 
 /* A summon spell: a creature group of type near the party, or a summoned creature that vanishes. */
@@ -462,6 +487,17 @@ static int cast_failure(int kind, const Spell *spell)
     return kind | champ_base_skill(skill);
 }
 
+/* The hand (1, then 0) that holds an empty flask, -1 none. */
+static int find_flask_in_hands(const Champion *c)
+{
+    for (int hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
+        uint16_t t = c->slots[hand];
+        if (thing_type(t) == THING_POTION && item_gdat_index(t) == FLASK_EMPTY)
+            return hand;
+    }
+    return -1;
+}
+
 int magic_cast_spell(int champ, const Spell *spell, int power)
 {
     Champion *c = champion(champ);
@@ -482,7 +518,7 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
     }
     switch (kind) {
     case SPELL_POTION: {
-        int hand = magic_find_flask_in_hands(c);
+        int hand = find_flask_in_hands(c);
         if (hand < 0)
             return cast_failure(CAST_NEEDS_FLASK, spell);
         uint16_t flask = champ_remove_object_from_slot(champ, hand);
@@ -512,7 +548,8 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
     return 0;
 }
 
-void magic_report_cast_failure(int result)
+/* Shows why a cast failed (CAST_*) and counts it in the global variables. */
+static void report_cast_failure(int result)
 {
     int min_delay = 1, var;
     switch (result & CAST_KIND_MASK) {
@@ -537,15 +574,15 @@ void magic_report_cast_failure(int result)
     action.redraw_delay = (int16_t)imax(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
 }
 
-int magic_cast_entered_runes(void)
+bool magic_cast_entered_runes(void)
 {
     int champ = (uint16_t)(action.champion - 1);
     Champion *c = champion(champ);
-    uint8_t *runes = champion_runes(c);
+    uint8_t *runes = runes_of(c);
     const Spell *spell = magic_find_spell(runes);
     int result = spell ? magic_cast_spell(champ, spell, (int16_t)(runes[0] - POWER_RUNE_BASE)) : CAST_UNKNOWN_SPELL;
     if (result)
-        magic_report_cast_failure(result);
+        report_cast_failure(result);
     if ((result & CAST_KIND_MASK) != CAST_NEEDS_FLASK) {
         runes[0] = 0;
         c->rune_count = 0;
@@ -557,7 +594,7 @@ int magic_cast_entered_runes(void)
 uint16_t magic_rune_mana_cost(int champ, int rune)
 {
     Champion *c = champion(champ);
-    uint8_t *runes = champion_runes(c);
+    uint8_t *runes = runes_of(c);
     int n = c->rune_count;
     uint16_t mana = rune_mana[n * RUNES_PER_SET + rune];
     if (n)
@@ -568,10 +605,10 @@ uint16_t magic_rune_mana_cost(int champ, int rune)
 void magic_add_rune(int rune)
 {
     Champion *c = champion(action.champion - 1);
-    uint8_t *runes = champion_runes(c);
+    uint8_t *runes = runes_of(c);
     int n = c->rune_count;
     uint16_t mana = magic_rune_mana_cost(action.champion - 1, rune);
-    int added = mana <= c->mana;
+    bool added = mana <= c->mana;
     if (added) {
         c->mana = (int16_t)(c->mana - mana);
         c->redraw |= REDRAW_BARS;
@@ -586,12 +623,11 @@ void magic_add_rune(int rune)
         g_hooks.draw_champion_state(action.champion - 1);
 }
 
-/* The champion who casts takes back the last rune. */
 void magic_remove_last_rune(void)
 {
     Champion *c = champion(action.champion - 1);
     c->rune_count--;
-    champion_runes(c)[c->rune_count] = 0;
+    runes_of(c)[c->rune_count] = 0;
     action.redraw_delay = 1;
     g_hooks.update_action_area(0);
     g_hooks.refresh_input_mode();
