@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Recruiting a champion from its mirror: the candidate joins the party or goes back. */
+#include "recruit.h"
 #include "gdat.h"
 #include "gfx.h"
 #include "ids.h"
@@ -11,43 +11,45 @@
 #include "game_text.h"
 #include "hooks.h"
 #include "inventory.h"
-#include "item.h"
 #include "move.h"
 #include "random.h"
 #include "sensor.h"
 #include "sound_request.h"
 #include <string.h>
 
-#define SENSOR_MIRROR         0x7e         /* the wall sensor of a champion mirror; its data is the portrait */
-#define SENSOR_MIRROR_ACTIVE  SENSOR_STATE /* the mirror still holds its champion */
-#define PORTRAIT_DATA_TYPE    8 /* GDAT item (0x16, portrait, 8, 0): health, stamina, mana, statistics, skills */
+/* The sensor flag of a mirror that still holds its champion. */
+#define MIRROR_ACTIVE         SENSOR_STATE
+/* The GDAT item type of the champion data (0x16, portrait, 8, 0): health, stamina, mana, statistics, skills. */
+#define PORTRAIT_DATA_TYPE    8
+/* Word indices of the champion data; skill s at DATA_SKILLS + s. */
+#define DATA_HEALTH           0
+#define DATA_STAMINA          1
+#define DATA_MANA             2
+#define DATA_STATS            3
+#define DATA_SKILLS           6
+/* Start values of a new champion. */
 #define STAT_START_MIN        30
 #define SKILL_EXPERIENCE_BASE 64
 #define FOOD_START            1500
-#define FOOD_RANDOM_MASK      0xff /* a new champion gets up to 255 more food and water */
+/* A new champion gets up to 255 more food and water. */
+#define FOOD_RANDOM_MASK      0xff
+/* The sound priority of the mouth of a recruit. */
 #define MOUTH_SOUND_PRIORITY  0xff
-#define MESSAGE_COLOR_FIRST   UI_GREEN
-enum {
-    DATA_HEALTH,
-    DATA_STAMINA,
-    DATA_MANA,
-    DATA_STATS,
-    DATA_SKILLS = 6
-}; /* word indices; skill s at DATA_SKILLS + s */
 
 /* The colors of the champion messages. */
 static const uint8_t message_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED, UI_BLUE};
 
-/* The champion of a new game joins without the inventory, the mouth, and the message (the original flag 0x75a29). */
-static int recruit_silent;
+/* The champion of a new game joins without the inventory, the mouth, and the message. */
+static bool recruit_silent;
 
 /* Makes champion index the champion of portrait, facing dir, in the first free cell. */
-static void champ_add_to_party(int portrait, int index, int dir)
+static void add_to_party(int portrait, int index, int dir)
 {
     Champion *c = champion(index);
     memset(c, 0, sizeof *c);
     c->portrait = (uint8_t)portrait;
-    c->last_command[0] = c->last_command[1] = COMMAND_NONE;
+    c->last_command[SLOT_READY_HAND] = COMMAND_NONE;
+    c->last_command[SLOT_ACTION_HAND] = COMMAND_NONE;
     c->damage_event = THING_NONE;
     c->dir = (uint8_t)dir;
     int k = 0;
@@ -74,12 +76,16 @@ static void champ_add_to_party(int portrait, int index, int dir)
         gdat_item(gdat_current(), gdat_find(gdat_current(), CAT_CHAMPION, portrait, PORTRAIT_DATA_TYPE, 0), &size);
     if (!d)
         return; /* fix: the original reads no data */
-    c->health = c->max_health = (int16_t)le16(d + 2 * DATA_HEALTH);
-    c->stamina = c->max_stamina = (int16_t)le16(d + 2 * DATA_STAMINA);
-    c->mana = c->max_mana = (int16_t)le16(d + 2 * DATA_MANA);
+    c->health = (int16_t)le16(d + 2 * DATA_HEALTH);
+    c->max_health = c->health;
+    c->stamina = (int16_t)le16(d + 2 * DATA_STAMINA);
+    c->max_stamina = c->stamina;
+    c->mana = (int16_t)le16(d + 2 * DATA_MANA);
+    c->max_mana = c->mana;
     for (int s = 0; s < STAT_COUNT; s++) {
         int16_t v = (int16_t)le16(d + 2 * (DATA_STATS + s));
-        c->stats[s][0] = c->stats[s][1] = (uint8_t)(v > STAT_START_MIN ? v : STAT_START_MIN);
+        c->stats[s][0] = (uint8_t)(v > STAT_START_MIN ? v : STAT_START_MIN);
+        c->stats[s][1] = c->stats[s][0];
     }
     for (int s = SKILL_BASE_COUNT; s < SKILL_COUNT; s++) {
         uint16_t level = le16(d + 2 * (DATA_SKILLS + s));
@@ -95,30 +101,30 @@ static void champ_add_to_party(int portrait, int index, int dir)
     c->water = (int16_t)((rand_next() & FOOD_RANDOM_MASK) + FOOD_START);
 }
 
-/* The mirror sensor on the square (x, y) of the current map. */
+/* The mirror sensor on the square (x, y) of the current map; its data is the portrait. */
 static uint16_t mirror_sensor(int x, int y)
 {
     for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_MIRROR)
+        if (thing_type(t) == THING_SENSOR && sensor_type(t) == WALL_CLICK_PORTRAIT)
             return t;
     return THING_NONE;
 }
 
-int champ_start_recruit(int x, int y, int dir, int map)
+bool recruit_start(int x, int y, int dir, int map)
 {
     int index = game.champion_count;
     if (game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
-        return 0;
+        return false;
     int saved = party.cur_map;
     dun_set_current_map(map);
     int fx = x + dir_dx[dir], fy = y + dir_dy[dir];
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror == THING_NONE) { /* fix: the original then takes an uninitialized portrait */
         dun_set_current_map(saved);
-        return 0;
+        return false;
     }
     int portrait = (uint8_t)sensor_data(mirror);
-    champ_add_to_party(portrait, index, dir);
+    add_to_party(portrait, index, dir);
     if (index) {
         action_area_close();
         g_hooks.update_action_area(0);
@@ -139,10 +145,10 @@ int champ_start_recruit(int x, int y, int dir, int map)
     }
     dun_set_current_map(saved);
     champ_compute_load(index);
-    return index + 1;
+    return true;
 }
 
-void champ_finish_recruit(int x, int y, int dir, int map, int command)
+void recruit_finish(int x, int y, int dir, int map, int command)
 {
     int champ = ui.candidate - 1;
     Champion *c = champion(champ);
@@ -179,7 +185,7 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
             dungeon_unlink_thing_from_square(c->slots[s], party.cur_map, fx, fy);
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror != THING_NONE)
-        sensor_set_flag(mirror, SENSOR_MIRROR_ACTIVE, false);
+        sensor_set_flag(mirror, MIRROR_ACTIVE, false);
     if (game.champion_count == 1)
         game.first_recruit_time = game.game_time;
     if (!recruit_silent) {
@@ -195,10 +201,10 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
     dun_set_current_map(saved);
 }
 
-void champ_recruit_start_champion(int x, int y, int dir, int map)
+void recruit_start_champion(int x, int y, int dir, int map)
 {
-    recruit_silent = 1;
-    champ_start_recruit(x, y, dir, map);
-    champ_finish_recruit(x, y, dir, map, CMD_RECRUIT);
-    recruit_silent = 0;
+    recruit_silent = true;
+    recruit_start(x, y, dir, map);
+    recruit_finish(x, y, dir, map, CMD_RECRUIT);
+    recruit_silent = false;
 }

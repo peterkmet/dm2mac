@@ -13,6 +13,7 @@
 #include "money.h"
 #include "move.h"
 #include "projectile.h"
+#include "recruit.h"
 #include "advanced.h"
 #include "input.h"
 #include "text.h"

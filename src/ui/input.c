@@ -16,6 +16,7 @@
 #include "minion.h"
 #include "money.h"
 #include "move.h"
+#include "recruit.h"
 #include "save.h"
 #include "sensor.h"
 #include "sound_request.h"
@@ -2106,7 +2107,7 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
         int champ = command - CMD_INVENTORY_FIRST;
         if (ui.candidate)
-            champ_finish_recruit(game.party_x, game.party_y, game.party_dir, game.party_map, CMD_RECRUIT_CANCEL);
+            recruit_finish(game.party_x, game.party_y, game.party_dir, game.party_map, CMD_RECRUIT_CANCEL);
         else if (champ == CHAMPION_MAX || champ < game.champion_count)
             ui_toggle_inventory(champ);
     } else if (command == CMD_LEADER_INVENTORY) {
@@ -2161,7 +2162,7 @@ static int command_execute_champion(int command, int idle)
     } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
         money_box_click_coin(command - CMD_COIN_FIRST);
     } else if ((command == CMD_RECRUIT || command == CMD_RECRUIT_CANCEL) && idle) {
-        champ_finish_recruit(game.party_x, game.party_y, game.party_dir, game.party_map, command);
+        recruit_finish(game.party_x, game.party_y, game.party_dir, game.party_map, command);
     } else if (command == CMD_MOUTH) {
         champ_consume_object(-1, THING_NONE, -1);
     } else if (command == CMD_EYE) {

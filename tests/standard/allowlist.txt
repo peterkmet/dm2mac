@@ -29,7 +29,6 @@ block engine/magic.c open: module cleanup
 block engine/money.c open: module cleanup
 block engine/move.c open: module cleanup
 block engine/projectile.c open: module cleanup
-block engine/recruit.c open: module cleanup
 block engine/save.c open: module cleanup
 block engine/sound_request.c open: module cleanup
 block platform/include/scale.h open: module cleanup
@@ -326,7 +325,6 @@ enum engine/item.c open: module cleanup
 enum engine/magic.c open: module cleanup
 enum engine/move.c open: module cleanup
 enum engine/projectile.c open: module cleanup
-enum engine/recruit.c open: module cleanup
 enum engine/save.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 enum ui/advanced.c open: module cleanup
@@ -399,7 +397,6 @@ include engine/magic.c:money.h open: module cleanup
 include engine/move.c:money.h open: module cleanup
 include engine/projectile.c:game.h open: module cleanup
 include engine/projectile.c:money.h open: module cleanup
-include engine/recruit.c:item.h open: module cleanup
 include engine/sound_request.c:ai.h open: module cleanup
 include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
@@ -452,7 +449,6 @@ long ui/view.c:view_draw_floor_ornament open: module cleanup
 long ui/view.c:view_draw_object open: module cleanup
 long ui/view.c:view_draw_wall_ornament open: module cleanup
 module engine/damage.c open: module cleanup
-module engine/recruit.c open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
 name engine/damage.c:champ_consume_food_and_water open: module cleanup
@@ -500,7 +496,6 @@ notation engine/magic.c open: module cleanup
 notation engine/money.c open: module cleanup
 notation engine/move.c open: module cleanup
 notation engine/projectile.c open: module cleanup
-notation engine/recruit.c open: module cleanup
 notation engine/save.c open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
@@ -738,7 +733,6 @@ static-prefix engine/projectile.c:projectile_hit_door open: module cleanup
 static-prefix engine/projectile.c:projectile_hit_wall_sensors open: module cleanup
 static-prefix engine/projectile.c:projectile_reflect open: module cleanup
 static-prefix engine/projectile.c:square_distance open: module cleanup
-static-prefix engine/recruit.c:champ_add_to_party open: module cleanup
 static-prefix engine/save.c:champion_slot open: module cleanup
 static-prefix engine/save.c:container_is_moneybox open: module cleanup
 static-prefix engine/save.c:creature_is_static open: module cleanup

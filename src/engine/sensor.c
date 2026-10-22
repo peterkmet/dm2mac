@@ -18,6 +18,7 @@
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
+#include "recruit.h"
 #include "save.h"
 #include "sound_request.h"
 #include <string.h>
@@ -1899,7 +1900,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
     case WALL_CLICK_PORTRAIT:
         if (!sensor_flag(t, SENSOR_STATE) || c->cell != dir_opposite(game.party_dir))
             return 1;
-        champ_start_recruit(game.party_x, game.party_y, game.party_dir, game.party_map);
+        recruit_start(game.party_x, game.party_y, game.party_dir, game.party_map);
         c->done = 1;
         return 0;
     case WALL_ITEM_HOLDER:

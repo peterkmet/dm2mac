@@ -866,10 +866,10 @@ address,name,signature,subsystem
 0x0004904f,ui_draw_all_champion_states,void ui_draw_all_champion_states(int tick),interface
 0x0004910b,inv_update_hand_cursor,void inv_update_hand_cursor(void),inventory
 0x0004916b,inv_put_object_in_free_slot,"void inv_put_object_in_free_slot(uint16_t champ, uint16_t thing)",inventory
-0x00049242,champ_add_to_party,"void champ_add_to_party(uint8_t portrait, int16_t index, uint8_t dir)",champions
-0x000494fb,champ_start_recruit,"int champ_start_recruit(int16_t x, int16_t y, int16_t dir, int16_t map)",champions
+0x00049242,add_to_party,"void add_to_party(uint8_t portrait, int16_t index, uint8_t dir)",champions
+0x000494fb,recruit_start,"int recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)",champions
 0x000496e5,session_edit_champion_name,void session_edit_champion_name(char *champ_name),champions
-0x00049a17,champ_finish_recruit,"void champ_finish_recruit(int16_t x, int16_t y, int16_t dir, int16_t map, int16_t command)",champions
+0x00049a17,recruit_finish,"void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int16_t command)",champions
 0x00049cbb,champ_revive,void champ_revive(uint16_t champ),champions
 0x00049d46,champ_init_party_state,void champ_init_party_state(void),champions
 0x00049ef8,creature_turn_group,"void creature_turn_group(uint16_t group_thing, int absolute, uint16_t dir)",creatures

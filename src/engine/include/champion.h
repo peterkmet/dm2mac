@@ -243,16 +243,6 @@ void champ_revive(int champ);
 void champ_drag_click(int cell);
 void champ_drag_cancel(void);
 
-/* The commands of the recruit buttons: the candidate joins, or goes back to its mirror. */
-enum { CMD_RECRUIT = 0x92, CMD_RECRUIT_CANCEL = 0x93 };
-/* Recruiting (recruit.c): the champion of the mirror in front of (x, y) of map joins as a candidate; returns its
-   ordinal, 0 when the party is full or the leader holds an object. */
-int champ_start_recruit(int x, int y, int dir, int map);
-/* The candidate joins the party, or goes back to its mirror (command 0x93). */
-void champ_finish_recruit(int x, int y, int dir, int map, int command);
-/* The champion of the mirror in front of (x, y) of map joins at once, without the inventory and the message. */
-void champ_recruit_start_champion(int x, int y, int dir, int map);
-
 /* Sets redraw flags on all champions. */
 void champ_set_redraw_flags(uint16_t flags);
 /* Prepares the party of a loaded game for the screen: redraw flags, drawn hand state, the leader. */

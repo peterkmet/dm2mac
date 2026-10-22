@@ -13,6 +13,7 @@
 #include "minion.h"
 #include "move.h"
 #include "random.h"
+#include "recruit.h"
 #include "sensor.h"
 
 #define AURA_MAX               100
@@ -231,7 +232,7 @@ static void champ_add_start_champion(void)
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_type(t) != SENSOR_START_CHAMPION)
             continue;
-        champ_recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
+        recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
         champion(0)->dir = champion(0)->cell = (uint8_t)game.party_dir;
         champ_set_redraw_flags(REDRAW_STATUS_BOX);
         champ_set_leader(0);
