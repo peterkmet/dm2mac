@@ -74,11 +74,15 @@ def allowed():
             if line.strip() and not line.startswith("#")}
 
 
+STRIP_TOKEN = re.compile(r"/\*.*?\*/|//[^\n]*|\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n])*'", re.S)
+
+
 def strip(text):
     """The text without comments and string or character literals; line numbers stay."""
-    text = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group().count("\n"), text, flags=re.S)
-    text = re.sub(r"//[^\n]*", "", text)
-    return re.sub(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'", '""', text)
+    def drop(match):
+        token = match.group()
+        return "\n" * token.count("\n") if token[0] == "/" else '""'
+    return STRIP_TOKEN.sub(drop, text)
 
 
 def code_lines(path):
