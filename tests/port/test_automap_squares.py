@@ -12,7 +12,9 @@ from dm2test.lib import load_lib
 FAKE_WALL, FAKE_WALL_OPEN, FLAG_0, FLOOR = C.SQUARE_FAKE_WALL, C.SQUARE_FAKE_WALL_OPEN, 0x01, 1
 THING_SENSOR = 3
 FLOOR_ANY = 0x01
-WALL_SENSOR_TYPES = 0x7F  # the sensor type is bits 0-6 of the type word
+SENSOR_TYPE_MASK = 0x7F  # the sensor type is bits 0-6 of the type word
+STEP_TYPES = (FLOOR_ANY, 2, 3, 7, 8)  # floor sensors that a step triggers
+ORNAMENT_SHIFT = 12  # the ornament ordinal is bits 12-15 of the sensor flags (0: none)
 
 
 @pytest.fixture(scope="module")
@@ -48,15 +50,14 @@ def test_dungeon_has_imaginary_walls_that_the_party_walks_through(lib, session):
     assert all(not lib.dun_square_blocks_movement(s) for s in found)
 
 
-def test_pressure_pad_is_a_floor_square_with_a_stepping_sensor(lib, session):  # noqa: F811
-    pads, others = [], []
+def test_pressure_pad_is_a_floor_trigger_that_the_view_draws(lib, session):  # noqa: F811
+    visible, hidden = [], []
     for map_, x, y, s in all_squares(lib):
-        kinds = [lib.thing_word(t, 2) & WALL_SENSOR_TYPES for t in square_things(lib, map_, x, y)
-                 if t >> 10 & 15 == THING_SENSOR]
-        if s >> 5 == FLOOR and any(k in (FLOOR_ANY, 2, 3, 7, 8) for k in kinds):
-            pads.append((map_, x, y))
-        elif s >> 5 == FLOOR and not kinds:
-            others.append((map_, x, y))
-    assert pads and others
-    assert all(lib.automap_is_pressure_pad(*p) for p in pads)
-    assert not any(lib.automap_is_pressure_pad(*p) for p in others[:200])
+        if s >> 5 != FLOOR:
+            continue
+        for t in square_things(lib, map_, x, y):
+            if t >> 10 & 15 == THING_SENSOR and lib.thing_word(t, 2) & SENSOR_TYPE_MASK in STEP_TYPES:
+                (visible if lib.thing_word(t, 4) >> ORNAMENT_SHIFT else hidden).append((map_, x, y))
+    assert visible and hidden
+    assert all(lib.automap_is_pressure_pad(*p) for p in visible if p not in hidden)
+    assert not any(lib.automap_is_pressure_pad(*p) for p in hidden if p not in visible)

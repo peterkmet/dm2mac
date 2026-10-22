@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The automap of the advanced mode: the map picture. */
 #include "automap.h"
+#include "aspect.h"
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
@@ -42,9 +43,13 @@ bool automap_is_pressure_pad(int16_t map, int16_t x, int16_t y)
 {
     if (square_type(dungeon_square(map, x, y)) != SQUARE_FLOOR)
         return false;
+    ViewSquare view;
+    aspect_get(&view, map, DIR_NORTH, x, y);
+    if ((view.side[SIDE_FLOOR_ORNAMENT] & ORNAMENT_INDEX_MASK) == ORNAMENT_NONE)
+        return false; /* the view draws no pad: a hidden trigger stays hidden */
     for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
-        if (thing_type(t) != THING_SENSOR)
+        if (thing_type(t) != THING_SENSOR || sensor_ornament_index(t) < 0)
             continue;
         switch (sensor_type(t)) {
         case FLOOR_ANY:

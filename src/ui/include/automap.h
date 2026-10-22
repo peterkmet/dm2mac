@@ -11,7 +11,7 @@
 
 /* True for a closed fake wall that the party walks through: the automap draws it as a checkered wall; exported for the tests. */
 bool automap_is_imaginary_wall(uint8_t square);
-/* True for a floor square with a sensor that the party or a creature triggers by stepping on it; the automap marks it; exported for the tests. */
+/* True for a floor square with a sensor that the party or a creature triggers by stepping on it and that the view draws with a floor ornament; the automap marks it; exported for the tests. */
 bool automap_is_pressure_pad(int16_t map, int16_t x, int16_t y);
 /* Draws the seen squares of the party map into the screen rect clip of o, with the party square at the middle, moved
    by the scroll. */
