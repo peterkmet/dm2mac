@@ -64,6 +64,15 @@ typedef struct {
     uint8_t kind;   /* CLICK_* */
 } ViewClickZone;
 
+/* A click on the objects of a square cell: the click at (x, y) of the viewport, the view position of the square, the
+   square (square_x, square_y), and the click zone kind (CLICK_*). */
+typedef struct {
+    int x, y;
+    int pos;
+    int square_x, square_y;
+    int kind;
+} ViewObjectClick;
+
 /* ---- Map graphics ---- */
 
 /* Sets up the map graphics of map for the view: the view part of entering a map. */
@@ -111,7 +120,7 @@ unsigned view_draws(int pos, int aspect);
 /* True when the view draws the floor ornament (an ornament index) on a floor square at a view position. */
 bool view_shows_floor_ornament(int pos, int ornament);
 /* True when the last view picture shows the party position and direction. */
-int view_shows_party(void);
+bool view_shows_party(void);
 /* Draws the view of the party at (x, y) of the party map looking to dir into g_view_viewport. */
 void view_draw_dungeon(int dir, int x, int y);
 
@@ -124,14 +133,13 @@ extern int g_view_click_zone_count;
 extern int16_t g_view_hit_offset_y; /* exported for the tests */
 /* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *side:
    0 its middle, 1 its right, 3 its left. */
-int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
+bool view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
 /* True when the ornament of the wall at view position pos (0 to 3) shows a pixel at (x, y) of the viewport. */
-int view_hit_test_wall_ornament(int pos, int x, int y);
-/* The object of a click at (x, y) of the viewport among the objects in the cell of thing (the cell bits) on the
-   square (square_x, square_y) at view position pos, by click zone kind; a chest opens or closes. placing: thing is the
-   leader hand object that goes there. Returns the object, THING_NONE when the click is done (a chest changed, or
-   thing went into an open chest), THING_ENDOFLIST when thing must drop; thing when nothing is hit. */
-uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y, uint16_t thing, int kind, int placing);
+bool view_hit_test_wall_ornament(int pos, int x, int y);
+/* The object of a click among the objects in the cell of thing (the cell bits); a chest opens or closes. placing:
+   thing is the leader hand object that goes there. Returns the object, THING_NONE when the click is done (a chest
+   changed, or thing went into an open chest), THING_ENDOFLIST when thing must drop; thing when nothing is hit. */
+uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing);
 /* A click in the dungeon view: walls, doors, objects, creatures (input.c). */
 void view_click_in_viewport(int x, int y);
 

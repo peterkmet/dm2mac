@@ -1828,7 +1828,7 @@ static void view_click_take_object(int x, int y, int index)
         sx += g_dir_dx[g_game.party_dir];
         sy += g_dir_dy[g_game.party_dir];
     }
-    uint16_t thing = view_hit_test_object(x, y, z->cell, sx, sy, z->thing, z->kind, 0);
+    uint16_t thing = view_hit_test_object(&(ViewObjectClick){x, y, z->cell, sx, sy, z->kind}, z->thing, false);
     if (thing != THING_NONE) {
         move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
         moneybox_clear_flag(thing);
@@ -1877,7 +1877,7 @@ static int view_click_drop_object(int x, int y, int cell)
 static int view_click_place_object(int x, int y, int sx, int sy, int pos, int cell, int kind)
 {
     uint16_t hand = thing_with_cell(g_game.leader_hand, dir_turn(g_game.party_dir, cell));
-    uint16_t hit = view_hit_test_object(x, y, pos, sx, sy, hand, kind, 1);
+    uint16_t hit = view_hit_test_object(&(ViewObjectClick){x, y, pos, sx, sy, kind}, hand, true);
     if (hit == THING_NONE) {
         champ_take_from_leader_hand();
         return 1;

@@ -636,6 +636,42 @@ typedef struct {
     int flip, scale_x, scale_y, dx, dy, depth, zone, anchor, key, key2;
 } PicturePlace;
 
+/* How an object shows: lifted by dy, at a jitter spot that keeps the objects of a cell apart (-1 none), as a
+   possession of the static creature group, with its click zone, as a chest in an open state, or in the alcove. */
+typedef struct {
+    int dy, spot;
+    uint16_t group;
+    bool record_click;
+    int open_state;
+    bool in_alcove;
+} ObjectLook;
+
+/* The eye of the party in the thing grid: the direction it looks to and its grid point. */
+typedef struct {
+    int dir;
+    int16_t x, y;
+} ViewEye;
+
+/* A door picture to put together: the door type, its ornament (an ordinal of the map door ornaments, 0 none), its
+   damage, the picture entry and scale, the depth of its shade and of its ornaments, the zone row of the depth, and
+   its transparent color. */
+typedef struct {
+    uint8_t type;
+    int ornament;
+    bool destroyed;
+    int entry, scale, shade_depth, depth, row, key;
+} DoorPicture;
+
+/* The picture of a creature from one side: its entry, its mirror, and whether it is the picture of the other side. */
+typedef struct {
+    int entry, flip, mirrored;
+} SidePicture;
+
+/* The picture of a thing: its entry and its mirror (MIRROR_*). */
+typedef struct {
+    int entry, flip;
+} ThingPicture;
+
 static struct {
     int map; /* the map of the squares that the view reads now */
     int party_map;
@@ -823,10 +859,11 @@ void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t size, in
     *y = (int16_t)(*y + toward_party_diagonal[size - 1][octant][1]);
 }
 
-/* Records the things of the square at pos for the party at (party_x, party_y) looking to dir: the grid cells of
-   the square, the creatures in the object grid, and the cells with missiles and objects. */
-static void load_square_things(int pos, int dir, int party_x, int party_y, int x, int y)
+/* Records the things of the square (x, y) at pos for the party eye: the grid cells of the square, the creatures in
+   the object grid, and the cells with missiles and objects. */
+static void load_square_things(int pos, const ViewEye *eye, int x, int y)
 {
+    int dir = eye->dir;
     ViewSquare *s = g_view_squares + pos;
     g_view_missile_masks[pos] = g_view_object_masks[pos] = 0;
     if (pos < POS_FAR_ROW && s->aspect != ASPECT_WALL) {
@@ -838,8 +875,7 @@ static void load_square_things(int pos, int dir, int party_x, int party_y, int x
     uint16_t thing = s->first_thing;
     if (thing == THING_ENDOFLIST)
         return;
-    int16_t eye_x, eye_y;
-    aspect_cell_to_xy(party_x, party_y, eye_cell[dir], &eye_x, &eye_y);
+    int16_t eye_x = eye->x, eye_y = eye->y;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         int type = thing_type(thing);
         if (type == THING_PROJECTILE) {
@@ -930,7 +966,9 @@ void view_load_square(int x, int y, int pos, int dir)
     aspect_get(s, view.map, dir, square_x, square_y);
     if (view.walking && pos == POS_PARTY)
         load_walking_party_square(s);
-    load_square_things(pos, dir, x, y, square_x, square_y);
+    ViewEye eye = {.dir = dir};
+    aspect_cell_to_xy(x, y, eye_cell[dir], &eye.x, &eye.y);
+    load_square_things(pos, &eye, square_x, square_y);
 }
 
 void view_unhide_linked_squares(void)
@@ -1354,13 +1392,35 @@ static bool shift_object_cell(int *pos, int *cell, int columns, int rows)
     return true;
 }
 
-/* Draws an object at its cell of the square at pos, moved by (dx, dy). spot (or -1) keeps the objects of a
-   cell apart; group places the possessions of a static creature; in_alcove places it in the alcove of the wall. */
-static void show_object(uint16_t thing, int pos, int dx, int dy, int spot, uint16_t group, int record_click,
-                        int open_state, int in_alcove)
+/* The picture of an object in cell of the square at pos: the side or the front view, by the open state of a chest,
+   mirrored by the side of the view axis. */
+static ThingPicture pick_object_picture(uint16_t thing, int pos, int cell, int open_state, bool in_alcove)
+{
+    uint8_t category = item_gdat_category(thing), index = item_gdat_index(thing);
+    bool chest = category == CAT_CONTAINER && index < CHEST_KINDS;
+    if (chest && !open_state)
+        open_state = container_is_open(thing);
+    ThingPicture pic = {.entry = object_picture[open_state][0], .flip = 0};
+    int lateral = view_lateral[pos];
+    if (lateral != 0) {
+        pic.flip = chest && lateral == 1;
+    } else {
+        int column = cell % CELL_GRID_SIDE;
+        if ((column == CELL_GRID_SIDE / 2 || in_alcove) &&
+            picture_exists(category, index, object_picture[open_state][1]))
+            pic.entry = object_picture[open_state][1];
+        else
+            pic.flip = chest && !in_alcove && column > CELL_GRID_SIDE / 2;
+    }
+    return pic;
+}
+
+/* Draws an object at its cell of the square at pos, as look tells. */
+static void show_object(uint16_t thing, int pos, const ObjectLook *look)
 {
     const gdat_t *g = gdat_current();
-    int cell = CELL_CENTER, row, zone;
+    int cell = CELL_CENTER, row, zone, dx = 0, dy = look->dy, spot = look->spot;
+    uint16_t group = look->group;
     if (group != THING_NONE) {
         int type = group_creature(group);
         bool low = (creature_info(g, type)->possessions & POSSESSIONS_KIND_MASK) <= POSSESSIONS_LOW_KIND;
@@ -1370,11 +1430,11 @@ static void show_object(uint16_t thing, int pos, int dx, int dy, int spot, uint1
         /* Step 14 adds the cell of the push arrow for a creature in front of the party */
         if (!shift_object_cell(&pos, &cell, possession_column_shift[low][side], possession_row_shift[low][side]))
             return;
-    } else if (!in_alcove) {
+    } else if (!look->in_alcove) {
         cell = get_thing_position(thing, view.party_dir);
     }
     int depth = view_depth[pos];
-    if (in_alcove) {
+    if (look->in_alcove) {
         row = 0;
         uint16_t place =
             gdat_entry_index(g, view.alcove.category, view.alcove.index, GDAT_TYPE_VALUE2, ORN_KEY_ALCOVE_ITEMS);
@@ -1388,32 +1448,19 @@ static void show_object(uint16_t thing, int pos, int dx, int dy, int spot, uint1
         zone = zone_id_for_view_cell(pos, cell, 0) | ZONE_RELATIVE;
     }
     uint8_t category = item_gdat_category(thing), index = item_gdat_index(thing);
-    bool chest = category == CAT_CONTAINER && index < CHEST_KINDS;
-    if (chest && !open_state)
-        open_state = container_is_open(thing);
-    int entry = object_picture[open_state][0], flip = 0, lateral = view_lateral[pos];
-    if (lateral != 0) {
-        flip = chest && lateral == 1;
-    } else {
-        int column = cell % CELL_GRID_SIDE;
-        if ((column == CELL_GRID_SIDE / 2 || in_alcove) &&
-            picture_exists(category, index, object_picture[open_state][1]))
-            entry = object_picture[open_state][1];
-        else
-            flip = chest && !in_alcove && column > CELL_GRID_SIDE / 2;
-    }
+    ThingPicture pic = pick_object_picture(thing, pos, cell, look->open_state, look->in_alcove);
     if (spot != -1) {
         dx += jitter_offset[jitter[spot][0]];
         if (group == THING_NONE)
             dy += jitter_offset[jitter[spot][1]];
     }
-    uint16_t offset = gdat_entry_index(g, category, CAT_ALCOVE_KEY, GDAT_TYPE_VALUE2, entry);
+    uint16_t offset = gdat_entry_index(g, category, CAT_ALCOVE_KEY, GDAT_TYPE_VALUE2, pic.entry);
     if (offset) {
         dx += gdat_offset_x(offset);
         dy += gdat_offset_y(offset);
     }
     int scale = thing_scale[depth * GRID_SQUARE_CELLS + row + OBJECT_SCALE_START];
-    setup_picture(&(PicturePlace){.flip = flip,
+    setup_picture(&(PicturePlace){.flip = pic.flip,
                                   .scale_x = scale,
                                   .scale_y = scale,
                                   .dx = (int16_t)dx,
@@ -1422,8 +1469,8 @@ static void show_object(uint16_t thing, int pos, int dx, int dy, int spot, uint1
                                   .zone = (int16_t)zone,
                                   .key = THING_KEY,
                                   .key2 = NO_KEY},
-                  category, index, entry);
-    if (!record_click)
+                  category, index, pic.entry);
+    if (!look->record_click)
         view.ctx.transparent = DRAW_NO_BLIT;
     flush_picture();
 }
@@ -1451,7 +1498,7 @@ static void show_cell_objects(uint16_t thing, int pos, int cell, uint16_t group)
             }
             return;
         }
-        show_object(thing, pos, 0, 0, spot, group, 1, 0, 0);
+        show_object(thing, pos, &(ObjectLook){.spot = spot, .group = group, .record_click = true});
         spot = (spot + 1) % JITTER_COUNT;
         if (info) {
             if (creature_cell_mask(info->possessions) >> cell & 1)
@@ -1466,43 +1513,45 @@ static void show_cell_objects(uint16_t thing, int pos, int cell, uint16_t group)
     }
 }
 
-/* The picture of the animation frame of a creature of type seen from side: *flip mirrors it, *mirrored tells
-   that the picture of the other side shows. */
-static int pick_side_picture(int type, const uint8_t *frame, int side, int anim, int *flip, int *mirrored)
+/* The picture of the animation frame of a creature of type seen from side, its mirror, and whether the picture of
+   the other side shows. */
+static SidePicture pick_side_picture(int type, const uint8_t *frame, int side, int anim)
 {
+    SidePicture pic;
     int entry = frame[FRAME_ENTRY + side];
-    *flip = *mirrored = 0;
+    pic.flip = pic.mirrored = 0;
     if (!has_creature_picture(type, entry)) {
         int back = dir_opposite(side);
-        *flip = *mirrored = back & 1;
+        pic.flip = pic.mirrored = back & 1;
         entry = frame[FRAME_ENTRY + back];
         if (!has_creature_picture(type, entry)) {
-            *flip = 0;
+            pic.flip = 0;
             entry = frame[FRAME_ENTRY + DIR_SOUTH];
         }
     } else {
         int bits = frame[FRAME_MIRROR] >> ((DIR_WEST - side) * FRAME_MIRROR_SHIFT) & FRAME_MIRROR_MASK;
         if (bits & FRAME_MIRROR_ALWAYS || (anim & ANIM_MIRROR && bits & FRAME_MIRROR_BY_ANIM))
-            *flip = 1;
+            pic.flip = 1;
     }
     if (!has_creature_picture(type, entry)) {
-        int saved = *flip;
-        *flip = 0;
+        int saved = pic.flip;
+        pic.flip = 0;
         entry = (uint8_t)(GFX_CREATURE_SIDE + side);
         if (!has_creature_picture(type, entry)) {
             int other = (uint8_t)(GFX_CREATURE_SIDE + dir_opposite(side));
             if (side & 1 && has_creature_picture(type, other)) {
-                *flip = *mirrored = 1;
+                pic.flip = pic.mirrored = 1;
                 entry = other;
             } else {
                 entry = GFX_CREATURE_ANY_SIDE;
-                *flip = saved;
+                pic.flip = saved;
             }
         }
-        if (*flip != saved)
-            *mirrored = 1;
+        if (pic.flip != saved)
+            pic.mirrored = 1;
     }
-    return entry;
+    pic.entry = entry;
+    return pic;
 }
 
 /* Draws a creature group of the square at pos at depth: its animation frame, from the side it shows. */
@@ -1521,8 +1570,8 @@ static void show_creature(int pos, int depth, uint16_t group)
     int anim = active ? active->anim_bits : 0;
     int side = creature_info(g, type)->flags & CREATURE_FACES_PARTY ? DIR_SOUTH
                                                                     : dir_relative(view.party_dir, group_dir(group));
-    int flip, mirrored;
-    int entry = pick_side_picture(type, frame, side, anim, &flip, &mirrored);
+    SidePicture pic = pick_side_picture(type, frame, side, anim);
+    int entry = pic.entry, flip = pic.flip, mirrored = pic.mirrored;
     int cell = still[FRAME_CELL], scale;
     if (pos == POS_FRONT && g_view_arrows_enabled) {
         /* by push arrow: the cell and scale of the creature that the party pushes */
@@ -1640,40 +1689,42 @@ static int missile_picture_kind(uint16_t thing)
     return MISSILE_FRONT;
 }
 
-/* The picture of a missile of picture kind in cell (0 to 3, relative to the party) of a square at lateral, and
-   its mirror in *flip: by its flight direction and the parity of its square. */
-static int missile_picture(uint16_t thing, int kind, int cell, int lateral, int spell, int square_parity, int *flip)
+/* The picture of a missile of picture kind in cell (0 to 3, relative to the party) of the square at pos, and its
+   mirror: by its flight direction and the parity of its square. */
+static ThingPicture missile_picture(uint16_t thing, int kind, int cell, int pos, bool spell)
 {
-    int dir = projectile_dir(thing), entry;
+    int dir = projectile_dir(thing), lateral = view_lateral[pos];
+    int square_parity = (g_view_squares[pos].x + g_view_squares[pos].y) & 1;
+    ThingPicture pic = {.flip = 0};
     if ((dir & 1) != (view.party_dir & 1)) { /* the missile flies across the view */
-        entry = GFX_MISSILE_PICTURE_SIDE;
+        pic.entry = GFX_MISSILE_PICTURE_SIDE;
         if (kind == MISSILE_MIRRORED) {
             if (cell == CELL_FRONT_LEFT || cell == CELL_BACK_LEFT)
-                *flip |= MIRROR_H;
+                pic.flip |= MIRROR_H;
             if (square_parity)
-                *flip |= MIRROR_V;
+                pic.flip |= MIRROR_V;
             else
-                *flip ^= MIRROR_H;
+                pic.flip ^= MIRROR_H;
         } else if (dir_turn(view.party_dir, TURN_RIGHT) == dir) {
-            *flip = MIRROR_H;
+            pic.flip = MIRROR_H;
         }
-        return entry;
+        return pic;
     }
     if (kind == MISSILE_MIRRORED) {
         if (square_parity)
-            *flip = MIRROR_V;
-        entry =
+            pic.flip = MIRROR_V;
+        pic.entry =
             (cell < CELL_BACK_RIGHT) == (square_parity != 0) ? GFX_MISSILE_PICTURE_FRONT : GFX_MISSILE_PICTURE_FRONT_2;
     } else if (kind == MISSILE_FRONT || (kind == MISSILE_FRONT_BACK && dir != view.party_dir)) {
-        entry = GFX_MISSILE_PICTURE_FRONT;
+        pic.entry = GFX_MISSILE_PICTURE_FRONT;
     } else {
-        entry = GFX_MISSILE_PICTURE_BACK;
+        pic.entry = GFX_MISSILE_PICTURE_BACK;
     }
     if (lateral < 0 || (lateral == 0 && cell != CELL_FRONT_RIGHT && cell != CELL_BACK_RIGHT))
-        *flip |= MIRROR_H;
+        pic.flip |= MIRROR_H;
     if (cell & 1 && spell)
-        *flip |= MIRROR_V;
-    return entry;
+        pic.flip |= MIRROR_V;
+    return pic;
 }
 
 /* Draws the missiles of a thing list at grid cell position of the square at pos. */
@@ -1682,10 +1733,9 @@ static void show_missiles(uint16_t thing, int pos, int position)
     int cell = position_to_cell(position);
     if (thing == THING_ENDOFLIST || cell < 0)
         return;
-    int depth = view_depth[pos], lateral = view_lateral[pos];
+    int depth = view_depth[pos];
     if ((depth == 0 && cell >= CELL_BACK_RIGHT) || !(MISSILE_POSITIONS & POS_BIT(pos)))
         return;
-    int square_parity = (g_view_squares[pos].x + g_view_squares[pos].y) & 1;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
         if (get_thing_position(thing, view.party_dir) != position || thing_type(thing) != THING_PROJECTILE)
             continue;
@@ -1694,7 +1744,8 @@ static void show_missiles(uint16_t thing, int pos, int position)
         uint16_t payload = thing_word(thing, PROJECTILE_PAYLOAD);
         if (kind == MISSILE_NO_PICTURE) {
             uint16_t object = thing_with_cell(payload, thing_cell(thing));
-            show_object(object, pos, 0, MISSILE_DY, -1, THING_NONE, 1, 0, 0);
+            show_object(object, pos,
+                        &(ObjectLook){.dy = MISSILE_DY, .spot = -1, .group = THING_NONE, .record_click = true});
             continue;
         }
         int category = item_gdat_category(thing), index = item_gdat_index(thing);
@@ -1716,20 +1767,20 @@ static void show_missiles(uint16_t thing, int pos, int position)
                     scale = MISSILE_SCALE_MIN;
             }
         }
-        int flip = 0, entry = kind == MISSILE_NO_SIDE
-                                  ? GFX_MISSILE_PICTURE_FRONT
-                                  : missile_picture(thing, kind, cell, lateral, spell, square_parity, &flip);
+        ThingPicture pic = {.entry = GFX_MISSILE_PICTURE_FRONT, .flip = 0};
+        if (kind != MISSILE_NO_SIDE)
+            pic = missile_picture(thing, kind, cell, pos, spell);
         int flips =
             spell ? gdat_entry_index(gdat_current(), CAT_EXPLOSION, index, GDAT_TYPE_VALUE, EXPLOSION_KEY_MISSILE_FLIP)
                   : MIRROR_HV;
-        setup_picture(&(PicturePlace){.flip = flips & flip,
+        setup_picture(&(PicturePlace){.flip = flips & pic.flip,
                                       .scale_x = scale,
                                       .scale_y = scale,
                                       .depth = depth,
                                       .zone = (int16_t)(zone | ZONE_RELATIVE),
                                       .key = THING_KEY,
                                       .key2 = NO_KEY},
-                      category, index, entry);
+                      category, index, pic.entry);
         view.ctx.src_x = (int16_t)(view.ctx.src_x + gfx_scale_64(0, (int16_t)offset_scale));
         view.ctx.src_y = (int16_t)(view.ctx.src_y + gfx_scale_64(MISSILE_DY, (int16_t)offset_scale));
         flush_picture();
@@ -1897,7 +1948,8 @@ static void show_alcove_contents(int pos)
         if (thing_cell(thing) != dir_opposite(g_game.party_dir))
             continue;
         if (is_item(thing)) {
-            show_object(thing, pos, 0, 0, spot, THING_NONE, 1, 0, 1);
+            show_object(thing, pos,
+                        &(ObjectLook){.spot = spot, .group = THING_NONE, .record_click = true, .in_alcove = true});
             if (++spot >= ALCOVE_SPOT_END)
                 spot = ALCOVE_FIRST_SPOT;
             if (pos == POS_FRONT)
@@ -2780,36 +2832,37 @@ static void show_door_frame(int pos, int parts)
     }
 }
 
-/* Puts the door picture of type together offscreen with its ornament and its damage, and makes it the view
-   picture. row is the zone row of the door depth. */
-static void compose_door(uint8_t type, int ornament, int destroyed, int entry, int scale, int shade_depth, int depth,
-                         int row, int key)
+/* Puts the door picture d together offscreen with its ornament and its damage, and makes it the view picture. */
+static void compose_door(const DoorPicture *d)
 {
     /* the door with its ornament or damage is put together offscreen */
     DrawCtx c;
     Bitmap *offscreen = render_offscreen(
-        &c, &(PicturePlace){.scale_x = scale, .scale_y = scale, .depth = shade_depth, .key = key, .key2 = NO_KEY},
-        CAT_DOOR, type, entry);
+        &c,
+        &(PicturePlace){
+            .scale_x = d->scale, .scale_y = d->scale, .depth = d->shade_depth, .key = d->key, .key2 = NO_KEY},
+        CAT_DOOR, d->type, d->entry);
     if (!offscreen)
         return;
     draw_ctx_draw(&c);
-    int scale_x = scale, scale_y = scale;
-    if (scale == SCALE_FULL) {
-        const Bitmap *near = draw_gdat_image(CAT_DOOR, type, 0);
+    int scale_x = d->scale, scale_y = d->scale;
+    if (d->scale == SCALE_FULL) {
+        const Bitmap *near = draw_gdat_image(CAT_DOOR, d->type, 0);
         if (near) {
             scale_x = inverse_scale((uint16_t)view.ctx.w, (uint16_t)near->width);
             scale_y = inverse_scale((uint16_t)view.ctx.h, (uint16_t)near->height);
         }
     }
-    if (ornament) {
-        uint8_t o = dungeon_map_door_ornaments(view.party_map)[ornament - 1];
+    if (d->ornament) {
+        uint8_t o = dungeon_map_door_ornaments(view.party_map)[d->ornament - 1];
         int okey = (int16_t)aspect_value_key(CAT_DOOR_ORNAMENT, o, ORN_KEY_COLOR);
         if (!okey)
             okey = ORNAMENT_KEY_DEFAULT;
-        int ozone = aspect_value_key(CAT_DOOR_ORNAMENT, o, ORN_KEY_ZONE_ROW) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + row;
+        int ozone =
+            aspect_value_key(CAT_DOOR_ORNAMENT, o, ORN_KEY_ZONE_ROW) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + d->row;
         setup_picture(&(PicturePlace){.scale_x = scale_x,
                                       .scale_y = scale_y,
-                                      .depth = depth,
+                                      .depth = d->depth,
                                       .zone = ozone,
                                       .anchor = ZONE_NO_ANCHOR,
                                       .key = okey,
@@ -2818,23 +2871,23 @@ static void compose_door(uint8_t type, int ornament, int destroyed, int entry, i
         view.ctx.dst = offscreen;
         flush_picture();
     }
-    if (destroyed) {
-        int dkey = (int16_t)aspect_value_key(CAT_DOOR, type, ORN_KEY_DAMAGE_COLOR);
+    if (d->destroyed) {
+        int dkey = (int16_t)aspect_value_key(CAT_DOOR, d->type, ORN_KEY_DAMAGE_COLOR);
         if (!dkey)
             dkey = ORNAMENT_KEY_DEFAULT;
-        int dzone = aspect_value_key(CAT_DOOR, type, ORN_KEY_KIND) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + row;
+        int dzone = aspect_value_key(CAT_DOOR, d->type, ORN_KEY_KIND) * ZONE_ROW_SIZE + ZONE_ORNAMENT_ROWS + d->row;
         setup_picture(&(PicturePlace){.scale_x = scale_x,
                                       .scale_y = scale_y,
-                                      .depth = depth,
+                                      .depth = d->depth,
                                       .zone = dzone,
                                       .anchor = ZONE_NO_ANCHOR,
                                       .key = dkey,
-                                      .key2 = key},
-                      CAT_DOOR, type, GFX_DOOR_DAMAGE);
+                                      .key2 = d->key},
+                      CAT_DOOR, d->type, GFX_DOOR_DAMAGE);
         view.ctx.dst = offscreen;
         flush_picture();
     }
-    c.transparent = (int16_t)mapped_key(&c, key);
+    c.transparent = (int16_t)mapped_key(&c, d->key);
     c.palette_count = 0;
     draw_ctx_set_image(&c, offscreen);
     view.ctx = c;
@@ -2878,7 +2931,15 @@ static void show_door(int pos, int frame_before, int frame_after, uint32_t cell_
                                           .key2 = NO_KEY},
                           CAT_DOOR, type, entry);
         } else {
-            compose_door(type, ornament, state == DOOR_STATE_BROKEN, entry, scale, shade_depth, depth, row, key);
+            compose_door(&(DoorPicture){.type = type,
+                                        .ornament = ornament,
+                                        .destroyed = state == DOOR_STATE_BROKEN,
+                                        .entry = entry,
+                                        .scale = scale,
+                                        .shade_depth = shade_depth,
+                                        .depth = depth,
+                                        .row = row,
+                                        .key = key});
         }
         if (state < DOOR_STATE_CLOSED) {
             zone += state;
@@ -3221,7 +3282,7 @@ bool view_shows_floor_ornament(int pos, int ornament)
              aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NOT_FAR_SIDE));
 }
 
-int view_shows_party(void)
+bool view_shows_party(void)
 {
     return view.party_x == g_game.party_x && view.party_y == g_game.party_y && view.party_map == g_game.party_map &&
            view.party_dir == g_game.party_dir;
@@ -3274,19 +3335,19 @@ void view_draw_dungeon(int dir, int x, int y)
 /* ---- Clicks ---- */
 
 /* True when the last picture has a pixel other than key at (x, y) of the viewport. */
-static int hit_test_picture(int x, int y, int key)
+static bool hit_test_picture(int x, int y, int key)
 {
     const DrawCtx *c = &view.ctx;
     const int16_t *r = c->rect;
     if (x < r[RECT_X] || x > r[RECT_X] + r[RECT_W] - 1 || y < r[RECT_Y] || y > r[RECT_Y] + r[RECT_H] - 1)
-        return 0;
+        return false;
     int sx = c->flip & MIRROR_H ? r[RECT_X] + r[RECT_W] - 1 - x + c->src_x : x - r[RECT_X] + c->src_x;
     int sy = y - r[RECT_Y] + c->src_y;
     const Bitmap *image = c->image;
     if (image && image->height >= 2)
         g_view_hit_offset_y = (int16_t)((sy - (image->height >> 1)) * PERCENT / (image->height >> 1));
     if (!image || sx < 0 || sy < 0 || sx >= image->width || sy >= image->height)
-        return 0;
+        return false;
     int pixel;
     if (image->bpp == IMAGE_8BPP) {
         pixel = image->pixels[sy * image->width + sx];
@@ -3301,18 +3362,18 @@ static int hit_test_picture(int x, int y, int key)
 #define HIT_SIDE_LIMIT 75 /* percent of the half picture width: a click beyond it hits a side */
 #define HIT_DEPTH      1  /* the depth at which the creature in front is drawn for a hit test */
 
-int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
+bool view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
 {
     uint16_t group = creature_get_group_at(square_x, square_y);
     if (group == THING_NONE)
-        return 0;
+        return false;
     show_creature(POS_FRONT, HIT_DEPTH, group);
     int key = view.ctx.transparent;
     view.ctx.transparent = DRAW_NO_BLIT;
     flush_picture();
     if (!hit_test_picture(x, y, key)) {
         draw_free_temp();
-        return 0;
+        return false;
     }
     const DrawCtx *c = &view.ctx;
     const int16_t *r = c->rect;
@@ -3321,28 +3382,29 @@ int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
     int16_t offset = half ? (int16_t)((sx - c->x - half) * PERCENT / half) : 0;
     *side = offset < -HIT_SIDE_LIMIT ? 3 : offset <= HIT_SIDE_LIMIT ? 0 : 1;
     draw_free_temp();
-    return 1;
+    return true;
 }
 
 /* The hit test of a wall ornament. */
 #define HIT_SMALL_SIZE 32 /* a smaller ornament takes every click on its wall */
 
-int view_hit_test_wall_ornament(int pos, int x, int y)
+bool view_hit_test_wall_ornament(int pos, int x, int y)
 {
     static const int8_t face_of_pos[4] = {0, -1, 1, 0}; /* the face that the party sees of the walls at 0 to 3 */
     if (pos > POS_FRONT)
-        return 0;
+        return false;
     ViewSquare saved = g_view_squares[pos];
     int sx = view.party_x, sy = view.party_y;
     step_relative(view.party_dir, view_offset[pos][1], view_offset[pos][0], &sx, &sy);
     g_view_squares[pos].x = (int8_t)sx;
     g_view_squares[pos].y = (int8_t)sy;
     aspect_get(&g_view_squares[pos], view.map, view.party_dir, sx, sy);
-    int hit = 0, key = show_wall_ornament(pos, face_of_pos[pos], 0);
+    bool hit = false;
+    int key = show_wall_ornament(pos, face_of_pos[pos], 0);
     if (key >= 0)
         hit = hit_test_picture(x, y, key);
     if (pos == POS_FRONT || view.ctx.w < HIT_SMALL_SIZE || view.ctx.h < HIT_SMALL_SIZE)
-        hit = 1;
+        hit = true;
     g_view_squares[pos] = saved;
     draw_free_temp();
     return hit;
@@ -3360,7 +3422,7 @@ int view_hit_test_wall_ornament(int pos, int x, int y)
 
 /* A click on a chest in the view that hit_state tells: it opens or closes, takes thing (placing), or gives its last
    item to the leader hand. Returns hit, THING_NONE when done, THING_ENDOFLIST when thing must drop. */
-static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_t thing, int placing)
+static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_t thing, bool placing)
 {
     switch (hit_state) {
     case CHEST_HIT_NONE:
@@ -3395,18 +3457,18 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
     return THING_NONE;
 }
 
-uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y, uint16_t thing, int kind, int placing)
+uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing)
 {
     uint16_t group = THING_NONE, t;
-    if (kind == CLICK_POSSESSIONS) {
-        group = creature_group_at(g_party.cur_map, square_x, square_y);
+    if (click->kind == CLICK_POSSESSIONS) {
+        group = creature_group_at(g_party.cur_map, click->square_x, click->square_y);
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
-        t = dungeon_square_first_thing(g_party.cur_map, square_x, square_y);
+        t = dungeon_square_first_thing(g_party.cur_map, click->square_x, click->square_y);
     }
     if (t == THING_ENDOFLIST)
         return placing ? thing : THING_NONE;
-    int spot = kind == CLICK_ALCOVE ? ALCOVE_FIRST_SPOT : 0;
+    int spot = click->kind == CLICK_ALCOVE ? ALCOVE_FIRST_SPOT : 0;
     uint16_t hit = THING_NONE, chest = THING_NONE;
     int hit_state = CHEST_HIT_NONE;
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
@@ -3423,8 +3485,11 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
                 state = CHEST_HIT_OPEN;
         }
         for (;;) {
-            show_object(t, pos, 0, 0, spot, group, 0, state, kind == CLICK_ALCOVE);
-            if (hit_test_picture(x, y, HIT_KEY) == 1) {
+            show_object(
+                t, click->pos,
+                &(ObjectLook){
+                    .spot = spot, .group = group, .open_state = state, .in_alcove = click->kind == CLICK_ALCOVE});
+            if (hit_test_picture(click->x, click->y, HIT_KEY)) {
                 chest = this_chest;
                 hit = t;
                 hit_state = state;
@@ -3435,7 +3500,7 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
             state = CHEST_HIT_NONE;
         }
         spot++;
-        if (kind == CLICK_ALCOVE) {
+        if (click->kind == CLICK_ALCOVE) {
             if (spot >= ALCOVE_SPOT_END)
                 spot = ALCOVE_FIRST_SPOT;
         } else {

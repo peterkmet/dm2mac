@@ -250,10 +250,10 @@ long ui/input.c:feedback_run_op open: module cleanup
 long ui/minion_map.c:mmap_draw open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
+long ui/view.c:show_door open: module cleanup
 long ui/view.c:show_explosions open: module cleanup
 long ui/view.c:show_far_squares open: module cleanup
 long ui/view.c:show_floor_ornament open: module cleanup
-long ui/view.c:show_object open: module cleanup
 long ui/view.c:show_shop_display open: module cleanup
 long ui/view.c:show_wall_ornament open: module cleanup
 long ui/view.c:show_wall_text open: module cleanup
@@ -324,7 +324,6 @@ params ui/include/ui.h:offscreen_draw_gdat_image open: module cleanup
 params ui/include/ui.h:offscreen_draw_text_at open: module cleanup
 params ui/include/ui.h:ui_blit_bitmap open: module cleanup
 params ui/include/video.h:video_map_mouse open: module cleanup
-params ui/include/view.h:view_hit_test_object open: module cleanup
 params ui/include/zone.h:zone_compute_rect open: module cleanup
 params ui/input.c:input_find_command open: module cleanup
 params ui/input.c:view_click_place_object open: module cleanup
@@ -346,12 +345,6 @@ params ui/ui.c:offscreen_draw_gdat_image open: module cleanup
 params ui/ui.c:offscreen_draw_text_at open: module cleanup
 params ui/ui.c:ui_blit_bitmap open: module cleanup
 params ui/video.c:video_map_mouse open: module cleanup
-params ui/view.c:compose_door open: module cleanup
-params ui/view.c:load_square_things open: module cleanup
-params ui/view.c:missile_picture open: module cleanup
-params ui/view.c:pick_side_picture open: module cleanup
-params ui/view.c:show_object open: module cleanup
-params ui/view.c:view_hit_test_object open: module cleanup
 params ui/zone.c:clip_placed open: module cleanup
 params ui/zone.c:place_relative open: module cleanup
 params ui/zone.c:zone_compute_rect open: module cleanup
