@@ -63,8 +63,10 @@ static void put_pixel(uint8_t *p, int bpp, int i, int color)
 
 void gfx_blit(const Blit *blit, const int16_t *rect)
 {
-    int src_width = blit->src_width, dst_width = blit->dst_width;
-    int src_bpp = blit->src_bpp, dst_bpp = blit->dst_bpp;
+    int src_width = blit->src_width;
+    int dst_width = blit->dst_width;
+    int src_bpp = blit->src_bpp;
+    int dst_bpp = blit->dst_bpp;
     int mirror = blit->mirror;
     const uint8_t *colormap = blit->colormap;
     if (!rect || rect[RECT_W] <= 0 || rect[RECT_H] <= 0)
@@ -80,10 +82,12 @@ void gfx_blit(const Blit *blit, const int16_t *rect)
     }
     if (mirror > MIRROR_HV)
         mirror = MIRROR_NONE;
-    int w = rect[RECT_W], h = rect[RECT_H];
+    int w = rect[RECT_W];
+    int h = rect[RECT_H];
     for (int row = 0; row < h; row++) {
         int sy = mirror & MIRROR_V ? blit->src_y + h - 1 - row : blit->src_y + row;
-        int s = sy * src_width + blit->src_x, d = (rect[RECT_Y] + row) * dst_width + rect[RECT_X];
+        int s = sy * src_width + blit->src_x;
+        int d = (rect[RECT_Y] + row) * dst_width + rect[RECT_X];
         for (int col = 0; col < w; col++) {
             int color = get_pixel(blit->src, src_bpp, mirror & MIRROR_H ? s + w - 1 - col : s + col);
             if (blit->transparent >= 0 && color == (uint8_t)blit->transparent)
@@ -97,9 +101,12 @@ void gfx_blit_scaled_4bpp(const Bitmap *source, Bitmap *target, const uint8_t *c
 {
     const uint8_t *src = source->pixels;
     uint8_t *dst = target->pixels;
-    int src_width = source->width, src_height = source->height;
-    int dst_width = target->width, dst_height = target->height;
-    int src_stride = even(src_width), dst_stride = even(dst_width);
+    int src_width = source->width;
+    int src_height = source->height;
+    int dst_width = target->width;
+    int dst_height = target->height;
+    int src_stride = even(src_width);
+    int dst_stride = even(dst_width);
     uint16_t step_x = (uint16_t)(((unsigned)src_width << FRACTION_SHIFT) / (unsigned)dst_width);
     uint16_t step_y = (uint16_t)(((unsigned)src_height << FRACTION_SHIFT) / (unsigned)dst_height);
     uint16_t acc_y = step_y >> 1;
@@ -133,8 +140,10 @@ void gfx_blit_scaled_8bpp(const Bitmap *source, Bitmap *target)
 {
     const uint8_t *src = source->pixels;
     uint8_t *dst = target->pixels;
-    int src_width = source->width, src_height = source->height;
-    int dst_width = target->width, dst_height = target->height;
+    int src_width = source->width;
+    int src_height = source->height;
+    int dst_width = target->width;
+    int dst_height = target->height;
     uint16_t step_x = (uint16_t)(((unsigned)src_width << FRACTION_SHIFT) / (unsigned)dst_width);
     uint16_t step_y = (uint16_t)(((unsigned)src_height << FRACTION_SHIFT) / (unsigned)dst_height);
     uint16_t acc_y = step_y >> 1;
@@ -184,13 +193,15 @@ static int mask_pixel(const uint8_t *mask, int i)
 
 void gfx_blit_tiled_4to8_masked(const TileFill *fill, uint8_t *dst, int dst_width, const int16_t *rect)
 {
-    int w = rect[RECT_W], h = rect[RECT_H];
+    int w = rect[RECT_W];
+    int h = rect[RECT_H];
     TileCursor cursor = {fill->tile_width - fill->tile_offset, fill->tile_offset};
     int row_start = rect[RECT_Y] * dst_width + rect[RECT_X];
     int mask_width = even(fill->mask_width);
     int mask_row = fill->mask_x + fill->mask_y * mask_width;
     for (int row = 0; row < h; row++, row_start += dst_width, mask_row += mask_width) {
-        int skip = 0, count = w;
+        int skip = 0;
+        int count = w;
         if (fill->mask) {
             while (count > 0 && !mask_pixel(fill->mask, mask_row + skip)) {
                 count--;
@@ -305,7 +316,8 @@ static int nearest_step(const uint8_t *brightness, int last, int target)
 {
     int k = 0;
     for (; k < last; k++) {
-        int below = target - brightness[k], above = brightness[k + 1] - target;
+        int below = target - brightness[k];
+        int above = brightness[k + 1] - target;
         if (below < 0 || above < 0)
             continue;
         return below > above ? k + 1 : k;
@@ -323,8 +335,10 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
         *count = REMAP_COLORS;
     for (int i = 0; i < *count; i++) {
         const uint8_t *rs = ramps.of_color + RAMP_OF_COLOR_SIZE * (identity ? i : table[i]);
-        int r = rs[0], last = ramps.length[r] - 1;
-        const uint8_t *brightness = ramps.brightness[r], *colors = ramps.colors[r];
+        int r = rs[0];
+        int last = ramps.length[r] - 1;
+        const uint8_t *brightness = ramps.brightness[r];
+        const uint8_t *colors = ramps.colors[r];
         int target = brightness[rs[1]] * light >> DIM_SHIFT;
         int k = nearest_step(brightness, last, target);
         int color = colors[k];

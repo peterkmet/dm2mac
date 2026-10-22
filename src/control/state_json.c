@@ -946,7 +946,9 @@ static void key_list(Json *j, const char *key, Json *list)
    the view draws on the square (draws: VIEW_DRAWS_* bits). */
 static void put_square_things(Json *j, unsigned draws, int x, int y, int dir)
 {
-    Json creatures = {0}, objects = {0}, flying = {0};
+    Json creatures = {0};
+    Json objects = {0};
+    Json flying = {0};
     json_open(&creatures, '[');
     json_open(&objects, '[');
     json_open(&flying, '[');

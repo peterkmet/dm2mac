@@ -58,7 +58,8 @@ void minion_map_drain_mana(void)
 
 void minion_toggle_map_option(int option)
 {
-    int mana = option_mana[option], bit = 1 << option;
+    int mana = option_mana[option];
+    int bit = 1 << option;
     if (!(g_action.flags & bit)) {
         Champion *c = champion(g_action.champion - 1);
         if (c->mana < mana)
@@ -97,8 +98,10 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!minion_find_link_projectile(group, thing))
         return;
-    int col = px / (MAP_ICON_W + GAP_X), row = py / (MAP_ICON_H + GAP_Y);
-    int16_t sx = g_minion_map.x, sy = g_minion_map.y;
+    int col = px / (MAP_ICON_W + GAP_X);
+    int row = py / (MAP_ICON_H + GAP_Y);
+    int16_t sx = g_minion_map.x;
+    int16_t sy = g_minion_map.y;
     dun_move_relative(g_minion_map.dir, GRID_RADIUS - row, col - GRID_RADIUS, &sx, &sy);
     int map = dungeon_location_on_map(g_minion_map.map, 0, &sx, &sy);
     if (map < 0)
