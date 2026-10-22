@@ -829,12 +829,12 @@ address,name,signature,subsystem
 0x00046892,champ_get_move_delay,uint16_t champ_get_move_delay(uint16_t champ),champions
 0x00046968,champ_get_dexterity,int16_t champ_get_dexterity(uint16_t champ),champions
 0x00046a19,champ_get_strength,"int16_t champ_get_strength(int16_t champ, int16_t slot, uint16_t skill)",champions
-0x00046bad,item_armor_defense,"int16_t item_armor_defense(uint16_t armor_attribute, int sharp)",items
-0x00046bdc,champ_get_wound_defense,"int16_t champ_get_wound_defense(int16_t champ, uint16_t location)",champions
+0x00046bad,armor_defense,"int16_t armor_defense(uint16_t armor_attribute, int sharp)",items
+0x00046bdc,wound_defense,"int16_t wound_defense(int16_t champ, uint16_t location)",champions
 0x00046d9c,champ_wake_party,void champ_wake_party(void),champions
-0x00046dc9,champ_drop_all_objects,void champ_drop_all_objects(uint16_t champ),inventory
-0x00046e4d,champ_place_in_free_cell,void champ_place_in_free_cell(uint16_t champ),champions
-0x00046eca,champ_kill,void champ_kill(uint16_t champ),champions
+0x00046dc9,drop_all_objects,void drop_all_objects(uint16_t champ),inventory
+0x00046e4d,place_in_free_cell,void place_in_free_cell(uint16_t champ),champions
+0x00046eca,kill_champion,void kill_champion(uint16_t champ),champions
 0x00047113,champ_apply_pending_damage,void champ_apply_pending_damage(void),champions
 0x0004722a,champ_take_damage,"int16_t champ_take_damage(int16_t champ, int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
 0x000474fc,champ_poison,"void champ_poison(int16_t champ, uint16_t amount)",champions

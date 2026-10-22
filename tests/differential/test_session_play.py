@@ -477,7 +477,7 @@ CHAMP_APPLY_PENDING_DAMAGE, G_GAME_END_FLAG, G_PENDING_DAMAGE = 0x47113, 0x7F24C
 
 
 def test_dead_party_ends_the_game_like_original(play, lib, request):
-    # The damage of a step kills the last champion: champ_kill sets the end flag in both (main_loop.end and
+    # The damage of a step kills the last champion: kill_champion sets the end flag in both (main_loop.end and
     # g_game_end_flag), drops the objects and the bones. Then session_end with that flag, as main.c and the original main
     # call it: the scream of the dead champion, the end dialog, QUIT GAME: the exit code of a dead party.
     sc = play

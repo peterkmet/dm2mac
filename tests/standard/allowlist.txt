@@ -6,7 +6,6 @@ block control/include/state_json.h open: module cleanup
 block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
 block engine/aspect.c open: module cleanup
-block engine/damage.c open: module cleanup
 block engine/game_text.c open: module cleanup
 block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
@@ -63,7 +62,6 @@ bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
 bool engine/aspect.c:wall_sensor_ornament open: module cleanup
 bool engine/aspect.c:wall_text_ornament open: module cleanup
-bool engine/damage.c open: module cleanup
 bool engine/include/item.h:item_use_charge open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
 bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
@@ -257,8 +255,8 @@ dead-api ui/include/view.h:view_squares open: module cleanup
 dead-api ui/include/view.h:view_unhide_linked_squares open: module cleanup
 decimal engine/aspect.c open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
+decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
-decimal engine/damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/dungeon.c rule 3.12: a table of SKULL.EXE
 decimal engine/game_text.c open: module cleanup
 decimal engine/include/action.h open: module cleanup
@@ -287,7 +285,6 @@ engine-write ui/ui.c open: module cleanup
 enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
-enum engine/damage.c open: module cleanup
 enum engine/game_text.c open: module cleanup
 enum engine/include/action.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
@@ -417,11 +414,8 @@ long ui/view.c:view_draw_explosions open: module cleanup
 long ui/view.c:view_draw_floor_ornament open: module cleanup
 long ui/view.c:view_draw_object open: module cleanup
 long ui/view.c:view_draw_wall_ornament open: module cleanup
-module engine/damage.c open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
-name engine/damage.c:champ_consume_food_and_water open: module cleanup
-name engine/damage.c:champ_place_in_free_cell open: module cleanup
 name engine/include/inventory.h:inv_put_object_in_free_slot open: module cleanup
 name engine/inventory.c:inv_put_object_in_free_slot open: module cleanup
 name engine/move.c:champ_get_party_move_time open: module cleanup
@@ -443,7 +437,6 @@ name ui/view.c:zone_id_for_view_element open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
 notation engine/aspect.c open: module cleanup
-notation engine/damage.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
@@ -627,14 +620,6 @@ static-prefix control/turn.c:turn_finished open: module cleanup
 static-prefix control/turn.c:turn_left open: module cleanup
 static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix engine/aspect.c:sensor_ornament open: module cleanup
-static-prefix engine/damage.c:champ_consume_food_and_water open: module cleanup
-static-prefix engine/damage.c:champ_drop_all_objects open: module cleanup
-static-prefix engine/damage.c:champ_get_mean_defense open: module cleanup
-static-prefix engine/damage.c:champ_get_wound_defense open: module cleanup
-static-prefix engine/damage.c:champ_place_in_free_cell open: module cleanup
-static-prefix engine/damage.c:champ_reduce_damage open: module cleanup
-static-prefix engine/damage.c:champ_regen_mana open: module cleanup
-static-prefix engine/damage.c:item_armor_defense open: module cleanup
 static-prefix engine/game.c:timeline_event_aura open: module cleanup
 static-prefix engine/game.c:timeline_event_hide_damage open: module cleanup
 static-prefix engine/inventory.c:item_stat_modifier open: module cleanup

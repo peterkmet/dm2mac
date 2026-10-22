@@ -14,48 +14,56 @@
 #include "weather.h"
 #include <string.h>
 
+/* Attack and wound bits. */
 #define ATTACK_TYPE_MASK           0x7fff
-#define WOUND_LOCATIONS            6      /* the hands, the head, the torso, the legs, the feet */
 #define WOUND_SHARP                0x8000 /* wound location bit: a sharp attack */
-#define COMMAND_PARRY              1      /* the last command of a hand that parries */
+#define ATTR_DEFENDS               0x8000 /* ATTR_ARMOUR_CLASS bit of a hand item: it defends */
+#define WOUND_HAND_BIT(hand)       ((hand) ? 2 : 1)
+/* Masks of the random rolls. */
+#define WOUND_ROLL_MASK            0x7f
+#define WOUND_LOCATION_ROLL        0x07 /* the random wound location of a hit: 0 to 7 */
+#define PARRY_ROLL                 0x0f
+#define STRENGTH_ROLL              0x0f
+#define DEXTERITY_ROLL             0x07
+/* Fields of an armour attribute: the defense and the sharp factor. */
+#define ARMOUR_DEFENSE_MASK        0xff
+#define ARMOUR_SHARP_MASK          0x07
+/* The action command of a hand that parries (last_command). */
+#define COMMAND_PARRY              0x01
+/* Fight formulas: bases, limits, and shifts. */
+#define WOUND_LOCATIONS            6 /* the hands, the head, the torso, the legs, the feet */
 #define DEFENSE_BASE               130
 #define PSYCHIC_BASE               115
 #define ADJUST_BASE                170
 #define ADJUST_MIN                 16
-#define WOUND_ROLL_MASK            0x7f
 #define WOUND_ROLL_BASE            10
-#define WOUND_LOCATION_ROLL        7 /* the random wound location of a hit: 0 to 7 */
 #define ADJUST_SHIFT               7 /* champ_get_stat_adjusted_attack: attack * (170 - statistic) / 128 */
 #define ADJUST_WEAK_SHIFT          3 /* a statistic above 154 lets an eighth of the attack through */
 #define DEFENSE_SHIFT              6 /* damage * (130 - defense) / 64 */
 #define PSYCHIC_SHIFT              6 /* damage * (115 - wisdom) / 64 */
-#define PARRY_ROLL                 0xf
 #define PARRY_CHANCE_SHIFT         3 /* the parry chance gains an eighth of the parry defense */
 #define PARRY_DEFENSE_SHIFT        2 /* a parry adds a quarter of its defense */
 #define HAND_DEFENSE_SHIFT         4 /* a hand item defends its own hand with 1/16 of its value, the rest with 1/32 */
 #define VITALITY_DEFENSE_SHIFT     3
-#define WOUNDED_DEFENSE_LOSS       8      /* a wounded location loses 8 to 11 defense */
-#define PARTY_SPREAD_SHIFT         3      /* party damage varies by an eighth around its value */
-#define ATTR_DEFENDS               0x8000 /* ATTR_ARMOUR_CLASS bit of a hand item: it defends */
+#define WOUNDED_DEFENSE_LOSS       8 /* a wounded location loses 8 to 11 defense */
+#define PARTY_SPREAD_SHIFT         3 /* party damage varies by an eighth around its value */
 #define ARMOUR_SHARP_SHIFT         8
-#define ARMOUR_SHARP_MASK          7
-#define ARMOUR_DEFENSE_MASK        0xff
 #define SHARP_FACTOR_BASE          4u /* against a sharp attack: defense * (sharp factor + 4) / 8 */
 #define SHARP_FACTOR_SHIFT         3
+/* Poison and the damage display. */
 #define POISON_EVENT_DELAY         36
 #define POISON_DAMAGE_ROUND        30
 #define POISON_DAMAGE_SHIFT        6
 #define DAMAGE_SHOW_TIME           5
-#define REDRAW_POISON              0x2800
-#define REDRAW_STATS_SKILLS        0x3000
-#define LUCK_STEP                  2
 #define CURE_ALL                   10000
-#define STRENGTH_ROLL              0xf
-#define DEXTERITY_ROLL             7
+/* Redraw flags of a poisoned champion and of the statistics and skills. */
+#define REDRAW_POISON              (REDRAW_TITLE_ALL | REDRAW_BARS)
+#define REDRAW_STATS_SKILLS        (REDRAW_TITLE_ALL | REDRAW_LOAD)
+/* Luck, strength, and dexterity. */
+#define LUCK_STEP                  2
 #define DEXTERITY_MIN              2
 #define LIGHT_LOAD_SHIFT           4  /* an item up to 1/16 of the maximum load is light */
 #define WEIGHT_FREE                12 /* the item weight that does not change the strength */
-#define WOUND_HAND_BIT(hand)       ((hand) ? 2 : 1)
 /* Time effects. */
 #define REGEN_STEP                 56
 #define REGEN_RANGE                128
@@ -67,8 +75,8 @@
 #define HUNGER_STEP_MAX            6
 #define NEW_PARTY_TIME             80 /* game steps after the first recruit: the party gets hungry faster */
 #define NEW_PARTY_TIME_2           250
-#define HUNGRY                     (-0x200)
-#define STARVING                   (-0x400)
+#define HUNGRY                     (-512)
+#define STARVING                   (-1024)
 #define HEALTH_REGEN_BASE          12
 #define HEALTH_REGEN_SHIFT         7
 #define HEALTH_REGEN_STAMINA_SHIFT 2 /* the health grows only with a quarter of the maximum stamina */
@@ -78,10 +86,17 @@
 #define WATER_HUNGER_SHIFT         2 /* water goes down by a quarter of the hunger, food by half */
 #define REVIVE_HEALTH_SHIFT        6 /* a revived champion loses 1/64 of its maximum health, and 1 */
 #define REVIVE_HEALTH_MIN          25
+/* Masks of the game time at which the statistics move toward their maximum. */
 #define STATS_TIME_MASK            0xff
 #define STATS_TIME_MASK_ASLEEP     0x3f
 /* Lights. */
 #define ATTR_LIGHT_FLAG            0x10 /* ATTR_FLAGS bit: the item gives light */
+/* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */
+#define REBIRTH_REVIVE             0
+#define REBIRTH_BONES              1
+#define REBIRTH_SMOKE              2
+/* Game steps of the rebirth smoke. */
+#define SMOKE_TIME                 5
 
 int16_t g_champ_pending_damage[CHAMPION_MAX];
 uint16_t g_champ_pending_wounds[CHAMPION_MAX];
@@ -119,6 +134,8 @@ static TimelineEvent party_event(uint32_t delay, int type, int priority)
     return e;
 }
 
+/* Damage, poison, and death */
+
 void champ_reset_step_state(void)
 {
     memset(g_champ_pending_damage, 0, sizeof g_champ_pending_damage);
@@ -137,7 +154,7 @@ int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack)
 }
 
 /* The defense of an armour attribute; against a sharp attack its sharp factor counts. */
-static int item_armor_defense(uint16_t attr, int sharp)
+static int armor_defense(uint16_t attr, bool sharp)
 {
     if (!sharp)
         return attr & ARMOUR_DEFENSE_MASK;
@@ -206,10 +223,10 @@ bool champ_test_luck(Champion *c, int chance)
 }
 
 /* The defense of a wound location (bit 15: against a sharp attack) of champ, 0 to 100. */
-static int champ_get_wound_defense(int champ, uint16_t location)
+static int wound_defense(int champ, uint16_t location)
 {
     Champion *c = champion(champ);
-    int sharp = location & WOUND_SHARP;
+    bool sharp = (location & WOUND_SHARP) != 0;
     location &= (uint16_t)~WOUND_SHARP;
     int16_t hands = 0;
     for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
@@ -217,7 +234,7 @@ static int champ_get_wound_defense(int champ, uint16_t location)
         if (!(attr & ATTR_DEFENDS))
             continue;
         int strength = (uint16_t)champ_get_strength(champ, hand, SKILL_PARRY);
-        int v = (item_armor_defense(attr, sharp) + strength) * wound_defense_factor[location];
+        int v = (armor_defense(attr, sharp) + strength) * wound_defense_factor[location];
         hands = (int16_t)(hands + (v >> ((hand != location) + HAND_DEFENSE_SHIFT)));
     }
     int16_t v =
@@ -228,7 +245,7 @@ static int champ_get_wound_defense(int champ, uint16_t location)
         v = (int16_t)(v + c->aura_value);
     v = (int16_t)(v + c->defense[0] + c->defense[1] + hands);
     if (location >= SLOT_HAND_COUNT)
-        v = (int16_t)(v + item_armor_defense(item_attr(c->slots[location], ATTR_ARMOUR_CLASS), sharp));
+        v = (int16_t)(v + armor_defense(item_attr(c->slots[location], ATTR_ARMOUR_CLASS), sharp));
     if (c->wounds & 1 << location)
         v = (int16_t)(v - (rand_2bits() + WOUNDED_DEFENSE_LOSS));
     if (g_party_sleeping)
@@ -237,7 +254,7 @@ static int champ_get_wound_defense(int champ, uint16_t location)
 }
 
 /* The mean defense of champ over the wound locations of wound_mask against an attack of type. */
-static uint16_t champ_get_mean_defense(int champ, int wound_mask, int type)
+static uint16_t mean_defense(int champ, int wound_mask, int type)
 {
     int count = 0;
     uint16_t defense = 0;
@@ -245,18 +262,18 @@ static uint16_t champ_get_mean_defense(int champ, int wound_mask, int type)
         if (!((uint16_t)wound_mask & 1 << w))
             continue;
         count++;
-        defense = (uint16_t)(defense + champ_get_wound_defense(
-                                           champ, (uint16_t)((type == ATTACK_TYPE_SHARP ? WOUND_SHARP : 0) | w)));
+        defense =
+            (uint16_t)(defense + wound_defense(champ, (uint16_t)((type == ATTACK_TYPE_SHARP ? WOUND_SHARP : 0) | w)));
     }
     return count ? (uint16_t)(defense / count) : defense;
 }
 
 /* The damage d that is left after the defense, a parry, the statistics, and the auras of champ; 0 or less: none. */
-static int16_t champ_reduce_damage(int champ, int16_t d, int wound_mask, int attack_type)
+static int16_t reduce_damage(int champ, int16_t d, int wound_mask, int attack_type)
 {
     Champion *c = champion(champ);
     int type = attack_type & ATTACK_TYPE_MASK;
-    uint16_t defense = champ_get_mean_defense(champ, wound_mask, type);
+    uint16_t defense = mean_defense(champ, wound_mask, type);
     int16_t parry = 0;
     for (int hand = 0; hand < SLOT_HAND_COUNT; hand++)
         if (c->last_command[hand] == COMMAND_PARRY)
@@ -272,7 +289,7 @@ static int16_t champ_reduce_damage(int champ, int16_t d, int wound_mask, int att
             defense = (uint16_t)(defense + ((uint16_t)parry >> PARRY_DEFENSE_SHIFT));
         }
     }
-    int scaled = 1;
+    bool scaled = true;
     switch (type) {
     case ATTACK_TYPE_FIRE:
         d = (int16_t)champ_get_stat_adjusted_attack(c, STAT_ANTI_FIRE, (uint16_t)d);
@@ -287,14 +304,14 @@ static int16_t champ_reduce_damage(int champ, int16_t d, int wound_mask, int att
         d = (int16_t)champ_get_stat_adjusted_attack(c, STAT_ANTI_MAGIC, (uint16_t)d);
         if (c->aura == AURA_SPELL_SHIELD)
             d = (int16_t)(d - c->aura_value);
-        scaled = 0;
+        scaled = false;
         break;
     case ATTACK_TYPE_PSYCHIC: {
         int16_t left = (int16_t)(PSYCHIC_BASE - champ_get_stat(c, STAT_WISDOM, 0));
         if (left <= 0)
             return 0;
         d = (int16_t)(mul16(d, left) >> PSYCHIC_SHIFT);
-        scaled = 0;
+        scaled = false;
         break;
     }
     }
@@ -313,7 +330,7 @@ int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
     if (champ == -1 || champ + 1 == ui.candidate || session.completed || d < 1 || !champion(champ)->health)
         return 0;
     if (attack_type & ATTACK_TYPE_MASK) {
-        d = champ_reduce_damage(champ, d, wound_mask, attack_type);
+        d = reduce_damage(champ, d, wound_mask, attack_type);
         if (d <= 0)
             return 0;
         int16_t resist = (int16_t)champ_get_stat_adjusted_attack(
@@ -336,7 +353,8 @@ int champ_damage_party(int damage, int wound_mask, int attack_type)
     int16_t d = (int16_t)damage;
     if (!d)
         return 0;
-    int hit = 0, spread = ((uint16_t)d >> PARTY_SPREAD_SHIFT) + 1;
+    int hit = 0;
+    int spread = ((uint16_t)d >> PARTY_SPREAD_SHIFT) + 1;
     d = (int16_t)(d - spread);
     for (int i = 0; i < game.champion_count; i++) {
         int16_t v = (int16_t)(rand_below((uint16_t)(spread * 2)) + d);
@@ -399,7 +417,7 @@ void champ_cure_poison(int champ, int amount)
 }
 
 /* Drops all items of the champion on the party square, in its cell. */
-static void champ_drop_all_objects(int champ)
+static void drop_all_objects(int champ)
 {
     int cell = champion(champ)->cell;
     for (int i = 0; i < SLOT_COUNT; i++) {
@@ -411,7 +429,7 @@ static void champ_drop_all_objects(int champ)
 
 void champ_drag_click(int cell)
 {
-    int finish = !(cell & DRAG_CANCEL);
+    bool finish = !(cell & DRAG_CANCEL);
     if (!finish)
         cell %= DIR_COUNT;
     int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, game.party_dir));
@@ -440,13 +458,16 @@ void champ_drag_cancel(void)
         champ_drag_click((input_drag_state - 1) | DRAG_CANCEL);
 }
 
-void champ_kill(int champ)
+/* Kills champ: it drops its items and its bones. */
+static void kill_champion(int champ)
 {
     Champion *c = champion(champ);
     if (champ == action.champion - 1)
         action_area_close();
     c->health = 0;
-    c->action_delay[0] = c->action_delay[1] = c->action_delay[ACTION_SPELL] = 0;
+    c->action_delay[0] = 0;
+    c->action_delay[1] = 0;
+    c->action_delay[ACTION_SPELL] = 0;
     c->redraw |= REDRAW_STATUS_BOX;
     if (champ + 1 == ui.inventory) {
         if (ui.eye) {
@@ -457,7 +478,7 @@ void champ_kill(int champ)
         ui.mouth = 0;
         g_hooks.toggle_inventory(CHAMPION_MAX);
     }
-    champ_drop_all_objects(champ);
+    drop_all_objects(champ);
     int cell = c->cell;
     uint16_t bones = dungeon_unused_thing(THING_MISC | THING_ANY_RECORD);
     if (bones != THING_NONE) {
@@ -504,7 +525,7 @@ void champ_apply_pending_damage(void)
         if (health <= 0 && cheat_immortal)
             health = 1;
         if (health <= 0) {
-            champ_kill(i);
+            kill_champion(i);
             continue;
         }
         c->health = health;
@@ -523,7 +544,7 @@ void champ_apply_pending_damage(void)
 }
 
 /* Champion i regains mana by its wisdom and magic skills, and pays stamina for it; mana above the maximum fades. */
-static void champ_regen_mana(int i)
+static void regen_mana(int i)
 {
     Champion *c = champion(i);
     if (c->mana < c->max_mana) {
@@ -545,7 +566,7 @@ static void champ_regen_mana(int i)
 }
 
 /* Champion i eats and drinks: food and water go down, and hunger or thirst costs stamina. */
-static void champ_consume_food_and_water(int i)
+static void consume_food_and_water(int i)
 {
     Champion *c = champion(i);
     uint16_t hunger = HUNGER_BASE;
@@ -559,9 +580,11 @@ static void champ_consume_food_and_water(int i)
         step++;
     if (g_party_sleeping)
         step *= 2;
-    int16_t stamina = 0, food = c->food, water = c->water;
+    int16_t stamina = 0;
+    int16_t food = c->food;
+    int16_t water = c->water;
     do {
-        int low = hunger <= HUNGER_BASE;
+        bool low = hunger <= HUNGER_BASE;
         if (c->food < HUNGRY) {
             if (low) {
                 stamina = (int16_t)(stamina + step);
@@ -605,8 +628,8 @@ void champ_apply_time_effects(void)
         Champion *c = champion(i);
         if (!c->health || i + 1 == ui.candidate)
             continue;
-        champ_regen_mana(i);
-        champ_consume_food_and_water(i);
+        regen_mana(i);
+        consume_food_and_water(i);
         if (c->health < c->max_health && c->stamina >= c->max_stamina >> HEALTH_REGEN_STAMINA_SHIFT &&
             g_champ_regen_counter < (uint16_t)champ_get_stat(c, STAT_VITALITY, 0) + HEALTH_REGEN_BASE) {
             int gain = (c->max_health >> HEALTH_REGEN_SHIFT) + 1;
@@ -631,7 +654,10 @@ void champ_apply_time_effects(void)
 
 void champ_burn_held_lights(void)
 {
-    int burned = 0, count = game.champion_count - (ui.candidate != 0);
+    bool burned = false;
+    int count = game.champion_count;
+    if (ui.candidate)
+        count--; /* the recruit candidate burns no lights */
     for (int i = 0; i < count; i++) {
         Champion *c = champion(i);
         for (int hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
@@ -640,7 +666,7 @@ void champ_burn_held_lights(void)
                 continue;
             if (!item_add_charges(t, -1))
                 item_set_do_not_discard(t, 0);
-            burned = 1;
+            burned = true;
         }
     }
     if (burned)
@@ -648,7 +674,7 @@ void champ_burn_held_lights(void)
 }
 
 /* Puts champ into its cell, or into the first free cell from the party direction. */
-static void champ_place_in_free_cell(int champ)
+static void place_in_free_cell(int champ)
 {
     Champion *c = champion(champ);
     int16_t health = c->health;
@@ -666,7 +692,7 @@ static void champ_place_in_free_cell(int champ)
 void champ_revive(int champ)
 {
     Champion *c = champion(champ);
-    champ_place_in_free_cell(champ);
+    place_in_free_cell(champ);
     c->load = 0;
     for (int s = 0; s < SLOT_COUNT; s++)
         c->slots[s] = THING_NONE;
@@ -679,13 +705,12 @@ void champ_revive(int champ)
     g_hooks.refresh_input_mode();
 }
 
-/* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */
-enum { REBIRTH_REVIVE, REBIRTH_BONES, REBIRTH_SMOKE };
-#define SMOKE_TIME 5
-
 void timeline_event_altar_rebirth(TimelineEvent *e)
 {
-    int x = e->data[EVENT_X], y = e->data[EVENT_Y], cell = e->data[EVENT_CELL], champ = e->priority;
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
+    int cell = e->data[EVENT_CELL];
+    int champ = e->priority;
     switch (e->data[ALTAR_EVENT_STEPS]) {
     case REBIRTH_REVIVE:
         champ_revive(champ);

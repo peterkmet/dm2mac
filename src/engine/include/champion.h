@@ -226,10 +226,14 @@ int champ_get_index_in_cell(int cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
 
-/* Damage, poison, and death (damage.c). */
-extern int16_t g_champ_pending_damage[CHAMPION_MAX]; /* the damage of this game step, applied at its end */
-extern uint16_t g_champ_pending_wounds[CHAMPION_MAX];
-extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and health */
+/* Damage, poison, and death (champion_damage.c). */
+/* The damage of this game step, applied at its end; exported for the tests. */
+extern int16_t g_champ_pending_damage[CHAMPION_MAX];
+extern uint16_t g_champ_pending_wounds[CHAMPION_MAX]; /* the wounds of this game step; exported for the tests */
+extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and health; exported for the tests */
+/* Clears the damage of the step, the regeneration counter, the leader hand cache, and the recruit candidate, as at
+   the program start. */
+void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
 int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack);
 /* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100. */
@@ -246,24 +250,19 @@ int champ_damage_party(int damage, int wound_mask, int attack_type);
 void champ_poison(int champ, int amount);
 /* Takes amount away from the poison events of champ. */
 void champ_cure_poison(int champ, int amount);
-/* Clears the damage of the step, the regeneration counter, the leader hand cache, and the recruit candidate, as at
-   the program start. */
-void champ_reset_step_state(void);
+/* A click on the face of a champion in cell (bit 15: cancel the drag): the first click takes the face, the second
+   swaps it with the champion of the second cell. */
+void champ_drag_click(int cell);
+/* Cancels the drag of a champion face. */
+void champ_drag_cancel(void);
 /* Applies the damage and wounds of this step; a champion without health dies. */
 void champ_apply_pending_damage(void);
-/* Kills champ: it drops its items and its bones. */
-void champ_kill(int champ);
 /* Mana, food, water, stamina, health, and statistics change with the time. */
 void champ_apply_time_effects(void);
 /* The torches in the hands burn down. */
 void champ_burn_held_lights(void);
 /* Brings champ back to life in a free cell, without items, with less maximum health. */
 void champ_revive(int champ);
-/* A click on the face of a champion in cell (bit 15: cancel the drag): the first click takes the face, the second
-   swaps it with the champion of the second cell. */
-void champ_drag_click(int cell);
-/* Cancels the drag of a champion face. */
-void champ_drag_cancel(void);
 
 /* Champion actions (champ_action.c). */
 /* action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
