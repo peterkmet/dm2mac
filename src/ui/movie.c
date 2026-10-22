@@ -9,20 +9,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SPLASH_NS          3000000000ull /* splash intrplay.pcx 3: three seconds */
-#define NS_PER_US          1000
+/* The times of the script. */
+#define SPLASH_NS 3000000000ull /* splash intrplay.pcx 3: three seconds */
+#define NS_PER_US 1000
+
+/* The screens of the player. */
 #define WIDE_SCREEN_WIDTH  640 /* the screen of the argument 640x350 */
 #define WIDE_SCREEN_HEIGHT 350
 #define WIDE_NUMERATOR     4 /* wide: the player shows the video 4/3 wider */
 #define WIDE_DENOMINATOR   3
 #define SVGA_MODE_WIDTH    640 /* the SVGA movies set 640 × 480; the VGA movies 320 × 200 */
 #define SVGA_MODE_HEIGHT   480
-#define PCX_TO_VGA_SHIFT   2      /* 8-bit palette values to the 6 bits of the VGA */
-#define AUDIO_RING_FRAMES  131072 /* stereo frames at SOUND_OUTPUT_RATE: about 3 seconds */
-#define STEREO_CHANNELS    2
-#define U8_SILENCE         0x80 /* the movie samples are unsigned 8-bit */
-#define U8_TO_S16          256
-#define SCRIPT_STEPS_MAX   4 /* the steps of the longest script and its end mark */
+
+/* The palette and audio sizes of the movies, and the length of a script. */
+#define PCX_TO_VGA_SHIFT  2      /* 8-bit palette values to the 6 bits of the VGA */
+#define AUDIO_RING_FRAMES 131072 /* stereo frames at SOUND_OUTPUT_RATE: about 3 seconds */
+#define STEREO_CHANNELS   2
+#define U8_TO_S16         256
+#define SCRIPT_STEPS_MAX  4 /* the steps of the longest script and its end mark */
+
+/* The sample value of silence. */
+#define U8_SILENCE 0x80 /* the movie samples are unsigned 8-bit */
 
 /* One step of the SVGA script of IBMIOP.EXE: its file and the arguments that the launcher gives its player. */
 typedef struct {
@@ -62,6 +69,36 @@ static struct {
     uint8_t saved_palette[PALETTE_COLORS][RGB_CHANNELS];
 } mv = {.step = MOVIE_STEP_NONE};
 
+/* Adds an audio frame (NULL: silence) to the ring as 16-bit stereo; another format than unsigned 8-bit plays none. */
+static void queue_audio(const uint8_t *samples, int bytes)
+{
+    const MveStream *m = &mv.mve;
+    if (!m->audio_rate || m->audio_16bit || m->audio_compressed || SOUND_OUTPUT_RATE % m->audio_rate)
+        return;
+    int channels = m->audio_stereo ? STEREO_CHANNELS : 1;
+    int repeat = SOUND_OUTPUT_RATE / m->audio_rate;
+    for (int i = 0; i + channels <= bytes; i += channels) {
+        int16_t left = samples ? (int16_t)((samples[i] - U8_SILENCE) * U8_TO_S16) : 0;
+        int16_t right = samples ? (int16_t)((samples[i + channels - 1] - U8_SILENCE) * U8_TO_S16) : 0;
+        for (int r = 0; r < repeat && mv.ring_count < AUDIO_RING_FRAMES; r++, mv.ring_count++) {
+            int16_t *out = mv.ring[(mv.ring_start + mv.ring_count) % AUDIO_RING_FRAMES];
+            out[0] = left;
+            out[1] = right;
+        }
+    }
+}
+
+/* Runs the movie to its next picture and queues its audio frames on the way; MVE_SHOW, MVE_END, or MVE_ERROR. */
+static int next_picture(void)
+{
+    int result;
+    while ((result = mve_step(&mv.mve)) == MVE_AUDIO)
+        queue_audio(mv.mve.audio, mv.mve.audio_size);
+    return result;
+}
+
+/* Scripts */
+
 int movie_script_after(int exit_code)
 {
     if (exit_code == EXIT_COMPLETED)
@@ -69,6 +106,18 @@ int movie_script_after(int exit_code)
     if (exit_code == EXIT_PARTY_DEAD)
         return MOVIE_SCRIPT_PARTY_DEAD;
     return MOVIE_SCRIPT_NONE;
+}
+
+void movie_stop(void)
+{
+    if (!mv.playing)
+        return;
+    free(mv.file);
+    mv.file = NULL;
+    mv.playing = false;
+    mv.step = MOVIE_STEP_NONE;
+    memcpy(g_video_fb, mv.saved_fb, sizeof g_video_fb);
+    memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
 }
 
 /* Reads a file of the data folder into memory; NULL when it is missing, empty, or does not read. */
@@ -106,32 +155,6 @@ static bool start_splash(void)
     return ok;
 }
 
-/* Adds an audio frame (NULL: silence) to the ring as 16-bit stereo; another format than unsigned 8-bit plays none. */
-static void queue_audio(const uint8_t *samples, int bytes)
-{
-    const MveStream *m = &mv.mve;
-    if (!m->audio_rate || m->audio_16bit || m->audio_compressed || SOUND_OUTPUT_RATE % m->audio_rate)
-        return;
-    int channels = m->audio_stereo ? STEREO_CHANNELS : 1, repeat = SOUND_OUTPUT_RATE / m->audio_rate;
-    for (int i = 0; i + channels <= bytes; i += channels) {
-        int16_t left = samples ? (int16_t)((samples[i] - U8_SILENCE) * U8_TO_S16) : 0;
-        int16_t right = samples ? (int16_t)((samples[i + channels - 1] - U8_SILENCE) * U8_TO_S16) : 0;
-        for (int r = 0; r < repeat && mv.ring_count < AUDIO_RING_FRAMES; r++, mv.ring_count++) {
-            int16_t *out = mv.ring[(mv.ring_start + mv.ring_count) % AUDIO_RING_FRAMES];
-            out[0] = left, out[1] = right;
-        }
-    }
-}
-
-/* Runs the movie to its next picture and queues its audio frames on the way; MVE_SHOW, MVE_END, or MVE_ERROR. */
-static int next_picture(void)
-{
-    int result;
-    while ((result = mve_step(&mv.mve)) == MVE_AUDIO)
-        queue_audio(mv.mve.audio, mv.mve.audio_size);
-    return result;
-}
-
 /* Loads the movie of step and decodes its first picture; false when it is missing, damaged, or not an SVGA movie. */
 static bool start_movie(int step)
 {
@@ -144,25 +167,14 @@ static bool start_movie(int step)
     return mv.mve.mode_width == SVGA_MODE_WIDTH && mv.mve.mode_height == SVGA_MODE_HEIGHT;
 }
 
-void movie_stop(void)
-{
-    if (!mv.playing)
-        return;
-    free(mv.file);
-    mv.file = NULL;
-    mv.playing = false;
-    mv.step = MOVIE_STEP_NONE;
-    memcpy(g_video_fb, mv.saved_fb, sizeof g_video_fb);
-    memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
-}
-
 /* Ends the current step and starts the next step of the script that can play; after the last step the script stops. */
 static void next_step(uint64_t now_ns)
 {
     for (;;) {
         free(mv.file);
         mv.file = NULL;
-        mv.ring_start = mv.ring_count = 0;
+        mv.ring_start = 0;
+        mv.ring_count = 0;
         mv.step = scripts[mv.script][++mv.index];
         mv.start_ns = now_ns;
         if (mv.step == MOVIE_STEP_NONE) {
@@ -182,10 +194,48 @@ bool movie_start(int script, const char *data_dir, uint64_t now_ns)
     snprintf(mv.data_dir, sizeof mv.data_dir, "%s", data_dir);
     memcpy(mv.saved_fb, g_video_fb, sizeof g_video_fb);
     memcpy(mv.saved_palette, g_video_palette, sizeof g_video_palette);
-    mv.script = script, mv.index = -1, mv.skip = false, mv.playing = true;
+    mv.script = script;
+    mv.index = -1;
+    mv.skip = false;
+    mv.playing = true;
     next_step(now_ns);
     return mv.playing;
 }
+
+/* Queries */
+
+bool movie_is_playing(void)
+{
+    return mv.playing;
+}
+
+int movie_current_step(void)
+{
+    return mv.playing ? mv.step : MOVIE_STEP_NONE;
+}
+
+bool movie_shows_splash(void)
+{
+    return mv.playing && mv.step == MOVIE_STEP_SPLASH;
+}
+
+void movie_picture(MoviePicture *p)
+{
+    if (!mv.playing || mv.step == MOVIE_STEP_SPLASH) {
+        *p = (MoviePicture){0};
+        return;
+    }
+    const Step *s = &steps[mv.step];
+    p->pixels = mve_pixels(&mv.mve);
+    p->width = mv.mve.width;
+    p->height = mv.mve.height;
+    p->shown_width = s->wide ? p->width * WIDE_NUMERATOR / WIDE_DENOMINATOR : p->width;
+    p->screen_width = s->screen_width ? s->screen_width : mv.mve.mode_width;
+    p->screen_height = s->screen_height ? s->screen_height : mv.mve.mode_height;
+    p->palette = mv.mve.palette;
+}
+
+/* Playback */
 
 void movie_update(uint64_t now_ns)
 {
@@ -213,36 +263,6 @@ void movie_click(void)
 {
     if (mv.playing)
         mv.skip = true;
-}
-
-bool movie_is_playing(void)
-{
-    return mv.playing;
-}
-
-int movie_current_step(void)
-{
-    return mv.playing ? mv.step : MOVIE_STEP_NONE;
-}
-
-bool movie_shows_splash(void)
-{
-    return mv.playing && mv.step == MOVIE_STEP_SPLASH;
-}
-
-void movie_picture(MoviePicture *p)
-{
-    if (!mv.playing || mv.step == MOVIE_STEP_SPLASH) {
-        *p = (MoviePicture){0};
-        return;
-    }
-    const Step *s = &steps[mv.step];
-    p->pixels = mve_pixels(&mv.mve);
-    p->width = mv.mve.width, p->height = mv.mve.height;
-    p->shown_width = s->wide ? p->width * WIDE_NUMERATOR / WIDE_DENOMINATOR : p->width;
-    p->screen_width = s->screen_width ? s->screen_width : mv.mve.mode_width;
-    p->screen_height = s->screen_height ? s->screen_height : mv.mve.mode_height;
-    p->palette = mv.mve.palette;
 }
 
 void movie_render_audio(int16_t *stereo, int frames)
