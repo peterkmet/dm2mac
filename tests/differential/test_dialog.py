@@ -7,6 +7,7 @@ import struct
 import pytest
 from unicorn import UC_PROT_ALL
 
+from dm2test import constants as C
 from dm2test.dialog import (  # noqa: F401 (program_start_after is an autouse fixture)
     G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch, Session,
     program_start_after,
@@ -30,8 +31,9 @@ G_SOUND_VOLUME, G_MUSIC_VOLUME, G_TITLE_PICTURE, G_TITLE_PALETTE, G_MENU_PICTURE
 G_SAVE_SLOTS, G_INV_PANEL_MODE, G_FORMAT_BUFFERS = 0x7F8F0, 0x756F8, 0x7F978
 G_GDAT_LOADED, G_IMAGE_CACHE_ENABLED = 0x7FA84, 0x7FA6C
 DRIVE_PATH = b"GAME"
-DIALOGS = [(0x1B, 0), (0x0C, 0), (0x0D, 0), (0x0E, 0), (0x10, 0), (0x06, 0), (0x00, 0x1B), (0x00, 0x1F), (0x00, 0x1C),
-           (0x11, 0), (0x12, 0), (0x0E, 0x1F)]
+DIALOGS = [(C.DIALOG_SAVE_MENU, 0), (C.DIALOG_NOT_SAVED, 0), (C.DIALOG_SAVING, 0), (C.DIALOG_LOADING, 0), (C.DIALOG_THE_END, 0),
+           (C.DIALOG_LOADED, 0), (C.DIALOG_ERROR, C.MESSAGE_SAVE_FAILED), (C.DIALOG_ERROR, C.MESSAGE_GAME_DAMAGED),
+           (C.DIALOG_ERROR, 0x1C), (0x11, 0), (0x12, 0), (C.DIALOG_LOADING, C.MESSAGE_GAME_DAMAGED)]
 
 
 @pytest.fixture()
@@ -96,8 +98,8 @@ def test_dialogs_match_original(ui, original):
 def test_progress_bar_matches_original(ui, original):
     lib, emu = ui, original.emu
     set_screen_mode(lib, emu, 1)
-    lib.dialog_draw(0x0E, 0)
-    emu.call(UI_DIALOG_DRAW, 0x0E, 0)
+    lib.dialog_draw(C.DIALOG_LOADING, 0)
+    emu.call(UI_DIALOG_DRAW, C.DIALOG_LOADING, 0)
     DialogState.in_dll(lib, "dialog").progress_enabled = 1
     emu.write_u32(0x7F1FC, 1)
     for permille in (0, 1, 120, 500, 999, 1000):
@@ -109,7 +111,7 @@ def test_progress_bar_matches_original(ui, original):
 def test_volume_dialog_matches_original(ui, original):
     # The volume dialog with each pair of settings; the dialog closes at once (the OK button).
     lib, emu = ui, original.emu
-    run = emu.stub(UI_DIALOG_RUN, lambda *_: 0xDB)
+    run = emu.stub(UI_DIALOG_RUN, lambda *_: C.CMD_DIALOG_BUTTON_FIRST)
     frame = ctypes.CFUNCTYPE(None)(lambda: close_dialog(lib))
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
     try:
@@ -130,7 +132,7 @@ def test_volume_dialog_matches_original(ui, original):
 def close_dialog(lib):
     """A frame hook: the player clicks the first button of the open dialog."""
     match = InputMatch.in_dll(lib, "input_match")
-    match.choice, match.value = 1, 0xDB
+    match.choice, match.value = 1, C.CMD_DIALOG_BUTTON_FIRST
 
 
 def test_slot_dialogs_match_original(ui, original, tmp_path):
@@ -143,7 +145,7 @@ def test_slot_dialogs_match_original(ui, original, tmp_path):
     start = START.read_bytes()
     (tmp_path / "DATA").mkdir()
     for n, slot in enumerate((0, 3)):
-        (tmp_path / "DATA" / f"SKSAVE{slot}.DAT").write_bytes(start[0x2A * n:0x2A * (n + 1)])
+        (tmp_path / "DATA" / f"SKSAVE{slot}.DAT").write_bytes(start[C.SAVE_HEADER_SIZE * n:C.SAVE_HEADER_SIZE * (n + 1)])
     Session.in_dll(lib, "session").data_dir = str(tmp_path).encode()
     for i in range(2):  # the file names go through the 2 format buffers of text_format
         emu.write_u32(G_FORMAT_BUFFERS + 4 * i, original.alloc(128))
@@ -155,7 +157,7 @@ def test_slot_dialogs_match_original(ui, original, tmp_path):
         return 5 if text[-5:-4] in (b"0", b"3") else -1
 
     stub(original, FILE_OPEN, file_open)
-    for dialog, buttons in ((0x80, 5), (0x81, 6)):
+    for dialog, buttons in ((C.DIALOG_LOAD_SLOTS, 5), (C.DIALOG_SAVE_SLOTS, 6)):
         for chosen in (-1, 0, 3, 7, 9):
             set_screen_mode(lib, emu, 1)
             emu.call(FILE_SEEK, 0, 0)
@@ -180,9 +182,9 @@ def test_menu_pictures_match_original(ui, original):
     # The title of the start menu and the picture of command 0xda: GDAT (5, 0, 1, 4) and (5, 0, 1, 1) with their
     # colors on the screen.
     lib, emu = ui, original.emu
-    title = original.image(original.image_item(5, 0, 4))
+    title = original.image(original.image_item(C.CAT_MENU, 0, 4))
     emu.write_u32(G_TITLE_PICTURE, title)
-    emu.write_u32(G_TITLE_PALETTE, original.image_palette(5, 0, 4))
+    emu.write_u32(G_TITLE_PALETTE, original.image_palette(C.CAT_MENU, 0, 4))
     lib.menu_draw_title()
     emu.call(MENU_DRAW_TITLE)
     mine, theirs = c_screen(lib), original.screen()
@@ -196,7 +198,8 @@ KBD_KEY_TO_ASCII = 0x114C5
 G_INVENTORY_ORDINAL, G_DIALOG_VALUE, G_DIALOG_KEY, INPUT_PUSH_MODE = 0x7F972, 0x7F526, 0x7F51A, 0x2073F
 # Typed keys: X, backspace, Q, 1 (no name character), space, Enter (to the title), 3 backspaces, Z, Tab (back to the
 # name), Enter (to the title), Enter (done).
-NAME_KEYS = [0x2D, 0x0E, 0x10, 0x02, 0x39, 0x1C, 0x0E, 0x0E, 0x0E, 0x2C, 0x0F, 0x1C, 0x1C]
+NAME_KEYS = [0x2D, C.KEY_BACKSPACE, 0x10, 0x02, 0x39, C.KEY_ENTER, C.KEY_BACKSPACE, C.KEY_BACKSPACE, C.KEY_BACKSPACE, 0x2C, C.KEY_TAB,
+             C.KEY_ENTER, C.KEY_ENTER]
 
 
 def test_champion_name_editor_matches_original(ui, original):
@@ -208,7 +211,7 @@ def test_champion_name_editor_matches_original(ui, original):
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     lib.input_find_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
-    commands = [lib.input_find_command(9, 0, 0, 0, k, rect) for k in NAME_KEYS]
+    commands = [lib.input_find_command(C.INPUT_MODE_NAME, 0, 0, 0, k, rect) for k in NAME_KEYS]
     assert all(commands), commands
     UiState.in_dll(lib, "ui").inventory = 1
     emu.write(G_INVENTORY_ORDINAL, struct.pack("<h", 1))
@@ -263,12 +266,12 @@ def test_quit_picture_matches_original(ui, original):
         raise RuntimeError("session_quit")
 
     for addr, fn in ((SAVE_CHECK_DISK, None), (GAME_QUIT, quit_),
-                     (COMMAND_PROCESS_QUEUE, lambda *_: emu.write(G_DIALOG_VALUE, struct.pack("<H", 0xEF)))):
+                     (COMMAND_PROCESS_QUEUE, lambda *_: emu.write(G_DIALOG_VALUE, struct.pack("<H", C.CMD_PICTURE_CLICK)))):
         stub(original, addr, fn or (lambda *_: 0))
     from dm2tools.emu import EmuError
     with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, 0)
-    hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "input_match"), "value", 0xEF))
+    hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "input_match"), "value", C.CMD_PICTURE_CLICK))
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     session = Session.in_dll(lib, "session")
     session.restart = session.quit_code = session.completed = 0
@@ -294,18 +297,18 @@ def test_pressed_buttons_match_original(ui, original):
     lib.input_init()
     match = InputMatch.in_dll(lib, "input_match")
     state = DialogState.in_dll(lib, "dialog")
-    for dialog, buttons in ((0x1B, 4), (0x10, 2)):
+    for dialog, buttons in ((C.DIALOG_SAVE_MENU, 4), (C.DIALOG_THE_END, 2)):
         for choice in range(1, buttons + 1):
             for entry in (0, 1):
                 set_screen_mode(lib, emu, 1)
                 lib.dialog_draw(dialog, 0)
                 emu.call(UI_DIALOG_DRAW, dialog, 0)
                 state.button_count = buttons
-                find_point(lib, 4, lambda m: m.choice == choice)
-                state.button_category, state.button_index, state.button_entry = 0x1A, 0xFE, entry
+                find_point(lib, C.INPUT_MODE_DIALOG, lambda m: m.choice == choice)
+                state.button_category, state.button_index, state.button_entry = C.CAT_DIALOG, 0xFE, entry
                 emu.write(G_MATCH_RECT, bytes(match.rect))
                 emu.write(G_MATCH_ORIGIN, struct.pack("<h", match.origin))
-                emu.write(G_BUTTON_PICTURE, bytes([0x1A, 0xFE, entry]))
+                emu.write(G_BUTTON_PICTURE, bytes([C.CAT_DIALOG, 0xFE, entry]))
                 lib.dialog_draw_button(match.zone, 1)
                 emu.call(UI_DIALOG_DRAW_BUTTON, match.zone, 1)
                 assert_same(lib, original, (dialog, choice, entry), screen=False)
@@ -317,18 +320,18 @@ KBD_READ_KEY, INPUT_SIMULATE_COMMAND_CLICK, G_DIALOG_CHOICE = 0x11413, 0x207F1, 
 def test_enter_presses_first_button_like_original(ui, original):
     # Enter in dialog 0x0c (OK, CANCEL): the original clicks command 0xdb, the first button; both return its value.
     lib, emu = ui, original.emu
-    keys, clicks = [0x1C], []
+    keys, clicks = [C.KEY_ENTER], []
     stub(original, KBD_KEY_AVAILABLE, lambda *_: int(bool(keys)))
     stub(original, KBD_READ_KEY, lambda *_: keys.pop(0))
     stub(original, INPUT_SIMULATE_COMMAND_CLICK, lambda command, *_: clicks.append(command & 0xFFFF))
     # the command queue: the dialog button command 0xdb + n chooses button n + 1
     stub(original, COMMAND_PROCESS_QUEUE,
-         lambda *_: clicks and emu.write(G_DIALOG_CHOICE, struct.pack("<H", clicks[-1] - 0xDA)))
+         lambda *_: clicks and emu.write(G_DIALOG_CHOICE, struct.pack("<H", clicks[-1] - (C.CMD_DIALOG_BUTTON_FIRST - 1))))
     for addr in (INPUT_PUSH_MODE, INPUT_POP_MODE):
         stub(original, addr, lambda *_: 0)
     set_screen_mode(lib, emu, 1)
-    theirs = emu.call(UI_DIALOG_RUN, emu.call(UI_DIALOG_DRAW, 0x0C, 0) & 0xFF) & 0xFFFF
-    assert clicks == [0xDB]
+    theirs = emu.call(UI_DIALOG_RUN, emu.call(UI_DIALOG_DRAW, C.DIALOG_NOT_SAVED, 0) & 0xFF) & 0xFFFF
+    assert clicks == [C.CMD_DIALOG_BUTTON_FIRST]
 
     lib.input_init()
     lib.input_key_down.argtypes = [ctypes.c_uint16]
@@ -337,12 +340,12 @@ def test_enter_presses_first_button_like_original(ui, original):
     def frame():
         frames.append(1)
         if len(frames) == 1:
-            lib.input_key_down(0x1C)
+            lib.input_key_down(C.KEY_ENTER)
         if len(frames) > 100:  # no choice: the program ends, the test fails
             ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 1
 
     hook = ctypes.CFUNCTYPE(None)(frame)
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     set_screen_mode(lib, emu, 1)
-    assert lib.dialog_run(lib.dialog_draw(0x0C, 0)) == theirs == 1
+    assert lib.dialog_run(lib.dialog_draw(C.DIALOG_NOT_SAVED, 0)) == theirs == 1
     assert len(frames) <= 100

@@ -8,6 +8,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
 from dm2test.creature import creatures  # noqa: F401 (fixture)
 from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
@@ -63,7 +64,7 @@ AI_FIELDS = {
 AI_SIZE = 1064
 AI_ACTIVE_FLAG_C = 696  # offset of active_flag in the C AI context
 AI_ARGS_C = 56  # offset of arg1 and arg2 in the C AI context
-ENDOFLIST, NONE = 0xFFFE, 0xFFFF
+ENDOFLIST, NONE = C.THING_ENDOFLIST, C.THING_NONE
 THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 
 
@@ -127,7 +128,7 @@ class Ai:
             possessions, side = uc.reg_read(UC_X86_REG_EAX) & 0xFFFF, uc.reg_read(UC_X86_REG_EDX) & 0xFFFF
             if side > 3 and possessions & 0x400 and not possessions & 0x200:
                 sp = uc.reg_read(UC_X86_REG_ESP)
-                uc.reg_write(UC_X86_REG_EAX, uc.reg_read(UC_X86_REG_EAX) & ~0xFF | 0x0F)
+                uc.reg_write(UC_X86_REG_EAX, uc.reg_read(UC_X86_REG_EAX) & ~0xFF | C.CELLS_ALL)
                 uc.reg_write(UC_X86_REG_EIP, emu.read_u32(sp))
                 uc.reg_write(UC_X86_REG_ESP, sp + 4)
 
@@ -138,9 +139,9 @@ class Ai:
         lib = self.lib
         lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
         lib.gdat_entry_index.restype = ctypes.c_uint16
-        gfx_set = lib.dungeon_map_graphics(self.sc.game.party_map) >> 4 & 0xF
-        light = lib.gdat_entry_index(self.sc.gdat, 8, gfx_set, 0x0B, 0x6D)
-        cost = lib.gdat_entry_index(self.sc.gdat, 8, gfx_set, 0x0B, 0x72) or 1
+        gfx_set = lib.dungeon_map_graphics(self.sc.game.party_map) >> C.MAP_WALLSET_SHIFT & C.MAP_NIBBLE_MASK
+        light = lib.gdat_entry_index(self.sc.gdat, C.CAT_WALLSET, gfx_set, C.GDAT_TYPE_VALUE, 0x6D)
+        cost = lib.gdat_entry_index(self.sc.gdat, C.CAT_WALLSET, gfx_set, C.GDAT_TYPE_VALUE, 0x72) or 1
         self.emu.write(G_MAP_LIGHT, struct.pack("<H", light))
         self.emu.write(G_MAP_WALL_COST, struct.pack("<H", cost))
 
@@ -149,14 +150,14 @@ class Ai:
         lib = self.lib
         n = ctypes.c_int.in_dll(lib, "active_group_max").value
         ptr = ctypes.c_void_p.in_dll(lib, "active_groups").value
-        raw = ctypes.string_at(ptr, n * 0x22)
+        raw = ctypes.string_at(ptr, n * C.ACTIVE_GROUP_SIZE)
         out = []
         for i in range(n):
-            index, = struct.unpack_from("<H", raw, i * 0x22)
-            if index == 0xFFFF:
+            index, = struct.unpack_from("<H", raw, i * C.ACTIVE_GROUP_SIZE)
+            if index == C.ACTIVE_FREE:
                 continue
-            pos, = struct.unpack_from("<H", raw, i * 0x22 + 0xC)
-            out.append((0x1000 | index, pos & 0x1F, pos >> 5 & 0x1F, pos >> 10))
+            pos, = struct.unpack_from("<H", raw, i * C.ACTIVE_GROUP_SIZE + 0xC)
+            out.append((C.THING_GROUP << C.THING_TYPE_SHIFT | index, pos & C.LOCATION_COORD_MASK, pos >> C.LOCATION_Y_SHIFT & C.LOCATION_COORD_MASK, pos >> C.LOCATION_MAP_SHIFT))
         return out
 
     def set_map(self, map_):
@@ -210,8 +211,8 @@ class Ai:
         assert ctypes.c_int16.in_dll(self.lib, "party").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
             (where, "current map")
         mine, theirs = self.sc.active_groups()
-        for i in range(0, len(mine), 0x22):
-            assert mine[i:i + 0x22].hex(" ") == theirs[i:i + 0x22].hex(" "), (where, "active group", i // 0x22)
+        for i in range(0, len(mine), C.ACTIVE_GROUP_SIZE):
+            assert mine[i:i + C.ACTIVE_GROUP_SIZE].hex(" ") == theirs[i:i + C.ACTIVE_GROUP_SIZE].hex(" "), (where, "active group", i // C.ACTIVE_GROUP_SIZE)
         assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), (where, "seed")
         if dungeon:
             assert self.sc.differences() == [], where
@@ -286,7 +287,7 @@ def test_square_cache(ai):
 
 def random_command(rng, test):
     kind = rng.choice((0, 0, 1, 3, 4, 5, 6, 7, 8, rng.randrange(32)))
-    return kind | rng.choice((0, 0x80)) | rng.choice((0, 0, 0x40)) | rng.choice((0, 0, 0x20))
+    return kind | rng.choice((0, C.AI_EXECUTE)) | rng.choice((0, 0, C.AI_MOVE_NO_MOVERS)) | rng.choice((0, 0, C.AI_MOVE_ATTACK_GROUPS))
 
 
 def places(ai, rng, per_group=3):
@@ -296,7 +297,7 @@ def places(ai, rng, per_group=3):
     for g, x, y, m in ai.groups():
         out.append((g, x, y, m))
         w, h = lib.dungeon_map_width(m), lib.dungeon_map_height(m)
-        open_squares = [(sx, sy) for sx in range(w) for sy in range(h) if lib.dungeon_square(m, sx, sy) >> 5 in (1, 2, 3, 4, 5)]
+        open_squares = [(sx, sy) for sx in range(w) for sy in range(h) if lib.dungeon_square(m, sx, sy) >> C.SQUARE_TYPE_SHIFT in (C.SQUARE_FLOOR, C.SQUARE_PIT, C.SQUARE_STAIRS, C.SQUARE_DOOR, C.SQUARE_TELEPORTER)]
         out += [(g, sx, sy, m) for sx, sy in rng.sample(open_squares, min(per_group, len(open_squares)))]
     return out
 
@@ -320,15 +321,15 @@ def test_try_move(ai):
             mine, theirs = ai.call("ai_try_move", command, x, y, tx, ty, d)
             assert mine == theirs, (g, n, command, tx, ty, d)
             moved += mine
-            acted += mine and command & 0x80
+            acted += mine and command & C.AI_EXECUTE
             ai.check((g, n, command, tx, ty, d))
         ai.end()
     assert moved > 100 and acted > 30
 
 
 AI_MOVE_FLAGS_C, AI_MOVE_FLAGS_ORIGINAL = AI_FIELDS["flags"][0], 0x2A  # offset of the move flags in the AI context
-MOVE_OPEN_PIT, MOVE_FALL, MOVE_STAIRS, MOVE_LEVELS = 0x0008, 0x0010, 0x0100, 0x2000
-G_THINGS, GROUP_SIZE, GROUP_CREATURE = 0x7F288, 16, 4
+MOVE_OPEN_PIT, MOVE_FALL, MOVE_STAIRS, MOVE_LEVELS = C.MOVE_OPEN_PIT, C.MOVE_FALL, C.MOVE_STAIRS, C.MOVE_LEVELS
+G_THINGS, GROUP_SIZE, GROUP_CREATURE = 0x7F288, 16, C.GROUP_CREATURE
 
 
 def set_creature_type(ai, group, kind):
@@ -336,7 +337,7 @@ def set_creature_type(ai, group, kind):
     lib = ai.lib
     lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.dungeon_thing_record(group)[GROUP_CREATURE] = kind
-    ai.emu.write(ai.emu.read_u32(G_THINGS + 4 * 4) + (group & 0x3FF) * GROUP_SIZE + GROUP_CREATURE, bytes([kind]))
+    ai.emu.write(ai.emu.read_u32(G_THINGS + 4 * 4) + (group & C.THING_INDEX_MASK) * GROUP_SIZE + GROUP_CREATURE, bytes([kind]))
 
 
 def native_type(lib, m, x, y, delta):
@@ -346,7 +347,7 @@ def native_type(lib, m, x, y, delta):
     target = lib.dungeon_location_on_map(m, delta, ctypes.byref(nx), ctypes.byref(ny))
     if target < 0:
         return None
-    count = lib.dungeon_map_object_counts(target) >> 4 & 0xF
+    count = lib.dungeon_map_object_counts(target) >> C.MAP_CREATURE_TYPES_SHIFT & C.MAP_NIBBLE_MASK
     lib.dungeon_map_creature_types.restype = ctypes.POINTER(ctypes.c_uint8)
     return lib.dungeon_map_creature_types(target)[0] if count else None
 
@@ -366,10 +367,10 @@ def test_try_move_changes_level(ai):
         seen.add(m)
         original_type = lib.dungeon_thing_record(g)[GROUP_CREATURE]
         w, h = lib.dungeon_map_width(m), lib.dungeon_map_height(m)
-        ways = [(sx, sy) for sx in range(w) for sy in range(h) if lib.dungeon_square(m, sx, sy) >> 5 in (2, 3)]
+        ways = [(sx, sy) for sx in range(w) for sy in range(h) if lib.dungeon_square(m, sx, sy) >> C.SQUARE_TYPE_SHIFT in (C.SQUARE_PIT, C.SQUARE_STAIRS)]
         for sx, sy in ways:
-            for d in (4, 5):
-                kind = native_type(lib, m, sx, sy, -1 if d == 4 else 1)
+            for d in (C.DIR_LEVEL_UP, C.DIR_LEVEL_DOWN):
+                kind = native_type(lib, m, sx, sy, -1 if d == C.DIR_LEVEL_UP else 1)
                 if kind is None:
                     continue
                 set_creature_type(ai, g, kind)
@@ -377,7 +378,7 @@ def test_try_move_changes_level(ai):
                 flags = ctypes.c_uint16.from_address(ai.ai + AI_MOVE_FLAGS_C)
                 flags.value |= MOVE_LEVELS | rng.choice((MOVE_OPEN_PIT, MOVE_FALL, MOVE_STAIRS, MOVE_OPEN_PIT | MOVE_FALL | MOVE_STAIRS))
                 ai.emu.write(G_AI + AI_MOVE_FLAGS_ORIGINAL, struct.pack("<H", flags.value))
-                command = rng.choice((0, 1, 3, 7, 8)) | rng.choice((0, 0x80))
+                command = rng.choice((0, 1, 3, 7, 8)) | rng.choice((0, C.AI_EXECUTE))
                 mine, theirs = ai.call("ai_try_move", command, sx, sy, -1, -1, d)
                 assert mine == theirs, (g, sx, sy, m, command, d)
                 tried += 1
@@ -402,11 +403,11 @@ def places_near(ai, rng, kinds, things=None, per_group=4):
         for tx in range(w):
             for ty in range(h):
                 s = lib.dungeon_square(m, tx, ty)
-                if s >> 5 not in kinds or (things is not None and bool(s & 0x10) != things):
+                if s >> C.SQUARE_TYPE_SHIFT not in kinds or (things is not None and bool(s & C.SQUARE_HAS_THINGS) != things):
                     continue
                 for dx, dy in DIRS:
                     x, y = tx - dx, ty - dy
-                    if 0 <= x < w and 0 <= y < h and lib.dungeon_square(m, x, y) >> 5 in (1, 4, 5):
+                    if 0 <= x < w and 0 <= y < h and lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT in (C.SQUARE_FLOOR, C.SQUARE_DOOR, C.SQUARE_TELEPORTER):
                         found.append((g, x, y, m, tx, ty))
         out += rng.sample(found, min(per_group, len(found)))
     return out
@@ -424,7 +425,7 @@ def filters(ai, g):
             base += variant * 3
         if f == 0x29:
             base = 7
-        if f in (0x3E, 0x3F) or 0 <= base < 0x2A:
+        if f in (0x3E, 0x3F) or 0 <= base < C.FILTER_SLOTS:
             out.append(f)
     return out
 
@@ -433,7 +434,7 @@ def test_turn_toward(ai):
     rng = random.Random(18)
     for g, x, y, m in places(ai, rng, 0):
         ai.begin(g, x, y, m)
-        for d in range(4):
+        for d in range(C.DIR_COUNT):
             mine, theirs = ai.call("ai_turn_toward", d)
             assert mine == theirs, (g, d)
             ai.check((g, d))
@@ -448,7 +449,7 @@ def test_try_attack(ai):
     for g, x, y, m in places(ai, rng):
         ai.begin(g, x, y, m)
         for n in range(30):
-            mode = rng.randrange(4) | rng.choice((0, 0x80))
+            mode = rng.randrange(4) | rng.choice((0, C.AI_EXECUTE))
             if rng.random() < 0.3:
                 tx = ty = -1
                 d = rng.randrange(4)
@@ -471,7 +472,7 @@ def test_try_door_action(ai):
     # Open, close, and close-marked actions on the doors next to the groups and in lines up to 3 squares away.
     rng = random.Random(20)
     done = 0
-    for g, x, y, m, tx, ty in places_near(ai, rng, (4,), per_group=6):
+    for g, x, y, m, tx, ty in places_near(ai, rng, (C.SQUARE_DOOR,), per_group=6):
         ai.begin(g, x, y, m)
         for mode in (0, 1, 2, 0x80, 0x81, 0x82):
             for target, d in (((tx, ty), -1), ((-1, -1), rng.randrange(4)), ((tx, ty), rng.randrange(4))):
@@ -488,11 +489,11 @@ def test_try_take_item(ai):
     # floor items, alcoves, chests, possessions of groups.
     rng = random.Random(21)
     taken = 0
-    for g, x, y, m, tx, ty in places_near(ai, rng, (0, 1, 2, 4, 5), things=True, per_group=5):
+    for g, x, y, m, tx, ty in places_near(ai, rng, (C.SQUARE_WALL, C.SQUARE_FLOOR, C.SQUARE_PIT, C.SQUARE_DOOR, C.SQUARE_TELEPORTER), things=True, per_group=5):
         ai.begin(g, x, y, m)
         fs = filters(ai, g)
         for n in range(16):
-            mode = rng.randrange(2) | rng.choice((0, 0x80))
+            mode = rng.randrange(2) | rng.choice((0, C.AI_EXECUTE))
             target = rng.choice(((tx, ty, -1), (tx, ty, rng.randrange(4)), (x, y, -1), (x, y, rng.randrange(4)),
                                  (-1, -1, rng.randrange(4))))
             f = rng.choice(fs) | rng.choice((0, 0, 0x80))
@@ -508,11 +509,11 @@ def test_try_use_wall_actuator(ai):
     # Wall actuators next to the groups: use, put, and take with many filters.
     rng = random.Random(22)
     used = 0
-    for g, x, y, m, tx, ty in places_near(ai, rng, (0,), things=True, per_group=6):
+    for g, x, y, m, tx, ty in places_near(ai, rng, (C.SQUARE_WALL,), things=True, per_group=6):
         ai.begin(g, x, y, m)
         fs = filters(ai, g)
         for n in range(8):
-            mode = rng.randrange(3) | rng.choice((0, 0x80))
+            mode = rng.randrange(3) | rng.choice((0, C.AI_EXECUTE))
             target = rng.choice(((tx, ty, -1), (tx, ty, rng.randrange(4)), (-1, -1, rng.randrange(4))))
             mine, theirs = ai.call("ai_try_use_wall_actuator", mode, x, y, *target, rng.choice(fs))
             assert mine == theirs, (g, n, mode, target)
@@ -541,7 +542,7 @@ def all_things(lib):
     def walk(t):
         while t != ENDOFLIST:
             out.append(t)
-            if t >> 10 & 15 in (4, 9):
+            if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK in (C.THING_GROUP, C.THING_CONTAINER):
                 walk(lib.thing_word(t, 2))
             t = lib.dungeon_next_thing(t)
 
@@ -588,13 +589,13 @@ def test_item_lists(ai):
     lib.ai_find_matching_item.restype = ctypes.c_uint16
     lib.ai_find_matching_item_inside.restype = ctypes.c_int16
     things = all_things(lib)
-    containers = [t for t in things if t >> 10 & 15 in (4, 9)]
+    containers = [t for t in things if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK in (C.THING_GROUP, C.THING_CONTAINER)]
     for g, x, y, m in rng.sample(ai.groups(), 10):
         ai.begin(g, x, y, m)
         fs = filters(ai, g)
         for n in range(40):
             f = rng.choice(fs) | rng.choice((0, 0x80))
-            cell = rng.choice((0xFF, rng.randrange(4)))
+            cell = rng.choice((C.CELL_ANY, rng.randrange(4)))
             first = rng.choice(things)
             mine, theirs = ai.call("ai_find_matching_item", f, first, cell)
             assert mine == theirs & 0xFFFF, (g, n, "find")
@@ -607,9 +608,9 @@ def test_item_lists(ai):
         # removals from the contents of chests and the possessions of groups
         for c in rng.sample(containers, 6):
             f = rng.choice(fs) | rng.choice((0, 0x80))
-            cell = rng.choice((0xFF, rng.randrange(4)))
+            cell = rng.choice((C.CELL_ANY, rng.randrange(4)))
             mine = lib.dungeon_thing_record(c) + 2
-            theirs = ai.emu.read_u32(0x7F288 + 4 * (c >> 10 & 15)) + (c & 0x3FF) * THING_SIZES[c >> 10 & 15] + 2
+            theirs = ai.emu.read_u32(0x7F288 + 4 * (c >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK)) + (c & C.THING_INDEX_MASK) * THING_SIZES[c >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK] + 2
             lib.ai_remove_matching_items(mine, f, cell)
             ai.emu.call(F["ai_remove_matching_items"], theirs, f, cell)
             ai.check((g, "remove", hex(c)), dungeon=True)
@@ -626,7 +627,7 @@ def test_ai_markers(ai):
     for mp in range(lib.dungeon_map_count()):
         for sx in range(lib.dungeon_map_width(mp)):
             for sy in range(lib.dungeon_map_height(mp)):
-                if lib.dungeon_square(mp, sx, sy) & 0x10:
+                if lib.dungeon_square(mp, sx, sy) & C.SQUARE_HAS_THINGS:
                     marked.append((mp, sx, sy))
     ai.begin(g, x, y, m)
     for mp, sx, sy in rng.sample(marked, 400):
@@ -685,12 +686,12 @@ def test_find_target_in_lines(ai):
 
 
 def random_candidate(rng, fs, x, y, m):
-    kind = rng.randrange(0x1C)
-    marker = rng.choice((0xFFFF, (x + rng.randrange(-4, 5)) & 0x1F | (y + rng.randrange(-4, 5)) % 32 << 5 | m << 10))
+    kind = rng.randrange(C.AI_TARGET_KIND_COUNT)
+    marker = rng.choice((0xFFFF, (x + rng.randrange(-4, 5)) & C.LOCATION_COORD_MASK | (y + rng.randrange(-4, 5)) % 32 << C.LOCATION_Y_SHIFT | m << C.LOCATION_MAP_SHIFT))
     item = rng.choice((rng.choice(fs), rng.randrange(-4, 6) & 0xFFFF, rng.randrange(8)))
-    if kind == 0x15:
+    if kind == C.TARGET_MOVE_TEST:
         item = rng.choice((0, 1, 3, 4, 5, 7, 8))
-    if kind in (8, 9, 0x0F, 0x10, 0x11, 0x14, 0x16):
+    if kind in (C.TARGET_MELEE_LINE, C.TARGET_SHOOT_LINE, C.TARGET_ITEM, C.TARGET_ITEM_2, C.TARGET_ITEM_WALL, C.TARGET_DAMAGE_GROUP, C.TARGET_ACTUATOR):
         item = rng.choice(fs) | rng.choice((0, 0x80))  # an item filter
     mask = rng.choice((0, 1, 2, 3, rng.randrange(0x10000)))
     cost = rng.randrange(1, 16)
@@ -713,7 +714,7 @@ def test_search_area(ai):
             cands = Buffers(ai, 22 * count)
             path = Buffers(ai, 0x64)
             cands.put(b"".join(random_candidate(rng, fs, x, y, m) for _ in range(count)))
-            command = rng.choice((0, 2, 3, 4, 5, 7, 8)) | rng.choice((0, 0, 0x20, 0x40))
+            command = rng.choice((0, 2, 3, 4, 5, 7, 8)) | rng.choice((0, 0, C.AI_MOVE_ATTACK_GROUPS, C.AI_MOVE_NO_MOVERS))
             mine = lib.ai_search_area(x, y, command, count, cands.c, path.c)
             theirs = ai.emu.call(F["ai_search_area"], x, y, command, 0, count, cands.emu, path.emu)
             where = (g, x, y, n, hex(command), cands.c.raw.hex())
@@ -735,7 +736,7 @@ def store_path(ai, g, data):
     lib.ai_store_path.restype = ctypes.c_void_p
     ctypes.memmove(lib.ai_store_path(len(data)), data, len(data))
     index = sc.view.new_index()
-    sc.ai_cache[0x30000000 | g & 0x3FF] = index
+    sc.ai_cache[0x30000000 | g & C.THING_INDEX_MASK] = index
     addr = sc.view.alloc(len(data))
     sc.view.cache[index] = addr
     sc.sizes[index] = len(data)
@@ -758,7 +759,7 @@ def test_plan_path_and_next_step(ai):
     for g, x, y, m in places(ai, rng, 2):
         ai.begin(g, x, y, m)
         tx, ty = x + rng.randrange(-5, 6), y + rng.randrange(-5, 6)
-        cand = struct.pack("<bBHHbbHHHbbBbI", 30, 0, 0, 0, 0, 0x0B, rng.randrange(4), 0, tx & 0x1F | (ty & 0x1F) << 5 | m << 10,
+        cand = struct.pack("<bBHHbbHHHbbBbI", 30, 0, 0, 0, 0, C.TARGET_MARKER, rng.randrange(4), 0, tx & C.LOCATION_COORD_MASK | (ty & C.LOCATION_COORD_MASK) << C.LOCATION_Y_SHIFT | m << C.LOCATION_MAP_SHIFT,
                            0, 0, 0, 0, 0)
         cands, path = Buffers(ai, 22), Buffers(ai, 0x64)
         cands.put(cand)
@@ -772,7 +773,7 @@ def test_plan_path_and_next_step(ai):
         put_ai(ai, "candidates", record + bytes(22 * 15))
         for n in range(4):
             left = rng.randrange(length + 1) if n else length
-            kind = record[7] if n < 3 else rng.randrange(0x1C)
+            kind = record[7] if n < 3 else rng.randrange(C.AI_TARGET_KIND_COUNT)
             cache = struct.pack("<BBbbHHHI", length, left, 0, kind, struct.unpack_from("<H", record, 8)[0], 0,
                                 struct.unpack_from("<H", record, 4)[0], 0)
             put_ai(ai, "cache", cache)
@@ -812,7 +813,7 @@ def test_refresh_party_maps(ai):
     assert emu.read_u32(G_PARTY_DISTANCE) and emu.read_u32(G_ALT_DISTANCE)
     reached = 0
     places_ = [(m, x, y) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
-               for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> 5 == 1]
+               for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_FLOOR]
     for n, (m, x, y) in enumerate(rng.sample(places_, 25)):
         sc.place(m, x, y, rng.randrange(4))
         ai.sync_map_values()
@@ -842,11 +843,11 @@ def add_thing(ai, type_, words, map_, x, y, cell):
     mine = lib.dungeon_unused_thing(type_)
     theirs = emu.call(DUN_GET_UNUSED_THING, type_) & 0xFFFF
     assert mine == theirs
-    record = emu.read_u32(0x7F288 + 4 * type_) + (mine & 0x3FF) * THING_SIZES[type_]
+    record = emu.read_u32(0x7F288 + 4 * type_) + (mine & C.THING_INDEX_MASK) * THING_SIZES[type_]
     for i, w in enumerate(words):
         lib.set_thing_word(mine, 2 + 2 * i, w)
         emu.write(record + 2 + 2 * i, struct.pack("<H", w))
-    thing = mine | cell << 14
+    thing = mine | cell << C.THING_CELL_SHIFT
     saved = ai.sc.party.cur_map
     ai.set_map(map_)
     assert lib.dungeon_link_thing_to_square(thing, map_, x, y) == 1
@@ -859,15 +860,15 @@ def add_projectile(ai, payload, direction, map_, x, y, cell):
     """A projectile with its move event (the direction in data byte 3) in both."""
     from dm2test.save import Event
     lib, emu = ai.lib, ai.emu
-    thing = add_thing(ai, 14, (payload, 0x40, 0), map_, x, y, cell)
-    event = Event((ai.sc.time() + 50) | map_ << 24, 0x1D, 0,
+    thing = add_thing(ai, C.THING_PROJECTILE, (payload, 0x40, 0), map_, x, y, cell)
+    event = Event((ai.sc.time() + 50) | map_ << C.EVENT_MAP_SHIFT, C.EVENT_PROJECTILE_MOVE, 0,
                   (ctypes.c_uint8 * 6)(*struct.pack("<HBB2x", thing, 0, direction << 2)))
     buf = ai.sc.view.alloc(12)
     emu.write(buf, bytes(event))
     index = lib.timeline_add_event(ctypes.byref(event))
     assert index == emu.call(TIMELINE_ADD_EVENT, buf) & 0xFFFF
     lib.set_thing_word(thing, 6, index)
-    record = emu.read_u32(0x7F288 + 4 * 14) + (thing & 0x3FF) * 8
+    record = emu.read_u32(0x7F288 + 4 * 14) + (thing & C.THING_INDEX_MASK) * 8
     emu.write(record + 6, struct.pack("<H", index))
     return thing
 
@@ -882,12 +883,12 @@ def test_with_clouds_and_projectiles(ai):
         for _ in range(3):
             sx, sy = x + rng.randrange(-3, 4), y + rng.randrange(-3, 4)
             if not (0 <= sx < lib.dungeon_map_width(m) and 0 <= sy < lib.dungeon_map_height(m)) \
-                    or lib.dungeon_square(m, sx, sy) >> 5 == 0:
+                    or lib.dungeon_square(m, sx, sy) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL:
                 continue
             if rng.random() < 0.5:
-                add_thing(ai, 15, (rng.choice((0xFF8E, 0xFF84, 0xFF8D, 0xFF87, 0xFF80)),), m, sx, sy, rng.randrange(4))
+                add_thing(ai, C.THING_EXPLOSION, (rng.choice((C.SPELL_MISSILE_WALL, C.SPELL_DOOR_TOGGLE, C.SPELL_DOOR_SET, C.SPELL_POISON_CLOUD, C.SPELL_FIREBALL)),), m, sx, sy, rng.randrange(4))
             else:
-                add_projectile(ai, rng.choice((0xFF8D, 0xFF84, 0xFF80)), rng.randrange(4), m, sx, sy, rng.randrange(4))
+                add_projectile(ai, rng.choice((C.SPELL_DOOR_SET, C.SPELL_DOOR_TOGGLE, C.SPELL_FIREBALL)), rng.randrange(4), m, sx, sy, rng.randrange(4))
     ai.check("added", dungeon=True)
     acted = 0
     for g, x, y, m in groups:
@@ -900,9 +901,9 @@ def test_with_clouds_and_projectiles(ai):
             d = rng.randrange(4)
             k = rng.randrange(1, 4)
             tx, ty = x + DIRS[d][0] * k, y + DIRS[d][1] * k
-            mine, theirs = ai.call("ai_try_attack", rng.randrange(4) | 0x80, x, y, tx, ty, -1)
+            mine, theirs = ai.call("ai_try_attack", rng.randrange(4) | C.AI_EXECUTE, x, y, tx, ty, -1)
             assert mine == theirs, (g, n, "attack")
-            mine, theirs = ai.call("ai_try_door_action", rng.randrange(3) | 0x80, x, y, tx, ty, -1)
+            mine, theirs = ai.call("ai_try_door_action", rng.randrange(3) | C.AI_EXECUTE, x, y, tx, ty, -1)
             assert mine == theirs, (g, n, "door")
             mine, theirs = ai.call("ai_try_move", rng.choice((4, 5, 0x84, 0x85)), x, y, -1, -1, d)
             assert mine == theirs, (g, n, "move")
@@ -918,9 +919,9 @@ def test_door_spells_on_the_way(ai):
     # A door spell that flies toward the door (or the other way) between a group and a door: the door action waits.
     rng = random.Random(32)
     waits = 0
-    for g, x, y, m, tx, ty in places_near(ai, rng, (4,), per_group=3)[:50]:  # start.DAT has 60 projectile records
+    for g, x, y, m, tx, ty in places_near(ai, rng, (C.SQUARE_DOOR,), per_group=3)[:50]:  # start.DAT has 60 projectile records
         d = [i for i, (dx, dy) in enumerate(DIRS) if (x + dx, y + dy) == (tx, ty)][0]
-        payload = rng.choice((0xFF8D, 0xFF84, 0xFF80))
+        payload = rng.choice((C.SPELL_DOOR_SET, C.SPELL_DOOR_TOGGLE, C.SPELL_FIREBALL))
         add_projectile(ai, payload, rng.choice((d, (d + 2) & 3)), m, x, y, rng.randrange(4))
         ai.begin(g, x, y, m)
         flags = struct.unpack("<H", ctypes.string_at(ai.ai + AI_MOVE_FLAGS_C + 4, 2))[0]
@@ -930,7 +931,7 @@ def test_door_spells_on_the_way(ai):
             mine, theirs = ai.call("ai_try_door_action", mode, x, y, tx, ty, -1)
             assert mine == theirs, (g, x, y, mode)
             ai.check((g, mode))
-            waits += mine and mode & 0x80 and ctypes.string_at(ai.ai + AI_FIELDS["command_result"][0], 1)[0] == 0xFC
+            waits += mine and mode & C.AI_EXECUTE and ctypes.string_at(ai.ai + AI_FIELDS["command_result"][0], 1)[0] == 0xFC
         ai.end()
     assert waits > 3
 
@@ -942,12 +943,12 @@ DUN_GET_THING_DATA, DUN_LINK_THING_TO_SQUARE, DUN_UNLINK_THING_FROM_SQUARE = 0x1
 ITEM_CREATE_BY_INDEX = 0x1DE8E
 MONEY_BOX = 0xA40F  # the money box on the shelf of the first room (map 22)
 MERCHANT, CUSTOMER = (0x1089, 4, 6, 18), (0x1087, 3, 4)  # map 18: the merchant, and a static group as the counter
-GROUP_DIR_WORD, WEST = 0x0E, 3
+GROUP_DIR_WORD, WEST = C.GROUP_DIR, C.DIR_WEST
 
 
 def set_word(ai, thing, offset, value):
     ai.lib.set_thing_word(thing, offset, value)
-    ai.emu.write(ai.emu.call(DUN_GET_THING_DATA, thing & 0x3FFF) + offset, struct.pack("<H", value))
+    ai.emu.write(ai.emu.call(DUN_GET_THING_DATA, thing & C.THING_ID_MASK) + offset, struct.pack("<H", value))
 
 
 def test_merchant_commands(ai):
@@ -997,14 +998,14 @@ def test_merchant_commands(ai):
         for t in pool:  # no list of the last round goes on
             set_word(ai, t, 0, ENDOFLIST)
         for t, nxt, cell in zip(things, things[1:] + [None], cells[1:] + [0]):
-            set_word(ai, t, 0, ENDOFLIST if nxt is None else nxt & 0x3FFF | cell << 14)
-        set_word(ai, counter, 2, first & 0x3FFF | 1 << 14)
+            set_word(ai, t, 0, ENDOFLIST if nxt is None else nxt & C.THING_ID_MASK | cell << C.THING_CELL_SHIFT)
+        set_word(ai, counter, 2, first & C.THING_ID_MASK | 1 << C.THING_CELL_SHIFT)
         # the change coins of the last round are freed: the records do not run out (no discarded item is reused,
         # dun_get_discarded_thing)
         t = lib.thing_word(g, 2)
         while t != ENDOFLIST:
             nxt = lib.dungeon_next_thing(t)
-            if t & 0x3FFF not in pool and t != box:
+            if t & C.THING_ID_MASK not in pool and t != box:
                 set_word(ai, t, 0, NONE)
             t = nxt
         set_word(ai, g, 2, ENDOFLIST)
@@ -1012,7 +1013,7 @@ def test_merchant_commands(ai):
             t = lib.thing_word(box, 2)
             while t != ENDOFLIST:
                 nxt = lib.dungeon_next_thing(t)
-                if t & 0x3FFF not in box_coins:
+                if t & C.THING_ID_MASK not in box_coins:
                     set_word(ai, t, 0, NONE)
                 t = nxt
             inside = rng.sample(box_coins, rng.randrange(len(box_coins) + 1))
@@ -1037,7 +1038,7 @@ def test_merchant_commands(ai):
         ai.end()
         t = lib.thing_word(box, 2)
         while t != ENDOFLIST and lib.thing_word(g, 2) == box:
-            change_in_box += t & 0x3FFF not in box_coins
+            change_in_box += t & C.THING_ID_MASK not in box_coins
             t = lib.dungeon_next_thing(t)
     assert all(len(r) >= 2 for r in results.values()) and len(results) == 4 and boxes > 80 and change_in_box > 5, (
         results, boxes, change_in_box)

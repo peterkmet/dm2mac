@@ -8,6 +8,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
 from dm2test.scenario import Scenario, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
@@ -26,7 +27,7 @@ CHAMP_APPLY_PENDING_DAMAGE, CHAMP_APPLY_TIME_EFFECTS, ITEMS_BURN_HELD_LIGHTS = 0
 CH = {"dir": 0x1C, "cell": 0x1D, "poisoned": 0x1F, "last_command": 0x20, "damage_event": 0x2E, "wounds": 0x34,
       "health": 0x36, "stamina": 0x3A, "mana": 0x3E, "defense": 0x42, "food": 0x44, "stats": 0x4A, "slots": 0xC3,
       "aura": 0x102, "aura_value": 0x103, "experience": 0x5F}
-WEAPON, CLOTHING = 5, 6
+WEAPON, CLOTHING = C.THING_WEAPON, C.THING_ARMOUR
 DUN_UNLINK_THING_FROM_SQUARE = 0x1D542
 
 
@@ -41,22 +42,22 @@ class Rules:
         self.first = bytes(champion_records(lib)[:CHAMPION_SIZE])
         self.pool = [lib.dungeon_unused_thing(t) for t in (WEAPON,) * 4 + (CLOTHING,) * 4]
         for t in self.pool:
-            self.set_word(t, 0, 0xFFFE)
+            self.set_word(t, 0, C.THING_ENDOFLIST)
             self.sync_record(t)
-        scenario.game.champion_count = 4
-        self.emu.write(G_CHAMPION_COUNT, struct.pack("<H", 4))
+        scenario.game.champion_count = C.CHAMPION_MAX
+        self.emu.write(G_CHAMPION_COUNT, struct.pack("<H", C.CHAMPION_MAX))
         lib.champ_test_luck.argtypes = [ctypes.c_void_p, ctypes.c_int]
 
     def record(self, thing):
         """(C address, original address) of a thing record."""
-        kind = thing >> 10 & 15
+        kind = thing >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK
         return (self.lib.dungeon_thing_record(thing),
-                self.emu.read_u32(G_THING_DATA + 4 * kind) + THING_SIZES[kind] * (thing & 0x3FF))
+                self.emu.read_u32(G_THING_DATA + 4 * kind) + THING_SIZES[kind] * (thing & C.THING_INDEX_MASK))
 
     def sync_record(self, thing):
         """Copies the C record of thing into the original."""
         mine, theirs = self.record(thing)
-        self.emu.write(theirs, ctypes.string_at(mine, THING_SIZES[thing >> 10 & 15]))
+        self.emu.write(theirs, ctypes.string_at(mine, THING_SIZES[thing >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK]))
 
     def set_word(self, thing, offset, value):
         mine, theirs = self.record(thing)
@@ -75,7 +76,7 @@ class Rules:
         for champ, cell in enumerate(rng.sample(range(4), 4)):
             champion_bytes(lib, champ, 0, self.first)
             maxima = [rng.randrange(20, 400) for _ in range(3)]
-            values = {"cell": [cell], "dir": [rng.randrange(4)], "last_command": [rng.choice((0, 1, 2)) for _ in range(2)],
+            values = {"cell": [cell], "dir": [rng.randrange(C.DIR_COUNT)], "last_command": [rng.choice((0, 1, 2)) for _ in range(2)],
                       "health": struct.pack("<hh", rng.randrange(1, maxima[0] + 1), maxima[0]),
                       "stamina": struct.pack("<hh", rng.randrange(0, maxima[1] + 1), maxima[1]),
                       "mana": struct.pack("<hh", rng.randrange(0, maxima[2] + 40), maxima[2]),
@@ -84,7 +85,7 @@ class Rules:
                       "wounds": struct.pack("<H", rng.randrange(0x40) if rng.random() < 0.3 else 0),
                       "stats": [v for _ in range(7) for v in (rng.randrange(10, 230), rng.randrange(20, 230))],
                       "aura": [rng.randrange(7)], "aura_value": struct.pack("<h", rng.choice((0, rng.randrange(120)))),
-                      "slots": struct.pack("<HH", *(rng.choice((hands[2 * champ + k], 0xFFFF)) for k in range(2)))
+                      "slots": struct.pack("<HH", *(rng.choice((hands[2 * champ + k], C.THING_NONE)) for k in range(2)))
                       + b"\xff\xff" * 28,  # the copies must not share the items of the first champion
                       "damage_event": b"\xff\xff", "poisoned": [0],
                       "experience": struct.pack("<20I", *(rng.choice((0, rng.randrange(1 << rng.randrange(24)),
@@ -104,18 +105,18 @@ class Rules:
         lib.dungeon_next_thing.restype = ctypes.c_uint16
         on_square = []
         t = lib.dungeon_square_first_thing(game.party_map, game.party_x, game.party_y)
-        while t != 0xFFFE:
-            if t & 0x3FFF in self.pool:
+        while t != C.THING_ENDOFLIST:
+            if t & C.THING_ID_MASK in self.pool:
                 on_square.append(t)
             t = lib.dungeon_next_thing(t)
         for t in on_square:
             lib.dungeon_unlink_thing_from_square(t, game.party_map, game.party_x, game.party_y)
             self.emu.call(DUN_UNLINK_THING_FROM_SQUARE, t, 0, game.party_x, game.party_y)
-            self.set_word(t & 0x3FFF, 0, 0xFFFE)
+            self.set_word(t & C.THING_ID_MASK, 0, C.THING_ENDOFLIST)
 
     def alive(self):
         records = bytes(champion_records(self.lib))
-        return sum(1 for c in range(4) if records[c * CHAMPION_SIZE + CH["health"]:c * CHAMPION_SIZE + CH["health"] + 2] != b"\0\0")
+        return sum(1 for c in range(C.CHAMPION_MAX) if records[c * CHAMPION_SIZE + CH["health"]:c * CHAMPION_SIZE + CH["health"] + 2] != b"\0\0")
 
     def assert_same(self, where):
         assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
@@ -140,7 +141,7 @@ def test_damage_rules_match_original(rules, lib):
     for n in range(800):
         if n % 8 == 0:
             rules.randomize()
-        champ = rng.randrange(4)
+        champ = rng.randrange(C.CHAMPION_MAX)
         kind = rng.randrange(10)
         mine = theirs = 0
         if kind < 3:
@@ -194,7 +195,7 @@ CHAMP_USE_ACTION_CHARGE, CHAMP_RELOAD_HAND, CHAMP_PROCESS_REPEATED_ACTIONS = 0x4
 G_ACTION_LIST, G_ACTION_THING, G_ACTION_COUNT, G_ACTION_REPEAT = 0x7FB3C, 0x7FB4C, 0x7FB76, 0x7FAD8
 G_ACTION_HAND, G_ACTION_RESULT, G_ACTION_RESULT_FLAG, G_ACTION_RESULT_AMMO, G_ACTION_DELAY = (
     0x7FB72, 0x7FB78, 0x7FB6E, 0x7FB74, 0x7FB68)
-POTION, MISC = 8, 10
+POTION, MISC = C.THING_POTION, C.THING_MISC
 REPEATING_WEAPON = 14  # its third action repeats
 # Item kinds (GDAT indices) with actions, by thing type.
 ACTION_ITEMS = {WEAPON: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
@@ -202,7 +203,7 @@ ACTION_ITEMS = {WEAPON: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 1
                 CLOTHING: [28, 29, 30, 31, 42, 47, 52], MISC: [1, 29, 30, 31, 32, 34, 43, 45, 63, 64]}
 SAVE_WRITE_DEFERRED_THINGS, G_SAVE_DEFERRED_COUNT = 0x34797, 0x75310
 G_SAVE_DEFERRED_THINGS, G_SAVE_CONTAINER_REMAP = 0x7F8E4, 0x7F8EC
-CONTAINER, PROJECTILE = 9, 14
+CONTAINER, PROJECTILE = C.THING_CONTAINER, C.THING_PROJECTILE
 
 
 def zero_minion_links(rules):
@@ -219,9 +220,9 @@ def zero_minion_links(rules):
             things, remap = emu.read_u32(G_SAVE_DEFERRED_THINGS), emu.read_u32(G_SAVE_CONTAINER_REMAP)
             for i in range(struct.unpack("<h", emu.read(G_SAVE_DEFERRED_COUNT, 2))[0]):
                 t = struct.unpack("<H", emu.read(things + 2 * i, 2))[0]
-                if t >> 10 & 15 != PROJECTILE:
+                if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK != PROJECTILE:
                     continue
-                target = struct.unpack("<H", emu.read(rules.record(t)[1] + 2, 2))[0] & 0x3FF
+                target = struct.unpack("<H", emu.read(rules.record(t)[1] + 2, 2))[0] & C.THING_INDEX_MASK
                 if target >= lib.dungeon_thing_count(CONTAINER):
                     saved.setdefault(remap + 2 * target, emu.read(remap + 2 * target, 2))
                     emu.write(remap + 2 * target, b"\0\0")
@@ -271,9 +272,9 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     potions = [lib.dungeon_unused_thing(POTION) for _ in range(4)]
     misc = [lib.dungeon_unused_thing(MISC) for _ in range(4)]
     for t in potions + misc:
-        rules.set_word(t, 0, 0xFFFE)
+        rules.set_word(t, 0, C.THING_ENDOFLIST)
         rules.sync_record(t)
-    places = squares(lib, (1,))
+    places = squares(lib, (C.SQUARE_FLOOR,))
     # places that face a creature group, for the melee actions and their repeats
     lib.dungeon_square_first_thing.restype = ctypes.c_uint16
     lib.dungeon_next_thing.restype = ctypes.c_uint16
@@ -283,13 +284,13 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             fx, fy = x + dx, y + dy
             if 0 <= fx < lib.dungeon_map_width(map_) and 0 <= fy < lib.dungeon_map_height(map_):
                 t = lib.dungeon_square_first_thing(map_, fx, fy)
-                while t != 0xFFFE:
-                    if t >> 10 & 15 == 4:
+                while t != C.THING_ENDOFLIST:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == 4:
                         facing.append((map_, x, y, d))
                         break
                     t = lib.dungeon_next_thing(t)
     action_state = ActionState.in_dll(lib, "action")
-    emu.write(G_ACTION_THING, struct.pack("<H", 0xFFFF))  # the port starts without an action item
+    emu.write(G_ACTION_THING, struct.pack("<H", C.THING_NONE))  # the port starts without an action item
     saved_links, minion_links = zero_minion_links(rules), 0
     performed = consumed = 0
     commands = set()
@@ -297,7 +298,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
 
     def hold(champ, hand, t, word):
         rules.set_word(t, 2, word)
-        for c in range(4):  # the item must not be in two hands
+        for c in range(C.CHAMPION_MAX):  # the item must not be in two hands
             for k in range(2):
                 off = c * CHAMPION_SIZE + CH["slots"] + 2 * k
                 if struct.unpack_from("<H", bytes(champion_records(lib)), off)[0] == t:
@@ -311,37 +312,37 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             if rng.random() < 0.5:
                 place = rng.choice(facing)
                 scenario.place(*place)
-                for c in range(4):
+                for c in range(C.CHAMPION_MAX):
                     champion_bytes(lib, c, CH["dir"], [place[3]])
                 sync_champions(lib, scenario)
             else:
                 map_, x, y, _ = rng.choice(places)
-                scenario.place(map_, x, y, rng.randrange(4))
-        champ = rng.randrange(4)
+                scenario.place(map_, x, y, rng.randrange(C.DIR_COUNT))
+        champ = rng.randrange(C.CHAMPION_MAX)
         if not champion_records(lib)[champ * CHAMPION_SIZE + CH["health"]:champ * CHAMPION_SIZE + CH["health"] + 2] != b"\0\0":
             continue
         kind = rng.randrange(4)
         if kind == 0:
             t = rng.choice(potions + misc)
-            if t >> 10 == POTION:
-                rules.set_word(t, 2, rng.choice((rng.randrange(6, 16), rng.randrange(0x80))) << 8 | rng.randrange(0x100))
+            if t >> C.THING_TYPE_SHIFT == POTION:
+                rules.set_word(t, 2, rng.choice((rng.randrange(6, 16), rng.randrange(0x80))) << C.POTION_TYPE_SHIFT | rng.randrange(0x100))
             else:
-                rules.set_word(t, 2, rng.choice((1, 8, 0x0b, 0x1d, 0x3a, rng.randrange(0x60))) | rng.randrange(4) << 14)
-            slot = rng.choice((0, 1, 13))
+                rules.set_word(t, 2, rng.choice((1, 8, 0x0b, 0x1d, 0x3a, rng.randrange(0x60))) | rng.randrange(4) << C.MISC_CHARGES_SHIFT)
+            slot = rng.choice((C.SLOT_READY_HAND, C.SLOT_ACTION_HAND, C.SLOT_POUCH_FIRST))
             champion_bytes(lib, champ, CH["slots"] + 2 * slot, struct.pack("<H", t))
             sync_champions(lib, scenario)
             lib.champ_consume_object(champ, t, slot)
             emu.call(CHAMP_CONSUME_OBJECT, champ, t, slot)
             consumed += 1
         elif kind == 1:
-            hand = rng.randrange(2)
+            hand = rng.randrange(C.SLOT_HAND_COUNT)
             if rng.random() < 0.7:  # an item with actions: a weapon, clothing, or a miscellaneous item
                 kind_, t = rng.choice(((WEAPON, rng.choice(rules.pool[:4])), (CLOTHING, rng.choice(rules.pool[4:])),
                                        (MISC, rng.choice(misc))))
                 index = rng.choice(ACTION_ITEMS[kind_])
                 if kind_ == WEAPON and rng.random() < 0.6:
                     index = REPEATING_WEAPON
-                charges = rng.randrange(4) << 14 if kind_ == MISC else rng.randrange(16) << (10 if kind_ == WEAPON else 9)
+                charges = rng.randrange(4) << C.MISC_CHARGES_SHIFT if kind_ == MISC else rng.randrange(16) << (C.WEAPON_CHARGES_SHIFT if kind_ == WEAPON else C.ARMOUR_CHARGES_SHIFT)
                 hold(champ, hand, t, index | charges)
             action_state.hand = hand
             emu.write(G_ACTION_HAND, struct.pack("<h", hand))
@@ -386,7 +387,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
                 continue
             rules.randomize()
             t = rules.pool[0]
-            hold(0, 0, t, index | 15 << 10)
+            hold(0, 0, t, index | C.CHARGES_MASK << C.WEAPON_CHARGES_SHIFT)
             action_state.hand = 0
             emu.write(G_ACTION_HAND, struct.pack("<h", 0))
             assert lib.champ_list_actions(0, t, 0) == emu.call(CHAMP_LIST_ACTIONS, 0, t, 0), (index, action)
@@ -406,7 +407,7 @@ MONEY_TAKE_COIN_FROM_BOX, MONEY_NORMALIZE_COINS, MONEY_SPLIT_AMOUNT = 0x1F50D, 0
 SHOP_PARSE_ITEM_CLASS_SET, SHOP_GET_ITEM_VALUE, MONEY_BOX_CLICK_COIN = 0x1538D, 0x15737, 0x42A35
 G_ACTION_CHAMPION, G_ACTION_MODE, UI_UPDATE_ACTION_AREA = 0x7FB70, 0x757B8, 0x3FE68
 MONEY_BOX = 0xA40F  # the money box on the shelf of the first room (map 22)
-ACTION_MODE_MONEY_BOX = 4
+ACTION_MODE_MONEY_BOX = C.ACTION_MODE_MONEY_BOX
 
 
 def test_money_and_prices_match_original(rules, lib):
@@ -424,7 +425,7 @@ def test_money_and_prices_match_original(rules, lib):
     lib.money_add_coin_to_box.argtypes = [ctypes.c_uint16, ctypes.c_uint16]
     lib.shop_get_item_value.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int16]
     buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
-    creatures = [t for t in range(0x100) if lib.gdat_exists(rules.s.gdat, 0x0F, t, 5, 0x10)]
+    creatures = [t for t in range(0x100) if lib.gdat_exists(rules.s.gdat, C.CAT_CREATURE, t, 5, 0x10)]
     action_state = ActionState.in_dll(lib, "action")
     emu.stub(UI_UPDATE_ACTION_AREA, lambda *_: 0)  # the drawing of the panel (the screen is not mapped here)
     lib.action_reset()
@@ -435,14 +436,14 @@ def test_money_and_prices_match_original(rules, lib):
             coin = rng.choice(coins)
             mine, theirs = lib.item_create_by_index(coin), emu.call(ITEM_CREATE_BY_INDEX, coin) & 0xFFFF
             assert mine == theirs, n
-            if mine != 0xFFFF:
+            if mine != C.THING_NONE:
                 assert lib.money_add_coin_to_box(MONEY_BOX, mine) == emu.call(MONEY_ADD_COIN_TO_BOX, MONEY_BOX, mine), n
         elif kind == 1:
             t = rng.randrange(-1, len(coins))
-            mine = lib.money_take_coin_from_box(MONEY_BOX, t) if t >= 0 else 0xFFFF
-            theirs = emu.call(MONEY_TAKE_COIN_FROM_BOX, MONEY_BOX, t) & 0xFFFF if t >= 0 else 0xFFFF
+            mine = lib.money_take_coin_from_box(MONEY_BOX, t) if t >= 0 else C.THING_NONE
+            theirs = emu.call(MONEY_TAKE_COIN_FROM_BOX, MONEY_BOX, t) & 0xFFFF if t >= 0 else C.THING_NONE
             assert mine == theirs, n
-            taken += mine != 0xFFFF
+            taken += mine != C.THING_NONE
         elif kind == 2:
             check = rng.randrange(2)
             assert lib.money_normalize_coins(check, MONEY_BOX) == emu.call(MONEY_NORMALIZE_COINS, check, MONEY_BOX), n
@@ -507,23 +508,23 @@ def test_item_value_matches_original(rules, lib):
     potions, misc = ([lib.dungeon_unused_thing(kind) for _ in range(4)] for kind in (POTION, MISC))
     box = lib.dungeon_unused_thing(CONTAINER)
     for t in potions + misc + [box]:
-        rules.set_word(t, 0, 0xFFFE)
-    rules.set_word(box, 2, 0xFFFE)
+        rules.set_word(t, 0, C.THING_ENDOFLIST)
+    rules.set_word(box, 2, C.THING_ENDOFLIST)
     items = rules.pool + potions + misc
     valued = boxes = 0
     for n in range(1500):
         for t in rules.pool:
-            charges = rng.randrange(16) << (10 if t >> 10 == WEAPON else 9)
+            charges = rng.randrange(16) << (C.WEAPON_CHARGES_SHIFT if t >> C.THING_TYPE_SHIFT == WEAPON else C.ARMOUR_CHARGES_SHIFT)
             rules.set_word(t, 2, rng.randrange(0x80) | charges)
         for t in potions:
             rules.set_word(t, 2, rng.randrange(0x80) << 8 | rng.choice((0, 1, 0xFF, rng.randrange(0x100))))
         for t in misc:
             index = rng.choice(coins) if rng.random() < 0.5 else rng.randrange(0x80)
-            rules.set_word(t, 2, index | rng.randrange(0x40) << 8 | rng.randrange(4) << 14)
+            rules.set_word(t, 2, index | rng.randrange(0x40) << 8 | rng.randrange(4) << C.MISC_CHARGES_SHIFT)
         contents = rng.sample(items, rng.randrange(len(items)))
-        for t, after in zip(contents, contents[1:] + [0xFFFE]):
+        for t, after in zip(contents, contents[1:] + [C.THING_ENDOFLIST]):
             rules.set_word(t, 0, after)
-        rules.set_word(box, 2, contents[0] if contents else 0xFFFE)
+        rules.set_word(box, 2, contents[0] if contents else C.THING_ENDOFLIST)
         rules.set_word(box, 4, rng.choice((box_word, box_word, rng.randrange(8) << 13 | rng.choice((0, 2, 4)))))
         boxes += lib.item_is_moneybox(box) != 0
         for t in items + [box]:
@@ -531,14 +532,15 @@ def test_item_value_matches_original(rules, lib):
             assert mine == theirs, (n, hex(t), [hex(lib.thing_word(t, w)) for w in (2, 4)])
             valued += mine > 0
         for t in contents:
-            rules.set_word(t, 0, 0xFFFE)
+            rules.set_word(t, 0, C.THING_ENDOFLIST)
     assert valued > 1000 and boxes > 300, (valued, boxes)
 
 
 G_MAGIC_LIGHT = 0x7FFEC  # 6 bytes: magic light, invisibility, action effect, haste, ...
 CHAMPIONS_OFFSET, MAGIC_LIGHT_OFFSET = 252, 252 + 4 * CHAMPION_SIZE + 2  # offsetof(Game, ...) in save.h
-EVENT_ITEM_EFFECT, EVENT_MAGIC_LIGHT, EVENT_INVISIBILITY, EVENT_AURA, EVENT_POISON = 0x0E, 0x46, 0x47, 0x48, 0x4B
-POTION, MISC = 8, 10
+EVENT_ITEM_EFFECT, EVENT_MAGIC_LIGHT, EVENT_INVISIBILITY, EVENT_AURA, EVENT_POISON = (
+    C.EVENT_ITEM_EFFECT, C.EVENT_MAGIC_LIGHT, C.EVENT_INVISIBILITY, C.EVENT_AURA, C.EVENT_POISON)
+POTION, MISC = C.THING_POTION, C.THING_MISC
 
 
 @pytest.mark.parametrize("dead", [False, True])

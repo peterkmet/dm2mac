@@ -5,6 +5,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.input import Loop
 from dm2test.interface import LeaderHand
 from dm2test.scenario import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
@@ -16,13 +17,13 @@ def lib():
     return load_lib()
 
 G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAP_COLUMNS = 0x7FBB4, 0x7FBCE, 0x7F3C8
-HAND_OFFSET = 252 + 4 * 263  # offsetof(Game, leader_hand) in save.h
-KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = 0x4C, 0x4B, 0x4D
-LEFT = 2
+HAND_OFFSET = 252 + 4 * C.CHAMPION_SIZE  # offsetof(Game, leader_hand) in save.h
+KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = C.KEYPAD_FORWARD, C.KEYPAD_TURN_LEFT, C.KEYPAD_TURN_RIGHT
+LEFT = C.INPUT_BUTTON_LEFT
 GOLD_COIN = 0x108
 TABLE_COIN = 0xA8B8  # the gold coin on the table of the first room (map 22)
 DUN_LINK_THING_TO_SQUARE, DUN_UNLINK_THING_FROM_SQUARE = 0x1D3DB, 0x1D542
-DOOR_STATE, DOOR_OPEN, DOOR_CLOSED = 7, 0, 4
+DOOR_STATE, DOOR_OPEN, DOOR_CLOSED = C.SQUARE_DOOR_STATE, C.DOOR_STATE_OPEN, C.DOOR_STATE_CLOSED
 
 
 @pytest.fixture
@@ -89,7 +90,7 @@ def test_coin_from_the_table(loop, lib):
     run(loop, [("c", 111, 90), ("t", 16)], "keyhole")
     assert hands(loop)[0][0] == hand
     run(loop, walk(KEY_TURN_RIGHT, KEY_FORWARD, KEY_TURN_RIGHT, KEY_FORWARD) + [("c", 77, 101), ("t", 16)], "back")
-    assert hands(loop)[0][0] == 0xFFFF
+    assert hands(loop)[0][0] == C.THING_NONE
     loop.assert_loop("end")
     loop.assert_equal("end")
 
@@ -99,7 +100,7 @@ SUN_CREST = 0x130    # the item of the holder on the shelf face
 SOLID_KEY_ITEM = 0x10B
 CABINET_ITEMS = 0x1E1, 0x1EB, SOLID_KEY_ITEM  # the items of the cabinet on the shelf face, in the order of the clicks
 G_PUSH_ARROW = 0x72246
-PUSH_ARROW_LEFT = 5  # the table moves to the left of the party, the party steps forward
+PUSH_ARROW_LEFT = C.PUSH_ARROW_LEFT  # the table moves to the left of the party, the party steps forward
 
 
 def test_door_out_of_the_first_room(loop, lib):
@@ -125,21 +126,21 @@ def test_door_out_of_the_first_room(loop, lib):
     run(loop, [("c", 110, 80), ("t", 16)], "holder")
     assert lib.item_get_index(hands(loop)[0][0]) == SUN_CREST
     run(loop, [("c", 110, 80), ("t", 16)], "holder back")
-    assert hands(loop)[0][0] == 0xFFFF
+    assert hands(loop)[0][0] == C.THING_NONE
     loop.assert_loop("shelf")
     run(loop, [("c", 110, 80), ("t", 16), ("c", 40, 165), ("t", 16)], "crest to the floor")
-    assert hands(loop)[0][0] == 0xFFFF
+    assert hands(loop)[0][0] == C.THING_NONE
     for item in CABINET_ITEMS:
         run(loop, [("c", 110, 80), ("t", 16)], "cabinet")
         assert lib.item_get_index(hands(loop)[0][0]) == item
         if item != SOLID_KEY_ITEM:
             run(loop, [("c", 40, 165), ("t", 16)], "to the floor")
-    assert hands(loop)[0][0] == SOLID_KEY & 0x3FFF
+    assert hands(loop)[0][0] == SOLID_KEY & C.THING_ID_MASK
     run(loop, walk(KEY_TURN_RIGHT), "east")
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT, KEY_FORWARD, KEY_TURN_RIGHT), "keyhole")
     closed = square(loop, 22, 3, 4)
     run(loop, [("c", 111, 90), ("t", 16)], "keyhole")
-    assert hands(loop)[0][0] == 0xFFFF
+    assert hands(loop)[0][0] == C.THING_NONE
     run(loop, walk(KEY_TURN_LEFT) + [("c", 173, 90), ("t", 136)], "button")
     loop.assert_loop("end")
     loop.assert_equal("end")
@@ -148,14 +149,14 @@ def test_door_out_of_the_first_room(loop, lib):
 
 
 MONEY_BOXES = 0xA401, 0xA40F  # on map 0 at (3, 2), and on the shelf of map 22 at (1, 5)
-MONEYBOX_WORD, MONEYBOX_FLAG = 6, 0x0400
+MONEYBOX_WORD, MONEYBOX_FLAG = C.MONEYBOX_FLAGS, C.MONEYBOX_PLACED
 DUN_GET_THING_DATA = 0x1D2DA
 
 
 def write_word(loop, thing, offset, value):
     """Writes a word of a thing record in both."""
     loop.lib.set_thing_word(thing, offset, value)
-    loop.emu.write(loop.emu.call(DUN_GET_THING_DATA, thing & 0x3FFF) + offset, struct.pack("<H", value))
+    loop.emu.write(loop.emu.call(DUN_GET_THING_DATA, thing & C.THING_ID_MASK) + offset, struct.pack("<H", value))
 
 
 def test_money_box_flags_in_the_view(loop, lib):
@@ -169,28 +170,28 @@ def test_money_box_flags_in_the_view(loop, lib):
     climb_ladder(loop)
     lib.dungeon_unlink_thing_from_square(table_box, 22, 1, 5)
     loop.emu.call(DUN_UNLINK_THING_FROM_SQUARE, table_box, 0, 1, 5)
-    floor = floor_box & 0x3FFF | 1 << 14
+    floor = floor_box & C.THING_ID_MASK | 1 << C.THING_CELL_SHIFT
     lib.dungeon_link_thing_to_square(floor, 22, 2, 6)
     loop.emu.call(DUN_LINK_THING_TO_SQUARE, floor, 0, 2, 6)
     last = TABLE_COIN  # the last possession of the table
-    while lib.thing_word(last, 0) != 0xFFFE:
+    while lib.thing_word(last, 0) != C.THING_ENDOFLIST:
         last = lib.thing_word(last, 0)
-    write_word(loop, last, 0, table_box & 0x3FFF | 2 << 14)
-    write_word(loop, table_box, 0, 0xFFFE)
+    write_word(loop, last, 0, table_box & C.THING_ID_MASK | 2 << C.THING_CELL_SHIFT)
+    write_word(loop, table_box, 0, C.THING_ENDOFLIST)
     for box in MONEY_BOXES:
         write_word(loop, box, MONEYBOX_WORD, lib.thing_word(box, MONEYBOX_WORD) | MONEYBOX_FLAG)
     loop.assert_loop("boxes")
     run(loop, walk(KEY_TURN_RIGHT, KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "floor")
     run(loop, [("c", 150, 145), ("t", 16)], "take")
-    assert hands(loop)[0][0] == floor_box & 0x3FFF
+    assert hands(loop)[0][0] == floor_box & C.THING_ID_MASK
     run(loop, walk(KEY_FORWARD) + [("c", 77, 101), ("t", 16)], "drop")
-    assert hands(loop)[0][0] == 0xFFFF
+    assert hands(loop)[0][0] == C.THING_NONE
     loop.assert_loop("end")
     assert not any(lib.thing_word(box, MONEYBOX_WORD) & MONEYBOX_FLAG for box in MONEY_BOXES)
 
 
-DUN_GET_UNUSED_THING, THING_SENSOR, FLOOR_PARTY_POSSESSES = 0x1DDD7, 3, 8
-SENSOR_TOGGLE, SENSOR_INVERTED = 2 << 3, 1 << 5  # sensor flags: the effect, and the inverted trigger
+DUN_GET_UNUSED_THING, THING_SENSOR, FLOOR_PARTY_POSSESSES = 0x1DDD7, C.THING_SENSOR, 8
+SENSOR_TOGGLE, SENSOR_INVERTED = C.EFFECT_TOGGLE << C.SENSOR_EFFECT_SHIFT, C.SENSOR_INVERTED  # sensor flags: the effect, and the inverted trigger
 
 
 def test_floor_sensor_sees_the_leader_hand(loop, lib):
@@ -206,8 +207,8 @@ def test_floor_sensor_sees_the_leader_hand(loop, lib):
     for flags in (SENSOR_TOGGLE, SENSOR_TOGGLE | SENSOR_INVERTED):
         sensor = lib.dungeon_unused_thing(THING_SENSOR)
         assert loop.emu.call(DUN_GET_UNUSED_THING, THING_SENSOR) & 0xFFFF == sensor
-        for offset, value in ((0, 0xFFFE), (2, FLOOR_PARTY_POSSESSES | GOLD_COIN << 7), (4, flags),
-                              (6, door_x << 6 | door_y << 11)):
+        for offset, value in ((0, C.THING_ENDOFLIST), (2, FLOOR_PARTY_POSSESSES | GOLD_COIN << C.SENSOR_DATA_SHIFT), (4, flags),
+                              (6, door_x << C.SENSOR_TARGET_X_SHIFT | door_y << C.SENSOR_TARGET_Y_SHIFT)):
             write_word(loop, sensor, offset, value)
         lib.dungeon_link_thing_to_square(sensor, 22, x, y)
         loop.emu.call(DUN_LINK_THING_TO_SQUARE, sensor, 0, x, y)
@@ -220,7 +221,7 @@ def test_floor_sensor_sees_the_leader_hand(loop, lib):
     mine, theirs = square(loop, 22, door_x, door_y)
     assert mine == theirs and mine & DOOR_STATE != closed[0] & DOOR_STATE, (closed, mine)
     run(loop, [("c", 77, 101), ("t", 16)], "back")
-    assert hands(loop)[0][0] == 0xFFFF
+    assert hands(loop)[0][0] == C.THING_NONE
     run(loop, [("t", 60)], "door")
     loop.assert_loop("end")
     mine, theirs = square(loop, 22, door_x, door_y)
@@ -228,8 +229,8 @@ def test_floor_sensor_sees_the_leader_hand(loop, lib):
 
 
 KEY_INVENTORY = 0x02
-MODE_MOVE, MODE_INVENTORY = 5, 8
-CMD_SLOT_FIRST, CMD_MOUTH, CMD_HAND_FIRST, CMD_ACTION_FIRST = 0x14 + 8, 0x46, 0x74, 0x71
+MODE_MOVE, MODE_INVENTORY = C.INPUT_MODE_MOVE, C.INPUT_MODE_INVENTORY
+CMD_SLOT_FIRST, CMD_MOUTH, CMD_HAND_FIRST, CMD_ACTION_FIRST = C.CMD_SLOT_INVENTORY_FIRST, C.CMD_MOUTH, C.CMD_HAND_FIRST, 0x71
 CHAMPION_WATER = 0x46
 
 
@@ -237,7 +238,7 @@ def find_click(lib, mode, command):
     """A screen point whose left click gives command in mode, with the C port state."""
     lib.input_find_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
-    return next((x, y) for y in range(0, 200, 2) for x in range(0, 320, 2)
+    return next((x, y) for y in range(0, C.SCREEN_H, 2) for x in range(0, C.SCREEN_W, 2)
                 if lib.input_find_command(mode, x, y, LEFT, 0, rect) == command)
 
 
@@ -249,12 +250,12 @@ def test_drink_and_hand_actions(loop, lib):
     run(loop, [("k", KEY_INVENTORY), ("t", 16)], "inventory")
     pouch = find_click(lib, MODE_INVENTORY, CMD_SLOT_FIRST + 13)
     run(loop, [("c", *pouch), ("t", 8)], "take bota")
-    assert hands(loop)[0][0] != 0xFFFF
+    assert hands(loop)[0][0] != C.THING_NONE
     water = struct.unpack_from("<h", bytes(champion_records(lib)), CHAMPION_WATER)[0]
     run(loop, [("c", *find_click(lib, MODE_INVENTORY, CMD_MOUTH)), ("t", 8)], "drink")
     assert struct.unpack_from("<h", bytes(champion_records(lib)), CHAMPION_WATER)[0] != water
     run(loop, [("c", *pouch), ("t", 8), ("k", KEY_INVENTORY), ("t", 16)], "put back")
-    assert hands(loop)[0][0] == 0xFFFF
+    assert hands(loop)[0][0] == C.THING_NONE
     loop.assert_loop("inventory")
     actions = 0
     for n in range(6):
@@ -270,7 +271,7 @@ def test_drink_and_hand_actions(loop, lib):
     loop.assert_equal("end")
 
 
-MODE_RECRUIT, CMD_RECRUIT, CMD_RECRUIT_CANCEL = 7, 0x92, 0x93
+MODE_RECRUIT, CMD_RECRUIT, CMD_RECRUIT_CANCEL = C.INPUT_MODE_RECRUIT, C.CMD_RECRUIT, C.CMD_RECRUIT_CANCEL
 G_CANDIDATE, G_INVENTORY = 0x7F284, 0x7F972
 
 
@@ -278,7 +279,7 @@ def viewport_on_screen(lib):
     """The viewport zone (7) of the C screen."""
     from dm2test.interface import SCREEN_W, VIEW_W, VIEW_H, c_screen
     rect = (ctypes.c_int16 * 4)()
-    lib.zone_get_rect(7, rect)
+    lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
     screen = c_screen(lib)
     return b"".join(screen[(rect[1] + y) * SCREEN_W + rect[0]:][:VIEW_W] for y in range(VIEW_H))
 
@@ -320,18 +321,18 @@ def test_sensors_create_items(scenario, lib):
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
                 t = lib.dungeon_square_first_thing(map_, x, y)
-                while t != 0xFFFE:
-                    if t >> 10 & 15 == 3 and lib.thing_word(t, 2) & 0x7F == SENSOR_CREATE_ITEM:
+                while t != C.THING_ENDOFLIST:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and lib.thing_word(t, 2) & C.SENSOR_TYPE_MASK == SENSOR_CREATE_ITEM:
                         sensors.append((map_, x, y, t))
                     t = lib.dungeon_next_thing(t)
     assert len(sensors) >= 9
     for n, (map_, x, y, sensor) in enumerate(sensors):
         scenario.place(map_, x, y, 0)
         flags = lib.thing_word(sensor, 4)
-        for inverted in (0, 0x20):
-            write_word(scenario, sensor, 4, flags & ~0x20 | inverted)
+        for inverted in (0, C.SENSOR_INVERTED):
+            write_word(scenario, sensor, 4, flags & ~C.SENSOR_INVERTED | inverted)
             for effect in (0, 1):
-                square_event(scenario, map_, x, y, sensor >> 14, effect, 0)
+                square_event(scenario, map_, x, y, sensor >> C.THING_CELL_SHIFT, effect, 0)
                 scenario.step()
                 scenario.assert_same(("create", n, map_, x, y, inverted, effect))
     scenario.assert_equal("end")

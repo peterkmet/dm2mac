@@ -5,6 +5,7 @@ import ctypes
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
@@ -17,17 +18,17 @@ from dm2test.lib import load_lib
 def lib():
     return load_lib()
 
-NORTH, EAST, SOUTH, WEST = range(4)
+NORTH, EAST, SOUTH, WEST = C.DIR_NORTH, C.DIR_EAST, C.DIR_SOUTH, C.DIR_WEST
 STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}
-WALL, DOOR, FAKE_WALL = 0, 4, 6
-FAKE_WALL_OPEN, DOOR_STATE, DOOR_CLOSED = 0x04, 0x07, 4
+WALL, DOOR, FAKE_WALL = C.SQUARE_WALL, C.SQUARE_DOOR, C.SQUARE_FAKE_WALL
+FAKE_WALL_OPEN, DOOR_STATE, DOOR_CLOSED = C.SQUARE_FAKE_WALL_OPEN, C.SQUARE_DOOR_STATE, C.DOOR_STATE_CLOSED
 ROW_HALF_WIDTH = (1, 1, 2, 2, 3)  # the side squares of each row of the dungeon view
-KEY_TAB, KEY_M, KEY_ESC, KEY_I, KEY_F, KEY_L = 0x0F, 0x32, 0x01, 0x17, 0x21, 0x26
-INPUT_BUTTON_LEFT, INPUT_LEFT_RELEASED = 2, 4
-ZONE_VIEWPORT, UI_RED, CELL = 7, 8, 8
-SCREEN_H, FILLER = 200, 0xEE
+KEY_TAB, KEY_M, KEY_ESC, KEY_I, KEY_F, KEY_L = C.KEY_AUTOMAP, C.KEY_AUTOMAP_M, 0x01, 0x17, 0x21, 0x26
+INPUT_BUTTON_LEFT, INPUT_LEFT_RELEASED = C.INPUT_BUTTON_LEFT, C.INPUT_LEFT_RELEASED
+ZONE_VIEWPORT, UI_RED, CELL = C.ZONE_VIEWPORT, C.UI_RED, C.MAP_CELL_SIZE
+SCREEN_H, FILLER = C.SCREEN_H, 0xEE
 HEALTH, FOOD, WATER = 0x36, 0x44, 0x46  # champion record offsets
-SAVE_OK = 0
+SAVE_OK = C.SAVE_OK
 
 
 @pytest.fixture
@@ -60,7 +61,7 @@ def blocks(lib, m, x, y):
     if not on_map(lib, m, x, y):
         return True
     square = lib.dungeon_square(m, x, y)
-    kind = square >> 5
+    kind = square >> C.SQUARE_TYPE_SHIFT
     return kind == WALL or (kind == FAKE_WALL and not square & FAKE_WALL_OPEN) or \
         (kind == DOOR and square & DOOR_STATE == DOOR_CLOSED)
 
@@ -92,7 +93,7 @@ def seen_squares(lib, m):
 def floor_views(lib, m):
     """Every party position on an open square of map m with each direction."""
     return [(x, y, d) for x in range(lib.dungeon_map_width(m)) for y in range(lib.dungeon_map_height(m))
-            if not blocks(lib, m, x, y) for d in range(4)]
+            if not blocks(lib, m, x, y) for d in range(C.DIR_COUNT)]
 
 
 def test_marks_start_and_squares_ahead(lib, automap):
@@ -113,9 +114,9 @@ def test_vanilla_marks_no_square(lib, session):  # noqa: F811
     lib.seen_reset()
     x, y = game.party_x, game.party_y
     run_ticks(lib, 20)
-    press(lib, 0x4C)  # forward
+    press(lib, C.KEYPAD_FORWARD)  # forward
     run_ticks(lib, 40)
-    press(lib, 0x4D)  # turn right
+    press(lib, C.KEYPAD_TURN_RIGHT)  # turn right
     assert (game.party_x, game.party_y) != (x, y)
     assert not seen_squares(lib, game.party_map)
 
@@ -127,7 +128,7 @@ def test_the_game_marks_what_the_view_shows(lib, automap):
     run_ticks(lib, 20)
     first = seen_squares(lib, m)
     assert first == expected(lib, m, game.party_x, game.party_y, game.party_dir)
-    press(lib, 0x4D)  # turn right
+    press(lib, C.KEYPAD_TURN_RIGHT)  # turn right
     assert seen_squares(lib, m) > first
 
 
@@ -196,7 +197,7 @@ def saves(lib, gdat, automap, tmp_path):  # noqa: F811
     """A marked game saved in vanilla and in the advanced mode; the seen squares."""
     game, _ = automap
     run_ticks(lib, 20)
-    press(lib, 0x4D)
+    press(lib, C.KEYPAD_TURN_RIGHT)
     seen = seen_squares(lib, game.party_map)
     seed = ctypes.c_uint32.in_dll(lib, "random_seed")
     kept = seed.value
@@ -259,7 +260,7 @@ def test_original_loader_ignores_the_amap_block(lib, gdat, saves, game_dir):  # 
 def test_quick_save_keeps_the_automap(lib, automap):
     game, data = automap
     run_ticks(lib, 20)
-    press(lib, 0x4D)
+    press(lib, C.KEYPAD_TURN_RIGHT)
     seen = seen_squares(lib, game.party_map)
     press(lib, KEY_F5)
     assert (data / "QUICK.DAT").read_bytes()[-block_size(lib):][:4] == b"AMAP"
@@ -272,7 +273,7 @@ def test_damaged_quick_save_keeps_the_automap(lib, automap):
     # The running game comes back from QUICK.TMP with its AMAP block.
     game, data = automap
     run_ticks(lib, 20)
-    press(lib, 0x4D)
+    press(lib, C.KEYPAD_TURN_RIGHT)
     seen = seen_squares(lib, game.party_map)
     (data / "QUICK.DAT").write_bytes(bytes(300))
     press(lib, KEY_F9)
@@ -364,7 +365,7 @@ def test_time_stops_and_keys_are_swallowed_while_open(lib, automap):
     game, data = automap
     press(lib, KEY_TAB)
     state = (game.game_time, game.party_x, game.party_y, game.party_dir)
-    for key in (SCAN_W, 0x4D, KEY_F5, KEY_F9):
+    for key in (SCAN_W, C.KEYPAD_TURN_RIGHT, KEY_F5, KEY_F9):
         press(lib, key)
     assert (game.game_time, game.party_x, game.party_y, game.party_dir) == state
     assert not (data / "QUICK.DAT").exists(), "F5 and F9 do nothing on the open automap"
@@ -435,7 +436,7 @@ def test_readout_shows_position_direction_and_cheats(lib, automap):
     shown = viewport_pixels(lib)
     for row, text in enumerate(lines):
         for line, same in ((text, True), (text[:-1] + b"X", False)):
-            lib.text_draw_on_screen(x + 2, y + 6 + row * 7, colors[15], colors[0], line)
+            lib.text_draw_on_screen(x + 2, y + 6 + row * 7, colors[C.UI_WHITE], colors[C.UI_BLACK], line)
             assert (viewport_pixels(lib) == shown) == same, line
             lib.advanced_draw_automap()
     press(lib, KEY_TAB)
