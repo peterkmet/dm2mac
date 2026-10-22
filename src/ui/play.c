@@ -24,30 +24,36 @@
 #include "ui.h"
 #include "view.h"
 #include "zone.h"
+#include <stdbool.h>
 #include <string.h>
 
-#define TIME_EFFECTS_PERIOD_MASK       0x3f  /* the champion clocks run each 64 game steps */
-#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x0f  /* and each 16 game steps while the party sleeps */
+/* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
+#define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
+#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
 #define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
 
 static int tick_elapsed;
-void (*play_frame_hook)(void);
+void (*g_play_frame_hook)(void);
+
+/* Modal loops */
 
 void play_wait_frames(int count)
 {
     while (count-- > 0) {
         g_main_loop.timer_ticks++;
-        if (play_frame_hook)
-            play_frame_hook();
+        if (g_play_frame_hook)
+            g_play_frame_hook();
     }
 }
+
+/* The view of the party */
 
 void play_present_viewport(void)
 {
     int steps = g_party.move_steps;
     int16_t r[RECT_SIZE];
     g_party.move_steps = 0;
-    int ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
+    bool ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
     g_party.move_steps = (int16_t)steps;
     if (!ok)
         return;
@@ -66,7 +72,8 @@ void play_present_viewport(void)
     }
 }
 
-static void draw_sleep_message(void)
+/* The sleep message on a black viewport. */
+static void render_sleep_message(void)
 {
     char text[TEXT_SIZE];
     gfx_fill_bitmap(&g_view_viewport, g_ui_colors[UI_BLACK]);
@@ -79,7 +86,7 @@ void play_show_view(void)
     if (!g_main_loop.view_hidden || g_dialog.screen_mode)
         return;
     if (g_party_sleeping) {
-        draw_sleep_message();
+        render_sleep_message();
         play_present_viewport();
         return;
     }
@@ -126,15 +133,17 @@ void play_sleep(void)
         move_party(g_party.move_command);
         g_party.move_steps = 0;
     }
-    draw_sleep_message();
+    render_sleep_message();
     play_present_viewport();
     g_main_loop.tick_threshold = SLEEP_STEP_TICKS;
     input_set_mode(INPUT_MODE_SLEEP);
     input_flush();
 }
 
-/* The events, map changes, and view of a game step, with each step of a walk. Returns 0 while the party sleeps. */
-static int game_step_view(void)
+/* The main loop */
+
+/* The events, map changes, and view of a game step, with each step of a walk. Returns false while the party sleeps. */
+static bool step_view(void)
 {
     for (;;) {
         if (g_party.new_map != -1) {
@@ -148,7 +157,7 @@ static int game_step_view(void)
             continue;
         world_update_day_night(0);
         if (g_party_sleeping)
-            return 0;
+            return false;
         if (!g_ui.candidate)
             play_show_view();
         if (!g_ui.inventory) {
@@ -163,22 +172,22 @@ static int game_step_view(void)
                 seen_mark(g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir);
         }
         if (!g_party.move_steps)
-            return 1;
+            return true;
         if (g_party.move_steps == 1)
             move_party(g_party.move_command);
         int map = g_party.new_map;
         g_party.move_steps--;
         if (map == -1)
-            return 1;
+            return true;
     }
 }
 
 /* The part of a game step before the input wait: events, the view, the party clocks. */
-static void game_step(void)
+static void step_before_input(void)
 {
     tick_elapsed = 0;
     g_main_loop.tick_count = 0;
-    if (game_step_view()) {
+    if (step_view()) {
         g_input_feedback_busy = 0;
         input_poll();
     }
@@ -209,7 +218,7 @@ static void game_step(void)
 }
 
 /* The part of a game step after the input wait: a map change, repeated actions, music. */
-static void game_step_end(void)
+static void step_after_input(void)
 {
     int saved = g_party.cur_map;
     if (g_party.new_map != -1)
@@ -247,7 +256,7 @@ void play_start_session(void)
     if (g_session.new_game)
         move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
     g_dialog.screen_mode = 0;
-    game_step();
+    step_before_input();
 }
 
 void play_tick(void)
@@ -261,6 +270,6 @@ void play_tick(void)
     /* the automap stops the game time; a quit (a lost game) ends all game work */
     if (!tick_elapsed || !g_main_loop.running || advanced_automap_open || g_main_loop.quit)
         return;
-    game_step_end();
-    game_step();
+    step_after_input();
+    step_before_input();
 }

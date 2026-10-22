@@ -48,7 +48,7 @@ def tb(lib, gdat, session):  # noqa: F811
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     mode = ctypes.c_int.in_dll(lib, "g_game_mode")
     mode.value = TURNBASED
-    hook = ctypes.c_void_p.in_dll(lib, "play_frame_hook")
+    hook = ctypes.c_void_p.in_dll(lib, "g_play_frame_hook")
     hook.value = ctypes.cast(lib.transport_poll, ctypes.c_void_p).value  # a dialog polls the socket, as main.c does
     folder = tempfile.mkdtemp(prefix="dm2t", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "control.sock")
@@ -501,7 +501,7 @@ def test_new_game_after_game_over_plays_again(tb, lib, saves):
 def test_turn_in_a_dialog_ends_and_the_dialog_stays(tb, lib, saves):
     """A turn that opens a dialog (act click on the volume button) ends; state.mode is dialog; save, load, and
     new_game reply "close the dialog first (act click or act key)"; act key enter closes it."""
-    path, *_ = tb  # the tb fixture sets play_frame_hook to transport_poll: the dialog serves the requests
+    path, *_ = tb  # the tb fixture sets g_play_frame_hook to transport_poll: the dialog serves the requests
     assert act(path, "open_inventory", champion=0)["state"]["mode"] == "inventory"
     x, y = center(command_rect(lib, CMD_VOLUME))
     r = act(path, "click", x=x, y=y)

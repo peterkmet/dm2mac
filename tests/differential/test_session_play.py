@@ -44,11 +44,11 @@ class Player:
             main_loop_quit(self.lib).value = 1
 
     def __enter__(self):
-        ctypes.c_void_p.in_dll(self.lib, "play_frame_hook").value = ctypes.cast(self.hook, ctypes.c_void_p).value
+        ctypes.c_void_p.in_dll(self.lib, "g_play_frame_hook").value = ctypes.cast(self.hook, ctypes.c_void_p).value
         return self
 
     def __exit__(self, *_):
-        ctypes.c_void_p.in_dll(self.lib, "play_frame_hook").value = None
+        ctypes.c_void_p.in_dll(self.lib, "g_play_frame_hook").value = None
 
 
 def click_choice(choice):

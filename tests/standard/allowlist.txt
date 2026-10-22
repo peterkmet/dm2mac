@@ -12,12 +12,10 @@ block platform/transport.c open: module cleanup
 block ui/advanced.c open: module cleanup
 block ui/fm.c open: module cleanup
 block ui/include/music.h open: module cleanup
-block ui/include/play.h open: module cleanup
 block ui/include/session.h open: module cleanup
 block ui/include/sound.h open: module cleanup
 block ui/movie.c open: module cleanup
 block ui/music.c open: module cleanup
-block ui/play.c open: module cleanup
 block ui/session.c open: module cleanup
 block ui/sound.c open: module cleanup
 bool control/control.c open: module cleanup
@@ -39,8 +37,6 @@ bool ui/include/session.h:session_load open: module cleanup
 bool ui/include/session.h:session_start_new_game open: module cleanup
 bool ui/include/session.h:session_start_save open: module cleanup
 bool ui/include/sound.h:sound_play open: module cleanup
-bool ui/play.c open: module cleanup
-bool ui/play.c:game_step_view open: module cleanup
 bool ui/session.c open: module cleanup
 bool ui/session.c:type_name_key open: module cleanup
 comment control/control.c open: module cleanup
@@ -56,10 +52,8 @@ comment ui/fm.c open: module cleanup
 comment ui/include/fm.h open: module cleanup
 comment ui/include/movie.h open: module cleanup
 comment ui/include/music.h open: module cleanup
-comment ui/include/play.h open: module cleanup
 comment ui/include/session.h open: module cleanup
 comment ui/music.c open: module cleanup
-comment ui/play.c open: module cleanup
 comment ui/session.c open: module cleanup
 dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
@@ -121,7 +115,6 @@ enum ui/music.c open: module cleanup
 enum ui/session.c open: module cleanup
 global ui/include/advanced.h open: module cleanup
 global ui/include/music.h open: module cleanup
-global ui/include/play.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
 hex engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -160,7 +153,6 @@ notation ui/include/music.h open: module cleanup
 notation ui/include/session.h open: module cleanup
 notation ui/movie.c open: module cleanup
 notation ui/music.c open: module cleanup
-notation ui/play.c open: module cleanup
 notation ui/session.c open: module cleanup
 order control/control.c open: module cleanup
 order control/state_json.c open: module cleanup
@@ -170,7 +162,6 @@ order platform/transport.c open: module cleanup
 order ui/advanced.c open: module cleanup
 order ui/fm.c open: module cleanup
 order ui/movie.c open: module cleanup
-order ui/play.c open: module cleanup
 order ui/session.c open: module cleanup
 order ui/sound.c open: module cleanup
 params control/state_json.c:wall_face_json open: module cleanup
@@ -213,10 +204,6 @@ static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix platform/main.c:play_movies open: module cleanup
 static-prefix platform/platform.c:movie_screen open: module cleanup
 static-prefix ui/advanced.c:draw_readout_line open: module cleanup
-static-prefix ui/play.c:draw_sleep_message open: module cleanup
-static-prefix ui/play.c:game_step open: module cleanup
-static-prefix ui/play.c:game_step_end open: module cleanup
-static-prefix ui/play.c:game_step_view open: module cleanup
 static-prefix ui/session.c:draw_screen_picture open: module cleanup
 static-prefix ui/session.c:save_choose_load_slot open: module cleanup
 static-prefix ui/session.c:save_choose_save_slot open: module cleanup

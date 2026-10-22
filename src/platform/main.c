@@ -501,7 +501,7 @@ int main(int argc, char **argv)
         sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
         sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
     }
-    play_frame_hook = g_game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
+    g_play_frame_hook = g_game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!save && !getenv(RESTART_ENV))
         play_movies(MOVIE_SCRIPT_START);
     if (!save && !g_main_loop.quit && !start_game(data)) {

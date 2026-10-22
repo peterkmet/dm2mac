@@ -382,7 +382,7 @@ address,name,signature,subsystem
 0x0002186c,input_refine_champion_click,void input_refine_champion_click(int16_t *command_record),input
 0x000219c2,champ_set_leader,void champ_set_leader(int16_t index),champions
 0x00021a49,minion_map_click_set_destination,"int minion_map_click_set_destination(int16_t command, int16_t x, int16_t y)",minions
-0x00021d19,draw_sleep_message,void draw_sleep_message(void),interface
+0x00021d19,render_sleep_message,void render_sleep_message(void),interface
 0x00021d6c,command_execute,int command_execute(int16_t *command_record),input
 0x000224a9,command_process_queue,void command_process_queue(void),input
 0x00022544,click_wall_sensor,void click_wall_sensor(uint16_t relative_side),dungeon view
