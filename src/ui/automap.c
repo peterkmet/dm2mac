@@ -5,6 +5,7 @@
 #include "game_text.h"
 #include "minion.h"
 #include "move.h"
+#include "save.h"
 #include "seen.h"
 #include "minion_map.h"
 

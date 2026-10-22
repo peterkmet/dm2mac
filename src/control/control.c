@@ -13,7 +13,6 @@
 #include "movie.h"
 #include "play.h"
 #include "session.h"
-#include "ui.h"
 #include "video.h"
 #include "state_json.h"
 #include "turn.h"

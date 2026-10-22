@@ -1514,7 +1514,7 @@ static void feedback_init_rect(Feedback *f, int16_t *r, int w, int h)
 {
     if (!f->opened) {
         memcpy(f->o.rect, in.current.rect, sizeof f->o.rect);
-        offscreen_create(&f->o, -1, 0);
+        offscreen_create(&f->o, -1, false);
         f->opened = true;
     }
     rect_center_in(r, f->o.rect, w, h);
@@ -1562,7 +1562,7 @@ static void feedback_rune_button(Feedback *f)
 /* Copies the drawn action area to the screen. */
 static void present_action_area(void)
 {
-    offscreen_flush(area_begin_draw(0), 1);
+    offscreen_flush(area_begin_draw(0), true);
 }
 
 /* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
@@ -1708,7 +1708,7 @@ static void run_click_feedback(int elapsed)
         }
     } while (op & FB_RUN_ON);
     if (f.opened)
-        offscreen_flush(&f.o, 1);
+        offscreen_flush(&f.o, true);
 }
 
 /* The open automap takes the keys and the mouse events until it closes; the mouse drags the map. */
@@ -1812,10 +1812,10 @@ static void show_move_arrow(int entry, int zone, bool pressed)
     in.arrow_zone = zone;
     in.arrow_entry = entry;
     Offscreen o;
-    offscreen_create(&o, zone, 1);
+    offscreen_create(&o, zone, true);
     gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
     offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry + pressed}, zone, GFX_OPAQUE);
-    offscreen_flush(&o, 1);
+    offscreen_flush(&o, true);
     draw_free_temp();
 }
 

@@ -742,6 +742,6 @@ void area_update(int tick)
     draw_open_face_aura();
 flush:
     if (area.bitmap)
-        offscreen_flush(&area, 1);
+        offscreen_flush(&area, true);
     draw_free_temp();
 }

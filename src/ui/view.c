@@ -5,6 +5,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "game.h"
 #include "game_text.h"
 #include "item.h"
 #include "money.h"

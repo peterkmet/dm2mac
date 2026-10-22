@@ -65,7 +65,6 @@ comment ui/include/movie.h open: module cleanup
 comment ui/include/music.h open: module cleanup
 comment ui/include/play.h open: module cleanup
 comment ui/include/session.h open: module cleanup
-comment ui/include/ui.h open: module cleanup
 comment ui/music.c open: module cleanup
 comment ui/play.c open: module cleanup
 comment ui/session.c open: module cleanup
@@ -90,9 +89,6 @@ dead-api ui/include/session.h:session_list_slots open: module cleanup
 dead-api ui/include/session.h:session_load open: module cleanup
 dead-api ui/include/session.h:session_open_slot_dialog open: module cleanup
 dead-api ui/include/session.h:session_save_path open: module cleanup
-dead-api ui/include/ui.h:offscreen_add_dirty_rect open: module cleanup
-dead-api ui/include/ui.h:ui_draw_game_screen open: module cleanup
-dead-api ui/include/ui.h:ui_fill_rect_dithered open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -150,16 +146,13 @@ hex ui/fm.c rule 3.12: a table of SKULL.EXE
 hex ui/input.c rule 3.12: a table of SKULL.EXE
 hex ui/ui.c rule 3.12: a table of SKULL.EXE
 hex ui/view.c rule 3.12: a table of SKULL.EXE
-include control/control.c:ui.h open: module cleanup
 include engine/include/creature.h:timeline.h open: module cleanup
 include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
-include platform/main.c:ui.h open: module cleanup
 include platform/main.c:view.h open: module cleanup
 include ui/include/advanced.h:game.h open: module cleanup
 include ui/include/session.h:game.h open: module cleanup
 include ui/include/session.h:save.h open: module cleanup
-include ui/include/ui.h:game.h open: module cleanup
 include ui/session.c:item.h open: module cleanup
 long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
@@ -198,7 +191,6 @@ order ui/movie.c open: module cleanup
 order ui/play.c open: module cleanup
 order ui/session.c open: module cleanup
 order ui/sound.c open: module cleanup
-order ui/ui.c open: module cleanup
 params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup

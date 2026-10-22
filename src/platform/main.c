@@ -26,7 +26,6 @@
 #include "session.h"
 #include "sound.h"
 #include "text.h"
-#include "ui.h"
 #include "video.h"
 #include "view.h"
 #include "zone.h"

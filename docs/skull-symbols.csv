@@ -85,7 +85,7 @@ address,name,signature,subsystem
 0x00013658,gfx_fill_rect_8bpp,"void gfx_fill_rect_8bpp(uint8_t *dst, const int16_t *rect, uint8_t color, int16_t pitch)",graphics
 0x000136a9,gfx_fill_rect_4bpp,"void gfx_fill_rect_4bpp(uint8_t *dst, const int16_t *rect, uint8_t color, int16_t width)",graphics
 0x00013702,gfx_fill_rect,"void gfx_fill_rect(uint8_t *dst, const int16_t *rect, uint8_t color, uint16_t pitch, int16_t bpp)",graphics
-0x00013745,ui_fill_rect_dithered,"void ui_fill_rect_dithered(uint8_t *dst, const uint16_t *rect, uint8_t color, uint16_t pitch)",graphics
+0x00013745,fill_rect_dithered,"void fill_rect_dithered(uint8_t *dst, const uint16_t *rect, uint8_t color, uint16_t pitch)",graphics
 0x00013887,vga_wait_vblank,void vga_wait_vblank(void),graphics
 0x00013898,pal_set_palette,void pal_set_palette(const uint8_t *palette_rgba),palette
 0x000138c7,iop_set_video_state,void iop_set_video_state(uint8_t state),graphics

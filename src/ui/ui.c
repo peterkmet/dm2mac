@@ -128,6 +128,22 @@ typedef struct {
     int low, high;
 } GaugeRange;
 
+/* A value gauge of the object info: its glyph, value, scale, and the word that the text of the panel gives it. */
+typedef struct {
+    uint8_t glyph;
+    int value, high;
+    const char *label;
+} ObjectGauge;
+
+/* The redraw of one champion: what to draw, and what it drew. */
+typedef struct {
+    uint16_t flags; /* REDRAW_* of what to draw */
+    bool inv;       /* the champion has the open inventory */
+    bool force_slots, force_inventory;
+    bool present;   /* the inventory changed: the view goes to the screen */
+    bool box_drawn; /* the status box changed */
+} ChampionRedraw;
+
 /* The zone and the empty slot icon of each slot entry. */
 static const struct {
     uint16_t zone;
@@ -211,7 +227,380 @@ static struct {
 } cache;
 static Offscreen status_box;
 
-/* ---- Drawing helpers ---- */
+/* The value gauge of an object of type: the strength or throw power of a weapon, the armour class of an armour, or
+   the power of a potion; false when the object shows none. */
+static bool object_value_gauge(uint16_t thing, int type, ObjectGauge *g)
+{
+    if (type == THING_WEAPON) {
+        *g = (ObjectGauge){GLYPH_STRENGTH, item_attr(thing, ATTR_STRENGTH), WEAPON_STRENGTH_MAX, "strength"};
+        if (!g->value)
+            *g = (ObjectGauge){GLYPH_THROW, item_attr(thing, ATTR_THROW_POWER), WEAPON_THROW_MAX, "throw"};
+    } else if (type == THING_ARMOUR) {
+        *g = (ObjectGauge){GLYPH_STRENGTH, item_attr(thing, ATTR_ARMOUR_CLASS) & ARMOUR_CLASS_MASK, ARMOUR_CLASS_MAX,
+                           "armour"};
+    } else if (type == THING_POTION) {
+        *g = (ObjectGauge){GLYPH_POTION, potion_power(thing), POTION_POWER_MAX, "power"};
+    } else {
+        return false;
+    }
+    return (uint16_t)g->value != 0;
+}
+
+/* ---- Setup ---- */
+
+void ui_reset(void)
+{
+    memset(&g_ui, 0, sizeof g_ui);
+    memset(&cache, 0, sizeof cache);
+    g_ui.screen_needs_refresh = 1;
+    cache.shown_object = THING_NONE;
+    status_box.bitmap = NULL;
+    action_reset();
+}
+
+/* ---- Queries ---- */
+
+/* Adds a formatted line to the object info lines; a full list takes no more lines. Returns the new count. */
+static int info_add(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, const char *fmt, ...)
+{
+    if (count >= OBJECT_INFO_LINES)
+        return count;
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(lines[count], OBJECT_INFO_SIZE, fmt, args);
+    va_end(args);
+    return count + 1;
+}
+
+/* Adds each non-empty line of text (lines end at a new line) to the object info lines. */
+static int info_add_text(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, const char *text)
+{
+    for (const char *p = text; *p;) {
+        int n = (int)strcspn(p, "\n");
+        if (n)
+            count = info_add(lines, count, "%.*s", n, p);
+        p += n;
+        if (*p)
+            p++;
+    }
+    return count;
+}
+
+/* Appends item to line after a comma; a line that has no room for it goes to the object info lines first. */
+static int info_append(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, char *line, const char *item)
+{
+    static const char separator[] = ", ";
+    size_t used = strlen(line);
+    if (used && used + strlen(separator) + strlen(item) >= OBJECT_INFO_SIZE) {
+        count = info_add(lines, count, "%s", line);
+        used = 0;
+    }
+    snprintf(line + used, OBJECT_INFO_SIZE - used, "%s%s", used ? separator : "", item);
+    return count;
+}
+
+/* Adds the names of the items of a chest, as many to a line as fit. */
+static int info_add_contents(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t container)
+{
+    char line[OBJECT_INFO_SIZE] = "";
+    uint16_t t = thing_word(container, CONTAINER_CONTENTS);
+    for (int i = 0; t != THING_ENDOFLIST && i < CONTAINER_SLOTS; i++, t = dungeon_next_thing(t))
+        count = info_append(lines, count, line, item_name(t));
+    return *line ? info_add(lines, count, "%s", line) : count;
+}
+
+/* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
+   total value. */
+static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
+{
+    int16_t counts[COIN_TYPE_MAX];
+    money_count_coins_in_box(box, counts);
+    int total = 0;
+    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[COIN_TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
+    for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
+        int type = money_coin_type_for_slot(box, slot);
+        if (type < 0)
+            continue;
+        total += money_coin_value(type) * counts[type];
+        uint16_t item = money_coin_item(type);
+        text_format(text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, raw), name);
+        snprintf(coin, sizeof coin, "%s %d", name, counts[type]);
+        count = info_append(lines, count, line, coin);
+    }
+    if (*line)
+        count = info_add(lines, count, "%s", line);
+    return info_add(lines, count, "total %d", total);
+}
+
+int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE])
+{
+    if (thing == THING_NONE)
+        return 0;
+    int type = thing_type(thing);
+    int count = info_add(lines, 0, "%s", item_name(thing));
+    uint16_t weight = (uint16_t)item_weight(thing);
+    g_text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
+    g_text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
+    char text[TEXT_SIZE * 2];
+    count = info_add_text(lines, count, text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
+    if (type == THING_SCROLL)
+        return info_add_text(lines, count, text_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
+    if (type == THING_CONTAINER) {
+        if (item_is_chest(thing))
+            return info_add_contents(lines, count, thing);
+        return item_is_moneybox(thing) ? info_add_coins(lines, count, thing) : count;
+    }
+    if (item_has_charged_action(thing) && (int16_t)item_charges(thing))
+        count = info_add(lines, count, "charges %d/%d", (int16_t)item_charges(thing), (int16_t)item_max_charges(thing));
+    ObjectGauge g;
+    if (object_value_gauge(thing, type, &g))
+        count = info_add(lines, count, "%s %d/%d", g.label, (int16_t)g.value, g.high);
+    return count;
+}
+
+char *ui_skill_rank_text(int champ, int skill, char *dst)
+{
+    int level = champ_get_skill_level(champ, skill, 1);
+    if (level > SKILL_LEVEL_MAX)
+        level = SKILL_LEVEL_MAX;
+    g_text_args.entry = (uint8_t)skill;
+    return text_gdat(CAT_PANEL, 0, skill_level_texts[level], dst);
+}
+
+/* ---- Offscreen bitmaps ---- */
+
+/* True when rectangle outer holds rectangle inner. */
+static bool contains(const int16_t *outer, const int16_t *inner)
+{
+    return outer[RECT_X] <= inner[RECT_X] && inner[RECT_X] + inner[RECT_W] - 1 <= outer[RECT_X] + outer[RECT_W] - 1 &&
+           outer[RECT_Y] <= inner[RECT_Y] && inner[RECT_Y] + inner[RECT_H] - 1 <= outer[RECT_Y] + outer[RECT_H] - 1;
+}
+
+/* Marks rect as changed: it replaces the smaller changed rects, clipped to the offscreen rect; a full list goes to
+   the screen first. */
+static void add_dirty_rect(Offscreen *o, const int16_t *rect)
+{
+    if (!rect)
+        return;
+    int i = 0;
+    for (; i < o->dirty_count; i++) {
+        if (contains(o->dirty[i], rect))
+            return;
+        if (contains(rect, o->dirty[i]))
+            break; /* the new rect replaces a smaller one */
+    }
+    if (i == o->dirty_count) {
+        if (i >= OFFSCREEN_DIRTY_MAX)
+            offscreen_flush(o, false);
+        i = o->dirty_count++;
+    }
+    int16_t *d = o->dirty[i];
+    memcpy(d, rect, sizeof o->dirty[i]);
+    int16_t delta = (int16_t)(d[RECT_X] - o->rect[RECT_X]);
+    if (delta < 0) {
+        d[RECT_W] = (int16_t)(d[RECT_W] + delta);
+        if (d[RECT_W] <= 0) {
+            o->dirty_count--;
+            return;
+        }
+        d[RECT_X] = (int16_t)(d[RECT_X] - delta);
+    }
+    delta = (int16_t)(d[RECT_Y] - o->rect[RECT_Y]);
+    if (delta < 0) {
+        d[RECT_H] = (int16_t)(d[RECT_H] + delta);
+        if (d[RECT_H] < 1) {
+            o->dirty_count--;
+            return;
+        }
+        d[RECT_Y] = (int16_t)(d[RECT_Y] - delta);
+    }
+    delta = (int16_t)((o->rect[RECT_X] + o->rect[RECT_W] - 1) - (d[RECT_X] + d[RECT_W] - 1));
+    if (delta < 0)
+        d[RECT_W] = (int16_t)(d[RECT_W] + delta);
+    delta = (int16_t)((o->rect[RECT_H] + o->rect[RECT_Y] - 1) - (d[RECT_Y] + d[RECT_H] - 1));
+    if (delta < 0)
+        d[RECT_H] = (int16_t)(d[RECT_H] + delta);
+}
+
+void offscreen_create(Offscreen *o, int zone, bool mark_dirty)
+{
+    if ((int16_t)zone != -1)
+        zone_get_rect(zone, o->rect);
+    o->bitmap = draw_temp_bitmap(o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP);
+    o->dirty_count = 0;
+    if (mark_dirty)
+        add_dirty_rect(o, o->rect);
+}
+
+void offscreen_flush(Offscreen *o, bool close)
+{
+    for (int i = 0; i < o->dirty_count; i++) {
+        const int16_t *d = o->dirty[i];
+        Blit blit = {.src = o->bitmap->pixels,
+                     .dst = g_draw_screen.pixels,
+                     .src_x = (int16_t)(d[RECT_X] - o->rect[RECT_X]),
+                     .src_y = (int16_t)(d[RECT_Y] - o->rect[RECT_Y]),
+                     .src_width = o->rect[RECT_W],
+                     .dst_width = g_draw_screen.width,
+                     .src_bpp = IMAGE_8BPP,
+                     .dst_bpp = IMAGE_8BPP,
+                     .transparent = GFX_OPAQUE,
+                     .mirror = MIRROR_NONE};
+        gfx_blit(&blit, d);
+    }
+    o->dirty_count = 0;
+    if (close)
+        o->bitmap = NULL; /* draw_free_temp frees it */
+}
+
+/* The screen rectangle rect in the coordinates of the offscreen bitmap. */
+static void local_rect(const Offscreen *o, const int16_t *rect, int16_t *out)
+{
+    out[RECT_X] = (int16_t)(rect[RECT_X] - o->rect[RECT_X]);
+    out[RECT_Y] = (int16_t)(rect[RECT_Y] - o->rect[RECT_Y]);
+    out[RECT_W] = rect[RECT_W];
+    out[RECT_H] = rect[RECT_H];
+}
+
+void offscreen_fill_rect(Offscreen *o, const int16_t *rect, int color)
+{
+    if (!rect)
+        return;
+    int16_t r[RECT_SIZE];
+    local_rect(o, rect, r);
+    gfx_fill_rect(o->bitmap->pixels, r, (uint16_t)color, o->rect[RECT_W], IMAGE_8BPP);
+    add_dirty_rect(o, rect);
+}
+
+/* Fills every second pixel of rect in dst with UI color ui_color. */
+static void fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width)
+{
+    if (!rect || !rect[RECT_W] || !rect[RECT_H])
+        return;
+    uint16_t start = (uint16_t)(rect[RECT_Y] * dst_width + rect[RECT_X]);
+    int phase = ((start / dst_width) ^ start) & 1;
+    uint8_t color = g_ui_colors[ui_color & DITHER_COLOR_MASK];
+    for (int row = 0; row < (uint16_t)rect[RECT_H]; row++, phase ^= 1) {
+        uint16_t at = (uint16_t)(start + row * dst_width);
+        for (int col = phase; col < (uint16_t)rect[RECT_W]; col += 2)
+            dst[(uint16_t)(at + col)] = color;
+    }
+}
+
+void offscreen_fill_rect_dithered(Offscreen *o, const int16_t *rect, int ui_color)
+{
+    if (!rect)
+        return;
+    int16_t r[RECT_SIZE];
+    local_rect(o, rect, r);
+    fill_rect_dithered(o->bitmap->pixels, r, ui_color, o->rect[RECT_W]);
+    add_dirty_rect(o, rect);
+}
+
+void offscreen_blit(Offscreen *o, const BlitSource *source, const int16_t *rect)
+{
+    const Bitmap *src = source->bitmap;
+    if (!rect || !src)
+        return;
+    int16_t r[RECT_SIZE];
+    local_rect(o, rect, r);
+    Blit blit = {.src = src->pixels,
+                 .dst = o->bitmap->pixels,
+                 .src_x = source->x,
+                 .src_y = source->y,
+                 .src_width = src->width,
+                 .dst_width = o->rect[RECT_W],
+                 .src_bpp = src->bpp,
+                 .dst_bpp = IMAGE_8BPP,
+                 .transparent = source->transparent,
+                 .mirror = source->mirror,
+                 .colormap = source->colormap};
+    gfx_blit(&blit, r);
+    add_dirty_rect(o, rect);
+}
+
+void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int transparent)
+{
+    const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
+    int16_t r[RECT_SIZE], sx = 0, sy = 0;
+    if (!image)
+        return;
+    int16_t *rect = zone_compute_rect(image, r, (int16_t)zone, &sx, &sy);
+    offscreen_blit(o,
+                   &(BlitSource){.bitmap = image,
+                                 .x = sx,
+                                 .y = sy,
+                                 .transparent = transparent,
+                                 .colormap = draw_gdat_image_palette(picture.category, picture.index, picture.entry)},
+                   rect);
+}
+
+void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
+{
+    int16_t r[RECT_SIZE];
+    ctx->dst = o->bitmap;
+    if ((int16_t)zone == -1) {
+        memcpy(r, ctx->rect, sizeof r);
+    } else {
+        int16_t w = ctx->w, h = ctx->h;
+        if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h))
+            return;
+        /* like the original, the clipped part goes into the size of the picture part, not its position */
+        ctx->w = (int16_t)(ctx->w + w);
+        ctx->h = (int16_t)(ctx->h + h);
+    }
+    local_rect(o, r, ctx->rect);
+    ctx->zone = (int16_t)ZONE_NONE;
+    ctx->transparent = (int16_t)transparent;
+    draw_ctx_draw(ctx);
+    add_dirty_rect(o, r);
+}
+
+void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const char *text)
+{
+    int16_t w, h;
+    if (!text_measure(text, &w, &h))
+        return;
+    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
+    text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]), colors, text);
+    /* like the original, the changed rect starts at the base line */
+    const int16_t r[RECT_SIZE] = {[RECT_X] = (int16_t)x, [RECT_Y] = (int16_t)y, [RECT_W] = w, [RECT_H] = h};
+    add_dirty_rect(o, r);
+}
+
+/* The base line start of text in zone (screen coordinates) and its rectangle; NULL when it is not visible. */
+static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
+{
+    int16_t w, h;
+    if (!text_measure(text, &w, &h))
+        return NULL;
+    return zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
+}
+
+void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
+{
+    int16_t r[RECT_SIZE];
+    if (!text_rect_in_zone(zone, text, r))
+        return;
+    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
+    text_draw(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]), (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
+              (TextColors){(uint16_t)color, (uint16_t)bg}, text);
+    add_dirty_rect(o, r);
+}
+
+void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text)
+{
+    int16_t r[RECT_SIZE];
+    if (!text_rect_in_zone(zone, text, r))
+        return;
+    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
+    text_draw_with_shadow(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]),
+                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
+                          (TextColors){(uint16_t)color, (int16_t)bg}, text);
+    add_dirty_rect(o, r);
+}
+
+/* ---- Interface pictures ---- */
 
 void ui_blit_bitmap(const BlitSource *source, Bitmap *dst, const int16_t *rect)
 {
@@ -228,20 +617,6 @@ void ui_blit_bitmap(const BlitSource *source, Bitmap *dst, const int16_t *rect)
                  .mirror = source->mirror,
                  .colormap = source->colormap};
     gfx_blit(&blit, rect);
-}
-
-void ui_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width)
-{
-    if (!rect || !rect[RECT_W] || !rect[RECT_H])
-        return;
-    uint16_t start = (uint16_t)(rect[RECT_Y] * dst_width + rect[RECT_X]);
-    int phase = ((start / dst_width) ^ start) & 1;
-    uint8_t color = g_ui_colors[ui_color & DITHER_COLOR_MASK];
-    for (int row = 0; row < (uint16_t)rect[RECT_H]; row++, phase ^= 1) {
-        uint16_t at = (uint16_t)(start + row * dst_width);
-        for (int col = phase; col < (uint16_t)rect[RECT_W]; col += 2)
-            dst[(uint16_t)(at + col)] = color;
-    }
 }
 
 void ui_draw_viewport_image(int category, int index, int entry, int zone, int transparent)
@@ -325,246 +700,7 @@ void ui_draw_interface_image(int category, int index, int entry, int zone)
     draw_ctx_draw(draw_ctx_prepare(&d));
 }
 
-/* ---- Offscreen bitmaps ---- */
-
-void offscreen_create(Offscreen *o, int zone, int mark_dirty)
-{
-    if ((int16_t)zone != -1)
-        zone_get_rect(zone, o->rect);
-    o->bitmap = draw_temp_bitmap(o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP);
-    o->dirty_count = 0;
-    if (mark_dirty)
-        offscreen_add_dirty_rect(o, o->rect);
-}
-
-void offscreen_flush(Offscreen *o, int close)
-{
-    for (int i = 0; i < o->dirty_count; i++) {
-        const int16_t *d = o->dirty[i];
-        Blit blit = {.src = o->bitmap->pixels,
-                     .dst = g_draw_screen.pixels,
-                     .src_x = (int16_t)(d[RECT_X] - o->rect[RECT_X]),
-                     .src_y = (int16_t)(d[RECT_Y] - o->rect[RECT_Y]),
-                     .src_width = o->rect[RECT_W],
-                     .dst_width = g_draw_screen.width,
-                     .src_bpp = IMAGE_8BPP,
-                     .dst_bpp = IMAGE_8BPP,
-                     .transparent = GFX_OPAQUE,
-                     .mirror = MIRROR_NONE};
-        gfx_blit(&blit, d);
-    }
-    o->dirty_count = 0;
-    if (close)
-        o->bitmap = NULL; /* draw_free_temp frees it */
-}
-
-/* True when rectangle outer holds rectangle inner. */
-static bool contains(const int16_t *outer, const int16_t *inner)
-{
-    return outer[RECT_X] <= inner[RECT_X] && inner[RECT_X] + inner[RECT_W] - 1 <= outer[RECT_X] + outer[RECT_W] - 1 &&
-           outer[RECT_Y] <= inner[RECT_Y] && inner[RECT_Y] + inner[RECT_H] - 1 <= outer[RECT_Y] + outer[RECT_H] - 1;
-}
-
-void offscreen_add_dirty_rect(Offscreen *o, const int16_t *rect)
-{
-    if (!rect)
-        return;
-    int i = 0;
-    for (; i < o->dirty_count; i++) {
-        if (contains(o->dirty[i], rect))
-            return;
-        if (contains(rect, o->dirty[i]))
-            break; /* the new rect replaces a smaller one */
-    }
-    if (i == o->dirty_count) {
-        if (i >= OFFSCREEN_DIRTY_MAX)
-            offscreen_flush(o, 0);
-        i = o->dirty_count++;
-    }
-    int16_t *d = o->dirty[i];
-    memcpy(d, rect, sizeof o->dirty[i]);
-    int16_t delta = (int16_t)(d[RECT_X] - o->rect[RECT_X]);
-    if (delta < 0) {
-        d[RECT_W] = (int16_t)(d[RECT_W] + delta);
-        if (d[RECT_W] <= 0) {
-            o->dirty_count--;
-            return;
-        }
-        d[RECT_X] = (int16_t)(d[RECT_X] - delta);
-    }
-    delta = (int16_t)(d[RECT_Y] - o->rect[RECT_Y]);
-    if (delta < 0) {
-        d[RECT_H] = (int16_t)(d[RECT_H] + delta);
-        if (d[RECT_H] < 1) {
-            o->dirty_count--;
-            return;
-        }
-        d[RECT_Y] = (int16_t)(d[RECT_Y] - delta);
-    }
-    delta = (int16_t)((o->rect[RECT_X] + o->rect[RECT_W] - 1) - (d[RECT_X] + d[RECT_W] - 1));
-    if (delta < 0)
-        d[RECT_W] = (int16_t)(d[RECT_W] + delta);
-    delta = (int16_t)((o->rect[RECT_H] + o->rect[RECT_Y] - 1) - (d[RECT_Y] + d[RECT_H] - 1));
-    if (delta < 0)
-        d[RECT_H] = (int16_t)(d[RECT_H] + delta);
-}
-
-/* The screen rectangle rect in the coordinates of the offscreen bitmap. */
-static void local_rect(const Offscreen *o, const int16_t *rect, int16_t *out)
-{
-    out[RECT_X] = (int16_t)(rect[RECT_X] - o->rect[RECT_X]);
-    out[RECT_Y] = (int16_t)(rect[RECT_Y] - o->rect[RECT_Y]);
-    out[RECT_W] = rect[RECT_W];
-    out[RECT_H] = rect[RECT_H];
-}
-
-void offscreen_fill_rect(Offscreen *o, const int16_t *rect, int color)
-{
-    if (!rect)
-        return;
-    int16_t r[RECT_SIZE];
-    local_rect(o, rect, r);
-    gfx_fill_rect(o->bitmap->pixels, r, (uint16_t)color, o->rect[RECT_W], IMAGE_8BPP);
-    offscreen_add_dirty_rect(o, rect);
-}
-
-void offscreen_fill_rect_dithered(Offscreen *o, const int16_t *rect, int ui_color)
-{
-    if (!rect)
-        return;
-    int16_t r[RECT_SIZE];
-    local_rect(o, rect, r);
-    ui_fill_rect_dithered(o->bitmap->pixels, r, ui_color, o->rect[RECT_W]);
-    offscreen_add_dirty_rect(o, rect);
-}
-
-void offscreen_blit(Offscreen *o, const BlitSource *source, const int16_t *rect)
-{
-    const Bitmap *src = source->bitmap;
-    if (!rect || !src)
-        return;
-    int16_t r[RECT_SIZE];
-    local_rect(o, rect, r);
-    Blit blit = {.src = src->pixels,
-                 .dst = o->bitmap->pixels,
-                 .src_x = source->x,
-                 .src_y = source->y,
-                 .src_width = src->width,
-                 .dst_width = o->rect[RECT_W],
-                 .src_bpp = src->bpp,
-                 .dst_bpp = IMAGE_8BPP,
-                 .transparent = source->transparent,
-                 .mirror = source->mirror,
-                 .colormap = source->colormap};
-    gfx_blit(&blit, r);
-    offscreen_add_dirty_rect(o, rect);
-}
-
-void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int transparent)
-{
-    const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
-    int16_t r[RECT_SIZE], sx = 0, sy = 0;
-    if (!image)
-        return;
-    int16_t *rect = zone_compute_rect(image, r, (int16_t)zone, &sx, &sy);
-    offscreen_blit(o,
-                   &(BlitSource){.bitmap = image,
-                                 .x = sx,
-                                 .y = sy,
-                                 .transparent = transparent,
-                                 .colormap = draw_gdat_image_palette(picture.category, picture.index, picture.entry)},
-                   rect);
-}
-
-void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
-{
-    int16_t r[RECT_SIZE];
-    ctx->dst = o->bitmap;
-    if ((int16_t)zone == -1) {
-        memcpy(r, ctx->rect, sizeof r);
-    } else {
-        int16_t w = ctx->w, h = ctx->h;
-        if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h))
-            return;
-        /* like the original, the clipped part goes into the size of the picture part, not its position */
-        ctx->w = (int16_t)(ctx->w + w);
-        ctx->h = (int16_t)(ctx->h + h);
-    }
-    local_rect(o, r, ctx->rect);
-    ctx->zone = (int16_t)ZONE_NONE;
-    ctx->transparent = (int16_t)transparent;
-    draw_ctx_draw(ctx);
-    offscreen_add_dirty_rect(o, r);
-}
-
-void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const char *text)
-{
-    int16_t w, h;
-    if (!text_measure(text, &w, &h))
-        return;
-    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
-    text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]), colors, text);
-    /* like the original, the changed rect starts at the base line */
-    const int16_t r[RECT_SIZE] = {[RECT_X] = (int16_t)x, [RECT_Y] = (int16_t)y, [RECT_W] = w, [RECT_H] = h};
-    offscreen_add_dirty_rect(o, r);
-}
-
-/* The base line start of text in zone (screen coordinates) and its rectangle; NULL when it is not visible. */
-static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
-{
-    int16_t w, h;
-    if (!text_measure(text, &w, &h))
-        return NULL;
-    return zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
-}
-
-void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
-{
-    int16_t r[RECT_SIZE];
-    if (!text_rect_in_zone(zone, text, r))
-        return;
-    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
-    text_draw(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]), (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
-              (TextColors){(uint16_t)color, (uint16_t)bg}, text);
-    offscreen_add_dirty_rect(o, r);
-}
-
-void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text)
-{
-    int16_t r[RECT_SIZE];
-    if (!text_rect_in_zone(zone, text, r))
-        return;
-    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
-    text_draw_with_shadow(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]),
-                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
-                          (TextColors){(uint16_t)color, (int16_t)bg}, text);
-    offscreen_add_dirty_rect(o, r);
-}
-
 /* ---- Screen ---- */
-
-void ui_draw_movement_arrows(void)
-{
-    Offscreen o;
-    int entry = g_ui.push_mode ? GFX_PUSH_ARROWS : GFX_ARROWS;
-    offscreen_create(&o, ZONE_MOVEMENT_ARROWS, 1);
-    gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
-    for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += 2)
-        offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry}, zone, GFX_OPAQUE);
-    offscreen_flush(&o, 1);
-    draw_free_temp();
-    input_set_mode(g_ui.push_mode ? INPUT_MODE_PUSH : INPUT_MODE_MOVE);
-}
-
-void ui_reset(void)
-{
-    memset(&g_ui, 0, sizeof g_ui);
-    memset(&cache, 0, sizeof cache);
-    g_ui.screen_needs_refresh = 1;
-    cache.shown_object = THING_NONE;
-    status_box.bitmap = NULL;
-    action_reset();
-}
 
 void ui_draw_game_screen(void)
 {
@@ -574,7 +710,20 @@ void ui_draw_game_screen(void)
     ui_draw_all_champion_states(1);
 }
 
-/* ---- Status boxes ---- */
+void ui_draw_movement_arrows(void)
+{
+    Offscreen o;
+    int entry = g_ui.push_mode ? GFX_PUSH_ARROWS : GFX_ARROWS;
+    offscreen_create(&o, ZONE_MOVEMENT_ARROWS, true);
+    gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
+    for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += 2)
+        offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry}, zone, GFX_OPAQUE);
+    offscreen_flush(&o, true);
+    draw_free_temp();
+    input_set_mode(g_ui.push_mode ? INPUT_MODE_PUSH : INPUT_MODE_MOVE);
+}
+
+/* ---- Status boxes and inventory ---- */
 
 static bool in_inventory(int champ)
 {
@@ -599,7 +748,7 @@ static void show_status_bars(int champ)
 {
     const Champion *c = champion(champ);
     int16_t r[RECT_SIZE];
-    offscreen_add_dirty_rect(&status_box, zone_get_rect(ZONE_STATUS_BARS + champ, r));
+    add_dirty_rect(&status_box, zone_get_rect(ZONE_STATUS_BARS + champ, r));
     const int16_t values[BAR_COUNT] = {c->health, c->stamina, c->mana};
     const int16_t maxima[BAR_COUNT] = {c->max_health, c->max_stamina, c->max_mana > c->mana ? c->max_mana : c->mana};
     for (int i = 0; i < BAR_COUNT; i++) {
@@ -785,8 +934,6 @@ static bool show_changed_slot(int champ, int slot, bool force)
     return true;
 }
 
-/* ---- Inventory panel ---- */
-
 /* Draws description lines (17 characters) under each other; "\f" at the start goes back to the first line. */
 static void show_description(const char *text)
 {
@@ -938,32 +1085,6 @@ static void show_chest_contents(uint16_t container)
         show_slot(t, SLOT_CONTAINER_INFO_FIRST + i, false, false, false);
 }
 
-/* A value gauge of the object info: its glyph, value, scale, and the word that the text of the panel gives it. */
-typedef struct {
-    uint8_t glyph;
-    int value, high;
-    const char *label;
-} ObjectGauge;
-
-/* The value gauge of an object of type: the strength or throw power of a weapon, the armour class of an armour, or
-   the power of a potion; false when the object shows none. */
-static bool object_value_gauge(uint16_t thing, int type, ObjectGauge *g)
-{
-    if (type == THING_WEAPON) {
-        *g = (ObjectGauge){GLYPH_STRENGTH, item_attr(thing, ATTR_STRENGTH), WEAPON_STRENGTH_MAX, "strength"};
-        if (!g->value)
-            *g = (ObjectGauge){GLYPH_THROW, item_attr(thing, ATTR_THROW_POWER), WEAPON_THROW_MAX, "throw"};
-    } else if (type == THING_ARMOUR) {
-        *g = (ObjectGauge){GLYPH_STRENGTH, item_attr(thing, ATTR_ARMOUR_CLASS) & ARMOUR_CLASS_MASK, ARMOUR_CLASS_MAX,
-                           "armour"};
-    } else if (type == THING_POTION) {
-        *g = (ObjectGauge){GLYPH_POTION, potion_power(thing), POTION_POWER_MAX, "power"};
-    } else {
-        return false;
-    }
-    return (uint16_t)g->value != 0;
-}
-
 /* Draws the gauges of an object of type in the object info: its charges, and the strength or throw power of a
    weapon, the armour class of an armour, or the power of a potion. */
 static void show_object_gauges(uint16_t thing, int type)
@@ -1021,104 +1142,6 @@ static bool show_object_info(uint16_t thing, bool full)
     return true;
 }
 
-/* Adds a formatted line to the object info lines; a full list takes no more lines. Returns the new count. */
-static int info_add(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, const char *fmt, ...)
-{
-    if (count >= OBJECT_INFO_LINES)
-        return count;
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(lines[count], OBJECT_INFO_SIZE, fmt, args);
-    va_end(args);
-    return count + 1;
-}
-
-/* Adds each non-empty line of text (lines end at a new line) to the object info lines. */
-static int info_add_text(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, const char *text)
-{
-    for (const char *p = text; *p;) {
-        int n = (int)strcspn(p, "\n");
-        if (n)
-            count = info_add(lines, count, "%.*s", n, p);
-        p += n;
-        if (*p)
-            p++;
-    }
-    return count;
-}
-
-/* Appends item to line after a comma; a line that has no room for it goes to the object info lines first. */
-static int info_append(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, char *line, const char *item)
-{
-    static const char separator[] = ", ";
-    size_t used = strlen(line);
-    if (used && used + strlen(separator) + strlen(item) >= OBJECT_INFO_SIZE) {
-        count = info_add(lines, count, "%s", line);
-        used = 0;
-    }
-    snprintf(line + used, OBJECT_INFO_SIZE - used, "%s%s", used ? separator : "", item);
-    return count;
-}
-
-/* Adds the names of the items of a chest, as many to a line as fit. */
-static int info_add_contents(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t container)
-{
-    char line[OBJECT_INFO_SIZE] = "";
-    uint16_t t = thing_word(container, CONTAINER_CONTENTS);
-    for (int i = 0; t != THING_ENDOFLIST && i < CONTAINER_SLOTS; i++, t = dungeon_next_thing(t))
-        count = info_append(lines, count, line, item_name(t));
-    return *line ? info_add(lines, count, "%s", line) : count;
-}
-
-/* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
-   total value. */
-static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
-{
-    int16_t counts[COIN_TYPE_MAX];
-    money_count_coins_in_box(box, counts);
-    int total = 0;
-    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[COIN_TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
-    for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
-        int type = money_coin_type_for_slot(box, slot);
-        if (type < 0)
-            continue;
-        total += money_coin_value(type) * counts[type];
-        uint16_t item = money_coin_item(type);
-        text_format(text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, raw), name);
-        snprintf(coin, sizeof coin, "%s %d", name, counts[type]);
-        count = info_append(lines, count, line, coin);
-    }
-    if (*line)
-        count = info_add(lines, count, "%s", line);
-    return info_add(lines, count, "total %d", total);
-}
-
-int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE])
-{
-    if (thing == THING_NONE)
-        return 0;
-    int type = thing_type(thing);
-    int count = info_add(lines, 0, "%s", item_name(thing));
-    uint16_t weight = (uint16_t)item_weight(thing);
-    g_text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
-    g_text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
-    char text[TEXT_SIZE * 2];
-    count = info_add_text(lines, count, text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
-    if (type == THING_SCROLL)
-        return info_add_text(lines, count, text_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
-    if (type == THING_CONTAINER) {
-        if (item_is_chest(thing))
-            return info_add_contents(lines, count, thing);
-        return item_is_moneybox(thing) ? info_add_coins(lines, count, thing) : count;
-    }
-    if (item_has_charged_action(thing) && (int16_t)item_charges(thing))
-        count = info_add(lines, count, "charges %d/%d", (int16_t)item_charges(thing), (int16_t)item_max_charges(thing));
-    ObjectGauge g;
-    if (object_value_gauge(thing, type, &g))
-        count = info_add(lines, count, "%s %d/%d", g.label, (int16_t)g.value, g.high);
-    return count;
-}
-
 /* Draws the food and water gauges (and the poison gauge) of the inventory panel. */
 static void show_food_water(void)
 {
@@ -1140,15 +1163,6 @@ static void show_closed_mouth(void)
 {
     ui_draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_CLOSED, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     g_ui.panel_mode = PANEL_MODE_MOUTH;
-}
-
-char *ui_skill_rank_text(int champ, int skill, char *dst)
-{
-    int level = champ_get_skill_level(champ, skill, 1);
-    if (level > SKILL_LEVEL_MAX)
-        level = SKILL_LEVEL_MAX;
-    g_text_args.entry = (uint8_t)skill;
-    return text_gdat(CAT_PANEL, 0, skill_level_texts[level], dst);
 }
 
 /* Draws the skill levels and the statistics of the champion in the inventory panel. */
@@ -1211,15 +1225,6 @@ static void show_load(int champ)
     text_draw_in_zone_shadowed(ZONE_LOAD, g_ui_colors[color], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
                                text_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
 }
-
-/* The redraw of one champion: what to draw, and what it drew. */
-typedef struct {
-    uint16_t flags; /* REDRAW_* of what to draw */
-    bool inv;       /* the champion has the open inventory */
-    bool force_slots, force_inventory;
-    bool present;   /* the inventory changed: the view goes to the screen */
-    bool box_drawn; /* the status box changed */
-} ChampionRedraw;
 
 /* Draws the inventory buttons whose pressed state changed; returns the redraw flags that they add. */
 static uint16_t show_changed_buttons(uint16_t changed)
@@ -1393,7 +1398,7 @@ void ui_draw_champion_state(int champ)
     if (c->health)
         show_living_champion(champ, &d);
     if (d.box_drawn)
-        offscreen_flush(&status_box, 1);
+        offscreen_flush(&status_box, true);
     if (d.present) {
         g_ui.screen_needs_refresh = 0;
         play_present_viewport();

@@ -7,7 +7,6 @@
 
 #include "gdat.h"
 #include "gfx.h"
-#include "game.h"
 #include "draw.h"
 #include "text.h"
 #include <stdbool.h>
@@ -61,15 +60,41 @@ typedef struct {
     const uint8_t *colormap;
 } BlitSource;
 
+/* The text lines of the eye panel for an object, and their size. */
+#define OBJECT_INFO_LINES 8
+#define OBJECT_INFO_SIZE  64
+
+/* The colors of a face icon. */
+#define FACE_ICON_COLORS 16
+
+/* Closing the inventory redraws the movement arrows (false while the party falls asleep). */
+extern bool g_inv_arrows_on_close;
+
+/* ---- Setup ---- */
+
+/* Clears the interface caches for a new screen. */
+void ui_reset(void);
+
+/* ---- Queries ---- */
+
+/* The text lines of the eye panel for an object: its name, its weight, and its gauges ("<label> <value>/<max>"), a
+   scroll's text, a chest's item names, or a money box's coin counts. Returns the count. */
+int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE]);
+/* The rank text of a base skill as the skills panel shows it (for example "NOVICE FIGHTER"), in dst (TEXT_SIZE bytes).
+   The master ranks start with a power rune glyph of the font. */
+char *ui_skill_rank_text(int champ, int skill, char *dst);
+
+/* ---- Offscreen bitmaps ---- */
+
 /* Opens an offscreen bitmap of zone (-1: of o->rect); mark_dirty marks it all as changed. */
-void offscreen_create(Offscreen *o, int zone, int mark_dirty);
+void offscreen_create(Offscreen *o, int zone, bool mark_dirty);
 /* Copies the changed parts to the screen; close frees the bitmap. */
-void offscreen_flush(Offscreen *o, int close);
-void offscreen_add_dirty_rect(Offscreen *o, const int16_t *rect);
-/* Drawing in screen coordinates. */
+void offscreen_flush(Offscreen *o, bool close);
+/* Fills rect (screen coordinates) with palette color color. */
 void offscreen_fill_rect(Offscreen *o, const int16_t *rect, int color);
 /* Fills every second pixel (a checkerboard) with UI color ui_color. */
 void offscreen_fill_rect_dithered(Offscreen *o, const int16_t *rect, int ui_color);
+/* Copies the part of source into rect (screen coordinates). */
 void offscreen_blit(Offscreen *o, const BlitSource *source, const int16_t *rect);
 /* Draws a GDAT image placed in zone. */
 void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int transparent);
@@ -77,20 +102,19 @@ void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int tran
 void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
 /* Draws text with its base line at (x, y) in screen coordinates. */
 void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const char *text);
-/* Draws text placed in zone, plain or with a shadow. */
+/* Draws text placed in zone. */
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text);
+/* Draws text with a shadow placed in zone. */
 void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text);
 
-/* Fills every second pixel of rect in dst with UI color ui_color. */
-void ui_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width);
+/* ---- Interface pictures ---- */
+
 /* Copies the part of source into rect of dst. */
 void ui_blit_bitmap(const BlitSource *source, Bitmap *dst, const int16_t *rect);
 /* Draws the GDAT image (category, index, entry) in zone of the view picture, without its GDAT offset. */
 void ui_draw_viewport_image(int category, int index, int entry, int zone, int transparent);
 /* Fills the screen rectangle of zone with palette color color. */
 void ui_fill_zone_screen(int zone, int color);
-/* The colors of a face icon. */
-#define FACE_ICON_COLORS 16
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
 /* Draws the icon of the leader hand object into the cursor: its 4 bpp color numbers and its palette colors. */
@@ -98,27 +122,20 @@ void ui_render_hand_icon(void);
 /* Draws a GDAT image of the interface in zone of the screen. */
 void ui_draw_interface_image(int category, int index, int entry, int zone);
 
-/* Clears the interface caches for a new screen. */
-void ui_reset(void);
+/* ---- Screen ---- */
+
 /* Draws the whole screen of a loaded game: the background, the movement arrows, the champions, the action area. */
-void ui_draw_game_screen(void);
+void ui_draw_game_screen(void); /* exported for the tests */
+/* Draws the movement arrows (or the push arrows) and selects their input mode. */
 void ui_draw_movement_arrows(void);
+
+/* ---- Status boxes and inventory ---- */
+
 /* Draws what changed of the status box (and of the inventory) of champ. */
 void ui_draw_champion_state(int champ);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
 void ui_draw_all_champion_states(int tick);
 /* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
 void ui_toggle_inventory(int champ);
-/* The text lines of the eye panel for an object, and their size. */
-#define OBJECT_INFO_LINES 8
-#define OBJECT_INFO_SIZE  64
-/* The text lines of the eye panel for an object: its name, its weight, and its gauges ("<label> <value>/<max>"), a
-   scroll's text, a chest's item names, or a money box's coin counts. Returns the count. */
-int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE]);
-/* The rank text of a base skill as the skills panel shows it (for example "NOVICE FIGHTER"), in dst (TEXT_SIZE bytes).
-   The master ranks start with a power rune glyph of the font. */
-char *ui_skill_rank_text(int champ, int skill, char *dst);
-/* Closing the inventory redraws the movement arrows (0 while the party falls asleep). */
-extern bool g_inv_arrows_on_close;
 
 #endif /* DM2_UI_UI_H */

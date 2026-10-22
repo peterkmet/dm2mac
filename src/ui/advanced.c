@@ -157,7 +157,7 @@ void advanced_draw_automap(void)
 {
     Offscreen o;
     char line[TEXT_SIZE];
-    offscreen_create(&o, ZONE_VIEWPORT, 1);
+    offscreen_create(&o, ZONE_VIEWPORT, true);
     if (!o.bitmap)
         return;
     automap_draw(&o, o.rect);
@@ -171,7 +171,7 @@ void advanced_draw_automap(void)
     draw_readout_line(&o, READOUT_FOOD, line);
     snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(g_cheat_light));
     draw_readout_line(&o, READOUT_LIGHT, line);
-    offscreen_flush(&o, 1);
+    offscreen_flush(&o, true);
     draw_free_temp();
 }
 
