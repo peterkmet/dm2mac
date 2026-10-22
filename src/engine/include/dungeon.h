@@ -308,7 +308,7 @@ static inline bool door_has_button(uint16_t door)
 #define SUBTYPE_WARP_ONCE          0x0f /* a warp marker that clears all markers; the view shows frame 1 */
 #define SUBTYPE_WARP               0x10 /* a warp marker that finds the set marker */
 #define SUBTYPE_SQUARE_SWITCH      0x11 /* frame from SQUARE_FLAG_3 */
-#define SUBTYPE_SHOP_STAND         0x14 /* clears SIDE_SHOP_FLAG */
+#define SUBTYPE_SHOP_STAND         0x14 /* clears SIDE_SHOP_DISPLAY */
 static inline bool text_is_visible(uint16_t text)
 {
     return thing_bit(text, TEXT_DATA, TEXT_VISIBLE);

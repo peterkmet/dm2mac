@@ -106,7 +106,7 @@ void view_click_in_viewport(int x, int y);
 
 /* The view position of the square at depth (0 to 4) and side (negative to the left), -1 when the view has none. */
 int view_position(int depth, int side);
-/* What the view draws of the square at a view position with an aspect (enum view_aspect): VIEW_DRAWS_* bits. */
+/* What the view draws of the square at a view position with an aspect (ASPECT_*): VIEW_DRAWS_* bits. */
 enum {
     VIEW_DRAWS_FRONT_FACE = 1,
     VIEW_DRAWS_SIDE_FACE = 2, /* the wall faces of a wall square */

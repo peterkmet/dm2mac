@@ -797,7 +797,7 @@ static void load_square_things(int pos, int dir, int party_x, int party_y, int x
             view_missile_masks[pos] |= 1u << view_get_thing_position(thing, dir);
         } else if (is_item(thing)) {
             /* a shop stand on a floor shows its objects itself */
-            if (s->aspect != ASPECT_FLOOR || s->side[SIDE_SHOP_FLAG] != 0)
+            if (s->aspect != ASPECT_FLOOR || s->side[SIDE_SHOP_DISPLAY] != 0)
                 view_object_masks[pos] |= 1u << view_get_thing_position(thing, dir);
         } else if (type == THING_GROUP) {
             int16_t cx, cy;
