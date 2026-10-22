@@ -29,7 +29,6 @@ block engine/include/sound_request.h open: module cleanup
 block engine/inventory.c open: module cleanup
 block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
-block engine/merchant.c open: module cleanup
 block engine/minion.c open: module cleanup
 block engine/money.c open: module cleanup
 block engine/move.c open: module cleanup
@@ -104,7 +103,6 @@ bool engine/include/projectile.h:projectile_hit open: module cleanup
 bool engine/include/sound_request.h:sound_party_offset open: module cleanup
 bool engine/inventory.c open: module cleanup
 bool engine/magic.c open: module cleanup
-bool engine/merchant.c open: module cleanup
 bool engine/minion.c open: module cleanup
 bool engine/move.c open: module cleanup
 bool engine/move.c:discard_take open: module cleanup
@@ -190,11 +188,9 @@ comment engine/include/creature.h open: module cleanup
 comment engine/include/game_text.h open: module cleanup
 comment engine/include/item.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
-comment engine/include/merchant.h open: module cleanup
 comment engine/include/money.h open: module cleanup
 comment engine/include/move.h open: module cleanup
 comment engine/include/projectile.h open: module cleanup
-comment engine/merchant.c open: module cleanup
 comment engine/move.c open: module cleanup
 comment engine/save.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
@@ -350,7 +346,6 @@ enum engine/include/save.h open: module cleanup
 enum engine/inventory.c open: module cleanup
 enum engine/item.c open: module cleanup
 enum engine/magic.c open: module cleanup
-enum engine/merchant.c open: module cleanup
 enum engine/move.c open: module cleanup
 enum engine/projectile.c open: module cleanup
 enum engine/recruit.c open: module cleanup
@@ -399,7 +394,6 @@ global ui/include/ui.h open: module cleanup
 global ui/include/video.h open: module cleanup
 global ui/include/view.h open: module cleanup
 global ui/include/zone.h open: module cleanup
-header engine/include/merchant.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
 hex engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -427,7 +421,6 @@ include engine/inventory.c:move.h open: module cleanup
 include engine/magic.c:champ_action.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
-include engine/merchant.c:champion.h open: module cleanup
 include engine/minion.c:item.h open: module cleanup
 include engine/move.c:money.h open: module cleanup
 include engine/projectile.c:game.h open: module cleanup
@@ -502,7 +495,6 @@ name engine/include/inventory.h:inv_put_object_in_free_slot open: module cleanup
 name engine/inventory.c:champ_put_object_in_leader_hand open: module cleanup
 name engine/inventory.c:champ_remove_object_from_leader_hand open: module cleanup
 name engine/inventory.c:inv_put_object_in_free_slot open: module cleanup
-name engine/merchant.c:shop_front_customer_has_goods open: module cleanup
 name engine/move.c:champ_get_party_move_time open: module cleanup
 name engine/move.c:champ_sync_directions_to_party open: module cleanup
 name engine/projectile.c:creature_get_ordered_attack_cells open: module cleanup
@@ -540,7 +532,6 @@ notation engine/include/sound_request.h open: module cleanup
 notation engine/inventory.c open: module cleanup
 notation engine/item.c open: module cleanup
 notation engine/magic.c open: module cleanup
-notation engine/merchant.c open: module cleanup
 notation engine/money.c open: module cleanup
 notation engine/move.c open: module cleanup
 notation engine/projectile.c open: module cleanup
@@ -627,7 +618,6 @@ params engine/include/projectile.h:projectile_create open: module cleanup
 params engine/include/sound_request.h:sound_party_offset open: module cleanup
 params engine/include/sound_request.h:sound_request open: module cleanup
 params engine/include/sound_request.h:sound_request_with_fallback open: module cleanup
-params engine/merchant.c:shop_sum_items_value open: module cleanup
 params engine/money.c:shop_get_item_value open: module cleanup
 params engine/move.c:discard_take open: module cleanup
 params engine/move.c:move_follow_square_transitions open: module cleanup
@@ -768,8 +758,6 @@ static-prefix engine/item.c:item_sum_attr open: module cleanup
 static-prefix engine/magic.c:champion_runes open: module cleanup
 static-prefix engine/magic.c:event_word open: module cleanup
 static-prefix engine/magic.c:magic_light_add open: module cleanup
-static-prefix engine/merchant.c:shop_front_customer_has_goods open: module cleanup
-static-prefix engine/merchant.c:shop_sum_items_value open: module cleanup
 static-prefix engine/move.c:champ_get_move_time open: module cleanup
 static-prefix engine/move.c:champ_get_party_move_time open: module cleanup
 static-prefix engine/move.c:champ_sync_directions_to_party open: module cleanup
