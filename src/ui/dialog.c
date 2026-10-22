@@ -215,13 +215,13 @@ void dialog_draw_progress_bar(int permille)
 void sound_set_volume_and_test(int volume, int device)
 {
     if (device == DEVICE_SOUND) {
-        g_game.sound_volume = (uint8_t)volume;
+        save_set_sound_volume((uint8_t)volume);
         sound_request((SoundCue){CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM,
                                  SOUND_VOLUME_LOUD},
                       g_game.party_x, g_game.party_y, 0);
         sound_set_volume(volume);
     } else if (device == DEVICE_MUSIC) {
-        g_game.music_volume = (uint8_t)volume;
+        save_set_music_volume((uint8_t)volume);
         music_set_volume(volume);
     }
 }

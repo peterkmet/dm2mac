@@ -976,3 +976,27 @@ SaveResult save_write(const char *path, const char *bak_path, const char *name, 
     creature_activate_all_maps();
     return ok ? SAVE_OK : SAVE_ERR_IO;
 }
+
+void save_clear_party(void)
+{
+    g_game.champion_count = 0;
+    g_game.leader_hand = THING_NONE;
+}
+
+void save_set_party_position(int x, int y, int dir, int map)
+{
+    g_game.party_x = (uint16_t)x;
+    g_game.party_y = (uint16_t)y;
+    g_game.party_dir = (uint16_t)dir;
+    g_game.party_map = (uint16_t)map;
+}
+
+void save_set_sound_volume(uint8_t volume)
+{
+    g_game.sound_volume = volume;
+}
+
+void save_set_music_volume(uint8_t volume)
+{
+    g_game.music_volume = volume;
+}

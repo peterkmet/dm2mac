@@ -378,17 +378,14 @@ static bool load_new_game(void)
     char path[SAVE_PATH_SIZE];
     if (!g_session.use_dungenb || !file_exists(data_path(path, "DUNGENB.DAT")))
         data_path(path, "DUNGEON.DAT");
-    g_game.champion_count = 0;
-    g_game.leader_hand = THING_NONE;
+    save_clear_party();
     bool first = !g_weather.dungeon_loaded;
     if (!dungeon_load(path))
         return false;
     seen_reset();
     uint16_t start = dungeon_party_start();
-    g_game.party_x = location_x(start);
-    g_game.party_y = location_y(start);
-    g_game.party_dir = location_dir(start); /* the party start keeps the direction in the map bits */
-    g_game.party_map = 0;
+    /* the party start keeps the direction in the map bits */
+    save_set_party_position(location_x(start), location_y(start), location_dir(start), 0);
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE) +
                   dungeon_thing_count(THING_EXPLOSION));
     weather_load(gdat_current());
@@ -401,8 +398,7 @@ static bool load_new_game(void)
 /* Loads the slot file at path into the game; returns false on an error. */
 static bool load_slot(const char *path)
 {
-    g_game.champion_count = 0;
-    g_game.leader_hand = THING_NONE;
+    save_clear_party();
     bool first = !g_weather.dungeon_loaded;
     if (save_load(path, gdat_current()) != SAVE_OK)
         return false;

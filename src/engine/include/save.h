@@ -80,4 +80,13 @@ SaveResult save_load(const char *path, const gdat_t *gdat);
    keeps the header bytes after the name from it; name goes into the header. */
 SaveResult save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat);
 
+/* The party has no champions and an empty leader hand: the state before a load or a new game. */
+void save_clear_party(void);
+/* The party stands at (x, y) of map and looks to dir. */
+void save_set_party_position(int x, int y, int dir, int map);
+/* The sound effect volume of the game. */
+void save_set_sound_volume(uint8_t volume);
+/* The music volume of the game. */
+void save_set_music_volume(uint8_t volume);
+
 #endif /* DM2_ENGINE_SAVE_H */
