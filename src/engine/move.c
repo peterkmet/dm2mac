@@ -668,9 +668,9 @@ bool move_party(int command)
         return false;
     }
     /* the cooldown: half the delay, at least 1 while the party walks */
-    int add = half;
-    if (!add && g_party.move_steps)
-        add = 1;
+    int add = g_party.move_steps ? 1 : 0;
+    if (half > add)
+        add = half;
     game.party_move_cooldown = (uint16_t)(game.party_move_cooldown + add);
     game.throw_cooldown = 0;
     return true;
