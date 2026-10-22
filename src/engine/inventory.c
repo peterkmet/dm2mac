@@ -15,7 +15,6 @@
 #include <string.h>
 
 /* ATTR_FLAGS bits of the effects. */
-#define ATTR_LIGHT_FLAGS       0x0010 /* ATTR_FLAGS bit: the item gives light */
 #define ATTR_HAS_EFFECTS       0x2000 /* ATTR_FLAGS bit: the item changes the champion */
 /* Item attributes of the effects. */
 #define ATTR_FOOD              0x03 /* item attribute: the food value */
@@ -167,7 +166,7 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode)
         return;
     if ((int16_t)slot < SLOT_COUNT) {
         uint16_t flags = item_attr(thing, ATTR_FLAGS);
-        if (mode && flags & ATTR_LIGHT_FLAGS)
+        if (mode && flags & ITEM_FLAG_LIGHT)
             light_update_party_light();
         if (flags & ATTR_HAS_EFFECTS) {
             Champion *c = champion(champ);

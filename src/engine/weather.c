@@ -44,9 +44,6 @@
 #define LIGHT_ANIMATED_ONLY 0x8000
 #define LIGHT_AMOUNT_MASK   0x7fff
 
-/* ATTR_FLAGS bit: a torch, its charges give light. */
-#define ITEM_FLAG_LIGHT 0x10
-
 /* Masks of the random draws and of the packed lightning target, and the ornament index in a side word (0xff: none). */
 #define LIGHTNING_STRIKES_MASK 0x07
 #define CLOUD_SLOW_MASK        0x03

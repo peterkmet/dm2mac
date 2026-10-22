@@ -89,8 +89,6 @@
 /* Masks of the game time at which the statistics move toward their maximum. */
 #define STATS_TIME_MASK            0xff
 #define STATS_TIME_MASK_ASLEEP     0x3f
-/* Lights. */
-#define ATTR_LIGHT_FLAG            0x10 /* ATTR_FLAGS bit: the item gives light */
 /* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */
 #define REBIRTH_REVIVE             0
 #define REBIRTH_BONES              1
@@ -665,7 +663,7 @@ void champ_burn_held_lights(void)
         Champion *c = champion(i);
         for (int hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
             uint16_t t = c->slots[hand];
-            if (!(item_attr(t, ATTR_FLAGS) & ATTR_LIGHT_FLAG) || !item_charges(t))
+            if (!(item_attr(t, ATTR_FLAGS) & ITEM_FLAG_LIGHT) || !item_charges(t))
                 continue;
             if (!item_add_charges(t, -1))
                 item_set_do_not_discard(t, 0);

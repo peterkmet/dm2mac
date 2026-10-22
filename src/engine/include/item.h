@@ -62,6 +62,7 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define ITEM_FLAG_ICON_IN_HAND 0x8000 /* the icon changes with the slot */
 #define ITEM_FLAG_SCROLL_INFO  0x0020 /* the inventory shows the object info while it is in the hand */
 #define ITEM_FLAG_REFILLS      0x0001 /* the item holds water */
+#define ITEM_FLAG_LIGHT        0x0010 /* the item gives light */
 /* ATTR_AMMO bits. */
 #define AMMO_LAUNCHER          0x8000 /* a launcher; the low bits are the ammunition kinds */
 /* ATTR_SLOTS bits. */

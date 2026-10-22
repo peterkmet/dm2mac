@@ -111,7 +111,6 @@
 
 /* Light, aura and haste amounts of the other spells. */
 #define INVISIBILITY_TICKS_SHIFT  3
-#define RUNE_KEY_SHIFT            8 /* each rune takes one byte of the spell key */
 #define LIGHT_TICKS_FACTOR        9
 #define AURA_COST                 4
 #define AURA_BIG                  50 /* a champion with a bigger aura makes a new aura a quarter */
