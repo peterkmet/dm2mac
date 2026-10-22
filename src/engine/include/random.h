@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 /* The state of the random number generator; the save game stores it. */
-extern uint32_t random_seed;
+extern uint32_t g_random_seed;
 
 /* Advances the generator and returns 24 random bits. */
 uint32_t rand_next(void);

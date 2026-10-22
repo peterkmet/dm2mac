@@ -1132,7 +1132,7 @@ static int move_group_arrive(uint16_t thing, int map, int dst_x, int dst_y, int 
     } else {
         int event = creature_active_group_event(active);
         if (event != -1) {
-            TimelineEvent *e = &timeline.events[event];
+            TimelineEvent *e = &g_timeline.events[event];
             e->data[0] = (uint8_t)dst_x;
             e->data[1] = (uint8_t)dst_y;
             timeline_set_event_map(e, map);

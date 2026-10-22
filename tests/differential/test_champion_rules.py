@@ -119,7 +119,7 @@ class Rules:
         return sum(1 for c in range(C.CHAMPION_MAX) if records[c * CHAMPION_SIZE + CH["health"]:c * CHAMPION_SIZE + CH["health"] + 2] != b"\0\0")
 
     def assert_same(self, where):
-        assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
+        assert ctypes.c_uint32.in_dll(self.lib, "g_random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
         regen = ctypes.c_uint16.in_dll(self.lib, "champ_regen_counter").value
         assert regen == struct.unpack("<H", self.emu.read(G_REGEN_COUNTER, 2))[0], where
         self.s.assert_same(where)

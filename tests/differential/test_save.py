@@ -80,8 +80,8 @@ def test_load_state_equals_original_load(lib, gdat, start, original_run, tmp_pat
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
     game = Game.in_dll(lib, "game")
-    loaded = {name: getattr(game, name) for name in RECORD_GLOBALS if name != "random_seed"}
-    loaded["random_seed"] = ctypes.c_uint32.in_dll(lib, "random_seed").value
+    loaded = {name: getattr(game, name) for name in RECORD_GLOBALS if name != "g_random_seed"}
+    loaded["g_random_seed"] = ctypes.c_uint32.in_dll(lib, "g_random_seed").value
     assert loaded == original_run[1]
 
 
@@ -164,7 +164,7 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
 
     assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == SAVE_OK
     first = path.read_bytes()
-    timeline = Timeline.in_dll(lib, "timeline")
+    timeline = Timeline.in_dll(lib, "g_timeline")
     written_events = [bytes(timeline.events[i])[4:] for i in range(timeline.capacity)]
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
     things = []
@@ -178,7 +178,7 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     assert [(t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK, t >> C.THING_CELL_SHIFT) for t in loaded] == [
         (C.THING_PROJECTILE, 1), (C.THING_EXPLOSION, 2)]
     assert lib.thing_word(loaded[0], 2) == C.SPELL_FIREBALL | 5 and lib.thing_word(loaded[0], 4) == 0x1234
-    events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "timeline"), ctypes.POINTER(Event))
+    events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_timeline"), ctypes.POINTER(Event))
     move_index = lib.thing_word(loaded[0], 6)
     assert events[move_index].type == C.EVENT_PROJECTILE_MOVE and bytes(events[move_index].data[:2]) == struct.pack("<H", loaded[0])
     explosion_index = 4  # after the 3 events of start.DAT and the projectile move
@@ -283,7 +283,7 @@ def linked(lib, gdat, start, tmp_path_factory):
         assert emu.read(base, len(records)) == records
 
     link_things(lib, Game.in_dll(lib, "game"))
-    timeline = Timeline.in_dll(lib, "timeline")
+    timeline = Timeline.in_dll(lib, "g_timeline")
     assert timeline.used_end <= int.from_bytes(emu.read(G_TIMELINE_EVENT_MAX, 2), "little")
     emu.write(emu.read_u32(G_TIMELINE_EVENTS), ctypes.string_at(timeline.events, timeline.used_end * C.TIMELINE_EVENT_SIZE))
     emu.write(G_TIMELINE_EVENT_COUNT, struct.pack("<H", timeline.count))

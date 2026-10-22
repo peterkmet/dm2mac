@@ -224,7 +224,7 @@ def draw_both(sc):
     lib, emu, game = sc.lib, sc.emu, sc.game
     light = struct.unpack("<h", emu.read(WEATHER["light_level"][0], 2))[0]
     sky = emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     saved = seed.value
     kept = [(addr, emu.read(addr, 4)) for addr in (tv.G_PARTY_MOVE_STEPS, tv.G_PUSH_MODE, tv.G_PUSH_PENDING_GROUP)]
     steps, sc.party.move_steps = sc.party.move_steps, 0  # the view of the party square, not of a walk

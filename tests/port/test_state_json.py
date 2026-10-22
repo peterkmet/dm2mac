@@ -105,7 +105,7 @@ def test_state_matches_the_game_record(lib, game):
 def test_reading_the_state_keeps_the_random_seed(lib, game):
     """A stat aura makes champ_get_stat draw a random number; reading the state must not change the later game."""
     struct.pack_into("<Bh", game.champions[0], CH_AURA, AURA_STRENGTH, AURA_VALUE)
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     before = seed.value
     part(lib, STATE)
     part(lib, STATE)

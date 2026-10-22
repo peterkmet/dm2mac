@@ -77,13 +77,13 @@ def assert_world(sc, where):
     sc.assert_same_sounds(where)
     for var in (0x40, 0x41):
         assert sc.lib.dun_get_global_var(var) == sc.emu.read(G_GLOBAL_BYTES + var - 0x40, 1)[0], (where, var)
-    assert ctypes.c_uint32.in_dll(sc.lib, "random_seed").value == sc.emu.read_u32(VIEW_SEED_ADDR), where
+    assert ctypes.c_uint32.in_dll(sc.lib, "g_random_seed").value == sc.emu.read_u32(VIEW_SEED_ADDR), where
     assert sc.differences() == [], where
 
 
 def delete_weather_events(sc):
     """Removes the queued storm steps in both: a direct call adds one each time."""
-    tl = Timeline.in_dll(sc.lib, "timeline")
+    tl = Timeline.in_dll(sc.lib, "g_timeline")
     for i in range(tl.capacity):
         if tl.events[i].type == EVENT_WEATHER:
             sc.lib.timeline_delete_event(i)
@@ -364,7 +364,7 @@ def test_object_transfer_sensors_match_original(world, lib):
 def lightning_seed(lib, rng, storm, chance, target):
     """A random seed with which the next weather step of a storm (rain already falling) rolls a lightning that hits
     squares and tries target first; the C random functions follow the calls of world_update_day_night."""
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     lib.rand_next.restype = ctypes.c_uint32
     lib.rand_below.restype = ctypes.c_uint16
     while True:
@@ -416,7 +416,7 @@ def test_lightning_strikes_match_original(world, lib):
         set_global(sc, 0x40, rng.choice((5, 6, 20)))
         set_party_state(sc, int(case == 2 and rng.random() < 0.6), int(case == 2 and rng.random() < 0.4))
         value = lightning_seed(lib, rng, storm, 0x28 if storm >= 0xCD else 7, target)
-        ctypes.c_uint32.in_dll(lib, "random_seed").value = value
+        ctypes.c_uint32.in_dll(lib, "g_random_seed").value = value
         sc.emu.write_u32(VIEW_SEED_ADDR, value)
         before = lib.dun_get_global_var(0x41)
         lib.world_update_day_night(0)
@@ -702,7 +702,7 @@ def test_repeated_ambient_wall_sounds_match_original(world, lib, gdat):
             before = len(getattr(sc, "sounds_seen", []))
             assert_world(sc, (n, map_, x, y, cell, i))
             played += any(s[0] == C.CAT_WALL_ORNAMENT for s in sc.sounds_seen[before:])
-        tl = Timeline.in_dll(lib, "timeline")
+        tl = Timeline.in_dll(lib, "g_timeline")
         for i in range(tl.capacity):
             if tl.events[i].type == C.EVENT_SENSOR_AMBIENT_SOUND:
                 events += 1
@@ -751,7 +751,7 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
         sc.flush_sounds()
         played["front" if front else "elsewhere"] += any(s[0] == C.CAT_WALL_ORNAMENT for s in sc.sounds)
         assert_world(sc, (n, map_, x, y, cell, party))
-        tl = Timeline.in_dll(lib, "timeline")
+        tl = Timeline.in_dll(lib, "g_timeline")
         for i in range(tl.capacity):  # the ambient sound events of this test
             if tl.events[i].type == C.EVENT_SENSOR_AMBIENT_SOUND:
                 lib.timeline_delete_event(i)

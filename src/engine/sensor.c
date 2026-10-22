@@ -1300,13 +1300,13 @@ void move_square_contents_through(int x, int y)
         count--;
         move_thing(thing, x, y, x, y);
         if (type == THING_PROJECTILE) {
-            TimelineEvent *ev = &timeline.events[thing_word(thing, PROJECTILE_EVENT)];
+            TimelineEvent *ev = &g_timeline.events[thing_word(thing, PROJECTILE_EVENT)];
             projectile_event_set_position(ev, party.dest_x, party.dest_y, party.dest_dir);
             put_le16(ev->data + PROJECTILE_EVENT_THING, thing_with_cell(thing, party.dest_cell));
             timeline_set_event_map(ev, party.dest_map);
         } else if (type == THING_EXPLOSION) {
-            for (int i = 0; i < timeline.used_end; i++) {
-                TimelineEvent *ev = &timeline.events[i];
+            for (int i = 0; i < g_timeline.used_end; i++) {
+                TimelineEvent *ev = &g_timeline.events[i];
                 if (ev->type != EVENT_EXPLOSION || le16(ev->data + EXPLOSION_EVENT_THING) != thing)
                     continue;
                 ev->data[EXPLOSION_EVENT_X] = (uint8_t)party.dest_x;

@@ -79,7 +79,7 @@ class NewGame:
 
 def c_new_game(lib, gdat, before_link=None):
     """The same in the C port: the steps of session.c load_new_game, then the timer sensors."""
-    ctypes.c_uint32.in_dll(lib, "random_seed").value = 0
+    ctypes.c_uint32.in_dll(lib, "g_random_seed").value = 0
     assert lib.dungeon_load(str(DUNGEON).encode()) == 1
     lib.timeline_init(50 + lib.dungeon_thing_count(C.THING_GROUP)
                        + lib.dungeon_thing_count(C.THING_PROJECTILE) + lib.dungeon_thing_count(C.THING_EXPLOSION))
@@ -132,7 +132,7 @@ def test_new_game_dungeon_matches_original(lib, new_game):
     raw = lib.dungeon_thing_count(C.THING_GROUP)
     assert raw and all(struct.unpack_from("<H", emu.read(emu.read_u32(G_THING_DATA + 16) + 16 * i + 6, 2))[0]
                        for i in range(20))  # the groups got their health
-    assert ctypes.c_uint32.in_dll(lib, "random_seed").value == emu.read_u32(G_RANDOM_SEED)
+    assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == emu.read_u32(G_RANDOM_SEED)
 
 
 def test_level_digits_match_original(lib, new_game):
@@ -165,7 +165,7 @@ def test_timer_sensors_start_like_original(lib, new_game):
     emu.write_u32(G_GAME_TIME, 1234)
     lib.sensor_start_timers()
     emu.call(SENSOR_START_TIMERS)
-    tl = Timeline.in_dll(lib, "timeline")
+    tl = Timeline.in_dll(lib, "g_timeline")
     assert tl.count == struct.unpack("<H", emu.read(G_TIMELINE_COUNT, 2))[0] == 9
     mine = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * C.TIMELINE_EVENT_SIZE)
     theirs = emu.read(emu.read_u32(G_TIMELINE_EVENTS), tl.capacity * C.TIMELINE_EVENT_SIZE)

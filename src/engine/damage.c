@@ -379,8 +379,8 @@ void champ_cure_poison(int champ, int amount)
     Champion *c = champion(champ);
     int16_t left = (int16_t)amount;
     /* the original reads the first event slots as many as the timeline holds */
-    for (int i = 0; i < timeline.count; i++) {
-        TimelineEvent *e = &timeline.events[i];
+    for (int i = 0; i < g_timeline.count; i++) {
+        TimelineEvent *e = &g_timeline.events[i];
         if (e->type != EVENT_POISON || e->priority != (uint8_t)champ)
             continue;
         int16_t v = (int16_t)le16(e->data);
@@ -515,7 +515,7 @@ void champ_apply_pending_damage(void)
             TimelineEvent e = party_event(DAMAGE_SHOW_TIME, EVENT_HIDE_DAMAGE, i);
             c->damage_event = (uint16_t)timeline_add_event(&e);
         } else {
-            timeline.events[c->damage_event].time_map =
+            g_timeline.events[c->damage_event].time_map =
                 timeline_time_map(game.game_time + DAMAGE_SHOW_TIME, game.party_map);
             timeline_reposition_event(c->damage_event);
         }

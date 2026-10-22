@@ -398,7 +398,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     ctypes.memset(ctypes.addressof(game), 0, GAME_SIZE)
     world = WorldGame.in_dll(lib, "game")
     world.leader, world.sound_volume, world.music_volume = C.LEADER_NONE, C.VOLUME_SETTING_START, C.VOLUME_SETTING_START
-    ctypes.c_uint32.in_dll(lib, "random_seed").value = 0
+    ctypes.c_uint32.in_dll(lib, "g_random_seed").value = 0
     party = Party.in_dll(lib, "party")
     ctypes.memset(ctypes.addressof(party), 0, ctypes.sizeof(party))
     party.cur_map, party.new_map, party.push_pending_group = -1, -1, 0xFFFF

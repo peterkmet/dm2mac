@@ -284,8 +284,8 @@ static void timeline_relink_events(void)
 {
     for (int c = 0; c < CHAMPION_MAX; c++)
         put_le16(game.champions[c] + CHAMPION_DAMAGE_EVENT, THING_NONE);
-    for (int i = 0; i < timeline.count; i++) {
-        const TimelineEvent *e = &timeline.events[i];
+    for (int i = 0; i < g_timeline.count; i++) {
+        const TimelineEvent *e = &g_timeline.events[i];
         uint16_t thing = le16(e->data + EVENT_THING);
         if (e->type == EVENT_HIDE_DAMAGE &&
             e->priority < CHAMPION_MAX) /* fix: the original does not check the champion */
@@ -368,8 +368,8 @@ static int write_held_things(uint16_t thing, const uint8_t *mask, int carried)
         return ok;
     }
     case THING_EXPLOSION:
-        for (int i = 0; i < timeline.count; i++)
-            if (timeline.events[i].type == EVENT_EXPLOSION && le16(timeline.events[i].data + EVENT_THING2) == thing)
+        for (int i = 0; i < g_timeline.count; i++)
+            if (g_timeline.events[i].type == EVENT_EXPLOSION && le16(g_timeline.events[i].data + EVENT_THING2) == thing)
                 return write_value(1, MORE_MASK) && write_value(i, INDEX_MASK);
         return write_value(0, MORE_MASK);
     }
@@ -478,14 +478,14 @@ static void pack_game_record(uint8_t *r)
 {
     memset(r, 0, GAME_RECORD_SIZE);
     put_le32(r + REC_GAME_TIME, game.game_time);
-    put_le32(r + REC_RANDOM_SEED, random_seed);
+    put_le32(r + REC_RANDOM_SEED, g_random_seed);
     put_le16(r + REC_CHAMPION_COUNT, game.champion_count);
     put_le16(r + REC_PARTY_X, game.party_x);
     put_le16(r + REC_PARTY_Y, game.party_y);
     put_le16(r + REC_PARTY_DIR, game.party_dir);
     put_le16(r + REC_PARTY_MAP, game.party_map);
     put_le16(r + REC_LEADER, game.leader);
-    put_le16(r + REC_EVENT_COUNT, timeline.count);
+    put_le16(r + REC_EVENT_COUNT, g_timeline.count);
     put_le32(r + REC_UNKNOWN_TIME_A, game.last_combat_time);
     put_le32(r + REC_UNKNOWN_TIME_B, game.first_recruit_time);
     put_le16(r + REC_MOVE_COOLDOWN, game.party_move_cooldown);
@@ -509,14 +509,14 @@ static void pack_game_record(uint8_t *r)
 static void unpack_game_record(const uint8_t *r)
 {
     game.game_time = le32(r + REC_GAME_TIME);
-    random_seed = le32(r + REC_RANDOM_SEED);
+    g_random_seed = le32(r + REC_RANDOM_SEED);
     game.champion_count = le16(r + REC_CHAMPION_COUNT);
     game.party_x = le16(r + REC_PARTY_X);
     game.party_y = le16(r + REC_PARTY_Y);
     game.party_dir = le16(r + REC_PARTY_DIR);
     game.party_map = le16(r + REC_PARTY_MAP);
     game.leader = le16(r + REC_LEADER);
-    timeline.count = le16(r + REC_EVENT_COUNT);
+    g_timeline.count = le16(r + REC_EVENT_COUNT);
     game.last_combat_time = le32(r + REC_UNKNOWN_TIME_A);
     game.first_recruit_time = le32(r + REC_UNKNOWN_TIME_B);
     game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
@@ -550,7 +550,7 @@ static int write_state(void)
         !write_packed((const uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT) ||
         !write_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count) ||
         !write_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) ||
-        !write_packed((const uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count))
+        !write_packed((const uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count))
         return 0;
     for (int c = 0; c < game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
@@ -558,9 +558,9 @@ static int write_state(void)
                 return 0;
     if (!write_thing_list(game.leader_hand, 0, 0))
         return 0;
-    for (int i = 0; i < timeline.count; i++)
-        if (is_move_group_event(&timeline.events[i]) &&
-            !write_thing_list(le16(timeline.events[i].data + EVENT_THING2), 0, 0))
+    for (int i = 0; i < g_timeline.count; i++)
+        if (is_move_group_event(&g_timeline.events[i]) &&
+            !write_thing_list(le16(g_timeline.events[i].data + EVENT_THING2), 0, 0))
             return 0;
     return write_squares() && write_deferred() && flush_bits();
 }
@@ -569,9 +569,9 @@ static int read_thing_list(int map, int x, int y, uint16_t *list, int with_cell,
 
 static int set_event_thing(uint16_t event, int offset, uint16_t thing)
 {
-    if (event >= timeline.capacity)
+    if (event >= g_timeline.capacity)
         return 0; /* fix: the original writes outside the timeline */
-    put_le16(timeline.events[event].data + offset, thing);
+    put_le16(g_timeline.events[event].data + offset, thing);
     return 1;
 }
 
@@ -792,8 +792,8 @@ static int read_things(void)
         for (int s = 0; s < SLOT_COUNT; s++)
             champ_apply_item_effects(c, champion(c)->slots[s], s, EFFECT_MODE_LOAD);
     champ_apply_item_effects((int16_t)game.leader, game.leader_hand, -1, EFFECT_MODE_LOAD);
-    for (int i = 0; i < timeline.count; i++) {
-        TimelineEvent *e = &timeline.events[i];
+    for (int i = 0; i < g_timeline.count; i++) {
+        TimelineEvent *e = &g_timeline.events[i];
         if (!is_move_group_event(e))
             continue;
         uint16_t group = THING_ENDOFLIST;
@@ -813,8 +813,8 @@ static const int8_t light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 
 static void save_restore_timed_effects(void)
 {
     memset(game.magic_light, 0, sizeof game.magic_light);
-    for (int i = 0; i < timeline.used_end; i++) {
-        const TimelineEvent *e = &timeline.events[i];
+    for (int i = 0; i < g_timeline.used_end; i++) {
+        const TimelineEvent *e = &g_timeline.events[i];
         int16_t v = (int16_t)le16(e->data + EVENT_VALUE);
         switch (e->type) {
         case EVENT_ITEM_EFFECT:
@@ -852,7 +852,7 @@ static int read_state(void)
     if (!read_packed(record, game_record_mask, GAME_RECORD_SIZE, 1, 0))
         return 0;
     unpack_game_record(record);
-    if (game.champion_count > CHAMPION_MAX || timeline.count > timeline.capacity)
+    if (game.champion_count > CHAMPION_MAX || g_timeline.count > g_timeline.capacity)
         return 0;
     memset(game.champions, 0, sizeof game.champions);
     if (!read_packed(game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES, 0) ||
@@ -860,10 +860,10 @@ static int read_state(void)
         !read_packed((uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT, 0) ||
         !read_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count, 0) ||
         !read_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, 0) ||
-        !read_packed((uint8_t *)timeline.events, event_mask, TIMELINE_EVENT_SIZE, timeline.count, 0))
+        !read_packed((uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count, 0))
         return 0;
-    for (int i = timeline.count; i < timeline.capacity; i++)
-        timeline.events[i].type = EVENT_NONE;
+    for (int i = g_timeline.count; i < g_timeline.capacity; i++)
+        g_timeline.events[i].type = EVENT_NONE;
     timeline_build_queue();
     if (!read_things())
         return 0;

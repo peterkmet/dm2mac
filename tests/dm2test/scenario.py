@@ -589,7 +589,7 @@ class Scenario(CreatureOracle):
                 a, b = mine[i * sizes[t]:(i + 1) * sizes[t]], theirs[i * sizes[t]:(i + 1) * sizes[t]]
                 if a != b:
                     out.append(("thing", t, i, a.hex(), b.hex()))
-        tl = Timeline.in_dll(lib, "timeline")
+        tl = Timeline.in_dll(lib, "g_timeline")
         mine = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
         theirs = emu.read(emu.read_u32(0x760E8), tl.capacity * 12)
         for i in range(tl.capacity):
@@ -643,7 +643,7 @@ class Scenario(CreatureOracle):
         assert self.differences() == [], where
         self.assert_same_weather(where)
         self.assert_same_sounds(where)
-        assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(0x70518), where
+        assert ctypes.c_uint32.in_dll(self.lib, "g_random_seed").value == self.emu.read_u32(0x70518), where
 
     def assert_equal(self, where):
         self.assert_same_damage(where)

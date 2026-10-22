@@ -137,7 +137,7 @@ int projectile_event_dir(const TimelineEvent *e)
 
 int projectile_dir(uint16_t projectile)
 {
-    return projectile_event_dir(&timeline.events[thing_word(projectile, PROJECTILE_EVENT)]);
+    return projectile_event_dir(&g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)]);
 }
 
 /* True for the party square on the current map. */
@@ -671,7 +671,7 @@ static int projectile_reflect(TimelineEvent *e, uint16_t projectile, int x, int 
     if (dir < DIR_COUNT) {
         set_event_dir(e, dir);
         /* the original also writes the direction into the freed event of this move */
-        set_event_dir(&timeline.events[thing_word(projectile, PROJECTILE_EVENT)], dir);
+        set_event_dir(&g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)], dir);
     }
     return 1;
 }
@@ -718,7 +718,7 @@ static int projectile_enter_square(TimelineEvent *e, uint16_t projectile, int16_
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_EXPLOSION || explosion_type(t) != BLAST_MISSILE_WALL)
             continue;
-        TimelineEvent *queued = &timeline.events[thing_word(projectile, PROJECTILE_EVENT)];
+        TimelineEvent *queued = &g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)];
         int back = dir_opposite(projectile_event_dir(queued));
         set_event_dir(e, back);
         set_event_dir(queued, back);
@@ -1058,7 +1058,7 @@ void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y)
         uint16_t t = dungeon_square_first_thing(party.cur_map, sx, sy);
         while (t != THING_ENDOFLIST) {
             if (thing_type(t) == THING_PROJECTILE &&
-                timeline.events[thing_word(t, PROJECTILE_EVENT)].type != EVENT_PROJECTILE_MOVE &&
+                g_timeline.events[thing_word(t, PROJECTILE_EVENT)].type != EVENT_PROJECTILE_MOVE &&
                 champs[thing_cell(t)] &&
                 projectile_hit(PROJECTILE_HIT_PARTY_SQUARE, (int16_t)x, (int16_t)y, champs[thing_cell(t)] - 1, t)) {
                 projectile_cancel_event(t);

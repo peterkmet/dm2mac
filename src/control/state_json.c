@@ -702,7 +702,7 @@ static void outdoor_json(Json *j)
 
 void state_json_state(Json *j)
 {
-    uint32_t seed = random_seed; /* a stat aura draws a random number in champ_get_stat: the read changes no game */
+    uint32_t seed = g_random_seed; /* a stat aura draws a random number in champ_get_stat: the read changes no game */
     int mode = input_get_mode();
     json_open(j, '{');
     key_int(j, "time", (long)game.game_time);
@@ -730,7 +730,7 @@ void state_json_state(Json *j)
     json_close(j, ']');
     outdoor_json(j);
     json_close(j, '}');
-    random_seed = seed;
+    g_random_seed = seed;
 }
 
 /* ---- The view and the map ---- */

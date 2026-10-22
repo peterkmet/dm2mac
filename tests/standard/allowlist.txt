@@ -30,7 +30,6 @@ block engine/include/projectile.h open: module cleanup
 block engine/include/save.h open: module cleanup
 block engine/include/seen.h open: module cleanup
 block engine/include/sound_request.h open: module cleanup
-block engine/include/timeline.h open: module cleanup
 block engine/include/weather.h open: module cleanup
 block engine/inventory.c open: module cleanup
 block engine/item.c open: module cleanup
@@ -43,7 +42,6 @@ block engine/projectile.c open: module cleanup
 block engine/recruit.c open: module cleanup
 block engine/save.c open: module cleanup
 block engine/sound_request.c open: module cleanup
-block engine/timeline.c open: module cleanup
 block engine/weather.c open: module cleanup
 block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
@@ -235,7 +233,6 @@ comment engine/include/money.h open: module cleanup
 comment engine/include/move.h open: module cleanup
 comment engine/include/projectile.h open: module cleanup
 comment engine/include/seen.h open: module cleanup
-comment engine/include/timeline.h open: module cleanup
 comment engine/include/weather.h open: module cleanup
 comment engine/merchant.c open: module cleanup
 comment engine/move.c open: module cleanup
@@ -414,7 +411,6 @@ decimal engine/include/champion.h open: module cleanup
 decimal engine/include/creature.h open: module cleanup
 decimal engine/include/minion.h open: module cleanup
 decimal engine/include/move.h open: module cleanup
-decimal engine/include/timeline.h open: module cleanup
 decimal engine/magic.c rule 3.12: a table of SKULL.EXE
 decimal engine/move.c open: module cleanup
 decimal engine/projectile.c open: module cleanup
@@ -489,7 +485,6 @@ enum ui/ui.c open: module cleanup
 enum ui/view.c open: module cleanup
 enum ui/zone.c open: module cleanup
 event-comment engine/include/sound_request.h open: module cleanup
-event-comment engine/include/timeline.h open: module cleanup
 event-comment ui/include/input.h open: module cleanup
 global engine/ai_move_internal.h open: module cleanup
 global engine/include/action.h open: module cleanup
@@ -504,10 +499,8 @@ global engine/include/inventory.h open: module cleanup
 global engine/include/minion.h open: module cleanup
 global engine/include/move.h open: module cleanup
 global engine/include/projectile.h open: module cleanup
-global engine/include/random.h open: module cleanup
 global engine/include/save.h open: module cleanup
 global engine/include/sound_request.h open: module cleanup
-global engine/include/timeline.h open: module cleanup
 global engine/include/weather.h open: module cleanup
 global ui/include/advanced.h open: module cleanup
 global ui/include/dialog.h open: module cleanup
@@ -696,7 +689,6 @@ notation engine/include/item.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
 notation engine/include/save.h open: module cleanup
 notation engine/include/sound_request.h open: module cleanup
-notation engine/include/timeline.h open: module cleanup
 notation engine/include/weather.h open: module cleanup
 notation engine/inventory.c open: module cleanup
 notation engine/item.c open: module cleanup
@@ -705,7 +697,6 @@ notation engine/merchant.c open: module cleanup
 notation engine/money.c open: module cleanup
 notation engine/move.c open: module cleanup
 notation engine/projectile.c open: module cleanup
-notation engine/random.c open: module cleanup
 notation engine/recruit.c open: module cleanup
 notation engine/save.c open: module cleanup
 notation engine/weather.c open: module cleanup
@@ -749,7 +740,6 @@ order engine/move.c open: module cleanup
 order engine/projectile.c open: module cleanup
 order engine/save.c open: module cleanup
 order engine/seen.c open: module cleanup
-order engine/timeline.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
 order ui/action_area.c open: module cleanup
@@ -1044,7 +1034,6 @@ static-prefix engine/seen.c:seen_square open: module cleanup
 static-prefix engine/sound_request.c:scale_away open: module cleanup
 static-prefix engine/sound_request.c:sound_play_requests open: module cleanup
 static-prefix engine/sound_request.c:sound_request_later open: module cleanup
-static-prefix engine/timeline.c:event_time open: module cleanup
 static-prefix engine/weather.c:weather_lightning open: module cleanup
 static-prefix engine/weather.c:weather_storm_step open: module cleanup
 static-prefix engine/weather.c:weather_update_rain open: module cleanup

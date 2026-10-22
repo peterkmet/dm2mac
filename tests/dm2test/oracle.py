@@ -129,8 +129,8 @@ class CreatureOracle:
             assert a == b, (where, i // ACTIVE_GROUP_SIZE, a, b)
         assert ctypes.c_int.in_dll(self.lib, "active_group_count").value == \
             struct.unpack("<H", self.emu.read(G_ACTIVE_GROUP_COUNT, 2))[0], where
-        assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
-        tl = Timeline.in_dll(self.lib, "timeline")
+        assert ctypes.c_uint32.in_dll(self.lib, "g_random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
+        tl = Timeline.in_dll(self.lib, "g_timeline")
         theirs = struct.unpack("<hhHH", self.emu.read(G_TIMELINE_FIX_SLOT, 8))
         assert (tl.fix_slot, tl.first_free, tl.capacity, tl.count) == theirs, (where, "timeline")
         mine_q = ctypes.string_at(tl.queue, tl.count * 2)

@@ -213,7 +213,7 @@ class Ai:
         mine, theirs = self.sc.active_groups()
         for i in range(0, len(mine), C.ACTIVE_GROUP_SIZE):
             assert mine[i:i + C.ACTIVE_GROUP_SIZE].hex(" ") == theirs[i:i + C.ACTIVE_GROUP_SIZE].hex(" "), (where, "active group", i // C.ACTIVE_GROUP_SIZE)
-        assert ctypes.c_uint32.in_dll(self.lib, "random_seed").value == self.emu.read_u32(G_RANDOM_SEED), (where, "seed")
+        assert ctypes.c_uint32.in_dll(self.lib, "g_random_seed").value == self.emu.read_u32(G_RANDOM_SEED), (where, "seed")
         if dungeon:
             assert self.sc.differences() == [], where
 

@@ -163,7 +163,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
         lib.weather_sky_objects.restype = ctypes.c_void_p
         ctypes.memmove(lib.weather_sky_objects(), sky, len(sky))
     ctypes.c_int.in_dll(lib, "view_light_level").value = light
-    ctypes.c_uint32.in_dll(lib, "random_seed").value = VIEW_SEED
+    ctypes.c_uint32.in_dll(lib, "g_random_seed").value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "view_viewport")
     ctypes.memset(viewport.pixels, 0, VIEW_W * VIEW_H)
     lib.view_draw_dungeon(direction, x, y)
@@ -481,7 +481,7 @@ class Things:
         self.lib, self.emu = lib, emu
         lib.dungeon_thing_record.restype = u8_p
         lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
-        self.events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "timeline"), u8_p)
+        self.events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_timeline"), u8_p)
 
     def write(self, thing, offset, data):
         record = self.lib.dungeon_thing_record(thing)
@@ -660,7 +660,7 @@ def test_wet_image_matches_original(lib, loaded, original_view):
     lib.rand_below.restype = ctypes.c_uint16
     lib.rand_below.argtypes = [ctypes.c_uint16]
     lib.rand_next.restype = ctypes.c_uint32
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     rng = random.Random(26)
     ctx_addr = original_view.alloc(CTX_SIZE)
     drawn = filled = small_drawn = 0

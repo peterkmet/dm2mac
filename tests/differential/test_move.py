@@ -179,7 +179,7 @@ def test_clicks_in_the_view(scenario, lib):
     scenario.lib.view_draw_dungeon.argtypes = [ctypes.c_int] * 3
     zones = (ctypes.c_uint8 * (C.VIEW_CLICK_ZONE_MAX * 12)).in_dll(lib, "view_click_zones")
     count = ctypes.c_int.in_dll(lib, "view_click_zone_count")
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     places = []
     for map_, x, y, cell in sensor_squares(lib):
         if lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:

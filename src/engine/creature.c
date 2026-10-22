@@ -664,8 +664,8 @@ void creature_deactivate_group(int active_index)
         if (a->event == EVENT_NO_SLOT)
             vanish = 0;
         else {
-            x = timeline.events[a->event].data[0];
-            y = timeline.events[a->event].data[1];
+            x = g_timeline.events[a->event].data[0];
+            y = g_timeline.events[a->event].data[1];
         }
     }
     a->action = 0;

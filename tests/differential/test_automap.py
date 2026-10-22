@@ -199,7 +199,7 @@ def saves(lib, gdat, automap, tmp_path):  # noqa: F811
     run_ticks(lib, 20)
     press(lib, C.KEYPAD_TURN_RIGHT)
     seen = seen_squares(lib, game.party_map)
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     kept = seed.value
     vanilla = write(lib, gdat, tmp_path / "V.DAT", VANILLA)
     seed.value = kept  # the reactivated creature groups draw random numbers after a save

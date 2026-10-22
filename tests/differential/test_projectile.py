@@ -66,7 +66,7 @@ def both(s, c_fn, addr, *args):
 def flying(s):
     """The number of projectile and explosion events in the C timeline."""
     from dm2test.save import Timeline
-    tl = Timeline.in_dll(s.lib, "timeline")
+    tl = Timeline.in_dll(s.lib, "g_timeline")
     raw = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * C.TIMELINE_EVENT_SIZE)
     return sum(raw[i * C.TIMELINE_EVENT_SIZE + 4] in (EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2) for i in range(tl.capacity))
 
@@ -424,7 +424,7 @@ def test_ordered_attack_cells(pj, lib):
         lib.creature_get_ordered_attack_cells(order, x, y, px, py, cell)
         pj.emu.call(CREATURE_GET_ORDERED_ATTACK_CELLS, SCRATCH_OUT, x, y, px, py, cell)
         assert bytes(order) == pj.emu.read(SCRATCH_OUT, 4), (n, x, y, px, py, cell)
-        assert ctypes.c_uint32.in_dll(lib, "random_seed").value == pj.emu.read_u32(0x70518), n
+        assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == pj.emu.read_u32(0x70518), n
 
 
 

@@ -295,8 +295,8 @@ void magic_add_party_aura(int mask, int type, int16_t value, uint16_t duration)
             if (type != c->aura || !c->health) {
                 /* a new aura type: the old aura and its events end */
                 c->aura_value = 0;
-                for (int k = 0; k < timeline.used_end; k++) {
-                    TimelineEvent *e = &timeline.events[k];
+                for (int k = 0; k < g_timeline.used_end; k++) {
+                    TimelineEvent *e = &g_timeline.events[k];
                     if (e->type != EVENT_AURA || !(e->priority & mask))
                         continue;
                     if (!(e->priority & ~mask))

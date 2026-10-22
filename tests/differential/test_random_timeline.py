@@ -46,7 +46,7 @@ def emu(game_dir):
 def test_random_matches_original(lib, emu, seed, name, addr, args, mask):
     func = getattr(lib, name)
     func.restype = ctypes.c_uint32
-    c_seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    c_seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     c_seed.value = seed
     emu.write_u32(G_RANDOM_SEED, seed)
     for i in range(1000):
@@ -70,7 +70,7 @@ def emu_state(emu, capacity):
 def test_timeline_matches_original(lib, emu, seed):
     capacity = 48
     lib.timeline_init(capacity)
-    tl = Timeline.in_dll(lib, "timeline")
+    tl = Timeline.in_dll(lib, "g_timeline")
     emu.write_u32(G_TIMELINE_EVENTS, EVENTS)
     emu.write_u32(G_TIMELINE_QUEUE, QUEUE)
     emu.write(G_TIMELINE_CAPACITY, struct.pack("<H", capacity))

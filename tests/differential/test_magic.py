@@ -414,7 +414,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
         game = Game.in_dll(lib, "game")
         assert bytes((ctypes.c_uint8 * 6).from_address(ctypes.addressof(game) + GAME_MAGIC)) == emu.read(G_MAGIC_LIGHT, 6), where
         from dm2test.save import Timeline
-        tl = Timeline.in_dll(lib, "timeline")
+        tl = Timeline.in_dll(lib, "g_timeline")
         events = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
         assert events == emu.read(emu.read_u32(G_TIMELINE_EVENTS), tl.capacity * 12), where
     assert added > 60
@@ -500,7 +500,7 @@ def test_many_casts_match_original(magic):
     lib = magic.lib
     spells = [i for i in range(SPELL_COUNT) if spell_kind(i) != 4]
     auras = [i for i in spells if spell_kind(i) == 3]
-    seed = ctypes.c_uint32.in_dll(lib, "random_seed")
+    seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     big = 0
     for n in range(1500):
         if n % 100 == 0:
@@ -611,7 +611,7 @@ def assert_map_state(lib, original, where):
     m = MinionMap.in_dll(lib, "minion_map")
     for name, (addr, fmt) in MINION_GLOBALS.items():
         assert getattr(m, name) == struct.unpack(fmt, emu.read(addr, struct.calcsize(fmt)))[0], (where, name)
-    assert ctypes.c_uint32.in_dll(lib, "random_seed").value == emu.read_u32(0x70518), where
+    assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == emu.read_u32(0x70518), where
     lib.dungeon_thing_record.restype = ctypes.c_void_p
     for t in (C.THING_CONTAINER, C.THING_PROJECTILE):
         n = lib.dungeon_thing_count(t)
