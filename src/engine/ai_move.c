@@ -394,7 +394,7 @@ static void set_action_destination(int x, int y)
     g_ai.active->destination = pack_location(x, y, g_party.cur_map);
 }
 
-bool ai_square_is_obstacle(int x, int y)
+bool ai_square_is_obstacle(int16_t x, int16_t y)
 {
     uint8_t square = dun_get_square(x, y);
     int type = square_type(square);
@@ -404,7 +404,7 @@ bool ai_square_is_obstacle(int x, int y)
            (type == SQUARE_FAKE_WALL && !(square & SQUARE_FAKE_WALL_OPEN));
 }
 
-bool ai_square_blocks_line(int x, int y)
+bool ai_square_blocks_line(int16_t x, int16_t y)
 {
     int16_t sx = (int16_t)x;
     int16_t sy = (int16_t)y;
@@ -443,14 +443,14 @@ bool ai_square_blocks_line(int x, int y)
     return 0;
 }
 
-bool ai_blocks_line_to_target(int x, int y)
+bool ai_blocks_line_to_target(int16_t x, int16_t y)
 {
     if (at_party(x, y))
         return 1;
     return ai_square_blocks_line(x, y);
 }
 
-bool ai_blocks_line_except_self(int x, int y)
+bool ai_blocks_line_except_self(int16_t x, int16_t y)
 {
     if ((uint16_t)x == own_x() && (uint16_t)y == own_y())
         return 0;
@@ -466,7 +466,7 @@ static int16_t line_slope(bool steep, int x1, int y1, int x, int y)
     return (int16_t)(((steep ? x - x1 : y - y1) << SLOPE_SHIFT) / major);
 }
 
-int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y))
+int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int16_t x, int16_t y))
 {
     if (abs16(x1 - x2) + abs16(y1 - y2) <= 1)
         return 1;
@@ -507,7 +507,7 @@ int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y))
     return axis_distance(x1, y1, x2, y2);
 }
 
-void ai_cache_square(int x, int y)
+void ai_cache_square(int16_t x, int16_t y)
 {
     if ((int16_t)x == g_ai_square.x && (int16_t)y == g_ai_square.y && g_party.cur_map == g_ai_square.map)
         return;
@@ -554,7 +554,7 @@ uint16_t ai_cached_first_group(void)
     return t;
 }
 
-bool ai_turn_toward(int dir)
+bool ai_turn_toward(int16_t dir)
 {
     int facing = group_dir(g_ai.group_thing);
     int turn;
@@ -616,7 +616,7 @@ static AiLocation back_off_line(uint8_t *distance_map, AiLocation from, int back
     return ai_location(sx, sy);
 }
 
-AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, AiLocation from, int dir, bool ranged)
+AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, AiLocation from, int16_t dir, bool ranged)
 {
     AiLineTarget none = {false, 0};
     int range = g_ai.attack_flags & ATTACK_RANGED_MASK ? info_attack_range(g_ai.info) : 1;
@@ -820,7 +820,7 @@ static void set_attack_action(uint16_t attack, int r)
     }
 }
 
-bool ai_try_attack(int mode, AiLocation from, AiLocation to, int dir)
+bool ai_try_attack(int mode, AiLocation from, AiLocation to, int16_t dir)
 {
     int execute = mode & AI_EXECUTE;
     mode &= AI_MODE_MASK;
@@ -989,7 +989,7 @@ static DoorTest test_door(DoorAction *a)
     return DOOR_TEST_ACT;
 }
 
-bool ai_try_door_action(int mode, AiLocation from, AiLocation to, int dir)
+bool ai_try_door_action(int mode, AiLocation from, AiLocation to, int16_t dir)
 {
     int execute = mode & AI_EXECUTE;
     DoorAction a = {mode & AI_MODE_MASK, 0, THING_NONE, from, to, (int16_t)dir, 0};
@@ -1027,7 +1027,7 @@ bool ai_try_door_action(int mode, AiLocation from, AiLocation to, int dir)
     return start_door_action(&a);
 }
 
-bool ai_projectile_incoming(int x, int y)
+bool ai_projectile_incoming(int16_t x, int16_t y)
 {
     for (int16_t d = 0; d < DIR_COUNT; d++) {
         if (!(class_flags() & AI_CLASS_SEES_BEHIND)) {
@@ -1225,8 +1225,8 @@ static int level_change(Move *m)
     if (!(g_ai.move_flags & need))
         return -1;
     int map;
-    int nx = (int16_t)x;
-    int ny = (int16_t)y;
+    int16_t nx = (int16_t)x;
+    int16_t ny = (int16_t)y;
     if (link != THING_NONE && (m->action == ACTION_LINK_UP || m->action == ACTION_LINK_DOWN)) {
         nx = sensor_target_x(link);
         ny = sensor_target_y(link);
@@ -1246,8 +1246,8 @@ static int level_change(Move *m)
     }
     if (!creature_is_native_to_map(g_ai.group_thing, map))
         return -1;
-    m->tx = (int16_t)nx;
-    m->ty = (int16_t)ny;
+    m->tx = nx;
+    m->ty = ny;
     return map;
 }
 
@@ -1490,7 +1490,7 @@ static void execute_move(Move *m)
     g_ai.command_result = AI_RESULT_ISSUED;
 }
 
-bool ai_try_move(int command, AiLocation from, AiLocation to, int dir)
+bool ai_try_move(int command, AiLocation from, AiLocation to, int16_t dir)
 {
     int saved_map = g_party.cur_map;
     Move m = {from.x, from.y, to.x,  to.y, (int16_t)dir, -1, (int16_t)dir, command & AI_MOVE_KIND_MASK,
@@ -1688,7 +1688,7 @@ static bool take_floor_action(ItemTest *it)
     return false;
 }
 
-bool ai_try_take_item(int mode, AiLocation from, AiLocation to, int dir, int filter)
+bool ai_try_take_item(int mode, AiLocation from, AiLocation to, int16_t dir, int filter)
 {
     int execute = mode & AI_EXECUTE;
     ItemTest it = {mode & AI_MODE_MASK, filter, false, (int16_t)dir, -1, 0};
@@ -1749,7 +1749,7 @@ bool ai_try_take_item(int mode, AiLocation from, AiLocation to, int dir, int fil
     return true;
 }
 
-uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter)
+uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int filter)
 {
     uint16_t found = THING_NONE;
     for (uint16_t t = first_thing; t != THING_ENDOFLIST && t != THING_NONE; t = dungeon_next_thing(t)) {
@@ -1801,7 +1801,7 @@ int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state)
     }
 }
 
-bool ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int dir, int filter)
+bool ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int16_t dir, int filter)
 {
     int execute = mode & AI_EXECUTE;
     mode &= AI_MODE_MASK;
@@ -1928,7 +1928,7 @@ static bool is_item(int type)
     return (type > THING_GROUP && type < THING_PROJECTILE) || type == THING_CONTAINER;
 }
 
-uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int cell)
+uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int16_t cell)
 {
     uint16_t t = first_thing;
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
@@ -1938,7 +1938,7 @@ uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int cell)
     return t;
 }
 
-void ai_remove_matching_items(uint16_t *list_head, int filter, int cell)
+void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell)
 {
     cell = (uint8_t)cell;
     uint16_t next;
@@ -1967,7 +1967,7 @@ void ai_remove_matching_items(uint16_t *list_head, int filter, int cell)
     }
 }
 
-int ai_count_matching_items(int filter, uint16_t first_thing, int cell, int into_groups, int into_containers)
+int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, int into_groups, int into_containers)
 {
     int count = 0;
     cell = (uint8_t)cell;

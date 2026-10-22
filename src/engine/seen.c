@@ -64,7 +64,7 @@ static uint8_t *known_byte(int map, int x, int y)
     return seen + map_first_square(map) + (size_t)x * dungeon_map_height(map) + y;
 }
 
-void seen_mark(int map, int x, int y, int dir)
+void seen_mark(int16_t map, int16_t x, int16_t y, int16_t dir)
 {
     SeenSquare squares[SEEN_VISIBLE_MAX];
     int count = seen_visible(map, x, y, dir, squares);
@@ -107,7 +107,7 @@ static int visible_depths(void)
     return VIEW_DEPTHS;
 }
 
-int seen_visible(int map, int x, int y, int dir, SeenSquare out[SEEN_VISIBLE_MAX])
+int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare out[SEEN_VISIBLE_MAX])
 {
     uint8_t open[VIEW_DEPTHS][VIEW_WIDTH] = {{0}}; /* seen, and the view looks on through it */
     int depths = visible_depths(), count = 0;
@@ -133,7 +133,7 @@ int seen_visible(int map, int x, int y, int dir, SeenSquare out[SEEN_VISIBLE_MAX
     return count;
 }
 
-bool seen_is_seen(int map, int x, int y)
+bool seen_is_seen(int16_t map, int16_t x, int16_t y)
 {
     uint8_t *square = known_byte(map, x, y);
     return square && *square;

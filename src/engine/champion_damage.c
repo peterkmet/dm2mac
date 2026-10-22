@@ -427,7 +427,7 @@ static void drop_all_objects(int champ)
     }
 }
 
-void champ_drag_click(int cell)
+void champ_drag_click(int16_t cell)
 {
     bool finish = !(cell & DRAG_CANCEL);
     if (!finish)

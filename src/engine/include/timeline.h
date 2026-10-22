@@ -36,7 +36,7 @@ typedef struct {
 _Static_assert(sizeof(TimelineEvent) == TIMELINE_EVENT_SIZE, "the save game stores 12-byte events");
 
 /* The time_map value of an event at time on map; the caller masks time when it can pass 24 bits. */
-static inline uint32_t timeline_time_map(uint32_t time, int map)
+static inline uint32_t timeline_time_map(uint32_t time, int16_t map)
 {
     return time | (uint32_t)(uint8_t)map << EVENT_MAP_SHIFT;
 }
@@ -48,7 +48,7 @@ static inline uint8_t timeline_event_map(const TimelineEvent *e)
 }
 
 /* Moves an event to map and keeps its time. */
-static inline void timeline_set_event_map(TimelineEvent *e, int map)
+static inline void timeline_set_event_map(TimelineEvent *e, int16_t map)
 {
     e->time_map = timeline_time_map(e->time_map & EVENT_TIME_MASK, map);
 }

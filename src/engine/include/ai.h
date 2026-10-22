@@ -158,7 +158,7 @@ void ai_free_cached_data(uint16_t group);
 /* The update context */
 
 /* Begins a creature update: saves the context of an update in progress; true when it saved one. */
-bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved);
+bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved);
 /* Ends a creature update: frees the context, or restores the update that the nested one interrupted. */
 void ai_end(bool restored, const AiContext *saved);
 /* Takes a scratch block for the item filters of the update; exported for the tests. */
@@ -191,17 +191,17 @@ void ai_update_group(void);
    context: classes of items, creatures, and wall actuators that the creature text lists, or money boxes. */
 int ai_thing_matches_filter(uint16_t thing, int filter);
 /* The first item of filter in a thing list (cell CELL_ANY: any cell), THING_ENDOFLIST for none. */
-uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int cell);
+uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int16_t cell);
 
 /* Perception and items of the AI (ai_move.c), exported for the tests */
 
 /* True when a square stops a line of sight or of fire: walls, doors, clouds, and creatures that hide.
    It is exported for the tests. */
-bool ai_square_blocks_line(int x, int y);
+bool ai_square_blocks_line(int16_t x, int16_t y);
 /* A line toward the party: the party square blocks it (the line ends there); exported for the tests. */
-bool ai_blocks_line_to_target(int x, int y);
+bool ai_blocks_line_to_target(int16_t x, int16_t y);
 /* A line test that ignores the square of the group in the AI context; exported for the tests. */
-bool ai_blocks_line_except_self(int x, int y);
+bool ai_blocks_line_except_self(int16_t x, int16_t y);
 /* The first object of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_object(void);
 /* The first creature group of the square in the AI cache, read once; exported for the tests. */
@@ -211,7 +211,7 @@ uint16_t ai_cached_first_group(void);
 int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
 /* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
    actuator of the cell; THING_NONE for none; exported for the tests. */
-uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter);
+uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int filter);
 /* True when the wall actuator reacts to the creature in mode (ACTUATOR_MODE_*) with an item of filter; state: the
    state bits of the creature slot; exported for the tests. */
 int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state);

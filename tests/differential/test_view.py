@@ -293,7 +293,7 @@ def read_xy(emu):
 
 
 def test_grid5_cell_to_xy_matches_original(lib, image_emu):
-    lib.aspect_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_uint16, i16_p, i16_p]
+    lib.aspect_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, i16_p, i16_p]
     rng = random.Random(21)
     x, y = ctypes.c_int16(), ctypes.c_int16()
     for _ in range(1000):

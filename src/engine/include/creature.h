@@ -287,11 +287,11 @@ int creature_current_step_acts(uint16_t group);
 
 /* Groups on squares. */
 /* The creature group on (x, y) of the current map, THING_NONE for none. */
-uint16_t creature_get_group_at(int x, int y);
+uint16_t creature_get_group_at(int16_t x, int16_t y);
 /* The first creature group on the square (x, y) of map, THING_NONE for none. */
-uint16_t creature_group_at(int map, int x, int y);
+uint16_t creature_group_at(int16_t map, int16_t x, int16_t y);
 /* True when the creature of group may stay on map: a wanderer, or a creature type of the map. */
-bool creature_is_native_to_map(uint16_t group, int map);
+bool creature_is_native_to_map(uint16_t group, int16_t map);
 /* True for a creature that flies over pits and does not press floor sensors. */
 bool creature_is_flying(uint16_t group);
 /* The cells (bits 0 to 3) in which a static creature shows its possessions, from its possessions word. */
@@ -317,48 +317,48 @@ void creature_deactivate_all_groups(void);
 /* Deletes the next update event of a group. */
 void creature_cancel_update(uint16_t group);
 /* Gives a group an active group: its AI state, animation, and first update. */
-void creature_activate_group(uint16_t group, int x, int y);
+void creature_activate_group(uint16_t group, int16_t x, int16_t y);
 /* Frees an active group; a creature that vanished leaves the dungeon. */
 void creature_deactivate_group(int active_index);
 /* Sets the action of the next update of a group; now: the update comes at once, or the current action stops. */
-void creature_set_next_action(uint16_t group, int x, int y, int action, int now);
+void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, int now);
 /* Schedules the next animation update of the static creature on (x, y). */
-void creature_update_anim_at(int x, int y, int alt);
+void creature_update_anim_at(int16_t x, int16_t y, int alt);
 /* Animates the creature in the AI context by one step (picture shift, mirror, sound); returns the time of its next
    update. */
 uint32_t creature_animate_step(void);
 /* The update event of a creature group: regeneration, damage, then the AI or the animation. */
-void creature_process_event(int x, int y, int type);
+void creature_process_event(int16_t x, int16_t y, int type);
 
 /* Group life: creation, damage, death, alerts. */
 /* A dead creature leaves its drop items and its possessions (mode DROP_*) on (x, y). */
-void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map);
+void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, int sound_map);
 /* Removes the group on (x, y) from the dungeon; it drops what it carries. */
-void creature_delete_group_at(int x, int y, int mode, int sound_map);
+void creature_delete_group_at(int16_t x, int16_t y, int mode, int sound_map);
 /* Damages the group in the AI context; true when it was removed. */
 bool creature_damage_current_group(uint16_t damage);
 /* The creature in the AI context hits the group on (x, y): the damage, 0 for a miss, -1 for no group. */
-int creature_attack_group_at(int x, int y);
+int creature_attack_group_at(int16_t x, int16_t y);
 /* Alerts the group (or the group on at for THING_NONE) with the alert flags, chance and damage. */
 void creature_alert(uint16_t group, Location at, int flags, int chance, int damage);
 /* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
 int creature_roll_armor_factor(uint16_t group, int amount);
 /* A damage kind that sets or clears a mood bit of the group. */
-void creature_apply_damage_kind(uint16_t group, int x, int y, int kind);
+void creature_apply_damage_kind(uint16_t group, int16_t x, int16_t y, int kind);
 /* Creates a group of count + 1 creatures on (x, y) of the current map; THING_NONE when the dungeon is full. */
-uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y);
+uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_t x, int16_t y);
 /* Creates a group on (x, y) of map or on a free square beside it; link: the item that controls a minion. */
 uint16_t creature_summon_group(CreatureSummon summon);
 /* Turns a group, to dir or by dir; a static creature turns its possessions too. */
-void creature_turn_group(uint16_t group, int absolute, int dir);
+void creature_turn_group(uint16_t group, int absolute, int16_t dir);
 /* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */
-int creature_get_party_distance(int x, int y);
+int creature_get_party_distance(int16_t x, int16_t y);
 
 /* Pushing creatures: the push arrows of the party and the pushes of creatures. */
 /* True when the group on (x, y) can be pushed one square in dir; *group gets it. */
-bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group);
+bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *group);
 /* Pushes the group on (x, y) one square in dir; a push into the party moves the party. */
-void creature_push_group(int x, int y, int dir, int strength);
+void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength);
 /* The party walks on after a push that waited for its slow move: the push ends now. */
 void creature_continue_push(int command);
 
@@ -368,13 +368,13 @@ void creature_continue_push(int command);
 void creature_refresh_party_maps(void);
 
 /* Creature groups of move.c. */
-/* The creature group whose body covers the point of cell (0xff: any cell) of the square (*x, *y) of the current
-   map or of a square next to it; moves *x, *y to that square. THING_NONE when there is none. */
-uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell);
+/* The creature group whose body covers the point of cell (0xff: any cell) of the square (*out_x, *out_y) of the current
+   map or of a square next to it; moves *out_x, *out_y to that square. THING_NONE when there is none. */
+uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell);
 
 /* Creature attacks (projectile.c). */
 /* The 4 cells of the party on party_at that a creature on at attacks first to last; cell 0xff: random order. */
-void creature_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int cell);
+void creature_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell);
 /* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
 int creature_attack_champion(uint16_t group, int champ);
 

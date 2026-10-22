@@ -268,7 +268,7 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
 
 /* Party */
 
-int champ_get_index_in_cell(int cell)
+int champ_get_index_in_cell(int16_t cell)
 {
     for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->cell == cell && champion(i)->health)

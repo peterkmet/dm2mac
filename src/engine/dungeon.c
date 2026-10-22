@@ -511,8 +511,8 @@ void dungeon_link_things_after_load(void)
                     gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
                                      WALLSET_PIT_TO_MARKER))
                     continue;
-                int bx = x;
-                int by = y;
+                int16_t bx = x;
+                int16_t by = y;
                 int below = dungeon_location_on_map(map, LEVEL_DOWN, &bx, &by);
                 if (below >= 0)
                     mark_level_link(bx, by, below); /* fix: the original marks a square of map -1 */
@@ -555,43 +555,43 @@ int dungeon_map_count(void)
 {
     return dun.map_count;
 }
-int dungeon_map_width(int map)
+int dungeon_map_width(int16_t map)
 {
     return (map_size_and_level(map) >> MAP_WIDTH_SHIFT & MAP_SIDE_MASK) + 1;
 }
-int dungeon_map_height(int map)
+int dungeon_map_height(int16_t map)
 {
     return (map_size_and_level(map) >> MAP_HEIGHT_SHIFT) + 1;
 }
-int dungeon_map_level(int map)
+int dungeon_map_level(int16_t map)
 {
     return map_size_and_level(map) & MAP_LEVEL_MASK;
 }
-int dungeon_map_offset_x(int map)
+int dungeon_map_offset_x(int16_t map)
 {
     return map_desc(map)[MAP_OFFSET_X];
 }
-int dungeon_map_offset_y(int map)
+int dungeon_map_offset_y(int16_t map)
 {
     return map_desc(map)[MAP_OFFSET_Y];
 }
-uint16_t dungeon_map_flags(int map)
+uint16_t dungeon_map_flags(int16_t map)
 {
     return le16(map_desc(map) + MAP_FLAGS_WORD);
 }
-uint16_t dungeon_map_object_counts(int map)
+uint16_t dungeon_map_object_counts(int16_t map)
 {
     return le16(map_desc(map) + MAP_OBJECT_COUNTS);
 }
-uint16_t dungeon_map_graphics(int map)
+uint16_t dungeon_map_graphics(int16_t map)
 {
     return le16(map_desc(map) + MAP_GRAPHICS);
 }
-int dungeon_map_wallset(int map)
+int dungeon_map_wallset(int16_t map)
 {
     return dungeon_map_graphics(map) >> MAP_WALLSET_SHIFT & MAP_NIBBLE_MASK;
 }
-uint8_t dungeon_map_door_type(int map, int slot)
+uint8_t dungeon_map_door_type(int16_t map, int slot)
 {
     if (!(dungeon_map_flags(map) & (slot ? MAP_HAS_DOOR_TYPE_1 : MAP_HAS_DOOR_TYPE_0)))
         return DOOR_TYPE_NONE;
@@ -604,15 +604,15 @@ static uint16_t map_ornament_counts(int map)
     return le16(map_desc(map) + MAP_ORNAMENT_COUNTS);
 }
 
-int dungeon_map_random_wall_count(int map)
+int dungeon_map_random_wall_count(int16_t map)
 {
     return map_ornament_counts(map) >> MAP_RANDOM_WALL_SHIFT & MAP_NIBBLE_MASK;
 }
-int dungeon_map_creature_type_count(int map)
+int dungeon_map_creature_type_count(int16_t map)
 {
     return dungeon_map_object_counts(map) >> MAP_CREATURE_TYPES_SHIFT & MAP_NIBBLE_MASK;
 }
-int dungeon_map_difficulty(int map)
+int dungeon_map_difficulty(int16_t map)
 {
     return dungeon_map_object_counts(map) >> MAP_DIFFICULTY_SHIFT;
 }
@@ -623,22 +623,22 @@ static const uint8_t *map_extra(int map)
     return dun.map_data + map_data_offset(map) + dungeon_map_width(map) * dungeon_map_height(map);
 }
 
-const uint8_t *dungeon_map_creature_types(int map)
+const uint8_t *dungeon_map_creature_types(int16_t map)
 {
     return map_extra(map);
 }
 
-const uint8_t *dungeon_map_wall_ornaments(int map)
+const uint8_t *dungeon_map_wall_ornaments(int16_t map)
 {
     return map_extra(map) + dungeon_map_creature_type_count(map);
 }
 
-const uint8_t *dungeon_map_floor_ornaments(int map)
+const uint8_t *dungeon_map_floor_ornaments(int16_t map)
 {
     return dungeon_map_wall_ornaments(map) + (map_ornament_counts(map) & WALL_ORNAMENT_MASK);
 }
 
-const uint8_t *dungeon_map_door_ornaments(int map)
+const uint8_t *dungeon_map_door_ornaments(int16_t map)
 {
     return dungeon_map_floor_ornaments(map) + (map_ornament_counts(map) >> FLOOR_ORNAMENT_SHIFT & WALL_ORNAMENT_MASK);
 }
@@ -664,12 +664,12 @@ const uint16_t *dungeon_text_data(void)
 
 /* Squares */
 
-uint8_t dungeon_square(int map, int x, int y)
+uint8_t dungeon_square(int16_t map, int16_t x, int16_t y)
 {
     return map_column(map, x)[y];
 }
 
-uint8_t *dungeon_square_byte(int map, int x, int y)
+uint8_t *dungeon_square_byte(int16_t map, int16_t x, int16_t y)
 {
     return dun.map_data + map_data_offset(map) + x * dungeon_map_height(map) + y;
 }
@@ -707,7 +707,7 @@ static uint8_t edge_wall(int map, int ex, int ey, bool along_x, uint8_t face)
     return is_open_square(map, ex + step_x, ey + step_y) ? 0 : SQUARE_OUTSIDE;
 }
 
-uint8_t dungeon_square_edge(int map, int x, int y)
+uint8_t dungeon_square_edge(int16_t map, int16_t x, int16_t y)
 {
     int w = dungeon_map_width(map);
     int h = dungeon_map_height(map);
@@ -743,13 +743,13 @@ uint8_t dungeon_square_edge(int map, int x, int y)
     return is_open_square(map, ex, h - 1) ? 0 : SQUARE_OUTSIDE;
 }
 
-uint16_t dungeon_square_first_thing(int map, int x, int y)
+uint16_t dungeon_square_first_thing(int16_t map, int16_t x, int16_t y)
 {
     int index = first_thing_index(map, x, y);
     return index < 0 ? THING_ENDOFLIST : dun.square_first_things[index];
 }
 
-uint16_t dungeon_square_first_object(int map, int x, int y)
+uint16_t dungeon_square_first_object(int16_t map, int16_t x, int16_t y)
 {
     uint16_t t = dungeon_square_first_thing(map, x, y);
     while (thing_type(t) <= THING_SENSOR)
@@ -766,15 +766,15 @@ const uint16_t *dungeon_square_things(void)
     return dun.square_first_things;
 }
 
-int dungeon_location_on_map(int map, int level_delta, int *x, int *y)
+int dungeon_location_on_map(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y)
 {
-    return dungeon_location_on_map_from(map, level_delta, x, y, NULL);
+    return dungeon_location_on_map_from(map, level_delta, out_x, out_y, NULL);
 }
 
-int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *next)
+int dungeon_location_on_map_from(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y, int *next)
 {
-    int ax = *x + dungeon_map_offset_x(map);
-    int ay = *y + dungeon_map_offset_y(map);
+    int ax = *out_x + dungeon_map_offset_x(map);
+    int ay = *out_y + dungeon_map_offset_y(map);
     int level = dungeon_map_level(map) + level_delta;
     int start = next ? *next : 0;
     if (next)
@@ -793,8 +793,8 @@ int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *
         int type = square_type(dungeon_square_edge(*m, lx, ly));
         if (type == SQUARE_UNKNOWN || (type == SQUARE_TELEPORTER && is_closed_teleporter(*m, lx, ly)))
             continue;
-        *x = lx;
-        *y = ly;
+        *out_x = lx;
+        *out_y = ly;
         if (next)
             *next = (int)(m - maps) + 1;
         return *m;
@@ -802,11 +802,11 @@ int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *
     return -1;
 }
 
-int dungeon_find_level_transfer(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags)
+int dungeon_find_level_transfer(int16_t *out_x, int16_t *out_y, int16_t map, int level_delta, unsigned flags)
 {
     bool fall_into = false;
     dun_set_current_map(map);
-    uint8_t square = dun_get_square(*x, *y);
+    uint8_t square = dun_get_square(*out_x, *out_y);
     int type = square_type(square);
     if (type == SQUARE_STAIRS) {
         if (!(flags & TRANSFER_STAIRS))
@@ -818,21 +818,17 @@ int dungeon_find_level_transfer(int16_t *x, int16_t *y, int map, int level_delta
         if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR)
             return -1;
         uint16_t sensor;
-        if (!(flags & TRANSFER_STAIRS) || dun_find_adjacent_level_link(*x, *y, level_delta, &sensor) < 0) {
+        if (!(flags & TRANSFER_STAIRS) || dun_find_adjacent_level_link(*out_x, *out_y, level_delta, &sensor) < 0) {
             if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP)
                 return -1;
             fall_into = true;
         }
     }
-    int lx = *x;
-    int ly = *y;
-    int found = dungeon_location_on_map(map, level_delta, &lx, &ly);
-    *x = (int16_t)lx;
-    *y = (int16_t)ly;
+    int found = dungeon_location_on_map(map, level_delta, out_x, out_y);
     if (found >= 0 && fall_into) {
         /* the square above must be an open pit that leads here */
         dun_set_current_map(found);
-        square = dun_get_square(*x, *y);
+        square = dun_get_square(*out_x, *out_y);
         if (square_type(square) != SQUARE_PIT || !(square & SQUARE_PIT_OPEN) || square & SQUARE_FLAG_0)
             found = -1;
         dun_set_current_map(map);
@@ -859,7 +855,7 @@ static int link_side(int map, int x, int y, uint16_t *teleporter)
     return -1;
 }
 
-bool dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link)
+bool dungeon_teleporter_link(int16_t map, int16_t x, int16_t y, TeleporterLink *link)
 {
     uint16_t teleporter;
     uint16_t other;
@@ -878,7 +874,7 @@ bool dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link)
     return true;
 }
 
-int dungeon_teleporter_link_map(int map, int x, int y)
+int dungeon_teleporter_link_map(int16_t map, int16_t x, int16_t y)
 {
     TeleporterLink link;
     return dungeon_teleporter_link(map, x, y, &link) ? link.map : -1;
@@ -946,7 +942,7 @@ static void shift_later_columns(int map, int x, int count)
         dun.column_first_thing[c] += count;
 }
 
-bool dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y)
+bool dungeon_link_thing_to_square(uint16_t thing, int16_t map, int16_t x, int16_t y)
 {
     set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
     uint16_t last = dungeon_square_first_thing(map, x, y);
@@ -968,7 +964,7 @@ bool dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y)
     return true;
 }
 
-void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y)
+void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, int16_t y)
 {
     int index = first_thing_index(map, x, y);
     if (index < 0)

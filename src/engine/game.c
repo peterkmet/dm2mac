@@ -41,7 +41,7 @@ void champ_wake_party(void)
     g_hooks.set_input_mode(INPUT_MODE_MOVE);
 }
 
-void game_enter_map(int x, int y, int map, int leaving)
+void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving)
 {
     if (leaving)
         sensor_process_map_entry(0);

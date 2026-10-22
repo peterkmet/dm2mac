@@ -101,7 +101,7 @@ extern int g_cheat_immortal; /* the health of a champion stops at 1 */
 extern int g_cheat_food;     /* food and water do not go down */
 
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
-void game_enter_map(int x, int y, int map, int leaving);
+void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving);
 
 /* The game step */
 /* The party arrives on the map that it entered in this step (g_party.new_map): the walk ends there. */

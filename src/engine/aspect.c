@@ -33,14 +33,14 @@ static const uint8_t *wall_ornaments;
 
 /* ---- Setup ---- */
 
-void aspect_enter_map(int map)
+void aspect_enter_map(int16_t map)
 {
     wall_ornaments = dungeon_map_wall_ornaments(map);
 }
 
 /* ---- Lookups ---- */
 
-uint16_t aspect_first_thing(int map, int x, int y)
+uint16_t aspect_first_thing(int16_t map, int16_t x, int16_t y)
 {
     if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map))
         return THING_ENDOFLIST;
@@ -399,7 +399,7 @@ static void set_door_aspect(ViewSquare *s, int map, int dir, int x, int y)
     }
 }
 
-void aspect_get(ViewSquare *s, int map, int dir, int x, int y)
+void aspect_get(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y)
 {
     for (int k = 0; k < VIEW_SIDE_COUNT; k++)
         s->side[k] = ORNAMENT_NONE;
@@ -457,7 +457,7 @@ void aspect_get(ViewSquare *s, int map, int dir, int x, int y)
     s->first_thing = floor_things ? apply_floor_things(s, map, thing, square) : skip_wall_things(thing);
 }
 
-int aspect_wall_face_ornament(int map, uint16_t first, int dir)
+int aspect_wall_face_ornament(int16_t map, uint16_t first, int16_t dir)
 {
     ViewSquare s;
     memset(&s, ORNAMENT_NONE, sizeof s); /* every byte of the square, not only its ornament fields */
@@ -467,10 +467,10 @@ int aspect_wall_face_ornament(int map, uint16_t first, int dir)
 
 /* ---- The cell grid ---- */
 
-int aspect_rotate_cell(int cell, int dir)
+int aspect_rotate_cell(int grid_cell, int16_t dir)
 {
-    int x = cell % CELL_GRID_SIDE - CELL_GRID_HALF;
-    int y = cell / CELL_GRID_SIDE - CELL_GRID_HALF;
+    int x = grid_cell % CELL_GRID_SIDE - CELL_GRID_HALF;
+    int y = grid_cell / CELL_GRID_SIDE - CELL_GRID_HALF;
     int t;
     switch (dir) {
     case DIR_EAST:
@@ -491,7 +491,7 @@ int aspect_rotate_cell(int cell, int dir)
     return (y + CELL_GRID_HALF) * CELL_GRID_SIDE + x + CELL_GRID_HALF;
 }
 
-int aspect_creature_cell(uint16_t group, int dir)
+int aspect_creature_cell(uint16_t group, int16_t dir)
 {
     if (!gdat_exists(gdat_current(), CAT_CREATURE, group_creature(group), GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_FRAMES))
         return CELL_CENTER;
@@ -500,8 +500,8 @@ int aspect_creature_cell(uint16_t group, int dir)
     return aspect_rotate_cell(frame[FRAME_CELL], dir);
 }
 
-void aspect_cell_to_xy(int base_x, int base_y, uint16_t cell, int16_t *x, int16_t *y)
+void aspect_cell_to_xy(int base_x, int base_y, int grid_cell, int16_t *out_x, int16_t *out_y)
 {
-    *x = (int16_t)(cell % CELL_GRID_SIDE + base_x * GRID_SQUARE_CELLS);
-    *y = (int16_t)(cell / CELL_GRID_SIDE + base_y * GRID_SQUARE_CELLS);
+    *out_x = (int16_t)(grid_cell % CELL_GRID_SIDE + base_x * GRID_SQUARE_CELLS);
+    *out_y = (int16_t)(grid_cell / CELL_GRID_SIDE + base_y * GRID_SQUARE_CELLS);
 }

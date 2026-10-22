@@ -519,12 +519,12 @@ int creature_current_step_acts(uint16_t group)
     return anim_current_step(group_creature(group), words[0], words + 1)[STEP_SOUND] >> STEP_ACTS_SHIFT;
 }
 
-uint16_t creature_get_group_at(int x, int y)
+uint16_t creature_get_group_at(int16_t x, int16_t y)
 {
     return creature_group_at(g_party.cur_map, x, y);
 }
 
-uint16_t creature_group_at(int map, int x, int y)
+uint16_t creature_group_at(int16_t map, int16_t x, int16_t y)
 {
     if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map))
         return THING_NONE;
@@ -534,7 +534,7 @@ uint16_t creature_group_at(int map, int x, int y)
     return THING_NONE;
 }
 
-bool creature_is_native_to_map(uint16_t group, int map)
+bool creature_is_native_to_map(uint16_t group, int16_t map)
 {
     if (creature_group_info(group)->flags & CREATURE_WANDERER)
         return true;
@@ -685,7 +685,7 @@ static void schedule_update(int x, int y)
     a->event = (int16_t)timeline_add_event(&e);
 }
 
-void creature_activate_group(uint16_t group, int x, int y)
+void creature_activate_group(uint16_t group, int16_t x, int16_t y)
 {
     if (group_active(group) != GROUP_NOT_ACTIVE)
         return;
@@ -759,7 +759,7 @@ void creature_deactivate_group(int active_index)
         creature_delete_group_at(x, y, DROP_ALL, 1);
 }
 
-void creature_set_next_action(uint16_t group, int x, int y, int action, int now)
+void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, int now)
 {
     if (group == THING_NONE && (group = creature_get_group_at(x, y)) == THING_NONE)
         return;
@@ -816,7 +816,7 @@ static void schedule_loop_end(void)
     g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
 }
 
-void creature_update_anim_at(int x, int y, int alt)
+void creature_update_anim_at(int16_t x, int16_t y, int alt)
 {
     uint16_t group = creature_get_group_at(x, y);
     if (group == THING_NONE)
@@ -921,7 +921,7 @@ uint32_t creature_animate_step(void)
     return (uint32_t)(delay + (int32_t)g_game.game_time);
 }
 
-void creature_process_event(int x, int y, int type)
+void creature_process_event(int16_t x, int16_t y, int type)
 {
     uint16_t group = creature_get_group_at(x, y);
     if (group == THING_NONE)
@@ -983,7 +983,7 @@ static int drop_cell(int x, int y)
     return rand_2bits();
 }
 
-void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map)
+void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, int sound_map)
 {
     if (mode == DROP_NOTHING)
         return;
@@ -1037,7 +1037,7 @@ static void signal_home_square(uint16_t group, int effect)
     dun_set_current_map(saved);
 }
 
-void creature_delete_group_at(int x, int y, int mode, int sound_map)
+void creature_delete_group_at(int16_t x, int16_t y, int mode, int sound_map)
 {
     uint16_t group = creature_get_group_at(x, y);
     if (group == THING_NONE)
@@ -1116,7 +1116,7 @@ bool creature_damage_current_group(uint16_t damage)
     return false;
 }
 
-int creature_attack_group_at(int x, int y)
+int creature_attack_group_at(int16_t x, int16_t y)
 {
     uint16_t group = creature_get_group_at(x, y);
     if (group == THING_NONE)
@@ -1256,14 +1256,14 @@ int creature_roll_armor_factor(uint16_t group, int amount)
     return ((uint16_t)amount + (uint16_t)r) * ARMOR_FACTOR / (armor + ARMOR_BASE);
 }
 
-void creature_apply_damage_kind(uint16_t group, int x, int y, int kind)
+void creature_apply_damage_kind(uint16_t group, int16_t x, int16_t y, int kind)
 {
     int k = kind & (uint16_t)~ALERT_CLEAR;
     if (k >= DAMAGE_KIND_MOOD_FIRST && k < DAMAGE_KIND_MOOD_END)
         creature_alert(group, (Location){x, y}, (k - DAMAGE_KIND_MOOD_FIRST) | (kind & ALERT_CLEAR), ALERT_ALWAYS, 0);
 }
 
-uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y)
+uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_t x, int16_t y)
 {
     int minion = creature_type & GROUP_MINION;
     uint16_t projectile = THING_NONE;
@@ -1360,7 +1360,7 @@ void minion_dismiss(uint16_t link)
     dun_set_current_map(saved);
 }
 
-void creature_turn_group(uint16_t group, int absolute, int dir)
+void creature_turn_group(uint16_t group, int absolute, int16_t dir)
 {
     int old = group_dir(group);
     if (!absolute)
@@ -1374,7 +1374,7 @@ void creature_turn_group(uint16_t group, int absolute, int dir)
 }
 
 /* Keeps the position of the projectiles that a group carries. */
-void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag)
+void move_update_carried_missiles(uint16_t holder, int16_t x, int16_t y, int16_t map, int flag)
 {
     for (uint16_t t = thing_word(holder, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_PROJECTILE)
@@ -1385,7 +1385,7 @@ void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int fl
 }
 
 /* Schedules a new try of a group move that a full square stopped. */
-void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible)
+void move_schedule_group_retry(uint16_t group, int16_t x, int16_t y, int16_t map, int audible)
 {
     TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + GROUP_RETRY_DELAY, map)};
     e.type = audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP;
@@ -1405,7 +1405,7 @@ void timeline_event_move_group(TimelineEvent *e)
                       1);
 }
 
-int creature_get_party_distance(int x, int y)
+int creature_get_party_distance(int16_t x, int16_t y)
 {
     const uint8_t *map;
     int width;
@@ -1437,7 +1437,7 @@ int creature_get_party_distance(int x, int y)
 
 /* Pushing creatures. */
 
-bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group)
+bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *group)
 {
     uint16_t g = creature_get_group_at(x, y);
     if (g == THING_NONE || creature_group_info(g)->push_resistance >= PUSH_IMMOVABLE)
@@ -1502,7 +1502,7 @@ bool move_party_can_push_group(uint16_t group)
     return pushed;
 }
 
-void creature_push_group(int x, int y, int dir, int strength)
+void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength)
 {
     uint16_t g;
     if (creature_can_be_pushed(x, y, dir, &g)) {
@@ -1618,7 +1618,7 @@ void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
         creature_turn_group(g, 1, sensor_turn_dir(sensor));
 }
 
-void sensor_affect_creatures_in_area(uint16_t sensor, int x, int y, int effect)
+void sensor_affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int effect)
 {
     int power = sensor_area_power(sensor), creature_type = sensor_area_creature(sensor);
     int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor), kind = sensor_type(sensor);

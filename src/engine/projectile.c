@@ -253,7 +253,7 @@ void projectile_create(const ProjectileLaunch *launch)
     set_thing_word(t, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
 }
 
-void projectile_event_set_position(TimelineEvent *e, int x, int y, int dir)
+void projectile_event_set_position(TimelineEvent *e, int16_t x, int16_t y, int16_t dir)
 {
     uint16_t w = le16(e->data + PROJECTILE_EVENT_POSITION);
     put_le16(e->data + PROJECTILE_EVENT_POSITION, (uint16_t)((w & ~POSITION_SQUARE_DIR) | event_square_dir(x, y, dir)));
@@ -325,7 +325,7 @@ static void blast_square(int type, int power, int x, int y, int cell)
     }
 }
 
-void explosion_create(int type, int power, int x, int y, int cell)
+void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell)
 {
     uint16_t t = dungeon_unused_thing(THING_EXPLOSION);
     if (t == THING_NONE)
@@ -394,7 +394,7 @@ void projectile_cancel_event(uint16_t projectile)
         timeline_delete_event(thing_word(projectile, PROJECTILE_EVENT));
 }
 
-void projectile_destroy(uint16_t projectile, uint16_t *holder, int x, int y)
+void projectile_destroy(uint16_t projectile, uint16_t *holder, int16_t x, int16_t y)
 {
     uint16_t payload = thing_word(projectile, PROJECTILE_PAYLOAD);
     if (thing_type(payload) != THING_EXPLOSION) {
@@ -974,7 +974,7 @@ void explosion_process_event(TimelineEvent *e)
 
 /* ---- Creature attacks ---- */
 
-void creature_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int cell)
+void creature_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell)
 {
     int dir = dun_get_direction_to(at.x, at.y, party_at.x, party_at.y);
     if ((uint16_t)cell == CELL_ANY) {

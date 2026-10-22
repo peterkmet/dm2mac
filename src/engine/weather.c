@@ -580,7 +580,7 @@ static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int x, int y)
     return true;
 }
 
-void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
+void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, unsigned flags)
 {
     SquareLight sum = {0, 0, 0};
     ViewSquare s;

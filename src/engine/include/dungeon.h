@@ -106,7 +106,7 @@
 #define thing_index(t)   ((t) & THING_INDEX_MASK)
 #define thing_cell(t)    ((t) >> THING_CELL_SHIFT)
 /* The thing id of thing in cell; the cell wraps at 4. */
-static inline uint16_t thing_with_cell(uint16_t thing, int cell)
+static inline uint16_t thing_with_cell(uint16_t thing, int16_t cell)
 {
     return (uint16_t)((thing & THING_ID_MASK) | (cell & DIR_MASK) << THING_CELL_SHIFT);
 }
@@ -135,7 +135,7 @@ static inline uint16_t thing_make(int type, int index)
 #define location_set_xy(w, x, y)                                                                                       \
     (((w) & LOCATION_MAP_BITS) | ((x) & LOCATION_COORD_MASK) | ((y) & LOCATION_COORD_MASK) << LOCATION_Y_SHIFT)
 /* A square and direction word of an event: x and y as in a location word, the direction in bits 10-11. */
-static inline uint16_t event_square_dir(int x, int y, int dir)
+static inline uint16_t event_square_dir(int16_t x, int16_t y, int16_t dir)
 {
     return (uint16_t)location_pack(x, y, dir & DIR_MASK);
 }
@@ -483,7 +483,7 @@ static inline uint16_t group_dir(uint16_t group)
 {
     return thing_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK);
 }
-static inline void group_set_dir(uint16_t group, uint16_t dir)
+static inline void group_set_dir(uint16_t group, int16_t dir)
 {
     set_thing_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK, dir);
 }
@@ -667,15 +667,15 @@ uint16_t dungeon_ornament_seed(void);
 /* The number of maps of the dungeon. */
 int dungeon_map_count(void);
 /* The squares of map along x. */
-int dungeon_map_width(int map);
+int dungeon_map_width(int16_t map);
 /* The squares of map along y. */
-int dungeon_map_height(int map);
+int dungeon_map_height(int16_t map);
 /* The dungeon level of map. */
-int dungeon_map_level(int map);
+int dungeon_map_level(int16_t map);
 /* The x position of the map on its level. */
-int dungeon_map_offset_x(int map);
+int dungeon_map_offset_x(int16_t map);
 /* The y position of the map on its level. */
-int dungeon_map_offset_y(int map);
+int dungeon_map_offset_y(int16_t map);
 /* Map flags bits: the map has door type 0, door type 1. */
 #define MAP_HAS_DOOR_TYPE_0      0x0080
 #define MAP_HAS_DOOR_TYPE_1      0x0100
@@ -691,29 +691,29 @@ int dungeon_map_offset_y(int map);
 /* The door type of a door slot without a door type. */
 #define DOOR_TYPE_NONE       0xff
 /* The map flags word: bit 7 door type 0 present, bit 8 door type 1 present; exported for the tests. */
-uint16_t dungeon_map_flags(int map);
+uint16_t dungeon_map_flags(int16_t map);
 /* The map object counts word: door ornaments bits 0-3, creature types bits 4-7; exported for the tests. */
-uint16_t dungeon_map_object_counts(int map);
+uint16_t dungeon_map_object_counts(int16_t map);
 /* The map graphics word: graphics set bits 4-7, door types bits 8-11 and 12-15; exported for the tests. */
-uint16_t dungeon_map_graphics(int map);
+uint16_t dungeon_map_graphics(int16_t map);
 /* The wall set (graphics set) of map. */
-int dungeon_map_wallset(int map);
+int dungeon_map_wallset(int16_t map);
 /* The door type of door slot 0 or 1 of map, DOOR_TYPE_NONE when the map has none. */
-uint8_t dungeon_map_door_type(int map, int slot);
+uint8_t dungeon_map_door_type(int16_t map, int slot);
 /* The number of random wall ornaments of map. */
-int dungeon_map_random_wall_count(int map);
+int dungeon_map_random_wall_count(int16_t map);
 /* The number of creature types of map. */
-int dungeon_map_creature_type_count(int map);
+int dungeon_map_creature_type_count(int16_t map);
 /* The difficulty of map, also the experience factor of the map. */
-int dungeon_map_difficulty(int map);
+int dungeon_map_difficulty(int16_t map);
 /* The creature types of map (count in dungeon_map_object_counts bits 4-7). */
-const uint8_t *dungeon_map_creature_types(int map);
+const uint8_t *dungeon_map_creature_types(int16_t map);
 /* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */
-const uint8_t *dungeon_map_wall_ornaments(int map);
+const uint8_t *dungeon_map_wall_ornaments(int16_t map);
 /* The GDAT indices of the floor ornaments of map. */
-const uint8_t *dungeon_map_floor_ornaments(int map);
+const uint8_t *dungeon_map_floor_ornaments(int16_t map);
 /* The GDAT indices of the door ornaments of map. */
-const uint8_t *dungeon_map_door_ornaments(int map);
+const uint8_t *dungeon_map_door_ornaments(int16_t map);
 /* The maps of a level, ended by LEVEL_LIST_END; exported for the tests. */
 const uint8_t *dungeon_level_maps(int level);
 /* The level digit of level: the map icon set of the squares outside the maps of the level. */
@@ -725,26 +725,26 @@ const uint16_t *dungeon_text_data(void);
 
 /* Squares */
 /* The square byte at (x, y); x and y must be inside the map. */
-uint8_t dungeon_square(int map, int x, int y);
+uint8_t dungeon_square(int16_t map, int16_t x, int16_t y);
 /* The square byte at (x, y) to change; x and y must be inside the map. */
-uint8_t *dungeon_square_byte(int map, int x, int y);
+uint8_t *dungeon_square_byte(int16_t map, int16_t x, int16_t y);
 /* The square byte of map at (x, y). Away from the map it gives the edge walls: a wall (with the bit of the
    side that faces the map) next to an open square at the map edge, else SQUARE_OUTSIDE. */
-uint8_t dungeon_square_edge(int map, int x, int y);
+uint8_t dungeon_square_edge(int16_t map, int16_t x, int16_t y);
 /* The first thing on the square (x, y), THING_ENDOFLIST when the square has no things. */
-uint16_t dungeon_square_first_thing(int map, int x, int y);
+uint16_t dungeon_square_first_thing(int16_t map, int16_t x, int16_t y);
 /* The first thing on the square after its doors, teleporters, texts, and sensors. */
-uint16_t dungeon_square_first_object(int map, int x, int y);
+uint16_t dungeon_square_first_object(int16_t map, int16_t x, int16_t y);
 /* Entries of the square first-thing table, including the free entries of a new game; exported for the tests. */
 int dungeon_square_thing_count(void);
 /* The square first-thing table; exported for the tests. */
 const uint16_t *dungeon_square_things(void);
-/* The map of the level at level_delta from the level of map that holds the dungeon position of (x, y) of map, and
-   its square there in *x, *y; -1 when no such map has an open square there. */
-int dungeon_location_on_map(int map, int level_delta, int *x, int *y);
+/* The map of the level at level_delta from the level of map that holds the dungeon position of (*out_x, *out_y) of map, and
+   its square there in *out_x, *out_y; -1 when no such map has an open square there. */
+int dungeon_location_on_map(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y);
 /* The same search from list position *next (0: the first map of the level); sets *next to the position after the
    map that it found, 0 when it found none. */
-int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *next);
+int dungeon_location_on_map_from(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y, int *next);
 /* Level deltas: one level up, one level down. */
 #define LEVEL_UP           (-1)
 #define LEVEL_DOWN         1
@@ -752,18 +752,18 @@ int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *
 #define TRANSFER_PIT       0x008
 #define TRANSFER_FALL_INTO 0x010
 #define TRANSFER_STAIRS    0x100
-/* The map one level up (level_delta -1) or down (1) that the square (*x, *y) of map leads to by its stairs, its open
-   pit (TRANSFER_PIT), or a level link; *x, *y become the square there. -1 none. Leaves map current. */
-int dungeon_find_level_transfer(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags);
+/* The map one level up (level_delta -1) or down (1) that the square (*out_x, *out_y) of map leads to by its stairs, its open
+   pit (TRANSFER_PIT), or a level link; *out_x, *out_y become the square there. -1 none. Leaves map current. */
+int dungeon_find_level_transfer(int16_t *out_x, int16_t *out_y, int16_t map, int level_delta, unsigned flags);
 /* A pair of teleporters with link sensors: a seamless passage to another map. */
 typedef struct {
     int side, target_side; /* side of the passage on the source and on the target square, 0 to 3 */
     int x, y, map;         /* the target square */
 } TeleporterLink;
 /* Fills link for a teleporter square whose target is a teleporter, both with link sensors; false when not. */
-bool dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link);
+bool dungeon_teleporter_link(int16_t map, int16_t x, int16_t y, TeleporterLink *link);
 /* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
-int dungeon_teleporter_link_map(int map, int x, int y);
+int dungeon_teleporter_link_map(int16_t map, int16_t x, int16_t y);
 
 /* Things */
 /* The number of records of thing type type, the free records included. */
@@ -787,9 +787,9 @@ void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list);
 /* Appends thing at the end of a thing list. */
 void dungeon_append_thing(uint16_t thing, uint16_t *list);
 /* Appends thing at the end of the square's thing list; false when the first-thing table is full. */
-bool dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y);
+bool dungeon_link_thing_to_square(uint16_t thing, int16_t map, int16_t x, int16_t y);
 /* Removes thing from the square's thing list. */
-void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
+void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, int16_t y);
 /* type | THING_ANY_RECORD: a miscellaneous item may take the records that the dungeon keeps for the game. */
 #define THING_ANY_RECORD 0x8000
 /* Takes a free record of type, cleared, without cell bits. When the table is full, it reuses a thing from

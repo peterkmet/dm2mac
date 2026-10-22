@@ -72,7 +72,7 @@ void minion_toggle_map_option(int option)
     g_minion_map.mana_divisor = (int16_t)(g_minion_map.mana_divisor + mana);
 }
 
-bool minion_map_set_location(uint16_t thing, int x, int y, int map)
+bool minion_map_set_location(uint16_t thing, int16_t x, int16_t y, int16_t map)
 {
     int saved = g_party.cur_map;
     dun_set_current_map(map);
@@ -83,7 +83,7 @@ bool minion_map_set_location(uint16_t thing, int x, int y, int map)
     return inside;
 }
 
-void minion_map_click_set_destination(int command, int x, int y)
+void minion_map_click_set_destination(int command, int16_t x, int16_t y)
 {
     uint16_t thing = champion(g_action.champion - 1)->slots[g_action.hand];
     if (command != CMD_MINION_MAP || container_type(thing) != MAP_KIND_MINION)
@@ -100,12 +100,9 @@ void minion_map_click_set_destination(int command, int x, int y)
     int col = px / (MAP_ICON_W + GAP_X), row = py / (MAP_ICON_H + GAP_Y);
     int16_t sx = g_minion_map.x, sy = g_minion_map.y;
     dun_move_relative(g_minion_map.dir, GRID_RADIUS - row, col - GRID_RADIUS, &sx, &sy);
-    int lx = sx, ly = sy;
-    int map = dungeon_location_on_map(g_minion_map.map, 0, &lx, &ly);
+    int map = dungeon_location_on_map(g_minion_map.map, 0, &sx, &sy);
     if (map < 0)
         return;
-    sx = (int16_t)lx;
-    sy = (int16_t)ly;
     int saved = g_party.cur_map;
     dun_set_current_map(map);
     uint8_t square = dun_get_square(sx, sy);

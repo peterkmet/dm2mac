@@ -109,20 +109,20 @@ int projectile_dir(uint16_t projectile);
 /* Launches a projectile and queues its first move event. */
 void projectile_create(const ProjectileLaunch *launch);
 /* Sets the square and the flight direction of a projectile move event; the energy step stays. */
-void projectile_event_set_position(TimelineEvent *e, int x, int y, int dir);
+void projectile_event_set_position(TimelineEvent *e, int16_t x, int16_t y, int16_t dir);
 
 /* ---- Explosions ---- */
 
 /* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle); an x
    above 0xff packs the square of a hit (low bytes) and the square of the explosion (high bytes, x + 1). */
-void explosion_create(int type, int power, int x, int y, int cell);
+void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell);
 
 /* ---- Projectile hits ---- */
 
 /* Removes the queued move of a projectile. */
 void projectile_cancel_event(uint16_t projectile);
 /* The projectile ends on (x, y): its object falls there (or into holder, a list of creature possessions). */
-void projectile_destroy(uint16_t projectile, uint16_t *holder, int x, int y);
+void projectile_destroy(uint16_t projectile, uint16_t *holder, int16_t x, int16_t y);
 /* The power of a hit of projectile with payload. */
 int projectile_get_attack(uint16_t projectile, uint16_t payload);
 /* The move event of a projectile: it hits what is on its square, then flies on to the next cell or square. */

@@ -120,20 +120,20 @@ class Ai:
         self.scan = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai_square_scan"))
         self.saved = ctypes.create_string_buffer(AI_SIZE)
         self.scratch = sc.view.alloc(0x2A * 0x40)
-        lib.ai_begin.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+        lib.ai_begin.argtypes = [ctypes.c_uint16, ctypes.c_int16, ctypes.c_int16, ctypes.c_int, ctypes.c_void_p]
         lib.ai_end.argtypes = [ctypes.c_int, ctypes.c_void_p]
         lib.ai_scratch_push.restype = ctypes.c_void_p
-        lib.dun_set_current_map.argtypes = [ctypes.c_int]
+        lib.dun_set_current_map.argtypes = [ctypes.c_int16]
         for name in ("ai_trace_line",):
             getattr(lib, name).argtypes = [ctypes.c_int] * 4 + [ctypes.c_void_p]
-        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, AiLocation, ctypes.c_int, ctypes.c_bool]
+        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, AiLocation, ctypes.c_int16, ctypes.c_bool]
         lib.ai_find_target_in_lines.restype = AiLineTarget
         lib.ai_search_area.argtypes = [AiLocation] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
         for name in SQUARE_ARGS:
-            getattr(lib, name).argtypes = [ctypes.c_int, AiLocation, AiLocation] + [ctypes.c_int] * (
-                2 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 1)
+            getattr(lib, name).argtypes = [ctypes.c_int, AiLocation, AiLocation, ctypes.c_int16] + [ctypes.c_int] * (
+                1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
             getattr(lib, name).restype = ctypes.c_bool
-        lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+        lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int16]
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
         ctypes.c_uint8.from_address(self.ai + AI_ACTIVE_FLAG_C).value = 0
@@ -375,8 +375,8 @@ def set_creature_type(ai, group, kind):
 
 def native_type(lib, m, x, y, delta):
     """A creature type of the map above (delta -1) or below (1) the square, or None."""
-    nx, ny = ctypes.c_int(x), ctypes.c_int(y)
-    lib.dungeon_location_on_map.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+    nx, ny = ctypes.c_int16(x), ctypes.c_int16(y)
+    lib.dungeon_location_on_map.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
     target = lib.dungeon_location_on_map(m, delta, ctypes.byref(nx), ctypes.byref(ny))
     if target < 0:
         return None

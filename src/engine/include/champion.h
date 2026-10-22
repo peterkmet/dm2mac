@@ -222,7 +222,7 @@ bool champ_list_actions(int champ, uint16_t thing, int hand);
 
 /* Party */
 /* The living champion in cell (0 to 3), -1 none. */
-int champ_get_index_in_cell(int cell);
+int champ_get_index_in_cell(int16_t cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
 
@@ -252,7 +252,7 @@ void champ_poison(int champ, int amount);
 void champ_cure_poison(int champ, int amount);
 /* A click on the face of a champion in cell (bit 15: cancel the drag): the first click takes the face, the second
    swaps it with the champion of the second cell. */
-void champ_drag_click(int cell);
+void champ_drag_click(int16_t cell);
 /* Cancels the drag of a champion face. */
 void champ_drag_cancel(void);
 /* Applies the damage and wounds of this step; a champion without health dies. */
@@ -312,11 +312,11 @@ void champ_consume_object(int champ, uint16_t thing, int slot);
 
 /* Champion movement (move.c). */
 /* Turns the party to dir; the champions turn with it. */
-void champ_set_party_direction(int dir);
+void champ_set_party_direction(int16_t dir);
 /* The number of game steps that the champion needs for a move (load, wounds, haste). */
 int champ_get_move_delay(int champ);
 /* The champion nearest to the square (x, y) next to the party, seen from cell (0xff: any); -1 none. */
-int champ_get_nearest_at(int x, int y, int cell);
+int champ_get_nearest_at(int16_t x, int16_t y, int16_t cell);
 /* Takes stamina from a champion. */
 void champ_decrease_stamina(int champ, int amount);
 

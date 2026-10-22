@@ -983,7 +983,7 @@ void save_clear_party(void)
     g_game.leader_hand = THING_NONE;
 }
 
-void save_set_party_position(int x, int y, int dir, int map)
+void save_set_party_position(int16_t x, int16_t y, int16_t dir, int16_t map)
 {
     g_game.party_x = (uint16_t)x;
     g_game.party_y = (uint16_t)y;

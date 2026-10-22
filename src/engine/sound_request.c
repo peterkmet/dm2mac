@@ -228,7 +228,7 @@ static void request_later(const SoundCue *cue, int x, int y, int delay)
     timeline_add_event(&e);
 }
 
-void sound_request(SoundCue cue, int x, int y, int delay)
+void sound_request(SoundCue cue, int16_t x, int16_t y, int delay)
 {
     delay = (int16_t)delay;
     if (delay > 0 && g_party.cur_map != g_party.square_map && g_party.cur_map != g_party.alt_view_map)
@@ -284,7 +284,7 @@ void sound_request(SoundCue cue, int x, int y, int delay)
         (*count)++;
 }
 
-void sound_request_with_fallback(SoundCue cue, int fallback, int x, int y, int delay)
+void sound_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay)
 {
     Sound sound;
     if (sound_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)

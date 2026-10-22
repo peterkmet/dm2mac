@@ -100,7 +100,7 @@ typedef struct {
 typedef struct {
     uint16_t thing;
     int type; /* the thing type, -1 for the party */
-    int src_x, src_y, x, y, map, start_map;
+    int16_t src_x, src_y, x, y, map, start_map;
     int scope; /* the teleporters that move it: SCOPE_* */
     bool flying, draw_fall;
     int falls;
@@ -168,7 +168,7 @@ static void pay_stamina_by_load(int factor)
 
 /* ---- The current map ---- */
 
-void dun_set_current_map(int map)
+void dun_set_current_map(int16_t map)
 {
     if (map == g_party.cur_map || map < 0)
         return;
@@ -186,7 +186,7 @@ void dun_set_current_map(int map)
     }
 }
 
-void dun_set_party_location(int x, int y, int map)
+void dun_set_party_location(int16_t x, int16_t y, int16_t map)
 {
     g_game.party_map = (uint16_t)map;
     g_game.party_x = (uint16_t)x;
@@ -194,21 +194,21 @@ void dun_set_party_location(int x, int y, int map)
     dun_set_current_map(map);
 }
 
-void dun_move_relative(int dir, int forward, int right, int16_t *x, int16_t *y)
+void dun_move_relative(int16_t dir, int forward, int right, int16_t *out_x, int16_t *out_y)
 {
-    *x = (int16_t)(*x + g_dir_dx[dir] * forward);
-    *y = (int16_t)(*y + g_dir_dy[dir] * forward);
+    *out_x = (int16_t)(*out_x + g_dir_dx[dir] * forward);
+    *out_y = (int16_t)(*out_y + g_dir_dy[dir] * forward);
     int side = dir_turn(dir, TURN_RIGHT);
-    *x = (int16_t)(*x + g_dir_dx[side] * right);
-    *y = (int16_t)(*y + g_dir_dy[side] * right);
+    *out_x = (int16_t)(*out_x + g_dir_dx[side] * right);
+    *out_y = (int16_t)(*out_y + g_dir_dy[side] * right);
 }
 
-uint8_t dun_get_square(int x, int y)
+uint8_t dun_get_square(int16_t x, int16_t y)
 {
     return dungeon_square_edge(g_party.cur_map, x, y);
 }
 
-bool dun_on_party_square(int x, int y)
+bool dun_on_party_square(int16_t x, int16_t y)
 {
     return g_party.cur_map == g_party.square_map && x == g_party.square_x && y == g_party.square_y;
 }
@@ -230,7 +230,7 @@ bool dun_square_blocks_movement(uint8_t square)
     }
 }
 
-int dun_get_stairs_exit_direction(int x, int y)
+int dun_get_stairs_exit_direction(int16_t x, int16_t y)
 {
     bool along_y = !(dun_get_square(x, y) & SQUARE_STAIRS_ALONG_X);
     int probe = along_y ? DIR_EAST : DIR_NORTH;
@@ -238,7 +238,7 @@ int dun_get_stairs_exit_direction(int x, int y)
     return (type == SQUARE_WALL || type == SQUARE_STAIRS) * 2 + along_y;
 }
 
-bool dun_get_linked_teleporter_dest(PassageEnd *end, int x, int y)
+bool dun_get_linked_teleporter_dest(PassageEnd *end, int16_t x, int16_t y)
 {
     TeleporterLink link;
     if (!dungeon_teleporter_link(g_party.cur_map, x, y, &link))
@@ -250,7 +250,7 @@ bool dun_get_linked_teleporter_dest(PassageEnd *end, int x, int y)
 
 /* ---- Champions ---- */
 
-void champ_set_party_direction(int dir)
+void champ_set_party_direction(int16_t dir)
 {
     if (dir == g_game.party_dir)
         return;
@@ -335,7 +335,7 @@ static void swap_cells(uint8_t *pair)
 }
 
 /* The champion of the cell nearest to the side of the party square that faces (x, y), -1 none. */
-int champ_get_nearest_at(int x, int y, int cell)
+int champ_get_nearest_at(int16_t x, int16_t y, int16_t cell)
 {
     static const uint8_t attack_cell_orders[DIR_COUNT * 2][DIR_COUNT] = {
         {0, 1, 3, 2},
@@ -385,7 +385,7 @@ static void bump_champion(int champ, int x, int y)
                                     SOUND_FALLBACK, x, y, 1);
 }
 
-BumpedChampions move_party_bump_damage(int x, int y, int dir, int step)
+BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int step)
 {
     int side = step + dir + 2;
     BumpedChampions bumped;
@@ -399,7 +399,7 @@ BumpedChampions move_party_bump_damage(int x, int y, int dir, int step)
 
 /* ---- Steps ---- */
 
-uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
+uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell)
 {
     /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
        cell (its table has rows of 4 pairs), which this table keeps. */
@@ -425,7 +425,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
     /* the centers of the four cells of the square in the 5 x 5 grid */
     static const uint16_t cell_grid[DIR_COUNT] = {cell_grid_index(1, 1), cell_grid_index(1, 3), cell_grid_index(3, 3),
                                                   cell_grid_index(3, 1)};
-    int16_t sx = *x, sy = *y, px, py, cx, cy;
+    int16_t sx = *out_x, sy = *out_y, px, py, cx, cy;
     aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell], &px, &py);
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
         uint16_t g = creature_group_at(g_party.cur_map, sx, sy);
@@ -436,19 +436,19 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
             cx = (int16_t)(cx - px);
             cy = (int16_t)(cy - py);
             if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size]) {
-                *x = sx;
-                *y = sy;
+                *out_x = sx;
+                *out_y = sy;
                 return g;
             }
         }
         if (i == HIT_OFFSETS_READ)
             break;
         if (cell == CELL_ANY) {
-            sx = (int16_t)(*x + hit_offsets_any_cell[i].dx);
-            sy = (int16_t)(*y + hit_offsets_any_cell[i].dy);
+            sx = (int16_t)(*out_x + hit_offsets_any_cell[i].dx);
+            sy = (int16_t)(*out_y + hit_offsets_any_cell[i].dy);
         } else {
-            sx = (int16_t)(*x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
-            sy = (int16_t)(*y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
+            sx = (int16_t)(*out_x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
+            sy = (int16_t)(*out_y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
         }
     }
     return THING_NONE;
@@ -489,7 +489,8 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
 static void take_stairs(int up)
 {
     move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
-    int x = g_game.party_x, y = g_game.party_y;
+    int16_t x = g_game.party_x;
+    int16_t y = g_game.party_y;
     g_party.new_map = (int16_t)dungeon_location_on_map(g_game.party_map, up ? -1 : 1, &x, &y);
     g_game.party_x = (uint16_t)x;
     g_game.party_y = (uint16_t)y;
@@ -677,7 +678,7 @@ bool move_party(int command)
     return true;
 }
 
-void move_party_to(int x, int y, int map, int dir)
+void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir)
 {
     bool other = map != g_game.party_map;
     if (other)
@@ -699,7 +700,7 @@ void move_party_to(int x, int y, int map, int dir)
     champ_set_party_direction(dir);
 }
 
-void move_compute_map_arrival(int x, int y, int map)
+void move_compute_map_arrival(int16_t x, int16_t y, int16_t map)
 {
     PassageEnd end;
     int turn = 0;
@@ -728,7 +729,7 @@ void move_compute_map_arrival(int x, int y, int map)
     dun_set_current_map(map);
 }
 
-int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y)
+int dun_find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_y)
 {
     int count = 0, found = -1;
     for (int map = 0; map < dungeon_map_count(); map++) {
@@ -753,13 +754,13 @@ int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y)
                         else
                             hit = mode == MARKER_FIND_SET && text_is_visible(t);
                     } else if (kind == MARKER_POSITION && id == marker) {
-                        *x = (int16_t)mx;
-                        *y = (int16_t)my;
+                        *out_x = (int16_t)mx;
+                        *out_y = (int16_t)my;
                         found = map;
                     }
                     if (hit) {
-                        *x = (int16_t)mx;
-                        *y = (int16_t)my;
+                        *out_x = (int16_t)mx;
+                        *out_y = (int16_t)my;
                         return map;
                     }
                 }

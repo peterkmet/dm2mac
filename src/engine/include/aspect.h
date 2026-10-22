@@ -102,27 +102,27 @@ static inline uint8_t aspect_word_ornament(uint16_t w)
 
 /* Setup */
 /* Sets the random wall ornament list of map: the aspect part of entering a map. */
-void aspect_enter_map(int map);
+void aspect_enter_map(int16_t map);
 
 /* Lookups */
 /* The first thing of the square (x, y) of map, THING_ENDOFLIST away from the map. */
-uint16_t aspect_first_thing(int map, int x, int y);
+uint16_t aspect_first_thing(int16_t map, int16_t x, int16_t y);
 /* The value (category, index, 0x0b, entry) of the graphics. */
 uint16_t aspect_value_key(int category, int index, int entry);
 
 /* Square aspects */
 /* What the party looking to dir sees of the square (x, y) of map. */
-void aspect_get(ViewSquare *s, int map, int dir, int x, int y);
+void aspect_get(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y);
 /* The ornament (low byte of the front face word) that the wall things from first show on the face that looks to
    dir, as aspect_get shows them; ORNAMENT_NONE none. */
-int aspect_wall_face_ornament(int map, uint16_t first, int dir);
+int aspect_wall_face_ornament(int16_t map, uint16_t first, int16_t dir);
 
 /* The cell grid */
-/* Turns a cell of a 5 x 5 grid around its center by dir quarter turns. */
-int aspect_rotate_cell(int cell, int dir);
+/* Turns grid_cell of a 5 x 5 grid around its center by dir quarter turns. */
+int aspect_rotate_cell(int grid_cell, int16_t dir);
 /* The grid cell (0 to 24) of a creature in its square, turned by dir quarter turns: the cell of its animation frame. */
-int aspect_creature_cell(uint16_t group, int dir);
-/* The thing grid position of cell (0 to 24) of the square (base_x, base_y) of the map. */
-void aspect_cell_to_xy(int base_x, int base_y, uint16_t cell, int16_t *x, int16_t *y);
+int aspect_creature_cell(uint16_t group, int16_t dir);
+/* The thing grid position of grid_cell (0 to 24) of the square (base_x, base_y) of the map. */
+void aspect_cell_to_xy(int base_x, int base_y, int grid_cell, int16_t *out_x, int16_t *out_y);
 
 #endif /* DM2_ENGINE_ASPECT_H */

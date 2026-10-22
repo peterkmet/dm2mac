@@ -154,7 +154,7 @@ def mirror(lib, map_, x, y, cell):
 def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
     # A click with an empty hand on every wall cell with a sensor or a text: buttons, switches, counters, item
     # holders, ladders, fountains; then the timeline runs what they trigger.
-    lib.sensor_process_wall_click.argtypes = [ctypes.c_int] * 3 + [ctypes.c_uint16] * 2
+    lib.sensor_process_wall_click.argtypes = [ctypes.c_int16] * 2 + [ctypes.c_int] + [ctypes.c_uint16] * 2
     cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL][part::2]
     for n, (map_, x, y, cell) in enumerate(cells):
         if mirror(lib, map_, x, y, cell):  # the champion of a mirror joins the party that stands in front of it

@@ -111,7 +111,7 @@ static uint16_t mirror_sensor(int x, int y)
     return THING_NONE;
 }
 
-bool recruit_start(int x, int y, int dir, int map)
+bool recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)
 {
     int index = g_game.champion_count;
     if (g_game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
@@ -149,7 +149,7 @@ bool recruit_start(int x, int y, int dir, int map)
     return true;
 }
 
-void recruit_finish(int x, int y, int dir, int map, int command)
+void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
 {
     int champ = g_ui.candidate - 1;
     Champion *c = champion(champ);
@@ -202,7 +202,7 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     dun_set_current_map(saved);
 }
 
-void recruit_start_champion(int x, int y, int dir, int map)
+void recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map)
 {
     recruit_silent = true;
     recruit_start(x, y, dir, map);

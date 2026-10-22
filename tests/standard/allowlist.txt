@@ -42,12 +42,10 @@ type data:src open: module cleanup
 type data:value open: module cleanup
 type engine:action open: module cleanup
 type engine:amount open: module cleanup
-type engine:cell open: module cleanup
 type engine:chance open: module cleanup
 type engine:charges open: module cleanup
 type engine:count open: module cleanup
 type engine:damage open: module cleanup
-type engine:dir open: module cleanup
 type engine:energy open: module cleanup
 type engine:filter open: module cleanup
 type engine:flags open: module cleanup
@@ -59,7 +57,6 @@ type engine:holder open: module cleanup
 type engine:index open: module cleanup
 type engine:kind open: module cleanup
 type engine:list open: module cleanup
-type engine:map open: module cleanup
 type engine:mask open: module cleanup
 type engine:out open: module cleanup
 type engine:path open: module cleanup
@@ -74,8 +71,6 @@ type engine:step open: module cleanup
 type engine:ticks open: module cleanup
 type engine:type open: module cleanup
 type engine:value open: module cleanup
-type engine:x open: module cleanup
-type engine:y open: module cleanup
 type platform:x open: module cleanup
 type platform:y open: module cleanup
 type ui:argb open: module cleanup

@@ -2690,7 +2690,8 @@ static void show_ceiling_pit(int pos)
 {
     if (pos > POS_CEILING_PIT_LAST || !(view.flip_flags & FLIP_CEILING_PITS))
         return;
-    int x = g_view_squares[pos].x, y = g_view_squares[pos].y;
+    int16_t x = g_view_squares[pos].x;
+    int16_t y = g_view_squares[pos].y;
     int map = dungeon_location_on_map(view.map, -1, &x, &y);
     if (map < 0)
         return;

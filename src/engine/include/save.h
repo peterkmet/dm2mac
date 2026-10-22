@@ -83,7 +83,7 @@ SaveResult save_write(const char *path, const char *bak_path, const char *name, 
 /* The party has no champions and an empty leader hand: the state before a load or a new game. */
 void save_clear_party(void);
 /* The party stands at (x, y) of map and looks to dir. */
-void save_set_party_position(int x, int y, int dir, int map);
+void save_set_party_position(int16_t x, int16_t y, int16_t dir, int16_t map);
 /* The sound effect volume of the game. */
 void save_set_sound_volume(uint8_t volume);
 /* The music volume of the game. */

@@ -73,7 +73,7 @@ typedef struct {
    that the map looks to, and the map item thing with its MAP_ flags; fake_seen: a fake wall that the party found;
    other_map: the wall of another map of the level. */
 typedef struct {
-    int sx, sy;
+    int16_t sx, sy;
     int x, y;
     int dir;
     uint16_t map_thing;
@@ -453,7 +453,8 @@ static void show_party_and_marker(const MapSquare *at)
 /* An open pit in the level above the square (sx, sy) of the current map shows as a hole in the ceiling. */
 static void show_pit_above(const Strip *base, const MapSquare *at)
 {
-    int ax = at->sx, ay = at->sy;
+    int16_t ax = at->sx;
+    int16_t ay = at->sy;
     int m = dungeon_location_on_map(g_party.cur_map, LEVEL_UP, &ax, &ay);
     if (m < 0 || !inside_map(m, ax, ay))
         return; /* fix: as above, no read outside the map */
@@ -581,10 +582,9 @@ static GridSquare grid_square(const GridView *view, int row, int col)
     GridSquare g;
     int16_t sx = (int16_t)view->x, sy = (int16_t)view->y;
     dun_move_relative(view->dir, row, col, &sx, &sy);
-    int lx = sx, ly = sy;
-    int square_map = dungeon_location_on_map(view->map, 0, &lx, &ly);
-    g.x = (int16_t)lx;
-    g.y = (int16_t)ly;
+    int square_map = dungeon_location_on_map(view->map, 0, &sx, &sy);
+    g.x = sx;
+    g.y = sy;
     if (square_map < 0) {
         dun_set_current_map(view->map);
         g.icon_set = square_type(dun_get_square(g.x, g.y)) == SQUARE_UNKNOWN ? level_icon_set()

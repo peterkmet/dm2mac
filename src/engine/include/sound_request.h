@@ -89,9 +89,9 @@ void sound_volume_pan(uint8_t volume, int8_t lateral, int8_t forward, int *loudn
 /* Requests */
 /* Asks for the sound of cue at (x, y) of the current map: delay 0 plays it now, 1 at the end of the game step, a
    negative delay at the next sound_flush_requests(1), a longer delay through the timeline. */
-void sound_request(SoundCue cue, int x, int y, int delay);
+void sound_request(SoundCue cue, int16_t x, int16_t y, int delay);
 /* sound_request with the sound of index fallback when the index of cue has no such sound. */
-void sound_request_with_fallback(SoundCue cue, int fallback, int x, int y, int delay);
+void sound_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay);
 /* A delayed sound (EVENT_DELAYED_SOUND) is due: it plays when the party is still on its map. */
 void sound_request_delayed(int slot);
 /* Plays the requests of the game step (queue 0) or the deferred requests (queue 1). */

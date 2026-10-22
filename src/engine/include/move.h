@@ -89,28 +89,28 @@ extern const int8_t g_dir_dx[DIR_COUNT], g_dir_dy[DIR_COUNT];
 /* ---- The current map ---- */
 
 /* Makes map the map of the square reads; updates the party position as seen from it. */
-void dun_set_current_map(int map);
+void dun_set_current_map(int16_t map);
 /* Puts the party at (x, y) of map and makes map current. */
-void dun_set_party_location(int x, int y, int map);
-/* Moves (*x, *y) forward and to the right of dir. */
-void dun_move_relative(int dir, int forward, int right, int16_t *x, int16_t *y);
+void dun_set_party_location(int16_t x, int16_t y, int16_t map);
+/* Moves (*out_x, *out_y) forward and to the right of dir. */
+void dun_move_relative(int16_t dir, int forward, int right, int16_t *out_x, int16_t *out_y);
 /* The square byte of (x, y) of the current map, with the edge walls around it. */
-uint8_t dun_get_square(int x, int y);
+uint8_t dun_get_square(int16_t x, int16_t y);
 /* True when (x, y) of the current map is the party square. */
-bool dun_on_party_square(int x, int y);
+bool dun_on_party_square(int16_t x, int16_t y);
 /* True when a square stops the party: walls, closed doors, closed fake walls, unknown squares. */
 bool dun_square_blocks_movement(uint8_t square);
 /* The direction that leads out of the stairs at (x, y) of the current map. */
-int dun_get_stairs_exit_direction(int x, int y);
+int dun_get_stairs_exit_direction(int16_t x, int16_t y);
 /* Puts the other end of the seamless passage at (x, y) of the current map into *end; false when there is none. */
-bool dun_get_linked_teleporter_dest(PassageEnd *end, int x, int y);
+bool dun_get_linked_teleporter_dest(PassageEnd *end, int16_t x, int16_t y);
 
 /* ---- Champions ---- */
 
 /* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
 int dun_get_direction_to(int x1, int y1, int x2, int y2);
 /* Damage of a bump into a wall or a creature at (x, y) for the two champions on that side; returns them. */
-BumpedChampions move_party_bump_damage(int x, int y, int dir, int step);
+BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int step);
 
 /* ---- Steps ---- */
 
@@ -119,12 +119,12 @@ void move_party_turn(int command);
 /* Moves the party one square in a move command; false when the command must wait. */
 bool move_party(int command);
 /* Puts the party on (x, y) of map, facing dir. */
-void move_party_to(int x, int y, int map, int dir);
+void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir);
 /* Sets the alternate view position of a party at (x, y) of map beside a seamless passage. */
-void move_compute_map_arrival(int x, int y, int map);
-/* Marker search over all maps by a MARKER_* mode: the map of the marker that it finds, with its square in *x, *y,
+void move_compute_map_arrival(int16_t x, int16_t y, int16_t map);
+/* Marker search over all maps by a MARKER_* mode: the map of the marker that it finds, with its square in *out_x, *out_y,
    or the count of the pit target markers of marker. */
-int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y);
+int dun_find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_y);
 
 /* ---- Moving things ---- */
 
@@ -143,15 +143,15 @@ uint16_t dun_get_discarded_thing(int type, int subtype);
 
 /* Dungeon squares of ai.c. */
 /* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor);
+int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *sensor);
 /* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
-bool dun_set_pit_teleporter_state(int x, int y, int mode);
+bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode);
 
 /* Moves of creature groups (creature.c). */
 /* Schedules a new try of a group move that a full square stopped. */
-void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible);
+void move_schedule_group_retry(uint16_t group, int16_t x, int16_t y, int16_t map, int audible);
 /* Keeps the position of the projectiles that a group carries. */
-void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int flag);
+void move_update_carried_missiles(uint16_t holder, int16_t x, int16_t y, int16_t map, int flag);
 /* True when the champions push the group; the push costs stamina. */
 bool move_party_can_push_group(uint16_t group);
 /* The party pushes the creature in front by a push arrow. */
@@ -167,7 +167,7 @@ void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
 
 /* Moves through squares of sensor.c. */
 /* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
-void move_square_contents_through(int x, int y);
+void move_square_contents_through(int16_t x, int16_t y);
 
 /* Dungeon reads of sensor.c. */
 /* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */

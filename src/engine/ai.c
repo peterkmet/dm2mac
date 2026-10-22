@@ -541,7 +541,7 @@ void ai_free_cached_data(uint16_t group)
 
 /* The update context */
 
-void ai_set_map(int map)
+void ai_set_map(int16_t map)
 {
     if (map == g_party.cur_map)
         return;
@@ -553,7 +553,7 @@ void ai_set_map(int map)
                                    (int16_t)g_game.party_dir};
 }
 
-bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved)
+bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved)
 {
     int map = g_party.cur_map;
     g_party.cur_map = -1;
@@ -2177,7 +2177,7 @@ static void decide(void)
 /* Level links and pits for the creature moves. */
 
 /* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor)
+int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *sensor)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
         int16_t sx = (int16_t)(x + g_dir_dx[d]), sy = (int16_t)(y + g_dir_dy[d]);
@@ -2211,7 +2211,7 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
 }
 
 /* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
-bool dun_set_pit_teleporter_state(int x, int y, int mode)
+bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode)
 {
     uint8_t *square = dungeon_square_byte(g_party.cur_map, x, y);
     bool open = false;
@@ -2433,7 +2433,9 @@ static int act_move_stairs(void)
             int exit = sensor_effect(sensor);
             dir = sensor_flag(sensor, SENSOR_LINK_FIXED) ? exit : dir_turn(exit, (int16_t)d);
         } else {
-            int x = g_ai.event.data[0], y = g_ai.event.data[1], saved = g_party.cur_map;
+            int16_t x = g_ai.event.data[0];
+            int16_t y = g_ai.event.data[1];
+            int saved = g_party.cur_map;
             dun_set_current_map(dungeon_location_on_map(saved, delta, &x, &y));
             int d2 = dun_find_adjacent_level_link(x, y, -delta, &sensor);
             dun_set_current_map(saved);

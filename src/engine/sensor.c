@@ -223,7 +223,7 @@ static bool possessions_hold_type(uint16_t group, int type)
     return false;
 }
 
-void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t time)
+void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect, uint32_t time)
 {
     TimelineEvent e = {.time_map = current_map_time(time), .type = EVENT_SQUARE};
     /* fix: the original leaves the priority of a hold effect uninitialized; it gets the priority of a clear */
@@ -243,7 +243,7 @@ void sensor_trigger_target(uint16_t sensor, int effect, int delay)
                                  (uint32_t)((int16_t)delay + sensor_delay(sensor) + g_game.game_time));
 }
 
-bool sensor_door_try_destroy(int x, int y, int strength, bool magic, int delay)
+bool sensor_door_try_destroy(int16_t x, int16_t y, int strength, bool magic, int delay)
 {
     uint16_t door = first_thing(x, y);
     if (!door_flag(door, magic ? DOOR_BREAKABLE_BY_MAGIC : DOOR_BREAKABLE))
@@ -503,12 +503,12 @@ static void process_floor(int x, int y, uint16_t thing, FloorMove m, bool posses
     }
 }
 
-void sensor_enter_square(int x, int y, uint16_t thing, bool on_square, bool possessions)
+void sensor_enter_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool possessions)
 {
     process_floor(x, y, thing, (FloorMove){.enter = true, .on_square = on_square}, possessions);
 }
 
-void sensor_leave_square(int x, int y, uint16_t thing, bool on_square, bool possessions)
+void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool possessions)
 {
     process_floor(x, y, thing, (FloorMove){.enter = false, .on_square = on_square}, possessions);
 }
@@ -812,7 +812,8 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
     int delta = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, text_value(text), GDAT_TYPE_VALUE, ORNAMENT_KEY_UP)
                     ? -1
                     : 1;
-    int x = e->data[EVENT_X], y = e->data[EVENT_Y];
+    int16_t x = e->data[EVENT_X];
+    int16_t y = e->data[EVENT_Y];
     int map = dungeon_location_on_map(g_game.party_map, delta, &x, &y);
     if (map < 0)
         return;
@@ -1284,7 +1285,7 @@ static void floor_square_event(TimelineEvent *e)
 }
 
 /* A pit or teleporter turns on: the party, a creature, and the objects on it go through. */
-void move_square_contents_through(int x, int y)
+void move_square_contents_through(int16_t x, int16_t y)
 {
     if (dun_on_party_square(x, y))
         move_thing(THING_NONE, x, y, x, y);
@@ -2001,7 +2002,8 @@ static void wall_click_text(WallClick *c, uint16_t t)
             return;
         int delta =
             gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
-        int lx = g_game.party_x, ly = g_game.party_y;
+        int16_t lx = g_game.party_x;
+        int16_t ly = g_game.party_y;
         int map = dungeon_location_on_map(g_game.party_map, delta, &lx, &ly);
         if (map >= 0) {
             move_party_to(lx, ly, map, g_game.party_dir);
@@ -2012,7 +2014,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
     }
 }
 
-void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand)
+void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t hand)
 {
     WallClick c = {.x = x, .y = y, .hand = hand, .give = THING_NONE, .has_leader = (int16_t)g_game.leader != -1};
     uint16_t first = first_thing(x, y);

@@ -85,6 +85,6 @@ void world_update_day_night(int storm_step);
    hour, and the weather. */
 void light_update_party_light(void);
 /* Adds the light of the square (x, y) of the current map, distance squares from the party, seen from dir. */
-void light_add_square_light(int distance, int dir, int x, int y, unsigned flags);
+void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, unsigned flags);
 
 #endif /* DM2_ENGINE_WEATHER_H */
