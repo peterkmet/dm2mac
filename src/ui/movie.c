@@ -96,15 +96,13 @@ static bool start_splash(void)
 {
     size_t size;
     uint8_t *file = load_file(steps[MOVIE_STEP_SPLASH].file, &size);
-    uint8_t colors[PCX_PALETTE_COLORS][PCX_RGB];
-    int width, height;
-    bool ok = file && pcx_decode(file, size, &fb[0][0], SCREEN_W, SCREEN_H, &width, &height, colors) == PCX_OK &&
-              width == SCREEN_W && height == SCREEN_H;
+    PcxImage image = {.pixels = &fb[0][0], .max_width = SCREEN_W, .max_height = SCREEN_H};
+    bool ok = file && pcx_decode(file, size, &image) == PCX_OK && image.width == SCREEN_W && image.height == SCREEN_H;
     free(file);
     if (ok)
         for (int c = 0; c < PALETTE_COLORS; c++)
             for (int ch = 0; ch < RGB_CHANNELS; ch++)
-                palette[c][ch] = colors[c][ch] >> PCX_TO_VGA_SHIFT;
+                palette[c][ch] = image.palette[c][ch] >> PCX_TO_VGA_SHIFT;
     return ok;
 }
 

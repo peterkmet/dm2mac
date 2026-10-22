@@ -18,13 +18,15 @@ PALETTE_SIZE = 1 + COLORS * RGB  # the marker byte and the colors
 
 
 def decode(lib, data, max_w=WIDTH, max_h=HEIGHT):
-    lib.pcx_decode.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
-                               ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+    class PcxImage(ctypes.Structure):
+        _fields_ = [("pixels", ctypes.c_void_p), ("max_width", ctypes.c_int), ("max_height", ctypes.c_int),
+                    ("width", ctypes.c_int), ("height", ctypes.c_int), ("palette", ctypes.c_uint8 * (COLORS * RGB))]
+
+    lib.pcx_decode.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.POINTER(PcxImage)]
     pixels = (ctypes.c_uint8 * (max_w * max_h))()
-    palette = (ctypes.c_uint8 * (COLORS * RGB))()
-    w, h = ctypes.c_int(), ctypes.c_int()
-    result = lib.pcx_decode(data, len(data), pixels, max_w, max_h, ctypes.byref(w), ctypes.byref(h), palette)
-    return result, w.value, h.value, bytes(pixels), bytes(palette)
+    image = PcxImage(ctypes.cast(pixels, ctypes.c_void_p), max_w, max_h)
+    result = lib.pcx_decode(data, len(data), ctypes.byref(image))
+    return result, image.width, image.height, bytes(pixels), bytes(image.palette)
 
 
 def reference_decode(data):

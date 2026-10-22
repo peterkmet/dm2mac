@@ -8,13 +8,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* The palette of a picture. */
 #define PCX_PALETTE_COLORS 256
 #define PCX_RGB            3
 
-enum { PCX_OK, PCX_ERR_DATA };
+enum PcxResult { PCX_OK, PCX_ERR_DATA };
+
+/* The picture to decode into: the caller sets pixels (max_width × max_height bytes) and the limits. */
+typedef struct {
+    uint8_t *pixels;
+    int max_width, max_height;
+    int width, height; /* the size of the decoded picture */
+    uint8_t palette[PCX_PALETTE_COLORS][PCX_RGB];
+} PcxImage;
 
 /* Decodes the picture (width bytes per row) and its 8-bit palette; PCX_ERR_DATA for another kind, size, or short data. */
-int pcx_decode(const uint8_t *data, size_t size, uint8_t *pixels, int max_width, int max_height, int *width,
-               int *height, uint8_t palette[PCX_PALETTE_COLORS][PCX_RGB]);
+enum PcxResult pcx_decode(const uint8_t *data, size_t size, PcxImage *image);
 
 #endif /* DM2_DATA_PCX_H */
