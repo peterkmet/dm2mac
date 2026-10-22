@@ -5,6 +5,7 @@ import pytest
 
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
+from dm2test import constants as C
 from dm2test.lib import load_lib
 
 
@@ -15,7 +16,7 @@ def lib():
 GFX_BLIT, GFX_BLIT_SCALED_4BPP, GFX_BLIT_SCALED_8BPP = 0x12AD2, 0x1410D, 0x1424B
 GFX_BLIT_TILED_4TO8_MASKED = 0x13BE5
 SRC, DST, RECT, MAP, MASK = SCRATCH, SCRATCH + 0x10000, SCRATCH + 0x20000, SCRATCH + 0x20100, SCRATCH + 0x30000
-OPAQUE = -1
+OPAQUE = C.GFX_OPAQUE
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 
@@ -27,8 +28,8 @@ def rect(*values):
     return (ctypes.c_int16 * 4)(*values)
 
 
-def blit(lib, src, dst_size, dst_width, r, src_x=0, src_y=0, src_width=3, transparent=OPAQUE, mirror=0,
-         src_bpp=8, dst_bpp=8, colormap=None):
+def blit(lib, src, dst_size, dst_width, r, src_x=0, src_y=0, src_width=3, transparent=OPAQUE, mirror=C.MIRROR_NONE,
+         src_bpp=C.IMAGE_8BPP, dst_bpp=C.IMAGE_8BPP, colormap=None):
     dst = buf([0] * dst_size)
     lib.gfx_blit(buf(src), dst, rect(*r), src_x, src_y, src_width, dst_width, transparent, mirror, src_bpp,
                  dst_bpp, buf(colormap) if colormap else None)
@@ -40,19 +41,19 @@ SRC_3X2 = [1, 2, 3,
 
 
 @pytest.mark.parametrize("transparent, mirror, expected", [
-    (OPAQUE, 0, [0, 0, 0, 0,
+    (OPAQUE, C.MIRROR_NONE, [0, 0, 0, 0,
                  0, 1, 2, 3,
                  0, 4, 5, 6]),
-    (2, 0, [0, 0, 0, 0,
+    (2, C.MIRROR_NONE, [0, 0, 0, 0,
             0, 1, 0, 3,
             0, 4, 5, 6]),
-    (OPAQUE, 1, [0, 0, 0, 0,
+    (OPAQUE, C.MIRROR_H, [0, 0, 0, 0,
                  0, 3, 2, 1,
                  0, 6, 5, 4]),
-    (OPAQUE, 2, [0, 0, 0, 0,
+    (OPAQUE, C.MIRROR_V, [0, 0, 0, 0,
                  0, 4, 5, 6,
                  0, 1, 2, 3]),
-    (OPAQUE, 3, [0, 0, 0, 0,
+    (OPAQUE, C.MIRROR_HV, [0, 0, 0, 0,
                  0, 6, 5, 4,
                  0, 3, 2, 1]),
 ])
@@ -62,17 +63,17 @@ def test_blit_8bpp(lib, transparent, mirror, expected):
 
 def test_blit_source_window(lib):
     # A 2 x 1 window at (1, 1) of the source, mirrored: the window is mirrored, not the whole row.
-    assert blit(lib, SRC_3X2, 4, 4, (0, 0, 2, 1), src_x=1, src_y=1, mirror=1) == [6, 5, 0, 0]
+    assert blit(lib, SRC_3X2, 4, 4, (0, 0, 2, 1), src_x=1, src_y=1, mirror=C.MIRROR_H) == [6, 5, 0, 0]
 
 
 def test_blit_4bpp_to_8bpp_with_colormap(lib):
     # 3 x 2 pixels, rows of 4 nibbles (even width), high nibble first.
     src = [0x12, 0x30, 0x45, 0x60]
     colormap = [10 + i for i in range(16)]
-    assert blit(lib, src, 6, 3, (0, 0, 3, 2), src_bpp=4, colormap=colormap) == [11, 12, 13, 14, 15, 16]
+    assert blit(lib, src, 6, 3, (0, 0, 3, 2), src_bpp=C.IMAGE_4BPP, colormap=colormap) == [11, 12, 13, 14, 15, 16]
     # The transparent value is a source pixel, before the colormap.
-    assert blit(lib, src, 6, 3, (0, 0, 3, 2), src_bpp=4, colormap=colormap, transparent=2) == [11, 0, 13, 14, 15, 16]
-    assert blit(lib, src, 6, 3, (0, 0, 3, 2), src_bpp=4, colormap=colormap, mirror=3) == [16, 15, 14, 13, 12, 11]
+    assert blit(lib, src, 6, 3, (0, 0, 3, 2), src_bpp=C.IMAGE_4BPP, colormap=colormap, transparent=2) == [11, 0, 13, 14, 15, 16]
+    assert blit(lib, src, 6, 3, (0, 0, 3, 2), src_bpp=C.IMAGE_4BPP, colormap=colormap, mirror=C.MIRROR_HV) == [16, 15, 14, 13, 12, 11]
 
 
 def test_blit_8bpp_with_colormap(lib):
@@ -82,8 +83,8 @@ def test_blit_8bpp_with_colormap(lib):
 
 def test_blit_4bpp_to_4bpp(lib):
     src = [0x12, 0x30, 0x45, 0x60]
-    assert blit(lib, src, 4, 3, (0, 0, 3, 2), src_bpp=4, dst_bpp=4) == [0x12, 0x30, 0x45, 0x60]
-    assert blit(lib, src, 4, 3, (1, 0, 2, 1), src_bpp=4, dst_bpp=4) == [0x01, 0x20, 0, 0]
+    assert blit(lib, src, 4, 3, (0, 0, 3, 2), src_bpp=C.IMAGE_4BPP, dst_bpp=C.IMAGE_4BPP) == [0x12, 0x30, 0x45, 0x60]
+    assert blit(lib, src, 4, 3, (1, 0, 2, 1), src_bpp=C.IMAGE_4BPP, dst_bpp=C.IMAGE_4BPP) == [0x01, 0x20, 0, 0]
 
 
 @pytest.fixture(scope="module")
@@ -108,20 +109,20 @@ def run_both(lib, emu, func, addr, src, dst_size, args, cargs):
 def test_blit_matches_original(lib, emu):
     rng = random.Random(1)
     for case in range(1000):
-        src_bpp = rng.choice([4, 8])
-        dst_bpp = 4 if src_bpp == 4 and rng.random() < 0.3 else 8
+        src_bpp = rng.choice([C.IMAGE_4BPP, C.IMAGE_8BPP])
+        dst_bpp = C.IMAGE_4BPP if src_bpp == C.IMAGE_4BPP and rng.random() < 0.3 else C.IMAGE_8BPP
         sw, sh = rng.randint(1, 13), rng.randint(1, 9)
         dw = rng.randint(1, 15)
         w, h = rng.randint(1, sw), rng.randint(1, sh)
         sx, sy = rng.randint(0, sw - w), rng.randint(0, sh - h)
         x, y = rng.randint(0, dw - 1), rng.randint(0, 5)
         w = min(w, dw - x)
-        stride = (sw + 1) // 2 if src_bpp == 4 else sw
+        stride = (sw + 1) // 2 if src_bpp == C.IMAGE_4BPP else sw
         src = [rng.randrange(256) for _ in range(stride * sh)]
         # The original mirrored 4 to 4 bpp rows with a transparent color have quirks (docs/skull-formats.md).
         transparent = rng.choice([OPAQUE, rng.randrange(16)])
-        mirror = rng.randrange(5) if dst_bpp == 8 or transparent == OPAQUE else rng.choice([0, 2, 4])
-        colormap = [rng.randrange(256) for _ in range(256)] if src_bpp == 4 or rng.random() < 0.5 else None
+        mirror = rng.randrange(5) if dst_bpp == C.IMAGE_8BPP or transparent == OPAQUE else rng.choice([0, 2, 4])
+        colormap = [rng.randrange(256) for _ in range(256)] if src_bpp == C.IMAGE_4BPP or rng.random() < 0.5 else None
         dst_size = 400
         emu.write(RECT, ctypes.string_at(rect(x, y, w, h), 8))
         if colormap:
@@ -201,7 +202,7 @@ def test_dim_remap_matches_original(lib, emu):
     assert lib.pal_load_color_ramps(gdat)
     # The original keeps a 9-byte record per ramp: length, brightness pointer, colors pointer.
     size = ctypes.c_uint32()
-    data = ctypes.string_at(lib.gdat_item(gdat, lib.gdat_find(gdat, 1, 0, 7, 2), ctypes.byref(size)), size.value)
+    data = ctypes.string_at(lib.gdat_item(gdat, lib.gdat_find(gdat, C.CAT_INTERFACE, 0, 7, 2), ctypes.byref(size)), size.value)
     lib.gdat_free(gdat)
     emu.write(RAMP_DATA, data)
     count, lengths = data[0], data[1:1 + data[0]]

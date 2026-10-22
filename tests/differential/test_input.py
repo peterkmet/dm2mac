@@ -7,6 +7,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.save import GRAPHICS
 from dm2test.input import (  # noqa: F401 (session is a fixture)
@@ -76,7 +77,7 @@ def test_clicks_and_keys_match_original(tree, lib, keys):
     found = 0
     for mode in MODES:
         for _ in range(400):
-            x, y, buttons = rng.randrange(320), rng.randrange(200), rng.choice((1, 2))
+            x, y, buttons = rng.randrange(C.SCREEN_W), rng.randrange(C.SCREEN_H), rng.choice((C.INPUT_BUTTON_RIGHT, C.INPUT_BUTTON_LEFT))
             mine = lib.input_find_command(mode, x, y, buttons, 0, rect)
             theirs, their_rect = original_command(tree.emu, mode, x, y, buttons, 0)
             assert mine == theirs, (mode, x, y, buttons)
@@ -113,11 +114,11 @@ def test_champion_clicks_match_original(tree, lib):
             champion_bytes(lib, champ, CHAMPION_CELL, [cell])
             champion_bytes(lib, champ, CHAMPION_ACTION_DELAY, [rng.choice((0, 0, 3)) for _ in range(3)])
             if rng.random() < 0.3:
-                champion_bytes(lib, champ, CHAMPION_HANDS + 2 * rng.randrange(2), b"\xff\xff")
+                champion_bytes(lib, champ, CHAMPION_HANDS + 2 * rng.randrange(C.SLOT_HAND_COUNT), b"\xff\xff")
         sync_champions(lib, tree)
-        tree.game.party_dir = rng.randrange(4)
+        tree.game.party_dir = rng.randrange(C.DIR_COUNT)
         tree.emu.write(0x7F254, struct.pack("<h", tree.game.party_dir))
-        command = rng.choice(list(range(0x5F, 0x63)) + list(range(0x74, 0x7C)))
+        command = rng.choice(list(range(C.CMD_PARTY_ICON_FIRST, C.CMD_PARTY_ICON_LAST + 1)) + list(range(C.CMD_HAND_FIRST, C.CMD_HAND_LAST + 1)))
         w, h = rng.randrange(8, 40), rng.randrange(8, 30)
         rect = (rng.randrange(200), rng.randrange(150), w, h)
         c = Command(rect[0] + rng.randrange(w), rect[1] + rng.randrange(h), command, (ctypes.c_int16 * 4)(*rect))
@@ -129,7 +130,8 @@ def test_champion_clicks_match_original(tree, lib):
         results.add((command, theirs))
     assert len(results) > 30
     refined = {theirs for _, theirs in results}
-    assert refined & set(range(0x74, 0x7C)) and refined & set(range(0x10, 0x14)) and refined & set(range(0x5F, 0x63))
+    assert refined & set(range(C.CMD_HAND_FIRST, C.CMD_HAND_LAST + 1)) and refined & set(range(C.CMD_LEADER_FIRST, C.CMD_LEADER_LAST + 1)) and refined & set(
+        range(C.CMD_PARTY_ICON_FIRST, C.CMD_PARTY_ICON_LAST + 1))
 
 
 INPUT_SET_MODE, MOUSE_MOVE_EVENT, MOUSE_SET_HOVER_AREA, MOUSE_AREA_ADD, MOUSE_AREA_REMOVE = (
@@ -166,7 +168,7 @@ def test_cursor_matches_original(tree, lib):
             emu.write(G_ACTION_AREA_MODE, b"\0\0")
         lib.input_set_mode(mode)
         emu.call(INPUT_SET_MODE, mode, allow_io=True)
-        points = [(rng.randrange(320), rng.randrange(200)) for _ in range(300)]
+        points = [(rng.randrange(C.SCREEN_W), rng.randrange(C.SCREEN_H)) for _ in range(300)]
         area = emu.read_u32(G_MOUSE_AREAS)
         while area:  # a point in each shown cursor zone: node of the zone = next zone, rectangle
             node = emu.read_u32(area + 6)
@@ -174,19 +176,19 @@ def test_cursor_matches_original(tree, lib):
             points.append((x + rng.randrange(w), y + rng.randrange(h)))
             area = emu.read_u32(node)
         for x, y in points:
-            hand, leader = rng.choice((0x0400, 0xFFFF)), rng.choice((0, 0, 0xFFFF))
+            hand, leader = rng.choice((0x0400, C.THING_NONE)), rng.choice((0, 0, C.LEADER_NONE))
             game.leader = leader
             set_leader_hand(lib, tree, hand)
-            emu.write_u32(G_CURSOR_HAS_ITEM, hand != 0xFFFF)
+            emu.write_u32(G_CURSOR_HAS_ITEM, hand != C.THING_NONE)
             emu.write(G_LEADER, struct.pack("<H", leader))
             emu.write(G_MOUSE_HOVER_INVALID, b"\1\0")
             theirs = emu.call(MOUSE_MOVE_EVENT, x, y, allow_io=True) & 0xFFFF
             assert lib.input_cursor_at(x, y) == theirs, (mode, x, y, hex(hand), leader)
             seen.add((mode, theirs))
     drag.value = 0  # the library lives through the module: later tests start without a dragged champion
-    assert {cursor for _, cursor in seen} == {0, 1, 2, 3}
-    assert {mode for mode, cursor in seen if cursor == 2} >= {5, 8}
-    assert {mode for mode, cursor in seen if cursor == 3} == {5, 8}
+    assert {cursor for _, cursor in seen} == {C.CURSOR_ARROW, C.CURSOR_HAND, C.CURSOR_OBJECT, C.CURSOR_CHAMPION}
+    assert {mode for mode, cursor in seen if cursor == C.CURSOR_OBJECT} >= {C.INPUT_MODE_MOVE, C.INPUT_MODE_INVENTORY}
+    assert {mode for mode, cursor in seen if cursor == C.CURSOR_CHAMPION} == {C.INPUT_MODE_MOVE, C.INPUT_MODE_INVENTORY}
 
 
 def test_keys_walk_and_turn_in_the_main_loop(session, lib):
@@ -203,7 +205,7 @@ def test_keys_walk_and_turn_in_the_main_loop(session, lib):
     assert (game.party_x, game.party_y) == (x + dx, y + dy)
     lib.input_key_down(KEY_TURN_RIGHT)
     run_ticks(lib, 16)
-    assert game.party_dir == (direction + 1) % 4
+    assert game.party_dir == (direction + 1) % C.DIR_COUNT
     lib.input_key_down(KEY_PAUSE)
     run_ticks(lib, 8)
     paused = game.game_time
@@ -219,17 +221,17 @@ def test_clicks_on_the_movement_arrows(session, lib):
     game, loop = session
     rect = (ctypes.c_int16 * 4)()
     direction = game.party_dir
-    assert lib.zone_get_rect(0x28, rect)
-    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, 2)
+    assert lib.zone_get_rect(C.ZONE_ARROW_FIRST, rect)
+    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, C.INPUT_BUTTON_LEFT)
     run_ticks(lib, 16)
-    assert game.party_dir == (direction + 3) % 4
-    assert lib.zone_get_rect(0x29, rect)
-    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, 2)
+    assert game.party_dir == (direction + 3) % C.DIR_COUNT
+    assert lib.zone_get_rect(C.ZONE_ARROW_FIRST + 1, rect)
+    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, C.INPUT_BUTTON_LEFT)
     run_ticks(lib, 16)
     assert game.party_dir == direction
     x, y = game.party_x, game.party_y
-    assert lib.zone_get_rect(0x2A, rect)
-    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, 2)
+    assert lib.zone_get_rect(C.ZONE_ARROW_FIRST + 2, rect)
+    lib.input_mouse_click(rect[0] + rect[2] // 2, rect[1] + rect[3] // 2, C.INPUT_BUTTON_LEFT)
     run_ticks(lib, 40)
     assert (game.party_x, game.party_y) != (x, y)
 
@@ -271,8 +273,8 @@ def test_save_start_prints_the_hand_object_name_once(tmp_path):
     lib.draw_init(gdat)
     lib.input_init()
     assert lib.session_start_save(str(path).encode()) == 1
-    expiry = (ctypes.c_uint32 * 3).in_dll(lib, "message_expiry")
-    assert sum(t != 0xFFFFFFFF for t in expiry) == 1
+    expiry = (ctypes.c_uint32 * C.MESSAGE_ROWS).in_dll(lib, "message_expiry")
+    assert sum(t != C.MESSAGE_NEVER for t in expiry) == 1
     lib.gdat_free(gdat)
 
 
@@ -296,7 +298,7 @@ def test_keys_and_move_cooldowns_match_original(loop, lib):
     # Movement keys at random ticks, often before the cooldown of the last move ends, turns, side steps, and the
     # pause key: the commands, the walks, the cooldowns, and the game steps tick by tick.
     rng = random.Random(17)
-    keys = [0x4C] * 6 + [0x4B, 0x4D, 0x4F, 0x50, 0x51]
+    keys = [C.KEYPAD_FORWARD] * 6 + [C.KEYPAD_TURN_LEFT, C.KEYPAD_TURN_RIGHT, C.KEYPAD_LEFT, C.KEYPAD_BACK, C.KEYPAD_RIGHT]
     for t in range(600):
         if rng.random() < 0.25:
             loop.key(rng.choice(keys))
@@ -313,11 +315,11 @@ def test_keys_and_move_cooldowns_match_original(loop, lib):
 def find_click(lib, mode, command):
     """A screen point whose left click gives command in mode."""
     rect = (ctypes.c_int16 * 4)()
-    return next((x, y) for y in range(200) for x in range(320)
+    return next((x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
                 if lib.input_find_command(mode, x, y, INPUT_BUTTON_LEFT, 0, rect) == command)
 
 
-INPUT_BUTTON_LEFT, MODE_INVENTORY, CMD_SLEEP, KEY_INVENTORY, KEY_WAKE = 2, 8, 0x8E, 0x02, 0x1C
+INPUT_BUTTON_LEFT, MODE_INVENTORY, CMD_SLEEP, KEY_INVENTORY, KEY_WAKE = C.INPUT_BUTTON_LEFT, C.INPUT_MODE_INVENTORY, C.CMD_SLEEP, 0x02, 0x1C
 
 
 def test_sleep_and_wake_match_original(loop, lib):
@@ -342,7 +344,7 @@ def test_sleep_and_wake_match_original(loop, lib):
 
 
 CHAMPION_AURA, CHAMPION_DAMAGE_EVENT = 0x102, 0x2E
-EVENT_HIDE_DAMAGE, EVENT_AURA = 0x0C, 0x48
+EVENT_HIDE_DAMAGE, EVENT_AURA = C.EVENT_HIDE_DAMAGE, C.EVENT_AURA
 
 
 def test_damage_and_aura_events_match_original(loop, lib):
@@ -356,7 +358,7 @@ def test_damage_and_aura_events_match_original(loop, lib):
     now, map_ = loop.game.game_time, loop.game.party_map
     for delay, type_, priority, data in ((2, EVENT_HIDE_DAMAGE, 0, (0,) * 6), (3, EVENT_AURA, 1, (7, 0, 0, 0, 0, 0)),
                                          (5, EVENT_AURA, 1, (60, 0, 0, 0, 0, 0))):
-        e = Event((now + delay) | map_ << 24, type_, priority, (ctypes.c_uint8 * 6)(*data))
+        e = Event((now + delay) | map_ << C.EVENT_MAP_SHIFT, type_, priority, (ctypes.c_uint8 * 6)(*data))
         loop.emu.write(COMMAND_RECORD, bytes(e))
         lib.timeline_add_event(ctypes.byref(e))
         loop.emu.call(TIMELINE_ADD_EVENT, COMMAND_RECORD)
@@ -372,7 +374,7 @@ def test_arrow_clicks_and_feedback_delays_match_original(loop, lib):
     rng = random.Random(18)
     rect = (ctypes.c_int16 * 4)()
     targets = []
-    for zone in range(0x28, 0x2E):
+    for zone in range(C.ZONE_ARROW_FIRST, C.ZONE_ARROW_FIRST + C.ZONE_ARROW_COUNT):
         assert lib.zone_get_rect(zone, rect)
         targets.append(tuple(rect))
     targets.append((80, 70, 60, 50))

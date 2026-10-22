@@ -3,6 +3,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
@@ -101,7 +102,7 @@ def dungeon(lib):
 def test_header(original, dungeon):
     assert dungeon.dungeon_map_count() == original.map_count() == 44
     assert dungeon.dungeon_party_start() == original.u16(original.header(8))
-    assert [dungeon.dungeon_thing_size(t) for t in range(16)] == list(original.emu.read(G_THING_SIZE, 16))
+    assert [dungeon.dungeon_thing_size(t) for t in range(C.THING_TYPE_COUNT)] == list(original.emu.read(G_THING_SIZE, C.THING_TYPE_COUNT))
 
 
 def test_maps_and_squares(original, dungeon):
@@ -109,7 +110,7 @@ def test_maps_and_squares(original, dungeon):
         word = original.map_word(m)
         width, height = (word >> 6 & 0x1F) + 1, (word >> 11) + 1
         assert (dungeon.dungeon_map_width(m), dungeon.dungeon_map_height(m)) == (width, height), m
-        assert dungeon.dungeon_map_level(m) == word & 0x3F, m
+        assert dungeon.dungeon_map_level(m) == word & C.MAP_LEVEL_MASK, m
         for x in range(width):
             assert bytes(dungeon.dungeon_square(m, x, y) for y in range(height)) == original.column(m, x, height), (m, x)
             for y in range(height):
@@ -124,18 +125,18 @@ def test_square_things(original, dungeon):
 
 
 def test_thing_slack_table(original, dungeon):
-    slack = original.emu.read(THING_SLACK, 16)
+    slack = original.emu.read(THING_SLACK, C.THING_TYPE_COUNT)
     in_file = struct.unpack_from("<16H", DUNGEON.read_bytes(), 12)
-    assert [dungeon.dungeon_thing_count(t) - in_file[t] for t in range(16)] == list(slack)
+    assert [dungeon.dungeon_thing_count(t) - in_file[t] for t in range(C.THING_TYPE_COUNT)] == list(slack)
 
 
 def test_things(original, dungeon):
-    for t in range(16):
+    for t in range(C.THING_TYPE_COUNT):
         count = original.u16(original.header(12 + 2 * t))
         assert dungeon.dungeon_thing_count(t) == count, t
         size = count * dungeon.dungeon_thing_size(t)
         if size:
-            record = ctypes.string_at(dungeon.dungeon_thing_record(t << 10), size)
+            record = ctypes.string_at(dungeon.dungeon_thing_record(t << C.THING_TYPE_SHIFT), size)
             assert record == original.emu.read(original.ptr(G_THING_DATA + 4 * t), size), t
 
 
@@ -143,8 +144,8 @@ def test_text_and_level_lists(original, dungeon):
     words = dungeon.dungeon_text_word_count()
     assert words == original.u16(original.header(6))
     assert ctypes.string_at(dungeon.dungeon_text_data(), 2 * words) == original.emu.read(original.ptr(G_TEXT_DATA), 2 * words)
-    offsets = original.emu.read(original.ptr(G_LEVEL_MAP_LIST_OFFSETS), 63)
-    for level in range(63):
+    offsets = original.emu.read(original.ptr(G_LEVEL_MAP_LIST_OFFSETS), C.LEVEL_COUNT)
+    for level in range(C.LEVEL_COUNT):
         assert dungeon.dungeon_level_maps(level) - dungeon.dungeon_level_maps(0) == offsets[level], level
         maps = original.emu.read(original.ptr(G_LEVEL_MAP_LISTS) + offsets[level], 64).split(b"\xff")[0]
         assert ctypes.string_at(dungeon.dungeon_level_maps(level), 64).split(b"\xff")[0] == maps, level
@@ -162,7 +163,7 @@ def test_thing_count_cap(lib, tmp_path):
     assert lib.dungeon_load(str(path).encode()) == 1
     assert lib.dungeon_thing_count(4) == 0x400
     lib.dungeon_thing_record.restype = ctypes.c_void_p
-    assert ctypes.string_at(lib.dungeon_thing_record(4 << 10 | 0x3FF), 2) == b"\xff\xff"
+    assert ctypes.string_at(lib.dungeon_thing_record(C.THING_GROUP << C.THING_TYPE_SHIFT | C.THING_INDEX_MASK), 2) == b"\xff\xff"
     path.write_bytes(synthetic_dungeon([0, 0, 0, 0, 0x401] + [0] * 11))
     assert lib.dungeon_load(str(path).encode()) == 0
 
@@ -179,7 +180,7 @@ def test_bad_files(lib, tmp_path):
         columns = 0x2C + 16 * map_count
         widths = sum((struct.unpack_from("<H", data, 0x2C + 16 * m + 8)[0] >> 6 & 0x1F) + 1 for m in range(map_count))
         square_things = columns + 2 * widths
-        damages = {"map_outside": (0x2C, 0xFFFF), "bad_column": (columns, 0xFFFF), "bad_thing": (square_things, 3 << 10 | 0x3FF)}
+        damages = {"map_outside": (0x2C, 0xFFFF), "bad_column": (columns, 0xFFFF), "bad_thing": (square_things, C.THING_SENSOR << C.THING_TYPE_SHIFT | C.THING_INDEX_MASK)}
         for name, (offset, value) in damages.items():
             damaged = bytearray(data)
             struct.pack_into("<H", damaged, offset, value)

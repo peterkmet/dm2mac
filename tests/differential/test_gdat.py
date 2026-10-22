@@ -3,6 +3,7 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
 from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE, GDAT, OK, gd  # noqa: F401 (gd is a fixture)
 from dm2test.markers import ROOT
 from dm2tools.emu import Emu
@@ -44,7 +45,7 @@ def image_items(lib, gd):
     items = set()
     for i in range(rows):
         _, _, key_type, _, language, _, value = struct.unpack_from(">6BH", keys, 20 + 8 * i)
-        if key_type == 1 and language & 0xF0 in (0, 0x10):
+        if key_type == C.GDAT_TYPE_IMAGE and language & 0xF0 in (0, 0x10):
             items.add(value & 0x7FFF)
     return sorted(items)
 
@@ -88,19 +89,19 @@ def test_header_and_keys(lib, gd):
         if item % 500 == 0 or item == count - 1:
             assert item_bytes(lib, gd, item) == data[offset:offset + size]
         offset += size
-    assert lib.gdat_find(gd, 0, 0, 0x0B, 0) == 0x7B  # value key: the GDAT flag word
-    assert lib.gdat_find(gd, 1, 0, 9, 0xFE) == 206  # item key: the game palette
+    assert lib.gdat_find(gd, 0, 0, C.GDAT_TYPE_VALUE, 0) == 0x7B  # value key: the GDAT flag word
+    assert lib.gdat_find(gd, C.CAT_INTERFACE, 0, 9, 0xFE) == 206  # item key: the game palette
     assert lib.gdat_find(gd, 99, 99, 99, 99) == -1
 
 
 def test_palette(lib, gd):
     raw = item_bytes(lib, gd, 206)
-    rgb = (ctypes.c_uint8 * 3)()
-    for color in range(256):
+    rgb = (ctypes.c_uint8 * C.RGB_CHANNELS)()
+    for color in range(C.GDAT_PALETTE_COLORS):
         assert lib.gdat_palette_color(gd, color, rgb) == OK
         assert bytes(rgb) == bytes(v >> 2 for v in raw[4 * color + 1:4 * color + 4])
     assert lib.gdat_palette_color(gd, 15, rgb) == OK and bytes(rgb) == bytes((236 >> 2, 183 >> 2, 72 >> 2))
-    assert lib.gdat_palette_color(gd, 256, rgb) != OK
+    assert lib.gdat_palette_color(gd, C.GDAT_PALETTE_COLORS, rgb) != OK
 
 
 def test_colormap(lib, gd):

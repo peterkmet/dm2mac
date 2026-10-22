@@ -7,6 +7,7 @@ import pytest
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import UC_X86_REG_EIP
 
+from dm2test import constants as C
 from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixtures)
     CHAMP_DRAW_ALL_STATES, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME, G_IOP_BUFFER, G_LEADER_HAND, G_MOUTH,
     G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W, TEXT_FORMAT, TEXT_MEASURE,
@@ -63,10 +64,10 @@ def test_inventory_panels_match_original(port, original):
     port.ui_toggle_inventory(0)
     lib = port
     lib.item_is_chest.argtypes = lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    samples = [0xFFFF]
-    for kind in (5, 6, 7, 8, 10):
+    samples = [C.THING_NONE]
+    for kind in (C.THING_WEAPON, C.THING_ARMOUR, C.THING_SCROLL, C.THING_POTION, C.THING_MISC):
         samples += things_of(lib, kind, 6)
-    samples += things_of(lib, 9, 3, lib.item_is_chest) + things_of(lib, 9, 3, lib.item_is_moneybox)
+    samples += things_of(lib, C.THING_CONTAINER, 3, lib.item_is_chest) + things_of(lib, C.THING_CONTAINER, 3, lib.item_is_moneybox)
     assert len(samples) > 25
     pictures = set()
     for thing in samples:
@@ -78,16 +79,16 @@ def test_inventory_panels_match_original(port, original):
         pictures.add(original.view())
     assert len(pictures) > 20  # each object draws its own panel
     set_eye(lib, original, 0)
-    set_leader_hand(lib, original, 0xFFFF)
+    set_leader_hand(lib, original, C.THING_NONE)
 
 
 INV_RENDER_HAND_ICON = 0x38392
-HAND_ICON_SIZE = 16
+HAND_ICON_SIZE = C.HAND_ICON_SIZE
 
 
 class LeaderHand(ctypes.Structure):
     _fields_ = [("attr", ctypes.c_uint16), ("weight", ctypes.c_uint16), ("icon", ctypes.c_uint8),
-                ("cursor", ctypes.c_uint8 * HAND_ICON_SIZE ** 2), ("palette", ctypes.c_uint8 * 16)]
+                ("cursor", ctypes.c_uint8 * HAND_ICON_SIZE ** 2), ("palette", ctypes.c_uint8 * C.HAND_ICON_COLORS)]
 
 
 def test_hand_icon_matches_original(port, original):
@@ -98,7 +99,8 @@ def test_hand_icon_matches_original(port, original):
     bitmap = original.alloc(4 + HAND_ICON_SIZE ** 2 // 2) + 4
     emu.write(bitmap - 4, struct.pack("<hh", HAND_ICON_SIZE, HAND_ICON_SIZE))
     icon = original.alloc(6 + 16)
-    samples = [t for kind in (5, 6, 7, 8, 10) for t in things_of(lib, kind, 4)] + things_of(lib, 9, 2)
+    samples = [t for kind in (C.THING_WEAPON, C.THING_ARMOUR, C.THING_SCROLL, C.THING_POTION, C.THING_MISC)
+               for t in things_of(lib, kind, 4)] + things_of(lib, C.THING_CONTAINER, 2)
     pictures = set()
     for thing in samples:
         lib.champ_put_object_in_leader_hand(thing, 0)
@@ -108,7 +110,7 @@ def test_hand_icon_matches_original(port, original):
         packed = emu.read(bitmap, HAND_ICON_SIZE ** 2 // 2)
         theirs = bytes(v for b in packed for v in (b >> 4, b & 0xF))
         assert bytes(hand.cursor) == theirs, hex(thing)
-        assert bytes(hand.palette) == emu.read(icon + 6, 16), hex(thing)
+        assert bytes(hand.palette) == emu.read(icon + 6, C.HAND_ICON_COLORS), hex(thing)
         pictures.add(theirs)
     assert len(pictures) > 10
 
@@ -122,7 +124,7 @@ MOUSE_SET_CURSOR_IMAGE, INPUT_INIT, IOP_INSTALL_INPUT_ISR, MOUSE_SET_DEFAULT_CUR
 CHAMP_DRAG_CLICK, MEM_ALLOC_IMAGE, G_CHAMP_DRAG_STATE = 0x149BA, 0x3BD64, 0x7F0B4
 # mouse_update_hand_cursor (a no-op of OriginalUi) without its register saves, up to mouse_set_default_cursor
 HAND_CURSOR_BODY, HAND_CURSOR_END, G_HAND_ICON_BITMAP = 0x1488D, 0x148FC, G_LEADER_HAND + 2
-CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION = 0, 1, 2, 3
+CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION = C.CURSOR_ARROW, C.CURSOR_HAND, C.CURSOR_OBJECT, C.CURSOR_CHAMPION
 
 
 def test_cursor_images_match_original(port, original):
@@ -158,7 +160,7 @@ def test_cursor_images_match_original(port, original):
         assert port_image(CURSOR_HAND) == images[1]
         emu.write(G_HAND_ICON_BITMAP, struct.pack("<I", alloc_image(HAND_ICON_SIZE, HAND_ICON_SIZE, 0, 4)))
         objects = set()
-        for thing in [t for kind in (5, 6, 8, 10) for t in things_of(lib, kind, 2)]:
+        for thing in [t for kind in (C.THING_WEAPON, C.THING_ARMOUR, C.THING_POTION, C.THING_MISC) for t in things_of(lib, kind, 2)]:
             emu.write(G_LEADER_HAND, struct.pack("<H", thing))
             emu.call(INV_RENDER_HAND_ICON, G_LEADER_HAND)
             images.pop(2, None)
@@ -197,8 +199,8 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
     Game.in_dll(lib, "game").leader = 0
     lib.champ_put_object_in_leader_hand(thing, 0)
     try:
-        lib.input_set_mode(5)
-        zone = [(x, y) for y in range(200) for x in range(320) if lib.input_cursor_at(x, y) == CURSOR_OBJECT]
+        lib.input_set_mode(C.INPUT_MODE_MOVE)
+        zone = [(x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W) if lib.input_cursor_at(x, y) == CURSOR_OBJECT]
         assert zone
         near_left = min(zone, key=lambda p: p[0])
         assert near_left[0] < 8  # the left clip runs
@@ -215,8 +217,8 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
             for i in range(c.width * c.height):
                 n = c.bits[i // 2] >> (0 if i & 1 else 4) & 0xF if c.bpp == 4 else c.bits[i]
                 sx, sy = x - c.hot_x + i % c.width, y - c.hot_y + i // c.width
-                if n != c.key and 0 <= sx < 320 and 0 <= sy < 200:
-                    expected[sy * 320 + sx] = c.palette[n] if c.palette else n
+                if n != c.key and 0 <= sx < C.SCREEN_W and 0 <= sy < C.SCREEN_H:
+                    expected[sy * C.SCREEN_W + sx] = c.palette[n] if c.palette else n
             assert bytes(fb) == bytes(expected), (x, y)
             assert bytes(fb) != screen, (x, y)
     finally:
@@ -257,8 +259,10 @@ def test_action_results_match_original(port, original):
     lib = port
     draw_game_screen(lib, original)
     pictures = set()
-    for result, flag, ammo in ((3, 0, 0), (15, 0, 0), (16, 0, 0), (40, 0, 0), (41, 0, 0), (123, 0, 0), (-1, 0, 0),
-                               (-2, 0, 0x01), (-2, 1, 0x02), (-2, 0, 0x10), (-3, 0, 0), (-4, 0, 0), (-5, 0, 0), (-6, 0, 0)):
+    for result, flag, ammo in ((3, 0, 0), (15, 0, 0), (16, 0, 0), (40, 0, 0), (41, 0, 0), (123, 0, 0), (C.RESULT_NOTHING, 0, 0),
+                               (C.RESULT_NO_AMMO, 0, 0x01), (C.RESULT_NO_AMMO, 1, 0x02), (C.RESULT_NO_AMMO, 0, 0x10),
+                               (C.RESULT_UNKNOWN_SPELL, 0, 0), (C.RESULT_WIZARD_FAILED, 0, 0), (C.RESULT_PRIEST_FAILED, 0, 0),
+                               (C.RESULT_CANT, 0, 0)):
         set_action(lib, original, result=result, result_flag=flag, result_ammo=ammo)
         update_action_area(lib, original)
         assert_same_screen_and_view(lib, original, f"result {result}")
@@ -270,7 +274,7 @@ def test_containers_in_hand_match_original(port, original):
     # A money box and a chest in the ready hand open their panels in the action area.
     lib = port
     lib.item_is_chest.argtypes = lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    boxes = things_of(lib, 9, 2, lib.item_is_moneybox) + things_of(lib, 9, 2, lib.item_is_chest)
+    boxes = things_of(lib, C.THING_CONTAINER, 2, lib.item_is_moneybox) + things_of(lib, C.THING_CONTAINER, 2, lib.item_is_chest)
     assert len(boxes) == 4
     draw_game_screen(lib, original)
     modes = set()
@@ -284,7 +288,7 @@ def test_containers_in_hand_match_original(port, original):
         modes.add(ActionArea.in_dll(lib, "action").mode)
         update_action_area(lib, original, tick=1)
         assert_same_screen_and_view(lib, original, f"box {box:#x} tick")
-    assert modes == {4, 5}  # money box and container panels
+    assert modes == {C.ACTION_MODE_MONEY_BOX, C.ACTION_MODE_CONTAINER}  # money box and container panels
 
 
 def test_party_states_match_original(port, original):
@@ -310,7 +314,7 @@ def test_party_states_match_original(port, original):
     pictures = set()
     for name, change in states:
         change()
-        champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0xFC00))
+        champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", C.REDRAW_ALL))
         sync_champions(lib, original)
         set_action(lib, original, dirty=1)
         original.emu.call(CHAMP_DRAW_ALL_STATES, 1)
@@ -324,7 +328,7 @@ def test_party_states_match_original(port, original):
     lib.ui_toggle_inventory(0)
     assert_same_screen_and_view(lib, original, "inventory")
     champion_bytes(lib, 0, CH_HEALTH, struct.pack("<h", 0))
-    champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0xFC00))
+    champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", C.REDRAW_ALL))
     sync_champions(lib, original)
     original.emu.call(CHAMP_DRAW_ALL_STATES, 1)
     lib.ui_draw_all_champion_states(1)
@@ -346,12 +350,12 @@ def test_draw_text_matches_original(port, original):
     width, height = 96, 40
     src, text = original.alloc(width * height), original.alloc(64)
     for case in range(300):
-        bpp = rng.choice([8, 4])
-        size = width * height if bpp == 8 else width // 2 * height
+        bpp = rng.choice([C.IMAGE_8BPP, C.IMAGE_4BPP])
+        size = width * height if bpp == C.IMAGE_8BPP else width // 2 * height
         fill = bytes(rng.randrange(256) for _ in range(size))
         s = random_text(rng, rng.randrange(0, 12))
         x, y = rng.randrange(0, 40), rng.randrange(4, height - 1)  # inside the bitmap
-        color, bg = rng.randrange(256 if bpp == 8 else 16), rng.randrange(256 if bpp == 8 else 16)
+        color, bg = rng.randrange(256 if bpp == C.IMAGE_8BPP else 16), rng.randrange(256 if bpp == C.IMAGE_8BPP else 16)
         if rng.random() < 0.5:
             bg |= 0x4000
         emu.write(src, fill)
@@ -449,7 +453,7 @@ def test_message_area_matches_original(port, original):
         lib.text_print_message(color, message)
         mine, theirs = c_screen(lib), original.screen()
         assert mine == theirs, (message, diff(mine, theirs, SCREEN_W))
-    expiry = (ctypes.c_uint32 * 3).in_dll(lib, "message_expiry")
+    expiry = (ctypes.c_uint32 * C.MESSAGE_ROWS).in_dll(lib, "message_expiry")
     assert list(expiry) == list(struct.unpack("<3I", emu.read(0x80404, 12)))
     time = expiry[1]
     emu.write(G_GAME_TIME, struct.pack("<I", time))
@@ -468,7 +472,7 @@ def test_message_area_scrolls(port):
     lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
     lib.zone_get_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
     r = (ctypes.c_int16 * 4)()
-    lib.zone_get_rect(15, r)
+    lib.zone_get_rect(C.ZONE_MESSAGE_AREA, r)
     x, y, w, h = r
     lib.text_set_message_cursor(0, 0)
     lib.text_print_message(15, b"ONE\nTWO\nTHREE")
@@ -480,7 +484,7 @@ def test_message_area_scrolls(port):
     assert rows(after, y + h - 6, 6) != rows(before, y + h - 6, 6)
 
 
-MESSAGE_SHOW_TIME = 90
+MESSAGE_SHOW_TIME = C.MESSAGE_SHOW_TIME
 
 
 def test_message_rows_follow_print_scroll_and_expiry(port):
@@ -542,7 +546,7 @@ def test_skill_raised_acknowledged_like_original(port, original):
     for i, n in enumerate(counts):
         raised[i] = n
     emu.write(G_SKILL_RAISED, bytes(counts) + bytes(12))
-    champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", 0x2000))
+    champion_bytes(lib, 0, CH_REDRAW, struct.pack("<H", C.REDRAW_TITLE_ALL))
     sync_champions(lib, original)
     original.emu.call(G_CHAMP_DRAW_STATE, 0)
     lib.ui_draw_champion_state(0)
@@ -565,7 +569,7 @@ def test_message_area_pending_rows_match_original(port, original):
     emu = original.emu
     emu.write_u32(G_IOP_BUFFER, original.alloc(0x400))
     rect = original.alloc(8)
-    emu.call(ZONE_GET_RECT, 15, rect)
+    emu.call(ZONE_GET_RECT, C.ZONE_MESSAGE_AREA, rect)
     x, y, w, h = struct.unpack("<4h", emu.read(rect, 8))
 
     def iop_scroll(uc, *_):
@@ -617,15 +621,16 @@ def test_item_names_match_original(port, original):
     lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
 
     def with_index(kind, word, index):
-        if kind == 7:  # a scroll has only index 0
+        if kind == C.THING_SCROLL:  # a scroll has only index 0
             return word
-        if kind == 9:  # container word 4: the index bits 0-2 in bits 13-15, bits 3-4 in bits 1-2
+        if kind == C.THING_CONTAINER:  # container word 4: the index bits 0-2 in bits 13-15, bits 3-4 in bits 1-2
             return word & ~0xE006 | (index & 7) << 13 | (index >> 3) << 1
-        shift = 8 if kind == 8 else 0
+        shift = C.POTION_TYPE_SHIFT if kind == C.THING_POTION else 0
         return word & 0x3FFF & ~(0x7F << shift) | index << shift  # a champion token of champion 0
 
     names = set()
-    for kind, offset, count in ((5, 2, 128), (6, 2, 128), (7, 2, 1), (8, 2, 128), (9, 4, 32), (10, 2, 128)):
+    for kind, offset, count in ((C.THING_WEAPON, 2, 128), (C.THING_ARMOUR, 2, 128), (C.THING_SCROLL, 2, 1), (C.THING_POTION, 2, 128),
+                                (C.THING_CONTAINER, 4, 32), (C.THING_MISC, 2, 128)):
         thing = things_of(lib, kind, 1)[0]
         record = emu.call(DUN_GET_THING_DATA, thing)
         word = lib.thing_word(thing, offset)
