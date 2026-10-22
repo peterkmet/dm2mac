@@ -4,7 +4,6 @@
 #include "action_area.h"
 #include "ids.h"
 #include "action.h"
-#include "champ_action.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"

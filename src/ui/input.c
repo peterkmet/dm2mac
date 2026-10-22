@@ -5,7 +5,6 @@
 #include "ids.h"
 #include "le.h"
 #include "action.h"
-#include "champ_action.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"

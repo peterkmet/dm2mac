@@ -6,12 +6,10 @@ block control/include/state_json.h open: module cleanup
 block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
 block engine/aspect.c open: module cleanup
-block engine/champ_action.c open: module cleanup
 block engine/damage.c open: module cleanup
 block engine/game_text.c open: module cleanup
 block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
-block engine/include/champ_action.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/inventory.h open: module cleanup
@@ -201,7 +199,6 @@ dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
-dead-api engine/include/champ_action.h:champ_action_repeat open: module cleanup
 dead-api engine/include/magic.h:magic_cast_spell open: module cleanup
 dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
@@ -271,7 +268,6 @@ decimal engine/damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/dungeon.c rule 3.12: a table of SKULL.EXE
 decimal engine/game_text.c open: module cleanup
 decimal engine/include/action.h open: module cleanup
-decimal engine/include/champ_action.h open: module cleanup
 decimal engine/include/move.h open: module cleanup
 decimal engine/magic.c rule 3.12: a table of SKULL.EXE
 decimal engine/move.c open: module cleanup
@@ -297,12 +293,10 @@ engine-write ui/ui.c open: module cleanup
 enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
-enum engine/champ_action.c open: module cleanup
 enum engine/damage.c open: module cleanup
 enum engine/game_text.c open: module cleanup
 enum engine/include/action.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
-enum engine/include/champ_action.h open: module cleanup
 enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
 enum engine/include/inventory.h open: module cleanup
@@ -339,7 +333,6 @@ enum ui/zone.c open: module cleanup
 event-comment engine/include/sound_request.h open: module cleanup
 event-comment ui/include/input.h open: module cleanup
 global engine/include/action.h open: module cleanup
-global engine/include/champ_action.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
 global engine/include/inventory.h open: module cleanup
@@ -373,14 +366,12 @@ hex ui/ui.c rule 3.12: a table of SKULL.EXE
 hex ui/view.c rule 3.12: a table of SKULL.EXE
 include control/control.c:ui.h open: module cleanup
 include engine/action.c:game.h open: module cleanup
-include engine/game.c:champ_action.h open: module cleanup
 include engine/game.c:magic.h open: module cleanup
 include engine/include/creature.h:timeline.h open: module cleanup
 include engine/include/inventory.h:timeline.h open: module cleanup
 include engine/include/magic.h:timeline.h open: module cleanup
 include engine/inventory.c:game_text.h open: module cleanup
 include engine/inventory.c:move.h open: module cleanup
-include engine/magic.c:champ_action.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
 include engine/move.c:money.h open: module cleanup
@@ -391,7 +382,6 @@ include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
 include platform/main.c:ui.h open: module cleanup
 include platform/main.c:view.h open: module cleanup
-include ui/action_area.c:champ_action.h open: module cleanup
 include ui/advanced.c:input.h open: module cleanup
 include ui/automap.c:advanced.h open: module cleanup
 include ui/automap.c:text.h open: module cleanup
@@ -404,7 +394,6 @@ include ui/include/session.h:save.h open: module cleanup
 include ui/include/text.h:game_text.h open: module cleanup
 include ui/include/ui.h:game.h open: module cleanup
 include ui/include/view.h:weather.h open: module cleanup
-include ui/input.c:champ_action.h open: module cleanup
 include ui/session.c:item.h open: module cleanup
 include ui/view.c:advanced.h open: module cleanup
 include ui/view.c:inventory.h open: module cleanup
@@ -463,7 +452,6 @@ name ui/view.c:zone_id_for_view_element open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
 notation engine/aspect.c open: module cleanup
-notation engine/champ_action.c open: module cleanup
 notation engine/damage.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup

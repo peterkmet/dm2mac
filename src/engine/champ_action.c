@@ -21,98 +21,117 @@
 #include "sound_request.h"
 #include "weather.h"
 
-#define ALL_CHARGES            0x0f
-#define ATTR_USED_UP           0x0800 /* ATTR_FLAGS bit: the item vanishes with its last charge */
-#define ATTR_THROW_POWER_SHOOT 9
+/* Item attributes that the actions read. */
+#define ATTR_THROW_POWER_SHOOT 0x09
 #define ATTR_SHOOT_ATTACK      0x0a
 #define ATTR_STEP              0x0c /* item attribute: the flight step of a missile */
+/* Item attribute bits and masks. */
+#define ALL_CHARGES            0x000f /* the charges that CHARGES_USE_ALL takes */
+#define ATTR_USED_UP           0x0800 /* ATTR_FLAGS bit: the item vanishes with its last charge */
 #define AMMO_KINDS             0x7fff
+/* Flag bits of the action area, the attacks, the creature alerts, the creature info and the redraw. */
+#define CREATURE_MELEE_REACHES 0x0020 /* creature info flag: mode 1 attacks reach the creature */
 #define FLAGS_KEEP_OPEN        0x0400 /* action.flags bit that the action area clears after an action */
+#define FRIGHTEN_ALERT_FLAGS   0x2005
+#define REDRAW_LEVEL           0x3800
+#define MELEE_ALERT_FLAGS      0x6002
+#define MELEE_PIERCES          0x8000 /* attack bit: the hit reaches creatures that CREATURE_NOT_DOOR_HIT marks */
+/* The random masks of the hit rolls and the throw. */
+#define MELEE_WEAK_RANDOM      0x0f /* the random part of the rest of a weak hit */
+#define MELEE_RANDOM           0x1f /* the random part of the hit chance, the defense, the damage, and the armor test */
+#define THROW_ATTACK_RANDOM    0x1f /* the random part of the attack of a throw */
+#define MELEE_CRITICAL_ROLL    0x3f /* a skill level above a roll of 0 to 63 doubles the damage plus a bonus */
+/* Creature info values: no fear reaches the creature, no hit reaches it. */
+#define FRIGHTEN_IMMUNE        0x0f
+#define DEXTERITY_UNHITTABLE   0xff
+/* The sound entries and priorities of the actions, and the spell base of a projectile spell action. */
+#define SOUND_HIT_PRIORITY     0x3c
+#define SOUND_ACTION_PRIORITY  0x73
+#define SPELL_BASE             0x80 /* FIELD_MODE of a projectile spell: the spell is the mode - SPELL_BASE */
+#define SOUND_HIT              0x8d /* sound entry of a door or creature that a melee action hits */
+/* Script variables that count the failed actions. */
+#define VAR_BLOCKED_ACTIONS    0x42
+#define VAR_NO_AMMO_ACTIONS    0x43
+#define VAR_CANT_ACTIONS       0x47
+/* The explosion types of the actions, and the cell of an explosion in the square center. */
+#define CENTER_CELL            0x00ff
+#define EXPLOSION_COMMAND      0xff8e
+#define EXPLOSION_SUMMON_FAIL  0xffa8
+/* action.result of a melee action when a champion stands in front. */
+#define RESULT_BLOCKED         (-1)
+/* The delays of the actions in game steps. */
+#define DELAY_BASE             2
+#define DELAY_EXTRA_SHIFT      2 /* an action delay grows by a quarter */
+#define HASTE_DELAY_SHIFT      2 /* haste cuts the delay to a quarter */
+#define DELAY_MAX              255
+#define ACTION_DOOR_DELAY      6
+#define DOOR_BREAK_DELAY       2
+#define RESULT_DELAY_BASE      8
+#define THROW_DELAY            4
+/* The power, cost, and limits of the spells and the party magic. */
 #define POWER_MIN              32
 #define ACTION_EFFECT_MAX      200
 #define HEAL_PER_STEP_MAX      10
 #define HEAL_MANA              2
-#define MAX_MANA_LIMIT         900 /* a level gain raises the maximum mana up to this */
-#define HEALTH_MAX             999
-#define STAMINA_MAX            9999
-#define DELAY_MAX              255
-#define ACTION_DOOR_DELAY      6
-#define MELEE_PIERCES          0x8000 /* attack bit: the hit reaches creatures that CREATURE_NOT_DOOR_HIT marks */
-#define MELEE_LUCK_BASE        75     /* a missed hit gets a luck test of 75 - attack */
-#define MELEE_ALERT_FLAGS      0x6002
+#define HEAL_EXPERIENCE        2 /* the experience of a heal: 2, and 2 for each healed step */
+#define SPELL_COST_BASE        7 /* the mana of a projectile spell: 7 - the skill level, at least 1 */
+#define SPELL_COST_SKILL_MAX   6
+#define SPELL_POWER_MIN        2
+#define EXPLOSION_POWER_MIN    2
+#define EXPLOSION_SUMMON_POWER 110
+#define SHIELD_POWER_FACTOR    3 /* the power of a shield: power * 3, of a statistic aura: power * 4 */
+#define AURA_POWER_SHIFT       2
+#define SUMMON_POWER_SHIFT     3 /* the level of a summoned group: the power / 8 */
+/* The melee hit: its chance, damage, experience, and stamina, and the alert chances. */
+#define MELEE_MODE_REACH       1  /* FIELD_MODE of an attack that reaches only CREATURE_MELEE_REACHES creatures */
+#define MELEE_KIND_FULL        1  /* FIELD_MELEE_KIND: full damage to creatures that take half damage */
+#define MELEE_LUCK_BASE        75 /* a missed hit gets a luck test of 75 - attack */
 #define MELEE_ALERT_CHANCE     90
-#define DEXTERITY_UNHITTABLE   0xff
-#define MELEE_RANDOM           0x1f /* the random part of the hit chance, the defense, the damage, and the armor test */
-#define MELEE_CHANCE_BASE      16   /* the hit chance: (random + dexterity + difficulty + 2 * light - base) / 2 */
-#define MELEE_FACTOR_SHIFT     5    /* the damage factor of an action is in 32nds */
-#define MELEE_WEAK_RANDOM      0xf  /* the random part of the rest of a weak hit */
-#define MELEE_CRITICAL_ROLL    0x3f /* a skill level above a roll of 0 to 63 doubles the damage plus a bonus */
+#define FRIGHTEN_ALERT_CHANCE  100
+#define MELEE_CHANCE_BASE      16 /* the hit chance: (random + dexterity + difficulty + 2 * light - base) / 2 */
+#define MELEE_FACTOR_SHIFT     5  /* the damage factor of an action is in 32nds */
 #define MELEE_CRITICAL_BONUS   10
 #define MELEE_EXPERIENCE_SHIFT 4 /* the experience of a hit: factor * damage / 16 + base */
 #define MELEE_EXPERIENCE_BASE  3
 #define MELEE_STAMINA_HIT      4 /* the stamina cost of a hit: 4 to 7, of a miss: 2 to 3 */
 #define MELEE_STAMINA_MISS     2
-#define FRIGHTEN_IMMUNE        0xf
-#define FRIGHTEN_ALERT_FLAGS   0x2005
-#define FRIGHTEN_ALERT_CHANCE  100
-#define SOUND_HIT              0x8d /* sound entry of a door or creature that a melee action hits */
-#define SOUND_HIT_PRIORITY     0x3c
-#define SOUND_ACTION_PRIORITY  0x73
-#define SPELL_BASE             0x80 /* FIELD_MODE of a projectile spell: the spell is the mode - SPELL_BASE */
-#define THROW_ATTACK_RANDOM    0x1f /* the random part of the attack of a throw */
-#define THROW_DELAY            4
+/* The throw: its experience, kinetic energy, attack, step, and fatigue. */
 #define THROW_EXPERIENCE       8
+#define THROW_EXPERIENCE_SHIFT 2 /* the experience of a throw: throw power / 4 + 12 */
+#define THROW_EXPERIENCE_BASE  12
 #define KINETIC_MAX            255
+#define THROW_KINETIC_SHIFT    2 /* the random part of the kinetic energy: 0 to kinetic / 4 + 7 */
+#define THROW_KINETIC_RANDOM   8
 #define ATTACK_MIN             40
 #define ATTACK_MAX             200
+#define THROW_ATTACK_PER_LEVEL 8
 #define STEP_MIN               5
 #define STEP_BASE              11
-#define RESULT_BLOCKED         (-1) /* action.result: a champion stands in front */
-#define VAR_BLOCKED_COUNT      0x42 /* script variables that count the failed actions */
-#define VAR_NO_AMMO_COUNT      0x43
-#define VAR_CANT_COUNT         0x47
-#define RESULT_DELAY_BASE      8
-#define EXPLOSION_SUMMON_FAIL  0xffa8
-#define EXPLOSION_COMMAND      0xff8e
-#define EXPLOSION_SUMMON_POWER 110
-#define CENTER_CELL            0xff
-#define CREATURE_MELEE_REACHES 0x0020 /* creature info flag: mode 1 attacks reach the creature */
-#define DOOR_BREAK_DELAY       2
-#define SKILL_INFLUENCE        14
-#define SKILL_HEAL             13
+#define THROW_FATIGUE_STEP     10 /* a throw costs half the weight up to 10, then half of each further part */
+/* The skills that the actions read. */
 #define SKILL_LAST_FIGHT       11 /* the fighter and ninja sub-skills learn less away from fights */
+#define SKILL_HEAL             13
+#define SKILL_INFLUENCE        14
+/* The base skills: fighter, ninja, priest, wizard. */
+#define BASE_FIGHTER           0
+#define BASE_NINJA             1
+#define BASE_PRIEST            2
+#define BASE_WIZARD            3
+/* Experience, levels, and the limits of the statistics that a level raises. */
 #define FIGHT_TIME_LONG        150
 #define FIGHT_TIME_SHORT       40
 #define LEVEL_EXPERIENCE       512
-#define REDRAW_LEVEL           0x3800
-#define DELAY_EXTRA_SHIFT      2 /* an action delay grows by a quarter */
-#define HASTE_DELAY_SHIFT      2 /* haste cuts the delay to a quarter */
-#define DELAY_BASE             2
+#define MAX_MANA_LIMIT         900 /* a level gain raises the maximum mana up to this */
+#define HEALTH_MAX             999
+#define STAMINA_MAX            9999
+#define FIGHTER_HEALTH_FACTOR  3 /* the health gain of a level: level * 3 for a fighter, * 2 for a ninja */
 /* The maximum stamina that a level of a base skill adds: max stamina / 16, / 21, / 25, / 32. */
 #define FIGHTER_STAMINA_SHIFT  4
 #define NINJA_STAMINA_DIVISOR  21
 #define PRIEST_STAMINA_DIVISOR 25
 #define WIZARD_STAMINA_SHIFT   5
-#define FIGHTER_HEALTH_FACTOR  3 /* the health gain of a level: level * 3 for a fighter, * 2 for a ninja */
-#define SUMMON_POWER_SHIFT     3 /* the level of a summoned group: the power / 8 */
-#define MELEE_MODE_REACH       1 /* FIELD_MODE of an attack that reaches only CREATURE_MELEE_REACHES creatures */
-#define MELEE_KIND_FULL        1 /* FIELD_MELEE_KIND: full damage to creatures that take half damage */
-#define SPELL_COST_BASE        7 /* the mana of a projectile spell: 7 - the skill level, at least 1 */
-#define SPELL_COST_SKILL_MAX   6
-#define SPELL_POWER_MIN        2
-#define EXPLOSION_POWER_MIN    2
-#define SHIELD_POWER_FACTOR    3 /* the power of a shield: power * 3, of a statistic aura: power * 4 */
-#define AURA_POWER_SHIFT       2
-#define HEAL_EXPERIENCE        2  /* the experience of a heal: 2, and 2 for each healed step */
-#define THROW_FATIGUE_STEP     10 /* a throw costs half the weight up to 10, then half of each further part */
-#define THROW_EXPERIENCE_SHIFT 2  /* the experience of a throw: throw power / 4 + 12 */
-#define THROW_EXPERIENCE_BASE  12
-#define THROW_KINETIC_SHIFT    2 /* the random part of the kinetic energy: 0 to kinetic / 4 + 7 */
-#define THROW_KINETIC_RANDOM   8
-#define THROW_ATTACK_PER_LEVEL 8
-enum { BASE_FIGHTER, BASE_NINJA, BASE_PRIEST, BASE_WIZARD };
 
-ActionRepeat champ_action_repeat[CHAMPION_MAX][2];
+ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
 /* action.result after the last champ_perform_action (damage >= 0, failure < 0). */
 int16_t g_champ_action_result;
 /* The creature group in front of the champion of the current action. */
@@ -520,7 +539,7 @@ static int champ_action_melee_attack(int champ, int mode, int x, int y, int skil
             /* a champion in front of the attacker: it cannot reach */
             action.result = RESULT_BLOCKED;
             action.redraw_delay = (int16_t)max16(
-                1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_COUNT, 1, GLOBAL_VAR_ADD)));
+                1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_ACTIONS, 1, GLOBAL_VAR_ADD)));
             return 0;
         }
     }
@@ -740,7 +759,7 @@ static int action_shoot(ActionRun *a)
     uint16_t ammo = a->c->slots[other];
     if (!item_is_ammo_for_hand(a->champ, a->hand, ammo)) {
         if (!a->repeated) {
-            show_failure(RESULT_NO_AMMO, VAR_NO_AMMO_COUNT);
+            show_failure(RESULT_NO_AMMO, VAR_NO_AMMO_ACTIONS);
             action.result_ammo = item_attr(a->item, ATTR_AMMO);
             action.result_flag = (int16_t)other;
             a->experience = 0;
@@ -855,7 +874,7 @@ static int champ_run_command(ActionRun *a, int command)
         return champ_action_minion(a->champ, command, a->item, a->skill, a->power, &a->experience, &a->delay);
     case COMMAND_WARP:
         if (!move_party_warp_to_marker())
-            show_failure(RESULT_CANT, VAR_CANT_COUNT);
+            show_failure(RESULT_CANT, VAR_CANT_ACTIONS);
         return 1;
     default:
         return 1;
@@ -899,7 +918,7 @@ int champ_perform_action(int champ, int index)
     if (a.experience)
         champ_add_experience(champ, a.skill, (uint32_t)a.experience);
     if (done) {
-        ActionRepeat *r = &champ_action_repeat[champ][hand];
+        ActionRepeat *r = &g_action_repeats[champ][hand];
         r->left = (uint16_t)action_field(FIELD_REPEATS);
         if (r->left) {
             r->count = r->left;
@@ -924,7 +943,7 @@ bool champ_execute_selected_action(int index)
         done = champ_perform_action(champ, index);
         g_champ_action_result = action.result;
         ActionRepeat *r = action.hand == SLOT_ACTION_HAND || action.hand == SLOT_READY_HAND
-                              ? &champ_action_repeat[champ][action.hand]
+                              ? &g_action_repeats[champ][action.hand]
                               : NULL;
         int use = !r || !r->left || (r->fresh && !rand_below((uint16_t)(r->count + 1)));
         if (use && champ_use_action_charge(champ) && r) {
@@ -945,7 +964,7 @@ void champ_process_repeated_actions(void)
     int16_t saved = -1;
     for (int champ = 0; champ < game.champion_count; champ++)
         for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
-            ActionRepeat *r = &champ_action_repeat[champ][hand];
+            ActionRepeat *r = &g_action_repeats[champ][hand];
             if (!r->left)
                 continue;
             if (!champion(champ)->health || r->thing != champion(champ)->slots[hand]) {

@@ -248,7 +248,7 @@ class ActionState(ctypes.Structure):
 def assert_same_actions(rules, where):
     """The action list, the action area results, and the repeats of both."""
     lib, emu = rules.lib, rules.emu
-    mine = bytes((ctypes.c_uint8 * 64).in_dll(lib, "champ_action_repeat"))
+    mine = bytes((ctypes.c_uint8 * 64).in_dll(lib, "g_action_repeats"))
     assert mine == emu.read(G_ACTION_REPEAT, 64), where
     count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
     assert count == struct.unpack("<H", emu.read(G_ACTION_COUNT, 2))[0], where
@@ -364,7 +364,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
                     lib.champ_process_repeated_actions()
                     emu.call(CHAMP_PROCESS_REPEATED_ACTIONS)
                     rules.assert_same((n, "repeat"))
-                    repeats += any(r for r in (ctypes.c_uint16 * 32).in_dll(lib, "champ_action_repeat")[1::4])
+                    repeats += any(r for r in (ctypes.c_uint16 * 32).in_dll(lib, "g_action_repeats")[1::4])
         elif kind == 2:
             hand = rng.randrange(3)
             lib.champ_reload_hand(champ, hand)

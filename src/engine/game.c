@@ -2,7 +2,6 @@
 /* The rules of the main loop: the timeline, map changes, the wake of the party. */
 #include "game.h"
 #include "le.h"
-#include "champ_action.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"

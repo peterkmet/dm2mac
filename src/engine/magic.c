@@ -6,7 +6,6 @@
 #include "le.h"
 #include "action.h"
 #include "ai.h"
-#include "champ_action.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
