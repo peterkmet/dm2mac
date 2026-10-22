@@ -15,6 +15,7 @@
 #include "sound_request.h"
 #include "weather.h"
 #include <stdbool.h>
+#include <string.h>
 
 MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
 UiState g_ui;
@@ -25,6 +26,11 @@ Session g_session = {.slot = SAVE_SLOT_NONE};
 int g_game_mode = GAME_MODE_VANILLA;
 const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
 int g_cheat_light, g_cheat_immortal, g_cheat_food;
+
+/* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
+#define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
+#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
+#define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
 
 void champ_wake_party(void)
 {
@@ -184,4 +190,208 @@ void timeline_process(void)
             process_party_event(&e, word);
     }
     dun_set_current_map(g_game.party_map);
+}
+
+void game_enter_new_map(void)
+{
+    game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, 1);
+    g_party.move_steps = 0;
+    move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+    g_party.new_map = -1;
+}
+
+void game_run_party_clocks(void)
+{
+    if (g_game.magic_light[MAGIC_HASTE])
+        g_game.magic_light[MAGIC_HASTE]--;
+    if (!(g_game.game_time & (g_party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK)))
+        champ_apply_time_effects();
+}
+
+void game_advance_time(void)
+{
+    g_game.game_time++;
+    if (!(g_game.game_time & LIGHT_BURN_PERIOD_MASK))
+        champ_burn_held_lights();
+    if (g_game.magic_light[MAGIC_ACTION_EFFECT])
+        g_game.magic_light[MAGIC_ACTION_EFFECT]--;
+    if (g_game.party_move_cooldown)
+        g_game.party_move_cooldown--;
+    if (g_game.throw_cooldown)
+        g_game.throw_cooldown--;
+}
+
+void game_start_play(void)
+{
+    g_party_sleeping = 0;
+    g_party.push_mode = 0;
+    g_main_loop.view_hidden = 0;
+    g_main_loop.tick_threshold = STEP_TICKS;
+    g_main_loop.running = 1;
+}
+
+void game_set_running(bool on)
+{
+    g_main_loop.running = on;
+}
+
+void game_set_view_hidden(bool on)
+{
+    g_main_loop.view_hidden = on;
+}
+
+void game_set_step_ticks(int ticks)
+{
+    g_main_loop.tick_threshold = ticks;
+}
+
+void game_count_timer_tick(void)
+{
+    g_main_loop.timer_ticks++;
+}
+
+bool game_count_step_tick(void)
+{
+    return ++g_main_loop.tick_count >= g_main_loop.tick_threshold;
+}
+
+void game_reset_step_ticks(void)
+{
+    g_main_loop.tick_count = 0;
+}
+
+void game_clear_end(void)
+{
+    g_main_loop.end = 0;
+}
+
+void game_request_quit(void)
+{
+    g_main_loop.quit = 1;
+}
+
+void game_clear_ui_state(void)
+{
+    memset(&g_ui, 0, sizeof g_ui);
+}
+
+void game_set_screen_refresh(bool on)
+{
+    g_ui.screen_needs_refresh = on;
+}
+
+void game_set_inventory_buttons(uint16_t buttons)
+{
+    g_ui.buttons = buttons;
+}
+
+void game_set_panel_mode(int mode)
+{
+    g_ui.panel_mode = (int16_t)mode;
+}
+
+void game_set_open_inventory(int inventory)
+{
+    g_ui.inventory = (int16_t)inventory;
+}
+
+void game_set_eye_held(bool on)
+{
+    g_ui.eye = on;
+}
+
+void game_release_eye_and_mouth(void)
+{
+    g_ui.eye = g_ui.mouth = 0;
+}
+
+void game_set_command_stop(bool on)
+{
+    g_input_command_stop = on;
+}
+
+void game_clear_drag(void)
+{
+    g_input_drag_state = 0;
+}
+
+void game_set_mouse_buttons(int pressed)
+{
+    g_input_mouse_buttons = pressed;
+}
+
+void game_set_new_game(int choice)
+{
+    g_session.new_game = choice;
+}
+
+void game_set_dungenb(bool on)
+{
+    g_session.use_dungenb = on;
+}
+
+void game_set_session_loaded(bool on)
+{
+    g_session.loaded = on;
+}
+
+void game_set_save_slot(int slot)
+{
+    g_session.slot = slot;
+}
+
+void game_note_slot_loaded(void)
+{
+    g_session.new_game = 0;
+    g_session.load_time = g_game.game_time;
+    g_session.loaded = 1;
+}
+
+void game_note_slot_saved(void)
+{
+    g_session.new_game = 0;
+    g_session.save_time = g_game.game_time;
+}
+
+void game_clear_save_times(void)
+{
+    g_session.load_time = 0;
+    g_session.save_time = 0;
+}
+
+void game_set_restart(bool on)
+{
+    g_session.restart = on;
+}
+
+void game_set_offer_restore(bool on)
+{
+    g_session.offer_restore = on;
+}
+
+void game_set_completed(bool on)
+{
+    g_session.completed = on;
+}
+
+void game_set_quit_code(int code)
+{
+    g_session.quit_code = code;
+}
+
+void game_set_exit_code(int code)
+{
+    g_session.exit_code = code;
+}
+
+void game_restore_session(const Session *session)
+{
+    g_session = *session;
+}
+
+void game_clear_cheats(void)
+{
+    g_cheat_light = 0;
+    g_cheat_immortal = 0;
+    g_cheat_food = 0;
 }

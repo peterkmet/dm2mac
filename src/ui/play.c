@@ -27,11 +27,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-/* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
-#define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
-#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
-#define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
-
 static int tick_elapsed;
 void (*g_play_frame_hook)(void);
 
@@ -40,7 +35,7 @@ void (*g_play_frame_hook)(void);
 void play_wait_frames(int count)
 {
     while (count-- > 0) {
-        g_main_loop.timer_ticks++;
+        game_count_timer_tick();
         if (g_play_frame_hook)
             g_play_frame_hook();
     }
@@ -97,7 +92,7 @@ void play_show_view(void)
         g_action.redraw_delay = 1;
     if (g_ui.inventory) {
         int champ = g_ui.inventory - 1;
-        g_ui.inventory = 0;
+        game_set_open_inventory(0);
         ui_toggle_inventory(champ);
         return;
     }
@@ -109,7 +104,7 @@ void play_hide_view(void)
 {
     if (g_main_loop.view_hidden || g_dialog.screen_mode)
         return;
-    g_main_loop.view_hidden = 1;
+    game_set_view_hidden(true);
     if (g_input_drag_state) {
         champ_drag_cancel();
         area_update(0);
@@ -135,7 +130,7 @@ void play_sleep(void)
     }
     render_sleep_message();
     play_present_viewport();
-    g_main_loop.tick_threshold = SLEEP_STEP_TICKS;
+    game_set_step_ticks(SLEEP_STEP_TICKS);
     input_set_mode(INPUT_MODE_SLEEP);
     input_flush();
 }
@@ -146,12 +141,8 @@ void play_sleep(void)
 static bool step_view(void)
 {
     for (;;) {
-        if (g_party.new_map != -1) {
-            game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, 1);
-            g_party.move_steps = 0;
-            move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
-            g_party.new_map = -1;
-        }
+        if (g_party.new_map != -1)
+            game_enter_new_map();
         timeline_process();
         if (g_party.new_map != -1)
             continue;
@@ -186,7 +177,7 @@ static bool step_view(void)
 static void step_before_input(void)
 {
     tick_elapsed = 0;
-    g_main_loop.tick_count = 0;
+    game_reset_step_ticks();
     if (step_view()) {
         g_input_feedback_busy = 0;
         input_poll();
@@ -194,25 +185,14 @@ static void step_before_input(void)
     input_release_move_arrow();
     sound_flush_requests(0);
     champ_apply_pending_damage();
-    if (g_game.magic_light[MAGIC_HASTE])
-        g_game.magic_light[MAGIC_HASTE]--;
-    if (!(g_game.game_time & (g_party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK)))
-        champ_apply_time_effects();
+    game_run_party_clocks();
     inv_update_hand_cursor();
     ui_draw_all_champion_states(1);
     if (g_main_loop.end) {
         input_reset_states();
         return;
     }
-    g_game.game_time++;
-    if (!(g_game.game_time & LIGHT_BURN_PERIOD_MASK))
-        champ_burn_held_lights();
-    if (g_game.magic_light[MAGIC_ACTION_EFFECT])
-        g_game.magic_light[MAGIC_ACTION_EFFECT]--;
-    if (g_game.party_move_cooldown)
-        g_game.party_move_cooldown--;
-    if (g_game.throw_cooldown)
-        g_game.throw_cooldown--;
+    game_advance_time();
     text_clear_expired_rows();
     input_release_move_arrow();
 }
@@ -231,11 +211,7 @@ static void step_after_input(void)
 
 void play_start_session(void)
 {
-    g_party_sleeping = 0;
-    g_party.push_mode = 0;
-    g_main_loop.view_hidden = 0;
-    g_main_loop.tick_threshold = STEP_TICKS;
-    g_main_loop.running = 1;
+    game_start_play();
     input_set_mode(INPUT_MODE_MOVE);
     game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
     g_dialog.progress_enabled = 0;
@@ -250,7 +226,7 @@ void play_start_session(void)
     }
     ui_draw_movement_arrows();
     champ_init_party_state();
-    g_session.offer_restore = 1;
+    game_set_offer_restore(true);
     creature_refresh_party_maps();
     creature_reset_active_groups();
     if (g_session.new_game)
@@ -263,8 +239,8 @@ void play_tick(void)
 {
     if (g_main_loop.end || g_main_loop.quit)
         return;
-    g_main_loop.timer_ticks++;
-    if (++g_main_loop.tick_count >= g_main_loop.tick_threshold)
+    game_count_timer_tick();
+    if (game_count_step_tick())
         tick_elapsed = 1;
     command_process_queue();
     /* the automap stops the game time; a quit (a lost game) ends all game work */

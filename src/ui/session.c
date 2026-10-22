@@ -134,7 +134,7 @@ void menu_show_picture_and_wait(void)
             break;
         play_wait_frames(1);
     }
-    g_session.new_game = MENU_REDRAW;
+    game_set_new_game(MENU_REDRAW);
     input_set_mode(INPUT_MODE_MENU);
 }
 
@@ -220,7 +220,7 @@ void session_open_slot_dialog(int id, int buttons)
 void session_close_slot_dialog(void)
 {
     input_pop_mode();
-    g_ui.screen_needs_refresh = 1;
+    game_set_screen_refresh(true);
 }
 
 /* The slot of a click in the slot list. */
@@ -404,9 +404,7 @@ static bool load_slot(const char *path)
         return false;
     if (first)
         dungeon_read_level_table();
-    g_session.new_game = 0;
-    g_session.load_time = g_game.game_time;
-    g_session.loaded = 1;
+    game_note_slot_loaded();
     return true;
 }
 
@@ -417,17 +415,17 @@ bool session_load(void)
     if (!g_session.new_game) {
         int slot = choose_load_slot();
         if (slot < 0) {
-            g_session.slot = 0; /* as in the original: a cancelled load leaves slot 0 */
+            game_set_save_slot(0); /* as in the original: a cancelled load leaves slot 0 */
             return false;
         }
-        g_session.slot = slot;
+        game_set_save_slot(slot);
         slot_path(path, slot, false);
         slot_path(bak, slot, true);
         if (!file_exists(path) && file_exists(bak)) {
             snprintf(path, sizeof path, "%s", bak);
             from_bak = true;
         } else if (!file_exists(path) && !g_session.loaded && file_exists(data_path(bak, "DUNGEON.FTL"))) {
-            g_session.new_game = 1;
+            game_set_new_game(1);
         }
     }
     bool ok = g_session.new_game ? load_new_game() : load_slot(path);
@@ -446,7 +444,7 @@ bool session_load(void)
     }
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
     g_dialog.progress_enabled = 1;
-    g_main_loop.end = 0;
+    game_clear_end();
     move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
     return true;
@@ -459,8 +457,7 @@ static bool write_slot(int slot)
     if (save_write(slot_path(path, slot, false), slot_path(bak, slot, true), g_session.save_name, gdat_current()) !=
         SAVE_OK)
         return false;
-    g_session.new_game = 0;
-    g_session.save_time = g_game.game_time;
+    game_note_slot_saved();
     return true;
 }
 
@@ -473,12 +470,12 @@ static int run_save_menu(bool *quit)
             return SAVE_SLOT_NONE;
         if (choice == SAVE_MENU_QUIT || choice == SAVE_MENU_RESTART) {
             if (choice == SAVE_MENU_RESTART)
-                g_session.restart = 1; /* a cancel below keeps it, as in the original */
+                game_set_restart(true); /* a cancel below keeps it, as in the original */
             if (g_session.load_time + QUIT_SAFE_TICKS < g_game.game_time &&
                 g_session.save_time + QUIT_SAFE_TICKS < g_game.game_time &&
                 dialog_run(dialog_draw(DIALOG_NOT_SAVED, MESSAGE_NONE)) == NOT_SAVED_CANCEL)
                 continue;
-            g_session.offer_restore = 0;
+            game_set_offer_restore(false);
             *quit = true;
             return SAVE_SLOT_NONE;
         }
@@ -491,14 +488,14 @@ static int run_save_menu(bool *quit)
 void session_save(void)
 {
     bool quit = false;
-    g_session.restart = 0;
+    game_set_restart(false);
     action_area_close();
     area_update(0);
     play_hide_view();
     timeline_rebuild_free_list();
     int slot = run_save_menu(&quit);
     if (slot >= 0) {
-        g_session.slot = slot;
+        game_set_save_slot(slot);
         dialog_draw(DIALOG_SAVING, MESSAGE_NONE);
         if (!write_slot(slot))
             dialog_run(dialog_draw(DIALOG_ERROR, MESSAGE_SAVE_FAILED));
@@ -518,7 +515,7 @@ static void run_menu(void)
     do {
         menu_draw_title();
         input_flush();
-        g_session.new_game = MENU_WAITING;
+        game_set_new_game(MENU_WAITING);
         while (g_session.new_game == MENU_WAITING && !g_main_loop.quit) {
             command_process_queue();
             play_wait_frames(1);
@@ -546,13 +543,13 @@ bool session_init(void)
 
 bool session_start_new_game(void)
 {
-    g_session.new_game = 1;
-    g_session.use_dungenb = 0;
+    game_set_new_game(1);
+    game_set_dungenb(false);
     if (!load_new_game())
         return false;
     sensor_start_timers();
-    g_main_loop.end = 0;
-    g_session.completed = 0;
+    game_clear_end();
+    game_set_completed(false);
     move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
     sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
@@ -586,16 +583,16 @@ void session_quit(void)
 {
     if (g_session.completed)
         ui_fill_zone_screen(ZONE_SCREEN, 0);
-    g_session.exit_code = g_session.completed   ? EXIT_COMPLETED
-                          : g_session.quit_code ? EXIT_PARTY_DEAD
-                          : g_session.restart   ? EXIT_RESTART
-                                                : EXIT_QUIT;
-    g_main_loop.quit = 1;
+    game_set_exit_code(g_session.completed   ? EXIT_COMPLETED
+                       : g_session.quit_code ? EXIT_PARTY_DEAD
+                       : g_session.restart   ? EXIT_RESTART
+                                             : EXIT_QUIT);
+    game_request_quit();
 }
 
 void session_complete(void)
 {
-    g_session.completed = 1;
+    game_set_completed(true);
     if (g_game_mode != GAME_MODE_TURNBASED)
         session_quit(); /* the turn-based mode stays for the next load or new game */
 }
@@ -613,10 +610,10 @@ void session_end(int party_dead)
     if (party_dead) {
         ui_fill_zone_screen(ZONE_SCREEN, 0);
         if (g_session.offer_restore) {
-            g_session.loaded = dialog_run(dialog_draw(DIALOG_THE_END, MESSAGE_NONE)) == 0;
+            game_set_session_loaded(dialog_run(dialog_draw(DIALOG_THE_END, MESSAGE_NONE)) == 0);
             if (g_session.loaded && session_load()) {
                 play_start_session();
-                g_session.loaded = 0;
+                game_set_session_loaded(false);
                 input_flush();
                 return;
             }
@@ -625,7 +622,7 @@ void session_end(int party_dead)
     ui_fill_zone_screen(ZONE_SCREEN, 0);
     if (g_session.restart || party_dead || g_main_loop.quit) {
         if (party_dead)
-            g_session.quit_code = 1;
+            game_set_quit_code(1);
         session_quit();
         return;
     }
@@ -700,7 +697,7 @@ void session_edit_champion_name(Champion *c)
     memcpy(name, c->name, sizeof name);
     memcpy(title, c->title, sizeof title);
     int16_t name_x, name_y, title_x, title_y;
-    g_ui.panel_mode = NAME_PANEL_MODE;
+    game_set_panel_mode(NAME_PANEL_MODE);
     zone_get_position(ZONE_NAME, &name_x, &name_y);
     zone_get_position(ZONE_TITLE, &title_x, &title_y);
     input_push_mode(INPUT_MODE_NAME);

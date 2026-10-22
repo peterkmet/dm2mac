@@ -145,7 +145,7 @@ int dialog_draw(int id, int message)
         dialog_present();
         dialog_screen_mode(0);
     }
-    g_ui.screen_needs_refresh = 1;
+    game_set_screen_refresh(true);
     return id;
 }
 
@@ -173,7 +173,7 @@ int dialog_run(int id)
     } while (g_input_match.choice == DIALOG_NO_CHOICE && !g_main_loop.quit);
     int choice = g_input_match.choice;
     int result = id == DIALOG_VOLUME ? g_input_match.value : choice >= 1 && choice <= count ? values[choice - 1] : 0;
-    g_ui.screen_needs_refresh = 1;
+    game_set_screen_refresh(true);
     input_pop_mode();
     return result;
 }

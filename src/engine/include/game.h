@@ -6,6 +6,7 @@
 /* The main loop state of the game rules: the step timing, the map changes, and the party wake. */
 
 #include "save.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 /* The timing of the main loop. */
@@ -101,5 +102,89 @@ extern int g_cheat_food;     /* food and water do not go down */
 
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int x, int y, int map, int leaving);
+
+/* The game step */
+/* The party arrives on the map that it entered in this step (g_party.new_map): the walk ends there. */
+void game_enter_new_map(void);
+/* The haste of the party runs down; the champion clocks run each 64 game steps (each 16 while the party sleeps). */
+void game_run_party_clocks(void);
+/* The game time goes on one step: held lights burn down, the action effect and the cooldowns run down. */
+void game_advance_time(void);
+
+/* The main loop */
+/* The party is awake and pushes nothing; the main loop runs game steps at the normal speed. */
+void game_start_play(void);
+/* The game runs (on) or pauses. */
+void game_set_running(bool on);
+/* The viewport shows no dungeon (on: pause, sleep) or the dungeon. */
+void game_set_view_hidden(bool on);
+/* The timer ticks of a game step. */
+void game_set_step_ticks(int ticks);
+/* One timer tick (60 Hz) passes. */
+void game_count_timer_tick(void);
+/* One timer tick of the game step passes; true when the step is due. */
+bool game_count_step_tick(void);
+/* A new game step starts: no timer ticks of it passed. */
+void game_reset_step_ticks(void);
+/* A loaded or a new game runs: the end of the last game is over. */
+void game_clear_end(void);
+/* The program ends. */
+void game_request_quit(void);
+
+/* The interface state */
+/* No inventory is open, nothing is held or pressed. */
+void game_clear_ui_state(void);
+/* The next drawing of the champion states redraws the whole open inventory (on). */
+void game_set_screen_refresh(bool on);
+/* The inventory buttons that show pressed. */
+void game_set_inventory_buttons(uint16_t buttons);
+/* What the inventory panel shows. */
+void game_set_panel_mode(int mode);
+/* The champion ordinal (champion + 1) of the open inventory, 0 none. */
+void game_set_open_inventory(int inventory);
+/* The eye of the inventory is held (on) or released. */
+void game_set_eye_held(bool on);
+/* The eye and the mouth of the inventory are released. */
+void game_release_eye_and_mouth(void);
+
+/* The input state */
+/* The last command stops the command processing of this tick (on). */
+void game_set_command_stop(bool on);
+/* No champion portrait or object is dragged. */
+void game_clear_drag(void);
+/* The mouse buttons that are down: INPUT_BUTTON_* bits. */
+void game_set_mouse_buttons(int pressed);
+
+/* The session */
+/* What the next session_load does: 1 starts DUNGEON.DAT, 0 loads a slot (or a start menu state). */
+void game_set_new_game(int choice);
+/* The new game reads DUNGENB.DAT when it exists (on). */
+void game_set_dungenb(bool on);
+/* A game is in memory (on): the end of the game can load the last slot again. */
+void game_set_session_loaded(bool on);
+/* The slot of the last load or save, SAVE_SLOT_NONE. */
+void game_set_save_slot(int slot);
+/* A slot was loaded: the load time is now, a game is in memory. */
+void game_note_slot_loaded(void);
+/* A slot was saved: the save time is now. */
+void game_note_slot_saved(void);
+/* No load and no save count for the question at quit. */
+void game_clear_save_times(void);
+/* The player chose to restart the program (on). */
+void game_set_restart(bool on);
+/* The end of the game offers the load of the last slot (on). */
+void game_set_offer_restore(bool on);
+/* The party finished the game (on). */
+void game_set_completed(bool on);
+/* The exit code that session_quit gives a non-zero value: the party died. */
+void game_set_quit_code(int code);
+/* The exit code of the program. */
+void game_set_exit_code(int code);
+/* The session is again as session was (a copy from before a quick load). */
+void game_restore_session(const Session *session);
+
+/* The cheats */
+/* All cheats are off. */
+void game_clear_cheats(void);
 
 #endif /* DM2_ENGINE_GAME_H */

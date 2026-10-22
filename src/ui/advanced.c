@@ -71,9 +71,7 @@ void advanced_reset(void)
 {
     close_automap();
     lost = false;
-    g_cheat_light = 0;
-    g_cheat_immortal = 0;
-    g_cheat_food = 0;
+    game_clear_cheats();
 }
 
 /* Movement keys */
@@ -155,19 +153,19 @@ enum QuickLoadResult advanced_quick_load(void)
     }
     Session kept = g_session;
     /* play_start_session shows no LOADED dialog and starts no new game */
-    g_session.loaded = 0;
-    g_session.new_game = 0;
+    game_set_session_loaded(false);
+    game_set_new_game(0);
     bool loaded = session_start_save(path);
     bool restored = loaded || (!lost && session_start_save(keep));
     if (restored)
         remove(keep); /* else QUICK.TMP keeps the running game */
-    g_session = kept;
+    game_restore_session(&kept);
     if (!restored) {
         /* the dungeon is empty: the game cannot go on */
         os_log("cannot load %s or the running game in %s", path, keep);
         if (g_game_mode != GAME_MODE_TURNBASED) {
             session_quit();
-            g_session.exit_code = EXIT_GAME_LOST;
+            game_set_exit_code(EXIT_GAME_LOST);
         }
         lost = true;
         return QUICK_LOST;
@@ -175,8 +173,7 @@ enum QuickLoadResult advanced_quick_load(void)
     lost = false;
     if (loaded) {
         /* a quick load is not a saved game for the QUIT question */
-        g_session.load_time = 0;
-        g_session.save_time = 0;
+        game_clear_save_times();
         sound_set_volume(g_game.sound_volume);
         music_set_volume(g_game.music_volume);
     }

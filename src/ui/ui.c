@@ -251,9 +251,9 @@ static bool object_value_gauge(uint16_t thing, int type, ObjectGauge *g)
 
 void ui_reset(void)
 {
-    memset(&g_ui, 0, sizeof g_ui);
+    game_clear_ui_state();
     memset(&cache, 0, sizeof cache);
-    g_ui.screen_needs_refresh = 1;
+    game_set_screen_refresh(true);
     cache.shown_object = THING_NONE;
     status_box.bitmap = NULL;
     action_reset();
@@ -985,7 +985,7 @@ static void show_scroll(uint16_t scroll)
 {
     char text[TEXT_SIZE * 2], line[TEXT_SIZE * 2];
     text_decode_dungeon(text, sizeof text, scroll, SCROLL_TEXT_MODE);
-    g_ui.panel_mode = PANEL_MODE_SCROLL;
+    game_set_panel_mode(PANEL_MODE_SCROLL);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     ui_draw_viewport_image(CAT_SCROLL, 0, GFX_SCROLL_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
     int newlines = 0;
@@ -1117,7 +1117,7 @@ static bool show_object_info(uint16_t thing, bool full)
         show_scroll(thing);
         return true;
     }
-    g_ui.panel_mode = PANEL_MODE_OBJECT;
+    game_set_panel_mode(PANEL_MODE_OBJECT);
     if (!full)
         return false;
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
@@ -1147,7 +1147,7 @@ static bool show_object_info(uint16_t thing, bool full)
 static void show_food_water(void)
 {
     const Champion *c = champion(g_ui.inventory - 1);
-    g_ui.panel_mode = PANEL_MODE_FOOD;
+    game_set_panel_mode(PANEL_MODE_FOOD);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     show_gauge_bar(c->food, ZONE_FOOD_GAUGE, UI_BROWN, (GaugeRange){FOOD_MIN, FOOD_MAX}, 0);
     show_gauge_bar(c->water, ZONE_WATER_GAUGE, UI_BLUE, (GaugeRange){FOOD_MIN, FOOD_MAX}, 0);
@@ -1163,7 +1163,7 @@ static void show_food_water(void)
 static void show_closed_mouth(void)
 {
     ui_draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_CLOSED, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
-    g_ui.panel_mode = PANEL_MODE_MOUTH;
+    game_set_panel_mode(PANEL_MODE_MOUTH);
 }
 
 /* Draws the skill levels and the statistics of the champion in the inventory panel. */
@@ -1173,7 +1173,7 @@ static void show_skills_and_stats(void)
     Champion *c = champion(champ);
     char text[TEXT_SIZE];
     int16_t x, y, stat_x, unused;
-    g_ui.panel_mode = PANEL_MODE_SKILLS;
+    game_set_panel_mode(PANEL_MODE_SKILLS);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     zone_get_position(ZONE_SKILLS, &x, &y);
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
@@ -1378,9 +1378,9 @@ void ui_draw_champion_state(int champ)
         if (g_ui.screen_needs_refresh)
             d.flags |= REDRAW_ALL_INVENTORY;
         if (!g_game.sound_volume && !g_game.music_volume)
-            g_ui.buttons |= BUTTON_SOUND;
+            game_set_inventory_buttons(g_ui.buttons | BUTTON_SOUND);
         else
-            g_ui.buttons &= ~BUTTON_SOUND;
+            game_set_inventory_buttons(g_ui.buttons & ~BUTTON_SOUND);
     }
     show_inventory_frame(&d);
     if (d.flags & REDRAW_STATUS_BOX) {
@@ -1401,7 +1401,7 @@ void ui_draw_champion_state(int champ)
     if (d.box_drawn)
         offscreen_flush(&status_box, true);
     if (d.present) {
-        g_ui.screen_needs_refresh = 0;
+        game_set_screen_refresh(false);
         play_present_viewport();
     }
     c->redraw &= REDRAW_KEEP;
@@ -1424,16 +1424,16 @@ void ui_draw_all_champion_states(int tick)
 
 void ui_toggle_inventory(int champ)
 {
-    g_ui.panel_mode = PANEL_MODE_NONE;
+    game_set_panel_mode(PANEL_MODE_NONE);
     cache.shown_object = THING_NONE;
     if ((champ < CHAMPION_MAX && !champion(champ)->health) || g_ui.push_mode || g_ui.mouth || g_ui.eye)
         return;
-    g_input_command_stop = 1;
+    game_set_command_stop(true);
     int open = g_ui.inventory;
     if (champ + 1 == open)
         champ = CHAMPION_MAX;
     if (open) {
-        g_ui.inventory = 0;
+        game_set_open_inventory(0);
         Champion *c = champion(open - 1);
         if (c->health && !g_ui.candidate) {
             c->redraw |= REDRAW_STATUS_BOX;
@@ -1451,10 +1451,10 @@ void ui_toggle_inventory(int champ)
             return;
         }
     }
-    g_ui.inventory = (int16_t)(champ + 1);
+    game_set_open_inventory(champ + 1);
     memset(cache.shown_raised, 0, sizeof cache.shown_raised);
     champion(champ)->redraw |= REDRAW_ALL;
-    g_ui.buttons = 0;
+    game_set_inventory_buttons(0);
     ui_draw_champion_state(champ);
     input_set_mode(INPUT_MODE_INVENTORY);
 }
