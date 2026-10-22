@@ -43,9 +43,34 @@ static struct {
     PlatMixer *music_mixer;
     SDL_Texture *movie_tex;
     int movie_tex_w, movie_tex_h;
+    int movie_shown_w, movie_screen_w, movie_screen_h;
+    bool movie_last; /* the last present was a movie picture */
 } platform = {.filter = SCALE_NONE_FACTOR};
 
 /* Setup */
+
+/* The largest 4:3 rectangle in the middle of the window: the tube of a VGA monitor. */
+static SDL_FRect tube_rect(int w, int h)
+{
+    float sw = (float)w;
+    float sh = (float)w * SCREEN_ASPECT_H / SCREEN_ASPECT_W;
+    if (sh > h) {
+        sh = (float)h;
+        sw = (float)h * SCREEN_ASPECT_W / SCREEN_ASPECT_H;
+    }
+    return (SDL_FRect){(w - sw) / 2, (h - sh) / 2, sw, sh};
+}
+
+/* The window rectangle of the last movie picture, centered on the tube. */
+static SDL_FRect last_picture_rect(int w, int h)
+{
+    SDL_FRect screen = tube_rect(w, h);
+    float kx = screen.w / platform.movie_screen_w;
+    float ky = screen.h / platform.movie_screen_h;
+    return (SDL_FRect){screen.x + (platform.movie_screen_w - platform.movie_shown_w) / 2 * kx,
+                       screen.y + (platform.movie_screen_h - platform.movie_tex_h) / 2 * ky,
+                       platform.movie_shown_w * kx, platform.movie_tex_h * ky};
+}
 
 /* Draws the frame texture letterboxed into the window. */
 static void render_frame(void)
@@ -55,9 +80,14 @@ static void render_frame(void)
     SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
     video_layout(w, h, &s, &ox, &oy);
     SDL_FRect dst = {ox, oy, SCREEN_W * s, SCREEN_H * s};
+    SDL_Texture *tex = platform.tex;
+    if (platform.movie_last) {
+        dst = last_picture_rect(w, h);
+        tex = platform.movie_tex;
+    }
     SDL_SetRenderDrawColor(platform.ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(platform.ren);
-    SDL_RenderTexture(platform.ren, platform.tex, NULL, &dst);
+    SDL_RenderTexture(platform.ren, tex, NULL, &dst);
     SDL_RenderPresent(platform.ren);
 }
 
@@ -130,25 +160,14 @@ void plat_present(void)
         for (int x = 0; x < tw; x++)
             px[y * stride + x] = pal[src[y * tw + x]];
     SDL_UnlockTexture(platform.tex);
+    platform.movie_last = false;
     render_frame();
-}
-
-/* The largest 4:3 rectangle in the middle of the window: the tube of a VGA monitor. */
-static SDL_FRect tube_rect(int w, int h)
-{
-    float sw = (float)w;
-    float sh = (float)w * SCREEN_ASPECT_H / SCREEN_ASPECT_W;
-    if (sh > h) {
-        sh = (float)h;
-        sw = (float)h * SCREEN_ASPECT_W / SCREEN_ASPECT_H;
-    }
-    return (SDL_FRect){(w - sw) / 2, (h - sh) / 2, sw, sh};
 }
 
 void plat_present_movie(const MoviePicture *p)
 {
     uint32_t pal[PALETTE_COLORS], *px;
-    int pitch, w, h;
+    int pitch;
     if (!platform.movie_tex || platform.movie_tex_w != p->width || platform.movie_tex_h != p->height) {
         if (platform.movie_tex)
             SDL_DestroyTexture(platform.movie_tex);
@@ -171,16 +190,11 @@ void plat_present_movie(const MoviePicture *p)
             px[y * (pitch / ARGB_BYTES) + x] = pal[p->pixels[y * p->width + x]];
     SDL_UnlockTexture(platform.movie_tex);
 
-    SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
-    SDL_FRect screen = tube_rect(w, h);
-    float kx = screen.w / p->screen_width;
-    float ky = screen.h / p->screen_height;
-    SDL_FRect dst = {screen.x + (p->screen_width - p->shown_width) / 2 * kx,
-                     screen.y + (p->screen_height - p->height) / 2 * ky, p->shown_width * kx, p->height * ky};
-    SDL_SetRenderDrawColor(platform.ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(platform.ren);
-    SDL_RenderTexture(platform.ren, platform.movie_tex, NULL, &dst);
-    SDL_RenderPresent(platform.ren);
+    platform.movie_shown_w = p->shown_width;
+    platform.movie_screen_w = p->screen_width;
+    platform.movie_screen_h = p->screen_height;
+    platform.movie_last = true;
+    render_frame();
 }
 
 /* Input */
