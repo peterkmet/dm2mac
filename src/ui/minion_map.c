@@ -711,18 +711,18 @@ static void follow_minion(uint16_t link, uint16_t group, GridView *view)
 
 void mmap_draw(uint16_t thing)
 {
-    g_action.map_item = item_gdat_index(thing);
-    g_action.flags |= MAP_STATIC_CREATURES | MAP_PARTY;
+    action_set_map_item(item_gdat_index(thing));
+    action_set_map_flags(MAP_STATIC_CREATURES | MAP_PARTY, true);
     int kind = container_type(thing);
     uint16_t group = thing_word(thing, MINION_MAP_GROUP), link = 0;
     if (kind != MAP_KIND_NO_OPTIONS) {
-        g_action.flags |= MAP_HAS_OPTIONS;
+        action_set_map_flags(MAP_HAS_OPTIONS, true);
         if (kind != MAP_KIND_PLAIN) {
             link = minion_find_link_projectile(group, thing);
             if (link)
-                g_action.flags |= MAP_MINION;
+                action_set_map_flags(MAP_MINION, true);
             else if (g_action.flags & MAP_MINION)
-                g_action.flags &= ~(MAP_MINION | MAP_PANEL_DRAWN);
+                action_set_map_flags(MAP_MINION | MAP_PANEL_DRAWN, false);
         }
     }
     area = area_begin_draw(false);
@@ -732,15 +732,15 @@ void mmap_draw(uint16_t thing)
         for (int i = 0; i < g_champ_action_count; i++)
             area_draw_name(i, 0);
         mmap_draw_option_buttons(0);
-        g_action.flags |= MAP_PANEL_DRAWN;
+        action_set_map_flags(MAP_PANEL_DRAWN, true);
     }
     GridView view = {g_game.party_x, g_game.party_y, g_game.party_map, g_game.party_dir, 0, 0};
     if (kind != MAP_KIND_PLAIN && kind != MAP_KIND_NO_OPTIONS) {
         if (location_map(thing_word(thing, MINION_MAP_LOCATION)) != MAP_LOCATION_NONE)
-            g_action.flags |= MAP_MARKER;
+            action_set_map_flags(MAP_MARKER, true);
         if (kind == MAP_KIND_MINION) {
             if (!link)
-                g_action.flags &= ~MAP_MARKER;
+                action_set_map_flags(MAP_MARKER, false);
             else
                 follow_minion(link, group, &view);
         } else if (g_action.flags & MAP_MARKER) {

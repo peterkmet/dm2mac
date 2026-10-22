@@ -85,11 +85,8 @@ void play_show_view(void)
         play_present_viewport();
         return;
     }
-    g_main_loop.view_hidden = 0;
-    if (!g_action.champion)
-        g_action.dirty = 1;
-    else
-        g_action.redraw_delay = 1;
+    game_set_view_hidden(false);
+    action_request_redraw();
     if (g_ui.inventory) {
         int champ = g_ui.inventory - 1;
         game_set_open_inventory(0);

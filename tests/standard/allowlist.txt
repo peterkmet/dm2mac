@@ -14,8 +14,6 @@ decimal ui/fm.c rule 3.12: a table of SKULL.EXE
 decimal ui/input.c rule 3.12: a table of SKULL.EXE
 decimal ui/view.c rule 3.12: a table of SKULL.EXE
 engine-write ui/action_area.c rule 1.5: the action area keeps the order of the original: it sets the mode, the result and the redraw state of g_action while it draws
-engine-write ui/minion_map.c open: module cleanup
-engine-write ui/play.c open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
 hex engine/creature.c rule 3.12: a table of SKULL.EXE

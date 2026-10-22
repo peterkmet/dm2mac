@@ -98,3 +98,24 @@ void action_tick_hands(void)
             if (champion(i)->action_delay[k] && !--champion(i)->action_delay[k])
                 champ_reload_hand(i, k);
 }
+
+void action_request_redraw(void)
+{
+    if (!g_action.champion)
+        g_action.dirty = 1;
+    else
+        g_action.redraw_delay = 1;
+}
+
+void action_set_map_item(int index)
+{
+    g_action.map_item = (uint8_t)index;
+}
+
+void action_set_map_flags(unsigned flags, bool on)
+{
+    if (on)
+        g_action.flags |= flags;
+    else
+        g_action.flags &= ~flags;
+}

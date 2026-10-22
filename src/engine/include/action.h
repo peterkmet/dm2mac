@@ -7,6 +7,7 @@
 
 #include "champion.h"
 #include "save.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 /* What the action area shows. */
@@ -76,5 +77,11 @@ void action_tick_hands(void);
 void action_area_open_hand(int champ, int hand);
 /* Opens the spell panel of champ in the action area. */
 void action_area_open_spells(int champ);
+/* The action area redraws: the whole area while no panel is open, else the open panel after one update. */
+void action_request_redraw(void);
+/* The GDAT index of the minion map that the action area shows. */
+void action_set_map_item(int index);
+/* Sets (on) or clears the minion map flags MAP_*. */
+void action_set_map_flags(unsigned flags, bool on);
 
 #endif /* DM2_ENGINE_ACTION_H */
