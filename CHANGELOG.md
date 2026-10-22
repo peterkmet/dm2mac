@@ -32,6 +32,9 @@ All notable changes to this project are in this file. The format follows [Keep a
 - Turn-based mode: `--mode turnbased` plays through the control socket with the commands `get_state`, `get_view`, `get_map`, `act`, `act_many`, `wait`, `save`, `load`, and `new_game`. The game time stands still between requests; a turn runs until the party can act again. Details: `docs/turnbased-mode.md`.
 - `--saves DIR` sets the folder of `QUICK.DAT` in all modes.
 - `dm2-play`: the forms `act <action> [args]` and `act_many <list>`, `--brief` for a short text summary, and a call log in `playthroughs/current/coordinator/calls.log` (`DM2_PLAY_LOG_DIR`).
+- Windows build: `make windows` builds `build/dm2.exe` with MinGW-w64 and the SDL3 MinGW package; the turn-based mode and `--control` need macOS.
+- `LICENSE` (GPL-3.0-or-later) and an SPDX line in each source file.
+- `tools/rename-symbol` renames a public symbol in `src/`, `tests/`, and the docs; `tools/standard-allowlist` regenerates `tests/standard/allowlist.txt`.
 
 ### Changed
 
@@ -43,6 +46,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 - Module cleanup of the C port (`docs/superpowers/2026-10-07-module-cleanup-plan.md`): named constants instead of literals, named accessors for the thing records and the packed fields (rule 10), one definition per constant in the header of its owner, a `Prefixes` line in each header with 104 renamed functions, function splits of all functions over 60 lines, and `bool` predicates. `tests/standard_allowlist.txt` keeps only tables of `SKULL.EXE`, the save record packing, and the layer violations.
 - `docs/coding-standard.md`: rule 10 (packed fields), the notation of constants (hex or decimal), accessor headers (rule 2), and prefix owners (rule 7). The build uses `-Wmissing-prototypes`.
 - The decompiled code is in `reference/decomp/`. `tools/test-suite` replaces `scripts/test-suite`. `docs/todo.md` replaces `TODO.md`.
+- The dm style refactor (`docs/superpowers/2026-10-21-dm-style-code.md`): the C port moves from `port/src/` to `src/` with five layers (`data/`, `engine/`, `ui/`, `control/`, `platform/`); the Python tools move to `tools/dm2tools/` and the test helpers to `tests/dm2test/`; `docs/coding-standard.md` has the new rules, and `tests/standard/test_standard.py` checks them with no open violation; one type per parameter name; `ui/` changes engine state only through engine functions; `make` fails on a warning.
 
 ### Fixed
 
