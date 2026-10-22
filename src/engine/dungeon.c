@@ -172,7 +172,7 @@ static bool read_things(FILE *f, int type, int count_in_file, bool new_game)
     dun.thing_count[type] = count;
     put_le16(dun.header + HEADER_THING_COUNTS + 2 * type, count);
     dun.things[type] = calloc(count, thing_size[type]);
-    if (!dun.things[type])
+    if (count && !dun.things[type]) /* calloc of 0 records may give NULL */
         os_fatal("out of memory");
     if (!read_bytes(f, dun.things[type], (size_t)thing_size[type] * count_in_file))
         return false;
