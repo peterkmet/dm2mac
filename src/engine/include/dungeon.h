@@ -427,7 +427,7 @@ static inline uint8_t group_creature(uint16_t group)
 {
     return thing_byte(group, GROUP_CREATURE);
 }
-static inline void group_set_creature(uint16_t group, uint8_t type)
+static inline void group_set_creature(uint16_t group, int type)
 {
     set_thing_byte(group, GROUP_CREATURE, type);
 }
@@ -436,7 +436,7 @@ static inline uint8_t group_active(uint16_t group)
 {
     return thing_byte(group, GROUP_ACTIVE);
 }
-static inline void group_set_active(uint16_t group, uint8_t index)
+static inline void group_set_active(uint16_t group, int index)
 {
     set_thing_byte(group, GROUP_ACTIVE, index);
 }
@@ -532,7 +532,7 @@ static inline uint16_t weapon_charges(uint16_t weapon)
 {
     return thing_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK);
 }
-static inline void weapon_set_charges(uint16_t weapon, uint16_t charges)
+static inline void weapon_set_charges(uint16_t weapon, int16_t charges)
 {
     set_thing_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK, charges);
 }
@@ -540,7 +540,7 @@ static inline uint16_t armour_charges(uint16_t armour)
 {
     return thing_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK);
 }
-static inline void armour_set_charges(uint16_t armour, uint16_t charges)
+static inline void armour_set_charges(uint16_t armour, int16_t charges)
 {
     set_thing_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK, charges);
 }
@@ -549,7 +549,7 @@ static inline uint16_t misc_charges(uint16_t misc)
 {
     return thing_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK);
 }
-static inline void misc_set_charges(uint16_t misc, uint16_t charges)
+static inline void misc_set_charges(uint16_t misc, int16_t charges)
 {
     set_thing_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK, charges);
 }
@@ -558,7 +558,7 @@ static inline uint16_t misc_stack(uint16_t misc)
 {
     return thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK);
 }
-static inline void misc_set_stack(uint16_t misc, uint16_t count)
+static inline void misc_set_stack(uint16_t misc, int count)
 {
     set_thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK, count);
 }
@@ -566,7 +566,7 @@ static inline uint16_t potion_power(uint16_t potion)
 {
     return thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK);
 }
-static inline void potion_set_power(uint16_t potion, uint16_t power)
+static inline void potion_set_power(uint16_t potion, int power)
 {
     set_thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK, power);
 }
@@ -574,7 +574,7 @@ static inline uint16_t potion_type(uint16_t potion)
 {
     return thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK);
 }
-static inline void potion_set_type(uint16_t potion, uint16_t type)
+static inline void potion_set_type(uint16_t potion, int type)
 {
     set_thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK, type);
 }
@@ -602,7 +602,7 @@ static inline uint16_t container_kind(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK);
 }
-static inline void container_set_kind(uint16_t container, uint16_t kind)
+static inline void container_set_kind(uint16_t container, int kind)
 {
     set_thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK, kind);
 }
@@ -611,7 +611,7 @@ static inline uint16_t container_type(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK);
 }
-static inline void container_set_type(uint16_t container, uint16_t type)
+static inline void container_set_type(uint16_t container, int type)
 {
     set_thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK, type);
 }
@@ -621,7 +621,7 @@ static inline uint16_t container_gdat_index(uint16_t container)
 {
     return (uint16_t)(container_type(container) | container_kind(container) << CONTAINER_INDEX_KIND_SHIFT);
 }
-static inline void container_set_gdat_index(uint16_t container, uint16_t index)
+static inline void container_set_gdat_index(uint16_t container, int index)
 {
     container_set_kind(container, index >> CONTAINER_INDEX_KIND_SHIFT);
     container_set_type(container, index);

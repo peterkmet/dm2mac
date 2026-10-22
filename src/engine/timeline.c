@@ -110,7 +110,7 @@ int timeline_add_event(const TimelineEvent *event)
     return index;
 }
 
-void timeline_delete_event(uint16_t index)
+void timeline_delete_event(int index)
 {
     fix_pending_slot();
     g_timeline.events[index].type = EVENT_NONE;
@@ -125,7 +125,7 @@ void timeline_delete_event(uint16_t index)
     }
 }
 
-void timeline_reposition_event(uint16_t index)
+void timeline_reposition_event(int index)
 {
     fix_pending_slot();
     fix_queue_slot(find_queue_slot(index));

@@ -769,7 +769,7 @@ void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, 
     a->next_action = (int8_t)action;
     if (!now)
         return;
-    if (ai_action_flag(a->action) & AI_ACTION_FLAG_INTERRUPT) {
+    if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_INTERRUPT) {
         a->interrupt = 1;
         return;
     }
@@ -1068,7 +1068,7 @@ static bool is_near_party_front(int x, int y, int map)
     return dx < NEAR_PARTY_DISTANCE && dy < NEAR_PARTY_DISTANCE;
 }
 
-bool creature_damage_current_group(uint16_t damage)
+bool creature_damage_current_group(int damage)
 {
     const CreatureInfo *info = g_ai.info;
     if (info->defense == CREATURE_NO_HURT)
@@ -1194,7 +1194,7 @@ static bool alert_wakes(uint16_t group, const ActiveGroup *a)
            f & AI_ACTION_FLAG_WAKES;
 }
 
-void creature_alert(uint16_t group, Location at, int flags, int chance, int damage)
+void creature_alert(uint16_t group, Location at, unsigned flags, int chance, int damage)
 {
     int x = at.x;
     int y = at.y;

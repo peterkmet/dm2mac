@@ -71,9 +71,9 @@ void timeline_init(uint16_t capacity);
 int timeline_add_event(const TimelineEvent *event);
 /* Removes a queued event and frees it. The last queue entry fills its slot; the next operation restores the heap
    order. */
-void timeline_delete_event(uint16_t index);
+void timeline_delete_event(int index);
 /* Restores the queue order after the time of a queued event changed. */
-void timeline_reposition_event(uint16_t index);
+void timeline_reposition_event(int index);
 /* Removes the next event and copies it to event; call timeline_is_event_due first. */
 void timeline_pop_first_event(TimelineEvent *event);
 /* Orders the queue of the first count events and links the other events into the free list. */

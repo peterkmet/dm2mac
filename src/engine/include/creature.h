@@ -336,11 +336,11 @@ void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, i
 /* Removes the group on (x, y) from the dungeon; it drops what it carries. */
 void creature_delete_group_at(int16_t x, int16_t y, int mode, int sound_map);
 /* Damages the group in the AI context; true when it was removed. */
-bool creature_damage_current_group(uint16_t damage);
+bool creature_damage_current_group(int damage);
 /* The creature in the AI context hits the group on (x, y): the damage, 0 for a miss, -1 for no group. */
 int creature_attack_group_at(int16_t x, int16_t y);
 /* Alerts the group (or the group on at for THING_NONE) with the alert flags, chance and damage. */
-void creature_alert(uint16_t group, Location at, int flags, int chance, int damage);
+void creature_alert(uint16_t group, Location at, unsigned flags, int chance, int damage);
 /* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
 int creature_roll_armor_factor(uint16_t group, int amount);
 /* A damage kind that sets or clears a mood bit of the group. */

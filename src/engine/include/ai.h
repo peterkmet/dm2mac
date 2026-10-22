@@ -171,7 +171,7 @@ void ai_prepare(void);
 /* The stored path buffer of the group, big enough for size bytes; exported for the tests. */
 uint8_t *ai_store_path(int size);
 /* The flags of an action: how it moves, waits, or follows the path. */
-uint8_t ai_action_flag(int8_t action);
+uint8_t ai_action_flag(int action);
 
 /* Plan commands that the merchant commands use */
 
@@ -214,7 +214,7 @@ int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
 uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int filter);
 /* True when the wall actuator reacts to the creature in mode (ACTUATOR_MODE_*) with an item of filter; state: the
    state bits of the creature slot; exported for the tests. */
-int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state);
+int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, uint16_t state);
 /* The AI marker text on the square in the AI cache for the level delta (1: also the markers of level 2 with bit 0)
    whose kind is in id_mask: its id (0 to 31), -1 none; exported for the tests. */
 int ai_find_marker(int level_delta, uint16_t id_mask);

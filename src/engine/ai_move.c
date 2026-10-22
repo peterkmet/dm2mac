@@ -1771,7 +1771,7 @@ uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int
     return found;
 }
 
-int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state)
+int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, uint16_t state)
 {
     if (actuator == THING_ENDOFLIST || actuator == THING_NONE)
         return 0;

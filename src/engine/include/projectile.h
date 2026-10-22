@@ -15,7 +15,7 @@ static inline uint8_t projectile_energy(uint16_t projectile)
 {
     return thing_byte(projectile, PROJECTILE_ENERGY);
 }
-static inline void projectile_set_energy(uint16_t projectile, uint8_t energy)
+static inline void projectile_set_energy(uint16_t projectile, int energy)
 {
     set_thing_byte(projectile, PROJECTILE_ENERGY, energy);
 }
@@ -23,7 +23,7 @@ static inline uint8_t projectile_hit_chance(uint16_t projectile)
 {
     return thing_byte(projectile, PROJECTILE_HIT_CHANCE);
 }
-static inline void projectile_set_hit_chance(uint16_t projectile, uint8_t chance)
+static inline void projectile_set_hit_chance(uint16_t projectile, int chance)
 {
     set_thing_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
 }
@@ -35,7 +35,7 @@ static inline uint16_t explosion_type(uint16_t explosion)
 {
     return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK);
 }
-static inline void explosion_set_type(uint16_t explosion, uint16_t type)
+static inline void explosion_set_type(uint16_t explosion, int type)
 {
     set_thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
 }
@@ -51,7 +51,7 @@ static inline uint16_t explosion_power(uint16_t explosion)
 {
     return thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK);
 }
-static inline void explosion_set_power(uint16_t explosion, uint16_t power)
+static inline void explosion_set_power(uint16_t explosion, int power)
 {
     set_thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);
 }

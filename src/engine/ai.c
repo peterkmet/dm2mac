@@ -665,7 +665,7 @@ uint8_t *ai_find_path(void)
     return ai_state.groups[g].path_size ? ai_state.groups[g].path : NULL;
 }
 
-uint8_t ai_action_flag(int8_t action)
+uint8_t ai_action_flag(int action)
 {
     return action < 0 ? 0 : g_ai_action_flags[action]; /* action -1 reads the byte before the table: 0 */
 }

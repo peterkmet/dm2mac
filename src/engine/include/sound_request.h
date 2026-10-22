@@ -84,7 +84,7 @@ int sound_load(const gdat_t *g, int category, int index, int entry, Sound *out);
    map value at the square of the sound; false when it is negative (no path). Also exported for the tests. */
 bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *out);
 /* The loudness (0-255) and stereo pan (0x0800 left to 0xf800 right) of a sound at lateral, forward. */
-void sound_volume_pan(uint8_t volume, int8_t lateral, int8_t forward, int *loudness, int *pan);
+void sound_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan);
 
 /* Requests */
 /* Asks for the sound of cue at (x, y) of the current map: delay 0 plays it now, 1 at the end of the game step, a

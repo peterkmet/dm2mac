@@ -15,7 +15,7 @@ static inline uint16_t item_type(uint16_t item)
 {
     return thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK);
 }
-static inline void item_set_type(uint16_t item, uint16_t type)
+static inline void item_set_type(uint16_t item, int type)
 {
     set_thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK, type);
 }

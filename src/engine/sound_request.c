@@ -148,7 +148,7 @@ bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundO
     return true;
 }
 
-void sound_volume_pan(uint8_t volume, int8_t lateral, int8_t forward, int *loudness, int *pan)
+void sound_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan)
 {
     *loudness = ((volume << VOLUME_SHIFT) / (forward * forward + lateral * lateral + DISTANCE_BIAS)) >> LOUDNESS_SHIFT;
     if (lateral == 0) {
