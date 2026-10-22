@@ -5,6 +5,7 @@
 #include "gdat.h"
 #include "le.h"
 #include "os.h"
+#include "ai.h"
 #include "ai_internal.h"
 #include "ai_move_internal.h"
 #include "champion.h"
@@ -21,38 +22,53 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DOOR_KEY_SEE_THROUGH      0x0d /* door value: creatures see through the closed door */
-#define DOOR_KEY_SOMETIMES_SEEN   0x10 /* ... creatures see through the moving door half of the time */
-#define DOOR_KEY_PASS_COST        0x11 /* ... the search cost of a door square */
-#define DOOR_DEFAULT_PASS_COST    6
-#define ORNAMENT_KEY_TARGET       0x0e /* ornament value: the filter value of a wall actuator ornament */
-#define ORNAMENT_KEY_LEVEL_LINK   0x11 /* ... a level link text: 0 leads down, else up */
-#define ORNAMENT_KEY_SHOOT_TARGET 0xf0 /* ... a target that ranged creatures shoot at */
-#define WALLSET_KEY_WALL_COST     0x72 /* wall set value: the search cost of a wall square */
-#define WALLSET_KEY_LIGHT         0x6d /* ... the light radius of the map */
-#define WALL_COST_BLOCKING        0x32
-#define LIGHT_RADIUS_MAX          8
-#define SENSOR_CREATURE_SLOT      0x26   /* a wall slot that a creature type uses */
-#define SLOT_STATE_BUSY           2      /* the state of a creature slot (its sensor effect bits): 2 and 3 busy */
-#define ACTUATOR_SKILL_USE        0x0001 /* g_ai.actuator_flags: the creature uses wall actuators */
-#define ACTUATOR_SWITCH           1
-#define ACTUATOR_ANY_ITEM         2
-#define ACTUATOR_ITEM             3
-#define ACTUATOR_TOGGLE           0x17
-#define ACTUATOR_BUTTON           0x18
-#define ACTUATOR_SLOT             0x1a
-#define ACTUATOR_COUNTED_ITEM     0x1b
-#define ACTUATOR_BUTTON_2         0x4a
-#define EXPLOSION_OPEN_DOOR       0x04
-#define EXPLOSION_POISON_CLOUD    0x07
-#define EXPLOSION_DOOR_SPELL      0x0d
-#define EXPLOSION_LASTING_CLOUD   0x0e /* blocks the sight */
-#define EXPLOSION_THING_BASE      0xff80
+/* The GDAT values of a door type. */
+#define DOOR_KEY_SEE_THROUGH      0x0d /* creatures see through the closed door */
+#define DOOR_KEY_SOMETIMES_SEEN   0x10 /* creatures see through the moving door half of the time */
+#define DOOR_KEY_PASS_COST        0x11 /* the search cost of a door square */
+/* The GDAT values of a wall ornament. */
+#define ORNAMENT_KEY_TARGET       0x0e /* the filter value of a wall actuator ornament */
+#define ORNAMENT_KEY_LEVEL_LINK   0x11 /* a level link text: 0 leads down, else up */
+#define ORNAMENT_KEY_SHOOT_TARGET 0xf0 /* a target that ranged creatures shoot at */
+/* The GDAT values of a wall set. */
+#define WALLSET_KEY_WALL_COST     0x72 /* the search cost of a wall square */
+#define WALLSET_KEY_LIGHT         0x6d /* the light radius of the map */
+
+/* The search costs and the light radius of the squares. */
+#define DOOR_DEFAULT_PASS_COST 6
+#define DOOR_COST_CHEAP        3  /* a door of this search cost or less costs little when half open */
+#define WALL_COST_BLOCKING     50 /* a wall of this search cost or more stops the search */
+#define LIGHT_RADIUS_MAX       8
+#define PARTY_MAP_SEARCH_COST  25 /* the cost of the search of the party distance maps */
+
+/* The sensor types of the wall actuators that creatures use. */
+#define ACTUATOR_SWITCH       0x01
+#define ACTUATOR_ANY_ITEM     0x02
+#define ACTUATOR_ITEM         0x03
+#define ACTUATOR_TOGGLE       0x17
+#define ACTUATOR_BUTTON       0x18
+#define ACTUATOR_SLOT         0x1a
+#define ACTUATOR_COUNTED_ITEM 0x1b
+#define SENSOR_CREATURE_SLOT  0x26 /* a wall slot that a creature type uses */
+#define ACTUATOR_BUTTON_2     0x4a
+/* The state of a creature slot (its sensor effect bits) from which the slot is busy. */
+#define SLOT_STATE_BUSY       2
+/* g_ai.actuator_flags. */
+#define ACTUATOR_SKILL_USE    0x0001 /* the creature uses wall actuators */
+
+/* The explosion types that the AI notices. */
+#define EXPLOSION_OPEN_DOOR     0x04
+#define EXPLOSION_POISON_CLOUD  0x07
+#define EXPLOSION_DOOR_SPELL    0x0d
+#define EXPLOSION_LASTING_CLOUD 0x0e /* blocks the sight */
+/* The payload of a missile that is an explosion: this plus the explosion type. */
+#define EXPLOSION_THING_BASE    0xff80
 
 /* Creature info words. */
 #define info_attack_range(i)        ((i)->unknown_14 >> 12)
 #define info_sight(i)               ((i)->unknown_14 & 0xf)
-#define CREATURE_NOT_SEEN_THROUGH   CREATURE_NOT_DOOR_HIT /* flag 0x20: a creature that hides the squares behind it */
+/* The creature flag 0x20: a creature that hides the squares behind it. */
+#define CREATURE_NOT_SEEN_THROUGH   CREATURE_NOT_DOOR_HIT
 /* The AI class flags (g_ai_class_flags). */
 #define AI_CLASS_SEES_ALL_SIDES     0x0100
 #define AI_CLASS_SEES_BEHIND        0x0400
@@ -82,6 +98,7 @@
 #define ITEM_SKILL_CHESTS           0x0010
 #define ITEM_SKILL_GROUPS           0x0020
 #define ITEM_SKILL_OTHER_SQUARE     0x002a
+/* The flags of an action in the AI action table. */
 #define AI_ACTION_FLAG_MOVES        0x02
 #define AI_ACTION_FLAG_BUSY         0x03
 /* Sub-commands of the shoot action (ActiveGroup.sub). */
@@ -94,66 +111,113 @@
 #define KIND_NO_LOCATION            0x10 /* the found target keeps its location */
 #define KIND_PARTY_LOCATION         0x20 /* the found target is the party square; also: needs the party seen */
 #define KIND_NO_BONUS               0x40
-/* The actions of a take from the same square (0, 1) or from the square in front (2, 3) by a random bit. */
-static const uint8_t take_actions[] = {ACTION_DROP_HERE, ACTION_DROP_HERE_2, ACTION_DROP_AHEAD_2, ACTION_DROP_AHEAD};
 
+/* The item filters of the AI (the filter argument of the item tests). */
+#define FILTER_INVERT              0x80
+#define FILTER_MASK                0x3f
+#define FILTER_ANY                 0x3f
+#define FILTER_FULL_MONEYBOX       0x3e
+#define FILTER_EMPTY_MONEYBOX      0x29
+#define FILTER_EMPTY_MONEYBOX_ELSE 0x07 /* the filter of filter 0x29 for a thing that is not a money box */
+#define FILTER_BY_VARIANT          0x10 /* filters 0x10 to 0x12: one set for each of three variants of the group */
+#define FILTER_BY_VARIANT_END      0x13
+#define FILTER_MONEYBOX_OR_VARIANT 0x28
+/* The variants of a group that have their own item filter. */
+#define FILTER_VARIANTS            3
+
+/* The search queue and the search maps. */
 #define SEARCH_QUEUE_SIZE      256
-#define SEARCH_QUEUE_MASK      (SEARCH_QUEUE_SIZE - 1)
-#define SEARCH_LEVEL_BLOCKED   0xff
-#define SEARCH_DIRECTION_TAPS  0xb400 /* the feedback of the shift register of the first search direction */
-#define VISIT_BLOCKED          0xff   /* the search cannot enter the square */
-#define CELLS_NEAR             0x03   /* ... the two cells on the near side */
-#define CELLS_FAR              0x0c
-#define SLOPE_VERTICAL         0x80 /* line slope: the main delta is 0 */
-#define SLOPE_SHIFT            6    /* line slope in 1/64 */
-#define ROLL_LOOK_AROUND       7    /* random bits: a creature that does not look that way looks in 1 of 8 tests */
-#define DOOR_COST_CHEAP        3    /* a door of this search cost or less costs little when half open */
-#define COMMAND_PAST_TABLE     0x14 /* the first command past the enabled table: it reads globals */
-#define COMMAND_AFTER_GLOBALS  0x20 /* ... the commands that read the bytes after the globals */
-#define PATH_X_SHIFT           3    /* path step: direction bits 0-2, x bits 3-7, y bits 8-12 */
-#define PATH_Y_SHIFT           8
-#define PATH_MAP_CHANGE_SHIFT  13
-/* Random bits of the test whether a creature sees an invisible party or a party in the dark. */
-#define ROLL_CHECK_ADJACENT    0x8000 /* clear: an adjacent party in front stays seen */
-#define ROLL_INVISIBLE_HIDDEN  0x4000
-#define ROLL_SIGHT             0xf
-#define ROLL_KEEP_COST         0x70 /* all clear: a hidden party target keeps 1/8 of its cost */
-#define SEARCH_LEVELS          51   /* the counts of the cost search, the last one blocks */
-#define SEARCH_CELL_SIZE       4    /* a square of a search map: distance, direction, previous square */
+#define SEARCH_LEVELS          51 /* the counts of the cost search, the last one blocks */
+#define SEARCH_CELL_SIZE       4  /* a square of a search map: distance, direction, previous square */
 #define SEARCH_COLUMN_SIZE     (MAP_SIDE_MAX * SEARCH_CELL_SIZE)
 #define SEARCH_MAPS            256 /* one search map per map number (a byte) */
 #define SEARCH_DISTANCES       256 /* the cost search counts the squares per distance (a byte) */
 #define SEARCH_MARKS           256 /* the marks of the candidates */
+/* The index bits of the search queue. */
+#define SEARCH_QUEUE_MASK      (SEARCH_QUEUE_SIZE - 1)
+/* The search counts and distances. */
+#define SEARCH_LEVEL_BLOCKED   255 /* the count of the last level of the cost search */
+#define VISIT_BLOCKED          255 /* the distance of a square that the search cannot enter */
 #define SEARCH_MOVERS_DISTANCE 6   /* beyond it groups that move do not block the search */
 #define SEARCH_STEPS           5   /* the first direction and three turns; with level changes two more */
 #define SEARCH_STEPS_LEVELS    7
+#define SEARCH_FAR             100
+#define SEARCH_FAR_RANGE       127
 #define HIDDEN_DISTANCE        4 /* beyond it an invisible party or a party in the dark stays hidden */
 #define FLEE_LINE_DISTANCE     5 /* a flee target nearer to the party must be out of its line of sight */
-#define ROLL_DARK_SHIFT        8 /* random bits 8-10: the dark hides the party by this much more */
-#define ROLL_DARK_MASK         7
-#define ROLL_LUCKY             7 /* random bits that must all be clear for a lucky step */
-#define PATH_DIR_MASK          7 /* path step and search cell: the direction */
-/* The bytes of a square of a search map. */
-enum { SEARCH_AT_DIST, SEARCH_AT_DIR, SEARCH_AT_FROM };
-/* The marks of a candidate: a target square and the best distance. */
-enum { MARK_X, MARK_Y, MARK_MAP, MARK_BEST, MARK_SIZE };
-/* The kinds of the party view target (AiCandidate.item). */
-enum { VIEW_ON_PARTY, VIEW_PARTY_SIDE, VIEW_IN_FRONT, VIEW_PARTY_AT_PIT, VIEW_AT_DISTANCE };
-/* The kinds of the door target (AiCandidate.item). */
-enum { DOOR_TARGET_PARTY = 1, DOOR_TARGET_NEXT_TO_PARTY };
-/* The kinds of the group in front target (AiCandidate.mask). */
-enum { GROUP_TARGET_ANY = 1, GROUP_TARGET_CARRIES };
-#define SEARCH_FAR               100
-#define SEARCH_FAR_RANGE         127
-#define PATH_MAP_CHANGE          0x2000
-#define PATH_KEEP_BITS           0xc000
+#define MISSILE_WATCH_RANGE    3 /* the squares in which a creature sees the missiles that fly toward it */
+#define PATH_CHECK_STEPS       5 /* the steps of a stored path that the path check tests */
+/* The feedback of the shift register of the first search direction. */
+#define SEARCH_DIRECTION_TAPS  0xb400
+/* The cells of a square that a creature reaches from the side. */
+#define CELLS_NEAR             0x03 /* the two cells on the near side */
+#define CELLS_FAR              0x0c
+
+/* The slope of a line in 1/64. */
+#define SLOPE_SHIFT    6
+#define SLOPE_VERTICAL 128 /* the main delta is 0 */
+
+/* Random bits of the sight of a creature. */
+#define ROLL_LOOK_AROUND      0x0007 /* a creature that does not look that way looks in 1 of 8 tests */
+#define ROLL_CHECK_ADJACENT   0x8000 /* clear: an adjacent party in front stays seen */
+#define ROLL_INVISIBLE_HIDDEN 0x4000
+#define ROLL_SIGHT            0x000f
+#define ROLL_KEEP_COST        0x0070 /* all clear: a hidden party target keeps 1/8 of its cost */
+#define ROLL_DARK_MASK        0x0007 /* random bits 8-10: the dark hides the party by this much more */
+#define ROLL_LUCKY            0x0007 /* random bits that must all be clear for a lucky step */
+/* The shift of the dark bits in the random bits. */
+#define ROLL_DARK_SHIFT       8
+
+/* The commands past the enabled table read the globals and the data after it in SKULL.EXE. */
+#define COMMAND_PAST_TABLE    0x14 /* the first command past the enabled table: it reads globals */
+#define COMMAND_AFTER_GLOBALS 0x20 /* ... the commands that read the bytes after the globals */
+
+/* A path step: direction bits 0-2, x bits 3-7, y bits 8-12. */
+#define PATH_DIR_MASK         0x0007 /* path step and search cell: the direction */
+#define PATH_MAP_CHANGE       0x2000
+#define PATH_KEEP_BITS        0xc000
+/* The fields of a path step. */
+#define PATH_X_SHIFT          3
+#define PATH_Y_SHIFT          8
+#define PATH_MAP_CHANGE_SHIFT 13
 /* The move command of the path check of ai_plan_path: the original reads a byte after the path buffer
    that nothing writes. */
-#define PATH_CHECK_COMMAND       0
+#define PATH_CHECK_COMMAND    0
+
+/* The bytes of a square of a search map. */
+#define SEARCH_AT_DIST            0
+#define SEARCH_AT_DIR             1
+#define SEARCH_AT_FROM            2
+/* The marks of a candidate: a target square and the best distance. */
+#define MARK_X                    0
+#define MARK_Y                    1
+#define MARK_MAP                  2
+#define MARK_BEST                 3
+#define MARK_SIZE                 4
+/* The kinds of the party view target (AiCandidate.item). */
+#define VIEW_ON_PARTY             0
+#define VIEW_PARTY_SIDE           1
+#define VIEW_IN_FRONT             2
+#define VIEW_PARTY_AT_PIT         3
+#define VIEW_AT_DISTANCE          4
+/* The kinds of the door target (AiCandidate.item). */
+#define DOOR_TARGET_PARTY         1
+#define DOOR_TARGET_NEXT_TO_PARTY 2
+/* The kinds of the group in front target (AiCandidate.mask). */
+#define GROUP_TARGET_ANY          1
+#define GROUP_TARGET_CARRIES      2
+/* A found item in the possessions of a group: this plus its cell. */
+#define POSSESSION_CELL_BASE      8
 /* AI marker levels: the markers whose id holds the sides of a square that a creature does not enter, and the
    markers of level 2 that count with them while their text shows. */
-#define MARKER_LEVEL_SIDES       1
-#define MARKER_LEVEL_SIDES_SHOWN 2
+#define MARKER_LEVEL_SIDES        1
+#define MARKER_LEVEL_SIDES_SHOWN  2
+
+/* The result of a step of the search. */
+enum SearchStep { SEARCH_STEP_SKIP, SEARCH_STEP_BLOCKED, SEARCH_STEP_ENTERED };
+
+/* The actions of a take from the same square (0, 1) or from the square in front (2, 3) by a random bit. */
+static const uint8_t take_actions[] = {ACTION_DROP_HERE, ACTION_DROP_HERE_2, ACTION_DROP_AHEAD_2, ACTION_DROP_AHEAD};
 
 AiSquareScan ai_square_scan;
 int16_t cached_light_sum = -1, cached_explosion_light_sum = -1, last_party_map = -1;
@@ -871,8 +935,6 @@ int ai_try_door_action(int mode, int x, int y, int door_x, int door_y, int dir)
     return start_door_action(mode, flags, door, x, y, tx, ty, d, distance);
 }
 
-#define MISSILE_WATCH_RANGE 3 /* the squares in which a creature sees the missiles that fly toward it */
-
 bool ai_projectile_incoming(int x, int y)
 {
     for (int16_t d = 0; d < DIR_COUNT; d++) {
@@ -1361,8 +1423,6 @@ static int possession_cell_mask(uint16_t possessions, int side)
     return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];
 }
 
-#define POSSESSION_CELL_BASE 8 /* a found item in the possessions of a group: this plus its cell */
-
 int ai_find_matching_item_inside(uint16_t thing, int filter, int side)
 {
     int16_t found_cell;
@@ -1693,17 +1753,6 @@ int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int
     }
     return 1;
 }
-
-#define FILTER_INVERT              0x80
-#define FILTER_MASK                0x3f
-#define FILTER_ANY                 0x3f
-#define FILTER_FULL_MONEYBOX       0x3e
-#define FILTER_EMPTY_MONEYBOX      0x29
-#define FILTER_EMPTY_MONEYBOX_ELSE 7    /* the filter of filter 0x29 for a thing that is not a money box */
-#define FILTER_BY_VARIANT          0x10 /* filters 0x10 to 0x12: one set for each of three variants of the group */
-#define FILTER_BY_VARIANT_END      0x13
-#define FILTER_VARIANTS            3
-#define FILTER_MONEYBOX_OR_VARIANT 0x28
 
 /* The item class bitmap of filter for the group in the AI context: parsed once per update into the scratch block.
    Returns NULL when the creature has no class text for it. */
@@ -2500,10 +2549,8 @@ static void search_enter_map(Search *s, int map)
     s->map = s->maps[map];
 }
 
-enum { SEARCH_STEP_SKIP, SEARCH_STEP_BLOCKED, SEARCH_STEP_ENTERED };
-
 /* Tries the step of the search in s->dir (DIR_LEVEL_UP, DIR_LEVEL_DOWN: the level changes) from the square it left. */
-static int search_step(Search *s)
+static enum SearchStep search_step(Search *s)
 {
     search_enter_map(s, s->from_map);
     if (s->levels && s->steps_left <= 2) {
@@ -2693,7 +2740,7 @@ int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates
         }
         s->dir = (int16_t)dir_turn(s->dir, s->turn);
         if (--s->steps_left && ((s->tail + 1) & SEARCH_QUEUE_MASK) != s->head) {
-            int step = search_step(s);
+            enum SearchStep step = search_step(s);
             if (step == SEARCH_STEP_ENTERED)
                 found = search_entered(s);
             else if (step == SEARCH_STEP_BLOCKED)
@@ -2715,9 +2762,6 @@ int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates
 }
 
 /* ---- Paths ---- */
-
-#define PATH_CHECK_STEPS      5
-#define PARTY_MAP_SEARCH_COST 25
 
 void ai_load_cached_path(void)
 {

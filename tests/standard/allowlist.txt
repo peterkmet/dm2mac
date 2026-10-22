@@ -5,7 +5,6 @@ block control/include/control.h open: module cleanup
 block control/include/state_json.h open: module cleanup
 block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
-block engine/ai_move.c open: module cleanup
 block engine/aspect.c open: module cleanup
 block engine/champ_action.c open: module cleanup
 block engine/champion.c open: module cleanup
@@ -322,7 +321,6 @@ dead-api ui/include/view.h:view_object_masks open: module cleanup
 dead-api ui/include/view.h:view_offset_creature_toward_party open: module cleanup
 dead-api ui/include/view.h:view_squares open: module cleanup
 dead-api ui/include/view.h:view_unhide_linked_squares open: module cleanup
-decimal engine/ai_move_internal.h open: module cleanup
 decimal engine/aspect.c open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -362,7 +360,6 @@ enum engine/champ_action.c open: module cleanup
 enum engine/damage.c open: module cleanup
 enum engine/game_text.c open: module cleanup
 enum engine/include/action.h open: module cleanup
-enum engine/include/ai_move.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
 enum engine/include/champ_action.h open: module cleanup
 enum engine/include/champion.h open: module cleanup
@@ -430,7 +427,6 @@ global ui/include/ui.h open: module cleanup
 global ui/include/video.h open: module cleanup
 global ui/include/view.h open: module cleanup
 global ui/include/zone.h open: module cleanup
-header engine/ai_move_internal.h open: module cleanup
 header engine/include/merchant.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
@@ -450,8 +446,6 @@ include engine/action.c:game.h open: module cleanup
 include engine/creature.c:money.h open: module cleanup
 include engine/game.c:champ_action.h open: module cleanup
 include engine/game.c:magic.h open: module cleanup
-include engine/include/ai_move.h:ai.h open: module cleanup
-include engine/include/ai_move.h:move.h open: module cleanup
 include engine/include/champion.h:timeline.h open: module cleanup
 include engine/include/creature.h:timeline.h open: module cleanup
 include engine/include/inventory.h:timeline.h open: module cleanup
@@ -461,7 +455,6 @@ include engine/inventory.c:move.h open: module cleanup
 include engine/magic.c:champ_action.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
-include engine/merchant.c:ai_move.h open: module cleanup
 include engine/merchant.c:champion.h open: module cleanup
 include engine/minion.c:item.h open: module cleanup
 include engine/move.c:money.h open: module cleanup
@@ -561,7 +554,6 @@ name ui/view.c:view_offset_creature_toward_party open: module cleanup
 name ui/view.c:zone_id_for_view_element open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
-notation engine/ai_move.c open: module cleanup
 notation engine/aspect.c open: module cleanup
 notation engine/champ_action.c open: module cleanup
 notation engine/champion.c open: module cleanup
@@ -569,7 +561,6 @@ notation engine/creature.c open: module cleanup
 notation engine/damage.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
-notation engine/include/ai_move.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
 notation engine/include/champion.h open: module cleanup
 notation engine/include/creature.h open: module cleanup

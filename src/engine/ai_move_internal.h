@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_AI_MOVE_INTERNAL_H
 #define DM2_ENGINE_AI_MOVE_INTERNAL_H
+/* Prefixes: AI_MOVE_ MOVE_KIND_ */
 
 /* Shared state of the creature movement (ai_move.c): the move directions past the map, the last read square. */
 
+#include "dungeon.h"
 #include "move.h"
 #include <stdint.h>
 
@@ -18,9 +20,9 @@ typedef struct {
     uint8_t passage;  /* the square is a seamless passage; end is its other side */
     PassageEnd end;
     uint8_t unused;
-    int8_t items_elsewhere;  /* -1 not read; 1: items or ornaments that the creature cannot reach */
-    uint8_t facing_ornament; /* a wall: the face toward the creature shows an alcove */
-    int8_t cells[4];         /* a floor: the cells that the creature reaches (cells[0] 0xff: not read);
+    int8_t items_elsewhere;   /* -1 not read; 1: items or ornaments that the creature cannot reach */
+    uint8_t facing_ornament;  /* a wall: the face toward the creature shows an alcove */
+    int8_t cells[CELL_COUNT]; /* a floor: the cells that the creature reaches (cells[0] 0xff: not read);
                                    a wall: cells[0] is the face toward the creature */
 } AiSquareScan;
 extern AiSquareScan ai_square_scan;

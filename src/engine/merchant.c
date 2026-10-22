@@ -2,7 +2,6 @@
 /* Merchant trading: the plan commands of the creature AI that a shopkeeper runs with the party in front of it. */
 #include "merchant.h"
 #include "ai.h"
-#include "ai_move.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
