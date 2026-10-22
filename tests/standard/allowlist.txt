@@ -250,12 +250,6 @@ long ui/input.c:feedback_run_op open: module cleanup
 long ui/minion_map.c:mmap_draw open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
-long ui/view.c:show_door open: module cleanup
-long ui/view.c:show_explosions open: module cleanup
-long ui/view.c:show_far_squares open: module cleanup
-long ui/view.c:show_floor_ornament open: module cleanup
-long ui/view.c:show_shop_display open: module cleanup
-long ui/view.c:show_wall_ornament open: module cleanup
 long ui/view.c:show_wall_text open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
