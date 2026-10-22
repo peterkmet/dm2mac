@@ -471,7 +471,7 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
     for (int16_t tries = (int16_t)(level - skill); tries > 0; tries--) {
         int roll = (int)(rand_next() & CAST_ROLL_MASK);
         if (imin(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
-            champ_add_experience(champ, spell->skill, experience >> ((level - skill) & SHIFT_COUNT_MASK));
+            champ_add_experience(champ, spell->skill, experience >> ((level - skill) & BIT_INDEX_MASK));
             return cast_failure(CAST_FAILED, spell);
         }
     }

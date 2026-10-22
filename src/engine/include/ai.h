@@ -27,6 +27,10 @@ static inline uint16_t ai_marker_level(uint16_t text)
 
 /* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
 #define AI_SCRIPTS_BASE        0x73020u
+#define AI_TARGET_IDLE         0x731d2u /* the target of a creature that waits or wanders */
+#define AI_CHOICES_WANDER      0x73392u /* ... of a creature that wanders at random */
+#define AI_CHOICES_NONE        0x73399u /* the plan choices of a creature that does nothing */
+/* The sizes of the AI tables and of their records. */
 #define AI_PLAN_COUNT          63
 #define AI_CLASS_COUNT         47
 #define AI_TARGET_SIZE         14
@@ -39,9 +43,6 @@ static inline uint16_t ai_marker_level(uint16_t text)
 #define AI_TARGET_KIND_COUNT   28
 #define AI_POSSESSION_KINDS    16 /* the display kinds of possession_cells, with the data after the table */
 #define AI_AFTER_COMMAND_BYTES 60
-#define AI_TARGET_IDLE         0x731d2u /* the target of a creature that waits or wanders */
-#define AI_CHOICES_NONE        0x73399u /* the plan choices of a creature that does nothing */
-#define AI_CHOICES_WANDER      0x73392u /* ... of a creature that wanders at random */
 extern const uint8_t ai_scripts[AI_SCRIPTS_SIZE];
 extern const uint32_t ai_plans[AI_PLAN_COUNT];
 extern const uint32_t ai_class_flags[AI_CLASS_COUNT];
@@ -107,15 +108,19 @@ typedef struct __attribute__((packed)) {
     uint32_t targets;     /* +0x12 address of the target list */
 } AiCandidate;
 
+/* The size of a candidate record. */
 #define AI_CANDIDATE_SIZE 22
 _Static_assert(sizeof(AiCandidate) == AI_CANDIDATE_SIZE, "the candidates of SKULL.EXE have 22 bytes");
 
+/* The sizes of the candidates, the path, and the item filters of a creature update. */
 #define AI_CANDIDATE_MAX 16
-#define SHIFT_COUNT_MASK 0x1f   /* the x86 shift uses the low 5 bits of the count */
-#define FOUND_NONE       0xffff /* a candidate or plan state without a found thing or marker */
 #define AI_PATH_MAX      49
 #define AI_PATH_BYTES    100 /* a path buffer: 2 bytes per step */
 #define FILTER_SLOTS     42  /* the item filters of a creature update */
+/* The bits of a shift count that the x86 shift uses: the low 5 bits. */
+#define BIT_INDEX_MASK   0x1f
+/* A candidate or plan state without a found thing or marker. */
+#define FOUND_NONE       0xffff
 
 /* The plan state of a group that lasts from one update to the next: the 14 bytes at 0x7f7d4 of SKULL.EXE. */
 typedef struct __attribute__((packed)) {
@@ -129,6 +134,7 @@ typedef struct __attribute__((packed)) {
     uint32_t targets;    /* 0x7f7de */
 } AiPlanCache;
 
+/* The sizes of the item counts of a creature update. */
 #define AI_COUNT_TARGETS    6 /* the target records that a count list holds */
 #define AI_COUNT_ENTRY_SIZE 4 /* per target: carried, still wanted, still wanted extra, unused */
 #define AI_COUNT_LISTS      4 /* the count lists of one creature update */
@@ -208,7 +214,9 @@ typedef struct {
     int16_t map, width;
     uint8_t cells[DISTANCE_MAP_SIDE * DISTANCE_MAP_SIDE];
 } DistanceMap;
+/* The marks of a distance map cell. */
 #define DISTANCE_NEXT_TO 0x80
+/* The distance of a cell that the search did not reach. */
 #define DISTANCE_FAR     127
 extern DistanceMap party_distance, alt_distance;
 

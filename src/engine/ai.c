@@ -21,18 +21,349 @@
 #include <stddef.h>
 #include <string.h>
 
-#define AI_GROUP_KEY_COUNT       1024 /* group record indices */
-#define AI_ACTION_FLAG_PATH      0x04 /* the action follows the cached path */
-#define AI_ACTION_FLAG_TIMED     0x03 /* the action sets the time of the last action */
-#define AI_CLASS_NO_DEATH_CLOUD  0x08
-#define STEP_INTERRUPTIBLE       0x40   /* jump byte: the step may end the animation at an interrupt */
-#define STEP_ACTS                0x80   /* jump byte: the creature acts at this step */
-#define ACTION_DELAY_EFFECT      4      /* game steps that a party action effect delays a creature */
-#define SCRATCH_BLOCKS           4      /* nested creature updates that hold a scratch block */
-#define TARGET_NO_ITEM           0xffff /* a target record without an item filter */
-#define CANDIDATE_MASK_ALL       0xffff
+/* The sizes of the AI state of the groups and of the nested updates. */
+#define AI_GROUP_KEY_COUNT 1024 /* group record indices */
+#define SCRATCH_BLOCKS     4    /* nested creature updates that hold a scratch block */
+
+/* The byte offsets of the fields of the AI table records. */
+#define STEP_AT_COMMAND         0
+#define STEP_AT_ON_DONE         1
+#define STEP_AT_ON_FAIL         2
+#define STEP_AT_ARG1            3
+#define STEP_AT_ARG2            4
+#define STEP_AT_SCAN            5
+#define STEP_AT_SCAN_ARG        6
+/* ... of a target record. */
+#define TARGET_AT_KIND          0
+#define TARGET_AT_CONDITION     1
+#define TARGET_AT_CONDITION_ARG 2
+#define TARGET_AT_ITEM          4
+#define TARGET_AT_MASK_WORD     6
+#define TARGET_AT_COST          8
+#define TARGET_AT_VALUE         9
+#define TARGET_AT_COUNT_10      10
+#define TARGET_AT_COUNT_11      11
+#define TARGET_AT_SCAN          12
+#define TARGET_AT_MORE          13
+/* ... of a plan choice and of a mood entry. */
+#define CHOICE_AT_PLAN          0
+#define CHOICE_AT_CHANCE        1
+#define CHOICE_AT_TARGETS       2
+#define CHOICE_AT_MORE          6
+#define MOOD_AT_MASK_WORD       0
+#define MOOD_AT_CHOICES         2
+
+/* The flags of an action in the AI action table. */
+#define AI_ACTION_FLAG_TIMED 0x03 /* the action sets the time of the last action */
+#define AI_ACTION_FLAG_PATH  0x04 /* the action follows the cached path */
+#define ACTION_FLAG_MOVES    0x04
+
+/* The flags of an AI class (ai_class_flags). */
+#define AI_CLASS_ALWAYS_SCANS   0x0001 /* the creature scans for plans on each update */
+#define AI_CLASS_ONE_FEAR       0x0002
+#define AI_CLASS_NO_DEATH_CLOUD 0x0008
+#define AI_CLASS_DODGES         0x0010
+#define AI_CLASS_SEARCH_NEAR    0x0020
+#define AI_CLASS_NO_FLEE        0x0040
+#define AI_CLASS_BORED          0x0400 /* class byte 1 bit 2: the creature is always bored */
+
+/* The jump byte of an animation step. */
+#define STEP_INTERRUPTIBLE 0x40 /* the step may end the animation at an interrupt */
+#define STEP_ACTS          0x80 /* the creature acts at this step */
+
+/* Game steps that a party action effect delays a creature. */
+#define ACTION_DELAY_EFFECT 4
+
+/* The filter words of a target record that filter nothing. */
+#define TARGET_NO_ITEM     0xffff /* a target record without an item filter */
+#define CANDIDATE_MASK_ALL 0xffff
+
+/* The power of the death cloud of a vanishing creature by its hit size. */
 #define DEATH_CLOUD_POWER_SMALL  110 /* the death cloud of a creature of hit size 0 */
 #define DEATH_CLOUD_POWER_MEDIUM 190
+
+/* The mood entry mask of a mood entry. */
+#define MOOD_GLOBAL_TEST 0xc000 /* mood entry mask: a global variable selects the entry */
+#define MOOD_GLOBAL_MASK 0x3fff
+
+/* Plan step directives and the next step values of a plan step. */
+#define PLAN_STEP_DIRECTIVE_COUNTER (-10) /* plan step: sets a counter of the active group */
+#define PLAN_NEXT_END               (-2)
+#define PLAN_NEXT_FAIL              (-3)
+#define PLAN_NEXT_FORWARD           (-5)
+#define PLAN_NEXT_BACK              (-6)
+#define PLAN_NEXT_STAY              (-7)
+#define PLAN_NEXT_SKIP              (-8)
+
+/* The scan byte of a plan step. */
+#define PLAN_SCAN_KIND           0x1f
+#define PLAN_SCAN_ONLY_PARTY_MAP 0x40
+#define PLAN_SCAN_PARTY_MAP      0x60 /* scan flags 0x40 without 0x20: only on the party map */
+#define PLAN_SCAN_ENDS           0x80 /* plan flags: a plan that ends when nothing is found */
+#define PLAN_SCAN_FLAGS          0xe0
+
+/* The plan of a creature that has nothing to do. */
+#define AI_IDLE_PLAN 0x11
+
+/* The plan steps that one creature update runs at most. */
+#define AI_STEP_LIMIT 32
+
+/* Mood bits that let the search flee. */
+#define SEARCH_FLAGS_FLEE 0x2048
+
+/* The attack skill bits of a creature that the candidates and the plan commands test. */
+#define CANDIDATE_MASK_NO_ATTACK 0x08
+#define ATTACK_SKILL_ITEMS       0x08
+
+/* Random bits that must all be clear for a mood change: the more bits, the rarer the change. */
+#define ROLL_FAR_NO_PLAN 0x0030
+#define ROLL_LAZY        0x0038
+#define ROLL_FAR         0x0070
+#define ROLL_HURRY_FEAR  0x0380
+#define ROLL_HURRY       0x0f80
+#define ROLL_RESTLESS    0x3000
+#define ROLL_STAYS       0x8008
+
+/* The mood changes by speed and by health. */
+#define SPEED_MOOD_STEPS    16 /* speed bits 4-7: 15 changes the bored mood on each update */
+#define FEAR_HEALTH_PERCENT 25
+
+/* The scanner kinds of a plan step (PlanStep.scan bits 0-4). */
+#define SCANNER_IDLE                0x00
+#define SCANNER_TARGETS             0x01
+#define SCANNER_ITEMS_SEEN          0x02
+#define SCANNER_ITEMS_SEEN_2        0x03
+#define SCANNER_ITEM_COUNTS         0x04
+#define SCANNER_ITEM_COUNTS_2       0x05
+#define SCANNER_ITEMS_SEEN_ATTACK   0x06
+#define SCANNER_ITEMS_SEEN_ATTACK_2 0x07
+#define SCANNER_PATH_13             0x08
+#define SCANNER_HOME                0x09
+#define SCANNER_MINION              0x0a
+#define SCANNER_PATH_5              0x0b
+#define SCANNER_CARRIED             0x0c
+#define SCANNER_CARRIED_2           0x0d
+#define SCANNER_WANDER              0x0e
+#define SCANNER_ITEM_CLASS          0x0f
+#define SCANNER_PARTY               0x10
+
+/* The target kind that the item counts skip. */
+#define TARGET_KIND_UNCOUNTED 0x08
+
+/* The scan kinds of the target records that the scanners read. */
+#define TARGET_PATH_13         0x05
+#define TARGET_SCAN_HOME       0x06
+#define TARGET_MINION          0x07
+#define TARGET_SCAN_CARRIED    0x0f
+#define TARGET_SCAN_CARRIED_2  0x10
+#define TARGET_SCAN_KIND11     0x11
+#define TARGET_PATH_5          0x12
+#define TARGET_SCAN_MOOD_SET   0x13 /* the target records that set mood bits */
+#define TARGET_SCAN_MOOD_CLEAR 0x14 /* ... that clear them */
+#define TARGET_SCAN_ITEMS      0x14 /* candidate kind of the item targets of seek_kind11 */
+#define TARGET_SCAN_ITEM_CLASS 0x15
+#define TARGET_PARTY           0x16
+/* The target records of the item scanners: the wanted items and the items seen, counted against them. */
+#define TARGET_SCAN_WANTED     0x01
+#define TARGET_SCAN_SEEN       0x02
+#define TARGET_SCAN_WANTED_2   0x03
+#define TARGET_SCAN_SEEN_2     0x04
+
+/* The candidate kinds of the plan state that the path scanners follow. */
+#define CACHE_KIND_5  0x05
+#define CACHE_KIND_13 0x0d
+
+/* The GDAT value of a map graphics set that keeps creatures from wandering. */
+#define MAP_KEY_NO_WANDER      0x20 /* GDAT (8, map graphics set, 0x0b, 0x65) bit: creatures do not wander */
+#define MAP_GRAPHICS_KEY_FLAGS 0x65
+
+/* Random bits of the wander scanner. */
+#define ROLL_WANDER_STOP  0x1f
+#define ROLL_WANDER_START 0x3f /* random bits: a creature starts to wander in 1 of 64 updates */
+
+/* The bytes of a count entry: the carried items and the items still wanted of each count. */
+#define COUNT_AT_CARRIED 0
+#define COUNT_AT_WANTED  1
+#define COUNT_AT_EXTRA   2
+
+/* The conditions of the target records. */
+#define COND_ALWAYS               0x00
+#define COND_SEES_PARTY_FRONT     0x01
+#define COND_ON_PARTY_SQUARE      0x02
+#define COND_CARRIES              0x03
+#define COND_ALERT                0x04
+#define COND_AT_HOME              0x05
+#define COND_MOOD_BIT             0x06
+#define COND_ON_PARTY_MAP         0x07
+#define COND_PARTY_HOLDS          0x08
+#define COND_PARTY_LEVEL          0x09
+#define COND_PARTY_AT_PIT         0x0a
+#define COND_DOOR_BEHIND          0x0b
+#define COND_STATIC_AHEAD         0x0c
+#define COND_AT_HOME_CARRIES      0x0d
+#define COND_HEALTH_BELOW         0x0e
+#define COND_FEW_OF_TYPE          0x0f
+#define COND_ON_HOME_MAP          0x10
+#define COND_MARKER               0x11
+#define COND_ON_GAME_MAP          0x12
+#define COND_MOOD_BIT_CLEAR_AWAY  0x13
+#define COND_MOOD_BIT_ON_GAME_MAP 0x14
+#define COND_AT_COUNTER           0x15
+#define COND_SEES_PARTY           0x16
+/* The bits of the condition byte. */
+#define COND_PLAN_TEST            0x40 /* true at once when the plan is the current plan */
+#define COND_MASK                 0x7f
+#define COND_NOT                  0x80
+
+/* The sensor type of the special wall beside the party. */
+#define SENSOR_SPECIAL_WALL 0x3f
+
+/* The creature types that count as the other kinds for the few-of-type condition. */
+#define CREATURE_TYPE_KIND_B 0x31
+#define CREATURE_TYPE_KIND_A 0x34
+
+/* The most groups of one creature type that the few-of-type condition allows. */
+#define FEW_OF_TYPE_MAX 4
+
+/* The plan commands of a plan step. */
+#define PLAN_CMD_MOVE_FORWARD          0x3f
+#define PLAN_CMD_TURN_SIDEWAYS         0x40
+#define PLAN_CMD_VANISH                0x41
+#define PLAN_CMD_SEEK_ITEM             0x42
+#define PLAN_CMD_STOP                  0x43
+#define PLAN_CMD_NOP                   0x44
+#define PLAN_CMD_PLACE_ON_SENSOR       0x45
+#define PLAN_CMD_FRONT_GROUP_CARRIES   0x46
+#define PLAN_CMD_SEEK_WITH_CARRIED     0x47
+#define PLAN_CMD_CHECK_PARTY_AHEAD     0x48
+#define PLAN_CMD_SHOP_WAIT             0x49
+#define PLAN_CMD_SHOP_EVALUATE         0x4a
+#define PLAN_CMD_SHOP_PAYMENT          0x4b
+#define PLAN_CMD_TURN_FRONT_GROUP      0x4c
+#define PLAN_CMD_TAKE_FROM_FRONT_GROUP 0x4d
+#define PLAN_CMD_DROP_THEN_SEEK        0x4e
+#define PLAN_CMD_SET_ACTION_A          0x4f
+#define PLAN_CMD_SET_MOOD_FLAG         0x50
+#define PLAN_CMD_GO_TO_TARGET          0x51
+#define PLAN_CMD_FOLLOW_PATH           0x52
+#define PLAN_CMD_SEEK_CACHED_ITEM      0x53
+#define PLAN_CMD_SEEK_KIND11           0x54
+#define PLAN_CMD_TURN_TO_PARTY         0x55
+#define PLAN_CMD_SHOOT_RANDOM          0x56
+#define PLAN_CMD_MOVE_RELATIVE         0x57
+#define PLAN_CMD_USE_ACTUATOR          0x58
+#define PLAN_CMD_SHOP_PAY              0x59
+#define PLAN_CMD_SET_ACTION_BY_FLAG    0x5a
+#define PLAN_CMD_CONSUME               0x5b
+#define PLAN_CMD_CHECK_TRANSFORM       0x5c
+#define PLAN_CMD_SET_SPECIAL           0x5d
+#define PLAN_CMD_SET_ACTION_B          0x5e
+#define PLAN_CMD_SET_ACTION_C          0x5f
+#define PLAN_CMD_DOOR_ACTION           0x60
+#define PLAN_CMD_RANDOM_CHANCE         0x61
+#define PLAN_CMD_CARRIES_ITEM          0x62
+
+/* The missile kind of the random shot command. */
+#define SHOT_KIND_RANDOM 0x82
+
+/* The item filters of the plan commands. */
+#define FILTER_FOOD      0x06
+#define FILTER_PLACEABLE 0x10
+#define FILTER_ANY_ITEM  0x3f
+
+/* The item skill bits of the plan commands that take and place items. */
+#define ITEM_SKILL_TAKE_CARRIED 0x08
+#define ITEM_SKILL_PLACE        0x77
+
+/* The floor sensor type where a creature places an item. */
+#define SENSOR_ITEM_SPOT 0x30
+
+/* The ornament subtype of a transform marker. */
+#define TEXT_TRANSFORM 0x01
+
+/* A position word without a square. */
+#define LOCATION_NONE 0xffff
+
+/* The operations of the set mood flag command; MOOD_OP_QUIET: no rescan. */
+#define MOOD_OP_CLEAR            0x00
+#define MOOD_OP_SET              0x01
+#define MOOD_OP_TEST             0x02
+#define MOOD_OP_SET_BY_TARGETS   0x03
+#define MOOD_OP_CLEAR_BY_TARGETS 0x04
+#define MOOD_OP_MASK             0x0f
+#define MOOD_OP_QUIET            0x10
+#define MOOD_OP_QUIET_LAST       0x12
+
+/* The checks ahead before a creature waits to place its item again. */
+#define PLACE_WAIT_CHECKS 3
+
+/* A link sensor: the exit direction does not turn with the link. */
+#define SENSOR_LINK_FIXED SENSOR_INVERTED
+
+/* The ornament subtypes of the stairs markers. */
+#define TEXT_LINK_FIRST 0x06 /* text kinds 6 and 7: stairs markers */
+#define TEXT_LINK_LAST  0x07
+
+/* The GDAT value of a wall ornament that leads up. */
+#define WALL_ORNAMENT_GOES_UP 0x11 /* GDAT value (9, ornament, 0x0b, 0x11) */
+
+/* The modes of the pit or teleporter change. */
+#define PIT_STATE_OPEN   0
+#define PIT_STATE_CLOSED 1
+#define PIT_STATE_SAME   2
+
+/* The cell of a melee attack on the nearest champion. */
+#define CELL_NEAREST 4
+
+/* The modes of the explode or spawn action. */
+#define MODE_EXPLODE 0
+#define MODE_SPAWN   1
+#define MODE_BECOME  2
+
+/* The sparks of a transform. */
+#define SPARK_CELLS      5 /* the four cells and the center */
+#define TRANSFORM_PHASES 3 /* the phases of sparks before the creature becomes the new type */
+
+/* The trait bit of a creature that closes pits behind it. */
+#define TRAIT_CLOSES_PITS 0x40
+
+/* The creature flags of the melee and missile actions. */
+#define CREATURE_ATTACKS_ANY_DIR 0x0004
+#define CREATURE_ATTACKS_FIRST   0x0100 /* flags: the creature attacks before it moves */
+
+/* The explosion types of the actions. */
+#define EXPLOSION_FIREBALL 0xff80
+#define EXPLOSION_SPARKS   0xff83
+#define EXPLOSION_CLOUD    0xff8e
+
+/* The sound entry of a creature that transformed. */
+#define SOUND_ENTRY_TRANSFORMED 0x81
+
+/* The item filter bit of an action that repeats for all matching items. */
+#define SUB_REPEAT 0x40
+
+/* The push of a melee hit by a creature. */
+#define PUSH_BY_CREATURE 0xfe
+
+/* Above this push resistance a melee hit pushes the creature only now and then. */
+#define PUSH_RESISTANCE_HEAVY 100
+
+/* Random bits of the actions. */
+#define ROLL_PUSH_HEAVY 0x0f /* a heavy creature stays only when all are clear and 2 more bits too */
+#define ROLL_STEAL      0x70 /* a steal fails the luck test only when all are clear */
+
+/* The stale register of the original that an action returns. */
+#define STALE_REGISTER 0x100
+
+/* The powers of the missiles, throws, sparks, and clouds of the actions. */
+#define SHOT_POWER_MEDIUM       16 /* a missile above power 8 flies at speed 2, above this 3 or 4 */
+#define SHOT_POWER_STRONG       32 /* ... above this 7 to 10 */
+#define THROW_POWER_MIN         20
+#define SPARK_POWER_MIN         100
+#define SPARK_POWER_RANGE       156
+#define TRANSFORM_POWER_STEP    85 /* the death cloud of a transform grows by this per phase */
+#define DODGE_CLOUD_POWER_MIN   20
+#define DODGE_CLOUD_POWER_RANGE 40
 
 AiContext ai;
 AiPartyView ai_party;
@@ -49,24 +380,6 @@ static struct {
 /* The scratch blocks of the updates in progress: item filter bitmaps (the 0x100-byte blocks of SKULL.EXE). */
 static uint8_t ai_scratch_blocks[SCRATCH_BLOCKS][FILTER_SLOTS * FILTER_BITMAP_SIZE];
 static int ai_scratch_depth;
-
-/* The byte offsets of the fields of the AI table records. */
-enum { STEP_AT_COMMAND, STEP_AT_ON_DONE, STEP_AT_ON_FAIL, STEP_AT_ARG1, STEP_AT_ARG2, STEP_AT_SCAN, STEP_AT_SCAN_ARG };
-enum {
-    TARGET_AT_KIND,
-    TARGET_AT_CONDITION,
-    TARGET_AT_CONDITION_ARG,
-    TARGET_AT_ITEM = 4,
-    TARGET_AT_MASK = 6,
-    TARGET_AT_COST = 8,
-    TARGET_AT_VALUE,
-    TARGET_AT_COUNT_10,
-    TARGET_AT_COUNT_11,
-    TARGET_AT_SCAN,
-    TARGET_AT_MORE
-};
-enum { CHOICE_AT_PLAN, CHOICE_AT_CHANCE, CHOICE_AT_TARGETS, CHOICE_AT_MORE = 6 };
-enum { MOOD_AT_MASK, MOOD_AT_CHOICES = 2 };
 
 static const uint8_t *script(uint32_t addr)
 {
@@ -90,7 +403,7 @@ AiTarget ai_target(uint32_t addr)
                       p[TARGET_AT_CONDITION],
                       (int16_t)le16(p + TARGET_AT_CONDITION_ARG),
                       le16(p + TARGET_AT_ITEM),
-                      le16(p + TARGET_AT_MASK),
+                      le16(p + TARGET_AT_MASK_WORD),
                       (int8_t)p[TARGET_AT_COST],
                       p[TARGET_AT_VALUE],
                       (int8_t)p[TARGET_AT_COUNT_10],
@@ -109,7 +422,7 @@ AiChoice ai_choice(uint32_t addr)
 
 uint16_t ai_mood_mask(uint32_t addr)
 {
-    return le16(script(addr) + MOOD_AT_MASK);
+    return le16(script(addr) + MOOD_AT_MASK_WORD);
 }
 
 /* The plan choices of a mood entry. */
@@ -394,62 +707,6 @@ AiSquare ai_square;
 DistanceMap party_distance = {.map = -1}, alt_distance = {.map = -1};
 
 /* Moods and plans. */
-
-#define MOOD_GLOBAL_TEST            0xc000 /* mood entry mask: a global variable selects the entry */
-#define MOOD_GLOBAL_MASK            0x3fff
-#define AI_CLASS_ALWAYS_SCANS       0x01 /* class flag: the creature scans for plans on each update */
-#define AI_CLASS_ONE_FEAR           0x02
-#define AI_CLASS_SEARCH_NEAR        0x20
-#define AI_CLASS_NO_FLEE            0x40
-#define AI_CLASS_DODGES             0x10
-#define AI_CLASS_BORED              (0x04 << 8) /* class byte 1 bit 2: the creature is always bored */
-#define PLAN_STEP_DIRECTIVE_COUNTER (-10)       /* plan step: sets a counter of the active group */
-#define PLAN_NEXT_END               (-2)
-#define PLAN_NEXT_FAIL              (-3)
-#define PLAN_NEXT_FORWARD           (-5)
-#define PLAN_NEXT_BACK              (-6)
-#define PLAN_NEXT_STAY              (-7)
-#define PLAN_NEXT_SKIP              (-8)
-#define PLAN_SCAN_KIND              0x1f
-#define PLAN_SCAN_FLAGS             0xe0
-#define PLAN_SCAN_PARTY_MAP         0x60 /* scan flags 0x40 without 0x20: only on the party map */
-#define PLAN_SCAN_ONLY_PARTY_MAP    0x40
-#define PLAN_SCAN_ENDS              0x80 /* plan flags: a plan that ends when nothing is found */
-#define AI_IDLE_PLAN                0x11
-#define AI_STEP_LIMIT               32
-#define SEARCH_FLAGS_FLEE           0x2048 /* mood bits that let the search flee */
-#define CANDIDATE_MASK_NO_ATTACK    0x08
-/* Random bits that must all be clear for a mood change: the more bits, the rarer the change. */
-#define ROLL_FAR_NO_PLAN            0x30
-#define ROLL_FAR                    0x70
-#define ROLL_HURRY_FEAR             0x380
-#define ROLL_HURRY                  0xf80
-#define ROLL_LAZY                   0x38
-#define ROLL_RESTLESS               0x3000
-#define ROLL_STAYS                  0x8008
-#define SPEED_MOOD_STEPS            16 /* speed bits 4-7: 15 changes the bored mood on each update */
-#define FEAR_HEALTH_PERCENT         25
-
-/* The scanner kinds of a plan step (PlanStep.scan bits 0-4). */
-enum ai_scanner {
-    SCANNER_IDLE,
-    SCANNER_TARGETS,
-    SCANNER_ITEMS_SEEN,
-    SCANNER_ITEMS_SEEN_2,
-    SCANNER_ITEM_COUNTS,
-    SCANNER_ITEM_COUNTS_2,
-    SCANNER_ITEMS_SEEN_ATTACK,
-    SCANNER_ITEMS_SEEN_ATTACK_2,
-    SCANNER_PATH_13,
-    SCANNER_HOME,
-    SCANNER_MINION,
-    SCANNER_PATH_5,
-    SCANNER_CARRIED,
-    SCANNER_CARRIED_2,
-    SCANNER_WANDER,
-    SCANNER_ITEM_CLASS,
-    SCANNER_PARTY
-};
 
 static AiCandidate *candidate_at(int i)
 {
@@ -912,29 +1169,6 @@ void ai_decide(void)
 
 /* Target scanners: they turn the target records of a plan into candidates for the path search. */
 
-#define TARGET_KIND_NO_COUNT   8    /* target kind that the item counts skip */
-#define TARGET_SCAN_ITEMS      0x14 /* candidate kind of the item targets of seek_kind11 */
-#define TARGET_SCAN_KIND11     0x11
-#define TARGET_SCAN_HOME       6
-#define TARGET_MINION          7
-#define TARGET_PATH_13         5
-#define TARGET_PATH_5          0x12
-#define TARGET_PARTY           0x16
-#define CACHE_KIND_13          0x0d
-#define CACHE_KIND_5           5
-#define MAP_KEY_NO_WANDER      0x20 /* GDAT (8, map graphics set, 0x0b, 0x65) bit: creatures do not wander */
-#define MAP_GRAPHICS_KEY_FLAGS 0x65
-#define ROLL_WANDER_START      0x3f /* random bits: a creature starts to wander in 1 of 64 updates */
-#define ROLL_WANDER_STOP       0x1f
-#define TARGET_SCAN_CARRIED    0x0f
-#define TARGET_SCAN_CARRIED_2  0x10
-#define TARGET_SCAN_ITEM_CLASS 0x15
-/* The target records of the item scanners: the wanted items and the items seen, counted against them. */
-#define TARGET_SCAN_WANTED     1
-#define TARGET_SCAN_SEEN       2
-#define TARGET_SCAN_WANTED_2   3
-#define TARGET_SCAN_SEEN_2     4
-
 /* Adds a candidate destination for the search, with its cost lowered away from the party map. */
 static void add_candidate(int kind, uint32_t record, const AiTarget *t, int scan_kind, int8_t bonus, uint16_t marker,
                           int plan, int scan_arg)
@@ -966,9 +1200,6 @@ static void add_candidate(int kind, uint32_t record, const AiTarget *t, int scan
     d->targets = record;
 }
 
-/* The bytes of a count entry: the carried items and the items still wanted of each count. */
-enum { COUNT_AT_CARRIED, COUNT_AT_WANTED, COUNT_AT_EXTRA };
-
 /* The item counts of a target list for a scan: how many of each wanted item the creature carries. */
 static AiItemCounts *creature_ai_get_item_counts(uint32_t targets, int scan)
 {
@@ -992,7 +1223,7 @@ static AiItemCounts *creature_ai_get_item_counts(uint32_t targets, int scan)
     for (int16_t i = 0; i < AI_COUNT_TARGETS;) {
         AiTarget t = ai_target(targets);
         if (t.scan == (int16_t)scan) {
-            if (t.item != TARGET_NO_ITEM && t.kind != TARGET_KIND_NO_COUNT) {
+            if (t.item != TARGET_NO_ITEM && t.kind != TARGET_KIND_UNCOUNTED) {
                 if (t.count_10 != -1) {
                     for (; pa < p; pa += AI_COUNT_ENTRY_SIZE)
                         pa[COUNT_AT_WANTED] = (int8_t)(want_a - used_a);
@@ -1235,39 +1466,6 @@ static void creature_ai_run_target_scanner(int kind, int arg, int plan, uint32_t
 
 /* Conditions of the target records. */
 
-enum ai_condition {
-    COND_ALWAYS,
-    COND_SEES_PARTY_FRONT,
-    COND_ON_PARTY_SQUARE,
-    COND_CARRIES,
-    COND_ALERT,
-    COND_AT_HOME,
-    COND_MOOD_BIT,
-    COND_ON_PARTY_MAP,
-    COND_PARTY_HOLDS,
-    COND_PARTY_LEVEL,
-    COND_PARTY_AT_PIT,
-    COND_DOOR_BEHIND,
-    COND_STATIC_AHEAD,
-    COND_AT_HOME_CARRIES,
-    COND_HEALTH_BELOW,
-    COND_FEW_OF_TYPE,
-    COND_ON_HOME_MAP,
-    COND_MARKER,
-    COND_ON_GAME_MAP,
-    COND_MOOD_BIT_CLEAR_AWAY,
-    COND_MOOD_BIT_ON_GAME_MAP,
-    COND_AT_COUNTER,
-    COND_SEES_PARTY
-};
-#define COND_PLAN_TEST       0x40 /* true at once when the plan is the current plan */
-#define COND_NOT             0x80
-#define COND_MASK            0x7f
-#define SENSOR_SPECIAL_WALL  0x3f
-#define CREATURE_TYPE_KIND_A 0x34
-#define CREATURE_TYPE_KIND_B 0x31
-#define FEW_OF_TYPE_MAX      4
-
 /* The distance between two squares along the axes. */
 static int manhattan(int x1, int y1, int x2, int y2)
 {
@@ -1432,7 +1630,7 @@ int creature_ai_test_condition(int condition, int arg, int plan)
         r = at_home && cond_carries(a);
         break;
     case COND_MOOD_BIT:
-        r = (mood & (1 << (a & SHIFT_COUNT_MASK))) != 0;
+        r = (mood & (1 << (a & BIT_INDEX_MASK))) != 0;
         break;
     case COND_ON_PARTY_MAP:
         r = ai.map == ai_party.map;
@@ -1470,10 +1668,10 @@ int creature_ai_test_condition(int condition, int arg, int plan)
         r = ai.map == game.party_map;
         break;
     case COND_MOOD_BIT_CLEAR_AWAY:
-        r = !(mood & (1 << (a & SHIFT_COUNT_MASK))) && ai.map != game.party_map;
+        r = !(mood & (1 << (a & BIT_INDEX_MASK))) && ai.map != game.party_map;
         break;
     case COND_MOOD_BIT_ON_GAME_MAP:
-        r = mood & (1 << (a & SHIFT_COUNT_MASK)) && ai.map == game.party_map;
+        r = mood & (1 << (a & BIT_INDEX_MASK)) && ai.map == game.party_map;
         break;
     case COND_AT_COUNTER:
         r = cond_at_counter(x, y, a);
@@ -1485,62 +1683,6 @@ int creature_ai_test_condition(int condition, int arg, int plan)
 }
 
 /* Plan commands: each returns AI_RESULT_DONE, AI_RESULT_FAIL, or AI_RESULT_ISSUED when it set the action. */
-
-enum ai_command {
-    PLAN_CMD_MOVE_FORWARD = 0x3f,
-    PLAN_CMD_TURN_SIDEWAYS,
-    PLAN_CMD_VANISH,
-    PLAN_CMD_SEEK_ITEM,
-    PLAN_CMD_STOP,
-    PLAN_CMD_NOP,
-    PLAN_CMD_PLACE_ON_SENSOR,
-    PLAN_CMD_FRONT_GROUP_CARRIES,
-    PLAN_CMD_SEEK_WITH_CARRIED,
-    PLAN_CMD_CHECK_PARTY_AHEAD,
-    PLAN_CMD_SHOP_WAIT,
-    PLAN_CMD_SHOP_EVALUATE,
-    PLAN_CMD_SHOP_COUNT,
-    PLAN_CMD_TURN_FRONT_GROUP,
-    PLAN_CMD_TAKE_FROM_FRONT_GROUP,
-    PLAN_CMD_DROP_THEN_SEEK,
-    PLAN_CMD_SET_ACTION_A,
-    PLAN_CMD_SET_MOOD_FLAG,
-    PLAN_CMD_GO_TO_TARGET,
-    PLAN_CMD_FOLLOW_PATH,
-    PLAN_CMD_SEEK_CACHED_ITEM,
-    PLAN_CMD_SEEK_KIND11,
-    PLAN_CMD_TURN_TO_PARTY,
-    PLAN_CMD_SHOOT_RANDOM,
-    PLAN_CMD_MOVE_RELATIVE,
-    PLAN_CMD_USE_ACTUATOR,
-    PLAN_CMD_SHOP_PAY,
-    PLAN_CMD_SET_ACTION_BY_FLAG,
-    PLAN_CMD_CONSUME,
-    PLAN_CMD_CHECK_TRANSFORM,
-    PLAN_CMD_SET_SPECIAL,
-    PLAN_CMD_SET_ACTION_B,
-    PLAN_CMD_SET_ACTION_C,
-    PLAN_CMD_DOOR_ACTION,
-    PLAN_CMD_RANDOM_CHANCE,
-    PLAN_CMD_CARRIES_ITEM
-};
-#define SHOT_KIND_RANDOM        0x82
-#define FILTER_ANY_ITEM         0x3f
-#define FILTER_FOOD             0x06
-#define FILTER_PLACEABLE        0x10
-#define ITEM_SKILL_TAKE_CARRIED 0x08
-#define ITEM_SKILL_PLACE        0x77
-#define SENSOR_ITEM_SPOT        0x30 /* floor sensor where a creature places an item */
-#define TEXT_TRANSFORM          1    /* ornament subtype: a transform marker */
-#define LOCATION_NONE           0xffff
-/* The operations of the set mood flag command; MOOD_OP_QUIET: no rescan. */
-enum { MOOD_OP_CLEAR, MOOD_OP_SET, MOOD_OP_TEST, MOOD_OP_SET_BY_TARGETS, MOOD_OP_CLEAR_BY_TARGETS };
-#define MOOD_OP_MASK         0x0f
-#define MOOD_OP_QUIET        0x10
-#define MOOD_OP_QUIET_LAST   0x12
-#define TARGET_SCAN_MOOD_SET 0x13 /* the target records that set mood bits; 0x14 clears them */
-#define ATTACK_SKILL_ITEMS   0x08
-#define PLACE_WAIT_CHECKS    3 /* the checks ahead before a creature waits to place its item again */
 
 static int facing(void)
 {
@@ -1781,7 +1923,7 @@ static int cmd_set_mood_flag(void)
     uint16_t op = (uint16_t)ai.arg2;
     uint16_t old = group_mood(ai.group_thing);
     if (op <= MOOD_OP_TEST || (op >= MOOD_OP_QUIET && op <= MOOD_OP_QUIET_LAST)) {
-        uint16_t bit = (uint16_t)(1 << (ai.arg1 & SHIFT_COUNT_MASK));
+        uint16_t bit = (uint16_t)(1 << (ai.arg1 & BIT_INDEX_MASK));
         int was_set = (old & bit) == bit;
         if ((op & MOOD_OP_MASK) == MOOD_OP_CLEAR)
             group_set_mood(ai.group_thing, old & ~bit);
@@ -1797,7 +1939,7 @@ static int cmd_set_mood_flag(void)
     for (uint32_t list = ai.cache.targets;; list += AI_TARGET_SIZE) {
         AiTarget t = ai_target(list);
         if (t.scan == kind) {
-            uint16_t mood = group_mood(ai.group_thing), bit = (uint16_t)(1 << (t.mask & SHIFT_COUNT_MASK));
+            uint16_t mood = group_mood(ai.group_thing), bit = (uint16_t)(1 << (t.mask & BIT_INDEX_MASK));
             if (!t.item)
                 group_set_mood(ai.group_thing, mood | bit);
             else if (t.item == 1)
@@ -2017,7 +2159,7 @@ int creature_ai_exec_plan_command(int command)
         return (uint8_t)shop_cmd_wait_for_offer();
     case PLAN_CMD_SHOP_EVALUATE:
         return (uint8_t)shop_cmd_evaluate_offer();
-    case PLAN_CMD_SHOP_COUNT:
+    case PLAN_CMD_SHOP_PAYMENT:
         return (uint8_t)shop_cmd_count_payment();
     case PLAN_CMD_TURN_FRONT_GROUP:
         cmd_turn_front_group();
@@ -2082,18 +2224,10 @@ int creature_ai_exec_plan_command(int command)
 
 /* Level links and pits for the creature moves. */
 
-#define SENSOR_LINK_FIXED     SENSOR_INVERTED /* a link sensor: the exit direction does not turn with the link */
-#define TEXT_LINK_FIRST       6               /* text kinds 6 and 7: stairs markers */
-#define TEXT_LINK_LAST        7
-#define WALL_ORNAMENT_GOES_UP 0x11 /* GDAT value (9, ornament, 0x0b, 0x11) */
-#define PIT_STATE_OPEN        0
-#define PIT_STATE_CLOSED      1
-#define PIT_STATE_SAME        2
-
 /* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
 int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor)
 {
-    for (int d = 0; d < 4; d++) {
+    for (int d = 0; d < DIR_COUNT; d++) {
         int16_t sx = (int16_t)(x + dir_dx[d]), sy = (int16_t)(y + dir_dy[d]);
         for (uint16_t t = dungeon_square_first_thing(party.cur_map, sx, sy); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t)) {
@@ -2152,35 +2286,6 @@ int dun_set_pit_or_teleporter_state(int x, int y, int mode)
 /* Actions: what a creature does at the acting step of its animation. Each returns 0 when it was done. */
 
 int16_t ai_dest_x, ai_dest_y;
-
-#define ACTION_FLAG_MOVES        0x04
-#define CELL_NEAREST             4
-#define MODE_EXPLODE             0 /* the modes of the explode or spawn action */
-#define MODE_SPAWN               1
-#define MODE_BECOME              2
-#define SPARK_CELLS              5 /* the four cells and the center */
-#define TRANSFORM_PHASES         3 /* the phases of sparks before the creature becomes the new type */
-#define TRAIT_CLOSES_PITS        0x40
-#define CREATURE_ATTACKS_FIRST   0x0100 /* flags: the creature attacks before it moves */
-#define CREATURE_ATTACKS_ANY_DIR 0x0004
-#define EXPLOSION_FIREBALL       0xff80
-#define EXPLOSION_SPARKS         0xff83
-#define EXPLOSION_CLOUD          0xff8e
-#define SOUND_ENTRY_TRANSFORMED  0x81
-#define SUB_REPEAT               0x40 /* item filter bit: the action repeats for all matching items */
-#define PUSH_BY_CREATURE         0xfe
-#define PUSH_RESISTANCE_HEAVY    100 /* above it a melee hit pushes the creature only now and then */
-#define ROLL_PUSH_HEAVY       0xf /* random bits: a heavy creature stays only when all are clear and 2 more bits too */
-#define STALE_REGISTER        0x100
-#define SHOT_POWER_MEDIUM     16 /* a missile above power 8 flies at speed 2, above this 3 or 4 */
-#define SHOT_POWER_STRONG     32 /* ... above this 7 to 10 */
-#define THROW_POWER_MIN       20
-#define ROLL_STEAL            0x70 /* random bits: a steal fails the luck test only when all are clear */
-#define SPARK_POWER_MIN       100
-#define SPARK_POWER_RANGE     156
-#define TRANSFORM_POWER_STEP  85 /* the death cloud of a transform grows by this per phase */
-#define DODGE_CLOUD_POWER_MIN 20
-#define DODGE_CLOUD_POWER_RANGE 40
 
 static int act_melee_attack(void);
 

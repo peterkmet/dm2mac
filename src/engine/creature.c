@@ -1162,7 +1162,7 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
         changed = (int16_t)chance > (int)rand_below(PERCENT);
         if (changed) {
             clear = flags & ALERT_CLEAR;
-            mask = (uint16_t)(1 << (flags & SHIFT_COUNT_MASK));
+            mask = (uint16_t)(1 << (flags & BIT_INDEX_MASK));
             uint16_t mood = group_mood(group);
             group_set_mood(group, clear ? mood & ~mask : mood | mask);
         }
