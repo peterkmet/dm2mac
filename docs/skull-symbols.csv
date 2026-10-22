@@ -170,7 +170,7 @@ address,name,signature,subsystem
 0x0001863d,dun_get_direction_to,"uint16_t dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
 0x0001869a,creature_order_attack_cells,"void creature_order_attack_cells(uint8_t *cells, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t cell)",creatures
 0x00018758,creature_attack_champion,"int16_t creature_attack_champion(uint8_t *group, uint16_t champion_index)",creatures
-0x00018a57,champ_melee_attack_creature,"int16_t champ_melee_attack_creature(uint8_t *champion, uint16_t champion_index, uint16_t group_thing, uint16_t cell, int16_t action_value, uint16_t flags, uint16_t skill, int16_t x, int16_t y)",champions
+0x00018a57,melee_attack_group,"int16_t melee_attack_group(uint8_t *champion, uint16_t champion_index, uint16_t group_thing, uint16_t cell, int16_t action_value, uint16_t flags, uint16_t skill, int16_t x, int16_t y)",champions
 0x00018d9e,dun_door_try_destroy,"int dun_door_try_destroy(int16_t x, int16_t y, int16_t attack, int magic, int16_t delay)",dungeon data
 0x00018e7f,aspect_cell_to_xy,"void aspect_cell_to_xy(int16_t base_x, int16_t base_y, uint16_t cell, int16_t *x, int16_t *y)",dungeon view
 0x00018ec1,rect_set,"void rect_set(int16_t *rect, int16_t x, int16_t y, int16_t w, int16_t h)",interface
@@ -770,8 +770,8 @@ address,name,signature,subsystem
 0x00040dec,champ_execute_selected_action,int champ_execute_selected_action(int16_t action),champions
 0x00040ee2,champ_process_repeated_actions,void champ_process_repeated_actions(void),champions
 0x00041081,minion_toggle_map_option,void minion_toggle_map_option(uint16_t option),interface
-0x000410f7,champ_action_frighten,"int champ_action_frighten(uint16_t power, int16_t x, int16_t y)",champions
-0x00041171,champ_action_melee_attack,"int champ_action_melee_attack(uint16_t champ, int16_t mode, int16_t x, int16_t y, int16_t skill, int16_t power)",champions
+0x000410f7,frighten_front_group,"int frighten_front_group(uint16_t power, int16_t x, int16_t y)",champions
+0x00041171,melee_attack_front,"int melee_attack_front(uint16_t champ, int16_t mode, int16_t x, int16_t y, int16_t skill, int16_t power)",champions
 0x000412e1,magic_add_light,"void magic_add_light(uint16_t spell, int16_t power)",magic
 0x000414a5,champ_perform_action,"int champ_perform_action(uint16_t champ, uint16_t action)",champions
 0x000421fd,magic_find_spell,uint32_t *magic_find_spell(const uint8_t *runes),magic
@@ -820,7 +820,7 @@ address,name,signature,subsystem
 0x000461e8,champ_get_party_level,int16_t champ_get_party_level(void),champions
 0x00046241,champ_get_skill_level,"int16_t champ_get_skill_level(int16_t champ, uint16_t skill, int with_bonus)",champions
 0x000462fa,champ_add_experience,"void champ_add_experience(uint16_t champ, uint16_t skill, uint32_t amount)",champions
-0x0004663a,item_get_throw_fatigue,uint16_t item_get_throw_fatigue(uint16_t thing),items
+0x0004663a,throw_fatigue,uint16_t throw_fatigue(uint16_t thing),items
 0x0004667a,champ_scale_by_stamina,"int16_t champ_scale_by_stamina(uint8_t *champ, int16_t value)",champions
 0x000466ab,champ_get_stat,"int16_t champ_get_stat(uint8_t *champ, uint16_t stat, uint16_t which)",champions
 0x00046745,champ_get_stat_adjusted_attack,"int16_t champ_get_stat_adjusted_attack(uint8_t *champ, uint16_t stat, uint16_t attack)",champions

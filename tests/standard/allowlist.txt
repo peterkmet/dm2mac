@@ -63,11 +63,6 @@ bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
 bool engine/aspect.c:wall_sensor_ornament open: module cleanup
 bool engine/aspect.c:wall_text_ornament open: module cleanup
-bool engine/champ_action.c open: module cleanup
-bool engine/champ_action.c:champ_action_frighten open: module cleanup
-bool engine/champ_action.c:champ_action_melee_attack open: module cleanup
-bool engine/champ_action.c:champ_action_minion open: module cleanup
-bool engine/champ_action.c:champ_run_command open: module cleanup
 bool engine/damage.c open: module cleanup
 bool engine/include/item.h:item_use_charge open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
@@ -159,7 +154,6 @@ comment control/include/turn.h open: module cleanup
 comment control/state_json.c open: module cleanup
 comment control/turn.c open: module cleanup
 comment engine/aspect.c open: module cleanup
-comment engine/champ_action.c open: module cleanup
 comment engine/game.c open: module cleanup
 comment engine/include/action.h open: module cleanup
 comment engine/include/aspect.h open: module cleanup
@@ -404,9 +398,6 @@ long engine/ai.c:test_condition rule 5.8: one short case for each target conditi
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
 long engine/aspect.c:apply_floor_things open: module cleanup
 long engine/aspect.c:aspect_get open: module cleanup
-long engine/champ_action.c:champ_action_minion open: module cleanup
-long engine/champ_action.c:champ_raise_level open: module cleanup
-long engine/champ_action.c:champ_run_command open: module cleanup
 long engine/game.c:timeline_process open: module cleanup
 long engine/game_text.c:text_decode_raw open: module cleanup
 long engine/inventory.c:champ_apply_item_effects open: module cleanup
@@ -529,9 +520,6 @@ params control/state_json.c:wall_ornament_json open: module cleanup
 params engine/aspect.c:set_random_wall_ornaments open: module cleanup
 params engine/aspect.c:wall_sensor_ornament open: module cleanup
 params engine/aspect.c:wall_square_aspect open: module cleanup
-params engine/champ_action.c:champ_action_melee_attack open: module cleanup
-params engine/champ_action.c:champ_action_minion open: module cleanup
-params engine/champ_action.c:champ_melee_attack_creature open: module cleanup
 params engine/include/merchant.h:shop_get_item_value open: module cleanup
 params engine/include/move.h:move_follow_square_transitions open: module cleanup
 params engine/include/move.h:move_party_bump_damage open: module cleanup
@@ -639,23 +627,6 @@ static-prefix control/turn.c:turn_finished open: module cleanup
 static-prefix control/turn.c:turn_left open: module cleanup
 static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix engine/aspect.c:sensor_ornament open: module cleanup
-static-prefix engine/champ_action.c:action_aura open: module cleanup
-static-prefix engine/champ_action.c:action_field open: module cleanup
-static-prefix engine/champ_action.c:action_heal open: module cleanup
-static-prefix engine/champ_action.c:action_invisibility open: module cleanup
-static-prefix engine/champ_action.c:action_levitate_down open: module cleanup
-static-prefix engine/champ_action.c:action_load open: module cleanup
-static-prefix engine/champ_action.c:action_melee open: module cleanup
-static-prefix engine/champ_action.c:action_shoot open: module cleanup
-static-prefix engine/champ_action.c:action_spell_projectile open: module cleanup
-static-prefix engine/champ_action.c:champ_action_frighten open: module cleanup
-static-prefix engine/champ_action.c:champ_action_melee_attack open: module cleanup
-static-prefix engine/champ_action.c:champ_action_minion open: module cleanup
-static-prefix engine/champ_action.c:champ_melee_attack_creature open: module cleanup
-static-prefix engine/champ_action.c:champ_raise_level open: module cleanup
-static-prefix engine/champ_action.c:champ_run_command open: module cleanup
-static-prefix engine/champ_action.c:creature_is_furniture open: module cleanup
-static-prefix engine/champ_action.c:item_get_throw_fatigue open: module cleanup
 static-prefix engine/damage.c:champ_consume_food_and_water open: module cleanup
 static-prefix engine/damage.c:champ_drop_all_objects open: module cleanup
 static-prefix engine/damage.c:champ_get_mean_defense open: module cleanup
