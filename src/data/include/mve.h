@@ -9,13 +9,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* The largest picture of a movie and its palette. */
 #define MVE_WIDTH_MAX      640
 #define MVE_HEIGHT_MAX     480
 #define MVE_PIXELS_MAX     (MVE_WIDTH_MAX * MVE_HEIGHT_MAX)
 #define MVE_PALETTE_COLORS 256
 #define MVE_RGB            3
+#define MVE_FRAME_BUFFERS  2 /* the current frame and the frame before it */
 
-enum {
+enum MveResult {
     MVE_ERROR = -1, /* damaged data: the movie stops */
     MVE_OK,
     MVE_END,   /* the end of the stream */
@@ -41,17 +43,15 @@ typedef struct {
     int frames;     /* show frame opcodes so far */
     int bad_blocks; /* blocks with encoding 6 or a source outside the frame; they stay unchanged */
     int current;    /* the buffer of the frame that is drawn and shown */
-    uint8_t palette[MVE_PALETTE_COLORS][MVE_RGB]; /* 6-bit VGA values */
-    uint8_t buffers[2][MVE_PIXELS_MAX];           /* the current frame and the frame before it */
+    uint8_t palette[MVE_PALETTE_COLORS][MVE_RGB];       /* 6-bit VGA values */
+    uint8_t buffers[MVE_FRAME_BUFFERS][MVE_PIXELS_MAX]; /* the current frame and the frame before it */
 } MveStream;
 
 /* Finds the MVE data after the player program of a movie file; MVE_ERROR when the file has none. */
-int mve_open(MveStream *m, const uint8_t *file, size_t size);
+enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size);
 /* Runs the opcodes up to the next audio frame, picture, or the end. */
-int mve_step(MveStream *m);
+enum MveResult mve_step(MveStream *m);
 /* The picture of the last MVE_SHOW: width × height palette indexes. */
 const uint8_t *mve_pixels(const MveStream *m);
-/* Decodes the blocks of one video data opcode into the current frame; false when the data is too short. */
-bool mve_decode_video(MveStream *m, const uint8_t *video, int size);
 
 #endif /* DM2_DATA_MVE_H */
