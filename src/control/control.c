@@ -535,7 +535,7 @@ static void put_part(Json *reply, const char *key, void (*part)(Json *))
 {
     json_open(reply, '{');
     json_key(reply, "ok");
-    json_bool(reply, 1);
+    json_bool(reply, true);
     json_key(reply, key);
     part(reply);
     json_close(reply, '}');

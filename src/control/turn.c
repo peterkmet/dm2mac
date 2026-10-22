@@ -1268,7 +1268,7 @@ void turn_reply(Json *j)
 {
     json_open(j, '{');
     json_key(j, "ok");
-    json_bool(j, 1);
+    json_bool(j, true);
     json_key(j, "ticks");
     json_int(j, (long)(g_game.game_time - (batch.active ? batch.start_time : turn.start_time)));
     stop_json(j);
@@ -1276,7 +1276,7 @@ void turn_reply(Json *j)
     json_bool(j, state_json_game_over());
     if (turn_bumped()) {
         json_key(j, "bumped");
-        json_bool(j, 1);
+        json_bool(j, true);
     }
     action_damage_json(j);
     health_lost_json(j);
