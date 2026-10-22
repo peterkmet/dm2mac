@@ -7,6 +7,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "game.h"
+#include "game_text.h"
 #include "inventory.h"
 #include "move.h"
 #include "seen.h"
@@ -57,10 +58,11 @@ void play_present_viewport(void)
             continue;
         }
         /* While the party walks, the visible part of the view fills the whole viewport (nearest neighbour). */
-        const uint8_t *src = g_view_viewport.pixels +
-                             (walk_view_rect[RECT_Y] + y * walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
+        const uint8_t *src =
+            g_view_viewport.pixels +
+            (g_zone_walk_view_rect[RECT_Y] + y * g_zone_walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
         for (int x = 0; x < VIEWPORT_WIDTH; x++)
-            dst[x] = src[walk_view_rect[RECT_X] + x * walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
+            dst[x] = src[g_zone_walk_view_rect[RECT_X] + x * g_zone_walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
     }
 }
 

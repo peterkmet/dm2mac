@@ -275,6 +275,10 @@ GRID_SIZE, MASKS_SIZE = C.VIEW_GRID_SIZE, 4 * SQUARE_COUNT
 i16_p = ctypes.POINTER(ctypes.c_int16)
 
 
+class AnchoredZone(ctypes.Structure):
+    _fields_ = [("zone", ctypes.c_int), ("anchor", ctypes.c_int)]
+
+
 @pytest.fixture(scope="module")
 def image_emu():
     from dm2tools.emu import Emu
@@ -410,9 +414,9 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gfx_scale_64.restype = ctypes.c_int16
     lib.gfx_scale_64.argtypes = [ctypes.c_int16, ctypes.c_int16]
-    lib.zone_compute_rect.argtypes = [ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16), ctypes.c_int, i16_p, i16_p,
-                                      ctypes.c_int]
-    lib.zone_compute_rect.restype = ctypes.c_void_p
+    lib.zone_compute_anchored_rect.argtypes = [ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16), AnchoredZone,
+                                               i16_p, i16_p]
+    lib.zone_compute_anchored_rect.restype = ctypes.c_void_p
     game = WeatherGame.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     assert lib.zone_load(gdat) == 1
@@ -456,7 +460,7 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     sx, sy = ctypes.c_int16(lib.gfx_scale_64(dx, scale)), ctypes.c_int16(lib.gfx_scale_64(dy, scale))
     rect = (ctypes.c_int16 * 4)()
     zone = 5000 + 3 * 25 + 16 | C.ZONE_RELATIVE
-    assert lib.zone_compute_rect(ctypes.byref(picture), rect, zone, ctypes.byref(sx), ctypes.byref(sy), 0)
+    assert lib.zone_compute_anchored_rect(ctypes.byref(picture), rect, AnchoredZone(zone, 0), ctypes.byref(sx), ctypes.byref(sy))
     rx, ry, rw, rh = rect
     assert all(rx <= col < rx + rw and ry <= row < ry + rh for row, col in changed), (rect[:], changed[:5])
     game.party_x, game.party_y, game.party_dir, game.party_map = saved
@@ -779,7 +783,7 @@ def test_walking_view_matches_original(lib, loaded, original_view):
 
 def present_viewport(lib, gdat, walking):
     """The screen viewport rect after play_present_viewport of a view whose walk rectangle holds the values 2 up."""
-    walk = (ctypes.c_int16 * 4).in_dll(lib, "walk_view_rect")
+    walk = (ctypes.c_int16 * 4).in_dll(lib, "g_zone_walk_view_rect")
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_load(gdat) == 1
     PartyHead.in_dll(lib, "g_party").move_steps = 0

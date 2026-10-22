@@ -4,6 +4,7 @@
 #include "gdat.h"
 #include "ids.h"
 #include "game.h"
+#include "game_text.h"
 #include "save.h"
 #include "sound_request.h"
 #include "draw.h"
@@ -49,7 +50,7 @@ void dialog_present(void)
         return;
     }
     int16_t r[RECT_SIZE], x = 0, y = 0;
-    if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y, ZONE_NO_ANCHOR))
+    if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y))
         ui_blit_bitmap(&g_view_viewport, &g_draw_screen, r, x, y, GFX_OPAQUE, NULL);
 }
 

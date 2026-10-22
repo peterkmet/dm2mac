@@ -16,7 +16,7 @@ from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixt
     sync_champions, things_of, update_action_area,
 )
 from dm2test.save import Game
-from dm2test.view import u8_p
+from dm2test.view import Bitmap, u8_p
 from dm2test.lib import load_lib
 
 
@@ -341,11 +341,15 @@ def random_text(rng, length):
     return bytes(rng.randrange(1, 128) for _ in range(length))
 
 
+class TextColors(ctypes.Structure):
+    _fields_ = [("color", ctypes.c_int), ("bg", ctypes.c_int)]
+
+
 def test_draw_text_matches_original(port, original):
     # Random texts in 8 bpp and 4 bpp bitmaps, with and without background, at random positions.
     lib = port
     emu = original.emu
-    lib.text_draw.argtypes = [u8_p] + [ctypes.c_int] * 5 + [ctypes.c_char_p, ctypes.c_int]
+    lib.text_draw.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int, ctypes.c_int, TextColors, ctypes.c_char_p]
     rng = random.Random(13)
     width, height = 96, 40
     src, text = original.alloc(width * height), original.alloc(64)
@@ -362,7 +366,8 @@ def test_draw_text_matches_original(port, original):
         emu.write(text, s + b"\0")
         emu.call(GFX_DRAW_TEXT, src, width, x, y, color, bg, text, bpp)
         mine = (ctypes.c_uint8 * size).from_buffer_copy(fill)
-        lib.text_draw(mine, width, x, y, color, bg, s, bpp)
+        dst = Bitmap(ctypes.cast(mine, u8_p), width, height, bpp)
+        lib.text_draw(ctypes.byref(dst), x, y, TextColors(color, bg), s)
         assert bytes(mine) == emu.read(src, size), (case, s, x, y, color, bg, bpp)
 
 
@@ -453,7 +458,7 @@ def test_message_area_matches_original(port, original):
         lib.text_print_message(color, message)
         mine, theirs = c_screen(lib), original.screen()
         assert mine == theirs, (message, diff(mine, theirs, SCREEN_W))
-    expiry = (ctypes.c_uint32 * C.MESSAGE_ROWS).in_dll(lib, "message_expiry")
+    expiry = (ctypes.c_uint32 * C.MESSAGE_ROWS).in_dll(lib, "g_text_message_expiry")
     assert list(expiry) == list(struct.unpack("<3I", emu.read(0x80404, 12)))
     time = expiry[1]
     emu.write(G_GAME_TIME, struct.pack("<I", time))

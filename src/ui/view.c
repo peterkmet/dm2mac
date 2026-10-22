@@ -5,6 +5,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "game_text.h"
 #include "item.h"
 #include "money.h"
 #include "move.h"
@@ -1248,7 +1249,7 @@ static void show_rain(void)
     if (!view_rain_shows())
         return;
     int16_t rect[RECT_SIZE], w = VIEWPORT_WIDTH, h = VIEWPORT_HEIGHT;
-    if (!zone_compute_rect(NULL, rect, ZONE_WALL, &w, &h, ZONE_NO_ANCHOR))
+    if (!zone_compute_rect(NULL, rect, ZONE_WALL, &w, &h))
         return;
     int side, entry = rain_picture(&side);
     const Bitmap *rain = draw_gdat_image(CAT_SKY, view.gfx_set, entry);
@@ -1319,7 +1320,7 @@ static void show_sparkle_field(int pos, int category, int index)
         return;
     const uint8_t *field = sparkle_field[pos];
     int16_t rect[RECT_SIZE], w = field[SPARKLE_WIDTH], h = field[SPARKLE_HEIGHT];
-    if (!zone_compute_rect(NULL, rect, ZONE_WALL + pos, &w, &h, ZONE_NO_ANCHOR))
+    if (!zone_compute_rect(NULL, rect, ZONE_WALL + pos, &w, &h))
         return;
     const uint8_t *mask = NULL;
     if (field[SPARKLE_MASK_PICTURE] != SPARKLE_MASK_NONE) {
@@ -2051,8 +2052,8 @@ static void show_centered_label(int x, int y, const char *text)
     uint8_t colors[UI_COLOR_COUNT];
     memcpy(colors, g_ui_colors, sizeof colors);
     pal_apply_dim_remap(colors, view.shade, NO_KEY, NO_KEY, &count);
-    text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width, x - (width >> 1), y, colors[UI_WHITE],
-                          colors[UI_BLACK] | TEXT_TRANSPARENT, text);
+    text_draw_with_shadow(&g_view_viewport, x - (width >> 1), y,
+                          (TextColors){colors[UI_WHITE], colors[UI_BLACK] | TEXT_TRANSPARENT}, text);
 }
 
 /* The price table of a shop ornament and its word count in *count; NULL when the ornament has none. */
@@ -2135,7 +2136,7 @@ static void show_shop_price(int amount, uint8_t ornament, const PicturePlace *p,
     int16_t rect[RECT_SIZE] = {0, 0, COIN_WIDTH, COIN_HEIGHT};
     for (int i = 0; i < count; i++, rect[RECT_X] += COIN_WIDTH)
         ui_blit_bitmap(view.ctx.image, strip, rect, coins[i] * COIN_WIDTH, 0, NO_KEY, NULL);
-    if (zone_compute_rect(strip, rect, p->zone | ZONE_RELATIVE, &x, &y, p->anchor))
+    if (zone_compute_anchored_rect(strip, rect, (AnchoredZone){p->zone | ZONE_RELATIVE, p->anchor}, &x, &y))
         ui_blit_bitmap(strip, &g_view_viewport, rect, 0, 0, p->key, view.ctx.palette);
 }
 
@@ -2525,7 +2526,7 @@ static void show_wall_block(int pos)
                                   .key2 = NO_KEY},
                   CAT_WALLSET, view.gfx_set, entry);
     flush_picture();
-    zone_clip_rect[RECT_W] = 0;
+    g_zone_clip_rect[RECT_W] = 0;
 }
 
 /* Draws the wall square at pos: the wall block and the ornaments of the faces that the party sees. */
@@ -3071,8 +3072,8 @@ static void outdoor_draw_sky_object(const SkyObject *o, int dir, int x, int y)
         scale_x = gfx_scale_64((int16_t)scale_x, WALK_SCALE);
         scale_y = gfx_scale_64((int16_t)scale_y, WALK_SCALE);
         if (o->scale_x == SCALE_FULL) {
-            dx = (int16_t)(dx + walk_view_rect[RECT_X]);
-            dy = (int16_t)(dy + (o->zone == ZONE_SKY_HIGH ? WALK_SKY_HIGH_DY : walk_view_rect[RECT_Y]));
+            dx = (int16_t)(dx + g_zone_walk_view_rect[RECT_X]);
+            dy = (int16_t)(dy + (o->zone == ZONE_SKY_HIGH ? WALK_SKY_HIGH_DY : g_zone_walk_view_rect[RECT_Y]));
         } else {
             dy = (int16_t)(dy + WALK_SKY_DY);
         }
@@ -3316,10 +3317,10 @@ void view_draw_dungeon(int dir, int x, int y)
     uint16_t m = margins < 0 ? 0 : aspect_value_key(CAT_WALLSET, view.gfx_set, margins);
     zone_set_clip_margins(0, 0, 0, LOW_BYTE(m));
     show_map_picture(GFX_MAP_CEILING, ZONE_CEILING, NO_KEY, get_flip_parity(PARITY_CEILING, dir, x, y) != 0);
-    zone_clip_rect[RECT_W] = 0;
+    g_zone_clip_rect[RECT_W] = 0;
     zone_set_clip_margins(0, HIGH_BYTE(m), 0, 0);
     show_map_picture(GFX_MAP_FLOOR, ZONE_FLOOR, NO_KEY, get_flip_parity(PARITY_FLOOR, dir, x, y) != 0);
-    zone_clip_rect[RECT_W] = 0;
+    g_zone_clip_rect[RECT_W] = 0;
     view.flip = get_flip_parity(PARITY_SQUARE, dir, x, y);
     outdoor_draw_sky(dir, x, y);
     view_unhide_linked_squares();

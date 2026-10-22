@@ -4,6 +4,7 @@
 #include "ids.h"
 #include "os.h"
 #include "dungeon.h"
+#include "game_text.h"
 #include "minion.h"
 #include "save.h"
 #include "timeline.h"

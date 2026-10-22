@@ -454,7 +454,7 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     emu.write(G_NEW_GAME, struct.pack("<H", 1))
     mode = lib.input_get_mode()
     assert mode == struct.unpack("<h", emu.read(G_INPUT_MODE, 2))[0]
-    rows = lambda: (list((ctypes.c_uint32 * 3).in_dll(lib, "message_expiry")), emu.read(G_MESSAGE_EXPIRY, 12))
+    rows = lambda: (list((ctypes.c_uint32 * 3).in_dll(lib, "g_text_message_expiry")), emu.read(G_MESSAGE_EXPIRY, 12))
     before = rows()
     lib.champ_init_party_state()
     emu.call(CHAMP_INIT_PARTY_STATE)

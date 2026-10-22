@@ -10,3 +10,4 @@
 - Manual tests L10 (sound direction) and L12 (end of the game) of the layer cleanup smoke test; the sound of L1 (music) and L9 (thunder) is also not checked.
 - `gdat_find` (`data/gdat.c`) scans the 11854 key rows linearly; sort or index the rows if lookups get hot.
 - Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.
+- Message area scroll: IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows up and keeps the bottom rows (`shift_message_area` in `src/ui/text.c`); check it against the original in DOSBox.

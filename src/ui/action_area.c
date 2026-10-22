@@ -7,6 +7,7 @@
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
+#include "game_text.h"
 #include "item.h"
 #include "minion.h"
 #include "money.h"
@@ -253,7 +254,7 @@ static void draw_party_icons(void)
             continue;
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
         int zone = ZONE_PARTY_FACE_FIRST + cell;
-        if (!zone_compute_rect(face, r, zone, &sx, &sy, ZONE_NO_ANCHOR))
+        if (!zone_compute_rect(face, r, zone, &sx, &sy))
             continue;
         haste_jitter(r);
         uint8_t palette[ICON_COLORS];
@@ -322,7 +323,7 @@ static void draw_action_champion_face(void)
     offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_FACE_BACK, ZONE_FACE_BACK, GFX_OPAQUE);
     Bitmap *face = face_bitmap();
     int16_t r[RECT_SIZE], sx = 0, sy = 0;
-    if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy, ZONE_NO_ANCHOR)) {
+    if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy)) {
         haste_jitter(r);
         int champ = g_action.champion - 1;
         uint8_t palette[ICON_COLORS];
@@ -445,7 +446,7 @@ static void draw_money_box(uint16_t box)
         const Bitmap *image = draw_gdat_image(category, index, GFX_ITEM_ICON);
         const uint8_t *colors = draw_gdat_image_palette(category, index, GFX_ITEM_ICON);
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
-        zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy, ZONE_NO_ANCHOR);
+        zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy);
         int n = counts[type], at = slot * PILE_SLOT_STEP + (n > COIN_PILE_MAX ? n - COIN_PILE_MAX : 0);
         n = n < COIN_PILE_MAX ? n : COIN_PILE_MAX;
         do {

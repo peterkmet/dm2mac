@@ -12,6 +12,7 @@
 #include "os.h"
 #include "dungeon.h"
 #include "game.h"
+#include "game_text.h"
 #include "item.h"
 #include "save.h"
 #include "advanced.h"

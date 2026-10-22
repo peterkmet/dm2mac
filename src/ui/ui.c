@@ -5,6 +5,7 @@
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
+#include "game_text.h"
 #include "inventory.h"
 #include "item.h"
 #include "money.h"
@@ -212,7 +213,7 @@ void ui_fill_zone_screen(int zone, int color)
 int16_t *zone_get_icon_rect(int zone, int16_t *rect)
 {
     int16_t w = ICON_SIZE, h = ICON_SIZE;
-    zone_compute_rect(NULL, rect, (int16_t)zone, &w, &h, ZONE_NO_ANCHOR);
+    zone_compute_rect(NULL, rect, (int16_t)zone, &w, &h);
     rect[RECT_X] -= ICON_FRAME;
     rect[RECT_Y] -= ICON_FRAME;
     rect[RECT_W] += 2 * ICON_FRAME;
@@ -223,7 +224,7 @@ int16_t *zone_get_icon_rect(int zone, int16_t *rect)
 void zone_get_position(int zone, int16_t *x, int16_t *y)
 {
     int16_t r[RECT_SIZE] = {0}, w = 1, h = 1;
-    zone_compute_rect(NULL, r, (int16_t)zone, &w, &h, ZONE_NO_ANCHOR);
+    zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
     *x = r[RECT_X];
     *y = r[RECT_Y];
 }
@@ -411,7 +412,7 @@ void offscreen_draw_gdat_image(Offscreen *o, int category, int index, int entry,
     int16_t r[RECT_SIZE], sx = 0, sy = 0;
     if (!image)
         return;
-    int16_t *rect = zone_compute_rect(image, r, (int16_t)zone, &sx, &sy, ZONE_NO_ANCHOR);
+    int16_t *rect = zone_compute_rect(image, r, (int16_t)zone, &sx, &sy);
     offscreen_blit(o, image, rect, sx, sy, transparent, MIRROR_NONE, draw_gdat_image_palette(category, index, entry));
 }
 
@@ -423,7 +424,7 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
         memcpy(r, ctx->rect, sizeof r);
     } else {
         int16_t w = ctx->w, h = ctx->h;
-        if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h, ZONE_NO_ANCHOR))
+        if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h))
             return;
         /* like the original, the clipped part goes into the size of the picture part, not its position */
         ctx->w = (int16_t)(ctx->w + w);
@@ -441,8 +442,9 @@ void offscreen_draw_text_at(Offscreen *o, int x, int y, int color, int bg, const
     int16_t w, h;
     if (!text_measure(text, &w, &h))
         return;
-    text_draw(o->bitmap->pixels, o->rect[RECT_W], (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]),
-              (uint16_t)color, (uint16_t)bg, text, IMAGE_8BPP);
+    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
+    text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]),
+              (TextColors){(uint16_t)color, (uint16_t)bg}, text);
     /* like the original, the changed rect starts at the base line */
     const int16_t r[RECT_SIZE] = {[RECT_X] = (int16_t)x, [RECT_Y] = (int16_t)y, [RECT_W] = w, [RECT_H] = h};
     offscreen_add_dirty_rect(o, r);
@@ -454,7 +456,7 @@ static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
     int16_t w, h;
     if (!text_measure(text, &w, &h))
         return NULL;
-    return zone_compute_rect(NULL, r, (int16_t)zone, &w, &h, ZONE_NO_ANCHOR);
+    return zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
 }
 
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
@@ -462,8 +464,9 @@ void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, cons
     int16_t r[RECT_SIZE];
     if (!text_rect_in_zone(zone, text, r))
         return;
-    text_draw(o->bitmap->pixels, o->rect[RECT_W], (int16_t)(r[RECT_X] - o->rect[RECT_X]),
-              (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), (uint16_t)color, (uint16_t)bg, text, IMAGE_8BPP);
+    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
+    text_draw(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]), (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
+              (TextColors){(uint16_t)color, (uint16_t)bg}, text);
     offscreen_add_dirty_rect(o, r);
 }
 
@@ -472,8 +475,10 @@ void offscreen_draw_text_in_zone_with_shadow(Offscreen *o, int zone, int color, 
     int16_t r[RECT_SIZE];
     if (!text_rect_in_zone(zone, text, r))
         return;
-    text_draw_with_shadow(o->bitmap->pixels, o->rect[RECT_W], (int16_t)(r[RECT_X] - o->rect[RECT_X]),
-                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), (uint16_t)color, (int16_t)bg, text);
+    Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
+    text_draw_with_shadow(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]),
+                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
+                          (TextColors){(uint16_t)color, (int16_t)bg}, text);
     offscreen_add_dirty_rect(o, r);
 }
 
@@ -570,7 +575,7 @@ static void draw_value_pair(int zone, unsigned value, unsigned maximum)
     strcpy(s, text_format_number(value, 1, NUMBER_DIGITS));
     strcat(s, "/");
     strcat(s, text_format_number(maximum, 1, NUMBER_DIGITS));
-    text_draw_in_zone_with_shadow(zone, g_ui_colors[UI_LIGHT_GRAY], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
+    text_draw_in_zone_shadowed(zone, g_ui_colors[UI_LIGHT_GRAY], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
 }
 
 /* Draws the health, stamina, and mana values of the inventory. */
@@ -829,15 +834,14 @@ static void draw_object_gauge(int zone, int value, int high, uint8_t glyph, int 
     draw_gauge_bar(value, zone, color, 0, high, 1);
     int y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE), bg = g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
     char s[2] = {(char)glyph, '\0'};
-    text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,
-                          g_ui_colors[color], bg, s);
+    text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,
+                          (TextColors){g_ui_colors[color], bg}, s);
     s[0] = GLYPH_GAUGE_LEFT;
-    text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
-                          g_ui_colors[UI_WHITE], bg, s);
+    text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
+                          (TextColors){g_ui_colors[UI_WHITE], bg}, s);
     s[0] = GLYPH_GAUGE_RIGHT;
-    text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width,
-                          (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y, g_ui_colors[UI_WHITE], bg,
-                          s);
+    text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y,
+                          (TextColors){g_ui_colors[UI_WHITE], bg}, s);
 }
 
 /* Draws the coin count of each coin slot of a money box and the total value. */
@@ -1139,8 +1143,8 @@ static void draw_load(int champ)
     g_text_args.number[ARG_LOAD_TENTHS] = (int16_t)(load % WEIGHT_TENTHS);
     g_text_args.number[ARG_LOAD_MAX_KG] = (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS);
     char text[TEXT_SIZE];
-    text_draw_in_zone_with_shadow(ZONE_LOAD, g_ui_colors[color], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
-                                  text_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
+    text_draw_in_zone_shadowed(ZONE_LOAD, g_ui_colors[color], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
+                               text_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
 }
 
 /* The redraw of one champion: what to draw, and what it drew. */
@@ -1259,8 +1263,7 @@ static void draw_champion_name(int champ, ChampionRedraw *d)
     if (!c->title[0] || !strchr(TITLE_NO_SPACE, c->title[0]))
         strcat(title, " ");
     strncat(title, c->title, CHAMPION_TITLE_SIZE);
-    text_draw_in_zone_with_shadow(ZONE_NAME, color, g_ui.candidate ? g_ui_colors[UI_DARK_GRAY] : TEXT_TRANSPARENT,
-                                  title);
+    text_draw_in_zone_shadowed(ZONE_NAME, color, g_ui.candidate ? g_ui_colors[UI_DARK_GRAY] : TEXT_TRANSPARENT, title);
     d->present = 1;
 }
 

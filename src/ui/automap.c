@@ -2,6 +2,7 @@
 /* The automap of the advanced mode: the map picture. */
 #include "automap.h"
 #include "dungeon.h"
+#include "game_text.h"
 #include "minion.h"
 #include "move.h"
 #include "advanced.h"

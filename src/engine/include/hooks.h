@@ -7,6 +7,7 @@
    ui/hook_table.c sets every member. */
 
 #include "sound_request.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct {
@@ -14,8 +15,8 @@ typedef struct {
     void (*print_newline)(void);                        /* the next message starts on a new row */
     int (*play_sound)(const Sound *s, uint8_t volume, int8_t lateral,
                       int8_t forward); /* starts a sound in a free voice */
-    int (*zone_offset)(int from, int to, int percent, int16_t *dx,
-                       int16_t *dy);                /* the offset percent of the way between two layout zones */
+    bool (*zone_offset)(int from, int to, int percent, int16_t *dx,
+                        int16_t *dy);               /* the offset percent of the way between two layout zones */
     int16_t *(*zone_rect)(int zone, int16_t *rect); /* the screen rectangle of a layout zone */
     void (*update_action_area)(int tick);           /* redraws what changed in the action area */
     void (*reset_action_area)(void);                /* clears the drawn state of the action area */

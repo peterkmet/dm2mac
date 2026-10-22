@@ -8,6 +8,7 @@
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "game_text.h"
 #include "item.h"
 #include "minion.h"
 #include "move.h"

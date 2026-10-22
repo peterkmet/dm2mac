@@ -21,7 +21,7 @@ address,name,signature,subsystem
 0x00010d0f,timer_init,void timer_init(void),main loop
 0x00010d29,system_shutdown,void system_shutdown(int code),main loop
 0x00010d9e,system_init_stub,void system_init_stub(void),main loop
-0x00010d9f,text_build_glyph,"uint8_t *text_build_glyph(uint8_t ch, uint8_t fg_color, uint8_t bg_color)",text
+0x00010d9f,build_glyph,"uint8_t *build_glyph(uint8_t ch, uint8_t fg_color, uint8_t bg_color)",text
 0x00010e3f,text_draw,"void text_draw(uint8_t *dst, uint16_t dst_width, int16_t x, int16_t y, int16_t color, uint32_t flags, const char *text, uint16_t bpp)",text
 0x00010f43,mem_copy,"void mem_copy(const void *src, void *dst, int32_t size)",runtime library
 0x00010f51,mem_zero,"void mem_zero(void *dst, int32_t size)",runtime library
@@ -90,7 +90,7 @@ address,name,signature,subsystem
 0x00013898,pal_set_palette,void pal_set_palette(const uint8_t *palette_rgba),palette
 0x000138c7,iop_set_video_state,void iop_set_video_state(uint8_t state),graphics
 0x000138d9,play_present_viewport,void play_present_viewport(void),graphics
-0x000139e4,text_scroll_message_area,void text_scroll_message_area(void),text
+0x000139e4,shift_message_area,void shift_message_area(void),text
 0x00013a87,screen_present_rect,void screen_present_rect(const int16_t *rect),graphics
 0x00013aab,gfx_fill_bitmap,"void gfx_fill_bitmap(uint8_t *bitmap, uint8_t color)",graphics
 0x00013b27,gfx_fill_rect_viewport,"void gfx_fill_rect_viewport(const int16_t *rect, uint8_t color)",graphics
@@ -970,8 +970,8 @@ address,name,signature,subsystem
 0x000555d2,text_draw_with_shadow,"void text_draw_with_shadow(uint8_t *bitmap, int16_t pitch, int16_t x, int16_t y, int16_t color, uint16_t flags, const char *text)",text
 0x0005570f,text_set_message_cursor,"void text_set_message_cursor(int16_t column, int16_t row)",text
 0x000557b5,text_clear_expired_rows,void text_clear_expired_rows(void),text
-0x00055844,text_message_new_line,void text_message_new_line(void),text
-0x000558bb,text_message_draw_line,"void text_message_draw_line(int16_t color, const char *text)",text
+0x00055844,new_message_line,void new_message_line(void),text
+0x000558bb,show_message_line,"void show_message_line(int16_t color, const char *text)",text
 0x0005599f,text_print_message,"void text_print_message(int16_t color_index, const char *text)",text
 0x00055ac0,text_print_char,"void text_print_char(int16_t color_index, char c)",text
 0x00055ad8,text_print_number,"void text_print_number(int16_t color_index, int32_t value)",text
@@ -979,7 +979,7 @@ address,name,signature,subsystem
 0x00055b14,text_draw_in_viewport,"void text_draw_in_viewport(int16_t x, int16_t y, int16_t color, const char *text)",text
 0x00055b43,text_draw_on_screen,"void text_draw_on_screen(int16_t x, int16_t y, int16_t color, int16_t background, const char *text)",text
 0x00055b70,text_draw_in_zone,"void text_draw_in_zone(int16_t zone, uint16_t color, const char *text)",text
-0x00055bd2,text_draw_in_zone_with_shadow,"void text_draw_in_zone_with_shadow(int16_t zone, int16_t color, int16_t flags, const char *text)",text
+0x00055bd2,text_draw_in_zone_shadowed,"void text_draw_in_zone_shadowed(int16_t zone, int16_t color, int16_t flags, const char *text)",text
 0x00055c45,text_init_message_area,void text_init_message_area(void),text
 0x00055d10,timeline_init,void timeline_init(void),timeline
 0x00055dbd,timeline_build_queue,void timeline_build_queue(void),timeline

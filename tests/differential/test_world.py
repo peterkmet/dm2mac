@@ -265,6 +265,7 @@ def test_zone_interpolate_offset_matches_original(world, lib):
     from dm2tools.emu import SCRATCH
     rng = random.Random(175)
     dx, dy = ctypes.c_int16(), ctypes.c_int16()
+    lib.zone_interpolate_offset.restype = ctypes.c_bool
     for n in range(400):
         a, b, p = rng.randrange(1, 7000), rng.randrange(1, 7000), rng.randrange(-20, 130)
         if rng.random() < 0.5:
@@ -275,7 +276,7 @@ def test_zone_interpolate_offset_matches_original(world, lib):
         sc.emu.write(SCRATCH + 0xF8300, struct.pack("<hh", 7, 7))
         mine = lib.zone_interpolate_offset(a, b, p, ctypes.byref(dx), ctypes.byref(dy))
         theirs = sc.emu.call(ZONE_INTERPOLATE_OFFSET, a, b, p, SCRATCH + 0xF8300, SCRATCH + 0xF8302)
-        assert (mine == -1) == (theirs & 0xFFFFFFFF == 0xFFFFFFFF), (a, b, p)
+        assert (mine is False) == (theirs & 0xFFFFFFFF == 0xFFFFFFFF), (a, b, p)
         assert (dx.value, dy.value) == struct.unpack("<hh", sc.emu.read(SCRATCH + 0xF8300, 4)), (a, b, p)
 
 

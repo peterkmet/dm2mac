@@ -100,7 +100,7 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 | `0x2f` | Free DOS memory block: returns `{linear address, size}`; the game adds it as one more memory pool | `system_init` |
 | `0x30` | Shutdown; also stops the game timer callback | `system_shutdown` |
 | `0x103` | Present an 8-byte rectangle of a game bitmap | `screen_present_rect` (`0x13a87`) |
-| `0x105` | Scroll the message area by one line height | `text_scroll_message_area` (`0x139e4`) |
+| `0x105` | Scroll the message area by one line height | `shift_message_area` (`0x139e4`) |
 | `0x106` | Video state on or off | `iop_set_video_state` |
 | `0x109` | Present the viewport (flags 8 or `0x8008`) | `play_present_viewport` |
 | `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,254)`; the first result word goes to `0x7f07c`. Ours: set the palette (256 × 4 bytes). reDM2: cursor image upload. Open | `pal_set_palette` |
@@ -355,7 +355,7 @@ Renamed because one name was used at two addresses, or because the anchor was wr
 | `0x7f8a0`, `0x7f8a2` | `g_ai_dest_y`, `g_ai_dest_x` | `g_ai_target_*` is kept for `0x7f8d0`-`0x7f8d4` |
 | `0x77aa3` | `g_hmi_digi_driver_info` | `g_hmi_digi_driver_table` is kept for `0x777a8` |
 | `0x80428`, `0x8042a` | `g_timeline_event_max`, `g_timeline_event_count` | The anchor names were swapped |
-| `0x139e4` | `text_scroll_message_area` | Takes no rectangle; `screen_present_rect` is `0x13a87` |
+| `0x139e4` | `shift_message_area` | Takes no rectangle; `screen_present_rect` is `0x13a87` |
 | `0x3ec2b` | `gdat_get_image` | Returns the decoded image, not an index |
 
 Function names had no clashes.

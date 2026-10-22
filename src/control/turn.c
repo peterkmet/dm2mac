@@ -87,7 +87,7 @@ static struct {
     int16_t health[CHAMPION_MAX];
     uint16_t groups[STATE_JSON_VISIBLE_GROUPS_MAX];
     int group_count;
-    uint32_t message_expiry;
+    uint32_t g_text_message_expiry;
 } seen;
 
 /* What the party saw during a request, also when it was gone at the end: the explosions, and the creature groups with
@@ -296,8 +296,8 @@ static uint32_t latest_message_expiry(void)
 {
     uint32_t latest = 0;
     for (int r = 0; r < MESSAGE_ROWS; r++)
-        if (message_expiry[r] != MESSAGE_NEVER && message_expiry[r] > latest)
-            latest = message_expiry[r];
+        if (g_text_message_expiry[r] != MESSAGE_NEVER && g_text_message_expiry[r] > latest)
+            latest = g_text_message_expiry[r];
     return latest;
 }
 
@@ -307,7 +307,7 @@ static void snapshot(void)
     for (uint16_t i = 0; i < g_game.champion_count; i++)
         seen.health[i] = champion(i)->health;
     seen.group_count = state_json_visible_groups(seen.groups);
-    seen.message_expiry = latest_message_expiry();
+    seen.g_text_message_expiry = latest_message_expiry();
 }
 
 /* A creature group is in view that was not in view at the snapshot. */
@@ -335,7 +335,7 @@ static const char *news(void)
             return "damage";
     if (new_group_in_view())
         return "creature";
-    if (latest_message_expiry() > seen.message_expiry)
+    if (latest_message_expiry() > seen.g_text_message_expiry)
         return "message";
     return NULL;
 }

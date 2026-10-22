@@ -273,7 +273,7 @@ def test_save_start_prints_the_hand_object_name_once(tmp_path):
     lib.draw_init(gdat)
     lib.input_init()
     assert lib.session_start_save(str(path).encode()) == 1
-    expiry = (ctypes.c_uint32 * C.MESSAGE_ROWS).in_dll(lib, "message_expiry")
+    expiry = (ctypes.c_uint32 * C.MESSAGE_ROWS).in_dll(lib, "g_text_message_expiry")
     assert sum(t != C.MESSAGE_NEVER for t in expiry) == 1
     lib.gdat_free(gdat)
 

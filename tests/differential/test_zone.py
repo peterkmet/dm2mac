@@ -71,11 +71,11 @@ MARGINS = [None, (0, 0, 0, 0), (10, 5, 20, 30)]
 @pytest.mark.parametrize("margins", MARGINS)
 def test_zone_rect_matches_original(lib, gdat, emu, margins):
     assert lib.zone_load(gdat) == 1
-    Party.in_dll(lib, "g_party").move_steps = 0  # a walk clips the zones to walk_view_rect; earlier tests leave one
+    Party.in_dll(lib, "g_party").move_steps = 0  # a walk clips the zones to g_zone_walk_view_rect; earlier tests leave one
     rng = random.Random(5)
     zones = zone_ids(layout_bytes(lib, gdat))
     assert len(zones) > 1000
-    clip = (ctypes.c_int16 * 4).in_dll(lib, "zone_clip_rect")
+    clip = (ctypes.c_int16 * 4).in_dll(lib, "g_zone_clip_rect")
     if margins:
         lib.zone_set_clip_margins(*margins)
     else:

@@ -9,6 +9,7 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
+#include "game_text.h"
 #include "inventory.h"
 #include "item.h"
 #include "magic.h"

@@ -213,7 +213,7 @@ void draw_ctx_draw(DrawCtx *ctx)
             sx = (int16_t)(sx + ctx->dx);
             sy = (int16_t)(sy + ctx->dy);
         }
-        if (!zone_compute_rect(image, ctx->rect, zone, &sx, &sy, ctx->anchor))
+        if (!zone_compute_anchored_rect(image, ctx->rect, (AnchoredZone){zone, ctx->anchor}, &sx, &sy))
             return;
     }
     sx = (int16_t)(sx + ctx->x);
