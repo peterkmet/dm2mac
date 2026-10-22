@@ -9,37 +9,36 @@
 #include <stdint.h>
 #include <stdio.h>
 
-enum thing_type {
-    THING_DOOR,
-    THING_TELEPORTER,
-    THING_TEXT,
-    THING_SENSOR,
-    THING_GROUP,
-    THING_WEAPON,
-    THING_ARMOUR,
-    THING_SCROLL,
-    THING_POTION,
-    THING_CONTAINER,
-    THING_MISC,
-    THING_PROJECTILE = 0x0e,
-    THING_EXPLOSION,
-    THING_TYPE_COUNT
-};
+/* Thing types: bits 10-13 of a thing id. */
+#define THING_DOOR       0
+#define THING_TELEPORTER 1
+#define THING_TEXT       2
+#define THING_SENSOR     3
+#define THING_GROUP      4
+#define THING_WEAPON     5
+#define THING_ARMOUR     6
+#define THING_SCROLL     7
+#define THING_POTION     8
+#define THING_CONTAINER  9
+#define THING_MISC       10
+#define THING_PROJECTILE 14
+#define THING_EXPLOSION  15
+#define THING_TYPE_COUNT 16
 
 /* Square byte: square type in bits 5-7; the other bits depend on the type. */
-#define SQUARE_TYPE_SHIFT 5
-#define square_type(s)    ((s) >> SQUARE_TYPE_SHIFT)
-enum square_type {
-    SQUARE_WALL,
-    SQUARE_FLOOR,
-    SQUARE_PIT,
-    SQUARE_STAIRS,
-    SQUARE_DOOR,
-    SQUARE_TELEPORTER,
-    SQUARE_FAKE_WALL,
-    SQUARE_UNKNOWN
-};
-#define SQUARE_OUTSIDE            0xe0 /* dungeon_square_edge: a square away from the map */
+#define SQUARE_TYPE_SHIFT         5
+#define square_type(s)            ((s) >> SQUARE_TYPE_SHIFT)
+/* Square types. */
+#define SQUARE_WALL               0
+#define SQUARE_FLOOR              1
+#define SQUARE_PIT                2
+#define SQUARE_STAIRS             3
+#define SQUARE_DOOR               4
+#define SQUARE_TELEPORTER         5
+#define SQUARE_FAKE_WALL          6
+#define SQUARE_UNKNOWN            7
+/* The square byte of dungeon_square_edge for a square away from the map. */
+#define SQUARE_OUTSIDE            0xe0
 /* Square bits 0-3 by square type. */
 #define SQUARE_PIT_OPEN           0x08
 #define SQUARE_PIT_VARIANT        0x04 /* selects the second pit picture */
@@ -52,48 +51,59 @@ enum square_type {
 #define SQUARE_FAKE_WALL_OPEN     0x04
 #define SQUARE_FLAG_3             0x08 /* bit 3 of any square: one floor text ornament shows it */
 #define SQUARE_LEVEL_LINK         0x02 /* a square with a link to another level */
-#define SQUARE_FLAG_0     0x01 /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
-#define SQUARE_HAS_THINGS 0x10 /* bit 4 of any square: things lie on it */
+#define SQUARE_FLAG_0         0x01 /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
+#define SQUARE_HAS_THINGS     0x10 /* bit 4 of any square: things lie on it */
 /* The values of SQUARE_DOOR_STATE. */
-enum door_state {
-    DOOR_STATE_OPEN,
-    DOOR_STATE_ONE_FOURTH, /* a door one step down: the party passes under it */
-    DOOR_STATE_HALF,
-    DOOR_STATE_THREE_FOURTHS,
-    DOOR_STATE_CLOSED,
-    DOOR_STATE_BROKEN
-};
-#define square_flag(s, bit) (((s) & (bit)) != 0)
+#define DOOR_STATE_OPEN       0
+#define DOOR_STATE_ONE_FOURTH 1 /* a door one step down: the party passes under it */
+#define DOOR_STATE_HALF       2
+#define DOOR_STATE_THREE_FOURTHS 3
+#define DOOR_STATE_CLOSED        4
+#define DOOR_STATE_BROKEN        5
+#define square_flag(s, bit)      (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
-#define WALL_FACE(dir)      (8 >> (dir))
+#define WALL_FACE(dir)           (8 >> (dir))
 
-enum direction { DIR_NORTH, DIR_EAST, DIR_SOUTH, DIR_WEST, DIR_COUNT };
-#define DIR_MASK                (DIR_COUNT - 1) /* directions and cells wrap at 4 */
-#define CELL_COUNT              4               /* the cells of a square, numbered like the directions */
-#define TURN_RIGHT              1               /* dir_turn: the direction to the right */
-#define TURN_LEFT               3               /* dir_turn: the direction to the left */
+/* Directions, clockwise from north, and the cells of a square, numbered like the directions. */
+#define DIR_NORTH               0
+#define DIR_EAST                1
+#define DIR_SOUTH               2
+#define DIR_WEST                3
+#define DIR_COUNT               4
+#define CELL_COUNT              4
+/* Directions and cells wrap at 4. */
+#define DIR_MASK                (DIR_COUNT - 1)
+/* Quarter turns of dir_turn. */
+#define TURN_RIGHT              1 /* dir_turn: the direction to the right */
+#define TURN_LEFT               3 /* dir_turn: the direction to the left */
 /* The direction or cell after a number of quarter turns clockwise. */
 #define dir_turn(d, turns)      (((d) + (turns)) & DIR_MASK)
 #define dir_opposite(d)         dir_turn(d, 2)
 /* The direction or cell d seen from a party or creature that looks to facing. */
 #define dir_relative(d, facing) dir_turn(d, -(facing))
 
-#define PERCENT         100 /* the whole of a chance or a ratio in percent */
+/* The whole of a chance or a ratio in percent. */
+#define PERCENT         100
+/* No thing, and the end of a thing list. */
 #define THING_NONE      0xffff
 #define THING_ENDOFLIST 0xfffe
+/* The levels of the dungeon and the size of a map. */
 #define LEVEL_COUNT     63
 #define MAP_SIDE_MAX    32 /* the squares of the longest map side */
+/* The end of a level list of dungeon_level_maps. */
 #define LEVEL_LIST_END  0xff
-#define MAP_LEVEL_MASK  0x3f /* the dungeon level in the map size word */
+/* The dungeon level in the map size word. */
+#define MAP_LEVEL_MASK  0x3f
 
 /* A thing id: record index in bits 0-9, thing type in bits 10-13, cell in bits 14-15. */
-#define THING_TYPE_SHIFT 10
-#define THING_TYPE_MASK  0xf
-#define thing_type(t)    (((t) >> THING_TYPE_SHIFT) & THING_TYPE_MASK)
-#define THING_INDEX_MASK 0x3ff
-#define thing_index(t)   ((t) & THING_INDEX_MASK)
-#define THING_CELL_SHIFT 14
+#define THING_INDEX_MASK 0x03ff
+#define THING_TYPE_MASK  0x000f
 #define THING_ID_MASK    0x3fff /* a thing id without its cell */
+/* The positions of the thing type and the cell in a thing id. */
+#define THING_TYPE_SHIFT 10
+#define THING_CELL_SHIFT 14
+#define thing_type(t)    (((t) >> THING_TYPE_SHIFT) & THING_TYPE_MASK)
+#define thing_index(t)   ((t) & THING_INDEX_MASK)
 #define thing_cell(t)    ((t) >> THING_CELL_SHIFT)
 /* The thing id of thing in cell; the cell wraps at 4. */
 static inline uint16_t thing_with_cell(uint16_t thing, int cell)
@@ -105,14 +115,16 @@ static inline uint16_t thing_make(int type, int index)
 {
     return (uint16_t)(type << THING_TYPE_SHIFT | index);
 }
-#define CELL_ANY 0xff /* a cell argument: any cell */
+/* A cell argument: any cell. */
+#define CELL_ANY 0xff
 
 /* A location word: x bits 0-4, y bits 5-9, map bits 10-15. */
-#define LOCATION_COORD_MASK 0x1f
+#define LOCATION_COORD_MASK 0x001f
+#define LOCATION_MAP_MASK   0x003f
+#define LOCATION_MAP_BITS   0xfc00
+/* The positions of y and the map in a location word. */
 #define LOCATION_Y_SHIFT    5
 #define LOCATION_MAP_SHIFT  10
-#define LOCATION_MAP_MASK   0x3f
-#define LOCATION_MAP_BITS   0xfc00
 #define location_x(w)       ((w) & LOCATION_COORD_MASK)
 #define location_y(w)       ((w) >> LOCATION_Y_SHIFT & LOCATION_COORD_MASK)
 #define location_map(w)     ((w) >> LOCATION_MAP_SHIFT)
@@ -134,43 +146,44 @@ static inline uint16_t location_dir(uint16_t word)
 }
 
 /* Byte offsets of thing record fields. Every record starts with the link to the next thing. */
-enum thing_field {
-    THING_NEXT = 0,
-    TELEPORTER_TARGET = 2, /* x bits 0-4, y bits 5-9, rotation bits 10-11, bit 12 absolute, scope bits 13-14 */
-    TELEPORTER_MAP = 4,    /* target map in bits 8-15, bit 0 closed, bits 1-2 fixed */
-    TEXT_DATA = 2,         /* bit 0 visible, bits 1-2 kind, bits 3-10 ornament, bits 11-15 subtype */
-    DOOR_DATA = 2,         /* bit 0 door type, bits 1-4 ornament ordinal, bits 5-13: see the DOOR_ bits */
-    SENSOR_TYPE_DATA = 2,  /* sensor type bits 0-6, data bits 7-15 */
-    SENSOR_FLAGS = 4,      /* bit 0 busy, bit 2 state, bits 3-4 effect, bits 7-10 delay, bits 12-15 ornament ordinal */
-    SENSOR_TARGET = 6,     /* target square: cell bits 4-5, x bits 6-10, y bits 11-15 */
-    GROUP_POSSESSIONS = 2,
-    GROUP_CREATURE = 4, /* byte: creature type */
-    GROUP_ACTIVE = 5,   /* byte: active group index, 0xff none */
-    GROUP_HEALTH = 6,
-    GROUP_ITEM_CLASS = 8,    /* the item class of a creature that acts, -1 while it is created */
-    GROUP_ANIM_SEQUENCE = 8, /* static creatures: first frame of the animation sequence */
-    GROUP_FLAGS = 0x0a,      /* the mood bits of the group */
-    GROUP_ANIM_STATE = 0x0a, /* static creatures: animation state word */
-    GROUP_HOME = 0x0c,       /* home square: x bits 0-4, y bits 5-9, map bits 10-15 */
-    GROUP_DIR = 0x0e,        /* bit 7 keep cells, bits 8-9 direction the creature faces, bit 10 do not discard */
-    ITEM_DATA = 2,           /* weapons, armour, scrolls, potions, and miscellaneous items: see the ITEM_ bits */
-    CONTAINER_CONTENTS = 2,
-    MINION_MAP_GROUP = 2,    /* a minion map: its minion group */
-    CONTAINER_KIND = 4,      /* bit 0 open, bits 1-2 container kind, bits 13-15 subtype */
-    MINION_MAP_LOCATION = 6, /* a minion map: its target location, THING_NONE for none */
-    MONEYBOX_FLAGS = 6,      /* a money box: bit 10 placed by a creature */
-    PROJECTILE_PAYLOAD = 2,
-    PROJECTILE_ENERGY = 4,     /* byte: the range and power left */
-    PROJECTILE_HIT_CHANCE = 5, /* byte */
-    PROJECTILE_LOCATION = 4,   /* a minion link projectile or a missile that a creature carries: its location word */
-    PROJECTILE_EVENT = 6,      /* timeline event that moves the projectile */
-    PROJECTILE_CARRIED = 6,    /* a missile that a creature carries: bit 0 the creature waits to enter its location */
-    EXPLOSION_DATA = 2,        /* explosion type bits 0-6, bit 7 centered on the square, power bits 8-15 */
-};
+#define THING_NEXT        0x00
+#define TELEPORTER_TARGET 0x02 /* x bits 0-4, y bits 5-9, rotation bits 10-11, bit 12 absolute, scope bits 13-14 */
+#define TELEPORTER_MAP    0x04 /* target map in bits 8-15, bit 0 closed, bits 1-2 fixed */
+#define TEXT_DATA         0x02 /* bit 0 visible, bits 1-2 kind, bits 3-10 ornament, bits 11-15 subtype */
+#define DOOR_DATA         0x02 /* bit 0 door type, bits 1-4 ornament ordinal, bits 5-13: see the DOOR_ bits */
+#define SENSOR_TYPE_DATA  0x02 /* sensor type bits 0-6, data bits 7-15 */
+#define SENSOR_FLAGS  0x04 /* bit 0 busy, bit 2 state, bits 3-4 effect, bits 7-10 delay, bits 12-15 ornament ordinal */
+#define SENSOR_TARGET 0x06 /* target square: cell bits 4-5, x bits 6-10, y bits 11-15 */
+#define GROUP_POSSESSIONS     0x02
+#define GROUP_CREATURE        0x04 /* byte: creature type */
+#define GROUP_ACTIVE          0x05 /* byte: active group index, 0xff none */
+#define GROUP_HEALTH          0x06
+#define GROUP_ITEM_CLASS      0x08 /* the item class of a creature that acts, -1 while it is created */
+#define GROUP_ANIM_SEQUENCE   0x08 /* static creatures: first frame of the animation sequence */
+#define GROUP_FLAGS           0x0a /* the mood bits of the group */
+#define GROUP_ANIM_STATE      0x0a /* static creatures: animation state word */
+#define GROUP_HOME            0x0c /* home square: x bits 0-4, y bits 5-9, map bits 10-15 */
+#define GROUP_DIR             0x0e /* bit 7 keep cells, bits 8-9 direction the creature faces, bit 10 do not discard */
+#define ITEM_DATA             0x02 /* weapons, armour, scrolls, potions, and miscellaneous items: see the ITEM_ bits */
+#define CONTAINER_CONTENTS    0x02
+#define MINION_MAP_GROUP      0x02 /* a minion map: its minion group */
+#define CONTAINER_KIND        0x04 /* bit 0 open, bits 1-2 container kind, bits 13-15 subtype */
+#define MINION_MAP_LOCATION   0x06 /* a minion map: its target location, THING_NONE for none */
+#define MONEYBOX_FLAGS        0x06 /* a money box: bit 10 placed by a creature */
+#define PROJECTILE_PAYLOAD    0x02
+#define PROJECTILE_ENERGY     0x04 /* byte: the range and power left */
+#define PROJECTILE_HIT_CHANCE 0x05 /* byte */
+#define PROJECTILE_LOCATION 0x04 /* a minion link projectile or a missile that a creature carries: its location word */
+#define PROJECTILE_EVENT    0x06 /* timeline event that moves the projectile */
+#define PROJECTILE_CARRIED  0x06 /* a missile that a creature carries: bit 0 the creature waits to enter its location */
+#define EXPLOSION_DATA      0x02 /* explosion type bits 0-6, bit 7 centered on the square, power bits 8-15 */
 
+/* Thing records */
+/* The record of thing in the record table of its thing type. */
 uint8_t *dungeon_thing_record(uint16_t thing);
 /* The 16-bit field of a thing record at byte offset field. */
 uint16_t thing_word(uint16_t thing, int field);
+/* Sets the 16-bit field of a thing record at byte offset field. */
 void set_thing_word(uint16_t thing, int field, uint16_t value);
 
 /* Building blocks of the accessors below; other modules call the named accessors. */
@@ -215,10 +228,11 @@ static inline uint16_t *container_contents(uint16_t container)
     return thing_list(container, CONTAINER_CONTENTS);
 }
 
-/* DOOR_DATA bits. */
-#define DOOR_MAP_TYPE           0x0001 /* the door has door type 1 of its map, else door type 0 */
+/* The position of the door ornament (bits 1-4) in DOOR_DATA. */
 #define DOOR_ORNAMENT_SHIFT     1
-#define DOOR_ORNAMENT_MASK      0xf
+/* DOOR_DATA bits, and the mask of the door ornament after the shift. */
+#define DOOR_MAP_TYPE           0x0001 /* the door has door type 1 of its map, else door type 0 */
+#define DOOR_ORNAMENT_MASK      0x000f
 #define DOOR_VERTICAL           0x0020 /* the door moves up and down as a whole: small creatures pass under it */
 #define DOOR_BUTTON             0x0040
 #define DOOR_BREAKABLE_BY_MAGIC 0x0080
@@ -253,39 +267,43 @@ static inline bool door_has_button(uint16_t door)
 }
 
 /* TEXT_DATA fields. */
-#define TEXT_VISIBLE    0x0001
-#define TEXT_KIND_SHIFT 1
-#define TEXT_KIND_MASK  3
-enum text_kind { TEXT_KIND_TEXT, TEXT_KIND_ORNAMENT, TEXT_KIND_AI_MARKER };
-#define TEXT_VALUE_SHIFT      3 /* a text: its offset in the text data; an ornament: its value in bits 3-10 */
-#define TEXT_VALUE_MASK       0xff
-#define TEXT_OFFSET_MASK      0x1fff
-#define TEXT_SUBTYPE_SHIFT    11
-#define TEXT_SUBTYPE_MASK     0x1f
-#define AI_MARKER_ID_SHIFT    3 /* an AI marker: id bits 3-7, kind bits 8-11, level delta bits 12-15 */
-#define AI_MARKER_ID_MASK     0x1f
-#define AI_MARKER_KIND_SHIFT  8
-#define AI_MARKER_KIND_MASK   0xf
-#define AI_MARKER_LEVEL_SHIFT 12
-#define AI_MARKER_LEVEL_MASK  0xf
+#define TEXT_VISIBLE               0x0001
+#define TEXT_KIND_MASK             0x0003
+#define TEXT_VALUE_MASK            0x00ff
+#define TEXT_OFFSET_MASK           0x1fff
+#define TEXT_SUBTYPE_MASK          0x001f
+/* The positions of the TEXT_DATA fields: kind bits 1-2, value or offset from bit 3, subtype bits 11-15. */
+#define TEXT_KIND_SHIFT            1
+#define TEXT_VALUE_SHIFT           3 /* a text: its offset in the text data; an ornament: its value in bits 3-10 */
+#define TEXT_SUBTYPE_SHIFT         11
+/* Text kinds. */
+#define TEXT_KIND_TEXT             0
+#define TEXT_KIND_ORNAMENT         1
+#define TEXT_KIND_AI_MARKER        2
+/* An AI marker: id bits 3-7, kind bits 8-11, level delta bits 12-15 of TEXT_DATA. */
+#define AI_MARKER_ID_SHIFT         3
+#define AI_MARKER_KIND_SHIFT       8
+#define AI_MARKER_LEVEL_SHIFT      12
+/* The masks of the AI marker fields after the shift. */
+#define AI_MARKER_ID_MASK          0x1f
+#define AI_MARKER_KIND_MASK        0x0f
+#define AI_MARKER_LEVEL_MASK       0x0f
 /* Subtypes of ornament texts, by what the view does with them (game meanings from docs/skull-notes/range-6.md). */
-enum text_subtype {
-    SUBTYPE_STILL = 0, /* plain ornament */
-    SUBTYPE_ANIMATED = 2,
-    SUBTYPE_ITEM_HOLDER = 4,        /* holds an item while visible; the view shows frame 1 */
-    SUBTYPE_TOGGLE = 5,             /* animated while visible (wall text toggle) */
-    SUBTYPE_LADDER = 6,             /* a ladder to another level */
-    SUBTYPE_LADDER_HIDDEN = 7,      /* a ladder that works while the text is not visible */
-    SUBTYPE_ITEM_HOLDER_MARKER = 8, /* an item holder that sets a marker; the dungeon load makes it visible */
-    SUBTYPE_RANDOM_PIT = 9,         /* a floor trigger that opens the pit at random */
-    SUBTYPE_TRAP_TELEPORT = 0x0a,   /* a floor trap that teleports the party */
-    SUBTYPE_HAND_SWITCH = 0x0d,     /* a switch that an empty hand operates */
-    SUBTYPE_PLATE = 0x0e,           /* a text plate on the wall */
-    SUBTYPE_WARP_ONCE = 0x0f,       /* a warp marker that clears all markers; the view shows frame 1 */
-    SUBTYPE_WARP = 0x10,            /* a warp marker that finds the set marker */
-    SUBTYPE_SQUARE_SWITCH = 0x11,   /* frame from SQUARE_FLAG_3 */
-    SUBTYPE_SHOP_STAND = 0x14,      /* clears SIDE_SHOP_FLAG */
-};
+#define SUBTYPE_STILL              0x00 /* plain ornament */
+#define SUBTYPE_ANIMATED           0x02
+#define SUBTYPE_ITEM_HOLDER        0x04 /* holds an item while visible; the view shows frame 1 */
+#define SUBTYPE_TOGGLE             0x05 /* animated while visible (wall text toggle) */
+#define SUBTYPE_LADDER             0x06 /* a ladder to another level */
+#define SUBTYPE_LADDER_HIDDEN      0x07 /* a ladder that works while the text is not visible */
+#define SUBTYPE_ITEM_HOLDER_MARKER 0x08 /* an item holder that sets a marker; the dungeon load makes it visible */
+#define SUBTYPE_RANDOM_PIT         0x09 /* a floor trigger that opens the pit at random */
+#define SUBTYPE_TRAP_TELEPORT      0x0a /* a floor trap that teleports the party */
+#define SUBTYPE_HAND_SWITCH        0x0d /* a switch that an empty hand operates */
+#define SUBTYPE_PLATE              0x0e /* a text plate on the wall */
+#define SUBTYPE_WARP_ONCE          0x0f /* a warp marker that clears all markers; the view shows frame 1 */
+#define SUBTYPE_WARP               0x10 /* a warp marker that finds the set marker */
+#define SUBTYPE_SQUARE_SWITCH      0x11 /* frame from SQUARE_FLAG_3 */
+#define SUBTYPE_SHOP_STAND         0x14 /* clears SIDE_SHOP_FLAG */
 static inline bool text_is_visible(uint16_t text)
 {
     return thing_bit(text, TEXT_DATA, TEXT_VISIBLE);
@@ -315,49 +333,56 @@ static inline uint16_t text_offset(uint16_t text)
 }
 
 /* SENSOR_TYPE_DATA fields. */
-#define SENSOR_TYPE_MASK         0x7f
-#define SENSOR_LEVEL_LINK        0x1c /* sensor type: a link to the square of another level */
+#define SENSOR_TYPE_MASK         0x007f
+#define SENSOR_DATA_MASK         0x01ff
+#define SENSOR_DATA_SIGN         0x0100 /* a counter: the count is below zero */
+#define SENSOR_DATA_SOUND        0x0100 /* an animated ornament: its ambient sound runs */
+#define SENSOR_DATA_FRAME_MASK   0x00ff /* an animated ornament: the frame offset of its animation */
+/* The position of the sensor data (bits 7-15) in SENSOR_TYPE_DATA. */
 #define SENSOR_DATA_SHIFT        7
-#define SENSOR_DATA_MASK         0x1ff
-#define SENSOR_DATA_SIGN         0x100 /* a counter: the count is below zero */
-#define SENSOR_DATA_SOUND        0x100 /* an animated ornament: its ambient sound runs */
-#define SENSOR_DATA_FRAME_MASK   0xff  /* an animated ornament: the frame offset of its animation */
+/* Sensor types of the dungeon links. */
+#define SENSOR_LEVEL_LINK        0x1c /* sensor type: a link to the square of another level */
 #define SENSOR_TELEPORTER_LINK   0x27
 /* SENSOR_FLAGS bits. */
 #define SENSOR_BUSY              0x0001 /* the sensor ignores triggers until its animation or its wait ends */
 #define SENSOR_STATE             0x0004 /* on; some sensor types use it as an option */
-#define SENSOR_EFFECT_SHIFT      3
-#define SENSOR_EFFECT_MASK       3
+#define SENSOR_EFFECT_MASK       0x0003
 #define SENSOR_INVERTED          0x0020
 #define SENSOR_AUDIBLE           0x0040
+#define SENSOR_DELAY_MASK        0x000f
+#define SENSOR_ORNAMENT_MASK     0x000f
+/* The positions of the SENSOR_FLAGS fields: effect bits 3-4, delay bits 7-10, ornament ordinal bits 12-15. */
+#define SENSOR_EFFECT_SHIFT      3
 #define SENSOR_DELAY_SHIFT       7
-#define SENSOR_DELAY_MASK        0xf
 #define SENSOR_ORNAMENT_SHIFT    12
-#define SENSOR_ORNAMENT_MASK     0xf
 /* SENSOR_TARGET fields. */
 #define SENSOR_TARGET_CELL_SHIFT 4
-#define SENSOR_TARGET_CELL_MASK  3
 #define SENSOR_TARGET_X_SHIFT    6
 #define SENSOR_TARGET_Y_SHIFT    11
+/* The mask of the target cell after the shift. */
+#define SENSOR_TARGET_CELL_MASK  0x03
 /* A missile launcher: energy in bits 4-11 and step in bits 12-15 of SENSOR_TARGET. */
 #define LAUNCH_ENERGY_SHIFT      4
-#define LAUNCH_ENERGY_MASK       0xff
 #define LAUNCH_STEP_SHIFT        12
-#define LAUNCH_STEP_MASK         0xf
+/* The masks of the launcher energy and step after the shift. */
+#define LAUNCH_ENERGY_MASK       0xff
+#define LAUNCH_STEP_MASK         0x0f
 
 /* TELEPORTER_TARGET bits. */
-#define TELEPORTER_ROTATION_SHIFT  10
-#define TELEPORTER_ROTATION_MASK   3
+#define TELEPORTER_ROTATION_MASK   0x0003
 #define TELEPORTER_ABSOLUTE        0x1000 /* the rotation sets the direction, it does not add to it */
-#define TELEPORTER_SCOPE_SHIFT     13     /* who uses the teleporter: bit 13 creatures, bit 14 the party and objects */
-#define TELEPORTER_SCOPE_MASK      3
-#define TELEPORTER_SCOPE_CREATURES 1 /* teleporter scope bit: the teleporter moves creatures */
+#define TELEPORTER_SCOPE_MASK      0x0003
+#define TELEPORTER_SCOPE_CREATURES 0x0001 /* teleporter scope bit: the teleporter moves creatures */
 #define TELEPORTER_AUDIBLE         0x8000
+/* The positions of the rotation (bits 10-11) and the scope (bits 13-14) in TELEPORTER_TARGET. */
+#define TELEPORTER_ROTATION_SHIFT  10
+#define TELEPORTER_SCOPE_SHIFT     13 /* who uses the teleporter: bit 13 creatures, bit 14 the party and objects */
 /* TELEPORTER_MAP bits. */
 #define TELEPORTER_CLOSED          0x0001
 #define TELEPORTER_FIXED           0x0006 /* both bits: square events do not turn the teleporter on or off */
+#define TELEPORTER_MAP_MASK        0x00ff
+/* The position of the target map (bits 8-15) in TELEPORTER_MAP. */
 #define TELEPORTER_MAP_SHIFT       8
-#define TELEPORTER_MAP_MASK        0xff
 static inline uint16_t teleporter_x(uint16_t teleporter)
 {
     return location_x(thing_word(teleporter, TELEPORTER_TARGET));
@@ -445,9 +470,10 @@ static inline void group_set_mood_flag(uint16_t group, uint16_t bit, bool on)
 }
 /* GROUP_DIR bits. */
 #define GROUP_KEEP_CELLS     0x0080 /* the possessions keep their cells */
-#define GROUP_DIR_SHIFT      8
-#define GROUP_DIR_MASK       3
+#define GROUP_DIR_MASK       0x0003
 #define GROUP_DO_NOT_DISCARD 0x0400 /* the record stays when the dungeon needs free records */
+/* The position of the direction (bits 8-9) in GROUP_DIR. */
+#define GROUP_DIR_SHIFT      8
 static inline uint16_t group_dir(uint16_t group)
 {
     return thing_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK);
@@ -467,22 +493,25 @@ static inline void group_set_flag(uint16_t group, uint16_t bit, bool on)
 }
 
 /* ITEM_DATA of weapons, armour, and miscellaneous items: type bits 0-6, bit 7 do not discard, charges. */
-#define ITEM_TYPE_MASK        0x7f /* the GDAT index */
+#define ITEM_TYPE_MASK        0x007f /* the GDAT index */
 #define ITEM_DO_NOT_DISCARD   0x0080
+#define CHARGES_MASK          0x000f
+#define MISC_CHARGES_MASK     0x0003
+#define MISC_STACK_MASK       0x003f
+/* The positions of the charges and of the stack size in ITEM_DATA. */
 #define WEAPON_CHARGES_SHIFT  10
 #define ARMOUR_CHARGES_SHIFT  9
-#define CHARGES_MASK          0xf
 #define MISC_CHARGES_SHIFT    14 /* also the champion of a champion token or of bones */
-#define MISC_CHARGES_MASK     3
-#define MISC_STACK_SHIFT      8 /* a miscellaneous item: the stack size - 1 in bits 8-13 */
-#define MISC_STACK_MASK       0x3f
+#define MISC_STACK_SHIFT      8  /* a miscellaneous item: the stack size - 1 in bits 8-13 */
 /* ITEM_DATA of potions: power bits 0-7, type bits 8-14, bit 15 do not discard. */
-#define POTION_POWER_MASK     0xff
-#define POTION_TYPE_SHIFT     8
-#define POTION_TYPE_MASK      0x7f
+#define POTION_POWER_MASK     0x00ff
+#define POTION_TYPE_MASK      0x007f
 #define POTION_DO_NOT_DISCARD 0x8000
+/* The position of the potion type in ITEM_DATA. */
+#define POTION_TYPE_SHIFT     8
 /* ITEM_DATA of scrolls: an ornament text id in bits 10-15, else a text thing index in bits 0-9. */
 #define SCROLL_TEXT_SHIFT     10
+/* The mask of the ornament text id of a scroll after the shift. */
 #define SCROLL_TEXT_MASK      0x3f
 /* The ornament text id of a scroll, 0 for a scroll with a text thing. */
 static inline uint16_t scroll_ornament_text(uint16_t scroll)
@@ -546,11 +575,14 @@ static inline void potion_set_type(uint16_t potion, uint16_t type)
 }
 /* CONTAINER_KIND fields. */
 #define CONTAINER_OPEN       0x0001
+#define CONTAINER_KIND_MASK  0x0003
+#define CONTAINER_TYPE_MASK  0x0007
+/* The positions of the container kind (bits 1-2) and type (bits 13-15) in CONTAINER_KIND. */
 #define CONTAINER_KIND_SHIFT 1
-#define CONTAINER_KIND_MASK  3
-enum container_kind { CONTAINER_CHEST, CONTAINER_MINION_MAP }; /* a chest or a money box, a minion map */
 #define CONTAINER_TYPE_SHIFT 13
-#define CONTAINER_TYPE_MASK  7
+/* Container kinds: a chest or a money box, a minion map. */
+#define CONTAINER_CHEST      0
+#define CONTAINER_MINION_MAP 1
 /* a creature placed the money box: creatures take it as empty until the party moves it */
 #define MONEYBOX_PLACED      0x0400
 static inline bool container_is_open(uint16_t container)
@@ -598,12 +630,14 @@ static inline void moneybox_set_placed(uint16_t box, bool placed)
     set_thing_bit(box, MONEYBOX_FLAGS, MONEYBOX_PLACED, placed);
 }
 
-#define PROJECTILE_HOLDER_WAITS 0x0001 /* PROJECTILE_CARRIED bit */
+/* The PROJECTILE_CARRIED bit. */
+#define PROJECTILE_HOLDER_WAITS 0x0001
 /* EXPLOSION_DATA fields. */
-#define EXPLOSION_TYPE_MASK     0x7f
+#define EXPLOSION_TYPE_MASK     0x007f
 #define EXPLOSION_CENTERED      0x0080 /* the explosion is in the middle of its square, not on a cell */
+#define EXPLOSION_POWER_MASK    0x00ff
+/* The position of the explosion power (bits 8-15) in EXPLOSION_DATA. */
 #define EXPLOSION_POWER_SHIFT   8
-#define EXPLOSION_POWER_MASK    0xff
 
 /* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
 int dungeon_load(const char *path);

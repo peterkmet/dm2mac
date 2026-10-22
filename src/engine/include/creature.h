@@ -6,7 +6,6 @@
 /* Creature groups: the creature info records and the update of the groups. */
 
 #include "gdat.h"
-#include "dungeon.h"
 #include "timeline.h"
 #include <stdbool.h>
 #include <stdint.h>

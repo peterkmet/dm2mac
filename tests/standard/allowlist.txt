@@ -12,7 +12,6 @@ block engine/champ_action.c open: module cleanup
 block engine/champion.c open: module cleanup
 block engine/creature.c open: module cleanup
 block engine/damage.c open: module cleanup
-block engine/dungeon.c open: module cleanup
 block engine/game_text.c open: module cleanup
 block engine/include/action.h open: module cleanup
 block engine/include/ai.h open: module cleanup
@@ -468,7 +467,6 @@ enum engine/ai.c open: module cleanup
 enum engine/ai_move.c open: module cleanup
 enum engine/champ_action.c open: module cleanup
 enum engine/damage.c open: module cleanup
-enum engine/dungeon.c open: module cleanup
 enum engine/game_text.c open: module cleanup
 enum engine/include/action.h open: module cleanup
 enum engine/include/ai_move.h open: module cleanup
@@ -476,7 +474,6 @@ enum engine/include/aspect.h open: module cleanup
 enum engine/include/champ_action.h open: module cleanup
 enum engine/include/champion.h open: module cleanup
 enum engine/include/creature.h open: module cleanup
-enum engine/include/dungeon.h open: module cleanup
 enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
 enum engine/include/inventory.h open: module cleanup
@@ -725,7 +722,6 @@ notation engine/champ_action.c open: module cleanup
 notation engine/champion.c open: module cleanup
 notation engine/creature.c open: module cleanup
 notation engine/damage.c open: module cleanup
-notation engine/dungeon.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/ai.h open: module cleanup

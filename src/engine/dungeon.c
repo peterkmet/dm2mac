@@ -12,37 +12,41 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Sizes of the DUNGEON.DAT sections and limits of the loaded dungeon. */
 #define HEADER_SIZE          44
 #define MAP_DESC_SIZE        16
-#define COMPRESSED_SIGNATURE 0x8104
 #define SQUARE_THING_SLACK   300
 #define THING_COUNT_MAX      1024
 #define EXPLOSION_COUNT_MAX  768
 #define MAP_COUNT_MAX        255
-#define MAP_WIDTH_SHIFT      6
-#define MAP_WIDTH_MASK       0x1f
-#define MAP_HEIGHT_SHIFT     11
 #define MISC_RESERVED        3 /* free misc records that only the forced creation of a misc item may use */
+/* The first word of a compressed DUNGEON.DAT. */
+#define COMPRESSED_SIGNATURE 0x8104
+/* The map size word: level in bits 0-5, width - 1 in bits 6-10, height - 1 in bits 11-15. */
+#define MAP_WIDTH_SHIFT      6
+#define MAP_HEIGHT_SHIFT     11
+/* The mask of the map width - 1 after the shift. */
+#define MAP_SIDE_MASK        0x1f
 
-enum header_field {
-    HEADER_MAP_DATA_SIZE = 2,
-    HEADER_MAP_COUNT = 4,
-    HEADER_TEXT_WORDS = 6,
-    HEADER_PARTY_START = 8,
-    HEADER_SQUARE_THINGS = 10,
-    HEADER_THING_COUNTS = 12
-};
-enum map_desc_field {
-    MAP_DATA_OFFSET = 0,
-    MAP_FLAGS = 2,
-    MAP_OFFSET_X = 6,
-    MAP_OFFSET_Y = 7,
-    MAP_SIZE_AND_LEVEL = 8,
-    MAP_ORNAMENT_COUNTS = 10,
-    MAP_OBJECT_COUNTS = 12,
-    MAP_GRAPHICS = 14
-};
+/* Byte offsets of the fields of the DUNGEON.DAT header. */
+#define HEADER_MAP_DATA_SIZE 2
+#define HEADER_MAP_COUNT     4
+#define HEADER_TEXT_WORDS    6
+#define HEADER_PARTY_START   8
+#define HEADER_SQUARE_THINGS 10
+#define HEADER_THING_COUNTS  12
+/* Byte offsets of the fields of a map descriptor. */
+#define MAP_DATA_OFFSET      0
+#define MAP_FLAGS_WORD       2
+#define MAP_OFFSET_X         6
+#define MAP_OFFSET_Y         7
+#define MAP_SIZE_AND_LEVEL   8
+#define MAP_ORNAMENT_COUNTS  10
+#define MAP_OBJECT_COUNTS    12
+#define MAP_GRAPHICS         14
+/* The map ornament counts word: wall ornaments in bits 0-3, floor ornaments in bits 8-11. */
 #define WALL_ORNAMENT_MASK   0xf
+/* The position of the floor ornament count in the map ornament counts word. */
 #define FLOOR_ORNAMENT_SHIFT 8
 
 /* The record size in bytes of each thing type. */
@@ -108,7 +112,7 @@ static uint16_t map_size_and_level(int map)
 
 int dungeon_map_width(int map)
 {
-    return (map_size_and_level(map) >> MAP_WIDTH_SHIFT & MAP_WIDTH_MASK) + 1;
+    return (map_size_and_level(map) >> MAP_WIDTH_SHIFT & MAP_SIDE_MASK) + 1;
 }
 int dungeon_map_height(int map)
 {
@@ -385,7 +389,7 @@ int dungeon_map_offset_y(int map)
 }
 uint16_t dungeon_map_flags(int map)
 {
-    return le16(map_desc(map) + MAP_FLAGS);
+    return le16(map_desc(map) + MAP_FLAGS_WORD);
 }
 uint16_t dungeon_map_ornament_counts(int map)
 {
@@ -745,12 +749,18 @@ int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int leve
 
 /* ---- The passes after the load of DUNGEON.DAT ---- */
 
-enum link_sensor_type { SENSOR_ANIMATED_ORNAMENT = 0x2c, SENSOR_STARTS_ON = 0x3f, SENSOR_DOOR_FLAG = 0x46 };
-#define WALLSET_PIT_TO_MARKER 0x6a /* wall set value: its pits lead to a marker, not to the square below */
-#define LEVEL_TEXT_SIZE       200
-#define LEVEL_TEXT_FILL       '1' /* the level digit of the levels that the start text does not name */
-#define LEVEL_TEXT_FILLED     0x40
-#define LEVEL_TEXT_MODE       0x8002 /* text decode mode: a hidden text too */
+/* Sensor types that the pass after the load of DUNGEON.DAT prepares. */
+#define SENSOR_ANIMATED_ORNAMENT 0x2c
+#define SENSOR_STARTS_ON         0x3f
+#define SENSOR_DOOR_FLAG         0x46
+/* A wall set value: its pits lead to a marker, not to the square below. */
+#define WALLSET_PIT_TO_MARKER    0x6a
+/* The text of the level digits on the party start square. */
+#define LEVEL_TEXT_SIZE          200
+#define LEVEL_TEXT_FILLED        64
+#define LEVEL_TEXT_FILL          '1' /* the level digit of the levels that the start text does not name */
+/* The text decode mode: a hidden text too. */
+#define LEVEL_TEXT_MODE          0x8002
 
 /* Marks (x, y) of map as a square with a link to another level. */
 static void mark_level_link(int x, int y, int map)
