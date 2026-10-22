@@ -81,7 +81,12 @@ static void draw_screen_picture(int category, int index, int entry)
     const Bitmap *image = draw_gdat_image(category, index, entry);
     int16_t r[RECT_SIZE], x = 0, y = 0;
     if (image && zone_compute_rect(image, r, ZONE_SCREEN, &x, &y))
-        ui_blit_bitmap(image, &g_draw_screen, r, x, y, GFX_OPAQUE, draw_gdat_image_palette(category, index, entry));
+        ui_blit_bitmap(&(BlitSource){.bitmap = image,
+                                     .x = x,
+                                     .y = y,
+                                     .transparent = GFX_OPAQUE,
+                                     .colormap = draw_gdat_image_palette(category, index, entry)},
+                       &g_draw_screen, r);
 }
 
 /* ---- Start menu ---- */
@@ -169,8 +174,12 @@ void session_draw_name_entry(const char *name, int cursor)
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_SLOT_NAME, r))
         return;
-    ui_blit_bitmap(draw_gdat_image(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0), &g_view_viewport, r, r[RECT_X], r[RECT_Y],
-                   GFX_OPAQUE, draw_gdat_image_palette(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0));
+    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0),
+                                 .x = r[RECT_X],
+                                 .y = r[RECT_Y],
+                                 .transparent = GFX_OPAQUE,
+                                 .colormap = draw_gdat_image_palette(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0)},
+                   &g_view_viewport, r);
     text_draw_in_viewport(r[RECT_X], r[RECT_Y] + SLOT_NAME_TOP, g_ui_colors[UI_WHITE], name);
     if (cursor) {
         r[RECT_X] = (int16_t)(r[RECT_X] + (int)strlen(name) * FONT_ADVANCE);

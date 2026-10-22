@@ -168,7 +168,14 @@ static void show_icon(const Strip *s, int icon, int x, int y, int mirror)
         dx = dx ? 0 : (int16_t)(MAP_ICON_W - r[RECT_W]);
     if (MAP_ICON_H - r[RECT_H] && mirror & MIRROR_V)
         dy = dy ? 0 : (int16_t)(MAP_ICON_H - r[RECT_H]);
-    offscreen_blit(area, s->image, r, (int16_t)(icon * MAP_ICON_W + dx), dy, ICON_KEY, mirror, s->palette);
+    offscreen_blit(area,
+                   &(BlitSource){.bitmap = s->image,
+                                 .x = (int16_t)(icon * MAP_ICON_W + dx),
+                                 .y = dy,
+                                 .transparent = ICON_KEY,
+                                 .mirror = mirror,
+                                 .colormap = s->palette},
+                   r);
 }
 
 /* True for a square of map. */
@@ -671,9 +678,9 @@ void mmap_draw_option_buttons(int pressed)
         return;
     int down = (pressed ^ g_action.flags) & MAP_OPTIONS;
     for (int i = 0; i < MAP_OPTION_COUNT; i++, down >>= 1) {
-        offscreen_draw_gdat_image(area, CAT_CONTAINER, g_action.map_item,
-                                  down & 1 ? GFX_OPTION_BUTTON_DOWN : GFX_OPTION_BUTTON_UP,
-                                  ZONE_OPTION_BUTTON_FIRST + i, GFX_OPAQUE);
+        offscreen_draw_gdat_image(
+            area, (GdatKey){CAT_CONTAINER, g_action.map_item, down & 1 ? GFX_OPTION_BUTTON_DOWN : GFX_OPTION_BUTTON_UP},
+            ZONE_OPTION_BUTTON_FIRST + i, GFX_OPAQUE);
         char label[OPTION_LABEL_SIZE] = {(char)(OPTION_LABEL_FIRST + i), '\0'};
         offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i, g_ui_colors[UI_BLACK],
                                     g_ui_colors[UI_GRAY] | TEXT_TRANSPARENT, label);
@@ -720,7 +727,7 @@ void mmap_draw(uint16_t thing)
     }
     area = area_begin_draw(0);
     if (!(g_action.flags & MAP_PANEL_DRAWN)) {
-        offscreen_draw_gdat_image(area, CAT_CONTAINER, g_action.map_item, GFX_CONTAINER_PICTURE, ZONE_PANEL,
+        offscreen_draw_gdat_image(area, (GdatKey){CAT_CONTAINER, g_action.map_item, GFX_CONTAINER_PICTURE}, ZONE_PANEL,
                                   GFX_OPAQUE);
         for (int i = 0; i < g_champ_action_count; i++)
             area_draw_name(i, 0);

@@ -144,8 +144,8 @@ int advanced_quick_load(void)
 static void draw_readout_line(Offscreen *o, int row, const char *text)
 {
     int baseline = o->rect[RECT_Y] + READOUT_MARGIN + row * TEXT_LINE_HEIGHT + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1;
-    offscreen_draw_text_at(o, o->rect[RECT_X] + READOUT_MARGIN, baseline, g_ui_colors[UI_WHITE], g_ui_colors[UI_BLACK],
-                           text);
+    offscreen_draw_text_at(o, o->rect[RECT_X] + READOUT_MARGIN, baseline,
+                           (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_BLACK]}, text);
 }
 
 static const char *on_off(int on)

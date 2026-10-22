@@ -1261,7 +1261,7 @@ void input_set_champion_cursor(int champ)
     Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
     memset(champion_cursor, UI_KEY, sizeof champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
-    ui_blit_bitmap(face, &cursor, r, 0, 0, FACE_CURSOR_SKIP, colors);
+    ui_blit_bitmap(&(BlitSource){.bitmap = face, .transparent = FACE_CURSOR_SKIP, .colormap = colors}, &cursor, r);
     champion_cursor_key = colors[UI_KEY];
     draw_free_temp();
 }
@@ -1280,8 +1280,9 @@ CursorImage input_cursor_image(int cursor)
         Bitmap image = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
-        ui_blit_bitmap(&icon, &image, s, 0, 0, HAND_ICON_KEY, shadow);
-        ui_blit_bitmap(&icon, &image, r, 0, 0, HAND_ICON_KEY, g_leader_hand.palette);
+        ui_blit_bitmap(&(BlitSource){.bitmap = &icon, .transparent = HAND_ICON_KEY, .colormap = shadow}, &image, s);
+        ui_blit_bitmap(&(BlitSource){.bitmap = &icon, .transparent = HAND_ICON_KEY, .colormap = g_leader_hand.palette},
+                       &image, r);
         return (CursorImage){object_cursor,      NULL,       IMAGE_8BPP, OBJECT_CURSOR_SIZE,
                              OBJECT_CURSOR_SIZE, OBJECT_HOT, OBJECT_HOT, key};
     }
@@ -1528,7 +1529,11 @@ static void feedback_picture(Feedback *f, const uint8_t *p)
         return;
     int16_t r[RECT_SIZE];
     feedback_init_rect(f, r, image->width, image->height);
-    offscreen_blit(&f->o, image, r, 0, 0, (int8_t)p[PICTURE_KEY], 0, draw_gdat_image_palette(category, index, entry));
+    offscreen_blit(&f->o,
+                   &(BlitSource){.bitmap = image,
+                                 .transparent = (int8_t)p[PICTURE_KEY],
+                                 .colormap = draw_gdat_image_palette(category, index, entry)},
+                   r);
 }
 
 /* Draws the pressed rune button with the rune of the pressed button in the next rune set. */
@@ -1539,15 +1544,19 @@ static void feedback_rune_button(Feedback *f)
         return;
     int16_t r[RECT_SIZE], w, h;
     feedback_init_rect(f, r, image->width, image->height);
-    offscreen_blit(&f->o, image, r, 0, 0, GFX_OPAQUE, 0,
-                   draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED));
+    offscreen_blit(
+        &f->o,
+        &(BlitSource){.bitmap = image,
+                      .transparent = GFX_OPAQUE,
+                      .colormap = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED)},
+        r);
     /* the rune of the pressed button in the next rune set */
     int set = champion(g_action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
     char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
     text_measure(text, &w, &h);
     rect_center_in(r, f->o.rect, w, h);
-    offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1, g_ui_colors[UI_BLACK], g_ui_colors[UI_CYAN],
-                           text);
+    offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1,
+                           (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_CYAN]}, text);
 }
 
 /* Copies the drawn action area to the screen. */
@@ -1805,7 +1814,7 @@ static void show_move_arrow(int entry, int zone, bool pressed)
     Offscreen o;
     offscreen_create(&o, zone, 1);
     gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
-    offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry + pressed, zone, GFX_OPAQUE);
+    offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry + pressed}, zone, GFX_OPAQUE);
     offscreen_flush(&o, 1);
     draw_free_temp();
 }

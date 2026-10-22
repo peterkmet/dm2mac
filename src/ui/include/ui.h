@@ -5,9 +5,11 @@
 
 /* The offscreen bitmaps shared by the panels and the drawing of the interface pictures. */
 
+#include "gdat.h"
 #include "gfx.h"
 #include "game.h"
 #include "draw.h"
+#include "text.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -49,6 +51,16 @@ typedef struct {
     int16_t dirty[OFFSCREEN_DIRTY_MAX][RECT_SIZE];
 } Offscreen;
 
+/* A part of a picture to copy: the bitmap, the start (x, y) of the part, the transparent color (GFX_OPAQUE: none),
+   the mirror mode (MIRROR_*), and the color map (NULL: none). */
+typedef struct {
+    const Bitmap *bitmap;
+    int16_t x, y;
+    int16_t transparent;
+    uint16_t mirror;
+    const uint8_t *colormap;
+} BlitSource;
+
 /* Opens an offscreen bitmap of zone (-1: of o->rect); mark_dirty marks it all as changed. */
 void offscreen_create(Offscreen *o, int zone, int mark_dirty);
 /* Copies the changed parts to the screen; close frees the bitmap. */
@@ -58,23 +70,21 @@ void offscreen_add_dirty_rect(Offscreen *o, const int16_t *rect);
 void offscreen_fill_rect(Offscreen *o, const int16_t *rect, int color);
 /* Fills every second pixel (a checkerboard) with UI color ui_color. */
 void offscreen_fill_rect_dithered(Offscreen *o, const int16_t *rect, int ui_color);
-void offscreen_blit(Offscreen *o, const Bitmap *src, const int16_t *rect, int src_x, int src_y, int transparent,
-                    int mirror, const uint8_t *colormap);
+void offscreen_blit(Offscreen *o, const BlitSource *source, const int16_t *rect);
 /* Draws a GDAT image placed in zone. */
-void offscreen_draw_gdat_image(Offscreen *o, int category, int index, int entry, int zone, int transparent);
+void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int transparent);
 /* Draws a prepared picture placed in zone (-1: at its rect). */
 void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
 /* Draws text with its base line at (x, y) in screen coordinates. */
-void offscreen_draw_text_at(Offscreen *o, int x, int y, int color, int bg, const char *text);
+void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const char *text);
 /* Draws text placed in zone, plain or with a shadow. */
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text);
 void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text);
 
 /* Fills every second pixel of rect in dst with UI color ui_color. */
 void ui_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int dst_width);
-/* Copies src into rect of dst from (src_x, src_y). */
-void ui_blit_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int src_x, int src_y, int transparent,
-                    const uint8_t *colormap);
+/* Copies the part of source into rect of dst. */
+void ui_blit_bitmap(const BlitSource *source, Bitmap *dst, const int16_t *rect);
 /* Draws the GDAT image (category, index, entry) in zone of the view picture, without its GDAT offset. */
 void ui_draw_viewport_image(int category, int index, int entry, int zone, int transparent);
 /* Fills the screen rectangle of zone with palette color color. */

@@ -203,14 +203,6 @@ params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
 params platform/main.c:read_options open: module cleanup
-params ui/include/ui.h:offscreen_blit open: module cleanup
-params ui/include/ui.h:offscreen_draw_gdat_image open: module cleanup
-params ui/include/ui.h:offscreen_draw_text_at open: module cleanup
-params ui/include/ui.h:ui_blit_bitmap open: module cleanup
-params ui/ui.c:offscreen_blit open: module cleanup
-params ui/ui.c:offscreen_draw_gdat_image open: module cleanup
-params ui/ui.c:offscreen_draw_text_at open: module cleanup
-params ui/ui.c:ui_blit_bitmap open: module cleanup
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-prefix control/control.c:game_restarts open: module cleanup
 static-prefix control/state_json.c:action_menu_json open: module cleanup
@@ -333,7 +325,6 @@ type ui:pos open: module cleanup
 type ui:side open: module cleanup
 type ui:size open: module cleanup
 type ui:slot open: module cleanup
-type ui:src open: module cleanup
 type ui:volume open: module cleanup
 type ui:w open: module cleanup
 type ui:width open: module cleanup

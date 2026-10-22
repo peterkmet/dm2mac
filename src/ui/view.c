@@ -2135,9 +2135,11 @@ static void show_shop_price(int amount, uint8_t ornament, const PicturePlace *p,
         return;
     int16_t rect[RECT_SIZE] = {0, 0, COIN_WIDTH, COIN_HEIGHT};
     for (int i = 0; i < count; i++, rect[RECT_X] += COIN_WIDTH)
-        ui_blit_bitmap(view.ctx.image, strip, rect, coins[i] * COIN_WIDTH, 0, NO_KEY, NULL);
+        ui_blit_bitmap(&(BlitSource){.bitmap = view.ctx.image, .x = coins[i] * COIN_WIDTH, .transparent = NO_KEY},
+                       strip, rect);
     if (zone_compute_anchored_rect(strip, rect, (AnchoredZone){p->zone | ZONE_RELATIVE, p->anchor}, &x, &y))
-        ui_blit_bitmap(strip, &g_view_viewport, rect, 0, 0, p->key, view.ctx.palette);
+        ui_blit_bitmap(&(BlitSource){.bitmap = strip, .transparent = p->key, .colormap = view.ctx.palette},
+                       &g_view_viewport, rect);
 }
 
 /* Draws the name and the sell and buy prices of the shop item in front of the party. */

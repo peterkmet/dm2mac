@@ -213,20 +213,20 @@ static Offscreen status_box;
 
 /* ---- Drawing helpers ---- */
 
-void ui_blit_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int src_x, int src_y, int transparent,
-                    const uint8_t *colormap)
+void ui_blit_bitmap(const BlitSource *source, Bitmap *dst, const int16_t *rect)
 {
+    const Bitmap *src = source->bitmap;
     Blit blit = {.src = src->pixels,
                  .dst = dst->pixels,
-                 .src_x = src_x,
-                 .src_y = src_y,
+                 .src_x = source->x,
+                 .src_y = source->y,
                  .src_width = src->width,
                  .dst_width = dst->width,
                  .src_bpp = src->bpp,
                  .dst_bpp = dst->bpp,
-                 .transparent = (int16_t)transparent,
-                 .mirror = MIRROR_NONE,
-                 .colormap = colormap};
+                 .transparent = source->transparent,
+                 .mirror = source->mirror,
+                 .colormap = source->colormap};
     gfx_blit(&blit, rect);
 }
 
@@ -291,8 +291,10 @@ void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *face_colors)
         memcpy(face_colors, colors, FACE_ICON_COLORS);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     /* the original skips color 2 of the face picture */
-    ui_blit_bitmap(draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champ), dst, r, FACE_SIZE * frame, 0, FACE_SKIP_COLOR,
-                   NULL);
+    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champ),
+                                 .x = FACE_SIZE * frame,
+                                 .transparent = FACE_SKIP_COLOR},
+                   dst, r);
 }
 
 void ui_render_hand_icon(void)
@@ -308,7 +310,7 @@ void ui_render_hand_icon(void)
     memset(g_leader_hand.cursor, HAND_ICON_KEY, sizeof g_leader_hand.cursor);
     const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
     if (image && colors) {
-        ui_blit_bitmap(image, &cursor, r, 0, 0, GFX_OPAQUE, identity);
+        ui_blit_bitmap(&(BlitSource){.bitmap = image, .transparent = GFX_OPAQUE, .colormap = identity}, &cursor, r);
         memcpy(g_leader_hand.palette, colors, sizeof g_leader_hand.palette);
     }
     draw_free_temp();
@@ -436,36 +438,42 @@ void offscreen_fill_rect_dithered(Offscreen *o, const int16_t *rect, int ui_colo
     offscreen_add_dirty_rect(o, rect);
 }
 
-void offscreen_blit(Offscreen *o, const Bitmap *src, const int16_t *rect, int src_x, int src_y, int transparent,
-                    int mirror, const uint8_t *colormap)
+void offscreen_blit(Offscreen *o, const BlitSource *source, const int16_t *rect)
 {
+    const Bitmap *src = source->bitmap;
     if (!rect || !src)
         return;
     int16_t r[RECT_SIZE];
     local_rect(o, rect, r);
     Blit blit = {.src = src->pixels,
                  .dst = o->bitmap->pixels,
-                 .src_x = (int16_t)src_x,
-                 .src_y = (int16_t)src_y,
+                 .src_x = source->x,
+                 .src_y = source->y,
                  .src_width = src->width,
                  .dst_width = o->rect[RECT_W],
                  .src_bpp = src->bpp,
                  .dst_bpp = IMAGE_8BPP,
-                 .transparent = (int16_t)transparent,
-                 .mirror = (uint16_t)mirror,
-                 .colormap = colormap};
+                 .transparent = source->transparent,
+                 .mirror = source->mirror,
+                 .colormap = source->colormap};
     gfx_blit(&blit, r);
     offscreen_add_dirty_rect(o, rect);
 }
 
-void offscreen_draw_gdat_image(Offscreen *o, int category, int index, int entry, int zone, int transparent)
+void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int transparent)
 {
-    const Bitmap *image = draw_gdat_image(category, index, entry);
+    const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
     int16_t r[RECT_SIZE], sx = 0, sy = 0;
     if (!image)
         return;
     int16_t *rect = zone_compute_rect(image, r, (int16_t)zone, &sx, &sy);
-    offscreen_blit(o, image, rect, sx, sy, transparent, MIRROR_NONE, draw_gdat_image_palette(category, index, entry));
+    offscreen_blit(o,
+                   &(BlitSource){.bitmap = image,
+                                 .x = sx,
+                                 .y = sy,
+                                 .transparent = transparent,
+                                 .colormap = draw_gdat_image_palette(picture.category, picture.index, picture.entry)},
+                   rect);
 }
 
 void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
@@ -489,14 +497,13 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
     offscreen_add_dirty_rect(o, r);
 }
 
-void offscreen_draw_text_at(Offscreen *o, int x, int y, int color, int bg, const char *text)
+void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const char *text)
 {
     int16_t w, h;
     if (!text_measure(text, &w, &h))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
-    text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]),
-              (TextColors){(uint16_t)color, (uint16_t)bg}, text);
+    text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]), colors, text);
     /* like the original, the changed rect starts at the base line */
     const int16_t r[RECT_SIZE] = {[RECT_X] = (int16_t)x, [RECT_Y] = (int16_t)y, [RECT_W] = w, [RECT_H] = h};
     offscreen_add_dirty_rect(o, r);
@@ -543,7 +550,7 @@ void ui_draw_movement_arrows(void)
     offscreen_create(&o, ZONE_MOVEMENT_ARROWS, 1);
     gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
     for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += 2)
-        offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry, zone, GFX_OPAQUE);
+        offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry}, zone, GFX_OPAQUE);
     offscreen_flush(&o, 1);
     draw_free_temp();
     input_set_mode(g_ui.push_mode ? INPUT_MODE_PUSH : INPUT_MODE_MOVE);
@@ -581,8 +588,8 @@ static void status_box_begin(int champ, bool clear)
         return;
     int background = !champion(champ)->health ? GFX_BOX_DEAD : in_inventory(champ) ? GFX_BOX_INVENTORY : GFX_BOX_ALIVE;
     offscreen_create(&status_box, ZONE_STATUS_BOX + champ, clear);
-    offscreen_draw_gdat_image(&status_box, CAT_INTERFACE, UI_INDEX_STATUS, background, ZONE_STATUS_BOX + champ,
-                              GFX_OPAQUE);
+    offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, background},
+                              ZONE_STATUS_BOX + champ, GFX_OPAQUE);
     if (!clear)
         status_box.dirty_count = 0;
 }
@@ -611,8 +618,8 @@ static void show_status_bars(int champ)
 /* Draws the damage star with the last damage of a champion in its status box. */
 static void show_damage_number(int champ)
 {
-    offscreen_draw_gdat_image(&status_box, CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE, ZONE_STATUS_DAMAGE + champ,
-                              DAMAGE_STAR_KEY);
+    offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE},
+                              ZONE_STATUS_DAMAGE + champ, DAMAGE_STAR_KEY);
     offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ, g_ui_colors[UI_WHITE], g_ui_colors[UI_RED],
                                 text_format_number(champion(champ)->damage, 0, NUMBER_DIGITS));
 }
@@ -641,15 +648,17 @@ static void show_state_icon(int icon, int zone)
 {
     int16_t r[RECT_SIZE];
     zone_get_icon_rect(zone, r);
-    ui_blit_bitmap(draw_gdat_image(CAT_INTERFACE, UI_INDEX_STATUS, icon), &g_view_viewport, r, 0, 0, UI_KEY,
-                   draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_STATUS, icon));
+    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_STATUS, icon),
+                                 .transparent = UI_KEY,
+                                 .colormap = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_STATUS, icon)},
+                   &g_view_viewport, r);
 }
 
 /* Draws the portrait of the champion with the open inventory, dimmed while the party is invisible. */
 static void show_portrait(int champ)
 {
-    offscreen_draw_gdat_image(&status_box, CAT_CHAMPION, champion(champ)->portrait, 0, ZONE_STATUS_PORTRAIT + champ,
-                              GFX_OPAQUE);
+    offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_CHAMPION, champion(champ)->portrait, 0},
+                              ZONE_STATUS_PORTRAIT + champ, GFX_OPAQUE);
     if (g_game.magic_light[MAGIC_INVISIBILITY]) {
         int16_t r[RECT_SIZE];
         offscreen_fill_rect_dithered(&status_box, zone_get_rect(ZONE_STATUS_PORTRAIT + champ, r), UI_DARKEST_GRAY);
@@ -667,8 +676,12 @@ static void restore_panel_back(int zone)
 {
     int16_t r[RECT_SIZE];
     zone_get_rect(zone, r);
-    ui_blit_bitmap(draw_gdat_image(CAT_PANEL, 0, GFX_PANEL_BACK), &g_view_viewport, r, r[RECT_X], r[RECT_Y], GFX_OPAQUE,
-                   draw_gdat_image_palette(CAT_PANEL, 0, GFX_PANEL_BACK));
+    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_PANEL, 0, GFX_PANEL_BACK),
+                                 .x = r[RECT_X],
+                                 .y = r[RECT_Y],
+                                 .transparent = GFX_OPAQUE,
+                                 .colormap = draw_gdat_image_palette(CAT_PANEL, 0, GFX_PANEL_BACK)},
+                   &g_view_viewport, r);
 }
 
 /* Draws one slot: background, frame (active hand, wound), and the item icon. */
@@ -690,10 +703,14 @@ static void show_slot(uint16_t thing, int slot, bool wounded, bool active, bool 
     if (slot < SLOT_BACKGROUND_COUNT) {
         zone_get_rect(zone, r);
         if (slot < SLOT_STATUS_COUNT)
-            offscreen_blit(&status_box, draw_gdat_image(CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_ALIVE), r,
-                           (int16_t)(r[RECT_X] - status_box.rect[RECT_X]),
-                           (int16_t)(r[RECT_Y] - status_box.rect[RECT_Y]), GFX_OPAQUE, MIRROR_NONE,
-                           draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_ALIVE));
+            offscreen_blit(
+                &status_box,
+                &(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_ALIVE),
+                              .x = (int16_t)(r[RECT_X] - status_box.rect[RECT_X]),
+                              .y = (int16_t)(r[RECT_Y] - status_box.rect[RECT_Y]),
+                              .transparent = GFX_OPAQUE,
+                              .colormap = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_ALIVE)},
+                r);
         else
             restore_panel_back(zone);
     }
@@ -703,14 +720,15 @@ static void show_slot(uint16_t thing, int slot, bool wounded, bool active, bool 
         const Bitmap *image = draw_gdat_image(CAT_INTERFACE, UI_INDEX_STATUS, frame);
         const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_STATUS, frame);
         if (slot < SLOT_STATUS_COUNT)
-            offscreen_blit(&status_box, image, r, 0, 0, UI_KEY, MIRROR_NONE, colors);
+            offscreen_blit(&status_box, &(BlitSource){.bitmap = image, .transparent = UI_KEY, .colormap = colors}, r);
         else
-            ui_blit_bitmap(image, &g_view_viewport, r, 0, 0, UI_KEY, colors);
+            ui_blit_bitmap(&(BlitSource){.bitmap = image, .transparent = UI_KEY, .colormap = colors}, &g_view_viewport,
+                           r);
     }
     if (icon == NO_ICON)
         return;
     if (slot < SLOT_STATUS_COUNT)
-        offscreen_draw_gdat_image(&status_box, category, index, icon, zone, UI_KEY);
+        offscreen_draw_gdat_image(&status_box, (GdatKey){category, index, icon}, zone, UI_KEY);
     else
         ui_draw_viewport_image(category, index, icon, zone, UI_KEY);
 }
