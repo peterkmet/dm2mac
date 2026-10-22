@@ -26,38 +26,6 @@ static bool class_set_has(const uint8_t *set, int item)
     return set[item / BYTE_BIT_COUNT] & 1 << item % BYTE_BIT_COUNT;
 }
 
-int item_index_to_thing_type(uint16_t item)
-{
-    item &= ITEM_INDEX_NONE;
-    if (item < ITEM_FIRST_CLOTHING)
-        return THING_WEAPON;
-    if (item < ITEM_FIRST_MISC)
-        return THING_ARMOUR;
-    if (item < ITEM_FIRST_POTION)
-        return THING_MISC;
-    if (item > ITEM_SCROLL)
-        return -1;
-    if (item == ITEM_SCROLL)
-        return THING_SCROLL;
-    if (item >= ITEM_FIRST_CONTAINER)
-        return THING_CONTAINER;
-    if (item >= ITEM_FIRST_CREATURE)
-        return THING_GROUP;
-    return THING_POTION;
-}
-
-uint16_t item_create_by_index(uint16_t item)
-{
-    int type = item_index_to_thing_type(item);
-    if (type < 0)
-        return THING_NONE; /* fix: the original asks for a record of the type 0xffff */
-    /* ponytail: when the records run out, the original reuses discarded items (dun_get_discarded_thing) */
-    uint16_t thing = dungeon_unused_thing(type | (item & THING_ANY_RECORD));
-    if (thing != THING_NONE)
-        item_set_gdat_index(thing, item_index_gdat_index(item));
-    return thing;
-}
-
 int money_add_coin_to_box(uint16_t box, uint16_t coin)
 {
     if (!item_is_moneybox(box) || !money_is_coin(coin))

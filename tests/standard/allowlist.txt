@@ -11,9 +11,7 @@ block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
-block engine/include/item.h open: module cleanup
 block engine/include/money.h open: module cleanup
-block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
 block engine/money.c open: module cleanup
 block platform/include/scale.h open: module cleanup
@@ -118,7 +116,6 @@ comment engine/game.c open: module cleanup
 comment engine/include/action.h open: module cleanup
 comment engine/include/aspect.h open: module cleanup
 comment engine/include/game_text.h open: module cleanup
-comment engine/include/item.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
 comment engine/include/money.h open: module cleanup
 comment platform/include/platform.h open: module cleanup
@@ -235,9 +232,7 @@ enum engine/include/action.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
 enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
-enum engine/include/item.h open: module cleanup
 enum engine/include/magic.h open: module cleanup
-enum engine/item.c open: module cleanup
 enum engine/magic.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 enum ui/advanced.c open: module cleanup
@@ -355,8 +350,6 @@ notation engine/aspect.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
-notation engine/include/item.h open: module cleanup
-notation engine/item.c open: module cleanup
 notation engine/magic.c open: module cleanup
 notation engine/money.c open: module cleanup
 notation platform/transport.c open: module cleanup
@@ -388,7 +381,6 @@ order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
 order engine/action.c open: module cleanup
 order engine/aspect.c open: module cleanup
-order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
@@ -502,7 +494,6 @@ static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix engine/aspect.c:sensor_ornament open: module cleanup
 static-prefix engine/game.c:timeline_event_aura open: module cleanup
 static-prefix engine/game.c:timeline_event_hide_damage open: module cleanup
-static-prefix engine/item.c:item_sum_attr open: module cleanup
 static-prefix engine/magic.c:champion_runes open: module cleanup
 static-prefix engine/magic.c:event_word open: module cleanup
 static-prefix engine/magic.c:magic_light_add open: module cleanup
@@ -672,7 +663,6 @@ static-prefix ui/view.c:weather_draw_rain open: module cleanup
 static-prefix ui/view.c:weather_get_rain_image open: module cleanup
 static-prefix ui/view.c:zone_id_for_view_element open: module cleanup
 static-prefix ui/zone.c:rect_clip open: module cleanup
-todo engine/money.c open: module cleanup
 todo ui/dialog.c open: module cleanup
 todo ui/text.c open: module cleanup
 type control:out open: module cleanup

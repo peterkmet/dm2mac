@@ -309,7 +309,7 @@ address,name,signature,subsystem
 0x0001f5d0,item_get_max_charges,int item_get_max_charges(uint16_t thing),items
 0x0001f606,item_add_charges,"int item_add_charges(uint16_t thing, int16_t delta)",items
 0x0001f6d2,item_get_attr_3,uint16_t item_get_attr_3(uint16_t thing),items
-0x0001f6e4,item_sum_attr,"int32_t item_sum_attr(uint16_t thing, uint8_t attr)",items
+0x0001f6e4,sum_attr,"int32_t sum_attr(uint16_t thing, uint8_t attr)",items
 0x0001f895,item_get_weight,uint16_t item_get_weight(uint16_t thing),items
 0x0001f8a7,item_get_value,uint16_t item_get_value(uint16_t thing),items
 0x0001f8c7,creature_get_info_for_group,uint8_t *creature_get_info_for_group(uint16_t group_thing),creatures
