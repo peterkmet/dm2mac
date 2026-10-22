@@ -1800,8 +1800,7 @@ void input_cancel_push_mode(void)
 {
     if (!g_party.push_mode)
         return;
-    g_party.push_mode = 0;
-    g_ui.push_mode = 0;
+    move_set_push_mode(false);
     ui_draw_movement_arrows();
 }
 
@@ -1838,7 +1837,7 @@ void input_update_viewport_arrow(void)
     if (!zone_get_rect(ZONE_VIEWPORT, r))
         return;
     int x = g_input_mouse_x - r[RECT_X], y = g_input_mouse_y - r[RECT_Y];
-    g_party.push_arrow = PUSH_ARROW_NONE;
+    move_set_push_arrow(PUSH_ARROW_NONE);
     if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
         return;
     int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
@@ -1860,7 +1859,7 @@ void input_update_viewport_arrow(void)
                                 dir_turn(push_dirs[arrow], g_game.party_dir), NULL))
         return;
     show_move_arrow(entries[arrow], zones[arrow], true);
-    g_party.push_arrow = (int16_t)arrow;
+    move_set_push_arrow(arrow);
 }
 
 /* ---- Clicks in the dungeon view ---- */
@@ -1904,10 +1903,9 @@ static void click_creature(uint16_t group, int x, int y, int square_x, int squar
                                                SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
                                     SOUND_FALLBACK, square_x, square_y, 0);
     } else if (!side) {
-        g_party.push_mode = 1;
-        g_ui.push_mode = 1;
+        move_set_push_mode(true);
         ui_draw_movement_arrows();
-        g_party.push_arrow = PUSH_ARROW_NONE;
+        move_set_push_arrow(PUSH_ARROW_NONE);
     } else {
         creature_turn_group(group, 0, side);
     }
@@ -2126,8 +2124,7 @@ void view_click_in_viewport(int x, int y)
 {
     dun_set_current_map(g_game.party_map);
     if (g_party.push_mode) {
-        g_party.push_mode = 0;
-        g_ui.push_mode = 0;
+        move_set_push_mode(false);
         move_push_creature(g_party.push_arrow);
         ui_draw_movement_arrows();
         return;

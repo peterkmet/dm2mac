@@ -179,4 +179,12 @@ int dun_modify_global_var(int var, int value, int op); /* returns the new value 
 /* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */
 int dun_get_door_type(uint16_t door);
 
+/* Party state that the interface sets (move.c). */
+/* The movement arrows show the push arrows (on) or the move arrows: the party and the interface flag. */
+void move_set_push_mode(bool on);
+/* The push arrow under the mouse, PUSH_ARROW_NONE for none. */
+void move_set_push_arrow(int arrow);
+/* The game steps until the slow move of the party ends. */
+void move_set_walk_steps(int steps);
+
 #endif /* DM2_ENGINE_MOVE_H */

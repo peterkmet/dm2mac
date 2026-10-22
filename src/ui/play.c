@@ -52,9 +52,9 @@ void play_present_viewport(void)
 {
     int steps = g_party.move_steps;
     int16_t r[RECT_SIZE];
-    g_party.move_steps = 0;
+    move_set_walk_steps(0);
     bool ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
-    g_party.move_steps = (int16_t)steps;
+    move_set_walk_steps(steps);
     if (!ok)
         return;
     for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
@@ -131,7 +131,7 @@ void play_sleep(void)
     champ_set_party_sleeping(true);
     if (g_party.move_steps) {
         move_party(g_party.move_command);
-        g_party.move_steps = 0;
+        move_set_walk_steps(0);
     }
     render_sleep_message();
     play_present_viewport();
@@ -176,7 +176,7 @@ static bool step_view(void)
         if (g_party.move_steps == 1)
             move_party(g_party.move_command);
         int map = g_party.new_map;
-        g_party.move_steps--;
+        move_set_walk_steps(g_party.move_steps - 1);
         if (map == -1)
             return true;
     }

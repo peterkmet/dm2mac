@@ -1490,3 +1490,19 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
         }
     }
 }
+
+void move_set_push_mode(bool on)
+{
+    g_party.push_mode = on;
+    g_ui.push_mode = on;
+}
+
+void move_set_push_arrow(int arrow)
+{
+    g_party.push_arrow = (int16_t)arrow;
+}
+
+void move_set_walk_steps(int steps)
+{
+    g_party.move_steps = (int16_t)steps;
+}
