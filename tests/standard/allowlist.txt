@@ -1,0 +1,35 @@
+# Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
+# A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
+decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
+decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
+decimal engine/creature.c rule 3.12: a table of SKULL.EXE
+decimal engine/dungeon.c rule 3.12: a table of SKULL.EXE
+decimal engine/game_text.c rule 3.12: the field names of an action text of SKULL.EXE
+decimal engine/magic.c rule 3.12: a table of SKULL.EXE
+decimal engine/save.c rule 3.12: magic light by power of SKULL.EXE
+decimal engine/sensor.c rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c rule 3.12: a table of SKULL.EXE
+decimal ui/action_area.c rule 3.12: coin pile offsets of SKULL.EXE
+decimal ui/fm.c rule 3.12: a table of SKULL.EXE
+decimal ui/input.c rule 3.12: a table of SKULL.EXE
+decimal ui/view.c rule 3.12: a table of SKULL.EXE
+engine-write ui/action_area.c rule 1.5: the action area keeps the order of the original: it sets the mode, the result and the redraw state of g_action while it draws
+hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
+hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
+hex engine/creature.c rule 3.12: a table of SKULL.EXE
+hex engine/item.c rule 3.12: GDAT categories, item index bases, and slot masks of SKULL.EXE
+hex engine/magic.c rule 3.12: a table of SKULL.EXE
+hex engine/save.c rule 3.12: bit mask tables and sensor types of SKULL.EXE
+hex engine/sound_request.c rule 3.12: a table of SKULL.EXE
+hex platform/main.c rule 3.12: the PC keyboard scan codes of the SDL keys
+hex ui/dialog.c rule 3.12: a table of SKULL.EXE
+hex ui/fm.c rule 3.12: a table of SKULL.EXE
+hex ui/input.c rule 3.12: a table of SKULL.EXE
+hex ui/ui.c rule 3.12: a table of SKULL.EXE
+hex ui/view.c rule 3.12: a table of SKULL.EXE
+long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
+long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
+long engine/ai.c:test_condition rule 5.8: one short case for each target condition
+long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
+module platform/main.c rule 1.7: the entry point has no header
+record engine/save.c rule 3.11: the save image packs whole thing records bit by bit

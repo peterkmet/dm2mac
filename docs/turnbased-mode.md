@@ -9,7 +9,7 @@ This page is a run guide and a reference. The other modes and the raw commands a
 1. Build the port.
 
    ```sh
-   make -C port
+   make
    ```
 
 2. Start the game in the turn-based mode. A run plays without sound.
@@ -69,7 +69,7 @@ Each request is one JSON object on one line. Each reply is one JSON object on on
 An `act` turn does these steps:
 
 1. It gives the inputs of the action to the input queue, one after the other (at most 4). This is the path of a player: a key, a click on a command zone, or a click at a screen point. The next input goes when the input pipeline is idle.
-2. It runs the game one game step per frame (`game.game_time` grows by 1). One tick of the turn protocol is one game step.
+2. It runs the game one game step per frame (`g_game.game_time` grows by 1). One tick of the turn protocol is one game step.
 3. It ends when at least `TURN_MIN_TICKS` (2) steps ran, all inputs are given, the input is idle, and the party can move again (no move cooldown, no walk in progress, no wait of the input). It also ends after `TURN_MAX_TICKS` (64) steps, and at once when the game is over.
 
 A game that does not tick (a dialog) ends a turn after `FRAMES_PER_TICK_LIMIT` (16) frames for each tick of the limit. The game rules do not change.
@@ -250,15 +250,15 @@ playthroughs/
 
 ## C API
 
-`control.h` (plain POSIX, in `build/libdm2.dylib`):
+`transport.h` (the socket, plain POSIX) and `control.h` (the line protocol), both in `build/libdm2.dylib`:
 
 | Function | Purpose |
 |---|---|
-| `control_open(path)` | Listens on the socket. Replaces an old socket file. Returns 1 on success. |
-| `control_poll()` | One call per frame: accepts a client, answers requests, and ends turns. |
-| `control_frame()` | `control_poll`, then one game step of the pending turn. |
-| `control_turn_pending()` | `true` while a turn runs. |
-| `control_close()` | Closes the sockets and removes the socket file. |
+| `transport_open(path)` | Listens on the socket. Replaces an old socket file. Returns `true` on success. |
+| `transport_poll()` | One call per frame: accepts a client, answers requests, and ends turns. |
+| `control_frame()` | One game step of the pending turn. |
+| `control_is_turn_pending()` | `true` while a turn runs. |
+| `transport_close()` | Closes the sockets and removes the socket file. |
 
 `turn.h`: `turn_is_pending`, `turn_act`, `turn_act_many`, `turn_wait`, `turn_poll`, `turn_reply`, and `turn_drop_reply`. The action table is in `turn.c`, one function per action.
 
@@ -271,18 +271,18 @@ In the turn-based mode, `main.c` does these steps:
 1. It opens the control socket before the main loop (the default path if `--control` is missing) and stops with an error when this fails.
 2. It starts a new game, or loads `--save`, without the start menu and without a movie.
 3. The window events keep only the quit event. Keys and clicks do not reach the input queue.
-4. Each frame calls `control_frame()`: it answers requests and runs one game step while a turn is pending. The window shows each frame.
+4. Each frame calls `transport_poll()` and `control_frame()`: they answer requests and run one game step while a turn is pending. The window shows each frame.
 5. In a modal loop (menu, dialog), the frame hook polls the control socket and does not wait for a timer tick while a turn runs.
 6. The program never ends the session by itself; `load` and `new_game` start the next game.
 
 ## Tests
 
-- `tests/test_state_json.py`: the JSON of the state, the view, and the map.
-- `tests/test_turnbased.py`: the protocol, the turn end rules, the stops, `act_many`, `save`, `load`, and `new_game`.
-- `tests/test_play_client.py`: `dm2-play` (the act forms, `--brief`, the call log).
+- `tests/port/test_state_json.py`: the JSON of the state, the view, and the map.
+- `tests/port/test_turnbased.py`: the protocol, the turn end rules, the stops, `act_many`, `save`, `load`, and `new_game`.
+- `tests/tools/test_play_client.py`: `dm2-play` (the act forms, `--brief`, the call log).
 
 ```sh
-uv run pytest -q -n auto tests/test_state_json.py tests/test_turnbased.py tests/test_play_client.py
+uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
 ```
 
 The manual checks are in section T of [manual-test-checklist.md](manual-test-checklist.md).

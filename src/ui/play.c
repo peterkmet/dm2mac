@@ -1,0 +1,248 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* The main loop: timer ticks, game steps, the view of the party, sleep. */
+#include "play.h"
+#include "gdat.h"
+#include "ids.h"
+#include "action.h"
+#include "champion.h"
+#include "creature.h"
+#include "game.h"
+#include "game_text.h"
+#include "inventory.h"
+#include "move.h"
+#include "seen.h"
+#include "sound_request.h"
+#include "timeline.h"
+#include "weather.h"
+#include "action_area.h"
+#include "advanced.h"
+#include "dialog.h"
+#include "draw.h"
+#include "input.h"
+#include "music.h"
+#include "text.h"
+#include "ui.h"
+#include "view.h"
+#include "zone.h"
+#include <stdbool.h>
+#include <string.h>
+
+static int tick_elapsed;
+void (*g_play_frame_hook)(void);
+
+/* Modal loops */
+
+void play_wait_frames(int count)
+{
+    while (count-- > 0) {
+        game_count_timer_tick();
+        if (g_play_frame_hook)
+            g_play_frame_hook();
+    }
+}
+
+/* The view of the party */
+
+void play_present_viewport(void)
+{
+    int steps = g_party.move_steps;
+    int16_t r[RECT_SIZE];
+    move_set_walk_steps(0);
+    bool ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
+    move_set_walk_steps(steps);
+    if (!ok)
+        return;
+    for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
+        uint8_t *dst = g_draw_screen.pixels + (r[RECT_Y] + y) * g_draw_screen.width + r[RECT_X];
+        if (!steps) {
+            memcpy(dst, g_view_viewport.pixels + y * VIEWPORT_WIDTH, VIEWPORT_WIDTH);
+            continue;
+        }
+        /* While the party walks, the visible part of the view fills the whole viewport (nearest neighbour). */
+        const uint8_t *src =
+            g_view_viewport.pixels +
+            (g_zone_walk_view_rect[RECT_Y] + y * g_zone_walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
+        for (int x = 0; x < VIEWPORT_WIDTH; x++)
+            dst[x] = src[g_zone_walk_view_rect[RECT_X] + x * g_zone_walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
+    }
+}
+
+/* The sleep message on a black viewport. */
+static void render_sleep_message(void)
+{
+    char text[TEXT_SIZE];
+    gfx_fill_bitmap(&g_view_viewport, g_ui_colors[UI_BLACK]);
+    gdat_text(gdat_current(), (GdatKey){CAT_INTERFACE, 0, TEXT_SLEEPING}, text, sizeof text);
+    text_draw_in_zone(ZONE_VIEW_TEXT, g_ui_colors[UI_CYAN], text);
+}
+
+void play_show_view(void)
+{
+    if (!g_main_loop.view_hidden || g_dialog.screen_mode)
+        return;
+    if (g_party_sleeping) {
+        render_sleep_message();
+        play_present_viewport();
+        return;
+    }
+    game_set_view_hidden(false);
+    action_request_redraw();
+    if (g_ui.inventory) {
+        int champ = g_ui.inventory - 1;
+        game_set_open_inventory(0);
+        ui_toggle_inventory(champ);
+        return;
+    }
+    view_clear_viewport();
+    ui_draw_movement_arrows();
+}
+
+void play_hide_view(void)
+{
+    if (g_main_loop.view_hidden || g_dialog.screen_mode)
+        return;
+    game_set_view_hidden(true);
+    if (g_input_drag_state) {
+        champ_drag_cancel();
+        area_update(0);
+    }
+    input_cancel_push_mode();
+    input_release_move_arrow();
+}
+
+void play_sleep(void)
+{
+    if (g_ui.candidate)
+        return;
+    g_inv_arrows_on_close = false;
+    if (g_ui.inventory)
+        ui_toggle_inventory(CHAMPION_MAX);
+    g_inv_arrows_on_close = true;
+    action_area_close();
+    play_hide_view();
+    champ_set_party_sleeping(true);
+    if (g_party.move_steps) {
+        move_party(g_party.move_command);
+        move_set_walk_steps(0);
+    }
+    render_sleep_message();
+    play_present_viewport();
+    game_set_step_ticks(SLEEP_STEP_TICKS);
+    input_set_mode(INPUT_MODE_SLEEP);
+    input_flush();
+}
+
+/* The main loop */
+
+/* The events, map changes, and view of a game step, with each step of a walk. Returns false while the party sleeps. */
+static bool step_view(void)
+{
+    for (;;) {
+        if (g_party.new_map != -1)
+            game_enter_new_map();
+        timeline_process();
+        if (g_party.new_map != -1)
+            continue;
+        world_update_day_night(0);
+        if (g_party_sleeping)
+            return false;
+        if (!g_ui.candidate)
+            play_show_view();
+        if (!g_ui.inventory) {
+            if (g_party.redraw)
+                creature_refresh_party_maps();
+            if (g_party.move_steps)
+                view_draw_dungeon(g_party.view_dir, g_party.view_x, g_party.view_y);
+            else
+                view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
+            play_present_viewport();
+            if (g_game_mode != GAME_MODE_VANILLA)
+                seen_mark(g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir);
+        }
+        if (!g_party.move_steps)
+            return true;
+        if (g_party.move_steps == 1)
+            move_party(g_party.move_command);
+        int map = g_party.new_map;
+        move_set_walk_steps(g_party.move_steps - 1);
+        if (map == -1)
+            return true;
+    }
+}
+
+/* The part of a game step before the input wait: events, the view, the party clocks. */
+static void step_before_input(void)
+{
+    tick_elapsed = 0;
+    game_reset_step_ticks();
+    if (step_view()) {
+        g_input_feedback_busy = 0;
+        input_poll();
+    }
+    input_release_move_arrow();
+    sound_flush_requests(0);
+    champ_apply_pending_damage();
+    game_run_party_clocks();
+    inv_update_hand_cursor();
+    ui_draw_all_champion_states(1);
+    if (g_main_loop.end) {
+        input_reset_states();
+        return;
+    }
+    game_advance_time();
+    text_clear_expired_rows();
+    input_release_move_arrow();
+}
+
+/* The part of a game step after the input wait: a map change, repeated actions, music. */
+static void step_after_input(void)
+{
+    int saved = g_party.cur_map;
+    if (g_party.new_map != -1)
+        dun_set_current_map(g_party.new_map);
+    champ_process_repeated_actions();
+    if (g_party.new_map != -1)
+        dun_set_current_map(saved);
+    music_update_for_map(g_game.party_map);
+}
+
+void play_start_session(void)
+{
+    game_start_play();
+    input_set_mode(INPUT_MODE_MOVE);
+    game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
+    g_dialog.progress_enabled = 0;
+    advanced_reset();
+    if (g_session.loaded) {
+        ui_fill_zone_screen(ZONE_SCREEN, 0);
+        dialog_run(dialog_draw(DIALOG_LOADED, MESSAGE_NONE));
+        ui_fill_zone_screen(ZONE_SCREEN, 0);
+    } else if (g_session.new_game) {
+        g_dialog.screen_mode = 0;
+        ui_fill_zone_screen(ZONE_SCREEN, 0);
+    }
+    ui_draw_movement_arrows();
+    champ_init_party_state();
+    game_set_offer_restore(true);
+    creature_refresh_party_maps();
+    creature_reset_active_groups();
+    if (g_session.new_game)
+        move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+    g_dialog.screen_mode = 0;
+    step_before_input();
+}
+
+void play_tick(void)
+{
+    if (g_main_loop.end || g_main_loop.quit)
+        return;
+    game_count_timer_tick();
+    if (game_count_step_tick())
+        tick_elapsed = 1;
+    command_process_queue();
+    /* the automap stops the game time; a quit (a lost game) ends all game work */
+    if (!tick_elapsed || !g_main_loop.running || g_advanced_automap_open || g_main_loop.quit)
+        return;
+    step_after_input();
+    step_before_input();
+}

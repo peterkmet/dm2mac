@@ -4,7 +4,7 @@
 
 **Goal:** The C code, the build, the tests and the Python tools of `dm2` follow the coding standard and the layout of the `dm` port, with the same behavior.
 
-**Architecture:** Eight waves. A wave holds packages; a package is a sequence of tasks on its own branch in its own git worktree. The packages of a wave run in parallel; the controller rebases each finished package onto the feature branch, runs the full suite, and starts the next wave after a green run. File ownership per package keeps the merges small; two scripts (`tools/rename-symbol`, `tools/standard-allowlist`) resolve the two kinds of shared edits mechanically.
+**Architecture:** Eight waves. A wave holds packages; a package is a sequence of tasks on its own branch in its own git worktree. The packages of a wave run in parallel; the controller rebases each finished package onto the feature branch, runs the full suite once after the last merge of the wave, and starts the next wave after a green run. File ownership per package keeps the merges small; two scripts (`tools/rename-symbol`, `tools/standard-allowlist`) resolve the two kinds of shared edits mechanically.
 
 **Tech Stack:** C11, clang, GNU make, MinGW-w64 GCC, SDL3, clang-format 23, Python 3.14 with uv, pytest with pytest-xdist, ruff.
 
@@ -39,7 +39,7 @@ Test list (CLAUDE.md §2). Write a test only for: a check against a reference (o
 
 In this plan the existing differential, port and golden tests prove the same behavior. New tests: the constant parser of `dm2test.constants` (Task 19, a parser) and the checks of `tests/standard/test_standard.py` (Tasks 29-30, which are themselves the standard check). Build targets, hooks, the Windows start and the scripts are wiring: the manual test checklist covers them (Task 72).
 
-**Weakened assertions:** none planned. The new `tests/standard/test_standard.py` replaces `tests/test_standard.py`; Task 30 maps each old check to a new check that is at least as strict (table in Task 30). Approved by the user on 2026-10-21 (the empty list).
+**Weakened assertions:** none planned. The new `tests/standard/test_standard.py` replaces `tests/test_standard.py`; Task 30 maps each old check to a new check that is at least as strict (table in Task 30). Approved by the user on 2026-10-21 (the empty list). Added during the run and approved by the user on 2026-10-21: after the format commit (Task 21), the old `tests/standard_allowlist.txt` gets the moved `hex` and `decimal` keys and the functions that the format made longer than the limit of `test_functions_are_short`, with the reason `open: module cleanup`; Task 29 replaces the file, wave 7 splits the functions, Task 72 checks that no `open:` line remains. Also approved by the user on 2026-10-22: the new standard check (Task 29) relaxes three old checks as the dm standard requires: `decimal` ignores the base 10 of `strtol` (rule 3.1), an `_internal.h` may share the prefixes of its public header (rule 1.7), and two prefixes of one header do not collide (rule 1.8).
 
 ## Parallel run
 
@@ -65,11 +65,11 @@ Each dispatch prompt of the package names the worktree as the working folder. In
 1. `OLD=$(git rev-parse pkg/P)`, then `git -C ../dm2-pkg/P rebase --exec 'if [ -f Makefile ]; then make -s; else make -s -C port; fi' feature/2026-10-21-dm-style-code`. On a conflict, use the resolution rules below; then `git rebase --continue`.
 2. `git range-diff "$BASE..$OLD" feature/2026-10-21-dm-style-code..pkg/P` shows each commit of the package once; a commit that the rebase dropped stops the merge for a resolver.
 3. From wave 6 on, after the merge of SC: `tools/standard-allowlist` in the package worktree; a change gets the commit `test: regenerate the allowlist`.
-4. The full suite in the package worktree (`tools/test-suite`, in the background). Red: debugger, fix author, one new run (agentic-workflow). Other packages can run steps 1-4 at the same time in their own worktrees.
-5. Green: in the main checkout `git merge --ff-only pkg/P`. When the feature branch moved since step 1 (another package merged), repeat from step 1; the suite skips nothing then, because the tree is new.
+4. Only after a rebase conflict: the resolver runs the tests of the tasks of the package (their Verify commands) in the package worktree. No full suite per package. Other packages can run steps 1-4 at the same time in their own worktrees.
+5. In the main checkout `git merge --ff-only pkg/P`. When the feature branch moved since step 1 (another package merged), repeat from step 1.
 6. `git worktree remove ../dm2-pkg/P && git branch -d pkg/P`.
 
-The next wave starts after the last package of the wave is merged and the full suite is green.
+After the last package of the wave is merged, the full suite runs once on the feature branch (`tools/test-suite`, in the background). Red: debugger, fix author, one new run (agentic-workflow). The next wave starts after a green run.
 
 **Conflict resolution** (a resolver subagent, opus effort medium, in the package worktree):
 
@@ -137,7 +137,7 @@ These follow from the PRD and the code; the plan reviewer and the user can rejec
 
 ## Review Focus
 
-1. A rebase that drops a caller edit in a file that the package does not own: expected the build or the full suite to fail, and `git range-diff` to show every commit. The merge procedure (steps 1-2) pins it.
+1. A rebase that drops a caller edit in a file that the package does not own: expected the build, the tests of the package or the full suite after the wave to fail, and `git range-diff` to show every commit. The merge procedure (steps 1-2) pins it.
 2. A wrong layer include: expected `make` to fail with "file not found". Task 11 step 5 pins it with a probe file that it does not commit.
 3. `screenshot` after the move of `realpath` behind `os_get_full_path`: expected the same absolute path in the reply (`/private/var/...` for `/var/...`). Task 5 runs `tests/test_control.py -k screenshot`; `dm2test.lib.load_lib` sets the hook (Task 13).
 4. A client that closes the socket during a turn, and the reset of the lost game flag at close (commit `5648d12`): expected the same as before the transport split. Task 6 runs `tests/test_turnbased.py` and `tests/test_control.py` unchanged except the C function names.

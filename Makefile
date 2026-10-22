@@ -1,0 +1,116 @@
+# The Dungeon Master II port: the game, the test library, and the Windows build.
+CC          = clang
+BASE_CFLAGS = -std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla \
+              -Wimplicit-fallthrough -O2 -g
+CFLAGS      = $(BASE_CFLAGS)
+CPPFLAGS    = -isystem src/third_party -MMD -MP
+# The include path of a layer: its own public headers and those of the layers before it. A private *_internal.h
+# stands next to its .c file. A wrong layer include does not compile.
+INC_data     = -Isrc/data/include
+INC_engine   = $(INC_data) -Isrc/engine/include
+INC_ui       = $(INC_engine) -Isrc/ui/include
+INC_control  = $(INC_ui) -Isrc/control/include
+INC_platform = $(INC_control) -Isrc/platform/include
+layer_inc    = $(INC_$(word 2,$(subst /, ,$(1))))
+LDFLAGS     =
+ifeq ($(SANITIZE),1)
+CFLAGS  += -fsanitize=address,undefined
+LDFLAGS += -fsanitize=address,undefined
+endif
+# Extra flags for one build, for example a developer check: make lib CFLAGS_EXTRA=-DX
+CFLAGS += $(CFLAGS_EXTRA)
+
+# SDL3 from Homebrew. Recursively expanded: only the targets that compile or link SDL code run brew.
+SDL_PREFIX ?= $(shell brew --prefix sdl3)
+
+B   = build
+OBJ = $(B)/obj
+
+SOURCES      = $(wildcard src/*/*.c src/third_party/*/*.c)
+SDL_SOURCES  = src/platform/main.c src/platform/platform.c
+WINDOWS_ONLY = src/platform/transport_none.c
+POSIX_ONLY   = src/platform/transport.c
+GAME_SOURCES = $(filter-out $(WINDOWS_ONLY),$(SOURCES))
+LIB_SOURCES  = $(filter-out $(SDL_SOURCES) $(WINDOWS_ONLY),$(SOURCES))
+WIN_SOURCES  = $(filter-out $(POSIX_ONLY),$(SOURCES))
+C_FILES      = $(wildcard src/*/*.[ch] src/*/include/*.h)
+
+objects = $(patsubst src/%.c,$(1)/%.o,$(2))
+
+all: $(B)/dm2 $(B)/libdm2.dylib
+
+lib: $(B)/libdm2.dylib
+
+# The stamp of the compile flags. When the flags change (SANITIZE, CFLAGS_EXTRA), the stamp deletes the objects,
+# so all recompile. Simply expanded: the SDL include path of two objects stays out.
+OBJ_FLAGS := $(strip $(CC) $(CPPFLAGS) $(CFLAGS))
+stamp = $(strip $(shell cat $(1) 2>/dev/null))
+write_flags = @mkdir -p $(@D); rm -f $(@D)/*/*.o $(@D)/*/*/*.o; echo '$(1)' > $@
+
+ifneq ($(OBJ_FLAGS),$(call stamp,$(OBJ)/flags.txt))
+$(OBJ)/flags.txt: FORCE
+endif
+$(OBJ)/flags.txt:
+	$(call write_flags,$(OBJ_FLAGS))
+
+$(OBJ)/%.o: src/%.c Makefile $(OBJ)/flags.txt
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(call layer_inc,$<) $(CFLAGS) -c -o $@ $<
+
+$(call objects,$(OBJ),$(SDL_SOURCES)): CPPFLAGS += -I$(SDL_PREFIX)/include
+
+$(B)/dm2: $(call objects,$(OBJ),$(GAME_SOURCES))
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -L$(SDL_PREFIX)/lib -lSDL3
+
+$(B)/libdm2.dylib: $(call objects,$(OBJ),$(LIB_SOURCES))
+	$(CC) $(CFLAGS) $(LDFLAGS) -dynamiclib -o $@ $^
+
+# Windows: cross-build with MinGW-w64 (brew install mingw-w64) and the SDL3 MinGW package, copied into build/ from
+# the dm port. Windows has no control socket: transport_none.c replaces transport.c. -mwindows: no console window; the
+# messages go to dm2.log in the game folder.
+WIN_CC            = x86_64-w64-mingw32-gcc
+WIN_OBJ           = $(B)/obj-win
+DM_DIR           ?= ../dm
+SDL_MINGW_VERSION = 3.4.18
+SDL_MINGW         = $(B)/sdl-mingw/SDL3-$(SDL_MINGW_VERSION)/x86_64-w64-mingw32
+WIN_OBJ_FLAGS := $(strip $(WIN_CC) $(CPPFLAGS) $(BASE_CFLAGS))
+
+windows: $(B)/dm2.exe
+
+ifneq ($(WIN_OBJ_FLAGS),$(call stamp,$(WIN_OBJ)/flags.txt))
+$(WIN_OBJ)/flags.txt: FORCE
+endif
+$(WIN_OBJ)/flags.txt:
+	$(call write_flags,$(WIN_OBJ_FLAGS))
+
+$(WIN_OBJ)/%.o: src/%.c Makefile $(WIN_OBJ)/flags.txt | $(SDL_MINGW)
+	@mkdir -p $(@D)
+	$(WIN_CC) $(CPPFLAGS) $(call layer_inc,$<) -I$(SDL_MINGW)/include $(BASE_CFLAGS) -c -o $@ $<
+
+$(B)/dm2.exe: $(call objects,$(WIN_OBJ),$(WIN_SOURCES))
+	$(WIN_CC) $(BASE_CFLAGS) -mwindows -o $@ $^ -L$(SDL_MINGW)/lib -lSDL3
+
+$(SDL_MINGW):
+	@test -d $(DM_DIR)/build/sdl-mingw || { echo "copy the SDL3 MinGW package to build/sdl-mingw"; exit 1; }
+	@mkdir -p $(B)
+	cp -R $(DM_DIR)/build/sdl-mingw $(B)/
+
+test: ; tools/test-suite
+
+# Lint, the coding standard check, then the full suite.
+check:
+	uv run ruff check tests tools/dm2tools
+	uv run pytest -q tests/standard
+	$(MAKE) test
+
+clean:
+	rm -rf $(B)
+
+-include $(wildcard $(OBJ)/*/*.d $(OBJ)/*/*/*.d $(WIN_OBJ)/*/*.d $(WIN_OBJ)/*/*/*.d)
+
+FORCE:
+
+.PHONY: all lib windows test check clean format FORCE
+
+format:
+	uv run clang-format -i $(C_FILES)

@@ -1,0 +1,218 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+#ifndef DM2_UI_INPUT_H
+#define DM2_UI_INPUT_H
+/* Prefixes: input_ command_ kbd_ rect_ */
+
+/* Mouse and keyboard input: key codes, rectangles and the command queue. */
+
+#include "gfx.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+/* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
+#define KEY_EXTENDED  0x1000
+#define KEY_SHIFTED   0x0200
+#define KEY_CONTROL   0x0400
+#define KEY_ALT       0x0800
+/* Scan codes of the keys that edit a text. */
+#define KEY_BACKSPACE 0x0e
+#define KEY_TAB       0x0f
+#define KEY_ENTER     0x1c
+
+/* Commands (command_execute). */
+#define CMD_INVENTORY_FIRST      0x07
+#define CMD_INVENTORY_LEADER     0x0b
+#define CMD_LEADER_FIRST         0x10
+#define CMD_LEADER_LAST          0x13
+#define CMD_SLOT_FIRST           0x14
+#define CMD_SLOT_LAST            0x41
+#define CMD_SLOT_INVENTORY_FIRST 0x1c /* + slot: a slot of the open inventory, after the hands of the 4 status boxes */
+#define CMD_SLOT_CHEST_FIRST     0x3a /* + slot - SLOT_CONTAINER_FIRST: a slot of the open chest */
+#define CMD_VIEWPORT             0x50
+#define CMD_LEADER_INVENTORY     0x52
+#define CMD_ROTATE_LEFT          0x5d
+#define CMD_ROTATE_RIGHT         0x5e
+#define CMD_SLEEP                0x8e
+#define CMD_WAKE                 0x8f
+#define CMD_PAUSE                0x90
+#define CMD_RESUME               0x91
+#define CMD_QUIT                 0xe0
+#define CMD_SAVE                 0x8c
+#define CMD_VOLUME               0x8d
+#define CMD_EDIT_CHAMPION_NAME   0x48
+#define CMD_NEW_GAME             0xd7
+#define CMD_NEW_GAME_B           0xd8
+#define CMD_LOAD_GAME            0xd9
+#define CMD_MENU_PICTURE         0xda
+#define CMD_CANCEL_PUSH          0xe1
+#define CMD_CANCEL_CAPTURE       0xe3
+#define CMD_TEXT_FIRST           0xa5
+#define CMD_TEXT_LAST            0xc6
+#define CMD_LAST                 0xf2
+#define CMD_PARTY_ICON_FIRST     0x5f
+#define CMD_PARTY_ICON_LAST      0x62
+#define CMD_HAND_FIRST           0x74
+#define CMD_HAND_LAST            0x7b
+#define CMD_STORE_FIRST          0xea
+#define CMD_STORE_LAST           0xed
+#define CMD_DRAG_FIRST           0x7d
+#define CMD_DRAG_CANCEL          0x81
+#define CMD_ACTION_CANCEL        0x70
+#define CMD_ACTION_LAST          0x73
+#define CMD_MOUTH                0x46
+#define CMD_EYE                  0x47
+#define CMD_COIN_FIRST           0xe4
+#define CMD_COIN_LAST            0xe9
+#define CMD_RUNE_FIRST           0x65
+#define CMD_RUNE_LAST            0x6a
+#define CMD_REMOVE_RUNE          0x6b
+#define CMD_CAST_SPELL           0x6c
+#define CMD_MAP_OPTION_FIRST     0x56
+#define CMD_MAP_OPTION_LAST      0x59
+#define CMD_EDIT_NAME            0x49
+#define CMD_EDIT_TITLE           0x4a
+#define CMD_EDIT_CANCEL          0x4b /* the buttons of the name editor */
+#define CMD_SOUND_VOLUME_FIRST   0x95
+#define CMD_MUSIC_VOLUME_FIRST   0x9d
+#define CMD_MUSIC_VOLUME_LAST    0xa4 /* settings 0 to 7 */
+#define CMD_PICTURE_CLICK        0xef /* a click on a picture of INPUT_MODE_PICTURE */
+#define CMD_QUICK_SAVE           (CMD_LAST + 1)
+#define CMD_QUICK_LOAD           (CMD_LAST + 2)
+#define CMD_AUTOMAP              (CMD_LAST + 3) /* the advanced mode: no original command has these numbers */
+
+/* The cursor images of input_cursor_at. */
+#define CURSOR_ARROW    0
+#define CURSOR_HAND     1
+#define CURSOR_OBJECT   2
+#define CURSOR_CHAMPION 3
+
+/* A command and the click that made it: position and the rectangle of its zone. */
+typedef struct {
+    int16_t x, y;
+    uint16_t command;
+    int16_t rect[RECT_SIZE];
+} Command;
+
+/* The last matched command entry: the dialogs read it. */
+#define DIALOG_NO_CHOICE 0xff /* a dialog waits while its choice has this value */
+typedef struct {
+    uint16_t zone;           /* the zone of the entry, ZONE_NONE none */
+    int16_t origin;          /* the zone that the entry zone is relative to, -1 none */
+    uint16_t key;            /* the key code of a key command, 0 for a click */
+    int16_t choice;          /* the place of the command in its list, from 1; 0 none */
+    int16_t x, y;            /* the click position */
+    uint16_t value;          /* the command */
+    int16_t rect[RECT_SIZE]; /* the screen rect of the zone of the entry */
+} InputMatch;
+
+/* A cursor image (mouse_set_cursor_image): bpp 4 (high nibble first) or 8, the hot spot at the pointer, the clear
+   color number, and the palette colors of the color numbers (NULL: the numbers are palette colors). */
+typedef struct {
+    const uint8_t *bits, *palette;
+    int bpp, width, height, hot_x, hot_y, key;
+} CursorImage;
+
+/* The last matched command entry. */
+extern InputMatch g_input_match;
+/* A click feedback script waits for the next game step. */
+extern int g_input_feedback_busy;
+/* The mouse position on the screen (main.c sets it before each tick). */
+extern int g_input_mouse_x, g_input_mouse_y;
+
+/* ---- Setup ---- */
+
+/* Builds the input tables; call once. */
+void input_init(void);
+/* A command waits (in.wait) after the last one: the input queue takes no new command. */
+bool input_is_waiting(void);
+/* No pending key, mouse event, deferred click, queued command, or running click feedback script. */
+bool input_is_idle(void);
+
+/* ---- The input tree ---- */
+
+/* The command of a click with buttons at (x, y) in mode, and the rectangle of its zone; 0 for none. */
+uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect); /* exported for the tests */
+/* The command of key in mode, and the rectangle of its zone; 0 for none. */
+uint16_t input_key_command(int mode, uint16_t key, int16_t *rect); /* exported for the tests */
+/* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
+void input_set_mode(int mode);
+/* The current input mode. */
+int input_get_mode(void);
+/* Recomputes the active zones of the current mode. */
+void input_refresh_mode(void);
+/* Remembers the current mode for input_pop_mode, ends the push mode, the click feedback and a drag, and selects
+   mode. */
+void input_push_mode(int mode);
+/* The mode of before the last input_push_mode returns. */
+void input_pop_mode(void);
+
+/* ---- The cursor ---- */
+
+/* The cursor image at (x, y) of the screen (the original mouse_move_event): the held object or the hand over a
+   cursor zone of kind 1, the dragged champion over a zone of kind 2, else the arrow. */
+int input_cursor_at(int16_t x, int16_t y); /* exported for the tests */
+/* Draws the face of champ into the dragged champion cursor (champ_drag_click). */
+void input_set_champion_cursor(int champ);
+/* The image of a cursor of input_cursor_at. */
+CursorImage input_cursor_image(int cursor); /* exported for the tests */
+/* Draws the cursor image of input_cursor_at(x, y) with its hot spot at (x, y) into the screen pixels. */
+void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y);
+
+/* ---- Events ---- */
+
+/* A mouse button event at (x, y) of the screen (type: INPUT_BUTTON_* bits or INPUT_LEFT_RELEASED). */
+void input_mouse_click(int16_t x, int16_t y, int type); /* exported for the tests */
+/* A mouse button (INPUT_BUTTON_*) goes down at (x, y) of the screen. */
+void input_mouse_down(int16_t x, int16_t y, int button);
+/* A mouse button (INPUT_BUTTON_*) goes up at (x, y) of the screen. The release of the left button ends the mouse
+   capture of the eye or the mouth (INPUT_LEFT_RELEASED). */
+void input_mouse_up(int16_t x, int16_t y, int button);
+/* A key press of the keyboard (key code with KEY_* bits); input_poll reads it. */
+void input_key_down(uint16_t key);
+/* Clears the pending keys, clicks, and commands. */
+void input_flush(void);
+
+/* ---- Click feedback ---- */
+
+/* A click on a champion hand (status box) or a champion icon (party icons) becomes the command of the champion
+   in that cell: the hand action when the hand is ready and has actions; near the icon edges toward the party
+   center the leader choice, else the icon command when the spell is ready; else no command (0). */
+void input_refine_champion_click(Command *c); /* exported for the tests */
+/* Sets rect to a w x h rect centered in src. */
+void rect_center_in(int16_t *rect, const int16_t *src, int16_t w, int16_t h);
+/* Turns the waiting events into commands and runs the click feedback. */
+void input_poll(void);
+/* Ends the push mode, the click feedback, and a drag. */
+void input_reset_states(void);
+
+/* ---- Movement arrows ---- */
+
+/* Ends the push mode and redraws the movement arrows. */
+void input_cancel_push_mode(void);
+/* Redraws the released movement arrow. */
+void input_release_move_arrow(void);
+/* The push arrow under the mouse in the viewport while the party can push a creature (g_party.push_arrow). */
+void input_update_viewport_arrow(void);
+
+/* ---- Commands ---- */
+
+/* Executes one command; false when it must wait. */
+bool command_execute(Command *c); /* exported for the tests */
+/* The commands wait for steps timer ticks (the death of a boss near the party). */
+void input_set_wait(int steps);
+/* Executes the queued commands until one stops the processing. */
+void command_process_queue(void);
+
+/* ---- Simulated clicks and keys ---- */
+
+/* A left or right click on the zone of command in the current mode, as if the player clicked it. */
+void input_simulate_command_click(uint16_t command);
+/* The screen rect of the zone that input_simulate_command_click clicks for command; false when the current mode has
+   none. */
+bool input_command_rect(uint16_t command, int16_t *rect);
+/* Takes a key from the keys that the input has not read yet; 0 for none. */
+uint16_t input_read_key(void);
+/* The character of a key code (US layout), 0 for none. */
+char kbd_key_to_ascii(uint16_t key);
+
+#endif /* DM2_UI_INPUT_H */

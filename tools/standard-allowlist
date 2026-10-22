@@ -1,0 +1,38 @@
+#!/bin/bash
+# Regenerates tests/standard/allowlist.txt from the violations that the standard check finds.
+# A pair that the old file lists keeps its reason; a new pair gets "open: module cleanup".
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+list=tests/standard/allowlist.txt
+dump=$(mktemp)
+old=$(mktemp)
+new=$(mktemp)
+trap 'rm -f "$dump" "$dump.added" "$old" "$new"' EXIT
+cp "$list" "$old"
+# Exit code 1 is the expected assertion failures; any other code or an error in the summary is a failure.
+status=0
+out=$(DM2_STANDARD_IGNORE_ALLOWLIST=1 DM2_STANDARD_DUMP="$dump" uv run pytest -q -p no:cacheprovider tests/standard/test_standard.py 2>&1) || status=$?
+if [ "$status" -gt 1 ] || tail -n 1 <<<"$out" | grep -qi 'error' ||
+   grep -E '^E +[A-Za-z_.]*(Error|Exception)\b' <<<"$out" | grep -qv 'AssertionError'; then
+    echo "the standard check failed with an error; $list not changed" >&2
+    tail -n 20 <<<"$out" >&2
+    exit 1
+fi
+if [ ! -s "$dump" ]; then
+    echo "the standard check wrote no violations; $list not changed" >&2
+    exit 1
+fi
+cat >"$new" <<'HDR'
+# Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
+# A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
+HDR
+# The allowlist check reports the allowlist file itself; its pairs are not entries.
+awk '$1 != "allowlist" { print $1, $2 }' "$dump" | LC_ALL=C sort -u |
+    awk 'NR == FNR { if ($0 !~ /^#/ && NF >= 3) { k = $1 " " $2; r[k] = substr($0, length(k) + 2) } next }
+         { k = $1 " " $2; if (k in r) print k, r[k]; else { print k, "open: module cleanup"; print k > "/dev/stderr" } }' "$old" - >>"$new" 2>"$dump.added"
+cp "$new" "$list"
+echo "open: $(grep -c ' open: module cleanup$' "$list")"
+echo "added: $(wc -l <"$dump.added" | tr -d ' ')"
+cat "$dump.added"
+rm -f "$dump.added"
