@@ -436,7 +436,6 @@ dead-api ui/include/view.h:view_object_masks open: module cleanup
 dead-api ui/include/view.h:view_offset_creature_toward_party open: module cleanup
 dead-api ui/include/view.h:view_squares open: module cleanup
 dead-api ui/include/view.h:view_unhide_linked_squares open: module cleanup
-decimal data/include/le.h open: module cleanup
 decimal data/include/mve.h open: module cleanup
 decimal engine/ai.c open: module cleanup
 decimal engine/ai_move_internal.h open: module cleanup
