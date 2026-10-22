@@ -325,7 +325,8 @@ def party_frame(lib, dx=0):
 
 
 def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automap):
-    assert key_command(lib, INPUT_MODE_MOVE, KEY_TAB) and key_command(lib, INPUT_MODE_INVENTORY, KEY_TAB) == 0
+    assert key_command(lib, INPUT_MODE_MOVE, KEY_TAB)
+    assert key_command(lib, INPUT_MODE_INVENTORY, KEY_TAB) == C.CMD_INVENTORY_LEADER, "Tab closes the inventory"
     set_mode(lib, VANILLA)
     assert key_command(lib, INPUT_MODE_MOVE, KEY_TAB) == key_command(lib, INPUT_MODE_MOVE, KEY_M) == 0
     press(lib, KEY_TAB)
@@ -333,7 +334,7 @@ def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automa
     assert not flag(lib, "g_advanced_screen").value
     lib.ui_toggle_inventory(0)
     press(lib, KEY_TAB)
-    lib.ui_toggle_inventory(0)
+    assert not flag(lib, "g_advanced_screen").value and lib.input_get_mode() == INPUT_MODE_MOVE
     press(lib, KEY_PAUSE)
     press(lib, KEY_M)
     press(lib, KEY_PAUSE)
