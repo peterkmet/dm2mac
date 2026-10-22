@@ -28,7 +28,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    `platform/transport.c`; the Windows build has no socket and links `platform/transport_none.c`. [platform]
 4. Game rules in `engine/` do not call the user interface. They set redraw flags (`Champion.redraw`,
    `REDRAW_*`), and they call a member of `g_hooks` (`engine/hooks.h`) for an event that must run the user
-   interface inside the rule (`g_hooks.print_message`, `g_hooks.play_sound`). `ui/hook_table.c` sets every
+   interface inside the rule (`g_hooks.print_message`, `g_hooks.play_sound`). `ui/ui_hooks.c` sets every
    member. [layer]
 5. `ui/` changes game state only through engine functions. Exceptions: redraw flags and hooks. Exception: the
    action area (`ui/action_area.c`: `area_update`, `draw_open_panel`, `draw_hand_panel`, `haste_jitter`) keeps

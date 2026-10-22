@@ -14,6 +14,7 @@
 #include "input.h"
 #include "play.h"
 #include "text.h"
+#include "ui_internal.h"
 #include "view.h"
 #include "zone.h"
 #include <stdarg.h>

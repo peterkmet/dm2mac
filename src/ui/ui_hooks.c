@@ -8,6 +8,7 @@
 #include "sound.h"
 #include "text.h"
 #include "ui.h"
+#include "ui_internal.h"
 #include "view.h"
 #include "zone.h"
 
