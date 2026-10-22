@@ -221,11 +221,11 @@ int gdat_item_count(const gdat_t *g)
     return g->count;
 }
 
-const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *size)
+const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *out_size)
 {
     if (item < 0 || item >= g->count)
         return NULL;
-    *size = g->size[item];
+    *out_size = g->size[item];
     return g->file + g->offset[item];
 }
 
@@ -280,15 +280,15 @@ static int read_image_header(const gdat_t *g, int item, ImageHeader *h)
 
 /* Images */
 
-int gdat_image_size(const gdat_t *g, int item, int *width, int *height, int *bpp)
+int gdat_image_size(const gdat_t *g, int item, int *out_width, int *out_height, int *out_bpp)
 {
     ImageHeader h;
     int format = read_image_header(g, item, &h);
     if (format < 0)
         return format;
-    *width = h.width;
-    *height = h.height;
-    *bpp = h.bpp;
+    *out_width = h.width;
+    *out_height = h.height;
+    *out_bpp = h.bpp;
     return (int)decoded_size(h.width, h.height, h.bpp);
 }
 
@@ -485,7 +485,7 @@ int gdat_exists(const gdat_t *g, int category, int index, int type, int entry)
     return gdat_find(g, category, index, type, entry) >= 0;
 }
 
-char *gdat_text(const gdat_t *g, GdatKey entry_key, char *dst, size_t dst_size)
+char *gdat_text(const gdat_t *g, GdatKey entry_key, char *buffer, size_t buffer_size)
 {
     uint32_t size;
     const uint8_t *text =
@@ -493,14 +493,14 @@ char *gdat_text(const gdat_t *g, GdatKey entry_key, char *dst, size_t dst_size)
     int encrypted =
         gdat_entry_index(g, FLAGS_CATEGORY, FLAGS_INDEX, GDAT_TYPE_VALUE, FLAGS_ENTRY) & FLAG_ENCRYPTED_TEXT;
     size_t n = 0;
-    for (; text && n < size && n + 1 < dst_size; n++) {
+    for (; text && n < size && n + 1 < buffer_size; n++) {
         uint8_t c = encrypted ? (uint8_t)((text[n] ^ TEXT_INVERT) - n) : text[n];
         if (!c)
             break;
-        dst[n] = (char)c;
+        buffer[n] = (char)c;
     }
-    dst[n] = '\0';
-    return dst;
+    buffer[n] = '\0';
+    return buffer;
 }
 
 int gdat_text_int_field(const char *text, const char *key)

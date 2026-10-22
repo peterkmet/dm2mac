@@ -71,23 +71,24 @@ typedef struct {
 
 /* Copies rect of blit->dst from blit->src at (src_x, src_y). */
 void gfx_blit(const Blit *blit, const int16_t *rect);
-/* Scales a whole 4 bpp image to the width x height of dst; colormap (or NULL) maps each pixel. */
-void gfx_blit_scaled_4bpp(const Bitmap *src, Bitmap *dst, const uint8_t *colormap);
-/* Scales a whole 8 bpp image to the width x height of dst. */
-void gfx_blit_scaled_8bpp(const Bitmap *src, Bitmap *dst);
+/* Scales a whole 4 bpp image to the width x height of target; colormap (or NULL) maps each pixel. */
+void gfx_blit_scaled_4bpp(const Bitmap *source, Bitmap *target, const uint8_t *colormap);
+/* Scales a whole 8 bpp image to the width x height of target. */
+void gfx_blit_scaled_8bpp(const Bitmap *source, Bitmap *target);
 /* Fills rect of an 8 bpp dst with the tile row repeated from tile_offset on; the mask rows start at the mask
    position; exported for the tests. */
 void gfx_blit_tiled_4to8_masked(const TileFill *fill, uint8_t *dst, int dst_width, const int16_t *rect);
 /* Fills rect of an 8 bpp dst with the tile row repeated from tile_offset on; a mask has the width of rect. */
 void gfx_blit_tiled_4to8(const TileFill *fill, uint8_t *dst, int dst_width, const int16_t *rect);
-/* Copies a whole bitmap into dst with the size and depth of src, mirrored by mirror. */
-void gfx_blit_image(const Bitmap *src, Bitmap *dst, int mirror);
-/* Copies a whole bitmap into rect of the 8 bpp dst. */
-void gfx_blit_to_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int transparent, const uint8_t *colormap);
+/* Copies a whole bitmap into target with the size and depth of source, mirrored by mirror. */
+void gfx_blit_image(const Bitmap *source, Bitmap *target, int mirror);
+/* Copies a whole bitmap into rect of the 8 bpp target. */
+void gfx_blit_to_bitmap(const Bitmap *source, Bitmap *target, const int16_t *rect, int transparent,
+                        const uint8_t *colormap);
 /* Fills rect of dst with one color. */
 void gfx_fill_rect(uint8_t *dst, const int16_t *rect, int color, int dst_width, int bpp);
 /* Fills a whole bitmap with one color. */
-void gfx_fill_bitmap(Bitmap *dst, int color);
+void gfx_fill_bitmap(Bitmap *target, int color);
 /* value * scale / 64, rounded the way of the original. */
 int16_t gfx_scale_64(int16_t value, int16_t scale);
 

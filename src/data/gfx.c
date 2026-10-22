@@ -225,30 +225,31 @@ void gfx_blit_tiled_4to8(const TileFill *fill, uint8_t *dst, int dst_width, cons
     gfx_blit_tiled_4to8_masked(&whole, dst, dst_width, rect);
 }
 
-void gfx_blit_image(const Bitmap *src, Bitmap *dst, int mirror)
+void gfx_blit_image(const Bitmap *source, Bitmap *target, int mirror)
 {
-    int16_t rect[RECT_SIZE] = {0, 0, src->width, src->height};
-    dst->width = src->width;
-    dst->height = src->height;
-    dst->bpp = src->bpp;
-    Blit blit = {.src = src->pixels,
-                 .dst = dst->pixels,
-                 .src_width = src->width,
-                 .dst_width = src->width,
-                 .src_bpp = src->bpp,
-                 .dst_bpp = src->bpp,
+    int16_t rect[RECT_SIZE] = {0, 0, source->width, source->height};
+    target->width = source->width;
+    target->height = source->height;
+    target->bpp = source->bpp;
+    Blit blit = {.src = source->pixels,
+                 .dst = target->pixels,
+                 .src_width = source->width,
+                 .dst_width = source->width,
+                 .src_bpp = source->bpp,
+                 .dst_bpp = source->bpp,
                  .transparent = GFX_OPAQUE,
                  .mirror = mirror};
     gfx_blit(&blit, rect);
 }
 
-void gfx_blit_to_bitmap(const Bitmap *src, Bitmap *dst, const int16_t *rect, int transparent, const uint8_t *colormap)
+void gfx_blit_to_bitmap(const Bitmap *source, Bitmap *target, const int16_t *rect, int transparent,
+                        const uint8_t *colormap)
 {
-    Blit blit = {.src = src->pixels,
-                 .dst = dst->pixels,
-                 .src_width = src->width,
-                 .dst_width = dst->width,
-                 .src_bpp = src->bpp,
+    Blit blit = {.src = source->pixels,
+                 .dst = target->pixels,
+                 .src_width = source->width,
+                 .dst_width = target->width,
+                 .src_bpp = source->bpp,
                  .dst_bpp = IMAGE_8BPP,
                  .transparent = transparent,
                  .mirror = MIRROR_NONE,
@@ -263,11 +264,11 @@ void gfx_fill_rect(uint8_t *dst, const int16_t *rect, int color, int dst_width, 
             put_pixel(dst, bpp, (rect[RECT_Y] + row) * dst_width + rect[RECT_X] + col, color);
 }
 
-void gfx_fill_bitmap(Bitmap *dst, int color)
+void gfx_fill_bitmap(Bitmap *target, int color)
 {
-    int width = dst->bpp == IMAGE_4BPP ? even(dst->width) : dst->width;
-    int16_t rect[RECT_SIZE] = {0, 0, (int16_t)width, dst->height};
-    gfx_fill_rect(dst->pixels, rect, color, width, dst->bpp);
+    int width = target->bpp == IMAGE_4BPP ? even(target->width) : target->width;
+    int16_t rect[RECT_SIZE] = {0, 0, (int16_t)width, target->height};
+    gfx_fill_rect(target->pixels, rect, color, width, target->bpp);
 }
 
 int16_t gfx_scale_64(int16_t value, int16_t scale)

@@ -312,15 +312,15 @@ static void decode_block(Block *b, int encoding)
     }
 }
 
-bool mve_decode_video(MveStream *m, const uint8_t *video, int size)
+bool mve_decode_video(MveStream *m, const uint8_t *video, int video_size)
 {
     int columns = m->width / MVE_BLOCK_SIZE, rows = m->height / MVE_BLOCK_SIZE;
-    if (size < VIDEO_HEADER_SIZE || !columns || m->map_size * ENCODINGS_PER_BYTE < columns * rows)
+    if (video_size < VIDEO_HEADER_SIZE || !columns || m->map_size * ENCODINGS_PER_BYTE < columns * rows)
         return false;
     if (le16(video + VIDEO_FLAGS_AT) & VIDEO_FLAG_SWAP)
         m->current ^= 1;
     Block b = {
-        .m = m, .r = {video + VIDEO_HEADER_SIZE, video + size, false}
+        .m = m, .r = {video + VIDEO_HEADER_SIZE, video + video_size, false}
     };
     for (int i = 0; i < columns * rows && !b.r.short_data; i++) {
         b.x = i % columns * MVE_BLOCK_SIZE, b.y = i / columns * MVE_BLOCK_SIZE;
