@@ -386,11 +386,11 @@ const char *item_name(uint16_t thing)
 {
     static char name[TEXT_SIZE];
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
-    text_args.champion = -1;
+    g_text_args.champion = -1;
     if (category == CAT_MISC && index == TEXT_CHAMPION_TOKEN) {
         int champion = misc_charges(thing); /* the champion of the token */
         if (champion < g_game.champion_count)
-            text_args.champion = (int16_t)champion;
+            g_text_args.champion = (int16_t)champion;
     }
     char raw[TEXT_SIZE];
     return text_format(text_gdat(category, index, GFX_ITEM_NAME, raw), name);

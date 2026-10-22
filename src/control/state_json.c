@@ -210,7 +210,7 @@ const char *state_json_mode_name(int mode)
 
 bool state_json_game_over(void)
 {
-    return main_loop.end || session.completed;
+    return g_main_loop.end || g_session.completed;
 }
 
 static void key_int(Json *j, const char *key, long value)
@@ -505,7 +505,7 @@ static void party_json(Json *j, int mode)
              !g_game.party_move_cooldown && !g_party.move_steps && !input_is_waiting() &&
                  (mode == INPUT_MODE_MOVE || mode == INPUT_MODE_PUSH));
     key_bool(j, "sleeping", g_party_sleeping);
-    key_bool(j, "dead", main_loop.end != 0);
+    key_bool(j, "dead", g_main_loop.end != 0);
     json_close(j, '}');
 }
 
@@ -513,7 +513,7 @@ static void party_json(Json *j, int mode)
 static void champions_json(Json *j)
 {
     int members = g_game.champion_count, candidate = -1;
-    if (ui.candidate && members)
+    if (g_ui.candidate && members)
         candidate = --members;
     json_key(j, "leader");
     if ((int16_t)g_game.leader == -1 || (int16_t)g_game.leader == candidate)
@@ -577,7 +577,7 @@ static void spell_json(Json *j)
 
 static const char *panel_name(void)
 {
-    switch (ui.panel_mode) {
+    switch (g_ui.panel_mode) {
     case PANEL_MODE_FOOD:
         return "food";
     case PANEL_MODE_SKILLS:
@@ -596,9 +596,9 @@ static const char *panel_name(void)
 static void inventory_json(Json *j)
 {
     json_key(j, "inventory");
-    if (ui.inventory) {
+    if (g_ui.inventory) {
         json_open(j, '{');
-        key_int(j, "champion", ui.inventory - 1);
+        key_int(j, "champion", g_ui.inventory - 1);
         key_str(j, "panel", panel_name());
         json_close(j, '}');
     } else {
@@ -706,7 +706,7 @@ void state_json_state(Json *j)
     int mode = input_get_mode();
     json_open(j, '{');
     key_int(j, "time", (long)g_game.game_time);
-    key_str(j, "game_mode", game_mode_names[game_mode]);
+    key_str(j, "game_mode", g_game_mode_names[g_game_mode]);
     key_str(j, "mode", state_json_mode_name(mode));
     json_key(j, "dialog");
     dialog_json(j, mode);
@@ -1168,7 +1168,7 @@ static void pile_json(Json *j, const ViewClickZone *z, int cell)
    and whether a click on the wall ahead reaches something; none while the inventory hides the view. */
 static void piles_json(Json *j)
 {
-    bool shown = !ui.inventory;
+    bool shown = !g_ui.inventory;
     int x, y;
     json_key(j, "piles");
     json_open(j, '[');

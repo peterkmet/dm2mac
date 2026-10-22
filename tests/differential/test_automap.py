@@ -35,12 +35,12 @@ SAVE_OK = C.SAVE_OK
 def automap(lib, advanced):  # noqa: F811
     """The advanced game with the bright light and the cheats off."""
     lib.dungeon_square.restype = ctypes.c_uint8
-    for name in ("g_view_light_level", "cheat_light", "cheat_immortal", "cheat_food"):
+    for name in ("g_view_light_level", "g_cheat_light", "g_cheat_immortal", "g_cheat_food"):
         flag(lib, name).value = 0
     game, _ = advanced
     lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
     yield advanced
-    for name in ("cheat_light", "cheat_immortal", "cheat_food", "advanced_automap_open"):
+    for name in ("g_cheat_light", "g_cheat_immortal", "g_cheat_food", "advanced_automap_open"):
         flag(lib, name).value = 0
 
 
@@ -171,7 +171,7 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
     long_view = next(v for v in floor_views(lib, m) if all(not blocks(lib, m, *ahead(v[0], v[1], v[2], k)) for k in (1, 2, 3, 4)))
     x, y, d = long_view
     for level, light, depth in ((0, 0, 4), (4, 0, 3), (5, 0, 2), (5, 1, 4)):
-        flag(lib, "g_view_light_level").value, flag(lib, "cheat_light").value = level, light
+        flag(lib, "g_view_light_level").value, flag(lib, "g_cheat_light").value = level, light
         lib.seen_reset()
         lib.seen_mark(m, x, y, d)
         seen = seen_squares(lib, m)
@@ -286,7 +286,7 @@ def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
     run_ticks(lib, 20)
     assert seen_squares(lib, game.party_map)
     (data / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
-    state = Session.in_dll(lib, "session")
+    state = Session.in_dll(lib, "g_session")
     state.new_game = 1
     try:
         assert lib.session_load() == 1
@@ -306,7 +306,7 @@ def screen(lib):
 
 
 def red(lib):
-    return ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "ui_colors")[UI_RED]
+    return ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")[UI_RED]
 
 
 def party_frame(lib, dx=0):
@@ -426,8 +426,8 @@ def test_readout_shows_position_direction_and_cheats(lib, automap):
     # Drawing each expected line again at its place changes no pixel; a wrong text changes some.
     game, _ = automap
     lib.text_draw_on_screen.argtypes = [ctypes.c_int] * 4 + [ctypes.c_char_p]
-    colors = ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "ui_colors")
-    flag(lib, "cheat_food").value = 1
+    colors = ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")
+    flag(lib, "g_cheat_food").value = 1
     press(lib, KEY_TAB)
     x, y, _, _ = viewport(lib)
     lines = [b"LEVEL %d  X %d  Y %d" % (lib.dungeon_map_level(game.party_map), game.party_x, game.party_y),
@@ -443,7 +443,7 @@ def test_readout_shows_position_direction_and_cheats(lib, automap):
 
 
 def test_cheat_keys_work_only_on_the_advanced_automap(lib, automap):
-    names = {KEY_I: "cheat_immortal", KEY_F: "cheat_food", KEY_L: "cheat_light"}
+    names = {KEY_I: "g_cheat_immortal", KEY_F: "g_cheat_food", KEY_L: "g_cheat_light"}
     for key in names:
         press(lib, key)
     assert not any(flag(lib, n).value for n in names.values())
@@ -468,7 +468,7 @@ def champion_word(lib, offset, value=None):
 
 def test_immortal_keeps_one_health(lib, automap):
     damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
-    flag(lib, "cheat_immortal").value = 1
+    flag(lib, "g_cheat_immortal").value = 1
     damage[0] = 30000
     lib.champ_apply_pending_damage()
     assert champion_word(lib, HEALTH) == 1
@@ -480,11 +480,11 @@ def test_immortal_keeps_one_health(lib, automap):
 def test_food_cheat_keeps_food_and_water(lib, automap):
     champion_word(lib, FOOD, 1000)
     champion_word(lib, WATER, 1000)
-    flag(lib, "cheat_food").value = 1
+    flag(lib, "g_cheat_food").value = 1
     for _ in range(20):
         lib.champ_apply_time_effects()
     assert (champion_word(lib, FOOD), champion_word(lib, WATER)) == (1000, 1000)
-    flag(lib, "cheat_food").value = 0
+    flag(lib, "g_cheat_food").value = 0
     for _ in range(20):
         lib.champ_apply_time_effects()
     assert champion_word(lib, FOOD) < 1000 and champion_word(lib, WATER) < 1000
@@ -495,7 +495,7 @@ def test_light_cheat_draws_full_light(lib, automap):
     level = flag(lib, "g_view_light_level")
 
     def view(light, cheat):
-        level.value, flag(lib, "cheat_light").value = light, cheat
+        level.value, flag(lib, "g_cheat_light").value = light, cheat
         lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
         return c_view(lib)
     dark, cheat, bright = view(5, 0), view(5, 1), view(0, 0)
@@ -505,10 +505,10 @@ def test_light_cheat_draws_full_light(lib, automap):
 
 def test_new_or_loaded_game_turns_the_cheats_off(lib, automap):
     press(lib, KEY_F5)
-    for name in ("cheat_immortal", "cheat_food", "cheat_light"):
+    for name in ("g_cheat_immortal", "g_cheat_food", "g_cheat_light"):
         flag(lib, name).value = 1
     press(lib, KEY_F9)
-    assert not any(flag(lib, n).value for n in ("cheat_immortal", "cheat_food", "cheat_light"))
+    assert not any(flag(lib, n).value for n in ("g_cheat_immortal", "g_cheat_food", "g_cheat_light"))
     flag(lib, "advanced_automap_open").value = 1
     lib.play_start_session()
     assert not flag(lib, "advanced_automap_open").value

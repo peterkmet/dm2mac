@@ -255,13 +255,13 @@ class Scenario(CreatureOracle):
         self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         # ... and from the interface state of the program start: an earlier test can leave a recruit open
         from dm2test.interface import UiState
-        ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "ui")), 0, ctypes.sizeof(UiState))
+        ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "g_ui")), 0, ctypes.sizeof(UiState))
         # ... and from a running game: the end-game sensor of an earlier test (session_complete) stops all damage
         from dm2test.dialog import Session
         from dm2test.input import MainLoop
-        session = Session.in_dll(lib, "session")
+        session = Session.in_dll(lib, "g_session")
         session.completed = session.exit_code = 0
-        MainLoop.in_dll(lib, "main_loop").quit = 0
+        MainLoop.in_dll(lib, "g_main_loop").quit = 0
         if place_party:
             self.place(self.game.party_map, self.game.party_x, self.game.party_y, self.game.party_dir)
         self.setup_creatures(place_party)

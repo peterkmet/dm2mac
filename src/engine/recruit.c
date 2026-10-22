@@ -130,7 +130,7 @@ bool recruit_start(int x, int y, int dir, int map)
         action_area_close();
         g_hooks.update_action_area(0);
     }
-    ui.candidate = (uint16_t)(index + 1);
+    g_ui.candidate = (uint16_t)(index + 1);
     g_game.champion_count++;
     if (!index)
         champ_set_leader(0);
@@ -151,7 +151,7 @@ bool recruit_start(int x, int y, int dir, int map)
 
 void recruit_finish(int x, int y, int dir, int map, int command)
 {
-    int champ = ui.candidate - 1;
+    int champ = g_ui.candidate - 1;
     Champion *c = champion(champ);
     int saved = g_party.cur_map;
     dun_set_current_map(map);
@@ -161,12 +161,12 @@ void recruit_finish(int x, int y, int dir, int map, int command)
         g_hooks.toggle_inventory(CHAMPION_MAX);
         if (g_game.champion_count == 1)
             champ_set_leader(-1);
-        if (ui.candidate >= g_game.champion_count)
+        if (g_ui.candidate >= g_game.champion_count)
             g_game.champion_count--;
-        ui.candidate = 0;
+        g_ui.candidate = 0;
         c->health = 0;
         action_reset_champion(champ);
-        g_hooks.fill_screen_zone(ZONE_STATUS_BOX + champ, ui_colors[UI_BLACK]);
+        g_hooks.fill_screen_zone(ZONE_STATUS_BOX + champ, g_ui_colors[UI_BLACK]);
         g_hooks.show_view();
         dun_set_current_map(saved);
         return;
@@ -179,7 +179,7 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     }
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);
-    ui.candidate = 0;
+    g_ui.candidate = 0;
     int fx = x + g_dir_dx[dir], fy = y + g_dir_dy[dir];
     for (int s = 0; s < SLOT_COUNT; s++)
         if (c->slots[s] != THING_NONE)
@@ -190,11 +190,11 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     if (g_game.champion_count == 1)
         g_game.first_recruit_time = g_game.game_time;
     if (!recruit_silent) {
-        text_args.champion = (int16_t)champ;
+        g_text_args.champion = (int16_t)champ;
         g_hooks.print_newline();
         char text[TEXT_SIZE];
         g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
-        if (ui.inventory) {
+        if (g_ui.inventory) {
             g_hooks.toggle_inventory(CHAMPION_MAX);
             g_hooks.show_view();
         }

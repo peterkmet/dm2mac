@@ -509,7 +509,7 @@ void move_party_turn(int command)
 {
     if (!command)
         return;
-    input_command_stop = 1;
+    g_input_command_stop = 1;
     sync_champion_directions();
     uint8_t square = dun_get_square(g_game.party_x, g_game.party_y);
     if (square_type(square) == SQUARE_STAIRS) {
@@ -600,7 +600,7 @@ static bool step_party(int command, uint8_t here, bool on_stairs)
     s.dir = g_party.ref_dir;
     dun_move_relative(s.dir, command_forward[s.step], command_right[s.step], &s.x, &s.y);
     s.ahead = dun_get_square(s.x, s.y);
-    input_command_stop = 1;
+    g_input_command_stop = 1;
     pay_stamina_by_load(LOAD_PER_STEP_FACTOR);
     sync_champion_directions();
     uint16_t group;
@@ -665,7 +665,7 @@ bool move_party(int command)
         return true;
     } else if (!step_party(command, here, on_stairs)) {
         g_hooks.flush_input();
-        input_command_stop = 0;
+        g_input_command_stop = 0;
         return false;
     }
     /* the cooldown: half the delay, at least 1 while the party walks */
@@ -1005,12 +1005,12 @@ bool move_follow_square_transitions(uint16_t thing, MovePath path, bool creature
     if (thing == THING_NONE) {
         if (g_party.push_mode) {
             g_party.push_mode = 0;
-            ui.push_mode = 0;
+            g_ui.push_mode = 0;
             g_hooks.draw_movement_arrows();
         }
         set_party_position(path.dst_x, path.dst_y);
         t.scope = SCOPE_PARTY;
-        t.draw_fall = !ui.inventory && !g_party_sleeping;
+        t.draw_fall = !g_ui.inventory && !g_party_sleeping;
         t.type = -1;
     } else {
         t.flying = is_flying_thing(thing);

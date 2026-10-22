@@ -385,7 +385,7 @@ static bool has_leader(void)
 static int champion_arg(const char *request, const char *key)
 {
     long c = control_get_int(request, key, -1);
-    int members = g_game.champion_count - (ui.candidate ? 1 : 0);
+    int members = g_game.champion_count - (g_ui.candidate ? 1 : 0);
     if (c < 0 || c >= members || c >= CHAMPION_MAX || champion((int)c)->health <= 0)
         return -1;
     return (int)c;
@@ -420,7 +420,7 @@ static bool add_shown_command(uint16_t command)
 
 static const char *need_movement_input(void)
 {
-    if (ui.inventory)
+    if (g_ui.inventory)
         return "close the inventory first (close_inventory)";
     return NULL;
 }
@@ -429,7 +429,7 @@ static const char *need_movement_input(void)
 static const char *need_view(void)
 {
     int16_t r[RECT_SIZE];
-    if (ui.inventory)
+    if (g_ui.inventory)
         return "close the inventory first (close_inventory)";
     if (!input_command_rect(CMD_VIEWPORT, r))
         return "the view takes no click now";
@@ -595,7 +595,7 @@ static const char *open_inventory(const char *r)
     int c = champion_arg(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
-    if (ui.inventory == c + 1)
+    if (g_ui.inventory == c + 1)
         return NULL;
     return add_shown_command(CMD_INVENTORY_FIRST + c) ? NULL : "the inventory cannot open now";
 }
@@ -603,7 +603,7 @@ static const char *open_inventory(const char *r)
 static const char *close_inventory(const char *r)
 {
     (void)r;
-    if (!ui.inventory)
+    if (!g_ui.inventory)
         return NULL;
     return add_shown_command(CMD_INVENTORY_LEADER) ? NULL : "the inventory cannot close now";
 }
@@ -618,7 +618,7 @@ static const char *slot_command(int c, long slot, uint16_t *command)
         if (g_action.mode != ACTION_MODE_CONTAINER)
             return "no open chest";
         *command = CMD_SLOT_CHEST_FIRST + (uint16_t)(slot - SLOT_CONTAINER_FIRST);
-    } else if (ui.inventory == c + 1) {
+    } else if (g_ui.inventory == c + 1) {
         *command = CMD_SLOT_INVENTORY_FIRST + (uint16_t)slot;
     } else if (slot < SLOT_HAND_COUNT) {
         *command = CMD_SLOT_FIRST + SLOT_HAND_COUNT * c + (uint16_t)slot;
@@ -662,7 +662,7 @@ static const char *take_from_slot(const char *r)
 static const char *use_mouth(const char *r)
 {
     (void)r;
-    if (!ui.inventory)
+    if (!g_ui.inventory)
         return "open the inventory of the champion who eats or drinks first";
     if (hand_is_empty())
         return "take the food or drink in the leader hand first";
@@ -796,7 +796,7 @@ static const char *cast(const char *r)
 static const char *recruit(const char *r)
 {
     char choice[ACTION_NAME_SIZE] = "";
-    if (!ui.candidate)
+    if (!g_ui.candidate)
         return "no candidate: click a champion mirror first (click_wall_ahead)";
     control_get_string(r, "choice", choice, sizeof choice);
     bool join = !strcmp(choice, "join");
@@ -812,7 +812,7 @@ static const char *sleep_party(const char *r)
     if (!has_leader())
         return "no leader";
     /* the status box of the leader: a click on the zone of CMD_LEADER_INVENTORY hits the status box of champion 0 */
-    if (!ui.inventory && !add_shown_command(CMD_INVENTORY_FIRST + g_game.leader))
+    if (!g_ui.inventory && !add_shown_command(CMD_INVENTORY_FIRST + g_game.leader))
         return "the inventory cannot open now";
     add_command(CMD_SLEEP);
     return NULL;
@@ -849,7 +849,7 @@ static const char *look(const char *r)
     uint16_t command = 0;
     int16_t eye[RECT_SIZE];
     long slot = control_get_int(r, "slot", -1);
-    if (!ui.inventory)
+    if (!g_ui.inventory)
         return "open an inventory first (open_inventory): the eye is in the inventory";
     if (!input_command_rect(CMD_EYE, eye))
         return "the eye takes no click now";
@@ -858,7 +858,7 @@ static const char *look(const char *r)
     if (slot >= 0) {
         if (!hand_is_empty())
             return "the leader hand must be empty to look at a slot";
-        int c = control_find_value(r, "champion") ? champion_arg(r, "champion") : ui.inventory - 1;
+        int c = control_find_value(r, "champion") ? champion_arg(r, "champion") : g_ui.inventory - 1;
         if (c < 0)
             return NO_CHAMPION;
         const char *error = slot_command(c, slot, &command);
@@ -989,7 +989,7 @@ static const char *run_action(const char *name, const char *request)
     for (size_t k = 0; k < sizeof actions / sizeof actions[0]; k++) {
         if (strcmp(name, actions[k].name))
             continue;
-        if (ui.candidate && strcmp(name, "recruit") && !raw)
+        if (g_ui.candidate && strcmp(name, "recruit") && !raw)
             return "a candidate is shown: answer with recruit first";
         if (g_party_sleeping && strcmp(name, "wake") && !raw)
             return "the party sleeps: use wake or wait";

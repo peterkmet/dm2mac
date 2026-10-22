@@ -57,7 +57,7 @@ def ui(port, original):
     emu.write(G_DISK_PATH_KIND + 2, struct.pack("<H", 2))
     # the port gets a --data path; the dialogs show its last folder in capitals (the font has no lowercase letters)
     data = b"/some/dir/" + DRIVE_PATH.lower() + b"/\0"
-    ctypes.memmove(ctypes.addressof(ctypes.c_char.in_dll(port, "text_drive_path")), data, len(data))
+    ctypes.memmove(ctypes.addressof(ctypes.c_char.in_dll(port, "g_text_drive_path")), data, len(data))
     return port
 
 
@@ -146,7 +146,7 @@ def test_slot_dialogs_match_original(ui, original, tmp_path):
     (tmp_path / "DATA").mkdir()
     for n, slot in enumerate((0, 3)):
         (tmp_path / "DATA" / f"SKSAVE{slot}.DAT").write_bytes(start[C.SAVE_HEADER_SIZE * n:C.SAVE_HEADER_SIZE * (n + 1)])
-    Session.in_dll(lib, "session").data_dir = str(tmp_path).encode()
+    Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
     for i in range(2):  # the file names go through the 2 format buffers of text_format
         emu.write_u32(G_FORMAT_BUFFERS + 4 * i, original.alloc(128))
     names = []
@@ -213,7 +213,7 @@ def test_champion_name_editor_matches_original(ui, original):
     rect = (ctypes.c_int16 * 4)()
     commands = [lib.input_find_command(C.INPUT_MODE_NAME, 0, 0, 0, k, rect) for k in NAME_KEYS]
     assert all(commands), commands
-    UiState.in_dll(lib, "ui").inventory = 1
+    UiState.in_dll(lib, "g_ui").inventory = 1
     emu.write(G_INVENTORY_ORDINAL, struct.pack("<h", 1))
     keys = list(NAME_KEYS)
     theirs, mine = [], []
@@ -273,7 +273,7 @@ def test_quit_picture_matches_original(ui, original):
         emu.call(GAME_END, 0)
     hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "input_match"), "value", C.CMD_PICTURE_CLICK))
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     session.restart = session.quit_code = session.completed = 0
     try:
         lib.session_end(0)
@@ -342,7 +342,7 @@ def test_enter_presses_first_button_like_original(ui, original):
         if len(frames) == 1:
             lib.input_key_down(C.KEY_ENTER)
         if len(frames) > 100:  # no choice: the program ends, the test fails
-            ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 1
+            ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "g_main_loop")) + 24).value = 1
 
     hook = ctypes.CFUNCTYPE(None)(frame)
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value

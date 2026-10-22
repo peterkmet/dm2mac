@@ -1058,7 +1058,7 @@ void creature_delete_group_at(int x, int y, int mode, int sound_map)
 /* True when (x, y) of map is near the party, in front of it, and the party sees it. */
 static bool is_near_party_front(int x, int y, int map)
 {
-    if (map != g_ai_party.map || g_party_sleeping || ui.inventory)
+    if (map != g_ai_party.map || g_party_sleeping || g_ui.inventory)
         return false;
     int dx = abs(g_ai_party.x - x), dy = abs(g_ai_party.y - y);
     if (dx == dy)

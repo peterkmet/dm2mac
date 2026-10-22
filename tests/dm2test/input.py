@@ -35,7 +35,7 @@ def session(lib, gdat, start, tmp_path):
     lib.ui_draw_game_screen()
     lib.input_init()
     lib.play_start_session()
-    return game, MainLoop.in_dll(lib, "main_loop")
+    return game, MainLoop.in_dll(lib, "g_main_loop")
 
 
 def run_ticks(lib, n):
@@ -81,7 +81,7 @@ class Loop(Scenario):
         emu.call(INPUT_INIT_TABLES)
         emu.write_u32(LOOP_GLOBALS["timer_ticks"][0], 0)
         # the C port as build/dm2 starts: the loop state of the program start
-        self.loop = MainLoop.in_dll(lib, "main_loop")
+        self.loop = MainLoop.in_dll(lib, "g_main_loop")
         self.loop.tick_count, self.loop.timer_ticks, self.loop.end, self.loop.quit = 0, 0, 0, 0
         assert lib.text_init(gdat)
         lib.ui_reset()

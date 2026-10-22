@@ -93,7 +93,7 @@ def play(lib, gdat, start, tmp_path):
         assert mine == theirs
     sc.assert_equal("walk")
     (tmp_path / "DATA").mkdir()
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     session.data_dir = str(tmp_path).encode()
     session.slot, session.loaded, session.new_game, session.restart, session.completed = -1, 0, 0, 0, 0
     session.load_time = session.save_time = 0
@@ -120,7 +120,7 @@ def test_save_and_load_through_the_dialogs(play, lib, gdat, tmp_path):
     from dm2test.save import c_round_trip
     expected = original_save(original_load(lib, gdat, saved), header)
     assert c_round_trip(lib, gdat, saved, tmp_path) == expected
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     assert (session.slot, session.save_time) == (2, sc.time())
 
     # the second load: the restore of the last slot (no dialog) when only the backup file is left
@@ -140,7 +140,7 @@ def test_save_and_load_through_the_dialogs(play, lib, gdat, tmp_path):
 
 def test_load_dialog_cancel_and_empty_slot(play, lib):
     # A click on an empty slot chooses nothing: LOAD then cancels the load; CANCEL too.
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     for actions in ([click_slot(5), click_choice(2)], [click_choice(1)]):
         with Player(lib, actions):
             assert lib.session_load() == -1
@@ -149,7 +149,7 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
 
 def test_hide_game_view_cancels_the_champion_drag(lib):
     # The original game_hide_view cancels a champion drag inside its guard (SKULL.c:54260).
-    drag = ctypes.c_int.in_dll(lib, "input_drag_state")
+    drag = ctypes.c_int.in_dll(lib, "g_input_drag_state")
     hidden = ctypes.c_int.from_address(ctypes.addressof(main_loop_quit(lib)) - 8)  # MainLoop.view_hidden
     DialogState.in_dll(lib, "dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
     lib.play_hide_view()
@@ -168,7 +168,7 @@ def test_end_sensor_completes_the_game(play, lib):
     quits = []
     emu.stub(GAME_QUIT, lambda *_: quits.append(emu.read_u32(G_GAME_COMPLETED)))
     emu.stub(IOP_SET_VIDEO_STATE, lambda *_: 0)
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     for effect in (0, 1, 2):
         square_event(sc, 38, 17, 2, 3, effect, 1)
         for _ in range(3):
@@ -197,14 +197,14 @@ def test_party_death_ends_the_game_like_original(play, lib):
 
     emu.stub(GAME_QUIT, quit_)
     emu.write_u32(G_END_OFFER_RESTORE, 1)
-    Session.in_dll(lib, "session").offer_restore = 1
+    Session.in_dll(lib, "g_session").offer_restore = 1
     with Player(lib, [click_choice(2)], every=300):
         lib.session_end(1)
     with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, 1)
     assert dialogs == [(C.DIALOG_THE_END, 0)]
     assert quits == [b"\x01\x00"]
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     assert (session.quit_code, session.exit_code, main_loop_quit(lib).value) == (1, 2, 1)
     sc.flush_sounds()
     sc.assert_same_sounds("scream")
@@ -219,7 +219,7 @@ def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
     saved_state = (game.game_time, game.party_x, game.party_y, game.party_dir, game.party_map)
     for _ in range(20):
         play.step()
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     session.offer_restore = 1
     with Player(lib, [click_choice(1), click_choice(1)], every=300):  # RESTART GAME, then OK of "GAME LOADED"
         lib.session_end(1)
@@ -256,7 +256,7 @@ def test_quit_asks_when_not_saved_like_original(play, lib, since_load, since_sav
     assert asked == (since_load > 100 and since_save > 100)
     assert dialogs == ([C.DIALOG_SAVE_MENU, C.DIALOG_NOT_SAVED, C.DIALOG_SAVE_MENU] if asked else [C.DIALOG_SAVE_MENU]) and ends == ([] if asked else [1])
 
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     session.load_time, session.save_time = now - since_load, now - since_save
     pick = lambda lib: setattr(InputMatch.in_dll(lib, "input_match"), "value", C.CMD_PICTURE_CLICK)  # a click on the end picture
     actions = [click_choice(2), click_choice(2), click_choice(4)] if asked else [click_choice(2), pick]
@@ -270,7 +270,7 @@ def test_menu_commands_match_original(play, lib):
     # The commands of the start menu: new game, new game from DUNGENB.DAT, load.
     from dm2test.scenario import COMMAND_RECORD, Command
     sc = play
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     for command in (C.CMD_NEW_GAME, C.CMD_LOAD_GAME, C.CMD_NEW_GAME_B):
         c = Command(0, 0, command)
         sc.emu.write(COMMAND_RECORD, bytes(c))
@@ -388,7 +388,7 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     lib.draw_init(gdat)
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.input_init()
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     session.data_dir = str(data).encode()
     session.slot, session.loaded, session.new_game, session.restart, session.completed = -1, 0, 0, 0, 0
     main_loop_quit(lib).value = 0
@@ -450,7 +450,7 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     game.champion_count, game.leader = 0, C.LEADER_NONE
     emu.write(G_CHAMPION_COUNT, bytes(2))
     emu.write(G_LEADER, struct.pack("<h", -1))
-    Session.in_dll(lib, "session").new_game = 1
+    Session.in_dll(lib, "g_session").new_game = 1
     emu.write(G_NEW_GAME, struct.pack("<H", 1))
     mode = lib.input_get_mode()
     assert mode == struct.unpack("<h", emu.read(G_INPUT_MODE, 2))[0]
@@ -463,7 +463,7 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     assert rows() == before  # the message rows of each side (the original leaves them at 0 in the emulator)
     loop.flush_sounds()
     loop.assert_same_sounds("new game")
-    ui = UiState.in_dll(lib, "ui")
+    ui = UiState.in_dll(lib, "g_ui")
     mine = (game.champion_count, game.leader, ui.candidate, ui.inventory)
     theirs = tuple(struct.unpack("<H", emu.read(addr, 2))[0] for addr in (G_CHAMPION_COUNT, G_LEADER, G_CANDIDATE,
                                                                          G_INVENTORY))
@@ -477,13 +477,13 @@ CHAMP_APPLY_PENDING_DAMAGE, G_GAME_END_FLAG, G_PENDING_DAMAGE = 0x47113, 0x7F24C
 
 
 def test_dead_party_ends_the_game_like_original(play, lib, request):
-    # The damage of a step kills the last champion: kill_champion sets the end flag in both (main_loop.end and
+    # The damage of a step kills the last champion: kill_champion sets the end flag in both (g_main_loop.end and
     # g_game_end_flag), drops the objects and the bones. Then session_end with that flag, as main.c and the original main
     # call it: the scream of the dead champion, the end dialog, QUIT GAME: the exit code of a dead party.
     sc = play
     emu = sc.emu
     from dm2test.input import MainLoop
-    loop = MainLoop.in_dll(lib, "main_loop")
+    loop = MainLoop.in_dll(lib, "g_main_loop")
     request.addfinalizer(lambda: setattr(loop, "end", 0))  # the next tests start with a running loop
     assert sc.game.champion_count == 1 and not loop.end
     damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
@@ -506,7 +506,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
 
     emu.stub(GAME_QUIT, quit_)
     emu.write_u32(G_END_OFFER_RESTORE, 1)
-    Session.in_dll(lib, "session").offer_restore = 1
+    Session.in_dll(lib, "g_session").offer_restore = 1
     state = DialogState.in_dll(lib, "dialog")
     state.id = -1
     with Player(lib, [click_choice(2)], every=300):
@@ -515,7 +515,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, struct.unpack("<h", emu.read(G_GAME_END_FLAG, 2))[0])
     assert dialogs == [(C.DIALOG_THE_END, 0)] and quits == [b"\x01\x00"]
-    assert (Session.in_dll(lib, "session").exit_code, main_loop_quit(lib).value) == (2, 1)
+    assert (Session.in_dll(lib, "g_session").exit_code, main_loop_quit(lib).value) == (2, 1)
     sc.flush_sounds()
     sc.assert_same_sounds("scream")
 
@@ -574,7 +574,7 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
     from dm2test.view import Bitmap
     game, _ = session.__wrapped__(lib, gdat, start, tmp_path)
     (tmp_path / "DATA").mkdir()
-    Session.in_dll(lib, "session").data_dir = str(tmp_path).encode()
+    Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     screen = Bitmap.in_dll(lib, "draw_screen")
     view = (ctypes.c_int16 * 4)()
@@ -611,7 +611,7 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
     session.__wrapped__(lib, gdat, start, tmp_path)
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     run_ticks(lib, 16)
-    setattr(UiState.in_dll(lib, "ui"), held, 1)
+    setattr(UiState.in_dll(lib, "g_ui"), held, 1)
     with Player(lib, []) as player:
         lib.input_key_down(KEY_SAVE_MENU)
         run_ticks(lib, 16)

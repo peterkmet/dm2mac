@@ -159,7 +159,7 @@ def test_cursor_matches_original(tree, lib):
         emu.write(G_INPUT_ZONES + 7 * i + 6, bytes([emu.read(G_INPUT_ZONES + 7 * i + 6, 1)[0] & 0x3F]))
     rng = random.Random(19)
     modes = [*MODES, *rng.sample(MODES, 10), *rng.sample(MODES, 10)]
-    drag, action = ctypes.c_int.in_dll(lib, "input_drag_state"), ActionArea.in_dll(lib, "g_action")
+    drag, action = ctypes.c_int.in_dll(lib, "g_input_drag_state"), ActionArea.in_dll(lib, "g_action")
     seen = set()
     for mode, dragged in [(mode, 0) for mode in modes] + [(mode, 1) for mode in MODES]:
         if dragged:  # the party icons show the dragged champion with the hands in the action area (action mode 0)

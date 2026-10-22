@@ -54,9 +54,9 @@ def test_vanilla_letter_keys_and_quick_keys_do_nothing(lib, session, tmp_path): 
     # The library starts in vanilla, as the original: W does not move the party, F5 writes no file.
     game, _ = session
     (tmp_path / "DATA").mkdir()
-    Session.in_dll(lib, "session").data_dir = str(tmp_path).encode()
+    Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
     lib.input_key_down.argtypes = [ctypes.c_uint16]
-    assert ctypes.c_int.in_dll(lib, "game_mode").value == VANILLA
+    assert ctypes.c_int.in_dll(lib, "g_game_mode").value == VANILLA
     position = (game.party_x, game.party_y, game.party_dir)
     for key in (SCAN_W, SCAN_Q, KEY_F5, KEY_F9):
         assert key_command(lib, INPUT_MODE_MOVE, key) == 0
@@ -112,7 +112,7 @@ def test_letter_keys_move_and_turn(lib, advanced):
 def test_quick_save_and_quick_load(lib, advanced):
     # F5 writes QUICK.DAT (no backup) and keeps the QUIT question state; F9 brings the party back to the saved square.
     game, data = advanced
-    state = Session.in_dll(lib, "session")
+    state = Session.in_dll(lib, "g_session")
     state.load_time, state.save_time, state.new_game = 5, 7, 1
     press(lib, KEY_F5)
     assert shows(lib, b"GAME SAVED")
@@ -185,7 +185,7 @@ def test_failed_quick_save_keeps_the_old_quick_save(lib, advanced):
 
 def test_quick_save_without_data_folder_writes_nothing(lib, advanced, tmp_path):
     _, data = advanced
-    state = Session.in_dll(lib, "session")
+    state = Session.in_dll(lib, "g_session")
     state.data_dir = str(tmp_path / "missing").encode()
     press(lib, KEY_F5)
     assert shows(lib, b"UNABLE TO SAVE") and not (tmp_path / "missing").exists() and not list(data.iterdir())
@@ -254,7 +254,7 @@ def test_state_tells_the_game_mode(control, lib):  # noqa: F811
 
 def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
     path, *_ = control
-    names = ("advanced_automap_open", "cheat_immortal", "cheat_food", "cheat_light")
+    names = ("advanced_automap_open", "g_cheat_immortal", "g_cheat_food", "g_cheat_light")
     fields = ("automap", "cheat_immortal", "cheat_food", "cheat_light")
     try:
         for value in (0, 1):
@@ -287,7 +287,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa:
             framed = fb[middle]
             assert request({"cmd": "key", "key": "esc"}, path)["ok"]
             assert request({"cmd": "wait", "ticks": 4}, path)["ok"]
-        assert framed == ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "ui_colors")[8]  # red: the map did not move
+        assert framed == ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")[8]  # red: the map did not move
     finally:
         set_mode(lib, VANILLA)
         ctypes.c_int.in_dll(lib, "advanced_automap_open").value = 0
@@ -298,7 +298,7 @@ def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
     # back: the program quits with EXIT_GAME_LOST and no command or game step runs on the empty dungeon.
     from dm2test.input import MainLoop
     game, data = advanced
-    loop, state = MainLoop.in_dll(lib, "main_loop"), Session.in_dll(lib, "session")
+    loop, state = MainLoop.in_dll(lib, "g_main_loop"), Session.in_dll(lib, "g_session")
     (data / "QUICK.DAT").write_bytes(b"\0" * 300)
     old = os.umask(0o477)
     try:
@@ -331,7 +331,7 @@ def test_quick_save_goes_to_the_save_folder(lib, advanced, tmp_path):
     """--saves: QUICK.DAT goes to the save folder, not to <data>/DATA."""
     saves = tmp_path / "saves"
     saves.mkdir()
-    state = Session.in_dll(lib, "session")
+    state = Session.in_dll(lib, "g_session")
     state.save_dir = str(saves).encode()
     try:
         assert lib.advanced_quick_save() == 1
@@ -360,7 +360,7 @@ def test_lost_game_stays_in_the_turnbased_mode(lib, advanced):
     """A damaged quick save whose restore also fails: QUICK_LOST; the turn-based mode does not quit."""
     from dm2test.input import MainLoop
     _, data = advanced
-    loop, state = MainLoop.in_dll(lib, "main_loop"), Session.in_dll(lib, "session")
+    loop, state = MainLoop.in_dll(lib, "g_main_loop"), Session.in_dll(lib, "g_session")
     (data / "QUICK.DAT").write_bytes(b"\0" * 300)
     set_mode(lib, TURNBASED)
     old = os.umask(0o477)

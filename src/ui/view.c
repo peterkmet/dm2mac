@@ -1905,7 +1905,7 @@ static void view_draw_centered_label(int x, int y, const char *text)
     if (!text_measure(text, &width, &height))
         return;
     uint8_t colors[UI_COLOR_COUNT];
-    memcpy(colors, ui_colors, sizeof colors);
+    memcpy(colors, g_ui_colors, sizeof colors);
     pal_apply_dim_remap(colors, view.shade, NO_KEY, NO_KEY, &count);
     text_draw_with_shadow(view_viewport.pixels, view_viewport.width, x - (width >> 1), y, colors[UI_WHITE],
                           colors[UI_BLACK] | TEXT_TRANSPARENT, text);
@@ -2961,7 +2961,7 @@ void view_draw_dungeon(int dir, int x, int y)
     view.party_dir = dir;
     view.party_x = x;
     view.party_y = y;
-    view.shade = cheat_light ? 0 : g_view_light_level * LIGHT_STEP; /* the creature rules keep g_view_light_level */
+    view.shade = g_cheat_light ? 0 : g_view_light_level * LIGHT_STEP; /* the creature rules keep g_view_light_level */
     view.walking = g_party.move_steps != 0;
     view_click_zone_count = VIEW_CLICK_ZONE_FIXED;
     for (int i = 0; i < VIEW_CLICK_ZONE_FIXED; i++) {

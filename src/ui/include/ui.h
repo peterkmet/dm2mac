@@ -13,7 +13,7 @@
 /* The number of movement arrow zones. */
 #define ZONE_ARROW_COUNT 6
 
-/* What the inventory panel shows (ui.panel_mode). */
+/* What the inventory panel shows (g_ui.panel_mode). */
 enum {
     PANEL_MODE_NONE,
     PANEL_MODE_FOOD,

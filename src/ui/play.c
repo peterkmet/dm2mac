@@ -35,7 +35,7 @@ void (*play_frame_hook)(void);
 void play_wait_frames(int count)
 {
     while (count-- > 0) {
-        main_loop.timer_ticks++;
+        g_main_loop.timer_ticks++;
         if (play_frame_hook)
             play_frame_hook();
     }
@@ -67,28 +67,28 @@ void play_present_viewport(void)
 static void draw_sleep_message(void)
 {
     char text[TEXT_SIZE];
-    gfx_fill_bitmap(&view_viewport, ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(&view_viewport, g_ui_colors[UI_BLACK]);
     gdat_text(gdat_current(), (GdatKey){CAT_INTERFACE, 0, TEXT_SLEEPING}, text, sizeof text);
-    text_draw_in_zone(ZONE_VIEW_TEXT, ui_colors[UI_CYAN], text);
+    text_draw_in_zone(ZONE_VIEW_TEXT, g_ui_colors[UI_CYAN], text);
 }
 
 void play_show_view(void)
 {
-    if (!main_loop.view_hidden || dialog.screen_mode)
+    if (!g_main_loop.view_hidden || dialog.screen_mode)
         return;
     if (g_party_sleeping) {
         draw_sleep_message();
         play_present_viewport();
         return;
     }
-    main_loop.view_hidden = 0;
+    g_main_loop.view_hidden = 0;
     if (!g_action.champion)
         g_action.dirty = 1;
     else
         g_action.redraw_delay = 1;
-    if (ui.inventory) {
-        int champ = ui.inventory - 1;
-        ui.inventory = 0;
+    if (g_ui.inventory) {
+        int champ = g_ui.inventory - 1;
+        g_ui.inventory = 0;
         ui_toggle_inventory(champ);
         return;
     }
@@ -98,10 +98,10 @@ void play_show_view(void)
 
 void play_hide_view(void)
 {
-    if (main_loop.view_hidden || dialog.screen_mode)
+    if (g_main_loop.view_hidden || dialog.screen_mode)
         return;
-    main_loop.view_hidden = 1;
-    if (input_drag_state) {
+    g_main_loop.view_hidden = 1;
+    if (g_input_drag_state) {
         champ_drag_cancel();
         area_update(0);
     }
@@ -111,10 +111,10 @@ void play_hide_view(void)
 
 void play_sleep(void)
 {
-    if (ui.candidate)
+    if (g_ui.candidate)
         return;
     inv_arrows_on_close = 0;
-    if (ui.inventory)
+    if (g_ui.inventory)
         ui_toggle_inventory(CHAMPION_MAX);
     inv_arrows_on_close = 1;
     action_area_close();
@@ -126,7 +126,7 @@ void play_sleep(void)
     }
     draw_sleep_message();
     play_present_viewport();
-    main_loop.tick_threshold = SLEEP_STEP_TICKS;
+    g_main_loop.tick_threshold = SLEEP_STEP_TICKS;
     input_set_mode(INPUT_MODE_SLEEP);
     input_flush();
 }
@@ -147,9 +147,9 @@ static int game_step_view(void)
         world_update_day_night(0);
         if (g_party_sleeping)
             return 0;
-        if (!ui.candidate)
+        if (!g_ui.candidate)
             play_show_view();
-        if (!ui.inventory) {
+        if (!g_ui.inventory) {
             if (g_party.redraw)
                 creature_refresh_party_maps();
             if (g_party.move_steps)
@@ -157,7 +157,7 @@ static int game_step_view(void)
             else
                 view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
             play_present_viewport();
-            if (game_mode != GAME_MODE_VANILLA)
+            if (g_game_mode != GAME_MODE_VANILLA)
                 seen_mark(g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir);
         }
         if (!g_party.move_steps)
@@ -175,7 +175,7 @@ static int game_step_view(void)
 static void game_step(void)
 {
     tick_elapsed = 0;
-    main_loop.tick_count = 0;
+    g_main_loop.tick_count = 0;
     if (game_step_view()) {
         input_feedback_busy = 0;
         input_poll();
@@ -189,7 +189,7 @@ static void game_step(void)
         champ_apply_time_effects();
     inv_update_hand_cursor();
     ui_draw_all_champion_states(1);
-    if (main_loop.end) {
+    if (g_main_loop.end) {
         input_reset_states();
         return;
     }
@@ -222,27 +222,27 @@ void play_start_session(void)
 {
     g_party_sleeping = 0;
     g_party.push_mode = 0;
-    main_loop.view_hidden = 0;
-    main_loop.tick_threshold = STEP_TICKS;
-    main_loop.running = 1;
+    g_main_loop.view_hidden = 0;
+    g_main_loop.tick_threshold = STEP_TICKS;
+    g_main_loop.running = 1;
     input_set_mode(INPUT_MODE_MOVE);
     game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
     dialog.progress_enabled = 0;
     advanced_reset();
-    if (session.loaded) {
+    if (g_session.loaded) {
         ui_fill_zone_screen(ZONE_SCREEN, 0);
         dialog_run(dialog_draw(DIALOG_LOADED, MESSAGE_NONE));
         ui_fill_zone_screen(ZONE_SCREEN, 0);
-    } else if (session.new_game) {
+    } else if (g_session.new_game) {
         dialog.screen_mode = 0;
         ui_fill_zone_screen(ZONE_SCREEN, 0);
     }
     ui_draw_movement_arrows();
     champ_init_party_state();
-    session.offer_restore = 1;
+    g_session.offer_restore = 1;
     creature_refresh_party_maps();
     creature_reset_active_groups();
-    if (session.new_game)
+    if (g_session.new_game)
         move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
     dialog.screen_mode = 0;
     game_step();
@@ -250,14 +250,14 @@ void play_start_session(void)
 
 void play_tick(void)
 {
-    if (main_loop.end || main_loop.quit)
+    if (g_main_loop.end || g_main_loop.quit)
         return;
-    main_loop.timer_ticks++;
-    if (++main_loop.tick_count >= main_loop.tick_threshold)
+    g_main_loop.timer_ticks++;
+    if (++g_main_loop.tick_count >= g_main_loop.tick_threshold)
         tick_elapsed = 1;
     command_process_queue();
     /* the automap stops the game time; a quit (a lost game) ends all game work */
-    if (!tick_elapsed || !main_loop.running || advanced_automap_open || main_loop.quit)
+    if (!tick_elapsed || !g_main_loop.running || advanced_automap_open || g_main_loop.quit)
         return;
     game_step_end();
     game_step();

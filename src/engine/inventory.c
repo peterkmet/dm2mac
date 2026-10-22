@@ -296,12 +296,12 @@ void inv_click_slot(int slot)
         return;
     if (slot < CLICK_STATUS_HANDS) {
         champ = slot / SLOT_HAND_COUNT;
-        if (ui.candidate || champ >= g_game.champion_count || champ + 1 == ui.inventory || !champion(champ)->health)
+        if (g_ui.candidate || champ >= g_game.champion_count || champ + 1 == g_ui.inventory || !champion(champ)->health)
             return;
         slot %= SLOT_HAND_COUNT;
     } else {
         slot -= CLICK_STATUS_HANDS;
-        champ = (slot < SLOT_COUNT ? ui.inventory : g_action.champion) - 1;
+        champ = (slot < SLOT_COUNT ? g_ui.inventory : g_action.champion) - 1;
     }
     uint16_t thing = slot_thing(champ, slot);
     if (thing == THING_NONE && hand == THING_NONE)
@@ -468,14 +468,14 @@ void champ_consume_object(int champ, uint16_t thing, int slot)
 {
     if (thing == THING_NONE) {
         if (g_game.leader_hand == THING_NONE) {
-            ui.mouth = (input_mouse_buttons & INPUT_BUTTON_LEFT) != 0; /* held until the left button is released */
+            g_ui.mouth = (g_input_mouse_buttons & INPUT_BUTTON_LEFT) != 0; /* held until the left button is released */
             return;
         }
-        champ = ui.inventory - 1;
+        champ = g_ui.inventory - 1;
         thing = g_game.leader_hand;
         slot = -1;
     }
-    if (ui.candidate)
+    if (g_ui.candidate)
         return;
     Champion *c = champion(champ);
     int16_t food = (int16_t)item_attr(thing, ATTR_FOOD);

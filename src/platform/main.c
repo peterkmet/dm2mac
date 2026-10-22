@@ -203,7 +203,7 @@ static void pump_events(void)
     PlatEvent e;
     while (plat_poll(&e)) {
         if (e.type == PLAT_QUIT) {
-            main_loop.quit = main_loop.closed = 1;
+            g_main_loop.quit = g_main_loop.closed = 1;
         } else if (e.type == PLAT_KEY) {
             uint16_t key = pc_key_code(e.scancode, e.mod);
             if (key)
@@ -235,7 +235,7 @@ static void pump_quit_events(void)
     PlatEvent e;
     while (plat_poll(&e))
         if (e.type == PLAT_QUIT)
-            main_loop.quit = main_loop.closed = 1;
+            g_main_loop.quit = g_main_loop.closed = 1;
 }
 
 /* One frame of a modal loop (menu, dialog) in the turn-based mode: the requests and the screen; no wait while a turn
@@ -253,7 +253,7 @@ static void turnbased_modal_frame(void)
 /* The main loop of the turn-based mode: the game runs only during a turn, one game step per frame. */
 static void run_turnbased(void)
 {
-    while (!main_loop.quit) {
+    while (!g_main_loop.quit) {
         pump_quit_events();
         transport_poll();
         control_frame();
@@ -268,13 +268,13 @@ static void run_turnbased(void)
    of the game, and the screen. */
 static void run_realtime(void)
 {
-    for (int pit = 0; !main_loop.quit;) {
+    for (int pit = 0; !g_main_loop.quit;) {
         pump_events();
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
             play_tick();
-            if (main_loop.end && !main_loop.quit)
-                session_end(main_loop.end);
+            if (g_main_loop.end && !g_main_loop.quit)
+                session_end(g_main_loop.end);
             present_with_cursor();
         }
         plat_wait_tick();
@@ -287,7 +287,7 @@ static void pump_movie_events(void)
     PlatEvent e;
     while (plat_poll(&e)) {
         if (e.type == PLAT_QUIT)
-            main_loop.quit = main_loop.closed = 1;
+            g_main_loop.quit = g_main_loop.closed = 1;
         else if (e.type == PLAT_MOUSE)
             movie_click();
     }
@@ -309,12 +309,12 @@ static void present_movie(void)
 /* Plays a script of the launcher with the movie sound instead of the music, until its end or a quit. */
 static void play_movies(int script)
 {
-    if (game_mode == GAME_MODE_TURNBASED)
+    if (g_game_mode == GAME_MODE_TURNBASED)
         return; /* the turn-based mode plays no movie */
-    if (!movie_start(script, session.data_dir, SDL_GetTicksNS()))
+    if (!movie_start(script, g_session.data_dir, SDL_GetTicksNS()))
         return;
     plat_audio_music(movie_render_audio);
-    for (int pit = 0; movie_is_playing() && !main_loop.quit;) {
+    for (int pit = 0; movie_is_playing() && !g_main_loop.quit;) {
         pump_movie_events();
         if (++pit == PIT_TICKS_PER_GAME_TICK) {
             pit = 0;
@@ -358,12 +358,13 @@ static int read_options(int argc, char **argv, const char **data, const char **f
     return 1;
 }
 
-/* Sets game_mode from its name; returns 0 with a message for an unknown name. */
+/* Sets g_game_mode from its name; returns 0 with a message for an unknown name. */
 static int select_mode(const char *mode)
 {
-    for (game_mode = 0; game_mode < GAME_MODE_COUNT && strcmp(mode, game_mode_names[game_mode]); game_mode++) {
+    for (g_game_mode = 0; g_game_mode < GAME_MODE_COUNT && strcmp(mode, g_game_mode_names[g_game_mode]);
+         g_game_mode++) {
     }
-    if (game_mode < GAME_MODE_COUNT)
+    if (g_game_mode < GAME_MODE_COUNT)
         return 1;
     os_log("unknown mode %s: use vanilla, advanced, or turnbased", mode);
     return 0;
@@ -386,7 +387,7 @@ static int default_control_path(const char **control)
 /* Starts the new game of the turn-based mode or the start menu of the other modes; returns 0 to end the program. */
 static int start_game(const char *data)
 {
-    if (game_mode != GAME_MODE_TURNBASED)
+    if (g_game_mode != GAME_MODE_TURNBASED)
         return session_init();
     if (session_start_new_game())
         return 1;
@@ -464,11 +465,11 @@ int main(int argc, char **argv)
 #endif
     if (!select_mode(mode))
         return EXIT_USAGE;
-    if (!transport_is_available() && (game_mode == GAME_MODE_TURNBASED || control)) {
+    if (!transport_is_available() && (g_game_mode == GAME_MODE_TURNBASED || control)) {
         os_log("the turn-based mode and --control need macOS");
         return 1;
     }
-    if (game_mode == GAME_MODE_TURNBASED && !control && !default_control_path(&control))
+    if (g_game_mode == GAME_MODE_TURNBASED && !control && !default_control_path(&control))
         return EXIT_USAGE;
     int factor = filter ? scale_filter_factor(filter) : 1;
     if (!factor) {
@@ -476,10 +477,10 @@ int main(int argc, char **argv)
         return EXIT_USAGE;
     }
     SDL_Log("data folder: %s, mode %s", data, mode);
-    snprintf(session.data_dir, sizeof session.data_dir, "%s", data);
+    snprintf(g_session.data_dir, sizeof g_session.data_dir, "%s", data);
     if (saves)
-        snprintf(session.save_dir, sizeof session.save_dir, "%s", saves);
-    snprintf(text_drive_path, sizeof text_drive_path, "%s", data);
+        snprintf(g_session.save_dir, sizeof g_session.save_dir, "%s", saves);
+    snprintf(g_text_drive_path, sizeof g_text_drive_path, "%s", data);
 
     if (!load_graphics(data))
         return 1;
@@ -500,26 +501,26 @@ int main(int argc, char **argv)
         sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
         sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
     }
-    play_frame_hook = game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
+    play_frame_hook = g_game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!save && !getenv(RESTART_ENV))
         play_movies(MOVIE_SCRIPT_START);
-    if (!save && !main_loop.quit && !start_game(data)) {
-        if (game_mode == GAME_MODE_TURNBASED) {
+    if (!save && !g_main_loop.quit && !start_game(data)) {
+        if (g_game_mode == GAME_MODE_TURNBASED) {
             close_platform();
             return 1;
         }
-        main_loop.quit = 1;
+        g_main_loop.quit = 1;
     }
-    if (game_mode == GAME_MODE_TURNBASED)
+    if (g_game_mode == GAME_MODE_TURNBASED)
         run_turnbased(); /* the turn-based mode never calls session_end */
     else
         run_realtime();
-    main_loop.quit = 0; /* the end movies run until their end, a closed window, or a quit request */
+    g_main_loop.quit = 0; /* the end movies run until their end, a closed window, or a quit request */
     sound_stop_all();
-    if (!main_loop.closed)
-        play_movies(movie_script_after(session.exit_code));
+    if (!g_main_loop.closed)
+        play_movies(movie_script_after(g_session.exit_code));
     close_platform();
-    if (session.exit_code == EXIT_RESTART)
+    if (g_session.exit_code == EXIT_RESTART)
         restart(argc, argv);
-    return session.exit_code;
+    return g_session.exit_code;
 }

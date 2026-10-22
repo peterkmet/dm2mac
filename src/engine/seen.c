@@ -98,7 +98,7 @@ static int visible_depths(void)
 {
     /* A fixed cut by light level (4: one row less, 5: two rows less), as in the DM port; a finer rule if a player
        needs it */
-    if (cheat_light)
+    if (g_cheat_light)
         return VIEW_DEPTHS;
     if (g_view_light_level >= DARKEST_LIGHT)
         return VIEW_DEPTHS - 2;

@@ -45,7 +45,7 @@
 #define SURROGATE_END         0xe000
 #define SURROGATE_BITS        10
 
-/* A wait request: the reply goes out when main_loop.timer_ticks reached start + ticks. */
+/* A wait request: the reply goes out when g_main_loop.timer_ticks reached start + ticks. */
 static struct {
     int pending;
     uint32_t start, ticks;
@@ -270,7 +270,7 @@ static void put_state(Json *reply)
     bool movie = movie_is_playing();
     const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
     put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", g_game.game_time,
-        main_loop.timer_ticks, mode_name);
+        g_main_loop.timer_ticks, mode_name);
     if (movie || mode != INPUT_MODE_DIALOG)
         put(reply, "null");
     else
@@ -286,7 +286,7 @@ static void put_state(Json *reply)
         put(reply, ",\"health\":[%d,%d],\"stamina\":[%d,%d],\"mana\":[%d,%d],\"load\":%d}", c->health, c->max_health,
             c->stamina, c->max_stamina, c->mana, c->max_mana, champ_get_load(i));
     }
-    put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", ui.inventory - 1, (int)ui.candidate - 1);
+    put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", g_ui.inventory - 1, (int)g_ui.candidate - 1);
     if (!g_game.champion_count || g_game.leader_hand == THING_NONE)
         put(reply, "null");
     else {
@@ -296,9 +296,10 @@ static void put_state(Json *reply)
         put(reply, "}");
     }
     put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d",
-        g_game.sound_volume, g_game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode],
+        g_game.sound_volume, g_game.music_volume, g_main_loop.end, g_main_loop.quit, g_game_mode_names[g_game_mode],
         advanced_automap_open);
-    put(reply, ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", cheat_immortal, cheat_food, cheat_light);
+    put(reply, ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", g_cheat_immortal, g_cheat_food,
+        g_cheat_light);
 }
 
 /* Screenshots: the screen with the pointer, as a PNG file. */
@@ -520,8 +521,8 @@ static bool refuse_in_modal_loop(Json *reply)
 /* After a load or a new game: the end of the last game is over. */
 static void game_restarts(void)
 {
-    main_loop.end = 0;
-    session.completed = 0;
+    g_main_loop.end = 0;
+    g_session.completed = 0;
     game_lost = 0;
 }
 
@@ -530,13 +531,13 @@ static void handle_load(Json *reply)
 {
     if (refuse_in_modal_loop(reply))
         return;
-    int end = main_loop.end;
-    main_loop.end = 0; /* the loaded game starts with a full game step, as after the load of a slot */
+    int end = g_main_loop.end;
+    g_main_loop.end = 0; /* the loaded game starts with a full game step, as after the load of a slot */
     int result = advanced_quick_load();
     if (result == QUICK_LOST)
         game_lost = 1;
     if (result != QUICK_LOADED) {
-        main_loop.end = end;
+        g_main_loop.end = end;
         put_error(reply, result == QUICK_MISSING   ? "no saved game (use save first)"
                          : result == QUICK_BLOCKED ? "cannot write QUICK.TMP: nothing loaded"
                                                    : "the saved game is damaged");
@@ -565,7 +566,7 @@ static void handle_save(Json *reply)
 {
     if (refuse_in_modal_loop(reply))
         return;
-    if (ui.candidate)
+    if (g_ui.candidate)
         put_error(reply, "answer the candidate first (act recruit)");
     else if (!advanced_quick_save())
         put_error(reply, "cannot write the save file");
@@ -639,7 +640,7 @@ static void handle_request(const char *request, Json *reply)
     int x, y;
     if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         put_error(reply, "missing cmd");
-    } else if (game_mode == GAME_MODE_TURNBASED && handle_turnbased_request(request, cmd, reply)) {
+    } else if (g_game_mode == GAME_MODE_TURNBASED && handle_turnbased_request(request, cmd, reply)) {
         return;
     } else if (!strcmp(cmd, "state")) {
         put_state(reply);
@@ -673,7 +674,7 @@ static void handle_request(const char *request, Json *reply)
             put_error(reply, error);
         } else {
             waiting.pending = 1;
-            waiting.start = main_loop.timer_ticks;
+            waiting.start = g_main_loop.timer_ticks;
             waiting.ticks = (uint32_t)ticks;
         }
     } else if (!strcmp(cmd, "screenshot")) {
@@ -682,7 +683,7 @@ static void handle_request(const char *request, Json *reply)
         else
             screenshot(path, reply);
     } else if (!strcmp(cmd, "quit")) {
-        main_loop.quit = main_loop.closed = 1;
+        g_main_loop.quit = g_main_loop.closed = 1;
         put_ok(reply);
     } else {
         put_error(reply, "unknown cmd");
@@ -698,7 +699,7 @@ bool control_handle_line(const char *line, Json *reply)
 bool control_end_turn(Json *reply)
 {
     if (waiting.pending) {
-        uint32_t ran = main_loop.timer_ticks - waiting.start;
+        uint32_t ran = g_main_loop.timer_ticks - waiting.start;
         if (ran < waiting.ticks)
             return false;
         waiting.pending = 0;
@@ -733,6 +734,6 @@ void control_frame(void)
     if (!turn_is_pending())
         return;
     uint32_t time = g_game.game_time;
-    for (int i = 0; i < STEP_TICKS && g_game.game_time == time && !main_loop.end && !main_loop.quit; i++)
+    for (int i = 0; i < STEP_TICKS && g_game.game_time == time && !g_main_loop.end && !g_main_loop.quit; i++)
         play_tick();
 }

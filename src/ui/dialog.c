@@ -134,22 +134,22 @@ int dialog_draw(int id, int message)
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, GFX_DIALOG_PICTURE), &view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, GFX_DIALOG_PICTURE));
-    text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
+    text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
     for (int i = 0; i < count; i++)
-        text_draw_in_zone(button_text_zones[first + i], ui_colors[UI_YELLOW], texts[i]);
+        text_draw_in_zone(button_text_zones[first + i], g_ui_colors[UI_YELLOW], texts[i]);
     if (id != DIALOG_VOLUME && zone_get_rect(count < 2 ? ZONE_DIALOG_MESSAGE_WIDE : ZONE_DIALOG_MESSAGE, r)) {
         static char message_texts[MESSAGE_TEXTS][TEXT_SIZE];
         char *shown[MESSAGE_TEXTS] = {NULL, NULL};
         int colors[MESSAGE_TEXTS];
         if (message && id == DIALOG_ERROR) {
-            colors[0] = ui_colors[UI_WHITE];
+            colors[0] = g_ui_colors[UI_WHITE];
             shown[0] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[0]);
         } else {
-            colors[0] = ui_colors[UI_YELLOW];
+            colors[0] = g_ui_colors[UI_YELLOW];
             shown[0] = text_gdat(CAT_DIALOG, id, GFX_DIALOG_MESSAGE, message_texts[0]);
             if (message) {
-                colors[1] = ui_colors[UI_WHITE];
+                colors[1] = g_ui_colors[UI_WHITE];
                 shown[1] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[1]);
             }
         }
@@ -159,7 +159,7 @@ int dialog_draw(int id, int message)
         dialog_present();
         dialog_screen_mode(0);
     }
-    ui.screen_needs_refresh = 1;
+    g_ui.screen_needs_refresh = 1;
     return id;
 }
 
@@ -184,10 +184,10 @@ int dialog_run(int id)
         play_wait_frames(1);
         if (input_match.choice == DIALOG_NO_CHOICE && input_read_key() == KEY_ENTER)
             input_simulate_command_click(CMD_DIALOG_BUTTON_FIRST);
-    } while (input_match.choice == DIALOG_NO_CHOICE && !main_loop.quit);
+    } while (input_match.choice == DIALOG_NO_CHOICE && !g_main_loop.quit);
     int choice = input_match.choice;
     int result = id == DIALOG_VOLUME ? input_match.value : choice >= 1 && choice <= count ? values[choice - 1] : 0;
-    ui.screen_needs_refresh = 1;
+    g_ui.screen_needs_refresh = 1;
     input_pop_mode();
     return result;
 }
@@ -201,7 +201,7 @@ void dialog_draw_progress_bar(int permille)
     if (r[RECT_W] <= 0 || r[RECT_W] == dialog.progress_width)
         return;
     dialog.progress_width = r[RECT_W];
-    gfx_fill_rect(view_viewport.pixels, r, ui_colors[UI_GOLD], view_viewport.width, IMAGE_8BPP);
+    gfx_fill_rect(view_viewport.pixels, r, g_ui_colors[UI_GOLD], view_viewport.width, IMAGE_8BPP);
     dialog_present();
 }
 
@@ -233,7 +233,7 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
         } else {
             text_gdat(CAT_DIALOG, DIALOG_VOLUME, off_entry, text);
         }
-        text_draw_in_zone(text_zone + level, ui_colors[UI_YELLOW], text);
+        text_draw_in_zone(text_zone + level, g_ui_colors[UI_YELLOW], text);
     }
 }
 
@@ -243,16 +243,16 @@ void dialog_volume(void)
     if (!gdat_exists(gdat_current(), CAT_DIALOG, DIALOG_VOLUME, GDAT_TYPE_IMAGE, GFX_DIALOG_PICTURE))
         return;
     dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
-    text_draw_in_zone(ZONE_SOUND_LABEL, ui_colors[UI_YELLOW],
+    text_draw_in_zone(ZONE_SOUND_LABEL, g_ui_colors[UI_YELLOW],
                       text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_SOUND_LABEL, text));
-    text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW],
+    text_draw_in_zone(ZONE_MUSIC_LABEL, g_ui_colors[UI_YELLOW],
                       text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_MUSIC_LABEL, text));
     for (;;) {
         draw_volume_buttons(g_game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, GFX_VOLUME_SOUND_OFF);
         draw_volume_buttons(g_game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, GFX_VOLUME_MUSIC_OFF);
         dialog_present();
         int command = dialog_run(DIALOG_VOLUME);
-        if (command == CMD_DIALOG_BUTTON_FIRST || main_loop.quit)
+        if (command == CMD_DIALOG_BUTTON_FIRST || g_main_loop.quit)
             return;
         if (command >= CMD_MUSIC_VOLUME_FIRST && command <= CMD_MUSIC_VOLUME_LAST)
             sound_set_volume_and_test(command - CMD_MUSIC_VOLUME_FIRST, DEVICE_MUSIC);

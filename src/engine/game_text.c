@@ -8,41 +8,44 @@
 #include <stdio.h>
 #include <string.h>
 
-#define FORMAT_CODE_BYTE   1 /* a format code: this byte, then the code + FORMAT_CODE_BASE */
-#define FORMAT_CODE_BASE   0x20
-#define FORMAT_CODE_DIGITS 3 /* or ".Z" and 3 decimal digits */
-#define FORMAT_CODE_PREFIX 2 /* the format code byte and the code, or ".Z" */
-#define FIELD_COUNT        18
-
-/* Format codes. */
-enum {
-    FORMAT_TITLE = 2,
-    FORMAT_DATA_PATH = 3,
-    FORMAT_SAVE_PATH = 4,
-    FORMAT_DISK_PATH = 0x0f,
-    FORMAT_CHAMPION = 7,
-    FORMAT_NUMBER_FIRST = 0x0a,
-    FORMAT_NUMBER_LAST = 0x0e,
-    FORMAT_TEXT = 0x11,
-    FORMAT_TITLE_2 = 0x1b
-};
+/* The format code bytes: this byte, then the code + FORMAT_CODE_BASE. */
+#define FORMAT_CODE_BYTE     0x01
+#define FORMAT_CODE_BASE     0x20
+/* The sizes of a format code, and the number of action text fields. */
+#define FORMAT_CODE_DIGITS   3 /* or ".Z" and 3 decimal digits */
+#define FORMAT_CODE_PREFIX   2 /* the format code byte and the code, or ".Z" */
+#define FIELD_COUNT          18
+/* Format codes, and the GDAT entries that they read. */
+#define FORMAT_TITLE         0x02
+#define FORMAT_DATA_PATH     0x03
+#define FORMAT_SAVE_PATH     0x04
+#define FORMAT_CHAMPION      0x07
+#define FORMAT_NUMBER_FIRST  0x0a
+#define FORMAT_NUMBER_LAST   0x0e
+#define FORMAT_DISK_PATH     0x0f
+#define FORMAT_TEXT          0x11
+#define FORMAT_TITLE_2       0x1b
 #define FORMAT_TITLE_INDEX   0xfe
-#define FORMAT_TEXT_CATEGORY 7
+#define FORMAT_TEXT_CATEGORY 0x07
 
-TextArgs text_args = {-1, {0}, 0};
-char text_drive_path[TEXT_SIZE];
-const uint8_t *ui_colors;
+TextArgs g_text_args = {-1, {0}, 0};
+char g_text_drive_path[TEXT_SIZE];
+const uint8_t *g_ui_colors;
 
+/* The two-letter name of each field of an action text, by FIELD_* number. */
 static const char field_names[FIELD_COUNT][3] = {"SK", "LV", "CM", "BZ", "TR", "ST", "PA", "TA", "NC",
                                                  "EX", "PB", "DM", "MS", "SD", "RP", "HN", "AT", "WH"};
 
+/* The characters of a padded number; a longer number goes on into the spare bytes. */
+#define NUMBER_WIDTH 4
+#define NUMBER_SPARE 4
+
 const char *text_format_number(unsigned value, int pad, int width)
 {
-    enum { FIELD = 4, SPARE = 4 }; /* 4 characters; a longer number goes on into the spare bytes */
-    static char buf[SPARE + FIELD + 1];
-    char *end = buf + SPARE + FIELD, *p = end;
+    static char buf[NUMBER_SPARE + NUMBER_WIDTH + 1];
+    char *end = buf + NUMBER_SPARE + NUMBER_WIDTH, *p = end;
     if (pad)
-        memset(buf + SPARE, ' ', FIELD);
+        memset(buf + NUMBER_SPARE, ' ', NUMBER_WIDTH);
     *end = '\0';
     value = (uint16_t)value;
     if (!value)
@@ -85,22 +88,23 @@ char *text_format(const char *fmt, char *dst)
         *out = '\0';
         char value[TEXT_SIZE] = "", inner[TEXT_SIZE];
         if (code == FORMAT_CHAMPION) {
-            if (text_args.champion >= 0 && text_args.champion < CHAMPION_MAX)
-                snprintf(value, sizeof value, "%s", (const char *)g_game.champions[text_args.champion]);
+            if (g_text_args.champion >= 0 && g_text_args.champion < CHAMPION_MAX)
+                snprintf(value, sizeof value, "%s", (const char *)g_game.champions[g_text_args.champion]);
         } else if (code >= FORMAT_NUMBER_FIRST && code <= FORMAT_NUMBER_LAST) {
-            snprintf(value, sizeof value, "%d", text_args.number[code - FORMAT_NUMBER_FIRST]);
+            snprintf(value, sizeof value, "%d", g_text_args.number[code - FORMAT_NUMBER_FIRST]);
         } else if (code == FORMAT_TEXT) {
-            text_gdat(FORMAT_TEXT_CATEGORY, 0, text_args.entry, value);
+            text_gdat(FORMAT_TEXT_CATEGORY, 0, g_text_args.entry, value);
         } else if (code == FORMAT_TITLE || code == FORMAT_TITLE_2) {
             text_gdat(CAT_INTERFACE, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : GFX_FORMAT_TITLE_2, value);
         } else if (code == FORMAT_DATA_PATH || code == FORMAT_SAVE_PATH || code == FORMAT_DISK_PATH) {
-            size_t len = strlen(text_drive_path);
-            while (len > 1 && text_drive_path[len - 1] == '/')
+            size_t len = strlen(g_text_drive_path);
+            while (len > 1 && g_text_drive_path[len - 1] == '/')
                 len--;
-            const char *name = text_drive_path + len;
-            while (name > text_drive_path && name[-1] != '/')
+            const char *name = g_text_drive_path + len;
+            while (name > g_text_drive_path && name[-1] != '/')
                 name--;
-            snprintf(value, sizeof value, "%.*s", (int)(text_drive_path + len - name), name); /* the last folder only */
+            snprintf(value, sizeof value, "%.*s", (int)(g_text_drive_path + len - name),
+                     name); /* the last folder only */
             for (char *p = value; *p; p++)
                 *p = (char)toupper((unsigned char)*p); /* the font has no lowercase */
         } /* the error, memory, and file name codes of the DOS layer give "" */
@@ -141,27 +145,63 @@ int16_t text_gdat_field(int category, int index, int entry, int field)
 }
 
 /* Dungeon texts: 3 codes of 5 bits per word. */
-#define TEXT_CODE_BITS      5
-#define TEXT_CODE_MASK      0x1f
+#define TEXT_CODE_WIDTH     5
 #define TEXT_CODES_PER_WORD 3
 #define TEXT_ESCAPE_WORDS   10
-enum {
-    TEXT_SPACE = 0x1a,
-    TEXT_PERIOD = 0x1b,
-    TEXT_NEWLINE = 0x1c,
-    TEXT_ESCAPE_CHAR = 0x1d,
-    TEXT_ESCAPE_WORD = 0x1e,
-    TEXT_END = 0x1f
-};
+/* The mask of a code, and the codes with a special meaning. */
+#define TEXT_CODE_MASK      0x1f
+#define TEXT_SPACE          0x1a
+#define TEXT_PERIOD         0x1b
+#define TEXT_NEWLINE        0x1c
+#define TEXT_ESCAPE_CHAR    0x1d
+#define TEXT_ESCAPE_WORD    0x1e
+#define TEXT_END            0x1f
 static const char *const text_escape_words[TEXT_ESCAPE_WORDS] = {"x", "y", "THE ", "YOU ", "z",
                                                                  "{", "|", "}",    "~",    "\x7f"};
 static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
-#define TEXT_MODE_NEW_LINE 1
+/* The flags of the text mode. */
+#define TEXT_MODE_NEW_LINE 0x0001
 #define TEXT_MODE_HIDDEN   0x8000
 #define TEXT_MODE_MASK     0x7fff
-#define NO_ORNAMENT_TEXT   0xff
 
-/* The text of a scroll or a text thing as stored, with its format codes; see text_decode_dungeon for mode. */
+/* The ornament value of a text without an ornament. */
+#define NO_ORNAMENT_TEXT 0xff
+
+/* The characters of the packed text at text, into out up to end; returns the end of the output. */
+static char *decode_words(uint16_t text, char *o, char *end)
+{
+    const uint16_t *p = dungeon_text_data() + text_offset(text);
+    const uint16_t *text_end = dungeon_text_data() + dungeon_text_word_count();
+    uint16_t word = 0;
+    int escape = 0;
+    for (int phase = 0;; phase = (phase + 1) % TEXT_CODES_PER_WORD) {
+        if (phase == 0) {
+            if (p >= text_end)
+                break; /* fix: the original reads past the text of a damaged dungeon */
+            word = *p++;
+        }
+        int code = word >> (TEXT_CODE_WIDTH * (TEXT_CODES_PER_WORD - 1 - phase)) & TEXT_CODE_MASK;
+        if (escape) {
+            const char *s = escape == TEXT_ESCAPE_WORD ? (code < TEXT_ESCAPE_WORDS ? text_escape_words[code] : "")
+                                                       : (char[]){text_escape_chars[code], '\0'};
+            while (*s && o < end)
+                *o++ = *s++;
+            escape = 0;
+        } else if (code < TEXT_NEWLINE) {
+            if (o < end)
+                *o++ = code == TEXT_SPACE ? ' ' : code == TEXT_PERIOD ? '.' : (char)('A' + code);
+        } else if (code == TEXT_NEWLINE) {
+            if (o < end)
+                *o++ = '\n';
+        } else if (code == TEXT_END) {
+            break;
+        } else {
+            escape = code;
+        }
+    }
+    return o;
+}
+
 void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
 {
     char *o = out, *end = out + size - 1;
@@ -192,35 +232,7 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
             gdat_text(gdat_current(), (GdatKey){CAT_DUNGEON, 0, (int)ornament}, o, (size_t)(end + 1 - o));
         return;
     }
-    const uint16_t *p = dungeon_text_data() + text_offset(text);
-    const uint16_t *text_end = dungeon_text_data() + dungeon_text_word_count();
-    uint16_t word = 0;
-    int escape = 0;
-    for (int phase = 0;; phase = (phase + 1) % TEXT_CODES_PER_WORD) {
-        if (phase == 0) {
-            if (p >= text_end)
-                break; /* fix: the original reads past the text of a damaged dungeon */
-            word = *p++;
-        }
-        int code = word >> (TEXT_CODE_BITS * (TEXT_CODES_PER_WORD - 1 - phase)) & TEXT_CODE_MASK;
-        if (escape) {
-            const char *s = escape == TEXT_ESCAPE_WORD ? (code < TEXT_ESCAPE_WORDS ? text_escape_words[code] : "")
-                                                       : (char[]){text_escape_chars[code], '\0'};
-            while (*s && o < end)
-                *o++ = *s++;
-            escape = 0;
-        } else if (code < TEXT_NEWLINE) {
-            if (o < end)
-                *o++ = code == TEXT_SPACE ? ' ' : code == TEXT_PERIOD ? '.' : (char)('A' + code);
-        } else if (code == TEXT_NEWLINE) {
-            if (o < end)
-                *o++ = '\n';
-        } else if (code == TEXT_END) {
-            break;
-        } else {
-            escape = code;
-        }
-    }
+    o = decode_words(text, o, end);
     *o = '\0';
 }
 

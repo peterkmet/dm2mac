@@ -41,7 +41,7 @@ void automap_scroll_reset(void)
 
 void automap_draw(Offscreen *o, const int16_t *clip)
 {
-    offscreen_fill_rect(o, clip, ui_colors[UI_BLACK]);
+    offscreen_fill_rect(o, clip, g_ui_colors[UI_BLACK]);
     int map = g_game.party_map, middle_x, middle_y;
     if (map < 0 || map >= dungeon_map_count())
         return;

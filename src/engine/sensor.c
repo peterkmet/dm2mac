@@ -2041,7 +2041,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
             champ_take_from_leader_hand();
         if (c.give != THING_NONE)
             champ_put_in_leader_hand(c.give, 1);
-        input_command_stop = c.stop;
+        g_input_command_stop = c.stop;
     } else {
         uint16_t *possessions = group_possessions(actor);
         if (!c.take && hand != THING_NONE)

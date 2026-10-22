@@ -295,7 +295,7 @@ def click_feedback(lib, original, cmd, where):
                     if lib.input_find_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, 0, rect) == cmd)
         button_clicks[cmd] = x, y, tuple(rect)
     x, y, rect = button_clicks[cmd]
-    loop = MainLoop.in_dll(lib, "main_loop")
+    loop = MainLoop.in_dll(lib, "g_main_loop")
     lib.input_reset_states()
     lib.input_flush()
     emu.write(G_CLICK_FEEDBACK_DELAY, bytes(2))
@@ -393,7 +393,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
                 if clicks.random() < 0.5:
                     click_feedback(lib, original, CMD_CAST_SPELL, n)  # it queues the command
                 assert command(lib, emu, CMD_CAST_SPELL) == (1, 1)
-                mine = ctypes.c_int.in_dll(lib, "input_command_stop").value
+                mine = ctypes.c_int.in_dll(lib, "g_input_command_stop").value
                 theirs = struct.unpack("<H", emu.read(G_COMMAND_STOP, 2))[0]
             assert mine == theirs, n
             results.add((mine, champion_records(lib)[CH_RUNE_COUNT] > 0))

@@ -596,12 +596,12 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 ### Timing and the game step
 
-- The PIT runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`main_loop.tick_threshold`), every timer tick while the party sleeps.
+- The PIT runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), every timer tick while the party sleeps.
 - The names of the inventory zones `ZONE_EYE` (`0x221`) and `ZONE_MOUTH` (`0x222`) in `data/ids.h` are swapped against the input table: the input table gives zone `0x221` to the mouth command `0x46` and zone `0x222` to the eye command `0x47` (section 13). The port keeps the names. The `look` action presses the zone of the eye command in the input table (`input_command_rect`).
 - A turn gives a command as a click on the top left pixel of its first zone in the current input mode (`input_simulate_command_click`). The zone of `CMD_LEADER_INVENTORY` (`0x52`) is the whole screen, and a click there hits the status box of champion 0 first. The `sleep` action therefore opens the inventory of the leader with its status box command (`0x07` + leader).
 - `choose_action` on a hand that holds a money box, a chest, or a minion map gives only the hand click: the hand opens the panel of the item, not an action menu, and `index` is not used.
 - `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `ui/play.c`: `game_step` (the timeline, the view, the party clocks) and `game_step_end` (a map change, repeated actions, music). `play_tick` runs one timer tick: the input, the click feedback, the command queue, and a game step when it is due.
-- Pause (`game_pause`) stops the game time until the resume command. The port keeps the main loop running and clears `main_loop.running`.
+- Pause (`game_pause`) stops the game time until the resume command. The port keeps the main loop running and clears `g_main_loop.running`.
 
 ### The input tree
 
@@ -838,12 +838,12 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### End of game
 
 - The end sensor (wall sensor `0x12`) completes the game: the screen goes black and the program ends with exit code 1 (the DOS launcher then plays the ending).
-- When the last champion dies, `kill_champion` (Step 15) sets the end flag (`g_game_end_flag`, `main_loop.end`); the game step stops before the game time goes on, and `session_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with exit code 2.
+- When the last champion dies, `kill_champion` (Step 15) sets the end flag (`g_game_end_flag`, `g_main_loop.end`); the game step stops before the game time goes on, and `session_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with exit code 2.
 
 ### Deviations of the C port (Step 20)
 
 - The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`play_wait_frames` in `ui/play.c` calls `play_frame_hook`, which `platform/main.c` sets); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook (`play_frame_hook`).
-- `session_quit` sets `main_loop.quit` and returns; the main loop then ends (the original exits the process at once). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error). The restart drops `--save PATH`, so the program shows the start menu, as the original does.
+- `session_quit` sets `g_main_loop.quit` and returns; the main loop then ends (the original exits the process at once). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error). The restart drops `--save PATH`, so the program shows the start menu, as the original does.
 - The drive path codes of the dialog texts (3, 4, 15) give the last folder name of the `--data` path in capitals (the font has no lowercase letters); the error, memory, and file name codes give an empty text.
 - The volume setting scales the mix of the sound voices (0 is silent); the music volume goes to the music player.
 - Fixes: a failed load of the last slot after the death of the party shows the error dialog (the original asks for the game disk); the link pass marks no square when no map lies below a pit (the original writes into map -1); the projectile that `dun_get_discarded_thing` frees is unlinked from its own map (the original unlinks from the current map); the name editor does not read before an empty field; slot names are bounded to 31 characters.

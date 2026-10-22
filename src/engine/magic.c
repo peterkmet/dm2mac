@@ -442,8 +442,8 @@ static void cast_other(Champion *c, int type, int skill, int power)
         magic_add_light(LIGHT_TORCH, (int16_t)(steps * LIGHT_TICKS_FACTOR));
         return;
     case OTHER_INVISIBILITY: {
-        if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory)
-            champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
+        if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && g_ui.inventory)
+            champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
         TimelineEvent e = party_event(EVENT_INVISIBILITY, (uint16_t)(steps << INVISIBILITY_TICKS_SHIFT));
         timeline_add_event(&e);
         return;

@@ -8,30 +8,30 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* The size of a formatted text. */
 #define TEXT_SIZE 256
 
 /* The 16 UI colors: GDAT (1, 0, 13, 0xfe) maps them to palette colors. */
-enum ui_color {
-    UI_BLACK,
-    UI_DARK_GRAY,
-    UI_GRAY,
-    UI_DARK_BROWN,
-    UI_CYAN,
-    UI_BROWN,
-    UI_DARK_GREEN,
-    UI_GREEN,
-    UI_RED,
-    UI_GOLD,
-    UI_TAN,
-    UI_YELLOW,
-    UI_DARKEST_GRAY,
-    UI_LIGHT_GRAY,
-    UI_BLUE,
-    UI_WHITE,
-    UI_COLOR_COUNT
-};
+#define UI_BLACK        0x00
+#define UI_DARK_GRAY    0x01
+#define UI_GRAY         0x02
+#define UI_DARK_BROWN   0x03
+#define UI_CYAN         0x04
+#define UI_BROWN        0x05
+#define UI_DARK_GREEN   0x06
+#define UI_GREEN        0x07
+#define UI_RED          0x08
+#define UI_GOLD         0x09
+#define UI_TAN          0x0a
+#define UI_YELLOW       0x0b
+#define UI_DARKEST_GRAY 0x0c
+#define UI_LIGHT_GRAY   0x0d
+#define UI_BLUE         0x0e
+#define UI_WHITE        0x0f
+/* The number of UI colors. */
+#define UI_COLOR_COUNT  16
 /* The palette colors of the UI colors (text_init reads them). */
-extern const uint8_t *ui_colors;
+extern const uint8_t *g_ui_colors;
 
 /* The values that the format codes of a text insert (".Z" and 3 digits, or byte 1 and the code + 32). */
 #define TEXT_ARG_NUMBERS 5
@@ -41,30 +41,28 @@ typedef struct {
     uint8_t entry;                    /* code 17: the text (7, 0, entry) */
 } TextArgs;
 
-extern TextArgs text_args;
+extern TextArgs g_text_args;
 /* The folder of the game files and the saves: the drive path codes of the dialog texts. */
-extern char text_drive_path[TEXT_SIZE];
+extern char g_text_drive_path[TEXT_SIZE];
 
 /* Fields of an action text. */
-enum {
-    FIELD_SKILL = 0,
-    FIELD_LEVEL = 1,
-    FIELD_COMMAND = 2,
-    FIELD_DELAY = 3,
-    FIELD_STAMINA = 4,
-    FIELD_POWER = 5,
-    FIELD_MODE = 6,
-    FIELD_DEFENSE = 7,
-    FIELD_CHARGES = 8,
-    FIELD_EXPERIENCE = 9,
-    FIELD_ATTACK = 10,
-    FIELD_WOUNDS = 11,
-    FIELD_SOUND = 13,
-    FIELD_REPEATS = 14,
-    FIELD_PIERCES = 15,
-    FIELD_MELEE_KIND = 0x10, /* 1: full damage to creatures that take half damage from other hits */
-    FIELD_HAND = 17
-};
+#define FIELD_SKILL      0
+#define FIELD_LEVEL      1
+#define FIELD_COMMAND    2
+#define FIELD_DELAY      3
+#define FIELD_STAMINA    4
+#define FIELD_POWER      5
+#define FIELD_MODE       6
+#define FIELD_DEFENSE    7
+#define FIELD_CHARGES    8
+#define FIELD_EXPERIENCE 9
+#define FIELD_ATTACK     10
+#define FIELD_WOUNDS     11
+#define FIELD_SOUND      13
+#define FIELD_REPEATS    14
+#define FIELD_PIERCES    15
+#define FIELD_MELEE_KIND 16 /* 1: full damage to creatures that take half damage from other hits */
+#define FIELD_HAND       17
 
 /* A number as decimal text; pad right-aligns it in width characters with spaces. Uses one static buffer. */
 const char *text_format_number(unsigned value, int pad, int width);

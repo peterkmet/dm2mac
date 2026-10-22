@@ -813,17 +813,17 @@ static int input_condition(int cond, int arg)
     case NODE_IF_BUTTON_COUNT:
         return arg == dialog.button_count;
     case NODE_IF_INVENTORY:
-        if (arg == ui.inventory)
+        if (arg == g_ui.inventory)
             return 1;
         if (arg <= CHAMPION_MAX)
             return 0;
-        return !ui.inventory || arg - CHAMPION_MAX != ui.inventory;
+        return !g_ui.inventory || arg - CHAMPION_MAX != g_ui.inventory;
     case NODE_IF_CHAMPION_ALIVE:
         return champion(arg)->health != 0;
     case NODE_IF_CHAMPION_IN_CELL:
         return champion_in_party_cell(arg) >= 0;
     case NODE_IF_DRAGGING:
-        return arg ? input_drag_state != 0 : input_drag_state == 0;
+        return arg ? g_input_drag_state != 0 : g_input_drag_state == 0;
     case NODE_IF_ICON_IN_CELL:
         if (g_action.champion)
             return 0;
@@ -997,7 +997,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 static uint16_t key_command(int mode, uint16_t key)
 {
     uint16_t command = find_key_command(&input_mode_roots[mode], key);
-    if (command || game_mode != GAME_MODE_ADVANCED)
+    if (command || g_game_mode != GAME_MODE_ADVANCED)
         return command;
     if (mode == INPUT_MODE_MOVE && (key == KEY_QUICK_SAVE || key == KEY_QUICK_LOAD))
         return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
@@ -1130,11 +1130,11 @@ CursorImage input_cursor_image(int cursor)
 {
     switch (cursor) {
     case CURSOR_HAND:
-        return (CursorImage){cursor_hand, ui_colors, IMAGE_4BPP, HAND_W, CURSOR_H, 0, 0, UI_KEY};
+        return (CursorImage){cursor_hand, g_ui_colors, IMAGE_4BPP, HAND_W, CURSOR_H, 0, 0, UI_KEY};
     case CURSOR_OBJECT: {
         static uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE];
         uint8_t key = g_leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
-        memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
+        memset(shadow, g_ui_colors[UI_BLACK], sizeof shadow);
         memset(object_cursor, key, sizeof object_cursor);
         const Bitmap icon = {g_leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
         Bitmap image = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
@@ -1149,13 +1149,13 @@ CursorImage input_cursor_image(int cursor)
         return (CursorImage){champion_cursor, NULL,       IMAGE_8BPP, FACE_SIZE,
                              FACE_SIZE,       FACE_HOT_X, FACE_HOT_Y, champion_cursor_key};
     default:
-        return (CursorImage){cursor_arrow, ui_colors, IMAGE_4BPP, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
+        return (CursorImage){cursor_arrow, g_ui_colors, IMAGE_4BPP, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
     }
 }
 
 void input_draw_cursor(uint8_t *dst, int x, int y)
 {
-    if (ui.eye || ui.mouth)
+    if (g_ui.eye || g_ui.mouth)
         return; /* the original hides the pointer while the eye or the mouth is held */
     CursorImage c = input_cursor_image(input_cursor_at(x, y));
     for (int cy = 0; cy < c.height; cy++)
@@ -1228,14 +1228,14 @@ void input_mouse_click(int x, int y, int type)
 
 void input_mouse_down(int x, int y, int button)
 {
-    input_mouse_buttons |= button;
+    g_input_mouse_buttons |= button;
     input_mouse_click(x, y, button);
 }
 
 void input_mouse_up(int x, int y, int button)
 {
-    input_mouse_buttons &= ~button;
-    if (button == INPUT_BUTTON_LEFT && (ui.eye || ui.mouth || advanced_automap_open))
+    g_input_mouse_buttons &= ~button;
+    if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || advanced_automap_open))
         input_mouse_click(x, y, INPUT_LEFT_RELEASED);
 }
 
@@ -1468,7 +1468,8 @@ static void feedback_rune_button(Feedback *f)
     char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
     text_measure(text, &w, &h);
     rect_center_in(r, f->o.rect, w, h);
-    offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1, ui_colors[UI_BLACK], ui_colors[UI_CYAN], text);
+    offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1, g_ui_colors[UI_BLACK], g_ui_colors[UI_CYAN],
+                           text);
 }
 
 /* Copies the drawn action area to the screen. */
@@ -1532,7 +1533,7 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         in.script = p;
         if (!command_execute(&in.current))
             p = in.script - 1;
-        else if (input_command_stop)
+        else if (g_input_command_stop)
             release_queue();
         break;
     case FB_PICTURE:
@@ -1561,9 +1562,9 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         action_area_present();
         break;
     case FB_INVENTORY_BUTTON:
-        if (ui.inventory) {
-            ui.buttons |= *p;
-            ui_draw_champion_state(ui.inventory - 1);
+        if (g_ui.inventory) {
+            g_ui.buttons |= *p;
+            ui_draw_champion_state(g_ui.inventory - 1);
         }
         p++;
         break;
@@ -1633,10 +1634,10 @@ static void automap_input(void)
 
 void input_poll(void)
 {
-    int elapsed = (int)(main_loop.timer_ticks - in.last_ticks);
+    int elapsed = (int)(g_main_loop.timer_ticks - in.last_ticks);
     if (!elapsed)
         return;
-    in.last_ticks = main_loop.timer_ticks;
+    in.last_ticks = g_main_loop.timer_ticks;
     if (advanced_automap_open) {
         automap_input();
         return;
@@ -1687,13 +1688,13 @@ void input_poll(void)
 
 void input_reset_states(void)
 {
-    ui.eye = ui.mouth = 0;
+    g_ui.eye = g_ui.mouth = 0;
     g_party.push_mode = 0;
-    ui.push_mode = 0;
+    g_ui.push_mode = 0;
     input_feedback_busy = 0;
     in.feedback_waiting = 0;
     in.script = NULL;
-    input_drag_state = 0;
+    g_input_drag_state = 0;
 }
 
 void input_cancel_push_mode(void)
@@ -1701,7 +1702,7 @@ void input_cancel_push_mode(void)
     if (!g_party.push_mode)
         return;
     g_party.push_mode = 0;
-    ui.push_mode = 0;
+    g_ui.push_mode = 0;
     ui_draw_movement_arrows();
 }
 
@@ -1713,7 +1714,7 @@ static void ui_draw_move_arrow(int entry, int zone, int pressed)
     in.arrow_entry = entry;
     Offscreen o;
     offscreen_create(&o, zone, 1);
-    gfx_fill_bitmap(o.bitmap, ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
     offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry + (pressed != 0), zone, GFX_OPAQUE);
     offscreen_flush(&o, 1);
     draw_free_temp();
@@ -1770,7 +1771,7 @@ static void view_click_creature(uint16_t group, int x, int y, int square_x, int 
                                     SOUND_FALLBACK, square_x, square_y, 0);
     } else if (!side) {
         g_party.push_mode = 1;
-        ui.push_mode = 1;
+        g_ui.push_mode = 1;
         ui_draw_movement_arrows();
         g_party.push_arrow = PUSH_ARROW_NONE;
     } else {
@@ -1787,7 +1788,7 @@ static void view_click_front_wall(int passable, int x, int y)
         sound_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
                                                SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
                                     SOUND_FALLBACK, x, y, 0);
-    input_command_stop = 1;
+    g_input_command_stop = 1;
 }
 
 /* A door button of the door at (x, y): the door toggles, the button shows pressed until the next game step. */
@@ -1802,7 +1803,7 @@ static void view_click_door_button(int x, int y, uint16_t door)
     put_le16(e.data + SENSOR_EVENT_THING, first);
     timeline_add_event(&e);
     door_set_flag(door, DOOR_BUTTON_PRESSED, true);
-    input_command_stop = 1;
+    g_input_command_stop = 1;
 }
 
 #define CELL_POSSESSION_FIRST 4 /* drop cells 4 to 7: the possession cells of a static creature */
@@ -1833,7 +1834,7 @@ static void view_click_take_object(int x, int y, int index)
         moneybox_clear_flag(thing);
         champ_put_in_leader_hand(thing, 1);
     }
-    input_command_stop = 1;
+    g_input_command_stop = 1;
 }
 
 /* Drops the leader hand object into cell of the square (x, y): 0 to 3 a floor cell, 4 to 7 a possession cell of
@@ -1867,7 +1868,7 @@ static int view_click_drop_object(int x, int y, int cell)
     } else {
         move_thing(thing_with_cell(thing, dir_cell), -1, 0, x, y);
     }
-    input_command_stop = 1;
+    g_input_command_stop = 1;
     return 1;
 }
 
@@ -1898,7 +1899,7 @@ static void view_click_throw_object(int x, int y)
     else
         return;
     if (champ_throw_leader_hand_object(side))
-        input_command_stop = 1;
+        g_input_command_stop = 1;
 }
 
 #define HALF_CELLS                 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
@@ -2003,7 +2004,7 @@ void view_click_in_viewport(int x, int y)
     dun_set_current_map(g_game.party_map);
     if (g_party.push_mode) {
         g_party.push_mode = 0;
-        ui.push_mode = 0;
+        g_ui.push_mode = 0;
         move_push_creature(g_party.push_arrow);
         ui_draw_movement_arrows();
         return;
@@ -2039,11 +2040,11 @@ void view_click_in_viewport(int x, int y)
 static void game_pause(void)
 {
     char text[TEXT_SIZE];
-    main_loop.running = 0;
+    g_main_loop.running = 0;
     play_hide_view();
-    gfx_fill_bitmap(&view_viewport, ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(&view_viewport, g_ui_colors[UI_BLACK]);
     gdat_text(gdat_current(), (GdatKey){CAT_INTERFACE, 0, TEXT_PAUSED}, text, sizeof text);
-    text_draw_in_zone(ZONE_VIEW_TEXT, ui_colors[UI_CYAN], text);
+    text_draw_in_zone(ZONE_VIEW_TEXT, g_ui_colors[UI_CYAN], text);
     play_present_viewport();
     input_push_mode(INPUT_MODE_PAUSE);
     input_flush();
@@ -2055,7 +2056,7 @@ static void command_execute_session(int command)
 {
     switch (command) {
     case CMD_SAVE:
-        if (g_game.champion_count && !ui.candidate) {
+        if (g_game.champion_count && !g_ui.candidate) {
             in.disabled--;
             session_save();
             in.disabled++;
@@ -2063,18 +2064,18 @@ static void command_execute_session(int command)
         break;
     case CMD_VOLUME:
         dialog_volume();
-        if (ui.inventory)
-            ui_draw_champion_state(ui.inventory - 1);
+        if (g_ui.inventory)
+            ui_draw_champion_state(g_ui.inventory - 1);
         break;
     case CMD_NEW_GAME:
-        session.new_game = 1;
+        g_session.new_game = 1;
         break;
     case CMD_NEW_GAME_B:
-        session.new_game = 1;
-        session.use_dungenb = 1;
+        g_session.new_game = 1;
+        g_session.use_dungenb = 1;
         break;
     case CMD_LOAD_GAME:
-        session.new_game = 0;
+        g_session.new_game = 0;
         break;
     case CMD_MENU_PICTURE:
         menu_show_picture_and_wait();
@@ -2091,7 +2092,7 @@ static int command_execute_party(const Command *c, int idle)
 {
     int command = c->command;
     if (command == CMD_CANCEL_CAPTURE) {
-        ui.eye = ui.mouth = 0;
+        g_ui.eye = g_ui.mouth = 0;
     } else if (command == CMD_CANCEL_PUSH) {
         input_cancel_push_mode();
     } else if (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT) {
@@ -2109,7 +2110,7 @@ static int command_execute_party(const Command *c, int idle)
         ui_draw_all_champion_states(0);
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
         int champ = command - CMD_INVENTORY_FIRST;
-        if (ui.candidate)
+        if (g_ui.candidate)
             recruit_finish(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map, CMD_RECRUIT_CANCEL);
         else if (champ == CHAMPION_MAX || champ < g_game.champion_count)
             ui_toggle_inventory(champ);
@@ -2119,7 +2120,7 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command == CMD_VIEWPORT) {
         view_click_in_viewport(c->x, c->y);
     } else if (command == CMD_CAST_SPELL) {
-        input_command_stop = magic_cast_entered_runes();
+        g_input_command_stop = magic_cast_entered_runes();
     } else if (command == CMD_REMOVE_RUNE) {
         magic_remove_last_rune();
     } else if (command >= CMD_RUNE_FIRST && command <= CMD_RUNE_LAST) {
@@ -2131,8 +2132,8 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command == CMD_PAUSE) {
         game_pause();
     } else if (command == CMD_RESUME) {
-        if (!main_loop.running) {
-            main_loop.running = 1;
+        if (!g_main_loop.running) {
+            g_main_loop.running = 1;
             play_show_view();
             input_pop_mode();
             input_flush();
@@ -2154,7 +2155,7 @@ static int command_execute_champion(int command, int idle)
     if (command == CMD_ACTION_CANCEL) {
         champ_execute_selected_action(-1);
     } else if (command > CMD_ACTION_CANCEL && command <= CMD_ACTION_LAST) {
-        input_command_stop = champ_execute_selected_action(command - CMD_ACTION_CANCEL - 1);
+        g_input_command_stop = champ_execute_selected_action(command - CMD_ACTION_CANCEL - 1);
     } else if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
         action_area_open_hand((command - CMD_HAND_FIRST) / SLOT_HAND_COUNT,
                               (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT);
@@ -2169,8 +2170,8 @@ static int command_execute_champion(int command, int idle)
     } else if (command == CMD_MOUTH) {
         champ_consume_object(-1, THING_NONE, -1);
     } else if (command == CMD_EYE) {
-        ui.eye = (input_mouse_buttons & INPUT_BUTTON_LEFT) != 0;
-        if (ui.eye)
+        g_ui.eye = (g_input_mouse_buttons & INPUT_BUTTON_LEFT) != 0;
+        if (g_ui.eye)
             input_flush();
     } else if (command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) {
         inv_click_slot(command - CMD_SLOT_FIRST);
@@ -2184,7 +2185,7 @@ static int command_execute_champion(int command, int idle)
         input_refresh_mode();
         area_update(0);
     } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
-        if (g_game.champion_count && !ui.candidate && idle) {
+        if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)
                 advanced_quick_save();
             else if (command == CMD_QUICK_LOAD)
@@ -2193,8 +2194,8 @@ static int command_execute_champion(int command, int idle)
                 advanced_open_automap();
         }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
-        if (ui.inventory)
-            session_edit_champion_name(champion(ui.inventory - 1));
+        if (g_ui.inventory)
+            session_edit_champion_name(champion(g_ui.inventory - 1));
     } else {
         return 0;
     }
@@ -2216,11 +2217,12 @@ int command_execute(Command *c)
           (g_game.throw_cooldown && g_game.throw_dir == dir_turn(g_game.party_dir, command - CMD_MOVE_FORWARD)))) ||
         (g_party.move_steps && (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT || command == CMD_VIEWPORT)) ||
         (command == CMD_VIEWPORT && !view_shows_party()) || in.wait) {
-        input_command_stop = 1;
+        g_input_command_stop = 1;
         return 0;
     }
-    input_command_stop = 0;
-    int idle = !ui.eye && !ui.mouth && !g_party.push_mode && !input_drag_state; /* no eye, mouth, drag or push mode */
+    g_input_command_stop = 0;
+    int idle =
+        !g_ui.eye && !g_ui.mouth && !g_party.push_mode && !g_input_drag_state; /* no eye, mouth, drag or push mode */
     if (!command_execute_party(c, idle) && !command_execute_champion(command, idle)) {
         if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE) ||
              command == CMD_QUIT) &&
@@ -2230,7 +2232,7 @@ int command_execute(Command *c)
             command_execute_later(c);
     }
     if (input_match.value >= CMD_TEXT_FIRST && input_match.value <= CMD_TEXT_LAST)
-        input_command_stop = 1;
+        g_input_command_stop = 1;
     return 1;
 }
 
@@ -2297,7 +2299,7 @@ void command_process_queue(void)
             in.queue_head = head;
         else if (in.disabled)
             in.disabled--;
-    } while (!input_command_stop && !main_loop.quit);
+    } while (!g_input_command_stop && !g_main_loop.quit);
 }
 
 /* The command entry of command in the input tree under node, NULL for none. */

@@ -404,7 +404,7 @@ static void raise_level(int champ, int base, uint16_t level)
     c->redraw |= REDRAW_LEVEL;
     g_champ_skill_raised[champ][base]++;
     g_hooks.print_newline();
-    text_args.champion = (int16_t)champ;
+    g_text_args.champion = (int16_t)champ;
     char line[TEXT_SIZE];
     g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, text, line));
 }
@@ -673,8 +673,8 @@ static void show_failure(int result, int counter)
 static void run_invisibility(int16_t power)
 {
     power = (int16_t)max16(POWER_MIN, power);
-    if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory)
-        champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
+    if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && g_ui.inventory)
+        champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
     /* fix: the original leaves the priority and the data bytes uninitialized */
     TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + power, g_game.party_map),
                        .type = EVENT_INVISIBILITY};

@@ -26,13 +26,13 @@ class Session(ctypes.Structure):
 
 def reset_session(lib):
     """The session state of the program start, so that later tests start from it."""
-    session = Session.in_dll(lib, "session")
+    session = Session.in_dll(lib, "g_session")
     for name in ("new_game", "use_dungenb", "loaded", "completed", "restart", "offer_restore", "quit_code", "exit_code"):
         setattr(session, name, 0)
     session.slot = -1
     state = DialogState.in_dll(lib, "dialog")
     state.screen_mode, state.button_count = 1, 0
-    ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24).value = 0  # MainLoop.quit
+    ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "g_main_loop")) + 24).value = 0  # MainLoop.quit
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = None
 
 
@@ -49,7 +49,7 @@ class InputMatch(ctypes.Structure):
 
 def main_loop_quit(lib):
     """MainLoop.quit (after tick_threshold, tick_count, timer_ticks, running, view_hidden, end)."""
-    return ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "main_loop")) + 24)
+    return ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "g_main_loop")) + 24)
 
 
 def find_point(lib, mode, test):

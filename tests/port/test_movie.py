@@ -44,7 +44,7 @@ def movies(lib, game_dir, tmp_path):
     link (a game/ name, bytes, or None for a missing file); yields start."""
     lib.movie_start.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint64]
     lib.movie_update.argtypes = [ctypes.c_uint64]
-    mode = ctypes.c_int.in_dll(lib, "game_mode")
+    mode = ctypes.c_int.in_dll(lib, "g_game_mode")
 
     def start(script, game_mode, **files):
         folder = tmp_path / f"data{len(list(tmp_path.iterdir()))}"

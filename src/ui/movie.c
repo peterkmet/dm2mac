@@ -193,7 +193,7 @@ void movie_update(uint64_t now_ns)
         return;
     bool skip = mv.skip;
     mv.skip = false; /* a click that the mode does not allow is dropped */
-    if (skip && (game_mode != GAME_MODE_VANILLA || !steps[mv.step].noabort)) {
+    if (skip && (g_game_mode != GAME_MODE_VANILLA || !steps[mv.step].noabort)) {
         next_step(now_ns);
         return;
     }

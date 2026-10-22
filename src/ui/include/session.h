@@ -10,8 +10,8 @@
 #include "save.h"
 #include <stdint.h>
 
-#define MENU_WAITING    99   /* session.new_game while the start menu waits */
-#define MENU_REDRAW     0xda /* session.new_game: the menu shows its title again */
+#define MENU_WAITING    99   /* g_session.new_game while the start menu waits */
+#define MENU_REDRAW     0xda /* g_session.new_game: the menu shows its title again */
 #define SAVE_SLOT_COUNT 10
 /* Exit codes of the program (the original system_shutdown): the launcher of the DOS game reads them. */
 enum { EXIT_QUIT = 0, EXIT_COMPLETED = 1, EXIT_PARTY_DEAD = 2, EXIT_RESTART = 3, EXIT_GAME_LOST = 4 };
@@ -24,7 +24,7 @@ void menu_run(void);
 void menu_draw_title(void);
 /* The picture of the menu until a click or a time out. */
 void menu_show_picture_and_wait(void);
-/* Loads the game that session.new_game names: DUNGEON.DAT or a slot that the player chooses. Returns 1 when a game
+/* Loads the game that g_session.new_game names: DUNGEON.DAT or a slot that the player chooses. Returns 1 when a game
    is ready, -1 when the player cancelled or the load failed. */
 int session_load(void);
 /* The slot dialogs: the header of each slot (an empty slot gets the name "n UNUSED"); the dialog id (0x80 load,
@@ -50,7 +50,7 @@ int session_start_save(const char *path);
    when a game loaded again, else quits. */
 void session_end(int party_dead);
 /* The party finished the game: the screen goes black and the program ends; the turn-based mode only sets
-   session.completed. */
+   g_session.completed. */
 void session_complete(void);
 /* Ends the program with the exit code of the session. */
 void session_quit(void);

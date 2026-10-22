@@ -702,7 +702,7 @@ static bool cond_sees_party(int x, int y, bool front_only, int16_t range)
     int16_t d = (int16_t)manhattan(g_ai_party.x, g_ai_party.y, x, y);
     if (d <= 1)
         return true;
-    return d <= range && !ui.inventory && ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_square_is_obstacle) != 0;
+    return d <= range && !g_ui.inventory && ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_square_is_obstacle) != 0;
 }
 
 /* True when a champion holds an item of FILTER_WEAPON_HANDS in a hand. */

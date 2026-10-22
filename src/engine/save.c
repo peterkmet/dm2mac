@@ -966,7 +966,7 @@ SaveResult save_write(const char *path, const char *bak_path, const char *name, 
     /* the records keep the indices of the active groups; the timeline loses their events (session_save) */
     bool ok = fwrite(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_write(f);
     creature_deactivate_all_groups();
-    ok = ok && write_state() && (game_mode == GAME_MODE_VANILLA || seen_write(f));
+    ok = ok && write_state() && (g_game_mode == GAME_MODE_VANILLA || seen_write(f));
     free(io.group_order);
     free(io.container_order);
     if (fclose(f) != 0)

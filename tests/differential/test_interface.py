@@ -34,7 +34,7 @@ def test_game_screen_matches_original(port, original):
 
 
 def set_eye(lib, original, eye, mouth=0):
-    ui = UiState.in_dll(lib, "ui")
+    ui = UiState.in_dll(lib, "g_ui")
     ui.eye, ui.mouth = eye, mouth
     original.emu.write(G_EYE, struct.pack("<I", eye))
     original.emu.write(G_MOUTH, struct.pack("<I", mouth))
@@ -175,7 +175,7 @@ def test_cursor_images_match_original(port, original):
         for cell in range(4):
             images.pop(3, None)
             emu.write(G_CHAMP_DRAG_STATE, b"\0\0")
-            ctypes.c_int.in_dll(lib, "input_drag_state").value = 0
+            ctypes.c_int.in_dll(lib, "g_input_drag_state").value = 0
             emu.call(CHAMP_DRAG_CLICK, cell, allow_io=True)
             lib.champ_drag_click(cell)
             if 3 in images:
@@ -185,7 +185,7 @@ def test_cursor_images_match_original(port, original):
     finally:
         for hook in hooks:
             emu.uc.hook_del(hook)
-        ctypes.c_int.in_dll(lib, "input_drag_state").value = 0
+        ctypes.c_int.in_dll(lib, "g_input_drag_state").value = 0
         emu.write(G_LEADER_HAND, b"\xff\xff")
         emu.write(G_HAND_ICON_BITMAP, saved_icon)
 
@@ -410,7 +410,7 @@ def test_text_format_matches_original(port, original):
     class Args(ctypes.Structure):
         _fields_ = [("champion", ctypes.c_int16), ("number", ctypes.c_int16 * 5), ("entry", ctypes.c_uint8)]
 
-    args = Args.in_dll(lib, "text_args")
+    args = Args.in_dll(lib, "g_text_args")
     lib.text_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     rng = random.Random(15)
     number_addresses = (0x7F996, 0x7F98A, 0x7F994, 0x7F992, 0x7F986)

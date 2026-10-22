@@ -41,7 +41,7 @@ def part(lib, which):
 @pytest.fixture(scope="module", autouse=True)
 def turnbased(lib):
     """The turn-based game mode for this module; vanilla again at the end."""
-    mode = ctypes.c_int.in_dll(lib, "game_mode")
+    mode = ctypes.c_int.in_dll(lib, "g_game_mode")
     mode.value = TURNBASED
     yield
     mode.value = VANILLA
@@ -63,7 +63,7 @@ def load(lib, gdat, data, tmp_path):  # noqa: F811
     lib.ui_draw_game_screen()
     lib.input_init()
     lib.play_start_session()
-    MainLoop.in_dll(lib, "main_loop").end = 0
+    MainLoop.in_dll(lib, "g_main_loop").end = 0
     return game
 
 

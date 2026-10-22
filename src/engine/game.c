@@ -14,22 +14,23 @@
 #include "sensor.h"
 #include "sound_request.h"
 #include "weather.h"
+#include <stdbool.h>
 
-MainLoop main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
-UiState ui;
-int input_command_stop;
-int input_drag_state;
-int input_mouse_buttons;
-Session session = {.slot = SAVE_SLOT_NONE};
-int game_mode = GAME_MODE_VANILLA;
-const char *const game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
-int cheat_light, cheat_immortal, cheat_food;
+MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
+UiState g_ui;
+int g_input_command_stop;
+int g_input_drag_state;
+int g_input_mouse_buttons;
+Session g_session = {.slot = SAVE_SLOT_NONE};
+int g_game_mode = GAME_MODE_VANILLA;
+const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
+int g_cheat_light, g_cheat_immortal, g_cheat_food;
 
 void champ_wake_party(void)
 {
-    input_command_stop = 1;
+    g_input_command_stop = 1;
     g_party_sleeping = 0;
-    main_loop.tick_threshold = STEP_TICKS;
+    g_main_loop.tick_threshold = STEP_TICKS;
     g_hooks.clear_viewport();
     g_hooks.set_input_mode(INPUT_MODE_MOVE);
 }
@@ -48,7 +49,8 @@ void game_enter_map(int x, int y, int map, int leaving)
     g_hooks.flush_input();
 }
 
-static void timeline_event_hide_damage(int champ)
+/* The damage number of champion champ stops showing; the bars redraw. */
+static void hide_damage(int champ)
 {
     Champion *c = champion(champ);
     c->damage_event = THING_NONE;
@@ -57,7 +59,7 @@ static void timeline_event_hide_damage(int champ)
 }
 
 /* The aura of the champions in mask weakens by amount. */
-static void timeline_event_aura(int mask, int amount)
+static void weaken_aura(int mask, int amount)
 {
     for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
@@ -65,6 +67,108 @@ static void timeline_event_aura(int mask, int amount)
             c->aura_value = (int16_t)(c->aura_value - amount);
         if (c->aura_value < 0)
             c->aura_value = 0;
+    }
+}
+
+/* Runs a timeline event of the dungeon: doors, squares, sensors, creatures, projectiles, and the weather; false for
+   another event type. */
+static bool process_world_event(TimelineEvent *e)
+{
+    switch (e->type) {
+    case EVENT_DOOR_ANIMATION:
+        timeline_event_door_animation(e);
+        break;
+    case EVENT_DOOR_DESTRUCTION:
+        timeline_event_door_destruction(e);
+        break;
+    case EVENT_SQUARE:
+        timeline_event_square(e);
+        break;
+    case EVENT_ALTAR_REBIRTH:
+        timeline_event_altar_rebirth(e);
+        break;
+    case EVENT_EXPLOSION:
+        explosion_process_event(e);
+        break;
+    case EVENT_PROJECTILE_MOVE:
+    case EVENT_PROJECTILE_MOVE_2:
+        projectile_process_event(e);
+        break;
+    case EVENT_CREATURE_ANIMATION:
+    case EVENT_CREATURE_THINK:
+        creature_process_event(e->data[EVENT_X], e->data[EVENT_Y], e->type);
+        break;
+    case EVENT_MOVE_GROUP:
+    case EVENT_MOVE_GROUP_2:
+        timeline_event_move_group(e);
+        break;
+    case EVENT_WEATHER:
+        world_update_day_night(1);
+        break;
+    case EVENT_SENSOR_ANIMATION_STEP:
+    case EVENT_SENSOR_TIMER:
+    case EVENT_SENSOR_IDLE:
+    case EVENT_DOOR_BUTTON_RELEASE:
+    case EVENT_SENSOR_ANIMATION_END:
+    case EVENT_SENSOR_AMBIENT_SOUND:
+    case EVENT_SENSOR_READY:
+    case EVENT_SET_MARKER:
+        timeline_event_sensor(e);
+        break;
+    case EVENT_SPAWN_CREATURE: {
+        int dir = rand_2bits()
+                      ? dun_get_direction_to(e->data[EVENT_X], e->data[EVENT_Y], g_game.party_x, g_game.party_y)
+                      : rand_2bits();
+        creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir, e->data[EVENT_X],
+                              e->data[EVENT_Y]);
+        break;
+    }
+    default:
+        return false;
+    }
+    return true;
+}
+
+/* Runs a timeline event of the party: teleports, damage numbers, item effects, sounds, light, invisibility, aura, and poison. */
+static void process_party_event(TimelineEvent *e, uint16_t word)
+{
+    switch (e->type) {
+    case EVENT_TELEPORT_PARTY:
+        if (e->data[TELEPORT_EVENT_MAP] == g_game.party_map) {
+            move_thing(THING_NONE, g_game.party_x, g_game.party_y, location_x(word), location_y(word));
+            champ_set_party_direction(location_dir(word));
+        }
+        break;
+    case EVENT_HIDE_DAMAGE:
+        hide_damage(e->priority);
+        break;
+    case EVENT_ITEM_EFFECT:
+        timeline_event_apply_item_effect(e, EFFECT_MODE_CONSUME_END);
+        break;
+    case EVENT_DELAYED_SOUND:
+        sound_request_delayed(word);
+        break;
+    case EVENT_MAGIC_LIGHT:
+        dun_set_current_map(g_game.party_map);
+        timeline_event_magic_light(e);
+        light_update_party_light();
+        break;
+    case EVENT_INVISIBILITY: /* invisibility ends */
+        if (!--g_game.magic_light[MAGIC_INVISIBILITY] && g_ui.inventory)
+            champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
+        break;
+    case EVENT_AURA:
+        weaken_aura(e->priority, (int16_t)word);
+        break;
+    case EVENT_POISON: {
+        Champion *c = champion(e->priority);
+        c->poisoned--;
+        c->poison = (int16_t)(c->poison - word);
+        champ_poison(e->priority, word);
+        break;
+    }
+    default:
+        break;
     }
 }
 
@@ -76,90 +180,8 @@ void timeline_process(void)
         timeline_pop_first_event(&e);
         dun_set_current_map((int8_t)timeline_event_map(&e));
         uint16_t word = le16(e.data);
-        switch (e.type) {
-        case EVENT_DOOR_ANIMATION:
-            timeline_event_door_animation(&e);
-            break;
-        case EVENT_DOOR_DESTRUCTION:
-            timeline_event_door_destruction(&e);
-            break;
-        case EVENT_SQUARE:
-            timeline_event_square(&e);
-            break;
-        case EVENT_HIDE_DAMAGE:
-            timeline_event_hide_damage(e.priority);
-            break;
-        case EVENT_ALTAR_REBIRTH:
-            timeline_event_altar_rebirth(&e);
-            break;
-        case EVENT_ITEM_EFFECT:
-            timeline_event_apply_item_effect(&e, EFFECT_MODE_CONSUME_END);
-            break;
-        case EVENT_DELAYED_SOUND:
-            sound_request_delayed(word);
-            break;
-        case EVENT_EXPLOSION:
-            explosion_process_event(&e);
-            break;
-        case EVENT_PROJECTILE_MOVE:
-        case EVENT_PROJECTILE_MOVE_2:
-            projectile_process_event(&e);
-            break;
-        case EVENT_CREATURE_ANIMATION:
-        case EVENT_CREATURE_THINK:
-            creature_process_event(e.data[EVENT_X], e.data[EVENT_Y], e.type);
-            break;
-        case EVENT_MOVE_GROUP:
-        case EVENT_MOVE_GROUP_2:
-            timeline_event_move_group(&e);
-            break;
-        case EVENT_MAGIC_LIGHT:
-            dun_set_current_map(g_game.party_map);
-            timeline_event_magic_light(&e);
-            light_update_party_light();
-            break;
-        case EVENT_INVISIBILITY: /* invisibility ends */
-            if (!--g_game.magic_light[MAGIC_INVISIBILITY] && ui.inventory)
-                champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
-            break;
-        case EVENT_AURA:
-            timeline_event_aura(e.priority, (int16_t)word);
-            break;
-        case EVENT_POISON: {
-            Champion *c = champion(e.priority);
-            c->poisoned--;
-            c->poison = (int16_t)(c->poison - word);
-            champ_poison(e.priority, word);
-            break;
-        }
-        case EVENT_WEATHER:
-            world_update_day_night(1);
-            break;
-        case EVENT_SENSOR_ANIMATION_STEP:
-        case EVENT_SENSOR_TIMER:
-        case EVENT_SENSOR_IDLE:
-        case EVENT_DOOR_BUTTON_RELEASE:
-        case EVENT_SENSOR_ANIMATION_END:
-        case EVENT_SENSOR_AMBIENT_SOUND:
-        case EVENT_SENSOR_READY:
-        case EVENT_SET_MARKER:
-            timeline_event_sensor(&e);
-            break;
-        case EVENT_TELEPORT_PARTY:
-            if (e.data[TELEPORT_EVENT_MAP] == g_game.party_map) {
-                move_thing(THING_NONE, g_game.party_x, g_game.party_y, location_x(word), location_y(word));
-                champ_set_party_direction(location_dir(word));
-            }
-            break;
-        case EVENT_SPAWN_CREATURE: {
-            int dir = rand_2bits()
-                          ? dun_get_direction_to(e.data[EVENT_X], e.data[EVENT_Y], g_game.party_x, g_game.party_y)
-                          : rand_2bits();
-            creature_create_group(e.data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir, e.data[EVENT_X],
-                                  e.data[EVENT_Y]);
-            break;
-        }
-        }
+        if (!process_world_event(&e))
+            process_party_event(&e, word);
     }
     dun_set_current_map(g_game.party_map);
 }

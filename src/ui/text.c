@@ -47,7 +47,7 @@ int text_init(const gdat_t *gdat)
     if (!p || !colors)
         return 0;
     memcpy(font, p, FONT_SIZE);
-    ui_colors = colors;
+    g_ui_colors = colors;
     text_set_message_cursor(0, MESSAGE_ROWS - 1);
     for (int i = 0; i < MESSAGE_ROWS; i++) {
         message_expiry[i] = MESSAGE_NEVER;
@@ -157,9 +157,9 @@ void text_draw_with_shadow(uint8_t *dst, int dst_width, int x, int y, int color,
         int16_t box[RECT_SIZE] = {(int16_t)(x - 1), (int16_t)(y - h), (int16_t)(w + 2), (int16_t)(h + 2)};
         gfx_fill_rect(dst, box, (uint16_t)bg, dst_width, IMAGE_8BPP);
     }
-    int shadow = ui_colors[UI_WHITE] | TEXT_TRANSPARENT;
-    text_draw(dst, dst_width, x, (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
-    text_draw(dst, dst_width, (int16_t)(x + 1), (int16_t)(y + 1), ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
+    int shadow = g_ui_colors[UI_WHITE] | TEXT_TRANSPARENT;
+    text_draw(dst, dst_width, x, (int16_t)(y + 1), g_ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
+    text_draw(dst, dst_width, (int16_t)(x + 1), (int16_t)(y + 1), g_ui_colors[UI_BLACK], shadow, text, IMAGE_8BPP);
     text_draw(dst, dst_width, x, y, color, (int16_t)(bg | TEXT_TRANSPARENT), text, IMAGE_8BPP);
 }
 
@@ -170,7 +170,7 @@ void text_draw_on_screen(int x, int y, int color, int bg, const char *text)
 
 void text_draw_in_viewport(int x, int y, int color, const char *text)
 {
-    text_draw(view_viewport.pixels, view_viewport.width, x, y, color, ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT,
+    text_draw(view_viewport.pixels, view_viewport.width, x, y, color, g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT,
               text, IMAGE_8BPP);
 }
 
@@ -218,7 +218,7 @@ void text_clear_expired_rows(void)
             continue;
         int16_t row[RECT_SIZE] = {r[RECT_X], (int16_t)(message.top + TEXT_LINE_HEIGHT * i + r[RECT_Y]), r[RECT_W],
                                   FONT_GLYPH_HEIGHT};
-        gfx_fill_rect(draw_screen.pixels, row, ui_colors[UI_BLACK], draw_screen.width, IMAGE_8BPP);
+        gfx_fill_rect(draw_screen.pixels, row, g_ui_colors[UI_BLACK], draw_screen.width, IMAGE_8BPP);
         message_expiry[i] = MESSAGE_NEVER;
         message_text[i][0] = '\0';
     }
@@ -261,7 +261,7 @@ static void text_message_new_line(void)
     }
     if (message.scroll_pending)
         text_scroll_message_area();
-    gfx_fill_bitmap(&message_line, ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(&message_line, g_ui_colors[UI_BLACK]);
     message.scroll_pending = 1;
     for (int i = 0; i < MESSAGE_ROWS - 1; i++) {
         message_expiry[i] = message_expiry[i + 1];
@@ -277,13 +277,13 @@ static void text_message_draw_line(int color, const char *line)
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     if (message.scroll_pending)
-        text_draw(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, ui_colors[UI_BLACK], line,
+        text_draw(message.line, MESSAGE_WIDTH, message.column, MESSAGE_LINE_BASE, color, g_ui_colors[UI_BLACK], line,
                   IMAGE_8BPP);
     else
         text_draw_on_screen(
             (int16_t)(r[RECT_X] + message.column),
             (int16_t)(message.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1 + message.top),
-            color, ui_colors[UI_BLACK], line);
+            color, g_ui_colors[UI_BLACK], line);
     message_expiry[message.row] = g_game.game_time + MESSAGE_SHOW_TIME;
     char *text = message_text[message.row];
     size_t length = strlen(text);
@@ -296,14 +296,14 @@ static void flush_pending_row(void)
     if (!message.scroll_pending)
         return;
     text_scroll_message_area();
-    gfx_fill_bitmap(&message_line, ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(&message_line, g_ui_colors[UI_BLACK]);
     message.scroll_pending = 0;
 }
 
 void text_print_message(int color, const char *text)
 {
     flush_pending_row();
-    int c = ui_colors[color];
+    int c = g_ui_colors[color];
     char line[TEXT_SIZE];
     int16_t pos = 0;
     while (text[pos]) {

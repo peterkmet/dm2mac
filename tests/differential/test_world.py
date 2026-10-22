@@ -145,7 +145,7 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
         set_weather(sc, strike_threshold=rng.randrange(4, 8), light_level=rng.randrange(C.DARKEST_LIGHT + 1), **weather)
         set_global(sc, 0x40, rng.choice((0, 3, 9, 30)))
         inventory, sleeping = rng.random() < 0.3, rng.random() < 0.3
-        ctypes.c_int16.in_dll(lib, "ui").value = inventory  # UiState.inventory
+        ctypes.c_int16.in_dll(lib, "g_ui").value = inventory  # UiState.inventory
         sc.emu.write(G_INVENTORY, struct.pack("<h", inventory))
         ctypes.c_int.in_dll(lib, "g_party_sleeping").value = sleeping
         sc.emu.write_u32(G_PARTY_SLEEPING, sleeping)
@@ -163,7 +163,7 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
                 mine, theirs = draw_both(sc)
                 assert mine == theirs, (n, map_, i)
                 pictures += 1
-        ctypes.c_int16.in_dll(lib, "ui").value = 0
+        ctypes.c_int16.in_dll(lib, "g_ui").value = 0
         sc.emu.write(G_INVENTORY, bytes(2))
         ctypes.c_int.in_dll(lib, "g_party_sleeping").value = 0
         sc.emu.write_u32(G_PARTY_SLEEPING, 0)
@@ -381,7 +381,7 @@ def lightning_seed(lib, rng, storm, chance, target):
 
 def set_party_state(sc, inventory, sleeping):
     """The open inventory (champion ordinal) and the sleep of the party in both."""
-    ctypes.c_int16.in_dll(sc.lib, "ui").value = inventory  # UiState.inventory
+    ctypes.c_int16.in_dll(sc.lib, "g_ui").value = inventory  # UiState.inventory
     sc.emu.write(G_INVENTORY, struct.pack("<h", inventory))
     ctypes.c_int.in_dll(sc.lib, "g_party_sleeping").value = sleeping
     sc.emu.write_u32(G_PARTY_SLEEPING, sleeping)

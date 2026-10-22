@@ -70,7 +70,7 @@ static void add_start_champion(void)
 
 void champ_init_party_state(void)
 {
-    if (session.new_game) {
+    if (g_session.new_game) {
         add_start_champion();
         return;
     }
@@ -284,6 +284,6 @@ void champ_set_leader(int champ)
     if (leader != -1)
         champion(leader)->redraw |= REDRAW_LOAD | REDRAW_NAME;
     g_game.leader = (uint16_t)champ;
-    if (champ != -1 && champ + 1 != ui.candidate)
+    if (champ != -1 && champ + 1 != g_ui.candidate)
         champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
 }

@@ -143,7 +143,7 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
     # the pointer; the release of the button (event 4, input_cancel_mouse_capture) ends it. The eye shows the skills
     # with an empty leader hand, else the leader hand object.
     path, *_ = control
-    ui = UiState.in_dll(lib, "ui")
+    ui = UiState.in_dll(lib, "g_ui")
     lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
     lib.input_find_command.restype = ctypes.c_uint16
 

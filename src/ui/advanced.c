@@ -40,7 +40,7 @@ static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH",
 
 uint16_t advanced_movement_key(uint16_t key)
 {
-    if (game_mode != GAME_MODE_ADVANCED)
+    if (g_game_mode != GAME_MODE_ADVANCED)
         return 0;
     switch (key) {
     case SCAN_W:
@@ -62,10 +62,10 @@ uint16_t advanced_movement_key(uint16_t key)
 /* <save folder>/QUICK.<extension>: the --saves folder, else the DATA folder of the game. */
 static char *quick_path(char *path, const char *extension)
 {
-    if (session.save_dir[0])
-        snprintf(path, SAVE_PATH_SIZE, "%s/QUICK.%s", session.save_dir, extension);
+    if (g_session.save_dir[0])
+        snprintf(path, SAVE_PATH_SIZE, "%s/QUICK.%s", g_session.save_dir, extension);
     else
-        snprintf(path, SAVE_PATH_SIZE, "%s/DATA/QUICK.%s", session.data_dir, extension);
+        snprintf(path, SAVE_PATH_SIZE, "%s/DATA/QUICK.%s", g_session.data_dir, extension);
     return path;
 }
 
@@ -114,25 +114,25 @@ int advanced_quick_load(void)
         print_line("UNABLE TO SAVE");
         return QUICK_BLOCKED;
     }
-    Session kept = session;
-    session.loaded = session.new_game = 0; /* play_start_session shows no LOADED dialog and starts no new game */
+    Session kept = g_session;
+    g_session.loaded = g_session.new_game = 0; /* play_start_session shows no LOADED dialog and starts no new game */
     int loaded = session_start_save(path), restored = loaded || (!lost && session_start_save(keep));
     if (restored)
         remove(keep); /* else QUICK.TMP keeps the running game */
-    session = kept;
+    g_session = kept;
     if (!restored) {
         /* the dungeon is empty: the game cannot go on */
         os_log("cannot load %s or the running game in %s", path, keep);
-        if (game_mode != GAME_MODE_TURNBASED) {
+        if (g_game_mode != GAME_MODE_TURNBASED) {
             session_quit();
-            session.exit_code = EXIT_GAME_LOST;
+            g_session.exit_code = EXIT_GAME_LOST;
         }
         lost = 1;
         return QUICK_LOST;
     }
     lost = 0;
     if (loaded) {
-        session.load_time = session.save_time = 0; /* a quick load is not a saved game for the QUIT question */
+        g_session.load_time = g_session.save_time = 0; /* a quick load is not a saved game for the QUIT question */
         sound_set_volume(g_game.sound_volume);
         music_set_volume(g_game.music_volume);
     }
@@ -144,7 +144,7 @@ int advanced_quick_load(void)
 static void draw_readout_line(Offscreen *o, int row, const char *text)
 {
     int baseline = o->rect[RECT_Y] + READOUT_MARGIN + row * TEXT_LINE_HEIGHT + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1;
-    offscreen_draw_text_at(o, o->rect[RECT_X] + READOUT_MARGIN, baseline, ui_colors[UI_WHITE], ui_colors[UI_BLACK],
+    offscreen_draw_text_at(o, o->rect[RECT_X] + READOUT_MARGIN, baseline, g_ui_colors[UI_WHITE], g_ui_colors[UI_BLACK],
                            text);
 }
 
@@ -165,11 +165,11 @@ void advanced_draw_automap(void)
              g_game.party_y);
     draw_readout_line(&o, READOUT_POSITION, line);
     draw_readout_line(&o, READOUT_DIRECTION, direction_names[g_game.party_dir & DIR_MASK]);
-    snprintf(line, sizeof line, "I IMMORTAL %s", on_off(cheat_immortal));
+    snprintf(line, sizeof line, "I IMMORTAL %s", on_off(g_cheat_immortal));
     draw_readout_line(&o, READOUT_IMMORTAL, line);
-    snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(cheat_food));
+    snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(g_cheat_food));
     draw_readout_line(&o, READOUT_FOOD, line);
-    snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(cheat_light));
+    snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(g_cheat_light));
     draw_readout_line(&o, READOUT_LIGHT, line);
     offscreen_flush(&o, 1);
     draw_free_temp();
@@ -185,7 +185,7 @@ void advanced_reset(void)
 {
     close_automap();
     lost = 0;
-    cheat_light = cheat_immortal = cheat_food = 0;
+    g_cheat_light = g_cheat_immortal = g_cheat_food = 0;
 }
 
 void advanced_open_automap(void)
@@ -215,7 +215,10 @@ void advanced_automap_event(int type, int x, int y)
             close_automap();
             return;
         }
-        int *cheat = x == SCAN_I ? &cheat_immortal : x == SCAN_F ? &cheat_food : x == SCAN_L ? &cheat_light : NULL;
+        int *cheat = x == SCAN_I   ? &g_cheat_immortal
+                     : x == SCAN_F ? &g_cheat_food
+                     : x == SCAN_L ? &g_cheat_light
+                                   : NULL;
         if (!cheat)
             return;
         *cheat = !*cheat;

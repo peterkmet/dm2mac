@@ -142,7 +142,7 @@ void champ_reset_step_state(void)
     memset(g_champ_pending_wounds, 0, sizeof g_champ_pending_wounds);
     g_champ_regen_counter = 0;
     g_leader_hand = (LeaderHand){.icon = HAND_ICON_NONE};
-    ui.candidate = 0;
+    g_ui.candidate = 0;
 }
 
 int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack)
@@ -327,7 +327,7 @@ int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
 {
     champ = (int16_t)champ;
     int16_t d = (int16_t)damage;
-    if (champ == -1 || champ + 1 == ui.candidate || session.completed || d < 1 || !champion(champ)->health)
+    if (champ == -1 || champ + 1 == g_ui.candidate || g_session.completed || d < 1 || !champion(champ)->health)
         return 0;
     if (attack_type & ATTACK_TYPE_MASK) {
         d = reduce_damage(champ, d, wound_mask, attack_type);
@@ -367,7 +367,7 @@ int champ_damage_party(int damage, int wound_mask, int attack_type)
 void champ_poison(int champ, int amount)
 {
     champ = (int16_t)champ;
-    if (champ == -1 || champ + 1 == ui.candidate)
+    if (champ == -1 || champ + 1 == g_ui.candidate)
         return;
     Champion *c = champion(champ);
     int16_t d = (int16_t)(((uint16_t)amount + POISON_DAMAGE_ROUND) >> POISON_DAMAGE_SHIFT);
@@ -433,15 +433,15 @@ void champ_drag_click(int cell)
     if (!finish)
         cell %= DIR_COUNT;
     int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, g_game.party_dir));
-    if (!input_drag_state) {
+    if (!g_input_drag_state) {
         if (target < 0)
             return;
         g_hooks.set_champion_cursor(target);
-        input_drag_state = cell + 1;
+        g_input_drag_state = cell + 1;
         return;
     }
-    int from = input_drag_state - 1;
-    input_drag_state = 0;
+    int from = g_input_drag_state - 1;
+    g_input_drag_state = 0;
     int16_t dragged = (int16_t)champ_get_index_in_cell(dir_turn(g_game.party_dir, from));
     if (finish)
         champion(dragged)->dir = (uint8_t)g_game.party_dir;
@@ -454,8 +454,8 @@ void champ_drag_click(int cell)
 
 void champ_drag_cancel(void)
 {
-    if (input_drag_state)
-        champ_drag_click((input_drag_state - 1) | DRAG_CANCEL);
+    if (g_input_drag_state)
+        champ_drag_click((g_input_drag_state - 1) | DRAG_CANCEL);
 }
 
 /* Kills champ: it drops its items and its bones. */
@@ -469,13 +469,13 @@ static void kill_champion(int champ)
     c->action_delay[1] = 0;
     c->action_delay[ACTION_SPELL] = 0;
     c->redraw |= REDRAW_STATUS_BOX;
-    if (champ + 1 == ui.inventory) {
-        if (ui.eye) {
-            ui.eye = 0;
+    if (champ + 1 == g_ui.inventory) {
+        if (g_ui.eye) {
+            g_ui.eye = 0;
             if (g_game.leader_hand != THING_NONE)
                 inv_show_object_name(g_game.leader_hand);
         }
-        ui.mouth = 0;
+        g_ui.mouth = 0;
         g_hooks.toggle_inventory(CHAMPION_MAX);
     }
     drop_all_objects(champ);
@@ -491,7 +491,7 @@ static void kill_champion(int champ)
     c->runes[0] = 0;
     c->dir = (uint8_t)g_game.party_dir;
     c->hit_damage = 0;
-    if (dir_relative(cell, g_game.party_dir) + 1 == input_drag_state)
+    if (dir_relative(cell, g_game.party_dir) + 1 == g_input_drag_state)
         champ_drag_cancel();
     if (c->poisoned)
         champ_cure_poison(champ, CURE_ALL);
@@ -499,10 +499,10 @@ static void kill_champion(int champ)
     while (alive < g_game.champion_count && !champion(alive)->health)
         alive++;
     if (alive == g_game.champion_count) {
-        main_loop.end = 1;
+        g_main_loop.end = 1;
         g_hooks.flush_input();
         g_party_sleeping = 0;
-        main_loop.view_hidden = 0;
+        g_main_loop.view_hidden = 0;
     } else if (champ == (int16_t)g_game.leader) {
         champ_set_leader(alive);
     }
@@ -522,7 +522,7 @@ void champ_apply_pending_damage(void)
         if (!c->health)
             continue;
         int16_t health = (int16_t)(c->health - d);
-        if (health <= 0 && cheat_immortal)
+        if (health <= 0 && g_cheat_immortal)
             health = 1;
         if (health <= 0) {
             kill_champion(i);
@@ -611,7 +611,7 @@ static void consume_food_and_water(int i)
         c->food = STARVING;
     if (c->water < STARVING)
         c->water = STARVING;
-    if (cheat_food) {
+    if (g_cheat_food) {
         c->food = food;
         c->water = water;
     }
@@ -626,7 +626,7 @@ void champ_apply_time_effects(void)
         g_champ_regen_counter = (uint16_t)(g_champ_regen_counter - REGEN_RANGE);
     for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
-        if (!c->health || i + 1 == ui.candidate)
+        if (!c->health || i + 1 == g_ui.candidate)
             continue;
         regen_mana(i);
         consume_food_and_water(i);
@@ -647,7 +647,7 @@ void champ_apply_time_effects(void)
             }
         }
         c->redraw |= REDRAW_BARS;
-        if (i + 1 == ui.inventory)
+        if (i + 1 == g_ui.inventory)
             c->redraw |= REDRAW_STATS_SKILLS;
     }
 }
@@ -656,7 +656,7 @@ void champ_burn_held_lights(void)
 {
     bool burned = false;
     int count = g_game.champion_count;
-    if (ui.candidate)
+    if (g_ui.candidate)
         count--; /* the recruit candidate burns no lights */
     for (int i = 0; i < count; i++) {
         Champion *c = champion(i);

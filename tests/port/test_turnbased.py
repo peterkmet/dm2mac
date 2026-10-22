@@ -46,7 +46,7 @@ def tb(lib, gdat, session):  # noqa: F811
     palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "palette")
     for c in range(PALETTE_COLORS):
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
-    mode = ctypes.c_int.in_dll(lib, "game_mode")
+    mode = ctypes.c_int.in_dll(lib, "g_game_mode")
     mode.value = TURNBASED
     hook = ctypes.c_void_p.in_dll(lib, "play_frame_hook")
     hook.value = ctypes.cast(lib.transport_poll, ctypes.c_void_p).value  # a dialog polls the socket, as main.c does
@@ -174,7 +174,7 @@ def test_direct_commands_are_refused(tb, lib):
 
 
 def test_game_over_refuses_turns(tb, lib):
-    """Set main_loop.end = 1 (the party died): act, act_many, wait, save reply "game over"; get_state works and
+    """Set g_main_loop.end = 1 (the party died): act, act_many, wait, save reply "game over"; get_state works and
     state.party.dead is true."""
     path, _, loop = tb
     loop.end = 1
@@ -381,7 +381,7 @@ SESSION_START_STEPS = 1  # the start of a loaded game runs one game step (play_s
 def saves(tb, lib, tmp_path):
     """The save folder of the turn-based mode in tmp_path and the game folder for new_game; both go back after the
     test, with the session flags that new_game and a completed game set."""
-    state = Session.in_dll(lib, "session")
+    state = Session.in_dll(lib, "g_session")
     data_dir, save_dir = state.data_dir, state.save_dir
     folder = tmp_path / "saves"  # tmp_path holds the SKSAVE0.DAT of the session fixture
     folder.mkdir()
@@ -474,7 +474,7 @@ def test_load_after_a_lost_game_plays_again(tb, lib, saves):
 
 
 def test_load_after_game_over_plays_again(tb, lib, saves):
-    """save; set main_loop.end = 1; act -> "game over"; load -> ok, game_over false, the start of the loaded game
+    """save; set g_main_loop.end = 1; act -> "game over"; load -> ok, game_over false, the start of the loaded game
     runs its full game step; act turn_left works."""
     path, _, loop = tb
     saved = place(request({"cmd": "get_state"}, path))
@@ -489,7 +489,7 @@ def test_load_after_game_over_plays_again(tb, lib, saves):
 
 
 def test_new_game_after_game_over_plays_again(tb, lib, saves):
-    """main_loop.end = 1, then new_game: a new game with one champion; act turn_left works."""
+    """g_main_loop.end = 1, then new_game: a new game with one champion; act turn_left works."""
     path, _, loop = tb
     loop.end = 1
     r = request({"cmd": "new_game"}, path, timeout=30)
@@ -520,7 +520,7 @@ def test_turn_in_a_dialog_ends_and_the_dialog_stays(tb, lib, saves):
 
 def test_completed_game_is_game_over_and_the_program_stays(tb, lib, saves):
     """session_complete during a wait in the turn-based mode: the turn ends with game_over true, state.party.dead
-    false, main_loop.quit 0; act replies "game over"."""
+    false, g_main_loop.quit 0; act replies "game over"."""
     path, _, loop = tb
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
         s.connect(path)

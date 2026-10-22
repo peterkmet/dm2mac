@@ -321,7 +321,7 @@ static void draw_party_frame(int x, int y)
     int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + MAP_ICON_W, GAP_Y * 2 + MAP_ICON_H},
             dx, dy;
     rect_clip(r, g_minion_map.clip, &dx, &dy);
-    offscreen_fill_rect(area, r, ui_colors[UI_RED]);
+    offscreen_fill_rect(area, r, g_ui_colors[UI_RED]);
 }
 
 /* The icon of each living champion at its cell of the party square at (x, y), for a map that looks to dir. */
@@ -594,7 +594,7 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
     mm->marker_state = MARKER_NONE;
     int saved_map = g_party.cur_map;
     area = area_begin_draw(0);
-    offscreen_fill_rect(area, zone_get_rect(ZONE_MAP_GRID, mm->clip), ui_colors[UI_BLACK]);
+    offscreen_fill_rect(area, zone_get_rect(ZONE_MAP_GRID, mm->clip), g_ui_colors[UI_BLACK]);
     mm->clip[RECT_X] += GAP_X;
     mm->clip[RECT_Y] += GAP_Y;
     mm->clip[RECT_W] -= GAP_X * 2;
@@ -633,8 +633,8 @@ void mmap_draw_option_buttons(int pressed)
                                   down & 1 ? GFX_OPTION_BUTTON_DOWN : GFX_OPTION_BUTTON_UP,
                                   ZONE_OPTION_BUTTON_FIRST + i, GFX_OPAQUE);
         char label[2] = {(char)(OPTION_LABEL_FIRST + i), '\0'};
-        offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i, ui_colors[UI_BLACK],
-                                    ui_colors[UI_GRAY] | TEXT_TRANSPARENT, label);
+        offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i, g_ui_colors[UI_BLACK],
+                                    g_ui_colors[UI_GRAY] | TEXT_TRANSPARENT, label);
     }
 }
 

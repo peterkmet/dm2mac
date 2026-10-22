@@ -37,7 +37,7 @@
 /* The number arguments of the inventory texts: the object weight and the champion load in kg and tenths. */
 enum { ARG_WEIGHT_KG, ARG_WEIGHT_TENTHS, ARG_LOAD_KG, ARG_LOAD_TENTHS, ARG_LOAD_MAX_KG };
 
-/* Inventory buttons: bits of ui.buttons. */
+/* Inventory buttons: bits of g_ui.buttons. */
 enum { BUTTON_CLOSE = 1, BUTTON_EXIT = 2, BUTTON_SLEEP = 4, BUTTON_SAVE = 8, BUTTON_SOUND = 0x10, BUTTON_ALL = 0x1f };
 /* Object info gauge glyphs and their scales. */
 enum {
@@ -184,7 +184,7 @@ void ui_fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, int 
         return;
     uint16_t start = (uint16_t)(rect[RECT_Y] * dst_width + rect[RECT_X]);
     int phase = ((start / dst_width) ^ start) & 1;
-    uint8_t color = ui_colors[ui_color & DITHER_COLOR_MASK];
+    uint8_t color = g_ui_colors[ui_color & DITHER_COLOR_MASK];
     for (int row = 0; row < (uint16_t)rect[RECT_H]; row++, phase ^= 1) {
         uint16_t at = (uint16_t)(start + row * dst_width);
         for (int col = phase; col < (uint16_t)rect[RECT_W]; col += 2)
@@ -483,21 +483,21 @@ void offscreen_draw_text_in_zone_with_shadow(Offscreen *o, int zone, int color, 
 void ui_draw_movement_arrows(void)
 {
     Offscreen o;
-    int entry = ui.push_mode ? GFX_PUSH_ARROWS : GFX_ARROWS;
+    int entry = g_ui.push_mode ? GFX_PUSH_ARROWS : GFX_ARROWS;
     offscreen_create(&o, ZONE_MOVEMENT_ARROWS, 1);
-    gfx_fill_bitmap(o.bitmap, ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
     for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += 2)
         offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry, zone, GFX_OPAQUE);
     offscreen_flush(&o, 1);
     draw_free_temp();
-    input_set_mode(ui.push_mode ? INPUT_MODE_PUSH : INPUT_MODE_MOVE);
+    input_set_mode(g_ui.push_mode ? INPUT_MODE_PUSH : INPUT_MODE_MOVE);
 }
 
 void ui_reset(void)
 {
-    memset(&ui, 0, sizeof ui);
+    memset(&g_ui, 0, sizeof g_ui);
     memset(&cache, 0, sizeof cache);
-    ui.screen_needs_refresh = 1;
+    g_ui.screen_needs_refresh = 1;
     cache.shown_object = THING_NONE;
     status_box.bitmap = NULL;
     action_reset();
@@ -515,7 +515,7 @@ void ui_draw_game_screen(void)
 
 static int in_inventory(int champ)
 {
-    return champ + 1 == ui.inventory;
+    return champ + 1 == g_ui.inventory;
 }
 
 /* Opens the status box bitmap of champ with its background; clear: the whole box goes to the screen. */
@@ -550,8 +550,8 @@ static void draw_champion_bars(int champ)
             continue;
         int16_t shadow[RECT_SIZE] = {(int16_t)(r[RECT_X] + BAR_SHADOW), (int16_t)(r[RECT_Y] + BAR_SHADOW), r[RECT_W],
                                      r[RECT_H]};
-        offscreen_fill_rect(&status_box, shadow, ui_colors[UI_BLACK]);
-        offscreen_fill_rect(&status_box, r, ui_colors[champion_colors[champ]]);
+        offscreen_fill_rect(&status_box, shadow, g_ui_colors[UI_BLACK]);
+        offscreen_fill_rect(&status_box, r, g_ui_colors[champion_colors[champ]]);
     }
 }
 
@@ -560,7 +560,7 @@ static void draw_damage_number(int champ)
 {
     offscreen_draw_gdat_image(&status_box, CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE, ZONE_STATUS_DAMAGE + champ,
                               DAMAGE_STAR_KEY);
-    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ, ui_colors[UI_WHITE], ui_colors[UI_RED],
+    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ, g_ui_colors[UI_WHITE], g_ui_colors[UI_RED],
                                 text_format_number(champion(champ)->damage, 0, NUMBER_DIGITS));
 }
 
@@ -571,7 +571,7 @@ static void draw_value_pair(int zone, unsigned value, unsigned maximum)
     strcpy(s, text_format_number(value, 1, NUMBER_DIGITS));
     strcat(s, "/");
     strcat(s, text_format_number(maximum, 1, NUMBER_DIGITS));
-    text_draw_in_zone_with_shadow(zone, ui_colors[UI_LIGHT_GRAY], ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
+    text_draw_in_zone_with_shadow(zone, g_ui_colors[UI_LIGHT_GRAY], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
 }
 
 /* Draws the health, stamina, and mana values of the inventory. */
@@ -606,7 +606,7 @@ static void draw_champion_portrait(int champ)
 /* Draws an inventory button (save, sleep, sound, exit, close), pressed when its bit is set. */
 static void draw_inventory_button(int icon, int zone, uint16_t mask)
 {
-    ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, ui.buttons & mask ? icon + 1 : icon, zone, GFX_OPAQUE);
+    ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, g_ui.buttons & mask ? icon + 1 : icon, zone, GFX_OPAQUE);
 }
 
 /* Copies the part of the inventory background under zone into the view picture. */
@@ -669,7 +669,7 @@ static int draw_champion_slot(int champ, int slot, int force)
     if (in_inventory(champ)) {
         entry = slot + SLOT_INVENTORY_FIRST;
     } else {
-        if (slot >= SLOT_HAND_COUNT || ui.candidate == champ + 1)
+        if (slot >= SLOT_HAND_COUNT || g_ui.candidate == champ + 1)
             return 0;
         entry = champ * SLOT_HAND_COUNT + slot;
     }
@@ -732,7 +732,7 @@ static void draw_description_text(const char *text)
             }
             *brk = '\0';
         }
-        text_draw_in_viewport(cache.description_x, cache.description_y, ui_colors[UI_LIGHT_GRAY], line);
+        text_draw_in_viewport(cache.description_x, cache.description_y, g_ui_colors[UI_LIGHT_GRAY], line);
         cache.description_y = (int16_t)(cache.description_y + TEXT_LINE_HEIGHT);
         if (brk)
             line = brk + 1;
@@ -758,7 +758,7 @@ static void draw_scroll_line(int center_x, int y, const char *line)
         mapped[n] = (char)c;
     }
     mapped[n] = '\0';
-    text_draw_in_viewport((int16_t)(center_x - (w >> 1)), y, ui_colors[UI_BLACK], mapped);
+    text_draw_in_viewport((int16_t)(center_x - (w >> 1)), y, g_ui_colors[UI_BLACK], mapped);
 }
 
 /* Draws an open scroll with its text in the inventory panel. */
@@ -766,7 +766,7 @@ static void draw_scroll(uint16_t scroll)
 {
     char text[TEXT_SIZE * 2], line[TEXT_SIZE * 2];
     text_decode_dungeon(text, sizeof text, scroll, SCROLL_TEXT_MODE);
-    ui.panel_mode = PANEL_MODE_SCROLL;
+    g_ui.panel_mode = PANEL_MODE_SCROLL;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     ui_draw_gdat_in_viewport_zone(CAT_SCROLL, 0, GFX_SCROLL_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
     int newlines = 0;
@@ -815,10 +815,10 @@ static void draw_gauge_bar(int value, int zone, int color, int low, int high, in
     }
     shadow[RECT_X] = (int16_t)(shadow[RECT_X] + GAUGE_SHADOW);
     shadow[RECT_Y] = (int16_t)(shadow[RECT_Y] + GAUGE_SHADOW);
-    gfx_fill_rect(view_viewport.pixels, shadow, ui_colors[UI_BLACK], view_viewport.width, IMAGE_8BPP);
-    gfx_fill_rect(view_viewport.pixels, bar, ui_colors[color], view_viewport.width, IMAGE_8BPP);
+    gfx_fill_rect(view_viewport.pixels, shadow, g_ui_colors[UI_BLACK], view_viewport.width, IMAGE_8BPP);
+    gfx_fill_rect(view_viewport.pixels, bar, g_ui_colors[color], view_viewport.width, IMAGE_8BPP);
     if (split)
-        gfx_fill_rect(view_viewport.pixels, full, ui_colors[split], view_viewport.width, IMAGE_8BPP);
+        gfx_fill_rect(view_viewport.pixels, full, g_ui_colors[split], view_viewport.width, IMAGE_8BPP);
 }
 
 /* An object gauge: the bar with its glyph left of it and the end marks. */
@@ -828,16 +828,17 @@ static void draw_object_gauge(int zone, int value, int high, uint8_t glyph, int 
     if (!zone_get_rect(zone, r))
         return;
     draw_gauge_bar(value, zone, color, 0, high, 1);
-    int y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE), bg = ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
+    int y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE), bg = g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
     char s[2] = {(char)glyph, '\0'};
     text_draw_with_shadow(view_viewport.pixels, view_viewport.width, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,
-                          ui_colors[color], bg, s);
+                          g_ui_colors[color], bg, s);
     s[0] = GLYPH_GAUGE_LEFT;
     text_draw_with_shadow(view_viewport.pixels, view_viewport.width, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
-                          ui_colors[UI_WHITE], bg, s);
+                          g_ui_colors[UI_WHITE], bg, s);
     s[0] = GLYPH_GAUGE_RIGHT;
     text_draw_with_shadow(view_viewport.pixels, view_viewport.width,
-                          (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y, ui_colors[UI_WHITE], bg, s);
+                          (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y, g_ui_colors[UI_WHITE], bg,
+                          s);
 }
 
 /* Draws the coin count of each coin slot of a money box and the total value. */
@@ -853,10 +854,10 @@ static void draw_coin_counts(uint16_t box)
             continue;
         total += money_coin_value(type) * counts[type];
         snprintf(s, sizeof s, "%d", counts[type]);
-        text_draw_in_zone(zone++, ui_colors[UI_LIGHT_GRAY], s);
+        text_draw_in_zone(zone++, g_ui_colors[UI_LIGHT_GRAY], s);
     }
     snprintf(s, sizeof s, "%d", total);
-    text_draw_in_zone(ZONE_COIN_TOTAL, ui_colors[UI_LIGHT_GRAY], s);
+    text_draw_in_zone(ZONE_COIN_TOTAL, g_ui_colors[UI_LIGHT_GRAY], s);
 }
 
 /* Draws the items of a chest in the object info. */
@@ -924,7 +925,7 @@ static int draw_object_info(uint16_t thing, int full)
         draw_scroll(thing);
         return 1;
     }
-    ui.panel_mode = PANEL_MODE_OBJECT;
+    g_ui.panel_mode = PANEL_MODE_OBJECT;
     if (!full)
         return 0;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
@@ -932,11 +933,11 @@ static int draw_object_info(uint16_t thing, int full)
     if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, GFX_OBJECT_PICTURE))
         ui_draw_gdat_in_viewport_zone(category, index, GFX_OBJECT_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_OBJECT_NAME, ZONE_OBJECT_NAME_BACK, UI_KEY);
-    text_draw_in_zone(ZONE_OBJECT_NAME, ui_colors[UI_LIGHT_GRAY], item_name(thing));
+    text_draw_in_zone(ZONE_OBJECT_NAME, g_ui_colors[UI_LIGHT_GRAY], item_name(thing));
     draw_slot(thing, SLOT_INFO, 0, 0, 0);
     uint16_t weight = (uint16_t)item_weight(thing);
-    text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
-    text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
+    g_text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
+    g_text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
     char text[TEXT_SIZE];
     draw_description_text(text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_CONTAINER) {
@@ -1031,8 +1032,8 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
     int type = thing_type(thing);
     int count = info_add(lines, 0, "%s", item_name(thing));
     uint16_t weight = (uint16_t)item_weight(thing);
-    text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
-    text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
+    g_text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
+    g_text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
     char text[TEXT_SIZE * 2];
     count = info_add_text(lines, count, text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_SCROLL)
@@ -1053,8 +1054,8 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
 /* Draws the food and water gauges (and the poison gauge) of the inventory panel. */
 static void draw_food_water_panel(void)
 {
-    const Champion *c = champion(ui.inventory - 1);
-    ui.panel_mode = PANEL_MODE_FOOD;
+    const Champion *c = champion(g_ui.inventory - 1);
+    g_ui.panel_mode = PANEL_MODE_FOOD;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     draw_gauge_bar(c->food, ZONE_FOOD_GAUGE, UI_BROWN, FOOD_MIN, FOOD_MAX, 0);
     draw_gauge_bar(c->water, ZONE_WATER_GAUGE, UI_BLUE, FOOD_MIN, FOOD_MAX, 0);
@@ -1070,7 +1071,7 @@ static void draw_food_water_panel(void)
 static void draw_mouth_picture(void)
 {
     ui_draw_gdat_in_viewport_zone(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_CLOSED, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
-    ui.panel_mode = PANEL_MODE_MOUTH;
+    g_ui.panel_mode = PANEL_MODE_MOUTH;
 }
 
 char *ui_skill_rank_text(int champ, int skill, char *dst)
@@ -1078,39 +1079,39 @@ char *ui_skill_rank_text(int champ, int skill, char *dst)
     int level = champ_get_skill_level(champ, skill, 1);
     if (level > SKILL_LEVEL_MAX)
         level = SKILL_LEVEL_MAX;
-    text_args.entry = (uint8_t)skill;
+    g_text_args.entry = (uint8_t)skill;
     return text_gdat(CAT_PANEL, 0, skill_level_texts[level], dst);
 }
 
 /* Draws the skill levels and the statistics of the champion in the inventory panel. */
 static void draw_skills_and_statistics(void)
 {
-    int champ = ui.inventory - 1;
+    int champ = g_ui.inventory - 1;
     Champion *c = champion(champ);
     char text[TEXT_SIZE];
     int16_t x, y, stat_x, unused;
-    ui.panel_mode = PANEL_MODE_SKILLS;
+    g_ui.panel_mode = PANEL_MODE_SKILLS;
     ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     zone_get_position(ZONE_SKILLS, &x, &y);
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
         if (champ_get_skill_level(champ, skill, 1) == 1)
             continue;
         ui_skill_rank_text(champ, skill, text);
-        text_draw_in_viewport(x, y, ui_colors[g_champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
+        text_draw_in_viewport(x, y, g_ui_colors[g_champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
         cache.shown_raised[skill] = g_champ_skill_raised[champ][skill];
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
     zone_get_position(ZONE_STATS, &stat_x, &unused);
     y = unused;
     for (int stat = 1; stat < STAT_COUNT; stat++) {
-        text_draw_in_viewport(x, y, ui_colors[UI_LIGHT_GRAY], text_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
+        text_draw_in_viewport(x, y, g_ui_colors[UI_LIGHT_GRAY], text_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
         int16_t current = (int16_t)champ_get_stat(c, stat, 0);
         int maximum = (uint16_t)champ_get_stat(c, stat, 1);
         int color = current < maximum ? UI_RED : current > maximum ? UI_GREEN : UI_LIGHT_GRAY;
-        text_draw_in_viewport(stat_x, y, ui_colors[color], text_format_number((uint16_t)current, 1, NUMBER_DIGITS));
+        text_draw_in_viewport(stat_x, y, g_ui_colors[color], text_format_number((uint16_t)current, 1, NUMBER_DIGITS));
         strcpy(text, "/");
         strcat(text, text_format_number((uint16_t)maximum, 1, NUMBER_DIGITS));
-        text_draw_in_viewport((int16_t)(FONT_ADVANCE * NUMBER_DIGITS + stat_x), y, ui_colors[UI_LIGHT_GRAY], text);
+        text_draw_in_viewport((int16_t)(FONT_ADVANCE * NUMBER_DIGITS + stat_x), y, g_ui_colors[UI_LIGHT_GRAY], text);
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
 }
@@ -1119,9 +1120,9 @@ static void draw_skills_and_statistics(void)
    action hand object. */
 static uint16_t panel_object(const Champion *c)
 {
-    if (ui.eye)
+    if (g_ui.eye)
         return g_game.leader_hand;
-    if (ui.mouth)
+    if (g_ui.mouth)
         return THING_NONE;
     return c->slots[SLOT_ACTION_HAND];
 }
@@ -1135,11 +1136,11 @@ static void draw_load(int champ)
     int color = load > max_load                                       ? UI_RED
                 : load * LOAD_HIGH_WHOLE > max_load * LOAD_HIGH_PARTS ? UI_YELLOW
                                                                       : UI_LIGHT_GRAY;
-    text_args.number[ARG_LOAD_KG] = (int16_t)(load / WEIGHT_TENTHS);
-    text_args.number[ARG_LOAD_TENTHS] = (int16_t)(load % WEIGHT_TENTHS);
-    text_args.number[ARG_LOAD_MAX_KG] = (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS);
+    g_text_args.number[ARG_LOAD_KG] = (int16_t)(load / WEIGHT_TENTHS);
+    g_text_args.number[ARG_LOAD_TENTHS] = (int16_t)(load % WEIGHT_TENTHS);
+    g_text_args.number[ARG_LOAD_MAX_KG] = (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS);
     char text[TEXT_SIZE];
-    text_draw_in_zone_with_shadow(ZONE_LOAD, ui_colors[color], ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
+    text_draw_in_zone_with_shadow(ZONE_LOAD, g_ui_colors[color], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
                                   text_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
 }
 
@@ -1158,7 +1159,7 @@ static uint16_t draw_changed_buttons(uint16_t changed)
     uint16_t flags = 0;
     if (changed & BUTTON_SOUND)
         draw_inventory_button(GFX_PANEL_BUTTON_SOUND, ZONE_BUTTON_SOUND, BUTTON_SOUND);
-    if (!ui.candidate) {
+    if (!g_ui.candidate) {
         if (changed & BUTTON_CLOSE) {
             draw_inventory_button(GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, BUTTON_CLOSE);
             flags |= REDRAW_NAME;
@@ -1170,7 +1171,7 @@ static uint16_t draw_changed_buttons(uint16_t changed)
     }
     if (changed & BUTTON_EXIT)
         draw_inventory_button(GFX_PANEL_BUTTON_EXIT, ZONE_BUTTON_EXIT, BUTTON_EXIT);
-    cache.drawn_buttons = ui.buttons;
+    cache.drawn_buttons = g_ui.buttons;
     return flags;
 }
 
@@ -1178,15 +1179,15 @@ static uint16_t draw_changed_buttons(uint16_t changed)
 static void draw_inventory_frame(ChampionRedraw *d)
 {
     uint16_t buttons_changed = 0;
-    if (ui.inventory == cache.drawn_inventory && !(d->flags & REDRAW_ALL_INVENTORY)) {
+    if (g_ui.inventory == cache.drawn_inventory && !(d->flags & REDRAW_ALL_INVENTORY)) {
         if (d->inv)
-            buttons_changed = ui.buttons ^ cache.drawn_buttons;
+            buttons_changed = g_ui.buttons ^ cache.drawn_buttons;
     } else if (!d->inv) {
         cache.drawn_inventory = 0;
     } else {
         ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_BACK, ZONE_DIALOG_BACK, GFX_OPAQUE);
         d->force_inventory = d->present = 1;
-        cache.drawn_inventory = ui.inventory;
+        cache.drawn_inventory = g_ui.inventory;
         buttons_changed = BUTTON_ALL;
         d->flags |= REDRAW_STATUS_BOX | REDRAW_TITLE_ALL | REDRAW_LOAD | REDRAW_BARS | REDRAW_NAME;
     }
@@ -1213,17 +1214,17 @@ static void draw_inventory_values(const Champion *c)
 static int draw_inventory_panel(const Champion *c, uint16_t flags)
 {
     uint16_t object = panel_object(c);
-    if (cache.shown_object != object || ui.mouth != cache.shown_mouth || ui.eye != cache.shown_eye ||
+    if (cache.shown_object != object || g_ui.mouth != cache.shown_mouth || g_ui.eye != cache.shown_eye ||
         flags & REDRAW_TITLE_ALL) {
         ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_EYE, ZONE_EYE, GFX_OPAQUE);
-        ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_MOUTH + (ui.eye != 0), ZONE_MOUTH, GFX_OPAQUE);
-        if (ui.eye) {
+        ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_MOUTH + (g_ui.eye != 0), ZONE_MOUTH, GFX_OPAQUE);
+        if (g_ui.eye) {
             if (object == THING_NONE)
                 draw_skills_and_statistics();
             else
                 draw_object_info(object, 1);
-        } else if (ui.candidate) {
-            if (!ui.mouth)
+        } else if (g_ui.candidate) {
+            if (!g_ui.mouth)
                 draw_mouth_picture();
             else
                 draw_food_water_panel();
@@ -1231,12 +1232,12 @@ static int draw_inventory_panel(const Champion *c, uint16_t flags)
             draw_food_water_panel();
         }
         cache.shown_object = object;
-        cache.shown_eye = ui.eye;
-        cache.shown_mouth = ui.mouth;
+        cache.shown_eye = g_ui.eye;
+        cache.shown_mouth = g_ui.mouth;
         return 1;
     }
     if (cache.shown_object != THING_NONE && item_attr(cache.shown_object, ATTR_FLAGS) & ITEM_FLAG_SCROLL_INFO) {
-        draw_object_info(cache.shown_object, ui.eye);
+        draw_object_info(cache.shown_object, g_ui.eye);
         return 1;
     }
     return 0;
@@ -1246,12 +1247,12 @@ static int draw_inventory_panel(const Champion *c, uint16_t flags)
 static void draw_champion_name(int champ, ChampionRedraw *d)
 {
     const Champion *c = champion(champ);
-    int color = ui_colors[champ == g_game.leader && !ui.candidate ? UI_GOLD : UI_WHITE];
+    int color = g_ui_colors[champ == g_game.leader && !g_ui.candidate ? UI_GOLD : UI_WHITE];
     if (!d->inv) {
         status_box_begin(champ, 0);
         d->box_drawn = 1;
         offscreen_draw_text_in_zone_with_shadow(&status_box, ZONE_STATUS_NAME + champ, color,
-                                                ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
+                                                g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
         return;
     }
     char title[TEXT_SIZE];
@@ -1259,7 +1260,8 @@ static void draw_champion_name(int champ, ChampionRedraw *d)
     if (!c->title[0] || !strchr(TITLE_NO_SPACE, c->title[0]))
         strcat(title, " ");
     strncat(title, c->title, CHAMPION_TITLE_SIZE);
-    text_draw_in_zone_with_shadow(ZONE_NAME, color, ui.candidate ? ui_colors[UI_DARK_GRAY] : TEXT_TRANSPARENT, title);
+    text_draw_in_zone_with_shadow(ZONE_NAME, color, g_ui.candidate ? g_ui_colors[UI_DARK_GRAY] : TEXT_TRANSPARENT,
+                                  title);
     d->present = 1;
 }
 
@@ -1299,12 +1301,12 @@ void ui_draw_champion_state(int champ)
     Champion *c = champion(champ);
     ChampionRedraw d = {.flags = c->redraw, .inv = in_inventory(champ)};
     if (d.inv) {
-        if (ui.screen_needs_refresh)
+        if (g_ui.screen_needs_refresh)
             d.flags |= REDRAW_ALL_INVENTORY;
         if (!g_game.sound_volume && !g_game.music_volume)
-            ui.buttons |= BUTTON_SOUND;
+            g_ui.buttons |= BUTTON_SOUND;
         else
-            ui.buttons &= ~BUTTON_SOUND;
+            g_ui.buttons &= ~BUTTON_SOUND;
     }
     draw_inventory_frame(&d);
     if (d.flags & REDRAW_STATUS_BOX) {
@@ -1316,8 +1318,8 @@ void ui_draw_champion_state(int champ)
             d.flags |= d.inv ? REDRAW_BARS : REDRAW_BARS | REDRAW_NAME;
             d.force_slots = 1;
         } else {
-            offscreen_draw_text_in_zone_with_shadow(&status_box, ZONE_STATUS_NAME + champ, ui_colors[UI_WHITE],
-                                                    ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
+            offscreen_draw_text_in_zone_with_shadow(&status_box, ZONE_STATUS_NAME + champ, g_ui_colors[UI_WHITE],
+                                                    g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
         }
     }
     if (c->health)
@@ -1325,7 +1327,7 @@ void ui_draw_champion_state(int champ)
     if (d.box_drawn)
         offscreen_flush(&status_box, 1);
     if (d.present) {
-        ui.screen_needs_refresh = 0;
+        g_ui.screen_needs_refresh = 0;
         play_present_viewport();
     }
     c->redraw &= REDRAW_KEEP;
@@ -1335,31 +1337,31 @@ void ui_draw_champion_state(int champ)
 void ui_draw_all_champion_states(int tick)
 {
     for (int i = 0; i < g_game.champion_count; i++)
-        if (i + 1 != ui.inventory)
+        if (i + 1 != g_ui.inventory)
             ui_draw_champion_state(i);
-    if (ui.inventory) {
-        Champion *c = champion(ui.inventory - 1);
+    if (g_ui.inventory) {
+        Champion *c = champion(g_ui.inventory - 1);
         if (c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST)
-            c->redraw |= !ui.eye || g_game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
-        ui_draw_champion_state(ui.inventory - 1);
+            c->redraw |= !g_ui.eye || g_game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
+        ui_draw_champion_state(g_ui.inventory - 1);
     }
     area_update(tick);
 }
 
 void ui_toggle_inventory(int champ)
 {
-    ui.panel_mode = PANEL_MODE_NONE;
+    g_ui.panel_mode = PANEL_MODE_NONE;
     cache.shown_object = THING_NONE;
-    if ((champ < CHAMPION_MAX && !champion(champ)->health) || ui.push_mode || ui.mouth || ui.eye)
+    if ((champ < CHAMPION_MAX && !champion(champ)->health) || g_ui.push_mode || g_ui.mouth || g_ui.eye)
         return;
-    input_command_stop = 1;
-    int open = ui.inventory;
+    g_input_command_stop = 1;
+    int open = g_ui.inventory;
     if (champ + 1 == open)
         champ = CHAMPION_MAX;
     if (open) {
-        ui.inventory = 0;
+        g_ui.inventory = 0;
         Champion *c = champion(open - 1);
-        if (c->health && !ui.candidate) {
+        if (c->health && !g_ui.candidate) {
             c->redraw |= REDRAW_STATUS_BOX;
             ui_draw_champion_state(open - 1);
         }
@@ -1376,10 +1378,10 @@ void ui_toggle_inventory(int champ)
             return;
         }
     }
-    ui.inventory = (int16_t)(champ + 1);
+    g_ui.inventory = (int16_t)(champ + 1);
     memset(cache.shown_raised, 0, sizeof cache.shown_raised);
     champion(champ)->redraw |= REDRAW_ALL;
-    ui.buttons = 0;
+    g_ui.buttons = 0;
     ui_draw_champion_state(champ);
     input_set_mode(INPUT_MODE_INVENTORY);
 }

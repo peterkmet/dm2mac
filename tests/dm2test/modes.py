@@ -19,14 +19,14 @@ STEP_TICKS = 40  # enough timer ticks for a key to give its command and the part
 
 
 def set_mode(lib, mode):
-    ctypes.c_int.in_dll(lib, "game_mode").value = mode
+    ctypes.c_int.in_dll(lib, "g_game_mode").value = mode
 
 
 @pytest.fixture
 def advanced(lib, session, tmp_path):  # noqa: F811
     """start.DAT in the advanced mode, with the game folder in tmp_path; vanilla again after the test."""
     (tmp_path / "DATA").mkdir()
-    state = Session.in_dll(lib, "session")
+    state = Session.in_dll(lib, "g_session")
     state.data_dir = str(tmp_path).encode()
     state.slot, state.loaded, state.new_game = -1, 0, 0
     lib.input_key_down.argtypes = [ctypes.c_uint16]

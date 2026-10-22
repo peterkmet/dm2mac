@@ -74,7 +74,7 @@ static void begin_draw(int clear)
         return;
     offscreen_create(&area, ZONE_ACTION_AREA, clear);
     if (clear)
-        offscreen_fill_rect(&area, area.rect, ui_colors[UI_BLACK]);
+        offscreen_fill_rect(&area, area.rect, g_ui_colors[UI_BLACK]);
 }
 
 Offscreen *area_begin_draw(int clear)
@@ -116,7 +116,7 @@ static void draw_action_result(int16_t value)
             digits[--at] = (char)('0' + value % DECIMAL_BASE);
             value = (int16_t)(value / DECIMAL_BASE);
         } while (value);
-        offscreen_draw_text_in_zone(&area, ZONE_RESULT, ui_colors[UI_CYAN], ui_colors[UI_BLACK], digits + at);
+        offscreen_draw_text_in_zone(&area, ZONE_RESULT, g_ui_colors[UI_CYAN], g_ui_colors[UI_BLACK], digits + at);
     } else if (value == RESULT_NO_AMMO) {
         offscreen_draw_gdat_image(&area, CAT_PANEL, 0,
                                   g_action.result_flag ? GFX_AMMO_HAND_OTHER : GFX_AMMO_HAND_DEFAULT, ZONE_AMMO_HAND,
@@ -148,13 +148,13 @@ static Bitmap *action_hand_icon(int champ, int hand)
     else
         draw_ctx_init(&c, item_gdat_category(thing), item_gdat_index(thing), item_icon_index(thing, -1, 0));
     draw_ctx_prepare(&c);
-    gfx_fill_bitmap(icon, ui_colors[ICON_KEY_COLOR]);
+    gfx_fill_bitmap(icon, g_ui_colors[ICON_KEY_COLOR]);
     if (!c.image)
         return icon;
     if (!empty) {
         uint8_t shadow[ICON_COLORS];
-        memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
-        shadow[UI_KEY] = ui_colors[ICON_KEY_COLOR];
+        memset(shadow, g_ui_colors[UI_BLACK], sizeof shadow);
+        shadow[UI_KEY] = g_ui_colors[ICON_KEY_COLOR];
         const int16_t r[RECT_SIZE] = {ICON_OFFSET, ICON_OFFSET, ICON_SIZE, ICON_SIZE};
         ui_blit_bitmap(c.image, icon, r, 0, 0, GFX_OPAQUE, shadow);
         uint32_t size;
@@ -185,7 +185,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
     int16_t r[RECT_SIZE];
     zone_get_rect(zone, r);
     if (!c->health) {
-        offscreen_fill_rect(&area, r, ui_colors[UI_BLACK]);
+        offscreen_fill_rect(&area, r, g_ui_colors[UI_BLACK]);
         return;
     }
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION,
@@ -195,7 +195,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
         int16_t centered[RECT_SIZE] = {(int16_t)(((r[RECT_W] - icon->width + 1) >> 1) + r[RECT_X]),
                                        (int16_t)(r[RECT_Y] + ((r[RECT_H] - icon->height + 1) >> 1)), icon->width,
                                        icon->height};
-        offscreen_blit(&area, icon, centered, 0, 0, ui_colors[ICON_KEY_COLOR], MIRROR_NONE, NULL);
+        offscreen_blit(&area, icon, centered, 0, 0, g_ui_colors[ICON_KEY_COLOR], MIRROR_NONE, NULL);
     }
     if (c->action_delay[hand] || g_party_sleeping)
         offscreen_fill_rect_dithered(&area, r, UI_BLACK);
@@ -249,7 +249,7 @@ static void draw_party_icons(void)
     for (int i = 0; face && i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
         int cell = dir_relative(c->cell, g_game.party_dir);
-        if (!c->health || input_drag_state == cell + 1)
+        if (!c->health || g_input_drag_state == cell + 1)
             continue;
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
         int zone = ZONE_PARTY_FACE_FIRST + cell;
@@ -274,7 +274,7 @@ void area_draw_spell_icon(int champ, int flash)
     const Champion *c = champion(champ);
     int rel = dir_relative(c->cell, g_game.party_dir);
     int16_t r[RECT_SIZE];
-    offscreen_fill_rect(&area, zone_get_rect(ZONE_SPELL_ICON_FIRST + rel, r), ui_colors[UI_BLACK]);
+    offscreen_fill_rect(&area, zone_get_rect(ZONE_SPELL_ICON_FIRST + rel, r), g_ui_colors[UI_BLACK]);
     if (!c->health)
         return;
     int mirror = rel == 1 || rel == 2;
@@ -311,8 +311,8 @@ static void draw_menu_header(void)
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK, ZONE_MENU_BACK, GFX_OPAQUE);
     int champ = g_action.champion - 1;
     offscreen_draw_text_in_zone_with_shadow(&area, ZONE_MENU_NAME,
-                                            ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
-                                            ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
+                                            g_ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
+                                            g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
 }
 
 /* Draws the face of the champion whose hand or spell panel is open. */
@@ -346,8 +346,8 @@ void area_draw_entered_runes(int clear)
     size_t n = strnlen(c->runes, CHAMPION_SIZE - offsetof(Champion, runes));
     for (size_t i = 0; i < n; i++) {
         char s[2] = {c->runes[i], '\0'};
-        offscreen_draw_text_in_zone(&area, ZONE_RUNE_ENTERED_FIRST + (int)i, ui_colors[UI_BLACK],
-                                    ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
+        offscreen_draw_text_in_zone(&area, ZONE_RUNE_ENTERED_FIRST + (int)i, g_ui_colors[UI_BLACK],
+                                    g_ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
     }
 }
 
@@ -359,8 +359,8 @@ static void draw_spell_panel(void)
     if (set < SPELL_RUNE_SETS) {
         for (int i = 0; i < SPELL_RUNES_PER_SET; i++) {
             char s[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + i), '\0'};
-            offscreen_draw_text_in_zone(&area, ZONE_RUNE_CHOICE_FIRST + i, ui_colors[UI_BLACK],
-                                        ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
+            offscreen_draw_text_in_zone(&area, ZONE_RUNE_CHOICE_FIRST + i, g_ui_colors[UI_BLACK],
+                                        g_ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
         }
     }
     area_draw_entered_runes(0);
@@ -381,8 +381,8 @@ void area_draw_name(int i, int highlight)
     }
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_BUTTON + highlight,
                               ZONE_ACTION_BUTTON_FIRST + i, GFX_OPAQUE);
-    offscreen_draw_text_in_zone_with_shadow(&area, ZONE_ACTION_NAME_FIRST + i, ui_colors[UI_WHITE],
-                                            ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
+    offscreen_draw_text_in_zone_with_shadow(&area, ZONE_ACTION_NAME_FIRST + i, g_ui_colors[UI_WHITE],
+                                            g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
                                             text_gdat_label(a->category, a->index, a->entry));
 }
 
@@ -580,7 +580,7 @@ static int party_icons_changed(void)
         const Champion *c = champion(i);
         uint8_t dir = (uint8_t)dir_relative(c->dir, g_game.party_dir),
                 cell = (uint8_t)dir_relative(c->cell, g_game.party_dir);
-        if (!c->health || input_drag_state == cell + 1)
+        if (!c->health || g_input_drag_state == cell + 1)
             cell = NO_CELL;
         if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
             changed = 1;
@@ -676,7 +676,7 @@ static void draw_open_face_aura(void)
 
 void area_update(int tick)
 {
-    if (ui.candidate)
+    if (g_ui.candidate)
         return;
     int full = 0, party_changed = 0;
     if (!g_game.champion_count) {

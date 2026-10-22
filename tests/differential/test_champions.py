@@ -289,7 +289,7 @@ def test_recruit_and_cancel(loop, lib):
     # champion as a candidate, and sends it back. The candidate panel shows on the screen, as the original
     # ui_draw_champion_state (0x48890) presents the viewport after it draws the inventory.
     from dm2test.interface import UiState, c_view
-    ui = UiState.in_dll(lib, "ui")
+    ui = UiState.in_dll(lib, "g_ui")
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")
     for n, command in enumerate((CMD_RECRUIT, CMD_RECRUIT_CANCEL)):
         if n:
