@@ -561,7 +561,7 @@ def word(lib, thing, offset):
     return lib.thing_word(thing, offset)
 
 
-# ui_map_draw_square reads square bytes of the map that dun_get_location_on_map found without a bounds check; the
+# show_square reads square bytes of the map that dun_get_location_on_map found without a bounds check; the
 # C port ignores squares outside that map: (address of the read, address to skip to).
 MAP_SQUARE_READS = ((0x44805, 0x44873), (0x448CB, 0x4493A))
 

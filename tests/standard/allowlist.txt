@@ -11,7 +11,6 @@ block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
 block ui/action_area.c open: module cleanup
 block ui/advanced.c open: module cleanup
-block ui/automap.c open: module cleanup
 block ui/dialog.c open: module cleanup
 block ui/fm.c open: module cleanup
 block ui/include/music.h open: module cleanup
@@ -20,7 +19,6 @@ block ui/include/session.h open: module cleanup
 block ui/include/sound.h open: module cleanup
 block ui/include/ui.h open: module cleanup
 block ui/input.c open: module cleanup
-block ui/minion_map.c open: module cleanup
 block ui/movie.c open: module cleanup
 block ui/music.c open: module cleanup
 block ui/play.c open: module cleanup
@@ -56,8 +54,6 @@ bool ui/input.c:command_execute_champion open: module cleanup
 bool ui/input.c:command_execute_party open: module cleanup
 bool ui/input.c:view_click_drop_object open: module cleanup
 bool ui/input.c:view_click_zones_hit open: module cleanup
-bool ui/minion_map.c open: module cleanup
-bool ui/minion_map.c:rect_clip open: module cleanup
 bool ui/play.c open: module cleanup
 bool ui/play.c:game_step_view open: module cleanup
 bool ui/session.c open: module cleanup
@@ -79,7 +75,6 @@ comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
 comment ui/fm.c open: module cleanup
 comment ui/include/action_area.h open: module cleanup
-comment ui/include/automap.h open: module cleanup
 comment ui/include/fm.h open: module cleanup
 comment ui/include/input.h open: module cleanup
 comment ui/include/movie.h open: module cleanup
@@ -136,7 +131,6 @@ decimal ui/action_area.c rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/fm.c rule 3.12: a table of SKULL.EXE
 decimal ui/include/input.h open: module cleanup
 decimal ui/input.c rule 3.12: a table of SKULL.EXE
-decimal ui/minion_map.c open: module cleanup
 decimal ui/session.c open: module cleanup
 decimal ui/ui.c open: module cleanup
 decimal ui/view.c rule 3.12: a table of SKULL.EXE
@@ -195,11 +189,7 @@ include platform/main.c:item.h open: module cleanup
 include platform/main.c:ui.h open: module cleanup
 include platform/main.c:view.h open: module cleanup
 include ui/advanced.c:input.h open: module cleanup
-include ui/automap.c:advanced.h open: module cleanup
-include ui/automap.c:text.h open: module cleanup
-include ui/automap.c:view.h open: module cleanup
 include ui/include/advanced.h:game.h open: module cleanup
-include ui/include/automap.h:seen.h open: module cleanup
 include ui/include/input.h:game.h open: module cleanup
 include ui/include/session.h:game.h open: module cleanup
 include ui/include/session.h:save.h open: module cleanup
@@ -214,7 +204,6 @@ long platform/main.c:pc_key_code open: module cleanup
 long ui/action_area.c:draw_money_box open: module cleanup
 long ui/action_area.c:draw_party_hands open: module cleanup
 long ui/input.c:feedback_run_op open: module cleanup
-long ui/minion_map.c:mmap_draw open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
 long ui/view.c:show_wall_text open: module cleanup
@@ -223,7 +212,6 @@ module ui/hook_table.c open: module cleanup
 name ui/include/ui.h:offscreen_draw_text_in_zone_with_shadow open: module cleanup
 name ui/include/ui.h:ui_draw_gdat_in_viewport_zone open: module cleanup
 name ui/input.c:view_click_door_button_zone open: module cleanup
-name ui/minion_map.c:grid_find_minion_and_marker open: module cleanup
 name ui/ui.c:offscreen_draw_text_in_zone_with_shadow open: module cleanup
 name ui/ui.c:ui_draw_gdat_in_viewport_zone open: module cleanup
 notation control/control.c open: module cleanup
@@ -237,7 +225,6 @@ notation ui/include/music.h open: module cleanup
 notation ui/include/session.h open: module cleanup
 notation ui/include/ui.h open: module cleanup
 notation ui/input.c open: module cleanup
-notation ui/minion_map.c open: module cleanup
 notation ui/movie.c open: module cleanup
 notation ui/music.c open: module cleanup
 notation ui/play.c open: module cleanup
@@ -250,11 +237,9 @@ order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
 order ui/action_area.c open: module cleanup
 order ui/advanced.c open: module cleanup
-order ui/automap.c open: module cleanup
 order ui/dialog.c open: module cleanup
 order ui/fm.c open: module cleanup
 order ui/input.c open: module cleanup
-order ui/minion_map.c open: module cleanup
 order ui/movie.c open: module cleanup
 order ui/play.c open: module cleanup
 order ui/session.c open: module cleanup
@@ -265,23 +250,12 @@ params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
 params platform/main.c:read_options open: module cleanup
 params ui/include/input.h:input_find_command open: module cleanup
-params ui/include/minion_map.h:mmap_draw_square_icon open: module cleanup
 params ui/include/ui.h:offscreen_blit open: module cleanup
 params ui/include/ui.h:offscreen_draw_gdat_image open: module cleanup
 params ui/include/ui.h:offscreen_draw_text_at open: module cleanup
 params ui/include/ui.h:ui_blit_bitmap open: module cleanup
 params ui/input.c:input_find_command open: module cleanup
 params ui/input.c:view_click_place_object open: module cleanup
-params ui/minion_map.c:draw_group open: module cleanup
-params ui/minion_map.c:draw_icon open: module cleanup
-params ui/minion_map.c:draw_square_base open: module cleanup
-params ui/minion_map.c:draw_things open: module cleanup
-params ui/minion_map.c:draw_wall open: module cleanup
-params ui/minion_map.c:grid_square open: module cleanup
-params ui/minion_map.c:grid_square_flags open: module cleanup
-params ui/minion_map.c:mmap_draw_square_icon open: module cleanup
-params ui/minion_map.c:ui_map_draw_grid open: module cleanup
-params ui/minion_map.c:ui_map_draw_square open: module cleanup
 params ui/ui.c:draw_gauge_bar open: module cleanup
 params ui/ui.c:offscreen_blit open: module cleanup
 params ui/ui.c:offscreen_draw_gdat_image open: module cleanup
@@ -337,7 +311,6 @@ static-prefix ui/action_area.c:draw_party_hands open: module cleanup
 static-prefix ui/action_area.c:draw_party_icons open: module cleanup
 static-prefix ui/action_area.c:draw_spell_panel open: module cleanup
 static-prefix ui/advanced.c:draw_readout_line open: module cleanup
-static-prefix ui/automap.c:draw_middle open: module cleanup
 static-prefix ui/dialog.c:draw_message open: module cleanup
 static-prefix ui/dialog.c:draw_volume_buttons open: module cleanup
 static-prefix ui/input.c:action_area_present open: module cleanup
@@ -366,22 +339,6 @@ static-prefix ui/input.c:view_click_with_object open: module cleanup
 static-prefix ui/input.c:view_click_zones_hit open: module cleanup
 static-prefix ui/input.c:zone_contains_point open: module cleanup
 static-prefix ui/input.c:zone_origin open: module cleanup
-static-prefix ui/minion_map.c:draw_floor open: module cleanup
-static-prefix ui/minion_map.c:draw_group open: module cleanup
-static-prefix ui/minion_map.c:draw_icon open: module cleanup
-static-prefix ui/minion_map.c:draw_missiles open: module cleanup
-static-prefix ui/minion_map.c:draw_party_and_marker open: module cleanup
-static-prefix ui/minion_map.c:draw_party_frame open: module cleanup
-static-prefix ui/minion_map.c:draw_party_icons open: module cleanup
-static-prefix ui/minion_map.c:draw_pit_above open: module cleanup
-static-prefix ui/minion_map.c:draw_square_base open: module cleanup
-static-prefix ui/minion_map.c:draw_strip open: module cleanup
-static-prefix ui/minion_map.c:draw_things open: module cleanup
-static-prefix ui/minion_map.c:draw_wall open: module cleanup
-static-prefix ui/minion_map.c:rect_clip open: module cleanup
-static-prefix ui/minion_map.c:ui_map_draw_grid open: module cleanup
-static-prefix ui/minion_map.c:ui_map_draw_square open: module cleanup
-static-prefix ui/minion_map.c:ui_map_set_marker open: module cleanup
 static-prefix ui/play.c:draw_sleep_message open: module cleanup
 static-prefix ui/play.c:game_step open: module cleanup
 static-prefix ui/play.c:game_step_end open: module cleanup

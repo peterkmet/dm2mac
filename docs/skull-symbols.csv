@@ -178,7 +178,7 @@ address,name,signature,subsystem
 0x00018eeb,rect_temp,"int16_t *rect_temp(int16_t x, int16_t y, int16_t w, int16_t h)",interface
 0x00018f2f,rect_temp_size,"int16_t *rect_temp_size(int16_t w, int16_t h)",interface
 0x00018f43,rect_inflate,"void rect_inflate(int16_t *rect, int16_t dx, int16_t dy)",interface
-0x00018f57,rect_clip,"int16_t *rect_clip(int16_t *rect, const int16_t *clip, int16_t *clipped_x, int16_t *clipped_y)",interface
+0x00018f57,clip_icon_rect,"int16_t *clip_icon_rect(int16_t *rect, const int16_t *clip, int16_t *clipped_x, int16_t *clipped_y)",interface
 0x00018fe7,rect_center_in,"void rect_center_in(int16_t *rect, const int16_t *outer, int16_t w, int16_t h)",interface
 0x0001902b,rect_contains,"int rect_contains(int16_t *rect, int16_t x, int16_t y)",interface
 0x0001906d,zone_contains_point,"int zone_contains_point(int16_t zone, int16_t x, int16_t y)",interface
@@ -796,9 +796,9 @@ address,name,signature,subsystem
 0x0004384b,report_cast_failure,void report_cast_failure(uint16_t result),magic
 0x000438fa,gdat_get_map_icon_strip,"int16_t gdat_get_map_icon_strip(uint8_t category, uint8_t index, uint8_t **image, uint8_t *palette)",graphics
 0x00043970,ui_map_draw_icon,"void ui_map_draw_icon(uint8_t *image, int16_t frame, int16_t x, int16_t y, uint16_t flags, uint8_t *palette)",interface
-0x00043a7c,ui_map_draw_square,"void ui_map_draw_square(uint16_t map_item, int16_t x, int16_t y, int16_t dir, int16_t screen_x, int16_t screen_y, uint8_t wallset, uint8_t flags)",interface
-0x00044943,ui_map_set_marker,"void ui_map_set_marker(int16_t x, int16_t y, int16_t map)",interface
-0x000449be,ui_map_draw_grid,"void ui_map_draw_grid(uint16_t map_item, int16_t x, int16_t y, int16_t map, int16_t dir, int16_t offset_x, int16_t offset_y, uint16_t flags)",interface
+0x00043a7c,show_square,"void show_square(uint16_t map_item, int16_t x, int16_t y, int16_t dir, int16_t screen_x, int16_t screen_y, uint8_t wallset, uint8_t flags)",interface
+0x00044943,set_marker,"void set_marker(int16_t x, int16_t y, int16_t map)",interface
+0x000449be,show_grid,"void show_grid(uint16_t map_item, int16_t x, int16_t y, int16_t map, int16_t dir, int16_t offset_x, int16_t offset_y, uint16_t flags)",interface
 0x00044ee3,mmap_draw_option_buttons,void mmap_draw_option_buttons(uint16_t changed),interface
 0x00044fc6,mmap_draw,void mmap_draw(uint16_t map_item),interface
 0x0004534f,ui_draw_money_box,void ui_draw_money_box(uint16_t thing),money and shops

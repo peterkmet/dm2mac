@@ -5,7 +5,6 @@
 
 /* The automap of the advanced mode: the map picture of the squares that the dungeon view has shown (seen.h). */
 
-#include "seen.h"
 #include "ui.h"
 #include <stdint.h>
 
@@ -14,6 +13,7 @@
 void automap_draw(Offscreen *o, const int16_t *clip);
 /* Moves the middle of the drawn map by (dx, dy) squares; the middle stays on the map. */
 void automap_scroll(int dx, int dy);
+/* Moves the middle of the drawn map back to the party square. */
 void automap_scroll_reset(void);
 
 #endif /* DM2_UI_AUTOMAP_H */
