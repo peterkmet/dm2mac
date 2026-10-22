@@ -13,30 +13,40 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define INPUT_SIZE      4096 /* a request line up to its newline */
+/* The size of the request buffer. */
+#define INPUT_SIZE 4096 /* a request line up to its newline */
+
+/* The mode of the socket folder: only the user reads, writes and enters it. */
 #define SOCKET_DIR_MODE 0700
 
 #ifdef MSG_NOSIGNAL
+/* The flags of a send to the client. */
 #define SEND_FLAGS MSG_NOSIGNAL /* a closed client does not raise SIGPIPE (Linux) */
 #else
-#define SEND_FLAGS 0 /* SO_NOSIGPIPE does the same (macOS) */
+/* The flags of a send to the client. */
+#define SEND_FLAGS 0x0 /* SO_NOSIGPIPE does the same (macOS) */
 #endif
 
-static int listen_fd = -1, client_fd = -1;
-static char socket_path[sizeof(((struct sockaddr_un *)0)->sun_path)];
-static char input[INPUT_SIZE];
-static size_t input_length;
-static int discarding;  /* the rest of a too long line goes up to its newline */
-static bool reply_held; /* a wait or a turn of the client gives its reply later */
+/* The listening socket, the one client, and the bytes of its next request line. */
+static struct {
+    int listen_fd;
+    int client_fd;
+    char socket_path[sizeof(((struct sockaddr_un *)0)->sun_path)];
+    char input[INPUT_SIZE];
+    size_t input_length;
+    bool discarding; /* the rest of a too long line goes up to its newline */
+    bool reply_held; /* a wait or a turn of the client gives its reply later */
+} transport = {.listen_fd = -1, .client_fd = -1};
 
+/* Closes the client connection and forgets its unread bytes; a wait or a turn of the client ends without a reply. */
 static void close_client(void)
 {
-    if (client_fd >= 0)
-        close(client_fd);
-    client_fd = -1;
-    input_length = 0;
-    discarding = 0;
-    reply_held = false;
+    if (transport.client_fd >= 0)
+        close(transport.client_fd);
+    transport.client_fd = -1;
+    transport.input_length = 0;
+    transport.discarding = false;
+    transport.reply_held = false;
     control_drop_client();
 }
 
@@ -44,8 +54,8 @@ static void close_client(void)
 static void send_line(Json *reply)
 {
     json_raw(reply, "\n");
-    for (size_t sent = 0; client_fd >= 0 && sent < reply->len;) {
-        ssize_t n = send(client_fd, reply->s + sent, reply->len - sent, SEND_FLAGS);
+    for (size_t sent = 0; transport.client_fd >= 0 && sent < reply->len;) {
+        ssize_t n = send(transport.client_fd, reply->s + sent, reply->len - sent, SEND_FLAGS);
         if (n <= 0)
             close_client();
         else
@@ -72,7 +82,7 @@ static void answer_line(const char *line)
     if (control_handle_line(line, &reply))
         send_line(&reply);
     else
-        reply_held = true;
+        transport.reply_held = true;
     free(reply.s);
 }
 
@@ -81,7 +91,7 @@ static void send_held_reply(void)
 {
     Json reply = {0};
     if (control_end_turn(&reply)) {
-        reply_held = false;
+        transport.reply_held = false;
         send_line(&reply);
     }
     free(reply.s);
@@ -101,9 +111,9 @@ static void prepare_connection(int fd)
 static void drop_closed_client(void)
 {
     char next;
-    if (client_fd < 0)
+    if (transport.client_fd < 0)
         return;
-    ssize_t n = recv(client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
+    ssize_t n = recv(transport.client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
     if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK))
         close_client(); /* the client left */
 }
@@ -112,11 +122,11 @@ static void drop_closed_client(void)
 static void accept_clients(void)
 {
     static const char busy[] = "{\"ok\":false,\"error\":\"busy\"}\n";
-    for (int fd; (fd = accept(listen_fd, NULL, NULL)) >= 0;) {
+    for (int fd; (fd = accept(transport.listen_fd, NULL, NULL)) >= 0;) {
         prepare_connection(fd);
         drop_closed_client();
-        if (client_fd < 0) {
-            client_fd = fd;
+        if (transport.client_fd < 0) {
+            transport.client_fd = fd;
             continue;
         }
         send(fd, busy, sizeof busy - 1, SEND_FLAGS);
@@ -127,48 +137,47 @@ static void accept_clients(void)
 /* Reads the bytes of the client and answers its complete lines; a too long line gets one error reply. */
 static void read_requests(void)
 {
-    if (client_fd < 0)
+    if (transport.client_fd < 0)
         return;
-    ssize_t n = recv(client_fd, input + input_length, sizeof input - input_length, MSG_DONTWAIT);
+    ssize_t n = recv(transport.client_fd, transport.input + transport.input_length,
+                     sizeof transport.input - transport.input_length, MSG_DONTWAIT);
     if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
         close_client();
         return;
     }
     if (n > 0)
-        input_length += (size_t)n;
+        transport.input_length += (size_t)n;
     char *end;
-    while (client_fd >= 0 && !reply_held && !control_is_turn_pending() && (end = memchr(input, '\n', input_length))) {
-        size_t used = (size_t)(end + 1 - input);
+    while (transport.client_fd >= 0 && !transport.reply_held && !control_is_turn_pending() &&
+           (end = memchr(transport.input, '\n', transport.input_length))) {
+        size_t used = (size_t)(end + 1 - transport.input);
         *end = 0;
-        if (discarding)
-            discarding = 0;
-        else if (memchr(input, 0, used - 1))
+        if (transport.discarding)
+            transport.discarding = false;
+        else if (memchr(transport.input, 0, used - 1))
             send_error("request line has a NUL byte");
-        else if (end > input)
-            answer_line(input);
-        if (client_fd < 0)
+        else if (end > transport.input)
+            answer_line(transport.input);
+        if (transport.client_fd < 0)
             return;
-        memmove(input, end + 1, input_length - used);
-        input_length -= used;
+        memmove(transport.input, end + 1, transport.input_length - used);
+        transport.input_length -= used;
     }
-    if (input_length == sizeof input) {
-        if (!discarding)
+    if (transport.input_length == sizeof transport.input) {
+        if (!transport.discarding)
             send_error("request line too long");
-        discarding = 1;
-        input_length = 0;
+        transport.discarding = true;
+        transport.input_length = 0;
     }
 }
 
-bool transport_is_available(void)
-{
-    return true;
-}
+/* Setup */
 
 bool transport_open(const char *path)
 {
     struct sockaddr_un address = {.sun_family = AF_UNIX};
     struct stat old;
-    char dir[sizeof socket_path];
+    char dir[sizeof transport.socket_path];
     if (strlen(path) >= sizeof address.sun_path)
         return false;
     if (!lstat(path, &old) && !S_ISSOCK(old.st_mode))
@@ -180,43 +189,52 @@ bool transport_open(const char *path)
         mkdir(dir, SOCKET_DIR_MODE);
     }
     snprintf(address.sun_path, sizeof address.sun_path, "%s", path);
-    snprintf(socket_path, sizeof socket_path, "%s", path);
+    snprintf(transport.socket_path, sizeof transport.socket_path, "%s", path);
     unlink(path);
-    listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (listen_fd < 0)
+    transport.listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (transport.listen_fd < 0)
         return false;
-    if (bind(listen_fd, (struct sockaddr *)&address, sizeof address) || listen(listen_fd, 1) ||
-        fcntl(listen_fd, F_SETFL, O_NONBLOCK)) {
+    if (bind(transport.listen_fd, (struct sockaddr *)&address, sizeof address) || listen(transport.listen_fd, 1) ||
+        fcntl(transport.listen_fd, F_SETFL, O_NONBLOCK)) {
         transport_close();
         return false;
     }
     return true;
 }
 
+void transport_close(void)
+{
+    close_client();
+    if (transport.listen_fd >= 0) {
+        close(transport.listen_fd);
+        unlink(transport.socket_path);
+    }
+    transport.listen_fd = -1;
+    control_reset();
+}
+
+/* Queries */
+
+bool transport_is_available(void)
+{
+    return true;
+}
+
+/* Requests */
+
 void transport_poll(void)
 {
-    if (listen_fd < 0)
+    if (transport.listen_fd < 0)
         return;
-    if (reply_held && !control_is_turn_pending())
+    if (transport.reply_held && !control_is_turn_pending())
         drop_closed_client(); /* a wait */
-    if (reply_held && !control_is_turn_pending())
+    if (transport.reply_held && !control_is_turn_pending())
         send_held_reply();
-    if (!reply_held && !control_is_turn_pending())
+    if (!transport.reply_held && !control_is_turn_pending())
         read_requests();
     if (control_is_turn_pending()) { /* a client that left gets no reply; the reply goes out when the turn ends */
         drop_closed_client();
         send_held_reply();
     }
     accept_clients();
-}
-
-void transport_close(void)
-{
-    close_client();
-    if (listen_fd >= 0) {
-        close(listen_fd);
-        unlink(socket_path);
-    }
-    listen_fd = -1;
-    control_reset();
 }

@@ -2,7 +2,6 @@
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
-block platform/transport.c open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
 bool platform/main.c:default_control_path open: module cleanup
@@ -12,7 +11,6 @@ bool platform/main.c:select_mode open: module cleanup
 bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
 comment platform/include/platform.h open: module cleanup
-comment platform/transport.c open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
@@ -63,9 +61,7 @@ long engine/ai_move.c:test_entered rule 5.8: one short case for each search targ
 long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
-notation platform/transport.c open: module cleanup
 order platform/platform.c open: module cleanup
-order platform/transport.c open: module cleanup
 params platform/main.c:read_options open: module cleanup
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-prefix platform/main.c:play_movies open: module cleanup

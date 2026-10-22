@@ -8,13 +8,22 @@
 
 #include <stdbool.h>
 
-/* True where the control socket exists (macOS); false on Windows, which has no turn-based mode. */
-bool transport_is_available(void);
+/* Setup */
+
 /* Listens on the socket path: an old socket there is replaced, the last folder level is made. Returns false when path
    is another file (it stays) or the socket cannot open. */
 bool transport_open(const char *path);
 /* Closes the sockets and removes the socket file. */
 void transport_close(void);
+
+/* Queries */
+
+/* True in the POSIX build (macOS), which has the control socket; false in the Windows build, which has no turn-based
+   mode. */
+bool transport_is_available(void);
+
+/* Requests */
+
 /* main.c calls it on every PIT tick of the game loop and once per frame of the modal loops: accepts a client (other
    clients get a busy error), reads requests, and answers them. A reply blocks until the client reads it. A client that
    closes with nothing unread during a wait frees the socket at once; one that sent more lines keeps it until the wait

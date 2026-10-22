@@ -2,10 +2,7 @@
 /* The build without a control socket (Windows): the turn-based mode cannot start. */
 #include "transport.h"
 
-bool transport_is_available(void)
-{
-    return false;
-}
+/* Setup */
 
 bool transport_open(const char *path)
 {
@@ -16,6 +13,15 @@ bool transport_open(const char *path)
 void transport_close(void)
 {
 }
+
+/* Queries */
+
+bool transport_is_available(void)
+{
+    return false;
+}
+
+/* Requests */
 
 void transport_poll(void)
 {
