@@ -70,14 +70,14 @@ We keep our name in each case. The reason is in the last column.
 | `0x1f347` | `money_is_coin` | `object_is_stackable` | `money_init_coin_table` builds the coin table from the same `0x4000` bit. See "Rejected rename". |
 | `0x104ea` | `sound_prepare_sample` | `hilite_node_add` | The only caller passes `g_sample_descs`. The XOR of bit 7 converts signed PCM to unsigned. reDM2 marks its role "not confirmed". |
 | `0x13898` | `pal_set_palette` | `mouse_shape_upload` | Both are inferences. Payload is GDAT `(1,0,9,254)`, 1024 bytes, `IBMIOP` function `0x10a` in the video group (`0x103`-`0x10a`). Needs the `IBMIOP.EXE` handler body. |
-| `0x159c3` | `view_position_to_cell` | `obj_type_remap` | Maps 6, 8, `0x12`, `0x10` to 0-3. reDM2 gives no role. |
+| `0x159c3` | `position_to_cell` | `obj_type_remap` | Maps 6, 8, `0x12`, `0x10` to 0-3. reDM2 gives no role. |
 | `0x1f180`, `0x1f1fc` | `item_index_to_thing_type`, `item_index_to_gdat_index` | `zone_classify`, `coord_band_normalize` | reDM2 names describe the arithmetic only. The input is the 9-bit global item index. |
 | `0x1f309` | `item_is_chest` | `object_is_noncontainer_db9` | Body: type 9, not a money box, flags `& 6 == 0`. A chest is a container; the reDM2 name follows its own name for `money_is_moneybox`. |
 | `0x22626` | `view_click_front_wall` | `cursor_suspend_toggle` | Argument 0 plays sound `0x84`. Other values start the right-button mouse capture. Both names cover one branch only. |
 | `0x24d88`-`0x33df9` (13 functions) | `creature_ai_*` | `overlay_*`, `sound_enqueue`, `snd_emit_*`, `snd_event_code`, `cond_tally_lookup` | reDM2 reads the creature AI plan context as a "sound queue" and "overlay". Its own globals in the same block are `g_actor_*`. A dump of the plan tables (`0x74f7e`, `0x75248`) decides this. See open question 5 in `docs/skull-map.md`. |
-| `0x4e733` | `weather_get_rain_image` | `compass_dir_char` | Body: letter `q` or `m` from wind direction relative to the party, plus 0-3 from `g_rain_intensity`. |
+| `0x4e733` | `rain_picture` | `compass_dir_char` | Body: letter `q` or `m` from wind direction relative to the party, plus 0-3 from `g_rain_intensity`. |
 | `0x4e930` | `view_draw_wet_image` | `face_pattern_blit` | Both low confidence. reDM2 covers only the short branch. |
-| `0x509e6` | `view_draw_sparkle_field` | `object_slot_draw` | Both low confidence. reDM2 calls the 16 regions "inventory regions", but the three callers are view functions. |
+| `0x509e6` | `show_sparkle_field` | `object_slot_draw` | Both low confidence. reDM2 calls the 16 regions "inventory regions", but the three callers are view functions. |
 | `0x54f5b` | `mem_parse_config_entry` | `gfx_cmd_stream_step` | The `0xfe` count is the progress bar total in `mem_test_all_maps`, which loads each map once per entry. |
 | `0x59026` | `timeline_event_hide_damage` | `champ_mark_dead` | Sets champion `+0x2e` to `0xffff`. Sets flag 8 only if the champion has health. "Dead" does not fit. |
 
@@ -104,7 +104,7 @@ We keep our name in each case. The reason is in the last column.
 
 reDM2 starts inside our functions (79):
 
-- Probable real entry points that Ghidra joined to the previous function (10): `0x2fdf0` and `0x2fe0a` (`word_sign_gate`, tested in reDM2) after `math_count_bits`; `0x3305a` (2789 bytes) in `ai_search_area`; `0x540ff` in `view_draw_far_squares`; `0x43108` in `ui_draw_party_icons`; `0x48066` in `champ_apply_time_effects`; `0x4be76` in `item_party_possesses_type`; `0x2301d` in `view_click_in_viewport`; `0x24022` in `move_push_creature`; `0x37022` in `restore_timed_effects` (reDM2: the switch on the event type). Check these before the port splits or merges them.
+- Probable real entry points that Ghidra joined to the previous function (10): `0x2fdf0` and `0x2fe0a` (`word_sign_gate`, tested in reDM2) after `math_count_bits`; `0x3305a` (2789 bytes) in `ai_search_area`; `0x540ff` in `show_far_squares`; `0x43108` in `ui_draw_party_icons`; `0x48066` in `champ_apply_time_effects`; `0x4be76` in `item_party_possesses_type`; `0x2301d` in `view_click_in_viewport`; `0x24022` in `move_push_creature`; `0x37022` in `restore_timed_effects` (reDM2: the switch on the event type). Check these before the port splits or merges them.
 - Second entry points of table-called handlers (26): 10 in the `input_cond_*` functions (`0x200c8`-`0x2027c`) and 16 in the `creature_ai_scan_*` and `creature_ai_cmd_*` functions (`0x2765c`-`0x281e9`). The dispatch tables can point into the middle of our functions.
 - Not functions (10): `0x1d051` (loop latch, reDM2 says so), `0x3156e` (shared epilogue, reDM2 says so), `0x26e60` and `0x2703c` (switch targets), `0x3ae7a` and `0x3b0ee` (parts of `gdat_load_map_graphics`), `0x4710c`/`0x4710d`, `0x10d07` and `0x14726` (interrupt return points).
 - Decoder inner loops (3): `0x5ab4f`, `0x5ad3c`, `0x5ad9e`. Our starts `0x5aada`, `0x5ad2b`, `0x5ad8d` are the pointers in `g_image_decoders`, so our starts are correct.
