@@ -32,7 +32,7 @@ G_PARTY_DISTANCE_MAP, G_ALT_DISTANCE_MAP = 0x752A0, 0x752A2
 G_PARTY_DISTANCE_WIDTH, G_ALT_DISTANCE_WIDTH = 0x7F8CE, 0x7F8CC
 G_LIGHT_SUMS = (0x7F970, 0x7F974, 0x752A4, 0x752A6, 0x752A8)
 G_VIEW_REDRAW = 0x7F38C
-LIGHT_NAMES = ("g_light_source_sum", "g_explosion_light_sum", "cached_light_sum", "cached_explosion_light_sum", "last_party_map")
+LIGHT_NAMES = ("g_light_source_sum", "g_explosion_light_sum", "g_cached_light_sum", "g_cached_explosion_light_sum", "g_last_party_map")
 DISTANCE_MAPS = (("g_party_distance", 0x7F8C8, 0x752A0, 0x7F8CE), ("g_alt_distance", 0x7F8C4, 0x752A2, 0x7F8CC))
 G_AI_SCRATCH, G_AI_CONTEXT_ACTIVE = 0x7F894, 0x7F7E6
 # Functions of later parts that both sides stub: (address, stack arguments).
@@ -89,7 +89,7 @@ class Ai:
         self.sync_map_values()
         self.ai = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai"))
         self.square = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai_square"))
-        self.scan = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "ai_square_scan"))
+        self.scan = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai_square_scan"))
         self.saved = ctypes.create_string_buffer(AI_SIZE)
         self.scratch = sc.view.alloc(0x2A * 0x40)
         lib.ai_begin.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
@@ -107,7 +107,7 @@ class Ai:
         # the C library lives through the tests: its AI state starts from the state of the original
         for c_off, o_off, size in AI_FIELDS.values():
             ctypes.memmove(self.ai + c_off, emu.read(G_AI + o_off, size), size)
-        ctypes.c_uint16.in_dll(lib, "search_direction_bits").value = struct.unpack("<H", emu.read(G_DIRECTION_BITS, 2))[0]
+        ctypes.c_uint16.in_dll(lib, "g_search_direction_bits").value = struct.unpack("<H", emu.read(G_DIRECTION_BITS, 2))[0]
         theirs = emu.read(G_AI_SQUARE, 0x1E)
         ctypes.memmove(self.square, theirs[:7] + b"\0" + theirs[8:14] + theirs[0x1C:0x1E], 16)
         ctypes.memmove(self.scan, theirs[14:21] + b"\0" + theirs[22:28], 14)
@@ -206,7 +206,7 @@ class Ai:
         mine_party = struct.unpack("<4h", party)
         x, y, m, d = (s16(struct.unpack("<H", self.emu.read(a, 2))[0]) for a in (0x7F8D4, 0x7F8D0, 0x7F8D2, 0x7F8D6))
         assert mine_party == (x, y, m, d), (where, "party")
-        assert ctypes.c_uint16.in_dll(self.lib, "search_direction_bits").value == \
+        assert ctypes.c_uint16.in_dll(self.lib, "g_search_direction_bits").value == \
             struct.unpack("<H", self.emu.read(G_DIRECTION_BITS, 2))[0], (where, "direction bits")
         assert ctypes.c_int16.in_dll(self.lib, "party").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
             (where, "current map")

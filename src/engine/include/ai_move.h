@@ -163,10 +163,10 @@
 #define ACTION_SPECIAL_LAST      0x40
 #define ACTION_DODGE             0x55
 
-/* The light sums of the light search (Step 17 moves them to its module). */
-extern int16_t cached_light_sum, cached_explosion_light_sum, last_party_map;
-/* The state of the shift register that picks the first search direction (0x752e8 of SKULL.EXE). */
-extern uint16_t search_direction_bits;
+/* The light sums of the last light search and the party map of the last refresh; exported for the tests. */
+extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
+/* The shift register that picks the first search direction (0x752e8 of SKULL.EXE); exported for the tests. */
+extern uint16_t g_search_direction_bits;
 
 /* The bit set of the item indexes of an item class (GDAT text entry of a creature type, money.h). */
 #define ITEM_CLASS_SET_SIZE SHOP_CLASS_SET_SIZE
