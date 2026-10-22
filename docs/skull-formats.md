@@ -682,7 +682,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### Skullkeep machines: object transfer sensors
 
 - Sensor kinds `0x3b`, `0x40`, `0x47`, `0x48`, `0x49` on walls and floors move objects from the event square to the sensor target (`0x47` and `0x49`: from the target to the event square). `0x40` moves the items of an item class (`shop_parse_item_class_set`, Step 15). `0x48` and `0x49` move one object only. Floor sensors `0x3b` and `0x40` take objects from all cells.
-- An object that matches the item of the sensor data (item `0x1ff`: any object) moves with `sensor_transfer_object`: its charges become full, empty, or random (sensor flags bits 3 and 4), and on a floor it lands in a random cell. Objects in the possessions of creatures on the square move too. Bones of a champion bring the champion back (`champ_revive`, Step 15) unless sensor flag bit 2 is set.
+- An object that matches the item of the sensor data (item `0x1ff`: any object) moves with `transfer_object`: its charges become full, empty, or random (sensor flags bits 3 and 4), and on a floor it lands in a random cell. Objects in the possessions of creatures on the square move too. Bones of a champion bring the champion back (`champ_revive`, Step 15) unless sensor flag bit 2 is set.
 
 ### Deviations of the C port (Step 17)
 
@@ -781,7 +781,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### Item creation by a sensor
 
 - A wall sensor of kind `0x3c` makes a new item when a square event reaches it: with the effect set, or with the effect clear when the sensor is inverted (flags bit 5). Its data is the item index. A new record of the thing type gets the GDAT index. Flags bits 3 and 4 both set keep the item from reuse (`dun_set_thing_do_not_discard`).
-- `sensor_transfer_object` sets the charges by flags bits 3 and 4: 0 full, 1 empty, 2 random up to full, 3 an uninitialized word. Miscellaneous item 0 keeps its charges. The item goes to the target square (target word: x bits 6 to 10, y bits 11 to 15, cell bits 4 and 5), to a random cell when the target is not a wall. Flags bit 2 selects the move mode of `move_thing`.
+- `transfer_object` sets the charges by flags bits 3 and 4: 0 full, 1 empty, 2 random up to full, 3 an uninitialized word. Miscellaneous item 0 keeps its charges. The item goes to the target square (target word: x bits 6 to 10, y bits 11 to 15, cell bits 4 and 5), to a random cell when the target is not a wall. Flags bit 2 selects the move mode of `move_thing`.
 
 ### Merchant trading
 

@@ -193,10 +193,9 @@ static inline uint16_t sensor_area_creature(uint16_t sensor)
 /* The ornament value of a fountain: touching the ornament fills the water. */
 #define ORNAMENT_KEY_TOUCH      0x0b
 
-/* A thing (THING_NONE: the party) leaves (enter 0) or enters (enter 1) the square (x, y) of the current map:
-   the floor sensors and texts of the square react. on_square: the party stands there (for the party: the
-   move ends on the same square); possessions: an item goes into the possessions of a static creature. */
-void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter, int possessions);
+/* Doors and square events. */
+/* A GDAT value of the door type of a door thing. */
+uint16_t sensor_door_value(uint16_t door, int key);
 /* Queues a square event for (x, y) of the current map at time. */
 void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t time);
 /* Queues the square event of the target of sensor with effect, delay ticks after its own delay. */
@@ -204,22 +203,30 @@ void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).
    True when the door breaks. */
 bool sensor_door_try_destroy(int x, int y, int strength, bool magic, int delay);
-/* A GDAT value of the door type of a door thing. */
-uint16_t sensor_door_value(uint16_t door, int key);
+
+/* Floor sensors. */
+/* A thing (THING_NONE: the party) enters the square (x, y) of the current map: the floor sensors and texts of the
+   square react. on_square: the party stands there (for the party: the move ends on the same square); possessions: an
+   item goes into the possessions of a static creature. */
+void sensor_enter_square(int x, int y, uint16_t thing, bool on_square, bool possessions);
+/* A thing (THING_NONE: the party) leaves the square (x, y) of the current map, as sensor_enter_square. */
+void sensor_leave_square(int x, int y, uint16_t thing, bool on_square, bool possessions);
+
+/* Sensor effects. */
+/* A new game starts the timer sensors that are on and stops the others. */
+void sensor_start_timers(void);
+
+/* Sensor timeline events. */
+/* The party enters (entering) or leaves the party map: the map entry sensors and the creature generators. */
+void sensor_process_map_entry(bool entering);
+
+/* Wall clicks. */
 /* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
-
 /* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
    with hand (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
 void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand);
-/* The party enters (1) or leaves (0) the party map: the map entry sensors and the creature generators. */
-void sensor_process_map_entry(int entering);
-/* A new game starts the timer sensors that are on and stops the others. */
-void sensor_start_timers(void);
-/* Moves thing (from (from_x, from_y), -1: a new thing) to the cell to_cell of (to_x, to_y) for a transfer sensor,
-   with the charge change of the sensor; on a floor the cell is random. */
-void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
-                            int from_creature, int to_possessions);
+
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
 #define GLOBAL_VAR_SET      0
 #define GLOBAL_VAR_CLEAR    1
@@ -234,9 +241,9 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
 /* Sensors that act on creatures (creature.c). */
 /* Creature sensors: a sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */
 void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor);
-/* A sensor reaches the groups of a creature type in the rectangle around (x, y) that (tx, ty) spans: kind 0x0b makes
-   them vanish (power 2), kind 0x28 sets mood bit power (cleared when effect is set). */
-void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect);
+/* A sensor reaches the groups of the creature type of its data in the rectangle around (x, y) that its target spans:
+   SENSOR_VANISH makes them vanish (power 2), SENSOR_ALERT sets mood bit power (cleared when effect is set). */
+void sensor_affect_creatures_in_area(uint16_t sensor, int x, int y, int effect);
 
 /* Missile launchers (projectile.c). */
 /* A missile launcher sensor shoots the objects of its square or new objects or spells. */

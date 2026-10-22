@@ -171,7 +171,7 @@ void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)
     inv_show_object_name(thing);
     (void)defer_cursor; /* the port draws the cursor each frame (inv_cursor_object) */
     champ_apply_item_effects((int16_t)game.leader, thing, -1, EFFECT_MODE_ADD);
-    sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 1, 0);
+    sensor_enter_square(game.party_x, game.party_y, THING_NONE, true, false);
 }
 
 uint16_t champ_remove_object_from_leader_hand(void)
@@ -184,7 +184,7 @@ uint16_t champ_remove_object_from_leader_hand(void)
     game.leader_hand = THING_NONE;
     leader_hand.icon = HAND_ICON_NONE;
     champ_apply_item_effects((int16_t)game.leader, thing, -1, EFFECT_MODE_REMOVE);
-    sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 0, 0);
+    sensor_leave_square(game.party_x, game.party_y, THING_NONE, true, false);
     return thing;
 }
 

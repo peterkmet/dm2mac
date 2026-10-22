@@ -346,7 +346,6 @@ dead-api engine/include/projectile.h:projectile_attack_type open: module cleanup
 dead-api engine/include/projectile.h:projectile_event_dir open: module cleanup
 dead-api engine/include/projectile.h:projectile_extra_damage open: module cleanup
 dead-api engine/include/projectile.h:projectile_hit open: module cleanup
-dead-api engine/include/sensor.h:sensor_transfer_object open: module cleanup
 dead-api engine/include/sound_request.h:sound_load open: module cleanup
 dead-api engine/include/sound_request.h:sound_party_offset open: module cleanup
 dead-api engine/include/sound_request.h:sound_played open: module cleanup
@@ -606,7 +605,6 @@ long engine/inventory.c:champ_apply_item_effects open: module cleanup
 long engine/inventory.c:drink_potion open: module cleanup
 long engine/move.c:move_party_step open: module cleanup
 long engine/move.c:move_thing open: module cleanup
-long engine/sensor.c:wall_click_sensor_skip open: module cleanup
 long engine/weather.c:light_add_square_light open: module cleanup
 long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
@@ -751,7 +749,6 @@ order engine/move.c open: module cleanup
 order engine/projectile.c open: module cleanup
 order engine/save.c open: module cleanup
 order engine/seen.c open: module cleanup
-order engine/sensor.c open: module cleanup
 order engine/timeline.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
@@ -804,7 +801,6 @@ params engine/champ_action.c:champ_melee_attack_creature open: module cleanup
 params engine/creature.c:creature_alert open: module cleanup
 params engine/creature.c:creature_anim_start open: module cleanup
 params engine/creature.c:creature_summon_group open: module cleanup
-params engine/creature.c:sensor_affect_creatures_in_area open: module cleanup
 params engine/include/ai.h:ai_find_target_in_lines open: module cleanup
 params engine/include/ai.h:ai_search_area open: module cleanup
 params engine/include/ai.h:ai_try_attack open: module cleanup
@@ -821,9 +817,6 @@ params engine/include/move.h:move_follow_square_transitions open: module cleanup
 params engine/include/move.h:move_party_bump_damage open: module cleanup
 params engine/include/projectile.h:projectile_create open: module cleanup
 params engine/include/seen.h:seen_visible open: module cleanup
-params engine/include/sensor.h:sensor_affect_creatures_in_area open: module cleanup
-params engine/include/sensor.h:sensor_process_floor open: module cleanup
-params engine/include/sensor.h:sensor_transfer_object open: module cleanup
 params engine/include/sound_request.h:sound_party_offset open: module cleanup
 params engine/include/sound_request.h:sound_request open: module cleanup
 params engine/include/sound_request.h:sound_request_with_fallback open: module cleanup
@@ -844,9 +837,6 @@ params engine/projectile.c:projectile_enter_square open: module cleanup
 params engine/projectile.c:projectile_hit_wall_sensors open: module cleanup
 params engine/save.c:read_thing_list open: module cleanup
 params engine/seen.c:seen_visible open: module cleanup
-params engine/sensor.c:sensor_process_floor open: module cleanup
-params engine/sensor.c:sensor_transfer_object open: module cleanup
-params engine/sensor.c:wall_click_sensor_skip open: module cleanup
 params engine/sound_request.c:sound_party_offset open: module cleanup
 params engine/sound_request.c:sound_request open: module cleanup
 params engine/sound_request.c:sound_request_later open: module cleanup

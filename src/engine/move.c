@@ -471,9 +471,9 @@ void move_party_turn(int command)
         move_party_to(end.x, end.y, end.map, end.target_side);
         return;
     }
-    sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 0, 0);
+    sensor_leave_square(game.party_x, game.party_y, THING_NONE, true, false);
     champ_set_party_direction(dir_turn(game.party_dir, command == CMD_TURN_RIGHT ? TURN_RIGHT : TURN_LEFT));
-    sensor_process_floor(game.party_x, game.party_y, THING_NONE, 1, 1, 0);
+    sensor_enter_square(game.party_x, game.party_y, THING_NONE, true, false);
 }
 
 /* The party steps onto (x, y) from the square of map: seamless passages, stairs, teleporter passages, then the move. */
@@ -1064,7 +1064,7 @@ static void move_party_arrive(int map, int start_map, int dst_x, int dst_y, int 
         }
     }
     if (map == start_map)
-        sensor_process_floor(game.party_x, game.party_y, THING_NONE, same, 1, 0);
+        sensor_enter_square(game.party_x, game.party_y, THING_NONE, same, false);
     else
         party.new_map = (int16_t)map;
 }
@@ -1124,7 +1124,7 @@ static int move_group_arrive(uint16_t thing, int map, int dst_x, int dst_y, int 
     if (flying)
         dungeon_link_thing_to_square(thing, party.cur_map, dst_x, dst_y);
     else
-        sensor_process_floor(dst_x, dst_y, thing, 0, 1, 0);
+        sensor_enter_square(dst_x, dst_y, thing, false, false);
     move_update_carried_missiles(thing, dst_x, dst_y, map, 0);
     if (active == GROUP_NOT_ACTIVE) {
         if (!(creature_group_info(thing)->flags & CREATURE_STATIC))
@@ -1156,7 +1156,7 @@ static void move_object_arrive(uint16_t thing, int type, int map, int start_map,
         if (g != THING_NONE)
             under_static = creature_group_info(g)->flags & CREATURE_STATIC;
     }
-    sensor_process_floor(dst_x, dst_y, thing, dun_on_party_square(dst_x, dst_y), 1, under_static);
+    sensor_enter_square(dst_x, dst_y, thing, dun_on_party_square(dst_x, dst_y), under_static);
 }
 
 /* A thing (THING_NONE: the party) leaves (src_x, src_y): the floor sensors there react; a group that leaves the
@@ -1164,13 +1164,13 @@ static void move_object_arrive(uint16_t thing, int type, int map, int start_map,
 static void move_thing_leave(uint16_t thing, int flying, int same, int src_x, int src_y, int dst_x, int dst_y)
 {
     if (thing == THING_NONE) {
-        sensor_process_floor(src_x, src_y, THING_NONE, same, 0, 0);
+        sensor_leave_square(src_x, src_y, THING_NONE, same, false);
         return;
     }
     if (flying)
         dungeon_unlink_thing_from_square(thing, party.cur_map, src_x, src_y);
     else
-        sensor_process_floor(src_x, src_y, thing, dun_on_party_square(src_x, src_y), 0, dst_x < 0 && dst_y < 0);
+        sensor_leave_square(src_x, src_y, thing, dun_on_party_square(src_x, src_y), dst_x < 0 && dst_y < 0);
     if (thing_type(thing) == THING_GROUP && dst_x < -1) {
         int a = group_active(thing);
         if (a != GROUP_NOT_ACTIVE)

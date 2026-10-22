@@ -892,7 +892,7 @@ address,name,signature,subsystem
 0x0004bed2,move_party_to,"void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir)",champions
 0x0004bfd4,move_party_warp_to_marker,int move_party_warp_to_marker(void),magic
 0x0004c134,sensor_process_wall_click,"void sensor_process_wall_click(int16_t x, int16_t y, int16_t side, uint16_t actor_thing, uint16_t hand_object)",Skullkeep machines
-0x0004cdcc,sensor_process_floor,"void sensor_process_floor(int16_t x, int16_t y, uint16_t thing, int party_on_square, int entering, int creature_holder)",Skullkeep machines
+0x0004cdcc,process_floor,"void process_floor(int16_t x, int16_t y, uint16_t thing, int party_on_square, int entering, int creature_holder)",Skullkeep machines
 0x0004d88a,dun_find_marker,"int16_t dun_find_marker(uint16_t mode, int16_t nth, uint16_t marker_id, int16_t *out_x, int16_t *out_y)",dungeon data
 0x0004db2e,game_init_stub,void game_init_stub(void),main loop
 0x0004db2f,aspect_creature_cell,"int16_t aspect_creature_cell(uint8_t *group, int16_t dir)",creatures
@@ -1012,7 +1012,7 @@ address,name,signature,subsystem
 0x00057a63,sensor_launch_missile,"void sensor_launch_missile(uint8_t *sensor, uint8_t *event)",Skullkeep machines
 0x00057d21,sensor_nop,void sensor_nop(void),Skullkeep machines
 0x00057d27,apply_effect,"int apply_effect(uint16_t effect, uint16_t state)",Skullkeep machines
-0x00057d4c,sensor_transfer_object,"void sensor_transfer_object(uint16_t thing, uint8_t *sensor, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y, uint16_t to_cell, int party_hand, int keep_charges)",Skullkeep machines
+0x00057d4c,transfer_object,"void transfer_object(uint16_t thing, uint8_t *sensor, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y, uint16_t to_cell, int party_hand, int keep_charges)",Skullkeep machines
 0x00057e6c,transfer_objects,"void transfer_objects(uint8_t *event, uint8_t *sensor, uint16_t first_thing, int any_cell, int use_filter, int party_hand, int reverse, int first_only)",Skullkeep machines
 0x00058304,wall_square_event,void wall_square_event(uint8_t *event),timeline
 0x00058c6f,move_square_contents_through,"void move_square_contents_through(uint16_t x, uint16_t y)",dungeon data

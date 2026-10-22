@@ -127,6 +127,8 @@ static uint32_t current_map_time(uint32_t time)
     return timeline_time_map(time & EVENT_TIME_MASK, party.cur_map);
 }
 
+/* ---- Doors and square events ---- */
+
 int dun_get_door_type(uint16_t door)
 {
     return dungeon_map_door_type(party.cur_map, door_map_type(door));
@@ -263,6 +265,8 @@ bool sensor_door_try_destroy(int x, int y, int strength, bool magic, int delay)
     return true;
 }
 
+/* ---- Floor sensors ---- */
+
 /* A sensor fires: the inverted flag, then the effect (hold follows the trigger), then its target. */
 static void fire_sensor(uint16_t sensor, int trigger, int floor, int x, int y)
 {
@@ -310,12 +314,12 @@ static void fall_risk(uint16_t text, int x, int y, int on_square)
 typedef struct {
     int type, item; /* the thing type and item index of the thing, -1 for the party */
     int cell;       /* the wall cell, -1 on a floor */
-    int enter, on_square;
-    int other_item, same_item, creature, items;
+    bool enter, on_square;
+    bool other_item, same_item, creature, items;
 } FloorMove;
 
 /* The static creature on (x, y) whose possessions take or give thing, THING_NONE for the square. */
-static uint16_t floor_holder(int x, int y, int enter, int possessions)
+static uint16_t floor_holder(int x, int y, bool enter, bool possessions)
 {
     uint16_t g = creature_group_at(party.cur_map, x, y);
     if (g == THING_NONE || !possessions)
@@ -334,20 +338,20 @@ static void floor_scan(FloorMove *m, int x, int y)
         if (m->cell == -1) {
             if (tt == THING_GROUP && !creature_is_flying(t)) {
                 if (creature_group_info(t)->flags & CREATURE_STATIC && possessions_hold_type(t, m->item))
-                    m->same_item = 1;
-                m->creature = 1;
+                    m->same_item = true;
+                m->creature = true;
             } else if (tt == THING_TEXT && m->type == -1 && m->enter && !m->on_square) {
                 if (text_kind(t) == TEXT_KIND_TEXT && text_is_visible(t)) {
                     char text[TEXT_SIZE];
                     g_hooks.print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
                 }
             } else if (tt > THING_GROUP && tt < THING_PROJECTILE) {
-                m->items = 1;
+                m->items = true;
                 m->same_item |= item_get_index(t) == m->item;
                 m->other_item |= item_get_index(t) != m->item;
             }
         } else if (m->cell == thing_cell(t) && tt > THING_GROUP) {
-            m->items = 1;
+            m->items = true;
             m->same_item |= item_get_index(t) == m->item;
             m->other_item |= item_get_index(t) != m->item;
         }
@@ -445,16 +449,20 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
     }
 }
 
-void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter, int possessions)
+/* A thing (THING_NONE: the party) leaves or enters (m.enter) the square (x, y) of the current map: the floor sensors
+   and texts of the square react. m.on_square: the party stands there; possessions: an item goes into the
+   possessions of a static creature. */
+static void process_floor(int x, int y, uint16_t thing, FloorMove m, bool possessions)
 {
-    FloorMove m = {.type = -1, .item = -1, .enter = enter, .on_square = on_square};
+    m.type = -1;
+    m.item = -1;
     uint16_t holder = THING_NONE; /* a static creature whose possessions take the thing */
     if (thing != THING_NONE) {
         m.type = thing_type(thing);
         m.item = item_get_index(thing);
-        holder = floor_holder(x, y, enter, possessions);
+        holder = floor_holder(x, y, m.enter, possessions);
     }
-    if (!enter && m.type != -1) {
+    if (!m.enter && m.type != -1) {
         if (holder != THING_NONE)
             dungeon_unlink_thing_from_list(thing, group_possessions(holder));
         else
@@ -462,7 +470,7 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
     }
     m.cell = square_type(dungeon_square(party.cur_map, x, y)) == SQUARE_WALL ? thing_cell(thing) : -1;
     floor_scan(&m, x, y);
-    if (enter && m.type != -1) {
+    if (m.enter && m.type != -1) {
         if (holder != THING_NONE)
             dungeon_append_thing(thing, group_possessions(holder));
         else
@@ -490,6 +498,16 @@ void sensor_process_floor(int x, int y, uint16_t thing, int on_square, int enter
             floor_text(&m, t, x, y);
         }
     }
+}
+
+void sensor_enter_square(int x, int y, uint16_t thing, bool on_square, bool possessions)
+{
+    process_floor(x, y, thing, (FloorMove){.enter = true, .on_square = on_square}, possessions);
+}
+
+void sensor_leave_square(int x, int y, uint16_t thing, bool on_square, bool possessions)
+{
+    process_floor(x, y, thing, (FloorMove){.enter = false, .on_square = on_square}, possessions);
 }
 
 /* ---- Sensor effects ---- */
@@ -840,8 +858,15 @@ static bool is_object(uint16_t thing)
     return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC;
 }
 
-void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int from_y, int to_x, int to_y, int to_cell,
-                            int from_creature, int to_possessions)
+/* A square of the current map and a cell on it. */
+typedef struct {
+    int x, y, cell;
+} SquareCell;
+
+/* Moves thing (from the square from, NULL: a new thing; from_creature: from the possessions of a creature there) to
+   the cell of the square to for a transfer sensor, with the charge change of the sensor; on a floor the cell is
+   random. */
+static void transfer_object(uint16_t thing, uint16_t sensor, const SquareCell *from, SquareCell to, bool from_creature)
 {
     if (item_gdat_category(thing) != CAT_MISC || item_gdat_index(thing) != ITEM_BONES) {
         int charges = 0; /* fix: mode 3 adds an uninitialized amount in the original */
@@ -858,11 +883,11 @@ void sensor_transfer_object(uint16_t thing, uint16_t sensor, int from_x, int fro
         }
         item_add_charges(thing, charges);
     }
-    if (square_type(*current_square(to_x, to_y)) != SQUARE_WALL)
-        to_cell = rand_below(CELL_COUNT);
-    if (from_x >= 0 && from_y >= 0)
-        move_thing(thing, from_x, from_y, -1, from_creature ? -1 : 0);
-    move_thing(thing_with_cell(thing, to_cell), -1, to_possessions ? -1 : 0, to_x, to_y);
+    if (square_type(*current_square(to.x, to.y)) != SQUARE_WALL)
+        to.cell = rand_below(CELL_COUNT);
+    if (from)
+        move_thing(thing, from->x, from->y, -1, from_creature ? -1 : 0);
+    move_thing(thing_with_cell(thing, to.cell), -1, sensor_flag(sensor, SENSOR_KEEP_BONES) ? -1 : 0, to.x, to.y);
 }
 
 /* An object transfer of a Skullkeep machine: the square event and the sensor, and how the sensor picks the objects. */
@@ -929,7 +954,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
             }
             if (!match)
                 continue;
-            sensor_transfer_object(t, sensor, fx, fy, dx, dy, dcell, possessions != NULL, keep_bones);
+            transfer_object(t, sensor, &(SquareCell){fx, fy, fcell}, (SquareCell){dx, dy, dcell}, possessions != NULL);
             if (tr.first_only)
                 return;
         } else if (!tr.use_filter && thing_type(t) == THING_GROUP) {
@@ -950,8 +975,8 @@ static void create_item(uint16_t sensor)
     item_set_gdat_index(thing, item_index_gdat_index(item));
     if (sensor_effect(sensor) == SENSOR_KEEP_ITEM)
         item_set_do_not_discard(thing, 1);
-    sensor_transfer_object(thing, sensor, -1, -1, sensor_target_x(sensor), sensor_target_y(sensor),
-                           sensor_target_cell(sensor), 0, sensor_flag(sensor, SENSOR_KEEP_BONES));
+    SquareCell target = {sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor)};
+    transfer_object(thing, sensor, NULL, target, false);
 }
 
 /* SENSOR_COUNTDOWN: a data value up to 400 counts down, a larger one is a chance of data - 400 in 100. */
@@ -1234,8 +1259,7 @@ static void floor_square_event(TimelineEvent *e)
             break;
         case SENSOR_VANISH:
         case SENSOR_ALERT:
-            sensor_affect_creatures_in_area(sensor_area_power(t), sensor_area_creature(t), x, y, sensor_target_x(t),
-                                            sensor_target_y(t), kind, effect);
+            sensor_affect_creatures_in_area(t, x, y, effect);
             break;
         case SENSOR_PARTY_TELEPORT: { /* moves the party to its target (or to this square) */
             int tx = x, ty = y;
@@ -1610,7 +1634,7 @@ void timeline_event_sensor(TimelineEvent *e)
     }
 }
 
-void sensor_process_map_entry(int entering)
+void sensor_process_map_entry(bool entering)
 {
     int saved = party.cur_map;
     dun_set_current_map(game.party_map);
@@ -1811,12 +1835,41 @@ static int wall_click_item_holder(WallClick *c, uint16_t t, int ornament)
     return CLICK_IGNORED;
 }
 
-/* The skip of the trigger of a clicked wall sensor of kind, or CLICK_IGNORED. */
-static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, int ornament, int *extra)
+/* A counted item sensor takes the item of its ornament from the hand until its count is 0; then it turns busy. Returns
+   the skip of the trigger or CLICK_IGNORED. */
+static int wall_click_counted_item(WallClick *c, uint16_t t, int ornament)
+{
+    unsigned data = sensor_data(t);
+    if (!data || item_get_index(c->hand) != holder_item(ornament))
+        return CLICK_IGNORED;
+    c->take = 1;
+    c->hand = THING_NONE;
+    sensor_set_data(t, --data);
+    if ((uint16_t)data)
+        return 1;
+    sensor_set_flag(t, SENSOR_BUSY, true);
+    return 0;
+}
+
+/* A teleport button moves the party to the target of the sensor on the map of its data; returns the skip of the
+   trigger or CLICK_IGNORED. */
+static int wall_click_teleport(WallClick *c, uint16_t t)
+{
+    if (c->hand != THING_NONE || sensor_flag(t, SENSOR_STATE))
+        return CLICK_IGNORED;
+    int effect = sensor_effect(t);
+    int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, game.party_dir);
+    move_party_to(sensor_target_x(t), sensor_target_y(t), sensor_data_map(t), dir);
+    g_hooks.flush_input();
+    return 1;
+}
+
+/* The skip of the trigger of a clicked wall sensor t on the clicked cell, or CLICK_IGNORED. */
+static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *extra)
 {
     int effect = sensor_effect(t);
     unsigned data = sensor_data(t);
-    switch (kind) {
+    switch (sensor_type(t)) {
     case WALL_CLICK_ANY:
         return effect == EFFECT_HOLD ? CLICK_IGNORED : 0;
     case WALL_CLICK_EMPTY_HAND:
@@ -1844,7 +1897,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, 
     case WALL_CLICK_BUTTON_2:
         return wall_click_button(c, t, ornament, extra);
     case WALL_CLICK_PORTRAIT:
-        if (!sensor_flag(t, SENSOR_STATE) || side != dir_opposite(game.party_dir))
+        if (!sensor_flag(t, SENSOR_STATE) || c->cell != dir_opposite(game.party_dir))
             return 1;
         champ_start_recruit(game.party_x, game.party_y, game.party_dir, game.party_map);
         c->done = 1;
@@ -1852,23 +1905,9 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, 
     case WALL_ITEM_HOLDER:
         return wall_click_item_holder(c, t, ornament);
     case WALL_CLICK_COUNTED_ITEM:
-        if (!data || item_get_index(c->hand) != holder_item(ornament))
-            return CLICK_IGNORED;
-        c->take = 1;
-        c->hand = THING_NONE;
-        sensor_set_data(t, --data);
-        if ((uint16_t)data)
-            return 1;
-        sensor_set_flag(t, SENSOR_BUSY, true);
-        return 0;
-    case WALL_CLICK_TELEPORT: {
-        if (c->hand != THING_NONE || sensor_flag(t, SENSOR_STATE))
-            return CLICK_IGNORED;
-        int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, game.party_dir);
-        move_party_to(sensor_target_x(t), sensor_target_y(t), sensor_data_map(t), dir);
-        g_hooks.flush_input();
-        return 1;
-    }
+        return wall_click_counted_item(c, t, ornament);
+    case WALL_CLICK_TELEPORT:
+        return wall_click_teleport(c, t);
     case WALL_CLICK_RESET:
         if (c->hand == THING_NONE)
             sensor_set_flag(t, SENSOR_BUSY, false);
@@ -1878,7 +1917,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int kind, int side, 
 }
 
 /* A clicked wall sensor triggers its target (a hold sensor: set when it does not skip, else clear). */
-static void wall_click_sensor(WallClick *c, uint16_t t, int side)
+static void wall_click_sensor(WallClick *c, uint16_t t)
 {
     int kind = sensor_type(t), effect = sensor_effect(t);
     if (!c->has_leader && kind != WALL_CLICK_PORTRAIT)
@@ -1887,7 +1926,7 @@ static void wall_click_sensor(WallClick *c, uint16_t t, int side)
     if (!kind)
         return;
     int extra = 0;
-    int skip = wall_click_sensor_skip(c, t, kind, side, ornament, &extra);
+    int skip = wall_click_sensor_skip(c, t, ornament, &extra);
     if (skip == CLICK_IGNORED)
         return;
     if (effect == EFFECT_HOLD) {
@@ -1978,7 +2017,7 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
         }
         int type = thing_type(t);
         if (type == THING_SENSOR)
-            wall_click_sensor(&c, t, side);
+            wall_click_sensor(&c, t);
         else if (actor == THING_NONE && type == THING_TEXT)
             wall_click_text(&c, t);
         else if (type >= THING_SENSOR)

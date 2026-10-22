@@ -1578,8 +1578,10 @@ void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
         creature_turn_group(g, 1, sensor_turn_dir(sensor));
 }
 
-void sensor_affect_creatures_in_area(int power, int creature_type, int x, int y, int tx, int ty, int kind, int effect)
+void sensor_affect_creatures_in_area(uint16_t sensor, int x, int y, int effect)
 {
+    int power = sensor_area_power(sensor), creature_type = sensor_area_creature(sensor);
+    int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor), kind = sensor_type(sensor);
     int rx = abs((int16_t)(x - tx)), ry = abs((int16_t)(y - ty));
     int left = x - rx, top = y - ry;
     for (int row = ry * 2; row >= 0; row--)

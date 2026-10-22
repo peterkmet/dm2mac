@@ -69,7 +69,7 @@ WALL_END_GAME = 0x58A12
 ARROWS_DRAWING = (0x42B00, 0x42B6D)
 # forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
 FORWARD_REVERSE_HOLD = 0x5723C
-# Step 17: the weather update, and sensor_transfer_object with its charge change that mode 3 leaves uninitialized.
+# Step 17: the weather update, and transfer_object with its charge change that mode 3 leaves uninitialized.
 WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2
 MAP_GRAPHICS_TAIL = SCRATCH + 0xF8200  # the end of gdat_load_map_graphics: world_update_day_night(0), then return
 # Weather globals of the original: name -> (address, struct format); the C values come from World.
