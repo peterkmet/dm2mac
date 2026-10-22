@@ -161,6 +161,7 @@ typedef struct {
     int sustain_count;
 } Channel;
 
+/* Driver state per voice, operator, and MIDI channel. */
 static struct {
     opl3_chip chip;
     void (*write_hook)(int reg, int value);
