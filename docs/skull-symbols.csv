@@ -156,13 +156,13 @@ address,name,signature,subsystem
 0x0001623b,sound_load_registered,void sound_load_registered(void),sound
 0x000163c2,sound_unload_all,void sound_unload_all(void),sound
 0x00016457,projectile_create,"void projectile_create(uint16_t thing, uint16_t x, uint16_t y, int cell, uint16_t dir, uint8_t kinetic, uint8_t attack, uint8_t step)",projectiles
-0x00016632,explosion_trigger_sensors,"void explosion_trigger_sensors(int16_t explosion_type, int16_t x, int16_t y, int16_t attack)",projectiles
+0x00016632,trigger_explosion_sensors,"void trigger_explosion_sensors(int16_t explosion_type, int16_t x, int16_t y, int16_t attack)",projectiles
 0x00016746,explosion_create,"void explosion_create(uint16_t type, uint16_t attack, uint16_t x, uint16_t y, int16_t cell)",projectiles
 0x00016bdc,projectile_cancel_event,void projectile_cancel_event(uint16_t thing),projectiles
 0x00016c0c,projectile_destroy,"void projectile_destroy(uint16_t projectile, uint16_t *possessions, int16_t x, int16_t y)",projectiles
 0x00016d72,projectile_get_attack,"uint16_t projectile_get_attack(const uint8_t *projectile, uint16_t payload)",projectiles
-0x00016f87,projectile_hit_wall_sensors,"int projectile_hit_wall_sensors(int16_t x, int16_t y, int16_t from_x, int16_t from_y, int16_t dir, uint16_t projectile)",projectiles
-0x0001726b,projectile_hit,"int projectile_hit(int16_t impact, int16_t x, int16_t y, int16_t cell, uint16_t projectile)",projectiles
+0x00016f87,hit_wall_sensors,"int hit_wall_sensors(int16_t x, int16_t y, int16_t from_x, int16_t from_y, int16_t dir, uint16_t projectile)",projectiles
+0x0001726b,hit_impact,"int hit_impact(int16_t impact, int16_t x, int16_t y, int16_t cell, uint16_t projectile)",projectiles
 0x00017a7b,projectile_process_event,void projectile_process_event(const void *event),projectiles
 0x000181f0,explosion_get_attack,"uint16_t explosion_get_attack(uint16_t explosion, uint16_t target)",projectiles
 0x00018395,explosion_process_event,void explosion_process_event(void *event),projectiles

@@ -252,7 +252,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 ### Projectiles and explosions
 
 - Projectile event data: `+6` projectile thing, `+8` `x | y << 5 | dir << 10 | step << 12`.
-- `projectile_hit(impact, x, y, cell, projectile)`: impact -1 creature, -2 champion, -3 party square, 0 wall, 4 door. Returns 1 when the projectile stops.
+- `hit_impact(impact, x, y, cell, projectile)`: impact -1 creature, -2 champion, -3 party square, 0 wall, 4 door. Returns 1 when the projectile stops.
 - `explosion_create(type, attack, x, y, cell)`: `cell == 0xff` = centered. Types: `0xff80` fireball, `0xff82`/`0xffb0`/`0xffb1` area damage (`0xffb0` lightning), `0xff83` non-material, `0xff86` poison, `0xff87` poison cloud, `0xff8e` lasting cloud, `0xffe4` smoke.
 
 ### Sound

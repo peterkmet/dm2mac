@@ -130,14 +130,15 @@ static const uint8_t explosion_attack_flags[BLAST_TYPE_COUNT] = {BLAST_RANDOM | 
 #define ALERT_CHANCE_WEAK   30
 #define ALERT_CHANCE_STRONG 95
 
-int projectile_event_dir(const TimelineEvent *e)
+/* The flight direction in the position word of a projectile move event. */
+static int flight_dir(const TimelineEvent *e)
 {
     return location_dir(le16(e->data + PROJECTILE_EVENT_POSITION));
 }
 
 int projectile_dir(uint16_t projectile)
 {
-    return projectile_event_dir(&g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)]);
+    return flight_dir(&g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)]);
 }
 
 /* True for the party square on the current map. */
@@ -187,7 +188,7 @@ void projectile_event_set_position(TimelineEvent *e, int x, int y, int dir)
 }
 
 /* An explosion of type with power on (x, y): the explosion sensors of the square react. */
-static void explosion_trigger_sensors(int type, int x, int y, int power)
+static void trigger_explosion_sensors(int type, int x, int y, int power)
 {
     for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
@@ -208,7 +209,7 @@ static void explosion_trigger_sensors(int type, int x, int y, int power)
 }
 
 /* The blast of a fireball or lightning hurts the party and the creature on (x, y), then a creature near it. */
-static void explosion_blast(int type, int power, int x, int y, int cell)
+static void blast_square(int type, int power, int x, int y, int cell)
 {
     uint16_t full = (uint16_t)(((uint16_t)power >> 1) + 1);
     full = (uint16_t)(full + rand_below(full) + 1);
@@ -285,7 +286,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
     case SPELL_FIREBALL:
     case EXPLOSION_STORM_LIGHTNING:
     case EXPLOSION_STORM_BLAST:
-        explosion_blast((uint16_t)type, power, x, y, cell);
+        blast_square((uint16_t)type, power, x, y, cell);
         if (g_party.cur_map == game.party_map)
             g_party.redraw |= REDRAW_VIEW;
         break;
@@ -303,7 +304,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
     }
     }
     /* kept quirk: after a door spell the original reads the power from the high byte of the door record word */
-    explosion_trigger_sensors((uint16_t)type, x, y, explosion_power(power_thing));
+    trigger_explosion_sensors((uint16_t)type, x, y, explosion_power(power_thing));
 }
 
 void projectile_cancel_event(uint16_t projectile)
@@ -387,7 +388,7 @@ int projectile_get_attack(uint16_t projectile, uint16_t payload)
 
 /* The projectile from (x, y) hits the wall at (wall_x, wall_y) while it flies toward dir: the hit sensors of the
    wall cell react, an alcove can catch the object, a portal sensor sends it on. Returns 1 when the object stops. */
-static int projectile_hit_wall_sensors(int wall_x, int wall_y, int x, int y, int dir, uint16_t projectile)
+static int hit_wall_sensors(int wall_x, int wall_y, int x, int y, int dir, uint16_t projectile)
 {
     int done = 0, side = dir_opposite(dir);
     uint16_t first = dungeon_square_first_thing(g_party.cur_map, wall_x, wall_y);
@@ -446,7 +447,7 @@ typedef struct {
 } Hit;
 
 /* The projectile meets the creature near the cell of its hit square; returns 1 when it hits. */
-static int projectile_hit_creature(Hit *h, int cell)
+static int hit_creature(Hit *h, int cell)
 {
     int16_t x = h->x, y = h->y;
     uint16_t g = creature_find_group_near_point(&x, &y, (uint16_t)cell);
@@ -494,7 +495,7 @@ static int projectile_hit_creature(Hit *h, int cell)
 }
 
 /* The projectile hits the champion in cell; returns 0 when no champion stands there. */
-static int projectile_hit_champion(Hit *h, int cell)
+static int hit_champion(Hit *h, int cell)
 {
     int champ = champ_get_index_in_cell((uint16_t)cell);
     if (champ < 0)
@@ -515,7 +516,7 @@ static int projectile_hit_champion(Hit *h, int cell)
 }
 
 /* The projectile hits the door at (x, y). Returns 1 when it stops, 0 when it flies through. */
-static int projectile_hit_door(Hit *h)
+static int hit_door(Hit *h)
 {
     uint8_t square = dungeon_square(g_party.cur_map, h->x, h->y);
     int state = square & SQUARE_DOOR_STATE;
@@ -600,7 +601,8 @@ static uint16_t hit_explode(Hit *h, uint16_t potion, uint16_t blast_type, int bl
     return push_strength;
 }
 
-int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile)
+/* The projectile from (x, y) meets impact (PROJECTILE_HIT_*, or a square type); returns 1 when it stops. */
+static int hit_impact(int impact, int x, int y, int cell, uint16_t projectile)
 {
     Hit h = {0};
     uint16_t blast_type = 0;
@@ -610,17 +612,16 @@ int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile)
     int16_t kind = (int16_t)impact;
     if (kind == 0) {
         int dir = projectile_dir(projectile);
-        if (projectile_hit_wall_sensors(fall_x + g_dir_dx[dir], fall_y + g_dir_dy[dir], fall_x, fall_y, dir,
-                                        projectile))
+        if (hit_wall_sensors(fall_x + g_dir_dx[dir], fall_y + g_dir_dy[dir], fall_x, fall_y, dir, projectile))
             return 1;
     } else if (kind == SQUARE_DOOR) {
-        if (!projectile_hit_door(&h))
+        if (!hit_door(&h))
             return 0;
     } else if (kind == PROJECTILE_HIT_CREATURE || kind == PROJECTILE_HIT_CHAMPION ||
                kind == PROJECTILE_HIT_PARTY_SQUARE) {
-        int champion_hit = kind != PROJECTILE_HIT_CREATURE && projectile_hit_champion(&h, cell);
+        int champion_hit = kind != PROJECTILE_HIT_CREATURE && hit_champion(&h, cell);
         if (kind != PROJECTILE_HIT_CHAMPION) {
-            if (projectile_hit_creature(&h, cell))
+            if (hit_creature(&h, cell))
                 h.hit = 1;
             else if (kind != PROJECTILE_HIT_PARTY_SQUARE)
                 return 0;
@@ -661,14 +662,14 @@ static void set_event_dir(TimelineEvent *e, int dir)
 
 /* The creature on (x, y) may reflect a spell of the projectile; returns 1 when a creature stands there and
    reflects spells (then the projectile hits nothing on this square). */
-static int projectile_reflect(TimelineEvent *e, uint16_t projectile, int x, int y)
+static int reflect_spell(TimelineEvent *e, uint16_t projectile, int x, int y)
 {
     uint16_t g = creature_get_group_at(x, y);
     if (g == THING_NONE || !(creature_group_info(g)->flags & CREATURE_REFLECTS_SPELLS) ||
         thing_word(projectile, PROJECTILE_PAYLOAD) < SPELL_THING_FIRST)
         return 0;
     int facing = group_dir(g) & 1;
-    int dir = spell_reflection[facing][(int16_t)thing_cell(projectile) & DIR_MASK][projectile_event_dir(e)];
+    int dir = spell_reflection[facing][(int16_t)thing_cell(projectile) & DIR_MASK][flight_dir(e)];
     if (dir < DIR_COUNT) {
         set_event_dir(e, dir);
         /* the original also writes the direction into the freed event of this move */
@@ -678,7 +679,7 @@ static int projectile_reflect(TimelineEvent *e, uint16_t projectile, int x, int 
 }
 
 /* A creature on the squares ahead of a projectile that flew on notices it. */
-static void projectile_alert_ahead(void)
+static void alert_creatures_ahead(void)
 {
     int saved = g_party.cur_map;
     if (g_party.dest_map != g_party.cur_map)
@@ -703,8 +704,8 @@ static void projectile_alert_ahead(void)
 
 /* The projectile on (*x, *y) flies into the next square toward dir: it hits a wall or stairs there (returns 1), or
    a missile wall there turns it back (*leaves 0, the square stays). */
-static int projectile_enter_square(TimelineEvent *e, uint16_t projectile, int16_t *x, int16_t *y, int dir, int cell,
-                                   int *leaves)
+static int enter_next_square(TimelineEvent *e, uint16_t projectile, int16_t *x, int16_t *y, int dir, int cell,
+                             int *leaves)
 {
     int16_t from_x = *x, from_y = *y;
     *x = (int16_t)(*x + g_dir_dx[dir]);
@@ -713,14 +714,14 @@ static int projectile_enter_square(TimelineEvent *e, uint16_t projectile, int16_
     int type = square_type(square);
     if ((type == SQUARE_WALL || (type == SQUARE_FAKE_WALL && !(square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0))) ||
          (type == SQUARE_STAIRS && square_type(dungeon_square(g_party.cur_map, from_x, from_y)) == SQUARE_STAIRS)) &&
-        projectile_hit(type, from_x, from_y, cell, projectile))
+        hit_impact(type, from_x, from_y, cell, projectile))
         return 1;
     for (uint16_t t = dungeon_square_first_object(g_party.cur_map, *x, *y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_EXPLOSION || explosion_type(t) != BLAST_MISSILE_WALL)
             continue;
         TimelineEvent *queued = &g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)];
-        int back = dir_opposite(projectile_event_dir(queued));
+        int back = dir_opposite(flight_dir(queued));
         set_event_dir(e, back);
         set_event_dir(queued, back);
         *x = from_x;
@@ -742,10 +743,10 @@ void projectile_process_event(TimelineEvent *event)
         e.type = EVENT_PROJECTILE_MOVE_2; /* the first move: no hit on the launch square */
     } else {
         int cell = thing_cell(projectile);
-        if (!projectile_reflect(&e, projectile, x, y)) {
-            if (on_party_square(x, y) && projectile_hit(PROJECTILE_HIT_PARTY_SQUARE, x, y, cell, projectile))
+        if (!reflect_spell(&e, projectile, x, y)) {
+            if (on_party_square(x, y) && hit_impact(PROJECTILE_HIT_PARTY_SQUARE, x, y, cell, projectile))
                 return;
-            if (projectile_hit(PROJECTILE_HIT_CREATURE, x, y, cell, projectile))
+            if (hit_impact(PROJECTILE_HIT_CREATURE, x, y, cell, projectile))
                 return;
         }
         int step = le16(e.data + PROJECTILE_EVENT_POSITION) >> POSITION_STEP_SHIFT;
@@ -760,11 +761,11 @@ void projectile_process_event(TimelineEvent *event)
     }
     projectile = le16(e.data + PROJECTILE_EVENT_THING);
     int cell = thing_cell(projectile);
-    int dir = projectile_event_dir(&e);
+    int dir = flight_dir(&e);
     int leaves = dir == cell ||
                  dir_turn(dir, TURN_RIGHT) == cell; /* the projectile is in the front cells: it leaves the square */
     int16_t from_x = x, from_y = y;
-    if (leaves && projectile_enter_square(&e, projectile, &x, &y, dir, cell, &leaves))
+    if (leaves && enter_next_square(&e, projectile, &x, &y, dir, cell, &leaves))
         return;
     int new_cell = dir_turn(cell, (dir & 1) == (cell & 1) ? -1 : 1);
     if (leaves) {
@@ -774,9 +775,9 @@ void projectile_process_event(TimelineEvent *event)
         projectile_event_set_position(&e, g_party.dest_x, g_party.dest_y, g_party.dest_dir);
         projectile = thing_with_cell(projectile, g_party.dest_cell);
         timeline_set_event_map(&e, g_party.dest_map);
-        projectile_alert_ahead();
+        alert_creatures_ahead();
     } else {
-        if (square_type(dun_get_square(x, y)) == SQUARE_DOOR && projectile_hit(SQUARE_DOOR, x, y, cell, projectile))
+        if (square_type(dun_get_square(x, y)) == SQUARE_DOOR && hit_impact(SQUARE_DOOR, x, y, cell, projectile))
             return;
         dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
         projectile = thing_with_cell(projectile, new_cell);
@@ -941,7 +942,7 @@ static int wound_nibble(const CreatureInfo *info, int location)
 }
 
 /* True when the champion dodges the melee attack of a creature with dexterity. */
-static int creature_attack_missed(const CreatureInfo *info, int champ, uint16_t dexterity, int difficulty)
+static int attack_missed(const CreatureInfo *info, int champ, uint16_t dexterity, int difficulty)
 {
     int visibility;
     if (game.magic_light[MAGIC_INVISIBILITY] && !(info->flags & CREATURE_SEES_INVISIBLE))
@@ -958,7 +959,7 @@ static int creature_attack_missed(const CreatureInfo *info, int champ, uint16_t 
 }
 
 /* The wounds of a melee hit: the hands, or a location by the wound chances of the creature. */
-static uint16_t creature_attack_wounds(const CreatureInfo *info)
+static uint16_t attack_wounds(const CreatureInfo *info)
 {
     uint32_t r = rand_next();
     if (!(r & ROLL_WOUND_LOCATION) || (!info->unknown_1a && !info->unknown_1b))
@@ -988,8 +989,8 @@ int creature_attack_champion(uint16_t group, int champ)
         dexterity = (uint16_t)min16(DEXTERITY_ALWAYS_HITS, (int16_t)(dexterity * 2));
     else if (kind == ATTACK_KIND_ALWAYS_HITS)
         dexterity = DEXTERITY_ALWAYS_HITS;
-    if (!creature_attack_missed(info, champ, dexterity, difficulty)) {
-        uint16_t wounds = creature_attack_wounds(info);
+    if (!attack_missed(info, champ, dexterity, difficulty)) {
+        uint16_t wounds = attack_wounds(info);
         int16_t power =
             (int16_t)(info->attack + min16(info->attack, (int16_t)((rand_next() & ROLL_MELEE_POWER) + difficulty)));
         int skipped = 0;
@@ -1029,7 +1030,7 @@ int creature_attack_champion(uint16_t group, int champ)
 }
 
 /* The number of square steps between two squares (no diagonals). */
-static int16_t square_distance(int x1, int y1, int x2, int y2)
+static int16_t steps_between(int x1, int y1, int x2, int y2)
 {
     int16_t dx = (int16_t)(x1 - x2), dy = (int16_t)(y1 - y2);
     return (int16_t)((dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy));
@@ -1043,7 +1044,7 @@ void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y)
     for (int cell = 0; cell < DIR_COUNT; cell++)
         if (champ_get_index_in_cell(cell) >= 0)
             champs[cell] = (uint8_t)(cell + 1);
-    if ((int16_t)to_x >= 0 && square_distance(from_x, from_y, to_x, to_y) == 1) {
+    if ((int16_t)to_x >= 0 && steps_between(from_x, from_y, to_x, to_y) == 1) {
         int dir = dun_get_direction_to((int16_t)from_x, (int16_t)from_y, (int16_t)to_x, (int16_t)to_y);
         int dir2 = dir_turn(dir, TURN_RIGHT);
         next[0] = next[1] = next[2] = next[3] = 0;
@@ -1062,7 +1063,7 @@ void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y)
             if (thing_type(t) == THING_PROJECTILE &&
                 g_timeline.events[thing_word(t, PROJECTILE_EVENT)].type != EVENT_PROJECTILE_MOVE &&
                 champs[thing_cell(t)] &&
-                projectile_hit(PROJECTILE_HIT_PARTY_SQUARE, (int16_t)x, (int16_t)y, champs[thing_cell(t)] - 1, t)) {
+                hit_impact(PROJECTILE_HIT_PARTY_SQUARE, (int16_t)x, (int16_t)y, champs[thing_cell(t)] - 1, t)) {
                 projectile_cancel_event(t);
                 t = dungeon_square_first_thing(g_party.cur_map, sx, sy);
                 continue;

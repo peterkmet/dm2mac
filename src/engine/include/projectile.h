@@ -100,8 +100,6 @@ void projectile_create(uint16_t payload, int x, int y, int cell, int dir, int en
 void explosion_create(int type, int power, int x, int y, int cell);
 /* Sets the square and the flight direction of a projectile move event; the energy step stays. */
 void projectile_event_set_position(TimelineEvent *e, int x, int y, int dir);
-/* The flight direction in the position word of a projectile move event. */
-int projectile_event_dir(const TimelineEvent *e);
 /* The flight direction of projectile: the direction of its queued move event. */
 int projectile_dir(uint16_t projectile);
 /* Removes the queued move of a projectile. */
@@ -110,8 +108,6 @@ void projectile_cancel_event(uint16_t projectile);
 void projectile_destroy(uint16_t projectile, uint16_t *holder, int x, int y);
 /* The power of a projectile hit; sets projectile_extra_damage and projectile_attack_type. */
 int projectile_get_attack(uint16_t projectile, uint16_t payload);
-/* The projectile from (x, y) meets impact (PROJECTILE_HIT_*, or a square type); returns 1 when it stops. */
-int projectile_hit(int impact, int x, int y, int cell, uint16_t projectile);
 enum { PROJECTILE_HIT_PARTY_SQUARE = -3, PROJECTILE_HIT_CHAMPION = -2, PROJECTILE_HIT_CREATURE = -1 };
 void projectile_process_event(TimelineEvent *e);
 /* The damage of an explosion on target: a door, a creature group, or THING_NONE for the party. */
