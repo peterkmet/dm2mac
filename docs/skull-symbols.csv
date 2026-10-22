@@ -328,7 +328,7 @@ address,name,signature,subsystem
 0x0001fc2c,dun_get_sensor_wall_ornament,uint8_t dun_get_sensor_wall_ornament(const void *sensor),dungeon data
 0x0001fc82,dun_get_sensor_floor_ornament,uint8_t dun_get_sensor_floor_ornament(const void *sensor),dungeon data
 0x0001fcec,dun_get_wall_ornament_attr_0a,uint16_t dun_get_wall_ornament_attr_0a(uint8_t ornament),dungeon data
-0x0001fd15,dun_is_wall_thing_ornament_shown,"int dun_is_wall_thing_ornament_shown(uint16_t list, uint16_t thing)",dungeon data
+0x0001fd15,dun_is_alcove_shown,"int dun_is_alcove_shown(uint16_t list, uint16_t thing)",dungeon data
 0x0001fd74,dun_get_wall_thing_ornament_attr_13,"uint16_t dun_get_wall_thing_ornament_attr_13(uint16_t list, uint16_t thing)",dungeon data
 0x0001fdbb,dun_get_thing_ornament_attr_0b,uint16_t dun_get_thing_ornament_attr_0b(uint16_t thing),dungeon data
 0x0001fdf0,dun_get_thing_ornament_attr_0c,uint16_t dun_get_thing_ornament_attr_0c(uint16_t thing),dungeon data
@@ -886,7 +886,7 @@ address,name,signature,subsystem
 0x0004b108,move_thing,"int move_thing(uint16_t thing, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",dungeon data
 0x0004bbe4,sensor_schedule_square_event,"void sensor_schedule_square_event(uint8_t x, uint8_t y, uint8_t cell, uint16_t effect, uint32_t time)",Skullkeep machines
 0x0004bc4c,sensor_trigger_target,"void sensor_trigger_target(uint8_t *sensor, uint16_t effect, int16_t extra_delay)",Skullkeep machines
-0x0004bca2,item_container_holds_type,"int item_container_holds_type(uint16_t container_thing, int16_t object_type)",items
+0x0004bca2,contains_item_type,"int contains_item_type(uint16_t container_thing, int16_t object_type)",items
 0x0004bd17,dun_find_object_type_on_square,"uint16_t dun_find_object_type_on_square(int16_t x, int16_t y, int16_t cell, uint16_t object_type)",dungeon data
 0x0004bd6c,item_party_possesses_type,int item_party_possesses_type(int16_t object_type),items
 0x0004bed2,move_party_to,"void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir)",champions
@@ -995,26 +995,26 @@ address,name,signature,subsystem
 0x0005643d,timeline_pop_first_event,void timeline_pop_first_event(void *event),timeline
 0x0005646f,timeline_is_event_due,int timeline_is_event_due(void),timeline
 0x000564c6,timeline_event_door_animation,void timeline_event_door_animation(uint8_t *event),timeline
-0x000568f7,timeline_event_door_square,void timeline_event_door_square(uint8_t *event),timeline
-0x00056a03,timeline_event_fake_wall_square,void timeline_event_fake_wall_square(uint8_t *event),timeline
+0x000568f7,doorway_event,void doorway_event(uint8_t *event),timeline
+0x00056a03,fake_wall_event,void fake_wall_event(uint8_t *event),timeline
 0x00056af9,timeline_event_door_destruction,void timeline_event_door_destruction(uint8_t *event),timeline
 0x00056b39,sensor_turn_creatures,"void sensor_turn_creatures(uint8_t *event, uint8_t *sensor)",Skullkeep machines
 0x00056ba5,sensor_affect_creatures_in_area,"void sensor_affect_creatures_in_area(uint16_t power, uint16_t creature_type, int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t sensor_type, int16_t effect)",Skullkeep machines
-0x00056cf4,sensor_get_ornament_cycle,"uint16_t sensor_get_ornament_cycle(uint8_t *sensor, int on_wall)",Skullkeep machines
-0x00056d6a,sensor_start_ambient_sound,"void sensor_start_ambient_sound(uint8_t *sensor, uint16_t sensor_thing, int16_t x, int16_t y, uint16_t period, int on_wall)",Skullkeep machines
-0x00056f11,sensor_toggle_animation,"void sensor_toggle_animation(uint16_t sensor_thing, uint8_t *event, uint8_t *sensor, int on_wall)",Skullkeep machines
-0x000570b1,sensor_play_activation,"void sensor_play_activation(uint8_t *event, uint8_t *sensor, uint16_t sensor_thing, int on_wall)",Skullkeep machines
-0x000571f3,sensor_forward_effect,"void sensor_forward_effect(uint8_t *event, uint8_t *sensor, int16_t delay)",Skullkeep machines
-0x000572a8,sensor_relay_delayed,"void sensor_relay_delayed(uint8_t *event, uint8_t *sensor, int scaled_delay)",Skullkeep machines
-0x0005737c,sensor_set_global_flag,"void sensor_set_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
-0x000573e9,sensor_test_global_flag,"void sensor_test_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
-0x00057476,timeline_event_floor_square,void timeline_event_floor_square(uint8_t *event),timeline
+0x00056cf4,ornament_cycle,"uint16_t ornament_cycle(uint8_t *sensor, int on_wall)",Skullkeep machines
+0x00056d6a,start_ambient_sound,"void start_ambient_sound(uint8_t *sensor, uint16_t sensor_thing, int16_t x, int16_t y, uint16_t period, int on_wall)",Skullkeep machines
+0x00056f11,toggle_animation,"void toggle_animation(uint16_t sensor_thing, uint8_t *event, uint8_t *sensor, int on_wall)",Skullkeep machines
+0x000570b1,run_activation,"void run_activation(uint8_t *event, uint8_t *sensor, uint16_t sensor_thing, int on_wall)",Skullkeep machines
+0x000571f3,forward_effect,"void forward_effect(uint8_t *event, uint8_t *sensor, int16_t delay)",Skullkeep machines
+0x000572a8,relay_delayed,"void relay_delayed(uint8_t *event, uint8_t *sensor, int scaled_delay)",Skullkeep machines
+0x0005737c,set_global_flag,"void set_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
+0x000573e9,test_global_flag,"void test_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
+0x00057476,floor_square_event,void floor_square_event(uint8_t *event),timeline
 0x00057a63,sensor_launch_missile,"void sensor_launch_missile(uint8_t *sensor, uint8_t *event)",Skullkeep machines
 0x00057d21,sensor_nop,void sensor_nop(void),Skullkeep machines
-0x00057d27,sensor_apply_effect,"int sensor_apply_effect(uint16_t effect, uint16_t state)",Skullkeep machines
+0x00057d27,apply_effect,"int apply_effect(uint16_t effect, uint16_t state)",Skullkeep machines
 0x00057d4c,sensor_transfer_object,"void sensor_transfer_object(uint16_t thing, uint8_t *sensor, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y, uint16_t to_cell, int party_hand, int keep_charges)",Skullkeep machines
-0x00057e6c,sensor_transfer_objects,"void sensor_transfer_objects(uint8_t *event, uint8_t *sensor, uint16_t first_thing, int any_cell, int use_filter, int party_hand, int reverse, int first_only)",Skullkeep machines
-0x00058304,timeline_event_wall_square,void timeline_event_wall_square(uint8_t *event),timeline
+0x00057e6c,transfer_objects,"void transfer_objects(uint8_t *event, uint8_t *sensor, uint16_t first_thing, int any_cell, int use_filter, int party_hand, int reverse, int first_only)",Skullkeep machines
+0x00058304,wall_square_event,void wall_square_event(uint8_t *event),timeline
 0x00058c6f,move_square_contents_through,"void move_square_contents_through(uint16_t x, uint16_t y)",dungeon data
 0x00058edb,timeline_event_teleporter_square,void timeline_event_teleporter_square(uint8_t *event),timeline
 0x00058f5c,timeline_event_pit_square,void timeline_event_pit_square(uint8_t *event),timeline
@@ -1024,7 +1024,7 @@ address,name,signature,subsystem
 0x0005917d,timeline_event_magic_light,void timeline_event_magic_light(uint8_t *event),magic
 0x00059207,timeline_event_apply_item_effect,"void timeline_event_apply_item_effect(uint8_t *event, int16_t slot)",items
 0x00059293,timeline_event_sensor_animation_step,uint32_t timeline_event_sensor_animation_step(uint8_t *event),Skullkeep machines
-0x000592fa,sensor_schedule_timer,"void sensor_schedule_timer(uint8_t *sensor, uint16_t sensor_thing)",Skullkeep machines
+0x000592fa,schedule_timer,"void schedule_timer(uint8_t *sensor, uint16_t sensor_thing)",Skullkeep machines
 0x000593cf,timeline_event_sensor_timer,void timeline_event_sensor_timer(uint8_t *event),Skullkeep machines
 0x000594a1,sensor_start_timers,void sensor_start_timers(void),Skullkeep machines
 0x00059608,timeline_event_door_button_release,void timeline_event_door_button_release(uint8_t *event),timeline

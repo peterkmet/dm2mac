@@ -61,13 +61,13 @@ COMMAND_RECORD = SCRATCH + 0xF8000
 SCHEDULED_EVENT = SCRATCH + 0xF8100
 SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
 EXPLOSION_CREATE = 0x16746
-# The wall sensor that creates an item (kind 0x3c) in timeline_event_wall_square: Step 15.
+# The wall sensor that creates an item (kind 0x3c) in wall_square_event: Step 15.
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
 # The wall sensor of the end of the game (kind 0x12): Step 20.
 WALL_END_GAME = 0x58A12
 # The drawing part of ui_draw_movement_arrows (the screen is not mapped); it then sets the input mode.
 ARROWS_DRAWING = (0x42B00, 0x42B6D)
-# sensor_forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
+# forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
 FORWARD_REVERSE_HOLD = 0x5723C
 # Step 17: the weather update, and sensor_transfer_object with its charge change that mode 3 leaves uninitialized.
 WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2

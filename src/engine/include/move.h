@@ -130,7 +130,7 @@ void move_square_contents_through(int x, int y);
 
 /* Dungeon reads of sensor.c. */
 /* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
-bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing);
+bool dun_is_alcove_shown(uint16_t first, uint16_t thing);
 int dun_get_global_var(int var);
 int dun_modify_global_var(int var, int value, int op); /* returns the new value */
 /* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */

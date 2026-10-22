@@ -50,10 +50,11 @@ static inline uint16_t sensor_delay(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_FLAGS, SENSOR_DELAY_SHIFT, SENSOR_DELAY_MASK);
 }
-/* The ordinal of the ornament in the wall or floor ornament list of the map, 0 for none. */
-static inline uint16_t sensor_ornament_ordinal(uint16_t sensor)
+/* The index of the ornament in the wall or floor ornament list of the map, -1 for none (the record stores index + 1,
+   0 for none). */
+static inline int16_t sensor_ornament_index(uint16_t sensor)
 {
-    return thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK);
+    return (int16_t)(thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK) - 1);
 }
 static inline uint16_t sensor_target_x(uint16_t sensor)
 {
@@ -201,8 +202,8 @@ void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t t
 /* Queues the square event of the target of sensor with effect, delay ticks after its own delay. */
 void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).
-   Returns 1 when the door breaks. */
-int sensor_door_try_destroy(int x, int y, int strength, int magic, int delay);
+   True when the door breaks. */
+bool sensor_door_try_destroy(int x, int y, int strength, bool magic, int delay);
 /* A GDAT value of the door type of a door thing. */
 uint16_t sensor_door_value(uint16_t door, int key);
 /* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */

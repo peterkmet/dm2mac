@@ -106,8 +106,8 @@ static int ornament_frame(int category, int ornament, uint32_t time, int offset)
 /* The wall ornament of a sensor: an entry of the wall ornament list of the current map. */
 static uint8_t sensor_ornament(uint16_t sensor, const uint8_t *list)
 {
-    int ordinal = sensor_ornament_ordinal(sensor);
-    return ordinal ? list[ordinal - 1] : ORNAMENT_NONE;
+    int index = sensor_ornament_index(sensor);
+    return index >= 0 ? list[index] : ORNAMENT_NONE;
 }
 
 /* How a wall or floor thing shows its ornament: a fixed frame, or an animation at time + offset. */

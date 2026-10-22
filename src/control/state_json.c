@@ -1005,7 +1005,7 @@ static bool wall_sensors_json(Json *j, int ornament, int face, int x, int y)
             click |= sub == SUBTYPE_HAND_SWITCH;
             takes |= sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER;
         }
-        if (thing_type(t) != THING_SENSOR || !sensor_ornament_ordinal(t))
+        if (thing_type(t) != THING_SENSOR || sensor_ornament_index(t) < 0)
             continue;
         switch (sensor_type(t)) {
         case WALL_CLICK_ANY:

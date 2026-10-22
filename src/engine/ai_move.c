@@ -1422,7 +1422,7 @@ static void scan_wall_ornaments(int side)
     ai_square_scan.cells[0] = (int8_t)side;
     uint16_t first = cached_first_thing(), t = first;
     for (; t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
-        if (!dun_is_wall_thing_ornament_shown(first, t))
+        if (!dun_is_alcove_shown(first, t))
             continue;
         if (thing_cell(t) == ai_square_scan.cells[0])
             ai_square_scan.facing_ornament = 1;
