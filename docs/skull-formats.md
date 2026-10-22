@@ -142,7 +142,7 @@ Impact on the port: load sounds from GDAT type `2`, skip 6 bytes, convert signed
 - Voices: 64, as in the original. A new sound takes the first free voice. When all play, the sound is dropped. The priority sort of `FUN_00010573` is not ported yet; it belongs to the request queues.
 - The port keeps the samples signed and skips the XOR `0x80` of `FUN_000104ea`.
 - `sound_party_offset` takes the party direction 0 to 3. For other values the original keeps stale locals; the port treats them as north.
-- The audio output (`src/platform/platform.c`) fills the SDL audio stream from `plat_audio_pump` on the main thread, up to 2048 frames ahead. A music source can be added with `plat_audio_music`. It is mixed before the sound effects.
+- The audio output (`src/platform/platform.c`) fills the SDL audio stream from `plat_wait_tick` on the main thread, up to 2048 frames ahead. A music source can be added with `plat_audio_music`. It is mixed before the sound effects.
 
 ## 2. HMP songs and SONGLIST.DAT
 
@@ -335,7 +335,7 @@ Decompiled with `tools/ghidra/decompile.sh` (without `Watcall.java`: the driver 
 - The frequency table index is clamped to the table; the driver reads outside it for notes below the bend range. MIDI data bytes are cut to 7 bits before the driver tables use them.
 - A loop to an id that a track does not have does not move that track (the original searches past the loop records). A track that has no end event ends at its chunk end. A map outside `SONGLIST.DAT` keeps the song (the original reads past the buffer).
 - Not ported, because no song uses them: the HMI controllers `0x67`/`0x68` (controller enable flags), `0x72`, `0x75`, `0x76`, `0x79` (other loops), `0x77` (trigger callbacks), the HMI fade (`hmi_midi_fade_song`), tempo change, and the channel remap mode (the game turns it off). Like the original, the port does not send these controllers to the driver, but it does not run them.
-- `main.c` calls `music_init` after `plat_init` (the original `system_init` calls `sound_init`) and `music_quit` before `plat_quit` (the original `sound_shutdown`). `plat_audio_music(music_render)` connects the music to the SDL audio stream. `plat_audio_pump` runs on the main thread, so the music needs no lock. Without `MELODIC.BNK` or `DRUM.BNK`, the port logs a message and plays without music.
+- `main.c` calls `music_init` after `plat_init` (the original `system_init` calls `sound_init`) and `music_quit` before `plat_quit` (the original `sound_shutdown`). `plat_audio_music(music_render)` connects the music to the SDL audio stream. `plat_wait_tick` fills the audio stream on the main thread, so the music needs no lock. Without `MELODIC.BNK` or `DRUM.BNK`, the port logs a message and plays without music.
 - The song calls are at the same places as in the original: `music_update_for_map` once per game step (`game_step_end`), `music_pause` on the pause command, and `music_set_volume` from the volume dialog and after the start menu (the original `sound_set_volume` with device 10). The start menu plays no song: the first song starts at the first game step.
 
 ## 6. PIT divisor and tick rates

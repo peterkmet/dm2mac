@@ -1,8 +1,6 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
 block platform/main.c open: module cleanup
-block platform/platform.c open: module cleanup
-bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
 bool platform/main.c:default_control_path open: module cleanup
 bool platform/main.c:load_graphics open: module cleanup
@@ -10,8 +8,6 @@ bool platform/main.c:read_options open: module cleanup
 bool platform/main.c:select_mode open: module cleanup
 bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
-comment platform/include/platform.h open: module cleanup
-dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -21,7 +17,6 @@ decimal engine/magic.c rule 3.12: a table of SKULL.EXE
 decimal engine/save.c rule 3.12: magic light by power of SKULL.EXE
 decimal engine/sensor.c rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c rule 3.12: a table of SKULL.EXE
-decimal platform/platform.c open: module cleanup
 decimal ui/action_area.c rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/fm.c rule 3.12: a table of SKULL.EXE
 decimal ui/input.c rule 3.12: a table of SKULL.EXE
@@ -35,7 +30,6 @@ engine-write ui/play.c open: module cleanup
 engine-write ui/session.c open: module cleanup
 engine-write ui/text.c open: module cleanup
 engine-write ui/ui.c open: module cleanup
-enum platform/include/platform.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
 hex engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -61,11 +55,9 @@ long engine/ai_move.c:test_entered rule 5.8: one short case for each search targ
 long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
-order platform/platform.c open: module cleanup
 params platform/main.c:read_options open: module cleanup
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-prefix platform/main.c:play_movies open: module cleanup
-static-prefix platform/platform.c:movie_screen open: module cleanup
 type control:out open: module cleanup
 type control:value open: module cleanup
 type data:bpp open: module cleanup

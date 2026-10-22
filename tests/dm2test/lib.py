@@ -33,7 +33,7 @@ def load_lib():
     lib = ctypes.CDLL(str(copy))
     # a C bool fills only the low byte of the return register
     for header in (ROOT / "src").rglob("*.h"):
-        if "third_party" in header.parts:
+        if "third_party" in header.parts or header.name == "platform.h":  # the SDL side is not in the library
             continue
         for name in re.findall(r"^bool (\w+)\(", header.read_text(), re.M):
             getattr(lib, name).restype = ctypes.c_bool
