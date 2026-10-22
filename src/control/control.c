@@ -296,7 +296,7 @@ static void put_state(Json *reply)
     }
     put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d",
         g_game.sound_volume, g_game.music_volume, g_main_loop.end, g_main_loop.quit, g_game_mode_names[g_game_mode],
-        advanced_automap_open);
+        g_advanced_automap_open);
     put(reply, ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", g_cheat_immortal, g_cheat_food,
         g_cheat_light);
 }
@@ -532,7 +532,7 @@ static void handle_load(Json *reply)
         return;
     int end = g_main_loop.end;
     g_main_loop.end = 0; /* the loaded game starts with a full game step, as after the load of a slot */
-    int result = advanced_quick_load();
+    enum QuickLoadResult result = advanced_quick_load();
     if (result == QUICK_LOST)
         game_lost = 1;
     if (result != QUICK_LOADED) {

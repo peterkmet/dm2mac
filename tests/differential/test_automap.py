@@ -40,7 +40,7 @@ def automap(lib, advanced):  # noqa: F811
     game, _ = advanced
     lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
     yield advanced
-    for name in ("g_cheat_light", "g_cheat_immortal", "g_cheat_food", "advanced_automap_open"):
+    for name in ("g_cheat_light", "g_cheat_immortal", "g_cheat_food", "g_advanced_automap_open"):
         flag(lib, name).value = 0
 
 
@@ -321,21 +321,21 @@ def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automa
     assert key_command(lib, INPUT_MODE_MOVE, KEY_TAB) == key_command(lib, INPUT_MODE_MOVE, KEY_M) == 0
     press(lib, KEY_TAB)
     set_mode(lib, ADVANCED)
-    assert not flag(lib, "advanced_automap_open").value
+    assert not flag(lib, "g_advanced_automap_open").value
     lib.ui_toggle_inventory(0)
     press(lib, KEY_TAB)
     lib.ui_toggle_inventory(0)
     press(lib, KEY_PAUSE)
     press(lib, KEY_M)
     press(lib, KEY_PAUSE)
-    assert not flag(lib, "advanced_automap_open").value
+    assert not flag(lib, "g_advanced_automap_open").value
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     for key in (KEY_TAB, KEY_M):
         for close in (KEY_TAB, KEY_M, KEY_ESC):
             press(lib, key)
-            assert flag(lib, "advanced_automap_open").value and party_frame(lib) == red(lib)
+            assert flag(lib, "g_advanced_automap_open").value and party_frame(lib) == red(lib)
             press(lib, close)
-            assert not flag(lib, "advanced_automap_open").value
+            assert not flag(lib, "g_advanced_automap_open").value
             assert viewport_pixels(lib) == c_view(lib), "the dungeon view is back after a step"
     assert lib.input_get_mode() == INPUT_MODE_MOVE
 
@@ -357,7 +357,7 @@ def test_close_key_drops_the_click_of_the_same_tick(lib, automap):
     lib.input_key_down(SCAN_W)
     position = (game.party_x, game.party_y)
     run_ticks(lib, 40)
-    assert not flag(lib, "advanced_automap_open").value and (game.party_x, game.party_y) == position
+    assert not flag(lib, "g_advanced_automap_open").value and (game.party_x, game.party_y) == position
     assert lib.input_get_mode() == INPUT_MODE_MOVE
 
 
@@ -369,9 +369,9 @@ def test_time_stops_and_keys_are_swallowed_while_open(lib, automap):
         press(lib, key)
     assert (game.game_time, game.party_x, game.party_y, game.party_dir) == state
     assert not (data / "QUICK.DAT").exists(), "F5 and F9 do nothing on the open automap"
-    assert flag(lib, "advanced_automap_open").value
+    assert flag(lib, "g_advanced_automap_open").value
     press(lib, KEY_ESC)
-    assert game.game_time > state[0] and not flag(lib, "advanced_automap_open").value
+    assert game.game_time > state[0] and not flag(lib, "g_advanced_automap_open").value
 
 
 def test_automap_draws_inside_the_viewport_with_the_party_icon(lib, automap):
@@ -509,7 +509,7 @@ def test_new_or_loaded_game_turns_the_cheats_off(lib, automap):
         flag(lib, name).value = 1
     press(lib, KEY_F9)
     assert not any(flag(lib, n).value for n in ("g_cheat_immortal", "g_cheat_food", "g_cheat_light"))
-    flag(lib, "advanced_automap_open").value = 1
+    flag(lib, "g_advanced_automap_open").value = 1
     lib.play_start_session()
-    assert not flag(lib, "advanced_automap_open").value
+    assert not flag(lib, "g_advanced_automap_open").value
 

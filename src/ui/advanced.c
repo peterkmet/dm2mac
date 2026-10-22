@@ -4,6 +4,7 @@
 #include "ids.h"
 #include "os.h"
 #include "dungeon.h"
+#include "game.h"
 #include "game_text.h"
 #include "minion.h"
 #include "save.h"
@@ -16,27 +17,66 @@
 #include "text.h"
 #include "ui.h"
 #include "zone.h"
+#include <stdbool.h>
 #include <stdio.h>
 
-#define QUICK_SAVE_NAME "QUICK SAVE" /* the name in the header of QUICK.DAT */
+/* The name in the header of QUICK.DAT. */
+#define QUICK_SAVE_NAME "QUICK SAVE"
 
 /* PC scan codes of the letter keys that move and turn the party. */
-enum { SCAN_Q = 0x10, SCAN_W = 0x11, SCAN_E = 0x12, SCAN_A = 0x1e, SCAN_S = 0x1f, SCAN_D = 0x20 };
+#define SCAN_Q 0x10
+#define SCAN_W 0x11
+#define SCAN_E 0x12
+#define SCAN_A 0x1e
+#define SCAN_S 0x1f
+#define SCAN_D 0x20
 
 /* PC scan codes of the keys on the open automap. */
-enum { SCAN_ESCAPE = 0x01, SCAN_I = 0x17, SCAN_F = 0x21, SCAN_L = 0x26 };
-#define READOUT_MARGIN 2 /* pixels between the viewport edge and the readout */
-/* The rows of the readout. */
-enum { READOUT_POSITION, READOUT_DIRECTION, READOUT_IMMORTAL, READOUT_FOOD, READOUT_LIGHT };
+#define SCAN_ESCAPE 0x01
+#define SCAN_I      0x17
+#define SCAN_F      0x21
+#define SCAN_L      0x26
 
-int advanced_automap_open;
+/* The layout of the readout: its margin, then its rows. */
+#define READOUT_MARGIN    2 /* pixels between the viewport edge and the readout */
+#define READOUT_POSITION  0
+#define READOUT_DIRECTION 1
+#define READOUT_IMMORTAL  2
+#define READOUT_FOOD      3
+#define READOUT_LIGHT     4
+
+int g_advanced_automap_open;
 
 static struct {
-    int active;
+    bool active;
     int x, y; /* the mouse position that matches the current scroll */
 } drag;
 
+/* true after a quick load lost the game: there is no running game to keep. */
+static bool lost;
+
 static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH", "WEST"};
+
+/* Closes the automap and ends a drag of the map. */
+static void close_automap(void)
+{
+    g_advanced_automap_open = 0;
+    drag.active = false;
+    automap_scroll_reset();
+}
+
+/* Setup */
+
+void advanced_reset(void)
+{
+    close_automap();
+    lost = false;
+    g_cheat_light = 0;
+    g_cheat_immortal = 0;
+    g_cheat_food = 0;
+}
+
+/* Movement keys */
 
 uint16_t advanced_movement_key(uint16_t key)
 {
@@ -59,6 +99,8 @@ uint16_t advanced_movement_key(uint16_t key)
     return 0;
 }
 
+/* Quick save and load */
+
 /* <save folder>/QUICK.<extension>: the --saves folder, else the DATA folder of the game. */
 static char *quick_path(char *path, const char *extension)
 {
@@ -77,17 +119,17 @@ static void print_line(const char *text)
     text_print_message(UI_WHITE, line);
 }
 
-/* Writes the game to path (session_save prepares the timeline the same way); returns 0 on an error. */
-static int write_game(const char *path, const char *bak)
+/* Writes the game to path (session_save prepares the timeline the same way); returns false on an error. */
+static bool write_game(const char *path, const char *bak)
 {
     timeline_rebuild_free_list();
     return save_write(path, bak, QUICK_SAVE_NAME, gdat_current()) == SAVE_OK;
 }
 
-int advanced_quick_save(void)
+bool advanced_quick_save(void)
 {
     char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
-    int ok = write_game(quick_path(path, "DAT"), quick_path(bak, "BAK"));
+    bool ok = write_game(quick_path(path, "DAT"), quick_path(bak, "BAK"));
     if (ok)
         remove(bak);
     else
@@ -96,10 +138,7 @@ int advanced_quick_save(void)
     return ok;
 }
 
-/* 1 after a quick load lost the game: there is no running game to keep. */
-static int lost;
-
-int advanced_quick_load(void)
+enum QuickLoadResult advanced_quick_load(void)
 {
     char path[SAVE_PATH_SIZE], keep[SAVE_PATH_SIZE];
     FILE *f = fopen(quick_path(path, "DAT"), "rb");
@@ -115,8 +154,11 @@ int advanced_quick_load(void)
         return QUICK_BLOCKED;
     }
     Session kept = g_session;
-    g_session.loaded = g_session.new_game = 0; /* play_start_session shows no LOADED dialog and starts no new game */
-    int loaded = session_start_save(path), restored = loaded || (!lost && session_start_save(keep));
+    /* play_start_session shows no LOADED dialog and starts no new game */
+    g_session.loaded = 0;
+    g_session.new_game = 0;
+    bool loaded = session_start_save(path);
+    bool restored = loaded || (!lost && session_start_save(keep));
     if (restored)
         remove(keep); /* else QUICK.TMP keeps the running game */
     g_session = kept;
@@ -127,12 +169,14 @@ int advanced_quick_load(void)
             session_quit();
             g_session.exit_code = EXIT_GAME_LOST;
         }
-        lost = 1;
+        lost = true;
         return QUICK_LOST;
     }
-    lost = 0;
+    lost = false;
     if (loaded) {
-        g_session.load_time = g_session.save_time = 0; /* a quick load is not a saved game for the QUIT question */
+        /* a quick load is not a saved game for the QUIT question */
+        g_session.load_time = 0;
+        g_session.save_time = 0;
         sound_set_volume(g_game.sound_volume);
         music_set_volume(g_game.music_volume);
     }
@@ -140,8 +184,16 @@ int advanced_quick_load(void)
     return loaded ? QUICK_LOADED : QUICK_DAMAGED;
 }
 
+/* The automap */
+
+void advanced_open_automap(void)
+{
+    g_advanced_automap_open = 1;
+    advanced_draw_automap();
+}
+
 /* Line row of the readout at the top left of the viewport, in white on black. */
-static void draw_readout_line(Offscreen *o, int row, const char *text)
+static void render_readout_line(Offscreen *o, int row, const char *text)
 {
     int baseline = o->rect[RECT_Y] + READOUT_MARGIN + row * TEXT_LINE_HEIGHT + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1;
     offscreen_draw_text_at(o, o->rect[RECT_X] + READOUT_MARGIN, baseline,
@@ -163,48 +215,16 @@ void advanced_draw_automap(void)
     automap_draw(&o, o.rect);
     snprintf(line, sizeof line, "LEVEL %d  X %d  Y %d", dungeon_map_level(g_game.party_map), g_game.party_x,
              g_game.party_y);
-    draw_readout_line(&o, READOUT_POSITION, line);
-    draw_readout_line(&o, READOUT_DIRECTION, direction_names[g_game.party_dir & DIR_MASK]);
+    render_readout_line(&o, READOUT_POSITION, line);
+    render_readout_line(&o, READOUT_DIRECTION, direction_names[g_game.party_dir & DIR_MASK]);
     snprintf(line, sizeof line, "I IMMORTAL %s", on_off(g_cheat_immortal));
-    draw_readout_line(&o, READOUT_IMMORTAL, line);
+    render_readout_line(&o, READOUT_IMMORTAL, line);
     snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(g_cheat_food));
-    draw_readout_line(&o, READOUT_FOOD, line);
+    render_readout_line(&o, READOUT_FOOD, line);
     snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(g_cheat_light));
-    draw_readout_line(&o, READOUT_LIGHT, line);
+    render_readout_line(&o, READOUT_LIGHT, line);
     offscreen_flush(&o, true);
     draw_free_temp();
-}
-
-static void close_automap(void)
-{
-    advanced_automap_open = drag.active = 0;
-    automap_scroll_reset();
-}
-
-void advanced_reset(void)
-{
-    close_automap();
-    lost = 0;
-    g_cheat_light = g_cheat_immortal = g_cheat_food = 0;
-}
-
-void advanced_open_automap(void)
-{
-    advanced_automap_open = 1;
-    advanced_draw_automap();
-}
-
-void advanced_automap_drag(int x, int y)
-{
-    if (!drag.active)
-        return;
-    int dx = (x - drag.x) / MAP_CELL_SIZE, dy = (y - drag.y) / MAP_CELL_SIZE;
-    if (!dx && !dy)
-        return;
-    drag.x += dx * MAP_CELL_SIZE;
-    drag.y += dy * MAP_CELL_SIZE;
-    automap_scroll(-dx, -dy);
-    advanced_draw_automap();
 }
 
 void advanced_automap_event(int type, int x, int y)
@@ -225,11 +245,24 @@ void advanced_automap_event(int type, int x, int y)
         advanced_draw_automap();
     } else if (type == INPUT_LEFT_RELEASED) {
         advanced_automap_drag(x, y);
-        drag.active = 0;
+        drag.active = false;
     } else if (type & INPUT_BUTTON_LEFT && zone_get_rect(ZONE_VIEWPORT, r) && x >= r[RECT_X] &&
                x < r[RECT_X] + r[RECT_W] && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
-        drag.active = 1;
+        drag.active = true;
         drag.x = x;
         drag.y = y;
     }
+}
+
+void advanced_automap_drag(int x, int y)
+{
+    if (!drag.active)
+        return;
+    int dx = (x - drag.x) / MAP_CELL_SIZE, dy = (y - drag.y) / MAP_CELL_SIZE;
+    if (!dx && !dy)
+        return;
+    drag.x += dx * MAP_CELL_SIZE;
+    drag.y += dy * MAP_CELL_SIZE;
+    automap_scroll(-dx, -dy);
+    advanced_draw_automap();
 }

@@ -254,7 +254,7 @@ def test_state_tells_the_game_mode(control, lib):  # noqa: F811
 
 def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
     path, *_ = control
-    names = ("advanced_automap_open", "g_cheat_immortal", "g_cheat_food", "g_cheat_light")
+    names = ("g_advanced_automap_open", "g_cheat_immortal", "g_cheat_food", "g_cheat_light")
     fields = ("automap", "cheat_immortal", "cheat_food", "cheat_light")
     try:
         for value in (0, 1):
@@ -290,7 +290,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa:
         assert framed == ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")[8]  # red: the map did not move
     finally:
         set_mode(lib, VANILLA)
-        ctypes.c_int.in_dll(lib, "advanced_automap_open").value = 0
+        ctypes.c_int.in_dll(lib, "g_advanced_automap_open").value = 0
 
 
 def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):

@@ -1346,7 +1346,7 @@ void input_mouse_down(int x, int y, int button)
 void input_mouse_up(int x, int y, int button)
 {
     g_input_mouse_buttons &= ~button;
-    if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || advanced_automap_open))
+    if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || g_advanced_automap_open))
         input_mouse_click(x, y, INPUT_LEFT_RELEASED);
 }
 
@@ -1715,15 +1715,15 @@ static void run_click_feedback(int elapsed)
 static void forward_to_automap(void)
 {
     uint16_t key;
-    while (advanced_automap_open && (key = input_read_key()))
+    while (g_advanced_automap_open && (key = input_read_key()))
         advanced_automap_event(INPUT_KEY, key, 0);
-    while (advanced_automap_open && in.event_count) {
+    while (g_advanced_automap_open && in.event_count) {
         int type = in.events[in.event_head].type, x = in.events[in.event_head].x, y = in.events[in.event_head].y;
         in.event_count--;
         in.event_head = (in.event_head + 1) % EVENT_RING;
         advanced_automap_event(type, x, y);
     }
-    if (advanced_automap_open)
+    if (g_advanced_automap_open)
         advanced_automap_drag(g_input_mouse_x, g_input_mouse_y);
     else
         input_flush(); /* the input after the close key does not reach the game */
@@ -1735,7 +1735,7 @@ void input_poll(void)
     if (!elapsed)
         return;
     in.last_ticks = g_main_loop.timer_ticks;
-    if (advanced_automap_open) {
+    if (g_advanced_automap_open) {
         forward_to_automap();
         return;
     }
@@ -2373,7 +2373,7 @@ void command_process_queue(void)
     in.feedback_waiting = 0;
     do {
         input_poll();
-        if (in.queue_head == in.queue_tail || advanced_automap_open)
+        if (in.queue_head == in.queue_tail || g_advanced_automap_open)
             return;
         int head = in.queue_head;
         in.queue_head = (head + 1) % COMMAND_QUEUE;

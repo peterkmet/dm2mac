@@ -9,7 +9,6 @@ block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
-block ui/advanced.c open: module cleanup
 block ui/fm.c open: module cleanup
 block ui/include/music.h open: module cleanup
 block ui/include/session.h open: module cleanup
@@ -29,9 +28,7 @@ bool platform/main.c:select_mode open: module cleanup
 bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
 bool platform/scale.c open: module cleanup
-bool ui/advanced.c open: module cleanup
 bool ui/fm.c open: module cleanup
-bool ui/include/advanced.h:advanced_quick_save open: module cleanup
 bool ui/include/session.h:session_init open: module cleanup
 bool ui/include/session.h:session_load open: module cleanup
 bool ui/include/session.h:session_start_new_game open: module cleanup
@@ -60,7 +57,6 @@ dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
-dead-api ui/include/advanced.h:advanced_draw_automap open: module cleanup
 dead-api ui/include/fm.h:fm_set_write_hook open: module cleanup
 dead-api ui/include/movie.h:movie_current_step open: module cleanup
 dead-api ui/include/music.h:music open: module cleanup
@@ -104,16 +100,13 @@ enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
-enum ui/advanced.c open: module cleanup
 enum ui/fm.c open: module cleanup
-enum ui/include/advanced.h open: module cleanup
 enum ui/include/fm.h open: module cleanup
 enum ui/include/movie.h open: module cleanup
 enum ui/include/music.h open: module cleanup
 enum ui/include/session.h open: module cleanup
 enum ui/music.c open: module cleanup
 enum ui/session.c open: module cleanup
-global ui/include/advanced.h open: module cleanup
 global ui/include/music.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
@@ -132,7 +125,6 @@ include engine/include/creature.h:timeline.h open: module cleanup
 include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
 include platform/main.c:view.h open: module cleanup
-include ui/include/advanced.h:game.h open: module cleanup
 include ui/include/session.h:game.h open: module cleanup
 include ui/include/session.h:save.h open: module cleanup
 include ui/session.c:item.h open: module cleanup
@@ -159,7 +151,6 @@ order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
-order ui/advanced.c open: module cleanup
 order ui/fm.c open: module cleanup
 order ui/movie.c open: module cleanup
 order ui/session.c open: module cleanup
@@ -203,7 +194,6 @@ static-prefix control/turn.c:turn_left open: module cleanup
 static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix platform/main.c:play_movies open: module cleanup
 static-prefix platform/platform.c:movie_screen open: module cleanup
-static-prefix ui/advanced.c:draw_readout_line open: module cleanup
 static-prefix ui/session.c:draw_screen_picture open: module cleanup
 static-prefix ui/session.c:save_choose_load_slot open: module cleanup
 static-prefix ui/session.c:save_choose_save_slot open: module cleanup
