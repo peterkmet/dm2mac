@@ -109,7 +109,7 @@ static void draw_action_result(int16_t value)
         c.scale_x = value > RESULT_SMALL_MAX ? RESULT_LARGE_SCALE : RESULT_SMALL_SCALE;
         c.scale_y = RESULT_SCALE_Y;
     }
-    offscreen_draw_ctx(&area, draw_ctx_prepare(&c), ZONE_RESULT, UI_OPAQUE);
+    offscreen_draw_ctx(&area, draw_ctx_prepare(&c), ZONE_RESULT, GFX_OPAQUE);
     if (value >= 0) {
         char digits[RESULT_DIGITS] = {0};
         int at = RESULT_DIGITS - 1;
@@ -120,11 +120,11 @@ static void draw_action_result(int16_t value)
         offscreen_draw_text_in_zone(&area, ZONE_RESULT, ui_colors[UI_CYAN], ui_colors[UI_BLACK], digits + at);
     } else if (value == RESULT_NO_AMMO) {
         offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? GFX_AMMO_HAND_OTHER : GFX_AMMO_HAND_DEFAULT,
-                                  ZONE_AMMO_HAND, UI_OPAQUE);
+                                  ZONE_AMMO_HAND, GFX_OPAQUE);
         for (int slot_index = 0; slot_index < GDAT_NO_INDEX; slot_index++) {
             uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, slot_index, GDAT_TYPE_VALUE, AMMO_ATTR);
             if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
-                offscreen_draw_gdat_image(&area, CAT_WEAPON, slot_index, GFX_ITEM_ICON, ZONE_AMMO_ITEM, UI_OPAQUE);
+                offscreen_draw_gdat_image(&area, CAT_WEAPON, slot_index, GFX_ITEM_ICON, ZONE_AMMO_ITEM, GFX_OPAQUE);
                 return;
             }
         }
@@ -156,7 +156,7 @@ static Bitmap *action_hand_icon(int champ, int hand)
         memset(shadow, ui_colors[UI_BLACK], sizeof shadow);
         shadow[UI_KEY] = ui_colors[ICON_KEY_COLOR];
         const int16_t r[RECT_SIZE] = {ICON_OFFSET, ICON_OFFSET, ICON_SIZE, ICON_SIZE};
-        ui_blit_bitmap(c.image, icon, r, 0, 0, UI_OPAQUE, shadow);
+        ui_blit_bitmap(c.image, icon, r, 0, 0, GFX_OPAQUE, shadow);
         uint32_t size;
         const uint8_t *remap = gdat_item(
             gdat_current(), gdat_find(gdat_current(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, GFX_ICON_SHADOW_REMAP), &size);
@@ -189,7 +189,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
         return;
     }
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION,
-                              (uint8_t)(hand * 2 + GFX_ACTION_HAND_BACK_FIRST + flash), zone, UI_OPAQUE);
+                              (uint8_t)(hand * 2 + GFX_ACTION_HAND_BACK_FIRST + flash), zone, GFX_OPAQUE);
     Bitmap *icon = action_hand_icon(champ, hand);
     if (icon) {
         int16_t centered[RECT_SIZE] = {(int16_t)(((r[RECT_W] - icon->width + 1) >> 1) + r[RECT_X]),
@@ -244,7 +244,7 @@ static Bitmap *face_bitmap(void)
 static void draw_party_icons(void)
 {
     begin_draw(0);
-    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_PARTY_BACK, ZONE_PARTY_ICONS, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_PARTY_BACK, ZONE_PARTY_ICONS, GFX_OPAQUE);
     Bitmap *face = face_bitmap();
     for (int i = 0; face && i < game.champion_count; i++) {
         const Champion *c = champion(i);
@@ -307,8 +307,8 @@ void area_draw_spell_icon(int champ, int flash)
 static void draw_menu_header(void)
 {
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_HEADER, ZONE_MENU_HEADER,
-                              UI_OPAQUE);
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK, ZONE_MENU_BACK, UI_OPAQUE);
+                              GFX_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK, ZONE_MENU_BACK, GFX_OPAQUE);
     int champ = action.champion - 1;
     offscreen_draw_text_in_zone_with_shadow(&area, ZONE_MENU_NAME, ui_colors[champ == game.leader ? UI_GOLD : UI_WHITE],
                                             ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
@@ -318,7 +318,7 @@ static void draw_menu_header(void)
 static void draw_action_champion_face(void)
 {
     begin_draw(0);
-    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_FACE_BACK, ZONE_FACE_BACK, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_FACE_BACK, ZONE_FACE_BACK, GFX_OPAQUE);
     Bitmap *face = face_bitmap();
     int16_t r[RECT_SIZE], sx = 0, sy = 0;
     if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy, ZONE_NO_ANCHOR)) {
@@ -329,8 +329,9 @@ static void draw_action_champion_face(void)
         offscreen_blit(&area, face, r, sx, sy, UI_KEY, MIRROR_NONE, palette);
         draw_aura(champ, ZONE_FACE);
     }
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_LEFT, ZONE_FACE_LEFT, UI_OPAQUE);
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_RIGHT, ZONE_FACE_RIGHT, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_LEFT, ZONE_FACE_LEFT, GFX_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_RIGHT, ZONE_FACE_RIGHT,
+                              GFX_OPAQUE);
 }
 
 /* Draws the runes that the champion entered in the spell panel. */
@@ -339,7 +340,7 @@ void area_draw_entered_runes(int clear)
     begin_draw(0);
     if (clear)
         offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNES_BACK, ZONE_RUNES_BACK,
-                                  UI_OPAQUE);
+                                  GFX_OPAQUE);
     const Champion *c = champion(action.champion - 1);
     size_t n = strnlen(c->runes, CHAMPION_SIZE - offsetof(Champion, runes));
     for (size_t i = 0; i < n; i++) {
@@ -353,7 +354,7 @@ void area_draw_entered_runes(int clear)
 static void draw_spell_panel(void)
 {
     int set = champion(action.champion - 1)->rune_count;
-    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, (uint8_t)(set + 1), ZONE_PANEL, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, (uint8_t)(set + 1), ZONE_PANEL, GFX_OPAQUE);
     if (set < SPELL_RUNE_SETS) {
         for (int i = 0; i < SPELL_RUNES_PER_SET; i++) {
             char s[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + i), '\0'};
@@ -374,11 +375,11 @@ void area_draw_name(int i, int highlight)
         offscreen_draw_gdat_image(
             &area, CAT_CONTAINER, action.map_item,
             (uint8_t)((a->entry - GFX_ACTION_FIRST) * 2 + GFX_MAP_ACTION_PICTURE_BASE + highlight),
-            ZONE_MAP_ACTION_FIRST + i, UI_OPAQUE);
+            ZONE_MAP_ACTION_FIRST + i, GFX_OPAQUE);
         return;
     }
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_BUTTON + highlight,
-                              ZONE_ACTION_BUTTON_FIRST + i, UI_OPAQUE);
+                              ZONE_ACTION_BUTTON_FIRST + i, GFX_OPAQUE);
     offscreen_draw_text_in_zone_with_shadow(&area, ZONE_ACTION_NAME_FIRST + i, ui_colors[UI_WHITE],
                                             ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
                                             text_gdat_label(a->category, a->index, a->entry));
@@ -430,7 +431,8 @@ static void draw_money_box(uint16_t box)
         {-4, 0  },
         {2,  -11}
     };
-    offscreen_draw_gdat_image(&area, CAT_CONTAINER, item_gdat_index(box), GFX_CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
+    offscreen_draw_gdat_image(&area, CAT_CONTAINER, item_gdat_index(box), GFX_CONTAINER_PICTURE, ZONE_PANEL,
+                              GFX_OPAQUE);
     int16_t counts[COIN_TYPE_MAX];
     money_count_coins_in_box(box, counts);
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
@@ -478,7 +480,7 @@ static void draw_container(uint16_t container, int full)
     int index = item_gdat_index(container);
     int16_t back[RECT_SIZE] = {0};
     if (full) {
-        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, GFX_CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
+        offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, GFX_CONTAINER_PICTURE, ZONE_PANEL, GFX_OPAQUE);
         offscreen_draw_gdat_image(&area, CAT_CONTAINER, index, GFX_CONTAINER_LID, ZONE_CONTAINER_LID,
                                   CONTAINER_LID_KEY);
     } else {
@@ -493,7 +495,7 @@ static void draw_container(uint16_t container, int full)
             int16_t r[RECT_SIZE];
             zone_get_rect(zone, r);
             offscreen_blit(&area, draw_gdat_image(CAT_CONTAINER, index, GFX_CONTAINER_PICTURE), r,
-                           (int16_t)(r[RECT_X] - back[RECT_X]), (int16_t)(r[RECT_Y] - back[RECT_Y]), UI_OPAQUE,
+                           (int16_t)(r[RECT_X] - back[RECT_X]), (int16_t)(r[RECT_Y] - back[RECT_Y]), GFX_OPAQUE,
                            MIRROR_NONE, draw_gdat_image_palette(CAT_CONTAINER, index, GFX_CONTAINER_PICTURE));
         }
         int icon = item_icon_index(t, SLOT_CONTAINER_FIRST + i, 1);

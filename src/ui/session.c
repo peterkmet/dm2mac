@@ -80,7 +80,7 @@ static void draw_screen_picture(int category, int index, int entry)
     const Bitmap *image = draw_gdat_image(category, index, entry);
     int16_t r[RECT_SIZE], x = 0, y = 0;
     if (image && zone_compute_rect(image, r, ZONE_SCREEN, &x, &y, ZONE_NO_ANCHOR))
-        ui_blit_bitmap(image, &draw_screen, r, x, y, UI_OPAQUE, draw_gdat_image_palette(category, index, entry));
+        ui_blit_bitmap(image, &draw_screen, r, x, y, GFX_OPAQUE, draw_gdat_image_palette(category, index, entry));
 }
 
 /* ---- Start menu ---- */
@@ -169,7 +169,7 @@ void session_draw_name_entry(const char *name, int cursor)
     if (!zone_get_rect(ZONE_SLOT_NAME, r))
         return;
     ui_blit_bitmap(draw_gdat_image(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0), &view_viewport, r, r[RECT_X], r[RECT_Y],
-                   UI_OPAQUE, draw_gdat_image_palette(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0));
+                   GFX_OPAQUE, draw_gdat_image_palette(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0));
     text_draw_in_viewport(r[RECT_X], r[RECT_Y] + SLOT_NAME_TOP, ui_colors[UI_WHITE], name);
     if (cursor) {
         r[RECT_X] = (int16_t)(r[RECT_X] + (int)strlen(name) * FONT_ADVANCE);
@@ -187,7 +187,7 @@ void session_open_slot_dialog(int id, int buttons)
     text_gdat(CAT_DIALOG, id, 1, text[1]);
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &view_viewport, r, UI_OPAQUE,
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
     dialog_screen_mode(1);
     text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
@@ -644,7 +644,7 @@ void session_edit_champion_name(Champion *c)
         int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE, y = in_name ? name_y : title_y;
         for (int field_done = 0, redraw = 1; !field_done && !main_loop.quit;) {
             if (redraw) {
-                ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, UI_OPAQUE);
+                ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, GFX_OPAQUE);
                 text_draw_in_zone(ZONE_NAME, ui_colors[UI_YELLOW], c->name);
                 text_draw_in_zone(ZONE_TITLE, ui_colors[UI_YELLOW], c->title);
                 text_draw_in_viewport(x, y, ui_colors[UI_GOLD], "_");
@@ -682,7 +682,7 @@ void session_edit_champion_name(Champion *c)
         }
     }
     editing = 0;
-    ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, UI_OPAQUE);
+    ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, GFX_OPAQUE);
     c->redraw |= REDRAW_NAME;
     ui_draw_champion_state(ui.inventory - 1);
     play_show_view();

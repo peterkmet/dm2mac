@@ -631,7 +631,7 @@ void mmap_draw_option_buttons(int pressed)
     for (int i = 0; i < MAP_OPTION_COUNT; i++, down >>= 1) {
         offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item,
                                   down & 1 ? GFX_OPTION_BUTTON_DOWN : GFX_OPTION_BUTTON_UP,
-                                  ZONE_OPTION_BUTTON_FIRST + i, UI_OPAQUE);
+                                  ZONE_OPTION_BUTTON_FIRST + i, GFX_OPAQUE);
         char label[2] = {(char)(OPTION_LABEL_FIRST + i), '\0'};
         offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i, ui_colors[UI_BLACK],
                                     ui_colors[UI_GRAY] | TEXT_TRANSPARENT, label);
@@ -656,7 +656,7 @@ void mmap_draw(uint16_t thing)
     }
     area = area_begin_draw(0);
     if (!(action.flags & MAP_PANEL_DRAWN)) {
-        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, GFX_CONTAINER_PICTURE, ZONE_PANEL, UI_OPAQUE);
+        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, GFX_CONTAINER_PICTURE, ZONE_PANEL, GFX_OPAQUE);
         for (int i = 0; i < champ_action_count; i++)
             area_draw_name(i, 0);
         mmap_draw_option_buttons(0);

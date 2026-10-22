@@ -30,7 +30,6 @@ enum ui_color {
     UI_WHITE,
     UI_COLOR_COUNT
 };
-#define UI_OPAQUE (-1) /* a picture without a transparent color */
 /* The palette colors of the UI colors (text_init reads them). */
 extern const uint8_t *ui_colors;
 

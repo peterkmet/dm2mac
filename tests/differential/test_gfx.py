@@ -20,6 +20,23 @@ OPAQUE = C.GFX_OPAQUE
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 
+class Blit(ctypes.Structure):
+    _fields_ = [("src", u8_p), ("dst", u8_p), ("src_x", ctypes.c_int), ("src_y", ctypes.c_int),
+                ("src_width", ctypes.c_int), ("dst_width", ctypes.c_int), ("src_bpp", ctypes.c_int),
+                ("dst_bpp", ctypes.c_int), ("transparent", ctypes.c_int), ("mirror", ctypes.c_int),
+                ("colormap", u8_p)]
+
+
+class TileFill(ctypes.Structure):
+    _fields_ = [("tile", u8_p), ("tile_width", ctypes.c_int), ("tile_offset", ctypes.c_int), ("mask", u8_p),
+                ("mask_x", ctypes.c_int), ("mask_y", ctypes.c_int), ("mask_width", ctypes.c_int),
+                ("transparent", ctypes.c_int), ("colormap", u8_p)]
+
+
+class Bitmap(ctypes.Structure):
+    _fields_ = [("pixels", u8_p), ("width", ctypes.c_int16), ("height", ctypes.c_int16), ("bpp", ctypes.c_uint8)]
+
+
 def buf(data):
     return (ctypes.c_uint8 * len(data))(*data)
 
@@ -28,11 +45,16 @@ def rect(*values):
     return (ctypes.c_int16 * 4)(*values)
 
 
+def call_blit(lib, src, dst, r, src_x, src_y, src_width, dst_width, transparent, mirror, src_bpp, dst_bpp, colormap):
+    blit = Blit(src, dst, src_x, src_y, src_width, dst_width, src_bpp, dst_bpp, transparent, mirror, colormap)
+    lib.gfx_blit(ctypes.byref(blit), r)
+
+
 def blit(lib, src, dst_size, dst_width, r, src_x=0, src_y=0, src_width=3, transparent=OPAQUE, mirror=C.MIRROR_NONE,
          src_bpp=C.IMAGE_8BPP, dst_bpp=C.IMAGE_8BPP, colormap=None):
     dst = buf([0] * dst_size)
-    lib.gfx_blit(buf(src), dst, rect(*r), src_x, src_y, src_width, dst_width, transparent, mirror, src_bpp,
-                 dst_bpp, buf(colormap) if colormap else None)
+    call_blit(lib, buf(src), dst, rect(*r), src_x, src_y, src_width, dst_width, transparent, mirror, src_bpp,
+              dst_bpp, buf(colormap) if colormap else None)
     return list(dst)
 
 
@@ -96,6 +118,10 @@ def emu():
     return Emu(load_image(exe))
 
 
+def bitmap(pixels, width, height, bpp):
+    return Bitmap(ctypes.cast(pixels, u8_p), width, height, bpp)
+
+
 def run_both(lib, emu, func, addr, src, dst_size, args, cargs):
     """Runs the C function and the original on the same source; returns both destinations."""
     emu.write(SRC, bytes(src))
@@ -128,7 +154,7 @@ def test_blit_matches_original(lib, emu):
         if colormap:
             emu.write(MAP, bytes(colormap))
         args = [SRC, DST, RECT, sx, sy, sw, dw, transparent, mirror, src_bpp, dst_bpp, MAP if colormap else 0]
-        mine, original = run_both(lib, emu, lambda s, d, *a: lib.gfx_blit(s, d, rect(x, y, w, h), *a), GFX_BLIT,
+        mine, original = run_both(lib, emu, lambda s, d, *a: call_blit(lib, s, d, rect(x, y, w, h), *a), GFX_BLIT,
                                   src, dst_size, args,
                                   [sx, sy, sw, dw, transparent, mirror, src_bpp, dst_bpp,
                                    buf(colormap) if colormap else None])
@@ -141,16 +167,20 @@ def test_scaled_blits_match_original(lib, emu):
         sw, sh, dw, dh = rng.randint(1, 40), rng.randint(1, 30), rng.randint(1, 60), rng.randint(1, 40)
         if rng.random() < 0.5:
             src = [rng.randrange(256) for _ in range(sw * sh)]
-            mine, original = run_both(lib, emu, lib.gfx_blit_scaled_8bpp, GFX_BLIT_SCALED_8BPP, src, dw * dh,
-                                      [SRC, DST, sw, sh, dw, dh], [sw, sh, dw, dh])
+            mine, original = run_both(
+                lib, emu, lambda s, d, *a: lib.gfx_blit_scaled_8bpp(ctypes.byref(bitmap(s, sw, sh, C.IMAGE_8BPP)),
+                                                         ctypes.byref(bitmap(d, dw, dh, C.IMAGE_8BPP))),
+                GFX_BLIT_SCALED_8BPP, src, dw * dh, [SRC, DST, sw, sh, dw, dh], [])
         else:
             src = [rng.randrange(256) for _ in range((sw + 1) // 2 * sh)]
             colormap = [rng.randrange(16) for _ in range(16)] if rng.random() < 0.5 else None
             if colormap:
                 emu.write(MAP, bytes(colormap))
-            mine, original = run_both(lib, emu, lib.gfx_blit_scaled_4bpp, GFX_BLIT_SCALED_4BPP, src,
-                                      (dw + 1) // 2 * dh, [SRC, DST, sw, sh, dw, dh, MAP if colormap else 0],
-                                      [sw, sh, dw, dh, buf(colormap) if colormap else None])
+            mine, original = run_both(
+                lib, emu, lambda s, d, *a: lib.gfx_blit_scaled_4bpp(ctypes.byref(bitmap(s, sw, sh, C.IMAGE_4BPP)),
+                                                                    ctypes.byref(bitmap(d, dw, dh, C.IMAGE_4BPP)), *a),
+                GFX_BLIT_SCALED_4BPP, src, (dw + 1) // 2 * dh, [SRC, DST, sw, sh, dw, dh, MAP if colormap else 0],
+                [buf(colormap) if colormap else None])
             if dw & 1:  # the original leaves the pad nibble of a copied row as it was
                 mine, original = ([b & ~(0xF if (i + 1) % ((dw + 1) // 2) == 0 else 0) & 0xFF for i, b in enumerate(m)]
                                   for m in (mine, original))
@@ -175,10 +205,10 @@ def test_tiled_blit_matches_original(lib, emu):
         args = [SRC, DST, MASK if use_mask else 0, RECT, tile_width, offset, mask_x, mask_y, mask_width, dw,
                 transparent, MAP]
         mine, original = run_both(
-            lib, emu, lambda s, d, *a: lib.gfx_blit_tiled_4to8_masked(s, d, buf(mask) if use_mask else None,
-                                                                    rect(x, y, w, h), *a),
-            GFX_BLIT_TILED_4TO8_MASKED, src, dw * 10, args,
-            [tile_width, offset, mask_x, mask_y, mask_width, dw, transparent, buf(colormap)])
+            lib, emu, lambda s, d, *a: lib.gfx_blit_tiled_4to8_masked(
+                ctypes.byref(TileFill(s, tile_width, offset, buf(mask) if use_mask else None, mask_x, mask_y,
+                                      mask_width, transparent, buf(colormap))), d, dw, rect(x, y, w, h)),
+            GFX_BLIT_TILED_4TO8_MASKED, src, dw * 10, args, [])
         assert mine == original, case
 
 

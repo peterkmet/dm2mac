@@ -966,9 +966,10 @@ static void view_get_depth_shading(uint8_t *palette, int depth, int key1, int ke
         light = walk_light[depth];
         entry = depth + GFX_REMAP_WALK_BASE;
     }
-    if (gdat_exists(gdat_current(), CAT_WALLSET, view.gfx_set, GDAT_TYPE_REMAP, entry))
-        pal_get_dimmed_remap(gdat_current(), palette, CAT_WALLSET, view.gfx_set, entry, view.shade, key1, key2, count);
-    else
+    if (gdat_exists(gdat_current(), CAT_WALLSET, view.gfx_set, GDAT_TYPE_REMAP, entry)) {
+        DimmedRemap remap = {CAT_WALLSET, view.gfx_set, entry, view.shade, key1, key2};
+        pal_get_dimmed_remap(gdat_current(), palette, &remap, count);
+    } else
         pal_apply_dim_remap(palette, SHADE_FULL - ((SHADE_FULL - light) * (SHADE_FULL - view.shade) >> SHADE_SHIFT),
                             key1, key2, count);
 }
@@ -1169,7 +1170,8 @@ static void weather_draw_rain(void)
     const uint8_t *palette = view_get_shaded_palette(CAT_SKY, view.gfx_set, entry, 0);
     int offset = rand_next() & RANDOM_BYTE;
     int width = (int16_t)(rain->width * rain->height - RAIN_TILE_TRIM - (rand_next() & RANDOM_TILE_SPREAD));
-    gfx_blit_tiled_4to8(rain->pixels, view_viewport.pixels, NULL, rect, width, offset, VIEWPORT_WIDTH, 0, palette);
+    TileFill fill = {.tile = rain->pixels, .tile_width = width, .tile_offset = offset, .colormap = palette};
+    gfx_blit_tiled_4to8(&fill, view_viewport.pixels, VIEWPORT_WIDTH, rect);
 }
 
 void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
@@ -1186,8 +1188,15 @@ void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
     if (!drops || !shaded)
         return;
     int16_t r[RECT_SIZE] = {0, 0, (int16_t)((ctx->rect[RECT_W] + 1) & ~1), rain->height};
-    gfx_blit(rain->pixels, drops->pixels, r, 0, 0, rain->width, r[RECT_W], GFX_OPAQUE,
-             side == DIR_EAST ? MIRROR_H : MIRROR_NONE, rain->bpp, drops->bpp, NULL);
+    Blit blit = {.src = rain->pixels,
+                 .dst = drops->pixels,
+                 .src_width = rain->width,
+                 .dst_width = r[RECT_W],
+                 .src_bpp = rain->bpp,
+                 .dst_bpp = drops->bpp,
+                 .transparent = GFX_OPAQUE,
+                 .mirror = side == DIR_EAST ? MIRROR_H : MIRROR_NONE};
+    gfx_blit(&blit, r);
     uint8_t palette[IMAGE_COLORS];
     memcpy(palette, shaded, IMAGE_COLORS);
     palette[0] = (uint8_t)transparent;
@@ -1198,7 +1207,12 @@ void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
         gfx_fill_bitmap(offscreen, transparent);
         return;
     }
-    gfx_blit_tiled_4to8(drops->pixels, offscreen->pixels, NULL, ctx->rect, width, offset, ctx->w, GFX_OPAQUE, palette);
+    TileFill fill = {.tile = drops->pixels,
+                     .tile_width = width,
+                     .tile_offset = offset,
+                     .transparent = GFX_OPAQUE,
+                     .colormap = palette};
+    gfx_blit_tiled_4to8(&fill, offscreen->pixels, ctx->w, ctx->rect);
 }
 
 /* ---- Things ---- */
@@ -1227,8 +1241,15 @@ static void view_draw_sparkle_field(int pos, int category, int index)
                 return;
             gfx_fill_bitmap(mirrored, 0); /* fix: the original leaves the last column of an odd width undefined */
             int16_t r[RECT_SIZE] = {0, 0, (int16_t)(picture->width - (picture->width & 1)), picture->height};
-            gfx_blit(picture->pixels, mirrored->pixels, r, 0, 0, picture->width, picture->width, GFX_OPAQUE, MIRROR_H,
-                     IMAGE_4BPP, IMAGE_4BPP, NULL);
+            Blit blit = {.src = picture->pixels,
+                         .dst = mirrored->pixels,
+                         .src_width = picture->width,
+                         .dst_width = picture->width,
+                         .src_bpp = IMAGE_4BPP,
+                         .dst_bpp = IMAGE_4BPP,
+                         .transparent = GFX_OPAQUE,
+                         .mirror = MIRROR_H};
+            gfx_blit(&blit, r);
             mask = mirrored->pixels;
         }
     }
@@ -1238,7 +1259,9 @@ static void view_draw_sparkle_field(int pos, int category, int index)
     const uint8_t *palette = view_get_shaded_palette(category, index, GFX_SPARKLE_PICTURE, 0);
     int offset = rand_next() & RANDOM_BYTE;
     int width = (int16_t)((rand_bit() + field[SPARKLE_TILE]) * SPARKLE_TILE_STEP);
-    gfx_blit_tiled_4to8(sparkles->pixels, view_viewport.pixels, mask, rect, width, offset, VIEWPORT_WIDTH, 0, palette);
+    TileFill fill = {
+        .tile = sparkles->pixels, .tile_width = width, .tile_offset = offset, .mask = mask, .colormap = palette};
+    gfx_blit_tiled_4to8(&fill, view_viewport.pixels, VIEWPORT_WIDTH, rect);
 }
 
 /* Moves a cell of the square at *pos by columns and rows (rows toward the far side); the cell can go onto a
@@ -1678,8 +1701,8 @@ static void draw_explosion_tint(int type, int power)
     int16_t rect[RECT_SIZE];
     int offset = (int16_t)rand_below((uint16_t)(area - RAIN_TILE_TRIM));
     int width = (int16_t)(area - RAIN_TILE_TRIM + (rand_next() & RANDOM_TILE_SPREAD));
-    gfx_blit_tiled_4to8(tint->pixels, view_viewport.pixels, NULL, zone_get_rect(VIEWPORT_ZONE, rect), width, offset,
-                        VIEWPORT_WIDTH, 0, palette);
+    TileFill fill = {.tile = tint->pixels, .tile_width = width, .tile_offset = offset, .colormap = palette};
+    gfx_blit_tiled_4to8(&fill, view_viewport.pixels, VIEWPORT_WIDTH, zone_get_rect(VIEWPORT_ZONE, rect));
 }
 
 /* Draws the explosions of a thing list at the square at pos, cell by cell from the far cells. */
@@ -2048,15 +2071,25 @@ static void draw_wall_text(int pos, int entry, int scale_x, int scale_y, int dep
     const uint8_t *font_palette = draw_gdat_image_palette(CAT_WALLSET, view.gfx_set, GFX_MAP_FONT);
     int16_t r[RECT_SIZE] = {0, (int16_t)((plate_image->height >> 1) - (lines * line_height >> 1)), GLYPH_SIZE,
                             font->height};
+    Blit glyph = {.src = font->pixels,
+                  .dst = bitmap->pixels,
+                  .src_width = font->width,
+                  .dst_width = bitmap->width,
+                  .src_bpp = font->bpp,
+                  .dst_bpp = bitmap->bpp,
+                  .transparent = key,
+                  .mirror = MIRROR_NONE,
+                  .colormap = font_palette};
     for (const char *p = text;;) {
         int n = 0;
         while (p[n] && p[n] != '\n')
             n++;
         if (n) {
             r[RECT_X] = (int16_t)((plate_image->width >> 1) - ((int16_t)(GLYPH_SIZE * n) >> 1));
-            for (int i = 0; i < n && r[RECT_X] >= 0; i++, r[RECT_X] += GLYPH_SIZE)
-                gfx_blit(font->pixels, bitmap->pixels, r, wall_text_glyph((uint8_t)p[i]) * GLYPH_SIZE, 0, font->width,
-                         bitmap->width, key, MIRROR_NONE, font->bpp, bitmap->bpp, font_palette);
+            for (int i = 0; i < n && r[RECT_X] >= 0; i++, r[RECT_X] += GLYPH_SIZE) {
+                glyph.src_x = wall_text_glyph((uint8_t)p[i]) * GLYPH_SIZE;
+                gfx_blit(&glyph, r);
+            }
             p += n;
         }
         r[RECT_Y] = (int16_t)(r[RECT_Y] + line_height);

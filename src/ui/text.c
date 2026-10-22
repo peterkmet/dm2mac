@@ -90,9 +90,18 @@ void text_draw(uint8_t *dst, int dst_width, int x, int y, int color, int bg, con
     }
     int16_t rect[RECT_SIZE] = {(int16_t)x, (int16_t)(y + FONT_BASELINE - (FONT_GLYPH_HEIGHT - 1)), FONT_ADVANCE,
                                FONT_GLYPH_HEIGHT};
-    for (; *text; text++, rect[RECT_X] += FONT_ADVANCE)
-        gfx_blit(text_build_glyph((uint8_t)*text, (uint8_t)color, (uint8_t)bg), dst, rect, 0, 0, FONT_GLYPH_WIDTH,
-                 dst_width, transparent, MIRROR_NONE, IMAGE_4BPP, bpp, colormap);
+    for (; *text; text++, rect[RECT_X] += FONT_ADVANCE) {
+        Blit blit = {.src = text_build_glyph((uint8_t)*text, (uint8_t)color, (uint8_t)bg),
+                     .dst = dst,
+                     .src_width = FONT_GLYPH_WIDTH,
+                     .dst_width = dst_width,
+                     .src_bpp = IMAGE_4BPP,
+                     .dst_bpp = bpp,
+                     .transparent = transparent,
+                     .mirror = MIRROR_NONE,
+                     .colormap = colormap};
+        gfx_blit(&blit, rect);
+    }
 }
 
 int text_measure(const char *text, int16_t *width, int16_t *height)
@@ -231,8 +240,15 @@ static void text_scroll_message_area(void)
                draw_screen.pixels + (y + MESSAGE_SCROLL_HEIGHT) * draw_screen.width + r[RECT_X], r[RECT_W]);
     r[RECT_Y] = (int16_t)(r[RECT_Y] + r[RECT_H] - FONT_GLYPH_HEIGHT);
     r[RECT_H] = FONT_GLYPH_HEIGHT;
-    gfx_blit(message.line, draw_screen.pixels, r, 0, 0, MESSAGE_WIDTH, draw_screen.width, GFX_OPAQUE, MIRROR_NONE,
-             IMAGE_8BPP, IMAGE_8BPP, NULL);
+    Blit blit = {.src = message.line,
+                 .dst = draw_screen.pixels,
+                 .src_width = MESSAGE_WIDTH,
+                 .dst_width = draw_screen.width,
+                 .src_bpp = IMAGE_8BPP,
+                 .dst_bpp = IMAGE_8BPP,
+                 .transparent = GFX_OPAQUE,
+                 .mirror = MIRROR_NONE};
+    gfx_blit(&blit, r);
 }
 
 /* Goes to the next message row; at the bottom row the new row waits in the row bitmap. */

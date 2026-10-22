@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Recruiting a champion from its mirror: the candidate joins the party or goes back. */
 #include "gdat.h"
+#include "gfx.h"
 #include "ids.h"
 #include "le.h"
 #include "action.h"
@@ -164,7 +165,7 @@ void champ_finish_recruit(int x, int y, int dir, int map, int command)
         return;
     }
     if (!recruit_silent) {
-        g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL, UI_OPAQUE);
+        g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
         g_hooks.present_viewport();
         sound_request(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD,
                       game.party_x, game.party_y, 0);

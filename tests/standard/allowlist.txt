@@ -5,8 +5,6 @@ block control/include/control.h open: module cleanup
 block control/include/state_json.h open: module cleanup
 block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
-block data/gfx.c open: module cleanup
-block data/include/gfx.h open: module cleanup
 block data/include/le.h open: module cleanup
 block data/include/mve.h open: module cleanup
 block data/include/pcx.h open: module cleanup
@@ -92,10 +90,8 @@ block ui/view.c open: module cleanup
 block ui/zone.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
-bool data/gfx.c open: module cleanup
 bool data/hmp.c:end_track open: module cleanup
 bool data/hmp.c:hmi_control open: module cleanup
-bool data/include/gfx.h:pal_load_color_ramps open: module cleanup
 bool engine/ai.c open: module cleanup
 bool engine/ai.c:ai_execute_action open: module cleanup
 bool engine/ai.c:creature_ai_act open: module cleanup
@@ -249,9 +245,7 @@ comment control/include/state_json.h open: module cleanup
 comment control/include/turn.h open: module cleanup
 comment control/state_json.c open: module cleanup
 comment control/turn.c open: module cleanup
-comment data/gfx.c open: module cleanup
 comment data/hmp.c open: module cleanup
-comment data/include/gfx.h open: module cleanup
 comment data/include/hmp.h open: module cleanup
 comment data/mve_video.c open: module cleanup
 comment engine/aspect.c open: module cleanup
@@ -306,7 +300,6 @@ dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
-dead-api data/include/gfx.h:gfx_blit_tiled_4to8_masked open: module cleanup
 dead-api data/include/hmp.h:hmp_is_playing open: module cleanup
 dead-api data/include/mve.h:mve_decode_video open: module cleanup
 dead-api engine/include/ai.h:ai_action_flags open: module cleanup
@@ -487,7 +480,6 @@ decimal ui/view.c rule 3.12: a table of SKULL.EXE
 enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
-enum data/include/gfx.h open: module cleanup
 enum data/include/hmp.h open: module cleanup
 enum data/include/mve.h open: module cleanup
 enum data/include/pcx.h open: module cleanup
@@ -640,7 +632,6 @@ include ui/include/input.h:game.h open: module cleanup
 include ui/include/session.h:game.h open: module cleanup
 include ui/include/session.h:save.h open: module cleanup
 include ui/include/text.h:game_text.h open: module cleanup
-include ui/include/text.h:gfx.h open: module cleanup
 include ui/include/ui.h:game.h open: module cleanup
 include ui/include/view.h:weather.h open: module cleanup
 include ui/input.c:champ_action.h open: module cleanup
@@ -680,6 +671,7 @@ long ui/input.c:feedback_run_op open: module cleanup
 long ui/minion_map.c:mmap_draw open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
+long ui/view.c:draw_wall_text open: module cleanup
 long ui/view.c:view_draw_explosions open: module cleanup
 long ui/view.c:view_draw_floor_ornament open: module cleanup
 long ui/view.c:view_draw_object open: module cleanup
@@ -748,7 +740,6 @@ name ui/view.c:view_offset_creature_toward_party open: module cleanup
 name ui/view.c:zone_id_for_view_element open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
-notation data/gfx.c open: module cleanup
 notation data/hmp.c open: module cleanup
 notation data/include/hmp.h open: module cleanup
 notation data/include/le.h open: module cleanup
@@ -860,19 +851,6 @@ ordinal sensor_ornament_ordinal open: module cleanup
 params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
-params data/gfx.c:gfx_blit open: module cleanup
-params data/gfx.c:gfx_blit_scaled_4bpp open: module cleanup
-params data/gfx.c:gfx_blit_scaled_8bpp open: module cleanup
-params data/gfx.c:gfx_blit_tiled_4to8 open: module cleanup
-params data/gfx.c:gfx_blit_tiled_4to8_masked open: module cleanup
-params data/gfx.c:pal_get_dimmed_remap open: module cleanup
-params data/gfx.c:tile_run open: module cleanup
-params data/include/gfx.h:gfx_blit open: module cleanup
-params data/include/gfx.h:gfx_blit_scaled_4bpp open: module cleanup
-params data/include/gfx.h:gfx_blit_scaled_8bpp open: module cleanup
-params data/include/gfx.h:gfx_blit_tiled_4to8 open: module cleanup
-params data/include/gfx.h:gfx_blit_tiled_4to8_masked open: module cleanup
-params data/include/gfx.h:pal_get_dimmed_remap open: module cleanup
 params data/include/pcx.h:pcx_decode open: module cleanup
 params data/mve_video.c:fill open: module cleanup
 params data/mve_video.c:halves open: module cleanup

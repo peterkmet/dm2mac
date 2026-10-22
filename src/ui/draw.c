@@ -177,9 +177,9 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
     if (!out)
         return ctx;
     if (src->bpp == IMAGE_8BPP)
-        gfx_blit_scaled_8bpp(src->pixels, out->pixels, src->width, src->height, w, h);
+        gfx_blit_scaled_8bpp(src, out);
     else
-        gfx_blit_scaled_4bpp(src->pixels, out->pixels, src->width, src->height, w, h, NULL);
+        gfx_blit_scaled_4bpp(src, out, NULL);
     draw_ctx_set_image(ctx, out);
     return ctx;
 }
@@ -220,9 +220,20 @@ void draw_ctx_draw(DrawCtx *ctx)
     if (ctx->flip & MIRROR_V)
         sy = 0;
     sy = (int16_t)(sy + fy);
-    if (ctx->transparent != DRAW_NO_BLIT)
-        gfx_blit(image->pixels, ctx->dst->pixels, ctx->rect, sx, sy, image->width, ctx->dst->width, ctx->transparent,
-                 ctx->flip, image->bpp, ctx->dst->bpp, ctx->palette_count > 0 ? ctx->palette : NULL);
+    if (ctx->transparent != DRAW_NO_BLIT) {
+        Blit blit = {.src = image->pixels,
+                     .dst = ctx->dst->pixels,
+                     .src_x = sx,
+                     .src_y = sy,
+                     .src_width = image->width,
+                     .dst_width = ctx->dst->width,
+                     .src_bpp = image->bpp,
+                     .dst_bpp = ctx->dst->bpp,
+                     .transparent = ctx->transparent,
+                     .mirror = ctx->flip,
+                     .colormap = ctx->palette_count > 0 ? ctx->palette : NULL};
+        gfx_blit(&blit, ctx->rect);
+    }
     ctx->src_x = sx;
     ctx->src_y = sy;
 }

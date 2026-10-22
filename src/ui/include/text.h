@@ -6,7 +6,6 @@
 /* Text: the font, message wrapping and printing into the screen. */
 
 #include "gdat.h"
-#include "gfx.h"
 #include "game_text.h"
 #include <stddef.h>
 #include <stdint.h>

@@ -50,7 +50,7 @@ void dialog_present(void)
     }
     int16_t r[RECT_SIZE], x = 0, y = 0;
     if (zone_compute_rect(&view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y, ZONE_NO_ANCHOR))
-        ui_blit_bitmap(&view_viewport, &draw_screen, r, x, y, UI_OPAQUE, NULL);
+        ui_blit_bitmap(&view_viewport, &draw_screen, r, x, y, GFX_OPAQUE, NULL);
 }
 
 void dialog_draw_button(int zone, int highlighted)
@@ -132,7 +132,7 @@ int dialog_draw(int id, int message)
             count++;
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, GFX_DIALOG_PICTURE), &view_viewport, r, UI_OPAQUE,
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, GFX_DIALOG_PICTURE), &view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, GFX_DIALOG_PICTURE));
     text_draw_in_zone(ZONE_DIALOG_VERSION, ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
@@ -225,7 +225,7 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
     for (int level = VOLUME_LEVELS - 1; level >= 0; level--) {
         ui_draw_gdat_in_viewport_zone(CAT_DIALOG, DIALOG_VOLUME,
                                       level == setting ? GFX_VOLUME_BUTTON_ON : GFX_VOLUME_BUTTON, button_zone + level,
-                                      UI_OPAQUE);
+                                      GFX_OPAQUE);
         if (level) {
             text[0] = (char)('0' + level);
             text[1] = '\0';

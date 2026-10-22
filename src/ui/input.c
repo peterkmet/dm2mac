@@ -1461,7 +1461,7 @@ static void feedback_rune_button(Feedback *f)
         return;
     int16_t r[RECT_SIZE], w, h;
     feedback_init_rect(f, r, image->width, image->height);
-    offscreen_blit(&f->o, image, r, 0, 0, UI_OPAQUE, 0,
+    offscreen_blit(&f->o, image, r, 0, 0, GFX_OPAQUE, 0,
                    draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED));
     /* the rune of the pressed button in the next rune set */
     int set = champion(action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
@@ -1714,7 +1714,7 @@ static void ui_draw_move_arrow(int entry, int zone, int pressed)
     Offscreen o;
     offscreen_create(&o, zone, 1);
     gfx_fill_bitmap(o.bitmap, ui_colors[UI_BLACK]);
-    offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry + (pressed != 0), zone, UI_OPAQUE);
+    offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry + (pressed != 0), zone, GFX_OPAQUE);
     offscreen_flush(&o, 1);
     draw_free_temp();
 }
