@@ -2,20 +2,25 @@
 #include "gdat.h"
 #include "ids.h"
 #include "le.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* File header: signature, item count, size of item 0 (u32), sizes of items 1 to count-1 (u16). */
-#define GDAT_SIGNATURE    0x8005
+/* File signature of GRAPHICS.DAT. */
+#define GDAT_SIGNATURE 0x8005
+
+/* File header: item count, size of item 0 (u32), sizes of items 1 to count-1 (u16). */
 #define HEADER_COUNT      2
 #define HEADER_KEYS_SIZE  4
 #define HEADER_ITEM_SIZES 8
 #define ITEM_KEYS         0
 #define ITEM_SIZE_BYTES   2 /* items 1 to count-1 have u16 sizes */
 
-/* Key table (item 0), big-endian: signature, row count, column count, column descriptors, rows. */
-#define KEYS_SIGNATURE    0x8001
+/* Signature of the key table (item 0), big-endian. */
+#define KEYS_SIGNATURE 0x8001
+
+/* Key table layout: row count, column count, column descriptors, rows. */
 #define KEYS_ROW_COUNT    2
 #define KEYS_COLUMN_COUNT 4
 #define KEYS_COLUMNS      7
@@ -27,19 +32,20 @@
 #define ROW_ENTRY         3
 #define ROW_LANGUAGE      4
 #define ROW_VALUE         6
-#define LANGUAGE_MASK     0xf0
-#define LANGUAGE_ALL      0x00
-#define LANGUAGE_ENGLISH  0x10
-#define VALUE_ITEM_MASK   0x7fff
+
+/* Language bits of a key row. */
+#define LANGUAGE_MASK    0xf0
+#define LANGUAGE_ALL     0x00
+#define LANGUAGE_ENGLISH 0x10
+
+/* Mask of the item number in a key row value. */
+#define VALUE_ITEM_MASK 0x7fff
 
 /* Image header: width and height in the low 10 bits of two u16; the top 6 bits of byte 3 give the format. */
 #define IMAGE_WIDTH         0
 #define IMAGE_HEIGHT        2
 #define IMAGE_FORMAT_BYTE   3
 #define IMAGE_FORMAT_SHIFT  2
-#define IMAGE_DIM_MASK      0x3ff
-#define FORMAT_8BPP         0x1f
-#define FORMAT_RAW          0x20
 #define RAW_BPP             4
 #define RAW_PIXELS          10
 #define COLORMAP_SIZE       16
@@ -48,38 +54,53 @@
 #define IMAGE_8BPP_OFFSET_X 4
 #define IMAGE_8BPP_OFFSET_Y 5
 
-/* The GDAT flag word: value key (0, 0, 0x0b, 0). */
-#define FLAGS_CATEGORY      0
-#define FLAGS_INDEX         0
-#define FLAGS_ENTRY         0
+/* Mask of the width and height in an image header. */
+#define IMAGE_DIM_MASK 0x03ff
+
+/* Image formats. */
+#define FORMAT_8BPP 0x1f
+#define FORMAT_RAW  0x20
+
+/* The key of the GDAT flag word: value key (0, 0, 0x0b, 0). */
+#define FLAGS_CATEGORY 0
+#define FLAGS_INDEX    0
+#define FLAGS_ENTRY    0
+
+/* The flag word bit and the mask of encrypted text: byte = (stored ^ 0xff) - position. */
 #define FLAG_ENCRYPTED_TEXT 0x08
-#define TEXT_INVERT         0xff /* encrypted text: byte = (stored ^ 0xff) - position */
+#define TEXT_INVERT         0xff
 
 /* 8 bpp stream: codec byte, then the LZSS data. */
-#define CODEC_OFFSET         6
-#define LZSS_DATA            8
-#define CODEC_LZSS_4_4       2
-#define CODEC_LZSS_5_3       3
-#define LZSS_4_4_LENGTH_BITS 4
-#define LZSS_5_3_LENGTH_BITS 5
-#define LZSS_REF_SIZE        2 /* a back reference takes two bytes */
-#define LZSS_MIN_MATCH       3
-#define FLAG_BITS            8
+#define CODEC_OFFSET 6
+#define LZSS_DATA    8
+
+/* Codecs of an 8 bpp stream. */
+#define CODEC_LZSS_4_4 2
+#define CODEC_LZSS_5_3 3
+
+/* LZSS parameters. */
+#define LZSS_4_4_LENGTH_WIDTH 4
+#define LZSS_5_3_LENGTH_WIDTH 5
+#define LZSS_REF_SIZE         2 /* a back reference takes two bytes */
+#define LZSS_MIN_MATCH        3
+#define FLAG_BIT_COUNT        8
 
 /* 4 bpp stream: nibbles from nibble 8, high nibble first; a local color table, then commands. */
 #define NIBBLE_START       8
 #define LOCAL_COLORS       6
 #define DELTA_LOCAL_COLORS 5
-#define CMD_KIND_MASK      7
 #define CMD_RUN            8
 #define CMD_COPY_BASE      5
 #define CMD_COPY_ABOVE     6
 #define CMD_COLOR_NIBBLE   7
 #define RUN_SHORT_MIN      2
-#define RUN_LONG           0xf
 #define RUN_LONG_MIN       17
-#define RUN_HUGE           0xff
 #define RUN_HUGE_NIBBLES   4
+
+/* Command kind mask and run length markers: a nibble and a byte. */
+#define CMD_KIND_MASK 0x07
+#define RUN_LONG      0x0f
+#define RUN_HUGE      0xff
 
 /* The game palette: key (1, 0, 9, 254), 256 entries of color index, red, green, blue. */
 #define PALETTE_INDEX      0
@@ -96,6 +117,21 @@ struct gdat {
     int row_count;
 };
 
+typedef struct {
+    const uint8_t *src;
+    size_t pos, end;
+    int bad;
+} nibbles_t;
+
+/* A parsed image header; format is the format bits of the stream. */
+typedef struct {
+    const uint8_t *data;
+    uint32_t size;
+    int width, height, bpp, format;
+} ImageHeader;
+
+static const gdat_t *current;
+
 /* The key table is big-endian. */
 static unsigned be16(const uint8_t *p)
 {
@@ -103,7 +139,7 @@ static unsigned be16(const uint8_t *p)
 }
 
 /* Checks the header, item sizes, and key table, and builds the item offset table. */
-static int gdat_parse(gdat_t *g, size_t file_size)
+static int parse_file(gdat_t *g, size_t file_size)
 {
     const uint8_t *f = g->file;
     if (file_size < HEADER_ITEM_SIZES || le16(f) != GDAT_SIGNATURE)
@@ -133,6 +169,8 @@ static int gdat_parse(gdat_t *g, size_t file_size)
     return KEYS_ROWS + (size_t)g->row_count * ROW_SIZE > g->size[ITEM_KEYS] ? GDAT_ERR_FORMAT : GDAT_OK;
 }
 
+/* Loading */
+
 int gdat_load(const char *path, gdat_t **out)
 {
     *out = NULL;
@@ -148,7 +186,7 @@ int gdat_load(const char *path, gdat_t **out)
     int err = GDAT_ERR_IO;
     if (file_size >= 0 && !fseek(fp, 0, SEEK_SET) && (g->file = malloc(file_size ? file_size : 1)) &&
         fread(g->file, 1, file_size, fp) == (size_t)file_size)
-        err = gdat_parse(g, file_size);
+        err = parse_file(g, file_size);
     fclose(fp);
     if (err)
         gdat_free(g);
@@ -167,8 +205,6 @@ void gdat_free(gdat_t *g)
     free(g);
 }
 
-static const gdat_t *current;
-
 const gdat_t *gdat_current(void)
 {
     return current;
@@ -177,6 +213,8 @@ void gdat_select(const gdat_t *g)
 {
     current = g;
 }
+
+/* Items and keys */
 
 int gdat_item_count(const gdat_t *g)
 {
@@ -193,7 +231,6 @@ const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *size)
 
 int gdat_find(const gdat_t *g, int category, int index, int type, int entry)
 {
-    // ponytail: linear scan of 11854 rows, sort or index the rows if lookups get hot
     for (int i = 0; i < g->row_count; i++) {
         const uint8_t *r = g->rows + i * ROW_SIZE;
         int language = r[ROW_LANGUAGE] & LANGUAGE_MASK;
@@ -206,82 +243,83 @@ int gdat_find(const gdat_t *g, int category, int index, int type, int entry)
     return -1;
 }
 
-static unsigned image_dim(const uint8_t *src, int field)
+static unsigned read_dimension(const uint8_t *src, int field)
 {
     return le16(src + field) & IMAGE_DIM_MASK;
 }
 
 /* Decoded byte size of a width x height image; 4 bpp rows hold an even pixel count. */
-static size_t image_bytes(unsigned width, unsigned height, int bpp)
+static size_t decoded_size(unsigned width, unsigned height, int bpp)
 {
     return bpp == IMAGE_8BPP ? (size_t)width * height : (size_t)(width + 1) / 2 * height;
 }
 
 /* Reads the image header of an item; returns its format or an error. */
-static int image_header(const gdat_t *g, int item, const uint8_t **data, uint32_t *size, int *width, int *height,
-                        int *bpp)
+static int read_image_header(const gdat_t *g, int item, ImageHeader *h)
 {
-    *data = gdat_item(g, item, size);
-    if (!*data)
+    h->data = gdat_item(g, item, &h->size);
+    if (!h->data)
         return GDAT_ERR_ITEM;
-    if (*size < LZSS_DATA)
+    if (h->size < LZSS_DATA)
         return GDAT_ERR_NOT_IMAGE;
-    int format = (*data)[IMAGE_FORMAT_BYTE] >> IMAGE_FORMAT_SHIFT;
-    *width = image_dim(*data, IMAGE_WIDTH);
-    *height = image_dim(*data, IMAGE_HEIGHT);
-    if (format == FORMAT_8BPP)
-        *bpp = IMAGE_8BPP;
-    else if (format == FORMAT_RAW && *size >= RAW_PIXELS)
-        *bpp = le16(*data + RAW_BPP);
-    else if (format == FORMAT_RAW)
+    h->format = h->data[IMAGE_FORMAT_BYTE] >> IMAGE_FORMAT_SHIFT;
+    h->width = read_dimension(h->data, IMAGE_WIDTH);
+    h->height = read_dimension(h->data, IMAGE_HEIGHT);
+    if (h->format == FORMAT_8BPP)
+        h->bpp = IMAGE_8BPP;
+    else if (h->format == FORMAT_RAW && h->size >= RAW_PIXELS)
+        h->bpp = le16(h->data + RAW_BPP);
+    else if (h->format == FORMAT_RAW)
         return GDAT_ERR_NOT_IMAGE;
     else
-        *bpp = IMAGE_4BPP; /* the format bits of a 4 bpp image can hold its y offset (gdat_image_offset) */
-    if (*bpp != IMAGE_4BPP && *bpp != IMAGE_8BPP)
+        h->bpp = IMAGE_4BPP; /* the format bits of a 4 bpp image can hold its y offset (gdat_image_offset) */
+    if (h->bpp != IMAGE_4BPP && h->bpp != IMAGE_8BPP)
         return GDAT_ERR_NOT_IMAGE;
-    return format;
+    return h->format;
 }
+
+/* Images */
 
 int gdat_image_size(const gdat_t *g, int item, int *width, int *height, int *bpp)
 {
-    const uint8_t *data;
-    uint32_t size;
-    int format = image_header(g, item, &data, &size, width, height, bpp);
-    return format < 0 ? format : (int)image_bytes(*width, *height, *bpp);
+    ImageHeader h;
+    int format = read_image_header(g, item, &h);
+    if (format < 0)
+        return format;
+    *width = h.width;
+    *height = h.height;
+    *bpp = h.bpp;
+    return (int)decoded_size(h.width, h.height, h.bpp);
 }
 
 int gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size)
 {
-    const uint8_t *data;
-    uint32_t size;
-    int width, height, bpp;
-    int format = image_header(g, item, &data, &size, &width, &height, &bpp);
+    ImageHeader h;
+    int format = read_image_header(g, item, &h);
     if (format < 0)
         return format;
     if (format == FORMAT_8BPP)
-        return image_decode_8bpp(data, size, dst, dst_size);
+        return image_decode_8bpp(h.data, h.size, dst, dst_size);
     if (format != FORMAT_RAW)
-        return image_decode_4bpp(data, size, NULL, dst, dst_size);
-    size_t bytes = image_bytes(width, height, bpp);
-    if (RAW_PIXELS + bytes > size)
+        return image_decode_4bpp(h.data, h.size, NULL, dst, dst_size);
+    size_t bytes = decoded_size(h.width, h.height, h.bpp);
+    if (RAW_PIXELS + bytes > h.size)
         return GDAT_ERR_DATA;
     if (bytes > dst_size)
         return GDAT_ERR_SPACE;
-    memcpy(dst, data + RAW_PIXELS, bytes);
+    memcpy(dst, h.data + RAW_PIXELS, bytes);
     return GDAT_OK;
 }
 
 const uint8_t *gdat_image_colormap(const gdat_t *g, int item)
 {
-    const uint8_t *data;
-    uint32_t size;
-    int width, height, bpp;
-    if (image_header(g, item, &data, &size, &width, &height, &bpp) < 0 || bpp != IMAGE_4BPP || size < COLORMAP_SIZE)
+    ImageHeader h;
+    if (read_image_header(g, item, &h) < 0 || h.bpp != IMAGE_4BPP || h.size < COLORMAP_SIZE)
         return NULL;
-    return data + size - COLORMAP_SIZE;
+    return h.data + h.size - COLORMAP_SIZE;
 }
 
-int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[3])
+int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_RGB_SIZE])
 {
     uint32_t size;
     const uint8_t *palette = gdat_item(g, gdat_find(g, CAT_INTERFACE, PALETTE_INDEX, PALETTE_TYPE, GFX_PALETTE), &size);
@@ -294,12 +332,7 @@ int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[3])
     return GDAT_OK;
 }
 
-typedef struct {
-    const uint8_t *src;
-    size_t pos, end;
-    int bad;
-} nibbles_t;
-
+/* The next nibble of the stream; flags the stream as bad at its end. */
 static int next_nibble(nibbles_t *n)
 {
     if (n->pos >= n->end) {
@@ -337,14 +370,12 @@ static void set_pixel(uint8_t *buf, size_t pos, int color)
     *p = pos & 1 ? (*p & ~NIBBLE_MASK) | color : (*p & NIBBLE_MASK) | color << NIBBLE_BITS;
 }
 
-/* Run-length 4 bpp image: each command sets a run of pixels to a local color, a literal color,
-   the pixels one row above, or (delta images) the pixels of the base image; runs wrap at the row end. */
 int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst, size_t dst_size)
 {
     if (src_size < NIBBLE_START / 2)
         return GDAT_ERR_DATA;
-    unsigned width = image_dim(src, IMAGE_WIDTH), row = (width + 1) & ~1u;
-    size_t total = (size_t)row * image_dim(src, IMAGE_HEIGHT);
+    unsigned width = read_dimension(src, IMAGE_WIDTH), row = (width + 1) & ~1u;
+    size_t total = (size_t)row * read_dimension(src, IMAGE_HEIGHT);
     if (total / 2 > dst_size)
         return GDAT_ERR_SPACE;
     nibbles_t n = {src, NIBBLE_START, src_size * 2, 0};
@@ -391,7 +422,7 @@ static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t
             if (in >= src_size)
                 break;
             flags = src[in++];
-            flags_left = FLAG_BITS;
+            flags_left = FLAG_BIT_COUNT;
         }
         int literal = flags & 1;
         flags >>= 1;
@@ -407,7 +438,7 @@ static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t
         if (src_size - in < LZSS_REF_SIZE)
             break;
         size_t length = (src[in] & ((1u << length_bits) - 1)) + LZSS_MIN_MATCH;
-        size_t distance = (size_t)src[in + 1] << (FLAG_BITS - length_bits) | src[in] >> length_bits;
+        size_t distance = (size_t)src[in + 1] << (FLAG_BIT_COUNT - length_bits) | src[in] >> length_bits;
         in += LZSS_REF_SIZE;
         if (distance == 0 || distance > out || length > dst_size - out)
             return GDAT_ERR_DATA;
@@ -421,16 +452,16 @@ int image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t 
 {
     if (src_size < LZSS_DATA)
         return GDAT_ERR_DATA;
-    size_t bytes = image_bytes(image_dim(src, IMAGE_WIDTH), image_dim(src, IMAGE_HEIGHT), 8);
+    size_t bytes = decoded_size(read_dimension(src, IMAGE_WIDTH), read_dimension(src, IMAGE_HEIGHT), 8);
     if (bytes > dst_size)
         return GDAT_ERR_SPACE;
     int length_bits;
     switch (src[CODEC_OFFSET]) {
     case CODEC_LZSS_4_4:
-        length_bits = LZSS_4_4_LENGTH_BITS;
+        length_bits = LZSS_4_4_LENGTH_WIDTH;
         break;
     case CODEC_LZSS_5_3:
-        length_bits = LZSS_5_3_LENGTH_BITS;
+        length_bits = LZSS_5_3_LENGTH_WIDTH;
         break;
     default:
         return GDAT_ERR_DATA;
@@ -438,6 +469,8 @@ int image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t 
     int out = lzss_decode(src + LZSS_DATA, src_size - LZSS_DATA, dst, bytes, length_bits);
     return out == (int)bytes ? GDAT_OK : GDAT_ERR_DATA;
 }
+
+/* Values and texts */
 
 uint16_t gdat_entry_index(const gdat_t *g, int category, int index, int type, int entry)
 {
@@ -452,10 +485,11 @@ int gdat_exists(const gdat_t *g, int category, int index, int type, int entry)
     return gdat_find(g, category, index, type, entry) >= 0;
 }
 
-char *gdat_text(const gdat_t *g, int category, int index, int entry, char *dst, size_t dst_size)
+char *gdat_text(const gdat_t *g, GdatKey entry_key, char *dst, size_t dst_size)
 {
     uint32_t size;
-    const uint8_t *text = gdat_item(g, gdat_find(g, category, index, GDAT_TYPE_TEXT, entry), &size);
+    const uint8_t *text =
+        gdat_item(g, gdat_find(g, entry_key.category, entry_key.index, GDAT_TYPE_TEXT, entry_key.entry), &size);
     int encrypted =
         gdat_entry_index(g, FLAGS_CATEGORY, FLAGS_INDEX, GDAT_TYPE_VALUE, FLAGS_ENTRY) & FLAG_ENCRYPTED_TEXT;
     size_t n = 0;
@@ -476,7 +510,7 @@ int gdat_text_int_field(const char *text, const char *key)
         p += strlen(key);
         if (*p == '=')
             p++;
-        int negative = *p == '-';
+        bool negative = *p == '-';
         if (negative)
             p++;
         for (; *p >= '0' && *p <= '9'; p++)

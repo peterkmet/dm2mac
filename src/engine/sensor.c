@@ -617,7 +617,7 @@ static unsigned sensor_get_ornament_cycle(uint16_t sensor, int wall)
     if (frames)
         return frames & ORNAMENT_FRAMES_MASK;
     char text[TEXT_SIZE];
-    gdat_text(gdat_current(), category, ornament, ORNAMENT_KEY_FRAMES, text, sizeof text);
+    gdat_text(gdat_current(), (GdatKey){category, ornament, ORNAMENT_KEY_FRAMES}, text, sizeof text);
     return text[0] && strlen(text) ? (uint16_t)strlen(text) : 1;
 }
 

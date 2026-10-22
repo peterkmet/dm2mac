@@ -162,7 +162,8 @@ bool weather_sky_has_clouds(void)
 int weather_load_sky_object(SkyObject *object)
 {
     char text[WALL_TEXT_SIZE];
-    gdat_text(gdat_current(), CAT_SKY, dungeon_map_wallset(game.party_map), object->entry, text, sizeof text);
+    gdat_text(gdat_current(), (GdatKey){CAT_SKY, dungeon_map_wallset(game.party_map), object->entry}, text,
+              sizeof text);
     if (!text[0])
         return 0;
     object->zone = (int16_t)gdat_text_int_field(text, "cd");

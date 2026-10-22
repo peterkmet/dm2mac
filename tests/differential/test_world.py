@@ -9,6 +9,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
+from dm2test.gdat import GdatKey
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
 from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
@@ -649,7 +650,7 @@ def ambient_wall_sensors(lib, gdat):
                         if frames:
                             cycle = frames & 0x7FFF
                         else:
-                            lib.gdat_text(gdat, C.CAT_WALL_ORNAMENT, ornament, 0x0D, text, 128)
+                            lib.gdat_text(gdat, GdatKey(C.CAT_WALL_ORNAMENT, ornament, 0x0D), text, 128)
                             cycle = len(text.value) or 1
                         offset = lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, 0x88)
                         out.append((map_, x, y, t >> 14, t, cycle, offset))
@@ -676,7 +677,7 @@ def test_repeated_ambient_wall_sounds_match_original(world, lib, gdat):
     sc = world
     lib.gdat_entry_index.restype = ctypes.c_uint16
     lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_char_p, ctypes.c_size_t]
+    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     sensors = ambient_wall_sensors(lib, gdat)
     rng = random.Random(183)
     all_floors = squares(lib, (C.SQUARE_FLOOR,))
@@ -718,7 +719,7 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
     sc = world
     lib.gdat_entry_index.restype = ctypes.c_uint16
     lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_char_p, ctypes.c_size_t]
+    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     sensors = ambient_wall_sensors(lib, gdat)
     assert len(sensors) > 5
     rng = random.Random(182)

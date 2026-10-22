@@ -116,7 +116,7 @@ char *text_gdat(int category, int index, int entry, char *dst)
     dst[0] = '\0';
     if (!gdat_current())
         return dst;
-    gdat_text(gdat_current(), category, index, entry, raw, sizeof raw);
+    gdat_text(gdat_current(), (GdatKey){category, index, entry}, raw, sizeof raw);
     return text_format(raw, dst);
 }
 
@@ -189,7 +189,7 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
         *o++ = '\n';
     if (ornament != NO_ORNAMENT_TEXT) {
         if (gdat_current())
-            gdat_text(gdat_current(), CAT_DUNGEON, 0, (int)ornament, o, (size_t)(end + 1 - o));
+            gdat_text(gdat_current(), (GdatKey){CAT_DUNGEON, 0, (int)ornament}, o, (size_t)(end + 1 - o));
         return;
     }
     const uint16_t *p = dungeon_text_data() + text_offset(text);

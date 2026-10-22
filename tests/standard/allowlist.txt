@@ -6,7 +6,6 @@ block control/include/state_json.h open: module cleanup
 block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
 block data/gfx.c open: module cleanup
-block data/include/gdat.h open: module cleanup
 block data/include/gfx.h open: module cleanup
 block data/include/le.h open: module cleanup
 block data/include/mve.h open: module cleanup
@@ -93,7 +92,6 @@ block ui/view.c open: module cleanup
 block ui/zone.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
-bool data/gdat.c open: module cleanup
 bool data/gfx.c open: module cleanup
 bool data/hmp.c:end_track open: module cleanup
 bool data/hmp.c:hmi_control open: module cleanup
@@ -251,10 +249,8 @@ comment control/include/state_json.h open: module cleanup
 comment control/include/turn.h open: module cleanup
 comment control/state_json.c open: module cleanup
 comment control/turn.c open: module cleanup
-comment data/gdat.c open: module cleanup
 comment data/gfx.c open: module cleanup
 comment data/hmp.c open: module cleanup
-comment data/include/gdat.h open: module cleanup
 comment data/include/gfx.h open: module cleanup
 comment data/include/hmp.h open: module cleanup
 comment data/mve_video.c open: module cleanup
@@ -310,9 +306,6 @@ dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
-dead-api data/include/gdat.h:gdat_free open: module cleanup
-dead-api data/include/gdat.h:image_decode_4bpp open: module cleanup
-dead-api data/include/gdat.h:image_decode_8bpp open: module cleanup
 dead-api data/include/gfx.h:gfx_blit_tiled_4to8_masked open: module cleanup
 dead-api data/include/hmp.h:hmp_is_playing open: module cleanup
 dead-api data/include/mve.h:mve_decode_video open: module cleanup
@@ -455,8 +448,6 @@ dead-api ui/include/view.h:view_object_masks open: module cleanup
 dead-api ui/include/view.h:view_offset_creature_toward_party open: module cleanup
 dead-api ui/include/view.h:view_squares open: module cleanup
 dead-api ui/include/view.h:view_unhide_linked_squares open: module cleanup
-decimal data/gdat.c open: module cleanup
-decimal data/include/gdat.h open: module cleanup
 decimal data/include/le.h open: module cleanup
 decimal data/include/mve.h open: module cleanup
 decimal engine/ai.c open: module cleanup
@@ -496,7 +487,6 @@ decimal ui/view.c rule 3.12: a table of SKULL.EXE
 enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
-enum data/include/gdat.h open: module cleanup
 enum data/include/gfx.h open: module cleanup
 enum data/include/hmp.h open: module cleanup
 enum data/include/mve.h open: module cleanup
@@ -758,10 +748,8 @@ name ui/view.c:view_offset_creature_toward_party open: module cleanup
 name ui/view.c:zone_id_for_view_element open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
-notation data/gdat.c open: module cleanup
 notation data/gfx.c open: module cleanup
 notation data/hmp.c open: module cleanup
-notation data/include/gdat.h open: module cleanup
 notation data/include/hmp.h open: module cleanup
 notation data/include/le.h open: module cleanup
 notation data/mve.c open: module cleanup
@@ -830,7 +818,6 @@ notation ui/zone.c open: module cleanup
 order control/control.c open: module cleanup
 order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
-order data/gdat.c open: module cleanup
 order data/hmp.c open: module cleanup
 order data/mve.c open: module cleanup
 order engine/action.c open: module cleanup
@@ -873,8 +860,6 @@ ordinal sensor_ornament_ordinal open: module cleanup
 params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
-params data/gdat.c:gdat_text open: module cleanup
-params data/gdat.c:image_header open: module cleanup
 params data/gfx.c:gfx_blit open: module cleanup
 params data/gfx.c:gfx_blit_scaled_4bpp open: module cleanup
 params data/gfx.c:gfx_blit_scaled_8bpp open: module cleanup
@@ -882,7 +867,6 @@ params data/gfx.c:gfx_blit_tiled_4to8 open: module cleanup
 params data/gfx.c:gfx_blit_tiled_4to8_masked open: module cleanup
 params data/gfx.c:pal_get_dimmed_remap open: module cleanup
 params data/gfx.c:tile_run open: module cleanup
-params data/include/gdat.h:gdat_text open: module cleanup
 params data/include/gfx.h:gfx_blit open: module cleanup
 params data/include/gfx.h:gfx_blit_scaled_4bpp open: module cleanup
 params data/include/gfx.h:gfx_blit_scaled_8bpp open: module cleanup
@@ -1052,10 +1036,6 @@ static-prefix control/turn.c:turn_displaced open: module cleanup
 static-prefix control/turn.c:turn_finished open: module cleanup
 static-prefix control/turn.c:turn_left open: module cleanup
 static-prefix control/turn.c:turn_right open: module cleanup
-static-prefix data/gdat.c:gdat_parse open: module cleanup
-static-prefix data/gdat.c:image_bytes open: module cleanup
-static-prefix data/gdat.c:image_dim open: module cleanup
-static-prefix data/gdat.c:image_header open: module cleanup
 static-prefix engine/ai.c:ai_store_cache open: module cleanup
 static-prefix engine/ai.c:creature_ai_act open: module cleanup
 static-prefix engine/ai.c:creature_ai_advance_plan_step open: module cleanup
@@ -1394,7 +1374,6 @@ static-prefix ui/view.c:weather_draw_rain open: module cleanup
 static-prefix ui/view.c:weather_get_rain_image open: module cleanup
 static-prefix ui/view.c:zone_id_for_view_element open: module cleanup
 static-prefix ui/zone.c:rect_clip open: module cleanup
-todo data/gdat.c open: module cleanup
 todo engine/money.c open: module cleanup
 todo engine/seen.c open: module cleanup
 todo ui/dialog.c open: module cleanup

@@ -2757,7 +2757,7 @@ static void outdoor_draw_sky(int dir, int x, int y)
         memset(view.landmarks, 0, sizeof view.landmarks);
         for (int e = 0; e < SKY_LANDMARK_MAX; e++)
             if (picture_exists(CAT_SKY, view.gfx_set, e) &&
-                *gdat_text(gdat_current(), CAT_SKY, view.gfx_set, e, text, sizeof text)) {
+                *gdat_text(gdat_current(), (GdatKey){CAT_SKY, view.gfx_set, e}, text, sizeof text)) {
                 view.landmarks[e / BYTE_BITS] |= (uint8_t)(1 << (e % BYTE_BITS));
                 view.no_landmarks = 0;
             }
@@ -2769,7 +2769,7 @@ static void outdoor_draw_sky(int dir, int x, int y)
     for (int e = 0; e < SKY_LANDMARK_MAX; e++) {
         if (!(view.landmarks[e / BYTE_BITS] & 1 << (e % BYTE_BITS)))
             continue;
-        gdat_text(gdat_current(), CAT_SKY, view.gfx_set, e, text, sizeof text);
+        gdat_text(gdat_current(), (GdatKey){CAT_SKY, view.gfx_set, e}, text, sizeof text);
         if (!outdoor_place_sky_object(o, text, dir, x, y))
             continue;
         o->entry = (uint8_t)e;

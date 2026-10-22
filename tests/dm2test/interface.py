@@ -9,6 +9,7 @@ from unicorn import UC_PROT_ALL
 from unicorn.x86_const import UC_X86_REG_ESP
 
 from dm2test import constants as C
+from dm2test.gdat import GdatKey
 from dm2test.markers import ROOT
 from dm2test.save import GRAPHICS, START, Game
 from dm2test.view import OriginalView, u8_p
@@ -87,7 +88,7 @@ class OriginalUi(OriginalView):
     def text(self, category, index, entry, buf):
         """gdat_get_text: the decrypted text goes through the original text_format (a jump with the caller's return)."""
         raw = ctypes.create_string_buffer(512)
-        self.lib.gdat_text(self.gdat, category & 0xFF, index & 0xFF, entry & 0xFF, raw, 512)
+        self.lib.gdat_text(self.gdat, GdatKey(category & 0xFF, index & 0xFF, entry & 0xFF), raw, 512)
         raw_addr = self.put(raw.value + b"\0")
         emu = self.emu
         sp = emu.uc.reg_read(UC_X86_REG_ESP)
@@ -122,7 +123,7 @@ def gdat(lib):
         pytest.skip("game/SKULL.EXE missing")
     g = ctypes.c_void_p()
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_char_p, ctypes.c_size_t]
+    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
     lib.gdat_item.restype = u8_p
     lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]

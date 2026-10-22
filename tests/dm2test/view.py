@@ -4,6 +4,7 @@ import ctypes
 import struct
 
 from dm2test import constants as C
+from dm2test.gdat import GdatKey
 from dm2test.markers import ROOT
 from dm2test.save import Game
 
@@ -145,7 +146,7 @@ class OriginalView:
 
     def text(self, category, index, entry, buf):
         text = ctypes.create_string_buffer(128)
-        self.lib.gdat_text(self.gdat, category & 0xFF, index & 0xFF, entry & 0xFF, text, 128)
+        self.lib.gdat_text(self.gdat, GdatKey(category & 0xFF, index & 0xFF, entry & 0xFF), text, 128)
         self.emu.write(buf, text.value + b"\0")
         return buf
 
@@ -209,7 +210,7 @@ class OriginalView:
             if not self.lib.gdat_exists(self.gdat, 0x17, gfx_set, 1, entries[0]) or amount < low:
                 continue
             entry = entries[sum(amount >= limit for limit in limits)]
-            self.lib.gdat_text(self.gdat, 0x17, gfx_set, entry, text, 128)
+            self.lib.gdat_text(self.gdat, GdatKey(0x17, gfx_set, entry), text, 128)
             if text.value:
                 out += struct.pack("<BBhhhBB", entry, self.lib.gdat_text_int_field(text.value, b"fw") & 0xFF,
                                    self.lib.gdat_text_int_field(text.value, b"cd"), 0, 0, 0x40, 0x40)

@@ -170,7 +170,7 @@ int dialog_run(int id)
     int count = 0;
     char text[TEXT_SIZE];
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++) {
-        if (!*gdat_text(g, CAT_DIALOG, id, e, text, sizeof text))
+        if (!*gdat_text(g, (GdatKey){CAT_DIALOG, id, e}, text, sizeof text))
             continue;
         /* ponytail: the high byte (a default button of the original) only feeds a check that is always 0 */
         uint8_t value = (uint8_t)gdat_entry_index(g, CAT_DIALOG, id, GDAT_TYPE_VALUE, e);

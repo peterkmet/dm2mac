@@ -83,7 +83,7 @@ static int ornament_frame(int category, int ornament, uint32_t time, int offset)
     int first = 0;
     const char *sequence = NULL;
     if (!frames) {
-        gdat_text(gdat_current(), category, ornament, ORN_KEY_FRAMES, text, sizeof text);
+        gdat_text(gdat_current(), (GdatKey){category, ornament, ORN_KEY_FRAMES}, text, sizeof text);
         if (!text[0])
             return 1;
         sequence = text;

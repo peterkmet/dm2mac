@@ -2038,7 +2038,7 @@ static void game_pause(void)
     main_loop.running = 0;
     play_hide_view();
     gfx_fill_bitmap(&view_viewport, ui_colors[UI_BLACK]);
-    gdat_text(gdat_current(), CAT_INTERFACE, 0, TEXT_PAUSED, text, sizeof text);
+    gdat_text(gdat_current(), (GdatKey){CAT_INTERFACE, 0, TEXT_PAUSED}, text, sizeof text);
     text_draw_in_zone(ZONE_VIEW_TEXT, ui_colors[UI_CYAN], text);
     play_present_viewport();
     input_push_mode(INPUT_MODE_PAUSE);

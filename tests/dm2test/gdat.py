@@ -10,6 +10,12 @@ from dm2test.markers import ROOT
 GDAT = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 OK, ERR_IO, ERR_FORMAT, ERR_NOT_IMAGE, ERR_DATA, ERR_SPACE = 0, -1, -2, -4, -5, -6
 
+class GdatKey(ctypes.Structure):
+    """The GdatKey of gdat.h: category, index, entry."""
+
+    _fields_ = [("category", ctypes.c_int), ("index", ctypes.c_int), ("entry", ctypes.c_int)]
+
+
 c_int_p = ctypes.POINTER(ctypes.c_int)
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 

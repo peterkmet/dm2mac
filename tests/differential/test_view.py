@@ -5,6 +5,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
+from dm2test.gdat import GdatKey
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, Game, original_load
@@ -33,7 +34,7 @@ def gdat(lib):
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
     g = ctypes.c_void_p()
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.c_char_p, ctypes.c_size_t]
+    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g
     lib.gdat_free(g)
@@ -55,7 +56,7 @@ def emu(lib, gdat, start):
 
     def get_text(category, index, entry, buf):
         text = ctypes.create_string_buffer(128)
-        lib.gdat_text(gdat, category & 0xFF, index & 0xFF, entry & 0xFF, text, 128)
+        lib.gdat_text(gdat, GdatKey(category & 0xFF, index & 0xFF, entry & 0xFF), text, 128)
         emu.write(buf, text.value + b"\0")
         return buf
 
