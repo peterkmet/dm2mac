@@ -9,6 +9,7 @@
 #include "draw.h"
 #include "icon.h"
 #include "input.h"
+#include "mode_screen.h"
 #include "movie.h"
 #include "music.h"
 #include "play.h"
@@ -41,6 +42,9 @@
 
 /* The exit status of a bad command line. */
 #define EXIT_USAGE 2
+
+/* The arguments that a RESTART adds: --mode and its value. */
+#define MODE_OPTION_ARGS 2
 
 /* The timer ticks of the main loops. */
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
@@ -157,6 +161,13 @@ static void present_with_cursor(void)
     memcpy(g_video_fb, saved, sizeof saved);
 }
 
+/* Sets the palette of GRAPHICS.DAT. */
+static void load_palette(void)
+{
+    for (int c = 0; c < PALETTE_COLORS; c++)
+        gdat_palette_color(gdat_current(), c, g_video_palette[c]);
+}
+
 /* Loads GRAPHICS.DAT, the screen layout, the colors, and the font; false with a message on an error. */
 static bool load_graphics(const char *data)
 {
@@ -171,9 +182,8 @@ static bool load_graphics(const char *data)
         os_log("%s has no screen layout, color ramps, or font", graphics);
         return false;
     }
-    for (int c = 0; c < PALETTE_COLORS; c++)
-        gdat_palette_color(gdat, c, g_video_palette[c]);
     draw_init(gdat);
+    load_palette();
     input_init();
     return true;
 }
@@ -365,6 +375,27 @@ static void run_movies(int script)
     plat_audio_music(music_render);
 }
 
+/* The keys and clicks of the mode screen; a closed window ends the program. */
+static void pump_mode_screen_events(void)
+{
+    PlatEvent e;
+    while (plat_poll(&e)) {
+        if (e.type == PLAT_QUIT)
+            end_by_platform();
+        else if (e.type == PLAT_MOUSE && e.button == SDL_BUTTON_LEFT)
+            mode_screen_click(e.x, e.y);
+        else if (e.type != PLAT_KEY)
+            continue;
+        else if (e.scancode == SDL_SCANCODE_UP || e.scancode == SDL_SCANCODE_KP_8 || e.scancode == SDL_SCANCODE_W)
+            mode_screen_key(MODE_SCREEN_UP);
+        else if (e.scancode == SDL_SCANCODE_DOWN || e.scancode == SDL_SCANCODE_KP_2 || e.scancode == SDL_SCANCODE_S)
+            mode_screen_key(MODE_SCREEN_DOWN);
+        else if (e.scancode == SDL_SCANCODE_RETURN || e.scancode == SDL_SCANCODE_KP_ENTER)
+            mode_screen_key(MODE_SCREEN_ENTER);
+    }
+    plat_mouse_position(&g_input_mouse_x, &g_input_mouse_y);
+}
+
 /* Reads the values of the command line options into options; the option without a value, NULL when all have one. */
 static const char *read_options(int argc, char **argv, Options *options)
 {
@@ -401,6 +432,22 @@ static bool select_mode(const char *mode)
         return true;
     os_log("unknown mode %s: use vanilla, advanced, or turnbased", mode);
     return false;
+}
+
+/* Shows the mode screen until the player selects a mode, which then plays as with --mode, or closes the window. */
+static void choose_mode(void)
+{
+    mode_screen_start();
+    while (!mode_screen_is_done() && !g_main_loop.quit) {
+        pump_mode_screen_events();
+        mode_screen_draw();
+        present_with_cursor();
+        for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++)
+            plat_wait_tick();
+    }
+    load_palette();
+    if (mode_screen_is_done())
+        select_mode(g_game_mode_names[mode_screen_cursor()]);
 }
 
 /* Builds the default control socket path $HOME/.dm2/control.sock of the turn-based mode; false without HOME. */
@@ -472,18 +519,28 @@ static void close_platform(void)
     plat_quit();
 }
 
-/* Starts the program again for a RESTART of the game; returns only with a message when it cannot start. */
-static void restart(int argc, char **argv)
+/* Starts the program again for a RESTART of the game, in the game mode of this run; returns only with a message when
+   it cannot start. */
+static void restart(int argc, char **argv, bool mode_given)
 {
-    args_drop_save(argc, argv); /* the original always restarts into the start menu */
+    int count = args_drop_save(argc, argv); /* the original always restarts into the start menu */
+    char **args = calloc((size_t)count + MODE_OPTION_ARGS + 1, sizeof *args);
+    if (!args)
+        os_fatal("out of memory");
+    memcpy(args, argv, (size_t)count * sizeof *args);
+    if (!mode_given) { /* the mode of the mode screen */
+        args[count++] = "--mode";
+        args[count++] = (char *)g_game_mode_names[g_game_mode];
+    }
 #ifdef _WIN32
     _putenv_s(RESTART_ENV, "1");
-    _execvp(argv[0], (const char *const *)argv); /* the DOS launcher starts the game again */
+    _execvp(args[0], (const char *const *)args); /* the DOS launcher starts the game again */
 #else
     setenv(RESTART_ENV, "1", 1);
-    execvp(argv[0], argv); /* the DOS launcher starts the game again */
+    execvp(args[0], args); /* the DOS launcher starts the game again */
 #endif
-    os_log("cannot restart %s", argv[0]);
+    os_log("cannot restart %s", args[0]);
+    free(args);
 }
 
 /* Loads the game files and the save, opens the window, the control socket, and the music; false with a message on
@@ -520,8 +577,11 @@ static bool open_game(const Options *options, int factor)
 
 int main(int argc, char **argv)
 {
-    Options options = {.data = "game", .filter = SDL_getenv("DM2_FILTER"), .mode = "advanced"};
+    Options options = {.data = "game", .filter = SDL_getenv("DM2_FILTER")};
     const char *missing = read_options(argc, argv, &options);
+    bool mode_given = options.mode != NULL;
+    if (!mode_given)
+        options.mode = g_game_mode_names[GAME_MODE_ADVANCED];
 #ifdef _WIN32
     open_log(options.data); /* before the first message: the Windows build has no console */
 #endif
@@ -545,6 +605,8 @@ int main(int argc, char **argv)
     if (!open_game(&options, factor))
         return EXIT_FAILURE;
     g_play_frame_hook = g_game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
+    if (!mode_given && !options.save && !getenv(RESTART_ENV))
+        choose_mode();
     if (!options.save && !getenv(RESTART_ENV))
         run_movies(MOVIE_SCRIPT_START);
     if (!options.save && !g_main_loop.quit && !start_game(options.data)) {
@@ -564,6 +626,6 @@ int main(int argc, char **argv)
         run_movies(movie_script_after(g_session.exit_code));
     close_platform();
     if (g_session.exit_code == EXIT_RESTART)
-        restart(argc, argv);
+        restart(argc, argv, mode_given);
     return g_session.exit_code;
 }

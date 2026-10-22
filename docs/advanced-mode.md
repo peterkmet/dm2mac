@@ -7,14 +7,25 @@ The C port has two game modes. Without the cheats, the game rules are the same i
 
 ## Select the mode
 
-Start the program with `--mode`:
+Without `--mode`, the program shows the mode screen before the start movies. The screen shows the heading MODE and the items VANILLA and ADVANCED. The cursor (gold) starts on ADVANCED.
+
+| Input | Action |
+| --- | --- |
+| Up, keypad 8, `W` | Move the cursor up |
+| Down, keypad 2, `S` | Move the cursor down |
+| Return, keypad Enter | Select the mode at the cursor |
+| Left click on an item | Select that mode |
+
+The cursor stops at the ends of the list. Close the window to end the program. The selected mode plays as with `--mode`; the start movies and the title menu follow.
+
+`--mode` skips the screen:
 
 ```sh
 build/dm2 --mode vanilla
 build/dm2 --mode advanced
 ```
 
-Without `--mode`, the mode is `advanced`. A different value stops the program with exit code 2 and the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. RESTART keeps the mode.
+`--save` also skips the screen; without `--mode`, the mode is then `advanced`. A value other than `vanilla`, `advanced`, or `turnbased` stops the program with exit code 2 and the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. RESTART skips the screen and keeps the mode, also the mode of the screen.
 
 The turn-based mode (`--mode turnbased`, `docs/turnbased-mode.md`) is a third mode for play through the control socket. It shares the seen squares and the AMAP block with the advanced mode, but it has no extra keys and no cheats.
 
