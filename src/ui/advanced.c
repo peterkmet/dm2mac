@@ -224,7 +224,7 @@ void advanced_draw_automap(void)
     draw_free_temp();
 }
 
-void advanced_automap_event(int type, int x, int y)
+void advanced_automap_event(int type, int16_t x, int16_t y)
 {
     int16_t r[RECT_SIZE];
     if (type == INPUT_KEY) {
@@ -251,7 +251,7 @@ void advanced_automap_event(int type, int x, int y)
     }
 }
 
-void advanced_automap_drag(int x, int y)
+void advanced_automap_drag(int16_t x, int16_t y)
 {
     if (!drag.active)
         return;

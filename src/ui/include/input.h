@@ -131,7 +131,7 @@ bool input_is_idle(void);
 /* ---- The input tree ---- */
 
 /* The command of a click with buttons at (x, y) in mode, and the rectangle of its zone; 0 for none. */
-uint16_t input_click_command(int mode, int x, int y, int buttons, int16_t *rect); /* exported for the tests */
+uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect); /* exported for the tests */
 /* The command of key in mode, and the rectangle of its zone; 0 for none. */
 uint16_t input_key_command(int mode, uint16_t key, int16_t *rect); /* exported for the tests */
 /* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
@@ -150,23 +150,23 @@ void input_pop_mode(void);
 
 /* The cursor image at (x, y) of the screen (the original mouse_move_event): the held object or the hand over a
    cursor zone of kind 1, the dragged champion over a zone of kind 2, else the arrow. */
-int input_cursor_at(int x, int y); /* exported for the tests */
+int input_cursor_at(int16_t x, int16_t y); /* exported for the tests */
 /* Draws the face of champ into the dragged champion cursor (champ_drag_click). */
 void input_set_champion_cursor(int champ);
 /* The image of a cursor of input_cursor_at. */
 CursorImage input_cursor_image(int cursor); /* exported for the tests */
-/* Draws the cursor image of input_cursor_at(x, y) with its hot spot at (x, y) into the screen dst. */
-void input_draw_cursor(uint8_t *dst, int x, int y);
+/* Draws the cursor image of input_cursor_at(x, y) with its hot spot at (x, y) into the screen pixels. */
+void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y);
 
 /* ---- Events ---- */
 
 /* A mouse button event at (x, y) of the screen (type: INPUT_BUTTON_* bits or INPUT_LEFT_RELEASED). */
-void input_mouse_click(int x, int y, int type); /* exported for the tests */
+void input_mouse_click(int16_t x, int16_t y, int type); /* exported for the tests */
 /* A mouse button (INPUT_BUTTON_*) goes down at (x, y) of the screen. */
-void input_mouse_down(int x, int y, int button);
+void input_mouse_down(int16_t x, int16_t y, int button);
 /* A mouse button (INPUT_BUTTON_*) goes up at (x, y) of the screen. The release of the left button ends the mouse
    capture of the eye or the mouth (INPUT_LEFT_RELEASED). */
-void input_mouse_up(int x, int y, int button);
+void input_mouse_up(int16_t x, int16_t y, int button);
 /* A key press of the keyboard (key code with KEY_* bits); input_poll reads it. */
 void input_key_down(uint16_t key);
 /* Clears the pending keys, clicks, and commands. */
@@ -178,8 +178,8 @@ void input_flush(void);
    in that cell: the hand action when the hand is ready and has actions; near the icon edges toward the party
    center the leader choice, else the icon command when the spell is ready; else no command (0). */
 void input_refine_champion_click(Command *c); /* exported for the tests */
-/* Centers a w x h rect in src. */
-void rect_center_in(int16_t *dst, const int16_t *src, int w, int h);
+/* Sets rect to a w x h rect centered in src. */
+void rect_center_in(int16_t *rect, const int16_t *src, int16_t w, int16_t h);
 /* Turns the waiting events into commands and runs the click feedback. */
 void input_poll(void);
 /* Ends the push mode, the click feedback, and a drag. */

@@ -80,7 +80,7 @@ static const uint8_t *build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
     return glyph;
 }
 
-void text_draw(Bitmap *dst, int x, int y, TextColors colors, const char *text)
+void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text)
 {
     if (!*text)
         return;
@@ -97,7 +97,7 @@ void text_draw(Bitmap *dst, int x, int y, TextColors colors, const char *text)
         if (transparent != GFX_OPAQUE)
             transparent = 1;
     }
-    int16_t rect[RECT_SIZE] = {(int16_t)x, (int16_t)(y + FONT_BASELINE - (FONT_GLYPH_HEIGHT - 1)), FONT_ADVANCE,
+    int16_t rect[RECT_SIZE] = {x, (int16_t)(y + FONT_BASELINE - (FONT_GLYPH_HEIGHT - 1)), FONT_ADVANCE,
                                FONT_GLYPH_HEIGHT};
     for (; *text; text++, rect[RECT_X] += FONT_ADVANCE) {
         Blit blit = {.src = build_glyph((uint8_t)*text, (uint8_t)color, (uint8_t)bg),
@@ -113,7 +113,7 @@ void text_draw(Bitmap *dst, int x, int y, TextColors colors, const char *text)
     }
 }
 
-bool text_measure(const char *text, int16_t *width, int16_t *height)
+bool text_measure(const char *text, int16_t *out_w, int16_t *out_h)
 {
     if (!text)
         return false;
@@ -122,14 +122,14 @@ bool text_measure(const char *text, int16_t *width, int16_t *height)
         w += FONT_ADVANCE;
     if (w <= 0)
         return false;
-    *width = w;
-    *height = FONT_GLYPH_HEIGHT - FONT_BASELINE;
+    *out_w = w;
+    *out_h = FONT_GLYPH_HEIGHT - FONT_BASELINE;
     return true;
 }
 
-int text_wrap_line(const char *text, char *line, int16_t *pos, int max_width)
+int text_wrap_line(const char *text, char *line, int16_t *out_pos, int max_width)
 {
-    int16_t p = *pos, out = 0, width = 0;
+    int16_t p = *out_pos, out = 0, width = 0;
     int16_t space = -1, space_out = 0, space_width = 0;
     for (;;) {
         line[out] = '\0';
@@ -144,7 +144,7 @@ int text_wrap_line(const char *text, char *line, int16_t *pos, int max_width)
         if (width + FONT_ADVANCE > (int16_t)max_width) {
             if (space == -1)
                 break;
-            *pos = (int16_t)(space + 1);
+            *out_pos = (int16_t)(space + 1);
             line[space_out] = '\0';
             return space_width;
         }
@@ -153,11 +153,11 @@ int text_wrap_line(const char *text, char *line, int16_t *pos, int max_width)
         width += FONT_ADVANCE;
         line[out++] = text[p++];
     }
-    *pos = p;
+    *out_pos = p;
     return width;
 }
 
-void text_draw_with_shadow(Bitmap *dst, int x, int y, TextColors colors, const char *text)
+void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text)
 {
     int16_t w, h;
     if (!text_measure(text, &w, &h))
@@ -172,12 +172,12 @@ void text_draw_with_shadow(Bitmap *dst, int x, int y, TextColors colors, const c
     text_draw(dst, x, y, (TextColors){colors.color, (int16_t)(colors.bg | TEXT_TRANSPARENT)}, text);
 }
 
-void text_draw_on_screen(int x, int y, int color, int bg, const char *text)
+void text_draw_on_screen(int16_t x, int16_t y, int color, int bg, const char *text)
 {
     text_draw(&g_draw_screen, x, y, (TextColors){color, bg}, text);
 }
 
-void text_draw_in_viewport(int x, int y, int color, const char *text)
+void text_draw_in_viewport(int16_t x, int16_t y, int color, const char *text)
 {
     text_draw(&g_view_viewport, x, y, (TextColors){color, g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT}, text);
 }

@@ -42,9 +42,9 @@ uint8_t video_vga_to_8bit(uint8_t v);
 /* ARGB8888 of palette color c. */
 uint32_t video_argb(uint8_t c);
 /* Largest integer scale that fits the output, centered (letterbox). */
-void video_layout(int out_w, int out_h, int *scale, int *ox, int *oy);
+void video_layout(int output_w, int output_h, int *scale, int *ox, int *oy);
 /* Maps output pixel coordinates to game coordinates, clamped to the screen. */
-VideoPoint video_map_mouse(int out_w, int out_h, int x, int y);
+VideoPoint video_map_mouse(int output_w, int output_h, int output_x, int output_y);
 
 /* An opaque ARGB8888 pixel of 8-bit red, green, and blue. */
 static inline uint32_t video_argb_pack(uint32_t red, uint32_t green, uint32_t blue)

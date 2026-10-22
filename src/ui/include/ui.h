@@ -80,9 +80,9 @@ void ui_reset(void);
 /* The text lines of the eye panel for an object: its name, its weight, and its gauges ("<label> <value>/<max>"), a
    scroll's text, a chest's item names, or a money box's coin counts. Returns the count. */
 int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE]);
-/* The rank text of a base skill as the skills panel shows it (for example "NOVICE FIGHTER"), in dst (TEXT_SIZE bytes).
+/* The rank text of a base skill as the skills panel shows it (for example "NOVICE FIGHTER"), in text (TEXT_SIZE bytes).
    The master ranks start with a power rune glyph of the font. */
-char *ui_skill_rank_text(int champ, int skill, char *dst);
+char *ui_skill_rank_text(int champ, int skill, char *text);
 
 /* ---- Offscreen bitmaps ---- */
 
@@ -101,7 +101,7 @@ void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int tran
 /* Draws a prepared picture placed in zone (-1: at its rect). */
 void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
 /* Draws text with its base line at (x, y) in screen coordinates. */
-void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const char *text);
+void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors colors, const char *text);
 /* Draws text placed in zone. */
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text);
 /* Draws text with a shadow placed in zone. */

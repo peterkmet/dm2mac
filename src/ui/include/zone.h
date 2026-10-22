@@ -37,18 +37,19 @@ extern int16_t g_zone_clip_rect[RECT_SIZE];
 
 /* Reads the layout zones from GRAPHICS.DAT; returns false when they are missing or damaged. */
 bool zone_load(const gdat_t *gdat);
-/* Places an image of *w x *h pixels (0: the size of image) in zone and clips it. Returns rect, or NULL when
-   nothing is visible; *w and *h then hold the clipped left and top pixel counts. */
-int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t *w, int16_t *h);
+/* Places an image of *out_w x *out_h pixels (0: the size of image) in zone and clips it. Returns rect, or NULL when
+   nothing is visible; *out_w and *out_h then hold the clipped left and top pixel counts. */
+int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t *out_w, int16_t *out_h);
 /* As zone_compute_rect, with the anchor type of the zone replaced. */
-int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *w, int16_t *h);
+int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *out_w,
+                                    int16_t *out_h);
 /* The rect of zone at w_scale and h_scale (1/10000) of the size of its parent size zone. */
 int16_t *zone_get_rect_clipped(int zone, int16_t *rect, unsigned w_scale, unsigned h_scale);
 /* The rect of zone at the full size of its parent size zone. */
 int16_t *zone_get_rect(int zone, int16_t *rect);
-/* The offset (*dx, *dy) at percent (0 to 100) of the way from zone from to zone to; returns false for an unknown
+/* The offset (*out_dx, *out_dy) at percent (0 to 100) of the way from zone from to zone to; returns false for an unknown
    zone. */
-bool zone_interpolate_offset(int from, int to, int percent, int16_t *dx, int16_t *dy);
+bool zone_interpolate_offset(int from, int to, int percent, int16_t *out_dx, int16_t *out_dy);
 /* Clips the next zones to the viewport minus these margins. */
 void zone_set_clip_margins(int left, int top, int right, int bottom);
 
@@ -56,7 +57,7 @@ void zone_set_clip_margins(int left, int top, int right, int bottom);
 /* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame. */
 int16_t *zone_get_icon_rect(int zone, int16_t *rect);
 /* The screen position of zone for a point (1 x 1 pixels). */
-void zone_get_position(int zone, int16_t *x, int16_t *y);
+void zone_get_position(int zone, int16_t *out_x, int16_t *out_y);
 /* The view zone of grid cell cell (0 to 24, 5 x 5) of view element base, turned by dir. */
 int zone_id_for_view_cell(int base, int cell, int dir);
 

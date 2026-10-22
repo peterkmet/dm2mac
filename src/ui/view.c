@@ -835,21 +835,21 @@ static int position_to_cell(int position)
     return position == CELL_CENTER ? DIR_COUNT : -1;
 }
 
-void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y)
+void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t creature_size, int16_t *out_x, int16_t *out_y)
 {
-    if (!size)
+    if (!creature_size)
         return;
-    if (size > CREATURE_SIZE_MAX)
-        size = CREATURE_SIZE_MAX;
-    int16_t cx = *x, cy = *y, step = toward_party_step[size - 1];
+    if (creature_size > CREATURE_SIZE_MAX)
+        creature_size = CREATURE_SIZE_MAX;
+    int16_t cx = *out_x, cy = *out_y, step = toward_party_step[creature_size - 1];
     int16_t dx = (int16_t)abs((int16_t)(party_x - cx)), dy;
     if (!dx) {
-        *y = (int16_t)(party_y < cy ? *y - step : *y + step);
+        *out_y = (int16_t)(party_y < cy ? *out_y - step : *out_y + step);
         return;
     }
     dy = (int16_t)abs((int16_t)(cy - party_y));
     if (!dy) {
-        *x = (int16_t)(party_x < cx ? *x - step : *x + step);
+        *out_x = (int16_t)(party_x < cx ? *out_x - step : *out_x + step);
         return;
     }
     bool below = party_y < cy;
@@ -857,8 +857,8 @@ void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t size, in
     bool same = below == right;
     bool steep = same == (dx < dy);
     int octant = steep | same << OCTANT_SAME_SHIFT | right << OCTANT_RIGHT_SHIFT;
-    *x = (int16_t)(*x + toward_party_diagonal[size - 1][octant][0]);
-    *y = (int16_t)(*y + toward_party_diagonal[size - 1][octant][1]);
+    *out_x = (int16_t)(*out_x + toward_party_diagonal[creature_size - 1][octant][0]);
+    *out_y = (int16_t)(*out_y + toward_party_diagonal[creature_size - 1][octant][1]);
 }
 
 /* Records the things of the square (x, y) at pos for the party eye: the grid cells of the square, the creatures in
@@ -958,7 +958,7 @@ static void load_walking_party_square(ViewSquare *s)
     }
 }
 
-void view_load_square(int x, int y, int pos, int dir)
+void view_load_square(int16_t x, int16_t y, int pos, int dir)
 {
     int square_x = x, square_y = y;
     step_relative(dir, view_offset[pos][1], view_offset[pos][0], &square_x, &square_y);
@@ -3296,7 +3296,7 @@ bool view_shows_party(void)
            view.party_dir == g_game.party_dir;
 }
 
-void view_draw_dungeon(int dir, int x, int y)
+void view_draw_dungeon(int dir, int16_t x, int16_t y)
 {
     view.map = view.party_map = g_game.party_map;
     view.party_dir = dir;
@@ -3370,7 +3370,7 @@ static bool hit_test_picture(int x, int y, int key)
 #define HIT_SIDE_LIMIT 75 /* percent of the half picture width: a click beyond it hits a side */
 #define HIT_DEPTH      1  /* the depth at which the creature in front is drawn for a hit test */
 
-bool view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
+bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side)
 {
     uint16_t group = creature_get_group_at(square_x, square_y);
     if (group == THING_NONE)
@@ -3388,7 +3388,7 @@ bool view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
     int sx = c->flip & MIRROR_H ? r[RECT_X] + r[RECT_W] - 1 - x + c->src_x : x - r[RECT_X] + c->src_x;
     int half = c->image ? c->image->width >> 1 : 0;
     int16_t offset = half ? (int16_t)((sx - c->x - half) * PERCENT / half) : 0;
-    *side = offset < -HIT_SIDE_LIMIT ? 3 : offset <= HIT_SIDE_LIMIT ? 0 : 1;
+    *out_side = offset < -HIT_SIDE_LIMIT ? 3 : offset <= HIT_SIDE_LIMIT ? 0 : 1;
     draw_free_temp();
     return true;
 }
@@ -3396,7 +3396,7 @@ bool view_hit_test_creature(int x, int y, int square_x, int square_y, int *side)
 /* The hit test of a wall ornament. */
 #define HIT_SMALL_SIZE 32 /* a smaller ornament takes every click on its wall */
 
-bool view_hit_test_wall_ornament(int pos, int x, int y)
+bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y)
 {
     static const int8_t face_of_pos[4] = {0, -1, 1, 0}; /* the face that the party sees of the walls at 0 to 3 */
     if (pos > POS_FRONT)

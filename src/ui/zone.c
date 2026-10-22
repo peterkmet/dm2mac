@@ -288,12 +288,13 @@ static int16_t *clip_placed(int16_t *rect, const int16_t *clip, int16_t *w, int1
     return rect[RECT_W] > 0 && rect[RECT_H] > 0 ? rect : NULL;
 }
 
-int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t *w, int16_t *h)
+int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t *out_w, int16_t *out_h)
 {
-    return zone_compute_anchored_rect(image, rect, (AnchoredZone){zone, ZONE_NO_ANCHOR}, w, h);
+    return zone_compute_anchored_rect(image, rect, (AnchoredZone){zone, ZONE_NO_ANCHOR}, out_w, out_h);
 }
 
-int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *w, int16_t *h)
+int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *out_w,
+                                    int16_t *out_h)
 {
     if ((uint16_t)anchored.zone == ZONE_NONE)
         return NULL;
@@ -321,21 +322,21 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
         type -= ANCHOR_RELATIVE;
     }
     if (relative) {
-        at.x += *w;
-        at.y += *h;
-        *w = 0;
-        *h = 0;
+        at.x += *out_w;
+        at.y += *out_h;
+        *out_w = 0;
+        *out_h = 0;
     }
-    if (!image && (*w <= 0 || *h <= 0))
+    if (!image && (*out_w <= 0 || *out_h <= 0))
         return NULL;
     if (!place_in_parents(rec, &at))
         return NULL;
     if ((unsigned)type > ANCHOR_LEFT)
         return NULL;
-    *w = *w ? *w : image->width;
-    *h = *h ? *h : image->height;
+    *out_w = *out_w ? *out_w : image->width;
+    *out_h = *out_h ? *out_h : image->height;
     int ox, oy;
-    anchor_offset(type, *w, *h, &ox, &oy);
+    anchor_offset(type, *out_w, *out_h, &ox, &oy);
     rect[RECT_X] = (int16_t)(at.x - ox);
     rect[RECT_Y] = (int16_t)(at.y - oy);
     if (g_zone_clip_rect[RECT_W]) {
@@ -344,7 +345,7 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
     }
     if (g_party.move_steps && at.last_parent == WALK_PARENT && !clip_rect(at.clip, g_zone_walk_view_rect))
         return NULL;
-    return clip_placed(rect, at.clip, w, h);
+    return clip_placed(rect, at.clip, out_w, out_h);
 }
 
 int16_t *zone_get_rect_clipped(int zone, int16_t *rect, unsigned w_scale, unsigned h_scale)
@@ -373,14 +374,14 @@ int16_t *zone_get_rect(int zone, int16_t *rect)
     return zone_get_rect_clipped(zone, rect, ZONE_SCALE_FULL, ZONE_SCALE_FULL);
 }
 
-bool zone_interpolate_offset(int from, int to, int percent, int16_t *dx, int16_t *dy)
+bool zone_interpolate_offset(int from, int to, int percent, int16_t *out_dx, int16_t *out_dy)
 {
     const int16_t *a = find_zone(from), *b = find_zone(to);
     if (!a || !b)
         return false;
     percent = percent < 0 ? 0 : percent > PERCENT ? PERCENT : percent;
-    *dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT);
-    *dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT);
+    *out_dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT);
+    *out_dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT);
     return true;
 }
 

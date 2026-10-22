@@ -46,7 +46,7 @@ void plat_present_movie(const MoviePicture *p);
 /* True with the next key, mouse button, or quit event; mouse motion only moves the pointer. */
 bool plat_poll(PlatEvent *e);
 /* Mouse position in game screen pixels. */
-void plat_mouse_position(int *x, int *y);
+void plat_mouse_position(int *out_x, int *out_y);
 
 /* Timer and sound */
 

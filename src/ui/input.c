@@ -1112,7 +1112,7 @@ static uint16_t key_command(int mode, uint16_t key)
     return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
 }
 
-uint16_t input_click_command(int mode, int x, int y, int buttons, int16_t *rect)
+uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect)
 {
     uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons);
     memcpy(rect, in.rect, sizeof in.rect);
@@ -1213,7 +1213,7 @@ void input_pop_mode(void)
 
 /* ---- The cursor ---- */
 
-int input_cursor_at(int x, int y)
+int input_cursor_at(int16_t x, int16_t y)
 {
     int kind = 0;
     for (int i = 0; i < in.cursor_count; i++) {
@@ -1294,7 +1294,7 @@ CursorImage input_cursor_image(int cursor)
     }
 }
 
-void input_draw_cursor(uint8_t *dst, int x, int y)
+void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y)
 {
     if (g_ui.eye || g_ui.mouth)
         return; /* the original hides the pointer while the eye or the mouth is held */
@@ -1306,13 +1306,13 @@ void input_draw_cursor(uint8_t *dst, int x, int y)
                 continue;
             int n = c.bpp == IMAGE_4BPP ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BIT_COUNT)) & NIBBLE_MASK : c.bits[i];
             if (n != c.key)
-                dst[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
+                screen[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
         }
 }
 
 /* ---- Events ---- */
 
-void input_mouse_click(int x, int y, int type)
+void input_mouse_click(int16_t x, int16_t y, int type)
 {
     if (in.events_locked) {
         in.deferred = 1;
@@ -1329,21 +1329,21 @@ void input_mouse_click(int x, int y, int type)
     if (in.event_count < limit) {
         in.event_tail = (in.event_tail + 1) % EVENT_RING;
         in.events[in.event_tail].type = (int16_t)type;
-        in.events[in.event_tail].x = (int16_t)x;
-        in.events[in.event_tail].y = (int16_t)y;
+        in.events[in.event_tail].x = x;
+        in.events[in.event_tail].y = y;
         in.event_count++;
     } else if (type == INPUT_BUTTON_LEFT) {
         in.dropped_left = 1;
     }
 }
 
-void input_mouse_down(int x, int y, int button)
+void input_mouse_down(int16_t x, int16_t y, int button)
 {
     game_set_mouse_buttons(g_input_mouse_buttons | button);
     input_mouse_click(x, y, button);
 }
 
-void input_mouse_up(int x, int y, int button)
+void input_mouse_up(int16_t x, int16_t y, int button)
 {
     game_set_mouse_buttons(g_input_mouse_buttons & ~button);
     if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || g_advanced_automap_open))
@@ -1489,12 +1489,12 @@ static const uint8_t *click_feedback_script(Command *c)
     return click_feedback_scripts + offset;
 }
 
-void rect_center_in(int16_t *dst, const int16_t *src, int w, int h)
+void rect_center_in(int16_t *rect, const int16_t *src, int16_t w, int16_t h)
 {
-    dst[RECT_W] = (int16_t)w;
-    dst[RECT_X] = (int16_t)(src[RECT_X] + ((src[RECT_W] - w + 1) >> 1));
-    dst[RECT_H] = (int16_t)h;
-    dst[RECT_Y] = (int16_t)(src[RECT_Y] + ((src[RECT_H] - h + 1) >> 1));
+    rect[RECT_W] = w;
+    rect[RECT_X] = (int16_t)(src[RECT_X] + ((src[RECT_W] - w + 1) >> 1));
+    rect[RECT_H] = h;
+    rect[RECT_Y] = (int16_t)(src[RECT_Y] + ((src[RECT_H] - h + 1) >> 1));
 }
 
 static void queue_current(void)
@@ -2119,7 +2119,7 @@ static void click_with_object(const ViewSquares *v, int x, int y, bool front_blo
     click_throw_object(x, y);
 }
 
-void view_click_in_viewport(int x, int y)
+void view_click_in_viewport(int16_t x, int16_t y)
 {
     dun_set_current_map(g_game.party_map);
     if (g_party.push_mode) {

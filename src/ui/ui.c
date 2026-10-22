@@ -359,13 +359,13 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
     return count;
 }
 
-char *ui_skill_rank_text(int champ, int skill, char *dst)
+char *ui_skill_rank_text(int champ, int skill, char *text)
 {
     int level = champ_get_skill_level(champ, skill, 1);
     if (level > SKILL_LEVEL_MAX)
         level = SKILL_LEVEL_MAX;
     text_format_set_entry(skill);
-    return text_gdat(CAT_PANEL, 0, skill_level_texts[level], dst);
+    return text_gdat(CAT_PANEL, 0, skill_level_texts[level], text);
 }
 
 /* ---- Offscreen bitmaps ---- */
@@ -557,7 +557,7 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
     add_dirty_rect(o, r);
 }
 
-void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const char *text)
+void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors colors, const char *text)
 {
     int16_t w, h;
     if (!text_measure(text, &w, &h))
@@ -565,7 +565,7 @@ void offscreen_draw_text_at(Offscreen *o, int x, int y, TextColors colors, const
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]), colors, text);
     /* like the original, the changed rect starts at the base line */
-    const int16_t r[RECT_SIZE] = {[RECT_X] = (int16_t)x, [RECT_Y] = (int16_t)y, [RECT_W] = w, [RECT_H] = h};
+    const int16_t r[RECT_SIZE] = {[RECT_X] = x, [RECT_Y] = y, [RECT_W] = w, [RECT_H] = h};
     add_dirty_rect(o, r);
 }
 
@@ -649,12 +649,12 @@ int16_t *zone_get_icon_rect(int zone, int16_t *rect)
     return rect;
 }
 
-void zone_get_position(int zone, int16_t *x, int16_t *y)
+void zone_get_position(int zone, int16_t *out_x, int16_t *out_y)
 {
     int16_t r[RECT_SIZE] = {0}, w = 1, h = 1;
     zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
-    *x = r[RECT_X];
-    *y = r[RECT_Y];
+    *out_x = r[RECT_X];
+    *out_y = r[RECT_Y];
 }
 
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *face_colors)

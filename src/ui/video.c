@@ -22,15 +22,15 @@ uint32_t video_argb(uint8_t c)
     return video_argb_pack(red, green, blue);
 }
 
-void video_layout(int out_w, int out_h, int *scale, int *ox, int *oy)
+void video_layout(int output_w, int output_h, int *scale, int *ox, int *oy)
 {
-    int sx = out_w / SCREEN_W, sy = out_h / SCREEN_H;
+    int sx = output_w / SCREEN_W, sy = output_h / SCREEN_H;
     int s = sx < sy ? sx : sy;
     if (s < 1)
         s = 1;
     *scale = s;
-    *ox = (out_w - SCREEN_W * s) / 2;
-    *oy = (out_h - SCREEN_H * s) / 2;
+    *ox = (output_w - SCREEN_W * s) / 2;
+    *oy = (output_h - SCREEN_H * s) / 2;
 }
 
 static int clamp(int v, int max)
@@ -38,9 +38,9 @@ static int clamp(int v, int max)
     return v < 0 ? 0 : v > max ? max : v;
 }
 
-VideoPoint video_map_mouse(int out_w, int out_h, int x, int y)
+VideoPoint video_map_mouse(int output_w, int output_h, int output_x, int output_y)
 {
     int s, ox, oy;
-    video_layout(out_w, out_h, &s, &ox, &oy);
-    return (VideoPoint){clamp((x - ox) / s, SCREEN_W - 1), clamp((y - oy) / s, SCREEN_H - 1)};
+    video_layout(output_w, output_h, &s, &ox, &oy);
+    return (VideoPoint){clamp((output_x - ox) / s, SCREEN_W - 1), clamp((output_y - oy) / s, SCREEN_H - 1)};
 }

@@ -42,19 +42,19 @@ typedef struct {
 bool text_init(const gdat_t *gdat);
 
 /* Draws text into dst with its base line at y. */
-void text_draw(Bitmap *dst, int x, int y, TextColors colors, const char *text);
+void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);
 /* The width and height in pixels of a text line; returns false for an empty text. */
-bool text_measure(const char *text, int16_t *width, int16_t *height);
-/* Copies the part of text from *pos that fits in max_width pixels into line, broken at a space when it does not
-   fit; *pos goes to the rest. Returns the width of line. */
-int text_wrap_line(const char *text, char *line, int16_t *pos, int max_width);
+bool text_measure(const char *text, int16_t *out_w, int16_t *out_h);
+/* Copies the part of text from *out_pos that fits in max_width pixels into line, broken at a space when it does
+   not fit; *out_pos goes to the rest. Returns the width of line. */
+int text_wrap_line(const char *text, char *line, int16_t *out_pos, int max_width);
 /* Draws text with a shadow down and right into an 8 bpp dst; bg without TEXT_TRANSPARENT fills a box behind it
    first. */
-void text_draw_with_shadow(Bitmap *dst, int x, int y, TextColors colors, const char *text);
+void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);
 /* Draws text into the screen; exported for the tests. */
-void text_draw_on_screen(int x, int y, int color, int bg, const char *text);
+void text_draw_on_screen(int16_t x, int16_t y, int color, int bg, const char *text);
 /* Draws text without background into the view picture. */
-void text_draw_in_viewport(int x, int y, int color, const char *text);
+void text_draw_in_viewport(int16_t x, int16_t y, int color, const char *text);
 /* Draws text placed in a layout zone into the view picture. */
 void text_draw_in_zone(int zone, int color, const char *text);
 /* Draws text placed in a layout zone into the view picture, with a shadow. */

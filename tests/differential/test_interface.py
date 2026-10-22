@@ -349,7 +349,7 @@ def test_draw_text_matches_original(port, original):
     # Random texts in 8 bpp and 4 bpp bitmaps, with and without background, at random positions.
     lib = port
     emu = original.emu
-    lib.text_draw.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int, ctypes.c_int, TextColors, ctypes.c_char_p]
+    lib.text_draw.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int16, ctypes.c_int16, TextColors, ctypes.c_char_p]
     rng = random.Random(13)
     width, height = 96, 40
     src, text = original.alloc(width * height), original.alloc(64)

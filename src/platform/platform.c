@@ -209,10 +209,10 @@ bool plat_poll(PlatEvent *e)
     return false;
 }
 
-void plat_mouse_position(int *x, int *y)
+void plat_mouse_position(int *out_x, int *out_y)
 {
-    *x = platform.mouse_x;
-    *y = platform.mouse_y;
+    *out_x = platform.mouse_x;
+    *out_y = platform.mouse_y;
 }
 
 /* Timer and sound */

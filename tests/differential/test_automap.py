@@ -349,7 +349,7 @@ def viewport_pixels(lib):
 def test_close_key_drops_the_click_of_the_same_tick(lib, automap):
     # A click on the viewport and Esc in one tick: the automap closes and the click does not reach the game.
     game, _ = automap
-    lib.input_mouse_click.argtypes = [ctypes.c_int] * 3
+    lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
     press(lib, KEY_TAB)
     x, y, w, h = viewport(lib)
     lib.input_mouse_click(x + w // 2, y + h // 2, INPUT_BUTTON_LEFT)
@@ -390,7 +390,7 @@ def test_automap_draws_inside_the_viewport_with_the_party_icon(lib, automap):
 
 
 def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
-    lib.input_mouse_click.argtypes = [ctypes.c_int] * 3
+    lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
     press(lib, KEY_TAB)
     x, y, w, h = viewport(lib)
     mouse_x, mouse_y = ctypes.c_int.in_dll(lib, "g_input_mouse_x"), ctypes.c_int.in_dll(lib, "g_input_mouse_y")

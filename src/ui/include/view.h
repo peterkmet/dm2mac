@@ -88,11 +88,11 @@ extern uint8_t g_view_object_grid[VIEW_GRID_SIZE]; /* exported for the tests */
 /* By view position: bit n set when grid cell n of the square holds a missile, or an object. */
 extern uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT]; /* exported for the tests */
 extern uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];  /* exported for the tests */
-/* Moves a creature of size 1 to 3 at (*x, *y) toward the party eye at (party_x, party_y), in thing grid cells;
+/* Moves a creature of size 1 to 3 at (*out_x, *out_y) toward the party eye at (party_x, party_y), in thing grid cells;
    exported for the tests. */
-void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y);
+void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t creature_size, int16_t *out_x, int16_t *out_y);
 /* Loads the view square at view position pos for the party at (x, y) looking to dir. */
-void view_load_square(int x, int y, int pos, int dir); /* exported for the tests */
+void view_load_square(int16_t x, int16_t y, int pos, int dir); /* exported for the tests */
 /* Shows the squares behind a seamless passage that view_mark_hidden_squares hid. */
 void view_unhide_linked_squares(void); /* exported for the tests */
 /* Hides the wall squares that walls in front of them cover. */
@@ -122,7 +122,7 @@ bool view_shows_floor_ornament(int pos, int ornament);
 /* True when the last view picture shows the party position and direction. */
 bool view_shows_party(void);
 /* Draws the view of the party at (x, y) of the party map looking to dir into g_view_viewport. */
-void view_draw_dungeon(int dir, int x, int y);
+void view_draw_dungeon(int dir, int16_t x, int16_t y);
 
 /* ---- Clicks ---- */
 
@@ -131,16 +131,16 @@ extern int g_view_click_zone_count;
 /* The vertical place of the last hit test of a view picture, in percent of half the picture height from its center:
    a shop click above the center shows the next item, else the last item. */
 extern int16_t g_view_hit_offset_y; /* exported for the tests */
-/* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *side:
+/* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *out_side:
    0 its middle, 1 its right, 3 its left. */
-bool view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);
+bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side);
 /* True when the ornament of the wall at view position pos (0 to 3) shows a pixel at (x, y) of the viewport. */
-bool view_hit_test_wall_ornament(int pos, int x, int y);
+bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y);
 /* The object of a click among the objects in the cell of thing (the cell bits); a chest opens or closes. placing:
    thing is the leader hand object that goes there. Returns the object, THING_NONE when the click is done (a chest
    changed, or thing went into an open chest), THING_ENDOFLIST when thing must drop; thing when nothing is hit. */
 uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing);
 /* A click in the dungeon view: walls, doors, objects, creatures (input.c). */
-void view_click_in_viewport(int x, int y);
+void view_click_in_viewport(int16_t x, int16_t y);
 
 #endif /* DM2_UI_VIEW_H */

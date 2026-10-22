@@ -53,8 +53,8 @@ void advanced_draw_automap(void); /* exported for the tests */
 /* An input event while the automap is open (type INPUT_KEY with the key in x, a mouse button, INPUT_LEFT_RELEASED):
    Tab, M, and Esc close it, I, F, and L switch the cheats, a left drag on the viewport scrolls the map. Other keys do
    nothing. */
-void advanced_automap_event(int type, int x, int y);
+void advanced_automap_event(int type, int16_t x, int16_t y);
 /* The mouse is at (x, y): during a drag the map follows it in whole squares. */
-void advanced_automap_drag(int x, int y);
+void advanced_automap_drag(int16_t x, int16_t y);
 
 #endif /* DM2_UI_ADVANCED_H */
