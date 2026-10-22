@@ -120,8 +120,8 @@ def test_keys_by_name_and_code(control, lib):
 def test_key_click_and_command_move_the_party(control, lib):
     path, game, _ = control
     direction, x, y = game.party_dir, game.party_x, game.party_y
-    lib.input_find_command.restype = ctypes.c_uint16
-    turn_right = lib.input_find_command(INPUT_MODE_MOVE, *arrow_center(lib, ZONE_TURN_RIGHT), LEFT, 0, (ctypes.c_int16 * 4)())
+    lib.input_click_command.restype = ctypes.c_uint16
+    turn_right = lib.input_click_command(INPUT_MODE_MOVE, *arrow_center(lib, ZONE_TURN_RIGHT), LEFT, (ctypes.c_int16 * 4)())
     with pumped(lib):
         assert request({"cmd": "key", "key": "up"}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 40}, path)["ok"]
@@ -145,7 +145,7 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
     path, *_ = control
     ui = UiState.in_dll(lib, "g_ui")
     lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
-    lib.input_find_command.restype = ctypes.c_uint16
+    lib.input_click_command.restype = ctypes.c_uint16
 
     def hold_and_release(x, y, mode):
         assert request({"cmd": "press", "x": x, "y": y}, path)["ok"]
@@ -165,14 +165,14 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
         lib.zone_get_position(ZONE_VIEWPORT, ctypes.byref(origin_x), ctypes.byref(origin_y))
         x, y = arrow_center(lib, ZONE_EYE_CLICK)
         x, y = x + origin_x.value, y + origin_y.value
-        assert lib.input_find_command(INPUT_MODE_INVENTORY, x, y, LEFT, 0, (ctypes.c_int16 * 4)()) == CMD_EYE
+        assert lib.input_click_command(INPUT_MODE_INVENTORY, x, y, LEFT, (ctypes.c_int16 * 4)()) == CMD_EYE
         assert request({"cmd": "click", "x": x, "y": y}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
         assert ui.eye == 0 and ui.panel_mode != PANEL_MODE_SKILLS
         hold_and_release(x, y, PANEL_MODE_SKILLS)
         mouth_x, mouth_y = arrow_center(lib, ZONE_MOUTH_CLICK)
         mouth_x, mouth_y = mouth_x + origin_x.value, mouth_y + origin_y.value
-        assert lib.input_find_command(INPUT_MODE_INVENTORY, mouth_x, mouth_y, LEFT, 0, (ctypes.c_int16 * 4)()) == CMD_MOUTH
+        assert lib.input_click_command(INPUT_MODE_INVENTORY, mouth_x, mouth_y, LEFT, (ctypes.c_int16 * 4)()) == CMD_MOUTH
         assert request({"cmd": "press", "x": mouth_x, "y": mouth_y}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
         assert ui.mouth == 1  # the mouth with an empty hand holds like the eye

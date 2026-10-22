@@ -209,9 +209,9 @@ def test_champion_name_editor_matches_original(ui, original):
     lib, emu = ui, original.emu
     lib.input_init()
     lib.input_key_down.argtypes = [ctypes.c_uint16]
-    lib.input_find_command.restype = ctypes.c_uint16
+    lib.input_key_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
-    commands = [lib.input_find_command(C.INPUT_MODE_NAME, 0, 0, 0, k, rect) for k in NAME_KEYS]
+    commands = [lib.input_key_command(C.INPUT_MODE_NAME, k, rect) for k in NAME_KEYS]
     assert all(commands), commands
     UiState.in_dll(lib, "g_ui").inventory = 1
     emu.write(G_INVENTORY_ORDINAL, struct.pack("<h", 1))

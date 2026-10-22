@@ -10,7 +10,6 @@
 #include "timeline.h"
 #include "automap.h"
 #include "draw.h"
-#include "input.h"
 #include "music.h"
 #include "session.h"
 #include "sound.h"

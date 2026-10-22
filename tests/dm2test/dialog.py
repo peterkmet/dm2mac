@@ -56,9 +56,9 @@ def find_point(lib, mode, test):
     """A screen point whose left click in input mode gives a match that test accepts."""
     rect = (ctypes.c_int16 * 4)()
     match = InputMatch.in_dll(lib, "g_input_match")
-    lib.input_find_command.restype = ctypes.c_uint16
+    lib.input_click_command.restype = ctypes.c_uint16
     for y in range(1, C.SCREEN_H, 2):
         for x in range(1, C.SCREEN_W, 2):
-            if lib.input_find_command(mode, x, y, 2, 0, rect) and test(match):
+            if lib.input_click_command(mode, x, y, 2, rect) and test(match):
                 return x, y
     raise AssertionError("no such click point")

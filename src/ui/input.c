@@ -906,20 +906,20 @@ static int party_cell_champion(int cell)
 }
 
 /* The condition of a node with children, tested with the argument of each child. */
-static int condition_holds(int cond, int arg)
+static bool condition_holds(int cond, int arg)
 {
     switch (cond) {
     case NODE_IF_ALWAYS:
-        return 1;
+        return true;
     case NODE_IF_SCREEN_MODE:
         return arg == dialog.screen_mode;
     case NODE_IF_BUTTON_COUNT:
         return arg == dialog.button_count;
     case NODE_IF_INVENTORY:
         if (arg == g_ui.inventory)
-            return 1;
+            return true;
         if (arg <= CHAMPION_MAX)
-            return 0;
+            return false;
         return !g_ui.inventory || arg - CHAMPION_MAX != g_ui.inventory;
     case NODE_IF_CHAMPION_ALIVE:
         return champion(arg)->health != 0;
@@ -929,7 +929,7 @@ static int condition_holds(int cond, int arg)
         return arg ? g_input_drag_state != 0 : g_input_drag_state == 0;
     case NODE_IF_ICON_IN_CELL:
         if (g_action.champion)
-            return 0;
+            return false;
         return arg >= CELL_COUNT || party_cell_champion(arg) >= 0;
     case NODE_IF_ACTION_COUNT:
         return g_action.champion && arg == g_champ_action_count;
@@ -937,12 +937,12 @@ static int condition_holds(int cond, int arg)
         return g_action.champion && arg & 1 << champion(g_action.champion - 1)->rune_count;
     case NODE_IF_MINION_MAP_LAYOUT:
         if (!g_action.champion)
-            return 0;
+            return false;
         return arg == (g_action.flags & MAP_HAS_OPTIONS ? g_champ_action_count : MAP_WITHOUT_OPTIONS);
     case NODE_IF_ACTION_MODE:
         return arg == g_action.mode;
     }
-    return 0;
+    return false;
 }
 
 static const InputNode *node_child(const InputNode *node, int i)
@@ -950,26 +950,26 @@ static const InputNode *node_child(const InputNode *node, int i)
     return &input_nodes[input_children[child_list_start[node->link] + i] & NODE_INDEX_MASK];
 }
 
-static int node_child_end(const InputNode *node, int i)
+static bool node_child_end(const InputNode *node, int i)
 {
     return i > 0 && input_children[child_list_start[node->link] + i] & NODE_HAS_CHILDREN;
 }
 
 /* The screen rectangle of an input zone. */
-static int get_input_zone_rect(uint16_t zone, int16_t *rect)
+static bool get_input_zone_rect(uint16_t zone, int16_t *rect)
 {
     if (!zone_get_rect(zone & ZONE_ID_MASK, rect))
-        return 0;
+        return false;
     if (zone & (ZONE_IN_PANEL | ZONE_IN_ACTION_AREA)) {
         int16_t x, y;
         zone_get_position(zone & ZONE_IN_PANEL ? ZONE_VIEWPORT : ZONE_ACTION_ORIGIN, &x, &y);
         rect[RECT_X] = (int16_t)(rect[RECT_X] + x);
         rect[RECT_Y] = (int16_t)(rect[RECT_Y] + y);
     }
-    return 1;
+    return true;
 }
 
-static int point_in_rect(const int16_t *r, int x, int y)
+static bool point_in_rect(const int16_t *r, int x, int y)
 {
     return x >= r[RECT_X] && x <= r[RECT_X] + r[RECT_W] - 1 && y >= r[RECT_Y] && y <= r[RECT_Y] + r[RECT_H] - 1;
 }
@@ -1003,6 +1003,7 @@ static void select_entry(const InputCommand *list, const InputCommand *e, int x,
     memcpy(g_input_match.rect, in.rect, sizeof g_input_match.rect);
 }
 
+/* The command of the first entry of a command list whose buttons and zone take the click, 0 for none. */
 static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int buttons)
 {
     if (!list)
@@ -1021,6 +1022,7 @@ static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int 
     return 0;
 }
 
+/* Remembers the entry of command in a command list as the matched entry, or only the command without an entry. */
 static void select_command_in_list(uint16_t command, const InputCommand *list)
 {
     g_input_match.origin = -1;
@@ -1039,6 +1041,7 @@ static void select_command_in_list(uint16_t command, const InputCommand *list)
     g_input_match.choice = 0;
 }
 
+/* The command of a click in the input tree below node, 0 for none. */
 static uint16_t find_click_command(const InputNode *node, int x, int y, int buttons)
 {
     uint16_t command = 0;
@@ -1060,6 +1063,7 @@ static uint16_t find_click_command(const InputNode *node, int x, int y, int butt
     return command;
 }
 
+/* The command of key in the input tree below node, 0 for none. */
 static uint16_t find_key_command(const InputNode *node, uint16_t key)
 {
     uint16_t command = 0;
@@ -1108,10 +1112,16 @@ static uint16_t key_command(int mode, uint16_t key)
     return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
 }
 
-uint16_t input_find_command(int mode, int x, int y, int buttons, int key, int16_t *rect)
+uint16_t input_click_command(int mode, int x, int y, int buttons, int16_t *rect)
 {
-    uint16_t command =
-        key ? key_command(mode, (uint16_t)key) : find_click_command(&input_mode_roots[mode], x, y, buttons);
+    uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons);
+    memcpy(rect, in.rect, sizeof in.rect);
+    return command;
+}
+
+uint16_t input_key_command(int mode, uint16_t key, int16_t *rect)
+{
+    uint16_t command = key_command(mode, key);
     memcpy(rect, in.rect, sizeof in.rect);
     return command;
 }
@@ -1339,6 +1349,7 @@ void input_mouse_up(int x, int y, int button)
         input_mouse_click(x, y, INPUT_LEFT_RELEASED);
 }
 
+/* Queues the click that came while the events were locked. */
 static void flush_deferred_click(void)
 {
     if (!in.deferred)
@@ -1347,6 +1358,7 @@ static void flush_deferred_click(void)
     input_mouse_click(in.deferred_x, in.deferred_y, in.deferred_type);
 }
 
+/* Queues a key event when the event ring has space, and unlocks the events. */
 static void enqueue_key(uint16_t key)
 {
     if (in.event_count < EVENT_LIMIT) {
@@ -1502,7 +1514,7 @@ static void feedback_init_rect(Feedback *f, int16_t *r, int w, int h)
     if (!f->opened) {
         memcpy(f->o.rect, in.current.rect, sizeof f->o.rect);
         offscreen_create(&f->o, -1, 0);
-        f->opened = 1;
+        f->opened = true;
     }
     rect_center_in(r, f->o.rect, w, h);
 }
@@ -1567,41 +1579,10 @@ static void feedback_spell_icon(int cell)
     present_action_area();
 }
 
-/* Runs the opcode op of a feedback script with its arguments at p; returns the next opcode. */
-static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p, int *queue_full)
+/* Runs a drawing opcode of a feedback script with its arguments at p; returns the next opcode. */
+static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p)
 {
     switch (op & FB_OP_MASK) {
-    case FB_DELAY:
-        in.script_delay = *p++;
-        break;
-    case FB_RELEASE_QUEUE:
-        release_queue();
-        break;
-    case FB_WAIT_QUEUE:
-        in.feedback_waiting = 1;
-        break;
-    case FB_WAIT_STEP:
-        g_input_feedback_busy = 1;
-        break;
-    case FB_QUEUE:
-    case FB_QUEUE_AND_RELEASE:
-        if ((in.queue_tail + 1) % COMMAND_QUEUE == in.queue_head) {
-            if (!in.disabled)
-                in.disabled = 1;
-            *queue_full = 1; /* the script waits */
-            break;
-        }
-        queue_current();
-        if ((op & FB_OP_MASK) == FB_QUEUE_AND_RELEASE)
-            release_queue();
-        break;
-    case FB_EXECUTE:
-        in.script = p;
-        if (!command_execute(&in.current))
-            p = in.script - 1;
-        else if (g_input_command_stop)
-            release_queue();
-        break;
     case FB_PICTURE:
         feedback_picture(f, p);
         p += PICTURE_ARGS;
@@ -1641,11 +1622,52 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         dialog.button_entry = p[PICTURE_ENTRY];
         p += DIALOG_BUTTON_ARGS;
         dialog_draw_button(g_input_match.zone, 1);
-        f->opened = 0; /* the original forgets the open feedback bitmap */
+        f->opened = false; /* the original forgets the open feedback bitmap */
         dialog_present();
         break;
     default:
         break;
+    }
+    return p;
+}
+
+/* Runs the opcode op of a feedback script with its arguments at p; returns the next opcode. */
+static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p, bool *queue_full)
+{
+    switch (op & FB_OP_MASK) {
+    case FB_DELAY:
+        in.script_delay = *p++;
+        break;
+    case FB_RELEASE_QUEUE:
+        release_queue();
+        break;
+    case FB_WAIT_QUEUE:
+        in.feedback_waiting = 1;
+        break;
+    case FB_WAIT_STEP:
+        g_input_feedback_busy = 1;
+        break;
+    case FB_QUEUE:
+    case FB_QUEUE_AND_RELEASE:
+        if ((in.queue_tail + 1) % COMMAND_QUEUE == in.queue_head) {
+            if (!in.disabled)
+                in.disabled = 1;
+            *queue_full = true; /* the script waits */
+            break;
+        }
+        queue_current();
+        if ((op & FB_OP_MASK) == FB_QUEUE_AND_RELEASE)
+            release_queue();
+        break;
+    case FB_EXECUTE:
+        in.script = p;
+        if (!command_execute(&in.current))
+            p = in.script - 1;
+        else if (g_input_command_stop)
+            release_queue();
+        break;
+    default:
+        return feedback_draw_op(f, op, p);
     }
     return p;
 }
@@ -1663,7 +1685,7 @@ static void run_click_feedback(int elapsed)
     if (in.disabled || in.feedback_waiting || g_input_feedback_busy || !in.script)
         return;
     Feedback f = {0};
-    int queue_full = 0;
+    bool queue_full = false;
     uint8_t op;
     do {
         op = in.script[0];
@@ -1763,6 +1785,8 @@ void input_reset_states(void)
     g_input_drag_state = 0;
 }
 
+/* ---- Movement arrows ---- */
+
 void input_cancel_push_mode(void)
 {
     if (!g_party.push_mode)
@@ -1773,7 +1797,7 @@ void input_cancel_push_mode(void)
 }
 
 /* Draws a movement arrow released or pressed. */
-static void show_move_arrow(int entry, int zone, int pressed)
+static void show_move_arrow(int entry, int zone, bool pressed)
 {
     in.arrow_pressed = pressed;
     in.arrow_zone = zone;
@@ -1781,7 +1805,7 @@ static void show_move_arrow(int entry, int zone, int pressed)
     Offscreen o;
     offscreen_create(&o, zone, 1);
     gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
-    offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry + (pressed != 0), zone, GFX_OPAQUE);
+    offscreen_draw_gdat_image(&o, CAT_INTERFACE, UI_INDEX_ARROWS, entry + pressed, zone, GFX_OPAQUE);
     offscreen_flush(&o, 1);
     draw_free_temp();
 }
@@ -1789,12 +1813,51 @@ static void show_move_arrow(int entry, int zone, int pressed)
 void input_release_move_arrow(void)
 {
     if (in.arrow_pressed)
-        show_move_arrow(in.arrow_entry, in.arrow_zone, 0);
+        show_move_arrow(in.arrow_entry, in.arrow_zone, false);
+}
+
+void input_update_viewport_arrow(void)
+{
+    /* by push arrow: the movement arrow entry and zone, the direction of the push and of the party step */
+    static const uint8_t entries[PUSH_ARROW_COUNT] = {0x12, 0x10, 0x14, 0x16, 0x18, 0x0e};
+    static const uint16_t zones[PUSH_ARROW_COUNT] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
+    static const uint8_t push_dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, 3},
+                         step_dirs[PUSH_ARROW_COUNT] = {0, 0, 1, 2, 3, 0};
+    if (!g_view_arrows_enabled || g_party.push_pending_group != THING_NONE)
+        return;
+    int16_t r[RECT_SIZE];
+    if (!zone_get_rect(ZONE_VIEWPORT, r))
+        return;
+    int x = g_input_mouse_x - r[RECT_X], y = g_input_mouse_y - r[RECT_Y];
+    g_party.push_arrow = PUSH_ARROW_NONE;
+    if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
+        return;
+    int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
+    if (abs(dx) < ARROW_CENTER_X) {
+        if (abs(dy) < ARROW_CENTER_Y)
+            return;
+        arrow = dy >= 0 ? PUSH_ARROW_DOWN : PUSH_ARROW_UP;
+    } else if (dx < 0) {
+        arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_LEFT : dy >= 0 ? PUSH_ARROW_DOWN_LEFT : PUSH_ARROW_UP;
+    } else {
+        arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
+    }
+    int step = dir_turn(step_dirs[arrow], g_game.party_dir);
+    if (dun_square_blocks_movement(
+            dun_get_square((int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step]))))
+        return;
+    if (!creature_can_be_pushed((int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
+                                (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]),
+                                dir_turn(push_dirs[arrow], g_game.party_dir), NULL))
+        return;
+    show_move_arrow(entries[arrow], zones[arrow], true);
+    g_party.push_arrow = (int16_t)arrow;
 }
 
 /* ---- Clicks in the dungeon view ---- */
 
-static int point_in_zone(int zone, int x, int y)
+/* The point (x, y) is in the layout zone. */
+static bool point_in_zone(int zone, int x, int y)
 {
     int16_t r[RECT_SIZE];
     return zone_get_rect(zone, r) && point_in_rect(r, x, y);
@@ -1842,7 +1905,7 @@ static void click_creature(uint16_t group, int x, int y, int square_x, int squar
 }
 
 /* A click on the wall in front: a plain wall sounds; the mouse drag through a fake wall is not ported. */
-static void click_front_wall(int passable, int x, int y)
+static void click_front_wall(bool passable, int x, int y)
 {
     if (!g_game.champion_count)
         return;
@@ -1897,21 +1960,21 @@ static void click_take_object(int x, int y, int index)
 }
 
 /* Drops the leader hand object into cell of the square (x, y): 0 to 3 a floor cell, 4 to 7 a possession cell of
-   a static creature, relative to the party direction. Returns 1 when done. */
-static int click_drop_object(int x, int y, int cell)
+   a static creature, relative to the party direction. True when done. */
+static bool click_drop_object(int x, int y, int cell)
 {
     if ((int16_t)g_game.leader == -1)
-        return 0;
+        return false;
     int dir_cell = dir_turn(g_game.party_dir, cell);
     uint16_t group = creature_group_at(g_party.cur_map, x, y);
-    int possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
+    bool possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
     if (group != THING_NONE) {
         const CreatureInfo *info = creature_group_info(group);
         if (info->flags & CREATURE_STATIC) {
             if (possession && !(info->possessions & CREATURE_POSSESSIONS_ON_FLOOR))
-                return 0;
+                return false;
             if (cell < CELL_POSSESSION_FIRST && !(info->possessions & POSSESSIONS_FLOOR_CLICKABLE))
-                return 0;
+                return false;
         } else {
             group = THING_NONE;
         }
@@ -1928,22 +1991,23 @@ static int click_drop_object(int x, int y, int cell)
         move_thing(thing_with_cell(thing, dir_cell), -1, 0, x, y);
     }
     g_input_command_stop = 1;
-    return 1;
+    return true;
 }
 
-/* A click with the leader hand object on the objects of a square cell: it goes into an open chest there (1), or
-   it drops into the cell when the click hits no object; pos: the view position of the square (0 or 3). */
-static int click_place_object(int x, int y, int sx, int sy, int pos, int cell, int kind)
+/* A click at (x, y) with the leader hand object on the objects of a square cell: it goes into an open chest there
+   (true), or it drops into the cell when the click hits no object; at.pos: the view position of the square (0 or
+   3). */
+static bool click_place_object(int x, int y, ViewCell at)
 {
-    uint16_t hand = thing_with_cell(g_game.leader_hand, dir_turn(g_game.party_dir, cell));
-    uint16_t hit = view_hit_test_object(&(ViewObjectClick){x, y, pos, sx, sy, kind}, hand, true);
+    uint16_t hand = thing_with_cell(g_game.leader_hand, dir_turn(g_game.party_dir, at.cell));
+    uint16_t hit = view_hit_test_object(&(ViewObjectClick){x, y, at.pos, at.x, at.y, at.kind}, hand, true);
     if (hit == THING_NONE) {
         champ_take_from_leader_hand();
-        return 1;
+        return true;
     }
     if (hit == THING_ENDOFLIST)
-        return click_drop_object(sx, sy, kind == CLICK_POSSESSIONS ? cell + CELL_POSSESSION_FIRST : cell);
-    return 0;
+        return click_drop_object(at.x, at.y, at.kind == CLICK_POSSESSIONS ? at.cell + CELL_POSSESSION_FIRST : at.cell);
+    return false;
 }
 
 /* A click in the upper view with the leader hand object: the leader throws it to the left or the right side. */
@@ -1975,8 +2039,8 @@ static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z,
     }
 }
 
-/* A click on the click zones of the view: objects, door buttons, and wall ornaments; returns 1 when it is done. */
-static int click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
+/* A click on the click zones of the view: objects, door buttons, and wall ornaments; true when it is done. */
+static bool click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
 {
     for (int i = 0; i < g_view_click_zone_count; i++) {
         const ViewClickZone *z = &g_view_click_zones[i];
@@ -1990,15 +2054,15 @@ static int click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
                 break;
             if (hand == THING_NONE) {
                 click_take_object(x, y, i);
-                return 1;
+                return true;
             }
             if (z->kind == CLICK_ALCOVE) {
-                if (click_place_object(x, y, v->fx, v->fy, 0, ALCOVE_CELL, CLICK_ALCOVE))
-                    return 1;
+                if (click_place_object(x, y, (ViewCell){v->fx, v->fy, 0, ALCOVE_CELL, CLICK_ALCOVE}))
+                    return true;
             } else if (z->kind == CLICK_OBJECT) {
                 for (int k = 0; k < HALF_CELLS; k++)
-                    if (click_place_object(x, y, v->px, v->py, POS_PARTY, k, CLICK_OBJECT))
-                        return 1;
+                    if (click_place_object(x, y, (ViewCell){v->px, v->py, POS_PARTY, k, CLICK_OBJECT}))
+                        return true;
             }
             break;
         case CLICK_DOOR_BUTTON:
@@ -2008,20 +2072,20 @@ static int click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
         case CLICK_WALL_ORNAMENT:
             if (view_hit_test_wall_ornament(z->cell, x, y)) {
                 click_wall_sensor(z->cell);
-                return 1;
+                return true;
             }
             break;
         }
     }
-    return 0;
+    return false;
 }
 
 /* A click with the leader hand object outside the click zones: it goes onto a cell of the party square, of the
    square in front (unless front_blocked), or of the possessions of a static creature there; else it is thrown. */
-static void click_with_object(const ViewSquares *v, int x, int y, int front_blocked)
+static void click_with_object(const ViewSquares *v, int x, int y, bool front_blocked)
 {
     for (int k = 0; k < HALF_CELLS; k++) {
-        if (click_place_object(x, y, v->px, v->py, POS_PARTY, k, CLICK_OBJECT))
+        if (click_place_object(x, y, (ViewCell){v->px, v->py, POS_PARTY, k, CLICK_OBJECT}))
             return;
         if (point_in_zone(ZONE_DROP_CELL_FIRST + k, x, y) && click_drop_object(v->px, v->py, k))
             return;
@@ -2029,7 +2093,7 @@ static void click_with_object(const ViewSquares *v, int x, int y, int front_bloc
     if (front_blocked)
         return;
     for (int k = HALF_CELLS; k < CELL_COUNT; k++) {
-        if (click_place_object(x, y, v->fx, v->fy, POS_FRONT, k, CLICK_OBJECT))
+        if (click_place_object(x, y, (ViewCell){v->fx, v->fy, POS_FRONT, k, CLICK_OBJECT}))
             return;
         if (point_in_zone(ZONE_DROP_CELL_FIRST + k, x, y) && click_drop_object(v->fx, v->fy, k))
             return;
@@ -2038,7 +2102,8 @@ static void click_with_object(const ViewSquares *v, int x, int y, int front_bloc
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
         const CreatureInfo *info = creature_group_info(g);
         for (int k = 0; k < (info->possessions & POSSESSIONS_KIND_MASK); k++) {
-            if (click_place_object(x, y, v->fx, v->fy, POS_FRONT, k + POSSESSION_VIEW_CELL_FIRST, CLICK_POSSESSIONS))
+            if (click_place_object(
+                    x, y, (ViewCell){v->fx, v->fy, POS_FRONT, k + POSSESSION_VIEW_CELL_FIRST, CLICK_POSSESSIONS}))
                 return;
             if (point_in_zone(info->possession_zone + k, x, y) &&
                 click_drop_object(v->fx, v->fy, k + POSSESSION_VIEW_CELL_FIRST + CELL_POSSESSION_FIRST))
@@ -2070,7 +2135,7 @@ void view_click_in_viewport(int x, int y)
     uint16_t hand = g_game.leader_hand;
     if (click_zones_hit(&v, x, y, hand))
         return;
-    int passable = square_type(front) == SQUARE_FAKE_WALL && front & SQUARE_FLAG_0 && !(front & SQUARE_FAKE_WALL_OPEN);
+    bool passable = square_type(front) == SQUARE_FAKE_WALL && front & SQUARE_FLAG_0 && !(front & SQUARE_FAKE_WALL_OPEN);
     if (hand != THING_NONE) {
         click_with_object(&v, x, y, square_type(front) == SQUARE_WALL && !passable);
         return;
@@ -2084,6 +2149,8 @@ void view_click_in_viewport(int x, int y)
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC)
         click_creature(g, x, y, v.fx, v.fy);
 }
+
+/* ---- Commands ---- */
 
 /* Shows the pause message and waits for the resume command. */
 static void pause_game(void)
@@ -2135,9 +2202,9 @@ static void execute_session_command(int command)
     }
 }
 
-/* The commands of the movement, the leader, the inventory, the spells, and the pause and the sleep; returns 1 when
+/* The commands of the movement, the leader, the inventory, the spells, and the pause and the sleep; true when
    command is one of them. */
-static int execute_party_command(const Command *c, int idle)
+static bool execute_party_command(const Command *c, bool idle)
 {
     int command = c->command;
     if (command == CMD_CANCEL_CAPTURE) {
@@ -2192,14 +2259,14 @@ static int execute_party_command(const Command *c, int idle)
     } else if (command == CMD_WAKE && idle) {
         champ_wake_party();
     } else {
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
 /* The commands of the champion actions, the hands, the slots, the money box, the drag, the recruiting, and the
-   advanced mode; returns 1 when command is one of them. */
-static int execute_champion_command(int command, int idle)
+   advanced mode; true when command is one of them. */
+static bool execute_champion_command(int command, bool idle)
 {
     if (command == CMD_ACTION_CANCEL) {
         champ_execute_selected_action(-1);
@@ -2246,9 +2313,9 @@ static int execute_champion_command(int command, int idle)
         if (g_ui.inventory)
             session_edit_champion_name(champion(g_ui.inventory - 1));
     } else {
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
 /* A command that the original runs later; the port runs none. */
@@ -2257,20 +2324,20 @@ static void run_later_command(const Command *c)
     (void)c;
 }
 
-int command_execute(Command *c)
+bool command_execute(Command *c)
 {
     int command = c->command;
-    int moving = command >= CMD_MOVE_FORWARD && command <= CMD_MOVE_LEFT;
+    bool moving = command >= CMD_MOVE_FORWARD && command <= CMD_MOVE_LEFT;
     if ((moving &&
          (g_game.party_move_cooldown ||
           (g_game.throw_cooldown && g_game.throw_dir == dir_turn(g_game.party_dir, command - CMD_MOVE_FORWARD)))) ||
         (g_party.move_steps && (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT || command == CMD_VIEWPORT)) ||
         (command == CMD_VIEWPORT && !view_shows_party()) || in.wait) {
         g_input_command_stop = 1;
-        return 0;
+        return false;
     }
     g_input_command_stop = 0;
-    int idle =
+    bool idle =
         !g_ui.eye && !g_ui.mouth && !g_party.push_mode && !g_input_drag_state; /* no eye, mouth, drag or push mode */
     if (!execute_party_command(c, idle) && !execute_champion_command(command, idle)) {
         if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE) ||
@@ -2282,45 +2349,7 @@ int command_execute(Command *c)
     }
     if (g_input_match.value >= CMD_TEXT_FIRST && g_input_match.value <= CMD_TEXT_LAST)
         g_input_command_stop = 1;
-    return 1;
-}
-
-void input_update_viewport_arrow(void)
-{
-    /* by push arrow: the movement arrow entry and zone, the direction of the push and of the party step */
-    static const uint8_t entries[PUSH_ARROW_COUNT] = {0x12, 0x10, 0x14, 0x16, 0x18, 0x0e};
-    static const uint16_t zones[PUSH_ARROW_COUNT] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
-    static const uint8_t push_dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, 3},
-                         step_dirs[PUSH_ARROW_COUNT] = {0, 0, 1, 2, 3, 0};
-    if (!g_view_arrows_enabled || g_party.push_pending_group != THING_NONE)
-        return;
-    int16_t r[RECT_SIZE];
-    if (!zone_get_rect(ZONE_VIEWPORT, r))
-        return;
-    int x = g_input_mouse_x - r[RECT_X], y = g_input_mouse_y - r[RECT_Y];
-    g_party.push_arrow = PUSH_ARROW_NONE;
-    if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
-        return;
-    int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
-    if (abs(dx) < ARROW_CENTER_X) {
-        if (abs(dy) < ARROW_CENTER_Y)
-            return;
-        arrow = dy >= 0 ? PUSH_ARROW_DOWN : PUSH_ARROW_UP;
-    } else if (dx < 0) {
-        arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_LEFT : dy >= 0 ? PUSH_ARROW_DOWN_LEFT : PUSH_ARROW_UP;
-    } else {
-        arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
-    }
-    int step = dir_turn(step_dirs[arrow], g_game.party_dir);
-    if (dun_square_blocks_movement(
-            dun_get_square((int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step]))))
-        return;
-    if (!creature_can_be_pushed((int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
-                                (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]),
-                                dir_turn(push_dirs[arrow], g_game.party_dir), NULL))
-        return;
-    show_move_arrow(entries[arrow], zones[arrow], 1);
-    g_party.push_arrow = (int16_t)arrow;
+    return true;
 }
 
 void input_set_wait(int steps)
@@ -2345,6 +2374,8 @@ void command_process_queue(void)
             in.disabled--;
     } while (!g_input_command_stop && !g_main_loop.quit);
 }
+
+/* ---- Simulated clicks and keys ---- */
 
 /* The command entry of command in the input tree under node, NULL for none. */
 static const InputCommand *find_command_entry(const InputNode *node, uint16_t command)

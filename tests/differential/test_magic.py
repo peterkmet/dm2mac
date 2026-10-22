@@ -290,9 +290,9 @@ def click_feedback(lib, original, cmd, where):
     emu = original.emu
     if cmd not in button_clicks:
         rect = (ctypes.c_int16 * 4)()
-        lib.input_find_command.restype = ctypes.c_uint16
+        lib.input_click_command.restype = ctypes.c_uint16
         x, y = next((x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
-                    if lib.input_find_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, 0, rect) == cmd)
+                    if lib.input_click_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, rect) == cmd)
         button_clicks[cmd] = x, y, tuple(rect)
     x, y, rect = button_clicks[cmd]
     loop = MainLoop.in_dll(lib, "g_main_loop")
@@ -452,9 +452,9 @@ def test_icon_click_feedback_matches_original(port, cast_ui):
         # a corner of the spell half of the icon: the leader half would refine the click to a leader command
         icon = cmd - CMD_PARTY_ICON
         rect = (ctypes.c_int16 * 4)()
-        lib.input_find_command.restype = ctypes.c_uint16
+        lib.input_click_command.restype = ctypes.c_uint16
         next(1 for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
-             if lib.input_find_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, 0, rect) == cmd)
+             if lib.input_click_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, rect) == cmd)
         x = rect[0] + rect[2] - 1 if icon in (1, 2) else rect[0]
         y = rect[1] + rect[3] - 1 if icon < 2 else rect[1]
         button_clicks[cmd] = x, y, tuple(rect)

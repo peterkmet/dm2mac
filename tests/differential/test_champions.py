@@ -236,10 +236,10 @@ CHAMPION_WATER = 0x46
 
 def find_click(lib, mode, command):
     """A screen point whose left click gives command in mode, with the C port state."""
-    lib.input_find_command.restype = ctypes.c_uint16
+    lib.input_click_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
     return next((x, y) for y in range(0, C.SCREEN_H, 2) for x in range(0, C.SCREEN_W, 2)
-                if lib.input_find_command(mode, x, y, LEFT, 0, rect) == command)
+                if lib.input_click_command(mode, x, y, LEFT, rect) == command)
 
 
 def test_drink_and_hand_actions(loop, lib):

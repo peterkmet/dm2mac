@@ -49,7 +49,8 @@ def tree(lib, gdat, start, tmp_path):
     scenario.emu.stub(MOUSE_AREA_ALLOC_NODE, lambda *_: 0)
     scenario.emu.call(INPUT_INIT_TABLES)
     lib.input_init()
-    lib.input_find_command.restype = ctypes.c_uint16
+    lib.input_click_command.restype = ctypes.c_uint16
+    lib.input_key_command.restype = ctypes.c_uint16
     # the action area state: the original after the load; the C port starts it with the screen
     mode = struct.unpack("<h", scenario.emu.read(G_ACTION_AREA_MODE, 2))[0]
     action = ActionArea.in_dll(lib, "g_action")
@@ -78,14 +79,14 @@ def test_clicks_and_keys_match_original(tree, lib, keys):
     for mode in MODES:
         for _ in range(400):
             x, y, buttons = rng.randrange(C.SCREEN_W), rng.randrange(C.SCREEN_H), rng.choice((C.INPUT_BUTTON_RIGHT, C.INPUT_BUTTON_LEFT))
-            mine = lib.input_find_command(mode, x, y, buttons, 0, rect)
+            mine = lib.input_click_command(mode, x, y, buttons, rect)
             theirs, their_rect = original_command(tree.emu, mode, x, y, buttons, 0)
             assert mine == theirs, (mode, x, y, buttons)
             if mine:
                 assert bytes(rect) == their_rect, (mode, x, y, buttons)
                 found += 1
         for key in keys:
-            mine = lib.input_find_command(mode, 0, 0, 0, key, rect)
+            mine = lib.input_key_command(mode, key, rect)
             theirs, their_rect = original_command(tree.emu, mode, 0, 0, 0, key)
             assert mine == theirs, (mode, hex(key))
             if mine:
@@ -316,7 +317,7 @@ def find_click(lib, mode, command):
     """A screen point whose left click gives command in mode."""
     rect = (ctypes.c_int16 * 4)()
     return next((x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
-                if lib.input_find_command(mode, x, y, INPUT_BUTTON_LEFT, 0, rect) == command)
+                if lib.input_click_command(mode, x, y, INPUT_BUTTON_LEFT, rect) == command)
 
 
 INPUT_BUTTON_LEFT, MODE_INVENTORY, CMD_SLEEP, KEY_INVENTORY, KEY_WAKE = C.INPUT_BUTTON_LEFT, C.INPUT_MODE_INVENTORY, C.CMD_SLEEP, 0x02, 0x1C
@@ -325,7 +326,8 @@ INPUT_BUTTON_LEFT, MODE_INVENTORY, CMD_SLEEP, KEY_INVENTORY, KEY_WAKE = C.INPUT_
 def test_sleep_and_wake_match_original(loop, lib):
     # The inventory key, then a click on the sleep button of the inventory: a game step on each tick while the
     # party sleeps; the wake key ends it.
-    lib.input_find_command.restype = ctypes.c_uint16
+    lib.input_click_command.restype = ctypes.c_uint16
+    lib.input_key_command.restype = ctypes.c_uint16
     loop.key(KEY_INVENTORY)
     for t in range(16):
         loop.tick()

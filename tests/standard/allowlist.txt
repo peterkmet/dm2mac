@@ -42,17 +42,11 @@ bool ui/advanced.c open: module cleanup
 bool ui/dialog.c open: module cleanup
 bool ui/fm.c open: module cleanup
 bool ui/include/advanced.h:advanced_quick_save open: module cleanup
-bool ui/include/input.h:command_execute open: module cleanup
 bool ui/include/session.h:session_init open: module cleanup
 bool ui/include/session.h:session_load open: module cleanup
 bool ui/include/session.h:session_start_new_game open: module cleanup
 bool ui/include/session.h:session_start_save open: module cleanup
 bool ui/include/sound.h:sound_play open: module cleanup
-bool ui/input.c open: module cleanup
-bool ui/input.c:click_drop_object open: module cleanup
-bool ui/input.c:click_zones_hit open: module cleanup
-bool ui/input.c:execute_champion_command open: module cleanup
-bool ui/input.c:execute_party_command open: module cleanup
 bool ui/play.c open: module cleanup
 bool ui/play.c:game_step_view open: module cleanup
 bool ui/session.c open: module cleanup
@@ -75,13 +69,11 @@ comment platform/transport.c open: module cleanup
 comment ui/fm.c open: module cleanup
 comment ui/include/action_area.h open: module cleanup
 comment ui/include/fm.h open: module cleanup
-comment ui/include/input.h open: module cleanup
 comment ui/include/movie.h open: module cleanup
 comment ui/include/music.h open: module cleanup
 comment ui/include/play.h open: module cleanup
 comment ui/include/session.h open: module cleanup
 comment ui/include/ui.h open: module cleanup
-comment ui/input.c open: module cleanup
 comment ui/music.c open: module cleanup
 comment ui/play.c open: module cleanup
 comment ui/session.c open: module cleanup
@@ -93,12 +85,6 @@ dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 dead-api ui/include/advanced.h:advanced_draw_automap open: module cleanup
 dead-api ui/include/dialog.h:dialog_draw_progress_bar open: module cleanup
 dead-api ui/include/fm.h:fm_set_write_hook open: module cleanup
-dead-api ui/include/input.h:command_execute open: module cleanup
-dead-api ui/include/input.h:input_cursor_at open: module cleanup
-dead-api ui/include/input.h:input_cursor_image open: module cleanup
-dead-api ui/include/input.h:input_find_command open: module cleanup
-dead-api ui/include/input.h:input_mouse_click open: module cleanup
-dead-api ui/include/input.h:input_refine_champion_click open: module cleanup
 dead-api ui/include/movie.h:movie_current_step open: module cleanup
 dead-api ui/include/music.h:music open: module cleanup
 dead-api ui/include/music.h:music_play_song open: module cleanup
@@ -128,7 +114,6 @@ decimal platform/platform.c open: module cleanup
 decimal platform/scale.c open: module cleanup
 decimal ui/action_area.c rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/fm.c rule 3.12: a table of SKULL.EXE
-decimal ui/include/input.h open: module cleanup
 decimal ui/input.c rule 3.12: a table of SKULL.EXE
 decimal ui/session.c open: module cleanup
 decimal ui/ui.c open: module cleanup
@@ -159,7 +144,6 @@ enum ui/include/ui.h open: module cleanup
 enum ui/music.c open: module cleanup
 enum ui/session.c open: module cleanup
 enum ui/ui.c open: module cleanup
-event-comment ui/include/input.h open: module cleanup
 global ui/include/advanced.h open: module cleanup
 global ui/include/dialog.h open: module cleanup
 global ui/include/music.h open: module cleanup
@@ -184,9 +168,7 @@ include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
 include platform/main.c:ui.h open: module cleanup
 include platform/main.c:view.h open: module cleanup
-include ui/advanced.c:input.h open: module cleanup
 include ui/include/advanced.h:game.h open: module cleanup
-include ui/include/input.h:game.h open: module cleanup
 include ui/include/session.h:game.h open: module cleanup
 include ui/include/session.h:save.h open: module cleanup
 include ui/include/ui.h:game.h open: module cleanup
@@ -199,7 +181,6 @@ long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
 long ui/action_area.c:draw_money_box open: module cleanup
 long ui/action_area.c:draw_party_hands open: module cleanup
-long ui/input.c:feedback_run_op open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
@@ -231,7 +212,6 @@ order ui/action_area.c open: module cleanup
 order ui/advanced.c open: module cleanup
 order ui/dialog.c open: module cleanup
 order ui/fm.c open: module cleanup
-order ui/input.c open: module cleanup
 order ui/movie.c open: module cleanup
 order ui/play.c open: module cleanup
 order ui/session.c open: module cleanup
@@ -241,13 +221,10 @@ params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
 params platform/main.c:read_options open: module cleanup
-params ui/include/input.h:input_find_command open: module cleanup
 params ui/include/ui.h:offscreen_blit open: module cleanup
 params ui/include/ui.h:offscreen_draw_gdat_image open: module cleanup
 params ui/include/ui.h:offscreen_draw_text_at open: module cleanup
 params ui/include/ui.h:ui_blit_bitmap open: module cleanup
-params ui/input.c:click_place_object open: module cleanup
-params ui/input.c:input_find_command open: module cleanup
 params ui/ui.c:draw_gauge_bar open: module cleanup
 params ui/ui.c:offscreen_blit open: module cleanup
 params ui/ui.c:offscreen_draw_gdat_image open: module cleanup

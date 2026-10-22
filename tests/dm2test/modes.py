@@ -42,6 +42,6 @@ def press(lib, key):
 
 
 def key_command(lib, mode, key):
-    lib.input_find_command.restype = ctypes.c_uint16
+    lib.input_key_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
-    return lib.input_find_command(mode, 0, 0, 0, key, rect)
+    return lib.input_key_command(mode, key, rect)
