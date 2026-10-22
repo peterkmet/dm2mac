@@ -76,7 +76,7 @@ void play_show_view(void)
 {
     if (!main_loop.view_hidden || dialog.screen_mode)
         return;
-    if (party_sleeping) {
+    if (g_party_sleeping) {
         draw_sleep_message();
         play_present_viewport();
         return;
@@ -119,7 +119,7 @@ void play_sleep(void)
     inv_arrows_on_close = 1;
     action_area_close();
     play_hide_view();
-    party_sleeping = 1;
+    g_party_sleeping = 1;
     if (party.move_steps) {
         move_party(party.move_command);
         party.move_steps = 0;
@@ -145,7 +145,7 @@ static int game_step_view(void)
         if (party.new_map != -1)
             continue;
         world_update_day_night(0);
-        if (party_sleeping)
+        if (g_party_sleeping)
             return 0;
         if (!ui.candidate)
             play_show_view();
@@ -185,7 +185,7 @@ static void game_step(void)
     champ_apply_pending_damage();
     if (game.magic_light[MAGIC_HASTE])
         game.magic_light[MAGIC_HASTE]--;
-    if (!(game.game_time & (party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK)))
+    if (!(game.game_time & (g_party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK)))
         champ_apply_time_effects();
     inv_update_hand_cursor();
     ui_draw_all_champion_states(1);
@@ -220,7 +220,7 @@ static void game_step_end(void)
 
 void play_start_session(void)
 {
-    party_sleeping = 0;
+    g_party_sleeping = 0;
     party.push_mode = 0;
     main_loop.view_hidden = 0;
     main_loop.tick_threshold = STEP_TICKS;

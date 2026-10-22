@@ -830,13 +830,13 @@ static int input_condition(int cond, int arg)
             return 0;
         return arg >= CELL_COUNT || champion_in_party_cell(arg) >= 0;
     case NODE_IF_ACTION_COUNT:
-        return action.champion && arg == champ_action_count;
+        return action.champion && arg == g_champ_action_count;
     case NODE_IF_RUNE_SET:
         return action.champion && arg & 1 << champion(action.champion - 1)->rune_count;
     case NODE_IF_MINION_MAP_LAYOUT:
         if (!action.champion)
             return 0;
-        return arg == (action.flags & MAP_HAS_OPTIONS ? champ_action_count : MAP_WITHOUT_OPTIONS);
+        return arg == (action.flags & MAP_HAS_OPTIONS ? g_champ_action_count : MAP_WITHOUT_OPTIONS);
     case NODE_IF_ACTION_MODE:
         return arg == action.mode;
     }
@@ -1830,7 +1830,7 @@ static void view_click_take_object(int x, int y, int index)
     if (thing != THING_NONE) {
         move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
         moneybox_clear_flag(thing);
-        champ_put_object_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing, 1);
     }
     input_command_stop = 1;
 }
@@ -1855,7 +1855,7 @@ static int view_click_drop_object(int x, int y, int cell)
             group = THING_NONE;
         }
     }
-    uint16_t thing = champ_remove_object_from_leader_hand();
+    uint16_t thing = champ_take_from_leader_hand();
     if (possession) {
         dir_cell = dir_turn(cell - CELL_POSSESSION_FIRST, game.party_dir);
         if (group != THING_NONE)
@@ -1877,7 +1877,7 @@ static int view_click_place_object(int x, int y, int sx, int sy, int pos, int ce
     uint16_t hand = thing_with_cell(game.leader_hand, dir_turn(game.party_dir, cell));
     uint16_t hit = view_hit_test_object(x, y, pos, sx, sy, hand, kind, 1);
     if (hit == THING_NONE) {
-        champ_remove_object_from_leader_hand();
+        champ_take_from_leader_hand();
         return 1;
     }
     if (hit == THING_ENDOFLIST)

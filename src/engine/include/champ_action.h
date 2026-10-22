@@ -14,7 +14,7 @@ typedef struct {
     uint16_t count; /* the repeats that the action gave: the chance to use a charge at each repeat */
     uint16_t left;  /* repeats to come */
     uint8_t fresh;  /* set in the step of the action: the first repeat waits a step */
-    uint8_t action; /* the index in champ_actions */
+    uint8_t action; /* the index in g_champ_actions */
     uint16_t thing; /* the item in the hand; another item stops the repeats */
 } ActionRepeat;
 

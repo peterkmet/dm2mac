@@ -112,13 +112,13 @@ void money_box_click_coin(int slot)
             champ_compute_load(champ);
             return;
         }
-        champ_put_object_in_leader_hand(coin, 0);
+        champ_put_in_leader_hand(coin, 0);
     } else {
         if (!money_add_coin_to_box(box, game.leader_hand)) {
             champ_compute_load(champ);
             return;
         }
-        champ_remove_object_from_leader_hand();
+        champ_take_from_leader_hand();
     }
     action.redraw_delay = 1;
     g_hooks.update_action_area(0);

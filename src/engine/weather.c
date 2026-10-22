@@ -344,7 +344,7 @@ static bool lightning_strike(void)
             return false;
     }
     explosion_create(LIGHTNING_EXPLOSION, game.storm_intensity, x, y, EXPLOSION_ANY_CELL);
-    if ((ui.inventory || party_sleeping) && !weak && distance <= STRIKE_SEEN &&
+    if ((ui.inventory || g_party_sleeping) && !weak && distance <= STRIKE_SEEN &&
         dun_get_direction_to(game.party_x, game.party_y, x, y) == game.party_dir)
         dun_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
     return true;

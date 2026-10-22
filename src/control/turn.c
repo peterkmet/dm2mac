@@ -691,7 +691,7 @@ static const char *choose_action(const char *r)
     if (!open && action.champion)
         return action.mode == ACTION_MODE_MENU ? "another champion's action menu is open: use pass first" : PANEL_OPEN;
     uint16_t thing = champion(c)->slots[hand];
-    int count = open ? champ_action_count : state_json_hand_action_count(c, hand);
+    int count = open ? g_champ_action_count : state_json_hand_action_count(c, hand);
     if (champion(c)->action_delay[hand] || (!count && !opens_panel(thing)))
         return "this champion cannot act now";
     uint16_t hand_command = CMD_HAND_FIRST + SLOT_HAND_COUNT * party_cell(c) + hand;
@@ -703,7 +703,7 @@ static const char *choose_action(const char *r)
         return "this hand cannot be clicked now";
     add_command(CMD_ACTION_CANCEL + 1 + (uint16_t)index);
     turn.has_damage = true;
-    champ_action_result = 0;
+    g_champ_action_result = 0;
     return NULL;
 }
 
@@ -820,7 +820,7 @@ static const char *sleep_party(const char *r)
 static const char *wake(const char *r)
 {
     (void)r;
-    if (!party_sleeping)
+    if (!g_party_sleeping)
         return NULL;
     return add_shown_command(CMD_WAKE) ? NULL : "the party cannot wake now";
 }
@@ -990,7 +990,7 @@ static const char *run_action(const char *name, const char *request)
             continue;
         if (ui.candidate && strcmp(name, "recruit") && !raw)
             return "a candidate is shown: answer with recruit first";
-        if (party_sleeping && strcmp(name, "wake") && !raw)
+        if (g_party_sleeping && strcmp(name, "wake") && !raw)
             return "the party sleeps: use wake or wait";
         forget_action();
         turn.map = game.party_map, turn.x = game.party_x, turn.y = game.party_y, turn.dir = game.party_dir;
@@ -1136,7 +1136,7 @@ static bool batch_after_turn(void)
 {
     batch.ran++;
     if (turn.has_damage && batch.damage_count < BATCH_DAMAGE_MAX)
-        batch.damages[batch.damage_count++] = champ_action_result;
+        batch.damages[batch.damage_count++] = g_champ_action_result;
     const char *stop = batch_stop_reason();
     if (stop) {
         batch_finish(stop, NULL);
@@ -1237,7 +1237,7 @@ static void action_damage_json(Json *j)
         return;
     json_key(j, "action_damage");
     if (!batch.active) {
-        json_int(j, champ_action_result);
+        json_int(j, g_champ_action_result);
         return;
     }
     json_open(j, '[');

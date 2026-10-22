@@ -367,12 +367,12 @@ static void slots_json(Json *j, const Champion *c)
     json_close(j, ']');
 }
 
-/* The action names of the open action menu (champ_actions). */
+/* The action names of the open action menu (g_champ_actions). */
 static void action_names_json(Json *j)
 {
     json_open(j, '[');
-    for (int i = 0; i < champ_action_count; i++) {
-        const ChampionAction *a = &champ_actions[i];
+    for (int i = 0; i < g_champ_action_count; i++) {
+        const ChampionAction *a = &g_champ_actions[i];
         const char *label = text_gdat_label(a->category, a->index, a->entry);
         trimmed(j, label ? label : "", TEXT_SIZE);
     }
@@ -383,36 +383,36 @@ static void action_names_json(Json *j)
 static void hands_json(Json *j, int champ)
 {
     ChampionAction saved[CHAMPION_ACTION_MAX];
-    int saved_count = champ_action_count;
-    uint16_t saved_thing = champ_action_thing;
-    memcpy(saved, champ_actions, sizeof saved);
+    int saved_count = g_champ_action_count;
+    uint16_t saved_thing = g_champ_action_thing;
+    memcpy(saved, g_champ_actions, sizeof saved);
     json_open(j, '{');
     for (int hand = SLOT_READY_HAND; hand < SLOT_HAND_COUNT; hand++) {
-        champ_action_count = 0;
+        g_champ_action_count = 0;
         if (champion(champ)->health)
             champ_list_actions(champ, champion(champ)->slots[hand], hand);
         json_key(j, hand_names[hand]);
         action_names_json(j);
     }
     json_close(j, '}');
-    memcpy(champ_actions, saved, sizeof saved);
-    champ_action_count = saved_count;
-    champ_action_thing = saved_thing;
+    memcpy(g_champ_actions, saved, sizeof saved);
+    g_champ_action_count = saved_count;
+    g_champ_action_thing = saved_thing;
 }
 
 int state_json_hand_action_count(int champ, int hand)
 {
     ChampionAction saved[CHAMPION_ACTION_MAX];
-    int saved_count = champ_action_count, count = 0;
-    uint16_t saved_thing = champ_action_thing;
-    memcpy(saved, champ_actions, sizeof saved);
-    champ_action_count = 0;
+    int saved_count = g_champ_action_count, count = 0;
+    uint16_t saved_thing = g_champ_action_thing;
+    memcpy(saved, g_champ_actions, sizeof saved);
+    g_champ_action_count = 0;
     if (champion(champ)->health)
         champ_list_actions(champ, champion(champ)->slots[hand], hand);
-    count = champ_action_count;
-    memcpy(champ_actions, saved, sizeof saved);
-    champ_action_count = saved_count;
-    champ_action_thing = saved_thing;
+    count = g_champ_action_count;
+    memcpy(g_champ_actions, saved, sizeof saved);
+    g_champ_action_count = saved_count;
+    g_champ_action_thing = saved_thing;
     return count;
 }
 
@@ -504,7 +504,7 @@ static void party_json(Json *j, int mode)
     key_bool(j, "can_move",
              !game.party_move_cooldown && !party.move_steps && !input_is_waiting() &&
                  (mode == INPUT_MODE_MOVE || mode == INPUT_MODE_PUSH));
-    key_bool(j, "sleeping", party_sleeping);
+    key_bool(j, "sleeping", g_party_sleeping);
     key_bool(j, "dead", main_loop.end != 0);
     json_close(j, '}');
 }

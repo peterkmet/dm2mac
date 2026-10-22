@@ -83,9 +83,9 @@
 /* Lights. */
 #define ATTR_LIGHT_FLAG            0x10 /* ATTR_FLAGS bit: the item gives light */
 
-int16_t champ_pending_damage[CHAMPION_MAX];
-uint16_t champ_pending_wounds[CHAMPION_MAX];
-uint16_t champ_regen_counter;
+int16_t g_champ_pending_damage[CHAMPION_MAX];
+uint16_t g_champ_pending_wounds[CHAMPION_MAX];
+uint16_t g_champ_regen_counter;
 
 /* The defense factor of each wound location. */
 static const uint8_t wound_defense_factor[WOUND_LOCATIONS] = {5, 5, 4, 6, 3, 1};
@@ -121,9 +121,9 @@ static TimelineEvent party_event(uint32_t delay, int type, int priority)
 
 void champ_reset_step_state(void)
 {
-    memset(champ_pending_damage, 0, sizeof champ_pending_damage);
-    memset(champ_pending_wounds, 0, sizeof champ_pending_wounds);
-    champ_regen_counter = 0;
+    memset(g_champ_pending_damage, 0, sizeof g_champ_pending_damage);
+    memset(g_champ_pending_wounds, 0, sizeof g_champ_pending_wounds);
+    g_champ_regen_counter = 0;
     leader_hand = (LeaderHand){.icon = HAND_ICON_NONE};
     ui.candidate = 0;
 }
@@ -187,20 +187,20 @@ int champ_get_dexterity(int champ)
     v = (int16_t)(v - load / (uint16_t)champ_get_max_load(c));
     if (v < DEXTERITY_MIN)
         v = DEXTERITY_MIN;
-    if (party_sleeping)
+    if (g_party_sleeping)
         v = (int16_t)(v >> 1);
     int high = (int16_t)(PERCENT - (rand_next() & DEXTERITY_ROLL));
     int low = (int16_t)((rand_next() & DEXTERITY_ROLL) + 1);
     return clamp16(low, v >> 1, high);
 }
 
-int champ_test_luck(Champion *c, int chance)
+bool champ_test_luck(Champion *c, int chance)
 {
     if (rand_bit() && rand_below(PERCENT) > (uint16_t)chance)
-        return 1;
+        return true;
     uint16_t roll = rand_below((uint16_t)(champ_get_stat(c, STAT_LUCK, 0) * 2));
     int max = min16(STAT_MAX, champ_get_stat(c, STAT_LUCK, 1));
-    int lucky = roll > (uint16_t)chance;
+    bool lucky = roll > (uint16_t)chance;
     c->stats[STAT_LUCK][0] = (uint8_t)clamp16(STAT_MIN, (lucky ? -LUCK_STEP : LUCK_STEP) + c->stats[STAT_LUCK][0], max);
     return lucky;
 }
@@ -231,7 +231,7 @@ static int champ_get_wound_defense(int champ, uint16_t location)
         v = (int16_t)(v + item_armor_defense(item_attr(c->slots[location], ATTR_ARMOUR_CLASS), sharp));
     if (c->wounds & 1 << location)
         v = (int16_t)(v - (rand_2bits() + WOUNDED_DEFENSE_LOSS));
-    if (party_sleeping)
+    if (g_party_sleeping)
         v = (int16_t)(v >> 1);
     return clamp16(0, v >> 1, PERCENT);
 }
@@ -319,15 +319,15 @@ int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
         int16_t resist = (int16_t)champ_get_stat_adjusted_attack(
             champion(champ), STAT_VITALITY, (int)((rand_next() & WOUND_ROLL_MASK) + WOUND_ROLL_BASE));
         while (d > resist) {
-            champ_pending_wounds[champ] |= (uint16_t)((1 << (rand_next() & WOUND_LOCATION_ROLL)) & wound_mask);
+            g_champ_pending_wounds[champ] |= (uint16_t)((1 << (rand_next() & WOUND_LOCATION_ROLL)) & wound_mask);
             resist = (int16_t)(resist * 2);
             if (d <= resist || !resist)
                 break;
         }
-        if (party_sleeping)
+        if (g_party_sleeping)
             champ_wake_party();
     }
-    champ_pending_damage[champ] = (int16_t)(champ_pending_damage[champ] + d);
+    g_champ_pending_damage[champ] = (int16_t)(g_champ_pending_damage[champ] + d);
     return d;
 }
 
@@ -480,7 +480,7 @@ void champ_kill(int champ)
     if (alive == game.champion_count) {
         main_loop.end = 1;
         g_hooks.flush_input();
-        party_sleeping = 0;
+        g_party_sleeping = 0;
         main_loop.view_hidden = 0;
     } else if (champ == (int16_t)game.leader) {
         champ_set_leader(alive);
@@ -492,12 +492,12 @@ void champ_apply_pending_damage(void)
 {
     for (int i = 0; i < game.champion_count; i++) {
         Champion *c = champion(i);
-        c->wounds |= champ_pending_wounds[i];
-        champ_pending_wounds[i] = 0;
-        int16_t d = champ_pending_damage[i];
+        c->wounds |= g_champ_pending_wounds[i];
+        g_champ_pending_wounds[i] = 0;
+        int16_t d = g_champ_pending_damage[i];
         if (!d)
             continue;
-        champ_pending_damage[i] = 0;
+        g_champ_pending_damage[i] = 0;
         if (!c->health)
             continue;
         int16_t health = (int16_t)(c->health - d);
@@ -529,9 +529,9 @@ static void champ_regen_mana(int i)
     if (c->mana < c->max_mana) {
         uint16_t magic =
             (uint16_t)(champ_get_skill_level(i, SKILL_WIZARD, 1) + champ_get_skill_level(i, SKILL_PRIEST, 1));
-        if (champ_regen_counter < (uint16_t)champ_get_stat(c, STAT_WISDOM, 0) + magic) {
+        if (g_champ_regen_counter < (uint16_t)champ_get_stat(c, STAT_WISDOM, 0) + magic) {
             int gain = c->max_mana / MANA_PER_STEP + 1;
-            if (party_sleeping)
+            if (g_party_sleeping)
                 gain *= 2;
             int cost = (int16_t)(MANA_STAMINA_BASE - magic);
             if (cost < MANA_STAMINA_MIN)
@@ -557,7 +557,7 @@ static void champ_consume_food_and_water(int i)
         step++;
     if (since > NEW_PARTY_TIME_2)
         step++;
-    if (party_sleeping)
+    if (g_party_sleeping)
         step *= 2;
     int16_t stamina = 0, food = c->food, water = c->water;
     do {
@@ -598,9 +598,9 @@ void champ_apply_time_effects(void)
 {
     if (!game.champion_count)
         return;
-    champ_regen_counter = (uint16_t)(champ_regen_counter + REGEN_STEP);
-    if (champ_regen_counter > REGEN_RANGE)
-        champ_regen_counter = (uint16_t)(champ_regen_counter - REGEN_RANGE);
+    g_champ_regen_counter = (uint16_t)(g_champ_regen_counter + REGEN_STEP);
+    if (g_champ_regen_counter > REGEN_RANGE)
+        g_champ_regen_counter = (uint16_t)(g_champ_regen_counter - REGEN_RANGE);
     for (int i = 0; i < game.champion_count; i++) {
         Champion *c = champion(i);
         if (!c->health || i + 1 == ui.candidate)
@@ -608,13 +608,13 @@ void champ_apply_time_effects(void)
         champ_regen_mana(i);
         champ_consume_food_and_water(i);
         if (c->health < c->max_health && c->stamina >= c->max_stamina >> HEALTH_REGEN_STAMINA_SHIFT &&
-            champ_regen_counter < (uint16_t)champ_get_stat(c, STAT_VITALITY, 0) + HEALTH_REGEN_BASE) {
+            g_champ_regen_counter < (uint16_t)champ_get_stat(c, STAT_VITALITY, 0) + HEALTH_REGEN_BASE) {
             int gain = (c->max_health >> HEALTH_REGEN_SHIFT) + 1;
-            if (party_sleeping)
+            if (g_party_sleeping)
                 gain *= 2;
             c->health = (int16_t)(c->health + min16(gain, c->max_health - c->health));
         }
-        if (!((uint16_t)game.game_time & (party_sleeping ? STATS_TIME_MASK_ASLEEP : STATS_TIME_MASK))) {
+        if (!((uint16_t)game.game_time & (g_party_sleeping ? STATS_TIME_MASK_ASLEEP : STATS_TIME_MASK))) {
             for (int s = 0; s < STAT_COUNT; s++) {
                 uint8_t *v = c->stats[s];
                 if (v[0] < v[1])

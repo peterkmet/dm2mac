@@ -657,7 +657,7 @@ void mmap_draw(uint16_t thing)
     area = area_begin_draw(0);
     if (!(action.flags & MAP_PANEL_DRAWN)) {
         offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, GFX_CONTAINER_PICTURE, ZONE_PANEL, GFX_OPAQUE);
-        for (int i = 0; i < champ_action_count; i++)
+        for (int i = 0; i < g_champ_action_count; i++)
             area_draw_name(i, 0);
         mmap_draw_option_buttons(0);
         action.flags |= MAP_PANEL_DRAWN;

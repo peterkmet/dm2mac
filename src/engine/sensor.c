@@ -1882,7 +1882,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
     case WALL_CLICK_ITEM: {
         bool match = item_get_index(c->hand) == data;
         if (match && sensor_flag(t, SENSOR_STATE))
-            set_thing_word(champ_remove_object_from_leader_hand(), THING_NEXT, THING_NONE); /* frees it */
+            set_thing_word(champ_take_from_leader_hand(), THING_NEXT, THING_NONE); /* frees it */
         return match == sensor_flag(t, SENSOR_INVERTED);
     }
     case WALL_CLICK_TOGGLE:
@@ -2026,9 +2026,9 @@ void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t 
     }
     if (actor == THING_NONE) {
         if (c.take)
-            champ_remove_object_from_leader_hand();
+            champ_take_from_leader_hand();
         if (c.give != THING_NONE)
-            champ_put_object_in_leader_hand(c.give, 1);
+            champ_put_in_leader_hand(c.give, 1);
         input_command_stop = c.stop;
     } else {
         uint16_t *possessions = group_possessions(actor);

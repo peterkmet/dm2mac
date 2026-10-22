@@ -880,7 +880,7 @@ static int16_t anim_step_delay(const uint8_t *step)
     } else if (party.cur_map != g_ai_party.map && !(g_ai_class_flags[g_ai.class_index] & AI_CLASS_STAYS_FAR) &&
                mood & MOOD_FAR && !(mood & GROUP_SEEN)) {
         d = (int16_t)(d * FAR_DELAY_FACTOR + rand_bit());
-    } else if (party_sleeping) {
+    } else if (g_party_sleeping) {
         d = (int16_t)(d * 2);
         if (party.cur_map != g_ai_party.map)
             d = (int16_t)(d * 2);
@@ -1056,7 +1056,7 @@ void creature_delete_group_at(int x, int y, int mode, int sound_map)
 /* True when (x, y) of map is near the party, in front of it, and the party sees it. */
 static bool is_near_party_front(int x, int y, int map)
 {
-    if (map != g_ai_party.map || party_sleeping || ui.inventory)
+    if (map != g_ai_party.map || g_party_sleeping || ui.inventory)
         return false;
     int dx = abs(g_ai_party.x - x), dy = abs(g_ai_party.y - y);
     if (dx == dy)

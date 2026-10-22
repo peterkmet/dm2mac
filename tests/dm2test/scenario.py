@@ -599,8 +599,8 @@ class Scenario(CreatureOracle):
 
     def pending(self):
         """(C, original) damage and wounds of the champions that the end of the step applies."""
-        mine = tuple((ctypes.c_int16 * 4).in_dll(self.lib, "champ_pending_damage")) + \
-            tuple((ctypes.c_uint16 * 4).in_dll(self.lib, "champ_pending_wounds"))
+        mine = tuple((ctypes.c_int16 * 4).in_dll(self.lib, "g_champ_pending_damage")) + \
+            tuple((ctypes.c_uint16 * 4).in_dll(self.lib, "g_champ_pending_wounds"))
         theirs = struct.unpack("<4h", self.emu.read(G_PENDING_DAMAGE, 8)) + struct.unpack("<4H", self.emu.read(G_PENDING_WOUNDS, 8))
         return mine, theirs
 

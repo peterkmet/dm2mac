@@ -982,7 +982,7 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
         }
         move_set_party_position(x, y);
         t.scope = SCOPE_PARTY;
-        t.draw_fall = !ui.inventory && !party_sleeping;
+        t.draw_fall = !ui.inventory && !g_party_sleeping;
         t.type = -1;
     } else {
         t.flying = move_thing_is_flying(thing);

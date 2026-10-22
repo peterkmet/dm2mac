@@ -463,7 +463,7 @@ def test_icon_click_feedback_matches_original(port, cast_ui):
         close()
         click_feedback(lib, original, cmd, "hand, closed")
     open_hand(lib, original, 0)
-    actions = ctypes.c_int.in_dll(lib, "champ_action_count").value
+    actions = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
     assert actions
     for cmd in range(CMD_ACTION_FIRST, CMD_ACTION_FIRST + actions):
         click_feedback(lib, original, cmd, "action")

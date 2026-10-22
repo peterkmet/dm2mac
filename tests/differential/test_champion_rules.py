@@ -95,7 +95,7 @@ class Rules:
                 champion_bytes(lib, champ, CH[name], data)
         sync_champions(lib, self.s)
         sleeping = int(rng.random() < 0.2)
-        ctypes.c_int.in_dll(lib, "party_sleeping").value = sleeping
+        ctypes.c_int.in_dll(lib, "g_party_sleeping").value = sleeping
         self.emu.write(G_PARTY_SLEEPING, struct.pack("<I", sleeping))
 
     def pick_up_pool(self):
@@ -120,7 +120,7 @@ class Rules:
 
     def assert_same(self, where):
         assert ctypes.c_uint32.in_dll(self.lib, "g_random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
-        regen = ctypes.c_uint16.in_dll(self.lib, "champ_regen_counter").value
+        regen = ctypes.c_uint16.in_dll(self.lib, "g_champ_regen_counter").value
         assert regen == struct.unpack("<H", self.emu.read(G_REGEN_COUNTER, 2))[0], where
         self.s.assert_same(where)
 
@@ -250,12 +250,12 @@ def assert_same_actions(rules, where):
     lib, emu = rules.lib, rules.emu
     mine = bytes((ctypes.c_uint8 * 64).in_dll(lib, "champ_action_repeat"))
     assert mine == emu.read(G_ACTION_REPEAT, 64), where
-    count = ctypes.c_int.in_dll(lib, "champ_action_count").value
+    count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
     assert count == struct.unpack("<H", emu.read(G_ACTION_COUNT, 2))[0], where
-    actions = bytes((ctypes.c_uint8 * 9).in_dll(lib, "champ_actions"))
+    actions = bytes((ctypes.c_uint8 * 9).in_dll(lib, "g_champ_actions"))
     theirs = emu.read(G_ACTION_LIST, 12)
     assert all(actions[3 * i:3 * i + 3] == theirs[4 * i:4 * i + 3] for i in range(count)), where
-    assert ctypes.c_uint16.in_dll(lib, "champ_action_thing").value == struct.unpack("<H", emu.read(G_ACTION_THING, 2))[0]
+    assert ctypes.c_uint16.in_dll(lib, "g_champ_action_thing").value == struct.unpack("<H", emu.read(G_ACTION_THING, 2))[0]
     a = ActionState.in_dll(lib, "action")
     theirs = [struct.unpack("<h", emu.read(addr, 2))[0] for addr in (G_ACTION_RESULT, G_ACTION_DELAY, G_ACTION_RESULT_FLAG)]
     assert [a.result, a.redraw_delay, a.result_flag] == theirs, where
@@ -350,7 +350,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             mine = lib.champ_list_actions(champ, thing, hand)
             theirs = emu.call(CHAMP_LIST_ACTIONS, champ, thing, hand)
             assert mine == theirs, n
-            count = ctypes.c_int.in_dll(lib, "champ_action_count").value
+            count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             if count:
                 index = rng.randrange(count) | rng.choice((0, 0, 0x8000))
                 mine = lib.champ_perform_action(champ, index)
@@ -391,7 +391,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             action_state.hand = 0
             emu.write(G_ACTION_HAND, struct.pack("<h", 0))
             assert lib.champ_list_actions(0, t, 0) == emu.call(CHAMP_LIST_ACTIONS, 0, t, 0), (index, action)
-            count = ctypes.c_int.in_dll(lib, "champ_action_count").value
+            count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             listed |= {(index, a) for a in range(count)}
             if action < count:
                 assert lib.champ_perform_action(0, action) == emu.call(CHAMP_PERFORM_ACTION, 0, action), (index, action)

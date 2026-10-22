@@ -2535,11 +2535,11 @@ static int act_steal(void)
             uint16_t item = champ_remove_object_from_slot(c, take_held);
             dungeon_append_thing(item, group_possessions(g_ai.group_thing));
             stolen = 1;
-            if (party_sleeping) {
-                party_sleeping = 0;
+            if (g_party_sleeping) {
+                g_party_sleeping = 0;
                 int roll = rand_next() & 0xf;
                 int level = champ_get_skill_level(c, 1, 1);
-                party_sleeping = 1;
+                g_party_sleeping = 1;
                 if (level + roll > 7)
                     champ_wake_party();
             }

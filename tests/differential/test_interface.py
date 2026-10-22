@@ -103,8 +103,8 @@ def test_hand_icon_matches_original(port, original):
                for t in things_of(lib, kind, 4)] + things_of(lib, C.THING_CONTAINER, 2)
     pictures = set()
     for thing in samples:
-        lib.champ_put_object_in_leader_hand(thing, 0)
-        lib.champ_remove_object_from_leader_hand()
+        lib.champ_put_in_leader_hand(thing, 0)
+        lib.champ_take_from_leader_hand()
         emu.write(icon, struct.pack("<HI", thing, bitmap))
         emu.call(INV_RENDER_HAND_ICON, icon)
         packed = emu.read(bitmap, HAND_ICON_SIZE ** 2 // 2)
@@ -166,9 +166,9 @@ def test_cursor_images_match_original(port, original):
             images.pop(2, None)
             emu.run(HAND_CURSOR_BODY, HAND_CURSOR_END)
             assert 2 in images, hex(thing)
-            lib.champ_put_object_in_leader_hand(thing, 0)
+            lib.champ_put_in_leader_hand(thing, 0)
             assert port_image(CURSOR_OBJECT) == images[2], hex(thing)
-            lib.champ_remove_object_from_leader_hand()
+            lib.champ_take_from_leader_hand()
             objects.add(images[2])
         assert len(objects) > 4
         dragged = 0
@@ -197,7 +197,7 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
     thing = things_of(lib, 5, 1)[0]
     lib.input_init()
     Game.in_dll(lib, "game").leader = 0
-    lib.champ_put_object_in_leader_hand(thing, 0)
+    lib.champ_put_in_leader_hand(thing, 0)
     try:
         lib.input_set_mode(C.INPUT_MODE_MOVE)
         zone = [(x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W) if lib.input_cursor_at(x, y) == CURSOR_OBJECT]
@@ -222,7 +222,7 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
             assert bytes(fb) == bytes(expected), (x, y)
             assert bytes(fb) != screen, (x, y)
     finally:
-        lib.champ_remove_object_from_leader_hand()
+        lib.champ_take_from_leader_hand()
 
 
 CH_RUNE_COUNT, CH_RUNES, CH_ACTION_DELAY, CH_WOUNDS, CH_HEALTH, CH_SLOTS, CH_AURA = 0x1E, 0x22, 0x2A, 0x34, 0x36, 0xC3, 0x102
@@ -230,7 +230,7 @@ CH_DIR, CH_CELL, CH_POISONED, CH_FOOD, CH_DAMAGE_EVENT, CH_REDRAW = 0x1C, 0x1D, 
 
 
 def set_sleeping(lib, original, value):
-    ctypes.c_int.in_dll(lib, "party_sleeping").value = value
+    ctypes.c_int.in_dll(lib, "g_party_sleeping").value = value
     original.emu.write(G_PARTY_SLEEPING, struct.pack("<I", value))
 
 
@@ -541,7 +541,7 @@ def test_skill_raised_acknowledged_like_original(port, original):
     original.emu.call(G_CHAMP_DRAW_STATE, 0)
     lib.ui_draw_champion_state(0)
     plain = original.view()
-    raised = (ctypes.c_uint8 * 16).in_dll(lib, "champ_skill_raised")
+    raised = (ctypes.c_uint8 * 16).in_dll(lib, "g_champ_skill_raised")
     counts = [2, 1, 3, 1]
     for i, n in enumerate(counts):
         raised[i] = n

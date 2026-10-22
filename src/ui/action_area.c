@@ -197,7 +197,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
                                        icon->height};
         offscreen_blit(&area, icon, centered, 0, 0, ui_colors[ICON_KEY_COLOR], MIRROR_NONE, NULL);
     }
-    if (c->action_delay[hand] || party_sleeping)
+    if (c->action_delay[hand] || g_party_sleeping)
         offscreen_fill_rect_dithered(&area, r, UI_BLACK);
 }
 
@@ -261,7 +261,7 @@ static void draw_party_icons(void)
         offscreen_blit(&area, face, r, sx, sy, UI_KEY, MIRROR_NONE, palette);
         draw_aura(i, zone);
     }
-    if (party_sleeping) {
+    if (g_party_sleeping) {
         int16_t r[RECT_SIZE];
         offscreen_fill_rect_dithered(&area, zone_get_rect(ZONE_PARTY_ICONS, r), UI_BLACK);
     }
@@ -288,7 +288,7 @@ void area_draw_spell_icon(int champ, int flash)
     draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, hand);
     d.flip = (int16_t)mirror;
     offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_HAND_ICON_FIRST + rel, UI_CYAN);
-    if (party_sleeping || c->action_delay[ACTION_SPELL]) {
+    if (g_party_sleeping || c->action_delay[ACTION_SPELL]) {
         int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]),
                                 (int16_t)(d.rect[RECT_Y] + area.rect[RECT_Y]), d.rect[RECT_W], d.rect[RECT_H]};
         offscreen_fill_rect_dithered(&area, s, UI_BLACK);
@@ -296,7 +296,7 @@ void area_draw_spell_icon(int champ, int flash)
     draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, rune);
     d.flip = (int16_t)mirror;
     offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_RUNE_ICON_FIRST + rel, UI_CYAN);
-    if (party_sleeping) {
+    if (g_party_sleeping) {
         int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]),
                                 (int16_t)(d.rect[RECT_Y] + area.rect[RECT_Y]), d.rect[RECT_W], d.rect[RECT_H]};
         offscreen_fill_rect_dithered(&area, s, UI_BLACK);
@@ -370,7 +370,7 @@ static void draw_spell_panel(void)
 void area_draw_name(int i, int highlight)
 {
     begin_draw(0);
-    const ChampionAction *a = &champ_actions[i];
+    const ChampionAction *a = &g_champ_actions[i];
     if (action.flags) {
         offscreen_draw_gdat_image(
             &area, CAT_CONTAINER, action.map_item,
@@ -388,7 +388,7 @@ void area_draw_name(int i, int highlight)
 /* Draws the action menu of the open hand. */
 static void draw_action_menu(void)
 {
-    for (int i = 0; i < champ_action_count; i++)
+    for (int i = 0; i < g_champ_action_count; i++)
         area_draw_name(i, 0);
     draw_action_champion_face();
 }

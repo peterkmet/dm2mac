@@ -159,7 +159,7 @@ void inv_show_object_name(uint16_t thing)
     g_hooks.print_message(MESSAGE_OBJECT_NAME, item_name(thing));
 }
 
-void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)
+void champ_put_in_leader_hand(uint16_t thing, int defer_cursor)
 {
     if (thing == THING_NONE)
         return;
@@ -174,7 +174,7 @@ void champ_put_object_in_leader_hand(uint16_t thing, int defer_cursor)
     sensor_enter_square(game.party_x, game.party_y, THING_NONE, true, false);
 }
 
-uint16_t champ_remove_object_from_leader_hand(void)
+uint16_t champ_take_from_leader_hand(void)
 {
     uint16_t thing = game.leader_hand;
     if (thing == THING_NONE)
@@ -263,10 +263,10 @@ void inv_click_slot(int slot)
     if (hand != THING_NONE && !item_fits_slot(hand, slot, 0))
         return;
     if (hand != THING_NONE)
-        champ_remove_object_from_leader_hand();
+        champ_take_from_leader_hand();
     if (thing != THING_NONE) {
         champ_remove_object_from_slot(champ, slot);
-        champ_put_object_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing, 1);
     }
     if (hand != THING_NONE)
         champ_add_object_to_slot(champ, hand, slot);
@@ -287,7 +287,7 @@ void inv_store_leader_hand_object(int champ)
         slot++;
     if (slot == SLOT_COUNT)
         return;
-    uint16_t thing = champ_remove_object_from_leader_hand();
+    uint16_t thing = champ_take_from_leader_hand();
     if (thing != THING_NONE)
         champ_add_object_to_slot(champ, thing, slot);
 }
@@ -369,7 +369,7 @@ int item_use_charge(uint16_t thing)
         return 0;
     item_add_charges(thing, -1);
     if (thing == game.leader_hand)
-        champ_put_object_in_leader_hand(thing, 0);
+        champ_put_in_leader_hand(thing, 0);
     return 1;
 }
 
@@ -456,7 +456,7 @@ void champ_consume_object(int champ, uint16_t thing, int slot)
     int16_t food = (int16_t)item_attr(thing, ATTR_FOOD);
     if (food) {
         if (slot == -1)
-            champ_remove_object_from_leader_hand(); /* the original also animates the mouth */
+            champ_take_from_leader_hand(); /* the original also animates the mouth */
         c->food = min16(c->food + food, FOOD_MAX);
         champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_CONSUME);
         set_thing_word(thing, THING_NEXT, THING_NONE);
@@ -470,14 +470,14 @@ void champ_consume_object(int champ, uint16_t thing, int slot)
         if (thing_type(thing) != THING_POTION || !drink_potion(champ, thing))
             return;
         if (slot == -1)
-            champ_remove_object_from_leader_hand();
+            champ_take_from_leader_hand();
         set_thing_word(thing, THING_NEXT, THING_NONE);
         uint16_t flask = dungeon_unused_thing(THING_POTION);
         if (flask == THING_NONE)
             return;
         item_set_gdat_index(flask, EMPTY_FLASK);
         if (slot == -1)
-            champ_put_object_in_leader_hand(flask, 0);
+            champ_put_in_leader_hand(flask, 0);
         else
             c->slots[slot] = flask;
     }

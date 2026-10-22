@@ -486,7 +486,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     loop = MainLoop.in_dll(lib, "main_loop")
     request.addfinalizer(lambda: setattr(loop, "end", 0))  # the next tests start with a running loop
     assert sc.game.champion_count == 1 and not loop.end
-    damage = (ctypes.c_int16 * 4).in_dll(lib, "champ_pending_damage")
+    damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
     damage[0] = 999
     emu.write(G_PENDING_DAMAGE, struct.pack("<h", 999))
     lib.champ_apply_pending_damage()
@@ -617,4 +617,4 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
         run_ticks(lib, 16)
         lib.command_execute(ctypes.byref(Command(0, 0, C.CMD_SLEEP)))
     assert player.frames < player.every
-    assert ctypes.c_int.in_dll(lib, "party_sleeping").value == 0
+    assert ctypes.c_int.in_dll(lib, "g_party_sleeping").value == 0

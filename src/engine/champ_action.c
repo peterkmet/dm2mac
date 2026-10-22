@@ -114,7 +114,7 @@ enum { BASE_FIGHTER, BASE_NINJA, BASE_PRIEST, BASE_WIZARD };
 
 ActionRepeat champ_action_repeat[CHAMPION_MAX][2];
 /* action.result after the last champ_perform_action (damage >= 0, failure < 0). */
-int16_t champ_action_result;
+int16_t g_champ_action_result;
 /* The creature group in front of the champion of the current action. */
 static uint16_t champ_action_target = THING_NONE;
 /* The creature info records of things that a blow does not hurt (static, without the bytes 2 and 8 of a fighter), from SKULL.EXE. */
@@ -198,17 +198,17 @@ void champ_add_action_delay(int champ, int ticks, int hand)
     }
 }
 
-int champ_use_action_charge(int champ)
+bool champ_use_action_charge(int champ)
 {
     int16_t charges = action_field(FIELD_CHARGES);
     if (charges == CHARGES_USE_ALL)
         charges = ALL_CHARGES;
     if (charges != CHARGES_USE_NONE && charges != CHARGES_EMPTY)
-        item_add_charges(champ_action_thing, (int16_t)-charges);
-    int empty = item_add_charges(champ_action_thing, 0) == 0;
-    if (empty && item_attr(champ_action_thing, ATTR_FLAGS) & ATTR_USED_UP) {
+        item_add_charges(g_champ_action_thing, (int16_t)-charges);
+    bool empty = item_add_charges(g_champ_action_thing, 0) == 0;
+    if (empty && item_attr(g_champ_action_thing, ATTR_FLAGS) & ATTR_USED_UP) {
         champ_remove_object_from_slot(champ, action.hand);
-        set_thing_word(champ_action_thing, THING_NEXT, THING_NONE);
+        set_thing_word(g_champ_action_thing, THING_NEXT, THING_NONE);
     }
     return empty;
 }
@@ -231,9 +231,9 @@ bool item_has_action_command(int champ, uint16_t thing, int command)
     if (thing == THING_NONE)
         return 0;
     if (champ_list_actions(champ, thing, -1)) {
-        for (int i = 0; i < champ_action_count; i++)
-            if ((uint16_t)text_gdat_field(champ_actions[i].category, champ_actions[i].index, champ_actions[i].entry,
-                                          FIELD_COMMAND) == (uint16_t)command) {
+        for (int i = 0; i < g_champ_action_count; i++)
+            if ((uint16_t)text_gdat_field(g_champ_actions[i].category, g_champ_actions[i].index,
+                                          g_champ_actions[i].entry, FIELD_COMMAND) == (uint16_t)command) {
                 found = 1;
                 break;
             }
@@ -375,7 +375,7 @@ static void champ_raise_level(int champ, int base, uint16_t level)
     if (c->max_stamina > STAMINA_MAX)
         c->max_stamina = STAMINA_MAX;
     c->redraw |= REDRAW_LEVEL;
-    champ_skill_raised[champ][base]++;
+    g_champ_skill_raised[champ][base]++;
     g_hooks.print_newline();
     text_args.champion = (int16_t)champ;
     char line[TEXT_SIZE];
@@ -866,7 +866,7 @@ int champ_perform_action(int champ, int index)
 {
     int repeated = index & ACTION_REPEATED;
     index &= ~ACTION_REPEATED;
-    current = champ_actions[index];
+    current = g_champ_actions[index];
     int hand = action.hand;
     Champion *c = champion(champ);
     if (!c->health)
@@ -911,18 +911,18 @@ int champ_perform_action(int champ, int index)
     return done;
 }
 
-int champ_execute_selected_action(int index)
+bool champ_execute_selected_action(int index)
 {
-    int done = 0;
+    bool done = false;
     if (!action.champion)
-        return 0;
+        return false;
     int champ = action.champion - 1;
     if ((int16_t)index == -1) {
         action.flags = 0;
     } else {
         champion(champ)->redraw |= REDRAW_BARS;
         done = champ_perform_action(champ, index);
-        champ_action_result = action.result;
+        g_champ_action_result = action.result;
         ActionRepeat *r = action.hand == SLOT_ACTION_HAND || action.hand == SLOT_READY_HAND
                               ? &champ_action_repeat[champ][action.hand]
                               : NULL;
@@ -981,20 +981,20 @@ static int item_get_throw_fatigue(uint16_t thing)
     return (int16_t)fatigue;
 }
 
-int champ_throw_object(int champ, int hand, int side)
+bool champ_throw_object(int champ, int hand, int side)
 {
     Champion *c = champion(champ);
-    int from_leader_hand = 0;
+    bool from_leader_hand = false;
     uint16_t saved = THING_NONE, thing = THING_NONE;
     if ((int16_t)hand < 0) {
         if (game.leader_hand == THING_NONE)
-            return 0;
+            return false;
         /* the strength reads the object in the action hand */
         saved = c->slots[SLOT_ACTION_HAND];
-        thing = champ_remove_object_from_leader_hand();
+        thing = champ_take_from_leader_hand();
         c->slots[SLOT_ACTION_HAND] = thing;
         hand = SLOT_ACTION_HAND;
-        from_leader_hand = 1;
+        from_leader_hand = true;
     }
     int16_t kinetic = (int16_t)champ_get_strength(champ, hand, SKILL_THROW);
     if (from_leader_hand) {
@@ -1002,7 +1002,7 @@ int champ_throw_object(int champ, int hand, int side)
     } else {
         thing = champ_remove_object_from_slot(champ, hand);
         if (thing == THING_NONE)
-            return 0;
+            return false;
     }
     champ_decrease_stamina(champ, item_get_throw_fatigue(thing));
     champ_add_action_delay(champ, THROW_DELAY, hand);
@@ -1027,12 +1027,12 @@ int champ_throw_object(int champ, int hand, int side)
                       (uint8_t)kinetic, (uint8_t)attack, (uint8_t)step);
     game.throw_cooldown = THROW_COOLDOWN;
     game.throw_dir = game.party_dir;
-    return 1;
+    return true;
 }
 
-int champ_throw_leader_hand_object(int side)
+bool champ_throw_leader_hand_object(int side)
 {
     if ((int16_t)game.leader == -1)
-        return 0;
+        return false;
     return champ_throw_object((int16_t)game.leader, -1, side);
 }

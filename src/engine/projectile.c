@@ -948,7 +948,7 @@ static int creature_attack_missed(const CreatureInfo *info, int champ, uint16_t 
         visibility = 0;
     else
         visibility = g_view_light_level * 2;
-    if (party_sleeping || dexterity == DEXTERITY_ALWAYS_HITS)
+    if (g_party_sleeping || dexterity == DEXTERITY_ALWAYS_HITS)
         return 0;
     int threshold = (uint16_t)visibility + (int16_t)((rand_next() & ROLL_MELEE) + dexterity + difficulty);
     return ((uint16_t)champ_get_dexterity(champ) >= threshold - DEXTERITY_DODGE_MARGIN && rand_2bits()) ||
@@ -1021,7 +1021,7 @@ int creature_attack_champion(uint16_t group, int champ)
             }
         }
     }
-    if (party_sleeping)
+    if (g_party_sleeping)
         champ_wake_party();
     return damage;
 }

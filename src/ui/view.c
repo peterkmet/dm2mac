@@ -3110,7 +3110,7 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
             dungeon_append_thing(thing, contents);
         } else if (count > 0) {
             dungeon_unlink_thing_from_list(last, contents);
-            champ_put_object_in_leader_hand(last, 1);
+            champ_put_in_leader_hand(last, 1);
         }
         break;
     }

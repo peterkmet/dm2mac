@@ -30,7 +30,7 @@ int cheat_light, cheat_immortal, cheat_food;
 void champ_wake_party(void)
 {
     input_command_stop = 1;
-    party_sleeping = 0;
+    g_party_sleeping = 0;
     main_loop.tick_threshold = STEP_TICKS;
     g_hooks.clear_viewport();
     g_hooks.set_input_mode(INPUT_MODE_MOVE);

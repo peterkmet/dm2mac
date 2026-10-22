@@ -467,7 +467,7 @@ def champion_word(lib, offset, value=None):
 
 
 def test_immortal_keeps_one_health(lib, automap):
-    damage = (ctypes.c_int16 * 4).in_dll(lib, "champ_pending_damage")
+    damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
     flag(lib, "cheat_immortal").value = 1
     damage[0] = 30000
     lib.champ_apply_pending_damage()

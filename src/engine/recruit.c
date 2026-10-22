@@ -84,8 +84,8 @@ static void add_to_party(int portrait, int index, int dir)
     c->max_mana = c->mana;
     for (int s = 0; s < STAT_COUNT; s++) {
         int16_t v = (int16_t)le16(d + 2 * (DATA_STATS + s));
-        c->stats[s][0] = (uint8_t)(v > STAT_START_MIN ? v : STAT_START_MIN);
-        c->stats[s][1] = c->stats[s][0];
+        c->stats[s][STAT_CURRENT] = (uint8_t)(v > STAT_START_MIN ? v : STAT_START_MIN);
+        c->stats[s][STAT_MAXIMUM] = c->stats[s][STAT_CURRENT];
     }
     for (int s = SKILL_BASE_COUNT; s < SKILL_COUNT; s++) {
         uint16_t level = le16(d + 2 * (DATA_SKILLS + s));
@@ -154,7 +154,7 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     Champion *c = champion(champ);
     int saved = party.cur_map;
     dun_set_current_map(map);
-    uint16_t hand = champ_remove_object_from_leader_hand();
+    uint16_t hand = champ_take_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
         /* the object in the hand is lost, as in the original */
         g_hooks.toggle_inventory(CHAMPION_MAX);

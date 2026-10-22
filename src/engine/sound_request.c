@@ -203,7 +203,7 @@ void sound_request(int category, int index, int entry, int priority, int volume,
     if (sound_load(gdat_current(), category, index, entry, &sound) != GDAT_OK)
         return;
     volume = (int16_t)volume;
-    if (party_sleeping)
+    if (g_party_sleeping)
         volume >>= 1;
     if (delay > DELAY_STEP) {
         sound_request_later(category, index, entry, priority, volume, x, y, delay);

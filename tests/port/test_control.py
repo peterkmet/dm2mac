@@ -144,7 +144,7 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
     # with an empty leader hand, else the leader hand object.
     path, *_ = control
     ui = UiState.in_dll(lib, "ui")
-    lib.champ_put_object_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
     lib.input_find_command.restype = ctypes.c_uint16
 
     def hold_and_release(x, y, mode):
@@ -179,7 +179,7 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
         assert request({"cmd": "release", "x": mouth_x, "y": mouth_y}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
         assert ui.mouth == 0
-    lib.champ_put_object_in_leader_hand(things_of(lib, THING_SCROLL, 1)[0], 0)
+    lib.champ_put_in_leader_hand(things_of(lib, THING_SCROLL, 1)[0], 0)
     with pumped(lib):
         hold_and_release(x, y, PANEL_MODE_SCROLL)
 

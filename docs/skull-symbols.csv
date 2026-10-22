@@ -755,7 +755,7 @@ address,name,signature,subsystem
 0x0003f7fa,gdat_get_text_field,"int16_t gdat_get_text_field(uint8_t category, uint8_t index, uint8_t entry, uint16_t field)",text
 0x0003f846,item_has_charged_action,int item_has_charged_action(uint16_t thing),items
 0x0003f8ff,champ_get_action_field,int16_t champ_get_action_field(uint16_t field),champions
-0x0003f927,minion_map_allows_action,"int minion_map_allows_action(uint16_t champ, uint16_t thing, int16_t command)",minions
+0x0003f927,is_command_allowed,"int is_command_allowed(uint16_t champ, uint16_t thing, int16_t command)",minions
 0x0003f9f5,champ_list_actions,"int champ_list_actions(uint16_t champ, uint16_t thing, int16_t hand)",champions
 0x0003fc6d,champ_find_hand_source_slot,"int16_t champ_find_hand_source_slot(int16_t champ, int16_t hand)",inventory
 0x0003fd17,action_area_close,void action_area_close(void),interface
@@ -812,8 +812,8 @@ address,name,signature,subsystem
 0x00045a41,item_get_stat_modifier,"int16_t item_get_stat_modifier(uint16_t thing, uint8_t attribute, int equipped, int16_t mode)",items
 0x00045a9d,champ_apply_item_effects,"void champ_apply_item_effects(int16_t champ, uint16_t thing, int16_t slot, int16_t mode)",inventory
 0x00045d6b,inv_store_leader_hand_object,void inv_store_leader_hand_object(int16_t champ),inventory
-0x00045def,champ_put_object_in_leader_hand,"void champ_put_object_in_leader_hand(uint16_t thing, int draw)",inventory
-0x00045e9e,champ_remove_object_from_leader_hand,uint16_t champ_remove_object_from_leader_hand(void),inventory
+0x00045def,champ_put_in_leader_hand,"void champ_put_in_leader_hand(uint16_t thing, int draw)",inventory
+0x00045e9e,champ_take_from_leader_hand,uint16_t champ_take_from_leader_hand(void),inventory
 0x00045f27,champ_remove_object_from_slot,"uint16_t champ_remove_object_from_slot(uint16_t champ, uint16_t slot)",inventory
 0x00045fcb,champ_add_object_to_slot,"void champ_add_object_to_slot(uint16_t champ, uint16_t thing, uint16_t slot)",inventory
 0x00046029,inv_click_slot,void inv_click_slot(uint16_t slot),inventory
@@ -862,7 +862,7 @@ address,name,signature,subsystem
 0x000487f9,ui_draw_champion_portrait,void ui_draw_champion_portrait(uint16_t champ),interface
 0x00048863,ui_draw_inventory_button,"void ui_draw_inventory_button(uint8_t icon, int16_t zone, uint16_t mask)",interface
 0x00048890,ui_draw_champion_state,void ui_draw_champion_state(uint16_t champ),interface
-0x00049020,champ_set_redraw_flags,void champ_set_redraw_flags(uint16_t flags),champions
+0x00049020,set_redraw_flags,void set_redraw_flags(uint16_t flags),champions
 0x0004904f,ui_draw_all_champion_states,void ui_draw_all_champion_states(int tick),interface
 0x0004910b,inv_update_hand_cursor,void inv_update_hand_cursor(void),inventory
 0x0004916b,inv_put_object_in_free_slot,"void inv_put_object_in_free_slot(uint16_t champ, uint16_t thing)",inventory

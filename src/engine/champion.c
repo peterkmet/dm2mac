@@ -16,26 +16,85 @@
 #include "recruit.h"
 #include "sensor.h"
 
+/* The aura that raises a statistic: its strength limit, and the random raise of the statistic. */
 #define AURA_MAX               100
 #define AURA_STAT_SHIFT        7
 #define AURA_BASE              4
+/* The load that a champion can carry, in 1/10 kg: per strength point, the base, and the rounding. */
 #define LOAD_PER_STRENGTH      8
 #define LOAD_BASE              100
 #define LOAD_ROUND             10
-#define SKILL_LEVEL_EXPERIENCE 512 /* each doubling of the experience above this is one more level */
+/* A wounded champion carries 1/8 less, with wounded legs 1/4 less. */
+#define WOUND_LOAD_SHIFT       3
+#define WOUND_LEGS_LOAD_SHIFT  2
+/* Each doubling of the experience above this is one more level. */
+#define SKILL_LEVEL_EXPERIENCE 512
+/* No slot that a hand loads from. */
 #define NO_SLOT                (-1)
-#define SENSOR_START_CHAMPION  0x7e /* on square (0, 0): the champion of its mirror starts a new game */
+/* The container types of the minion maps. */
+#define MINION_MAP_FIRST_TYPE  1
+#define MINION_MAP_LAST_TYPE   2
 
-#define MINION_MAP_FIRST_TYPE 1
-#define MINION_MAP_LAST_TYPE  2
-#define WOUND_LOAD_SHIFT      3 /* a wounded champion carries 1/8 less, with wounded legs 1/4 less */
-#define WOUND_LEGS_LOAD_SHIFT 2
+ChampionAction g_champ_actions[CHAMPION_ACTION_MAX];
+int g_champ_action_count;
+uint16_t g_champ_action_thing = THING_NONE;
+int g_party_sleeping;
+uint8_t g_champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
-ChampionAction champ_actions[CHAMPION_ACTION_MAX];
-int champ_action_count;
-uint16_t champ_action_thing = THING_NONE;
-int party_sleeping;
-uint8_t champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
+/* Setup */
+
+/* Sets redraw flags on all champions. */
+static void set_redraw_flags(uint16_t flags)
+{
+    for (int i = 0; i < game.champion_count; i++)
+        champion(i)->redraw |= flags;
+}
+
+/* A new game: the champion of the start square (map square (0, 0) with a mirror sensor) joins the party. */
+static void add_start_champion(void)
+{
+    game.leader_hand = THING_NONE;
+    leader_hand.icon = HAND_ICON_NONE;
+    for (uint16_t t = dungeon_square_first_thing(party.cur_map, 0, 0); t != THING_ENDOFLIST;
+         t = dungeon_next_thing(t)) {
+        if (thing_type(t) != THING_SENSOR || sensor_type(t) != WALL_CLICK_PORTRAIT)
+            continue;
+        recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
+        champion(0)->dir = (uint8_t)game.party_dir;
+        champion(0)->cell = (uint8_t)game.party_dir;
+        set_redraw_flags(REDRAW_STATUS_BOX);
+        champ_set_leader(0);
+        return;
+    }
+}
+
+void champ_init_party_state(void)
+{
+    if (session.new_game) {
+        add_start_champion();
+        return;
+    }
+    if (game.leader_hand == THING_NONE) {
+        leader_hand.icon = HAND_ICON_NONE;
+    } else {
+        uint16_t leader = game.leader;
+        game.leader = (uint16_t)-1;
+        champ_put_in_leader_hand(game.leader_hand, 1);
+        game.leader = leader;
+    }
+    for (int i = 0; i < game.champion_count; i++) {
+        champion(i)->redraw &= REDRAW_KEEP;
+        action_reset_champion(i);
+    }
+    set_redraw_flags(REDRAW_STATUS_BOX);
+    int leader = (int16_t)game.leader;
+    if (leader != -1) {
+        game.leader = (uint16_t)-1;
+        champ_set_leader(leader);
+    }
+}
+
+/* Statistics and load */
 
 /* v limited to low and high. */
 static int clamp(int low, int v, int high)
@@ -46,7 +105,7 @@ static int clamp(int low, int v, int high)
 int champ_get_stat(Champion *c, int stat, int which)
 {
     int v = c->stats[stat][which];
-    if (!which && c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST &&
+    if (which == STAT_CURRENT && c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST &&
         stat == c->aura - AURA_STAT_OFFSET) {
         int aura = c->aura_value > AURA_MAX ? AURA_MAX : c->aura_value;
         v = (uint16_t)(v + rand_below((uint16_t)((aura * v >> AURA_STAT_SHIFT) + 1)) + AURA_BASE);
@@ -56,7 +115,7 @@ int champ_get_stat(Champion *c, int stat, int which)
 
 int champ_get_skill_level(int champ, int skill, int with_bonus)
 {
-    if (party_sleeping)
+    if (g_party_sleeping)
         return 1;
     const Champion *c = champion(champ);
     uint32_t experience = c->experience[skill];
@@ -106,6 +165,8 @@ int champ_get_load(int champ)
     return load;
 }
 
+/* Hands and actions */
+
 int champ_find_hand_source_slot(int champ, int hand)
 {
     const Champion *c = champion(champ);
@@ -125,38 +186,38 @@ int champ_find_hand_source_slot(int champ, int hand)
 }
 
 /* True when a minion map item allows command: summoning without a minion, its commands with one. */
-static int minion_map_allows_action(uint16_t thing, int command)
+static bool is_command_allowed(uint16_t thing, int command)
 {
     if (thing == THING_NONE)
-        return 0;
+        return false;
     if (thing_type(thing) != THING_CONTAINER)
-        return 1;
+        return true;
     if (container_kind(thing) != CONTAINER_MINION_MAP)
-        return 1;
+        return true;
     int type = container_type(thing);
     if (type < MINION_MAP_FIRST_TYPE || type > MINION_MAP_LAST_TYPE)
-        return 0;
+        return false;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!minion_find_link_projectile(group, thing)) {
         if (command == COMMAND_MINION_ATTACK || command == COMMAND_MINION_MAP_SET)
-            return 1;
+            return true;
         if (thing_word(thing, MINION_MAP_LOCATION) == THING_NONE)
-            return 0;
+            return false;
         return command == COMMAND_MINION_GUARD || command == COMMAND_MINION_FETCH;
     }
     if (command == COMMAND_MINION_DISMISS)
-        return 1;
+        return true;
     if (type != MINION_MAP_LAST_TYPE)
-        return 0;
+        return false;
     uint8_t creature = group_creature(group);
     if (creature == MINION_FETCH)
         return command == COMMAND_MINION_GUARD;
     if (creature == MINION_GUARD)
         return command == COMMAND_MINION_FETCH;
-    return 0;
+    return false;
 }
 
-int champ_list_actions(int champ, uint16_t thing, int hand)
+bool champ_list_actions(int champ, uint16_t thing, int hand)
 {
     int category, index;
     if (thing == THING_NONE) {
@@ -164,7 +225,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
         index = champion(champ)->portrait;
     } else {
         if (item_is_moneybox(thing) || item_is_chest(thing))
-            return 1;
+            return true;
         category = item_gdat_category(thing);
         index = item_gdat_index(thing);
     }
@@ -182,7 +243,7 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
             if (command == COMMAND_LOAD && champ_find_hand_source_slot(champ, hand) < 0)
                 continue;
         } else {
-            if (!minion_map_allows_action(thing, command))
+            if (!is_command_allowed(thing, command))
                 continue;
             int16_t needs = text_gdat_field(category, index, entry, FIELD_CHARGES);
             if (needs == CHARGES_EMPTY) {
@@ -198,11 +259,21 @@ int champ_list_actions(int champ, uint16_t thing, int hand)
         uint16_t skill = (uint16_t)text_gdat_field(category, index, entry, FIELD_SKILL);
         uint16_t level = (uint16_t)text_gdat_field(category, index, entry, FIELD_LEVEL);
         if (level <= (uint16_t)champ_get_skill_level(champ, skill, 1))
-            champ_actions[count++] = (ChampionAction){(uint8_t)category, (uint8_t)index, (uint8_t)entry};
+            g_champ_actions[count++] = (ChampionAction){(uint8_t)category, (uint8_t)index, (uint8_t)entry};
     }
-    champ_action_count = count;
-    champ_action_thing = thing;
+    g_champ_action_count = count;
+    g_champ_action_thing = thing;
     return item_is_minion_map(thing) || count > 0;
+}
+
+/* Party */
+
+int champ_get_index_in_cell(int cell)
+{
+    for (int i = 0; i < game.champion_count; i++)
+        if (champion(i)->cell == cell && champion(i)->health)
+            return i;
+    return -1;
 }
 
 void champ_set_leader(int champ)
@@ -215,61 +286,4 @@ void champ_set_leader(int champ)
     game.leader = (uint16_t)champ;
     if (champ != -1 && champ + 1 != ui.candidate)
         champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
-}
-
-void champ_set_redraw_flags(uint16_t flags)
-{
-    for (int i = 0; i < game.champion_count; i++)
-        champion(i)->redraw |= flags;
-}
-
-/* A new game: the champion of the start square (map square (0, 0) with sensor 0x7e) joins the party. */
-static void champ_add_start_champion(void)
-{
-    game.leader_hand = THING_NONE;
-    leader_hand.icon = HAND_ICON_NONE;
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, 0, 0); t != THING_ENDOFLIST;
-         t = dungeon_next_thing(t)) {
-        if (thing_type(t) != THING_SENSOR || sensor_type(t) != SENSOR_START_CHAMPION)
-            continue;
-        recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
-        champion(0)->dir = champion(0)->cell = (uint8_t)game.party_dir;
-        champ_set_redraw_flags(REDRAW_STATUS_BOX);
-        champ_set_leader(0);
-        return;
-    }
-}
-
-void champ_init_party_state(void)
-{
-    if (session.new_game) {
-        champ_add_start_champion();
-        return;
-    }
-    if (game.leader_hand == THING_NONE) {
-        leader_hand.icon = HAND_ICON_NONE;
-    } else {
-        uint16_t leader = game.leader;
-        game.leader = (uint16_t)-1;
-        champ_put_object_in_leader_hand(game.leader_hand, 1);
-        game.leader = leader;
-    }
-    for (int i = 0; i < game.champion_count; i++) {
-        champion(i)->redraw &= REDRAW_KEEP;
-        action_reset_champion(i);
-    }
-    champ_set_redraw_flags(REDRAW_STATUS_BOX);
-    int leader = (int16_t)game.leader;
-    if (leader != -1) {
-        game.leader = (uint16_t)-1;
-        champ_set_leader(leader);
-    }
-}
-
-int champ_get_index_in_cell(int cell)
-{
-    for (int i = 0; i < game.champion_count; i++)
-        if (champion(i)->cell == cell && champion(i)->health)
-            return i;
-    return -1;
 }

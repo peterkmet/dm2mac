@@ -117,7 +117,7 @@ class Loop(Scenario):
         from dm2test.scenario import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale
         game = self.game
         mine = {name: getattr(self.loop, name) for name in LOOP_GLOBALS}
-        mine |= {"sleeping": ctypes.c_int.in_dll(self.lib, "party_sleeping").value, "time": game.game_time,
+        mine |= {"sleeping": ctypes.c_int.in_dll(self.lib, "g_party_sleeping").value, "time": game.game_time,
                  "cooldown": game.party_move_cooldown, "throw": game.throw_cooldown}
         mine |= {name: getattr(self.party, name) for name in GLOBALS}
         values = LOOP_GLOBALS | GLOBALS | {"sleeping": (G_PARTY_SLEEPING, "<I"), "time": (G_GAME_TIME, "<I"),

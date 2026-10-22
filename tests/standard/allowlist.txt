@@ -7,13 +7,11 @@ block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
 block engine/aspect.c open: module cleanup
 block engine/champ_action.c open: module cleanup
-block engine/champion.c open: module cleanup
 block engine/damage.c open: module cleanup
 block engine/game_text.c open: module cleanup
 block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
 block engine/include/champ_action.h open: module cleanup
-block engine/include/champion.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/inventory.h open: module cleanup
@@ -73,11 +71,6 @@ bool engine/champ_action.c:champ_action_melee_attack open: module cleanup
 bool engine/champ_action.c:champ_action_minion open: module cleanup
 bool engine/champ_action.c:champ_run_command open: module cleanup
 bool engine/damage.c open: module cleanup
-bool engine/include/champion.h:champ_execute_selected_action open: module cleanup
-bool engine/include/champion.h:champ_list_actions open: module cleanup
-bool engine/include/champion.h:champ_test_luck open: module cleanup
-bool engine/include/champion.h:champ_throw_object open: module cleanup
-bool engine/include/champion.h:champ_use_action_charge open: module cleanup
 bool engine/include/item.h:item_use_charge open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
 bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
@@ -172,7 +165,6 @@ comment engine/champ_action.c open: module cleanup
 comment engine/game.c open: module cleanup
 comment engine/include/action.h open: module cleanup
 comment engine/include/aspect.h open: module cleanup
-comment engine/include/champion.h open: module cleanup
 comment engine/include/game_text.h open: module cleanup
 comment engine/include/item.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
@@ -210,7 +202,6 @@ dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
 dead-api engine/include/champ_action.h:champ_action_repeat open: module cleanup
-dead-api engine/include/champion.h:champ_set_redraw_flags open: module cleanup
 dead-api engine/include/magic.h:magic_cast_spell open: module cleanup
 dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
@@ -281,7 +272,6 @@ decimal engine/dungeon.c rule 3.12: a table of SKULL.EXE
 decimal engine/game_text.c open: module cleanup
 decimal engine/include/action.h open: module cleanup
 decimal engine/include/champ_action.h open: module cleanup
-decimal engine/include/champion.h open: module cleanup
 decimal engine/include/move.h open: module cleanup
 decimal engine/magic.c rule 3.12: a table of SKULL.EXE
 decimal engine/move.c open: module cleanup
@@ -302,6 +292,8 @@ decimal ui/text.c open: module cleanup
 decimal ui/ui.c open: module cleanup
 decimal ui/video.c open: module cleanup
 decimal ui/view.c rule 3.12: a table of SKULL.EXE
+engine-write ui/play.c open: module cleanup
+engine-write ui/ui.c open: module cleanup
 enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
@@ -311,7 +303,6 @@ enum engine/game_text.c open: module cleanup
 enum engine/include/action.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
 enum engine/include/champ_action.h open: module cleanup
-enum engine/include/champion.h open: module cleanup
 enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
 enum engine/include/inventory.h open: module cleanup
@@ -349,7 +340,6 @@ event-comment engine/include/sound_request.h open: module cleanup
 event-comment ui/include/input.h open: module cleanup
 global engine/include/action.h open: module cleanup
 global engine/include/champ_action.h open: module cleanup
-global engine/include/champion.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
 global engine/include/inventory.h open: module cleanup
@@ -385,7 +375,6 @@ include control/control.c:ui.h open: module cleanup
 include engine/action.c:game.h open: module cleanup
 include engine/game.c:champ_action.h open: module cleanup
 include engine/game.c:magic.h open: module cleanup
-include engine/include/champion.h:timeline.h open: module cleanup
 include engine/include/creature.h:timeline.h open: module cleanup
 include engine/include/inventory.h:timeline.h open: module cleanup
 include engine/include/magic.h:timeline.h open: module cleanup
@@ -453,11 +442,7 @@ module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
 name engine/damage.c:champ_consume_food_and_water open: module cleanup
 name engine/damage.c:champ_place_in_free_cell open: module cleanup
-name engine/include/champion.h:champ_put_object_in_leader_hand open: module cleanup
-name engine/include/champion.h:champ_remove_object_from_leader_hand open: module cleanup
 name engine/include/inventory.h:inv_put_object_in_free_slot open: module cleanup
-name engine/inventory.c:champ_put_object_in_leader_hand open: module cleanup
-name engine/inventory.c:champ_remove_object_from_leader_hand open: module cleanup
 name engine/inventory.c:inv_put_object_in_free_slot open: module cleanup
 name engine/move.c:champ_get_party_move_time open: module cleanup
 name engine/move.c:champ_sync_directions_to_party open: module cleanup
@@ -479,12 +464,10 @@ notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
 notation engine/aspect.c open: module cleanup
 notation engine/champ_action.c open: module cleanup
-notation engine/champion.c open: module cleanup
 notation engine/damage.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
-notation engine/include/champion.h open: module cleanup
 notation engine/include/inventory.h open: module cleanup
 notation engine/include/item.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
@@ -526,7 +509,6 @@ order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
 order engine/action.c open: module cleanup
 order engine/aspect.c open: module cleanup
-order engine/champion.c open: module cleanup
 order engine/inventory.c open: module cleanup
 order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
@@ -686,8 +668,6 @@ static-prefix engine/champ_action.c:champ_raise_level open: module cleanup
 static-prefix engine/champ_action.c:champ_run_command open: module cleanup
 static-prefix engine/champ_action.c:creature_is_furniture open: module cleanup
 static-prefix engine/champ_action.c:item_get_throw_fatigue open: module cleanup
-static-prefix engine/champion.c:champ_add_start_champion open: module cleanup
-static-prefix engine/champion.c:minion_map_allows_action open: module cleanup
 static-prefix engine/damage.c:champ_consume_food_and_water open: module cleanup
 static-prefix engine/damage.c:champ_drop_all_objects open: module cleanup
 static-prefix engine/damage.c:champ_get_mean_defense open: module cleanup

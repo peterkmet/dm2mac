@@ -1096,8 +1096,8 @@ static void draw_skills_and_statistics(void)
         if (champ_get_skill_level(champ, skill, 1) == 1)
             continue;
         ui_skill_rank_text(champ, skill, text);
-        text_draw_in_viewport(x, y, ui_colors[champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
-        cache.shown_raised[skill] = champ_skill_raised[champ][skill];
+        text_draw_in_viewport(x, y, ui_colors[g_champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
+        cache.shown_raised[skill] = g_champ_skill_raised[champ][skill];
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
     zone_get_position(ZONE_STATS, &stat_x, &unused);
@@ -1365,9 +1365,9 @@ void ui_toggle_inventory(int champ)
         }
         /* the raised skills that the player saw no longer show green */
         for (int i = 0; i < SKILL_BASE_COUNT; i++)
-            champ_skill_raised[open - 1][i] = (uint8_t)(champ_skill_raised[open - 1][i] - cache.shown_raised[i]);
-        if (party_sleeping || champ == CHAMPION_MAX) {
-            if (!party_sleeping) {
+            g_champ_skill_raised[open - 1][i] = (uint8_t)(g_champ_skill_raised[open - 1][i] - cache.shown_raised[i]);
+        if (g_party_sleeping || champ == CHAMPION_MAX) {
+            if (!g_party_sleeping) {
                 if (inv_arrows_on_close)
                     ui_draw_movement_arrows();
                 view_clear_viewport();
