@@ -206,7 +206,6 @@ long ui/action_area.c:draw_party_hands open: module cleanup
 long ui/input.c:feedback_run_op open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
-long ui/view.c:show_wall_text open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
 name ui/include/ui.h:offscreen_draw_text_in_zone_with_shadow open: module cleanup
