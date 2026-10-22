@@ -4,7 +4,7 @@
 /* Prefixes: AI_MOVE_ MOVE_KIND_ */
 
 /* Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the
-   path search (ai_move.c). The functions work on the AI context (ai.h) and set ai.command_result. */
+   path search (ai_move.c). The functions work on the AI context (ai.h) and set g_ai.command_result. */
 
 #include "ai.h"
 #include "money.h"
@@ -77,7 +77,7 @@ enum ai_item_mode { ITEM_MODE_TAKE, ITEM_MODE_GIVE };
 /* The modes of ai_try_use_wall_actuator. */
 enum ai_actuator_mode { ACTUATOR_MODE_USE, ACTUATOR_MODE_PUT, ACTUATOR_MODE_TAKE };
 
-/* ai.move_flags: the squares that the creature may enter. */
+/* g_ai.move_flags: the squares that the creature may enter. */
 #define MOVE_WALL               0x0001
 #define MOVE_FLOOR              0x0002
 #define MOVE_CLOSED_PIT         0x0004
@@ -100,7 +100,7 @@ enum ai_actuator_mode { ACTUATOR_MODE_USE, ACTUATOR_MODE_PUT, ACTUATOR_MODE_TAKE
 #define MOVE_FLAGS_LIGHT        0x0227
 #define MOVE_FLAGS_PARTY_MAP    0x36e7
 #define MOVE_FLAGS_NO_FALL      0x7db7
-/* ai.door_flags. */
+/* g_ai.door_flags. */
 #define DOOR_SKILLS_OPEN        0x6f
 #define DOOR_SKILLS_CLOSE       0x73
 #define DOOR_SKILL_BUTTON       0x0003

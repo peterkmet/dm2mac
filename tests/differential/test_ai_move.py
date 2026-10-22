@@ -33,7 +33,7 @@ G_PARTY_DISTANCE_WIDTH, G_ALT_DISTANCE_WIDTH = 0x7F8CE, 0x7F8CC
 G_LIGHT_SUMS = (0x7F970, 0x7F974, 0x752A4, 0x752A6, 0x752A8)
 G_VIEW_REDRAW = 0x7F38C
 LIGHT_NAMES = ("g_light_source_sum", "g_explosion_light_sum", "cached_light_sum", "cached_explosion_light_sum", "last_party_map")
-DISTANCE_MAPS = (("party_distance", 0x7F8C8, 0x752A0, 0x7F8CE), ("alt_distance", 0x7F8C4, 0x752A2, 0x7F8CC))
+DISTANCE_MAPS = (("g_party_distance", 0x7F8C8, 0x752A0, 0x7F8CE), ("g_alt_distance", 0x7F8C4, 0x752A2, 0x7F8CC))
 G_AI_SCRATCH, G_AI_CONTEXT_ACTIVE = 0x7F894, 0x7F7E6
 # Functions of later parts that both sides stub: (address, stack arguments).
 
@@ -87,8 +87,8 @@ class Ai:
         emu.write_u32(G_MEM_FREE_BYTES, 0x7FFFFFFF)
         self.fix_cell_mask()
         self.sync_map_values()
-        self.ai = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "ai"))
-        self.square = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "ai_square"))
+        self.ai = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai"))
+        self.square = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai_square"))
         self.scan = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "ai_square_scan"))
         self.saved = ctypes.create_string_buffer(AI_SIZE)
         self.scratch = sc.view.alloc(0x2A * 0x40)
@@ -202,7 +202,7 @@ class Ai:
         assert sq[14:16] == theirs[0x1C:0x1E], (where, "cost")
         scan = ctypes.string_at(self.scan, 14)
         assert scan[:7] + scan[8:] == theirs[14:21] + theirs[22:28], (where, "scan")
-        party = ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(self.lib, "ai_party")), 8)
+        party = ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(self.lib, "g_ai_party")), 8)
         mine_party = struct.unpack("<4h", party)
         x, y, m, d = (s16(struct.unpack("<H", self.emu.read(a, 2))[0]) for a in (0x7F8D4, 0x7F8D0, 0x7F8D2, 0x7F8D6))
         assert mine_party == (x, y, m, d), (where, "party")

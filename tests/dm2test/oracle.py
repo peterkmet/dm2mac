@@ -30,7 +30,7 @@ class CreatureOracle:
                             ("cached_explosion_light_sum", -1), ("last_party_map", -1)):
             ctypes.c_int16.in_dll(lib, name).value = value
         ctypes.c_uint16.in_dll(lib, "search_direction_bits").value = 1
-        for name in ("party_distance", "alt_distance"):
+        for name in ("g_party_distance", "g_alt_distance"):
             ctypes.c_int16.in_dll(lib, name).value = -1
 
     def setup_creatures(self, reset):

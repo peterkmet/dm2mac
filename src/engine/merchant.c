@@ -24,7 +24,7 @@ enum {
 #define FILTER_COINS     0x10 /* item filters of a merchant: coins and the goods it takes as payment */
 #define FILTER_GOODS     7
 #define FILTER_MONEY_BOX 0x3e
-#define FILTER_NEW_COINS 0x47 /* ai.arg1 of the carried item search after the change */
+#define FILTER_NEW_COINS 0x47 /* g_ai.arg1 of the carried item search after the change */
 #define ANY_CELL         0xff
 #define COIN_MAX         18 /* the most coins of a price */
 #define DISCOUNT_FROM    16 /* a price above it gets a random discount of up to 15 % */
@@ -37,7 +37,7 @@ enum {
 #define OFFER_WAIT_STEP  4      /* the wait shortens by it while the offer stays the same */
 #define OFFER_CELL       2      /* the cell, relative to the merchant, where the customer shows coins and goods */
 #define VALUE_NONE       0xffff /* -1 as a word: no offer, or no change due */
-enum { PAY_COUNTED = 1, PAY_PRICE = 2 }; /* ai.arg1 of shop_cmd_pay_change: the counter that holds the change */
+enum { PAY_COUNTED = 1, PAY_PRICE = 2 }; /* g_ai.arg1 of shop_cmd_pay_change: the counter that holds the change */
 
 static int max16(int a, int b)
 {
@@ -56,14 +56,14 @@ typedef struct {
 
 static int facing(void)
 {
-    return group_dir(ai.group_thing);
+    return group_dir(g_ai.group_thing);
 }
 
 static uint16_t front_group(void)
 {
     int d = facing();
-    return creature_get_group_at((uint16_t)(ai.event.data[EVENT_X] + dir_dx[d]),
-                                 (uint16_t)(ai.event.data[EVENT_Y] + dir_dy[d]));
+    return creature_get_group_at((uint16_t)(g_ai.event.data[EVENT_X] + dir_dx[d]),
+                                 (uint16_t)(g_ai.event.data[EVENT_Y] + dir_dy[d]));
 }
 
 /* True when the group in front holds an item in cell (relative to the merchant, ANY_CELL: any) that is neither coins
@@ -94,9 +94,9 @@ static void sum_thing(uint16_t t, ItemSum *s)
     if (s->sum == -1)
         s->sum = 0;
     int charges = s->charges ? (int16_t)item_add_charges(t, 0) : -1;
-    s->sum = (int16_t)(s->sum + shop_get_item_value(item_get_index(t), group_creature(ai.group_thing),
-                                                    (int16_t)thing_word(ai.group_thing, GROUP_ANIM_SEQUENCE), s->buying,
-                                                    s->margin, (int16_t)charges));
+    s->sum = (int16_t)(s->sum + shop_get_item_value(item_get_index(t), group_creature(g_ai.group_thing),
+                                                    (int16_t)thing_word(g_ai.group_thing, GROUP_ANIM_SEQUENCE),
+                                                    s->buying, s->margin, (int16_t)charges));
 }
 
 /* Adds the values of the items of a thing list in cell (ANY_CELL: any), also inside chests (dun_find_thing_in_list). */
@@ -143,12 +143,12 @@ static void haggle_or_refuse(int percent)
 {
     int low = rand_below((uint16_t)max16(1, (int16_t)(PERCENT - percent))) < LOW_OFFER_CHANCE;
     int odd = rand_2bits() == 0;
-    ai.active->action = low ^ odd ? MERCHANT_HAGGLE : MERCHANT_REFUSE;
+    g_ai.active->action = low ^ odd ? MERCHANT_HAGGLE : MERCHANT_REFUSE;
 }
 
 int shop_cmd_wait_for_offer(void)
 {
-    ActiveGroup *a = ai.active;
+    ActiveGroup *a = g_ai.active;
     if (shop_front_customer_has_goods(OFFER_CELL)) {
         if (a->counters[0]-- <= WAIT_START) {
             a->counters[0] = OFFER_WAIT;
@@ -158,13 +158,13 @@ int shop_cmd_wait_for_offer(void)
         a->action = MERCHANT_WAIT;
         return AI_RESULT_ISSUED;
     }
-    int16_t goods_too = ai.arg1;
-    ai.arg1 = FILTER_COINS;
-    ai.arg2 = OFFER_CELL;
+    int16_t goods_too = g_ai.arg1;
+    g_ai.arg1 = FILTER_COINS;
+    g_ai.arg2 = OFFER_CELL;
     if (ai_cmd_front_group_carries() == AI_RESULT_DONE)
         return AI_RESULT_DONE;
     if (goods_too) {
-        ai.arg1 = FILTER_GOODS;
+        g_ai.arg1 = FILTER_GOODS;
         if (ai_cmd_front_group_carries() == AI_RESULT_DONE)
             return AI_RESULT_DONE;
     }
@@ -181,7 +181,7 @@ int shop_cmd_wait_for_offer(void)
 
 int shop_cmd_evaluate_offer(void)
 {
-    ActiveGroup *a = ai.active;
+    ActiveGroup *a = g_ai.active;
     int dir = facing();
     if (shop_front_customer_has_goods(OFFER_CELL)) {
         if (a->counters[0]-- <= GOODS_WAIT_MIN) {
@@ -238,16 +238,16 @@ int shop_cmd_evaluate_offer(void)
 
 int shop_cmd_count_payment(void)
 {
-    ActiveGroup *a = ai.active;
+    ActiveGroup *a = g_ai.active;
     int dir = facing();
-    if (shop_front_customer_has_goods(dir_opposite(ai.arg1))) {
+    if (shop_front_customer_has_goods(dir_opposite(g_ai.arg1))) {
         a->action = MERCHANT_OFFER;
         return AI_RESULT_FAIL;
     }
     uint16_t g = front_group();
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
-    int cell = dir_turn(dir, ai.arg1), goods_cell = dir_opposite(cell);
+    int cell = dir_turn(dir, g_ai.arg1), goods_cell = dir_opposite(cell);
     int16_t price = price_in_coins(g, goods_cell), due = price;
     int16_t goods = shop_sum_items_value(g, FILTER_GOODS, goods_cell, 0, 0, 0);
     if (goods != -1)
@@ -272,13 +272,13 @@ int shop_cmd_count_payment(void)
 
 int shop_cmd_pay_change(void)
 {
-    ActiveGroup *a = ai.active;
+    ActiveGroup *a = g_ai.active;
     int dir = facing();
     uint16_t g = front_group();
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
     a->action = MERCHANT_WAIT;
-    if (!ai.arg1) {
+    if (!g_ai.arg1) {
         uint16_t box = ai_find_matching_item(FILTER_MONEY_BOX, thing_word(g, GROUP_POSSESSIONS), dir_opposite(dir));
         if (box == THING_ENDOFLIST)
             box = THING_NONE;
@@ -288,16 +288,16 @@ int shop_cmd_pay_change(void)
         a->counters[1] = (int16_t)max16(0, value);
         return AI_RESULT_DONE;
     }
-    uint16_t *change = ai.arg1 == PAY_COUNTED ? (uint16_t *)&a->counters[1]
-                       : ai.arg1 == PAY_PRICE ? (uint16_t *)&a->counters[0]
-                                              : &a->position;
+    uint16_t *change = g_ai.arg1 == PAY_COUNTED ? (uint16_t *)&a->counters[1]
+                       : g_ai.arg1 == PAY_PRICE ? (uint16_t *)&a->counters[0]
+                                                : &a->position;
     uint16_t box = THING_NONE;
-    for (uint16_t t = thing_word(ai.group_thing, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+    for (uint16_t t = thing_word(g_ai.group_thing, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (item_is_moneybox(t)) {
             box = t;
             money_normalize_coins(0, t);
         }
-    ai.arg1 = FILTER_NEW_COINS;
+    g_ai.arg1 = FILTER_NEW_COINS;
     int16_t amount = (int16_t)*change;
     if (amount <= 0) {
         int r = ai_cmd_seek_with_carried();
@@ -316,7 +316,7 @@ int shop_cmd_pay_change(void)
         if (box != THING_NONE)
             money_add_coin_to_box(box, coin);
         else
-            dungeon_append_thing(coin, group_possessions(ai.group_thing));
+            dungeon_append_thing(coin, group_possessions(g_ai.group_thing));
     }
     ai_cmd_seek_with_carried();
     return AI_RESULT_ISSUED;

@@ -101,7 +101,7 @@ int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int di
    Returns 1 for a flying thing. */
 int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound);
 
-/* Dungeon squares of ai.c. */
+/* Dungeon squares of g_ai.c. */
 int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor);
 bool dun_set_pit_teleporter_state(int x, int y, int mode);
 

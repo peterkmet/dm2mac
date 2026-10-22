@@ -39,19 +39,19 @@ static inline uint16_t ai_marker_level(uint16_t text)
 #define AI_MOOD_ENTRY_SIZE     6 /* a mood mask word and the address of its plan choices */
 #define AI_SCRIPTS_SIZE        8030
 #define AI_ACTION_COUNT        86
-#define AI_MOVE_TEST_KINDS     20 /* the move test kinds of ai_command_enabled */
+#define AI_MOVE_TEST_KINDS     20 /* the move test kinds of g_ai_command_enabled */
 #define AI_TARGET_KIND_COUNT   28
 #define AI_POSSESSION_KINDS    16 /* the display kinds of possession_cells, with the data after the table */
 #define AI_AFTER_COMMAND_BYTES 60
-extern const uint8_t ai_scripts[AI_SCRIPTS_SIZE];
-extern const uint32_t ai_plans[AI_PLAN_COUNT];
-extern const uint32_t ai_class_flags[AI_CLASS_COUNT];
-extern const uint8_t ai_action_flags[AI_ACTION_COUNT];
-extern const uint32_t ai_behaviors[AI_CLASS_COUNT];
-extern const uint8_t ai_command_enabled[AI_MOVE_TEST_KINDS];
-extern const uint8_t ai_after_command_table[AI_AFTER_COMMAND_BYTES];
-extern const uint8_t ai_kind_flags[AI_TARGET_KIND_COUNT];
-extern const uint8_t ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
+extern const uint8_t g_ai_scripts[AI_SCRIPTS_SIZE];
+extern const uint32_t g_ai_plans[AI_PLAN_COUNT];
+extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
+extern const uint8_t g_ai_action_flags[AI_ACTION_COUNT];
+extern const uint32_t g_ai_behaviors[AI_CLASS_COUNT];
+extern const uint8_t g_ai_command_enabled[AI_MOVE_TEST_KINDS];
+extern const uint8_t g_ai_after_command_table[AI_AFTER_COMMAND_BYTES];
+extern const uint8_t g_ai_kind_flags[AI_TARGET_KIND_COUNT];
+extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
 
 /* A step of a plan (7 bytes). */
 typedef struct {
@@ -185,9 +185,9 @@ typedef struct {
     int scratch_used;
 } AiContext;
 
-extern AiContext ai;
+extern AiContext g_ai;
 
-/* Command results (ai.command_result and the plan commands). */
+/* Command results (g_ai.command_result and the plan commands). */
 #define AI_RESULT_ISSUED 0xfc /* an action was set: the update ends */
 #define AI_RESULT_FAIL   0xfd
 #define AI_RESULT_DONE   0xfe /* nothing to do: the goal is reached */
@@ -197,7 +197,7 @@ extern AiContext ai;
 typedef struct {
     int16_t x, y, map, dir;
 } AiPartyView;
-extern AiPartyView ai_party;
+extern AiPartyView g_ai_party;
 
 /* The square that the AI read last (g_ai_sq_* of SKULL.EXE); x -1: none. */
 typedef struct {
@@ -206,7 +206,7 @@ typedef struct {
     uint16_t first_thing, first_object, first_group;
     int16_t cost;
 } AiSquare;
-extern AiSquare ai_square;
+extern AiSquare g_ai_square;
 
 /* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
 #define DISTANCE_MAP_SIDE MAP_SIDE_MAX /* the cells of a distance map: x * 32 + y */
@@ -218,18 +218,16 @@ typedef struct {
 #define DISTANCE_NEXT_TO 0x80
 /* The distance of a cell that the search did not reach. */
 #define DISTANCE_FAR     127
-extern DistanceMap party_distance, alt_distance;
+extern DistanceMap g_party_distance, g_alt_distance;
 
 uint8_t ai_action_flag(int8_t action);
-/* The target square of the action that runs (g_ai_dest_x/y of SKULL.EXE). */
-extern int16_t ai_dest_x, ai_dest_y;
 int ai_class(void);
 uint8_t *ai_scratch_push(void);
 void ai_scratch_pop(void);
 uint8_t *ai_store_path(int size);
 void ai_free_cached_data(uint16_t group);
-/* Plan commands that the merchant commands use: the group in front carries an item of filter ai.arg1 in cell
-   ai.arg2; the creature puts down a carried item of filter ai.arg1. */
+/* Plan commands that the merchant commands use: the group in front carries an item of filter g_ai.arg1 in cell
+   g_ai.arg2; the creature puts down a carried item of filter g_ai.arg1. */
 int ai_cmd_front_group_carries(void);
 int ai_cmd_seek_with_carried(void);
 /* Forgets the AI data of all groups (a load). */
