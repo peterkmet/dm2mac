@@ -11,10 +11,8 @@ block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
 block ui/fm.c open: module cleanup
 block ui/include/music.h open: module cleanup
-block ui/include/sound.h open: module cleanup
 block ui/movie.c open: module cleanup
 block ui/music.c open: module cleanup
-block ui/sound.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
@@ -27,7 +25,6 @@ bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
 bool platform/scale.c open: module cleanup
 bool ui/fm.c open: module cleanup
-bool ui/include/sound.h:sound_play open: module cleanup
 comment control/control.c open: module cleanup
 comment control/include/control.h open: module cleanup
 comment control/include/state_json.h open: module cleanup
@@ -125,7 +122,6 @@ order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
 order ui/fm.c open: module cleanup
 order ui/movie.c open: module cleanup
-order ui/sound.c open: module cleanup
 params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup

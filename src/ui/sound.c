@@ -2,8 +2,10 @@
 #include "sound.h"
 #include <stdlib.h>
 
+/* The output frames of one sample. */
 #define UPSAMPLE (SOUND_OUTPUT_RATE / SOUND_RATE)
 
+/* The scale of the stereo pan: 0 is the left side, PAN_FULL the right side. */
 #define PAN_FULL 0x10000
 
 /* SOS volume (0-0x7fff) from loudness, and the mixer gain shift for 8-bit samples. */
@@ -19,8 +21,18 @@ typedef struct {
 } Voice;
 
 static Voice voices[SOUND_VOICES];
+static int master_volume = VOLUME_SETTING_MAX;
 
-int sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
+/* Settings */
+
+void sound_set_volume(int level)
+{
+    master_volume = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
+}
+
+/* Voices */
+
+bool sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
 {
     int loudness, pan;
     sound_volume_pan(volume, lateral, forward, &loudness, &pan);
@@ -36,9 +48,9 @@ int sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
         v->data = s->data;
         v->end = s->length * UPSAMPLE;
         v->pos = 0;
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 void sound_stop_all(void)
@@ -52,17 +64,11 @@ static int16_t clamp16(int s)
     return s < INT16_MIN ? INT16_MIN : s > INT16_MAX ? INT16_MAX : s;
 }
 
-static int master_volume = VOLUME_SETTING_MAX;
-
-void sound_set_volume(int level)
-{
-    master_volume = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
-}
-
 void sound_mix(int16_t *stereo, int frames)
 {
     for (int f = 0; f < frames; f++) {
-        int left = stereo[2 * f], right = stereo[2 * f + 1];
+        int left = stereo[2 * f];
+        int right = stereo[2 * f + 1];
         for (int i = 0; i < SOUND_VOICES; i++) {
             Voice *v = &voices[i];
             if (!v->data)

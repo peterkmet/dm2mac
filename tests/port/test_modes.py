@@ -139,6 +139,7 @@ def sound_level(lib):
     """The mixed level of a sample of 100 at full volume: the master volume of the sounds."""
     from dm2test.audio import UPSAMPLE, Sound, mix
     lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
+    lib.sound_play.restype = ctypes.c_bool
     lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
     lib.sound_stop_all()
     pcm = (ctypes.c_int8 * 1)(100)
