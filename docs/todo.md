@@ -21,3 +21,4 @@
 - End picture: after QUIT the end picture shows until a click and goes at once, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.
 - Sound under Wine: `build/dm2.exe` under Wine CX crackles, also the music; the port `dm` crackles the same way. Not checked on real Windows.
 - Manual test checklist `docs/superpowers/2026-10-21-dm-style-code-checklist.md` M2: Esc (the pause) cancels a champion drag, a right click does not.
+- Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (today the outdoor sections around Skullkeep show one at a time).
