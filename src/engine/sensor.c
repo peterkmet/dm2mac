@@ -13,7 +13,7 @@
 #include "game_text.h"
 #include "hooks.h"
 #include "item.h"
-#include "merchant.h"
+#include "money.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -931,8 +931,8 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
             count++;
     uint8_t bits[ITEM_CLASS_SET_SIZE];
     if (tr.use_filter)
-        shop_parse_item_class_set(data & ITEM_CLASS_SET_MASK,
-                                  sensor_delay(sensor) * ITEM_CLASS_ENTRY_STEP + ITEM_CLASS_ENTRY_FIRST, bits, 0);
+        money_parse_item_class_set(data & ITEM_CLASS_SET_MASK,
+                                   sensor_delay(sensor) * ITEM_CLASS_ENTRY_STEP + ITEM_CLASS_ENTRY_FIRST, bits, 0);
     for (uint16_t t = first, next; t != THING_ENDOFLIST; t = next) {
         next = dungeon_next_thing(t);
         if (count > 0 && is_object(t) && (tr.any_cell || thing_cell(t) == fcell)) {

@@ -12,7 +12,7 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "item.h"
-#include "merchant.h"
+#include "money.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -1863,7 +1863,7 @@ static uint8_t *filter_bitmap(int filter, int creature_type, int is_group)
     if (filter >= FILTER_SLOTS || !g_ai.scratch) {
         /* fix: the original reads pointers after its table of FILTER_SLOTS filters, or writes the bitmap to address 0
            without a scratch block; the port parses without a cache */
-        return shop_parse_item_class_set(creature_type, filter, uncached, is_group) ? uncached : NULL;
+        return money_parse_item_class_set(creature_type, filter, uncached, is_group) ? uncached : NULL;
     }
     if (g_ai.filters[filter])
         return g_ai.filters[filter];
@@ -1871,7 +1871,7 @@ static uint8_t *filter_bitmap(int filter, int creature_type, int is_group)
     uint8_t *bitmap = g_ai.scratch + g_ai.scratch_used;
     g_ai.filters[filter] = bitmap;
     g_ai.scratch_used += FILTER_BITMAP_SIZE;
-    return shop_parse_item_class_set(creature_type, filter, bitmap, is_group) ? bitmap : NULL;
+    return money_parse_item_class_set(creature_type, filter, bitmap, is_group) ? bitmap : NULL;
 }
 
 int ai_thing_matches_filter(uint16_t thing, int filter)

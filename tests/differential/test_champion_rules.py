@@ -245,6 +245,11 @@ class ActionState(ctypes.Structure):
                 ("result", ctypes.c_int16), ("result_flag", ctypes.c_int16), ("result_ammo", ctypes.c_uint16)]
 
 
+class PriceTerms(ctypes.Structure):
+    _fields_ = [("creature", ctypes.c_int), ("list", ctypes.c_int), ("buying", ctypes.c_bool),
+                ("apply_margin", ctypes.c_bool)]
+
+
 def assert_same_actions(rules, where):
     """The action list, the action area results, and the repeats of both."""
     lib, emu = rules.lib, rules.emu
@@ -423,7 +428,7 @@ def test_money_and_prices_match_original(rules, lib):
     lib.item_create_by_index.restype = ctypes.c_uint16
     lib.money_take_coin_from_box.restype = ctypes.c_uint16
     lib.money_add_coin_to_box.argtypes = [ctypes.c_uint16, ctypes.c_uint16]
-    lib.shop_get_item_value.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int16]
+    lib.money_get_item_value.argtypes = [ctypes.c_uint16, ctypes.POINTER(PriceTerms), ctypes.c_int16]
     buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
     creatures = [t for t in range(0x100) if lib.gdat_exists(rules.s.gdat, C.CAT_CREATURE, t, 5, 0x10)]
     action_state = ActionState.in_dll(lib, "action")
@@ -458,18 +463,18 @@ def test_money_and_prices_match_original(rules, lib):
         elif kind == 4:
             creature, list_, skip = rng.choice(creatures), rng.randrange(-1, 16), rng.randrange(2)
             bits = (ctypes.c_uint8 * 0x40)()
-            mine = lib.shop_parse_item_class_set(creature, list_, bits, skip)
+            mine = lib.money_parse_item_class_set(creature, list_, bits, skip)
             theirs = emu.call(SHOP_PARSE_ITEM_CLASS_SET, creature, list_, buffer, skip)
             assert mine == theirs and (not mine or bytes(bits) == emu.read(buffer, 0x40)), (n, creature, list_)
         elif kind == 5:
             creature, list_ = rng.choice(creatures), rng.randrange(5)
             item = rng.randrange(0x1fd)
             bits = (ctypes.c_uint8 * 0x40)()
-            if rng.random() < 0.7 and lib.shop_parse_item_class_set(creature, list_ * 3 + rng.choice((0x11, 0x12)), bits, 0):
+            if rng.random() < 0.7 and lib.money_parse_item_class_set(creature, list_ * 3 + rng.choice((0x11, 0x12)), bits, 0):
                 listed = [i for i in range(0x1fd) if bits[i >> 3] >> (i & 7) & 1]
                 item = rng.choice(listed) if listed else item  # an item of a price class of the merchant
             args = (item, creature, list_, rng.randrange(2), rng.randrange(2), rng.choice((-1, 0, 3, 15)))
-            mine = lib.shop_get_item_value(*args)
+            mine = lib.money_get_item_value(args[0], ctypes.byref(PriceTerms(*args[1:5])), args[5])
             theirs = emu.call(SHOP_GET_ITEM_VALUE, *args)
             assert ctypes.c_int16(mine).value == ctypes.c_int16(theirs).value, (n, args)
         else:

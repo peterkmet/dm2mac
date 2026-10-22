@@ -7,7 +7,6 @@
 #include "dungeon.h"
 #include "game_text.h"
 #include "minion.h"
-#include "money.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -19,12 +18,11 @@
 /* Explosion things: thing values of explosion types; the low 7 bits are the GDAT index. */
 #define EXPLOSION_THING_FIRST    0xff80
 #define EXPLOSION_INDEX_BASE     0x0080
-/* Charges, item index kinds, and the coin scan. */
+/* Charges and item index kinds. */
 #define WEAPON_MAX_CHARGES       15
 #define MISC_MAX_CHARGES         3
 #define ITEM_KIND_ITEMS          128 /* item indices per kind: weapons, clothing, miscellaneous, then the rest */
-#define COIN_SCAN_COUNT          128
-#define COINS_PER_WEIGHT         5 /* the coins of a money box weigh one unit per 5 coins, rounded up */
+#define COINS_PER_WEIGHT         5   /* the coins of a money box weigh one unit per 5 coins, rounded up */
 /* The miscellaneous item 0 (a champion token) names its champion. */
 #define TEXT_CHAMPION_TOKEN      0
 /* Item index kinds: item index / ITEM_KIND_ITEMS. */
@@ -63,12 +61,6 @@ static const uint16_t slot_item_masks[] = {0x0200, 0x0100, 0x0001, 0x0004, 0x000
                                            0x0040, 0x0040, 0x0040, 0x0002, 0x0020, 0x0080};
 /* The champion slots that have a slot mask. */
 #define SLOT_MASK_COUNT ((int)(sizeof slot_item_masks / sizeof *slot_item_masks))
-
-static struct {
-    int ready, count;
-    uint16_t items[COIN_TYPE_MAX];
-    int16_t values[COIN_TYPE_MAX];
-} coins;
 
 /* The 16-bit field of a thing record at byte offset offset. */
 static uint16_t record_word(uint16_t thing, int offset)
@@ -494,100 +486,4 @@ uint16_t minion_find_link_projectile(uint16_t group, uint16_t filter)
         if (thing_type(t) == THING_PROJECTILE && (filter == THING_NONE || filter == record_word(t, PROJECTILE_PAYLOAD)))
             return t;
     return 0;
-}
-
-/* Coins (money.h) */
-
-void money_init_coin_table(void)
-{
-    if (coins.ready)
-        return;
-    coins.ready = 1;
-    for (int index = 0; index < COIN_SCAN_COUNT; index++) {
-        if (!(gdat_entry_index(gdat_current(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
-            continue;
-        int16_t value = (int16_t)gdat_entry_index(gdat_current(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_VALUE);
-        int at = 0;
-        while (at < coins.count && coins.values[at] < value)
-            at++;
-        if (coins.count == COIN_TYPE_MAX)
-            break;
-        memmove(coins.values + at + 1, coins.values + at, (coins.count - at) * sizeof *coins.values);
-        memmove(coins.items + at + 1, coins.items + at, (coins.count - at) * sizeof *coins.items);
-        coins.values[at] = value;
-        coins.items[at] = (uint16_t)(ITEM_FIRST_MISC + index);
-        coins.count++;
-    }
-}
-
-int money_coin_type_count(void)
-{
-    return coins.count;
-}
-
-uint16_t money_coin_item(int coin_type)
-{
-    return coins.items[coin_type];
-}
-
-int16_t money_coin_value(int coin_type)
-{
-    return coins.values[coin_type];
-}
-
-bool money_is_coin(uint16_t thing)
-{
-    return thing_type(thing) == THING_MISC && item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_COIN;
-}
-
-void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
-{
-    memset(counts, 0, COIN_TYPE_MAX * sizeof *counts);
-    for (uint16_t t = record_word(box, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (!money_is_coin(t))
-            continue;
-        uint16_t item = item_get_index(t);
-        for (int c = 0; c < coins.count; c++)
-            if (item == coins.items[c])
-                counts[c] += misc_stack(t) + 1;
-    }
-}
-
-int money_coin_type_for_slot(uint16_t box, int slot)
-{
-    char text[TEXT_SIZE];
-    const char *p = text_gdat(CAT_CONTAINER, item_gdat_index(box), GFX_MONEYBOX_TEXT, text);
-    if (!*p)
-        return -1;
-    /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */
-    int16_t number = 0, counter = 0;
-    for (int done = 0; !done;) {
-        int16_t low = -1, base = -1;
-        for (;;) {
-            char c = *p++;
-            if (c >= '0' && c <= '9') {
-                number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
-            } else if (c == '-') {
-                low = number;
-                number = 0;
-            } else if (c == 'J' && number == 0) {
-                base = ITEM_FIRST_MISC;
-            } else {
-                if (c == 'J')
-                    p--;
-                if (c == '\0')
-                    done = 1;
-                break;
-            }
-        }
-        if (low < 0)
-            low = number;
-        for (; low <= number; low++, counter++)
-            if (counter == slot)
-                for (int t = 0; t < coins.count; t++)
-                    if ((int16_t)coins.items[t] == base + low)
-                        return t;
-        number = 0;
-    }
-    return -1;
 }

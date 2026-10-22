@@ -136,10 +136,10 @@ address,name,signature,subsystem
 0x000151e6,item_get_image_kind,int16_t item_get_image_kind(uint16_t thing),items
 0x00015286,creature_get_cell_mask,"uint8_t creature_get_cell_mask(uint16_t group_position, uint16_t dir)",creatures
 0x000152c4,inv_item_fits_slot,"uint16_t inv_item_fits_slot(uint16_t thing, int16_t slot, int strict)",inventory
-0x0001538d,shop_parse_item_class_set,"int shop_parse_item_class_set(uint8_t creature_type, uint8_t text_entry, uint8_t *bitset, int skip_containers)",money and shops
+0x0001538d,money_parse_item_class_set,"int money_parse_item_class_set(uint8_t creature_type, uint8_t text_entry, uint8_t *bitset, int skip_containers)",money and shops
 0x000154e0,money_init_coin_table,void money_init_coin_table(void),money and shops
 0x000155ef,money_get_coin_type_for_slot,"int16_t money_get_coin_type_for_slot(uint16_t container, uint16_t slot)",money and shops
-0x00015737,shop_get_item_value,"uint16_t shop_get_item_value(uint16_t thing, uint8_t creature_type, int16_t list, int buying, int apply_margin, int16_t charges)",money and shops
+0x00015737,money_get_item_value,"uint16_t money_get_item_value(uint16_t thing, uint8_t creature_type, int16_t list, int buying, int apply_margin, int16_t charges)",money and shops
 0x00015958,money_split_amount,"int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count)",money and shops
 0x000159c3,view_position_to_cell,int16_t view_position_to_cell(int16_t position),dungeon view
 0x00015a02,view_get_thing_position,"int16_t view_get_thing_position(uint16_t thing, int16_t dir)",dungeon view
@@ -302,7 +302,7 @@ address,name,signature,subsystem
 0x0001f274,dun_get_thing_gdat_category,uint8_t dun_get_thing_gdat_category(uint16_t thing),dungeon data
 0x0001f2ab,money_is_moneybox,int money_is_moneybox(uint16_t thing),money and shops
 0x0001f309,item_is_chest,int item_is_chest(uint16_t thing),items
-0x0001f347,money_is_coin,int money_is_coin(uint16_t thing),money and shops
+0x0001f347,is_coin,int is_coin(uint16_t thing),money and shops
 0x0001f380,money_count_coins_in_box,"void money_count_coins_in_box(uint16_t box, int16_t counts[10])",money and shops
 0x0001f413,money_add_coin_to_box,"int money_add_coin_to_box(uint16_t box, uint16_t coin)",money and shops
 0x0001f50d,money_take_coin_from_box,"uint16_t money_take_coin_from_box(uint16_t box, int16_t coin_type)",money and shops

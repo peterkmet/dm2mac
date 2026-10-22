@@ -6,7 +6,6 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "item.h"
-#include "merchant.h"
 #include "money.h"
 #include "move.h"
 #include "projectile.h"
@@ -1928,7 +1927,7 @@ static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, 
     uint16_t item = sensor_data(display);
     uint8_t set[SHOP_CLASS_SET_SIZE];
     int list = sensor_delay(shop); /* the delay bits of a shop: its price list */
-    if (shop_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, 0)) {
+    if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, 0)) {
         int count, at = item;
         const uint16_t *table = shop_table(ornament, &count);
         if (table)
@@ -2042,8 +2041,10 @@ static void shop_draw_display(uint16_t shop, uint8_t ornament, int depth, int po
     view_draw_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
                              text_format(text_gdat(category, index, GFX_ITEM_NAME, raw), name));
     int list = sensor_delay(shop);
-    int buy = shop_get_item_value(item, creature, list, 1, 1, -1);
-    int sell = shop_get_item_value(item, creature, list, 0, 1, -1);
+    PriceTerms buying = {creature, list, true, true};
+    PriceTerms selling = {creature, list, false, true};
+    int buy = money_get_item_value(item, &buying, -1);
+    int sell = money_get_item_value(item, &selling, -1);
     shop_draw_price(sell, ornament, depth, zone, anchor, key, ORN_KEY_SHOP_SELL);
     shop_draw_price(buy, ornament, depth, zone, anchor, key, ORN_KEY_SHOP_BUY);
 }

@@ -104,9 +104,9 @@ static void sum_thing(uint16_t t, ItemSum *s)
     if (s->sum == -1)
         s->sum = 0;
     int charges = s->charges ? (int16_t)item_add_charges(t, 0) : -1;
-    s->sum = (int16_t)(s->sum + shop_get_item_value(item_get_index(t), group_creature(g_ai.group_thing),
-                                                    (int16_t)thing_word(g_ai.group_thing, GROUP_ANIM_SEQUENCE),
-                                                    s->buying, s->margin, (int16_t)charges));
+    PriceTerms terms = {group_creature(g_ai.group_thing), (int16_t)thing_word(g_ai.group_thing, GROUP_ANIM_SEQUENCE),
+                        s->buying, s->margin};
+    s->sum = (int16_t)(s->sum + money_get_item_value(item_get_index(t), &terms, (int16_t)charges));
 }
 
 /* Adds the values of the items of a thing list in cell (ANY_CELL: any), also inside chests (dun_find_thing_in_list). */

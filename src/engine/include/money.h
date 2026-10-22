@@ -3,35 +3,57 @@
 #define DM2_ENGINE_MONEY_H
 /* Prefixes: money_ */
 
-/* Coins in money boxes, the money box panel, and new items. */
+/* Coins in money boxes, the money box panel, and the item class sets and prices of the merchants. */
 
-#include "item.h"
+#include <stdbool.h>
 #include <stdint.h>
 
-#define SHOP_CLASS_SET_SIZE 64 /* a bit for each item index */
+/* Money: the coin types are the miscellaneous items with ITEM_FLAG_COIN, by value. */
+#define COIN_TYPE_MAX       10
+/* The bytes of an item class set: a bit for each item index. */
+#define SHOP_CLASS_SET_SIZE 64
 
-/* Puts coin into the money box; returns 0 when box is no money box or coin no coin. */
-int money_add_coin_to_box(uint16_t box, uint16_t coin);
-/* Takes a coin of coin_type out of the money box; THING_NONE when it has none. */
-uint16_t money_take_coin_from_box(uint16_t box, int coin_type);
-/* A click on the coin pile of slot in the open money box: a coin goes into or out of the leader hand. */
-void money_box_click_coin(int slot);
-/* Splits amount into at most max_coins coins, the most valuable first; returns the value of the coins. */
-int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *coin_count);
-/* Exchanges the coins of box for the fewest coins of the same value; check_only 1: only tests. Returns 1 when the
-   coins change. */
-int money_normalize_coins(int check_only, uint16_t box);
+/* The terms of a merchant price: the merchant creature, its price list (0 to 4), buying or selling, the margin. */
+typedef struct {
+    int creature;
+    int list;
+    bool buying;
+    bool apply_margin;
+} PriceTerms;
 
-/* Coins (item.c). */
+/* Setup */
 /* Builds the coin table once. */
 void money_init_coin_table(void);
-int money_coin_type_count(void);
-uint16_t money_coin_item(int coin_type); /* the item index of a coin type */
+
+/* Coins */
+/* The number of coin types. */
+int money_coin_type_count(void); /* exported for the tests */
+/* The item index of a coin type. */
+uint16_t money_coin_item(int coin_type);
+/* The value of a coin type. */
 int16_t money_coin_value(int coin_type);
-bool money_is_coin(uint16_t thing);
 /* The coins of each coin type in a money box. */
 void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
 /* The coin type that the money box shows in slot (0 to 9), -1 none. */
 int money_coin_type_for_slot(uint16_t box, int slot);
+/* Splits amount into at most max_coins coins, the most valuable first; returns the value of the coins. */
+int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *coin_count);
+
+/* Money boxes */
+/* Puts coin into the money box; false when box is no money box or coin no coin. */
+bool money_add_coin_to_box(uint16_t box, uint16_t coin);
+/* Takes a coin of coin_type out of the money box; THING_NONE when it has none. */
+uint16_t money_take_coin_from_box(uint16_t box, int coin_type); /* exported for the tests */
+/* A click on the coin pile of slot in the open money box: a coin goes into or out of the leader hand. */
+void money_box_click_coin(int slot);
+/* Exchanges the coins of box for the fewest coins of the same value; check_only: only tests. True when the coins
+   change. */
+bool money_normalize_coins(bool check_only, uint16_t box);
+
+/* Merchant prices */
+/* The item class set of list of a merchant creature (its GDAT text 0x10 + list): a bit per item index. */
+int money_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_containers);
+/* The price of item at a merchant under terms; charges -1: the full charges. */
+int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges);
 
 #endif /* DM2_ENGINE_MONEY_H */

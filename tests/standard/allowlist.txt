@@ -11,9 +11,7 @@ block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
-block engine/include/money.h open: module cleanup
 block engine/magic.c open: module cleanup
-block engine/money.c open: module cleanup
 block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
@@ -53,8 +51,6 @@ bool engine/aspect.c:wall_text_ornament open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
 bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
 bool engine/include/magic.h:magic_cast_projectile_spell open: module cleanup
-bool engine/include/money.h:money_add_coin_to_box open: module cleanup
-bool engine/include/money.h:money_normalize_coins open: module cleanup
 bool engine/magic.c open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
@@ -117,7 +113,6 @@ comment engine/include/action.h open: module cleanup
 comment engine/include/aspect.h open: module cleanup
 comment engine/include/game_text.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
-comment engine/include/money.h open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
@@ -150,7 +145,6 @@ dead-api engine/include/magic.h:magic_cast_spell open: module cleanup
 dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
 dead-api engine/include/magic.h:magic_report_cast_failure open: module cleanup
-dead-api engine/include/money.h:money_take_coin_from_box open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 dead-api ui/include/advanced.h:advanced_draw_automap open: module cleanup
 dead-api ui/include/dialog.h:dialog_draw_progress_bar open: module cleanup
@@ -351,7 +345,6 @@ notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
 notation engine/magic.c open: module cleanup
-notation engine/money.c open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
 notation ui/draw.c open: module cleanup
@@ -408,8 +401,6 @@ params control/state_json.c:wall_ornament_json open: module cleanup
 params engine/aspect.c:set_random_wall_ornaments open: module cleanup
 params engine/aspect.c:wall_sensor_ornament open: module cleanup
 params engine/aspect.c:wall_square_aspect open: module cleanup
-params engine/include/merchant.h:shop_get_item_value open: module cleanup
-params engine/money.c:shop_get_item_value open: module cleanup
 params platform/main.c:read_options open: module cleanup
 params ui/include/input.h:input_find_command open: module cleanup
 params ui/include/minion_map.h:mmap_draw_square_icon open: module cleanup

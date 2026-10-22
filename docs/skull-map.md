@@ -310,8 +310,8 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 
 | System | Location | Notes |
 |---|---|---|
-| Money | `0x1538d`-`0x15958`, `0x1f2ab`-`0x1f50d`, `money_normalize_coins` `0x29598`, `money_draw_coin_counts` `0x39409`, `money_box_click_coin` `0x42a35`, `ui_draw_money_box` `0x4534f` | Coins are misc items with attribute 0 flag `0x4000`: `money_init_coin_table` builds `g_coin_item_types` from exactly this flag, and `money_is_coin` tests it (reDM2 calls the test `object_is_stackable`). `g_coin_values` `0x7f3a8`, `g_coin_item_types` `0x7f390`, `g_coin_type_count` `0x7f3fa`. `money_split_amount` is greedy. |
-| Shops | `shop_get_item_value` `0x15737`, merchant AI commands `0x27cd2`-`0x29caa`, `shop_draw_display` `0x4ec19` | Merchants are creatures. Class sets from creature text (`W A J P C S` letters). Sensor type `0x30` is a shop display. |
+| Money | `0x1538d`-`0x15958`, `0x1f2ab`-`0x1f50d`, `money_normalize_coins` `0x29598`, `money_draw_coin_counts` `0x39409`, `money_box_click_coin` `0x42a35`, `ui_draw_money_box` `0x4534f` | Coins are misc items with attribute 0 flag `0x4000`: `money_init_coin_table` builds `g_coin_item_types` from exactly this flag, and `is_coin` tests it (reDM2 calls the test `object_is_stackable`). `g_coin_values` `0x7f3a8`, `g_coin_item_types` `0x7f390`, `g_coin_type_count` `0x7f3fa`. `money_split_amount` is greedy. |
+| Shops | `money_get_item_value` `0x15737`, merchant AI commands `0x27cd2`-`0x29caa`, `shop_draw_display` `0x4ec19` | Merchants are creatures. Class sets from creature text (`W A J P C S` letters). Sensor type `0x30` is a shop display. |
 | Minions | `item_is_minion_map` `0x1fa8f`, `minion_map_set_location`, `minion_find_link_projectile`, `minion_map_click_set_destination` (command `0x55`), `creature_summon_group` `0x30944`, `minion_dismiss` `0x30b3d`, `mmap_draw` `0x44fc6` | Champion actions `0x2c`-`0x33` summon creature types `0x30`-`0x35`. A type 14 record in the group possessions links the minion to its map item. The map panel drains mana. |
 | Weather | `0x59f12`-`0x5a808`, `world_update_day_night` `0x5a073`, `weather_draw_rain` `0x4e79c`, globals `0x8046a`-`0x80480` | Storm curves (table `0x76104`), rain intensity `0x8047e`, wind `0x8047f`, lightning (`explosion_create(0xffb0)`), thunder. Images in GDAT category `0x17`. |
 | Day and night | `world_update_day_night`, `sensor_process_map_entry` `0x59785` | Hour = `(time + g_day_time_offset) / 0x555 mod 24`; `g_light_by_hour`. Sensor type `0x21` and night creature generators. |
@@ -383,7 +383,7 @@ Library signatures (clib, DPMI, HMI) are firm only for the names. `dpmi_map_phys
 4. `0x7f278` with `0x7f25c`, `0x7f25e`, `0x7f272`: alternate view position or arrival position after a map link. Also the difference between `g_party_square_*` (`0x7f27a`-`0x7f27e`) and `g_party_x`/`g_party_y`.
 5. Creature AI plan tables (`0x74f7e`) and scanner kinds: a table dump is necessary to give each plan command and scanner a game meaning.
 6. Sensor types `0x2c`, `0x32`, `0x3f`, `0x41`, `0x46`, `0x4a`, `0x7e` and the wall-view effects in `dun_apply_wall_things_to_aspect`.
-7. Merchant price formula: the role of the `list` argument of `shop_get_item_value`.
+7. Merchant price formula: the role of the `list` argument of `money_get_item_value`.
 8. Functions that did not decompile: `sound_request_with_fallback` (`0x15baa`), `melee_attack_group` (`0x18a57`), `pal_get_dimmed_remap` (`0x1b2be`), `view_render_picture_offscreen` (`0x4e620`). Use the disassembly for the port.
 9. Ghidra function boundaries: hidden functions at `0x113dd`, `0x114d2`, `0x14c93`, `0x5b577`, `0x62e81` (PIT ISR) are inside other functions.
 10. Meaning of the GDAT text fields `BZ TR PA TA EX PB MS SD RP HN AT`, and of event `0x0e` (`timeline_event_apply_item_effect`).
