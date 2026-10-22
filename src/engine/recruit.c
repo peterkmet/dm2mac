@@ -53,10 +53,10 @@ static void add_to_party(int portrait, int index, int dir)
     c->damage_event = THING_NONE;
     c->dir = (uint8_t)dir;
     int k = 0;
-    while (champ_get_index_in_cell(dir_turn(game.party_dir, k)) != -1)
+    while (champ_get_index_in_cell(dir_turn(g_game.party_dir, k)) != -1)
         k++;
-    c->cell = (uint8_t)dir_turn(game.party_dir, k);
-    c->hit_dir = (uint8_t)game.party_dir;
+    c->cell = (uint8_t)dir_turn(g_game.party_dir, k);
+    c->hit_dir = (uint8_t)g_game.party_dir;
     for (int s = 0; s < SLOT_COUNT; s++)
         c->slots[s] = THING_NONE;
     char text[TEXT_SIZE];
@@ -113,8 +113,8 @@ static uint16_t mirror_sensor(int x, int y)
 
 bool recruit_start(int x, int y, int dir, int map)
 {
-    int index = game.champion_count;
-    if (game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
+    int index = g_game.champion_count;
+    if (g_game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
         return false;
     int saved = g_party.cur_map;
     dun_set_current_map(map);
@@ -131,7 +131,7 @@ bool recruit_start(int x, int y, int dir, int map)
         g_hooks.update_action_area(0);
     }
     ui.candidate = (uint16_t)(index + 1);
-    game.champion_count++;
+    g_game.champion_count++;
     if (!index)
         champ_set_leader(0);
     int back = dir_opposite(dir);
@@ -159,10 +159,10 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     if (command == CMD_RECRUIT_CANCEL) {
         /* the object in the hand is lost, as in the original */
         g_hooks.toggle_inventory(CHAMPION_MAX);
-        if (game.champion_count == 1)
+        if (g_game.champion_count == 1)
             champ_set_leader(-1);
-        if (ui.candidate >= game.champion_count)
-            game.champion_count--;
+        if (ui.candidate >= g_game.champion_count)
+            g_game.champion_count--;
         ui.candidate = 0;
         c->health = 0;
         action_reset_champion(champ);
@@ -175,7 +175,7 @@ void recruit_finish(int x, int y, int dir, int map, int command)
         g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
         g_hooks.present_viewport();
         sound_request(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD,
-                      game.party_x, game.party_y, 0);
+                      g_game.party_x, g_game.party_y, 0);
     }
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);
@@ -187,8 +187,8 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror != THING_NONE)
         sensor_set_flag(mirror, MIRROR_ACTIVE, false);
-    if (game.champion_count == 1)
-        game.first_recruit_time = game.game_time;
+    if (g_game.champion_count == 1)
+        g_game.first_recruit_time = g_game.game_time;
     if (!recruit_silent) {
         text_args.champion = (int16_t)champ;
         g_hooks.print_newline();

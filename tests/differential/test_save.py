@@ -79,7 +79,7 @@ def test_load_state_equals_original_load(lib, gdat, start, original_run, tmp_pat
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     loaded = {name: getattr(game, name) for name in RECORD_GLOBALS if name != "g_random_seed"}
     loaded["g_random_seed"] = ctypes.c_uint32.in_dll(lib, "g_random_seed").value
     assert loaded == original_run[1]
@@ -144,7 +144,7 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     square = (game.party_map, game.party_x, game.party_y)
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
     lib.thing_word.restype = ctypes.c_uint16
@@ -197,7 +197,7 @@ def test_load_relinks_champion_damage_events_like_original(lib, gdat, start, tmp
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     for delay, type_, priority in ((40, C.EVENT_ALTAR_REBIRTH, 0), (20, C.EVENT_HIDE_DAMAGE, 0), (90, C.EVENT_HIDE_DAMAGE, 0)):
         event = Event(game.game_time + delay | game.party_map << 24, type_, priority, (ctypes.c_uint8 * 6)())
         lib.timeline_add_event(ctypes.byref(event))
@@ -282,7 +282,7 @@ def linked(lib, gdat, start, tmp_path_factory):
         records = c_records(lib, t)
         assert emu.read(base, len(records)) == records
 
-    link_things(lib, Game.in_dll(lib, "game"))
+    link_things(lib, Game.in_dll(lib, "g_game"))
     timeline = Timeline.in_dll(lib, "g_timeline")
     assert timeline.used_end <= int.from_bytes(emu.read(G_TIMELINE_EVENT_MAX, 2), "little")
     emu.write(emu.read_u32(G_TIMELINE_EVENTS), ctypes.string_at(timeline.events, timeline.used_end * C.TIMELINE_EVENT_SIZE))

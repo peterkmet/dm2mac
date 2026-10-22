@@ -166,12 +166,12 @@ static int clamp(int lo, int v, int hi)
 
 static uint16_t map_value(int key)
 {
-    return gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_VALUE, key);
 }
 
 static bool sky_has(int entry)
 {
-    return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(game.party_map), GDAT_TYPE_IMAGE, entry);
+    return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_IMAGE, entry);
 }
 
 /* The sky objects of the weather, ended by SKY_OBJECT_END. */
@@ -195,7 +195,7 @@ bool weather_sky_has_clouds(void)
 static bool load_sky_object(SkyObject *object)
 {
     char text[WALL_TEXT_SIZE];
-    gdat_text(gdat_current(), (GdatKey){CAT_SKY, dungeon_map_wallset(game.party_map), object->entry}, text,
+    gdat_text(gdat_current(), (GdatKey){CAT_SKY, dungeon_map_wallset(g_game.party_map), object->entry}, text,
               sizeof text);
     if (!text[0])
         return false;
@@ -209,18 +209,18 @@ static bool load_sky_object(SkyObject *object)
 /* The daylight in % that a window lets in now. */
 static int daylight(void)
 {
-    return light_levels[clamp(0, (int16_t)(game.heavy_rain + g_weather.hour_light), LIGHT_LEVEL_MAX)];
+    return light_levels[clamp(0, (int16_t)(g_game.heavy_rain + g_weather.hour_light), LIGHT_LEVEL_MAX)];
 }
 
 static void set_hour_light(void)
 {
-    g_weather.hour_light = light_by_hour[(game.game_time + g_weather.day_time_offset) / HOUR_TICKS % HOURS_PER_DAY];
+    g_weather.hour_light = light_by_hour[(g_game.game_time + g_weather.day_time_offset) / HOUR_TICKS % HOURS_PER_DAY];
 }
 
 /* Queues the next storm step delay ticks from now. */
 static void schedule_storm_step(int32_t delay)
 {
-    TimelineEvent e = {.time_map = game.game_time + (uint32_t)delay, .type = EVENT_WEATHER};
+    TimelineEvent e = {.time_map = g_game.game_time + (uint32_t)delay, .type = EVENT_WEATHER};
     timeline_add_event(&e); /* fix: the original leaves the data bytes uninitialized */
 }
 
@@ -228,30 +228,30 @@ void weather_init(bool keep_state)
 {
     if (keep_state) {
         g_weather.storm_previous = 0;
-        if (!game.storm_multiplier)
-            game.storm_multiplier = 1;
+        if (!g_game.storm_multiplier)
+            g_game.storm_multiplier = 1;
     } else {
         dun_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
-        game.next_hour_time = game.game_time + HOUR_TICKS;
-        game.heavy_rain = 0;
-        game.weather_visible = 0;
+        g_game.next_hour_time = g_game.game_time + HOUR_TICKS;
+        g_game.heavy_rain = 0;
+        g_game.weather_visible = 0;
         int delay;
         if (g_weather.first_init) {
-            game.cloud_cover = 0;
+            g_game.cloud_cover = 0;
             delay = rand_below(STORM_FIRST_DELAY);
-            game.storm_curve = CALM_CURVE;
-            game.storm_multiplier = 1;
+            g_game.storm_curve = CALM_CURVE;
+            g_game.storm_multiplier = 1;
         } else {
             delay = rand_below(STORM_NEXT_DELAY) + STORM_FIRST_DELAY;
-            game.storm_curve = (uint8_t)rand_2bits();
-            game.storm_multiplier = (uint8_t)(rand_below(STORM_MULTIPLIER_MAX) + 1);
+            g_game.storm_curve = (uint8_t)rand_2bits();
+            g_game.storm_multiplier = (uint8_t)(rand_below(STORM_MULTIPLIER_MAX) + 1);
         }
-        game.sky_darkness = 1;
-        game.rain_intensity = 0;
-        game.storm_intensity = 0;
+        g_game.sky_darkness = 1;
+        g_game.rain_intensity = 0;
+        g_game.storm_intensity = 0;
         g_weather.storm_previous = 0;
-        game.storm_step = 0;
-        game.wind_dir = (uint8_t)rand_2bits();
+        g_game.storm_step = 0;
+        g_game.wind_dir = (uint8_t)rand_2bits();
         schedule_storm_step(delay);
     }
     g_weather.strike_threshold = (int16_t)(rand_below(STRIKE_THRESHOLD_SPAN) + STRIKE_THRESHOLD_MIN);
@@ -271,40 +271,41 @@ void weather_load(const gdat_t *g)
 /* A storm step: the storm intensity follows its curve; after the last step a new weather cycle starts. */
 static void step_storm(void)
 {
-    game.storm_step++;
-    if (game.storm_step >= STORM_STEPS) {
+    g_game.storm_step++;
+    if (g_game.storm_step >= STORM_STEPS) {
         weather_init(false);
         return;
     }
-    g_weather.storm_previous = game.storm_intensity;
-    game.storm_intensity =
-        (uint16_t)(game.storm_intensity + game.storm_multiplier * storm_curves[game.storm_curve][game.storm_step]);
-    game.storm_intensity = (uint16_t)clamp(0, (int16_t)game.storm_intensity, STORM_MAX);
+    g_weather.storm_previous = g_game.storm_intensity;
+    g_game.storm_intensity = (uint16_t)(g_game.storm_intensity +
+                                        g_game.storm_multiplier * storm_curves[g_game.storm_curve][g_game.storm_step]);
+    g_game.storm_intensity = (uint16_t)clamp(0, (int16_t)g_game.storm_intensity, STORM_MAX);
     schedule_storm_step(rand_below(STORM_RANDOM_SPAN) + STORM_STEP_DELAY);
 }
 
 /* Rain and clouds follow the storm; returns true when a lightning comes in this step. */
 static bool update_rain(void)
 {
-    if (!game.storm_intensity) {
-        if (game.cloud_cover && game.game_time % CLOUD_STEP_TICKS == 0)
-            game.cloud_cover--;
+    if (!g_game.storm_intensity) {
+        if (g_game.cloud_cover && g_game.game_time % CLOUD_STEP_TICKS == 0)
+            g_game.cloud_cover--;
         bool lightning = rand_below(LIGHTNING_CHANCE_CALM) == 0;
-        game.rain_intensity = 0;
-        game.sky_darkness = 1;
+        g_game.rain_intensity = 0;
+        g_game.sky_darkness = 1;
         return lightning;
     }
-    uint16_t span = (uint16_t)(STORM_RANDOM_SPAN - game.storm_intensity + (rand_next() & STORM_SPAN_JITTER));
-    int chance = (int16_t)game.storm_intensity >= STORM_STRONG ? LIGHTNING_CHANCE_STRONG : LIGHTNING_CHANCE_WEAK;
-    game.sky_darkness = (uint8_t)game.storm_intensity;
+    uint16_t span = (uint16_t)(STORM_RANDOM_SPAN - g_game.storm_intensity + (rand_next() & STORM_SPAN_JITTER));
+    int chance = (int16_t)g_game.storm_intensity >= STORM_STRONG ? LIGHTNING_CHANCE_STRONG : LIGHTNING_CHANCE_WEAK;
+    g_game.sky_darkness = (uint8_t)g_game.storm_intensity;
     /* rain starts by chance, then follows the storm */
-    game.rain_intensity = game.rain_intensity ? (uint8_t)game.storm_intensity : rand_below(span) <= RAIN_CHANCE_MAX;
-    int rain = game.rain_intensity;
-    if (rain && game.cloud_cover < CLOUDS_MAX) {
-        bool even = !(game.game_time & 1);
+    g_game.rain_intensity =
+        g_game.rain_intensity ? (uint8_t)g_game.storm_intensity : rand_below(span) <= RAIN_CHANCE_MAX;
+    int rain = g_game.rain_intensity;
+    if (rain && g_game.cloud_cover < CLOUDS_MAX) {
+        bool even = !(g_game.game_time & 1);
         if (rain >= RAIN_STRONG || (rain >= RAIN_MEDIUM && even) ||
-            (rain >= RAIN_LIGHT && game.game_time % CLOUD_STEP_TICKS == 0) || !(game.game_time & CLOUD_SLOW_MASK))
-            game.cloud_cover++;
+            (rain >= RAIN_LIGHT && g_game.game_time % CLOUD_STEP_TICKS == 0) || !(g_game.game_time & CLOUD_SLOW_MASK))
+            g_game.cloud_cover++;
     }
     return sky_has(GFX_SKY_LIGHTNING) && rand_below(span) <= chance;
 }
@@ -330,22 +331,22 @@ static bool lightning_strike(void)
     PassageEnd end;
     if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, x, y))
         return false;
-    bool weak = (int16_t)game.storm_intensity < STORM_WEAK;
-    if (game.party_map == g_party.cur_map && x == game.party_x && y == game.party_y &&
-        (weak || game.game_time < STRIKE_PARTY_TIME || dun_get_global_var(VAR_STORMS) <= g_weather.strike_threshold))
+    bool weak = (int16_t)g_game.storm_intensity < STORM_WEAK;
+    if (g_game.party_map == g_party.cur_map && x == g_game.party_x && y == g_game.party_y &&
+        (weak || g_game.game_time < STRIKE_PARTY_TIME || dun_get_global_var(VAR_STORMS) <= g_weather.strike_threshold))
         return false;
-    int distance = (int16_t)(abs16(game.party_x - x) + abs16(game.party_y - y));
+    int distance = (int16_t)(abs16(g_game.party_x - x) + abs16(g_game.party_y - y));
     uint16_t group = creature_group_at(g_party.cur_map, x, y);
     if (group != THING_NONE) {
         if (creature_lightning[creature_group_info(group) - creature_info_at(0)] == CREATURE_LIGHTNING_PROOF)
             return false;
         if (distance > STRIKE_NEAR &&
-            (distance > STRIKE_SEEN || dun_get_direction_to(game.party_x, game.party_y, x, y) != game.party_dir))
+            (distance > STRIKE_SEEN || dun_get_direction_to(g_game.party_x, g_game.party_y, x, y) != g_game.party_dir))
             return false;
     }
-    explosion_create(LIGHTNING_EXPLOSION, game.storm_intensity, x, y, EXPLOSION_ANY_CELL);
+    explosion_create(LIGHTNING_EXPLOSION, g_game.storm_intensity, x, y, EXPLOSION_ANY_CELL);
     if ((ui.inventory || g_party_sleeping) && !weak && distance <= STRIKE_SEEN &&
-        dun_get_direction_to(game.party_x, game.party_y, x, y) == game.party_dir)
+        dun_get_direction_to(g_game.party_x, g_game.party_y, x, y) == g_game.party_dir)
         dun_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
     return true;
 }
@@ -354,15 +355,15 @@ static bool lightning_strike(void)
    view flashes. o is the next free sky object; returns the next free one after the bolt. */
 static SkyObject *show_lightning(SkyObject *o)
 {
-    if ((int16_t)game.storm_intensity < STORM_WEAK)
+    if ((int16_t)g_game.storm_intensity < STORM_WEAK)
         dun_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
     uint16_t strikes = 0;
-    if (rand_below((uint16_t)(game.storm_intensity + 1)) >= STORM_LIGHTNING_HITS) {
+    if (rand_below((uint16_t)(g_game.storm_intensity + 1)) >= STORM_LIGHTNING_HITS) {
         strikes = (uint16_t)((rand_next() & LIGHTNING_STRIKES_MASK) + 1);
         uint16_t target = map_value(MAP_KEY_LIGHTNING_TARGET);
         if (target) {
             int x = target >> TARGET_X_SHIFT, y = target & TARGET_Y_MASK;
-            sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
+            sensor_schedule_square_event(x, y, 0, EFFECT_SET, g_game.game_time + 1);
             sound_request_with_fallback(
                 CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE, SOUND_FALLBACK, x, y, 1, SOUND_PRIORITY_EXPLODE,
                 (int16_t)(rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL)); /* the volume: normal plus 0 to 31 */
@@ -385,15 +386,15 @@ static SkyObject *show_lightning(SkyObject *o)
     if (bolt) {
         if (!g_weather.thunder_toggle) {
             int delay;
-            if (!game.storm_intensity)
+            if (!g_game.storm_intensity)
                 delay = rand_below(THUNDER_CALM_DELAY) + THUNDER_CALM_BASE;
             else
-                delay = THUNDER_DELAY_BASE -
-                        (int16_t)game.storm_intensity /
-                            (game.storm_multiplier ? game.storm_multiplier : 1); /* fix: the original divides by 0 */
+                delay = THUNDER_DELAY_BASE - (int16_t)g_game.storm_intensity /
+                                                 (g_game.storm_multiplier ? g_game.storm_multiplier
+                                                                          : 1); /* fix: the original divides by 0 */
             delay = clamp(1, (int16_t)delay, THUNDER_DELAY_MAX);
-            sound_request(CAT_SKY, dungeon_map_wallset(game.party_map), 0, THUNDER_PRIORITY, THUNDER_VOLUME,
-                          game.party_x, game.party_y, delay);
+            sound_request(CAT_SKY, dungeon_map_wallset(g_game.party_map), 0, THUNDER_PRIORITY, THUNDER_VOLUME,
+                          g_game.party_x, g_game.party_y, delay);
             g_weather.thunder_toggle = 1;
         } else {
             g_weather.thunder_toggle = 0;
@@ -413,34 +414,34 @@ static int sky_entry(int amount, int medium, int heavy, int first)
 void world_update_day_night(int storm_step)
 {
     uint16_t sky = map_value(MAP_KEY_SKY_STATE);
-    game.weather_visible = sky < sizeof sky_state_weather && sky_state_weather[sky]; /* fix: no read past the table */
+    g_game.weather_visible = sky < sizeof sky_state_weather && sky_state_weather[sky]; /* fix: no read past the table */
     if (storm_step) {
         step_storm();
         return;
     }
-    if (game.game_time >= game.next_hour_time) {
+    if (g_game.game_time >= g_game.next_hour_time) {
         set_hour_light();
-        game.next_hour_time = game.game_time + HOUR_TICKS;
-        if (game.weather_visible)
+        g_game.next_hour_time = g_game.game_time + HOUR_TICKS;
+        if (g_game.weather_visible)
             light_update_party_light();
     }
     int lightning = update_rain();
-    if (!game.weather_visible)
+    if (!g_game.weather_visible)
         return;
     if (g_weather.lightning_flash) {
         g_weather.lightning_flash = 0;
         light_update_party_light();
     }
     SkyObject *o = weather_sky_objects();
-    if (sky_has(GFX_SKY_RAIN_LIGHT) && game.sky_darkness >= DARKNESS_RAIN) {
-        if (game.sky_darkness >= DARKNESS_HEAVY)
-            game.heavy_rain = 1;
-        o->entry = (uint8_t)sky_entry(game.sky_darkness, DARKNESS_MEDIUM, DARKNESS_HEAVY, GFX_SKY_RAIN_LIGHT);
+    if (sky_has(GFX_SKY_RAIN_LIGHT) && g_game.sky_darkness >= DARKNESS_RAIN) {
+        if (g_game.sky_darkness >= DARKNESS_HEAVY)
+            g_game.heavy_rain = 1;
+        o->entry = (uint8_t)sky_entry(g_game.sky_darkness, DARKNESS_MEDIUM, DARKNESS_HEAVY, GFX_SKY_RAIN_LIGHT);
         if (load_sky_object(o))
             o++;
     }
-    if (sky_has(GFX_SKY_CLOUDS_LIGHT) && game.cloud_cover >= CLOUDS_SHOWN) {
-        o->entry = (uint8_t)sky_entry(game.cloud_cover, CLOUDS_MORE, CLOUDS_MOST, GFX_SKY_CLOUDS_LIGHT);
+    if (sky_has(GFX_SKY_CLOUDS_LIGHT) && g_game.cloud_cover >= CLOUDS_SHOWN) {
+        o->entry = (uint8_t)sky_entry(g_game.cloud_cover, CLOUDS_MORE, CLOUDS_MOST, GFX_SKY_CLOUDS_LIGHT);
         if (load_sky_object(o))
             o++;
     }
@@ -454,14 +455,14 @@ int g_view_light_level;
 void light_update_party_light(void)
 {
     int level;
-    if (!dungeon_map_difficulty(game.party_map)) { /* a map without difficulty bits is always lit */
+    if (!dungeon_map_difficulty(g_game.party_map)) { /* a map without difficulty bits is always lit */
         level = LIGHT_LEVEL_LIT;
     } else {
         int16_t lights[HAND_LIGHTS_MAX] = {0};
         int n = 0;
-        if (item_attr(game.leader_hand, ATTR_FLAGS) & ITEM_FLAG_LIGHT)
-            lights[n++] = (int16_t)item_add_charges(game.leader_hand, 0);
-        for (int c = 0; c < game.champion_count; c++)
+        if (item_attr(g_game.leader_hand, ATTR_FLAGS) & ITEM_FLAG_LIGHT)
+            lights[n++] = (int16_t)item_add_charges(g_game.leader_hand, 0);
+        for (int c = 0; c < g_game.champion_count; c++)
             for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
                 uint16_t thing = champion(c)->slots[hand];
                 if (item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_LIGHT)
@@ -483,7 +484,7 @@ void light_update_party_light(void)
         }
         int16_t magic = save_magic_light();
         sum = (int16_t)(sum + g_light_source_sum + magic + map_value(MAP_KEY_LIGHT));
-        if (game.weather_visible)
+        if (g_game.weather_visible)
             sum = (int16_t)(sum + daylight());
         level = 0;
         while (level < LIGHT_LEVEL_MAX && light_levels[level] >= sum)
@@ -491,7 +492,7 @@ void light_update_party_light(void)
         int16_t lowest = (int16_t)map_value(MAP_KEY_LEAST_LIGHT_LEVEL);
         if (lowest > level)
             level = lowest;
-        if (game.weather_visible && g_weather.lightning_flash)
+        if (g_game.weather_visible && g_weather.lightning_flash)
             level = 0;
     }
     level -= g_explosion_light_sum > EXPLOSION_GLARE;

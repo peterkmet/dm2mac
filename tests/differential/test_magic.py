@@ -103,7 +103,7 @@ class MagicScenario(CreatureScenario):
         super().__init__(lib, gdat, start, tmp_path)
         emu = self.emu
         clear_magic_event_bytes(emu)
-        self.game_record = Game.in_dll(lib, "game")
+        self.game_record = Game.in_dll(lib, "g_game")
         sync_champions(lib, self)  # the loads differ in the redraw flags, the skill bonuses, and the load (Step 14)
 
     def magic(self):
@@ -343,7 +343,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
     lib, original = port, cast_ui
     emu = original.emu
     draw_game_screen(lib, original)
-    party_map = Game.in_dll(lib, "game").party_map  # the missile spells fly on the current map
+    party_map = Game.in_dll(lib, "g_game").party_map  # the missile spells fly on the current map
     lib.dun_set_current_map(party_map)
     emu.call(DUN_SET_CURRENT_MAP, party_map)
     action = ActionArea.in_dll(lib, "action")
@@ -411,7 +411,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
         for field, addr in (("champion", G_ACTION_CHAMPION), ("redraw_delay", G_ACTION_DELAY), ("result", G_ACTION_RESULT),
                             ("mode", G_ACTION_MODE)):
             assert getattr(action, field) == struct.unpack("<h", emu.read(addr, 2))[0], (where, field)
-        game = Game.in_dll(lib, "game")
+        game = Game.in_dll(lib, "g_game")
         assert bytes((ctypes.c_uint8 * 6).from_address(ctypes.addressof(game) + GAME_MAGIC)) == emu.read(G_MAGIC_LIGHT, 6), where
         from dm2test.save import Timeline
         tl = Timeline.in_dll(lib, "g_timeline")
@@ -436,7 +436,7 @@ def test_icon_click_feedback_matches_original(port, cast_ui):
     champion_bytes(lib, 1, 0, first)
     champion_bytes(lib, 1, CH_CELL, [first[CH_CELL] + 1 & 3])
     champion_bytes(lib, 1, CH_SLOTS, b"\xff\xff" * C.SLOT_COUNT)  # the copy must not share the items of the first champion
-    Game.in_dll(lib, "game").champion_count = 2
+    Game.in_dll(lib, "g_game").champion_count = 2
     emu.write(G_CHAMPION_COUNT, struct.pack("<H", 2))
     sync_champions(lib, original)
     draw_game_screen(lib, original)
@@ -592,7 +592,7 @@ def place_party(lib, emu, map_, x, y, d):
     from dm2test.scenario import GameRecord, Party
     Party.in_dll(lib, "g_party").cur_map = -1
     emu.write(G_CUR_MAP, struct.pack("<h", -1))
-    GameRecord.in_dll(lib, "game").party_dir = d
+    GameRecord.in_dll(lib, "g_game").party_dir = d
     emu.write(G_PARTY_DIR, struct.pack("<H", d))
     lib.dun_set_party_location(x, y, map_)
     emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
@@ -655,7 +655,7 @@ def leads(lib, m, x, y, delta):
 
 
 def set_time(lib, emu, t):
-    Game.in_dll(lib, "game").game_time = t
+    Game.in_dll(lib, "g_game").game_time = t
     emu.write_u32(0x7F22C, t)
 
 
@@ -743,7 +743,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
     feedback = random.Random(21)  # the click feedback choices; rng keeps its sequence
     lib.input_init()
     place_set = set(places)
-    time = Game.in_dll(lib, "game").game_time
+    time = Game.in_dll(lib, "g_game").game_time
     kinds, clicks, moved, dark, offsets, markers = set(), 0, 0, 0, set(), set()
     for n in range(64):
         thing = rng.choice(maps)

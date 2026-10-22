@@ -89,7 +89,7 @@ void action_area_close(void)
 
 void action_tick_hands(void)
 {
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         for (int k = 0; k < ACTION_DELAY_COUNT; k++)
             if (champion(i)->action_delay[k] && !--champion(i)->action_delay[k])
                 champ_reload_hand(i, k);

@@ -132,7 +132,7 @@ enum game_record_field {
 #define VOLUME_MASK        0xf
 #define MUSIC_VOLUME_SHIFT 4
 
-Game game = {
+Game g_game = {
     .leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START}; /* no leader */
 
 /* State of one load or write. */
@@ -235,12 +235,12 @@ static int flush_bits(void)
 
 static uint16_t champion_slot(int champion, int slot)
 {
-    return le16(game.champions[champion] + CHAMPION_SLOTS + 2 * slot);
+    return le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot);
 }
 
 static void set_champion_slot(int champion, int slot, uint16_t thing)
 {
-    put_le16(game.champions[champion] + CHAMPION_SLOTS + 2 * slot, thing);
+    put_le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot, thing);
 }
 
 static int sensor_has_data(uint16_t sensor)
@@ -283,13 +283,13 @@ static int defer_thing(uint16_t thing)
 static void timeline_relink_events(void)
 {
     for (int c = 0; c < CHAMPION_MAX; c++)
-        put_le16(game.champions[c] + CHAMPION_DAMAGE_EVENT, THING_NONE);
+        put_le16(g_game.champions[c] + CHAMPION_DAMAGE_EVENT, THING_NONE);
     for (int i = 0; i < g_timeline.count; i++) {
         const TimelineEvent *e = &g_timeline.events[i];
         uint16_t thing = le16(e->data + EVENT_THING);
         if (e->type == EVENT_HIDE_DAMAGE &&
             e->priority < CHAMPION_MAX) /* fix: the original does not check the champion */
-            put_le16(game.champions[e->priority] + CHAMPION_DAMAGE_EVENT, (uint16_t)i);
+            put_le16(g_game.champions[e->priority] + CHAMPION_DAMAGE_EVENT, (uint16_t)i);
         if ((e->type == EVENT_PROJECTILE_MOVE || e->type == EVENT_PROJECTILE_MOVE_2) &&
             thing_type(thing) == THING_PROJECTILE && dungeon_thing_valid(thing))
             set_thing_word(thing, PROJECTILE_EVENT, i);
@@ -477,64 +477,64 @@ static int write_deferred(void)
 static void pack_game_record(uint8_t *r)
 {
     memset(r, 0, GAME_RECORD_SIZE);
-    put_le32(r + REC_GAME_TIME, game.game_time);
+    put_le32(r + REC_GAME_TIME, g_game.game_time);
     put_le32(r + REC_RANDOM_SEED, g_random_seed);
-    put_le16(r + REC_CHAMPION_COUNT, game.champion_count);
-    put_le16(r + REC_PARTY_X, game.party_x);
-    put_le16(r + REC_PARTY_Y, game.party_y);
-    put_le16(r + REC_PARTY_DIR, game.party_dir);
-    put_le16(r + REC_PARTY_MAP, game.party_map);
-    put_le16(r + REC_LEADER, game.leader);
+    put_le16(r + REC_CHAMPION_COUNT, g_game.champion_count);
+    put_le16(r + REC_PARTY_X, g_game.party_x);
+    put_le16(r + REC_PARTY_Y, g_game.party_y);
+    put_le16(r + REC_PARTY_DIR, g_game.party_dir);
+    put_le16(r + REC_PARTY_MAP, g_game.party_map);
+    put_le16(r + REC_LEADER, g_game.leader);
     put_le16(r + REC_EVENT_COUNT, g_timeline.count);
-    put_le32(r + REC_UNKNOWN_TIME_A, game.last_combat_time);
-    put_le32(r + REC_UNKNOWN_TIME_B, game.first_recruit_time);
-    put_le16(r + REC_MOVE_COOLDOWN, game.party_move_cooldown);
-    put_le16(r + REC_UNKNOWN_COUNTDOWN, game.throw_cooldown);
-    put_le16(r + REC_UNKNOWN_DIR, game.throw_dir);
-    put_le16(r + REC_VOLUMES, (game.sound_volume & VOLUME_MASK) | (game.music_volume & VOLUME_MASK)
-                                                                      << MUSIC_VOLUME_SHIFT);
-    put_le32(r + REC_WEATHER_VISIBLE, game.weather_visible);
-    r[REC_HEAVY_RAIN] = game.heavy_rain;
-    r[REC_WIND_DIR] = game.wind_dir;
-    r[REC_RAIN_INTENSITY] = game.rain_intensity;
-    r[REC_SKY_DARKNESS] = game.sky_darkness;
-    r[REC_CLOUD_COVER] = game.cloud_cover;
-    r[REC_STORM_MULTIPLIER] = game.storm_multiplier;
-    put_le16(r + REC_STORM_INTENSITY, game.storm_intensity);
-    r[REC_STORM_STEP] = game.storm_step;
-    r[REC_STORM_CURVE] = game.storm_curve;
-    put_le32(r + REC_NEXT_HOUR_TIME, game.next_hour_time);
+    put_le32(r + REC_UNKNOWN_TIME_A, g_game.last_combat_time);
+    put_le32(r + REC_UNKNOWN_TIME_B, g_game.first_recruit_time);
+    put_le16(r + REC_MOVE_COOLDOWN, g_game.party_move_cooldown);
+    put_le16(r + REC_UNKNOWN_COUNTDOWN, g_game.throw_cooldown);
+    put_le16(r + REC_UNKNOWN_DIR, g_game.throw_dir);
+    put_le16(r + REC_VOLUMES, (g_game.sound_volume & VOLUME_MASK) | (g_game.music_volume & VOLUME_MASK)
+                                                                        << MUSIC_VOLUME_SHIFT);
+    put_le32(r + REC_WEATHER_VISIBLE, g_game.weather_visible);
+    r[REC_HEAVY_RAIN] = g_game.heavy_rain;
+    r[REC_WIND_DIR] = g_game.wind_dir;
+    r[REC_RAIN_INTENSITY] = g_game.rain_intensity;
+    r[REC_SKY_DARKNESS] = g_game.sky_darkness;
+    r[REC_CLOUD_COVER] = g_game.cloud_cover;
+    r[REC_STORM_MULTIPLIER] = g_game.storm_multiplier;
+    put_le16(r + REC_STORM_INTENSITY, g_game.storm_intensity);
+    r[REC_STORM_STEP] = g_game.storm_step;
+    r[REC_STORM_CURVE] = g_game.storm_curve;
+    put_le32(r + REC_NEXT_HOUR_TIME, g_game.next_hour_time);
 }
 
 static void unpack_game_record(const uint8_t *r)
 {
-    game.game_time = le32(r + REC_GAME_TIME);
+    g_game.game_time = le32(r + REC_GAME_TIME);
     g_random_seed = le32(r + REC_RANDOM_SEED);
-    game.champion_count = le16(r + REC_CHAMPION_COUNT);
-    game.party_x = le16(r + REC_PARTY_X);
-    game.party_y = le16(r + REC_PARTY_Y);
-    game.party_dir = le16(r + REC_PARTY_DIR);
-    game.party_map = le16(r + REC_PARTY_MAP);
-    game.leader = le16(r + REC_LEADER);
+    g_game.champion_count = le16(r + REC_CHAMPION_COUNT);
+    g_game.party_x = le16(r + REC_PARTY_X);
+    g_game.party_y = le16(r + REC_PARTY_Y);
+    g_game.party_dir = le16(r + REC_PARTY_DIR);
+    g_game.party_map = le16(r + REC_PARTY_MAP);
+    g_game.leader = le16(r + REC_LEADER);
     g_timeline.count = le16(r + REC_EVENT_COUNT);
-    game.last_combat_time = le32(r + REC_UNKNOWN_TIME_A);
-    game.first_recruit_time = le32(r + REC_UNKNOWN_TIME_B);
-    game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
-    game.throw_cooldown = le16(r + REC_UNKNOWN_COUNTDOWN);
-    game.throw_dir = le16(r + REC_UNKNOWN_DIR);
-    game.sound_volume = r[REC_VOLUMES] & VOLUME_MASK;
-    game.music_volume = r[REC_VOLUMES] >> MUSIC_VOLUME_SHIFT & VOLUME_MASK;
-    game.weather_visible = r[REC_WEATHER_VISIBLE];
-    game.heavy_rain = r[REC_HEAVY_RAIN];
-    game.wind_dir = r[REC_WIND_DIR];
-    game.rain_intensity = r[REC_RAIN_INTENSITY];
-    game.sky_darkness = r[REC_SKY_DARKNESS];
-    game.cloud_cover = r[REC_CLOUD_COVER];
-    game.storm_multiplier = r[REC_STORM_MULTIPLIER];
-    game.storm_intensity = le16(r + REC_STORM_INTENSITY);
-    game.storm_step = r[REC_STORM_STEP];
-    game.storm_curve = r[REC_STORM_CURVE];
-    game.next_hour_time = le32(r + REC_NEXT_HOUR_TIME);
+    g_game.last_combat_time = le32(r + REC_UNKNOWN_TIME_A);
+    g_game.first_recruit_time = le32(r + REC_UNKNOWN_TIME_B);
+    g_game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
+    g_game.throw_cooldown = le16(r + REC_UNKNOWN_COUNTDOWN);
+    g_game.throw_dir = le16(r + REC_UNKNOWN_DIR);
+    g_game.sound_volume = r[REC_VOLUMES] & VOLUME_MASK;
+    g_game.music_volume = r[REC_VOLUMES] >> MUSIC_VOLUME_SHIFT & VOLUME_MASK;
+    g_game.weather_visible = r[REC_WEATHER_VISIBLE];
+    g_game.heavy_rain = r[REC_HEAVY_RAIN];
+    g_game.wind_dir = r[REC_WIND_DIR];
+    g_game.rain_intensity = r[REC_RAIN_INTENSITY];
+    g_game.sky_darkness = r[REC_SKY_DARKNESS];
+    g_game.cloud_cover = r[REC_CLOUD_COVER];
+    g_game.storm_multiplier = r[REC_STORM_MULTIPLIER];
+    g_game.storm_intensity = le16(r + REC_STORM_INTENSITY);
+    g_game.storm_step = r[REC_STORM_STEP];
+    g_game.storm_curve = r[REC_STORM_CURVE];
+    g_game.next_hour_time = le32(r + REC_NEXT_HOUR_TIME);
 }
 
 /* The global words and the timeline events are stored in host order; the host is little-endian like the save file. */
@@ -545,18 +545,18 @@ static int write_state(void)
     timeline_relink_events();
     pack_game_record(record);
     if (!write_packed(record, game_record_mask, GAME_RECORD_SIZE, 1) ||
-        !write_packed(game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES) ||
-        !write_packed(game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT) ||
-        !write_packed((const uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT) ||
-        !write_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count) ||
-        !write_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) ||
+        !write_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES) ||
+        !write_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT) ||
+        !write_packed((const uint8_t *)g_game.global_words, all_bits, 2, GLOBAL_WORD_COUNT) ||
+        !write_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count) ||
+        !write_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) ||
         !write_packed((const uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count))
         return 0;
-    for (int c = 0; c < game.champion_count; c++)
+    for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
             if (!write_thing_list(champion_slot(c, s), 0, 0))
                 return 0;
-    if (!write_thing_list(game.leader_hand, 0, 0))
+    if (!write_thing_list(g_game.leader_hand, 0, 0))
         return 0;
     for (int i = 0; i < g_timeline.count; i++)
         if (is_move_group_event(&g_timeline.events[i]) &&
@@ -776,22 +776,22 @@ static int read_deferred(void)
 static int read_things(void)
 {
     free_movable_things();
-    for (int c = 0; c < game.champion_count; c++)
+    for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++) {
             uint16_t slot = THING_ENDOFLIST;
             if (!read_thing_list(0, 0, 0, &slot, 0, 0))
                 return 0;
             set_champion_slot(c, s, slot == THING_ENDOFLIST ? THING_NONE : slot);
         }
-    game.leader_hand = THING_ENDOFLIST;
-    if (!read_thing_list(0, 0, 0, &game.leader_hand, 0, 0))
+    g_game.leader_hand = THING_ENDOFLIST;
+    if (!read_thing_list(0, 0, 0, &g_game.leader_hand, 0, 0))
         return 0;
-    if (game.leader_hand == THING_ENDOFLIST)
-        game.leader_hand = THING_NONE;
-    for (int c = 0; c < game.champion_count; c++)
+    if (g_game.leader_hand == THING_ENDOFLIST)
+        g_game.leader_hand = THING_NONE;
+    for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
             champ_apply_item_effects(c, champion(c)->slots[s], s, EFFECT_MODE_LOAD);
-    champ_apply_item_effects((int16_t)game.leader, game.leader_hand, -1, EFFECT_MODE_LOAD);
+    champ_apply_item_effects((int16_t)g_game.leader, g_game.leader_hand, -1, EFFECT_MODE_LOAD);
     for (int i = 0; i < g_timeline.count; i++) {
         TimelineEvent *e = &g_timeline.events[i];
         if (!is_move_group_event(e))
@@ -812,7 +812,7 @@ static const int8_t light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 
    the champion loads. */
 static void save_restore_timed_effects(void)
 {
-    memset(game.magic_light, 0, sizeof game.magic_light);
+    memset(g_game.magic_light, 0, sizeof g_game.magic_light);
     for (int i = 0; i < g_timeline.used_end; i++) {
         const TimelineEvent *e = &g_timeline.events[i];
         int16_t v = (int16_t)le16(e->data + EVENT_VALUE);
@@ -826,10 +826,10 @@ static void save_restore_timed_effects(void)
             }
             break;
         case EVENT_INVISIBILITY:
-            game.magic_light[MAGIC_INVISIBILITY]++;
+            g_game.magic_light[MAGIC_INVISIBILITY]++;
             break;
         case EVENT_AURA:
-            for (int c = 0; c < game.champion_count; c++)
+            for (int c = 0; c < g_game.champion_count; c++)
                 if (e->priority >> c & 1 && champion(c)->health)
                     champion(c)->aura_value = (int16_t)(champion(c)->aura_value + v);
             break;
@@ -839,7 +839,7 @@ static void save_restore_timed_effects(void)
             break;
         }
     }
-    for (int c = 0; c < game.champion_count; c++)
+    for (int c = 0; c < g_game.champion_count; c++)
         champ_compute_load(c);
 }
 
@@ -852,14 +852,14 @@ static int read_state(void)
     if (!read_packed(record, game_record_mask, GAME_RECORD_SIZE, 1, 0))
         return 0;
     unpack_game_record(record);
-    if (game.champion_count > CHAMPION_MAX || g_timeline.count > g_timeline.capacity)
+    if (g_game.champion_count > CHAMPION_MAX || g_timeline.count > g_timeline.capacity)
         return 0;
-    memset(game.champions, 0, sizeof game.champions);
-    if (!read_packed(game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES, 0) ||
-        !read_packed(game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, 0) ||
-        !read_packed((uint8_t *)game.global_words, all_bits, 2, GLOBAL_WORD_COUNT, 0) ||
-        !read_packed(game.champions[0], champion_mask, CHAMPION_SIZE, game.champion_count, 0) ||
-        !read_packed(game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, 0) ||
+    memset(g_game.champions, 0, sizeof g_game.champions);
+    if (!read_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES, 0) ||
+        !read_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, 0) ||
+        !read_packed((uint8_t *)g_game.global_words, all_bits, 2, GLOBAL_WORD_COUNT, 0) ||
+        !read_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count, 0) ||
+        !read_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, 0) ||
         !read_packed((uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count, 0))
         return 0;
     for (int i = g_timeline.count; i < g_timeline.capacity; i++)

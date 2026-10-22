@@ -128,7 +128,7 @@ static uint32_t mul16(uint16_t a, uint16_t b)
 /* An event of the party map at delay game steps from now. */
 static TimelineEvent party_event(uint32_t delay, int type, int priority)
 {
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + delay, game.party_map),
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + delay, g_game.party_map),
                        .type = (uint8_t)type,
                        .priority = (uint8_t)priority};
     return e;
@@ -356,7 +356,7 @@ int champ_damage_party(int damage, int wound_mask, int attack_type)
     int hit = 0;
     int spread = ((uint16_t)d >> PARTY_SPREAD_SHIFT) + 1;
     d = (int16_t)(d - spread);
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         int16_t v = (int16_t)(rand_below((uint16_t)(spread * 2)) + d);
         if (champ_take_damage(i, v > 1 ? v : 1, wound_mask, attack_type))
             hit |= 1 << i;
@@ -423,7 +423,7 @@ static void drop_all_objects(int champ)
     for (int i = 0; i < SLOT_COUNT; i++) {
         uint16_t t = champ_remove_object_from_slot(champ, drop_order[i]);
         if (t != THING_NONE)
-            move_thing(thing_with_cell(t, cell), -1, 0, game.party_x, game.party_y);
+            move_thing(thing_with_cell(t, cell), -1, 0, g_game.party_x, g_game.party_y);
     }
 }
 
@@ -432,7 +432,7 @@ void champ_drag_click(int cell)
     bool finish = !(cell & DRAG_CANCEL);
     if (!finish)
         cell %= DIR_COUNT;
-    int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, game.party_dir));
+    int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, g_game.party_dir));
     if (!input_drag_state) {
         if (target < 0)
             return;
@@ -442,14 +442,14 @@ void champ_drag_click(int cell)
     }
     int from = input_drag_state - 1;
     input_drag_state = 0;
-    int16_t dragged = (int16_t)champ_get_index_in_cell(dir_turn(game.party_dir, from));
+    int16_t dragged = (int16_t)champ_get_index_in_cell(dir_turn(g_game.party_dir, from));
     if (finish)
-        champion(dragged)->dir = (uint8_t)game.party_dir;
+        champion(dragged)->dir = (uint8_t)g_game.party_dir;
     if (from == cell)
         return;
     if (target >= 0)
-        champion(target)->cell = (uint8_t)dir_turn(from, game.party_dir);
-    champion(dragged)->cell = (uint8_t)dir_turn(cell, game.party_dir);
+        champion(target)->cell = (uint8_t)dir_turn(from, g_game.party_dir);
+    champion(dragged)->cell = (uint8_t)dir_turn(cell, g_game.party_dir);
 }
 
 void champ_drag_cancel(void)
@@ -472,8 +472,8 @@ static void kill_champion(int champ)
     if (champ + 1 == ui.inventory) {
         if (ui.eye) {
             ui.eye = 0;
-            if (game.leader_hand != THING_NONE)
-                inv_show_object_name(game.leader_hand);
+            if (g_game.leader_hand != THING_NONE)
+                inv_show_object_name(g_game.leader_hand);
         }
         ui.mouth = 0;
         g_hooks.toggle_inventory(CHAMPION_MAX);
@@ -485,25 +485,25 @@ static void kill_champion(int champ)
         item_set_type(bones, ITEM_BONES);
         item_set_kept(bones, true);
         misc_set_charges(bones, (uint16_t)champ); /* the champion of the bones */
-        move_thing(thing_with_cell(bones, cell), -1, 0, game.party_x, game.party_y);
+        move_thing(thing_with_cell(bones, cell), -1, 0, g_game.party_x, g_game.party_y);
     }
     c->rune_count = 0;
     c->runes[0] = 0;
-    c->dir = (uint8_t)game.party_dir;
+    c->dir = (uint8_t)g_game.party_dir;
     c->hit_damage = 0;
-    if (dir_relative(cell, game.party_dir) + 1 == input_drag_state)
+    if (dir_relative(cell, g_game.party_dir) + 1 == input_drag_state)
         champ_drag_cancel();
     if (c->poisoned)
         champ_cure_poison(champ, CURE_ALL);
     int alive = 0;
-    while (alive < game.champion_count && !champion(alive)->health)
+    while (alive < g_game.champion_count && !champion(alive)->health)
         alive++;
-    if (alive == game.champion_count) {
+    if (alive == g_game.champion_count) {
         main_loop.end = 1;
         g_hooks.flush_input();
         g_party_sleeping = 0;
         main_loop.view_hidden = 0;
-    } else if (champ == (int16_t)game.leader) {
+    } else if (champ == (int16_t)g_game.leader) {
         champ_set_leader(alive);
     }
     g_hooks.refresh_input_mode();
@@ -511,7 +511,7 @@ static void kill_champion(int champ)
 
 void champ_apply_pending_damage(void)
 {
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         c->wounds |= g_champ_pending_wounds[i];
         g_champ_pending_wounds[i] = 0;
@@ -537,7 +537,7 @@ void champ_apply_pending_damage(void)
             c->damage_event = (uint16_t)timeline_add_event(&e);
         } else {
             g_timeline.events[c->damage_event].time_map =
-                timeline_time_map(game.game_time + DAMAGE_SHOW_TIME, game.party_map);
+                timeline_time_map(g_game.game_time + DAMAGE_SHOW_TIME, g_game.party_map);
             timeline_reposition_event(c->damage_event);
         }
     }
@@ -573,7 +573,7 @@ static void consume_food_and_water(int i)
     for (int16_t half = (int16_t)(c->max_stamina >> 1); half > c->stamina; half = (int16_t)(half >> 1))
         hunger += HUNGER_PER_HALF;
     int step = clamp16(HUNGER_STEP_MIN, (int8_t)(c->max_stamina >> HUNGER_STAMINA_SHIFT) - 1, HUNGER_STEP_MAX);
-    uint16_t since = (uint16_t)(game.game_time - game.first_recruit_time);
+    uint16_t since = (uint16_t)(g_game.game_time - g_game.first_recruit_time);
     if (since > NEW_PARTY_TIME)
         step++;
     if (since > NEW_PARTY_TIME_2)
@@ -619,12 +619,12 @@ static void consume_food_and_water(int i)
 
 void champ_apply_time_effects(void)
 {
-    if (!game.champion_count)
+    if (!g_game.champion_count)
         return;
     g_champ_regen_counter = (uint16_t)(g_champ_regen_counter + REGEN_STEP);
     if (g_champ_regen_counter > REGEN_RANGE)
         g_champ_regen_counter = (uint16_t)(g_champ_regen_counter - REGEN_RANGE);
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (!c->health || i + 1 == ui.candidate)
             continue;
@@ -637,7 +637,7 @@ void champ_apply_time_effects(void)
                 gain *= 2;
             c->health = (int16_t)(c->health + min16(gain, c->max_health - c->health));
         }
-        if (!((uint16_t)game.game_time & (g_party_sleeping ? STATS_TIME_MASK_ASLEEP : STATS_TIME_MASK))) {
+        if (!((uint16_t)g_game.game_time & (g_party_sleeping ? STATS_TIME_MASK_ASLEEP : STATS_TIME_MASK))) {
             for (int s = 0; s < STAT_COUNT; s++) {
                 uint8_t *v = c->stats[s];
                 if (v[0] < v[1])
@@ -655,7 +655,7 @@ void champ_apply_time_effects(void)
 void champ_burn_held_lights(void)
 {
     bool burned = false;
-    int count = game.champion_count;
+    int count = g_game.champion_count;
     if (ui.candidate)
         count--; /* the recruit candidate burns no lights */
     for (int i = 0; i < count; i++) {
@@ -681,11 +681,11 @@ static void place_in_free_cell(int champ)
     c->health = 0;
     if (c->cell == NO_CHAMPION_CELL || champ_get_index_in_cell(c->cell) != -1) {
         int k = 0;
-        while (champ_get_index_in_cell(dir_turn(game.party_dir, k)) != -1)
+        while (champ_get_index_in_cell(dir_turn(g_game.party_dir, k)) != -1)
             k++;
-        c->cell = (uint8_t)dir_turn(game.party_dir, k);
+        c->cell = (uint8_t)dir_turn(g_game.party_dir, k);
     }
-    c->dir = (uint8_t)game.party_dir;
+    c->dir = (uint8_t)g_game.party_dir;
     c->health = health;
 }
 

@@ -136,9 +136,9 @@ static int game_step_view(void)
 {
     for (;;) {
         if (g_party.new_map != -1) {
-            game_enter_map(game.party_x, game.party_y, g_party.new_map, 1);
+            game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, 1);
             g_party.move_steps = 0;
-            move_thing(THING_NONE, -1, 0, game.party_x, game.party_y);
+            move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
             g_party.new_map = -1;
         }
         timeline_process();
@@ -155,10 +155,10 @@ static int game_step_view(void)
             if (g_party.move_steps)
                 view_draw_dungeon(g_party.view_dir, g_party.view_x, g_party.view_y);
             else
-                view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
+                view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
             play_present_viewport();
             if (game_mode != GAME_MODE_VANILLA)
-                seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir);
+                seen_mark(g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir);
         }
         if (!g_party.move_steps)
             return 1;
@@ -183,9 +183,9 @@ static void game_step(void)
     input_release_move_arrow();
     sound_flush_requests(0);
     champ_apply_pending_damage();
-    if (game.magic_light[MAGIC_HASTE])
-        game.magic_light[MAGIC_HASTE]--;
-    if (!(game.game_time & (g_party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK)))
+    if (g_game.magic_light[MAGIC_HASTE])
+        g_game.magic_light[MAGIC_HASTE]--;
+    if (!(g_game.game_time & (g_party_sleeping ? SLEEP_TIME_EFFECTS_PERIOD_MASK : TIME_EFFECTS_PERIOD_MASK)))
         champ_apply_time_effects();
     inv_update_hand_cursor();
     ui_draw_all_champion_states(1);
@@ -193,15 +193,15 @@ static void game_step(void)
         input_reset_states();
         return;
     }
-    game.game_time++;
-    if (!(game.game_time & LIGHT_BURN_PERIOD_MASK))
+    g_game.game_time++;
+    if (!(g_game.game_time & LIGHT_BURN_PERIOD_MASK))
         champ_burn_held_lights();
-    if (game.magic_light[MAGIC_ACTION_EFFECT])
-        game.magic_light[MAGIC_ACTION_EFFECT]--;
-    if (game.party_move_cooldown)
-        game.party_move_cooldown--;
-    if (game.throw_cooldown)
-        game.throw_cooldown--;
+    if (g_game.magic_light[MAGIC_ACTION_EFFECT])
+        g_game.magic_light[MAGIC_ACTION_EFFECT]--;
+    if (g_game.party_move_cooldown)
+        g_game.party_move_cooldown--;
+    if (g_game.throw_cooldown)
+        g_game.throw_cooldown--;
     text_clear_expired_rows();
     input_release_move_arrow();
 }
@@ -215,7 +215,7 @@ static void game_step_end(void)
     champ_process_repeated_actions();
     if (g_party.new_map != -1)
         dun_set_current_map(saved);
-    music_update_for_map(game.party_map);
+    music_update_for_map(g_game.party_map);
 }
 
 void play_start_session(void)
@@ -226,7 +226,7 @@ void play_start_session(void)
     main_loop.tick_threshold = STEP_TICKS;
     main_loop.running = 1;
     input_set_mode(INPUT_MODE_MOVE);
-    game_enter_map(game.party_x, game.party_y, game.party_map, 0);
+    game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
     dialog.progress_enabled = 0;
     advanced_reset();
     if (session.loaded) {
@@ -243,7 +243,7 @@ void play_start_session(void)
     creature_refresh_party_maps();
     creature_reset_active_groups();
     if (session.new_game)
-        move_thing(THING_NONE, -1, 0, game.party_x, game.party_y);
+        move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
     dialog.screen_mode = 0;
     game_step();
 }

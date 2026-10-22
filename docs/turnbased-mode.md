@@ -69,7 +69,7 @@ Each request is one JSON object on one line. Each reply is one JSON object on on
 An `act` turn does these steps:
 
 1. It gives the inputs of the action to the input queue, one after the other (at most 4). This is the path of a player: a key, a click on a command zone, or a click at a screen point. The next input goes when the input pipeline is idle.
-2. It runs the game one game step per frame (`game.game_time` grows by 1). One tick of the turn protocol is one game step.
+2. It runs the game one game step per frame (`g_game.game_time` grows by 1). One tick of the turn protocol is one game step.
 3. It ends when at least `TURN_MIN_TICKS` (2) steps ran, all inputs are given, the input is idle, and the party can move again (no move cooldown, no walk in progress, no wait of the input). It also ends after `TURN_MAX_TICKS` (64) steps, and at once when the game is over.
 
 A game that does not tick (a dialog) ends a turn after `FRAMES_PER_TICK_LIMIT` (16) frames for each tick of the limit. The game rules do not change.

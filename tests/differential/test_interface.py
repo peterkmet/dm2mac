@@ -196,7 +196,7 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
     lib.input_cursor_image.restype = CursorImage
     thing = things_of(lib, 5, 1)[0]
     lib.input_init()
-    Game.in_dll(lib, "game").leader = 0
+    Game.in_dll(lib, "g_game").leader = 0
     lib.champ_put_in_leader_hand(thing, 0)
     try:
         lib.input_set_mode(C.INPUT_MODE_MOVE)
@@ -457,7 +457,7 @@ def test_message_area_matches_original(port, original):
     assert list(expiry) == list(struct.unpack("<3I", emu.read(0x80404, 12)))
     time = expiry[1]
     emu.write(G_GAME_TIME, struct.pack("<I", time))
-    Game.in_dll(lib, "game").game_time = time
+    Game.in_dll(lib, "g_game").game_time = time
     emu.call(0x557B5, allow_io=True)
     lib.text_clear_expired_rows()
     mine, theirs = c_screen(lib), original.screen()
@@ -492,7 +492,7 @@ def test_message_rows_follow_print_scroll_and_expiry(port):
     lib = port
     lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
     lib.text_message_row.restype = ctypes.c_char_p
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     start = 1000
     for step, message in enumerate([b"\nONE", b"\nTWO", b"\nTHREE", b"\nFOUR"]):
         game.game_time = start + step

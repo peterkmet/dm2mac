@@ -241,9 +241,9 @@ void projectile_create(const ProjectileLaunch *launch)
     projectile_set_energy(t, launch->energy);
     projectile_set_hit_chance(t, launch->hit_chance);
     dungeon_link_thing_to_square(t, g_party.cur_map, launch->x, launch->y);
-    if (payload == SPELL_FIREBALL && g_party.cur_map == game.party_map)
+    if (payload == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
         g_party.redraw |= REDRAW_VIEW;
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, g_party.cur_map)};
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_party.cur_map)};
     e.type = launch->from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE;
     put_le16(e.data + PROJECTILE_EVENT_THING, t);
     put_le16(e.data + PROJECTILE_EVENT_POSITION,
@@ -352,7 +352,8 @@ void explosion_create(int type, int power, int x, int y, int cell)
     int16_t delay = (uint16_t)type == EXPLOSION_SMOKE      ? SMOKE_DURATION
                     : (uint16_t)type == SPELL_MISSILE_WALL ? (int16_t)((uint16_t)power >> 1)
                                                            : 1;
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + delay, g_party.cur_map), .type = EVENT_EXPLOSION};
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + delay, g_party.cur_map),
+                       .type = EVENT_EXPLOSION};
     e.data[EXPLOSION_EVENT_X] = (uint8_t)ex;
     e.data[EXPLOSION_EVENT_Y] = (uint8_t)ey;
     put_le16(e.data + EXPLOSION_EVENT_THING, t);
@@ -364,7 +365,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
     case EXPLOSION_STORM_LIGHTNING:
     case EXPLOSION_STORM_BLAST:
         blast_square((uint16_t)type, power, x, y, cell);
-        if (g_party.cur_map == game.party_map)
+        if (g_party.cur_map == g_game.party_map)
             g_party.redraw |= REDRAW_VIEW;
         break;
     case SPELL_DOOR_TOGGLE:
@@ -376,7 +377,7 @@ void explosion_create(int type, int power, int x, int y, int cell)
         power_thing = door;
         if (door_has_button(door))
             sensor_schedule_square_event(ex, ey, 0, (uint16_t)type == SPELL_DOOR_TOGGLE ? EFFECT_TOGGLE : EFFECT_SET,
-                                         game.game_time + 1);
+                                         g_game.game_time + 1);
         break;
     }
     }
@@ -845,7 +846,7 @@ void projectile_process_event(TimelineEvent *event)
     int new_cell = dir_turn(cell, (dir & 1) == (cell & 1) ? -1 : 1);
     if (leaves) {
         move_thing(thing_with_cell(projectile, new_cell), from_x, from_y, x, y);
-        if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_party.cur_map == game.party_map)
+        if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
             g_party.redraw |= REDRAW_VIEW;
         projectile_event_set_position(&e, g_party.dest_x, g_party.dest_y, g_party.dest_dir);
         projectile = thing_with_cell(projectile, g_party.dest_cell);
@@ -962,7 +963,7 @@ void explosion_process_event(TimelineEvent *e)
         }
     }
     type = explosion_type(t);
-    if (g_party.cur_map == game.party_map &&
+    if (g_party.cur_map == g_game.party_map &&
         (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_FADING))
         g_party.redraw |= REDRAW_VIEW;
     dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
@@ -1008,7 +1009,7 @@ static int wound_nibble(const CreatureInfo *info, int location)
 static bool attack_missed(const CreatureInfo *info, int champ, uint16_t dexterity, int difficulty)
 {
     int visibility;
-    if (game.magic_light[MAGIC_INVISIBILITY] && !(info->flags & CREATURE_SEES_INVISIBLE))
+    if (g_game.magic_light[MAGIC_INVISIBILITY] && !(info->flags & CREATURE_SEES_INVISIBLE))
         visibility = VISIBILITY_INVISIBLE;
     else if (info->flags & CREATURE_SEES_IN_DARK)
         visibility = 0;
@@ -1038,7 +1039,7 @@ static uint16_t attack_wounds(const CreatureInfo *info)
 
 int creature_attack_champion(uint16_t group, int champ)
 {
-    if ((uint16_t)champ >= game.champion_count)
+    if ((uint16_t)champ >= g_game.champion_count)
         return 0;
     Champion *c = champion(champ);
     if (!c->health)
@@ -1077,8 +1078,8 @@ int creature_attack_champion(uint16_t group, int champ)
                 power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
             damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
             if (damage) {
-                sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x,
-                                            game.party_y, SOUND_DELAY_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
+                sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_FALLBACK, g_game.party_x,
+                                            g_game.party_y, SOUND_DELAY_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
                 int16_t poison;
                 if (info->poison && rand_bit() &&
                     (poison = (int16_t)champ_get_stat_adjusted_attack(champion(champ), STAT_VITALITY, info->poison)) !=
@@ -1221,13 +1222,13 @@ void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack
     int dir = c->dir;
     int cell = dir_turn(dir, (((c->cell - dir) + 1) & 2) >> 1);
     projectile_create(&(ProjectileLaunch){.payload = payload,
-                                          .x = game.party_x,
-                                          .y = game.party_y,
+                                          .x = g_game.party_x,
+                                          .y = g_game.party_y,
                                           .cell = (int16_t)cell,
                                           .dir = (int16_t)dir,
                                           .energy = (uint8_t)min16((int16_t)energy, UINT8_MAX),
                                           .hit_chance = (uint8_t)min16((int16_t)attack, UINT8_MAX),
                                           .step = (uint8_t)min16((int16_t)step, UINT8_MAX)});
-    game.throw_cooldown = THROW_COOLDOWN;
-    game.throw_dir = (uint16_t)dir;
+    g_game.throw_cooldown = THROW_COOLDOWN;
+    g_game.throw_dir = (uint16_t)dir;
 }

@@ -497,8 +497,8 @@ int main(int argc, char **argv)
         SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
     plat_audio_music(music_render);
     if (save) {
-        sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
-        sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
+        sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
+        sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
     }
     play_frame_hook = game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!save && !getenv(RESTART_ENV))

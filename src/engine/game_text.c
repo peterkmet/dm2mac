@@ -86,7 +86,7 @@ char *text_format(const char *fmt, char *dst)
         char value[TEXT_SIZE] = "", inner[TEXT_SIZE];
         if (code == FORMAT_CHAMPION) {
             if (text_args.champion >= 0 && text_args.champion < CHAMPION_MAX)
-                snprintf(value, sizeof value, "%s", (const char *)game.champions[text_args.champion]);
+                snprintf(value, sizeof value, "%s", (const char *)g_game.champions[text_args.champion]);
         } else if (code >= FORMAT_NUMBER_FIRST && code <= FORMAT_NUMBER_LAST) {
             snprintf(value, sizeof value, "%d", text_args.number[code - FORMAT_NUMBER_FIRST]);
         } else if (code == FORMAT_TEXT) {

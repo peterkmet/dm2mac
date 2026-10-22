@@ -20,13 +20,13 @@ static int clamp(int lo, int v, int hi)
 /* The middle square of the drawn map. */
 static void draw_middle(int *x, int *y)
 {
-    *x = game.party_x + scroll_x;
-    *y = game.party_y + scroll_y;
+    *x = g_game.party_x + scroll_x;
+    *y = g_game.party_y + scroll_y;
 }
 
 void automap_scroll(int dx, int dy)
 {
-    int x, y, map = game.party_map;
+    int x, y, map = g_game.party_map;
     if (map < 0 || map >= dungeon_map_count())
         return;
     draw_middle(&x, &y);
@@ -42,7 +42,7 @@ void automap_scroll_reset(void)
 void automap_draw(Offscreen *o, const int16_t *clip)
 {
     offscreen_fill_rect(o, clip, ui_colors[UI_BLACK]);
-    int map = game.party_map, middle_x, middle_y;
+    int map = g_game.party_map, middle_x, middle_y;
     if (map < 0 || map >= dungeon_map_count())
         return;
     draw_middle(&middle_x, &middle_y);
@@ -54,6 +54,6 @@ void automap_draw(Offscreen *o, const int16_t *clip)
         for (int y = 0; y < dungeon_map_height(map); y++)
             if (seen_is_seen(map, x, y))
                 mmap_draw_square_icon(o, clip, x, y, left + x * MAP_CELL_SIZE, top + y * MAP_CELL_SIZE,
-                                      x == game.party_x && y == game.party_y ? party_item : -1);
+                                      x == g_game.party_x && y == g_game.party_y ? party_item : -1);
     dun_set_current_map(saved);
 }

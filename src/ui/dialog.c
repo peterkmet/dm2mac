@@ -208,12 +208,12 @@ void dialog_draw_progress_bar(int permille)
 void sound_set_volume_and_test(int volume, int device)
 {
     if (device == DEVICE_SOUND) {
-        game.sound_volume = (uint8_t)volume;
+        g_game.sound_volume = (uint8_t)volume;
         sound_request(CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD,
-                      game.party_x, game.party_y, 0);
+                      g_game.party_x, g_game.party_y, 0);
         sound_set_volume(volume);
     } else if (device == DEVICE_MUSIC) {
-        game.music_volume = (uint8_t)volume;
+        g_game.music_volume = (uint8_t)volume;
         music_set_volume(volume);
     }
 }
@@ -247,8 +247,8 @@ void dialog_volume(void)
     text_draw_in_zone(ZONE_MUSIC_LABEL, ui_colors[UI_YELLOW],
                       text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_MUSIC_LABEL, text));
     for (;;) {
-        draw_volume_buttons(game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, GFX_VOLUME_SOUND_OFF);
-        draw_volume_buttons(game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, GFX_VOLUME_MUSIC_OFF);
+        draw_volume_buttons(g_game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, GFX_VOLUME_SOUND_OFF);
+        draw_volume_buttons(g_game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, GFX_VOLUME_MUSIC_OFF);
         dialog_present();
         int command = dialog_run(DIALOG_VOLUME);
         if (command == CMD_DIALOG_BUTTON_FIRST || main_loop.quit)

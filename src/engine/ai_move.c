@@ -859,7 +859,7 @@ bool ai_try_attack(int mode, AiLocation from, AiLocation to, int dir)
     if (!execute)
         return true;
     if ((int16_t)dir == -1)
-        dir = distance == 0 && at_party(tx, ty) ? dir_opposite(game.party_dir) : dun_get_direction_to(x, y, tx, ty);
+        dir = distance == 0 && at_party(tx, ty) ? dir_opposite(g_game.party_dir) : dun_get_direction_to(x, y, tx, ty);
     if (ai_turn_toward(dir))
         return true;
     int r = rand_bit();
@@ -1083,7 +1083,7 @@ static int search_square_test(int command, int x, int y)
             return 1; /* a closed fake wall costs like a wall */
         __attribute__((fallthrough));
     case SQUARE_WALL: {
-        int cost = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE,
+        int cost = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_VALUE,
                                     WALLSET_KEY_WALL_COST);
         if (!cost)
             cost = 1;
@@ -1113,7 +1113,7 @@ static int search_square_test(int command, int x, int y)
                 axis_distance(end.x, end.y, teleporter_x(link), teleporter_y(link)) != 1)
                 return 1;
             int map = teleporter_map(link);
-            if (map != game.party_map && map != g_party.alt_view_map)
+            if (map != g_game.party_map && map != g_party.alt_view_map)
                 return 1;
             int saved = g_party.cur_map;
             ai_set_map(map);
@@ -1125,7 +1125,7 @@ static int search_square_test(int command, int x, int y)
         g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, x, y);
         if (!g_ai_square_scan.passage)
             return 1;
-        return g_ai_square_scan.end.map == game.party_map || g_ai_square_scan.end.map == g_party.alt_view_map;
+        return g_ai_square_scan.end.map == g_game.party_map || g_ai_square_scan.end.map == g_party.alt_view_map;
     default:
         return 0;
     }
@@ -2046,7 +2046,7 @@ static int16_t far_party_distance(int x, int y, int map, bool doubled)
 /* A target that needs the party seen: an invisible party or a party in the dark may stay hidden. */
 static void hide_party_target(AiCandidate *c)
 {
-    bool invisible = game.magic_light[MAGIC_INVISIBILITY] && !(g_ai.info->flags & CREATURE_SEES_INVISIBLE);
+    bool invisible = g_game.magic_light[MAGIC_INVISIBILITY] && !(g_ai.info->flags & CREATURE_SEES_INVISIBLE);
     bool dark = false;
     if (!invisible) {
         dark = g_view_light_level && save_magic_light() < 0 && !(g_ai.info->flags & CREATURE_SEES_IN_DARK);
@@ -2370,7 +2370,7 @@ static int test_entered(Search *s, int i)
         return ai_try_move((uint8_t)c->item, ai_location(x, y), ai_location(x, y), -1);
     case TARGET_LIGHT:
         if (g_ai_square.square & SQUARE_HAS_THINGS)
-            light_add_square_light(s->dist, s->dir == -1 ? game.party_dir : s->dir, x, y,
+            light_add_square_light(s->dist, s->dir == -1 ? g_game.party_dir : s->dir, x, y,
                                    LIGHT_FLOOR | LIGHT_CREATURES);
         return 0;
     case TARGET_AI_MARKER:
@@ -2958,13 +2958,13 @@ bool ai_plan_path(void)
 void creature_refresh_party_maps(void)
 {
     int saved = g_party.cur_map;
-    dun_set_current_map(game.party_map);
+    dun_set_current_map(g_game.party_map);
     AiCandidate target;
     uint8_t path[AI_PATH_MAX * 2];
     memset(&target, 0, sizeof target);
     if (g_party.redraw & REDRAW_SQUARES) {
-        g_party_distance.map = (int16_t)game.party_map;
-        g_party_distance.width = (int16_t)dungeon_map_width(game.party_map);
+        g_party_distance.map = (int16_t)g_game.party_map;
+        g_party_distance.width = (int16_t)dungeon_map_width(g_game.party_map);
         memset(g_party_distance.cells, 0, (size_t)g_party_distance.width * MAP_SIDE_MAX);
         g_alt_distance.map = g_party.alt_view_map;
         if (g_alt_distance.map >= 0) {
@@ -2974,12 +2974,12 @@ void creature_refresh_party_maps(void)
         target.cost = PARTY_MAP_SEARCH_COST;
         target.value = 0;
         target.kind = TARGET_PARTY_DISTANCE;
-        ai_search_area(ai_location(game.party_x, game.party_y), MOVE_KIND_COST, 1, &target, path);
+        ai_search_area(ai_location(g_game.party_x, g_game.party_y), MOVE_KIND_COST, 1, &target, path);
     }
     if (g_party.redraw & REDRAW_VIEW) {
-        bool changed = game.party_map != g_last_party_map;
-        int radius = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE,
-                                      WALLSET_KEY_LIGHT);
+        bool changed = g_game.party_map != g_last_party_map;
+        int radius = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(g_game.party_map),
+                                      GDAT_TYPE_VALUE, WALLSET_KEY_LIGHT);
         if (!radius) {
             g_light_source_sum = 0;
             g_explosion_light_sum = 0;
@@ -2989,7 +2989,7 @@ void creature_refresh_party_maps(void)
             target.cost = (int8_t)radius;
             target.value = 0;
             target.kind = TARGET_LIGHT;
-            ai_search_area(ai_location(game.party_x, game.party_y), MOVE_KIND_SIGHT, 1, &target, path);
+            ai_search_area(ai_location(g_game.party_x, g_game.party_y), MOVE_KIND_SIGHT, 1, &target, path);
             if (g_light_source_sum != g_cached_light_sum || g_explosion_light_sum != g_cached_explosion_light_sum)
                 changed = true;
         }
@@ -3000,5 +3000,5 @@ void creature_refresh_party_maps(void)
     }
     dun_set_current_map(saved);
     g_party.redraw = 0;
-    g_last_party_map = (int16_t)game.party_map;
+    g_last_party_map = (int16_t)g_game.party_map;
 }

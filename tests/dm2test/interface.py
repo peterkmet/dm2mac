@@ -153,7 +153,7 @@ def port(lib, gdat, original, tmp_path):
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
     assert lib.text_init(gdat) == 1
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     lib.view_enter_map(game.party_map)
     lib.money_init_coin_table()
     lib.ui_reset()
@@ -171,7 +171,7 @@ def port(lib, gdat, original, tmp_path):
 
 def champion_records(lib):
     """The 4 champion records of the C game state."""
-    return (ctypes.c_uint8 * (4 * CHAMPION_SIZE)).from_address(ctypes.addressof(Game.in_dll(lib, "game")) + GAME_CHAMPIONS)
+    return (ctypes.c_uint8 * (4 * CHAMPION_SIZE)).from_address(ctypes.addressof(Game.in_dll(lib, "g_game")) + GAME_CHAMPIONS)
 
 
 def c_screen(lib):
@@ -207,7 +207,7 @@ G_LEADER_HAND_WEIGHT, G_CHAMP_DRAW_STATE = 0x7FBCE, 0x48890
 
 
 def set_leader_hand(lib, original, thing):
-    ctypes.c_uint16.from_address(ctypes.addressof(Game.in_dll(lib, "game")) + GAME_LEADER_HAND).value = thing
+    ctypes.c_uint16.from_address(ctypes.addressof(Game.in_dll(lib, "g_game")) + GAME_LEADER_HAND).value = thing
     original.emu.write(G_LEADER_HAND, struct.pack("<H", thing))
     original.emu.write(G_LEADER_HAND_WEIGHT, struct.pack("<H", lib.item_weight(thing) & 0xFFFF if thing != 0xFFFF else 0))
 
@@ -240,7 +240,7 @@ def sync_champions(lib, original):
 
 
 def set_magic(lib, original, invisible, haste):
-    magic = (ctypes.c_uint8 * 6).from_address(ctypes.addressof(Game.in_dll(lib, "game")) + GAME_MAGIC)
+    magic = (ctypes.c_uint8 * 6).from_address(ctypes.addressof(Game.in_dll(lib, "g_game")) + GAME_MAGIC)
     magic[2], magic[4] = invisible, haste
     original.emu.write(0x7FFEE, bytes([invisible]))
     original.emu.write(0x7FFF0, bytes([haste]))

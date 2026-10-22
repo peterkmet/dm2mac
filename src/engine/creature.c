@@ -379,7 +379,7 @@ static unsigned anim_frame_offset(uint16_t *state)
         start = 0;
     }
     unsigned length = *state & ANIM_FRAME_MASK;
-    return length ? (start + game.game_time) % length : 0; /* fix: the original divides by 0 */
+    return length ? (start + g_game.game_time) % length : 0; /* fix: the original divides by 0 */
 }
 
 void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE])
@@ -677,7 +677,7 @@ static void schedule_update(int x, int y)
     ActiveGroup *a = creature_active(group);
     if (a->event != EVENT_NO_SLOT)
         creature_cancel_update(group);
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, g_party.cur_map)};
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_party.cur_map)};
     e.type = thing_word(group, GROUP_ITEM_CLASS) != THING_NONE ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
     e.priority = group_creature(group);
     e.data[0] = (uint8_t)x;
@@ -708,8 +708,8 @@ void creature_activate_group(uint16_t group, int x, int y)
             bool restored = ai_begin(group, x, y, EVENT_CREATURE_THINK, &saved);
             g_ai.active->plan = -1;
             g_ai.active->plan_step = 0;
-            a->regeneration_time = (uint8_t)((game.game_time >> REGEN_TIME_SHIFT) - 1);
-            a->last_action_time = (uint8_t)(game.game_time - ACTION_TIME_LONG_AGO);
+            a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - 1);
+            a->last_action_time = (uint8_t)(g_game.game_time - ACTION_TIME_LONG_AGO);
             a->position = (uint16_t)location_pack(g_ai.event.data[0], g_ai.event.data[1], g_party.cur_map);
             g_ai.cache.path_left = 0;
             a->behavior = -1;
@@ -785,14 +785,14 @@ static void schedule_loop_start(void)
         return;
     int length = anim_sequence_length(group_creature(g_ai.group_thing), g_ai.anim[0]);
     uint16_t start = *state & ANIM_START_MASK;
-    unsigned at = (start + game.game_time) % (unsigned)length;
+    unsigned at = (start + g_game.game_time) % (unsigned)length;
     if (!(uint16_t)at) {
         *state = start | ANIM_SINGLE_LOOP;
         return;
     }
     *state = (uint16_t)(start | length | ANIM_LOOP | ANIM_STILL);
     creature_cancel_update(g_ai.group_thing);
-    g_ai.event.time_map = timeline_time_map((uint32_t)(length - (int16_t)at) + game.game_time, g_ai.map);
+    g_ai.event.time_map = timeline_time_map((uint32_t)(length - (int16_t)at) + g_game.game_time, g_ai.map);
     g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
 }
 
@@ -804,7 +804,7 @@ static void schedule_loop_end(void)
         return;
     int length = anim_sequence_length(group_creature(g_ai.group_thing), g_ai.anim[0]);
     uint16_t start = *state & ANIM_START_MASK;
-    unsigned at = (start + game.game_time) % (unsigned)length;
+    unsigned at = (start + g_game.game_time) % (unsigned)length;
     uint16_t word = (uint16_t)(length | start);
     if (!(uint16_t)at) {
         *state = word | ANIM_LOOP;
@@ -812,7 +812,7 @@ static void schedule_loop_end(void)
     }
     *state = word | ANIM_LOOP | ANIM_LOOP_ALT;
     creature_cancel_update(g_ai.group_thing);
-    g_ai.event.time_map = timeline_time_map((uint32_t)(length - (int16_t)at) + game.game_time, g_ai.map);
+    g_ai.event.time_map = timeline_time_map((uint32_t)(length - (int16_t)at) + g_game.game_time, g_ai.map);
     g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
 }
 
@@ -874,7 +874,7 @@ static int16_t anim_step_delay(const uint8_t *step)
         return (int16_t)(base < 1 ? base : 1);
     int r = (step[STEP_TIME] & STEP_RANDOM_TIME_MASK) >> STEP_RANDOM_TIME_SHIFT;
     int16_t d = (int16_t)((r ? rand_below((uint16_t)r) : 0) + base);
-    if (g_ai.active->action == CREATURE_ACTION_VANISH && game.magic_light[MAGIC_ACTION_EFFECT] &&
+    if (g_ai.active->action == CREATURE_ACTION_VANISH && g_game.magic_light[MAGIC_ACTION_EFFECT] &&
         !(g_ai.info->flags & CREATURE_FAST_VANISH)) {
         d = (int16_t)(d * VANISH_DELAY_FACTOR);
     } else if (g_party.cur_map != g_ai_party.map && !(g_ai_class_flags[g_ai.class_index] & AI_CLASS_STAYS_FAR) &&
@@ -917,7 +917,7 @@ uint32_t creature_animate_step(void)
     int16_t delay = anim_step_delay(step);
     if (own_step)
         g_ai.anim_step = NULL;
-    return (uint32_t)(delay + (int32_t)game.game_time);
+    return (uint32_t)(delay + (int32_t)g_game.game_time);
 }
 
 void creature_process_event(int x, int y, int type)
@@ -940,7 +940,7 @@ void creature_process_event(int x, int y, int type)
     if (regen) {
         if (regen < 0)
             regen = (int16_t)-regen;
-        unsigned now = (uint8_t)(game.game_time >> REGEN_TIME_SHIFT);
+        unsigned now = (uint8_t)(g_game.game_time >> REGEN_TIME_SHIFT);
         int16_t elapsed = (int16_t)((a->regeneration_time > now ? now + TIME_BYTE_WRAP : now) - a->regeneration_time);
         int16_t q = (int16_t)(elapsed / regen);
         if (q > 0) {
@@ -948,7 +948,7 @@ void creature_process_event(int x, int y, int type)
                 damage = (int16_t)(damage + q);
             else if (thing_word(group, GROUP_HEALTH) < info->max_health)
                 set_thing_word(group, GROUP_HEALTH, (uint16_t)(thing_word(group, GROUP_HEALTH) + q));
-            a->regeneration_time = (uint8_t)((game.game_time >> REGEN_TIME_SHIFT) - elapsed % regen);
+            a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - elapsed % regen);
         }
     }
     if (damage > 0) {
@@ -977,8 +977,8 @@ void creature_process_event(int x, int y, int type)
 /* A random cell for an item that a creature drops on (x, y): beside the party on its square. */
 static int drop_cell(int x, int y)
 {
-    if (x == game.party_x && y == game.party_y)
-        return dir_turn(game.party_dir, rand_bit());
+    if (x == g_game.party_x && y == g_game.party_y)
+        return dir_turn(g_game.party_dir, rand_bit());
     return rand_2bits();
 }
 
@@ -1031,7 +1031,7 @@ static void signal_home_square(uint16_t group, int effect)
     int saved = g_party.cur_map;
     uint16_t home = thing_word(group, GROUP_HOME);
     dun_set_current_map(location_map(home));
-    sensor_schedule_square_event(location_x(home), location_y(home), 0, effect, game.game_time + 1);
+    sensor_schedule_square_event(location_x(home), location_y(home), 0, effect, g_game.game_time + 1);
     dun_set_current_map(saved);
 }
 
@@ -1148,7 +1148,7 @@ static int alert_turn(uint16_t group, int x, int y)
 {
     uint16_t mood = group_mood(group);
     int facing = group_dir(group);
-    int dir = dun_get_direction_to(x, y, game.party_x, game.party_y);
+    int dir = dun_get_direction_to(x, y, g_game.party_x, g_game.party_y);
     if ((mood & MOOD_FEAR && rand_2bits()) || (dir != facing && !rand_2bits()))
         dir = dir_opposite(dir);
     if (facing == dir_opposite(dir))
@@ -1383,7 +1383,7 @@ void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int fl
 /* Schedules a new try of a group move that a full square stopped. */
 void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible)
 {
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + GROUP_RETRY_DELAY, map)};
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + GROUP_RETRY_DELAY, map)};
     e.type = audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP;
     e.data[0] = (uint8_t)x;
     e.data[1] = (uint8_t)y;
@@ -1470,12 +1470,12 @@ bool move_party_can_push_group(uint16_t group)
     if (resistance >= PUSH_IMMOVABLE)
         return false;
     bool pushed = false;
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (!c->health)
             continue;
         int16_t s = (int16_t)champ_get_stat(c, STAT_STRENGTH, 0);
-        if (i == game.leader)
+        if (i == g_game.leader)
             s = (int16_t)(s + (s >> PUSH_LEADER_SHIFT));
         if (resistance < PUSH_LIGHT)
             s = (int16_t)(s + (s >> PUSH_LIGHT_SHIFT));
@@ -1485,7 +1485,7 @@ bool move_party_can_push_group(uint16_t group)
             break;
         }
     }
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (c->health && c->max_stamina >> PUSH_STAMINA_SHIFT < c->stamina) {
             int16_t cost = PUSH_FAIL_STAMINA;
@@ -1510,7 +1510,7 @@ void creature_push_group(int x, int y, int dir, int strength)
             uint16_t flags = creature_group_info(g)->flags;
             if (g_party.cur_map == g_party.square_map && nx == g_party.square_x && ny == g_party.square_y &&
                 !(flags & CREATURE_NOT_SOLID)) {
-                move_party_bump_damage(x, y, game.party_dir, dir_opposite(dir));
+                move_party_bump_damage(x, y, g_game.party_dir, dir_opposite(dir));
             } else {
                 ai_free_cached_data(g);
                 ActiveGroup *a = creature_active(g);
@@ -1542,7 +1542,7 @@ void creature_push_group(int x, int y, int dir, int strength)
         return;
     load = (int16_t)(load / (int16_t)alive + PUSH_BASE_STRENGTH);
     if ((int16_t)strength >= PUSH_STRENGTH_PARTY || load < (int16_t)strength)
-        move_party(dir_relative(dir, game.party_dir) + CMD_MOVE_FORWARD);
+        move_party(dir_relative(dir, g_game.party_dir) + CMD_MOVE_FORWARD);
 }
 
 /* The party pushes the creature in front by a push arrow. */
@@ -1554,23 +1554,23 @@ void move_push_creature(int arrow)
     static const int8_t dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, -1};
     if (arrow < 0 || arrow >= PUSH_ARROW_COUNT)
         return;
-    int dir = dir_turn(game.party_dir, dirs[arrow]);
-    int16_t x = (int16_t)(game.party_x + g_dir_dx[game.party_dir]),
-            y = (int16_t)(game.party_y + g_dir_dy[game.party_dir]);
+    int dir = dir_turn(g_game.party_dir, dirs[arrow]);
+    int16_t x = (int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
+            y = (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]);
     uint16_t g;
     if (!creature_can_be_pushed(x, y, dir, &g))
         return;
     if (!move_party_can_push_group(g)) {
-        for (int i = 0; i < game.champion_count; i++)
-            if (champion(i)->health && (i == game.leader || !rand_2bits()))
-                sound_request_with_fallback(CAT_CHAMPION, i, SOUND_HURT, SOUND_FALLBACK, game.party_x, game.party_y, 1,
-                                            SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
+        for (int i = 0; i < g_game.champion_count; i++)
+            if (champion(i)->health && (i == g_game.leader || !rand_2bits()))
+                sound_request_with_fallback(CAT_CHAMPION, i, SOUND_HURT, SOUND_FALLBACK, g_game.party_x, g_game.party_y,
+                                            1, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
         return;
     }
     push.x = x;
-    push.party_x = (int16_t)game.party_x;
-    push.party_y = (int16_t)game.party_y;
-    push.map = (int16_t)game.party_map;
+    push.party_x = (int16_t)g_game.party_x;
+    push.party_y = (int16_t)g_game.party_y;
+    push.map = (int16_t)g_game.party_map;
     g_party.push_pending_group = g;
     push.turn = turns[arrow];
     push.y = y;
@@ -1580,13 +1580,13 @@ void move_push_creature(int arrow)
 
 void creature_continue_push(int command)
 {
-    if (game.party_dir != g_party.view_dir)
+    if (g_game.party_dir != g_party.view_dir)
         return;
-    if (game.party_map != push.map || game.party_x != push.party_x || game.party_y != push.party_y ||
+    if (g_game.party_map != push.map || g_game.party_x != push.party_x || g_game.party_y != push.party_y ||
         creature_get_group_at(push.x, push.y) != g_party.push_pending_group)
         return;
     g_party.push_pending_group = THING_NONE;
-    int map = game.party_map;
+    int map = g_game.party_map;
     if (command == CMD_MOVE_FORWARD)
         creature_push_group(push.x, push.y, push.dir, PUSH_STRENGTH_PARTY);
     if (move_party(command)) {
@@ -1596,7 +1596,7 @@ void creature_continue_push(int command)
             creature_push_group(push.x, push.y, push.dir, PUSH_STRENGTH_PARTY);
         }
     }
-    dun_set_current_map(game.party_map);
+    dun_set_current_map(g_game.party_map);
 }
 
 /* Creature sensors. */

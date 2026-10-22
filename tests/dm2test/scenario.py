@@ -119,7 +119,7 @@ class WeatherState(ctypes.Structure):
 
 def c_weather(lib):
     """The weather globals of the C port, by the names of WEATHER."""
-    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = WorldGame.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
     out = {name: getattr(game, name) for name in list(WEATHER)[:11]}
     out |= {name: getattr(weather, name) for name in list(WEATHER)[11:18]}
     out["light_level"] = ctypes.c_int.in_dll(lib, "g_view_light_level").value
@@ -222,7 +222,7 @@ class Scenario(CreatureOracle):
         path.write_bytes(start)
         assert lib.save_load(str(path).encode(), gdat) == 0
         lib.draw_init(gdat)
-        self.game = GameRecord.in_dll(lib, "game")
+        self.game = GameRecord.in_dll(lib, "g_game")
         self.party = Party.in_dll(lib, "g_party")
         assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
         assert lib.text_init(gdat)  # the messages of the leader hand

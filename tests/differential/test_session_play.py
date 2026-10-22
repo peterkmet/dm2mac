@@ -215,7 +215,7 @@ def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
     with Player(lib, [click_choice(1), click_slot(4), click_choice(2)]):
         lib.session_save()
     from dm2test.scenario import GameRecord
-    game = GameRecord.in_dll(lib, "game")
+    game = GameRecord.in_dll(lib, "g_game")
     saved_state = (game.game_time, game.party_x, game.party_y, game.party_dir, game.party_map)
     for _ in range(20):
         play.step()
@@ -392,11 +392,11 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     session.data_dir = str(data).encode()
     session.slot, session.loaded, session.new_game, session.restart, session.completed = -1, 0, 0, 0, 0
     main_loop_quit(lib).value = 0
-    game = GameRecord.in_dll(lib, "game")
+    game = GameRecord.in_dll(lib, "g_game")
     # the state of the program start (the tests before leave theirs): no game, the start values
     from dm2test.scenario import Party, WorldGame
     ctypes.memset(ctypes.addressof(game), 0, GAME_SIZE)
-    world = WorldGame.in_dll(lib, "game")
+    world = WorldGame.in_dll(lib, "g_game")
     world.leader, world.sound_volume, world.music_volume = C.LEADER_NONE, C.VOLUME_SETTING_START, C.VOLUME_SETTING_START
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = 0
     party = Party.in_dll(lib, "g_party")
@@ -536,7 +536,7 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     lib.draw_init(gdat)
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
     hand = next(t for t in (lib.champ_remove_object_from_slot(0, s) for s in range(C.SLOT_COUNT)) if t != C.THING_NONE)
     ctypes.c_uint16.from_address(ctypes.addressof(game) + HAND_OFFSET).value = hand

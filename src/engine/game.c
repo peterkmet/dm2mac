@@ -60,7 +60,7 @@ static void timeline_event_hide_damage(int champ)
 /* The aura of the champions in mask weakens by amount. */
 static void timeline_event_aura(int mask, int amount)
 {
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (mask >> i & 1 && c->health)
             c->aura_value = (int16_t)(c->aura_value - amount);
@@ -71,7 +71,7 @@ static void timeline_event_aura(int mask, int amount)
 
 void timeline_process(void)
 {
-    while (timeline_is_event_due(game.game_time)) {
+    while (timeline_is_event_due(g_game.game_time)) {
         g_hooks.poll_input();
         TimelineEvent e;
         timeline_pop_first_event(&e);
@@ -115,12 +115,12 @@ void timeline_process(void)
             timeline_event_move_group(&e);
             break;
         case EVENT_MAGIC_LIGHT:
-            dun_set_current_map(game.party_map);
+            dun_set_current_map(g_game.party_map);
             timeline_event_magic_light(&e);
             light_update_party_light();
             break;
         case EVENT_INVISIBILITY: /* invisibility ends */
-            if (!--game.magic_light[MAGIC_INVISIBILITY] && ui.inventory)
+            if (!--g_game.magic_light[MAGIC_INVISIBILITY] && ui.inventory)
                 champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
             break;
         case EVENT_AURA:
@@ -147,19 +147,20 @@ void timeline_process(void)
             timeline_event_sensor(&e);
             break;
         case EVENT_TELEPORT_PARTY:
-            if (e.data[TELEPORT_EVENT_MAP] == game.party_map) {
-                move_thing(THING_NONE, game.party_x, game.party_y, location_x(word), location_y(word));
+            if (e.data[TELEPORT_EVENT_MAP] == g_game.party_map) {
+                move_thing(THING_NONE, g_game.party_x, g_game.party_y, location_x(word), location_y(word));
                 champ_set_party_direction(location_dir(word));
             }
             break;
         case EVENT_SPAWN_CREATURE: {
-            int dir = rand_2bits() ? dun_get_direction_to(e.data[EVENT_X], e.data[EVENT_Y], game.party_x, game.party_y)
-                                   : rand_2bits();
+            int dir = rand_2bits()
+                          ? dun_get_direction_to(e.data[EVENT_X], e.data[EVENT_Y], g_game.party_x, g_game.party_y)
+                          : rand_2bits();
             creature_create_group(e.data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir, e.data[EVENT_X],
                                   e.data[EVENT_Y]);
             break;
         }
         }
     }
-    dun_set_current_map(game.party_map);
+    dun_set_current_map(g_game.party_map);
 }

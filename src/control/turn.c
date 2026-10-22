@@ -215,8 +215,8 @@ static void witness(void)
 static void start_witnessing(void)
 {
     memset(&witnessed, 0, sizeof witnessed);
-    witnessed.champion_count = game.champion_count;
-    for (uint16_t i = 0; i < game.champion_count; i++)
+    witnessed.champion_count = g_game.champion_count;
+    for (uint16_t i = 0; i < g_game.champion_count; i++)
         witnessed.health[i] = champion(i)->health;
     witness();
 }
@@ -304,7 +304,7 @@ static uint32_t latest_message_expiry(void)
 /* Remembers what the news checks compare during and after the next turn. */
 static void snapshot(void)
 {
-    for (uint16_t i = 0; i < game.champion_count; i++)
+    for (uint16_t i = 0; i < g_game.champion_count; i++)
         seen.health[i] = champion(i)->health;
     seen.group_count = state_json_visible_groups(seen.groups);
     seen.message_expiry = latest_message_expiry();
@@ -330,7 +330,7 @@ static const char *news(void)
 {
     if (state_json_game_over())
         return "game_over";
-    for (uint16_t i = 0; i < game.champion_count; i++)
+    for (uint16_t i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health < seen.health[i])
             return "damage";
     if (new_group_in_view())
@@ -346,7 +346,7 @@ static const char *news(void)
    teleporter that sends the party back to its square counts as a bump (DM2 has no teleport counter). */
 static bool turn_bumped(void)
 {
-    return turn.moving && game.party_map == turn.map && game.party_x == turn.x && game.party_y == turn.y;
+    return turn.moving && g_game.party_map == turn.map && g_game.party_x == turn.x && g_game.party_y == turn.y;
 }
 
 /* The party was turned or moved by something else than its action: a spinner, a teleporter, a pit, stairs. */
@@ -355,10 +355,10 @@ static const char *turn_displaced(void)
     int16_t x = turn.x, y = turn.y;
     if (turn.moving)
         dun_move_relative(turn.dir, turn.step_forward, turn.step_right, &x, &y);
-    bool stayed = game.party_x == turn.x && game.party_y == turn.y;
-    if (game.party_map != turn.map || (!stayed && (game.party_x != x || game.party_y != y)))
+    bool stayed = g_game.party_x == turn.x && g_game.party_y == turn.y;
+    if (g_game.party_map != turn.map || (!stayed && (g_game.party_x != x || g_game.party_y != y)))
         return "moved";
-    if (game.party_dir != turn.dir && game.party_dir != dir_turn(turn.dir, turn.rotation))
+    if (g_game.party_dir != turn.dir && g_game.party_dir != dir_turn(turn.dir, turn.rotation))
         return "turned";
     return NULL;
 }
@@ -374,18 +374,18 @@ typedef const char *(*ActionFn)(const char *request);
 
 static bool hand_is_empty(void)
 {
-    return game.leader_hand == THING_NONE;
+    return g_game.leader_hand == THING_NONE;
 }
 static bool has_leader(void)
 {
-    return (int16_t)game.leader != -1;
+    return (int16_t)g_game.leader != -1;
 }
 
 /* The champion of the request key: a living member of the party, not the candidate; -1 none. */
 static int champion_arg(const char *request, const char *key)
 {
     long c = control_get_int(request, key, -1);
-    int members = game.champion_count - (ui.candidate ? 1 : 0);
+    int members = g_game.champion_count - (ui.candidate ? 1 : 0);
     if (c < 0 || c >= members || c >= CHAMPION_MAX || champion((int)c)->health <= 0)
         return -1;
     return (int)c;
@@ -394,7 +394,7 @@ static int champion_arg(const char *request, const char *key)
 /* The cell of champion c relative to the party direction: the place of its icons on the screen. */
 static int party_cell(int c)
 {
-    return dir_relative(champion(c)->cell, game.party_dir);
+    return dir_relative(champion(c)->cell, g_game.party_dir);
 }
 
 /* A left click on the center of a rect of the view picture; false when the screen has no viewport. */
@@ -439,10 +439,10 @@ static const char *need_view(void)
 /* The square ahead of the party is a wall (outside the map counts as a wall). */
 static bool wall_ahead(void)
 {
-    int x = game.party_x + g_dir_dx[game.party_dir], y = game.party_y + g_dir_dy[game.party_dir];
-    if (x < 0 || y < 0 || x >= dungeon_map_width(game.party_map) || y >= dungeon_map_height(game.party_map))
+    int x = g_game.party_x + g_dir_dx[g_game.party_dir], y = g_game.party_y + g_dir_dy[g_game.party_dir];
+    if (x < 0 || y < 0 || x >= dungeon_map_width(g_game.party_map) || y >= dungeon_map_height(g_game.party_map))
         return true;
-    return square_type(dungeon_square(game.party_map, x, y)) == SQUARE_WALL;
+    return square_type(dungeon_square(g_game.party_map, x, y)) == SQUARE_WALL;
 }
 
 /* A step remembers where it goes, so that the turn result can tell a bump or a move by the dungeon. */
@@ -552,8 +552,8 @@ static const char *take_object(const char *r)
 /* A static creature ahead whose floor takes no click hides the floor: a click there throws the object. */
 static bool front_floor_clickable(void)
 {
-    int x = game.party_x + g_dir_dx[game.party_dir], y = game.party_y + g_dir_dy[game.party_dir];
-    uint16_t group = creature_group_at(game.party_map, x, y);
+    int x = g_game.party_x + g_dir_dx[g_game.party_dir], y = g_game.party_y + g_dir_dy[g_game.party_dir];
+    uint16_t group = creature_group_at(g_game.party_map, x, y);
     if (group == THING_NONE)
         return true;
     const CreatureInfo *info = creature_group_info(group);
@@ -811,7 +811,7 @@ static const char *sleep_party(const char *r)
     if (!has_leader())
         return "no leader";
     /* the status box of the leader: a click on the zone of CMD_LEADER_INVENTORY hits the status box of champion 0 */
-    if (!ui.inventory && !add_shown_command(CMD_INVENTORY_FIRST + game.leader))
+    if (!ui.inventory && !add_shown_command(CMD_INVENTORY_FIRST + g_game.leader))
         return "the inventory cannot open now";
     add_command(CMD_SLEEP);
     return NULL;
@@ -993,7 +993,7 @@ static const char *run_action(const char *name, const char *request)
         if (g_party_sleeping && strcmp(name, "wake") && !raw)
             return "the party sleeps: use wake or wait";
         forget_action();
-        turn.map = game.party_map, turn.x = game.party_x, turn.y = game.party_y, turn.dir = game.party_dir;
+        turn.map = g_game.party_map, turn.x = g_game.party_x, turn.y = g_game.party_y, turn.dir = g_game.party_dir;
         return actions[k].run(request);
     }
     return "unknown action";
@@ -1007,7 +1007,7 @@ static void start_turn(long min_ticks, long max_ticks, bool wait_only)
     turn.wait_only = wait_only;
     turn.reply_dropped = false;
     turn.stop = NULL;
-    turn.start_time = game.game_time;
+    turn.start_time = g_game.game_time;
     turn.frames = 0;
     turn.min_ticks = min_ticks;
     turn.max_ticks = max_ticks;
@@ -1156,7 +1156,7 @@ const char *turn_act_many(const char *request)
         os_fatal("out of memory");
     batch.next = batch.actions;
     batch.active = true;
-    batch.start_time = game.game_time;
+    batch.start_time = g_game.game_time;
     forget_action();
     start_witnessing();
     batch_next();
@@ -1167,7 +1167,7 @@ const char *turn_act_many(const char *request)
    game that does not tick ends the turn after a frame limit. */
 static bool turn_finished(void)
 {
-    long ticks = (long)(game.game_time - turn.start_time);
+    long ticks = (long)(g_game.game_time - turn.start_time);
     if (turn.wait_only && (turn.stop = news()))
         return true;
     if (state_json_game_over())
@@ -1175,13 +1175,13 @@ static bool turn_finished(void)
     if (ticks >= turn.max_ticks || turn.frames > turn.max_ticks * FRAMES_PER_TICK_LIMIT)
         return true;
     return !turn.wait_only && ticks >= turn.min_ticks && turn.inputs_given == turn.input_count && input_is_idle() &&
-           !game.party_move_cooldown && !g_party.move_steps && !input_is_waiting();
+           !g_game.party_move_cooldown && !g_party.move_steps && !input_is_waiting();
 }
 
 /* The eye panel text of the leader hand object while the eye is held. */
 static void record_look(void)
 {
-    looked.count = ui_object_info_lines(game.leader_hand, looked.lines);
+    looked.count = ui_object_info_lines(g_game.leader_hand, looked.lines);
     looked.shown = true;
 }
 
@@ -1269,7 +1269,7 @@ void turn_reply(Json *j)
     json_key(j, "ok");
     json_bool(j, 1);
     json_key(j, "ticks");
-    json_int(j, (long)(game.game_time - (batch.active ? batch.start_time : turn.start_time)));
+    json_int(j, (long)(g_game.game_time - (batch.active ? batch.start_time : turn.start_time)));
     stop_json(j);
     json_key(j, "game_over");
     json_bool(j, state_json_game_over());

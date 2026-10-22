@@ -198,7 +198,7 @@ static bool contains_item_type(uint16_t thing, int type)
 
 int item_party_possesses_type(int type)
 {
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (!c->health)
             continue;
@@ -210,7 +210,7 @@ int item_party_possesses_type(int type)
         for (int s = 0; s < CONTAINER_SLOTS; s++)
             if (action.open_items[s] != THING_NONE && item_get_index(action.open_items[s]) == type)
                 return 1;
-    return item_get_index(game.leader_hand) == type || contains_item_type(game.leader_hand, type);
+    return item_get_index(g_game.leader_hand) == type || contains_item_type(g_game.leader_hand, type);
 }
 
 /* True when a static creature group holds an item of the item index type. */
@@ -239,7 +239,7 @@ void sensor_schedule_square_event(int x, int y, int cell, int effect, uint32_t t
 void sensor_trigger_target(uint16_t sensor, int effect, int delay)
 {
     sensor_schedule_square_event(sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor), effect,
-                                 (uint32_t)((int16_t)delay + sensor_delay(sensor) + game.game_time));
+                                 (uint32_t)((int16_t)delay + sensor_delay(sensor) + g_game.game_time));
 }
 
 bool sensor_door_try_destroy(int x, int y, int strength, bool magic, int delay)
@@ -254,7 +254,7 @@ bool sensor_door_try_destroy(int x, int y, int strength, bool magic, int delay)
         return false;
     if (delay) {
         /* fix: the original leaves 4 data bytes of the event uninitialized */
-        TimelineEvent e = {.time_map = current_map_time((uint16_t)delay + game.game_time),
+        TimelineEvent e = {.time_map = current_map_time((uint16_t)delay + g_game.game_time),
                            .type = EVENT_DOOR_DESTRUCTION};
         e.data[EVENT_X] = (uint8_t)x;
         e.data[EVENT_Y] = (uint8_t)y;
@@ -285,7 +285,7 @@ static void fire_sensor(uint16_t sensor, int trigger, int floor, int x, int y)
 static void fall_risk(uint16_t text, int x, int y, int on_square)
 {
     int load = 0;
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (c->health)
             load = (int16_t)(load + (uint16_t)champ_get_load(i) / (int)((uint16_t)champ_get_max_load(c) >> 1));
@@ -295,18 +295,18 @@ static void fall_risk(uint16_t text, int x, int y, int on_square)
         chance = FALL_CHANCE_MAX;
     if (!on_square && (int)rand_below(PERCENT) < chance) {
         /* fix: the original leaves the high bits of the event data uninitialized */
-        TimelineEvent e = {.time_map = current_map_time(game.game_time), .type = EVENT_TELEPORT_PARTY};
-        put_le16(e.data + TELEPORT_EVENT_TARGET, event_square_dir(x, y, game.party_dir));
-        e.data[TELEPORT_EVENT_MAP] = (uint8_t)game.party_map;
+        TimelineEvent e = {.time_map = current_map_time(g_game.game_time), .type = EVENT_TELEPORT_PARTY};
+        put_le16(e.data + TELEPORT_EVENT_TARGET, event_square_dir(x, y, g_game.party_dir));
+        e.data[TELEPORT_EVENT_MAP] = (uint8_t)g_game.party_map;
         timeline_add_event(&e);
         int c = rand_2bits();
         if (!champion(c)->health)
-            c = game.leader;
-        sound_request_with_fallback(CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_FALLBACK, game.party_x,
-                                    game.party_y, 1, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
+            c = g_game.leader;
+        sound_request_with_fallback(CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_FALLBACK, g_game.party_x,
+                                    g_game.party_y, 1, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
     } else {
         sound_request(CAT_FLOOR_ORNAMENT, text_value(text), SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK,
-                      SOUND_VOLUME_NORMAL, game.party_x, game.party_y, 1);
+                      SOUND_VOLUME_NORMAL, g_game.party_x, g_game.party_y, 1);
     }
 }
 
@@ -371,10 +371,10 @@ static int altar_takes_bones(uint16_t t, uint16_t thing)
 static void altar_schedule_rebirth(uint16_t bones, int x, int y, int cell)
 {
     int champ = item_charges(bones);
-    if (champ < 0 || champ >= game.champion_count)
+    if (champ < 0 || champ >= g_game.champion_count)
         return;
     TimelineEvent e = {
-        .time_map = current_map_time(game.game_time + 1), .type = EVENT_ALTAR_REBIRTH, .priority = (uint8_t)champ};
+        .time_map = current_map_time(g_game.game_time + 1), .type = EVENT_ALTAR_REBIRTH, .priority = (uint8_t)champ};
     e.data[EVENT_X] = (uint8_t)x;
     e.data[EVENT_Y] = (uint8_t)y;
     e.data[EVENT_CELL] = (uint8_t)cell;
@@ -391,10 +391,10 @@ static int floor_sensor_trigger(const FloorMove *m, int kind, int data)
     case FLOOR_PARTY_OR_CREATURE:
         return m->type > THING_GROUP || m->on_square || m->creature ? -1 : m->enter;
     case FLOOR_PARTY:
-        if (m->type != -1 || !game.champion_count)
+        if (m->type != -1 || !g_game.champion_count)
             return -1;
         if (data)
-            return m->enter ? data == game.party_dir + 1 : 0;
+            return m->enter ? data == g_game.party_dir + 1 : 0;
         return m->on_square ? -1 : m->enter;
     case FLOOR_ITEM:
         return data != m->item || m->same_item ? -1 : m->enter;
@@ -435,12 +435,12 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
     int sub = text_subtype(t);
     if (m->cell == -1) {
         if (sub == SUBTYPE_RANDOM_PIT) {
-            if (m->type == -1 && !m->on_square && game.champion_count && rand_below(PERCENT) < text_value(t) &&
+            if (m->type == -1 && !m->on_square && g_game.champion_count && rand_below(PERCENT) < text_value(t) &&
                 text_is_visible(t) != m->enter) {
-                sensor_schedule_square_event(x, y, 0, EFFECT_SET, game.game_time + 1);
-                sensor_schedule_square_event(x, y, 0, EFFECT_CLEAR, game.game_time + PIT_OPEN_TICKS);
+                sensor_schedule_square_event(x, y, 0, EFFECT_SET, g_game.game_time + 1);
+                sensor_schedule_square_event(x, y, 0, EFFECT_CLEAR, g_game.game_time + PIT_OPEN_TICKS);
             }
-        } else if (sub == SUBTYPE_TRAP_TELEPORT && m->type == -1 && !m->enter && game.champion_count) {
+        } else if (sub == SUBTYPE_TRAP_TELEPORT && m->type == -1 && !m->enter && g_game.champion_count) {
             fall_risk(t, x, y, m->on_square);
         }
     } else if (m->cell == thing_cell(t) && (sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER) &&
@@ -541,7 +541,7 @@ static void relay_delayed(const TimelineEvent *e, uint16_t sensor, int scaled)
     if (sensor_flag(sensor, SENSOR_STATE) && !effect_activates(sensor, effect))
         return;
     unsigned data = sensor_data(sensor), bits = sensor_delay(sensor);
-    uint32_t time = scaled ? (data << bits) + game.game_time : game.game_time + data + bits;
+    uint32_t time = scaled ? (data << bits) + g_game.game_time : g_game.game_time + data + bits;
     sensor_schedule_square_event(sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor),
                                  passed_effect(sensor, effect), time);
 }
@@ -594,17 +594,17 @@ int dun_modify_global_var(int var, int value, int op)
     if (var < GLOBAL_BYTE_FIRST) {
         uint8_t bit = (uint8_t)(1 << (var & GLOBAL_BIT_MASK));
         if ((int16_t)v)
-            game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
         else
-            game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
         return (int16_t)v != 0;
     }
     v = (int16_t)v;
     if (var < GLOBAL_WORD_FIRST) {
         v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
-        game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
+        g_game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
     } else if (var < GLOBAL_VAR_END) {
-        game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
+        g_game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
     }
     return v;
 }
@@ -612,11 +612,11 @@ int dun_modify_global_var(int var, int value, int op)
 int dun_get_global_var(int var)
 {
     if (var < GLOBAL_BYTE_FIRST)
-        return game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
+        return g_game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
     if (var < GLOBAL_WORD_FIRST)
-        return game.global_bytes[var - GLOBAL_BYTE_FIRST];
+        return g_game.global_bytes[var - GLOBAL_BYTE_FIRST];
     if (var < GLOBAL_VAR_END)
-        return game.global_words[var - GLOBAL_WORD_FIRST];
+        return g_game.global_words[var - GLOBAL_WORD_FIRST];
     return 0;
 }
 
@@ -660,11 +660,11 @@ static void start_ambient_sound(uint16_t sensor, int x, int y, unsigned cycle, b
     if (!sensor_flag(sensor, SENSOR_AUDIBLE) || sensor_sound_on(sensor))
         return;
     int frame = sensor_frame(sensor);
-    uint32_t start = game.game_time + frame;
+    uint32_t start = g_game.game_time + frame;
     uint16_t offset = gdat_entry_index(gdat_current(), ornament_category(wall), wall_or_floor_ornament(sensor, wall),
                                        GDAT_TYPE_VALUE, ORNAMENT_KEY_SOUND_DELAY);
     unsigned phase = (offset + start) % cycle;
-    TimelineEvent e = {.time_map = current_map_time(cycle - phase + game.game_time),
+    TimelineEvent e = {.time_map = current_map_time(cycle - phase + g_game.game_time),
                        .type = EVENT_SENSOR_AMBIENT_SOUND};
     e.data[EVENT_X] = (uint8_t)x;
     e.data[EVENT_Y] = (uint8_t)y;
@@ -689,21 +689,21 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
         if (now) {
             if (!sensor_flag(sensor, SENSOR_BUSY)) {
                 sensor_set_flag(sensor, SENSOR_BUSY, true);
-                if (g_party.cur_map == game.party_map)
+                if (g_party.cur_map == g_game.party_map)
                     g_party.redraw |= REDRAW_VIEW;
-                unsigned frame = (cycle - game.game_time % cycle) % cycle & SENSOR_DATA_FRAME_MASK;
+                unsigned frame = (cycle - g_game.game_time % cycle) % cycle & SENSOR_DATA_FRAME_MASK;
                 sensor_set_data(sensor, (sensor_data(sensor) & SENSOR_DATA_SOUND) | frame);
                 start_ambient_sound(sensor, e->data[EVENT_X], e->data[EVENT_Y], cycle, wall);
             }
         } else {
-            unsigned r = (sensor_frame(sensor) + game.game_time) % cycle;
+            unsigned r = (sensor_frame(sensor) + g_game.game_time) % cycle;
             if (!(uint16_t)r) {
-                if (g_party.cur_map == game.party_map)
+                if (g_party.cur_map == g_game.party_map)
                     g_party.redraw |= REDRAW_VIEW;
                 sensor_set_flag(sensor, SENSOR_BUSY, false);
             } else {
                 /* fix: the original leaves 2 of the data bytes uninitialized */
-                TimelineEvent ev = {.time_map = current_map_time(game.game_time + (int16_t)(cycle - r)),
+                TimelineEvent ev = {.time_map = current_map_time(g_game.game_time + (int16_t)(cycle - r)),
                                     .type = EVENT_SENSOR_ANIMATION_END};
                 put_le16(ev.data + SENSOR_EVENT_SQUARE_THING, sensor);
                 timeline_add_event(&ev);
@@ -720,7 +720,7 @@ static void run_activation(const TimelineEvent *e, uint16_t sensor, bool wall)
     if (!sensor_flag(sensor, SENSOR_BUSY)) {
         sensor_set_flag(sensor, SENSOR_BUSY, true);
         sensor_set_data(sensor, 0);
-        TimelineEvent ev = {.time_map = current_map_time(game.game_time + 1), .type = EVENT_SENSOR_ANIMATION_STEP};
+        TimelineEvent ev = {.time_map = current_map_time(g_game.game_time + 1), .type = EVENT_SENSOR_ANIMATION_STEP};
         put_le16(ev.data + SENSOR_EVENT_THING, sensor);
         ev.data[SENSOR_EVENT_WALL] = (uint8_t)wall;
         timeline_add_event(&ev);
@@ -759,7 +759,7 @@ static void schedule_timer(uint16_t sensor, uint16_t thing)
     if (!period)
         return;
     /* fix: the original leaves bits 9-15 of the period word uninitialized; bit 8 is the timer phase */
-    TimelineEvent e = {.time_map = current_map_time(game.game_time % (period * factor) + game.game_time),
+    TimelineEvent e = {.time_map = current_map_time(g_game.game_time % (period * factor) + g_game.game_time),
                        .type = EVENT_SENSOR_TIMER};
     put_le16(e.data + SENSOR_EVENT_THING, thing);
     e.data[SENSOR_EVENT_TIMER_FACTOR] = (uint8_t)factor;
@@ -810,7 +810,7 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
                     ? -1
                     : 1;
     int x = e->data[EVENT_X], y = e->data[EVENT_Y];
-    int map = dungeon_location_on_map(game.party_map, delta, &x, &y);
+    int map = dungeon_location_on_map(g_game.party_map, delta, &x, &y);
     if (map < 0)
         return;
     int saved = g_party.cur_map;
@@ -1034,7 +1034,7 @@ static void busy_relay(uint16_t t, int effect)
 {
     if (sensor_flag(t, SENSOR_BUSY))
         return;
-    TimelineEvent ev = {.time_map = current_map_time(sensor_data(t) + game.game_time), .type = EVENT_SENSOR_READY};
+    TimelineEvent ev = {.time_map = current_map_time(sensor_data(t) + g_game.game_time), .type = EVENT_SENSOR_READY};
     put_le16(ev.data + SENSOR_EVENT_THING, t);
     timeline_add_event(&ev);
     sensor_set_flag(t, SENSOR_BUSY, true);
@@ -1095,7 +1095,7 @@ static void relay_to_map(const TimelineEvent *e, uint16_t t)
     int map = sensor_data_map(t), tx = sensor_target_x(t), ty = sensor_target_y(t);
     if (map >= dungeon_map_count())
         return; /* fix: the original reads a map outside the dungeon */
-    TimelineEvent ev = {.time_map = timeline_time_map(game.game_time & EVENT_TIME_MASK, map),
+    TimelineEvent ev = {.time_map = timeline_time_map(g_game.game_time & EVENT_TIME_MASK, map),
                         .type = EVENT_SQUARE,
                         .priority = e->priority};
     ev.data[EVENT_X] = (uint8_t)tx;
@@ -1212,7 +1212,7 @@ static void text_schedule_spawn(uint16_t t, int sub, bool was_visible, int x, in
     if (was_visible)
         base *= sub == TEXT_GENERATOR_SLOW ? GENERATOR_SLOW_SHOWN_FACTOR : 2;
     unsigned r = (uint16_t)rand_next();
-    TimelineEvent ev = {.time_map = current_map_time(base + ((base * 2 - 1) & r) + game.game_time),
+    TimelineEvent ev = {.time_map = current_map_time(base + ((base * 2 - 1) & r) + g_game.game_time),
                         .type = EVENT_SPAWN_CREATURE};
     ev.data[EVENT_X] = (uint8_t)x;
     ev.data[EVENT_Y] = (uint8_t)y;
@@ -1267,7 +1267,7 @@ static void floor_square_event(TimelineEvent *e)
                 tx = sensor_target_x(t);
                 ty = sensor_target_y(t);
             }
-            int dir = sensor_flag(t, SENSOR_INVERTED) ? sensor_effect(t) : dir_turn(sensor_effect(t), game.party_dir);
+            int dir = sensor_flag(t, SENSOR_INVERTED) ? sensor_effect(t) : dir_turn(sensor_effect(t), g_game.party_dir);
             move_party_to(tx, ty, g_party.cur_map, dir);
             break;
         }
@@ -1395,7 +1395,7 @@ static void fake_wall_event(TimelineEvent *e)
     } else {
         *square |= SQUARE_FAKE_WALL_OPEN;
     }
-    if (g_party.cur_map == game.party_map)
+    if (g_party.cur_map == g_game.party_map)
         g_party.redraw = REDRAW_ALL_VIEW;
 }
 
@@ -1430,7 +1430,7 @@ void timeline_event_door_destruction(TimelineEvent *e)
 {
     uint8_t *square = current_square(e->data[EVENT_X], e->data[EVENT_Y]);
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
-    if (g_party.cur_map == game.party_map)
+    if (g_party.cur_map == g_game.party_map)
         g_party.redraw = REDRAW_ALL_VIEW;
 }
 
@@ -1443,7 +1443,7 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
     int16_t damage = (int16_t)sensor_door_value(door, DOOR_KEY_DAMAGE);
     if (dun_on_party_square(x, y) && *state) {
         hit = true;
-        if (game.champion_count) {
+        if (g_game.champion_count) {
             *square &= (uint8_t)~SQUARE_DOOR_STATE;
             int hurt = champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
             for (int i = 0; i < CHAMPION_MAX; i++)
@@ -1481,7 +1481,7 @@ void timeline_event_door_animation(TimelineEvent *e)
     int state = *square & SQUARE_DOOR_STATE;
     if (state == DOOR_STATE_BROKEN)
         return;
-    if (g_party.cur_map == game.party_map)
+    if (g_party.cur_map == g_game.party_map)
         g_party.redraw = REDRAW_ALL_VIEW;
     uint16_t door = first_thing(x, y);
     if (!door_flag(door, DOOR_MOVING))
@@ -1550,7 +1550,7 @@ static int16_t ambient_wall_step(const int16_t table[CELL_COUNT][RECORD_INDEX_HI
 /* The repeating sound of an animated ornament plays while it runs on the party map. */
 static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
 {
-    if (!sensor_flag(thing, SENSOR_BUSY) || (int8_t)timeline_event_map(e) != game.party_map) {
+    if (!sensor_flag(thing, SENSOR_BUSY) || (int8_t)timeline_event_map(e) != g_game.party_map) {
         sensor_set_data(thing, sensor_frame(thing));
         return;
     }
@@ -1613,7 +1613,7 @@ void timeline_event_sensor(TimelineEvent *e)
     case EVENT_SENSOR_ANIMATION_END:
         thing = le16(e->data + SENSOR_EVENT_SQUARE_THING);
         if (!sensor_flag(thing, SENSOR_STATE)) {
-            if (g_party.cur_map == game.party_map)
+            if (g_party.cur_map == g_game.party_map)
                 g_party.redraw |= REDRAW_VIEW;
             sensor_set_flag(thing, SENSOR_BUSY, false);
         }
@@ -1637,7 +1637,7 @@ void timeline_event_sensor(TimelineEvent *e)
 void sensor_process_map_entry(bool entering)
 {
     int saved = g_party.cur_map;
-    dun_set_current_map(game.party_map);
+    dun_set_current_map(g_game.party_map);
     int map = g_party.cur_map;
     for (int x = 0; x < dungeon_map_width(map); x++)
         for (int y = 0; y < dungeon_map_height(map); y++) {
@@ -1775,8 +1775,9 @@ static void wall_click_fountain(WallClick *c)
         for (int i = 0; i < CHAMPION_MAX; i++)
             if (champion(i)->health)
                 champion(i)->water = WATER_FULL;
-        sound_request_with_fallback(CAT_CHAMPION, champion(game.leader)->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK,
-                                    game.party_x, game.party_y, 0, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback(CAT_CHAMPION, champion(g_game.leader)->portrait, SOUND_ENTRY_SWALLOW,
+                                    SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0, SOUND_PRIORITY_SWALLOW,
+                                    SOUND_VOLUME_NORMAL);
     } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
         item_add_charges(hand, CHARGES_FULL_AMOUNT);
         c->take = 1;
@@ -1796,7 +1797,7 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
         return CLICK_IGNORED;
     unsigned data = sensor_data(t);
     /* fix: the original leaves 4 data bytes of the event uninitialized */
-    TimelineEvent e = {.time_map = current_map_time(data + game.game_time + CLICK_EVENT_DELAY),
+    TimelineEvent e = {.time_map = current_map_time(data + g_game.game_time + CLICK_EVENT_DELAY),
                        .type = EVENT_SENSOR_IDLE};
     put_le16(e.data + SENSOR_EVENT_THING, t);
     timeline_add_event(&e);
@@ -1807,8 +1808,8 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
         return 0;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_request_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, game.party_x,
-                                    game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, g_game.party_x,
+                                    g_game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     sensor_trigger_target(t, EFFECT_SET, *extra);
     sensor_trigger_target(t, EFFECT_CLEAR, (int16_t)(data + 1 + *extra));
     return CLICK_IGNORED;
@@ -1859,7 +1860,7 @@ static int wall_click_teleport(WallClick *c, uint16_t t)
     if (c->hand != THING_NONE || sensor_flag(t, SENSOR_STATE))
         return CLICK_IGNORED;
     int effect = sensor_effect(t);
-    int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, game.party_dir);
+    int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, g_game.party_dir);
     move_party_to(sensor_target_x(t), sensor_target_y(t), sensor_data_map(t), dir);
     g_hooks.flush_input();
     return 1;
@@ -1898,9 +1899,9 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
     case WALL_CLICK_BUTTON_2:
         return wall_click_button(c, t, ornament, extra);
     case WALL_CLICK_PORTRAIT:
-        if (!sensor_flag(t, SENSOR_STATE) || c->cell != dir_opposite(game.party_dir))
+        if (!sensor_flag(t, SENSOR_STATE) || c->cell != dir_opposite(g_game.party_dir))
             return 1;
-        recruit_start(game.party_x, game.party_y, game.party_dir, game.party_map);
+        recruit_start(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map);
         c->done = 1;
         return 0;
     case WALL_ITEM_HOLDER:
@@ -1938,8 +1939,8 @@ static void wall_click_sensor(WallClick *c, uint16_t t)
         return;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_request_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, game.party_x,
-                                    game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback(CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, g_game.party_x,
+                                    g_game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     sensor_trigger_target(t, effect, extra);
 }
 
@@ -1960,7 +1961,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
             /* fix: the original leaves 4 data bytes of the event uninitialized */
             uint16_t delay =
                 gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_MARKER_DELAY);
-            TimelineEvent e = {.time_map = current_map_time(game.game_time + delay + CLICK_EVENT_DELAY),
+            TimelineEvent e = {.time_map = current_map_time(g_game.game_time + delay + CLICK_EVENT_DELAY),
                                .type = EVENT_SET_MARKER};
             put_le16(e.data + SENSOR_EVENT_THING, t);
             timeline_add_event(&e);
@@ -1989,10 +1990,10 @@ static void wall_click_text(WallClick *c, uint16_t t)
             return;
         int delta =
             gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
-        int lx = game.party_x, ly = game.party_y;
-        int map = dungeon_location_on_map(game.party_map, delta, &lx, &ly);
+        int lx = g_game.party_x, ly = g_game.party_y;
+        int map = dungeon_location_on_map(g_game.party_map, delta, &lx, &ly);
         if (map >= 0) {
-            move_party_to(lx, ly, map, game.party_dir);
+            move_party_to(lx, ly, map, g_game.party_dir);
             g_hooks.flush_input();
         }
     } else if (sub == SUBTYPE_HAND_SWITCH && c->hand == THING_NONE) {
@@ -2002,7 +2003,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
 
 void sensor_process_wall_click(int x, int y, int side, uint16_t actor, uint16_t hand)
 {
-    WallClick c = {.x = x, .y = y, .hand = hand, .give = THING_NONE, .has_leader = (int16_t)game.leader != -1};
+    WallClick c = {.x = x, .y = y, .hand = hand, .give = THING_NONE, .has_leader = (int16_t)g_game.leader != -1};
     uint16_t first = first_thing(x, y);
     for (uint16_t t = first; t != THING_ENDOFLIST && !c.done; t = dungeon_next_thing(t)) {
         c.cell = thing_cell(t);

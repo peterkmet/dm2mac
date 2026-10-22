@@ -431,7 +431,7 @@ static void champion_values_json(Json *j, int champ)
     tenths(j, champ_get_load(champ));
     tenths(j, champ_get_max_load(c));
     json_close(j, ']');
-    key_str(j, "position", party_cell_names[dir_relative(c->cell, game.party_dir)]);
+    key_str(j, "position", party_cell_names[dir_relative(c->cell, g_game.party_dir)]);
     key_bool(j, "poisoned", c->poisoned != 0);
 }
 
@@ -495,14 +495,14 @@ static void dialog_json(Json *j, int mode)
 static void party_json(Json *j, int mode)
 {
     json_open(j, '{');
-    key_int(j, "map", game.party_map);
-    key_int(j, "level", dungeon_map_level(game.party_map));
-    key_int(j, "x", game.party_x);
-    key_int(j, "y", game.party_y);
-    key_str(j, "facing", direction_names[game.party_dir & DIR_MASK]);
+    key_int(j, "map", g_game.party_map);
+    key_int(j, "level", dungeon_map_level(g_game.party_map));
+    key_int(j, "x", g_game.party_x);
+    key_int(j, "y", g_game.party_y);
+    key_str(j, "facing", direction_names[g_game.party_dir & DIR_MASK]);
     key_int(j, "darkness", g_view_light_level);
     key_bool(j, "can_move",
-             !game.party_move_cooldown && !g_party.move_steps && !input_is_waiting() &&
+             !g_game.party_move_cooldown && !g_party.move_steps && !input_is_waiting() &&
                  (mode == INPUT_MODE_MOVE || mode == INPUT_MODE_PUSH));
     key_bool(j, "sleeping", g_party_sleeping);
     key_bool(j, "dead", main_loop.end != 0);
@@ -512,16 +512,16 @@ static void party_json(Json *j, int mode)
 /* The leader, the leader hand, the shown candidate (the last champion record), and the members of the party. */
 static void champions_json(Json *j)
 {
-    int members = game.champion_count, candidate = -1;
+    int members = g_game.champion_count, candidate = -1;
     if (ui.candidate && members)
         candidate = --members;
     json_key(j, "leader");
-    if ((int16_t)game.leader == -1 || (int16_t)game.leader == candidate)
+    if ((int16_t)g_game.leader == -1 || (int16_t)g_game.leader == candidate)
         json_null(j);
     else
-        json_int(j, (int16_t)game.leader);
+        json_int(j, (int16_t)g_game.leader);
     json_key(j, "leader_hand");
-    object_json(j, game.champion_count ? game.leader_hand : THING_NONE);
+    object_json(j, g_game.champion_count ? g_game.leader_hand : THING_NONE);
     json_key(j, "candidate");
     if (candidate >= 0)
         champion_json(j, candidate);
@@ -682,17 +682,17 @@ static const char *amount_name(int value, int light, int medium, int heavy)
    only as the slant of the falling rain. */
 static void outdoor_json(Json *j)
 {
-    key_bool(j, "outdoor", game.weather_visible != 0);
-    if (!game.weather_visible)
+    key_bool(j, "outdoor", g_game.weather_visible != 0);
+    if (!g_game.weather_visible)
         return;
     json_key(j, "weather");
     json_open(j, '{');
-    const char *clouds = amount_name(game.cloud_cover, CLOUDS_SHOWN, CLOUDS_MORE, CLOUDS_MOST);
-    const char *rain = amount_name(game.sky_darkness, DARKNESS_RAIN, DARKNESS_MEDIUM, DARKNESS_HEAVY);
+    const char *clouds = amount_name(g_game.cloud_cover, CLOUDS_SHOWN, CLOUDS_MORE, CLOUDS_MOST);
+    const char *rain = amount_name(g_game.sky_darkness, DARKNESS_RAIN, DARKNESS_MEDIUM, DARKNESS_HEAVY);
     key_str(j, "clouds", weather_sky_has_clouds() ? clouds : amount_names[0]);
     key_str(j, "rain", weather_sky_has_rain() ? rain : amount_names[0]);
     if (view_rain_shows())
-        key_str(j, "wind", direction_names[game.wind_dir & DIR_MASK]);
+        key_str(j, "wind", direction_names[g_game.wind_dir & DIR_MASK]);
     json_close(j, '}');
     key_str(j, "day_time",
             g_weather.hour_light <= HOUR_LIGHT_DAY     ? "day"
@@ -705,7 +705,7 @@ void state_json_state(Json *j)
     uint32_t seed = g_random_seed; /* a stat aura draws a random number in champ_get_stat: the read changes no game */
     int mode = input_get_mode();
     json_open(j, '{');
-    key_int(j, "time", (long)game.game_time);
+    key_int(j, "time", (long)g_game.game_time);
     key_str(j, "game_mode", game_mode_names[game_mode]);
     key_str(j, "mode", state_json_mode_name(mode));
     json_key(j, "dialog");
@@ -783,9 +783,9 @@ void state_json_creature_name(Json *j, uint16_t type)
 /* Where the view stands: the party square, or the walk position while the party walks. */
 static void view_place(int *x, int *y, int *dir)
 {
-    *x = g_party.move_steps ? g_party.view_x : game.party_x;
-    *y = g_party.move_steps ? g_party.view_y : game.party_y;
-    *dir = (g_party.move_steps ? g_party.view_dir : game.party_dir) & DIR_MASK;
+    *x = g_party.move_steps ? g_party.view_x : g_game.party_x;
+    *y = g_party.move_steps ? g_party.view_y : g_game.party_y;
+    *dir = (g_party.move_steps ? g_party.view_dir : g_game.party_dir) & DIR_MASK;
 }
 
 /* The squares that the view shows now (seen_visible); returns the count. */
@@ -793,12 +793,12 @@ static int visible_squares(SeenSquare out[SEEN_VISIBLE_MAX])
 {
     int x, y, dir;
     view_place(&x, &y, &dir);
-    return seen_visible(game.party_map, x, y, dir, out);
+    return seen_visible(g_game.party_map, x, y, dir, out);
 }
 
 static bool on_party_map(int x, int y)
 {
-    return x >= 0 && y >= 0 && x < dungeon_map_width(game.party_map) && y < dungeon_map_height(game.party_map);
+    return x >= 0 && y >= 0 && x < dungeon_map_width(g_game.party_map) && y < dungeon_map_height(g_game.party_map);
 }
 
 /* The look of a square: a fake wall is a wall until it opens; a closed pit and a teleporter that is off or not
@@ -807,7 +807,7 @@ static const char *element_name(int x, int y)
 {
     if (!on_party_map(x, y))
         return "wall";
-    uint8_t square = dungeon_square(game.party_map, x, y);
+    uint8_t square = dungeon_square(g_game.party_map, x, y);
     switch (square_type(square)) {
     case SQUARE_FLOOR:
         return "floor";
@@ -852,7 +852,7 @@ static bool is_object(uint16_t thing)
 static unsigned square_draws(int pos, int dir, int x, int y)
 {
     ViewSquare s;
-    aspect_get(&s, game.party_map, dir, x, y);
+    aspect_get(&s, g_game.party_map, dir, x, y);
     return view_draws(pos, s.aspect);
 }
 
@@ -880,7 +880,7 @@ int state_json_visible_things(uint16_t type, StateJsonSeenThing *out, int max)
         if (is_wall(q->x, q->y))
             continue;
         unsigned draws = square_draws(view_position(q->depth, q->side), dir, q->x, q->y);
-        for (uint16_t t = dungeon_square_first_thing(game.party_map, q->x, q->y); t != THING_ENDOFLIST;
+        for (uint16_t t = dungeon_square_first_thing(g_game.party_map, q->x, q->y); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t))
             if (thing_type(t) == type && thing_shown(t, draws) && n < max)
                 out[n++] = (StateJsonSeenThing){q->depth, q->side, q->x, q->y, t};
@@ -935,7 +935,7 @@ static void square_things_json(Json *j, unsigned draws, int x, int y, int dir)
     json_open(&creatures, '[');
     json_open(&objects, '[');
     json_open(&flying, '[');
-    for (uint16_t t = dungeon_square_first_thing(game.party_map, x, y); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_game.party_map, x, y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (!thing_shown(t, draws))
             continue;
@@ -963,8 +963,8 @@ static void square_things_json(Json *j, unsigned draws, int x, int y, int dir)
 /* The door state, and the door button when the view draws the door. */
 static void door_json(Json *j, unsigned draws, int x, int y)
 {
-    key_str(j, "door", door_state_name(dungeon_square(game.party_map, x, y) & SQUARE_DOOR_STATE));
-    uint16_t door = dungeon_square_first_thing(game.party_map, x, y);
+    key_str(j, "door", door_state_name(dungeon_square(g_game.party_map, x, y) & SQUARE_DOOR_STATE));
+    uint16_t door = dungeon_square_first_thing(g_game.party_map, x, y);
     if (draws & VIEW_DRAWS_DOOR && door != THING_ENDOFLIST && thing_type(door) == THING_DOOR)
         key_bool(j, "button", door_has_button(door));
 }
@@ -978,7 +978,7 @@ static void shop_json(Json *j, uint16_t shop)
         return;
     }
     int x = sensor_target_x(shop), y = sensor_target_y(shop);
-    for (uint16_t t = aspect_first_thing(game.party_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
+    for (uint16_t t = aspect_first_thing(g_game.party_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_type(t) != SENSOR_SHOP)
             continue;
@@ -996,7 +996,7 @@ static void shop_json(Json *j, uint16_t shop)
 static bool wall_sensors_json(Json *j, int ornament, int face, int x, int y)
 {
     bool click = false, takes = false;
-    for (uint16_t t = aspect_first_thing(game.party_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
+    for (uint16_t t = aspect_first_thing(g_game.party_map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
         if (thing_cell(t) != face)
             continue;
@@ -1079,7 +1079,7 @@ static void wall_face_json(Json *j, const char *key, const ViewSquare *s, int k,
 static void wall_faces_json(Json *j, int pos, int side, int dir, int x, int y)
 {
     ViewSquare s;
-    aspect_get(&s, game.party_map, dir, x, y);
+    aspect_get(&s, g_game.party_map, dir, x, y);
     unsigned draws = view_draws(pos, ASPECT_WALL);
     if (draws & VIEW_DRAWS_SIDE_FACE)
         wall_face_json(j, "side_face", &s, side < 0 ? TURN_RIGHT : TURN_LEFT, dir, x, y);
@@ -1091,7 +1091,7 @@ static void wall_faces_json(Json *j, int pos, int side, int dir, int x, int y)
 static int floor_ornament(int dir, int x, int y)
 {
     ViewSquare s;
-    aspect_get(&s, game.party_map, dir, x, y);
+    aspect_get(&s, g_game.party_map, dir, x, y);
     if (s.aspect != ASPECT_FLOOR && s.aspect != ASPECT_PIT && s.aspect != ASPECT_TELEPORTER)
         return ORNAMENT_NONE;
     return aspect_word_ornament(s.side[SIDE_FLOOR_ORNAMENT]);
@@ -1111,7 +1111,7 @@ static void view_square_json(Json *j, const SeenSquare *q, int dir)
         wall_faces_json(j, pos, q->side, dir, q->x, q->y);
     } else {
         unsigned draws = square_draws(pos, dir, q->x, q->y);
-        if (square_type(dungeon_square(game.party_map, q->x, q->y)) == SQUARE_DOOR)
+        if (square_type(dungeon_square(g_game.party_map, q->x, q->y)) == SQUARE_DOOR)
             door_json(j, draws, q->x, q->y);
         int ornament = floor_ornament(dir, q->x, q->y);
         if (view_shows_floor_ornament(pos, ornament))
@@ -1134,7 +1134,7 @@ static uint16_t zone_top(const ViewClickZone *z, int *x, int *y)
     }
     if (z->thing == THING_NONE || (z->cell != POS_PARTY && z->cell != POS_FRONT) || !on_party_map(*x, *y))
         return top;
-    for (uint16_t t = dungeon_square_first_thing(game.party_map, *x, *y); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_game.party_map, *x, *y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
         if (is_object(t) && thing_cell(t) == thing_cell(z->thing))
             top = t;
@@ -1145,7 +1145,7 @@ static uint16_t zone_top(const ViewClickZone *z, int *x, int *y)
 static void pile_json(Json *j, const ViewClickZone *z, int cell)
 {
     int x, y, n = 0, at = thing_cell(z->thing);
-    uint16_t top = zone_top(z, &x, &y), first = dungeon_square_first_thing(game.party_map, x, y);
+    uint16_t top = zone_top(z, &x, &y), first = dungeon_square_first_thing(g_game.party_map, x, y);
     json_open(j, '{');
     key_int(j, "cell", cell);
     json_key(j, "top");
@@ -1212,7 +1212,7 @@ void state_json_view(Json *j)
 static char map_char(int x, int y)
 {
     const char *name = element_name(x, y);
-    uint8_t square = dungeon_square(game.party_map, x, y);
+    uint8_t square = dungeon_square(g_game.party_map, x, y);
     int state = square & SQUARE_DOOR_STATE;
     if (!strcmp(name, "wall"))
         return '#';
@@ -1226,17 +1226,17 @@ static char map_char(int x, int y)
         return 'T';
     if (!strcmp(name, "door"))
         return state == DOOR_STATE_OPEN || state == DOOR_STATE_BROKEN ? 'd' : 'D';
-    return mmap_shows_floor_ornament(floor_ornament(game.party_dir & DIR_MASK, x, y)) ? '_' : '.';
+    return mmap_shows_floor_ornament(floor_ornament(g_game.party_dir & DIR_MASK, x, y)) ? '_' : '.';
 }
 
 /* Map row y in out: one glyph per square, '@' for the party, a space for a square not explored and not in view. */
 static void map_row(int y, int w, const SeenSquare *squares, int count, char *out)
 {
     for (int x = 0; x < w; x++) {
-        bool seen = seen_is_seen(game.party_map, x, y);
+        bool seen = seen_is_seen(g_game.party_map, x, y);
         for (int i = 0; i < count && !seen; i++)
             seen = squares[i].x == x && squares[i].y == y;
-        out[x] = x == game.party_x && y == game.party_y ? '@' : seen ? map_char(x, y) : ' ';
+        out[x] = x == g_game.party_x && y == g_game.party_y ? '@' : seen ? map_char(x, y) : ' ';
     }
     out[w] = 0;
 }
@@ -1245,7 +1245,8 @@ static void map_row(int y, int w, const SeenSquare *squares, int count, char *ou
 static void map_rows_json(Json *j, const char *key, bool grid)
 {
     SeenSquare squares[SEEN_VISIBLE_MAX];
-    int w = dungeon_map_width(game.party_map), h = dungeon_map_height(game.party_map), count = visible_squares(squares);
+    int w = dungeon_map_width(g_game.party_map), h = dungeon_map_height(g_game.party_map),
+        count = visible_squares(squares);
     int prefix = grid ? MAP_GRID_PREFIX : 0;
     char line[MAP_GRID_PREFIX + MAP_SIDE_MAX + 1];
     if (w > MAP_SIDE_MAX)
@@ -1270,12 +1271,12 @@ static void map_rows_json(Json *j, const char *key, bool grid)
 void state_json_map(Json *j)
 {
     json_open(j, '{');
-    key_int(j, "map", game.party_map);
-    key_int(j, "level", dungeon_map_level(game.party_map));
-    key_int(j, "width", dungeon_map_width(game.party_map));
-    key_int(j, "height", dungeon_map_height(game.party_map));
-    pair(j, "party", game.party_x, game.party_y);
-    key_str(j, "facing", direction_names[game.party_dir & DIR_MASK]);
+    key_int(j, "map", g_game.party_map);
+    key_int(j, "level", dungeon_map_level(g_game.party_map));
+    key_int(j, "width", dungeon_map_width(g_game.party_map));
+    key_int(j, "height", dungeon_map_height(g_game.party_map));
+    pair(j, "party", g_game.party_x, g_game.party_y);
+    key_str(j, "facing", direction_names[g_game.party_dir & DIR_MASK]);
     key_str(j, "legend",
             "row index = y (north at the top), column = x; @ party, # wall, . floor, D closed door, "
             "d open door, < stairs up, > stairs down, O pit, T teleporter, "

@@ -180,7 +180,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
     begin_draw(0);
     const Champion *c = champion(champ);
     int zone = (hand == SLOT_ACTION_HAND ? ZONE_ACTION_HAND_FIRST : ZONE_READY_HAND_FIRST) +
-               dir_relative(c->cell, game.party_dir);
+               dir_relative(c->cell, g_game.party_dir);
     int16_t r[RECT_SIZE];
     zone_get_rect(zone, r);
     if (!c->health) {
@@ -210,16 +210,16 @@ static void draw_aura(int champ, int zone)
     draw_ctx_init(&a, CAT_INTERFACE, UI_INDEX_AURA, c->aura);
     draw_ctx_prepare(&a);
     a.w = (int16_t)(a.w / AURA_FRAMES);
-    a.x = (int16_t)(dir_relative(c->dir, game.party_dir) * a.w);
+    a.x = (int16_t)(dir_relative(c->dir, g_game.party_dir) * a.w);
     a.h = (int16_t)(a.h / AURA_FRAMES);
-    a.y = (int16_t)((game.game_time & (AURA_FRAMES - 1)) * a.h);
+    a.y = (int16_t)((g_game.game_time & (AURA_FRAMES - 1)) * a.h);
     offscreen_draw_ctx(&area, &a, zone, UI_KEY);
 }
 
 /* Moves a face picture by -1 to 1 pixels while the party hastes. */
 static void haste_jitter(int16_t *r)
 {
-    if (!game.magic_light[MAGIC_HASTE])
+    if (!g_game.magic_light[MAGIC_HASTE])
         return;
     int d = rand_2bits();
     if (!d)
@@ -245,9 +245,9 @@ static void draw_party_icons(void)
     begin_draw(0);
     offscreen_draw_gdat_image(&area, CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_PARTY_BACK, ZONE_PARTY_ICONS, GFX_OPAQUE);
     Bitmap *face = face_bitmap();
-    for (int i = 0; face && i < game.champion_count; i++) {
+    for (int i = 0; face && i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
-        int cell = dir_relative(c->cell, game.party_dir);
+        int cell = dir_relative(c->cell, g_game.party_dir);
         if (!c->health || input_drag_state == cell + 1)
             continue;
         int16_t r[RECT_SIZE], sx = 0, sy = 0;
@@ -271,7 +271,7 @@ void area_draw_spell_icon(int champ, int flash)
 {
     begin_draw(0);
     const Champion *c = champion(champ);
-    int rel = dir_relative(c->cell, game.party_dir);
+    int rel = dir_relative(c->cell, g_game.party_dir);
     int16_t r[RECT_SIZE];
     offscreen_fill_rect(&area, zone_get_rect(ZONE_SPELL_ICON_FIRST + rel, r), ui_colors[UI_BLACK]);
     if (!c->health)
@@ -279,7 +279,7 @@ void area_draw_spell_icon(int champ, int flash)
     int mirror = rel == 1 || rel == 2;
     int rune = rel <= 1 ? GFX_ACTION_SPELL_RUNE_LEFT : GFX_ACTION_SPELL_RUNE_RIGHT;
     int hand = rel <= 1 ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
-    if (champ == game.leader)
+    if (champ == g_game.leader)
         rune++;
     if (flash)
         hand++;
@@ -309,7 +309,8 @@ static void draw_menu_header(void)
                               GFX_OPAQUE);
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK, ZONE_MENU_BACK, GFX_OPAQUE);
     int champ = action.champion - 1;
-    offscreen_draw_text_in_zone_with_shadow(&area, ZONE_MENU_NAME, ui_colors[champ == game.leader ? UI_GOLD : UI_WHITE],
+    offscreen_draw_text_in_zone_with_shadow(&area, ZONE_MENU_NAME,
+                                            ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
                                             ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
 }
 
@@ -507,14 +508,14 @@ static void draw_party_hands(int full, int changed)
 {
     int party_changed = changed;
     action.mode = ACTION_MODE_HANDS;
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
         if (!c->health) {
             int k = 0;
-            for (; k < game.champion_count; k++)
+            for (; k < g_game.champion_count; k++)
                 if (champion(k)->cell == c->cell && champion(k)->health)
                     break;
-            if (k < game.champion_count)
+            if (k < g_game.champion_count)
                 continue; /* a living champion stands in the cell of this dead one */
         }
         int redraw = 0;
@@ -552,7 +553,7 @@ static void draw_party_hands(int full, int changed)
             drawn.busy[i][ACTION_SPELL] = busy;
             redraw = 1;
         }
-        int16_t leader = (int16_t)game.leader;
+        int16_t leader = (int16_t)g_game.leader;
         if (full || redraw || (drawn.leader != leader && (drawn.leader == i || leader == i)))
             area_draw_spell_icon(i, flash);
         if (c->aura_value || drawn.aura_mask)
@@ -574,10 +575,10 @@ static void draw_party_hands(int full, int changed)
 static int party_icons_changed(void)
 {
     int changed = 0;
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
-        uint8_t dir = (uint8_t)dir_relative(c->dir, game.party_dir),
-                cell = (uint8_t)dir_relative(c->cell, game.party_dir);
+        uint8_t dir = (uint8_t)dir_relative(c->dir, g_game.party_dir),
+                cell = (uint8_t)dir_relative(c->cell, g_game.party_dir);
         if (!c->health || input_drag_state == cell + 1)
             cell = NO_CELL;
         if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
@@ -588,11 +589,11 @@ static int party_icons_changed(void)
             drawn.dir[i] = dir;
         }
     }
-    int invisible = game.magic_light[MAGIC_INVISIBILITY] != 0;
-    if (drawn.gfx_set != dungeon_map_wallset(game.party_map) || game.magic_light[MAGIC_HASTE] ||
+    int invisible = g_game.magic_light[MAGIC_INVISIBILITY] != 0;
+    if (drawn.gfx_set != dungeon_map_wallset(g_game.party_map) || g_game.magic_light[MAGIC_HASTE] ||
         !drawn.invisible != !invisible) {
         changed = 1;
-        drawn.gfx_set = dungeon_map_wallset(game.party_map);
+        drawn.gfx_set = dungeon_map_wallset(g_game.party_map);
         drawn.invisible = invisible;
     }
     return changed;
@@ -677,7 +678,7 @@ void area_update(int tick)
     if (ui.candidate)
         return;
     int full = 0, party_changed = 0;
-    if (!game.champion_count) {
+    if (!g_game.champion_count) {
         if (action.dirty || action.redraw_delay) {
             action.redraw_delay = 0;
             action.dirty = 0;
@@ -713,7 +714,7 @@ void area_update(int tick)
     }
     if (!action.champion)
         draw_party_hands(full, party_changed);
-    drawn.leader = (int16_t)game.leader;
+    drawn.leader = (int16_t)g_game.leader;
     if (action.champion > 0 && !draw_open_panel(full, party_changed, tick))
         goto flush;
     draw_open_face_aura();

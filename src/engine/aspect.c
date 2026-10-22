@@ -231,7 +231,7 @@ static uint16_t apply_wall_things(ViewSquare *s, int map, uint16_t thing, int di
         int cell = thing_cell(thing), face = dir_relative(cell, dir);
         if (done & 1 << cell || (only_front && face != SIDE_FRONT))
             continue;
-        OrnamentState o = {.time = game.game_time};
+        OrnamentState o = {.time = g_game.game_time};
         int last = 0, shows = 0;
         if (thing_type(thing) == THING_TEXT)
             shows = wall_text_ornament(s, thing, face, &o, &last);
@@ -253,7 +253,7 @@ static uint16_t apply_floor_things(ViewSquare *s, int map, uint16_t thing, uint8
 {
     for (; thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR; thing = dungeon_next_thing(thing)) {
         int animated = 0, frame = 0, offset = 0;
-        uint32_t time = game.game_time;
+        uint32_t time = g_game.game_time;
         uint8_t ornament;
         if (thing_type(thing) == THING_TEXT) {
             if (text_kind(thing) != TEXT_KIND_ORNAMENT)
@@ -333,7 +333,7 @@ static void wall_square_aspect(ViewSquare *s, int map, uint8_t square, int fake,
     thing = apply_wall_things(s, map, thing, dir, 0);
     if (fake) {
         /* a closed fake wall away from the party row and column hides its things */
-        if (game.party_x != x && game.party_y != y) {
+        if (g_game.party_x != x && g_game.party_y != y) {
             s->first_thing = THING_ENDOFLIST;
             return;
         }
@@ -354,7 +354,7 @@ static void set_map_floor_ornament(ViewSquare *s, int map)
     if (!v)
         return;
     int frame = v & FLOOR_ORNAMENT_ANIMATED
-                    ? ornament_frame(CAT_FLOOR_ORNAMENT, v & ORNAMENT_INDEX_MASK, game.game_time, 0)
+                    ? ornament_frame(CAT_FLOOR_ORNAMENT, v & ORNAMENT_INDEX_MASK, g_game.game_time, 0)
                     : 0;
     s->side[SIDE_FLOOR_ORNAMENT] = aspect_floor_word(v & ORNAMENT_INDEX_MASK, frame);
 }

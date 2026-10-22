@@ -76,7 +76,7 @@ Reads the game state.
 
 | Field | Meaning |
 | --- | --- |
-| `time` | Game time in game steps (`game.game_time`). It stands still during a pause and in dialogs. |
+| `time` | Game time in game steps (`g_game.game_time`). It stands still during a pause and in dialogs. |
 | `ticks` | Timer ticks at 60 Hz since the program start (`main_loop.timer_ticks`). `wait` counts these. |
 | `mode` | Input mode: `menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`; `movie` while the splash picture or a movie plays (see "Movies"). |
 | `dialog` | The dialog id (`DialogState.id`, `src/ui/include/dialog.h`) while `mode` is `dialog`, else `null`. |

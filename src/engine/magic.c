@@ -185,7 +185,7 @@ static void magic_light_add(int delta)
 static TimelineEvent party_event(int type, uint32_t delay)
 {
     TimelineEvent e = {0};
-    e.time_map = timeline_time_map(game.game_time + delay, game.party_map);
+    e.time_map = timeline_time_map(g_game.game_time + delay, g_game.party_map);
     e.type = (uint8_t)type;
     return e;
 }
@@ -309,7 +309,7 @@ void magic_add_party_aura(int mask, int type, int16_t value, uint16_t duration)
     }
     if (big)
         value = (int16_t)(value >> AURA_BIG_SHIFT);
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         if (!(mask & 1 << i))
             continue;
         Champion *c = champion(i);
@@ -372,18 +372,18 @@ static void cast_summon(int type, int skill, int power)
             }
         }
     }
-    int dir = game.party_dir;
+    int dir = g_game.party_dir;
     int level = (uint16_t)((rand_2bits() + skill * 2) * power / SUMMON_LEVEL_DIVISOR);
     CreatureSummon summon = {.creature_type = type,
                              .level = level,
                              .dir = dir_opposite(dir),
-                             .x = game.party_x,
-                             .y = game.party_y,
-                             .map = game.party_map,
+                             .x = g_game.party_x,
+                             .y = g_game.party_y,
+                             .map = g_game.party_map,
                              .link = SUMMON_NO_LINK,
                              .search_dir = (int8_t)dir};
     if (creature_summon_group(summon) == THING_NONE)
-        explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, game.party_x, game.party_y, EXPLOSION_ON_SQUARE);
+        explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, g_game.party_x, g_game.party_y, EXPLOSION_ON_SQUARE);
 }
 
 /* The spell that the item spell creates goes into the leader hand, or onto the party square. */
@@ -391,14 +391,14 @@ static void cast_create_item(void)
 {
     uint16_t thing = item_create_by_index(
         gdat_entry_index(gdat_current(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE, SPELL_ITEM_KEY));
-    if (game.leader_hand == THING_NONE) {
+    if (g_game.leader_hand == THING_NONE) {
         champ_put_in_leader_hand(thing, 1);
         return;
     }
-    int cell = dir_turn(game.party_dir, rand_bit());
+    int cell = dir_turn(g_game.party_dir, rand_bit());
     if (thing == THING_NONE)
         return; /* fix: the original moves an invalid thing when no record is free */
-    move_thing(thing_with_cell(thing, cell), -1, 0, game.party_x, game.party_y);
+    move_thing(thing_with_cell(thing, cell), -1, 0, g_game.party_x, g_game.party_y);
 }
 
 /* The spells that are neither potions, missiles, nor summons. */
@@ -417,7 +417,7 @@ static void cast_other(Champion *c, int type, int skill, int power)
         magic_add_light(LIGHT_TORCH, (int16_t)(steps * LIGHT_TICKS_FACTOR));
         return;
     case OTHER_INVISIBILITY: {
-        if (!game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory)
+        if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory)
             champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
         TimelineEvent e = party_event(EVENT_INVISIBILITY, (uint16_t)(steps << INVISIBILITY_TICKS_SHIFT));
         timeline_add_event(&e);
@@ -438,14 +438,14 @@ static void cast_other(Champion *c, int type, int skill, int power)
                               0);
         return;
     case OTHER_HASTE:
-        game.magic_light[MAGIC_HASTE] =
-            (uint8_t)imin((int16_t)(steps * HASTE_PER_STEP + game.magic_light[MAGIC_HASTE]), HASTE_MAX);
+        g_game.magic_light[MAGIC_HASTE] =
+            (uint8_t)imin((int16_t)(steps * HASTE_PER_STEP + g_game.magic_light[MAGIC_HASTE]), HASTE_MAX);
         return;
     case OTHER_EXPLOSION: {
         int strength =
             iclamp(MISSILE_POWER_MIN, (int16_t)((skill * 2 + MISSILE_SKILL_BASE) * (power + MISSILE_POWER_BASE)),
                    MISSILE_POWER_MAX);
-        explosion_create(MISSILE_THING_BASE + OTHER_EXPLOSION, strength, game.party_x, game.party_y,
+        explosion_create(MISSILE_THING_BASE + OTHER_EXPLOSION, strength, g_game.party_x, g_game.party_y,
                          EXPLOSION_ON_SQUARE);
         return;
     }
@@ -599,7 +599,7 @@ void magic_remove_last_rune(void)
 
 bool move_party_warp_to_marker(void)
 {
-    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, game.party_x, game.party_y);
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, g_game.party_x, g_game.party_y);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;
@@ -617,9 +617,9 @@ bool move_party_warp_to_marker(void)
         int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0)
             continue;
-        move_party_to(x, y, map, game.party_dir);
-        sound_request_with_fallback(CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, game.party_x,
-                                    game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
+        move_party_to(x, y, map, g_game.party_dir);
+        sound_request_with_fallback(CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, g_game.party_x,
+                                    g_game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
         if (mode == MARKER_CLEAR_ALL)
             text_set_visible(t, true);
         return true;

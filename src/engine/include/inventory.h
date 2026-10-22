@@ -24,7 +24,7 @@
 #define MOUTH_CATEGORY          0x09
 #define MOUTH_INDEX             0x5b
 
-/* The leader hand object as the original keeps it beside game.leader_hand. */
+/* The leader hand object as the original keeps it beside g_game.leader_hand. */
 typedef struct {
     uint16_t attr;                                   /* item attribute 0 (flags) of the object */
     uint16_t weight;                                 /* its weight when it went into the hand */

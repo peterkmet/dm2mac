@@ -269,7 +269,7 @@ static void put_state(Json *reply)
     int mode = input_get_mode();
     bool movie = movie_is_playing();
     const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
-    put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", game.game_time,
+    put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", g_game.game_time,
         main_loop.timer_ticks, mode_name);
     if (movie || mode != INPUT_MODE_DIALOG)
         put(reply, "null");
@@ -277,8 +277,9 @@ static void put_state(Json *reply)
         put(reply, "%d", dialog.id);
     put(reply,
         ",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
-        game.party_map, game.party_x, game.party_y, game.party_dir, game.champion_count, (int16_t)game.leader);
-    for (int i = 0; i < game.champion_count && i < CHAMPION_MAX; i++) {
+        g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir, g_game.champion_count,
+        (int16_t)g_game.leader);
+    for (int i = 0; i < g_game.champion_count && i < CHAMPION_MAX; i++) {
         const Champion *c = champion(i);
         put(reply, "%s{\"name\":", i ? "," : "");
         put_string(reply, c->name, CHAMPION_NAME_SIZE);
@@ -286,16 +287,16 @@ static void put_state(Json *reply)
             c->stamina, c->max_stamina, c->mana, c->max_mana, champ_get_load(i));
     }
     put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", ui.inventory - 1, (int)ui.candidate - 1);
-    if (!game.champion_count || game.leader_hand == THING_NONE)
+    if (!g_game.champion_count || g_game.leader_hand == THING_NONE)
         put(reply, "null");
     else {
-        const char *name = item_name(game.leader_hand);
-        put(reply, "{\"thing\":%u,\"name\":", game.leader_hand);
+        const char *name = item_name(g_game.leader_hand);
+        put(reply, "{\"thing\":%u,\"name\":", g_game.leader_hand);
         put_string(reply, name, strlen(name));
         put(reply, "}");
     }
     put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d",
-        game.sound_volume, game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode],
+        g_game.sound_volume, g_game.music_volume, main_loop.end, main_loop.quit, game_mode_names[game_mode],
         advanced_automap_open);
     put(reply, ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d}", cheat_immortal, cheat_food, cheat_light);
 }
@@ -731,7 +732,7 @@ void control_frame(void)
 {
     if (!turn_is_pending())
         return;
-    uint32_t time = game.game_time;
-    for (int i = 0; i < STEP_TICKS && game.game_time == time && !main_loop.end && !main_loop.quit; i++)
+    uint32_t time = g_game.game_time;
+    for (int i = 0; i < STEP_TICKS && g_game.game_time == time && !main_loop.end && !main_loop.quit; i++)
         play_tick();
 }

@@ -193,7 +193,7 @@ class OriginalView:
         emu.write(G_PUSH_MODE, bytes(4))
         emu.write(G_PUSH_PENDING_GROUP, struct.pack("<h", -1))
         emu.write(G_SKY_STATE, struct.pack("<H", self.entry_index(8, gfx_set, 0x0B, 0x66)))
-        game = WeatherGame.in_dll(lib, "game")
+        game = WeatherGame.in_dll(lib, "g_game")
         emu.write(G_RAIN_INTENSITY, bytes([game.rain_intensity, game.wind_dir]))
         emu.write_u32(G_RANDOM_SEED, VIEW_SEED)
         emu.write(self.viewport, bytes(VIEW_W * VIEW_H))

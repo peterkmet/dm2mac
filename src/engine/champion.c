@@ -46,22 +46,22 @@ uint8_t g_champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 /* Sets redraw flags on all champions. */
 static void set_redraw_flags(uint16_t flags)
 {
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         champion(i)->redraw |= flags;
 }
 
 /* A new game: the champion of the start square (map square (0, 0) with a mirror sensor) joins the party. */
 static void add_start_champion(void)
 {
-    game.leader_hand = THING_NONE;
+    g_game.leader_hand = THING_NONE;
     g_leader_hand.icon = HAND_ICON_NONE;
     for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, 0, 0); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_type(t) != WALL_CLICK_PORTRAIT)
             continue;
-        recruit_start_champion(0, 1, DIR_NORTH, game.party_map);
-        champion(0)->dir = (uint8_t)game.party_dir;
-        champion(0)->cell = (uint8_t)game.party_dir;
+        recruit_start_champion(0, 1, DIR_NORTH, g_game.party_map);
+        champion(0)->dir = (uint8_t)g_game.party_dir;
+        champion(0)->cell = (uint8_t)g_game.party_dir;
         set_redraw_flags(REDRAW_STATUS_BOX);
         champ_set_leader(0);
         return;
@@ -74,22 +74,22 @@ void champ_init_party_state(void)
         add_start_champion();
         return;
     }
-    if (game.leader_hand == THING_NONE) {
+    if (g_game.leader_hand == THING_NONE) {
         g_leader_hand.icon = HAND_ICON_NONE;
     } else {
-        uint16_t leader = game.leader;
-        game.leader = (uint16_t)-1;
-        champ_put_in_leader_hand(game.leader_hand, 1);
-        game.leader = leader;
+        uint16_t leader = g_game.leader;
+        g_game.leader = (uint16_t)-1;
+        champ_put_in_leader_hand(g_game.leader_hand, 1);
+        g_game.leader = leader;
     }
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         champion(i)->redraw &= REDRAW_KEEP;
         action_reset_champion(i);
     }
     set_redraw_flags(REDRAW_STATUS_BOX);
-    int leader = (int16_t)game.leader;
+    int leader = (int16_t)g_game.leader;
     if (leader != -1) {
-        game.leader = (uint16_t)-1;
+        g_game.leader = (uint16_t)-1;
         champ_set_leader(leader);
     }
 }
@@ -160,7 +160,7 @@ int champ_get_load(int champ)
     if (!c->health)
         return 0;
     uint16_t load = c->load;
-    if (champ == game.leader)
+    if (champ == g_game.leader)
         load = (uint16_t)(load + g_leader_hand.weight);
     return load;
 }
@@ -270,7 +270,7 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
 
 int champ_get_index_in_cell(int cell)
 {
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->cell == cell && champion(i)->health)
             return i;
     return -1;
@@ -278,12 +278,12 @@ int champ_get_index_in_cell(int cell)
 
 void champ_set_leader(int champ)
 {
-    int16_t leader = (int16_t)game.leader;
+    int16_t leader = (int16_t)g_game.leader;
     if (champ == leader || (champ != -1 && !champion(champ)->health))
         return;
     if (leader != -1)
         champion(leader)->redraw |= REDRAW_LOAD | REDRAW_NAME;
-    game.leader = (uint16_t)champ;
+    g_game.leader = (uint16_t)champ;
     if (champ != -1 && champ + 1 != ui.candidate)
         champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
 }

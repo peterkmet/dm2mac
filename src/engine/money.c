@@ -105,7 +105,7 @@ void money_box_click_coin(int slot)
         return;
     int champ = action.champion - 1;
     uint16_t box = champion(champ)->slots[action.hand];
-    if (game.leader_hand == THING_NONE) {
+    if (g_game.leader_hand == THING_NONE) {
         uint16_t coin = money_take_coin_from_box(box, money_coin_type_for_slot(box, slot));
         if (coin == THING_NONE) {
             champ_compute_load(champ);
@@ -113,7 +113,7 @@ void money_box_click_coin(int slot)
         }
         champ_put_in_leader_hand(coin, 0);
     } else {
-        if (!money_add_coin_to_box(box, game.leader_hand)) {
+        if (!money_add_coin_to_box(box, g_game.leader_hand)) {
             champ_compute_load(champ);
             return;
         }

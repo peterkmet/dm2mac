@@ -684,7 +684,7 @@ static int view_get_flip_parity(int kind, int dir, int x, int y)
     int parity =
         (y + x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map) + dungeon_map_level(view.map)) &
         1;
-    int party_parity = game.party_dir & 1, time = game.game_time & GAME_TIME_FRAMES;
+    int party_parity = g_game.party_dir & 1, time = g_game.game_time & GAME_TIME_FRAMES;
     uint16_t flags = view.flip_flags;
     if (kind == PARITY_FLOOR) {
         if (!(flags & FLIP_FLOOR_BY_SQUARE))
@@ -1134,17 +1134,17 @@ static void draw_offscreen(DrawCtx *ctx, Bitmap *offscreen, int zone, int anchor
 /* The rain picture for the wind as the party sees it; *side is the wind direction relative to the party. */
 static int weather_get_rain_image(int *side)
 {
-    *side = dir_relative(game.wind_dir, view.party_dir);
-    int level = game.rain_intensity >= RAIN_STRONG   ? 3
-                : game.rain_intensity >= RAIN_MEDIUM ? 2
-                : game.rain_intensity >= RAIN_LIGHT  ? 1
-                                                     : 0;
+    *side = dir_relative(g_game.wind_dir, view.party_dir);
+    int level = g_game.rain_intensity >= RAIN_STRONG   ? 3
+                : g_game.rain_intensity >= RAIN_MEDIUM ? 2
+                : g_game.rain_intensity >= RAIN_LIGHT  ? 1
+                                                       : 0;
     return (*side == DIR_NORTH || *side == DIR_SOUTH ? RAIN_ALONG : RAIN_ACROSS) + level;
 }
 
 bool view_rain_shows(void)
 {
-    return game.rain_intensity && view.rain_shown;
+    return g_game.rain_intensity && view.rain_shown;
 }
 
 /* Draws the rain over the view: a random part of the rain picture, tiled. */
@@ -1176,7 +1176,7 @@ static void weather_draw_rain(void)
 void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
 {
     int transparent = mapped_key(ctx, key);
-    if (!game.rain_intensity) {
+    if (!g_game.rain_intensity) {
         gfx_fill_bitmap(offscreen, transparent);
         return;
     }
@@ -1682,7 +1682,7 @@ static void view_setup_explosion_picture(int type, int size, int flip, int zone)
 /* Adds 1 to a global byte variable of the game, up to 255. */
 static void global_byte_add(int var)
 {
-    uint8_t *value = game.global_bytes + var - GLOBAL_BYTE_FIRST;
+    uint8_t *value = g_game.global_bytes + var - GLOBAL_BYTE_FIRST;
     if (*value < GLOBAL_BYTE_MAX)
         ++*value;
 }
@@ -1748,7 +1748,7 @@ static void view_draw_explosions(uint16_t first, int pos, uint32_t cell_mask)
             if (!(cell_mask & 1u << turned))
                 continue;
             int scale = thing_scale[depth * GRID_SQUARE_CELLS + EXPLOSION_SCALE_START - turned / CELL_GRID_SIDE];
-            int zone = zone_id_for_view_cell(pos, position, game.party_dir) | ZONE_RELATIVE;
+            int zone = zone_id_for_view_cell(pos, position, g_game.party_dir) | ZONE_RELATIVE;
             int strength = power + 1 > EXPLOSION_POWER_SIZE ? power + 1 : EXPLOSION_POWER_SIZE;
             view_setup_explosion_picture(type, (int16_t)(scale * strength >> EXPLOSION_SIZE_SHIFT), flip, zone);
             int16_t grow = (int16_t)(power - EXPLOSION_POWER_BIG);
@@ -1815,7 +1815,7 @@ static void view_draw_alcove_contents(int pos)
 {
     int ordinal = ALCOVE_FIRST_ORDINAL, depth = view_depth[pos];
     for (uint16_t thing = view_squares[pos].first_thing; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
-        if (thing_cell(thing) != dir_opposite(game.party_dir))
+        if (thing_cell(thing) != dir_opposite(g_game.party_dir))
             continue;
         if (is_item(thing)) {
             view_draw_object(thing, pos, 0, 0, ordinal, THING_NONE, 1, 0, 1);
@@ -2376,8 +2376,8 @@ static int view_draw_floor_ornament(int pos)
     int linked = dungeon_teleporter_link(view.map, s->x, s->y, &link);
     if (depth > DEPTH_FAR && !linked)
         return 0;
-    if (linked && pos != POS_NEAR_SIDE_1 && pos != POS_NEAR_SIDE_2 && link.side != game.party_dir &&
-        link.side != dir_opposite(game.party_dir))
+    if (linked && pos != POS_NEAR_SIDE_1 && pos != POS_NEAR_SIDE_2 && link.side != g_game.party_dir &&
+        link.side != dir_opposite(g_game.party_dir))
         return 0;
     uint16_t w = s->side[SIDE_FLOOR_ORNAMENT];
     int frame = HIGH_BYTE(w);
@@ -2779,7 +2779,7 @@ static void outdoor_draw_sky_object(const SkyObject *o, int dir, int x, int y)
 
 static void outdoor_draw_sky(int dir, int x, int y)
 {
-    if (game.weather_visible)
+    if (g_game.weather_visible)
         for (const SkyObject *o = weather_sky_objects(); o->entry != SKY_OBJECT_END; o++)
             outdoor_draw_sky_object(o, dir, x, y);
     char text[WALL_TEXT_SIZE];
@@ -2950,13 +2950,13 @@ bool view_shows_floor_ornament(int pos, int ornament)
 
 int view_shows_party(void)
 {
-    return view.party_x == game.party_x && view.party_y == game.party_y && view.party_map == game.party_map &&
-           view.party_dir == game.party_dir;
+    return view.party_x == g_game.party_x && view.party_y == g_game.party_y && view.party_map == g_game.party_map &&
+           view.party_dir == g_game.party_dir;
 }
 
 void view_draw_dungeon(int dir, int x, int y)
 {
-    view.map = view.party_map = game.party_map;
+    view.map = view.party_map = g_game.party_map;
     view.party_dir = dir;
     view.party_x = x;
     view.party_y = y;

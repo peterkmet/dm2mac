@@ -186,7 +186,7 @@ static void sound_request_later(int category, int index, int entry, int priority
     delayed[slot] =
         (Delayed){1,          (uint8_t)category, (uint8_t)index,    (uint8_t)entry, (uint8_t)g_party.cur_map,
                   (uint8_t)x, (uint8_t)y,        (int16_t)priority, (int16_t)volume};
-    TimelineEvent e = {.time_map = timeline_time_map((game.game_time + delay - 1) & EVENT_TIME_MASK, g_party.cur_map),
+    TimelineEvent e = {.time_map = timeline_time_map((g_game.game_time + delay - 1) & EVENT_TIME_MASK, g_party.cur_map),
                        .type = EVENT_DELAYED_SOUND,
                        .priority = (uint8_t)priority};
     e.data[0] = (uint8_t)slot; /* fix: the original leaves data bytes 2 to 5 uninitialized */
@@ -212,11 +212,11 @@ void sound_request(int category, int index, int entry, int priority, int volume,
     }
     int map_x = x, map_y = y;
     if (delay > 0) { /* a sound on the other map of a seamless passage */
-        x += dungeon_map_offset_x(g_party.cur_map) - dungeon_map_offset_x(game.party_map);
-        y += dungeon_map_offset_y(g_party.cur_map) - dungeon_map_offset_y(game.party_map);
+        x += dungeon_map_offset_x(g_party.cur_map) - dungeon_map_offset_x(g_game.party_map);
+        y += dungeon_map_offset_y(g_party.cur_map) - dungeon_map_offset_y(g_game.party_map);
     }
     int lateral, forward;
-    sound_party_offset((int16_t)x, (int16_t)y, game.party_x, game.party_y, game.party_dir, 0, &lateral, &forward);
+    sound_party_offset((int16_t)x, (int16_t)y, g_game.party_x, g_game.party_y, g_game.party_dir, 0, &lateral, &forward);
     Pending *queue = requests;
     int *count = &request_count;
     if (delay < 0) {
@@ -230,8 +230,8 @@ void sound_request(int category, int index, int entry, int priority, int volume,
             return;
     if (abs(lateral) + abs(forward) > 1) {
         int path = creature_get_party_distance(map_x, map_y);
-        if (!sound_party_offset((int16_t)x, (int16_t)y, game.party_x, game.party_y, game.party_dir, path, &lateral,
-                                &forward))
+        if (!sound_party_offset((int16_t)x, (int16_t)y, g_game.party_x, g_game.party_y, g_game.party_dir, path,
+                                &lateral, &forward))
             return;
     }
     Pending *p = &queue[*count]; /* a sound of delay 0 uses the next free entry for itself */

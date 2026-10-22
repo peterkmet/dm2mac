@@ -214,7 +214,7 @@ void text_clear_expired_rows(void)
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     for (int i = 0; i < MESSAGE_ROWS; i++) {
-        if (message_expiry[i] == MESSAGE_NEVER || message_expiry[i] > game.game_time)
+        if (message_expiry[i] == MESSAGE_NEVER || message_expiry[i] > g_game.game_time)
             continue;
         int16_t row[RECT_SIZE] = {r[RECT_X], (int16_t)(message.top + TEXT_LINE_HEIGHT * i + r[RECT_Y]), r[RECT_W],
                                   FONT_GLYPH_HEIGHT};
@@ -284,7 +284,7 @@ static void text_message_draw_line(int color, const char *line)
             (int16_t)(r[RECT_X] + message.column),
             (int16_t)(message.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1 + message.top),
             color, ui_colors[UI_BLACK], line);
-    message_expiry[message.row] = game.game_time + MESSAGE_SHOW_TIME;
+    message_expiry[message.row] = g_game.game_time + MESSAGE_SHOW_TIME;
     char *text = message_text[message.row];
     size_t length = strlen(text);
     snprintf(text + length, MESSAGE_TEXT_SIZE - length, "%s", line);

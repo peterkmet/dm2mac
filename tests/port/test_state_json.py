@@ -54,7 +54,7 @@ def load(lib, gdat, data, tmp_path):  # noqa: F811
     assert lib.save_load(str(path).encode(), gdat) == 0
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
-    game = GameWithChampions.in_dll(lib, "game")
+    game = GameWithChampions.in_dll(lib, "g_game")
     party = Party.in_dll(lib, "g_party")
     party.cur_map, party.new_map, party.move_steps, party.push_pending_group = -1, -1, 0, 0xFFFF
     lib.view_enter_map(game.party_map)

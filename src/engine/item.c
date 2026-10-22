@@ -201,7 +201,7 @@ int item_icon_index(uint16_t thing, int slot, int animated)
     }
     if (!frames)
         return icon;
-    int32_t time = (int32_t)game.game_time;
+    int32_t time = (int32_t)g_game.game_time;
     int mode = attr >> ICON_MODE_SHIFT & ICON_MODE_MASK;
     switch (mode) {
     case ICON_BY_TIME_PER_ITEM:
@@ -212,7 +212,7 @@ int item_icon_index(uint16_t thing, int slot, int animated)
     case ICON_RANDOM:
         return (uint8_t)(icon + rand_below(frames));
     case ICON_BY_PARTY_DIR:
-        return (uint8_t)(icon + game.party_dir);
+        return (uint8_t)(icon + g_game.party_dir);
     case ICON_BY_CHARGES: {
         int charges = item_charges(thing);
         if (!charges)
@@ -332,7 +332,7 @@ const char *item_name(uint16_t thing)
     text_args.champion = -1;
     if (category == CAT_MISC && index == TEXT_CHAMPION_TOKEN) {
         int champion = misc_charges(thing); /* the champion of the token */
-        if (champion < game.champion_count)
+        if (champion < g_game.champion_count)
             text_args.champion = (int16_t)champion;
     }
     char raw[TEXT_SIZE];

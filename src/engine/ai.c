@@ -549,8 +549,8 @@ void ai_set_map(int map)
     if (map == g_party.alt_view_map)
         g_ai_party = (AiPartyView){g_party.alt_view_x, g_party.alt_view_y, g_party.alt_view_map, g_party.alt_view_dir};
     else
-        g_ai_party = (AiPartyView){(int16_t)game.party_x, (int16_t)game.party_y, (int16_t)game.party_map,
-                                   (int16_t)game.party_dir};
+        g_ai_party = (AiPartyView){(int16_t)g_game.party_x, (int16_t)g_game.party_y, (int16_t)g_game.party_map,
+                                   (int16_t)g_game.party_dir};
 }
 
 bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved)
@@ -571,7 +571,7 @@ bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved)
     g_ai.info = creature_group_info(group);
     g_ai.anim = creature_anim_words(group);
     g_ai.map = (uint8_t)map;
-    g_ai.event = (TimelineEvent){.time_map = timeline_time_map(game.game_time, map)};
+    g_ai.event = (TimelineEvent){.time_map = timeline_time_map(g_game.game_time, map)};
     g_ai.event.priority = group_creature(g_ai.group_thing);
     g_ai.event.type = (uint8_t)type;
     g_ai.event.data[0] = (uint8_t)x;
@@ -635,7 +635,7 @@ void ai_prepare(void)
     g_ai.filter_free = 4;
     g_ai.plan_flags = 0;
     g_ai.attr7 = (int16_t)creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_7);
-    int16_t elapsed = (int8_t)((uint8_t)game.game_time - g_ai.active->last_action_time);
+    int16_t elapsed = (int8_t)((uint8_t)g_game.game_time - g_ai.active->last_action_time);
     if (elapsed < 0)
         elapsed = (int16_t)(elapsed + TIME_BYTE_WRAP);
     int16_t n = (int16_t)((NIBBLE_MASK - creature_think_speed(g_ai.info)) * 2);
@@ -865,13 +865,13 @@ static bool test_condition(int condition, int arg, int plan)
             r = !ai_find_marker_by_id(a, (int16_t)thing_word(g_ai.group_thing, GROUP_ITEM_CLASS));
         break;
     case COND_ON_GAME_MAP:
-        r = g_ai.map == game.party_map;
+        r = g_ai.map == g_game.party_map;
         break;
     case COND_MOOD_BIT_CLEAR_AWAY:
-        r = !(mood & (1 << (a & BIT_INDEX_MASK))) && g_ai.map != game.party_map;
+        r = !(mood & (1 << (a & BIT_INDEX_MASK))) && g_ai.map != g_game.party_map;
         break;
     case COND_MOOD_BIT_ON_GAME_MAP:
-        r = mood & (1 << (a & BIT_INDEX_MASK)) && g_ai.map == game.party_map;
+        r = mood & (1 << (a & BIT_INDEX_MASK)) && g_ai.map == g_game.party_map;
         break;
     case COND_AT_COUNTER:
         r = cond_at_counter(x, y, a);
@@ -1503,7 +1503,7 @@ static void wander_at_random(void)
         return;
     }
     if (!r) {
-        ai_turn_toward(game.game_time & DIR_MASK);
+        ai_turn_toward(g_game.game_time & DIR_MASK);
         return;
     }
     int dir = group_dir(g_ai.group_thing);
@@ -2264,19 +2264,19 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
 {
     ActiveGroup *a = g_ai.active;
     const CreatureInfo *info = g_ai.info;
-    game.last_combat_time = game.game_time;
+    g_game.last_combat_time = g_game.game_time;
     bool hit = false;
     int random = info->flags & CREATURE_ATTACKS_RANDOM;
     int8_t list[CHAMPION_MAX];
     int16_t n = 0;
-    for (int c = 0; c < game.champion_count; c++)
+    for (int c = 0; c < g_game.champion_count; c++)
         if (champion(c)->health)
             list[n++] = (int8_t)c;
     if (!n)
         return false;
     int16_t count;
     if (info->flags & CREATURE_ATTACKS_ALL)
-        count = random ? (int16_t)(rand_below((uint16_t)n) + 1) : (int16_t)game.champion_count;
+        count = random ? (int16_t)(rand_below((uint16_t)n) + 1) : (int16_t)g_game.champion_count;
     else
         count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
     if (a->cell == CELL_NEAREST) {
@@ -2285,8 +2285,8 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
             a->cell = champion(c)->cell;
     }
     int cell = a->cell;
-    if (count > (int16_t)game.champion_count)
-        count = (int16_t)game.champion_count;
+    if (count > (int16_t)g_game.champion_count)
+        count = (int16_t)g_game.champion_count;
     while (--count != -1) {
         int c;
         if (random) {
@@ -2478,7 +2478,7 @@ static int act_shoot(void)
     ActiveGroup *a = g_ai.active;
     const CreatureInfo *info = g_ai.info;
     if (a->mode <= ATTACK_MODE_PARTY_RANGED)
-        game.last_combat_time = game.game_time;
+        g_game.last_combat_time = g_game.game_time;
     if (facing() != (int8_t)a->direction && !(info->flags & CREATURE_ATTACKS_ANY_DIR))
         return 1;
     uint16_t p = (uint16_t)((info->attack >> 2) + 1);
@@ -2560,7 +2560,7 @@ static int act_trigger_square(void)
     if (ai_try_door_action(g_ai.active->mode | AI_EXECUTE, ai_group_square(),
                            ai_location(ai_state.dest_x, ai_state.dest_y), facing()) &&
         g_ai.active->action == ACTION_OPERATE_DOOR) {
-        sensor_schedule_square_event(ai_state.dest_x, ai_state.dest_y, 0, 2, game.game_time);
+        sensor_schedule_square_event(ai_state.dest_x, ai_state.dest_y, 0, 2, g_game.game_time);
         return 0;
     }
     return 1;
@@ -2873,7 +2873,7 @@ static int execute_action(void)
     int r = run_act(a->action);
     if (!(int16_t)r) {
         if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_TIMED)
-            a->last_action_time = (uint8_t)game.game_time;
+            a->last_action_time = (uint8_t)g_game.game_time;
     } else {
         g_ai.cache.path_left = 0;
     }
@@ -2957,7 +2957,8 @@ static bool run_next_action(void)
             start_vanish();
         int8_t action = (int8_t)a->action;
         if (action >= ACTION_WAIT_FIRST && action <= ACTION_WAIT_LAST) {
-            g_ai.event.time_map = timeline_time_map((uint32_t)(action - ACTION_WAIT_FIRST) + game.game_time, g_ai.map);
+            g_ai.event.time_map =
+                timeline_time_map((uint32_t)(action - ACTION_WAIT_FIRST) + g_game.game_time, g_ai.map);
             return true;
         }
         r = creature_anim_start(group_creature(g_ai.group_thing), action, anim, &g_ai.anim_step, 0);
@@ -2983,7 +2984,7 @@ static void store_plan_cache(void)
 void ai_update_group(void)
 {
     ActiveGroup *a = g_ai.active;
-    if (game.magic_light[MAGIC_ACTION_EFFECT] && !(g_ai.info->flags & CREATURE_FAST_VANISH) &&
+    if (g_game.magic_light[MAGIC_ACTION_EFFECT] && !(g_ai.info->flags & CREATURE_FAST_VANISH) &&
         a->action != ACTION_VANISH && a->next_action != ACTION_VANISH) {
         g_ai.event.time_map += ACTION_DELAY_EFFECT;
     } else if (!run_next_action()) {

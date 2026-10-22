@@ -342,17 +342,17 @@ static int load_new_game(void)
     char path[SAVE_PATH_SIZE];
     if (!session.use_dungenb || !file_exists(data_path(path, "DUNGENB.DAT")))
         data_path(path, "DUNGEON.DAT");
-    game.champion_count = 0;
-    game.leader_hand = THING_NONE;
+    g_game.champion_count = 0;
+    g_game.leader_hand = THING_NONE;
     int first = !g_weather.dungeon_loaded;
     if (!dungeon_load(path))
         return 0;
     seen_reset();
     uint16_t start = dungeon_party_start();
-    game.party_x = location_x(start);
-    game.party_y = location_y(start);
-    game.party_dir = location_dir(start); /* the party start keeps the direction in the map bits */
-    game.party_map = 0;
+    g_game.party_x = location_x(start);
+    g_game.party_y = location_y(start);
+    g_game.party_dir = location_dir(start); /* the party start keeps the direction in the map bits */
+    g_game.party_map = 0;
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE) +
                   dungeon_thing_count(THING_EXPLOSION));
     weather_load(gdat_current());
@@ -365,15 +365,15 @@ static int load_new_game(void)
 /* Loads the slot file at path into the game; returns 0 on an error. */
 static int load_slot(const char *path)
 {
-    game.champion_count = 0;
-    game.leader_hand = THING_NONE;
+    g_game.champion_count = 0;
+    g_game.leader_hand = THING_NONE;
     int first = !g_weather.dungeon_loaded;
     if (save_load(path, gdat_current()) != SAVE_OK)
         return 0;
     if (first)
         dungeon_read_level_table();
     session.new_game = 0;
-    session.load_time = game.game_time;
+    session.load_time = g_game.game_time;
     session.loaded = 1;
     return 1;
 }
@@ -415,7 +415,7 @@ int session_load(void)
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
     dialog.progress_enabled = 1;
     main_loop.end = 0;
-    move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
+    move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
     return 1;
 }
@@ -428,7 +428,7 @@ static int save_into_slot(int slot)
                    gdat_current()) != SAVE_OK)
         return 0;
     session.new_game = 0;
-    session.save_time = game.game_time;
+    session.save_time = g_game.game_time;
     return 1;
 }
 
@@ -442,8 +442,8 @@ static int save_menu(int *quit)
         if (choice == SAVE_MENU_QUIT || choice == SAVE_MENU_RESTART) {
             if (choice == SAVE_MENU_RESTART)
                 session.restart = 1; /* a cancel below keeps it, as in the original */
-            if (session.load_time + QUIT_SAFE_TICKS < game.game_time &&
-                session.save_time + QUIT_SAFE_TICKS < game.game_time &&
+            if (session.load_time + QUIT_SAFE_TICKS < g_game.game_time &&
+                session.save_time + QUIT_SAFE_TICKS < g_game.game_time &&
                 dialog_run(dialog_draw(DIALOG_NOT_SAVED, MESSAGE_NONE)) == NOT_SAVED_CANCEL)
                 continue;
             session.offer_restore = 0;
@@ -488,8 +488,8 @@ int session_init(void)
     } while (session_load() != 1 && !main_loop.quit);
     if (main_loop.quit)
         return 0;
-    sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
-    sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
+    sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
+    sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
     ui_reset();
     money_init_coin_table();
     play_start_session();
@@ -506,10 +506,10 @@ int session_start_new_game(void)
     sensor_start_timers();
     main_loop.end = 0;
     session.completed = 0;
-    move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
+    move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
-    sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
-    sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
+    sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
+    sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
     ui_reset();
     money_init_coin_table();
     play_start_session();
@@ -527,7 +527,7 @@ int session_start_save(const char *path)
     ui_reset();
     money_init_coin_table();
     ui_fill_zone_screen(ZONE_SCREEN, 0); /* play_start_session runs champ_init_party_state */
-    move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
+    move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
     play_start_session();
     return 1;
@@ -556,9 +556,9 @@ void session_complete(void)
 void session_end(int party_dead)
 {
     if (party_dead && !session.completed) {
-        int portrait = game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
-        sound_request_with_fallback(CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, game.party_x,
-                                    game.party_y, 0, END_SOUND_PRIORITY, SOUND_VOLUME_MAX);
+        int portrait = g_game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
+        sound_request_with_fallback(CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, g_game.party_x,
+                                    g_game.party_y, 0, END_SOUND_PRIORITY, SOUND_VOLUME_MAX);
         play_wait_frames(END_SOUND_VBLANKS);
     }
     dialog.screen_mode = 1;

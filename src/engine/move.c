@@ -157,7 +157,7 @@ uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 /* Each living champion pays stamina by load for a step or a levitated fall: factor * load / max load + 1. */
 static void pay_stamina_by_load(int factor)
 {
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (!c->health)
             continue;
@@ -174,10 +174,10 @@ void dun_set_current_map(int map)
         return;
     g_party.cur_map = (int16_t)map;
     if (!g_party.alt_view_active || map != g_party.alt_view_map) {
-        g_party.square_x = (int16_t)game.party_x;
-        g_party.square_y = (int16_t)game.party_y;
-        g_party.square_map = (int16_t)game.party_map;
-        g_party.ref_dir = (int16_t)game.party_dir;
+        g_party.square_x = (int16_t)g_game.party_x;
+        g_party.square_y = (int16_t)g_game.party_y;
+        g_party.square_map = (int16_t)g_game.party_map;
+        g_party.ref_dir = (int16_t)g_game.party_dir;
     } else {
         g_party.square_x = g_party.alt_view_x;
         g_party.square_y = g_party.alt_view_y;
@@ -188,9 +188,9 @@ void dun_set_current_map(int map)
 
 void dun_set_party_location(int x, int y, int map)
 {
-    game.party_map = (uint16_t)map;
-    game.party_x = (uint16_t)x;
-    game.party_y = (uint16_t)y;
+    g_game.party_map = (uint16_t)map;
+    g_game.party_x = (uint16_t)x;
+    g_game.party_y = (uint16_t)y;
     dun_set_current_map(map);
 }
 
@@ -252,17 +252,17 @@ bool dun_get_linked_teleporter_dest(PassageEnd *end, int x, int y)
 
 void champ_set_party_direction(int dir)
 {
-    if (dir == game.party_dir)
+    if (dir == g_game.party_dir)
         return;
-    int turn = dir - game.party_dir;
+    int turn = dir - g_game.party_dir;
     if (turn < 0)
         turn += DIR_COUNT;
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         c->cell = (uint8_t)dir_turn(c->cell, turn);
         c->dir = (uint8_t)dir_turn(c->dir, turn);
     }
-    game.party_dir = (uint16_t)dir;
+    g_game.party_dir = (uint16_t)dir;
     g_party.ref_dir = (int16_t)dir;
     if (g_party.alt_view_active) {
         g_party.alt_view_dir = (int16_t)dir_turn(g_party.alt_view_dir, turn);
@@ -272,7 +272,7 @@ void champ_set_party_direction(int dir)
 
 int champ_get_move_delay(int champ)
 {
-    if (game.magic_light[MAGIC_HASTE])
+    if (g_game.magic_light[MAGIC_HASTE])
         return 1;
     Champion *c = champion(champ);
     unsigned max = (uint16_t)champ_get_max_load(c), load = (uint16_t)champ_get_load(champ);
@@ -347,7 +347,7 @@ int champ_get_nearest_at(int x, int y, int cell)
         {0, 3, 1, 2},
         {3, 0, 2, 1}
     };
-    if (!game.champion_count)
+    if (!g_game.champion_count)
         return -1;
     if (abs(x - g_party.square_x) + abs(y - g_party.square_y) >= 2)
         return -1;
@@ -478,7 +478,7 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
         uint16_t g = creature_find_group_near_point(&gx, &gy, CELL_ANY);
         if (g == THING_NONE || creature_group_info(g)->flags & CREATURE_NOT_SOLID)
             return STEP_FREE;
-    } else if (!is_side_blocked(*group, game.party_dir)) {
+    } else if (!is_side_blocked(*group, g_game.party_dir)) {
         return STEP_CREATURE;
     }
     return STEP_CREATURE_SIDE;
@@ -487,21 +487,21 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
 /* The party takes the stairs up or down: it leaves the square and arrives on the map above or below. */
 static void take_stairs(int up)
 {
-    move_thing(THING_NONE, game.party_x, game.party_y, -1, 0);
-    int x = game.party_x, y = game.party_y;
-    g_party.new_map = (int16_t)dungeon_location_on_map(game.party_map, up ? -1 : 1, &x, &y);
-    game.party_x = (uint16_t)x;
-    game.party_y = (uint16_t)y;
+    move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
+    int x = g_game.party_x, y = g_game.party_y;
+    g_party.new_map = (int16_t)dungeon_location_on_map(g_game.party_map, up ? -1 : 1, &x, &y);
+    g_game.party_x = (uint16_t)x;
+    g_game.party_y = (uint16_t)y;
     dun_set_current_map(g_party.new_map);
-    champ_set_party_direction(dun_get_stairs_exit_direction(game.party_x, game.party_y));
-    dun_set_current_map(game.party_map);
+    champ_set_party_direction(dun_get_stairs_exit_direction(g_game.party_x, g_game.party_y));
+    dun_set_current_map(g_game.party_map);
 }
 
 /* The champions face the direction of the party again. */
 static void sync_champion_directions(void)
 {
-    for (int i = 0; i < game.champion_count; i++)
-        champion(i)->dir = (uint8_t)game.party_dir;
+    for (int i = 0; i < g_game.champion_count; i++)
+        champion(i)->dir = (uint8_t)g_game.party_dir;
 }
 
 void move_party_turn(int command)
@@ -510,19 +510,19 @@ void move_party_turn(int command)
         return;
     input_command_stop = 1;
     sync_champion_directions();
-    uint8_t square = dun_get_square(game.party_x, game.party_y);
+    uint8_t square = dun_get_square(g_game.party_x, g_game.party_y);
     if (square_type(square) == SQUARE_STAIRS) {
         take_stairs(square & SQUARE_STAIRS_UP);
         return;
     }
     PassageEnd end;
-    if (dun_get_linked_teleporter_dest(&end, game.party_x, game.party_y)) {
+    if (dun_get_linked_teleporter_dest(&end, g_game.party_x, g_game.party_y)) {
         move_party_to(end.x, end.y, end.map, end.target_side);
         return;
     }
-    sensor_leave_square(game.party_x, game.party_y, THING_NONE, true, false);
-    champ_set_party_direction(dir_turn(game.party_dir, command == CMD_TURN_RIGHT ? TURN_RIGHT : TURN_LEFT));
-    sensor_enter_square(game.party_x, game.party_y, THING_NONE, true, false);
+    sensor_leave_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
+    champ_set_party_direction(dir_turn(g_game.party_dir, command == CMD_TURN_RIGHT ? TURN_RIGHT : TURN_LEFT));
+    sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
 }
 
 /* The party steps onto the square ahead from the square of map: seamless passages, stairs, teleporter passages, then
@@ -545,7 +545,7 @@ static void take_free_step(int map, bool on_stairs, PartyStep s)
         move_party_to(end.x, end.y, end.map, end.target_side);
         return;
     }
-    move_thing(THING_NONE, game.party_x, game.party_y, s.x, s.y);
+    move_thing(THING_NONE, g_game.party_x, g_game.party_y, s.x, s.y);
 }
 
 /* The strength of a champion who bumps into a door. */
@@ -571,7 +571,7 @@ static void bash_door(int x, int y, BumpedChampions bumped)
    party stays. */
 static bool push_creature_ahead(const PartyStep *s, uint16_t group)
 {
-    if (!game.champion_count)
+    if (!g_game.champion_count)
         return false;
     bool is_static = creature_group_info(group)->flags & CREATURE_STATIC;
     if (is_static || creature_group_info(group)->push_resistance == PUSH_WALL)
@@ -605,16 +605,16 @@ static bool step_party(int command, uint8_t here, bool on_stairs)
     uint16_t group;
     switch (get_step_result(&s, &group)) {
     case STEP_STAIRS_AHEAD:
-        move_thing(THING_NONE, game.party_x, game.party_y, -1, 0);
-        game.party_x = (uint16_t)s.x;
-        game.party_y = (uint16_t)s.y;
+        move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
+        g_game.party_x = (uint16_t)s.x;
+        g_game.party_y = (uint16_t)s.y;
         here = s.ahead;
         __attribute__((fallthrough));
     case STEP_STAIRS_HERE:
         take_stairs(here & SQUARE_STAIRS_UP);
         return true;
     case STEP_BLOCKED: {
-        if (!game.champion_count)
+        if (!g_game.champion_count)
             return false;
         BumpedChampions bumped = move_party_bump_damage(s.x, s.y, s.dir, s.step);
         if (square_type(s.ahead) == SQUARE_DOOR && (s.ahead & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED)
@@ -639,7 +639,7 @@ bool move_party(int command)
     uint8_t here = dun_get_square(g_party.square_x, g_party.square_y);
     bool on_stairs = square_type(here) == SQUARE_STAIRS;
     int delay = 1;
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health) {
             int d = champ_get_move_delay(i);
             if (d > delay)
@@ -650,12 +650,12 @@ bool move_party(int command)
         (command == CMD_MOVE_FORWARD || (command == CMD_MOVE_BACK && !g_party.alt_view_active && !on_stairs) ||
          g_party.push_pending_group != THING_NONE)) {
         g_party.move_steps = (int16_t)half;
-        g_party.view_x = (int16_t)game.party_x;
-        g_party.view_y = (int16_t)game.party_y;
-        g_party.view_dir = (int16_t)game.party_dir;
+        g_party.view_x = (int16_t)g_game.party_x;
+        g_party.view_y = (int16_t)g_game.party_y;
+        g_party.view_dir = (int16_t)g_game.party_dir;
         g_party.move_command = (uint16_t)command;
         if (command != CMD_MOVE_FORWARD)
-            dun_move_relative(game.party_dir, -1, 0, &g_party.view_x, &g_party.view_y);
+            dun_move_relative(g_game.party_dir, -1, 0, &g_party.view_x, &g_party.view_y);
     } else if (g_party.push_pending_group != THING_NONE) {
         creature_continue_push(command);
         g_party.push_pending_group = THING_NONE;
@@ -671,25 +671,25 @@ bool move_party(int command)
     int add = g_party.move_steps ? 1 : 0;
     if (half > add)
         add = half;
-    game.party_move_cooldown = (uint16_t)(game.party_move_cooldown + add);
-    game.throw_cooldown = 0;
+    g_game.party_move_cooldown = (uint16_t)(g_game.party_move_cooldown + add);
+    g_game.throw_cooldown = 0;
     return true;
 }
 
 void move_party_to(int x, int y, int map, int dir)
 {
-    bool other = map != game.party_map;
+    bool other = map != g_game.party_map;
     if (other)
         dun_set_current_map(map);
     if (x < 0 || x >= dungeon_map_width(g_party.cur_map) || y < 0 || y >= dungeon_map_height(g_party.cur_map)) {
         if (other)
-            dun_set_current_map(game.party_map);
+            dun_set_current_map(g_game.party_map);
         return;
     }
-    int sx = game.party_x, sy = game.party_y;
+    int sx = g_game.party_x, sy = g_game.party_y;
     if (other) {
-        dun_set_current_map(game.party_map);
-        move_thing(THING_NONE, game.party_x, game.party_y, -1, 0);
+        dun_set_current_map(g_game.party_map);
+        move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
         game_enter_map(x, y, map, 1);
         sx = -1;
         sy = 0;
@@ -721,7 +721,7 @@ void move_compute_map_arrival(int x, int y, int map)
     }
     if (found) {
         g_party.alt_view_map = end.map;
-        g_party.alt_view_dir = (int16_t)dir_turn(game.party_dir, turn);
+        g_party.alt_view_dir = (int16_t)dir_turn(g_game.party_dir, turn);
     }
     g_party.cur_map = -1;
     dun_set_current_map(map);
@@ -764,7 +764,7 @@ int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y)
                 }
             }
     }
-    dun_set_current_map(game.party_map);
+    dun_set_current_map(g_game.party_map);
     if (mode == MARKER_CLEAR_ALL)
         return found;
     return mode == MARKER_FIND_SET ? -1 : count;
@@ -804,8 +804,8 @@ static void set_party_position(int x, int y)
 {
     int map = g_party.cur_map;
     g_party.cur_map = -1;
-    game.party_x = (uint16_t)x;
-    game.party_y = (uint16_t)y;
+    g_game.party_x = (uint16_t)x;
+    g_game.party_y = (uint16_t)y;
     dun_set_current_map(map);
 }
 
@@ -832,10 +832,10 @@ static bool transit_teleporter(Transit *t, uint8_t square)
         set_party_position(t->x, t->y);
         if (audible)
             sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL,
-                          game.party_x, game.party_y, -1);
+                          g_game.party_x, g_game.party_y, -1);
         if (t->start_map != t->map)
             t->draw_fall = false; /* the original keeps it only with its debug flag */
-        int base = absolute ? 0 : game.party_dir;
+        int base = absolute ? 0 : g_game.party_dir;
         champ_set_party_direction(dir_turn(base, rotation));
     } else if (t->type == THING_GROUP && t->creature_sound) {
         if (audible) {
@@ -866,15 +866,15 @@ static void transit_party_lands(Transit *t)
         pay_stamina_by_load(LOAD_PER_FALL_FACTOR);
         return;
     }
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (c->health) {
             int base = c->max_health >> 2;
             if (base > FALL_DAMAGE_MAX)
                 base = FALL_DAMAGE_MAX;
             champ_take_damage(i, (int16_t)((rand_2bits() + base) * t->falls), FALL_WOUNDS, ATTACK_TYPE_SELF);
-            sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, game.party_x,
-                                        game.party_y, -1, SOUND_PRIORITY_FALL, SOUND_VOLUME_MAX);
+            sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, g_game.party_x,
+                                        g_game.party_y, -1, SOUND_PRIORITY_FALL, SOUND_VOLUME_MAX);
         }
         t->fell_hurt = true;
     }
@@ -924,7 +924,7 @@ static void transit_pit(Transit *t)
         }
         int steps = g_party.move_steps;
         g_party.move_steps = 0;
-        g_hooks.draw_dungeon(game.party_dir, t->x, t->y);
+        g_hooks.draw_dungeon(g_game.party_dir, t->x, t->y);
         g_party.move_steps = (int16_t)steps;
     }
     if (to_marker) {
@@ -936,7 +936,7 @@ static void transit_pit(Transit *t)
     dun_set_current_map(t->map);
     if (t->thing == THING_NONE) {
         set_party_position(t->x, t->y);
-        if (game.champion_count)
+        if (g_game.champion_count)
             transit_party_lands(t);
         g_party.fell = 0;
         return;
@@ -975,10 +975,10 @@ static void transit_finish(const Transit *t)
                                     SOUND_FALLBACK, t->x, t->y, 1, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
     if (!t->fell_hurt)
         return;
-    int saved_map = g_party.cur_map, px = game.party_x, py = game.party_y, pmap = game.party_map;
+    int saved_map = g_party.cur_map, px = g_game.party_x, py = g_game.party_y, pmap = g_game.party_map;
     g_party.cur_map = -1;
     dun_set_party_location(t->x, t->y, t->map);
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
             sound_request_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_HURT, SOUND_FALLBACK, t->x, t->y, 2,
                                         SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
@@ -1042,7 +1042,7 @@ static bool find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out
 {
     int row = rand_2bits();
     const uint8_t *order = thing == THING_NONE ? free_square_order_party[row] : free_square_order_thing[row];
-    int base = thing == THING_NONE ? game.party_dir : 0;
+    int base = thing == THING_NONE ? g_game.party_dir : 0;
     for (int i = 0; i < DIR_COUNT; i++) {
         int dir = dir_turn(order[i], base);
         int nx = (int16_t)(x + g_dir_dx[dir]), ny = (int16_t)(y + g_dir_dy[dir]);
@@ -1095,7 +1095,7 @@ static int get_step_time(int champ)
 static int get_party_step_time(void)
 {
     int sum = 0;
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         sum += get_step_time(i);
     return sum;
 }
@@ -1108,7 +1108,7 @@ static void arrive_party(const ThingMove *m)
     int dst_y = m->path.dst_y;
     dun_set_current_map(map);
     move_compute_map_arrival(dst_x, dst_y, map);
-    uint16_t g = creature_group_at(g_party.cur_map, game.party_x, game.party_y);
+    uint16_t g = creature_group_at(g_party.cur_map, g_game.party_x, g_game.party_y);
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID)) {
         int16_t nx, ny;
         const CreatureInfo *info = creature_group_info(g);
@@ -1118,7 +1118,7 @@ static void arrive_party(const ThingMove *m)
                 dun_set_party_location(nx, ny, map);
                 g_party.new_map = (int16_t)map;
                 move_thing(THING_NONE, -1, 0, nx, ny);
-                dun_set_party_location(game.party_x, game.party_y, m->start_map);
+                dun_set_party_location(g_game.party_x, g_game.party_y, m->start_map);
                 if (g_party.new_map != m->start_map)
                     return;
                 g_party.new_map = -1;
@@ -1133,12 +1133,12 @@ static void arrive_party(const ThingMove *m)
         }
         if (!displaced) {
             creature_cancel_update(g);
-            if (!move_thing(g, game.party_x, game.party_y, MOVE_RETRY, 0))
-                move_schedule_group_retry(g, game.party_x, game.party_y, map, 0);
+            if (!move_thing(g, g_game.party_x, g_game.party_y, MOVE_RETRY, 0))
+                move_schedule_group_retry(g, g_game.party_x, g_game.party_y, map, 0);
         }
     }
     if (map == m->start_map)
-        sensor_enter_square(game.party_x, game.party_y, THING_NONE, m->same, false);
+        sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, m->same, false);
     else
         g_party.new_map = (int16_t)map;
 }
@@ -1264,7 +1264,7 @@ static bool reach_destination(ThingMove *m)
     m->flying = move_follow_square_transitions(m->thing, m->path, true);
     if (m->thing != THING_NONE) {
         if (item_attr(m->thing, ATTR_LIGHT_SOURCE) &&
-            (m->start_map == game.party_map || g_party.dest_map == game.party_map))
+            (m->start_map == g_game.party_map || g_party.dest_map == g_game.party_map))
             g_party.redraw |= REDRAW_VIEW;
         m->thing = thing_with_cell(m->thing, g_party.dest_cell);
     }
@@ -1282,11 +1282,11 @@ static bool reach_destination(ThingMove *m)
     }
     m->same = m->map == m->start_map && m->path.dst_x == m->path.src_x && m->path.dst_y == m->path.src_y;
     if (m->same) {
-        m->stays = m->thing == THING_NONE ? game.party_dir == m->start_dir
+        m->stays = m->thing == THING_NONE ? g_game.party_dir == m->start_dir
                                           : g_party.dest_cell == m->cell && m->type != THING_PROJECTILE;
     } else if (m->map != m->start_map) {
-        if (m->thing == THING_NONE && game.party_map != m->start_map)
-            dun_set_party_location(game.party_x, game.party_y, m->start_map);
+        if (m->thing == THING_NONE && g_game.party_map != m->start_map)
+            dun_set_party_location(g_game.party_x, g_game.party_y, m->start_map);
         else
             dun_set_current_map(m->start_map);
     }
@@ -1301,7 +1301,7 @@ MoveResult move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y
         .type = -1,
         .path = {src_x, src_y, dst_x, dst_y},
         .start_map = g_party.cur_map,
-        .start_dir = game.party_dir,
+        .start_dir = g_game.party_dir,
         .dest_dir = g_party.dest_dir
     };
     m.map = m.start_map;
@@ -1346,8 +1346,8 @@ static int discard_next_map(int map, int stop, int *alt)
         do {
             if (++map >= count)
                 map = 0;
-        } while (map == game.party_map);
-        return map == stop ? game.party_map : map;
+        } while (map == g_game.party_map);
+        return map == stop ? g_game.party_map : map;
     }
     do {
         if (++map >= count)
@@ -1356,7 +1356,7 @@ static int discard_next_map(int map, int stop, int *alt)
             map = *alt;
             *alt = -1;
         }
-    } while (map == *alt || map == game.party_map);
+    } while (map == *alt || map == g_game.party_map);
     return map;
 }
 
@@ -1415,8 +1415,8 @@ static uint16_t discard_scan_map(int type, int subtype, int map, bool second)
             if (!(dungeon_square(map, x, y) & SQUARE_HAS_THINGS))
                 continue;
             int reserved = DISCARD_ANY_KIND;
-            bool near =
-                map == game.party_map && abs(x - game.party_x) <= DISCARD_NEAR && abs(y - game.party_y) <= DISCARD_NEAR;
+            bool near = map == g_game.party_map && abs(x - g_game.party_x) <= DISCARD_NEAR &&
+                        abs(y - g_game.party_y) <= DISCARD_NEAR;
             DiscardSquare at = {map, x, y, THING_NONE};
             uint16_t t = dungeon_square_first_thing(map, x, y);
             for (;;) {
@@ -1464,7 +1464,7 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
         return THING_NONE;
     int saved = g_party.cur_map, alt = g_party.alt_view_active ? g_party.alt_view_map : -1;
     int map = g_last_discarded_map[type];
-    if (map == game.party_map || map == alt)
+    if (map == g_game.party_map || map == alt)
         map = discard_next_map(map, map, &alt);
     int start = map;
     for (bool second = false;;) {
@@ -1474,7 +1474,7 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
             g_last_discarded_map[type] = (uint8_t)map;
             return t & THING_ID_MASK;
         }
-        if (map != game.party_map && dungeon_map_count() > 1) {
+        if (map != g_game.party_map && dungeon_map_count() > 1) {
             map = discard_next_map(map, start, &alt);
         } else if (second) {
             g_last_discarded_map[type] = (uint8_t)map;

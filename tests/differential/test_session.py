@@ -161,7 +161,7 @@ def test_timer_sensors_start_like_original(lib, new_game):
         emu.write(base + 8 * i + 4, struct.pack("<H", flags.value))
         timers += 1
     assert timers == 18
-    ctypes.c_uint32.in_dll(lib, "game").value = 1234  # Game.game_time is the first field
+    ctypes.c_uint32.in_dll(lib, "g_game").value = 1234  # Game.game_time is the first field
     emu.write_u32(G_GAME_TIME, 1234)
     lib.sensor_start_timers()
     emu.call(SENSOR_START_TIMERS)

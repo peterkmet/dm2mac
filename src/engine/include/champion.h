@@ -138,7 +138,7 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define ATTACK_TYPE_SELF_2    8
 /* The attack type bit of an attack that a parry can block. */
 #define ATTACK_BLOCKABLE      0x8000
-/* game.throw_cooldown after a throw or a launch. */
+/* g_game.throw_cooldown after a throw or a launch. */
 #define THROW_COOLDOWN        4
 /* Champion sounds (GDAT category CAT_CHAMPION, index portrait): the scream of a fall or of the end of the game, and
    a push, a bump, or a closing door that hurts. A push that fails plays SOUND_HURT. */
@@ -164,7 +164,7 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 /* The cell bit of champ_drag_click that cancels the drag. */
 #define DRAG_CANCEL           0x8000
 
-/* Bytes of game.magic_light: the party spells, and the maximum of the haste byte. */
+/* Bytes of g_game.magic_light: the party spells, and the maximum of the haste byte. */
 #define MAGIC_INVISIBILITY  2
 #define MAGIC_ACTION_EFFECT 3
 #define MAGIC_HASTE         4
@@ -188,7 +188,7 @@ extern uint8_t g_champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
 static inline Champion *champion(int index)
 {
-    return (Champion *)game.champions[index];
+    return (Champion *)g_game.champions[index];
 }
 /* Adds delta to the move speed bonus, the low byte of move_speed; the high byte stays. */
 static inline void champ_add_move_speed(Champion *c, int delta)

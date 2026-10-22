@@ -554,7 +554,7 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     lib.draw_init(gdat)
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     champions = ctypes.addressof(game) + CHAMPIONS_OFFSET
     if dead:
         ctypes.c_int16.from_address(champions + CH["health"]).value = 0

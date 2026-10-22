@@ -233,7 +233,7 @@ void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *face_colors)
 {
     const Champion *c = champion(champ);
     int frame =
-        dir_relative(c->dir, game.party_dir) + (game.magic_light[MAGIC_INVISIBILITY] ? FACE_INVISIBLE_FRAMES : 0);
+        dir_relative(c->dir, g_game.party_dir) + (g_game.magic_light[MAGIC_INVISIBILITY] ? FACE_INVISIBLE_FRAMES : 0);
     const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_FACES, champ);
     if (colors)
         memcpy(face_colors, colors, FACE_ICON_COLORS);
@@ -248,7 +248,7 @@ void ui_render_hand_icon(void)
     uint8_t identity[HAND_ICON_COLORS]; /* the icon keeps its color numbers */
     for (int i = 0; i < HAND_ICON_COLORS; i++)
         identity[i] = (uint8_t)i;
-    uint16_t t = game.leader_hand;
+    uint16_t t = g_game.leader_hand;
     int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
     const Bitmap *image = draw_gdat_image(category, index, entry);
     const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
@@ -597,7 +597,7 @@ static void draw_champion_portrait(int champ)
 {
     offscreen_draw_gdat_image(&status_box, CAT_CHAMPION, champion(champ)->portrait, 0, ZONE_STATUS_PORTRAIT + champ,
                               GFX_OPAQUE);
-    if (game.magic_light[MAGIC_INVISIBILITY]) {
+    if (g_game.magic_light[MAGIC_INVISIBILITY]) {
         int16_t r[RECT_SIZE];
         offscreen_fill_rect_dithered(&status_box, zone_get_rect(ZONE_STATUS_PORTRAIT + champ, r), UI_DARKEST_GRAY);
     }
@@ -1120,7 +1120,7 @@ static void draw_skills_and_statistics(void)
 static uint16_t panel_object(const Champion *c)
 {
     if (ui.eye)
-        return game.leader_hand;
+        return g_game.leader_hand;
     if (ui.mouth)
         return THING_NONE;
     return c->slots[SLOT_ACTION_HAND];
@@ -1246,7 +1246,7 @@ static int draw_inventory_panel(const Champion *c, uint16_t flags)
 static void draw_champion_name(int champ, ChampionRedraw *d)
 {
     const Champion *c = champion(champ);
-    int color = ui_colors[champ == game.leader && !ui.candidate ? UI_GOLD : UI_WHITE];
+    int color = ui_colors[champ == g_game.leader && !ui.candidate ? UI_GOLD : UI_WHITE];
     if (!d->inv) {
         status_box_begin(champ, 0);
         d->box_drawn = 1;
@@ -1301,7 +1301,7 @@ void ui_draw_champion_state(int champ)
     if (d.inv) {
         if (ui.screen_needs_refresh)
             d.flags |= REDRAW_ALL_INVENTORY;
-        if (!game.sound_volume && !game.music_volume)
+        if (!g_game.sound_volume && !g_game.music_volume)
             ui.buttons |= BUTTON_SOUND;
         else
             ui.buttons &= ~BUTTON_SOUND;
@@ -1334,13 +1334,13 @@ void ui_draw_champion_state(int champ)
 
 void ui_draw_all_champion_states(int tick)
 {
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         if (i + 1 != ui.inventory)
             ui_draw_champion_state(i);
     if (ui.inventory) {
         Champion *c = champion(ui.inventory - 1);
         if (c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST)
-            c->redraw |= !ui.eye || game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
+            c->redraw |= !ui.eye || g_game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
         ui_draw_champion_state(ui.inventory - 1);
     }
     area_update(tick);

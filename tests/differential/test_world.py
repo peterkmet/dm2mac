@@ -50,7 +50,7 @@ def world(lib, gdat, start, tmp_path):
 def set_weather(sc, **values):
     """Writes weather globals (names of dm2test.scenario.WEATHER) into both."""
     lib, emu = sc.lib, sc.emu
-    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = WorldGame.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
     for name, value in values.items():
         if name == "light_level":
             ctypes.c_int.in_dll(lib, "g_view_light_level").value = value
@@ -197,7 +197,7 @@ def test_party_light_matches_original(world, lib):
     torches = [t for t in thing_records(lib, range(C.THING_WEAPON, C.THING_MISC + 1)) if lib.item_attr(t, 0) & 0x10]
     others = thing_records(lib, (C.THING_WEAPON, C.THING_ARMOUR, C.THING_MISC))[:200]
     assert len(torches) > 5
-    game = Game.in_dll(lib, "game")
+    game = Game.in_dll(lib, "g_game")
     magic = (ctypes.c_uint8 * 2).from_address(ctypes.addressof(game) + GAME_MAGIC)
     levels = set()
     first = bytes((ctypes.c_uint8 * CHAMPION_SIZE).from_address(ctypes.addressof(game) + GAME_CHAMPIONS))

@@ -151,7 +151,7 @@ static int level_icon_set(void)
 /* The icons of a wall square: the wall and the ornaments of its 4 faces. */
 static void draw_wall(const ViewSquare *s, const Strip *base, int x, int y, int flags, int fake_seen, int other_map)
 {
-    if (flags & MAP_OPTION_DETAILS && fake_seen && game.game_time & 2) {
+    if (flags & MAP_OPTION_DETAILS && fake_seen && g_game.game_time & 2) {
         draw_strip(base, ICON_FAKE_WALL_BLINK, x, y, 0);
         return;
     }
@@ -188,7 +188,7 @@ static void draw_floor(const ViewSquare *s, const Strip *base, int x, int y, int
         return;
     Strip t = map_icon_strip(CAT_TELEPORTER, 0);
     if (t.count)
-        draw_strip(&t, (int)(game.game_time % (uint32_t)t.count), x, y, 0);
+        draw_strip(&t, (int)(g_game.game_time % (uint32_t)t.count), x, y, 0);
 }
 
 /* The icon of the creature group, and the items that a static creature holds on its square. */
@@ -197,19 +197,19 @@ static void draw_group(uint16_t group, uint16_t map_thing, int dir, int x, int y
     uint16_t cflags = creature_group_info(group)->flags;
     if (flags & MAP_MINION) {
         Strip m = map_item_icons(map_thing);
-        draw_strip(&m, ICON_MINION_FIRST + (game.game_time & 1), x, y, 0);
+        draw_strip(&m, ICON_MINION_FIRST + (g_game.game_time & 1), x, y, 0);
     } else {
         Strip c = map_icon_strip(item_gdat_category(group), item_gdat_index(group));
         if (c.count) {
             int frame = 0;
             /* fix: a strip of 1 icon divides by zero in the original */
             if (!(cflags & CREATURE_STATIC) && c.count / 2)
-                frame = (int)(game.game_time % (uint32_t)(c.count / 2)) * 2;
+                frame = (int)(g_game.game_time % (uint32_t)(c.count / 2)) * 2;
             int side = dir_relative(dir, group_dir(group));
             draw_strip(&c, frame + (side & 1), x, y, mirror_two_sides[side]);
         } else if (!(cflags & CREATURE_STATIC) && !(cflags & POSSESSIONS_FLOOR_CLICKABLE)) {
             Strip m = map_item_icons(map_thing);
-            draw_strip(&m, game.game_time & 1, x, y, 0);
+            draw_strip(&m, g_game.game_time & 1, x, y, 0);
         }
     }
     if (!(cflags & CREATURE_STATIC) || !(flags & MAP_OPTION_ITEMS))
@@ -311,7 +311,7 @@ static void draw_things(const ViewSquare *s, uint16_t map_thing, int dir, int x,
             continue;
         Strip e = map_icon_strip(item_gdat_category(t), item_gdat_index(t));
         if (e.count)
-            draw_strip(&e, (game.game_time & 1) + 1, x, y, rand_2bits());
+            draw_strip(&e, (g_game.game_time & 1) + 1, x, y, rand_2bits());
     }
 }
 
@@ -327,11 +327,11 @@ static void draw_party_frame(int x, int y)
 /* The icon of each living champion at its cell of the party square at (x, y), for a map that looks to dir. */
 static void draw_party_icons(const Strip *p, int x, int y, int dir)
 {
-    for (int i = 0; i < game.champion_count; i++) {
+    for (int i = 0; i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
         if (!c->health)
             continue;
-        int icon = game.magic_light[MAGIC_INVISIBILITY] ? ICON_PARTY_INVISIBLE : i + ICON_PARTY_FIRST;
+        int icon = g_game.magic_light[MAGIC_INVISIBILITY] ? ICON_PARTY_INVISIBLE : i + ICON_PARTY_FIRST;
         draw_strip(p, icon, x, y, mirror_one_side[dir_relative(c->cell, dir)]);
     }
 }
@@ -378,7 +378,7 @@ static bool draw_square_base(const ViewSquare *s, const Strip *base, int sx, int
     case ASPECT_PIT: {
         int icon = ICON_PIT;
         if (s->side[SIDE_PIT_UP])
-            icon = flags & MAP_OPTION_DETAILS && game.game_time & 1 ? ICON_PIT_BLINK : ICON_PIT_VARIANT;
+            icon = flags & MAP_OPTION_DETAILS && g_game.game_time & 1 ? ICON_PIT_BLINK : ICON_PIT_VARIANT;
         draw_strip(base, icon, x, y, 0);
         break;
     }
@@ -662,7 +662,7 @@ void mmap_draw(uint16_t thing)
         mmap_draw_option_buttons(0);
         action.flags |= MAP_PANEL_DRAWN;
     }
-    int x = game.party_x, y = game.party_y, map = game.party_map, x_offset = 0, y_offset = 0;
+    int x = g_game.party_x, y = g_game.party_y, map = g_game.party_map, x_offset = 0, y_offset = 0;
     if (kind != MAP_KIND_PLAIN && kind != MAP_KIND_NO_OPTIONS) {
         if (location_map(thing_word(thing, MINION_MAP_LOCATION)) != MAP_LOCATION_NONE)
             action.flags |= MAP_MARKER;
@@ -675,7 +675,7 @@ void mmap_draw(uint16_t thing)
                 x = location_x(w);
                 y = location_y(w);
                 map = location_map(w);
-                int dir = game.party_dir;
+                int dir = g_game.party_dir;
                 int cell = aspect_creature_cell(group, dir_turn(creature_side_dir[group_dir(group)], dir));
                 int col = (int16_t)cell % VIEW_CELL_ROW, row = (int16_t)cell / VIEW_CELL_ROW;
                 if (col > VIEW_CELL_ROW / 2) {
@@ -696,7 +696,7 @@ void mmap_draw(uint16_t thing)
             map = location_map(w);
         }
     }
-    ui_map_draw_grid(thing, (int16_t)x, (int16_t)y, map, game.party_dir, (int16_t)x_offset, (int16_t)y_offset,
+    ui_map_draw_grid(thing, (int16_t)x, (int16_t)y, map, g_game.party_dir, (int16_t)x_offset, (int16_t)y_offset,
                      action.flags);
     if (action.flags & MAP_DIMMED || !(action.flags & MAP_POWERED)) {
         int16_t r[RECT_SIZE];

@@ -209,7 +209,7 @@ void champ_add_action_delay(int champ, int ticks, int hand)
         count = ACTION_DELAY_COUNT;
         hand = 0;
     }
-    if (game.magic_light[MAGIC_HASTE])
+    if (g_game.magic_light[MAGIC_HASTE])
         delay = (uint16_t)(delay >> HASTE_DELAY_SHIFT);
     delay = (uint16_t)(delay + DELAY_BASE);
     for (; count; count--, hand++) {
@@ -330,7 +330,7 @@ void champ_reload_hand(int champ, int hand)
 int champ_get_party_level(void)
 {
     uint32_t sum = 0;
-    for (int i = 0; i < game.champion_count; i++)
+    for (int i = 0; i < g_game.champion_count; i++)
         for (int s = 0; s < SKILL_BASE_COUNT; s++)
             sum += champion(i)->experience[s];
     int level = 1;
@@ -412,7 +412,7 @@ static void raise_level(int champ, int base, uint16_t level)
 void champ_add_experience(int champ, int skill, uint32_t amount)
 {
     if (skill >= SKILL_BASE_COUNT && skill <= SKILL_LAST_FIGHT &&
-        game.game_time - FIGHT_TIME_LONG > game.last_combat_time)
+        g_game.game_time - FIGHT_TIME_LONG > g_game.last_combat_time)
         amount >>= 1;
     if (!amount)
         return;
@@ -422,7 +422,7 @@ void champ_add_experience(int champ, int skill, uint32_t amount)
     Champion *c = champion(champ);
     int base = champ_base_skill(skill);
     uint16_t old = (uint16_t)champ_get_skill_level(champ, base, 0);
-    if (skill >= SKILL_BASE_COUNT && (int32_t)(game.game_time - FIGHT_TIME_SHORT) < (int32_t)game.last_combat_time)
+    if (skill >= SKILL_BASE_COUNT && (int32_t)(g_game.game_time - FIGHT_TIME_SHORT) < (int32_t)g_game.last_combat_time)
         amount *= 2;
     c->experience[skill] += amount;
     if (skill >= SKILL_BASE_COUNT)
@@ -484,7 +484,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t group, uint16_t attac
     int x = a->fx;
     int y = a->fy;
     Champion *c = a->c;
-    if ((uint16_t)champ >= game.champion_count || !c->health)
+    if ((uint16_t)champ >= g_game.champion_count || !c->health)
         return 0;
     int difficulty = dungeon_map_difficulty(g_party.cur_map) * 2;
     const CreatureInfo *info = creature_group_info(group);
@@ -573,14 +573,14 @@ static void summon_minions(const ActionRun *a, int command)
     static const uint8_t summoned[] = {MINION_SCOUT, MINION_CARRIER, MINION_ARMY};
     CreatureSummon summon = {.creature_type = summoned[command - COMMAND_SUMMON_FIRST],
                              .level = (uint16_t)((int16_t)a->power >> SUMMON_POWER_SHIFT),
-                             .dir = dir_opposite(game.party_dir),
-                             .x = game.party_x,
-                             .y = game.party_y,
-                             .map = game.party_map,
+                             .dir = dir_opposite(g_game.party_dir),
+                             .x = g_game.party_x,
+                             .y = g_game.party_y,
+                             .map = g_game.party_map,
                              .link = a->item,
-                             .search_dir = (int8_t)game.party_dir};
+                             .search_dir = (int8_t)g_game.party_dir};
     if (creature_summon_group(summon) == THING_NONE)
-        explosion_create(EXPLOSION_SUMMON_FAIL, EXPLOSION_SUMMON_POWER, game.party_x, game.party_y, CENTER_CELL);
+        explosion_create(EXPLOSION_SUMMON_FAIL, EXPLOSION_SUMMON_POWER, g_game.party_x, g_game.party_y, CENTER_CELL);
 }
 
 /* A new guard, fetch, or attack minion of the minion map: at the party, a fetch minion at its location; true when it
@@ -589,15 +589,15 @@ static bool send_minion(ActionRun *a, int command)
 {
     uint16_t map_item = a->item;
     int type = MINION_ATTACK;
-    int x = game.party_x;
-    int y = game.party_y;
-    int map = game.party_map;
-    int dir = dir_opposite(game.party_dir);
+    int x = g_game.party_x;
+    int y = g_game.party_y;
+    int map = g_game.party_map;
+    int dir = dir_opposite(g_game.party_dir);
     int search = (int8_t)a->c->dir;
     if (command == COMMAND_MINION_FETCH) {
         uint16_t target = thing_word(map_item, MINION_MAP_LOCATION);
         type = MINION_FETCH;
-        dir = game.party_dir;
+        dir = g_game.party_dir;
         x = location_x(target);
         y = location_y(target);
         map = location_map(target);
@@ -634,7 +634,7 @@ static bool run_minion_command(ActionRun *a, int command)
     uint16_t group = map_item != THING_NONE ? thing_word(map_item, MINION_MAP_GROUP) : THING_NONE;
     switch (command) {
     case COMMAND_MINION_MAP_SET:
-        if (minion_map_set_location(map_item, game.party_x, game.party_y, game.party_map))
+        if (minion_map_set_location(map_item, g_game.party_x, g_game.party_y, g_game.party_map))
             return true;
         a->experience = 0;
         a->delay = 1;
@@ -673,10 +673,10 @@ static void show_failure(int result, int counter)
 static void run_invisibility(int16_t power)
 {
     power = (int16_t)max16(POWER_MIN, power);
-    if (!game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory)
+    if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && ui.inventory)
         champion(ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
     /* fix: the original leaves the priority and the data bytes uninitialized */
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + power, game.party_map),
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + power, g_game.party_map),
                        .type = EVENT_INVISIBILITY};
     timeline_add_event(&e);
 }
@@ -737,15 +737,15 @@ static bool run_melee(ActionRun *a)
 /* The party falls into the pit in front, when no solid creature stands over it; else the action takes no time. */
 static void run_levitate_down(ActionRun *a)
 {
-    int px = game.party_x + g_dir_dx[game.party_dir];
-    int py = game.party_y + g_dir_dy[game.party_dir];
+    int px = g_game.party_x + g_dir_dx[g_game.party_dir];
+    int py = g_game.party_y + g_dir_dy[g_game.party_dir];
     bool open = true;
     uint16_t g = creature_group_at(g_party.cur_map, px, py);
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID))
         open = false;
     if (square_type(dun_get_square(px, py)) == SQUARE_PIT && open) {
         g_party.fell = 1;
-        move_thing(THING_NONE, game.party_x, game.party_y, px, py);
+        move_thing(THING_NONE, g_game.party_x, g_game.party_y, px, py);
         g_party.fell = 0;
     } else {
         a->delay = 0;
@@ -840,19 +840,20 @@ static void run_party_magic(ActionRun *a, int command)
         magic_add_light(command, a->power);
         break;
     case COMMAND_EXPLOSION:
-        explosion_create(EXPLOSION_COMMAND, (uint16_t)max16(EXPLOSION_POWER_MIN, a->power), game.party_x, game.party_y,
-                         CENTER_CELL);
+        explosion_create(EXPLOSION_COMMAND, (uint16_t)max16(EXPLOSION_POWER_MIN, a->power), g_game.party_x,
+                         g_game.party_y, CENTER_CELL);
         break;
     case COMMAND_HASTE:
         a->power = (int16_t)max16(POWER_MIN, a->power);
-        game.magic_light[MAGIC_HASTE] = (uint8_t)min16(HASTE_MAX, (int16_t)(game.magic_light[MAGIC_HASTE] + a->power));
+        g_game.magic_light[MAGIC_HASTE] =
+            (uint8_t)min16(HASTE_MAX, (int16_t)(g_game.magic_light[MAGIC_HASTE] + a->power));
         break;
     case COMMAND_LEVITATE_DOWN:
         run_levitate_down(a);
         break;
     case COMMAND_ACTION_EFFECT:
-        game.magic_light[MAGIC_ACTION_EFFECT] =
-            (uint8_t)min16(ACTION_EFFECT_MAX, game.magic_light[MAGIC_ACTION_EFFECT] + a->power);
+        g_game.magic_light[MAGIC_ACTION_EFFECT] =
+            (uint8_t)min16(ACTION_EFFECT_MAX, g_game.magic_light[MAGIC_ACTION_EFFECT] + a->power);
         break;
     case COMMAND_AURA_FIRST:
     case COMMAND_AURA_2:
@@ -896,7 +897,8 @@ static bool run_command(ActionRun *a, int command)
         run_heal(a);
         return true;
     case COMMAND_THROW: {
-        bool side = a->c->cell == dir_turn(game.party_dir, TURN_RIGHT) || a->c->cell == dir_opposite(game.party_dir);
+        bool side =
+            a->c->cell == dir_turn(g_game.party_dir, TURN_RIGHT) || a->c->cell == dir_opposite(g_game.party_dir);
         return champ_throw_object(a->champ, a->hand, side);
     }
     case COMMAND_MINION_MAP_SET:
@@ -931,8 +933,8 @@ int champ_perform_action(int champ, int index)
     uint8_t sound = (uint8_t)current_field(FIELD_SOUND);
     c->last_command[hand] = (uint8_t)command;
     ActionRun a = {.champ = champ, .hand = hand, .repeated = repeated, .c = c, .item = c->slots[hand]};
-    a.fx = (int16_t)(game.party_x + g_dir_dx[c->dir]);
-    a.fy = (int16_t)(game.party_y + g_dir_dy[c->dir]);
+    a.fx = (int16_t)(g_game.party_x + g_dir_dx[c->dir]);
+    a.fy = (int16_t)(g_game.party_y + g_dir_dy[c->dir]);
     champ_action_target = creature_group_at(g_party.cur_map, a.fx, a.fy);
     a.delay = (uint16_t)current_field(FIELD_DELAY);
     a.skill = (uint16_t)current_field(FIELD_SKILL);
@@ -944,8 +946,8 @@ int champ_perform_action(int champ, int index)
     a.front = dun_get_square(a.fx, a.fy);
     bool done = run_command(&a, command);
     if (!a.silent)
-        sound_request_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, game.party_x, game.party_y,
-                                    0, SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD);
+        sound_request_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, g_game.party_x,
+                                    g_game.party_y, 0, SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD);
     if (!c->health || repeated)
         return done;
     if (a.delay)
@@ -999,7 +1001,7 @@ bool champ_execute_selected_action(int index)
 void champ_process_repeated_actions(void)
 {
     int16_t saved = -1;
-    for (int champ = 0; champ < game.champion_count; champ++)
+    for (int champ = 0; champ < g_game.champion_count; champ++)
         for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
             ActionRepeat *r = &g_action_repeats[champ][hand];
             if (!r->left)
@@ -1044,7 +1046,7 @@ bool champ_throw_object(int champ, int hand, int side)
     uint16_t saved = THING_NONE;
     uint16_t thing = THING_NONE;
     if ((int16_t)hand < 0) {
-        if (game.leader_hand == THING_NONE)
+        if (g_game.leader_hand == THING_NONE)
             return false;
         /* the strength reads the object in the action hand */
         saved = c->slots[SLOT_ACTION_HAND];
@@ -1082,21 +1084,21 @@ bool champ_throw_object(int champ, int hand, int side)
     if (!step)
         step = max16(STEP_MIN, (int16_t)(STEP_BASE - level));
     projectile_create(&(ProjectileLaunch){.payload = thing,
-                                          .x = game.party_x,
-                                          .y = game.party_y,
-                                          .cell = (int16_t)dir_turn(game.party_dir, side),
-                                          .dir = game.party_dir,
+                                          .x = g_game.party_x,
+                                          .y = g_game.party_y,
+                                          .cell = (int16_t)dir_turn(g_game.party_dir, side),
+                                          .dir = g_game.party_dir,
                                           .energy = (uint8_t)kinetic,
                                           .hit_chance = (uint8_t)attack,
                                           .step = (uint8_t)step});
-    game.throw_cooldown = THROW_COOLDOWN;
-    game.throw_dir = game.party_dir;
+    g_game.throw_cooldown = THROW_COOLDOWN;
+    g_game.throw_dir = g_game.party_dir;
     return true;
 }
 
 bool champ_throw_leader_hand_object(int side)
 {
-    if ((int16_t)game.leader == -1)
+    if ((int16_t)g_game.leader == -1)
         return false;
-    return champ_throw_object((int16_t)game.leader, -1, side);
+    return champ_throw_object((int16_t)g_game.leader, -1, side);
 }

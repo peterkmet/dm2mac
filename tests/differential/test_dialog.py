@@ -116,7 +116,7 @@ def test_volume_dialog_matches_original(ui, original):
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
     try:
         from dm2test.scenario import WorldGame
-        game = WorldGame.in_dll(lib, "game")
+        game = WorldGame.in_dll(lib, "g_game")
         for sound, music in ((7, 7), (0, 3), (5, 0)):
             set_screen_mode(lib, emu, 1)
             game.sound_volume, game.music_volume = sound, music

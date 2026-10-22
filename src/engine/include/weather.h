@@ -44,8 +44,8 @@ extern int16_t g_light_source_sum, g_explosion_light_sum;
 #define RAIN_MEDIUM 64
 #define RAIN_LIGHT  16
 
-/* The sky darkness (game.sky_darkness) from which the rain shows light, medium, heavy; the cloud cover
-   (game.cloud_cover) from which the clouds show light, medium, heavy. */
+/* The sky darkness (g_game.sky_darkness) from which the rain shows light, medium, heavy; the cloud cover
+   (g_game.cloud_cover) from which the clouds show light, medium, heavy. */
 #define DARKNESS_RAIN   16
 #define DARKNESS_MEDIUM 64
 #define DARKNESS_HEAVY  128
