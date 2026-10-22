@@ -161,8 +161,6 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define SLOT_BODY_FIRST       2
 #define SLOT_BODY_LAST        5
 #define SLOT_BODY_EXTRA       10
-/* The cell bit of champ_drag_click that cancels the drag. */
-#define DRAG_CANCEL           0x8000
 
 /* Bytes of g_game.magic_light: the party spells, and the maximum of the haste byte. */
 #define MAGIC_INVISIBILITY  2
@@ -250,8 +248,8 @@ int champ_damage_party(int damage, int wound_mask, int attack_type);
 void champ_poison(int champ, int amount);
 /* Takes amount away from the poison events of champ. */
 void champ_cure_poison(int champ, int amount);
-/* A click on the face of a champion in cell (bit 15: cancel the drag): the first click takes the face, the second
-   swaps it with the champion of the second cell. */
+/* A click on the face of a champion in cell: the first click takes the face, the second swaps it with the champion
+   of the second cell. */
 void champ_drag_click(int16_t cell);
 /* Cancels the drag of a champion face. */
 void champ_drag_cancel(void);

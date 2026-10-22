@@ -9,10 +9,10 @@ from unicorn.x86_const import UC_X86_REG_EIP
 
 from dm2test import constants as C
 from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixtures)
-    CHAMP_DRAW_ALL_STATES, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME, G_IOP_BUFFER, G_LEADER_HAND, G_MOUTH,
-    G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W, TEXT_FORMAT, TEXT_MEASURE,
-    TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, TEXT_WRAP_LINE, VGA, VIEW_W, ZONE_GET_RECT, ActionArea, UiState, c_screen,
-    c_view, champion_bytes, diff, draw_game_screen, gdat, open_hand, original, port, set_action, set_leader_hand, set_magic,
+    CHAMP_DRAW_ALL_STATES, CHAMPION_SIZE, GAME_CHAMPIONS, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME,
+    G_IOP_BUFFER, G_LEADER_HAND, G_MOUTH, G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT,
+    SCREEN_W, TEXT_FORMAT, TEXT_MEASURE, TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, TEXT_WRAP_LINE, VGA, VIEW_W,
+    ZONE_GET_RECT, ActionArea, UiState, c_screen, c_view, champion_bytes, champion_records, diff, draw_game_screen, gdat, open_hand, original, port, set_action, set_leader_hand, set_magic,
     sync_champions, things_of, update_action_area,
 )
 from dm2test.save import Game
@@ -227,6 +227,28 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
 
 CH_RUNE_COUNT, CH_RUNES, CH_ACTION_DELAY, CH_WOUNDS, CH_HEALTH, CH_SLOTS, CH_AURA = 0x1E, 0x22, 0x2A, 0x34, 0x36, 0xC3, 0x102
 CH_DIR, CH_CELL, CH_POISONED, CH_FOOD, CH_DAMAGE_EVENT, CH_REDRAW = 0x1C, 0x1D, 0x1F, 0x44, 0x2E, 0x32
+
+
+def test_drag_cancel_of_a_dead_champion_changes_nothing(port):
+    # Regression: the dragged champion in relative cell 1-3 dies (kill_champion cancels the drag). The cancel ends
+    # the drag and writes no champion record (a champion -1 write went into g_game).
+    lib = port
+    game = Game.in_dll(lib, "g_game")
+    drag = ctypes.c_int.in_dll(lib, "g_input_drag_state")
+    size = GAME_CHAMPIONS + 4 * CHAMPION_SIZE
+    try:
+        for cell in range(1, C.DIR_COUNT):
+            champion_bytes(lib, 0, CH_CELL, [(cell + game.party_dir) % C.DIR_COUNT])
+            champion_bytes(lib, 0, CH_HEALTH, [0, 0])
+            before = ctypes.string_at(ctypes.addressof(game), size)
+            drag.value = cell + 1
+            lib.champ_drag_cancel()
+            assert drag.value == 0, cell
+            assert ctypes.string_at(ctypes.addressof(game), size) == before, cell
+            records = champion_records(lib)
+            assert all(records[c * CHAMPION_SIZE + CH_CELL] < C.DIR_COUNT for c in range(game.champion_count)), cell
+    finally:
+        drag.value = 0
 
 
 def set_sleeping(lib, original, value):

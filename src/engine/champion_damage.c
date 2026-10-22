@@ -427,11 +427,9 @@ static void drop_all_objects(int champ)
     }
 }
 
-void champ_drag_click(int16_t cell)
+/* A click on the face in relative cell: takes the face, or drops the dragged face there (finish false: a cancel). */
+static void drag_click(int16_t cell, bool finish)
 {
-    bool finish = !(cell & DRAG_CANCEL);
-    if (!finish)
-        cell %= DIR_COUNT;
     int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, g_game.party_dir));
     if (!g_input_drag_state) {
         if (target < 0)
@@ -452,10 +450,15 @@ void champ_drag_click(int16_t cell)
     champion(dragged)->cell = (uint8_t)dir_turn(cell, g_game.party_dir);
 }
 
+void champ_drag_click(int16_t cell)
+{
+    drag_click(cell, true);
+}
+
 void champ_drag_cancel(void)
 {
     if (g_input_drag_state)
-        champ_drag_click((g_input_drag_state - 1) | DRAG_CANCEL);
+        drag_click((int16_t)(g_input_drag_state - 1), false);
 }
 
 /* Kills champ: it drops its items and its bones. */
