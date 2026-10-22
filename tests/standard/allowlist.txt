@@ -251,8 +251,10 @@ long ui/minion_map.c:mmap_draw open: module cleanup
 long ui/session.c:save_choose_save_slot open: module cleanup
 long ui/session.c:session_edit_champion_name open: module cleanup
 long ui/view.c:show_explosions open: module cleanup
+long ui/view.c:show_far_squares open: module cleanup
 long ui/view.c:show_floor_ornament open: module cleanup
 long ui/view.c:show_object open: module cleanup
+long ui/view.c:show_shop_display open: module cleanup
 long ui/view.c:show_wall_ornament open: module cleanup
 long ui/view.c:show_wall_text open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
@@ -348,13 +350,7 @@ params ui/view.c:compose_door open: module cleanup
 params ui/view.c:load_square_things open: module cleanup
 params ui/view.c:missile_picture open: module cleanup
 params ui/view.c:pick_side_picture open: module cleanup
-params ui/view.c:render_offscreen open: module cleanup
-params ui/view.c:setup_picture open: module cleanup
-params ui/view.c:show_map_picture open: module cleanup
 params ui/view.c:show_object open: module cleanup
-params ui/view.c:show_shop_display open: module cleanup
-params ui/view.c:show_shop_price open: module cleanup
-params ui/view.c:show_wall_text open: module cleanup
 params ui/view.c:view_hit_test_object open: module cleanup
 params ui/zone.c:clip_placed open: module cleanup
 params ui/zone.c:place_relative open: module cleanup
