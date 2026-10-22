@@ -10,7 +10,9 @@
 #include <stdio.h>
 
 /* The rows of the dungeon view and the squares of each row (the middle one and 3 to each side). */
-enum { VIEW_DEPTHS = 5, VIEW_HALF_WIDTH = 3, VIEW_WIDTH = 2 * VIEW_HALF_WIDTH + 1 };
+#define VIEW_DEPTHS      5
+#define VIEW_HALF_WIDTH  3
+#define VIEW_WIDTH       (2 * VIEW_HALF_WIDTH + 1)
 #define SEEN_VISIBLE_MAX (VIEW_DEPTHS * VIEW_WIDTH)
 
 /* A square that the dungeon view shows: its row (0 is the party row), its side (negative to the left), its position. */
@@ -22,13 +24,14 @@ typedef struct {
 void seen_reset(void);
 /* Marks the squares that the dungeon view shows to a party at (x, y) of map looking to dir. */
 void seen_mark(int map, int x, int y, int dir);
-/* Writes to out (at most max) the squares that the dungeon view shows now to a party at (x, y) of map looking to dir,
+/* Writes to out the squares that the dungeon view shows now to a party at (x, y) of map looking to dir,
    row by row, in each row the middle square, then +1, -1, +2, -2; returns the count. */
-int seen_visible(int map, int x, int y, int dir, SeenSquare *out, int max);
+int seen_visible(int map, int x, int y, int dir, SeenSquare out[SEEN_VISIBLE_MAX]);
+/* True when the dungeon view has shown the square (x, y) of map. */
 bool seen_is_seen(int map, int x, int y);
 /* Writes the AMAP block ("AMAP", version, map count, width and height of each map, one byte per square) to f;
-   returns 0 on an error. */
-int seen_write(FILE *f);
+   returns false on an error. */
+bool seen_write(FILE *f);
 /* Reads the AMAP block from the rest of f; a missing or damaged block gives an empty automap. */
 void seen_read(FILE *f);
 

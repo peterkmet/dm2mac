@@ -9,3 +9,4 @@
 - Item name "f m": in `tests/saves/shell.DAT` the leader hand holds thing 10279 with the name "f m", and the message area sometimes shows a row "B %" (for example before "GAME SAVED"). `main` does the same. Find out if the name of this item is decoded wrong.
 - Manual tests L10 (sound direction) and L12 (end of the game) of the layer cleanup smoke test; the sound of L1 (music) and L9 (thunder) is also not checked.
 - `gdat_find` (`data/gdat.c`) scans the 11854 key rows linearly; sort or index the rows if lookups get hot.
+- Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.

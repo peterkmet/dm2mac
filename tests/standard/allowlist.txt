@@ -28,7 +28,6 @@ block engine/include/money.h open: module cleanup
 block engine/include/move.h open: module cleanup
 block engine/include/projectile.h open: module cleanup
 block engine/include/save.h open: module cleanup
-block engine/include/seen.h open: module cleanup
 block engine/include/sound_request.h open: module cleanup
 block engine/include/weather.h open: module cleanup
 block engine/inventory.c open: module cleanup
@@ -157,7 +156,6 @@ bool engine/save.c:container_is_moneybox open: module cleanup
 bool engine/save.c:creature_is_static open: module cleanup
 bool engine/save.c:is_move_group_event open: module cleanup
 bool engine/save.c:sensor_has_data open: module cleanup
-bool engine/seen.c open: module cleanup
 bool engine/sound_request.c:has_priority open: module cleanup
 bool engine/weather.c open: module cleanup
 bool engine/weather.c:lightning_strike open: module cleanup
@@ -232,12 +230,10 @@ comment engine/include/merchant.h open: module cleanup
 comment engine/include/money.h open: module cleanup
 comment engine/include/move.h open: module cleanup
 comment engine/include/projectile.h open: module cleanup
-comment engine/include/seen.h open: module cleanup
 comment engine/include/weather.h open: module cleanup
 comment engine/merchant.c open: module cleanup
 comment engine/move.c open: module cleanup
 comment engine/save.c open: module cleanup
-comment engine/seen.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
@@ -453,7 +449,6 @@ enum engine/include/minion.h open: module cleanup
 enum engine/include/move.h open: module cleanup
 enum engine/include/projectile.h open: module cleanup
 enum engine/include/save.h open: module cleanup
-enum engine/include/seen.h open: module cleanup
 enum engine/include/weather.h open: module cleanup
 enum engine/inventory.c open: module cleanup
 enum engine/item.c open: module cleanup
@@ -463,7 +458,6 @@ enum engine/move.c open: module cleanup
 enum engine/projectile.c open: module cleanup
 enum engine/recruit.c open: module cleanup
 enum engine/save.c open: module cleanup
-enum engine/seen.c open: module cleanup
 enum engine/weather.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 enum ui/advanced.c open: module cleanup
@@ -739,7 +733,6 @@ order engine/minion.c open: module cleanup
 order engine/move.c open: module cleanup
 order engine/projectile.c open: module cleanup
 order engine/save.c open: module cleanup
-order engine/seen.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
 order ui/action_area.c open: module cleanup
@@ -806,7 +799,6 @@ params engine/include/merchant.h:shop_get_item_value open: module cleanup
 params engine/include/move.h:move_follow_square_transitions open: module cleanup
 params engine/include/move.h:move_party_bump_damage open: module cleanup
 params engine/include/projectile.h:projectile_create open: module cleanup
-params engine/include/seen.h:seen_visible open: module cleanup
 params engine/include/sound_request.h:sound_party_offset open: module cleanup
 params engine/include/sound_request.h:sound_request open: module cleanup
 params engine/include/sound_request.h:sound_request_with_fallback open: module cleanup
@@ -826,7 +818,6 @@ params engine/projectile.c:projectile_create open: module cleanup
 params engine/projectile.c:projectile_enter_square open: module cleanup
 params engine/projectile.c:projectile_hit_wall_sensors open: module cleanup
 params engine/save.c:read_thing_list open: module cleanup
-params engine/seen.c:seen_visible open: module cleanup
 params engine/sound_request.c:sound_party_offset open: module cleanup
 params engine/sound_request.c:sound_request open: module cleanup
 params engine/sound_request.c:sound_request_later open: module cleanup
@@ -1029,8 +1020,6 @@ static-prefix engine/save.c:save_restore_timed_effects open: module cleanup
 static-prefix engine/save.c:sensor_has_data open: module cleanup
 static-prefix engine/save.c:square_mask open: module cleanup
 static-prefix engine/save.c:timeline_relink_events open: module cleanup
-static-prefix engine/seen.c:light_depths open: module cleanup
-static-prefix engine/seen.c:seen_square open: module cleanup
 static-prefix engine/sound_request.c:scale_away open: module cleanup
 static-prefix engine/sound_request.c:sound_play_requests open: module cleanup
 static-prefix engine/sound_request.c:sound_request_later open: module cleanup
@@ -1204,7 +1193,6 @@ static-prefix ui/view.c:weather_get_rain_image open: module cleanup
 static-prefix ui/view.c:zone_id_for_view_element open: module cleanup
 static-prefix ui/zone.c:rect_clip open: module cleanup
 todo engine/money.c open: module cleanup
-todo engine/seen.c open: module cleanup
 todo ui/dialog.c open: module cleanup
 todo ui/text.c open: module cleanup
 type control:out open: module cleanup

@@ -165,7 +165,7 @@ SIDE_FLOOR_ORNAMENT, ORNAMENT_MASK = C.SIDE_FLOOR_ORNAMENT, C.ORNAMENT_INDEX_MAS
 def visible(lib, game):
     """The squares of the seen rule for the party (seen_visible) as {(depth, side, x, y)}."""
     out = (SeenSquare * SEEN_VISIBLE_MAX)()
-    count = lib.seen_visible(game.party_map, game.party_x, game.party_y, game.party_dir, out, SEEN_VISIBLE_MAX)
+    count = lib.seen_visible(game.party_map, game.party_x, game.party_y, game.party_dir, out)
     return {(s.depth, s.side, s.x, s.y) for s in out[:count]}
 
 

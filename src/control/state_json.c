@@ -793,7 +793,7 @@ static int visible_squares(SeenSquare out[SEEN_VISIBLE_MAX])
 {
     int x, y, dir;
     view_place(&x, &y, &dir);
-    return seen_visible(game.party_map, x, y, dir, out, SEEN_VISIBLE_MAX);
+    return seen_visible(game.party_map, x, y, dir, out);
 }
 
 static bool on_party_map(int x, int y)
