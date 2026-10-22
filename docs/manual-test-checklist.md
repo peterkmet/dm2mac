@@ -13,6 +13,18 @@ The user and LLM test agents over the control socket (`docs/llm-control.md`) ran
 
 The fixes that the manual test found are in `CHANGELOG.md`.
 
+## Smoke test after the dm style refactor (2026-10-22)
+
+The refactor renames symbols, files, and build targets and does not change the behavior; the automated tests pass. This short test checks the paths that the renames and the new build touch. Start `build/dm2 --save game/DATA/SKSAVE0.DAT` or a new game.
+
+- [ ] R1. Run the items of "Build and start": `make`, `make windows`, and the start of both programs.
+- [ ] R2. Run the items of section A: the window and the program start.
+- [ ] R3. Run the items of section C: input and movement.
+- [ ] R4. Run the items of section J: start menu, new game, save and load.
+- [ ] R5. Run the items of section L: advanced mode.
+- [ ] R6. Run the items of section T: turn-based mode.
+- [ ] R7. Run the items of section W: Windows.
+
 ## Smoke test after the module cleanup (2026-10-07)
 
 The cleanup does not change the behavior, and the automated tests pass. This short test checks the game paths that the cleanup touched most. Start `build/dm2 --save game/DATA/SKSAVE0.DAT` or a new game.
