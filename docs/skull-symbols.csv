@@ -5,7 +5,7 @@ address,name,signature,subsystem
 0x0001043c,sound_shutdown,void sound_shutdown(void),sound
 0x000104ea,sound_prepare_sample,void sound_prepare_sample(void *sample_desc),sound
 0x00010546,sound_unprepare_sample,void sound_unprepare_sample(void *sample_desc),sound
-0x00010573,sound_play_requests,"int sound_play_requests(uint16_t count, void *requests)",sound
+0x00010573,start_requests,"int start_requests(uint16_t count, void *requests)",sound
 0x00010736,sound_set_volume,"void sound_set_volume(int16_t volume, int16_t device)",sound
 0x000107fe,sound_stop_all,void sound_stop_all(void),sound
 0x00010835,sound_wait_until_idle,void sound_wait_until_idle(void),sound
