@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, and the cheat screen. */
+/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, the cheat screen, and the options menu. */
 #include "advanced.h"
 #include "ids.h"
 #include "os.h"
@@ -13,6 +13,7 @@
 #include "cheats.h"
 #include "draw.h"
 #include "music.h"
+#include "optmenu.h"
 #include "session.h"
 #include "sound.h"
 #include "text.h"
@@ -23,18 +24,6 @@
 
 /* The name in the header of QUICK.DAT. */
 #define QUICK_SAVE_NAME "QUICK SAVE"
-
-/* PC scan codes of the letter keys that move and turn the party. */
-#define SCAN_Q 0x10
-#define SCAN_W 0x11
-#define SCAN_E 0x12
-#define SCAN_A 0x1e
-#define SCAN_S 0x1f
-#define SCAN_D 0x20
-
-/* PC scan codes of the keys on the open viewport screens. */
-#define SCAN_ESCAPE 0x01
-#define SCAN_RETURN 0x1c
 
 /* The layout of the readout: its margin, then its rows. */
 #define READOUT_MARGIN    2 /* pixels between the viewport edge and the readout */
@@ -290,10 +279,30 @@ static void cheat_event(int type, int16_t x, int16_t y)
     }
 }
 
+void advanced_open_options(void)
+{
+    g_advanced_screen = ADVANCED_SCREEN_OPTIONS;
+    optmenu_open();
+}
+
+/* An input event on the open options menu: a key or a left click. */
+static void options_event(int type, int16_t x, int16_t y)
+{
+    bool closes = false;
+    if (type == INPUT_KEY)
+        closes = optmenu_process_key(x);
+    else if (type != INPUT_LEFT_RELEASED && type & INPUT_BUTTON_LEFT)
+        closes = optmenu_process_click(x, y);
+    if (closes)
+        close_screen();
+}
+
 void advanced_screen_event(int type, int16_t x, int16_t y)
 {
     if (g_advanced_screen == ADVANCED_SCREEN_AUTOMAP)
         map_event(type, x, y);
     else if (g_advanced_screen == ADVANCED_SCREEN_CHEATS)
         cheat_event(type, x, y);
+    else if (g_advanced_screen == ADVANCED_SCREEN_OPTIONS)
+        options_event(type, x, y);
 }

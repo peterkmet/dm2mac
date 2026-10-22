@@ -126,6 +126,22 @@ bool plat_init(int scale, int filter_factor)
     return true;
 }
 
+bool plat_set_filter(int filter_factor)
+{
+    SDL_Texture *tex = SDL_CreateTexture(platform.ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                         SCREEN_W * filter_factor, SCREEN_H * filter_factor);
+    if (!tex) {
+        os_log("SDL: %s", SDL_GetError());
+        return false;
+    }
+    SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_PIXELART);
+    SDL_DestroyTexture(platform.tex);
+    platform.tex = tex;
+    platform.filter = filter_factor;
+    plat_present();
+    return true;
+}
+
 void plat_quit(void)
 {
     SDL_Quit();

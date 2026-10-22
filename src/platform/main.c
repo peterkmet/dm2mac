@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "gdat.h"
 #include "os.h"
+#include "settings.h"
 #include "game.h"
 #include "game_text.h"
 #include "save.h"
@@ -12,6 +13,7 @@
 #include "mode_screen.h"
 #include "movie.h"
 #include "music.h"
+#include "optmenu.h"
 #include "play.h"
 #include "session.h"
 #include "sound.h"
@@ -396,6 +398,11 @@ static void pump_mode_screen_events(void)
     plat_mouse_position(&g_input_mouse_x, &g_input_mouse_y);
 }
 
+/* The filters of SETTINGS.TXT and the options menu are the upscale factors of the window. */
+_Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCALE2X == SCALE2X_FACTOR &&
+                   SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
+               "filter numbers");
+
 /* Reads the values of the command line options into options; the option without a value, NULL when all have one. */
 static const char *read_options(int argc, char **argv, Options *options)
 {
@@ -604,9 +611,11 @@ int main(int argc, char **argv)
     }
     if (!open_game(&options, factor))
         return EXIT_FAILURE;
+    g_optmenu_filter_hook = plat_set_filter;
     g_play_frame_hook = g_game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!mode_given && !options.save && !getenv(RESTART_ENV))
         choose_mode();
+    optmenu_start(options.filter ? factor : 0); /* --filter and DM2_FILTER go before SETTINGS.TXT */
     if (!options.save && !getenv(RESTART_ENV))
         run_movies(MOVIE_SCRIPT_START);
     if (!options.save && !g_main_loop.quit && !start_game(options.data)) {

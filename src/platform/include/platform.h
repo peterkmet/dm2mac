@@ -29,6 +29,8 @@ typedef void PlatMixer(int16_t *stereo, int frames);
 
 /* Opens the window at scale times the game screen; filter is the upscale factor of scale_filter_factor. */
 bool plat_init(int scale, int filter);
+/* Changes the upscale factor of the window at once (SCALE_*_FACTOR). False, and no change, when the texture cannot be made. */
+bool plat_set_filter(int filter);
 /* Closes the window, the sound output and SDL. */
 void plat_quit(void);
 /* Sets the window and Dock icon from w by h ARGB pixels. */

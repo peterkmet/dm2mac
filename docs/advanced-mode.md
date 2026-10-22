@@ -2,7 +2,7 @@
 
 The C port has two game modes. Without the cheats, the game rules are the same in both modes.
 
-- `advanced` (the default) adds keys, a quick save, an automap, and a cheat screen with cheats that the original game does not have.
+- `advanced` (the default) adds keys, a quick save, an automap, an options menu, and a cheat screen with cheats that the original game does not have.
 - `vanilla` is the original game without additions.
 
 ## Select the mode
@@ -49,10 +49,12 @@ The keys of the original game work in both modes. The advanced mode adds these k
 | `Tab`, `M`, or `Esc` | Close the automap | Open automap |
 | `C` | Open the cheat screen | Dungeon view only |
 | `C` or `Esc` | Close the cheat screen | Open cheat screen |
+| `Esc` | Open the options menu (instead of the pause) | Dungeon view only |
+| `Esc` | Close the options menu | Open options menu |
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
-The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing. The automap and the cheat screen do not open together.
+The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing. `Esc` there opens the options menu; in other places `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). The vanilla mode pauses. The automap, the cheat screen, and the options menu do not open together.
 
 ## Quick save and quick load
 
@@ -148,3 +150,33 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 A spell line shows the runes, their numbers, and the spell name, for example `FUL IR (X,4,4) FIREBALL`. A number is the place of the rune in its row (1 to 6); `X` means any power. A line wider than the viewport shows only the numbers and the name. The game files have no spell names: the names are port names. A potion spell is named by its drink effect, a missile by its explosion, a summon by its minion.
 
 A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, else the leader. The power is the power rune of the spell, or MON for any power (all spells of the game take any power). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.
+
+## Options menu
+
+`Esc` in the dungeon view opens the options menu in the viewport. The game time stops while it is open. The title is cyan, the rows are white, the selected row is yellow. The volume stays in the volume dialog of the original game.
+
+- FILTER: the upscale filter of the window, `NONE`, `SCALE2X`, or `SCALE3X`. A change shows at once.
+- CONTINUE: closes the menu.
+
+| Input | Action |
+| --- | --- |
+| `Esc` | Close the menu |
+| Up, Down, `W`, `S` | Select a row |
+| Left, Right, `A`, `D` | Set the previous or next filter (after SCALE3X comes NONE) |
+| Return | On FILTER: the next filter. On CONTINUE: close the menu |
+| Left click on FILTER | The next filter |
+| Left click on CONTINUE | Close the menu |
+
+### SETTINGS.TXT
+
+The menu keeps the filter in `SETTINGS.TXT` in the folder of `QUICK.DAT` (`--saves DIR`, else `<data>/DATA`). The file has one line:
+
+```
+filter=scale2x
+```
+
+The values are `none`, `scale2x`, and `scale3x`. The file is a text file of `key=value` lines. The game ignores a CR at the end of a line, an unknown key, a bad value, and a line of 64 characters or more. A file over 1024 bytes gives the defaults (no filter).
+
+The advanced mode reads the file once at the start of the program and applies the filter. `--filter` and `DM2_FILTER` have priority at the start; the menu can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
+
+The game writes the file only when the filter changes. It writes `SETTINGS.TMP` first and replaces the file with it. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once, until a write works.

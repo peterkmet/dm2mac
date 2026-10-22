@@ -279,7 +279,7 @@ Details: `docs/advanced-mode.md`.
 - [ ] L6. Walk some squares, then press F9. Expected: "GAME LOADED"; the party is back on the square of L5; no dialog shows.
 - [ ] L7. Delete `game/DATA/QUICK.DAT` and press F9. Expected: "NO QUICK SAVE"; the game goes on.
 - [ ] L8. Write some bytes of garbage into `game/DATA/QUICK.DAT` and press F9. Expected: "QUICK SAVE DAMAGED"; the game goes on unchanged.
-- [ ] L9. Press F5 and F9 with an open inventory, during the pause (Esc), during the sleep, and in the save menu. Expected: nothing happens.
+- [ ] L9. Press F5 and F9 with an open inventory, in the options menu, during the pause (vanilla mode, Esc), during the sleep, and in the save menu. Expected: nothing happens.
 - [ ] L10. Load a slot, play more than 100 ticks, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
 - [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
 - [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla, advanced, or turnbased" and exit code 2.
@@ -294,6 +294,8 @@ Details: `docs/advanced-mode.md`.
 - [ ] L21. Press F5 with all cheats off, turn cheats on with C, then press F9. Expected: the cheat screen shows all cheats OFF. On the SPELLS pages, click NEXT up to page 5, then NEXT (page 1) and BACK (the cheat page). Click FUL IR (X,4,4) FIREBALL. Expected: the screen closes, the fireball flies, the mana and the experience do not change.
 - [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
 - [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
+- [ ] L24. In the advanced mode, press Esc in the dungeon view. Expected: the viewport shows OPTIONS with FILTER NONE and CONTINUE; the game time stops. Press A, D, Return, and click FILTER. Expected: the filter changes at once through NONE, SCALE2X, SCALE3X and wraps; `game/DATA/SETTINGS.TXT` holds the filter. Press Esc, or click CONTINUE. Expected: the menu closes and the game goes on.
+- [ ] L25. Start `build/dm2` again. Expected: the filter of `SETTINGS.TXT` is on. Start with `--filter none`. Expected: no filter; Esc, then D, writes the file again. With `--mode vanilla` Esc pauses and the file is not read. Make `SETTINGS.TMP` a folder and change the filter. Expected: "UNABLE TO SAVE OPTIONS" once; the filter still changes.
 
 ## Movies (2026-10-10)
 

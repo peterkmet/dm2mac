@@ -1097,10 +1097,12 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 }
 
 /* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
-   load, Tab and M there open the automap, C the cheat screen, and a letter key W S A D Q E without a command gives
+   load, Tab and M there open the automap, C the cheat screen, Esc the options menu (instead of the pause), and a letter key W S A D Q E without a command gives
    the command of its keypad key. */
 static uint16_t key_command(int mode, uint16_t key)
 {
+    if (g_game_mode == GAME_MODE_ADVANCED && mode == INPUT_MODE_MOVE && key == KEY_OPTIONS)
+        return CMD_OPTIONS;
     uint16_t command = find_key_command(&input_mode_roots[mode], key);
     if (command || g_game_mode != GAME_MODE_ADVANCED)
         return command;
@@ -1450,7 +1452,7 @@ static const uint8_t *click_feedback_script(Command *c)
     input_refine_champion_click(c);
     uint16_t command = c->command;
     int offset;
-    if (!command || command > CMD_CHEATS)
+    if (!command || command > CMD_OPTIONS)
         return NULL;
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == CMD_VOLUME ||
         (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL) ||
@@ -2307,7 +2309,7 @@ static bool execute_champion_command(int command, bool idle)
             champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
         area_update(0);
-    } else if (command >= CMD_QUICK_SAVE && command <= CMD_CHEATS) {
+    } else if (command >= CMD_QUICK_SAVE && command <= CMD_OPTIONS) {
         if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)
                 advanced_quick_save();
@@ -2315,6 +2317,8 @@ static bool execute_champion_command(int command, bool idle)
                 advanced_quick_load();
             else if (command == CMD_AUTOMAP)
                 advanced_open_automap();
+            else if (command == CMD_OPTIONS)
+                advanced_open_options();
             else
                 advanced_open_cheats();
         }
