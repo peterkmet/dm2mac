@@ -205,108 +205,108 @@
 #define GFX_PLACEHOLDER 0xfe
 
 /* Layout zones of the screen, the panels, the dialogs and the view. */
-#define ZONE_SCREEN                0x02
-#define ZONE_DIALOG_BACK           0x04 /* the viewport of the dialog picture */
-#define ZONE_DIALOG_SCREEN         0x05 /* where the dialog viewport goes on a black screen */
-#define ZONE_VIEW_TEXT             0x06 /* the layout zone of a message in the viewport */
-#define ZONE_VIEWPORT              0x07
-#define ZONE_MOVEMENT_ARROWS       0x09
-#define ZONE_ACTION_AREA           0x0b
-#define ZONE_MESSAGE_AREA          0x0f
-#define ZONE_ACTION_ORIGIN         0x12
-#define ZONE_ARROW_FIRST           0x28
-#define ZONE_PARTY_ICONS           0x2f
-#define ZONE_PARTY_FACE_FIRST      0x35
-#define ZONE_RESULT                0x39
-#define ZONE_MENU_BACK             0x3b
-#define ZONE_MENU_HEADER           0x3c
-#define ZONE_MENU_NAME             0x3d
-#define ZONE_ACTION_BUTTON_FIRST   0x3f
-#define ZONE_ACTION_NAME_FIRST     0x42
-#define ZONE_ACTION_HAND_FIRST     0x46
-#define ZONE_READY_HAND_FIRST      0x4a
-#define ZONE_SPELL_ICON_FIRST      0x4f
-#define ZONE_SPELL_RUNE_ICON_FIRST 0x53
-#define ZONE_SPELL_HAND_ICON_FIRST 0x57
-#define ZONE_PANEL                 0x5c /* the panel of the action area */
-#define ZONE_FACE_BACK             0x5d
-#define ZONE_FACE                  0x5e
-#define ZONE_FACE_LEFT             0x60
-#define ZONE_FACE_RIGHT            0x61
-#define ZONE_MAP_GRID              0x63
-#define ZONE_OPTION_BUTTON_FIRST   0x65
-#define ZONE_OPTION_LABEL_FIRST    0x69
-#define ZONE_MAP_ACTION_FIRST      0x6e
-#define ZONE_AMMO_ITEM             0x7d
-#define ZONE_AMMO_HAND             0x7e
-#define ZONE_STATUS_BOX            0xa1 /* the status box of a champion: + champion */
-#define ZONE_STATUS_NAME           0xa5 /* + champion */
-#define ZONE_STATUS_PORTRAIT       0xad /* + champion */
-#define ZONE_STATUS_DAMAGE         0xb1 /* + champion */
-#define ZONE_STATUS_BARS           0xb9 /* + champion */
-#define ZONE_STATUS_BAR_FIRST      0xc1 /* + champion + 4 * bar */
-#define ZONE_COIN_PILE_FIRST       0xdd
-#define ZONE_CONTAINER_LID         0xe3
-#define ZONE_CONTAINER_SLOT_FIRST  0xe5
-#define ZONE_RUNES_BACK            0xfc
-#define ZONE_RUNE_CHOICE_FIRST     0xff
-#define ZONE_RUNE_ENTERED_FIRST    0x105
-#define ZONE_SOUND_LABEL           0x15f
-#define ZONE_SOUND_BUTTON          0x160
-#define ZONE_SOUND_TEXT            0x168
-#define ZONE_MUSIC_LABEL           0x170
-#define ZONE_MUSIC_BUTTON          0x171
-#define ZONE_MUSIC_TEXT            0x179
-#define ZONE_DIALOG_VERSION        0x1c2 /* the version text of the dialogs and of the slot lists */
-#define ZONE_SLOT_LIST             0x1c3
-#define ZONE_SLOT_NAME             0x1c5
-#define ZONE_SLOT_TEXT_1           0x1d2
-#define ZONE_SLOT_TEXT_2           0x1d3
-#define ZONE_DIALOG_MESSAGE_WIDE   0x1d5 /* the message zone of a dialog with fewer than 2 buttons */
-#define ZONE_DIALOG_MESSAGE        0x1d7
-#define ZONE_PROGRESS_BAR          0x1da
-#define ZONE_INVENTORY_PANEL       0x1ee /* the picture panel of the inventory */
-#define ZONE_FOOD_GAUGE            0x1f0
-#define ZONE_WATER_GAUGE           0x1f1
-#define ZONE_POISON_GAUGE          0x1f3
-#define ZONE_FOOD_LABEL            0x1f4
-#define ZONE_WATER_LABEL           0x1f5
-#define ZONE_POISON_LABEL          0x1f6
-#define ZONE_OBJECT_NAME_BACK      0x1f8
-#define ZONE_OBJECT_NAME           0x1fa
-#define ZONE_EYE                   0x221
-#define ZONE_MOUTH                 0x222
-#define ZONE_VALUES_BACK           0x225
-#define ZONE_HEALTH_VALUE          0x226
-#define ZONE_STAMINA_VALUE         0x227
-#define ZONE_MANA_VALUE            0x228
-#define ZONE_NAME                  0x229
-#define ZONE_LOAD_BACK             0x22a
-#define ZONE_LOAD                  0x22b
-#define ZONE_DESCRIPTION           0x22c
-#define ZONE_SKILLS                0x22d
-#define ZONE_STATS                 0x22f
-#define ZONE_SCROLL_TEXT           0x230
-#define ZONE_BUTTON_SAVE           0x232
-#define ZONE_BUTTON_SLEEP          0x234
-#define ZONE_BUTTON_EXIT           0x236
-#define ZONE_BUTTON_SOUND          0x238
-#define ZONE_COIN_TOTAL            0x239
-#define ZONE_NAME_BUTTON           0x267
-#define ZONE_COINS_FIRST           0x26a
-#define ZONE_OBJECT_GAUGE_FIRST    0x270
-#define ZONE_TITLE                 0x273
-#define ZONE_CEILING               0x2bc
-#define ZONE_FLOOR                 0x2bd
-#define ZONE_WALL                  0x2be
-#define ZONE_DROP_CELL_FIRST       0x2f8 /* + cell: where a click drops an object */
-#define ZONE_FRONT_WALL_LOW        0x2fd /* the parts of the view that show the wall in front of the party */
-#define ZONE_FRONT_WALL_HIGH       0x2fe
-#define ZONE_PARTY_STAIRS_UP       0x32b
-#define ZONE_PARTY_STAIRS_DOWN     0x338
-#define ZONE_DOOR_ORNAMENT         0x79e
-#define ZONE_ORNAMENT_ROWS         0x7d0
-#define ZONE_VIEW_ELEMENTS         0xc1c
+#define ZONE_SCREEN                0x0002
+#define ZONE_DIALOG_BACK           0x0004 /* the viewport of the dialog picture */
+#define ZONE_DIALOG_SCREEN         0x0005 /* where the dialog viewport goes on a black screen */
+#define ZONE_VIEW_TEXT             0x0006 /* the layout zone of a message in the viewport */
+#define ZONE_VIEWPORT              0x0007
+#define ZONE_MOVEMENT_ARROWS       0x0009
+#define ZONE_ACTION_AREA           0x000b
+#define ZONE_MESSAGE_AREA          0x000f
+#define ZONE_ACTION_ORIGIN         0x0012
+#define ZONE_ARROW_FIRST           0x0028
+#define ZONE_PARTY_ICONS           0x002f
+#define ZONE_PARTY_FACE_FIRST      0x0035
+#define ZONE_RESULT                0x0039
+#define ZONE_MENU_BACK             0x003b
+#define ZONE_MENU_HEADER           0x003c
+#define ZONE_MENU_NAME             0x003d
+#define ZONE_ACTION_BUTTON_FIRST   0x003f
+#define ZONE_ACTION_NAME_FIRST     0x0042
+#define ZONE_ACTION_HAND_FIRST     0x0046
+#define ZONE_READY_HAND_FIRST      0x004a
+#define ZONE_SPELL_ICON_FIRST      0x004f
+#define ZONE_SPELL_RUNE_ICON_FIRST 0x0053
+#define ZONE_SPELL_HAND_ICON_FIRST 0x0057
+#define ZONE_PANEL                 0x005c /* the panel of the action area */
+#define ZONE_FACE_BACK             0x005d
+#define ZONE_FACE                  0x005e
+#define ZONE_FACE_LEFT             0x0060
+#define ZONE_FACE_RIGHT            0x0061
+#define ZONE_MAP_GRID              0x0063
+#define ZONE_OPTION_BUTTON_FIRST   0x0065
+#define ZONE_OPTION_LABEL_FIRST    0x0069
+#define ZONE_MAP_ACTION_FIRST      0x006e
+#define ZONE_AMMO_ITEM             0x007d
+#define ZONE_AMMO_HAND             0x007e
+#define ZONE_STATUS_BOX            0x00a1 /* the status box of a champion: + champion */
+#define ZONE_STATUS_NAME           0x00a5 /* + champion */
+#define ZONE_STATUS_PORTRAIT       0x00ad /* + champion */
+#define ZONE_STATUS_DAMAGE         0x00b1 /* + champion */
+#define ZONE_STATUS_BARS           0x00b9 /* + champion */
+#define ZONE_STATUS_BAR_FIRST      0x00c1 /* + champion + 4 * bar */
+#define ZONE_COIN_PILE_FIRST       0x00dd
+#define ZONE_CONTAINER_LID         0x00e3
+#define ZONE_CONTAINER_SLOT_FIRST  0x00e5
+#define ZONE_RUNES_BACK            0x00fc
+#define ZONE_RUNE_CHOICE_FIRST     0x00ff
+#define ZONE_RUNE_ENTERED_FIRST    0x0105
+#define ZONE_SOUND_LABEL           0x015f
+#define ZONE_SOUND_BUTTON          0x0160
+#define ZONE_SOUND_TEXT            0x0168
+#define ZONE_MUSIC_LABEL           0x0170
+#define ZONE_MUSIC_BUTTON          0x0171
+#define ZONE_MUSIC_TEXT            0x0179
+#define ZONE_DIALOG_VERSION        0x01c2 /* the version text of the dialogs and of the slot lists */
+#define ZONE_SLOT_LIST             0x01c3
+#define ZONE_SLOT_NAME             0x01c5
+#define ZONE_SLOT_TEXT_1           0x01d2
+#define ZONE_SLOT_TEXT_2           0x01d3
+#define ZONE_DIALOG_MESSAGE_WIDE   0x01d5 /* the message zone of a dialog with fewer than 2 buttons */
+#define ZONE_DIALOG_MESSAGE        0x01d7
+#define ZONE_PROGRESS_BAR          0x01da
+#define ZONE_INVENTORY_PANEL       0x01ee /* the picture panel of the inventory */
+#define ZONE_FOOD_GAUGE            0x01f0
+#define ZONE_WATER_GAUGE           0x01f1
+#define ZONE_POISON_GAUGE          0x01f3
+#define ZONE_FOOD_LABEL            0x01f4
+#define ZONE_WATER_LABEL           0x01f5
+#define ZONE_POISON_LABEL          0x01f6
+#define ZONE_OBJECT_NAME_BACK      0x01f8
+#define ZONE_OBJECT_NAME           0x01fa
+#define ZONE_EYE                   0x0221
+#define ZONE_MOUTH                 0x0222
+#define ZONE_VALUES_BACK           0x0225
+#define ZONE_HEALTH_VALUE          0x0226
+#define ZONE_STAMINA_VALUE         0x0227
+#define ZONE_MANA_VALUE            0x0228
+#define ZONE_NAME                  0x0229
+#define ZONE_LOAD_BACK             0x022a
+#define ZONE_LOAD                  0x022b
+#define ZONE_DESCRIPTION           0x022c
+#define ZONE_SKILLS                0x022d
+#define ZONE_STATS                 0x022f
+#define ZONE_SCROLL_TEXT           0x0230
+#define ZONE_BUTTON_SAVE           0x0232
+#define ZONE_BUTTON_SLEEP          0x0234
+#define ZONE_BUTTON_EXIT           0x0236
+#define ZONE_BUTTON_SOUND          0x0238
+#define ZONE_COIN_TOTAL            0x0239
+#define ZONE_NAME_BUTTON           0x0267
+#define ZONE_COINS_FIRST           0x026a
+#define ZONE_OBJECT_GAUGE_FIRST    0x0270
+#define ZONE_TITLE                 0x0273
+#define ZONE_CEILING               0x02bc
+#define ZONE_FLOOR                 0x02bd
+#define ZONE_WALL                  0x02be
+#define ZONE_DROP_CELL_FIRST       0x02f8 /* + cell: where a click drops an object */
+#define ZONE_FRONT_WALL_LOW        0x02fd /* the parts of the view that show the wall in front of the party */
+#define ZONE_FRONT_WALL_HIGH       0x02fe
+#define ZONE_PARTY_STAIRS_UP       0x032b
+#define ZONE_PARTY_STAIRS_DOWN     0x0338
+#define ZONE_DOOR_ORNAMENT         0x079e
+#define ZONE_ORNAMENT_ROWS         0x07d0
+#define ZONE_VIEW_ELEMENTS         0x0c1c
 #define ZONE_VIEW_CELLS            0x1388
 #define ZONE_SKY_HIGH              0x1771
 #define ZONE_NONE                  0xffff
