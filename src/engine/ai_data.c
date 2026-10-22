@@ -2,6 +2,7 @@
 /* The creature AI tables of SKULL.EXE: behaviors, plan choices, plans, and targets. Generated from the
    data object of SKULL.EXE; the records keep their original layout and link each other by their address. */
 #include "ai.h"
+#include "ai_internal.h"
 
 /* Plan steps, mood entries, plan choices, and target records at addresses 0x73020 to 0x74f7e. */
 const uint8_t g_ai_scripts[AI_SCRIPTS_SIZE] = {

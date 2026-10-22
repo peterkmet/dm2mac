@@ -8,6 +8,7 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "timeline.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
@@ -25,70 +26,9 @@ static inline uint16_t ai_marker_level(uint16_t text)
     return thing_field(text, TEXT_DATA, AI_MARKER_LEVEL_SHIFT, AI_MARKER_LEVEL_MASK);
 }
 
-/* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
-#define AI_SCRIPTS_BASE        0x73020u
-#define AI_TARGET_IDLE         0x731d2u /* the target of a creature that waits or wanders */
-#define AI_CHOICES_WANDER      0x73392u /* ... of a creature that wanders at random */
-#define AI_CHOICES_NONE        0x73399u /* the plan choices of a creature that does nothing */
-/* The sizes of the AI tables and of their records. */
-#define AI_PLAN_COUNT          63
-#define AI_CLASS_COUNT         47
-#define AI_TARGET_SIZE         14
-#define AI_PLAN_STEP_SIZE      7
-#define AI_CHOICE_SIZE         7
-#define AI_MOOD_ENTRY_SIZE     6 /* a mood mask word and the address of its plan choices */
-#define AI_SCRIPTS_SIZE        8030
-#define AI_ACTION_COUNT        86
-#define AI_MOVE_TEST_KINDS     20 /* the move test kinds of g_ai_command_enabled */
-#define AI_TARGET_KIND_COUNT   28
-#define AI_POSSESSION_KINDS    16 /* the display kinds of possession_cells, with the data after the table */
-#define AI_AFTER_COMMAND_BYTES 60
-extern const uint8_t g_ai_scripts[AI_SCRIPTS_SIZE];
-extern const uint32_t g_ai_plans[AI_PLAN_COUNT];
+/* The flags of the AI classes (ai_data.c). */
+#define AI_CLASS_COUNT 47
 extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
-extern const uint8_t g_ai_action_flags[AI_ACTION_COUNT];
-extern const uint32_t g_ai_behaviors[AI_CLASS_COUNT];
-extern const uint8_t g_ai_command_enabled[AI_MOVE_TEST_KINDS];
-extern const uint8_t g_ai_after_command_table[AI_AFTER_COMMAND_BYTES];
-extern const uint8_t g_ai_kind_flags[AI_TARGET_KIND_COUNT];
-extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
-
-/* A step of a plan (7 bytes). */
-typedef struct {
-    int8_t command; /* AI_CMD_* (0x3f and up), a step index, or a directive (negative) */
-    int8_t on_done; /* the next step when the command is done: index or AI_NEXT_* */
-    int8_t on_fail; /* ... when it failed */
-    int8_t arg1, arg2;
-    uint8_t scan; /* bits 0-4 scanner kind, bits 5-7 AI_SCAN_* */
-    int8_t scan_arg;
-} PlanStep;
-
-/* A target record (14 bytes): what a scanner looks for. */
-typedef struct {
-    int8_t kind;       /* candidate kind */
-    uint8_t condition; /* AI_COND_*, bit 6 plan test, bit 7 negation */
-    int16_t condition_arg;
-    uint16_t item; /* item filter or marker */
-    uint16_t mask;
-    int8_t cost;
-    uint8_t value_9;
-    int8_t count_10, count_11;
-    int8_t scan;  /* the scanner kind that uses the record */
-    uint8_t more; /* 0 for the last record of a list */
-} AiTarget;
-
-/* A plan choice (7 bytes). */
-typedef struct {
-    int8_t plan, chance;
-    uint32_t targets; /* address of the target records */
-    uint8_t more;
-} AiChoice;
-
-PlanStep ai_plan_step(int plan, int step);
-AiTarget ai_target(uint32_t addr);
-AiChoice ai_choice(uint32_t addr);
-uint16_t ai_mood_mask(uint32_t addr);
-uint32_t ai_mood_choices(uint32_t addr);
 
 /* A candidate destination of a plan: the 22-byte record of SKULL.EXE (g_ai_candidates, 0x7f674), same layout. */
 typedef struct __attribute__((packed)) {
@@ -114,13 +54,10 @@ _Static_assert(sizeof(AiCandidate) == AI_CANDIDATE_SIZE, "the candidates of SKUL
 
 /* The sizes of the candidates, the path, and the item filters of a creature update. */
 #define AI_CANDIDATE_MAX 16
-#define AI_PATH_MAX      49
 #define AI_PATH_BYTES    100 /* a path buffer: 2 bytes per step */
 #define FILTER_SLOTS     42  /* the item filters of a creature update */
 /* The bits of a shift count that the x86 shift uses: the low 5 bits. */
 #define BIT_INDEX_MASK   0x1f
-/* A candidate or plan state without a found thing or marker. */
-#define FOUND_NONE       0xffff
 
 /* The plan state of a group that lasts from one update to the next: the 14 bytes at 0x7f7d4 of SKULL.EXE. */
 typedef struct __attribute__((packed)) {
@@ -191,22 +128,13 @@ extern AiContext g_ai;
 #define AI_RESULT_ISSUED 0xfc /* an action was set: the update ends */
 #define AI_RESULT_FAIL   0xfd
 #define AI_RESULT_DONE   0xfe /* nothing to do: the goal is reached */
-#define AI_EXECUTE       0x80 /* creature_ai_try_* mode bit: set the action when the test passes */
+#define AI_EXECUTE       0x80 /* ai_try_* mode bit: set the action when the test passes */
 
 /* The party position as the current map sees it (g_ai_target_* of SKULL.EXE). */
 typedef struct {
     int16_t x, y, map, dir;
 } AiPartyView;
 extern AiPartyView g_ai_party;
-
-/* The square that the AI read last (g_ai_sq_* of SKULL.EXE); x -1: none. */
-typedef struct {
-    int16_t x, y, map;
-    uint8_t square;
-    uint16_t first_thing, first_object, first_group;
-    int16_t cost;
-} AiSquare;
-extern AiSquare g_ai_square;
 
 /* The distances from the party of the squares of a map (32 x 32, 0: not reached; bit 7: next to a reached square). */
 #define DISTANCE_MAP_SIDE MAP_SIDE_MAX /* the cells of a distance map: x * 32 + y */
@@ -220,66 +148,105 @@ typedef struct {
 #define DISTANCE_FAR     127
 extern DistanceMap g_party_distance, g_alt_distance;
 
-uint8_t ai_action_flag(int8_t action);
-int ai_class(void);
-uint8_t *ai_scratch_push(void);
-void ai_scratch_pop(void);
-uint8_t *ai_store_path(int size);
-void ai_free_cached_data(uint16_t group);
-/* Plan commands that the merchant commands use: the group in front carries an item of filter g_ai.arg1 in cell
-   g_ai.arg2; the creature puts down a carried item of filter g_ai.arg1. */
-int ai_cmd_front_group_carries(void);
-int ai_cmd_seek_with_carried(void);
+/* Setup */
+
 /* Forgets the AI data of all groups (a load). */
 void ai_forget_all(void);
-void ai_update_group(void);
-void ai_decide(void);
-int ai_plan_flags(void);
-int ai_execute_action(void);
+/* Forgets the plan state and path of a group. */
+void ai_free_cached_data(uint16_t group);
+
+/* The update context */
 
 /* Begins a creature update: saves the context of an update in progress; true when it saved one. */
 bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved);
+/* Ends a creature update: frees the context, or restores the update that the nested one interrupted. */
 void ai_end(bool restored, const AiContext *saved);
+/* Takes a scratch block for the item filters of the update; exported for the tests. */
+uint8_t *ai_scratch_push(void);
+/* Gives back the scratch block of the update; exported for the tests. */
+void ai_scratch_pop(void);
+/* Reads the skills of the creature and its plan state once per update, before the first test.
+   It is exported for the tests. */
 void ai_prepare(void);
-void ai_set_map(int map);
+/* The stored path buffer of the group, big enough for size bytes; exported for the tests. */
+uint8_t *ai_store_path(int size);
+/* The flags of an action: how it moves, waits, or follows the path. */
+uint8_t ai_action_flag(int8_t action);
 
-/* ai_move.c */
-/* The stored path of the group in the AI context, NULL when it has none. */
-uint8_t *ai_find_path(void);
+/* Plan commands that the merchant commands use */
 
-/* Perception, movement tests, and path search (ai_move.c). */
-bool ai_square_is_obstacle(int x, int y);
+/* Plan command: the group in front carries an item of filter g_ai.arg1 in cell g_ai.arg2. */
+int ai_cmd_front_group_carries(void);
+/* Plan command: the creature puts down a carried item of filter g_ai.arg1. */
+int ai_cmd_seek_with_carried(void);
+
+/* The update of a creature that acts */
+
+/* The update of a creature that acts: the next action and its animation, then the next update event. */
+void ai_update_group(void);
+
+/* Item filters (ai_move.c) */
+
+/* True (1, or FILTER_INVERT for an inverted filter) when thing belongs to the item filter of the group in the AI
+   context: classes of items, creatures, and wall actuators that the creature text lists, or money boxes. */
+int ai_thing_matches_filter(uint16_t thing, int filter);
+/* The first item of filter in a thing list (cell CELL_ANY: any cell), THING_ENDOFLIST for none. */
+uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int cell);
+
+/* Perception and items of the AI (ai_move.c), exported for the tests */
+
+/* True when a square stops a line of sight or of fire: walls, doors, clouds, and creatures that hide.
+   It is exported for the tests. */
 bool ai_square_blocks_line(int x, int y);
+/* A line toward the party: the party square blocks it (the line ends there); exported for the tests. */
 bool ai_blocks_line_to_target(int x, int y);
+/* A line test that ignores the square of the group in the AI context; exported for the tests. */
 bool ai_blocks_line_except_self(int x, int y);
-int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y));
-void ai_cache_square(int x, int y);
+/* The first object of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_object(void);
+/* The first creature group of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_group(void);
-int ai_turn_toward(int dir);
-/* distance_map: the map of the search (4 bytes per square, 32 squares per column); out_location gets the target. */
+/* An item of filter inside a chest or in the possessions of a group that the creature may take from: the chest
+   cell (0 to 3), POSSESSION_CELL_BASE plus the cell of the possession, -1 none; exported for the tests. */
+int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
+/* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
+   actuator of the cell; THING_NONE for none; exported for the tests. */
+uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter);
+/* True when the wall actuator reacts to the creature in mode (ACTUATOR_MODE_*) with an item of filter; state: the
+   state bits of the creature slot; exported for the tests. */
+int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state);
+/* The AI marker text on the square in the AI cache for the level delta (1: also the markers of level 2 with bit 0)
+   whose kind is in id_mask: its id (0 to 31), -1 none; exported for the tests. */
+int ai_find_marker(int level_delta, uint16_t id_mask);
+/* Points g_ai.cached_path to the stored path of the group; a lost path clears the path state.
+   It is exported for the tests. */
+void ai_load_cached_path(void);
+
+/* The tests of the AI commands and the path search (ai_move.c) */
+
+/* Looks along the lines from (x, y) (dir -1: all four) for a target of filter in attack range: a group, or for a
+   ranged attack a wall ornament that is a shooting target; then tests the attack from the farthest square of the
+   line that the search reached no later. distance_map: the map of the search (4 bytes per square, 32 squares per
+   column); out_location gets the target. */
 int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_location, int x, int y, int dir,
                             int ranged);
+/* Tests (and with AI_EXECUTE starts) an attack (ATTACK_MODE_*) from (x, y) on (target_x, target_y) (-1: the square
+   in dir). */
 int ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir);
+/* Tests (and with AI_EXECUTE starts) an action on the door at (door_x, door_y) (-1: the square in dir):
+   DOOR_MODE_*. */
 int ai_try_door_action(int mode, int x, int y, int door_x, int door_y, int dir);
-int ai_projectile_incoming(int x, int y);
+/* Tests (and with AI_EXECUTE starts) a move (MOVE_KIND_*) of the group from (x, y) to (dest_x, dest_y) (-1: the
+   square in dir); dir DIR_LEVEL_UP and DIR_LEVEL_DOWN change the level, DIR_KEEP_FACING keeps the facing. */
 int ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir);
-int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
+/* Tests (and with AI_EXECUTE starts) taking or giving (ITEM_MODE_*) an item of filter at (dest_x, dest_y) (-1: the
+   square in dir): from the floor, an alcove, a chest, or a group. */
 int ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
-uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter);
-int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state);
+/* Tests (and with AI_EXECUTE starts) the use of a wall actuator at (dest_x, dest_y) (-1: the square in dir) from
+   the slot of the creature type on that wall face. */
 int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
-int ai_thing_matches_filter(uint16_t thing, int filter);
-uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int cell);
-void ai_remove_matching_items(uint16_t *list_head, int filter, int cell);
-int ai_count_matching_items(int filter, uint16_t first_thing, int cell, int into_groups, int into_containers);
-int ai_find_marker(int level_delta, uint16_t id_mask);
-int ai_find_marker_by_id(int level_delta, int id);
 /* The breadth-first search from (x, y) with the move command: the nearest of count candidates; returns its index,
    -1 for none. path gets the steps to it (2 bytes each). */
 int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates, uint8_t *path);
-void ai_load_cached_path(void);
-int ai_next_path_step(void);
-int ai_plan_path(void);
 
 #endif /* DM2_ENGINE_AI_H */

@@ -5,6 +5,7 @@
 #include "gdat.h"
 #include "le.h"
 #include "os.h"
+#include "ai_internal.h"
 #include "ai_move_internal.h"
 #include "champion.h"
 #include "creature.h"
@@ -275,7 +276,6 @@ static void set_action_destination(int x, int y)
     g_ai.active->destination = pack_location(x, y, party.cur_map);
 }
 
-/* True for squares that the sight of a creature does not cross: walls, closed doors that hide, closed fake walls. */
 bool ai_square_is_obstacle(int x, int y)
 {
     uint8_t square = dun_get_square(x, y);
@@ -286,7 +286,6 @@ bool ai_square_is_obstacle(int x, int y)
            (type == SQUARE_FAKE_WALL && !(square & SQUARE_FAKE_WALL_OPEN));
 }
 
-/* True when a square stops a line of sight or of fire: walls, doors, clouds, and creatures that hide. */
 bool ai_square_blocks_line(int x, int y)
 {
     int16_t sx = (int16_t)x, sy = (int16_t)y;
@@ -325,7 +324,6 @@ bool ai_square_blocks_line(int x, int y)
     return 0;
 }
 
-/* A line toward the party: the party square blocks it (the line ends there). */
 bool ai_blocks_line_to_target(int x, int y)
 {
     if (at_party(x, y))
@@ -333,7 +331,6 @@ bool ai_blocks_line_to_target(int x, int y)
     return ai_square_blocks_line(x, y);
 }
 
-/* A line test that ignores the square of the group in the AI context. */
 bool ai_blocks_line_except_self(int x, int y)
 {
     if ((uint16_t)x == group_x() && (uint16_t)y == group_y())
@@ -350,8 +347,6 @@ static int16_t line_slope(int steep, int x1, int y1, int x, int y)
     return (int16_t)(((steep ? x - x1 : y - y1) << SLOPE_SHIFT) / major);
 }
 
-/* Walks the squares of the line from (x2, y2) toward (x1, y1); returns 0 when blocked() stops it, else the
-   square distance of the ends (1 for adjacent squares). */
 int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y))
 {
     if (abs16(x1 - x2) + abs16(y1 - y2) <= 1)
@@ -389,7 +384,6 @@ int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y))
     return square_distance(x1, y1, x2, y2);
 }
 
-/* Makes (x, y) of the current map the square that the AI reads; keeps the cache when it is the same square. */
 void ai_cache_square(int x, int y)
 {
     if ((int16_t)x == g_ai_square.x && (int16_t)y == g_ai_square.y && party.cur_map == g_ai_square.map)
@@ -414,7 +408,6 @@ static uint16_t cached_first_thing(void)
     return g_ai_square.first_thing;
 }
 
-/* The first object of the square in the AI cache, read once. */
 uint16_t ai_cached_first_object(void)
 {
     if (g_ai_square.first_object != THING_NONE)
@@ -425,7 +418,6 @@ uint16_t ai_cached_first_object(void)
     return g_ai_square.first_object = t;
 }
 
-/* The first creature group of the square in the AI cache, read once. */
 uint16_t ai_cached_first_group(void)
 {
     if (g_ai_square.first_group != THING_NONE)
@@ -436,8 +428,7 @@ uint16_t ai_cached_first_group(void)
     return g_ai_square.first_group = t;
 }
 
-/* Turns the group toward dir (action turn left or right); returns 0 when it already faces dir. */
-int ai_turn_toward(int dir)
+bool ai_turn_toward(int dir)
 {
     int facing = group_dir(g_ai.group_thing), turn;
     if (facing == dir_opposite(dir)) {
@@ -445,14 +436,14 @@ int ai_turn_toward(int dir)
     } else if (facing == (int16_t)dir) {
         g_ai.active->action = ACTION_NONE;
         g_ai.command_result = AI_RESULT_DONE;
-        return 0;
+        return false;
     } else {
         turn = facing == dir_turn(dir, TURN_LEFT) ? 1 : -1;
     }
     g_ai.active->facing = (uint8_t)dir_turn(facing, turn);
     g_ai.active->action = (uint8_t)(ACTION_TURN_LEFT + (turn != -1));
     g_ai.command_result = AI_RESULT_ISSUED;
-    return 1;
+    return true;
 }
 
 /* The search map cell of (x, y). */
@@ -476,9 +467,6 @@ static int wall_shows_shoot_target(int x, int y, int side, int filter)
     return 0;
 }
 
-/* Looks along the lines from (x, y) (dir -1: all four) for a target of filter in attack range: a group, or for a
-   ranged attack a wall ornament that is a shooting target; then tests the attack from the farthest square of the
-   line that the search reached no later. */
 int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_location, int x, int y, int dir,
                             int ranged)
 {
@@ -664,8 +652,6 @@ static void set_attack_action(uint16_t attack, int r)
     }
 }
 
-/* Tests (and with AI_EXECUTE starts) an attack (ATTACK_MODE_*) from (x, y) on (target_x, target_y) (-1: the square
-   in dir). */
 int ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir)
 {
     int execute = mode & AI_EXECUTE;
@@ -819,8 +805,6 @@ static int start_door_action(int mode, uint16_t flags, uint16_t door, int x, int
     return 1;
 }
 
-/* Tests (and with AI_EXECUTE starts) an action on the door at (door_x, door_y) (-1: the square in dir):
-   DOOR_MODE_*. */
 int ai_try_door_action(int mode, int x, int y, int door_x, int door_y, int dir)
 {
     int execute = mode & AI_EXECUTE;
@@ -889,8 +873,7 @@ int ai_try_door_action(int mode, int x, int y, int door_x, int door_y, int dir)
 
 #define MISSILE_WATCH_RANGE 3 /* the squares in which a creature sees the missiles that fly toward it */
 
-/* True when a dangerous projectile flies toward (x, y) within 3 squares in a direction that the creature sees. */
-int ai_projectile_incoming(int x, int y)
+bool ai_projectile_incoming(int x, int y)
 {
     for (int16_t d = 0; d < DIR_COUNT; d++) {
         if (!(class_flags() & AI_CLASS_SEES_BEHIND)) {
@@ -909,12 +892,12 @@ int ai_projectile_incoming(int x, int y)
             for (uint16_t t = first_object(sx, sy); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (thing_type(t) == THING_PROJECTILE && projectile_dir(t) == dir_opposite(d) &&
                     projectile_get_attack(t, thing_word(t, PROJECTILE_PAYLOAD)))
-                    return 1;
+                    return true;
             if (!at_group(sx, sy) && ai_square_blocks_line(sx, sy))
                 break;
         }
     }
-    return 0;
+    return false;
 }
 
 /* The search cost of a door square (g_ai_square.cost) by its state; returns 1. */
@@ -1343,8 +1326,6 @@ static void execute_move(Move *m)
     g_ai.command_result = AI_RESULT_ISSUED;
 }
 
-/* Tests (and with AI_EXECUTE starts) a move (MOVE_KIND_*) of the group from (x, y) to (dest_x, dest_y) (-1: the
-   square in dir); dir DIR_LEVEL_UP and DIR_LEVEL_DOWN change the level, DIR_KEEP_FACING keeps the facing. */
 int ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir)
 {
     int saved_map = party.cur_map;
@@ -1382,8 +1363,6 @@ static int possession_cell_mask(uint16_t possessions, int side)
 
 #define POSSESSION_CELL_BASE 8 /* a found item in the possessions of a group: this plus its cell */
 
-/* An item of filter inside a chest or in the possessions of a group that the creature may take from: the chest
-   cell (0 to 3), POSSESSION_CELL_BASE plus the cell of the possession, -1 none. */
 int ai_find_matching_item_inside(uint16_t thing, int filter, int side)
 {
     int16_t found_cell;
@@ -1552,8 +1531,6 @@ static int take_floor_action(int same, int16_t cell, int16_t *action)
     return 0;
 }
 
-/* Tests (and with AI_EXECUTE starts) taking or giving (ITEM_MODE_*) an item of filter at (dest_x, dest_y) (-1: the
-   square in dir): from the floor, an alcove, a chest, or a group. */
 int ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter)
 {
     int execute = mode & AI_EXECUTE;
@@ -1615,8 +1592,6 @@ int ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, in
     return 1;
 }
 
-/* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
-   actuator of the cell; THING_NONE for none. */
 uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter)
 {
     uint16_t found = THING_NONE;
@@ -1639,8 +1614,6 @@ uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int fil
     return found;
 }
 
-/* True when the wall actuator reacts to the creature in mode (ACTUATOR_MODE_*) with an item of filter; state: the
-   state bits of the creature slot. */
 int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state)
 {
     if (actuator == THING_ENDOFLIST || actuator == THING_NONE)
@@ -1671,8 +1644,6 @@ int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state)
     }
 }
 
-/* Tests (and with AI_EXECUTE starts) the use of a wall actuator at (dest_x, dest_y) (-1: the square in dir) from
-   the slot of the creature type on that wall face. */
 int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter)
 {
     int execute = mode & AI_EXECUTE;
@@ -1753,8 +1724,6 @@ static uint8_t *filter_bitmap(int filter, int creature_type, int is_group)
     return shop_parse_item_class_set(creature_type, filter, bitmap, is_group) ? bitmap : NULL;
 }
 
-/* True (1, or FILTER_INVERT for an inverted filter) when thing belongs to the item filter of the group in the AI
-   context: classes of items, creatures, and wall actuators that the creature text lists, or money boxes. */
 int ai_thing_matches_filter(uint16_t thing, int filter)
 {
     int invert = filter & FILTER_INVERT;
@@ -1809,7 +1778,6 @@ static int is_item(int type)
     return (type > THING_GROUP && type < THING_PROJECTILE) || type == THING_CONTAINER;
 }
 
-/* The first item of filter in a thing list (cell CELL_ANY: any cell), THING_ENDOFLIST for none. */
 uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int cell)
 {
     uint16_t t = first_thing;
@@ -1820,8 +1788,6 @@ uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int cell)
     return t;
 }
 
-/* Removes and frees the items of filter from a thing list (cell CELL_ANY: any cell); the matching items inside a
-   chest go too, and a matching chest gives its other contents to the list. */
 void ai_remove_matching_items(uint16_t *list_head, int filter, int cell)
 {
     cell = (uint8_t)cell;
@@ -1851,8 +1817,6 @@ void ai_remove_matching_items(uint16_t *list_head, int filter, int cell)
     }
 }
 
-/* The number of items of filter in a thing list (cell CELL_ANY: any cell), with the possessions of groups and the
-   contents of chests on request. */
 int ai_count_matching_items(int filter, uint16_t first_thing, int cell, int into_groups, int into_containers)
 {
     int count = 0;
@@ -1869,8 +1833,6 @@ int ai_count_matching_items(int filter, uint16_t first_thing, int cell, int into
     return count;
 }
 
-/* The AI marker text on the square in the AI cache for the level delta (1: also the markers of level 2 with bit 0)
-   whose kind is in id_mask: its id (0 to 31), -1 none. */
 int ai_find_marker(int level_delta, uint16_t id_mask)
 {
     int16_t other = (int16_t)level_delta == MARKER_LEVEL_SIDES ? MARKER_LEVEL_SIDES_SHOWN : -1;
@@ -1888,7 +1850,6 @@ int ai_find_marker(int level_delta, uint16_t id_mask)
     return -1;
 }
 
-/* The AI marker text on the square in the AI cache for the level delta with kind id: its id, -1 none. */
 int ai_find_marker_by_id(int level_delta, int id)
 {
     for (uint16_t t = cached_first_thing(); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
@@ -2758,7 +2719,6 @@ int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates
 #define PATH_CHECK_STEPS      5
 #define PARTY_MAP_SEARCH_COST 25
 
-/* Points g_ai.cached_path to the stored path of the group; a lost path clears the path state. */
 void ai_load_cached_path(void)
 {
     g_ai.cached_path = NULL;
@@ -2779,8 +2739,6 @@ static uint16_t path_step(int index)
     return le16(g_ai.cached_path + index * 2);
 }
 
-/* The direction of the next step of the stored path into the action; returns the steps left (0: none). A group
-   at the end of its path forgets the found square. */
 int ai_next_path_step(void)
 {
     ActiveGroup *a = g_ai.active;
@@ -2829,9 +2787,7 @@ static int path_holds(int saved)
     return 1;
 }
 
-/* Checks that the stored path still leads to the target of the plan: the target is still where the search found it,
-   and the next steps (at most 5) of the path are free. Returns 1 when the path holds. */
-int ai_plan_path(void)
+bool ai_plan_path(void)
 {
     ai_load_cached_path();
     int16_t i = 0;
@@ -2839,7 +2795,7 @@ int ai_plan_path(void)
            !(g_ai.candidates[i].kind == g_ai.cache.kind && g_ai.candidates[i].item == g_ai.cache.item))
         i++;
     if (i >= (int8_t)g_ai.candidate_count)
-        return 0;
+        return false;
     if (i)
         g_ai.candidates[0] = g_ai.candidates[i];
     g_ai.candidates[0].cost = 0;

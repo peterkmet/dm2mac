@@ -2,6 +2,7 @@
 /* Creature AI: the update context, moods, plans, and the update of a creature that acts. */
 #include "ai.h"
 #include "le.h"
+#include "ai_internal.h"
 #include "ai_move.h"
 #include "champion.h"
 #include "creature.h"
@@ -363,6 +364,37 @@
 #define DODGE_CLOUD_POWER_MIN   20
 #define DODGE_CLOUD_POWER_RANGE 40
 
+/* A step of a plan (7 bytes). */
+typedef struct {
+    int8_t command; /* AI_CMD_* (0x3f and up), a step index, or a directive (negative) */
+    int8_t on_done; /* the next step when the command is done: index or AI_NEXT_* */
+    int8_t on_fail; /* ... when it failed */
+    int8_t arg1, arg2;
+    uint8_t scan; /* bits 0-4 scanner kind, bits 5-7 AI_SCAN_* */
+    int8_t scan_arg;
+} PlanStep;
+
+/* A target record (14 bytes): what a scanner looks for. */
+typedef struct {
+    int8_t kind;       /* candidate kind */
+    uint8_t condition; /* AI_COND_*, bit 6 plan test, bit 7 negation */
+    int16_t condition_arg;
+    uint16_t item; /* item filter or marker */
+    uint16_t mask;
+    int8_t cost;
+    uint8_t value_9;
+    int8_t count_10, count_11;
+    int8_t scan;  /* the scanner kind that uses the record */
+    uint8_t more; /* 0 for the last record of a list */
+} AiTarget;
+
+/* A plan choice (7 bytes). */
+typedef struct {
+    int8_t plan, chance;
+    uint32_t targets; /* address of the target records */
+    uint8_t more;
+} AiChoice;
+
 /* The scan that adds candidates: its plan, the scan kind and the scan argument that the candidates keep. */
 typedef struct {
     int plan;
@@ -393,13 +425,15 @@ static struct {
     int16_t dest_x, dest_y; /* the target square of the action that runs */
 } ai_state;
 
+/* AI tables and helpers that several sections share. */
+
 static const uint8_t *script(uint32_t addr)
 {
     return g_ai_scripts + (addr - AI_SCRIPTS_BASE);
 }
 
 /* A step of a plan from the AI tables. */
-PlanStep ai_plan_step(int plan, int step)
+static PlanStep read_plan_step(int plan, int step)
 {
     const uint8_t *p = script(g_ai_plans[plan] + (uint32_t)(step * AI_PLAN_STEP_SIZE));
     return (PlanStep){(int8_t)p[STEP_AT_COMMAND], (int8_t)p[STEP_AT_ON_DONE], (int8_t)p[STEP_AT_ON_FAIL],
@@ -408,7 +442,7 @@ PlanStep ai_plan_step(int plan, int step)
 }
 
 /* A target record from the AI tables. */
-AiTarget ai_target(uint32_t addr)
+static AiTarget read_target(uint32_t addr)
 {
     const uint8_t *p = script(addr);
     return (AiTarget){(int8_t)p[TARGET_AT_KIND],
@@ -425,31 +459,83 @@ AiTarget ai_target(uint32_t addr)
 }
 
 /* A plan choice from the AI tables. */
-AiChoice ai_choice(uint32_t addr)
+static AiChoice read_choice(uint32_t addr)
 {
     const uint8_t *p = script(addr);
     return (AiChoice){(int8_t)p[CHOICE_AT_PLAN], (int8_t)p[CHOICE_AT_CHANCE], le32(p + CHOICE_AT_TARGETS),
                       p[CHOICE_AT_MORE]};
 }
 
-uint16_t ai_mood_mask(uint32_t addr)
+static uint16_t read_mood_mask(uint32_t addr)
 {
     return le16(script(addr) + MOOD_AT_MASK_WORD);
 }
 
 /* The plan choices of a mood entry. */
-uint32_t ai_mood_choices(uint32_t addr)
+static uint32_t read_mood_choices(uint32_t addr)
 {
     return le32(script(addr) + MOOD_AT_CHOICES);
 }
 
-/* The flags of an action: how it moves, waits, or follows the path. */
-uint8_t ai_action_flag(int8_t action)
+/* The AI class of the creature, read once per update. */
+static int load_class(void)
 {
-    return action < 0 ? 0 : g_ai_action_flags[action]; /* action -1 reads the byte before the table: 0 */
+    if (g_ai.class_index == -1)
+        g_ai.class_index = (int16_t)creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS);
+    return g_ai.class_index;
 }
 
-/* Makes map the current map of the AI and reads where the party stands as that map sees it. */
+/* The distance between two squares along the axes. */
+static int manhattan(int x1, int y1, int x2, int y2)
+{
+    int16_t dx = (int16_t)(x1 - x2), dy = (int16_t)(y1 - y2);
+    return (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+}
+
+static AiCandidate *candidate_at(int i)
+{
+    return &g_ai.candidates[i];
+}
+
+static int facing(void)
+{
+    return group_dir(g_ai.group_thing);
+}
+
+static int dest_x(void)
+{
+    return location_x(g_ai.active->destination);
+}
+
+static int dest_y(void)
+{
+    return location_y(g_ai.active->destination);
+}
+
+/* Sets the destination square of the action on the current map. */
+static void set_destination(int x, int y)
+{
+    g_ai.active->destination = (uint16_t)location_set_xy(g_ai.active->destination, x, y);
+}
+
+/* Setup */
+
+void ai_forget_all(void)
+{
+    memset(ai_state.groups, 0, sizeof ai_state.groups);
+    memset(&g_ai, 0, sizeof g_ai);
+    ai_state.scratch_depth = 0;
+}
+
+void ai_free_cached_data(uint16_t group)
+{
+    int g = thing_index(group) | thing_index(g_ai.group_thing); /* the original ORs both indices into the key */
+    ai_state.groups[g].present = false;
+    ai_state.groups[g].path_size = 0;
+}
+
+/* The update context */
+
 void ai_set_map(int map)
 {
     if (map == party.cur_map)
@@ -501,7 +587,6 @@ bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved)
     return restored;
 }
 
-/* Ends a creature update: frees the context, or restores the update that the nested one interrupted. */
 void ai_end(bool restored, const AiContext *saved)
 {
     if (!restored) {
@@ -511,15 +596,6 @@ void ai_end(bool restored, const AiContext *saved)
     g_ai = *saved;
 }
 
-/* The AI class of the creature, read once per update. */
-int ai_class(void)
-{
-    if (g_ai.class_index == -1)
-        g_ai.class_index = (int16_t)creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS);
-    return g_ai.class_index;
-}
-
-/* Takes a scratch block for the item filters of the update. */
 uint8_t *ai_scratch_push(void)
 {
     g_ai.scratch = ai_state.scratch_blocks[ai_state.scratch_depth < SCRATCH_BLOCKS - 1 ? ai_state.scratch_depth++
@@ -528,7 +604,6 @@ uint8_t *ai_scratch_push(void)
     return g_ai.scratch;
 }
 
-/* Gives back the scratch block of the update. */
 void ai_scratch_pop(void)
 {
     g_ai.scratch = NULL;
@@ -536,13 +611,12 @@ void ai_scratch_pop(void)
         ai_state.scratch_depth--;
 }
 
-/* Reads the skills of the creature and its plan state once per update, before the first test. */
 void ai_prepare(void)
 {
     if (g_ai.prepared)
         return;
     g_ai.prepared = 1;
-    ai_class();
+    load_class();
     g_ai.move_flags = g_ai.info->movement;
     g_ai.attack_flags = g_ai.info->attack_skills;
     g_ai.door_flags = g_ai.info->door_skills;
@@ -572,15 +646,6 @@ void ai_prepare(void)
     }
 }
 
-/* Keeps the plan state of the group for its next update. */
-static void store_plan_cache(void)
-{
-    int g = thing_index(g_ai.group_thing);
-    ai_state.groups[g].present = true;
-    ai_state.groups[g].cache = g_ai.cache;
-}
-
-/* The stored path buffer of the group, big enough for size bytes. */
 uint8_t *ai_store_path(int size)
 {
     int g = thing_index(g_ai.group_thing);
@@ -589,924 +654,18 @@ uint8_t *ai_store_path(int size)
     return ai_state.groups[g].path;
 }
 
-void ai_forget_all(void)
-{
-    memset(ai_state.groups, 0, sizeof ai_state.groups);
-    memset(&g_ai, 0, sizeof g_ai);
-    ai_state.scratch_depth = 0;
-}
-
 uint8_t *ai_find_path(void)
 {
     int g = thing_index(g_ai.group_thing);
     return ai_state.groups[g].path_size ? ai_state.groups[g].path : NULL;
 }
 
-/* Forgets the plan state and path of a group. */
-void ai_free_cached_data(uint16_t group)
+uint8_t ai_action_flag(int8_t action)
 {
-    int g = thing_index(group) | thing_index(g_ai.group_thing); /* the original ORs both indices into the key */
-    ai_state.groups[g].present = false;
-    ai_state.groups[g].path_size = 0;
-}
-
-/* The action that the think event starts: the planned next action, or a new decision. */
-static void take_next_action(void)
-{
-    ActiveGroup *a = g_ai.active;
-    a->action = (uint8_t)a->next_action;
-    if (a->next_action == -1) {
-        ai_decide();
-        return;
-    }
-    a->next_action = -1;
-    if (ai_plan_flags() && (int8_t)a->action != ACTION_VANISH) {
-        a->action = ACTIVE_ACTION_NONE;
-        return;
-    }
-    if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_PATH) {
-        g_ai.cache.path_left = 0;
-        g_ai.cache.kind = -1;
-    }
-    int dir = group_dir(g_ai.group_thing);
-    if (a->action == ACTION_TURN_LEFT)
-        a->facing = (uint8_t)dir_turn(dir, TURN_LEFT);
-    else if (a->action == ACTION_TURN_RIGHT)
-        a->facing = (uint8_t)dir_turn(dir, TURN_RIGHT);
-}
-
-/* The creature starts to vanish: it keeps its animation and leaves a death cloud by its size. */
-static void start_vanish(void)
-{
-    ActiveGroup *a = g_ai.active;
-    a->counters[0] = (int16_t)g_ai.anim[0];
-    a->counters[1] = (int16_t)g_ai.anim[1];
-    if (g_ai_class_flags[creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS)] &
-        AI_CLASS_NO_DEATH_CLOUD)
-        return;
-    int size = g_ai.info->hit_size; /* the power of the death cloud by size */
-    explosion_create(EXPLOSION_DEATH_CLOUD,
-                     size == 1   ? DEATH_CLOUD_POWER_MEDIUM
-                     : size == 2 ? POWER_MAX
-                                 : DEATH_CLOUD_POWER_SMALL,
-                     g_ai.event.data[0], g_ai.event.data[1], EXPLOSION_AT_CENTER);
-}
-
-/* Runs the animation steps of the action: the creature acts at its acting steps; returns the last step result. */
-static int run_animation(bool think, int r)
-{
-    ActiveGroup *a = g_ai.active;
-    for (;;) {
-        if ((think || !a->interrupt || !(g_ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE)) &&
-            g_ai.anim_step[STEP_JUMP] & STEP_ACTS) {
-            ai_prepare();
-            a->interrupt |= (uint8_t)ai_execute_action();
-        }
-        if (!a->interrupt || !(g_ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE))
-            break;
-        r = creature_anim_next_step(group_creature(g_ai.group_thing), g_ai.anim[0], g_ai.anim + 1, &g_ai.anim_step);
-        if ((uint16_t)r == ANIM_SEQUENCE_END)
-            break;
-    }
-    return r;
-}
-
-/* The next action and its animation; false when the group left the dungeon. */
-static bool run_next_action(void)
-{
-    ActiveGroup *a = g_ai.active;
-    uint16_t *anim = g_ai.anim;
-    bool think = g_ai.event.type == EVENT_CREATURE_THINK;
-    int r;
-    if (think) {
-        take_next_action();
-        if ((int8_t)a->action == ACTION_VANISH)
-            start_vanish();
-        int8_t action = (int8_t)a->action;
-        if (action >= ACTION_WAIT_FIRST && action <= ACTION_WAIT_LAST) {
-            g_ai.event.time_map = timeline_time_map((uint32_t)(action - ACTION_WAIT_FIRST) + game.game_time, g_ai.map);
-            return true;
-        }
-        r = creature_anim_start(group_creature(g_ai.group_thing), action, anim, anim + 1, &g_ai.anim_step, 0);
-    } else {
-        r = creature_anim_next_random_step(group_creature(g_ai.group_thing), anim[0], anim + 1, &g_ai.anim_step);
-    }
-    r = run_animation(think, r);
-    g_ai.event.type = (uint16_t)r != ANIM_MORE_STEPS ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
-    if (g_ai.removed)
-        return false;
-    g_ai.event.time_map = timeline_time_map(creature_ai_animate_and_get_next_time(), g_ai.map);
-    return true;
-}
-
-/* The update of a creature that acts: the next action and its animation, then the next update event. */
-void ai_update_group(void)
-{
-    ActiveGroup *a = g_ai.active;
-    if (game.magic_light[MAGIC_ACTION_EFFECT] && !(g_ai.info->flags & CREATURE_FAST_VANISH) &&
-        a->action != ACTION_VANISH && a->next_action != ACTION_VANISH) {
-        g_ai.event.time_map += ACTION_DELAY_EFFECT;
-    } else if (!run_next_action()) {
-        return;
-    }
-    if (g_ai.prepared && (g_ai.cache.path_length || g_ai.cache.kind != -1))
-        store_plan_cache();
-    if (g_ai.active->event != EVENT_NO_SLOT)
-        creature_cancel_update(g_ai.group_thing);
-    g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
-}
-
-/* Moods and plans. */
-
-static AiCandidate *candidate_at(int i)
-{
-    return &g_ai.candidates[i];
-}
-
-/* The mood bits of the creature after their random changes: far, hurry, bored, lazy, restless, quick, stays, fear. */
-static uint16_t change_mood(uint16_t mood)
-{
-    ActiveGroup *a = g_ai.active;
-    uint32_t r = rand_next();
-    if (g_ai.map == g_ai_party.map) {
-        mood &= ~MOOD_FAR;
-    } else if (!((uint16_t)r & (a->plan == -1 ? ROLL_FAR_NO_PLAN : ROLL_FAR))) {
-        mood = (uint16_t)((mood | MOOD_FAR) & ~MOOD_HURRY);
-    }
-    if (!(mood & MOOD_FAR) && !((uint16_t)r & (mood & MOOD_FEAR ? ROLL_HURRY_FEAR : ROLL_HURRY)))
-        mood ^= MOOD_HURRY;
-    if (!((uint16_t)r % (SPEED_MOOD_STEPS - creature_fear_resistance(g_ai.info))))
-        mood &= ~MOOD_BORED;
-    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_BORED)
-        mood |= MOOD_LAZY;
-    else if (!(r & ROLL_LAZY))
-        mood &= ~MOOD_LAZY;
-    if (!(r & ROLL_RESTLESS))
-        mood &= ~MOOD_RESTLESS;
-    if (!(r & 3))
-        mood &= ~MOOD_QUICK;
-    if (!(r & ROLL_STAYS))
-        mood &= ~MOOD_STAYS;
-    int n = 2;
-    if (!(g_ai_class_flags[g_ai.class_index] & AI_CLASS_ONE_FEAR))
-        n = (((g_ai.group_thing & 3) + 1) * 2 - 1) * 2;
-    if (!rand_below((uint16_t)n)) {
-        int max = (int16_t)g_ai.info->max_health < 1 ? 1 : (int16_t)g_ai.info->max_health;
-        if (thing_word(g_ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / (unsigned)max < FEAR_HEALTH_PERCENT)
-            mood |= MOOD_FEAR;
-        else
-            mood &= ~MOOD_FEAR;
-    }
-    return mood;
-}
-
-/* The mood entry of the creature: its mood bits change at random, then the first entry that fits them. */
-static int update_mood(uint32_t entries)
-{
-    ActiveGroup *a = g_ai.active;
-    uint16_t mood = change_mood(group_mood(g_ai.group_thing));
-    group_set_mood(g_ai.group_thing, mood & ~GROUP_SEEN);
-    int16_t any = -1, all = -1, i = 0;
-    uint16_t mask;
-    for (;; i++) {
-        mask = ai_mood_mask(entries + (uint32_t)(i * AI_MOOD_ENTRY_SIZE));
-        if (!mask)
-            break;
-        if ((mask & MOOD_GLOBAL_TEST) == MOOD_GLOBAL_TEST) {
-            if (dun_get_global_var(mask & MOOD_GLOBAL_MASK))
-                break;
-            continue;
-        }
-        if (any == -1 && mask & mood)
-            any = i;
-        if (all == -1 && (mask & mood) == mask)
-            all = i;
-        if (mask == mood)
-            break;
-    }
-    if (!mask && (all != -1 || any != -1))
-        i = all != -1 ? all : any;
-    if ((int8_t)i != a->behavior) {
-        g_ai.cache.path_left = 0;
-        a->plan = -1;
-        a->plan_step = 0;
-        g_ai.cache.kind = -1;
-    }
-    a->behavior = (int8_t)i;
-    return (int8_t)i;
-}
-
-/* The mood entry of the creature class. */
-static void select_behavior(void)
-{
-    ai_class();
-    g_ai.mood = (int16_t)update_mood(g_ai_behaviors[g_ai.class_index]);
-    g_ai.mood_entry = g_ai_behaviors[g_ai.class_index] + (uint32_t)(g_ai.mood * AI_MOOD_ENTRY_SIZE);
-}
-
-/* The plan state of a found candidate: its path, kind, and target for the next updates. */
-static void load_candidate_path(const AiCandidate *c)
-{
-    int length = c->path_length < 0 ? 0 : c->path_length;
-    g_ai.cache.path_left = g_ai.cache.path_length = (uint8_t)length;
-    g_ai.cache.found = c->found;
-    g_ai.cache.kind = c->kind;
-    g_ai.cache.item = c->item;
-    g_ai.cache.mask = c->mask;
-    g_ai.cache.scan_kind = c->scan_kind;
-    g_ai.cache.targets = c->targets;
-    uint8_t *path = NULL;
-    if (length > 0) {
-        path = ai_store_path(length * 2);
-        memcpy(path, g_ai.path, (size_t)length * 2);
-    }
-    g_ai.cached_path = path;
-}
-
-static void run_target_scanner(int kind, int arg, int plan, uint32_t targets);
-
-/* The current plan goes on when its targets are still there: returns the plan, or -1. */
-static int continue_plan(void)
-{
-    ActiveGroup *a = g_ai.active;
-    int found = 0, plan = -1;
-    if (g_ai.cache.path_length && g_ai.cache.path_left && g_ai.cache.kind != -1) {
-        g_ai.candidate_count = 0;
-        if (a->plan != -1) {
-            plan = a->plan;
-            PlanStep step = ai_plan_step(plan, a->plan_step);
-            run_target_scanner(step.scan, step.scan_arg, plan, g_ai.cache.targets);
-        }
-        if (g_ai.candidate_count) {
-            found = ai_plan_path();
-            if (found)
-                a->destination = g_ai.candidates[0].destination;
-        }
-    }
-    return found ? plan : -1;
-}
-
-/* Halves the costs of the candidates and removes those without a cost. */
-static void compact_candidates(void)
-{
-    int16_t count = (int8_t)g_ai.candidate_count;
-    if (!count)
-        return;
-    for (int i = 0; i < count; i++) {
-        AiCandidate *c = candidate_at(i);
-        if (c->cost > 0) {
-            int16_t half = (int16_t)(c->cost >> 1), limit = (int16_t)(g_ai.cache.path_length - 2);
-            c->cost = (int8_t)(half < limit ? half : limit);
-        }
-    }
-    for (int16_t i = 0; i < count; i++) {
-        if (candidate_at(i)->cost >= 0)
-            continue;
-        int16_t j = (int16_t)(i + 1);
-        while (j < count && candidate_at(j)->cost < 0)
-            j++;
-        if (j >= count) {
-            count = (int16_t)(i + 1);
-        } else {
-            memmove(candidate_at(i), candidate_at(j), (size_t)(count - j) * sizeof(AiCandidate));
-            count = (int16_t)(count - (j - i));
-        }
-    }
-    if (candidate_at(count - 1)->cost < 0)
-        count--;
-    g_ai.candidate_count = (uint8_t)count;
-}
-
-/* The plans of the mood entry whose chance comes up scan for their targets; the current plan always. */
-static void scan_plan_list(uint32_t choices, int plan, int step, bool continuing)
-{
-    for (;;) {
-        AiChoice c = ai_choice(choices);
-        int stop = 0, run = 0, at = 0;
-        if (c.plan == plan) {
-            stop = continuing || g_ai.plan_flags;
-            run = 1;
-            at = (int8_t)step;
-        } else if (!g_ai.plan_flags) {
-            if (!c.chance)
-                run = 1;
-            else if (c.chance > 0)
-                run = !rand_below((uint16_t)c.chance);
-            else
-                run = rand_below((uint16_t)-c.chance) != 0;
-        }
-        if (run) {
-            PlanStep s = ai_plan_step(c.plan, at);
-            run_target_scanner(s.scan, s.scan_arg, c.plan, c.targets);
-        }
-        if (stop || !c.more)
-            return;
-        choices += AI_CHOICE_SIZE;
-    }
-}
-
-/* The scan flags of the current plan step; 0 when the step applies only on the party map and the creature is away. */
-int ai_plan_flags(void)
-{
-    ActiveGroup *a = g_ai.active;
-    if (a->plan == -1)
-        return 0;
-    uint8_t scan = ai_plan_step(a->plan, a->plan_step).scan;
-    if ((scan & PLAN_SCAN_PARTY_MAP) == PLAN_SCAN_ONLY_PARTY_MAP && g_ai.map != g_ai_party.map)
-        return 0;
-    return scan & PLAN_SCAN_FLAGS;
-}
-
-/* The plan of the next update: the plan that goes on, or the nearest candidate of a scan; AI_IDLE_PLAN when there
-   is none; -1 when the plan stays; AI_RESULT_FAIL when the plan ends. */
-static int choose_plan(void)
-{
-    ActiveGroup *a = g_ai.active;
-    bool continuing = continue_plan() != -1;
-    int chosen = -1;
-    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_ALWAYS_SCANS || !continuing || !rand_2bits()) {
-        g_ai.candidate_count = 0;
-        g_ai.plan_flags = (uint8_t)ai_plan_flags();
-        scan_plan_list(ai_mood_choices(g_ai.mood_entry), a->plan, a->plan_step, continuing);
-        if (continuing)
-            compact_candidates();
-        if (g_ai.candidate_count) {
-            uint16_t mood = group_mood(g_ai.group_thing);
-            int flags = mood & SEARCH_FLAGS_FLEE ? g_ai.search_flags : 0;
-            if (mood & MOOD_STAYS)
-                flags |= AI_MOVE_ATTACK_GROUPS;
-            int i = ai_search_area(g_ai.event.data[0], g_ai.event.data[1], (uint8_t)flags, (int8_t)g_ai.candidate_count,
-                                   g_ai.candidates, g_ai.path);
-            g_ai.chosen = (int8_t)i;
-            if ((int16_t)i != -1) {
-                chosen = candidate_at(i)->plan;
-                a->destination = candidate_at(i)->destination;
-                load_candidate_path(candidate_at(i));
-            } else if (g_ai.plan_flags) {
-                return AI_RESULT_FAIL;
-            }
-        }
-    }
-    if ((int8_t)chosen == -1 && continuing)
-        return -1;
-    if ((int8_t)chosen == -1) {
-        g_ai.cache.path_left = 0;
-        g_ai.cache.kind = -1;
-        return AI_IDLE_PLAN;
-    }
-    if (a->plan != -1) {
-        if (a->plan == (int8_t)chosen)
-            return -1;
-        a->plan = -1;
-        a->plan_step = 0;
-    }
-    return (int8_t)chosen;
-}
-
-/* The command of the current plan step; directives before it set the plan counters. */
-static int fetch_plan_step(void)
-{
-    ActiveGroup *a = g_ai.active;
-    int8_t step = a->plan_step;
-    PlanStep s;
-    for (;; step++) {
-        s = ai_plan_step(a->plan, step);
-        if (s.command >= 0)
-            break;
-        if (s.command == PLAN_STEP_DIRECTIVE_COUNTER && s.on_done >= 0 && s.on_done < 2)
-            a->counters[(int)s.on_done] = s.on_fail;
-    }
-    a->plan_step = step;
-    g_ai.arg1 = s.arg1;
-    g_ai.arg2 = s.arg2;
-    return s.command;
-}
-
-/* The next plan step after a command result; true when the step changed. */
-static bool advance_plan_step(int result)
-{
-    ActiveGroup *a = g_ai.active;
-    int8_t step = a->plan_step;
-    PlanStep s = ai_plan_step(a->plan, step);
-    int8_t next = (int8_t)result == (int8_t)AI_RESULT_DONE ? s.on_done : s.on_fail;
-    if (next == PLAN_NEXT_END || next == PLAN_NEXT_FAIL) {
-        a->plan = -1;
-        a->plan_step = 0;
-        return true;
-    }
-    bool changed = false;
-    if (next <= PLAN_NEXT_FORWARD && next >= PLAN_NEXT_SKIP) {
-        if (next != PLAN_NEXT_STAY) {
-            if (next == PLAN_NEXT_SKIP)
-                step = (int8_t)(step + 2);
-            else
-                step = (int8_t)(step + (next == PLAN_NEXT_FORWARD ? 1 : -1));
-            changed = true;
-        }
-    } else {
-        changed = step != next;
-        step = next;
-    }
-    a->plan_step = step;
-    return changed;
-}
-
-/* Is the next step of a plan a step of the same scan as the first one: the plan goes on in this update. */
-static bool plan_scan_goes_on(int first_kind, int first_arg, const PlanStep *s)
-{
-    int k = s->scan & PLAN_SCAN_KIND;
-    if (first_kind == k && k != SCANNER_TARGETS)
-        return true;
-    if (k == SCANNER_IDLE)
-        return true;
-    return first_kind == SCANNER_TARGETS && k == SCANNER_TARGETS && s->scan_arg == first_arg;
-}
-
-/* A creature that wanders: a step forward, a turn, or a wait. */
-static void wander_at_random(void)
-{
-    ActiveGroup *a = g_ai.active;
-    int r = rand_next() & 7;
-    if (r > 3) {
-        a->action = 0;
-        return;
-    }
-    if (!r) {
-        ai_turn_toward(game.game_time & DIR_MASK);
-        return;
-    }
-    int dir = group_dir(g_ai.group_thing);
-    a->direction = (uint8_t)dir;
-    int x = (g_ai.event.data[0] + dir_dx[dir]) & LOCATION_COORD_MASK,
-        y = (g_ai.event.data[1] + dir_dy[dir]) & LOCATION_COORD_MASK;
-    a->destination = (uint16_t)location_set_xy(a->destination, x, y);
-    int type = square_type(dun_get_square(x, y));
-    if (type == SQUARE_WALL || type == SQUARE_UNKNOWN) {
-        a->action = 0;
-        return;
-    }
-    if (type == SQUARE_TELEPORTER) {
-        PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, x, y) && !creature_is_native_to_map(g_ai.group_thing, end.map)) {
-            a->action = 0;
-            return;
-        }
-    }
-    a->action = ACTION_MOVE_NEAR;
-}
-
-/* The creature flees: dodges a missile, or steps away in up to two rounds of four directions; true when it moved. */
-static bool flee_or_dodge(bool second_round)
-{
-    ActiveGroup *a = g_ai.active;
-    uint32_t class_flags = g_ai_class_flags[g_ai.class_index];
-    group_set_mood_flag(g_ai.group_thing, MOOD_LAZY, true);
-    for (;;) {
-        if (class_flags & AI_CLASS_DODGES) {
-            uint16_t mood = group_mood(g_ai.group_thing);
-            bool look = (mood & MOOD_FEAR && rand_2bits()) || (mood & MOOD_QUICK && rand_bit()) || !rand_2bits();
-            if (look && ai_projectile_incoming(g_ai.event.data[0], g_ai.event.data[1])) {
-                a->plan = -1;
-                a->plan_step = 0;
-                a->action = ACTION_DODGE;
-                return true;
-            }
-        }
-        int dir;
-        if (ai_next_path_step() > 0)
-            dir = a->direction;
-        else if (rand_bit())
-            dir = dir_opposite(group_dir(g_ai.group_thing));
-        else
-            dir = rand_2bits();
-        int turn = rand_bit() ? 1 : -1;
-        for (int tries = DIR_COUNT; tries; tries--) {
-            int command = (second_round ? MOVE_KIND_PLAIN : g_ai.search_flags) | AI_EXECUTE;
-            if (ai_try_move(command, g_ai.event.data[0], g_ai.event.data[1], -1, -1, dir)) {
-                a->plan = -1;
-                a->plan_step = 0;
-                return true;
-            }
-            dir = dir_turn(dir, turn);
-        }
-        if (second_round || !rand_bit())
-            return false;
-        second_round = true;
-    }
-}
-
-int creature_ai_exec_plan_command(int command);
-
-/* A creature that cannot stay flees: it sees a missile, is not alert, cannot attack, or by chance by its armor;
-   true when it moved. */
-static bool try_flee(uint32_t class_flags)
-{
-    bool second_round = rand_2bits() == 0;
-    int x = g_ai.event.data[0], y = g_ai.event.data[1];
-    if (class_flags & AI_CLASS_NO_FLEE || ai_try_move(g_ai.search_flags, x, y, x, y, -1))
-        return false;
-    bool flee = (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(x, y)) || !g_ai.alert ||
-                !ai_try_attack(ATTACK_MODE_PARTY, x, y, -1, -1, group_dir(g_ai.group_thing)) ||
-                rand_below((uint16_t)((creature_armor(g_ai.info) >> 2) + 1)) <= 1;
-    return flee && flee_or_dodge(second_round);
-}
-
-/* Runs the steps of the chosen plan (or of the current plan) while they scan as its first step does. */
-static void run_plan(int chosen)
-{
-    ActiveGroup *a = g_ai.active;
-    int plan, step;
-    if (chosen >= 0 && chosen < AI_PLAN_COUNT) {
-        plan = a->plan = (int8_t)chosen;
-        step = a->plan_step = 0;
-    } else {
-        plan = a->plan;
-        step = a->plan_step;
-    }
-    PlanStep first = ai_plan_step(plan, step);
-    int first_kind = first.scan & PLAN_SCAN_KIND, first_arg = first.scan_arg;
-    bool changed = false;
-    int n = 0;
-    do {
-        if (changed) {
-            PlanStep s = ai_plan_step(a->plan, a->plan_step);
-            if (!plan_scan_goes_on(first_kind, first_arg, &s)) {
-                a->action = ACTION_RESCAN;
-                break;
-            }
-        }
-        int8_t r = (int8_t)creature_ai_exec_plan_command(fetch_plan_step());
-        if (r != (int8_t)AI_RESULT_ISSUED)
-            changed |= advance_plan_step(r);
-        if (changed)
-            g_ai.cache.path_left = 0;
-        if (n++ > AI_STEP_LIMIT)
-            a->action = 0;
-        if ((int8_t)a->action == -1 && r != (int8_t)AI_RESULT_ISSUED && a->plan == -1)
-            a->action = 0;
-    } while ((int8_t)a->action == -1);
-}
-
-/* The creature chooses what to do next: wander, flee, or follow the best plan. */
-void ai_decide(void)
-{
-    ActiveGroup *a = g_ai.active;
-    select_behavior();
-    uint32_t class_flags = g_ai_class_flags[g_ai.class_index];
-    g_ai.search_flags = class_flags & AI_CLASS_NO_FLEE       ? MOVE_KIND_PLAIN
-                        : class_flags & AI_CLASS_SEARCH_NEAR ? MOVE_KIND_SAFE
-                                                             : MOVE_KIND_SAFE_FLEE;
-    uint32_t choices = ai_mood_choices(g_ai.mood_entry);
-    if (choices == AI_CHOICES_NONE) {
-        a->action = 0;
-        return;
-    }
-    if (choices == AI_CHOICES_WANDER) {
-        wander_at_random();
-        return;
-    }
-    ai_prepare();
-    ai_scratch_push();
-    if (try_flee(class_flags)) {
-        ai_scratch_pop();
-        return;
-    }
-    a->action = ACTIVE_ACTION_NONE;
-    int chosen = (int8_t)choose_plan();
-    if (chosen != (int8_t)AI_RESULT_FAIL) {
-        run_plan(chosen);
-    } else if (!(g_ai.plan_flags & PLAN_SCAN_ENDS)) {
-        a->action = 0;
-    } else {
-        if (advance_plan_step(AI_RESULT_FAIL))
-            g_ai.cache.path_left = 0;
-        a->action = ACTION_RESCAN;
-    }
-    ai_scratch_pop();
-}
-
-/* Target scanners: they turn the target records of a plan into candidates for the path search. */
-
-/* Adds a candidate destination for the search, with its cost lowered away from the party map. */
-static void add_candidate(const TargetScan *scan, uint32_t record, const AiTarget *t, int8_t bonus, uint16_t marker)
-{
-    if (g_ai.candidate_count >= AI_CANDIDATE_MAX)
-        return;
-    int8_t cost = t->cost;
-    if (g_ai.map != g_ai_party.map && cost > 0 && !(g_ai.info->flags & CREATURE_WANDERER)) {
-        cost = (int8_t)(cost >> 2);
-        bonus = (int8_t)(bonus >> 2);
-    }
-    int16_t c = (int16_t)(cost + bonus);
-    if (c < -1)
-        c = -1;
-    if (c > INT8_MAX)
-        c = INT8_MAX;
-    if ((int8_t)c < 0)
-        return;
-    AiCandidate *d = candidate_at(g_ai.candidate_count++);
-    d->plan = (int8_t)scan->plan;
-    d->scan_arg = (int8_t)scan->arg;
-    d->marker = marker;
-    d->cost = (int8_t)c;
-    d->value = t->value_9;
-    d->kind = t->kind;
-    d->item = t->item;
-    d->mask = t->mask & g_ai.candidate_mask;
-    d->scan_kind = (int8_t)scan->kind;
-    d->targets = record;
-}
-
-/* The item counts of a target list for a scan: how many of each wanted item the creature carries. */
-static AiItemCounts *get_item_counts(uint32_t targets, int scan)
-{
-    if (g_ai.counts_dirty) {
-        memset(g_ai.item_counts, 0, sizeof g_ai.item_counts);
-        g_ai.counts_dirty = 0;
-    }
-    AiItemCounts *slot = &g_ai.item_counts[0];
-    for (int i = 0; i < AI_COUNT_LISTS; i++) {
-        AiItemCounts *e = &g_ai.item_counts[i];
-        if (!e->targets)
-            slot = e;
-        else if (e->targets == targets && e->scan_kind == (int16_t)scan)
-            return e;
-    }
-    slot->targets = targets;
-    slot->scan_kind = (int8_t)scan;
-    slot->total = slot->wanted = slot->extra = 0;
-    int8_t *p = slot->counts, *pa = p, *pb = p;
-    int16_t want_a = 0, want_b = 0, used_a = 0, used_b = 0;
-    for (int16_t i = 0; i < AI_COUNT_TARGETS;) {
-        AiTarget t = ai_target(targets);
-        if (t.scan == (int16_t)scan) {
-            if (t.item != TARGET_NO_ITEM && t.kind != TARGET_KIND_UNCOUNTED) {
-                if (t.count_10 != -1) {
-                    for (; pa < p; pa += AI_COUNT_ENTRY_SIZE)
-                        pa[COUNT_AT_WANTED] = (int8_t)(want_a - used_a);
-                    want_a = t.count_10;
-                    slot->wanted = (int8_t)(slot->wanted + (int8_t)want_a);
-                    used_a = 0;
-                }
-                if (t.count_11 != -1) {
-                    for (; pb < p; pb += AI_COUNT_ENTRY_SIZE)
-                        pb[COUNT_AT_EXTRA] = (int8_t)(want_b - used_b);
-                    want_b = t.count_11;
-                    slot->extra = (int8_t)(slot->extra + (int8_t)want_b);
-                    used_b = 0;
-                }
-                int16_t n = (int16_t)ai_count_matching_items(
-                    (int16_t)t.item, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY, 0, 1);
-                p[COUNT_AT_CARRIED] = (int8_t)n;
-                slot->total = (int8_t)(slot->total + (int8_t)n);
-                int16_t ra = (int16_t)(want_a - used_a), rb = (int16_t)(want_b - used_b);
-                slot->wanted = (int8_t)(slot->wanted - (int8_t)(n < ra ? n : ra));
-                slot->extra = (int8_t)(slot->extra - (int8_t)(n < rb ? n : rb));
-                used_a = (int16_t)(used_a + n < want_a ? used_a + n : want_a);
-                used_b = (int16_t)(n + used_b < want_b ? n + used_b : want_b);
-            }
-            p += AI_COUNT_ENTRY_SIZE;
-            i++;
-        }
-        if (!t.more)
-            break;
-        targets += AI_TARGET_SIZE;
-    }
-    return slot;
-}
-
-bool creature_ai_test_condition(int condition, int arg, int plan);
-
-/* The target records of scan |arg| whose condition holds; a negative arg ignores their cost. */
-static void scan_targets(int arg, int plan, uint32_t list, int8_t bonus, uint16_t marker)
-{
-    if (!list)
-        return;
-    int ignore_cost = (int8_t)arg < 0;
-    int kind = ignore_cost ? -(int8_t)arg : (int8_t)arg;
-    TargetScan scan = {plan, kind, kind};
-    for (;; list += AI_TARGET_SIZE) {
-        AiTarget t = ai_target(list);
-        if (t.scan == (int8_t)kind && creature_ai_test_condition(t.condition, t.condition_arg, plan)) {
-            AiTarget copy = t;
-            if (ignore_cost) {
-                copy.cost = 0;
-                copy.value_9 = 0;
-            }
-            add_candidate(&scan, list, &copy, bonus, marker);
-        }
-        if (!t.more)
-            return;
-    }
-}
-
-/* The items that the creature wants and sees: scans the seen kind of the first or second item set (ignoring costs
-   for arg != 0) when it is alert. */
-static void scan_items_seen(int arg, int plan, uint32_t list, bool second_set, bool need_attack)
-{
-    if (!list || !g_ai.alert)
-        return;
-    int n = second_set ? TARGET_SCAN_SEEN_2 : TARGET_SCAN_SEEN;
-    AiItemCounts *c = get_item_counts(list, second_set ? TARGET_SCAN_WANTED_2 : TARGET_SCAN_WANTED);
-    if ((!need_attack || g_ai.attack_flags & CANDIDATE_MASK_NO_ATTACK) && c->total <= 0)
-        g_ai.candidate_mask &= ~CANDIDATE_MASK_NO_ATTACK;
-    if (!g_ai.attack_flags)
-        return;
-    scan_targets(arg ? -n : n, plan, list, 0, FOUND_NONE);
-}
-
-/* The items still wanted by count: candidates with a bonus by the count of each. */
-static void scan_item_counts(int arg, int plan, uint32_t list, int n)
-{
-    if (!list)
-        return;
-    AiItemCounts *c = get_item_counts(list, n);
-    if (!c->extra)
-        return;
-    int8_t *p = c->counts;
-    TargetScan scan = {plan, n, (int8_t)arg};
-    for (;; list += AI_TARGET_SIZE) {
-        AiTarget t = ai_target(list);
-        if (t.scan == (int8_t)n) {
-            if (t.item != TARGET_NO_ITEM && creature_ai_test_condition(t.condition, t.condition_arg, plan)) {
-                int8_t bonus = (int8_t)-(t.cost < p[COUNT_AT_CARRIED] ? t.cost : p[COUNT_AT_CARRIED]);
-                AiTarget copy = t;
-                if (arg) {
-                    copy.cost = 0;
-                    copy.value_9 = 0;
-                    bonus = 0;
-                }
-                add_candidate(&scan, list, &copy, bonus, FOUND_NONE);
-            }
-            p += AI_COUNT_ENTRY_SIZE;
-        }
-        if (!t.more)
-            return;
-    }
-}
-
-/* The targets of scan n whose items the creature carries (filters 0 and 1 of a target). */
-static void scan_carried_kind(int arg, int plan, uint32_t list, int n)
-{
-    if (!list)
-        return;
-    TargetScan scan = {plan, n, (int8_t)arg};
-    for (;; list += AI_TARGET_SIZE) {
-        AiTarget t = ai_target(list);
-        if (t.scan == (int8_t)n) {
-            bool carried = true;
-            if (t.item != TARGET_NO_ITEM && (t.mask == 0 || t.mask == 1))
-                carried = ai_find_matching_item((int16_t)t.item, thing_word(g_ai.group_thing, GROUP_POSSESSIONS),
-                                                CELL_ANY) != THING_ENDOFLIST;
-            if (carried && creature_ai_test_condition(t.condition, t.condition_arg, plan)) {
-                AiTarget copy = t;
-                if (arg) {
-                    copy.cost = 0;
-                    copy.value_9 = 0;
-                }
-                add_candidate(&scan, list, &copy, 0, FOUND_NONE);
-            }
-        }
-        if (!t.more)
-            return;
-    }
-}
-
-/* The targets of scan n by their condition; the target filter becomes the item class of the group. */
-static void scan_by_condition(int arg, int plan, uint32_t list, int n)
-{
-    if (!list)
-        return;
-    TargetScan scan = {plan, n, (int8_t)arg};
-    for (;; list += AI_TARGET_SIZE) {
-        AiTarget t = ai_target(list);
-        if (t.scan == (int8_t)n && creature_ai_test_condition(t.condition, t.condition_arg, plan)) {
-            AiTarget copy = t;
-            copy.mask = thing_word(g_ai.group_thing, GROUP_ITEM_CLASS);
-            if (arg) {
-                copy.cost = 0;
-                copy.value_9 = 0;
-            }
-            add_candidate(&scan, list, &copy, 0, FOUND_NONE);
-        }
-        if (!t.more)
-            return;
-    }
-}
-
-/* A creature that waits or wanders: the idle target. */
-static void scan_idle(int arg, int plan, uint32_t list)
-{
-    AiTarget t = ai_target(AI_TARGET_IDLE);
-    t.kind = TARGET_ANY;
-    TargetScan scan = {plan, 0, (int8_t)arg};
-    add_candidate(&scan, list, &t, 0, FOUND_NONE);
-}
-
-/* A creature that wanders now and then on maps that allow it. */
-static void scan_random_wander(int arg, int plan, uint32_t list)
-{
-    uint16_t mood = group_mood(g_ai.group_thing);
-    int set = dungeon_map_wallset(g_ai.map);
-    if (gdat_entry_index(gdat_current(), CAT_WALLSET, set, GDAT_TYPE_VALUE, MAP_GRAPHICS_KEY_FLAGS) &
-            MAP_KEY_NO_WANDER ||
-        (!(int8_t)arg && mood & MOOD_WANDERS)) {
-        group_set_mood(g_ai.group_thing, mood & ~MOOD_WANDERS);
-        return;
-    }
-    if (!(int8_t)arg) {
-        if (rand_next() & ROLL_WANDER_START)
-            return;
-        group_set_mood(g_ai.group_thing, mood | MOOD_WANDERS);
-    } else if (!(rand_next() & ROLL_WANDER_STOP)) {
-        group_set_mood(g_ai.group_thing, mood & ~MOOD_WANDERS);
-    }
-    AiTarget t = ai_target(AI_TARGET_IDLE);
-    t.kind = TARGET_ANY;
-    TargetScan scan = {plan, 0, (int8_t)arg};
-    add_candidate(&scan, list, &t, 0, FOUND_NONE);
-}
-
-/* Runs a scanner kind over a target list: each target that fits becomes a candidate. */
-static void run_target_scanner(int kind, int arg, int plan, uint32_t targets)
-{
-    g_ai.candidate_mask = CANDIDATE_MASK_ALL;
-    arg = (int8_t)arg;
-    plan = (int8_t)plan;
-    switch (kind & PLAN_SCAN_KIND) {
-    case SCANNER_IDLE:
-        scan_idle(arg, plan, targets);
-        break;
-    case SCANNER_TARGETS:
-        scan_targets(arg, plan, targets, 0, FOUND_NONE);
-        break;
-    case SCANNER_ITEMS_SEEN:
-        scan_items_seen(arg, plan, targets, false, false);
-        break;
-    case SCANNER_ITEMS_SEEN_2:
-        scan_items_seen(arg, plan, targets, true, false);
-        break;
-    case SCANNER_ITEM_COUNTS:
-        scan_item_counts(arg, plan, targets, TARGET_SCAN_WANTED);
-        break;
-    case SCANNER_ITEM_COUNTS_2:
-        scan_item_counts(arg, plan, targets, TARGET_SCAN_WANTED_2);
-        break;
-    case SCANNER_ITEMS_SEEN_ATTACK:
-        scan_items_seen(arg, plan, targets, false, true);
-        break;
-    case SCANNER_ITEMS_SEEN_ATTACK_2:
-        scan_items_seen(arg, plan, targets, true, true);
-        break;
-    case SCANNER_PATH_13:
-        scan_targets(TARGET_PATH_13, plan, targets, 0,
-                     g_ai.cache.kind == CACHE_KIND_13 ? g_ai.cache.found : FOUND_NONE);
-        break;
-    case SCANNER_HOME: {
-        uint16_t home = thing_word(g_ai.group_thing, GROUP_HOME);
-        if (arg && g_ai.event.data[0] == location_x(home) && g_ai.event.data[1] == location_y(home) &&
-            g_ai.map == location_map(home))
-            break;
-        scan_targets(TARGET_SCAN_HOME, plan, targets, 0, FOUND_NONE);
-        break;
-    }
-    case SCANNER_MINION: {
-        uint16_t p = minion_find_link_projectile(g_ai.group_thing, THING_NONE);
-        if (p && thing_type(thing_word(p, PROJECTILE_PAYLOAD)) == THING_CONTAINER)
-            scan_targets(TARGET_MINION, plan, targets, 0,
-                         thing_word(thing_word(p, PROJECTILE_PAYLOAD), MINION_MAP_LOCATION));
-        break;
-    }
-    case SCANNER_PATH_5:
-        scan_targets(TARGET_PATH_5, plan, targets, 0, g_ai.cache.kind == CACHE_KIND_5 ? g_ai.cache.found : FOUND_NONE);
-        break;
-    case SCANNER_CARRIED:
-        scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED);
-        break;
-    case SCANNER_CARRIED_2:
-        scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED_2);
-        break;
-    case SCANNER_WANDER:
-        scan_random_wander(arg, plan, targets);
-        break;
-    case SCANNER_ITEM_CLASS:
-        scan_by_condition(arg, plan, targets, TARGET_SCAN_ITEM_CLASS);
-        break;
-    case SCANNER_PARTY:
-        scan_targets(TARGET_PARTY, plan, targets, 0,
-                     (uint16_t)location_pack(g_ai_party.x, g_ai_party.y, g_ai_party.map));
-        break;
-    }
+    return action < 0 ? 0 : g_ai_action_flags[action]; /* action -1 reads the byte before the table: 0 */
 }
 
 /* Conditions of the target records. */
-
-/* The distance between two squares along the axes. */
-static int manhattan(int x1, int y1, int x2, int y2)
-{
-    int16_t dx = (int16_t)(x1 - x2), dy = (int16_t)(y1 - y2);
-    return (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
-}
 
 /* True when the wall squares around the party have a sensor of the special type. */
 static bool party_beside_special_wall(void)
@@ -1627,7 +786,7 @@ static bool cond_carries(int16_t filter)
 }
 
 /* True when the condition of a target record holds for the creature. */
-bool creature_ai_test_condition(int condition, int arg, int plan)
+static bool test_condition(int condition, int arg, int plan)
 {
     uint8_t c = (uint8_t)condition;
     int16_t a = (int16_t)arg;
@@ -1718,26 +877,705 @@ bool creature_ai_test_condition(int condition, int arg, int plan)
     return r;
 }
 
+/* Target scanners: they turn the target records of a plan into candidates for the path search. */
+
+/* Adds a candidate destination for the search, with its cost lowered away from the party map. */
+static void add_candidate(const TargetScan *scan, uint32_t record, const AiTarget *t, int8_t bonus, uint16_t marker)
+{
+    if (g_ai.candidate_count >= AI_CANDIDATE_MAX)
+        return;
+    int8_t cost = t->cost;
+    if (g_ai.map != g_ai_party.map && cost > 0 && !(g_ai.info->flags & CREATURE_WANDERER)) {
+        cost = (int8_t)(cost >> 2);
+        bonus = (int8_t)(bonus >> 2);
+    }
+    int16_t c = (int16_t)(cost + bonus);
+    if (c < -1)
+        c = -1;
+    if (c > INT8_MAX)
+        c = INT8_MAX;
+    if ((int8_t)c < 0)
+        return;
+    AiCandidate *d = candidate_at(g_ai.candidate_count++);
+    d->plan = (int8_t)scan->plan;
+    d->scan_arg = (int8_t)scan->arg;
+    d->marker = marker;
+    d->cost = (int8_t)c;
+    d->value = t->value_9;
+    d->kind = t->kind;
+    d->item = t->item;
+    d->mask = t->mask & g_ai.candidate_mask;
+    d->scan_kind = (int8_t)scan->kind;
+    d->targets = record;
+}
+
+/* The item counts of a target list for a scan: how many of each wanted item the creature carries. */
+static AiItemCounts *get_item_counts(uint32_t targets, int scan)
+{
+    if (g_ai.counts_dirty) {
+        memset(g_ai.item_counts, 0, sizeof g_ai.item_counts);
+        g_ai.counts_dirty = 0;
+    }
+    AiItemCounts *slot = &g_ai.item_counts[0];
+    for (int i = 0; i < AI_COUNT_LISTS; i++) {
+        AiItemCounts *e = &g_ai.item_counts[i];
+        if (!e->targets)
+            slot = e;
+        else if (e->targets == targets && e->scan_kind == (int16_t)scan)
+            return e;
+    }
+    slot->targets = targets;
+    slot->scan_kind = (int8_t)scan;
+    slot->total = slot->wanted = slot->extra = 0;
+    int8_t *p = slot->counts, *pa = p, *pb = p;
+    int16_t want_a = 0, want_b = 0, used_a = 0, used_b = 0;
+    for (int16_t i = 0; i < AI_COUNT_TARGETS;) {
+        AiTarget t = read_target(targets);
+        if (t.scan == (int16_t)scan) {
+            if (t.item != TARGET_NO_ITEM && t.kind != TARGET_KIND_UNCOUNTED) {
+                if (t.count_10 != -1) {
+                    for (; pa < p; pa += AI_COUNT_ENTRY_SIZE)
+                        pa[COUNT_AT_WANTED] = (int8_t)(want_a - used_a);
+                    want_a = t.count_10;
+                    slot->wanted = (int8_t)(slot->wanted + (int8_t)want_a);
+                    used_a = 0;
+                }
+                if (t.count_11 != -1) {
+                    for (; pb < p; pb += AI_COUNT_ENTRY_SIZE)
+                        pb[COUNT_AT_EXTRA] = (int8_t)(want_b - used_b);
+                    want_b = t.count_11;
+                    slot->extra = (int8_t)(slot->extra + (int8_t)want_b);
+                    used_b = 0;
+                }
+                int16_t n = (int16_t)ai_count_matching_items(
+                    (int16_t)t.item, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY, 0, 1);
+                p[COUNT_AT_CARRIED] = (int8_t)n;
+                slot->total = (int8_t)(slot->total + (int8_t)n);
+                int16_t ra = (int16_t)(want_a - used_a), rb = (int16_t)(want_b - used_b);
+                slot->wanted = (int8_t)(slot->wanted - (int8_t)(n < ra ? n : ra));
+                slot->extra = (int8_t)(slot->extra - (int8_t)(n < rb ? n : rb));
+                used_a = (int16_t)(used_a + n < want_a ? used_a + n : want_a);
+                used_b = (int16_t)(n + used_b < want_b ? n + used_b : want_b);
+            }
+            p += AI_COUNT_ENTRY_SIZE;
+            i++;
+        }
+        if (!t.more)
+            break;
+        targets += AI_TARGET_SIZE;
+    }
+    return slot;
+}
+
+/* The target records of scan |arg| whose condition holds; a negative arg ignores their cost. */
+static void scan_targets(int arg, int plan, uint32_t list, int8_t bonus, uint16_t marker)
+{
+    if (!list)
+        return;
+    int ignore_cost = (int8_t)arg < 0;
+    int kind = ignore_cost ? -(int8_t)arg : (int8_t)arg;
+    TargetScan scan = {plan, kind, kind};
+    for (;; list += AI_TARGET_SIZE) {
+        AiTarget t = read_target(list);
+        if (t.scan == (int8_t)kind && test_condition(t.condition, t.condition_arg, plan)) {
+            AiTarget copy = t;
+            if (ignore_cost) {
+                copy.cost = 0;
+                copy.value_9 = 0;
+            }
+            add_candidate(&scan, list, &copy, bonus, marker);
+        }
+        if (!t.more)
+            return;
+    }
+}
+
+/* The items that the creature wants and sees: scans the seen kind of the first or second item set (ignoring costs
+   for arg != 0) when it is alert. */
+static void scan_items_seen(int arg, int plan, uint32_t list, bool second_set, bool need_attack)
+{
+    if (!list || !g_ai.alert)
+        return;
+    int n = second_set ? TARGET_SCAN_SEEN_2 : TARGET_SCAN_SEEN;
+    AiItemCounts *c = get_item_counts(list, second_set ? TARGET_SCAN_WANTED_2 : TARGET_SCAN_WANTED);
+    if ((!need_attack || g_ai.attack_flags & CANDIDATE_MASK_NO_ATTACK) && c->total <= 0)
+        g_ai.candidate_mask &= ~CANDIDATE_MASK_NO_ATTACK;
+    if (!g_ai.attack_flags)
+        return;
+    scan_targets(arg ? -n : n, plan, list, 0, FOUND_NONE);
+}
+
+/* The items still wanted by count: candidates with a bonus by the count of each. */
+static void scan_item_counts(int arg, int plan, uint32_t list, int n)
+{
+    if (!list)
+        return;
+    AiItemCounts *c = get_item_counts(list, n);
+    if (!c->extra)
+        return;
+    int8_t *p = c->counts;
+    TargetScan scan = {plan, n, (int8_t)arg};
+    for (;; list += AI_TARGET_SIZE) {
+        AiTarget t = read_target(list);
+        if (t.scan == (int8_t)n) {
+            if (t.item != TARGET_NO_ITEM && test_condition(t.condition, t.condition_arg, plan)) {
+                int8_t bonus = (int8_t)-(t.cost < p[COUNT_AT_CARRIED] ? t.cost : p[COUNT_AT_CARRIED]);
+                AiTarget copy = t;
+                if (arg) {
+                    copy.cost = 0;
+                    copy.value_9 = 0;
+                    bonus = 0;
+                }
+                add_candidate(&scan, list, &copy, bonus, FOUND_NONE);
+            }
+            p += AI_COUNT_ENTRY_SIZE;
+        }
+        if (!t.more)
+            return;
+    }
+}
+
+/* The targets of scan n whose items the creature carries (filters 0 and 1 of a target). */
+static void scan_carried_kind(int arg, int plan, uint32_t list, int n)
+{
+    if (!list)
+        return;
+    TargetScan scan = {plan, n, (int8_t)arg};
+    for (;; list += AI_TARGET_SIZE) {
+        AiTarget t = read_target(list);
+        if (t.scan == (int8_t)n) {
+            bool carried = true;
+            if (t.item != TARGET_NO_ITEM && (t.mask == 0 || t.mask == 1))
+                carried = ai_find_matching_item((int16_t)t.item, thing_word(g_ai.group_thing, GROUP_POSSESSIONS),
+                                                CELL_ANY) != THING_ENDOFLIST;
+            if (carried && test_condition(t.condition, t.condition_arg, plan)) {
+                AiTarget copy = t;
+                if (arg) {
+                    copy.cost = 0;
+                    copy.value_9 = 0;
+                }
+                add_candidate(&scan, list, &copy, 0, FOUND_NONE);
+            }
+        }
+        if (!t.more)
+            return;
+    }
+}
+
+/* The targets of scan n by their condition; the target filter becomes the item class of the group. */
+static void scan_by_condition(int arg, int plan, uint32_t list, int n)
+{
+    if (!list)
+        return;
+    TargetScan scan = {plan, n, (int8_t)arg};
+    for (;; list += AI_TARGET_SIZE) {
+        AiTarget t = read_target(list);
+        if (t.scan == (int8_t)n && test_condition(t.condition, t.condition_arg, plan)) {
+            AiTarget copy = t;
+            copy.mask = thing_word(g_ai.group_thing, GROUP_ITEM_CLASS);
+            if (arg) {
+                copy.cost = 0;
+                copy.value_9 = 0;
+            }
+            add_candidate(&scan, list, &copy, 0, FOUND_NONE);
+        }
+        if (!t.more)
+            return;
+    }
+}
+
+/* A creature that waits or wanders: the idle target. */
+static void scan_idle(int arg, int plan, uint32_t list)
+{
+    AiTarget t = read_target(AI_TARGET_IDLE);
+    t.kind = TARGET_ANY;
+    TargetScan scan = {plan, 0, (int8_t)arg};
+    add_candidate(&scan, list, &t, 0, FOUND_NONE);
+}
+
+/* A creature that wanders now and then on maps that allow it. */
+static void scan_random_wander(int arg, int plan, uint32_t list)
+{
+    uint16_t mood = group_mood(g_ai.group_thing);
+    int set = dungeon_map_wallset(g_ai.map);
+    if (gdat_entry_index(gdat_current(), CAT_WALLSET, set, GDAT_TYPE_VALUE, MAP_GRAPHICS_KEY_FLAGS) &
+            MAP_KEY_NO_WANDER ||
+        (!(int8_t)arg && mood & MOOD_WANDERS)) {
+        group_set_mood(g_ai.group_thing, mood & ~MOOD_WANDERS);
+        return;
+    }
+    if (!(int8_t)arg) {
+        if (rand_next() & ROLL_WANDER_START)
+            return;
+        group_set_mood(g_ai.group_thing, mood | MOOD_WANDERS);
+    } else if (!(rand_next() & ROLL_WANDER_STOP)) {
+        group_set_mood(g_ai.group_thing, mood & ~MOOD_WANDERS);
+    }
+    AiTarget t = read_target(AI_TARGET_IDLE);
+    t.kind = TARGET_ANY;
+    TargetScan scan = {plan, 0, (int8_t)arg};
+    add_candidate(&scan, list, &t, 0, FOUND_NONE);
+}
+
+/* Runs a scanner kind over a target list: each target that fits becomes a candidate. */
+static void run_target_scanner(int kind, int arg, int plan, uint32_t targets)
+{
+    g_ai.candidate_mask = CANDIDATE_MASK_ALL;
+    arg = (int8_t)arg;
+    plan = (int8_t)plan;
+    switch (kind & PLAN_SCAN_KIND) {
+    case SCANNER_IDLE:
+        scan_idle(arg, plan, targets);
+        break;
+    case SCANNER_TARGETS:
+        scan_targets(arg, plan, targets, 0, FOUND_NONE);
+        break;
+    case SCANNER_ITEMS_SEEN:
+        scan_items_seen(arg, plan, targets, false, false);
+        break;
+    case SCANNER_ITEMS_SEEN_2:
+        scan_items_seen(arg, plan, targets, true, false);
+        break;
+    case SCANNER_ITEM_COUNTS:
+        scan_item_counts(arg, plan, targets, TARGET_SCAN_WANTED);
+        break;
+    case SCANNER_ITEM_COUNTS_2:
+        scan_item_counts(arg, plan, targets, TARGET_SCAN_WANTED_2);
+        break;
+    case SCANNER_ITEMS_SEEN_ATTACK:
+        scan_items_seen(arg, plan, targets, false, true);
+        break;
+    case SCANNER_ITEMS_SEEN_ATTACK_2:
+        scan_items_seen(arg, plan, targets, true, true);
+        break;
+    case SCANNER_PATH_13:
+        scan_targets(TARGET_PATH_13, plan, targets, 0,
+                     g_ai.cache.kind == CACHE_KIND_13 ? g_ai.cache.found : FOUND_NONE);
+        break;
+    case SCANNER_HOME: {
+        uint16_t home = thing_word(g_ai.group_thing, GROUP_HOME);
+        if (arg && g_ai.event.data[0] == location_x(home) && g_ai.event.data[1] == location_y(home) &&
+            g_ai.map == location_map(home))
+            break;
+        scan_targets(TARGET_SCAN_HOME, plan, targets, 0, FOUND_NONE);
+        break;
+    }
+    case SCANNER_MINION: {
+        uint16_t p = minion_find_link_projectile(g_ai.group_thing, THING_NONE);
+        if (p && thing_type(thing_word(p, PROJECTILE_PAYLOAD)) == THING_CONTAINER)
+            scan_targets(TARGET_MINION, plan, targets, 0,
+                         thing_word(thing_word(p, PROJECTILE_PAYLOAD), MINION_MAP_LOCATION));
+        break;
+    }
+    case SCANNER_PATH_5:
+        scan_targets(TARGET_PATH_5, plan, targets, 0, g_ai.cache.kind == CACHE_KIND_5 ? g_ai.cache.found : FOUND_NONE);
+        break;
+    case SCANNER_CARRIED:
+        scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED);
+        break;
+    case SCANNER_CARRIED_2:
+        scan_carried_kind(arg, plan, targets, TARGET_SCAN_CARRIED_2);
+        break;
+    case SCANNER_WANDER:
+        scan_random_wander(arg, plan, targets);
+        break;
+    case SCANNER_ITEM_CLASS:
+        scan_by_condition(arg, plan, targets, TARGET_SCAN_ITEM_CLASS);
+        break;
+    case SCANNER_PARTY:
+        scan_targets(TARGET_PARTY, plan, targets, 0,
+                     (uint16_t)location_pack(g_ai_party.x, g_ai_party.y, g_ai_party.map));
+        break;
+    }
+}
+
+/* Moods and plans. */
+
+/* The mood bits of the creature after their random changes: far, hurry, bored, lazy, restless, quick, stays, fear. */
+static uint16_t change_mood(uint16_t mood)
+{
+    ActiveGroup *a = g_ai.active;
+    uint32_t r = rand_next();
+    if (g_ai.map == g_ai_party.map) {
+        mood &= ~MOOD_FAR;
+    } else if (!((uint16_t)r & (a->plan == -1 ? ROLL_FAR_NO_PLAN : ROLL_FAR))) {
+        mood = (uint16_t)((mood | MOOD_FAR) & ~MOOD_HURRY);
+    }
+    if (!(mood & MOOD_FAR) && !((uint16_t)r & (mood & MOOD_FEAR ? ROLL_HURRY_FEAR : ROLL_HURRY)))
+        mood ^= MOOD_HURRY;
+    if (!((uint16_t)r % (SPEED_MOOD_STEPS - creature_fear_resistance(g_ai.info))))
+        mood &= ~MOOD_BORED;
+    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_BORED)
+        mood |= MOOD_LAZY;
+    else if (!(r & ROLL_LAZY))
+        mood &= ~MOOD_LAZY;
+    if (!(r & ROLL_RESTLESS))
+        mood &= ~MOOD_RESTLESS;
+    if (!(r & 3))
+        mood &= ~MOOD_QUICK;
+    if (!(r & ROLL_STAYS))
+        mood &= ~MOOD_STAYS;
+    int n = 2;
+    if (!(g_ai_class_flags[g_ai.class_index] & AI_CLASS_ONE_FEAR))
+        n = (((g_ai.group_thing & 3) + 1) * 2 - 1) * 2;
+    if (!rand_below((uint16_t)n)) {
+        int max = (int16_t)g_ai.info->max_health < 1 ? 1 : (int16_t)g_ai.info->max_health;
+        if (thing_word(g_ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / (unsigned)max < FEAR_HEALTH_PERCENT)
+            mood |= MOOD_FEAR;
+        else
+            mood &= ~MOOD_FEAR;
+    }
+    return mood;
+}
+
+/* The mood entry of the creature: its mood bits change at random, then the first entry that fits them. */
+static int update_mood(uint32_t entries)
+{
+    ActiveGroup *a = g_ai.active;
+    uint16_t mood = change_mood(group_mood(g_ai.group_thing));
+    group_set_mood(g_ai.group_thing, mood & ~GROUP_SEEN);
+    int16_t any = -1, all = -1, i = 0;
+    uint16_t mask;
+    for (;; i++) {
+        mask = read_mood_mask(entries + (uint32_t)(i * AI_MOOD_ENTRY_SIZE));
+        if (!mask)
+            break;
+        if ((mask & MOOD_GLOBAL_TEST) == MOOD_GLOBAL_TEST) {
+            if (dun_get_global_var(mask & MOOD_GLOBAL_MASK))
+                break;
+            continue;
+        }
+        if (any == -1 && mask & mood)
+            any = i;
+        if (all == -1 && (mask & mood) == mask)
+            all = i;
+        if (mask == mood)
+            break;
+    }
+    if (!mask && (all != -1 || any != -1))
+        i = all != -1 ? all : any;
+    if ((int8_t)i != a->behavior) {
+        g_ai.cache.path_left = 0;
+        a->plan = -1;
+        a->plan_step = 0;
+        g_ai.cache.kind = -1;
+    }
+    a->behavior = (int8_t)i;
+    return (int8_t)i;
+}
+
+/* The mood entry of the creature class. */
+static void select_behavior(void)
+{
+    load_class();
+    g_ai.mood = (int16_t)update_mood(g_ai_behaviors[g_ai.class_index]);
+    g_ai.mood_entry = g_ai_behaviors[g_ai.class_index] + (uint32_t)(g_ai.mood * AI_MOOD_ENTRY_SIZE);
+}
+
+/* The plan state of a found candidate: its path, kind, and target for the next updates. */
+static void load_candidate_path(const AiCandidate *c)
+{
+    int length = c->path_length < 0 ? 0 : c->path_length;
+    g_ai.cache.path_left = g_ai.cache.path_length = (uint8_t)length;
+    g_ai.cache.found = c->found;
+    g_ai.cache.kind = c->kind;
+    g_ai.cache.item = c->item;
+    g_ai.cache.mask = c->mask;
+    g_ai.cache.scan_kind = c->scan_kind;
+    g_ai.cache.targets = c->targets;
+    uint8_t *path = NULL;
+    if (length > 0) {
+        path = ai_store_path(length * 2);
+        memcpy(path, g_ai.path, (size_t)length * 2);
+    }
+    g_ai.cached_path = path;
+}
+
+/* The current plan goes on when its targets are still there: returns the plan, or -1. */
+static int continue_plan(void)
+{
+    ActiveGroup *a = g_ai.active;
+    int found = 0, plan = -1;
+    if (g_ai.cache.path_length && g_ai.cache.path_left && g_ai.cache.kind != -1) {
+        g_ai.candidate_count = 0;
+        if (a->plan != -1) {
+            plan = a->plan;
+            PlanStep step = read_plan_step(plan, a->plan_step);
+            run_target_scanner(step.scan, step.scan_arg, plan, g_ai.cache.targets);
+        }
+        if (g_ai.candidate_count) {
+            found = ai_plan_path();
+            if (found)
+                a->destination = g_ai.candidates[0].destination;
+        }
+    }
+    return found ? plan : -1;
+}
+
+/* Halves the costs of the candidates and removes those without a cost. */
+static void compact_candidates(void)
+{
+    int16_t count = (int8_t)g_ai.candidate_count;
+    if (!count)
+        return;
+    for (int i = 0; i < count; i++) {
+        AiCandidate *c = candidate_at(i);
+        if (c->cost > 0) {
+            int16_t half = (int16_t)(c->cost >> 1), limit = (int16_t)(g_ai.cache.path_length - 2);
+            c->cost = (int8_t)(half < limit ? half : limit);
+        }
+    }
+    for (int16_t i = 0; i < count; i++) {
+        if (candidate_at(i)->cost >= 0)
+            continue;
+        int16_t j = (int16_t)(i + 1);
+        while (j < count && candidate_at(j)->cost < 0)
+            j++;
+        if (j >= count) {
+            count = (int16_t)(i + 1);
+        } else {
+            memmove(candidate_at(i), candidate_at(j), (size_t)(count - j) * sizeof(AiCandidate));
+            count = (int16_t)(count - (j - i));
+        }
+    }
+    if (candidate_at(count - 1)->cost < 0)
+        count--;
+    g_ai.candidate_count = (uint8_t)count;
+}
+
+/* The plans of the mood entry whose chance comes up scan for their targets; the current plan always. */
+static void scan_plan_list(uint32_t choices, int plan, int step, bool continuing)
+{
+    for (;;) {
+        AiChoice c = read_choice(choices);
+        int stop = 0, run = 0, at = 0;
+        if (c.plan == plan) {
+            stop = continuing || g_ai.plan_flags;
+            run = 1;
+            at = (int8_t)step;
+        } else if (!g_ai.plan_flags) {
+            if (!c.chance)
+                run = 1;
+            else if (c.chance > 0)
+                run = !rand_below((uint16_t)c.chance);
+            else
+                run = rand_below((uint16_t)-c.chance) != 0;
+        }
+        if (run) {
+            PlanStep s = read_plan_step(c.plan, at);
+            run_target_scanner(s.scan, s.scan_arg, c.plan, c.targets);
+        }
+        if (stop || !c.more)
+            return;
+        choices += AI_CHOICE_SIZE;
+    }
+}
+
+/* The scan flags of the current plan step; 0 when the step applies only on the party map and the creature is away. */
+static int step_scan_flags(void)
+{
+    ActiveGroup *a = g_ai.active;
+    if (a->plan == -1)
+        return 0;
+    uint8_t scan = read_plan_step(a->plan, a->plan_step).scan;
+    if ((scan & PLAN_SCAN_PARTY_MAP) == PLAN_SCAN_ONLY_PARTY_MAP && g_ai.map != g_ai_party.map)
+        return 0;
+    return scan & PLAN_SCAN_FLAGS;
+}
+
+/* The plan of the next update: the plan that goes on, or the nearest candidate of a scan; AI_IDLE_PLAN when there
+   is none; -1 when the plan stays; AI_RESULT_FAIL when the plan ends. */
+static int choose_plan(void)
+{
+    ActiveGroup *a = g_ai.active;
+    bool continuing = continue_plan() != -1;
+    int chosen = -1;
+    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_ALWAYS_SCANS || !continuing || !rand_2bits()) {
+        g_ai.candidate_count = 0;
+        g_ai.plan_flags = (uint8_t)step_scan_flags();
+        scan_plan_list(read_mood_choices(g_ai.mood_entry), a->plan, a->plan_step, continuing);
+        if (continuing)
+            compact_candidates();
+        if (g_ai.candidate_count) {
+            uint16_t mood = group_mood(g_ai.group_thing);
+            int flags = mood & SEARCH_FLAGS_FLEE ? g_ai.search_flags : 0;
+            if (mood & MOOD_STAYS)
+                flags |= AI_MOVE_ATTACK_GROUPS;
+            int i = ai_search_area(g_ai.event.data[0], g_ai.event.data[1], (uint8_t)flags, (int8_t)g_ai.candidate_count,
+                                   g_ai.candidates, g_ai.path);
+            g_ai.chosen = (int8_t)i;
+            if ((int16_t)i != -1) {
+                chosen = candidate_at(i)->plan;
+                a->destination = candidate_at(i)->destination;
+                load_candidate_path(candidate_at(i));
+            } else if (g_ai.plan_flags) {
+                return AI_RESULT_FAIL;
+            }
+        }
+    }
+    if ((int8_t)chosen == -1 && continuing)
+        return -1;
+    if ((int8_t)chosen == -1) {
+        g_ai.cache.path_left = 0;
+        g_ai.cache.kind = -1;
+        return AI_IDLE_PLAN;
+    }
+    if (a->plan != -1) {
+        if (a->plan == (int8_t)chosen)
+            return -1;
+        a->plan = -1;
+        a->plan_step = 0;
+    }
+    return (int8_t)chosen;
+}
+
+/* The command of the current plan step; directives before it set the plan counters. */
+static int fetch_plan_step(void)
+{
+    ActiveGroup *a = g_ai.active;
+    int8_t step = a->plan_step;
+    PlanStep s;
+    for (;; step++) {
+        s = read_plan_step(a->plan, step);
+        if (s.command >= 0)
+            break;
+        if (s.command == PLAN_STEP_DIRECTIVE_COUNTER && s.on_done >= 0 && s.on_done < 2)
+            a->counters[(int)s.on_done] = s.on_fail;
+    }
+    a->plan_step = step;
+    g_ai.arg1 = s.arg1;
+    g_ai.arg2 = s.arg2;
+    return s.command;
+}
+
+/* The next plan step after a command result; true when the step changed. */
+static bool advance_plan_step(int result)
+{
+    ActiveGroup *a = g_ai.active;
+    int8_t step = a->plan_step;
+    PlanStep s = read_plan_step(a->plan, step);
+    int8_t next = (int8_t)result == (int8_t)AI_RESULT_DONE ? s.on_done : s.on_fail;
+    if (next == PLAN_NEXT_END || next == PLAN_NEXT_FAIL) {
+        a->plan = -1;
+        a->plan_step = 0;
+        return true;
+    }
+    bool changed = false;
+    if (next <= PLAN_NEXT_FORWARD && next >= PLAN_NEXT_SKIP) {
+        if (next != PLAN_NEXT_STAY) {
+            if (next == PLAN_NEXT_SKIP)
+                step = (int8_t)(step + 2);
+            else
+                step = (int8_t)(step + (next == PLAN_NEXT_FORWARD ? 1 : -1));
+            changed = true;
+        }
+    } else {
+        changed = step != next;
+        step = next;
+    }
+    a->plan_step = step;
+    return changed;
+}
+
+/* Is the next step of a plan a step of the same scan as the first one: the plan goes on in this update. */
+static bool plan_scan_goes_on(int first_kind, int first_arg, const PlanStep *s)
+{
+    int k = s->scan & PLAN_SCAN_KIND;
+    if (first_kind == k && k != SCANNER_TARGETS)
+        return true;
+    if (k == SCANNER_IDLE)
+        return true;
+    return first_kind == SCANNER_TARGETS && k == SCANNER_TARGETS && s->scan_arg == first_arg;
+}
+
+/* A creature that wanders: a step forward, a turn, or a wait. */
+static void wander_at_random(void)
+{
+    ActiveGroup *a = g_ai.active;
+    int r = rand_next() & 7;
+    if (r > 3) {
+        a->action = 0;
+        return;
+    }
+    if (!r) {
+        ai_turn_toward(game.game_time & DIR_MASK);
+        return;
+    }
+    int dir = group_dir(g_ai.group_thing);
+    a->direction = (uint8_t)dir;
+    int x = (g_ai.event.data[0] + dir_dx[dir]) & LOCATION_COORD_MASK,
+        y = (g_ai.event.data[1] + dir_dy[dir]) & LOCATION_COORD_MASK;
+    a->destination = (uint16_t)location_set_xy(a->destination, x, y);
+    int type = square_type(dun_get_square(x, y));
+    if (type == SQUARE_WALL || type == SQUARE_UNKNOWN) {
+        a->action = 0;
+        return;
+    }
+    if (type == SQUARE_TELEPORTER) {
+        PassageEnd end;
+        if (dun_get_linked_teleporter_dest(&end, x, y) && !creature_is_native_to_map(g_ai.group_thing, end.map)) {
+            a->action = 0;
+            return;
+        }
+    }
+    a->action = ACTION_MOVE_NEAR;
+}
+
+/* The creature flees: dodges a missile, or steps away in up to two rounds of four directions; true when it moved. */
+static bool flee_or_dodge(bool second_round)
+{
+    ActiveGroup *a = g_ai.active;
+    uint32_t class_flags = g_ai_class_flags[g_ai.class_index];
+    group_set_mood_flag(g_ai.group_thing, MOOD_LAZY, true);
+    for (;;) {
+        if (class_flags & AI_CLASS_DODGES) {
+            uint16_t mood = group_mood(g_ai.group_thing);
+            bool look = (mood & MOOD_FEAR && rand_2bits()) || (mood & MOOD_QUICK && rand_bit()) || !rand_2bits();
+            if (look && ai_projectile_incoming(g_ai.event.data[0], g_ai.event.data[1])) {
+                a->plan = -1;
+                a->plan_step = 0;
+                a->action = ACTION_DODGE;
+                return true;
+            }
+        }
+        int dir;
+        if (ai_next_path_step() > 0)
+            dir = a->direction;
+        else if (rand_bit())
+            dir = dir_opposite(group_dir(g_ai.group_thing));
+        else
+            dir = rand_2bits();
+        int turn = rand_bit() ? 1 : -1;
+        for (int tries = DIR_COUNT; tries; tries--) {
+            int command = (second_round ? MOVE_KIND_PLAIN : g_ai.search_flags) | AI_EXECUTE;
+            if (ai_try_move(command, g_ai.event.data[0], g_ai.event.data[1], -1, -1, dir)) {
+                a->plan = -1;
+                a->plan_step = 0;
+                return true;
+            }
+            dir = dir_turn(dir, turn);
+        }
+        if (second_round || !rand_bit())
+            return false;
+        second_round = true;
+    }
+}
+
+/* A creature that cannot stay flees: it sees a missile, is not alert, cannot attack, or by chance by its armor;
+   true when it moved. */
+static bool try_flee(uint32_t class_flags)
+{
+    bool second_round = rand_2bits() == 0;
+    int x = g_ai.event.data[0], y = g_ai.event.data[1];
+    if (class_flags & AI_CLASS_NO_FLEE || ai_try_move(g_ai.search_flags, x, y, x, y, -1))
+        return false;
+    bool flee = (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(x, y)) || !g_ai.alert ||
+                !ai_try_attack(ATTACK_MODE_PARTY, x, y, -1, -1, group_dir(g_ai.group_thing)) ||
+                rand_below((uint16_t)((creature_armor(g_ai.info) >> 2) + 1)) <= 1;
+    return flee && flee_or_dodge(second_round);
+}
+
 /* Plan commands: each returns AI_RESULT_DONE, AI_RESULT_FAIL, or AI_RESULT_ISSUED when it set the action. */
-
-static int facing(void)
-{
-    return group_dir(g_ai.group_thing);
-}
-static int dest_x(void)
-{
-    return location_x(g_ai.active->destination);
-}
-static int dest_y(void)
-{
-    return location_y(g_ai.active->destination);
-}
-
-/* Sets the destination square of the action on the current map. */
-static void set_destination(int x, int y)
-{
-    g_ai.active->destination = (uint16_t)location_set_xy(g_ai.active->destination, x, y);
-}
 
 /* A floor sensor of a type on (x, y), at cell (CELL_ANY: any); THING_NONE none. */
 static uint16_t find_floor_sensor(int x, int y, int cell, int type)
@@ -1855,7 +1693,6 @@ static int cmd_place_on_sensor(void)
     return g_ai.command_result;
 }
 
-/* Plan command: true when the group in front carries an item of the filter in a cell. */
 int ai_cmd_front_group_carries(void)
 {
     if (g_ai.arg1 == -1)
@@ -1872,7 +1709,6 @@ int ai_cmd_front_group_carries(void)
                                                                                                        : AI_RESULT_FAIL;
 }
 
-/* Plan command: the creature puts down a carried item of the filter. */
 int ai_cmd_seek_with_carried(void)
 {
     uint16_t saved = g_ai.item_flags;
@@ -1973,7 +1809,7 @@ static int cmd_set_mood_flag(void)
         return AI_RESULT_FAIL;
     int kind = op == MOOD_OP_SET_BY_TARGETS ? TARGET_SCAN_MOOD_SET : TARGET_SCAN_MOOD_CLEAR;
     for (uint32_t list = g_ai.cache.targets;; list += AI_TARGET_SIZE) {
-        AiTarget t = ai_target(list);
+        AiTarget t = read_target(list);
         if (t.scan == kind) {
             uint16_t mood = group_mood(g_ai.group_thing), bit = (uint16_t)(1 << (t.mask & BIT_INDEX_MASK));
             if (!t.item)
@@ -2049,7 +1885,7 @@ static int cmd_seek_kind11(void)
         return AI_RESULT_FAIL;
     TargetScan scan = {-1, TARGET_SCAN_KIND11, 0};
     for (uint32_t list = g_ai.cache.targets;; list += AI_TARGET_SIZE) {
-        AiTarget t = ai_target(list);
+        AiTarget t = read_target(list);
         if (t.scan == TARGET_SCAN_KIND11 && t.item != TARGET_NO_ITEM) {
             AiTarget copy = t;
             copy.kind = TARGET_SCAN_ITEMS;
@@ -2166,7 +2002,7 @@ static int cmd_check_transform(void)
 }
 
 /* Runs a plan command for the creature; returns AI_RESULT_* or the result of the command. */
-int creature_ai_exec_plan_command(int command)
+static int exec_plan_command(int command)
 {
     ActiveGroup *a = g_ai.active;
     switch ((uint8_t)command) {
@@ -2263,6 +2099,80 @@ int creature_ai_exec_plan_command(int command)
     }
 }
 
+/* Runs the steps of the chosen plan (or of the current plan) while they scan as its first step does. */
+static void run_plan(int chosen)
+{
+    ActiveGroup *a = g_ai.active;
+    int plan, step;
+    if (chosen >= 0 && chosen < AI_PLAN_COUNT) {
+        plan = a->plan = (int8_t)chosen;
+        step = a->plan_step = 0;
+    } else {
+        plan = a->plan;
+        step = a->plan_step;
+    }
+    PlanStep first = read_plan_step(plan, step);
+    int first_kind = first.scan & PLAN_SCAN_KIND, first_arg = first.scan_arg;
+    bool changed = false;
+    int n = 0;
+    do {
+        if (changed) {
+            PlanStep s = read_plan_step(a->plan, a->plan_step);
+            if (!plan_scan_goes_on(first_kind, first_arg, &s)) {
+                a->action = ACTION_RESCAN;
+                break;
+            }
+        }
+        int8_t r = (int8_t)exec_plan_command(fetch_plan_step());
+        if (r != (int8_t)AI_RESULT_ISSUED)
+            changed |= advance_plan_step(r);
+        if (changed)
+            g_ai.cache.path_left = 0;
+        if (n++ > AI_STEP_LIMIT)
+            a->action = 0;
+        if ((int8_t)a->action == -1 && r != (int8_t)AI_RESULT_ISSUED && a->plan == -1)
+            a->action = 0;
+    } while ((int8_t)a->action == -1);
+}
+
+/* The creature chooses what to do next: wander, flee, or follow the best plan. */
+static void decide(void)
+{
+    ActiveGroup *a = g_ai.active;
+    select_behavior();
+    uint32_t class_flags = g_ai_class_flags[g_ai.class_index];
+    g_ai.search_flags = class_flags & AI_CLASS_NO_FLEE       ? MOVE_KIND_PLAIN
+                        : class_flags & AI_CLASS_SEARCH_NEAR ? MOVE_KIND_SAFE
+                                                             : MOVE_KIND_SAFE_FLEE;
+    uint32_t choices = read_mood_choices(g_ai.mood_entry);
+    if (choices == AI_CHOICES_NONE) {
+        a->action = 0;
+        return;
+    }
+    if (choices == AI_CHOICES_WANDER) {
+        wander_at_random();
+        return;
+    }
+    ai_prepare();
+    ai_scratch_push();
+    if (try_flee(class_flags)) {
+        ai_scratch_pop();
+        return;
+    }
+    a->action = ACTIVE_ACTION_NONE;
+    int chosen = (int8_t)choose_plan();
+    if (chosen != (int8_t)AI_RESULT_FAIL) {
+        run_plan(chosen);
+    } else if (!(g_ai.plan_flags & PLAN_SCAN_ENDS)) {
+        a->action = 0;
+    } else {
+        if (advance_plan_step(AI_RESULT_FAIL))
+            g_ai.cache.path_left = 0;
+        a->action = ACTION_RESCAN;
+    }
+    ai_scratch_pop();
+}
+
 /* Level links and pits for the creature moves. */
 
 /* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
@@ -2324,9 +2234,7 @@ bool dun_set_pit_teleporter_state(int x, int y, int mode)
     return open;
 }
 
-/* Actions: what a creature does at the acting step of its animation. Each returns 0 when it was done. */
-
-static int act_melee_attack(void);
+/* Actions: what a creature does at the acting step of its animation. The result of each is 0 when it was done. */
 
 /* Action: the creature turns to its new facing. */
 static void act_turn(void)
@@ -2348,6 +2256,109 @@ static void act_arrive(int closes_pits)
         dun_set_pit_teleporter_state(g_ai.event.data[0], g_ai.event.data[1], PIT_STATE_OPEN);
     if (g_ai.cache.path_left)
         g_ai.cache.path_left--;
+}
+
+/* The champions that the creature on (x, y) hits on the party square (dx, dy); true when it hit one. */
+static bool melee_attack_party(int x, int y, int dx, int dy)
+{
+    ActiveGroup *a = g_ai.active;
+    const CreatureInfo *info = g_ai.info;
+    game.last_combat_time = game.game_time;
+    bool hit = false;
+    int random = info->flags & CREATURE_ATTACKS_RANDOM;
+    int8_t list[CHAMPION_MAX];
+    int16_t n = 0;
+    for (int c = 0; c < game.champion_count; c++)
+        if (champion(c)->health)
+            list[n++] = (int8_t)c;
+    if (!n)
+        return false;
+    int16_t count;
+    if (info->flags & CREATURE_ATTACKS_ALL)
+        count = random ? (int16_t)(rand_below((uint16_t)n) + 1) : (int16_t)game.champion_count;
+    else
+        count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
+    if (a->cell == CELL_NEAREST) {
+        int c = champ_get_nearest_at(x, y, CELL_ANY);
+        if (c != -1)
+            a->cell = champion(c)->cell;
+    }
+    int cell = a->cell;
+    if (count > (int16_t)game.champion_count)
+        count = (int16_t)game.champion_count;
+    while (--count != -1) {
+        int c;
+        if (random) {
+            int16_t i = (int16_t)rand_below((uint16_t)n);
+            if (list[i] < 0)
+                for (int16_t k = 0; k < n; k++) {
+                    if (++i >= n)
+                        i = 0;
+                    if (list[i] >= 0)
+                        break;
+                }
+            c = list[i];
+            list[i] = -1;
+        } else {
+            c = champ_get_index_in_cell(cell);
+            int d = dun_get_direction_to(dx, dy, x, y);
+            cell = dir_turn(cell, (d + cell) & 1 ? -1 : 1);
+            if (c == -1)
+                c = champ_get_nearest_at(x, y, CELL_ANY);
+            if (c == -1)
+                continue;
+        }
+        hit = true;
+        int16_t damage = (int16_t)(creature_attack_champion(g_ai.group_thing, c) + 1);
+        Champion *ch = champion(c);
+        if (damage > ch->hit_damage) {
+            ch->hit_damage = (uint8_t)damage;
+            ch->hit_dir = (uint8_t)dir_opposite(dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y));
+        }
+    }
+    return hit;
+}
+
+/* The creature hits the party, a door, or another creature in front of it. */
+static int act_melee_attack(void)
+{
+    ActiveGroup *a = g_ai.active;
+    const CreatureInfo *info = g_ai.info;
+    int dx = ai_state.dest_x, dy = ai_state.dest_y, x = g_ai.event.data[0], y = g_ai.event.data[1];
+    int dir = facing();
+    if (a->mode == MOVE_KIND_STEP_BACK)
+        dir = dir_opposite(dir);
+    bool at_self = x == dx && y == dy;
+    if (!at_self) {
+        if (manhattan(x, y, dx, dy) > 1)
+            return 1;
+        if (dun_get_direction_to(x, y, dx, dy) != dir && !(info->flags & CREATURE_ATTACKS_ANY_DIR))
+            return 1;
+    }
+    if (party.cur_map == g_ai_party.map && dx == g_ai_party.x && dy == g_ai_party.y) {
+        if (!melee_attack_party(x, y, dx, dy))
+            return 1;
+    } else {
+        if (square_type(dun_get_square(dx, dy)) == SQUARE_DOOR) {
+            int strength = rand_below((uint16_t)(info->attack + (info->attack >> 1)));
+            if (sensor_door_try_destroy(dx, dy, (int16_t)strength, 0, 0))
+                return 1;
+        }
+        if (at_self)
+            return 1;
+        if ((int16_t)creature_attack_group_at(dx, dy) < 0)
+            return 1;
+    }
+    if (a->action == ACTION_MELEE_2) {
+        int push;
+        if (creature_group_info(g_ai.group_thing)->push_resistance > PUSH_RESISTANCE_HEAVY)
+            push = (rand_next() & ROLL_PUSH_HEAVY) || rand_2bits();
+        else
+            push = rand_2bits() != 0;
+        if (push)
+            creature_push_group(dx, dy, dir, PUSH_BY_CREATURE);
+    }
+    return 0;
 }
 
 /* Action: the creature moves to its destination square, after an attack if it attacks first. */
@@ -2458,109 +2469,6 @@ static int act_turn_then_move(void)
     }
     a->phase++;
     return (int16_t)r;
-}
-
-/* The champions that the creature on (x, y) hits on the party square (dx, dy); true when it hit one. */
-static bool melee_attack_party(int x, int y, int dx, int dy)
-{
-    ActiveGroup *a = g_ai.active;
-    const CreatureInfo *info = g_ai.info;
-    game.last_combat_time = game.game_time;
-    bool hit = false;
-    int random = info->flags & CREATURE_ATTACKS_RANDOM;
-    int8_t list[CHAMPION_MAX];
-    int16_t n = 0;
-    for (int c = 0; c < game.champion_count; c++)
-        if (champion(c)->health)
-            list[n++] = (int8_t)c;
-    if (!n)
-        return false;
-    int16_t count;
-    if (info->flags & CREATURE_ATTACKS_ALL)
-        count = random ? (int16_t)(rand_below((uint16_t)n) + 1) : (int16_t)game.champion_count;
-    else
-        count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
-    if (a->cell == CELL_NEAREST) {
-        int c = champ_get_nearest_at(x, y, CELL_ANY);
-        if (c != -1)
-            a->cell = champion(c)->cell;
-    }
-    int cell = a->cell;
-    if (count > (int16_t)game.champion_count)
-        count = (int16_t)game.champion_count;
-    while (--count != -1) {
-        int c;
-        if (random) {
-            int16_t i = (int16_t)rand_below((uint16_t)n);
-            if (list[i] < 0)
-                for (int16_t k = 0; k < n; k++) {
-                    if (++i >= n)
-                        i = 0;
-                    if (list[i] >= 0)
-                        break;
-                }
-            c = list[i];
-            list[i] = -1;
-        } else {
-            c = champ_get_index_in_cell(cell);
-            int d = dun_get_direction_to(dx, dy, x, y);
-            cell = dir_turn(cell, (d + cell) & 1 ? -1 : 1);
-            if (c == -1)
-                c = champ_get_nearest_at(x, y, CELL_ANY);
-            if (c == -1)
-                continue;
-        }
-        hit = true;
-        int16_t damage = (int16_t)(creature_attack_champion(g_ai.group_thing, c) + 1);
-        Champion *ch = champion(c);
-        if (damage > ch->hit_damage) {
-            ch->hit_damage = (uint8_t)damage;
-            ch->hit_dir = (uint8_t)dir_opposite(dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y));
-        }
-    }
-    return hit;
-}
-
-/* The creature hits the party, a door, or another creature in front of it. */
-static int act_melee_attack(void)
-{
-    ActiveGroup *a = g_ai.active;
-    const CreatureInfo *info = g_ai.info;
-    int dx = ai_state.dest_x, dy = ai_state.dest_y, x = g_ai.event.data[0], y = g_ai.event.data[1];
-    int dir = facing();
-    if (a->mode == MOVE_KIND_STEP_BACK)
-        dir = dir_opposite(dir);
-    bool at_self = x == dx && y == dy;
-    if (!at_self) {
-        if (manhattan(x, y, dx, dy) > 1)
-            return 1;
-        if (dun_get_direction_to(x, y, dx, dy) != dir && !(info->flags & CREATURE_ATTACKS_ANY_DIR))
-            return 1;
-    }
-    if (party.cur_map == g_ai_party.map && dx == g_ai_party.x && dy == g_ai_party.y) {
-        if (!melee_attack_party(x, y, dx, dy))
-            return 1;
-    } else {
-        if (square_type(dun_get_square(dx, dy)) == SQUARE_DOOR) {
-            int strength = rand_below((uint16_t)(info->attack + (info->attack >> 1)));
-            if (sensor_door_try_destroy(dx, dy, (int16_t)strength, 0, 0))
-                return 1;
-        }
-        if (at_self)
-            return 1;
-        if ((int16_t)creature_attack_group_at(dx, dy) < 0)
-            return 1;
-    }
-    if (a->action == ACTION_MELEE_2) {
-        int push;
-        if (creature_group_info(g_ai.group_thing)->push_resistance > PUSH_RESISTANCE_HEAVY)
-            push = (rand_next() & ROLL_PUSH_HEAVY) || rand_2bits();
-        else
-            push = rand_2bits() != 0;
-        if (push)
-            creature_push_group(dx, dy, dir, PUSH_BY_CREATURE);
-    }
-    return 0;
 }
 
 /* Action: the creature shoots a missile, with a power from its attack. */
@@ -2936,7 +2844,7 @@ static int run_act(uint8_t action)
 
 /* Runs the action of the creature at the acting step of its animation. The result is 0 when it was done; else the
    low byte of the result interrupts the animation. */
-int ai_execute_action(void)
+static int execute_action(void)
 {
     ActiveGroup *a = g_ai.active;
     ai_scratch_push();
@@ -2951,4 +2859,119 @@ int ai_execute_action(void)
     }
     ai_scratch_pop();
     return r;
+}
+
+/* The update of a creature that acts */
+
+/* The action that the think event starts: the planned next action, or a new decision. */
+static void take_next_action(void)
+{
+    ActiveGroup *a = g_ai.active;
+    a->action = (uint8_t)a->next_action;
+    if (a->next_action == -1) {
+        decide();
+        return;
+    }
+    a->next_action = -1;
+    if (step_scan_flags() && (int8_t)a->action != ACTION_VANISH) {
+        a->action = ACTIVE_ACTION_NONE;
+        return;
+    }
+    if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_PATH) {
+        g_ai.cache.path_left = 0;
+        g_ai.cache.kind = -1;
+    }
+    int dir = group_dir(g_ai.group_thing);
+    if (a->action == ACTION_TURN_LEFT)
+        a->facing = (uint8_t)dir_turn(dir, TURN_LEFT);
+    else if (a->action == ACTION_TURN_RIGHT)
+        a->facing = (uint8_t)dir_turn(dir, TURN_RIGHT);
+}
+
+/* The creature starts to vanish: it keeps its animation and leaves a death cloud by its size. */
+static void start_vanish(void)
+{
+    ActiveGroup *a = g_ai.active;
+    a->counters[0] = (int16_t)g_ai.anim[0];
+    a->counters[1] = (int16_t)g_ai.anim[1];
+    if (g_ai_class_flags[creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS)] &
+        AI_CLASS_NO_DEATH_CLOUD)
+        return;
+    int size = g_ai.info->hit_size; /* the power of the death cloud by size */
+    explosion_create(EXPLOSION_DEATH_CLOUD,
+                     size == 1   ? DEATH_CLOUD_POWER_MEDIUM
+                     : size == 2 ? POWER_MAX
+                                 : DEATH_CLOUD_POWER_SMALL,
+                     g_ai.event.data[0], g_ai.event.data[1], EXPLOSION_AT_CENTER);
+}
+
+/* Runs the animation steps of the action: the creature acts at its acting steps; returns the last step result. */
+static int run_animation(bool think, int r)
+{
+    ActiveGroup *a = g_ai.active;
+    for (;;) {
+        if ((think || !a->interrupt || !(g_ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE)) &&
+            g_ai.anim_step[STEP_JUMP] & STEP_ACTS) {
+            ai_prepare();
+            a->interrupt |= (uint8_t)execute_action();
+        }
+        if (!a->interrupt || !(g_ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE))
+            break;
+        r = creature_anim_next_step(group_creature(g_ai.group_thing), g_ai.anim[0], g_ai.anim + 1, &g_ai.anim_step);
+        if ((uint16_t)r == ANIM_SEQUENCE_END)
+            break;
+    }
+    return r;
+}
+
+/* The next action and its animation; false when the group left the dungeon. */
+static bool run_next_action(void)
+{
+    ActiveGroup *a = g_ai.active;
+    uint16_t *anim = g_ai.anim;
+    bool think = g_ai.event.type == EVENT_CREATURE_THINK;
+    int r;
+    if (think) {
+        take_next_action();
+        if ((int8_t)a->action == ACTION_VANISH)
+            start_vanish();
+        int8_t action = (int8_t)a->action;
+        if (action >= ACTION_WAIT_FIRST && action <= ACTION_WAIT_LAST) {
+            g_ai.event.time_map = timeline_time_map((uint32_t)(action - ACTION_WAIT_FIRST) + game.game_time, g_ai.map);
+            return true;
+        }
+        r = creature_anim_start(group_creature(g_ai.group_thing), action, anim, anim + 1, &g_ai.anim_step, 0);
+    } else {
+        r = creature_anim_next_random_step(group_creature(g_ai.group_thing), anim[0], anim + 1, &g_ai.anim_step);
+    }
+    r = run_animation(think, r);
+    g_ai.event.type = (uint16_t)r != ANIM_MORE_STEPS ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
+    if (g_ai.removed)
+        return false;
+    g_ai.event.time_map = timeline_time_map(creature_ai_animate_and_get_next_time(), g_ai.map);
+    return true;
+}
+
+/* Keeps the plan state of the group for its next update. */
+static void store_plan_cache(void)
+{
+    int g = thing_index(g_ai.group_thing);
+    ai_state.groups[g].present = true;
+    ai_state.groups[g].cache = g_ai.cache;
+}
+
+void ai_update_group(void)
+{
+    ActiveGroup *a = g_ai.active;
+    if (game.magic_light[MAGIC_ACTION_EFFECT] && !(g_ai.info->flags & CREATURE_FAST_VANISH) &&
+        a->action != ACTION_VANISH && a->next_action != ACTION_VANISH) {
+        g_ai.event.time_map += ACTION_DELAY_EFFECT;
+    } else if (!run_next_action()) {
+        return;
+    }
+    if (g_ai.prepared && (g_ai.cache.path_length || g_ai.cache.kind != -1))
+        store_plan_cache();
+    if (g_ai.active->event != EVENT_NO_SLOT)
+        creature_cancel_update(g_ai.group_thing);
+    g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
 }
