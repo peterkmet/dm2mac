@@ -415,3 +415,12 @@ def test_program_starts_in_advanced_unless_vanilla(game_dir, tmp_path, args, nam
     finally:
         program.kill()
         shutil.rmtree(folder)
+
+
+def test_tab_closes_the_inventory_in_the_advanced_mode_only(lib, session):  # noqa: F811
+    assert key_command(lib, INPUT_MODE_INVENTORY, C.KEY_AUTOMAP) == 0
+    name_editor = key_command(lib, INPUT_MODE_NAME, C.KEY_AUTOMAP)
+    set_mode(lib, ADVANCED)
+    assert key_command(lib, INPUT_MODE_INVENTORY, C.KEY_AUTOMAP) == C.CMD_INVENTORY_LEADER
+    assert key_command(lib, INPUT_MODE_NAME, C.KEY_AUTOMAP) == name_editor, "the name editor keeps Tab"
+    set_mode(lib, VANILLA)

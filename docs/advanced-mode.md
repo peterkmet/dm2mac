@@ -50,6 +50,7 @@ The keys of the original game work in both modes. The advanced mode adds these k
 | `C` | Open the cheat screen | Dungeon view only |
 | `C` or `Esc` | Close the cheat screen | Open cheat screen |
 | `Esc` | Open the options menu (instead of the pause) | Dungeon view only |
+| `Tab` | Close the inventory | Open inventory; not in the name editor or the recruit dialog |
 | `Esc` | Close the options menu | Open options menu |
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.

@@ -1097,7 +1097,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 }
 
 /* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
-   load, Tab and M there open the automap, C the cheat screen, Esc the options menu (instead of the pause), and a letter key W S A D Q E without a command gives
+   load, Tab and M there open the automap, C the cheat screen, Esc the options menu (instead of the pause), Tab in the inventory closes it, and a letter key W S A D Q E without a command gives
    the command of its keypad key. */
 static uint16_t key_command(int mode, uint16_t key)
 {
@@ -1112,6 +1112,8 @@ static uint16_t key_command(int mode, uint16_t key)
         return CMD_AUTOMAP;
     if (mode == INPUT_MODE_MOVE && key == KEY_CHEATS)
         return CMD_CHEATS;
+    if (mode == INPUT_MODE_INVENTORY && key == KEY_AUTOMAP && !g_ui.candidate)
+        return CMD_INVENTORY_LEADER;
     uint16_t keypad = advanced_movement_key(key);
     return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
 }
