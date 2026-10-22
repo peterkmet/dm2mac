@@ -58,6 +58,7 @@ def gd(lib):
     lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
     lib.gdat_item.restype = u8_p
     lib.fm_set_bank.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
+    lib.fm_set_bank.restype = ctypes.c_bool
     lib.fm_send.argtypes = [ctypes.c_char_p]
     lib.fm_set_write_hook.argtypes = [ctypes.c_void_p]
     lib.hmp_start.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p]
@@ -396,8 +397,8 @@ def test_fm_driver_writes_like_the_original(lib, gd):
     melodic, drum = (GAME / "MELODIC.BNK").read_bytes(), (GAME / "DRUM.BNK").read_bytes()
     driver = Driver(blob, melodic, drum)
     lib.fm_reset(SAMPLE_RATE)
-    assert lib.fm_set_bank(C.FM_BANK_MELODIC, melodic, len(melodic)) == C.FM_OK
-    assert lib.fm_set_bank(C.FM_BANK_DRUM, drum, len(drum)) == C.FM_OK
+    assert lib.fm_set_bank(C.FM_BANK_MELODIC, melodic, len(melodic)) is True
+    assert lib.fm_set_bank(C.FM_BANK_DRUM, drum, len(drum)) is True
     writes = []
     hook = WRITE_HOOK(lambda reg, value: writes.append((reg, value)))
     lib.fm_set_write_hook(ctypes.cast(hook, ctypes.c_void_p))

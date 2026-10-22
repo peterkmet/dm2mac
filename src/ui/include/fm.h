@@ -5,26 +5,34 @@
 
 /* The OPL2 FM music driver of HMIMDRV.386 (fmmidi.com, device 0xa002) on an emulated OPL3 chip. */
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-enum { FM_BANK_MELODIC, FM_BANK_DRUM, FM_BANK_COUNT };
+/* The instrument banks of the driver. */
+#define FM_BANK_MELODIC 0
+#define FM_BANK_DRUM    1
+#define FM_BANK_COUNT   2
 
-enum {
-    FM_OK = 0,
-    FM_ERR_BANK = -1, /* not an AdLib BNK file with 128 instruments */
-};
-
+/* Setup */
 /* Resets the chip to sample_rate and the driver to its start state; keeps the banks. */
 void fm_reset(uint32_t sample_rate);
-/* Copies MELODIC.BNK or DRUM.BNK and packs its instruments into OPL register bytes. */
-int fm_set_bank(int bank, const uint8_t *data, size_t size);
+/* Copies MELODIC.BNK or DRUM.BNK and packs its instruments into OPL register bytes; false when it is not an AdLib BNK
+   file with 128 instruments. */
+bool fm_set_bank(int bank, const uint8_t *data, size_t size);
+/* Frees the copies of the banks. */
 void fm_free_banks(void);
+
+/* MIDI messages */
 /* Plays a 3-byte MIDI channel message; the driver ignores aftertouch and channel pressure. */
 void fm_send(const uint8_t *event);
+
+/* Output */
 /* Renders frames of stereo samples, left then right. */
 void fm_render(int16_t *out, int frames);
+
+/* Tests */
 /* Test hook: hook sees each OPL register write; NULL removes it. */
-void fm_set_write_hook(void (*hook)(int reg, int value));
+void fm_set_write_hook(void (*hook)(int reg, int value)); /* exported for the tests */
 
 #endif /* DM2_UI_FM_H */

@@ -59,7 +59,7 @@ static bool load_bank(const char *data_dir, const char *name, int bank)
 {
     uint8_t *buf = malloc(BANK_MAX);
     size_t size;
-    bool ok = buf && read_file(data_dir, name, buf, BANK_MAX, &size) && fm_set_bank(bank, buf, size) == FM_OK;
+    bool ok = buf && read_file(data_dir, name, buf, BANK_MAX, &size) && fm_set_bank(bank, buf, size);
     free(buf);
     return ok;
 }
