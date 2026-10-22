@@ -646,7 +646,7 @@ void session_edit_champion_name(Champion *c)
         int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE, y = in_name ? name_y : title_y;
         for (int field_done = 0, redraw = 1; !field_done && !g_main_loop.quit;) {
             if (redraw) {
-                ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, GFX_OPAQUE);
+                ui_draw_viewport_image(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, GFX_OPAQUE);
                 text_draw_in_zone(ZONE_NAME, g_ui_colors[UI_YELLOW], c->name);
                 text_draw_in_zone(ZONE_TITLE, g_ui_colors[UI_YELLOW], c->title);
                 text_draw_in_viewport(x, y, g_ui_colors[UI_GOLD], "_");
@@ -684,7 +684,7 @@ void session_edit_champion_name(Champion *c)
         }
     }
     editing = 0;
-    ui_draw_gdat_in_viewport_zone(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, GFX_OPAQUE);
+    ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, GFX_OPAQUE);
     c->redraw |= REDRAW_NAME;
     ui_draw_champion_state(g_ui.inventory - 1);
     play_show_view();

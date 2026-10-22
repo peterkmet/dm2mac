@@ -38,7 +38,7 @@ Hooks g_hooks = {
     .draw_all_champion_states = ui_draw_all_champion_states,
     .draw_movement_arrows = ui_draw_movement_arrows,
     .fill_screen_zone = ui_fill_zone_screen,
-    .draw_viewport_image = ui_draw_gdat_in_viewport_zone,
+    .draw_viewport_image = ui_draw_viewport_image,
     .complete_game = session_complete,
     .draw_dungeon = view_draw_dungeon,
 };

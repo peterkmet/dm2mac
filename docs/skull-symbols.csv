@@ -235,7 +235,7 @@ address,name,signature,subsystem
 0x0001c2a0,gfx_blit_forward,void gfx_blit_forward(void),graphics
 0x0001c2d8,gfx_blit_image,"void gfx_blit_image(uint8_t *image, uint8_t *dst, int16_t transparent)",graphics
 0x0001c338,gfx_blit_to_viewport,"void gfx_blit_to_viewport(const uint8_t *image, const int16_t *rect, int16_t transparent, const uint8_t *remap)",graphics
-0x0001c367,ui_draw_gdat_in_viewport_zone,"void ui_draw_gdat_in_viewport_zone(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t transparent)",graphics
+0x0001c367,ui_draw_viewport_image,"void ui_draw_viewport_image(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t transparent)",graphics
 0x0001c3bf,gfx_blit_to_screen_zone,"void gfx_blit_to_screen_zone(const uint8_t *image, int16_t zone, int16_t transparent, const uint8_t *remap)",graphics
 0x0001c440,gfx_draw_gdat_in_screen_zone,"void gfx_draw_gdat_in_screen_zone(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t transparent)",graphics
 0x0001c472,str_length,int str_length(const char *s),runtime library

@@ -225,9 +225,8 @@ static void draw_volume_buttons(int setting, int button_zone, int text_zone, int
 {
     char text[TEXT_SIZE];
     for (int level = VOLUME_LEVELS - 1; level >= 0; level--) {
-        ui_draw_gdat_in_viewport_zone(CAT_DIALOG, DIALOG_VOLUME,
-                                      level == setting ? GFX_VOLUME_BUTTON_ON : GFX_VOLUME_BUTTON, button_zone + level,
-                                      GFX_OPAQUE);
+        ui_draw_viewport_image(CAT_DIALOG, DIALOG_VOLUME, level == setting ? GFX_VOLUME_BUTTON_ON : GFX_VOLUME_BUTTON,
+                               button_zone + level, GFX_OPAQUE);
         if (level) {
             text[0] = (char)('0' + level);
             text[1] = '\0';

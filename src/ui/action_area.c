@@ -311,9 +311,8 @@ static void draw_menu_header(void)
                               GFX_OPAQUE);
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK, ZONE_MENU_BACK, GFX_OPAQUE);
     int champ = g_action.champion - 1;
-    offscreen_draw_text_in_zone_with_shadow(&area, ZONE_MENU_NAME,
-                                            g_ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
-                                            g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
+    offscreen_draw_shadow_text(&area, ZONE_MENU_NAME, g_ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
+                               g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
 }
 
 /* Draws the face of the champion whose hand or spell panel is open. */
@@ -382,9 +381,9 @@ void area_draw_name(int i, int highlight)
     }
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_BUTTON + highlight,
                               ZONE_ACTION_BUTTON_FIRST + i, GFX_OPAQUE);
-    offscreen_draw_text_in_zone_with_shadow(&area, ZONE_ACTION_NAME_FIRST + i, g_ui_colors[UI_WHITE],
-                                            g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
-                                            text_gdat_label(a->category, a->index, a->entry));
+    offscreen_draw_shadow_text(&area, ZONE_ACTION_NAME_FIRST + i, g_ui_colors[UI_WHITE],
+                               g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
+                               text_gdat_label(a->category, a->index, a->entry));
 }
 
 /* Draws the action menu of the open hand. */
