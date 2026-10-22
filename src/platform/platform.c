@@ -47,20 +47,44 @@ static struct {
 
 /* Setup */
 
+/* Draws the frame texture letterboxed into the window. */
+static void render_frame(void)
+{
+    int w, h;
+    float s, ox, oy;
+    SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
+    video_layout(w, h, &s, &ox, &oy);
+    SDL_FRect dst = {ox, oy, SCREEN_W * s, SCREEN_H * s};
+    SDL_SetRenderDrawColor(platform.ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(platform.ren);
+    SDL_RenderTexture(platform.ren, platform.tex, NULL, &dst);
+    SDL_RenderPresent(platform.ren);
+}
+
+/* Redraws the last frame while macOS blocks the main loop during a live window resize. */
+static bool SDLCALL on_expose(void *userdata, SDL_Event *ev)
+{
+    (void)userdata;
+    if (ev->type == SDL_EVENT_WINDOW_EXPOSED && platform.tex)
+        render_frame();
+    return true;
+}
+
 bool plat_init(int scale, int filter_factor)
 {
     platform.filter = filter_factor;
     SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
     if (!SDL_Init(SDL_INIT_VIDEO) ||
-        !SDL_CreateWindowAndRenderer("Dungeon Master II", SCREEN_W * scale, SCREEN_H * scale, SDL_WINDOW_RESIZABLE,
-                                     &platform.win, &platform.ren) ||
+        !SDL_CreateWindowAndRenderer("DM2Mac", SCREEN_W * scale, SCREEN_H * scale, SDL_WINDOW_RESIZABLE, &platform.win,
+                                     &platform.ren) ||
         !(platform.tex = SDL_CreateTexture(platform.ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                            SCREEN_W * platform.filter, SCREEN_H * platform.filter))) {
         os_log("SDL: %s", SDL_GetError());
         return false;
     }
     SDL_RaiseWindow(platform.win);
-    SDL_SetTextureScaleMode(platform.tex, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureScaleMode(platform.tex, SDL_SCALEMODE_PIXELART); /* even pixels at a fractional scale */
+    SDL_AddEventWatch(on_expose, NULL);
     SDL_HideCursor(); /* the game draws its own cursor into g_video_fb */
     SDL_AudioSpec spec = {SDL_AUDIO_S16, AUDIO_CHANNELS, SOUND_OUTPUT_RATE};
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO) ||
@@ -91,7 +115,7 @@ void plat_set_icon(const uint32_t *argb, int w, int h)
 void plat_present(void)
 {
     uint32_t pal[PALETTE_COLORS], *px;
-    int pitch, w, h, s, ox, oy, tw = SCREEN_W * platform.filter;
+    int pitch, tw = SCREEN_W * platform.filter;
     const uint8_t *src = platform.filter == SCALE_NONE_FACTOR ? &g_video_fb[0][0] : &platform.big[0][0];
     if (platform.filter == SCALE2X_FACTOR)
         scale2x(&g_video_fb[0][0], SCREEN_W, SCREEN_H, &platform.big[0][0]);
@@ -106,14 +130,7 @@ void plat_present(void)
         for (int x = 0; x < tw; x++)
             px[y * stride + x] = pal[src[y * tw + x]];
     SDL_UnlockTexture(platform.tex);
-
-    SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
-    video_layout(w, h, &s, &ox, &oy);
-    SDL_FRect dst = {ox, oy, SCREEN_W * s, SCREEN_H * s};
-    SDL_SetRenderDrawColor(platform.ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(platform.ren);
-    SDL_RenderTexture(platform.ren, platform.tex, NULL, &dst);
-    SDL_RenderPresent(platform.ren);
+    render_frame();
 }
 
 /* The largest 4:3 rectangle in the middle of the window: the tube of a VGA monitor. */

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "video.h"
+#include <math.h>
 
 /* Bit depth of a VGA DAC value and of an output channel. */
 #define VGA_DEPTH     6
@@ -22,12 +23,12 @@ uint32_t video_argb(uint8_t palette_color)
     return video_argb_pack(red, green, blue);
 }
 
-void video_layout(int output_w, int output_h, int *scale, int *ox, int *oy)
+void video_layout(int output_w, int output_h, float *scale, float *ox, float *oy)
 {
-    int sx = output_w / SCREEN_W, sy = output_h / SCREEN_H;
-    int s = sx < sy ? sx : sy;
-    if (s < 1)
-        s = 1;
+    float sx = (float)output_w / SCREEN_W, sy = (float)output_h / SCREEN_H;
+    float s = sx < sy ? sx : sy;
+    if (s <= 0)
+        s = 1; /* minimized window: avoid a zero scale */
     *scale = s;
     *ox = (output_w - SCREEN_W * s) / 2;
     *oy = (output_h - SCREEN_H * s) / 2;
@@ -40,7 +41,8 @@ static int clamp(int v, int max)
 
 VideoPoint video_map_mouse(int output_w, int output_h, int output_x, int output_y)
 {
-    int s, ox, oy;
+    float s, ox, oy;
     video_layout(output_w, output_h, &s, &ox, &oy);
-    return (VideoPoint){clamp((output_x - ox) / s, SCREEN_W - 1), clamp((output_y - oy) / s, SCREEN_H - 1)};
+    return (VideoPoint){clamp((int)floorf((output_x - ox) / s), SCREEN_W - 1),
+                        clamp((int)floorf((output_y - oy) / s), SCREEN_H - 1)};
 }
