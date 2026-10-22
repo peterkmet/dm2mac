@@ -33,9 +33,3 @@ long engine/ai.c:test_condition rule 5.8: one short case for each target conditi
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
 module platform/main.c rule 1.7: the entry point has no header
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
-type ui:argb open: module cleanup
-type ui:c open: module cleanup
-type ui:cell open: module cleanup
-type ui:key open: module cleanup
-type ui:map open: module cleanup
-type ui:volume open: module cleanup

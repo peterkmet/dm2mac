@@ -24,7 +24,7 @@ typedef struct {
     void (*render_hand_icon)(void);                 /* draws the leader hand object into the cursor */
     void (*draw_interface_image)(int category, int index, int entry,
                                  int zone);        /* an interface picture in a screen zone */
-    void (*enter_map_view)(int map);               /* the view loads the graphics of the map that the party enters */
+    void (*enter_map_view)(int16_t map);           /* the view loads the graphics of the map that the party enters */
     void (*flush_input)(void);                     /* drops the waiting clicks and keys */
     void (*poll_input)(void);                      /* reads the clicks and keys that came since the last read */
     void (*clear_viewport)(void);                  /* fills the cleared band of the viewport */

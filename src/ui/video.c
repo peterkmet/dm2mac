@@ -13,9 +13,9 @@ uint8_t video_vga_to_8bit(uint8_t v)
     return (uint8_t)(v << (CHANNEL_DEPTH - VGA_DEPTH) | v >> (2 * VGA_DEPTH - CHANNEL_DEPTH));
 }
 
-uint32_t video_argb(uint8_t c)
+uint32_t video_argb(uint8_t palette_color)
 {
-    const uint8_t *p = g_video_palette[c];
+    const uint8_t *p = g_video_palette[palette_color];
     uint32_t red = video_vga_to_8bit(p[RGB_RED]);
     uint32_t green = video_vga_to_8bit(p[RGB_GREEN]);
     uint32_t blue = video_vga_to_8bit(p[RGB_BLUE]);

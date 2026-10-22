@@ -675,8 +675,8 @@ typedef struct {
 } ThingPicture;
 
 static struct {
-    int map; /* the map of the squares that the view reads now */
-    int party_map;
+    int16_t map; /* the map of the squares that the view reads now */
+    int16_t party_map;
     int party_dir, party_x, party_y; /* the position the view is drawn for */
     int walking;                     /* the party walks: the original g_party_move_steps (Step 14) */
     int shade;
@@ -734,7 +734,7 @@ static void step_relative(int dir, int forward, int right, int *x, int *y)
 
 /* ---- Map graphics ---- */
 
-void view_enter_map(int map)
+void view_enter_map(int16_t map)
 {
     const gdat_t *g = gdat_current();
     sound_clear_requests();
@@ -1024,9 +1024,9 @@ void view_mark_hidden_squares(void)
 
 /* ---- Pictures ---- */
 
-int zone_id_for_view_cell(int base, int cell, int dir)
+int zone_id_for_view_cell(int base, int grid_cell, int dir)
 {
-    return base * ZONE_CELL_GRID + aspect_rotate_cell(cell, dir) + ZONE_VIEW_CELLS;
+    return base * ZONE_CELL_GRID + aspect_rotate_cell(grid_cell, dir) + ZONE_VIEW_CELLS;
 }
 
 static int element_zone(int element, int offset, int use_table)
@@ -1270,9 +1270,9 @@ static void show_rain(void)
     gfx_blit_tiled_4to8(&fill, g_view_viewport.pixels, VIEWPORT_WIDTH, rect);
 }
 
-void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key)
+void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int color_key)
 {
-    int transparent = mapped_key(ctx, key);
+    int transparent = mapped_key(ctx, color_key);
     if (!g_game.rain_intensity) {
         gfx_fill_bitmap(offscreen, transparent);
         return;

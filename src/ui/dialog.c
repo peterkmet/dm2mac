@@ -212,17 +212,17 @@ void dialog_draw_progress_bar(int permille)
     dialog_present();
 }
 
-void sound_set_volume_and_test(int volume, int device)
+void sound_set_volume_and_test(int level, int device)
 {
     if (device == DEVICE_SOUND) {
-        save_set_sound_volume((uint8_t)volume);
+        save_set_sound_volume((uint8_t)level);
         sound_request((SoundCue){CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM,
                                  SOUND_VOLUME_LOUD},
                       g_game.party_x, g_game.party_y, 0);
-        sound_set_volume(volume);
+        sound_set_volume(level);
     } else if (device == DEVICE_MUSIC) {
-        save_set_music_volume((uint8_t)volume);
-        music_set_volume(volume);
+        save_set_music_volume((uint8_t)level);
+        music_set_volume(level);
     }
 }
 

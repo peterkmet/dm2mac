@@ -19,7 +19,7 @@
 /* The master volume of the voices, 0 (off) to 7 (the sound volume setting). */
 void sound_set_volume(int level);
 /* The volume of the sound setting (dialog.c). */
-void sound_set_volume_and_test(int volume, int device);
+void sound_set_volume_and_test(int level, int device);
 
 /* Voices */
 /* Starts a sound in the first free voice; false when all voices play. */

@@ -691,11 +691,11 @@ static void close_name_editor(Champion *c)
     input_pop_mode();
 }
 
-void session_edit_champion_name(Champion *c)
+void session_edit_champion_name(Champion *champion)
 {
     char name[CHAMPION_NAME_SIZE], title[CHAMPION_TITLE_SIZE];
-    memcpy(name, c->name, sizeof name);
-    memcpy(title, c->title, sizeof title);
+    memcpy(name, champion->name, sizeof name);
+    memcpy(title, champion->title, sizeof title);
     int16_t name_x, name_y, title_x, title_y;
     game_set_panel_mode(NAME_PANEL_MODE);
     zone_get_position(ZONE_NAME, &name_x, &name_y);
@@ -706,14 +706,14 @@ void session_edit_champion_name(Champion *c)
     bool in_name = true;
     bool done = false;
     while (!done && !g_main_loop.quit) {
-        char *text = in_name ? c->name : c->title;
+        char *text = in_name ? champion->name : champion->title;
         int max = in_name ? CHAMP_NAME_MAX : CHAMP_TITLE_MAX;
         int length = (int)strlen(text);
         int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE;
         int y = in_name ? name_y : title_y;
         for (bool field_done = false, redraw = true; !field_done && !g_main_loop.quit;) {
             if (redraw)
-                render_name_fields(c, x, y);
+                render_name_fields(champion, x, y);
             redraw = false;
             g_input_match.choice = 0;
             g_input_match.value = 0;
@@ -726,8 +726,8 @@ void session_edit_champion_name(Champion *c)
                 in_name = false;
                 field_done = true;
             } else if (command == CMD_EDIT_CANCEL) {
-                memcpy(c->name, name, sizeof name);
-                memcpy(c->title, title, sizeof title);
+                memcpy(champion->name, name, sizeof name);
+                memcpy(champion->title, title, sizeof title);
                 field_done = true;
                 done = true;
             } else if (!command) {
@@ -746,7 +746,7 @@ void session_edit_champion_name(Champion *c)
             }
         }
     }
-    close_name_editor(c);
+    close_name_editor(champion);
 }
 
 /* ---- Arguments ---- */

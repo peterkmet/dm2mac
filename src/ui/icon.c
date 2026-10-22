@@ -10,7 +10,7 @@
 /* Size of the decode buffer in pixels. */
 #define ICON_MAX_BYTES 65536
 
-bool icon_build(const gdat_t *g, uint32_t *argb, int max, int *out_width, int *out_height)
+bool icon_build(const gdat_t *g, uint32_t *pixels, int max, int *out_width, int *out_height)
 {
     static uint8_t px[ICON_MAX_BYTES];
     int bpp, item = gdat_find(g, CAT_CREATURE, ICON_INDEX, GDAT_TYPE_IMAGE, GFX_ICON);
@@ -25,7 +25,7 @@ bool icon_build(const gdat_t *g, uint32_t *argb, int max, int *out_width, int *o
         uint32_t red = video_vga_to_8bit(rgb[RGB_RED]);
         uint32_t green = video_vga_to_8bit(rgb[RGB_GREEN]);
         uint32_t blue = video_vga_to_8bit(rgb[RGB_BLUE]);
-        argb[i] = px[i] == ICON_TRANSPARENT ? 0 : video_argb_pack(red, green, blue);
+        pixels[i] = px[i] == ICON_TRANSPARENT ? 0 : video_argb_pack(red, green, blue);
     }
     return true;
 }

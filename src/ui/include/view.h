@@ -76,7 +76,7 @@ typedef struct {
 /* ---- Map graphics ---- */
 
 /* Sets up the map graphics of map for the view: the view part of entering a map. */
-void view_enter_map(int map);
+void view_enter_map(int16_t map);
 
 /* ---- Things of the view squares ---- */
 
@@ -102,8 +102,8 @@ void view_mark_hidden_squares(void); /* exported for the tests */
 
 /* Falling rain shows over the view: its slant shows the wind. */
 bool view_rain_shows(void);
-/* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else key. */
-void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key); /* exported for the tests */
+/* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else color_key. */
+void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int color_key); /* exported for the tests */
 
 /* ---- The view ---- */
 

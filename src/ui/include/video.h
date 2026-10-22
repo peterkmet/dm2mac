@@ -39,8 +39,8 @@ extern uint8_t g_video_palette[PALETTE_COLORS][RGB_CHANNELS];
 
 /* Converts a 6-bit VGA DAC value to 8 bits: repeats the high bits in the low bits, so 0 gives 0 and 63 gives 255 (as DOSBox). */
 uint8_t video_vga_to_8bit(uint8_t v);
-/* ARGB8888 of palette color c. */
-uint32_t video_argb(uint8_t c);
+/* ARGB8888 of a palette color. */
+uint32_t video_argb(uint8_t palette_color);
 /* Largest integer scale that fits the output, centered (letterbox). */
 void video_layout(int output_w, int output_h, int *scale, int *ox, int *oy);
 /* Maps output pixel coordinates to game coordinates, clamped to the screen. */

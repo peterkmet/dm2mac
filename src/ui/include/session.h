@@ -69,7 +69,7 @@ void session_end(int party_dead);
 
 /* ---- Champion names ---- */
 /* The player edits the name and the title of a champion in the inventory. */
-void session_edit_champion_name(Champion *c);
+void session_edit_champion_name(Champion *champion);
 
 /* ---- Arguments ---- */
 /* Removes every "--save PATH" pair from argv, walking it like the option parser (--mode, --saves and the other options stay);

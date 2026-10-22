@@ -116,7 +116,7 @@ void music_pause(void)
     g_music.paused = 1;
 }
 
-void music_update_for_map(int map)
+void music_update_for_map(int16_t map)
 {
     if (!g_music.enabled || !g_music.songlist_loaded)
         return;

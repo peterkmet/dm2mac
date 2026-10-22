@@ -44,7 +44,7 @@ void music_play_song(int song); /* exported for the tests */
 /* Pauses the song until the next music_update_for_map. */
 void music_pause(void);
 /* Once per game step: resumes a paused song, steps the fade, and changes to the song of map. */
-void music_update_for_map(int map);
+void music_update_for_map(int16_t map);
 /* Music volume 0 to 7; 0 stops the song. */
 void music_set_volume(int level);
 
