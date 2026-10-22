@@ -1,13 +1,5 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
-block platform/main.c open: module cleanup
-bool platform/main.c open: module cleanup
-bool platform/main.c:default_control_path open: module cleanup
-bool platform/main.c:load_graphics open: module cleanup
-bool platform/main.c:read_options open: module cleanup
-bool platform/main.c:select_mode open: module cleanup
-bool platform/main.c:show_save open: module cleanup
-bool platform/main.c:start_game open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -44,20 +36,13 @@ hex ui/input.c rule 3.12: a table of SKULL.EXE
 hex ui/ui.c rule 3.12: a table of SKULL.EXE
 hex ui/view.c rule 3.12: a table of SKULL.EXE
 include engine/include/creature.h:timeline.h open: module cleanup
-include platform/main.c:dungeon.h open: module cleanup
-include platform/main.c:item.h open: module cleanup
-include platform/main.c:view.h open: module cleanup
 include ui/session.c:item.h open: module cleanup
 long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
-long platform/main.c:main open: module cleanup
-long platform/main.c:pc_key_code open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
-params platform/main.c:read_options open: module cleanup
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
-static-prefix platform/main.c:play_movies open: module cleanup
 type control:out open: module cleanup
 type control:value open: module cleanup
 type data:bpp open: module cleanup
