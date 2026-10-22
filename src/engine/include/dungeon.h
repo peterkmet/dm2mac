@@ -639,132 +639,160 @@ static inline void moneybox_set_placed(uint16_t box, bool placed)
 /* The position of the explosion power (bits 8-15) in EXPLOSION_DATA. */
 #define EXPLOSION_POWER_SHIFT   8
 
-/* Loads a new game from DUNGEON.DAT; returns 1 on success, 0 on a read error or a compressed file. */
-int dungeon_load(const char *path);
-/* Reads a dungeon at the file position: DUNGEON.DAT (new_game 1, adds free records) or the image in a save file (new_game 0). */
-int dungeon_read(FILE *f, int new_game);
+/* Setup */
+/* Loads a new game from DUNGEON.DAT; false on a read error or a compressed file. */
+bool dungeon_load(const char *path);
+/* Reads a dungeon at the file position: DUNGEON.DAT (new_game, adds free records) or the image in a save file. */
+bool dungeon_read(FILE *f, bool new_game);
 /* Writes the dungeon image of a save file: the header with the counts of the loaded game, then the sections. */
-int dungeon_write(FILE *f);
+bool dungeon_write(FILE *f);
+/* Frees the loaded dungeon. */
 void dungeon_free(void);
+/* The pass of a new game after the load of DUNGEON.DAT: numbered teleporter links, shared lists of linked
+   teleporters, level link marks, the start states of sensors and texts, creature health and homes. */
+void dungeon_link_things_after_load(void);
+/* Reads the level digits from the text on the party start square (the first load of a run). */
+void dungeon_read_level_table(void);
 
+/* The dungeon header, the maps and the levels */
+/* The location word of the party start square. */
 uint16_t dungeon_party_start(void);
+/* The first word of the dungeon header; it seeds the random wall ornaments. */
+uint16_t dungeon_ornament_seed(void);
+/* The number of maps of the dungeon. */
 int dungeon_map_count(void);
+/* The squares of map along x. */
 int dungeon_map_width(int map);
+/* The squares of map along y. */
 int dungeon_map_height(int map);
+/* The dungeon level of map. */
 int dungeon_map_level(int map);
+/* The x position of the map on its level. */
+int dungeon_map_offset_x(int map);
+/* The y position of the map on its level. */
+int dungeon_map_offset_y(int map);
+/* Map flags bits: the map has door type 0, door type 1. */
+#define MAP_HAS_DOOR_TYPE_0      0x0080
+#define MAP_HAS_DOOR_TYPE_1      0x0100
+/* The positions of the fields of the map descriptor words. */
+#define MAP_WALLSET_SHIFT        4
+#define MAP_DOOR_TYPE_SHIFT      8 /* door type 0; door type 1 follows 4 bits higher */
+#define MAP_DOOR_TYPE_1_SHIFT    12
+#define MAP_RANDOM_WALL_SHIFT    4 /* map ornament counts: random wall ornaments in bits 4-7 */
+#define MAP_CREATURE_TYPES_SHIFT 4 /* map object counts bits 4-7: the number of creature types of the map */
+#define MAP_DIFFICULTY_SHIFT 12    /* map object counts: difficulty bits 12-15, also the experience factor of the map */
+/* The mask of a 4-bit field of a map descriptor word after the shift. */
+#define MAP_NIBBLE_MASK      0xf
+/* The door type of a door slot without a door type. */
+#define DOOR_TYPE_NONE       0xff
+/* The map flags word: bit 7 door type 0 present, bit 8 door type 1 present; exported for the tests. */
+uint16_t dungeon_map_flags(int map);
+/* The map object counts word: door ornaments bits 0-3, creature types bits 4-7; exported for the tests. */
+uint16_t dungeon_map_object_counts(int map);
+/* The map graphics word: graphics set bits 4-7, door types bits 8-11 and 12-15; exported for the tests. */
+uint16_t dungeon_map_graphics(int map);
+/* The wall set (graphics set) of map. */
+int dungeon_map_wallset(int map);
+/* The door type of door slot 0 or 1 of map, DOOR_TYPE_NONE when the map has none. */
+uint8_t dungeon_map_door_type(int map, int slot);
+/* The number of random wall ornaments of map. */
+int dungeon_map_random_wall_count(int map);
+/* The number of creature types of map. */
+int dungeon_map_creature_type_count(int map);
+/* The difficulty of map, also the experience factor of the map. */
+int dungeon_map_difficulty(int map);
+/* The creature types of map (count in dungeon_map_object_counts bits 4-7). */
+const uint8_t *dungeon_map_creature_types(int map);
+/* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */
+const uint8_t *dungeon_map_wall_ornaments(int map);
+/* The GDAT indices of the floor ornaments of map. */
+const uint8_t *dungeon_map_floor_ornaments(int map);
+/* The GDAT indices of the door ornaments of map. */
+const uint8_t *dungeon_map_door_ornaments(int map);
+/* The maps of a level, ended by LEVEL_LIST_END; exported for the tests. */
+const uint8_t *dungeon_level_maps(int level);
+/* The level digit of level: the map icon set of the squares outside the maps of the level. */
+int dungeon_level_digit(int level);
+/* The number of words of the text data. */
+int dungeon_text_word_count(void);
+/* The text data: the words of the dungeon texts. */
+const uint16_t *dungeon_text_data(void);
+
+/* Squares */
 /* The square byte at (x, y); x and y must be inside the map. */
 uint8_t dungeon_square(int map, int x, int y);
+/* The square byte at (x, y) to change; x and y must be inside the map. */
+uint8_t *dungeon_square_byte(int map, int x, int y);
+/* The square byte of map at (x, y). Away from the map it gives the edge walls: a wall (with the bit of the
+   side that faces the map) next to an open square at the map edge, else SQUARE_OUTSIDE. */
+uint8_t dungeon_square_edge(int map, int x, int y);
 /* The first thing on the square (x, y), THING_ENDOFLIST when the square has no things. */
 uint16_t dungeon_square_first_thing(int map, int x, int y);
 /* The first thing on the square after its doors, teleporters, texts, and sensors. */
 uint16_t dungeon_square_first_object(int map, int x, int y);
-/* Entries of the square first-thing table, including the free entries of a new game. */
+/* Entries of the square first-thing table, including the free entries of a new game; exported for the tests. */
 int dungeon_square_thing_count(void);
+/* The square first-thing table; exported for the tests. */
 const uint16_t *dungeon_square_things(void);
-int dungeon_thing_count(int type);
-int dungeon_thing_size(int type);
-#define DUNGEON_RECORD_MAX 16 /* the largest thing record (a creature group) */
-/* Copies the record of thing to or from buffer (DUNGEON_RECORD_MAX bytes). */
-void dungeon_save_record(uint16_t thing, uint8_t *buffer);
-void dungeon_restore_record(uint16_t thing, const uint8_t *buffer);
-/* True when thing has a record in the loaded dungeon. */
-int dungeon_thing_valid(uint16_t thing);
-uint16_t dungeon_next_thing(uint16_t thing);
-uint8_t *dungeon_square_byte(int map, int x, int y);
-/* Removes thing from the thing list whose first-thing word is at list. */
-void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list);
-/* Appends thing at the end of a thing list. */
-void dungeon_append_thing(uint16_t thing, uint16_t *list);
-/* Appends thing at the end of the square's thing list; returns 0 when the first-thing table is full. */
-int dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y);
-/* Removes thing from the square's thing list. */
-void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
-/* Takes a free record of type, cleared, without cell bits. When the table is full, it reuses a thing from
-   dun_get_discarded_thing; THING_NONE when there is none. type | THING_ANY_RECORD: a miscellaneous item may take
-   the records that the dungeon keeps for the game. */
-#define THING_ANY_RECORD 0x8000
-uint16_t dungeon_unused_thing(int type);
-#define DISCARD_ANY_KIND 0xff /* dun_get_discarded_thing (move.h): a thing of any kind */
-/* The map where the last search for each thing type ended; the next search starts there. */
-extern uint8_t last_discarded_map[THING_TYPE_COUNT];
-/* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
-int dungeon_teleporter_link_map(int map, int x, int y);
-/* The square byte of map at (x, y). Away from the map it gives the edge walls: a wall (with the bit of the
-   side that faces the map) next to an open square at the map edge, else SQUARE_OUTSIDE. */
-uint8_t dungeon_square_edge(int map, int x, int y);
 /* The map of the level at level_delta from the level of map that holds the dungeon position of (x, y) of map, and
    its square there in *x, *y; -1 when no such map has an open square there. */
 int dungeon_location_on_map(int map, int level_delta, int *x, int *y);
 /* The same search from list position *next (0: the first map of the level); sets *next to the position after the
    map that it found, 0 when it found none. */
 int dungeon_location_on_map_from(int map, int level_delta, int *x, int *y, int *next);
+/* Level deltas: one level up, one level down. */
 #define LEVEL_UP           (-1)
 #define LEVEL_DOWN         1
 /* Level transfer flags. */
 #define TRANSFER_PIT       0x008
 #define TRANSFER_FALL_INTO 0x010
 #define TRANSFER_STAIRS    0x100
-
+/* The map one level up (level_delta -1) or down (1) that the square (*x, *y) of map leads to by its stairs, its open
+   pit (TRANSFER_PIT), or a level link; *x, *y become the square there. -1 none. Leaves map current. */
+int dungeon_find_level_transfer(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags);
 /* A pair of teleporters with link sensors: a seamless passage to another map. */
 typedef struct {
     int side, target_side; /* side of the passage on the source and on the target square, 0 to 3 */
     int x, y, map;         /* the target square */
 } TeleporterLink;
-/* Fills link for a teleporter square whose target is a teleporter, both with link sensors; returns 0 when not. */
-int dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link);
+/* Fills link for a teleporter square whose target is a teleporter, both with link sensors; false when not. */
+bool dungeon_teleporter_link(int map, int x, int y, TeleporterLink *link);
+/* The target map of a teleporter square whose target square is a teleporter too, both with a link sensor; else -1. */
+int dungeon_teleporter_link_map(int map, int x, int y);
 
-/* Map descriptor values. */
-int dungeon_map_offset_x(int map); /* position of the map on its level */
-int dungeon_map_offset_y(int map);
-uint16_t dungeon_map_flags(int map);           /* bit 7 door type 0 present, bit 8 door type 1 present */
-uint16_t dungeon_map_ornament_counts(int map); /* wall bits 0-3, random wall 4-7, floor 8-11, random floor 12-15 */
-uint16_t dungeon_map_object_counts(int map);   /* door ornaments bits 0-3, creature types bits 4-7 */
-uint16_t dungeon_map_graphics(int map);        /* graphics set bits 4-7, door types bits 8-11 and 12-15 */
-#define MAP_HAS_DOOR_TYPE_0      0x0080
-#define MAP_HAS_DOOR_TYPE_1      0x0100
-#define MAP_WALLSET_SHIFT        4
-#define MAP_DOOR_TYPE_SHIFT      8 /* door type 0; door type 1 follows 4 bits higher */
-#define MAP_DOOR_TYPE_1_SHIFT    12
-#define MAP_NIBBLE_MASK          0xf
-#define DOOR_TYPE_NONE           0xff
-#define MAP_RANDOM_WALL_SHIFT    4 /* map ornament counts: random wall ornaments in bits 4-7 */
-#define MAP_CREATURE_TYPES_SHIFT 4 /* map object counts bits 4-7: the number of creature types of the map */
-#define MAP_DIFFICULTY_SHIFT 12    /* map object counts: difficulty bits 12-15, also the experience factor of the map */
-/* The wall set (graphics set) of map. */
-#define dungeon_map_wallset(map) (dungeon_map_graphics(map) >> MAP_WALLSET_SHIFT & MAP_NIBBLE_MASK)
-/* The door type of door slot 0 or 1 of map, DOOR_TYPE_NONE when the map has none. */
-static inline uint8_t dungeon_map_door_type(int map, int slot)
-{
-    if (!(dungeon_map_flags(map) & (slot ? MAP_HAS_DOOR_TYPE_1 : MAP_HAS_DOOR_TYPE_0)))
-        return DOOR_TYPE_NONE;
-    return dungeon_map_graphics(map) >> (slot ? MAP_DOOR_TYPE_1_SHIFT : MAP_DOOR_TYPE_SHIFT) & MAP_NIBBLE_MASK;
-}
-/* The number of random wall ornaments of map. */
-#define dungeon_map_random_wall_count(map) (dungeon_map_ornament_counts(map) >> MAP_RANDOM_WALL_SHIFT & MAP_NIBBLE_MASK)
-/* The number of creature types of map. */
-#define dungeon_map_creature_type_count(map)                                                                           \
-    (dungeon_map_object_counts(map) >> MAP_CREATURE_TYPES_SHIFT & MAP_NIBBLE_MASK)
-#define dungeon_map_difficulty(map) (dungeon_map_object_counts(map) >> MAP_DIFFICULTY_SHIFT)
-/* The creature types of map (count in dungeon_map_object_counts bits 4-7). */
-const uint8_t *dungeon_map_creature_types(int map);
-/* The ornament lists of map: GDAT indices of its wall, floor, and door ornaments. */
-const uint8_t *dungeon_map_wall_ornaments(int map);
-const uint8_t *dungeon_map_floor_ornaments(int map);
-const uint8_t *dungeon_map_door_ornaments(int map);
-/* The first word of the dungeon header; it seeds the random wall ornaments. */
-uint16_t dungeon_ornament_seed(void);
+/* Things */
+/* The number of records of thing type type, the free records included. */
+int dungeon_thing_count(int type);
+/* The record size in bytes of thing type type. */
+int dungeon_thing_size(int type);
+/* True when thing has a record in the loaded dungeon. */
+bool dungeon_thing_valid(uint16_t thing);
+/* The next thing in the thing list of thing. */
+uint16_t dungeon_next_thing(uint16_t thing);
+/* The largest thing record (a creature group). */
+#define DUNGEON_RECORD_MAX 16
+/* Copies the record of thing to or from buffer (DUNGEON_RECORD_MAX bytes). */
+void dungeon_save_record(uint16_t thing, uint8_t *buffer);
+/* Copies buffer (DUNGEON_RECORD_MAX bytes) back into the record of thing. */
+void dungeon_restore_record(uint16_t thing, const uint8_t *buffer);
 
-/* The pass of a new game after the load of DUNGEON.DAT: numbered teleporter links, shared lists of linked
-   teleporters, level link marks, the start states of sensors and texts, creature health and homes. */
-void dungeon_link_things_after_load(void);
-/* Reads the level digits from the text on the party start square (the first load of a run). */
-void dungeon_read_level_table(void);
-/* The level digit of level: the map icon set of the squares outside the maps of the level. */
-int dungeon_level_digit(int level);
-
-int dungeon_text_word_count(void);
-const uint16_t *dungeon_text_data(void);
-/* The maps of a level, ended by LEVEL_LIST_END. */
-const uint8_t *dungeon_level_maps(int level);
+/* Thing lists */
+/* Removes thing from the thing list whose first-thing word is at list. */
+void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list);
+/* Appends thing at the end of a thing list. */
+void dungeon_append_thing(uint16_t thing, uint16_t *list);
+/* Appends thing at the end of the square's thing list; false when the first-thing table is full. */
+bool dungeon_link_thing_to_square(uint16_t thing, int map, int x, int y);
+/* Removes thing from the square's thing list. */
+void dungeon_unlink_thing_from_square(uint16_t thing, int map, int x, int y);
+/* type | THING_ANY_RECORD: a miscellaneous item may take the records that the dungeon keeps for the game. */
+#define THING_ANY_RECORD 0x8000
+/* Takes a free record of type, cleared, without cell bits. When the table is full, it reuses a thing from
+   dun_get_discarded_thing; THING_NONE when there is none. */
+uint16_t dungeon_unused_thing(int type);
+/* dun_get_discarded_thing (move.h): a thing of any kind. */
+#define DISCARD_ANY_KIND 0xff
+/* The map where the last search for each thing type ended; the next search starts there. */
+extern uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 
 #endif /* DM2_ENGINE_DUNGEON_H */

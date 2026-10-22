@@ -19,7 +19,6 @@ block engine/include/aspect.h open: module cleanup
 block engine/include/champ_action.h open: module cleanup
 block engine/include/champion.h open: module cleanup
 block engine/include/creature.h open: module cleanup
-block engine/include/dungeon.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/inventory.h open: module cleanup
@@ -118,10 +117,6 @@ bool engine/creature.c open: module cleanup
 bool engine/creature.c:creature_anim_next_random_step open: module cleanup
 bool engine/creature.c:creature_damage_current_group open: module cleanup
 bool engine/damage.c open: module cleanup
-bool engine/dungeon.c open: module cleanup
-bool engine/dungeon.c:link_teleporters open: module cleanup
-bool engine/dungeon.c:link_thing open: module cleanup
-bool engine/dungeon.c:number_linked_actuators open: module cleanup
 bool engine/include/ai.h:ai_begin open: module cleanup
 bool engine/include/champion.h:champ_execute_selected_action open: module cleanup
 bool engine/include/champion.h:champ_list_actions open: module cleanup
@@ -129,8 +124,6 @@ bool engine/include/champion.h:champ_test_luck open: module cleanup
 bool engine/include/champion.h:champ_throw_object open: module cleanup
 bool engine/include/champion.h:champ_use_action_charge open: module cleanup
 bool engine/include/creature.h:creature_anim_start open: module cleanup
-bool engine/include/dungeon.h:dungeon_link_thing_to_square open: module cleanup
-bool engine/include/dungeon.h:dungeon_teleporter_link open: module cleanup
 bool engine/include/item.h:item_use_charge open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
 bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
@@ -243,7 +236,6 @@ comment engine/include/ai.h open: module cleanup
 comment engine/include/aspect.h open: module cleanup
 comment engine/include/champion.h open: module cleanup
 comment engine/include/creature.h open: module cleanup
-comment engine/include/dungeon.h open: module cleanup
 comment engine/include/game_text.h open: module cleanup
 comment engine/include/item.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
@@ -353,13 +345,6 @@ dead-api engine/include/creature.h:creature_alloc_active_groups open: module cle
 dead-api engine/include/creature.h:creature_anim_bits open: module cleanup
 dead-api engine/include/creature.h:creature_is_near_party_front open: module cleanup
 dead-api engine/include/creature.h:creature_schedule_update open: module cleanup
-dead-api engine/include/dungeon.h:dungeon_level_maps open: module cleanup
-dead-api engine/include/dungeon.h:dungeon_map_flags open: module cleanup
-dead-api engine/include/dungeon.h:dungeon_map_graphics open: module cleanup
-dead-api engine/include/dungeon.h:dungeon_map_object_counts open: module cleanup
-dead-api engine/include/dungeon.h:dungeon_map_ornament_counts open: module cleanup
-dead-api engine/include/dungeon.h:dungeon_square_thing_count open: module cleanup
-dead-api engine/include/dungeon.h:dungeon_square_things open: module cleanup
 dead-api engine/include/magic.h:magic_cast_spell open: module cleanup
 dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
@@ -526,7 +511,6 @@ global engine/include/ai_move.h open: module cleanup
 global engine/include/champ_action.h open: module cleanup
 global engine/include/champion.h open: module cleanup
 global engine/include/creature.h open: module cleanup
-global engine/include/dungeon.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
 global engine/include/inventory.h open: module cleanup
@@ -569,7 +553,6 @@ include engine/action.c:game.h open: module cleanup
 include engine/ai.c:champ_action.h open: module cleanup
 include engine/ai.c:inventory.h open: module cleanup
 include engine/creature.c:money.h open: module cleanup
-include engine/dungeon.c:ai.h open: module cleanup
 include engine/game.c:champ_action.h open: module cleanup
 include engine/game.c:magic.h open: module cleanup
 include engine/include/ai_move.h:ai.h open: module cleanup
@@ -675,7 +658,6 @@ name engine/creature.c:creature_activate_groups_all_maps open: module cleanup
 name engine/creature.c:creature_ai_animate_and_get_next_time open: module cleanup
 name engine/damage.c:champ_consume_food_and_water open: module cleanup
 name engine/damage.c:champ_place_in_free_cell open: module cleanup
-name engine/dungeon.c:dun_get_level_transfer_destination open: module cleanup
 name engine/include/ai.h:ai_cmd_seek_with_carried_item open: module cleanup
 name engine/include/ai.h:ai_find_wall_actuator_in_cell open: module cleanup
 name engine/include/ai.h:ai_square_blocks_line_except_self open: module cleanup
@@ -686,7 +668,6 @@ name engine/include/creature.h:creature_activate_groups_all_maps open: module cl
 name engine/include/creature.h:creature_ai_animate_and_get_next_time open: module cleanup
 name engine/include/creature.h:creature_get_ordered_attack_cells open: module cleanup
 name engine/include/inventory.h:inv_put_object_in_free_slot open: module cleanup
-name engine/include/move.h:dun_get_level_transfer_destination open: module cleanup
 name engine/include/move.h:dun_is_wall_thing_ornament_shown open: module cleanup
 name engine/include/move.h:dun_set_pit_or_teleporter_state open: module cleanup
 name engine/inventory.c:champ_put_object_in_leader_hand open: module cleanup
@@ -729,7 +710,6 @@ notation engine/include/ai_move.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
 notation engine/include/champion.h open: module cleanup
 notation engine/include/creature.h open: module cleanup
-notation engine/include/dungeon.h open: module cleanup
 notation engine/include/inventory.h open: module cleanup
 notation engine/include/item.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
@@ -782,7 +762,6 @@ order engine/ai.c open: module cleanup
 order engine/aspect.c open: module cleanup
 order engine/champion.c open: module cleanup
 order engine/creature.c open: module cleanup
-order engine/dungeon.c open: module cleanup
 order engine/inventory.c open: module cleanup
 order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
@@ -846,7 +825,6 @@ params engine/creature.c:creature_alert open: module cleanup
 params engine/creature.c:creature_anim_start open: module cleanup
 params engine/creature.c:creature_summon_group open: module cleanup
 params engine/creature.c:sensor_affect_creatures_in_area open: module cleanup
-params engine/dungeon.c:edge_wall open: module cleanup
 params engine/include/ai.h:ai_find_target_in_lines open: module cleanup
 params engine/include/ai.h:ai_search_area open: module cleanup
 params engine/include/ai.h:ai_try_attack open: module cleanup
@@ -1046,12 +1024,6 @@ static-prefix engine/damage.c:champ_place_in_free_cell open: module cleanup
 static-prefix engine/damage.c:champ_reduce_damage open: module cleanup
 static-prefix engine/damage.c:champ_regen_mana open: module cleanup
 static-prefix engine/damage.c:item_armor_defense open: module cleanup
-static-prefix engine/dungeon.c:square_open open: module cleanup
-static-prefix engine/dungeon.c:square_thing_index open: module cleanup
-static-prefix engine/dungeon.c:square_things_valid open: module cleanup
-static-prefix engine/dungeon.c:teleporter_closed open: module cleanup
-static-prefix engine/dungeon.c:teleporter_link_side open: module cleanup
-static-prefix engine/dungeon.c:thing_list_valid open: module cleanup
 static-prefix engine/game.c:timeline_event_aura open: module cleanup
 static-prefix engine/game.c:timeline_event_hide_damage open: module cleanup
 static-prefix engine/inventory.c:item_stat_modifier open: module cleanup

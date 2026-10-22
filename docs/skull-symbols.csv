@@ -531,7 +531,7 @@ address,name,signature,subsystem
 0x0002c0a2,ai_find_target_in_lines,"int ai_find_target_in_lines(int16_t filter, uint8_t *distance_map, uint16_t *out_location, int16_t x, int16_t y, int16_t dir, int ranged)",creatures
 0x0002c404,ai_try_attack,"int ai_try_attack(uint8_t mode, int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t dir)",creatures
 0x0002cc42,ai_try_door_action,"int ai_try_door_action(uint8_t mode, int16_t x, int16_t y, int16_t door_x, int16_t door_y, int16_t dir)",creatures
-0x0002d35e,dun_get_level_transfer_destination,"int16_t dun_get_level_transfer_destination(int16_t *x, int16_t *y, int16_t map, int16_t level_delta, uint16_t flags)",dungeon data
+0x0002d35e,dungeon_find_level_transfer,"int16_t dungeon_find_level_transfer(int16_t *x, int16_t *y, int16_t map, int16_t level_delta, uint16_t flags)",dungeon data
 0x0002d52d,ai_projectile_incoming,"int ai_projectile_incoming(int16_t x, int16_t y)",creatures
 0x0002d725,creature_thing_matches_filter9,int creature_thing_matches_filter9(uint16_t thing),creatures
 0x0002d792,ai_try_move,"uint16_t ai_try_move(uint8_t command, int16_t x, int16_t y, int16_t dest_x, int16_t dest_y, int16_t dir)",creatures

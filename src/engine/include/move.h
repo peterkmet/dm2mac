@@ -111,13 +111,10 @@ void move_update_carried_missiles(uint16_t holder, int x, int y, int map, int fl
 bool move_party_can_push_group(uint16_t group);
 void move_push_creature(int arrow);
 
-/* Dungeon reads of dungeon.c and move.c. */
+/* Dungeon reads of move.c. */
 /* Frees a record of type for reuse when the table is full: removes a thing of kind subtype (DISCARD_ANY_KIND:
    any) that may go, away from the party; THING_NONE when there is none. */
 uint16_t dun_get_discarded_thing(int type, int subtype);
-/* The map one level up (level_delta -1) or down (1) that the square (*x, *y) of map leads to by its stairs, its open
-   pit (TRANSFER_PIT), or a level link; *x, *y become the square there. -1 none. Leaves map current. */
-int dun_get_level_transfer_destination(int16_t *x, int16_t *y, int map, int level_delta, unsigned flags);
 
 /* The warp of the party (magic.c). */
 /* The party on a warp marker text moves to the marker of its id; returns 1 when it moved. */

@@ -1256,7 +1256,7 @@ static const uint8_t sensor_blocks_discard[SENSOR_KIND_TABLE] = {
     0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
 };
-uint8_t last_discarded_map[THING_TYPE_COUNT];
+uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 
 /* The next map of the discard search after map: the party map comes last; alt (the map of a seamless passage, -1
    none) comes when the search is back at stop. */
@@ -1382,7 +1382,7 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
     if (type == THING_EXPLOSION)
         return THING_NONE;
     int saved = party.cur_map, alt = party.alt_view_active ? party.alt_view_map : -1;
-    int map = last_discarded_map[type];
+    int map = g_last_discarded_map[type];
     if (map == game.party_map || map == alt)
         map = discard_next_map(map, map, &alt);
     int start = map;
@@ -1390,13 +1390,13 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
         uint16_t t = discard_scan_map(type, subtype, map, second);
         if (t != THING_NONE) {
             dun_set_current_map(saved);
-            last_discarded_map[type] = (uint8_t)map;
+            g_last_discarded_map[type] = (uint8_t)map;
             return t & THING_ID_MASK;
         }
         if (map != game.party_map && dungeon_map_count() > 1) {
             map = discard_next_map(map, start, &alt);
         } else if (second) {
-            last_discarded_map[type] = (uint8_t)map;
+            g_last_discarded_map[type] = (uint8_t)map;
             return THING_NONE;
         } else {
             second = 1;

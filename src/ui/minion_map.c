@@ -489,10 +489,10 @@ static void ui_map_set_marker(int x, int y, int map)
     m->marker_x = m->below_x = m->above_x = (int16_t)x;
     m->marker_y = m->below_y = m->above_y = (int16_t)y;
     m->marker_map = (int16_t)map;
-    m->above_map = (int16_t)dun_get_level_transfer_destination(&m->above_x, &m->above_y, map, LEVEL_UP,
-                                                               TRANSFER_STAIRS | TRANSFER_FALL_INTO);
-    m->below_map = (int16_t)dun_get_level_transfer_destination(&m->below_x, &m->below_y, m->marker_map, LEVEL_DOWN,
-                                                               TRANSFER_STAIRS | TRANSFER_PIT);
+    m->above_map = (int16_t)dungeon_find_level_transfer(&m->above_x, &m->above_y, map, LEVEL_UP,
+                                                        TRANSFER_STAIRS | TRANSFER_FALL_INTO);
+    m->below_map = (int16_t)dungeon_find_level_transfer(&m->below_x, &m->below_y, m->marker_map, LEVEL_DOWN,
+                                                        TRANSFER_STAIRS | TRANSFER_PIT);
 }
 
 /* The squares that show the minion of a map item: its square and the far end of a teleporter there. */

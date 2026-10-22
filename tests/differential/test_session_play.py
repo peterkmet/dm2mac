@@ -314,7 +314,7 @@ def test_discarded_things_match_original(play, lib, place):
     if place:
         sc.place(*place)
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    last = (ctypes.c_uint8 * C.THING_TYPE_COUNT).in_dll(lib, "last_discarded_map")
+    last = (ctypes.c_uint8 * C.THING_TYPE_COUNT).in_dll(lib, "g_last_discarded_map")
     ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, C.THING_TYPE_COUNT), C.THING_TYPE_COUNT)  # both from the program start
     found = {}
     for kind in (C.THING_WEAPON, C.THING_ARMOUR, C.THING_MISC, C.THING_POTION, C.THING_GROUP):
@@ -359,7 +359,7 @@ def test_discard_keeps_things_within_5_squares(play, lib, distance):
         keep = ctypes.c_uint8.from_address(rec + offset)
         keep.value = keep.value & ~bit if C.THING_WEAPON << C.THING_TYPE_SHIFT | i == target else keep.value | bit
         sc.emu.write(base + 4 * i, ctypes.string_at(rec, 4))
-    last = (ctypes.c_uint8 * C.THING_TYPE_COUNT).in_dll(lib, "last_discarded_map")
+    last = (ctypes.c_uint8 * C.THING_TYPE_COUNT).in_dll(lib, "g_last_discarded_map")
     ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, C.THING_TYPE_COUNT), C.THING_TYPE_COUNT)
     sc.place(map_, x - distance if x >= 6 else x + distance, y, 0)
     mine = lib.dungeon_unused_thing(C.THING_WEAPON)
