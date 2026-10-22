@@ -1,16 +1,21 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "hmp.h"
 #include "le.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* HMP header. */
-#define HMP_SIGNATURE   "HMIMIDIP013195"
-#define HMP_BRANCHES    0x20 /* u32: offset of the loop table */
-#define HMP_TRACK_COUNT 0x30 /* u32 */
-#define HMP_TICK_RATE   0x38 /* u32: song timer ticks per second */
-#define HMP_FIRST_TRACK 0x388
-#define HMP_MAX_TRACKS  32
+#define HMP_SIGNATURE "HMIMIDIP013195"
+
+/* HMP header offsets. */
+#define HMP_BRANCHES    32 /* u32: offset of the loop table */
+#define HMP_TRACK_COUNT 48 /* u32 */
+#define HMP_TICK_RATE   56 /* u32: song timer ticks per second */
+#define HMP_FIRST_TRACK 904
+
+/* Most tracks of a song. */
+#define HMP_MAX_TRACKS 32
 
 /* Track chunk: number, chunk size, MIDI channel, then delta times and events. */
 #define TRACK_SIZE    4
@@ -24,25 +29,27 @@
 #define BRANCH_PROGRAM    5
 #define BRANCH_LOOPS      6 /* loops left, LOOPS_FOREVER for no end */
 #define BRANCH_CTRL_BYTES 7
-#define BRANCH_CTRLS      0x0c /* u32: offset of the controller and value pairs to send at the loop point */
-#define LOOPS_FOREVER     0xff
+#define BRANCH_CTRLS      12 /* u32: offset of the controller and value pairs to send at the loop point */
+#define LOOPS_FOREVER     255
 
-/* MIDI and HMI events. */
-#define MIDI_SYSTEM         0xf0
-#define MIDI_META           0xff
-#define META_END_OF_TRACK   0x2f
-#define META_TEMPO          0x51
+/* MIDI and HMI event codes. */
+#define MIDI_SYSTEM       0xf0
+#define MIDI_META         0xff
+#define META_END_OF_TRACK 0x2f
+#define META_TEMPO        0x51
+#define HMI_FIRST         0x67 /* controllers 0x67 to 0x79 are HMI commands, never sent to the driver */
+#define HMI_LAST          0x79
+#define HMI_SET_LOOPS     0x6d /* the value of the next event (an 0x6e controller) sets the loop count */
+#define HMI_LOOP          0x6f /* all tracks jump to their loop point with the id of the value */
+#define HMI_LOOP_2        0x70
+#define VARLEN_LAST       0x80
+#define VARLEN_BIT_MASK   0x1f
+
+/* Event sizes and bit counts. */
 #define META_TEMPO_LENGTH   5
 #define MIDI_VOLUME_SHIFT   7
-#define HMI_FIRST           0x67 /* controllers 0x67 to 0x79 are HMI commands, never sent to the driver */
-#define HMI_LAST            0x79
-#define HMI_SET_LOOPS       0x6d /* the value of the next event (an 0x6e controller) sets the loop count */
 #define HMI_SET_LOOPS_VALUE 6
-#define HMI_LOOP            0x6f /* all tracks jump to their loop point with the id of the value */
-#define HMI_LOOP_2          0x70
-#define VARLEN_BITS         7
-#define VARLEN_LAST         0x80
-#define SHIFT_MASK          0x1f
+#define VARLEN_GROUP_WIDTH  7
 #define STATUS_NIBBLES      16
 
 /* Event length by status high nibble, and for system events by low nibble (tables of SKULL.EXE). */
@@ -75,9 +82,9 @@ static uint8_t channel_volume[MIDI_CHANNELS] = {
 static uint32_t read_delta(Track *tr)
 {
     uint32_t value = 0;
-    for (int shift = 0; tr->cursor < tr->end; shift += VARLEN_BITS) {
+    for (int shift = 0; tr->cursor < tr->end; shift += VARLEN_GROUP_WIDTH) {
         uint8_t b = song[tr->cursor++];
-        value |= (uint32_t)(b & ~VARLEN_LAST) << (shift & SHIFT_MASK);
+        value |= (uint32_t)(b & ~VARLEN_LAST) << (shift & VARLEN_BIT_MASK);
         if (b & VARLEN_LAST)
             break;
     }
@@ -127,7 +134,7 @@ static void silence(void)
     }
 }
 
-int hmp_start(const uint8_t *data, size_t size, HmpSend to_driver)
+enum HmpResult hmp_start(const uint8_t *data, size_t size, HmpSend to_driver)
 {
     hmp_stop();
     if (size < HMP_FIRST_TRACK || memcmp(data, HMP_SIGNATURE, strlen(HMP_SIGNATURE)) || !le32(data + HMP_TICK_RATE))
@@ -183,16 +190,7 @@ void hmp_stop(void)
     track_count = 0;
 }
 
-int hmp_tick_rate(void)
-{
-    return song ? (int)le32(song + HMP_TICK_RATE) : 0;
-}
-
-bool hmp_is_playing(void)
-{
-    return playing;
-}
-
+/* Finds the loop record of a track with a loop point id. */
 static uint8_t *find_branch(int t, int id)
 {
     for (int b = 0; b < tracks[t].branch_count; b++) {
@@ -225,32 +223,32 @@ static void jump(int t, int id)
     }
 }
 
-/* Runs an HMI controller of track t; returns 1 when the tracks jumped to a loop point. */
-static int hmi_control(int t, const uint8_t *event)
+/* Runs an HMI controller of track t; returns true when the tracks jumped to a loop point. */
+static bool hmi_control(int t, const uint8_t *event)
 {
     uint8_t *rec = find_branch(t, event[MIDI_DATA2]);
     if (!rec)
-        return 0;
+        return false;
     if (event[MIDI_DATA1] == HMI_SET_LOOPS) {
         if (tracks[t].cursor + HMI_SET_LOOPS_VALUE < song_size)
             rec[BRANCH_LOOPS] = song[tracks[t].cursor + HMI_SET_LOOPS_VALUE];
-        return 0;
+        return false;
     }
     if (event[MIDI_DATA1] != HMI_LOOP && event[MIDI_DATA1] != HMI_LOOP_2)
-        return 0;
+        return false;
     int loops = rec[BRANCH_LOOPS];
     if (loops != LOOPS_FOREVER && loops)
         loops = --rec[BRANCH_LOOPS];
     if (!loops)
-        return 0;
+        return false;
     for (int k = 1; k < track_count; k++)
         if (tracks[k].cursor)
             jump(k, event[MIDI_DATA2]);
-    return 1;
+    return true;
 }
 
-/* Ends a track; returns 1 when the song ended. */
-static int end_track(int t)
+/* Ends a track; returns true when the song ended. */
+static bool end_track(int t)
 {
     tracks[t].cursor = 0;
     if (active_tracks == 2 && tracks[0].cursor) {
@@ -258,10 +256,10 @@ static int end_track(int t)
         tracks[0].cursor = 0;
     }
     if (--active_tracks)
-        return 0;
+        return false;
     playing = 0;
     silence();
-    return 1;
+    return true;
 }
 
 void hmp_tick(void)
@@ -307,6 +305,11 @@ void hmp_tick(void)
                 tr->delta = read_delta(tr);
         } while (tr->delta == 0);
     }
+}
+
+int hmp_tick_rate(void)
+{
+    return song ? (int)le32(song + HMP_TICK_RATE) : 0;
 }
 
 void hmp_set_song_volume(int volume)

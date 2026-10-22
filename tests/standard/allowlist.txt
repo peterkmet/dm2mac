@@ -90,8 +90,6 @@ block ui/view.c open: module cleanup
 block ui/zone.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
-bool data/hmp.c:end_track open: module cleanup
-bool data/hmp.c:hmi_control open: module cleanup
 bool engine/ai.c open: module cleanup
 bool engine/ai.c:ai_execute_action open: module cleanup
 bool engine/ai.c:creature_ai_act open: module cleanup
@@ -245,8 +243,6 @@ comment control/include/state_json.h open: module cleanup
 comment control/include/turn.h open: module cleanup
 comment control/state_json.c open: module cleanup
 comment control/turn.c open: module cleanup
-comment data/hmp.c open: module cleanup
-comment data/include/hmp.h open: module cleanup
 comment data/mve_video.c open: module cleanup
 comment engine/aspect.c open: module cleanup
 comment engine/champ_action.c open: module cleanup
@@ -300,7 +296,6 @@ dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
-dead-api data/include/hmp.h:hmp_is_playing open: module cleanup
 dead-api data/include/mve.h:mve_decode_video open: module cleanup
 dead-api engine/include/ai.h:ai_action_flags open: module cleanup
 dead-api engine/include/ai.h:ai_after_command_table open: module cleanup
@@ -480,7 +475,6 @@ decimal ui/view.c rule 3.12: a table of SKULL.EXE
 enum control/control.c open: module cleanup
 enum control/include/state_json.h open: module cleanup
 enum control/turn.c open: module cleanup
-enum data/include/hmp.h open: module cleanup
 enum data/include/mve.h open: module cleanup
 enum data/include/pcx.h open: module cleanup
 enum data/mve.c open: module cleanup
@@ -740,8 +734,6 @@ name ui/view.c:view_offset_creature_toward_party open: module cleanup
 name ui/view.c:zone_id_for_view_element open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
-notation data/hmp.c open: module cleanup
-notation data/include/hmp.h open: module cleanup
 notation data/include/le.h open: module cleanup
 notation data/mve.c open: module cleanup
 notation data/mve_video.c open: module cleanup
@@ -809,7 +801,6 @@ notation ui/zone.c open: module cleanup
 order control/control.c open: module cleanup
 order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup
-order data/hmp.c open: module cleanup
 order data/mve.c open: module cleanup
 order engine/action.c open: module cleanup
 order engine/ai.c open: module cleanup
