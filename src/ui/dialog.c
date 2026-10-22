@@ -16,36 +16,41 @@
 #include "ui.h"
 #include "view.h"
 #include "zone.h"
+#include <stdbool.h>
 #include <string.h>
 
+/* The buttons of the dialogs. */
 #define DIALOG_VOLUME_BUTTONS 7
 #define BUTTON_KEY            7 /* transparent color of a pressed button picture */
 #define BUTTON_PRESS_VBLANKS  20
-#define DIALOG_LINE_GAP       1 /* pixels between two lines */
-#define DIALOG_MESSAGE_TOP    6 /* the message area starts this far into its zone */
-#define PERMILLE              1000
-#define MESSAGE_TEXTS         2 /* the dialog message and the error message under it */
-#define WRAP_MARGIN_SHIFT     3 /* a text wider than 7/8 of the zone wraps */
-#define WRAP_SHRINK_SHIFT     2 /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
+
+/* The layout of the message texts and of the progress bar. */
+#define DIALOG_LINE_GAP    1 /* pixels between two lines */
+#define DIALOG_MESSAGE_TOP 6 /* the message area starts this far into its zone */
+#define PERMILLE           1000
+#define MESSAGE_TEXTS      2 /* the dialog message and the error message under it */
+#define WRAP_MARGIN_SHIFT  3 /* a text wider than 7/8 of the zone wraps */
+#define WRAP_SHRINK_SHIFT  2 /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
 /* The zones of the button texts (table of SKULL.EXE); the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
 static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
 
 /* The volume settings 0 to 7 of the volume dialog. */
 #define VOLUME_LEVELS 8
-/* The test sound of a new sound volume. */
-enum { TEST_SOUND_INDEX = 0 };
 
-DialogState dialog = {.screen_mode = 1};
+/* The test sound of a new sound volume. */
+#define TEST_SOUND_INDEX 0
+
+DialogState g_dialog = {.screen_mode = 1};
 
 void dialog_screen_mode(int begin)
 {
-    if (dialog.screen_mode && begin)
+    if (g_dialog.screen_mode && begin)
         ui_fill_zone_screen(ZONE_SCREEN, 0);
 }
 
 void dialog_present(void)
 {
-    if (!dialog.screen_mode) {
+    if (!g_dialog.screen_mode) {
         play_present_viewport();
         return;
     }
@@ -55,29 +60,8 @@ void dialog_present(void)
                        &g_draw_screen, r);
 }
 
-void dialog_draw_button(int zone, int highlighted)
-{
-    (void)zone;
-    if (!highlighted)
-        return;
-    const Bitmap *image = draw_gdat_image(dialog.button_category, dialog.button_index, dialog.button_entry);
-    if (!image)
-        return;
-    int16_t r[RECT_SIZE];
-    rect_center_in(r, g_input_match.rect, image->width, image->height);
-    if (g_input_match.origin != -1) {
-        int16_t x, y;
-        zone_get_position(g_input_match.origin, &x, &y);
-        r[RECT_X] = (int16_t)(r[RECT_X] - x);
-        r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
-    }
-    gfx_blit_to_bitmap(image, &g_view_viewport, r, BUTTON_KEY,
-                       draw_gdat_image_palette(dialog.button_category, dialog.button_index, dialog.button_entry));
-    play_wait_frames(BUTTON_PRESS_VBLANKS);
-}
-
 /* The message texts of a dialog, centered in rect: each text wraps to a width near the zone width. */
-static void draw_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], const int colors[MESSAGE_TEXTS])
+static void render_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], const int colors[MESSAGE_TEXTS])
 {
     int16_t widths[MESSAGE_TEXTS] = {0}, heights[MESSAGE_TEXTS] = {0};
     int total = 0;
@@ -118,13 +102,13 @@ static void draw_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], const 
 int dialog_draw(int id, int message)
 {
     const gdat_t *g = gdat_current();
-    int present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
+    bool present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
     if (message && id != DIALOG_ERROR && id != DIALOG_LOADING &&
         gdat_exists(g, CAT_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, GFX_DIALOG_PICTURE)) {
         dialog_run(dialog_draw(DIALOG_ERROR, message));
         message = MESSAGE_NONE;
     }
-    dialog.id = id;
+    g_dialog.id = id;
     if (present)
         dialog_screen_mode(1);
     static char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
@@ -155,7 +139,7 @@ int dialog_draw(int id, int message)
                 shown[1] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[1]);
             }
         }
-        draw_message(r, shown, colors);
+        render_message(r, shown, colors);
     }
     if (present) {
         dialog_present();
@@ -174,11 +158,11 @@ int dialog_run(int id)
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++) {
         if (!*gdat_text(g, (GdatKey){CAT_DIALOG, id, e}, text, sizeof text))
             continue;
-        /* ponytail: the high byte (a default button of the original) only feeds a check that is always 0 */
+        /* the high byte (a default button of the original) only feeds a check that is always 0 */
         uint8_t value = (uint8_t)gdat_entry_index(g, CAT_DIALOG, id, GDAT_TYPE_VALUE, e);
         values[count++] = value ? value : (uint8_t)e;
     }
-    dialog.button_count = id == DIALOG_VOLUME ? DIALOG_VOLUME_BUTTONS : count;
+    g_dialog.button_count = id == DIALOG_VOLUME ? DIALOG_VOLUME_BUTTONS : count;
     input_push_mode(INPUT_MODE_DIALOG);
     g_input_match.choice = DIALOG_NO_CHOICE;
     do {
@@ -194,15 +178,36 @@ int dialog_run(int id)
     return result;
 }
 
+void dialog_draw_button(int zone, int highlighted)
+{
+    (void)zone;
+    if (!highlighted)
+        return;
+    const Bitmap *image = draw_gdat_image(g_dialog.button_category, g_dialog.button_index, g_dialog.button_entry);
+    if (!image)
+        return;
+    int16_t r[RECT_SIZE];
+    rect_center_in(r, g_input_match.rect, image->width, image->height);
+    if (g_input_match.origin != -1) {
+        int16_t x, y;
+        zone_get_position(g_input_match.origin, &x, &y);
+        r[RECT_X] = (int16_t)(r[RECT_X] - x);
+        r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
+    }
+    gfx_blit_to_bitmap(image, &g_view_viewport, r, BUTTON_KEY,
+                       draw_gdat_image_palette(g_dialog.button_category, g_dialog.button_index, g_dialog.button_entry));
+    play_wait_frames(BUTTON_PRESS_VBLANKS);
+}
+
 void dialog_draw_progress_bar(int permille)
 {
     int16_t r[RECT_SIZE];
-    if (!dialog.progress_enabled || !zone_get_rect(ZONE_PROGRESS_BAR, r))
+    if (!g_dialog.progress_enabled || !zone_get_rect(ZONE_PROGRESS_BAR, r))
         return;
     r[RECT_W] = (int16_t)(r[RECT_W] * permille / PERMILLE);
-    if (r[RECT_W] <= 0 || r[RECT_W] == dialog.progress_width)
+    if (r[RECT_W] <= 0 || r[RECT_W] == g_dialog.progress_width)
         return;
-    dialog.progress_width = r[RECT_W];
+    g_dialog.progress_width = r[RECT_W];
     gfx_fill_rect(g_view_viewport.pixels, r, g_ui_colors[UI_GOLD], g_view_viewport.width, IMAGE_8BPP);
     dialog_present();
 }
@@ -222,7 +227,7 @@ void sound_set_volume_and_test(int volume, int device)
 }
 
 /* The buttons of the settings of one volume, the chosen one lit, and their texts (0: "off"). */
-static void draw_volume_buttons(int setting, int button_zone, int text_zone, int off_entry)
+static void render_volume_buttons(int setting, int button_zone, int text_zone, int off_entry)
 {
     char text[TEXT_SIZE];
     for (int level = VOLUME_LEVELS - 1; level >= 0; level--) {
@@ -249,8 +254,8 @@ void dialog_volume(void)
     text_draw_in_zone(ZONE_MUSIC_LABEL, g_ui_colors[UI_YELLOW],
                       text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_MUSIC_LABEL, text));
     for (;;) {
-        draw_volume_buttons(g_game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, GFX_VOLUME_SOUND_OFF);
-        draw_volume_buttons(g_game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, GFX_VOLUME_MUSIC_OFF);
+        render_volume_buttons(g_game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, GFX_VOLUME_SOUND_OFF);
+        render_volume_buttons(g_game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, GFX_VOLUME_MUSIC_OFF);
         dialog_present();
         int command = dialog_run(DIALOG_VOLUME);
         if (command == CMD_DIALOG_BUTTON_FIRST || g_main_loop.quit)

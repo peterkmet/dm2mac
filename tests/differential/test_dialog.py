@@ -71,7 +71,7 @@ def stub(original, addr, fn):
 
 
 def set_screen_mode(lib, emu, mode):
-    DialogState.in_dll(lib, "dialog").screen_mode = mode
+    DialogState.in_dll(lib, "g_dialog").screen_mode = mode
     emu.write_u32(G_DIALOG_SCREEN_MODE, mode)
 
 
@@ -100,7 +100,7 @@ def test_progress_bar_matches_original(ui, original):
     set_screen_mode(lib, emu, 1)
     lib.dialog_draw(C.DIALOG_LOADING, 0)
     emu.call(UI_DIALOG_DRAW, C.DIALOG_LOADING, 0)
-    DialogState.in_dll(lib, "dialog").progress_enabled = 1
+    DialogState.in_dll(lib, "g_dialog").progress_enabled = 1
     emu.write_u32(0x7F1FC, 1)
     for permille in (0, 1, 120, 500, 999, 1000):
         lib.dialog_draw_progress_bar(permille)
@@ -296,7 +296,7 @@ def test_pressed_buttons_match_original(ui, original):
     lib, emu = ui, original.emu
     lib.input_init()
     match = InputMatch.in_dll(lib, "g_input_match")
-    state = DialogState.in_dll(lib, "dialog")
+    state = DialogState.in_dll(lib, "g_dialog")
     for dialog, buttons in ((C.DIALOG_SAVE_MENU, 4), (C.DIALOG_THE_END, 2)):
         for choice in range(1, buttons + 1):
             for entry in (0, 1):

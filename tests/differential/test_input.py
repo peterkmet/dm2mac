@@ -56,7 +56,7 @@ def tree(lib, gdat, start, tmp_path):
     action = ActionArea.in_dll(lib, "g_action")
     action.champion, action.mode = 0, mode
     # the dialog screen mode and button count of the input conditions 1 and 2 (dialog.h DialogState)
-    dialog = (ctypes.c_int * 2).in_dll(lib, "dialog")
+    dialog = (ctypes.c_int * 2).in_dll(lib, "g_dialog")
     dialog[0] = scenario.emu.read_u32(G_DIALOG_SCREEN_MODE)
     dialog[1] = struct.unpack("<h", scenario.emu.read(G_DIALOG_BUTTON_COUNT, 2))[0]
     return scenario
@@ -292,7 +292,7 @@ def test_session_start_matches_original(loop):
     loop.assert_equal("start")
     # game_loop starts with the dialogs in the game viewport
     theirs = struct.unpack("<h", loop.emu.read(G_DIALOG_SCREEN_MODE, 2))[0]
-    assert DialogState.in_dll(loop.lib, "dialog").screen_mode == theirs == 0
+    assert DialogState.in_dll(loop.lib, "g_dialog").screen_mode == theirs == 0
 
 
 def test_keys_and_move_cooldowns_match_original(loop, lib):

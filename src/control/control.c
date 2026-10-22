@@ -273,7 +273,7 @@ static void put_state(Json *reply)
     if (movie || mode != INPUT_MODE_DIALOG)
         put(reply, "null");
     else
-        put(reply, "%d", dialog.id);
+        put(reply, "%d", g_dialog.id);
     put(reply,
         ",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
         g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir, g_game.champion_count,

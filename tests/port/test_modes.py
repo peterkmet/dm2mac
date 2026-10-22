@@ -68,7 +68,7 @@ def test_vanilla_letter_keys_and_quick_keys_do_nothing(lib, session, tmp_path): 
 def test_letter_keys_give_the_keypad_commands_only_where_the_letters_have_none(lib, session):  # noqa: F811
     # In the advanced mode a letter without a command of its own gives the command of its keypad key (the movement
     # mode); in the text modes (slot name, champion name) it still types its letter.
-    DialogState.in_dll(lib, "dialog").button_count = SLOT_BUTTONS_SAVE
+    DialogState.in_dll(lib, "g_dialog").button_count = SLOT_BUTTONS_SAVE
     for mode in range(10):
         for letter, keypad in LETTER_KEYPAD.items():
             vanilla = key_command(lib, mode, letter)
@@ -80,7 +80,7 @@ def test_letter_keys_give_the_keypad_commands_only_where_the_letters_have_none(l
                 assert mine and not vanilla, hex(letter)
             if mode in (INPUT_MODE_DIALOG, INPUT_MODE_NAME):
                 assert mine == vanilla != 0, (mode, hex(letter))
-    DialogState.in_dll(lib, "dialog").button_count = 0
+    DialogState.in_dll(lib, "g_dialog").button_count = 0
 
 
 def test_letter_keys_move_and_turn(lib, advanced):

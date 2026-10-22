@@ -912,9 +912,9 @@ static bool condition_holds(int cond, int arg)
     case NODE_IF_ALWAYS:
         return true;
     case NODE_IF_SCREEN_MODE:
-        return arg == dialog.screen_mode;
+        return arg == g_dialog.screen_mode;
     case NODE_IF_BUTTON_COUNT:
-        return arg == dialog.button_count;
+        return arg == g_dialog.button_count;
     case NODE_IF_INVENTORY:
         if (arg == g_ui.inventory)
             return true;
@@ -1626,9 +1626,9 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         break;
     case FB_DIALOG_BUTTON:
     case FB_DIALOG_BUTTON_2:
-        dialog.button_category = p[PICTURE_CATEGORY];
-        dialog.button_index = p[PICTURE_INDEX];
-        dialog.button_entry = p[PICTURE_ENTRY];
+        g_dialog.button_category = p[PICTURE_CATEGORY];
+        g_dialog.button_index = p[PICTURE_INDEX];
+        g_dialog.button_entry = p[PICTURE_ENTRY];
         p += DIALOG_BUTTON_ARGS;
         dialog_draw_button(g_input_match.zone, 1);
         f->opened = false; /* the original forgets the open feedback bitmap */

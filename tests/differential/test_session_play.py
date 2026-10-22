@@ -98,7 +98,7 @@ def play(lib, gdat, start, tmp_path):
     session.slot, session.loaded, session.new_game, session.restart, session.completed = -1, 0, 0, 0, 0
     session.load_time = session.save_time = 0
     main_loop_quit(lib).value = 0
-    DialogState.in_dll(lib, "dialog").screen_mode = 0
+    DialogState.in_dll(lib, "g_dialog").screen_mode = 0
     return sc
 
 
@@ -151,7 +151,7 @@ def test_hide_game_view_cancels_the_champion_drag(lib):
     # The original game_hide_view cancels a champion drag inside its guard (SKULL.c:54260).
     drag = ctypes.c_int.in_dll(lib, "g_input_drag_state")
     hidden = ctypes.c_int.from_address(ctypes.addressof(main_loop_quit(lib)) - 8)  # MainLoop.view_hidden
-    DialogState.in_dll(lib, "dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
+    DialogState.in_dll(lib, "g_dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
     lib.play_hide_view()
     assert (hidden.value, drag.value) == (1, 0)
     drag.value = 1
@@ -407,14 +407,14 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     assert (session.new_game, session.loaded) == (1, 0)
     party_start = lib.dungeon_party_start()
     assert (game.party_map, game.party_x, game.party_y) == (0, party_start & 0x1F, party_start >> 5 & 0x1F)
-    assert DialogState.in_dll(lib, "dialog").screen_mode == 0
+    assert DialogState.in_dll(lib, "g_dialog").screen_mode == 0
 
     session.new_game = 0
-    DialogState.in_dll(lib, "dialog").screen_mode = 1  # the program start state, reset on the load path
+    DialogState.in_dll(lib, "g_dialog").screen_mode = 1  # the program start state, reset on the load path
     with Player(lib, [click_command(C.INPUT_MODE_MENU, C.CMD_LOAD_GAME), click_slot(0), click_choice(2), click_choice(1)]):
         assert lib.session_init() == 1
     assert (session.new_game, session.loaded, session.slot) == (0, 1, 0)
-    assert DialogState.in_dll(lib, "dialog").screen_mode == 0  # the game after "GAME LOADED"
+    assert DialogState.in_dll(lib, "g_dialog").screen_mode == 0  # the game after "GAME LOADED"
     mine = (game.game_time - 1, game.party_map, game.party_x, game.party_y)
     path = tmp_path / "direct.DAT"
     path.write_bytes(start)
@@ -507,7 +507,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     emu.stub(GAME_QUIT, quit_)
     emu.write_u32(G_END_OFFER_RESTORE, 1)
     Session.in_dll(lib, "g_session").offer_restore = 1
-    state = DialogState.in_dll(lib, "dialog")
+    state = DialogState.in_dll(lib, "g_dialog")
     state.id = -1
     with Player(lib, [click_choice(2)], every=300):
         lib.session_end(loop.end)

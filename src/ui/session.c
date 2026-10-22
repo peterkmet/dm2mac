@@ -204,7 +204,7 @@ void session_open_slot_dialog(int id, int buttons)
     text_draw_in_zone(ZONE_SLOT_TEXT_1, g_ui_colors[UI_YELLOW], text[0]);
     text_draw_in_zone(ZONE_SLOT_TEXT_2, g_ui_colors[UI_YELLOW], text[1]);
     session_list_slots();
-    dialog.button_count = buttons;
+    g_dialog.button_count = buttons;
     input_push_mode(INPUT_MODE_DIALOG);
 }
 
@@ -423,7 +423,7 @@ int session_load(void)
         rename(path, bak);
     }
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
-    dialog.progress_enabled = 1;
+    g_dialog.progress_enabled = 1;
     g_main_loop.end = 0;
     move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
@@ -572,7 +572,7 @@ void session_end(int party_dead)
             SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
         play_wait_frames(END_SOUND_VBLANKS);
     }
-    dialog.screen_mode = 1;
+    g_dialog.screen_mode = 1;
     if (party_dead) {
         ui_fill_zone_screen(ZONE_SCREEN, 0);
         if (g_session.offer_restore) {

@@ -76,7 +76,7 @@ static void draw_sleep_message(void)
 
 void play_show_view(void)
 {
-    if (!g_main_loop.view_hidden || dialog.screen_mode)
+    if (!g_main_loop.view_hidden || g_dialog.screen_mode)
         return;
     if (g_party_sleeping) {
         draw_sleep_message();
@@ -100,7 +100,7 @@ void play_show_view(void)
 
 void play_hide_view(void)
 {
-    if (g_main_loop.view_hidden || dialog.screen_mode)
+    if (g_main_loop.view_hidden || g_dialog.screen_mode)
         return;
     g_main_loop.view_hidden = 1;
     if (g_input_drag_state) {
@@ -229,14 +229,14 @@ void play_start_session(void)
     g_main_loop.running = 1;
     input_set_mode(INPUT_MODE_MOVE);
     game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
-    dialog.progress_enabled = 0;
+    g_dialog.progress_enabled = 0;
     advanced_reset();
     if (g_session.loaded) {
         ui_fill_zone_screen(ZONE_SCREEN, 0);
         dialog_run(dialog_draw(DIALOG_LOADED, MESSAGE_NONE));
         ui_fill_zone_screen(ZONE_SCREEN, 0);
     } else if (g_session.new_game) {
-        dialog.screen_mode = 0;
+        g_dialog.screen_mode = 0;
         ui_fill_zone_screen(ZONE_SCREEN, 0);
     }
     ui_draw_movement_arrows();
@@ -246,7 +246,7 @@ void play_start_session(void)
     creature_reset_active_groups();
     if (g_session.new_game)
         move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
-    dialog.screen_mode = 0;
+    g_dialog.screen_mode = 0;
     game_step();
 }
 

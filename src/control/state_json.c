@@ -470,7 +470,7 @@ static void champion_json(Json *j, int champ)
     json_close(j, '}');
 }
 
-/* The open dialog and its button texts. The slot dialogs do not set dialog.id: they give the id of the last
+/* The open dialog and its button texts. The slot dialogs do not set g_dialog.id: they give the id of the last
    dialog (docs/skull-formats.md). */
 static void dialog_json(Json *j, int mode)
 {
@@ -479,12 +479,12 @@ static void dialog_json(Json *j, int mode)
         return;
     }
     json_open(j, '{');
-    key_int(j, "id", dialog.id);
+    key_int(j, "id", g_dialog.id);
     json_key(j, "buttons");
     json_open(j, '[');
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++) {
         char text[TEXT_SIZE];
-        if (*text_gdat(CAT_DIALOG, dialog.id, e, text))
+        if (*text_gdat(CAT_DIALOG, g_dialog.id, e, text))
             json_str(j, text);
     }
     json_close(j, ']');
