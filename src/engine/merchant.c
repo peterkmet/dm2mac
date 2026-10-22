@@ -300,7 +300,7 @@ int shop_cmd_pay_change(void)
     ai.arg1 = FILTER_NEW_COINS;
     int16_t amount = (int16_t)*change;
     if (amount <= 0) {
-        int r = ai_cmd_seek_with_carried_item();
+        int r = ai_cmd_seek_with_carried();
         return r == AI_RESULT_ISSUED ? AI_RESULT_ISSUED : AI_RESULT_DONE;
     }
     uint8_t coins[COIN_MAX];
@@ -318,6 +318,6 @@ int shop_cmd_pay_change(void)
         else
             dungeon_append_thing(coin, group_possessions(ai.group_thing));
     }
-    ai_cmd_seek_with_carried_item();
+    ai_cmd_seek_with_carried();
     return AI_RESULT_ISSUED;
 }

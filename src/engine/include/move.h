@@ -103,7 +103,7 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
 
 /* Dungeon squares of ai.c. */
 int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor);
-bool dun_set_pit_or_teleporter_state(int x, int y, int mode);
+bool dun_set_pit_teleporter_state(int x, int y, int mode);
 
 /* Moves of creature groups (creature.c). */
 void move_schedule_group_retry(uint16_t group, int x, int y, int map, int audible);

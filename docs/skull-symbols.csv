@@ -420,22 +420,22 @@ address,name,signature,subsystem
 0x0002538c,creature_update_anim_at,"void creature_update_anim_at(int16_t x, int16_t y, int alt)",creatures
 0x00025420,ai_update_group,void ai_update_group(void),creatures
 0x000257cc,creature_process_event,"void creature_process_event(int16_t x, int16_t y, int16_t event_type)",creatures
-0x00025962,creature_ai_select_behavior,void creature_ai_select_behavior(void),creatures
-0x000259cc,creature_ai_update_mood,int16_t creature_ai_update_mood(const uint16_t *behavior_table),creatures
-0x00025c59,creature_ai_load_candidate_path,void creature_ai_load_candidate_path(const uint8_t *candidate),creatures
-0x00025d49,creature_ai_continue_plan,int8_t creature_ai_continue_plan(void),creatures
-0x00025df9,creature_ai_compact_candidates,void creature_ai_compact_candidates(void),creatures
-0x00025ef0,creature_ai_scan_plan_list,"void creature_ai_scan_plan_list(const int8_t *list, int8_t plan, int8_t step, int force)",creatures
+0x00025962,select_behavior,void select_behavior(void),creatures
+0x000259cc,update_mood,int16_t update_mood(const uint16_t *behavior_table),creatures
+0x00025c59,load_candidate_path,void load_candidate_path(const uint8_t *candidate),creatures
+0x00025d49,continue_plan,int8_t continue_plan(void),creatures
+0x00025df9,compact_candidates,void compact_candidates(void),creatures
+0x00025ef0,scan_plan_list,"void scan_plan_list(const int8_t *list, int8_t plan, int8_t step, int force)",creatures
 0x00025fb2,ai_plan_flags,uint8_t ai_plan_flags(void),creatures
-0x00026008,creature_ai_choose_plan,int8_t creature_ai_choose_plan(void),creatures
+0x00026008,choose_plan,int8_t choose_plan(void),creatures
 0x000261a0,creature_ai_clear_plan,void creature_ai_clear_plan(void),creatures
-0x000261b3,creature_ai_fetch_plan_step,int8_t creature_ai_fetch_plan_step(void),creatures
-0x00026249,creature_ai_advance_plan_step,int creature_ai_advance_plan_step(int8_t result),creatures
+0x000261b3,fetch_plan_step,int8_t fetch_plan_step(void),creatures
+0x00026249,advance_plan_step,int advance_plan_step(int8_t result),creatures
 0x000262f7,ai_decide,void ai_decide(void),creatures
-0x00026873,creature_ai_run_target_scanner,"void creature_ai_run_target_scanner(uint8_t scanner, int8_t plan, int8_t step, const uint8_t *targets)",creatures
+0x00026873,run_target_scanner,"void run_target_scanner(uint8_t scanner, int8_t plan, int8_t step, const uint8_t *targets)",creatures
 0x00026896,creature_ai_add_candidate,"void creature_ai_add_candidate(uint8_t kind, const uint8_t *target, const int8_t *entry, uint8_t scan_kind, int8_t bonus, uint16_t param, int8_t step, int8_t plan)",creatures
 0x0002697b,ai_count_matching_items,"int16_t ai_count_matching_items(int16_t flag, uint16_t first_thing, uint8_t cell, int into_groups, int into_containers)",creatures
-0x00026a67,creature_ai_get_item_counts,"uint8_t *creature_ai_get_item_counts(const uint8_t *targets, int16_t kind)",creatures
+0x00026a67,get_item_counts,"uint8_t *get_item_counts(const uint8_t *targets, int16_t kind)",creatures
 0x00026d16,creature_ai_test_condition,"int creature_ai_test_condition(uint8_t condition, uint16_t value, int8_t plan)",creatures
 0x00027578,creature_ai_scan_idle,"void creature_ai_scan_idle(int8_t plan, int8_t step, const uint8_t *targets)",creatures
 0x0002759e,creature_ai_scan_targets,"void creature_ai_scan_targets(int8_t kind, int8_t step, const uint8_t *targets, uint8_t bonus, uint16_t param)",creatures
@@ -467,7 +467,7 @@ address,name,signature,subsystem
 0x00027f6e,creature_ai_cmd_turn_sideways,void creature_ai_cmd_turn_sideways(void),creatures
 0x00028017,creature_ai_cmd_seek_item,int8_t creature_ai_cmd_seek_item(void),creatures
 0x000280ac,creature_ai_cmd_turn_front_group,void creature_ai_cmd_turn_front_group(void),creatures
-0x00028138,ai_cmd_seek_with_carried_item,int8_t ai_cmd_seek_with_carried_item(void),creatures
+0x00028138,ai_cmd_seek_with_carried,int8_t ai_cmd_seek_with_carried(void),creatures
 0x000281f3,creature_ai_cmd_take_from_front_group,int8_t creature_ai_cmd_take_from_front_group(void),creatures
 0x00028344,ai_cmd_front_group_carries,int8_t ai_cmd_front_group_carries(void),creatures
 0x00028427,shop_front_customer_has_goods,int shop_front_customer_has_goods(uint8_t cell),money and shops
@@ -475,7 +475,7 @@ address,name,signature,subsystem
 0x0002864b,shop_sum_value_callback,"int shop_sum_value_callback(uint16_t *thing, int32_t *accumulator)",money and shops
 0x000286c8,shop_sum_items_value,"int16_t shop_sum_items_value(uint16_t *list, uint16_t flag, uint8_t cell, uint16_t selling, uint16_t mark, uint16_t unused)",money and shops
 0x00028711,shop_cmd_evaluate_offer,int8_t shop_cmd_evaluate_offer(void),money and shops
-0x00028a24,dun_find_sensor_on_square,"uint16_t dun_find_sensor_on_square(int16_t x, int16_t y, uint8_t cell, uint16_t sensor_type)",dungeon data
+0x00028a24,find_floor_sensor,"uint16_t find_floor_sensor(int16_t x, int16_t y, uint8_t cell, uint16_t sensor_type)",dungeon data
 0x00028aad,creature_ai_cmd_place_item_on_sensor,int8_t creature_ai_cmd_place_item_on_sensor(void),creatures
 0x00028df0,creature_ai_cmd_check_party_ahead,int8_t creature_ai_cmd_check_party_ahead(void),creatures
 0x00028e99,shop_cmd_count_payment,int8_t shop_cmd_count_payment(void),money and shops
@@ -496,7 +496,7 @@ address,name,signature,subsystem
 0x00029c2d,creature_ai_cmd_path_to_target_alt,int8_t creature_ai_cmd_path_to_target_alt(void),creatures
 0x00029c88,creature_ai_cmd_random_chance,int8_t creature_ai_cmd_random_chance(void),creatures
 0x00029caa,creature_ai_cmd_carries_item,int8_t creature_ai_cmd_carries_item(void),creatures
-0x00029d0c,dun_set_pit_or_teleporter_state,"int dun_set_pit_or_teleporter_state(uint16_t x, uint16_t y, uint16_t mode)",dungeon data
+0x00029d0c,dun_set_pit_teleporter_state,"int dun_set_pit_teleporter_state(uint16_t x, uint16_t y, uint16_t mode)",dungeon data
 0x00029de7,creature_ai_act_move,int creature_ai_act_move(void),creatures
 0x00029f39,creature_ai_act_turn_then_move,int16_t creature_ai_act_turn_then_move(void),creatures
 0x00029f6b,creature_ai_act_move_two_steps,int creature_ai_act_move_two_steps(void),creatures
@@ -521,7 +521,7 @@ address,name,signature,subsystem
 0x0002b75e,ai_execute_action,int ai_execute_action(void),creatures
 0x0002b96a,ai_square_is_obstacle,"int ai_square_is_obstacle(int16_t x, int16_t y)",creatures
 0x0002b9fc,ai_square_blocks_line,"int ai_square_blocks_line(int16_t x, int16_t y)",creatures
-0x0002bb78,ai_square_blocks_line_to_target,"int ai_square_blocks_line_to_target(int16_t x, int16_t y)",creatures
+0x0002bb78,ai_blocks_line_to_target,"int ai_blocks_line_to_target(int16_t x, int16_t y)",creatures
 0x0002bbad,ai_trace_line,"int16_t ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int (*blocked)(int16_t x, int16_t y))",creatures
 0x0002beaf,ai_cache_square,"void ai_cache_square(int16_t x, int16_t y)",creatures
 0x0002bf41,ai_cached_first_object,uint16_t ai_cached_first_object(void),creatures
@@ -537,7 +537,7 @@ address,name,signature,subsystem
 0x0002d792,ai_try_move,"uint16_t ai_try_move(uint8_t command, int16_t x, int16_t y, int16_t dest_x, int16_t dest_y, int16_t dir)",creatures
 0x0002e8e1,ai_find_matching_item_inside,"int16_t ai_find_matching_item_inside(uint16_t thing, int16_t filter, int16_t dir)",creatures
 0x0002ea68,ai_try_take_item,"int ai_try_take_item(uint8_t mode, int16_t x, int16_t y, int16_t dest_x, int16_t dest_y, int16_t dir, int16_t filter)",creatures
-0x0002f0fa,ai_find_wall_actuator_in_cell,"uint16_t ai_find_wall_actuator_in_cell(uint16_t first_thing, int16_t cell, int16_t mode, int16_t filter)",creatures
+0x0002f0fa,ai_find_wall_actuator,"uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int16_t mode, int16_t filter)",creatures
 0x0002f1c4,ai_wall_actuator_accepts,"int ai_wall_actuator_accepts(uint16_t actuator, int16_t mode, int16_t filter, uint16_t state)",creatures
 0x0002f2cf,ai_try_use_wall_actuator,"int ai_try_use_wall_actuator(uint8_t mode, int16_t x, int16_t y, int16_t dest_x, int16_t dest_y, int16_t dir, int16_t filter)",creatures
 0x0002f636,ai_thing_matches_filter,"uint16_t ai_thing_matches_filter(uint16_t thing, uint16_t filter)",creatures
@@ -551,7 +551,7 @@ address,name,signature,subsystem
 0x0002fda0,math_count_bits,int16_t math_count_bits(uint32_t mask),runtime library
 0x0002fe35,ai_set_map,void ai_set_map(int16_t map),creatures
 0x0002feb5,item_match_type_callback,"int item_match_type_callback(const uint16_t *thing, const int16_t *wanted_type)",items
-0x0002fed6,item_find_in_possessions,"uint16_t *item_find_in_possessions(int16_t owner_thing, int16_t item_type, uint8_t nth)",items
+0x0002fed6,has_possession,"uint16_t *has_possession(int16_t owner_thing, int16_t item_type, uint8_t nth)",items
 0x0002ff1e,ai_find_matching_item,"uint16_t ai_find_matching_item(int16_t filter, uint16_t first_thing, uint8_t cell)",creatures
 0x0002ff89,ai_remove_matching_items,"void ai_remove_matching_items(uint16_t *list_head, int16_t filter, uint8_t cell)",creatures
 0x00030102,creature_group_in_state5,int creature_group_in_state5(const uint8_t *group),creatures
@@ -576,7 +576,7 @@ address,name,signature,subsystem
 0x000315c5,creature_apply_damage_kind,"void creature_apply_damage_kind(uint16_t group_thing, int16_t x, int16_t y, uint16_t kind)",creatures
 0x0003161e,ai_find_marker,"int16_t ai_find_marker(int16_t level_delta, uint16_t id_mask)",creatures
 0x00031724,ai_find_marker_by_id,"int16_t ai_find_marker_by_id(int16_t level_delta, int16_t id)",creatures
-0x000317ee,ai_square_blocks_line_except_self,"int ai_square_blocks_line_except_self(int16_t x, int16_t y)",creatures
+0x000317ee,ai_blocks_line_except_self,"int ai_blocks_line_except_self(int16_t x, int16_t y)",creatures
 0x0003188a,ai_search_area,"int ai_search_area(int16_t x, int16_t y, uint8_t max_distance, int16_t flags, int16_t goal_count, uint8_t *goals, uint8_t *result)",creatures
 0x00033df9,ai_load_cached_path,void ai_load_cached_path(void),creatures
 0x00033e61,ai_next_path_step,int16_t ai_next_path_step(void),creatures

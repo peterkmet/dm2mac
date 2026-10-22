@@ -111,7 +111,7 @@ reDM2 starts inside our functions (79):
 - Library and HMI code (10): `0x5b0fe`, `0x5efb5`, `0x5f35c`, `0x62001`, `0x62513`, `0x633b5`, `0x63661`, `0x637e9`, `0x64ff4`, `0x68c0f`.
 - Short starts near a function end, probably shared tails, not checked (20): `0x140fb`, `0x1c4a1`, `0x1fe66` (reDM2: shared tail), `0x23d0d`, `0x24015`, `0x25c52`, `0x25d41`, `0x28671`, `0x2a351`, `0x2fecd`, `0x2fed3`, `0x3180d`, `0x35b77`, `0x3c0ca`, `0x3c3a5`, `0x3f547`, `0x40d33`, `0x509df`, `0x557a0`, `0x55f48`.
 
-Our starts without a reDM2 start: `system_debug_break` and its alias, `iop_call_return_word`, `input_key_or_button_pressed`, `gfx_fill_end`, `zone_alloc_record`, `system_debug_hook`, 10 `input_cond_*` handlers, `view_click_drop_done`, `ai_square_blocks_line_except_self`, the four GDAT decoder functions, and 11 library functions.
+Our starts without a reDM2 start: `system_debug_break` and its alias, `iop_call_return_word`, `input_key_or_button_pressed`, `gfx_fill_end`, `zone_alloc_record`, `system_debug_hook`, 10 `input_cond_*` handlers, `view_click_drop_done`, `ai_blocks_line_except_self`, the four GDAT decoder functions, and 11 library functions.
 
 The hidden functions in open question 9 of `docs/skull-map.md` (`0x113dd`, `0x114d2`, `0x14c93`, `0x5b577`, `0x62e81`) have no reDM2 start either.
 

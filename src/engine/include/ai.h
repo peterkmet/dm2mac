@@ -231,7 +231,7 @@ void ai_free_cached_data(uint16_t group);
 /* Plan commands that the merchant commands use: the group in front carries an item of filter ai.arg1 in cell
    ai.arg2; the creature puts down a carried item of filter ai.arg1. */
 int ai_cmd_front_group_carries(void);
-int ai_cmd_seek_with_carried_item(void);
+int ai_cmd_seek_with_carried(void);
 /* Forgets the AI data of all groups (a load). */
 void ai_forget_all(void);
 void ai_update_group(void);
@@ -252,8 +252,8 @@ uint8_t *ai_find_path(void);
 /* Perception, movement tests, and path search (ai_move.c). */
 bool ai_square_is_obstacle(int x, int y);
 bool ai_square_blocks_line(int x, int y);
-bool ai_square_blocks_line_to_target(int x, int y);
-bool ai_square_blocks_line_except_self(int x, int y);
+bool ai_blocks_line_to_target(int x, int y);
+bool ai_blocks_line_except_self(int x, int y);
 int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y));
 void ai_cache_square(int x, int y);
 uint16_t ai_cached_first_object(void);
@@ -268,7 +268,7 @@ int ai_projectile_incoming(int x, int y);
 int ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir);
 int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
 int ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
-uint16_t ai_find_wall_actuator_in_cell(uint16_t first_thing, int cell, int mode, int filter);
+uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter);
 int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state);
 int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
 int ai_thing_matches_filter(uint16_t thing, int filter);

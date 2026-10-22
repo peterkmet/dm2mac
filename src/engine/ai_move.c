@@ -326,7 +326,7 @@ bool ai_square_blocks_line(int x, int y)
 }
 
 /* A line toward the party: the party square blocks it (the line ends there). */
-bool ai_square_blocks_line_to_target(int x, int y)
+bool ai_blocks_line_to_target(int x, int y)
 {
     if (at_party(x, y))
         return 1;
@@ -334,7 +334,7 @@ bool ai_square_blocks_line_to_target(int x, int y)
 }
 
 /* A line test that ignores the square of the group in the AI context. */
-bool ai_square_blocks_line_except_self(int x, int y)
+bool ai_blocks_line_except_self(int x, int y)
 {
     if ((uint16_t)x == group_x() && (uint16_t)y == group_y())
         return 0;
@@ -518,7 +518,7 @@ int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_loc
                     }
                 }
             }
-            if (*search_cell(distance_map, tx, ty) || ai_square_blocks_line_to_target(tx, ty))
+            if (*search_cell(distance_map, tx, ty) || ai_blocks_line_to_target(tx, ty))
                 break;
         }
         if (found)
@@ -532,7 +532,7 @@ int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_loc
         sx += dir_dx[back];
         sy += dir_dy[back];
         uint8_t reached = *search_cell(distance_map, sx, sy);
-        if (!reached || reached > limit || ai_square_blocks_line_to_target(sx, sy)) {
+        if (!reached || reached > limit || ai_blocks_line_to_target(sx, sy)) {
             sx = px;
             sy = py;
             break;
@@ -1616,7 +1616,7 @@ int ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, in
 
 /* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
    actuator of the cell; THING_NONE for none. */
-uint16_t ai_find_wall_actuator_in_cell(uint16_t first_thing, int cell, int mode, int filter)
+uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter)
 {
     uint16_t found = THING_NONE;
     for (uint16_t t = first_thing; t != THING_ENDOFLIST && t != THING_NONE; t = dungeon_next_thing(t)) {
@@ -1703,7 +1703,7 @@ int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int
     }
     if (slot == THING_NONE || sensor_data(slot) != group_creature(ai.group_thing) || !sensor_flag(slot, SENSOR_STATE))
         return command_failed(execute);
-    uint16_t actuator = ai_find_wall_actuator_in_cell(cached_first_thing(), dir_opposite(d), mode, filter);
+    uint16_t actuator = ai_find_wall_actuator(cached_first_thing(), dir_opposite(d), mode, filter);
     if (actuator == THING_NONE)
         return command_failed(execute);
     int slot_state = sensor_effect(slot);
@@ -2130,7 +2130,7 @@ static int entered_party_view(const AiCandidate *c, int16_t x, int16_t y)
             return 0;
         if (x != ai_party.x && y != ai_party.y)
             return 1;
-        return !(int16_t)ai_trace_line(ai_party.x, ai_party.y, x, y, ai_square_blocks_line_except_self);
+        return !(int16_t)ai_trace_line(ai_party.x, ai_party.y, x, y, ai_blocks_line_except_self);
     }
     return 0;
 }
@@ -2152,7 +2152,7 @@ static int entered_flee(Search *s, const AiCandidate *c, int8_t *m, int16_t x, i
     if (m[MARK_BEST] >= d)
         return 0;
     if (on_party_map && d < FLEE_LINE_DISTANCE && (x == ai_party.x || y == ai_party.y) &&
-        (int16_t)ai_trace_line(ai_party.x, ai_party.y, x, y, ai_square_blocks_line_except_self))
+        (int16_t)ai_trace_line(ai_party.x, ai_party.y, x, y, ai_blocks_line_except_self))
         return 0;
     m[MARK_BEST] = (int8_t)d;
     return 1;

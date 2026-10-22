@@ -40,18 +40,18 @@ G_AI_SCRATCH, G_AI_CONTEXT_ACTIVE = 0x7F894, 0x7F7E6
 # Original functions of ai_move.c.
 F = {
     "ai_square_is_obstacle": 0x2B96A, "ai_square_blocks_line": 0x2B9FC,
-    "ai_square_blocks_line_to_target": 0x2BB78, "ai_trace_line": 0x2BBAD,
+    "ai_blocks_line_to_target": 0x2BB78, "ai_trace_line": 0x2BBAD,
     "ai_cache_square": 0x2BEAF, "ai_cached_first_object": 0x2BF41,
     "ai_cached_first_group": 0x2BFAE, "ai_turn_toward": 0x2C005,
     "ai_find_target_in_lines": 0x2C0A2, "ai_try_attack": 0x2C404,
     "ai_try_door_action": 0x2CC42, "ai_projectile_incoming": 0x2D52D,
     "ai_try_move": 0x2D792, "ai_find_matching_item_inside": 0x2E8E1,
-    "ai_try_take_item": 0x2EA68, "ai_find_wall_actuator_in_cell": 0x2F0FA,
+    "ai_try_take_item": 0x2EA68, "ai_find_wall_actuator": 0x2F0FA,
     "ai_wall_actuator_accepts": 0x2F1C4, "ai_try_use_wall_actuator": 0x2F2CF,
     "ai_thing_matches_filter": 0x2F636, "ai_find_matching_item": 0x2FF1E,
     "ai_remove_matching_items": 0x2FF89, "ai_count_matching_items": 0x2697B,
     "ai_find_marker": 0x3161E, "ai_find_marker_by_id": 0x31724,
-    "ai_square_blocks_line_except_self": 0x317EE, "ai_search_area": 0x3188A,
+    "ai_blocks_line_except_self": 0x317EE, "ai_search_area": 0x3188A,
     "ai_load_cached_path": 0x33DF9, "ai_next_path_step": 0x33E61,
     "ai_plan_path": 0x33EF3, "creature_refresh_party_maps": 0x2F8F5,
 }
@@ -238,8 +238,8 @@ def squares_near(lib, map_, x, y, radius):
             if -1 <= sx <= w and -1 <= sy <= h]
 
 
-LINE_TESTS = ("ai_square_is_obstacle", "ai_square_blocks_line", "ai_square_blocks_line_to_target",
-              "ai_square_blocks_line_except_self")
+LINE_TESTS = ("ai_square_is_obstacle", "ai_square_blocks_line", "ai_blocks_line_to_target",
+              "ai_blocks_line_except_self")
 
 
 def test_square_and_line_tests(ai):
