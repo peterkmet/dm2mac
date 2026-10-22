@@ -463,6 +463,15 @@ static bool is_side_blocked(uint16_t group, int dir)
     return aspect_creature_cell(group, side) % CELL_GRID_SIDE != CELL_GRID_HALF;
 }
 
+/* The walk-through-walls cheat: the party enters a wall, a closed fake wall, or a closed door inside the map. */
+static bool can_walk_through(const PartyStep *s)
+{
+    int type = square_type(s->ahead);
+    return game_has_cheat(CHEAT_WALLS) && (type == SQUARE_WALL || type == SQUARE_FAKE_WALL || type == SQUARE_DOOR) &&
+           s->x >= 0 && s->x < dungeon_map_width(g_party.cur_map) && s->y >= 0 &&
+           s->y < dungeon_map_height(g_party.cur_map);
+}
+
 /* What a step of the party meets on the square ahead; *group: the creature group there. */
 static StepResult get_step_result(const PartyStep *s, uint16_t *group)
 {
@@ -471,7 +480,7 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
         return STEP_STAIRS_HERE;
     if (square_type(s->ahead) == SQUARE_STAIRS)
         return STEP_STAIRS_AHEAD;
-    if (dun_square_blocks_movement(s->ahead))
+    if (dun_square_blocks_movement(s->ahead) && !can_walk_through(s))
         return STEP_BLOCKED;
     int16_t gx = s->x, gy = s->y;
     *group = creature_group_at(g_party.cur_map, s->x, s->y);

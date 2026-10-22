@@ -1,5 +1,5 @@
 """The automap of the advanced mode (src/ui/automap.c, ui/advanced.c): the seen squares, the AMAP save block, the map in
-the viewport, and the cheats of the open automap."""
+the viewport, and the cheats that change what the automap and the view show."""
 
 import ctypes
 
@@ -35,13 +35,15 @@ SAVE_OK = C.SAVE_OK
 def automap(lib, advanced):  # noqa: F811
     """The advanced game with the bright light and the cheats off."""
     lib.dungeon_square.restype = ctypes.c_uint8
-    for name in ("g_view_light_level", "g_cheat_light", "g_cheat_immortal", "g_cheat_food"):
-        flag(lib, name).value = 0
+    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
+    lib.game_get_cheats.restype = ctypes.c_uint8
+    flag(lib, "g_view_light_level").value = 0
+    lib.game_set_cheats(0)
     game, _ = advanced
     lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
     yield advanced
-    for name in ("g_cheat_light", "g_cheat_immortal", "g_cheat_food", "g_advanced_automap_open"):
-        flag(lib, name).value = 0
+    lib.game_set_cheats(0)
+    flag(lib, "g_advanced_automap_open").value = 0
 
 
 def flag(lib, name):
@@ -171,7 +173,8 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
     long_view = next(v for v in floor_views(lib, m) if all(not blocks(lib, m, *ahead(v[0], v[1], v[2], k)) for k in (1, 2, 3, 4)))
     x, y, d = long_view
     for level, light, depth in ((0, 0, 4), (4, 0, 3), (5, 0, 2), (5, 1, 4)):
-        flag(lib, "g_view_light_level").value, flag(lib, "g_cheat_light").value = level, light
+        flag(lib, "g_view_light_level").value = level
+        lib.game_set_cheats(C.CHEAT_LIGHT if light else 0)
         lib.seen_reset()
         lib.seen_mark(m, x, y, d)
         seen = seen_squares(lib, m)
@@ -422,17 +425,15 @@ def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
     press(lib, KEY_TAB)
 
 
-def test_readout_shows_position_direction_and_cheats(lib, automap):
+def test_readout_shows_position_and_direction(lib, automap):
     # Drawing each expected line again at its place changes no pixel; a wrong text changes some.
     game, _ = automap
     lib.text_draw_on_screen.argtypes = [ctypes.c_int] * 4 + [ctypes.c_char_p]
     colors = ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")
-    flag(lib, "g_cheat_food").value = 1
     press(lib, KEY_TAB)
     x, y, _, _ = viewport(lib)
     lines = [b"LEVEL %d  X %d  Y %d" % (lib.dungeon_map_level(game.party_map), game.party_x, game.party_y),
-             [b"NORTH", b"EAST", b"SOUTH", b"WEST"][game.party_dir], b"I IMMORTAL OFF", b"F FOOD AND WATER ON",
-             b"L FULL LIGHT OFF"]
+             [b"NORTH", b"EAST", b"SOUTH", b"WEST"][game.party_dir]]
     shown = viewport_pixels(lib)
     for row, text in enumerate(lines):
         for line, same in ((text, True), (text[:-1] + b"X", False)):
@@ -442,20 +443,23 @@ def test_readout_shows_position_direction_and_cheats(lib, automap):
     press(lib, KEY_TAB)
 
 
-def test_cheat_keys_work_only_on_the_advanced_automap(lib, automap):
-    names = {KEY_I: "g_cheat_immortal", KEY_F: "g_cheat_food", KEY_L: "g_cheat_light"}
-    for key in names:
-        press(lib, key)
-    assert not any(flag(lib, n).value for n in names.values())
+def test_the_automap_has_no_cheat_keys(lib, automap):
     press(lib, KEY_TAB)
-    x, y, w, h = viewport(lib)
-    for key, name in names.items():
-        before = bytes(screen(lib))
+    before = bytes(screen(lib))
+    for key in (KEY_I, KEY_F, KEY_L):
         press(lib, key)
-        assert flag(lib, name).value == 1 and bytes(screen(lib)) != before, name
-    for key, name in names.items():
-        press(lib, key)
-        assert flag(lib, name).value == 0, name
+    assert lib.game_get_cheats() == 0 and bytes(screen(lib)) == before
+
+
+def test_reveal_map_draws_every_square_and_keeps_the_seen_squares(lib, automap):
+    game, _ = automap
+    seen = seen_squares(lib, game.party_map)
+    press(lib, KEY_TAB)
+    shown = viewport_pixels(lib)
+    lib.game_set_cheats(C.CHEAT_MAP)
+    lib.advanced_draw_automap()
+    assert viewport_pixels(lib) != shown and seen_squares(lib, game.party_map) == seen
+    press(lib, KEY_TAB)
 
 
 def champion_word(lib, offset, value=None):
@@ -468,7 +472,7 @@ def champion_word(lib, offset, value=None):
 
 def test_immortal_keeps_one_health(lib, automap):
     damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
-    flag(lib, "g_cheat_immortal").value = 1
+    lib.game_set_cheats(C.CHEAT_IMMORTAL)
     damage[0] = 30000
     lib.champ_apply_pending_damage()
     assert champion_word(lib, HEALTH) == 1
@@ -480,11 +484,11 @@ def test_immortal_keeps_one_health(lib, automap):
 def test_food_cheat_keeps_food_and_water(lib, automap):
     champion_word(lib, FOOD, 1000)
     champion_word(lib, WATER, 1000)
-    flag(lib, "g_cheat_food").value = 1
+    lib.game_set_cheats(C.CHEAT_FOOD)
     for _ in range(20):
         lib.champ_apply_time_effects()
     assert (champion_word(lib, FOOD), champion_word(lib, WATER)) == (1000, 1000)
-    flag(lib, "g_cheat_food").value = 0
+    lib.game_set_cheats(0)
     for _ in range(20):
         lib.champ_apply_time_effects()
     assert champion_word(lib, FOOD) < 1000 and champion_word(lib, WATER) < 1000
@@ -495,7 +499,8 @@ def test_light_cheat_draws_full_light(lib, automap):
     level = flag(lib, "g_view_light_level")
 
     def view(light, cheat):
-        level.value, flag(lib, "g_cheat_light").value = light, cheat
+        level.value = light
+        lib.game_set_cheats(C.CHEAT_LIGHT if cheat else 0)
         lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
         return c_view(lib)
     dark, cheat, bright = view(5, 0), view(5, 1), view(0, 0)
@@ -505,10 +510,9 @@ def test_light_cheat_draws_full_light(lib, automap):
 
 def test_new_or_loaded_game_turns_the_cheats_off(lib, automap):
     press(lib, KEY_F5)
-    for name in ("g_cheat_immortal", "g_cheat_food", "g_cheat_light"):
-        flag(lib, name).value = 1
+    lib.game_set_cheats(C.CHEAT_ALL)
     press(lib, KEY_F9)
-    assert not any(flag(lib, n).value for n in ("g_cheat_immortal", "g_cheat_food", "g_cheat_light"))
+    assert lib.game_get_cheats() == 0
     flag(lib, "g_advanced_automap_open").value = 1
     lib.play_start_session()
     assert not flag(lib, "g_advanced_automap_open").value

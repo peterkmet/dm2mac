@@ -47,9 +47,6 @@ The keys of the original game work in both modes. The advanced mode adds these k
 | `F9` | Quick load | Dungeon view only |
 | `Tab` or `M` | Open the automap | Dungeon view only |
 | `Tab`, `M`, or `Esc` | Close the automap | Open automap |
-| `I` | Immortal cheat on or off | Open automap |
-| `F` | Food and water cheat on or off | Open automap |
-| `L` | Light cheat on or off | Open automap |
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
@@ -78,8 +75,8 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 The automap shows the squares of the party map that the dungeon view has shown. It covers the viewport. The party square is in the middle of the viewport, north is up.
 
 - The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. A red frame and the champion icons of a minion map item mark the party square.
-- Only the seen squares show. Other squares stay black.
-- The readout at the top left shows `LEVEL n  X x  Y y`, the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`), and the cheat states `I IMMORTAL ON|OFF`, `F FOOD AND WATER ON|OFF`, and `L FULL LIGHT ON|OFF`.
+- Only the seen squares show. Other squares stay black. With the reveal map cheat, all squares of the map show.
+- The readout at the top left shows `LEVEL n  X x  Y y` and the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`).
 - The game time stops while the automap is open. Keys other than the automap keys do nothing.
 - Drag the map with the left mouse button. The map moves in whole squares. The middle of the map stays on the map. The next automap opens on the party again.
 
@@ -113,8 +110,11 @@ The original game loads a save with the block: its loader stops at the last bit 
 
 ## Cheats
 
-The cheats switch only on the open automap of the advanced mode. The automap draws the new state at once. The cheats are not saved. A new game, a load, and a quick load turn them off.
+The advanced mode has six cheats. They switch on the cheat screen (`C` key). They are not saved. A new game, a load, and a quick load turn them all off. The vanilla and turn-based modes use no cheats.
 
-- `I` immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
-- `F` food and water: food and water do not go down with the time. Eating and drinking still raise them.
-- `L` full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
+- Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
+- Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
+- Food and water: food and water do not go down with the time. Eating and drinking still raise them.
+- One-hit kill: each hit kills the creature, also a hit of a trap, a door, or another creature (a missile does not keep its launcher). A creature that cannot be hurt (defense 0xff) stays unhurt; a creature that others cannot hit (dexterity 0xff) stays so. The health that a creature loses by itself over time does not kill it. A boss that dies only near the party front keeps that rule.
+- Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall.
+- Reveal map: the automap shows every square of the map. The seen squares do not change.

@@ -2,6 +2,7 @@
 /* The automap of the advanced mode: the map picture. */
 #include "automap.h"
 #include "dungeon.h"
+#include "game.h"
 #include "game_text.h"
 #include "minion.h"
 #include "move.h"
@@ -39,7 +40,7 @@ void automap_draw(Offscreen *o, const int16_t *clip)
     dun_set_current_map(map);
     for (int x = 0; x < dungeon_map_width(map); x++)
         for (int y = 0; y < dungeon_map_height(map); y++)
-            if (seen_is_seen(map, x, y)) {
+            if (game_has_cheat(CHEAT_MAP) || seen_is_seen(map, x, y)) {
                 SquareIcon icon = {x, y, left + x * MAP_CELL_SIZE, top + y * MAP_CELL_SIZE,
                                    x == g_game.party_x && y == g_game.party_y ? party_item : -1};
                 mmap_draw_square_icon(o, clip, &icon);

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, and the cheats. */
+/* The advanced mode: the movement letter keys, the quick save and quick load, and the automap. */
 #include "advanced.h"
 #include "ids.h"
 #include "os.h"
@@ -33,17 +33,11 @@
 
 /* PC scan codes of the keys on the open automap. */
 #define SCAN_ESCAPE 0x01
-#define SCAN_I      0x17
-#define SCAN_F      0x21
-#define SCAN_L      0x26
 
 /* The layout of the readout: its margin, then its rows. */
 #define READOUT_MARGIN    2 /* pixels between the viewport edge and the readout */
 #define READOUT_POSITION  0
 #define READOUT_DIRECTION 1
-#define READOUT_IMMORTAL  2
-#define READOUT_FOOD      3
-#define READOUT_LIGHT     4
 
 int g_advanced_automap_open;
 
@@ -71,7 +65,7 @@ void advanced_reset(void)
 {
     close_automap();
     lost = false;
-    game_clear_cheats();
+    game_set_cheats(0);
 }
 
 /* Movement keys */
@@ -197,11 +191,6 @@ static void render_readout_line(Offscreen *o, int row, const char *text)
                            (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_BLACK]}, text);
 }
 
-static const char *on_off(int on)
-{
-    return on ? "ON" : "OFF";
-}
-
 void advanced_draw_automap(void)
 {
     Offscreen o;
@@ -214,12 +203,6 @@ void advanced_draw_automap(void)
              g_game.party_y);
     render_readout_line(&o, READOUT_POSITION, line);
     render_readout_line(&o, READOUT_DIRECTION, direction_names[g_game.party_dir & DIR_MASK]);
-    snprintf(line, sizeof line, "I IMMORTAL %s", on_off(g_cheat_immortal));
-    render_readout_line(&o, READOUT_IMMORTAL, line);
-    snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(g_cheat_food));
-    render_readout_line(&o, READOUT_FOOD, line);
-    snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(g_cheat_light));
-    render_readout_line(&o, READOUT_LIGHT, line);
     offscreen_flush(&o, true);
     draw_free_temp();
 }
@@ -228,18 +211,8 @@ void advanced_automap_event(int type, int16_t x, int16_t y)
 {
     int16_t r[RECT_SIZE];
     if (type == INPUT_KEY) {
-        if (x == KEY_AUTOMAP || x == KEY_AUTOMAP_M || x == SCAN_ESCAPE) {
+        if (x == KEY_AUTOMAP || x == KEY_AUTOMAP_M || x == SCAN_ESCAPE)
             close_automap();
-            return;
-        }
-        int *cheat = x == SCAN_I   ? &g_cheat_immortal
-                     : x == SCAN_F ? &g_cheat_food
-                     : x == SCAN_L ? &g_cheat_light
-                                   : NULL;
-        if (!cheat)
-            return;
-        *cheat = !*cheat;
-        advanced_draw_automap();
     } else if (type == INPUT_LEFT_RELEASED) {
         advanced_automap_drag(x, y);
         drag.active = false;

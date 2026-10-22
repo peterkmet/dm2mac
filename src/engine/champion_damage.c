@@ -523,7 +523,7 @@ void champ_apply_pending_damage(void)
         if (!c->health)
             continue;
         int16_t health = (int16_t)(c->health - d);
-        if (health <= 0 && g_cheat_immortal)
+        if (health <= 0 && game_has_cheat(CHEAT_IMMORTAL))
             health = 1;
         if (health <= 0) {
             kill_champion(i);
@@ -612,7 +612,7 @@ static void consume_food_and_water(int i)
         c->food = STARVING;
     if (c->water < STARVING)
         c->water = STARVING;
-    if (g_cheat_food) {
+    if (game_has_cheat(CHEAT_FOOD)) {
         c->food = food;
         c->water = water;
     }

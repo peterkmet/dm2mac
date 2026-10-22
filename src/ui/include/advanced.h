@@ -48,11 +48,10 @@ enum QuickLoadResult advanced_quick_load(void);
 /* The automap */
 /* Opens the automap in the viewport. */
 void advanced_open_automap(void);
-/* Draws the automap and its readout (level, position, direction, cheats) in the viewport. */
+/* Draws the automap and its readout (level, position, direction) in the viewport. */
 void advanced_draw_automap(void); /* exported for the tests */
 /* An input event while the automap is open (type INPUT_KEY with the key in x, a mouse button, INPUT_LEFT_RELEASED):
-   Tab, M, and Esc close it, I, F, and L switch the cheats, a left drag on the viewport scrolls the map. Other keys do
-   nothing. */
+   Tab, M, and Esc close it, a left drag on the viewport scrolls the map. Other keys do nothing. */
 void advanced_automap_event(int type, int16_t x, int16_t y);
 /* The mouse is at (x, y): during a drag the map follows it in whole squares. */
 void advanced_automap_drag(int16_t x, int16_t y);

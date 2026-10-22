@@ -255,18 +255,20 @@ def test_state_tells_the_game_mode(control, lib):  # noqa: F811
 
 def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
     path, *_ = control
-    names = ("g_advanced_automap_open", "g_cheat_immortal", "g_cheat_food", "g_cheat_light")
-    fields = ("automap", "cheat_immortal", "cheat_food", "cheat_light")
+    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
+    cheats = {"cheat_light": C.CHEAT_LIGHT, "cheat_immortal": C.CHEAT_IMMORTAL, "cheat_food": C.CHEAT_FOOD,
+              "cheat_kill": C.CHEAT_KILL, "cheat_walls": C.CHEAT_WALLS, "cheat_map": C.CHEAT_MAP}
+    automap = ctypes.c_int.in_dll(lib, "g_advanced_automap_open")
     try:
-        for value in (0, 1):
-            for name in names:
-                ctypes.c_int.in_dll(lib, name).value = value
+        for name, cheat in [("automap", 0), *cheats.items()]:
+            automap.value = name == "automap"
+            lib.game_set_cheats(cheat)
             with pumped(lib, ticks=False):
                 state = request({"cmd": "state"}, path)
-            assert [state[f] for f in fields] == [value] * 4
+            assert {f: state[f] for f in ["automap", *cheats]} == {f: int(f == name) for f in ["automap", *cheats]}
     finally:
-        for name in names:
-            ctypes.c_int.in_dll(lib, name).value = 0
+        automap.value = 0
+        lib.game_set_cheats(0)
 
 
 def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa: F811
