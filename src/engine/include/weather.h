@@ -21,30 +21,41 @@ typedef struct {
     int dungeon_loaded;       /* a dungeon load happened in this run: a load keeps the weather */
 } Weather;
 
-extern Weather weather;
-/* The party light level, 0 (bright) to 5 (light_update_party_light). */
-extern int view_light_level;
-#define DARKEST_LIGHT 5 /* view_light_level of the darkest view */
+extern Weather g_weather;
+/* The party light level, 0 (bright) to DARKEST_LIGHT (light_update_party_light). */
+extern int g_view_light_level;
 /* The light of the squares around the party and of the explosions near it; creature_refresh_party_maps (Step 16)
    clears them and adds each square with light_add_square_light. */
-extern int16_t light_source_sum, explosion_light_sum;
+extern int16_t g_light_source_sum, g_explosion_light_sum;
+
+/* The g_view_light_level of the darkest view. */
+#define DARKEST_LIGHT 5
 
 /* light_add_square_light flags: what of the square gives light. */
-enum { LIGHT_FLOOR = 1, LIGHT_CREATURES = 2, LIGHT_WALLS = 4 };
-#define MAP_KEY_SKY_STATE 0x66 /* map graphics value key (CAT_WALLSET, set, 0x0b, key): the sky */
-#define RAIN_STRONG       128  /* rain intensities: strong rain grows the clouds faster */
-#define RAIN_MEDIUM       64
-#define RAIN_LIGHT        16
+#define LIGHT_FLOOR     0x01
+#define LIGHT_CREATURES 0x02
+#define LIGHT_WALLS     0x04
+
+/* Map graphics value key (CAT_WALLSET, set, 0x0b, key): the sky. */
+#define MAP_KEY_SKY_STATE 0x66
+
+/* Rain intensities: strong rain grows the clouds faster. */
+#define RAIN_STRONG 128
+#define RAIN_MEDIUM 64
+#define RAIN_LIGHT  16
+
 /* The sky darkness (game.sky_darkness) from which the rain shows light, medium, heavy; the cloud cover
    (game.cloud_cover) from which the clouds show light, medium, heavy. */
-#define DARKNESS_RAIN     16
-#define DARKNESS_MEDIUM   64
-#define DARKNESS_HEAVY    128
-#define CLOUDS_SHOWN      64
-#define CLOUDS_MORE       128
-#define CLOUDS_MOST       192
-#define HOUR_LIGHT_DAY    1 /* weather.hour_light of the day */
-#define HOUR_LIGHT_NIGHT  5 /* weather.hour_light of the night; between them dawn and dusk */
+#define DARKNESS_RAIN   16
+#define DARKNESS_MEDIUM 64
+#define DARKNESS_HEAVY  128
+#define CLOUDS_SHOWN    64
+#define CLOUDS_MORE     128
+#define CLOUDS_MOST     192
+
+/* g_weather.hour_light of the day and of the night; between them dawn and dusk. */
+#define HOUR_LIGHT_DAY   1
+#define HOUR_LIGHT_NIGHT 5
 
 /* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
 typedef struct {
@@ -53,24 +64,24 @@ typedef struct {
     int16_t zone, dx, dy; /* layout zone and offset */
     uint8_t scale_x, scale_y;
 } SkyObject;
+
+/* The end mark of the sky objects. */
 #define SKY_OBJECT_END 0xff
 
 /* The weather sky objects that the view draws, ended by SKY_OBJECT_END (world_update_day_night fills them). */
 SkyObject *weather_sky_objects(void);
-/* The sky set of the party map has rain pictures, cloud pictures. */
+/* The sky set of the party map has rain pictures. */
 bool weather_sky_has_rain(void);
+/* The sky set of the party map has cloud pictures. */
 bool weather_sky_has_clouds(void);
-/* Reads the sky object entry of the map graphics into object; returns 0 when the map has none. */
-int weather_load_sky_object(SkyObject *object);
-/* Queues the next storm step delay ticks from now. */
-void weather_schedule_event(int32_t delay);
-/* Starts a new weather cycle (keep_state 0) or keeps the loaded weather (1); sets the light of the hour. */
-void weather_init(int keep_state);
+/* Starts a new weather cycle (keep_state false) or keeps the loaded weather (true); sets the light of the hour.
+   exported for the tests */
+void weather_init(bool keep_state);
 /* The weather part of a dungeon load: the time of day of the dungeon, then weather_init. */
 void weather_load(const gdat_t *g);
 /* The weather of a game step (storm_step 0): hour, rain, clouds, sky objects, lightning; or a storm step (1). */
 void world_update_day_night(int storm_step);
-/* Computes the party light level (view_light_level) from the hand lights, the square lights, magic, the map, the
+/* Computes the party light level (g_view_light_level) from the hand lights, the square lights, magic, the map, the
    hour, and the weather. */
 void light_update_party_light(void);
 /* Adds the light of the square (x, y) of the current map, distance squares from the party, seen from dir. */

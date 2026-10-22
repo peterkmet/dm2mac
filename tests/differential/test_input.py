@@ -248,7 +248,7 @@ def test_save_start_matches_a_menu_load(start, tmp_path):
     lib.draw_init(gdat)
     lib.input_init()
     assert lib.session_start_save(str(path).encode()) == 1
-    level = ctypes.c_int.in_dll(lib, "view_light_level")
+    level = ctypes.c_int.in_dll(lib, "g_view_light_level")
     loaded = level.value
     levels = range(max(lib.dungeon_map_level(m) for m in range(lib.dungeon_map_count())) + 1)
     digits = [lib.dungeon_level_digit(n) for n in levels]

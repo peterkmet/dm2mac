@@ -32,7 +32,7 @@ G_PARTY_DISTANCE_MAP, G_ALT_DISTANCE_MAP = 0x752A0, 0x752A2
 G_PARTY_DISTANCE_WIDTH, G_ALT_DISTANCE_WIDTH = 0x7F8CE, 0x7F8CC
 G_LIGHT_SUMS = (0x7F970, 0x7F974, 0x752A4, 0x752A6, 0x752A8)
 G_VIEW_REDRAW = 0x7F38C
-LIGHT_NAMES = ("light_source_sum", "explosion_light_sum", "cached_light_sum", "cached_explosion_light_sum", "last_party_map")
+LIGHT_NAMES = ("g_light_source_sum", "g_explosion_light_sum", "cached_light_sum", "cached_explosion_light_sum", "last_party_map")
 DISTANCE_MAPS = (("party_distance", 0x7F8C8, 0x752A0, 0x7F8CE), ("alt_distance", 0x7F8C4, 0x752A2, 0x7F8CC))
 G_AI_SCRATCH, G_AI_CONTEXT_ACTIVE = 0x7F894, 0x7F7E6
 # Functions of later parts that both sides stub: (address, stack arguments).

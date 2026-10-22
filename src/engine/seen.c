@@ -100,9 +100,9 @@ static int visible_depths(void)
        needs it */
     if (cheat_light)
         return VIEW_DEPTHS;
-    if (view_light_level >= DARKEST_LIGHT)
+    if (g_view_light_level >= DARKEST_LIGHT)
         return VIEW_DEPTHS - 2;
-    if (view_light_level >= DARKEST_LIGHT - 1)
+    if (g_view_light_level >= DARKEST_LIGHT - 1)
         return VIEW_DEPTHS - 1;
     return VIEW_DEPTHS;
 }

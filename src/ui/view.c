@@ -2961,7 +2961,7 @@ void view_draw_dungeon(int dir, int x, int y)
     view.party_dir = dir;
     view.party_x = x;
     view.party_y = y;
-    view.shade = cheat_light ? 0 : view_light_level * LIGHT_STEP; /* the creature rules keep view_light_level */
+    view.shade = cheat_light ? 0 : g_view_light_level * LIGHT_STEP; /* the creature rules keep g_view_light_level */
     view.walking = party.move_steps != 0;
     view_click_zone_count = VIEW_CLICK_ZONE_FIXED;
     for (int i = 0; i < VIEW_CLICK_ZONE_FIXED; i++) {

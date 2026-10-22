@@ -26,7 +26,7 @@ class CreatureOracle:
     def reset_creature_globals(lib):
         """The C library keeps its globals from test to test: back to the values of the program start, before the
         party is placed."""
-        for name, value in (("light_source_sum", 0), ("explosion_light_sum", 0), ("cached_light_sum", -1),
+        for name, value in (("g_light_source_sum", 0), ("g_explosion_light_sum", 0), ("cached_light_sum", -1),
                             ("cached_explosion_light_sum", -1), ("last_party_map", -1)):
             ctypes.c_int16.in_dll(lib, name).value = value
         ctypes.c_uint16.in_dll(lib, "search_direction_bits").value = 1

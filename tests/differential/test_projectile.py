@@ -388,7 +388,7 @@ def test_creature_attacks_champions(pj, lib):
     # visible and invisible, in light and darkness: the damage hook arguments and the random numbers.
     from dm2test.interface import set_magic
     rng = random.Random(166)
-    light = ctypes.c_int.in_dll(lib, "view_light_level")
+    light = ctypes.c_int.in_dll(lib, "g_view_light_level")
     sleeping = ctypes.c_int.in_dll(lib, "party_sleeping")
     attacks = woke = 0
     for n, (map_, x, y, g) in enumerate(groups(lib) * 3):

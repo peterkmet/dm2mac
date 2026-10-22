@@ -50,11 +50,11 @@ def world(lib, gdat, start, tmp_path):
 def set_weather(sc, **values):
     """Writes weather globals (names of dm2test.scenario.WEATHER) into both."""
     lib, emu = sc.lib, sc.emu
-    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "weather")
+    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "g_weather")
     for name, value in values.items():
         if name == "light_level":
-            ctypes.c_int.in_dll(lib, "view_light_level").value = value
-        elif name in ("light_source_sum", "explosion_light_sum"):
+            ctypes.c_int.in_dll(lib, "g_view_light_level").value = value
+        elif name in ("g_light_source_sum", "g_explosion_light_sum"):
             ctypes.c_int16.in_dll(lib, name).value = value
         elif hasattr(weather, name):
             setattr(weather, name, value)
@@ -225,12 +225,12 @@ def test_party_light_matches_original(world, lib):
         magic[0], magic[1] = light & 0xFF, light >> 8 & 0xFF
         sc.emu.write(G_MAGIC_LIGHT, struct.pack("<h", light))
         set_weather(sc, weather_visible=rng.randrange(2), heavy_rain=rng.randrange(2), hour_light=rng.randrange(C.HOUR_LIGHT_DAY, C.HOUR_LIGHT_NIGHT + 1),
-                    lightning_flash=rng.randrange(2), light_source_sum=rng.choice((0, 0, 10, 60, 200)),
-                    explosion_light_sum=rng.choice((0, 0, 12, 13, 40)))
+                    lightning_flash=rng.randrange(2), g_light_source_sum=rng.choice((0, 0, 10, 60, 200)),
+                    g_explosion_light_sum=rng.choice((0, 0, 12, 13, 40)))
         lib.light_update_party_light()
         sc.emu.call(LIGHT_UPDATE_PARTY_LIGHT)
         sc.assert_same_weather(n)
-        levels.add(ctypes.c_int.in_dll(lib, "view_light_level").value)
+        levels.add(ctypes.c_int.in_dll(lib, "g_view_light_level").value)
     assert levels == set(range(C.DARKEST_LIGHT + 1))
 
 
@@ -250,12 +250,12 @@ def test_square_light_matches_original(world, lib):
         for x, y in cells if map_ % 3 == 0 or map_ in OUTDOOR_MAPS else rng.sample(cells, 40):
             for d in range(C.DIR_COUNT):
                 args = (rng.randrange(10), d, x, y, rng.choice((7, 7, rng.randrange(8))))
-                set_weather(sc, light_source_sum=0, explosion_light_sum=0, heavy_rain=rng.randrange(2),
+                set_weather(sc, g_light_source_sum=0, g_explosion_light_sum=0, heavy_rain=rng.randrange(2),
                             hour_light=rng.randrange(C.HOUR_LIGHT_DAY, C.HOUR_LIGHT_NIGHT + 1))
                 lib.light_add_square_light(*args)
                 sc.emu.call(LIGHT_ADD_SQUARE_LIGHT, *args[:4], args[4])
                 sc.assert_same_weather((map_, args))
-                nonzero += ctypes.c_int16.in_dll(lib, "light_source_sum").value != 0
+                nonzero += ctypes.c_int16.in_dll(lib, "g_light_source_sum").value != 0
     assert nonzero > 80
 
 
@@ -504,11 +504,11 @@ def test_square_light_of_added_things_matches_original(world, lib, gdat):
             set_word(sc, last, 0, thing)
             for d in range(C.DIR_COUNT):
                 args = (rng.randrange(10), d, x, y, rng.choice((1, 3, 7)))
-                set_weather(sc, light_source_sum=0, explosion_light_sum=0)
+                set_weather(sc, g_light_source_sum=0, g_explosion_light_sum=0)
                 lib.light_add_square_light(*args)
                 sc.emu.call(LIGHT_ADD_SQUARE_LIGHT, *args[:4], args[4])
                 sc.assert_same_weather((map_, hex(thing), args))
-                lit += ctypes.c_int16.in_dll(lib, "explosion_light_sum").value != 0
+                lit += ctypes.c_int16.in_dll(lib, "g_explosion_light_sum").value != 0
             set_word(sc, last, 0, C.THING_ENDOFLIST)
             write_record(sc, thing, struct.pack("<H", NONE) + bytes(len(record) - 2))
     assert lit > 100

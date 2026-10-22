@@ -80,8 +80,8 @@ WEATHER = {
     "storm_intensity": (0x80470, "<H"), "next_hour_time": (0x80430, "<I"),
     "strike_threshold": (0x8046C, "<h"), "storm_previous": (0x8046A, "<H"), "hour_light": (0x80472, "<h"),
     "day_time_offset": (0x80434, "<I"), "first_init": (0x76184, "<i"), "thunder_toggle": (0x76188, "<i"),
-    "lightning_flash": (0x7F248, "<i"), "light_level": (0x7F282, "<h"), "light_source_sum": (0x7F970, "<h"),
-    "explosion_light_sum": (0x7F974, "<h"),
+    "lightning_flash": (0x7F248, "<i"), "light_level": (0x7F282, "<h"), "g_light_source_sum": (0x7F970, "<h"),
+    "g_explosion_light_sum": (0x7F974, "<h"),
 }
 G_SKY_OBJECTS, SKY_OBJECTS_SIZE, G_VIEW_CLEAR_RECT, G_UI_COLORS = 0x80438, 50, 0x8002C, 0x7F210
 # The sound requests: the original sound table (the sounds that the map graphics load) is a stub, every sound of
@@ -119,12 +119,12 @@ class WeatherState(ctypes.Structure):
 
 def c_weather(lib):
     """The weather globals of the C port, by the names of WEATHER."""
-    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "weather")
+    game, weather = WorldGame.in_dll(lib, "game"), WeatherState.in_dll(lib, "g_weather")
     out = {name: getattr(game, name) for name in list(WEATHER)[:11]}
     out |= {name: getattr(weather, name) for name in list(WEATHER)[11:18]}
-    out["light_level"] = ctypes.c_int.in_dll(lib, "view_light_level").value
-    out["light_source_sum"] = ctypes.c_int16.in_dll(lib, "light_source_sum").value
-    out["explosion_light_sum"] = ctypes.c_int16.in_dll(lib, "explosion_light_sum").value
+    out["light_level"] = ctypes.c_int.in_dll(lib, "g_view_light_level").value
+    out["g_light_source_sum"] = ctypes.c_int16.in_dll(lib, "g_light_source_sum").value
+    out["g_explosion_light_sum"] = ctypes.c_int16.in_dll(lib, "g_explosion_light_sum").value
     return out
 
 
@@ -375,7 +375,7 @@ class Scenario(CreatureOracle):
         mine = c_weather(self.lib)
         assert mine["day_time_offset"] == theirs["day_time_offset"]
         for name in ("strike_threshold", "storm_previous", "hour_light", "first_init", "thunder_toggle", "lightning_flash",
-                     "light_level", "light_source_sum", "explosion_light_sum"):
+                     "light_level", "g_light_source_sum", "g_explosion_light_sum"):
             addr, fmt = WEATHER[name]
             self.emu.write(addr, struct.pack(fmt, mine[name]))
 

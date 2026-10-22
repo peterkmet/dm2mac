@@ -162,7 +162,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     if sky is not None:  # the weather sky objects that world_update_day_night builds
         lib.weather_sky_objects.restype = ctypes.c_void_p
         ctypes.memmove(lib.weather_sky_objects(), sky, len(sky))
-    ctypes.c_int.in_dll(lib, "view_light_level").value = light
+    ctypes.c_int.in_dll(lib, "g_view_light_level").value = light
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "view_viewport")
     ctypes.memset(viewport.pixels, 0, VIEW_W * VIEW_H)
@@ -576,7 +576,7 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
             things.write(thing, 0, struct.pack("<HH", THING_END, data))
         things.write(last, 0, struct.pack("<H", thing))
         mine = c_view(lib, map_, x, y, direction, rng.choice([0, 3]))
-        light = ctypes.c_int.in_dll(lib, "view_light_level").value
+        light = ctypes.c_int.in_dll(lib, "g_view_light_level").value
         original = original_view.draw(map_, x, y, direction, light, b"\xff" + bytes(9))
         things.write(last, 0, struct.pack("<H", THING_END))
         assert mine == original, (map_, x, y, direction, hex(thing), hex(last))

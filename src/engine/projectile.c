@@ -947,7 +947,7 @@ static int creature_attack_missed(const CreatureInfo *info, int champ, uint16_t 
     else if (info->flags & CREATURE_SEES_IN_DARK)
         visibility = 0;
     else
-        visibility = view_light_level * 2;
+        visibility = g_view_light_level * 2;
     if (party_sleeping || dexterity == DEXTERITY_ALWAYS_HITS)
         return 0;
     int threshold = (uint16_t)visibility + (int16_t)((rand_next() & ROLL_MELEE) + dexterity + difficulty);

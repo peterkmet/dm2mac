@@ -1963,7 +1963,7 @@ static void hide_party_target(AiCandidate *c)
     int invisible = game.magic_light[MAGIC_INVISIBILITY] && !(ai.info->flags & CREATURE_SEES_INVISIBLE);
     int dark = 0;
     if (!invisible) {
-        dark = view_light_level && save_magic_light() < 0 && !(ai.info->flags & CREATURE_SEES_IN_DARK);
+        dark = g_view_light_level && save_magic_light() < 0 && !(ai.info->flags & CREATURE_SEES_IN_DARK);
         if (!dark)
             return;
     }
@@ -1982,7 +1982,7 @@ static void hide_party_target(AiCandidate *c)
         if (invisible &&
             ((int)(r & ROLL_SIGHT) - (HIDDEN_DISTANCE - dist) > info_sight(ai.info) || r & ROLL_INVISIBLE_HIDDEN))
             hide = 1;
-        else if (dark && dist * view_light_level - (int)(r >> ROLL_DARK_SHIFT & ROLL_DARK_MASK) > info_sight(ai.info))
+        else if (dark && dist * g_view_light_level - (int)(r >> ROLL_DARK_SHIFT & ROLL_DARK_MASK) > info_sight(ai.info))
             hide = 1;
     }
     if (hide)
@@ -2042,7 +2042,7 @@ static void search_setup(Search *s)
             break;
         case TARGET_LIGHT:
             ai.move_flags = MOVE_FLAGS_LIGHT;
-            light_source_sum = explosion_light_sum = 0;
+            g_light_source_sum = g_explosion_light_sum = 0;
             break;
         case TARGET_AI_MARKER:
             m[MARK_BEST] = SEARCH_FAR_RANGE;
@@ -2875,7 +2875,7 @@ void creature_refresh_party_maps(void)
         int radius = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE,
                                       WALLSET_KEY_LIGHT);
         if (!radius) {
-            light_source_sum = explosion_light_sum = 0;
+            g_light_source_sum = g_explosion_light_sum = 0;
         } else {
             if (radius > LIGHT_RADIUS_MAX)
                 radius = LIGHT_RADIUS_MAX;
@@ -2883,11 +2883,11 @@ void creature_refresh_party_maps(void)
             target.value = 0;
             target.kind = TARGET_LIGHT;
             ai_search_area(game.party_x, game.party_y, MOVE_KIND_SIGHT, 1, &target, path);
-            if (light_source_sum != cached_light_sum || explosion_light_sum != cached_explosion_light_sum)
+            if (g_light_source_sum != cached_light_sum || g_explosion_light_sum != cached_explosion_light_sum)
                 changed = 1;
         }
-        cached_light_sum = light_source_sum;
-        cached_explosion_light_sum = explosion_light_sum;
+        cached_light_sum = g_light_source_sum;
+        cached_explosion_light_sum = g_explosion_light_sum;
         if (changed)
             light_update_party_light();
     }

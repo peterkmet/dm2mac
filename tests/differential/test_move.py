@@ -194,7 +194,7 @@ def test_clicks_in_the_view(scenario, lib):
         scenario.place(map_, x, y, d)
         lib.weather_sky_objects.restype = ctypes.c_void_p
         sky = ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE)  # the weather of the C port in both
-        scenario.view.draw(map_, x, y, d, ctypes.c_int.in_dll(lib, "view_light_level").value, sky)
+        scenario.view.draw(map_, x, y, d, ctypes.c_int.in_dll(lib, "g_view_light_level").value, sky)
         seed.value = tv.VIEW_SEED
         lib.view_draw_dungeon(d, x, y)
         n_zones = count.value

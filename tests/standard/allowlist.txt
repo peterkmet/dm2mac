@@ -29,7 +29,6 @@ block engine/include/move.h open: module cleanup
 block engine/include/projectile.h open: module cleanup
 block engine/include/save.h open: module cleanup
 block engine/include/sound_request.h open: module cleanup
-block engine/include/weather.h open: module cleanup
 block engine/inventory.c open: module cleanup
 block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
@@ -41,7 +40,6 @@ block engine/projectile.c open: module cleanup
 block engine/recruit.c open: module cleanup
 block engine/save.c open: module cleanup
 block engine/sound_request.c open: module cleanup
-block engine/weather.c open: module cleanup
 block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
@@ -133,7 +131,6 @@ bool engine/include/move.h:move_party_warp_to_marker open: module cleanup
 bool engine/include/move.h:move_thing open: module cleanup
 bool engine/include/projectile.h:projectile_hit open: module cleanup
 bool engine/include/sound_request.h:sound_party_offset open: module cleanup
-bool engine/include/weather.h:weather_load_sky_object open: module cleanup
 bool engine/inventory.c open: module cleanup
 bool engine/magic.c open: module cleanup
 bool engine/merchant.c open: module cleanup
@@ -157,9 +154,6 @@ bool engine/save.c:creature_is_static open: module cleanup
 bool engine/save.c:is_move_group_event open: module cleanup
 bool engine/save.c:sensor_has_data open: module cleanup
 bool engine/sound_request.c:has_priority open: module cleanup
-bool engine/weather.c open: module cleanup
-bool engine/weather.c:lightning_strike open: module cleanup
-bool engine/weather.c:weather_update_rain open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
 bool platform/main.c:default_control_path open: module cleanup
@@ -230,7 +224,6 @@ comment engine/include/merchant.h open: module cleanup
 comment engine/include/money.h open: module cleanup
 comment engine/include/move.h open: module cleanup
 comment engine/include/projectile.h open: module cleanup
-comment engine/include/weather.h open: module cleanup
 comment engine/merchant.c open: module cleanup
 comment engine/move.c open: module cleanup
 comment engine/save.c open: module cleanup
@@ -346,9 +339,6 @@ dead-api engine/include/sound_request.h:sound_played_count open: module cleanup
 dead-api engine/include/sound_request.h:sound_reset_requests open: module cleanup
 dead-api engine/include/sound_request.h:sound_started open: module cleanup
 dead-api engine/include/sound_request.h:sound_started_count open: module cleanup
-dead-api engine/include/weather.h:weather_init open: module cleanup
-dead-api engine/include/weather.h:weather_load_sky_object open: module cleanup
-dead-api engine/include/weather.h:weather_schedule_event open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 dead-api ui/include/advanced.h:advanced_draw_automap open: module cleanup
 dead-api ui/include/dialog.h:dialog_draw_progress_bar open: module cleanup
@@ -449,7 +439,6 @@ enum engine/include/minion.h open: module cleanup
 enum engine/include/move.h open: module cleanup
 enum engine/include/projectile.h open: module cleanup
 enum engine/include/save.h open: module cleanup
-enum engine/include/weather.h open: module cleanup
 enum engine/inventory.c open: module cleanup
 enum engine/item.c open: module cleanup
 enum engine/magic.c open: module cleanup
@@ -458,7 +447,6 @@ enum engine/move.c open: module cleanup
 enum engine/projectile.c open: module cleanup
 enum engine/recruit.c open: module cleanup
 enum engine/save.c open: module cleanup
-enum engine/weather.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 enum ui/advanced.c open: module cleanup
 enum ui/dialog.c open: module cleanup
@@ -495,7 +483,6 @@ global engine/include/move.h open: module cleanup
 global engine/include/projectile.h open: module cleanup
 global engine/include/save.h open: module cleanup
 global engine/include/sound_request.h open: module cleanup
-global engine/include/weather.h open: module cleanup
 global ui/include/advanced.h open: module cleanup
 global ui/include/dialog.h open: module cleanup
 global ui/include/draw.h open: module cleanup
@@ -592,7 +579,6 @@ long engine/inventory.c:champ_apply_item_effects open: module cleanup
 long engine/inventory.c:drink_potion open: module cleanup
 long engine/move.c:move_party_step open: module cleanup
 long engine/move.c:move_thing open: module cleanup
-long engine/weather.c:light_add_square_light open: module cleanup
 long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
 long ui/action_area.c:draw_money_box open: module cleanup
@@ -683,7 +669,6 @@ notation engine/include/item.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
 notation engine/include/save.h open: module cleanup
 notation engine/include/sound_request.h open: module cleanup
-notation engine/include/weather.h open: module cleanup
 notation engine/inventory.c open: module cleanup
 notation engine/item.c open: module cleanup
 notation engine/magic.c open: module cleanup
@@ -693,7 +678,6 @@ notation engine/move.c open: module cleanup
 notation engine/projectile.c open: module cleanup
 notation engine/recruit.c open: module cleanup
 notation engine/save.c open: module cleanup
-notation engine/weather.c open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
 notation ui/draw.c open: module cleanup
@@ -1023,9 +1007,6 @@ static-prefix engine/save.c:timeline_relink_events open: module cleanup
 static-prefix engine/sound_request.c:scale_away open: module cleanup
 static-prefix engine/sound_request.c:sound_play_requests open: module cleanup
 static-prefix engine/sound_request.c:sound_request_later open: module cleanup
-static-prefix engine/weather.c:weather_lightning open: module cleanup
-static-prefix engine/weather.c:weather_storm_step open: module cleanup
-static-prefix engine/weather.c:weather_update_rain open: module cleanup
 static-prefix platform/main.c:play_movies open: module cleanup
 static-prefix platform/platform.c:movie_screen open: module cleanup
 static-prefix ui/action_area.c:action_hand_icon open: module cleanup
@@ -1209,7 +1190,6 @@ type engine:chance open: module cleanup
 type engine:charges open: module cleanup
 type engine:count open: module cleanup
 type engine:damage open: module cleanup
-type engine:delay open: module cleanup
 type engine:dir open: module cleanup
 type engine:energy open: module cleanup
 type engine:filter open: module cleanup

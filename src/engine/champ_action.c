@@ -467,7 +467,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
         hit = 0;
     if (hit) {
         int16_t chance = (int16_t)(((int)(rand_next() & MELEE_RANDOM) + info->dexterity + difficulty +
-                                    view_light_level * 2 - MELEE_CHANCE_BASE) >>
+                                    g_view_light_level * 2 - MELEE_CHANCE_BASE) >>
                                    1);
         if ((uint16_t)champ_get_dexterity(champ) <= chance && rand_2bits())
             hit = champ_test_luck(c, (uint16_t)(MELEE_LUCK_BASE - attack)) != 0;

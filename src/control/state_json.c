@@ -500,7 +500,7 @@ static void party_json(Json *j, int mode)
     key_int(j, "x", game.party_x);
     key_int(j, "y", game.party_y);
     key_str(j, "facing", direction_names[game.party_dir & DIR_MASK]);
-    key_int(j, "darkness", view_light_level);
+    key_int(j, "darkness", g_view_light_level);
     key_bool(j, "can_move",
              !game.party_move_cooldown && !party.move_steps && !input_is_waiting() &&
                  (mode == INPUT_MODE_MOVE || mode == INPUT_MODE_PUSH));
@@ -695,9 +695,9 @@ static void outdoor_json(Json *j)
         key_str(j, "wind", direction_names[game.wind_dir & DIR_MASK]);
     json_close(j, '}');
     key_str(j, "day_time",
-            weather.hour_light <= HOUR_LIGHT_DAY     ? "day"
-            : weather.hour_light >= HOUR_LIGHT_NIGHT ? "night"
-                                                     : "dawn_dusk");
+            g_weather.hour_light <= HOUR_LIGHT_DAY     ? "day"
+            : g_weather.hour_light >= HOUR_LIGHT_NIGHT ? "night"
+                                                       : "dawn_dusk");
 }
 
 void state_json_state(Json *j)
@@ -1198,7 +1198,7 @@ void state_json_view(Json *j)
     view_place(&x, &y, &dir);
     json_open(j, '{');
     key_str(j, "facing", direction_names[dir]);
-    key_int(j, "darkness", view_light_level);
+    key_int(j, "darkness", g_view_light_level);
     json_key(j, "squares");
     json_open(j, '[');
     for (int i = 0; i < count; i++)

@@ -344,7 +344,7 @@ static int load_new_game(void)
         data_path(path, "DUNGEON.DAT");
     game.champion_count = 0;
     game.leader_hand = THING_NONE;
-    int first = !weather.dungeon_loaded;
+    int first = !g_weather.dungeon_loaded;
     if (!dungeon_load(path))
         return 0;
     seen_reset();
@@ -367,7 +367,7 @@ static int load_slot(const char *path)
 {
     game.champion_count = 0;
     game.leader_hand = THING_NONE;
-    int first = !weather.dungeon_loaded;
+    int first = !g_weather.dungeon_loaded;
     if (save_load(path, gdat_current()) != SAVE_OK)
         return 0;
     if (first)
@@ -519,7 +519,7 @@ int session_start_new_game(void)
 
 int session_start_save(const char *path)
 {
-    int first = !weather.dungeon_loaded;
+    int first = !g_weather.dungeon_loaded;
     if (save_load(path, gdat_current()) != SAVE_OK)
         return 0;
     if (first)

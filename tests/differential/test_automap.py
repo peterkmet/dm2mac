@@ -35,7 +35,7 @@ SAVE_OK = C.SAVE_OK
 def automap(lib, advanced):  # noqa: F811
     """The advanced game with the bright light and the cheats off."""
     lib.dungeon_square.restype = ctypes.c_uint8
-    for name in ("view_light_level", "cheat_light", "cheat_immortal", "cheat_food"):
+    for name in ("g_view_light_level", "cheat_light", "cheat_immortal", "cheat_food"):
         flag(lib, name).value = 0
     game, _ = advanced
     lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
@@ -171,7 +171,7 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
     long_view = next(v for v in floor_views(lib, m) if all(not blocks(lib, m, *ahead(v[0], v[1], v[2], k)) for k in (1, 2, 3, 4)))
     x, y, d = long_view
     for level, light, depth in ((0, 0, 4), (4, 0, 3), (5, 0, 2), (5, 1, 4)):
-        flag(lib, "view_light_level").value, flag(lib, "cheat_light").value = level, light
+        flag(lib, "g_view_light_level").value, flag(lib, "cheat_light").value = level, light
         lib.seen_reset()
         lib.seen_mark(m, x, y, d)
         seen = seen_squares(lib, m)
@@ -492,7 +492,7 @@ def test_food_cheat_keeps_food_and_water(lib, automap):
 
 def test_light_cheat_draws_full_light(lib, automap):
     game, _ = automap
-    level = flag(lib, "view_light_level")
+    level = flag(lib, "g_view_light_level")
 
     def view(light, cheat):
         level.value, flag(lib, "cheat_light").value = light, cheat
