@@ -424,3 +424,32 @@ def test_tab_closes_the_inventory_in_the_advanced_mode_only(lib, session):  # no
     assert key_command(lib, INPUT_MODE_INVENTORY, C.KEY_AUTOMAP) == C.CMD_INVENTORY_LEADER
     assert key_command(lib, INPUT_MODE_NAME, C.KEY_AUTOMAP) == name_editor, "the name editor keeps Tab"
     set_mode(lib, VANILLA)
+
+
+def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced):  # noqa: F811
+    from dm2test.interface import ActionArea
+    action = ActionArea.in_dll(lib, "g_action")
+    rect = (ctypes.c_int16 * 4)()
+    lib.zone_get_rect(C.ZONE_ACTION_AREA, rect)
+    lib.area_end_damage_hold.argtypes = [ctypes.c_int16, ctypes.c_int16]
+
+    def hit(mode):
+        set_mode(lib, mode)
+        action.champion, action.mode, action.redraw_delay, action.result = 0, C.ACTION_MODE_HANDS, 1, 7
+        lib.area_update(1)
+        assert action.mode == C.ACTION_MODE_RESULT and action.dirty
+
+    hit(VANILLA)
+    lib.area_update(1)
+    assert not action.dirty, "the vanilla mode redraws one step later"
+    hit(ADVANCED)
+    lib.area_update(1)
+    assert action.dirty, "the damage stays one more step"
+    lib.area_update(1)
+    assert not action.dirty
+    hit(ADVANCED)
+    lib.area_update(1)
+    assert not lib.area_end_damage_hold(rect[0] - 1, rect[1]), "a click outside the area keeps the hold"
+    assert lib.area_end_damage_hold(rect[0], rect[1])
+    assert not action.dirty, "a click in the area ends the hold and draws the icons"
+    set_mode(lib, VANILLA)

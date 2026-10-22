@@ -298,6 +298,7 @@ Details: `docs/advanced-mode.md`.
 - [ ] L24. In the advanced mode, press Esc in the dungeon view. Expected: the viewport shows OPTIONS with FILTER NONE and CONTINUE; the game time stops. Press A, D, Return, and click FILTER. Expected: the filter changes at once through NONE, SCALE2X, SCALE3X and wraps; `game/DATA/SETTINGS.TXT` holds the filter. Press Esc, or click CONTINUE. Expected: the menu closes and the game goes on.
 - [ ] L25. Start `build/dm2` again. Expected: the filter of `SETTINGS.TXT` is on. Start with `--filter none`. Expected: no filter; Esc, then D, writes the file again. With `--mode vanilla` Esc pauses and the file is not read. Make `SETTINGS.TMP` a folder and change the filter. Expected: "UNABLE TO SAVE OPTIONS" once; the filter still changes.
 - [ ] L26. In the advanced mode, open an inventory and press Tab. Expected: the inventory closes. Open the name editor and press Tab. Expected: the editor moves to the next field; the inventory stays. In the vanilla mode, press Tab in an inventory. Expected: nothing.
+- [ ] L27. In the advanced mode, hit a creature with a weapon. Expected: the damage star stays visible about twice as long as in the vanilla mode. Click in the action area while the star shows. Expected: the hand icons show at once and the click works as usual (it opens the hand menu). In the vanilla mode, the star disappears after one step.
 
 ## Movies (2026-10-10)
 

@@ -1762,8 +1762,11 @@ void input_poll(void)
                 if (type < INPUT_KEY) {
                     if (type & INPUT_LEFT_RELEASED)
                         command = CMD_CANCEL_CAPTURE;
-                    else if (type & EVENT_CLICK_TYPES)
+                    else if (type & EVENT_CLICK_TYPES) {
+                        if (type == INPUT_BUTTON_LEFT)
+                            area_end_damage_hold((int16_t)x, (int16_t)y);
                         command = find_click_command(&input_mode_roots[in.mode], x, y, type);
+                    }
                 } else if (type == INPUT_KEY) {
                     command = key_command(in.mode, (uint16_t)x);
                 } else if (type == EVENT_ENTER_AREA) {

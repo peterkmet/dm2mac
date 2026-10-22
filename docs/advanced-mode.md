@@ -155,6 +155,10 @@ A spell line shows the runes, their numbers, and the spell name, for example `FU
 
 A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, else the leader. The power is the power rune of the spell, or MON for any power (all spells of the game take any power). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.
 
+## Damage hold
+
+The damage star of a hit stays one game step longer in the action area than in the original game. A left click in the action area during this extra step ends it and draws the hand icons; the click then acts as usual. The action delay and the timing of the champion do not change. Failures and hits of zero damage keep the original time.
+
 ## Options menu
 
 `Esc` in the dungeon view opens the options menu in the viewport. The game time stops while it is open. The title is cyan, the rows are white, the selected row is yellow. The volume stays in the volume dialog of the original game.
