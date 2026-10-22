@@ -205,6 +205,14 @@ Feature: Same behavior
 | Plans | `docs/superpowers/` stays in the repository. | `dm2` has no private research repository. |
 | License | `LICENSE` with GPL-3.0 and the SPDX line `GPL-3.0-or-later` in each file, as `dm`; `opl3` keeps its own license. | User answer. |
 | Test helpers | All move to `tests/dm2test/` in this refactor. | `dm` rule 11.1; an allowlist reason for imports between test modules leaves the work half done. |
+| Windows warnings | The Windows build uses the flags of the macOS build, without `-Wno-format-truncation`; the text buffers are sized for the MinGW truncation check. | Run ruling: "0 warnings with the warning flags". |
+| Id spaces | Text entries of `GRAPHICS.DAT` keep `GFX_`; `TEXT_` names string ids; rule 3.7 says so. Each minion map strip has its own `ICON_` block. Zone ids have 4 hex digits. | Run ruling: one name per value inside each kind. |
+| Parameter types | A parameter name has one type in all headers of a layer (F3, F4). An output pointer is `out_x`, `out_y`, `out_step`; a cell of the 5 x 5 grid is `grid_cell` (`int`, it keeps every `uint16_t` value of the original). | Run ruling: the `type` check spans modules, so one follow-up per layer did it. |
+| Engine writes from `ui/` | `ui/` changes engine state only through engine functions (setters in `game.h`, `save.h`, `champion.h`, `move.h`, `action.h`, `game_text.h`). `control/` and `platform/` still write `g_session` and `g_main_loop`. | Run ruling: the check covers `ui/`; moving `Session` to `ui/` needs a decision (follow-up). |
+| Packed flags | `champ_drag_cancel` passes `finish = false` to a static helper; no cancel bit in the cell. | The final review found that the `0x8000` bit in an `int16_t` cell wrote `champion(-1)` when a dragged champion died. |
+| Limits | A `_MAX` name is a limit and stays decimal (`KEY_CODE_MAX` 65535). | The notation check and rule 3. |
+| Bool results in tests | A test that compared `-1` or an `_OK` code now asserts `is False` or `is True` where the function returns `bool`. | Same strength; follows rule 6.1. |
+| Left for later | The chest out-of-bounds read, the `creature_is_flying` script crash, the `make` equal-mtime rebuild, the remaining `long` in `control/`, naming minors: `docs/todo.md`. | They exist on `main`; the player sees no change. |
 
 ## Left to the plan
 
