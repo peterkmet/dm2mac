@@ -97,7 +97,7 @@ void menu_show_picture_and_wait(void)
     input_set_mode(INPUT_MODE_PICTURE);
     for (int n = MENU_PICTURE_VBLANKS; n && !g_main_loop.quit; n--) {
         command_process_queue();
-        if (input_match.value == CMD_PICTURE_CLICK)
+        if (g_input_match.value == CMD_PICTURE_CLICK)
             break;
         play_wait_frames(1);
     }
@@ -209,9 +209,9 @@ void session_close_slot_dialog(void)
 static int clicked_slot(void)
 {
     int16_t r[RECT_SIZE] = {0}, x = 0, y = 0;
-    zone_get_rect(input_match.zone, r);
-    zone_get_position(input_match.origin, &x, &y);
-    int slot = (int16_t)(input_match.y - (r[RECT_Y] + y)) / TEXT_LINE_HEIGHT;
+    zone_get_rect(g_input_match.zone, r);
+    zone_get_position(g_input_match.origin, &x, &y);
+    int slot = (int16_t)(g_input_match.y - (r[RECT_Y] + y)) / TEXT_LINE_HEIGHT;
     return slot < SAVE_SLOT_COUNT ? slot : SAVE_SLOT_COUNT;
 }
 
@@ -226,22 +226,22 @@ static int save_choose_load_slot(void)
     dialog_present();
     dialog_screen_mode(0);
     int chosen = SAVE_SLOT_NONE, done = 0;
-    input_match.choice = DIALOG_NO_CHOICE;
+    g_input_match.choice = DIALOG_NO_CHOICE;
     while (!done && !g_main_loop.quit) {
         command_process_queue();
-        if (input_match.choice == SLOT_CANCEL) {
+        if (g_input_match.choice == SLOT_CANCEL) {
             chosen = SAVE_SLOT_NONE;
             done = 1;
-        } else if (input_match.choice == SLOT_OK) {
+        } else if (g_input_match.choice == SLOT_OK) {
             done = 1;
-        } else if (input_match.choice == SLOT_LIST) {
+        } else if (g_input_match.choice == SLOT_LIST) {
             chosen = clicked_slot();
             if (chosen < SAVE_SLOT_COUNT && slot_unused(chosen))
                 chosen = SAVE_SLOT_NONE;
             session_draw_slot_selection(chosen);
             dialog_present();
         }
-        input_match.choice = -1;
+        g_input_match.choice = -1;
         if (!done)
             play_wait_frames(1);
     }
@@ -252,7 +252,7 @@ static int save_choose_load_slot(void)
 /* A key of the name field of the save dialog: delete, end, or a character. */
 static void type_slot_name_key(char *name, int *length)
 {
-    uint16_t key = input_match.key;
+    uint16_t key = g_input_match.key;
     if (key == KEY_BACKSPACE) {
         if (*length > 0)
             name[--*length] = '\0';
@@ -290,7 +290,7 @@ static int save_choose_save_slot(void)
         session_draw_name_entry(name, 0);
     while (!done && !g_main_loop.quit) {
         command_process_queue();
-        switch (input_match.choice) {
+        switch (g_input_match.choice) {
         case SLOT_CANCEL:
             chosen = SAVE_SLOT_NONE;
             editing = 0;
@@ -324,10 +324,10 @@ static int save_choose_save_slot(void)
             }
             break;
         }
-        if (editing && input_match.value >= CMD_TEXT_FIRST && input_match.value <= CMD_TEXT_KEY_LAST)
+        if (editing && g_input_match.value >= CMD_TEXT_FIRST && g_input_match.value <= CMD_TEXT_KEY_LAST)
             type_slot_name_key(name, &length);
-        input_match.choice = 0;
-        input_match.value = 0;
+        g_input_match.choice = 0;
+        g_input_match.value = 0;
         if (!done)
             play_wait_frames(1);
     }
@@ -588,7 +588,7 @@ void session_end(int party_dead)
     do {
         command_process_queue();
         play_wait_frames(1);
-    } while (input_match.value != CMD_PICTURE_CLICK && !g_main_loop.quit);
+    } while (g_input_match.value != CMD_PICTURE_CLICK && !g_main_loop.quit);
     session_quit();
 }
 
@@ -598,7 +598,7 @@ void session_end(int party_dead)
    name alphabet while the text is shorter than max; *x is the cursor. Returns 1 when the field needs a redraw. */
 static int type_name_key(char *text, int *length, int max, int *x)
 {
-    uint16_t key = input_match.key;
+    uint16_t key = g_input_match.key;
     if (key == KEY_BACKSPACE) {
         if (*length > 0) {
             text[--*length] = '\0';
@@ -653,10 +653,10 @@ void session_edit_champion_name(Champion *c)
                 play_present_viewport();
             }
             redraw = 0;
-            input_match.choice = 0;
-            input_match.value = 0;
+            g_input_match.choice = 0;
+            g_input_match.value = 0;
             command_process_queue();
-            int command = input_match.value;
+            int command = g_input_match.value;
             if (command == CMD_EDIT_NAME && !in_name) {
                 in_name = 1;
                 field_done = 1;
@@ -669,12 +669,12 @@ void session_edit_champion_name(Champion *c)
                 field_done = done = 1;
             } else if (!command) {
                 play_wait_frames(1);
-            } else if (input_match.key == KEY_ENTER || input_match.key == KEY_TAB) {
+            } else if (g_input_match.key == KEY_ENTER || g_input_match.key == KEY_TAB) {
                 trim_spaces(text);
                 field_done = 1;
                 if (in_name)
                     in_name = 0;
-                else if (input_match.key == KEY_TAB)
+                else if (g_input_match.key == KEY_TAB)
                     in_name = 1;
                 else
                     done = 1;

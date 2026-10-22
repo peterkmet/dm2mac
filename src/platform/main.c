@@ -49,7 +49,7 @@ static void present_with_cursor(void)
 {
     static uint8_t saved[SCREEN_H][SCREEN_W];
     memcpy(saved, g_video_fb, sizeof saved);
-    input_draw_cursor(&g_video_fb[0][0], input_mouse_x, input_mouse_y);
+    input_draw_cursor(&g_video_fb[0][0], g_input_mouse_x, g_input_mouse_y);
     plat_present();
     memcpy(g_video_fb, saved, sizeof saved);
 }
@@ -190,7 +190,7 @@ static uint16_t pc_key_code(int scancode, int mod)
     }
     for (size_t i = 0; i < sizeof scan / sizeof scan[0]; i++)
         if (scan[i].sdl == scancode)
-            return (uint16_t)(scan[i].pc | (shift ? KEY_SHIFT : 0) | (mod & SDL_KMOD_CTRL ? KEY_CONTROL : 0) |
+            return (uint16_t)(scan[i].pc | (shift ? KEY_SHIFTED : 0) | (mod & SDL_KMOD_CTRL ? KEY_CONTROL : 0) |
                               (mod & SDL_KMOD_ALT ? KEY_ALT : 0));
     return 0;
 }
@@ -217,7 +217,7 @@ static void pump_events(void)
     }
     plat_mouse_position(&x, &y);
     if (x != window_x || y != window_y)
-        input_mouse_x = window_x = x, input_mouse_y = window_y = y;
+        g_input_mouse_x = window_x = x, g_input_mouse_y = window_y = y;
     transport_poll();
 }
 

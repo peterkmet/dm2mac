@@ -179,7 +179,7 @@ static void game_step(void)
     tick_elapsed = 0;
     g_main_loop.tick_count = 0;
     if (game_step_view()) {
-        input_feedback_busy = 0;
+        g_input_feedback_busy = 0;
         input_poll();
     }
     input_release_move_arrow();

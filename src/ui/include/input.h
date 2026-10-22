@@ -11,7 +11,7 @@
 
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
 #define KEY_EXTENDED  0x1000
-#define KEY_SHIFT     0x0200
+#define KEY_SHIFTED   0x0200
 #define KEY_CONTROL   0x0400
 #define KEY_ALT       0x0800
 /* Scan codes of the keys that edit a text. */
@@ -20,67 +20,65 @@
 #define KEY_ENTER     0x1c
 
 /* Commands (command_execute). */
-enum {
-    CMD_INVENTORY_FIRST = 7,
-    CMD_INVENTORY_LEADER = 0x0b,
-    CMD_LEADER_FIRST = 0x10,
-    CMD_LEADER_LAST = 0x13,
-    CMD_SLOT_FIRST = 0x14,
-    CMD_SLOT_LAST = 0x41,
-    CMD_SLOT_INVENTORY_FIRST = 0x1c, /* + slot: a slot of the open inventory, after the hands of the 4 status boxes */
-    CMD_SLOT_CHEST_FIRST = 0x3a,
-    /* + slot - SLOT_CONTAINER_FIRST: a slot of the open chest */ CMD_VIEWPORT = 0x50,
-    CMD_LEADER_INVENTORY = 0x52,
-    CMD_ROTATE_LEFT = 0x5d,
-    CMD_ROTATE_RIGHT = 0x5e,
-    CMD_SLEEP = 0x8e,
-    CMD_WAKE = 0x8f,
-    CMD_PAUSE = 0x90,
-    CMD_RESUME = 0x91,
-    CMD_QUIT = 0xe0,
-    CMD_SAVE = 0x8c,
-    CMD_VOLUME = 0x8d,
-    CMD_EDIT_CHAMPION_NAME = 0x48,
-    CMD_NEW_GAME = 0xd7,
-    CMD_NEW_GAME_B = 0xd8,
-    CMD_LOAD_GAME = 0xd9,
-    CMD_MENU_PICTURE = 0xda,
-    CMD_CANCEL_PUSH = 0xe1,
-    CMD_CANCEL_CAPTURE = 0xe3,
-    CMD_TEXT_FIRST = 0xa5,
-    CMD_TEXT_LAST = 0xc6,
-    CMD_LAST = 0xf2,
-    CMD_PARTY_ICON_FIRST = 0x5f,
-    CMD_PARTY_ICON_LAST = 0x62,
-    CMD_HAND_FIRST = 0x74,
-    CMD_HAND_LAST = 0x7b,
-    CMD_STORE_FIRST = 0xea,
-    CMD_STORE_LAST = 0xed,
-    CMD_DRAG_FIRST = 0x7d,
-    CMD_DRAG_CANCEL = 0x81,
-    CMD_ACTION_CANCEL = 0x70,
-    CMD_ACTION_LAST = 0x73,
-    CMD_MOUTH = 0x46,
-    CMD_EYE = 0x47,
-    CMD_COIN_FIRST = 0xe4,
-    CMD_COIN_LAST = 0xe9,
-    CMD_RUNE_FIRST = 0x65,
-    CMD_RUNE_LAST = 0x6a,
-    CMD_REMOVE_RUNE = 0x6b,
-    CMD_CAST_SPELL = 0x6c,
-    CMD_MAP_OPTION_FIRST = 0x56,
-    CMD_MAP_OPTION_LAST = 0x59,
-    CMD_EDIT_NAME = 0x49,
-    CMD_EDIT_TITLE = 0x4a,
-    CMD_EDIT_CANCEL = 0x4b, /* the buttons of the name editor */
-    CMD_SOUND_VOLUME_FIRST = 0x95,
-    CMD_MUSIC_VOLUME_FIRST = 0x9d,
-    CMD_MUSIC_VOLUME_LAST = 0xa4, /* settings 0 to 7 */
-    CMD_PICTURE_CLICK = 0xef,     /* a click on a picture of INPUT_MODE_PICTURE */
-    CMD_QUICK_SAVE = CMD_LAST + 1,
-    CMD_QUICK_LOAD,
-    CMD_AUTOMAP /* the advanced mode: no original command has these numbers */
-};
+#define CMD_INVENTORY_FIRST      0x07
+#define CMD_INVENTORY_LEADER     0x0b
+#define CMD_LEADER_FIRST         0x10
+#define CMD_LEADER_LAST          0x13
+#define CMD_SLOT_FIRST           0x14
+#define CMD_SLOT_LAST            0x41
+#define CMD_SLOT_INVENTORY_FIRST 0x1c /* + slot: a slot of the open inventory, after the hands of the 4 status boxes */
+#define CMD_SLOT_CHEST_FIRST     0x3a /* + slot - SLOT_CONTAINER_FIRST: a slot of the open chest */
+#define CMD_VIEWPORT             0x50
+#define CMD_LEADER_INVENTORY     0x52
+#define CMD_ROTATE_LEFT          0x5d
+#define CMD_ROTATE_RIGHT         0x5e
+#define CMD_SLEEP                0x8e
+#define CMD_WAKE                 0x8f
+#define CMD_PAUSE                0x90
+#define CMD_RESUME               0x91
+#define CMD_QUIT                 0xe0
+#define CMD_SAVE                 0x8c
+#define CMD_VOLUME               0x8d
+#define CMD_EDIT_CHAMPION_NAME   0x48
+#define CMD_NEW_GAME             0xd7
+#define CMD_NEW_GAME_B           0xd8
+#define CMD_LOAD_GAME            0xd9
+#define CMD_MENU_PICTURE         0xda
+#define CMD_CANCEL_PUSH          0xe1
+#define CMD_CANCEL_CAPTURE       0xe3
+#define CMD_TEXT_FIRST           0xa5
+#define CMD_TEXT_LAST            0xc6
+#define CMD_LAST                 0xf2
+#define CMD_PARTY_ICON_FIRST     0x5f
+#define CMD_PARTY_ICON_LAST      0x62
+#define CMD_HAND_FIRST           0x74
+#define CMD_HAND_LAST            0x7b
+#define CMD_STORE_FIRST          0xea
+#define CMD_STORE_LAST           0xed
+#define CMD_DRAG_FIRST           0x7d
+#define CMD_DRAG_CANCEL          0x81
+#define CMD_ACTION_CANCEL        0x70
+#define CMD_ACTION_LAST          0x73
+#define CMD_MOUTH                0x46
+#define CMD_EYE                  0x47
+#define CMD_COIN_FIRST           0xe4
+#define CMD_COIN_LAST            0xe9
+#define CMD_RUNE_FIRST           0x65
+#define CMD_RUNE_LAST            0x6a
+#define CMD_REMOVE_RUNE          0x6b
+#define CMD_CAST_SPELL           0x6c
+#define CMD_MAP_OPTION_FIRST     0x56
+#define CMD_MAP_OPTION_LAST      0x59
+#define CMD_EDIT_NAME            0x49
+#define CMD_EDIT_TITLE           0x4a
+#define CMD_EDIT_CANCEL          0x4b /* the buttons of the name editor */
+#define CMD_SOUND_VOLUME_FIRST   0x95
+#define CMD_MUSIC_VOLUME_FIRST   0x9d
+#define CMD_MUSIC_VOLUME_LAST    0xa4 /* settings 0 to 7 */
+#define CMD_PICTURE_CLICK        0xef /* a click on a picture of INPUT_MODE_PICTURE */
+#define CMD_QUICK_SAVE           (CMD_LAST + 1)
+#define CMD_QUICK_LOAD           (CMD_LAST + 2)
+#define CMD_AUTOMAP              (CMD_LAST + 3) /* the advanced mode: no original command has these numbers */
 
 /* A command and the click that made it: position and the rectangle of its zone. */
 typedef struct {
@@ -100,10 +98,10 @@ typedef struct {
     uint16_t value;  /* the command */
     int16_t rect[4]; /* the screen rect of the zone of the entry */
 } InputMatch;
-extern InputMatch input_match;
+extern InputMatch g_input_match;
 
 /* A click feedback script waits for the next game step. */
-extern int input_feedback_busy;
+extern int g_input_feedback_busy;
 /* A command waits (in.wait) after the last one: the input queue takes no new command. */
 bool input_is_waiting(void);
 /* No pending key, mouse event, deferred click, queued command, or running click feedback script. */
@@ -113,9 +111,13 @@ bool input_is_idle(void);
 void input_init(void);
 /* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
 void input_set_mode(int mode);
+/* The cursor images of input_cursor_at. */
+#define CURSOR_ARROW    0
+#define CURSOR_HAND     1
+#define CURSOR_OBJECT   2
+#define CURSOR_CHAMPION 3
 /* The cursor image at (x, y) of the screen (the original mouse_move_event): the held object or the hand over a
    cursor zone of kind 1, the dragged champion over a zone of kind 2, else the arrow. */
-enum { CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION };
 int input_cursor_at(int x, int y);
 /* A cursor image (mouse_set_cursor_image): bpp 4 (high nibble first) or 8, the hot spot at the pointer, the clear
    color number, and the palette colors of the color numbers (NULL: the numbers are palette colors). */
@@ -172,7 +174,7 @@ void input_cancel_push_mode(void);
 /* The commands wait for steps timer ticks (the death of a boss near the party). */
 void input_set_wait(int steps);
 /* The mouse position on the screen (main.c sets it before each tick). */
-extern int input_mouse_x, input_mouse_y;
+extern int g_input_mouse_x, g_input_mouse_y;
 /* The push arrow under the mouse in the viewport while the party can push a creature (g_party.push_arrow). */
 void input_update_viewport_arrow(void);
 /* Redraws the released movement arrow. */

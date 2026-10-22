@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Sizes of the input tables of SKULL.EXE. */
 #define INPUT_NODE_COUNT    76
 #define INPUT_CHILD_COUNT   83
 #define INPUT_MODE_COUNT    10
@@ -44,33 +45,155 @@
 #define INPUT_KEY_COUNT     121
 #define CURSOR_ZONE_COUNT   18
 #define CLICK_FEEDBACK_SIZE 236
-#define LIST_START          0x8000
-#define NODE_HAS_CHILDREN   0x80
-#define NODE_INDEX_MASK     0x7f /* a child list entry: the node index */
-#define COMMAND_MASK        0x7ff
-#define COMMAND_OFF         0x08
+
+/* Bits of an input tree node and of a child list entry. */
+#define NODE_HAS_CHILDREN 0x80
+#define NODE_INDEX_MASK   0x7f /* a child list entry: the node index */
+
+/* Bits of the command and key lists: the list start, the command, and the off flag of a command entry. */
+#define LIST_START   0x8000
+#define COMMAND_MASK 0x07ff
+#define COMMAND_OFF  0x0008
+
+/* Bits of the layout zone of an input zone or a command entry. */
 #define ZONE_IN_PANEL       0x8000
 #define ZONE_IN_ACTION_AREA 0x4000
 #define ZONE_ID_MASK        0x3fff
+
+/* Sizes of the event ring, the command queue, and the key buffer. */
 #define EVENT_RING          11
 #define EVENT_LIMIT         7
 #define EVENT_LIMIT_SPECIAL 9
 #define COMMAND_QUEUE       3
 #define KEY_BUFFER          16
-#define EVENT_ENTER_AREA    0x40
-#define EVENT_LEAVE_AREA    0x60
-#define EVENT_CLICK_OTHER   0x10 /* a click type of the original that the port never queues */
+
+/* Mouse event types of the event ring besides the buttons. */
+#define EVENT_ENTER_AREA  0x40
+#define EVENT_LEAVE_AREA  0x60
+#define EVENT_CLICK_OTHER 0x10 /* a click type of the original that the port never queues */
 /* the mouse event types that find a click command: bits 0, 1, and 4 */
-#define EVENT_CLICK_TYPES   (INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT | EVENT_CLICK_OTHER)
-#define ARROW_W             12
-#define HAND_W              16
-#define CURSOR_H            16
-#define FACE_CURSOR_SKIP    4 /* color 4 of the face keeps the fill color of the dragged champion cursor */
-#define FACE_HOT_X          8
-#define FACE_HOT_Y          6
-#define OBJECT_SHADOW       2 /* the offset of the black shadow of the held object cursor */
-#define OBJECT_HOT          8 /* the hot spot of the held object cursor: the center of the icon */
-#define OBJECT_CURSOR_SIZE  (HAND_ICON_SIZE + OBJECT_SHADOW)
+#define EVENT_CLICK_TYPES (INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT | EVENT_CLICK_OTHER)
+
+/* Sizes and hot spots of the cursor images. */
+#define ARROW_W            12
+#define HAND_W             16
+#define CURSOR_H           16
+#define FACE_CURSOR_SKIP   4 /* color 4 of the face keeps the fill color of the dragged champion cursor */
+#define FACE_HOT_X         8
+#define FACE_HOT_Y         6
+#define OBJECT_SHADOW      2 /* the offset of the black shadow of the held object cursor */
+#define OBJECT_HOT         8 /* the hot spot of the held object cursor: the center of the icon */
+#define OBJECT_CURSOR_SIZE (HAND_ICON_SIZE + OBJECT_SHADOW)
+
+/* Cursor kinds of a cursor zone. */
+#define CURSOR_KIND_HAND     1
+#define CURSOR_KIND_CHAMPION 2
+
+/* Changes of a cursor zone when the active input zones change. */
+#define CURSOR_ADD    0x01
+#define CURSOR_REMOVE 0x02
+
+/* The conditions of the input tree nodes with children. */
+#define NODE_IF_ALWAYS            0
+#define NODE_IF_SCREEN_MODE       1
+#define NODE_IF_BUTTON_COUNT      2
+#define NODE_IF_INVENTORY         3
+#define NODE_IF_CHAMPION_ALIVE    4
+#define NODE_IF_CHAMPION_IN_CELL  5
+#define NODE_IF_DRAGGING          6
+#define NODE_IF_ICON_IN_CELL      7
+#define NODE_IF_ACTION_COUNT      8
+#define NODE_IF_RUNE_SET          9
+#define NODE_IF_MINION_MAP_LAYOUT 10
+#define NODE_IF_ACTION_MODE       11
+
+/* The condition argument of a minion map without option buttons. */
+#define MAP_WITHOUT_OPTIONS 5
+
+/* The places of the click feedback scripts. */
+#define SCRIPT_QUEUE            0x00
+#define SCRIPT_EXECUTE          0x01
+#define SCRIPT_MOVE_FIRST       0x02
+#define SCRIPT_HAND_FIRST       0x5c
+#define SCRIPT_PARTY_ICON_FIRST 0x66
+#define SCRIPT_ACTION_CANCEL    0x7a
+#define SCRIPT_ROTATE_FIRST     0x82
+#define SCRIPT_RUNE             0x92
+#define SCRIPT_REMOVE_RUNE      0x96
+#define SCRIPT_CAST_SPELL       0x9e
+#define SCRIPT_ACTION_FIRST     0xa2
+#define SCRIPT_INVENTORY_CLOSE  0xb1
+#define SCRIPT_SLEEP            0xb6
+#define SCRIPT_SAVE             0xbb
+#define SCRIPT_MAP_OPTION_FIRST 0xc0
+#define SCRIPT_VIEWPORT         0xea
+
+/* A script of a command group is SIZE long per command. */
+#define SCRIPT_MOVE_SIZE       15
+#define SCRIPT_HAND_SIZE       5
+#define SCRIPT_PARTY_ICON_SIZE 5
+#define SCRIPT_ROTATE_SIZE     8
+#define SCRIPT_ACTION_SIZE     5
+#define SCRIPT_MAP_OPTION_SIZE 7
+
+/* Feedback script opcodes (low 6 bits; bit 6: run on, bit 7: end). */
+#define FB_DELAY              0x00
+#define FB_RELEASE_QUEUE      0x01
+#define FB_WAIT_QUEUE         0x02
+#define FB_WAIT_STEP          0x03
+#define FB_QUEUE              0x04
+#define FB_EXECUTE            0x05
+#define FB_QUEUE_AND_RELEASE  0x06
+#define FB_PICTURE            0x07
+#define FB_SPELL_ICON         0x08
+#define FB_HAND_ICON          0x09
+#define FB_RUNE_BUTTON        0x0a
+#define FB_ENTERED_RUNES      0x0b
+#define FB_ACTION_NAME        0x0c
+#define FB_INVENTORY_BUTTON   0x0d
+#define FB_MAP_OPTION_BUTTONS 0x0e
+#define FB_DIALOG_BUTTON      0x0f
+#define FB_DIALOG_BUTTON_2    0x10
+
+/* Bits of a feedback script opcode. */
+#define FB_OP_MASK 0x3f
+#define FB_RUN_ON  0x40
+#define FB_END     0x80
+
+/* The arguments of a picture opcode: a GDAT image and its transparent color; a dialog button has the first three. */
+#define PICTURE_CATEGORY   0
+#define PICTURE_INDEX      1
+#define PICTURE_ENTRY      2
+#define PICTURE_KEY        3
+#define PICTURE_ARGS       4
+#define DIALOG_BUTTON_ARGS PICTURE_KEY
+
+/* The squares of a wall ornament click: the party square, left, right, front. */
+#define WALL_CELL_PARTY 0
+#define WALL_CELL_LEFT  1
+#define WALL_CELL_RIGHT 2
+#define WALL_CELL_FRONT 3
+
+/* The push resistance of a creature that never moves: a click on it only sounds. */
+#define PUSH_RESISTANCE_FIXED 0xff
+
+/* Drop cells 4 to 7: the possession cells of a static creature. */
+#define CELL_POSSESSION_FIRST 4
+#define CELL_POSSESSION_LAST  7
+
+/* Relative cells of the squares of a view click. */
+#define HALF_CELLS                 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
+#define POSSESSION_VIEW_CELL_FIRST HALF_CELLS /* the possessions of a static creature show in the back half */
+#define ALCOVE_CELL                2          /* the alcove in front keeps its objects in relative cell 2 */
+
+/* The middle part of the viewport without a push arrow. */
+#define ARROW_CENTER_X 20 /* half size of the middle part of the viewport, without an arrow */
+#define ARROW_CENTER_Y 15
+
+/* The PC scan codes that have a character (kbd_key_to_ascii), and the scan code of a key code. */
+#define CHAR_SCAN_FIRST 0x02
+#define CHAR_SCAN_LAST  0x39
+#define SCAN_CODE_MASK  0xff
 
 typedef struct {
     uint8_t cond, arg;
@@ -85,7 +208,6 @@ typedef struct {
     uint16_t zone;
     uint8_t kind, priority;
 } CursorZone;
-enum { CURSOR_KIND_HAND = 1, CURSOR_KIND_CHAMPION = 2 };
 typedef struct {
     uint16_t command, zone;
     uint8_t buttons, flags;
@@ -93,6 +215,20 @@ typedef struct {
 typedef struct {
     uint16_t command, key;
 } InputKey;
+/* The feedback bitmap of the clicked button, open or closed. */
+typedef struct {
+    Offscreen o;
+    bool opened;
+} Feedback;
+/* The party direction, the party square, and the square in front of it at the click. */
+typedef struct {
+    int dir, px, py, fx, fy;
+} ViewSquares;
+/* A cell of a square of the view that a click with the leader hand object aims at: the square, its view position,
+   the cell relative to the party direction, and the click zone kind. */
+typedef struct {
+    int x, y, pos, cell, kind;
+} ViewCell;
 
 /* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
 static const InputNode input_nodes[INPUT_NODE_COUNT] = {
@@ -260,7 +396,7 @@ static const InputZone input_zones[INPUT_ZONE_COUNT] = {
     {0x0002, 60, -1, 0 },
     {0x0002, 61, 14, 0 },
 };
-/* The cursor zones of the input zones (from 1): layout zone (bit 15: in the viewport; input_get_zone_rect adds the
+/* The cursor zones of the input zones (from 1): layout zone (bit 15: in the viewport; get_input_zone_rect adds the
    origin of the panel zone 7, which equals the viewport origin), cursor kind (1: hand or held object, 2: dragged
    champion), priority (a higher priority comes first). */
 static const CursorZone cursor_zones[CURSOR_ZONE_COUNT] = {
@@ -674,31 +810,6 @@ static const InputKey input_keys[INPUT_KEY_COUNT] = {
     {0x8093, 0x0039},
     {0x8000, 0x0000},
 };
-/* The places of the click feedback scripts; a script of a command group is SIZE long per command. */
-enum {
-    SCRIPT_QUEUE = 0,
-    SCRIPT_EXECUTE = 1,
-    SCRIPT_MOVE_FIRST = 2,
-    SCRIPT_MOVE_SIZE = 15,
-    SCRIPT_HAND_FIRST = 0x5c,
-    SCRIPT_HAND_SIZE = 5,
-    SCRIPT_PARTY_ICON_FIRST = 0x66,
-    SCRIPT_PARTY_ICON_SIZE = 5,
-    SCRIPT_ACTION_CANCEL = 0x7a,
-    SCRIPT_ROTATE_FIRST = 0x82,
-    SCRIPT_ROTATE_SIZE = 8,
-    SCRIPT_RUNE = 0x92,
-    SCRIPT_REMOVE_RUNE = 0x96,
-    SCRIPT_CAST_SPELL = 0x9e,
-    SCRIPT_ACTION_FIRST = 0xa2,
-    SCRIPT_ACTION_SIZE = 5,
-    SCRIPT_INVENTORY_CLOSE = 0xb1,
-    SCRIPT_SLEEP = 0xb6,
-    SCRIPT_SAVE = 0xbb,
-    SCRIPT_MAP_OPTION_FIRST = 0xc0,
-    SCRIPT_MAP_OPTION_SIZE = 7,
-    SCRIPT_VIEWPORT = 0xea
-};
 /* The click feedback scripts (see run_click_feedback). */
 static const uint8_t click_feedback_scripts[CLICK_FEEDBACK_SIZE] = {
     0x86, 0x85, 0x47, 0x01, 0x03, 0x03, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x02, 0xff, 0x82, 0x47, 0x01,
@@ -741,24 +852,21 @@ static struct {
     int script_delay;
     uint32_t last_ticks;
     int feedback_waiting; /* the original 0x7f474: the script waits for the next queue run */
-    int arrow_pressed, arrow_zone, arrow_entry;
+    bool arrow_pressed;
+    int arrow_zone, arrow_entry;
     uint8_t zone_active[INPUT_ZONE_COUNT];  /* the input zones of the input tree of the mode */
     uint8_t cursor_list[CURSOR_ZONE_COUNT]; /* the shown cursor zones (from 1), by priority */
     int cursor_count;
 } in;
 
-int input_feedback_busy;
+static uint8_t champion_cursor[FACE_SIZE * FACE_SIZE];
+static uint8_t champion_cursor_key;
 
-bool input_is_waiting(void)
-{
-    return in.wait != 0;
-}
+InputMatch g_input_match = {.zone = ZONE_NONE, .origin = -1};
+int g_input_feedback_busy;
+int g_input_mouse_x = -1, g_input_mouse_y = -1;
 
-bool input_is_idle(void)
-{
-    return !in.key_count && !in.event_count && !in.deferred && in.queue_head == in.queue_tail && !in.script &&
-           !in.feedback_waiting && !input_feedback_busy;
-}
+/* ---- Setup ---- */
 
 void input_init(void)
 {
@@ -778,33 +886,27 @@ void input_init(void)
     in.event_tail = EVENT_RING - 1;
 }
 
+bool input_is_waiting(void)
+{
+    return in.wait != 0;
+}
+
+bool input_is_idle(void)
+{
+    return !in.key_count && !in.event_count && !in.deferred && in.queue_head == in.queue_tail && !in.script &&
+           !in.feedback_waiting && !g_input_feedback_busy;
+}
+
 /* ---- The input tree ---- */
 
-/* The conditions of the input tree nodes with children. */
-enum {
-    NODE_IF_ALWAYS,
-    NODE_IF_SCREEN_MODE,
-    NODE_IF_BUTTON_COUNT,
-    NODE_IF_INVENTORY,
-    NODE_IF_CHAMPION_ALIVE,
-    NODE_IF_CHAMPION_IN_CELL,
-    NODE_IF_DRAGGING,
-    NODE_IF_ICON_IN_CELL,
-    NODE_IF_ACTION_COUNT,
-    NODE_IF_RUNE_SET,
-    NODE_IF_MINION_MAP_LAYOUT,
-    NODE_IF_ACTION_MODE
-};
-#define MAP_WITHOUT_OPTIONS 5 /* the condition argument of a minion map without option buttons */
-
 /* The champion in the cell relative to the party direction, -1 none. */
-static int champion_in_party_cell(int cell)
+static int party_cell_champion(int cell)
 {
     return champ_get_index_in_cell(dir_turn(cell, g_game.party_dir));
 }
 
 /* The condition of a node with children, tested with the argument of each child. */
-static int input_condition(int cond, int arg)
+static int condition_holds(int cond, int arg)
 {
     switch (cond) {
     case NODE_IF_ALWAYS:
@@ -822,13 +924,13 @@ static int input_condition(int cond, int arg)
     case NODE_IF_CHAMPION_ALIVE:
         return champion(arg)->health != 0;
     case NODE_IF_CHAMPION_IN_CELL:
-        return champion_in_party_cell(arg) >= 0;
+        return party_cell_champion(arg) >= 0;
     case NODE_IF_DRAGGING:
         return arg ? g_input_drag_state != 0 : g_input_drag_state == 0;
     case NODE_IF_ICON_IN_CELL:
         if (g_action.champion)
             return 0;
-        return arg >= CELL_COUNT || champion_in_party_cell(arg) >= 0;
+        return arg >= CELL_COUNT || party_cell_champion(arg) >= 0;
     case NODE_IF_ACTION_COUNT:
         return g_action.champion && arg == g_champ_action_count;
     case NODE_IF_RUNE_SET:
@@ -854,7 +956,7 @@ static int node_child_end(const InputNode *node, int i)
 }
 
 /* The screen rectangle of an input zone. */
-static int input_get_zone_rect(uint16_t zone, int16_t *rect)
+static int get_input_zone_rect(uint16_t zone, int16_t *rect)
 {
     if (!zone_get_rect(zone & ZONE_ID_MASK, rect))
         return 0;
@@ -867,7 +969,7 @@ static int input_get_zone_rect(uint16_t zone, int16_t *rect)
     return 1;
 }
 
-static int rect_contains(const int16_t *r, int x, int y)
+static int point_in_rect(const int16_t *r, int x, int y)
 {
     return x >= r[RECT_X] && x <= r[RECT_X] + r[RECT_W] - 1 && y >= r[RECT_Y] && y <= r[RECT_Y] + r[RECT_H] - 1;
 }
@@ -878,10 +980,8 @@ static const InputCommand *node_commands(const InputNode *node)
     return list == -1 ? NULL : &input_commands[command_list_start[list]];
 }
 
-InputMatch input_match = {.zone = ZONE_NONE, .origin = -1};
-
 /* The zone that the position of a command zone is relative to: the inventory panel, the action area, or none. */
-static int16_t zone_origin(uint16_t zone)
+static int16_t origin_of_zone(uint16_t zone)
 {
     if (zone & ZONE_IN_PANEL)
         return ZONE_VIEWPORT;
@@ -894,13 +994,13 @@ static int16_t zone_origin(uint16_t zone)
 static void select_entry(const InputCommand *list, const InputCommand *e, int x, int y)
 {
     uint16_t command = e->command & COMMAND_MASK;
-    input_match.zone = e->zone & ZONE_ID_MASK;
-    input_match.origin = zone_origin(e->zone);
-    input_match.value = command;
-    input_match.choice = (int16_t)(command - ((list->command & COMMAND_MASK) - 1));
-    input_match.x = (int16_t)x;
-    input_match.y = (int16_t)y;
-    memcpy(input_match.rect, in.rect, sizeof input_match.rect);
+    g_input_match.zone = e->zone & ZONE_ID_MASK;
+    g_input_match.origin = origin_of_zone(e->zone);
+    g_input_match.value = command;
+    g_input_match.choice = (int16_t)(command - ((list->command & COMMAND_MASK) - 1));
+    g_input_match.x = (int16_t)x;
+    g_input_match.y = (int16_t)y;
+    memcpy(g_input_match.rect, in.rect, sizeof g_input_match.rect);
 }
 
 static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int buttons)
@@ -909,10 +1009,10 @@ static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int 
         return 0;
     const InputCommand *e = list;
     do {
-        if (!(e->flags & COMMAND_OFF) && buttons & e->buttons && input_get_zone_rect(e->zone, in.rect) &&
-            rect_contains(in.rect, x, y)) {
+        if (!(e->flags & COMMAND_OFF) && buttons & e->buttons && get_input_zone_rect(e->zone, in.rect) &&
+            point_in_rect(in.rect, x, y)) {
             select_entry(list, e, x, y);
-            input_match.key = 0;
+            g_input_match.key = 0;
             return e->command & COMMAND_MASK;
         }
         e++;
@@ -923,20 +1023,20 @@ static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int 
 
 static void select_command_in_list(uint16_t command, const InputCommand *list)
 {
-    input_match.origin = -1;
+    g_input_match.origin = -1;
     if (list)
         for (const InputCommand *e = list; e->command & COMMAND_MASK; e++)
             if (!(e->flags & COMMAND_OFF) && (e->command & COMMAND_MASK) == command) {
-                input_get_zone_rect(e->zone, in.rect);
+                get_input_zone_rect(e->zone, in.rect);
                 select_entry(list, e, in.rect[RECT_X], in.rect[RECT_Y]);
                 return;
             }
     if (list)
         in.rect[RECT_W] = in.rect[RECT_H] = 0;
-    input_match.zone = ZONE_NONE;
-    input_match.x = input_match.y = 0;
-    input_match.value = command;
-    input_match.choice = 0;
+    g_input_match.zone = ZONE_NONE;
+    g_input_match.x = g_input_match.y = 0;
+    g_input_match.value = command;
+    g_input_match.choice = 0;
 }
 
 static uint16_t find_click_command(const InputNode *node, int x, int y, int buttons)
@@ -944,13 +1044,13 @@ static uint16_t find_click_command(const InputNode *node, int x, int y, int butt
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg))
+        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
             continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             command = find_click_command(child, x, y, buttons);
         } else {
             int16_t r[RECT_SIZE];
-            if (!input_get_zone_rect(input_zones[child->link].zone, r) || !rect_contains(r, x, y))
+            if (!get_input_zone_rect(input_zones[child->link].zone, r) || !point_in_rect(r, x, y))
                 continue;
             command = match_click_in_list(node_commands(child), x, y, buttons);
         }
@@ -965,7 +1065,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg))
+        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
             continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             command = find_key_command(child, key);
@@ -981,7 +1081,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
             if (k->key == key) {
                 command = k->command & COMMAND_MASK;
                 select_command_in_list(command, node_commands(child));
-                input_match.key = key;
+                g_input_match.key = key;
                 break;
             }
             k++;
@@ -1021,7 +1121,7 @@ static void mark_active_zones(const InputNode *node, uint8_t *active)
 {
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg))
+        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
             continue;
         if (child->cond & NODE_HAS_CHILDREN)
             mark_active_zones(child, active);
@@ -1056,7 +1156,6 @@ static void cursor_zone_remove(int c)
    becomes inactive hides; with both changes it stays as it is, as in the original. */
 static void update_active_zones(void)
 {
-    enum { CURSOR_ADD = 1, CURSOR_REMOVE = 2 };
     uint8_t active[INPUT_ZONE_COUNT] = {0}, change[CURSOR_ZONE_COUNT + 1] = {0};
     mark_active_zones(&input_mode_roots[in.mode], active);
     for (int i = 0; i < INPUT_ZONE_COUNT; i++)
@@ -1072,13 +1171,45 @@ static void update_active_zones(void)
     }
 }
 
+void input_set_mode(int mode)
+{
+    if (mode != in.mode)
+        input_flush();
+    in.mode = mode;
+    update_active_zones();
+}
+
+int input_get_mode(void)
+{
+    return in.mode;
+}
+
+void input_refresh_mode(void)
+{
+    update_active_zones();
+}
+
+void input_push_mode(int mode)
+{
+    in.saved_mode = in.mode;
+    input_reset_states();
+    input_set_mode(mode);
+}
+
+void input_pop_mode(void)
+{
+    input_set_mode(in.saved_mode);
+}
+
+/* ---- The cursor ---- */
+
 int input_cursor_at(int x, int y)
 {
     int kind = 0;
     for (int i = 0; i < in.cursor_count; i++) {
         const CursorZone *z = &cursor_zones[in.cursor_list[i] - 1];
         int16_t r[RECT_SIZE];
-        if (input_get_zone_rect(z->zone, r) && rect_contains(r, x, y)) {
+        if (get_input_zone_rect(z->zone, r) && point_in_rect(r, x, y)) {
             kind = z->kind;
             break;
         }
@@ -1108,8 +1239,6 @@ static const uint8_t cursor_hand[HAND_W * CURSOR_H / 2] = {
     0x0c, 0xcc, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0, 0xcc, 0xc0, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xcc, 0xcc,
     0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xcc, 0xcc, 0xcc, 0xc0, 0xff, 0xff, 0xff, 0xff,
 };
-static uint8_t champion_cursor[FACE_SIZE * FACE_SIZE];
-static uint8_t champion_cursor_key;
 
 void input_set_champion_cursor(int champ)
 {
@@ -1168,36 +1297,6 @@ void input_draw_cursor(uint8_t *dst, int x, int y)
             if (n != c.key)
                 dst[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
         }
-}
-
-void input_set_mode(int mode)
-{
-    if (mode != in.mode)
-        input_flush();
-    in.mode = mode;
-    update_active_zones();
-}
-
-int input_get_mode(void)
-{
-    return in.mode;
-}
-
-void input_refresh_mode(void)
-{
-    update_active_zones();
-}
-
-void input_push_mode(int mode)
-{
-    in.saved_mode = in.mode;
-    input_reset_states();
-    input_set_mode(mode);
-}
-
-void input_pop_mode(void)
-{
-    input_set_mode(in.saved_mode);
 }
 
 /* ---- Events ---- */
@@ -1288,11 +1387,11 @@ void input_flush(void)
     in.disabled = 0;
     in.queue_head = in.queue_tail = 0;
     in.rect[RECT_W] = in.rect[RECT_H] = 0;
-    input_match.zone = ZONE_NONE;
-    input_match.origin = -1;
-    input_match.x = input_match.y = 0;
-    input_match.value = 0;
-    input_match.choice = 0;
+    g_input_match.zone = ZONE_NONE;
+    g_input_match.origin = -1;
+    g_input_match.x = g_input_match.y = 0;
+    g_input_match.value = 0;
+    g_input_match.choice = 0;
     in.events_locked = 0;
     flush_deferred_click();
 }
@@ -1304,7 +1403,7 @@ void input_refine_champion_click(Command *c)
     int command = c->command;
     if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
         int n = command - CMD_HAND_FIRST, hand = n & 1;
-        int champ = champion_in_party_cell(n / 2);
+        int champ = party_cell_champion(n / 2);
         if (champ < 0 || champion(champ)->action_delay[hand] ||
             !champ_list_actions(champ, champion(champ)->slots[hand], hand))
             c->command = 0;
@@ -1315,7 +1414,7 @@ void input_refine_champion_click(Command *c)
     if (command < CMD_PARTY_ICON_FIRST || command > CMD_PARTY_ICON_LAST)
         return;
     int icon = command - CMD_PARTY_ICON_FIRST; /* the cell relative to the party direction */
-    int champ = champion_in_party_cell(icon);
+    int champ = party_cell_champion(icon);
     if (champ < 0) {
         c->command = 0;
         return;
@@ -1385,30 +1484,6 @@ void rect_center_in(int16_t *dst, const int16_t *src, int w, int h)
     dst[RECT_Y] = (int16_t)(src[RECT_Y] + ((src[RECT_H] - h + 1) >> 1));
 }
 
-/* Feedback script opcodes (low 6 bits; bit 6: run on, bit 7: end). */
-enum {
-    FB_DELAY,
-    FB_RELEASE_QUEUE,
-    FB_WAIT_QUEUE,
-    FB_WAIT_STEP,
-    FB_QUEUE,
-    FB_EXECUTE,
-    FB_QUEUE_AND_RELEASE,
-    FB_PICTURE,
-    FB_SPELL_ICON,
-    FB_HAND_ICON,
-    FB_RUNE_BUTTON,
-    FB_ENTERED_RUNES,
-    FB_ACTION_NAME,
-    FB_INVENTORY_BUTTON,
-    FB_MAP_OPTION_BUTTONS,
-    FB_DIALOG_BUTTON,
-    FB_DIALOG_BUTTON_2
-};
-#define FB_OP_MASK 0x3f
-#define FB_RUN_ON  0x40
-#define FB_END     0x80
-
 static void queue_current(void)
 {
     in.queue[in.queue_tail] = in.current;
@@ -1420,16 +1495,6 @@ static void release_queue(void)
 {
     in.disabled = (in.queue_tail - in.queue_head + COMMAND_QUEUE) % COMMAND_QUEUE;
 }
-
-/* The feedback bitmap of the clicked button, open or closed. */
-typedef struct {
-    Offscreen o;
-    int opened;
-} Feedback;
-
-/* The arguments of a picture opcode: a GDAT image and its transparent color; a dialog button has the first three. */
-enum { PICTURE_CATEGORY, PICTURE_INDEX, PICTURE_ENTRY, PICTURE_KEY, PICTURE_ARGS };
-#define DIALOG_BUTTON_ARGS PICTURE_KEY
 
 /* Opens the feedback bitmap of the clicked button when it is closed; r becomes a w x h rect centered in it. */
 static void feedback_init_rect(Feedback *f, int16_t *r, int w, int h)
@@ -1474,7 +1539,7 @@ static void feedback_rune_button(Feedback *f)
 }
 
 /* Copies the drawn action area to the screen. */
-static void action_area_present(void)
+static void present_action_area(void)
 {
     offscreen_flush(area_begin_draw(0), 1);
 }
@@ -1489,17 +1554,17 @@ static void feedback_hand_icon(int icon)
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
     area_draw_hand_icon(champ, icon, 1);
-    action_area_present();
+    present_action_area();
 }
 
 /* Draws the pressed spell icon of the champion in the party cell in the action area. */
 static void feedback_spell_icon(int cell)
 {
-    int champ = champion_in_party_cell(cell);
+    int champ = party_cell_champion(cell);
     if (champ < 0)
         return;
     area_draw_spell_icon(champ, 1);
-    action_area_present();
+    present_action_area();
 }
 
 /* Runs the opcode op of a feedback script with its arguments at p; returns the next opcode. */
@@ -1516,7 +1581,7 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         in.feedback_waiting = 1;
         break;
     case FB_WAIT_STEP:
-        input_feedback_busy = 1;
+        g_input_feedback_busy = 1;
         break;
     case FB_QUEUE:
     case FB_QUEUE_AND_RELEASE:
@@ -1552,15 +1617,15 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         break;
     case FB_ACTION_NAME:
         area_draw_name(*p++, 1);
-        action_area_present();
+        present_action_area();
         break;
     case FB_ENTERED_RUNES:
         area_draw_entered_runes(1);
-        action_area_present();
+        present_action_area();
         break;
     case FB_MAP_OPTION_BUTTONS:
         mmap_draw_option_buttons(*p++);
-        action_area_present();
+        present_action_area();
         break;
     case FB_INVENTORY_BUTTON:
         if (g_ui.inventory) {
@@ -1575,7 +1640,7 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         dialog.button_index = p[PICTURE_INDEX];
         dialog.button_entry = p[PICTURE_ENTRY];
         p += DIALOG_BUTTON_ARGS;
-        dialog_draw_button(input_match.zone, 1);
+        dialog_draw_button(g_input_match.zone, 1);
         f->opened = 0; /* the original forgets the open feedback bitmap */
         dialog_present();
         break;
@@ -1595,7 +1660,7 @@ static void run_click_feedback(int elapsed)
         }
         in.script_delay = 0;
     }
-    if (in.disabled || in.feedback_waiting || input_feedback_busy || !in.script)
+    if (in.disabled || in.feedback_waiting || g_input_feedback_busy || !in.script)
         return;
     Feedback f = {0};
     int queue_full = 0;
@@ -1616,7 +1681,7 @@ static void run_click_feedback(int elapsed)
 }
 
 /* The open automap takes the keys and the mouse events until it closes; the mouse drags the map. */
-static void automap_input(void)
+static void forward_to_automap(void)
 {
     uint16_t key;
     while (advanced_automap_open && (key = input_read_key()))
@@ -1628,7 +1693,7 @@ static void automap_input(void)
         advanced_automap_event(type, x, y);
     }
     if (advanced_automap_open)
-        advanced_automap_drag(input_mouse_x, input_mouse_y);
+        advanced_automap_drag(g_input_mouse_x, g_input_mouse_y);
     else
         input_flush(); /* the input after the close key does not reach the game */
 }
@@ -1640,10 +1705,10 @@ void input_poll(void)
         return;
     in.last_ticks = g_main_loop.timer_ticks;
     if (advanced_automap_open) {
-        automap_input();
+        forward_to_automap();
         return;
     }
-    if (!in.disabled && !in.feedback_waiting && !input_feedback_busy) {
+    if (!in.disabled && !in.feedback_waiting && !g_input_feedback_busy) {
         while (!in.script) {
             for (int i = 0; i < in.key_count; i++)
                 enqueue_key(in.keys[i]);
@@ -1670,8 +1735,8 @@ void input_poll(void)
                     command = CMD_CANCEL_PUSH;
                 }
                 if (command) {
-                    in.current.x = input_match.x;
-                    in.current.y = input_match.y;
+                    in.current.x = g_input_match.x;
+                    in.current.y = g_input_match.y;
                     memcpy(in.current.rect, in.rect, sizeof in.rect);
                     in.current.command = command;
                 }
@@ -1692,7 +1757,7 @@ void input_reset_states(void)
     g_ui.eye = g_ui.mouth = 0;
     g_party.push_mode = 0;
     g_ui.push_mode = 0;
-    input_feedback_busy = 0;
+    g_input_feedback_busy = 0;
     in.feedback_waiting = 0;
     in.script = NULL;
     g_input_drag_state = 0;
@@ -1708,7 +1773,7 @@ void input_cancel_push_mode(void)
 }
 
 /* Draws a movement arrow released or pressed. */
-static void ui_draw_move_arrow(int entry, int zone, int pressed)
+static void show_move_arrow(int entry, int zone, int pressed)
 {
     in.arrow_pressed = pressed;
     in.arrow_zone = zone;
@@ -1724,23 +1789,19 @@ static void ui_draw_move_arrow(int entry, int zone, int pressed)
 void input_release_move_arrow(void)
 {
     if (in.arrow_pressed)
-        ui_draw_move_arrow(in.arrow_entry, in.arrow_zone, 0);
+        show_move_arrow(in.arrow_entry, in.arrow_zone, 0);
 }
 
 /* ---- Clicks in the dungeon view ---- */
 
-/* The squares of a wall ornament click: the party square, left, right, front. */
-enum { WALL_CELL_PARTY, WALL_CELL_LEFT, WALL_CELL_RIGHT, WALL_CELL_FRONT };
-#define PUSH_RESISTANCE_FIXED 0xff /* a creature that never moves: a click on it only sounds */
-
-static int zone_contains_point(int zone, int x, int y)
+static int point_in_zone(int zone, int x, int y)
 {
     int16_t r[RECT_SIZE];
-    return zone_get_rect(zone, r) && rect_contains(r, x, y);
+    return zone_get_rect(zone, r) && point_in_rect(r, x, y);
 }
 
 /* A click on a wall ornament of the view (cell: a WALL_CELL_* square). */
-static void view_click_wall_sensor(int cell)
+static void click_wall_sensor(int cell)
 {
     static const int8_t side_turn[DIR_COUNT] = {1, 1, 3,
                                                 2}; /* the face that the party sees of each wall, from its direction */
@@ -1761,7 +1822,7 @@ static void view_click_wall_sensor(int cell)
 }
 
 /* A click on a static creature in front: a push of its middle starts the push arrows, a side turns it. */
-static void view_click_creature(uint16_t group, int x, int y, int square_x, int square_y)
+static void click_creature(uint16_t group, int x, int y, int square_x, int square_y)
 {
     int side;
     if (!view_hit_test_creature(x, y, square_x, square_y, &side))
@@ -1781,7 +1842,7 @@ static void view_click_creature(uint16_t group, int x, int y, int square_x, int 
 }
 
 /* A click on the wall in front: a plain wall sounds; the mouse drag through a fake wall is not ported. */
-static void view_click_front_wall(int passable, int x, int y)
+static void click_front_wall(int passable, int x, int y)
 {
     if (!g_game.champion_count)
         return;
@@ -1793,7 +1854,7 @@ static void view_click_front_wall(int passable, int x, int y)
 }
 
 /* A door button of the door at (x, y): the door toggles, the button shows pressed until the next game step. */
-static void view_click_door_button(int x, int y, uint16_t door)
+static void click_door_button(int x, int y, uint16_t door)
 {
     sound_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
                   g_game.party_x, g_game.party_y, 1);
@@ -1807,17 +1868,14 @@ static void view_click_door_button(int x, int y, uint16_t door)
     g_input_command_stop = 1;
 }
 
-#define CELL_POSSESSION_FIRST 4 /* drop cells 4 to 7: the possession cells of a static creature */
-#define CELL_POSSESSION_LAST  7
-
-static void moneybox_clear_flag(uint16_t thing)
+static void clear_moneybox_placed(uint16_t thing)
 {
     if (item_is_moneybox(thing))
         moneybox_set_placed(thing, false);
 }
 
 /* A click with an empty hand on the object of click zone index: the leader takes the object. */
-static void view_click_take_object(int x, int y, int index)
+static void click_take_object(int x, int y, int index)
 {
     if ((int16_t)g_game.leader == -1)
         return;
@@ -1832,7 +1890,7 @@ static void view_click_take_object(int x, int y, int index)
     uint16_t thing = view_hit_test_object(&(ViewObjectClick){x, y, z->cell, sx, sy, z->kind}, z->thing, false);
     if (thing != THING_NONE) {
         move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
-        moneybox_clear_flag(thing);
+        clear_moneybox_placed(thing);
         champ_put_in_leader_hand(thing, 1);
     }
     g_input_command_stop = 1;
@@ -1840,7 +1898,7 @@ static void view_click_take_object(int x, int y, int index)
 
 /* Drops the leader hand object into cell of the square (x, y): 0 to 3 a floor cell, 4 to 7 a possession cell of
    a static creature, relative to the party direction. Returns 1 when done. */
-static int view_click_drop_object(int x, int y, int cell)
+static int click_drop_object(int x, int y, int cell)
 {
     if ((int16_t)g_game.leader == -1)
         return 0;
@@ -1864,7 +1922,7 @@ static int view_click_drop_object(int x, int y, int cell)
         if (group != THING_NONE)
             for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (thing_cell(t) == dir_cell)
-                    moneybox_clear_flag(t);
+                    clear_moneybox_placed(t);
         move_thing(thing_with_cell(thing, dir_cell), -1, -1, x, y);
     } else {
         move_thing(thing_with_cell(thing, dir_cell), -1, 0, x, y);
@@ -1875,7 +1933,7 @@ static int view_click_drop_object(int x, int y, int cell)
 
 /* A click with the leader hand object on the objects of a square cell: it goes into an open chest there (1), or
    it drops into the cell when the click hits no object; pos: the view position of the square (0 or 3). */
-static int view_click_place_object(int x, int y, int sx, int sy, int pos, int cell, int kind)
+static int click_place_object(int x, int y, int sx, int sy, int pos, int cell, int kind)
 {
     uint16_t hand = thing_with_cell(g_game.leader_hand, dir_turn(g_game.party_dir, cell));
     uint16_t hit = view_hit_test_object(&(ViewObjectClick){x, y, pos, sx, sy, kind}, hand, true);
@@ -1884,18 +1942,18 @@ static int view_click_place_object(int x, int y, int sx, int sy, int pos, int ce
         return 1;
     }
     if (hit == THING_ENDOFLIST)
-        return view_click_drop_object(sx, sy, kind == CLICK_POSSESSIONS ? cell + CELL_POSSESSION_FIRST : cell);
+        return click_drop_object(sx, sy, kind == CLICK_POSSESSIONS ? cell + CELL_POSSESSION_FIRST : cell);
     return 0;
 }
 
 /* A click in the upper view with the leader hand object: the leader throws it to the left or the right side. */
-static void view_click_throw_object(int x, int y)
+static void click_throw_object(int x, int y)
 {
     /* the original tests for square type 0x11 in front, which never occurs, and then uses zones 0x300 and 0x301 */
     int side;
-    if (zone_contains_point(ZONE_FRONT_WALL_LOW, x, y))
+    if (point_in_zone(ZONE_FRONT_WALL_LOW, x, y))
         side = 0;
-    else if (zone_contains_point(ZONE_FRONT_WALL_HIGH, x, y))
+    else if (point_in_zone(ZONE_FRONT_WALL_HIGH, x, y))
         side = 1;
     else
         return;
@@ -1903,17 +1961,8 @@ static void view_click_throw_object(int x, int y)
         g_input_command_stop = 1;
 }
 
-#define HALF_CELLS                 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
-#define POSSESSION_VIEW_CELL_FIRST HALF_CELLS /* the possessions of a static creature show in the back half */
-#define ALCOVE_CELL                2          /* the alcove in front keeps its objects in relative cell 2 */
-
-/* The party direction, the party square, and the square in front of it at the click. */
-typedef struct {
-    int dir, px, py, fx, fy;
-} ViewSquares;
-
 /* A click on a door button zone: a door without a button passes the click to the wall beside it. */
-static void view_click_door_button_zone(const ViewSquares *v, const ViewClickZone *z, uint16_t hand)
+static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z, uint16_t hand)
 {
     int front = z->cell == POS_FRONT, dx = front ? v->fx : v->px, dy = front ? v->fy : v->py;
     uint16_t door = dungeon_square_first_thing(g_party.cur_map, dx, dy);
@@ -1922,16 +1971,16 @@ static void view_click_door_button_zone(const ViewSquares *v, const ViewClickZon
         sensor_process_wall_click(dx + g_dir_dx[side], dy + g_dir_dy[side], dir_turn(v->dir, TURN_LEFT), THING_NONE,
                                   hand);
     } else if (hand == THING_NONE) {
-        view_click_door_button(dx, dy, door);
+        click_door_button(dx, dy, door);
     }
 }
 
 /* A click on the click zones of the view: objects, door buttons, and wall ornaments; returns 1 when it is done. */
-static int view_click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
+static int click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
 {
     for (int i = 0; i < g_view_click_zone_count; i++) {
         const ViewClickZone *z = &g_view_click_zones[i];
-        if (!rect_contains(z->rect, x, y))
+        if (!point_in_rect(z->rect, x, y))
             continue;
         switch (z->kind) {
         case CLICK_OBJECT:
@@ -1940,25 +1989,25 @@ static int view_click_zones_hit(const ViewSquares *v, int x, int y, uint16_t han
             if (z->thing == THING_NONE)
                 break;
             if (hand == THING_NONE) {
-                view_click_take_object(x, y, i);
+                click_take_object(x, y, i);
                 return 1;
             }
             if (z->kind == CLICK_ALCOVE) {
-                if (view_click_place_object(x, y, v->fx, v->fy, 0, ALCOVE_CELL, CLICK_ALCOVE))
+                if (click_place_object(x, y, v->fx, v->fy, 0, ALCOVE_CELL, CLICK_ALCOVE))
                     return 1;
             } else if (z->kind == CLICK_OBJECT) {
                 for (int k = 0; k < HALF_CELLS; k++)
-                    if (view_click_place_object(x, y, v->px, v->py, POS_PARTY, k, CLICK_OBJECT))
+                    if (click_place_object(x, y, v->px, v->py, POS_PARTY, k, CLICK_OBJECT))
                         return 1;
             }
             break;
         case CLICK_DOOR_BUTTON:
             if ((int16_t)g_game.leader != -1)
-                view_click_door_button_zone(v, z, hand);
+                click_door_button_zone(v, z, hand);
             break;
         case CLICK_WALL_ORNAMENT:
             if (view_hit_test_wall_ornament(z->cell, x, y)) {
-                view_click_wall_sensor(z->cell);
+                click_wall_sensor(z->cell);
                 return 1;
             }
             break;
@@ -1969,35 +2018,34 @@ static int view_click_zones_hit(const ViewSquares *v, int x, int y, uint16_t han
 
 /* A click with the leader hand object outside the click zones: it goes onto a cell of the party square, of the
    square in front (unless front_blocked), or of the possessions of a static creature there; else it is thrown. */
-static void view_click_with_object(const ViewSquares *v, int x, int y, int front_blocked)
+static void click_with_object(const ViewSquares *v, int x, int y, int front_blocked)
 {
     for (int k = 0; k < HALF_CELLS; k++) {
-        if (view_click_place_object(x, y, v->px, v->py, POS_PARTY, k, CLICK_OBJECT))
+        if (click_place_object(x, y, v->px, v->py, POS_PARTY, k, CLICK_OBJECT))
             return;
-        if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(v->px, v->py, k))
+        if (point_in_zone(ZONE_DROP_CELL_FIRST + k, x, y) && click_drop_object(v->px, v->py, k))
             return;
     }
     if (front_blocked)
         return;
     for (int k = HALF_CELLS; k < CELL_COUNT; k++) {
-        if (view_click_place_object(x, y, v->fx, v->fy, POS_FRONT, k, CLICK_OBJECT))
+        if (click_place_object(x, y, v->fx, v->fy, POS_FRONT, k, CLICK_OBJECT))
             return;
-        if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(v->fx, v->fy, k))
+        if (point_in_zone(ZONE_DROP_CELL_FIRST + k, x, y) && click_drop_object(v->fx, v->fy, k))
             return;
     }
     uint16_t g = creature_group_at(g_party.cur_map, v->fx, v->fy);
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
         const CreatureInfo *info = creature_group_info(g);
         for (int k = 0; k < (info->possessions & POSSESSIONS_KIND_MASK); k++) {
-            if (view_click_place_object(x, y, v->fx, v->fy, POS_FRONT, k + POSSESSION_VIEW_CELL_FIRST,
-                                        CLICK_POSSESSIONS))
+            if (click_place_object(x, y, v->fx, v->fy, POS_FRONT, k + POSSESSION_VIEW_CELL_FIRST, CLICK_POSSESSIONS))
                 return;
-            if (zone_contains_point(info->possession_zone + k, x, y) &&
-                view_click_drop_object(v->fx, v->fy, k + POSSESSION_VIEW_CELL_FIRST + CELL_POSSESSION_FIRST))
+            if (point_in_zone(info->possession_zone + k, x, y) &&
+                click_drop_object(v->fx, v->fy, k + POSSESSION_VIEW_CELL_FIRST + CELL_POSSESSION_FIRST))
                 return;
         }
     }
-    view_click_throw_object(x, y);
+    click_throw_object(x, y);
 }
 
 void view_click_in_viewport(int x, int y)
@@ -2020,25 +2068,25 @@ void view_click_in_viewport(int x, int y)
                      g_game.party_y + g_dir_dy[dir]};
     uint8_t front = dun_get_square(v.fx, v.fy);
     uint16_t hand = g_game.leader_hand;
-    if (view_click_zones_hit(&v, x, y, hand))
+    if (click_zones_hit(&v, x, y, hand))
         return;
     int passable = square_type(front) == SQUARE_FAKE_WALL && front & SQUARE_FLAG_0 && !(front & SQUARE_FAKE_WALL_OPEN);
     if (hand != THING_NONE) {
-        view_click_with_object(&v, x, y, square_type(front) == SQUARE_WALL && !passable);
+        click_with_object(&v, x, y, square_type(front) == SQUARE_WALL && !passable);
         return;
     }
     if (square_type(front) == SQUARE_WALL &&
-        (zone_contains_point(ZONE_FRONT_WALL_LOW, x, y) || zone_contains_point(ZONE_FRONT_WALL_HIGH, x, y))) {
-        view_click_front_wall(passable, v.fx, v.fy);
+        (point_in_zone(ZONE_FRONT_WALL_LOW, x, y) || point_in_zone(ZONE_FRONT_WALL_HIGH, x, y))) {
+        click_front_wall(passable, v.fx, v.fy);
         return;
     }
     uint16_t g = creature_group_at(g_party.cur_map, v.fx, v.fy);
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC)
-        view_click_creature(g, x, y, v.fx, v.fy);
+        click_creature(g, x, y, v.fx, v.fy);
 }
 
 /* Shows the pause message and waits for the resume command. */
-static void game_pause(void)
+static void pause_game(void)
 {
     char text[TEXT_SIZE];
     g_main_loop.running = 0;
@@ -2053,7 +2101,7 @@ static void game_pause(void)
 }
 
 /* The commands of the save, volume, and start menus. */
-static void command_execute_session(int command)
+static void execute_session_command(int command)
 {
     switch (command) {
     case CMD_SAVE:
@@ -2089,7 +2137,7 @@ static void command_execute_session(int command)
 
 /* The commands of the movement, the leader, the inventory, the spells, and the pause and the sleep; returns 1 when
    command is one of them. */
-static int command_execute_party(const Command *c, int idle)
+static int execute_party_command(const Command *c, int idle)
 {
     int command = c->command;
     if (command == CMD_CANCEL_CAPTURE) {
@@ -2107,7 +2155,7 @@ static int command_execute_party(const Command *c, int idle)
         }
         area_update(0);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
-        champ_set_leader(champion_in_party_cell(command - CMD_LEADER_FIRST));
+        champ_set_leader(party_cell_champion(command - CMD_LEADER_FIRST));
         ui_draw_all_champion_states(0);
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
         int champ = command - CMD_INVENTORY_FIRST;
@@ -2131,7 +2179,7 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command >= CMD_MAP_OPTION_FIRST && command <= CMD_MAP_OPTION_LAST) {
         minion_toggle_map_option(command - CMD_MAP_OPTION_FIRST);
     } else if (command == CMD_PAUSE) {
-        game_pause();
+        pause_game();
     } else if (command == CMD_RESUME) {
         if (!g_main_loop.running) {
             g_main_loop.running = 1;
@@ -2151,7 +2199,7 @@ static int command_execute_party(const Command *c, int idle)
 
 /* The commands of the champion actions, the hands, the slots, the money box, the drag, the recruiting, and the
    advanced mode; returns 1 when command is one of them. */
-static int command_execute_champion(int command, int idle)
+static int execute_champion_command(int command, int idle)
 {
     if (command == CMD_ACTION_CANCEL) {
         champ_execute_selected_action(-1);
@@ -2161,7 +2209,7 @@ static int command_execute_champion(int command, int idle)
         action_area_open_hand((command - CMD_HAND_FIRST) / SLOT_HAND_COUNT,
                               (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT);
     } else if (command >= CMD_PARTY_ICON_FIRST && command <= CMD_PARTY_ICON_LAST) {
-        int champ = champion_in_party_cell(command - CMD_PARTY_ICON_FIRST);
+        int champ = party_cell_champion(command - CMD_PARTY_ICON_FIRST);
         if (champ >= 0)
             action_area_open_spells(champ);
     } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
@@ -2204,7 +2252,7 @@ static int command_execute_champion(int command, int idle)
 }
 
 /* A command that the original runs later; the port runs none. */
-static void command_execute_later(const Command *c)
+static void run_later_command(const Command *c)
 {
     (void)c;
 }
@@ -2224,23 +2272,18 @@ int command_execute(Command *c)
     g_input_command_stop = 0;
     int idle =
         !g_ui.eye && !g_ui.mouth && !g_party.push_mode && !g_input_drag_state; /* no eye, mouth, drag or push mode */
-    if (!command_execute_party(c, idle) && !command_execute_champion(command, idle)) {
+    if (!execute_party_command(c, idle) && !execute_champion_command(command, idle)) {
         if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE) ||
              command == CMD_QUIT) &&
             idle)
-            command_execute_session(command);
+            execute_session_command(command);
         else
-            command_execute_later(c);
+            run_later_command(c);
     }
-    if (input_match.value >= CMD_TEXT_FIRST && input_match.value <= CMD_TEXT_LAST)
+    if (g_input_match.value >= CMD_TEXT_FIRST && g_input_match.value <= CMD_TEXT_LAST)
         g_input_command_stop = 1;
     return 1;
 }
-
-int input_mouse_x = -1, input_mouse_y = -1;
-
-#define ARROW_CENTER_X 20 /* half size of the middle part of the viewport, without an arrow */
-#define ARROW_CENTER_Y 15
 
 void input_update_viewport_arrow(void)
 {
@@ -2254,7 +2297,7 @@ void input_update_viewport_arrow(void)
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_VIEWPORT, r))
         return;
-    int x = input_mouse_x - r[RECT_X], y = input_mouse_y - r[RECT_Y];
+    int x = g_input_mouse_x - r[RECT_X], y = g_input_mouse_y - r[RECT_Y];
     g_party.push_arrow = PUSH_ARROW_NONE;
     if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
         return;
@@ -2276,7 +2319,7 @@ void input_update_viewport_arrow(void)
                                 (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]),
                                 dir_turn(push_dirs[arrow], g_game.party_dir), NULL))
         return;
-    ui_draw_move_arrow(entries[arrow], zones[arrow], 1);
+    show_move_arrow(entries[arrow], zones[arrow], 1);
     g_party.push_arrow = (int16_t)arrow;
 }
 
@@ -2308,7 +2351,7 @@ static const InputCommand *find_command_entry(const InputNode *node, uint16_t co
 {
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
-        if (!input_condition(node->cond & ~NODE_HAS_CHILDREN, child->arg))
+        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
             continue;
         if (child->cond & NODE_HAS_CHILDREN) {
             const InputCommand *e = find_command_entry(child, command);
@@ -2329,14 +2372,14 @@ void input_simulate_command_click(uint16_t command)
 {
     const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
     int16_t r[RECT_SIZE];
-    if (e && input_get_zone_rect(e->zone, r))
+    if (e && get_input_zone_rect(e->zone, r))
         input_mouse_click(r[RECT_X], r[RECT_Y], e->buttons);
 }
 
 bool input_command_rect(uint16_t command, int16_t *rect)
 {
     const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
-    return e && input_get_zone_rect(e->zone, rect);
+    return e && get_input_zone_rect(e->zone, rect);
 }
 
 uint16_t input_read_key(void)
@@ -2353,9 +2396,8 @@ char kbd_key_to_ascii(uint16_t key)
     /* the characters of the PC scan codes 0x02 to 0x39 */
     static const char chars[] = "1234567890-=\0\0qwertyuiop[]\0\0asdfghjkl;'`\0\\zxcvbnm,./\0\0\0 ";
     static const char shifted[] = "!@#$%^&*()_+\0\0QWERTYUIOP{}\0\0ASDFGHJKL:\"~\0|ZXCVBNM<>?\0\0\0 ";
-    enum { FIRST = 0x02, LAST = 0x39, SCAN_MASK = 0xff };
-    int scan = key & SCAN_MASK;
-    if (scan < FIRST || scan > LAST)
+    int scan = key & SCAN_CODE_MASK;
+    if (scan < CHAR_SCAN_FIRST || scan > CHAR_SCAN_LAST)
         return 0;
-    return (key & KEY_SHIFT ? shifted : chars)[scan - FIRST];
+    return (key & KEY_SHIFTED ? shifted : chars)[scan - CHAR_SCAN_FIRST];
 }

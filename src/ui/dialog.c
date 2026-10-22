@@ -63,10 +63,10 @@ void dialog_draw_button(int zone, int highlighted)
     if (!image)
         return;
     int16_t r[RECT_SIZE];
-    rect_center_in(r, input_match.rect, image->width, image->height);
-    if (input_match.origin != -1) {
+    rect_center_in(r, g_input_match.rect, image->width, image->height);
+    if (g_input_match.origin != -1) {
         int16_t x, y;
-        zone_get_position(input_match.origin, &x, &y);
+        zone_get_position(g_input_match.origin, &x, &y);
         r[RECT_X] = (int16_t)(r[RECT_X] - x);
         r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
     }
@@ -179,15 +179,15 @@ int dialog_run(int id)
     }
     dialog.button_count = id == DIALOG_VOLUME ? DIALOG_VOLUME_BUTTONS : count;
     input_push_mode(INPUT_MODE_DIALOG);
-    input_match.choice = DIALOG_NO_CHOICE;
+    g_input_match.choice = DIALOG_NO_CHOICE;
     do {
         command_process_queue();
         play_wait_frames(1);
-        if (input_match.choice == DIALOG_NO_CHOICE && input_read_key() == KEY_ENTER)
+        if (g_input_match.choice == DIALOG_NO_CHOICE && input_read_key() == KEY_ENTER)
             input_simulate_command_click(CMD_DIALOG_BUTTON_FIRST);
-    } while (input_match.choice == DIALOG_NO_CHOICE && !g_main_loop.quit);
-    int choice = input_match.choice;
-    int result = id == DIALOG_VOLUME ? input_match.value : choice >= 1 && choice <= count ? values[choice - 1] : 0;
+    } while (g_input_match.choice == DIALOG_NO_CHOICE && !g_main_loop.quit);
+    int choice = g_input_match.choice;
+    int result = id == DIALOG_VOLUME ? g_input_match.value : choice >= 1 && choice <= count ? values[choice - 1] : 0;
     g_ui.screen_needs_refresh = 1;
     input_pop_mode();
     return result;

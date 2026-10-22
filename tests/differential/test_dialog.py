@@ -131,7 +131,7 @@ def test_volume_dialog_matches_original(ui, original):
 
 def close_dialog(lib):
     """A frame hook: the player clicks the first button of the open dialog."""
-    match = InputMatch.in_dll(lib, "input_match")
+    match = InputMatch.in_dll(lib, "g_input_match")
     match.choice, match.value = 1, C.CMD_DIALOG_BUTTON_FIRST
 
 
@@ -271,7 +271,7 @@ def test_quit_picture_matches_original(ui, original):
     from dm2tools.emu import EmuError
     with pytest.raises(EmuError, match="session_quit"):
         emu.call(GAME_END, 0)
-    hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "input_match"), "value", C.CMD_PICTURE_CLICK))
+    hook = ctypes.CFUNCTYPE(None)(lambda: setattr(InputMatch.in_dll(lib, "g_input_match"), "value", C.CMD_PICTURE_CLICK))
     ctypes.c_void_p.in_dll(lib, "play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     session = Session.in_dll(lib, "g_session")
     session.restart = session.quit_code = session.completed = 0
@@ -295,7 +295,7 @@ def test_pressed_buttons_match_original(ui, original):
     from dm2test.dialog import find_point
     lib, emu = ui, original.emu
     lib.input_init()
-    match = InputMatch.in_dll(lib, "input_match")
+    match = InputMatch.in_dll(lib, "g_input_match")
     state = DialogState.in_dll(lib, "dialog")
     for dialog, buttons in ((C.DIALOG_SAVE_MENU, 4), (C.DIALOG_THE_END, 2)):
         for choice in range(1, buttons + 1):

@@ -601,7 +601,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - A turn gives a command as a click on the top left pixel of its first zone in the current input mode (`input_simulate_command_click`). The zone of `CMD_LEADER_INVENTORY` (`0x52`) is the whole screen, and a click there hits the status box of champion 0 first. The `sleep` action therefore opens the inventory of the leader with its status box command (`0x07` + leader).
 - `choose_action` on a hand that holds a money box, a chest, or a minion map gives only the hand click: the hand opens the panel of the item, not an action menu, and `index` is not used.
 - `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `ui/play.c`: `game_step` (the timeline, the view, the party clocks) and `game_step_end` (a map change, repeated actions, music). `play_tick` runs one timer tick: the input, the click feedback, the command queue, and a game step when it is due.
-- Pause (`game_pause`) stops the game time until the resume command. The port keeps the main loop running and clears `g_main_loop.running`.
+- Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop running and clears `g_main_loop.running`.
 
 ### The input tree
 
@@ -619,7 +619,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`mmap_draw_option_buttons`). The script draws the pressed button, executes the command, waits 4 ticks, and draws the buttons with argument 0.
 - After opcodes `8`, `9`, `0xb`, `0xc`, and `0xe`, the script copies the action area bitmap to the screen and closes it.
 - The port also runs the opcodes `8` (spell icon), `9` (hand icon), `0xc` (action name), `0xf`, and `0x10` (dialog buttons).
-- The movement arrows show pressed (`ui_draw_move_arrow`) until the move is done (`input_release_move_arrow`).
+- The movement arrows show pressed (`show_move_arrow`) until the move is done (`input_release_move_arrow`).
 - Before the script lookup, `input_refine_champion_click` makes the command of a champion click. A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions; else no command. A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center; else it keeps the command when the spell is ready, and else no command.
 
 ### Click zones of the view
@@ -755,7 +755,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 ### The leader hand
 
 - `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `g_leader_hand` (`src/engine/include/inventory.h`) and draws the icon at the mouse pointer.
-- A click on an object zone of the view takes the object (`view_click_take_object`). With an object in the hand, the click places the object in the cell (`view_click_place_object`), in an alcove, or into an open chest. A click in the upper view throws the hand object (`view_click_throw_object`). The commands `0x14` to `0x41` click the inventory slots, `0xea` to `0xed` put the hand object into a free slot.
+- A click on an object zone of the view takes the object (`click_take_object`). With an object in the hand, the click places the object in the cell (`click_place_object`), in an alcove, or into an open chest. A click in the upper view throws the hand object (`click_throw_object`). The commands `0x14` to `0x41` click the inventory slots, `0xea` to `0xed` put the hand object into a free slot.
 - `champ_apply_item_effects` adds or removes the stat effects of an item in a slot. Mode 0 is the load, 1 adds, -1 removes, 2 and -2 are the timed effects of eaten items, 3 restores. The load applies mode 0 to all slots. Then `restore_timed_effects` restores the light power and the timed effects.
 
 ### Damage and time effects

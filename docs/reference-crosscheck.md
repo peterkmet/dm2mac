@@ -73,7 +73,7 @@ We keep our name in each case. The reason is in the last column.
 | `0x159c3` | `position_to_cell` | `obj_type_remap` | Maps 6, 8, `0x12`, `0x10` to 0-3. reDM2 gives no role. |
 | `0x1f180`, `0x1f1fc` | `item_index_to_thing_type`, `item_index_to_gdat_index` | `zone_classify`, `coord_band_normalize` | reDM2 names describe the arithmetic only. The input is the 9-bit global item index. |
 | `0x1f309` | `item_is_chest` | `object_is_noncontainer_db9` | Body: type 9, not a money box, flags `& 6 == 0`. A chest is a container; the reDM2 name follows its own name for `money_is_moneybox`. |
-| `0x22626` | `view_click_front_wall` | `cursor_suspend_toggle` | Argument 0 plays sound `0x84`. Other values start the right-button mouse capture. Both names cover one branch only. |
+| `0x22626` | `click_front_wall` | `cursor_suspend_toggle` | Argument 0 plays sound `0x84`. Other values start the right-button mouse capture. Both names cover one branch only. |
 | `0x24d88`-`0x33df9` (13 functions) | `creature_ai_*` | `overlay_*`, `sound_enqueue`, `snd_emit_*`, `snd_event_code`, `cond_tally_lookup` | reDM2 reads the creature AI plan context as a "sound queue" and "overlay". Its own globals in the same block are `g_actor_*`. A dump of the plan tables (`0x74f7e`, `0x75248`) decides this. See open question 5 in `docs/skull-map.md`. |
 | `0x4e733` | `rain_picture` | `compass_dir_char` | Body: letter `q` or `m` from wind direction relative to the party, plus 0-3 from `g_rain_intensity`. |
 | `0x4e930` | `view_draw_wet_image` | `face_pattern_blit` | Both low confidence. reDM2 covers only the short branch. |

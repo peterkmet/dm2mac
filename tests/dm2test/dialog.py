@@ -55,7 +55,7 @@ def main_loop_quit(lib):
 def find_point(lib, mode, test):
     """A screen point whose left click in input mode gives a match that test accepts."""
     rect = (ctypes.c_int16 * 4)()
-    match = InputMatch.in_dll(lib, "input_match")
+    match = InputMatch.in_dll(lib, "g_input_match")
     lib.input_find_command.restype = ctypes.c_uint16
     for y in range(1, C.SCREEN_H, 2):
         for x in range(1, C.SCREEN_W, 2):

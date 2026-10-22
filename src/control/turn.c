@@ -163,7 +163,7 @@ static void give_input(const TurnInput *in)
     case INPUT_CLICK:
     case INPUT_PRESS:
     case INPUT_RELEASE:
-        input_mouse_x = in->x, input_mouse_y = in->y;
+        g_input_mouse_x = in->x, g_input_mouse_y = in->y;
         if (in->kind != INPUT_RELEASE)
             input_mouse_down(in->x, in->y, in->value);
         if (in->kind != INPUT_PRESS)

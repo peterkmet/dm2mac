@@ -95,7 +95,7 @@ static const struct {
     const char *prefix;
     uint16_t bit;
 } key_modifiers[] = {
-    {"shift+", KEY_SHIFT  },
+    {"shift+", KEY_SHIFTED},
     {"ctrl+",  KEY_CONTROL},
     {"alt+",   KEY_ALT    },
 };
@@ -118,8 +118,8 @@ uint16_t control_key_code(const char *name)
     for (uint16_t scan = 1; scan < SCAN_CODE_COUNT; scan++) {
         if (kbd_key_to_ascii(scan) == name[0])
             return scan;
-        if (kbd_key_to_ascii(scan | KEY_SHIFT) == name[0])
-            return scan | KEY_SHIFT;
+        if (kbd_key_to_ascii(scan | KEY_SHIFTED) == name[0])
+            return scan | KEY_SHIFTED;
     }
     return 0;
 }
@@ -409,8 +409,8 @@ static void screenshot(const char *path, Json *reply)
     static uint8_t screen[SCREEN_H][SCREEN_W];
     char absolute[FULL_PATH_SIZE];
     memcpy(screen, g_video_fb, sizeof screen);
-    if (input_mouse_x >= 0 && input_mouse_y >= 0)
-        input_draw_cursor(&screen[0][0], input_mouse_x, input_mouse_y);
+    if (g_input_mouse_x >= 0 && g_input_mouse_y >= 0)
+        input_draw_cursor(&screen[0][0], g_input_mouse_x, g_input_mouse_y);
     if (!write_png(path, screen) || !os_get_full_path(path, absolute, sizeof absolute)) {
         put_error(reply, "cannot write the PNG file");
         return;
@@ -468,7 +468,7 @@ static void handle_button(const char *request, int down, int up, Json *reply)
         if (down)
             movie_click(); /* a movie takes only clicks; the game input stays empty */
     } else {
-        input_mouse_x = x, input_mouse_y = y;
+        g_input_mouse_x = x, g_input_mouse_y = y;
         if (down)
             input_mouse_down(x, y, bit);
         if (up)
@@ -655,7 +655,7 @@ static void handle_request(const char *request, Json *reply)
     } else if (!strcmp(cmd, "move")) {
         if (!get_position(request, &x, &y, reply))
             return;
-        input_mouse_x = x, input_mouse_y = y;
+        g_input_mouse_x = x, g_input_mouse_y = y;
         put_ok(reply);
     } else if (!strcmp(cmd, "command")) {
         long id = control_get_int(request, "id", -1);

@@ -66,7 +66,7 @@ def click_slot(slot):
         rect = (ctypes.c_int16 * 4)()
         assert lib.zone_get_rect(0x1C3, rect)
         vx, vy = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(InputMatch.in_dll(lib, "input_match").origin, ctypes.byref(vx), ctypes.byref(vy))
+        lib.zone_get_position(InputMatch.in_dll(lib, "g_input_match").origin, ctypes.byref(vx), ctypes.byref(vy))
         lib.input_mouse_click(x, rect[1] + vy.value + slot * 7 + 3, 2)
     return act
 
@@ -258,7 +258,7 @@ def test_quit_asks_when_not_saved_like_original(play, lib, since_load, since_sav
 
     session = Session.in_dll(lib, "g_session")
     session.load_time, session.save_time = now - since_load, now - since_save
-    pick = lambda lib: setattr(InputMatch.in_dll(lib, "input_match"), "value", C.CMD_PICTURE_CLICK)  # a click on the end picture
+    pick = lambda lib: setattr(InputMatch.in_dll(lib, "g_input_match"), "value", C.CMD_PICTURE_CLICK)  # a click on the end picture
     actions = [click_choice(2), click_choice(2), click_choice(4)] if asked else [click_choice(2), pick]
     with Player(lib, actions) as player:
         lib.session_save()
