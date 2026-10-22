@@ -1,6 +1,5 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
-block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
@@ -12,9 +11,7 @@ bool platform/main.c:read_options open: module cleanup
 bool platform/main.c:select_mode open: module cleanup
 bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
-bool platform/scale.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
-comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
@@ -27,7 +24,6 @@ decimal engine/save.c rule 3.12: magic light by power of SKULL.EXE
 decimal engine/sensor.c rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c rule 3.12: a table of SKULL.EXE
 decimal platform/platform.c open: module cleanup
-decimal platform/scale.c open: module cleanup
 decimal ui/action_area.c rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/fm.c rule 3.12: a table of SKULL.EXE
 decimal ui/input.c rule 3.12: a table of SKULL.EXE
