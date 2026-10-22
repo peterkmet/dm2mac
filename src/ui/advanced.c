@@ -39,7 +39,7 @@
 #define READOUT_POSITION  0
 #define READOUT_DIRECTION 1
 
-int g_advanced_automap_open;
+int g_advanced_screen;
 
 static struct {
     bool active;
@@ -51,10 +51,10 @@ static bool lost;
 
 static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH", "WEST"};
 
-/* Closes the automap and ends a drag of the map. */
-static void close_automap(void)
+/* Closes the open viewport screen and ends a drag of the map. */
+static void close_screen(void)
 {
-    g_advanced_automap_open = 0;
+    g_advanced_screen = ADVANCED_SCREEN_NONE;
     drag.active = false;
     automap_scroll_reset();
 }
@@ -63,7 +63,7 @@ static void close_automap(void)
 
 void advanced_reset(void)
 {
-    close_automap();
+    close_screen();
     lost = false;
 }
 
@@ -178,7 +178,7 @@ enum QuickLoadResult advanced_quick_load(void)
 
 void advanced_open_automap(void)
 {
-    g_advanced_automap_open = 1;
+    g_advanced_screen = ADVANCED_SCREEN_AUTOMAP;
     advanced_draw_automap();
 }
 
@@ -206,23 +206,6 @@ void advanced_draw_automap(void)
     draw_free_temp();
 }
 
-void advanced_automap_event(int type, int16_t x, int16_t y)
-{
-    int16_t r[RECT_SIZE];
-    if (type == INPUT_KEY) {
-        if (x == KEY_AUTOMAP || x == KEY_AUTOMAP_M || x == SCAN_ESCAPE)
-            close_automap();
-    } else if (type == INPUT_LEFT_RELEASED) {
-        advanced_automap_drag(x, y);
-        drag.active = false;
-    } else if (type & INPUT_BUTTON_LEFT && zone_get_rect(ZONE_VIEWPORT, r) && x >= r[RECT_X] &&
-               x < r[RECT_X] + r[RECT_W] && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
-        drag.active = true;
-        drag.x = x;
-        drag.y = y;
-    }
-}
-
 void advanced_automap_drag(int16_t x, int16_t y)
 {
     if (!drag.active)
@@ -234,4 +217,30 @@ void advanced_automap_drag(int16_t x, int16_t y)
     drag.y += dy * MAP_CELL_SIZE;
     automap_scroll(-dx, -dy);
     advanced_draw_automap();
+}
+
+/* Viewport screens */
+
+/* An input event on the open automap. */
+static void map_event(int type, int16_t x, int16_t y)
+{
+    int16_t r[RECT_SIZE];
+    if (type == INPUT_KEY) {
+        if (x == KEY_AUTOMAP || x == KEY_AUTOMAP_M || x == SCAN_ESCAPE)
+            close_screen();
+    } else if (type == INPUT_LEFT_RELEASED) {
+        advanced_automap_drag(x, y);
+        drag.active = false;
+    } else if (type & INPUT_BUTTON_LEFT && zone_get_rect(ZONE_VIEWPORT, r) && x >= r[RECT_X] &&
+               x < r[RECT_X] + r[RECT_W] && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
+        drag.active = true;
+        drag.x = x;
+        drag.y = y;
+    }
+}
+
+void advanced_screen_event(int type, int16_t x, int16_t y)
+{
+    if (g_advanced_screen == ADVANCED_SCREEN_AUTOMAP)
+        map_event(type, x, y);
 }

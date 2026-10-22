@@ -27,10 +27,14 @@
 /* The results of a quick load. */
 enum QuickLoadResult { QUICK_LOADED, QUICK_MISSING, QUICK_DAMAGED, QUICK_BLOCKED, QUICK_LOST };
 
-extern int g_advanced_automap_open; /* 1: the automap covers the viewport and the game time stops */
+/* The screens that cover the viewport, one at a time; the game time stops while one is open. */
+#define ADVANCED_SCREEN_NONE    0
+#define ADVANCED_SCREEN_AUTOMAP 1
+
+extern int g_advanced_screen; /* the open viewport screen (ADVANCED_SCREEN_*) */
 
 /* Setup */
-/* Closes the automap: a new or loaded game starts. */
+/* Closes the open viewport screen: a new or loaded game starts. */
 void advanced_reset(void);
 
 /* Movement keys */
@@ -50,10 +54,13 @@ enum QuickLoadResult advanced_quick_load(void);
 void advanced_open_automap(void);
 /* Draws the automap and its readout (level, position, direction) in the viewport. */
 void advanced_draw_automap(void); /* exported for the tests */
-/* An input event while the automap is open (type INPUT_KEY with the key in x, a mouse button, INPUT_LEFT_RELEASED):
-   Tab, M, and Esc close it, a left drag on the viewport scrolls the map. Other keys do nothing. */
-void advanced_automap_event(int type, int16_t x, int16_t y);
 /* The mouse is at (x, y): during a drag the map follows it in whole squares. */
 void advanced_automap_drag(int16_t x, int16_t y);
+
+/* Viewport screens */
+/* An input event while a viewport screen is open (type INPUT_KEY with the key in x, a mouse button,
+   INPUT_LEFT_RELEASED). On the automap Tab, M, and Esc close it, a left drag on the viewport scrolls the map; other
+   keys do nothing. */
+void advanced_screen_event(int type, int16_t x, int16_t y);
 
 #endif /* DM2_UI_ADVANCED_H */

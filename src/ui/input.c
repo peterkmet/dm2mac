@@ -1346,7 +1346,7 @@ void input_mouse_down(int16_t x, int16_t y, int button)
 void input_mouse_up(int16_t x, int16_t y, int button)
 {
     game_set_mouse_buttons(g_input_mouse_buttons & ~button);
-    if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || g_advanced_automap_open))
+    if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || g_advanced_screen))
         input_mouse_click(x, y, INPUT_LEFT_RELEASED);
 }
 
@@ -1711,19 +1711,19 @@ static void run_click_feedback(int elapsed)
         offscreen_flush(&f.o, true);
 }
 
-/* The open automap takes the keys and the mouse events until it closes; the mouse drags the map. */
-static void forward_to_automap(void)
+/* The open viewport screen takes the keys and the mouse events until it closes; the mouse drags the automap. */
+static void forward_to_screen(void)
 {
     uint16_t key;
-    while (g_advanced_automap_open && (key = input_read_key()))
-        advanced_automap_event(INPUT_KEY, key, 0);
-    while (g_advanced_automap_open && in.event_count) {
+    while (g_advanced_screen && (key = input_read_key()))
+        advanced_screen_event(INPUT_KEY, key, 0);
+    while (g_advanced_screen && in.event_count) {
         int type = in.events[in.event_head].type, x = in.events[in.event_head].x, y = in.events[in.event_head].y;
         in.event_count--;
         in.event_head = (in.event_head + 1) % EVENT_RING;
-        advanced_automap_event(type, x, y);
+        advanced_screen_event(type, x, y);
     }
-    if (g_advanced_automap_open)
+    if (g_advanced_screen)
         advanced_automap_drag(g_input_mouse_x, g_input_mouse_y);
     else
         input_flush(); /* the input after the close key does not reach the game */
@@ -1735,8 +1735,8 @@ void input_poll(void)
     if (!elapsed)
         return;
     in.last_ticks = g_main_loop.timer_ticks;
-    if (g_advanced_automap_open) {
-        forward_to_automap();
+    if (g_advanced_screen) {
+        forward_to_screen();
         return;
     }
     if (!in.disabled && !in.feedback_waiting && !g_input_feedback_busy) {
@@ -2369,7 +2369,7 @@ void command_process_queue(void)
     in.feedback_waiting = 0;
     do {
         input_poll();
-        if (in.queue_head == in.queue_tail || g_advanced_automap_open)
+        if (in.queue_head == in.queue_tail || g_advanced_screen)
             return;
         int head = in.queue_head;
         in.queue_head = (head + 1) % COMMAND_QUEUE;

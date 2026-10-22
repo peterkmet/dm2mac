@@ -15,7 +15,7 @@
 - `creature_is_flying` crashed on 3 maps in a check script of the dm style refactor, also with the library of `main`. Find the cause.
 - `make` does not rebuild an object with the same modification time as its source (seen after scripted rebases). After a scripted rebase, build with `make -B`.
 - `long` in `src/control/control.c` and `src/control/turn.c` (38 uses, rule 5.3).
-- Naming: `advanced_automap_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4); the in/out parameters of `zone_compute_rect` (`out_w`, `out_h`) and `dungeon_location_on_map` (`out_x`, `out_y`) have an `out_` name.
+- Naming: `advanced_screen_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4); the in/out parameters of `zone_compute_rect` (`out_w`, `out_h`) and `dungeon_location_on_map` (`out_x`, `out_y`) have an `out_` name.
 - Scroll color: a scroll is white on a table and yellowish in the hand, in the inventory, and while it is read. `main` does the same (manual test of the dm style refactor, 2026-10-22). Compare with the original.
 - Dark dots in letters: with `--filter scale2x` and `scale3x`, the "D" of READY and the "O" of TO in "GAME LOADED, READY TO PLAY" have a dark dot; the "O" of OK has none. `main` does the same. Compare with `--filter none` to find out if the filter or the background causes it.
 - End picture: after QUIT the end picture shows until a click and goes at once, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.

@@ -240,8 +240,8 @@ void play_tick(void)
     if (game_count_step_tick())
         tick_elapsed = 1;
     command_process_queue();
-    /* the automap stops the game time; a quit (a lost game) ends all game work */
-    if (!tick_elapsed || !g_main_loop.running || g_advanced_automap_open || g_main_loop.quit)
+    /* a viewport screen stops the game time; a quit (a lost game) ends all game work */
+    if (!tick_elapsed || !g_main_loop.running || g_advanced_screen || g_main_loop.quit)
         return;
     step_after_input();
     step_before_input();

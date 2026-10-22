@@ -258,7 +258,7 @@ def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
     cheats = {"cheat_light": C.CHEAT_LIGHT, "cheat_immortal": C.CHEAT_IMMORTAL, "cheat_food": C.CHEAT_FOOD,
               "cheat_kill": C.CHEAT_KILL, "cheat_walls": C.CHEAT_WALLS, "cheat_map": C.CHEAT_MAP}
-    automap = ctypes.c_int.in_dll(lib, "g_advanced_automap_open")
+    automap = ctypes.c_int.in_dll(lib, "g_advanced_screen")
     try:
         for name, cheat in [("automap", 0), *cheats.items()]:
             automap.value = name == "automap"
@@ -293,7 +293,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa:
         assert framed == ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")[8]  # red: the map did not move
     finally:
         set_mode(lib, VANILLA)
-        ctypes.c_int.in_dll(lib, "g_advanced_automap_open").value = 0
+        ctypes.c_int.in_dll(lib, "g_advanced_screen").value = 0
 
 
 def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):

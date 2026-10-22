@@ -365,7 +365,7 @@ static void put_state(Json *reply)
     }
     put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d",
         g_game.sound_volume, g_game.music_volume, g_main_loop.end, g_main_loop.quit, g_game_mode_names[g_game_mode],
-        g_advanced_automap_open);
+        g_advanced_screen == ADVANCED_SCREEN_AUTOMAP);
     put(reply,
         ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d,\"cheat_kill\":%d,\"cheat_walls\":%d,"
         "\"cheat_map\":%d}",
