@@ -9,25 +9,33 @@
 #include "le.h"
 #include <stdint.h>
 
-#define CHAMPION_MAX         4
-#define CHAMPION_SIZE        263
-#define GLOBAL_FLAG_BYTES    8
-#define GLOBAL_BYTE_COUNT    64
-#define GLOBAL_WORD_COUNT    64
-#define MAGIC_LIGHT_SIZE     6
-#define SAVE_NAME_SIZE       32     /* a slot name of up to 31 characters and its end mark */
-#define SAVE_HEADER_SIZE     42     /* the save file header: format word, slot name, empty slot mark */
-#define SAVE_HEADER_NAME     2      /* the offset of the slot name in the header */
-#define EVENT_SLACK          50     /* timeline events beyond one for each group, projectile, and explosion record */
-#define VOLUME_SETTING_START 7      /* the sound and music volumes of a new game */
-#define LEADER_NONE          0xffff /* g_game.leader of a party without a leader */
+/* Sizes of the game state blocks of the save. */
+#define CHAMPION_MAX      4
+#define CHAMPION_SIZE     263
+#define GLOBAL_FLAG_BYTES 8
+#define GLOBAL_BYTE_COUNT 64
+#define GLOBAL_WORD_COUNT 64
+#define MAGIC_LIGHT_SIZE  6
 
-enum {
+/* The save file header. */
+#define SAVE_NAME_SIZE   32 /* a slot name of up to 31 characters and its end mark */
+#define SAVE_HEADER_SIZE 42 /* the save file header: format word, slot name, empty slot mark */
+#define SAVE_HEADER_NAME 2  /* the offset of the slot name in the header */
+
+/* Start values of a loaded or new game. */
+#define EVENT_SLACK          50 /* timeline events beyond one for each group, projectile, and explosion record */
+#define VOLUME_SETTING_START 7  /* the sound and music volumes of a new game */
+
+/* No leader of the party. */
+#define LEADER_NONE 0xffff /* g_game.leader of a party without a leader */
+
+/* The result of a load or a write. */
+typedef enum {
     SAVE_OK = 0,
     SAVE_ERR_IO = -1,     /* the file cannot be opened, read, or written */
     SAVE_ERR_FORMAT = -2, /* the header or the dungeon image is damaged */
     SAVE_ERR_DATA = -3,   /* the bit-packed game state is damaged or ends too early */
-};
+} SaveResult;
 
 /* Game state that the save file stores beside the dungeon, the timeline, and the random seed.
    The modules of later steps take these fields over. */
@@ -67,9 +75,9 @@ static inline void save_set_magic_light(int16_t light)
 
 /* Loads a save file (SKSAVEn.DAT or .BAK) into the dungeon, the timeline, the random seed, and g_game.
    gdat answers the creature and container questions of the format. On an error the dungeon is empty. */
-int save_load(const char *path, const gdat_t *gdat);
+SaveResult save_load(const char *path, const gdat_t *gdat);
 /* Writes the game to path. Like the original, it first renames an old file at path to bak_path and
    keeps the header bytes after the name from it; name goes into the header. */
-int save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat);
+SaveResult save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat);
 
 #endif /* DM2_ENGINE_SAVE_H */

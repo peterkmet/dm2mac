@@ -12,31 +12,36 @@
 #include "random.h"
 #include "seen.h"
 #include "sensor.h"
-#include "timeline.h"
 #include "weather.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "timeline.h"
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
    of the bit stream stores only the bits that its mask table selects, most significant bit first.
    Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. In the advanced mode the AMAP block
    of the automap follows the bit stream (seen.h); the original loader ignores it. */
 
-#define HEADER_FORMAT         0
-#define SAVE_FORMAT           1
-#define GAME_RECORD_SIZE      60
+/* The save file header and the sizes of the game state. */
+#define HEADER_FORMAT       0
+#define SAVE_FORMAT         1
+#define GAME_RECORD_SIZE    60
+#define DEFERRED_THINGS_MAX 100
+#define PACKED_WORD_BYTES   2 /* a little-endian word: a global word, or a value between the records */
+
+/* Byte offsets in a champion record. */
 #define CHAMPION_SLOTS        0xc3 /* 30 thing words: hands, body, pouches, quiver, backpack */
 #define CHAMPION_DAMAGE_EVENT 0x2e /* the timeline event that ends the damage display */
-#define DEFERRED_THINGS_MAX   100
 
 /* Bit widths of the values between the records, as masks. */
-#define MORE_MASK        0x1
-#define TYPE_MASK        0xf
-#define CELL_MASK        0x3
-#define CREATURE_MASK    0x7f
-#define SPELL_MASK       0x7f
-#define INDEX_MASK       0x3ff
+#define MORE_MASK        0x0001
+#define TYPE_MASK        0x000f
+#define CELL_MASK        0x0003
+#define CREATURE_MASK    0x007f
+#define SPELL_MASK       0x007f
+#define INDEX_MASK       0x03ff
 #define SPELL_THING_BASE 0xff80 /* a projectile payload that is a spell, not a thing record */
 
 /* Square bits that change during play and that the save stores, by square type. */
@@ -45,16 +50,62 @@
 #define FAKE_WALL_SAVED_BITS  0x04
 #define TELEPORTER_SAVED_BITS 0x08 /* only for a teleporter without a linked teleporter */
 
-enum event_data { EVENT_THING = 0, EVENT_VALUE = 0, EVENT_THING2 = 2 }; /* byte offsets in TimelineEvent.data */
+/* Byte offsets in TimelineEvent.data. */
+#define EVENT_THING  0x00
+#define EVENT_VALUE  0x00
+#define EVENT_THING2 0x02
 
-#define GDAT_CREATURE_INFO_ENTRY 5
+/* The GDAT entry of the creature info record. */
+#define GDAT_CREATURE_INFO_ENTRY 0x05
+
+/* Game record fields, byte offsets. */
+#define REC_GAME_TIME         0x00
+#define REC_RANDOM_SEED       0x04
+#define REC_CHAMPIONS         0x08
+#define REC_PARTY_X           0x0a
+#define REC_PARTY_Y           0x0c
+#define REC_PARTY_DIR         0x0e
+#define REC_PARTY_MAP         0x10
+#define REC_LEADER            0x12
+#define REC_TIMELINE_EVENTS   0x14
+#define REC_UNKNOWN_TIME_A    0x16
+#define REC_UNKNOWN_TIME_B    0x1a
+#define REC_MOVE_COOLDOWN     0x1e
+#define REC_UNKNOWN_COUNTDOWN 0x20
+#define REC_UNKNOWN_DIR       0x22
+#define REC_VOLUMES           0x28
+#define REC_WEATHER_VISIBLE   0x2a
+#define REC_HEAVY_RAIN        0x2e
+#define REC_WIND_DIR          0x2f
+#define REC_RAIN_INTENSITY    0x30
+#define REC_SKY_DARKNESS      0x31
+#define REC_CLOUD_COVER       0x32
+#define REC_STORM_MULTIPLIER  0x33
+#define REC_STORM_INTENSITY   0x34
+#define REC_STORM_STEP        0x36
+#define REC_STORM_CURVE       0x37
+#define REC_NEXT_HOUR_TIME    0x38
+
+/* The sound volume in the low nibble of the volume byte, the music volume in the high nibble. */
+#define VOLUME_MASK 0xf
+
+/* The bit position of the music volume in the volume byte. */
+#define MUSIC_VOLUME_SHIFT 4
+
+/* The powers of a magic light event (its event data is the power, negative for darkness). */
+#define LIGHT_POWER_COUNT 16
+
+/* A square with its map. */
+typedef struct {
+    int16_t map, x, y;
+} Position;
 
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
    animated ornament (0x2c), shop display (0x30), activation with sound (0x32), and four of unknown use. */
 static const uint8_t sensors_with_data[] = {0x27, 0x1b, 0x1d, 0x41, 0x2c, 0x32, 0x30, 0x2d};
 
 /* Mask tables of SKULL.EXE: one mask byte per record byte. */
-static const uint8_t all_bits[2] = {0xff, 0xff};
+static const uint8_t all_bits[PACKED_WORD_BYTES] = {0xff, 0xff};
 static const uint8_t game_record_mask[GAME_RECORD_SIZE] = {
     0xff, 0xff, 0xff, 0x00, 0xff, 0xff, 0x00, 0x00, 0x07, 0x00, 0x1f, 0x00, 0x1f, 0x00, 0x03,
     0x00, 0x3f, 0x00, 0x03, 0x00, 0xff, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
@@ -94,43 +145,14 @@ static const uint8_t moneybox_misc_mask[] = {0x00, 0x00, 0x7f, 0xff};
 static const uint8_t projectile_mask[] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x03};
 static const uint8_t carried_projectile_mask[] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00};
 
+/* The light of a magic light event by its power (event data), from SKULL.EXE. */
+static const int8_t light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
+
 /* The mask of each thing type; teleporters and the unused types are not stored. */
 static const uint8_t *const thing_masks[THING_TYPE_COUNT] = {
     door_mask, NULL,           text_mask, sensor_mask, group_mask, weapon_mask, armour_mask,     word_mask,
     word_mask, container_mask, misc_mask, NULL,        NULL,       NULL,        projectile_mask, word_mask,
 };
-
-/* Game record fields, byte offsets. */
-enum game_record_field {
-    REC_GAME_TIME = 0x00,
-    REC_RANDOM_SEED = 0x04,
-    REC_CHAMPION_COUNT = 0x08,
-    REC_PARTY_X = 0x0a,
-    REC_PARTY_Y = 0x0c,
-    REC_PARTY_DIR = 0x0e,
-    REC_PARTY_MAP = 0x10,
-    REC_LEADER = 0x12,
-    REC_EVENT_COUNT = 0x14,
-    REC_UNKNOWN_TIME_A = 0x16,
-    REC_UNKNOWN_TIME_B = 0x1a,
-    REC_MOVE_COOLDOWN = 0x1e,
-    REC_UNKNOWN_COUNTDOWN = 0x20,
-    REC_UNKNOWN_DIR = 0x22,
-    REC_VOLUMES = 0x28,
-    REC_WEATHER_VISIBLE = 0x2a,
-    REC_HEAVY_RAIN = 0x2e,
-    REC_WIND_DIR = 0x2f,
-    REC_RAIN_INTENSITY = 0x30,
-    REC_SKY_DARKNESS = 0x31,
-    REC_CLOUD_COVER = 0x32,
-    REC_STORM_MULTIPLIER = 0x33,
-    REC_STORM_INTENSITY = 0x34,
-    REC_STORM_STEP = 0x36,
-    REC_STORM_CURVE = 0x37,
-    REC_NEXT_HOUR_TIME = 0x38
-};
-#define VOLUME_MASK        0xf
-#define MUSIC_VOLUME_SHIFT 4
 
 Game g_game = {
     .leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START}; /* no leader */
@@ -141,8 +163,8 @@ static struct {
     uint8_t byte;             /* the byte being read or written */
     int bits;                 /* bits of byte already read or written */
     int format;               /* header format word of the loaded file */
-    int in_group;             /* inside the possessions of a creature group */
-    int in_projectile;        /* inside the payload of a projectile */
+    bool in_group;            /* inside the possessions of a creature group */
+    bool in_projectile;       /* inside the payload of a projectile */
     const uint8_t *misc_mask; /* moneybox_misc_mask inside a moneybox */
     uint16_t deferred[DEFERRED_THINGS_MAX];
     int deferred_count;
@@ -152,6 +174,7 @@ static struct {
     const gdat_t *gdat;
 } io;
 
+/* Starts a load or a write of the bit stream of f. */
 static void start_io(FILE *f, const gdat_t *gdat)
 {
     memset(&io, 0, sizeof io);
@@ -161,7 +184,7 @@ static void start_io(FILE *f, const gdat_t *gdat)
 }
 
 /* Writes the bits that mask selects of count records of size bytes. */
-static int write_packed(const uint8_t *src, const uint8_t *mask, int size, int count)
+static bool write_packed(const uint8_t *src, const uint8_t *mask, int size, int count)
 {
     for (int r = 0; r < count; r++, src += size)
         for (int i = 0; i < size; i++)
@@ -172,15 +195,15 @@ static int write_packed(const uint8_t *src, const uint8_t *mask, int size, int c
                 if (++io.bits < 8)
                     continue;
                 if (fputc(io.byte, io.f) == EOF)
-                    return 0;
+                    return false;
                 io.byte = 0;
                 io.bits = 0;
             }
-    return 1;
+    return true;
 }
 
 /* Reads the bits that mask selects of count records; the other bits keep their value, or become 0 without keep. */
-static int read_packed(uint8_t *dst, const uint8_t *mask, int size, int count, int keep)
+static bool read_packed(uint8_t *dst, const uint8_t *mask, int size, int count, bool keep)
 {
     for (int r = 0; r < count; r++, dst += size)
         for (int i = 0; i < size; i++) {
@@ -191,7 +214,7 @@ static int read_packed(uint8_t *dst, const uint8_t *mask, int size, int count, i
                 if (io.bits == 0) {
                     int c = fgetc(io.f);
                     if (c == EOF)
-                        return 0; /* fix: the original reads on with a stale byte */
+                        return false; /* fix: the original reads on with a stale byte */
                     io.byte = (uint8_t)c;
                 }
                 value = io.byte >> 7 ? value | 1 << bit : value & ~(1 << bit); /* most significant bit first */
@@ -200,59 +223,65 @@ static int read_packed(uint8_t *dst, const uint8_t *mask, int size, int count, i
             }
             dst[i] = value;
         }
-    return 1;
+    return true;
 }
 
 /* A value between the records: a little-endian word through a little-endian mask. */
-static int write_value(uint16_t value, uint16_t mask)
+static bool write_value(uint16_t value, uint16_t mask)
 {
-    uint8_t v[2], m[2];
+    uint8_t v[PACKED_WORD_BYTES];
+    uint8_t m[PACKED_WORD_BYTES];
     put_le16(v, value);
     put_le16(m, mask);
-    return write_packed(v, m, 2, 1);
+    return write_packed(v, m, PACKED_WORD_BYTES, 1);
 }
 
-static int read_value(uint16_t *value, uint16_t mask)
+/* Reads a value between the records: the bits of mask of a little-endian word. */
+static bool read_value(uint16_t *value, uint16_t mask)
 {
-    uint8_t v[2], m[2];
+    uint8_t v[PACKED_WORD_BYTES];
+    uint8_t m[PACKED_WORD_BYTES];
     put_le16(m, mask);
-    if (!read_packed(v, m, 2, 1, 0))
-        return 0;
+    if (!read_packed(v, m, PACKED_WORD_BYTES, 1, false))
+        return false;
     *value = le16(v);
-    return 1;
+    return true;
 }
 
 /* Writes the last byte; its unused low bits are 0. */
-static int flush_bits(void)
+static bool flush_bits(void)
 {
     if (io.bits == 0)
-        return 1;
-    int ok = fputc((uint8_t)(io.byte << (8 - io.bits)), io.f) != EOF;
+        return true;
+    bool ok = fputc((uint8_t)(io.byte << (8 - io.bits)), io.f) != EOF;
     io.byte = 0;
     io.bits = 0;
     return ok;
 }
 
-static uint16_t champion_slot(int champion, int slot)
+/* The thing in a slot of a champion record. */
+static uint16_t held_thing(int champion, int slot)
 {
     return le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot);
 }
 
-static void set_champion_slot(int champion, int slot, uint16_t thing)
+static void set_held_thing(int champion, int slot, uint16_t thing)
 {
     put_le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot, thing);
 }
 
-static int sensor_has_data(uint16_t sensor)
+/* A sensor of a type in sensors_with_data stores 9 bits of its data word. */
+static bool has_sensor_data(uint16_t sensor)
 {
     int type = sensor_type(sensor);
     for (size_t i = 0; i < sizeof sensors_with_data; i++)
         if (sensors_with_data[i] == type)
-            return 1;
-    return 0;
+            return true;
+    return false;
 }
 
-static int creature_is_static(uint16_t group)
+/* A group of a creature with the static flag stores fewer bits of its record. */
+static bool is_static_creature(uint16_t group)
 {
     int info = gdat_find(io.gdat, CAT_CREATURE, group_creature(group), GDAT_TYPE_VALUE, GDAT_CREATURE_INFO_ENTRY);
     if (info == -1)
@@ -262,25 +291,26 @@ static int creature_is_static(uint16_t group)
 }
 
 /* A chest whose item has the moneybox text holds coins. */
-static int container_is_moneybox(uint16_t container)
+static bool is_moneybox(uint16_t container)
 {
     if (container_kind(container) != CONTAINER_CHEST)
-        return 0;
+        return false;
     int item = container_type(container);
     return gdat_find(io.gdat, CAT_CONTAINER, item, GDAT_TYPE_TEXT, GFX_MONEYBOX_TEXT) != -1;
 }
 
-static int defer_thing(uint16_t thing)
+/* Keeps a minion map or a carried projectile for the links at the end of the bit stream. */
+static bool defer_thing(uint16_t thing)
 {
     if (io.deferred_count == DEFERRED_THINGS_MAX)
-        return 0; /* fix: the original writes past its buffer */
+        return false; /* fix: the original writes past its buffer */
     io.deferred[io.deferred_count++] = thing;
-    return 1;
+    return true;
 }
 
 /* Points each projectile at the timeline event that moves it, and each champion at the event that ends its damage
    display (THING_NONE: no damage shows). */
-static void timeline_relink_events(void)
+static void relink_events(void)
 {
     for (int c = 0; c < CHAMPION_MAX; c++)
         put_le16(g_game.champions[c] + CHAMPION_DAMAGE_EVENT, THING_NONE);
@@ -296,23 +326,24 @@ static void timeline_relink_events(void)
     }
 }
 
-static int write_thing_list(uint16_t thing, int with_cell, int follow);
+/* Recursion: write_thing_list writes the things that a thing holds through write_held_things. */
+static bool write_thing_list(uint16_t thing, bool with_cell, bool follow);
 
 /* Writes what the record of thing stores beside its mask; returns the mask of the record, NULL on a write error. */
-static const uint8_t *write_thing_head(uint16_t thing, int *carried)
+static const uint8_t *write_thing_head(uint16_t thing, bool *carried)
 {
     int type = thing_type(thing);
     const uint8_t *mask = type == THING_MISC ? io.misc_mask : thing_masks[type];
-    *carried = 0; /* minion map, or projectile in a creature: the reference follows at the end */
+    *carried = false; /* minion map, or projectile in a creature: the reference follows at the end */
     switch (type) {
     case THING_SENSOR:
-        if (sensor_has_data(thing) && !write_value(sensor_data(thing), SENSOR_DATA_MASK))
+        if (has_sensor_data(thing) && !write_value(sensor_data(thing), SENSOR_DATA_MASK))
             return NULL;
         break;
     case THING_GROUP:
         if (!write_value(group_creature(thing), CREATURE_MASK))
             return NULL;
-        if (creature_is_static(thing))
+        if (is_static_creature(thing))
             mask = static_group_mask;
         io.group_order[thing_index(thing)] = io.group_count++;
         break;
@@ -321,14 +352,14 @@ static const uint8_t *write_thing_head(uint16_t thing, int *carried)
             return NULL;
         if (container_kind(thing) == CONTAINER_MINION_MAP) {
             mask = minion_map_mask;
-            *carried = 1;
+            *carried = true;
         }
         io.container_order[thing_index(thing)] = io.container_count++;
         break;
     case THING_PROJECTILE:
         if (io.in_group) {
             mask = carried_projectile_mask;
-            *carried = 1;
+            *carried = true;
         }
         break;
     }
@@ -336,25 +367,25 @@ static const uint8_t *write_thing_head(uint16_t thing, int *carried)
 }
 
 /* Writes the things that thing holds after its record: possessions, contents, payload, or the explosion event. */
-static int write_held_things(uint16_t thing, const uint8_t *mask, int carried)
+static bool write_held_things(uint16_t thing, const uint8_t *mask, bool carried)
 {
     switch (thing_type(thing)) {
     case THING_GROUP: {
-        io.in_group = 1;
-        int ok = write_thing_list(thing_word(thing, GROUP_POSSESSIONS), mask != group_mask, 1);
-        io.in_group = 0;
+        io.in_group = true;
+        bool ok = write_thing_list(thing_word(thing, GROUP_POSSESSIONS), mask != group_mask, true);
+        io.in_group = false;
         return ok;
     }
     case THING_CONTAINER: {
         uint16_t contents = thing_word(thing, CONTAINER_CONTENTS);
         if (carried) {
-            int linked = contents != THING_NONE && contents != THING_ENDOFLIST;
+            bool linked = contents != THING_NONE && contents != THING_ENDOFLIST;
             return write_value(linked, MORE_MASK) && (!linked || defer_thing(thing));
         }
-        int moneybox = container_is_moneybox(thing);
+        bool moneybox = is_moneybox(thing);
         if (moneybox)
             io.misc_mask = moneybox_misc_mask;
-        int ok = write_thing_list(contents, 0, 1);
+        bool ok = write_thing_list(contents, false, true);
         if (moneybox)
             io.misc_mask = misc_mask;
         return ok;
@@ -362,9 +393,9 @@ static int write_held_things(uint16_t thing, const uint8_t *mask, int carried)
     case THING_PROJECTILE: {
         if (carried)
             return defer_thing(thing);
-        io.in_projectile = 1;
-        int ok = write_thing_list(thing_word(thing, PROJECTILE_PAYLOAD), 0, 0);
-        io.in_projectile = 0;
+        io.in_projectile = true;
+        bool ok = write_thing_list(thing_word(thing, PROJECTILE_PAYLOAD), false, false);
+        io.in_projectile = false;
         return ok;
     }
     case THING_EXPLOSION:
@@ -373,13 +404,13 @@ static int write_held_things(uint16_t thing, const uint8_t *mask, int carried)
                 return write_value(1, MORE_MASK) && write_value(i, INDEX_MASK);
         return write_value(0, MORE_MASK);
     }
-    return 1;
+    return true;
 }
 
 /* Writes what the record of thing stores beside its mask, the record, and the things that it holds. */
-static int write_thing(uint16_t thing)
+static bool write_thing(uint16_t thing)
 {
-    int carried;
+    bool carried;
     const uint8_t *mask = write_thing_head(thing, &carried);
     return mask && write_packed(dungeon_thing_record(thing), mask, dungeon_thing_size(thing_type(thing)), 1) &&
            write_held_things(thing, mask, carried);
@@ -387,36 +418,36 @@ static int write_thing(uint16_t thing)
 
 /* Writes a thing list: one thing without follow, else up to the end of the list. Things above
    the sensors start with a 1 bit and their type; a 0 bit ends a list. */
-static int write_thing_list(uint16_t thing, int with_cell, int follow)
+static bool write_thing_list(uint16_t thing, bool with_cell, bool follow)
 {
     while (thing != THING_ENDOFLIST && thing != THING_NONE) {
         int type = thing_type(thing);
         if (type > THING_SENSOR) {
             if (!write_value(1, MORE_MASK) || !write_value(type, TYPE_MASK))
-                return 0;
+                return false;
             if (with_cell && type != THING_GROUP && !write_value(thing_cell(thing), CELL_MASK))
-                return 0;
+                return false;
         }
         if (type == THING_EXPLOSION && io.in_projectile) {
             if (!write_value(thing, SPELL_MASK))
-                return 0;
+                return false;
             break;
         }
         if (thing_masks[type] && !write_thing(thing))
-            return 0;
+            return false;
         if (!follow)
             break;
         thing = dungeon_next_thing(thing);
     }
     if (!follow && thing != THING_NONE)
-        return 1; /* like the original, also no end bit for an empty single thing */
+        return true; /* like the original, also no end bit for an empty single thing */
     return write_value(0, MORE_MASK);
 }
 
 /* The mask of the stored square bits; *skip when a linked teleporter of a lower map stores the things. */
-static uint8_t square_mask(int map, int x, int y, int *skip)
+static uint8_t saved_bits_mask(int map, int x, int y, bool *skip)
 {
-    *skip = 0;
+    *skip = false;
     switch (square_type(dungeon_square(map, x, y))) {
     case SQUARE_PIT:
         return PIT_SAVED_BITS;
@@ -437,55 +468,57 @@ static uint8_t square_mask(int map, int x, int y, int *skip)
 }
 
 /* Writes the saved bits and the thing list of each square, column by column. */
-static int write_squares(void)
+static bool write_squares(void)
 {
     for (int map = 0; map < dungeon_map_count(); map++)
         for (int x = 0; x < dungeon_map_width(map); x++)
             for (int y = 0; y < dungeon_map_height(map); y++) {
-                int skip;
-                uint8_t mask = square_mask(map, x, y, &skip);
+                bool skip;
+                uint8_t mask = saved_bits_mask(map, x, y, &skip);
                 if (mask && !write_packed(dungeon_square_byte(map, x, y), &mask, 1, 1))
-                    return 0;
-                if (!skip && !write_thing_list(dungeon_square_first_thing(map, x, y), 1, 1))
-                    return 0;
+                    return false;
+                if (!skip && !write_thing_list(dungeon_square_first_thing(map, x, y), true, true))
+                    return false;
             }
-    return 1;
+    return true;
 }
 
-static int is_move_group_event(const TimelineEvent *e)
+/* The timeline events that move a creature group hold the group. */
+static bool is_move_group_event(const TimelineEvent *e)
 {
     return e->type == EVENT_MOVE_GROUP || e->type == EVENT_MOVE_GROUP_2;
 }
 
 /* Writes the things of the deferred minion maps and carried projectiles as bit stream positions. */
-static int write_deferred(void)
+static bool write_deferred(void)
 {
     for (int i = 0; i < io.deferred_count; i++) {
         uint16_t thing = io.deferred[i];
         uint16_t target = thing_index(thing_word(thing, CONTAINER_CONTENTS));
-        int of_group = thing_type(thing) == THING_CONTAINER;
+        bool of_group = thing_type(thing) == THING_CONTAINER;
         /* fix: the original reads past its table for a minion whose link is no container (the minion items) */
         uint16_t order = 0;
         if (target < dungeon_thing_count(of_group ? THING_GROUP : THING_CONTAINER))
             order = of_group ? io.group_order[target] : io.container_order[target];
         if (!write_value(order, INDEX_MASK))
-            return 0;
+            return false;
     }
-    return 1;
+    return true;
 }
 
+/* Fills the game record of the save from the game state. */
 static void pack_game_record(uint8_t *r)
 {
     memset(r, 0, GAME_RECORD_SIZE);
     put_le32(r + REC_GAME_TIME, g_game.game_time);
     put_le32(r + REC_RANDOM_SEED, g_random_seed);
-    put_le16(r + REC_CHAMPION_COUNT, g_game.champion_count);
+    put_le16(r + REC_CHAMPIONS, g_game.champion_count);
     put_le16(r + REC_PARTY_X, g_game.party_x);
     put_le16(r + REC_PARTY_Y, g_game.party_y);
     put_le16(r + REC_PARTY_DIR, g_game.party_dir);
     put_le16(r + REC_PARTY_MAP, g_game.party_map);
     put_le16(r + REC_LEADER, g_game.leader);
-    put_le16(r + REC_EVENT_COUNT, g_timeline.count);
+    put_le16(r + REC_TIMELINE_EVENTS, g_timeline.count);
     put_le32(r + REC_UNKNOWN_TIME_A, g_game.last_combat_time);
     put_le32(r + REC_UNKNOWN_TIME_B, g_game.first_recruit_time);
     put_le16(r + REC_MOVE_COOLDOWN, g_game.party_move_cooldown);
@@ -506,17 +539,18 @@ static void pack_game_record(uint8_t *r)
     put_le32(r + REC_NEXT_HOUR_TIME, g_game.next_hour_time);
 }
 
+/* Sets the game state from the game record of the save. */
 static void unpack_game_record(const uint8_t *r)
 {
     g_game.game_time = le32(r + REC_GAME_TIME);
     g_random_seed = le32(r + REC_RANDOM_SEED);
-    g_game.champion_count = le16(r + REC_CHAMPION_COUNT);
+    g_game.champion_count = le16(r + REC_CHAMPIONS);
     g_game.party_x = le16(r + REC_PARTY_X);
     g_game.party_y = le16(r + REC_PARTY_Y);
     g_game.party_dir = le16(r + REC_PARTY_DIR);
     g_game.party_map = le16(r + REC_PARTY_MAP);
     g_game.leader = le16(r + REC_LEADER);
-    g_timeline.count = le16(r + REC_EVENT_COUNT);
+    g_timeline.count = le16(r + REC_TIMELINE_EVENTS);
     g_game.last_combat_time = le32(r + REC_UNKNOWN_TIME_A);
     g_game.first_recruit_time = le32(r + REC_UNKNOWN_TIME_B);
     g_game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
@@ -538,56 +572,58 @@ static void unpack_game_record(const uint8_t *r)
 }
 
 /* The global words and the timeline events are stored in host order; the host is little-endian like the save file. */
-static int write_state(void)
+static bool write_state(void)
 {
     uint8_t record[GAME_RECORD_SIZE];
     timeline_compact();
-    timeline_relink_events();
+    relink_events();
     pack_game_record(record);
     if (!write_packed(record, game_record_mask, GAME_RECORD_SIZE, 1) ||
         !write_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES) ||
         !write_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT) ||
-        !write_packed((const uint8_t *)g_game.global_words, all_bits, 2, GLOBAL_WORD_COUNT) ||
+        !write_packed((const uint8_t *)g_game.global_words, all_bits, PACKED_WORD_BYTES, GLOBAL_WORD_COUNT) ||
         !write_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count) ||
         !write_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) ||
         !write_packed((const uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count))
-        return 0;
+        return false;
     for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
-            if (!write_thing_list(champion_slot(c, s), 0, 0))
-                return 0;
-    if (!write_thing_list(g_game.leader_hand, 0, 0))
-        return 0;
+            if (!write_thing_list(held_thing(c, s), false, false))
+                return false;
+    if (!write_thing_list(g_game.leader_hand, false, false))
+        return false;
     for (int i = 0; i < g_timeline.count; i++)
         if (is_move_group_event(&g_timeline.events[i]) &&
-            !write_thing_list(le16(g_timeline.events[i].data + EVENT_THING2), 0, 0))
-            return 0;
+            !write_thing_list(le16(g_timeline.events[i].data + EVENT_THING2), false, false))
+            return false;
     return write_squares() && write_deferred() && flush_bits();
 }
 
-static int read_thing_list(int map, int x, int y, uint16_t *list, int with_cell, int follow);
+/* Recursion: read_thing_list reads the things that a thing holds through read_held_things. */
+static bool read_thing_list(const Position *square, uint16_t *list, bool with_cell, bool follow);
 
-static int set_event_thing(uint16_t event, int offset, uint16_t thing)
+/* Puts thing into the data of a timeline event at offset. */
+static bool set_event_thing(uint16_t event, int offset, uint16_t thing)
 {
     if (event >= g_timeline.capacity)
-        return 0; /* fix: the original writes outside the timeline */
+        return false; /* fix: the original writes outside the timeline */
     put_le16(g_timeline.events[event].data + offset, thing);
-    return 1;
+    return true;
 }
 
 /* Reads what the record of a new thing stores beside its mask; returns the mask of the record, NULL on a read error. */
-static const uint8_t *read_thing_head(uint16_t thing, int *carried)
+static const uint8_t *read_thing_head(uint16_t thing, bool *carried)
 {
     int type = thing_type(thing);
     const uint8_t *mask = type == THING_MISC ? io.misc_mask : thing_masks[type];
     uint16_t value;
-    *carried = 0;
+    *carried = false;
     switch (type) {
     case THING_GROUP:
         if (!read_value(&value, CREATURE_MASK))
             return NULL;
         group_set_creature(thing, (uint8_t)value);
-        if (creature_is_static(thing))
+        if (is_static_creature(thing))
             mask = static_group_mask;
         break;
     case THING_CONTAINER:
@@ -596,13 +632,13 @@ static const uint8_t *read_thing_head(uint16_t thing, int *carried)
         container_set_kind(thing, value);
         if (value == CONTAINER_MINION_MAP) {
             mask = minion_map_mask;
-            *carried = 1;
+            *carried = true;
         }
         break;
     case THING_PROJECTILE:
         if (io.in_group) {
             mask = carried_projectile_mask;
-            *carried = 1;
+            *carried = true;
         }
         break;
     }
@@ -610,15 +646,15 @@ static const uint8_t *read_thing_head(uint16_t thing, int *carried)
 }
 
 /* Reads the things that a new thing holds after its record: possessions, contents, payload, or the explosion event. */
-static int read_held_things(uint16_t thing, const uint8_t *mask, int carried)
+static bool read_held_things(uint16_t thing, const uint8_t *mask, bool carried)
 {
     uint16_t value;
     switch (thing_type(thing)) {
     case THING_GROUP: {
         uint16_t possessions = THING_ENDOFLIST;
-        io.in_group = 1;
-        int ok = read_thing_list(0, 0, 0, &possessions, mask != group_mask, 1);
-        io.in_group = 0;
+        io.in_group = true;
+        bool ok = read_thing_list(NULL, &possessions, mask != group_mask, true);
+        io.in_group = false;
         set_thing_word(thing, GROUP_POSSESSIONS, possessions);
         return ok;
     }
@@ -626,14 +662,14 @@ static int read_held_things(uint16_t thing, const uint8_t *mask, int carried)
         uint16_t contents = THING_ENDOFLIST;
         if (carried) {
             if (!read_value(&value, MORE_MASK))
-                return 0;
+                return false;
             set_thing_word(thing, CONTAINER_CONTENTS, contents);
             return !value || defer_thing(thing);
         }
-        int moneybox = container_is_moneybox(thing);
+        bool moneybox = is_moneybox(thing);
         if (moneybox)
             io.misc_mask = moneybox_misc_mask;
-        int ok = read_thing_list(0, 0, 0, &contents, 0, 1);
+        bool ok = read_thing_list(NULL, &contents, false, true);
         if (moneybox)
             io.misc_mask = misc_mask;
         set_thing_word(thing, CONTAINER_CONTENTS, contents);
@@ -644,65 +680,67 @@ static int read_held_things(uint16_t thing, const uint8_t *mask, int carried)
             return defer_thing(thing);
         uint16_t payload = THING_ENDOFLIST;
         if (!set_event_thing(thing_word(thing, PROJECTILE_EVENT), EVENT_THING, thing))
-            return 0;
-        io.in_projectile = 1;
-        int ok = read_thing_list(0, 0, 0, &payload, 0, 0);
-        io.in_projectile = 0;
+            return false;
+        io.in_projectile = true;
+        bool ok = read_thing_list(NULL, &payload, false, false);
+        io.in_projectile = false;
         set_thing_word(thing, PROJECTILE_PAYLOAD, payload);
         return ok;
     }
     case THING_EXPLOSION:
         if (!read_value(&value, MORE_MASK))
-            return 0;
+            return false;
         if (!value)
-            return 1;
+            return true;
         return read_value(&value, INDEX_MASK) && set_event_thing(value, EVENT_THING2, thing);
     }
-    return 1;
+    return true;
 }
 
 /* Reads what the record of a new thing stores beside its mask, the record, and the things that it holds. */
-static int read_thing(uint16_t thing)
+static bool read_thing(uint16_t thing)
 {
-    int carried;
+    bool carried;
     const uint8_t *mask = read_thing_head(thing, &carried);
-    return mask && read_packed(dungeon_thing_record(thing), mask, dungeon_thing_size(thing_type(thing)), 1, 1) &&
+    return mask && read_packed(dungeon_thing_record(thing), mask, dungeon_thing_size(thing_type(thing)), 1, true) &&
            read_held_things(thing, mask, carried);
 }
 
-/* Reads a thing list into new records: onto the square (x, y) of map, or with list onto the end of *list. */
-static int read_thing_list(int map, int x, int y, uint16_t *list, int with_cell, int follow)
+/* Reads a thing list into new records: with list onto the end of *list, else onto square. */
+static bool read_thing_list(const Position *square, uint16_t *list, bool with_cell, bool follow)
 {
     do {
-        uint16_t more, type, cell = 0;
+        uint16_t more;
+        uint16_t type;
+        uint16_t cell = 0;
         if (!read_value(&more, MORE_MASK))
-            return 0;
+            return false;
         if (!more)
-            return 1;
+            return true;
         if (!read_value(&type, TYPE_MASK))
-            return 0;
+            return false;
         if (with_cell && type != THING_GROUP && !read_value(&cell, CELL_MASK))
-            return 0;
+            return false;
         if (type == THING_EXPLOSION && io.in_projectile) {
             uint16_t spell;
             if (!read_value(&spell, SPELL_MASK))
-                return 0;
+                return false;
             if (list)
                 *list = spell | SPELL_THING_BASE;
-            return 1;
+            return true;
         }
         uint16_t thing = dungeon_unused_thing(type);
         if (thing == THING_NONE)
-            return 0;
+            return false;
         thing = thing_with_cell(thing, cell);
         if (list)
             dungeon_append_thing(thing, list);
-        else if (!dungeon_link_thing_to_square(thing, map, x, y))
-            return 0;
+        else if (!dungeon_link_thing_to_square(thing, square->map, square->x, square->y))
+            return false;
         if (thing_masks[type] && !read_thing(thing))
-            return 0;
+            return false;
     } while (follow);
-    return 1;
+    return true;
 }
 
 /* Removes the creature groups and items from the squares and frees their records; the bit stream creates them again. */
@@ -724,15 +762,15 @@ static void free_movable_things(void)
 }
 
 /* Reads the saved bits of each square, the bits of its fixed things, and its movable things. */
-static int read_squares(void)
+static bool read_squares(void)
 {
-    for (int map = 0; map < dungeon_map_count(); map++)
-        for (int x = 0; x < dungeon_map_width(map); x++)
-            for (int y = 0; y < dungeon_map_height(map); y++) {
-                int skip;
-                uint8_t mask = square_mask(map, x, y, &skip);
-                if (mask && !read_packed(dungeon_square_byte(map, x, y), &mask, 1, 1, 1))
-                    return 0;
+    for (int16_t map = 0; map < dungeon_map_count(); map++)
+        for (int16_t x = 0; x < dungeon_map_width(map); x++)
+            for (int16_t y = 0; y < dungeon_map_height(map); y++) {
+                bool skip;
+                uint8_t mask = saved_bits_mask(map, x, y, &skip);
+                if (mask && !read_packed(dungeon_square_byte(map, x, y), &mask, 1, 1, true))
+                    return false;
                 if (skip)
                     continue;
                 for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST;
@@ -741,51 +779,53 @@ static int read_squares(void)
                     if (!thing_masks[type])
                         continue;
                     uint16_t data;
-                    if (type == THING_SENSOR && sensor_has_data(t)) {
+                    if (type == THING_SENSOR && has_sensor_data(t)) {
                         if (!read_value(&data, SENSOR_DATA_MASK))
-                            return 0;
+                            return false;
                         sensor_set_data(t, data);
                     }
-                    if (!read_packed(dungeon_thing_record(t), thing_masks[type], dungeon_thing_size(type), 1, 1))
-                        return 0;
+                    if (!read_packed(dungeon_thing_record(t), thing_masks[type], dungeon_thing_size(type), 1, true))
+                        return false;
                 }
-                if (!read_thing_list(map, x, y, NULL, 1, 1))
-                    return 0;
+                Position square = {map, x, y};
+                if (!read_thing_list(&square, NULL, true, true))
+                    return false;
             }
-    return 1;
+    return true;
 }
 
 /* Links the deferred minion maps to their creature groups and the carried projectiles to their containers. */
-static int read_deferred(void)
+static bool read_deferred(void)
 {
     for (int i = 0; i < io.deferred_count; i++) {
-        uint16_t index, thing = io.deferred[i];
+        uint16_t index;
+        uint16_t thing = io.deferred[i];
         if (!read_value(&index, INDEX_MASK))
-            return 0;
+            return false;
         int target_type = thing_type(thing) == THING_CONTAINER ? THING_GROUP : THING_CONTAINER;
         uint16_t target = thing_make(target_type, index);
         if (!dungeon_thing_valid(target))
-            return 0;
+            return false;
         set_thing_word(thing, CONTAINER_CONTENTS, target);
     }
-    return 1;
+    return true;
 }
 
 /* Reads the things of the champions, the leader's hand, the timeline events, and the squares; the items that the
    champions hold give their bonuses again. */
-static int read_things(void)
+static bool read_things(void)
 {
     free_movable_things();
     for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++) {
             uint16_t slot = THING_ENDOFLIST;
-            if (!read_thing_list(0, 0, 0, &slot, 0, 0))
-                return 0;
-            set_champion_slot(c, s, slot == THING_ENDOFLIST ? THING_NONE : slot);
+            if (!read_thing_list(NULL, &slot, false, false))
+                return false;
+            set_held_thing(c, s, slot == THING_ENDOFLIST ? THING_NONE : slot);
         }
     g_game.leader_hand = THING_ENDOFLIST;
-    if (!read_thing_list(0, 0, 0, &g_game.leader_hand, 0, 0))
-        return 0;
+    if (!read_thing_list(NULL, &g_game.leader_hand, false, false))
+        return false;
     if (g_game.leader_hand == THING_ENDOFLIST)
         g_game.leader_hand = THING_NONE;
     for (int c = 0; c < g_game.champion_count; c++)
@@ -797,20 +837,16 @@ static int read_things(void)
         if (!is_move_group_event(e))
             continue;
         uint16_t group = THING_ENDOFLIST;
-        if (io.format == 0 || !read_thing_list(0, 0, 0, &group, 0, 0))
-            return 0;
+        if (io.format == 0 || !read_thing_list(NULL, &group, false, false))
+            return false;
         put_le16(e->data + EVENT_THING2, group);
     }
     return read_squares() && read_deferred();
 }
 
-/* The light of a magic light event by its power (event data), from SKULL.EXE. */
-#define LIGHT_POWER_COUNT 16
-static const int8_t light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
-
 /* The magic effects that the timeline holds come back: magic light, invisibility, auras, poison, eaten items; then
    the champion loads. */
-static void save_restore_timed_effects(void)
+static void restore_timed_effects(void)
 {
     memset(g_game.magic_light, 0, sizeof g_game.magic_light);
     for (int i = 0; i < g_timeline.used_end; i++) {
@@ -843,43 +879,45 @@ static void save_restore_timed_effects(void)
         champ_compute_load(c);
 }
 
-static int read_state(void)
+/* Reads the game record, the global variables, the champions, the timeline, and the things; then the timed effects
+   come back. */
+static bool read_state(void)
 {
     uint8_t record[GAME_RECORD_SIZE];
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE) +
                   dungeon_thing_count(THING_EXPLOSION));
     weather_load(io.gdat); /* the weather part of the original dungeon_load; the record then sets the weather */
-    if (!read_packed(record, game_record_mask, GAME_RECORD_SIZE, 1, 0))
-        return 0;
+    if (!read_packed(record, game_record_mask, GAME_RECORD_SIZE, 1, false))
+        return false;
     unpack_game_record(record);
     if (g_game.champion_count > CHAMPION_MAX || g_timeline.count > g_timeline.capacity)
-        return 0;
+        return false;
     memset(g_game.champions, 0, sizeof g_game.champions);
-    if (!read_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES, 0) ||
-        !read_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, 0) ||
-        !read_packed((uint8_t *)g_game.global_words, all_bits, 2, GLOBAL_WORD_COUNT, 0) ||
-        !read_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count, 0) ||
-        !read_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, 0) ||
-        !read_packed((uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count, 0))
-        return 0;
+    if (!read_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES, false) ||
+        !read_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, false) ||
+        !read_packed((uint8_t *)g_game.global_words, all_bits, PACKED_WORD_BYTES, GLOBAL_WORD_COUNT, false) ||
+        !read_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count, false) ||
+        !read_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, false) ||
+        !read_packed((uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count, false))
+        return false;
     for (int i = g_timeline.count; i < g_timeline.capacity; i++)
         g_timeline.events[i].type = EVENT_NONE;
     timeline_build_queue();
     if (!read_things())
-        return 0;
-    save_restore_timed_effects();
-    timeline_relink_events();
-    return 1;
+        return false;
+    restore_timed_effects();
+    relink_events();
+    return true;
 }
 
-int save_load(const char *path, const gdat_t *gdat)
+SaveResult save_load(const char *path, const gdat_t *gdat)
 {
     FILE *f = fopen(path, "rb");
     if (!f)
         return SAVE_ERR_IO;
     creature_free_active_groups();
     uint8_t header[SAVE_HEADER_SIZE];
-    int result = SAVE_ERR_FORMAT;
+    SaveResult result = SAVE_ERR_FORMAT;
     if (fread(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_read(f, 0)) {
         start_io(f, gdat);
         if (gdat_current() != gdat)
@@ -896,9 +934,13 @@ int save_load(const char *path, const gdat_t *gdat)
     return result;
 }
 
-int save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat)
+SaveResult save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat)
 {
     uint8_t header[SAVE_HEADER_SIZE] = {0}; /* fix: without an old file the original writes uninitialized bytes */
+    uint16_t *group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *group_order);
+    uint16_t *container_order = calloc(dungeon_thing_count(THING_CONTAINER) + 1, sizeof *container_order);
+    if (!group_order || !container_order)
+        os_fatal("out of memory"); /* before the files change: the old save stays at path */
     remove(bak_path);
     rename(path, bak_path);
     FILE *old = fopen(bak_path, "rb");
@@ -913,21 +955,22 @@ int save_write(const char *path, const char *bak_path, const char *name, const g
     header[SAVE_HEADER_NAME + n] = 0;
 
     FILE *f = fopen(path, "wb");
-    if (!f)
+    if (!f) {
+        free(group_order);
+        free(container_order);
         return SAVE_ERR_IO;
+    }
     start_io(f, gdat);
-    io.group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *io.group_order);
-    io.container_order = calloc(dungeon_thing_count(THING_CONTAINER) + 1, sizeof *io.container_order);
-    if (!io.group_order || !io.container_order)
-        os_fatal("out of memory");
+    io.group_order = group_order;
+    io.container_order = container_order;
     /* the records keep the indices of the active groups; the timeline loses their events (session_save) */
-    int ok = fwrite(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_write(f);
+    bool ok = fwrite(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_write(f);
     creature_deactivate_all_groups();
     ok = ok && write_state() && (game_mode == GAME_MODE_VANILLA || seen_write(f));
     free(io.group_order);
     free(io.container_order);
     if (fclose(f) != 0)
-        ok = 0;
+        ok = false;
     if (!ok)
         remove(path);
     creature_activate_all_maps();

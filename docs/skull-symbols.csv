@@ -611,7 +611,7 @@ address,name,signature,subsystem
 0x0003624f,dungeon_link_things_after_load,void dungeon_link_things_after_load(void),dungeon data
 0x000367da,dungeon_read_level_table,void dungeon_read_level_table(void),dungeon data
 0x00036909,dungeon_load,void dungeon_load(int new_game),dungeon data
-0x00036ef6,save_restore_timed_effects,void save_restore_timed_effects(void),save and load
+0x00036ef6,restore_timed_effects,void restore_timed_effects(void),save and load
 0x00037058,dungeon_open_file,void dungeon_open_file(void),dungeon data
 0x000370d2,session_load,int16_t session_load(void),save and load
 0x000376b6,save_choose_load_slot,int16_t save_choose_load_slot(void),save and load
@@ -983,7 +983,7 @@ address,name,signature,subsystem
 0x00055c45,text_init_message_area,void text_init_message_area(void),text
 0x00055d10,timeline_init,void timeline_init(void),timeline
 0x00055dbd,timeline_build_queue,void timeline_build_queue(void),timeline
-0x00055f4f,timeline_relink_events,void timeline_relink_events(void),timeline
+0x00055f4f,relink_events,void relink_events(void),timeline
 0x00055fdc,timeline_compact,void timeline_compact(void),timeline
 0x00056030,timeline_rebuild_free_list,void timeline_rebuild_free_list(void),timeline
 0x000560b8,timeline_event_is_later,"int timeline_event_is_later(const uint8_t *a, const uint8_t *b)",timeline

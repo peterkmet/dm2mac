@@ -453,7 +453,7 @@ Source: reDM2 `docs/savegame.md`. We checked the call sequence in `session_load`
 
 ### Measurement: original load, then original save (Step 10)
 
-Method (`tests/differential/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `session_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `save_restore_timed_effects`, `timeline_relink_events`). Then it runs the file part of `session_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `session_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
+Method (`tests/differential/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `session_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `restore_timed_effects`, `relink_events`). Then it runs the file part of `session_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `session_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
 
 Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
@@ -486,7 +486,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).
 - Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than room, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.
-- Not ported yet, because they do not change the file bytes: the item effects of the champion slots (`champ_apply_item_effects`, inventory), `save_restore_timed_effects` and `champ_compute_load` (magic, champions), the champion part of `timeline_relink_events`, `creature_deactivate_all_groups` (no active groups exist in the port yet), and the `.BAK` fallback of the load slot dialog. The projectile part of `timeline_relink_events` is ported.
+- Not ported yet, because they do not change the file bytes: the item effects of the champion slots (`champ_apply_item_effects`, inventory), `restore_timed_effects` and `champ_compute_load` (magic, champions), the champion part of `relink_events`, `creature_deactivate_all_groups` (no active groups exist in the port yet), and the `.BAK` fallback of the load slot dialog. The projectile part of `relink_events` is ported.
 - When all records of a type are in use, the original reuses a discarded item (`dun_get_discarded_thing`); the port reports an error.
 - The creature info flags (`0x71968`, 63 records of 36 bytes, word `+0`) are copied into `save.c` until the creature module reads them.
 
@@ -652,7 +652,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
 - The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
 - Not ported: the enter and leave events of the cursor zones (section 13); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
-- The original load relinks the damage display event of each champion (`timeline_relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
+- The original load relinks the damage display event of each champion (`relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion. The C load did not; `save.c` now does.
 - Later steps (the calls of the rules into the interface are members of `g_hooks`, `engine/hooks.h`, set in `ui/hook_table.c`): the leader hand object, item creation, and recruiting (Step 15); active creatures, the push of a creature, the push arrow (`input_update_viewport_arrow`), and missiles (Step 16); sounds (Step 18). Step 17 has ported the weather update, the object transfer of a sensor, and the sound requests (section 11); the end of the game, the dialogs (also the dialog after a load in `play_start_session`), `dungeon_link_things_after_load`, and `dungeon_read_level_table` (Step 20).
 
 ## 11. Weather, day and night, light, and Skullkeep machines (Step 17)
@@ -756,7 +756,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `g_leader_hand` (`src/engine/include/inventory.h`) and draws the icon at the mouse pointer.
 - A click on an object zone of the view takes the object (`view_click_take_object`). With an object in the hand, the click places the object in the cell (`view_click_place_object`), in an alcove, or into an open chest. A click in the upper view throws the hand object (`view_click_throw_object`). The commands `0x14` to `0x41` click the inventory slots, `0xea` to `0xed` put the hand object into a free slot.
-- `champ_apply_item_effects` adds or removes the stat effects of an item in a slot. Mode 0 is the load, 1 adds, -1 removes, 2 and -2 are the timed effects of eaten items, 3 restores. The load applies mode 0 to all slots. Then `save_restore_timed_effects` restores the light power and the timed effects.
+- `champ_apply_item_effects` adds or removes the stat effects of an item in a slot. Mode 0 is the load, 1 adds, -1 removes, 2 and -2 are the timed effects of eaten items, 3 restores. The load applies mode 0 to all slots. Then `restore_timed_effects` restores the light power and the timed effects.
 
 ### Damage and time effects
 
@@ -824,7 +824,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - Saves are `<data>/DATA/SKSAVEn.DAT` (slots 0 to 9) and `.BAK`, as the DOS game finds them. The slot dialogs (`0x80` load, `0x81` save) list the 42-byte header of each slot; an empty slot shows "n UNUSED" and has `0xdeadbeef` at byte `0x26`. A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
 - The save menu (dialog `0x1b`): SAVE, QUIT (the end picture GDAT `(6, 0, 1, 1)` until a click), RESTART (the program starts again: exit code 3), RESUME. A quit more than 100 ticks after the last load and the last save first asks dialog `0x0c`.
-- A load restores the timed effects of the save (`save_restore_timed_effects`, section 13). The start of its session puts the saved object back into the leader hand (`champ_init_party_state`) with the leader index -1, so the object adds no item effects; its name shows in the message area.
+- A load restores the timed effects of the save (`restore_timed_effects`, section 13). The start of its session puts the saved object back into the leader hand (`champ_init_party_state`) with the leader index -1, so the object adds no item effects; its name shows in the message area.
 - A load of a missing slot file takes the `.BAK` file and renames it back; a damaged file shows "THE GAME IS DAMAGED!" and ends the program when no game is in memory. After a load, "LOADING GAME..." stays until the session starts, and `play_start_session` shows "GAME LOADED, READY TO PLAY".
 - When the records of a thing type run out, `dun_get_discarded_thing` frees one: it searches the maps from the map after the last search (the party map last, a second time with one item of each shop display kind kept) for a thing of the type without the "do not discard" bit, not within 5 squares of the party on its map, not on a square with a protecting sensor or text ornament subtype 4; it removes it from its square (or from a static creature's possessions).
 
