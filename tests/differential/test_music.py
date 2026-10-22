@@ -62,6 +62,7 @@ def gd(lib):
     lib.fm_set_write_hook.argtypes = [ctypes.c_void_p]
     lib.hmp_start.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p]
     lib.music_init.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+    lib.music_init.restype = ctypes.c_bool
     lib.music_render.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
     handle = ctypes.c_void_p()
     assert lib.gdat_load(str(GAME / "DATA" / "GRAPHICS.DAT").encode(), ctypes.byref(handle)) == C.GDAT_OK
@@ -72,11 +73,11 @@ def gd(lib):
 @pytest.fixture
 def music(lib, gd):
     """The music module after music_init, with the start values of the original globals."""
-    state = Music.in_dll(lib, "music")
+    state = Music.in_dll(lib, "g_music")
     lib.music_quit()
     ctypes.memset(ctypes.byref(state), 0, ctypes.sizeof(state))
     state.requested_song, state.current_song = -1, C.MUSIC_NO_SONG
-    assert lib.music_init(gd, str(GAME).encode()) == C.MUSIC_OK
+    assert lib.music_init(gd, str(GAME).encode()) is True
     yield state
     lib.music_quit()
 

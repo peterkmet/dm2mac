@@ -153,7 +153,7 @@ def test_quick_load_sets_the_loaded_volumes(lib, advanced):
     from dm2test.scenario import WorldGame
     from dm2test.audio import Music
     game = WorldGame.in_dll(lib, "g_game")
-    music = Music.in_dll(lib, "music")
+    music = Music.in_dll(lib, "g_music")
     game.sound_volume, game.music_volume = 5, 3
     press(lib, KEY_F5)
     lib.sound_set_volume(5)

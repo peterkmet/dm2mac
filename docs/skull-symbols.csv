@@ -13,7 +13,7 @@ address,name,signature,subsystem
 0x00010877,sound_compute_volume_pan,void sound_compute_volume_pan(void *request),sound
 0x0001095d,music_play_song,void music_play_song(uint8_t song),music
 0x00010a86,music_pause,void music_pause(void),music
-0x00010ab4,music_stop,void music_stop(void),music
+0x00010ab4,stop_song,void stop_song(void),music
 0x00010af6,music_update_for_map,void music_update_for_map(int16_t map),music
 0x00010bd3,system_init,void system_init(void),main loop
 0x00010c7b,gfx_alloc_dos_bitmap,"uint8_t *gfx_alloc_dos_bitmap(uint16_t width, uint16_t height, int16_t bpp)",graphics

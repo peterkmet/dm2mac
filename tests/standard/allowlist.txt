@@ -10,9 +10,7 @@ block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
 block ui/fm.c open: module cleanup
-block ui/include/music.h open: module cleanup
 block ui/movie.c open: module cleanup
-block ui/music.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
@@ -37,8 +35,6 @@ comment platform/transport.c open: module cleanup
 comment ui/fm.c open: module cleanup
 comment ui/include/fm.h open: module cleanup
 comment ui/include/movie.h open: module cleanup
-comment ui/include/music.h open: module cleanup
-comment ui/music.c open: module cleanup
 dead-api control/include/state_json.h:json_null open: module cleanup
 dead-api control/include/state_json.h:json_rawn open: module cleanup
 dead-api control/include/state_json.h:json_strn open: module cleanup
@@ -46,9 +42,6 @@ dead-api control/include/state_json.h:state_json_string open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 dead-api ui/include/fm.h:fm_set_write_hook open: module cleanup
 dead-api ui/include/movie.h:movie_current_step open: module cleanup
-dead-api ui/include/music.h:music open: module cleanup
-dead-api ui/include/music.h:music_play_song open: module cleanup
-dead-api ui/include/music.h:music_stop open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -80,9 +73,6 @@ enum platform/include/platform.h open: module cleanup
 enum ui/fm.c open: module cleanup
 enum ui/include/fm.h open: module cleanup
 enum ui/include/movie.h open: module cleanup
-enum ui/include/music.h open: module cleanup
-enum ui/music.c open: module cleanup
-global ui/include/music.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
 hex engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -112,9 +102,7 @@ notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/fm.c open: module cleanup
-notation ui/include/music.h open: module cleanup
 notation ui/movie.c open: module cleanup
-notation ui/music.c open: module cleanup
 order control/control.c open: module cleanup
 order control/state_json.c open: module cleanup
 order control/turn.c open: module cleanup

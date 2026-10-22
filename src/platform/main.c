@@ -494,7 +494,7 @@ int main(int argc, char **argv)
         os_log("cannot open the control socket %s", control);
         return 1;
     }
-    if (music_init(gdat_current(), data) != MUSIC_OK)
+    if (!music_init(gdat_current(), data))
         SDL_Log("cannot load MELODIC.BNK or DRUM.BNK in %s: playing without music", data);
     plat_audio_music(music_render);
     if (save) {
