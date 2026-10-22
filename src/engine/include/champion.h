@@ -324,4 +324,10 @@ void champ_decrease_stamina(int champ, int amount);
 /* A champion throws or casts payload from the party square. */
 void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step);
 
+/* Party state that the interface sets (champion.c). */
+/* The party falls asleep (on) or wakes; only the flag. */
+void champ_set_party_sleeping(bool on);
+/* The raised skill counts that the closed inventory of champ showed (shown[SKILL_BASE_COUNT]) no longer show green. */
+void champ_forget_shown_raises(int champ, const uint8_t *shown);
+
 #endif /* DM2_ENGINE_CHAMPION_H */

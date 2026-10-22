@@ -287,3 +287,14 @@ void champ_set_leader(int champ)
     if (champ != -1 && champ + 1 != g_ui.candidate)
         champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
 }
+
+void champ_set_party_sleeping(bool on)
+{
+    g_party_sleeping = on;
+}
+
+void champ_forget_shown_raises(int champ, const uint8_t *shown)
+{
+    for (int i = 0; i < SKILL_BASE_COUNT; i++)
+        g_champ_skill_raised[champ][i] = (uint8_t)(g_champ_skill_raised[champ][i] - shown[i]);
+}

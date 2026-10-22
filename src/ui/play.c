@@ -128,7 +128,7 @@ void play_sleep(void)
     g_inv_arrows_on_close = true;
     action_area_close();
     play_hide_view();
-    g_party_sleeping = 1;
+    champ_set_party_sleeping(true);
     if (g_party.move_steps) {
         move_party(g_party.move_command);
         g_party.move_steps = 0;

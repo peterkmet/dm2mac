@@ -1440,8 +1440,7 @@ void ui_toggle_inventory(int champ)
             ui_draw_champion_state(open - 1);
         }
         /* the raised skills that the player saw no longer show green */
-        for (int i = 0; i < SKILL_BASE_COUNT; i++)
-            g_champ_skill_raised[open - 1][i] = (uint8_t)(g_champ_skill_raised[open - 1][i] - cache.shown_raised[i]);
+        champ_forget_shown_raises(open - 1, cache.shown_raised);
         if (g_party_sleeping || champ == CHAMPION_MAX) {
             if (!g_party_sleeping) {
                 if (g_inv_arrows_on_close)
