@@ -1097,8 +1097,8 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 }
 
 /* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
-   load, Tab and M there open the automap, and a letter key W S A D Q E without a command gives the command of its
-   keypad key. */
+   load, Tab and M there open the automap, C the cheat screen, and a letter key W S A D Q E without a command gives
+   the command of its keypad key. */
 static uint16_t key_command(int mode, uint16_t key)
 {
     uint16_t command = find_key_command(&input_mode_roots[mode], key);
@@ -1108,6 +1108,8 @@ static uint16_t key_command(int mode, uint16_t key)
         return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
     if (mode == INPUT_MODE_MOVE && (key == KEY_AUTOMAP || key == KEY_AUTOMAP_M))
         return CMD_AUTOMAP;
+    if (mode == INPUT_MODE_MOVE && key == KEY_CHEATS)
+        return CMD_CHEATS;
     uint16_t keypad = advanced_movement_key(key);
     return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
 }
@@ -1448,7 +1450,7 @@ static const uint8_t *click_feedback_script(Command *c)
     input_refine_champion_click(c);
     uint16_t command = c->command;
     int offset;
-    if (!command || command > CMD_AUTOMAP)
+    if (!command || command > CMD_CHEATS)
         return NULL;
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == CMD_VOLUME ||
         (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL) ||
@@ -2305,14 +2307,16 @@ static bool execute_champion_command(int command, bool idle)
             champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
         area_update(0);
-    } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
+    } else if (command >= CMD_QUICK_SAVE && command <= CMD_CHEATS) {
         if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)
                 advanced_quick_save();
             else if (command == CMD_QUICK_LOAD)
                 advanced_quick_load();
-            else
+            else if (command == CMD_AUTOMAP)
                 advanced_open_automap();
+            else
+                advanced_open_cheats();
         }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
         if (g_ui.inventory)

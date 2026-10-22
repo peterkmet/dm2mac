@@ -194,7 +194,7 @@ uint8_t game_get_cheats(void);
 /* Only the cheats of the bits cheats are on. */
 void game_set_cheats(uint8_t cheats);
 /* The cheat bit cheat switches on or off. */
-void game_toggle_cheat(uint8_t cheat); /* exported for the tests */
+void game_toggle_cheat(uint8_t cheat);
 /* True when the cheat bit cheat is on. */
 bool game_has_cheat(uint8_t cheat);
 

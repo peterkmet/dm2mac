@@ -62,7 +62,6 @@
 /* Spell types and ids that the rules single out. */
 #define MISSILE_DOUBLE_SKILL   0x04 /* this missile spell counts the skill twice */
 #define SUMMON_RECAST_VANISHES 0x35 /* a cast of this summon makes a summoned one vanish instead */
-#define FLASK_EMPTY            0x14 /* GDAT index of the empty flask */
 
 /* Rune glyphs. */
 #define RUNE_FIRST      0x60 /* the glyph of the first rune; 6 runes per set */
@@ -137,9 +136,8 @@
 #define FAILURE_DELAY_BASE        8
 #define FLASK_DELAY_MIN           3
 
-/* The party of an aura cast, and the cast result masks. */
+/* The party of an aura cast, and the cast result mask of the base skill. */
 #define AURA_PARTY      0x0f
-#define CAST_KIND_MASK  0xf0
 #define CAST_SKILL_MASK 0x0f /* the base skill in a cast result */
 
 /* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
@@ -150,6 +148,12 @@
 #define GLOBAL_FLASK_MISSING 0x44
 #define GLOBAL_SPELL_FAILED  0x45
 #define GLOBAL_SPELL_UNKNOWN 0x46
+
+/* The port name of the spells of a kind and type. */
+typedef struct {
+    uint8_t kind, type;
+    const char *name;
+} SpellName;
 
 /* The spells of SKULL.EXE. */
 static const Spell spells[SPELL_COUNT] = {
@@ -193,6 +197,44 @@ static const uint8_t rune_mana[RUNE_SETS * RUNES_PER_SET] = {1, 2, 3, 4, 5, 6, 2
                                                              4, 5, 6, 7, 7, 9, 2, 2, 3, 4, 6, 7};
 /* The mana factor (in eighths) of each power rune for the runes after it. */
 static const uint8_t power_rune_mana_factor[RUNES_PER_SET] = {8, 12, 16, 20, 24, 28};
+/* The port names of the spells by kind and type: a potion is named by its drink effect, a missile by its explosion,
+   a summon by its minion. */
+static const SpellName spell_names[] = {
+    {SPELL_POTION,  POTION_DEXTERITY,                            "DEXTERITY POTION" },
+    {SPELL_POTION,  POTION_STRENGTH,                             "STRENGTH POTION"  },
+    {SPELL_POTION,  POTION_WISDOM,                               "WISDOM POTION"    },
+    {SPELL_POTION,  POTION_VITALITY,                             "VITALITY POTION"  },
+    {SPELL_POTION,  POTION_ANTIDOTE,                             "ANTIDOTE"         },
+    {SPELL_POTION,  POTION_STAMINA,                              "STAMINA POTION"   },
+    {SPELL_POTION,  POTION_DEFENSE,                              "SHIELD POTION"    },
+    {SPELL_POTION,  POTION_MANA,                                 "MANA POTION"      },
+    {SPELL_POTION,  POTION_HEALTH,                               "HEALTH POTION"    },
+    {SPELL_MISSILE, SPELL_FIREBALL - SPELL_THING_FIRST,          "FIREBALL"         },
+    {SPELL_MISSILE, SPELL_LIGHTNING - SPELL_THING_FIRST,         "LIGHTNING BOLT"   },
+    {SPELL_MISSILE, SPELL_HARM_NON_MATERIAL - SPELL_THING_FIRST, "HARM NON-MATERIAL"},
+    {SPELL_MISSILE, SPELL_DOOR_TOGGLE - SPELL_THING_FIRST,       "OPEN DOOR"        },
+    {SPELL_MISSILE, SPELL_POISON_BOLT - SPELL_THING_FIRST,       "POISON BOLT"      },
+    {SPELL_MISSILE, SPELL_POISON_CLOUD - SPELL_THING_FIRST,      "POISON CLOUD"     },
+    {SPELL_MISSILE, SPELL_PUSH - SPELL_THING_FIRST,              "PUSH"             },
+    {SPELL_MISSILE, SPELL_PULL - SPELL_THING_FIRST,              "PULL"             },
+    {SPELL_OTHER,   OTHER_LIGHT,                                 "LIGHT"            },
+    {SPELL_OTHER,   OTHER_DARKNESS,                              "DARKNESS"         },
+    {SPELL_OTHER,   OTHER_AURA_1,                                "SPELL SHIELD"     },
+    {SPELL_OTHER,   OTHER_INVISIBILITY,                          "INVISIBILITY"     },
+    {SPELL_OTHER,   OTHER_AURA_2,                                "PARTY SHIELD"     },
+    {SPELL_OTHER,   OTHER_TORCH,                                 "MAGIC TORCH"      },
+    {SPELL_OTHER,   OTHER_AURA_5,                                "AURA OF WISDOM"   },
+    {SPELL_OTHER,   OTHER_AURA_4,                                "AURA OF DEXTERITY"},
+    {SPELL_OTHER,   OTHER_AURA_0,                                "FIRE SHIELD"      },
+    {SPELL_OTHER,   OTHER_AURA_6,                                "AURA OF VITALITY" },
+    {SPELL_OTHER,   OTHER_AURA_3,                                "AURA OF STRENGTH" },
+    {SPELL_OTHER,   OTHER_HASTE,                                 "HASTE"            },
+    {SPELL_OTHER,   OTHER_EXPLOSION,                             "MISSILE WALL"     },
+    {SPELL_OTHER,   OTHER_CREATE_ITEM,                           "YA EW ITEM"       },
+    {SPELL_SUMMON,  MINION_SCOUT,                                "SCOUT MINION"     },
+    {SPELL_SUMMON,  MINION_CARRIER,                              "CARRIER MINION"   },
+    {SPELL_SUMMON,  MINION_ARMY,                                 "ARMY MINION"      },
+};
 /* The rune names by rune: the power runes, then the three rune sets. */
 static const char *const rune_names[RUNE_SETS * RUNES_PER_SET] = {
     "lo",  "um", "on",   "ee", "pal", "mon", "ya", "vi",  "oh",   "ful",  "des", "zo",
@@ -200,6 +242,18 @@ static const char *const rune_names[RUNE_SETS * RUNES_PER_SET] = {
 };
 /* The light of each magic light level. */
 static const int8_t light_power[MAGIC_LIGHT_LEVELS] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
+
+/* The kind of a spell (SPELL_POTION, SPELL_MISSILE, SPELL_OTHER, SPELL_SUMMON). */
+static int spell_kind(const Spell *spell)
+{
+    return spell->effect & SPELL_KIND_MASK;
+}
+
+/* The type of a spell inside its kind. */
+static int spell_type(const Spell *spell)
+{
+    return spell->effect >> SPELL_TYPE_SHIFT & SPELL_TYPE_MASK;
+}
 
 static int imin(int a, int b)
 {
@@ -260,6 +314,24 @@ const Spell *magic_find_spell(const uint8_t *runes)
             return s;
     }
     return NULL;
+}
+
+const Spell *magic_get_spell(int index)
+{
+    return index >= 0 && index < SPELL_COUNT ? &spells[index] : NULL;
+}
+
+uint8_t magic_get_spell_rune(const Spell *spell, int step)
+{
+    return (uint8_t)(spell->runes >> (SPELL_POWER_RUNE_SHIFT - step * RUNE_KEY_SHIFT)); /* the byte of the step */
+}
+
+const char *magic_get_spell_name(const Spell *spell)
+{
+    for (size_t i = 0; i < sizeof spell_names / sizeof *spell_names; i++)
+        if (spell_names[i].kind == spell_kind(spell) && spell_names[i].type == spell_type(spell))
+            return spell_names[i].name;
+    return "?";
 }
 
 const char *magic_get_rune_name(int rune)
@@ -501,31 +573,26 @@ static int find_flask_in_hands(const Champion *c)
 {
     for (int hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
         uint16_t t = c->slots[hand];
-        if (thing_type(t) == THING_POTION && item_gdat_index(t) == FLASK_EMPTY)
+        if (thing_type(t) == THING_POTION && item_gdat_index(t) == EMPTY_FLASK)
             return hand;
     }
     return -1;
 }
 
-int magic_cast_spell(int champ, const Spell *spell, int power)
+/* The action delay of a spell cast with power. */
+static int spell_delay(const Spell *spell, int power)
+{
+    return (spell->effect >> SPELL_DELAY_SHIFT & SPELL_DELAY_MASK) * (power + SPELL_DELAY_POWER_BASE) /
+           SPELL_DELAY_DIVISOR;
+}
+
+/* The effect of a spell that champion champ casts with power and skill: a potion in a flask, a missile, another
+   spell, or a summon. Returns the cast result: 0, or the failure without an empty flask for a potion. */
+static int cast_effect(int champ, const Spell *spell, int power, int skill)
 {
     Champion *c = champion(champ);
-    int kind = spell->effect & SPELL_KIND_MASK, type = spell->effect >> SPELL_TYPE_SHIFT & SPELL_TYPE_MASK;
-    int delay = (spell->effect >> SPELL_DELAY_SHIFT & SPELL_DELAY_MASK) * (power + SPELL_DELAY_POWER_BASE) /
-                SPELL_DELAY_DIVISOR;
-    int level = power + spell->difficulty;
-    uint16_t experience =
-        (uint16_t)(spell->difficulty * (power - 1) * EXPERIENCE_PER_DIFFICULTY + level * EXPERIENCE_PER_LEVEL +
-                   (int)(rand_next() & EXPERIENCE_ROLL_MASK) + level * level);
-    int skill = champ_get_skill_level(champ, spell->skill, 1);
-    for (int16_t tries = (int16_t)(level - skill); tries > 0; tries--) {
-        int roll = (int)(rand_next() & CAST_ROLL_MASK);
-        if (imin(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
-            champ_add_experience(champ, spell->skill, experience >> ((level - skill) & BIT_INDEX_MASK));
-            return cast_failure(CAST_FAILED, spell);
-        }
-    }
-    switch (kind) {
+    int type = spell_type(spell);
+    switch (spell_kind(spell)) {
     case SPELL_POTION: {
         int hand = find_flask_in_hands(c);
         if (hand < 0)
@@ -550,11 +617,46 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
         cast_summon(type, skill, power);
         break;
     }
+    return 0;
+}
+
+int magic_cast_spell(int champ, const Spell *spell, int power)
+{
+    Champion *c = champion(champ);
+    int delay = spell_delay(spell, power);
+    int level = power + spell->difficulty;
+    uint16_t experience =
+        (uint16_t)(spell->difficulty * (power - 1) * EXPERIENCE_PER_DIFFICULTY + level * EXPERIENCE_PER_LEVEL +
+                   (int)(rand_next() & EXPERIENCE_ROLL_MASK) + level * level);
+    int skill = champ_get_skill_level(champ, spell->skill, 1);
+    for (int16_t tries = (int16_t)(level - skill); tries > 0; tries--) {
+        int roll = (int)(rand_next() & CAST_ROLL_MASK);
+        if (imin(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
+            champ_add_experience(champ, spell->skill, experience >> ((level - skill) & BIT_INDEX_MASK));
+            return cast_failure(CAST_FAILED, spell);
+        }
+    }
+    int result = cast_effect(champ, spell, power, skill);
+    if (result)
+        return result;
     if ((int16_t)delay) {
         champ_add_experience(champ, spell->skill, experience);
         champ_add_action_delay(champ, (uint16_t)delay, ACTION_SPELL);
     }
     return 0;
+}
+
+int magic_cast_cheat_spell(int champ, const Spell *spell)
+{
+    if (!champion(champ)->health)
+        return cast_failure(CAST_FAILED, spell);
+    uint8_t power_rune = magic_get_spell_rune(spell, 0);
+    int power = power_rune ? power_rune - POWER_RUNE_BASE : POWER_MON;
+    int result = cast_effect(champ, spell, power, champ_get_skill_level(champ, spell->skill, 1));
+    int delay = spell_delay(spell, power);
+    if (!result && (int16_t)delay)
+        champ_add_action_delay(champ, (uint16_t)delay, ACTION_SPELL);
+    return result;
 }
 
 /* Shows why a cast failed (CAST_*) and counts it in the global variables. */

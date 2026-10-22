@@ -19,7 +19,7 @@ IncludeCategories:
     Priority: 1
   - Regex: '^"(action|ai|ai_move|aspect|champ_action|champion|creature|dungeon|game|game_text|hooks|inventory|item|magic|merchant|minion|money|move|projectile|random|recruit|save|seen|sensor|sound_request|timeline|weather|ai_move_internal|ai_internal)\.h"$'
     Priority: 2
-  - Regex: '^"(action_area|advanced|automap|dialog|draw|fm|icon|input|minion_map|mode_screen|movie|music|play|session|sound|text|ui|video|view|zone|ui_internal)\.h"$'
+  - Regex: '^"(action_area|advanced|automap|cheats|dialog|draw|fm|icon|input|minion_map|mode_screen|movie|music|play|rows|session|sound|text|ui|video|view|zone|ui_internal)\.h"$'
     Priority: 3
   - Regex: '^"(control|state_json|turn)\.h"$'
     Priority: 4

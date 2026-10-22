@@ -3,7 +3,8 @@
 #define DM2_UI_ADVANCED_H
 /* Prefixes: advanced_ */
 
-/* The advanced mode: quick save and load, the automap key and the movement letter keys. */
+/* The advanced mode: quick save and load, the viewport screens (the automap and the cheat screen) and their keys,
+   and the movement letter keys. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,9 +13,10 @@
 #define KEY_QUICK_SAVE 0x3f /* F5 */
 #define KEY_QUICK_LOAD 0x43 /* F9 */
 
-/* PC scan codes of the keys that open the automap. */
+/* PC scan codes of the keys that open the automap and the cheat screen. */
 #define KEY_AUTOMAP   0x0f /* Tab */
 #define KEY_AUTOMAP_M 0x32 /* M */
+#define KEY_CHEATS    0x2e /* C */
 
 /* PC scan codes of the numeric keypad keys that move and turn the party. */
 #define KEYPAD_TURN_LEFT  0x4b
@@ -30,6 +32,7 @@ enum QuickLoadResult { QUICK_LOADED, QUICK_MISSING, QUICK_DAMAGED, QUICK_BLOCKED
 /* The screens that cover the viewport, one at a time; the game time stops while one is open. */
 #define ADVANCED_SCREEN_NONE    0
 #define ADVANCED_SCREEN_AUTOMAP 1
+#define ADVANCED_SCREEN_CHEATS  2
 
 extern int g_advanced_screen; /* the open viewport screen (ADVANCED_SCREEN_*) */
 
@@ -58,9 +61,12 @@ void advanced_draw_automap(void); /* exported for the tests */
 void advanced_automap_drag(int16_t x, int16_t y);
 
 /* Viewport screens */
+/* Opens the cheat screen in the viewport. */
+void advanced_open_cheats(void);
 /* An input event while a viewport screen is open (type INPUT_KEY with the key in x, a mouse button,
-   INPUT_LEFT_RELEASED). On the automap Tab, M, and Esc close it, a left drag on the viewport scrolls the map; other
-   keys do nothing. */
+   INPUT_LEFT_RELEASED). On the automap Tab, M, and Esc close it, a left drag on the viewport scrolls the map. On the
+   cheat screen C and Esc close it, Up, Down, W, and S select a row, Return and a left click run a row, F5 and F9
+   quick save and quick load (a quick load closes the screen first). Other keys do nothing. */
 void advanced_screen_event(int type, int16_t x, int16_t y);
 
 #endif /* DM2_UI_ADVANCED_H */

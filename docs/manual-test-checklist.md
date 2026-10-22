@@ -288,10 +288,10 @@ Details: `docs/advanced-mode.md`.
 - [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the close).
 - [ ] L16. Drag the automap with the left mouse button. Expected: the map moves in whole squares and stops at the map edges; after a close and a new open, the party is in the middle again.
 - [ ] L17. Press I, F, and L with the automap open. Expected: nothing changes; the readout shows no cheats.
-- [ ] L18. Turn I on, close the automap, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
-- [ ] L19. Turn F on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
-- [ ] L20. In a dark place, turn L on and close the automap. Expected: the dungeon view shows full light.
-- [ ] L21. Turn the cheats on, then press F9 after a quick save. Expected: the readout shows all cheats OFF.
+- [ ] L18. Press C, turn IMMORTAL on, close the screen, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
+- [ ] L19. On the cheat screen, turn FOOD AND WATER on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
+- [ ] L20. In a dark place, turn FULL LIGHT on with C and close the screen. Expected: the dungeon view shows full light.
+- [ ] L21. Press F5 with all cheats off, turn cheats on with C, then press F9. Expected: the cheat screen shows all cheats OFF. On the SPELLS pages, click NEXT up to page 5, then NEXT (page 1) and BACK (the cheat page). Click FUL IR (X,4,4) FIREBALL. Expected: the screen closes, the fireball flies, the mana and the experience do not change.
 - [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
 - [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
 

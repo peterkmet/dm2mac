@@ -2,7 +2,7 @@
 
 The C port has two game modes. Without the cheats, the game rules are the same in both modes.
 
-- `advanced` (the default) adds keys, a quick save, an automap, and cheats that the original game does not have.
+- `advanced` (the default) adds keys, a quick save, an automap, and a cheat screen with cheats that the original game does not have.
 - `vanilla` is the original game without additions.
 
 ## Select the mode
@@ -47,10 +47,12 @@ The keys of the original game work in both modes. The advanced mode adds these k
 | `F9` | Quick load | Dungeon view only |
 | `Tab` or `M` | Open the automap | Dungeon view only |
 | `Tab`, `M`, or `Esc` | Close the automap | Open automap |
+| `C` | Open the cheat screen | Dungeon view only |
+| `C` or `Esc` | Close the cheat screen | Open cheat screen |
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
-The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In other places `F5`, `F9`, `Tab`, and `M` do nothing.
+The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing. The automap and the cheat screen do not open together.
 
 ## Quick save and quick load
 
@@ -132,3 +134,17 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 - One-hit kill: each hit kills the creature, also a hit of a trap, a door, or another creature (a missile does not keep its launcher). A creature that cannot be hurt (defense 0xff) stays unhurt; a creature that others cannot hit (dexterity 0xff) stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall.
 - Reveal map: the automap shows every square of the map. The seen squares do not change.
+
+## Cheat screen
+
+`C` in the dungeon view opens the cheat screen in the viewport. The game time stops while it is open. Click a row, or select it with Up and Down (`W`, `S`) and press Return. `C` and `Esc` close the screen. The title is cyan, the rows are white, the selected row is yellow.
+
+- FULL LIGHT, IMMORTAL, FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see Cheats).
+- QUICK SAVE F5: writes `QUICK.DAT`; the screen stays open. `F5` on the screen does the same.
+- QUICK LOAD F9: closes the screen, then loads `QUICK.DAT`. `F9` on the screen does the same.
+- SPELLS: the spell pages, `SPELLS n/5`, with 8 spells per page, then NEXT, BACK, and CLOSE. NEXT after the last page shows the first page. BACK on the first page shows the cheat page.
+- CLOSE: closes the screen.
+
+A spell line shows the runes, their numbers, and the spell name, for example `FUL IR (X,4,4) FIREBALL`. A number is the place of the rune in its row (1 to 6); `X` means any power. A line wider than the viewport shows only the numbers and the name. The game files have no spell names: the names are port names. A potion spell is named by its drink effect, a missile by its explosion, a summon by its minion.
+
+A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, else the leader. The power is the power rune of the spell, or MON for any power (all spells of the game take any power). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.

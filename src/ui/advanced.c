@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* The advanced mode: the movement letter keys, the quick save and quick load, and the automap. */
+/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, and the cheat screen. */
 #include "advanced.h"
 #include "ids.h"
 #include "os.h"
@@ -10,6 +10,7 @@
 #include "save.h"
 #include "timeline.h"
 #include "automap.h"
+#include "cheats.h"
 #include "draw.h"
 #include "music.h"
 #include "session.h"
@@ -31,8 +32,9 @@
 #define SCAN_S 0x1f
 #define SCAN_D 0x20
 
-/* PC scan codes of the keys on the open automap. */
+/* PC scan codes of the keys on the open viewport screens. */
 #define SCAN_ESCAPE 0x01
+#define SCAN_RETURN 0x1c
 
 /* The layout of the readout: its margin, then its rows. */
 #define READOUT_MARGIN    2 /* pixels between the viewport edge and the readout */
@@ -239,8 +241,59 @@ static void map_event(int type, int16_t x, int16_t y)
     }
 }
 
+void advanced_open_cheats(void)
+{
+    g_advanced_screen = ADVANCED_SCREEN_CHEATS;
+    cheats_open();
+}
+
+/* What a key on the open cheat screen asks for; the arrows and W and S move the selection. */
+static enum CheatsResult process_cheat_key(int16_t key)
+{
+    switch (key) {
+    case KEY_CHEATS:
+    case SCAN_ESCAPE:
+        return CHEATS_CLOSE;
+    case KEY_QUICK_SAVE:
+        return CHEATS_QUICK_SAVE;
+    case KEY_QUICK_LOAD:
+        return CHEATS_QUICK_LOAD;
+    case SCAN_RETURN:
+        return cheats_run_selected_row();
+    case KEYPAD_FORWARD:
+    case SCAN_W:
+        cheats_move_selection(-1);
+        break;
+    case KEYPAD_BACK:
+    case SCAN_S:
+        cheats_move_selection(1);
+        break;
+    }
+    return CHEATS_STAY;
+}
+
+/* An input event on the open cheat screen: a key or a left click, then what its row asks for. */
+static void cheat_event(int type, int16_t x, int16_t y)
+{
+    enum CheatsResult result = CHEATS_STAY;
+    if (type == INPUT_KEY)
+        result = process_cheat_key(x);
+    else if (type != INPUT_LEFT_RELEASED && type & INPUT_BUTTON_LEFT)
+        result = cheats_process_click(x, y);
+    if (result == CHEATS_QUICK_SAVE) {
+        advanced_quick_save();
+    } else if (result == CHEATS_QUICK_LOAD) {
+        close_screen();
+        advanced_quick_load();
+    } else if (result == CHEATS_CLOSE) {
+        close_screen();
+    }
+}
+
 void advanced_screen_event(int type, int16_t x, int16_t y)
 {
     if (g_advanced_screen == ADVANCED_SCREEN_AUTOMAP)
         map_event(type, x, y);
+    else if (g_advanced_screen == ADVANCED_SCREEN_CHEATS)
+        cheat_event(type, x, y);
 }
