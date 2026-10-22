@@ -43,14 +43,14 @@
 #define RESTART_ENV "DM2_RESTARTED" /* set for the program that a RESTART starts: the launcher plays no start movies */
 #define LOG_FILE    "dm2.log"       /* the messages of the Windows build, in the game folder */
 
-/* Shows fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
+/* Shows g_video_fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
 static void present_with_cursor(void)
 {
     static uint8_t saved[SCREEN_H][SCREEN_W];
-    memcpy(saved, fb, sizeof saved);
-    input_draw_cursor(&fb[0][0], input_mouse_x, input_mouse_y);
+    memcpy(saved, g_video_fb, sizeof saved);
+    input_draw_cursor(&g_video_fb[0][0], input_mouse_x, input_mouse_y);
     plat_present();
-    memcpy(fb, saved, sizeof saved);
+    memcpy(g_video_fb, saved, sizeof saved);
 }
 
 /* Loads GRAPHICS.DAT, the screen layout, the colors, and the font; returns 0 with a message on an error. */
@@ -68,7 +68,7 @@ static int load_graphics(const char *data)
         return 0;
     }
     for (int c = 0; c < PALETTE_COLORS; c++)
-        gdat_palette_color(gdat, c, palette[c]);
+        gdat_palette_color(gdat, c, g_video_palette[c]);
     draw_init(gdat);
     input_init();
     return 1;

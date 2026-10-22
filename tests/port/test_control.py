@@ -71,7 +71,7 @@ def read_png(path):
 def screen_rgb(lib):
     lib.video_argb.restype = ctypes.c_uint32
     colors = [lib.video_argb(c) for c in range(PALETTE_COLORS)]
-    fb = (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "fb")
+    fb = (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "g_video_fb")
     return [[((a := colors[fb[y * SCREEN_W + x]]) >> 16 & 255, a >> 8 & 255, a & 255) for x in range(SCREEN_W)]
             for y in range(SCREEN_H)]
 

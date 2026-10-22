@@ -408,7 +408,7 @@ static void screenshot(const char *path, Json *reply)
 {
     static uint8_t screen[SCREEN_H][SCREEN_W];
     char absolute[FULL_PATH_SIZE];
-    memcpy(screen, fb, sizeof screen);
+    memcpy(screen, g_video_fb, sizeof screen);
     if (input_mouse_x >= 0 && input_mouse_y >= 0)
         input_draw_cursor(&screen[0][0], input_mouse_x, input_mouse_y);
     if (!write_png(path, screen) || !os_get_full_path(path, absolute, sizeof absolute)) {

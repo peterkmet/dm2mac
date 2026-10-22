@@ -20,7 +20,7 @@ typedef struct {
 /* Opens the window at scale times the game screen; filter is the upscale factor of scale_filter_factor. */
 int plat_init(int scale, int filter);
 void plat_quit(void);
-/* Shows fb with the palette, scaled into the window. */
+/* Shows g_video_fb with the palette, scaled into the window. */
 void plat_present(void);
 /* Shows a movie picture on the screen of its player, in the largest 4:3 rectangle of the window. */
 void plat_present_movie(const MoviePicture *p);

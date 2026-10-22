@@ -80,7 +80,7 @@ static void draw_screen_picture(int category, int index, int entry)
     const Bitmap *image = draw_gdat_image(category, index, entry);
     int16_t r[RECT_SIZE], x = 0, y = 0;
     if (image && zone_compute_rect(image, r, ZONE_SCREEN, &x, &y, ZONE_NO_ANCHOR))
-        ui_blit_bitmap(image, &draw_screen, r, x, y, GFX_OPAQUE, draw_gdat_image_palette(category, index, entry));
+        ui_blit_bitmap(image, &g_draw_screen, r, x, y, GFX_OPAQUE, draw_gdat_image_palette(category, index, entry));
 }
 
 /* ---- Start menu ---- */

@@ -96,13 +96,13 @@ static bool start_splash(void)
 {
     size_t size;
     uint8_t *file = load_file(steps[MOVIE_STEP_SPLASH].file, &size);
-    PcxImage image = {.pixels = &fb[0][0], .max_width = SCREEN_W, .max_height = SCREEN_H};
+    PcxImage image = {.pixels = &g_video_fb[0][0], .max_width = SCREEN_W, .max_height = SCREEN_H};
     bool ok = file && pcx_decode(file, size, &image) == PCX_OK && image.width == SCREEN_W && image.height == SCREEN_H;
     free(file);
     if (ok)
         for (int c = 0; c < PALETTE_COLORS; c++)
             for (int ch = 0; ch < RGB_CHANNELS; ch++)
-                palette[c][ch] = image.palette[c][ch] >> PCX_TO_VGA_SHIFT;
+                g_video_palette[c][ch] = image.palette[c][ch] >> PCX_TO_VGA_SHIFT;
     return ok;
 }
 
@@ -152,8 +152,8 @@ void movie_stop(void)
     mv.file = NULL;
     mv.playing = false;
     mv.step = MOVIE_STEP_NONE;
-    memcpy(fb, mv.saved_fb, sizeof fb);
-    memcpy(palette, mv.saved_palette, sizeof palette);
+    memcpy(g_video_fb, mv.saved_fb, sizeof g_video_fb);
+    memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
 }
 
 /* Ends the current step and starts the next step of the script that can play; after the last step the script stops. */
@@ -180,8 +180,8 @@ bool movie_start(int script, const char *data_dir, uint64_t now_ns)
     if (script == MOVIE_SCRIPT_NONE)
         return false;
     snprintf(mv.data_dir, sizeof mv.data_dir, "%s", data_dir);
-    memcpy(mv.saved_fb, fb, sizeof fb);
-    memcpy(mv.saved_palette, palette, sizeof palette);
+    memcpy(mv.saved_fb, g_video_fb, sizeof g_video_fb);
+    memcpy(mv.saved_palette, g_video_palette, sizeof g_video_palette);
     mv.script = script, mv.index = -1, mv.skip = false, mv.playing = true;
     next_step(now_ns);
     return mv.playing;

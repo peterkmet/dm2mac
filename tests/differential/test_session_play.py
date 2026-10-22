@@ -576,7 +576,7 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
     (tmp_path / "DATA").mkdir()
     Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
     lib.input_key_down.argtypes = [ctypes.c_uint16]
-    screen = Bitmap.in_dll(lib, "draw_screen")
+    screen = Bitmap.in_dll(lib, "g_draw_screen")
     view = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, view)
 

@@ -13,7 +13,6 @@
 #include "input.h"
 #include "play.h"
 #include "text.h"
-#include "video.h"
 #include "view.h"
 #include "zone.h"
 #include <stdarg.h>
@@ -207,7 +206,7 @@ void ui_fill_zone_screen(int zone, int color)
 {
     int16_t r[RECT_SIZE];
     if (zone_get_rect(zone, r))
-        gfx_fill_rect(draw_screen.pixels, r, color, draw_screen.width, IMAGE_8BPP);
+        gfx_fill_rect(g_draw_screen.pixels, r, color, g_draw_screen.width, IMAGE_8BPP);
 }
 
 int16_t *zone_get_icon_rect(int zone, int16_t *rect)
@@ -288,11 +287,11 @@ void offscreen_flush(Offscreen *o, int close)
     for (int i = 0; i < o->dirty_count; i++) {
         const int16_t *d = o->dirty[i];
         Blit blit = {.src = o->bitmap->pixels,
-                     .dst = draw_screen.pixels,
+                     .dst = g_draw_screen.pixels,
                      .src_x = (int16_t)(d[RECT_X] - o->rect[RECT_X]),
                      .src_y = (int16_t)(d[RECT_Y] - o->rect[RECT_Y]),
                      .src_width = o->rect[RECT_W],
-                     .dst_width = draw_screen.width,
+                     .dst_width = g_draw_screen.width,
                      .src_bpp = IMAGE_8BPP,
                      .dst_bpp = IMAGE_8BPP,
                      .transparent = GFX_OPAQUE,

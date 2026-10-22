@@ -28,7 +28,7 @@ class GameWithChampions(WorldGame):
 def control(lib, gdat, session):  # noqa: F811
     """start.DAT ready to play with its palette and the control socket open; yields the socket path, the game record,
     the main loop."""
-    palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "palette")
+    palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "g_video_palette")
     for c in range(PALETTE_COLORS):
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")  # sun_path holds about 100 bytes

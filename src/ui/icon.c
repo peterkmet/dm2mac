@@ -3,23 +3,28 @@
 #include "ids.h"
 #include "video.h"
 
-#define ICON_INDEX       0x26 /* the mummy */
-#define ICON_TRANSPARENT 47   /* the see-through color of the creature graphics */
-#define ICON_MAX_BYTES   (256 * 256)
+/* The creature graphic of the icon (the mummy) and the see-through color of the creature graphics. */
+#define ICON_INDEX       0x26
+#define ICON_TRANSPARENT 0x2f
 
-int icon_build(const gdat_t *g, uint32_t *argb, int max, int *w, int *h)
+/* Size of the decode buffer in pixels. */
+#define ICON_MAX_BYTES 65536
+
+bool icon_build(const gdat_t *g, uint32_t *argb, int max, int *w, int *h)
 {
     static uint8_t px[ICON_MAX_BYTES];
     int bpp, item = gdat_find(g, CAT_CREATURE, ICON_INDEX, GDAT_TYPE_IMAGE, GFX_ICON);
     if (item < 0 || gdat_image_size(g, item, w, h, &bpp) < 0 || bpp != IMAGE_8BPP)
-        return 0;
+        return false;
     if (*w * *h > max || *w * *h > ICON_MAX_BYTES || gdat_decode_image(g, item, px, sizeof px) < 0)
-        return 0;
+        return false;
     for (int i = 0; i < *w * *h; i++) {
         uint8_t rgb[RGB_CHANNELS];
         gdat_palette_color(g, px[i], rgb);
-        uint32_t red = video_vga_to_8bit(rgb[0]), green = video_vga_to_8bit(rgb[1]), blue = video_vga_to_8bit(rgb[2]);
+        uint32_t red = video_vga_to_8bit(rgb[RGB_RED]);
+        uint32_t green = video_vga_to_8bit(rgb[RGB_GREEN]);
+        uint32_t blue = video_vga_to_8bit(rgb[RGB_BLUE]);
         argb[i] = px[i] == ICON_TRANSPARENT ? 0 : video_argb_pack(red, green, blue);
     }
-    return 1;
+    return true;
 }

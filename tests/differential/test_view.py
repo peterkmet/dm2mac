@@ -795,7 +795,7 @@ def present_viewport(lib, gdat, walking):
     PartyHead.in_dll(lib, "g_party").move_steps = walking
     lib.play_present_viewport()
     PartyHead.in_dll(lib, "g_party").move_steps = 0
-    screen = Bitmap.in_dll(lib, "draw_screen")
+    screen = Bitmap.in_dll(lib, "g_draw_screen")
     shown = [ctypes.string_at(ctypes.addressof(screen.pixels.contents) + (rect[1] + y) * screen.width + rect[0], VIEW_W) for y in range(VIEW_H)]
     return view, shown, (wx, wy, ww, wh)
 

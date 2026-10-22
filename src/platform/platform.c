@@ -45,7 +45,7 @@ int plat_init(int scale, int filter_factor)
     }
     SDL_RaiseWindow(win);
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
-    SDL_HideCursor(); /* the game draws its own cursor into fb */
+    SDL_HideCursor(); /* the game draws its own cursor into g_video_fb */
     SDL_AudioSpec spec = {SDL_AUDIO_S16, AUDIO_CHANNELS, SOUND_OUTPUT_RATE};
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO) ||
         !(audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL)))
@@ -65,11 +65,11 @@ void plat_present(void)
 {
     uint32_t pal[PALETTE_COLORS], *px;
     int pitch, w, h, s, ox, oy, tw = SCREEN_W * filter;
-    const uint8_t *src = filter == SCALE_NONE_FACTOR ? &fb[0][0] : &big[0][0];
+    const uint8_t *src = filter == SCALE_NONE_FACTOR ? &g_video_fb[0][0] : &big[0][0];
     if (filter == SCALE2X_FACTOR)
-        scale2x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
+        scale2x(&g_video_fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
     if (filter == SCALE3X_FACTOR)
-        scale3x(&fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
+        scale3x(&g_video_fb[0][0], SCREEN_W, SCREEN_H, &big[0][0]);
     for (int i = 0; i < PALETTE_COLORS; i++)
         pal[i] = video_argb((uint8_t)i);
     if (!SDL_LockTexture(tex, NULL, (void **)&px, &pitch))
@@ -136,6 +136,7 @@ int plat_poll(PlatEvent *e)
 {
     SDL_Event ev;
     int w, h;
+    VideoPoint at;
     while (SDL_PollEvent(&ev)) {
         *e = (PlatEvent){0};
         switch (ev.type) {
@@ -151,7 +152,9 @@ int plat_poll(PlatEvent *e)
         case SDL_EVENT_MOUSE_MOTION:
             SDL_ConvertEventToRenderCoordinates(ren, &ev); /* window points -> output pixels */
             SDL_GetCurrentRenderOutputSize(ren, &w, &h);
-            video_map_mouse(w, h, (int)ev.motion.x, (int)ev.motion.y, &mouse_x, &mouse_y);
+            at = video_map_mouse(w, h, (int)ev.motion.x, (int)ev.motion.y);
+            mouse_x = at.x;
+            mouse_y = at.y;
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -159,7 +162,9 @@ int plat_poll(PlatEvent *e)
             SDL_GetCurrentRenderOutputSize(ren, &w, &h);
             e->type = ev.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? PLAT_MOUSE : PLAT_MOUSE_UP;
             e->button = ev.button.button;
-            video_map_mouse(w, h, (int)ev.button.x, (int)ev.button.y, &e->x, &e->y);
+            at = video_map_mouse(w, h, (int)ev.button.x, (int)ev.button.y);
+            e->x = at.x;
+            e->y = at.y;
             mouse_x = e->x;
             mouse_y = e->y;
             return 1;

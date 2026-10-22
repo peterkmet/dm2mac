@@ -20,6 +20,7 @@ MIN_OPAQUE = 1000
 
 @pytest.fixture(scope="module")
 def icon(lib, gd):
+    lib.icon_build.restype = ctypes.c_bool
     lib.icon_build.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int, c_int_p, c_int_p]
     argb = (ctypes.c_uint32 * (ICON_W * ICON_H))()
     w, h = ctypes.c_int(), ctypes.c_int()

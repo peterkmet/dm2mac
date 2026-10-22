@@ -50,7 +50,7 @@ void dialog_present(void)
     }
     int16_t r[RECT_SIZE], x = 0, y = 0;
     if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y, ZONE_NO_ANCHOR))
-        ui_blit_bitmap(&g_view_viewport, &draw_screen, r, x, y, GFX_OPAQUE, NULL);
+        ui_blit_bitmap(&g_view_viewport, &g_draw_screen, r, x, y, GFX_OPAQUE, NULL);
 }
 
 void dialog_draw_button(int zone, int highlighted)

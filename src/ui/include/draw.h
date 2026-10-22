@@ -9,9 +9,12 @@
 #include "gfx.h"
 #include <stdint.h>
 
-#define DRAW_NO_BLIT  (-2) /* transparent value: compute the rectangle, draw nothing */
-#define DRAW_NO_IMAGE (-3) /* transparent value: do not even load the image */
-#define IMAGE_COLORS  16   /* colors of a 4 bpp picture */
+/* Special transparent values. */
+#define DRAW_NO_BLIT  (-2) /* compute the rectangle, draw nothing */
+#define DRAW_NO_IMAGE (-3) /* do not even load the image */
+
+/* Colors of a 4 bpp picture. */
+#define IMAGE_COLORS 16
 
 /* A picture to draw: an image (or a part of it), where it goes, and how. */
 typedef struct {
@@ -32,7 +35,7 @@ typedef struct {
 } DrawCtx;
 
 /* The game screen as a bitmap. */
-extern Bitmap draw_screen;
+extern Bitmap g_draw_screen;
 
 /* Selects the GRAPHICS.DAT of the images; frees the decoded images of the last file. */
 void draw_init(const gdat_t *gdat);
@@ -42,6 +45,7 @@ const Bitmap *draw_gdat_image(int category, int index, int entry);
 const uint8_t *draw_gdat_image_palette(int category, int index, int entry);
 /* A temporary bitmap (not cleared) that lives until draw_free_temp; NULL when memory is out. */
 Bitmap *draw_temp_bitmap(int width, int height, int bpp);
+/* Frees all temporary bitmaps. */
 void draw_free_temp(void);
 
 /* Starts a context for the GDAT image (category, index, entry) at its GDAT offset, to the screen. */

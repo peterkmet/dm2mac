@@ -51,7 +51,7 @@ void play_present_viewport(void)
     if (!ok)
         return;
     for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
-        uint8_t *dst = draw_screen.pixels + (r[RECT_Y] + y) * draw_screen.width + r[RECT_X];
+        uint8_t *dst = g_draw_screen.pixels + (r[RECT_Y] + y) * g_draw_screen.width + r[RECT_X];
         if (!steps) {
             memcpy(dst, g_view_viewport.pixels + y * VIEWPORT_WIDTH, VIEWPORT_WIDTH);
             continue;

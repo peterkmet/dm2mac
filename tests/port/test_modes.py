@@ -38,7 +38,7 @@ SLOT_BUTTONS_SAVE = 6
 def last_message_row(lib):
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(ZONE_MESSAGE_AREA, rect)
-    fb = (ctypes.c_uint8 * (SCREEN_W * C.SCREEN_H)).in_dll(lib, "fb")
+    fb = (ctypes.c_uint8 * (SCREEN_W * C.SCREEN_H)).in_dll(lib, "g_video_fb")
     top = rect[1] + rect[3] - TEXT_LINE_HEIGHT
     return [bytes(fb[y * SCREEN_W + rect[0]:y * SCREEN_W + rect[0] + rect[2]]) for y in range(top, top + TEXT_LINE_HEIGHT)]
 
@@ -276,7 +276,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa:
     assert lib.zone_get_rect(7, rect)  # the viewport
     x, y, w, h = rect
     middle = (y + (h - 8) // 2) * SCREEN_W + x + (w - 8) // 2  # the top left pixel of the party frame
-    fb = (ctypes.c_uint8 * (SCREEN_W * C.SCREEN_H)).in_dll(lib, "fb")
+    fb = (ctypes.c_uint8 * (SCREEN_W * C.SCREEN_H)).in_dll(lib, "g_video_fb")
     set_mode(lib, ADVANCED)
     try:
         with pumped(lib):

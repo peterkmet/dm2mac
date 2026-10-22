@@ -165,7 +165,7 @@ void text_draw_with_shadow(uint8_t *dst, int dst_width, int x, int y, int color,
 
 void text_draw_on_screen(int x, int y, int color, int bg, const char *text)
 {
-    text_draw(draw_screen.pixels, draw_screen.width, x, y, color, bg, text, IMAGE_8BPP);
+    text_draw(g_draw_screen.pixels, g_draw_screen.width, x, y, color, bg, text, IMAGE_8BPP);
 }
 
 void text_draw_in_viewport(int x, int y, int color, const char *text)
@@ -218,7 +218,7 @@ void text_clear_expired_rows(void)
             continue;
         int16_t row[RECT_SIZE] = {r[RECT_X], (int16_t)(message.top + TEXT_LINE_HEIGHT * i + r[RECT_Y]), r[RECT_W],
                                   FONT_GLYPH_HEIGHT};
-        gfx_fill_rect(draw_screen.pixels, row, g_ui_colors[UI_BLACK], draw_screen.width, IMAGE_8BPP);
+        gfx_fill_rect(g_draw_screen.pixels, row, g_ui_colors[UI_BLACK], g_draw_screen.width, IMAGE_8BPP);
         message_expiry[i] = MESSAGE_NEVER;
         message_text[i][0] = '\0';
     }
@@ -236,14 +236,14 @@ static void text_scroll_message_area(void)
     zone_get_rect(ZONE_MESSAGE_AREA, r);
     /* ponytail: the IBMIOP scroll (service 0x105) is not decompiled; this moves the rows and keeps the bottom rows */
     for (int y = r[RECT_Y]; y < r[RECT_Y] + r[RECT_H] - MESSAGE_SCROLL_HEIGHT; y++)
-        memcpy(draw_screen.pixels + y * draw_screen.width + r[RECT_X],
-               draw_screen.pixels + (y + MESSAGE_SCROLL_HEIGHT) * draw_screen.width + r[RECT_X], r[RECT_W]);
+        memcpy(g_draw_screen.pixels + y * g_draw_screen.width + r[RECT_X],
+               g_draw_screen.pixels + (y + MESSAGE_SCROLL_HEIGHT) * g_draw_screen.width + r[RECT_X], r[RECT_W]);
     r[RECT_Y] = (int16_t)(r[RECT_Y] + r[RECT_H] - FONT_GLYPH_HEIGHT);
     r[RECT_H] = FONT_GLYPH_HEIGHT;
     Blit blit = {.src = message.line,
-                 .dst = draw_screen.pixels,
+                 .dst = g_draw_screen.pixels,
                  .src_width = MESSAGE_WIDTH,
-                 .dst_width = draw_screen.width,
+                 .dst_width = g_draw_screen.width,
                  .src_bpp = IMAGE_8BPP,
                  .dst_bpp = IMAGE_8BPP,
                  .transparent = GFX_OPAQUE,

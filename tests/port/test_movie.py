@@ -155,8 +155,8 @@ def test_end_scripts(lib, movies):
 
 
 def test_script_end_restores_the_game_screen(lib, movies):
-    fb = (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "fb")
-    pal = (ctypes.c_uint8 * (COLORS * RGB)).in_dll(lib, "palette")
+    fb = (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "g_video_fb")
+    pal = (ctypes.c_uint8 * (COLORS * RGB)).in_dll(lib, "g_video_palette")
     for i in range(len(fb)):
         fb[i] = i % 7
     for i in range(len(pal)):

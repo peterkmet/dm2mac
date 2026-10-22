@@ -302,7 +302,7 @@ def viewport(lib):
 
 
 def screen(lib):
-    return (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "fb")
+    return (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "g_video_fb")
 
 
 def red(lib):

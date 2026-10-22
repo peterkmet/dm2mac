@@ -43,7 +43,7 @@ def tb(lib, gdat, session):  # noqa: F811
     """start.DAT in the turn-based mode with the control socket open and a thread that runs control_frame as the turn
     loop of main.c does; yields the socket path, the game record, the main loop."""
     poll, frame, pending = lib.transport_poll, lib.control_frame, lib.control_is_turn_pending
-    palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "palette")
+    palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "g_video_palette")
     for c in range(PALETTE_COLORS):
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     mode = ctypes.c_int.in_dll(lib, "g_game_mode")

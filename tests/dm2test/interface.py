@@ -157,7 +157,7 @@ def port(lib, gdat, original, tmp_path):
     lib.view_enter_map(game.party_map)
     lib.money_init_coin_table()
     lib.ui_reset()
-    ctypes.memset(ctypes.addressof(ctypes.c_uint8.in_dll(lib, "fb")), 0, SCREEN_W * SCREEN_H)
+    ctypes.memset(ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_video_fb")), 0, SCREEN_W * SCREEN_H)
     viewport = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_view_viewport"), u8_p)
     ctypes.memset(viewport, 0, VIEW_W * VIEW_H)
     emu = original.emu
@@ -175,7 +175,7 @@ def champion_records(lib):
 
 
 def c_screen(lib):
-    return ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(lib, "fb")), SCREEN_W * SCREEN_H)
+    return ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_video_fb")), SCREEN_W * SCREEN_H)
 
 
 def c_view(lib):

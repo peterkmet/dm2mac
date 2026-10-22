@@ -13,16 +13,12 @@ block ui/action_area.c open: module cleanup
 block ui/advanced.c open: module cleanup
 block ui/automap.c open: module cleanup
 block ui/dialog.c open: module cleanup
-block ui/draw.c open: module cleanup
 block ui/fm.c open: module cleanup
-block ui/icon.c open: module cleanup
-block ui/include/draw.h open: module cleanup
 block ui/include/music.h open: module cleanup
 block ui/include/play.h open: module cleanup
 block ui/include/session.h open: module cleanup
 block ui/include/sound.h open: module cleanup
 block ui/include/ui.h open: module cleanup
-block ui/include/video.h open: module cleanup
 block ui/include/zone.h open: module cleanup
 block ui/input.c open: module cleanup
 block ui/minion_map.c open: module cleanup
@@ -33,7 +29,6 @@ block ui/session.c open: module cleanup
 block ui/sound.c open: module cleanup
 block ui/text.c open: module cleanup
 block ui/ui.c open: module cleanup
-block ui/video.c open: module cleanup
 block ui/zone.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
@@ -51,10 +46,8 @@ bool ui/action_area.c:draw_open_panel open: module cleanup
 bool ui/action_area.c:party_icons_changed open: module cleanup
 bool ui/advanced.c open: module cleanup
 bool ui/dialog.c open: module cleanup
-bool ui/draw.c open: module cleanup
 bool ui/fm.c open: module cleanup
 bool ui/include/advanced.h:advanced_quick_save open: module cleanup
-bool ui/include/icon.h:icon_build open: module cleanup
 bool ui/include/input.h:command_execute open: module cleanup
 bool ui/include/session.h:session_init open: module cleanup
 bool ui/include/session.h:session_load open: module cleanup
@@ -91,11 +84,9 @@ comment control/turn.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
-comment ui/draw.c open: module cleanup
 comment ui/fm.c open: module cleanup
 comment ui/include/action_area.h open: module cleanup
 comment ui/include/automap.h open: module cleanup
-comment ui/include/draw.h open: module cleanup
 comment ui/include/fm.h open: module cleanup
 comment ui/include/input.h open: module cleanup
 comment ui/include/movie.h open: module cleanup
@@ -104,7 +95,6 @@ comment ui/include/play.h open: module cleanup
 comment ui/include/session.h open: module cleanup
 comment ui/include/text.h open: module cleanup
 comment ui/include/ui.h open: module cleanup
-comment ui/include/video.h open: module cleanup
 comment ui/include/zone.h open: module cleanup
 comment ui/input.c open: module cleanup
 comment ui/music.c open: module cleanup
@@ -158,14 +148,12 @@ decimal platform/platform.c open: module cleanup
 decimal platform/scale.c open: module cleanup
 decimal ui/action_area.c rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/fm.c rule 3.12: a table of SKULL.EXE
-decimal ui/icon.c open: module cleanup
 decimal ui/include/input.h open: module cleanup
 decimal ui/input.c rule 3.12: a table of SKULL.EXE
 decimal ui/minion_map.c open: module cleanup
 decimal ui/session.c open: module cleanup
 decimal ui/text.c open: module cleanup
 decimal ui/ui.c open: module cleanup
-decimal ui/video.c open: module cleanup
 decimal ui/view.c rule 3.12: a table of SKULL.EXE
 engine-write ui/action_area.c rule 1.5: the action area keeps the order of the original: it sets the mode, the result and the redraw state of g_action while it draws
 engine-write ui/advanced.c open: module cleanup
@@ -199,13 +187,11 @@ enum ui/zone.c open: module cleanup
 event-comment ui/include/input.h open: module cleanup
 global ui/include/advanced.h open: module cleanup
 global ui/include/dialog.h open: module cleanup
-global ui/include/draw.h open: module cleanup
 global ui/include/input.h open: module cleanup
 global ui/include/music.h open: module cleanup
 global ui/include/play.h open: module cleanup
 global ui/include/text.h open: module cleanup
 global ui/include/ui.h open: module cleanup
-global ui/include/video.h open: module cleanup
 global ui/include/zone.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
@@ -265,16 +251,13 @@ notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
-notation ui/draw.c open: module cleanup
 notation ui/fm.c open: module cleanup
-notation ui/icon.c open: module cleanup
 notation ui/include/dialog.h open: module cleanup
 notation ui/include/input.h open: module cleanup
 notation ui/include/music.h open: module cleanup
 notation ui/include/session.h open: module cleanup
 notation ui/include/text.h open: module cleanup
 notation ui/include/ui.h open: module cleanup
-notation ui/include/video.h open: module cleanup
 notation ui/include/zone.h open: module cleanup
 notation ui/input.c open: module cleanup
 notation ui/minion_map.c open: module cleanup
@@ -284,7 +267,6 @@ notation ui/play.c open: module cleanup
 notation ui/session.c open: module cleanup
 notation ui/text.c open: module cleanup
 notation ui/ui.c open: module cleanup
-notation ui/video.c open: module cleanup
 notation ui/zone.c open: module cleanup
 order control/control.c open: module cleanup
 order control/state_json.c open: module cleanup
@@ -317,7 +299,6 @@ params ui/include/ui.h:offscreen_blit open: module cleanup
 params ui/include/ui.h:offscreen_draw_gdat_image open: module cleanup
 params ui/include/ui.h:offscreen_draw_text_at open: module cleanup
 params ui/include/ui.h:ui_blit_bitmap open: module cleanup
-params ui/include/video.h:video_map_mouse open: module cleanup
 params ui/include/zone.h:zone_compute_rect open: module cleanup
 params ui/input.c:input_find_command open: module cleanup
 params ui/input.c:view_click_place_object open: module cleanup
@@ -338,7 +319,6 @@ params ui/ui.c:offscreen_blit open: module cleanup
 params ui/ui.c:offscreen_draw_gdat_image open: module cleanup
 params ui/ui.c:offscreen_draw_text_at open: module cleanup
 params ui/ui.c:ui_blit_bitmap open: module cleanup
-params ui/video.c:video_map_mouse open: module cleanup
 params ui/zone.c:clip_placed open: module cleanup
 params ui/zone.c:place_relative open: module cleanup
 params ui/zone.c:zone_compute_rect open: module cleanup
@@ -396,7 +376,6 @@ static-prefix ui/advanced.c:draw_readout_line open: module cleanup
 static-prefix ui/automap.c:draw_middle open: module cleanup
 static-prefix ui/dialog.c:draw_message open: module cleanup
 static-prefix ui/dialog.c:draw_volume_buttons open: module cleanup
-static-prefix ui/draw.c:image_item open: module cleanup
 static-prefix ui/input.c:action_area_present open: module cleanup
 static-prefix ui/input.c:automap_input open: module cleanup
 static-prefix ui/input.c:champion_in_party_cell open: module cleanup

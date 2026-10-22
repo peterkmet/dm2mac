@@ -3,14 +3,18 @@
 #include "ids.h"
 #include "video.h"
 #include "zone.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define OFFSET_ENTRY      0xfe /* value key (category, index, 0x0c, 0xfe): offset of all images of an index */
+/* Value key (category, index, 0x0c, 0xfe): offset of all images of an index; the index of the placeholder image. */
+#define OFFSET_ENTRY      0xfe
 #define PLACEHOLDER_INDEX 0xfe
-#define NO_PALETTE        (-1)
 
-Bitmap draw_screen = {&fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
+/* Palette count of a context without a color remap. */
+#define NO_PALETTE (-1)
+
+Bitmap g_draw_screen = {&g_video_fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
 
 static const gdat_t *cache_owner; /* the GRAPHICS.DAT of the decoded images */
 static Bitmap *images;            /* decoded images by GDAT item */
@@ -49,6 +53,7 @@ void draw_init(const gdat_t *g)
     rebuild_cache();
 }
 
+/* The decoded image of a GDAT item, decoded on first use; NULL when it cannot be decoded. */
 static const Bitmap *decoded(int item)
 {
     follow_gdat();
@@ -72,7 +77,8 @@ static const Bitmap *decoded(int item)
     return b;
 }
 
-static int image_item(int category, int index, int entry)
+/* The GDAT item of an image, or of the placeholder image when it is missing. */
+static int find_item(int category, int index, int entry)
 {
     const gdat_t *gdat = gdat_current();
     int item = gdat_find(gdat, category, index, GDAT_TYPE_IMAGE, entry);
@@ -81,13 +87,13 @@ static int image_item(int category, int index, int entry)
 
 const Bitmap *draw_gdat_image(int category, int index, int entry)
 {
-    return gdat_current() ? decoded(image_item(category, index, entry)) : NULL;
+    return gdat_current() ? decoded(find_item(category, index, entry)) : NULL;
 }
 
 const uint8_t *draw_gdat_image_palette(int category, int index, int entry)
 {
     const gdat_t *gdat = gdat_current();
-    return gdat ? gdat_image_colormap(gdat, image_item(category, index, entry)) : NULL;
+    return gdat ? gdat_image_colormap(gdat, find_item(category, index, entry)) : NULL;
 }
 
 Bitmap *draw_temp_bitmap(int width, int height, int bpp)
@@ -127,7 +133,7 @@ DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->scale_x = ctx->scale_y = SCALE_FULL;
     ctx->zone = (int16_t)ZONE_NONE;
     ctx->anchor = ZONE_NO_ANCHOR;
-    ctx->dst = &draw_screen;
+    ctx->dst = &g_draw_screen;
     ctx->transparent = GFX_OPAQUE;
     const gdat_t *gdat = gdat_current();
     if ((uint8_t)category == CAT_NONE || !gdat)
@@ -152,8 +158,8 @@ void draw_ctx_set_image(DrawCtx *ctx, const Bitmap *image)
 
 DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
 {
-    int scaled = ctx->scale_x != SCALE_FULL || ctx->scale_y != SCALE_FULL;
-    int given = ctx->item == -1 && ctx->image;
+    bool scaled = ctx->scale_x != SCALE_FULL || ctx->scale_y != SCALE_FULL;
+    bool given = ctx->item == -1 && ctx->image;
     if (scaled) {
         ctx->dx = gfx_scale_64(ctx->dx, ctx->scale_x);
         ctx->dy = gfx_scale_64(ctx->dy, ctx->scale_y);
