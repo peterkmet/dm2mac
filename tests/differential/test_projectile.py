@@ -413,6 +413,10 @@ def test_creature_attacks_champions(pj, lib):
     sleeping.value = 0
 
 
+class Location(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
+
+
 def test_ordered_attack_cells(pj, lib):
     # creature_order_attack_cells from all directions and cells, and in random order.
     rng = random.Random(167)
@@ -421,7 +425,7 @@ def test_ordered_attack_cells(pj, lib):
         x, y = rng.randrange(32), rng.randrange(32)
         px, py = x + rng.randrange(-2, 3), y + rng.randrange(-2, 3)
         cell = rng.choice((0, 1, 2, 3, C.CELL_ANY))
-        lib.creature_order_attack_cells(order, x, y, px, py, cell)
+        lib.creature_order_attack_cells(order, Location(x, y), Location(px, py), cell)
         pj.emu.call(CREATURE_GET_ORDERED_ATTACK_CELLS, SCRATCH_OUT, x, y, px, py, cell)
         assert bytes(order) == pj.emu.read(SCRATCH_OUT, 4), (n, x, y, px, py, cell)
         assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == pj.emu.read_u32(0x70518), n

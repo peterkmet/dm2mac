@@ -12,18 +12,22 @@
 #include "hooks.h"
 #include "item.h"
 #include "minion.h"
-#include "money.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
 #include "sound_request.h"
+#include "timeline.h"
 #include <stdlib.h>
 #include <string.h>
 
-#define CREATURE_KEY_INFO  5 /* value key: index of the creature info record */
-#define CREATURE_KEY_CLASS 1 /* value key: the AI class */
+/* GDAT value key: the index of the creature info record. */
+#define CREATURE_KEY_INFO 0x05
+
+/* GDAT value keys 10 to 20: the items that a dead creature leaves. */
+#define CREATURE_ATTR_DROP_FIRST 0x0a
+#define CREATURE_ATTR_DROP_LAST  0x14
 
 /* Animation state word. */
 #define ANIM_STILL         0x4000 /* the creature shows the first frame of its sequence */
@@ -31,61 +35,159 @@
 #define ANIM_LOOP_ALT      0x2000 /* the sequence repeats until its end */
 #define ANIM_RESTART       0x1000 /* a looping sequence starts again from frame 0 */
 #define ANIM_START_MASK    0x0fc0 /* first frame of a looping sequence */
-#define ANIM_START_SHIFT   6
 #define ANIM_RESTART_CLEAR 0xe03f /* clears ANIM_RESTART and the first frame */
-#define ANIM_FRAME_MASK    0x3f   /* frame of a still sequence, length of a looping one */
+#define ANIM_FRAME_MASK    0x003f /* frame of a still sequence, length of a looping one */
 #define ANIM_KIND_MASK     0xe03f
 #define ANIM_SINGLE_LOOP   0x8001 /* a looping sequence of one frame */
 #define ANIM_STEP_NONE     0xffff /* no step of the sequence shown yet */
 
-/* Animation step. */
-#define ANIM_STEP_SIZE         4
-#define STEP_SOUND_MASK        0x7f
-#define STEP_NO_SOUND          0x7f
-#define STEP_ACTS_SHIFT        7    /* sound byte bit 7: the creature acts at this step */
-#define STEP_NEXT_SHIFT        4    /* bits 4-7: steps to the next step, 0 for the last */
-#define STEP_CHANCE_MASK       0x0f /* chance of 16 to stay on the step; 15: always */
-#define STEP_JUMP_MASK         0x3f
-#define STEP_JITTER            0x01 /* time byte: a random picture shift */
-#define STEP_MIRROR            0x02 /* time byte: a random mirror */
-#define STEP_RANDOM_TIME_SHIFT 2    /* bits 2-3: random extra game steps */
-#define STEP_TIME_SHIFT        4    /* bits 4-7: game steps */
-#define STEP_RANDOM_TIME_MASK  0x0c
-#define STEP_TIME_MASK         0xf0
+/* The shift of the first frame of a looping sequence in the animation state word. */
+#define ANIM_START_SHIFT 6
 
-#define ANIM_BIT_MIRROR     0x40
-#define ANIM_BIT_KEEP       0xc0
-#define ANIM_BIT_SHIFT_Y    3 /* anim bits 0-2: sideways picture shift, bits 3-5: forward shift */
-#define TRAIT_SHIFT_MASK    3 /* traits bits 0-1: sideways random shift, bits 2-3: forward random shift */
-#define TRAIT_SHIFT_Y       2
+/* Animation step. */
+#define ANIM_STEP_SIZE 4
+
+/* Bits of the bytes of an animation step. */
+#define STEP_SOUND_MASK       0x7f
+#define STEP_NO_SOUND         0x7f
+#define STEP_CHANCE_MASK      0x0f /* chance of 16 to stay on the step; 15: always */
+#define STEP_JUMP_MASK        0x3f
+#define STEP_JITTER           0x01 /* time byte: a random picture shift */
+#define STEP_MIRROR           0x02 /* time byte: a random mirror */
+#define STEP_RANDOM_TIME_MASK 0x0c
+#define STEP_TIME_MASK        0xf0
+
+/* Shifts of the fields of an animation step. */
+#define STEP_ACTS_SHIFT        7 /* sound byte bit 7: the creature acts at this step */
+#define STEP_NEXT_SHIFT        4 /* bits 4-7: steps to the next step, 0 for the last */
+#define STEP_RANDOM_TIME_SHIFT 2 /* bits 2-3: random extra game steps */
+#define STEP_TIME_SHIFT        4 /* bits 4-7: game steps */
+
+/* Anim bits of an active group. */
+#define ANIM_BIT_MIRROR 0x40
+#define ANIM_BIT_KEEP   0xc0
+
+/* Traits bits 0-1: sideways random shift, bits 2-3: forward random shift. */
+#define TRAIT_JITTER_MASK 0x3
+
+/* The shifts of the forward picture shift in the anim bits and in the traits. */
+#define ANIM_BIT_SHIFT_Y 3 /* anim bits 0-2: sideways picture shift, bits 3-5: forward shift */
+#define TRAIT_SHIFT_Y    2
+
 /* A sequence table entry: the action word, then the word of its first step. */
 #define SEQUENCE_ENTRY_SIZE 4
 #define SEQUENCE_FIRST_STEP 2
 #define SEQUENCE_END        (-1)
 
-#define AI_CLASS_STAYS_FAR       0x10000 /* class flag: a creature on another map than the party keeps its pace */
-#define AI_ACTION_VANISH         0x13
-#define AI_ACTION_IDLE           0x11
-#define AI_ACTION_ATTACK_2       0x24
-#define AI_ACTION_STAND_1        0x23
-#define AI_ACTION_STAND_2        0x25
+/* AI class flags of g_ai_class_flags. */
+#define AI_CLASS_NO_HOME_EVENT   0x0004 /* class flag: the home square gets no event when the creature is hurt */
+#define AI_CLASS_NO_TURN         0x0080 /* an alert does not turn the creature */
+#define AI_CLASS_WAKES           0x0410
+#define AI_CLASS_DIES_NEAR_PARTY 0x0800 /* the creature dies only in front of the party; the commands wait */
+#define AI_CLASS_SCREAMS         0x8000 /* the creature screams when it is hurt */
+
+/* Class flag: a creature on another map than the party keeps its pace. */
+#define AI_CLASS_STAYS_FAR 0x10000
+
+/* AI actions. */
+#define AI_ACTION_JUMP       0x05
+#define AI_ACTION_TURN_LEFT  0x06
+#define AI_ACTION_TURN_RIGHT 0x07
+#define AI_ACTION_IDLE       0x11
+#define AI_ACTION_STAND_1    0x23
+#define AI_ACTION_ATTACK_2   0x24
+#define AI_ACTION_STAND_2    0x25
+
+/* Flags of an AI action. */
+#define AI_ACTION_FLAG_WAKES     0x02
+#define ACTION_FLAG_PATH         0x04
 #define AI_ACTION_FLAG_INTERRUPT 0x10
-#define AI_ACTION_JUMP           5
-#define ACTION_TIME_LONG_AGO     127  /* a new active group acted this many game steps ago */
-#define GROUP_SIZE_MAX           31   /* creatures of a group - 1 */
-#define ROLL_COMBAT              0x1f /* the random part of hit, dodge, and defense */
-#define ALERT_HIT_CHANCE         60
-#define DAMAGE_KIND_MOOD_FIRST   6 /* damage kinds 6 to 0x15 set mood bit kind - 6 */
-#define DAMAGE_KIND_MOOD_END     0x16
-#define ACTIVE_GROUP_SPARE       100 /* active groups beyond the acting groups of the dungeon */
-#define REGEN_TIME_SHIFT         2   /* regeneration counts in game time / 4 */
-#define VANISH_DELAY_FACTOR      3   /* a vanish in a party action effect is 3 times slower */
-#define FAR_DELAY_FACTOR         4   /* a creature away from the party and unseen is 4 times slower */
-#define FEAR_DELAY_PERCENT       75  /* a frightened creature is faster */
-#define FEAR_HURRY_DELAY         2   /* a frightened creature in a hurry keeps delays up to this */
+
+/* Active groups and the size of a group. */
+#define ACTIVE_GROUP_SPARE   100 /* active groups beyond the acting groups of the dungeon */
+#define ACTION_TIME_LONG_AGO 127 /* a new active group acted this many game steps ago */
+#define GROUP_SIZE_MAX       31  /* creatures of a group - 1 */
+#define GROUP_HEALTH_SHIFT   3   /* each creature of a new group has 1/8 of the maximum health, plus 0 to 1/8 */
+
+/* creature_create_group: the group links a minion projectile. */
+#define GROUP_MINION 0x8000
+
+/* The delays of an animation step. */
+#define REGEN_TIME_SHIFT    2  /* regeneration counts in game time / 4 */
+#define VANISH_DELAY_FACTOR 3  /* a vanish in a party action effect is 3 times slower */
+#define FAR_DELAY_FACTOR    4  /* a creature away from the party and unseen is 4 times slower */
+#define FEAR_DELAY_PERCENT  75 /* a frightened creature is faster */
+#define FEAR_HURRY_DELAY    2  /* a frightened creature in a hurry keeps delays up to this */
+
+/* The items that a dead creature leaves: a value of a GDAT drop key. */
+#define DROP_AMOUNT_MASK 0x0f
+#define DROP_RANDOM_MASK 0x70
+
+/* The shifts of the random count and the item of a drop value. */
+#define DROP_RANDOM_SHIFT 4
+#define DROP_ITEM_SHIFT   7
+
+/* The sound of a hurt creature. */
+#define SOUND_ENTRY_HURT 0x09 /* and 10 */
+
+/* Random masks of the combat rolls. */
+#define ROLL_COMBAT      0x1f /* the random part of hit, dodge, and defense */
+#define ATTACK_ROLL_MASK 0x0f
+#define SCREAM_ROLL_MASK 0x07 /* a hurt creature screams with chance 1 in 8 */
+
+/* Damage kinds 6 to 0x15 set mood bit kind - 6. */
+#define DAMAGE_KIND_MOOD_FIRST 0x06
+#define DAMAGE_KIND_MOOD_END   0x16
+
+/* Damage, death, and combat values. */
+#define BOSS_DEATH_WAIT           160 /* timer ticks */
+#define SCREAM_MAX_HEALTH_PERCENT 3   /* or more often when the damage is above this part of its maximum health */
+#define SCREAM_HEALTH_PERCENT     5   /* ... or of its health */
+#define NEAR_PARTY_DISTANCE       3
+#define CREATURE_DEFENSE_SHIFT    3 /* the defense of a creature counts in eighths */
+#define ATTACK_DAMAGE_SHIFT       2 /* the damage of a creature hit is a quarter of the rolls */
+#define ATTACK_MIN_DAMAGE         2
+#define ANGER_DAMAGE              30 /* the damage since the last update that makes a creature angry */
+#define ANGER_DAMAGE_MAYBE        4  /* ... with chance 1 in 4 */
+#define ANGER_HEALTH_PERCENT      15 /* ... or this part of its maximum health */
+#define ARMOR_FACTOR              8  /* the armor factor: (amount + 0 to 3) * 8 / (armor + 2) */
+#define ARMOR_BASE                2
+
+/* Alert flags of the alerts of this module. */
+#define ALERT_SET_ANGRY 0x0002 /* alert flags: set mood bit 2, MOOD_ANGRY */
+#define ALERT_MOOD_BIT  0x0040
+#define ALERT_PUSHED    0x4002
+
+/* Alert chances in percent. */
+#define ALERT_HIT_CHANCE    60
+#define ALERT_PUSHED_CHANCE 10
+
+/* The retry of a group move. */
+#define GROUP_RETRY_DELAY 5
+#define EVENT_GROUP_WORD  2 /* group retry event: data bytes 2-3 hold the group */
+
+/* Pushing creatures. */
+#define PUSH_FAIL_STAMINA  5
+#define PUSH_LIGHT         46 /* creatures below this resistance are easy to push */
+#define PUSH_BASE_STRENGTH 40
+#define PUSH_LEADER_SHIFT  3  /* the leader pushes with 1/8 more strength */
+#define PUSH_LIGHT_SHIFT   2  /* a light creature: 1/4 more strength */
+#define PUSH_STAMINA_SHIFT 4  /* a push costs stamina when a champion has more than 1/16 of the maximum */
+#define PUSH_COST_SHIFT    2  /* a push costs a quarter of the resistance, at least PUSH_FAIL_STAMINA */
+#define PUSH_STOP_SHIFT    2  /* a weak push stops with chance 1 in (resistance - strength) / 4 + 1 */
+#define LOAD_PUSH_DIVISOR  10 /* the push strength of the party: its load / 10 per champion */
+
+/* The power of a vanish sensor that makes the creatures vanish. */
+#define VANISH_POWER 2
 
 ActiveGroup *g_active_groups;
-int g_active_group_max, g_active_group_count;
+int g_active_group_max;
+int g_active_group_count;
+
+/* The push that waits for the slow move of the party. */
+static struct {
+    int16_t turn, y, x, map, dir, party_y, party_x;
+} push;
 
 /* The creature info records of SKULL.EXE. */
 static const CreatureInfo creature_infos[CREATURE_INFO_COUNT] = {
@@ -308,13 +410,7 @@ void creature_anim_frame_of(const gdat_t *g, int type, uint16_t sequence, uint16
         memcpy(frame, data + index * CREATURE_FRAME_SIZE, CREATURE_FRAME_SIZE);
 }
 
-int creature_anim_bits(uint16_t group)
-{
-    ActiveGroup *a = creature_active(group);
-    return a && !(creature_group_info(group)->flags & CREATURE_STATIC) ? a->anim_bits : 0;
-}
-
-/* The 4-byte step of a creature animation at its current state (creature_get_anim_step). */
+/* The 4-byte step of a creature animation at its current state. */
 static const uint8_t *anim_current_step(int creature_type, uint16_t sequence, uint16_t *state)
 {
     const uint8_t *steps = read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
@@ -334,19 +430,18 @@ static int anim_sequence_length(int creature_type, uint16_t sequence)
     return n;
 }
 
-/* Moves *step to the next step of a sequence, through the random chances of its steps; *frame gets the step.
-   Returns 1 when the step has a duration. */
-int creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
+bool creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
 {
     const uint8_t *steps = read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
-    unsigned s = *step, result = 0;
-    int ended = 0;
+    unsigned s = *step;
+    bool has_duration = false;
+    bool ended = false;
     if (s == ANIM_STEP_NONE) {
         s = 0;
     } else {
         int next = steps[((uint16_t)(s + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT;
         if (!next)
-            ended = 1;
+            ended = true;
         else
             s += next;
     }
@@ -361,42 +456,37 @@ int creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_
             }
             if (((p[STEP_TIME] & STEP_RANDOM_TIME_MASK) >> STEP_RANDOM_TIME_SHIFT) +
                 ((p[STEP_TIME] & STEP_TIME_MASK) >> STEP_TIME_SHIFT))
-                result = 1;
+                has_duration = true;
             break;
         }
     }
     *step = (uint16_t)s;
     *frame = steps + ((uint16_t)(s + sequence)) * ANIM_STEP_SIZE;
-    return result;
+    return has_duration;
 }
 
-/* Moves *step by the jump of the current step; returns 2 at the end of the sequence, 1 when more steps follow. */
-int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
+AnimStepResult creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
 {
     const uint8_t *steps = read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
-    int result;
     if (*step == ANIM_STEP_NONE) {
         *step = 0;
-        result = -1;
     } else {
         int jump = steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_JUMP] & STEP_JUMP_MASK;
-        if (!jump)
-            result = ANIM_SEQUENCE_END;
-        else {
-            *step = (uint16_t)(*step + jump);
-            result = -1;
+        if (!jump) {
+            *frame = steps + ((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE;
+            return ANIM_SEQUENCE_END;
         }
+        *step = (uint16_t)(*step + jump);
     }
-    if (result != ANIM_SEQUENCE_END)
-        result =
-            steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT ? ANIM_MORE_STEPS : 0;
     *frame = steps + ((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE;
-    return result;
+    return steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT ? ANIM_MORE_STEPS
+                                                                                                 : ANIM_LAST_STEP;
 }
 
-int creature_anim_start(int creature_type, int action, uint16_t *sequence, uint16_t *state, const uint8_t **frame,
-                        uint16_t start)
+bool creature_anim_start(int creature_type, int action, uint16_t *anim, const uint8_t **frame, uint16_t start)
 {
+    uint16_t *sequence = anim;
+    uint16_t *state = anim + 1;
     const uint8_t *table = read_creature_data(creature_type, GDAT_TYPE_TABLE, GFX_CREATURE_SEQUENCES, NULL);
     for (;; table += SEQUENCE_ENTRY_SIZE) {
         int16_t a = (int16_t)le16(table);
@@ -412,15 +502,15 @@ int creature_anim_start(int creature_type, int action, uint16_t *sequence, uint1
     uint16_t n = (uint16_t)anim_sequence_length(creature_type, first);
     *state = start ? (uint16_t)(n | (start & ANIM_FRAME_MASK) << ANIM_START_SHIFT | ANIM_LOOP)
                    : (uint16_t)(n | ANIM_LOOP | ANIM_RESTART);
-    return 1;
+    return true;
 }
 
-/* The first animation step of the idle sequence of a static creature (reset_idle_animation). */
+/* The first animation step of the idle sequence of a static creature. */
 static void reset_idle_animation(uint16_t group)
 {
     uint16_t *words = creature_anim_words(group);
     const uint8_t *frame;
-    creature_anim_start(group_creature(group), AI_ACTION_IDLE, words, words + 1, &frame, thing_word(group, GROUP_HOME));
+    creature_anim_start(group_creature(group), AI_ACTION_IDLE, words, &frame, thing_word(group, GROUP_HOME));
 }
 
 int creature_current_step_acts(uint16_t group)
@@ -456,12 +546,19 @@ bool creature_is_native_to_map(uint16_t group, int map)
     return false;
 }
 
+/* True while an active group is in the air in a fall or jump. */
+static bool is_floating(int active_index)
+{
+    const ActiveGroup *a = g_active_groups + active_index;
+    return a->action == AI_ACTION_JUMP && (a->phase == 1 || a->phase == 2);
+}
+
 bool creature_is_flying(uint16_t group)
 {
     if (creature_group_info(group)->movement & CREATURE_FLIES)
         return true;
     int active = group_active(group);
-    return active != GROUP_NOT_ACTIVE && creature_active_group_floats(active);
+    return active != GROUP_NOT_ACTIVE && is_floating(active);
 }
 
 int creature_cell_mask(uint16_t possessions)
@@ -476,31 +573,23 @@ int creature_cell_mask(uint16_t possessions)
 
 /* Active groups. */
 
-/* The timeline event of the next update of an active group. */
 int creature_active_group_event(int active_index)
 {
     return g_active_groups[active_index].event;
 }
 
-/* True while an active group is in the air in a fall or jump. */
-int creature_active_group_floats(int active_index)
-{
-    const ActiveGroup *a = g_active_groups + active_index;
-    return a->action == AI_ACTION_JUMP && (a->phase == 1 || a->phase == 2);
-}
-
-/* True while the creature of a group is in the air in a fall or jump. */
 int creature_group_jumps(uint16_t group)
 {
     int active = group_active(group);
-    return active != GROUP_NOT_ACTIVE && creature_active_group_floats(active);
+    return active != GROUP_NOT_ACTIVE && is_floating(active);
 }
 
 void creature_free_active_groups(void)
 {
     free(g_active_groups);
     g_active_groups = NULL;
-    g_active_group_max = g_active_group_count = 0;
+    g_active_group_max = 0;
+    g_active_group_count = 0;
     ai_forget_all();
 }
 
@@ -519,7 +608,6 @@ void creature_alloc_active_groups(void)
         os_fatal("out of memory");
 }
 
-/* Frees all active groups and activates the groups of all maps (a new game or a load). */
 void creature_reset_active_groups(void)
 {
     creature_alloc_active_groups();
@@ -531,7 +619,6 @@ void creature_reset_active_groups(void)
     creature_activate_all_maps();
 }
 
-/* Activates the creatures of the current map and restarts the loops of its static creatures. */
 void creature_activate_groups_on_map(void)
 {
     int map = party.cur_map;
@@ -555,7 +642,6 @@ void creature_activate_groups_on_map(void)
         }
 }
 
-/* Activates the creatures of all maps. */
 void creature_activate_all_maps(void)
 {
     int saved = party.cur_map;
@@ -566,7 +652,6 @@ void creature_activate_all_maps(void)
     dun_set_current_map(saved);
 }
 
-/* Deactivates all active groups. */
 void creature_deactivate_all_groups(void)
 {
     for (int i = 0; g_active_group_count; i++)
@@ -574,7 +659,6 @@ void creature_deactivate_all_groups(void)
             creature_deactivate_group(i);
 }
 
-/* Deletes the next update event of a group. */
 void creature_cancel_update(uint16_t group)
 {
     if (thing_type(group) != THING_GROUP)
@@ -587,7 +671,7 @@ void creature_cancel_update(uint16_t group)
 }
 
 /* Schedules the next update of the group on (x, y) for the next game step. */
-void creature_schedule_update(int x, int y)
+static void schedule_update(int x, int y)
 {
     uint16_t group = creature_get_group_at(x, y);
     ActiveGroup *a = creature_active(group);
@@ -601,7 +685,6 @@ void creature_schedule_update(int x, int y)
     a->event = (int16_t)timeline_add_event(&e);
 }
 
-/* Gives a group an active group: its AI state, animation, and first update. */
 void creature_activate_group(uint16_t group, int x, int y)
 {
     if (group_active(group) != GROUP_NOT_ACTIVE)
@@ -632,7 +715,7 @@ void creature_activate_group(uint16_t group, int x, int y)
             a->behavior = -1;
             a->next_action = -1;
             a->anim_bits = 0;
-            creature_schedule_update(x, y);
+            schedule_update(x, y);
             a->action = thing_word(group, GROUP_ITEM_CLASS) == THING_NONE ? AI_ACTION_IDLE : 0;
             if (!(g_ai.info->flags & CREATURE_STATIC)) {
                 group_set_mood_flag(g_ai.group_thing, MOOD_FAR, true);
@@ -649,7 +732,6 @@ void creature_activate_group(uint16_t group, int x, int y)
     }
 }
 
-/* Frees an active group; a creature that vanished leaves the dungeon. */
 void creature_deactivate_group(int active_index)
 {
     if (active_index > g_active_group_max)
@@ -658,11 +740,11 @@ void creature_deactivate_group(int active_index)
     if (a->group == ACTIVE_FREE)
         return;
     uint16_t group = thing_make(THING_GROUP, a->group);
-    int vanish = !(creature_group_info(group)->flags & CREATURE_STATIC) && a->action == AI_ACTION_VANISH;
+    bool vanish = !(creature_group_info(group)->flags & CREATURE_STATIC) && a->action == CREATURE_ACTION_VANISH;
     int x = 0, y = 0;
     if (vanish) {
         if (a->event == EVENT_NO_SLOT)
-            vanish = 0;
+            vanish = false;
         else {
             x = g_timeline.events[a->event].data[0];
             y = g_timeline.events[a->event].data[1];
@@ -674,16 +756,15 @@ void creature_deactivate_group(int active_index)
     group_set_active(group, GROUP_NOT_ACTIVE);
     a->group = ACTIVE_FREE;
     if (vanish)
-        creature_delete_group_at(x, y, 0, 1);
+        creature_delete_group_at(x, y, DROP_ALL, 1);
 }
 
-/* Sets the action of the next update of a group; now: the update comes at once, or the current action stops. */
 void creature_set_next_action(uint16_t group, int x, int y, int action, int now)
 {
     if (group == THING_NONE && (group = creature_get_group_at(x, y)) == THING_NONE)
         return;
     ActiveGroup *a = creature_active(group);
-    if (!a || a->next_action == AI_ACTION_VANISH || a->action == AI_ACTION_VANISH)
+    if (!a || a->next_action == CREATURE_ACTION_VANISH || a->action == CREATURE_ACTION_VANISH)
         return;
     a->next_action = (int8_t)action;
     if (!now)
@@ -693,7 +774,7 @@ void creature_set_next_action(uint16_t group, int x, int y, int action, int now)
         return;
     }
     creature_cancel_update(group);
-    creature_schedule_update(x, y);
+    schedule_update(x, y);
 }
 
 /* A looping animation of a static creature: the next update comes when the loop reaches its first frame. */
@@ -735,7 +816,6 @@ static void schedule_loop_end(void)
     g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
 }
 
-/* Schedules the next animation update of the static creature on (x, y). */
 void creature_update_anim_at(int x, int y, int alt)
 {
     uint16_t group = creature_get_group_at(x, y);
@@ -771,10 +851,10 @@ static uint8_t anim_step_bits(const uint8_t *step)
     if (step[STEP_TIME] & STEP_JITTER && g_ai.active->action != AI_ACTION_ATTACK_2 &&
         g_ai.active->action != AI_ACTION_STAND_1 && g_ai.active->action != AI_ACTION_STAND_2) {
         bits &= ANIM_BIT_KEEP;
-        if (traits & TRAIT_SHIFT_MASK)
-            bits |= anim_random_shift(traits & TRAIT_SHIFT_MASK);
-        if (traits >> TRAIT_SHIFT_Y & TRAIT_SHIFT_MASK)
-            bits |= (uint8_t)(anim_random_shift(traits >> TRAIT_SHIFT_Y & TRAIT_SHIFT_MASK) << ANIM_BIT_SHIFT_Y);
+        if (traits & TRAIT_JITTER_MASK)
+            bits |= anim_random_shift(traits & TRAIT_JITTER_MASK);
+        if (traits >> TRAIT_SHIFT_Y & TRAIT_JITTER_MASK)
+            bits |= (uint8_t)(anim_random_shift(traits >> TRAIT_SHIFT_Y & TRAIT_JITTER_MASK) << ANIM_BIT_SHIFT_Y);
     }
     if (step[STEP_TIME] & STEP_MIRROR) {
         if (rand_bit())
@@ -794,7 +874,7 @@ static int16_t anim_step_delay(const uint8_t *step)
         return (int16_t)(base < 1 ? base : 1);
     int r = (step[STEP_TIME] & STEP_RANDOM_TIME_MASK) >> STEP_RANDOM_TIME_SHIFT;
     int16_t d = (int16_t)((r ? rand_below((uint16_t)r) : 0) + base);
-    if (g_ai.active->action == AI_ACTION_VANISH && game.magic_light[MAGIC_ACTION_EFFECT] &&
+    if (g_ai.active->action == CREATURE_ACTION_VANISH && game.magic_light[MAGIC_ACTION_EFFECT] &&
         !(g_ai.info->flags & CREATURE_FAST_VANISH)) {
         d = (int16_t)(d * VANISH_DELAY_FACTOR);
     } else if (party.cur_map != g_ai_party.map && !(g_ai_class_flags[g_ai.class_index] & AI_CLASS_STAYS_FAR) &&
@@ -816,21 +896,21 @@ static int16_t anim_step_delay(const uint8_t *step)
 uint32_t creature_animate_step(void)
 {
     int type = group_creature(g_ai.group_thing);
-    uint16_t sequence = g_ai.anim[0], state = g_ai.anim[1];
+    uint16_t anim[] = {g_ai.anim[0], g_ai.anim[1]};
     static const uint8_t no_step[ANIM_STEP_SIZE];
-    int own_step = 0;
+    bool own_step = false;
     if (!g_ai.anim_step) {
         uint16_t start = g_ai.info->flags & CREATURE_STATIC ? thing_word(g_ai.group_thing, GROUP_HOME) : 0;
-        creature_anim_start(type, (int8_t)g_ai.active->action, &sequence, &state, &g_ai.anim_step, start);
+        creature_anim_start(type, (int8_t)g_ai.active->action, anim, &g_ai.anim_step, start);
         if (!g_ai.anim_step) {
             g_ai.anim_step = no_step;
-            own_step = 1;
+            own_step = true;
         }
     }
     const uint8_t *step = g_ai.anim_step;
     g_ai.active->anim_bits = anim_step_bits(step);
-    g_ai.anim[0] = sequence;
-    g_ai.anim[1] = state;
+    g_ai.anim[0] = anim[0];
+    g_ai.anim[1] = anim[1];
     if ((step[STEP_SOUND] & STEP_SOUND_MASK) != STEP_NO_SOUND)
         sound_request(CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE,
                       SOUND_VOLUME_NORMAL, g_ai.event.data[0], g_ai.event.data[1], 1);
@@ -840,7 +920,6 @@ uint32_t creature_animate_step(void)
     return (uint32_t)(delay + (int32_t)game.game_time);
 }
 
-/* The update event of a creature group: regeneration, damage, then the AI or the animation. */
 void creature_process_event(int x, int y, int type)
 {
     uint16_t group = creature_get_group_at(x, y);
@@ -895,42 +974,6 @@ void creature_process_event(int x, int y, int type)
 
 /* Group life: creation, damage, death, alerts. */
 
-#define CREATURE_ATTR_DROP_FIRST  0x0a /* GDAT value keys 10 to 20: the items that a dead creature leaves */
-#define CREATURE_ATTR_DROP_LAST   0x14
-#define DROP_COUNT_MASK           0x0f
-#define DROP_RANDOM_SHIFT         4
-#define DROP_RANDOM_MASK          0x70
-#define DROP_ITEM_SHIFT           7
-#define SOUND_ENTRY_HURT          9      /* and 10 */
-#define AI_CLASS_NO_HOME_EVENT    0x0004 /* class flag: the home square gets no event when the creature is hurt */
-#define AI_CLASS_DIES_NEAR_PARTY  0x0800 /* the creature dies only in front of the party; the commands wait */
-#define AI_CLASS_SCREAMS          0x8000 /* the creature screams when it is hurt */
-#define AI_CLASS_NO_TURN          0x0080 /* an alert does not turn the creature */
-#define AI_CLASS_WAKES            0x0410
-#define ALERT_MOOD_BIT            0x40
-#define AI_ACTION_FLAG_WAKES      0x02
-#define AI_ACTION_TURN_LEFT       6
-#define AI_ACTION_TURN_RIGHT      7
-#define BOSS_DEATH_WAIT           160    /* timer ticks */
-#define GROUP_MINION              0x8000 /* creature_create_group: the group links a minion projectile */
-#define GROUP_RETRY_DELAY         5
-#define EVENT_GROUP_WORD          2 /* group retry event: data bytes 2-3 hold the group */
-#define SCREAM_ROLL_MASK          7 /* a hurt creature screams with chance 1 in 8 */
-#define SCREAM_MAX_HEALTH_PERCENT 3 /* or more often when the damage is above this part of its maximum health */
-#define SCREAM_HEALTH_PERCENT     5 /* ... or of its health */
-#define NEAR_PARTY_DISTANCE       3
-#define ATTACK_ROLL_MASK          0x0f
-#define CREATURE_DEFENSE_SHIFT    3 /* the defense of a creature counts in eighths */
-#define ATTACK_DAMAGE_SHIFT       2 /* the damage of a creature hit is a quarter of the rolls */
-#define ATTACK_MIN_DAMAGE         2
-#define ALERT_SET_ANGRY           2  /* alert flags: set mood bit 2, MOOD_ANGRY */
-#define ANGER_DAMAGE              30 /* the damage since the last update that makes a creature angry */
-#define ANGER_DAMAGE_MAYBE        4  /* ... with chance 1 in 4 */
-#define ANGER_HEALTH_PERCENT      15 /* ... or this part of its maximum health */
-#define ARMOR_FACTOR              8  /* the armor factor: (amount + 0 to 3) * 8 / (armor + 2) */
-#define ARMOR_BASE                2
-#define GROUP_HEALTH_SHIFT        3 /* each creature of a new group has 1/8 of the maximum health, plus 0 to 1/8 */
-
 /* A random cell for an item that a creature drops on (x, y): beside the party on its square. */
 static int drop_cell(int x, int y)
 {
@@ -939,7 +982,6 @@ static int drop_cell(int x, int y)
     return rand_2bits();
 }
 
-/* A dead creature leaves its drop items and its possessions on (x, y). */
 void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound_map)
 {
     if (mode == DROP_NOTHING)
@@ -949,7 +991,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
             int value = creature_gdat_attr(group_creature(group), attr);
             if (!(uint16_t)value)
                 continue;
-            int count = (value & DROP_COUNT_MASK) + 1;
+            int count = (value & DROP_AMOUNT_MASK) + 1;
             int extra = (value & DROP_RANDOM_MASK) >> DROP_RANDOM_SHIFT;
             if (extra)
                 count = rand_below((uint16_t)(extra + 1)) + count;
@@ -993,7 +1035,6 @@ static void signal_home_square(uint16_t group, int effect)
     dun_set_current_map(saved);
 }
 
-/* Removes the group on (x, y) from the dungeon; it drops what it carries. */
 void creature_delete_group_at(int x, int y, int mode, int sound_map)
 {
     uint16_t group = creature_get_group_at(x, y);
@@ -1012,13 +1053,25 @@ void creature_delete_group_at(int x, int y, int mode, int sound_map)
     set_thing_word(group, THING_NEXT, THING_NONE);
 }
 
-/* Damages the group in the AI context; returns 1 when it was removed. */
-int creature_damage_current_group(uint16_t damage)
+/* True when (x, y) of map is near the party, in front of it, and the party sees it. */
+static bool is_near_party_front(int x, int y, int map)
+{
+    if (map != g_ai_party.map || party_sleeping || ui.inventory)
+        return false;
+    int dx = abs(g_ai_party.x - x), dy = abs(g_ai_party.y - y);
+    if (dx == dy)
+        return false;
+    if (dun_get_direction_to(g_ai_party.x, g_ai_party.y, x, y) != g_ai_party.dir)
+        return false;
+    return dx < NEAR_PARTY_DISTANCE && dy < NEAR_PARTY_DISTANCE;
+}
+
+bool creature_damage_current_group(uint16_t damage)
 {
     const CreatureInfo *info = g_ai.info;
     if (info->defense == CREATURE_NO_HURT)
-        return 0;
-    int is_static = info->flags & CREATURE_STATIC;
+        return false;
+    bool is_static = info->flags & CREATURE_STATIC;
     uint32_t class_flags = 0;
     if (!is_static) {
         class_flags =
@@ -1031,22 +1084,23 @@ int creature_damage_current_group(uint16_t damage)
         set_thing_word(g_ai.group_thing, GROUP_HEALTH, 1);
         if (!is_static) {
             if (class_flags & AI_CLASS_DIES_NEAR_PARTY) {
-                if (!creature_is_near_party_front(g_ai.event.data[0], g_ai.event.data[1], g_ai.map))
-                    return 0;
+                if (!is_near_party_front(g_ai.event.data[0], g_ai.event.data[1], g_ai.map))
+                    return false;
                 g_hooks.set_wait(BOSS_DEATH_WAIT);
             }
-            creature_set_next_action(g_ai.group_thing, g_ai.event.data[0], g_ai.event.data[1], AI_ACTION_VANISH, 1);
-            return 0;
+            creature_set_next_action(g_ai.group_thing, g_ai.event.data[0], g_ai.event.data[1], CREATURE_ACTION_VANISH,
+                                     1);
+            return false;
         }
         creature_delete_group_at(g_ai.event.data[0], g_ai.event.data[1], DROP_ALL, 1);
-        return 1;
+        return true;
     }
     if (!is_static && class_flags & AI_CLASS_SCREAMS) {
-        int scream = !(rand_next() & SCREAM_ROLL_MASK);
+        bool scream = !(rand_next() & SCREAM_ROLL_MASK);
         if (!scream && ((int)damage > (int)(info->max_health * SCREAM_MAX_HEALTH_PERCENT) / PERCENT ||
                         (int)damage > (int)(health * SCREAM_HEALTH_PERCENT) / PERCENT)) {
             if (group_mood_flag(g_ai.group_thing, MOOD_FEAR) && rand_bit())
-                scream = 1;
+                scream = true;
             else
                 scream = !rand_2bits();
         }
@@ -1055,23 +1109,9 @@ int creature_damage_current_group(uint16_t damage)
                           SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL, g_ai.event.data[0], g_ai.event.data[1], 1);
     }
     set_thing_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
-    return 0;
+    return false;
 }
 
-/* True when (x, y) of map is near the party, in front of it, and the party sees it. */
-bool creature_is_near_party_front(int x, int y, int map)
-{
-    if (map != g_ai_party.map || party_sleeping || ui.inventory)
-        return false;
-    int dx = abs(g_ai_party.x - x), dy = abs(g_ai_party.y - y);
-    if (dx == dy)
-        return false;
-    if (dun_get_direction_to(g_ai_party.x, g_ai_party.y, x, y) != g_ai_party.dir)
-        return false;
-    return dx < NEAR_PARTY_DISTANCE && dy < NEAR_PARTY_DISTANCE;
-}
-
-/* The creature in the AI context hits the group on (x, y): the damage, 0 for a miss, -1 for no group. */
 int creature_attack_group_at(int x, int y)
 {
     uint16_t group = creature_get_group_at(x, y);
@@ -1099,7 +1139,7 @@ int creature_attack_group_at(int x, int y)
     damage = (int16_t)(damage + rand_2bits() + 1);
     if (rand_bit())
         damage = (int16_t)(damage - rand_below((uint16_t)((damage >> ATTACK_DAMAGE_SHIFT) + 1)));
-    creature_alert(group, x, y, ALERT_SET_ANGRY, ALERT_HIT_CHANCE, (uint16_t)damage);
+    creature_alert(group, (Location){x, y}, ALERT_SET_ANGRY, ALERT_HIT_CHANCE, (uint16_t)damage);
     return damage;
 }
 
@@ -1120,19 +1160,51 @@ static int alert_turn(uint16_t group, int x, int y)
     return rand_bit() ? AI_ACTION_TURN_LEFT : AI_ACTION_TURN_RIGHT;
 }
 
-void creature_alert(uint16_t group, int x, int y, int flags, int chance, int damage)
+/* An alert makes the group angry by its damage total; an angry creature may turn toward the party. */
+static void alert_anger(uint16_t group, int x, int y, uint16_t total, bool anger)
 {
+    if (!group_mood_flag(group, MOOD_ANGRY) &&
+        (total > ANGER_DAMAGE || (total > ANGER_DAMAGE_MAYBE && !rand_2bits()) ||
+         total * (unsigned)PERCENT / creature_group_info(group)->max_health > ANGER_HEALTH_PERCENT)) {
+        group_set_mood_flag(group, MOOD_ANGRY, true);
+        anger = true;
+    }
+    if (anger &&
+        !(g_ai_class_flags[(uint16_t)creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)] &
+          AI_CLASS_NO_TURN) &&
+        rand_bit()) {
+        int action = alert_turn(group, x, y);
+        if (action != -1)
+            creature_set_next_action(group, x, y, action, 0);
+    }
+}
+
+/* True when an alert that changed the mood wakes the creature from its current action. */
+static bool alert_wakes(uint16_t group, const ActiveGroup *a)
+{
+    uint8_t f = ai_action_flag((int8_t)a->action);
+    if (!(f & AI_ACTION_FLAG_INTERRUPT))
+        return true;
+    return g_ai_class_flags[(uint16_t)creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)] &
+               AI_CLASS_WAKES &&
+           f & AI_ACTION_FLAG_WAKES;
+}
+
+void creature_alert(uint16_t group, Location at, int flags, int chance, int damage)
+{
+    int x = at.x;
+    int y = at.y;
     if (group == THING_NONE && (group = creature_get_group_at(x, y)) == THING_NONE)
         return;
-    int anger = flags & ALERT_ANGER;
+    bool anger = flags & ALERT_ANGER;
     if (anger) {
         flags &= ~ALERT_ANGER;
         if (rand_bit())
-            anger = 0;
+            anger = false;
     }
-    int loud = flags & ALERT_LOUD;
+    bool loud = flags & ALERT_LOUD;
     flags &= ~ALERT_LOUD;
-    int is_static = creature_group_info(group)->flags & CREATURE_STATIC;
+    bool is_static = creature_group_info(group)->flags & CREATURE_STATIC;
     if (group_active(group) == GROUP_NOT_ACTIVE) {
         if (!is_static)
             return;
@@ -1143,23 +1215,11 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
         return; /* fix: a stale index of a save before the session activates the groups */
     a->damage = (uint16_t)(a->damage + damage);
     uint16_t total = a->damage;
-    int changed = 0, clear = 0;
+    bool changed = false;
+    bool clear = false;
     uint16_t mask = 0;
     if (!is_static && (int16_t)chance > 0) {
-        if (!group_mood_flag(group, MOOD_ANGRY) &&
-            (total > ANGER_DAMAGE || (total > ANGER_DAMAGE_MAYBE && !rand_2bits()) ||
-             total * (unsigned)PERCENT / creature_group_info(group)->max_health > ANGER_HEALTH_PERCENT)) {
-            group_set_mood_flag(group, MOOD_ANGRY, true);
-            anger = 1;
-        }
-        if (anger &&
-            !(g_ai_class_flags[(uint16_t)creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)] &
-              AI_CLASS_NO_TURN) &&
-            rand_bit()) {
-            int action = alert_turn(group, x, y);
-            if (action != -1)
-                creature_set_next_action(group, x, y, action, 0);
-        }
+        alert_anger(group, x, y, total, anger);
         changed = (int16_t)chance > (int)rand_below(PERCENT);
         if (changed) {
             clear = flags & ALERT_CLEAR;
@@ -1168,24 +1228,17 @@ void creature_alert(uint16_t group, int x, int y, int flags, int chance, int dam
             group_set_mood(group, clear ? mood & ~mask : mood | mask);
         }
     }
-    int wake = 0;
-    if (!is_static && loud && !(int16_t)chance) {
-        wake = 1;
-    } else if (changed && ((!clear && mask & ALERT_MOOD_BIT) || loud)) {
-        uint8_t f = ai_action_flag((int8_t)a->action);
-        if (!(f & AI_ACTION_FLAG_INTERRUPT))
-            wake = 1;
-        else if (g_ai_class_flags[(uint16_t)creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)] &
-                     AI_CLASS_WAKES &&
-                 f & AI_ACTION_FLAG_WAKES)
-            wake = 1;
-    }
-    if ((int8_t)a->action == AI_ACTION_VANISH)
+    bool wake = false;
+    if (!is_static && loud && !(int16_t)chance)
+        wake = true;
+    else if (changed && ((!clear && mask & ALERT_MOOD_BIT) || loud))
+        wake = alert_wakes(group, a);
+    if ((int8_t)a->action == CREATURE_ACTION_VANISH)
         return;
     if (!wake && total < thing_word(group, GROUP_HEALTH))
         return;
     creature_cancel_update(group);
-    creature_schedule_update(x, y);
+    schedule_update(x, y);
 }
 
 int creature_roll_armor_factor(uint16_t group, int amount)
@@ -1199,15 +1252,13 @@ int creature_roll_armor_factor(uint16_t group, int amount)
     return ((uint16_t)amount + (uint16_t)r) * ARMOR_FACTOR / (armor + ARMOR_BASE);
 }
 
-/* A damage kind that sets or clears a mood bit of the group. */
 void creature_apply_damage_kind(uint16_t group, int x, int y, int kind)
 {
     int k = kind & (uint16_t)~ALERT_CLEAR;
     if (k >= DAMAGE_KIND_MOOD_FIRST && k < DAMAGE_KIND_MOOD_END)
-        creature_alert(group, x, y, (k - DAMAGE_KIND_MOOD_FIRST) | (kind & ALERT_CLEAR), ALERT_ALWAYS, 0);
+        creature_alert(group, (Location){x, y}, (k - DAMAGE_KIND_MOOD_FIRST) | (kind & ALERT_CLEAR), ALERT_ALWAYS, 0);
 }
 
-/* Creates a group of count + 1 creatures on (x, y) of the current map; THING_NONE when the dungeon is full. */
 uint16_t creature_create_group(int creature_type, int count, int dir, int x, int y)
 {
     int minion = creature_type & GROUP_MINION;
@@ -1249,11 +1300,14 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
     return group;
 }
 
-/* Creates a group on (x, y) of map or on a free square beside it; link: the item that controls a minion. */
-uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int y, int map, int link, int search_dir)
+uint16_t creature_summon_group(CreatureSummon summon)
 {
+    int x = summon.x;
+    int y = summon.y;
+    int link = summon.link;
+    int search_dir = summon.search_dir;
     int saved = party.cur_map;
-    dun_set_current_map((int16_t)map);
+    dun_set_current_map((int16_t)summon.map);
     uint16_t group = THING_NONE;
     int tries = (int8_t)search_dir < 0 ? 0 : DIR_COUNT;
     int turn = rand_bit() ? 1 : -1;
@@ -1266,7 +1320,8 @@ uint16_t creature_summon_group(int creature_type, int level, int dir, int x, int
             (type != SQUARE_DOOR || !(square & SQUARE_DOOR_STATE) ||
              (square & SQUARE_DOOR_STATE) == DOOR_STATE_BROKEN) &&
             creature_get_group_at(sx, sy) == THING_NONE) {
-            group = creature_create_group(creature_type | ((int16_t)link != -1 ? GROUP_MINION : 0), level, dir, sx, sy);
+            group = creature_create_group(summon.creature_type | ((int16_t)link != -1 ? GROUP_MINION : 0), summon.level,
+                                          summon.dir, sx, sy);
             if (group != THING_NONE)
                 break;
         }
@@ -1297,11 +1352,10 @@ void minion_dismiss(uint16_t link)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
     dun_set_current_map(location_map(at));
-    creature_set_next_action(link, location_x(at), location_y(at), AI_ACTION_VANISH, 1);
+    creature_set_next_action(link, location_x(at), location_y(at), CREATURE_ACTION_VANISH, 1);
     dun_set_current_map(saved);
 }
 
-/* Turns a group, to dir or by dir; a static creature turns its possessions too. */
 void creature_turn_group(uint16_t group, int absolute, int dir)
 {
     int old = group_dir(group);
@@ -1346,7 +1400,6 @@ void timeline_event_move_group(TimelineEvent *e)
         sound_request(CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL, x, y, 1);
 }
 
-/* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */
 int creature_get_party_distance(int x, int y)
 {
     const uint8_t *map;
@@ -1378,24 +1431,6 @@ int creature_get_party_distance(int x, int y)
 }
 
 /* Pushing creatures. */
-
-#define PUSH_FAIL_STAMINA   5
-#define PUSH_LIGHT          46 /* creatures below this resistance are easy to push */
-#define ALERT_PUSHED        0x4002
-#define PUSH_BASE_STRENGTH  40
-#define ACTION_FLAG_PATH    0x04
-#define PUSH_LEADER_SHIFT   3 /* the leader pushes with 1/8 more strength */
-#define PUSH_LIGHT_SHIFT    2 /* a light creature: 1/4 more strength */
-#define PUSH_STAMINA_SHIFT  4 /* a push costs stamina when a champion has more than 1/16 of the maximum */
-#define PUSH_COST_SHIFT     2 /* a push costs a quarter of the resistance, at least PUSH_FAIL_STAMINA */
-#define PUSH_STOP_SHIFT     2 /* a weak push stops with chance 1 in (resistance - strength) / 4 + 1 */
-#define ALERT_PUSHED_CHANCE 10
-#define LOAD_PUSH_DIVISOR   10 /* the push strength of the party: its load / 10 per champion */
-
-/* The push that waits for the slow move of the party. */
-static struct {
-    int16_t turn, y, x, map, dir, party_y, party_x;
-} push;
 
 bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group)
 {
@@ -1462,7 +1497,6 @@ bool move_party_can_push_group(uint16_t group)
     return pushed;
 }
 
-/* Pushes the group on (x, y) one square in dir; a push into the party moves the party. */
 void creature_push_group(int x, int y, int dir, int strength)
 {
     uint16_t g;
@@ -1481,14 +1515,14 @@ void creature_push_group(int x, int y, int dir, int strength)
             } else {
                 ai_free_cached_data(g);
                 ActiveGroup *a = creature_active(g);
-                if (a && (int8_t)a->action != -1 && (int8_t)a->action != AI_ACTION_VANISH &&
+                if (a && (int8_t)a->action != -1 && (int8_t)a->action != CREATURE_ACTION_VANISH &&
                     ai_action_flag((int8_t)a->action) & ACTION_FLAG_PATH) {
                     creature_cancel_update(g);
-                    creature_schedule_update(x, y);
+                    schedule_update(x, y);
                 }
                 move_thing(g, x, y, nx, ny);
                 if (creature_get_group_at(nx, ny) != THING_NONE && !(flags & CREATURE_STATIC))
-                    creature_alert(THING_NONE, nx, ny, ALERT_PUSHED, ALERT_PUSHED_CHANCE, 0);
+                    creature_alert(THING_NONE, (Location){nx, ny}, ALERT_PUSHED, ALERT_PUSHED_CHANCE, 0);
             }
         }
     }
@@ -1567,8 +1601,6 @@ void creature_continue_push(int command)
 
 /* Creature sensors. */
 
-#define VANISH_POWER 2
-
 void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
 {
     /* an inverted sensor turns the creatures on effect 1 instead of 0 */
@@ -1600,7 +1632,7 @@ void sensor_affect_creatures_in_area(uint16_t sensor, int x, int y, int effect)
                     creature_set_next_action(g, sx, sy, CREATURE_ACTION_VANISH, 1);
                 }
             } else if (kind == SENSOR_ALERT) {
-                creature_alert(g, sx, sy, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
+                creature_alert(g, (Location){sx, sy}, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
             }
         }
 }

@@ -1464,7 +1464,7 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
         if (damage < 1)
             damage = 1;
     }
-    creature_alert(g, x, y, ALERT_STARTLED, ALERT_ALWAYS, (uint16_t)damage);
+    creature_alert(g, (Location){x, y}, ALERT_STARTLED, ALERT_ALWAYS, (uint16_t)damage);
     *state = *state ? *state - 1 : 0;
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | *state);
     sound_request_with_fallback(CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_FALLBACK, x, y, 1,

@@ -2725,7 +2725,7 @@ static void become_creature(int type)
     g_ai.info = creature_info(gdat_current(), type);
     int16_t max = (int16_t)g_ai.info->max_health;
     set_thing_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(max + rand_below((uint16_t)((max >> 3) + 1))));
-    creature_anim_start(type, (int8_t)g_ai.active->action, g_ai.anim, g_ai.anim + 1, &g_ai.anim_step, 0);
+    creature_anim_start(type, (int8_t)g_ai.active->action, g_ai.anim, &g_ai.anim_step, 0);
     if (!creature_is_native_to_map(g_ai.group_thing, g_ai.map)) {
         creature_delete_group_at(g_ai.event.data[0], g_ai.event.data[1], 0, 1);
         g_ai.removed = 1;
@@ -2781,8 +2781,15 @@ static int act_explode_or_spawn(void)
             act_vanish();
     } else if (a->mode == MODE_SPAWN) {
         int dir = rand_2bits();
-        if (creature_summon_group(a->sub, GROUP_COUNT_FULL_HEALTH, dir, g_ai.event.data[0], g_ai.event.data[1],
-                                  g_ai.map, -1, (int8_t)facing()) == THING_NONE)
+        CreatureSummon summon = {.creature_type = a->sub,
+                                 .level = GROUP_COUNT_FULL_HEALTH,
+                                 .dir = dir,
+                                 .x = g_ai.event.data[0],
+                                 .y = g_ai.event.data[1],
+                                 .map = g_ai.map,
+                                 .link = -1,
+                                 .search_dir = (int8_t)facing()};
+        if (creature_summon_group(summon) == THING_NONE)
             return 1;
     } else if (a->mode == MODE_BECOME) {
         a->action = ACTION_IDLE;
@@ -2941,7 +2948,7 @@ static bool run_next_action(void)
             g_ai.event.time_map = timeline_time_map((uint32_t)(action - ACTION_WAIT_FIRST) + game.game_time, g_ai.map);
             return true;
         }
-        r = creature_anim_start(group_creature(g_ai.group_thing), action, anim, anim + 1, &g_ai.anim_step, 0);
+        r = creature_anim_start(group_creature(g_ai.group_thing), action, anim, &g_ai.anim_step, 0);
     } else {
         r = creature_anim_next_random_step(group_creature(g_ai.group_thing), anim[0], anim + 1, &g_ai.anim_step);
     }

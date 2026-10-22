@@ -560,7 +560,7 @@ address,name,signature,subsystem
 0x000301dc,creature_group_check_field8,int creature_group_check_field8(uint16_t group_thing),creatures
 0x000301f3,reset_idle_animation,void reset_idle_animation(uint8_t *group),creatures
 0x0003023f,creature_animate_step,uint32_t creature_animate_step(void),creatures
-0x0003059d,creature_schedule_update,"void creature_schedule_update(int16_t x, int16_t y)",creatures
+0x0003059d,schedule_update,"void schedule_update(int16_t x, int16_t y)",creatures
 0x0003064d,creature_cancel_update,void creature_cancel_update(uint16_t group_thing),creatures
 0x000306a8,creature_activate_group,"void creature_activate_group(uint16_t group_thing, int16_t x, int16_t y)",creatures
 0x0003085a,creature_deactivate_group,void creature_deactivate_group(uint16_t active_index),creatures
@@ -570,7 +570,7 @@ address,name,signature,subsystem
 0x00030d45,creature_drop_possessions,"void creature_drop_possessions(uint16_t group_thing, uint16_t x, uint16_t y, int16_t mode, int16_t sound_map)",creatures
 0x00030fe3,creature_delete_group_at,"void creature_delete_group_at(int16_t x, int16_t y, uint16_t mode, int16_t sound_map)",creatures
 0x00031113,creature_attack_group_at,"int16_t creature_attack_group_at(int16_t x, int16_t y)",creatures
-0x0003128a,creature_is_near_party_front,"int creature_is_near_party_front(int16_t x, int16_t y, int16_t map)",creatures
+0x0003128a,is_near_party_front,"int is_near_party_front(int16_t x, int16_t y, int16_t map)",creatures
 0x00031348,creature_damage_current_group,int creature_damage_current_group(uint16_t damage),creatures
 0x00031574,creature_roll_armor_factor,"int creature_roll_armor_factor(uint16_t group_thing, int16_t enabled)",creatures
 0x000315c5,creature_apply_damage_kind,"void creature_apply_damage_kind(uint16_t group_thing, int16_t x, int16_t y, uint16_t kind)",creatures

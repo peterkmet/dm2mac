@@ -145,6 +145,11 @@ static inline uint16_t location_dir(uint16_t word)
     return location_map(word) & DIR_MASK;
 }
 
+/* A square of the current map. */
+typedef struct {
+    int16_t x, y;
+} Location;
+
 /* Byte offsets of thing record fields. Every record starts with the link to the next thing. */
 #define THING_NEXT        0x00
 #define TELEPORTER_TARGET 0x02 /* x bits 0-4, y bits 5-9, rotation bits 10-11, bit 12 absolute, scope bits 13-14 */

@@ -233,7 +233,7 @@ static void explosion_blast(int type, int power, int x, int y, int cell)
                     damage >>= 2;
                 damage = (uint16_t)(damage - rand_below((uint16_t)(dodge * 2 + 1)));
                 if ((int16_t)damage > 0)
-                    creature_alert(g, hx, hy, ALERT_HIT, ALERT_ALWAYS, damage);
+                    creature_alert(g, (Location){hx, hy}, ALERT_HIT, ALERT_ALWAYS, damage);
             }
         }
         if (!first)
@@ -479,14 +479,14 @@ static int projectile_hit_creature(Hit *h, int cell)
         uint16_t damage = (uint16_t)(creature_roll_armor_factor(g, projectile_extra_damage) + h->damage);
         if (info->door_flags & CREATURE_RESISTS_NON_FIRE && projectile_attack_type != ATTACK_TYPE_FIRE)
             damage = (uint16_t)((int16_t)damage >> 2);
-        creature_alert(g, x, y, ALERT_HIT, ALERT_ALWAYS, damage);
+        creature_alert(g, (Location){x, y}, ALERT_HIT, ALERT_ALWAYS, damage);
         if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS && item_attr(payload, ATTR_FLAGS) & ITEM_CAUGHT)
             h->holder = group_possessions(g);
     }
     if (h->potion_bomb || h->payload_type == THING_WEAPON ||
         (h->payload_type == THING_EXPLOSION && payload != SPELL_DOOR_TOGGLE &&
          (payload < SPELL_PUSH || payload > SPELL_MISSILE_WALL)))
-        creature_alert(g, x, y, ALERT_ATTACKED,
+        creature_alert(g, (Location){x, y}, ALERT_ATTACKED,
                        h->damage < ALERT_WEAK_DAMAGE && payload != SPELL_POISON_CLOUD ? ALERT_CHANCE_WEAK
                                                                                       : ALERT_CHANCE_STRONG,
                        0);
@@ -687,7 +687,7 @@ static void projectile_alert_ahead(void)
         party.dest_y = (int16_t)(party.dest_y + dir_dy[party.dest_dir]);
         uint16_t g = creature_get_group_at(party.dest_x, party.dest_y);
         if (g != THING_NONE)
-            creature_alert(g, party.dest_x, party.dest_y, ALERT_STARTLED, ALERT_ALWAYS, 0);
+            creature_alert(g, (Location){party.dest_x, party.dest_y}, ALERT_STARTLED, ALERT_ALWAYS, 0);
         if (i)
             break;
         uint8_t square = dun_get_square(party.dest_x, party.dest_y);
@@ -851,7 +851,7 @@ void explosion_process_event(TimelineEvent *e)
             champ_damage_party(attack, 0, 0);
         uint16_t g = creature_get_group_at(x, y);
         if (g != THING_NONE && !creature_current_step_acts(g) && (attack = (uint16_t)explosion_get_attack(t, g)))
-            creature_alert(g, x, y, ALERT_HIT, ALERT_ALWAYS, attack);
+            creature_alert(g, (Location){x, y}, ALERT_HIT, ALERT_ALWAYS, attack);
         int lasts = 1, power = explosion_power(t);
         switch (explosion_type(t)) {
         case BLAST_POISON_CLOUD:
@@ -902,9 +902,9 @@ static const uint8_t attack_cell_orders[8][4] = {
 };
 static const uint8_t attack_cell_orders_random[7] = {0, 1, 2, 3, 0, 1, 2};
 
-void creature_order_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell)
+void creature_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int cell)
 {
-    int dir = dun_get_direction_to((int16_t)x, (int16_t)y, (int16_t)party_x, (int16_t)party_y);
+    int dir = dun_get_direction_to(at.x, at.y, party_at.x, party_at.y);
     if ((uint16_t)cell == CELL_ANY) {
         for (int i = 0; i < DIR_COUNT; i++)
             order[i] = attack_cell_orders_random[dir + i];

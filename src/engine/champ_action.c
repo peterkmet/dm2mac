@@ -416,7 +416,7 @@ static int champ_action_frighten(int power, int x, int y)
     if (resist > rand_below((uint16_t)power) || resist == FRIGHTEN_IMMUNE)
         return 0;
     /* fix: the original passes a leftover register (EDX) as the damage, no defined value; the port passes 0 */
-    creature_alert(champ_action_target, x, y, FRIGHTEN_ALERT_FLAGS, FRIGHTEN_ALERT_CHANCE, 0);
+    creature_alert(champ_action_target, (Location){x, y}, FRIGHTEN_ALERT_FLAGS, FRIGHTEN_ALERT_CHANCE, 0);
     return 1;
 }
 
@@ -500,7 +500,7 @@ static int champ_melee_attack_creature(Champion *c, int champ, uint16_t group, i
     champ_decrease_stamina(champ, stamina);
     if (info->door_flags & CREATURE_RESISTS_NON_FIRE && kind != MELEE_KIND_FULL)
         damage = (int16_t)(damage >> (rand_bit() + 1));
-    creature_alert(group, x, y, MELEE_ALERT_FLAGS, MELEE_ALERT_CHANCE, (uint16_t)damage);
+    creature_alert(group, (Location){x, y}, MELEE_ALERT_FLAGS, MELEE_ALERT_CHANCE, (uint16_t)damage);
     return damage;
 }
 
@@ -557,9 +557,15 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
     case COMMAND_SUMMON_2:
     case COMMAND_SUMMON_LAST: {
         static const uint8_t summoned[] = {MINION_SCOUT, MINION_CARRIER, MINION_ARMY};
-        if (creature_summon_group(summoned[command - COMMAND_SUMMON_FIRST],
-                                  (uint16_t)((int16_t)power >> SUMMON_POWER_SHIFT), dir, game.party_x, game.party_y,
-                                  game.party_map, map_item, (int8_t)game.party_dir) == THING_NONE)
+        CreatureSummon summon = {.creature_type = summoned[command - COMMAND_SUMMON_FIRST],
+                                 .level = (uint16_t)((int16_t)power >> SUMMON_POWER_SHIFT),
+                                 .dir = dir,
+                                 .x = game.party_x,
+                                 .y = game.party_y,
+                                 .map = game.party_map,
+                                 .link = map_item,
+                                 .search_dir = (int8_t)game.party_dir};
+        if (creature_summon_group(summon) == THING_NONE)
             explosion_create(EXPLOSION_SUMMON_FAIL, EXPLOSION_SUMMON_POWER, game.party_x, game.party_y, CENTER_CELL);
         return 1;
     }
@@ -587,7 +593,15 @@ static int champ_action_minion(int champ, int command, uint16_t map_item, int sk
         break;
     }
     int level = (uint16_t)champ_get_skill_level(champ, skill, 1);
-    uint16_t summoned = creature_summon_group(type, level, dir, x, y, map, map_item, search);
+    CreatureSummon summon = {.creature_type = type,
+                             .level = level,
+                             .dir = dir,
+                             .x = x,
+                             .y = y,
+                             .map = map,
+                             .link = map_item,
+                             .search_dir = search};
+    uint16_t summoned = creature_summon_group(summon);
     if (summoned == THING_NONE) {
         *experience = (int16_t)(*experience >> 2);
         *delay = (uint16_t)(*delay >> 1);

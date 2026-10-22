@@ -2955,8 +2955,6 @@ bool ai_plan_path(void)
     return result;
 }
 
-/* After the party moved or the squares changed: the distance maps of the squares around the party on the party map
-   and on the map of the alternate view; after a view change also the light sums of the light sources near the party. */
 void creature_refresh_party_maps(void)
 {
     int saved = party.cur_map;

@@ -566,7 +566,7 @@ static int move_party_step(int command, uint8_t here, int on_stairs)
         int push_dir = dir_turn(dir, command - CMD_MOVE_FORWARD);
         if (!creature_can_be_pushed(x, y, push_dir, &group) || !move_party_can_push_group(group)) {
             if (!is_static)
-                creature_alert(THING_NONE, x, y, ALERT_ANGER | ALERT_MOOD_BORED, BUMP_ALERT_CHANCE, 0);
+                creature_alert(THING_NONE, (Location){x, y}, ALERT_ANGER | ALERT_MOOD_BORED, BUMP_ALERT_CHANCE, 0);
             return 0;
         }
         creature_push_group(x, y, push_dir, PUSH_STRENGTH_PARTY);
@@ -918,7 +918,7 @@ static void transit_pit(Transit *t)
     }
     if (t->type == THING_GROUP && t->creature_sound && t->src_x >= 0) {
         dun_set_current_map(t->start_map);
-        creature_alert(t->thing, t->src_x, t->src_y, 0, 0, FALL_ALERT_DAMAGE);
+        creature_alert(t->thing, (Location){t->src_x, t->src_y}, 0, 0, FALL_ALERT_DAMAGE);
     }
     dun_set_current_map(t->map);
 }
@@ -1052,7 +1052,7 @@ static void move_party_arrive(int map, int start_map, int dst_x, int dst_y, int 
             }
         } else if (move_find_free_adjacent_square(g, dst_x, dst_y, &nx, &ny)) {
             int t = (uint16_t)champ_get_party_move_time() >> ARRIVAL_ALERT_SHIFT;
-            creature_alert(g, dst_x, dst_y, ALERT_LOUD, 0,
+            creature_alert(g, (Location){dst_x, dst_y}, ALERT_LOUD, 0,
                            (uint16_t)(rand_below((uint16_t)(((int16_t)t >> 1) + 1)) + t));
             move_thing(g, dst_x, dst_y, nx, ny);
             displaced = 1;
@@ -1102,7 +1102,7 @@ static int move_group_meet_square(uint16_t thing, int map, int dst_x, int dst_y)
         return ARRIVAL_WAIT;
     }
     int r = rand_below((uint16_t)(((int16_t)(push >> PUSH_ALERT_SHIFT) >> 1) + 1));
-    creature_alert(other, dst_x, dst_y, ALERT_LOUD, 0, (uint16_t)((push >> PUSH_ALERT_SHIFT) + r));
+    creature_alert(other, (Location){dst_x, dst_y}, ALERT_LOUD, 0, (uint16_t)((push >> PUSH_ALERT_SHIFT) + r));
     move_thing(other, dst_x, dst_y, nx, ny);
     return ARRIVAL_ENTER;
 }

@@ -8,14 +8,12 @@ block control/turn.c open: module cleanup
 block engine/aspect.c open: module cleanup
 block engine/champ_action.c open: module cleanup
 block engine/champion.c open: module cleanup
-block engine/creature.c open: module cleanup
 block engine/damage.c open: module cleanup
 block engine/game_text.c open: module cleanup
 block engine/include/action.h open: module cleanup
 block engine/include/aspect.h open: module cleanup
 block engine/include/champ_action.h open: module cleanup
 block engine/include/champion.h open: module cleanup
-block engine/include/creature.h open: module cleanup
 block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/inventory.h open: module cleanup
@@ -75,16 +73,12 @@ bool engine/champ_action.c:champ_action_frighten open: module cleanup
 bool engine/champ_action.c:champ_action_melee_attack open: module cleanup
 bool engine/champ_action.c:champ_action_minion open: module cleanup
 bool engine/champ_action.c:champ_run_command open: module cleanup
-bool engine/creature.c open: module cleanup
-bool engine/creature.c:creature_anim_next_random_step open: module cleanup
-bool engine/creature.c:creature_damage_current_group open: module cleanup
 bool engine/damage.c open: module cleanup
 bool engine/include/champion.h:champ_execute_selected_action open: module cleanup
 bool engine/include/champion.h:champ_list_actions open: module cleanup
 bool engine/include/champion.h:champ_test_luck open: module cleanup
 bool engine/include/champion.h:champ_throw_object open: module cleanup
 bool engine/include/champion.h:champ_use_action_charge open: module cleanup
-bool engine/include/creature.h:creature_anim_start open: module cleanup
 bool engine/include/item.h:item_use_charge open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
 bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
@@ -180,7 +174,6 @@ comment engine/game.c open: module cleanup
 comment engine/include/action.h open: module cleanup
 comment engine/include/aspect.h open: module cleanup
 comment engine/include/champion.h open: module cleanup
-comment engine/include/creature.h open: module cleanup
 comment engine/include/game_text.h open: module cleanup
 comment engine/include/item.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
@@ -219,13 +212,6 @@ dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
 dead-api engine/include/champ_action.h:champ_action_repeat open: module cleanup
 dead-api engine/include/champion.h:champ_set_redraw_flags open: module cleanup
-dead-api engine/include/creature.h:creature_active_group_floats open: module cleanup
-dead-api engine/include/creature.h:creature_alloc_active_groups open: module cleanup
-dead-api engine/include/creature.h:creature_anim_bits open: module cleanup
-dead-api engine/include/creature.h:creature_is_near_party_front open: module cleanup
-dead-api engine/include/creature.h:creature_schedule_update open: module cleanup
-dead-api engine/include/creature.h:g_active_group_count open: module cleanup
-dead-api engine/include/creature.h:g_active_group_max open: module cleanup
 dead-api engine/include/magic.h:magic_cast_spell open: module cleanup
 dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
@@ -297,7 +283,6 @@ decimal engine/game_text.c open: module cleanup
 decimal engine/include/action.h open: module cleanup
 decimal engine/include/champ_action.h open: module cleanup
 decimal engine/include/champion.h open: module cleanup
-decimal engine/include/creature.h open: module cleanup
 decimal engine/include/move.h open: module cleanup
 decimal engine/magic.c rule 3.12: a table of SKULL.EXE
 decimal engine/move.c open: module cleanup
@@ -328,7 +313,6 @@ enum engine/include/action.h open: module cleanup
 enum engine/include/aspect.h open: module cleanup
 enum engine/include/champ_action.h open: module cleanup
 enum engine/include/champion.h open: module cleanup
-enum engine/include/creature.h open: module cleanup
 enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
 enum engine/include/inventory.h open: module cleanup
@@ -401,7 +385,6 @@ hex ui/ui.c rule 3.12: a table of SKULL.EXE
 hex ui/view.c rule 3.12: a table of SKULL.EXE
 include control/control.c:ui.h open: module cleanup
 include engine/action.c:game.h open: module cleanup
-include engine/creature.c:money.h open: module cleanup
 include engine/game.c:champ_action.h open: module cleanup
 include engine/game.c:magic.h open: module cleanup
 include engine/include/champion.h:timeline.h open: module cleanup
@@ -449,7 +432,6 @@ long engine/aspect.c:aspect_get open: module cleanup
 long engine/champ_action.c:champ_action_minion open: module cleanup
 long engine/champ_action.c:champ_raise_level open: module cleanup
 long engine/champ_action.c:champ_run_command open: module cleanup
-long engine/creature.c:creature_alert open: module cleanup
 long engine/game.c:timeline_process open: module cleanup
 long engine/game_text.c:text_decode_raw open: module cleanup
 long engine/inventory.c:champ_apply_item_effects open: module cleanup
@@ -502,13 +484,11 @@ notation control/include/control.h open: module cleanup
 notation engine/aspect.c open: module cleanup
 notation engine/champ_action.c open: module cleanup
 notation engine/champion.c open: module cleanup
-notation engine/creature.c open: module cleanup
 notation engine/damage.c open: module cleanup
 notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
 notation engine/include/champion.h open: module cleanup
-notation engine/include/creature.h open: module cleanup
 notation engine/include/inventory.h open: module cleanup
 notation engine/include/item.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
@@ -552,7 +532,6 @@ order control/turn.c open: module cleanup
 order engine/action.c open: module cleanup
 order engine/aspect.c open: module cleanup
 order engine/champion.c open: module cleanup
-order engine/creature.c open: module cleanup
 order engine/inventory.c open: module cleanup
 order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
@@ -588,13 +567,6 @@ params engine/aspect.c:wall_square_aspect open: module cleanup
 params engine/champ_action.c:champ_action_melee_attack open: module cleanup
 params engine/champ_action.c:champ_action_minion open: module cleanup
 params engine/champ_action.c:champ_melee_attack_creature open: module cleanup
-params engine/creature.c:creature_alert open: module cleanup
-params engine/creature.c:creature_anim_start open: module cleanup
-params engine/creature.c:creature_summon_group open: module cleanup
-params engine/include/creature.h:creature_alert open: module cleanup
-params engine/include/creature.h:creature_anim_start open: module cleanup
-params engine/include/creature.h:creature_order_attack_cells open: module cleanup
-params engine/include/creature.h:creature_summon_group open: module cleanup
 params engine/include/merchant.h:shop_get_item_value open: module cleanup
 params engine/include/move.h:move_follow_square_transitions open: module cleanup
 params engine/include/move.h:move_party_bump_damage open: module cleanup
@@ -610,7 +582,6 @@ params engine/move.c:move_object_arrive open: module cleanup
 params engine/move.c:move_party_bump_damage open: module cleanup
 params engine/move.c:move_party_free_step open: module cleanup
 params engine/move.c:move_thing_leave open: module cleanup
-params engine/projectile.c:creature_order_attack_cells open: module cleanup
 params engine/projectile.c:hit_explode open: module cleanup
 params engine/projectile.c:hit_start open: module cleanup
 params engine/projectile.c:projectile_create open: module cleanup
@@ -974,7 +945,6 @@ type engine:holder open: module cleanup
 type engine:index open: module cleanup
 type engine:kind open: module cleanup
 type engine:lateral open: module cleanup
-type engine:link open: module cleanup
 type engine:list open: module cleanup
 type engine:map open: module cleanup
 type engine:mask open: module cleanup
@@ -983,7 +953,6 @@ type engine:path open: module cleanup
 type engine:possessions open: module cleanup
 type engine:power open: module cleanup
 type engine:sensor open: module cleanup
-type engine:sequence open: module cleanup
 type engine:size open: module cleanup
 type engine:slot open: module cleanup
 type engine:stat open: module cleanup
