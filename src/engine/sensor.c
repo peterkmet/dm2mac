@@ -207,9 +207,9 @@ int item_party_possesses_type(int type)
             if (item_get_index(c->slots[s]) == type || contains_item_type(c->slots[s], type))
                 return 1;
     }
-    if (action.mode == ACTION_MODE_CONTAINER)
+    if (g_action.mode == ACTION_MODE_CONTAINER)
         for (int s = 0; s < CONTAINER_SLOTS; s++)
-            if (action.open_items[s] != THING_NONE && item_get_index(action.open_items[s]) == type)
+            if (g_action.open_items[s] != THING_NONE && item_get_index(g_action.open_items[s]) == type)
                 return 1;
     return item_get_index(g_game.leader_hand) == type || contains_item_type(g_game.leader_hand, type);
 }

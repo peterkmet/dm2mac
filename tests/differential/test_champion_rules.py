@@ -261,7 +261,7 @@ def assert_same_actions(rules, where):
     theirs = emu.read(G_ACTION_LIST, 12)
     assert all(actions[3 * i:3 * i + 3] == theirs[4 * i:4 * i + 3] for i in range(count)), where
     assert ctypes.c_uint16.in_dll(lib, "g_champ_action_thing").value == struct.unpack("<H", emu.read(G_ACTION_THING, 2))[0]
-    a = ActionState.in_dll(lib, "action")
+    a = ActionState.in_dll(lib, "g_action")
     theirs = [struct.unpack("<h", emu.read(addr, 2))[0] for addr in (G_ACTION_RESULT, G_ACTION_DELAY, G_ACTION_RESULT_FLAG)]
     assert [a.result, a.redraw_delay, a.result_flag] == theirs, where
     assert a.result_ammo == struct.unpack("<H", emu.read(G_ACTION_RESULT_AMMO, 2))[0], where
@@ -294,7 +294,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
                         facing.append((map_, x, y, d))
                         break
                     t = lib.dungeon_next_thing(t)
-    action_state = ActionState.in_dll(lib, "action")
+    action_state = ActionState.in_dll(lib, "g_action")
     emu.write(G_ACTION_THING, struct.pack("<H", C.THING_NONE))  # the port starts without an action item
     saved_links, minion_links = zero_minion_links(rules), 0
     performed = consumed = 0
@@ -431,7 +431,7 @@ def test_money_and_prices_match_original(rules, lib):
     lib.money_get_item_value.argtypes = [ctypes.c_uint16, ctypes.POINTER(PriceTerms), ctypes.c_int16]
     buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
     creatures = [t for t in range(0x100) if lib.gdat_exists(rules.s.gdat, C.CAT_CREATURE, t, 5, 0x10)]
-    action_state = ActionState.in_dll(lib, "action")
+    action_state = ActionState.in_dll(lib, "g_action")
     emu.stub(UI_UPDATE_ACTION_AREA, lambda *_: 0)  # the drawing of the panel (the screen is not mapped here)
     lib.action_reset()
     clicks = taken = 0

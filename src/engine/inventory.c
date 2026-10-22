@@ -117,10 +117,10 @@ void champ_compute_load(int champ)
     uint16_t load = 0;
     for (int s = 0; s < SLOT_COUNT; s++)
         load = (uint16_t)(load + item_weight(c->slots[s]));
-    if (champ == action.champion - 1 && action.hand < SLOT_HAND_COUNT &&
-        item_is_chest(action.hand_items[champ][action.hand]))
+    if (champ == g_action.champion - 1 && g_action.hand < SLOT_HAND_COUNT &&
+        item_is_chest(g_action.hand_items[champ][g_action.hand]))
         for (int i = 0; i < CONTAINER_SLOTS; i++)
-            load = (uint16_t)(load + item_weight(action.open_items[i]));
+            load = (uint16_t)(load + item_weight(g_action.open_items[i]));
     c->load = load;
     c->redraw |= REDRAW_LOAD;
 }
@@ -255,7 +255,7 @@ void inv_update_hand_cursor(void)
 /* The thing in the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
 static uint16_t slot_thing(int champ, int slot)
 {
-    return slot < SLOT_COUNT ? champion(champ)->slots[slot] : action.open_items[slot - SLOT_CONTAINER_FIRST];
+    return slot < SLOT_COUNT ? champion(champ)->slots[slot] : g_action.open_items[slot - SLOT_CONTAINER_FIRST];
 }
 
 /* Puts thing into the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
@@ -264,7 +264,7 @@ static void set_slot_thing(int champ, int slot, uint16_t thing)
     if (slot < SLOT_COUNT)
         champion(champ)->slots[slot] = thing;
     else
-        action.open_items[slot - SLOT_CONTAINER_FIRST] = thing;
+        g_action.open_items[slot - SLOT_CONTAINER_FIRST] = thing;
 }
 
 uint16_t champ_remove_object_from_slot(int champ, int slot)
@@ -272,7 +272,7 @@ uint16_t champ_remove_object_from_slot(int champ, int slot)
     uint16_t thing = slot_thing(champ, slot);
     set_slot_thing(champ, slot, THING_NONE);
     if (thing != THING_NONE) {
-        if (champ == action.champion - 1 && slot < SLOT_HAND_COUNT && slot == action.hand)
+        if (champ == g_action.champion - 1 && slot < SLOT_HAND_COUNT && slot == g_action.hand)
             action_area_close();
         champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_REMOVE);
     }
@@ -301,7 +301,7 @@ void inv_click_slot(int slot)
         slot %= SLOT_HAND_COUNT;
     } else {
         slot -= CLICK_STATUS_HANDS;
-        champ = (slot < SLOT_COUNT ? ui.inventory : action.champion) - 1;
+        champ = (slot < SLOT_COUNT ? ui.inventory : g_action.champion) - 1;
     }
     uint16_t thing = slot_thing(champ, slot);
     if (thing == THING_NONE && hand == THING_NONE)
@@ -319,7 +319,7 @@ void inv_click_slot(int slot)
     g_hooks.draw_all_champion_states(0);
     if (slot == SLOT_QUIVER_READY || slot == SLOT_QUIVER_FIRST || slot == SLOT_QUIVER_ACTION ||
         (slot > SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot >= SLOT_COUNT) {
-        action.redraw_delay = 1;
+        g_action.redraw_delay = 1;
         g_hooks.update_action_area(0);
     }
 }

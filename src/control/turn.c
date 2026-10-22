@@ -615,7 +615,7 @@ static const char *slot_command(int c, long slot, uint16_t *command)
     if (slot < 0 || slot >= SLOT_CONTAINER_FIRST + CONTAINER_SLOTS)
         return "slot must be 0-37";
     if (slot >= SLOT_CONTAINER_FIRST) {
-        if (action.mode != ACTION_MODE_CONTAINER)
+        if (g_action.mode != ACTION_MODE_CONTAINER)
             return "no open chest";
         *command = CMD_SLOT_CHEST_FIRST + (uint16_t)(slot - SLOT_CONTAINER_FIRST);
     } else if (ui.inventory == c + 1) {
@@ -687,9 +687,10 @@ static const char *choose_action(const char *r)
     int hand = !strcmp(name, "ready") ? SLOT_READY_HAND : !strcmp(name, "action") ? SLOT_ACTION_HAND : -1;
     if (hand < 0)
         return "hand must be ready or action";
-    bool open = action.mode == ACTION_MODE_MENU && action.champion == c + 1 && action.hand == hand;
-    if (!open && action.champion)
-        return action.mode == ACTION_MODE_MENU ? "another champion's action menu is open: use pass first" : PANEL_OPEN;
+    bool open = g_action.mode == ACTION_MODE_MENU && g_action.champion == c + 1 && g_action.hand == hand;
+    if (!open && g_action.champion)
+        return g_action.mode == ACTION_MODE_MENU ? "another champion's action menu is open: use pass first"
+                                                 : PANEL_OPEN;
     uint16_t thing = champion(c)->slots[hand];
     int count = open ? g_champ_action_count : state_json_hand_action_count(c, hand);
     if (champion(c)->action_delay[hand] || (!count && !opens_panel(thing)))
@@ -711,7 +712,7 @@ static const char *choose_action(const char *r)
 static const char *pass(const char *r)
 {
     (void)r;
-    if (!action.champion)
+    if (!g_action.champion)
         return NULL;
     return add_shown_command(CMD_ACTION_CANCEL) ? NULL : "the open panel has no close button";
 }
@@ -725,7 +726,7 @@ static const char *click_spell_icon(const char *r, bool caster)
     int c = champion_arg(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
-    if (action.champion)
+    if (g_action.champion)
         return PANEL_OPEN;
     if (caster && champion(c)->action_delay[ACTION_SPELL])
         return "this champion cannot cast now";
@@ -751,7 +752,7 @@ static const char *set_leader(const char *r)
 /* The caster of the open spell panel, -1 none. */
 static int spell_caster(void)
 {
-    return action.mode == ACTION_MODE_SPELL && action.champion ? action.champion - 1 : -1;
+    return g_action.mode == ACTION_MODE_SPELL && g_action.champion ? g_action.champion - 1 : -1;
 }
 
 static const char *add_rune(const char *r)
@@ -833,7 +834,7 @@ static const char *swap_champions(const char *r)
         return "a and b must be living champions";
     if (a == b)
         return "a and b must be different champions";
-    if (action.champion)
+    if (g_action.champion)
         return PANEL_OPEN;
     if (!add_shown_command(CMD_DRAG_FIRST + party_cell(a)))
         return "the champion faces take no click now";
@@ -864,7 +865,7 @@ static const char *look(const char *r)
         if (error)
             return error;
         uint16_t held =
-            slot >= SLOT_CONTAINER_FIRST ? action.open_items[slot - SLOT_CONTAINER_FIRST] : champion(c)->slots[slot];
+            slot >= SLOT_CONTAINER_FIRST ? g_action.open_items[slot - SLOT_CONTAINER_FIRST] : champion(c)->slots[slot];
         if (held == THING_NONE)
             return "no object in this slot";
         add_command(command);
@@ -882,11 +883,11 @@ static const char *look(const char *r)
 static const char *take_coin(const char *r)
 {
     long slot = control_get_int(r, "slot", -1);
-    if (action.mode != ACTION_MODE_MONEY_BOX || !action.champion)
+    if (g_action.mode != ACTION_MODE_MONEY_BOX || !g_action.champion)
         return "open a money box first (choose_action on the hand that holds it)";
     if (slot < 0 || slot > CMD_COIN_LAST - CMD_COIN_FIRST)
         return "slot must be 0-5";
-    if (money_coin_type_for_slot(champion(action.champion - 1)->slots[action.hand], (int)slot) < 0)
+    if (money_coin_type_for_slot(champion(g_action.champion - 1)->slots[g_action.hand], (int)slot) < 0)
         return "no coin in this slot";
     return add_shown_command(CMD_COIN_FIRST + (uint16_t)slot) ? NULL : "the money box takes no click now";
 }
@@ -894,9 +895,9 @@ static const char *take_coin(const char *r)
 static const char *minion_map_option(const char *r)
 {
     long option = control_get_int(r, "option", -1);
-    if (action.mode != ACTION_MODE_MINION_MAP)
+    if (g_action.mode != ACTION_MODE_MINION_MAP)
         return "open a minion map first";
-    if (!(action.flags & MAP_HAS_OPTIONS))
+    if (!(g_action.flags & MAP_HAS_OPTIONS))
         return "this minion map has no options";
     if (option < 0 || option >= MAP_OPTION_COUNT)
         return "option must be 0-3";

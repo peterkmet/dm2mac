@@ -462,7 +462,7 @@ void champ_drag_cancel(void)
 static void kill_champion(int champ)
 {
     Champion *c = champion(champ);
-    if (champ == action.champion - 1)
+    if (champ == g_action.champion - 1)
         action_area_close();
     c->health = 0;
     c->action_delay[0] = 0;

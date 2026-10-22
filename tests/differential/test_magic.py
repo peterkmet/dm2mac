@@ -346,7 +346,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
     party_map = Game.in_dll(lib, "g_game").party_map  # the missile spells fly on the current map
     lib.dun_set_current_map(party_map)
     emu.call(DUN_SET_CURRENT_MAP, party_map)
-    action = ActionArea.in_dll(lib, "action")
+    action = ActionArea.in_dll(lib, "g_action")
     rng = random.Random(17)
     clicks = random.Random(19)  # the click feedback choices; rng keeps its sequence
     lib.input_init()
@@ -604,7 +604,7 @@ def assert_map_state(lib, original, where):
     mine, theirs = c_screen(lib), original.screen()
     assert mine == theirs, (where, diff(mine, theirs, C.SCREEN_W))
     assert bytes(champion_records(lib)) == emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE), where
-    action = ActionArea.in_dll(lib, "action")
+    action = ActionArea.in_dll(lib, "g_action")
     for field, addr in (("champion", G_ACTION_CHAMPION), ("redraw_delay", G_ACTION_DELAY), ("mode", G_ACTION_MODE),
                         ("flags", G_ACTION_FLAGS)):
         assert getattr(action, field) & 0xFFFF == struct.unpack("<H", emu.read(addr, 2))[0], (where, field)
@@ -794,11 +794,11 @@ def test_minion_maps_match_original(port, map_ui, gdat):
         set_action(lib, original, champion=0)
         update_action_area(lib, original)
         open_hand(lib, original, 0)
-        kinds.add((kind, ActionArea.in_dll(lib, "action").flags & 0x60))
+        kinds.add((kind, ActionArea.in_dll(lib, "g_action").flags & 0x60))
         assert_map_state(lib, original, (n, "open", hex(thing), kind))
         for option in range(4):
             if rng.random() < 0.6:
-                if ActionArea.in_dll(lib, "action").flags & MAP_HAS_OPTIONS and feedback.random() < 0.5:
+                if ActionArea.in_dll(lib, "g_action").flags & MAP_HAS_OPTIONS and feedback.random() < 0.5:
                     click_feedback(lib, original, C.CMD_MAP_OPTION_FIRST + option, (n, "option"))
                 else:
                     assert command(lib, emu, C.CMD_MAP_OPTION_FIRST + option) == (1, 1)
@@ -826,7 +826,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
             time += 1
             set_time(lib, emu, time)
             update_action_area(lib, original, tick=1)
-            dark += not ActionArea.in_dll(lib, "action").flags & 0x200
+            dark += not ActionArea.in_dll(lib, "g_action").flags & 0x200
             markers.add(MinionMap.in_dll(lib, "g_minion_map").marker_state)
             assert_map_state(lib, original, (n, k, hex(thing), kind))
         lib.action_area_close()

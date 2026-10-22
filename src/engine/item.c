@@ -264,7 +264,7 @@ int item_icon_index(uint16_t thing, int slot, int animated)
     if (attr & ICON_IN_SLOT && !(special = item_fits_slot(thing, slot, 1)))
         return icon;
     if (attr & ICON_IN_ACTION_HAND) {
-        if (!action.champion || thing != action_open_hand_item())
+        if (!g_action.champion || thing != action_open_hand_item())
             return icon;
         special = 1;
     }

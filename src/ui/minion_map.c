@@ -625,11 +625,11 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
 void mmap_draw_option_buttons(int pressed)
 {
     area = area_begin_draw(0);
-    if (action.champion <= 0 || !(action.flags & MAP_HAS_OPTIONS))
+    if (g_action.champion <= 0 || !(g_action.flags & MAP_HAS_OPTIONS))
         return;
-    int down = (pressed ^ action.flags) & MAP_OPTIONS;
+    int down = (pressed ^ g_action.flags) & MAP_OPTIONS;
     for (int i = 0; i < MAP_OPTION_COUNT; i++, down >>= 1) {
-        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item,
+        offscreen_draw_gdat_image(area, CAT_CONTAINER, g_action.map_item,
                                   down & 1 ? GFX_OPTION_BUTTON_DOWN : GFX_OPTION_BUTTON_UP,
                                   ZONE_OPTION_BUTTON_FIRST + i, GFX_OPAQUE);
         char label[2] = {(char)(OPTION_LABEL_FIRST + i), '\0'};
@@ -640,35 +640,36 @@ void mmap_draw_option_buttons(int pressed)
 
 void mmap_draw(uint16_t thing)
 {
-    action.map_item = item_gdat_index(thing);
-    action.flags |= MAP_STATIC_CREATURES | MAP_PARTY;
+    g_action.map_item = item_gdat_index(thing);
+    g_action.flags |= MAP_STATIC_CREATURES | MAP_PARTY;
     int kind = container_type(thing);
     uint16_t group = thing_word(thing, MINION_MAP_GROUP), link = 0;
     if (kind != MAP_KIND_NO_OPTIONS) {
-        action.flags |= MAP_HAS_OPTIONS;
+        g_action.flags |= MAP_HAS_OPTIONS;
         if (kind != MAP_KIND_PLAIN) {
             link = minion_find_link_projectile(group, thing);
             if (link)
-                action.flags |= MAP_MINION;
-            else if (action.flags & MAP_MINION)
-                action.flags &= ~(MAP_MINION | MAP_PANEL_DRAWN);
+                g_action.flags |= MAP_MINION;
+            else if (g_action.flags & MAP_MINION)
+                g_action.flags &= ~(MAP_MINION | MAP_PANEL_DRAWN);
         }
     }
     area = area_begin_draw(0);
-    if (!(action.flags & MAP_PANEL_DRAWN)) {
-        offscreen_draw_gdat_image(area, CAT_CONTAINER, action.map_item, GFX_CONTAINER_PICTURE, ZONE_PANEL, GFX_OPAQUE);
+    if (!(g_action.flags & MAP_PANEL_DRAWN)) {
+        offscreen_draw_gdat_image(area, CAT_CONTAINER, g_action.map_item, GFX_CONTAINER_PICTURE, ZONE_PANEL,
+                                  GFX_OPAQUE);
         for (int i = 0; i < g_champ_action_count; i++)
             area_draw_name(i, 0);
         mmap_draw_option_buttons(0);
-        action.flags |= MAP_PANEL_DRAWN;
+        g_action.flags |= MAP_PANEL_DRAWN;
     }
     int x = g_game.party_x, y = g_game.party_y, map = g_game.party_map, x_offset = 0, y_offset = 0;
     if (kind != MAP_KIND_PLAIN && kind != MAP_KIND_NO_OPTIONS) {
         if (location_map(thing_word(thing, MINION_MAP_LOCATION)) != MAP_LOCATION_NONE)
-            action.flags |= MAP_MARKER;
+            g_action.flags |= MAP_MARKER;
         if (kind == MAP_KIND_MINION) {
             if (!link) {
-                action.flags &= ~MAP_MARKER;
+                g_action.flags &= ~MAP_MARKER;
             } else {
                 /* the grid follows the minion; it shifts by where the minion stands in its square */
                 uint16_t w = thing_word(link, PROJECTILE_LOCATION);
@@ -689,7 +690,7 @@ void mmap_draw(uint16_t thing)
                 x_offset = (GAP_X * 2 + MAP_ICON_W + 1) / VIEW_CELL_ROW * cell_shift[col];
                 y_offset = (GAP_Y * 2 + MAP_ICON_H + 1) / VIEW_CELL_ROW * cell_shift[row];
             }
-        } else if (action.flags & MAP_MARKER) {
+        } else if (g_action.flags & MAP_MARKER) {
             uint16_t w = thing_word(thing, MINION_MAP_LOCATION);
             x = location_x(w);
             y = location_y(w);
@@ -697,8 +698,8 @@ void mmap_draw(uint16_t thing)
         }
     }
     ui_map_draw_grid(thing, (int16_t)x, (int16_t)y, map, g_game.party_dir, (int16_t)x_offset, (int16_t)y_offset,
-                     action.flags);
-    if (action.flags & MAP_DIMMED || !(action.flags & MAP_POWERED)) {
+                     g_action.flags);
+    if (g_action.flags & MAP_DIMMED || !(g_action.flags & MAP_POWERED)) {
         int16_t r[RECT_SIZE];
         offscreen_fill_rect_dithered(area, zone_get_rect(ZONE_MAP_GRID, r), UI_BLACK);
     }

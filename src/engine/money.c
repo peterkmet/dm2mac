@@ -195,10 +195,10 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type)
 
 void money_box_click_coin(int slot)
 {
-    if (action.mode != ACTION_MODE_MONEY_BOX)
+    if (g_action.mode != ACTION_MODE_MONEY_BOX)
         return;
-    int champ = action.champion - 1;
-    uint16_t box = champion(champ)->slots[action.hand];
+    int champ = g_action.champion - 1;
+    uint16_t box = champion(champ)->slots[g_action.hand];
     if (g_game.leader_hand == THING_NONE) {
         uint16_t coin = money_take_coin_from_box(box, money_coin_type_for_slot(box, slot));
         if (coin == THING_NONE) {
@@ -213,7 +213,7 @@ void money_box_click_coin(int slot)
         }
         champ_take_from_leader_hand();
     }
-    action.redraw_delay = 1;
+    g_action.redraw_delay = 1;
     g_hooks.update_action_area(0);
     champ_compute_load(champ);
 }

@@ -285,7 +285,7 @@ def test_containers_in_hand_match_original(port, original):
         update_action_area(lib, original)  # the hand icons take the box
         open_hand(lib, original, 0)
         assert_same_screen_and_view(lib, original, f"box {box:#x}")
-        modes.add(ActionArea.in_dll(lib, "action").mode)
+        modes.add(ActionArea.in_dll(lib, "g_action").mode)
         update_action_area(lib, original, tick=1)
         assert_same_screen_and_view(lib, original, f"box {box:#x} tick")
     assert modes == {C.ACTION_MODE_MONEY_BOX, C.ACTION_MODE_CONTAINER}  # money box and container panels

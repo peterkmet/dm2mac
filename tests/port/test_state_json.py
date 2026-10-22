@@ -116,7 +116,7 @@ def test_hand_menus_do_not_change_the_open_menu(lib, game):
     """Listing the action menus of both hands for the state keeps the open menu of the action area."""
     lib.action_area_open_hand(0, SLOT_READY_HAND)
     lib.area_update(0)
-    action = ActionArea.in_dll(lib, "action")
+    action = ActionArea.in_dll(lib, "g_action")
     assert action.mode == ACTION_MODE_MENU
     menu = (ctypes.c_uint8 * (CHAMPION_ACTION_MAX * CHAMPION_ACTION_SIZE)).in_dll(lib, "g_champ_actions")
     count = ctypes.c_int.in_dll(lib, "g_champ_action_count")

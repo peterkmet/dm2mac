@@ -30,7 +30,7 @@
 #define AMMO_KINDS             0x7fff
 /* Flag bits of the action area, the attacks, the creature alerts, the creature info and the redraw. */
 #define CREATURE_MELEE_REACHES 0x0020 /* creature info flag: mode 1 attacks reach the creature */
-#define FLAGS_KEEP_OPEN        0x0400 /* action.flags bit that the action area clears after an action */
+#define FLAGS_KEEP_OPEN        0x0400 /* g_action.flags bit that the action area clears after an action */
 #define FRIGHTEN_ALERT_FLAGS   0x2005
 #define REDRAW_LEVEL           0x3800
 #define MELEE_ALERT_FLAGS      0x6002
@@ -56,7 +56,7 @@
 #define CENTER_CELL            0x00ff
 #define EXPLOSION_COMMAND      0xff8e
 #define EXPLOSION_SUMMON_FAIL  0xffa8
-/* action.result of a melee action when a champion stands in front. */
+/* g_action.result of a melee action when a champion stands in front. */
 #define RESULT_BLOCKED         (-1)
 /* The delays of the actions in game steps. */
 #define DELAY_BASE             2
@@ -144,7 +144,7 @@ typedef struct {
 } ActionRun;
 
 ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
-/* action.result after the last champ_perform_action (damage >= 0, failure < 0). */
+/* g_action.result after the last champ_perform_action (damage >= 0, failure < 0). */
 int16_t g_champ_action_result;
 /* The creature group in front of the champion of the current action. */
 static uint16_t champ_action_target = THING_NONE;
@@ -175,12 +175,12 @@ void action_area_open_hand(int champ, int hand)
 {
     if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand))
         return;
-    action.flash = (int16_t)(champ + 1);
-    action.redraw_delay = 1;
-    action.flags = 0;
-    action.flash_hand = (int16_t)hand;
-    action.champion = action.flash;
-    action.hand = (int16_t)hand;
+    g_action.flash = (int16_t)(champ + 1);
+    g_action.redraw_delay = 1;
+    g_action.flags = 0;
+    g_action.flash_hand = (int16_t)hand;
+    g_action.champion = g_action.flash;
+    g_action.hand = (int16_t)hand;
     champ_drag_cancel();
     g_hooks.update_action_area(0);
     g_hooks.draw_champion_state(champ);
@@ -190,12 +190,12 @@ void action_area_open_spells(int champ)
 {
     if (!champion(champ)->health)
         return;
-    action.hand = ACTION_HAND_SPELL;
-    action.flash_hand = ACTION_HAND_SPELL;
-    action.flash = (int16_t)(champ + 1);
-    action.redraw_delay = 1;
-    action.flags = 0;
-    action.champion = action.flash;
+    g_action.hand = ACTION_HAND_SPELL;
+    g_action.flash_hand = ACTION_HAND_SPELL;
+    g_action.flash = (int16_t)(champ + 1);
+    g_action.redraw_delay = 1;
+    g_action.flags = 0;
+    g_action.champion = g_action.flash;
     champ_drag_cancel();
     g_hooks.update_action_area(0);
 }
@@ -228,7 +228,7 @@ bool champ_use_action_charge(int champ)
         item_add_charges(g_champ_action_thing, (int16_t)-charges);
     bool empty = item_add_charges(g_champ_action_thing, 0) == 0;
     if (empty && item_attr(g_champ_action_thing, ATTR_FLAGS) & ATTR_USED_UP) {
-        champ_remove_object_from_slot(champ, action.hand);
+        champ_remove_object_from_slot(champ, g_action.hand);
         set_thing_word(g_champ_action_thing, THING_NEXT, THING_NONE);
     }
     return empty;
@@ -259,8 +259,8 @@ bool item_has_action_command(int champ, uint16_t thing, int command)
                 break;
             }
     }
-    if (action.champion && (action.hand == SLOT_READY_HAND || action.hand == SLOT_ACTION_HAND))
-        champ_list_actions(action.champion - 1, champion(action.champion - 1)->slots[action.hand], action.hand);
+    if (g_action.champion && (g_action.hand == SLOT_READY_HAND || g_action.hand == SLOT_ACTION_HAND))
+        champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
     return found;
 }
 
@@ -505,7 +505,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t group, uint16_t attac
             hit = champ_test_luck(c, (uint16_t)(MELEE_LUCK_BASE - attack));
     }
     if (hit) {
-        damage = melee_hit_damage((int16_t)champ_get_strength(champ, action.hand, skill), factor, info, difficulty);
+        damage = melee_hit_damage((int16_t)champ_get_strength(champ, g_action.hand, skill), factor, info, difficulty);
         hit = damage != 0;
     }
     if (hit) {
@@ -518,7 +518,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t group, uint16_t attac
         unsigned roll = rand_next() & MELEE_CRITICAL_ROLL;
         if ((uint16_t)champ_get_skill_level(champ, skill, 1) > roll)
             damage = (int16_t)(damage + damage + MELEE_CRITICAL_BONUS);
-        uint16_t extra = item_attr(c->slots[action.hand], ATTR_EXTRA_DAMAGE);
+        uint16_t extra = item_attr(c->slots[g_action.hand], ATTR_EXTRA_DAMAGE);
         if (extra && damage > (int16_t)(rand_next() & MELEE_RANDOM))
             damage = (int16_t)(damage + creature_roll_armor_factor(group, extra));
         int worth = creature_experience(info);
@@ -550,8 +550,8 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
         int other = dir_turn(c->cell, rel == 2 ? TURN_LEFT : TURN_RIGHT);
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
-            action.result = RESULT_BLOCKED;
-            action.redraw_delay = (int16_t)max16(
+            g_action.result = RESULT_BLOCKED;
+            g_action.redraw_delay = (int16_t)max16(
                 1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_ACTIONS, 1, GLOBAL_VAR_ADD)));
             return false;
         }
@@ -563,7 +563,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
     uint16_t wounds = (uint16_t)current_field(FIELD_WOUNDS);
     if (current_field(FIELD_PIERCES))
         attack |= MELEE_PIERCES;
-    action.result = (int16_t)melee_attack_group(a, champ_action_target, attack, wounds, kind);
+    g_action.result = (int16_t)melee_attack_group(a, champ_action_target, attack, wounds, kind);
     return true;
 }
 
@@ -665,8 +665,8 @@ static bool run_minion_command(ActionRun *a, int command)
 static void show_failure(int result, int counter)
 {
     int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
-    action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - count));
-    action.result = (int16_t)result;
+    g_action.redraw_delay = (int16_t)max16(1, (int16_t)(RESULT_DELAY_BASE - count));
+    g_action.result = (int16_t)result;
 }
 
 /* The party becomes invisible for power game steps, at least POWER_MIN. */
@@ -788,8 +788,8 @@ static bool run_shoot(ActionRun *a)
     if (!item_is_ammo_for_hand(a->champ, a->hand, ammo)) {
         if (!a->repeated) {
             show_failure(RESULT_NO_AMMO, VAR_NO_AMMO_ACTIONS);
-            action.result_ammo = item_attr(a->item, ATTR_AMMO);
-            action.result_flag = (int16_t)other;
+            g_action.result_ammo = item_attr(a->item, ATTR_AMMO);
+            g_action.result_flag = (int16_t)other;
             a->experience = 0;
         }
         return false;
@@ -927,7 +927,7 @@ int champ_perform_action(int champ, int index)
     bool repeated = index & ACTION_REPEATED;
     index &= ~ACTION_REPEATED;
     current = g_champ_actions[index];
-    int hand = action.hand;
+    int hand = g_action.hand;
     Champion *c = champion(champ);
     if (!c->health)
         return 0;
@@ -975,17 +975,17 @@ int champ_perform_action(int champ, int index)
 bool champ_execute_selected_action(int index)
 {
     bool done = false;
-    if (!action.champion)
+    if (!g_action.champion)
         return false;
-    int champ = action.champion - 1;
+    int champ = g_action.champion - 1;
     if ((int16_t)index == -1) {
-        action.flags = 0;
+        g_action.flags = 0;
     } else {
         champion(champ)->redraw |= REDRAW_BARS;
         done = champ_perform_action(champ, index);
-        g_champ_action_result = action.result;
-        ActionRepeat *r = action.hand == SLOT_ACTION_HAND || action.hand == SLOT_READY_HAND
-                              ? &g_action_repeats[champ][action.hand]
+        g_champ_action_result = g_action.result;
+        ActionRepeat *r = g_action.hand == SLOT_ACTION_HAND || g_action.hand == SLOT_READY_HAND
+                              ? &g_action_repeats[champ][g_action.hand]
                               : NULL;
         bool use = !r || !r->left || (r->fresh && !rand_below((uint16_t)(r->count + 1)));
         if (use && champ_use_action_charge(champ) && r) {
@@ -993,10 +993,10 @@ bool champ_execute_selected_action(int index)
             r->fresh = 0;
         }
     }
-    if (!action.flags)
+    if (!g_action.flags)
         action_area_close();
     else
-        action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
+        g_action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
     g_hooks.update_action_area(0);
     return done;
 }
@@ -1018,18 +1018,18 @@ void champ_process_repeated_actions(void)
                 continue;
             }
             r->left--;
-            saved = action.hand;
-            action.hand = (int16_t)hand;
+            saved = g_action.hand;
+            g_action.hand = (int16_t)hand;
             champ_list_actions(champ, r->thing, hand);
             champ_perform_action(champ, r->action | ACTION_REPEATED);
             if (!rand_below((uint16_t)(r->count + 1)) && champ_use_action_charge(champ)) {
                 r->count = r->left = 0;
                 r->fresh = 0;
             }
-            action.hand = saved;
+            g_action.hand = saved;
         }
-    if (action.champion && saved >= 0 && action.hand <= SLOT_ACTION_HAND)
-        champ_list_actions(action.champion - 1, champion(action.champion - 1)->slots[action.hand], action.hand);
+    if (g_action.champion && saved >= 0 && g_action.hand <= SLOT_ACTION_HAND)
+        champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
 }
 
 /* The stamina that a throw of thing costs. */

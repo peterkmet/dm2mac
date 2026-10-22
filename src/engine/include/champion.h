@@ -265,7 +265,7 @@ void champ_burn_held_lights(void);
 void champ_revive(int champ);
 
 /* Champion actions (champ_action.c). */
-/* action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
+/* g_action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
 extern int16_t g_champ_action_result;
 /* Runs action (0 to 2, -1: none) of the open action menu; true when the action was done. */
 bool champ_execute_selected_action(int action);

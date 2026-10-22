@@ -118,11 +118,12 @@ static void draw_action_result(int16_t value)
         } while (value);
         offscreen_draw_text_in_zone(&area, ZONE_RESULT, ui_colors[UI_CYAN], ui_colors[UI_BLACK], digits + at);
     } else if (value == RESULT_NO_AMMO) {
-        offscreen_draw_gdat_image(&area, CAT_PANEL, 0, action.result_flag ? GFX_AMMO_HAND_OTHER : GFX_AMMO_HAND_DEFAULT,
-                                  ZONE_AMMO_HAND, GFX_OPAQUE);
+        offscreen_draw_gdat_image(&area, CAT_PANEL, 0,
+                                  g_action.result_flag ? GFX_AMMO_HAND_OTHER : GFX_AMMO_HAND_DEFAULT, ZONE_AMMO_HAND,
+                                  GFX_OPAQUE);
         for (int slot_index = 0; slot_index < GDAT_NO_INDEX; slot_index++) {
             uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, slot_index, GDAT_TYPE_VALUE, AMMO_ATTR);
-            if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & action.result_ammo) {
+            if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & g_action.result_ammo) {
                 offscreen_draw_gdat_image(&area, CAT_WEAPON, slot_index, GFX_ITEM_ICON, ZONE_AMMO_ITEM, GFX_OPAQUE);
                 return;
             }
@@ -308,7 +309,7 @@ static void draw_menu_header(void)
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_HEADER, ZONE_MENU_HEADER,
                               GFX_OPAQUE);
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK, ZONE_MENU_BACK, GFX_OPAQUE);
-    int champ = action.champion - 1;
+    int champ = g_action.champion - 1;
     offscreen_draw_text_in_zone_with_shadow(&area, ZONE_MENU_NAME,
                                             ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
                                             ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
@@ -323,7 +324,7 @@ static void draw_action_champion_face(void)
     int16_t r[RECT_SIZE], sx = 0, sy = 0;
     if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy, ZONE_NO_ANCHOR)) {
         haste_jitter(r);
-        int champ = action.champion - 1;
+        int champ = g_action.champion - 1;
         uint8_t palette[ICON_COLORS];
         ui_draw_champion_face_icon(face, champ, palette);
         offscreen_blit(&area, face, r, sx, sy, UI_KEY, MIRROR_NONE, palette);
@@ -341,7 +342,7 @@ void area_draw_entered_runes(int clear)
     if (clear)
         offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNES_BACK, ZONE_RUNES_BACK,
                                   GFX_OPAQUE);
-    const Champion *c = champion(action.champion - 1);
+    const Champion *c = champion(g_action.champion - 1);
     size_t n = strnlen(c->runes, CHAMPION_SIZE - offsetof(Champion, runes));
     for (size_t i = 0; i < n; i++) {
         char s[2] = {c->runes[i], '\0'};
@@ -353,7 +354,7 @@ void area_draw_entered_runes(int clear)
 /* Draws the spell panel: the runes of the next set, the entered runes, the face. */
 static void draw_spell_panel(void)
 {
-    int set = champion(action.champion - 1)->rune_count;
+    int set = champion(g_action.champion - 1)->rune_count;
     offscreen_draw_gdat_image(&area, CAT_INTERFACE, UI_INDEX_SPELL, (uint8_t)(set + 1), ZONE_PANEL, GFX_OPAQUE);
     if (set < SPELL_RUNE_SETS) {
         for (int i = 0; i < SPELL_RUNES_PER_SET; i++) {
@@ -371,9 +372,9 @@ void area_draw_name(int i, int highlight)
 {
     begin_draw(0);
     const ChampionAction *a = &g_champ_actions[i];
-    if (action.flags) {
+    if (g_action.flags) {
         offscreen_draw_gdat_image(
-            &area, CAT_CONTAINER, action.map_item,
+            &area, CAT_CONTAINER, g_action.map_item,
             (uint8_t)((a->entry - GFX_ACTION_FIRST) * 2 + GFX_MAP_ACTION_PICTURE_BASE + highlight),
             ZONE_MAP_ACTION_FIRST + i, GFX_OPAQUE);
         return;
@@ -487,7 +488,7 @@ static void draw_container(uint16_t container, int full)
         zone_get_rect(ZONE_PANEL, back);
     }
     for (int i = 0; i < CONTAINER_SLOTS; i++) {
-        uint16_t t = action.open_items[i];
+        uint16_t t = g_action.open_items[i];
         if (t == THING_NONE)
             continue;
         int zone = ZONE_CONTAINER_SLOT_FIRST + i;
@@ -507,7 +508,7 @@ static void draw_container(uint16_t container, int full)
 static void draw_party_hands(int full, int changed)
 {
     int party_changed = changed;
-    action.mode = ACTION_MODE_HANDS;
+    g_action.mode = ACTION_MODE_HANDS;
     for (int i = 0; i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
         if (!c->health) {
@@ -524,11 +525,11 @@ static void draw_party_hands(int full, int changed)
             drawn.alive[i] = alive;
             redraw = 1;
         }
-        int flash_this = (action.flash < 0 ? -action.flash : action.flash) - 1 == i;
+        int flash_this = (g_action.flash < 0 ? -g_action.flash : g_action.flash) - 1 == i;
         for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
             int flash = 0, update = 0;
-            if (flash_this && action.flash_hand == hand) {
-                flash = action.flash > 0;
+            if (flash_this && g_action.flash_hand == hand) {
+                flash = g_action.flash > 0;
                 update = 1;
             }
             uint8_t busy = c->action_delay[hand] != 0;
@@ -536,16 +537,16 @@ static void draw_party_hands(int full, int changed)
                 drawn.busy[i][hand] = busy;
                 update = 1;
             }
-            if (action.hand_items[i][hand] != c->slots[hand] || full || redraw) {
-                action.hand_items[i][hand] = c->slots[hand];
+            if (g_action.hand_items[i][hand] != c->slots[hand] || full || redraw) {
+                g_action.hand_items[i][hand] = c->slots[hand];
                 update = 1;
             }
             if (full || redraw || update)
                 area_draw_hand_icon(i, hand, flash);
         }
         int flash = 0;
-        if (flash_this && action.flash_hand == ACTION_HAND_SPELL) {
-            flash = action.flash > 0;
+        if (flash_this && g_action.flash_hand == ACTION_HAND_SPELL) {
+            flash = g_action.flash > 0;
             redraw = 1;
         }
         uint8_t busy = c->action_delay[ACTION_SPELL] != 0;
@@ -563,9 +564,9 @@ static void draw_party_hands(int full, int changed)
         else
             drawn.aura_mask &= ~(1 << i);
     }
-    if (action.flash < 0)
-        action.flash = 0;
-    action.flash = (int16_t)-action.flash;
+    if (g_action.flash < 0)
+        g_action.flash = 0;
+    g_action.flash = (int16_t)-g_action.flash;
     if (full || party_changed)
         draw_party_icons();
 }
@@ -584,7 +585,7 @@ static int party_icons_changed(void)
         if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
             changed = 1;
             if (cell != NO_CELL)
-                action.dirty = 1;
+                g_action.dirty = 1;
             drawn.cell[i] = cell;
             drawn.dir[i] = dir;
         }
@@ -603,56 +604,56 @@ static int party_icons_changed(void)
    the hand closes. */
 static void draw_hand_panel(void)
 {
-    int champ = action.champion - 1;
-    uint16_t thing = champion(champ)->slots[action.hand];
-    if (item_is_minion_map(thing) && !action.flags) {
+    int champ = g_action.champion - 1;
+    uint16_t thing = champion(champ)->slots[g_action.hand];
+    if (item_is_minion_map(thing) && !g_action.flags) {
         minion_map_open(champ);
     } else if (item_is_moneybox(thing)) {
-        action.mode = ACTION_MODE_MONEY_BOX;
-    } else if (item_is_chest(thing) && action.mode != ACTION_MODE_CONTAINER) {
+        g_action.mode = ACTION_MODE_MONEY_BOX;
+    } else if (item_is_chest(thing) && g_action.mode != ACTION_MODE_CONTAINER) {
         action_open_container(thing);
-        action.mode = ACTION_MODE_CONTAINER;
+        g_action.mode = ACTION_MODE_CONTAINER;
     }
-    if (action.mode == ACTION_MODE_MONEY_BOX) {
+    if (g_action.mode == ACTION_MODE_MONEY_BOX) {
         draw_money_box(thing);
-    } else if (action.mode == ACTION_MODE_CONTAINER) {
+    } else if (g_action.mode == ACTION_MODE_CONTAINER) {
         draw_container(thing, 1);
-    } else if (champ_list_actions(champ, thing, action.hand) && action.mode != ACTION_MODE_MINION_MAP) {
-        action.mode = ACTION_MODE_MENU;
+    } else if (champ_list_actions(champ, thing, g_action.hand) && g_action.mode != ACTION_MODE_MINION_MAP) {
+        g_action.mode = ACTION_MODE_MENU;
         draw_action_menu();
-    } else if (action.mode == ACTION_MODE_MINION_MAP) {
+    } else if (g_action.mode == ACTION_MODE_MINION_MAP) {
         mmap_draw(thing);
     } else {
-        action.champion = 0;
-        action.mode = ACTION_MODE_HANDS;
+        g_action.champion = 0;
+        g_action.mode = ACTION_MODE_HANDS;
     }
 }
 
 /* Draws the open hand or spell panel when it changed; returns 0 while the panel waits for its redraw delay. */
 static int draw_open_panel(int full, int party_changed, int tick)
 {
-    if (action.redraw_delay || full || party_changed || (action.mode == ACTION_MODE_MINION_MAP && tick)) {
-        if (action.redraw_delay > 1) {
-            action.redraw_delay--;
+    if (g_action.redraw_delay || full || party_changed || (g_action.mode == ACTION_MODE_MINION_MAP && tick)) {
+        if (g_action.redraw_delay > 1) {
+            g_action.redraw_delay--;
             return 0;
         }
-        if (action.flags && !action.redraw_delay && !full) {
+        if (g_action.flags && !g_action.redraw_delay && !full) {
             begin_draw(0);
         } else {
             begin_draw(1);
             draw_menu_header();
-            action.flags &= ~FLAGS_MINION_HEADER;
+            g_action.flags &= ~FLAGS_MINION_HEADER;
         }
-        if (action.hand == ACTION_HAND_SPELL) {
-            action.mode = ACTION_MODE_SPELL;
+        if (g_action.hand == ACTION_HAND_SPELL) {
+            g_action.mode = ACTION_MODE_SPELL;
             draw_spell_panel();
         } else {
             draw_hand_panel();
         }
-        action.redraw_delay = 0;
-    } else if (action.mode == ACTION_MODE_CONTAINER && tick) {
+        g_action.redraw_delay = 0;
+    } else if (g_action.mode == ACTION_MODE_CONTAINER && tick) {
         begin_draw(0);
-        draw_container(champion(action.champion - 1)->slots[action.hand], 0);
+        draw_container(champion(g_action.champion - 1)->slots[g_action.hand], 0);
     }
     return 1;
 }
@@ -661,15 +662,15 @@ static int draw_open_panel(int full, int party_changed, int tick)
 static void draw_open_face_aura(void)
 {
     static const uint8_t mode_shows_face[] = {0, 1, 1, 0, 0, 0, 0};
-    if (action.champion <= 0 || action.mode < 0 || !mode_shows_face[action.mode])
+    if (g_action.champion <= 0 || g_action.mode < 0 || !mode_shows_face[g_action.mode])
         return;
-    const Champion *c = champion(action.champion - 1);
+    const Champion *c = champion(g_action.champion - 1);
     if (c->aura_value || drawn.aura_mask) {
         draw_action_champion_face();
         if (c->aura_value)
-            drawn.aura_mask |= 1 << (action.champion - 1);
+            drawn.aura_mask |= 1 << (g_action.champion - 1);
         else
-            drawn.aura_mask &= ~(1 << (action.champion - 1));
+            drawn.aura_mask &= ~(1 << (g_action.champion - 1));
     }
 }
 
@@ -679,43 +680,44 @@ void area_update(int tick)
         return;
     int full = 0, party_changed = 0;
     if (!g_game.champion_count) {
-        if (action.dirty || action.redraw_delay) {
-            action.redraw_delay = 0;
-            action.dirty = 0;
+        if (g_action.dirty || g_action.redraw_delay) {
+            g_action.redraw_delay = 0;
+            g_action.dirty = 0;
             begin_draw(1);
         }
-        action.mode = ACTION_MODE_NONE;
+        g_action.mode = ACTION_MODE_NONE;
         goto flush;
     }
     if (tick)
         action_tick_hands();
-    if (tick && action.mode == ACTION_MODE_MINION_MAP)
+    if (tick && g_action.mode == ACTION_MODE_MINION_MAP)
         minion_map_drain_mana();
-    if (action.result) {
-        draw_action_result(action.result);
-        action.dirty = 1;
-        action.result = 0;
-        action.mode = ACTION_MODE_RESULT;
+    if (g_action.result) {
+        draw_action_result(g_action.result);
+        g_action.dirty = 1;
+        g_action.result = 0;
+        g_action.mode = ACTION_MODE_RESULT;
         goto flush;
     }
-    if (action.champion > 0 && action.hand >= 0 && action.hand != ACTION_HAND_SPELL &&
-        action.hand_items[action.champion - 1][action.hand] != champion(action.champion - 1)->slots[action.hand])
+    if (g_action.champion > 0 && g_action.hand >= 0 && g_action.hand != ACTION_HAND_SPELL &&
+        g_action.hand_items[g_action.champion - 1][g_action.hand] !=
+            champion(g_action.champion - 1)->slots[g_action.hand])
         action_area_close();
-    if (action.champion >= 0)
+    if (g_action.champion >= 0)
         party_changed = party_icons_changed();
-    if (action.dirty) {
-        if (action.redraw_delay > 1) {
-            action.redraw_delay--;
+    if (g_action.dirty) {
+        if (g_action.redraw_delay > 1) {
+            g_action.redraw_delay--;
             goto flush;
         }
         begin_draw(1);
-        action.dirty = 0;
+        g_action.dirty = 0;
         full = 1;
     }
-    if (!action.champion)
+    if (!g_action.champion)
         draw_party_hands(full, party_changed);
     drawn.leader = (int16_t)g_game.leader;
-    if (action.champion > 0 && !draw_open_panel(full, party_changed, tick))
+    if (g_action.champion > 0 && !draw_open_panel(full, party_changed, tick))
         goto flush;
     draw_open_face_aura();
 flush:

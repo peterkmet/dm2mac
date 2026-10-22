@@ -554,12 +554,12 @@ static void report_cast_failure(int result)
     int min_delay = 1, var;
     switch (result & CAST_KIND_MASK) {
     case CAST_FAILED:
-        action.result =
+        g_action.result =
             (int16_t)((result & CAST_SKILL_MASK) == SKILL_WIZARD ? RESULT_WIZARD_FAILED : RESULT_PRIEST_FAILED);
         var = GLOBAL_SPELL_FAILED;
         break;
     case CAST_UNKNOWN_SPELL:
-        action.result = RESULT_UNKNOWN_SPELL;
+        g_action.result = RESULT_UNKNOWN_SPELL;
         var = GLOBAL_SPELL_UNKNOWN;
         break;
     case CAST_NEEDS_FLASK:
@@ -571,12 +571,12 @@ static void report_cast_failure(int result)
         return;
     }
     int count = dun_modify_global_var(var, 1, GLOBAL_VAR_ADD);
-    action.redraw_delay = (int16_t)imax(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
+    g_action.redraw_delay = (int16_t)imax(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
 }
 
 bool magic_cast_entered_runes(void)
 {
-    int champ = (uint16_t)(action.champion - 1);
+    int champ = (uint16_t)(g_action.champion - 1);
     Champion *c = champion(champ);
     uint8_t *runes = runes_of(c);
     const Spell *spell = magic_find_spell(runes);
@@ -604,10 +604,10 @@ uint16_t magic_rune_mana_cost(int champ, int rune)
 
 void magic_add_rune(int rune)
 {
-    Champion *c = champion(action.champion - 1);
+    Champion *c = champion(g_action.champion - 1);
     uint8_t *runes = runes_of(c);
     int n = c->rune_count;
-    uint16_t mana = magic_rune_mana_cost(action.champion - 1, rune);
+    uint16_t mana = magic_rune_mana_cost(g_action.champion - 1, rune);
     bool added = mana <= c->mana;
     if (added) {
         c->mana = (int16_t)(c->mana - mana);
@@ -616,19 +616,19 @@ void magic_add_rune(int rune)
         c->rune_count = (uint8_t)(n + 1);
         runes[n + 1] = 0;
     }
-    action.redraw_delay = 1;
+    g_action.redraw_delay = 1;
     g_hooks.update_action_area(0);
     g_hooks.refresh_input_mode();
     if (added)
-        g_hooks.draw_champion_state(action.champion - 1);
+        g_hooks.draw_champion_state(g_action.champion - 1);
 }
 
 void magic_remove_last_rune(void)
 {
-    Champion *c = champion(action.champion - 1);
+    Champion *c = champion(g_action.champion - 1);
     c->rune_count--;
     runes_of(c)[c->rune_count] = 0;
-    action.redraw_delay = 1;
+    g_action.redraw_delay = 1;
     g_hooks.update_action_area(0);
     g_hooks.refresh_input_mode();
 }

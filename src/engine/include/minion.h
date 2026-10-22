@@ -23,7 +23,7 @@
 #define MAP_KIND_LOCATION   2
 #define MAP_KIND_NO_OPTIONS 3
 
-/* action.flags while the action area shows a minion map. */
+/* g_action.flags while the action area shows a minion map. */
 #define MAP_OPTION_CREATURES 0x0001 /* option button 0: moving creatures */
 #define MAP_OPTION_DETAILS   0x0002 /* option button 1: all ornaments, blinking pits and fake walls */
 #define MAP_OPTION_ITEMS     0x0004 /* option button 2: items, missiles, explosions, possessions */

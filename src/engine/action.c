@@ -2,65 +2,53 @@
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
-#include "game.h"
 #include "hooks.h"
 #include <string.h>
 
-ActionArea action;
+ActionArea g_action;
+
+/* Setup */
+
+void action_reset(void)
+{
+    memset(&g_action, 0, sizeof g_action);
+    g_action.mode = ACTION_MODE_NONE;
+    g_action.open_container = THING_NONE;
+    for (int i = 0; i < CONTAINER_SLOTS; i++)
+        g_action.open_items[i] = THING_NONE;
+    g_hooks.reset_action_area();
+}
 
 void action_reset_champion(int champ)
 {
     g_hooks.reset_action_champion(champ);
-    action.hand_items[champ][0] = action.hand_items[champ][1] = THING_NONE;
+    g_action.hand_items[champ][SLOT_READY_HAND] = THING_NONE;
+    g_action.hand_items[champ][SLOT_ACTION_HAND] = THING_NONE;
 }
 
-void action_reset(void)
-{
-    memset(&action, 0, sizeof action);
-    action.mode = ACTION_MODE_NONE;
-    action.open_container = THING_NONE;
-    for (int i = 0; i < CONTAINER_SLOTS; i++)
-        action.open_items[i] = THING_NONE;
-    g_hooks.reset_action_area();
-}
+/* Queries */
 
 uint16_t action_open_hand_item(void)
 {
-    if (action.champion <= 0 || action.hand < 0 || action.hand > SLOT_ACTION_HAND)
+    if (g_action.champion <= 0 || g_action.hand < 0 || g_action.hand > SLOT_ACTION_HAND)
         return THING_NONE;
-    return action.hand_items[action.champion - 1][action.hand];
+    return g_action.hand_items[g_action.champion - 1][g_action.hand];
 }
 
-/* Takes the items out of a chest into the open container slots. */
-void action_open_container(uint16_t container)
-{
-    if (container == THING_NONE || container == action.open_container)
-        return;
-    int i = 0;
-    for (uint16_t t; (t = thing_word(container, CONTAINER_CONTENTS)) != THING_ENDOFLIST && i < CONTAINER_SLOTS; i++) {
-        action.open_items[i] = t;
-        uint16_t contents = t;
-        /* unlink the first item from the contents list */
-        set_thing_word(container, CONTAINER_CONTENTS, dungeon_next_thing(contents));
-        set_thing_word(contents, THING_NEXT, THING_ENDOFLIST);
-    }
-    for (; i < CONTAINER_SLOTS; i++)
-        action.open_items[i] = THING_NONE;
-    action.open_container = container;
-}
+/* Commands */
 
 /* Puts the items of the open container slots back into the chest. */
 static void close_container(void)
 {
-    uint16_t container = action.open_container;
+    uint16_t container = g_action.open_container;
     if (container == THING_NONE)
         return;
-    action.open_container = THING_NONE;
+    g_action.open_container = THING_NONE;
     for (int i = 0; i < CONTAINER_SLOTS; i++) {
-        uint16_t t = action.open_items[i];
+        uint16_t t = g_action.open_items[i];
         if (t == THING_NONE)
             continue;
-        action.open_items[i] = THING_NONE;
+        g_action.open_items[i] = THING_NONE;
         set_thing_word(t, THING_NEXT, THING_ENDOFLIST);
         uint16_t last = thing_word(container, CONTAINER_CONTENTS);
         if (last == THING_ENDOFLIST) {
@@ -73,18 +61,34 @@ static void close_container(void)
     }
 }
 
-/* Closes the open hand or spell panel. */
 void action_area_close(void)
 {
-    if (!action.champion)
+    if (!g_action.champion)
         return;
-    if (!action.result || action.redraw_delay < 2)
-        action.redraw_delay = 0;
-    action.champion = 0;
-    action.mode = ACTION_MODE_HANDS;
-    action.flags = 0;
+    if (!g_action.result || g_action.redraw_delay < 2)
+        g_action.redraw_delay = 0;
+    g_action.champion = 0;
+    g_action.mode = ACTION_MODE_HANDS;
+    g_action.flags = 0;
     close_container();
-    action.dirty = 1;
+    g_action.dirty = 1;
+}
+
+void action_open_container(uint16_t container)
+{
+    if (container == THING_NONE || container == g_action.open_container)
+        return;
+    int i = 0;
+    for (uint16_t t; (t = thing_word(container, CONTAINER_CONTENTS)) != THING_ENDOFLIST && i < CONTAINER_SLOTS; i++) {
+        g_action.open_items[i] = t;
+        uint16_t contents = t;
+        /* unlink the first item from the contents list */
+        set_thing_word(container, CONTAINER_CONTENTS, dungeon_next_thing(contents));
+        set_thing_word(contents, THING_NEXT, THING_ENDOFLIST);
+    }
+    for (; i < CONTAINER_SLOTS; i++)
+        g_action.open_items[i] = THING_NONE;
+    g_action.open_container = container;
 }
 
 void action_tick_hands(void)

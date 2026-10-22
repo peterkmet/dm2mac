@@ -537,13 +537,13 @@ static void champions_json(Json *j)
 /* The open action menu: whose hand and its actions. */
 static void action_menu_json(Json *j)
 {
-    if (action.mode != ACTION_MODE_MENU || action.champion <= 0 || action.hand >= SLOT_HAND_COUNT) {
+    if (g_action.mode != ACTION_MODE_MENU || g_action.champion <= 0 || g_action.hand >= SLOT_HAND_COUNT) {
         json_null(j);
         return;
     }
     json_open(j, '{');
-    key_int(j, "champion", action.champion - 1);
-    key_str(j, "hand", hand_names[action.hand]);
+    key_int(j, "champion", g_action.champion - 1);
+    key_str(j, "hand", hand_names[g_action.hand]);
     json_key(j, "actions");
     action_names_json(j);
     json_close(j, '}');
@@ -552,11 +552,11 @@ static void action_menu_json(Json *j)
 /* The open spell panel: the caster, the entered runes, and the runes of the next set with their mana cost. */
 static void spell_json(Json *j)
 {
-    if (action.mode != ACTION_MODE_SPELL || action.champion <= 0) {
+    if (g_action.mode != ACTION_MODE_SPELL || g_action.champion <= 0) {
         json_null(j);
         return;
     }
-    int caster = action.champion - 1;
+    int caster = g_action.champion - 1;
     const Champion *c = champion(caster);
     json_open(j, '{');
     key_int(j, "caster", caster);
@@ -605,18 +605,18 @@ static void inventory_json(Json *j)
         json_null(j);
     }
     json_key(j, "chest");
-    if (action.mode != ACTION_MODE_CONTAINER) {
+    if (g_action.mode != ACTION_MODE_CONTAINER) {
         json_null(j);
         return;
     }
     json_open(j, '[');
     for (int i = 0; i < CONTAINER_SLOTS; i++) {
-        if (action.open_items[i] == THING_NONE)
+        if (g_action.open_items[i] == THING_NONE)
             continue;
         json_open(j, '{');
         key_int(j, "slot", SLOT_CONTAINER_FIRST + i);
         json_key(j, "object");
-        object_json(j, action.open_items[i]);
+        object_json(j, g_action.open_items[i]);
         json_close(j, '}');
     }
     json_close(j, ']');
@@ -625,11 +625,11 @@ static void inventory_json(Json *j)
 /* The open money box: the coin type and count of each coin slot. */
 static void money_box_json(Json *j)
 {
-    if (action.mode != ACTION_MODE_MONEY_BOX || action.champion <= 0 || action.hand >= SLOT_HAND_COUNT) {
+    if (g_action.mode != ACTION_MODE_MONEY_BOX || g_action.champion <= 0 || g_action.hand >= SLOT_HAND_COUNT) {
         json_null(j);
         return;
     }
-    uint16_t box = champion(action.champion - 1)->slots[action.hand];
+    uint16_t box = champion(g_action.champion - 1)->slots[g_action.hand];
     int16_t counts[COIN_TYPE_MAX];
     money_count_coins_in_box(box, counts);
     json_open(j, '[');
@@ -653,19 +653,19 @@ static void money_box_json(Json *j)
 /* The open minion map: whether its mana is paid, and its option buttons. */
 static void minion_map_json(Json *j)
 {
-    if (action.mode != ACTION_MODE_MINION_MAP) {
+    if (g_action.mode != ACTION_MODE_MINION_MAP) {
         json_null(j);
         return;
     }
     json_open(j, '{');
-    key_bool(j, "powered", (action.flags & MAP_POWERED) != 0);
+    key_bool(j, "powered", (g_action.flags & MAP_POWERED) != 0);
     json_key(j, "options");
     json_open(j, '[');
-    for (int i = 0; (action.flags & MAP_HAS_OPTIONS) && i < MAP_OPTION_COUNT; i++) {
+    for (int i = 0; (g_action.flags & MAP_HAS_OPTIONS) && i < MAP_OPTION_COUNT; i++) {
         json_open(j, '{');
         key_int(j, "option", i);
         key_str(j, "name", map_option_names[i]);
-        key_bool(j, "on", (action.flags & MAP_OPTION_CREATURES << i) != 0);
+        key_bool(j, "on", (g_action.flags & MAP_OPTION_CREATURES << i) != 0);
         json_close(j, '}');
     }
     json_close(j, ']');

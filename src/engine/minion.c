@@ -24,31 +24,31 @@ void minion_map_open(int champ)
     g_minion_map.mana_divisor = 1;
     g_minion_map.mana_timer = MINION_MAP_MANA_TICKS;
     if (!c->mana) {
-        action.flags = MAP_OPEN;
+        g_action.flags = MAP_OPEN;
     } else {
         c->mana--;
         c->redraw |= REDRAW_BARS;
-        action.flags = MAP_OPEN | MAP_POWERED;
+        g_action.flags = MAP_OPEN | MAP_POWERED;
     }
-    action.mode = ACTION_MODE_MINION_MAP;
+    g_action.mode = ACTION_MODE_MINION_MAP;
 }
 
 void minion_map_drain_mana(void)
 {
-    Champion *c = champion(action.champion - 1);
-    if (!(action.flags & MAP_POWERED)) {
+    Champion *c = champion(g_action.champion - 1);
+    if (!(g_action.flags & MAP_POWERED)) {
         if (c->mana) {
             /* the champion has mana again: the map opens anew */
-            action.redraw_delay = 1;
-            action.flags = 0;
+            g_action.redraw_delay = 1;
+            g_action.flags = 0;
         }
         return;
     }
     if (--g_minion_map.mana_timer)
         return;
     if (!c->mana) {
-        action.redraw_delay = 1;
-        action.flags = 0;
+        g_action.redraw_delay = 1;
+        g_action.flags = 0;
         return;
     }
     c->mana--;
@@ -59,8 +59,8 @@ void minion_map_drain_mana(void)
 void minion_toggle_map_option(int option)
 {
     int mana = option_mana[option], bit = 1 << option;
-    if (!(action.flags & bit)) {
-        Champion *c = champion(action.champion - 1);
+    if (!(g_action.flags & bit)) {
+        Champion *c = champion(g_action.champion - 1);
         if (c->mana < mana)
             return;
         c->mana = (int16_t)(c->mana - mana);
@@ -68,7 +68,7 @@ void minion_toggle_map_option(int option)
     } else {
         mana = -mana;
     }
-    action.flags ^= (uint16_t)bit;
+    g_action.flags ^= (uint16_t)bit;
     g_minion_map.mana_divisor = (int16_t)(g_minion_map.mana_divisor + mana);
 }
 
@@ -85,7 +85,7 @@ bool minion_map_set_location(uint16_t thing, int x, int y, int map)
 
 void minion_map_click_set_destination(int command, int x, int y)
 {
-    uint16_t thing = champion(action.champion - 1)->slots[action.hand];
+    uint16_t thing = champion(g_action.champion - 1)->slots[g_action.hand];
     if (command != CMD_MINION_MAP || container_type(thing) != MAP_KIND_MINION)
         return;
     int16_t r[RECT_SIZE];

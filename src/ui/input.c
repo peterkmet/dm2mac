@@ -825,19 +825,19 @@ static int input_condition(int cond, int arg)
     case NODE_IF_DRAGGING:
         return arg ? input_drag_state != 0 : input_drag_state == 0;
     case NODE_IF_ICON_IN_CELL:
-        if (action.champion)
+        if (g_action.champion)
             return 0;
         return arg >= CELL_COUNT || champion_in_party_cell(arg) >= 0;
     case NODE_IF_ACTION_COUNT:
-        return action.champion && arg == g_champ_action_count;
+        return g_action.champion && arg == g_champ_action_count;
     case NODE_IF_RUNE_SET:
-        return action.champion && arg & 1 << champion(action.champion - 1)->rune_count;
+        return g_action.champion && arg & 1 << champion(g_action.champion - 1)->rune_count;
     case NODE_IF_MINION_MAP_LAYOUT:
-        if (!action.champion)
+        if (!g_action.champion)
             return 0;
-        return arg == (action.flags & MAP_HAS_OPTIONS ? g_champ_action_count : MAP_WITHOUT_OPTIONS);
+        return arg == (g_action.flags & MAP_HAS_OPTIONS ? g_champ_action_count : MAP_WITHOUT_OPTIONS);
     case NODE_IF_ACTION_MODE:
-        return arg == action.mode;
+        return arg == g_action.mode;
     }
     return 0;
 }
@@ -1464,7 +1464,7 @@ static void feedback_rune_button(Feedback *f)
     offscreen_blit(&f->o, image, r, 0, 0, GFX_OPAQUE, 0,
                    draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED));
     /* the rune of the pressed button in the next rune set */
-    int set = champion(action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
+    int set = champion(g_action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
     char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
     text_measure(text, &w, &h);
     rect_center_in(r, f->o.rect, w, h);
@@ -1480,8 +1480,8 @@ static void action_area_present(void)
 /* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
 static void feedback_hand_icon(int icon)
 {
-    int champ = action.champion - 1;
-    if (!action.champion) {
+    int champ = g_action.champion - 1;
+    if (!g_action.champion) {
         if (in.current.command < CMD_HAND_FIRST || in.current.command > CMD_HAND_LAST)
             return;
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
@@ -2099,8 +2099,8 @@ static int command_execute_party(const Command *c, int idle)
     } else if (command >= CMD_MOVE_FORWARD && command <= CMD_MOVE_LEFT) {
         move_party(command);
     } else if (command == CMD_ROTATE_LEFT || command == CMD_ROTATE_RIGHT) {
-        if (action.champion) {
-            Champion *ch = champion(action.champion - 1);
+        if (g_action.champion) {
+            Champion *ch = champion(g_action.champion - 1);
             ch->dir = (uint8_t)dir_turn(ch->dir, command == CMD_ROTATE_LEFT ? -1 : 1);
         }
         area_update(0);

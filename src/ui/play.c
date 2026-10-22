@@ -82,10 +82,10 @@ void play_show_view(void)
         return;
     }
     main_loop.view_hidden = 0;
-    if (!action.champion)
-        action.dirty = 1;
+    if (!g_action.champion)
+        g_action.dirty = 1;
     else
-        action.redraw_delay = 1;
+        g_action.redraw_delay = 1;
     if (ui.inventory) {
         int champ = ui.inventory - 1;
         ui.inventory = 0;

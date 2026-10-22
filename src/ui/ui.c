@@ -677,7 +677,7 @@ static int draw_champion_slot(int champ, int slot, int force)
     uint16_t thing = c->slots[slot];
     int redraw_frame = force, active = 0, wounded = 0, changed = force;
     if (slot < SLOT_HAND_COUNT) {
-        active = champ + 1 == action.champion && slot == action.hand;
+        active = champ + 1 == g_action.champion && slot == g_action.hand;
         if (!(cache.slots[entry].flags & SLOT_ACTIVE) != !active) {
             redraw_frame = 1;
             cache.slots[entry].flags ^= SLOT_ACTIVE;

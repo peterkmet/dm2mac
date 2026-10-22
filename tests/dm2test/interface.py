@@ -251,7 +251,7 @@ def set_action(lib, original, **fields):
     addresses = {"dirty": G_ACTION_DIRTY, "champion": G_ACTION_CHAMPION, "hand": G_ACTION_HAND, "mode": G_ACTION_MODE, "redraw_delay": G_ACTION_DELAY,
                  "flags": G_ACTION_FLAGS, "result": G_ACTION_RESULT, "result_flag": G_ACTION_RESULT_FLAG,
                  "result_ammo": G_ACTION_RESULT_AMMO, "flash": G_ACTION_FLASH, "flash_hand": G_ACTION_FLASH_HAND}
-    action = ActionArea.in_dll(lib, "action")
+    action = ActionArea.in_dll(lib, "g_action")
     for name, value in fields.items():
         setattr(action, name, value)
         original.emu.write(addresses[name], struct.pack("<H", value & 0xFFFF))
