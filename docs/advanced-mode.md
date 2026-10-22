@@ -79,6 +79,9 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 The automap shows the squares of the party map that the dungeon view has shown. It covers the viewport. The party square is in the middle of the viewport, north is up.
 
 - The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. A red frame and the champion icons of a minion map item mark the party square.
+- A white frame of 1 pixel surrounds the whole map, just outside its last squares. It shows the end of the map, also for squares that are not seen.
+- An imaginary wall (a closed fake wall that the party can walk through) shows as the wall icon with a light gray checkerboard, so it differs from a real wall.
+- A pressure pad shows as a small gray square in the middle of its floor square. A pressure pad is a floor square with a floor sensor that the party or a creature triggers by stepping on it (sensor types any, party or creature, party, creature, party possesses an item). The gray square shows also where the floor ornament of the pad shows. The pad of an item sensor does not show.
 - Only the seen squares show. Other squares stay black. With the reveal map cheat, all squares of the map show.
 - The readout at the top left shows `LEVEL n  X x  Y y` and the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`).
 - The game time stops while the automap is open. Keys other than the automap keys do nothing.

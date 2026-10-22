@@ -77,13 +77,6 @@
 #define SENSOR_KEEP_ITEM          EFFECT_HOLD
 /* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
 #define TIMER_SLOW_FACTOR         8
-/* Floor sensor types. */
-#define FLOOR_ANY                 0x01
-#define FLOOR_PARTY_OR_CREATURE   0x02
-#define FLOOR_PARTY               0x03
-#define FLOOR_ITEM                0x04
-#define FLOOR_CREATURE            0x07
-#define FLOOR_PARTY_POSSESSES     0x08
 
 /* The first word variable and the end of the script variables. */
 #define GLOBAL_WORD_FIRST 0x80

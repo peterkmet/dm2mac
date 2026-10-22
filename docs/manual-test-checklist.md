@@ -288,6 +288,7 @@ Details: `docs/advanced-mode.md`.
 - [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the close).
 - [ ] L16. Drag the automap with the left mouse button. Expected: the map moves in whole squares and stops at the map edges; after a close and a new open, the party is in the middle again.
 - [ ] L17. Press I, F, and L with the automap open. Expected: nothing changes; the readout shows no cheats.
+- [ ] L17a. Open the automap with the reveal map cheat on, then off. Expected: a white 1 pixel frame surrounds the whole map; a floor with a pressure pad (a floor plate that a step triggers) has a small gray square in the middle; a wall that the party can walk through (an imaginary wall) shows as the wall icon with a light gray checkerboard.
 - [ ] L18. Press C, turn IMMORTAL on, close the screen, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
 - [ ] L19. On the cheat screen, turn FOOD AND WATER on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
 - [ ] L20. In a dark place, turn FULL LIGHT on with C and close the screen. Expected: the dungeon view shows full light.

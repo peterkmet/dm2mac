@@ -132,17 +132,24 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 #define ALTAR_EVENT_STEPS           0x03
 
 /* Sensor types that launch missiles. */
-#define LAUNCH_ITEM    0x07
-#define LAUNCH_SPELL   0x08
-#define LAUNCH_ITEMS   0x09
-#define LAUNCH_SPELLS  0x0a
-#define LAUNCH_OBJECT  0x0e
-#define LAUNCH_OBJECTS 0x0f
+#define LAUNCH_ITEM             0x07
+#define LAUNCH_SPELL            0x08
+#define LAUNCH_ITEMS            0x09
+#define LAUNCH_SPELLS           0x0a
+#define LAUNCH_OBJECT           0x0e
+#define LAUNCH_OBJECTS          0x0f
+/* Floor sensor types. */
+#define FLOOR_ANY               0x01
+#define FLOOR_PARTY_OR_CREATURE 0x02
+#define FLOOR_PARTY             0x03
+#define FLOOR_ITEM              0x04
+#define FLOOR_CREATURE          0x07
+#define FLOOR_PARTY_POSSESSES   0x08
 /* Sensor type 0: the sensor does nothing. */
-#define SENSOR_NONE    0x00
+#define SENSOR_NONE             0x00
 /* Floor sensor types that act on the creatures of an area. */
-#define SENSOR_VANISH  0x0b
-#define SENSOR_ALERT   0x28
+#define SENSOR_VANISH           0x0b
+#define SENSOR_ALERT            0x28
 
 /* Sensor data sub-fields: the target map (bits 0-5) and wall cell (bits 6-7) of a map relay and a teleport button,
    the direction of a creature turn sensor, and the power (bits 0-3) and creature type of an area sensor. */
