@@ -1081,8 +1081,14 @@ bool champ_throw_object(int champ, int hand, int side)
     int step = item_attr(thing, ATTR_STEP);
     if (!step)
         step = max16(STEP_MIN, (int16_t)(STEP_BASE - level));
-    projectile_create(thing, game.party_x, game.party_y, dir_turn(game.party_dir, side), game.party_dir,
-                      (uint8_t)kinetic, (uint8_t)attack, (uint8_t)step);
+    projectile_create(&(ProjectileLaunch){.payload = thing,
+                                          .x = game.party_x,
+                                          .y = game.party_y,
+                                          .cell = (int16_t)dir_turn(game.party_dir, side),
+                                          .dir = game.party_dir,
+                                          .energy = (uint8_t)kinetic,
+                                          .hit_chance = (uint8_t)attack,
+                                          .step = (uint8_t)step});
     game.throw_cooldown = THROW_COOLDOWN;
     game.throw_dir = game.party_dir;
     return true;

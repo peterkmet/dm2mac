@@ -13,13 +13,11 @@ block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/item.h open: module cleanup
 block engine/include/money.h open: module cleanup
-block engine/include/projectile.h open: module cleanup
 block engine/include/save.h open: module cleanup
 block engine/include/sound_request.h open: module cleanup
 block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
 block engine/money.c open: module cleanup
-block engine/projectile.c open: module cleanup
 block engine/save.c open: module cleanup
 block engine/sound_request.c open: module cleanup
 block platform/include/scale.h open: module cleanup
@@ -65,14 +63,6 @@ bool engine/include/money.h:money_add_coin_to_box open: module cleanup
 bool engine/include/money.h:money_normalize_coins open: module cleanup
 bool engine/include/sound_request.h:sound_party_offset open: module cleanup
 bool engine/magic.c open: module cleanup
-bool engine/projectile.c open: module cleanup
-bool engine/projectile.c:enter_next_square open: module cleanup
-bool engine/projectile.c:hit_champion open: module cleanup
-bool engine/projectile.c:hit_creature open: module cleanup
-bool engine/projectile.c:hit_door open: module cleanup
-bool engine/projectile.c:hit_impact open: module cleanup
-bool engine/projectile.c:hit_wall_sensors open: module cleanup
-bool engine/projectile.c:reflect_spell open: module cleanup
 bool engine/save.c open: module cleanup
 bool engine/save.c:container_is_moneybox open: module cleanup
 bool engine/save.c:creature_is_static open: module cleanup
@@ -142,7 +132,6 @@ comment engine/include/game_text.h open: module cleanup
 comment engine/include/item.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
 comment engine/include/money.h open: module cleanup
-comment engine/include/projectile.h open: module cleanup
 comment engine/save.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
@@ -177,9 +166,6 @@ dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
 dead-api engine/include/magic.h:magic_report_cast_failure open: module cleanup
 dead-api engine/include/money.h:money_take_coin_from_box open: module cleanup
-dead-api engine/include/projectile.h:missile_from_sensor open: module cleanup
-dead-api engine/include/projectile.h:projectile_attack_type open: module cleanup
-dead-api engine/include/projectile.h:projectile_extra_damage open: module cleanup
 dead-api engine/include/sound_request.h:sound_load open: module cleanup
 dead-api engine/include/sound_request.h:sound_party_offset open: module cleanup
 dead-api engine/include/sound_request.h:sound_played open: module cleanup
@@ -239,7 +225,6 @@ decimal engine/dungeon.c rule 3.12: a table of SKULL.EXE
 decimal engine/game_text.c open: module cleanup
 decimal engine/include/action.h open: module cleanup
 decimal engine/magic.c rule 3.12: a table of SKULL.EXE
-decimal engine/projectile.c open: module cleanup
 decimal engine/save.c rule 3.12: magic light by power of SKULL.EXE
 decimal engine/sensor.c rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c rule 3.12: a table of SKULL.EXE
@@ -269,11 +254,9 @@ enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
 enum engine/include/item.h open: module cleanup
 enum engine/include/magic.h open: module cleanup
-enum engine/include/projectile.h open: module cleanup
 enum engine/include/save.h open: module cleanup
 enum engine/item.c open: module cleanup
 enum engine/magic.c open: module cleanup
-enum engine/projectile.c open: module cleanup
 enum engine/save.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 enum ui/advanced.c open: module cleanup
@@ -299,7 +282,6 @@ event-comment ui/include/input.h open: module cleanup
 global engine/include/action.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
-global engine/include/projectile.h open: module cleanup
 global engine/include/save.h open: module cleanup
 global engine/include/sound_request.h open: module cleanup
 global ui/include/advanced.h open: module cleanup
@@ -333,8 +315,6 @@ include engine/include/creature.h:timeline.h open: module cleanup
 include engine/include/magic.h:timeline.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
-include engine/projectile.c:game.h open: module cleanup
-include engine/projectile.c:money.h open: module cleanup
 include engine/sound_request.c:ai.h open: module cleanup
 include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
@@ -399,13 +379,11 @@ notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
 notation engine/include/item.h open: module cleanup
-notation engine/include/projectile.h open: module cleanup
 notation engine/include/save.h open: module cleanup
 notation engine/include/sound_request.h open: module cleanup
 notation engine/item.c open: module cleanup
 notation engine/magic.c open: module cleanup
 notation engine/money.c open: module cleanup
-notation engine/projectile.c open: module cleanup
 notation engine/save.c open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
@@ -438,7 +416,6 @@ order engine/action.c open: module cleanup
 order engine/aspect.c open: module cleanup
 order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
-order engine/projectile.c open: module cleanup
 order engine/save.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
@@ -467,16 +444,10 @@ params engine/aspect.c:set_random_wall_ornaments open: module cleanup
 params engine/aspect.c:wall_sensor_ornament open: module cleanup
 params engine/aspect.c:wall_square_aspect open: module cleanup
 params engine/include/merchant.h:shop_get_item_value open: module cleanup
-params engine/include/projectile.h:projectile_create open: module cleanup
 params engine/include/sound_request.h:sound_party_offset open: module cleanup
 params engine/include/sound_request.h:sound_request open: module cleanup
 params engine/include/sound_request.h:sound_request_with_fallback open: module cleanup
 params engine/money.c:shop_get_item_value open: module cleanup
-params engine/projectile.c:enter_next_square open: module cleanup
-params engine/projectile.c:hit_explode open: module cleanup
-params engine/projectile.c:hit_start open: module cleanup
-params engine/projectile.c:hit_wall_sensors open: module cleanup
-params engine/projectile.c:projectile_create open: module cleanup
 params engine/save.c:read_thing_list open: module cleanup
 params engine/sound_request.c:sound_party_offset open: module cleanup
 params engine/sound_request.c:sound_request open: module cleanup

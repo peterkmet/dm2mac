@@ -2499,8 +2499,14 @@ static int act_shoot(void)
         speed = rand_bit() + 3;
     else
         speed = rand_2bits() + 7;
-    projectile_create((uint16_t)a->sub, g_ai.event.data[0], g_ai.event.data[1], a->cell, (int8_t)a->direction,
-                      (uint8_t)power, info->dexterity, (uint8_t)speed);
+    projectile_create(&(ProjectileLaunch){.payload = (uint16_t)a->sub,
+                                          .x = g_ai.event.data[0],
+                                          .y = g_ai.event.data[1],
+                                          .cell = a->cell,
+                                          .dir = (int8_t)a->direction,
+                                          .energy = (uint8_t)power,
+                                          .hit_chance = info->dexterity,
+                                          .step = (uint8_t)speed});
     if (info->traits & CREATURE_TRAIT_SHOT_HURTS) {
         int hurt = (power >> 1) + rand_bit();
         if (creature_damage_current_group((uint16_t)hurt)) {
@@ -2641,8 +2647,14 @@ static int act_throw_item(void)
     p = (uint16_t)(p + rand_below(p));
     p = (uint16_t)(p + rand_below(p));
     int16_t power = (int16_t)p < THROW_POWER_MIN ? THROW_POWER_MIN : (int16_t)p > POWER_MAX ? POWER_MAX : (int16_t)p;
-    projectile_create(t, g_ai.event.data[0], g_ai.event.data[1], g_ai.active->cell, (int8_t)g_ai.active->direction,
-                      (uint8_t)power, g_ai.info->dexterity, 8);
+    projectile_create(&(ProjectileLaunch){.payload = t,
+                                          .x = g_ai.event.data[0],
+                                          .y = g_ai.event.data[1],
+                                          .cell = g_ai.active->cell,
+                                          .dir = (int8_t)g_ai.active->direction,
+                                          .energy = (uint8_t)power,
+                                          .hit_chance = g_ai.info->dexterity,
+                                          .step = 8});
     return 0;
 }
 

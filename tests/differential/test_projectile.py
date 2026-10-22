@@ -137,8 +137,14 @@ def take(s, x, y, thing):
     s.emu.call(DUN_UNLINK_THING, thing, 0, x, y)
 
 
+class ProjectileLaunch(ctypes.Structure):
+    _fields_ = [("payload", ctypes.c_uint16), ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("cell", ctypes.c_int16),
+                ("dir", ctypes.c_int16), ("energy", ctypes.c_uint8), ("hit_chance", ctypes.c_uint8),
+                ("step", ctypes.c_uint8), ("from_sensor", ctypes.c_bool)]
+
+
 def launch(s, payload, x, y, cell, direction, energy, attack, step):
-    s.lib.projectile_create(payload, x, y, cell, direction, energy, attack, step)
+    s.lib.projectile_create(ctypes.byref(ProjectileLaunch(payload, x, y, cell, direction, energy, attack, step)))
     s.emu.call(PROJECTILE_CREATE, payload, x, y, cell, direction, energy, attack, step)
 
 
@@ -187,7 +193,7 @@ def test_thrown_objects(pj, lib):
     for n, (map_, x, y, t) in enumerate(things[:120]):
         place_near(pj, rng, map_, x, y)
         take(pj, x, y, t)
-        launch(pj, t, x, y, rng.randrange(4), rng.randrange(4), rng.randrange(1, 256), rng.randrange(256),
+        launch(pj, t, x, y, rng.randrange(C.DIR_COUNT), rng.randrange(C.DIR_COUNT), rng.randrange(1, 256), rng.randrange(256),
                rng.randrange(16))
         check(pj, ("launch", n))
         run_out(pj, ("object", n, map_, x, y, t))
@@ -209,8 +215,8 @@ def test_spell_missiles(pj, lib, part):
                 or lib.dungeon_square(map_, sx, sy) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR:
             sx, sy = pj.game.party_x, pj.game.party_y
         spell = SPELLS[(n + part) % len(SPELLS)] if n % 3 else rng.choice(SPELLS)
-        direction = toward(sx, sy, x, y) if (sx, sy) != (x, y) else rng.randrange(4)
-        launch(pj, spell, sx, sy, rng.randrange(4), direction, rng.randrange(1, 256), rng.randrange(256),
+        direction = toward(sx, sy, x, y) if (sx, sy) != (x, y) else rng.randrange(C.DIR_COUNT)
+        launch(pj, spell, sx, sy, rng.randrange(C.DIR_COUNT), direction, rng.randrange(1, 256), rng.randrange(256),
                rng.randrange(1, 16))
         check(pj, ("launch", n))
         run_out(pj, ("spell", n, map_, sx, sy, hex(spell)))
@@ -228,7 +234,7 @@ def test_explosions(pj, lib):
         if n % 5 == 0:
             x, y = pj.game.party_x, pj.game.party_y
         kind = EXPLOSIONS[n % len(EXPLOSIONS)]
-        cell = rng.choice((0, 1, 2, 3, C.EXPLOSION_AT_CENTER))
+        cell = rng.choice((*range(C.CELL_COUNT), C.EXPLOSION_AT_CENTER))
         both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(256), x, y, cell)
         check(pj, ("create", n))
         run_out(pj, ("explosion", n, map_, x, y, hex(kind)), limit=300)
@@ -264,7 +270,7 @@ def test_party_walks_into_missiles(pj, lib):
     for n in range(150):
         four_champions(pj, rng)
         map_, x, y, _ = rng.choice(places)
-        d = rng.randrange(4)
+        d = rng.randrange(C.DIR_COUNT)
         pj.place(map_, x, y, d)
         dist = rng.randrange(1, 4)
         sx, sy = x + (0, 1, 0, -1)[d] * dist, y + (-1, 0, 1, 0)[d] * dist
@@ -278,7 +284,7 @@ def test_party_walks_into_missiles(pj, lib):
             take(pj, tx, ty, payload)
         else:
             payload = rng.choice(SPELLS)
-        launch(pj, payload, sx, sy, rng.randrange(4), (d + 2) & 3, rng.randrange(20, 256), rng.randrange(256),
+        launch(pj, payload, sx, sy, rng.randrange(C.DIR_COUNT), (d + 2) & C.DIR_MASK, rng.randrange(20, 256), rng.randrange(256),
                rng.randrange(1, 4))
         for i in range(12):
             pj.step()
@@ -301,15 +307,15 @@ def test_missiles_hit_party_on_moves(pj, lib):
     for n in range(150):
         random_champions(pj, rng)
         map_, x, y, _ = rng.choice(places)
-        pj.place(map_, x, y, rng.randrange(4))
-        d = rng.randrange(4)
+        pj.place(map_, x, y, rng.randrange(C.DIR_COUNT))
+        d = rng.randrange(C.DIR_COUNT)
         tx, ty = x + (0, 1, 0, -1)[d], y + (-1, 0, 1, 0)[d]
         if not (0 <= tx < lib.dungeon_map_width(map_) and 0 <= ty < lib.dungeon_map_height(map_)) \
                 or lib.dungeon_square(map_, tx, ty) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR:
             tx, ty = x, y  # projectiles start only on open squares
         for _ in range(rng.randrange(1, 5)):
             sx, sy = rng.choice(((x, y), (tx, ty)))
-            launch(pj, rng.choice(SPELLS), sx, sy, rng.randrange(4), rng.randrange(4), rng.randrange(1, 256),
+            launch(pj, rng.choice(SPELLS), sx, sy, rng.randrange(C.DIR_COUNT), rng.randrange(C.DIR_COUNT), rng.randrange(1, 256),
                    rng.randrange(256), rng.randrange(16))
         for _ in range(rng.randrange(4)):
             pj.step()  # the first move at the second step: the events become 0x1e
@@ -371,7 +377,7 @@ def test_champions_throw(pj, lib):
         four_champions(pj, rng)
         place_near(pj, rng, map_, x, y)
         take(pj, x, y, t)
-        champ = rng.randrange(4)
+        champ = rng.randrange(C.CHAMPION_MAX)
         payload = t if n % 2 else rng.choice(SPELLS)
         args = (payload, rng.randrange(-10, 300), rng.randrange(-10, 300), rng.randrange(-5, 20))
         lib.champ_launch_projectile(champ, *args)
@@ -424,7 +430,7 @@ def test_ordered_attack_cells(pj, lib):
     for n in range(400):
         x, y = rng.randrange(32), rng.randrange(32)
         px, py = x + rng.randrange(-2, 3), y + rng.randrange(-2, 3)
-        cell = rng.choice((0, 1, 2, 3, C.CELL_ANY))
+        cell = rng.choice((*range(C.CELL_COUNT), C.CELL_ANY))
         lib.creature_order_attack_cells(order, Location(x, y), Location(px, py), cell)
         pj.emu.call(CREATURE_GET_ORDERED_ATTACK_CELLS, SCRATCH_OUT, x, y, px, py, cell)
         assert bytes(order) == pj.emu.read(SCRATCH_OUT, 4), (n, x, y, px, py, cell)
@@ -466,14 +472,14 @@ def test_projectiles_at_creatures(pj, lib):
         rng.shuffle(p)
     shots = 0
     for n, (map_, x, y, g) in enumerate(groups(lib) * 2):
-        d = rng.randrange(4)
+        d = rng.randrange(C.DIR_COUNT)
         dist = rng.randrange(1, 4)
         sx, sy = x - DIRS[d][0] * dist, y - DIRS[d][1] * dist
         if not open_square(lib, map_, sx, sy):
             continue
         place_near(pj, rng, map_, sx, sy)
         payload = payload_for(pj, rng, pool, map_, n)
-        launch(pj, payload, sx, sy, rng.randrange(4), d, rng.randrange(1, 256), rng.randrange(256), rng.randrange(1, 8))
+        launch(pj, payload, sx, sy, rng.randrange(C.DIR_COUNT), d, rng.randrange(1, 256), rng.randrange(256), rng.randrange(1, 8))
         shots += 1
         check(pj, ("launch", n))
         run_out(pj, ("creature", n, map_, x, y, hex(g), hex(payload)))
@@ -521,19 +527,19 @@ def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
     for n, (map_, x, y, g) in enumerate(targets * (40 // len(targets))):
         place_near(pj, rng, map_, x, y)
         kind = rng.choice((C.SPELL_LIGHTNING, C.EXPLOSION_STORM_BLAST, C.SPELL_POISON_CLOUD, C.EXPLOSION_DEATH_CLOUD))  # lightning, storm blast, poison cloud, death cloud
-        both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(64, 256), x, y, rng.choice((0, 1, 2, 3, C.EXPLOSION_AT_CENTER)))
+        both(pj, lib.explosion_create, EXPLOSION_CREATE, kind, rng.randrange(64, 256), x, y, rng.choice((*range(C.CELL_COUNT), C.EXPLOSION_AT_CENTER)))
         check(pj, ("create", n))
         run_out(pj, ("resists", n, map_, x, y, hex(g), hex(kind)))
         at = group_square(lib, map_, g)  # the group moves: aim at its square now
         if at is None:
             continue
         gx, gy = at
-        d, dist = rng.randrange(4), rng.randrange(3)
+        d, dist = rng.randrange(C.DIR_COUNT), rng.randrange(3)
         sx, sy = gx - DIRS[d][0] * dist, gy - DIRS[d][1] * dist
         if dist and not open_square(lib, map_, sx, sy):
             sx, sy = gx, gy
         place_near(pj, rng, map_, gx, gy)
-        launch(pj, C.SPELL_LIGHTNING, sx, sy, rng.randrange(4), d, 200, 200, 1)
+        launch(pj, C.SPELL_LIGHTNING, sx, sy, rng.randrange(C.DIR_COUNT), d, 200, 200, 1)
         check(pj, ("bolt", n))
         run_out(pj, ("bolt", n, map_, sx, sy, d))
     assert_saves(pj, "end")
@@ -560,13 +566,13 @@ def test_projectiles_at_doors(pj, lib):
     shots = 0
     for n, (map_, x, y, square) in enumerate(squares(lib, (C.SQUARE_DOOR,)) * 2):
         set_square(pj, map_, x, y, square & ~7 | rng.randrange(6))
-        d = rng.randrange(4)
+        d = rng.randrange(C.DIR_COUNT)
         dist = rng.randrange(1, 3)
         sx, sy = x - DIRS[d][0] * dist, y - DIRS[d][1] * dist
         if open_square(lib, map_, sx, sy):
             place_near(pj, rng, map_, sx, sy)
             payload = payload_for(pj, rng, pool, map_, n)
-            launch(pj, payload, sx, sy, rng.randrange(4), d, rng.randrange(1, 256), rng.randrange(256),
+            launch(pj, payload, sx, sy, rng.randrange(C.DIR_COUNT), d, rng.randrange(1, 256), rng.randrange(256),
                    rng.randrange(1, 8))
             shots += 1
         else:
@@ -607,7 +613,7 @@ def test_projectiles_at_wall_sensors(pj, lib):
                 continue
             px, py, payload = pool[map_].pop()
             take(pj, px, py, payload)
-        launch(pj, payload, sx, sy, rng.randrange(4), (cell + 2) & 3, rng.randrange(10, 256), rng.randrange(256), 1)
+        launch(pj, payload, sx, sy, rng.randrange(C.DIR_COUNT), (cell + 2) & C.DIR_MASK, rng.randrange(10, 256), rng.randrange(256), 1)
         shots += 1
         check(pj, ("launch", n))
         run_out(pj, ("wall", n, map_, x, y, cell, hex(payload)))
@@ -623,19 +629,19 @@ def test_missile_walls_and_packed_explosions(pj, lib):
     places = squares(lib, (C.SQUARE_FLOOR,))
     for n in range(120):
         map_, x, y, _ = rng.choice(places)
-        d = rng.randrange(4)
+        d = rng.randrange(C.DIR_COUNT)
         sx, sy = x - DIRS[d][0] * 2, y - DIRS[d][1] * 2
         if not open_square(lib, map_, sx, sy):
             continue
         place_near(pj, rng, map_, sx, sy)
         if n % 2:
             both(pj, lib.explosion_create, EXPLOSION_CREATE, C.SPELL_MISSILE_WALL, rng.randrange(20, 256), x, y, C.EXPLOSION_AT_CENTER)
-            launch(pj, rng.choice(SPELLS), sx, sy, rng.randrange(4), d, rng.randrange(1, 256), rng.randrange(256), 1)
+            launch(pj, rng.choice(SPELLS), sx, sy, rng.randrange(C.DIR_COUNT), d, rng.randrange(1, 256), rng.randrange(256), 1)
         else:
             hx, hy = x - DIRS[d][0], y - DIRS[d][1]
             both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((C.SPELL_FIREBALL, C.SPELL_LIGHTNING, C.EXPLOSION_STORM_LIGHTNING, C.EXPLOSION_STORM_BLAST,
                          C.SPELL_POISON_CLOUD)),
-                 rng.randrange(256), hx | (x + 1) << 8, hy | y << 8, rng.randrange(4))
+                 rng.randrange(256), hx | (x + 1) << 8, hy | y << 8, rng.randrange(C.DIR_COUNT))
         check(pj, ("start", n))
         run_out(pj, ("wall", n, map_, x, y), limit=300)
     assert_saves(pj, "end")
