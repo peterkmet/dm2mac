@@ -15,7 +15,6 @@
 #include "inventory.h"
 #include "item.h"
 #include "merchant.h"
-#include "money.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -23,14 +22,17 @@
 #include "sound_request.h"
 #include <string.h>
 
-#define CAT_CREATURE_APPEARS     0    /* sound (0, 0, 0x89): a generator creates a creature */
+/* The sound category of a creature that a generator creates: sound (0, 0, 0x89). */
+#define CAT_CREATURE_APPEARS     0x00
+/* Values of the door and ornament GDAT entries. */
 #define DOOR_KEY_STRENGTH        0x0e /* door value: the strength that breaks the door */
 #define DOOR_KEY_DAMAGE          0x0f /* door value: the damage of a closing door */
 #define ORNAMENT_KEY_ITEM        0x0e /* ornament value: the item that the ornament takes */
 #define ORNAMENT_KEY_ALTAR       0x0c /* ornament value: an altar that brings back a champion from its bones */
 #define ORNAMENT_KEY_FRAMES      0x0d /* ornament value (or text): the frame count of its animation */
-#define ORNAMENT_FRAMES_MASK     0x7fff
 #define ORNAMENT_KEY_SOUND_DELAY 0x88 /* ornament value: the delay of its sound in its animation cycle */
+/* The frame count in the ORNAMENT_KEY_FRAMES value. */
+#define ORNAMENT_FRAMES_MASK     0x7fff
 
 /* Sound arguments (entry, priority) of sound_request_with_fallback and sound_request. */
 #define SOUND_PRIORITY_MAP_SOUND 0x73
@@ -38,54 +40,64 @@
 #define SOUND_ENTRY_DOOR_SHUT    0x8f
 #define SOUND_PRIORITY_DOOR      0x5f
 
-#define SENSOR_CREATE_ITEM 0x3c
-#define SENSOR_KEEP_ITEM   EFFECT_HOLD /* the effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse */
-#define GLOBAL_WORD_FIRST  0x80
-#define GLOBAL_VAR_END     0xc0
-#define GLOBAL_BIT_SHIFT   3 /* a flag variable: its byte, and its bit in the byte */
-#define GLOBAL_BIT_MASK    7
-#define SENSOR_TIMER       0x1e /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
-#define TIMER_SLOW_FACTOR  8
 /* Sensor types of square events. A wall and a floor give some types other meanings. */
-enum {
-    SENSOR_GAME_END = 0x12,
-    SENSOR_MAP_RELAY = 0x16,
-    SENSOR_COUNTER = 0x1d,
-    SENSOR_RELAY = 0x20,
-    SENSOR_MAP_ENTRY = 0x21,
-    SENSOR_WALL_STATE = 0x26,
-    SENSOR_ANIMATION = 0x2c,
-    SENSOR_COUNTDOWN = 0x2d,
-    SENSOR_GENERATOR = 0x2e,
-    SENSOR_PARTY_TELEPORT = 0x2e,
-    SENSOR_BUSY_RELAY = 0x31,
-    SENSOR_ACTIVATION = 0x32,
-    SENSOR_TIMER_8 = 0x33,
-    SENSOR_TIMER_16,
-    SENSOR_TIMER_32,
-    SENSOR_TIMER_64,
-    SENSOR_TIMER_128,
-    SENSOR_CREATURE_ANIMATION = 0x3a,
-    SENSOR_TRANSFER = 0x3b,
-    SENSOR_FORWARD = 0x3d,
-    SENSOR_TRANSFER_CLASS = 0x40,
-    SENSOR_FRAME_STEP = 0x41,
-    SENSOR_TURN_CREATURES = 0x42,
-    SENSOR_SET_GLOBAL = 0x43,
-    SENSOR_TEST_GLOBAL = 0x44,
-    SENSOR_RELAY_SCALED = 0x45,
-    SENSOR_DOOR_SWITCH = 0x46,
-    SENSOR_TRANSFER_BACK = 0x47,
-    SENSOR_TRANSFER_ONE = 0x48,
-    SENSOR_TRANSFER_BACK_ONE = 0x49
-};
+#define SENSOR_GAME_END           0x12
+#define SENSOR_MAP_RELAY          0x16
+#define SENSOR_COUNTER            0x1d
+#define SENSOR_TIMER              0x1e /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
+#define SENSOR_RELAY              0x20
+#define SENSOR_MAP_ENTRY          0x21
+#define SENSOR_WALL_STATE         0x26
+#define SENSOR_ANIMATION          0x2c
+#define SENSOR_COUNTDOWN          0x2d
+#define SENSOR_GENERATOR          0x2e
+#define SENSOR_PARTY_TELEPORT     0x2e
+#define SENSOR_BUSY_RELAY         0x31
+#define SENSOR_ACTIVATION         0x32
+#define SENSOR_TIMER_8            0x33
+#define SENSOR_TIMER_16           0x34
+#define SENSOR_TIMER_32           0x35
+#define SENSOR_TIMER_64           0x36
+#define SENSOR_TIMER_128          0x37
+#define SENSOR_CREATURE_ANIMATION 0x3a
+#define SENSOR_TRANSFER           0x3b
+#define SENSOR_CREATE_ITEM        0x3c
+#define SENSOR_FORWARD            0x3d
+#define SENSOR_TRANSFER_CLASS     0x40
+#define SENSOR_FRAME_STEP         0x41
+#define SENSOR_TURN_CREATURES     0x42
+#define SENSOR_SET_GLOBAL         0x43
+#define SENSOR_TEST_GLOBAL        0x44
+#define SENSOR_RELAY_SCALED       0x45
+#define SENSOR_DOOR_SWITCH        0x46
+#define SENSOR_TRANSFER_BACK      0x47
+#define SENSOR_TRANSFER_ONE       0x48
+#define SENSOR_TRANSFER_BACK_ONE  0x49
+/* The effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse. */
+#define SENSOR_KEEP_ITEM          EFFECT_HOLD
+/* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
+#define TIMER_SLOW_FACTOR         8
 /* Floor sensor types. */
-enum { FLOOR_ANY = 1, FLOOR_PARTY_OR_CREATURE, FLOOR_PARTY, FLOOR_ITEM, FLOOR_CREATURE = 7, FLOOR_PARTY_POSSESSES };
+#define FLOOR_ANY                 0x01
+#define FLOOR_PARTY_OR_CREATURE   0x02
+#define FLOOR_PARTY               0x03
+#define FLOOR_ITEM                0x04
+#define FLOOR_CREATURE            0x07
+#define FLOOR_PARTY_POSSESSES     0x08
+
+/* The first word variable and the end of the script variables. */
+#define GLOBAL_WORD_FIRST 0x80
+#define GLOBAL_VAR_END    0xc0
+/* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
+#define GLOBAL_BIT_SHIFT  3
+/* The bit of a flag variable in its byte. */
+#define GLOBAL_BIT_MASK   0x07
 
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET    1
 #define SQUARE_PRIORITY_TOGGLE 2
 #define SQUARE_PRIORITY_CLEAR  3
+/* The ticks and steps of the square and click events. */
 #define PIT_OPEN_TICKS         5 /* a random pit closes again after 5 ticks */
 #define ALTAR_REBIRTH_STEPS    2
 #define CLICK_EVENT_DELAY      2  /* the ticks before a clicked button turns idle or an item holder shows its marker */
@@ -596,6 +608,7 @@ static void sensor_set_global_flag(const TimelineEvent *e, uint16_t sensor)
     sensor_trigger_target(sensor, sensor_passed_effect(sensor, e->data[EVENT_EFFECT]), 0);
 }
 
+/* Triggers the target when the script variable of the sensor data matches the event effect (inverted: the reverse). */
 static void sensor_test_global_flag(const TimelineEvent *e, uint16_t sensor)
 {
     int set = dun_get_global_var(sensor_data(sensor)) != 0;
@@ -760,15 +773,13 @@ static void text_set_shown(uint16_t text, int effect)
     text_set_visible(text, effect == EFFECT_TOGGLE ? !text_is_visible(text) : effect == EFFECT_SET);
 }
 
-enum {
-    TEXT_TOGGLED = 5,
-    TEXT_LINKED = 7,
-    TEXT_GENERATOR_SLOW = 0x13,
-    TEXT_GENERATOR_ON_ENTRY = 0x15,
-    TEXT_GENERATOR_FAST = 0x16,
-    TEXT_SOUND = 0x17
-};
-#define ORNAMENT_KEY_UP 0x11 /* ornament value: the ladder goes up, the linked twin is on the level above */
+/* Text subtypes of the square events: generators and sounds. */
+#define TEXT_GENERATOR_SLOW     0x13
+#define TEXT_GENERATOR_ON_ENTRY 0x15
+#define TEXT_GENERATOR_FAST     0x16
+#define TEXT_SOUND              0x17
+/* The ornament value of a ladder that goes up: the linked twin is on the level above. */
+#define ORNAMENT_KEY_UP         0x11
 
 /* A wall text of subtype 7 shows the same state as its twin on the level above or below. */
 static void text_update_linked(const TimelineEvent *e, uint16_t text)
@@ -786,7 +797,7 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT || thing_cell(t) != e->data[EVENT_CELL])
             continue;
-        if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_LINKED)
+        if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == SUBTYPE_LADDER_HIDDEN)
             text_set_visible(t, visible);
     }
     dun_set_current_map(saved);
@@ -807,16 +818,20 @@ static int counter_empty(uint16_t sensor)
 }
 
 /* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
-enum { TRANSFER_CHARGES_FILL, TRANSFER_CHARGES_EMPTY, TRANSFER_CHARGES_RANDOM };
-#define CHARGES_EMPTY_AMOUNT (-15)
-#define CHARGES_FULL_AMOUNT  CHARGES_MASK /* fills the charges of an object */
-#define SENSOR_KEEP_BONES                                                                                              \
-    SENSOR_STATE                     /* sensor flags: bones move like other objects; the moved object goes into
-                                           the possessions of a static creature there */
-#define SENSOR_ANY_ITEM        0x1ff /* sensor data: item index 0x1ff, any object */
-#define ITEM_CLASS_SET_MASK    0xff  /* sensor data: the item class set; sensor delay bits: the item class text */
-#define ITEM_CLASS_ENTRY_STEP  3
-#define ITEM_CLASS_ENTRY_FIRST 0x10
+#define TRANSFER_CHARGES_FILL   0
+#define TRANSFER_CHARGES_EMPTY  1
+#define TRANSFER_CHARGES_RANDOM 2
+/* The charge changes of item_add_charges that empty and fill the charges of an object. */
+#define CHARGES_EMPTY_AMOUNT    (-15)
+#define CHARGES_FULL_AMOUNT     CHARGES_MASK
+/* Sensor flags: bones move like other objects; the moved object goes into the possessions of a static creature there. */
+#define SENSOR_KEEP_BONES       SENSOR_STATE
+/* Sensor data: item index 0x1ff, any object; the item class set of SENSOR_TRANSFER_CLASS. */
+#define SENSOR_ANY_ITEM         0x1ff
+#define ITEM_CLASS_SET_MASK     0x0ff
+/* The item class text of SENSOR_TRANSFER_CLASS: the first GDAT entry; the sensor delay bits step by 3 entries. */
+#define ITEM_CLASS_ENTRY_FIRST  0x10
+#define ITEM_CLASS_ENTRY_STEP   0x03
 static int is_object(uint16_t thing)
 {
     return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC;
@@ -927,7 +942,8 @@ static void sensor_create_item(uint16_t sensor)
                            sensor_target_cell(sensor), 0, sensor_flag(sensor, SENSOR_KEEP_BONES));
 }
 
-#define COUNTDOWN_MAX 400 /* sensor 0x2d: a larger data value is a chance of data - 400 in 100 */
+/* SENSOR_COUNTDOWN: a data value up to 400 counts down, a larger one is a chance of data - 400 in 100. */
+#define COUNTDOWN_MAX 400
 #define CHANCE_END    500
 
 /* The sensor types that react the same way to a square event on a wall and on a floor; returns 0 for another type. */
@@ -1126,6 +1142,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
     }
 }
 
+/* A square event on a wall: the texts and the sensors on the event cell react. */
 static void timeline_event_wall_square(TimelineEvent *e)
 {
     int x = e->data[EVENT_X], y = e->data[EVENT_Y], effect = e->data[EVENT_EFFECT];
@@ -1137,9 +1154,9 @@ static void timeline_event_wall_square(TimelineEvent *e)
             if (text_kind(t) > TEXT_KIND_ORNAMENT)
                 continue;
             int sub = text_subtype(t);
-            if (sub == TEXT_TOGGLED || sub == TEXT_LINKED) {
+            if (sub == SUBTYPE_TOGGLE || sub == SUBTYPE_LADDER_HIDDEN) {
                 text_set_shown(t, effect);
-                if (sub == TEXT_LINKED)
+                if (sub == SUBTYPE_LADDER_HIDDEN)
                     text_update_linked(e, t);
             } else if (sub == TEXT_SOUND && effect == EFFECT_SET) {
                 text_play_sound(t, x, y);
@@ -1173,7 +1190,7 @@ static void floor_text_event(uint16_t t, int effect, int x, int y)
         return;
     int sub = text_subtype(t);
     bool was_visible = text_is_visible(t);
-    if (sub == TEXT_TOGGLED) {
+    if (sub == SUBTYPE_TOGGLE) {
         text_set_shown(t, effect);
         if (text_kind(t) == TEXT_KIND_TEXT && !was_visible && text_is_visible(t) && dun_on_party_square(x, y)) {
             char text[TEXT_SIZE];
@@ -1186,6 +1203,7 @@ static void floor_text_event(uint16_t t, int effect, int x, int y)
     }
 }
 
+/* A square event on a floor: the texts and the sensors of the square react. */
 static void timeline_event_floor_square(TimelineEvent *e)
 {
     int x = e->data[EVENT_X], y = e->data[EVENT_Y], effect = e->data[EVENT_EFFECT];
@@ -1264,6 +1282,7 @@ void move_square_contents_through(int x, int y)
     }
 }
 
+/* A square event opens, closes, or toggles a pit or a teleporter (on_bit); an opened one moves the square contents. */
 static void timeline_event_pit_or_teleporter(TimelineEvent *e, uint8_t on_bit)
 {
     int x = e->data[EVENT_X], y = e->data[EVENT_Y];
@@ -1279,6 +1298,7 @@ static void timeline_event_pit_or_teleporter(TimelineEvent *e, uint8_t on_bit)
     }
 }
 
+/* A square event opens, closes, or toggles a door that is not broken: it starts or turns the door animation. */
 static void timeline_event_door_square(TimelineEvent *e)
 {
     uint8_t state = *square_byte(e->data[EVENT_X], e->data[EVENT_Y]) & SQUARE_DOOR_STATE;
@@ -1317,6 +1337,7 @@ static void timeline_event_door_square(TimelineEvent *e)
     }
 }
 
+/* A square event opens or closes a fake wall; a party or a creature on it delays the close by one tick. */
 static void timeline_event_fake_wall_square(TimelineEvent *e)
 {
     int x = e->data[EVENT_X], y = e->data[EVENT_Y];
@@ -1465,16 +1486,19 @@ void timeline_event_door_animation(TimelineEvent *e)
 
 /* ---- Sensor timeline events ---- */
 
+/* The values of the index bits 8-9 of a record. */
+#define RECORD_INDEX_HIGH_COUNT 4
+
 /* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
    with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
    the data after those tables in SKULL.EXE (0x717f8 and 0x71800); these are the values it reads. */
-static const int16_t ambient_wall_dx[4][4] = {
+static const int16_t ambient_wall_dx[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
     {2052, 4, 0,   1032},
     {0,    0, 0,   0   },
     {0,    0, 0,   0   },
     {450,  0, 255, 0   }
 };
-static const int16_t ambient_wall_dy[4][4] = {
+static const int16_t ambient_wall_dy[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
     {0, 0, 25675, 60},
     {0, 0, 0,     0 },
     {0, 0, 0,     0 },
@@ -1482,7 +1506,7 @@ static const int16_t ambient_wall_dy[4][4] = {
 };
 
 /* A value of an ambient wall table for the sensor thing: by its cell and the index bits 8-9 of its record. */
-static int16_t ambient_wall_step(const int16_t table[4][4], uint16_t thing)
+static int16_t ambient_wall_step(const int16_t table[CELL_COUNT][RECORD_INDEX_HIGH_COUNT], uint16_t thing)
 {
     return table[thing_cell(thing)][thing_index(thing) >> BYTE_BIT_COUNT];
 }
@@ -1609,12 +1633,16 @@ void sensor_process_map_entry(int entering)
 
 /* ---- Wall clicks ---- */
 
+/* Values of the wall ornament GDAT entries of the wall clicks. */
 #define ORNAMENT_KEY_ALCOVE       0x0a /* ornament value 1: an alcove */
 #define ORNAMENT_KEY_MARKER_DELAY 0x12
-#define WATER_FULL                0x800
+/* The water of a champion after a drink from a fountain. */
+#define WATER_FULL                2048
+/* The item index of an empty flask, and the GDAT index of a flask of water. */
 #define ITEM_EMPTY_FLASK          0x194
-#define FLASK_FULL_INDEX          0x0f
-#define CLICK_IGNORED             (-1) /* a wall sensor that does not react to the click */
+#define FLASK_FULL_INDEX          0x00f
+/* A wall sensor that does not react to the click. */
+#define CLICK_IGNORED             (-1)
 
 /* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
 bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
@@ -1626,6 +1654,7 @@ bool dun_is_wall_thing_ornament_shown(uint16_t first, uint16_t thing)
     return aspect_wall_face_ornament(party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
 }
 
+/* A GDAT value of the wall ornament of thing, 0 for none. */
 static int ornament_value(uint16_t thing, int key)
 {
     int ornament = item_gdat_index(thing);

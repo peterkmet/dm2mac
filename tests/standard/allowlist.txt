@@ -29,7 +29,6 @@ block engine/include/move.h open: module cleanup
 block engine/include/projectile.h open: module cleanup
 block engine/include/save.h open: module cleanup
 block engine/include/seen.h open: module cleanup
-block engine/include/sensor.h open: module cleanup
 block engine/include/sound_request.h open: module cleanup
 block engine/include/timeline.h open: module cleanup
 block engine/include/weather.h open: module cleanup
@@ -43,7 +42,6 @@ block engine/move.c open: module cleanup
 block engine/projectile.c open: module cleanup
 block engine/recruit.c open: module cleanup
 block engine/save.c open: module cleanup
-block engine/sensor.c open: module cleanup
 block engine/sound_request.c open: module cleanup
 block engine/timeline.c open: module cleanup
 block engine/weather.c open: module cleanup
@@ -250,7 +248,6 @@ comment engine/merchant.c open: module cleanup
 comment engine/move.c open: module cleanup
 comment engine/save.c open: module cleanup
 comment engine/seen.c open: module cleanup
-comment engine/sensor.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
@@ -469,7 +466,6 @@ enum engine/include/move.h open: module cleanup
 enum engine/include/projectile.h open: module cleanup
 enum engine/include/save.h open: module cleanup
 enum engine/include/seen.h open: module cleanup
-enum engine/include/sensor.h open: module cleanup
 enum engine/include/weather.h open: module cleanup
 enum engine/inventory.c open: module cleanup
 enum engine/item.c open: module cleanup
@@ -480,7 +476,6 @@ enum engine/projectile.c open: module cleanup
 enum engine/recruit.c open: module cleanup
 enum engine/save.c open: module cleanup
 enum engine/seen.c open: module cleanup
-enum engine/sensor.c open: module cleanup
 enum engine/weather.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 enum ui/advanced.c open: module cleanup
@@ -573,7 +568,6 @@ include engine/move.c:money.h open: module cleanup
 include engine/projectile.c:game.h open: module cleanup
 include engine/projectile.c:money.h open: module cleanup
 include engine/recruit.c:item.h open: module cleanup
-include engine/sensor.c:money.h open: module cleanup
 include engine/sound_request.c:ai.h open: module cleanup
 include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
@@ -714,7 +708,6 @@ notation engine/include/inventory.h open: module cleanup
 notation engine/include/item.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
 notation engine/include/save.h open: module cleanup
-notation engine/include/sensor.h open: module cleanup
 notation engine/include/sound_request.h open: module cleanup
 notation engine/include/timeline.h open: module cleanup
 notation engine/include/weather.h open: module cleanup
@@ -728,7 +721,6 @@ notation engine/projectile.c open: module cleanup
 notation engine/random.c open: module cleanup
 notation engine/recruit.c open: module cleanup
 notation engine/save.c open: module cleanup
-notation engine/sensor.c open: module cleanup
 notation engine/weather.c open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
