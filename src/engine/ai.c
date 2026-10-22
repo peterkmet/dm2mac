@@ -512,6 +512,11 @@ static int dest_y(void)
     return location_y(g_ai.active->destination);
 }
 
+static AiLocation dest_square(void)
+{
+    return ai_location(dest_x(), dest_y());
+}
+
 /* Sets the destination square of the action on the current map. */
 static void set_destination(int x, int y)
 {
@@ -737,7 +742,7 @@ static bool cond_door_behind(int x, int y)
         return false;
     if (square_type(dun_get_square((int16_t)(x + dir_dx[d]), (int16_t)(y + dir_dy[d]))) != SQUARE_DOOR)
         return false;
-    return ai_try_door_action(DOOR_MODE_CLOSE, x, y, -1, -1, d) != 0;
+    return ai_try_door_action(DOOR_MODE_CLOSE, ai_location(x, y), AI_SQUARE_IN_DIR, d);
 }
 
 /* True when a static creature stands in front of the creature on (x, y) and the party is beside a special wall. */
@@ -1401,8 +1406,8 @@ static int choose_plan(void)
             int flags = mood & SEARCH_FLAGS_FLEE ? g_ai.search_flags : 0;
             if (mood & MOOD_STAYS)
                 flags |= AI_MOVE_ATTACK_GROUPS;
-            int i = ai_search_area(g_ai.event.data[0], g_ai.event.data[1], (uint8_t)flags, (int8_t)g_ai.candidate_count,
-                                   g_ai.candidates, g_ai.path);
+            int i = ai_search_area(ai_group_square(), (uint8_t)flags, (int8_t)g_ai.candidate_count, g_ai.candidates,
+                                   g_ai.path);
             g_ai.chosen = (int8_t)i;
             if ((int16_t)i != -1) {
                 chosen = candidate_at(i)->plan;
@@ -1548,7 +1553,7 @@ static bool flee_or_dodge(bool second_round)
         int turn = rand_bit() ? 1 : -1;
         for (int tries = DIR_COUNT; tries; tries--) {
             int command = (second_round ? MOVE_KIND_PLAIN : g_ai.search_flags) | AI_EXECUTE;
-            if (ai_try_move(command, g_ai.event.data[0], g_ai.event.data[1], -1, -1, dir)) {
+            if (ai_try_move(command, ai_group_square(), AI_SQUARE_IN_DIR, dir)) {
                 a->plan = -1;
                 a->plan_step = 0;
                 return true;
@@ -1566,11 +1571,11 @@ static bool flee_or_dodge(bool second_round)
 static bool try_flee(uint32_t class_flags)
 {
     bool second_round = rand_2bits() == 0;
-    int x = g_ai.event.data[0], y = g_ai.event.data[1];
-    if (class_flags & AI_CLASS_NO_FLEE || ai_try_move(g_ai.search_flags, x, y, x, y, -1))
+    AiLocation at = ai_group_square();
+    if (class_flags & AI_CLASS_NO_FLEE || ai_try_move(g_ai.search_flags, at, at, -1))
         return false;
-    bool flee = (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(x, y)) || !g_ai.alert ||
-                !ai_try_attack(ATTACK_MODE_PARTY, x, y, -1, -1, group_dir(g_ai.group_thing)) ||
+    bool flee = (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(at.x, at.y)) || !g_ai.alert ||
+                !ai_try_attack(ATTACK_MODE_PARTY, at, AI_SQUARE_IN_DIR, group_dir(g_ai.group_thing)) ||
                 rand_below((uint16_t)((creature_armor(g_ai.info) >> 2) + 1)) <= 1;
     return flee && flee_or_dodge(second_round);
 }
@@ -1605,8 +1610,7 @@ static bool has_possession(uint16_t group, int item, int cell)
 /* Plan command: the creature steps forward; done when it cannot. */
 static int cmd_move_forward(void)
 {
-    return ai_try_move(AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], -1, -1, facing()) ? AI_RESULT_ISSUED
-                                                                                             : AI_RESULT_DONE;
+    return ai_try_move(AI_EXECUTE, ai_group_square(), AI_SQUARE_IN_DIR, facing()) ? AI_RESULT_ISSUED : AI_RESULT_DONE;
 }
 
 /* Plan command: the creature steps to a random side, or turns to it when both sides are blocked. */
@@ -1614,9 +1618,9 @@ static void cmd_turn_sideways(void)
 {
     int turn = rand_bit() ? 1 : -1, f = facing();
     int first = dir_turn(f, turn);
-    if (ai_try_move(AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], -1, -1, first))
+    if (ai_try_move(AI_EXECUTE, ai_group_square(), AI_SQUARE_IN_DIR, first))
         return;
-    if (ai_try_move(AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], -1, -1, dir_turn(f, -turn)))
+    if (ai_try_move(AI_EXECUTE, ai_group_square(), AI_SQUARE_IN_DIR, dir_turn(f, -turn)))
         return;
     ai_turn_toward(first);
 }
@@ -1628,7 +1632,7 @@ static int cmd_seek_item(void)
     if (g_ai.arg2 &&
         ai_find_matching_item(filter, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) != THING_ENDOFLIST)
         return AI_RESULT_DONE;
-    ai_try_take_item(AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], dest_x(), dest_y(), -1, filter);
+    ai_try_take_item(AI_EXECUTE, ai_group_square(), dest_square(), -1, filter);
     return g_ai.command_result;
 }
 
@@ -1688,7 +1692,7 @@ static int cmd_place_on_sensor(void)
         return AI_RESULT_FAIL;
     }
     g_ai.item_flags &= ITEM_SKILL_PLACE;
-    ai_try_take_item(AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], sx, sy, -1, FILTER_PLACEABLE);
+    ai_try_take_item(AI_EXECUTE, ai_group_square(), ai_location(sx, sy), -1, FILTER_PLACEABLE);
     g_ai.item_flags = saved;
     return g_ai.command_result;
 }
@@ -1718,7 +1722,7 @@ int ai_cmd_seek_with_carried(void)
     if (ai_find_matching_item(filter, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY) == THING_ENDOFLIST)
         return AI_RESULT_FAIL;
     g_ai.item_flags &= ITEM_SKILL_TAKE_CARRIED;
-    ai_try_take_item(AI_EXECUTE | ITEM_MODE_GIVE, g_ai.event.data[0], g_ai.event.data[1], -1, -1, facing(), filter);
+    ai_try_take_item(AI_EXECUTE | ITEM_MODE_GIVE, ai_group_square(), AI_SQUARE_IN_DIR, facing(), filter);
     g_ai.item_flags = saved;
     return g_ai.command_result;
 }
@@ -1784,8 +1788,7 @@ static int cmd_drop_then_seek(void)
     }
     if (ai_find_matching_item(filter, *list, CELL_ANY) == THING_ENDOFLIST)
         return AI_RESULT_FAIL;
-    ai_try_take_item(AI_EXECUTE | ITEM_MODE_GIVE, g_ai.event.data[0], g_ai.event.data[1], g_ai.event.data[0],
-                     g_ai.event.data[1], -1, filter);
+    ai_try_take_item(AI_EXECUTE | ITEM_MODE_GIVE, ai_group_square(), ai_group_square(), -1, filter);
     return g_ai.command_result;
 }
 
@@ -1856,7 +1859,7 @@ static int cmd_go_to_target(void)
         return AI_RESULT_ISSUED;
     }
     int mode = group_mood_flag(g_ai.group_thing, MOOD_STAYS) ? AI_EXECUTE | AI_MOVE_ATTACK_GROUPS : AI_EXECUTE;
-    ai_try_move(mode, g_ai.event.data[0], g_ai.event.data[1], -1, -1, a->direction);
+    ai_try_move(mode, ai_group_square(), AI_SQUARE_IN_DIR, a->direction);
     return g_ai.command_result;
 }
 
@@ -1872,7 +1875,7 @@ static int cmd_follow_path(void)
     if (saved & ATTACK_SKILL_ITEMS && c->total <= 0)
         g_ai.attack_flags &= ~ATTACK_SKILL_ITEMS;
     g_ai.attack_flags &= g_ai.cache.mask;
-    ai_try_attack(mode | AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], dest_x(), dest_y(), -1);
+    ai_try_attack(mode | AI_EXECUTE, ai_group_square(), dest_square(), -1);
     g_ai.attack_flags = saved;
     return g_ai.command_result;
 }
@@ -1896,8 +1899,8 @@ static int cmd_seek_kind11(void)
     }
     if (!g_ai.candidate_count)
         return AI_RESULT_FAIL;
-    g_ai.chosen = (int8_t)ai_search_area(g_ai.event.data[0], g_ai.event.data[1], MOVE_KIND_OPEN,
-                                         (int8_t)g_ai.candidate_count, g_ai.candidates, g_ai.path);
+    g_ai.chosen = (int8_t)ai_search_area(ai_group_square(), MOVE_KIND_OPEN, (int8_t)g_ai.candidate_count,
+                                         g_ai.candidates, g_ai.path);
     return g_ai.chosen != -1 ? AI_RESULT_DONE : AI_RESULT_FAIL;
 }
 
@@ -1931,8 +1934,8 @@ static int cmd_move_relative(void)
 {
     uint16_t saved = g_ai.move_flags;
     g_ai.move_flags |= MOVE_PARTY | MOVE_GROUPS;
-    ai_try_move((g_ai.arg1 ? MOVE_KIND_STEP_BACK : MOVE_KIND_PLAIN) | AI_EXECUTE, g_ai.event.data[0],
-                g_ai.event.data[1], -1, -1, dir_turn(facing(), g_ai.arg1));
+    ai_try_move((g_ai.arg1 ? MOVE_KIND_STEP_BACK : MOVE_KIND_PLAIN) | AI_EXECUTE, ai_group_square(), AI_SQUARE_IN_DIR,
+                dir_turn(facing(), g_ai.arg1));
     g_ai.move_flags = saved;
     return g_ai.command_result;
 }
@@ -1974,8 +1977,7 @@ static int cmd_consume(void)
         return AI_RESULT_DONE;
     }
     if (!(rand_next() & 7)) {
-        ai_try_take_item(AI_EXECUTE | ITEM_MODE_GIVE, g_ai.event.data[0], g_ai.event.data[1], g_ai.event.data[0],
-                         g_ai.event.data[1], -1, FILTER_FOOD);
+        ai_try_take_item(AI_EXECUTE | ITEM_MODE_GIVE, ai_group_square(), ai_group_square(), -1, FILTER_FOOD);
         g_ai.active->counters[0] = (int16_t)location_pack(g_ai.event.data[0], g_ai.event.data[1], g_ai.map);
     } else if (!(rand_next() & 0xf)) {
         g_ai.active->counters[0] = -1;
@@ -2060,8 +2062,8 @@ static int exec_plan_command(int command)
     case PLAN_CMD_MOVE_RELATIVE:
         return cmd_move_relative();
     case PLAN_CMD_USE_ACTUATOR:
-        ai_try_use_wall_actuator((uint8_t)g_ai.cache.mask | AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1],
-                                 dest_x(), dest_y(), -1, (int16_t)g_ai.cache.item);
+        ai_try_use_wall_actuator((uint8_t)g_ai.cache.mask | AI_EXECUTE, ai_group_square(), dest_square(), -1,
+                                 (int16_t)g_ai.cache.item);
         return g_ai.command_result;
     case PLAN_CMD_SHOP_PAY:
         return (uint8_t)shop_cmd_pay_change();
@@ -2082,8 +2084,7 @@ static int exec_plan_command(int command)
         a->action = (uint8_t)((int8_t)g_ai.arg1 == -1 ? (uint8_t)g_ai.cache.item : (uint8_t)g_ai.arg1);
         return AI_RESULT_DONE;
     case PLAN_CMD_DOOR_ACTION:
-        ai_try_door_action((uint8_t)g_ai.cache.mask | AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], dest_x(),
-                           dest_y(), -1);
+        ai_try_door_action((uint8_t)g_ai.cache.mask | AI_EXECUTE, ai_group_square(), dest_square(), -1);
         return g_ai.command_result;
     case PLAN_CMD_RANDOM_CHANCE:
         return g_ai.arg1 > (int)rand_below(PERCENT) ? AI_RESULT_DONE : AI_RESULT_FAIL;
@@ -2370,7 +2371,7 @@ static int act_move(void)
         a->cell = CELL_NEAREST;
         act_melee_attack();
     }
-    if (!ai_try_move(a->mode | AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], ai_state.dest_x, ai_state.dest_y,
+    if (!ai_try_move(a->mode | AI_EXECUTE, ai_group_square(), ai_location(ai_state.dest_x, ai_state.dest_y),
                      a->direction) ||
         !(ai_action_flag((int8_t)a->action) & ACTION_FLAG_MOVES))
         return 1;
@@ -2417,7 +2418,7 @@ static int act_move_two_steps(void)
 static int act_move_stairs(void)
 {
     ActiveGroup *a = g_ai.active;
-    if (!ai_try_move(a->mode | AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], ai_state.dest_x, ai_state.dest_y,
+    if (!ai_try_move(a->mode | AI_EXECUTE, ai_group_square(), ai_location(ai_state.dest_x, ai_state.dest_y),
                      a->direction) ||
         !(ai_action_flag((int8_t)a->action) & ACTION_FLAG_MOVES))
         return 1;
@@ -2550,8 +2551,8 @@ static int act_steal(void)
 /* Action: the creature operates the door on its destination square. */
 static int act_trigger_square(void)
 {
-    if (ai_try_door_action(g_ai.active->mode | AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], ai_state.dest_x,
-                           ai_state.dest_y, facing()) &&
+    if (ai_try_door_action(g_ai.active->mode | AI_EXECUTE, ai_group_square(),
+                           ai_location(ai_state.dest_x, ai_state.dest_y), facing()) &&
         g_ai.active->action == ACTION_OPERATE_DOOR) {
         sensor_schedule_square_event(ai_state.dest_x, ai_state.dest_y, 0, 2, game.game_time);
         return 0;
@@ -2703,8 +2704,8 @@ static int act_use_wall_sensor(void)
 {
     ActiveGroup *a = g_ai.active;
     int8_t sub = a->sub;
-    if (!ai_try_use_wall_actuator(a->mode | AI_EXECUTE, g_ai.event.data[0], g_ai.event.data[1], ai_state.dest_x,
-                                  ai_state.dest_y, facing(), sub))
+    if (!ai_try_use_wall_actuator(a->mode | AI_EXECUTE, ai_group_square(),
+                                  ai_location(ai_state.dest_x, ai_state.dest_y), facing(), sub))
         return 1;
     uint16_t hand = THING_NONE;
     if (a->mode != ACTUATOR_MODE_TAKE && sub != -1) {

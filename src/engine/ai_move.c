@@ -214,7 +214,7 @@
 #define MARKER_LEVEL_SIDES_SHOWN  2
 
 /* The result of a step of the search. */
-enum SearchStep { SEARCH_STEP_SKIP, SEARCH_STEP_BLOCKED, SEARCH_STEP_ENTERED };
+typedef enum { SEARCH_STEP_SKIP, SEARCH_STEP_BLOCKED, SEARCH_STEP_ENTERED } SearchStep;
 
 /* The actions of a take from the same square (0, 1) or from the square in front (2, 3) by a random bit. */
 static const uint8_t take_actions[] = {ACTION_DROP_HERE, ACTION_DROP_HERE_2, ACTION_DROP_AHEAD_2, ACTION_DROP_AHEAD};
@@ -518,7 +518,7 @@ static uint8_t *search_cell(uint8_t *map, int x, int y)
 }
 
 /* True when the wall face of (x, y) toward side shows an ornament that is a shooting target of filter. */
-static int wall_shows_shoot_target(int x, int y, int side, int filter)
+static bool wall_shows_shoot_target(int x, int y, int side, int filter)
 {
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         int type = thing_type(t);
@@ -527,16 +527,16 @@ static int wall_shows_shoot_target(int x, int y, int side, int filter)
         int ornament = item_gdat_index(t);
         if (ornament != GDAT_NO_INDEX && gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE,
                                                           ORNAMENT_KEY_SHOOT_TARGET) == (uint16_t)filter)
-            return 1;
+            return true;
     }
-    return 0;
+    return false;
 }
 
-int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_location, int x, int y, int dir,
-                            int ranged)
+AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, AiLocation from, int dir, bool ranged)
 {
+    AiLineTarget none = {false, 0};
     int range = g_ai.attack_flags & ATTACK_RANGED_MASK ? info_attack_range(g_ai.info) : 1;
-    int16_t sx = (int16_t)x, sy = (int16_t)y, d = (int16_t)dir;
+    int16_t sx = from.x, sy = from.y, d = (int16_t)dir;
     int16_t left = 0;
     if (d == -1) {
         d = DIR_NORTH;
@@ -546,10 +546,10 @@ int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_loc
     int16_t i;
     for (;; d++, left--) {
         if (left < 0)
-            return 0;
+            return none;
         tx = sx;
         ty = sy;
-        int found = 0;
+        bool found = false;
         for (i = 0; i < range; i++) {
             tx += dir_dx[d];
             ty += dir_dy[d];
@@ -566,7 +566,7 @@ int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_loc
                 } else if (!ranged && !at_group(tx, ty)) {
                     uint16_t g = creature_get_group_at((uint16_t)tx, (uint16_t)ty);
                     if (g != THING_NONE && ai_thing_matches_filter(g, (int16_t)filter)) {
-                        found = 1;
+                        found = true;
                         break;
                     }
                 }
@@ -591,12 +591,12 @@ int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_loc
             break;
         }
     }
-    int r = ai_try_attack(ranged ? ATTACK_MODE_ANY : ATTACK_MODE_GROUP, sx, sy, tx, ty, dir_opposite(back));
-    if (!r)
-        return 0;
+    if (!ai_try_attack(ranged ? ATTACK_MODE_ANY : ATTACK_MODE_GROUP, ai_location(sx, sy), ai_location(tx, ty),
+                       dir_opposite(back)))
+        return none;
     ai_cache_square(sx, sy);
-    *out_location = pack_location(tx, ty, party.cur_map);
-    return 1;
+    AiLineTarget target = {true, pack_location(tx, ty, party.cur_map)};
+    return target;
 }
 
 /* The champion that holds an item of FILTER_WEAPON_HANDS in a hand in the cells next to (x, y): its cell, -1 none. */
@@ -640,18 +640,18 @@ static uint32_t random_set_bit(uint32_t bits)
 }
 
 /* Fails the command: with AI_EXECUTE the creature reports the failure. */
-static int fail_command(int execute)
+static bool fail_command(int execute)
 {
     if (execute)
         g_ai.command_result = AI_RESULT_FAIL;
-    return 0;
+    return false;
 }
 
-/* True when the creature on (x, y) can step to a side square: then it does not attack its own square. */
-static bool can_step_off(int x, int y)
+/* True when the creature on the square at can step to a side square: then it does not attack its own square. */
+static bool can_step_off(AiLocation at)
 {
     for (int16_t d = 0; d < DIR_COUNT; d++)
-        if (ai_try_move(MOVE_KIND_PLAIN, x, y, dir_dx[d] + x, (int16_t)(y + dir_dy[d]), d))
+        if (ai_try_move(MOVE_KIND_PLAIN, at, ai_location(dir_dx[d] + at.x, at.y + dir_dy[d]), d))
             return true;
     return false;
 }
@@ -668,10 +668,10 @@ static int party_door_stops_attack(int x, int y)
 }
 
 /* The cell of the target that the attack aims at; r: the random bit of the attack variant, a ranged attack may flip it. */
-static int attack_cell(int mode, int x, int y, int dir, bool melee, int *r)
+static int attack_cell(int mode, AiLocation from, int dir, bool melee, int *r)
 {
     if (melee) {
-        int c = mode > ATTACK_MODE_PARTY_RANGED ? -1 : champ_get_nearest_at(x, y, CELL_ANY);
+        int c = mode > ATTACK_MODE_PARTY_RANGED ? -1 : champ_get_nearest_at(from.x, from.y, CELL_ANY);
         return c == -1 ? dir_turn(dir, *r + 2) : champion(c)->cell;
     }
     if (mode <= ATTACK_MODE_PARTY_RANGED && rand_2bits()) {
@@ -717,12 +717,14 @@ static void set_attack_action(uint16_t attack, int r)
     }
 }
 
-int ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir)
+bool ai_try_attack(int mode, AiLocation from, AiLocation to, int dir)
 {
     int execute = mode & AI_EXECUTE;
     mode &= AI_MODE_MASK;
     uint16_t flags = g_ai.attack_flags;
-    int16_t tx = (int16_t)target_x, ty = (int16_t)target_y;
+    int x = from.x;
+    int y = from.y;
+    int16_t tx = to.x, ty = to.y;
     if (!flags)
         return fail_command(execute);
     if (tx == -1) {
@@ -738,7 +740,7 @@ int ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir)
         return fail_command(execute);
     if (distance > info_attack_range(g_ai.info))
         return fail_command(execute);
-    if (distance == 0 && can_step_off(x, y))
+    if (distance == 0 && can_step_off(from))
         return fail_command(execute);
     if (mode <= ATTACK_MODE_PARTY_RANGED) {
         if (!at_party(tx, ty))
@@ -764,15 +766,15 @@ int ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir)
     if (party_door_stops_attack(x, y))
         return fail_command(execute);
     if (!execute)
-        return 1;
+        return true;
     if ((int16_t)dir == -1)
         dir = distance == 0 && at_party(tx, ty) ? dir_opposite(game.party_dir) : dun_get_direction_to(x, y, tx, ty);
     if (ai_turn_toward(dir))
-        return 1;
+        return true;
     int r = rand_bit();
     bool melee = distance <= 1 && flags & ATTACK_MELEE_MASK && (!(flags & ATTACK_RANGED_MASK) || rand_bit());
     flags &= melee ? ATTACK_MELEE_MASK : ATTACK_RANGED_MASK;
-    int cell = attack_cell(mode, x, y, dir, melee, &r);
+    int cell = attack_cell(mode, from, dir, melee, &r);
     set_attack_action((uint16_t)random_set_bit(flags), r);
     set_action_destination(tx, ty);
     g_ai.active->direction = (uint8_t)dir;
@@ -781,11 +783,11 @@ int ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir)
     g_ai.active->cell = (uint8_t)cell;
     g_ai.active->mode = (uint8_t)mode;
     g_ai.command_result = AI_RESULT_ISSUED;
-    return 1;
+    return true;
 }
 
 /* A door spell flying toward the door or an explosion that opens it between (x, y) and the door. */
-static int spell_on_door_line(int x, int y, int distance, int dir)
+static bool spell_on_door_line(int x, int y, int distance, int dir)
 {
     for (int16_t n = (int16_t)distance; n >= 0; n--) {
         for (uint16_t t = first_object(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
@@ -795,51 +797,61 @@ static int spell_on_door_line(int x, int y, int distance, int dir)
                 if ((payload == EXPLOSION_THING_BASE + EXPLOSION_DOOR_SPELL ||
                      payload == EXPLOSION_THING_BASE + EXPLOSION_OPEN_DOOR) &&
                     projectile_dir(t) == (int16_t)dir)
-                    return 1;
+                    return true;
             } else if (type == THING_EXPLOSION) {
                 int kind = explosion_type(t);
                 if (kind == EXPLOSION_DOOR_SPELL || kind == EXPLOSION_OPEN_DOOR)
-                    return 1;
+                    return true;
             }
         }
         x = (int16_t)(x + dir_dx[step_dir(dir)]);
         y = (int16_t)(y + dir_dy[step_dir(dir)]);
     }
-    return 0;
+    return false;
 }
 
-/* The result of the door test: act on the door, the door is as wanted, or a spell is on the way. */
-enum { DOOR_TEST_ACT, DOOR_TEST_AS_WANTED, DOOR_TEST_SPELL_ON_WAY };
+/* A door action of the group: the mode, the door skills that the test leaves, the door, the squares, the direction,
+   and the distance to the door. */
+typedef struct {
+    int mode;
+    uint16_t flags, door;
+    AiLocation from, to;
+    int16_t d, distance;
+} DoorAction;
 
-/* True when the door skills reach the door at distance: a button, a break, or the handle next to it; a button shot or
-   a spell from afar in attack range and in sight. */
-static int skills_reach_door(uint16_t flags, int mode, uint16_t door, int x, int y, int tx, int ty, int16_t distance)
+/* The result of the door test: act on the door, the door is as wanted, a spell is on the way, or no action. */
+typedef enum { DOOR_TEST_ACT, DOOR_TEST_AS_WANTED, DOOR_TEST_SPELL_ON_WAY, DOOR_TEST_FAIL } DoorTest;
+
+/* True when the door skills reach the door at its distance: a button, a break, or the handle next to it; a button
+   shot or a spell from afar in attack range and in sight. */
+static bool skills_reach_door(const DoorAction *a)
 {
-    bool button = door_has_button(door);
-    bool by_magic = door_flag(door, DOOR_BREAKABLE_BY_MAGIC);
-    if (distance == 1)
+    uint16_t flags = a->flags;
+    bool button = door_has_button(a->door);
+    bool by_magic = door_flag(a->door, DOOR_BREAKABLE_BY_MAGIC);
+    if (a->distance == 1)
         return (flags & DOOR_SKILL_BUTTON && button) ||
-               (mode == DOOR_MODE_OPEN && ((flags & DOOR_SKILL_SPELL && by_magic) ||
-                                           (flags & DOOR_SKILL_BASH && door_flag(door, DOOR_BREAKABLE)))) ||
+               (a->mode == DOOR_MODE_OPEN && ((flags & DOOR_SKILL_SPELL && by_magic) ||
+                                              (flags & DOOR_SKILL_BASH && door_flag(a->door, DOOR_BREAKABLE)))) ||
                flags & DOOR_SKILL_HANDLE;
-    if (distance > info_attack_range(g_ai.info))
-        return 0;
+    if (a->distance > info_attack_range(g_ai.info))
+        return false;
     if (!((flags & DOOR_SKILL_SHOOT_BUTTON && button) ||
-          (mode == DOOR_MODE_OPEN && flags & DOOR_SKILL_SPELL && by_magic)))
-        return 0;
-    return (int16_t)ai_trace_line(x, y, tx, ty, ai_square_blocks_line) != 0;
+          (a->mode == DOOR_MODE_OPEN && flags & DOOR_SKILL_SPELL && by_magic)))
+        return false;
+    return (int16_t)ai_trace_line(a->from.x, a->from.y, a->to.x, a->to.y, ai_square_blocks_line) != 0;
 }
 
 /* Starts the door action that the skills allow: the handle or button, a button shot, or an attack on the door. */
-static int start_door_action(int mode, uint16_t flags, uint16_t door, int x, int y, int tx, int ty, int d,
-                             int16_t distance)
+static bool start_door_action(const DoorAction *a)
 {
+    uint16_t flags = a->flags;
     if (flags & DOOR_SKILL_MARK) {
         flags &= (uint16_t)~DOOR_SKILL_MARK;
-        if (mode == DOOR_MODE_OPEN)
-            door_set_flag(door, DOOR_MARKED, true);
+        if (a->mode == DOOR_MODE_OPEN)
+            door_set_flag(a->door, DOOR_MARKED, true);
     }
-    if (distance > 1)
+    if (a->distance > 1)
         flags &= DOOR_SKILL_SHOOT_BUTTON | DOOR_SKILL_SPELL;
     if (flags & (DOOR_SKILL_HANDLE | DOOR_SKILL_PRESS_BUTTON) &&
         (!(flags & (uint16_t)~(DOOR_SKILL_HANDLE | DOOR_SKILL_PRESS_BUTTON)) || rand_2bits())) {
@@ -847,7 +859,7 @@ static int start_door_action(int mode, uint16_t flags, uint16_t door, int x, int
     } else if (flags & DOOR_SKILL_SHOOT_BUTTON &&
                (!(flags & (uint16_t)~(DOOR_SKILL_HANDLE | DOOR_SKILL_BUTTON)) || !rand_2bits())) {
         g_ai.active->action = (uint8_t)(ACTION_SHOOT + (rand_bit() != 0));
-        g_ai.active->sub = (int8_t)(mode == DOOR_MODE_OPEN ? (uint8_t)SPELL_DOOR_SET : (uint8_t)SPELL_DOOR_TOGGLE);
+        g_ai.active->sub = (int8_t)(a->mode == DOOR_MODE_OPEN ? (uint8_t)SPELL_DOOR_SET : (uint8_t)SPELL_DOOR_TOGGLE);
     } else {
         uint16_t saved = g_ai.attack_flags;
         if (flags & DOOR_SKILL_BASH && saved & ATTACK_HIT &&
@@ -857,83 +869,83 @@ static int start_door_action(int mode, uint16_t flags, uint16_t door, int x, int
             return fail_command(AI_EXECUTE);
         else
             g_ai.attack_flags &= ATTACK_FIREBALL | ATTACK_LIGHTNING;
-        int r = ai_try_attack(AI_EXECUTE | ATTACK_MODE_DOOR, x, y, tx, ty, d);
+        bool r = ai_try_attack(AI_EXECUTE | ATTACK_MODE_DOOR, a->from, a->to, a->d);
         g_ai.attack_flags = saved;
         return r;
     }
-    set_action_destination(tx, ty);
-    g_ai.active->facing = (uint8_t)d;
-    g_ai.active->direction = (uint8_t)d;
-    g_ai.active->cell = (uint8_t)dir_turn(d, rand_bit());
-    g_ai.active->mode = (uint8_t)mode;
+    set_action_destination(a->to.x, a->to.y);
+    g_ai.active->facing = (uint8_t)a->d;
+    g_ai.active->direction = (uint8_t)a->d;
+    g_ai.active->cell = (uint8_t)dir_turn(a->d, rand_bit());
+    g_ai.active->mode = (uint8_t)a->mode;
     g_ai.command_result = AI_RESULT_ISSUED;
-    return 1;
+    return true;
 }
 
-int ai_try_door_action(int mode, int x, int y, int door_x, int door_y, int dir)
+/* Tests the door on the target square for the action: the door state, the door skills, and the spells on the way. */
+static DoorTest test_door(DoorAction *a)
+{
+    ai_cache_square(a->to.x, a->to.y);
+    if (square_type(g_ai_square.square) != SQUARE_DOOR)
+        return DOOR_TEST_FAIL;
+    int door_state = g_ai_square.square & SQUARE_DOOR_STATE;
+    if (a->mode == DOOR_MODE_OPEN ? door_state == DOOR_STATE_OPEN : door_state == DOOR_STATE_CLOSED)
+        return DOOR_TEST_AS_WANTED;
+    if (a->mode != DOOR_MODE_OPEN && door_state == DOOR_STATE_BROKEN)
+        return DOOR_TEST_FAIL;
+    a->door = cached_first_thing();
+    bool moving = door_flag(a->door, DOOR_MOVING);
+    bool opening = door_flag(a->door, DOOR_OPENING);
+    if (a->mode == DOOR_MODE_CLOSE_MARKED && !door_flag(a->door, DOOR_MARKED))
+        return DOOR_TEST_FAIL;
+    if (moving && (opening ? a->mode == DOOR_MODE_OPEN : a->mode != DOOR_MODE_OPEN))
+        return DOOR_TEST_SPELL_ON_WAY;
+    if (moving && !opening && !(a->flags &= (uint16_t)~(DOOR_SKILL_SPELL | DOOR_SKILL_BASH)))
+        return DOOR_TEST_FAIL;
+    a->distance = (int16_t)axis_distance(a->from.x, a->from.y, a->to.x, a->to.y);
+    if (!skills_reach_door(a))
+        return DOOR_TEST_FAIL;
+    if (a->flags & DOOR_SKILL_SHOOT_BUTTON && spell_on_door_line(a->from.x, a->from.y, a->distance, a->d))
+        return DOOR_TEST_SPELL_ON_WAY;
+    return DOOR_TEST_ACT;
+}
+
+bool ai_try_door_action(int mode, AiLocation from, AiLocation to, int dir)
 {
     int execute = mode & AI_EXECUTE;
-    mode &= AI_MODE_MASK;
-    uint16_t flags = (uint16_t)((mode == DOOR_MODE_OPEN ? DOOR_SKILLS_OPEN : DOOR_SKILLS_CLOSE) & g_ai.door_flags);
-    int16_t tx = (int16_t)door_x, ty = (int16_t)door_y, d = (int16_t)dir;
-    int state = DOOR_TEST_ACT;
-    int16_t distance = 0;
-    uint16_t door = THING_NONE;
-    if (!flags)
+    DoorAction a = {mode & AI_MODE_MASK, 0, THING_NONE, from, to, (int16_t)dir, 0};
+    a.flags = (uint16_t)((a.mode == DOOR_MODE_OPEN ? DOOR_SKILLS_OPEN : DOOR_SKILLS_CLOSE) & g_ai.door_flags);
+    if (!a.flags)
         return fail_command(execute);
-    if (tx == -1) {
-        tx = (int16_t)(x + dir_dx[step_dir(d)]);
-        ty = (int16_t)(y + dir_dy[step_dir(d)]);
-    } else if (d == -1) {
-        d = (int16_t)dun_get_direction_to(x, y, tx, ty);
-    } else if (tx == (int16_t)x && (int16_t)y == ty) {
+    if (a.to.x == -1) {
+        a.to.x = (int16_t)(from.x + dir_dx[step_dir(a.d)]);
+        a.to.y = (int16_t)(from.y + dir_dy[step_dir(a.d)]);
+    } else if (a.d == -1) {
+        a.d = (int16_t)dun_get_direction_to(from.x, from.y, a.to.x, a.to.y);
+    } else if (a.to.x == from.x && from.y == a.to.y) {
         return fail_command(execute);
     }
-    if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty))
+    if (!on_map(a.to.x, a.to.y) || (from.x != a.to.x && from.y != a.to.y))
         return fail_command(execute);
-    ai_cache_square(tx, ty);
-    if (square_type(g_ai_square.square) != SQUARE_DOOR)
-        return fail_command(execute);
-    int door_state = g_ai_square.square & SQUARE_DOOR_STATE;
-    if (mode == DOOR_MODE_OPEN ? door_state == DOOR_STATE_OPEN : door_state == DOOR_STATE_CLOSED) {
-        state = DOOR_TEST_AS_WANTED;
-    } else if (mode != DOOR_MODE_OPEN && door_state == DOOR_STATE_BROKEN) {
-        return fail_command(execute);
-    } else {
-        door = cached_first_thing();
-        bool moving = door_flag(door, DOOR_MOVING), opening = door_flag(door, DOOR_OPENING);
-        if (mode == DOOR_MODE_CLOSE_MARKED && !door_flag(door, DOOR_MARKED))
-            return fail_command(execute);
-        if (moving && (opening ? mode == DOOR_MODE_OPEN : mode != DOOR_MODE_OPEN)) {
-            state = DOOR_TEST_SPELL_ON_WAY;
-        } else {
-            if (moving && !opening && !(flags &= (uint16_t)~(DOOR_SKILL_SPELL | DOOR_SKILL_BASH)))
-                return fail_command(execute);
-            distance = (int16_t)axis_distance(x, y, tx, ty);
-            if (!skills_reach_door(flags, mode, door, x, y, tx, ty, distance))
-                return fail_command(execute);
-            if (flags & DOOR_SKILL_SHOOT_BUTTON && spell_on_door_line(x, y, distance, d))
-                state = DOOR_TEST_SPELL_ON_WAY;
-        }
-    }
-    if (state != DOOR_TEST_ACT && mode == DOOR_MODE_CLOSE_MARKED)
+    DoorTest state = test_door(&a);
+    if (state == DOOR_TEST_FAIL || (state != DOOR_TEST_ACT && a.mode == DOOR_MODE_CLOSE_MARKED))
         return fail_command(execute);
     if (!execute)
-        return 1;
-    if (d == -1)
-        d = (int16_t)dun_get_direction_to(x, y, tx, ty);
+        return true;
+    if (a.d == -1)
+        a.d = (int16_t)dun_get_direction_to(from.x, from.y, a.to.x, a.to.y);
     if (state == DOOR_TEST_AS_WANTED) {
         g_ai.command_result = AI_RESULT_DONE;
-        return 1;
+        return true;
     }
     if (state == DOOR_TEST_SPELL_ON_WAY) {
         g_ai.active->action = ACTION_NONE;
         g_ai.command_result = AI_RESULT_ISSUED;
-        return 1;
+        return true;
     }
-    if (ai_turn_toward(d))
-        return 1;
-    return start_door_action(mode, flags, door, x, y, tx, ty, d, distance);
+    if (ai_turn_toward(a.d))
+        return true;
+    return start_door_action(&a);
 }
 
 bool ai_projectile_incoming(int x, int y)
@@ -1025,8 +1037,8 @@ static int search_square_test(int command, int x, int y)
                 return 1;
             int saved = party.cur_map;
             ai_set_map(map);
-            int tx = teleporter_x(link), ty = teleporter_y(link);
-            int r = ai_try_move(command, tx, ty, tx, ty, DIR_KEEP_FACING);
+            AiLocation at = ai_location(teleporter_x(link), teleporter_y(link));
+            bool r = ai_try_move(command, at, at, DIR_KEEP_FACING);
             ai_set_map(saved);
             return r;
         }
@@ -1095,40 +1107,50 @@ static uint16_t needed_move_flags(int kind, int no_movers, bool map_changed, int
     }
 }
 
-/* The level change of a move up (DIR_LEVEL_UP) or down (DIR_LEVEL_DOWN) from (x, y): sets the action, the facing,
-   and the target square on the other map; returns the map, -1 when the creature cannot go. */
-static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing, int16_t *tx, int16_t *ty)
+/* A move of the group: the squares, the directions, the action, and the result that the test sets for the execution. */
+typedef struct {
+    int16_t sx, sy, tx, ty, d, action, facing;
+    int kind;
+    bool result, map_changed, attack_group, same;
+} Move;
+
+/* The level change of a move up (DIR_LEVEL_UP) or down (DIR_LEVEL_DOWN): sets the action, the facing, and the
+   target square on the other map; returns the map, -1 when the creature cannot go. */
+static int level_change(Move *m)
 {
+    int x = m->sx;
+    int y = m->sy;
+    int dir = m->d;
     uint16_t need = 0, link = THING_NONE;
     uint8_t square = dun_get_square(x, y);
     int type = square_type(square);
     if (type == SQUARE_PIT && dir == DIR_LEVEL_DOWN && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0)) {
         need = MOVE_OPEN_PIT;
-        *action = ACTION_PIT;
-        *facing = (int16_t)group_dir(g_ai.group_thing);
+        m->action = ACTION_PIT;
+        m->facing = (int16_t)group_dir(g_ai.group_thing);
     } else if (type == SQUARE_FLOOR || type == SQUARE_PIT || type == SQUARE_TELEPORTER || type == SQUARE_FAKE_WALL) {
         if (square & SQUARE_LEVEL_LINK) {
             int16_t side =
                 (int16_t)dun_find_adjacent_level_link(x, y, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &link);
-            *facing = side;
+            m->facing = side;
             if (side >= 0) {
-                *action = dir == DIR_LEVEL_UP ? ACTION_LINK_UP : ACTION_LINK_DOWN;
+                m->action = dir == DIR_LEVEL_UP ? ACTION_LINK_UP : ACTION_LINK_DOWN;
                 need = MOVE_STAIRS;
             } else {
-                *action = ACTION_FALL_IN_PIT;
+                m->action = ACTION_FALL_IN_PIT;
                 need = MOVE_FALL;
-                *facing = (int16_t)group_dir(g_ai.group_thing);
+                m->facing = (int16_t)group_dir(g_ai.group_thing);
             }
         }
     } else if (type == SQUARE_STAIRS && (square & SQUARE_STAIRS_UP ? dir == DIR_LEVEL_UP : dir == DIR_LEVEL_DOWN)) {
-        *action = square & SQUARE_STAIRS_UP ? ACTION_STAIRS_UP : ACTION_STAIRS_DOWN;
-        *facing = (int16_t)dir_opposite(dun_get_stairs_exit_direction(x, y));
+        m->action = square & SQUARE_STAIRS_UP ? ACTION_STAIRS_UP : ACTION_STAIRS_DOWN;
+        m->facing = (int16_t)dir_opposite(dun_get_stairs_exit_direction(x, y));
         need = MOVE_STAIRS;
     }
     if (!(g_ai.move_flags & need))
         return -1;
     int map, nx = (int16_t)x, ny = (int16_t)y;
-    if (link != THING_NONE && (*action == ACTION_LINK_UP || *action == ACTION_LINK_DOWN)) {
+    if (link != THING_NONE && (m->action == ACTION_LINK_UP || m->action == ACTION_LINK_DOWN)) {
         nx = sensor_target_x(link);
         ny = sensor_target_y(link);
         map = sensor_data(link);
@@ -1136,7 +1158,7 @@ static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing,
         map = dungeon_location_on_map(party.cur_map, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &nx, &ny);
         if ((int16_t)map < 0)
             return -1;
-        if (*action == ACTION_FALL_IN_PIT) {
+        if (m->action == ACTION_FALL_IN_PIT) {
             /* fix: the original reads the square without a bounds test; a square at the map edge is not a pit */
             if (nx < 0 || nx >= dungeon_map_width(map) || ny < 0 || ny >= dungeon_map_height(map))
                 return -1;
@@ -1147,17 +1169,10 @@ static int level_change(int x, int y, int dir, int16_t *action, int16_t *facing,
     }
     if (!creature_is_native_to_map(g_ai.group_thing, map))
         return -1;
-    *tx = (int16_t)nx;
-    *ty = (int16_t)ny;
+    m->tx = (int16_t)nx;
+    m->ty = (int16_t)ny;
     return map;
 }
-
-/* A move of the group: the squares, the directions, the action, and the result that the test sets for the execution. */
-typedef struct {
-    int16_t sx, sy, tx, ty, d, action, facing;
-    int kind, result;
-    bool map_changed, attack_group, same;
-} Move;
 
 /* Sets the target square and facing of the move, a level change included; false when the move cannot start. */
 static bool set_move_target(Move *m)
@@ -1167,7 +1182,7 @@ static bool set_move_target(Move *m)
     } else if (m->d >= DIR_LEVEL_UP) {
         if (!(g_ai.move_flags & MOVE_LEVELS))
             return false;
-        int map = level_change(m->sx, m->sy, m->d, &m->action, &m->facing, &m->tx, &m->ty);
+        int map = level_change(m);
         if (map < 0)
             return false;
         m->map_changed = true;
@@ -1244,13 +1259,13 @@ static void test_move_transition(Move *m, int no_movers)
     if (saved != party.dest_map) {
         if (!(g_ai.move_flags & MOVE_LEVELS) ||
             !creature_is_native_to_map(g_ai.group_thing, (uint16_t)party.dest_map)) {
-            m->result = 0;
+            m->result = false;
             return;
         }
         ai_set_map((uint16_t)party.dest_map);
     }
-    m->result = ai_try_move(m->kind | no_movers, (uint16_t)party.dest_x, (uint16_t)party.dest_y, (uint16_t)party.dest_x,
-                            (uint16_t)party.dest_y, DIR_KEEP_FACING);
+    AiLocation dest = ai_location(party.dest_x, party.dest_y);
+    m->result = ai_try_move(m->kind | no_movers, dest, dest, DIR_KEEP_FACING);
     ai_set_map(saved);
 }
 
@@ -1258,12 +1273,12 @@ static void test_move_transition(Move *m, int no_movers)
 static void test_move_over_pit(Move *m, int no_movers)
 {
     if (m->kind == MOVE_KIND_STEP_BACK) {
-        m->result = 0;
+        m->result = false;
     } else {
         uint16_t saved = g_ai.move_flags;
         g_ai.move_flags &= MOVE_FLAGS_NO_FALL;
-        m->result = ai_try_move(m->kind | no_movers, m->tx, m->ty, (int16_t)(m->tx + dir_dx[m->facing]),
-                                (int16_t)(m->ty + dir_dy[m->facing]), m->facing);
+        m->result = ai_try_move(m->kind | no_movers, ai_location(m->tx, m->ty),
+                                ai_location(m->tx + dir_dx[m->facing], m->ty + dir_dy[m->facing]), m->facing);
         g_ai.move_flags = saved;
     }
     if (m->result) {
@@ -1271,7 +1286,7 @@ static void test_move_over_pit(Move *m, int no_movers)
     } else if (g_ai.move_flags & MOVE_OPEN_PIT) {
         uint16_t saved = g_ai.move_flags;
         g_ai.move_flags &= (uint16_t)~MOVE_FALLS;
-        m->result = ai_try_move(m->kind | no_movers, m->sx, m->sy, m->tx, m->ty, m->facing);
+        m->result = ai_try_move(m->kind | no_movers, ai_location(m->sx, m->sy), ai_location(m->tx, m->ty), m->facing);
         if (m->result)
             m->action = ACTION_PIT;
         g_ai.move_flags = saved;
@@ -1324,7 +1339,7 @@ static bool test_move(Move *m, int command)
         return true;
     if (party_door_stops_move(m))
         return true;
-    m->result = 1;
+    m->result = true;
     if (m->map_changed || need == MOVE_TELEPORTER) {
         test_move_transition(m, no_movers);
         return true;
@@ -1332,7 +1347,8 @@ static bool test_move(Move *m, int command)
     if (m->same)
         return true;
     if (need == MOVE_DOOR) {
-        m->result = ai_try_door_action(execute | DOOR_MODE_OPEN, m->sx, m->sy, m->tx, m->ty, m->facing);
+        m->result = ai_try_door_action(execute | DOOR_MODE_OPEN, ai_location(m->sx, m->sy), ai_location(m->tx, m->ty),
+                                       m->facing);
         return false;
     }
     if (need & MOVE_FALLS)
@@ -1351,7 +1367,8 @@ static void execute_move(Move *m)
         g_ai.command_result = AI_RESULT_DONE;
         return;
     }
-    if (m->attack_group && ai_try_attack(AI_EXECUTE | ATTACK_MODE_GROUP, m->sx, m->sy, m->tx, m->ty, -1))
+    if (m->attack_group &&
+        ai_try_attack(AI_EXECUTE | ATTACK_MODE_GROUP, ai_location(m->sx, m->sy), ai_location(m->tx, m->ty), -1))
         return;
     if (g_ai.door_flags & DOOR_SKILL_ANY_SIDE)
         for (int16_t i = 0; i < DIR_COUNT; i++) {
@@ -1359,7 +1376,8 @@ static void execute_move(Move *m)
                 continue;
             int16_t nx = (int16_t)(m->sx + dir_dx[i]), ny = (int16_t)(m->sy + dir_dy[i]);
             if (square_type(dun_get_square(nx, ny)) == SQUARE_DOOR &&
-                ai_try_door_action(AI_EXECUTE | DOOR_MODE_CLOSE_MARKED, m->sx, m->sy, nx, ny, i))
+                ai_try_door_action(AI_EXECUTE | DOOR_MODE_CLOSE_MARKED, ai_location(m->sx, m->sy), ai_location(nx, ny),
+                                   i))
                 return;
         }
     if (m->kind == MOVE_KIND_STEP_BACK) {
@@ -1390,21 +1408,11 @@ static void execute_move(Move *m)
     g_ai.command_result = AI_RESULT_ISSUED;
 }
 
-int ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir)
+bool ai_try_move(int command, AiLocation from, AiLocation to, int dir)
 {
     int saved_map = party.cur_map;
-    Move m = {(int16_t)x,
-              (int16_t)y,
-              (int16_t)dest_x,
-              (int16_t)dest_y,
-              (int16_t)dir,
-              -1,
-              (int16_t)dir,
-              command & AI_MOVE_KIND_MASK,
-              0,
-              0,
-              0,
-              0};
+    Move m = {from.x, from.y, to.x,  to.y, (int16_t)dir, -1, (int16_t)dir, command & AI_MOVE_KIND_MASK,
+              false,  false,  false, false};
     if (test_move(&m, command) && command & AI_EXECUTE)
         execute_move(&m);
     if (m.map_changed)
@@ -1487,23 +1495,33 @@ static bool alcove_has_item(int16_t cell, int d, int filter)
     return false;
 }
 
+/* A take or give of the group: the mode, the item filter, the side, and the action and cell that the test finds. */
+typedef struct {
+    int mode, filter;
+    bool same; /* the item is on the square of the group */
+    int16_t d, action, cell;
+} ItemTest;
+
 /* Finds an item of filter on the square in the AI cache in a cell that the creature reaches, or in the possessions of
    a group there (action: take from the group); false for none. */
-static bool floor_item_in_reach(bool same, int d, int filter, int16_t *action, int16_t *cell)
+static bool floor_item_in_reach(ItemTest *it)
 {
+    bool same = it->same;
+    int d = it->d;
+    int filter = it->filter;
     for (uint16_t t = ai_cached_first_object(); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        *cell = (int16_t)thing_cell(t);
+        it->cell = (int16_t)thing_cell(t);
         int type = thing_type(t);
         if (type < THING_GROUP || type >= THING_PROJECTILE)
             continue;
         if (!(type != THING_GROUP && ai_thing_matches_filter(t, (int16_t)filter))) {
-            *cell = (int16_t)ai_find_matching_item_inside(t, filter, d);
-            if (*cell == -1)
+            it->cell = (int16_t)ai_find_matching_item_inside(t, filter, d);
+            if (it->cell == -1)
                 continue;
         }
-        if ((uint16_t)*cell >= POSSESSION_CELL_BASE) {
-            *action = ACTION_TAKE_FROM_GROUP;
-            *cell &= 3;
+        if ((uint16_t)it->cell >= POSSESSION_CELL_BASE) {
+            it->action = ACTION_TAKE_FROM_GROUP;
+            it->cell &= 3;
             return true;
         }
         if ((uint8_t)g_ai_square_scan.cells[0] == CELL_ANY) {
@@ -1515,7 +1533,7 @@ static bool floor_item_in_reach(bool same, int d, int filter, int16_t *action, i
                 bits >>= 1;
             }
         }
-        if (g_ai_square_scan.cells[(uint16_t)*cell])
+        if (g_ai_square_scan.cells[(uint16_t)it->cell])
             return true;
         g_ai_square_scan.items_elsewhere = 1;
     }
@@ -1538,50 +1556,50 @@ static int16_t give_cell(int d)
 
 /* The alcove of the wall square in the AI cache as the target: the face toward the creature must show it; a take
    needs an item of filter in it. False when it does not fit. */
-static bool wall_item_target(int mode, bool same, int d, int filter, int16_t *action, int16_t *cell)
+static bool wall_item_target(ItemTest *it)
 {
     if (g_ai_square_scan.items_elsewhere == -1) {
         g_ai_square_scan.items_elsewhere = 0;
         g_ai_square_scan.facing_ornament = 0;
-        if (!same && g_ai.item_flags & ITEM_SKILL_WALL)
-            scan_wall_ornaments(dir_opposite(d));
+        if (!it->same && g_ai.item_flags & ITEM_SKILL_WALL)
+            scan_wall_ornaments(dir_opposite(it->d));
     }
     if (!g_ai_square_scan.facing_ornament)
         return false;
-    if (mode == ITEM_MODE_GIVE) {
-        *action = ACTION_PUT_IN_WALL;
+    if (it->mode == ITEM_MODE_GIVE) {
+        it->action = ACTION_PUT_IN_WALL;
         return true;
     }
-    *action = ACTION_TAKE_FROM_WALL;
-    *cell = g_ai_square_scan.cells[0];
-    return alcove_has_item(*cell, d, filter);
+    it->action = ACTION_TAKE_FROM_WALL;
+    it->cell = g_ai_square_scan.cells[0];
+    return alcove_has_item(it->cell, it->d, it->filter);
 }
 
 /* The cell and action of a give: into the alcove, to the group in front, or a drop here or ahead; -1 when the group
    has no cell for it. */
-static int16_t give_place(bool same, int d, int16_t *action)
+static int16_t give_place(ItemTest *it)
 {
-    if (*action == ACTION_PUT_IN_WALL)
-        return (int16_t)d;
-    if (*action == ACTION_GIVE)
-        return give_cell(d);
+    if (it->action == ACTION_PUT_IN_WALL)
+        return it->d;
+    if (it->action == ACTION_GIVE)
+        return give_cell(it->d);
     int r = rand_bit();
-    if (!same)
+    if (!it->same)
         r += 2;
-    *action = take_actions[r];
-    return (int16_t)dir_turn(d, r);
+    it->action = take_actions[r];
+    return (int16_t)dir_turn(it->d, r);
 }
 
 /* The take action by the side of the cell; on its own square the creature turns to the cell first when its class
    does. True when it turns instead. */
-static bool take_floor_action(bool same, int16_t cell, int16_t *action)
+static bool take_floor_action(ItemTest *it)
 {
-    int side = dir_turn(cell - g_ai.active->facing, 1);
-    if (!same) {
-        *action = side < 2 ? ACTION_TAKE_FRONT : ACTION_TAKE_SIDE;
+    int side = dir_turn(it->cell - g_ai.active->facing, 1);
+    if (!it->same) {
+        it->action = side < 2 ? ACTION_TAKE_FRONT : ACTION_TAKE_SIDE;
         return false;
     }
-    *action = (int16_t)(ACTION_TAKE_LEFT + (side >= 2));
+    it->action = (int16_t)(ACTION_TAKE_LEFT + (side >= 2));
     if (side == 0)
         g_ai.active->facing = (uint8_t)dir_turn(g_ai.active->facing, TURN_LEFT);
     else if (side == 3)
@@ -1593,65 +1611,64 @@ static bool take_floor_action(bool same, int16_t cell, int16_t *action)
     return false;
 }
 
-int ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter)
+bool ai_try_take_item(int mode, AiLocation from, AiLocation to, int dir, int filter)
 {
     int execute = mode & AI_EXECUTE;
-    mode &= AI_MODE_MASK;
-    int16_t tx = (int16_t)dest_x, ty = (int16_t)dest_y, d = (int16_t)dir, action = -1, cell = 0;
-    bool same = false;
+    ItemTest it = {mode & AI_MODE_MASK, filter, false, (int16_t)dir, -1, 0};
+    int16_t tx = to.x, ty = to.y;
     if (!g_ai.item_flags)
         return fail_command(execute);
     if (tx == -1) {
-        tx = (int16_t)(dir_dx[step_dir(d)] + x);
-        ty = (int16_t)(dir_dy[step_dir(d)] + y);
+        tx = (int16_t)(dir_dx[step_dir(it.d)] + from.x);
+        ty = (int16_t)(dir_dy[step_dir(it.d)] + from.y);
     } else {
-        same = (int16_t)x == tx && (int16_t)y == ty;
-        if (!same && d == -1)
-            d = (int16_t)dun_get_direction_to(x, y, tx, ty);
+        it.same = from.x == tx && from.y == ty;
+        if (!it.same && it.d == -1)
+            it.d = (int16_t)dun_get_direction_to(from.x, from.y, tx, ty);
     }
     ai_cache_square(tx, ty);
-    if (mode == ITEM_MODE_TAKE && !(g_ai_square.square & SQUARE_HAS_THINGS))
+    if (it.mode == ITEM_MODE_TAKE && !(g_ai_square.square & SQUARE_HAS_THINGS))
         return fail_command(execute);
     if (square_type(g_ai_square.square) == SQUARE_WALL) {
-        if (!wall_item_target(mode, same, d, filter, &action, &cell))
+        if (!wall_item_target(&it))
             return fail_command(execute);
     } else {
         if (g_ai_square_scan.items_elsewhere == -1) {
             g_ai_square_scan.items_elsewhere = 0;
             g_ai_square_scan.cells[0] = -1;
         }
-        if (!same && at_party(tx, ty))
+        if (!it.same && at_party(tx, ty))
             return fail_command(execute);
-        if (!(g_ai.item_flags & (same ? ITEM_SKILL_SAME_SQUARE : ITEM_SKILL_OTHER_SQUARE)))
+        if (!(g_ai.item_flags & (it.same ? ITEM_SKILL_SAME_SQUARE : ITEM_SKILL_OTHER_SQUARE)))
             return fail_command(execute);
-        if (mode == ITEM_MODE_GIVE) {
-            if (!same)
-                action = ACTION_GIVE;
-        } else if (!floor_item_in_reach(same, d, filter, &action, &cell)) {
+        if (it.mode == ITEM_MODE_GIVE) {
+            if (!it.same)
+                it.action = ACTION_GIVE;
+        } else if (!floor_item_in_reach(&it)) {
             return fail_command(execute);
         }
     }
     if (!execute)
-        return 1;
-    if (d == -1)
-        d = (int16_t)group_dir(g_ai.group_thing);
-    if (!same && ai_turn_toward(d))
-        return 1;
-    g_ai.active->facing = (uint8_t)d;
-    if (mode == ITEM_MODE_GIVE) {
-        cell = give_place(same, d, &action);
-        if (cell == -1)
+        return true;
+    if (it.d == -1)
+        it.d = (int16_t)group_dir(g_ai.group_thing);
+    if (!it.same && ai_turn_toward(it.d))
+        return true;
+    g_ai.active->facing = (uint8_t)it.d;
+    if (it.mode == ITEM_MODE_GIVE) {
+        it.cell = give_place(&it);
+        if (it.cell == -1)
             return fail_command(execute);
-    } else if (action == -1 && take_floor_action(same, cell, &action)) {
-        return 1;
+    } else if (it.action == -1 && take_floor_action(&it)) {
+        return true;
     }
     g_ai.active->destination = pack_location(g_ai_square.x, g_ai_square.y, g_ai_square.map);
-    g_ai.active->cell = (uint8_t)cell;
+    g_ai.active->cell = (uint8_t)it.cell;
     g_ai.active->sub = (int8_t)filter;
-    g_ai.active->mode = (uint8_t)mode;
-    g_ai.active->action = (uint8_t)action;
+    g_ai.active->mode = (uint8_t)it.mode;
+    g_ai.active->action = (uint8_t)it.action;
     g_ai.command_result = AI_RESULT_ISSUED;
-    return 1;
+    return true;
 }
 
 uint16_t ai_find_wall_actuator(uint16_t first_thing, int cell, int mode, int filter)
@@ -1706,11 +1723,13 @@ int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, int state)
     }
 }
 
-int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter)
+bool ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int dir, int filter)
 {
     int execute = mode & AI_EXECUTE;
     mode &= AI_MODE_MASK;
-    int16_t tx = (int16_t)dest_x, ty = (int16_t)dest_y, d = (int16_t)dir;
+    int x = from.x;
+    int y = from.y;
+    int16_t tx = to.x, ty = to.y, d = (int16_t)dir;
     if (!(g_ai.actuator_flags & ACTUATOR_SKILL_USE))
         return fail_command(execute);
     if (tx == -1) {
@@ -1753,7 +1772,7 @@ int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int
         g_ai.command_result =
             mode == ACTUATOR_MODE_USE && slot_state < SLOT_STATE_BUSY ? AI_RESULT_ISSUED : AI_RESULT_DONE;
     }
-    return 1;
+    return true;
 }
 
 /* The item class bitmap of filter for the group in the AI context: parsed once per update into the scratch block.
@@ -2075,17 +2094,17 @@ static void search_setup(Search *s)
     }
 }
 
-/* True when the search square, or the other side of its passage, is the target square. */
-static int at_place(Search *s, int map, int x, int y, int16_t tx, int16_t ty, int16_t tmap)
+/* True when the search square, or the other side of its passage, is the target square of map tmap. */
+static bool at_place(const Search *s, int16_t tx, int16_t ty, int16_t tmap)
 {
-    return ((int16_t)map == tmap && (int16_t)x == tx && (int16_t)y == ty) ||
+    return (s->check_map == tmap && s->x == tx && s->y == ty) ||
            (s->passage_map == tmap && s->passage_x == tx && s->passage_y == ty);
 }
 
 /* A target of a search mark: the marked square, or its other side. */
-static int at_mark(Search *s, const int8_t *m)
+static bool at_mark(const Search *s, const int8_t *m)
 {
-    return at_place(s, s->check_map, s->x, s->y, m[MARK_X], m[MARK_Y], m[MARK_MAP]);
+    return at_place(s, m[MARK_X], m[MARK_Y], m[MARK_MAP]);
 }
 
 /* True for a candidate at the start, or by a chance of 1 in 8. */
@@ -2111,13 +2130,13 @@ static void mark_distance(Search *s, DistanceMap *d, uint8_t value, int add)
 }
 
 /* A line target found from the square that the search reached: the shooter square and its distance. */
-static int line_target(Search *s, AiCandidate *c, int x, int y, int dir, int at_entered)
+static bool line_target(Search *s, AiCandidate *c, AiLocation from, int dir, bool at_entered)
 {
-    uint16_t location = c->destination;
     g_ai.attack_flags &= c->mask;
-    bool found = ai_find_target_in_lines((int16_t)c->item, s->map, &location, x, y, dir, c->kind == TARGET_SHOOT_LINE);
-    c->destination = location;
+    AiLineTarget target = ai_find_target_in_lines((int16_t)c->item, s->map, from, dir, c->kind == TARGET_SHOOT_LINE);
+    bool found = target.found;
     if (found) {
+        c->destination = target.location;
         c->found = pack_location(g_ai_square.x, g_ai_square.y, g_ai_square.map);
         if (at_entered && g_ai_square.x == s->x && g_ai_square.y == s->y && g_ai_square.map == s->check_map)
             c->path_length = (int8_t)s->dist;
@@ -2150,12 +2169,14 @@ static int entered_party_view(const AiCandidate *c, int16_t x, int16_t y)
 }
 
 /* The flee target on an entered square: farther from the party than the best square yet, and out of its sight. */
-static int entered_flee(Search *s, const AiCandidate *c, int8_t *m, int16_t x, int16_t y, bool on_party_map)
+static bool entered_flee(Search *s, const AiCandidate *c, int8_t *m, bool on_party_map)
 {
+    int16_t x = s->x;
+    int16_t y = s->y;
     if (c->marker != FOUND_NONE)
         return at_mark(s, m);
     if (!lucky_step(c))
-        return 0;
+        return false;
     int16_t d;
     if (on_party_map) {
         d = (int16_t)axis_distance(x, y, g_ai_party.x, g_ai_party.y);
@@ -2164,19 +2185,19 @@ static int entered_flee(Search *s, const AiCandidate *c, int8_t *m, int16_t x, i
         d = far_party_distance(x, y, s->check_map, other_level);
     }
     if (m[MARK_BEST] >= d)
-        return 0;
+        return false;
     if (on_party_map && d < FLEE_LINE_DISTANCE && (x == g_ai_party.x || y == g_ai_party.y) &&
         (int16_t)ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_blocks_line_except_self))
-        return 0;
+        return false;
     m[MARK_BEST] = (int8_t)d;
-    return 1;
+    return true;
 }
 
-/* The attack test of a candidate with the attacks of its mask. */
-static int candidate_attack(const Search *s, const AiCandidate *c, int mode, int x, int y, int tx, int ty, int dir)
+/* The attack test of a candidate from the search square with the attacks of its mask. */
+static bool candidate_attack(const Search *s, const AiCandidate *c, int mode, AiLocation target, int dir)
 {
     g_ai.attack_flags &= c->mask;
-    int r = ai_try_attack(mode, x, y, tx, ty, dir);
+    bool r = ai_try_attack(mode, ai_location(s->x, s->y), target, dir);
     g_ai.attack_flags = s->saved_attack;
     return r;
 }
@@ -2235,31 +2256,31 @@ static int test_entered(Search *s, int i)
     case TARGET_ANY:
         return 1;
     case TARGET_HOME:
-        return at_place(s, s->check_map, x, y, s->home_x, s->home_y, s->home_map);
+        return at_place(s, s->home_x, s->home_y, s->home_map);
     case TARGET_PARTY_VIEW:
         return entered_party_view(c, x, y);
     case TARGET_ACTIVATION:
-        return at_place(s, s->check_map, x, y, s->act_x, s->act_y, s->act_map);
+        return at_place(s, s->act_x, s->act_y, s->act_map);
     case TARGET_PARTY_RANGE_2:
         return on_party_map && axis_distance(x, y, g_ai_party.x, g_ai_party.y) == 2;
     case TARGET_FLEE:
-        return entered_flee(s, c, m, x, y, on_party_map);
+        return entered_flee(s, c, m, on_party_map);
     case TARGET_SHOOT_PARTY:
     case TARGET_MELEE_PARTY: {
         if (!on_party_map)
             return 0;
         int mode = c->kind == TARGET_SHOOT_PARTY ? ATTACK_MODE_PARTY_RANGED : ATTACK_MODE_PARTY;
-        return candidate_attack(s, c, mode, x, y, g_ai_party.x, g_ai_party.y, -1);
+        return candidate_attack(s, c, mode, ai_location(g_ai_party.x, g_ai_party.y), -1);
     }
     case TARGET_MELEE_LINE:
     case TARGET_SHOOT_LINE:
         if (c->cost != s->dist)
             return 0;
-        return line_target(s, c, x, y, -1, 1);
+        return line_target(s, c, ai_location(x, y), -1, true);
     case TARGET_STEAL:
         if (!on_party_map || ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_BUSY)
             return 0;
-        return candidate_attack(s, c, ATTACK_MODE_PARTY, x, y, -1, -1, group_dir(g_ai.group_thing));
+        return candidate_attack(s, c, ATTACK_MODE_PARTY, AI_SQUARE_IN_DIR, group_dir(g_ai.group_thing));
     case TARGET_MARKER:
         return at_mark(s, m);
     case TARGET_NEAR_MARKER:
@@ -2276,13 +2297,13 @@ static int test_entered(Search *s, int i)
     }
     case TARGET_ITEM:
     case TARGET_ITEM_2:
-        return ai_try_take_item(ITEM_MODE_TAKE, x, y, x, y, -1, (int16_t)c->item);
+        return ai_try_take_item(ITEM_MODE_TAKE, ai_location(x, y), ai_location(x, y), -1, (int16_t)c->item);
     case TARGET_DAMAGE_GROUP:
         if (x == s->start_x && y == s->start_y)
             return 0;
         return damage_group_at(c, x, y);
     case TARGET_MOVE_TEST:
-        return ai_try_move((uint8_t)c->item, x, y, x, y, -1);
+        return ai_try_move((uint8_t)c->item, ai_location(x, y), ai_location(x, y), -1);
     case TARGET_LIGHT:
         if (g_ai_square.square & SQUARE_HAS_THINGS)
             light_add_square_light(s->dist, s->dir == -1 ? game.party_dir : s->dir, x, y,
@@ -2355,7 +2376,7 @@ static int blocked_door(Search *s, const AiCandidate *c, int16_t x, int16_t y)
 {
     if (c->item == DOOR_TARGET_PARTY && !at_party(x, y))
         return 0;
-    if (!ai_try_door_action((uint8_t)c->mask, s->from_x, s->from_y, x, y, s->dir))
+    if (!ai_try_door_action((uint8_t)c->mask, ai_location(s->from_x, s->from_y), ai_location(x, y), s->dir))
         return 0;
     if (c->item == DOOR_TARGET_NEXT_TO_PARTY && axis_distance(x, y, g_ai_party.x, g_ai_party.y) != 1)
         return 0;
@@ -2387,10 +2408,11 @@ static int test_blocked(Search *s, int i)
             return 0;
         __attribute__((fallthrough));
     case TARGET_SHOOT_LINE:
-        return line_target(s, c, s->from_x, s->from_y, s->dir, 0);
+        return line_target(s, c, ai_location(s->from_x, s->from_y), s->dir, false);
     case TARGET_ITEM:
     case TARGET_ITEM_WALL: {
-        int r = ai_try_take_item(ITEM_MODE_TAKE, s->from_x, s->from_y, x, y, s->dir, (int16_t)c->item);
+        bool r = ai_try_take_item(ITEM_MODE_TAKE, ai_location(s->from_x, s->from_y), ai_location(x, y), s->dir,
+                                  (int16_t)c->item);
         if (!r && g_ai_square_scan.items_elsewhere)
             s->visit = VISIT_BLOCKED;
         return r;
@@ -2406,7 +2428,8 @@ static int test_blocked(Search *s, int i)
     case TARGET_ACTUATOR: {
         if (!(g_ai_square.square & SQUARE_HAS_THINGS))
             return 0;
-        int r = ai_try_use_wall_actuator((uint8_t)c->mask, s->from_x, s->from_y, x, y, s->dir, (int16_t)c->item);
+        bool r = ai_try_use_wall_actuator((uint8_t)c->mask, ai_location(s->from_x, s->from_y), ai_location(x, y),
+                                          s->dir, (int16_t)c->item);
         if (!r)
             s->visit = VISIT_BLOCKED;
         return r;
@@ -2551,7 +2574,7 @@ static void search_enter_map(Search *s, int map)
 }
 
 /* Tries the step of the search in s->dir (DIR_LEVEL_UP, DIR_LEVEL_DOWN: the level changes) from the square it left. */
-static enum SearchStep search_step(Search *s)
+static SearchStep search_step(Search *s)
 {
     search_enter_map(s, s->from_map);
     if (s->levels && s->steps_left <= 2) {
@@ -2576,7 +2599,7 @@ static enum SearchStep search_step(Search *s)
     s->visit = search_cell(s->map, s->x, s->y)[SEARCH_AT_DIST];
     if (!s->visit || s->dir >= DIR_LEVEL_UP) {
         int dir = s->dir;
-        if (!ai_try_move(s->command, s->from_x, s->from_y, s->x, s->y, dir)) {
+        if (!ai_try_move(s->command, ai_location(s->from_x, s->from_y), ai_location(s->x, s->y), dir)) {
             s->visit = VISIT_BLOCKED;
         } else {
             s->passage_map = -1;
@@ -2679,9 +2702,12 @@ static void search_write_path(Search *s, uint8_t *path)
     }
 }
 
-/* Starts a search from (x, y) of the current map: the candidates, the level changes, and the first search map. */
-static void search_start(Search *s, int x, int y, int command, int count, AiCandidate *candidates)
+/* Starts a search from the square start of the current map: the candidates, the level changes, and the first search
+   map. */
+static void search_start(Search *s, AiLocation start, int command, int count, AiCandidate *candidates)
 {
+    int x = start.x;
+    int y = start.y;
     s->command = (uint8_t)command;
     s->count = (int16_t)count;
     s->cands = candidates;
@@ -2720,10 +2746,10 @@ static void search_start(Search *s, int x, int y, int command, int count, AiCand
     }
 }
 
-int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates, uint8_t *path)
+int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *path)
 {
     if (!candidates[0].kind) {
-        candidates[0].destination = candidates[0].found = pack_location(x, y, party.cur_map);
+        candidates[0].destination = candidates[0].found = pack_location(from.x, from.y, party.cur_map);
         candidates[0].path_length = 0;
         return 0;
     }
@@ -2732,7 +2758,7 @@ int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates
         os_fatal("out of memory");
     int8_t marks[SEARCH_MARKS][MARK_SIZE];
     s->marks = marks;
-    search_start(s, x, y, command, count, candidates);
+    search_start(s, from, command, count, candidates);
     int found = search_entered(s);
     for (;;) {
         if (found >= 0) {
@@ -2742,7 +2768,7 @@ int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates
         }
         s->dir = (int16_t)dir_turn(s->dir, s->turn);
         if (--s->steps_left && ((s->tail + 1) & SEARCH_QUEUE_MASK) != s->head) {
-            enum SearchStep step = search_step(s);
+            SearchStep step = search_step(s);
             if (step == SEARCH_STEP_ENTERED)
                 found = search_entered(s);
             else if (step == SEARCH_STEP_BLOCKED)
@@ -2806,7 +2832,8 @@ static int path_holds(int saved)
 {
     int16_t x = location_x(g_ai.cache.found), y = location_y(g_ai.cache.found);
     uint8_t path[AI_PATH_MAX * 2];
-    if ((int16_t)ai_search_area(x, y, MOVE_KIND_NONE, 1, g_ai.candidates, path) || g_ai.candidates[0].path_length)
+    if ((int16_t)ai_search_area(ai_location(x, y), MOVE_KIND_NONE, 1, g_ai.candidates, path) ||
+        g_ai.candidates[0].path_length)
         return 0;
     int16_t cx = (int16_t)own_x(), cy = (int16_t)own_y(), left = g_ai.cache.path_left;
     if (!left)
@@ -2818,7 +2845,7 @@ static int path_holds(int saved)
         return 0;
     for (int16_t checks = PATH_CHECK_STEPS;;) {
         uint16_t step = path_step(g_ai.cache.path_length - left);
-        if (!ai_try_move(PATH_CHECK_COMMAND, cx, cy, -1, -1, step & PATH_DIR_MASK))
+        if (!ai_try_move(PATH_CHECK_COMMAND, ai_location(cx, cy), AI_SQUARE_IN_DIR, step & PATH_DIR_MASK))
             return 0;
         if ((step >> PATH_X_SHIFT & LOCATION_COORD_MASK) != g_ai_square.x ||
             (step >> PATH_Y_SHIFT & LOCATION_COORD_MASK) != g_ai_square.y ||
@@ -2873,7 +2900,7 @@ void creature_refresh_party_maps(void)
         target.cost = PARTY_MAP_SEARCH_COST;
         target.value = 0;
         target.kind = TARGET_PARTY_DISTANCE;
-        ai_search_area(game.party_x, game.party_y, MOVE_KIND_COST, 1, &target, path);
+        ai_search_area(ai_location(game.party_x, game.party_y), MOVE_KIND_COST, 1, &target, path);
     }
     if (party.redraw & REDRAW_VIEW) {
         bool changed = game.party_map != g_last_party_map;
@@ -2887,7 +2914,7 @@ void creature_refresh_party_maps(void)
             target.cost = (int8_t)radius;
             target.value = 0;
             target.kind = TARGET_LIGHT;
-            ai_search_area(game.party_x, game.party_y, MOVE_KIND_SIGHT, 1, &target, path);
+            ai_search_area(ai_location(game.party_x, game.party_y), MOVE_KIND_SIGHT, 1, &target, path);
             if (g_light_source_sum != g_cached_light_sum || g_explosion_light_sum != g_cached_explosion_light_sum)
                 changed = true;
         }

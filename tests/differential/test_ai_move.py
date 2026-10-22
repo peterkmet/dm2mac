@@ -72,6 +72,34 @@ def s16(v):
     return ctypes.c_int16(v & 0xFFFF).value
 
 
+class AiLocation(ctypes.Structure):
+    """A square of the current map as the port passes it."""
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
+
+
+class AiLineTarget(ctypes.Structure):
+    """The result of the line search of the port."""
+    _fields_ = [("found", ctypes.c_bool), ("location", ctypes.c_uint16)]
+
+
+# The command tests of the port take each square as one AiLocation: the index of its x in the arguments of the original.
+SQUARE_ARGS = {name: (1, 3) for name in ("ai_try_attack", "ai_try_door_action", "ai_try_move", "ai_try_take_item",
+                                         "ai_try_use_wall_actuator")}
+
+
+def c_args(name, args):
+    """The arguments of the C function from the arguments of the original: each (x, y) pair becomes an AiLocation."""
+    squares, out, i = SQUARE_ARGS.get(name, ()), [], 0
+    while i < len(args):
+        if i in squares:
+            out.append(AiLocation(args[i], args[i + 1]))
+            i += 2
+        else:
+            out.append(args[i])
+            i += 1
+    return out
+
+
 class Ai:
     """The C port and the original with the same creature AI context."""
 
@@ -98,8 +126,13 @@ class Ai:
         lib.dun_set_current_map.argtypes = [ctypes.c_int]
         for name in ("ai_trace_line",):
             getattr(lib, name).argtypes = [ctypes.c_int] * 4 + [ctypes.c_void_p]
-        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p] + [ctypes.c_int] * 4
-        lib.ai_search_area.argtypes = [ctypes.c_int] * 4 + [ctypes.c_void_p] * 2
+        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, AiLocation, ctypes.c_int, ctypes.c_bool]
+        lib.ai_find_target_in_lines.restype = AiLineTarget
+        lib.ai_search_area.argtypes = [AiLocation] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
+        for name in SQUARE_ARGS:
+            getattr(lib, name).argtypes = [ctypes.c_int, AiLocation, AiLocation] + [ctypes.c_int] * (
+                2 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 1)
+            getattr(lib, name).restype = ctypes.c_bool
         lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
@@ -184,7 +217,7 @@ class Ai:
 
     def call(self, name, *args, emu_args=None):
         """Calls the C function and the original with the same arguments; returns both results."""
-        mine = getattr(self.lib, name)(*args)
+        mine = getattr(self.lib, name)(*c_args(name, args))
         theirs = self.emu.call(F[name], *(args if emu_args is None else emu_args))
         return mine, theirs
 
@@ -676,7 +709,10 @@ def test_find_target_in_lines(ai):
                 cells[i] = rng.choice((0, 0, 1, 2, 3, 4, 5))
             dist.put(bytes(cells))
             args = (rng.choice(fs), dist, out, x, y, rng.choice((-1, rng.randrange(4))), rng.randrange(2))
-            mine = ai.lib.ai_find_target_in_lines(args[0], dist.c, out.c, *args[3:])
+            target = ai.lib.ai_find_target_in_lines(args[0], dist.c, AiLocation(x, y), *args[5:])
+            mine = int(target.found)
+            if target.found:  # the original writes the target square to out
+                ctypes.memmove(out.c, struct.pack("<H", target.location), 2)
             theirs = ai.emu.call(F["ai_find_target_in_lines"], args[0], dist.emu, out.emu, *args[3:])
             assert mine == theirs, (g, n, args)
             assert out.both()[0] == out.both()[1], (g, n)
@@ -715,7 +751,7 @@ def test_search_area(ai):
             path = Buffers(ai, 0x64)
             cands.put(b"".join(random_candidate(rng, fs, x, y, m) for _ in range(count)))
             command = rng.choice((0, 2, 3, 4, 5, 7, 8)) | rng.choice((0, 0, C.AI_MOVE_ATTACK_GROUPS, C.AI_MOVE_NO_MOVERS))
-            mine = lib.ai_search_area(x, y, command, count, cands.c, path.c)
+            mine = lib.ai_search_area(AiLocation(x, y), command, count, cands.c, path.c)
             theirs = ai.emu.call(F["ai_search_area"], x, y, command, 0, count, cands.emu, path.emu)
             where = (g, x, y, n, hex(command), cands.c.raw.hex())
             assert mine == s16(theirs), where
@@ -764,7 +800,7 @@ def test_plan_path_and_next_step(ai):
         cands, path = Buffers(ai, 22), Buffers(ai, 0x64)
         cands.put(cand)
         command = rng.choice((0, 3, 5))
-        mine = lib.ai_search_area(x, y, command, 1, cands.c, path.c)
+        mine = lib.ai_search_area(AiLocation(x, y), command, 1, cands.c, path.c)
         theirs = ai.emu.call(F["ai_search_area"], x, y, command, 0, 1, cands.emu, path.emu)
         assert mine == s16(theirs) and cands.both()[0] == cands.both()[1] and path.both()[0] == path.both()[1], (g, x, y)
         record = cands.c.raw

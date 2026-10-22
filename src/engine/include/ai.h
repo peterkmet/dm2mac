@@ -222,31 +222,4 @@ int ai_find_marker(int level_delta, uint16_t id_mask);
    It is exported for the tests. */
 void ai_load_cached_path(void);
 
-/* The tests of the AI commands and the path search (ai_move.c) */
-
-/* Looks along the lines from (x, y) (dir -1: all four) for a target of filter in attack range: a group, or for a
-   ranged attack a wall ornament that is a shooting target; then tests the attack from the farthest square of the
-   line that the search reached no later. distance_map: the map of the search (4 bytes per square, 32 squares per
-   column); out_location gets the target. */
-int ai_find_target_in_lines(int filter, uint8_t *distance_map, uint16_t *out_location, int x, int y, int dir,
-                            int ranged);
-/* Tests (and with AI_EXECUTE starts) an attack (ATTACK_MODE_*) from (x, y) on (target_x, target_y) (-1: the square
-   in dir). */
-int ai_try_attack(int mode, int x, int y, int target_x, int target_y, int dir);
-/* Tests (and with AI_EXECUTE starts) an action on the door at (door_x, door_y) (-1: the square in dir):
-   DOOR_MODE_*. */
-int ai_try_door_action(int mode, int x, int y, int door_x, int door_y, int dir);
-/* Tests (and with AI_EXECUTE starts) a move (MOVE_KIND_*) of the group from (x, y) to (dest_x, dest_y) (-1: the
-   square in dir); dir DIR_LEVEL_UP and DIR_LEVEL_DOWN change the level, DIR_KEEP_FACING keeps the facing. */
-int ai_try_move(int command, int x, int y, int dest_x, int dest_y, int dir);
-/* Tests (and with AI_EXECUTE starts) taking or giving (ITEM_MODE_*) an item of filter at (dest_x, dest_y) (-1: the
-   square in dir): from the floor, an alcove, a chest, or a group. */
-int ai_try_take_item(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
-/* Tests (and with AI_EXECUTE starts) the use of a wall actuator at (dest_x, dest_y) (-1: the square in dir) from
-   the slot of the creature type on that wall face. */
-int ai_try_use_wall_actuator(int mode, int x, int y, int dest_x, int dest_y, int dir, int filter);
-/* The breadth-first search from (x, y) with the move command: the nearest of count candidates; returns its index,
-   -1 for none. path gets the steps to it (2 bytes each). */
-int ai_search_area(int x, int y, int command, int count, AiCandidate *candidates, uint8_t *path);
-
 #endif /* DM2_ENGINE_AI_H */
