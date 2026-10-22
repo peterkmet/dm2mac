@@ -591,7 +591,7 @@ int dungeon_map_wallset(int16_t map)
 {
     return dungeon_map_graphics(map) >> MAP_WALLSET_SHIFT & MAP_NIBBLE_MASK;
 }
-uint8_t dungeon_map_door_type(int16_t map, int slot)
+uint8_t dungeon_map_door_type(int16_t map, int16_t slot)
 {
     if (!(dungeon_map_flags(map) & (slot ? MAP_HAS_DOOR_TYPE_1 : MAP_HAS_DOOR_TYPE_0)))
         return DOOR_TYPE_NONE;

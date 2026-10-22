@@ -240,7 +240,7 @@ void game_set_view_hidden(bool on)
     g_main_loop.view_hidden = on;
 }
 
-void game_set_step_ticks(int ticks)
+void game_set_step_ticks(uint16_t ticks)
 {
     g_main_loop.tick_threshold = ticks;
 }
@@ -335,7 +335,7 @@ void game_set_session_loaded(bool on)
     g_session.loaded = on;
 }
 
-void game_set_save_slot(int slot)
+void game_set_save_slot(int16_t slot)
 {
     g_session.slot = slot;
 }

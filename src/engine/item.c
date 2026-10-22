@@ -231,10 +231,9 @@ int item_max_charges(uint16_t thing)
                                                         : 0;
 }
 
-int item_fits_slot(uint16_t thing, int slot, int strict)
+int item_fits_slot(uint16_t thing, int16_t slot, int strict)
 {
     uint16_t slots = item_attr(thing, ATTR_SLOTS);
-    slot = (int16_t)slot;
     if (strict) {
         if (slot >= SLOT_MASK_COUNT)
             return 0;
@@ -251,7 +250,7 @@ int item_fits_slot(uint16_t thing, int slot, int strict)
     return 1;
 }
 
-int item_icon_index(uint16_t thing, int slot, int animated)
+int item_icon_index(uint16_t thing, int16_t slot, int animated)
 {
     uint8_t icon = GFX_ITEM_ICON;
     if (!animated)

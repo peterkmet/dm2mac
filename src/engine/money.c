@@ -90,7 +90,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
     }
 }
 
-int money_coin_type_for_slot(uint16_t box, int slot)
+int money_coin_type_for_slot(uint16_t box, int16_t slot)
 {
     char text[TEXT_SIZE];
     const char *p = text_gdat(CAT_CONTAINER, item_gdat_index(box), GFX_MONEYBOX_TEXT, text);
@@ -193,7 +193,7 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type)
     return item_create_by_index(item);
 }
 
-void money_box_click_coin(int slot)
+void money_box_click_coin(int16_t slot)
 {
     if (g_action.mode != ACTION_MODE_MONEY_BOX)
         return;

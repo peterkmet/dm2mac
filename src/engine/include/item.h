@@ -93,9 +93,9 @@ int item_charges(uint16_t thing);
 /* The highest charge count of the thing type. */
 int item_max_charges(uint16_t thing);
 /* True when thing may go into slot. strict: only the champion slots 0 to 12 (or -1, a hand) count. */
-int item_fits_slot(uint16_t thing, int slot, int strict);
+int item_fits_slot(uint16_t thing, int16_t slot, int strict);
 /* The icon entry of an item in slot (animated: by its icon animation attribute). */
-int item_icon_index(uint16_t thing, int slot, int animated);
+int item_icon_index(uint16_t thing, int16_t slot, int animated);
 /* True when the thing is a money box: a chest with coin slots. */
 bool item_is_moneybox(uint16_t thing);
 /* True when the thing is a chest that is no money box. */

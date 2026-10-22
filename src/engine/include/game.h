@@ -119,7 +119,7 @@ void game_set_running(bool on);
 /* The viewport shows no dungeon (on: pause, sleep) or the dungeon. */
 void game_set_view_hidden(bool on);
 /* The timer ticks of a game step. */
-void game_set_step_ticks(int ticks);
+void game_set_step_ticks(uint16_t ticks);
 /* One timer tick (60 Hz) passes. */
 void game_count_timer_tick(void);
 /* One timer tick of the game step passes; true when the step is due. */
@@ -163,7 +163,7 @@ void game_set_dungenb(bool on);
 /* A game is in memory (on): the end of the game can load the last slot again. */
 void game_set_session_loaded(bool on);
 /* The slot of the last load or save, SAVE_SLOT_NONE. */
-void game_set_save_slot(int slot);
+void game_set_save_slot(int16_t slot);
 /* A slot was loaded: the load time is now, a game is in memory. */
 void game_note_slot_loaded(void);
 /* A slot was saved: the save time is now. */

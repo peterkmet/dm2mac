@@ -43,7 +43,7 @@ void inv_show_object_name(uint16_t thing);
 void inv_update_hand_cursor(void);
 /* A click on a slot: 0 to 7 the hands in the status boxes, then the inventory slots, then the open chest. The leader
    hand object and the item in the slot change places. */
-void inv_click_slot(int slot);
+void inv_click_slot(int16_t slot);
 /* Puts the leader hand object into the first free pouch or pack slot of champ. */
 void inv_store_leader_hand_object(int champ);
 /* Puts thing into the first free slot of champ that takes it. */

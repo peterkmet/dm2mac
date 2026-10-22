@@ -272,7 +272,7 @@ bool champ_execute_selected_action(int action);
 /* Champ performs action (an index in g_champ_actions, bit 15: a repeat) with the item in the open hand. */
 int champ_perform_action(int champ, int action);
 /* Makes the hand (-1: both hands and the spell) of champ busy for about ticks game steps. */
-void champ_add_action_delay(int champ, int ticks, int hand);
+void champ_add_action_delay(int champ, uint16_t ticks, int hand);
 /* Takes the charges of the current action from its item; true when the item has no charges left. */
 bool champ_use_action_charge(int champ);
 /* The hand of champ is free again: a shooter or a thrower takes the next ammunition or throwing item. */
@@ -297,18 +297,18 @@ void champ_put_in_leader_hand(uint16_t thing, int defer_cursor);
 /* Takes the object out of the hand of the leader; THING_NONE when the hand is empty. */
 uint16_t champ_take_from_leader_hand(void);
 /* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
-void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode);
+void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode);
 /* Computes the load of the champion: its slots and the items of its open chest. */
 void champ_compute_load(int champ);
 /* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
 void champ_adjust_stat(uint8_t *stat, int delta);
 /* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
-uint16_t champ_remove_object_from_slot(int champ, int slot);
+uint16_t champ_remove_object_from_slot(int champ, int16_t slot);
 /* Puts thing into slot of champ. */
-void champ_add_object_to_slot(int champ, uint16_t thing, int slot);
+void champ_add_object_to_slot(int champ, uint16_t thing, int16_t slot);
 /* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
    champion of the open inventory (a click on the mouth). */
-void champ_consume_object(int champ, uint16_t thing, int slot);
+void champ_consume_object(int champ, uint16_t thing, int16_t slot);
 
 /* Champion movement (move.c). */
 /* Turns the party to dir; the champions turn with it. */

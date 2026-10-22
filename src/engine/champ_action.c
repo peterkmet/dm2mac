@@ -200,10 +200,10 @@ void action_area_open_spells(int champ)
     g_hooks.update_action_area(0);
 }
 
-void champ_add_action_delay(int champ, int ticks, int hand)
+void champ_add_action_delay(int champ, uint16_t ticks, int hand)
 {
     Champion *c = champion(champ);
-    uint16_t delay = (uint16_t)((uint16_t)ticks + ((uint16_t)ticks >> DELAY_EXTRA_SHIFT));
+    uint16_t delay = (uint16_t)(ticks + (ticks >> DELAY_EXTRA_SHIFT));
     int count = 1;
     if ((int16_t)hand == -1) {
         count = ACTION_DELAY_COUNT;

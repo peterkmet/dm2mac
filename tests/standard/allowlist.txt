@@ -64,11 +64,9 @@ type engine:possessions open: module cleanup
 type engine:power open: module cleanup
 type engine:sensor open: module cleanup
 type engine:size open: module cleanup
-type engine:slot open: module cleanup
 type engine:stat open: module cleanup
 type engine:state open: module cleanup
 type engine:step open: module cleanup
-type engine:ticks open: module cleanup
 type engine:type open: module cleanup
 type engine:value open: module cleanup
 type platform:x open: module cleanup

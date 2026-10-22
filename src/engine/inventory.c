@@ -161,7 +161,7 @@ static void add_effect_end_event(int champ, uint16_t thing)
     timeline_add_event(&e);
 }
 
-void champ_apply_item_effects(int champ, uint16_t thing, int slot, int mode)
+void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode)
 {
     if ((int16_t)champ < 0 || thing == THING_NONE)
         return;
@@ -267,7 +267,7 @@ static void set_slot_thing(int champ, int slot, uint16_t thing)
         g_action.open_items[slot - SLOT_CONTAINER_FIRST] = thing;
 }
 
-uint16_t champ_remove_object_from_slot(int champ, int slot)
+uint16_t champ_remove_object_from_slot(int champ, int16_t slot)
 {
     uint16_t thing = slot_thing(champ, slot);
     set_slot_thing(champ, slot, THING_NONE);
@@ -279,7 +279,7 @@ uint16_t champ_remove_object_from_slot(int champ, int slot)
     return thing;
 }
 
-void champ_add_object_to_slot(int champ, uint16_t thing, int slot)
+void champ_add_object_to_slot(int champ, uint16_t thing, int16_t slot)
 {
     if (thing == THING_NONE)
         return;
@@ -288,7 +288,7 @@ void champ_add_object_to_slot(int champ, uint16_t thing, int slot)
     champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_ADD);
 }
 
-void inv_click_slot(int slot)
+void inv_click_slot(int16_t slot)
 {
     uint16_t hand = g_game.leader_hand;
     int champ;
@@ -464,7 +464,7 @@ static bool drink_potion(int champ, uint16_t thing)
     return true;
 }
 
-void champ_consume_object(int champ, uint16_t thing, int slot)
+void champ_consume_object(int champ, uint16_t thing, int16_t slot)
 {
     if (thing == THING_NONE) {
         if (g_game.leader_hand == THING_NONE) {

@@ -35,7 +35,7 @@ int16_t money_coin_value(int coin_type);
 /* The coins of each coin type in a money box. */
 void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
 /* The coin type that the money box shows in slot (0 to 9), -1 none. */
-int money_coin_type_for_slot(uint16_t box, int slot);
+int money_coin_type_for_slot(uint16_t box, int16_t slot);
 /* Splits amount into at most max_coins coins, the most valuable first; returns the value of the coins. */
 int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *coin_count);
 
@@ -45,7 +45,7 @@ bool money_add_coin_to_box(uint16_t box, uint16_t coin);
 /* Takes a coin of coin_type out of the money box; THING_NONE when it has none. */
 uint16_t money_take_coin_from_box(uint16_t box, int coin_type); /* exported for the tests */
 /* A click on the coin pile of slot in the open money box: a coin goes into or out of the leader hand. */
-void money_box_click_coin(int slot);
+void money_box_click_coin(int16_t slot);
 /* Exchanges the coins of box for the fewest coins of the same value; check_only: only tests. True when the coins
    change. */
 bool money_normalize_coins(bool check_only, uint16_t box);

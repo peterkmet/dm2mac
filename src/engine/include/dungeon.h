@@ -699,7 +699,7 @@ uint16_t dungeon_map_graphics(int16_t map);
 /* The wall set (graphics set) of map. */
 int dungeon_map_wallset(int16_t map);
 /* The door type of door slot 0 or 1 of map, DOOR_TYPE_NONE when the map has none. */
-uint8_t dungeon_map_door_type(int16_t map, int slot);
+uint8_t dungeon_map_door_type(int16_t map, int16_t slot);
 /* The number of random wall ornaments of map. */
 int dungeon_map_random_wall_count(int16_t map);
 /* The number of creature types of map. */

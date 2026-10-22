@@ -93,7 +93,7 @@ void sound_request(SoundCue cue, int16_t x, int16_t y, int delay);
 /* sound_request with the sound of index fallback when the index of cue has no such sound. */
 void sound_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay);
 /* A delayed sound (EVENT_DELAYED_SOUND) is due: it plays when the party is still on its map. */
-void sound_request_delayed(int slot);
+void sound_request_delayed(int16_t slot);
 /* Plays the requests of the game step (queue 0) or the deferred requests (queue 1). */
 void sound_flush_requests(int queue);
 

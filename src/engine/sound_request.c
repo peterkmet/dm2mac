@@ -292,7 +292,7 @@ void sound_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t 
     sound_request(cue, x, y, delay);
 }
 
-void sound_request_delayed(int slot)
+void sound_request_delayed(int16_t slot)
 {
     Delayed *d = &queues.delayed[slot & (DELAYED_MAX - 1)]; /* fix: a slot from the save stays in the table */
     int map = (int8_t)d->map;
