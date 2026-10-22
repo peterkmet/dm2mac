@@ -190,7 +190,7 @@ void game_restore_session(const Session *session);
 
 /* The cheats */
 /* The cheat bits that are on (CHEAT_*). */
-uint8_t game_get_cheats(void); /* exported for the tests */
+uint8_t game_get_cheats(void);
 /* Only the cheats of the bits cheats are on. */
 void game_set_cheats(uint8_t cheats);
 /* The cheat bit cheat switches on or off. */

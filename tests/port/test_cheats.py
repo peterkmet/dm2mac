@@ -1,5 +1,5 @@
-"""The cheats of the advanced mode in the engine (src/engine/game.c, creature.c, move.c, sensor.c): the bit set,
-one-hit kill, and walk through walls."""
+"""The cheats of the advanced mode in the engine (src/engine/game.c, creature.c, move.c, save.c): the bit set, one-hit
+kill, walk through walls, and the CHTS save block."""
 
 import ctypes
 
@@ -7,7 +7,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.input import session  # noqa: F401 (session is a fixture)
-from dm2test.modes import VANILLA, set_mode
+from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
@@ -196,6 +196,49 @@ def test_walk_through_walls_stops_at_a_creature(lib, gdat, game):  # noqa: F811
     m = game.party_map
     place = find_place(lib, game, lambda m2, x, y: (m2, x, y) == (m, gx, gy))
     assert walk(lib, game, place, True) == place[1:3]
+
+
+# The CHTS save block.
+
+
+def save(lib, gdat, path, mode, cheats):  # noqa: F811
+    set_mode(lib, mode)
+    lib.game_set_cheats(cheats)
+    assert lib.save_write(str(path).encode(), str(path.with_suffix(".BAK")).encode(), b"CHEATS", gdat) == C.SAVE_OK
+    return path.read_bytes()
+
+
+def load(lib, gdat, path, mode, data):  # noqa: F811
+    set_mode(lib, mode)
+    lib.game_set_cheats(C.CHEAT_ALL)
+    path.write_bytes(data)
+    assert lib.save_load(str(path).encode(), gdat) == C.SAVE_OK
+    return lib.game_get_cheats()
+
+
+def test_advanced_save_appends_the_chts_block(lib, gdat, game, tmp_path):  # noqa: F811
+    turnbased = save(lib, gdat, tmp_path / "T.DAT", C.GAME_MODE_TURNBASED, C.CHEAT_FOOD)
+    mine = save(lib, gdat, tmp_path / "A.DAT", ADVANCED, C.CHEAT_FOOD | C.CHEAT_MAP)
+    assert len(mine) == len(turnbased) + 6 and mine[-6:] == b"CHTS\x01" + bytes([C.CHEAT_FOOD | C.CHEAT_MAP])
+    assert load(lib, gdat, tmp_path / "L.DAT", ADVANCED, mine) == C.CHEAT_FOOD | C.CHEAT_MAP
+    for mode in (VANILLA, C.GAME_MODE_TURNBASED):
+        assert load(lib, gdat, tmp_path / "L.DAT", mode, mine) == 0, "only the advanced mode uses the cheats"
+    assert load(lib, gdat, tmp_path / "L.DAT", ADVANCED, turnbased) == 0, "a save without the block"
+    vanilla = save(lib, gdat, tmp_path / "V.DAT", VANILLA, C.CHEAT_FOOD)
+    assert load(lib, gdat, tmp_path / "L.DAT", ADVANCED, vanilla) == 0, "a save without the AMAP block"
+
+
+@pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "bits"])
+def test_damaged_chts_block_gives_no_cheats(lib, gdat, game, tmp_path, damage):  # noqa: F811
+    data = bytearray(save(lib, gdat, tmp_path / "A.DAT", ADVANCED, C.CHEAT_KILL))
+    if damage == "short":
+        del data[-1]
+    elif damage == "long":
+        data.append(0)
+    else:
+        data[{"magic": -6, "version": -2, "bits": -1}[damage]] |= 0x80
+    assert load(lib, gdat, tmp_path / "L.DAT", ADVANCED, bytes(data)) == 0
+
 
 
 class TimelineEvent(ctypes.Structure):

@@ -21,8 +21,9 @@
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
    of the bit stream stores only the bits that its mask table selects, most significant bit first.
-   Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. In the advanced mode the AMAP block
-   of the automap follows the bit stream (seen.h); the original loader ignores it. */
+   Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. Outside the vanilla mode the AMAP
+   block of the automap follows the bit stream (seen.h), in the advanced mode then the CHTS block of the cheats; the
+   original loader ignores them. */
 
 /* The save file header and the sizes of the game state. */
 #define HEADER_FORMAT       0
@@ -30,6 +31,13 @@
 #define GAME_RECORD_SIZE    60
 #define DEFERRED_THINGS_MAX 100
 #define PACKED_WORD_BYTES   2 /* a little-endian word: a global word, or a value between the records */
+
+/* The CHTS block of the cheats after the AMAP block: the magic, the version, one byte of cheat bits (CHEAT_*). */
+#define CHEAT_MAGIC      "CHTS"
+#define CHEAT_MAGIC_SIZE 4
+#define CHEAT_VERSION    1
+#define CHEAT_BITS_AT    (CHEAT_MAGIC_SIZE + 1)
+#define CHEAT_BLOCK_SIZE (CHEAT_MAGIC_SIZE + 2)
 
 /* Byte offsets in a champion record. */
 #define CHAMPION_SLOTS        0xc3 /* 30 thing words: hands, body, pouches, quiver, backpack */
@@ -910,6 +918,45 @@ static bool read_state(void)
     return true;
 }
 
+/* What follows the AMAP block. */
+enum SaveTail { TAIL_END, TAIL_CHEATS, TAIL_OTHER };
+
+/* Writes the CHTS block with the cheats that are on; returns false on an error. */
+static bool write_cheats(FILE *f)
+{
+    uint8_t block[CHEAT_BLOCK_SIZE];
+    memcpy(block, CHEAT_MAGIC, CHEAT_MAGIC_SIZE);
+    block[CHEAT_MAGIC_SIZE] = CHEAT_VERSION;
+    block[CHEAT_BITS_AT] = game_get_cheats();
+    return fwrite(block, 1, sizeof block, f) == sizeof block;
+}
+
+/* Reads the rest of f: nothing, a valid CHTS block (its cheat bits to *cheats), or other bytes. */
+static enum SaveTail read_tail(FILE *f, uint8_t *cheats)
+{
+    uint8_t block[CHEAT_BLOCK_SIZE + 1]; /* one byte more: the block must end the file */
+    size_t size = fread(block, 1, sizeof block, f);
+    if (!size)
+        return TAIL_END;
+    if (size != CHEAT_BLOCK_SIZE || memcmp(block, CHEAT_MAGIC, CHEAT_MAGIC_SIZE) ||
+        block[CHEAT_MAGIC_SIZE] != CHEAT_VERSION || block[CHEAT_BITS_AT] & ~CHEAT_ALL)
+        return TAIL_OTHER;
+    *cheats = block[CHEAT_BITS_AT];
+    return TAIL_CHEATS;
+}
+
+/* Reads the blocks after the bit stream. The AMAP block counts only at the end of the file or before a valid CHTS
+   block; the cheats come only from a valid CHTS block after it, and only in the advanced mode. */
+static void read_extension(FILE *f)
+{
+    uint8_t cheats = 0;
+    bool amap = seen_read(f);
+    enum SaveTail tail = read_tail(f, &cheats);
+    if (tail == TAIL_OTHER)
+        seen_reset();
+    game_set_cheats(amap && tail == TAIL_CHEATS && g_game_mode == GAME_MODE_ADVANCED ? cheats : 0);
+}
+
 SaveResult save_load(const char *path, const gdat_t *gdat)
 {
     FILE *f = fopen(path, "rb");
@@ -926,7 +973,7 @@ SaveResult save_load(const char *path, const gdat_t *gdat)
         io.format = le16(header + HEADER_FORMAT);
         result = read_state() ? SAVE_OK : SAVE_ERR_DATA;
         if (result == SAVE_OK)
-            seen_read(f); /* the original stops at the last bit of the state: the block follows */
+            read_extension(f); /* the original stops at the last bit of the state: the blocks follow */
     }
     fclose(f);
     if (result != SAVE_OK)
@@ -966,7 +1013,9 @@ SaveResult save_write(const char *path, const char *bak_path, const char *name, 
     /* the records keep the indices of the active groups; the timeline loses their events (session_save) */
     bool ok = fwrite(header, 1, SAVE_HEADER_SIZE, f) == SAVE_HEADER_SIZE && dungeon_write(f);
     creature_deactivate_all_groups();
-    ok = ok && write_state() && (g_game_mode == GAME_MODE_VANILLA || seen_write(f));
+    ok =
+        ok && write_state() &&
+        (g_game_mode == GAME_MODE_VANILLA || (seen_write(f) && (g_game_mode != GAME_MODE_ADVANCED || write_cheats(f))));
     free(io.group_order);
     free(io.container_order);
     if (fclose(f) != 0)

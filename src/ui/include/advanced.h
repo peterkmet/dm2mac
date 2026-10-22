@@ -30,7 +30,7 @@ enum QuickLoadResult { QUICK_LOADED, QUICK_MISSING, QUICK_DAMAGED, QUICK_BLOCKED
 extern int g_advanced_automap_open; /* 1: the automap covers the viewport and the game time stops */
 
 /* Setup */
-/* Closes the automap and turns the cheats off: a new or loaded game starts. */
+/* Closes the automap: a new or loaded game starts. */
 void advanced_reset(void);
 
 /* Movement keys */

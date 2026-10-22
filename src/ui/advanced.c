@@ -65,7 +65,6 @@ void advanced_reset(void)
 {
     close_automap();
     lost = false;
-    game_set_cheats(0);
 }
 
 /* Movement keys */

@@ -32,7 +32,7 @@ bool seen_is_seen(int16_t map, int16_t x, int16_t y);
 /* Writes the AMAP block ("AMAP", version, map count, width and height of each map, one byte per square) to f;
    returns false on an error. */
 bool seen_write(FILE *f);
-/* Reads the AMAP block from the rest of f; a missing or damaged block gives an empty automap. */
-void seen_read(FILE *f);
+/* Reads the AMAP block from f; a missing or damaged block gives an empty automap and false. */
+bool seen_read(FILE *f);
 
 #endif /* DM2_ENGINE_SEEN_H */

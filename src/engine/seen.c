@@ -153,14 +153,13 @@ bool seen_write(FILE *f)
     return ok && fwrite(seen, 1, seen_size, f) == seen_size;
 }
 
-void seen_read(FILE *f)
+bool seen_read(FILE *f)
 {
     seen_reset();
     int count = dungeon_map_count();
     size_t size = AMAP_HEADER_SIZE + AMAP_MAP_SIZE * (size_t)count + seen_size;
-    uint8_t *block = malloc(size + 1);
-    /* the block ends the file: one byte more must not come */
-    bool ok = block && fread(block, 1, size + 1, f) == size && !memcmp(block, AMAP_MAGIC, AMAP_MAGIC_SIZE) &&
+    uint8_t *block = malloc(size);
+    bool ok = block && fread(block, 1, size, f) == size && !memcmp(block, AMAP_MAGIC, AMAP_MAGIC_SIZE) &&
               block[AMAP_MAGIC_SIZE] == AMAP_VERSION && block[AMAP_COUNT_AT] == count;
     const uint8_t *p = block + AMAP_HEADER_SIZE;
     for (int map = 0; ok && map < count; map++, p += AMAP_MAP_SIZE)
@@ -170,4 +169,5 @@ void seen_read(FILE *f)
     if (ok)
         memcpy(seen, p, seen_size);
     free(block);
+    return ok;
 }

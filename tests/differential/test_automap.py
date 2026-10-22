@@ -24,6 +24,7 @@ WALL, DOOR, FAKE_WALL = C.SQUARE_WALL, C.SQUARE_DOOR, C.SQUARE_FAKE_WALL
 FAKE_WALL_OPEN, DOOR_STATE, DOOR_CLOSED = C.SQUARE_FAKE_WALL_OPEN, C.SQUARE_DOOR_STATE, C.DOOR_STATE_CLOSED
 ROW_HALF_WIDTH = (1, 1, 2, 2, 3)  # the side squares of each row of the dungeon view
 KEY_TAB, KEY_M, KEY_ESC, KEY_I, KEY_F, KEY_L = C.KEY_AUTOMAP, C.KEY_AUTOMAP_M, 0x01, 0x17, 0x21, 0x26
+CHTS_SIZE = 6  # the CHTS block after the AMAP block of an advanced save
 INPUT_BUTTON_LEFT, INPUT_LEFT_RELEASED = C.INPUT_BUTTON_LEFT, C.INPUT_LEFT_RELEASED
 ZONE_VIEWPORT, UI_RED, CELL = C.ZONE_VIEWPORT, C.UI_RED, C.MAP_CELL_SIZE
 SCREEN_H, FILLER = C.SCREEN_H, 0xEE
@@ -217,8 +218,9 @@ def load(lib, gdat, path, data):  # noqa: F811
 def test_advanced_save_appends_the_amap_block(lib, saves):
     game, seen, vanilla, mine = saves
     assert seen and mine[:len(vanilla)] == vanilla
-    block = mine[len(vanilla):]
+    block = mine[len(vanilla):-CHTS_SIZE]
     assert block[:6] == b"AMAP\x01" + bytes([lib.dungeon_map_count()]) and len(block) == block_size(lib)
+    assert mine[-CHTS_SIZE:-1] == b"CHTS\x01"
     assert block[6:8] == bytes([lib.dungeon_map_width(0), lib.dungeon_map_height(0)])
 
 
@@ -231,17 +233,19 @@ def test_amap_block_round_trip(lib, gdat, saves, tmp_path):  # noqa: F811
     assert not seen_squares(lib, game.party_map), "a save without the block gives an empty map"
 
 
-@pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "map_count", "map_size", "value"])
+@pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "map_count", "map_size", "value", "chts"])
 def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damage):  # noqa: F811
     game, seen, vanilla, mine = saves
     n = len(vanilla)
     data = bytearray(mine)
     if damage == "short":
-        del data[-1]
+        del data[-CHTS_SIZE - 1]
     elif damage == "long":
-        data.append(0)
+        data.insert(len(data) - CHTS_SIZE, 0)
+    elif damage == "chts":
+        data[-2] += 1  # the version of the CHTS block
     else:
-        offset = {"magic": 0, "version": 4, "map_count": 5, "map_size": 6, "value": len(mine) - n - 1}[damage]
+        offset = {"magic": 0, "version": 4, "map_count": 5, "map_size": 6, "value": block_size(lib) - 1}[damage]
         data[n + offset] = 2 if damage == "value" else data[n + offset] + 1
     position = (game.party_x, game.party_y, game.party_map)
     assert load(lib, gdat, tmp_path / "L.DAT", bytes(data)) == SAVE_OK
@@ -266,7 +270,7 @@ def test_quick_save_keeps_the_automap(lib, automap):
     press(lib, C.KEYPAD_TURN_RIGHT)
     seen = seen_squares(lib, game.party_map)
     press(lib, KEY_F5)
-    assert (data / "QUICK.DAT").read_bytes()[-block_size(lib):][:4] == b"AMAP"
+    assert (data / "QUICK.DAT").read_bytes()[-block_size(lib) - CHTS_SIZE:][:4] == b"AMAP"
     lib.seen_reset()
     press(lib, KEY_F9)
     assert seen_squares(lib, game.party_map) >= seen
@@ -283,11 +287,12 @@ def test_damaged_quick_save_keeps_the_automap(lib, automap):
     assert seen and seen_squares(lib, game.party_map) >= seen
 
 
-def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
+def test_new_game_starts_with_an_empty_automap_and_no_cheats(lib, automap, game_dir):
     game, data = automap
     from dm2test.dialog import Session
     run_ticks(lib, 20)
     assert seen_squares(lib, game.party_map)
+    lib.game_set_cheats(C.CHEAT_ALL)
     (data / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
     state = Session.in_dll(lib, "g_session")
     state.new_game = 1
@@ -296,6 +301,7 @@ def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
     finally:
         state.new_game = 0
     assert not any(seen_squares(lib, m) for m in range(lib.dungeon_map_count()))
+    assert lib.game_get_cheats() == 0
 
 
 def viewport(lib):
@@ -508,12 +514,14 @@ def test_light_cheat_draws_full_light(lib, automap):
     assert level.value == 0 and view(5, 1) and level.value == 5, "the creature rules keep the real light"
 
 
-def test_new_or_loaded_game_turns_the_cheats_off(lib, automap):
+def test_quick_load_takes_the_saved_cheats(lib, automap):
+    lib.game_set_cheats(C.CHEAT_FOOD | C.CHEAT_KILL)
     press(lib, KEY_F5)
     lib.game_set_cheats(C.CHEAT_ALL)
     press(lib, KEY_F9)
-    assert lib.game_get_cheats() == 0
+    assert lib.game_get_cheats() == C.CHEAT_FOOD | C.CHEAT_KILL
     flag(lib, "g_advanced_automap_open").value = 1
     lib.play_start_session()
     assert not flag(lib, "g_advanced_automap_open").value
+    assert lib.game_get_cheats() == C.CHEAT_FOOD | C.CHEAT_KILL, "a session start keeps the cheats"
 

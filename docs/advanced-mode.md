@@ -94,7 +94,9 @@ A new game starts with an empty automap.
 
 ### Save block
 
-In the advanced mode, a slot save and `QUICK.DAT` end with the AMAP block. The block follows the original save data. The bytes before the block are the same as in the vanilla mode.
+In the advanced mode, a slot save and `QUICK.DAT` end with two blocks after the original save data: the AMAP block, then the CHTS block. The turn-based mode writes only the AMAP block. The bytes before the blocks are the same as in the vanilla mode.
+
+The AMAP block:
 
 | Bytes | Content |
 | --- | --- |
@@ -104,17 +106,29 @@ In the advanced mode, a slot save and `QUICK.DAT` end with the AMAP block. The b
 | 2 per map | Width and height of the map |
 | 1 per square | 1: seen, 0: not seen. The maps one after another, each map column by column (x, then y). |
 
-A load reads the block when it is there. A missing block, a block with other map sizes, a value other than 0 or 1, or bytes after the block give an empty automap. The game loads.
+The CHTS block:
 
-The original game loads a save with the block: its loader stops at the last bit of the game state. A save in the original game writes the file again without the block.
+| Bytes | Content |
+| --- | --- |
+| 4 | `CHTS` |
+| 1 | Version: 1 |
+| 1 | Cheat bits: 0x01 full light, 0x02 immortal, 0x04 food and water, 0x08 one-hit kill, 0x10 walk through walls, 0x20 reveal map |
+
+A load reads the blocks when they are there.
+
+- AMAP: a missing block, a block with other map sizes, or a value other than 0 or 1 gives an empty automap. After the block, only the end of the file or a valid CHTS block can come; other bytes give an empty automap.
+- CHTS: in the advanced mode, the cheats come from the block. A missing block, a wrong version, an unknown bit, bytes after the block, or a damaged AMAP block give no cheats. The vanilla and turn-based modes ignore the block and use no cheats.
+- The game loads in all these cases. A save with only the original data (vanilla) loads with an empty automap and no cheats.
+
+The original game loads a save with the blocks: its loader stops at the last bit of the game state. A save in the original game writes the file again without the blocks.
 
 ## Cheats
 
-The advanced mode has six cheats. They switch on the cheat screen (`C` key). They are not saved. A new game, a load, and a quick load turn them all off. The vanilla and turn-based modes use no cheats.
+The advanced mode has six cheats. They switch on the cheat screen (`C` key). A slot save and the quick save keep them in the CHTS block; a load and a quick load take them from the file. A new game turns them all off. The vanilla and turn-based modes use no cheats.
 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
 - Food and water: food and water do not go down with the time. Eating and drinking still raise them.
-- One-hit kill: each hit kills the creature, also a hit of a trap, a door, or another creature (a missile does not keep its launcher). A creature that cannot be hurt (defense 0xff) stays unhurt; a creature that others cannot hit (dexterity 0xff) stays so. The health that a creature loses by itself over time does not kill it. A boss that dies only near the party front keeps that rule.
+- One-hit kill: each hit kills the creature, also a hit of a trap, a door, or another creature (a missile does not keep its launcher). A creature that cannot be hurt (defense 0xff) stays unhurt; a creature that others cannot hit (dexterity 0xff) stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall.
 - Reveal map: the automap shows every square of the map. The seen squares do not change.
