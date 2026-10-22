@@ -174,7 +174,7 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     if (!recruit_silent) {
         g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
         g_hooks.present_viewport();
-        sound_request(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD,
+        sound_request((SoundCue){MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD},
                       g_game.party_x, g_game.party_y, 0);
     }
     if (hand != THING_NONE)

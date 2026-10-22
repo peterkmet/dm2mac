@@ -9,6 +9,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
+from dm2test.audio import SoundCue
 from dm2test.gdat import GdatKey
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
 from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
@@ -602,13 +603,13 @@ def test_sound_requests_match_original(world, lib, gdat):
             source = other if passage and rng.random() < 0.6 else map_
             lib.dun_set_current_map(source)
             sc.emu.call(DUN_SET_CURRENT_MAP, source)
-            args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, C.SOUND_VOLUME_NORMAL, C.SOUND_VOLUME_LOUD, C.SOUND_VOLUME_MAX, rng.randrange(256))),
+            args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, C.SOUND_VOLUME_NORMAL, C.SOUND_VOLUME_LOUD, C.SOUND_VOLUME_FULL, rng.randrange(256))),
                     x + rng.randrange(-5, 6), y + rng.randrange(-5, 6), delay)
             if last and rng.random() < 0.4:  # the same sound again, at the same place or one square away
                 step = rng.choice(((0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)))
                 args = last[:5] + (last[5] + step[0], last[6] + step[1], last[7])
             last = args
-            lib.sound_request(*args)
+            lib.sound_request(SoundCue(*args[:5]), *args[5:])
             sc.emu.call(SOUND_REQUEST, *args)
         lib.dun_set_current_map(map_)
         sc.emu.call(DUN_SET_CURRENT_MAP, map_)

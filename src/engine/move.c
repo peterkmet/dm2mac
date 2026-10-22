@@ -380,8 +380,9 @@ static void bump_champion(int champ, int x, int y)
     if (champ < 0)
         return;
     if (champ_take_damage(champ, 1, BUMP_WOUNDS, ATTACK_TYPE_SELF))
-        sound_request_with_fallback(CAT_CHAMPION, champion(champ)->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y,
-                                    1, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD);
+        sound_request_with_fallback((SoundCue){CAT_CHAMPION, champion(champ)->portrait, SOUND_ENTRY_PUSHED,
+                                               SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
+                                    SOUND_FALLBACK, x, y, 1);
 }
 
 BumpedChampions move_party_bump_damage(int x, int y, int dir, int step)
@@ -831,7 +832,7 @@ static bool transit_teleporter(Transit *t, uint8_t square)
     if (t->thing == THING_NONE) {
         set_party_position(t->x, t->y);
         if (audible)
-            sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL,
+            sound_request((SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
                           g_game.party_x, g_game.party_y, -1);
         if (t->start_map != t->map)
             t->draw_fall = false; /* the original keeps it only with its debug flag */
@@ -842,12 +843,13 @@ static bool transit_teleporter(Transit *t, uint8_t square)
             if (g_party.cur_map != t->start_map) {
                 int saved = g_party.cur_map;
                 dun_set_current_map(t->start_map);
-                sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL,
-                              t->src_x, t->src_y, 1);
+                sound_request(
+                    (SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
+                    t->src_x, t->src_y, 1);
                 dun_set_current_map(saved);
             }
-            sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL, t->x, t->y,
-                          1);
+            sound_request((SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
+                          t->x, t->y, 1);
         }
         creature_turn_group(t->thing, absolute, rotation);
     } else if (t->type == THING_PROJECTILE) {
@@ -873,8 +875,9 @@ static void transit_party_lands(Transit *t)
             if (base > FALL_DAMAGE_MAX)
                 base = FALL_DAMAGE_MAX;
             champ_take_damage(i, (int16_t)((rand_2bits() + base) * t->falls), FALL_WOUNDS, ATTACK_TYPE_SELF);
-            sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, g_game.party_x,
-                                        g_game.party_y, -1, SOUND_PRIORITY_FALL, SOUND_VOLUME_MAX);
+            sound_request_with_fallback(
+                (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_SCREAM, SOUND_PRIORITY_FALL, SOUND_VOLUME_FULL},
+                SOUND_FALLBACK, g_game.party_x, g_game.party_y, -1);
         }
         t->fell_hurt = true;
     }
@@ -971,8 +974,9 @@ static void transit_finish(const Transit *t)
     g_party.dest_map = (int16_t)t->map;
     g_party.dest_cell = (int16_t)thing_cell(t->thing);
     if (t->falls && t->creature_sound && t->thing != THING_NONE)
-        sound_request_with_fallback(item_gdat_category(t->thing), item_gdat_index(t->thing), SOUND_ENTRY_DROP,
-                                    SOUND_FALLBACK, t->x, t->y, 1, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback((SoundCue){item_gdat_category(t->thing), item_gdat_index(t->thing),
+                                               SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                    SOUND_FALLBACK, t->x, t->y, 1);
     if (!t->fell_hurt)
         return;
     int saved_map = g_party.cur_map, px = g_game.party_x, py = g_game.party_y, pmap = g_game.party_map;
@@ -980,8 +984,9 @@ static void transit_finish(const Transit *t)
     dun_set_party_location(t->x, t->y, t->map);
     for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
-            sound_request_with_fallback(CAT_CHAMPION, champion(i)->portrait, SOUND_HURT, SOUND_FALLBACK, t->x, t->y, 2,
-                                        SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
+            sound_request_with_fallback(
+                (SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
+                SOUND_FALLBACK, t->x, t->y, 2);
     dun_set_party_location(px, py, pmap);
     dun_set_current_map(saved_map);
 }
@@ -1074,8 +1079,9 @@ static bool push_party_aside(uint16_t thing, int x, int y)
     int damage =
         rand_below(DISPLACE_DAMAGE_ROLL) + (creature_group_info(thing)->push_resistance >> DISPLACE_RESISTANCE_SHIFT);
     champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
-    sound_request_with_fallback(CAT_CHAMPION, SOUND_FALLBACK, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1,
-                                SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD);
+    sound_request_with_fallback(
+        (SoundCue){CAT_CHAMPION, SOUND_FALLBACK, SOUND_ENTRY_PUSHED, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
+        SOUND_FALLBACK, x, y, 1);
     move_thing(THING_NONE, x, y, nx, ny);
     return true;
 }

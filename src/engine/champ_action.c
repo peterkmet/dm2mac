@@ -713,9 +713,10 @@ static bool run_melee(ActionRun *a)
     if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
-        sound_request_with_fallback(CAT_DOOR,
-                                    dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
-                                    SOUND_HIT, SOUND_FALLBACK, a->fx, a->fy, 1, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD);
+        sound_request_with_fallback(
+            (SoundCue){CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
+                       SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
+            SOUND_FALLBACK, a->fx, a->fy, 1);
         return true;
     }
     bool done = true;
@@ -729,8 +730,9 @@ static bool run_melee(ActionRun *a)
         }
     }
     if (done && champ_action_target != THING_NONE)
-        sound_request(CAT_CREATURE, item_gdat_index(champ_action_target), SOUND_HIT, SOUND_HIT_PRIORITY,
-                      SOUND_VOLUME_LOUD, a->fx, a->fy, 1);
+        sound_request((SoundCue){CAT_CREATURE, item_gdat_index(champ_action_target), SOUND_HIT, SOUND_HIT_PRIORITY,
+                                 SOUND_VOLUME_LOUD},
+                      a->fx, a->fy, 1);
     return done;
 }
 
@@ -946,8 +948,9 @@ int champ_perform_action(int champ, int index)
     a.front = dun_get_square(a.fx, a.fy);
     bool done = run_command(&a, command);
     if (!a.silent)
-        sound_request_with_fallback(current.category, current.index, sound, SOUND_FALLBACK, g_game.party_x,
-                                    g_game.party_y, 0, SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD);
+        sound_request_with_fallback(
+            (SoundCue){current.category, current.index, sound, SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD},
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
     if (!c->health || repeated)
         return done;
     if (a.delay)

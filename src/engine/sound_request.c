@@ -3,22 +3,25 @@
    party. sound.c plays them. */
 #include "sound_request.h"
 #include "gdat.h"
-#include "ai.h"
 #include "champion.h"
+#include "creature.h"
 #include "dungeon.h"
 #include "hooks.h"
 #include "move.h"
 #include "save.h"
 #include "sensor.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
+/* Sizes of the request queues and the delays of a request. */
 #define REQUESTS_MAX 20 /* requests of a game step */
 #define DEFERRED_MAX 6
 #define DELAYED_MAX  8
 #define DELAY_NOW    0
 #define DELAY_STEP   1 /* at the end of the game step */
 
+/* The header of a GDAT sound item before its samples. */
 #define SAMPLE_HEADER 6 /* u16 rate, then 08 01 00 00 */
 
 /* Distance scaling and volume in 10-bit and 8-bit fixed point. */
@@ -29,7 +32,21 @@
 #define DISTANCE_BIAS   8
 #define PAN_RATIO_SHIFT 11
 
+/* The stereo pan steps from full left to full right. */
 #define PAN_STEPS 16
+
+/* A request in a queue with the sound that it plays. */
+typedef struct {
+    SoundRequest r;
+    Sound sound;
+} Pending;
+
+/* A sound that waits for its timeline event. */
+typedef struct {
+    bool used;
+    uint8_t category, index, entry, map, x, y;
+    int16_t priority, volume;
+} Delayed;
 
 /* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front (table of SKULL.EXE). */
 static const uint16_t pan_thresholds[PAN_STEPS / 2] = {
@@ -41,6 +58,36 @@ static const uint16_t pan_values[PAN_STEPS] = {
     0x0800, 0x1700, 0x2600, 0x3500, 0x4400, 0x5300, 0x6200, 0x7100,
     0x8f00, 0x9e00, 0xad00, 0xbc00, 0xcb00, 0xda00, 0xe900, 0xf800,
 };
+
+SoundRequest g_sound_played[SOUND_PLAYED_MAX];
+int g_sound_played_count;
+SoundStart g_sound_started[SOUND_PLAYED_MAX];
+int g_sound_started_count;
+
+/* The queues of the game step and the deferred requests, and the delayed sounds. */
+static struct {
+    Pending requests[REQUESTS_MAX];
+    int request_count;
+    Pending deferred[DEFERRED_MAX];
+    int deferred_count;
+    Delayed delayed[DELAYED_MAX];
+} queues;
+
+/* Setup */
+
+void sound_reset_requests(void)
+{
+    queues.request_count = 0;
+    queues.deferred_count = 0;
+    memset(queues.delayed, 0, sizeof queues.delayed);
+}
+
+void sound_clear_requests(void)
+{
+    queues.request_count = 0;
+}
+
+/* Queries */
 
 int sound_load(const gdat_t *g, int category, int index, int entry, Sound *out)
 {
@@ -57,48 +104,48 @@ int sound_load(const gdat_t *g, int category, int index, int entry, Sound *out)
 }
 
 /* Moves one coordinate away from the party by scale/1024, rounded, keeping its sign. */
-static int scale_away(int c, int scale)
+static int push_away(int c, int scale)
 {
     if (c < 0)
         return -((-c * scale + SCALE_ROUND) >> SCALE_SHIFT);
     return (c * scale + SCALE_ROUND) >> SCALE_SHIFT;
 }
 
-int sound_party_offset(int x, int y, int party_x, int party_y, int party_dir, int path_distance, int *lateral,
-                       int *forward)
+bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *out)
 {
-    int lat, fwd;
+    int lat;
+    int fwd;
     switch (party_dir) {
     case DIR_EAST:
-        lat = y - party_y;
-        fwd = x - party_x;
+        lat = dy;
+        fwd = dx;
         break;
     case DIR_SOUTH:
-        lat = party_x - x;
-        fwd = y - party_y;
+        lat = -dx;
+        fwd = dy;
         break;
     case DIR_WEST:
-        lat = party_y - y;
-        fwd = party_x - x;
+        lat = -dy;
+        fwd = -dx;
         break;
     default:
-        lat = x - party_x;
-        fwd = party_y - y;
+        lat = dx;
+        fwd = -dy;
         break;
     }
     int dist = abs(lat) + abs(fwd);
     if (dist > 1) {
         if (path_distance < 0)
-            return 0;
+            return false;
         if (dist < path_distance) {
             int scale = (path_distance << SCALE_SHIFT) / dist;
-            lat = scale_away(lat, scale);
-            fwd = scale_away(fwd, scale);
+            lat = push_away(lat, scale);
+            fwd = push_away(fwd, scale);
         }
     }
-    *lateral = lat;
-    *forward = fwd;
-    return 1;
+    out->lateral = lat;
+    out->forward = fwd;
+    return true;
 }
 
 void sound_volume_pan(uint8_t volume, int8_t lateral, int8_t forward, int *loudness, int *pan)
@@ -118,28 +165,10 @@ void sound_volume_pan(uint8_t volume, int8_t lateral, int8_t forward, int *loudn
     }
 }
 
-typedef struct {
-    SoundRequest r;
-    Sound sound;
-} Pending;
-
-typedef struct {
-    int used;
-    uint8_t category, index, entry, map, x, y;
-    int16_t priority, volume;
-} Delayed;
-
-SoundRequest sound_played[SOUND_PLAYED_MAX];
-int sound_played_count;
-SoundStart sound_started[SOUND_PLAYED_MAX];
-int sound_started_count;
-
-static Pending requests[REQUESTS_MAX], deferred[DEFERRED_MAX];
-static int request_count, deferred_count;
-static Delayed delayed[DELAYED_MAX];
+/* Requests */
 
 /* True when request a plays before request b: a higher priority, then a louder sound. */
-static int has_priority(const Pending *a, int loud_a, const Pending *b, int loud_b)
+static bool has_priority(const Pending *a, int loud_a, const Pending *b, int loud_b)
 {
     if (a->r.priority != b->r.priority)
         return a->r.priority > b->r.priority;
@@ -147,143 +176,141 @@ static int has_priority(const Pending *a, int loud_a, const Pending *b, int loud
 }
 
 /* Starts the sounds of a request list, the most important first, while voices are free. */
-static void sound_play_requests(const Pending *list, int count)
+static void start_requests(const Pending *list, int count)
 {
     int order[REQUESTS_MAX], loudness[REQUESTS_MAX], pan[REQUESTS_MAX];
     for (int i = 0; i < count; i++) {
-        if (sound_played_count < SOUND_PLAYED_MAX)
-            sound_played[sound_played_count++] = list[i].r;
+        if (g_sound_played_count < SOUND_PLAYED_MAX)
+            g_sound_played[g_sound_played_count++] = list[i].r;
         sound_volume_pan(list[i].r.volume, list[i].r.lateral, list[i].r.forward, &loudness[i], &pan[i]);
         order[i] = i;
     }
-    for (int swapped = 1; swapped;) {
-        swapped = 0;
+    for (bool swapped = true; swapped;) {
+        swapped = false;
         for (int i = 1; i < count; i++)
             if (!has_priority(&list[order[i - 1]], loudness[order[i - 1]], &list[order[i]], loudness[order[i]])) {
                 int t = order[i - 1];
                 order[i - 1] = order[i];
                 order[i] = t;
-                swapped = 1;
+                swapped = true;
             }
     }
     for (int i = 0; i < count; i++) {
         const Pending *p = &list[order[i]];
         if (!g_hooks.play_sound(&p->sound, p->r.volume, p->r.lateral, p->r.forward))
             return;
-        if (sound_started_count < SOUND_PLAYED_MAX)
-            sound_started[sound_started_count++] = (SoundStart){p->sound.data, loudness[order[i]], pan[order[i]]};
+        if (g_sound_started_count < SOUND_PLAYED_MAX)
+            g_sound_started[g_sound_started_count++] = (SoundStart){p->sound.data, loudness[order[i]], pan[order[i]]};
     }
 }
 
 /* Keeps a sound for later: a timeline event plays it after delay ticks. */
-static void sound_request_later(int category, int index, int entry, int priority, int volume, int x, int y, int delay)
+static void request_later(const SoundCue *cue, int x, int y, int delay)
 {
     int slot = 0;
-    while (slot < DELAYED_MAX && delayed[slot].used)
+    while (slot < DELAYED_MAX && queues.delayed[slot].used)
         slot++;
     if (slot == DELAYED_MAX)
         return;
-    delayed[slot] =
-        (Delayed){1,          (uint8_t)category, (uint8_t)index,    (uint8_t)entry, (uint8_t)g_party.cur_map,
-                  (uint8_t)x, (uint8_t)y,        (int16_t)priority, (int16_t)volume};
+    queues.delayed[slot] = (Delayed){true,
+                                     (uint8_t)cue->category,
+                                     (uint8_t)cue->index,
+                                     (uint8_t)cue->entry,
+                                     (uint8_t)g_party.cur_map,
+                                     (uint8_t)x,
+                                     (uint8_t)y,
+                                     (int16_t)cue->priority,
+                                     (int16_t)cue->volume};
     TimelineEvent e = {.time_map = timeline_time_map((g_game.game_time + delay - 1) & EVENT_TIME_MASK, g_party.cur_map),
                        .type = EVENT_DELAYED_SOUND,
-                       .priority = (uint8_t)priority};
+                       .priority = (uint8_t)cue->priority};
     e.data[0] = (uint8_t)slot; /* fix: the original leaves data bytes 2 to 5 uninitialized */
     timeline_add_event(&e);
 }
 
-void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay)
+void sound_request(SoundCue cue, int x, int y, int delay)
 {
     delay = (int16_t)delay;
     if (delay > 0 && g_party.cur_map != g_party.square_map && g_party.cur_map != g_party.alt_view_map)
         return;
-    if (request_count == REQUESTS_MAX)
+    if (queues.request_count == REQUESTS_MAX)
         return;
     Sound sound;
-    if (sound_load(gdat_current(), category, index, entry, &sound) != GDAT_OK)
+    if (sound_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
         return;
-    volume = (int16_t)volume;
+    cue.volume = (int16_t)cue.volume;
     if (g_party_sleeping)
-        volume >>= 1;
+        cue.volume >>= 1;
     if (delay > DELAY_STEP) {
-        sound_request_later(category, index, entry, priority, volume, x, y, delay);
+        request_later(&cue, x, y, delay);
         return;
     }
-    int map_x = x, map_y = y;
+    int map_x = x;
+    int map_y = y;
     if (delay > 0) { /* a sound on the other map of a seamless passage */
         x += dungeon_map_offset_x(g_party.cur_map) - dungeon_map_offset_x(g_game.party_map);
         y += dungeon_map_offset_y(g_party.cur_map) - dungeon_map_offset_y(g_game.party_map);
     }
-    int lateral, forward;
-    sound_party_offset((int16_t)x, (int16_t)y, g_game.party_x, g_game.party_y, g_game.party_dir, 0, &lateral, &forward);
-    Pending *queue = requests;
-    int *count = &request_count;
+    int dx = (int16_t)x - g_game.party_x;
+    int dy = (int16_t)y - g_game.party_y;
+    SoundOffset offset;
+    sound_party_offset(dx, dy, g_game.party_dir, 0, &offset);
+    Pending *queue = queues.requests;
+    int *count = &queues.request_count;
     if (delay < 0) {
-        if (deferred_count == DEFERRED_MAX)
+        if (queues.deferred_count == DEFERRED_MAX)
             return;
-        queue = deferred;
-        count = &deferred_count;
+        queue = queues.deferred;
+        count = &queues.deferred_count;
     }
     for (int i = 0; i < *count; i++)
-        if (queue[i].sound.data == sound.data && queue[i].r.lateral == lateral && queue[i].r.forward == forward)
+        if (queue[i].sound.data == sound.data && queue[i].r.lateral == offset.lateral &&
+            queue[i].r.forward == offset.forward)
             return;
-    if (abs(lateral) + abs(forward) > 1) {
+    if (abs(offset.lateral) + abs(offset.forward) > 1) {
         int path = creature_get_party_distance(map_x, map_y);
-        if (!sound_party_offset((int16_t)x, (int16_t)y, g_game.party_x, g_game.party_y, g_game.party_dir, path,
-                                &lateral, &forward))
+        if (!sound_party_offset(dx, dy, g_game.party_dir, path, &offset))
             return;
     }
     Pending *p = &queue[*count]; /* a sound of delay 0 uses the next free entry for itself */
     *p = (Pending){
-        {(uint8_t)category, (uint8_t)index, (uint8_t)entry, (uint8_t)priority, (uint8_t)volume, (int8_t)lateral,
-         (int8_t)forward},
+        {(uint8_t)cue.category, (uint8_t)cue.index, (uint8_t)cue.entry, (uint8_t)cue.priority, (uint8_t)cue.volume,
+         (int8_t)offset.lateral, (int8_t)offset.forward},
         sound
     };
     if (delay == DELAY_NOW)
-        sound_play_requests(p, 1);
+        start_requests(p, 1);
     else
         (*count)++;
 }
 
-void sound_request_with_fallback(int category, int index, int entry, int fallback, int x, int y, int delay,
-                                 int priority, int volume)
+void sound_request_with_fallback(SoundCue cue, int fallback, int x, int y, int delay)
 {
     Sound sound;
-    if (sound_load(gdat_current(), category, index, entry, &sound) != GDAT_OK)
-        index = fallback;
-    sound_request(category, index, entry, priority, volume, x, y, delay);
+    if (sound_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
+        cue.index = fallback;
+    sound_request(cue, x, y, delay);
+}
+
+void sound_request_delayed(int slot)
+{
+    Delayed *d = &queues.delayed[slot & (DELAYED_MAX - 1)]; /* fix: a slot from the save stays in the table */
+    int map = (int8_t)d->map;
+    if (map == g_party.square_map || map == g_party.alt_view_map)
+        sound_request((SoundCue){d->category, d->index, d->entry, d->priority, d->volume}, (int8_t)d->x, (int8_t)d->y,
+                      DELAY_STEP);
+    d->used = false;
 }
 
 void sound_flush_requests(int queue)
 {
     if (queue) {
-        if (deferred_count > 0)
-            sound_play_requests(deferred, deferred_count);
-        deferred_count = 0;
+        if (queues.deferred_count > 0)
+            start_requests(queues.deferred, queues.deferred_count);
+        queues.deferred_count = 0;
         return;
     }
-    if (request_count > 0)
-        sound_play_requests(requests, request_count);
-    request_count = 0;
-}
-
-void sound_reset_requests(void)
-{
-    request_count = deferred_count = 0;
-    memset(delayed, 0, sizeof delayed);
-}
-
-void sound_clear_requests(void)
-{
-    request_count = 0;
-}
-
-void sound_request_delayed(int slot)
-{
-    Delayed *d = &delayed[slot & (DELAYED_MAX - 1)]; /* fix: a slot from the save stays in the table */
-    int map = (int8_t)d->map;
-    if (map == g_party.square_map || map == g_party.alt_view_map)
-        sound_request(d->category, d->index, d->entry, d->priority, d->volume, (int8_t)d->x, (int8_t)d->y, DELAY_STEP);
-    d->used = 0;
+    if (queues.request_count > 0)
+        start_requests(queues.requests, queues.request_count);
+    queues.request_count = 0;
 }

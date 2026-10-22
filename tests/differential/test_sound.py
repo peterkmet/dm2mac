@@ -5,7 +5,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.audio import UPSAMPLE, Sound, mix
+from dm2test.audio import UPSAMPLE, Sound, SoundOffset, mix
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
@@ -32,7 +32,7 @@ PAN_LEFT, PAN_CENTER, PAN_RIGHT = 0x0800, C.SOUND_PAN_CENTER, 0xF800
 def snd(lib):
     c_int_p = ctypes.POINTER(ctypes.c_int)
     lib.sound_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
-    lib.sound_party_offset.argtypes = [ctypes.c_int] * 6 + [c_int_p, c_int_p]
+    lib.sound_party_offset.argtypes = [ctypes.c_int] * 4 + [ctypes.POINTER(SoundOffset)]
     lib.sound_volume_pan.argtypes = [ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8, c_int_p, c_int_p]
     lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
     lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
@@ -65,7 +65,7 @@ def ratio_overflows(lateral, forward):
 
 def test_volume_pan_matches_original(snd, emu):
     rng = random.Random(18)
-    cases = [(v, l, f) for v in (0, 1, C.SOUND_VOLUME_MAX) for l in (-128, -1, 0, 1, 127) for f in (-128, -1, 0, 1, 127)]
+    cases = [(v, l, f) for v in (0, 1, C.SOUND_VOLUME_FULL) for l in (-128, -1, 0, 1, 127) for f in (-128, -1, 0, 1, 127)]
     cases += [(rng.randrange(256), rng.randrange(-128, 128), rng.randrange(-128, 128)) for _ in range(5000)]
     cases += [(rng.randrange(256), rng.randrange(-8, 9), rng.randrange(-8, 9)) for _ in range(2000)]
     for case in cases:
@@ -75,15 +75,15 @@ def test_volume_pan_matches_original(snd, emu):
 
 def test_volume_pan_fixes_ratio_overflow(snd, emu):
     # The original truncates (32 << 11) / 1 to 0 and pans the sound near the center.
-    assert emu_volume_pan(emu, C.SOUND_VOLUME_MAX, 32, 1)[1] == 0x8F00
-    assert c_volume_pan(snd, C.SOUND_VOLUME_MAX, 32, 1)[1] == PAN_RIGHT
-    assert c_volume_pan(snd, C.SOUND_VOLUME_MAX, -32, 1)[1] == PAN_LEFT
+    assert emu_volume_pan(emu, C.SOUND_VOLUME_FULL, 32, 1)[1] == 0x8F00
+    assert c_volume_pan(snd, C.SOUND_VOLUME_FULL, 32, 1)[1] == PAN_RIGHT
+    assert c_volume_pan(snd, C.SOUND_VOLUME_FULL, -32, 1)[1] == PAN_LEFT
 
 
 def c_offset(lib, x, y, px, py, direction, path):
-    lateral, forward = ctypes.c_int(), ctypes.c_int()
-    ok = lib.sound_party_offset(x, y, px, py, direction, path, ctypes.byref(lateral), ctypes.byref(forward))
-    return ok, lateral.value, forward.value
+    offset = SoundOffset()
+    ok = lib.sound_party_offset(x - px, y - py, direction, path, ctypes.byref(offset))
+    return ok, offset.lateral, offset.forward
 
 
 def emu_offset(emu, x, y, px, py, direction, path):
@@ -133,13 +133,13 @@ def test_sound_load_sample_count(snd):
 def test_mix_upsamples_and_pans(snd):
     pcm = (ctypes.c_int8 * 3)(100, -100, 50)
     s = Sound(ctypes.cast(pcm, ctypes.POINTER(ctypes.c_int8)), 3)
-    assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_MAX, 0, 0)  # center, loudness 255, gain 0x7fff
+    assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_FULL, 0, 0)  # center, loudness 255, gain 0x7fff
     out = mix(snd, 3 * UPSAMPLE + 1)
     expected = [100 * 256 * 0x7FFF >> 15, -100 * 256 * 0x7FFF >> 15, 50 * 256 * 0x7FFF >> 15]
     assert out[0::2] == out[1::2] == [v for v in expected for _ in range(UPSAMPLE)] + [0]
-    assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_MAX, 1, 0)  # full right: the left side gets 1/16
+    assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_FULL, 1, 0)  # full right: the left side gets 1/16
     left, right = mix(snd, 1)
-    loudness = c_volume_pan(snd, C.SOUND_VOLUME_MAX, 1, 0)[0]
+    loudness = c_volume_pan(snd, C.SOUND_VOLUME_FULL, 1, 0)[0]
     gain = loudness << 7 | loudness >> 1
     assert (left, right) == (100 * 256 * (gain // 16) >> 15, 100 * 256 * gain >> 15)
     mix(snd, 3 * UPSAMPLE)
@@ -149,10 +149,10 @@ def test_mix_upsamples_and_pans(snd):
 def test_all_voices_busy(snd):
     pcm = (ctypes.c_int8 * 1)(1)
     s = Sound(ctypes.cast(pcm, ctypes.POINTER(ctypes.c_int8)), 1)
-    assert all(snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_MAX, 0, 0) for _ in range(C.SOUND_VOICES))
-    assert not snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_MAX, 0, 0)
+    assert all(snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_FULL, 0, 0) for _ in range(C.SOUND_VOICES))
+    assert not snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_FULL, 0, 0)
     mix(snd, UPSAMPLE)
-    assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_MAX, 0, 0)
+    assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_FULL, 0, 0)
     mix(snd, UPSAMPLE)
 
 
@@ -168,7 +168,7 @@ def test_master_volume_scales_like_original(snd, emu):
         for level in range(C.VOLUME_SETTING_MAX + 1):
             emu.call(SOUND_SET_VOLUME, level, 0)
             snd.sound_set_volume(level)
-            assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_MAX, 0, 0)
+            assert snd.sound_play(ctypes.byref(s), C.SOUND_VOLUME_FULL, 0, 0)
             left, right = mix(snd, UPSAMPLE)[:2]
             assert left == right == (100 * 256 * volumes[-1] // 0x7FFF) * 0x7FFF >> 15, level
     finally:

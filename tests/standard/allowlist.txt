@@ -13,11 +13,9 @@ block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/item.h open: module cleanup
 block engine/include/money.h open: module cleanup
-block engine/include/sound_request.h open: module cleanup
 block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
 block engine/money.c open: module cleanup
-block engine/sound_request.c open: module cleanup
 block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
@@ -59,9 +57,7 @@ bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
 bool engine/include/magic.h:magic_cast_projectile_spell open: module cleanup
 bool engine/include/money.h:money_add_coin_to_box open: module cleanup
 bool engine/include/money.h:money_normalize_coins open: module cleanup
-bool engine/include/sound_request.h:sound_party_offset open: module cleanup
 bool engine/magic.c open: module cleanup
-bool engine/sound_request.c:has_priority open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
 bool platform/main.c:default_control_path open: module cleanup
@@ -158,13 +154,6 @@ dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
 dead-api engine/include/magic.h:magic_report_cast_failure open: module cleanup
 dead-api engine/include/money.h:money_take_coin_from_box open: module cleanup
-dead-api engine/include/sound_request.h:sound_load open: module cleanup
-dead-api engine/include/sound_request.h:sound_party_offset open: module cleanup
-dead-api engine/include/sound_request.h:sound_played open: module cleanup
-dead-api engine/include/sound_request.h:sound_played_count open: module cleanup
-dead-api engine/include/sound_request.h:sound_reset_requests open: module cleanup
-dead-api engine/include/sound_request.h:sound_started open: module cleanup
-dead-api engine/include/sound_request.h:sound_started_count open: module cleanup
 dead-api platform/include/platform.h:plat_audio_pump open: module cleanup
 dead-api ui/include/advanced.h:advanced_draw_automap open: module cleanup
 dead-api ui/include/dialog.h:dialog_draw_progress_bar open: module cleanup
@@ -269,12 +258,10 @@ enum ui/session.c open: module cleanup
 enum ui/ui.c open: module cleanup
 enum ui/view.c open: module cleanup
 enum ui/zone.c open: module cleanup
-event-comment engine/include/sound_request.h open: module cleanup
 event-comment ui/include/input.h open: module cleanup
 global engine/include/action.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
-global engine/include/sound_request.h open: module cleanup
 global ui/include/advanced.h open: module cleanup
 global ui/include/dialog.h open: module cleanup
 global ui/include/draw.h open: module cleanup
@@ -306,7 +293,6 @@ include engine/include/creature.h:timeline.h open: module cleanup
 include engine/include/magic.h:timeline.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
-include engine/sound_request.c:ai.h open: module cleanup
 include platform/main.c:dungeon.h open: module cleanup
 include platform/main.c:item.h open: module cleanup
 include platform/main.c:ui.h open: module cleanup
@@ -370,7 +356,6 @@ notation engine/game_text.c open: module cleanup
 notation engine/include/action.h open: module cleanup
 notation engine/include/aspect.h open: module cleanup
 notation engine/include/item.h open: module cleanup
-notation engine/include/sound_request.h open: module cleanup
 notation engine/item.c open: module cleanup
 notation engine/magic.c open: module cleanup
 notation engine/money.c open: module cleanup
@@ -432,14 +417,7 @@ params engine/aspect.c:set_random_wall_ornaments open: module cleanup
 params engine/aspect.c:wall_sensor_ornament open: module cleanup
 params engine/aspect.c:wall_square_aspect open: module cleanup
 params engine/include/merchant.h:shop_get_item_value open: module cleanup
-params engine/include/sound_request.h:sound_party_offset open: module cleanup
-params engine/include/sound_request.h:sound_request open: module cleanup
-params engine/include/sound_request.h:sound_request_with_fallback open: module cleanup
 params engine/money.c:shop_get_item_value open: module cleanup
-params engine/sound_request.c:sound_party_offset open: module cleanup
-params engine/sound_request.c:sound_request open: module cleanup
-params engine/sound_request.c:sound_request_later open: module cleanup
-params engine/sound_request.c:sound_request_with_fallback open: module cleanup
 params platform/main.c:read_options open: module cleanup
 params ui/include/input.h:input_find_command open: module cleanup
 params ui/include/minion_map.h:mmap_draw_square_icon open: module cleanup
@@ -528,9 +506,6 @@ static-prefix engine/item.c:item_sum_attr open: module cleanup
 static-prefix engine/magic.c:champion_runes open: module cleanup
 static-prefix engine/magic.c:event_word open: module cleanup
 static-prefix engine/magic.c:magic_light_add open: module cleanup
-static-prefix engine/sound_request.c:scale_away open: module cleanup
-static-prefix engine/sound_request.c:sound_play_requests open: module cleanup
-static-prefix engine/sound_request.c:sound_request_later open: module cleanup
 static-prefix platform/main.c:play_movies open: module cleanup
 static-prefix platform/platform.c:movie_screen open: module cleanup
 static-prefix ui/action_area.c:action_hand_icon open: module cleanup
@@ -725,7 +700,6 @@ type engine:hand open: module cleanup
 type engine:holder open: module cleanup
 type engine:index open: module cleanup
 type engine:kind open: module cleanup
-type engine:lateral open: module cleanup
 type engine:list open: module cleanup
 type engine:map open: module cleanup
 type engine:mask open: module cleanup
@@ -742,7 +716,6 @@ type engine:step open: module cleanup
 type engine:ticks open: module cleanup
 type engine:type open: module cleanup
 type engine:value open: module cleanup
-type engine:volume open: module cleanup
 type engine:x open: module cleanup
 type engine:y open: module cleanup
 type platform:x open: module cleanup

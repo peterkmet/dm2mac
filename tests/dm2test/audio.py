@@ -10,6 +10,14 @@ class Sound(ctypes.Structure):
     _fields_ = [("data", ctypes.POINTER(ctypes.c_int8)), ("length", ctypes.c_uint32)]
 
 
+class SoundCue(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_int) for name in ("category", "index", "entry", "priority", "volume")]
+
+
+class SoundOffset(ctypes.Structure):
+    _fields_ = [("lateral", ctypes.c_int), ("forward", ctypes.c_int)]
+
+
 class Music(ctypes.Structure):
     _fields_ = [("enabled", ctypes.c_int), ("songlist_loaded", ctypes.c_int), ("songlist", ctypes.c_uint8 * 63),
                 ("songlist_size", ctypes.c_int), ("fade", ctypes.c_int16), ("paused", ctypes.c_int),

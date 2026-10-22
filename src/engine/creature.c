@@ -912,8 +912,9 @@ uint32_t creature_animate_step(void)
     g_ai.anim[0] = anim[0];
     g_ai.anim[1] = anim[1];
     if ((step[STEP_SOUND] & STEP_SOUND_MASK) != STEP_NO_SOUND)
-        sound_request(CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE,
-                      SOUND_VOLUME_NORMAL, g_ai.event.data[0], g_ai.event.data[1], 1);
+        sound_request((SoundCue){CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE,
+                                 SOUND_VOLUME_NORMAL},
+                      g_ai.event.data[0], g_ai.event.data[1], 1);
     int16_t delay = anim_step_delay(step);
     if (own_step)
         g_ai.anim_step = NULL;
@@ -1002,9 +1003,9 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
                 uint16_t t = thing_with_cell(item, drop_cell(x, y));
                 move_thing(t, MOVE_NEW_ITEM, 0, x, y);
                 if ((int16_t)sound_map >= 0)
-                    sound_request_with_fallback(item_gdat_category(item), item_gdat_index(item), SOUND_ENTRY_DROP,
-                                                SOUND_FALLBACK, x, y, (int16_t)sound_map, SOUND_PRIORITY_DROP,
-                                                SOUND_VOLUME_NORMAL);
+                    sound_request_with_fallback((SoundCue){item_gdat_category(item), item_gdat_index(item),
+                                                           SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                                SOUND_FALLBACK, x, y, (int16_t)sound_map);
             }
         }
     }
@@ -1018,8 +1019,9 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
         } else {
             move_thing(t, MOVE_NEW_ITEM, 0, x, y);
             if ((int16_t)sound_map >= 0)
-                sound_request_with_fallback(item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP, SOUND_FALLBACK,
-                                            x, y, (int16_t)sound_map, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
+                sound_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
+                                                       SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                            SOUND_FALLBACK, x, y, (int16_t)sound_map);
         }
         t = next;
     }
@@ -1105,8 +1107,10 @@ bool creature_damage_current_group(uint16_t damage)
                 scream = !rand_2bits();
         }
         if (scream)
-            sound_request(CAT_CREATURE, group_creature(g_ai.group_thing), SOUND_ENTRY_HURT + (rand_bit() != 0),
-                          SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL, g_ai.event.data[0], g_ai.event.data[1], 1);
+            sound_request((SoundCue){CAT_CREATURE, group_creature(g_ai.group_thing),
+                                     SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_CREATURE,
+                                     SOUND_VOLUME_NORMAL},
+                          g_ai.event.data[0], g_ai.event.data[1], 1);
     }
     set_thing_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
     return false;
@@ -1397,7 +1401,8 @@ void timeline_event_move_group(TimelineEvent *e)
 {
     int x = e->data[0], y = e->data[1];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
-        sound_request(CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL, x, y, 1);
+        sound_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
+                      1);
 }
 
 int creature_get_party_distance(int x, int y)
@@ -1533,8 +1538,9 @@ void creature_push_group(int x, int y, int dir, int strength)
         Champion *c = champion(i);
         if (!c->health)
             continue;
-        sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_FALLBACK, x, y, 1,
-                                    SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD);
+        sound_request_with_fallback(
+            (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
+            SOUND_FALLBACK, x, y, 1);
         load = (int16_t)(load + (uint16_t)champ_get_load(i) / LOAD_PUSH_DIVISOR);
         alive++;
     }
@@ -1563,8 +1569,9 @@ void move_push_creature(int arrow)
     if (!move_party_can_push_group(g)) {
         for (int i = 0; i < g_game.champion_count; i++)
             if (champion(i)->health && (i == g_game.leader || !rand_2bits()))
-                sound_request_with_fallback(CAT_CHAMPION, i, SOUND_HURT, SOUND_FALLBACK, g_game.party_x, g_game.party_y,
-                                            1, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD);
+                sound_request_with_fallback(
+                    (SoundCue){CAT_CHAMPION, i, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD}, SOUND_FALLBACK,
+                    g_game.party_x, g_game.party_y, 1);
         return;
     }
     push.x = x;

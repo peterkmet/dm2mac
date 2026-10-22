@@ -618,8 +618,9 @@ bool move_party_warp_to_marker(void)
         if (map < 0)
             continue;
         move_party_to(x, y, map, g_game.party_dir);
-        sound_request_with_fallback(CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_FALLBACK, g_game.party_x,
-                                    g_game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback(
+            (SoundCue){CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
         if (mode == MARKER_CLEAR_ALL)
             text_set_visible(t, true);
         return true;

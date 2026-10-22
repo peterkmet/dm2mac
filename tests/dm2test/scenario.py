@@ -342,8 +342,8 @@ class Scenario(CreatureOracle):
         emu.write_u32(G_DIGI_ENABLED, 1)
         emu.write(G_DIGI_VOLUME, struct.pack("<h", 7))
         emu.write(G_SAMPLE_HANDLES, struct.pack("<64i", *[-1] * 64))
-        ctypes.c_int.in_dll(lib, "sound_played_count").value = 0
-        ctypes.c_int.in_dll(lib, "sound_started_count").value = 0
+        ctypes.c_int.in_dll(lib, "g_sound_played_count").value = 0
+        ctypes.c_int.in_dll(lib, "g_sound_started_count").value = 0
         lib.sound_stop_all()
         lib.sound_reset_requests()  # both start from the sound state of the program start
 
@@ -354,14 +354,14 @@ class Scenario(CreatureOracle):
 
     def assert_same_sounds(self, where):
         """The sound requests that reached the voices in both since the last check."""
-        count = ctypes.c_int.in_dll(self.lib, "sound_played_count")
-        played = (SoundRequest * 64).in_dll(self.lib, "sound_played")
+        count = ctypes.c_int.in_dll(self.lib, "g_sound_played_count")
+        played = (SoundRequest * 64).in_dll(self.lib, "g_sound_played")
         mine = [(r.category, r.index, r.entry, r.priority, r.volume, r.lateral, r.forward) for r in played[:count.value]]
         assert mine == self.sounds[:64], (where, mine, self.sounds)
         count.value = 0
         self.sounds.clear()
-        count = ctypes.c_int.in_dll(self.lib, "sound_started_count")
-        started = (SoundStart * 64).in_dll(self.lib, "sound_started")
+        count = ctypes.c_int.in_dll(self.lib, "g_sound_started_count")
+        started = (SoundStart * 64).in_dll(self.lib, "g_sound_started")
         mine = [((s.data or 0) & 0xFFFFFFFF, s.loudness, s.pan) for s in started[:count.value]]
         assert mine == self.started[:64], (where, mine, self.started)
         count.value = 0

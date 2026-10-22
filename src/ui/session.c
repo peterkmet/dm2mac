@@ -557,8 +557,9 @@ void session_end(int party_dead)
 {
     if (party_dead && !session.completed) {
         int portrait = g_game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
-        sound_request_with_fallback(CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, SOUND_FALLBACK, g_game.party_x,
-                                    g_game.party_y, 0, END_SOUND_PRIORITY, SOUND_VOLUME_MAX);
+        sound_request_with_fallback(
+            (SoundCue){CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, END_SOUND_PRIORITY, SOUND_VOLUME_FULL},
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
         play_wait_frames(END_SOUND_VBLANKS);
     }
     dialog.screen_mode = 1;

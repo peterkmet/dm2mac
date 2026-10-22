@@ -510,8 +510,9 @@ void champ_consume_object(int champ, uint16_t thing, int slot)
         c->stamina = c->max_stamina;
     if (c->health > c->max_health)
         c->health = c->max_health;
-    sound_request_with_fallback(CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_FALLBACK, g_game.party_x,
-                                g_game.party_y, 0, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL);
+    sound_request_with_fallback(
+        (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
+        SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
     c->redraw |= REDRAW_EATEN;
     if (slot != -1) {
         c->redraw |= REDRAW_STATUS_BOX;

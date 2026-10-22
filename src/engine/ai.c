@@ -2608,8 +2608,9 @@ static int act_turn_pick_up(void)
 static void drop_sound(uint16_t t, int n)
 {
     if (n == 1)
-        sound_request_with_fallback(item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP, SOUND_FALLBACK,
-                                    ai_state.dest_x, ai_state.dest_y, 1, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
+        sound_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
+                                               SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                    SOUND_FALLBACK, ai_state.dest_x, ai_state.dest_y, 1);
 }
 
 /* Action: the creature drops its items of the filter on its destination square. */
@@ -2773,7 +2774,7 @@ static void act_transform(void)
     } else {
         explosion_create(EXPLOSION_DEATH_CLOUD, POWER_MAX, x, y, EXPLOSION_AT_CENTER);
     }
-    sound_request(CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD, x, y, 1);
+    sound_request((SoundCue){CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD}, x, y, 1);
 }
 
 /* Action: the creature explodes, spawns a creature, or becomes another creature type. */
