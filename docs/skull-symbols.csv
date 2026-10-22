@@ -470,10 +470,10 @@ address,name,signature,subsystem
 0x00028138,ai_cmd_seek_with_carried,int8_t ai_cmd_seek_with_carried(void),creatures
 0x000281f3,creature_ai_cmd_take_from_front_group,int8_t creature_ai_cmd_take_from_front_group(void),creatures
 0x00028344,ai_cmd_front_group_carries,int8_t ai_cmd_front_group_carries(void),creatures
-0x00028427,shop_front_customer_has_goods,int shop_front_customer_has_goods(uint8_t cell),money and shops
+0x00028427,front_customer_has_goods,int front_customer_has_goods(uint8_t cell),money and shops
 0x00028574,shop_cmd_wait_for_offer,int8_t shop_cmd_wait_for_offer(void),money and shops
 0x0002864b,shop_sum_value_callback,"int shop_sum_value_callback(uint16_t *thing, int32_t *accumulator)",money and shops
-0x000286c8,shop_sum_items_value,"int16_t shop_sum_items_value(uint16_t *list, uint16_t flag, uint8_t cell, uint16_t selling, uint16_t mark, uint16_t unused)",money and shops
+0x000286c8,sum_items_value,"int16_t sum_items_value(uint16_t *list, uint16_t flag, uint8_t cell, uint16_t selling, uint16_t mark, uint16_t unused)",money and shops
 0x00028711,shop_cmd_evaluate_offer,int8_t shop_cmd_evaluate_offer(void),money and shops
 0x00028a24,find_floor_sensor,"uint16_t find_floor_sensor(int16_t x, int16_t y, uint8_t cell, uint16_t sensor_type)",dungeon data
 0x00028aad,creature_ai_cmd_place_item_on_sensor,int8_t creature_ai_cmd_place_item_on_sensor(void),creatures
@@ -987,7 +987,7 @@ address,name,signature,subsystem
 0x00055fdc,timeline_compact,void timeline_compact(void),timeline
 0x00056030,timeline_rebuild_free_list,void timeline_rebuild_free_list(void),timeline
 0x000560b8,timeline_event_is_later,"int timeline_event_is_later(const uint8_t *a, const uint8_t *b)",timeline
-0x000560f9,timeline_find_queue_slot,int16_t timeline_find_queue_slot(uint16_t event_index),timeline
+0x000560f9,find_queue_slot,int16_t find_queue_slot(uint16_t event_index),timeline
 0x00056134,timeline_fix_queue_slot,void timeline_fix_queue_slot(uint16_t slot),timeline
 0x000562ce,timeline_reposition_event,void timeline_reposition_event(uint16_t event_index),timeline
 0x000562ff,timeline_delete_event,void timeline_delete_event(uint16_t event_index),timeline
@@ -1019,7 +1019,7 @@ address,name,signature,subsystem
 0x00058edb,timeline_event_teleporter_square,void timeline_event_teleporter_square(uint8_t *event),timeline
 0x00058f5c,timeline_event_pit_square,void timeline_event_pit_square(uint8_t *event),timeline
 0x00058fc2,timeline_event_move_group,void timeline_event_move_group(uint8_t *event),creatures
-0x00059026,timeline_event_hide_damage,void timeline_event_hide_damage(uint16_t champion),champions
+0x00059026,hide_damage,void hide_damage(uint16_t champion),champions
 0x00059050,timeline_event_altar_rebirth,void timeline_event_altar_rebirth(uint8_t *event),champions
 0x0005917d,timeline_event_magic_light,void timeline_event_magic_light(uint8_t *event),magic
 0x00059207,timeline_event_apply_item_effect,"void timeline_event_apply_item_effect(uint8_t *event, int16_t slot)",items
@@ -1032,10 +1032,10 @@ address,name,signature,subsystem
 0x0005964e,timeline_event_sensor_ambient_sound,void timeline_event_sensor_ambient_sound(uint8_t *event),Skullkeep machines
 0x00059785,sensor_process_map_entry,void sensor_process_map_entry(int night),Skullkeep machines
 0x00059a5c,timeline_process,void timeline_process(uint32_t until),timeline
-0x00059f12,weather_schedule_event,void weather_schedule_event(int32_t delay),weather
+0x00059f12,schedule_storm_step,void schedule_storm_step(int32_t delay),weather
 0x00059f38,weather_init,void weather_init(int keep_state),weather
 0x0005a073,world_update_day_night,void world_update_day_night(int storm_step),weather
-0x0005a808,weather_load_sky_object,int weather_load_sky_object(uint8_t *object),weather
+0x0005a808,load_sky_object,int load_sky_object(uint8_t *object),weather
 0x0005a87c,iop_init_shared_buffer,void iop_init_shared_buffer(void),input
 0x0005a8b1,iop_install_timer_isr,uint16_t iop_install_timer_isr(void (*isr)(void)),main loop
 0x0005a8d5,iop_alloc_dos_buffer,void *iop_alloc_dos_buffer(uint32_t size),memory

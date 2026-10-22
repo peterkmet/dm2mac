@@ -646,7 +646,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - Uninitialized data of the original: some events keep 2 to 4 data bytes or the high bits of a word from the stack (hold square events, sensor timers, item and wall events). The port sets them to 0. The reverse of a hold effect and the priority of a hold square event are uninitialized too: the port keeps the hold effect and uses priority 3.
 - Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones.
-- System errors of the timeline: when an event is not in the queue (`timeline_find_queue_slot`, `system_error(0x46)`) or the timeline is full (`timeline_add_event`, `system_error(0x2d)`), the original shows `SYSTEM ERROR 70` or `SYSTEM ERROR 45` on the screen, waits 300 vertical blanks or a key, and quits. The port calls `os_fatal` with the same text (`src/engine/timeline.c`): the fatal hook (or the error output without a hook) gets the text, then the program exits with `EXIT_FAILURE`.
+- System errors of the timeline: when an event is not in the queue (`find_queue_slot`, `system_error(0x46)`) or the timeline is full (`timeline_add_event`, `system_error(0x2d)`), the original shows `SYSTEM ERROR 70` or `SYSTEM ERROR 45` on the screen, waits 300 vertical blanks or a key, and quits. The port calls `os_fatal` with the same text (`src/engine/timeline.c`): the fatal hook (or the error output without a hook) gets the text, then the program exits with `EXIT_FAILURE`.
 - Out of memory: a failed allocation that has no error result calls `os_fatal("out of memory")` (`src/engine/` and `src/control/`). The original has no such exit.
 - `creature_cell_mask` reads display kinds 5 to 15 from the bytes after its table in the original. The port keeps those bytes.
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
@@ -787,7 +787,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 
 - A merchant faces a counter: a group in front of it. Coins (item filter `0x10`) and goods (filter `7`) on the counter are the offer. The AI plan of the merchant runs four commands: `shop_cmd_wait_for_offer` waits for coins or goods in the customer cells; `shop_cmd_evaluate_offer` compares the value of the offer with the price of the goods in the merchant cells (in whole coins, at most 18 coins, with a random discount of up to 15 % above 16); `shop_cmd_count_payment` checks the payment and keeps the change in the active group (`position` word); `shop_cmd_pay_change` normalizes the coins of its money boxes and gives the change in coins (into its money box, or into its possessions).
 - The active group words `counters[0]` and `counters[1]` hold the patience and the last offer. The actions are `0x1b` refuse, `0x1c` accept, `0x1d` wait, `0x1e` idle, `0x1f` offer, `0x20` haggle.
-- `shop_sum_items_value` adds the merchant values (`money_get_item_value`, price list from group word 8) of the items of a filter in a cell, also inside chests; -1 when none matches.
+- `sum_items_value` adds the merchant values (`money_get_item_value`, price list from group word 8) of the items of a filter in a cell, also inside chests; -1 when none matches.
 
 ### Deviations of the C port (Step 15)
 

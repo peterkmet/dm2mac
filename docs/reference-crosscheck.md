@@ -57,7 +57,7 @@ All renames are in `docs/skull-symbols.csv`. The function address set did not ch
 
 `reference/decomp/SKULL.c` was exported again with the new names (`tools/decompile-skull.sh`). `docs/skull-map.md` and `docs/skull-notes/` use the new names.
 
-Rejected rename: `0x1f347` `money_is_coin` → `item_is_stackable` (reDM2 `object_is_stackable`). A first pass applied it, because the body only tests "thing type 10 and attribute 0 bit `0x4000`". `money_init_coin_table` (`0x154e0`) builds `g_coin_item_types` from the same attribute bit of the same GDAT entries `(0x15, i, 0x0b, 0)`. Thus the bit marks coins, and `money_is_coin` is correct. The name was restored.
+Rejected rename: `0x1f347` `is_coin` → `item_is_stackable` (reDM2 `object_is_stackable`). A first pass applied it, because the body only tests "thing type 10 and attribute 0 bit `0x4000`". `money_init_coin_table` (`0x154e0`) builds `g_coin_item_types` from the same attribute bit of the same GDAT entries `(0x15, i, 0x0b, 0)`. Thus the bit marks coins, and `is_coin` is correct. The name was restored.
 
 ## Conflicts left open
 
@@ -67,7 +67,7 @@ We keep our name in each case. The reason is in the last column.
 
 | Address | Ours | reDM2 | Why we keep ours |
 |---|---|---|---|
-| `0x1f347` | `money_is_coin` | `object_is_stackable` | `money_init_coin_table` builds the coin table from the same `0x4000` bit. See "Rejected rename". |
+| `0x1f347` | `is_coin` | `object_is_stackable` | `money_init_coin_table` builds the coin table from the same `0x4000` bit. See "Rejected rename". |
 | `0x104ea` | `sound_prepare_sample` | `hilite_node_add` | The only caller passes `g_sample_descs`. The XOR of bit 7 converts signed PCM to unsigned. reDM2 marks its role "not confirmed". |
 | `0x13898` | `pal_set_palette` | `mouse_shape_upload` | Both are inferences. Payload is GDAT `(1,0,9,254)`, 1024 bytes, `IBMIOP` function `0x10a` in the video group (`0x103`-`0x10a`). Needs the `IBMIOP.EXE` handler body. |
 | `0x159c3` | `position_to_cell` | `obj_type_remap` | Maps 6, 8, `0x12`, `0x10` to 0-3. reDM2 gives no role. |
@@ -79,7 +79,7 @@ We keep our name in each case. The reason is in the last column.
 | `0x4e930` | `view_draw_wet_image` | `face_pattern_blit` | Both low confidence. reDM2 covers only the short branch. |
 | `0x509e6` | `show_sparkle_field` | `object_slot_draw` | Both low confidence. reDM2 calls the 16 regions "inventory regions", but the three callers are view functions. |
 | `0x54f5b` | `mem_parse_config_entry` | `gfx_cmd_stream_step` | The `0xfe` count is the progress bar total in `mem_test_all_maps`, which loads each map once per entry. |
-| `0x59026` | `timeline_event_hide_damage` | `champ_mark_dead` | Sets champion `+0x2e` to `0xffff`. Sets flag 8 only if the champion has health. "Dead" does not fit. |
+| `0x59026` | `hide_damage` | `champ_mark_dead` | Sets champion `+0x2e` to `0xffff`. Sets flag 8 only if the champion has health. "Dead" does not fit. |
 
 ### Globals
 
