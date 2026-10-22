@@ -22,3 +22,7 @@
 - Sound under Wine: `build/dm2.exe` under Wine CX crackles, also the music; the port `dm` crackles the same way. Not checked on real Windows.
 - Manual test checklist `docs/superpowers/2026-10-21-dm-style-code-checklist.md` M2: Esc (the pause) cancels a champion drag, a right click does not.
 - Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (today the outdoor sections around Skullkeep show one at a time).
+- Cheat screen spell names that are port guesses: HASTE (OH IR ROS), MISSILE WALL (ZO BRO ROS), YA EW ITEM, SCOUT, CARRIER, ARMY MINION (ZO EW KU/NETA/ROS). Check them against the DM2 manual.
+- `save_write` gives different bytes on two writes in a row right after `projectile_create` (one byte at offset 30196) and changes `g_random_seed`; found by `tests/port/test_projectile_flight.py`.
+- A damaged CHTS block also clears the AMAP block on load; consider keeping the automap.
+- A one-off failure in a run of `test_automap`, `test_modes`, and `test_control` (73 tests counted instead of 72) during the cheat screen work; not reproduced.
