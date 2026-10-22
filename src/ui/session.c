@@ -8,7 +8,6 @@
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
-#include "item.h"
 #include "money.h"
 #include "move.h"
 #include "save.h"

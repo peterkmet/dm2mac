@@ -7,7 +7,6 @@
 
 #include "gdat.h"
 #include "dungeon.h"
-#include "timeline.h"
 #include <stdbool.h>
 #include <stdint.h>
 
