@@ -523,7 +523,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - No image cache: each GDAT image is decoded once and kept; scaled images and offscreen bitmaps live until the end of the frame. The original cache key of a scaled image keeps only 5 bits of the height scale and 7 bits of the width scale, so two scales can share a cached image; the port always scales anew.
 - `gdat_exists` is true for every key of the file. The original also says no for an image that the map did not preload. The view checks only images of the map graphics set, which the original preloads.
 - Text entries: `gdat_text` decrypts the text but does not expand the `.Z` placeholders of `text_format` (Step 13).
-- Fixes: `view_unhide_linked_squares` read far past the view squares for missing neighbours; `show_ceiling_pit` read the square above without a bounds check; `setup_picture` divided by 0 for a width scale key with a low byte of 0; `view_get_shaded_palette` wrote a 256-color table into a 16-byte buffer; `dun_is_open_square_raw` read the record of the end mark on a teleporter square without things.
+- Fixes: `view_unhide_linked_squares` read far past the view squares for missing neighbours; `show_ceiling_pit` read the square above without a bounds check; `setup_picture` divided by 0 for a width scale key with a low byte of 0; `get_shaded_palette` wrote a 256-color table into a 16-byte buffer; `dun_is_open_square_raw` read the record of the end mark on a teleporter square without things.
 
 ### Things in the view (Step 12b)
 
@@ -776,7 +776,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - A shop is a wall sensor of kind `0x3f` with a shop ornament (ornament value `0x0a` = 2). Its data byte is the merchant creature. Its flags: bit 0 "item chosen", bit 2 "step forward", bits 7 to 10 the price list. Its target square holds the display sensor (kind `0x30`). The data of the display sensor is the shown item index.
 - `show_shop_display` chooses the item when bit 0 is clear or bit 2 is set: the next item (bit 2, or a click above the center of the ornament) or the last item (a click below the center) of the item order table `(9, ornament, 8, 0x13)` that is in the item set of the list. A unique item (`ATTR_FLAGS` bit 12) shows only when it lies on the square, when a creature there holds it, or when the party has it. A table word with bit 15 makes a new item on the target square when the square does not have it. Then the function draws the item (offset value `0xfd`), the empty display (entry `0x11`) when no item is there, and the overlay (entry `0x0f`). In front of the party it also draws the item name (offset `0xf2`) and the sell and buy prices as coin pictures (entry `0x10`, 8 × 7 pixels for each coin type, offsets `0xf1` and `0xf0`).
 - The map graphics load has all entries of the map ornaments, also the item order table. `gdat_get_entry_data_or_null` gives entries of other categories only when they are loaded.
-- `g_view_hit_offset` (`0x802d4`) is the place of the last click in a view picture: the vertical and the horizontal distance from the picture center, in percent of half the picture size. The port keeps the vertical value in `view_hit_offset_y`.
+- `g_view_hit_offset` (`0x802d4`) is the place of the last click in a view picture: the vertical and the horizontal distance from the picture center, in percent of half the picture size. The port keeps the vertical value in `g_view_hit_offset_y`.
 
 ### Item creation by a sensor
 

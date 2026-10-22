@@ -168,14 +168,14 @@ void session_draw_name_entry(const char *name, int cursor)
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_SLOT_NAME, r))
         return;
-    ui_blit_bitmap(draw_gdat_image(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0), &view_viewport, r, r[RECT_X], r[RECT_Y],
+    ui_blit_bitmap(draw_gdat_image(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0), &g_view_viewport, r, r[RECT_X], r[RECT_Y],
                    GFX_OPAQUE, draw_gdat_image_palette(CAT_DIALOG, DIALOG_SAVE_SLOTS, 0));
     text_draw_in_viewport(r[RECT_X], r[RECT_Y] + SLOT_NAME_TOP, g_ui_colors[UI_WHITE], name);
     if (cursor) {
         r[RECT_X] = (int16_t)(r[RECT_X] + (int)strlen(name) * FONT_ADVANCE);
         r[RECT_W] = FONT_ADVANCE;
         r[RECT_H] = (int16_t)(r[RECT_H] - SLOT_NAME_TOP);
-        gfx_fill_rect(view_viewport.pixels, r, g_ui_colors[UI_YELLOW], view_viewport.width, IMAGE_8BPP);
+        gfx_fill_rect(g_view_viewport.pixels, r, g_ui_colors[UI_YELLOW], g_view_viewport.width, IMAGE_8BPP);
     }
     dialog_present();
 }
@@ -187,7 +187,7 @@ void session_open_slot_dialog(int id, int buttons)
     text_gdat(CAT_DIALOG, id, 1, text[1]);
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &view_viewport, r, GFX_OPAQUE,
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &g_view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
     dialog_screen_mode(1);
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);

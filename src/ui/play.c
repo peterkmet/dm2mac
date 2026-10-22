@@ -53,11 +53,11 @@ void play_present_viewport(void)
     for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
         uint8_t *dst = draw_screen.pixels + (r[RECT_Y] + y) * draw_screen.width + r[RECT_X];
         if (!steps) {
-            memcpy(dst, view_viewport.pixels + y * VIEWPORT_WIDTH, VIEWPORT_WIDTH);
+            memcpy(dst, g_view_viewport.pixels + y * VIEWPORT_WIDTH, VIEWPORT_WIDTH);
             continue;
         }
         /* While the party walks, the visible part of the view fills the whole viewport (nearest neighbour). */
-        const uint8_t *src = view_viewport.pixels +
+        const uint8_t *src = g_view_viewport.pixels +
                              (walk_view_rect[RECT_Y] + y * walk_view_rect[RECT_H] / VIEWPORT_HEIGHT) * VIEWPORT_WIDTH;
         for (int x = 0; x < VIEWPORT_WIDTH; x++)
             dst[x] = src[walk_view_rect[RECT_X] + x * walk_view_rect[RECT_W] / VIEWPORT_WIDTH];
@@ -67,7 +67,7 @@ void play_present_viewport(void)
 static void draw_sleep_message(void)
 {
     char text[TEXT_SIZE];
-    gfx_fill_bitmap(&view_viewport, g_ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(&g_view_viewport, g_ui_colors[UI_BLACK]);
     gdat_text(gdat_current(), (GdatKey){CAT_INTERFACE, 0, TEXT_SLEEPING}, text, sizeof text);
     text_draw_in_zone(ZONE_VIEW_TEXT, g_ui_colors[UI_CYAN], text);
 }

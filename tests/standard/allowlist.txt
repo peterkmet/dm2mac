@@ -145,19 +145,6 @@ dead-api ui/include/text.h:text_set_message_cursor open: module cleanup
 dead-api ui/include/ui.h:offscreen_add_dirty_rect open: module cleanup
 dead-api ui/include/ui.h:ui_draw_game_screen open: module cleanup
 dead-api ui/include/ui.h:ui_fill_rect_dithered open: module cleanup
-dead-api ui/include/view.h:view_copy_image_mode1 open: module cleanup
-dead-api ui/include/view.h:view_creature_grid open: module cleanup
-dead-api ui/include/view.h:view_draw_wet_image open: module cleanup
-dead-api ui/include/view.h:view_get_shaded_palette open: module cleanup
-dead-api ui/include/view.h:view_hit_offset_y open: module cleanup
-dead-api ui/include/view.h:view_load_square open: module cleanup
-dead-api ui/include/view.h:view_mark_hidden_squares open: module cleanup
-dead-api ui/include/view.h:view_missile_masks open: module cleanup
-dead-api ui/include/view.h:view_object_grid open: module cleanup
-dead-api ui/include/view.h:view_object_masks open: module cleanup
-dead-api ui/include/view.h:view_offset_creature_toward_party open: module cleanup
-dead-api ui/include/view.h:view_squares open: module cleanup
-dead-api ui/include/view.h:view_unhide_linked_squares open: module cleanup
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -219,7 +206,6 @@ global ui/include/play.h open: module cleanup
 global ui/include/text.h open: module cleanup
 global ui/include/ui.h open: module cleanup
 global ui/include/video.h open: module cleanup
-global ui/include/view.h open: module cleanup
 global ui/include/zone.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
@@ -274,13 +260,11 @@ module ui/hook_table.c open: module cleanup
 name ui/include/text.h:text_draw_in_zone_with_shadow open: module cleanup
 name ui/include/ui.h:offscreen_draw_text_in_zone_with_shadow open: module cleanup
 name ui/include/ui.h:ui_draw_gdat_in_viewport_zone open: module cleanup
-name ui/include/view.h:view_offset_creature_toward_party open: module cleanup
 name ui/input.c:view_click_door_button_zone open: module cleanup
 name ui/minion_map.c:grid_find_minion_and_marker open: module cleanup
 name ui/text.c:text_draw_in_zone_with_shadow open: module cleanup
 name ui/ui.c:offscreen_draw_text_in_zone_with_shadow open: module cleanup
 name ui/ui.c:ui_draw_gdat_in_viewport_zone open: module cleanup
-name ui/view.c:view_offset_creature_toward_party open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
 notation platform/transport.c open: module cleanup

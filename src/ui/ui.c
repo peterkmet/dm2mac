@@ -197,7 +197,7 @@ void ui_draw_gdat_in_viewport_zone(int category, int index, int entry, int zone,
     DrawCtx c;
     draw_ctx_init(&c, category, index, entry);
     c.transparent = (int16_t)transparent;
-    c.dst = &view_viewport;
+    c.dst = &g_view_viewport;
     c.dx = c.dy = 0;
     c.zone = (int16_t)zone;
     draw_ctx_draw(draw_ctx_prepare(&c));
@@ -588,7 +588,7 @@ static void draw_panel_icon(int icon, int zone)
 {
     int16_t r[RECT_SIZE];
     zone_get_icon_rect(zone, r);
-    ui_blit_bitmap(draw_gdat_image(CAT_INTERFACE, UI_INDEX_STATUS, icon), &view_viewport, r, 0, 0, UI_KEY,
+    ui_blit_bitmap(draw_gdat_image(CAT_INTERFACE, UI_INDEX_STATUS, icon), &g_view_viewport, r, 0, 0, UI_KEY,
                    draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_STATUS, icon));
 }
 
@@ -614,7 +614,7 @@ static void restore_panel_back(int zone)
 {
     int16_t r[RECT_SIZE];
     zone_get_rect(zone, r);
-    ui_blit_bitmap(draw_gdat_image(CAT_PANEL, 0, GFX_PANEL_BACK), &view_viewport, r, r[RECT_X], r[RECT_Y], GFX_OPAQUE,
+    ui_blit_bitmap(draw_gdat_image(CAT_PANEL, 0, GFX_PANEL_BACK), &g_view_viewport, r, r[RECT_X], r[RECT_Y], GFX_OPAQUE,
                    draw_gdat_image_palette(CAT_PANEL, 0, GFX_PANEL_BACK));
 }
 
@@ -652,7 +652,7 @@ static void draw_slot(uint16_t thing, int slot, int wounded, int active, int dra
         if (slot < SLOT_STATUS_COUNT)
             offscreen_blit(&status_box, image, r, 0, 0, UI_KEY, MIRROR_NONE, colors);
         else
-            ui_blit_bitmap(image, &view_viewport, r, 0, 0, UI_KEY, colors);
+            ui_blit_bitmap(image, &g_view_viewport, r, 0, 0, UI_KEY, colors);
     }
     if (icon == NO_ICON)
         return;
@@ -815,10 +815,10 @@ static void draw_gauge_bar(int value, int zone, int color, int low, int high, in
     }
     shadow[RECT_X] = (int16_t)(shadow[RECT_X] + GAUGE_SHADOW);
     shadow[RECT_Y] = (int16_t)(shadow[RECT_Y] + GAUGE_SHADOW);
-    gfx_fill_rect(view_viewport.pixels, shadow, g_ui_colors[UI_BLACK], view_viewport.width, IMAGE_8BPP);
-    gfx_fill_rect(view_viewport.pixels, bar, g_ui_colors[color], view_viewport.width, IMAGE_8BPP);
+    gfx_fill_rect(g_view_viewport.pixels, shadow, g_ui_colors[UI_BLACK], g_view_viewport.width, IMAGE_8BPP);
+    gfx_fill_rect(g_view_viewport.pixels, bar, g_ui_colors[color], g_view_viewport.width, IMAGE_8BPP);
     if (split)
-        gfx_fill_rect(view_viewport.pixels, full, g_ui_colors[split], view_viewport.width, IMAGE_8BPP);
+        gfx_fill_rect(g_view_viewport.pixels, full, g_ui_colors[split], g_view_viewport.width, IMAGE_8BPP);
 }
 
 /* An object gauge: the bar with its glyph left of it and the end marks. */
@@ -830,13 +830,13 @@ static void draw_object_gauge(int zone, int value, int high, uint8_t glyph, int 
     draw_gauge_bar(value, zone, color, 0, high, 1);
     int y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE), bg = g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
     char s[2] = {(char)glyph, '\0'};
-    text_draw_with_shadow(view_viewport.pixels, view_viewport.width, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,
+    text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,
                           g_ui_colors[color], bg, s);
     s[0] = GLYPH_GAUGE_LEFT;
-    text_draw_with_shadow(view_viewport.pixels, view_viewport.width, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
+    text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
                           g_ui_colors[UI_WHITE], bg, s);
     s[0] = GLYPH_GAUGE_RIGHT;
-    text_draw_with_shadow(view_viewport.pixels, view_viewport.width,
+    text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width,
                           (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y, g_ui_colors[UI_WHITE], bg,
                           s);
 }

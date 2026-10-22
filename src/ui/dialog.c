@@ -49,8 +49,8 @@ void dialog_present(void)
         return;
     }
     int16_t r[RECT_SIZE], x = 0, y = 0;
-    if (zone_compute_rect(&view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y, ZONE_NO_ANCHOR))
-        ui_blit_bitmap(&view_viewport, &draw_screen, r, x, y, GFX_OPAQUE, NULL);
+    if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y, ZONE_NO_ANCHOR))
+        ui_blit_bitmap(&g_view_viewport, &draw_screen, r, x, y, GFX_OPAQUE, NULL);
 }
 
 void dialog_draw_button(int zone, int highlighted)
@@ -69,7 +69,7 @@ void dialog_draw_button(int zone, int highlighted)
         r[RECT_X] = (int16_t)(r[RECT_X] - x);
         r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
     }
-    gfx_blit_to_bitmap(image, &view_viewport, r, BUTTON_KEY,
+    gfx_blit_to_bitmap(image, &g_view_viewport, r, BUTTON_KEY,
                        draw_gdat_image_palette(dialog.button_category, dialog.button_index, dialog.button_entry));
     play_wait_frames(BUTTON_PRESS_VBLANKS);
 }
@@ -132,7 +132,7 @@ int dialog_draw(int id, int message)
             count++;
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
-        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, GFX_DIALOG_PICTURE), &view_viewport, r, GFX_OPAQUE,
+        gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, GFX_DIALOG_PICTURE), &g_view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, GFX_DIALOG_PICTURE));
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
@@ -201,7 +201,7 @@ void dialog_draw_progress_bar(int permille)
     if (r[RECT_W] <= 0 || r[RECT_W] == dialog.progress_width)
         return;
     dialog.progress_width = r[RECT_W];
-    gfx_fill_rect(view_viewport.pixels, r, g_ui_colors[UI_GOLD], view_viewport.width, IMAGE_8BPP);
+    gfx_fill_rect(g_view_viewport.pixels, r, g_ui_colors[UI_GOLD], g_view_viewport.width, IMAGE_8BPP);
     dialog_present();
 }
 

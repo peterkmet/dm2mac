@@ -232,7 +232,7 @@ def draw_both(sc):
     for addr, data in kept:
         emu.write(addr, data)
     seed.value = tv.VIEW_SEED
-    viewport = tv.Bitmap.in_dll(lib, "view_viewport")
+    viewport = tv.Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memset(viewport.pixels, 0, tv.VIEW_W * tv.VIEW_H)
     lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
     mine = ctypes.string_at(viewport.pixels, tv.VIEW_W * tv.VIEW_H)

@@ -901,9 +901,9 @@ address,name,signature,subsystem
 0x0004dcee,view_hit_test_creature,"int view_hit_test_creature(int16_t x, int16_t y, int16_t square_x, int16_t square_y, int16_t *out_side)",dungeon view
 0x0004ddc0,view_hit_test_wall_ornament,"int view_hit_test_wall_ornament(int16_t view_pos, int16_t x, int16_t y)",dungeon view
 0x0004df08,view_hit_test_object,"uint16_t view_hit_test_object(int16_t x, int16_t y, int16_t view_pos, int16_t square_x, int16_t square_y, uint16_t thing, int16_t kind, int put)",dungeon view
-0x0004e226,view_get_shaded_palette,"uint8_t *view_get_shaded_palette(uint8_t category, uint8_t index, uint8_t entry, int16_t color_key)",dungeon view
+0x0004e226,get_shaded_palette,"uint8_t *get_shaded_palette(uint8_t category, uint8_t index, uint8_t entry, int16_t color_key)",dungeon view
 0x0004e294,view_clear_viewport,void view_clear_viewport(void),dungeon view
-0x0004e31d,view_copy_image_mode1,"void view_copy_image_mode1(uint8_t *src, uint8_t *dst)",dungeon view
+0x0004e31d,copy_mirrored,"void copy_mirrored(uint8_t *src, uint8_t *dst)",dungeon view
 0x0004e32a,show_map_picture,"void show_map_picture(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t color_key, int flip)",dungeon view
 0x0004e3d5,get_depth_shading,"void get_depth_shading(uint8_t *palette, int16_t depth, int16_t color_key, int16_t count, int16_t *out_size)",dungeon view
 0x0004e502,setup_picture,"void setup_picture(int flip, int16_t scale_x, int16_t scale_y, int16_t dx, int16_t dy, int16_t depth, int16_t zone, int16_t align, int16_t color_key, int16_t mirror, uint8_t category, uint8_t index, uint8_t entry)",dungeon view
@@ -936,7 +936,7 @@ address,name,signature,subsystem
 0x000527ba,show_possessions,"void show_possessions(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask, uint8_t *group)",dungeon view
 0x0005288f,show_pending_possessions,void show_pending_possessions(int16_t view_pos),dungeon view
 0x000528c5,show_alcove_contents,void show_alcove_contents(int16_t view_pos),dungeon view
-0x00052a88,view_offset_creature_toward_party,"void view_offset_creature_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y)",dungeon view
+0x00052a88,view_offset_toward_party,"void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y)",dungeon view
 0x00052bf6,view_load_square,"void view_load_square(int16_t x, int16_t y, int16_t view_pos, uint16_t dir)",dungeon view
 0x000530d1,show_door_ornament,"void show_door_ornament(uint8_t category, uint8_t index, uint8_t entry, int16_t view_pos)",dungeon view
 0x000531ec,show_door_frame,"void show_door_frame(int16_t view_pos, uint16_t parts)",dungeon view

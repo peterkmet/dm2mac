@@ -87,7 +87,7 @@ def c_view_squares(lib, x, y, direction):
         lib.view_load_square(x, y, pos, direction)
     lib.view_unhide_linked_squares()
     lib.view_mark_hidden_squares()
-    return bytes((ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "view_squares"))
+    return bytes((ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "g_view_squares"))
 
 
 @pytest.fixture(scope="module")
@@ -164,7 +164,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
         ctypes.memmove(lib.weather_sky_objects(), sky, len(sky))
     ctypes.c_int.in_dll(lib, "g_view_light_level").value = light
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = VIEW_SEED
-    viewport = Bitmap.in_dll(lib, "view_viewport")
+    viewport = Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memset(viewport.pixels, 0, VIEW_W * VIEW_H)
     lib.view_draw_dungeon(direction, x, y)
     return ctypes.string_at(viewport.pixels, VIEW_W * VIEW_H)
@@ -247,7 +247,7 @@ def test_door_states_match_original(lib, loaded, original_view):
                     if len(doors) == 10 or not lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
                         continue
                     c_view_squares(lib, x, y, direction)
-                    door = (ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "view_squares")[3 * SQUARE_SIZE:]
+                    door = (ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "g_view_squares")[3 * SQUARE_SIZE:]
                     if struct.unpack_from("<H", bytes(door), 2)[0] == C.ASPECT_DOOR_FRONT:  # a door front ahead
                         doors.append((map_, x, y, direction, door[0], door[1]))
     assert len(doors) == 10
@@ -308,7 +308,7 @@ def test_rotate_grid5_cell_matches_original(lib, image_emu):
 
 
 def test_offset_creature_toward_party_matches_original(lib, image_emu):
-    lib.view_offset_creature_toward_party.argtypes = [ctypes.c_int16] * 3 + [i16_p, i16_p]
+    lib.view_offset_toward_party.argtypes = [ctypes.c_int16] * 3 + [i16_p, i16_p]
     rng = random.Random(22)
     x, y = ctypes.c_int16(), ctypes.c_int16()
     cases = [(px, py, 8, 8, size) for px in range(5, 12) for py in range(5, 12) for size in range(5)]
@@ -319,7 +319,7 @@ def test_offset_creature_toward_party_matches_original(lib, image_emu):
         image_emu.write(OUT_Y, struct.pack("<h", cy))
         image_emu.call(VIEW_OFFSET_CREATURE, party_x, party_y, size, OUT_X, OUT_Y)
         x.value, y.value = cx, cy
-        lib.view_offset_creature_toward_party(party_x, party_y, size, ctypes.byref(x), ctypes.byref(y))
+        lib.view_offset_toward_party(party_x, party_y, size, ctypes.byref(x), ctypes.byref(y))
         assert (x.value, y.value) == read_xy(image_emu), (party_x, party_y, cx, cy, size)
 
 
@@ -349,11 +349,11 @@ def original_thing_grids(original_view, map_, x, y, direction):
 
 def c_thing_grids(lib, map_, x, y, direction):
     lib.view_enter_map(map_)
-    grids = [(ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "view_creature_grid"), (ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "view_object_grid")]
+    grids = [(ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "g_view_creature_grid"), (ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "g_view_object_grid")]
     ctypes.memset(grids[0], 0, GRID_SIZE)
     ctypes.memset(grids[1], 0xFF, GRID_SIZE)
     squares = c_view_squares(lib, x, y, direction)
-    masks = [bytes((ctypes.c_uint8 * MASKS_SIZE).in_dll(lib, name)) for name in ("view_missile_masks", "view_object_masks")]
+    masks = [bytes((ctypes.c_uint8 * MASKS_SIZE).in_dll(lib, name)) for name in ("g_view_missile_masks", "g_view_object_masks")]
     return (squares, bytes(grids[0]), bytes(grids[1]), *masks)
 
 
@@ -369,8 +369,8 @@ def views_with_things(lib, count, seed):
             continue
         lib.view_enter_map(map_)
         c_view_squares(lib, x, y, direction)
-        if any((ctypes.c_uint32 * SQUARE_COUNT).in_dll(lib, "view_object_masks")) or \
-                any(v != 0xFF for v in (ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "view_object_grid")):
+        if any((ctypes.c_uint32 * SQUARE_COUNT).in_dll(lib, "g_view_object_masks")) or \
+                any(v != 0xFF for v in (ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "g_view_object_grid")):
             views.append((map_, x, y, direction))
     return views
 
@@ -379,7 +379,7 @@ def test_thing_grids_match_original(lib, loaded, original_view):
     # The creature cells, the creatures in the object grid, and the cells with objects and missiles.
     game = WeatherGame.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
-    ctypes.memset((ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "view_object_grid"), 0xFF, GRID_SIZE)
+    ctypes.memset((ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "g_view_object_grid"), 0xFF, GRID_SIZE)
     for map_, x, y, direction in views_with_things(lib, 300, 23):
         game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
         assert c_thing_grids(lib, map_, x, y, direction) == original_thing_grids(original_view, map_, x, y, direction), \
@@ -426,7 +426,7 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
         for y in range(lib.dungeon_map_height(map_)):
             if view or not lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT:
                 continue
-            grid = (ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "view_object_grid")
+            grid = (ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "g_view_object_grid")
             ctypes.memset(grid, 0xFF, GRID_SIZE)
             squares = c_view_squares(lib, x, y, 0)
             front = struct.unpack_from("<bbHHH", squares, 3 * SQUARE_SIZE)
@@ -634,7 +634,7 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
         for step, (light, offset) in enumerate(((0, None), (3, None), (2, 50), (0, -50), (5, 0))):
             if offset is not None:  # a click with an empty hand below or above the center clears the shown flag
                 Things(lib, emu).write(shop, 4, struct.pack("<H", lib.thing_word(shop, 4) & ~C.SHOP_SHOWN))
-                ctypes.c_int16.in_dll(lib, "view_hit_offset_y").value = offset
+                ctypes.c_int16.in_dll(lib, "g_view_hit_offset_y").value = offset
                 emu.write(G_VIEW_HIT_OFFSET, struct.pack("<h", offset))
             original = original_view.draw(map_, party_x, party_y, (cell + 2) & C.DIR_MASK, light, b"\xff" + bytes(9))
             assert c_view(lib, map_, party_x, party_y, (cell + 2) & C.DIR_MASK, light) == original, (map_, x, y, step)
@@ -731,8 +731,8 @@ def test_view_click_zones_match_original(lib, loaded, original_view):
     original_view.emu.write(G_WEATHER_VISIBLE, b"\0")
     game.weather_visible = 0
     emu = original_view.emu
-    count = ctypes.c_int.in_dll(lib, "view_click_zone_count")
-    zones = (ctypes.c_uint8 * (C.VIEW_CLICK_ZONE_MAX * CLICK_ZONE_SIZE)).in_dll(lib, "view_click_zones")
+    count = ctypes.c_int.in_dll(lib, "g_view_click_zone_count")
+    zones = (ctypes.c_uint8 * (C.VIEW_CLICK_ZONE_MAX * CLICK_ZONE_SIZE)).in_dll(lib, "g_view_click_zones")
     rng = random.Random(21)
     views = with_zones = 0
     while views < 300:
@@ -790,7 +790,7 @@ def present_viewport(lib, gdat, walking):
     for y in range(wh):
         for x in range(ww):
             view[(wy + y) * VIEW_W + wx + x] = 2 + (x * 7 + y * 13) % 250
-    viewport = Bitmap.in_dll(lib, "view_viewport")
+    viewport = Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memmove(viewport.pixels, bytes(view), len(view))
     PartyHead.in_dll(lib, "g_party").move_steps = walking
     lib.play_present_viewport()

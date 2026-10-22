@@ -534,7 +534,7 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
     sc = Loop(lib, gdat, start, tmp_path)
     sc.emu.uc.hook_del(sc.view.weather_init_stub)
     rng = random.Random(180)
-    viewport = tv.Bitmap.in_dll(lib, "view_viewport")
+    viewport = tv.Bitmap.in_dll(lib, "g_view_viewport")
     falls = 0
     for n, (map_, x, y, d) in enumerate(approaches(lib, 2, lambda s: s & 8, limit=40)):
         sc.place(map_, x, y, d)

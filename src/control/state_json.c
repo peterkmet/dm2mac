@@ -1173,10 +1173,10 @@ static void piles_json(Json *j)
     json_key(j, "piles");
     json_open(j, '[');
     for (int k = 0; shown && k < CELL_COUNT; k++)
-        if (view_click_zones[k].kind == CLICK_OBJECT && zone_top(&view_click_zones[k], &x, &y) != THING_NONE)
-            pile_json(j, &view_click_zones[k], k);
+        if (g_view_click_zones[k].kind == CLICK_OBJECT && zone_top(&g_view_click_zones[k], &x, &y) != THING_NONE)
+            pile_json(j, &g_view_click_zones[k], k);
     json_close(j, ']');
-    const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
+    const ViewClickZone *alcove = &g_view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
     bool has_alcove = shown && alcove->kind == CLICK_ALCOVE;
     json_key(j, "alcove");
     if (has_alcove && zone_top(alcove, &x, &y) != THING_NONE)
@@ -1184,8 +1184,8 @@ static void piles_json(Json *j)
     else
         json_null(j);
     bool clickable = has_alcove;
-    for (int i = VIEW_CLICK_ZONE_FIXED; shown && i < view_click_zone_count; i++) {
-        const ViewClickZone *z = &view_click_zones[i];
+    for (int i = VIEW_CLICK_ZONE_FIXED; shown && i < g_view_click_zone_count; i++) {
+        const ViewClickZone *z = &g_view_click_zones[i];
         clickable |= z->cell == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON);
     }
     key_bool(j, "wall_ahead_clickable", clickable);

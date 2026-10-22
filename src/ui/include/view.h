@@ -71,43 +71,37 @@ void view_enter_map(int map);
 
 /* ---- Things of the view squares ---- */
 
-extern ViewSquare view_squares[VIEW_SQUARE_COUNT];
+extern ViewSquare g_view_squares[VIEW_SQUARE_COUNT]; /* exported for the tests */
 /* The view position of the square that holds each grid cell. */
-extern uint8_t view_creature_grid[VIEW_GRID_SIZE];
+extern uint8_t g_view_creature_grid[VIEW_GRID_SIZE]; /* exported for the tests */
 /* The view position of the square of the creature that stands at each grid cell, 0xff for none. */
-extern uint8_t view_object_grid[VIEW_GRID_SIZE];
+extern uint8_t g_view_object_grid[VIEW_GRID_SIZE]; /* exported for the tests */
 /* By view position: bit n set when grid cell n of the square holds a missile, or an object. */
-extern uint32_t view_missile_masks[VIEW_SQUARE_COUNT];
-extern uint32_t view_object_masks[VIEW_SQUARE_COUNT];
-/* Moves a creature of size 1 to 3 at (*x, *y) toward the party eye at (party_x, party_y), in thing grid cells. */
-void view_offset_creature_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y);
+extern uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT]; /* exported for the tests */
+extern uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];  /* exported for the tests */
+/* Moves a creature of size 1 to 3 at (*x, *y) toward the party eye at (party_x, party_y), in thing grid cells;
+   exported for the tests. */
+void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y);
 /* Loads the view square at view position pos for the party at (x, y) looking to dir. */
-void view_load_square(int x, int y, int pos, int dir);
+void view_load_square(int x, int y, int pos, int dir); /* exported for the tests */
 /* Shows the squares behind a seamless passage that view_mark_hidden_squares hid. */
-void view_unhide_linked_squares(void);
+void view_unhide_linked_squares(void); /* exported for the tests */
 /* Hides the wall squares that walls in front of them cover. */
-void view_mark_hidden_squares(void);
-
-/* ---- Pictures ---- */
-
-/* The colors of a 4 bpp picture dimmed by the view shade, with key kept; NULL for an 8 bpp picture in full dark. */
-const uint8_t *view_get_shaded_palette(int category, int index, int entry, int key);
-/* Copies a bitmap mirrored left to right. */
-void view_copy_image_mode1(const Bitmap *src, Bitmap *dst);
+void view_mark_hidden_squares(void); /* exported for the tests */
 
 /* ---- Rain ---- */
 
 /* Falling rain shows over the view: its slant shows the wind. */
 bool view_rain_shows(void);
 /* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else key. */
-void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key);
+void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int key); /* exported for the tests */
 
 /* ---- The view ---- */
 
 /* The view picture, 224 x 136 pixels. */
-extern Bitmap view_viewport;
+extern Bitmap g_view_viewport;
 /* The viewport shows the push arrows (the party pushes or can push a creature). */
-extern int view_arrows_enabled;
+extern int g_view_arrows_enabled;
 /* Fills the cleared band of the viewport (a gap that the floor and ceiling leave). */
 void view_clear_viewport(void);
 /* The view position of the square at depth (0 to 4) and side (negative to the left), -1 when the view has none. */
@@ -118,16 +112,16 @@ unsigned view_draws(int pos, int aspect);
 bool view_shows_floor_ornament(int pos, int ornament);
 /* True when the last view picture shows the party position and direction. */
 int view_shows_party(void);
-/* Draws the view of the party at (x, y) of the party map looking to dir into view_viewport. */
+/* Draws the view of the party at (x, y) of the party map looking to dir into g_view_viewport. */
 void view_draw_dungeon(int dir, int x, int y);
 
 /* ---- Clicks ---- */
 
-extern ViewClickZone view_click_zones[VIEW_CLICK_ZONE_MAX];
-extern int view_click_zone_count;
+extern ViewClickZone g_view_click_zones[VIEW_CLICK_ZONE_MAX];
+extern int g_view_click_zone_count;
 /* The vertical place of the last hit test of a view picture, in percent of half the picture height from its center:
    a shop click above the center shows the next item, else the last item. */
-extern int16_t view_hit_offset_y;
+extern int16_t g_view_hit_offset_y; /* exported for the tests */
 /* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *side:
    0 its middle, 1 its right, 3 its left. */
 int view_hit_test_creature(int x, int y, int square_x, int square_y, int *side);

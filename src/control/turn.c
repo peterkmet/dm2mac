@@ -501,12 +501,12 @@ static const char *turn_right(const char *r)
 /* The click zone of the wall ahead: a wall ornament or a door button of the square ahead, or the alcove; NULL none. */
 static const ViewClickZone *front_click_zone(void)
 {
-    for (int i = VIEW_CLICK_ZONE_FIXED; i < view_click_zone_count; i++) {
-        const ViewClickZone *z = &view_click_zones[i];
+    for (int i = VIEW_CLICK_ZONE_FIXED; i < g_view_click_zone_count; i++) {
+        const ViewClickZone *z = &g_view_click_zones[i];
         if (z->cell == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON))
             return z;
     }
-    const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
+    const ViewClickZone *alcove = &g_view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
     return alcove->kind == CLICK_ALCOVE ? alcove : NULL;
 }
 
@@ -543,7 +543,7 @@ static const char *take_object(const char *r)
         return HAND_FULL;
     if (!has_leader())
         return "no leader";
-    const ViewClickZone *z = &view_click_zones[cell];
+    const ViewClickZone *z = &g_view_click_zones[cell];
     if (z->kind != CLICK_OBJECT || z->thing == THING_NONE)
         return "no object at this cell";
     return add_view_click(z->rect) ? NULL : "the view takes no click now";
@@ -576,7 +576,7 @@ static const char *drop_object(const char *r)
     if (!has_leader())
         return "no leader";
     if (cell == DROP_ALCOVE_CELL) {
-        const ViewClickZone *alcove = &view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
+        const ViewClickZone *alcove = &g_view_click_zones[VIEW_CLICK_ZONE_ALCOVE];
         if (alcove->kind != CLICK_ALCOVE)
             return "no alcove ahead";
         return add_view_click(alcove->rect) ? NULL : "the view takes no click now";

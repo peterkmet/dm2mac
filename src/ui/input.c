@@ -1820,7 +1820,7 @@ static void view_click_take_object(int x, int y, int index)
 {
     if ((int16_t)g_game.leader == -1)
         return;
-    const ViewClickZone *z = &view_click_zones[index];
+    const ViewClickZone *z = &g_view_click_zones[index];
     int sx = g_game.party_x, sy = g_game.party_y;
     if (z->cell) {
         if (z->cell != POS_FRONT)
@@ -1928,8 +1928,8 @@ static void view_click_door_button_zone(const ViewSquares *v, const ViewClickZon
 /* A click on the click zones of the view: objects, door buttons, and wall ornaments; returns 1 when it is done. */
 static int view_click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
 {
-    for (int i = 0; i < view_click_zone_count; i++) {
-        const ViewClickZone *z = &view_click_zones[i];
+    for (int i = 0; i < g_view_click_zone_count; i++) {
+        const ViewClickZone *z = &g_view_click_zones[i];
         if (!rect_contains(z->rect, x, y))
             continue;
         switch (z->kind) {
@@ -2042,7 +2042,7 @@ static void game_pause(void)
     char text[TEXT_SIZE];
     g_main_loop.running = 0;
     play_hide_view();
-    gfx_fill_bitmap(&view_viewport, g_ui_colors[UI_BLACK]);
+    gfx_fill_bitmap(&g_view_viewport, g_ui_colors[UI_BLACK]);
     gdat_text(gdat_current(), (GdatKey){CAT_INTERFACE, 0, TEXT_PAUSED}, text, sizeof text);
     text_draw_in_zone(ZONE_VIEW_TEXT, g_ui_colors[UI_CYAN], text);
     play_present_viewport();
@@ -2248,7 +2248,7 @@ void input_update_viewport_arrow(void)
     static const uint16_t zones[PUSH_ARROW_COUNT] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
     static const uint8_t push_dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, 3},
                          step_dirs[PUSH_ARROW_COUNT] = {0, 0, 1, 2, 3, 0};
-    if (!view_arrows_enabled || g_party.push_pending_group != THING_NONE)
+    if (!g_view_arrows_enabled || g_party.push_pending_group != THING_NONE)
         return;
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_VIEWPORT, r))

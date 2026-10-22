@@ -158,7 +158,7 @@ def port(lib, gdat, original, tmp_path):
     lib.money_init_coin_table()
     lib.ui_reset()
     ctypes.memset(ctypes.addressof(ctypes.c_uint8.in_dll(lib, "fb")), 0, SCREEN_W * SCREEN_H)
-    viewport = ctypes.cast(ctypes.c_void_p.in_dll(lib, "view_viewport"), u8_p)
+    viewport = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_view_viewport"), u8_p)
     ctypes.memset(viewport, 0, VIEW_W * VIEW_H)
     emu = original.emu
     original.restore()
@@ -179,7 +179,7 @@ def c_screen(lib):
 
 
 def c_view(lib):
-    viewport = ctypes.cast(ctypes.c_void_p.in_dll(lib, "view_viewport"), u8_p)
+    viewport = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_view_viewport"), u8_p)
     return ctypes.string_at(viewport, VIEW_W * VIEW_H)
 
 

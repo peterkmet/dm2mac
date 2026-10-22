@@ -170,8 +170,8 @@ void text_draw_on_screen(int x, int y, int color, int bg, const char *text)
 
 void text_draw_in_viewport(int x, int y, int color, const char *text)
 {
-    text_draw(view_viewport.pixels, view_viewport.width, x, y, color, g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT,
-              text, IMAGE_8BPP);
+    text_draw(g_view_viewport.pixels, g_view_viewport.width, x, y, color,
+              g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, text, IMAGE_8BPP);
 }
 
 /* The base line start of text placed in zone; returns 0 when it is not visible. */
@@ -196,7 +196,7 @@ void text_draw_in_zone_with_shadow(int zone, int color, int bg, const char *text
 {
     int16_t x, y;
     if (text_zone_position(zone, text, &x, &y))
-        text_draw_with_shadow(view_viewport.pixels, view_viewport.width, x, y, color, bg, text);
+        text_draw_with_shadow(g_view_viewport.pixels, g_view_viewport.width, x, y, color, bg, text);
 }
 
 void text_set_message_cursor(int column, int row)
