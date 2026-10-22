@@ -72,14 +72,6 @@ block ui/view.c open: module cleanup
 block ui/zone.c open: module cleanup
 bool control/control.c open: module cleanup
 bool control/turn.c:next_element open: module cleanup
-bool engine/ai.c open: module cleanup
-bool engine/ai.c:ai_execute_action open: module cleanup
-bool engine/ai.c:creature_ai_act open: module cleanup
-bool engine/ai.c:creature_ai_advance_plan_step open: module cleanup
-bool engine/ai.c:creature_ai_flee open: module cleanup
-bool engine/ai.c:creature_ai_try_flee open: module cleanup
-bool engine/ai.c:dun_set_pit_or_teleporter_state open: module cleanup
-bool engine/ai.c:melee_attack_party open: module cleanup
 bool engine/ai_move.c open: module cleanup
 bool engine/ai_move.c:ai_plan_path open: module cleanup
 bool engine/ai_move.c:ai_trace_line open: module cleanup
@@ -108,7 +100,6 @@ bool engine/creature.c open: module cleanup
 bool engine/creature.c:creature_anim_next_random_step open: module cleanup
 bool engine/creature.c:creature_damage_current_group open: module cleanup
 bool engine/damage.c open: module cleanup
-bool engine/include/ai.h:ai_begin open: module cleanup
 bool engine/include/champion.h:champ_execute_selected_action open: module cleanup
 bool engine/include/champion.h:champ_list_actions open: module cleanup
 bool engine/include/champion.h:champ_test_luck open: module cleanup
@@ -507,8 +498,6 @@ hex ui/ui.c rule 3.12: a table of SKULL.EXE
 hex ui/view.c rule 3.12: a table of SKULL.EXE
 include control/control.c:ui.h open: module cleanup
 include engine/action.c:game.h open: module cleanup
-include engine/ai.c:champ_action.h open: module cleanup
-include engine/ai.c:inventory.h open: module cleanup
 include engine/creature.c:money.h open: module cleanup
 include engine/game.c:champ_action.h open: module cleanup
 include engine/game.c:magic.h open: module cleanup
@@ -553,11 +542,9 @@ include ui/session.c:item.h open: module cleanup
 include ui/view.c:advanced.h open: module cleanup
 include ui/view.c:inventory.h open: module cleanup
 include ui/view.c:timeline.h open: module cleanup
-long engine/ai.c:ai_execute_action open: module cleanup
 long engine/ai.c:creature_ai_exec_plan_command open: module cleanup
 long engine/ai.c:creature_ai_run_target_scanner open: module cleanup
 long engine/ai.c:creature_ai_test_condition open: module cleanup
-long engine/ai.c:creature_ai_update_mood open: module cleanup
 long engine/ai_move.c:ai_find_target_in_lines open: module cleanup
 long engine/ai_move.c:ai_try_attack open: module cleanup
 long engine/ai_move.c:ai_try_door_action open: module cleanup
@@ -734,8 +721,6 @@ ordinal ordinal open: module cleanup
 params control/state_json.c:wall_face_json open: module cleanup
 params control/state_json.c:wall_faces_json open: module cleanup
 params control/state_json.c:wall_ornament_json open: module cleanup
-params engine/ai.c:add_candidate open: module cleanup
-params engine/ai.c:scan_items_seen open: module cleanup
 params engine/ai_move.c:ai_find_target_in_lines open: module cleanup
 params engine/ai_move.c:ai_search_area open: module cleanup
 params engine/ai_move.c:ai_try_attack open: module cleanup

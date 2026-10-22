@@ -239,9 +239,9 @@ void ai_decide(void);
 int ai_plan_flags(void);
 int ai_execute_action(void);
 
-/* Begins a creature update: saves the context of an update in progress; returns 1 when it saved one. */
-int ai_begin(uint16_t group, int x, int y, int type, AiContext *saved);
-void ai_end(int restored, const AiContext *saved);
+/* Begins a creature update: saves the context of an update in progress; true when it saved one. */
+bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved);
+void ai_end(bool restored, const AiContext *saved);
 void ai_prepare(void);
 void ai_set_map(int map);
 

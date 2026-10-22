@@ -622,7 +622,7 @@ void creature_activate_group(uint16_t group, int x, int y)
             a->event = EVENT_NO_SLOT;
             a->action = ACTIVE_ACTION_NONE;
             AiContext saved;
-            int restored = ai_begin(group, x, y, EVENT_CREATURE_THINK, &saved);
+            bool restored = ai_begin(group, x, y, EVENT_CREATURE_THINK, &saved);
             ai.active->plan = -1;
             ai.active->plan_step = 0;
             a->regeneration_time = (uint8_t)((game.game_time >> REGEN_TIME_SHIFT) - 1);
@@ -744,7 +744,7 @@ void creature_update_anim_at(int x, int y, int alt)
     if (creature_group_info(group)->flags & CREATURE_STATIC && group_active(group) == GROUP_NOT_ACTIVE)
         creature_activate_group(group, x, y);
     AiContext saved;
-    int restored = ai_begin(group, x, y, EVENT_CREATURE_ANIMATION, &saved);
+    bool restored = ai_begin(group, x, y, EVENT_CREATURE_ANIMATION, &saved);
     if (ai.active) {
         if (!alt)
             creature_anim_schedule();
@@ -847,7 +847,7 @@ void creature_process_event(int x, int y, int type)
     if (group == THING_NONE)
         return;
     AiContext saved;
-    int restored = ai_begin(group, x, y, type, &saved);
+    bool restored = ai_begin(group, x, y, type, &saved);
     ActiveGroup *a = ai.active;
     const CreatureInfo *info = ai.info;
     a->event = EVENT_NO_SLOT;
