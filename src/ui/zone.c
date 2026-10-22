@@ -310,7 +310,7 @@ int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, int zone, int16_t
         for (int i = 0; i < RECT_SIZE; i++)
             clip[i] = zone_clip_rect[i];
     }
-    if (party.move_steps && last_parent == WALK_PARENT && !rect_clip(clip, walk_view_rect))
+    if (g_party.move_steps && last_parent == WALK_PARENT && !rect_clip(clip, walk_view_rect))
         return NULL;
     return clip_placed(rect, clip, width, height, w, h);
 }

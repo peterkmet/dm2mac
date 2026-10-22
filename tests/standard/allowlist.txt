@@ -276,6 +276,7 @@ decimal ui/text.c open: module cleanup
 decimal ui/ui.c open: module cleanup
 decimal ui/video.c open: module cleanup
 decimal ui/view.c rule 3.12: a table of SKULL.EXE
+engine-write ui/input.c open: module cleanup
 engine-write ui/play.c open: module cleanup
 engine-write ui/ui.c open: module cleanup
 enum control/control.c open: module cleanup
@@ -320,7 +321,6 @@ event-comment ui/include/input.h open: module cleanup
 global engine/include/action.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
-global engine/include/move.h open: module cleanup
 global engine/include/projectile.h open: module cleanup
 global engine/include/save.h open: module cleanup
 global engine/include/sound_request.h open: module cleanup

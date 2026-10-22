@@ -104,7 +104,8 @@ static void add_to_party(int portrait, int index, int dir)
 /* The mirror sensor on the square (x, y) of the current map; its data is the portrait. */
 static uint16_t mirror_sensor(int x, int y)
 {
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
+         t = dungeon_next_thing(t))
         if (thing_type(t) == THING_SENSOR && sensor_type(t) == WALL_CLICK_PORTRAIT)
             return t;
     return THING_NONE;
@@ -115,9 +116,9 @@ bool recruit_start(int x, int y, int dir, int map)
     int index = game.champion_count;
     if (game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
         return false;
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     dun_set_current_map(map);
-    int fx = x + dir_dx[dir], fy = y + dir_dy[dir];
+    int fx = x + g_dir_dx[dir], fy = y + g_dir_dy[dir];
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror == THING_NONE) { /* fix: the original then takes an uninitialized portrait */
         dun_set_current_map(saved);
@@ -134,7 +135,7 @@ bool recruit_start(int x, int y, int dir, int map)
     if (!index)
         champ_set_leader(0);
     int back = dir_opposite(dir);
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, fx, fy); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, fx, fy); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
         if (thing_type(t) > THING_SENSOR && thing_cell(t) == back)
             inv_put_in_free_slot(index, t);
@@ -152,7 +153,7 @@ void recruit_finish(int x, int y, int dir, int map, int command)
 {
     int champ = ui.candidate - 1;
     Champion *c = champion(champ);
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     dun_set_current_map(map);
     uint16_t hand = champ_take_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
@@ -179,10 +180,10 @@ void recruit_finish(int x, int y, int dir, int map, int command)
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);
     ui.candidate = 0;
-    int fx = x + dir_dx[dir], fy = y + dir_dy[dir];
+    int fx = x + g_dir_dx[dir], fy = y + g_dir_dy[dir];
     for (int s = 0; s < SLOT_COUNT; s++)
         if (c->slots[s] != THING_NONE)
-            dungeon_unlink_thing_from_square(c->slots[s], party.cur_map, fx, fy);
+            dungeon_unlink_thing_from_square(c->slots[s], g_party.cur_map, fx, fy);
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror != THING_NONE)
         sensor_set_flag(mirror, MIRROR_ACTIVE, false);

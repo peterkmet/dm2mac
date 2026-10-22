@@ -173,7 +173,7 @@ void input_cancel_push_mode(void);
 void input_set_wait(int steps);
 /* The mouse position on the screen (main.c sets it before each tick). */
 extern int input_mouse_x, input_mouse_y;
-/* The push arrow under the mouse in the viewport while the party can push a creature (party.push_arrow). */
+/* The push arrow under the mouse in the viewport while the party can push a creature (g_party.push_arrow). */
 void input_update_viewport_arrow(void);
 /* Redraws the released movement arrow. */
 void input_release_move_arrow(void);

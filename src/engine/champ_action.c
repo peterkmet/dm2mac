@@ -416,7 +416,7 @@ void champ_add_experience(int champ, int skill, uint32_t amount)
         amount >>= 1;
     if (!amount)
         return;
-    int factor = dungeon_map_difficulty(party.cur_map);
+    int factor = dungeon_map_difficulty(g_party.cur_map);
     if (factor)
         amount *= (uint32_t)factor;
     Champion *c = champion(champ);
@@ -486,13 +486,13 @@ static int melee_attack_group(const ActionRun *a, uint16_t group, uint16_t attac
     Champion *c = a->c;
     if ((uint16_t)champ >= game.champion_count || !c->health)
         return 0;
-    int difficulty = dungeon_map_difficulty(party.cur_map) * 2;
+    int difficulty = dungeon_map_difficulty(g_party.cur_map) * 2;
     const CreatureInfo *info = creature_group_info(group);
     bool pierces = attack & MELEE_PIERCES;
     attack &= (uint16_t)~MELEE_PIERCES;
     int16_t damage = 0, stamina;
     bool hit = info->dexterity != DEXTERITY_UNHITTABLE;
-    uint16_t at = creature_group_at(party.cur_map, x, y);
+    uint16_t at = creature_group_at(g_party.cur_map, x, y);
     if (hit && at != THING_NONE && creature_current_step_acts(at))
         hit = false;
     if (hit && info->flags & CREATURE_NOT_DOOR_HIT && !pierces)
@@ -542,7 +542,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
     Champion *c = a->c;
     if (champ_action_target == THING_NONE)
         return false;
-    uint16_t group = creature_group_at(party.cur_map, a->fx, a->fy);
+    uint16_t group = creature_group_at(g_party.cur_map, a->fx, a->fy);
     if (group == THING_NONE)
         return false;
     int rel = dir_relative(c->cell, c->dir);
@@ -622,7 +622,7 @@ static bool send_minion(ActionRun *a, int command)
         return false;
     }
     if (command == COMMAND_MINION_ATTACK)
-        minion_map_set_location(map_item, party.dest_x, party.dest_y, party.dest_map);
+        minion_map_set_location(map_item, g_party.dest_x, g_party.dest_y, g_party.dest_map);
     set_thing_word(map_item, MINION_MAP_GROUP, summoned);
     return true;
 }
@@ -714,7 +714,7 @@ static bool run_melee(ActionRun *a)
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sound_request_with_fallback(CAT_DOOR,
-                                    dun_get_door_type(dungeon_square_first_thing(party.cur_map, a->fx, a->fy)),
+                                    dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
                                     SOUND_HIT, SOUND_FALLBACK, a->fx, a->fy, 1, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD);
         return true;
     }
@@ -737,16 +737,16 @@ static bool run_melee(ActionRun *a)
 /* The party falls into the pit in front, when no solid creature stands over it; else the action takes no time. */
 static void run_levitate_down(ActionRun *a)
 {
-    int px = game.party_x + dir_dx[game.party_dir];
-    int py = game.party_y + dir_dy[game.party_dir];
+    int px = game.party_x + g_dir_dx[game.party_dir];
+    int py = game.party_y + g_dir_dy[game.party_dir];
     bool open = true;
-    uint16_t g = creature_group_at(party.cur_map, px, py);
+    uint16_t g = creature_group_at(g_party.cur_map, px, py);
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID))
         open = false;
     if (square_type(dun_get_square(px, py)) == SQUARE_PIT && open) {
-        party.fell = 1;
+        g_party.fell = 1;
         move_thing(THING_NONE, game.party_x, game.party_y, px, py);
-        party.fell = 0;
+        g_party.fell = 0;
     } else {
         a->delay = 0;
     }
@@ -931,9 +931,9 @@ int champ_perform_action(int champ, int index)
     uint8_t sound = (uint8_t)current_field(FIELD_SOUND);
     c->last_command[hand] = (uint8_t)command;
     ActionRun a = {.champ = champ, .hand = hand, .repeated = repeated, .c = c, .item = c->slots[hand]};
-    a.fx = (int16_t)(game.party_x + dir_dx[c->dir]);
-    a.fy = (int16_t)(game.party_y + dir_dy[c->dir]);
-    champ_action_target = creature_group_at(party.cur_map, a.fx, a.fy);
+    a.fx = (int16_t)(game.party_x + g_dir_dx[c->dir]);
+    a.fy = (int16_t)(game.party_y + g_dir_dy[c->dir]);
+    champ_action_target = creature_group_at(g_party.cur_map, a.fx, a.fy);
     a.delay = (uint16_t)current_field(FIELD_DELAY);
     a.skill = (uint16_t)current_field(FIELD_SKILL);
     int16_t stamina = current_field(FIELD_STAMINA);

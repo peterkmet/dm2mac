@@ -640,8 +640,8 @@ static uint8_t door_type(uint16_t door)
 
 static void move_relative(int dir, int forward, int right, int *x, int *y)
 {
-    *x += dir_dx[dir & DIR_MASK] * forward + dir_dx[dir_turn(dir, TURN_RIGHT)] * right;
-    *y += dir_dy[dir & DIR_MASK] * forward + dir_dy[dir_turn(dir, TURN_RIGHT)] * right;
+    *x += g_dir_dx[dir & DIR_MASK] * forward + g_dir_dx[dir_turn(dir, TURN_RIGHT)] * right;
+    *y += g_dir_dy[dir & DIR_MASK] * forward + g_dir_dy[dir_turn(dir, TURN_RIGHT)] * right;
 }
 
 /* ---- Map graphics ---- */
@@ -1465,8 +1465,8 @@ static void view_draw_creature(int pos, int depth, uint16_t group)
         /* by push arrow: the cell and scale of the creature that the party pushes */
         static const uint8_t arrow_cells[7] = {2, 0x0e, 0x16, 0x16, 0x16, 0x0a, 0x0c};
         static const uint8_t arrow_scales[7] = {0x34, 0x40, 0x4e, 0x4e, 0x4e, 0x40, 0x40};
-        cell = (int8_t)arrow_cells[party.push_arrow];
-        scale = arrow_scales[party.push_arrow];
+        cell = (int8_t)arrow_cells[g_party.push_arrow];
+        scale = arrow_scales[g_party.push_arrow];
         side = 0;
     } else {
         uint32_t size;
@@ -2922,7 +2922,7 @@ unsigned view_draws(int pos, int aspect)
     unsigned draws = wall_faces[pos];
     if (aspect == ASPECT_WALL)
         return draws;
-    bool creatures = !(party.move_steps && pos == POS_PARTY); /* the walking view hides the party square creatures */
+    bool creatures = !(g_party.move_steps && pos == POS_PARTY); /* the walking view hides the party square creatures */
     if (pos >= POS_FAR_ROW) {
         bool floor = aspect == ASPECT_FLOOR || aspect == ASPECT_PIT || aspect == ASPECT_TELEPORTER;
         return pos < POS_DRAWN && (floor || aspect == ASPECT_DOOR_FRONT) ? draws | VIEW_DRAWS_CREATURES : draws;
@@ -2961,7 +2961,7 @@ void view_draw_dungeon(int dir, int x, int y)
     view.party_x = x;
     view.party_y = y;
     view.shade = cheat_light ? 0 : g_view_light_level * LIGHT_STEP; /* the creature rules keep g_view_light_level */
-    view.walking = party.move_steps != 0;
+    view.walking = g_party.move_steps != 0;
     view_click_zone_count = VIEW_CLICK_ZONE_FIXED;
     for (int i = 0; i < VIEW_CLICK_ZONE_FIXED; i++) {
         view_click_zones[i].thing = THING_NONE;
@@ -2970,7 +2970,7 @@ void view_draw_dungeon(int dir, int x, int y)
     memset(view_creature_grid, 0, sizeof view_creature_grid);
     memset(view_object_grid, NO_POSITION, sizeof view_object_grid);
     view_clear_viewport();
-    view_arrows_enabled = party.push_mode || party.push_pending_group != THING_NONE;
+    view_arrows_enabled = g_party.push_mode || g_party.push_pending_group != THING_NONE;
     input_update_viewport_arrow();
     for (int pos = VIEW_SQUARE_COUNT - 1; pos >= 0; pos--)
         view_load_square(x, y, pos, dir);
@@ -3121,10 +3121,10 @@ uint16_t view_hit_test_object(int x, int y, int pos, int square_x, int square_y,
 {
     uint16_t group = THING_NONE, t;
     if (kind == CLICK_POSSESSIONS) {
-        group = creature_group_at(party.cur_map, square_x, square_y);
+        group = creature_group_at(g_party.cur_map, square_x, square_y);
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
-        t = dungeon_square_first_thing(party.cur_map, square_x, square_y);
+        t = dungeon_square_first_thing(g_party.cur_map, square_x, square_y);
     }
     if (t == THING_ENDOFLIST)
         return placing ? thing : THING_NONE;

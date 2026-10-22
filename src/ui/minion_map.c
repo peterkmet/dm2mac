@@ -145,7 +145,7 @@ static int inside_map(int map, int x, int y)
 /* The level digit icons of the current map: what a square outside the maps of a level shows. */
 static int level_icon_set(void)
 {
-    return dungeon_level_digit(dungeon_map_level(party.cur_map));
+    return dungeon_level_digit(dungeon_map_level(g_party.cur_map));
 }
 
 /* The icons of a wall square: the wall and the ornaments of its 4 faces. */
@@ -406,7 +406,7 @@ static void draw_party_and_marker(uint16_t map_thing, int x, int y, int dir, int
 static void draw_pit_above(const Strip *base, int sx, int sy, int x, int y)
 {
     int ax = sx, ay = sy;
-    int m = dungeon_location_on_map(party.cur_map, LEVEL_UP, &ax, &ay);
+    int m = dungeon_location_on_map(g_party.cur_map, LEVEL_UP, &ax, &ay);
     if (m < 0 || !inside_map(m, ax, ay))
         return; /* fix: as above, no read outside the map */
     uint8_t square = dungeon_square(m, ax, ay);
@@ -418,7 +418,7 @@ static void draw_pit_above(const Strip *base, int sx, int sy, int x, int y)
 static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int x, int y, int icon_set, int flags)
 {
     ViewSquare s;
-    aspect_get(&s, party.cur_map, dir, sx, sy);
+    aspect_get(&s, g_party.cur_map, dir, sx, sy);
     Strip base = map_icon_strip(CAT_WALLSET, icon_set);
     if (flags & MAP_PARTY)
         draw_party_frame(x, y);
@@ -437,22 +437,22 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
         saved_y = sy;
         /* a wall square: another map of the level may show a wall there; like the original, the search leaves
            (sx, sy) on the map that it found */
-        int next = 0, m = party.cur_map;
-        while (m == party.cur_map)
-            m = dungeon_location_on_map_from(party.cur_map, 0, &sx, &sy, &next);
+        int next = 0, m = g_party.cur_map;
+        while (m == g_party.cur_map)
+            m = dungeon_location_on_map_from(g_party.cur_map, 0, &sx, &sy, &next);
         /* fix: the original reads the square byte also outside the map (out of its column table) */
         if (m < 0 || !inside_map(m, sx, sy) || square_type(dungeon_square(m, sx, sy)) != SQUARE_WALL)
             break;
         other_map = 1;
-        saved_map = party.cur_map;
+        saved_map = g_party.cur_map;
         dun_set_current_map(m);
-        aspect_get(&s, party.cur_map, dir, sx, sy);
+        aspect_get(&s, g_party.cur_map, dir, sx, sy);
     }
     if (other_map) {
         sx = saved_x;
         sy = saved_y;
         dun_set_current_map(saved_map);
-        aspect_get(&s, party.cur_map, dir, sx, sy);
+        aspect_get(&s, g_party.cur_map, dir, sx, sy);
     }
     draw_pit_above(&base, sx, sy, x, y);
 }
@@ -465,7 +465,7 @@ void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int s
     area = target;
     if (party_item >= 0)
         draw_party_frame(x, y);
-    ui_map_draw_square(THING_NONE, sx, sy, DIR_NORTH, x, y, dungeon_map_wallset(party.cur_map), 0);
+    ui_map_draw_square(THING_NONE, sx, sy, DIR_NORTH, x, y, dungeon_map_wallset(g_party.cur_map), 0);
     if (party_item >= 0) {
         Strip p = {draw_gdat_image(CAT_CONTAINER, party_item, GFX_MAP_ITEM_ICONS),
                    draw_gdat_image_palette(CAT_CONTAINER, party_item, GFX_MAP_ITEM_ICONS), 0};
@@ -538,11 +538,11 @@ static int grid_square(int x, int y, int map, int dir, int row, int col, int16_t
     if (square_map < 0) {
         dun_set_current_map(map);
         *icon_set = square_type(dun_get_square(*sx, *sy)) == SQUARE_UNKNOWN ? level_icon_set()
-                                                                            : dungeon_map_wallset(party.cur_map);
+                                                                            : dungeon_map_wallset(g_party.cur_map);
         return map;
     }
     dun_set_current_map(square_map);
-    *icon_set = dungeon_map_wallset(party.cur_map);
+    *icon_set = dungeon_map_wallset(g_party.cur_map);
     return square_map;
 }
 
@@ -567,7 +567,7 @@ static int grid_square_flags(const MinionSquares *ms, int16_t sx, int16_t sy, in
         if (mm->marker_state)
             flags |= MAP_MARKER;
     }
-    if (show & MAP_PARTY && m16 == party.square_map && sx == party.square_x && sy == party.square_y)
+    if (show & MAP_PARTY && m16 == g_party.square_map && sx == g_party.square_x && sy == g_party.square_y)
         flags |= MAP_PARTY;
     return flags;
 }
@@ -592,7 +592,7 @@ static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int
         mm->y_offset = (int16_t)y_offset;
     }
     mm->marker_state = MARKER_NONE;
-    int saved_map = party.cur_map;
+    int saved_map = g_party.cur_map;
     area = area_begin_draw(0);
     offscreen_fill_rect(area, zone_get_rect(ZONE_MAP_GRID, mm->clip), ui_colors[UI_BLACK]);
     mm->clip[RECT_X] += GAP_X;
@@ -679,12 +679,12 @@ void mmap_draw(uint16_t thing)
                 int cell = aspect_creature_cell(group, dir_turn(creature_side_dir[group_dir(group)], dir));
                 int col = (int16_t)cell % VIEW_CELL_ROW, row = (int16_t)cell / VIEW_CELL_ROW;
                 if (col > VIEW_CELL_ROW / 2) {
-                    x += dir_dx[dir_turn(dir, 1)];
-                    y += dir_dy[dir_turn(dir, 1)];
+                    x += g_dir_dx[dir_turn(dir, 1)];
+                    y += g_dir_dy[dir_turn(dir, 1)];
                 }
                 if (row > VIEW_CELL_ROW / 2) {
-                    x += dir_dx[dir_opposite(dir)];
-                    y += dir_dy[dir_opposite(dir)];
+                    x += g_dir_dx[dir_opposite(dir)];
+                    y += g_dir_dy[dir_opposite(dir)];
                 }
                 x_offset = (GAP_X * 2 + MAP_ICON_W + 1) / VIEW_CELL_ROW * cell_shift[col];
                 y_offset = (GAP_Y * 2 + MAP_ICON_H + 1) / VIEW_CELL_ROW * cell_shift[row];

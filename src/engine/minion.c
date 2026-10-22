@@ -74,9 +74,9 @@ void minion_toggle_map_option(int option)
 
 bool minion_map_set_location(uint16_t thing, int x, int y, int map)
 {
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     dun_set_current_map(map);
-    bool inside = x >= 0 && x < dungeon_map_width(party.cur_map) && y >= 0 && y < dungeon_map_height(party.cur_map);
+    bool inside = x >= 0 && x < dungeon_map_width(g_party.cur_map) && y >= 0 && y < dungeon_map_height(g_party.cur_map);
     if (inside)
         set_thing_word(thing, MINION_MAP_LOCATION, (uint16_t)location_pack(x, y, map));
     dun_set_current_map(saved);
@@ -106,7 +106,7 @@ void minion_map_click_set_destination(int command, int x, int y)
         return;
     sx = (int16_t)lx;
     sy = (int16_t)ly;
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     dun_set_current_map(map);
     uint8_t square = dun_get_square(sx, sy);
     int type = square_type(square);

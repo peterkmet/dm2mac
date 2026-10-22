@@ -71,8 +71,8 @@ static int facing(void)
 static uint16_t front_group(void)
 {
     int d = facing();
-    return creature_get_group_at((uint16_t)(g_ai.event.data[EVENT_X] + dir_dx[d]),
-                                 (uint16_t)(g_ai.event.data[EVENT_Y] + dir_dy[d]));
+    return creature_get_group_at((uint16_t)(g_ai.event.data[EVENT_X] + g_dir_dx[d]),
+                                 (uint16_t)(g_ai.event.data[EVENT_Y] + g_dir_dy[d]));
 }
 
 /* True when the group in front holds an item in cell (relative to the merchant, ANY_CELL: any) that is neither coins

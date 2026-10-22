@@ -1688,7 +1688,7 @@ void input_poll(void)
 void input_reset_states(void)
 {
     ui.eye = ui.mouth = 0;
-    party.push_mode = 0;
+    g_party.push_mode = 0;
     ui.push_mode = 0;
     input_feedback_busy = 0;
     in.feedback_waiting = 0;
@@ -1698,9 +1698,9 @@ void input_reset_states(void)
 
 void input_cancel_push_mode(void)
 {
-    if (!party.push_mode)
+    if (!g_party.push_mode)
         return;
-    party.push_mode = 0;
+    g_party.push_mode = 0;
     ui.push_mode = 0;
     ui_draw_movement_arrows();
 }
@@ -1744,16 +1744,16 @@ static void view_click_wall_sensor(int cell)
                                                 2}; /* the face that the party sees of each wall, from its direction */
     int dir = game.party_dir, x = game.party_x, y = game.party_y;
     if (cell == WALL_CELL_LEFT) {
-        x += dir_dx[dir_turn(dir, TURN_LEFT)];
-        y += dir_dy[dir_turn(dir, TURN_LEFT)];
+        x += g_dir_dx[dir_turn(dir, TURN_LEFT)];
+        y += g_dir_dy[dir_turn(dir, TURN_LEFT)];
     } else if (cell == WALL_CELL_RIGHT) {
-        x += dir_dx[dir_turn(dir, TURN_RIGHT)];
-        y += dir_dy[dir_turn(dir, TURN_RIGHT)];
+        x += g_dir_dx[dir_turn(dir, TURN_RIGHT)];
+        y += g_dir_dy[dir_turn(dir, TURN_RIGHT)];
     } else if (cell == WALL_CELL_FRONT) {
-        x += dir_dx[dir];
-        y += dir_dy[dir];
+        x += g_dir_dx[dir];
+        y += g_dir_dy[dir];
     }
-    if (x < 0 || x >= dungeon_map_width(party.cur_map) || y < 0 || y >= dungeon_map_height(party.cur_map))
+    if (x < 0 || x >= dungeon_map_width(g_party.cur_map) || y < 0 || y >= dungeon_map_height(g_party.cur_map))
         return;
     sensor_process_wall_click(x, y, dir_turn(dir, side_turn[cell & DIR_MASK]), THING_NONE, game.leader_hand);
 }
@@ -1768,10 +1768,10 @@ static void view_click_creature(uint16_t group, int x, int y, int square_x, int 
         sound_request_with_fallback(CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK, SOUND_FALLBACK, square_x,
                                     square_y, 0, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
     } else if (!side) {
-        party.push_mode = 1;
+        g_party.push_mode = 1;
         ui.push_mode = 1;
         ui_draw_movement_arrows();
-        party.push_arrow = PUSH_ARROW_NONE;
+        g_party.push_arrow = PUSH_ARROW_NONE;
     } else {
         creature_turn_group(group, 0, side);
     }
@@ -1794,9 +1794,9 @@ static void view_click_door_button(int x, int y, uint16_t door)
     sound_request(CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL, game.party_x,
                   game.party_y, 1);
     sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, game.game_time + 1);
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, party.cur_map),
+    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, g_party.cur_map),
                        .type = EVENT_DOOR_BUTTON_RELEASE};
-    uint16_t first = dungeon_square_first_thing(party.cur_map, x, y);
+    uint16_t first = dungeon_square_first_thing(g_party.cur_map, x, y);
     put_le16(e.data + SENSOR_EVENT_THING, first);
     timeline_add_event(&e);
     door_set_flag(door, DOOR_BUTTON_PRESSED, true);
@@ -1822,8 +1822,8 @@ static void view_click_take_object(int x, int y, int index)
     if (z->cell) {
         if (z->cell != POS_FRONT)
             return;
-        sx += dir_dx[game.party_dir];
-        sy += dir_dy[game.party_dir];
+        sx += g_dir_dx[game.party_dir];
+        sy += g_dir_dy[game.party_dir];
     }
     uint16_t thing = view_hit_test_object(x, y, z->cell, sx, sy, z->thing, z->kind, 0);
     if (thing != THING_NONE) {
@@ -1841,7 +1841,7 @@ static int view_click_drop_object(int x, int y, int cell)
     if ((int16_t)game.leader == -1)
         return 0;
     int dir_cell = dir_turn(game.party_dir, cell);
-    uint16_t group = creature_group_at(party.cur_map, x, y);
+    uint16_t group = creature_group_at(g_party.cur_map, x, y);
     int possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
     if (group != THING_NONE) {
         const CreatureInfo *info = creature_group_info(group);
@@ -1912,10 +1912,11 @@ typedef struct {
 static void view_click_door_button_zone(const ViewSquares *v, const ViewClickZone *z, uint16_t hand)
 {
     int front = z->cell == POS_FRONT, dx = front ? v->fx : v->px, dy = front ? v->fy : v->py;
-    uint16_t door = dungeon_square_first_thing(party.cur_map, dx, dy);
+    uint16_t door = dungeon_square_first_thing(g_party.cur_map, dx, dy);
     if (!door_flag(door, DOOR_BUTTON)) {
         int side = dir_turn(v->dir, TURN_RIGHT);
-        sensor_process_wall_click(dx + dir_dx[side], dy + dir_dy[side], dir_turn(v->dir, TURN_LEFT), THING_NONE, hand);
+        sensor_process_wall_click(dx + g_dir_dx[side], dy + g_dir_dy[side], dir_turn(v->dir, TURN_LEFT), THING_NONE,
+                                  hand);
     } else if (hand == THING_NONE) {
         view_click_door_button(dx, dy, door);
     }
@@ -1980,7 +1981,7 @@ static void view_click_with_object(const ViewSquares *v, int x, int y, int front
         if (zone_contains_point(ZONE_DROP_CELL_FIRST + k, x, y) && view_click_drop_object(v->fx, v->fy, k))
             return;
     }
-    uint16_t g = creature_group_at(party.cur_map, v->fx, v->fy);
+    uint16_t g = creature_group_at(g_party.cur_map, v->fx, v->fy);
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
         const CreatureInfo *info = creature_group_info(g);
         for (int k = 0; k < (info->possessions & POSSESSIONS_KIND_MASK); k++) {
@@ -1998,10 +1999,10 @@ static void view_click_with_object(const ViewSquares *v, int x, int y, int front
 void view_click_in_viewport(int x, int y)
 {
     dun_set_current_map(game.party_map);
-    if (party.push_mode) {
-        party.push_mode = 0;
+    if (g_party.push_mode) {
+        g_party.push_mode = 0;
         ui.push_mode = 0;
-        move_push_creature(party.push_arrow);
+        move_push_creature(g_party.push_arrow);
         ui_draw_movement_arrows();
         return;
     }
@@ -2011,7 +2012,7 @@ void view_click_in_viewport(int x, int y)
         y -= origin[RECT_Y];
     }
     int dir = game.party_dir;
-    ViewSquares v = {dir, game.party_x, game.party_y, game.party_x + dir_dx[dir], game.party_y + dir_dy[dir]};
+    ViewSquares v = {dir, game.party_x, game.party_y, game.party_x + g_dir_dx[dir], game.party_y + g_dir_dy[dir]};
     uint8_t front = dun_get_square(v.fx, v.fy);
     uint16_t hand = game.leader_hand;
     if (view_click_zones_hit(&v, x, y, hand))
@@ -2026,7 +2027,7 @@ void view_click_in_viewport(int x, int y)
         view_click_front_wall(passable, v.fx, v.fy);
         return;
     }
-    uint16_t g = creature_group_at(party.cur_map, v.fx, v.fy);
+    uint16_t g = creature_group_at(g_party.cur_map, v.fx, v.fy);
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC)
         view_click_creature(g, x, y, v.fx, v.fy);
 }
@@ -2209,13 +2210,13 @@ int command_execute(Command *c)
     int moving = command >= CMD_MOVE_FORWARD && command <= CMD_MOVE_LEFT;
     if ((moving && (game.party_move_cooldown ||
                     (game.throw_cooldown && game.throw_dir == dir_turn(game.party_dir, command - CMD_MOVE_FORWARD)))) ||
-        (party.move_steps && (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT || command == CMD_VIEWPORT)) ||
+        (g_party.move_steps && (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT || command == CMD_VIEWPORT)) ||
         (command == CMD_VIEWPORT && !view_shows_party()) || in.wait) {
         input_command_stop = 1;
         return 0;
     }
     input_command_stop = 0;
-    int idle = !ui.eye && !ui.mouth && !party.push_mode && !input_drag_state; /* no eye, mouth, drag or push mode */
+    int idle = !ui.eye && !ui.mouth && !g_party.push_mode && !input_drag_state; /* no eye, mouth, drag or push mode */
     if (!command_execute_party(c, idle) && !command_execute_champion(command, idle)) {
         if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE) ||
              command == CMD_QUIT) &&
@@ -2241,13 +2242,13 @@ void input_update_viewport_arrow(void)
     static const uint16_t zones[PUSH_ARROW_COUNT] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
     static const uint8_t push_dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, 3},
                          step_dirs[PUSH_ARROW_COUNT] = {0, 0, 1, 2, 3, 0};
-    if (!view_arrows_enabled || party.push_pending_group != THING_NONE)
+    if (!view_arrows_enabled || g_party.push_pending_group != THING_NONE)
         return;
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_VIEWPORT, r))
         return;
     int x = input_mouse_x - r[RECT_X], y = input_mouse_y - r[RECT_Y];
-    party.push_arrow = PUSH_ARROW_NONE;
+    g_party.push_arrow = PUSH_ARROW_NONE;
     if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
         return;
     int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
@@ -2262,14 +2263,14 @@ void input_update_viewport_arrow(void)
     }
     int step = dir_turn(step_dirs[arrow], game.party_dir);
     if (dun_square_blocks_movement(
-            dun_get_square((int16_t)(game.party_x + dir_dx[step]), (int16_t)(game.party_y + dir_dy[step]))))
+            dun_get_square((int16_t)(game.party_x + g_dir_dx[step]), (int16_t)(game.party_y + g_dir_dy[step]))))
         return;
-    if (!creature_can_be_pushed((int16_t)(game.party_x + dir_dx[game.party_dir]),
-                                (int16_t)(game.party_y + dir_dy[game.party_dir]),
+    if (!creature_can_be_pushed((int16_t)(game.party_x + g_dir_dx[game.party_dir]),
+                                (int16_t)(game.party_y + g_dir_dy[game.party_dir]),
                                 dir_turn(push_dirs[arrow], game.party_dir), NULL))
         return;
     ui_draw_move_arrow(entries[arrow], zones[arrow], 1);
-    party.push_arrow = (int16_t)arrow;
+    g_party.push_arrow = (int16_t)arrow;
 }
 
 void input_set_wait(int steps)

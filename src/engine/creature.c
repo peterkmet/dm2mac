@@ -521,7 +521,7 @@ int creature_current_step_acts(uint16_t group)
 
 uint16_t creature_get_group_at(int x, int y)
 {
-    return creature_group_at(party.cur_map, x, y);
+    return creature_group_at(g_party.cur_map, x, y);
 }
 
 uint16_t creature_group_at(int map, int x, int y)
@@ -621,7 +621,7 @@ void creature_reset_active_groups(void)
 
 void creature_activate_groups_on_map(void)
 {
-    int map = party.cur_map;
+    int map = g_party.cur_map;
     for (int x = 0; x < dungeon_map_width(map); x++)
         for (int y = 0; y < dungeon_map_height(map); y++) {
             uint16_t g = creature_group_at(map, x, y);
@@ -644,7 +644,7 @@ void creature_activate_groups_on_map(void)
 
 void creature_activate_all_maps(void)
 {
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     for (int map = 0; map < dungeon_map_count(); map++) {
         dun_set_current_map(map);
         creature_activate_groups_on_map();
@@ -677,7 +677,7 @@ static void schedule_update(int x, int y)
     ActiveGroup *a = creature_active(group);
     if (a->event != EVENT_NO_SLOT)
         creature_cancel_update(group);
-    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, party.cur_map)};
+    TimelineEvent e = {.time_map = timeline_time_map(game.game_time + 1, g_party.cur_map)};
     e.type = thing_word(group, GROUP_ITEM_CLASS) != THING_NONE ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
     e.priority = group_creature(group);
     e.data[0] = (uint8_t)x;
@@ -710,7 +710,7 @@ void creature_activate_group(uint16_t group, int x, int y)
             g_ai.active->plan_step = 0;
             a->regeneration_time = (uint8_t)((game.game_time >> REGEN_TIME_SHIFT) - 1);
             a->last_action_time = (uint8_t)(game.game_time - ACTION_TIME_LONG_AGO);
-            a->position = (uint16_t)location_pack(g_ai.event.data[0], g_ai.event.data[1], party.cur_map);
+            a->position = (uint16_t)location_pack(g_ai.event.data[0], g_ai.event.data[1], g_party.cur_map);
             g_ai.cache.path_left = 0;
             a->behavior = -1;
             a->next_action = -1;
@@ -877,12 +877,12 @@ static int16_t anim_step_delay(const uint8_t *step)
     if (g_ai.active->action == CREATURE_ACTION_VANISH && game.magic_light[MAGIC_ACTION_EFFECT] &&
         !(g_ai.info->flags & CREATURE_FAST_VANISH)) {
         d = (int16_t)(d * VANISH_DELAY_FACTOR);
-    } else if (party.cur_map != g_ai_party.map && !(g_ai_class_flags[g_ai.class_index] & AI_CLASS_STAYS_FAR) &&
+    } else if (g_party.cur_map != g_ai_party.map && !(g_ai_class_flags[g_ai.class_index] & AI_CLASS_STAYS_FAR) &&
                mood & MOOD_FAR && !(mood & GROUP_SEEN)) {
         d = (int16_t)(d * FAR_DELAY_FACTOR + rand_bit());
     } else if (g_party_sleeping) {
         d = (int16_t)(d * 2);
-        if (party.cur_map != g_ai_party.map)
+        if (g_party.cur_map != g_ai_party.map)
             d = (int16_t)(d * 2);
     } else if (mood & MOOD_FEAR) {
         if (!(mood & MOOD_HURRY) || d > FEAR_HURRY_DELAY)
@@ -1028,7 +1028,7 @@ void creature_drop_possessions(uint16_t group, int x, int y, int mode, int sound
 /* The home square of a creature group gets a square event (effect) at the next game step. */
 static void signal_home_square(uint16_t group, int effect)
 {
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     uint16_t home = thing_word(group, GROUP_HOME);
     dun_set_current_map(location_map(home));
     sensor_schedule_square_event(location_x(home), location_y(home), 0, effect, game.game_time + 1);
@@ -1288,7 +1288,7 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
     health = (uint16_t)(health + rand_below((uint16_t)((health >> GROUP_HEALTH_SHIFT) + 1)));
     set_thing_word(group, GROUP_HEALTH, health);
     group_set_mood(group, 0);
-    set_thing_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, party.cur_map));
+    set_thing_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, g_party.cur_map));
     set_thing_word(group, GROUP_ITEM_CLASS, THING_NONE);
     if (move_thing(group, MOVE_CREATED, 0, x, y) == 1) {
         /* the original frees a stale thing here when the group links no projectile */
@@ -1306,7 +1306,7 @@ uint16_t creature_summon_group(CreatureSummon summon)
     int y = summon.y;
     int link = summon.link;
     int search_dir = summon.search_dir;
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     dun_set_current_map((int16_t)summon.map);
     uint16_t group = THING_NONE;
     int tries = (int8_t)search_dir < 0 ? 0 : DIR_COUNT;
@@ -1326,8 +1326,8 @@ uint16_t creature_summon_group(CreatureSummon summon)
                 break;
         }
         if (tries) {
-            sx = (int16_t)(x + dir_dx[(int8_t)search_dir]);
-            sy = (int16_t)(y + dir_dy[(int8_t)search_dir]);
+            sx = (int16_t)(x + g_dir_dx[(int8_t)search_dir]);
+            sy = (int16_t)(y + g_dir_dy[(int8_t)search_dir]);
             search_dir = dir_turn(search_dir, turn);
         }
         if (--tries == -1)
@@ -1347,7 +1347,7 @@ uint16_t creature_summon_group(CreatureSummon summon)
 void minion_dismiss(uint16_t link)
 {
     uint16_t projectile = minion_find_link_projectile(link, THING_NONE);
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     if (!projectile)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
@@ -1404,10 +1404,10 @@ int creature_get_party_distance(int x, int y)
 {
     const uint8_t *map;
     int width;
-    if (party.cur_map == g_party_distance.map) {
+    if (g_party.cur_map == g_party_distance.map) {
         map = g_party_distance.cells;
         width = g_party_distance.width;
-    } else if (party.cur_map == g_alt_distance.map) {
+    } else if (g_party.cur_map == g_alt_distance.map) {
         map = g_alt_distance.cells;
         width = g_alt_distance.width;
     } else {
@@ -1419,8 +1419,8 @@ int creature_get_party_distance(int x, int y)
     if (d & DISTANCE_NEXT_TO) {
         d = DISTANCE_FAR;
         for (int dir = 0; dir < DIR_COUNT; dir++) {
-            int16_t nx = (int16_t)(dir_dx[dir] + x), ny = (int16_t)(y + dir_dy[dir]);
-            if (nx < 0 || nx >= width || ny < 0 || ny >= dungeon_map_height(party.cur_map))
+            int16_t nx = (int16_t)(g_dir_dx[dir] + x), ny = (int16_t)(y + g_dir_dy[dir]);
+            if (nx < 0 || nx >= width || ny < 0 || ny >= dungeon_map_height(g_party.cur_map))
                 continue;
             uint8_t n = map[nx * DISTANCE_MAP_SIDE + ny];
             if (n && n < d)
@@ -1441,16 +1441,16 @@ bool creature_can_be_pushed(int x, int y, int dir, uint16_t *group)
     if (dun_get_linked_teleporter_dest(&end, x, y) && dir == dir_opposite(end.side)) {
         if (!creature_is_native_to_map(g, end.map))
             return false;
-        int saved = party.cur_map;
+        int saved = g_party.cur_map;
         dun_set_current_map(end.map);
         int blocked = dun_square_blocks_movement(dun_get_square(end.x, end.y)) ||
-                      (group && creature_get_group_at((uint16_t)(end.x + dir_dx[end.target_side]),
-                                                      (uint16_t)(end.y + dir_dy[end.target_side])) != THING_NONE);
+                      (group && creature_get_group_at((uint16_t)(end.x + g_dir_dx[end.target_side]),
+                                                      (uint16_t)(end.y + g_dir_dy[end.target_side])) != THING_NONE);
         dun_set_current_map(saved);
         if (blocked)
             return false;
     }
-    int16_t nx = (int16_t)(x + dir_dx[dir]), ny = (int16_t)(y + dir_dy[dir]);
+    int16_t nx = (int16_t)(x + g_dir_dx[dir]), ny = (int16_t)(y + g_dir_dy[dir]);
     uint8_t square = dun_get_square(nx, ny);
     if (dun_square_blocks_movement(square) || square_type(square) == SQUARE_STAIRS)
         return false;
@@ -1506,9 +1506,9 @@ void creature_push_group(int x, int y, int dir, int strength)
         if ((int16_t)strength < PUSH_IMMOVABLE && (int16_t)strength < resistance)
             stop = rand_below((uint16_t)(((resistance - (int16_t)strength) >> PUSH_STOP_SHIFT) + 1)) != 0;
         if (!stop) {
-            int16_t nx = (int16_t)(x + dir_dx[dir]), ny = (int16_t)(y + dir_dy[dir]);
+            int16_t nx = (int16_t)(x + g_dir_dx[dir]), ny = (int16_t)(y + g_dir_dy[dir]);
             uint16_t flags = creature_group_info(g)->flags;
-            if (party.cur_map == party.square_map && nx == party.square_x && ny == party.square_y &&
+            if (g_party.cur_map == g_party.square_map && nx == g_party.square_x && ny == g_party.square_y &&
                 !(flags & CREATURE_NOT_SOLID)) {
                 int16_t first, second;
                 move_party_bump_damage(x, y, &first, &second, game.party_dir, dir_opposite(dir));
@@ -1526,7 +1526,7 @@ void creature_push_group(int x, int y, int dir, int strength)
             }
         }
     }
-    if (party.cur_map != party.square_map || x != party.square_x || y != party.square_y)
+    if (g_party.cur_map != g_party.square_map || x != g_party.square_x || y != g_party.square_y)
         return;
     int16_t load = 0;
     uint16_t alive = 0;
@@ -1556,7 +1556,8 @@ void move_push_creature(int arrow)
     if (arrow < 0 || arrow >= PUSH_ARROW_COUNT)
         return;
     int dir = dir_turn(game.party_dir, dirs[arrow]);
-    int16_t x = (int16_t)(game.party_x + dir_dx[game.party_dir]), y = (int16_t)(game.party_y + dir_dy[game.party_dir]);
+    int16_t x = (int16_t)(game.party_x + g_dir_dx[game.party_dir]),
+            y = (int16_t)(game.party_y + g_dir_dy[game.party_dir]);
     uint16_t g;
     if (!creature_can_be_pushed(x, y, dir, &g))
         return;
@@ -1571,7 +1572,7 @@ void move_push_creature(int arrow)
     push.party_x = (int16_t)game.party_x;
     push.party_y = (int16_t)game.party_y;
     push.map = (int16_t)game.party_map;
-    party.push_pending_group = g;
+    g_party.push_pending_group = g;
     push.turn = turns[arrow];
     push.y = y;
     push.dir = (int16_t)dir;
@@ -1580,12 +1581,12 @@ void move_push_creature(int arrow)
 
 void creature_continue_push(int command)
 {
-    if (game.party_dir != party.view_dir)
+    if (game.party_dir != g_party.view_dir)
         return;
     if (game.party_map != push.map || game.party_x != push.party_x || game.party_y != push.party_y ||
-        creature_get_group_at(push.x, push.y) != party.push_pending_group)
+        creature_get_group_at(push.x, push.y) != g_party.push_pending_group)
         return;
-    party.push_pending_group = THING_NONE;
+    g_party.push_pending_group = THING_NONE;
     int map = game.party_map;
     if (command == CMD_MOVE_FORWARD)
         creature_push_group(push.x, push.y, push.dir, PUSH_STRENGTH_PARTY);
@@ -1620,7 +1621,8 @@ void sensor_affect_creatures_in_area(uint16_t sensor, int x, int y, int effect)
     for (int row = ry * 2; row >= 0; row--)
         for (int col = rx * 2; col >= 0; col--) {
             int16_t sx = (int16_t)(left + col), sy = (int16_t)(top + row);
-            if (sx < 0 || sx >= dungeon_map_width(party.cur_map) || sy < 0 || sy >= dungeon_map_height(party.cur_map))
+            if (sx < 0 || sx >= dungeon_map_width(g_party.cur_map) || sy < 0 ||
+                sy >= dungeon_map_height(g_party.cur_map))
                 continue;
             uint16_t g = creature_get_group_at(sx, sy);
             if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != (uint16_t)creature_type)

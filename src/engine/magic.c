@@ -599,7 +599,7 @@ void magic_remove_last_rune(void)
 
 int move_party_warp_to_marker(void)
 {
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, game.party_x, game.party_y);
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, game.party_x, game.party_y);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;

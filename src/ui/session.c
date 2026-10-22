@@ -416,7 +416,7 @@ int session_load(void)
     dialog.progress_enabled = 1;
     main_loop.end = 0;
     move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
-    party.redraw = REDRAW_ALL_VIEW;
+    g_party.redraw = REDRAW_ALL_VIEW;
     return 1;
 }
 
@@ -507,7 +507,7 @@ int session_start_new_game(void)
     main_loop.end = 0;
     session.completed = 0;
     move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
-    party.redraw = REDRAW_ALL_VIEW;
+    g_party.redraw = REDRAW_ALL_VIEW;
     sound_set_volume_and_test(game.sound_volume, DEVICE_SOUND);
     sound_set_volume_and_test(game.music_volume, DEVICE_MUSIC);
     ui_reset();
@@ -528,7 +528,7 @@ int session_start_save(const char *path)
     money_init_coin_table();
     ui_fill_zone_screen(ZONE_SCREEN, 0); /* play_start_session runs champ_init_party_state */
     move_compute_map_arrival(game.party_x, game.party_y, game.party_map);
-    party.redraw = REDRAW_ALL_VIEW;
+    g_party.redraw = REDRAW_ALL_VIEW;
     play_start_session();
     return 1;
 }

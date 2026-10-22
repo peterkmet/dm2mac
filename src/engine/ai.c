@@ -543,11 +543,11 @@ void ai_free_cached_data(uint16_t group)
 
 void ai_set_map(int map)
 {
-    if (map == party.cur_map)
+    if (map == g_party.cur_map)
         return;
     dun_set_current_map(map);
-    if (map == party.alt_view_map)
-        g_ai_party = (AiPartyView){party.alt_view_x, party.alt_view_y, party.alt_view_map, party.alt_view_dir};
+    if (map == g_party.alt_view_map)
+        g_ai_party = (AiPartyView){g_party.alt_view_x, g_party.alt_view_y, g_party.alt_view_map, g_party.alt_view_dir};
     else
         g_ai_party = (AiPartyView){(int16_t)game.party_x, (int16_t)game.party_y, (int16_t)game.party_map,
                                    (int16_t)game.party_dir};
@@ -555,8 +555,8 @@ void ai_set_map(int map)
 
 bool ai_begin(uint16_t group, int x, int y, int type, AiContext *saved)
 {
-    int map = party.cur_map;
-    party.cur_map = -1;
+    int map = g_party.cur_map;
+    g_party.cur_map = -1;
     ai_set_map(map);
     g_ai_square.x = -1;
     bool restored = false;
@@ -676,11 +676,11 @@ uint8_t ai_action_flag(int8_t action)
 static bool party_beside_special_wall(void)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
-        int x = g_ai_party.x + dir_dx[d], y = g_ai_party.y + dir_dy[d];
+        int x = g_ai_party.x + g_dir_dx[d], y = g_ai_party.y + g_dir_dy[d];
         uint8_t square = dun_get_square(x, y);
         if (square_type(square) || !(square & SQUARE_HAS_THINGS))
             continue;
-        for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y); t != THING_ENDOFLIST;
+        for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t)) {
             int type = thing_type(t);
             if (type == THING_SENSOR && sensor_type(t) == SENSOR_SPECIAL_WALL)
@@ -730,7 +730,7 @@ static bool cond_party_at_pit(int x, int y)
     if (manhattan(x, y, g_ai_party.x, g_ai_party.y) > 1)
         return false;
     int d = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
-    uint8_t square = dun_get_square((int16_t)(g_ai_party.x + dir_dx[d]), (int16_t)(g_ai_party.y + dir_dy[d]));
+    uint8_t square = dun_get_square((int16_t)(g_ai_party.x + g_dir_dx[d]), (int16_t)(g_ai_party.y + g_dir_dy[d]));
     return square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0);
 }
 
@@ -740,7 +740,7 @@ static bool cond_door_behind(int x, int y)
     int d = dir_opposite(group_dir(g_ai.group_thing));
     if (!(g_ai.door_flags & DOOR_SKILL_ANY_SIDE))
         return false;
-    if (square_type(dun_get_square((int16_t)(x + dir_dx[d]), (int16_t)(y + dir_dy[d]))) != SQUARE_DOOR)
+    if (square_type(dun_get_square((int16_t)(x + g_dir_dx[d]), (int16_t)(y + g_dir_dy[d]))) != SQUARE_DOOR)
         return false;
     return ai_try_door_action(DOOR_MODE_CLOSE, ai_location(x, y), AI_SQUARE_IN_DIR, d);
 }
@@ -751,7 +751,7 @@ static bool cond_static_ahead(int x, int y)
     if (g_ai.map != g_ai_party.map)
         return false;
     int d = group_dir(g_ai.group_thing);
-    uint16_t g = creature_get_group_at((uint16_t)(x + dir_dx[d]), (uint16_t)(y + dir_dy[d]));
+    uint16_t g = creature_get_group_at((uint16_t)(x + g_dir_dx[d]), (uint16_t)(y + g_dir_dy[d]));
     return g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC && party_beside_special_wall();
 }
 
@@ -759,7 +759,7 @@ static bool cond_static_ahead(int x, int y)
 static bool cond_few_of_type(int16_t creature_type)
 {
     int16_t same = 0, others = 0;
-    int map = party.cur_map;
+    int map = g_party.cur_map;
     for (int sx = 0; sx < dungeon_map_width(map); sx++)
         for (int sy = 0; sy < dungeon_map_height(map); sy++) {
             uint16_t g = creature_group_at(map, sx, sy);
@@ -1508,8 +1508,8 @@ static void wander_at_random(void)
     }
     int dir = group_dir(g_ai.group_thing);
     a->direction = (uint8_t)dir;
-    int x = (g_ai.event.data[0] + dir_dx[dir]) & LOCATION_COORD_MASK,
-        y = (g_ai.event.data[1] + dir_dy[dir]) & LOCATION_COORD_MASK;
+    int x = (g_ai.event.data[0] + g_dir_dx[dir]) & LOCATION_COORD_MASK,
+        y = (g_ai.event.data[1] + g_dir_dy[dir]) & LOCATION_COORD_MASK;
     a->destination = (uint16_t)location_set_xy(a->destination, x, y);
     int type = square_type(dun_get_square(x, y));
     if (type == SQUARE_WALL || type == SQUARE_UNKNOWN) {
@@ -1585,7 +1585,7 @@ static bool try_flee(uint32_t class_flags)
 /* A floor sensor of a type on (x, y), at cell (CELL_ANY: any); THING_NONE none. */
 static uint16_t find_floor_sensor(int x, int y, int cell, int type)
 {
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, x, y);
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if ((thing_type(t) == THING_SENSOR && cell == CELL_ANY) || thing_cell(t) == cell) {
             if (sensor_type(t) == type)
@@ -1652,14 +1652,14 @@ static int cmd_place_on_sensor(void)
     uint16_t item = sensor_data(sensor);
     if (g_ai.arg2 == 2) {
         int f = facing();
-        uint16_t g = creature_get_group_at((uint16_t)(g_ai.event.data[0] + dir_dx[f]),
-                                           (uint16_t)(g_ai.event.data[1] + dir_dy[f]));
+        uint16_t g = creature_get_group_at((uint16_t)(g_ai.event.data[0] + g_dir_dx[f]),
+                                           (uint16_t)(g_ai.event.data[1] + g_dir_dy[f]));
         if (g == THING_NONE)
             return AI_RESULT_FAIL;
         return has_possession(g, item, dir_opposite(f)) ? AI_RESULT_DONE : AI_RESULT_FAIL;
     }
     int found = 0;
-    uint16_t t = dungeon_square_first_object(party.cur_map, sx, sy);
+    uint16_t t = dungeon_square_first_object(g_party.cur_map, sx, sy);
     while (t != THING_ENDOFLIST && thing_type(t) < THING_WEAPON)
         t = dungeon_next_thing(t);
     if (t != THING_ENDOFLIST) {
@@ -1673,8 +1673,8 @@ static int cmd_place_on_sensor(void)
                 found = 1;
                 while (first != THING_ENDOFLIST && thing_type(first) <= THING_MISC && item_get_index(first) != item) {
                     uint16_t next = dungeon_next_thing(first);
-                    dungeon_unlink_thing_from_square(first, party.cur_map, sx, sy);
-                    dungeon_link_thing_to_square(first, party.cur_map, sx, sy);
+                    dungeon_unlink_thing_from_square(first, g_party.cur_map, sx, sy);
+                    dungeon_link_thing_to_square(first, g_party.cur_map, sx, sy);
                     first = next;
                 }
             }
@@ -1705,8 +1705,8 @@ int ai_cmd_front_group_carries(void)
     if (cell != CELL_ANY)
         cell = dir_turn(cell, facing() + 2);
     int f = facing();
-    uint16_t g =
-        creature_get_group_at((uint16_t)(g_ai.event.data[0] + dir_dx[f]), (uint16_t)(g_ai.event.data[1] + dir_dy[f]));
+    uint16_t g = creature_get_group_at((uint16_t)(g_ai.event.data[0] + g_dir_dx[f]),
+                                       (uint16_t)(g_ai.event.data[1] + g_dir_dy[f]));
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
     return ai_find_matching_item(g_ai.arg1, thing_word(g, GROUP_POSSESSIONS), cell) != THING_ENDOFLIST ? AI_RESULT_DONE
@@ -1732,11 +1732,11 @@ static int cmd_check_party_ahead(void)
 {
     g_ai.active->position = LOCATION_NONE;
     int f = facing();
-    uint16_t x = (uint16_t)(dir_dx[f] * 2 + g_ai.event.data[0]), y = (uint16_t)(dir_dy[f] * 2 + g_ai.event.data[1]);
+    uint16_t x = (uint16_t)(g_dir_dx[f] * 2 + g_ai.event.data[0]), y = (uint16_t)(g_dir_dy[f] * 2 + g_ai.event.data[1]);
     uint16_t g = creature_get_group_at(x, y);
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_STATIC))
         return AI_RESULT_DONE;
-    if (party.cur_map == g_ai_party.map && (int16_t)x == g_ai_party.x && (int16_t)y == g_ai_party.y)
+    if (g_party.cur_map == g_ai_party.map && (int16_t)x == g_ai_party.x && (int16_t)y == g_ai_party.y)
         return AI_RESULT_DONE;
     g_ai.active->action = ACTION_CHECK_AHEAD;
     return AI_RESULT_ISSUED;
@@ -1746,7 +1746,7 @@ static int cmd_check_party_ahead(void)
 static void cmd_turn_front_group(void)
 {
     int f = facing();
-    set_destination(g_ai.event.data[0] + dir_dx[f], g_ai.event.data[1] + dir_dy[f]);
+    set_destination(g_ai.event.data[0] + g_dir_dx[f], g_ai.event.data[1] + g_dir_dy[f]);
     g_ai.active->facing = (uint8_t)g_ai.arg1;
     g_ai.active->action = (uint8_t)((g_ai.arg1 == 1) + ACTION_TURN_GROUP);
 }
@@ -1759,7 +1759,7 @@ static int cmd_take_from_front(void)
     set_destination(g_ai.event.data[0], g_ai.event.data[1]);
     g_ai.active->cell = (uint8_t)(dir_opposite(f));
     g_ai.active->sub = (int8_t)filter;
-    set_destination(dest_x() + dir_dx[f], dest_y() + dir_dy[f]);
+    set_destination(dest_x() + g_dir_dx[f], dest_y() + g_dir_dy[f]);
     uint16_t g = creature_get_group_at(dest_x(), dest_y());
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
@@ -1842,7 +1842,7 @@ static int cmd_go_to_target(void)
     }
     if (!ai_next_path_step()) {
         int x = g_ai.event.data[0], y = g_ai.event.data[1];
-        if (x == dest_x() && y == dest_y() && location_map(a->destination) == party.cur_map)
+        if (x == dest_x() && y == dest_y() && location_map(a->destination) == g_party.cur_map)
             return AI_RESULT_DONE;
         int dir = dun_get_direction_to(x, y, dest_x(), dest_y());
         if (facing() == dir)
@@ -1908,11 +1908,11 @@ static int cmd_seek_kind11(void)
 static int cmd_turn_to_party(void)
 {
     g_ai.command_result = AI_RESULT_FAIL;
-    if (party.cur_map != g_ai_party.map)
+    if (g_party.cur_map != g_ai_party.map)
         return g_ai.command_result;
     int x = g_ai.event.data[0], y = g_ai.event.data[1];
     int dir = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
-    if (square_type(dun_get_square((int16_t)(x + dir_dx[dir]), (int16_t)(y + dir_dy[dir]))))
+    if (square_type(dun_get_square((int16_t)(x + g_dir_dx[dir]), (int16_t)(y + g_dir_dy[dir]))))
         ai_turn_toward(dir);
     return g_ai.command_result;
 }
@@ -1988,7 +1988,7 @@ static int cmd_consume(void)
 /* Plan command: the creature transforms at a transform marker on its square, else it vanishes. */
 static int cmd_check_transform(void)
 {
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, g_ai.event.data[0], g_ai.event.data[1]);
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, g_ai.event.data[0], g_ai.event.data[1]);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;
@@ -2180,8 +2180,8 @@ static void decide(void)
 int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
-        int16_t sx = (int16_t)(x + dir_dx[d]), sy = (int16_t)(y + dir_dy[d]);
-        for (uint16_t t = dungeon_square_first_thing(party.cur_map, sx, sy); t != THING_ENDOFLIST;
+        int16_t sx = (int16_t)(x + g_dir_dx[d]), sy = (int16_t)(y + g_dir_dy[d]);
+        for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, sx, sy); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t)) {
             int type = thing_type(t);
             if (type > THING_SENSOR)
@@ -2189,7 +2189,7 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
             if (type == THING_SENSOR) {
                 if (sensor_type(t) == SENSOR_LEVEL_LINK &&
                     level_delta == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) -
-                                       (dungeon_map_level(party.cur_map) & MAP_LEVEL_MASK)) {
+                                       (dungeon_map_level(g_party.cur_map) & MAP_LEVEL_MASK)) {
                     *sensor = t;
                     return d;
                 }
@@ -2213,12 +2213,12 @@ int dun_find_adjacent_level_link(int x, int y, int level_delta, uint16_t *sensor
 /* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
 bool dun_set_pit_teleporter_state(int x, int y, int mode)
 {
-    uint8_t *square = dungeon_square_byte(party.cur_map, x, y);
+    uint8_t *square = dungeon_square_byte(g_party.cur_map, x, y);
     bool open = false;
     if (square_type(*square) == SQUARE_PIT) {
         open = (*square & SQUARE_PIT_OPEN) != 0;
     } else if (square_type(*square) == SQUARE_TELEPORTER) {
-        if (teleporter_is_fixed(dungeon_square_first_thing(party.cur_map, x, y)))
+        if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, x, y)))
             return false;
         open = (*square & SQUARE_TELEPORTER_ON) != 0;
     } else {
@@ -2249,9 +2249,9 @@ static void act_turn(void)
 /* The creature arrives on its new square: the AI position follows the move. */
 static void act_arrive(int closes_pits)
 {
-    g_ai.event.data[0] = (uint8_t)party.dest_x;
-    g_ai.event.data[1] = (uint8_t)party.dest_y;
-    g_ai.map = (uint8_t)party.dest_map;
+    g_ai.event.data[0] = (uint8_t)g_party.dest_x;
+    g_ai.event.data[1] = (uint8_t)g_party.dest_y;
+    g_ai.map = (uint8_t)g_party.dest_map;
     ai_set_map(g_ai.map);
     if (closes_pits)
         dun_set_pit_teleporter_state(g_ai.event.data[0], g_ai.event.data[1], PIT_STATE_OPEN);
@@ -2336,7 +2336,7 @@ static int act_melee_attack(void)
         if (dun_get_direction_to(x, y, dx, dy) != dir && !(info->flags & CREATURE_ATTACKS_ANY_DIR))
             return 1;
     }
-    if (party.cur_map == g_ai_party.map && dx == g_ai_party.x && dy == g_ai_party.y) {
+    if (g_party.cur_map == g_ai_party.map && dx == g_ai_party.x && dy == g_ai_party.y) {
         if (!melee_attack_party(x, y, dx, dy))
             return 1;
     } else {
@@ -2395,7 +2395,7 @@ static int act_move_two_steps(void)
         uint8_t left = g_ai.cache.path_left;
         r = act_move();
         g_ai.cache.path_left = left;
-        set_destination(dest_x() + dir_dx[a->direction], dest_y() + dir_dy[a->direction]);
+        set_destination(dest_x() + g_dir_dx[a->direction], dest_y() + g_dir_dy[a->direction]);
     } else if (a->phase == 1) {
         r = act_move();
         a->phase = r ? 2 : 3;
@@ -2404,9 +2404,9 @@ static int act_move_two_steps(void)
         if (move_thing(g_ai.group_thing, g_ai.event.data[0], g_ai.event.data[1], g_ai.event.data[0],
                        g_ai.event.data[1]))
             g_ai.removed = 1;
-        g_ai.event.data[0] = (uint8_t)party.dest_x;
-        g_ai.event.data[1] = (uint8_t)party.dest_y;
-        g_ai.map = (uint8_t)party.dest_map;
+        g_ai.event.data[0] = (uint8_t)g_party.dest_x;
+        g_ai.event.data[1] = (uint8_t)g_party.dest_y;
+        g_ai.map = (uint8_t)g_party.dest_map;
         ai_set_map(g_ai.map);
     } else {
         r = STALE_REGISTER; /* the original returns a stale register (the low half of a pointer): nonzero, low byte 0 here */
@@ -2433,7 +2433,7 @@ static int act_move_stairs(void)
             int exit = sensor_effect(sensor);
             dir = sensor_flag(sensor, SENSOR_LINK_FIXED) ? exit : dir_turn(exit, (int16_t)d);
         } else {
-            int x = g_ai.event.data[0], y = g_ai.event.data[1], saved = party.cur_map;
+            int x = g_ai.event.data[0], y = g_ai.event.data[1], saved = g_party.cur_map;
             dun_set_current_map(dungeon_location_on_map(saved, delta, &x, &y));
             int d2 = dun_find_adjacent_level_link(x, y, -delta, &sensor);
             dun_set_current_map(saved);
@@ -2514,7 +2514,7 @@ static int act_shoot(void)
 /* Action: the creature steals an item from the hands of a champion. */
 static int act_steal(void)
 {
-    if (party.cur_map != g_ai_party.map || ai_state.dest_x != g_ai_party.x || ai_state.dest_y != g_ai_party.y)
+    if (g_party.cur_map != g_ai_party.map || ai_state.dest_x != g_ai_party.x || ai_state.dest_y != g_ai_party.y)
         return 1;
     int c = champ_get_index_in_cell(g_ai.active->cell);
     if (c == -1)
@@ -2564,7 +2564,7 @@ static int act_trigger_square(void)
 static int act_pick_up_items(void)
 {
     int n = 0;
-    for (uint16_t t = dungeon_square_first_object(party.cur_map, ai_state.dest_x, ai_state.dest_y);
+    for (uint16_t t = dungeon_square_first_object(g_party.cur_map, ai_state.dest_x, ai_state.dest_y);
          t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_GROUP)
             continue;

@@ -223,7 +223,7 @@ class Scenario(CreatureOracle):
         assert lib.save_load(str(path).encode(), gdat) == 0
         lib.draw_init(gdat)
         self.game = GameRecord.in_dll(lib, "game")
-        self.party = Party.in_dll(lib, "party")
+        self.party = Party.in_dll(lib, "g_party")
         assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
         assert lib.text_init(gdat)  # the messages of the leader hand
         view = original_view_of(lib, gdat, start)

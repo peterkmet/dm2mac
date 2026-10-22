@@ -502,7 +502,7 @@ static void party_json(Json *j, int mode)
     key_str(j, "facing", direction_names[game.party_dir & DIR_MASK]);
     key_int(j, "darkness", g_view_light_level);
     key_bool(j, "can_move",
-             !game.party_move_cooldown && !party.move_steps && !input_is_waiting() &&
+             !game.party_move_cooldown && !g_party.move_steps && !input_is_waiting() &&
                  (mode == INPUT_MODE_MOVE || mode == INPUT_MODE_PUSH));
     key_bool(j, "sleeping", g_party_sleeping);
     key_bool(j, "dead", main_loop.end != 0);
@@ -783,9 +783,9 @@ void state_json_creature_name(Json *j, uint16_t type)
 /* Where the view stands: the party square, or the walk position while the party walks. */
 static void view_place(int *x, int *y, int *dir)
 {
-    *x = party.move_steps ? party.view_x : game.party_x;
-    *y = party.move_steps ? party.view_y : game.party_y;
-    *dir = (party.move_steps ? party.view_dir : game.party_dir) & DIR_MASK;
+    *x = g_party.move_steps ? g_party.view_x : game.party_x;
+    *y = g_party.move_steps ? g_party.view_y : game.party_y;
+    *dir = (g_party.move_steps ? g_party.view_dir : game.party_dir) & DIR_MASK;
 }
 
 /* The squares that the view shows now (seen_visible); returns the count. */
@@ -1129,8 +1129,8 @@ static uint16_t zone_top(const ViewClickZone *z, int *x, int *y)
     int dir;
     view_place(x, y, &dir);
     if (z->cell == POS_FRONT) {
-        *x += dir_dx[dir];
-        *y += dir_dy[dir];
+        *x += g_dir_dx[dir];
+        *y += g_dir_dy[dir];
     }
     if (z->thing == THING_NONE || (z->cell != POS_PARTY && z->cell != POS_FRONT) || !on_party_map(*x, *y))
         return top;

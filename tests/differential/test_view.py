@@ -155,7 +155,7 @@ class PartyHead(ctypes.Structure):
 def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     game = WeatherGame.in_dll(lib, "game")
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
-    party = PartyHead.in_dll(lib, "party")
+    party = PartyHead.in_dll(lib, "g_party")
     party.cur_map, party.move_steps = -1, walking  # 0: no walk; the current map of the dungeon reads becomes map_
     lib.dun_set_party_location(x, y, map_)
     lib.view_enter_map(map_)
@@ -782,7 +782,7 @@ def present_viewport(lib, gdat, walking):
     walk = (ctypes.c_int16 * 4).in_dll(lib, "walk_view_rect")
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_load(gdat) == 1
-    PartyHead.in_dll(lib, "party").move_steps = 0
+    PartyHead.in_dll(lib, "g_party").move_steps = 0
     lib.zone_get_rect.restype = ctypes.c_void_p
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
     wx, wy, ww, wh = walk
@@ -792,9 +792,9 @@ def present_viewport(lib, gdat, walking):
             view[(wy + y) * VIEW_W + wx + x] = 2 + (x * 7 + y * 13) % 250
     viewport = Bitmap.in_dll(lib, "view_viewport")
     ctypes.memmove(viewport.pixels, bytes(view), len(view))
-    PartyHead.in_dll(lib, "party").move_steps = walking
+    PartyHead.in_dll(lib, "g_party").move_steps = walking
     lib.play_present_viewport()
-    PartyHead.in_dll(lib, "party").move_steps = 0
+    PartyHead.in_dll(lib, "g_party").move_steps = 0
     screen = Bitmap.in_dll(lib, "draw_screen")
     shown = [ctypes.string_at(ctypes.addressof(screen.pixels.contents) + (rect[1] + y) * screen.width + rect[0], VIEW_W) for y in range(VIEW_H)]
     return view, shown, (wx, wy, ww, wh)

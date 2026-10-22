@@ -439,7 +439,7 @@ static const char *need_view(void)
 /* The square ahead of the party is a wall (outside the map counts as a wall). */
 static bool wall_ahead(void)
 {
-    int x = game.party_x + dir_dx[game.party_dir], y = game.party_y + dir_dy[game.party_dir];
+    int x = game.party_x + g_dir_dx[game.party_dir], y = game.party_y + g_dir_dy[game.party_dir];
     if (x < 0 || y < 0 || x >= dungeon_map_width(game.party_map) || y >= dungeon_map_height(game.party_map))
         return true;
     return square_type(dungeon_square(game.party_map, x, y)) == SQUARE_WALL;
@@ -552,7 +552,7 @@ static const char *take_object(const char *r)
 /* A static creature ahead whose floor takes no click hides the floor: a click there throws the object. */
 static bool front_floor_clickable(void)
 {
-    int x = game.party_x + dir_dx[game.party_dir], y = game.party_y + dir_dy[game.party_dir];
+    int x = game.party_x + g_dir_dx[game.party_dir], y = game.party_y + g_dir_dy[game.party_dir];
     uint16_t group = creature_group_at(game.party_map, x, y);
     if (group == THING_NONE)
         return true;
@@ -1175,7 +1175,7 @@ static bool turn_finished(void)
     if (ticks >= turn.max_ticks || turn.frames > turn.max_ticks * FRAMES_PER_TICK_LIMIT)
         return true;
     return !turn.wait_only && ticks >= turn.min_ticks && turn.inputs_given == turn.input_count && input_is_idle() &&
-           !game.party_move_cooldown && !party.move_steps && !input_is_waiting();
+           !game.party_move_cooldown && !g_party.move_steps && !input_is_waiting();
 }
 
 /* The eye panel text of the leader hand object while the eye is held. */

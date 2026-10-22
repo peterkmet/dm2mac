@@ -43,11 +43,11 @@ void play_wait_frames(int count)
 
 void play_present_viewport(void)
 {
-    int steps = party.move_steps;
+    int steps = g_party.move_steps;
     int16_t r[RECT_SIZE];
-    party.move_steps = 0;
+    g_party.move_steps = 0;
     int ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
-    party.move_steps = (int16_t)steps;
+    g_party.move_steps = (int16_t)steps;
     if (!ok)
         return;
     for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
@@ -120,9 +120,9 @@ void play_sleep(void)
     action_area_close();
     play_hide_view();
     g_party_sleeping = 1;
-    if (party.move_steps) {
-        move_party(party.move_command);
-        party.move_steps = 0;
+    if (g_party.move_steps) {
+        move_party(g_party.move_command);
+        g_party.move_steps = 0;
     }
     draw_sleep_message();
     play_present_viewport();
@@ -135,14 +135,14 @@ void play_sleep(void)
 static int game_step_view(void)
 {
     for (;;) {
-        if (party.new_map != -1) {
-            game_enter_map(game.party_x, game.party_y, party.new_map, 1);
-            party.move_steps = 0;
+        if (g_party.new_map != -1) {
+            game_enter_map(game.party_x, game.party_y, g_party.new_map, 1);
+            g_party.move_steps = 0;
             move_thing(THING_NONE, -1, 0, game.party_x, game.party_y);
-            party.new_map = -1;
+            g_party.new_map = -1;
         }
         timeline_process();
-        if (party.new_map != -1)
+        if (g_party.new_map != -1)
             continue;
         world_update_day_night(0);
         if (g_party_sleeping)
@@ -150,22 +150,22 @@ static int game_step_view(void)
         if (!ui.candidate)
             play_show_view();
         if (!ui.inventory) {
-            if (party.redraw)
+            if (g_party.redraw)
                 creature_refresh_party_maps();
-            if (party.move_steps)
-                view_draw_dungeon(party.view_dir, party.view_x, party.view_y);
+            if (g_party.move_steps)
+                view_draw_dungeon(g_party.view_dir, g_party.view_x, g_party.view_y);
             else
                 view_draw_dungeon(game.party_dir, game.party_x, game.party_y);
             play_present_viewport();
             if (game_mode != GAME_MODE_VANILLA)
                 seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir);
         }
-        if (!party.move_steps)
+        if (!g_party.move_steps)
             return 1;
-        if (party.move_steps == 1)
-            move_party(party.move_command);
-        int map = party.new_map;
-        party.move_steps--;
+        if (g_party.move_steps == 1)
+            move_party(g_party.move_command);
+        int map = g_party.new_map;
+        g_party.move_steps--;
         if (map == -1)
             return 1;
     }
@@ -209,11 +209,11 @@ static void game_step(void)
 /* The part of a game step after the input wait: a map change, repeated actions, music. */
 static void game_step_end(void)
 {
-    int saved = party.cur_map;
-    if (party.new_map != -1)
-        dun_set_current_map(party.new_map);
+    int saved = g_party.cur_map;
+    if (g_party.new_map != -1)
+        dun_set_current_map(g_party.new_map);
     champ_process_repeated_actions();
-    if (party.new_map != -1)
+    if (g_party.new_map != -1)
         dun_set_current_map(saved);
     music_update_for_map(game.party_map);
 }
@@ -221,7 +221,7 @@ static void game_step_end(void)
 void play_start_session(void)
 {
     g_party_sleeping = 0;
-    party.push_mode = 0;
+    g_party.push_mode = 0;
     main_loop.view_hidden = 0;
     main_loop.tick_threshold = STEP_TICKS;
     main_loop.running = 1;

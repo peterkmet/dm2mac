@@ -340,7 +340,7 @@ static void wall_square_aspect(ViewSquare *s, int map, uint8_t square, int fake,
     } else {
         for (int k = 0; k < VIEW_SIDE_COUNT; k++) {
             int d = dir_turn(dir, k);
-            if (square_type(dungeon_square_edge(map, x + dir_dx[d], y + dir_dy[d])) == SQUARE_DOOR)
+            if (square_type(dungeon_square_edge(map, x + g_dir_dx[d], y + g_dir_dy[d])) == SQUARE_DOOR)
                 s->side[k] = ORNAMENT_NONE;
         }
     }
@@ -404,7 +404,7 @@ void aspect_get(ViewSquare *s, int map, int dir, int x, int y)
         } else {
             s->aspect = ASPECT_DOOR_FRONT;
             int d = dir_turn(dir, TURN_RIGHT);
-            apply_wall_things(s, map, aspect_first_thing(map, x + dir_dx[d], y + dir_dy[d]), d, 1);
+            apply_wall_things(s, map, aspect_first_thing(map, x + g_dir_dx[d], y + g_dir_dy[d]), d, 1);
         }
         floor_things = 0;
         break;

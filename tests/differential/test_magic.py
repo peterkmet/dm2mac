@@ -590,7 +590,7 @@ def map_ui(spell_ui, lib):
 
 def place_party(lib, emu, map_, x, y, d):
     from dm2test.scenario import GameRecord, Party
-    Party.in_dll(lib, "party").cur_map = -1
+    Party.in_dll(lib, "g_party").cur_map = -1
     emu.write(G_CUR_MAP, struct.pack("<h", -1))
     GameRecord.in_dll(lib, "game").party_dir = d
     emu.write(G_PARTY_DIR, struct.pack("<H", d))

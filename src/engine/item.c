@@ -97,7 +97,8 @@ uint8_t item_gdat_index(uint16_t thing)
         }
         case THING_SENSOR: {
             int index = sensor_ornament_index(thing);
-            return index >= 0 && party.cur_map >= 0 ? dungeon_map_wall_ornaments(party.cur_map)[index] : GDAT_NO_INDEX;
+            return index >= 0 && g_party.cur_map >= 0 ? dungeon_map_wall_ornaments(g_party.cur_map)[index]
+                                                      : GDAT_NO_INDEX;
         }
         default:
             return GDAT_NO_INDEX;

@@ -241,7 +241,7 @@ class Ai:
         assert mine_party == (x, y, m, d), (where, "party")
         assert ctypes.c_uint16.in_dll(self.lib, "g_search_direction_bits").value == \
             struct.unpack("<H", self.emu.read(G_DIRECTION_BITS, 2))[0], (where, "direction bits")
-        assert ctypes.c_int16.in_dll(self.lib, "party").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
+        assert ctypes.c_int16.in_dll(self.lib, "g_party").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
             (where, "current map")
         mine, theirs = self.sc.active_groups()
         for i in range(0, len(mine), C.ACTIVE_GROUP_SIZE):

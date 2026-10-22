@@ -48,7 +48,7 @@ void automap_draw(Offscreen *o, const int16_t *clip)
     draw_middle(&middle_x, &middle_y);
     int left = clip[RECT_X] + (clip[RECT_W] - MAP_CELL_SIZE) / 2 + ICON_GAP - middle_x * MAP_CELL_SIZE;
     int top = clip[RECT_Y] + (clip[RECT_H] - MAP_CELL_SIZE) / 2 + ICON_GAP - middle_y * MAP_CELL_SIZE;
-    int saved = party.cur_map, party_item = mmap_party_icons_item();
+    int saved = g_party.cur_map, party_item = mmap_party_icons_item();
     dun_set_current_map(map);
     for (int x = 0; x < dungeon_map_width(map); x++)
         for (int y = 0; y < dungeon_map_height(map); y++)

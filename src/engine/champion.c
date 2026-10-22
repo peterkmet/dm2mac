@@ -55,7 +55,7 @@ static void add_start_champion(void)
 {
     game.leader_hand = THING_NONE;
     g_leader_hand.icon = HAND_ICON_NONE;
-    for (uint16_t t = dungeon_square_first_thing(party.cur_map, 0, 0); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, 0, 0); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_type(t) != WALL_CLICK_PORTRAIT)
             continue;

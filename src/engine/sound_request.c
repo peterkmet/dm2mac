@@ -183,9 +183,10 @@ static void sound_request_later(int category, int index, int entry, int priority
         slot++;
     if (slot == DELAYED_MAX)
         return;
-    delayed[slot] = (Delayed){1,          (uint8_t)category, (uint8_t)index,    (uint8_t)entry, (uint8_t)party.cur_map,
-                              (uint8_t)x, (uint8_t)y,        (int16_t)priority, (int16_t)volume};
-    TimelineEvent e = {.time_map = timeline_time_map((game.game_time + delay - 1) & EVENT_TIME_MASK, party.cur_map),
+    delayed[slot] =
+        (Delayed){1,          (uint8_t)category, (uint8_t)index,    (uint8_t)entry, (uint8_t)g_party.cur_map,
+                  (uint8_t)x, (uint8_t)y,        (int16_t)priority, (int16_t)volume};
+    TimelineEvent e = {.time_map = timeline_time_map((game.game_time + delay - 1) & EVENT_TIME_MASK, g_party.cur_map),
                        .type = EVENT_DELAYED_SOUND,
                        .priority = (uint8_t)priority};
     e.data[0] = (uint8_t)slot; /* fix: the original leaves data bytes 2 to 5 uninitialized */
@@ -195,7 +196,7 @@ static void sound_request_later(int category, int index, int entry, int priority
 void sound_request(int category, int index, int entry, int priority, int volume, int x, int y, int delay)
 {
     delay = (int16_t)delay;
-    if (delay > 0 && party.cur_map != party.square_map && party.cur_map != party.alt_view_map)
+    if (delay > 0 && g_party.cur_map != g_party.square_map && g_party.cur_map != g_party.alt_view_map)
         return;
     if (request_count == REQUESTS_MAX)
         return;
@@ -211,8 +212,8 @@ void sound_request(int category, int index, int entry, int priority, int volume,
     }
     int map_x = x, map_y = y;
     if (delay > 0) { /* a sound on the other map of a seamless passage */
-        x += dungeon_map_offset_x(party.cur_map) - dungeon_map_offset_x(game.party_map);
-        y += dungeon_map_offset_y(party.cur_map) - dungeon_map_offset_y(game.party_map);
+        x += dungeon_map_offset_x(g_party.cur_map) - dungeon_map_offset_x(game.party_map);
+        y += dungeon_map_offset_y(g_party.cur_map) - dungeon_map_offset_y(game.party_map);
     }
     int lateral, forward;
     sound_party_offset((int16_t)x, (int16_t)y, game.party_x, game.party_y, game.party_dir, 0, &lateral, &forward);
@@ -282,7 +283,7 @@ void sound_request_delayed(int slot)
 {
     Delayed *d = &delayed[slot & (DELAYED_MAX - 1)]; /* fix: a slot from the save stays in the table */
     int map = (int8_t)d->map;
-    if (map == party.square_map || map == party.alt_view_map)
+    if (map == g_party.square_map || map == g_party.alt_view_map)
         sound_request(d->category, d->index, d->entry, d->priority, d->volume, (int8_t)d->x, (int8_t)d->y, DELAY_STEP);
     d->used = 0;
 }

@@ -464,7 +464,7 @@ static bool link_thing(uint16_t t, int x, int y, int map)
             break;
         int subtype = text_subtype(t);
         if (subtype == SUBTYPE_LADDER || subtype == SUBTYPE_LADDER_HIDDEN)
-            mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
+            mark_level_link(x + g_dir_dx[cell], y + g_dir_dy[cell], map);
         else if (subtype == SUBTYPE_ITEM_HOLDER_MARKER)
             text_set_visible(t, true);
         break;
@@ -472,7 +472,7 @@ static bool link_thing(uint16_t t, int x, int y, int map)
     case THING_SENSOR: {
         switch (sensor_type(t)) {
         case SENSOR_LEVEL_LINK:
-            mark_level_link(x + dir_dx[cell], y + dir_dy[cell], map);
+            mark_level_link(x + g_dir_dx[cell], y + g_dir_dy[cell], map);
             break;
         case SENSOR_TELEPORTER_LINK:
         case SENSOR_ANIMATED_ORNAMENT:

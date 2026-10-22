@@ -720,14 +720,14 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
         e->time_map += SMOKE_TIME;
         break;
     case REBIRTH_BONES: {
-        uint16_t t = dungeon_square_first_thing(party.cur_map, x, y);
+        uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
         for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
             if (thing_cell(t) == cell && item_gdat_category(t) == CAT_MISC && item_gdat_index(t) == ITEM_BONES &&
                 (int16_t)item_add_charges(t, 0) == champ)
                 break;
         if (t == THING_ENDOFLIST)
             return;
-        dungeon_unlink_thing_from_square(t, party.cur_map, x, y);
+        dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
         set_thing_word(t, THING_NEXT, THING_NONE);
         e->time_map++;
         break;

@@ -281,11 +281,11 @@ uint16_t g_search_direction_bits = 1;
 
 static int map_width(void)
 {
-    return dungeon_map_width(party.cur_map);
+    return dungeon_map_width(g_party.cur_map);
 }
 static int map_height(void)
 {
-    return dungeon_map_height(party.cur_map);
+    return dungeon_map_height(g_party.cur_map);
 }
 
 static int on_map(int x, int y)
@@ -293,7 +293,7 @@ static int on_map(int x, int y)
     return (int16_t)x >= 0 && (int16_t)x < map_width() && (int16_t)y >= 0 && (int16_t)y < map_height();
 }
 
-/* The index of dir into dir_dx and dir_dy; for dir -1 the original reads the step (0, -1), north. */
+/* The index of dir into g_dir_dx and g_dir_dy; for dir -1 the original reads the step (0, -1), north. */
 static int step_dir(int dir)
 {
     return (int16_t)dir == -1 ? DIR_NORTH : (int16_t)dir;
@@ -302,7 +302,7 @@ static int step_dir(int dir)
 /* The first thing of (x, y) of the current map; none away from the map. */
 static uint16_t first_thing(int x, int y)
 {
-    return on_map(x, y) ? dungeon_square_first_thing(party.cur_map, x, y) : THING_ENDOFLIST;
+    return on_map(x, y) ? dungeon_square_first_thing(g_party.cur_map, x, y) : THING_ENDOFLIST;
 }
 
 /* The first object (not a door, teleporter, text, or sensor) of (x, y) of the current map. */
@@ -364,7 +364,7 @@ static int at_group(int x, int y)
 /* True for the party square on the current map. */
 static int at_party(int x, int y)
 {
-    return party.cur_map == g_ai_party.map && (int16_t)x == g_ai_party.x && (int16_t)y == g_ai_party.y;
+    return g_party.cur_map == g_ai_party.map && (int16_t)x == g_ai_party.x && (int16_t)y == g_ai_party.y;
 }
 
 static uint32_t class_flags(void)
@@ -391,7 +391,7 @@ static int enabled_byte(int command)
 /* Sets the destination of the action to (x, y) of the current map. */
 static void set_action_destination(int x, int y)
 {
-    g_ai.active->destination = pack_location(x, y, party.cur_map);
+    g_ai.active->destination = pack_location(x, y, g_party.cur_map);
 }
 
 bool ai_square_is_obstacle(int x, int y)
@@ -509,9 +509,9 @@ int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int x, int y))
 
 void ai_cache_square(int x, int y)
 {
-    if ((int16_t)x == g_ai_square.x && (int16_t)y == g_ai_square.y && party.cur_map == g_ai_square.map)
+    if ((int16_t)x == g_ai_square.x && (int16_t)y == g_ai_square.y && g_party.cur_map == g_ai_square.map)
         return;
-    g_ai_square.map = party.cur_map;
+    g_ai_square.map = g_party.cur_map;
     g_ai_square.x = (int16_t)x;
     g_ai_square.y = (int16_t)y;
     g_ai_square.square = dun_get_square(x, y);
@@ -604,8 +604,8 @@ static AiLocation back_off_line(uint8_t *distance_map, AiLocation from, int back
     for (int i = step + 1; i < range; i++) {
         int16_t px = sx;
         int16_t py = sy;
-        sx += dir_dx[back];
-        sy += dir_dy[back];
+        sx += g_dir_dx[back];
+        sy += g_dir_dy[back];
         uint8_t reached = *search_cell(distance_map, sx, sy);
         if (!reached || reached > limit || ai_blocks_line_to_target(sx, sy)) {
             sx = px;
@@ -638,8 +638,8 @@ AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, AiLocati
         ty = sy;
         bool found = false;
         for (i = 0; i < range; i++) {
-            tx += dir_dx[d];
-            ty += dir_dy[d];
+            tx += g_dir_dx[d];
+            ty += g_dir_dy[d];
             if (!on_map(tx, ty))
                 continue;
             uint8_t square = dun_get_square(tx, ty);
@@ -669,7 +669,7 @@ AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, AiLocati
     if (!ai_try_attack(ranged ? ATTACK_MODE_ANY : ATTACK_MODE_GROUP, at, ai_location(tx, ty), dir_opposite(back)))
         return none;
     ai_cache_square(at.x, at.y);
-    AiLineTarget target = {true, pack_location(tx, ty, party.cur_map)};
+    AiLineTarget target = {true, pack_location(tx, ty, g_party.cur_map)};
     return target;
 }
 
@@ -726,7 +726,7 @@ static bool fail_command(int execute)
 static bool can_step_off(AiLocation at)
 {
     for (int16_t d = 0; d < DIR_COUNT; d++)
-        if (ai_try_move(MOVE_KIND_PLAIN, at, ai_location(dir_dx[d] + at.x, at.y + dir_dy[d]), d))
+        if (ai_try_move(MOVE_KIND_PLAIN, at, ai_location(g_dir_dx[d] + at.x, at.y + g_dir_dy[d]), d))
             return true;
     return false;
 }
@@ -734,9 +734,9 @@ static bool can_step_off(AiLocation at)
 /* True when a creature that avoids doors near the party stands in such a door on (x, y) and stays out of the fight. */
 static int party_door_stops_attack(int x, int y)
 {
-    if (g_ai_party.map != party.cur_map || !(class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS) ||
+    if (g_ai_party.map != g_party.cur_map || !(class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS) ||
         g_ai.info->flags & CREATURE_NOT_SEEN_THROUGH ||
-        ((uint16_t)x == own_x() && (uint16_t)y == own_y() && party.cur_map == g_ai.map))
+        ((uint16_t)x == own_x() && (uint16_t)y == own_y() && g_party.cur_map == g_ai.map))
         return 0;
     return square_type(dun_get_square(x, y)) == SQUARE_DOOR && axis_distance(x, y, g_ai_party.x, g_ai_party.y) < 2 &&
            rand_2bits();
@@ -832,8 +832,8 @@ bool ai_try_attack(int mode, AiLocation from, AiLocation to, int dir)
     if (!flags)
         return fail_command(execute);
     if (tx == -1) {
-        tx = (int16_t)(dir_dx[step_dir(dir)] + x);
-        ty = (int16_t)(y + dir_dy[step_dir(dir)]);
+        tx = (int16_t)(g_dir_dx[step_dir(dir)] + x);
+        ty = (int16_t)(y + g_dir_dy[step_dir(dir)]);
     }
     if (!on_map(tx, ty) || ((int16_t)x != tx && (int16_t)y != ty))
         return fail_command(execute);
@@ -895,8 +895,8 @@ static bool spell_on_door_line(int x, int y, int distance, int dir)
                     return true;
             }
         }
-        x = (int16_t)(x + dir_dx[step_dir(dir)]);
-        y = (int16_t)(y + dir_dy[step_dir(dir)]);
+        x = (int16_t)(x + g_dir_dx[step_dir(dir)]);
+        y = (int16_t)(y + g_dir_dy[step_dir(dir)]);
     }
     return false;
 }
@@ -997,8 +997,8 @@ bool ai_try_door_action(int mode, AiLocation from, AiLocation to, int dir)
     if (!a.flags)
         return fail_command(execute);
     if (a.to.x == -1) {
-        a.to.x = (int16_t)(from.x + dir_dx[step_dir(a.d)]);
-        a.to.y = (int16_t)(from.y + dir_dy[step_dir(a.d)]);
+        a.to.x = (int16_t)(from.x + g_dir_dx[step_dir(a.d)]);
+        a.to.y = (int16_t)(from.y + g_dir_dy[step_dir(a.d)]);
     } else if (a.d == -1) {
         a.d = (int16_t)dun_get_direction_to(from.x, from.y, a.to.x, a.to.y);
     } else if (a.to.x == from.x && from.y == a.to.y) {
@@ -1040,8 +1040,8 @@ bool ai_projectile_incoming(int x, int y)
         int16_t sx = (int16_t)x;
         int16_t sy = (int16_t)y;
         for (int16_t n = 0; n < MISSILE_WATCH_RANGE; n++) {
-            sx += dir_dx[d];
-            sy += dir_dy[d];
+            sx += g_dir_dx[d];
+            sy += g_dir_dy[d];
             if (!on_map(sx, sy))
                 break;
             for (uint16_t t = first_object(sx, sy); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
@@ -1113,9 +1113,9 @@ static int search_square_test(int command, int x, int y)
                 axis_distance(end.x, end.y, teleporter_x(link), teleporter_y(link)) != 1)
                 return 1;
             int map = teleporter_map(link);
-            if (map != game.party_map && map != party.alt_view_map)
+            if (map != game.party_map && map != g_party.alt_view_map)
                 return 1;
-            int saved = party.cur_map;
+            int saved = g_party.cur_map;
             ai_set_map(map);
             AiLocation at = ai_location(teleporter_x(link), teleporter_y(link));
             bool r = ai_try_move(command, at, at, DIR_KEEP_FACING);
@@ -1125,7 +1125,7 @@ static int search_square_test(int command, int x, int y)
         g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, x, y);
         if (!g_ai_square_scan.passage)
             return 1;
-        return g_ai_square_scan.end.map == game.party_map || g_ai_square_scan.end.map == party.alt_view_map;
+        return g_ai_square_scan.end.map == game.party_map || g_ai_square_scan.end.map == g_party.alt_view_map;
     default:
         return 0;
     }
@@ -1232,7 +1232,7 @@ static int level_change(Move *m)
         ny = sensor_target_y(link);
         map = sensor_data(link);
     } else {
-        map = dungeon_location_on_map(party.cur_map, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &nx, &ny);
+        map = dungeon_location_on_map(g_party.cur_map, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &nx, &ny);
         if ((int16_t)map < 0)
             return -1;
         if (m->action == ACTION_FALL_IN_PIT) {
@@ -1267,8 +1267,8 @@ static bool set_move_target(Move *m)
         m->sx = -1;
         m->sy = -1;
     } else if (m->tx == -1) {
-        m->tx = (int16_t)(m->sx + dir_dx[step_dir(m->d)]);
-        m->ty = (int16_t)(m->sy + dir_dy[step_dir(m->d)]);
+        m->tx = (int16_t)(m->sx + g_dir_dx[step_dir(m->d)]);
+        m->ty = (int16_t)(m->sy + g_dir_dy[step_dir(m->d)]);
     } else {
         m->same = m->tx == m->sx && m->sy == m->ty;
         if (!m->same && m->d == -1) {
@@ -1323,7 +1323,7 @@ static bool is_dangerous(Move *m)
 /* True when a creature that avoids doors near the party must not enter the door square of the move. */
 static bool party_door_stops_move(Move *m)
 {
-    return !m->same && g_ai_party.map == party.cur_map && class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS &&
+    return !m->same && g_ai_party.map == g_party.cur_map && class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS &&
            !(g_ai.info->flags & CREATURE_NOT_SEEN_THROUGH) && square_type(g_ai_square.square) == SQUARE_DOOR &&
            axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) < 2 &&
            ((uint16_t)m->sx != own_x() || (uint16_t)m->sy != own_y() || rand_2bits());
@@ -1333,18 +1333,18 @@ static bool party_door_stops_move(Move *m)
 static void test_move_transition(Move *m, int no_movers)
 {
     move_follow_square_transitions(g_ai.group_thing, m->sx, m->sy, m->tx, m->ty, 0);
-    if (party.cur_map == party.dest_map && m->tx == party.dest_x && m->ty == party.dest_y)
+    if (g_party.cur_map == g_party.dest_map && m->tx == g_party.dest_x && m->ty == g_party.dest_y)
         return;
-    int saved = party.cur_map;
-    if (saved != party.dest_map) {
+    int saved = g_party.cur_map;
+    if (saved != g_party.dest_map) {
         if (!(g_ai.move_flags & MOVE_LEVELS) ||
-            !creature_is_native_to_map(g_ai.group_thing, (uint16_t)party.dest_map)) {
+            !creature_is_native_to_map(g_ai.group_thing, (uint16_t)g_party.dest_map)) {
             m->result = false;
             return;
         }
-        ai_set_map((uint16_t)party.dest_map);
+        ai_set_map((uint16_t)g_party.dest_map);
     }
-    AiLocation dest = ai_location(party.dest_x, party.dest_y);
+    AiLocation dest = ai_location(g_party.dest_x, g_party.dest_y);
     m->result = ai_try_move(m->kind | no_movers, dest, dest, DIR_KEEP_FACING);
     ai_set_map(saved);
 }
@@ -1358,7 +1358,7 @@ static void test_move_over_pit(Move *m, int no_movers)
         uint16_t saved = g_ai.move_flags;
         g_ai.move_flags &= MOVE_FLAGS_NO_FALL;
         m->result = ai_try_move(m->kind | no_movers, ai_location(m->tx, m->ty),
-                                ai_location(m->tx + dir_dx[m->facing], m->ty + dir_dy[m->facing]), m->facing);
+                                ai_location(m->tx + g_dir_dx[m->facing], m->ty + g_dir_dy[m->facing]), m->facing);
         g_ai.move_flags = saved;
     }
     if (m->result) {
@@ -1455,8 +1455,8 @@ static void execute_move(Move *m)
         for (int16_t i = 0; i < DIR_COUNT; i++) {
             if (i == m->facing)
                 continue;
-            int16_t nx = (int16_t)(m->sx + dir_dx[i]);
-            int16_t ny = (int16_t)(m->sy + dir_dy[i]);
+            int16_t nx = (int16_t)(m->sx + g_dir_dx[i]);
+            int16_t ny = (int16_t)(m->sy + g_dir_dy[i]);
             if (square_type(dun_get_square(nx, ny)) == SQUARE_DOOR &&
                 ai_try_door_action(AI_EXECUTE | DOOR_MODE_CLOSE_MARKED, ai_location(m->sx, m->sy), ai_location(nx, ny),
                                    i))
@@ -1492,7 +1492,7 @@ static void execute_move(Move *m)
 
 bool ai_try_move(int command, AiLocation from, AiLocation to, int dir)
 {
-    int saved_map = party.cur_map;
+    int saved_map = g_party.cur_map;
     Move m = {from.x, from.y, to.x,  to.y, (int16_t)dir, -1, (int16_t)dir, command & AI_MOVE_KIND_MASK,
               false,  false,  false, false};
     if (test_move(&m, command) && command & AI_EXECUTE)
@@ -1697,8 +1697,8 @@ bool ai_try_take_item(int mode, AiLocation from, AiLocation to, int dir, int fil
     if (!g_ai.item_flags)
         return fail_command(execute);
     if (tx == -1) {
-        tx = (int16_t)(dir_dx[step_dir(it.d)] + from.x);
-        ty = (int16_t)(dir_dy[step_dir(it.d)] + from.y);
+        tx = (int16_t)(g_dir_dx[step_dir(it.d)] + from.x);
+        ty = (int16_t)(g_dir_dy[step_dir(it.d)] + from.y);
     } else {
         it.same = from.x == tx && from.y == ty;
         if (!it.same && it.d == -1)
@@ -1813,8 +1813,8 @@ bool ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int dir,
     if (!(g_ai.actuator_flags & ACTUATOR_SKILL_USE))
         return fail_command(execute);
     if (tx == -1) {
-        tx = (int16_t)(dir_dx[step_dir(d)] + x);
-        ty = (int16_t)(dir_dy[step_dir(d)] + y);
+        tx = (int16_t)(g_dir_dx[step_dir(d)] + x);
+        ty = (int16_t)(g_dir_dy[step_dir(d)] + y);
     } else if ((int16_t)x == tx && (int16_t)y == ty) {
         return fail_command(execute);
     }
@@ -2097,7 +2097,7 @@ static void setup_target_kind(Search *s, AiCandidate *c, int8_t *m, uint8_t flag
             c->unknown_10 = flags ^ (KIND_TESTS_OPEN | KIND_TESTS_BLOCKED);
         break;
     case TARGET_FLEE: {
-        int16_t d = party.cur_map == g_ai_party.map
+        int16_t d = g_party.cur_map == g_ai_party.map
                         ? (int16_t)axis_distance(own_x(), own_y(), g_ai_party.x, g_ai_party.y)
                         : SEARCH_FAR;
         m[MARK_BEST] = (int8_t)max16(d, (int16_t)c->item);
@@ -2114,8 +2114,8 @@ static void setup_target_kind(Search *s, AiCandidate *c, int8_t *m, uint8_t flag
         break;
     case TARGET_NEAR_MARKER:
         m[MARK_BEST] =
-            (int8_t)(m[MARK_MAP] == party.cur_map ? max16(1, axis_distance(own_x(), own_y(), m[MARK_X], m[MARK_Y]))
-                                                  : SEARCH_FAR);
+            (int8_t)(m[MARK_MAP] == g_party.cur_map ? max16(1, axis_distance(own_x(), own_y(), m[MARK_X], m[MARK_Y]))
+                                                    : SEARCH_FAR);
         break;
     case TARGET_LIGHT:
         g_ai.move_flags = MOVE_FLAGS_LIGHT;
@@ -2403,7 +2403,7 @@ static int blocked_party_view(Search *s, const AiCandidate *c, int16_t x, int16_
             return 1;
         s->visit = VISIT_BLOCKED;
     } else if (c->item == VIEW_PARTY_AT_PIT) {
-        uint8_t square = dun_get_square(x + dir_dx[s->dir], y + dir_dy[s->dir]);
+        uint8_t square = dun_get_square(x + g_dir_dx[s->dir], y + g_dir_dy[s->dir]);
         if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0))
             return 1;
         s->visit = VISIT_BLOCKED;
@@ -2426,8 +2426,8 @@ static int blocked_group_in_front(Search *s, const AiCandidate *c, int16_t x, in
                 return 1;
         return 0;
     }
-    int16_t nx = (int16_t)(x + dir_dx[s->dir]);
-    int16_t ny = (int16_t)(y + dir_dy[s->dir]);
+    int16_t nx = (int16_t)(x + g_dir_dx[s->dir]);
+    int16_t ny = (int16_t)(y + g_dir_dy[s->dir]);
     uint16_t other;
     int r = at_party(nx, ny) || ((other = creature_get_group_at((uint16_t)nx, (uint16_t)ny)) != THING_NONE &&
                                  !(creature_group_info(other)->flags & CREATURE_STATIC));
@@ -2531,7 +2531,7 @@ static int test_candidates(Search *s, int blocked)
             continue;
         if (!(blocked ? test_blocked(s, i) : test_entered(s, i)))
             continue;
-        if (s->two_maps && party.cur_map != s->start_map && party.cur_map != g_ai_party.map)
+        if (s->two_maps && g_party.cur_map != s->start_map && g_party.cur_map != g_ai_party.map)
             continue;
         return i;
     }
@@ -2595,7 +2595,7 @@ static bool search_found(Search *s, int i)
    goes into the queue when its distance is in the range of the candidates. Returns the found candidate, -1 none. */
 static int search_entered(Search *s)
 {
-    s->check_map = party.cur_map;
+    s->check_map = g_party.cur_map;
     int i = s->or_flags & KIND_TESTS_OPEN ? test_candidates(s, 0) : -1;
     int16_t dist = (int16_t)(s->dist + g_ai_square.cost);
     if (dist <= s->max_cost) {
@@ -2633,7 +2633,7 @@ static int search_blocked(Search *s)
 /* Makes the map of a queued square the current map of the search. */
 static void search_enter_map(Search *s, int map)
 {
-    if (map == party.cur_map)
+    if (map == g_party.cur_map)
         return;
     ai_set_map(map);
     s->map = s->maps[map];
@@ -2656,8 +2656,8 @@ static SearchStep search_step(Search *s)
         s->x = s->from_x;
         s->y = s->from_y;
     } else {
-        s->x = (int16_t)(s->from_x + dir_dx[s->dir]);
-        s->y = (int16_t)(s->from_y + dir_dy[s->dir]);
+        s->x = (int16_t)(s->from_x + g_dir_dx[s->dir]);
+        s->y = (int16_t)(s->from_y + g_dir_dy[s->dir]);
         if (!on_map(s->x, s->y))
             return SEARCH_STEP_SKIP;
     }
@@ -2671,22 +2671,22 @@ static SearchStep search_step(Search *s)
             s->passage_map = -1;
             s->passage_x = s->x;
             s->passage_y = s->y;
-            if (g_ai_square.map != party.cur_map) {
+            if (g_ai_square.map != g_party.cur_map) {
                 if (!s->maps[g_ai_square.map])
                     s->maps[g_ai_square.map] = calloc(MAP_SIDE_MAX, SEARCH_COLUMN_SIZE);
                 if (!s->maps[g_ai_square.map])
                     os_fatal("out of memory");
                 if (dir < DIR_LEVEL_UP)
-                    s->passage_map = party.cur_map;
+                    s->passage_map = g_party.cur_map;
                 ai_set_map(g_ai_square.map);
-                s->map = s->maps[party.cur_map];
+                s->map = s->maps[g_party.cur_map];
             } else if (dir < DIR_LEVEL_UP) {
                 if (g_ai_square_scan.passage) {
                     s->passage_map = g_ai_square_scan.end.map;
                     s->passage_x = g_ai_square_scan.end.x;
                     s->passage_y = g_ai_square_scan.end.y;
                 } else if (g_ai_square.x != s->x || g_ai_square.y != s->y) {
-                    s->passage_map = party.cur_map;
+                    s->passage_map = g_party.cur_map;
                 }
             }
             s->visit = 0;
@@ -2781,7 +2781,7 @@ static void search_start(Search *s, AiLocation start, int command, int count, Ai
     s->cands = candidates;
     s->start_x = (int16_t)x;
     s->start_y = (int16_t)y;
-    s->start_map = party.cur_map;
+    s->start_map = g_party.cur_map;
     s->result = -1;
     s->enabled = enabled_byte(s->command);
     s->two_maps = !s->enabled && class_flags() & AI_CLASS_STAYS_ON_MAPS;
@@ -2794,14 +2794,14 @@ static void search_start(Search *s, AiLocation start, int command, int count, Ai
     }
     /* fix: the original clears the first search map only for line targets or a cost; the port always clears it */
     s->map = calloc(MAP_SIDE_MAX, SEARCH_COLUMN_SIZE);
-    s->maps[party.cur_map] = s->map;
+    s->maps[g_party.cur_map] = s->map;
     if (!s->map)
         os_fatal("out of memory");
     s->cost_search = (s->command & AI_MOVE_KIND_MASK) == MOVE_KIND_COST;
     if (s->cost_search)
         s->counts[SEARCH_LEVELS - 1] = SEARCH_LEVEL_BLOCKED;
-    s->from_map = party.cur_map;
-    s->check_map = party.cur_map;
+    s->from_map = g_party.cur_map;
+    s->check_map = g_party.cur_map;
     s->from_x = (int16_t)x;
     s->x = s->from_x;
     s->from_y = (int16_t)y;
@@ -2821,7 +2821,7 @@ static void search_start(Search *s, AiLocation start, int command, int count, Ai
 int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *path)
 {
     if (!candidates[0].kind) {
-        candidates[0].found = pack_location(from.x, from.y, party.cur_map);
+        candidates[0].found = pack_location(from.x, from.y, g_party.cur_map);
         candidates[0].destination = candidates[0].found;
         candidates[0].path_length = 0;
         return 0;
@@ -2913,7 +2913,7 @@ static int path_holds(int saved)
     int16_t cy = (int16_t)own_y();
     int16_t left = g_ai.cache.path_left;
     if (!left)
-        return cx == x && cy == y && party.cur_map == saved;
+        return cx == x && cy == y && g_party.cur_map == saved;
     ai_set_map(saved);
     ai_load_cached_path();
     /* fix: without a stored path the original reads its steps at address 0 */
@@ -2925,7 +2925,7 @@ static int path_holds(int saved)
             return 0;
         if ((step >> PATH_X_SHIFT & LOCATION_COORD_MASK) != g_ai_square.x ||
             (step >> PATH_Y_SHIFT & LOCATION_COORD_MASK) != g_ai_square.y ||
-            (step >> PATH_MAP_CHANGE_SHIFT & 1) != (g_ai_square.map != party.cur_map))
+            (step >> PATH_MAP_CHANGE_SHIFT & 1) != (g_ai_square.map != g_party.cur_map))
             return 0;
         ai_set_map(g_ai_square.map);
         cx = g_ai_square.x;
@@ -2948,7 +2948,7 @@ bool ai_plan_path(void)
     if (i)
         g_ai.candidates[0] = g_ai.candidates[i];
     g_ai.candidates[0].cost = 0;
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     ai_set_map(location_map(g_ai.cache.found));
     int result = path_holds(saved);
     ai_set_map(saved);
@@ -2957,16 +2957,16 @@ bool ai_plan_path(void)
 
 void creature_refresh_party_maps(void)
 {
-    int saved = party.cur_map;
+    int saved = g_party.cur_map;
     dun_set_current_map(game.party_map);
     AiCandidate target;
     uint8_t path[AI_PATH_MAX * 2];
     memset(&target, 0, sizeof target);
-    if (party.redraw & REDRAW_SQUARES) {
+    if (g_party.redraw & REDRAW_SQUARES) {
         g_party_distance.map = (int16_t)game.party_map;
         g_party_distance.width = (int16_t)dungeon_map_width(game.party_map);
         memset(g_party_distance.cells, 0, (size_t)g_party_distance.width * MAP_SIDE_MAX);
-        g_alt_distance.map = party.alt_view_map;
+        g_alt_distance.map = g_party.alt_view_map;
         if (g_alt_distance.map >= 0) {
             g_alt_distance.width = (int16_t)dungeon_map_width(g_alt_distance.map);
             memset(g_alt_distance.cells, 0, (size_t)g_alt_distance.width * MAP_SIDE_MAX);
@@ -2976,7 +2976,7 @@ void creature_refresh_party_maps(void)
         target.kind = TARGET_PARTY_DISTANCE;
         ai_search_area(ai_location(game.party_x, game.party_y), MOVE_KIND_COST, 1, &target, path);
     }
-    if (party.redraw & REDRAW_VIEW) {
+    if (g_party.redraw & REDRAW_VIEW) {
         bool changed = game.party_map != g_last_party_map;
         int radius = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(game.party_map), GDAT_TYPE_VALUE,
                                       WALLSET_KEY_LIGHT);
@@ -2999,6 +2999,6 @@ void creature_refresh_party_maps(void)
             light_update_party_light();
     }
     dun_set_current_map(saved);
-    party.redraw = 0;
+    g_party.redraw = 0;
     g_last_party_map = (int16_t)game.party_map;
 }

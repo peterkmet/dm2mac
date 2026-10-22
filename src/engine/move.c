@@ -57,7 +57,7 @@
 #define HIT_OFFSETS_PER_CELL 2 /* creature_find_group_near_point: the squares to check by cell */
 #define HIT_OFFSETS_READ     4
 
-const int8_t dir_dx[DIR_COUNT] = {0, 1, 0, -1}, dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
+const int8_t g_dir_dx[DIR_COUNT] = {0, 1, 0, -1}, g_dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
 /* Steps of the move commands 3 to 6: forward and right parts. */
 static const int8_t command_forward[4] = {1, 0, -1, 0}, command_right[4] = {0, 1, 0, -1};
 /* The order in which move_find_free_adjacent_square tries the 4 sides, by a random row: for the party
@@ -75,25 +75,25 @@ static const uint8_t free_square_order_thing[4][4] = {
     {3, 1, 2, 0}
 };
 
-Party party = {.cur_map = -1, .new_map = -1, .push_pending_group = THING_NONE};
+Party g_party = {.cur_map = -1, .new_map = -1, .push_pending_group = THING_NONE};
 
 /* ---- The current map ---- */
 
 void dun_set_current_map(int map)
 {
-    if (map == party.cur_map || map < 0)
+    if (map == g_party.cur_map || map < 0)
         return;
-    party.cur_map = (int16_t)map;
-    if (!party.alt_view_active || map != party.alt_view_map) {
-        party.square_x = (int16_t)game.party_x;
-        party.square_y = (int16_t)game.party_y;
-        party.square_map = (int16_t)game.party_map;
-        party.ref_dir = (int16_t)game.party_dir;
+    g_party.cur_map = (int16_t)map;
+    if (!g_party.alt_view_active || map != g_party.alt_view_map) {
+        g_party.square_x = (int16_t)game.party_x;
+        g_party.square_y = (int16_t)game.party_y;
+        g_party.square_map = (int16_t)game.party_map;
+        g_party.ref_dir = (int16_t)game.party_dir;
     } else {
-        party.square_x = party.alt_view_x;
-        party.square_y = party.alt_view_y;
-        party.square_map = party.alt_view_map;
-        party.ref_dir = party.alt_view_dir;
+        g_party.square_x = g_party.alt_view_x;
+        g_party.square_y = g_party.alt_view_y;
+        g_party.square_map = g_party.alt_view_map;
+        g_party.ref_dir = g_party.alt_view_dir;
     }
 }
 
@@ -108,8 +108,8 @@ void dun_set_party_location(int x, int y, int map)
 /* Moves the party on the current map; the party square is read again. */
 static void move_set_party_position(int x, int y)
 {
-    int map = party.cur_map;
-    party.cur_map = -1;
+    int map = g_party.cur_map;
+    g_party.cur_map = -1;
     game.party_x = (uint16_t)x;
     game.party_y = (uint16_t)y;
     dun_set_current_map(map);
@@ -117,26 +117,26 @@ static void move_set_party_position(int x, int y)
 
 void dun_move_relative(int dir, int forward, int right, int16_t *x, int16_t *y)
 {
-    *x = (int16_t)(*x + dir_dx[dir] * forward);
-    *y = (int16_t)(*y + dir_dy[dir] * forward);
+    *x = (int16_t)(*x + g_dir_dx[dir] * forward);
+    *y = (int16_t)(*y + g_dir_dy[dir] * forward);
     int side = dir_turn(dir, TURN_RIGHT);
-    *x = (int16_t)(*x + dir_dx[side] * right);
-    *y = (int16_t)(*y + dir_dy[side] * right);
+    *x = (int16_t)(*x + g_dir_dx[side] * right);
+    *y = (int16_t)(*y + g_dir_dy[side] * right);
 }
 
 uint8_t dun_get_square(int x, int y)
 {
-    return dungeon_square_edge(party.cur_map, x, y);
+    return dungeon_square_edge(g_party.cur_map, x, y);
 }
 
 static uint16_t first_thing(int x, int y)
 {
-    return dungeon_square_first_thing(party.cur_map, x, y);
+    return dungeon_square_first_thing(g_party.cur_map, x, y);
 }
 
 int dun_on_party_square(int x, int y)
 {
-    return party.cur_map == party.square_map && x == party.square_x && y == party.square_y;
+    return g_party.cur_map == g_party.square_map && x == g_party.square_x && y == g_party.square_y;
 }
 
 int dun_square_blocks_movement(uint8_t square)
@@ -160,14 +160,14 @@ int dun_get_stairs_exit_direction(int x, int y)
 {
     int along_y = !(dun_get_square(x, y) & SQUARE_STAIRS_ALONG_X);
     int probe = along_y ? DIR_EAST : DIR_NORTH;
-    int type = square_type(dun_get_square(x + dir_dx[probe], y + dir_dy[probe]));
+    int type = square_type(dun_get_square(x + g_dir_dx[probe], y + g_dir_dy[probe]));
     return (type == SQUARE_WALL || type == SQUARE_STAIRS) * 2 + along_y;
 }
 
 int dun_get_linked_teleporter_dest(PassageEnd *end, int x, int y)
 {
     TeleporterLink link;
-    if (!dungeon_teleporter_link(party.cur_map, x, y, &link))
+    if (!dungeon_teleporter_link(g_party.cur_map, x, y, &link))
         return 0;
     *end = (PassageEnd){(uint8_t)link.side, (uint8_t)link.target_side, (uint8_t)link.x, (uint8_t)link.y,
                         (uint8_t)link.map};
@@ -195,10 +195,10 @@ void champ_set_party_direction(int dir)
         c->dir = (uint8_t)dir_turn(c->dir, turn);
     }
     game.party_dir = (uint16_t)dir;
-    party.ref_dir = (int16_t)dir;
-    if (party.alt_view_active) {
-        party.alt_view_dir = (int16_t)dir_turn(party.alt_view_dir, turn);
-        party.ref_dir = party.alt_view_dir;
+    g_party.ref_dir = (int16_t)dir;
+    if (g_party.alt_view_active) {
+        g_party.alt_view_dir = (int16_t)dir_turn(g_party.alt_view_dir, turn);
+        g_party.ref_dir = g_party.alt_view_dir;
     }
 }
 
@@ -292,9 +292,9 @@ int champ_get_nearest_at(int x, int y, int cell)
     };
     if (!game.champion_count)
         return -1;
-    if (abs(x - party.square_x) + abs(y - party.square_y) >= 2)
+    if (abs(x - g_party.square_x) + abs(y - g_party.square_y) >= 2)
         return -1;
-    int dir = dun_get_direction_to(party.square_x, party.square_y, x, y);
+    int dir = dun_get_direction_to(g_party.square_x, g_party.square_y, x, y);
     uint8_t cells[DIR_COUNT];
     if (cell == CELL_ANY) {
         /* any cell: the cells from the side toward (x, y) on, the two front and the two back cells in random order */
@@ -385,7 +385,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell)
     int16_t sx = *x, sy = *y, px, py, cx, cy;
     aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell], &px, &py);
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
-        uint16_t g = creature_group_at(party.cur_map, sx, sy);
+        uint16_t g = creature_group_at(g_party.cur_map, sx, sy);
         if (g != THING_NONE) {
             int size = (int8_t)creature_group_info(g)->hit_size;
             int zone = aspect_creature_cell(g, dir_relative(DIR_NORTH, group_dir(g)));
@@ -431,7 +431,7 @@ static int move_get_step_result(int step, uint8_t here, uint8_t ahead, int x, in
     if (dun_square_blocks_movement(ahead))
         return STEP_BLOCKED;
     int16_t gx = (int16_t)x, gy = (int16_t)y;
-    *group = creature_group_at(party.cur_map, x, y);
+    *group = creature_group_at(g_party.cur_map, x, y);
     if (*group == THING_NONE || creature_group_info(*group)->flags & CREATURE_NOT_SOLID) {
         uint16_t g = creature_find_group_near_point(&gx, &gy, CELL_ANY);
         if (g == THING_NONE || creature_group_info(g)->flags & CREATURE_NOT_SOLID)
@@ -447,10 +447,10 @@ static void move_party_take_stairs(int up)
 {
     move_thing(THING_NONE, game.party_x, game.party_y, -1, 0);
     int x = game.party_x, y = game.party_y;
-    party.new_map = (int16_t)dungeon_location_on_map(game.party_map, up ? -1 : 1, &x, &y);
+    g_party.new_map = (int16_t)dungeon_location_on_map(game.party_map, up ? -1 : 1, &x, &y);
     game.party_x = (uint16_t)x;
     game.party_y = (uint16_t)y;
-    dun_set_current_map(party.new_map);
+    dun_set_current_map(g_party.new_map);
     champ_set_party_direction(dun_get_stairs_exit_direction(game.party_x, game.party_y));
     dun_set_current_map(game.party_map);
 }
@@ -479,11 +479,11 @@ void move_party_turn(int command)
 /* The party steps onto (x, y) from the square of map: seamless passages, stairs, teleporter passages, then the move. */
 static void move_party_free_step(int map, int step, int on_stairs, int16_t x, int16_t y, int dir)
 {
-    if (party.alt_view_active && step == 2) {
+    if (g_party.alt_view_active && step == 2) {
         dun_set_current_map(map);
-        x = party.square_x;
-        y = party.square_y;
-        dir = party.ref_dir;
+        x = g_party.square_x;
+        y = g_party.square_y;
+        dir = g_party.ref_dir;
         dun_move_relative(dir, -1, 0, &x, &y);
     }
     if (on_stairs) {
@@ -521,12 +521,12 @@ static void move_party_bash_door(int x, int y, int16_t first, int16_t second)
    Returns 0 when the party cannot move. */
 static int move_party_step(int command, uint8_t here, int on_stairs)
 {
-    int map = party.cur_map;
+    int map = g_party.cur_map;
     int step = command - CMD_MOVE_FORWARD;
-    if (party.alt_view_active && step == 2)
-        dun_set_current_map(party.alt_view_map);
-    int16_t x = party.square_x, y = party.square_y;
-    int dir = party.ref_dir;
+    if (g_party.alt_view_active && step == 2)
+        dun_set_current_map(g_party.alt_view_map);
+    int16_t x = g_party.square_x, y = g_party.square_y;
+    int dir = g_party.ref_dir;
     dun_move_relative(dir, command_forward[step], command_right[step], &x, &y);
     uint8_t ahead = dun_get_square(x, y);
     input_command_stop = 1;
@@ -583,7 +583,7 @@ static int move_party_step(int command, uint8_t here, int on_stairs)
 
 int move_party(int command)
 {
-    uint8_t here = dun_get_square(party.square_x, party.square_y);
+    uint8_t here = dun_get_square(g_party.square_x, g_party.square_y);
     int on_stairs = square_type(here) == SQUARE_STAIRS;
     int delay = 1;
     for (int i = 0; i < game.champion_count; i++)
@@ -593,28 +593,28 @@ int move_party(int command)
                 delay = d;
         }
     int half = (int16_t)delay >> 1;
-    if (delay > 1 && !party.move_steps &&
-        (command == CMD_MOVE_FORWARD || (command == CMD_MOVE_BACK && !party.alt_view_active && !on_stairs) ||
-         party.push_pending_group != THING_NONE)) {
-        party.move_steps = (int16_t)half;
-        party.view_x = (int16_t)game.party_x;
-        party.view_y = (int16_t)game.party_y;
-        party.view_dir = (int16_t)game.party_dir;
-        party.move_command = (uint16_t)command;
+    if (delay > 1 && !g_party.move_steps &&
+        (command == CMD_MOVE_FORWARD || (command == CMD_MOVE_BACK && !g_party.alt_view_active && !on_stairs) ||
+         g_party.push_pending_group != THING_NONE)) {
+        g_party.move_steps = (int16_t)half;
+        g_party.view_x = (int16_t)game.party_x;
+        g_party.view_y = (int16_t)game.party_y;
+        g_party.view_dir = (int16_t)game.party_dir;
+        g_party.move_command = (uint16_t)command;
         if (command != CMD_MOVE_FORWARD)
-            dun_move_relative(game.party_dir, -1, 0, &party.view_x, &party.view_y);
-    } else if (party.push_pending_group != THING_NONE) {
+            dun_move_relative(game.party_dir, -1, 0, &g_party.view_x, &g_party.view_y);
+    } else if (g_party.push_pending_group != THING_NONE) {
         creature_continue_push(command);
-        party.push_pending_group = THING_NONE;
-        if (!party.push_mode)
-            party.push_arrow = PUSH_ARROW_NONE;
+        g_party.push_pending_group = THING_NONE;
+        if (!g_party.push_mode)
+            g_party.push_arrow = PUSH_ARROW_NONE;
         return 1;
     } else if (!move_party_step(command, here, on_stairs)) {
         g_hooks.flush_input();
         input_command_stop = 0;
         return 0;
     }
-    int add = party.move_steps != 0;
+    int add = g_party.move_steps != 0;
     if (half > add)
         add = half;
     game.party_move_cooldown = (uint16_t)(game.party_move_cooldown + add);
@@ -627,7 +627,7 @@ void move_party_to(int x, int y, int map, int dir)
     int other = map != game.party_map;
     if (other)
         dun_set_current_map(map);
-    if (x < 0 || x >= dungeon_map_width(party.cur_map) || y < 0 || y >= dungeon_map_height(party.cur_map)) {
+    if (x < 0 || x >= dungeon_map_width(g_party.cur_map) || y < 0 || y >= dungeon_map_height(g_party.cur_map)) {
         if (other)
             dun_set_current_map(game.party_map);
         return;
@@ -648,28 +648,28 @@ void move_compute_map_arrival(int x, int y, int map)
 {
     PassageEnd end;
     int turn = 0;
-    party.alt_view_map = -1;
-    party.alt_view_active = dun_get_linked_teleporter_dest(&end, x, y);
-    int found = party.alt_view_active;
+    g_party.alt_view_map = -1;
+    g_party.alt_view_active = dun_get_linked_teleporter_dest(&end, x, y);
+    int found = g_party.alt_view_active;
     if (found) {
-        party.alt_view_x = end.x;
-        party.alt_view_y = end.y;
+        g_party.alt_view_x = end.x;
+        g_party.alt_view_y = end.y;
         turn = end.target_side - end.side;
     }
     for (int d = 0; d < DIR_COUNT && !found; d++) {
-        if (!dun_get_linked_teleporter_dest(&end, x + dir_dx[d], y + dir_dy[d]))
+        if (!dun_get_linked_teleporter_dest(&end, x + g_dir_dx[d], y + g_dir_dy[d]))
             continue;
         found = 1;
         turn = end.target_side + 6 - end.side;
         int side = dir_turn(d, turn + 2);
-        party.alt_view_x = (int16_t)(end.x + dir_dx[side]);
-        party.alt_view_y = (int16_t)(end.y + dir_dy[side]);
+        g_party.alt_view_x = (int16_t)(end.x + g_dir_dx[side]);
+        g_party.alt_view_y = (int16_t)(end.y + g_dir_dy[side]);
     }
     if (found) {
-        party.alt_view_map = end.map;
-        party.alt_view_dir = (int16_t)dir_turn(game.party_dir, turn);
+        g_party.alt_view_map = end.map;
+        g_party.alt_view_dir = (int16_t)dir_turn(game.party_dir, turn);
     }
-    party.cur_map = -1;
+    g_party.cur_map = -1;
     dun_set_current_map(map);
 }
 
@@ -680,7 +680,7 @@ int move_find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out_x,
     int base = thing == THING_NONE ? game.party_dir : 0;
     for (int i = 0; i < 4; i++) {
         int dir = dir_turn(order[i], base);
-        int nx = (int16_t)(x + dir_dx[dir]), ny = (int16_t)(y + dir_dy[dir]);
+        int nx = (int16_t)(x + g_dir_dx[dir]), ny = (int16_t)(y + g_dir_dy[dir]);
         uint8_t square = dun_get_square(nx, ny);
         if (dun_square_blocks_movement(square))
             continue;
@@ -690,7 +690,7 @@ int move_find_free_adjacent_square(uint16_t thing, int x, int y, int16_t *out_x,
         if (thing != THING_NONE && thing_type(thing) == THING_GROUP &&
             (type == SQUARE_TELEPORTER || type == SQUARE_PIT))
             continue;
-        uint16_t g = creature_group_at(party.cur_map, nx, ny);
+        uint16_t g = creature_group_at(g_party.cur_map, nx, ny);
         if (g != THING_NONE && !(thing == THING_NONE && creature_group_info(g)->flags & CREATURE_NOT_SOLID))
             continue;
         *out_x = (int16_t)nx;
@@ -763,9 +763,9 @@ static uint16_t move_rotate_through_teleporter(uint16_t teleporter, uint16_t thi
     int rotation = teleporter_rotation(teleporter);
     if (!teleporter_flag(teleporter, TELEPORTER_ABSOLUTE)) {
         thing = thing_with_cell(thing, dir_turn(thing_cell(thing), rotation));
-        rotation = dir_turn(party.dest_dir, rotation);
+        rotation = dir_turn(g_party.dest_dir, rotation);
     }
-    party.dest_dir = (int16_t)rotation;
+    g_party.dest_dir = (int16_t)rotation;
     return thing;
 }
 
@@ -794,7 +794,7 @@ static int transit_teleporter(Transit *t, uint8_t square)
     int same = tx == t->x && ty == t->y && tmap == t->map;
     t->x = tx;
     t->y = ty;
-    party.teleporter_flag = audible;
+    g_party.teleporter_flag = audible;
     t->map = tmap;
     dun_set_current_map(t->map);
     if (t->thing == THING_NONE) {
@@ -808,8 +808,8 @@ static int transit_teleporter(Transit *t, uint8_t square)
         champ_set_party_direction(dir_turn(base, rotation));
     } else if (t->type == THING_GROUP && t->creature_sound) {
         if (audible) {
-            if (party.cur_map != t->start_map) {
-                int saved = party.cur_map;
+            if (g_party.cur_map != t->start_map) {
+                int saved = g_party.cur_map;
                 dun_set_current_map(t->start_map);
                 sound_request(CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL,
                               t->src_x, t->src_y, 1);
@@ -830,7 +830,7 @@ static int transit_teleporter(Transit *t, uint8_t square)
 /* The party lands after a fall: a levitation costs stamina by load, a real fall hurts the legs and the feet. */
 static void transit_party_lands(Transit *t)
 {
-    if (party.fell) {
+    if (g_party.fell) {
         t->draw_fall = 0; /* the original keeps it only with its debug flag */
         for (int i = 0; i < game.champion_count; i++) {
             Champion *c = champion(i);
@@ -880,7 +880,7 @@ static void transit_pit_marker(Transit *t)
 /* An open pit at (x, y): the thing falls to the map below or to a pit target marker; a creature of a marker pit goes home. */
 static void transit_pit(Transit *t)
 {
-    int to_marker = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(party.cur_map), GDAT_TYPE_VALUE,
+    int to_marker = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(g_party.cur_map), GDAT_TYPE_VALUE,
                                      MAP_KEY_PIT_TO_MARKER);
     if (to_marker && t->type == THING_GROUP) {
         uint16_t home = thing_word(t->thing, GROUP_HOME);
@@ -890,17 +890,17 @@ static void transit_pit(Transit *t)
         dun_set_current_map(t->map);
         return;
     }
-    if (t->draw_fall && !to_marker && !party.fell) {
+    if (t->draw_fall && !to_marker && !g_party.fell) {
         t->draw_fall = 0;
         if (t->falls) {
             dun_set_party_location(t->x, t->y, t->map);
             g_hooks.enter_map_view(t->map);
             world_update_day_night(0);
         }
-        int steps = party.move_steps;
-        party.move_steps = 0;
+        int steps = g_party.move_steps;
+        g_party.move_steps = 0;
         g_hooks.draw_dungeon(game.party_dir, t->x, t->y);
-        party.move_steps = (int16_t)steps;
+        g_party.move_steps = (int16_t)steps;
     }
     if (to_marker) {
         transit_pit_marker(t);
@@ -913,7 +913,7 @@ static void transit_pit(Transit *t)
         move_set_party_position(t->x, t->y);
         if (game.champion_count)
             transit_party_lands(t);
-        party.fell = 0;
+        g_party.fell = 0;
         return;
     }
     if (t->type == THING_GROUP && t->creature_sound && t->src_x >= 0) {
@@ -931,27 +931,27 @@ static void transit_stairs(Transit *t, uint8_t square)
         dun_set_current_map(t->map);
     }
     int dir = dun_get_stairs_exit_direction(t->x, t->y);
-    t->x += dir_dx[dir];
-    t->y += dir_dy[dir];
+    t->x += g_dir_dx[dir];
+    t->y += g_dir_dy[dir];
     int back = dir_opposite(dir);
     int cell = dir_turn(back, (((thing_cell(t->thing) - back) + 1) & 2) / 2);
     t->thing = thing_with_cell(t->thing, cell);
 }
 
-/* The end of the way: party.dest_* get the end; an object that fell and champions that fell hurt make their sounds. */
+/* The end of the way: g_party.dest_* get the end; an object that fell and champions that fell hurt make their sounds. */
 static void transit_finish(const Transit *t)
 {
-    party.dest_x = (int16_t)t->x;
-    party.dest_y = (int16_t)t->y;
-    party.dest_map = (int16_t)t->map;
-    party.dest_cell = (int16_t)thing_cell(t->thing);
+    g_party.dest_x = (int16_t)t->x;
+    g_party.dest_y = (int16_t)t->y;
+    g_party.dest_map = (int16_t)t->map;
+    g_party.dest_cell = (int16_t)thing_cell(t->thing);
     if (t->falls && t->creature_sound && t->thing != THING_NONE)
         sound_request_with_fallback(item_gdat_category(t->thing), item_gdat_index(t->thing), SOUND_ENTRY_DROP,
                                     SOUND_FALLBACK, t->x, t->y, 1, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL);
     if (!t->fell_hurt)
         return;
-    int saved_map = party.cur_map, px = game.party_x, py = game.party_y, pmap = game.party_map;
-    party.cur_map = -1;
+    int saved_map = g_party.cur_map, px = game.party_x, py = game.party_y, pmap = game.party_map;
+    g_party.cur_map = -1;
     dun_set_party_location(t->x, t->y, t->map);
     for (int i = 0; i < game.champion_count; i++)
         if (champion(i)->health)
@@ -961,22 +961,22 @@ static void transit_finish(const Transit *t)
     dun_set_current_map(saved_map);
 }
 
-/* Follows pits, teleporters, and stairs from (x, y) of the current map; leaves the end in party.dest_*.
+/* Follows pits, teleporters, and stairs from (x, y) of the current map; leaves the end in g_party.dest_*.
    Returns 1 for a flying thing. */
 int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound)
 {
-    party.teleporter_flag = 0;
+    g_party.teleporter_flag = 0;
     Transit t = {.thing = thing,
                  .src_x = src_x,
                  .src_y = src_y,
                  .x = x,
                  .y = y,
-                 .map = party.cur_map,
-                 .start_map = party.cur_map,
+                 .map = g_party.cur_map,
+                 .start_map = g_party.cur_map,
                  .creature_sound = creature_sound};
     if (thing == THING_NONE) {
-        if (party.push_mode) {
-            party.push_mode = 0;
+        if (g_party.push_mode) {
+            g_party.push_mode = 0;
             ui.push_mode = 0;
             g_hooks.draw_movement_arrows();
         }
@@ -991,10 +991,10 @@ int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, 
         if (t.type == THING_GROUP)
             t.scope = item_attr(thing, ATTR_TELEPORT_SCOPE) ? SCOPE_PARTY : SCOPE_CREATURES;
         else if (t.type == THING_PROJECTILE)
-            party.dest_dir = (int16_t)projectile_dir(thing); /* fix: bits 10-11 of the position word */
+            g_party.dest_dir = (int16_t)projectile_dir(thing); /* fix: bits 10-11 of the position word */
     }
     for (int loop = TRANSITION_MAX; --loop;) {
-        uint8_t square = dungeon_square(party.cur_map, t.x, t.y);
+        uint8_t square = dungeon_square(g_party.cur_map, t.x, t.y);
         int square_kind = square_type(square);
         if (square_kind == SQUARE_TELEPORTER) {
             if (!transit_teleporter(&t, square))
@@ -1034,7 +1034,7 @@ static void move_party_arrive(int map, int start_map, int dst_x, int dst_y, int 
 {
     dun_set_current_map(map);
     move_compute_map_arrival(dst_x, dst_y, map);
-    uint16_t g = creature_group_at(party.cur_map, game.party_x, game.party_y);
+    uint16_t g = creature_group_at(g_party.cur_map, game.party_x, game.party_y);
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID)) {
         int16_t nx, ny;
         const CreatureInfo *info = creature_group_info(g);
@@ -1042,12 +1042,12 @@ static void move_party_arrive(int map, int start_map, int dst_x, int dst_y, int 
         if (info->flags & CREATURE_STATIC && info->push_resistance >= PUSH_IMMOVABLE) {
             if (move_find_free_adjacent_square(THING_NONE, dst_x, dst_y, &nx, &ny)) {
                 dun_set_party_location(nx, ny, map);
-                party.new_map = (int16_t)map;
+                g_party.new_map = (int16_t)map;
                 move_thing(THING_NONE, -1, 0, nx, ny);
                 dun_set_party_location(game.party_x, game.party_y, start_map);
-                if (party.new_map != start_map)
+                if (g_party.new_map != start_map)
                     return;
-                party.new_map = -1;
+                g_party.new_map = -1;
                 displaced = 1;
             }
         } else if (move_find_free_adjacent_square(g, dst_x, dst_y, &nx, &ny)) {
@@ -1066,7 +1066,7 @@ static void move_party_arrive(int map, int start_map, int dst_x, int dst_y, int 
     if (map == start_map)
         sensor_enter_square(game.party_x, game.party_y, THING_NONE, same, false);
     else
-        party.new_map = (int16_t)map;
+        g_party.new_map = (int16_t)map;
 }
 
 /* How a group meets its target square: it enters (the square is free, or another group moved aside), it is done
@@ -1076,10 +1076,10 @@ enum group_arrival { ARRIVAL_ENTER, ARRIVAL_DONE, ARRIVAL_WAIT };
 /* A creature group meets the square (dst_x, dst_y) of map: the party or another group can block it or move aside. */
 static int move_group_meet_square(uint16_t thing, int map, int dst_x, int dst_y)
 {
-    if (map == party.square_map && dst_x == party.square_x && dst_y == party.square_y &&
+    if (map == g_party.square_map && dst_x == g_party.square_x && dst_y == g_party.square_y &&
         !(creature_group_info(thing)->flags & CREATURE_NOT_SOLID) && !creature_displaces_party(thing, dst_x, dst_y))
         return ARRIVAL_WAIT;
-    uint16_t other = creature_group_at(party.cur_map, dst_x, dst_y);
+    uint16_t other = creature_group_at(g_party.cur_map, dst_x, dst_y);
     if (other == THING_NONE)
         return ARRIVAL_ENTER;
     int push = creature_group_info(thing)->push_resistance;
@@ -1116,13 +1116,13 @@ static int move_group_arrive(uint16_t thing, int map, int dst_x, int dst_y, int 
     if (arrival == ARRIVAL_WAIT) {
         if (active != GROUP_NOT_ACTIVE)
             creature_deactivate_group(active);
-        move_schedule_group_retry(thing, dst_x, dst_y, map, party.teleporter_flag);
+        move_schedule_group_retry(thing, dst_x, dst_y, map, g_party.teleporter_flag);
         return 2;
     }
     if (arrival == ARRIVAL_DONE)
         return 0;
     if (flying)
-        dungeon_link_thing_to_square(thing, party.cur_map, dst_x, dst_y);
+        dungeon_link_thing_to_square(thing, g_party.cur_map, dst_x, dst_y);
     else
         sensor_enter_square(dst_x, dst_y, thing, false, false);
     move_update_carried_missiles(thing, dst_x, dst_y, map, 0);
@@ -1147,12 +1147,12 @@ static void move_object_arrive(uint16_t thing, int type, int map, int start_map,
 {
     dun_set_current_map(map);
     if (type == THING_PROJECTILE) {
-        dungeon_link_thing_to_square(thing, party.cur_map, dst_x, dst_y);
+        dungeon_link_thing_to_square(thing, g_party.cur_map, dst_x, dst_y);
         return;
     }
     int added = src_x < 0 && src_y < 0, under_static = added;
     if (!added && map != start_map) {
-        uint16_t g = creature_group_at(party.cur_map, dst_x, dst_y);
+        uint16_t g = creature_group_at(g_party.cur_map, dst_x, dst_y);
         if (g != THING_NONE)
             under_static = creature_group_info(g)->flags & CREATURE_STATIC;
     }
@@ -1168,7 +1168,7 @@ static void move_thing_leave(uint16_t thing, int flying, int same, int src_x, in
         return;
     }
     if (flying)
-        dungeon_unlink_thing_from_square(thing, party.cur_map, src_x, src_y);
+        dungeon_unlink_thing_from_square(thing, g_party.cur_map, src_x, src_y);
     else
         sensor_leave_square(src_x, src_y, thing, dun_on_party_square(src_x, src_y), dst_x < 0 && dst_y < 0);
     if (thing_type(thing) == THING_GROUP && dst_x < -1) {
@@ -1180,12 +1180,12 @@ static void move_thing_leave(uint16_t thing, int flying, int same, int src_x, in
 
 int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
 {
-    party.teleporter_flag = 0;
+    g_party.teleporter_flag = 0;
     int flying = 0, same = 0, stays = 0;
-    int start_map = party.cur_map, start_dir = game.party_dir;
-    int map = start_map, type = -1, cell = 0, dest_dir = party.dest_dir;
+    int start_map = g_party.cur_map, start_dir = game.party_dir;
+    int map = start_map, type = -1, cell = 0, dest_dir = g_party.dest_dir;
     if (thing == THING_NONE) {
-        party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = REDRAW_ALL_VIEW;
         if (src_x >= 0)
             move_check_missiles_hit_party(src_x, src_y, dst_x, dst_y);
     } else {
@@ -1196,14 +1196,14 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
         flying = move_follow_square_transitions(thing, src_x, src_y, dst_x, dst_y, 1);
         if (thing != THING_NONE) {
             if (item_attr(thing, ATTR_LIGHT_SOURCE) &&
-                (start_map == game.party_map || party.dest_map == game.party_map))
-                party.redraw |= REDRAW_VIEW;
-            thing = thing_with_cell(thing, party.dest_cell);
+                (start_map == game.party_map || g_party.dest_map == game.party_map))
+                g_party.redraw |= REDRAW_VIEW;
+            thing = thing_with_cell(thing, g_party.dest_cell);
         }
-        dst_x = party.dest_x;
-        dst_y = party.dest_y;
-        dest_dir = party.dest_dir;
-        map = party.dest_map;
+        dst_x = g_party.dest_x;
+        dst_y = g_party.dest_y;
+        dest_dir = g_party.dest_dir;
+        map = g_party.dest_map;
         dun_set_current_map(map);
         if (type == THING_GROUP && !creature_is_native_to_map(thing, map)) {
             creature_drop_possessions(thing, dst_x, dst_y, DROP_ALL, 1);
@@ -1214,8 +1214,8 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
         }
         same = map == start_map && dst_x == src_x && dst_y == src_y;
         if (same) {
-            stays =
-                thing == THING_NONE ? game.party_dir == start_dir : party.dest_cell == cell && type != THING_PROJECTILE;
+            stays = thing == THING_NONE ? game.party_dir == start_dir
+                                        : g_party.dest_cell == cell && type != THING_PROJECTILE;
         } else if (map != start_map) {
             if (thing == THING_NONE && game.party_map != start_map)
                 dun_set_party_location(game.party_x, game.party_y, start_map);
@@ -1235,10 +1235,10 @@ int move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y)
             move_object_arrive(thing, type, map, start_map, src_x, src_y, dst_x, dst_y);
         }
     }
-    party.dest_dir = (int16_t)dest_dir;
-    party.dest_x = (int16_t)dst_x;
-    party.dest_y = (int16_t)dst_y;
-    party.dest_map = (int16_t)map; /* the original writes a stale register when no destination is given */
+    g_party.dest_dir = (int16_t)dest_dir;
+    g_party.dest_x = (int16_t)dst_x;
+    g_party.dest_y = (int16_t)dst_y;
+    g_party.dest_map = (int16_t)map; /* the original writes a stale register when no destination is given */
     dun_set_current_map(start_map);
     return 0;
 }
@@ -1381,7 +1381,7 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
 {
     if (type == THING_EXPLOSION)
         return THING_NONE;
-    int saved = party.cur_map, alt = party.alt_view_active ? party.alt_view_map : -1;
+    int saved = g_party.cur_map, alt = g_party.alt_view_active ? g_party.alt_view_map : -1;
     int map = g_last_discarded_map[type];
     if (map == game.party_map || map == alt)
         map = discard_next_map(map, map, &alt);

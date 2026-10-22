@@ -17,7 +17,7 @@ enum move_command { CMD_TURN_LEFT = 1, CMD_TURN_RIGHT, CMD_MOVE_FORWARD, CMD_MOV
 #define REDRAW_ALL_VIEW 0x03
 
 /* Movement state of the party and of the dungeon reads (the original globals). */
-/* The push arrows (party.push_arrow) by the part of the viewport under the mouse. */
+/* The push arrows (g_party.push_arrow) by the part of the viewport under the mouse. */
 enum {
     PUSH_ARROW_UP,
     PUSH_ARROW_RIGHT,
@@ -48,9 +48,9 @@ typedef struct {
     int16_t push_arrow;
 } Party;
 
-extern Party party;
+extern Party g_party;
 /* The square step of each direction. */
-extern const int8_t dir_dx[4], dir_dy[4];
+extern const int8_t g_dir_dx[4], g_dir_dy[4];
 
 /* Makes map the map of the square reads; updates the party position as seen from it. */
 void dun_set_current_map(int map);
@@ -97,7 +97,7 @@ enum { MARKER_FIND_NTH = 2, MARKER_COUNT = 3, MARKER_CLEAR_ALL = 4, MARKER_FIND_
 int dun_find_marker(int mode, int nth, int marker, int16_t *x, int16_t *y);
 /* Damage of a bump into (x, y) for the two champions on that side; returns 1 when one was hurt. */
 int move_party_bump_damage(int x, int y, int16_t *first, int16_t *second, int dir, int step);
-/* Follows pits, teleporters, and stairs from (x, y) of the current map; leaves the end in party.dest_*.
+/* Follows pits, teleporters, and stairs from (x, y) of the current map; leaves the end in g_party.dest_*.
    Returns 1 for a flying thing. */
 int move_follow_square_transitions(uint16_t thing, int src_x, int src_y, int x, int y, int creature_sound);
 

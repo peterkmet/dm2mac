@@ -323,19 +323,19 @@ static int max16(int lo, int v)
 static bool lightning_strike(void)
 {
     int x = rand_below(LIGHTNING_RANGE), y = rand_below(LIGHTNING_RANGE);
-    if (x >= dungeon_map_width(party.cur_map) || y >= dungeon_map_height(party.cur_map))
+    if (x >= dungeon_map_width(g_party.cur_map) || y >= dungeon_map_height(g_party.cur_map))
         return false;
     ViewSquare s;
-    aspect_get(&s, party.cur_map, DIR_NORTH, x, y);
+    aspect_get(&s, g_party.cur_map, DIR_NORTH, x, y);
     PassageEnd end;
     if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, x, y))
         return false;
     bool weak = (int16_t)game.storm_intensity < STORM_WEAK;
-    if (game.party_map == party.cur_map && x == game.party_x && y == game.party_y &&
+    if (game.party_map == g_party.cur_map && x == game.party_x && y == game.party_y &&
         (weak || game.game_time < STRIKE_PARTY_TIME || dun_get_global_var(VAR_STORMS) <= g_weather.strike_threshold))
         return false;
     int distance = (int16_t)(abs16(game.party_x - x) + abs16(game.party_y - y));
-    uint16_t group = creature_group_at(party.cur_map, x, y);
+    uint16_t group = creature_group_at(g_party.cur_map, x, y);
     if (group != THING_NONE) {
         if (creature_lightning[creature_group_info(group) - creature_info_at(0)] == CREATURE_LIGHTNING_PROOF)
             return false;
@@ -581,7 +581,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
 {
     SquareLight sum = {0, 0, 0};
     ViewSquare s;
-    aspect_get(&s, party.cur_map, dir, x, y);
+    aspect_get(&s, g_party.cur_map, dir, x, y);
     switch (s.aspect) {
     case ASPECT_WALL:
         if (flags & LIGHT_WALLS)
@@ -597,7 +597,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
         if ((flags & LIGHT_FLOOR) && !add_floor_light(&sum, &s, x, y))
             break;
         if (flags & LIGHT_CREATURES) {
-            uint16_t group = creature_group_at(party.cur_map, x, y);
+            uint16_t group = creature_group_at(g_party.cur_map, x, y);
             if (group != THING_NONE)
                 sum.light = (int16_t)(sum.light + (item_attr(group, ATTR_LIGHT_SOURCE) & LIGHT_AMOUNT_MASK));
         }
