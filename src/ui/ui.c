@@ -817,7 +817,7 @@ static void draw_coin_counts(uint16_t box)
 {
     int16_t counts[COIN_TYPE_MAX];
     money_count_coins_in_box(box, counts);
-    int total = 0, zone = ZONE_COIN_COUNT_FIRST;
+    int total = 0, zone = ZONE_COINS_FIRST;
     char s[TEXT_SIZE];
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
         int type = money_coin_type_for_slot(box, slot);

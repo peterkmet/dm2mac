@@ -293,7 +293,7 @@
 #define ZONE_BUTTON_SOUND          0x238
 #define ZONE_COIN_TOTAL            0x239
 #define ZONE_NAME_BUTTON           0x267
-#define ZONE_COIN_COUNT_FIRST      0x26a
+#define ZONE_COINS_FIRST           0x26a
 #define ZONE_OBJECT_GAUGE_FIRST    0x270
 #define ZONE_TITLE                 0x273
 #define ZONE_CEILING               0x2bc
