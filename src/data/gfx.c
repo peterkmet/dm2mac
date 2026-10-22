@@ -46,7 +46,7 @@ static int get_pixel(const uint8_t *p, int bpp, int i)
 {
     if (bpp == IMAGE_8BPP)
         return p[i];
-    return i & 1 ? p[i >> 1] & NIBBLE_MASK : p[i >> 1] >> NIBBLE_BITS;
+    return i & 1 ? p[i >> 1] & NIBBLE_MASK : p[i >> 1] >> NIBBLE_BIT_COUNT;
 }
 
 /* Sets pixel i of a 4 bpp or 8 bpp picture. */
@@ -57,7 +57,8 @@ static void put_pixel(uint8_t *p, int bpp, int i, int color)
         return;
     }
     uint8_t *b = p + (i >> 1);
-    *b = i & 1 ? (*b & HIGH_NIBBLE_MASK) | (color & NIBBLE_MASK) : (*b & NIBBLE_MASK) | (uint8_t)(color << NIBBLE_BITS);
+    *b = i & 1 ? (*b & HIGH_NIBBLE_MASK) | (color & NIBBLE_MASK)
+               : (*b & NIBBLE_MASK) | (uint8_t)(color << NIBBLE_BIT_COUNT);
 }
 
 void gfx_blit(const Blit *blit, const int16_t *rect)
@@ -123,7 +124,7 @@ void gfx_blit_scaled_4bpp(const Bitmap *source, Bitmap *target, const uint8_t *c
                 hi = colormap[hi];
                 lo = colormap[lo];
             }
-            out[i] = (uint8_t)(hi << NIBBLE_BITS | lo);
+            out[i] = (uint8_t)(hi << NIBBLE_BIT_COUNT | lo);
         }
     }
 }

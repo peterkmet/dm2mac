@@ -262,7 +262,7 @@ static int command_enabled(int command)
     if (command < COMMAND_AFTER_GLOBALS) {
         const int16_t words[] = {party_distance.map,         alt_distance.map, cached_light_sum,
                                  cached_explosion_light_sum, last_party_map,   -1};
-        return (uint8_t)(words[(command - COMMAND_PAST_TABLE) / 2] >> ((command & 1) * BYTE_BITS));
+        return (uint8_t)(words[(command - COMMAND_PAST_TABLE) / 2] >> ((command & 1) * BYTE_BIT_COUNT));
     }
     if (command < COMMAND_AFTER_GLOBALS + (int)sizeof ai_after_command_table)
         return ai_after_command_table[command - COMMAND_AFTER_GLOBALS];
@@ -1797,9 +1797,9 @@ int ai_thing_matches_filter(uint16_t thing, int filter)
         return 0;
     }
     /* fix: the original reads outside the bitmap for a negative or large value */
-    if (value < 0 || value >= FILTER_BITMAP_SIZE * BYTE_BITS)
+    if (value < 0 || value >= FILTER_BITMAP_SIZE * BYTE_BIT_COUNT)
         return invert;
-    return bitmap[value / BYTE_BITS] >> (value % BYTE_BITS) & 1 ? !invert : invert;
+    return bitmap[value / BYTE_BIT_COUNT] >> (value % BYTE_BIT_COUNT) & 1 ? !invert : invert;
 }
 
 /* True for the thing types that creatures carry. */

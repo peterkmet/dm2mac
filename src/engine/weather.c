@@ -478,7 +478,7 @@ void light_add_square_light(int distance, int dir, int x, int y, unsigned flags)
     ViewSquare s;
     aspect_get(&s, party.cur_map, dir, x, y);
     /* the front wall ornament, or the floor ornament: index in the low byte, animation frame in the high byte */
-    int ornament = s.side[SIDE_LIGHT] & ORNAMENT_MASK, animated = s.side[SIDE_LIGHT] >> BYTE_BITS != 0;
+    int ornament = s.side[SIDE_LIGHT] & ORNAMENT_MASK, animated = s.side[SIDE_LIGHT] >> BYTE_BIT_COUNT != 0;
     int animated_only;
     PassageEnd end;
     switch (s.aspect) {

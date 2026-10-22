@@ -5,7 +5,6 @@ block control/include/control.h open: module cleanup
 block control/include/state_json.h open: module cleanup
 block control/state_json.c open: module cleanup
 block control/turn.c open: module cleanup
-block data/include/le.h open: module cleanup
 block data/include/mve.h open: module cleanup
 block data/include/pcx.h open: module cleanup
 block data/mve.c open: module cleanup
@@ -733,7 +732,6 @@ name ui/view.c:view_offset_creature_toward_party open: module cleanup
 name ui/view.c:zone_id_for_view_element open: module cleanup
 notation control/control.c open: module cleanup
 notation control/include/control.h open: module cleanup
-notation data/include/le.h open: module cleanup
 notation data/mve.c open: module cleanup
 notation data/mve_video.c open: module cleanup
 notation data/pcx.c open: module cleanup

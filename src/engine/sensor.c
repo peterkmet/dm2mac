@@ -883,7 +883,7 @@ static void sensor_transfer_objects(const TimelineEvent *e, uint16_t sensor, uin
             uint16_t item = item_get_index(t);
             int match;
             if (use_filter) {
-                match = bits[item / BYTE_BITS] >> (item % BYTE_BITS) & 1;
+                match = bits[item / BYTE_BIT_COUNT] >> (item % BYTE_BIT_COUNT) & 1;
             } else if (item == data) {
                 if (!keep_bones && item_gdat_category(t) == CAT_MISC && item_gdat_index(t) == ITEM_BONES) {
                     /* bones: the champion comes back */
@@ -1484,7 +1484,7 @@ static const int16_t ambient_wall_dy[4][4] = {
 /* A value of an ambient wall table for the sensor thing: by its cell and the index bits 8-9 of its record. */
 static int16_t ambient_wall_step(const int16_t table[4][4], uint16_t thing)
 {
-    return table[thing_cell(thing)][thing_index(thing) >> BYTE_BITS];
+    return table[thing_cell(thing)][thing_index(thing) >> BYTE_BIT_COUNT];
 }
 
 /* The repeating sound of an animated ornament plays while it runs on the party map. */

@@ -80,7 +80,7 @@ static uint64_t get_bits(Reader *r, int count)
 {
     uint64_t bits = 0;
     for (int i = 0; i < count; i++)
-        bits |= (uint64_t)get8(r) << (i * BYTE_BITS);
+        bits |= (uint64_t)get8(r) << (i * BYTE_BIT_COUNT);
     return bits;
 }
 
@@ -265,7 +265,8 @@ static void decode_block(Block *b, int encoding)
         break;
     case ENC_PREVIOUS_NEAR:
         v = get8(&b->r);
-        copy_from(b, previous, (v & NIBBLE_MASK) - PREVIOUS_MOTION_CENTER, (v >> NIBBLE_BITS) - PREVIOUS_MOTION_CENTER);
+        copy_from(b, previous, (v & NIBBLE_MASK) - PREVIOUS_MOTION_CENTER,
+                  (v >> NIBBLE_BIT_COUNT) - PREVIOUS_MOTION_CENTER);
         break;
     case ENC_PREVIOUS_FAR:
         dx = (int8_t)get8(&b->r);
@@ -305,7 +306,7 @@ bool mve_decode_video(MveStream *m, const uint8_t *video, int size)
     for (int i = 0; i < columns * rows && !b.r.short_data; i++) {
         b.x = i % columns * MVE_BLOCK_SIZE, b.y = i / columns * MVE_BLOCK_SIZE;
         b.dst = m->buffers[m->current] + b.y * m->width + b.x;
-        decode_block(&b, m->map[i / ENCODINGS_PER_BYTE] >> (i % ENCODINGS_PER_BYTE * NIBBLE_BITS) & NIBBLE_MASK);
+        decode_block(&b, m->map[i / ENCODINGS_PER_BYTE] >> (i % ENCODINGS_PER_BYTE * NIBBLE_BIT_COUNT) & NIBBLE_MASK);
     }
     return !b.r.short_data;
 }

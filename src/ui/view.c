@@ -28,7 +28,7 @@
 
 /* Value keys of two bytes: the first value in the high byte, the second in the low byte. */
 #define LOW_BYTE(v)  ((v) & BYTE_MASK)
-#define HIGH_BYTE(v) ((v) >> BYTE_BITS)
+#define HIGH_BYTE(v) ((v) >> BYTE_BIT_COUNT)
 
 /* Value keys (CAT_WALLSET, graphics set, 0x0b, key). */
 enum {
@@ -609,7 +609,7 @@ static struct {
     uint8_t clear_color;
     int landmark_set; /* graphics set of the landmark bits, -1: none yet */
     int no_landmarks;
-    uint8_t landmarks[(SKY_LANDMARK_MAX + BYTE_BITS - 1) / BYTE_BITS];
+    uint8_t landmarks[(SKY_LANDMARK_MAX + BYTE_BIT_COUNT - 1) / BYTE_BIT_COUNT];
     DrawCtx ctx;    /* the picture of view_setup_picture */
     DrawCtx alcove; /* the picture of the last alcove: its items are placed relative to it */
     int rain_shown; /* the map graphics show rain */
@@ -1948,7 +1948,7 @@ static void shop_choose_item(uint16_t shop, uint16_t display, uint8_t ornament, 
                 at &= ITEM_INDEX_NONE;
                 item = (uint16_t)at;
             }
-            if (!(set[item / BYTE_BITS] & 1 << (item % BYTE_BITS)))
+            if (!(set[item / BYTE_BIT_COUNT] & 1 << (item % BYTE_BIT_COUNT)))
                 continue;
             if (gdat_entry_index(gdat_current(), item_index_gdat_category(item), item_index_gdat_index(item),
                                  GDAT_TYPE_VALUE, ATTR_FLAGS) &
@@ -2791,7 +2791,7 @@ static void outdoor_draw_sky(int dir, int x, int y)
         for (int e = 0; e < SKY_LANDMARK_MAX; e++)
             if (picture_exists(CAT_SKY, view.gfx_set, e) &&
                 *gdat_text(gdat_current(), (GdatKey){CAT_SKY, view.gfx_set, e}, text, sizeof text)) {
-                view.landmarks[e / BYTE_BITS] |= (uint8_t)(1 << (e % BYTE_BITS));
+                view.landmarks[e / BYTE_BIT_COUNT] |= (uint8_t)(1 << (e % BYTE_BIT_COUNT));
                 view.no_landmarks = 0;
             }
     }
@@ -2800,7 +2800,7 @@ static void outdoor_draw_sky(int dir, int x, int y)
     /* like the original, the landmarks use the first sky object as their record */
     SkyObject *o = weather_sky_objects();
     for (int e = 0; e < SKY_LANDMARK_MAX; e++) {
-        if (!(view.landmarks[e / BYTE_BITS] & 1 << (e % BYTE_BITS)))
+        if (!(view.landmarks[e / BYTE_BIT_COUNT] & 1 << (e % BYTE_BIT_COUNT)))
             continue;
         gdat_text(gdat_current(), (GdatKey){CAT_SKY, view.gfx_set, e}, text, sizeof text);
         if (!outdoor_place_sky_object(o, text, dir, x, y))
@@ -3021,7 +3021,7 @@ static int view_hit_test_picture(int x, int y, int key)
         pixel = image->pixels[sy * image->width + sx];
     } else {
         int i = sy * ((image->width + 1) & ~1) + sx;
-        pixel = i & 1 ? image->pixels[i >> 1] & NIBBLE_MASK : image->pixels[i >> 1] >> NIBBLE_BITS;
+        pixel = i & 1 ? image->pixels[i >> 1] & NIBBLE_MASK : image->pixels[i >> 1] >> NIBBLE_BIT_COUNT;
     }
     return pixel != key;
 }

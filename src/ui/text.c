@@ -66,7 +66,7 @@ const uint8_t *text_build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
         uint8_t bits = font[row * FONT_CHARS + c];
         for (int pair = 0; pair < GLYPH_BYTES_PER_ROW; pair++, bits = (uint8_t)(bits << GLYPH_PAIR_BITS)) {
             uint8_t first = bits & GLYPH_BIT_FIRST ? fg : bg, second = bits & GLYPH_BIT_SECOND ? fg : bg;
-            *out++ = (uint8_t)(first << NIBBLE_BITS | second);
+            *out++ = (uint8_t)(first << NIBBLE_BIT_COUNT | second);
         }
     }
     return glyph;

@@ -1163,7 +1163,7 @@ void input_draw_cursor(uint8_t *dst, int x, int y)
             int sx = x - c.hot_x + cx, sy = y - c.hot_y + cy, i = cy * c.width + cx;
             if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H)
                 continue;
-            int n = c.bpp == IMAGE_4BPP ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BITS)) & NIBBLE_MASK : c.bits[i];
+            int n = c.bpp == IMAGE_4BPP ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BIT_COUNT)) & NIBBLE_MASK : c.bits[i];
             if (n != c.key)
                 dst[sy * SCREEN_W + sx] = c.palette ? c.palette[n] : (uint8_t)n;
         }

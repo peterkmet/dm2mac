@@ -24,7 +24,7 @@
 /* True when the item class set holds item index item. */
 static bool class_set_has(const uint8_t *set, int item)
 {
-    return set[item / BYTE_BITS] & 1 << item % BYTE_BITS;
+    return set[item / BYTE_BIT_COUNT] & 1 << item % BYTE_BIT_COUNT;
 }
 
 int item_index_to_thing_type(uint16_t item)
@@ -202,11 +202,11 @@ int shop_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_
         if (digits) {
             if (low < 0)
                 low = number;
-            for (; low <= number && low < SHOP_CLASS_SET_SIZE * BYTE_BITS; low++) {
+            for (; low <= number && low < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT; low++) {
                 int16_t bit = (int16_t)(low + base);
                 /* fix: the original writes outside the set for bad numbers */
-                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * BYTE_BITS)
-                    bitset[bit / BYTE_BITS] |= (uint8_t)(1 << bit % BYTE_BITS);
+                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT)
+                    bitset[bit / BYTE_BIT_COUNT] |= (uint8_t)(1 << bit % BYTE_BIT_COUNT);
             }
             number = 0;
             low = base = -1;

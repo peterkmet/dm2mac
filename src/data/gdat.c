@@ -135,7 +135,7 @@ static const gdat_t *current;
 /* The key table is big-endian. */
 static unsigned be16(const uint8_t *p)
 {
-    return p[0] << BYTE_BITS | p[1];
+    return p[0] << BYTE_BIT_COUNT | p[1];
 }
 
 /* Checks the header, item sizes, and key table, and builds the item offset table. */
@@ -340,7 +340,7 @@ static int next_nibble(nibbles_t *n)
         return 0;
     }
     uint8_t b = n->src[n->pos / 2];
-    return n->pos++ & 1 ? b & NIBBLE_MASK : b >> NIBBLE_BITS;
+    return n->pos++ & 1 ? b & NIBBLE_MASK : b >> NIBBLE_BIT_COUNT;
 }
 
 /* A run length: 2 to 16 in one nibble, 17 to 271 in two, any 16-bit count in four more. */
@@ -349,25 +349,25 @@ static unsigned run_length(nibbles_t *n)
     unsigned v = next_nibble(n);
     if (v != RUN_LONG)
         return v + RUN_SHORT_MIN;
-    v = next_nibble(n) << NIBBLE_BITS;
+    v = next_nibble(n) << NIBBLE_BIT_COUNT;
     v |= next_nibble(n);
     if (v != RUN_HUGE)
         return v + RUN_LONG_MIN;
     v = 0;
     for (int i = 0; i < RUN_HUGE_NIBBLES; i++)
-        v = v << NIBBLE_BITS | next_nibble(n);
+        v = v << NIBBLE_BIT_COUNT | next_nibble(n);
     return v;
 }
 
 static int get_pixel(const uint8_t *buf, size_t pos)
 {
-    return pos & 1 ? buf[pos / 2] & NIBBLE_MASK : buf[pos / 2] >> NIBBLE_BITS;
+    return pos & 1 ? buf[pos / 2] & NIBBLE_MASK : buf[pos / 2] >> NIBBLE_BIT_COUNT;
 }
 
 static void set_pixel(uint8_t *buf, size_t pos, int color)
 {
     uint8_t *p = buf + pos / 2;
-    *p = pos & 1 ? (*p & ~NIBBLE_MASK) | color : (*p & NIBBLE_MASK) | color << NIBBLE_BITS;
+    *p = pos & 1 ? (*p & ~NIBBLE_MASK) | color : (*p & NIBBLE_MASK) | color << NIBBLE_BIT_COUNT;
 }
 
 int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst, size_t dst_size)

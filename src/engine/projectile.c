@@ -227,7 +227,7 @@ static void explosion_blast(int type, int power, int x, int y, int cell)
             const CreatureInfo *info = creature_group_info(g);
             if (info->door_flags & CREATURE_RESISTS_NON_FIRE && type != SPELL_FIREBALL)
                 damage = (uint16_t)max16(1, (int16_t)(damage >> 2));
-            int dodge = info->unknown_18 >> NIBBLE_BITS;
+            int dodge = info->unknown_18 >> NIBBLE_BIT_COUNT;
             if (dodge != DODGE_NONE) {
                 if (info->flags & CREATURE_NON_MATERIAL)
                     damage >>= 2;
@@ -935,7 +935,7 @@ static const uint8_t melee_wounds[4] = {WOUND_FEET, WOUND_LEGS, WOUND_TORSO, WOU
 static int wound_nibble(const CreatureInfo *info, int location)
 {
     uint8_t chances = location < 2 ? info->unknown_1a : info->unknown_1b;
-    return location & 1 ? chances >> NIBBLE_BITS : chances & NIBBLE_MASK;
+    return location & 1 ? chances >> NIBBLE_BIT_COUNT : chances & NIBBLE_MASK;
 }
 
 /* True when the champion dodges the melee attack of a creature with dexterity. */

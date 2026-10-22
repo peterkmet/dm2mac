@@ -223,7 +223,7 @@ enum global_var_op {
     GLOBAL_VAR_SUBTRACT,
     GLOBAL_VAR_ASSIGN = 6
 };
-#define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BITS) /* the first byte variable */
+#define GLOBAL_BYTE_FIRST (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT) /* the first byte variable */
 #define GLOBAL_BYTE_MAX   255
 
 /* Sensors that act on creatures (creature.c). */

@@ -279,7 +279,7 @@ void hmp_tick(void)
             }
             const uint8_t *event = song + tr->cursor;
             uint8_t status = event[MIDI_STATUS];
-            uint32_t length = status < MIDI_SYSTEM ? channel_event_length[status >> NIBBLE_BITS]
+            uint32_t length = status < MIDI_SYSTEM ? channel_event_length[status >> NIBBLE_BIT_COUNT]
                                                    : system_event_length[status & MIDI_CHANNEL_MASK];
             int next_delta = 1;
             if (event[MIDI_STATUS] == MIDI_META) {

@@ -298,7 +298,7 @@ static void voice_set_level(int v)
 static void voice_set_freq(int v, uint32_t freq, int retrigger)
 {
     op_sustain[OP_SUSTAIN_SLOTS + v] = (uint8_t)freq;
-    voice_key_block[v] = (uint8_t)(freq >> BYTE_BITS) | OPL_KEY_ON;
+    voice_key_block[v] = (uint8_t)(freq >> BYTE_BIT_COUNT) | OPL_KEY_ON;
     opl_write(OPL_FNUM_LOW + v, freq & BYTE_MASK);
     if (retrigger)
         opl_write(OPL_KEY_BLOCK + v, voice_key_block[v] & ~OPL_KEY_ON);
