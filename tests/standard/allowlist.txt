@@ -540,7 +540,6 @@ enum engine/seen.c open: module cleanup
 enum engine/sensor.c open: module cleanup
 enum engine/weather.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
-enum ui/action_area.c open: module cleanup
 enum ui/advanced.c open: module cleanup
 enum ui/dialog.c open: module cleanup
 enum ui/fm.c open: module cleanup
@@ -554,7 +553,6 @@ enum ui/include/session.h open: module cleanup
 enum ui/include/ui.h open: module cleanup
 enum ui/include/view.h open: module cleanup
 enum ui/input.c open: module cleanup
-enum ui/minion_map.c open: module cleanup
 enum ui/music.c open: module cleanup
 enum ui/session.c open: module cleanup
 enum ui/ui.c open: module cleanup
@@ -787,7 +785,6 @@ notation engine/include/creature.h open: module cleanup
 notation engine/include/dungeon.h open: module cleanup
 notation engine/include/inventory.h open: module cleanup
 notation engine/include/item.h open: module cleanup
-notation engine/include/minion.h open: module cleanup
 notation engine/include/projectile.h open: module cleanup
 notation engine/include/save.h open: module cleanup
 notation engine/include/sensor.h open: module cleanup
@@ -808,15 +805,12 @@ notation engine/sensor.c open: module cleanup
 notation engine/weather.c open: module cleanup
 notation platform/transport.c open: module cleanup
 notation ui/action_area.c open: module cleanup
-notation ui/dialog.c open: module cleanup
 notation ui/draw.c open: module cleanup
 notation ui/fm.c open: module cleanup
 notation ui/icon.c open: module cleanup
 notation ui/include/dialog.h open: module cleanup
-notation ui/include/draw.h open: module cleanup
 notation ui/include/input.h open: module cleanup
 notation ui/include/music.h open: module cleanup
-notation ui/include/play.h open: module cleanup
 notation ui/include/session.h open: module cleanup
 notation ui/include/text.h open: module cleanup
 notation ui/include/ui.h open: module cleanup
