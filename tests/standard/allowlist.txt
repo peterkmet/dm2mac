@@ -1,11 +1,9 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
-block control/turn.c open: module cleanup
 block platform/include/scale.h open: module cleanup
 block platform/main.c open: module cleanup
 block platform/platform.c open: module cleanup
 block platform/transport.c open: module cleanup
-bool control/turn.c:next_element open: module cleanup
 bool platform/include/platform.h:plat_poll open: module cleanup
 bool platform/main.c open: module cleanup
 bool platform/main.c:default_control_path open: module cleanup
@@ -15,8 +13,6 @@ bool platform/main.c:select_mode open: module cleanup
 bool platform/main.c:show_save open: module cleanup
 bool platform/main.c:start_game open: module cleanup
 bool platform/scale.c open: module cleanup
-comment control/include/turn.h open: module cleanup
-comment control/turn.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
 comment platform/transport.c open: module cleanup
@@ -45,7 +41,6 @@ engine-write ui/play.c open: module cleanup
 engine-write ui/session.c open: module cleanup
 engine-write ui/text.c open: module cleanup
 engine-write ui/ui.c open: module cleanup
-enum control/turn.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
@@ -73,25 +68,10 @@ long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 notation platform/transport.c open: module cleanup
-order control/turn.c open: module cleanup
 order platform/platform.c open: module cleanup
 order platform/transport.c open: module cleanup
 params platform/main.c:read_options open: module cleanup
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
-static-prefix control/turn.c:action_damage_json open: module cleanup
-static-prefix control/turn.c:champion_arg open: module cleanup
-static-prefix control/turn.c:minion_map_option open: module cleanup
-static-prefix control/turn.c:move_back open: module cleanup
-static-prefix control/turn.c:move_forward open: module cleanup
-static-prefix control/turn.c:move_left open: module cleanup
-static-prefix control/turn.c:move_right open: module cleanup
-static-prefix control/turn.c:seen_json open: module cleanup
-static-prefix control/turn.c:seen_place_json open: module cleanup
-static-prefix control/turn.c:turn_bumped open: module cleanup
-static-prefix control/turn.c:turn_displaced open: module cleanup
-static-prefix control/turn.c:turn_finished open: module cleanup
-static-prefix control/turn.c:turn_left open: module cleanup
-static-prefix control/turn.c:turn_right open: module cleanup
 static-prefix platform/main.c:play_movies open: module cleanup
 static-prefix platform/platform.c:movie_screen open: module cleanup
 type control:out open: module cleanup

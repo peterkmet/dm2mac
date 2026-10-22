@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Limits of a turn, a batch, and their texts. */
 #define TURN_MIN_TICKS        2 /* an action shows its result before the turn ends */
 #define TURN_MAX_TICKS        64
 #define TURN_WAIT_MAX_TICKS   5000 /* the turn wait; the real-time wait keeps WAIT_MAX_TICKS 6000 of control.c */
@@ -42,12 +43,44 @@
 #define DROP_ALCOVE_CELL         CELL_COUNT /* drop_object cell 4: the alcove ahead */
 #define CORNER_INSET             1          /* a click on a corner of a spell icon goes one pixel inside */
 
-typedef enum { INPUT_KEY_PRESS, INPUT_CLICK, INPUT_PRESS, INPUT_RELEASE, INPUT_COMMAND } TurnInputKind;
+/* The kinds of the inputs of an action. */
+#define INPUT_KEY_PRESS 0
+#define INPUT_CLICK     1
+#define INPUT_PRESS     2
+#define INPUT_RELEASE   3
+#define INPUT_COMMAND   4
+
+/* The reasons why an action cannot run. */
+#define NO_CHAMPION "no living champion with this index"
+#define PANEL_OPEN  "close the open panel first (pass)"
+#define HAND_FULL   "the leader hand is not empty: drop or store the object first"
+#define HAND_EMPTY  "the leader hand is empty"
+
+/* An input of an action: a key, a mouse button at a point, or the click on the zone of a command. */
 typedef struct {
-    TurnInputKind kind;
+    uint8_t kind;   /* INPUT_* */
     uint16_t value; /* a key code, a command, or a mouse button bit */
     int16_t x, y;
 } TurnInput;
+
+/* What the party saw during a request, also when it was gone at the end: the explosions, and the creature groups with
+   their creature count when first seen and when last seen. */
+typedef struct {
+    StateJsonSeenThing at;
+    uint16_t type;
+} WitnessedExplosion;
+typedef struct {
+    StateJsonSeenThing at;
+    uint16_t creature;
+    int16_t before, after;
+    bool in_view, killed;
+} WitnessedGroup;
+
+/* An action: lists its inputs, or returns the reason why it cannot run. */
+typedef const char *(*ActionFn)(const char *request);
+
+/* The result of reading the next item of an act_many list. */
+typedef enum { ELEMENT_FOUND, ELEMENT_END, ELEMENT_BAD } ElementResult;
 
 static struct {
     bool pending, wait_only, reply_dropped;
@@ -87,21 +120,10 @@ static struct {
     int16_t health[CHAMPION_MAX];
     uint16_t groups[STATE_JSON_VISIBLE_GROUPS_MAX];
     int group_count;
-    uint32_t g_text_message_expiry;
+    uint32_t message_expiry;
 } seen;
 
-/* What the party saw during a request, also when it was gone at the end: the explosions, and the creature groups with
-   their creature count when first seen and when last seen. */
-typedef struct {
-    StateJsonSeenThing at;
-    uint16_t type;
-} WitnessedExplosion;
-typedef struct {
-    StateJsonSeenThing at;
-    uint16_t creature;
-    int16_t before, after;
-    bool in_view, killed;
-} WitnessedGroup;
+/* What the party saw during a request. */
 static struct {
     int explosion_count, group_count;
     WitnessedExplosion explosions[WITNESSED_EXPLOSIONS_MAX];
@@ -109,6 +131,8 @@ static struct {
     int16_t health[CHAMPION_MAX]; /* the health of each champion at the start of the request */
     uint16_t champion_count;
 } witnessed;
+
+/* The state of the turn */
 
 bool turn_is_pending(void)
 {
@@ -122,7 +146,7 @@ void turn_drop_reply(void)
 
 /* Inputs: an action lists them; the turn gives each one when the input of the one before is done. */
 
-static void add_input(TurnInputKind kind, uint16_t value, int16_t x, int16_t y)
+static void add_input(uint8_t kind, uint16_t value, int16_t x, int16_t y)
 {
     if (turn.input_count < TURN_INPUT_MAX)
         turn.inputs[turn.input_count++] = (TurnInput){kind, value, x, y};
@@ -163,7 +187,8 @@ static void give_input(const TurnInput *in)
     case INPUT_CLICK:
     case INPUT_PRESS:
     case INPUT_RELEASE:
-        g_input_mouse_x = in->x, g_input_mouse_y = in->y;
+        g_input_mouse_x = in->x;
+        g_input_mouse_y = in->y;
         if (in->kind != INPUT_RELEASE)
             input_mouse_down(in->x, in->y, in->value);
         if (in->kind != INPUT_PRESS)
@@ -221,7 +246,8 @@ static void start_witnessing(void)
     witness();
 }
 
-static void seen_place_json(Json *j, const StateJsonSeenThing *at)
+/* The square, the row, and the side of the view where the party saw a thing. */
+static void put_seen_place(Json *j, const StateJsonSeenThing *at)
 {
     json_key(j, "x");
     json_int(j, at->x);
@@ -234,7 +260,7 @@ static void seen_place_json(Json *j, const StateJsonSeenThing *at)
 }
 
 /* The explosions the party saw and the groups that lost creatures in view or were killed; nothing when none. */
-static void seen_json(Json *j)
+static void put_seen(Json *j)
 {
     int changes = 0;
     for (int k = 0; k < witnessed.group_count; k++)
@@ -249,7 +275,7 @@ static void seen_json(Json *j)
         json_open(j, '{');
         json_key(j, "name");
         state_json_explosion_name(j, witnessed.explosions[k].type);
-        seen_place_json(j, &witnessed.explosions[k].at);
+        put_seen_place(j, &witnessed.explosions[k].at);
         json_close(j, '}');
     }
     json_close(j, ']');
@@ -261,7 +287,7 @@ static void seen_json(Json *j)
         json_open(j, '{');
         json_key(j, "type");
         state_json_creature_name(j, witnessed.groups[k].creature);
-        seen_place_json(j, &witnessed.groups[k].at);
+        put_seen_place(j, &witnessed.groups[k].at);
         json_key(j, "before");
         json_int(j, witnessed.groups[k].before);
         json_key(j, "after");
@@ -307,7 +333,7 @@ static void snapshot(void)
     for (uint16_t i = 0; i < g_game.champion_count; i++)
         seen.health[i] = champion(i)->health;
     seen.group_count = state_json_visible_groups(seen.groups);
-    seen.g_text_message_expiry = latest_message_expiry();
+    seen.message_expiry = latest_message_expiry();
 }
 
 /* A creature group is in view that was not in view at the snapshot. */
@@ -335,7 +361,7 @@ static const char *news(void)
             return "damage";
     if (new_group_in_view())
         return "creature";
-    if (latest_message_expiry() > seen.g_text_message_expiry)
+    if (latest_message_expiry() > seen.message_expiry)
         return "message";
     return NULL;
 }
@@ -344,13 +370,13 @@ static const char *news(void)
 
 /* The step of the turn left the party on its square: a wall, a closed door, or a creature is in the way. A
    teleporter that sends the party back to its square counts as a bump (DM2 has no teleport counter). */
-static bool turn_bumped(void)
+static bool was_bumped(void)
 {
     return turn.moving && g_game.party_map == turn.map && g_game.party_x == turn.x && g_game.party_y == turn.y;
 }
 
 /* The party was turned or moved by something else than its action: a spinner, a teleporter, a pit, stairs. */
-static const char *turn_displaced(void)
+static const char *displacement(void)
 {
     int16_t x = turn.x, y = turn.y;
     if (turn.moving)
@@ -365,13 +391,6 @@ static const char *turn_displaced(void)
 
 /* Actions: each lists its inputs, or returns the reason why it cannot run now (it lists nothing then). */
 
-typedef const char *(*ActionFn)(const char *request);
-
-#define NO_CHAMPION "no living champion with this index"
-#define PANEL_OPEN  "close the open panel first (pass)"
-#define HAND_FULL   "the leader hand is not empty: drop or store the object first"
-#define HAND_EMPTY  "the leader hand is empty"
-
 static bool hand_is_empty(void)
 {
     return g_game.leader_hand == THING_NONE;
@@ -382,7 +401,7 @@ static bool has_leader(void)
 }
 
 /* The champion of the request key: a living member of the party, not the candidate; -1 none. */
-static int champion_arg(const char *request, const char *key)
+static int requested_champion(const char *request, const char *key)
 {
     long c = control_get_int(request, key, -1);
     int members = g_game.champion_count - (g_ui.candidate ? 1 : 0);
@@ -418,6 +437,7 @@ static bool add_shown_command(uint16_t command)
     return true;
 }
 
+/* A step or a turn needs the view of the movement mode. */
 static const char *need_movement_input(void)
 {
     if (g_ui.inventory)
@@ -439,7 +459,8 @@ static const char *need_view(void)
 /* The square ahead of the party is a wall (outside the map counts as a wall). */
 static bool wall_ahead(void)
 {
-    int x = g_game.party_x + g_dir_dx[g_game.party_dir], y = g_game.party_y + g_dir_dy[g_game.party_dir];
+    int x = g_game.party_x + g_dir_dx[g_game.party_dir];
+    int y = g_game.party_y + g_dir_dy[g_game.party_dir];
     if (x < 0 || y < 0 || x >= dungeon_map_width(g_game.party_map) || y >= dungeon_map_height(g_game.party_map))
         return true;
     return square_type(dungeon_square(g_game.party_map, x, y)) == SQUARE_WALL;
@@ -452,11 +473,13 @@ static const char *step(uint16_t key, int16_t forward, int16_t right)
     if (error)
         return error;
     turn.moving = true;
-    turn.step_forward = forward, turn.step_right = right;
+    turn.step_forward = forward;
+    turn.step_right = right;
     add_key(key);
     return NULL;
 }
 
+/* A turn of the party remembers its rotation, so that the turn result can tell a turn by the dungeon. */
 static const char *rotate(uint16_t key, int16_t rotation)
 {
     const char *error = need_movement_input();
@@ -467,32 +490,32 @@ static const char *rotate(uint16_t key, int16_t rotation)
     return NULL;
 }
 
-static const char *move_forward(const char *r)
+static const char *walk_forward(const char *r)
 {
     (void)r;
     return step(KEYPAD_FORWARD, 1, 0);
 }
-static const char *move_back(const char *r)
+static const char *walk_back(const char *r)
 {
     (void)r;
     return step(KEYPAD_BACK, -1, 0);
 }
-static const char *move_left(const char *r)
+static const char *walk_left(const char *r)
 {
     (void)r;
     return step(KEYPAD_LEFT, 0, -1);
 }
-static const char *move_right(const char *r)
+static const char *walk_right(const char *r)
 {
     (void)r;
     return step(KEYPAD_RIGHT, 0, 1);
 }
-static const char *turn_left(const char *r)
+static const char *rotate_left(const char *r)
 {
     (void)r;
     return rotate(KEYPAD_TURN_LEFT, -1);
 }
-static const char *turn_right(const char *r)
+static const char *rotate_right(const char *r)
 {
     (void)r;
     return rotate(KEYPAD_TURN_RIGHT, 1);
@@ -552,7 +575,8 @@ static const char *take_object(const char *r)
 /* A static creature ahead whose floor takes no click hides the floor: a click there throws the object. */
 static bool front_floor_clickable(void)
 {
-    int x = g_game.party_x + g_dir_dx[g_game.party_dir], y = g_game.party_y + g_dir_dy[g_game.party_dir];
+    int x = g_game.party_x + g_dir_dx[g_game.party_dir];
+    int y = g_game.party_y + g_dir_dy[g_game.party_dir];
     uint16_t group = creature_group_at(g_game.party_map, x, y);
     if (group == THING_NONE)
         return true;
@@ -590,9 +614,10 @@ static const char *drop_object(const char *r)
     return NULL;
 }
 
+/* Opens the inventory of a champion with a click on its status box. */
 static const char *open_inventory(const char *r)
 {
-    int c = champion_arg(r, "champion");
+    int c = requested_champion(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
     if (g_ui.inventory == c + 1)
@@ -600,6 +625,7 @@ static const char *open_inventory(const char *r)
     return add_shown_command(CMD_INVENTORY_FIRST + c) ? NULL : "the inventory cannot open now";
 }
 
+/* Closes the open inventory. */
 static const char *close_inventory(const char *r)
 {
     (void)r;
@@ -633,7 +659,7 @@ static const char *slot_command(int c, long slot, uint16_t *command)
 static const char *click_slot(const char *r, bool put)
 {
     uint16_t command;
-    int c = champion_arg(r, "champion");
+    int c = requested_champion(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
     if (!has_leader())
@@ -679,7 +705,7 @@ static bool opens_panel(uint16_t thing)
 static const char *choose_action(const char *r)
 {
     char name[ACTION_NAME_SIZE] = "";
-    int c = champion_arg(r, "champion");
+    int c = requested_champion(r, "champion");
     long index = control_get_int(r, "index", -1);
     if (c < 0)
         return NO_CHAMPION;
@@ -721,9 +747,10 @@ static const char *pass(const char *r)
    by party cell 0 to 3, the corner (right, bottom) of the caster, else of the leader. */
 static const char *click_spell_icon(const char *r, bool caster)
 {
-    static const bool right[CELL_COUNT] = {false, true, true, false}, bottom[CELL_COUNT] = {true, true, false, false};
+    static const bool right[CELL_COUNT] = {false, true, true, false};
+    static const bool bottom[CELL_COUNT] = {true, true, false, false};
     int16_t rect[RECT_SIZE];
-    int c = champion_arg(r, "champion");
+    int c = requested_champion(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
     if (g_action.champion)
@@ -733,7 +760,8 @@ static const char *click_spell_icon(const char *r, bool caster)
     int cell = party_cell(c);
     if (!input_command_rect(CMD_PARTY_ICON_FIRST + cell, rect))
         return "the spell icons take no click now";
-    bool at_right = right[cell] == caster, at_bottom = bottom[cell] == caster;
+    bool at_right = right[cell] == caster;
+    bool at_bottom = bottom[cell] == caster;
     add_click(at_right ? rect[RECT_X] + rect[RECT_W] - 1 - CORNER_INSET : rect[RECT_X] + CORNER_INSET,
               at_bottom ? rect[RECT_Y] + rect[RECT_H] - 1 - CORNER_INSET : rect[RECT_Y] + CORNER_INSET,
               INPUT_BUTTON_LEFT);
@@ -755,6 +783,7 @@ static int spell_caster(void)
     return g_action.mode == ACTION_MODE_SPELL && g_action.champion ? g_action.champion - 1 : -1;
 }
 
+/* The caster of the open spell panel enters a rune of the next rune set. */
 static const char *add_rune(const char *r)
 {
     long symbol = control_get_int(r, "symbol", -1);
@@ -818,6 +847,7 @@ static const char *sleep_party(const char *r)
     return NULL;
 }
 
+/* The sleeping party wakes up. */
 static const char *wake(const char *r)
 {
     (void)r;
@@ -829,7 +859,8 @@ static const char *wake(const char *r)
 /* Clicks the face of champion a, then the face of champion b: the two champions swap cells. */
 static const char *swap_champions(const char *r)
 {
-    int a = champion_arg(r, "a"), b = champion_arg(r, "b");
+    int a = requested_champion(r, "a");
+    int b = requested_champion(r, "b");
     if (a < 0 || b < 0)
         return "a and b must be living champions";
     if (a == b)
@@ -858,7 +889,7 @@ static const char *look(const char *r)
     if (slot >= 0) {
         if (!hand_is_empty())
             return "the leader hand must be empty to look at a slot";
-        int c = control_find_value(r, "champion") ? champion_arg(r, "champion") : g_ui.inventory - 1;
+        int c = control_find_value(r, "champion") ? requested_champion(r, "champion") : g_ui.inventory - 1;
         if (c < 0)
             return NO_CHAMPION;
         const char *error = slot_command(c, slot, &command);
@@ -870,7 +901,8 @@ static const char *look(const char *r)
             return "no object in this slot";
         add_command(command);
     }
-    int16_t x = eye[RECT_X] + eye[RECT_W] / 2, y = eye[RECT_Y] + eye[RECT_H] / 2;
+    int16_t x = eye[RECT_X] + eye[RECT_W] / 2;
+    int16_t y = eye[RECT_Y] + eye[RECT_H] / 2;
     add_press(x, y);
     add_release(x, y);
     if (command)
@@ -892,7 +924,8 @@ static const char *take_coin(const char *r)
     return add_shown_command(CMD_COIN_FIRST + (uint16_t)slot) ? NULL : "the money box takes no click now";
 }
 
-static const char *minion_map_option(const char *r)
+/* Switches an option button of the open minion map. */
+static const char *switch_map_option(const char *r)
 {
     long option = control_get_int(r, "option", -1);
     if (g_action.mode != ACTION_MODE_MINION_MAP)
@@ -909,7 +942,8 @@ static const char *click(const char *r)
 {
     static char error[TURN_ERROR_SIZE];
     char button[ACTION_NAME_SIZE] = "left";
-    long x = control_get_int(r, "x", -1), y = control_get_int(r, "y", -1);
+    long x = control_get_int(r, "x", -1);
+    long y = control_get_int(r, "y", -1);
     if (x < 0 || y < 0 || x >= SCREEN_W || y >= SCREEN_H) {
         snprintf(error, sizeof error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
         return error;
@@ -939,12 +973,12 @@ static const struct {
     const char *name;
     ActionFn run;
 } actions[] = {
-    {"move_forward",      move_forward     },
-    {"move_back",         move_back        },
-    {"move_left",         move_left        },
-    {"move_right",        move_right       },
-    {"turn_left",         turn_left        },
-    {"turn_right",        turn_right       },
+    {"move_forward",      walk_forward     },
+    {"move_back",         walk_back        },
+    {"move_left",         walk_left        },
+    {"move_right",        walk_right       },
+    {"turn_left",         rotate_left      },
+    {"turn_right",        rotate_right     },
     {"click_wall_ahead",  click_wall_ahead },
     {"take_object",       take_object      },
     {"drop_object",       drop_object      },
@@ -967,7 +1001,7 @@ static const struct {
     {"swap_champions",    swap_champions   },
     {"look",              look             },
     {"take_coin",         take_coin        },
-    {"minion_map_option", minion_map_option},
+    {"minion_map_option", switch_map_option},
     {"click",             click            },
     {"key",               key              },
 };
@@ -975,9 +1009,12 @@ static const struct {
 /* Clears what the last action gave and changed. */
 static void forget_action(void)
 {
-    turn.has_damage = turn.moving = turn.looking = false;
+    turn.has_damage = false;
+    turn.moving = false;
+    turn.looking = false;
     turn.rotation = 0;
-    turn.input_count = turn.inputs_given = 0;
+    turn.input_count = 0;
+    turn.inputs_given = 0;
     looked.shown = false;
 }
 
@@ -994,7 +1031,10 @@ static const char *run_action(const char *name, const char *request)
         if (g_party_sleeping && strcmp(name, "wake") && !raw)
             return "the party sleeps: use wake or wait";
         forget_action();
-        turn.map = g_game.party_map, turn.x = g_game.party_x, turn.y = g_game.party_y, turn.dir = g_game.party_dir;
+        turn.map = g_game.party_map;
+        turn.x = g_game.party_x;
+        turn.y = g_game.party_y;
+        turn.dir = g_game.party_dir;
         return actions[k].run(request);
     }
     return "unknown action";
@@ -1002,6 +1042,7 @@ static const char *run_action(const char *name, const char *request)
 
 /* Turns. */
 
+/* The turn runs from now: at least min_ticks and at most max_ticks game ticks; a wait runs without inputs. */
 static void start_turn(long min_ticks, long max_ticks, bool wait_only)
 {
     turn.pending = true;
@@ -1063,48 +1104,48 @@ static const char *batch_stop_reason(void)
 {
     if (state_json_game_over())
         return news();
-    if (turn_bumped())
-        return "bumped";                      /* before damage: a bump into a wall hurts */
-    const char *displaced = turn_displaced(); /* before damage: a pit fall hurts */
+    if (was_bumped())
+        return "bumped";                    /* before damage: a bump into a wall hurts */
+    const char *displaced = displacement(); /* before damage: a pit fall hurts */
     return displaced ? displaced : news();
 }
 
-/* The next act_many item, a "name" or an {"action": "name", "args": {...}} object, copied to out. Returns 1, 0 at
-   the end of the list, or -1 for an item that is not an action. Strings hold no '"' (docs/turnbased-mode.md). */
-static int next_element(char *out, size_t size)
+/* The next act_many item, a "name" or an {"action": "name", "args": {...}} object, copied to out; ELEMENT_END at the
+   end of the list, ELEMENT_BAD for an item that is not an action. Strings hold no '"' (docs/turnbased-mode.md). */
+static ElementResult next_element(char *out, size_t size)
 {
     const char *p = batch.next;
     while (*p == ' ' || *p == ',')
         p++;
     const char *start = p;
     if (!*p || *p == ']')
-        return 0;
+        return ELEMENT_END;
     if (*p == '"') {
         p = strchr(p + 1, '"');
         if (!p)
-            return -1;
+            return ELEMENT_BAD;
         p++;
     } else if (*p == '{') {
         for (int depth = 0; *p; p++) {
             if (*p == '"')
                 p = strchr(p + 1, '"');
             if (!p)
-                return -1;
+                return ELEMENT_BAD;
             depth += (*p == '{') - (*p == '}');
             if (!depth)
                 break;
         }
         if (!*p++)
-            return -1;
+            return ELEMENT_BAD;
     } else {
-        return -1;
+        return ELEMENT_BAD;
     }
     if ((size_t)(p - start) >= size)
-        return -1;
+        return ELEMENT_BAD;
     memcpy(out, start, (size_t)(p - start));
     out[p - start] = 0;
     batch.next = p;
-    return 1;
+    return ELEMENT_FOUND;
 }
 
 /* Starts the turn of the next item of the batch; ends the batch when the list is done or the item cannot run.
@@ -1113,9 +1154,10 @@ static bool batch_next(void)
 {
     char element[BATCH_ITEM_SIZE], name[ACTION_NAME_SIZE];
     snapshot();
-    int found = next_element(element, sizeof element);
-    if (found <= 0) {
-        batch_finish(found ? "failed" : "done", found ? "an item of actions is not an action name or object" : NULL);
+    ElementResult found = next_element(element, sizeof element);
+    if (found != ELEMENT_FOUND) {
+        bool bad = found == ELEMENT_BAD;
+        batch_finish(bad ? "failed" : "done", bad ? "an item of actions is not an action name or object" : NULL);
         return false;
     }
     if (element[0] == '"')
@@ -1164,9 +1206,11 @@ const char *turn_act_many(const char *request)
     return NULL;
 }
 
+/* Frames */
+
 /* A turn ends when the party can act again after the minimum ticks, or at the maximum. A wait ends early on news. A
    game that does not tick ends the turn after a frame limit. */
-static bool turn_finished(void)
+static bool has_ended(void)
 {
     long ticks = (long)(g_game.game_time - turn.start_time);
     if (turn.wait_only && (turn.stop = news()))
@@ -1197,7 +1241,7 @@ bool turn_poll(void)
         give_input(in);
     }
     witness();
-    if (!turn_finished()) {
+    if (!has_ended()) {
         turn.frames++;
         return false;
     }
@@ -1224,7 +1268,7 @@ static void stop_json(Json *j)
         }
         return;
     }
-    const char *displaced = turn.wait_only || state_json_game_over() ? NULL : turn_displaced();
+    const char *displaced = turn.wait_only || state_json_game_over() ? NULL : displacement();
     if (!turn.wait_only && !displaced)
         return;
     json_key(j, "stopped");
@@ -1232,7 +1276,7 @@ static void stop_json(Json *j)
 }
 
 /* The result of choose_action: one value after act, the list of the choose_action items after act_many. */
-static void action_damage_json(Json *j)
+static void put_action_damage(Json *j)
 {
     if (batch.active ? !batch.damage_count : !turn.has_damage)
         return;
@@ -1274,14 +1318,14 @@ void turn_reply(Json *j)
     stop_json(j);
     json_key(j, "game_over");
     json_bool(j, state_json_game_over());
-    if (turn_bumped()) {
+    if (was_bumped()) {
         json_key(j, "bumped");
         json_bool(j, true);
     }
-    action_damage_json(j);
+    put_action_damage(j);
     health_lost_json(j);
     look_json(j);
-    seen_json(j);
+    put_seen(j);
     json_key(j, "state");
     state_json_state(j);
     json_key(j, "view");
