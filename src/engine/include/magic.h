@@ -30,6 +30,9 @@ typedef struct {
 /* Spell lookup */
 /* The spell of the entered runes (a power rune and 1 to 3 runes), NULL when no spell has them. */
 const Spell *magic_find_spell(const uint8_t *runes); /* exported for the tests */
+/* The lower-case name of a rune (its glyph - SPELL_RUNE_GLYPH_FIRST: the power runes, then the three rune sets), for
+   example "ful"; NULL for a value outside the runes. */
+const char *magic_get_rune_name(int rune);
 
 /* Light and auras */
 /* Adds magic light (or darkness) of a kind and power; it fades through timeline events. */

@@ -193,6 +193,11 @@ static const uint8_t rune_mana[RUNE_SETS * RUNES_PER_SET] = {1, 2, 3, 4, 5, 6, 2
                                                              4, 5, 6, 7, 7, 9, 2, 2, 3, 4, 6, 7};
 /* The mana factor (in eighths) of each power rune for the runes after it. */
 static const uint8_t power_rune_mana_factor[RUNES_PER_SET] = {8, 12, 16, 20, 24, 28};
+/* The rune names by rune: the power runes, then the three rune sets. */
+static const char *const rune_names[RUNE_SETS * RUNES_PER_SET] = {
+    "lo",  "um", "on",   "ee", "pal", "mon", "ya", "vi",  "oh",   "ful",  "des", "zo",
+    "ven", "ew", "kath", "ir", "bro", "gor", "ku", "ros", "dain", "neta", "ra",  "sar",
+};
 /* The light of each magic light level. */
 static const int8_t light_power[MAGIC_LIGHT_LEVELS] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 
@@ -255,6 +260,11 @@ const Spell *magic_find_spell(const uint8_t *runes)
             return s;
     }
     return NULL;
+}
+
+const char *magic_get_rune_name(int rune)
+{
+    return rune >= 0 && rune < RUNE_SETS * RUNES_PER_SET ? rune_names[rune] : NULL;
 }
 
 void magic_add_light(int kind, int power)
