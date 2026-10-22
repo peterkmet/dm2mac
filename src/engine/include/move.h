@@ -128,9 +128,9 @@ int dun_find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_
 
 /* ---- Moving things ---- */
 
-/* Follows pits, teleporters, and stairs from the destination of path; leaves the end in g_party.dest_*.
+/* Follows pits, teleporters, and stairs from the destination of route; leaves the end in g_party.dest_*.
    creature_sound: the teleporter sounds, the fall alert, and the drop sound play. True for a flying thing. */
-bool move_follow_square_transitions(uint16_t thing, MovePath path, bool creature_sound);
+bool move_follow_square_transitions(uint16_t thing, MovePath route, bool creature_sound);
 /* Moves a thing (THING_NONE: the party) from (src_x, src_y) to (dst_x, dst_y) of the current map, through
    pits, teleporters, and stairs; a negative src_x adds it, a negative dst_x removes it. */
 MoveResult move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
@@ -143,7 +143,7 @@ uint16_t dun_get_discarded_thing(int type, int subtype);
 
 /* Dungeon squares of ai.c. */
 /* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *sensor);
+int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *out_sensor);
 /* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
 bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode);
 

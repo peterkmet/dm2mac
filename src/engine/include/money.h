@@ -51,8 +51,8 @@ void money_box_click_coin(int16_t slot);
 bool money_normalize_coins(bool check_only, uint16_t box);
 
 /* Merchant prices */
-/* The item class set of list of a merchant creature (its GDAT text 0x10 + list): a bit per item index. */
-int money_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_containers);
+/* The item class set of class_list of a merchant creature (its GDAT text 0x10 + class_list): a bit per item index. */
+int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, int skip_containers);
 /* The price of item at a merchant under terms; charges -1: the full charges. */
 int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges);
 

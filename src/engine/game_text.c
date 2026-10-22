@@ -40,7 +40,7 @@ static const char field_names[FIELD_COUNT][3] = {"SK", "LV", "CM", "BZ", "TR", "
 #define NUMBER_WIDTH 4
 #define NUMBER_SPARE 4
 
-const char *text_format_number(unsigned value, int pad, int width)
+const char *text_format_number(int value, int pad, int width)
 {
     static char buf[NUMBER_SPARE + NUMBER_WIDTH + 1];
     char *end = buf + NUMBER_SPARE + NUMBER_WIDTH, *p = end;
@@ -202,9 +202,9 @@ static char *decode_words(uint16_t text, char *o, char *end)
     return o;
 }
 
-void text_decode_raw(uint16_t thing, int mode, char *out, size_t size)
+void text_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
 {
-    char *o = out, *end = out + size - 1;
+    char *o = dst, *end = dst + size - 1;
     unsigned ornament = NO_ORNAMENT_TEXT;
     uint16_t text = thing;
     *o = '\0';

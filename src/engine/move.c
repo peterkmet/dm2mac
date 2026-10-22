@@ -992,14 +992,14 @@ static void transit_finish(const Transit *t)
     dun_set_current_map(saved_map);
 }
 
-bool move_follow_square_transitions(uint16_t thing, MovePath path, bool creature_sound)
+bool move_follow_square_transitions(uint16_t thing, MovePath route, bool creature_sound)
 {
     g_party.teleporter_flag = 0;
     Transit t = {.thing = thing,
-                 .src_x = path.src_x,
-                 .src_y = path.src_y,
-                 .x = path.dst_x,
-                 .y = path.dst_y,
+                 .src_x = route.src_x,
+                 .src_y = route.src_y,
+                 .x = route.dst_x,
+                 .y = route.dst_y,
                  .map = g_party.cur_map,
                  .start_map = g_party.cur_map,
                  .creature_sound = creature_sound};
@@ -1009,7 +1009,7 @@ bool move_follow_square_transitions(uint16_t thing, MovePath path, bool creature
             g_ui.push_mode = 0;
             g_hooks.draw_movement_arrows();
         }
-        set_party_position(path.dst_x, path.dst_y);
+        set_party_position(route.dst_x, route.dst_y);
         t.scope = SCOPE_PARTY;
         t.draw_fall = !g_ui.inventory && !g_party_sleeping;
         t.type = -1;

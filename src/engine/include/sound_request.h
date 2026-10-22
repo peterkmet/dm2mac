@@ -78,11 +78,11 @@ void sound_clear_requests(void);
 
 /* Queries */
 /* Finds sound (category, index, entry) in GRAPHICS.DAT; the data stays in g. */
-int sound_load(const gdat_t *g, int category, int index, int entry, Sound *out); /* exported for the tests */
+int sound_load(const gdat_t *g, int category, int index, int entry, Sound *sound); /* exported for the tests */
 /* The place of a sound at (dx, dy) from the party seen by the party facing party_dir. A sound that comes around
    walls (path_distance above the straight distance) is pushed further away. path_distance is the party distance
    map value at the square of the sound; false when it is negative (no path). Also exported for the tests. */
-bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *out);
+bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset);
 /* The loudness (0-255) and stereo pan (0x0800 left to 0xf800 right) of a sound at lateral, forward. */
 void sound_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan);
 

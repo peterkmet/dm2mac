@@ -100,15 +100,15 @@ static int stat_modifier(uint16_t thing, int attr, bool equipped, int mode)
     return mode < 0 ? -r : r;
 }
 
-void champ_adjust_stat(uint8_t *stat, int delta)
+void champ_adjust_stat(uint8_t *stat_values, int delta)
 {
     int16_t d = (int16_t)delta;
-    int16_t diff = (int16_t)(stat[0] + d - stat[1]);
+    int16_t diff = (int16_t)(stat_values[0] + d - stat_values[1]);
     if ((diff < 0) == (d < 0)) {
         for (int16_t left = (int16_t)(diff < 0 ? -diff : diff); left > STAT_STEP; left = (int16_t)(left - STAT_STEP))
             d = (int16_t)(d - (d >> 2));
     }
-    stat[0] = (uint8_t)clamp16(STAT_MIN, (int16_t)(stat[0] + d), STAT_MAX);
+    stat_values[0] = (uint8_t)clamp16(STAT_MIN, (int16_t)(stat_values[0] + d), STAT_MAX);
 }
 
 void champ_compute_load(int champ)

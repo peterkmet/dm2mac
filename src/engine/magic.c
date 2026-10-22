@@ -306,26 +306,26 @@ void timeline_event_magic_light(TimelineEvent *e)
     timeline_add_event(&fade);
 }
 
-void magic_add_party_aura(int mask, int type, int16_t value, uint16_t duration)
+void magic_add_party_aura(int champion_mask, int type, int value, uint16_t duration)
 {
     int big = 0;
     for (int i = 0; i < CHAMPION_MAX; i++) {
         Champion *c = champion(i);
         int bit = 1 << i;
-        if (mask & bit) {
+        if (champion_mask & bit) {
             if (!c->health)
-                mask &= ~bit;
+                champion_mask &= ~bit;
             if (type != c->aura || !c->health) {
                 /* a new aura type: the old aura and its events end */
                 c->aura_value = 0;
                 for (int k = 0; k < g_timeline.used_end; k++) {
                     TimelineEvent *e = &g_timeline.events[k];
-                    if (e->type != EVENT_AURA || !(e->priority & mask))
+                    if (e->type != EVENT_AURA || !(e->priority & champion_mask))
                         continue;
-                    if (!(e->priority & ~mask))
+                    if (!(e->priority & ~champion_mask))
                         timeline_delete_event((uint16_t)k);
                     else
-                        e->priority &= (uint8_t)~mask;
+                        e->priority &= (uint8_t)~champion_mask;
                 }
             }
         }
@@ -335,33 +335,33 @@ void magic_add_party_aura(int mask, int type, int16_t value, uint16_t duration)
     if (big)
         value = (int16_t)(value >> AURA_BIG_SHIFT);
     for (int i = 0; i < g_game.champion_count; i++) {
-        if (!(mask & 1 << i))
+        if (!(champion_mask & 1 << i))
             continue;
         Champion *c = champion(i);
         c->aura = (uint8_t)type;
         c->aura_value = (int16_t)(c->aura_value + value);
     }
     TimelineEvent e = party_event(EVENT_AURA, duration);
-    e.priority = (uint8_t)mask;
+    e.priority = (uint8_t)champion_mask;
     set_event_word(&e, (uint16_t)value);
     timeline_add_event(&e);
 }
 
-bool magic_cast_party_aura(Champion *c, int type, uint16_t value, bool pay)
+bool magic_cast_party_aura(Champion *c, int type, int power, bool pay)
 {
     bool paid = true;
     if (pay) {
         if (!c->mana)
             return false;
         if (c->mana < AURA_COST) {
-            value >>= 1;
+            power >>= 1;
             c->mana = 0;
             paid = false;
         } else {
             c->mana -= AURA_COST;
         }
     }
-    magic_add_party_aura(AURA_PARTY, type, (int16_t)(value >> AURA_SHIFT), value);
+    magic_add_party_aura(AURA_PARTY, type, (int16_t)(power >> AURA_SHIFT), power);
     return paid;
 }
 

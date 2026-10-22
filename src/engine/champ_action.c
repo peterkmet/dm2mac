@@ -409,24 +409,24 @@ static void raise_level(int champ, int base, uint16_t level)
     g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, text, line));
 }
 
-void champ_add_experience(int champ, int skill, uint32_t amount)
+void champ_add_experience(int champ, int skill, uint32_t experience)
 {
     if (skill >= SKILL_BASE_COUNT && skill <= SKILL_LAST_FIGHT &&
         g_game.game_time - FIGHT_TIME_LONG > g_game.last_combat_time)
-        amount >>= 1;
-    if (!amount)
+        experience >>= 1;
+    if (!experience)
         return;
     int factor = dungeon_map_difficulty(g_party.cur_map);
     if (factor)
-        amount *= (uint32_t)factor;
+        experience *= (uint32_t)factor;
     Champion *c = champion(champ);
     int base = champ_base_skill(skill);
     uint16_t old = (uint16_t)champ_get_skill_level(champ, base, 0);
     if (skill >= SKILL_BASE_COUNT && (int32_t)(g_game.game_time - FIGHT_TIME_SHORT) < (int32_t)g_game.last_combat_time)
-        amount *= 2;
-    c->experience[skill] += amount;
+        experience *= 2;
+    c->experience[skill] += experience;
     if (skill >= SKILL_BASE_COUNT)
-        c->experience[base] += amount;
+        c->experience[base] += experience;
     uint16_t level = (uint16_t)champ_get_skill_level(champ, base, 0);
     while (old < level) {
         old++;

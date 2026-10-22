@@ -2818,7 +2818,7 @@ static void search_start(Search *s, AiLocation start, int command, int count, Ai
     }
 }
 
-int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *path)
+int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *out_path)
 {
     if (!candidates[0].kind) {
         candidates[0].found = pack_location(from.x, from.y, g_party.cur_map);
@@ -2853,7 +2853,7 @@ int ai_search_area(AiLocation from, int command, int count, AiCandidate *candida
         s->dir = (int16_t)dir_turn(s->dir, -s->turn); /* the first direction has no turn */
     }
     if (s->result != -1)
-        search_write_path(s, path);
+        search_write_path(s, out_path);
     ai_set_map(s->start_map);
     int result = s->result;
     for (int m = 0; m < SEARCH_MAPS; m++)

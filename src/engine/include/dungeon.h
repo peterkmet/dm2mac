@@ -189,25 +189,25 @@ uint8_t *dungeon_thing_record(uint16_t thing);
 /* The 16-bit field of a thing record at byte offset field. */
 uint16_t thing_word(uint16_t thing, int field);
 /* Sets the 16-bit field of a thing record at byte offset field. */
-void set_thing_word(uint16_t thing, int field, uint16_t value);
+void set_thing_word(uint16_t thing, int field, uint16_t word);
 
 /* Building blocks of the accessors below; other modules call the named accessors. */
 static inline uint8_t thing_byte(uint16_t thing, int field)
 {
     return dungeon_thing_record(thing)[field];
 }
-static inline void set_thing_byte(uint16_t thing, int field, uint8_t value)
+static inline void set_thing_byte(uint16_t thing, int field, uint8_t byte)
 {
-    dungeon_thing_record(thing)[field] = value;
+    dungeon_thing_record(thing)[field] = byte;
 }
 static inline uint16_t thing_field(uint16_t thing, int field, int shift, uint16_t mask)
 {
     return (uint16_t)(thing_word(thing, field) >> shift & mask);
 }
-static inline void set_thing_field(uint16_t thing, int field, int shift, uint16_t mask, unsigned value)
+static inline void set_thing_field(uint16_t thing, int field, int shift, uint16_t mask, unsigned bits)
 {
     uint16_t w = thing_word(thing, field);
-    set_thing_word(thing, field, (uint16_t)((w & ~(mask << shift)) | (value & mask) << shift));
+    set_thing_word(thing, field, (uint16_t)((w & ~(mask << shift)) | (bits & mask) << shift));
 }
 static inline bool thing_bit(uint16_t thing, int field, uint16_t bit)
 {

@@ -168,8 +168,8 @@ void ai_scratch_pop(void);
 /* Reads the skills of the creature and its plan state once per update, before the first test.
    It is exported for the tests. */
 void ai_prepare(void);
-/* The stored path buffer of the group, big enough for size bytes; exported for the tests. */
-uint8_t *ai_store_path(int size);
+/* The stored path buffer of the group, big enough for path_size bytes; exported for the tests. */
+uint8_t *ai_store_path(int path_size);
 /* The flags of an action: how it moves, waits, or follows the path. */
 uint8_t ai_action_flag(int action);
 

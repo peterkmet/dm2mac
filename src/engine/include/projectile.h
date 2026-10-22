@@ -121,8 +121,8 @@ void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell);
 
 /* Removes the queued move of a projectile. */
 void projectile_cancel_event(uint16_t projectile);
-/* The projectile ends on (x, y): its object falls there (or into holder, a list of creature possessions). */
-void projectile_destroy(uint16_t projectile, uint16_t *holder, int16_t x, int16_t y);
+/* The projectile ends on (x, y): its object falls there (or into list, the possessions of a creature). */
+void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t y);
 /* The power of a hit of projectile with payload. */
 int projectile_get_attack(uint16_t projectile, uint16_t payload);
 /* The move event of a projectile: it hits what is on its square, then flies on to the next cell or square. */

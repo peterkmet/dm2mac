@@ -89,7 +89,7 @@ void sound_clear_requests(void)
 
 /* Queries */
 
-int sound_load(const gdat_t *g, int category, int index, int entry, Sound *out)
+int sound_load(const gdat_t *g, int category, int index, int entry, Sound *sound)
 {
     uint32_t size;
     int item = gdat_find(g, category, index, GDAT_TYPE_SOUND, entry);
@@ -98,8 +98,8 @@ int sound_load(const gdat_t *g, int category, int index, int entry, Sound *out)
         return GDAT_ERR_ITEM;
     if (size <= SAMPLE_HEADER)
         return GDAT_ERR_FORMAT;
-    out->data = (const int8_t *)p + SAMPLE_HEADER;
-    out->length = size - SAMPLE_HEADER;
+    sound->data = (const int8_t *)p + SAMPLE_HEADER;
+    sound->length = size - SAMPLE_HEADER;
     return GDAT_OK;
 }
 
@@ -111,7 +111,7 @@ static int push_away(int c, int scale)
     return (c * scale + SCALE_ROUND) >> SCALE_SHIFT;
 }
 
-bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *out)
+bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset)
 {
     int lat;
     int fwd;
@@ -143,8 +143,8 @@ bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundO
             fwd = push_away(fwd, scale);
         }
     }
-    out->lateral = lat;
-    out->forward = fwd;
+    offset->lateral = lat;
+    offset->forward = fwd;
     return true;
 }
 

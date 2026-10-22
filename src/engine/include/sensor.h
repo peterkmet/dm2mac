@@ -206,11 +206,11 @@ bool sensor_door_try_destroy(int16_t x, int16_t y, int strength, bool magic, int
 
 /* Floor sensors. */
 /* A thing (THING_NONE: the party) enters the square (x, y) of the current map: the floor sensors and texts of the
-   square react. on_square: the party stands there (for the party: the move ends on the same square); possessions: an
-   item goes into the possessions of a static creature. */
-void sensor_enter_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool possessions);
+   square react. on_square: the party stands there (for the party: the move ends on the same square); into_possessions:
+   an item goes into the possessions of a static creature. */
+void sensor_enter_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions);
 /* A thing (THING_NONE: the party) leaves the square (x, y) of the current map, as sensor_enter_square. */
-void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool possessions);
+void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions);
 
 /* Sensor effects. */
 /* A new game starts the timer sensors that are on and stops the others. */
@@ -224,8 +224,8 @@ void sensor_process_map_entry(bool entering);
 /* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
 /* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
-   with hand (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
-void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t hand);
+   with held (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
+void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held);
 
 /* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
 #define GLOBAL_VAR_SET      0

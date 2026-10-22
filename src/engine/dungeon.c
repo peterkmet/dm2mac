@@ -136,9 +136,9 @@ uint16_t thing_word(uint16_t thing, int field)
     return le16(dungeon_thing_record(thing) + field);
 }
 
-void set_thing_word(uint16_t thing, int field, uint16_t value)
+void set_thing_word(uint16_t thing, int field, uint16_t word)
 {
-    put_le16(dungeon_thing_record(thing) + field, value);
+    put_le16(dungeon_thing_record(thing) + field, word);
 }
 
 /* Setup */

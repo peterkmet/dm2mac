@@ -274,14 +274,16 @@ void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE
 /* The frame of an animation state of a creature type. */
 void creature_anim_frame_of(const gdat_t *g, int creature_type, uint16_t sequence, uint16_t state,
                             uint8_t frame[CREATURE_FRAME_SIZE]);
-/* Moves *step to the next step of a sequence, through the random chances of its steps; *frame gets the step.
+/* Moves *out_step to the next step of a sequence, through the random chances of its steps; *out_frame gets the step.
    True when the step has a duration. */
-bool creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame);
-/* Moves *step by the jump of the current step; *frame gets the step. */
-AnimStepResult creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame);
-/* Starts the animation sequence of action: anim[0] the sequence, anim[1] the state, *frame the first step; true when
+bool creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *out_step,
+                                    const uint8_t **out_frame);
+/* Moves *out_step by the jump of the current step; *out_frame gets the step. */
+AnimStepResult creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *out_step,
+                                       const uint8_t **out_frame);
+/* Starts the animation sequence of action: anim[0] the sequence, anim[1] the state, *out_frame the first step; true when
    the step has a duration. start: the first frame of a looping sequence of a static creature. */
-bool creature_anim_start(int creature_type, int action, uint16_t *anim, const uint8_t **frame, uint16_t start);
+bool creature_anim_start(int creature_type, int action, uint16_t *anim, const uint8_t **out_frame, uint16_t start);
 /* True when the current animation step of a group is a step at which the creature acts. */
 int creature_current_step_acts(uint16_t group);
 
@@ -355,8 +357,8 @@ void creature_turn_group(uint16_t group, int absolute, int16_t dir);
 int creature_get_party_distance(int16_t x, int16_t y);
 
 /* Pushing creatures: the push arrows of the party and the pushes of creatures. */
-/* True when the group on (x, y) can be pushed one square in dir; *group gets it. */
-bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *group);
+/* True when the group on (x, y) can be pushed one square in dir; *out_group gets it. */
+bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_group);
 /* Pushes the group on (x, y) one square in dir; a push into the party moves the party. */
 void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength);
 /* The party walks on after a push that waited for its slow move: the push ends now. */

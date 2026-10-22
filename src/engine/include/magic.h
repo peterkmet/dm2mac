@@ -34,10 +34,10 @@ const Spell *magic_find_spell(const uint8_t *runes); /* exported for the tests *
 /* Light and auras */
 /* Adds magic light (or darkness) of a kind and power; it fades through timeline events. */
 void magic_add_light(int kind, int power);
-/* Gives the living champions of mask aura type with value for duration game ticks. */
-void magic_add_party_aura(int mask, int type, int16_t value, uint16_t duration);
+/* Gives the living champions of champion_mask aura type with value for duration game ticks. */
+void magic_add_party_aura(int champion_mask, int type, int value, uint16_t duration);
 /* A party aura from champion c; pay: it costs 4 mana (less mana halves it). Returns false when it was not paid in full. */
-bool magic_cast_party_aura(Champion *c, int type, uint16_t value, bool pay);
+bool magic_cast_party_aura(Champion *c, int type, int power, bool pay);
 
 /* Casting */
 /* Champion champ shoots the missile thing with power for cost mana; returns false without the mana. */

@@ -133,7 +133,7 @@ bool ai_try_take_item(int mode, AiLocation from, AiLocation to, int16_t dir, int
    dir) from the slot of the creature type on that wall face. */
 bool ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int16_t dir, int filter);
 /* The breadth-first search from the square from with the move command: the nearest of count candidates; returns its index,
-   -1 for none. path gets the steps to it (2 bytes each). */
-int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *path);
+   -1 for none. out_path gets the steps to it (2 bytes each). */
+int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *out_path);
 
 #endif /* DM2_ENGINE_AI_INTERNAL_H */

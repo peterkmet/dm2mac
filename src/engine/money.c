@@ -251,11 +251,11 @@ bool money_normalize_coins(bool check_only, uint16_t box)
 
 /* Merchant prices */
 
-int money_parse_item_class_set(int creature, int list, uint8_t *bitset, int skip_containers)
+int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, int skip_containers)
 {
     char text[TEXT_SIZE];
     memset(bitset, 0, SHOP_CLASS_SET_SIZE);
-    const char *p = text_gdat(CAT_CREATURE, creature, (uint8_t)(list + GFX_CREATURE_CLASS_TEXT), text);
+    const char *p = text_gdat(CAT_CREATURE, creature, (uint8_t)(class_list + GFX_CREATURE_CLASS_TEXT), text);
     if (!*p)
         return 0;
     int16_t number = 0, low = -1, base = -1;

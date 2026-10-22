@@ -503,14 +503,14 @@ static void process_floor(int x, int y, uint16_t thing, FloorMove m, bool posses
     }
 }
 
-void sensor_enter_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool possessions)
+void sensor_enter_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions)
 {
-    process_floor(x, y, thing, (FloorMove){.enter = true, .on_square = on_square}, possessions);
+    process_floor(x, y, thing, (FloorMove){.enter = true, .on_square = on_square}, into_possessions);
 }
 
-void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool possessions)
+void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions)
 {
-    process_floor(x, y, thing, (FloorMove){.enter = false, .on_square = on_square}, possessions);
+    process_floor(x, y, thing, (FloorMove){.enter = false, .on_square = on_square}, into_possessions);
 }
 
 /* ---- Sensor effects ---- */
@@ -2014,9 +2014,9 @@ static void wall_click_text(WallClick *c, uint16_t t)
     }
 }
 
-void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t hand)
+void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held)
 {
-    WallClick c = {.x = x, .y = y, .hand = hand, .give = THING_NONE, .has_leader = (int16_t)g_game.leader != -1};
+    WallClick c = {.x = x, .y = y, .hand = held, .give = THING_NONE, .has_leader = (int16_t)g_game.leader != -1};
     uint16_t first = first_thing(x, y);
     for (uint16_t t = first; t != THING_ENDOFLIST && !c.done; t = dungeon_next_thing(t)) {
         c.cell = thing_cell(t);
@@ -2046,8 +2046,8 @@ void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
         g_input_command_stop = c.stop;
     } else {
         uint16_t *possessions = group_possessions(actor);
-        if (!c.take && hand != THING_NONE)
-            dungeon_append_thing(hand, possessions);
+        if (!c.take && held != THING_NONE)
+            dungeon_append_thing(held, possessions);
         if (c.give != THING_NONE)
             dungeon_append_thing(c.give, possessions);
     }

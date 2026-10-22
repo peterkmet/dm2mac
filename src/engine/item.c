@@ -477,12 +477,13 @@ uint16_t item_create_by_index(uint16_t item)
 
 /* Minion links (minion.h) */
 
-uint16_t minion_find_link_projectile(uint16_t group, uint16_t filter)
+uint16_t minion_find_link_projectile(uint16_t group, uint16_t payload)
 {
     if (group == THING_NONE || group == THING_ENDOFLIST || record_word(group, THING_NEXT) == THING_NONE)
         return 0;
     for (uint16_t t = record_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (thing_type(t) == THING_PROJECTILE && (filter == THING_NONE || filter == record_word(t, PROJECTILE_PAYLOAD)))
+        if (thing_type(t) == THING_PROJECTILE &&
+            (payload == THING_NONE || payload == record_word(t, PROJECTILE_PAYLOAD)))
             return t;
     return 0;
 }

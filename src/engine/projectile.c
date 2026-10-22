@@ -394,12 +394,12 @@ void projectile_cancel_event(uint16_t projectile)
         timeline_delete_event(thing_word(projectile, PROJECTILE_EVENT));
 }
 
-void projectile_destroy(uint16_t projectile, uint16_t *holder, int16_t x, int16_t y)
+void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t y)
 {
     uint16_t payload = thing_word(projectile, PROJECTILE_PAYLOAD);
     if (thing_type(payload) != THING_EXPLOSION) {
-        if (holder) {
-            dungeon_append_thing(payload, holder);
+        if (list) {
+            dungeon_append_thing(payload, list);
         } else {
             uint16_t g = creature_get_group_at(x, y);
             if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {

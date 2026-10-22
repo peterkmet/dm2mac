@@ -651,11 +651,11 @@ void ai_prepare(void)
     }
 }
 
-uint8_t *ai_store_path(int size)
+uint8_t *ai_store_path(int path_size)
 {
     int g = thing_index(g_ai.group_thing);
-    if (ai_state.groups[g].path_size < size)
-        ai_state.groups[g].path_size = size;
+    if (ai_state.groups[g].path_size < path_size)
+        ai_state.groups[g].path_size = path_size;
     return ai_state.groups[g].path;
 }
 
@@ -2177,7 +2177,7 @@ static void decide(void)
 /* Level links and pits for the creature moves. */
 
 /* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *sensor)
+int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *out_sensor)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
         int16_t sx = (int16_t)(x + g_dir_dx[d]), sy = (int16_t)(y + g_dir_dy[d]);
@@ -2190,7 +2190,7 @@ int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t
                 if (sensor_type(t) == SENSOR_LEVEL_LINK &&
                     level_delta == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) -
                                        (dungeon_map_level(g_party.cur_map) & MAP_LEVEL_MASK)) {
-                    *sensor = t;
+                    *out_sensor = t;
                     return d;
                 }
             } else if (type == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
@@ -2200,13 +2200,13 @@ int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t
                 int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, text_value(t),
                                                        GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
                 if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
-                    *sensor = THING_NONE;
+                    *out_sensor = THING_NONE;
                     return d;
                 }
             }
         }
     }
-    *sensor = THING_NONE;
+    *out_sensor = THING_NONE;
     return -1;
 }
 

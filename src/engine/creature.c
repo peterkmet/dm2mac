@@ -430,10 +430,10 @@ static int anim_sequence_length(int creature_type, uint16_t sequence)
     return n;
 }
 
-bool creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
+bool creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *out_step, const uint8_t **out_frame)
 {
     const uint8_t *steps = read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
-    unsigned s = *step;
+    unsigned s = *out_step;
     bool has_duration = false;
     bool ended = false;
     if (s == ANIM_STEP_NONE) {
@@ -460,30 +460,31 @@ bool creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16
             break;
         }
     }
-    *step = (uint16_t)s;
-    *frame = steps + ((uint16_t)(s + sequence)) * ANIM_STEP_SIZE;
+    *out_step = (uint16_t)s;
+    *out_frame = steps + ((uint16_t)(s + sequence)) * ANIM_STEP_SIZE;
     return has_duration;
 }
 
-AnimStepResult creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step, const uint8_t **frame)
+AnimStepResult creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *out_step,
+                                       const uint8_t **out_frame)
 {
     const uint8_t *steps = read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
-    if (*step == ANIM_STEP_NONE) {
-        *step = 0;
+    if (*out_step == ANIM_STEP_NONE) {
+        *out_step = 0;
     } else {
-        int jump = steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_JUMP] & STEP_JUMP_MASK;
+        int jump = steps[((uint16_t)(*out_step + sequence)) * ANIM_STEP_SIZE + STEP_JUMP] & STEP_JUMP_MASK;
         if (!jump) {
-            *frame = steps + ((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE;
+            *out_frame = steps + ((uint16_t)(*out_step + sequence)) * ANIM_STEP_SIZE;
             return ANIM_SEQUENCE_END;
         }
-        *step = (uint16_t)(*step + jump);
+        *out_step = (uint16_t)(*out_step + jump);
     }
-    *frame = steps + ((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE;
-    return steps[((uint16_t)(*step + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT ? ANIM_MORE_STEPS
-                                                                                                 : ANIM_LAST_STEP;
+    *out_frame = steps + ((uint16_t)(*out_step + sequence)) * ANIM_STEP_SIZE;
+    return steps[((uint16_t)(*out_step + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT ? ANIM_MORE_STEPS
+                                                                                                     : ANIM_LAST_STEP;
 }
 
-bool creature_anim_start(int creature_type, int action, uint16_t *anim, const uint8_t **frame, uint16_t start)
+bool creature_anim_start(int creature_type, int action, uint16_t *anim, const uint8_t **out_frame, uint16_t start)
 {
     uint16_t *sequence = anim;
     uint16_t *state = anim + 1;
@@ -497,7 +498,7 @@ bool creature_anim_start(int creature_type, int action, uint16_t *anim, const ui
     *sequence = first;
     if (!(creature_info(gdat_current(), creature_type)->flags & CREATURE_STATIC)) {
         *state = ANIM_STEP_NONE;
-        return creature_anim_next_random_step(creature_type, first, state, frame);
+        return creature_anim_next_random_step(creature_type, first, state, out_frame);
     }
     uint16_t n = (uint16_t)anim_sequence_length(creature_type, first);
     *state = start ? (uint16_t)(n | (start & ANIM_FRAME_MASK) << ANIM_START_SHIFT | ANIM_LOOP)
@@ -1437,7 +1438,7 @@ int creature_get_party_distance(int16_t x, int16_t y)
 
 /* Pushing creatures. */
 
-bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *group)
+bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_group)
 {
     uint16_t g = creature_get_group_at(x, y);
     if (g == THING_NONE || creature_group_info(g)->push_resistance >= PUSH_IMMOVABLE)
@@ -1449,8 +1450,8 @@ bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *group)
         int saved = g_party.cur_map;
         dun_set_current_map(end.map);
         int blocked = dun_square_blocks_movement(dun_get_square(end.x, end.y)) ||
-                      (group && creature_get_group_at((uint16_t)(end.x + g_dir_dx[end.target_side]),
-                                                      (uint16_t)(end.y + g_dir_dy[end.target_side])) != THING_NONE);
+                      (out_group && creature_get_group_at((uint16_t)(end.x + g_dir_dx[end.target_side]),
+                                                          (uint16_t)(end.y + g_dir_dy[end.target_side])) != THING_NONE);
         dun_set_current_map(saved);
         if (blocked)
             return false;
@@ -1459,12 +1460,12 @@ bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *group)
     uint8_t square = dun_get_square(nx, ny);
     if (dun_square_blocks_movement(square) || square_type(square) == SQUARE_STAIRS)
         return false;
-    if (group && creature_get_group_at(nx, ny) != THING_NONE)
+    if (out_group && creature_get_group_at(nx, ny) != THING_NONE)
         return false;
     if (dun_get_linked_teleporter_dest(&end, nx, ny) && !creature_is_native_to_map(g, end.map))
         return false;
-    if (group)
-        *group = g;
+    if (out_group)
+        *out_group = g;
     return true;
 }
 

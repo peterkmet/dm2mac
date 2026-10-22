@@ -65,7 +65,7 @@ extern char g_text_drive_path[TEXT_SIZE];
 #define FIELD_HAND       17
 
 /* A number as decimal text; pad right-aligns it in width characters with spaces. Uses one static buffer. */
-const char *text_format_number(unsigned value, int pad, int width);
+const char *text_format_number(int value, int pad, int width);
 /* Copies fmt to dst with the format codes replaced; returns dst (TEXT_SIZE bytes). */
 char *text_format(const char *fmt, char *dst);
 /* The text entry (category, index, 5, entry), decrypted and formatted, in dst (TEXT_SIZE bytes). */
@@ -76,7 +76,7 @@ const char *text_gdat_label(int category, int index, int entry);
 int16_t text_gdat_field(int category, int index, int entry, int field);
 
 /* The text of a scroll or a text thing as stored, without the format pass; mode as in text_decode_dungeon. */
-void text_decode_raw(uint16_t thing, int mode, char *out, size_t size);
+void text_decode_raw(uint16_t thing, int mode, char *dst, size_t size);
 /* The text of a scroll or a text thing with its format codes replaced; mode 1 starts with a new line, mode bit 15
    also gives a hidden text. */
 char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);

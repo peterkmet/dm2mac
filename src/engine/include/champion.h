@@ -280,7 +280,7 @@ void champ_reload_hand(int champ, int hand);
 /* The repeats of the actions of all champions. */
 void champ_process_repeated_actions(void);
 /* Adds experience in skill; each new level raises the statistics and prints a message. */
-void champ_add_experience(int champ, int skill, uint32_t amount);
+void champ_add_experience(int champ, int skill, uint32_t experience);
 /* The level of the whole party: from the sum of the base skill experience of all champions. */
 int champ_get_party_level(void);
 /* Champ throws the item in hand (-1: the leader hand object) to the left or right side; true when it flies. */
@@ -301,7 +301,7 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode)
 /* Computes the load of the champion: its slots and the items of its open chest. */
 void champ_compute_load(int champ);
 /* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
-void champ_adjust_stat(uint8_t *stat, int delta);
+void champ_adjust_stat(uint8_t *stat_values, int delta);
 /* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
 uint16_t champ_remove_object_from_slot(int champ, int16_t slot);
 /* Puts thing into slot of champ. */
