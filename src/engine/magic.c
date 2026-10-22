@@ -597,7 +597,7 @@ void magic_remove_last_rune(void)
     g_hooks.refresh_input_mode();
 }
 
-int move_party_warp_to_marker(void)
+bool move_party_warp_to_marker(void)
 {
     for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, game.party_x, game.party_y);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
@@ -622,7 +622,7 @@ int move_party_warp_to_marker(void)
                                     game.party_y, 1, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL);
         if (mode == MARKER_CLEAR_ALL)
             text_set_visible(t, true);
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }

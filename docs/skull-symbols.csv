@@ -396,13 +396,13 @@ address,name,signature,subsystem
 0x000231b1,view_click_object_zone_by_kind,void view_click_object_zone_by_kind(uint16_t kind),dungeon view
 0x00023233,ui_draw_move_arrow,"void ui_draw_move_arrow(uint8_t arrow, uint16_t zone, int pressed)",interface
 0x000232b8,input_release_move_arrow,void input_release_move_arrow(void),interface
-0x000232dd,move_party_take_stairs,void move_party_take_stairs(int16_t going_up),champions
-0x0002336d,champ_sync_directions_to_party,void champ_sync_directions_to_party(void),champions
+0x000232dd,take_stairs,void take_stairs(int16_t going_up),champions
+0x0002336d,sync_champion_directions,void sync_champion_directions(void),champions
 0x0002339d,move_party_turn,void move_party_turn(int16_t command),champions
 0x000234a8,move_party_bump_damage,"int move_party_bump_damage(int16_t x, int16_t y, int16_t *champ_a, int16_t *champ_b, int8_t party_dir, int8_t move_dir)",champions
 0x000235bf,move_party,int move_party(int16_t command),champions
-0x00023d13,move_get_step_result,"int16_t move_get_step_result(int16_t move_dir, uint16_t from_square, uint16_t to_square, int16_t x, int16_t y, int16_t *group)",champions
-0x00023e0d,move_group_side_blocks,"int move_group_side_blocks(uint8_t *group, int16_t dir)",creatures
+0x00023d13,get_step_result,"int16_t get_step_result(int16_t move_dir, uint16_t from_square, uint16_t to_square, int16_t x, int16_t y, int16_t *group)",champions
+0x00023e0d,is_side_blocked,"int is_side_blocked(uint8_t *group, int16_t dir)",creatures
 0x00023e5b,move_party_can_push_group,int move_party_can_push_group(uint16_t group_thing),creatures
 0x00023f9b,move_push_creature,void move_push_creature(uint16_t arrow),creatures
 0x00024171,creature_can_be_pushed,"int creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, int16_t *group)",creatures
@@ -845,8 +845,8 @@ address,name,signature,subsystem
 0x00047813,magic_cast_projectile_spell,"int magic_cast_projectile_spell(uint16_t champ, uint16_t thing, uint16_t power, uint16_t mana_cost)",magic
 0x000478a1,champ_throw_object,"int champ_throw_object(uint16_t champ, int16_t slot, int side)",champions
 0x00047b0a,champ_throw_leader_hand_object,int champ_throw_leader_hand_object(int side),champions
-0x00047b39,champ_get_move_time,int16_t champ_get_move_time(int16_t champ),champions
-0x00047b9e,champ_get_party_move_time,int16_t champ_get_party_move_time(void),champions
+0x00047b39,get_step_time,int16_t get_step_time(int16_t champ),champions
+0x00047b9e,get_party_step_time,int16_t get_party_step_time(void),champions
 0x00047bc5,champ_get_load,uint16_t champ_get_load(uint16_t champ),champions
 0x00047c05,champ_compute_load,void champ_compute_load(uint16_t champ),champions
 0x00047cc3,champ_apply_time_effects,void champ_apply_time_effects(void),champions
@@ -873,16 +873,16 @@ address,name,signature,subsystem
 0x00049cbb,champ_revive,void champ_revive(uint16_t champ),champions
 0x00049d46,champ_init_party_state,void champ_init_party_state(void),champions
 0x00049ef8,creature_turn_group,"void creature_turn_group(uint16_t group_thing, int absolute, uint16_t dir)",creatures
-0x00049f7c,move_rotate_through_teleporter,"uint16_t move_rotate_through_teleporter(uint8_t *teleporter, uint16_t thing)",dungeon data
-0x00049fcb,move_thing_is_flying,int move_thing_is_flying(uint16_t thing),dungeon data
+0x00049f7c,rotate_projectile,"uint16_t rotate_projectile(uint8_t *teleporter, uint16_t thing)",dungeon data
+0x00049fcb,is_flying_thing,int is_flying_thing(uint16_t thing),dungeon data
 0x0004a005,move_update_carried_missiles,"void move_update_carried_missiles(uint16_t holder_thing, uint8_t x, uint8_t y, uint16_t map, uint8_t flag)",projectiles
 0x0004a096,move_schedule_group_retry,"void move_schedule_group_retry(uint16_t group_thing, int16_t x, int16_t y, int16_t map, int audible)",creatures
 0x0004a0fe,move_check_missiles_hit_party,"void move_check_missiles_hit_party(int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",projectiles
 0x0004a34a,move_follow_square_transitions,"int move_follow_square_transitions(uint16_t thing, int16_t x, int16_t y, int16_t map, int fall_allowed)",dungeon data
 0x0004ae20,move_compute_map_arrival,"void move_compute_map_arrival(int16_t x, int16_t y, int16_t map)",dungeon data
-0x0004af50,move_set_party_position,"void move_set_party_position(int16_t x, int16_t y)",champions
+0x0004af50,set_party_position,"void set_party_position(int16_t x, int16_t y)",champions
 0x0004af72,dun_square_blocks_movement,int dun_square_blocks_movement(uint8_t square),dungeon data
-0x0004afcd,move_find_free_adjacent_square,"int move_find_free_adjacent_square(uint16_t thing, int16_t x, int16_t y, int16_t *out_x, int16_t *out_y)",dungeon data
+0x0004afcd,find_free_adjacent_square,"int find_free_adjacent_square(uint16_t thing, int16_t x, int16_t y, int16_t *out_x, int16_t *out_y)",dungeon data
 0x0004b108,move_thing,"int move_thing(uint16_t thing, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",dungeon data
 0x0004bbe4,sensor_schedule_square_event,"void sensor_schedule_square_event(uint8_t x, uint8_t y, uint8_t cell, uint16_t effect, uint32_t time)",Skullkeep machines
 0x0004bc4c,sensor_trigger_target,"void sensor_trigger_target(uint8_t *sensor, uint16_t effect, int16_t extra_delay)",Skullkeep machines

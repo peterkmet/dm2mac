@@ -1290,7 +1290,7 @@ uint16_t creature_create_group(int creature_type, int count, int dir, int x, int
     group_set_mood(group, 0);
     set_thing_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, g_party.cur_map));
     set_thing_word(group, GROUP_ITEM_CLASS, THING_NONE);
-    if (move_thing(group, MOVE_CREATED, 0, x, y) == 1) {
+    if (move_thing(group, MOVE_CREATED, 0, x, y) == MOVE_LEFT_DUNGEON) {
         /* the original frees a stale thing here when the group links no projectile */
         if (minion)
             set_thing_word(projectile, THING_NEXT, THING_NONE);
@@ -1510,8 +1510,7 @@ void creature_push_group(int x, int y, int dir, int strength)
             uint16_t flags = creature_group_info(g)->flags;
             if (g_party.cur_map == g_party.square_map && nx == g_party.square_x && ny == g_party.square_y &&
                 !(flags & CREATURE_NOT_SOLID)) {
-                int16_t first, second;
-                move_party_bump_damage(x, y, &first, &second, game.party_dir, dir_opposite(dir));
+                move_party_bump_damage(x, y, game.party_dir, dir_opposite(dir));
             } else {
                 ai_free_cached_data(g);
                 ActiveGroup *a = creature_active(g);

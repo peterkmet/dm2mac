@@ -1332,7 +1332,7 @@ static bool party_door_stops_move(Move *m)
 /* A move onto another map or into a teleporter: the move test goes on at the square where the creature arrives. */
 static void test_move_transition(Move *m, int no_movers)
 {
-    move_follow_square_transitions(g_ai.group_thing, m->sx, m->sy, m->tx, m->ty, 0);
+    move_follow_square_transitions(g_ai.group_thing, (MovePath){m->sx, m->sy, m->tx, m->ty}, false);
     if (g_party.cur_map == g_party.dest_map && m->tx == g_party.dest_x && m->ty == g_party.dest_y)
         return;
     int saved = g_party.cur_map;

@@ -13,14 +13,12 @@ block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/item.h open: module cleanup
 block engine/include/money.h open: module cleanup
-block engine/include/move.h open: module cleanup
 block engine/include/projectile.h open: module cleanup
 block engine/include/save.h open: module cleanup
 block engine/include/sound_request.h open: module cleanup
 block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
 block engine/money.c open: module cleanup
-block engine/move.c open: module cleanup
 block engine/projectile.c open: module cleanup
 block engine/save.c open: module cleanup
 block engine/sound_request.c open: module cleanup
@@ -65,20 +63,9 @@ bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
 bool engine/include/magic.h:magic_cast_projectile_spell open: module cleanup
 bool engine/include/money.h:money_add_coin_to_box open: module cleanup
 bool engine/include/money.h:money_normalize_coins open: module cleanup
-bool engine/include/move.h:move_find_free_adjacent_square open: module cleanup
-bool engine/include/move.h:move_party open: module cleanup
-bool engine/include/move.h:move_party_bump_damage open: module cleanup
-bool engine/include/move.h:move_party_warp_to_marker open: module cleanup
-bool engine/include/move.h:move_thing open: module cleanup
 bool engine/include/projectile.h:projectile_hit open: module cleanup
 bool engine/include/sound_request.h:sound_party_offset open: module cleanup
 bool engine/magic.c open: module cleanup
-bool engine/move.c open: module cleanup
-bool engine/move.c:discard_take open: module cleanup
-bool engine/move.c:move_party_bump_damage open: module cleanup
-bool engine/move.c:move_party_step open: module cleanup
-bool engine/move.c:move_thing_is_flying open: module cleanup
-bool engine/move.c:transit_teleporter open: module cleanup
 bool engine/projectile.c open: module cleanup
 bool engine/projectile.c:projectile_enter_square open: module cleanup
 bool engine/projectile.c:projectile_hit_champion open: module cleanup
@@ -155,9 +142,7 @@ comment engine/include/game_text.h open: module cleanup
 comment engine/include/item.h open: module cleanup
 comment engine/include/magic.h open: module cleanup
 comment engine/include/money.h open: module cleanup
-comment engine/include/move.h open: module cleanup
 comment engine/include/projectile.h open: module cleanup
-comment engine/move.c open: module cleanup
 comment engine/save.c open: module cleanup
 comment platform/include/platform.h open: module cleanup
 comment platform/include/scale.h open: module cleanup
@@ -192,7 +177,6 @@ dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
 dead-api engine/include/magic.h:magic_report_cast_failure open: module cleanup
 dead-api engine/include/money.h:money_take_coin_from_box open: module cleanup
-dead-api engine/include/move.h:move_find_free_adjacent_square open: module cleanup
 dead-api engine/include/projectile.h:missile_from_sensor open: module cleanup
 dead-api engine/include/projectile.h:projectile_attack_type open: module cleanup
 dead-api engine/include/projectile.h:projectile_event_dir open: module cleanup
@@ -256,9 +240,7 @@ decimal engine/creature.c rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c rule 3.12: a table of SKULL.EXE
 decimal engine/game_text.c open: module cleanup
 decimal engine/include/action.h open: module cleanup
-decimal engine/include/move.h open: module cleanup
 decimal engine/magic.c rule 3.12: a table of SKULL.EXE
-decimal engine/move.c open: module cleanup
 decimal engine/projectile.c open: module cleanup
 decimal engine/save.c rule 3.12: magic light by power of SKULL.EXE
 decimal engine/sensor.c rule 3.12: a table of SKULL.EXE
@@ -289,12 +271,10 @@ enum engine/include/game.h open: module cleanup
 enum engine/include/game_text.h open: module cleanup
 enum engine/include/item.h open: module cleanup
 enum engine/include/magic.h open: module cleanup
-enum engine/include/move.h open: module cleanup
 enum engine/include/projectile.h open: module cleanup
 enum engine/include/save.h open: module cleanup
 enum engine/item.c open: module cleanup
 enum engine/magic.c open: module cleanup
-enum engine/move.c open: module cleanup
 enum engine/projectile.c open: module cleanup
 enum engine/save.c open: module cleanup
 enum platform/include/platform.h open: module cleanup
@@ -355,7 +335,6 @@ include engine/include/creature.h:timeline.h open: module cleanup
 include engine/include/magic.h:timeline.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
-include engine/move.c:money.h open: module cleanup
 include engine/projectile.c:game.h open: module cleanup
 include engine/projectile.c:money.h open: module cleanup
 include engine/sound_request.c:ai.h open: module cleanup
@@ -386,8 +365,6 @@ long engine/aspect.c:apply_floor_things open: module cleanup
 long engine/aspect.c:aspect_get open: module cleanup
 long engine/game.c:timeline_process open: module cleanup
 long engine/game_text.c:text_decode_raw open: module cleanup
-long engine/move.c:move_party_step open: module cleanup
-long engine/move.c:move_thing open: module cleanup
 long platform/main.c:main open: module cleanup
 long platform/main.c:pc_key_code open: module cleanup
 long ui/action_area.c:draw_money_box open: module cleanup
@@ -403,8 +380,6 @@ long ui/view.c:view_draw_object open: module cleanup
 long ui/view.c:view_draw_wall_ornament open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
-name engine/move.c:champ_get_party_move_time open: module cleanup
-name engine/move.c:champ_sync_directions_to_party open: module cleanup
 name ui/include/text.h:text_draw_in_zone_with_shadow open: module cleanup
 name ui/include/ui.h:offscreen_draw_text_in_zone_with_shadow open: module cleanup
 name ui/include/ui.h:ui_draw_gdat_in_viewport_zone open: module cleanup
@@ -432,7 +407,6 @@ notation engine/include/sound_request.h open: module cleanup
 notation engine/item.c open: module cleanup
 notation engine/magic.c open: module cleanup
 notation engine/money.c open: module cleanup
-notation engine/move.c open: module cleanup
 notation engine/projectile.c open: module cleanup
 notation engine/save.c open: module cleanup
 notation platform/transport.c open: module cleanup
@@ -466,7 +440,6 @@ order engine/action.c open: module cleanup
 order engine/aspect.c open: module cleanup
 order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
-order engine/move.c open: module cleanup
 order engine/projectile.c open: module cleanup
 order engine/save.c open: module cleanup
 order platform/platform.c open: module cleanup
@@ -496,20 +469,11 @@ params engine/aspect.c:set_random_wall_ornaments open: module cleanup
 params engine/aspect.c:wall_sensor_ornament open: module cleanup
 params engine/aspect.c:wall_square_aspect open: module cleanup
 params engine/include/merchant.h:shop_get_item_value open: module cleanup
-params engine/include/move.h:move_follow_square_transitions open: module cleanup
-params engine/include/move.h:move_party_bump_damage open: module cleanup
 params engine/include/projectile.h:projectile_create open: module cleanup
 params engine/include/sound_request.h:sound_party_offset open: module cleanup
 params engine/include/sound_request.h:sound_request open: module cleanup
 params engine/include/sound_request.h:sound_request_with_fallback open: module cleanup
 params engine/money.c:shop_get_item_value open: module cleanup
-params engine/move.c:discard_take open: module cleanup
-params engine/move.c:move_follow_square_transitions open: module cleanup
-params engine/move.c:move_get_step_result open: module cleanup
-params engine/move.c:move_object_arrive open: module cleanup
-params engine/move.c:move_party_bump_damage open: module cleanup
-params engine/move.c:move_party_free_step open: module cleanup
-params engine/move.c:move_thing_leave open: module cleanup
 params engine/projectile.c:hit_explode open: module cleanup
 params engine/projectile.c:hit_start open: module cleanup
 params engine/projectile.c:projectile_create open: module cleanup
@@ -608,24 +572,6 @@ static-prefix engine/item.c:item_sum_attr open: module cleanup
 static-prefix engine/magic.c:champion_runes open: module cleanup
 static-prefix engine/magic.c:event_word open: module cleanup
 static-prefix engine/magic.c:magic_light_add open: module cleanup
-static-prefix engine/move.c:champ_get_move_time open: module cleanup
-static-prefix engine/move.c:champ_get_party_move_time open: module cleanup
-static-prefix engine/move.c:champ_sync_directions_to_party open: module cleanup
-static-prefix engine/move.c:creature_displaces_party open: module cleanup
-static-prefix engine/move.c:move_get_step_result open: module cleanup
-static-prefix engine/move.c:move_group_arrive open: module cleanup
-static-prefix engine/move.c:move_group_meet_square open: module cleanup
-static-prefix engine/move.c:move_group_side_blocks open: module cleanup
-static-prefix engine/move.c:move_object_arrive open: module cleanup
-static-prefix engine/move.c:move_party_arrive open: module cleanup
-static-prefix engine/move.c:move_party_bash_door open: module cleanup
-static-prefix engine/move.c:move_party_free_step open: module cleanup
-static-prefix engine/move.c:move_party_step open: module cleanup
-static-prefix engine/move.c:move_party_take_stairs open: module cleanup
-static-prefix engine/move.c:move_rotate_through_teleporter open: module cleanup
-static-prefix engine/move.c:move_set_party_position open: module cleanup
-static-prefix engine/move.c:move_thing_is_flying open: module cleanup
-static-prefix engine/move.c:move_thing_leave open: module cleanup
 static-prefix engine/projectile.c:creature_attack_missed open: module cleanup
 static-prefix engine/projectile.c:creature_attack_wounds open: module cleanup
 static-prefix engine/projectile.c:explosion_blast open: module cleanup
@@ -834,7 +780,6 @@ type engine:damage open: module cleanup
 type engine:dir open: module cleanup
 type engine:energy open: module cleanup
 type engine:filter open: module cleanup
-type engine:first open: module cleanup
 type engine:flags open: module cleanup
 type engine:forward open: module cleanup
 type engine:frame open: module cleanup
