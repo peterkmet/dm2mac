@@ -340,8 +340,8 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
     int type = thing_type(thing);
     int count = info_add(lines, 0, "%s", item_name(thing));
     uint16_t weight = (uint16_t)item_weight(thing);
-    g_text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
-    g_text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
+    text_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
+    text_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
     char text[TEXT_SIZE * 2];
     count = info_add_text(lines, count, text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_SCROLL)
@@ -364,7 +364,7 @@ char *ui_skill_rank_text(int champ, int skill, char *dst)
     int level = champ_get_skill_level(champ, skill, 1);
     if (level > SKILL_LEVEL_MAX)
         level = SKILL_LEVEL_MAX;
-    g_text_args.entry = (uint8_t)skill;
+    text_format_set_entry(skill);
     return text_gdat(CAT_PANEL, 0, skill_level_texts[level], dst);
 }
 
@@ -1128,8 +1128,8 @@ static bool show_object_info(uint16_t thing, bool full)
     text_draw_in_zone(ZONE_OBJECT_NAME, g_ui_colors[UI_LIGHT_GRAY], item_name(thing));
     show_slot(thing, SLOT_INFO, false, false, false);
     uint16_t weight = (uint16_t)item_weight(thing);
-    g_text_args.number[ARG_WEIGHT_KG] = (int16_t)(weight / WEIGHT_TENTHS);
-    g_text_args.number[ARG_WEIGHT_TENTHS] = (int16_t)(weight % WEIGHT_TENTHS);
+    text_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
+    text_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
     char text[TEXT_SIZE];
     show_description(text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_CONTAINER) {
@@ -1219,9 +1219,9 @@ static void show_load(int champ)
     int color = load > max_load                                       ? UI_RED
                 : load * LOAD_HIGH_WHOLE > max_load * LOAD_HIGH_PARTS ? UI_YELLOW
                                                                       : UI_LIGHT_GRAY;
-    g_text_args.number[ARG_LOAD_KG] = (int16_t)(load / WEIGHT_TENTHS);
-    g_text_args.number[ARG_LOAD_TENTHS] = (int16_t)(load % WEIGHT_TENTHS);
-    g_text_args.number[ARG_LOAD_MAX_KG] = (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS);
+    text_format_set_number(ARG_LOAD_KG, (int16_t)(load / WEIGHT_TENTHS));
+    text_format_set_number(ARG_LOAD_TENTHS, (int16_t)(load % WEIGHT_TENTHS));
+    text_format_set_number(ARG_LOAD_MAX_KG, (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS));
     char text[TEXT_SIZE];
     text_draw_in_zone_shadowed(ZONE_LOAD, g_ui_colors[color], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
                                text_gdat(CAT_PANEL, 0, TEXT_LOAD, text));

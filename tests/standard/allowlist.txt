@@ -20,7 +20,6 @@ engine-write ui/input.c open: module cleanup
 engine-write ui/minion_map.c open: module cleanup
 engine-write ui/play.c open: module cleanup
 engine-write ui/session.c open: module cleanup
-engine-write ui/text.c open: module cleanup
 engine-write ui/ui.c open: module cleanup
 hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c rule 3.12: a table of SKULL.EXE

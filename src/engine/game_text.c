@@ -244,3 +244,18 @@ char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
     snprintf(dst, size, "%s", formatted);
     return dst;
 }
+
+void text_gdat_set_ui_colors(const uint8_t *colors)
+{
+    g_ui_colors = colors;
+}
+
+void text_format_set_number(int index, int value)
+{
+    g_text_args.number[index] = (int16_t)value;
+}
+
+void text_format_set_entry(int entry)
+{
+    g_text_args.entry = (uint8_t)entry;
+}

@@ -81,4 +81,11 @@ void text_decode_raw(uint16_t thing, int mode, char *out, size_t size);
    also gives a hidden text. */
 char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);
 
+/* The UI colors that the font item of the interface GDAT gives (text_init). */
+void text_gdat_set_ui_colors(const uint8_t *colors);
+/* The number that format code 10 + index inserts. */
+void text_format_set_number(int index, int value);
+/* The text (7, 0, entry) that format code 17 inserts. */
+void text_format_set_entry(int entry);
+
 #endif /* DM2_ENGINE_GAME_TEXT_H */
