@@ -48,7 +48,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
    1. `system_init` (`0x10bd3`): `sound_init` (HMI timer at 240 Hz, digital and MIDI drivers, `SONGLIST.DAT`), memory pools.
    2. `disk_detect_drives`, `data_path_init`, `gdat_load_index` (`GRAPHICS.DAT` and `GRAPHIC2.DAT`).
    3. Sound buffers, palette from GDAT `(1,0,9,0xfe)`, viewport bitmap, `zone_init`, message area, `input_init`.
-   4. Start menu loop: `menu_run` (`0x386f5`), then `session_load` until it returns 1. `session_load` calls `dungeon_load` for a new game.
+   4. Start menu loop: `run_menu` (`0x386f5`), then `session_load` until it returns 1. `session_load` calls `dungeon_load` for a new game.
    5. Volumes, creature counts, command queue reset.
 4. `main` then loops forever: `game_loop`, then `session_end`.
 5. `session_quit` (`0x2005b`) calls `system_shutdown` and `clib_longjmp(g_main_jmpbuf, 1)`.

@@ -143,7 +143,7 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
     session = Session.in_dll(lib, "g_session")
     for actions in ([click_slot(5), click_choice(2)], [click_choice(1)]):
         with Player(lib, actions):
-            assert lib.session_load() == -1
+            assert lib.session_load() is False
         assert (session.slot, session.loaded) == (0, 0)
 
 

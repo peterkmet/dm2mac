@@ -614,13 +614,13 @@ address,name,signature,subsystem
 0x00036ef6,restore_timed_effects,void restore_timed_effects(void),save and load
 0x00037058,dungeon_open_file,void dungeon_open_file(void),dungeon data
 0x000370d2,session_load,int16_t session_load(void),save and load
-0x000376b6,save_choose_load_slot,int16_t save_choose_load_slot(void),save and load
-0x000377e5,save_make_slot_name,"void save_make_slot_name(char *dst, int slot)",save and load
-0x0003780f,save_choose_save_slot,int16_t save_choose_save_slot(void),save and load
+0x000376b6,choose_load_slot,int16_t choose_load_slot(void),save and load
+0x000377e5,make_slot_name,"void make_slot_name(char *dst, int slot)",save and load
+0x0003780f,choose_save_slot,int16_t choose_save_slot(void),save and load
 0x00037ab0,session_open_slot_dialog,"void session_open_slot_dialog(uint8_t dialog_index, int16_t input_mode)",save and load
 0x00037bfc,session_close_slot_dialog,void session_close_slot_dialog(void),save and load
 0x00037c33,session_draw_name_entry,"void session_draw_name_entry(const char *name, int show_cursor)",save and load
-0x00037cfb,session_list_slots,void session_list_slots(void),save and load
+0x00037cfb,list_slots,void list_slots(void),save and load
 0x00037d9f,session_draw_slot_selection,void session_draw_slot_selection(int16_t slot),save and load
 0x00037e22,inv_alloc_hand_icon_bitmap,void inv_alloc_hand_icon_bitmap(void),inventory
 0x00037e4e,text_get_object_name,"void text_get_object_name(uint8_t category, uint8_t index)",text
@@ -634,7 +634,7 @@ address,name,signature,subsystem
 0x00038392,inv_render_hand_icon,void inv_render_hand_icon(uint16_t *hand_icon),inventory
 0x0003844c,ui_draw_action_hand_icon,"uint8_t *ui_draw_action_hand_icon(int16_t champion, int16_t hand, uint8_t *target)",interface
 0x0003867b,menu_draw_title,void menu_draw_title(void),start menu
-0x000386f5,menu_run,void menu_run(void),start menu
+0x000386f5,run_menu,void run_menu(void),start menu
 0x00038877,menu_show_picture_and_wait,void menu_show_picture_and_wait(void),start menu
 0x000388ff,inv_draw_description_text,void inv_draw_description_text(const char *text),inventory
 0x000389c2,light_update_party_light,void light_update_party_light(void),day and night

@@ -27,35 +27,63 @@
 #include "ui.h"
 #include "view.h"
 #include "zone.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
+/* The waits of the start menu picture and of the end of the game, and the time of a quit without a question. */
 #define MENU_PICTURE_VBLANKS 1800
 #define END_SOUND_VBLANKS    240
-#define SAVE_HEADER_UNUSED   0x26 /* the slot list marks an empty slot with UNUSED_SLOT here */
-#define UNUSED_SLOT          0xdeadbeefu
-#define SAVE_NAME_MAX        31  /* characters of a slot name */
 #define QUIT_SAFE_TICKS      100 /* a quit within this time after a load or a save needs no question */
-#define CMD_TEXT_KEY_LAST    0xd6
+
+/* The header byte where the slot list marks an empty slot with UNUSED_SLOT. */
+#define SAVE_HEADER_UNUSED 0x26
+
+/* The mark of an empty slot in the slot list. */
+#define UNUSED_SLOT 0xdeadbeefu
+
+/* The characters of a slot name. */
+#define SAVE_NAME_MAX 31
+
+/* The last command of a text key: the commands CMD_TEXT_FIRST to it type a character. */
+#define CMD_TEXT_KEY_LAST 0xd6
+
 /* The buttons of the save menu (dialog 0x1b) and of the question before a quit (dialog 0x0c). */
-enum { SAVE_MENU_SAVE, SAVE_MENU_QUIT, SAVE_MENU_RESTART, SAVE_MENU_RESUME };
-enum { NOT_SAVED_CANCEL = 3 };
+#define SAVE_MENU_SAVE    0
+#define SAVE_MENU_QUIT    1
+#define SAVE_MENU_RESTART 2
+#define SAVE_MENU_RESUME  3
+#define NOT_SAVED_CANCEL  3
+
 /* The choices of the slot dialogs: the list of input mode 4 with 5 or 6 buttons. */
-enum { SLOT_CANCEL = 1, SLOT_OK, SLOT_LIST, SLOT_NAME };
-enum { SLOT_BUTTONS_LOAD = 5, SLOT_BUTTONS_SAVE = 6 };
-#define SLOT_NAME_TOP 4 /* the text base line below the top of a slot zone */
+#define SLOT_CANCEL       1
+#define SLOT_OK           2
+#define SLOT_LIST         3
+#define SLOT_NAME         4
+#define SLOT_BUTTONS_LOAD 5
+#define SLOT_BUTTONS_SAVE 6
+
+/* The layout of a slot dialog. */
+#define SLOT_NAME_TOP   4 /* the text base line below the top of a slot zone */
+#define SLOT_TEXT_COUNT 2 /* the text lines above the slot list */
+
 /* The sound of the end of the game: the scream of the first champion (fallback: the generic scream). */
-enum { END_SOUND_PRIORITY = 0xff };
+#define END_SOUND_PRIORITY 0xff
+
 /* The name and title fields of the inventory while a name changes. */
-enum { NAME_PANEL_MODE = 8, CHAMP_NAME_MAX = 7, CHAMP_TITLE_MAX = 15 };
+#define NAME_PANEL_MODE 8
+#define CHAMP_NAME_MAX  7
+#define CHAMP_TITLE_MAX 15
+
 /* The characters of a champion name. */
 static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
 
 /* The headers of the save slots in the slot dialogs. */
 static uint8_t slots[SAVE_SLOT_COUNT][SAVE_HEADER_SIZE + 1];
-static int editing; /* the player types the slot name or a champion name */
+static bool editing; /* the player types the slot name or a champion name */
 
-char *session_save_path(char *path, int slot, int bak)
+/* The path of slot in the save folder; bak: the backup file. */
+static char *slot_path(char *path, int slot, bool bak)
 {
     snprintf(path, SAVE_PATH_SIZE, "%s/DATA/SKSAVE%d.%s", g_session.data_dir, slot, bak ? "BAK" : "DAT");
     return path;
@@ -67,7 +95,8 @@ static char *data_path(char *path, const char *name)
     return path;
 }
 
-static int file_exists(const char *path)
+/* Whether the file at path can be read. */
+static bool file_exists(const char *path)
 {
     FILE *f = fopen(path, "rb");
     if (f)
@@ -76,7 +105,7 @@ static int file_exists(const char *path)
 }
 
 /* Draws a GDAT picture placed in the screen zone, with its colors. */
-static void draw_screen_picture(int category, int index, int entry)
+static void render_screen_picture(int category, int index, int entry)
 {
     const Bitmap *image = draw_gdat_image(category, index, entry);
     int16_t r[RECT_SIZE], x = 0, y = 0;
@@ -93,12 +122,12 @@ static void draw_screen_picture(int category, int index, int entry)
 
 void menu_draw_title(void)
 {
-    draw_screen_picture(CAT_MENU, 0, GFX_MENU_TITLE);
+    render_screen_picture(CAT_MENU, 0, GFX_MENU_TITLE);
 }
 
 void menu_show_picture_and_wait(void)
 {
-    draw_screen_picture(CAT_MENU, 0, GFX_MENU_PICTURE);
+    render_screen_picture(CAT_MENU, 0, GFX_MENU_PICTURE);
     input_set_mode(INPUT_MODE_PICTURE);
     for (int n = MENU_PICTURE_VBLANKS; n && !g_main_loop.quit; n--) {
         command_process_queue();
@@ -110,20 +139,6 @@ void menu_show_picture_and_wait(void)
     input_set_mode(INPUT_MODE_MENU);
 }
 
-void menu_run(void)
-{
-    input_set_mode(INPUT_MODE_MENU);
-    do {
-        menu_draw_title();
-        input_flush();
-        g_session.new_game = MENU_WAITING;
-        while (g_session.new_game == MENU_WAITING && !g_main_loop.quit) {
-            command_process_queue();
-            play_wait_frames(1);
-        }
-    } while (g_session.new_game == MENU_REDRAW && !g_main_loop.quit);
-}
-
 /* ---- Slot dialogs ---- */
 
 static const char *slot_name(int slot)
@@ -131,32 +146,9 @@ static const char *slot_name(int slot)
     return (const char *)slots[slot] + SAVE_HEADER_NAME;
 }
 
-static int slot_unused(int slot)
+static bool slot_unused(int slot)
 {
     return le32(slots[slot] + SAVE_HEADER_UNUSED) == UNUSED_SLOT;
-}
-
-void session_list_slots(void)
-{
-    char path[SAVE_PATH_SIZE];
-    for (int i = 0; i < SAVE_SLOT_COUNT; i++) {
-        memset(slots[i], 0, sizeof slots[i]);
-        FILE *f = fopen(session_save_path(path, i, 0), "rb");
-        if (f) {
-            if (fread(slots[i], 1, SAVE_HEADER_SIZE, f) != SAVE_HEADER_SIZE) { /* a short file keeps what it has */
-            }
-            fclose(f);
-            continue;
-        }
-        snprintf((char *)slots[i] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", i);
-        put_le32(slots[i] + SAVE_HEADER_UNUSED, UNUSED_SLOT);
-    }
-}
-
-/* The default name of slot: "GAME n". */
-static void save_make_slot_name(char *dst, int slot)
-{
-    snprintf(dst, SAVE_NAME_SIZE, "GAME %d", slot);
 }
 
 void session_draw_slot_selection(int chosen)
@@ -190,9 +182,27 @@ void session_draw_name_entry(const char *name, int cursor)
     dialog_present();
 }
 
+/* Reads the header of each slot; an empty slot gets the name "n UNUSED". */
+static void list_slots(void)
+{
+    char path[SAVE_PATH_SIZE];
+    for (int i = 0; i < SAVE_SLOT_COUNT; i++) {
+        memset(slots[i], 0, sizeof slots[i]);
+        FILE *f = fopen(slot_path(path, i, false), "rb");
+        if (f) {
+            if (fread(slots[i], 1, SAVE_HEADER_SIZE, f) != SAVE_HEADER_SIZE) { /* a short file keeps what it has */
+            }
+            fclose(f);
+            continue;
+        }
+        snprintf((char *)slots[i] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", i);
+        put_le32(slots[i] + SAVE_HEADER_UNUSED, UNUSED_SLOT);
+    }
+}
+
 void session_open_slot_dialog(int id, int buttons)
 {
-    char text[2][TEXT_SIZE];
+    char text[SLOT_TEXT_COUNT][TEXT_SIZE];
     text_gdat(CAT_DIALOG, id, 0, text[0]);
     text_gdat(CAT_DIALOG, id, 1, text[1]);
     int16_t r[RECT_SIZE];
@@ -203,7 +213,7 @@ void session_open_slot_dialog(int id, int buttons)
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     text_draw_in_zone(ZONE_SLOT_TEXT_1, g_ui_colors[UI_YELLOW], text[0]);
     text_draw_in_zone(ZONE_SLOT_TEXT_2, g_ui_colors[UI_YELLOW], text[1]);
-    session_list_slots();
+    list_slots();
     g_dialog.button_count = buttons;
     input_push_mode(INPUT_MODE_DIALOG);
 }
@@ -226,7 +236,7 @@ static int clicked_slot(void)
 
 /* The load dialog: the slot that the player loads, SAVE_SLOT_NONE when cancelled. A restore after the end of the
    game loads the last slot without a dialog. */
-static int save_choose_load_slot(void)
+static int choose_load_slot(void)
 {
     if (g_session.loaded)
         return g_session.slot;
@@ -234,15 +244,16 @@ static int save_choose_load_slot(void)
     session_draw_slot_selection(SAVE_SLOT_NONE);
     dialog_present();
     dialog_screen_mode(0);
-    int chosen = SAVE_SLOT_NONE, done = 0;
+    int chosen = SAVE_SLOT_NONE;
+    bool done = false;
     g_input_match.choice = DIALOG_NO_CHOICE;
     while (!done && !g_main_loop.quit) {
         command_process_queue();
         if (g_input_match.choice == SLOT_CANCEL) {
             chosen = SAVE_SLOT_NONE;
-            done = 1;
+            done = true;
         } else if (g_input_match.choice == SLOT_OK) {
-            done = 1;
+            done = true;
         } else if (g_input_match.choice == SLOT_LIST) {
             chosen = clicked_slot();
             if (chosen < SAVE_SLOT_COUNT && slot_unused(chosen))
@@ -258,6 +269,12 @@ static int save_choose_load_slot(void)
     return chosen;
 }
 
+/* The default name of slot: "GAME n". */
+static void make_slot_name(char *dst, int slot)
+{
+    snprintf(dst, SAVE_NAME_SIZE, "GAME %d", slot);
+}
+
 /* A key of the name field of the save dialog: delete, end, or a character. */
 static void type_slot_name_key(char *name, int *length)
 {
@@ -266,7 +283,7 @@ static void type_slot_name_key(char *name, int *length)
         if (*length > 0)
             name[--*length] = '\0';
     } else if (key == KEY_ENTER) {
-        editing = 0;
+        editing = false;
     } else if (*length < SAVE_NAME_MAX) {
         char c = kbd_key_to_ascii(key);
         if (c >= 'a' && c <= 'z')
@@ -277,58 +294,68 @@ static void type_slot_name_key(char *name, int *length)
     session_draw_name_entry(name, editing);
 }
 
-/* The save dialog: the slot that the player saves into (its name in g_session.save_name), SAVE_SLOT_NONE when
-   cancelled. */
-static int save_choose_save_slot(void)
+/* The slot that the save dialog lights first, with its name in name: the slot of the last load or save, else the
+   first empty slot (SAVE_SLOT_COUNT: none). */
+static int first_save_slot(char *name)
 {
-    char *name = g_session.save_name;
-    session_open_slot_dialog(DIALOG_SAVE_SLOTS, SLOT_BUTTONS_SAVE);
-    int chosen = g_session.slot, length = 0, done = 0;
+    int chosen = g_session.slot;
     if (chosen < 0) {
         for (chosen = 0; chosen < SAVE_SLOT_COUNT && !slot_unused(chosen); chosen++) {
         }
         if (chosen < SAVE_SLOT_COUNT)
-            save_make_slot_name(name, chosen);
+            make_slot_name(name, chosen);
     } else {
         snprintf(name, SAVE_NAME_SIZE, "%s", slot_name(chosen));
     }
+    return chosen;
+}
+
+/* The save dialog: the slot that the player saves into (its name in g_session.save_name), SAVE_SLOT_NONE when
+   cancelled. */
+static int choose_save_slot(void)
+{
+    char *name = g_session.save_name;
+    session_open_slot_dialog(DIALOG_SAVE_SLOTS, SLOT_BUTTONS_SAVE);
+    int chosen = first_save_slot(name);
+    int length = 0;
+    bool done = false;
     session_draw_slot_selection(chosen);
     if (chosen == SAVE_SLOT_COUNT)
         dialog_present();
     else
-        session_draw_name_entry(name, 0);
+        session_draw_name_entry(name, false);
     while (!done && !g_main_loop.quit) {
         command_process_queue();
         switch (g_input_match.choice) {
         case SLOT_CANCEL:
             chosen = SAVE_SLOT_NONE;
-            editing = 0;
-            done = 1;
+            editing = false;
+            done = true;
             break;
         case SLOT_OK:
-            editing = 0;
+            editing = false;
             if (chosen == SAVE_SLOT_COUNT)
                 break;
             if (!*name)
-                save_make_slot_name(name, chosen);
-            session_draw_name_entry(name, 0);
-            done = 1;
+                make_slot_name(name, chosen);
+            session_draw_name_entry(name, false);
+            done = true;
             break;
         case SLOT_LIST:
-            editing = 0;
+            editing = false;
             chosen = clicked_slot();
             if (chosen < SAVE_SLOT_COUNT && slot_unused(chosen))
-                save_make_slot_name(name, chosen);
+                make_slot_name(name, chosen);
             else
                 snprintf(name, SAVE_NAME_SIZE, "%s",
                          slot_name(chosen < SAVE_SLOT_COUNT ? chosen : SAVE_SLOT_COUNT - 1));
             session_draw_slot_selection(chosen);
-            session_draw_name_entry(name, 0);
+            session_draw_name_entry(name, false);
             break;
         case SLOT_NAME:
             if (chosen != SAVE_SLOT_COUNT && !editing) {
-                editing = 1;
-                session_draw_name_entry(name, 1);
+                editing = true;
+                session_draw_name_entry(name, true);
                 length = (int)strlen(name);
             }
             break;
@@ -346,17 +373,17 @@ static int save_choose_save_slot(void)
 
 /* ---- Load and save ---- */
 
-/* Reads DUNGEON.DAT (DUNGENB.DAT when chosen and present) for a new game; returns 0 on a read error. */
-static int load_new_game(void)
+/* Reads DUNGEON.DAT (DUNGENB.DAT when chosen and present) for a new game; returns false on a read error. */
+static bool load_new_game(void)
 {
     char path[SAVE_PATH_SIZE];
     if (!g_session.use_dungenb || !file_exists(data_path(path, "DUNGENB.DAT")))
         data_path(path, "DUNGEON.DAT");
     g_game.champion_count = 0;
     g_game.leader_hand = THING_NONE;
-    int first = !g_weather.dungeon_loaded;
+    bool first = !g_weather.dungeon_loaded;
     if (!dungeon_load(path))
-        return 0;
+        return false;
     seen_reset();
     uint16_t start = dungeon_party_start();
     g_game.party_x = location_x(start);
@@ -369,57 +396,57 @@ static int load_new_game(void)
     dungeon_link_things_after_load();
     if (first)
         dungeon_read_level_table();
-    return 1;
+    return true;
 }
 
-/* Loads the slot file at path into the game; returns 0 on an error. */
-static int load_slot(const char *path)
+/* Loads the slot file at path into the game; returns false on an error. */
+static bool load_slot(const char *path)
 {
     g_game.champion_count = 0;
     g_game.leader_hand = THING_NONE;
-    int first = !g_weather.dungeon_loaded;
+    bool first = !g_weather.dungeon_loaded;
     if (save_load(path, gdat_current()) != SAVE_OK)
-        return 0;
+        return false;
     if (first)
         dungeon_read_level_table();
     g_session.new_game = 0;
     g_session.load_time = g_game.game_time;
     g_session.loaded = 1;
-    return 1;
+    return true;
 }
 
-int session_load(void)
+bool session_load(void)
 {
     char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
-    int from_bak = 0, ok;
+    bool from_bak = false;
     if (!g_session.new_game) {
-        int slot = save_choose_load_slot();
+        int slot = choose_load_slot();
         if (slot < 0) {
             g_session.slot = 0; /* as in the original: a cancelled load leaves slot 0 */
-            return -1;
+            return false;
         }
         g_session.slot = slot;
-        session_save_path(path, slot, 0);
-        session_save_path(bak, slot, 1);
+        slot_path(path, slot, false);
+        slot_path(bak, slot, true);
         if (!file_exists(path) && file_exists(bak)) {
             snprintf(path, sizeof path, "%s", bak);
-            from_bak = 1;
+            from_bak = true;
         } else if (!file_exists(path) && !g_session.loaded && file_exists(data_path(bak, "DUNGEON.FTL"))) {
             g_session.new_game = 1;
         }
     }
-    ok = g_session.new_game ? load_new_game() : load_slot(path);
+    bool ok = g_session.new_game ? load_new_game() : load_slot(path);
     if (!ok) {
         /* fix: the original asks for the disk of the game (dialog 7) when the load of the last slot fails */
         dialog_run(dialog_draw(DIALOG_ERROR, MESSAGE_GAME_DAMAGED));
         if (!g_session.loaded)
             session_quit();
-        return -1;
+        return false;
     }
     if (g_session.new_game) {
         sensor_start_timers();
     } else if (from_bak) {
-        session_save_path(bak, g_session.slot, 0);
+        slot_path(bak, g_session.slot, false);
         rename(path, bak);
     }
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
@@ -427,23 +454,23 @@ int session_load(void)
     g_main_loop.end = 0;
     move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
-    return 1;
+    return true;
 }
 
-/* Writes the game into slot; returns 0 on an error. */
-static int save_into_slot(int slot)
+/* Writes the game into slot; returns false on an error. */
+static bool write_slot(int slot)
 {
     char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
-    if (save_write(session_save_path(path, slot, 0), session_save_path(bak, slot, 1), g_session.save_name,
-                   gdat_current()) != SAVE_OK)
-        return 0;
+    if (save_write(slot_path(path, slot, false), slot_path(bak, slot, true), g_session.save_name, gdat_current()) !=
+        SAVE_OK)
+        return false;
     g_session.new_game = 0;
     g_session.save_time = g_game.game_time;
-    return 1;
+    return true;
 }
 
-/* The save menu until the player saves (returns the slot), quits (*quit 1), or resumes (SAVE_SLOT_NONE). */
-static int save_menu(int *quit)
+/* The save menu until the player saves (returns the slot), quits (*quit true), or resumes (SAVE_SLOT_NONE). */
+static int run_save_menu(bool *quit)
 {
     for (;;) {
         int choice = dialog_run(dialog_draw(DIALOG_SAVE_MENU, MESSAGE_NONE));
@@ -457,10 +484,10 @@ static int save_menu(int *quit)
                 dialog_run(dialog_draw(DIALOG_NOT_SAVED, MESSAGE_NONE)) == NOT_SAVED_CANCEL)
                 continue;
             g_session.offer_restore = 0;
-            *quit = 1;
+            *quit = true;
             return SAVE_SLOT_NONE;
         }
-        int slot = save_choose_save_slot();
+        int slot = choose_save_slot();
         if (slot >= 0)
             return slot;
     }
@@ -468,17 +495,17 @@ static int save_menu(int *quit)
 
 void session_save(void)
 {
-    int quit = 0;
+    bool quit = false;
     g_session.restart = 0;
     action_area_close();
     area_update(0);
     play_hide_view();
     timeline_rebuild_free_list();
-    int slot = save_menu(&quit);
+    int slot = run_save_menu(&quit);
     if (slot >= 0) {
         g_session.slot = slot;
         dialog_draw(DIALOG_SAVING, MESSAGE_NONE);
-        if (!save_into_slot(slot))
+        if (!write_slot(slot))
             dialog_run(dialog_draw(DIALOG_ERROR, MESSAGE_SAVE_FAILED));
     }
     creature_activate_all_maps();
@@ -489,30 +516,45 @@ void session_save(void)
     play_show_view();
 }
 
-int session_init(void)
+/* The start menu: waits until the player chooses a new game or a load. */
+static void run_menu(void)
+{
+    input_set_mode(INPUT_MODE_MENU);
+    do {
+        menu_draw_title();
+        input_flush();
+        g_session.new_game = MENU_WAITING;
+        while (g_session.new_game == MENU_WAITING && !g_main_loop.quit) {
+            command_process_queue();
+            play_wait_frames(1);
+        }
+    } while (g_session.new_game == MENU_REDRAW && !g_main_loop.quit);
+}
+
+bool session_init(void)
 {
     do {
-        menu_run();
+        run_menu();
         if (g_main_loop.quit)
-            return 0;
-    } while (session_load() != 1 && !g_main_loop.quit);
+            return false;
+    } while (!session_load() && !g_main_loop.quit);
     if (g_main_loop.quit)
-        return 0;
+        return false;
     sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
     sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
     ui_reset();
     money_init_coin_table();
     play_start_session();
     input_flush();
-    return 1;
+    return true;
 }
 
-int session_start_new_game(void)
+bool session_start_new_game(void)
 {
     g_session.new_game = 1;
     g_session.use_dungenb = 0;
     if (!load_new_game())
-        return 0;
+        return false;
     sensor_start_timers();
     g_main_loop.end = 0;
     g_session.completed = 0;
@@ -524,14 +566,14 @@ int session_start_new_game(void)
     money_init_coin_table();
     play_start_session();
     input_flush();
-    return 1;
+    return true;
 }
 
-int session_start_save(const char *path)
+bool session_start_save(const char *path)
 {
-    int first = !g_weather.dungeon_loaded;
+    bool first = !g_weather.dungeon_loaded;
     if (save_load(path, gdat_current()) != SAVE_OK)
-        return 0;
+        return false;
     if (first)
         dungeon_read_level_table();
     ui_reset();
@@ -540,7 +582,7 @@ int session_start_save(const char *path)
     move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
     g_party.redraw = REDRAW_ALL_VIEW;
     play_start_session();
-    return 1;
+    return true;
 }
 
 /* ---- End of the game ---- */
@@ -577,7 +619,7 @@ void session_end(int party_dead)
         ui_fill_zone_screen(ZONE_SCREEN, 0);
         if (g_session.offer_restore) {
             g_session.loaded = dialog_run(dialog_draw(DIALOG_THE_END, MESSAGE_NONE)) == 0;
-            if (g_session.loaded && session_load() != -1) {
+            if (g_session.loaded && session_load()) {
                 play_start_session();
                 g_session.loaded = 0;
                 input_flush();
@@ -592,7 +634,7 @@ void session_end(int party_dead)
         session_quit();
         return;
     }
-    draw_screen_picture(CAT_END, 0, GFX_END_PICTURE);
+    render_screen_picture(CAT_END, 0, GFX_END_PICTURE);
     input_set_mode(INPUT_MODE_PICTURE);
     do {
         command_process_queue();
@@ -604,8 +646,8 @@ void session_end(int party_dead)
 /* ---- Champion names ---- */
 
 /* A key of a champion name field other than Enter and Tab: deletes the last character, or adds a character of the
-   name alphabet while the text is shorter than max; *x is the cursor. Returns 1 when the field needs a redraw. */
-static int type_name_key(char *text, int *length, int max, int *x)
+   name alphabet while the text is shorter than max; *x is the cursor. Returns true when the field needs a redraw. */
+static bool type_name_key(char *text, int *length, int max, int *x)
 {
     uint16_t key = g_input_match.key;
     if (key == KEY_BACKSPACE) {
@@ -613,19 +655,19 @@ static int type_name_key(char *text, int *length, int max, int *x)
             text[--*length] = '\0';
             *x -= FONT_ADVANCE;
         }
-        return 1;
+        return true;
     }
     if (*length >= max)
-        return 1;
+        return true;
     char ch = kbd_key_to_ascii(key);
     if (ch >= 'a' && ch <= 'z')
         ch = (char)(ch - 'a' + 'A');
     if (!ch || !strchr(name_alphabet, ch) || (ch == ' ' && !*length))
-        return 0;
+        return false;
     text[(*length)++] = ch;
     text[*length] = '\0';
     *x += FONT_ADVANCE;
-    return 1;
+    return true;
 }
 
 /* Removes the spaces at the end of text. */
@@ -634,6 +676,27 @@ static void trim_spaces(char *text)
     /* fix: the original reads the byte before an empty text */
     for (size_t n = strlen(text); n > 0 && text[n - 1] == ' '; n--)
         text[n - 1] = '\0';
+}
+
+/* The name and title fields of the champion, with the cursor at (x, y). */
+static void render_name_fields(const Champion *c, int x, int y)
+{
+    ui_draw_viewport_image(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, GFX_OPAQUE);
+    text_draw_in_zone(ZONE_NAME, g_ui_colors[UI_YELLOW], c->name);
+    text_draw_in_zone(ZONE_TITLE, g_ui_colors[UI_YELLOW], c->title);
+    text_draw_in_viewport(x, y, g_ui_colors[UI_GOLD], "_");
+    play_present_viewport();
+}
+
+/* Ends the name edit: the close button, the champion state with the new name, and the view again. */
+static void close_name_editor(Champion *c)
+{
+    editing = false;
+    ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, GFX_OPAQUE);
+    c->redraw |= REDRAW_NAME;
+    ui_draw_champion_state(g_ui.inventory - 1);
+    play_show_view();
+    input_pop_mode();
 }
 
 void session_edit_champion_name(Champion *c)
@@ -646,67 +709,63 @@ void session_edit_champion_name(Champion *c)
     zone_get_position(ZONE_NAME, &name_x, &name_y);
     zone_get_position(ZONE_TITLE, &title_x, &title_y);
     input_push_mode(INPUT_MODE_NAME);
-    editing = 1;
+    editing = true;
     play_hide_view();
-    int in_name = 1, done = 0;
+    bool in_name = true;
+    bool done = false;
     while (!done && !g_main_loop.quit) {
         char *text = in_name ? c->name : c->title;
-        int max = in_name ? CHAMP_NAME_MAX : CHAMP_TITLE_MAX, length = (int)strlen(text);
-        int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE, y = in_name ? name_y : title_y;
-        for (int field_done = 0, redraw = 1; !field_done && !g_main_loop.quit;) {
-            if (redraw) {
-                ui_draw_viewport_image(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, GFX_OPAQUE);
-                text_draw_in_zone(ZONE_NAME, g_ui_colors[UI_YELLOW], c->name);
-                text_draw_in_zone(ZONE_TITLE, g_ui_colors[UI_YELLOW], c->title);
-                text_draw_in_viewport(x, y, g_ui_colors[UI_GOLD], "_");
-                play_present_viewport();
-            }
-            redraw = 0;
+        int max = in_name ? CHAMP_NAME_MAX : CHAMP_TITLE_MAX;
+        int length = (int)strlen(text);
+        int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE;
+        int y = in_name ? name_y : title_y;
+        for (bool field_done = false, redraw = true; !field_done && !g_main_loop.quit;) {
+            if (redraw)
+                render_name_fields(c, x, y);
+            redraw = false;
             g_input_match.choice = 0;
             g_input_match.value = 0;
             command_process_queue();
             int command = g_input_match.value;
             if (command == CMD_EDIT_NAME && !in_name) {
-                in_name = 1;
-                field_done = 1;
+                in_name = true;
+                field_done = true;
             } else if (command == CMD_EDIT_TITLE && in_name) {
-                in_name = 0;
-                field_done = 1;
+                in_name = false;
+                field_done = true;
             } else if (command == CMD_EDIT_CANCEL) {
                 memcpy(c->name, name, sizeof name);
                 memcpy(c->title, title, sizeof title);
-                field_done = done = 1;
+                field_done = true;
+                done = true;
             } else if (!command) {
                 play_wait_frames(1);
             } else if (g_input_match.key == KEY_ENTER || g_input_match.key == KEY_TAB) {
                 trim_spaces(text);
-                field_done = 1;
+                field_done = true;
                 if (in_name)
-                    in_name = 0;
+                    in_name = false;
                 else if (g_input_match.key == KEY_TAB)
-                    in_name = 1;
+                    in_name = true;
                 else
-                    done = 1;
+                    done = true;
             } else {
                 redraw = type_name_key(text, &length, max, &x);
             }
         }
     }
-    editing = 0;
-    ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, GFX_OPAQUE);
-    c->redraw |= REDRAW_NAME;
-    ui_draw_champion_state(g_ui.inventory - 1);
-    play_show_view();
-    input_pop_mode();
+    close_name_editor(c);
 }
+
+/* ---- Arguments ---- */
 
 int args_drop_save(int argc, char **argv)
 {
     int out = 1;
     for (int i = 1; i < argc; i++) {
-        int is_value_option = !strcmp(argv[i], "--data") || !strcmp(argv[i], "--filter") ||
-                              !strcmp(argv[i], "--save") || !strcmp(argv[i], "--control") ||
-                              !strcmp(argv[i], "--mode") || !strcmp(argv[i], "--saves");
+        bool is_value_option = !strcmp(argv[i], "--data") || !strcmp(argv[i], "--filter") ||
+                               !strcmp(argv[i], "--save") || !strcmp(argv[i], "--control") ||
+                               !strcmp(argv[i], "--mode") || !strcmp(argv[i], "--saves");
         if (is_value_option && i + 1 < argc) {
             if (strcmp(argv[i], "--save")) {
                 argv[out++] = argv[i];
