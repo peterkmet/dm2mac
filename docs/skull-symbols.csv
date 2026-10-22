@@ -168,7 +168,7 @@ address,name,signature,subsystem
 0x00018395,explosion_process_event,void explosion_process_event(void *event),projectiles
 0x0001861b,math_square_distance,"int16_t math_square_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
 0x0001863d,dun_get_direction_to,"uint16_t dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
-0x0001869a,creature_get_ordered_attack_cells,"void creature_get_ordered_attack_cells(uint8_t *cells, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t cell)",creatures
+0x0001869a,creature_order_attack_cells,"void creature_order_attack_cells(uint8_t *cells, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t cell)",creatures
 0x00018758,creature_attack_champion,"int16_t creature_attack_champion(uint8_t *group, uint16_t champion_index)",creatures
 0x00018a57,champ_melee_attack_creature,"int16_t champ_melee_attack_creature(uint8_t *champion, uint16_t champion_index, uint16_t group_thing, uint16_t cell, int16_t action_value, uint16_t flags, uint16_t skill, int16_t x, int16_t y)",champions
 0x00018d9e,dun_door_try_destroy,"int dun_door_try_destroy(int16_t x, int16_t y, int16_t attack, int magic, int16_t delay)",dungeon data
@@ -415,8 +415,8 @@ address,name,signature,subsystem
 0x00024d88,ai_end,void ai_end(void *saved_context),creatures
 0x00024db5,creature_set_next_action,"void creature_set_next_action(uint16_t group_thing, int16_t x, int16_t y, uint8_t action, int reschedule)",creatures
 0x00024e62,creature_alert,"void creature_alert(uint16_t group_thing, int16_t x, int16_t y, uint16_t flags, int16_t amount, int16_t chance)",creatures
-0x00025204,creature_anim_schedule,void creature_anim_schedule(void),creatures
-0x000252c3,creature_anim_schedule_alt,void creature_anim_schedule_alt(void),creatures
+0x00025204,schedule_loop_start,void schedule_loop_start(void),creatures
+0x000252c3,schedule_loop_end,void schedule_loop_end(void),creatures
 0x0002538c,creature_update_anim_at,"void creature_update_anim_at(int16_t x, int16_t y, int alt)",creatures
 0x00025420,ai_update_group,void ai_update_group(void),creatures
 0x000257cc,creature_process_event,"void creature_process_event(int16_t x, int16_t y, int16_t event_type)",creatures
@@ -558,8 +558,8 @@ address,name,signature,subsystem
 0x0003014d,creature_group_check_pass_flag,int creature_group_check_pass_flag(uint16_t group_thing),creatures
 0x00030185,creature_group_current_frame_flag,int creature_group_current_frame_flag(uint16_t group_thing),creatures
 0x000301dc,creature_group_check_field8,int creature_group_check_field8(uint16_t group_thing),creatures
-0x000301f3,creature_reset_animation,void creature_reset_animation(uint8_t *group),creatures
-0x0003023f,creature_ai_animate_and_get_next_time,uint32_t creature_ai_animate_and_get_next_time(void),creatures
+0x000301f3,reset_idle_animation,void reset_idle_animation(uint8_t *group),creatures
+0x0003023f,creature_animate_step,uint32_t creature_animate_step(void),creatures
 0x0003059d,creature_schedule_update,"void creature_schedule_update(int16_t x, int16_t y)",creatures
 0x0003064d,creature_cancel_update,void creature_cancel_update(uint16_t group_thing),creatures
 0x000306a8,creature_activate_group,"void creature_activate_group(uint16_t group_thing, int16_t x, int16_t y)",creatures
@@ -582,7 +582,7 @@ address,name,signature,subsystem
 0x00033e61,ai_next_path_step,int16_t ai_next_path_step(void),creatures
 0x00033ef3,ai_plan_path,int ai_plan_path(void),creatures
 0x00034106,creature_activate_groups_on_map,void creature_activate_groups_on_map(void),creatures
-0x00034236,creature_activate_groups_all_maps,void creature_activate_groups_all_maps(void),creatures
+0x00034236,creature_activate_all_maps,void creature_activate_all_maps(void),creatures
 0x0003426d,creature_deactivate_all_groups,void creature_deactivate_all_groups(void),creatures
 0x000342a3,creature_reset_active_groups,void creature_reset_active_groups(void),creatures
 0x000342f9,creature_alloc_active_groups,void creature_alloc_active_groups(void),creatures

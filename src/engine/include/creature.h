@@ -163,8 +163,8 @@ _Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 
 #define ACTIVE_ACTION_NONE 0xff /* an active group without a chosen action */
 #define EVENT_NO_SLOT      (-1)
 
-extern ActiveGroup *active_groups;
-extern int active_group_max, active_group_count;
+extern ActiveGroup *g_active_groups;
+extern int g_active_group_max, g_active_group_count;
 
 /* The info record of a creature type, read through GDAT (0x0f, type, 0x0b, 5). */
 const CreatureInfo *creature_info(const gdat_t *g, int creature_type);
@@ -208,7 +208,7 @@ int creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *step
 /* True when the current animation step of a group is a step at which the creature acts. */
 int creature_current_step_acts(uint16_t group);
 /* The time of the next update of the group in the AI context, with the animation bits of its step. */
-uint32_t creature_ai_animate_and_get_next_time(void);
+uint32_t creature_animate_step(void);
 
 /* Active groups. */
 void creature_alloc_active_groups(void);
@@ -216,7 +216,7 @@ void creature_alloc_active_groups(void);
 void creature_free_active_groups(void);
 void creature_reset_active_groups(void);
 void creature_activate_groups_on_map(void);
-void creature_activate_groups_all_maps(void);
+void creature_activate_all_maps(void);
 void creature_deactivate_all_groups(void);
 void creature_activate_group(uint16_t group, int x, int y);
 void creature_deactivate_group(int active_index);
@@ -277,7 +277,7 @@ uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, int cell);
 
 /* Creature attacks (projectile.c). */
 /* The 4 cells of the party that a creature on (x, y) attacks first to last; cell 0xff: random order. */
-void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell);
+void creature_order_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell);
 /* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
 int creature_attack_champion(uint16_t group, int champ);
 

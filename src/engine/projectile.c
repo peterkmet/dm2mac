@@ -902,7 +902,7 @@ static const uint8_t attack_cell_orders[8][4] = {
 };
 static const uint8_t attack_cell_orders_random[7] = {0, 1, 2, 3, 0, 1, 2};
 
-void creature_get_ordered_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell)
+void creature_order_attack_cells(uint8_t order[4], int x, int y, int party_x, int party_y, int cell)
 {
     int dir = dun_get_direction_to((int16_t)x, (int16_t)y, (int16_t)party_x, (int16_t)party_y);
     if ((uint16_t)cell == CELL_ANY) {

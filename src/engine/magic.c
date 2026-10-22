@@ -367,7 +367,7 @@ static void cast_summon(int type, int skill, int power)
             if (thing_word(group, THING_NEXT) == THING_NONE || group_creature(group) != type ||
                 group_active(group) == GROUP_NOT_ACTIVE)
                 continue;
-            ActiveGroup *a = &active_groups[group_active(group)];
+            ActiveGroup *a = &g_active_groups[group_active(group)];
             if (a->action != CREATURE_ACTION_VANISH) {
                 a->next_action = CREATURE_ACTION_VANISH;
                 return;

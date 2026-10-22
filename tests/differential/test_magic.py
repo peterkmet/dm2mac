@@ -774,7 +774,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
                 set_word(lib, emu, group, 10, 0)
             else:
                 # a moving minion: its animation is in active group 1
-                active = ctypes.c_void_p.in_dll(lib, "active_groups").value
+                active = ctypes.c_void_p.in_dll(lib, "g_active_groups").value
                 ctypes.memmove(active + ACTIVE_SIZE + 8, struct.pack("<HH", sequence, 0), 4)
                 emu.write(emu.read_u32(G_ACTIVE_GROUPS) + ACTIVE_SIZE + 8, struct.pack("<HH", sequence, 0))
                 activated.append((group, word(lib, group, 4)))

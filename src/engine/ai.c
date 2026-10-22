@@ -2949,7 +2949,7 @@ static bool run_next_action(void)
     g_ai.event.type = (uint16_t)r != ANIM_MORE_STEPS ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
     if (g_ai.removed)
         return false;
-    g_ai.event.time_map = timeline_time_map(creature_ai_animate_and_get_next_time(), g_ai.map);
+    g_ai.event.time_map = timeline_time_map(creature_animate_step(), g_ai.map);
     return true;
 }
 

@@ -181,8 +181,8 @@ class Ai:
     def groups(self):
         """(group thing, x, y, map) of each active group."""
         lib = self.lib
-        n = ctypes.c_int.in_dll(lib, "active_group_max").value
-        ptr = ctypes.c_void_p.in_dll(lib, "active_groups").value
+        n = ctypes.c_int.in_dll(lib, "g_active_group_max").value
+        ptr = ctypes.c_void_p.in_dll(lib, "g_active_groups").value
         raw = ctypes.string_at(ptr, n * C.ACTIVE_GROUP_SIZE)
         out = []
         for i in range(n):

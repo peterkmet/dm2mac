@@ -114,9 +114,9 @@ class CreatureOracle:
     def active_groups(self):
         """(C, original) bytes of the active group tables."""
         lib, emu = self.lib, self.emu
-        n = ctypes.c_int.in_dll(lib, "active_group_max").value
+        n = ctypes.c_int.in_dll(lib, "g_active_group_max").value
         assert n == struct.unpack("<H", emu.read(G_ACTIVE_GROUP_MAX, 2))[0]
-        ptr = ctypes.c_void_p.in_dll(self.lib, "active_groups").value
+        ptr = ctypes.c_void_p.in_dll(self.lib, "g_active_groups").value
         mine = ctypes.string_at(ptr, n * ACTIVE_GROUP_SIZE)
         theirs = emu.read(emu.read_u32(G_ACTIVE_GROUPS), n * ACTIVE_GROUP_SIZE)
         return mine, theirs
@@ -127,7 +127,7 @@ class CreatureOracle:
         for i in range(0, len(mine), ACTIVE_GROUP_SIZE):
             a, b = mine[i:i + ACTIVE_GROUP_SIZE].hex(), theirs[i:i + ACTIVE_GROUP_SIZE].hex()
             assert a == b, (where, i // ACTIVE_GROUP_SIZE, a, b)
-        assert ctypes.c_int.in_dll(self.lib, "active_group_count").value == \
+        assert ctypes.c_int.in_dll(self.lib, "g_active_group_count").value == \
             struct.unpack("<H", self.emu.read(G_ACTIVE_GROUP_COUNT, 2))[0], where
         assert ctypes.c_uint32.in_dll(self.lib, "g_random_seed").value == self.emu.read_u32(G_RANDOM_SEED), where
         tl = Timeline.in_dll(self.lib, "g_timeline")

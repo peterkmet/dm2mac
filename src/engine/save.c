@@ -930,6 +930,6 @@ int save_write(const char *path, const char *bak_path, const char *name, const g
         ok = 0;
     if (!ok)
         remove(path);
-    creature_activate_groups_all_maps();
+    creature_activate_all_maps();
     return ok ? SAVE_OK : SAVE_ERR_IO;
 }

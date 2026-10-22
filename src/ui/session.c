@@ -471,7 +471,7 @@ void session_save(void)
         if (!save_into_slot(slot))
             dialog_run(dialog_draw(DIALOG_ERROR, MESSAGE_SAVE_FAILED));
     }
-    creature_activate_groups_all_maps();
+    creature_activate_all_maps();
     if (quit) {
         session_end(0);
         return;

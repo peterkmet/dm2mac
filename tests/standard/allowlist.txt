@@ -219,13 +219,13 @@ dead-api control/include/state_json.h:json_strn open: module cleanup
 dead-api control/include/state_json.h:state_json_string open: module cleanup
 dead-api engine/include/champ_action.h:champ_action_repeat open: module cleanup
 dead-api engine/include/champion.h:champ_set_redraw_flags open: module cleanup
-dead-api engine/include/creature.h:active_group_count open: module cleanup
-dead-api engine/include/creature.h:active_group_max open: module cleanup
 dead-api engine/include/creature.h:creature_active_group_floats open: module cleanup
 dead-api engine/include/creature.h:creature_alloc_active_groups open: module cleanup
 dead-api engine/include/creature.h:creature_anim_bits open: module cleanup
 dead-api engine/include/creature.h:creature_is_near_party_front open: module cleanup
 dead-api engine/include/creature.h:creature_schedule_update open: module cleanup
+dead-api engine/include/creature.h:g_active_group_count open: module cleanup
+dead-api engine/include/creature.h:g_active_group_max open: module cleanup
 dead-api engine/include/magic.h:magic_cast_spell open: module cleanup
 dead-api engine/include/magic.h:magic_find_flask_in_hands open: module cleanup
 dead-api engine/include/magic.h:magic_find_spell open: module cleanup
@@ -368,7 +368,6 @@ event-comment ui/include/input.h open: module cleanup
 global engine/include/action.h open: module cleanup
 global engine/include/champ_action.h open: module cleanup
 global engine/include/champion.h open: module cleanup
-global engine/include/creature.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
 global engine/include/inventory.h open: module cleanup
@@ -474,22 +473,16 @@ module engine/damage.c open: module cleanup
 module engine/recruit.c open: module cleanup
 module platform/main.c rule 1.7: the entry point has no header
 module ui/hook_table.c open: module cleanup
-name engine/creature.c:creature_activate_groups_all_maps open: module cleanup
-name engine/creature.c:creature_ai_animate_and_get_next_time open: module cleanup
 name engine/damage.c:champ_consume_food_and_water open: module cleanup
 name engine/damage.c:champ_place_in_free_cell open: module cleanup
 name engine/include/champion.h:champ_put_object_in_leader_hand open: module cleanup
 name engine/include/champion.h:champ_remove_object_from_leader_hand open: module cleanup
-name engine/include/creature.h:creature_activate_groups_all_maps open: module cleanup
-name engine/include/creature.h:creature_ai_animate_and_get_next_time open: module cleanup
-name engine/include/creature.h:creature_get_ordered_attack_cells open: module cleanup
 name engine/include/inventory.h:inv_put_object_in_free_slot open: module cleanup
 name engine/inventory.c:champ_put_object_in_leader_hand open: module cleanup
 name engine/inventory.c:champ_remove_object_from_leader_hand open: module cleanup
 name engine/inventory.c:inv_put_object_in_free_slot open: module cleanup
 name engine/move.c:champ_get_party_move_time open: module cleanup
 name engine/move.c:champ_sync_directions_to_party open: module cleanup
-name engine/projectile.c:creature_get_ordered_attack_cells open: module cleanup
 name ui/include/text.h:text_draw_in_zone_with_shadow open: module cleanup
 name ui/include/ui.h:offscreen_draw_text_in_zone_with_shadow open: module cleanup
 name ui/include/ui.h:ui_draw_gdat_in_viewport_zone open: module cleanup
@@ -600,7 +593,7 @@ params engine/creature.c:creature_anim_start open: module cleanup
 params engine/creature.c:creature_summon_group open: module cleanup
 params engine/include/creature.h:creature_alert open: module cleanup
 params engine/include/creature.h:creature_anim_start open: module cleanup
-params engine/include/creature.h:creature_get_ordered_attack_cells open: module cleanup
+params engine/include/creature.h:creature_order_attack_cells open: module cleanup
 params engine/include/creature.h:creature_summon_group open: module cleanup
 params engine/include/merchant.h:shop_get_item_value open: module cleanup
 params engine/include/move.h:move_follow_square_transitions open: module cleanup
@@ -617,7 +610,7 @@ params engine/move.c:move_object_arrive open: module cleanup
 params engine/move.c:move_party_bump_damage open: module cleanup
 params engine/move.c:move_party_free_step open: module cleanup
 params engine/move.c:move_thing_leave open: module cleanup
-params engine/projectile.c:creature_get_ordered_attack_cells open: module cleanup
+params engine/projectile.c:creature_order_attack_cells open: module cleanup
 params engine/projectile.c:hit_explode open: module cleanup
 params engine/projectile.c:hit_start open: module cleanup
 params engine/projectile.c:projectile_create open: module cleanup
@@ -729,11 +722,6 @@ static-prefix engine/champ_action.c:creature_is_furniture open: module cleanup
 static-prefix engine/champ_action.c:item_get_throw_fatigue open: module cleanup
 static-prefix engine/champion.c:champ_add_start_champion open: module cleanup
 static-prefix engine/champion.c:minion_map_allows_action open: module cleanup
-static-prefix engine/creature.c:creature_anim_schedule open: module cleanup
-static-prefix engine/creature.c:creature_anim_schedule_alt open: module cleanup
-static-prefix engine/creature.c:creature_data open: module cleanup
-static-prefix engine/creature.c:creature_home_event open: module cleanup
-static-prefix engine/creature.c:creature_reset_animation open: module cleanup
 static-prefix engine/damage.c:champ_consume_food_and_water open: module cleanup
 static-prefix engine/damage.c:champ_drop_all_objects open: module cleanup
 static-prefix engine/damage.c:champ_get_mean_defense open: module cleanup
