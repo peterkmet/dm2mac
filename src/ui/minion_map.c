@@ -122,7 +122,7 @@ static void draw_icon(const Bitmap *image, const uint8_t *palette, int icon, int
     if (!image)
         return;
     int16_t r[RECT_SIZE] = {(int16_t)x, (int16_t)y, MAP_ICON_W, MAP_ICON_H}, dx, dy;
-    if (!rect_clip(r, minion_map.clip, &dx, &dy))
+    if (!rect_clip(r, g_minion_map.clip, &dx, &dy))
         return;
     if (MAP_ICON_W - r[RECT_W] && mirror & MIRROR_X)
         dx = dx ? 0 : (int16_t)(MAP_ICON_W - r[RECT_W]);
@@ -320,7 +320,7 @@ static void draw_party_frame(int x, int y)
 {
     int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + MAP_ICON_W, GAP_Y * 2 + MAP_ICON_H},
             dx, dy;
-    rect_clip(r, minion_map.clip, &dx, &dy);
+    rect_clip(r, g_minion_map.clip, &dx, &dy);
     offscreen_fill_rect(area, r, ui_colors[UI_RED]);
 }
 
@@ -394,9 +394,9 @@ static void draw_party_and_marker(uint16_t map_thing, int x, int y, int dir, int
         draw_party_icons(&p, x, y, dir);
     }
     if (flags & MAP_MARKER) {
-        int icon = minion_map.marker_state == MARKER_ABOVE   ? ICON_MARKER_ABOVE
-                   : minion_map.marker_state == MARKER_BELOW ? ICON_MARKER_BELOW
-                                                             : ICON_MARKER;
+        int icon = g_minion_map.marker_state == MARKER_ABOVE   ? ICON_MARKER_ABOVE
+                   : g_minion_map.marker_state == MARKER_BELOW ? ICON_MARKER_BELOW
+                                                               : ICON_MARKER;
         Strip m = map_item_icons(map_thing);
         draw_strip(&m, icon, x, y, 0);
     }
@@ -460,8 +460,8 @@ static void ui_map_draw_square(uint16_t map_thing, int sx, int sy, int dir, int 
 void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int sy, int x, int y, int party_item)
 {
     int16_t saved[RECT_SIZE];
-    memcpy(saved, minion_map.clip, sizeof saved);
-    memcpy(minion_map.clip, clip, sizeof saved);
+    memcpy(saved, g_minion_map.clip, sizeof saved);
+    memcpy(g_minion_map.clip, clip, sizeof saved);
     area = target;
     if (party_item >= 0)
         draw_party_frame(x, y);
@@ -471,7 +471,7 @@ void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, int sx, int s
                    draw_gdat_image_palette(CAT_CONTAINER, party_item, GFX_MAP_ITEM_ICONS), 0};
         draw_party_icons(&p, x, y, DIR_NORTH);
     }
-    memcpy(minion_map.clip, saved, sizeof saved);
+    memcpy(g_minion_map.clip, saved, sizeof saved);
 }
 
 int mmap_party_icons_item(void)
@@ -485,7 +485,7 @@ int mmap_party_icons_item(void)
 /* Sets the marker square (x, y) of map and the squares that it leads to one level up and down. */
 static void ui_map_set_marker(int x, int y, int map)
 {
-    MinionMap *m = &minion_map;
+    MinionMap *m = &g_minion_map;
     m->marker_x = m->below_x = m->above_x = (int16_t)x;
     m->marker_y = m->below_y = m->above_y = (int16_t)y;
     m->marker_map = (int16_t)map;
@@ -549,7 +549,7 @@ static int grid_square(int x, int y, int map, int dir, int row, int col, int16_t
 /* The party, minion, and marker flags of the grid square (sx, sy) of map m16; show: the ones that the grid shows. */
 static int grid_square_flags(const MinionSquares *ms, int16_t sx, int16_t sy, int16_t m16, int flags, int show)
 {
-    MinionMap *mm = &minion_map;
+    MinionMap *mm = &g_minion_map;
     flags &= ~(MAP_PARTY | MAP_MINION | MAP_MARKER);
     if (show & MAP_MINION && ((sx == ms->x && sy == ms->y && m16 == ms->map) ||
                               (m16 == ms->linked_map && sx == ms->linked_x && sy == ms->linked_y)))
@@ -575,7 +575,7 @@ static int grid_square_flags(const MinionSquares *ms, int16_t sx, int16_t sy, in
 /* Draws the grid of squares around (x, y) of map looking to dir, shifted by (x_offset, y_offset) pixels. */
 static void ui_map_draw_grid(uint16_t thing, int x, int y, int map, int dir, int x_offset, int y_offset, int flags)
 {
-    MinionMap *mm = &minion_map;
+    MinionMap *mm = &g_minion_map;
     if (flags & MAP_OPTION_HOLD) {
         x = mm->x;
         y = mm->y;

@@ -608,7 +608,7 @@ def assert_map_state(lib, original, where):
     for field, addr in (("champion", G_ACTION_CHAMPION), ("redraw_delay", G_ACTION_DELAY), ("mode", G_ACTION_MODE),
                         ("flags", G_ACTION_FLAGS)):
         assert getattr(action, field) & 0xFFFF == struct.unpack("<H", emu.read(addr, 2))[0], (where, field)
-    m = MinionMap.in_dll(lib, "minion_map")
+    m = MinionMap.in_dll(lib, "g_minion_map")
     for name, (addr, fmt) in MINION_GLOBALS.items():
         assert getattr(m, name) == struct.unpack(fmt, emu.read(addr, struct.calcsize(fmt)))[0], (where, name)
     assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == emu.read_u32(0x70518), where
@@ -802,7 +802,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
                     click_feedback(lib, original, C.CMD_MAP_OPTION_FIRST + option, (n, "option"))
                 else:
                     assert command(lib, emu, C.CMD_MAP_OPTION_FIRST + option) == (1, 1)
-        mm = MinionMap.in_dll(lib, "minion_map")
+        mm = MinionMap.in_dll(lib, "g_minion_map")
         offsets.add((mm.x_offset, mm.y_offset))
         if word(lib, thing, 2) != C.THING_ENDOFLIST and rng.random() < 0.7:
             # the minion goes where the marker square leads: the grid shows the marker on its other level
@@ -827,7 +827,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
             set_time(lib, emu, time)
             update_action_area(lib, original, tick=1)
             dark += not ActionArea.in_dll(lib, "action").flags & 0x200
-            markers.add(MinionMap.in_dll(lib, "minion_map").marker_state)
+            markers.add(MinionMap.in_dll(lib, "g_minion_map").marker_state)
             assert_map_state(lib, original, (n, k, hex(thing), kind))
         lib.action_area_close()
         emu.call(UI_ACTION_AREA_CLOSE)

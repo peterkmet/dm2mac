@@ -5,6 +5,7 @@
 
 /* Minion maps: the grid, the mana of the map panel, and the clicks that send a minion. */
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* The grid: 7 x 7 squares (9 x 9 when the grid is shifted) of 7 x 7 pixel icons with 1 pixel gaps. */
@@ -14,8 +15,13 @@
 #define GAP_Y            1
 #define GRID_RADIUS      3
 #define MAP_OPTION_COUNT 4
+#define MAP_CLIP_COUNT   4
+
 /* Minion map kinds: the container type of a minion map. */
-enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS };
+#define MAP_KIND_PLAIN      0
+#define MAP_KIND_MINION     1
+#define MAP_KIND_LOCATION   2
+#define MAP_KIND_NO_OPTIONS 3
 
 /* action.flags while the action area shows a minion map. */
 #define MAP_OPTION_CREATURES 0x0001 /* option button 0: moving creatures */
@@ -34,7 +40,10 @@ enum { MAP_KIND_PLAIN, MAP_KIND_MINION, MAP_KIND_LOCATION, MAP_KIND_NO_OPTIONS }
 #define MAP_OPEN             0x8000
 
 /* MinionMap.marker_state: the grid shows the marker square, or the square it leads to one level up or down. */
-enum { MARKER_NONE, MARKER_SHOWN, MARKER_ABOVE, MARKER_BELOW };
+#define MARKER_NONE  0
+#define MARKER_SHOWN 1
+#define MARKER_ABOVE 2
+#define MARKER_BELOW 3
 
 /* The state of the minion map panel (the original globals 0x7fb4a to 0x7fb9f). */
 typedef struct {
@@ -46,15 +55,19 @@ typedef struct {
     int16_t below_map;
     int16_t above_x, above_y;
     int16_t marker_x, marker_y;
-    int8_t map, x, y, dir; /* the center of the last grid */
-    int16_t mana_divisor;  /* 1 + the mana of the options that are on */
-    int16_t mana_timer;    /* game ticks until the next mana point */
-    int16_t clip[4];       /* the grid rectangle */
+    int8_t map, x, y, dir;        /* the center of the last grid */
+    int16_t mana_divisor;         /* 1 + the mana of the options that are on */
+    int16_t mana_timer;           /* game ticks until the next mana point */
+    int16_t clip[MAP_CLIP_COUNT]; /* the grid rectangle */
 } MinionMap;
 
-#define CMD_MINION_MAP 0x55 /* the command of a click on the minion map grid */
+/* The command of a click on the minion map grid. */
+#define CMD_MINION_MAP 0x55
 
-extern MinionMap minion_map;
+/* Pixels per square of a map: a 7 x 7 icon and a 1 pixel gap. */
+#define MAP_CELL_SIZE 8
+
+extern MinionMap g_minion_map;
 
 /* The minion map opens in the hand of the open action area: the champion pays 1 mana for it. */
 void minion_map_open(int champ);
@@ -62,12 +75,10 @@ void minion_map_open(int champ);
 void minion_map_drain_mana(void);
 /* Turns option button option (0 to 3) on (for its mana) or off. */
 void minion_toggle_map_option(int option);
-/* Sets the location of the minion map thing to (x, y) of map; returns 0 outside the map. */
-int minion_map_set_location(uint16_t thing, int x, int y, int map);
+/* Sets the location of the minion map thing to (x, y) of map; returns false outside the map. */
+bool minion_map_set_location(uint16_t thing, int x, int y, int map);
 /* A click (command) at (x, y) of the screen on the grid of a minion location map sends its minion there. */
 void minion_map_click_set_destination(int command, int x, int y);
-#define MAP_CELL_SIZE 8 /* pixels per square of a map: a 7 x 7 icon and a 1 pixel gap */
-
 /* Minions of creature.c and item.c. */
 void minion_dismiss(uint16_t group);
 /* The projectile among the possessions of group that carries filter (THING_NONE: any); 0 when none. */

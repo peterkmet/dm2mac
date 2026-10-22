@@ -20,7 +20,6 @@ block engine/include/game.h open: module cleanup
 block engine/include/game_text.h open: module cleanup
 block engine/include/inventory.h open: module cleanup
 block engine/include/item.h open: module cleanup
-block engine/include/minion.h open: module cleanup
 block engine/include/money.h open: module cleanup
 block engine/include/move.h open: module cleanup
 block engine/include/projectile.h open: module cleanup
@@ -29,7 +28,6 @@ block engine/include/sound_request.h open: module cleanup
 block engine/inventory.c open: module cleanup
 block engine/item.c open: module cleanup
 block engine/magic.c open: module cleanup
-block engine/minion.c open: module cleanup
 block engine/money.c open: module cleanup
 block engine/move.c open: module cleanup
 block engine/projectile.c open: module cleanup
@@ -91,7 +89,6 @@ bool engine/include/item.h:item_use_charge open: module cleanup
 bool engine/include/magic.h:magic_cast_entered_runes open: module cleanup
 bool engine/include/magic.h:magic_cast_party_aura open: module cleanup
 bool engine/include/magic.h:magic_cast_projectile_spell open: module cleanup
-bool engine/include/minion.h:minion_map_set_location open: module cleanup
 bool engine/include/money.h:money_add_coin_to_box open: module cleanup
 bool engine/include/money.h:money_normalize_coins open: module cleanup
 bool engine/include/move.h:move_find_free_adjacent_square open: module cleanup
@@ -103,7 +100,6 @@ bool engine/include/projectile.h:projectile_hit open: module cleanup
 bool engine/include/sound_request.h:sound_party_offset open: module cleanup
 bool engine/inventory.c open: module cleanup
 bool engine/magic.c open: module cleanup
-bool engine/minion.c open: module cleanup
 bool engine/move.c open: module cleanup
 bool engine/move.c:discard_take open: module cleanup
 bool engine/move.c:move_party_bump_damage open: module cleanup
@@ -302,7 +298,6 @@ decimal engine/include/action.h open: module cleanup
 decimal engine/include/champ_action.h open: module cleanup
 decimal engine/include/champion.h open: module cleanup
 decimal engine/include/creature.h open: module cleanup
-decimal engine/include/minion.h open: module cleanup
 decimal engine/include/move.h open: module cleanup
 decimal engine/magic.c rule 3.12: a table of SKULL.EXE
 decimal engine/move.c open: module cleanup
@@ -339,7 +334,6 @@ enum engine/include/game_text.h open: module cleanup
 enum engine/include/inventory.h open: module cleanup
 enum engine/include/item.h open: module cleanup
 enum engine/include/magic.h open: module cleanup
-enum engine/include/minion.h open: module cleanup
 enum engine/include/move.h open: module cleanup
 enum engine/include/projectile.h open: module cleanup
 enum engine/include/save.h open: module cleanup
@@ -378,7 +372,6 @@ global engine/include/creature.h open: module cleanup
 global engine/include/game.h open: module cleanup
 global engine/include/game_text.h open: module cleanup
 global engine/include/inventory.h open: module cleanup
-global engine/include/minion.h open: module cleanup
 global engine/include/move.h open: module cleanup
 global engine/include/projectile.h open: module cleanup
 global engine/include/save.h open: module cleanup
@@ -421,7 +414,6 @@ include engine/inventory.c:move.h open: module cleanup
 include engine/magic.c:champ_action.h open: module cleanup
 include engine/magic.c:game_text.h open: module cleanup
 include engine/magic.c:money.h open: module cleanup
-include engine/minion.c:item.h open: module cleanup
 include engine/move.c:money.h open: module cleanup
 include engine/projectile.c:game.h open: module cleanup
 include engine/projectile.c:money.h open: module cleanup
@@ -571,7 +563,6 @@ order engine/creature.c open: module cleanup
 order engine/inventory.c open: module cleanup
 order engine/item.c open: module cleanup
 order engine/magic.c open: module cleanup
-order engine/minion.c open: module cleanup
 order engine/move.c open: module cleanup
 order engine/projectile.c open: module cleanup
 order engine/save.c open: module cleanup
