@@ -424,7 +424,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
 - While the inventory is open, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is `false`.
 
-Visibility rule: the view has the party row and the rows ahead up to the first center square that blocks sight (a wall, a closed fake wall, or a closed door). The row of that square is in the view, with its side squares. Nothing behind it is in the view. A square outside the map is a wall.
+Visibility rule: the party square is in the view. A square is in the view when the square beside it toward the center is in the view and open, or when the square in front of it (one row nearer) is in the view and open. The rows end at the first center square that blocks sight (a wall, a closed fake wall, or a closed door). Nothing behind it is in the view. A square outside the map is a wall.
 
 The view shows what a player sees. Creature health is not in the view, because the original does not show it.
 
