@@ -161,6 +161,16 @@ Feature: Documentation structure
 | Screenshot | `docs/images/screenshot.png`, as `dm`. | |
 | Order of the new pages | `architecture.md` and `development.md` come before the LLM pages. | The merge of `turnbased-mode.md` moves sections into them. |
 | Style check | The docs-audit pass checks the style; no test. | ASD-STE100 and one term per concept need a reader, not a pattern. |
+| README | The README of the advanced mode branch is rewritten in the form of `dm`; it keeps the name DM2Mac and its facts. | It existed before the run; the PRD wants the form of `dm`. |
+| Advanced mode sections | Mode screen, cheats, cheat screen, damage hold, smooth projectile flight, options menu and `SETTINGS.TXT` go to `docs/manual.md`; the AMAP and CHTS save blocks go to `docs/formats/save.md` "AMAP and CHTS blocks". | The page grew after the plan; same rule as the save block decision. |
+| Stale deviations | A deviation line that says "not yet" or "until" goes when the code has the feature (checked against the cited code). | Wrong facts; Acceptance "no history". |
+| Rules and the manual | The format and rule pages own the rules (movie skip, saves, end of game); `docs/manual.md` says what the player does and links. | One fact on one page; the deviations stay next to their rules. |
+| LLM player manual | `docs/llm/llm-playbook.md` stays self-contained; it repeats protocol facts of `docs/llm/llm-mode.md`. | The player agent reads only this page (`.claude/agents/dm2-player.md`); an exception to Requirement 2. |
+| Terms | Port pages use the port names (cursor zone); reference pages about the original use the original names (mouse area). | The `c-decomp-port` skill. |
+| `CLAUDE.md` | Keeps its short Commands and Layout lines and links `docs/development.md`. | It is the instruction file of the agents. |
+| `.gitignore` | `reference/` becomes `/reference/`. | The old pattern also ignored `docs/reference/`. |
+| License | GPL-3.0-or-later. | The SPDX headers of `src/`. |
+| Personal data search | `docs/coding-standard.md` rule 12.4 keeps `/Users/` as the example of a forbidden machine path. | Rule text, not personal data; no rule change. |
 
 ## Left to the plan
 
