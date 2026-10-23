@@ -94,6 +94,8 @@ The controls of the original game work in all modes except the turn-based mode.
 | Click on an object in the view | Take the object into the leader hand |
 | Click on a wall button or a lever | Use it |
 | Click on a champion hand | Open the action menu. Click an action to run it. |
+| Click on the gray triangle beside a champion in the party panel | Make the champion the leader. The hand on a triangle marks the leader. |
+| Click on the `!` beside a champion in the party panel | Open the spell panel of the champion |
 | Inventory: click on the speaker button | Open the volume dialog: the sound and music volumes 0–7 |
 | Inventory: the name editor | Type the name and the title of the champion |
 
