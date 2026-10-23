@@ -32,3 +32,4 @@
 - Cheat cast (`src/ui/cheats.c`, `src/engine/magic.c`): a dead leader with no open spell panel fails the cast without a message. Print a message or take the first living champion.
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
 - ONE-HIT KILL (`src/engine/creature.c`): `kills` forces an immediate creature update also for a creature that cannot be hurt (defense 0xff), so it acts at once instead of at its scheduled time. Add `info->defense != CREATURE_NO_HURT` or note it in the doc.
+- `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.

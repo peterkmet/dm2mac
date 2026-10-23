@@ -183,14 +183,15 @@ A menu or a dialog waits for the player inside a rule (a modal loop). It calls `
 ## The game step
 
 `play_tick` (`ui/play.c`) counts the timer ticks of the step (`game_count_step_tick`, `engine/game.c`) and runs
-the command queue (`command_process_queue`). When the step is due and the game runs, it runs the end of the
-step and the start of the next:
+the command queue (`command_process_queue`, `ui/input.c`). The command queue first reads the input
+(`input_poll`), which also runs the click feedback of a command. When the step is due and the game runs,
+`play_tick` runs the end of the step and the start of the next:
 
 - `step_after_input`: a pending map change, the repeated actions of the champions
   (`champ_process_repeated_actions`), and the music of the party map.
 - `step_before_input`: the timeline (`timeline_process`), the day and night, the dungeon view, the input poll,
-  the pending sounds and damage, the party clocks (`game_run_party_clocks`), the status boxes of the champions,
-  and the game time (`game_advance_time`).
+  the pending sounds and damage, the party clocks (`game_run_party_clocks`, `engine/game.c`), the status
+  boxes of the champions, and the game time (`game_advance_time`, `engine/game.c`).
 
 A viewport screen of the advanced mode (the automap, the cheat screen, the options menu) and the pause stop the
 game step. The split of the original `game_loop` into the two parts is in
