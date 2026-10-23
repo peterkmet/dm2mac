@@ -3,11 +3,11 @@
 - Manual test D15: take the bones of a dead champion to an altar (needs long play).
 - Manual test J16: complete the final task and check the end of the game (needs long play).
 - Manual test H6: an animated wall ornament with a sound (only on levels 2 and 4).
-- Flaky test: `tests/port/test_control.py::test_a_second_client_gets_busy` failed once with `BrokenPipeError` under heavy machine load (7 parallel builds). It waits only `time.sleep(0.05)` for the first client. It passed 5 of 5 runs alone. `tests/port/test_modes.py::test_program_starts_in_advanced_unless_vanilla[advanced]` once got `{'error': 'busy'}` from the control socket in a parallel run (2026-10-09).
+- Flaky test: `tests/port/test_control.py::test_a_second_client_gets_busy` failed once with `BrokenPipeError` under heavy machine load (7 parallel builds). It waits only `time.sleep(0.05)` for the first client. It passed 5 of 5 runs alone. `tests/port/test_modes.py::test_program_starts_in_advanced_unless_vanilla[advanced]` once got `{'error': 'busy'}` from the control socket in a parallel run.
 - Champion redraw bit 0x10 (`REDRAW_STEP_TIME` in `engine/champion.h`): the step time of `get_step_time` (`engine/move.c`) reads it, but no code of the port sets it. Find out what sets it in `SKULL.EXE` and name it after its meaning.
 - Names without a verb (rule 7): `dialog_volume`. `sensor_door_value` reads the GDAT value of a door type, not a sensor value. Functions with one prefix that other modules define (for example `money_*` in `item.c`, `shop_*` in `money.c`) could move to the module of their prefix.
 - Item name "f m": in `tests/saves/shell.DAT` the leader hand holds thing 10279 with the name "f m", and the message area sometimes shows a row "B %" (for example before "GAME SAVED"). `main` does the same. Find out if the name of this item is decoded wrong.
-- Manual tests L10 (sound direction) and L12 (end of the game) of the layer cleanup smoke test; the sound of L1 (music) and L9 (thunder) is also not checked.
+- Manual tests: the sound direction next to creatures and doors, and the end of the game with the end sensor. The music and the thunder sound are not checked (dummy audio).
 - `gdat_find` (`data/gdat.c`) scans the 11854 key rows linearly; sort or index the rows if lookups get hot.
 - Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.
 - Message area scroll: IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows up and keeps the bottom rows (`shift_message_area` in `src/ui/text.c`); check it against the original in DOSBox.
@@ -17,11 +17,11 @@
 - `make` does not rebuild an object with the same modification time as its source (seen after scripted rebases). After a scripted rebase, build with `make -B`.
 - `long` in `src/control/control.c` and `src/control/turn.c` (38 uses, rule 5.3).
 - Naming: `advanced_screen_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4); the in/out parameters of `zone_compute_rect` (`out_w`, `out_h`) and `dungeon_location_on_map` (`out_x`, `out_y`) have an `out_` name.
-- Scroll color: a scroll is white on a table and yellowish in the hand, in the inventory, and while it is read. `main` does the same (manual test of the dm style refactor, 2026-10-22). Compare with the original.
+- Scroll color: a scroll is white on a table and yellowish in the hand, in the inventory, and while it is read. `main` does the same. Compare with the original.
 - Dark dots in letters: with `--filter scale2x` and `scale3x`, the "D" of READY and the "O" of TO in "GAME LOADED, READY TO PLAY" have a dark dot; the "O" of OK has none. `main` does the same. Compare with `--filter none` to find out if the filter or the background causes it.
 - End picture: after QUIT the end picture shows until a click and goes at once, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.
 - Sound under Wine: `build/dm2.exe` under Wine CX crackles, also the music; the port `dm` crackles the same way. Not checked on real Windows.
-- Manual test checklist `docs/superpowers/2026-10-21-dm-style-code-checklist.md` M2: Esc (the pause) cancels a champion drag, a right click does not.
+- Esc (the pause) cancels a champion drag, a right click does not.
 - Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (today the outdoor sections around Skullkeep show one at a time).
 - Cheat screen spell names that are port guesses: HASTE (OH IR ROS), MISSILE WALL (ZO BRO ROS), YA EW ITEM, SCOUT, CARRIER, ARMY MINION (ZO EW KU/NETA/ROS). Check them against the DM2 manual.
 - `save_write` gives different bytes on two writes in a row right after `projectile_create` (one byte at offset 30196) and changes `g_random_seed`; found by `tests/port/test_projectile_flight.py`.
