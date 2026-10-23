@@ -20,7 +20,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 - A projectile record links its payload (an object or a spell), and its event (type `0x1d` or `0x1e`) holds the energy, the attack, and the step. Each event moves the projectile one cell. At a wall, a closed door, a creature, or a champion the projectile hits (`hit_impact`).
 - An explosion record holds its type and power. Its event (type `0x19`) applies the damage on its square and can trigger the wall sensors.
 - A spell is a sequence of up to 4 runes (power, element, form, class). `magic_find_spell` finds it in the spell table of `SKULL.EXE`. The kinds are potions, projectiles, party auras, summons, and others.
-- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes mana every tick, and a click on the grid sends the minion there.
+- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes mana every 25 game steps, and a click on the grid sends the minion there.
 
 ## Deviations from the original
 
@@ -37,7 +37,6 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a division by 0 for an animation of length 0 and for a minion map strip of 1 icon
   - the minion map square read outside the map
   - a path step read without a stored path (address 0 in the original)
-  - a write outside an item class set for a number without a class letter
   - the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook)
   - the step of an AI command with direction -1: the original reads the words before its direction tables, the step (0, -1), and the port takes the step north (`step_dir` in `engine/ai_move.c`)
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.

@@ -69,7 +69,7 @@ uv run dm2-play [--socket PATH] [--brief] act_many '<json-list>'
 - `--brief` (before the command) prints a short text summary instead of the JSON: the turn (`ticks`, `ran`, `stopped`, `error`, `game_over`, `action_damage`, `health_lost`, `path`, and `BUMPED`), the `look:` line, the `seen:` line, the party position, the leader hand, the candidate, each champion, the open panels, the messages, and the squares ahead (side words: `left` and `right`, `far left` and `far right` at 2 squares from the lane, `outer left` and `outer right` at 3 squares). For `get_map`, it prints the `grid`.
 - The exit code is 1 when the reply has `"ok": false`, even when the game is not reachable.
 - A relative screenshot `path` becomes an absolute path before it goes to the game, because the game runs in another directory.
-- Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`. The default folder is `playthroughs/current/coordinator`. The log is written only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off. Run `dm2-play` in the repository root, otherwise the relative folder does not exist.
+- Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`. The default folder is `playthroughs/current/coordinator`. `dm2-play` writes the log only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off. Run `dm2-play` in the repository root, otherwise the relative folder does not exist.
 
 Python code can use `dm2tools.control_client.request(payload, path=None, timeout=150.0)`.
 
@@ -107,7 +107,7 @@ uv run dm2-play new_game
 - While a turn or a wait runs, the game reads no next request.
 - A request line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error. Replies have no size limit.
 - String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is. In the turn-based commands, a string value cannot contain a `"` character.
-- The parser is flat: it finds `"field": value` anywhere in the line. The keys in `args` of the turn-based mode are found the same way. Do not nest other objects.
+- The parser is flat: it finds `"field": value` anywhere in the line, also the keys in `args` of the turn-based mode. Do not nest other objects.
 - Positions are game screen pixels: `x` 0 to 319, `y` 0 to 199.
 
 ## Commands

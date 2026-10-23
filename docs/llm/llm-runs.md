@@ -23,7 +23,7 @@ playthroughs/
     saves/<name>/               a checkpoint: a copy of QUICK.DAT and of player/
 ```
 
-- A new run: create `playthroughs/run<N>/` with `player/`, `coordinator/`, `game/`, and `saves/`. Point the link: `ln -sfn run<N> playthroughs/current`. Start the game with `--saves playthroughs/current/game` ([Start the game](llm-mode.md#turn-based-mode)). Send `new_game`, then `save`. The player recruits the champions.
+- A new run: create `playthroughs/run<N>/` with `player/`, `coordinator/`, `game/`, and `saves/`, and copy the files of `playthroughs/template/` to `player/`. Point the link: `ln -sfn run<N> playthroughs/current`. Start the game with `--saves playthroughs/current/game` ([Start the game](llm-mode.md#turn-based-mode)). Send `new_game`, then `save`. The player recruits the champions.
 - A checkpoint after a session: copy `game/QUICK.DAT` and the files of `player/` to `saves/<name>/`.
 - A resume: copy `QUICK.DAT` of the checkpoint to `game/` and its files to `player/`, then send `load`.
 - The calls of the coordinator stay out of the log: `DM2_PLAY_LOG_DIR=none uv run dm2-play ...`.

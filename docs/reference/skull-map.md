@@ -106,7 +106,7 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 | `0x105` | Scroll the message area by one line height | `shift_message_area` (`0x139e4`) |
 | `0x106` | Video state on or off | `iop_set_video_state` |
 | `0x109` | Present the viewport (flags 8 or `0x8008`) | `play_present_viewport` |
-| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,254)`; the first result word goes to `0x7f07c`. The port reading: set the palette (256 × 4 bytes). reDM2: cursor image upload, marked as an inference. Open | `pal_set_palette` |
+| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,0xfe)`; the first result word goes to `0x7f07c`. The port reading: set the palette (256 × 4 bytes). reDM2: cursor image upload, marked as an inference. Open | `pal_set_palette` |
 
 Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga_wait_vblank` polls port `0x3da`.
 

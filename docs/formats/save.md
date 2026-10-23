@@ -96,7 +96,7 @@ The CHTS block:
 | --- | --- |
 | 4 | `CHTS` |
 | 1 | Version: 1 |
-| 1 | Cheat bits: 0x01 full light, 0x02 immortal, 0x04 food and water, 0x08 one-hit kill, 0x10 walk through walls, 0x20 reveal map |
+| 1 | Cheat bits: `0x01` full light, `0x02` immortal, `0x04` food and water, `0x08` one-hit kill, `0x10` walk through walls, `0x20` reveal map |
 
 A load reads the blocks when they are there.
 
@@ -109,4 +109,4 @@ The original game loads a save with the blocks: its loader stops at the last bit
 ## Deviations from the original
 
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).
-- Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than room, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.
+- Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than the queue holds, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.

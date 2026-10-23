@@ -4,7 +4,7 @@ The DOS runtime of `SKULL.EXE`: the SVGA option of the installer, the PIT diviso
 
 ## SVGA option
 
-- The SVGA option changes only the movies. It does not change the game. The game always runs in VGA mode `0x13` (320×200, 256 colors).
+- The SVGA option changes only the movies. It does not change the game. The game always runs in VGA mode `0x13` (320 × 200, 256 colors).
 - `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie. It writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, probably for SVGA only, the switch ` +VS`.
 - The movie files, their video modes, and their video sizes: [movies.md](movies.md#movie-player).
 - `IBMIOP.EXE` holds two launch scripts, one for SVGA and one for VGA ([movies.md](movies.md#launcher-script-ibmiopexe)).
@@ -59,7 +59,7 @@ The port sets `PIT_DIVISOR` in `src/platform/platform.c` to `4971` (240.02 Hz) a
 
 ## Unknown values
 
-Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` handler in real mode. The HMI handler calls the old handler only at about 18.2 Hz. Thus the real rate of the `INT 2Dh` callback depends on how DOS/4GW routes `IRQ 0`. Static analysis cannot fix it. A measurement in DOSBox can: compare the game clock in two saves with a known real time between them. reDM2 did not measure the real rate either. The DOSBox measurement is open; it is the check of the game rate of the port.
+Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` handler in real mode. The HMI handler calls the old handler only at about 18.2 Hz. Thus the real rate of the `INT 2Dh` callback depends on how DOS/4GW routes `IRQ 0`. Static analysis cannot fix it. A measurement in DOSBox can: compare the game clock in two saves with a known real time between them. reDM2 did not measure the real rate either. Manual check C10 compares the game rate of the port with DOSBox.
 
 ## IBMIOP.EXE runtime layer
 

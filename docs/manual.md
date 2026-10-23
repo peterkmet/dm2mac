@@ -62,8 +62,8 @@ The advanced mode has one quick save slot: `<data>/DATA/QUICK.DAT`. With `--save
 
 `F5` writes the game to `QUICK.DAT`. The message area shows one of these lines:
 
-- `GAME SAVED`: the file is written.
-- `UNABLE TO SAVE`: the file cannot be written. An earlier quick save stays.
+- `GAME SAVED`: the game wrote the file.
+- `UNABLE TO SAVE`: the game cannot write the file. An earlier quick save stays.
 
 A quick save is not a saved game for the save menu. The QUIT question and RESTART GAME after the death of the party use only the save slots.
 
@@ -72,7 +72,7 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 - `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks before the quit, as after a game that is not saved.
 - `NO QUICK SAVE`: the file does not exist. The game goes on.
 - `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. If the copy in `QUICK.TMP` also does not load, the program prints an error and ends with exit code 4; `QUICK.TMP` stays.
-- `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `DATA/QUICK.TMP` before the load, so it does not load. The game goes on.
+- `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `QUICK.TMP`, next to `QUICK.DAT`, before the load, so it does not load. The game goes on.
 
 ## Controls
 
@@ -169,7 +169,7 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
 - Food and water: food and water do not go down over time. Eating and drinking still raise them.
-- One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt (defense 0xff) stays unhurt; a creature that others cannot hit (dexterity 0xff) stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
+- One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt stays unhurt; a creature that others cannot hit stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall. In a wall, a closed fake wall, or a closed door, the party cannot drop an object on its own square: the object stays in the hand.
 - Reveal map: the automap shows every square of the map. The seen squares do not change.
 

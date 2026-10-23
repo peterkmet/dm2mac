@@ -32,7 +32,7 @@ How to decompile `SKULL.EXE` of Dungeon Master II (PC DOS) from your own copy of
    tools/decompile-skull.sh
    ```
 
-   The script writes `build/skull.bin` (the flat image), `reference/decomp/SKULL.c` (decompiled C), and `reference/decomp/SKULL.c.log` (Ghidra log). A run stops at a missing Ghidra script ([Known limitations](#known-limitations)).
+   The script writes `build/skull.bin` (the flat image), `reference/decomp/SKULL.c` (decompiled C), and `reference/decomp/SKULL.c.log` (Ghidra log). A run stops at a missing Ghidra script, before `ExportC.java` writes `SKULL.c` ([Known limitations](#known-limitations)).
 
 The `.gitignore` file excludes `game/` and `reference/`. Do not commit game content. For the build and the tests, see [Development](development.md).
 

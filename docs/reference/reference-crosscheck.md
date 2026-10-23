@@ -134,7 +134,7 @@ The details and the citations are in the pages of `docs/formats/`.
 
 Agreements:
 
-- `GRAPHICS.DAT` header, item table, key table (94852 bytes, 11854 rows of 8 bytes), total size 8639757.
+- `GRAPHICS.DAT` header, item table, key table (94852 bytes: a 20-byte header and 11854 rows of 8 bytes), total size 8639757 bytes.
 - Music: GDAT `(4, song, 3, 0)`, 29 HMP items, item 5602 = `TEST.HMP`, `SONGLIST.DAT` values 0-28.
 - `g_timer_step` = 1, `g_tick_threshold` = 8, timer tick from `INT 8` on every 4th interrupt under `+VS`.
 - `IBMIOP` functions `0x02`, `0x0e`, `0x0f`, `0x28`, `0x2e`, `0x2f`, `0x30`: same role. reDM2 adds the record layouts.
@@ -163,7 +163,7 @@ reDM2 verifies by functional equivalence, not by byte matching (`README.md`, "Ho
 |---|---|---|
 | Memory-write diffing (`tools/difftest.py`) | Runs the original and the port from the same state. Compares `EAX`, the full set of memory writes (Unicorn `UC_HOOK_MEM_WRITE`), the write order, the stack balance, and the saved registers. | Proposed: an optional write recorder in `Emu.call` (one `UC_HOOK_MEM_WRITE` hook that stores address, size, value). The C port runs natively on a copy of the same memory buffer. The test compares the changed bytes of both runs, not only the return value. |
 | Stack and buffer poison | Runs each case with a zero stack, a stack poisoned on one side, and a stack poisoned on both sides. A port that reads bytes the original never wrote fails. | Proposed: fill the `emu.py` stack and scratch area with a pattern (for example `0xa5`) in a second run of each oracle test. The result must not change. |
-| State snapshots from the real load path (`tools/objstate.py`) | Runs the original `session_load` → `dungeon_load` → packed records → thing records in the emulator over a real save. Only file I/O and `int 0FCh` leaves are stubbed. The memory dump is the fixture for many tests. | `original_round_trip` in `tests/differential/test_save.py` runs the file part of `session_load` in `dm2tools.emu` ([save.md](../formats/save.md#compatibility-with-the-original)). |
+| State snapshots from the real load path (`tools/objstate.py`) | Runs the original `session_load` → `dungeon_load` → packed records → thing records in the emulator over a real save. Only file I/O and `INT 0xFC` leaves are stubbed. The memory dump is the fixture for many tests. | `original_round_trip` in `tests/differential/test_save.py` runs the file part of `session_load` in `dm2tools.emu` ([save.md](../formats/save.md#compatibility-with-the-original)). |
 | Whole-file sweeps (`src/gfx_sweep_*.test.toml`) | Decodes 5519 of 5623 `GRAPHICS.DAT` items with the original and the port and compares all writes. | `tests/differential/test_gdat.py` decodes the image items with the original and the port ([graphics.md](../formats/graphics.md#image-compression)). The 1442 items with a gate outside `{0, 31, -32}` are not images. |
 | Sibling fixtures for state-gated branches | A branch that depends on the game state gets two fixtures. Removing the guarded call must make exactly one of them fail. | Proposed: two saves (start of game and later game) for state-dependent functions. |
 | Runnable "blocked" records (`src/*.blocked.toml`) | A function that cannot run in the emulator keeps a test that must stay red. If it turns green, the blocker is gone. | Proposed: when `dm2tools.emu` cannot run a function (DOS/4GW selector load, port I/O), keep an expected-failure test (`pytest.mark.xfail(strict=True)`) instead of a note. |

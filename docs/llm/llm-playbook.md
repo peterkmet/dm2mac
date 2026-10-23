@@ -22,7 +22,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## The party
 
 - A new game starts with one champion, Torham. The party has up to 4 champions.
-- Recruit the other champions from mirrors. Stand in front of a mirror (the wall face has `mirror`) and send `click_wall_ahead`. The champion shows as `state.candidate`. Read its statistics and skills, then send `recruit` with `{"choice":"join"}` or `{"choice":"cancel"}`. While a candidate shows, the game accepts only `recruit`. Write each mirror and its champion in `party.md`.
+- Recruit the other champions from mirrors. Stand in front of a mirror (the wall face has `mirror`) and send `click_wall_ahead`. The champion shows as `state.candidate`. Read its statistics and skills, then send `recruit` with `{"choice":"join"}` or `{"choice":"cancel"}`. While a candidate shows, the game accepts only `recruit`, `click`, and `key`. Write each mirror and its champion in `party.md`.
 - Each champion has health, stamina, and mana, and the statistics strength, dexterity, wisdom, vitality, antimagic, and antifire.
 - The party has 2 rows: `front_left`, `front_right`, `back_right`, `back_left` (`champions[].position`). The front row fights hand to hand and takes most of the hits from the front. The back row casts spells, throws objects, or shoots. `swap_champions` swaps the places of two champions.
 - The party turns as one. A creature attacks the champions on the side that faces it: a creature behind the party hits the back row.
@@ -46,7 +46,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
 - To eat or drink: put the food or the drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then `eat` or `drink`.
 - A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand fills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
-- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. While the party sleeps, only `wake` and `wait` run. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
+- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. While the party sleeps, only `wake`, `wait`, `click`, and `key` run. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
 
 ## Light and load
 
@@ -127,7 +127,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Some items and spells give minions: creatures that work for the party.
 - A minion map is an item. Hold it in a hand and send `choose_action` for that hand: the minion map opens as a panel. `state.minion_map` gives `powered` (whether its mana is paid) and `options[]` (`option` 0-3, `name`: `creatures`, `details`, `items`, `hold`; `on`).
 - `minion_map_option` with `option` 0-3 turns an option on or off. `pass` closes the map.
-- The minion map takes 1 mana of the champion when it opens; a champion without mana opens it not powered. While it is open and powered, it takes 1 mana every 25 ticks. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the 25 ticks are divided by 1 plus the mana of the options that are on. When the champion has no mana left, the map loses its power. Close it when you do not use it.
+- The minion map takes 1 mana of the champion when it opens; a champion without mana opens it not powered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by 1 plus the mana of the options that are on. When the champion has no mana left, the map loses its power. Close it when you do not use it.
 - A click on the grid of the map sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
 - Hint: the action menu of a minion item (`hands`) gives the minion commands. Test each command and write it in `lessons.md`.
 
@@ -135,7 +135,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 - `state.outdoor` is `true` when the party sees the sky. Only then the state has `weather` and `day_time`.
 - `weather.clouds` and `weather.rain` are `none`, `light`, `medium`, or `heavy`. `weather.wind` (`north`, `east`, `south`, `west`) is present only while rain falls in the view.
-- `day_time` is `day`, `night`, or `dawn_dusk`. One hour is 1365 game ticks; a day has 24 hours. The night is dark: carry a light.
+- `day_time` is `day`, `night`, or `dawn_dusk`. One hour is 1365 game steps; a day has 24 hours. The night is dark: carry a light.
 - A storm comes and goes. In a strong storm, lightning can strike floor squares, even the party square. Get under a roof in a heavy storm.
 
 ## Saves
@@ -293,7 +293,7 @@ When the dungeon changes the party in another way, the turn has a displacement:
 
 ### Wait
 
-A `wait` turn runs `ticks` game ticks (1-5000, default 1). It checks for news after each tick and ends at once when it finds news: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` when all ticks ran, else the news. `ticks` gives the ticks that ran. This also works while the party sleeps: damage wakes the party.
+A `wait` turn runs `ticks` game steps (1-5000, default 1). It checks for news after each tick and ends at once when it finds news: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` when all ticks ran, else the news. `ticks` gives the ticks that ran. This also works while the party sleeps: damage wakes the party.
 
 Example: rest until something happens, at most 5000 ticks.
 
@@ -393,7 +393,7 @@ The response of `look` has `look: {name, lines}`: the texts of the eye panel. `n
 
 ### State fields
 
-- `time`: game ticks. `game_mode`: `turnbased`. `mode`: the input mode (`move`, `inventory`, `recruit`, `sleep`, `dialog`, `menu`, `picture`, `pause`, `push`, `name`).
+- `time`: game steps. `game_mode`: `turnbased`. `mode`: the input mode (`move`, `inventory`, `recruit`, `sleep`, `dialog`, `menu`, `picture`, `pause`, `push`, `name`).
 - `dialog`: `{id, buttons}` while a dialog shows, else `null`. Answer it with `act click` or `act key`.
 - `party`: `map`, `level`, `x`, `y`, `facing`, `darkness` (0 bright to 5 dark), `can_move`, `sleeping`, `dead`.
 - `leader` (index, or `null`), `leader_hand` (object or `null`).
