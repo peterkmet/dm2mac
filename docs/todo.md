@@ -18,7 +18,8 @@
 - End picture: after QUIT the end picture shows until a click and goes immediately, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.
 - Sound under Wine: `build/dm2.exe` under Wine CX crackles, the music too; the port `dm` crackles the same way. Not checked on real Windows.
 - Esc (the pause) cancels a champion drag, a right click does not.
-- Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (the outdoor sections around Skullkeep show one at a time).
+- Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (the outdoor sections around Skullkeep show one at a time). Implement the PRD `research/superpowers/2026-10-23-level-automap.md` by its plan `research/superpowers/2026-10-23-level-automap-plan.md`.
+- Manual check of the push arrows in the window: grab a boulder, move the mouse in the viewport; the arrow of a free direction stays lit in the arrow panel while the mouse is on it and goes off in the middle of the viewport (fix `a21fed7`).
 - Cheat screen spell names that are port guesses: HASTE (OH IR ROS), MISSILE WALL (ZO BRO ROS), YA EW ITEM, SCOUT, CARRIER, ARMY MINION (ZO EW KU/NETA/ROS). Check them against the DM2 manual.
 - A one-off failure in a run of `test_automap`, `test_modes`, and `test_control` (73 tests counted instead of 72) during the cheat screen work; not reproduced.
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
