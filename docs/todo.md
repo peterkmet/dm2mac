@@ -23,7 +23,6 @@
 - Esc (the pause) cancels a champion drag, a right click does not.
 - Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (the outdoor sections around Skullkeep show one at a time).
 - Cheat screen spell names that are port guesses: HASTE (OH IR ROS), MISSILE WALL (ZO BRO ROS), YA EW ITEM, SCOUT, CARRIER, ARMY MINION (ZO EW KU/NETA/ROS). Check them against the DM2 manual.
-- `save_write` gives different bytes on two writes in a row right after `projectile_create` (one byte at offset 30196) and changes `g_random_seed`; found by `tests/port/test_projectile_flight.py`.
 - A one-off failure in a run of `test_automap`, `test_modes`, and `test_control` (73 tests counted instead of 72) during the cheat screen work; not reproduced.
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
 - `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.
