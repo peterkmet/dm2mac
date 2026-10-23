@@ -10,6 +10,7 @@ Details: `docs/development.md`.
 - Build: `make` (0 warnings) builds `build/dm2`; `make lib` builds `build/libdm2.dylib`.
 - Windows build: `make windows` builds `build/dm2.exe` with MinGW-w64 and the SDL3 MinGW package of `../dm` (in a worktree: `make windows DM_DIR=<path to the dm folder>`).
 - Run: `build/dm2` starts a new game; `build/dm2 --save game/DATA/SKSAVE0.DAT` loads a save.
+- Never stop or restart a running game of the user; after a build, tell the user and let them restart it.
 - Turn-based mode: `build/dm2 --mode turnbased --saves DIR`; `uv run dm2-play --brief get_state` (`docs/llm/llm-mode.md`).
 - One test file: `uv run pytest -q tests/<folder>/test_x.py`.
 - Full suite: `make test` runs `tools/test-suite` (parallel; skips a clean tree that already passed; log in `build/test-suite.log`).
