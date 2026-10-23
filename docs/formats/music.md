@@ -27,7 +27,7 @@ The code and the data show this:
 
 Music master volume, `FUN_00010736(level 0..7, 10)`: `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
 
-Confidence: high. reDM2 (`docs/formats.md`, "T=0x04 IS MUSIC") gives the same key, the same 29 items, and the same match of item 5602 with `TEST.HMP`.
+reDM2 (`docs/formats.md`, "T=0x04 IS MUSIC") gives the same key, the same 29 items, and the same match of item 5602 with `TEST.HMP`.
 
 The port reads the songs from GDAT `(4, n, 3, 0)` and follows `FUN_00010af6` with the fade of each game step (`music_update_for_map`, `src/ui/music.c`).
 
@@ -37,7 +37,7 @@ Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi
 
 - Header: `+0x20` u32 offset of the loop table, `+0x30` u32 track count, `+0x38` u32 song timer rate ([runtime.md](runtime.md#pit-divisor-and-tick-rates)). Track chunks start at `+0x388`: u32 track number, u32 chunk size, u32 MIDI channel, then the data.
 - Delta times: 7-bit groups, low group first. The last byte has bit 7 set (the opposite of standard MIDI).
-- Timing: each tick adds 1 to the elapsed ticks of each track. A track plays its next event when its delta is not more than the elapsed ticks. After each event, the elapsed ticks start again at 0. Thus the first event plays at tick `max(d, 1)` (`d` = first delta), and each later event plays its delta after the event before it. An event with time `T` (sum of the deltas) plays at tick `T + 1` if the first delta is 0, else at tick `T`. Tracks play in track order within a tick.
+- Timing: each tick adds 1 to the elapsed ticks of each track. A track plays its next event when its delta is not more than the elapsed ticks. After each event, the elapsed ticks start again at 0. Thus the first event plays at tick `max(d, 1)` (`d` = first delta), and each later event plays its delta after the event before it. An event with time `T` (sum of the deltas) plays at tick `T + 1` if the first delta is 0, otherwise at tick `T`. Tracks play in track order within a tick.
 - Track 0 events are not sent. Controllers `0x67` to `0x79` are HMI commands and do not go to the driver. The songs use `0x6c` (no effect), `0x6d` (the value of the next event, an `0x6e` controller, sets the loop count of the loop point with id = value), and `0x6f` (loop). `0xff 0x2f` ends a track.
 - Loop table: one record count per track, then 24-byte records of all tracks: `+0` u32 loop point in the track data, `+4` id, `+5` program, `+6` loop count (`0xff` = forever), `+7` byte count of controller pairs, `+0xc` u32 offset of the pairs.
 - Loop `0x6f id`: if the count is not 0 or `0xff`, it decrements. If the count is not 0, all tracks 1 and up that still play jump to their loop point with the same id, read the delta there, and get a program change and the controller pairs. Later tracks count the loop tick as their first tick. All 29 songs loop forever.
@@ -101,8 +101,6 @@ The operator offsets per channel come from the byte pairs at driver `[0x2ee5 + 2
 
 The standard AdLib mapping uses the same register formulas as in the table above, 9 melodic voices, F-number from the MIDI note with block = octave, carrier TL scaled by velocity and channel volume, and drum notes played as melodic voices with the instrument from `DRUM.BNK[note]` at the pitch from its name flag byte. The port does not use it: it reproduces the driver logic ([OPL2 driver logic](#opl2-driver-logic)).
 
-Confidence: high for the file format, the BNK layout, and the register mapping.
-
 ### OPL2 driver logic
 
 Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002` (Sound Blaster, Sound Blaster Pro), not the OPL3 driver `0xa009` (Sound Blaster 16, the DOSBox default).
@@ -118,7 +116,7 @@ Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `
 | `0x201e` | Instrument to voice. |
 | `0x237f` | Channel volume change. |
 
-- Note on: take a voice (first free voice, else the first voice of the first channel without pitch bend, else `channel mod 9`), key it off, write the release byte with release rate 15 five times (fast release time), load the instrument (drums: `DRUM.BNK[note]`; else `MELODIC.BNK[program]`), set the levels, write the frequency, key off and key on. Drums sound at the note in the flag byte of their name.
+- Note on: take a voice (first free voice, otherwise the first voice of the first channel without pitch bend, otherwise `channel mod 9`), key it off, write the release byte with release rate 15 five times (fast release time), load the instrument (drums: `DRUM.BNK[note]`; else `MELODIC.BNK[program]`), set the levels, write the frequency, key off and key on. Drums sound at the note in the flag byte of their name.
 - Frequency: a table of block and F-number per note from note 12 at driver `0x2f4c`. Notes 0 to 11 read the attenuation table in front of it.
 - Level: `level = ((volume << 7) / 127) * velocity >> 7`, `a = table_0x2f00[level >> 1]`, `TL = 64 - (64 - a) * (64 - instrument TL) / 64` with the instrument KSL. The modulator gets it too when the melodic instrument of the channel program is additive (also on the drum channel).
 - Start state: channel volume 127, pitch bend 64, bend range 2, program 0, voice velocity 127.
@@ -128,7 +126,7 @@ Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `
 ## Deviations from the original
 
 - OPL chip: Nuked-OPL3 in OPL2 mode, register writes through its write buffer (2 samples per write, like the delay of the real chip). Output: 44100 Hz stereo, the same signal on both sides.
-- `fmmidi.com` computes `(note - 12) mod 12` with repeated subtraction. For a note below 12 with pitch bend, this takes about 1.4 billion instructions in the timer interrupt (song 7 has one such note). The port computes the same value at once.
+- `fmmidi.com` computes `(note - 12) mod 12` with repeated subtraction. For a note below 12 with pitch bend, this takes about 1.4 billion instructions in the timer interrupt (song 7 has one such note). The port computes the same value directly.
 - The frequency table index is clamped to the table; the driver reads outside it for notes below the bend range. MIDI data bytes are cut to 7 bits before the driver tables use them.
 - A loop to an id that a track does not have does not move that track (the original searches past the loop records). A track that has no end event ends at its chunk end. A map outside `SONGLIST.DAT` keeps the song (the original reads past the buffer).
 - Not ported, because no song uses them: the HMI controllers `0x67`/`0x68` (controller enable flags), `0x72`, `0x75`, `0x76`, `0x79` (other loops), `0x77` (trigger callbacks), the HMI fade (`hmi_midi_fade_song`), tempo change, and the channel remap mode (the game turns it off). Like the original, the port does not send these controllers to the driver, but it does not run them.

@@ -28,7 +28,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 | `0x02` | dword µs per subdivision, word subdivisions | Time of one picture: 83.328 ms (`FTL`, `INTRO`, `END`), 100 ms (`CREDITS`). |
 | `0x03` v0 | word ?, word flags, word rate, word buffer size | Bit 0 stereo, bit 1 16-bit, bit 2 compressed (version 1 only). The movies: 22050 Hz, stereo, unsigned 8-bit. |
 | `0x04` | - | Starts the sound. |
-| `0x05` v2 | word width, word height in blocks of 8 × 8 | 54 × 40 blocks: 432 × 320. |
+| `0x05` v2 | word width, word height in blocks of 8 × 8 | 54 × 40 blocks: 432 × 320; the VGA movies: 40 × 25 blocks, 320 × 200. |
 | `0x07` v1 | word first color, word count, word ? | Shows the picture. |
 | `0x08`, `0x09` | word sequence, word stream mask, word length, samples (`0x08` only) | Audio and silence; the port plays stream mask bit 0. |
 | `0x0a` | word width, word height, word VESA mode | `INTRO`, `END`, `FTL`, `CREDITS`: `(640, 480, 0x101)`; the VGA movies `*.VGA`: `(320, 200, 0x13)`. |
@@ -49,7 +49,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 - The VGA movies and `CREDITS.PCX` of the VGA script are not played.
 - The movie screen is the largest 4:3 rectangle of the window with black borders and linear filtering: the scale is not an integer, and no scale filter applies.
 - A click skips; a key does not skip. In the vanilla mode a click does not stop the splash picture and `FTL`: the script gives the splash a fixed 3 seconds and `FTL` the argument `noabort`.
-- The movie sound plays at full volume through the sound output of the port at 44100 Hz: each sample repeats two times. Another audio format plays the movie without sound.
+- The movie sound plays at full volume through the sound output of the port at 44100 Hz: each sample repeats twice. A different audio format plays the movie without sound.
 - A missing file, damaged data, a splash picture of another size than 320 × 200, or a movie whose mode is not 640 × 480 is a failed step: the script goes on with the next step. Damage in the middle of a movie stops it there.
 - A block whose source is outside the frame, or with encoding 6, stays unchanged.
 - `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. A RESTART starts the program again with the environment variable `DM2_RESTARTED`: no start movies, as the launcher starts only the game step again.

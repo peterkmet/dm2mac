@@ -49,7 +49,7 @@ The rules of the champions: the leader hand, damage and time effects, the action
 ## The first room of `start.DAT`
 
 - The table of the first room can be pushed. The shelf face (1, 5) behind it shows a sun crest holder (text `0x885c`); while the holder is full, it hides the cabinet with the solid key (text `0x8854`, ornament `0x86`). When the party takes the sun crest, the face shows the cabinet, and its clicks give its items, the solid key last. No other trigger is needed.
-- The gold coin on the table of the first room does not open the door. No wall slot takes it, also in the original. The door opens with the solid key in the keyhole (4, 5) cell 3 and the door button (4, 4) (sensor kind `0x46`), which toggles the door (3, 4).
+- The gold coin on the table of the first room does not open the door. No wall slot takes it, as in the original. The door opens with the solid key in the keyhole (4, 5) cell 3 and the door button (4, 4) (sensor kind `0x46`), which toggles the door (3, 4).
 
 ## Deviations from the original
 
@@ -57,5 +57,5 @@ The rules of the champions: the leader hand, damage and time effects, the action
 - The port hides the system cursor. Each present (the game loop and the modal loops of menus and dialogs) draws the image of `input_cursor_at` at the mouse pointer (`present_with_cursor`, `input_draw_cursor`). The original cursor in menus and dialogs is not verified: the driver (`IBMIOP.EXE`) is not checked.
 - The load clears the pending damage and wounds, the regeneration counter, the leader hand, and the recruit candidate of the last game (`champ_reset_step_state`).
 - The leader hand icon (`g_leader_hand_icon`) starts at 0 in the original (BSS), and a load keeps it. The port starts it at `0xff` (no icon) and sets `0xff` on each load. The screen does not change.
-- Not ported: the mouth animation of `champ_consume_object` when the leader hand feeds a champion (4 frames of GDAT `(7, 0, 0x25/0x26)` in zone `0x221`, 8 vertical retraces each). The food takes effect at once.
+- Not ported: the mouth animation of `champ_consume_object` when the leader hand feeds a champion (4 frames of GDAT `(7, 0, 0x25/0x26)` in zone `0x221`, 8 vertical retraces each). The food takes effect immediately.
 - The eye (command `0x47`, zone `0x222`, `input_hold_right_button`) and the mouth with an empty leader hand (command `0x46`, zone `0x221`) start the mouse capture: they set their flag (`0x7f224`, `0x7f21c`) only while the left button (button bit `0x02`) is down, and hide the pointer. The release of the left button (event type 4) gives command `0xe3`, `input_cancel_mouse_capture`, which clears both flags. The port sends event type 4 only while the eye or the mouth is held, because the `IBMIOP` handler that makes the event is not analyzed. After `input_flush` and `mouse_hide`, the original eye waits 8 vertical retraces (`wait_vblanks(8)`); the port does not wait.

@@ -31,7 +31,7 @@ Request: `FUN_00015ca9(cat, idx, entry, priority, volume, x, y, mode)`.
 1. If the global flag `DAT_0007f234` is set, `volume = volume >> 1`.
 2. The sound position is made relative to the party (`DAT_0007f26a`, `DAT_0007f26e`) and rotated by the party direction `DAT_0007f252`. The result is `lateral` (byte `+6`) and `forward` (byte `+7`).
 3. `dist = |dx| + |dy|`. If `dist > 1`, `FUN_0002facc(x, y)` returns `n`. If `n < 0`, the sound is dropped. If `dist < n`, both components are scaled: `k = (n << 10) / dist`, `c = ±((|c| * k + 0x200) >> 10)`.
-4. `mode`: `0` plays now, `1` queues to `DAT_0007f198`, `-1` queues to `DAT_0007f190`, `>= 2` schedules timeline event `0x15` at `now + mode − 1`. `FUN_0001616d` flushes a queue.
+4. `mode` is the delay: `1` queues to `DAT_0007f198`, `-1` queues to `DAT_0007f190`, `>= 2` uses timeline event `0x15`. `FUN_0001616d` flushes a queue. The rules of the delay: [world.md](../rules/world.md#sound-requests).
 
 Volume and pan: `FUN_00010877` on the 12-byte request record.
 
@@ -51,9 +51,9 @@ else {
 - `FUN_00010573` sorts the records by priority (byte `+4`), then by `vol8` (`FUN_0001084d`). It fills the SOS start-sample structure at `0x703f8`: `+0` data pointer, `+8` length, `+0x10` = 2, `+0x14` volume = `vol8 << 7 | vol8 >> 1`, `+0x18` slot, `+0x28` = 800, `+0x40` pan. Then it calls `FUN_000609b9` (`sosDIGIStartSample`). There are 64 slots (`DAT_0007eda0`).
 - Master volume, `FUN_00010736(level 0..7, 0)`: `FUN_00061a45` gets `l | l<<3 | l<<6 | l<<9 | l<<12` (0 to `0x7fff`).
 
-Confidence: high for the format and the formulas. Medium for the SOS structure field names.
+The SOS structure field names are probable.
 
-Disagreement with reDM2: reDM2 (`docs/formats.md`, "There is no audio in GRAPHICS.DAT") states that the archive holds no digital samples. It lists the 292 type-2 rows as "image?, inferred, no reader". Our evidence is the reader `FUN_0001623b`, which loads exactly these 292 items as sound descriptors, and the constant 6-byte sample header. We keep our answer. reDM2 names `FUN_000104ea` `hilite_node_add` and marks its role as not verified. The caller passes the sample descriptors, and an XOR of bit 7 is the signed to unsigned PCM conversion. We keep `sound_prepare_sample`.
+Disagreement with reDM2: reDM2 (`docs/formats.md`, "There is no audio in GRAPHICS.DAT") states that the archive holds no digital samples. It lists the 292 type-2 rows as "image?, inferred, no reader". The evidence for samples is the reader `FUN_0001623b`, which loads exactly these 292 items as sound descriptors, and the constant 6-byte sample header. This page keeps the sample reading. reDM2 names `FUN_000104ea` `hilite_node_add` and marks its role as not verified. The caller passes the sample descriptors, and an XOR of bit 7 is the signed to unsigned PCM conversion. The symbol table keeps `sound_prepare_sample`.
 
 The port loads the sounds from GDAT type `2` and skips the 6-byte header (`sound_load`, `src/engine/sound_request.c`). `tests/differential/test_sound.py` compares the port of `FUN_00010877` and of the scaling in `FUN_00015ca9` with the original.
 

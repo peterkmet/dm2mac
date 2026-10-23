@@ -19,11 +19,11 @@ The key table is big-endian (first word `0x8001` is read byte-swapped). It holds
 
 The sum of all item sizes ends at byte `8639757`. This is the exact size of `game/DATA/GRAPHICS.DAT`.
 
-The reDM2 project (`docs/formats.md`, section "GRAPHICS.DAT") gives the same header, item count, key table size (`0x17284` = 94852), and row layout. Its census also gives these facts. We did not repeat the census.
+The reDM2 project (`docs/formats.md`, section "GRAPHICS.DAT") gives the same header, item count, key table size (`0x17284` = 94852), and row layout. Its census gives the same facts. The census is not repeated.
 
 ### Language filter (field `F`)
 
-Source: reDM2 `docs/formats.md`, "F IS THE LANGUAGE". Our code names agree: `gdat_key_row_matches_language` (`0x3cd2f`) and `g_language` (`0x7576c`).
+Source: reDM2 `docs/formats.md`, "F IS THE LANGUAGE". The names of the symbol table agree: `gdat_key_row_matches_language` (`0x3cd2f`) and `g_language` (`0x7576c`).
 
 - `gdat_load_key_table` keeps a row only if `F & 0xf0` is `0` or equal to `g_language`. Other rows are not installed.
 - `g_language` is `0x10` by default. `main` sets `0x30` for `+GLG` and `0x40` for `+GLF`.
@@ -34,7 +34,7 @@ The port applies the same filter when the key table loads. The default is Englis
 
 ### Image compression
 
-Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. We checked the dispatch in `reference/decomp/SKULL.c`.
+Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. `reference/decomp/SKULL.c` confirms the dispatch.
 
 `gdat_decode_image` (`0x3e867`) reads the first u32 of the raw item as a signed value and shifts it right by 26 (the gate):
 
@@ -45,18 +45,18 @@ Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3
 | Other value | 4-bit image, nibble and run-length codes | `image_decode_4bpp` (`0x12e4f`) |
 | (delta table present) | 4-bit image relative to a parent image | `image_decode_4bpp_delta` (`0x13258`) |
 
-`gdat_load_index` sets `g_gdat_8bpp_marker` to 31 if bit `0x40` of the flag item `(0,0,0x0b,0)` is set, else to 1000 (no gate can be 1000, so all images are 4-bit). The shipped flag item is `0x7b`, so the marker is 31.
+`gdat_load_index` sets `g_gdat_8bpp_marker` to 31 if bit `0x40` of the flag item `(0,0,0x0b,0)` is set, otherwise to 1000 (no gate can be 1000, so all images are 4-bit). The shipped flag item is `0x7b`, so the marker is 31.
 
-`image_decode_8bpp` selects the decompressor. It reads the codec byte at item + 6, skips 8 bytes, and calls the first pointer of the entry `g_image_decoders[codec]` (`0x75798 + codec * 8`). The second pointer of the entry is an init function (`void (*)(void)`). Only codec 1 has one, `gdat_lzw_alloc_tables`, which allocates the LZW tables. `gdat_load_index` calls it once at start through `0x757a4` when flag `0x40` of item `(0,0,0x0b,0)` is set. The function does not check the codec value.
+`image_decode_8bpp` selects the decompressor. It reads the codec byte at item + 6, skips 8 bytes, and calls the first pointer of the entry `g_image_decoders[codec]` (`0x75798 + codec * 8`). The second pointer of the entry is an init function (`void (*)(void)`). Only codec 1 has one, `gdat_lzw_alloc_tables`, which allocates the LZW tables. `gdat_load_index` calls it once on startup through `0x757a4` when flag `0x40` of item `(0,0,0x0b,0)` is set. The function does not check the codec value.
 
 | Codec | Function | Scheme |
 |---|---|---|
 | 0 | none (null pointer) | — |
-| 1 | `gdat_lzw_decode` (`0x5aada`), allocator `gdat_lzw_alloc_tables` (`0x5acf4`) | LZW and `0x90` run-length |
-| 2 | `gdat_lzss12_decode` (`0x5ad2b`) | LZSS, mask `0x0f`, 4/4 bit split |
-| 3 | `gdat_lzss13_decode` (`0x5ad8d`) | LZSS, mask `0x1f`, 5/3 bit split |
+| 1 | `gdat_lzw_decode` (`0x5aada`), allocator `gdat_lzw_alloc_tables` (`0x5acf4`) | LZW (9 to 12 bits) and `0x90` run-length |
+| 2 | `gdat_lzss12_decode` (`0x5ad2b`) | LZSS, mask `0x0f`, 4/4 bit split, 12-bit distance |
+| 3 | `gdat_lzss13_decode` (`0x5ad8d`) | LZSS, mask `0x1f`, 5/3 bit split, 13-bit distance |
 
-This answers open question 2 of [skull-map.md](../reference/skull-map.md#open-questions): `g_gdat_decompressors` (`0x757a0`) is `g_image_decoders[1]`.
+`g_gdat_decompressors` (`0x757a0`) is `g_image_decoders[1]`.
 
 reDM2 measurements for the shipped file:
 
@@ -82,7 +82,7 @@ Both files are absent from `game/DATA`. The CD release does not need them.
 - It is the continuation of `GRAPHICS.DAT` for a split (floppy) distribution. `FUN_0003d1c8` compares the file size of `GRAPHICS.DAT` with the end of the last item. If the file is shorter, it sets the split flags `DAT_0007fa74` and `DAT_0007fa78`.
 - `FUN_0003bef6` (GDAT read): if `DAT_0007fa74` is set, it subtracts the size of `GRAPHICS.DAT` (`DAT_0007fa44`) from the item offset and reads the rest from the `GRAPHIC2.DAT` handle (`DAT_0007fac0`).
 - `FUN_0003d111` opens `.Z026GRAPHIC2.DAT` (`0x700a5`) only if `DAT_0007fa74 != 0 && DAT_0007fa78 == 0`. The disk labels `SKDISKA`, `SKDISKB`, `SKDISKC` (`0x7051c`) and the disk prompt in `FUN_000111c7` belong to the same floppy logic.
-- Our `GRAPHICS.DAT` is complete: the computed end is 8639757 bytes, equal to the file size.
+- The `GRAPHICS.DAT` of `game/DATA` is complete ([GRAPHICS.DAT container](#graphicsdat-container)).
 
 ### DUNGENB.DAT
 
@@ -95,9 +95,7 @@ Both files are absent from `game/DATA`. The CD release does not need them.
 
 `GRAPHIC2.DAT` holds the bytes after the end of a short `GRAPHICS.DAT`. `DUNGENB.DAT` has the same role as `DUNGEON.DAT` but is a different start dungeon.
 
-Confidence: high for `GRAPHIC2.DAT`. Medium for `DUNGENB.DAT` (the trigger input is not verified).
-
-The port keeps the `DUNGENB.DAT` fallback logic: it opens `DUNGENB.DAT` when it is chosen and present, else `DUNGEON.DAT`. With the shipped files the result is the same as without command `0xd8`.
+The port keeps the `DUNGENB.DAT` fallback logic: it opens `DUNGENB.DAT` when it is chosen and present, otherwise `DUNGEON.DAT`. With the shipped files the result is the same as without command `0xd8`.
 
 ## Deviations from the original
 
