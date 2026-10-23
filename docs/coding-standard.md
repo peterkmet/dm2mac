@@ -248,10 +248,11 @@ that this port cannot use keeps its number with "No rule in dm2".
 1. Each non-trivial function has a one-line comment that tells what it does in game terms: a public function
    in the header above its prototype, a static function above its definition, never both. [comment]
 2. A comment does not repeat the code, and does not name an original symbol, address or event number. It
-   names the constant. The original name and address belong in `docs/skull-symbols.csv`. [event-comment; the
+   names the constant. The original name and address belong in `docs/reference/skull-symbols.csv`. [event-comment; the
    rest review only]
 3. A kept quirk of the original and a fixed bug of the original (a stale register, an overflow) get a short
-   comment at the place, and an entry in `docs/skull-formats.md`. [review only]
+   comment at the place, and an entry in "Deviations from the original" of its page in `docs/formats/`,
+   `docs/rules/`, or `docs/llm/llm-mode.md`. [review only]
 4. No TODO marker in code (`ponytail:`, `TODO`, `FIXME`); open work goes to `docs/todo.md`. [todo]
 5. Keep existing comments. New comments only where needed, one line, about what the code does, never about
    its history. [review only]
@@ -268,13 +269,14 @@ that this port cannot use keeps its number with "No rule in dm2".
 4. A struct field that points to owned memory says so in its comment; a module that opens or allocates has a
    close or free; `malloc` and `free` of one buffer stay in one module. [review only]
 5. Do not reproduce undefined register values, overflows or out-of-bounds reads of the original. Use a
-   defined value, mark it with a short comment, record it as a deviation in `docs/skull-formats.md`, mask it
-   in the tests. Keep a quirk of the original only when it changes what the player sees. [review only]
+   defined value, mark it with a short comment, record it as a deviation in `docs/formats/`, `docs/rules/`, or
+   `docs/llm/llm-mode.md`, mask it in the tests. Keep a quirk of the original only when it changes what the
+   player sees. [review only]
 6. No rule in dm2: the port plays one game, so no code detects the adventure (`g_adventure`).
 
 ## 11. Tests
 
-`CLAUDE.md` (Commands, Layout) describes the test layout: `tests/differential/` (the port against the
+[Development](development.md#tests) describes the test layout: `tests/differential/` (the port against the
 original in the emulator), `tests/port/` (the port alone), `tests/tools/` (the Python tools),
 `tests/standard/` (this standard), and the helpers in `tests/dm2test/`. The rules that the standard check
 enforces: [tests]
@@ -297,7 +299,7 @@ dependency group (version 23). [format]
 `make` (clang) and `make windows` (MinGW-w64 GCC) build with 0 warnings under `-Wall -Wextra -Werror
 -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough`.
 
-`make check` runs the checks (`CLAUDE.md`, Commands). The checks of `tests/standard/test_standard.py`, by
+`make check` runs the checks ([Development](development.md#tests)). The checks of `tests/standard/test_standard.py`, by
 their allowlist key:
 
 | Key | Fails on |

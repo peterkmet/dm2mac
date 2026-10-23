@@ -6,7 +6,7 @@
     uv run dm2-play --brief <cmd> ...              a short text summary instead of the JSON
 
 The reply is printed as compact JSON on one line. The exit code is 1 when the reply has "ok": false. The socket path
-comes from --socket, else from DM2_CONTROL, else ~/.dm2/control.sock (docs/llm-control.md).
+comes from --socket, else from DM2_CONTROL, else ~/.dm2/control.sock (docs/llm/llm-mode.md).
 DM2_PLAY_LOG_DIR (default playthroughs/current/coordinator; "none" turns it off) names the folder of calls.log: one
 tab-separated line per call, written when the folder exists.
 """

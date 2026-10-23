@@ -25,7 +25,7 @@ SONG_TEST_HMP = 10  # game/TEST.HMP is song 10
 SONG_GAME = 2       # the song of map 0
 SAMPLE_RATE = C.MUSIC_SAMPLE_RATE
 TICK_RATE = 120
-# SONGLIST.DAT bytes 0 to 45 (docs/skull-formats.md, section 2)
+# SONGLIST.DAT bytes 0 to 45 (docs/formats/music.md)
 SONGLIST = [2, 17, 14, 27, 4, 12, 12, 18, 15, 13, 12, 12, 16, 6, 21, 14, 17, 17, 17, 17, 3, 8, 17, 14, 2, 23, 22,
             20, 17, 0, 2, 2, 2, 9, 2, 3, 14, 16, 28, 22, 19, 9, 22, 3, 17, 2]
 
@@ -35,7 +35,7 @@ EVENT_LENGTH = {0x8: 3, 0x9: 3, 0xA: 3, 0xB: 3, 0xC: 2, 0xD: 2, 0xE: 3}
 HMI_FIRST, HMI_LAST, HMI_LOOP = 0x67, 0x79, 0x6F
 LOOP_ID = 0x80  # the loop point id of TEST.HMP
 
-# fmmidi.com, the OPL2 driver in HMIMDRV.386 (docs/skull-formats.md, section 5)
+# fmmidi.com, the OPL2 driver in HMIMDRV.386 (docs/formats/music.md)
 DRIVER_FILE_OFFSET, DRIVER_SIZE = 0x5C, 0x318C
 DRV_INIT, DRV_RESET, DRV_SET_BANK, DRV_SEND = 0xA0A, 0xAE1, 0xBC9, 0x80D
 DRV_SEMITONE_LOOP = 0x1A93  # note - 12 mod 12 by repeated subtraction; billions of steps for notes below 12

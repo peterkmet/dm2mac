@@ -23,7 +23,7 @@ Table `g_gdat_decompressors` at 0x757a0, 8 bytes per entry: `decode`, `init`. It
 | 2 | 0x5ad8d `gdat_lzss13_decode` | none | LZSS. Match: length = (b0 & 0x1f) + 3, distance = b1 * 8 + (b0 >> 5) |
 
 - Signature of all three decoders: `(src, dst, src_size)`, return value = output size.
-- `gdat_open` (0x3d3xx) calls the init function `[0x757a4]` when the GDAT flag 0x40 of item `(0,0,0x0b,0)` is set. Callers of the decode entries use the table with an index; no direct call exists. The caller that picks the entry is `image_decode_8bpp` (0x3f71c): codec byte at item + 6, table `g_image_decoders` (0x75798), see `docs/skull-formats.md`.
+- `gdat_open` (0x3d3xx) calls the init function `[0x757a4]` when the GDAT flag 0x40 of item `(0,0,0x0b,0)` is set. Callers of the decode entries use the table with an index; no direct call exists. The caller that picks the entry is `image_decode_8bpp` (0x3f71c): codec byte at item + 6, table `g_image_decoders` (0x75798), see [graphics.md](../../formats/graphics.md).
 - `gdat_lzw_alloc_tables` allocates two buffers with `mem_alloc`: sizes 0x3aa1 (prefix table, 16-bit entries) and 0x138b (suffix table).
 - LZW decoder state: `g_lzw_*` (0x80490-0x804ac). `gdat_lzw_read_code` reads variable width codes from the source. Width grows when `g_lzw_next_code` passes `g_lzw_max_code`.
 - 0x5a95b has no direct caller besides 0x5aada. This answers the open point in notes.md.
@@ -64,7 +64,7 @@ Four functions, same as anchors. Offsets in `g_iop_info` (0x7618c): +0x3dc input
 | +0x56 | pan speed (start struct +0x44) |
 | +0x58..+0x60 | start struct +0x48..+0x58 |
 
-- Start struct (SKULL fills it at 0x703f8): +0 pointer, +8 length, +0x10 channel 2, +0x14 volume, +0x18 id, +0x28 flags 800, +0x40 pan. See `docs/skull-formats.md`.
+- Start struct (SKULL fills it at 0x703f8): +0 pointer, +8 length, +0x10 channel 2, +0x14 volume, +0x18 id, +0x28 flags 800, +0x40 pan. See [sound.md](../../formats/sound.md).
 - `g_hmi_digi_driver_table` (0x777a8) holds driver structs. `hmi_digi_set_master_volume` writes +4.
 - Names for field +0x36, +0x38, +0x44, +0x4c, +0x56 are low confidence.
 

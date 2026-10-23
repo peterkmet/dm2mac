@@ -3,7 +3,7 @@
 #define DM2_DATA_MVE_H
 /* Prefixes: mve_ */
 
-/* Interplay MVE movies: chunks, opcodes, 8-bit video, audio (docs/skull-formats.md section 15); from memory only. */
+/* Interplay MVE movies: chunks, opcodes, 8-bit video, audio (docs/formats/movies.md); from memory only. */
 
 #include <stdbool.h>
 #include <stddef.h>

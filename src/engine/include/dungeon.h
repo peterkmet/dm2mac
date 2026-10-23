@@ -293,7 +293,7 @@ static inline bool door_has_button(uint16_t door)
 #define AI_MARKER_ID_MASK          0x1f
 #define AI_MARKER_KIND_MASK        0x0f
 #define AI_MARKER_LEVEL_MASK       0x0f
-/* Subtypes of ornament texts, by what the view does with them (game meanings from docs/skull-notes/range-6.md). */
+/* Subtypes of ornament texts, by what the view does with them (game meanings from docs/reference/symbols/range-6.md). */
 #define SUBTYPE_STILL              0x00 /* plain ornament */
 #define SUBTYPE_ANIMATED           0x02
 #define SUBTYPE_ITEM_HOLDER        0x04 /* holds an item while visible; the view shows frame 1 */

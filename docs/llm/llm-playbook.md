@@ -1,8 +1,8 @@
-# Dungeon Master II: player manual
+# LLM player manual
 
 You play Dungeon Master II (PC DOS `SKULL.EXE`) in this C port, through the turn-based mode. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
 
-This page tells you how to play. The protocol reference is [turnbased-mode.md](turnbased-mode.md). A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
+This page tells you how to play. This page is self-contained for the player agent: you need no other page to play. [llm-mode.md](llm-mode.md) is the reference of the protocol. A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
 
 ## Your notes
 
@@ -98,7 +98,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - **Switches and plates:** wall switches and floor plates open doors, close doors, open pits, move walls, or start traps. Some are hidden.
 - **Walls:** some walls are illusions that the party can walk through.
 - **Pits:** a pit can be the way down or a trap.
-- **Teleporters:** a teleporter moves the party or objects to another square. A teleporter shows only while it is on and visible; else it looks like floor.
+- **Teleporters:** a teleporter moves the party or objects to another square. A teleporter shows only while it is on and visible; otherwise it looks like floor.
 - **Stairs:** stairs lead to the level above or below.
 - **Alcoves:** an alcove holds objects. `view.alcove` lists them. Some alcoves react to the object that you put in.
 - **Machines:** some wall and floor places move objects to another place.
@@ -136,7 +136,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - `state.outdoor` is `true` when the party sees the sky. Only then the state has `weather` and `day_time`.
 - `weather.clouds` and `weather.rain` are `none`, `light`, `medium`, or `heavy`. `weather.wind` (`north`, `east`, `south`, `west`) is present only while rain falls in the view.
 - `day_time` is `day`, `night`, or `dawn_dusk`. One hour is 1365 game ticks; a day has 24 hours. The night is dark: carry a light.
-- A storm comes and goes. In a strong storm, lightning can strike floor squares, also the party square. Get under a roof in a heavy storm.
+- A storm comes and goes. In a strong storm, lightning can strike floor squares, even the party square. Get under a roof in a heavy storm.
 
 ## Saves
 
@@ -151,7 +151,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## When you are stuck
 
 1. Stop moving. Save.
-2. Read your own notes again: every lock, key, door, merchant, and shop in the map of the level and in `items.md`. Try each key that you carry in each lock that you know, also in locks that you did not list as exits.
+2. Read your own notes again: every lock, key, door, merchant, and shop in the map of the level and in `items.md`. Try each key that you carry in each lock that you know, even in locks that you did not list as exits.
 3. Walk over each square of the area once and look at the objects on the floor in the view. Turn to each wall of a dead end.
 4. Write a list into `progress.md` under "Not tried yet": wall features you have not clicked, keys and items you have not tried on each lock or alcove, piles you did not empty, wall texts you did not read, goods you did not buy, unexplored edges of the map, walls you did not test for an illusion, doors you could not open.
 5. Rank the list. Visible things come first: keys, piles, alcoves, switches, locks, doors, shops. Hidden switches and illusory walls come last.
@@ -198,6 +198,18 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 | Save, load | `uv run dm2-play save`, `uv run dm2-play load` |
 | Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake` |
 | See the screen | `uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'`, then read the PNG |
+
+### View a screenshot as an LLM
+
+1. Save the screenshot to a file.
+
+   ```bash
+   uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'
+   ```
+
+2. Open the path of the reply with the Read tool. The Read tool shows a PNG file as an image.
+
+The image pixels are the game pixels, so a position in the image is the `x` and `y` of `act click`.
 
 ### dm2-play
 
@@ -329,7 +341,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `take_coin` | `slot` 0-5 | One coin of the open money box to the leader hand. |
 | `minion_map_option` | `option` 0-3 | Turns an option of the open minion map on or off. |
 | `click` | `x` 0-319, `y` 0-199, `button` (`left` or `right`, optional) | A raw click on the screen. Use it only when no action does the job (a dialog, the minion map grid, a shop display). |
-| `key` | `key` | A raw key (names in [llm-control.md](llm-control.md)). |
+| `key` | `key` | A raw key (names in [llm-mode.md](llm-mode.md#key)). |
 
 `click` and `key` also run while a candidate shows, while the party sleeps, and while a dialog shows. `state.dialog` gives the `id` and the `buttons` of an open dialog.
 
@@ -412,7 +424,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
 - While the inventory is open, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is `false`.
 
-Visibility rule: the view has the party row and the rows ahead up to the first center square that blocks sight (a wall, a closed fake wall, or a closed door). The row of that square is in the view, with its side squares. Nothing behind it is in the view. A square outside the map is a wall.
+Visibility rule: the party square is in the view. A square is in the view when the square beside it toward the center is in the view and open, or when the square in front of it (one row nearer) is in the view and open. The rows end at the first center square that blocks sight (a wall, a closed fake wall, or a closed door). Nothing behind it is in the view. A square outside the map is a wall.
 
 The view shows what a player sees. Creature health is not in the view, because the original does not show it.
 

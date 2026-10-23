@@ -208,7 +208,7 @@ CONTAINER, PROJECTILE = C.THING_CONTAINER, C.THING_PROJECTILE
 
 def zero_minion_links(rules):
     """The minion of an attack or guard minion item (63, 64) carries the item as its link: the original save writes
-    the container order of that link from past the end of its table, the port writes 0 (skull-formats.md section 13).
+    the container order of that link from past the end of its table, the port writes 0 (docs/rules/champions.md).
     While the original writes the links, the table entries past its end are 0; the dict keeps their values for
     restore_minion_links."""
     from unicorn import UC_HOOK_CODE

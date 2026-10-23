@@ -1,5 +1,5 @@
 game
-reference/
+/reference/
 build/
 .venv/
 __pycache__/

@@ -145,7 +145,7 @@ def test_blit_matches_original(lib, emu):
         w = min(w, dw - x)
         stride = (sw + 1) // 2 if src_bpp == C.IMAGE_4BPP else sw
         src = [rng.randrange(256) for _ in range(stride * sh)]
-        # The original mirrored 4 to 4 bpp rows with a transparent color have quirks (docs/skull-formats.md).
+        # The original mirrored 4 to 4 bpp rows with a transparent color have quirks (docs/rules/view.md).
         transparent = rng.choice([OPAQUE, rng.randrange(16)])
         mirror = rng.randrange(5) if dst_bpp == C.IMAGE_8BPP or transparent == OPAQUE else rng.choice([0, 2, 4])
         colormap = [rng.randrange(256) for _ in range(256)] if src_bpp == C.IMAGE_4BPP or rng.random() < 0.5 else None
