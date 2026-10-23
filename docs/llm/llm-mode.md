@@ -462,6 +462,25 @@ The errors of the real-time commands:
 - The game sends a reply with a blocking write. A client that sends requests but never reads the replies can stop the game. The socket is a local test tool.
 - The Windows build (`make windows`, `build/dm2.exe`) has no control socket (`src/platform/transport_none.c`): `--mode turnbased` and `--control` stop with the message `the turn-based mode and --control need macOS` and exit code 1.
 
+## Protocol vocabulary
+
+Each line lists the names of one table of the protocol, in table order.
+
+- Input modes (`mode`): `menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`.
+- Directions (`facing`): `north`, `east`, `south`, `west`.
+- Party cells (`position` of a champion): `front_left`, `front_right`, `back_right`, `back_left`.
+- Statistics (`statistics`): `strength`, `dexterity`, `wisdom`, `vitality`, `antimagic`, `antifire`.
+- Base skills (`skills`): `fighter`, `ninja`, `priest`, `wizard`.
+- Wounds (`wounds`): `ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`.
+- Slots (`slots[].where`): `ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`, `ready_quiver_2`, `action_quiver_2`, `action_quiver_3`, `action_quiver_4`, `neck`, `ready_quiver_1`, `action_quiver_1`, `backpack_1`, `backpack_2`, `backpack_3`, `backpack_4`, `backpack_5`, `backpack_6`, `backpack_7`, `backpack_8`, `backpack_9`, `backpack_10`, `backpack_11`, `backpack_12`, `backpack_13`, `backpack_14`, `backpack_15`, `backpack_16`, `backpack_17`.
+- Hands (`hands`, and `hand` of `choose_action`): `ready`, `action`.
+- Minion map options (`option` of `minion_map_option`): `creatures`, `details`, `items`, `hold`.
+- Sky amounts (`weather`): `none`, `light`, `medium`, `heavy`.
+- View sides (`side` of a square in `get_view`): `left_3`, `left_2`, `left`, `center`, `right`, `right_2`, `right_3`.
+- Explosions (in `get_view`): `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, `smoke`.
+- Runes (`runes`): the power runes `lo`, `um`, `on`, `ee`, `pal`, `mon`, then the three rune sets `ya`, `vi`, `oh`, `ful`, `des`, `zo`, `ven`, `ew`, `kath`, `ir`, `bro`, `gor`, `ku`, `ros`, `dain`, `neta`, `ra`, `sar`.
+- Actions (`act`): `move_forward`, `move_back`, `move_left`, `move_right`, `turn_left`, `turn_right`, `click_wall_ahead`, `take_object`, `drop_object`, `open_inventory`, `close_inventory`, `put_in_slot`, `take_from_slot`, `eat`, `drink`, `choose_action`, `pass`, `set_caster`, `add_rune`, `delete_rune`, `cast`, `recruit`, `set_leader`, `sleep`, `wake`, `swap_champions`, `look`, `take_coin`, `minion_map_option`, `click`, `key` (see [Actions](#actions)).
+
 ## Deviations from the original
 
 - The port keeps the text of each message row next to its pixels (`text_message_row`). The original has only the pixels and the expiry time of each row. The text moves up and clears with the row.
