@@ -7,10 +7,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TABLE = re.compile(r"static const char \*const (\w+)\[[^\]]*\] = \{(.*?)\};", re.S)
 ACTION = re.compile(r'\{"(\w+)",\s*\w+\s*\}')
-# Tables that hold no protocol name (creature_names is empty) or none of their own.
+# creature_names is skipped: it is empty, so it gives no name.
 SKIPPED = {"creature_names"}
 # Only this table of src/engine/magic.c is part of the protocol.
 MAGIC_TABLES = {"rune_names"}
+STATE_TABLES = {
+    "mode_names", "direction_names", "party_cell_names", "statistic_names", "skill_names", "wound_names",
+    "slot_names", "hand_names", "map_option_names", "amount_names", "side_names", "explosion_names",
+    "creature_names",
+}  # fmt: skip
 
 
 def section():
@@ -23,7 +28,7 @@ def section():
 def tables(path, only=None):
     found = {}
     for name, body in TABLE.findall((ROOT / path).read_text()):
-        if name in SKIPPED or (only is not None and name not in only):
+        if only is not None and name not in only:
             continue
         found[name] = set(re.findall(r'"([^"]+)"', body))
     return found
@@ -31,10 +36,17 @@ def tables(path, only=None):
 
 def protocol_names():
     names = set()
-    for found in (tables("src/control/state_json.c"), tables("src/engine/magic.c", MAGIC_TABLES)):
-        for table in found.values():
-            names |= table
-    names |= set(ACTION.findall((ROOT / "src/control/turn.c").read_text()))
+    state = tables("src/control/state_json.c")
+    magic = tables("src/engine/magic.c", MAGIC_TABLES)
+    assert set(state) == STATE_TABLES, f"state_json.c tables found: {sorted(state)}"
+    assert set(magic) == MAGIC_TABLES, f"magic.c tables found: {sorted(magic)}"
+    for found in (state, magic):
+        for name, table in found.items():
+            if name not in SKIPPED:
+                names |= table
+    actions = set(ACTION.findall((ROOT / "src/control/turn.c").read_text()))
+    assert actions, "no action table found in src/control/turn.c"
+    names |= actions
     return names
 
 
