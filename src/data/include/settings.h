@@ -25,8 +25,9 @@ typedef struct {
 } Settings;
 
 /* Queries */
-/* The values of the settings text: a missing line, a bad value, or a line of 64 characters or more gives the default
-   (no filter), an unknown key is ignored, a text above SETTINGS_MAX_SIZE gives all defaults; exported for the tests. */
+/* The values of the settings text: a missing line or a bad value gives the default (no filter), an unknown key and a
+   line of 64 characters or more are skipped, a text above SETTINGS_MAX_SIZE gives all defaults;
+   exported for the tests. */
 Settings settings_parse(const char *file_text, size_t length);
 /* The values of the settings file in dir, as settings_parse; a missing file gives the defaults. */
 Settings settings_load(const char *dir);
