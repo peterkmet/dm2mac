@@ -1729,10 +1729,14 @@ static void forward_to_screen(void)
         in.event_head = (in.event_head + 1) % EVENT_RING;
         advanced_screen_event(type, x, y);
     }
-    if (g_advanced_screen)
+    if (g_advanced_screen) {
         advanced_automap_drag(g_input_mouse_x, g_input_mouse_y);
-    else
-        input_flush(); /* the input after the close key does not reach the game */
+        return;
+    }
+    input_flush(); /* the input after the close key does not reach the game */
+    uint16_t pending = advanced_take_pending_key();
+    if (pending)
+        input_key_down(pending);
 }
 
 void input_poll(void)

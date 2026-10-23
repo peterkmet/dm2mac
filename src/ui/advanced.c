@@ -40,6 +40,9 @@ static struct {
 /* true after a quick load lost the game: there is no running game to keep. */
 static bool lost;
 
+/* The key that the closed screen leaves for the game (F9 of QUICK LOAD), 0 for none. */
+static uint16_t pending_key;
+
 static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH", "WEST"};
 
 /* Closes the open viewport screen and ends a drag of the map. */
@@ -56,6 +59,7 @@ void advanced_reset(void)
 {
     close_screen();
     lost = false;
+    pending_key = 0;
 }
 
 /* Movement keys */
@@ -273,7 +277,7 @@ static void cheat_event(int type, int16_t x, int16_t y)
         advanced_quick_save();
     } else if (result == CHEATS_QUICK_LOAD) {
         close_screen();
-        advanced_quick_load();
+        pending_key = KEY_QUICK_LOAD; /* the load runs as a game command, not inside the input poll */
     } else if (result == CHEATS_CLOSE) {
         close_screen();
     }
@@ -305,4 +309,11 @@ void advanced_screen_event(int type, int16_t x, int16_t y)
         cheat_event(type, x, y);
     else if (g_advanced_screen == ADVANCED_SCREEN_OPTIONS)
         options_event(type, x, y);
+}
+
+uint16_t advanced_take_pending_key(void)
+{
+    uint16_t key = pending_key;
+    pending_key = 0;
+    return key;
 }

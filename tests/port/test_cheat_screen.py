@@ -203,3 +203,14 @@ def test_cheat_potion_needs_an_empty_flask(lib, screen):
     before = experience_and_mana(lib, 0)
     assert lib.magic_cast_cheat_spell(0, potion) == 0
     assert lib.item_gdat_index(flask) == C.POTION_HEALTH and experience_and_mana(lib, 0) == before
+
+
+def test_quick_load_from_the_screen_restores_the_saved_game_and_closes_the_screen(lib, screen):
+    mode = ctypes.c_int.in_dll(lib, "g_advanced_screen")
+    press(lib, C.KEY_QUICK_SAVE)
+    lib.game_set_cheats(C.CHEAT_FOOD)
+    press(lib, C.KEY_CHEATS)
+    assert mode.value == C.ADVANCED_SCREEN_CHEATS
+    press(lib, C.KEY_QUICK_LOAD)
+    assert mode.value == C.ADVANCED_SCREEN_NONE
+    assert not lib.game_has_cheat(C.CHEAT_FOOD), "the saved game without the cheat is back"

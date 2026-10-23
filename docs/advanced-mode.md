@@ -147,7 +147,7 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 
 - FULL LIGHT, IMMORTAL, FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see Cheats).
 - QUICK SAVE F5: writes `QUICK.DAT`; the screen stays open. `F5` on the screen does the same.
-- QUICK LOAD F9: closes the screen, then loads `QUICK.DAT`. `F9` on the screen does the same.
+- QUICK LOAD F9: closes the screen, then loads `QUICK.DAT` as `F9` in the dungeon view does. `F9` on the screen does the same.
 - SPELLS: the spell pages, `SPELLS n/5`, with 8 spells per page, then NEXT, BACK, and CLOSE. NEXT after the last page shows the first page. BACK on the first page shows the cheat page.
 - CLOSE: closes the screen.
 
