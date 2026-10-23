@@ -66,6 +66,7 @@ The items marked "control socket" ran over `docs/llm-control.md` with the saves 
 - The game files of Dungeon Master II (PC DOS, English, 1995) in `game/`, with `game/DATA/GRAPHICS.DAT`, `game/DATA/DUNGEON.DAT`, `game/DATA/SONGLIST.DAT`, `game/MELODIC.BNK`, and `game/DRUM.BNK`.
 - DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
 - `make` and `uv run pytest` pass (plan Step 21).
+- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/advanced-mode.md`).
 - Optional: a DOS save near the end of the game, for the end sensor (item J16).
 
 ## Build and start
@@ -169,7 +170,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 - [x] C7. Click the sleep button. Expected: the party sleeps (the sleep message shows, time runs faster); a key or click wakes the party. Covered by `tests/differential/test_input.py::test_sleep_and_wake_match_original`, `tests/differential/test_interface.py::test_party_states_match_original`. Passed (manual, 2026-10-06).
 - [x] C8. Click a wall button and a lever. Expected: the click feedback shows and the sensor acts as in DOS. Covered by `tests/differential/test_move.py::test_wall_clicks_on_all_wall_cells`, `tests/differential/test_move.py::test_square_events_on_all_sensors`. Passed (manual, 2026-10-06).
 - [x] C9. Click the champion hands and the action icons. Expected: the action menu opens; the choice runs. Covered by `tests/differential/test_input.py::test_champion_clicks_match_original`, `tests/differential/test_interface.py::test_action_area_panels_match_original`, `tests/differential/test_interface.py::test_action_results_match_original`, `tests/differential/test_magic.py::test_icon_click_feedback_matches_original`.
-- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; `docs/skull-formats.md` section 6 marks the real DOS rate as an open measurement). Skipped by the user's decision (DOSBox comparison).
+- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; `docs/formats/runtime.md` "Unknown values" marks the real DOS rate as an open measurement). Skipped by the user's decision (DOSBox comparison).
 
 ## D. Champions, inventory, items, money, and shops
 
@@ -348,18 +349,4 @@ Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next 
 
 ## Known deviations
 
-Do not report these documented deviations as bugs. Details are in `docs/skull-formats.md`.
-
-- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/advanced-mode.md`).
-- No DOS layer: no disk, drive, or memory dialogs; menus and dialogs wait without busy loops (section 14).
-- `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).
-- RESTART starts the program again; the dialog texts show the last folder of the `--data` path in capitals as the drive path (section 14).
-- The port hides the system cursor and draws the original cursor images: the arrow, the hand, the held object with its shadow, and the dragged champion. The held object shows only over the cursor zones where the original shows it; menus and dialogs show no object icon. The original cursor in menus and dialogs is unverified (section 13).
-- The enter and leave events of the cursor zones and the mouse drag through a fake wall are not ported (section 10).
-- The walking frame stretch uses nearest neighbour; its exact rounding is unverified (section 10).
-- The pit fall view shows at the next screen update, not in the middle of the step (section 10).
-- The message area scroll by 7 pixels is a port reconstruction (section 9).
-- Sound: every sound counts as loaded, so a sound can play where DOS has not loaded it (section 11).
-- Fixed technical bugs of the original (uninitialized values, reads past tables, divisions by 0, endless loops in the shop display) can make a rare case differ from DOS (sections 8, 11, 12, 13, 14).
-- A creature AI keeps its plan data; the DOS image cache can make a group plan again (section 12).
-- With no free active group, a creature group stays inactive; DOS discards a group instead (section 12).
+Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/` and `docs/turnbased-mode.md`.

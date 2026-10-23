@@ -90,5 +90,5 @@ Clicking a champion cell in the party formation picks the champion (`champ_get_i
 
 - Low-confidence names: `disk_query_drive_info` (IOP 0x15), `disk_get_drive_path` (IOP 0x28), `disk_prompt_stub` (empty, called before save disk prompts), `input_stub_return_zero` (always 0, called with a key code in the dialog loop 0x1a1e0), `mouse_capture_begin` / `mouse_capture_end` (IOP 0x06 / 0x07, used while the right button is held), `iop_input_lock` / `iop_input_unlock` (IOP 0x04 / 0x05, around mouse area list changes), `dun_get_global_var` / `dun_modify_global_var` (subsystem), `item_get_image_kind` (checks GDAT types 8, 9, 0x0a, 0x0c of an item), `creature_get_cell_mask`, `money_get_coin_type_for_slot`, `champ_melee_attack_creature` (argument roles after the third), `ui_fill_rect_dithered`, `system_init_stub`.
 - Merchant price formula: the role of `list` (0 or the shop list index from `(item >> 7) & 0x0f`) needs range 6 (merchant panel code at 0x4e...).
-- `g_samples_have_rate` (0x71698) comes from GDAT flag 0x20 (see `docs/skull-formats.md`); its writer is outside this range.
+- `g_samples_have_rate` (0x71698) comes from GDAT flag 0x20 (see [sound.md](../../formats/sound.md)); its writer is outside this range.
 - 0x7f27a/0x7f27c/0x7f27e are compared as a map and position in projectile and explosion code (probably the party square for damage checks). Not named here.

@@ -21,7 +21,7 @@
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
    of the bit stream stores only the bits that its mask table selects, most significant bit first.
-   Format analysis: reDM2 docs/savegame.md and docs/skull-formats.md section 7. Outside the vanilla mode the AMAP
+   Format analysis: reDM2 docs/savegame.md and docs/formats/save.md. Outside the vanilla mode the AMAP
    block of the automap follows the bit stream (seen.h), in the advanced mode then the CHTS block of the cheats; the
    original loader ignores them. */
 

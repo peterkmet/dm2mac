@@ -11,7 +11,7 @@
 - `gdat_find` (`data/gdat.c`) scans the 11854 key rows linearly; sort or index the rows if lookups get hot.
 - Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.
 - Message area scroll: IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows up and keeps the bottom rows (`shift_message_area` in `src/ui/text.c`); check it against the original in DOSBox.
-- Chest picture out of bounds: `pick_object_picture` (`src/ui/view.c`) reads `object_picture[open_state]` with chest open states 2 and 3, past the 2 rows of the table (rule 10.5). `main` does the same; the 4 bytes after the table are 0. Check the original, use a defined value, and record it in `docs/skull-formats.md`.
+- Chest picture out of bounds: `pick_object_picture` (`src/ui/view.c`) reads `object_picture[open_state]` with chest open states 2 and 3, past the 2 rows of the table (rule 10.5). `main` does the same; the 4 bytes after the table are 0. Check the original, use a defined value, and record it in `docs/rules/view.md`.
 - Check the driver offset of "Instrument to voice" in `HMIMDRV.386`: `docs/formats/music.md` has `0x1ff8` and `0x201e`.
 - `creature_is_flying` crashed on 3 maps in a check script of the dm style refactor, also with the library of `main`. Find the cause.
 - `make` does not rebuild an object with the same modification time as its source (seen after scripted rebases). After a scripted rebase, build with `make -B`.

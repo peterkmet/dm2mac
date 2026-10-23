@@ -5,7 +5,8 @@ This page is the reference map of `SKULL.EXE` for the C port. It lists the progr
 Related files:
 
 - `docs/reference/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
-- `docs/skull-formats.md`: file formats, sound, music, the SVGA option, and the PIT rate.
+- `docs/formats/`: file formats, sound, music, the SVGA option, and the PIT rate.
+- `docs/rules/`: the game rules of the port.
 - `docs/reference/symbols/`: per-range analysis notes (layout, data structures, open questions).
 - `docs/reference/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
 - `reference/decomp/SKULL.c`: Ghidra output with the names from `docs/reference/skull-symbols.csv` (`tools/decompile-skull.sh`).
@@ -68,7 +69,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 7. Map change through `g_new_map_index` (`0x717f4`) and `game_enter_map`; `music_update_for_map`.
 8. On the game end flag: `input_reset_states`, then return.
 
-Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_step` (`0x7efac`) to `g_timer_ticks` (`0x7f228`) and `g_tick_accumulator` (`0x7f256`). At `g_tick_threshold` it sets `g_tick_elapsed`. Rates: see `docs/skull-formats.md`, section 6.
+Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_step` (`0x7efac`) to `g_timer_ticks` (`0x7f228`) and `g_tick_accumulator` (`0x7f256`). At `g_tick_threshold` it sets `g_tick_elapsed`. Rates: see `docs/formats/runtime.md`, "PIT divisor and tick rates".
 
 ## IBMIOP INT 0xFC service table
 
@@ -259,7 +260,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 
 ### Sound
 
-- Request (12 bytes): `+0` sample pointer, `+4` priority, `+5` volume, `+6` lateral (int8), `+7` forward (int8), `+8` loudness, `+9` pan, `+0x0b` order. Formulas: `docs/skull-formats.md`, section 1.
+- Request (12 bytes): `+0` sample pointer, `+4` priority, `+5` volume, `+6` lateral (int8), `+7` forward (int8), `+8` loudness, `+9` pan, `+0x0b` order. Formulas: `docs/formats/sound.md`, "Playback, volume, and stereo position".
 - Sound table (7 bytes, `g_sound_table` `0x7f18c`): `+0` sample descriptor index, `+2` category, `+3` index, `+4` entry, `+5` raw GDAT entry (`0xffff` not loaded).
 - Sample descriptor (16 bytes, `g_sample_descs` `0x7f194`): `+0` data, `+4` length, `+6` rate, `+8` next.
 - Delayed sound (14 bytes, `g_delayed_sounds` `0x7f188`, 8 entries): `+4` category, `+5` index, `+6` entry, `+7` map, `+8` x, `+9` y, `+0x0a` priority, `+0x0c` volume.
@@ -272,7 +273,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 - Categories 5, 6, `0x1b` are read from the file on every use (`gdat_category_is_raw`).
 - Image buffer: 6-byte header before the pixels (`-6` bpp, `-4` width, `-2` height). 4-bpp rows are `(width + 1) / 2` bytes.
 - Encoded image: word 0 bits 0-9 width, word 1 bits 0-9 height, top 6 bits of word 1 select raw, 8 bpp (`g_gdat_8bpp_marker` `0x7fac8`), or 4 bpp. Decoders: `image_decode_4bpp` (`0x12e4f`), `image_decode_4bpp_delta` (`0x13258`, base images from GDAT `(0,0,8,0)`), `image_decode_8bpp` (`0x3f71c`).
-- Compressed items: `image_decode_8bpp` reads the codec byte at item + 6 and calls `g_image_decoders[codec]` (`0x75798 + codec * 8`, 8 bytes: decode, init). Codec 1 LZW 9-12 bit + RLE (escape `0x90`), codec 2 LZSS 4/4 (12-bit distance), codec 3 LZSS 5/3 (13-bit distance). `g_gdat_decompressors` (`0x757a0`) is the codec 1 entry. Details: `docs/skull-formats.md`, "Image compression".
+- Compressed items: `image_decode_8bpp` reads the codec byte at item + 6 and calls `g_image_decoders[codec]` (`0x75798 + codec * 8`, 8 bytes: decode, init). Codec 1 LZW 9-12 bit + RLE (escape `0x90`), codec 2 LZSS 4/4 (12-bit distance), codec 3 LZSS 5/3 (13-bit distance). `g_gdat_decompressors` (`0x757a0`) is the codec 1 entry. Details: `docs/formats/graphics.md`, "Image compression".
 - Text entries hold `XX=n` fields (`gdat_get_text_field`; names `SK LV CM BZ TR ST PA TA NC EX PB DM MS SD RP HN AT WH`). Encrypted text: `byte = (byte ^ 0xff) - counter`.
 
 ### Memory manager and image cache
@@ -379,8 +380,8 @@ Library signatures (clib, DPMI, HMI) are firm only for the names. `dpmi_map_phys
 
 ## Open questions
 
-1. Game tick rate: the real rate of the `INT 0x2d` callback under DOS/4GW. Measure it in DOSBox (`docs/skull-formats.md`, section 6).
-2. Answered: `image_decode_8bpp` (`0x3f71c`) selects the decompressor by the codec byte at item + 6 through `g_image_decoders` (`0x75798`). See `docs/skull-formats.md`, "Image compression".
+1. Game tick rate: the real rate of the `INT 0x2d` callback under DOS/4GW. Measure it in DOSBox (`docs/formats/runtime.md`, "Unknown values").
+2. Answered: `image_decode_8bpp` (`0x3f71c`) selects the decompressor by the codec byte at item + 6 through `g_image_decoders` (`0x75798`). See `docs/formats/graphics.md`, "Image compression".
 3. Thing types 11-13 and square type 7 in DM2.
 4. `0x7f278` with `0x7f25c`, `0x7f25e`, `0x7f272`: alternate view position or arrival position after a map link. Also the difference between `g_party_square_*` (`0x7f27a`-`0x7f27e`) and `g_party_x`/`g_party_y`.
 5. Creature AI plan tables (`0x74f7e`) and scanner kinds: a table dump is necessary to give each plan command and scanner a game meaning.

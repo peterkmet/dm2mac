@@ -476,7 +476,7 @@ static void put_champion(Json *j, int champ)
 }
 
 /* The open dialog and its button texts. The slot dialogs do not set g_dialog.id: they give the id of the last
-   dialog (docs/skull-formats.md). */
+   dialog (docs/turnbased-mode.md). */
 static void put_dialog(Json *j, int mode)
 {
     if (mode != INPUT_MODE_DIALOG) {

@@ -10,7 +10,7 @@ Sources in reDM2:
 - Formats: `docs/formats.md`, `docs/savegame.md`.
 - Evidence: `docs/memory.md`, `docs/equiv.md`, `README.md`, and `src/*.c` with `src/*.test.toml` (functions with a differential test).
 
-Our sources: `docs/reference/skull-symbols.csv`, `docs/reference/skull-map.md`, `docs/skull-formats.md`, `reference/decomp/SKULL.c`.
+Our sources: `docs/reference/skull-symbols.csv`, `docs/reference/skull-map.md`, `docs/formats/`, `docs/rules/`, `reference/decomp/SKULL.c`.
 
 ## Method
 
@@ -130,7 +130,7 @@ Add them when a port step needs them.
 
 ## Format findings
 
-Details and citations are in `docs/skull-formats.md`.
+Details and citations are in `docs/formats/`.
 
 Agreements:
 

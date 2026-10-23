@@ -205,7 +205,7 @@ Ends the program the same way as a closed window. The exit code is 0 in the game
 
 ## Movies
 
-Without `--save`, the program shows the splash picture (3 seconds), then the movies `FTL` and `INTRO`, then the start menu. After a completed game it plays `END` and `CREDITS`; after QUIT GAME of a dead party it plays `CREDITS` (`docs/skull-formats.md` section 15). While one of them plays:
+Without `--save`, the program shows the splash picture (3 seconds), then the movies `FTL` and `INTRO`, then the start menu. After a completed game it plays `END` and `CREDITS`; after QUIT GAME of a dead party it plays `CREDITS` (`docs/formats/movies.md`). While one of them plays:
 
 - `state` gives `"mode": "movie"` and `"dialog": null`.
 - `click` and `press` skip: in the `advanced` mode always; in the `vanilla` mode only `INTRO`, `END`, and `CREDITS`. `release`, `key`, and `command` reply `{"ok":true}` and do nothing.

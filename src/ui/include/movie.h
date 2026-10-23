@@ -3,7 +3,7 @@
 #define DM2_UI_MOVIE_H
 /* Prefixes: movie_ */
 
-/* The movie script of the DOS launcher IBMIOP.EXE; platform/main.c drives it (docs/skull-formats.md section 15). */
+/* The movie script of the DOS launcher IBMIOP.EXE; platform/main.c drives it (docs/formats/movies.md). */
 
 #include "mve.h"
 #include <stdbool.h>
