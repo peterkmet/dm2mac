@@ -19,9 +19,11 @@ Details: `docs/development.md`.
 - `src/`: the C port in five layers (`data/`, `engine/`, `ui/`, `control/`, `platform/`; headers in `<layer>/include/`, vendored OPL3 in `src/third_party/opl3/`); the root `Makefile` builds `build/dm2` and `build/libdm2.dylib`, and with `make windows` `build/dm2.exe`.
 - `tools/dm2tools/`: Python tools: LE loader, emulator harness (unicorn), data formats.
 - `tests/`: `differential/` (the port against the original in `dm2tools.emu`), `port/` (port only), `tools/` (the Python tools), `standard/` (`test_standard.py` checks the coding standard); `dm2test/` holds the shared helpers.
+- `docs/`: `manual.md` (player manual), `architecture.md`, `development.md`, `decompiling.md`; folders `formats/`, `rules/`, `llm/`, `reference/`, `images/`.
 - Git-ignored data: `game/` (original files), `reference/` (incl. `reference/decomp/SKULL.c`, the Ghidra output of `tools/decompile-skull.sh`), `tests/saves/`. Link them into a new worktree.
 
 ## Conventions
 - `docs/coding-standard.md` is the coding standard of the C port; follow it for every change in `src/`.
 - `docs/formats/`: data formats; `docs/rules/`: game rules. Each page ends with the deviations of the port in "Deviations from the original"; the deviations of the turn-based mode are in `docs/llm/llm-mode.md`. `docs/reference/skull-symbols.csv`: original addresses and names.
-- Plans in `docs/superpowers/`; manual checks in `docs/manual-test-checklist.md`.
+- `docs/architecture.md`: the layers; `docs/development.md`: build, test and release; `docs/decompiling.md`: the Ghidra output of `reference/`.
+- Plans in `docs/superpowers/`; manual checks in `docs/manual-test-checklist.md`; open work in `docs/todo.md`.
