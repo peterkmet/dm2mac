@@ -1140,21 +1140,28 @@ static const InputCommand *find_command_entry(const InputNode *node, uint16_t co
     return NULL;
 }
 
-/* The command of a click; in the advanced mode a left click without a command on a status box is a click on the
-   name in the box (it opens the inventory of the champion). */
+/* The command of a click; in the advanced mode a left click on a status box outside the hands is a click on the
+   bars when the leader hand holds an object (it stores the object), else a click on the name (it opens the
+   inventory of the champion). */
 static uint16_t click_command(int mode, int x, int y, int buttons)
 {
     uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons);
-    if (command || g_game_mode != GAME_MODE_ADVANCED || buttons != INPUT_BUTTON_LEFT)
+    if (g_game_mode != GAME_MODE_ADVANCED || buttons != INPUT_BUTTON_LEFT)
         return command;
     for (int champ = 0; champ < CHAMPION_MAX; champ++) {
-        int16_t box[RECT_SIZE], name[RECT_SIZE];
-        const InputCommand *e = find_command_entry(&input_mode_roots[mode], CMD_INVENTORY_FIRST + champ);
-        if (zone_get_rect(ZONE_STATUS_BOX + champ, box) && point_in_rect(box, x, y) && e &&
-            get_input_zone_rect(e->zone, name))
-            return find_click_command(&input_mode_roots[mode], name[RECT_X], name[RECT_Y], buttons);
+        int16_t box[RECT_SIZE], target[RECT_SIZE];
+        uint16_t open = (uint16_t)(CMD_INVENTORY_FIRST + champ), store = (uint16_t)(CMD_STORE_FIRST + champ);
+        if (!zone_get_rect(ZONE_STATUS_BOX + champ, box) || !point_in_rect(box, x, y))
+            continue;
+        if (command && command != open && command != store)
+            return command;
+        const InputCommand *e =
+            find_command_entry(&input_mode_roots[mode], g_game.leader_hand != THING_NONE ? store : open);
+        if (e && get_input_zone_rect(e->zone, target))
+            return find_click_command(&input_mode_roots[mode], target[RECT_X], target[RECT_Y], buttons);
+        return command;
     }
-    return 0;
+    return command;
 }
 
 uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect)

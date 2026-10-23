@@ -457,24 +457,29 @@ def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced
     set_mode(lib, VANILLA)
 
 
-def test_left_click_on_a_status_box_opens_the_inventory_in_the_advanced_mode(lib, session):  # noqa: F811
-    # In the advanced mode a left click without a command of its own anywhere on a status box gives the name click;
-    # the hands and the other commands of the box keep theirs, and a right click gives the same command as in vanilla.
+def test_left_click_on_a_status_box_stores_or_opens_the_inventory_in_the_advanced_mode(lib, session):  # noqa: F811
+    # In the advanced mode a left click on a status box outside the hands stores the leader hand object in the
+    # inventory of the champion, or with an empty leader hand opens the inventory; the hands keep their commands, and a
+    # right click gives the same command as in vanilla.
+    from dm2test.interface import GAME_LEADER_HAND
     lib.input_click_command.restype = ctypes.c_uint16
+    hand = ctypes.c_uint16.from_address(ctypes.addressof(session[0]) + GAME_LEADER_HAND)
     rect, box = (ctypes.c_int16 * 4)(), (ctypes.c_int16 * 4)()
-    opened = set()
-    for champ in range(C.CHAMPION_MAX):
-        assert lib.zone_get_rect(C.ZONE_STATUS_BOX + champ, box)
-        for y in range(box[1], box[1] + box[3]):
-            for x in range(box[0], box[0] + box[2]):
-                for buttons in (C.INPUT_BUTTON_LEFT, C.INPUT_BUTTON_RIGHT):
-                    vanilla = lib.input_click_command(INPUT_MODE_MOVE, x, y, buttons, rect)
-                    set_mode(lib, ADVANCED)
-                    mine = lib.input_click_command(INPUT_MODE_MOVE, x, y, buttons, rect)
-                    set_mode(lib, VANILLA)
-                    if vanilla or buttons != C.INPUT_BUTTON_LEFT:
-                        assert mine == vanilla, (champ, x, y, buttons)
-                    elif mine:
-                        assert mine == C.CMD_INVENTORY_FIRST + champ, (champ, x, y)
-                        opened.add(champ)
-    assert opened, "no status box opens an inventory"
+    hands = range(C.CMD_SLOT_FIRST, C.CMD_SLOT_FIRST + C.CHAMPION_MAX * C.SLOT_HAND_COUNT)
+    for thing in (C.THING_NONE, 0):
+        hand.value = thing
+        for champ in range(C.CHAMPION_MAX):
+            assert lib.zone_get_rect(C.ZONE_STATUS_BOX + champ, box)
+            for y in range(box[1], box[1] + box[3]):
+                for x in range(box[0], box[0] + box[2]):
+                    for buttons in (C.INPUT_BUTTON_LEFT, C.INPUT_BUTTON_RIGHT):
+                        vanilla = lib.input_click_command(INPUT_MODE_MOVE, x, y, buttons, rect)
+                        set_mode(lib, ADVANCED)
+                        mine = lib.input_click_command(INPUT_MODE_MOVE, x, y, buttons, rect)
+                        set_mode(lib, VANILLA)
+                        if vanilla in hands or buttons != C.INPUT_BUTTON_LEFT:
+                            assert mine == vanilla, (champ, x, y, buttons)
+                        elif champ < session[0].champion_count:
+                            want = C.CMD_INVENTORY_FIRST if thing == C.THING_NONE else C.CMD_STORE_FIRST
+                            assert mine == want + champ, (champ, x, y, thing)
+    hand.value = C.THING_NONE
