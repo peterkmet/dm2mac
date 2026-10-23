@@ -6,7 +6,6 @@
 - Flaky test: `tests/port/test_modes.py::test_program_starts_in_advanced_unless_vanilla[advanced]` once got `{'error': 'busy'}` from the control socket in a parallel run.
 - Champion redraw bit 0x10 (`REDRAW_STEP_TIME` in `engine/champion.h`): the step time of `get_step_time` (`engine/move.c`) reads it, but no code of the port sets it. Find out what sets it in `SKULL.EXE` and name it after its meaning.
 - Names without a verb (rule 4.1): `dialog_volume`. `sensor_door_value` reads the GDAT value of a door type, not a sensor value. Functions with one prefix that other modules define (for example `money_*` in `item.c`, `shop_*` in `money.c`) could move to the module of their prefix.
-- Message row "B %": with `tests/saves/shell.DAT` the message area sometimes shows a row "B %" (for example before "GAME SAVED"). Find its source. (The item name "f m" of the leader hand is right: GDAT text `(0x15, 62, 5, 0x18)` is "f m" for every language, item 1804.)
 - Manual tests: the sound direction next to creatures and doors, and the end of the game with the end sensor. The music and the thunder sound are not checked (dummy audio).
 - `gdat_find` (`data/gdat.c`) scans the 11854 key rows linearly; sort or index the rows if lookups get hot.
 - Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.
