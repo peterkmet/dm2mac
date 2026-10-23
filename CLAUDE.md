@@ -25,5 +25,5 @@ Details: `docs/development.md`.
 ## Conventions
 - `docs/coding-standard.md` is the coding standard of the C port; follow it for every change in `src/`.
 - `docs/formats/`: data formats; `docs/rules/`: game rules. Each page ends with the deviations of the port in "Deviations from the original"; the deviations of the turn-based mode are in `docs/llm/llm-mode.md`. `docs/reference/skull-symbols.csv`: original addresses and names.
-- `docs/architecture.md`: the layers; `docs/development.md`: build, test and release; `docs/decompiling.md`: the Ghidra output of `reference/`.
+- `docs/architecture.md`: the layers; `docs/development.md`: build, test and check; `docs/decompiling.md`: the Ghidra output of `reference/`.
 - Plans in `docs/superpowers/`; manual checks in `docs/manual-test-checklist.md`; open work in `docs/todo.md`.
