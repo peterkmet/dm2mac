@@ -9,6 +9,7 @@ from dm2test import constants as C
 from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
+from dm2test.save import Event, Timeline
 from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
@@ -120,6 +121,20 @@ def test_one_hit_kill_keeps_a_creature_that_cannot_be_hurt(lib, gdat, game):  # 
     lib.game_set_cheats(C.CHEAT_KILL)
     assert not hit(lib, group, x, y, 3)
     assert lib.thing_word(group, C.GROUP_HEALTH) == HEALTH
+
+
+def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(lib, gdat, game):  # noqa: F811
+    # regression: a hit with the cheat moved the next update of the creature to the next game step
+    group, x, y = first_group(lib, gdat, game)
+    word = lib.thing_word(group, C.GROUP_CREATURE)
+    lib.set_thing_word(group, C.GROUP_CREATURE, word & 0xFF00 | unhurt_creature(lib, gdat))
+    lib.game_set_cheats(C.CHEAT_KILL)
+    game.game_time += 100  # the scheduled update lies before the next game step
+    timeline = Timeline.in_dll(lib, "g_timeline")
+    before = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(Event))
+    lib.creature_alert(group, Location(x, y), 0, 0, 3)
+    after = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(Event))
+    assert after == before
 
 
 # Walk through walls.

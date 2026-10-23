@@ -1245,7 +1245,8 @@ void creature_alert(uint16_t group, Location at, unsigned flags, int chance, int
         wake = alert_wakes(group, a);
     if ((int8_t)a->action == CREATURE_ACTION_VANISH)
         return;
-    bool kills = game_has_cheat(CHEAT_KILL) && damage > 0; /* one-hit kill cheat: the update kills at once */
+    /* one-hit kill cheat: the update kills at once, except a creature that cannot be hurt */
+    bool kills = game_has_cheat(CHEAT_KILL) && damage > 0 && creature_group_info(group)->defense != CREATURE_NO_HURT;
     if (!wake && !kills && total < thing_word(group, GROUP_HEALTH))
         return;
     creature_cancel_update(group);

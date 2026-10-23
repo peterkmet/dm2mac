@@ -31,7 +31,6 @@
 - Smooth projectile flight (`src/ui/view.c`): tracks match by thing id, so a projectile record freed in one step and reused in the next slides in from the place of the old projectile for one step. Also compare the square position.
 - Cheat cast (`src/ui/cheats.c`, `src/engine/magic.c`): a dead leader with no open spell panel fails the cast without a message. Print a message or take the first living champion.
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
-- ONE-HIT KILL (`src/engine/creature.c`): `kills` forces an immediate creature update even for a creature that cannot be hurt (defense 0xff), so it acts immediately instead of at its scheduled time. Add `info->defense != CREATURE_NO_HURT` or note it in the doc.
 - `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.
 - Check in `SKULL.EXE` whether the key table rows with language nibble 0 load for every language (`docs/reference/skull-map.md`, "GDAT database in memory").
 - `docs/reference/reference-crosscheck.md`: the 1405 reDM2 function starts do not equal the table sum 473 + 151 + 27 + 677 + 79 = 1407. Check the count against the reDM2 data.
