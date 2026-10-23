@@ -366,9 +366,9 @@ The reply of a batch has `ran` (the turns that ran), `stopped`, `error` (only wi
 | `time`, `game_mode`, `mode` | The game step, `turnbased`, and the input mode (`menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`). |
 | `dialog` | `{id, buttons}` while `mode` is `dialog`, otherwise `null`. |
 | `party` | `map`, `level`, `x`, `y`, `facing`, `darkness`, `can_move`, `sleeping`, `dead`. |
-| `leader`, `leader_hand` | The index of the leader and the object in its hand. |
+| `leader`, `leader_hand` | The index of the leader and the object in its hand; `null` for none. |
 | `candidate` | The champion that a mirror shows, with the fields of a champion, otherwise `null`. A candidate is not in `champions`. |
-| `champions` | The members: `index`, `name`, `title`, `alive`, `health`, `stamina`, `mana` (each `[value, maximum]`), `food`, `water`, `load_kg`, `position`, `poisoned`, `statistics`, `skills`, `wounds`, `slots`, `hands`, `runes`, `busy`. |
+| `champions` | The members: `index`, `name`, `title`, `alive`, `health`, `stamina` (the stored value divided by 10), `mana` (each `[value, maximum]`), `food`, `water`, `load_kg`, `position`, `poisoned`, `statistics`, `skills`, `wounds`, `slots`, `hands`, `runes`, `busy`. |
 | `action_menu`, `spell`, `inventory`, `chest`, `money_box`, `minion_map` | The open panel, otherwise `null`. |
 | `messages` | The text of the message rows. |
 | `outdoor`, `weather`, `day_time` | The sky, only outdoors. |
