@@ -450,7 +450,8 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
    possessions of a static creature. */
 static void process_floor(int x, int y, uint16_t thing, FloorMove m, bool possessions)
 {
-    if (thing == THING_NONE && square_type(dungeon_square(g_party.cur_map, x, y)) == SQUARE_WALL)
+    if (thing == THING_NONE && game_has_cheat(CHEAT_WALLS) &&
+        square_type(dungeon_square(g_party.cur_map, x, y)) == SQUARE_WALL)
         return; /* the party in a wall (walk-through-walls cheat) does not touch the wall sensors */
     m.type = -1;
     m.item = -1;
