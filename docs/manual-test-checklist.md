@@ -57,7 +57,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## A. Program start and window
 
-- [ ] A1. Run `build/dm2`. Expected: a window at scale 3 shows the splash picture and the movies, then the start menu title; the log shows `data folder: game`.
+- [ ] A1. Run `build/dm2 --mode vanilla`. Expected: a window at scale 3 shows the splash picture and the movies, then the start menu title; the log shows `data folder: game`.
 - [ ] A2. Run `build/dm2 --filter scale2x`, then `--filter scale3x`. Expected: the image is smoothed by the filter; the game is the same.
 - [ ] A3. Run `DM2_FILTER=scale2x build/dm2 --filter none`. Expected: no filter (the option wins).
 - [ ] A4. Run `build/dm2 --filter bad`. Expected: an error message and exit code 2.
@@ -178,7 +178,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## J. Start menu, new game, save and load, end of game
 
-- [ ] J1. Run `build/dm2`. Expected: the start menu shows the title and its options.
+- [ ] J1. Run `build/dm2 --mode vanilla`. Expected: the start menu shows the title and its options.
 - [ ] J2. Choose the picture option. Expected: the picture shows until a click or until the time ends.
 - [ ] J3. Choose a new game. Expected: the party starts on the start square with the champion of the start mirror as leader.
 - [ ] J4. Recruit more champions and enter the game. Expected: the party has up to four champions.

@@ -23,7 +23,7 @@ The code and the data show this:
 1. `new = SONGLIST[map]`. If `new` equals the current song (`DAT_0007050e`), nothing changes.
 2. If no song plays, or a fade is active, the new song starts now.
 3. Otherwise a fade starts: the fade counter is `0x7f`. Each call sets the song volume to the counter and decrements it. At counter `1`, the new song starts.
-4. `FUN_0001095d(0)` starts no song. Song 0 is never started through this path.
+4. A `SONGLIST.DAT` byte 0 starts no song (`FUN_0001095d(0)`), so GDAT song 0 never plays through this path.
 
 Music master volume, `FUN_00010736(level 0..7, 10)`: `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
 

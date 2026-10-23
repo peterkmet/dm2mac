@@ -311,11 +311,11 @@ The response has `seen: {explosions, creature_changes}` when the record is not e
 
 ### Game over
 
-When the party dies or the game is complete during a turn, the turn ends. The response has `"game_over": true`. `state.party.dead` is `true` after a death and `false` when the game is complete. After that, `act`, `act_many`, `wait`, and `save` give `game over`. `get_state`, `get_view`, `get_map`, and `screenshot` still work. After a death, send `load`.
+When the party dies or the game is complete during a turn, the turn ends. The response has `"game_over": true`. `state.party.dead` is `true` after a death and `false` when the game is complete. After that, `act`, `act_many`, `wait`, and `save` give `game over`. The other commands still work. After a death, send `load`.
 
 ### Actions
 
-A champion index is the `index` of `champions[]`; the champion must be alive. While a candidate shows, only `recruit` runs. While the party sleeps, only `wake` runs; `wait` always runs. An action that cannot run gives an error and changes nothing.
+A champion index is the `index` of `champions[]`; the champion must be alive. While a candidate shows, only `recruit`, `click`, and `key` run. While the party sleeps, only `wake`, `click`, and `key` run; `wait` always runs. An action that cannot run gives an error and changes nothing.
 
 | `action` | `args` | Notes |
 |---|---|---|
