@@ -678,10 +678,11 @@ typedef struct {
     int entry, flip;
 } ThingPicture;
 
-/* A projectile of a view (its thing id without the cell) and the picture corner in the views of the game step before
-   and of the last game step. */
+/* A projectile of a view (its thing id without the cell), its view square, and the picture corner in the views of
+   the game step before and of the last game step. */
 typedef struct {
     uint16_t thing;
+    int pos;
     ViewPoint from, to;
 } FlightTrack;
 
@@ -1439,11 +1440,14 @@ static ThingPicture pick_object_picture(uint16_t thing, int pos, int cell, int o
     return pic;
 }
 
-/* The track of the projectile thing in a list of tracks, NULL for none; the cell bits of a projectile change in flight. */
-static const FlightTrack *find_track(const FlightTrack *list, int count, uint16_t thing)
+/* The track of the projectile thing on view square pos in a list of tracks, NULL for none; the cell bits of a
+   projectile change in flight. A track on a view square that is not pos or next to it belongs to a freed projectile
+   record that a new projectile took. */
+static const FlightTrack *find_track(const FlightTrack *list, int count, uint16_t thing, int pos)
 {
     for (int i = 0; i < count; i++)
-        if (list[i].thing == (thing & THING_ID_MASK))
+        if (list[i].thing == (thing & THING_ID_MASK) && abs(view_depth[list[i].pos] - view_depth[pos]) <= 1 &&
+            abs(view_lateral[list[i].pos] - view_lateral[pos]) <= 1)
             return &list[i];
     return NULL;
 }
@@ -1463,20 +1467,21 @@ static bool picture_corner(ViewPoint *corner)
     return true;
 }
 
-/* Draws the view picture of the projectile thing (0: a picture of no projectile). A view of a game step keeps its
-   corner; a view between game steps draws it part of the way back to its corner of the game step before. */
-static void flush_projectile(uint16_t thing)
+/* Draws the view picture of the projectile thing (0: a picture of no projectile) on view square pos. A view of a game
+   step keeps its corner; a view between game steps draws it part of the way back to its corner of the game step
+   before. */
+static void flush_projectile(uint16_t thing, int pos)
 {
     ViewPoint corner;
     if (thing && picture_corner(&corner)) {
         if (flight.step_ticks) {
-            const FlightTrack *t = find_track(flight.tracks, flight.count, thing);
+            const FlightTrack *t = find_track(flight.tracks, flight.count, thing, pos);
             ViewPoint shift = t ? view_flight_shift(t->from, t->to, flight.tick, flight.step_ticks) : (ViewPoint){0, 0};
             view.ctx.src_x = (int16_t)(view.ctx.src_x + shift.x);
             view.ctx.src_y = (int16_t)(view.ctx.src_y + shift.y);
         } else if (flight.count < FLIGHT_TRACK_MAX) {
-            const FlightTrack *last = find_track(flight.last, flight.last_count, thing);
-            flight.tracks[flight.count++] = (FlightTrack){thing & THING_ID_MASK, last ? last->to : corner, corner};
+            const FlightTrack *last = find_track(flight.last, flight.last_count, thing, pos);
+            flight.tracks[flight.count++] = (FlightTrack){thing & THING_ID_MASK, pos, last ? last->to : corner, corner};
         }
     }
     flush_picture();
@@ -1539,7 +1544,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
                   category, index, pic.entry);
     if (!look->record_click)
         view.ctx.transparent = DRAW_NO_BLIT;
-    flush_projectile(look->projectile);
+    flush_projectile(look->projectile, pos);
 }
 
 /* Draws the objects of a thing list in cell (0 to 3, relative to the party) of the square at pos; with group,
@@ -1852,7 +1857,7 @@ static void show_missiles(uint16_t thing, int pos, int position)
                       category, index, pic.entry);
         view.ctx.src_x = (int16_t)(view.ctx.src_x + gfx_scale_64(0, (int16_t)offset_scale));
         view.ctx.src_y = (int16_t)(view.ctx.src_y + gfx_scale_64(MISSILE_DY, (int16_t)offset_scale));
-        flush_projectile(thing);
+        flush_projectile(thing, pos);
     }
 }
 
