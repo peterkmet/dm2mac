@@ -202,7 +202,7 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 
 1. Save the screenshot to a file.
 
-   ```bash
+   ```sh
    uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'
    ```
 

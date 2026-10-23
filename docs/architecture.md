@@ -114,7 +114,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `ui/sound.h` | `sound_mix` `sound_play` `sound_set_` `sound_stop_` | Sound output: the sample mixer, the voices, and the volume settings. |
 | `ui/text.h` | `text_clear_` `text_draw` `text_init` `text_measure` `text_message_` `text_print_` `text_set_message_` `text_wrap_` | Text: the font, message wrapping, and printing into the screen. |
 | `ui/ui.h` | `ui_` `offscreen_` | The offscreen bitmaps shared by the panels and the drawing of the interface pictures. |
-| `ui/video.h` | `video_` | The frame buffer and the palette of the 320x200 screen. |
+| `ui/video.h` | `video_` | The frame buffer and the palette of the 320 × 200 screen. |
 | `ui/view.h` | `view_` | The dungeon view: the squares in sight and their drawing. |
 | `ui/zone.h` | `zone_` | Layout zones: the GDAT record of each zone with its anchor type, parent zone, and position. |
 

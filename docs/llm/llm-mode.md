@@ -14,13 +14,13 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([Modes](../man
 
 1. Build the port.
 
-   ```bash
+   ```sh
    make
    ```
 
 2. Start the game with the socket. The dummy drivers run it without a window and without sound.
 
-   ```bash
+   ```sh
    SDL_AUDIO_DRIVER=dummy SDL_VIDEO_DRIVER=dummy build/dm2 --control ~/.dm2/control.sock --save tests/saves/start.DAT &
    ```
 
@@ -75,7 +75,7 @@ Python code can use `dm2tools.control_client.request(payload, path=None, timeout
 
 Examples of the real-time modes:
 
-```bash
+```sh
 uv run dm2-play state
 uv run dm2-play key '{"key": "up"}'
 uv run dm2-play wait '{"ticks": 60}'
@@ -233,7 +233,7 @@ A game step takes 8 ticks. A step forward needs about 40 ticks before the party 
 
 ### screenshot
 
-Writes a PNG file of 320 x 200 pixels: the screen with the palette and the cursor at the pointer. The cursor is the original cursor image that the window shows there: the arrow, the hand, the held object with its shadow, or the dragged champion. The pointer is the window pointer until a click or move request moves it. In `build/dm2` the pointer starts at (0, 0), so the first screenshot has the cursor in the top left corner. The reply gives the absolute path.
+Writes a PNG file of 320 × 200 pixels: the screen with the palette and the cursor at the pointer. The cursor is the original cursor image that the window shows there: the arrow, the hand, the held object with its shadow, or the dragged champion. The pointer is the window pointer until a click or move request moves it. In `build/dm2` the pointer starts at (0, 0), so the first screenshot has the cursor in the top left corner. The reply gives the absolute path.
 
 ```json
 {"cmd": "screenshot", "path": "/tmp/shot.png"}
