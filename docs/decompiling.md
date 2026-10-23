@@ -7,6 +7,7 @@ How to decompile `SKULL.EXE` of Dungeon Master II (PC DOS) from your own copy of
 - macOS with [Homebrew](https://brew.sh).
 - [uv](https://docs.astral.sh/uv/).
 - Ghidra and OpenJDK 21 from Homebrew. `tools/ghidra/decompile.sh` uses `brew --prefix ghidra`. It uses `JAVA_HOME` if set, else `brew --prefix openjdk@21`.
+- [DOSBox](https://www.dosbox.com) as `/Applications/dosbox.app`, only for `tools/dosbox-nointro.sh`.
 - The original game files in `game/`, with `game/SKULL.EXE`. You provide them. The folder is git-ignored.
 
 ## Quickstart
@@ -53,12 +54,14 @@ Ghidra runs these scripts of `tools/ghidra/` in this order:
 
 1. `Layout.java` (before the analysis) splits the image at `<data-start>` into a `code` block (read, execute) and a `data` block (read, write). It marks each `<entry>` as an entry point and a function.
 2. `FindFunctions.java` removes the functions that the analysis created outside the `code` block. It creates a function at each 4-byte aligned pointer in the `data` block that points to code outside all functions. It skips a target that starts with `NOP` (`0x90`) or a zero byte.
-3. `ApplySymbols.java` reads the CSV file in `SYMBOLS` (columns `address,name,signature,subsystem`, with a header line). A row with a signature in an executable block, or at an instruction, names a function; the script creates the function when needed. Any other row labels a global. The script ignores the signature text. With `SYMBOLS` empty or missing, the script does nothing.
-4. `Watcall.java` adds the Watcom calling convention `__watcall` and sets it on every function. The arguments go in `EAX`, `EDX`, `EBX`, `ECX`, then on the stack. The callee removes the stack arguments.
-5. `ExportC.java` decompiles all functions to the output file. A function that fails has the line `/* failed: ... */`.
+3. `CreateFunctionAfterTerminals.java` is the next step in `decompile.sh`. See Known limitations.
+4. `ApplySymbols.java` reads the CSV file in `SYMBOLS` (columns `address,name,signature,subsystem`, with a header line). A row with a signature in an executable block, or at an instruction, names a function; the script creates the function when needed. Any other row labels a global. The script ignores the signature text. With `SYMBOLS` empty or missing, the script does nothing.
+5. `Watcall.java` adds the Watcom calling convention `__watcall` and sets it on every function. The arguments go in `EAX`, `EDX`, `EBX`, `ECX`, then on the stack. The callee removes the stack arguments.
+6. `ExportC.java` decompiles all functions to the output file. A function that fails has the line `/* failed: ... */`.
 
 ## Known limitations
 
+- `decompile.sh` runs `CreateFunctionAfterTerminals.java`. This file is not in `tools/ghidra/`, so a run of `decompile.sh` fails at this step.
 - The decompiled C does not compile. Some names, types, and calling conventions are incomplete.
 - The binary has no symbols. The names come from `docs/reference/skull-symbols.csv`.
 
