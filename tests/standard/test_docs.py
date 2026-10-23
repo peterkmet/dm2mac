@@ -10,7 +10,7 @@ LINK = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")
 
 
 def markdown_files():
-    docs = sorted(p for p in (ROOT / "docs").rglob("*.md") if "superpowers" not in p.relative_to(ROOT / "docs").parts[:1])
+    docs = sorted((ROOT / "docs").rglob("*.md"))
     return [ROOT / "README.md", ROOT / "CHANGELOG.md", ROOT / "CLAUDE.md", *docs]
 
 

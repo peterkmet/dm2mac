@@ -1,11 +1,14 @@
-game
+/game
 /reference/
 build/
 .venv/
 __pycache__/
 .pytest_cache/
 .DS_Store
-tests/saves/
+/tests/saves
 
 /playthroughs/*
 !/playthroughs/template/
+/research/
+.ruff_cache/
+.superpowers/
