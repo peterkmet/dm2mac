@@ -372,7 +372,7 @@ static void show_party_frame(int x, int y)
     offscreen_fill_rect(area, r, g_ui_colors[UI_RED]);
 }
 
-/* The yellow side of the party frame around (x, y) toward dir, the direction that the party faces. */
+/* The white side of the party frame around (x, y) toward dir, the direction that the party faces. */
 static void show_party_facing(int x, int y, int dir)
 {
     int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + MAP_ICON_W, GAP_Y * 2 + MAP_ICON_H},
@@ -386,7 +386,7 @@ static void show_party_facing(int x, int y, int dir)
     else
         r[RECT_W] = GAP_X;
     if (clip_icon_rect(r, g_minion_map.clip, &dx, &dy))
-        offscreen_fill_rect(area, r, g_ui_colors[UI_YELLOW]);
+        offscreen_fill_rect(area, r, g_ui_colors[UI_WHITE]);
 }
 
 /* The icon of each living champion at its cell of the party square at (x, y), for a map that looks to dir. */

@@ -320,7 +320,7 @@ def red(lib):
 
 def party_frame(lib, dx=0):
     """A pixel of the red frame around the party square, dx squares right of the middle: the middle of the left side, or
-    of the top side when the party faces west (the side toward the party direction is yellow)."""
+    of the top side when the party faces west (the side toward the party direction is white)."""
     x, y, w, h = viewport(lib)
     west = GameRecord.in_dll(lib, "g_game").party_dir == C.DIR_WEST
     px, py = (CELL // 2, 0) if west else (0, CELL // 2)

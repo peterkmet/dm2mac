@@ -11,7 +11,7 @@
 
 /* A square icon of the map: the square (sx, sy) of the current map and the screen position (x, y) of the icon;
    party_item >= 0: the party stands there, with the party icons of the map item party_item (category 0x14), and the
-   side of its frame toward party_dir is yellow. */
+   side of its frame toward party_dir is white. */
 typedef struct {
     int sx, sy;
     int x, y;

@@ -278,7 +278,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa:
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(7, rect)  # the viewport
     x, y, w, h = rect
-    # the middle of the left side of the party frame, or of the top side when the party faces west (that side is yellow)
+    # the middle of the left side of the party frame, or of the top side when the party faces west (that side is white)
     px, py = (4, 0) if game.party_dir == C.DIR_WEST else (0, 4)
     middle = (y + (h - 8) // 2 + py) * SCREEN_W + x + (w - 8) // 2 + px
     fb = (ctypes.c_uint8 * (SCREEN_W * C.SCREEN_H)).in_dll(lib, "g_video_fb")
