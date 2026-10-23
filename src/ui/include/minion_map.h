@@ -10,11 +10,13 @@
 #include <stdint.h>
 
 /* A square icon of the map: the square (sx, sy) of the current map and the screen position (x, y) of the icon;
-   party_item >= 0: the party stands there, with the party icons of the map item party_item (category 0x14). */
+   party_item >= 0: the party stands there, with the party icons of the map item party_item (category 0x14), and the
+   side of its frame toward party_dir is yellow. */
 typedef struct {
     int sx, sy;
     int x, y;
     int party_item;
+    int party_dir;
 } SquareIcon;
 
 /* True when the map draws the floor ornament (an ornament index) without the details option. */

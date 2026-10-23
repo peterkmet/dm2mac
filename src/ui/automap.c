@@ -115,8 +115,12 @@ void automap_draw(Offscreen *o, const int16_t *clip)
     for (int x = 0; x < dungeon_map_width(map); x++)
         for (int y = 0; y < dungeon_map_height(map); y++)
             if (game_has_cheat(CHEAT_MAP) || seen_is_seen(map, x, y)) {
-                SquareIcon icon = {x, y, left + x * MAP_CELL_SIZE, top + y * MAP_CELL_SIZE,
-                                   x == g_game.party_x && y == g_game.party_y ? party_item : -1};
+                SquareIcon icon = {x,
+                                   y,
+                                   left + x * MAP_CELL_SIZE,
+                                   top + y * MAP_CELL_SIZE,
+                                   x == g_game.party_x && y == g_game.party_y ? party_item : -1,
+                                   g_game.party_dir};
                 mmap_draw_square_icon(o, clip, &icon);
                 if (automap_is_imaginary_wall(dungeon_square(map, x, y)))
                     checker_overlay(o, clip, icon.x, icon.y);

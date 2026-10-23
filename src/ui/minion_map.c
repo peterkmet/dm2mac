@@ -372,6 +372,23 @@ static void show_party_frame(int x, int y)
     offscreen_fill_rect(area, r, g_ui_colors[UI_RED]);
 }
 
+/* The yellow side of the party frame around (x, y) toward dir, the direction that the party faces. */
+static void show_party_facing(int x, int y, int dir)
+{
+    int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + MAP_ICON_W, GAP_Y * 2 + MAP_ICON_H},
+            dx, dy;
+    if (dir == DIR_SOUTH)
+        r[RECT_Y] = (int16_t)(y + MAP_ICON_H);
+    else if (dir == DIR_EAST)
+        r[RECT_X] = (int16_t)(x + MAP_ICON_W);
+    if (dir == DIR_NORTH || dir == DIR_SOUTH)
+        r[RECT_H] = GAP_Y;
+    else
+        r[RECT_W] = GAP_X;
+    if (clip_icon_rect(r, g_minion_map.clip, &dx, &dy))
+        offscreen_fill_rect(area, r, g_ui_colors[UI_YELLOW]);
+}
+
 /* The icon of each living champion at its cell of the party square at (x, y), for a map that looks to dir. */
 static void show_party_icons(const Strip *p, int x, int y, int dir)
 {
@@ -514,8 +531,10 @@ void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, const SquareI
     memcpy(saved, g_minion_map.clip, sizeof saved);
     memcpy(g_minion_map.clip, clip, sizeof saved);
     area = target;
-    if (icon->party_item >= 0)
+    if (icon->party_item >= 0) {
         show_party_frame(icon->x, icon->y);
+        show_party_facing(icon->x, icon->y, icon->party_dir);
+    }
     MapSquare sq = {
         .sx = icon->sx, .sy = icon->sy, .x = icon->x, .y = icon->y, .dir = DIR_NORTH, .map_thing = THING_NONE};
     show_square(&sq, dungeon_map_wallset(g_party.cur_map));

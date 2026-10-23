@@ -10,7 +10,7 @@ from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
 from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import GameRecord, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 
@@ -319,9 +319,12 @@ def red(lib):
 
 
 def party_frame(lib, dx=0):
-    """The top left pixel of the red frame around the party square, dx squares right of the middle."""
+    """A pixel of the red frame around the party square, dx squares right of the middle: the middle of the left side, or
+    of the top side when the party faces west (the side toward the party direction is yellow)."""
     x, y, w, h = viewport(lib)
-    return screen(lib)[(y + (h - CELL) // 2) * SCREEN_W + x + (w - CELL) // 2 + dx * CELL]
+    west = GameRecord.in_dll(lib, "g_game").party_dir == C.DIR_WEST
+    px, py = (CELL // 2, 0) if west else (0, CELL // 2)
+    return screen(lib)[(y + (h - CELL) // 2 + py) * SCREEN_W + x + (w - CELL) // 2 + dx * CELL + px]
 
 
 def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automap):
