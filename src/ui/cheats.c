@@ -186,20 +186,28 @@ void cheats_move_selection(int16_t step)
     show_page();
 }
 
-/* The caster of the spell area: the champion of the open spell panel, else the leader; -1 for none. */
+/* The caster of the spell area: the champion of the open spell panel, else the leader, else the first living
+   champion; -1 for none. */
 static int16_t find_caster(void)
 {
     if (g_action.champion > 0 && g_action.hand == ACTION_HAND_SPELL)
         return (int16_t)(g_action.champion - 1);
-    return g_game.leader == LEADER_NONE ? -1 : (int16_t)g_game.leader;
+    if (g_game.leader != LEADER_NONE && g_game.leader < g_game.champion_count && champion(g_game.leader)->health)
+        return (int16_t)g_game.leader;
+    for (int16_t i = 0; i < g_game.champion_count; i++)
+        if (champion(i)->health)
+            return i;
+    return -1;
 }
 
 /* The caster of the spell area casts spell without its cost; a potion without an empty flask says so. */
 static void cast_spell(const Spell *spell)
 {
     int16_t caster = find_caster();
-    if (caster < 0 || caster >= g_game.champion_count)
+    if (caster < 0 || caster >= g_game.champion_count) {
+        text_print_message(UI_WHITE, "\nNO CHAMPION CAN CAST");
         return;
+    }
     if ((magic_cast_cheat_spell(caster, spell) & CAST_KIND_MASK) == CAST_NEEDS_FLASK)
         text_print_message(UI_WHITE, "\nNO EMPTY FLASK IN HAND");
 }

@@ -20,7 +20,7 @@ STAY, CLOSE, QUICK_SAVE, QUICK_LOAD = C.CHEATS_STAY, C.CHEATS_CLOSE, C.CHEATS_QU
 SCAN_ESCAPE, SCAN_RETURN, SCAN_S = 0x01, 0x1C, 0x1F
 FIREBALL_EFFECT = 0x5402  # a missile spell of type 0 (fireball)
 # Champion record offsets (the Champion struct of engine/champion.h).
-CH_MANA, CH_EXPERIENCE, EXPERIENCE_SIZE = 0x3E, 0x5F, 20 * 4
+CH_HEALTH, CH_MANA, CH_EXPERIENCE, EXPERIENCE_SIZE = 0x36, 0x3E, 0x5F, 20 * 4
 LIGHT, HEALTH_POTION = 0, 25  # spell table indices: OH IR RA, VI
 
 
@@ -181,6 +181,24 @@ def test_cheat_cast_has_no_failure_and_no_experience(lib, screen):
     for _ in range(10):
         assert lib.magic_cast_cheat_spell(0, lib.magic_get_spell(LIGHT)) == 0
     assert experience_and_mana(lib, 0) == before
+
+
+def test_cheat_cast_without_a_living_champion_says_so(lib, screen):
+    # regression: a dead leader made the spell line fail without a message
+    records = champion_records(lib)
+    health = bytes(records[CH_HEALTH:CH_HEALTH + 2])
+    records[CH_HEALTH:CH_HEALTH + 2] = b"\0\0"
+    try:
+        lib.cheats_open()
+        select(lib, ROW_SPELLS)
+        lib.cheats_run_selected_row()
+        select(lib, 0)
+        assert lib.cheats_run_selected_row() == CLOSE
+        lib.text_message_row.restype = ctypes.c_char_p
+        rows = [lib.text_message_row(r) for r in range(C.MESSAGE_ROWS)]
+        assert b"NO CHAMPION CAN CAST" in rows
+    finally:
+        records[CH_HEALTH:CH_HEALTH + 2] = health
 
 
 def empty_flask(lib):
