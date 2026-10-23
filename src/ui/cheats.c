@@ -95,9 +95,11 @@ void cheats_get_spell_line(const Spell *spell, char *line, size_t size)
         char number[RUNE_NUMBER_SIZE] = ANY_POWER; /* a spell without a power rune takes any power */
         if (glyph) {
             int rune = glyph - SPELL_RUNE_GLYPH_FIRST;
-            if (runes[0])
+            const char *name = magic_get_rune_name(rune);
+            if (name && runes[0])
                 append_text(runes, sizeof runes, " ");
-            append_text(runes, sizeof runes, magic_get_rune_name(rune));
+            if (name) /* a glyph outside the runes gives no name */
+                append_text(runes, sizeof runes, name);
             snprintf(number, sizeof number, "%d", rune % SPELL_RUNES_PER_SET + 1);
         }
         if (step)
