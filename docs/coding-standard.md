@@ -276,7 +276,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 ## 11. Tests
 
-`CLAUDE.md` (Commands, Layout) describes the test layout: `tests/differential/` (the port against the
+[Development](development.md#tests) describes the test layout: `tests/differential/` (the port against the
 original in the emulator), `tests/port/` (the port alone), `tests/tools/` (the Python tools),
 `tests/standard/` (this standard), and the helpers in `tests/dm2test/`. The rules that the standard check
 enforces: [tests]
@@ -299,7 +299,7 @@ dependency group (version 23). [format]
 `make` (clang) and `make windows` (MinGW-w64 GCC) build with 0 warnings under `-Wall -Wextra -Werror
 -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough`.
 
-`make check` runs the checks (`CLAUDE.md`, Commands). The checks of `tests/standard/test_standard.py`, by
+`make check` runs the checks ([Development](development.md#tests)). The checks of `tests/standard/test_standard.py`, by
 their allowlist key:
 
 | Key | Fails on |
