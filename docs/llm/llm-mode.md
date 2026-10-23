@@ -257,7 +257,7 @@ Ends the program the same way as a closed window. The exit code is 0 in the game
 
 ## The turn-based mode
 
-### Commands
+### Turn-based commands
 
 | `cmd` | Fields | Reply |
 |---|---|---|
