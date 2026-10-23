@@ -248,7 +248,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 1. Each non-trivial function has a one-line comment that tells what it does in game terms: a public function
    in the header above its prototype, a static function above its definition, never both. [comment]
 2. A comment does not repeat the code, and does not name an original symbol, address or event number. It
-   names the constant. The original name and address belong in `docs/skull-symbols.csv`. [event-comment; the
+   names the constant. The original name and address belong in `docs/reference/skull-symbols.csv`. [event-comment; the
    rest review only]
 3. A kept quirk of the original and a fixed bug of the original (a stale register, an overflow) get a short
    comment at the place, and an entry in `docs/skull-formats.md`. [review only]

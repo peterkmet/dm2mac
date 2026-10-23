@@ -22,5 +22,5 @@ Native C11/SDL3 macOS port of Dungeon Master II (PC DOS `SKULL.EXE`), built from
 
 ## Conventions
 - `docs/coding-standard.md` is the coding standard of the C port; follow it for every change in `src/`.
-- `docs/skull-formats.md`: data formats and every deviation of the port. `docs/skull-symbols.csv`: original addresses and names.
+- `docs/skull-formats.md`: data formats and every deviation of the port. `docs/reference/skull-symbols.csv`: original addresses and names.
 - Plans in `docs/superpowers/`; manual checks in `docs/manual-test-checklist.md`.

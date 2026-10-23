@@ -10,7 +10,7 @@ Sources in reDM2:
 - Formats: `docs/formats.md`, `docs/savegame.md`.
 - Evidence: `docs/memory.md`, `docs/equiv.md`, `README.md`, and `src/*.c` with `src/*.test.toml` (functions with a differential test).
 
-Our sources: `docs/skull-symbols.csv`, `docs/skull-map.md`, `docs/skull-formats.md`, `reference/decomp/SKULL.c`.
+Our sources: `docs/reference/skull-symbols.csv`, `docs/reference/skull-map.md`, `docs/skull-formats.md`, `reference/decomp/SKULL.c`.
 
 ## Method
 
@@ -48,14 +48,14 @@ Our 1362 starts = 473 + 151 + 27 + 677 + 34.
 
 ## Renames applied
 
-All renames are in `docs/skull-symbols.csv`. The function address set did not change.
+All renames are in `docs/reference/skull-symbols.csv`. The function address set did not change.
 
 | Address | Old name | New name | Reason |
 |---|---|---|---|
 | `0x46745` | `champ_reduce_by_stat` | `champ_get_stat_adjusted_attack` | reDM2 matches the body with DM1 `F0307_CHAMPION_GetStatisticAdjustedAttack` and tests it (1035 cases). The function scales an attack value by `170 - stat`. "Reduce" did not tell this. The third argument is now `attack`. |
 | `0x7f8dc` | `g_save_checksum` | `g_save_bit_total` | reDM2: `g_packed_bit_ctr`. `save_write_packed` and `save_read_packed` add the number of stored bits. No code reads the value for a check. |
 
-`reference/decomp/SKULL.c` was exported again with the new names (`tools/decompile-skull.sh`). `docs/skull-map.md` and `docs/skull-notes/` use the new names.
+`reference/decomp/SKULL.c` was exported again with the new names (`tools/decompile-skull.sh`). `docs/reference/skull-map.md` and `docs/reference/symbols/` use the new names.
 
 Rejected rename: `0x1f347` `is_coin` → `item_is_stackable` (reDM2 `object_is_stackable`). A first pass applied it, because the body only tests "thing type 10 and attribute 0 bit `0x4000`". `money_init_coin_table` (`0x154e0`) builds `g_coin_item_types` from the same attribute bit of the same GDAT entries `(0x15, i, 0x0b, 0)`. Thus the bit marks coins, and `is_coin` is correct. The name was restored.
 
@@ -74,7 +74,7 @@ We keep our name in each case. The reason is in the last column.
 | `0x1f180`, `0x1f1fc` | `item_index_to_thing_type`, `item_index_to_gdat_index` | `zone_classify`, `coord_band_normalize` | reDM2 names describe the arithmetic only. The input is the 9-bit global item index. |
 | `0x1f309` | `item_is_chest` | `object_is_noncontainer_db9` | Body: type 9, not a money box, flags `& 6 == 0`. A chest is a container; the reDM2 name follows its own name for `money_is_moneybox`. |
 | `0x22626` | `click_front_wall` | `cursor_suspend_toggle` | Argument 0 plays sound `0x84`. Other values start the right-button mouse capture. Both names cover one branch only. |
-| `0x24d88`-`0x33df9` (13 functions) | `creature_ai_*` | `overlay_*`, `sound_enqueue`, `snd_emit_*`, `snd_event_code`, `cond_tally_lookup` | reDM2 reads the creature AI plan context as a "sound queue" and "overlay". Its own globals in the same block are `g_actor_*`. A dump of the plan tables (`0x74f7e`, `0x75248`) decides this. See open question 5 in `docs/skull-map.md`. |
+| `0x24d88`-`0x33df9` (13 functions) | `creature_ai_*` | `overlay_*`, `sound_enqueue`, `snd_emit_*`, `snd_event_code`, `cond_tally_lookup` | reDM2 reads the creature AI plan context as a "sound queue" and "overlay". Its own globals in the same block are `g_actor_*`. A dump of the plan tables (`0x74f7e`, `0x75248`) decides this. See open question 5 in `docs/reference/skull-map.md`. |
 | `0x4e733` | `rain_picture` | `compass_dir_char` | Body: letter `q` or `m` from wind direction relative to the party, plus 0-3 from `g_rain_intensity`. |
 | `0x4e930` | `view_draw_wet_image` | `face_pattern_blit` | Both low confidence. reDM2 covers only the short branch. |
 | `0x509e6` | `show_sparkle_field` | `object_slot_draw` | Both low confidence. reDM2 calls the 16 regions "inventory regions", but the three callers are view functions. |
@@ -89,11 +89,11 @@ We keep our name in each case. The reason is in the last column.
 | `0x7ef34` | `g_prepared_samples` | `g_hilite_list` | Follows `0x104ea`. |
 | `0x7f07c` | `g_palette_set_result` | `g_mouse_absent` | Follows `0x13898`. |
 | `0x7f0ae` | `g_mouse_buttons` | `g_cursor_q_h` | reDM2 read the `IBMIOP` handler: the third word is "cursor height". The game tests bit 1 of it for the right button. Needs a DOSBox check. |
-| `0x7f258` | `g_party_move_steps` | `g_ui_effect_count` | Our merge already chose between two own names (`docs/skull-map.md`, "Symbol merge decisions"). The reDM2 name is a third reading. Not checked in depth. |
+| `0x7f258` | `g_party_move_steps` | `g_ui_effect_count` | Our merge already chose between two own names (`docs/reference/skull-map.md`, "Symbol merge decisions"). The reDM2 name is a third reading. Not checked in depth. |
 | `0x7f280` | `g_new_game` | `g_rec12_relink_7f280` | Commands `0xd7`/`0xd8` set it, `0xd9` clears it. |
 | `0x7f3c0` | `g_cur_map_extra_data` | `g_creature_list` | Not checked in depth. |
 | `0x7f54e`-`0x7f570`, `0x7f670`, `0x7f7e6`, `0x7f892`, `0x7f894` (11 globals) | `g_ai_*`, `g_item_filter_free` | `g_sound_*`, `g_snd_*`, `g_overlay_*`, `g_occ_*` | Same cause as the creature AI functions. |
-| `0x7f8d0`-`0x7f8d6` | `g_ai_target_y`, `_map`, `_x`, `_dir` | `g_view_y_save`, ... | reDM2: saved view position in `map_switch_save_view` (our `ai_set_map`). Our merge dropped `g_ai_party_*` for these (`docs/skull-map.md`, "Symbol merge decisions"). The reDM2 reading supports "party position saved". Check before Step 16. |
+| `0x7f8d0`-`0x7f8d6` | `g_ai_target_y`, `_map`, `_x`, `_dir` | `g_view_y_save`, ... | reDM2: saved view position in `map_switch_save_view` (our `ai_set_map`). Our merge dropped `g_ai_party_*` for these (`docs/reference/skull-map.md`, "Symbol merge decisions"). The reDM2 reading supports "party position saved". Check before Step 16. |
 | `0x7fad0` | `g_song_buffer_size` | `g_gfx_max_size_7fad0` | `gdat_find_max_song_size` scans type 3 items. `sound_alloc_buffers` uses the value for `g_song_buffer`. |
 | `0x7fbce` | `g_leader_hand_weight` | `g_champ_bonus_7fbce` | Not checked in depth. |
 | `0x7fff0` | `g_party_haste` | `g_stat_boost_shift` | The main loop decrements it. Spells add to it. When it is not 0, the action delay is shifted right by 2. |
@@ -113,7 +113,7 @@ reDM2 starts inside our functions (79):
 
 Our starts without a reDM2 start: `system_debug_break` and its alias, `iop_call_return_word`, `input_key_or_button_pressed`, `gfx_fill_end`, `zone_alloc_record`, `system_debug_hook`, 10 `input_cond_*` handlers, `view_click_drop_done`, `ai_blocks_line_except_self`, the four GDAT decoder functions, and 11 library functions.
 
-The hidden functions in open question 9 of `docs/skull-map.md` (`0x113dd`, `0x114d2`, `0x14c93`, `0x5b577`, `0x62e81`) have no reDM2 start either.
+The hidden functions in open question 9 of `docs/reference/skull-map.md` (`0x113dd`, `0x114d2`, `0x14c93`, `0x5b577`, `0x62e81`) have no reDM2 start either.
 
 ## reDM2-only globals
 
@@ -143,7 +143,7 @@ Agreements:
 Added to our document from reDM2:
 
 - The `F` field is the language (1 English, 3 German, 4 French, 0 all, `0xf` never).
-- Image compression: gate, codec table `g_image_decoders` (`0x75798`), codecs 2 and 3 are LZSS, codec 1 (LZW) is not used by the shipped file. This answers open question 2 of `docs/skull-map.md` (Step 8).
+- Image compression: gate, codec table `g_image_decoders` (`0x75798`), codecs 2 and 3 are LZSS, codec 1 (LZW) is not used by the shipped file. This answers open question 2 of `docs/reference/skull-map.md` (Step 8).
 - The delta table key `(0,0,8,0)` is absent, so `image_decode_4bpp_delta` does not run.
 - Save file format: 42-byte header, dungeon image, 7 bit-packed records, thing records (Step 10).
 - `IBMIOP` dispatcher facts and the sound configuration record of function `0x2e`.

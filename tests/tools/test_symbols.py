@@ -16,7 +16,7 @@ SUBSYSTEMS = {
 
 @pytest.fixture(scope="module")
 def rows():
-    with open(ROOT / "docs/skull-symbols.csv", newline="") as f:
+    with open(ROOT / "docs/reference/skull-symbols.csv", newline="") as f:
         return list(csv.DictReader(f))
 
 

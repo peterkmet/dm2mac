@@ -4,7 +4,7 @@ This page answers the open points of the PRD (`docs/superpowers/2026-10-04-dm2-c
 
 Conventions:
 
-- A linear address (`0x10cc2`) is an address in the flat image from `uv run dm2-le game/SKULL.EXE skull.bin` (code base `0x10000`, data base `0x70000`). `FUN_xxxxxxxx` is the function at that address. `docs/skull-symbols.csv` gives its name, and `docs/skull-map.md` lists the program structure.
+- A linear address (`0x10cc2`) is an address in the flat image from `uv run dm2-le game/SKULL.EXE skull.bin` (code base `0x10000`, data base `0x70000`). `FUN_xxxxxxxx` is the function at that address. `docs/reference/skull-symbols.csv` gives its name, and `docs/reference/skull-map.md` lists the program structure.
 - A file offset is written as `file+0x...`.
 - A GDAT key is the tuple `(category, index, type, entry)` that the lookup function `FUN_0003c4f2` uses.
 - HMI SOS function names (for example `sosDIGIStartSample`) are probable names. They come from the call shape and from public HMI SOS knowledge. The binary has no symbols.
@@ -63,7 +63,7 @@ Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3
 | 2 | `gdat_lzss12_decode` (`0x5ad2b`) | LZSS, mask `0x0f`, 4/4 bit split |
 | 3 | `gdat_lzss13_decode` (`0x5ad8d`) | LZSS, mask `0x1f`, 5/3 bit split |
 
-This answers open question 2 of `docs/skull-map.md`: `g_gdat_decompressors` (`0x757a0`) is `g_image_decoders[1]`.
+This answers open question 2 of `docs/reference/skull-map.md`: `g_gdat_decompressors` (`0x757a0`) is `g_image_decoders[1]`.
 
 reDM2 measurements for the shipped file:
 
@@ -390,15 +390,15 @@ Impact on the port: set `PIT_DIVISOR` in `src/platform/platform.c` to `4971` (24
 
 `DM2.BAT` starts `IBMIOP SKULL.EXE`. `IBMIOP.EXE` is a real-mode resident layer that `SKULL.EXE` calls through `int 0FCh` with a shared buffer (`DAT_0008048c`). It sets video mode `0x13`, writes the palette (port `0x3c8`), reads `skull.cfg`, handles the keyboard and timer, and runs the movie script. `SKULL.EXE` uses 34 call sites with function numbers `0x00` to `0x30` and `0x103` to `0x10a` (for example `0x0f` timer callback, `0x2a` timer reinstall, `0x2e`, `0x2f`, `0x30` at start and exit).
 
-Impact on the port: `docs/skull-map.md` lists these `int 0FCh` functions. The platform layer replaces them (video, palette, input, timer).
+Impact on the port: `docs/reference/skull-map.md` lists these `int 0FCh` functions. The platform layer replaces them (video, palette, input, timer).
 
 ### IBMIOP service details from reDM2
 
-Source: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x14`, `0x2e`, `0x2f`, `0x30`) and its comments on `0x10010`, `0x13898`, `0x14cb1`. reDM2 read the unpacked `IBMIOP.EXE` code. These facts add to or correct the table in `docs/skull-map.md`:
+Source: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x14`, `0x2e`, `0x2f`, `0x30`) and its comments on `0x10010`, `0x13898`, `0x14cb1`. reDM2 read the unpacked `IBMIOP.EXE` code. These facts add to or correct the table in `docs/reference/skull-map.md`:
 
 - The dispatcher accepts `EAX` from `0x00` to `0x30`. 28 functions do work. 21 numbers go to one exit that does nothing. Bit `0x100` selects a second table (the `0x103` to `0x10a` functions).
 - `int 0FCh` keeps all registers. All results go through the shared buffer (`DGROUP:0x2342` in `IBMIOP.EXE`, `g_iop_buffer` in `SKULL.EXE`).
-- `0x0e`: the first buffer word is an input. `0` gives the live pointer position. Other values give the position at the last event. The result is x, y, and a third word. reDM2 calls the third word "cursor height". We call it the button state (`g_mouse_buttons`, `0x7f0ae`). See the open conflicts in `docs/reference-crosscheck.md`.
+- `0x0e`: the first buffer word is an input. `0` gives the live pointer position. Other values give the position at the last event. The result is x, y, and a third word. reDM2 calls the third word "cursor height". We call it the button state (`g_mouse_buttons`, `0x7f0ae`). See the open conflicts in `docs/reference/reference-crosscheck.md`.
 - `0x12`: the driver does nothing. `SKULL.EXE` then reads buffer word 0, which the driver keeps up to date. Our name `disk_get_drive_status` stays, because the game uses that word as the drive status.
 - `0x14`: the driver first writes a zero byte. If the drive has no volume label, the result is an empty string.
 - `0x2e`: the result is the linear address of a 6-word sound configuration record, filled from `SKULL.CFG`: `+0` digital device ID, `+2` IRQ, `+4` DMA, `+6` port, `+8` MIDI device ID, `+0x0a` MIDI port. `sound_init` stores the address at `0x7ef2c`.

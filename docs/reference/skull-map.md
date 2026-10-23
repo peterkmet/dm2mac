@@ -4,11 +4,11 @@ This page is the reference map of `SKULL.EXE` for the C port. It lists the progr
 
 Related files:
 
-- `docs/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
+- `docs/reference/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
 - `docs/skull-formats.md`: file formats, sound, music, the SVGA option, and the PIT rate.
-- `docs/skull-notes/`: per-range analysis notes (layout, data structures, open questions).
-- `docs/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
-- `reference/decomp/SKULL.c`: Ghidra output with the names from `docs/skull-symbols.csv` (`tools/decompile-skull.sh`).
+- `docs/reference/symbols/`: per-range analysis notes (layout, data structures, open questions).
+- `docs/reference/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
+- `reference/decomp/SKULL.c`: Ghidra output with the names from `docs/reference/skull-symbols.csv` (`tools/decompile-skull.sh`).
 
 Conventions:
 
@@ -72,7 +72,7 @@ Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_s
 
 `SKULL.EXE` calls `INT 0xFC` with the function number in EAX and an argument in EBX. The real-mode program `IBMIOP.EXE` serves the call. The shared buffer is `g_iop_buffer` (`0x8048c`), set by `iop_init_shared_buffer` from `g_iop_info` (`0x7618c`) + `0x3ec`. The port platform layer replaces every function in this table.
 
-The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go to one exit that does nothing. Bit `0x100` selects a second table (functions `0x103`-`0x10a`). The call keeps all registers; every result comes back through the shared buffer. Source for the driver side: reDM2 (`docs/reference-crosscheck.md`).
+The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go to one exit that does nothing. Bit `0x100` selects a second table (functions `0x103`-`0x10a`). The call keeps all registers; every result comes back through the shared buffer. Source for the driver side: reDM2 (`docs/reference/reference-crosscheck.md`).
 
 | EAX | Function | Caller |
 |---|---|---|
