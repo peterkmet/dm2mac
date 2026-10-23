@@ -76,7 +76,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 - To cast: `set_caster` with the `champion`, then `add_rune` with `symbol` 0-5 for each rune, then `cast`. The symbol is the place of the rune in the set of the next rune. `state.spell` gives `caster`, `chosen` (the rune names), and `available[]` (`rune`, `name`, `mana`): the runes of the next set and the mana that each costs this caster.
 - A stronger power rune makes a stronger spell and costs more mana.
-- Chosen runes stay after a failed cast. Before you add runes, check `state.spell.chosen` and send `delete_rune` until it is empty.
+- Chosen runes stay after a stopped or failed cast. Before you add runes, check `state.spell.chosen` and send `delete_rune` until it is empty.
 - The spell kinds are potions, projectiles, party auras, summons, and others. Hint: a potion spell needs an empty flask in a hand.
 - Scrolls (`text` of the object) and wall texts teach spells. Write each spell in `spells.md`.
 - `set_caster`, `set_leader`, and `swap_champions` need the action menu or panel closed: send `pass` first.
@@ -184,7 +184,6 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 - A script must not loop over `get_state`, `get_view`, `wait`, or `act`: each turn is your decision.
 - Ask for `get_map` only when you plan a route: one `get_map` per route plan, not one per step. The `act`, `act_many`, and `wait` responses already contain the state and the view.
 - The view gives wall texts (`text`), locks (`lock`), and shops (`shop`). Use screenshots to read the minion map, a shop display, or a dialog, and to check a suspected bug.
-- Chosen runes stay after a stopped or failed cast. Before you add runes, check `state.spell.chosen` and send `delete_rune` until it is empty.
 
 ### Commands you use most
 
@@ -268,6 +267,8 @@ The response has `ran` (the number of turns that ran) and `stopped`. The checks 
 | `done` | All items ran. |
 
 After a batch, `action_damage` is a list with one value for each `choose_action`, and `look` has the text of the last `look` only.
+
+`health_lost`: a list with one value for each champion: the health that the champion lost since the start of the request. It is only in the response when a champion lost health.
 
 ### Bump
 
@@ -375,8 +376,6 @@ A chest in a hand opens with `choose_action` on that hand. `state.chest` lists t
 ### Look
 
 The response of `look` has `look: {name, lines}`: the texts of the eye panel. `name` is the object name; `lines` are the description lines, for example the weight and the gauges as `<word> <value>/<maximum>`: `charges`, `strength`, `throw`, `armour`, `power`. A money box gives the coin counts and `total`; a chest gives its items. A scroll gives its name, its weight, and its text; the scroll text is also in the state (`text` of the object).
-
-`health_lost`: a list with one value for each champion: the health that the champion lost since the start of the request. It is only in the response when a champion lost health.
 
 ### Cells
 

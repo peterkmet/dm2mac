@@ -104,7 +104,16 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
 
 ## Add a game rule
 
-See [Add a game rule](architecture.md#add-a-game-rule).
+1. Find the original function in [skull-symbols.csv](reference/skull-symbols.csv) and its code in
+   `reference/decomp/SKULL.c`.
+2. Write the rule in the engine module that owns the data.
+3. Name every value (rule 3.1 of [coding-standard.md](coding-standard.md#3-constants)).
+4. Change the user interface only through the redraw flags or a member of `g_hooks`.
+5. Write a differential test in `tests/differential/`: the same input through the port (the test library) and
+   the original in the emulator (`dm2tools.emu`); compare the state.
+6. Record a deviation from the original in the "Deviations from the original" section of the rule page in
+   [docs/rules/](rules/).
+7. Run `make check`.
 
 ## Manual checks
 

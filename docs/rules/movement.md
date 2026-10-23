@@ -5,9 +5,6 @@ The rules of the main loop, the input, and the movement: the timing and the game
 ## Timing and the game step
 
 - The PIT runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), every timer tick while the party sleeps.
-- The names of the inventory zones `ZONE_EYE` (`0x221`) and `ZONE_MOUTH` (`0x222`) in `data/ids.h` are swapped against the input table: the input table gives zone `0x221` to the mouth command `0x46` and zone `0x222` to the eye command `0x47` ([champions.md](champions.md#deviations-from-the-original)). The port keeps the names. The `look` action presses the zone of the eye command in the input table (`input_command_rect`).
-- A turn gives a command as a click on the top left pixel of its first zone in the current input mode (`input_simulate_command_click`). The zone of `CMD_LEADER_INVENTORY` (`0x52`) is the whole screen, and a click there hits the status box of champion 0 first. The `sleep` action therefore opens the inventory of the leader with its status box command (`0x07` + leader).
-- `choose_action` on a hand that holds a money box, a chest, or a minion map gives only the hand click: the hand opens the panel of the item, not an action menu, and `index` is not used.
 - `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `ui/play.c` into `step_before_input` and `step_after_input`. What `play_tick` and the two parts run is in [architecture.md](../architecture.md#the-game-step).
 - The calls of the rules into the interface: [architecture.md](../architecture.md#hooks-between-layers).
 - Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop running and clears `g_main_loop.running`.
