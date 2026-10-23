@@ -244,7 +244,7 @@ The globals of the game:
   (`engine/timeline.h`), and the random seed `g_random_seed` (`engine/random.h`). The dungeon records are
   `static` in `engine/dungeon.c`; the other modules read and write them through the `dungeon_` and `thing_`
   functions.
-- `g_party` (`engine/move.h`): the movement state of the party and of the dungeon reads.
+- `g_party` (`engine/move.h`): the movement state of the party, and the current map of the square reads (`cur_map`).
 - `g_main_loop` (`engine/game.h`): the step timing, the pause, the end of the game, and the quit.
 - `g_session` (`engine/game.h`): the state of one run: the folders, the slot of the last load or save, and the
   exit code. The save file does not hold it.

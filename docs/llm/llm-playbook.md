@@ -61,7 +61,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Each base skill has 4 sub-skills. The state does not show them; a sub-skill grows with its base skill. Known from the code: fighter has swing and parry; ninja has steal, fight, throw, and shoot. Hint: the other sub-skills are as in Dungeon Master: fighter thrust and club; priest identify, heal, influence, and defend; wizard fire, air, earth, and water.
 - Fighter: hand-to-hand attacks. Ninja: fast attacks, throwing, shooting, stealing. Priest: healing, potions, protection. Wizard: attack spells.
 - A new level gives more health, stamina, or mana and better statistics.
-- Before the way to a new level, follow the training rule in `progress.md`.
+- Before you go to a new level, follow the training rule in `progress.md`.
 
 ## Magic
 

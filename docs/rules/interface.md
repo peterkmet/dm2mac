@@ -18,7 +18,7 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 
 ## Message area
 
-- 3 rows in zone 15, 7 pixels apart, with `g_message_area_y = (zone height - 20) / 2` above the first row. A row clears 90 game ticks after its last text (`g_message_expiry`).
+- 3 rows in zone 15, 7 pixels apart, with `g_message_area_y = (zone height - 20) / 2` above the first row. A row clears 90 game steps after its last text (`g_message_expiry`).
 - A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, IBMIOP service `0x105` moves the area up by one row; then the first 6 rows of the row bitmap go to the bottom 6 rows of the area.
 - Text before a `\n` goes to the next row; a wrapped line goes on at column 12.
 
