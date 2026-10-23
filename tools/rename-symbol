@@ -29,7 +29,7 @@ if [ ${#files[@]} -eq 0 ]; then
         exit 1
     fi
     while IFS= read -r f; do files+=("$f"); done < <(
-        git ls-files 'src/*.c' 'src/*.h' 'tests/*.py' 'docs/**/*.md' 'docs/reference/skull-symbols.csv' CLAUDE.md |
+        git ls-files 'src/*.c' 'src/*.h' 'tests/*.py' 'docs/*.md' 'docs/reference/skull-symbols.csv' CLAUDE.md |
             grep -v -e '^src/third_party/' -e '^docs/superpowers/' -e '^docs/reference/symbols/')
 fi
 for f in "${files[@]}"; do
