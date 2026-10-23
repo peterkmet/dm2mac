@@ -57,6 +57,7 @@ bool automap_is_pressure_pad(int16_t map, int16_t x, int16_t y)
         case FLOOR_PARTY:
         case FLOOR_CREATURE:
         case FLOOR_PARTY_POSSESSES:
+        case FLOOR_ITEM:
             return true;
         }
     }

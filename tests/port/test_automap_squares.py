@@ -13,7 +13,7 @@ FAKE_WALL, FAKE_WALL_OPEN, FLAG_0, FLOOR = C.SQUARE_FAKE_WALL, C.SQUARE_FAKE_WAL
 THING_SENSOR = 3
 FLOOR_ANY = 0x01
 SENSOR_TYPE_MASK = 0x7F  # the sensor type is bits 0-6 of the type word
-STEP_TYPES = (FLOOR_ANY, 2, 3, 7, 8)  # floor sensors that a step triggers
+STEP_TYPES = (FLOOR_ANY, 2, 3, 4, 7, 8)  # floor sensors that a step or an item triggers
 ORNAMENT_SHIFT = 12  # the ornament ordinal is bits 12-15 of the sensor flags (0: none)
 
 
