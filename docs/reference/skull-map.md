@@ -290,7 +290,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 - `gfx_blit(src, dst, rect, src_x, src_y, src_width, dst_width, transparent, mirror, src_bpp, dst_bpp, colormap)`: `transparent < 0` = opaque; mirror 0 none, 1 horizontal, 2 vertical, 3 both.
 - View square (`0x12` bytes, `g_view_squares` `0x80040`, 23 entries): [view.md](../rules/view.md#view-square-record-and-the-view).
 - Viewport click zone (12 bytes, `g_view_click_zones` `0x7f2ec`): `+0` rect, `+8` thing, `+0x0a` cell or side, `+0x0b` kind.
-- Mouse area (10 bytes, `0x722d4`): `+0` zone, `+2` cursor kind, `+3` flags, `+4`/`+5` enter and leave commands, `+6` node pointer.
+- Mouse area (10 bytes, `0x722d4`): `+0` zone, `+2` cursor kind, `+3` flags, `+4`/`+5` enter and leave events, `+6` node pointer.
 - Text glyph: 6 × 6 pixels from `g_font_bitmap` (`0x80414`, GDAT `(1,0,7,0)`).
 
 ### Input and commands

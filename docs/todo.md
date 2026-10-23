@@ -34,3 +34,4 @@
 - ONE-HIT KILL (`src/engine/creature.c`): `kills` forces an immediate creature update also for a creature that cannot be hurt (defense 0xff), so it acts at once instead of at its scheduled time. Add `info->defense != CREATURE_NO_HURT` or note it in the doc.
 - `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.
 - `tools/ghidra/decompile.sh` runs `CreateFunctionAfterTerminals.java`, which is not in `tools/ghidra/`; add the script or remove the step.
+- Check in `SKULL.EXE` whether the key table rows with language nibble 0 load for every language (`docs/reference/skull-map.md`, "GDAT database in memory").
