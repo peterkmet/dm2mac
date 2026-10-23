@@ -1878,8 +1878,13 @@ static void show_move_arrow(int entry, int zone, bool pressed)
 
 void input_release_move_arrow(void)
 {
-    if (in.arrow_pressed)
+    /* the push arrow under the mouse stays pressed; after the push mode the arrows are already drawn released */
+    if (!in.arrow_pressed || (g_party.push_mode && g_party.push_arrow != PUSH_ARROW_NONE))
+        return;
+    if (g_party.push_mode)
         show_move_arrow(in.arrow_entry, in.arrow_zone, false);
+    else
+        in.arrow_pressed = false;
 }
 
 void input_update_viewport_arrow(void)
@@ -1896,6 +1901,7 @@ void input_update_viewport_arrow(void)
         return;
     int x = g_input_mouse_x - r[RECT_X], y = g_input_mouse_y - r[RECT_Y];
     move_set_push_arrow(PUSH_ARROW_NONE);
+    input_release_move_arrow();
     if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
         return;
     int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
