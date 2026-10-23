@@ -58,7 +58,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 
 ## Main loop
 
-`game_loop` (`0x24691`). `g_tick_threshold` (`0x7f268`) is set to 8 game ticks per step. One iteration is one game step:
+`game_loop` (`0x24691`). `g_tick_threshold` (`0x7f268`) is set to 8 timer ticks per step. One iteration is one game step:
 
 1. `timeline_process` (`0x59a5c`): runs all due events.
 2. `world_update_day_night(0)` (`0x5a073`): hour light and weather.

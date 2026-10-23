@@ -35,9 +35,9 @@ controls, the cheats, and the options menu.
 ## Let an LLM play
 
 ```sh
-build/dm2 --mode turnbased --control /tmp/dm2.sock
-DM2_CONTROL=/tmp/dm2.sock uv run dm2-play --brief get_state
-DM2_CONTROL=/tmp/dm2.sock uv run dm2-play act move_forward
+build/dm2 --mode turnbased --saves playthroughs/current/game
+uv run dm2-play --brief get_state
+uv run dm2-play act move_forward
 ```
 
 [LLM mode: play over the control socket](docs/llm/llm-mode.md) has the protocol, the actions, and the setup.

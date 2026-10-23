@@ -18,7 +18,7 @@ Details: `docs/development.md`.
 ## Layout
 - `src/`: the C port in five layers (`data/`, `engine/`, `ui/`, `control/`, `platform/`; headers in `<layer>/include/`, vendored OPL3 in `src/third_party/opl3/`); the root `Makefile` builds `build/dm2` and `build/libdm2.dylib`, and with `make windows` `build/dm2.exe`.
 - `tools/dm2tools/`: Python tools: LE loader, emulator harness (unicorn), data formats.
-- `tests/`: `differential/` (the port against the original in `dm2tools.emu`), `port/` (port only), `tools/` (the Python tools), `standard/` (`test_standard.py` checks the coding standard); `dm2test/` holds the shared helpers.
+- `tests/`: `differential/` (the port against the original in `dm2tools.emu`), `port/` (port only), `tools/` (the Python tools), `standard/` (`test_standard.py`, `test_docs.py`, `test_vocabulary.py` check the coding standard, the doc links and the protocol vocabulary); `dm2test/` holds the shared helpers.
 - `docs/`: `manual.md` (player manual), `architecture.md`, `development.md`, `decompiling.md`; folders `formats/`, `rules/`, `llm/`, `reference/`, `images/`.
 - Git-ignored data: `game/` (original files), `reference/` (incl. `reference/decomp/SKULL.c`, the Ghidra output of `tools/decompile-skull.sh`), `tests/saves/`. Link them into a new worktree.
 

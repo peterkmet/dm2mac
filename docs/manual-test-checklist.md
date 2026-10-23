@@ -186,7 +186,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - [ ] J6. Save into an empty slot and type a name. Expected: the slot shows the name; `game/DATA/SKSAVEn.DAT` exists.
 - [ ] J7. Quit, start `build/dm2`, and load the save. Expected: "LOADING GAME...", then "GAME LOADED, READY TO PLAY"; the game continues in the same state.
 - [ ] J8. Save with an object in the leader hand, a magic light, and an aura; load. Expected: the object is back in the hand; the light and the aura continue.
-- [ ] J9. Choose QUIT more than 100 ticks after the last save. Expected: the program asks before the quit; then the end picture shows until a click.
+- [ ] J9. Choose QUIT more than 100 game steps after the last save. Expected: the program asks before the quit; then the end picture shows until a click.
 - [ ] J10. Choose RESTART. Expected: the program starts again with the start menu, even when it started with `--save`.
 - [ ] J11. Open a champion's inventory and click the speaker button (zone 0x238, command 0x8d); the dialog has no key. Expected: the sound and music volumes go from 0 to 7.
 - [ ] J12. Rename a champion with the name editor. Expected: the keys edit the name and the title.
@@ -218,7 +218,7 @@ Details: [Advanced features](manual.md#advanced-features).
 - [ ] L7. Delete `game/DATA/QUICK.DAT` and press F9. Expected: "NO QUICK SAVE"; the game goes on.
 - [ ] L8. Write some bytes of garbage into `game/DATA/QUICK.DAT` and press F9. Expected: "QUICK SAVE DAMAGED"; the game goes on unchanged.
 - [ ] L9. Press F5 and F9 with an open inventory, in the options menu, during the pause (vanilla mode, Esc), during the sleep, and in the save menu. Expected: nothing happens.
-- [ ] L10. Load a slot, play more than 100 ticks, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
+- [ ] L10. Load a slot, play more than 100 game steps, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
 - [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
 - [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla, advanced, or turnbased" and exit code 2.
 - [ ] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, and the direction. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.

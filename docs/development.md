@@ -66,7 +66,8 @@ To run several files, add `-n auto`.
 | `tests/differential/` | The same input through the port (`ctypes` on `build/libdm2.dylib`) and through the original in the emulator `dm2tools.emu` gives the same state. |
 | `tests/port/` | The port code by itself. |
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
-| `tests/standard/` | The coding standard (`test_standard.py`). |
+| `tests/standard/` | The coding standard (`test_standard.py`), the relative links of the docs (`test_docs.py`), and the protocol vocabulary of [llm-mode.md](llm/llm-mode.md) (`test_vocabulary.py`). |
+| `tests/differential/test_creature.py` | The views of running creatures against the original. The view tests give the original zeroed active groups, because they draw without active groups. |
 
 The tests of the control socket and the turn-based mode:
 
