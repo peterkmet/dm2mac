@@ -121,7 +121,7 @@ The advanced mode adds these keys:
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
-The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In the dungeon view `Esc` opens the options menu. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). The vanilla mode pauses. The automap, the cheat screen, and the options menu do not open together.
+The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In the dungeon view `Esc` opens the options menu. There the advanced keys work only without a recruit candidate and with an idle party: no held eye or mouth, no champion drag, and no push mode. Otherwise they do nothing, and `Esc` does not pause either. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). The vanilla mode pauses. The automap, the cheat screen, and the options menu do not open together.
 
 ## Modes
 
