@@ -11,7 +11,7 @@ The songs of the game: the HMP song items in `GRAPHICS.DAT` ([graphics.md](graph
 The code and the data show this:
 
 - `FUN_0001095d` at `0x10999`: `mov eax,4; mov edx,song; mov ebx,3; xor ecx,ecx; call 0x3c92e` (exists), then `0x3f573` (size) and `0x3ecc7` (pointer). It copies the item to `DAT_000704da` and calls `FUN_0005f6ad` (`sosMIDIInitSong`), `FUN_0005fed2` (`sosMIDIStartSong`), and `FUN_00062012(handle, 0x7f)` (song volume).
-- Song items start at `file+0x7bd597` (song 0) to `file+0x83b356` (song 17). Every item begins with `HMIMIDIP013195`.
+- In file order, the song items go from `file+0x7bd597` (song 0) to `file+0x83b356` (song 17). Every item begins with `HMIMIDIP013195`.
 - `FUN_00010010` loads `DATA\SONGLIST.DAT` (`0x70019`) into `DAT_0007ef78`, at most `0x3f` bytes.
 - The main loop calls `FUN_00010af6(DAT_0007f260 >> 16)` once per game step (`FUN_00024691`, `game_loop`). `DAT_0007f260 >> 16` is the current map index. It also indexes the 16-byte map records at `DAT_0007f3c4`.
 - `SONGLIST.DAT` bytes 0 to 45: `2 17 14 27 4 12 12 18 15 13 12 12 16 6 21 14 17 17 17 17 3 8 17 14 2 23 22 20 17 0 2 2 2 9 2 3 14 16 28 22 19 9 22 3 17 2`.
@@ -23,7 +23,7 @@ The code and the data show this:
 1. `new = SONGLIST[map]`. If `new` equals the current song (`DAT_0007050e`), nothing changes.
 2. If no song plays, or a fade is active, the new song starts now.
 3. Otherwise a fade starts: the fade counter is `0x7f`. Each call sets the song volume to the counter and decrements it. At counter `1`, the new song starts.
-4. `FUN_0001095d(0)` starts no song. Song 0 is never started through this path.
+4. A `SONGLIST.DAT` byte 0 starts no song (`FUN_0001095d(0)`), so GDAT song 0 never plays through this path.
 
 Music master volume, `FUN_00010736(level 0..7, 10)`: `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
 

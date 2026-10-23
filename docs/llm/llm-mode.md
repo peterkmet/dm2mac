@@ -14,13 +14,13 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([Modes](../man
 
 1. Build the port.
 
-   ```bash
+   ```sh
    make
    ```
 
 2. Start the game with the socket. The dummy drivers run it without a window and without sound.
 
-   ```bash
+   ```sh
    SDL_AUDIO_DRIVER=dummy SDL_VIDEO_DRIVER=dummy build/dm2 --control ~/.dm2/control.sock --save tests/saves/start.DAT &
    ```
 
@@ -69,13 +69,13 @@ uv run dm2-play [--socket PATH] [--brief] act_many '<json-list>'
 - `--brief` (before the command) prints a short text summary instead of the JSON: the turn (`ticks`, `ran`, `stopped`, `error`, `game_over`, `action_damage`, `health_lost`, `path`, and `BUMPED`), the `look:` line, the `seen:` line, the party position, the leader hand, the candidate, each champion, the open panels, the messages, and the squares ahead (side words: `left` and `right`, `far left` and `far right` at 2 squares from the lane, `outer left` and `outer right` at 3 squares). For `get_map`, it prints the `grid`.
 - The exit code is 1 when the reply has `"ok": false`, even when the game is not reachable.
 - A relative screenshot `path` becomes an absolute path before it goes to the game, because the game runs in another directory.
-- Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`. The default folder is `playthroughs/current/coordinator`. The log is written only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off. Run `dm2-play` in the repository root, otherwise the relative folder does not exist.
+- Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`. The default folder is `playthroughs/current/coordinator`. `dm2-play` writes the log only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off. Run `dm2-play` in the repository root, otherwise the relative folder does not exist.
 
 Python code can use `dm2tools.control_client.request(payload, path=None, timeout=150.0)`.
 
 Examples of the real-time modes:
 
-```bash
+```sh
 uv run dm2-play state
 uv run dm2-play key '{"key": "up"}'
 uv run dm2-play wait '{"ticks": 60}'
@@ -103,11 +103,11 @@ uv run dm2-play new_game
 - A client sends one JSON object per line and gets one JSON object per line.
 - Each request has a `cmd` field.
 - A successful reply has `"ok": true`. A failed reply is `{"ok": false, "error": "<reason>"}`.
-- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte. A client that connects again right after a reply is not refused with `busy`.
+- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte. A client that connects again right after a reply does not get `busy`.
 - While a turn or a wait runs, the game reads no next request.
 - A request line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error. Replies have no size limit.
 - String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is. In the turn-based commands, a string value cannot contain a `"` character.
-- The parser is flat: it finds `"field": value` anywhere in the line. The keys in `args` of the turn-based mode are found the same way. Do not nest other objects.
+- The parser is flat: it finds `"field": value` anywhere in the line, also the keys in `args` of the turn-based mode. Do not nest other objects.
 - Positions are game screen pixels: `x` 0 to 319, `y` 0 to 199.
 
 ## Commands
@@ -233,7 +233,7 @@ A game step takes 8 ticks. A step forward needs about 40 ticks before the party 
 
 ### screenshot
 
-Writes a PNG file of 320 x 200 pixels: the screen with the palette and the cursor at the pointer. The cursor is the original cursor image that the window shows there: the arrow, the hand, the held object with its shadow, or the dragged champion. The pointer is the window pointer until a click or move request moves it. In `build/dm2` the pointer starts at (0, 0), so the first screenshot has the cursor in the top left corner. The reply gives the absolute path.
+Writes a PNG file of 320 × 200 pixels: the screen with the palette and the cursor at the pointer. The cursor is the original cursor image that the window shows there: the arrow, the hand, the held object with its shadow, or the dragged champion. The pointer is the window pointer until a click or move request moves it. In `build/dm2` the pointer starts at (0, 0), so the first screenshot has the cursor in the top left corner. The reply gives the absolute path.
 
 ```json
 {"cmd": "screenshot", "path": "/tmp/shot.png"}
@@ -245,7 +245,7 @@ Writes a PNG file of 320 x 200 pixels: the screen with the palette and the curso
 
 ### quit
 
-Ends the program the same way as a closed window. The exit code is 0 in the game. The socket file is removed.
+Ends the program the same way as a closed window. The exit code is 0 in the game. The game removes the socket file.
 
 ```json
 {"cmd": "quit"}
@@ -277,7 +277,7 @@ Ends the program the same way as a closed window. The exit code is 0 in the game
 - A failed request changes nothing in the game, except a failed `load` (see [Deviations from the original](#deviations-from-the-original)).
 - `key`, `click`, `press`, `release`, `command`, and `move` are refused: `use act in turnbased mode`. Use `act click` and `act key`.
 - An unknown `cmd` gives `unknown cmd`. A request without `cmd` gives `missing cmd`.
-- `act`, `act_many`, `wait`, and `save` give `game over` after a game over. `get_state`, `get_view`, `get_map`, `state`, `load`, and `new_game` still work.
+- `act`, `act_many`, `wait`, and `save` give `game over` after a game over. The other commands still work.
 - `save` gives `answer the candidate first (act recruit)` while a champion candidate shows, and `cannot write the save file` when the write fails. `save` is allowed with no champion.
 - `load` gives `no saved game (use save first)` when `QUICK.DAT` does not exist, `the saved game is damaged` when it does not load, and `cannot write QUICK.TMP: nothing loaded` when the game cannot keep a copy of the running game. The game goes on unchanged. When the copy also does not load, the game is lost (see below).
 - `load` and `new_game` also work after a game over. Each ends the old game without a question. After `load`, the game time is the time of the save plus 1 (see [Deviations from the original](#deviations-from-the-original)).
@@ -293,7 +293,7 @@ An `act` turn does these steps:
 2. It runs the game one game step per frame (`g_game.game_time` grows by 1). One tick of the turn protocol is one game step.
 3. It ends when at least `TURN_MIN_TICKS` (2) steps ran, all inputs are given, the input is idle, and the party can move again (no move cooldown, no walk in progress, no wait of the input). It also ends after `TURN_MAX_TICKS` (64) steps, and immediately when the game is over.
 
-A game that does not tick (a dialog) ends a turn after `FRAMES_PER_TICK_LIMIT` (16) frames for each tick of the limit. The game rules do not change.
+A game that does not tick (a dialog) ends a turn after `FRAMES_PER_TICK_LIMIT` (16) frames for each step of the maximum of the turn (`TURN_MAX_TICKS`, or the `ticks` of `wait`). The game rules do not change.
 
 A `wait` turn runs `ticks` game steps (`TURN_WAIT_MAX_TICKS` is 5000). It ends early when news arrives. The real-time [wait](#wait) keeps its own limit of 6000 timer ticks.
 
@@ -320,7 +320,7 @@ The reply of `act` has `stopped` only when the dungeon displaced the party:
 
 ### Batches
 
-`act_many` takes `actions`, a list. An item is an action name (`"turn_left"`) or an object (`{"action":"take_object","args":{"cell":2}}`). Items are separated by spaces and commas only. A string holds no `"` character.
+`act_many` takes `actions`, a list. An item is an action name (`"turn_left"`) or an object (`{"action":"take_object","args":{"cell":2}}`). Only spaces and commas separate the items. A string holds no `"` character.
 
 The batch runs the items in order, one turn each. After each turn it stops when one of these is true. The checks run in this order:
 
@@ -366,14 +366,14 @@ The reply of a batch has `ran` (the turns that ran), `stopped`, `error` (only wi
 | `time`, `game_mode`, `mode` | The game step, `turnbased`, and the input mode (`menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`). |
 | `dialog` | `{id, buttons}` while `mode` is `dialog`, otherwise `null`. |
 | `party` | `map`, `level`, `x`, `y`, `facing`, `darkness`, `can_move`, `sleeping`, `dead`. |
-| `leader`, `leader_hand` | The index of the leader and the object in its hand. |
+| `leader`, `leader_hand` | The index of the leader and the object in its hand; `null` for none. |
 | `candidate` | The champion that a mirror shows, with the fields of a champion, otherwise `null`. A candidate is not in `champions`. |
-| `champions` | The members: `index`, `name`, `title`, `alive`, `health`, `stamina`, `mana` (each `[value, maximum]`), `food`, `water`, `load_kg`, `position`, `poisoned`, `statistics`, `skills`, `wounds`, `slots`, `hands`, `runes`, `busy`. |
+| `champions` | The members: `index`, `name`, `title`, `alive`, `health`, `stamina` (the stored value divided by 10), `mana` (each `[value, maximum]`), `food`, `water`, `load_kg`, `position`, `poisoned`, `statistics`, `skills`, `wounds`, `slots`, `hands`, `runes`, `busy`. |
 | `action_menu`, `spell`, `inventory`, `chest`, `money_box`, `minion_map` | The open panel, otherwise `null`. |
 | `messages` | The text of the message rows. |
 | `outdoor`, `weather`, `day_time` | The sky, only outdoors. |
 
-Slot names (`slots[].where`): `ready_hand` (0), `action_hand` (1), `head`, `torso`, `legs`, `feet`, `ready_quiver_1`, `ready_quiver_2`, `action_quiver_1` to `action_quiver_4`, `neck`, and `backpack_1` to `backpack_17`. The chest slots are 30 to 37. The slot numbers are in `slots[].slot`; `put_in_slot`, `take_from_slot`, and `look` use them.
+The slot names (`slots[].where`) are in slot number order in [Protocol vocabulary](#protocol-vocabulary). The chest slots are 30 to 37. The slot numbers are in `slots[].slot`; `put_in_slot`, `take_from_slot`, and `look` use them.
 
 `get_view` gives the squares that the party sees now (the seen rule), with `facing`, `darkness`, `squares` (each with `depth`, `side`, `x`, `y`, `element`, and, where the view draws them, `creatures`, `objects`, `flying`, `door`, `button`, `floor_ornament`, `front_face`, `side_face`), `piles` (the objects of cells 0 to 3, top first), `alcove` (cell 4), and `wall_ahead_clickable`. It shows no creature health and nothing behind a wall.
 
@@ -416,7 +416,7 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 | `sleep` | none | Opens the inventory of the leader through its status box, then sleeps. | `no leader`, `the inventory cannot open now` |
 | `wake` | none | Wakes the party. | `the party cannot wake now` |
 | `swap_champions` | `a`, `b` | The two champions swap cells. | `a and b must be living champions`, `a and b must be different champions` |
-| `look` | optional `champion`, `slot` | Holds the eye on the leader hand object. With `slot`, the hand takes the slot object first and puts it back after. The reply has `look`. | `open an inventory first (open_inventory): the eye is in the inventory`, `the leader hand is empty: take an object, or give champion and slot`, `the leader hand must be empty to look at a slot`, `no object in this slot` |
+| `look` | optional `slot`, `champion` (default the open inventory) | Holds the eye on the leader hand object. With `slot`, the hand takes the slot object first and puts it back after. The reply has `look`. | `open an inventory first (open_inventory): the eye is in the inventory`, `the leader hand is empty: take an object, or give champion and slot`, `the leader hand must be empty to look at a slot`, `no object in this slot` |
 | `take_coin` | `slot` 0-5 | One coin of the open money box goes to the leader hand. | `open a money box first (choose_action on the hand that holds it)`, `slot must be 0-5`, `no coin in this slot` |
 | `minion_map_option` | `option` 0-3 | Toggles an option of the open minion map. | `open a minion map first`, `this minion map has no options`, `option must be 0-3` |
 | `click` | `x` 0-319, `y` 0-199, optional `button` (`left` or `right`) | A raw click at a screen point. | `x must be 0-319 and y 0-199`, `button must be left or right` |
@@ -483,6 +483,8 @@ Each line lists the names of one table of the protocol, in table order.
 
 ## Deviations from the original
 
+- The names of the inventory zones `ZONE_EYE` (`0x221`) and `ZONE_MOUTH` (`0x222`) in `data/ids.h` are swapped against the input table: the input table gives zone `0x221` to the mouth command `0x46` and zone `0x222` to the eye command `0x47` ([champions.md](../rules/champions.md#deviations-from-the-original)). The port keeps the names. The `look` action presses the zone of the eye command in the input table (`input_command_rect`).
+- A turn gives a command as a click on the top left pixel of its first zone in the current input mode (`input_simulate_command_click`). The zone of `CMD_LEADER_INVENTORY` (`0x52`) is the whole screen, and a click there hits the status box of champion 0 first. The `sleep` action therefore opens the inventory of the leader with its status box command (`0x07` + leader).
 - The port keeps the text of each message row next to its pixels (`text_message_row`). The original has only the pixels and the expiry time of each row. The text moves up and clears with the row.
 - `ui_object_info_lines` gives the eye panel of an object as text lines. The panel shows some parts only as pictures; the text uses these English words for them: `charges` (charges gauge), `strength` (weapon strength gauge), `throw` (weapon throw power gauge), `armour` (armour class gauge), `power` (potion power gauge), and `total` (the total value of a money box). A gauge line is `<word> <value>/<maximum>`.
 - In these lines, the items of a chest and the coin counts of a money box (`<coin name> <count>`) go after each other, separated by a comma, as many to a line as fit. The panel shows them as icons and numbers in slots. A scroll gives its name and weight before its text; the panel shows only the text. More than 8 lines are cut off.
@@ -490,11 +492,16 @@ Each line lists the names of one table of the protocol, in table order.
 - The skill ranks of the JSON are the texts of the skills panel. The panel shows the master ranks with a power rune glyph of the font (`` ` `` and `a` to `e`, characters `0x60` to `0x65`); the JSON gives the upper-case rune name for it: `LO`, `UM`, `ON`, `EE`, `PAL`, `MON` (`LO MASTER FIGHTER`).
 - The slot dialogs (`0x80` load, `0x81` save) do not set the dialog id (`g_dialog.id`); the JSON gives the id and the button texts of the last dialog that `dialog_draw` drew.
 - The JSON names the champion slots by their place in the inventory picture: `ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`, `neck` (10); the slots that the ready hand loads from, `ready_quiver_1` (11) and `ready_quiver_2` (6); the slots that the action hand loads from, `action_quiver_1` (12) to `action_quiver_4` (7, 8, 9); the backpack, `backpack_1` (13, left of the second row) to `backpack_17` (14 to 21 in the first row, 22 to 29 in the second).
-- The weather of the JSON uses the thresholds of the sky pictures: clouds from the cloud cover (`light` from 64, `medium` from 128, `heavy` from 192), rain from the sky darkness (16, 64, 128), wind as the direction of `g_game.wind_dir`. The JSON gives only the weather that the player sees: rain or clouds are `none` when the sky set of the map has no rain or cloud picture, and `wind` is present only while falling rain shows over the view (its slant shows the wind). The time of day comes from the light of the hour: 1 `day`, 5 `night`, otherwise `dawn_dusk`.
+- The weather of the JSON uses the thresholds of the sky pictures:
+  - `clouds` from the cloud cover: `light` from 64, `medium` from 128, `heavy` from 192;
+  - `rain` from the sky darkness: `light` from 16, `medium` from 64, `heavy` from 128;
+  - `wind`: the direction of `g_game.wind_dir`.
+- The JSON gives only the weather that the player sees: rain or clouds are `none` when the sky set of the map has no rain or cloud picture, and `wind` is present only while falling rain shows over the view (its slant shows the wind).
+- `day_time` comes from the darkness of the hour (`g_weather.hour_light`, 1 to 5): 1 is `day`, 5 is `night`, otherwise `dawn_dusk`.
 - The view JSON (`state_json_view`) gives the squares of the seen rule (`seen_visible`), from the walk position while the party walks. It gives only what the view draws there (`view_draws`): wall faces as the wall face table of the view (`side_face`, `front_face`); creatures, objects, missiles, and explosions only on the view positions and square aspects that draw them (no things at depth 2 side 2; at depth 4 only creatures, only on a floor, pit, teleporter, or door seen from the front, nothing at side 3; nothing on a door seen from the front beside the party; no creature on the party square while the party walks); a floor ornament from depth 0 to 3 (the party row too, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key; a door button only to depth 3. The element, door state, and map glyph show at every depth, as the automap shows them.
 - A wall face gives what its ornament (the one that `aspect_get` gives the face) holds, by the ornament kind and value keys: `mirror` (portrait kind), `alcove`, `shop`, `fountain` (the touch key). Otherwise `switch` (a click sensor with an ornament, or a hand switch text) and `lock` (the ornament index of a sensor or an item holder text that takes an object); otherwise `ornament` (the index). A text plate gives `text` on the front face and `null` on a side face or for a hidden text, as the view draws text only on a front plate. `shop` is the name of the item that the display shows, `true` before the display chose an item.
 - Each creature group of a square is one entry with `count` 1: a DM2 group record holds one creature. The JSON has no creature names, wall ornament names, or floor ornament names (the game data has none); it gives the index.
-- `piles` lists the object zones 0 to 3 of the last drawn view (cells seen from the party: 0 and 1 on the party square, 2 and 3 on the square ahead), `alcove` the alcove zone ahead as cell 4; both are empty and `wall_ahead_clickable` is false while the inventory hides the view.
+- `piles` lists the object zones 0 to 3 of the last drawn view (cells seen from the party: 0 and 1 on the party square, 2 and 3 on the square ahead), `alcove` the alcove zone ahead as cell 4. While the inventory hides the view, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is false.
 - The view JSON lists things that the view does not draw in these cases: the objects and missiles in the back cells of the party square (the view draws only its two front cells); the things in the far cells of a closed door, which the door hides. `button` shows even for a door seen from the side (`door_has_button`, as the minion map).
 - The map JSON (`state_json_map`) marks a floor square with `_` when the minion map draws its floor ornament without the details option (`mmap_shows_floor_ornament`). It shows no floor sensor without an ornament and no wall feature.
 - A turn tells a bump (`bumped`) from a displacement (`stopped` `moved` or `turned`) by the party square, map, and facing before and after the action. DM has a teleport counter for a teleporter that sends the party back to its square; DM2 has none, so such a teleporter counts as a bump.

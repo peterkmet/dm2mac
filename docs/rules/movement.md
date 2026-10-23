@@ -5,9 +5,6 @@ The rules of the main loop, the input, and the movement: the timing and the game
 ## Timing and the game step
 
 - The PIT runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), every timer tick while the party sleeps.
-- The names of the inventory zones `ZONE_EYE` (`0x221`) and `ZONE_MOUTH` (`0x222`) in `data/ids.h` are swapped against the input table: the input table gives zone `0x221` to the mouth command `0x46` and zone `0x222` to the eye command `0x47` ([champions.md](champions.md#deviations-from-the-original)). The port keeps the names. The `look` action presses the zone of the eye command in the input table (`input_command_rect`).
-- A turn gives a command as a click on the top left pixel of its first zone in the current input mode (`input_simulate_command_click`). The zone of `CMD_LEADER_INVENTORY` (`0x52`) is the whole screen, and a click there hits the status box of champion 0 first. The `sleep` action therefore opens the inventory of the leader with its status box command (`0x07` + leader).
-- `choose_action` on a hand that holds a money box, a chest, or a minion map gives only the hand click: the hand opens the panel of the item, not an action menu, and `index` is not used.
 - `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `ui/play.c` into `step_before_input` and `step_after_input`. What `play_tick` and the two parts run is in [architecture.md](../architecture.md#the-game-step).
 - The calls of the rules into the interface: [architecture.md](../architecture.md#hooks-between-layers).
 - Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop running and clears `g_main_loop.running`.
@@ -58,5 +55,5 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - Out of memory: a failed allocation that has no error result calls `os_fatal("out of memory")` (`src/engine/` and `src/control/`). The original has no such exit.
 - `creature_cell_mask` reads kinds 5 to 15 past its table: [creatures.md](creatures.md#deviations-from-the-original).
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
-- The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified. Check it manually in DOSBox.
+- The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified (manual check B7).
 - Not ported: the enter and leave events of the cursor zones ([champions.md](champions.md#the-cursor)); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.

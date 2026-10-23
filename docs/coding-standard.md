@@ -33,7 +33,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 5. `ui/` changes game state only through engine functions. Exceptions: redraw flags and hooks. Exception: the
    action area (`ui/action_area.c`: `area_update`, `show_open_panel`, `show_hand_panel`, `haste_jitter`) keeps
    the order of the original, which mixes rules and drawing. It writes `g_action.mode` and `g_action.result`,
-   closes the open hand, opens a chest or a minion map when the panel redraws, and `haste_jitter` takes
+   closes the open hand, and opens a chest or a minion map when the panel redraws. `haste_jitter` takes
    `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its
    allowlist lines give `rule 1.5`. [engine-write]
 6. `control/` is a client of `ui/` and `engine/`; it holds no socket. The socket is `platform/transport.c`; it

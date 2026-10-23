@@ -62,8 +62,8 @@ The advanced mode has one quick save slot: `<data>/DATA/QUICK.DAT`. With `--save
 
 `F5` writes the game to `QUICK.DAT`. The message area shows one of these lines:
 
-- `GAME SAVED`: the file is written.
-- `UNABLE TO SAVE`: the file cannot be written. An earlier quick save stays.
+- `GAME SAVED`: the game wrote the file.
+- `UNABLE TO SAVE`: the game cannot write the file. An earlier quick save stays.
 
 A quick save is not a saved game for the save menu. The QUIT question and RESTART GAME after the death of the party use only the save slots.
 
@@ -72,7 +72,7 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 - `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks before the quit, as after a game that is not saved.
 - `NO QUICK SAVE`: the file does not exist. The game goes on.
 - `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. If the copy in `QUICK.TMP` also does not load, the program prints an error and ends with exit code 4; `QUICK.TMP` stays.
-- `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `DATA/QUICK.TMP` before the load, so it does not load. The game goes on.
+- `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `QUICK.TMP`, next to `QUICK.DAT`, before the load, so it does not load. The game goes on.
 
 ## Controls
 
@@ -121,7 +121,7 @@ The advanced mode adds these keys:
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
-The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing. `Esc` there opens the options menu; in other places `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). The vanilla mode pauses. The automap, the cheat screen, and the options menu do not open together.
+The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In the dungeon view `Esc` opens the options menu. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). The vanilla mode pauses. The automap, the cheat screen, and the options menu do not open together.
 
 ## Modes
 
@@ -144,8 +144,8 @@ The automap shows the squares of the party map that the dungeon view has shown. 
 - The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. A red frame and the champion icons of a minion map item mark the party square.
 - A white frame of 1 pixel surrounds the whole map, just outside its last squares. It shows the end of the map, even for squares that are not seen.
 - An imaginary wall (a closed fake wall that the party can walk through) shows as the wall icon with a light gray checkerboard, so it differs from a real wall.
-- A pressure pad shows as a small gray square in the middle of its floor square. A pressure pad is a floor square with a floor sensor that the party, a creature, or an item triggers (sensor types any, party or creature, party, creature, party possesses an item, item) whose floor ornament the dungeon view draws. A floor trigger without an ornament stays hidden.
-- Only the seen squares show. Different squares stay black. With the reveal map cheat, all squares of the map show.
+- A pressure pad shows as a small gray square in the middle of its floor square. A pressure pad is a floor square with a floor sensor whose floor ornament the dungeon view draws. The party, a creature, or an item triggers the sensor (sensor types any, party or creature, party, creature, party possesses an item, item). A floor trigger without an ornament stays hidden.
+- Only the seen squares show. Unseen squares stay black. With the reveal map cheat, all squares of the map show.
 - The readout at the top left shows `LEVEL n  X x  Y y` and the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`).
 - The game time stops while the automap is open. Keys other than the automap keys do nothing.
 - Drag the map with the left mouse button. The map moves in whole squares. The middle of the map stays on the map. The next automap opens on the party again.
@@ -168,8 +168,8 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
-- Food and water: food and water do not go down with the time. Eating and drinking still raise them.
-- One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature (a missile does not keep its launcher). A creature that cannot be hurt (defense 0xff) stays unhurt; a creature that others cannot hit (dexterity 0xff) stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
+- Food and water: food and water do not go down over time. Eating and drinking still raise them.
+- One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt stays unhurt; a creature that others cannot hit stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall. In a wall, a closed fake wall, or a closed door, the party cannot drop an object on its own square: the object stays in the hand.
 - Reveal map: the automap shows every square of the map. The seen squares do not change.
 
@@ -193,7 +193,7 @@ The damage star of a hit stays one game step longer in the action area than in t
 
 ### Smooth projectile flight
 
-A projectile moves one cell (half a square) per game step, as in the original game. In the advanced mode the dungeon view shows the flight between the game steps: on each timer tick (60 Hz) the view is drawn again with each projectile part of the way from its place in the view of the game step before to its place now. At the game step the projectile shows at its old place; at the end of the step it reaches its new place. The flight shows one game step later than the game rules move the projectile.
+A projectile moves one cell (half a square) per game step, as in the original game. In the advanced mode the dungeon view shows the flight between the game steps. On each timer tick (60 Hz) the game draws the view again, with each projectile part of the way from its place at the last game step to its place now. At the game step the projectile shows at its old place; at the end of the step it reaches its new place. The flight shows one game step later than the game rules move the projectile.
 
 - A projectile that is new or was not in the view of the game step before shows at its place now.
 - The flight shows only when the party view is the same as at the step before: the same map, square, and direction. It does not show while the party walks or after a turn.

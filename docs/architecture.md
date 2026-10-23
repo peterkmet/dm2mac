@@ -114,7 +114,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `ui/sound.h` | `sound_mix` `sound_play` `sound_set_` `sound_stop_` | Sound output: the sample mixer, the voices, and the volume settings. |
 | `ui/text.h` | `text_clear_` `text_draw` `text_init` `text_measure` `text_message_` `text_print_` `text_set_message_` `text_wrap_` | Text: the font, message wrapping, and printing into the screen. |
 | `ui/ui.h` | `ui_` `offscreen_` | The offscreen bitmaps shared by the panels and the drawing of the interface pictures. |
-| `ui/video.h` | `video_` | The frame buffer and the palette of the 320x200 screen. |
+| `ui/video.h` | `video_` | The frame buffer and the palette of the 320 × 200 screen. |
 | `ui/view.h` | `view_` | The dungeon view: the squares in sight and their drawing. |
 | `ui/zone.h` | `zone_` | Layout zones: the GDAT record of each zone with its anchor type, parent zone, and position. |
 
@@ -244,7 +244,7 @@ The globals of the game:
   (`engine/timeline.h`), and the random seed `g_random_seed` (`engine/random.h`). The dungeon records are
   `static` in `engine/dungeon.c`; the other modules read and write them through the `dungeon_` and `thing_`
   functions.
-- `g_party` (`engine/move.h`): the movement state of the party and of the dungeon reads.
+- `g_party` (`engine/move.h`): the movement state of the party, and the current map of the square reads (`cur_map`).
 - `g_main_loop` (`engine/game.h`): the step timing, the pause, the end of the game, and the quit.
 - `g_session` (`engine/game.h`): the state of one run: the folders, the slot of the last load or save, and the
   exit code. The save file does not hold it.
@@ -287,16 +287,3 @@ no console.
   [coding-standard.md](coding-standard.md#2-headers-and-includes)).
 
 The test folders are in [Tests](development.md#tests).
-
-## Add a game rule
-
-1. Find the original function in [skull-symbols.csv](reference/skull-symbols.csv) and its code in
-   `reference/decomp/SKULL.c`.
-2. Write the rule in the engine module that owns the data.
-3. Name every value (rule 3.1 of [coding-standard.md](coding-standard.md#3-constants)).
-4. Change the user interface only through the redraw flags or a member of `g_hooks`.
-5. Write a differential test in `tests/differential/`: the same input through the port (the test library) and
-   the original in the emulator (`dm2tools.emu`); compare the state.
-6. Record a deviation from the original in the "Deviations from the original" section of the rule page in
-   [docs/rules/](rules/).
-7. Run `make check`.

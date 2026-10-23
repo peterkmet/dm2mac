@@ -12,7 +12,7 @@ Source: reDM2 `docs/savegame.md`. `reference/decomp/SKULL.c` confirms the call s
 | 2 | 43443 bytes | Dungeon image in the `DUNGEON.DAT` section format |
 | 3 | rest of file | Bit-packed game state |
 
-- Header: `+0x00` u16 = 1 (format marker), `+0x02` 16 bytes save name (`"GAME 0"`, NUL padded). The meaning of `+0x12` to `+0x29` is not known.
+- Header: `+0x00` u16 = 1 (format marker), `+0x02` 32 bytes save name (up to 31 characters and a NUL, `"GAME 0"`). The meaning of `+0x22` to `+0x29` is not known.
 - `session_save` (`0x3502b`) first reads the old header, then changes only `+0x00` and the name, and writes it back. All other header bytes come from the previous save. The port keeps them byte for byte.
 - `session_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
 - The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with 0, and `DUNGEON.DAT` with 1.
@@ -96,7 +96,7 @@ The CHTS block:
 | --- | --- |
 | 4 | `CHTS` |
 | 1 | Version: 1 |
-| 1 | Cheat bits: 0x01 full light, 0x02 immortal, 0x04 food and water, 0x08 one-hit kill, 0x10 walk through walls, 0x20 reveal map |
+| 1 | Cheat bits: `0x01` full light, `0x02` immortal, `0x04` food and water, `0x08` one-hit kill, `0x10` walk through walls, `0x20` reveal map |
 
 A load reads the blocks when they are there.
 
@@ -109,4 +109,4 @@ The original game loads a save with the blocks: its loader stops at the last bit
 ## Deviations from the original
 
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).
-- Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than room, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.
+- Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than the queue holds, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.

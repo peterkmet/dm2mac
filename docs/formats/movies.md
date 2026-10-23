@@ -48,7 +48,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 
 - The VGA movies and `CREDITS.PCX` of the VGA script are not played.
 - The movie screen is the largest 4:3 rectangle of the window with black borders and linear filtering: the scale is not an integer, and no scale filter applies.
-- A click skips; a key does not skip. In the advanced mode a click stops every step. In the vanilla mode a click does not stop the splash picture and `FTL`: the script gives the splash a fixed 3 seconds and `FTL` the argument `noabort`.
+- A click skips; a key does not skip. In the advanced mode a click skips each step. In the vanilla mode a click does not stop the splash picture and `FTL`: the script gives the splash a fixed 3 seconds and `FTL` the argument `noabort`.
 - The movie sound plays at full volume through the sound output of the port at 44100 Hz: each sample repeats twice. A different audio format plays the movie without sound.
 - A missing file, damaged data, a splash picture of another size than 320 × 200, or a movie whose mode is not 640 × 480 is a failed step: the script goes on with the next step. Damage in the middle of a movie stops it there.
 - A block whose source is outside the frame, or with encoding 6, stays unchanged.

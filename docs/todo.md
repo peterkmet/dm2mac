@@ -5,20 +5,20 @@
 - Manual test H6: an animated wall ornament with a sound (only on levels 2 and 4).
 - Flaky test: `tests/port/test_control.py::test_a_second_client_gets_busy` failed once with `BrokenPipeError` under heavy machine load (7 parallel builds). It waits only `time.sleep(0.05)` for the first client. It passed 5 of 5 runs alone. `tests/port/test_modes.py::test_program_starts_in_advanced_unless_vanilla[advanced]` once got `{'error': 'busy'}` from the control socket in a parallel run.
 - Champion redraw bit 0x10 (`REDRAW_STEP_TIME` in `engine/champion.h`): the step time of `get_step_time` (`engine/move.c`) reads it, but no code of the port sets it. Find out what sets it in `SKULL.EXE` and name it after its meaning.
-- Names without a verb (rule 7): `dialog_volume`. `sensor_door_value` reads the GDAT value of a door type, not a sensor value. Functions with one prefix that other modules define (for example `money_*` in `item.c`, `shop_*` in `money.c`) could move to the module of their prefix.
-- Item name "f m": in `tests/saves/shell.DAT` the leader hand holds thing 10279 with the name "f m", and the message area sometimes shows a row "B %" (for example before "GAME SAVED"). `main` does the same. Find out if the name of this item is decoded wrong.
+- Names without a verb (rule 4.1): `dialog_volume`. `sensor_door_value` reads the GDAT value of a door type, not a sensor value. Functions with one prefix that other modules define (for example `money_*` in `item.c`, `shop_*` in `money.c`) could move to the module of their prefix.
+- Item name "f m": in `tests/saves/shell.DAT` the leader hand holds thing 10279 with the name "f m", and the message area sometimes shows a row "B %" (for example before "GAME SAVED"). Find out if the name of this item is decoded wrong.
 - Manual tests: the sound direction next to creatures and doors, and the end of the game with the end sensor. The music and the thunder sound are not checked (dummy audio).
 - `gdat_find` (`data/gdat.c`) scans the 11854 key rows linearly; sort or index the rows if lookups get hot.
 - Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.
 - Message area scroll: IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows up and keeps the bottom rows (`shift_message_area` in `src/ui/text.c`); check it against the original in DOSBox.
-- Chest picture out of bounds: `pick_object_picture` (`src/ui/view.c`) reads `object_picture[open_state]` with chest open states 2 and 3, past the 2 rows of the table (rule 10.5). `main` does the same; the 4 bytes after the table are 0. Check the original, use a defined value, and record it in `docs/rules/view.md`.
+- Chest picture out of bounds: `pick_object_picture` (`src/ui/view.c`) reads `object_picture[open_state]` with chest open states 2 and 3, past the 2 rows of the table (rule 10.5). The 4 bytes after the table are 0. Check the original, use a defined value, and record it in `docs/rules/view.md`.
 - Check the driver offset of "Instrument to voice" in `HMIMDRV.386`: `docs/formats/music.md` has `0x1ff8` and `0x201e`.
-- `creature_is_flying` crashed on 3 maps in a check script, even with the library of `main`. Find the cause.
+- `creature_is_flying` crashed on 3 maps in a check script. Find the cause.
 - `make` does not rebuild an object with the same modification time as its source (seen after scripted rebases). After a scripted rebase, build with `make -B`.
 - `long` in `src/control/control.c` and `src/control/turn.c` (38 uses, rule 5.3).
 - Naming: `advanced_screen_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4); the in/out parameters of `zone_compute_rect` (`out_w`, `out_h`) and `dungeon_location_on_map` (`out_x`, `out_y`) have an `out_` name.
-- Scroll color: a scroll is white on a table and yellowish in the hand, in the inventory, and while it is read. `main` does the same. Compare with the original.
-- Dark dots in letters: with `--filter scale2x` and `scale3x`, the "D" of READY and the "O" of TO in "GAME LOADED, READY TO PLAY" have a dark dot; the "O" of OK has none. `main` does the same. Compare with `--filter none` to find out if the filter or the background causes it.
+- Scroll color: a scroll is white on a table and yellowish in the hand, in the inventory, and while it is read. Compare with the original.
+- Dark dots in letters: with `--filter scale2x` and `scale3x`, the "D" of READY and the "O" of TO in "GAME LOADED, READY TO PLAY" have a dark dot; the "O" of OK has none. Compare with `--filter none` to find out if the filter or the background causes it.
 - End picture: after QUIT the end picture shows until a click and goes immediately, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.
 - Sound under Wine: `build/dm2.exe` under Wine CX crackles, the music too; the port `dm` crackles the same way. Not checked on real Windows.
 - Esc (the pause) cancels a champion drag, a right click does not.
@@ -33,5 +33,5 @@
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
 - ONE-HIT KILL (`src/engine/creature.c`): `kills` forces an immediate creature update even for a creature that cannot be hurt (defense 0xff), so it acts immediately instead of at its scheduled time. Add `info->defense != CREATURE_NO_HURT` or note it in the doc.
 - `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.
-- `tools/ghidra/decompile.sh` runs `CreateFunctionAfterTerminals.java`, which is not in `tools/ghidra/`; add the script or remove the step.
 - Check in `SKULL.EXE` whether the key table rows with language nibble 0 load for every language (`docs/reference/skull-map.md`, "GDAT database in memory").
+- `docs/reference/reference-crosscheck.md`: the 1405 reDM2 function starts do not equal the table sum 473 + 151 + 27 + 677 + 79 = 1407. Check the count against the reDM2 data.

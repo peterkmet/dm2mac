@@ -1,7 +1,7 @@
 # DM2Mac: Dungeon Master II for macOS and Windows
 
-DM2Mac is a native C11 and SDL3 port of **Dungeon Master II** (PC DOS `SKULL.EXE`) for macOS and Windows. It is
-built from its own Ghidra decompilation of `SKULL.EXE`.
+DM2Mac is a native C11 and SDL3 port of **Dungeon Master II** (PC DOS `SKULL.EXE`) for macOS (Apple Silicon)
+and Windows (x86-64). It is built from its own Ghidra decompilation of `SKULL.EXE`.
 
 <p align="center">
   <img src="docs/images/screenshot.png" alt="Dungeon Master II viewport with the party of four champions outside">

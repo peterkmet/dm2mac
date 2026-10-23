@@ -3,7 +3,7 @@
 @~/.claude/skills/c-decomp-port/SKILL.md
 @~/.claude/skills/python-uv/SKILL.md
 
-Native C11/SDL3 macOS port of Dungeon Master II (PC DOS `SKULL.EXE`), built from its own Ghidra decompilation.
+Native C11/SDL3 macOS and Windows port of Dungeon Master II (PC DOS `SKULL.EXE`), built from its own Ghidra decompilation.
 
 ## Commands
 Details: `docs/development.md`.

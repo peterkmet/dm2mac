@@ -9,7 +9,7 @@ Related files:
 - `docs/rules/`: the game rules of the port.
 - `docs/reference/symbols/`: per-range analysis notes (layout, data structures, open questions).
 - `docs/reference/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
-- `reference/decomp/SKULL.c`: Ghidra output with the names from `docs/reference/skull-symbols.csv` (`tools/decompile-skull.sh`).
+- `reference/decomp/SKULL.c`: the local Ghidra output of `tools/decompile-skull.sh`, with the names from `docs/reference/skull-symbols.csv`. Git ignores it.
 
 Conventions:
 
@@ -64,7 +64,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 2. `world_update_day_night(0)` (`0x5a073`): hour light and weather.
 3. `view_draw_dungeon(dir, x, y)` (`0x54b3f`) and `play_present_viewport`, unless the party sleeps or the inventory is open.
 4. `champ_apply_pending_damage` (`0x47113`); every 64 steps `champ_apply_time_effects`.
-5. `sound_flush_requests`; `g_game_time` + 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
+5. `sound_flush_requests`; `g_game_time` goes up by 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
 6. `command_process_queue` (`0x224a9`) until the tick flag `g_tick_elapsed` (`0x717f2`) is set.
 7. Map change through `g_new_map_index` (`0x717f4`) and `game_enter_map`; `music_update_for_map`.
 8. On the game end flag: `input_reset_states`, then return.
@@ -106,7 +106,7 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 | `0x105` | Scroll the message area by one line height | `shift_message_area` (`0x139e4`) |
 | `0x106` | Video state on or off | `iop_set_video_state` |
 | `0x109` | Present the viewport (flags 8 or `0x8008`) | `play_present_viewport` |
-| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,254)`; the first result word goes to `0x7f07c`. The port reading: set the palette (256 × 4 bytes). reDM2: cursor image upload, marked as an inference. Open | `pal_set_palette` |
+| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,0xfe)`; the first result word goes to `0x7f07c`. The port reading: set the palette (256 × 4 bytes). reDM2: cursor image upload, marked as an inference. Open | `pal_set_palette` |
 
 Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga_wait_vblank` polls port `0x3da`.
 
@@ -152,7 +152,7 @@ Hub functions (most callers): `dun_get_thing_data` 161, `dun_get_next_thing` 86,
 
 ### Dungeon (`DUNGEON.DAT`)
 
-- `dungeon_load` (`0x36909`) reads 8 bytes (first word compared with `0x8104`), then the `0x2c`-byte header `g_dungeon_header` (`0x7f3e8`): `+4` map count (byte), `+8` party start (x bits 0-4, y bits 5-9, direction bits 10-11), `+0x0a` square thing count, `+0x0c` thing counts per type (uint16[16]), `+0x12` creature limit, `+0x14` creature group count.
+- `dungeon_load` (`0x36909`) reads 8 bytes (first word compared with `0x8104`), then the `0x2c`-byte header `g_dungeon_header` (`0x7f3e8`): `+4` map count (byte), `+8` party start (x bits 0-4, y bits 5-9, direction bits 10-11), `+0x0a` square thing count, `+0x0c` thing counts per type (uint16[16]; `+0x14` is the count of type 4, the creature groups).
 - Map descriptor (16 bytes, `g_map_descs` `0x7f3c4`): `+2` bit 15 and `+3` bit 0 door sets, `+6` offset x, `+8` bits 0-5 level, bits 6-10 width - 1, bits 11-15 height - 1, `+0x0a` wall ornament count (bits 0-3), floor ornament count (bits 8-11), `+0x0c` door ornament count (bits 0-3), creature type count (bits 4-7), `+0x0d` high nibble flags (light, outdoor), `+0x0e` bits 8-11 and 12-15 door types.
 - Square byte: bits 5-7 square type (0 wall, 1 floor, 2 pit, 3 stairs, 4 door, 5 teleporter, 6 fake wall, 7 unknown), bit 4 has things.
 - `g_square_first_things` (`0x7f388`): first thing per square with things. `g_cur_map_extra_data` (`0x7f3c0`): creature types and ornament lists after the squares.

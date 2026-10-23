@@ -30,7 +30,7 @@ Use this checklist for the manual test of the C port. Use DOSBox only for the it
 
    Expected result: `build/dm2.exe`, no warnings; `file build/dm2.exe` says `PE32+ executable (GUI) x86-64`.
 
-2. Start the port: the splash picture, the movies `FTL` and `INTRO`, then the start menu:
+2. Start the port: the mode screen, the splash picture, the movies `FTL` and `INTRO`, then the start menu:
 
    ```sh
    build/dm2
@@ -57,7 +57,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## A. Program start and window
 
-- [ ] A1. Run `build/dm2`. Expected: a window at scale 3 shows the splash picture and the movies, then the start menu title; the log shows `data folder: game`.
+- [ ] A1. Run `build/dm2 --mode vanilla`. Expected: a window at scale 3 shows the splash picture and the movies, then the start menu title; the log shows `data folder: game`.
 - [ ] A2. Run `build/dm2 --filter scale2x`, then `--filter scale3x`. Expected: the image is smoothed by the filter; the game is the same.
 - [ ] A3. Run `DM2_FILTER=scale2x build/dm2 --filter none`. Expected: no filter (the option wins).
 - [ ] A4. Run `build/dm2 --filter bad`. Expected: an error message and exit code 2.
@@ -178,7 +178,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## J. Start menu, new game, save and load, end of game
 
-- [ ] J1. Run `build/dm2`. Expected: the start menu shows the title and its options.
+- [ ] J1. Run `build/dm2 --mode vanilla`. Expected: the start menu shows the title and its options.
 - [ ] J2. Choose the picture option. Expected: the picture shows until a click or until the time ends.
 - [ ] J3. Choose a new game. Expected: the party starts on the start square with the champion of the start mirror as leader.
 - [ ] J4. Recruit more champions and enter the game. Expected: the party has up to four champions.
@@ -243,7 +243,7 @@ Details: [Advanced features](manual.md#advanced-features).
 
 Start `build/dm2` without `--save` unless an item says otherwise. Use a window with sound.
 
-- [ ] M1. Start. Expected: the Interplay picture for 3 seconds, then `FTL` with sound, then `INTRO` with sound, then the start menu with its music and its colors.
+- [ ] M1. Start and choose a mode. Expected: the Interplay picture for 3 seconds, then `FTL` with sound, then `INTRO` with sound, then the start menu with its colors.
 - [ ] M2. Look at the size of the pictures. Expected: `FTL` small in the middle of a 4:3 area; `INTRO` fills about 90 % of the 4:3 area; black borders on the sides of a wide window.
 - [ ] M3. `--mode vanilla`: click during the splash and during `FTL`. Expected: they go on. Click during `INTRO`. Expected: the start menu shows.
 - [ ] M4. `--mode advanced`: click during the splash, `FTL`, and `INTRO`. Expected: each stops immediately. Press keys during a movie. Expected: nothing; the start menu does not get the keys.
