@@ -104,10 +104,17 @@ static struct {
     int16_t leader;
 } drawn;
 
+/* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
+#define DAMAGE_HOLD_EXTRA_TICKS 1
+
+/* The ticks to wait for the redraw after the damage shows: one for the original delay, then the extra ones. */
+static int16_t damage_hold_ticks;
+
 /* ---- Setup ---- */
 
 void area_reset(void)
 {
+    damage_hold_ticks = 0;
     memset(&drawn, 0, sizeof drawn);
     drawn.gfx_set = NO_CELL;
     drawn.leader = -1;
@@ -674,12 +681,6 @@ static void show_panel_face_aura(void)
             drawn.aura_mask &= ~(1 << (g_action.champion - 1));
     }
 }
-
-/* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
-#define DAMAGE_HOLD_EXTRA_TICKS 1
-
-/* The ticks to wait for the redraw after the damage shows: one for the original delay, then the extra ones. */
-static int16_t damage_hold_ticks;
 
 /* Draws the result of an action: the damage in a star, or the picture of a failure. */
 static void show_action_result(int16_t value)
