@@ -514,10 +514,13 @@ static const uint8_t jitter[JITTER_COUNT][2] = {
     {5, 3},
 };
 static const int8_t jitter_offset[8] = {0, 1, 2, 3, 0, -3, -2, -1};
-/* Object pictures by the open state of a chest: side view, front view. */
-static const uint8_t object_picture[2][2] = {
+/* Object pictures by the open state of a chest (closed, open, and the click states lid and inside): side view, front
+   view. The original keeps rows 2 and 3 in the 4 bytes after its 2-row table (0x75d6a). */
+static const uint8_t object_picture[4][2] = {
     {GFX_OBJECT_PICTURE_CLOSED, GFX_OBJECT_PICTURE_CLOSED + 1},
-    {GFX_OBJECT_PICTURE_OPEN,   GFX_OBJECT_PICTURE_OPEN + 1  }
+    {GFX_OBJECT_PICTURE_OPEN,   GFX_OBJECT_PICTURE_OPEN + 1  },
+    {GFX_CHEST_OPEN_PICTURE,    GFX_CHEST_OPEN_PICTURE + 1   },
+    {GFX_CHEST_INSIDE_PICTURE,  GFX_CHEST_INSIDE_PICTURE + 1 }
 };
 /* The possessions of a static creature: lift above the floor, and their cell shift by the side they lie on,
    for creatures that carry them high (0) and low (1). */

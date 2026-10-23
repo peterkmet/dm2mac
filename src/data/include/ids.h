@@ -182,7 +182,8 @@
 #define GFX_CONTAINER_LID           0x12
 #define GFX_MAP_ITEM_ICONS          0x40 /* the image of the map item with the party, minion, and marker icons */
 #define GFX_MAP_ACTION_PICTURE_BASE 0x41
-#define GFX_CHEST_OPEN_PICTURE      0x48
+#define GFX_CHEST_INSIDE_PICTURE    0x44 /* the inside of an open chest: side view, front view (0x45) */
+#define GFX_CHEST_OPEN_PICTURE      0x48 /* the lid of an open chest: side view, front view (0x49) */
 #define GFX_OPTION_BUTTON_UP        0x49
 #define GFX_OPTION_BUTTON_DOWN      0x4a
 
