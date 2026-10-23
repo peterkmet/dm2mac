@@ -56,6 +56,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 - `docs/coding-standard.md`: rule 10 (packed fields), the notation of constants (hex or decimal), accessor headers (rule 2), and prefix owners (rule 7). The build uses `-Wmissing-prototypes`.
 - The decompiled code is in `reference/decomp/`. `tools/test-suite` replaces `scripts/test-suite`. `docs/todo.md` replaces `TODO.md`.
 - The dm style refactor (`docs/superpowers/2026-10-21-dm-style-code.md`): the C port moves from `port/src/` to `src/` with five layers (`data/`, `engine/`, `ui/`, `control/`, `platform/`); the Python tools move to `tools/dm2tools/` and the test helpers to `tests/dm2test/`; `docs/coding-standard.md` has the new rules, and `tests/standard/test_standard.py` checks them with no open violation; one type per parameter name; `ui/` changes engine state only through engine functions; `make` fails on a warning.
+- The docs in the style of the dm port (`docs/superpowers/2026-10-21-dm-style-docs.md`): `README.md` with a screenshot, the new pages `docs/manual.md`, `architecture.md`, `development.md` and `decompiling.md`, and the folders `docs/formats/`, `rules/`, `llm/` and `reference/`; `docs/skull-formats.md`, `llm-control.md`, `turnbased-mode.md` and `advanced-mode.md` are gone. `tests/standard/test_docs.py` checks the doc links, `tests/standard/test_vocabulary.py` the protocol vocabulary.
 
 ### Fixed
 
