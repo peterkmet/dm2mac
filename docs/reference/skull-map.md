@@ -152,7 +152,7 @@ Hub functions (most callers): `dun_get_thing_data` 161, `dun_get_next_thing` 86,
 
 ### Dungeon (`DUNGEON.DAT`)
 
-- `dungeon_load` (`0x36909`) reads 8 bytes (first word compared with `0x8104`), then the `0x2c`-byte header `g_dungeon_header` (`0x7f3e8`): `+4` map count (byte), `+8` party start (x bits 0-4, y bits 5-9, direction bits 10-11), `+0x0a` square thing count, `+0x0c` thing counts per type (uint16[16]), `+0x12` creature limit, `+0x14` creature group count.
+- `dungeon_load` (`0x36909`) reads 8 bytes (first word compared with `0x8104`), then the `0x2c`-byte header `g_dungeon_header` (`0x7f3e8`): `+4` map count (byte), `+8` party start (x bits 0-4, y bits 5-9, direction bits 10-11), `+0x0a` square thing count, `+0x0c` thing counts per type (uint16[16]; `+0x14` is the count of type 4, the creature groups).
 - Map descriptor (16 bytes, `g_map_descs` `0x7f3c4`): `+2` bit 15 and `+3` bit 0 door sets, `+6` offset x, `+8` bits 0-5 level, bits 6-10 width - 1, bits 11-15 height - 1, `+0x0a` wall ornament count (bits 0-3), floor ornament count (bits 8-11), `+0x0c` door ornament count (bits 0-3), creature type count (bits 4-7), `+0x0d` high nibble flags (light, outdoor), `+0x0e` bits 8-11 and 12-15 door types.
 - Square byte: bits 5-7 square type (0 wall, 1 floor, 2 pit, 3 stairs, 4 door, 5 teleporter, 6 fake wall, 7 unknown), bit 4 has things.
 - `g_square_first_things` (`0x7f388`): first thing per square with things. `g_cur_map_extra_data` (`0x7f3c0`): creature types and ornament lists after the squares.

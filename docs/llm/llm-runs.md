@@ -4,7 +4,7 @@ An LLM run is a playthrough of the game by an LLM player in the turn-based mode 
 
 ## Goal of the runs
 
-The goal of the runs is to measure how much an LLM player gets better: from session to session, and against earlier runs. To finish the game is the long-term goal, not the measure of one run. The main session of Claude Code starts the coordinator, the agent `dm2-coordinator` ([Agents](#agents)). The coordinator starts the sessions and keeps the records.
+The goal of a run is to complete the game. The runs also measure how much an LLM player gets better: from session to session, and against earlier runs. The main session of Claude Code starts the coordinator, the agent `dm2-coordinator` ([Agents](#agents)). The coordinator starts the sessions and keeps the records.
 
 - Allowed changes of the player instructions between sessions and runs: general rules about how to play and about the game, for example survival, fights, food and water, training, saves, the use of the commands, and how to keep the memory. Change them in small steps and write each change, its reason, and the session where it starts.
 - Not allowed: hints for this dungeon, for example a position, a map, the solution of a puzzle, where an item lies, or the way to the next level. The memory of an earlier run (maps, lessons) is the player's own knowledge, not a hint.
@@ -20,12 +20,12 @@ playthroughs/
     player/                     the memory of the player (the player sees only this)
     coordinator/                the coordinator files; calls.log of dm2-play
     game/                       the live save folder: QUICK.DAT (--saves)
-    saves/<name>/               a checkpoint: a copy of QUICK.DAT and of player/
+    saves/<name>/               a checkpoint: a copy of QUICK.DAT, and of player/ in files/
 ```
 
 - A new run: create `playthroughs/run<N>/` with `player/`, `coordinator/`, `game/`, and `saves/`, and copy the files of `playthroughs/template/` to `player/`. Point the link: `ln -sfn run<N> playthroughs/current`. Start the game with `--saves playthroughs/current/game` ([Start the game](llm-mode.md#turn-based-mode)). Send `new_game`, then `save`. The player recruits the champions.
-- A checkpoint after a session: copy `game/QUICK.DAT` and the files of `player/` to `saves/<name>/`.
-- A resume: copy `QUICK.DAT` of the checkpoint to `game/` and its files to `player/`, then send `load`.
+- A checkpoint after a session: copy `game/QUICK.DAT` to `saves/<name>/` and the files of `player/` to `saves/<name>/files/`.
+- A resume: copy `QUICK.DAT` of the checkpoint to `game/` and its `files/` to `player/`, then send `load`.
 - The calls of the coordinator stay out of the log: `DM2_PLAY_LOG_DIR=none uv run dm2-play ...`.
 
 ## Agents
