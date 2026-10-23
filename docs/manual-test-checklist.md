@@ -4,7 +4,7 @@ Use this checklist for the manual test of the C port (workflow step 6, plan Step
 
 ## Results of 2026-10-06
 
-The user and LLM test agents over the control socket (`docs/llm-control.md`) ran the manual test on 2026-10-06. The checklist has 108 items:
+The user and LLM test agents over the control socket (`docs/llm/llm-mode.md`) ran the manual test on 2026-10-06. The checklist has 108 items:
 
 - 47 passed in the manual test.
 - 51 are covered by automated tests.
@@ -44,7 +44,7 @@ The cleanup does not change the behavior, and the automated tests pass. This sho
 
 The cleanup moves code between the layers and does not change the behavior; the automated tests pass. This short test checks the paths that now go through `g_hooks` or `ui/play.c`. Start `build/dm2 --save game/DATA/SKSAVE0.DAT` or a new game.
 
-The items marked "control socket" ran over `docs/llm-control.md` with the saves of `tests/saves/`, on this branch and on `main` side by side with the same input; the states and the screenshots are equal.
+The items marked "control socket" ran over `docs/llm/llm-mode.md` with the saves of `tests/saves/`, on this branch and on `main` side by side with the same input; the states and the screenshots are equal.
 
 - [x] L1. Start a new game and load a save from the start menu: the view, the champions, and the music start as before. Passed (control socket, 2026-10-10). The music is not checked (dummy audio).
 - [x] L2. Take an object into the leader hand two times: its name prints in the message area, with a new row for the next message. `DUNGEON.DAT` has no visible floor text and no wall text with a message. Passed (control socket, 2026-10-10).
@@ -319,12 +319,12 @@ Start `build/dm2` without `--save` unless an item says otherwise. Use a window w
 - [ ] M10. Resize the window during a movie. Expected: the picture stays 4:3 with black borders.
 - [ ] M11. Watch `INTRO`, `END`, and `CREDITS` to the end. Expected: clean pictures without broken blocks; the sound fits the picture.
 - [ ] M12. Rename `game/FTL` and start. Expected: the splash, then `INTRO`, then the start menu. Rename it back.
-- [ ] M13. With the control socket (`docs/llm-control.md`, section "Movies"): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
+- [ ] M13. With the control socket (`docs/llm/llm-mode.md`, section "Movies"): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
 - [ ] M14. Optional, DOSBox (`tools/dosbox-dm2.conf`): compare the size and the position of the `INTRO` picture with the port.
 
 ## T. Turn-based mode
 
-Details: `docs/turnbased-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
+Details: `docs/llm/llm-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
 
 - [ ] T1. Start the game. Expected: no start menu and no movie; the dungeon view shows at once; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
 - [ ] T2. Send `new_game`. Expected: the party is on the start square (map 0, x 1, y 8, facing north); the reply has `state`.
@@ -349,4 +349,4 @@ Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next 
 
 ## Known deviations
 
-Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/` and `docs/turnbased-mode.md`.
+Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/` and `docs/llm/llm-mode.md`.

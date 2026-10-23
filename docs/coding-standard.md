@@ -252,7 +252,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    rest review only]
 3. A kept quirk of the original and a fixed bug of the original (a stale register, an overflow) get a short
    comment at the place, and an entry in "Deviations from the original" of its page in `docs/formats/`,
-   `docs/rules/`, or `docs/turnbased-mode.md`. [review only]
+   `docs/rules/`, or `docs/llm/llm-mode.md`. [review only]
 4. No TODO marker in code (`ponytail:`, `TODO`, `FIXME`); open work goes to `docs/todo.md`. [todo]
 5. Keep existing comments. New comments only where needed, one line, about what the code does, never about
    its history. [review only]
@@ -270,7 +270,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    close or free; `malloc` and `free` of one buffer stay in one module. [review only]
 5. Do not reproduce undefined register values, overflows or out-of-bounds reads of the original. Use a
    defined value, mark it with a short comment, record it as a deviation in `docs/formats/`, `docs/rules/`, or
-   `docs/turnbased-mode.md`, mask it in the tests. Keep a quirk of the original only when it changes what the
+   `docs/llm/llm-mode.md`, mask it in the tests. Keep a quirk of the original only when it changes what the
    player sees. [review only]
 6. No rule in dm2: the port plays one game, so no code detects the adventure (`g_adventure`).
 

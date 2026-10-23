@@ -27,9 +27,9 @@ build/dm2 --mode advanced
 
 `--save` also skips the screen; without `--mode`, the mode is then `advanced`. A value other than `vanilla`, `advanced`, or `turnbased` stops the program with exit code 2 and the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. RESTART skips the screen and keeps the mode, also the mode of the screen.
 
-The turn-based mode (`--mode turnbased`, `docs/turnbased-mode.md`) is a third mode for play through the control socket. It shares the seen squares and the AMAP block with the advanced mode, but it has no extra keys and no cheats.
+The turn-based mode (`--mode turnbased`, `docs/llm/llm-mode.md`) is a third mode for play through the control socket. It shares the seen squares and the AMAP block with the advanced mode, but it has no extra keys and no cheats.
 
-The control socket state (`docs/llm-control.md`) gives the mode in the field `game_mode`.
+The control socket state (`docs/llm/llm-mode.md`) gives the mode in the field `game_mode`.
 
 ## Keys
 

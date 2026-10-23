@@ -172,13 +172,16 @@ The turn-based mode plays no movie. The start of a run in the game rules is in
    with the mouse cursor in the window.
 4. `plat_wait_tick` mixes the audio and waits for the next PIT tick.
 
-`run_turnbased` is the main loop of the turn-based mode. The window events keep only the quit event. Each frame
-calls `transport_poll` and `control_frame`, and shows the screen.
+`run_turnbased` is the main loop of the turn-based mode. The window events keep only the quit event: keys and
+clicks do not reach the input queue. Each frame calls `transport_poll` and `control_frame`, and shows the screen.
+While no turn is pending, the frame waits one timer tick. The loop never ends the session by itself; `load` and
+`new_game` start the next game.
 
 A menu or a dialog waits for the player inside a rule (a modal loop). It calls `play_wait_frames`
 (`ui/play.c`), which counts one timer tick and calls the frame hook `g_play_frame_hook` per frame.
 `platform/main.c` sets the hook to `modal_frame` (the input, the screen, and the wait of one timer tick), or to
-`turnbased_modal_frame` in the turn-based mode. A NULL hook counts the timer ticks and shows no frame.
+`turnbased_modal_frame` in the turn-based mode, which polls the control socket and does not wait for a timer tick
+while a turn runs. A NULL hook counts the timer ticks and shows no frame.
 
 ## The game step
 
@@ -205,8 +208,9 @@ The rules do not draw the panels. They set redraw flags that `ui/` reads and dra
 
 ## The control socket and the turn
 
-A client controls the running game over a Unix domain socket (`--control PATH`). The real-time commands are in
-[llm-control.md](llm-control.md); the turn-based mode is in [turnbased-mode.md](turnbased-mode.md).
+A client controls the running game over a Unix domain socket (`--control PATH`). The commands and the
+turn-based mode are in [llm-mode.md](llm/llm-mode.md). In the turn-based mode `main` opens the socket before the
+main loop, at `~/.dm2/control.sock` when `--control` is missing, and stops with an error when this fails.
 
 - `platform/transport.c` holds the socket. It accepts one client and gives a second client a `busy` error. It
   cuts the bytes of the client into request lines and sends one reply line per request.
@@ -221,6 +225,15 @@ A client controls the running game over a Unix domain socket (`--control PATH`).
 In the vanilla and advanced modes the game runs in real time, and `pump_events` polls the socket on each PIT tick.
 In the turn-based mode the game time stands still between two turns, because only `control_frame` runs
 `play_tick`.
+
+The interface of the control code, all in `build/libdm2.dylib`:
+
+| Header | Functions |
+|---|---|
+| `platform/transport.h` (the socket, plain POSIX) | `transport_open(path)` listens on the socket, replaces an old socket file, and returns true on success. `transport_poll()`, one call per frame, accepts a client, answers requests, and ends turns. `transport_close()` closes the sockets and removes the socket file. |
+| `control/control.h` (the line protocol) | `control_frame()` runs one game step of the pending turn. `control_is_turn_pending()` is true while a turn runs. |
+| `control/turn.h` | `turn_is_pending`, `turn_act`, `turn_act_many`, `turn_wait`, `turn_poll`, `turn_reply`, and `turn_drop_reply`. The action table is in `turn.c`, one function per action. |
+| `control/state_json.h` (no SDL) | `state_json_state`, `state_json_view`, and `state_json_map` append one JSON object to a `Json` buffer. `state_json_string(part)` returns a new string; free it with `free`. |
 
 ## Global state
 

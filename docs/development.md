@@ -68,6 +68,18 @@ To run several files, add `-n auto`.
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
 | `tests/standard/` | The coding standard (`test_standard.py`). |
 
+The tests of the control socket and the turn-based mode:
+
+| File | What it proves |
+|---|---|
+| `tests/port/test_state_json.py` | The JSON of the state, the view, and the map. |
+| `tests/port/test_turnbased.py` | The protocol, the turn end rules, the stops, `act_many`, `save`, `load`, and `new_game`. |
+| `tests/tools/test_play_client.py` | `dm2-play`: the act forms, `--brief`, and the call log. |
+
+```sh
+uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
+```
+
 `tests/dm2test/` has the shared helpers, for example the paths of the project and the skip marker `needs_game`. Tests that need the original files are skipped when `game/SKULL.EXE` is missing. Each test module loads its own copy of the library and owns its state, so the tests run in any order and in parallel.
 
 | Command | Result |
@@ -95,4 +107,4 @@ See [Add a game rule](architecture.md#add-a-game-rule).
 
 ## Manual checks
 
-The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md).
+The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md). The checks of the turn-based mode are in [section T](manual-test-checklist.md#t-turn-based-mode).

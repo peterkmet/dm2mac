@@ -45,6 +45,6 @@ build/dm2 --mode turnbased --saves DIR      # Turn-based mode
 ## More
 
 - [Advanced mode](docs/advanced-mode.md)
-- [Turn-based mode](docs/turnbased-mode.md)
+- [LLM mode](docs/llm/llm-mode.md)
 - [Coding standard](docs/coding-standard.md)
 - [Changelog](CHANGELOG.md)

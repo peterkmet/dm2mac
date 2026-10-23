@@ -2,7 +2,7 @@
 
 You play Dungeon Master II (PC DOS `SKULL.EXE`) in this C port, through the turn-based mode. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
 
-This page tells you how to play. The protocol reference is [turnbased-mode.md](turnbased-mode.md). A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
+This page tells you how to play. The protocol reference is [llm-mode.md](llm-mode.md). A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
 
 ## Your notes
 
@@ -199,6 +199,18 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 | Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake` |
 | See the screen | `uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'`, then read the PNG |
 
+### View a screenshot as an LLM
+
+1. Save the screenshot to a file.
+
+   ```bash
+   uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'
+   ```
+
+2. Open the path of the reply with the Read tool. The Read tool shows a PNG file as an image.
+
+The image pixels are the game pixels, so a position in the image is the `x` and `y` of `act click`.
+
 ### dm2-play
 
 `dm2-play` sends one request to the game and prints the answer as compact JSON on one line. The exit code is 1 when the answer has `"ok": false`.
@@ -329,7 +341,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `take_coin` | `slot` 0-5 | One coin of the open money box to the leader hand. |
 | `minion_map_option` | `option` 0-3 | Turns an option of the open minion map on or off. |
 | `click` | `x` 0-319, `y` 0-199, `button` (`left` or `right`, optional) | A raw click on the screen. Use it only when no action does the job (a dialog, the minion map grid, a shop display). |
-| `key` | `key` | A raw key (names in [llm-control.md](llm-control.md)). |
+| `key` | `key` | A raw key (names in [llm-mode.md](llm-mode.md#key)). |
 
 `click` and `key` also run while a candidate shows, while the party sleeps, and while a dialog shows. `state.dialog` gives the `id` and the `buttons` of an open dialog.
 
