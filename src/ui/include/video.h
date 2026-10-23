@@ -41,8 +41,8 @@ extern uint8_t g_video_palette[PALETTE_COLORS][RGB_CHANNELS];
 uint8_t video_vga_to_8bit(uint8_t v);
 /* ARGB8888 of a palette color. */
 uint32_t video_argb(uint8_t palette_color);
-/* Largest integer scale that fits the output, centered (letterbox). */
-void video_layout(int output_w, int output_h, int *scale, int *ox, int *oy);
+/* Largest scale (fractional) that fits the output, centered (letterbox). */
+void video_layout(int output_w, int output_h, float *scale, float *ox, float *oy);
 /* Maps output pixel coordinates to game coordinates, clamped to the screen. */
 VideoPoint video_map_mouse(int output_w, int output_h, int output_x, int output_y);
 

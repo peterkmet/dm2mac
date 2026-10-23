@@ -77,13 +77,6 @@
 #define SENSOR_KEEP_ITEM          EFFECT_HOLD
 /* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
 #define TIMER_SLOW_FACTOR         8
-/* Floor sensor types. */
-#define FLOOR_ANY                 0x01
-#define FLOOR_PARTY_OR_CREATURE   0x02
-#define FLOOR_PARTY               0x03
-#define FLOOR_ITEM                0x04
-#define FLOOR_CREATURE            0x07
-#define FLOOR_PARTY_POSSESSES     0x08
 
 /* The first word variable and the end of the script variables. */
 #define GLOBAL_WORD_FIRST 0x80
@@ -457,6 +450,9 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
    possessions of a static creature. */
 static void process_floor(int x, int y, uint16_t thing, FloorMove m, bool possessions)
 {
+    if (thing == THING_NONE && game_has_cheat(CHEAT_WALLS) &&
+        square_type(dungeon_square(g_party.cur_map, x, y)) == SQUARE_WALL)
+        return; /* the party in a wall (walk-through-walls cheat) does not touch the wall sensors */
     m.type = -1;
     m.item = -1;
     uint16_t holder = THING_NONE; /* a static creature whose possessions take the thing */
@@ -1451,7 +1447,9 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
         hit = true;
         if (g_game.champion_count) {
             *square &= (uint8_t)~SQUARE_DOOR_STATE;
-            int hurt = champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
+            /* the walk-through-walls cheat: the door opens and does not hurt the party */
+            int hurt =
+                game_has_cheat(CHEAT_WALLS) ? 0 : champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
             for (int i = 0; i < CHAMPION_MAX; i++)
                 if (hurt >> i & 1)
                     sound_request_with_fallback((SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_PUSHED,

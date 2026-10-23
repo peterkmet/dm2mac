@@ -10,6 +10,7 @@
 #include "game_text.h"
 #include "inventory.h"
 #include "move.h"
+#include "random.h"
 #include "seen.h"
 #include "sound_request.h"
 #include "timeline.h"
@@ -232,6 +233,22 @@ void play_start_session(void)
     step_before_input();
 }
 
+/* Advanced mode: the view of a timer tick draws each projectile part of the way from its place of the game step before.
+   No rule changes: the random seed stays. */
+static void show_projectile_flight(void)
+{
+    if (g_game_mode != GAME_MODE_ADVANCED || !g_main_loop.running || g_main_loop.end || g_advanced_screen ||
+        g_main_loop.view_hidden || g_ui.inventory || g_ui.candidate || g_dialog.screen_mode || g_party_sleeping ||
+        g_party.move_steps || g_party.redraw || !view_shows_party() || !view_has_moving_projectiles())
+        return;
+    uint32_t seed = g_random_seed;
+    view_set_flight_tick(g_main_loop.tick_count, g_main_loop.tick_threshold);
+    view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
+    play_present_viewport();
+    view_set_flight_tick(0, 0);
+    rand_set_seed(seed);
+}
+
 void play_tick(void)
 {
     if (g_main_loop.end || g_main_loop.quit)
@@ -240,9 +257,12 @@ void play_tick(void)
     if (game_count_step_tick())
         tick_elapsed = 1;
     command_process_queue();
-    /* the automap stops the game time; a quit (a lost game) ends all game work */
-    if (!tick_elapsed || !g_main_loop.running || g_advanced_automap_open || g_main_loop.quit)
+    /* a viewport screen stops the game time; a quit (a lost game) ends all game work */
+    if (!tick_elapsed || !g_main_loop.running || g_advanced_screen || g_main_loop.quit) {
+        show_projectile_flight();
         return;
+    }
     step_after_input();
     step_before_input();
+    show_projectile_flight();
 }

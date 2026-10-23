@@ -71,7 +71,7 @@ Reads the game state.
 ```
 
 ```json
-{"ok":true,"time":33,"ticks":61,"mode":"move","dialog":null,"party":{"map":0,"x":1,"y":8,"dir":0},"champion_count":1,"leader":0,"champions":[{"name":"TORHAM","health":[83,83],"stamina":[770,770],"mana":[14,14],"load":67}],"inventory":-1,"candidate":-1,"hand":null,"sound_volume":7,"music_volume":7,"end":0,"quit":0,"game_mode":"advanced","automap":0,"cheat_immortal":0,"cheat_food":0,"cheat_light":0}
+{"ok":true,"time":33,"ticks":61,"mode":"move","dialog":null,"party":{"map":0,"x":1,"y":8,"dir":0},"champion_count":1,"leader":0,"champions":[{"name":"TORHAM","health":[83,83],"stamina":[770,770],"mana":[14,14],"load":67}],"inventory":-1,"candidate":-1,"hand":null,"sound_volume":7,"music_volume":7,"end":0,"quit":0,"game_mode":"advanced","automap":0,"cheat_immortal":0,"cheat_food":0,"cheat_light":0,"cheat_kill":0,"cheat_walls":0,"cheat_map":0}
 ```
 
 | Field | Meaning |
@@ -89,7 +89,7 @@ Reads the game state.
 | `end`, `quit` | The end flag of the game (party dead or quit) and the program end flag. |
 | `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` (`docs/advanced-mode.md`, `docs/turnbased-mode.md`). |
 | `automap` | 1 while the automap is open, else 0. |
-| `cheat_immortal`, `cheat_food`, `cheat_light` | 1 while the cheat is on, else 0. |
+| `cheat_immortal`, `cheat_food`, `cheat_light`, `cheat_kill`, `cheat_walls`, `cheat_map` | 1 while the cheat is on, else 0 (`docs/advanced-mode.md`, Cheats). |
 
 The message area text is not in the state. Use a screenshot to read it.
 

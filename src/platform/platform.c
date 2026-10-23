@@ -43,24 +43,78 @@ static struct {
     PlatMixer *music_mixer;
     SDL_Texture *movie_tex;
     int movie_tex_w, movie_tex_h;
+    int movie_shown_w, movie_screen_w, movie_screen_h;
+    bool movie_last; /* the last present was a movie picture */
 } platform = {.filter = SCALE_NONE_FACTOR};
 
 /* Setup */
+
+/* The largest 4:3 rectangle in the middle of the window: the tube of a VGA monitor. */
+static SDL_FRect tube_rect(int w, int h)
+{
+    float sw = (float)w;
+    float sh = (float)w * SCREEN_ASPECT_H / SCREEN_ASPECT_W;
+    if (sh > h) {
+        sh = (float)h;
+        sw = (float)h * SCREEN_ASPECT_W / SCREEN_ASPECT_H;
+    }
+    return (SDL_FRect){(w - sw) / 2, (h - sh) / 2, sw, sh};
+}
+
+/* The window rectangle of the last movie picture, centered on the tube. */
+static SDL_FRect last_picture_rect(int w, int h)
+{
+    SDL_FRect screen = tube_rect(w, h);
+    float kx = screen.w / platform.movie_screen_w;
+    float ky = screen.h / platform.movie_screen_h;
+    return (SDL_FRect){screen.x + (platform.movie_screen_w - platform.movie_shown_w) / 2 * kx,
+                       screen.y + (platform.movie_screen_h - platform.movie_tex_h) / 2 * ky,
+                       platform.movie_shown_w * kx, platform.movie_tex_h * ky};
+}
+
+/* Draws the frame texture letterboxed into the window. */
+static void render_frame(void)
+{
+    int w, h;
+    float s, ox, oy;
+    SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
+    video_layout(w, h, &s, &ox, &oy);
+    SDL_FRect dst = {ox, oy, SCREEN_W * s, SCREEN_H * s};
+    SDL_Texture *tex = platform.tex;
+    if (platform.movie_last) {
+        dst = last_picture_rect(w, h);
+        tex = platform.movie_tex;
+    }
+    SDL_SetRenderDrawColor(platform.ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(platform.ren);
+    SDL_RenderTexture(platform.ren, tex, NULL, &dst);
+    SDL_RenderPresent(platform.ren);
+}
+
+/* Redraws the last frame while macOS blocks the main loop during a live window resize. */
+static bool SDLCALL on_expose(void *userdata, SDL_Event *ev)
+{
+    (void)userdata;
+    if (ev->type == SDL_EVENT_WINDOW_EXPOSED && platform.tex)
+        render_frame();
+    return true;
+}
 
 bool plat_init(int scale, int filter_factor)
 {
     platform.filter = filter_factor;
     SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
     if (!SDL_Init(SDL_INIT_VIDEO) ||
-        !SDL_CreateWindowAndRenderer("Dungeon Master II", SCREEN_W * scale, SCREEN_H * scale, SDL_WINDOW_RESIZABLE,
-                                     &platform.win, &platform.ren) ||
+        !SDL_CreateWindowAndRenderer("DM2Mac", SCREEN_W * scale, SCREEN_H * scale, SDL_WINDOW_RESIZABLE, &platform.win,
+                                     &platform.ren) ||
         !(platform.tex = SDL_CreateTexture(platform.ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                            SCREEN_W * platform.filter, SCREEN_H * platform.filter))) {
         os_log("SDL: %s", SDL_GetError());
         return false;
     }
     SDL_RaiseWindow(platform.win);
-    SDL_SetTextureScaleMode(platform.tex, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureScaleMode(platform.tex, SDL_SCALEMODE_PIXELART); /* even pixels at a fractional scale */
+    SDL_AddEventWatch(on_expose, NULL);
     SDL_HideCursor(); /* the game draws its own cursor into g_video_fb */
     SDL_AudioSpec spec = {SDL_AUDIO_S16, AUDIO_CHANNELS, SOUND_OUTPUT_RATE};
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO) ||
@@ -69,6 +123,22 @@ bool plat_init(int scale, int filter_factor)
     else
         SDL_ResumeAudioStreamDevice(platform.audio);
     platform.next_tick = SDL_GetTicksNS() + TICK_NS;
+    return true;
+}
+
+bool plat_set_filter(int filter_factor)
+{
+    SDL_Texture *tex = SDL_CreateTexture(platform.ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                         SCREEN_W * filter_factor, SCREEN_H * filter_factor);
+    if (!tex) {
+        os_log("SDL: %s", SDL_GetError());
+        return false;
+    }
+    SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_PIXELART);
+    SDL_DestroyTexture(platform.tex);
+    platform.tex = tex;
+    platform.filter = filter_factor;
+    plat_present();
     return true;
 }
 
@@ -91,7 +161,7 @@ void plat_set_icon(const uint32_t *argb, int w, int h)
 void plat_present(void)
 {
     uint32_t pal[PALETTE_COLORS], *px;
-    int pitch, w, h, s, ox, oy, tw = SCREEN_W * platform.filter;
+    int pitch, tw = SCREEN_W * platform.filter;
     const uint8_t *src = platform.filter == SCALE_NONE_FACTOR ? &g_video_fb[0][0] : &platform.big[0][0];
     if (platform.filter == SCALE2X_FACTOR)
         scale2x(&g_video_fb[0][0], SCREEN_W, SCREEN_H, &platform.big[0][0]);
@@ -106,32 +176,14 @@ void plat_present(void)
         for (int x = 0; x < tw; x++)
             px[y * stride + x] = pal[src[y * tw + x]];
     SDL_UnlockTexture(platform.tex);
-
-    SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
-    video_layout(w, h, &s, &ox, &oy);
-    SDL_FRect dst = {ox, oy, SCREEN_W * s, SCREEN_H * s};
-    SDL_SetRenderDrawColor(platform.ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(platform.ren);
-    SDL_RenderTexture(platform.ren, platform.tex, NULL, &dst);
-    SDL_RenderPresent(platform.ren);
-}
-
-/* The largest 4:3 rectangle in the middle of the window: the tube of a VGA monitor. */
-static SDL_FRect tube_rect(int w, int h)
-{
-    float sw = (float)w;
-    float sh = (float)w * SCREEN_ASPECT_H / SCREEN_ASPECT_W;
-    if (sh > h) {
-        sh = (float)h;
-        sw = (float)h * SCREEN_ASPECT_W / SCREEN_ASPECT_H;
-    }
-    return (SDL_FRect){(w - sw) / 2, (h - sh) / 2, sw, sh};
+    platform.movie_last = false;
+    render_frame();
 }
 
 void plat_present_movie(const MoviePicture *p)
 {
     uint32_t pal[PALETTE_COLORS], *px;
-    int pitch, w, h;
+    int pitch;
     if (!platform.movie_tex || platform.movie_tex_w != p->width || platform.movie_tex_h != p->height) {
         if (platform.movie_tex)
             SDL_DestroyTexture(platform.movie_tex);
@@ -154,16 +206,11 @@ void plat_present_movie(const MoviePicture *p)
             px[y * (pitch / ARGB_BYTES) + x] = pal[p->pixels[y * p->width + x]];
     SDL_UnlockTexture(platform.movie_tex);
 
-    SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
-    SDL_FRect screen = tube_rect(w, h);
-    float kx = screen.w / p->screen_width;
-    float ky = screen.h / p->screen_height;
-    SDL_FRect dst = {screen.x + (p->screen_width - p->shown_width) / 2 * kx,
-                     screen.y + (p->screen_height - p->height) / 2 * ky, p->shown_width * kx, p->height * ky};
-    SDL_SetRenderDrawColor(platform.ren, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(platform.ren);
-    SDL_RenderTexture(platform.ren, platform.movie_tex, NULL, &dst);
-    SDL_RenderPresent(platform.ren);
+    platform.movie_shown_w = p->shown_width;
+    platform.movie_screen_w = p->screen_width;
+    platform.movie_screen_h = p->screen_height;
+    platform.movie_last = true;
+    render_frame();
 }
 
 /* Input */

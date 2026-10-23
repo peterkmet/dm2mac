@@ -255,18 +255,20 @@ def test_state_tells_the_game_mode(control, lib):  # noqa: F811
 
 def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
     path, *_ = control
-    names = ("g_advanced_automap_open", "g_cheat_immortal", "g_cheat_food", "g_cheat_light")
-    fields = ("automap", "cheat_immortal", "cheat_food", "cheat_light")
+    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
+    cheats = {"cheat_light": C.CHEAT_LIGHT, "cheat_immortal": C.CHEAT_IMMORTAL, "cheat_food": C.CHEAT_FOOD,
+              "cheat_kill": C.CHEAT_KILL, "cheat_walls": C.CHEAT_WALLS, "cheat_map": C.CHEAT_MAP}
+    automap = ctypes.c_int.in_dll(lib, "g_advanced_screen")
     try:
-        for value in (0, 1):
-            for name in names:
-                ctypes.c_int.in_dll(lib, name).value = value
+        for name, cheat in [("automap", 0), *cheats.items()]:
+            automap.value = name == "automap"
+            lib.game_set_cheats(cheat)
             with pumped(lib, ticks=False):
                 state = request({"cmd": "state"}, path)
-            assert [state[f] for f in fields] == [value] * 4
+            assert {f: state[f] for f in ["automap", *cheats]} == {f: int(f == name) for f in ["automap", *cheats]}
     finally:
-        for name in names:
-            ctypes.c_int.in_dll(lib, name).value = 0
+        automap.value = 0
+        lib.game_set_cheats(0)
 
 
 def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa: F811
@@ -291,7 +293,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa:
         assert framed == ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")[8]  # red: the map did not move
     finally:
         set_mode(lib, VANILLA)
-        ctypes.c_int.in_dll(lib, "g_advanced_automap_open").value = 0
+        ctypes.c_int.in_dll(lib, "g_advanced_screen").value = 0
 
 
 def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
@@ -413,3 +415,41 @@ def test_program_starts_in_advanced_unless_vanilla(game_dir, tmp_path, args, nam
     finally:
         program.kill()
         shutil.rmtree(folder)
+
+
+def test_tab_closes_the_inventory_in_the_advanced_mode_only(lib, session):  # noqa: F811
+    assert key_command(lib, INPUT_MODE_INVENTORY, C.KEY_AUTOMAP) == 0
+    name_editor = key_command(lib, INPUT_MODE_NAME, C.KEY_AUTOMAP)
+    set_mode(lib, ADVANCED)
+    assert key_command(lib, INPUT_MODE_INVENTORY, C.KEY_AUTOMAP) == C.CMD_INVENTORY_LEADER
+    assert key_command(lib, INPUT_MODE_NAME, C.KEY_AUTOMAP) == name_editor, "the name editor keeps Tab"
+    set_mode(lib, VANILLA)
+
+
+def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced):  # noqa: F811
+    from dm2test.interface import ActionArea
+    action = ActionArea.in_dll(lib, "g_action")
+    rect = (ctypes.c_int16 * 4)()
+    lib.zone_get_rect(C.ZONE_ACTION_AREA, rect)
+    lib.area_end_damage_hold.argtypes = [ctypes.c_int16, ctypes.c_int16]
+
+    def hit(mode):
+        set_mode(lib, mode)
+        action.champion, action.mode, action.redraw_delay, action.result = 0, C.ACTION_MODE_HANDS, 1, 7
+        lib.area_update(1)
+        assert action.mode == C.ACTION_MODE_RESULT and action.dirty
+
+    hit(VANILLA)
+    lib.area_update(1)
+    assert not action.dirty, "the vanilla mode redraws one step later"
+    hit(ADVANCED)
+    lib.area_update(1)
+    assert action.dirty, "the damage stays one more step"
+    lib.area_update(1)
+    assert not action.dirty
+    hit(ADVANCED)
+    lib.area_update(1)
+    assert not lib.area_end_damage_hold(rect[0] - 1, rect[1]), "a click outside the area keeps the hold"
+    assert lib.area_end_damage_hold(rect[0], rect[1])
+    assert not action.dirty, "a click in the area ends the hold and draws the icons"
+    set_mode(lib, VANILLA)

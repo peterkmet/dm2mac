@@ -514,6 +514,18 @@ static inline void group_set_flag(uint16_t group, uint16_t bit, bool on)
 #define POTION_DO_NOT_DISCARD 0x8000
 /* The position of the potion type in ITEM_DATA. */
 #define POTION_TYPE_SHIFT     8
+/* Potion kinds. */
+#define POTION_DEXTERITY      0x06
+#define POTION_STRENGTH       0x07
+#define POTION_WISDOM         0x08
+#define POTION_VITALITY       0x09
+#define POTION_ANTIDOTE       0x0a
+#define POTION_STAMINA        0x0b
+#define POTION_DEFENSE        0x0c
+#define POTION_MANA           0x0d
+#define POTION_HEALTH         0x0e
+#define POTION_WATER          0x0f
+#define EMPTY_FLASK           0x14 /* the potion kind of an empty flask */
 /* ITEM_DATA of scrolls: an ornament text id in bits 10-15, else a text thing index in bits 0-9. */
 #define SCROLL_TEXT_SHIFT     10
 /* The mask of the ornament text id of a scroll after the shift. */

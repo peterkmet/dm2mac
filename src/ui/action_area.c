@@ -104,10 +104,17 @@ static struct {
     int16_t leader;
 } drawn;
 
+/* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
+#define DAMAGE_HOLD_EXTRA_TICKS 1
+
+/* The ticks to wait for the redraw after the damage shows: one for the original delay, then the extra ones. */
+static int16_t damage_hold_ticks;
+
 /* ---- Setup ---- */
 
 void area_reset(void)
 {
+    damage_hold_ticks = 0;
     memset(&drawn, 0, sizeof drawn);
     drawn.gfx_set = NO_CELL;
     drawn.leader = -1;
@@ -745,6 +752,7 @@ void area_update(int tick)
         minion_map_drain_mana();
     if (g_action.result) {
         show_action_result(g_action.result);
+        damage_hold_ticks = g_game_mode == GAME_MODE_ADVANCED && g_action.result > 0 ? DAMAGE_HOLD_EXTRA_TICKS + 1 : 0;
         g_action.dirty = 1;
         g_action.result = 0;
         g_action.mode = ACTION_MODE_RESULT;
@@ -761,6 +769,13 @@ void area_update(int tick)
             g_action.redraw_delay--;
             goto flush;
         }
+        if (g_action.mode != ACTION_MODE_RESULT)
+            damage_hold_ticks = 0;
+        if (damage_hold_ticks > DAMAGE_HOLD_EXTRA_TICKS) {
+            damage_hold_ticks -= tick != 0;
+            goto flush;
+        }
+        damage_hold_ticks = 0;
         begin_draw(true);
         g_action.dirty = 0;
         full = true;
@@ -775,4 +790,16 @@ flush:
     if (area.bitmap)
         offscreen_flush(&area, true);
     draw_free_temp();
+}
+
+bool area_end_damage_hold(int16_t x, int16_t y)
+{
+    int16_t rect[RECT_SIZE];
+    zone_get_rect(ZONE_ACTION_AREA, rect);
+    if (damage_hold_ticks <= 0 || damage_hold_ticks > DAMAGE_HOLD_EXTRA_TICKS || x < rect[0] || y < rect[1] ||
+        x >= rect[0] + rect[2] || y >= rect[1] + rect[3])
+        return false;
+    damage_hold_ticks = 0;
+    area_update(0);
+    return true;
 }

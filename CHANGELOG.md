@@ -6,6 +6,15 @@ All notable changes to this project are in this file. The format follows [Keep a
 
 ### Added
 
+- Advanced mode, mode screen: without `--mode`, a screen with the items VANILLA and ADVANCED starts the program.
+- Smooth window scaling with a live resize redraw, and the window title DM2Mac.
+- Cheat screen (`C`) with six cheats: full light, immortal, food and water, one-hit kill, walk through walls, and reveal map. It also casts spells. The save slots and `QUICK.DAT` keep the cheats in a CHTS block.
+- Quick save and quick load (`F5`, `F9`) and spells on the cheat screen.
+- Automap: a frame, a checkerboard for imaginary walls, and a mark for the pressure pads that the dungeon view draws. The cheat keys of the automap are gone; use the cheat screen.
+- Options menu on `Esc` with the upscale filter FILTER (changes at once), saved in `SETTINGS.TXT`.
+- `Tab` closes the open inventory.
+- The damage of a hit stays one more game step.
+- Projectiles fly smoothly between game steps.
 - Window and Dock icon (a mummy from `GRAPHICS.DAT`).
 - Tools: the LE loader `dm2-le` (`src/dm2tools/le.py`), the Unicorn emulator harness `dm2tools.emu` with the Watcom register convention, and the Ghidra headless scripts that write `decomp/SKULL.c`.
 - Analysis: the symbol map `docs/skull-symbols.csv` and `docs/skull-map.md`, and the data formats and port deviations in `docs/skull-formats.md`.

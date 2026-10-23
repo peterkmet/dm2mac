@@ -48,18 +48,6 @@
 #define DIVISOR_POWER_TOP      511 /* drink_potion: the divisor of the stat gains falls as the power rises */
 #define DIVISOR_POWER_BASE     32
 #define WOUND_TRIES            10
-/* Potion kinds. */
-#define POTION_DEXTERITY       0x06
-#define POTION_STRENGTH        0x07
-#define POTION_WISDOM          0x08
-#define POTION_VITALITY        0x09
-#define POTION_ANTIDOTE        0x0a
-#define POTION_STAMINA         0x0b
-#define POTION_DEFENSE         0x0c
-#define POTION_MANA            0x0d
-#define POTION_HEALTH          0x0e
-#define POTION_WATER           0x0f
-#define EMPTY_FLASK            0x14 /* the potion kind of an empty flask */
 /* Potion gains by power: a statistic gains power / 25 + 8, strength power / 35 + 5. */
 #define POTION_GAIN_DIVISOR    25
 #define POTION_GAIN_BASE       8

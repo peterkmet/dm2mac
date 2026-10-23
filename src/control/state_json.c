@@ -34,12 +34,11 @@
 #include <string.h>
 
 /* Sizes of the JSON text and of the texts of the game state. */
-#define JSON_START_SIZE  1024                                        /* the first size of the text buffer */
-#define INT64_TEXT_SIZE  24                                          /* the digits and sign of an int64_t */
-#define ESCAPE_SIZE      8                                           /* a \u00XX escape and its end mark */
-#define ESCAPE_LENGTH    6                                           /* the length of a \u00XX escape */
-#define RUNE_NAME_COUNT  (CHAMPION_RUNES_SIZE * SPELL_RUNES_PER_SET) /* the power runes and three rune sets */
-#define RUNE_NAME_MAX    4                                           /* the letters of the longest rune name */
+#define JSON_START_SIZE  1024            /* the first size of the text buffer */
+#define INT64_TEXT_SIZE  24              /* the digits and sign of an int64_t */
+#define ESCAPE_SIZE      8               /* a \u00XX escape and its end mark */
+#define ESCAPE_LENGTH    6               /* the length of a \u00XX escape */
+#define RUNE_NAME_MAX    4               /* the letters of the longest rune name */
 #define SCROLL_TEXT_SIZE (TEXT_SIZE * 2) /* a decoded scroll text, as the scroll panel holds it */
 #define MAP_GRID_PREFIX  3               /* the "yy " in front of each grid row */
 #define PILE_ALCOVE      CELL_COUNT      /* the cell number of the alcove pile, after the 4 floor cells */
@@ -194,11 +193,6 @@ static const char *const slot_names[SLOT_COUNT] = {
     "backpack_16",
     "backpack_17",
 };
-/* The rune names by rune glyph - SPELL_RUNE_GLYPH_FIRST: the power runes, then the three rune sets. */
-static const char *const rune_names[RUNE_NAME_COUNT] = {
-    "lo",  "um", "on",   "ee", "pal", "mon", "ya", "vi",  "oh",   "ful",  "des", "zo",
-    "ven", "ew", "kath", "ir", "bro", "gor", "ku", "ros", "dain", "neta", "ra",  "sar",
-};
 static const char *const hand_names[SLOT_HAND_COUNT] = {"ready", "action"};
 static const char *const map_option_names[MAP_OPTION_COUNT] = {"creatures", "details", "items", "hold"};
 /* The amounts of rain and clouds that the sky shows. */
@@ -307,8 +301,8 @@ static void runes_json(Json *j, const Champion *c)
     json_open(j, '[');
     for (int k = 0; k < c->rune_count && k < CHAMPION_RUNES_SIZE; k++) {
         int rune = (uint8_t)c->runes[k] - SPELL_RUNE_GLYPH_FIRST;
-        if (rune >= 0 && rune < RUNE_NAME_COUNT)
-            json_str(j, rune_names[rune]);
+        if (magic_get_rune_name(rune))
+            json_str(j, magic_get_rune_name(rune));
     }
     json_close(j, ']');
 }
@@ -324,7 +318,7 @@ static void rank_json(Json *j, const char *text)
             out[n++] = *text;
             continue;
         }
-        for (const char *name = rune_names[rune]; *name; name++)
+        for (const char *name = magic_get_rune_name(rune); *name; name++)
             out[n++] = (char)toupper((unsigned char)*name);
     }
     out[n] = 0;
@@ -579,7 +573,7 @@ static void spell_json(Json *j)
     for (int r = 0; c->rune_count < CHAMPION_RUNES_SIZE && r < SPELL_RUNES_PER_SET; r++) {
         json_open(j, '{');
         key_int(j, "rune", r);
-        key_str(j, "name", rune_names[c->rune_count * SPELL_RUNES_PER_SET + r]);
+        key_str(j, "name", magic_get_rune_name(c->rune_count * SPELL_RUNES_PER_SET + r));
         key_int(j, "mana", magic_rune_mana_cost(caster, r));
         json_close(j, '}');
     }

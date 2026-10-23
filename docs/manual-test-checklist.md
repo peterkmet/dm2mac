@@ -279,21 +279,27 @@ Details: `docs/advanced-mode.md`.
 - [ ] L6. Walk some squares, then press F9. Expected: "GAME LOADED"; the party is back on the square of L5; no dialog shows.
 - [ ] L7. Delete `game/DATA/QUICK.DAT` and press F9. Expected: "NO QUICK SAVE"; the game goes on.
 - [ ] L8. Write some bytes of garbage into `game/DATA/QUICK.DAT` and press F9. Expected: "QUICK SAVE DAMAGED"; the game goes on unchanged.
-- [ ] L9. Press F5 and F9 with an open inventory, during the pause (Esc), during the sleep, and in the save menu. Expected: nothing happens.
+- [ ] L9. Press F5 and F9 with an open inventory, in the options menu, during the pause (vanilla mode, Esc), during the sleep, and in the save menu. Expected: nothing happens.
 - [ ] L10. Load a slot, play more than 100 ticks, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
 - [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
 - [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla, advanced, or turnbased" and exit code 2.
-- [ ] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, the direction, and the three cheats OFF. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.
+- [ ] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, and the direction. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.
 - [ ] L14. Walk through some rooms and open the automap. Expected: the squares that the view showed are drawn with the minion map icons; squares behind walls and closed doors stay black.
 - [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the close).
 - [ ] L16. Drag the automap with the left mouse button. Expected: the map moves in whole squares and stops at the map edges; after a close and a new open, the party is in the middle again.
-- [ ] L17. Press I, F, and L with the automap open. Expected: each readout line changes to ON and back to OFF. Press I, F, and L in the dungeon view. Expected: no cheat changes.
-- [ ] L18. Turn I on, close the automap, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
-- [ ] L19. Turn F on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
-- [ ] L20. In a dark place, turn L on and close the automap. Expected: the dungeon view shows full light.
-- [ ] L21. Turn the cheats on, then press F9 after a quick save. Expected: the readout shows all cheats OFF.
+- [ ] L17. Press I, F, and L with the automap open. Expected: nothing changes; the readout shows no cheats.
+- [ ] L17a. Open the automap with the reveal map cheat on, then off. Expected: a white 1 pixel frame surrounds the whole map; a floor with a pressure pad (a floor plate that a step triggers) has a small gray square in the middle; a wall that the party can walk through (an imaginary wall) shows as the wall icon with a light gray checkerboard.
+- [ ] L18. Press C, turn IMMORTAL on, close the screen, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
+- [ ] L19. On the cheat screen, turn FOOD AND WATER on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
+- [ ] L20. In a dark place, turn FULL LIGHT on with C and close the screen. Expected: the dungeon view shows full light.
+- [ ] L21. Press F5 with all cheats off, turn cheats on with C, then press F9. Expected: the cheat screen shows all cheats OFF. On the SPELLS pages, click NEXT up to page 5, then NEXT (page 1) and BACK (the cheat page). Click FUL IR (X,4,4) FIREBALL. Expected: the screen closes, the fireball flies, the mana and the experience do not change.
 - [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
 - [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
+- [ ] L24. In the advanced mode, press Esc in the dungeon view. Expected: the viewport shows OPTIONS with FILTER NONE and CONTINUE; the game time stops. Press A, D, Return, and click FILTER. Expected: the filter changes at once through NONE, SCALE2X, SCALE3X and wraps; `game/DATA/SETTINGS.TXT` holds the filter. Press Esc, or click CONTINUE. Expected: the menu closes and the game goes on.
+- [ ] L25. Start `build/dm2` again. Expected: the filter of `SETTINGS.TXT` is on. Start with `--filter none`. Expected: no filter; Esc, then D, writes the file again. With `--mode vanilla` Esc pauses and the file is not read. Make `SETTINGS.TMP` a folder and change the filter. Expected: "UNABLE TO SAVE OPTIONS" once; the filter still changes.
+- [ ] L26. In the advanced mode, open an inventory and press Tab. Expected: the inventory closes. Open the name editor and press Tab. Expected: the editor moves to the next field; the inventory stays. In the vanilla mode, press Tab in an inventory. Expected: nothing.
+- [ ] L27. In the advanced mode, hit a creature with a weapon. Expected: the damage star stays visible about twice as long as in the vanilla mode. Click in the action area while the star shows. Expected: the hand icons show at once and the click works as usual (it opens the hand menu). In the vanilla mode, the star disappears after one step.
+- [ ] L28. In the advanced mode, stand still and cast a fireball, or throw a dagger, down a long corridor. Expected: the projectile glides smoothly away, with no jumps or steps back. Turn while it flies. Expected: the view turns at once; no projectile jumps. In the vanilla mode the projectile moves in steps.
 
 ## Movies (2026-10-10)
 

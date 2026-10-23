@@ -937,6 +937,7 @@ void creature_process_event(int16_t x, int16_t y, int type)
         set_thing_word(group, GROUP_HEALTH, a->damage);
     }
     int16_t damage = (int16_t)a->damage;
+    bool hit = damage > 0;
     a->damage = 0;
     int16_t regen = info->regeneration;
     if (regen) {
@@ -953,6 +954,10 @@ void creature_process_event(int16_t x, int16_t y, int type)
             a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - elapsed % regen);
         }
     }
+    /* one-hit kill cheat: any hit kills (of the party, a trap, or a creature: a missile keeps no launcher); the
+       health that the creature loses by itself does not */
+    if (game_has_cheat(CHEAT_KILL) && hit && damage < thing_word(group, GROUP_HEALTH))
+        damage = (int16_t)thing_word(group, GROUP_HEALTH);
     if (damage > 0) {
         if (!(info->flags & CREATURE_STATIC))
             group_set_mood_flag(g_ai.group_thing, MOOD_FAR, false);
@@ -1240,7 +1245,8 @@ void creature_alert(uint16_t group, Location at, unsigned flags, int chance, int
         wake = alert_wakes(group, a);
     if ((int8_t)a->action == CREATURE_ACTION_VANISH)
         return;
-    if (!wake && total < thing_word(group, GROUP_HEALTH))
+    bool kills = game_has_cheat(CHEAT_KILL) && damage > 0; /* one-hit kill cheat: the update kills at once */
+    if (!wake && !kills && total < thing_word(group, GROUP_HEALTH))
         return;
     creature_cancel_update(group);
     schedule_update(x, y);

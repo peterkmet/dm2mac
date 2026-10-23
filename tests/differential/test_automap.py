@@ -1,5 +1,5 @@
 """The automap of the advanced mode (src/ui/automap.c, ui/advanced.c): the seen squares, the AMAP save block, the map in
-the viewport, and the cheats of the open automap."""
+the viewport, and the cheats that change what the automap and the view show."""
 
 import ctypes
 
@@ -24,6 +24,7 @@ WALL, DOOR, FAKE_WALL = C.SQUARE_WALL, C.SQUARE_DOOR, C.SQUARE_FAKE_WALL
 FAKE_WALL_OPEN, DOOR_STATE, DOOR_CLOSED = C.SQUARE_FAKE_WALL_OPEN, C.SQUARE_DOOR_STATE, C.DOOR_STATE_CLOSED
 ROW_HALF_WIDTH = (1, 1, 2, 2, 3)  # the side squares of each row of the dungeon view
 KEY_TAB, KEY_M, KEY_ESC, KEY_I, KEY_F, KEY_L = C.KEY_AUTOMAP, C.KEY_AUTOMAP_M, 0x01, 0x17, 0x21, 0x26
+CHTS_SIZE = 6  # the CHTS block after the AMAP block of an advanced save
 INPUT_BUTTON_LEFT, INPUT_LEFT_RELEASED = C.INPUT_BUTTON_LEFT, C.INPUT_LEFT_RELEASED
 ZONE_VIEWPORT, UI_RED, CELL = C.ZONE_VIEWPORT, C.UI_RED, C.MAP_CELL_SIZE
 SCREEN_H, FILLER = C.SCREEN_H, 0xEE
@@ -35,13 +36,15 @@ SAVE_OK = C.SAVE_OK
 def automap(lib, advanced):  # noqa: F811
     """The advanced game with the bright light and the cheats off."""
     lib.dungeon_square.restype = ctypes.c_uint8
-    for name in ("g_view_light_level", "g_cheat_light", "g_cheat_immortal", "g_cheat_food"):
-        flag(lib, name).value = 0
+    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
+    lib.game_get_cheats.restype = ctypes.c_uint8
+    flag(lib, "g_view_light_level").value = 0
+    lib.game_set_cheats(0)
     game, _ = advanced
     lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
     yield advanced
-    for name in ("g_cheat_light", "g_cheat_immortal", "g_cheat_food", "g_advanced_automap_open"):
-        flag(lib, name).value = 0
+    lib.game_set_cheats(0)
+    flag(lib, "g_advanced_screen").value = 0
 
 
 def flag(lib, name):
@@ -171,7 +174,8 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
     long_view = next(v for v in floor_views(lib, m) if all(not blocks(lib, m, *ahead(v[0], v[1], v[2], k)) for k in (1, 2, 3, 4)))
     x, y, d = long_view
     for level, light, depth in ((0, 0, 4), (4, 0, 3), (5, 0, 2), (5, 1, 4)):
-        flag(lib, "g_view_light_level").value, flag(lib, "g_cheat_light").value = level, light
+        flag(lib, "g_view_light_level").value = level
+        lib.game_set_cheats(C.CHEAT_LIGHT if light else 0)
         lib.seen_reset()
         lib.seen_mark(m, x, y, d)
         seen = seen_squares(lib, m)
@@ -214,8 +218,9 @@ def load(lib, gdat, path, data):  # noqa: F811
 def test_advanced_save_appends_the_amap_block(lib, saves):
     game, seen, vanilla, mine = saves
     assert seen and mine[:len(vanilla)] == vanilla
-    block = mine[len(vanilla):]
+    block = mine[len(vanilla):-CHTS_SIZE]
     assert block[:6] == b"AMAP\x01" + bytes([lib.dungeon_map_count()]) and len(block) == block_size(lib)
+    assert mine[-CHTS_SIZE:-1] == b"CHTS\x01"
     assert block[6:8] == bytes([lib.dungeon_map_width(0), lib.dungeon_map_height(0)])
 
 
@@ -228,17 +233,19 @@ def test_amap_block_round_trip(lib, gdat, saves, tmp_path):  # noqa: F811
     assert not seen_squares(lib, game.party_map), "a save without the block gives an empty map"
 
 
-@pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "map_count", "map_size", "value"])
+@pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "map_count", "map_size", "value", "chts"])
 def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damage):  # noqa: F811
     game, seen, vanilla, mine = saves
     n = len(vanilla)
     data = bytearray(mine)
     if damage == "short":
-        del data[-1]
+        del data[-CHTS_SIZE - 1]
     elif damage == "long":
-        data.append(0)
+        data.insert(len(data) - CHTS_SIZE, 0)
+    elif damage == "chts":
+        data[-2] += 1  # the version of the CHTS block
     else:
-        offset = {"magic": 0, "version": 4, "map_count": 5, "map_size": 6, "value": len(mine) - n - 1}[damage]
+        offset = {"magic": 0, "version": 4, "map_count": 5, "map_size": 6, "value": block_size(lib) - 1}[damage]
         data[n + offset] = 2 if damage == "value" else data[n + offset] + 1
     position = (game.party_x, game.party_y, game.party_map)
     assert load(lib, gdat, tmp_path / "L.DAT", bytes(data)) == SAVE_OK
@@ -263,7 +270,7 @@ def test_quick_save_keeps_the_automap(lib, automap):
     press(lib, C.KEYPAD_TURN_RIGHT)
     seen = seen_squares(lib, game.party_map)
     press(lib, KEY_F5)
-    assert (data / "QUICK.DAT").read_bytes()[-block_size(lib):][:4] == b"AMAP"
+    assert (data / "QUICK.DAT").read_bytes()[-block_size(lib) - CHTS_SIZE:][:4] == b"AMAP"
     lib.seen_reset()
     press(lib, KEY_F9)
     assert seen_squares(lib, game.party_map) >= seen
@@ -280,11 +287,12 @@ def test_damaged_quick_save_keeps_the_automap(lib, automap):
     assert seen and seen_squares(lib, game.party_map) >= seen
 
 
-def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
+def test_new_game_starts_with_an_empty_automap_and_no_cheats(lib, automap, game_dir):
     game, data = automap
     from dm2test.dialog import Session
     run_ticks(lib, 20)
     assert seen_squares(lib, game.party_map)
+    lib.game_set_cheats(C.CHEAT_ALL)
     (data / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
     state = Session.in_dll(lib, "g_session")
     state.new_game = 1
@@ -293,6 +301,7 @@ def test_new_game_starts_with_an_empty_automap(lib, automap, game_dir):
     finally:
         state.new_game = 0
     assert not any(seen_squares(lib, m) for m in range(lib.dungeon_map_count()))
+    assert lib.game_get_cheats() == 0
 
 
 def viewport(lib):
@@ -316,26 +325,27 @@ def party_frame(lib, dx=0):
 
 
 def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automap):
-    assert key_command(lib, INPUT_MODE_MOVE, KEY_TAB) and key_command(lib, INPUT_MODE_INVENTORY, KEY_TAB) == 0
+    assert key_command(lib, INPUT_MODE_MOVE, KEY_TAB)
+    assert key_command(lib, INPUT_MODE_INVENTORY, KEY_TAB) == C.CMD_INVENTORY_LEADER, "Tab closes the inventory"
     set_mode(lib, VANILLA)
     assert key_command(lib, INPUT_MODE_MOVE, KEY_TAB) == key_command(lib, INPUT_MODE_MOVE, KEY_M) == 0
     press(lib, KEY_TAB)
     set_mode(lib, ADVANCED)
-    assert not flag(lib, "g_advanced_automap_open").value
+    assert not flag(lib, "g_advanced_screen").value
     lib.ui_toggle_inventory(0)
     press(lib, KEY_TAB)
-    lib.ui_toggle_inventory(0)
+    assert not flag(lib, "g_advanced_screen").value and lib.input_get_mode() == INPUT_MODE_MOVE
     press(lib, KEY_PAUSE)
     press(lib, KEY_M)
     press(lib, KEY_PAUSE)
-    assert not flag(lib, "g_advanced_automap_open").value
+    assert not flag(lib, "g_advanced_screen").value
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     for key in (KEY_TAB, KEY_M):
         for close in (KEY_TAB, KEY_M, KEY_ESC):
             press(lib, key)
-            assert flag(lib, "g_advanced_automap_open").value and party_frame(lib) == red(lib)
+            assert flag(lib, "g_advanced_screen").value and party_frame(lib) == red(lib)
             press(lib, close)
-            assert not flag(lib, "g_advanced_automap_open").value
+            assert not flag(lib, "g_advanced_screen").value
             assert viewport_pixels(lib) == c_view(lib), "the dungeon view is back after a step"
     assert lib.input_get_mode() == INPUT_MODE_MOVE
 
@@ -357,7 +367,7 @@ def test_close_key_drops_the_click_of_the_same_tick(lib, automap):
     lib.input_key_down(SCAN_W)
     position = (game.party_x, game.party_y)
     run_ticks(lib, 40)
-    assert not flag(lib, "g_advanced_automap_open").value and (game.party_x, game.party_y) == position
+    assert not flag(lib, "g_advanced_screen").value and (game.party_x, game.party_y) == position
     assert lib.input_get_mode() == INPUT_MODE_MOVE
 
 
@@ -369,9 +379,9 @@ def test_time_stops_and_keys_are_swallowed_while_open(lib, automap):
         press(lib, key)
     assert (game.game_time, game.party_x, game.party_y, game.party_dir) == state
     assert not (data / "QUICK.DAT").exists(), "F5 and F9 do nothing on the open automap"
-    assert flag(lib, "g_advanced_automap_open").value
+    assert flag(lib, "g_advanced_screen").value
     press(lib, KEY_ESC)
-    assert game.game_time > state[0] and not flag(lib, "g_advanced_automap_open").value
+    assert game.game_time > state[0] and not flag(lib, "g_advanced_screen").value
 
 
 def test_automap_draws_inside_the_viewport_with_the_party_icon(lib, automap):
@@ -422,17 +432,15 @@ def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
     press(lib, KEY_TAB)
 
 
-def test_readout_shows_position_direction_and_cheats(lib, automap):
+def test_readout_shows_position_and_direction(lib, automap):
     # Drawing each expected line again at its place changes no pixel; a wrong text changes some.
     game, _ = automap
     lib.text_draw_on_screen.argtypes = [ctypes.c_int] * 4 + [ctypes.c_char_p]
     colors = ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")
-    flag(lib, "g_cheat_food").value = 1
     press(lib, KEY_TAB)
     x, y, _, _ = viewport(lib)
     lines = [b"LEVEL %d  X %d  Y %d" % (lib.dungeon_map_level(game.party_map), game.party_x, game.party_y),
-             [b"NORTH", b"EAST", b"SOUTH", b"WEST"][game.party_dir], b"I IMMORTAL OFF", b"F FOOD AND WATER ON",
-             b"L FULL LIGHT OFF"]
+             [b"NORTH", b"EAST", b"SOUTH", b"WEST"][game.party_dir]]
     shown = viewport_pixels(lib)
     for row, text in enumerate(lines):
         for line, same in ((text, True), (text[:-1] + b"X", False)):
@@ -442,20 +450,23 @@ def test_readout_shows_position_direction_and_cheats(lib, automap):
     press(lib, KEY_TAB)
 
 
-def test_cheat_keys_work_only_on_the_advanced_automap(lib, automap):
-    names = {KEY_I: "g_cheat_immortal", KEY_F: "g_cheat_food", KEY_L: "g_cheat_light"}
-    for key in names:
-        press(lib, key)
-    assert not any(flag(lib, n).value for n in names.values())
+def test_the_automap_has_no_cheat_keys(lib, automap):
     press(lib, KEY_TAB)
-    x, y, w, h = viewport(lib)
-    for key, name in names.items():
-        before = bytes(screen(lib))
+    before = bytes(screen(lib))
+    for key in (KEY_I, KEY_F, KEY_L):
         press(lib, key)
-        assert flag(lib, name).value == 1 and bytes(screen(lib)) != before, name
-    for key, name in names.items():
-        press(lib, key)
-        assert flag(lib, name).value == 0, name
+    assert lib.game_get_cheats() == 0 and bytes(screen(lib)) == before
+
+
+def test_reveal_map_draws_every_square_and_keeps_the_seen_squares(lib, automap):
+    game, _ = automap
+    seen = seen_squares(lib, game.party_map)
+    press(lib, KEY_TAB)
+    shown = viewport_pixels(lib)
+    lib.game_set_cheats(C.CHEAT_MAP)
+    lib.advanced_draw_automap()
+    assert viewport_pixels(lib) != shown and seen_squares(lib, game.party_map) == seen
+    press(lib, KEY_TAB)
 
 
 def champion_word(lib, offset, value=None):
@@ -468,7 +479,7 @@ def champion_word(lib, offset, value=None):
 
 def test_immortal_keeps_one_health(lib, automap):
     damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
-    flag(lib, "g_cheat_immortal").value = 1
+    lib.game_set_cheats(C.CHEAT_IMMORTAL)
     damage[0] = 30000
     lib.champ_apply_pending_damage()
     assert champion_word(lib, HEALTH) == 1
@@ -480,11 +491,11 @@ def test_immortal_keeps_one_health(lib, automap):
 def test_food_cheat_keeps_food_and_water(lib, automap):
     champion_word(lib, FOOD, 1000)
     champion_word(lib, WATER, 1000)
-    flag(lib, "g_cheat_food").value = 1
+    lib.game_set_cheats(C.CHEAT_FOOD)
     for _ in range(20):
         lib.champ_apply_time_effects()
     assert (champion_word(lib, FOOD), champion_word(lib, WATER)) == (1000, 1000)
-    flag(lib, "g_cheat_food").value = 0
+    lib.game_set_cheats(0)
     for _ in range(20):
         lib.champ_apply_time_effects()
     assert champion_word(lib, FOOD) < 1000 and champion_word(lib, WATER) < 1000
@@ -495,7 +506,8 @@ def test_light_cheat_draws_full_light(lib, automap):
     level = flag(lib, "g_view_light_level")
 
     def view(light, cheat):
-        level.value, flag(lib, "g_cheat_light").value = light, cheat
+        level.value = light
+        lib.game_set_cheats(C.CHEAT_LIGHT if cheat else 0)
         lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
         return c_view(lib)
     dark, cheat, bright = view(5, 0), view(5, 1), view(0, 0)
@@ -503,13 +515,14 @@ def test_light_cheat_draws_full_light(lib, automap):
     assert level.value == 0 and view(5, 1) and level.value == 5, "the creature rules keep the real light"
 
 
-def test_new_or_loaded_game_turns_the_cheats_off(lib, automap):
+def test_quick_load_takes_the_saved_cheats(lib, automap):
+    lib.game_set_cheats(C.CHEAT_FOOD | C.CHEAT_KILL)
     press(lib, KEY_F5)
-    for name in ("g_cheat_immortal", "g_cheat_food", "g_cheat_light"):
-        flag(lib, name).value = 1
+    lib.game_set_cheats(C.CHEAT_ALL)
     press(lib, KEY_F9)
-    assert not any(flag(lib, n).value for n in ("g_cheat_immortal", "g_cheat_food", "g_cheat_light"))
-    flag(lib, "g_advanced_automap_open").value = 1
+    assert lib.game_get_cheats() == C.CHEAT_FOOD | C.CHEAT_KILL
+    flag(lib, "g_advanced_screen").value = 1
     lib.play_start_session()
-    assert not flag(lib, "g_advanced_automap_open").value
+    assert not flag(lib, "g_advanced_screen").value
+    assert lib.game_get_cheats() == C.CHEAT_FOOD | C.CHEAT_KILL, "a session start keeps the cheats"
 

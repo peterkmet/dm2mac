@@ -23,9 +23,10 @@ int g_input_command_stop;
 int g_input_drag_state;
 int g_input_mouse_buttons;
 Session g_session = {.slot = SAVE_SLOT_NONE};
+/* The cheat bits that are on (CHEAT_*). */
+static uint8_t cheats;
 int g_game_mode = GAME_MODE_VANILLA;
 const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
-int g_cheat_light, g_cheat_immortal, g_cheat_food;
 
 /* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
 #define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
@@ -389,9 +390,22 @@ void game_restore_session(const Session *session)
     g_session = *session;
 }
 
-void game_clear_cheats(void)
+uint8_t game_get_cheats(void)
 {
-    g_cheat_light = 0;
-    g_cheat_immortal = 0;
-    g_cheat_food = 0;
+    return cheats;
+}
+
+void game_set_cheats(uint8_t bits)
+{
+    cheats = bits & CHEAT_ALL;
+}
+
+void game_toggle_cheat(uint8_t cheat)
+{
+    game_set_cheats(cheats ^ cheat);
+}
+
+bool game_has_cheat(uint8_t cheat)
+{
+    return cheats & cheat;
 }

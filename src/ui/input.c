@@ -1097,10 +1097,12 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 }
 
 /* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
-   load, Tab and M there open the automap, and a letter key W S A D Q E without a command gives the command of its
-   keypad key. */
+   load, Tab and M there open the automap, C the cheat screen, Esc the options menu (instead of the pause), Tab in the inventory closes it, and a letter key W S A D Q E without a command gives
+   the command of its keypad key. */
 static uint16_t key_command(int mode, uint16_t key)
 {
+    if (g_game_mode == GAME_MODE_ADVANCED && mode == INPUT_MODE_MOVE && key == KEY_OPTIONS)
+        return CMD_OPTIONS;
     uint16_t command = find_key_command(&input_mode_roots[mode], key);
     if (command || g_game_mode != GAME_MODE_ADVANCED)
         return command;
@@ -1108,6 +1110,10 @@ static uint16_t key_command(int mode, uint16_t key)
         return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
     if (mode == INPUT_MODE_MOVE && (key == KEY_AUTOMAP || key == KEY_AUTOMAP_M))
         return CMD_AUTOMAP;
+    if (mode == INPUT_MODE_MOVE && key == KEY_CHEATS)
+        return CMD_CHEATS;
+    if (mode == INPUT_MODE_INVENTORY && key == KEY_AUTOMAP && !g_ui.candidate)
+        return CMD_INVENTORY_LEADER;
     uint16_t keypad = advanced_movement_key(key);
     return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
 }
@@ -1346,7 +1352,7 @@ void input_mouse_down(int16_t x, int16_t y, int button)
 void input_mouse_up(int16_t x, int16_t y, int button)
 {
     game_set_mouse_buttons(g_input_mouse_buttons & ~button);
-    if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || g_advanced_automap_open))
+    if (button == INPUT_BUTTON_LEFT && (g_ui.eye || g_ui.mouth || g_advanced_screen))
         input_mouse_click(x, y, INPUT_LEFT_RELEASED);
 }
 
@@ -1448,7 +1454,7 @@ static const uint8_t *click_feedback_script(Command *c)
     input_refine_champion_click(c);
     uint16_t command = c->command;
     int offset;
-    if (!command || command > CMD_AUTOMAP)
+    if (!command || command > CMD_OPTIONS)
         return NULL;
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == CMD_VOLUME ||
         (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL) ||
@@ -1711,22 +1717,26 @@ static void run_click_feedback(int elapsed)
         offscreen_flush(&f.o, true);
 }
 
-/* The open automap takes the keys and the mouse events until it closes; the mouse drags the map. */
-static void forward_to_automap(void)
+/* The open viewport screen takes the keys and the mouse events until it closes; the mouse drags the automap. */
+static void forward_to_screen(void)
 {
     uint16_t key;
-    while (g_advanced_automap_open && (key = input_read_key()))
-        advanced_automap_event(INPUT_KEY, key, 0);
-    while (g_advanced_automap_open && in.event_count) {
+    while (g_advanced_screen && (key = input_read_key()))
+        advanced_screen_event(INPUT_KEY, key, 0);
+    while (g_advanced_screen && in.event_count) {
         int type = in.events[in.event_head].type, x = in.events[in.event_head].x, y = in.events[in.event_head].y;
         in.event_count--;
         in.event_head = (in.event_head + 1) % EVENT_RING;
-        advanced_automap_event(type, x, y);
+        advanced_screen_event(type, x, y);
     }
-    if (g_advanced_automap_open)
+    if (g_advanced_screen) {
         advanced_automap_drag(g_input_mouse_x, g_input_mouse_y);
-    else
-        input_flush(); /* the input after the close key does not reach the game */
+        return;
+    }
+    input_flush(); /* the input after the close key does not reach the game */
+    uint16_t pending = advanced_take_pending_key();
+    if (pending)
+        input_key_down(pending);
 }
 
 void input_poll(void)
@@ -1735,8 +1745,8 @@ void input_poll(void)
     if (!elapsed)
         return;
     in.last_ticks = g_main_loop.timer_ticks;
-    if (g_advanced_automap_open) {
-        forward_to_automap();
+    if (g_advanced_screen) {
+        forward_to_screen();
         return;
     }
     if (!in.disabled && !in.feedback_waiting && !g_input_feedback_busy) {
@@ -1756,8 +1766,11 @@ void input_poll(void)
                 if (type < INPUT_KEY) {
                     if (type & INPUT_LEFT_RELEASED)
                         command = CMD_CANCEL_CAPTURE;
-                    else if (type & EVENT_CLICK_TYPES)
+                    else if (type & EVENT_CLICK_TYPES) {
+                        if (type == INPUT_BUTTON_LEFT)
+                            area_end_damage_hold((int16_t)x, (int16_t)y);
                         command = find_click_command(&input_mode_roots[in.mode], x, y, type);
+                    }
                 } else if (type == INPUT_KEY) {
                     command = key_command(in.mode, (uint16_t)x);
                 } else if (type == EVENT_ENTER_AREA) {
@@ -1965,12 +1978,21 @@ static void click_take_object(int x, int y, int index)
     game_set_command_stop(true);
 }
 
+/* True when the party stands in a wall, a closed fake wall, or a closed door (walk-through-walls cheat). */
+static bool is_party_in_wall(void)
+{
+    return game_has_cheat(CHEAT_WALLS) &&
+           dun_square_blocks_movement(dungeon_square(g_party.cur_map, g_game.party_x, g_game.party_y));
+}
+
 /* Drops the leader hand object into cell of the square (x, y): 0 to 3 a floor cell, 4 to 7 a possession cell of
    a static creature, relative to the party direction. True when done. */
 static bool click_drop_object(int x, int y, int cell)
 {
     if ((int16_t)g_game.leader == -1)
         return false;
+    if (x == g_game.party_x && y == g_game.party_y && is_party_in_wall())
+        return true; /* no drop inside a wall: the object stays in the hand */
     int dir_cell = dir_turn(g_game.party_dir, cell);
     uint16_t group = creature_group_at(g_party.cur_map, x, y);
     bool possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
@@ -2305,14 +2327,18 @@ static bool execute_champion_command(int command, bool idle)
             champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
         area_update(0);
-    } else if (command == CMD_QUICK_SAVE || command == CMD_QUICK_LOAD || command == CMD_AUTOMAP) {
+    } else if (command >= CMD_QUICK_SAVE && command <= CMD_OPTIONS) {
         if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)
                 advanced_quick_save();
             else if (command == CMD_QUICK_LOAD)
                 advanced_quick_load();
-            else
+            else if (command == CMD_AUTOMAP)
                 advanced_open_automap();
+            else if (command == CMD_OPTIONS)
+                advanced_open_options();
+            else
+                advanced_open_cheats();
         }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
         if (g_ui.inventory)
@@ -2369,7 +2395,7 @@ void command_process_queue(void)
     in.feedback_waiting = 0;
     do {
         input_poll();
-        if (in.queue_head == in.queue_tail || g_advanced_automap_open)
+        if (in.queue_head == in.queue_tail || g_advanced_screen)
             return;
         int head = in.queue_head;
         in.queue_head = (head + 1) % COMMAND_QUEUE;

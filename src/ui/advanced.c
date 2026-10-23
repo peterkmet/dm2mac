@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, and the cheats. */
+/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, the cheat screen, and the options menu. */
 #include "advanced.h"
 #include "ids.h"
 #include "os.h"
@@ -10,8 +10,10 @@
 #include "save.h"
 #include "timeline.h"
 #include "automap.h"
+#include "cheats.h"
 #include "draw.h"
 #include "music.h"
+#include "optmenu.h"
 #include "session.h"
 #include "sound.h"
 #include "text.h"
@@ -23,29 +25,12 @@
 /* The name in the header of QUICK.DAT. */
 #define QUICK_SAVE_NAME "QUICK SAVE"
 
-/* PC scan codes of the letter keys that move and turn the party. */
-#define SCAN_Q 0x10
-#define SCAN_W 0x11
-#define SCAN_E 0x12
-#define SCAN_A 0x1e
-#define SCAN_S 0x1f
-#define SCAN_D 0x20
-
-/* PC scan codes of the keys on the open automap. */
-#define SCAN_ESCAPE 0x01
-#define SCAN_I      0x17
-#define SCAN_F      0x21
-#define SCAN_L      0x26
-
 /* The layout of the readout: its margin, then its rows. */
 #define READOUT_MARGIN    2 /* pixels between the viewport edge and the readout */
 #define READOUT_POSITION  0
 #define READOUT_DIRECTION 1
-#define READOUT_IMMORTAL  2
-#define READOUT_FOOD      3
-#define READOUT_LIGHT     4
 
-int g_advanced_automap_open;
+int g_advanced_screen;
 
 static struct {
     bool active;
@@ -55,12 +40,15 @@ static struct {
 /* true after a quick load lost the game: there is no running game to keep. */
 static bool lost;
 
+/* The key that the closed screen leaves for the game (F9 of QUICK LOAD), 0 for none. */
+static uint16_t pending_key;
+
 static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH", "WEST"};
 
-/* Closes the automap and ends a drag of the map. */
-static void close_automap(void)
+/* Closes the open viewport screen and ends a drag of the map. */
+static void close_screen(void)
 {
-    g_advanced_automap_open = 0;
+    g_advanced_screen = ADVANCED_SCREEN_NONE;
     drag.active = false;
     automap_scroll_reset();
 }
@@ -69,9 +57,9 @@ static void close_automap(void)
 
 void advanced_reset(void)
 {
-    close_automap();
+    close_screen();
     lost = false;
-    game_clear_cheats();
+    pending_key = 0;
 }
 
 /* Movement keys */
@@ -185,7 +173,7 @@ enum QuickLoadResult advanced_quick_load(void)
 
 void advanced_open_automap(void)
 {
-    g_advanced_automap_open = 1;
+    g_advanced_screen = ADVANCED_SCREEN_AUTOMAP;
     advanced_draw_automap();
 }
 
@@ -195,11 +183,6 @@ static void render_readout_line(Offscreen *o, int row, const char *text)
     int baseline = o->rect[RECT_Y] + READOUT_MARGIN + row * TEXT_LINE_HEIGHT + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1;
     offscreen_draw_text_at(o, o->rect[RECT_X] + READOUT_MARGIN, baseline,
                            (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_BLACK]}, text);
-}
-
-static const char *on_off(int on)
-{
-    return on ? "ON" : "OFF";
 }
 
 void advanced_draw_automap(void)
@@ -214,41 +197,8 @@ void advanced_draw_automap(void)
              g_game.party_y);
     render_readout_line(&o, READOUT_POSITION, line);
     render_readout_line(&o, READOUT_DIRECTION, direction_names[g_game.party_dir & DIR_MASK]);
-    snprintf(line, sizeof line, "I IMMORTAL %s", on_off(g_cheat_immortal));
-    render_readout_line(&o, READOUT_IMMORTAL, line);
-    snprintf(line, sizeof line, "F FOOD AND WATER %s", on_off(g_cheat_food));
-    render_readout_line(&o, READOUT_FOOD, line);
-    snprintf(line, sizeof line, "L FULL LIGHT %s", on_off(g_cheat_light));
-    render_readout_line(&o, READOUT_LIGHT, line);
     offscreen_flush(&o, true);
     draw_free_temp();
-}
-
-void advanced_automap_event(int type, int16_t x, int16_t y)
-{
-    int16_t r[RECT_SIZE];
-    if (type == INPUT_KEY) {
-        if (x == KEY_AUTOMAP || x == KEY_AUTOMAP_M || x == SCAN_ESCAPE) {
-            close_automap();
-            return;
-        }
-        int *cheat = x == SCAN_I   ? &g_cheat_immortal
-                     : x == SCAN_F ? &g_cheat_food
-                     : x == SCAN_L ? &g_cheat_light
-                                   : NULL;
-        if (!cheat)
-            return;
-        *cheat = !*cheat;
-        advanced_draw_automap();
-    } else if (type == INPUT_LEFT_RELEASED) {
-        advanced_automap_drag(x, y);
-        drag.active = false;
-    } else if (type & INPUT_BUTTON_LEFT && zone_get_rect(ZONE_VIEWPORT, r) && x >= r[RECT_X] &&
-               x < r[RECT_X] + r[RECT_W] && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
-        drag.active = true;
-        drag.x = x;
-        drag.y = y;
-    }
 }
 
 void advanced_automap_drag(int16_t x, int16_t y)
@@ -262,4 +212,108 @@ void advanced_automap_drag(int16_t x, int16_t y)
     drag.y += dy * MAP_CELL_SIZE;
     automap_scroll(-dx, -dy);
     advanced_draw_automap();
+}
+
+/* Viewport screens */
+
+/* An input event on the open automap. */
+static void map_event(int type, int16_t x, int16_t y)
+{
+    int16_t r[RECT_SIZE];
+    if (type == INPUT_KEY) {
+        if (x == KEY_AUTOMAP || x == KEY_AUTOMAP_M || x == SCAN_ESCAPE)
+            close_screen();
+    } else if (type == INPUT_LEFT_RELEASED) {
+        advanced_automap_drag(x, y);
+        drag.active = false;
+    } else if (type & INPUT_BUTTON_LEFT && zone_get_rect(ZONE_VIEWPORT, r) && x >= r[RECT_X] &&
+               x < r[RECT_X] + r[RECT_W] && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
+        drag.active = true;
+        drag.x = x;
+        drag.y = y;
+    }
+}
+
+void advanced_open_cheats(void)
+{
+    g_advanced_screen = ADVANCED_SCREEN_CHEATS;
+    cheats_open();
+}
+
+/* What a key on the open cheat screen asks for; the arrows and W and S move the selection. */
+static enum CheatsResult process_cheat_key(int16_t key)
+{
+    switch (key) {
+    case KEY_CHEATS:
+    case SCAN_ESCAPE:
+        return CHEATS_CLOSE;
+    case KEY_QUICK_SAVE:
+        return CHEATS_QUICK_SAVE;
+    case KEY_QUICK_LOAD:
+        return CHEATS_QUICK_LOAD;
+    case SCAN_RETURN:
+        return cheats_run_selected_row();
+    case KEYPAD_FORWARD:
+    case SCAN_W:
+        cheats_move_selection(-1);
+        break;
+    case KEYPAD_BACK:
+    case SCAN_S:
+        cheats_move_selection(1);
+        break;
+    }
+    return CHEATS_STAY;
+}
+
+/* An input event on the open cheat screen: a key or a left click, then what its row asks for. */
+static void cheat_event(int type, int16_t x, int16_t y)
+{
+    enum CheatsResult result = CHEATS_STAY;
+    if (type == INPUT_KEY)
+        result = process_cheat_key(x);
+    else if (type != INPUT_LEFT_RELEASED && type & INPUT_BUTTON_LEFT)
+        result = cheats_process_click(x, y);
+    if (result == CHEATS_QUICK_SAVE) {
+        advanced_quick_save();
+    } else if (result == CHEATS_QUICK_LOAD) {
+        close_screen();
+        pending_key = KEY_QUICK_LOAD; /* the load runs as a game command, not inside the input poll */
+    } else if (result == CHEATS_CLOSE) {
+        close_screen();
+    }
+}
+
+void advanced_open_options(void)
+{
+    g_advanced_screen = ADVANCED_SCREEN_OPTIONS;
+    optmenu_open();
+}
+
+/* An input event on the open options menu: a key or a left click. */
+static void options_event(int type, int16_t x, int16_t y)
+{
+    bool closes = false;
+    if (type == INPUT_KEY)
+        closes = optmenu_process_key(x);
+    else if (type != INPUT_LEFT_RELEASED && type & INPUT_BUTTON_LEFT)
+        closes = optmenu_process_click(x, y);
+    if (closes)
+        close_screen();
+}
+
+void advanced_screen_event(int type, int16_t x, int16_t y)
+{
+    if (g_advanced_screen == ADVANCED_SCREEN_AUTOMAP)
+        map_event(type, x, y);
+    else if (g_advanced_screen == ADVANCED_SCREEN_CHEATS)
+        cheat_event(type, x, y);
+    else if (g_advanced_screen == ADVANCED_SCREEN_OPTIONS)
+        options_event(type, x, y);
+}
+
+uint16_t advanced_take_pending_key(void)
+{
+    uint16_t key = pending_key;
+    pending_key = 0;
+    return key;
 }

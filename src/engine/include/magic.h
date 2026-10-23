@@ -21,15 +21,28 @@ typedef struct {
 #define CAST_FAILED        0x10
 #define CAST_UNKNOWN_SPELL 0x20
 #define CAST_NEEDS_FLASK   0x30
+#define CAST_KIND_MASK     0xf0 /* the failure kind of a cast result */
 
 /* Kinds of magic light (magic_add_light). */
 #define LIGHT_DARKNESS 0x06
 #define LIGHT_TORCH    0x26
 #define LIGHT_LIGHT    0x27
 
+/* The power of the MON rune, the strongest power rune. */
+#define POWER_MON 6
+
 /* Spell lookup */
 /* The spell of the entered runes (a power rune and 1 to 3 runes), NULL when no spell has them. */
 const Spell *magic_find_spell(const uint8_t *runes); /* exported for the tests */
+/* The spell at index of the spell table, NULL after the last spell. */
+const Spell *magic_get_spell(int index);
+/* The rune glyph of a spell at step 0 (the power rune; 0 for any power) to 3 (0 after the last rune). */
+uint8_t magic_get_spell_rune(const Spell *spell, int step);
+/* The port name of a spell, for example "FIREBALL"; the game files have no spell names. */
+const char *magic_get_spell_name(const Spell *spell);
+/* The lower-case name of a rune (its glyph - SPELL_RUNE_GLYPH_FIRST: the power runes, then the three rune sets), for
+   example "ful"; NULL for a value outside the runes. */
+const char *magic_get_rune_name(int rune);
 
 /* Light and auras */
 /* Adds magic light (or darkness) of a kind and power; it fades through timeline events. */
@@ -44,6 +57,9 @@ bool magic_cast_party_aura(Champion *c, int type, int power, bool pay);
 bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost);
 /* Champion champ casts spell with power 1 to 6; returns the cast result (CAST_*), 0 for success. */
 int magic_cast_spell(int champ, const Spell *spell, int power); /* exported for the tests */
+/* Champion champ casts spell from the cheat screen at the power of its power rune (POWER_MON for any power), without
+   the failure roll and without experience; a potion still needs an empty flask. Returns the cast result (CAST_*). */
+int magic_cast_cheat_spell(int champ, const Spell *spell);
 /* The champion of the open spell panel casts the entered runes; returns true when the cast failed. */
 bool magic_cast_entered_runes(void);
 

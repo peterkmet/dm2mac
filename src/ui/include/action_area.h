@@ -32,5 +32,8 @@ void area_draw_name(int i, int highlight);
 
 /* Redraws what changed in the action area (tick: one game tick passed). */
 void area_update(int tick);
+/* Ends the extra hold of a hit's damage of the advanced mode when the click at (x, y) is in the action area, and draws
+   the hand icons; returns whether it did. */
+bool area_end_damage_hold(int16_t x, int16_t y);
 
 #endif /* DM2_UI_ACTION_AREA_H */

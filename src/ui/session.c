@@ -383,6 +383,7 @@ static bool load_new_game(void)
     if (!dungeon_load(path))
         return false;
     seen_reset();
+    game_set_cheats(0);
     uint16_t start = dungeon_party_start();
     /* the party start keeps the direction in the map bits */
     save_set_party_position(location_x(start), location_y(start), location_dir(start), 0);

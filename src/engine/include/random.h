@@ -10,6 +10,8 @@
 /* The state of the random number generator; the save game stores it. */
 extern uint32_t g_random_seed;
 
+/* Sets the state of the generator: a drawing that takes random numbers puts the state back. */
+void rand_set_seed(uint32_t seed);
 /* Advances the generator and returns 24 random bits. */
 uint32_t rand_next(void);
 /* A random number from 0 to n - 1; 0 without a draw when n is 0. */

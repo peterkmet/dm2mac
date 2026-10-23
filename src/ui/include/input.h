@@ -78,7 +78,9 @@
 #define CMD_PICTURE_CLICK        0xef /* a click on a picture of INPUT_MODE_PICTURE */
 #define CMD_QUICK_SAVE           (CMD_LAST + 1)
 #define CMD_QUICK_LOAD           (CMD_LAST + 2)
-#define CMD_AUTOMAP              (CMD_LAST + 3) /* the advanced mode: no original command has these numbers */
+#define CMD_AUTOMAP              (CMD_LAST + 3)
+#define CMD_CHEATS               (CMD_LAST + 4)
+#define CMD_OPTIONS              (CMD_LAST + 5) /* the advanced mode: no original command has these numbers */
 
 /* The cursor images of input_cursor_at. */
 #define CURSOR_ARROW    0

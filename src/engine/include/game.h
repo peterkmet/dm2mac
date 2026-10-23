@@ -86,7 +86,7 @@ typedef struct {
 extern Session g_session;
 
 /* The game modes: vanilla is the original game; advanced adds the W A S D Q E keys, the quick save (F5) and quick
-   load (F9), the automap (Tab or M), and its cheats; turnbased plays turn by turn over the control socket, with the
+   load (F9), the automap (Tab or M), and the cheats; turnbased plays turn by turn over the control socket, with the
    seen squares and the AMAP block of advanced, without its keys and cheats. Without the cheats the game rules are the
    same in all modes. */
 #define GAME_MODE_VANILLA   0
@@ -95,10 +95,15 @@ extern Session g_session;
 #define GAME_MODE_COUNT     3
 extern int g_game_mode; /* GAME_MODE_VANILLA in the library; main.c sets the --mode value */
 extern const char *const g_game_mode_names[GAME_MODE_COUNT];
-/* The cheats, switched on the automap. Not saved; a new or loaded game turns them off. */
-extern int g_cheat_light;    /* the dungeon view draws in full light; the creatures keep the real light */
-extern int g_cheat_immortal; /* the health of a champion stops at 1 */
-extern int g_cheat_food;     /* food and water do not go down */
+/* The cheat bits of the advanced mode, as the CHTS block of the save file holds them (game_get_cheats). A new game
+   turns them off; a load takes them from the save file. */
+#define CHEAT_LIGHT    0x01 /* the dungeon view draws in full light; the creatures keep the real light */
+#define CHEAT_IMMORTAL 0x02 /* the health of a champion stops at 1 */
+#define CHEAT_FOOD     0x04 /* food and water do not go down */
+#define CHEAT_KILL     0x08 /* a damage above 0 kills a creature that can be hurt */
+#define CHEAT_WALLS    0x10 /* the party walks into walls, closed fake walls, and closed doors inside the map */
+#define CHEAT_MAP      0x20 /* the automap shows every square of the map */
+#define CHEAT_ALL      0x3f
 
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving);
@@ -184,7 +189,13 @@ void game_set_exit_code(int code);
 void game_restore_session(const Session *session);
 
 /* The cheats */
-/* All cheats are off. */
-void game_clear_cheats(void);
+/* The cheat bits that are on (CHEAT_*). */
+uint8_t game_get_cheats(void);
+/* Only the cheats of the bits cheats are on. */
+void game_set_cheats(uint8_t cheats);
+/* The cheat bit cheat switches on or off. */
+void game_toggle_cheat(uint8_t cheat);
+/* True when the cheat bit cheat is on. */
+bool game_has_cheat(uint8_t cheat);
 
 #endif /* DM2_ENGINE_GAME_H */
