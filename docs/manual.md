@@ -137,7 +137,7 @@ The game has three modes. Without the cheats, the game rules are the same in all
 
 ### Advanced features
 
-The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. An antidote always cures the poison; in the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)). A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
+The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. A left click anywhere on a status box opens the inventory of the champion, as a click on the name does; the hands and the other parts of the box with a click of their own keep it. An antidote always cures the poison; in the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)). A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
 
 ### Automap
 

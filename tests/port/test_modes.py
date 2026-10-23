@@ -453,3 +453,26 @@ def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced
     assert lib.area_end_damage_hold(rect[0], rect[1])
     assert not action.dirty, "a click in the area ends the hold and draws the icons"
     set_mode(lib, VANILLA)
+
+
+def test_left_click_on_a_status_box_opens_the_inventory_in_the_advanced_mode(lib, session):  # noqa: F811
+    # In the advanced mode a left click without a command of its own anywhere on a status box gives the name click;
+    # the hands and the other commands of the box keep theirs, and a right click gives the same command as in vanilla.
+    lib.input_click_command.restype = ctypes.c_uint16
+    rect, box = (ctypes.c_int16 * 4)(), (ctypes.c_int16 * 4)()
+    opened = set()
+    for champ in range(C.CHAMPION_MAX):
+        assert lib.zone_get_rect(C.ZONE_STATUS_BOX + champ, box)
+        for y in range(box[1], box[1] + box[3]):
+            for x in range(box[0], box[0] + box[2]):
+                for buttons in (C.INPUT_BUTTON_LEFT, C.INPUT_BUTTON_RIGHT):
+                    vanilla = lib.input_click_command(INPUT_MODE_MOVE, x, y, buttons, rect)
+                    set_mode(lib, ADVANCED)
+                    mine = lib.input_click_command(INPUT_MODE_MOVE, x, y, buttons, rect)
+                    set_mode(lib, VANILLA)
+                    if vanilla or buttons != C.INPUT_BUTTON_LEFT:
+                        assert mine == vanilla, (champ, x, y, buttons)
+                    elif mine:
+                        assert mine == C.CMD_INVENTORY_FIRST + champ, (champ, x, y)
+                        opened.add(champ)
+    assert opened, "no status box opens an inventory"

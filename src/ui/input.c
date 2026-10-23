@@ -1118,9 +1118,48 @@ static uint16_t key_command(int mode, uint16_t key)
     return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
 }
 
-uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect)
+/* The command entry of command in the input tree under node, NULL for none. */
+static const InputCommand *find_command_entry(const InputNode *node, uint16_t command)
+{
+    for (int i = 0; !node_child_end(node, i); i++) {
+        const InputNode *child = node_child(node, i);
+        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
+            continue;
+        if (child->cond & NODE_HAS_CHILDREN) {
+            const InputCommand *e = find_command_entry(child, command);
+            if (e)
+                return e;
+            continue;
+        }
+        const InputCommand *e = node_commands(child);
+        if (e)
+            for (; e->command & COMMAND_MASK; e++)
+                if ((e->command & COMMAND_MASK) == command)
+                    return e;
+    }
+    return NULL;
+}
+
+/* The command of a click; in the advanced mode a left click without a command on a status box is a click on the
+   name in the box (it opens the inventory of the champion). */
+static uint16_t click_command(int mode, int x, int y, int buttons)
 {
     uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons);
+    if (command || g_game_mode != GAME_MODE_ADVANCED || buttons != INPUT_BUTTON_LEFT)
+        return command;
+    for (int champ = 0; champ < CHAMPION_MAX; champ++) {
+        int16_t box[RECT_SIZE], name[RECT_SIZE];
+        const InputCommand *e = find_command_entry(&input_mode_roots[mode], CMD_INVENTORY_FIRST + champ);
+        if (zone_get_rect(ZONE_STATUS_BOX + champ, box) && point_in_rect(box, x, y) && e &&
+            get_input_zone_rect(e->zone, name))
+            return find_click_command(&input_mode_roots[mode], name[RECT_X], name[RECT_Y], buttons);
+    }
+    return 0;
+}
+
+uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect)
+{
+    uint16_t command = click_command(mode, x, y, buttons);
     memcpy(rect, in.rect, sizeof in.rect);
     return command;
 }
@@ -1769,7 +1808,7 @@ void input_poll(void)
                     else if (type & EVENT_CLICK_TYPES) {
                         if (type == INPUT_BUTTON_LEFT)
                             area_end_damage_hold((int16_t)x, (int16_t)y);
-                        command = find_click_command(&input_mode_roots[in.mode], x, y, type);
+                        command = click_command(in.mode, x, y, type);
                     }
                 } else if (type == INPUT_KEY) {
                     command = key_command(in.mode, (uint16_t)x);
@@ -2407,28 +2446,6 @@ void command_process_queue(void)
 }
 
 /* ---- Simulated clicks and keys ---- */
-
-/* The command entry of command in the input tree under node, NULL for none. */
-static const InputCommand *find_command_entry(const InputNode *node, uint16_t command)
-{
-    for (int i = 0; !node_child_end(node, i); i++) {
-        const InputNode *child = node_child(node, i);
-        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
-            continue;
-        if (child->cond & NODE_HAS_CHILDREN) {
-            const InputCommand *e = find_command_entry(child, command);
-            if (e)
-                return e;
-            continue;
-        }
-        const InputCommand *e = node_commands(child);
-        if (e)
-            for (; e->command & COMMAND_MASK; e++)
-                if ((e->command & COMMAND_MASK) == command)
-                    return e;
-    }
-    return NULL;
-}
 
 void input_simulate_command_click(uint16_t command)
 {
