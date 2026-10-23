@@ -429,7 +429,7 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 The program plays the start movies and the end movies of [Start screens](../manual.md#start-screens) ([movies.md](../formats/movies.md)). While one of them plays:
 
 - `state` gives `"mode": "movie"` and `"dialog": null`.
-- `click` and `press` skip: in the `advanced` mode always; in the `vanilla` mode only `INTRO`, `END`, and `CREDITS`. `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
+- `click` and `press` skip as a click does ([movies.md](../formats/movies.md#deviations-from-the-original)). `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
 - `wait` counts game timer ticks. They stand still during a movie, so the reply comes after the movies.
 - `screenshot` saves the game screen (320 × 200), not the movie.
 - `quit` stops the movies and ends the program.

@@ -46,24 +46,15 @@ Without `--mode` and `--save`, the program first shows the mode screen. The scre
 
 The cursor stops at the ends of the list. Close the window to end the program. The selected mode plays as with `--mode`.
 
-Then the program shows the splash picture (3 seconds), the movies `FTL` and `INTRO`, and the start menu. A click skips the splash picture or a movie; a key does not. In the vanilla mode, a click does not stop the splash picture and `FTL`, as in the original. The movie files are in [movies.md](formats/movies.md).
+Then the program plays the start movies, and then shows the start menu. Click to skip a movie. The movies at the start and at the end of the game, and when a click skips them, are in [movies.md](formats/movies.md#deviations-from-the-original).
 
-The start menu starts a new game, loads a save slot, shows a picture, or quits. The picture shows until a click or until its time ends.
+The start menu starts a new game, loads a save slot, shows a picture, or quits ([game-flow.md](rules/game-flow.md#start-of-a-run)).
 
-RESTART in the save menu starts the program again with the start menu. It skips the mode screen and the start movies and keeps the mode, even the mode that the mode screen selected.
-
-At the end of the game, the program plays movies. After the end of the quest it plays `END` and `CREDITS`; after QUIT GAME of a dead party it plays `CREDITS`. A closed window ends the program without these movies.
+RESTART in the save menu shows no mode screen and keeps the mode, even the mode that the mode screen selected.
 
 ## Saved games
 
-The game has 10 save slots: `<data>/DATA/SKSAVE0.DAT` to `SKSAVE9.DAT`, each with a `.BAK` backup. The files have the format of the original DOS game, and the DOS game loads them ([Save file format](formats/save.md)).
-
-- Alt+S (Option+S on a Mac keyboard) opens the save menu: SAVE, QUIT, RESTART, RESUME. SAVE opens the slot list. Click a slot, then type a name of up to 31 characters.
-- The start menu loads a slot. A damaged file shows "THE GAME IS DAMAGED!".
-- QUIT more than 100 ticks after the last save or load asks first.
-- When the whole party dies, "THE END" shows. RESTART GAME loads the last slot. QUIT GAME ends the program with exit code 2.
-
-The rules of the save and the load are in [game-flow.md](rules/game-flow.md#save-and-load).
+Press Alt+S (Option+S on a Mac keyboard) to open the save menu, and save the game in a slot of `<data>/DATA`. Load a slot from the start menu. The slots, the save menu, and the end of the game are in [game-flow.md](rules/game-flow.md#save-and-load); the file format is in [save.md](formats/save.md).
 
 ### Quick save and quick load
 
@@ -140,11 +131,11 @@ The game has three modes. Without the cheats, the game rules are the same in all
 |---|---|
 | `vanilla` | The original game without additions. The advanced keys do nothing. |
 | `advanced` | The default. The original game with the advanced features below. |
-| `turnbased` | A program plays through the control socket, one turn per request. The mode has the seen squares and the AMAP block of the advanced mode, but no advanced keys and no cheats. See [LLM mode: play over the control socket](llm/llm-mode.md). Only on macOS. |
+| `turnbased` | A program plays through the control socket, one turn per request. The mode has the seen squares of the advanced mode ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)), but no advanced keys and no cheats. See [LLM mode: play over the control socket](llm/llm-mode.md). Only on macOS. |
 
 ### Advanced features
 
-The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. A slot save and the quick save keep the seen squares and the cheats in two blocks at the end of the file ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)). The vanilla mode loads such a file, but it does not use the blocks.
+The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
 
 ### Automap
 
