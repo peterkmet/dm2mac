@@ -70,7 +70,7 @@ static inline int champ_base_skill(int skill)
 #define REDRAW_ALL_INVENTORY 0x8000
 #define REDRAW_ALL           0xfc00
 #define REDRAW_KEEP          0x03ff /* the bits that stay after a redraw */
-#define REDRAW_STEP_TIME     0x0010 /* the step time reads this bit; nothing in the port sets it (docs/todo.md) */
+#define REDRAW_SLOW_STEP     0x0010 /* a slow step time; no code sets it, as in SKULL.EXE */
 
 /* Aura types: 0 to 2 shields, 3 to 6 raise a statistic. */
 #define AURA_FIRE_SHIELD  0

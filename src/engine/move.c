@@ -1103,7 +1103,7 @@ static int get_step_time(int champ)
     if (!c->health)
         return 0;
     /* kept quirk: the original tests the sum of load / 10 and the flag, not the flag alone */
-    return (uint16_t)champ_get_load(champ) / LOAD_TIME_DIVISOR + (c->redraw & REDRAW_STEP_TIME) ? WALK_TIME_SLOW
+    return (uint16_t)champ_get_load(champ) / LOAD_TIME_DIVISOR + (c->redraw & REDRAW_SLOW_STEP) ? WALK_TIME_SLOW
                                                                                                 : WALK_TIME;
 }
 

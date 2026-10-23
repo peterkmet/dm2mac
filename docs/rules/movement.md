@@ -38,6 +38,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - `g_cur_map` is the map of the dungeon reads (`dun_get_square`, `dun_move_relative`). The party map and the current map differ while things move on other maps.
 - A slow party (`champ_get_move_delay`) walks: `g_party_move_steps` holds the view one square back for the steps of the walk.
 - `move_follow_square_transitions` takes a thing through teleporters, open pits, and stairs until it stays on a square. A pit can lead to the map below or to a marker of the map.
+- When the party arrives on a square with a creature that moves aside, the creature gets a loud alert. Its value is a quarter of the sum of the step times of the champions, plus a random part up to half of that quarter. The step time of a champion (`champ_get_move_time`) is 0 for a dead champion, 50 when the load / 10 plus the redraw bit `0x10` is not 0, and 40 otherwise. No code of `SKULL.EXE` sets the redraw bit `0x10` (`REDRAW_SLOW_STEP`); the port keeps the test.
 - A move into a wall, a closed door, or a creature gives bump damage (`move_party_bump_damage`) to the champions on the front cells.
 
 ## Sensors and square events
