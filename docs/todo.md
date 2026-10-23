@@ -12,7 +12,6 @@
 - Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.
 - Message area scroll: IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows up and keeps the bottom rows (`shift_message_area` in `src/ui/text.c`); check it against the original in DOSBox.
 - Check the driver offset of "Instrument to voice" in `HMIMDRV.386`: `docs/formats/music.md` has `0x1ff8` and `0x201e`.
-- `creature_is_flying` crashed on 3 maps in a check script. Find the cause.
 - `make` does not rebuild an object with the same modification time as its source (seen after scripted rebases). After a scripted rebase, build with `make -B`.
 - `long` in `src/control/control.c` and `src/control/turn.c` (38 uses, rule 5.3).
 - Naming: `advanced_screen_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4); the in/out parameters of `zone_compute_rect` (`out_w`, `out_h`) and `dungeon_location_on_map` (`out_x`, `out_y`) have an `out_` name.

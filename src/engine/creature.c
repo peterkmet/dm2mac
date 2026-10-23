@@ -547,19 +547,16 @@ bool creature_is_native_to_map(uint16_t group, int16_t map)
     return false;
 }
 
-/* True while an active group is in the air in a fall or jump. */
-static bool is_floating(int active_index)
+/* True while the active group of group is in the air in a fall or jump; false for a group without an active group. */
+static bool is_floating(uint16_t group)
 {
-    const ActiveGroup *a = g_active_groups + active_index;
-    return a->action == AI_ACTION_JUMP && (a->phase == 1 || a->phase == 2);
+    const ActiveGroup *a = creature_active(group); /* fix: the original reads a stale index of a loaded save */
+    return a && a->action == AI_ACTION_JUMP && (a->phase == 1 || a->phase == 2);
 }
 
 bool creature_is_flying(uint16_t group)
 {
-    if (creature_group_info(group)->movement & CREATURE_FLIES)
-        return true;
-    int active = group_active(group);
-    return active != GROUP_NOT_ACTIVE && is_floating(active);
+    return creature_group_info(group)->movement & CREATURE_FLIES || is_floating(group);
 }
 
 int creature_cell_mask(uint16_t possessions)
@@ -581,8 +578,7 @@ int creature_active_group_event(int active_index)
 
 int creature_group_jumps(uint16_t group)
 {
-    int active = group_active(group);
-    return active != GROUP_NOT_ACTIVE && is_floating(active);
+    return is_floating(group);
 }
 
 void creature_free_active_groups(void)
