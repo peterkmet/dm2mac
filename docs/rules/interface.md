@@ -38,7 +38,7 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 ## Deviations from the original
 
 - No hardware layer: the screen bitmap is `g_video_fb`; `screen_present_*`, `mouse_hide`, `mouse_show`, and `vga_wait_retrace` have no port. Offscreen bitmaps are frame bitmaps (`draw_temp_bitmap`), not image cache entries.
-- IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows of zone 15 up by 7 pixels and keeps the bottom 7 rows (`shift_message_area`); a manual check in DOSBox confirms it or not.
+- IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows of zone 15 up by 7 pixels and keeps the bottom 7 rows (`shift_message_area`); manual check B18 compares it with DOSBox.
 - The action area reads the wall set of the party map from the map descriptor; the original reads `g_map_gfx_set`, which `game_enter_map` sets from the same descriptor.
 - `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
