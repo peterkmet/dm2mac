@@ -12,10 +12,12 @@ Related files:
 
 Conventions:
 
-- Addresses are linear addresses in the flat image: code object `0x10000`-`0x695ac`, data object `0x70000`-`0x828f0`. An address below `0x70000` is a function. Other addresses are globals.
+- Addresses are linear addresses in the flat image from `uv run dm2-le game/SKULL.EXE skull.bin` (code base `0x10000`, data base `0x70000`): code object `0x10000`-`0x695ac`, data object `0x70000`-`0x828f0`. An address below `0x70000` is a function. Other addresses are globals. `FUN_xxxxxxxx` is the function at that address; `docs/reference/skull-symbols.csv` gives its name.
+- A file offset is written as `file+0x...`.
 - Signatures use the Watcom register order: EAX, EDX, EBX, ECX, then the stack.
 - Thing: 16-bit reference. Bits 0-9 index, bits 10-13 type, bits 14-15 cell. `0xffff` = none, `0xfffe` = end of list.
-- GDAT key: `(category, index, type, entry)` in `GRAPHICS.DAT`.
+- GDAT key: `(category, index, type, entry)` in `GRAPHICS.DAT`, the tuple that the lookup function `FUN_0003c4f2` uses.
+- HMI SOS function names (for example `sosDIGIStartSample`) are probable names. They come from the call shape and from public HMI SOS knowledge. The binary has no symbols.
 
 ## Symbol counts
 
@@ -72,7 +74,7 @@ Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_s
 
 `SKULL.EXE` calls `INT 0xFC` with the function number in EAX and an argument in EBX. The real-mode program `IBMIOP.EXE` serves the call. The shared buffer is `g_iop_buffer` (`0x8048c`), set by `iop_init_shared_buffer` from `g_iop_info` (`0x7618c`) + `0x3ec`. The port platform layer replaces every function in this table.
 
-The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go to one exit that does nothing. Bit `0x100` selects a second table (functions `0x103`-`0x10a`). The call keeps all registers; every result comes back through the shared buffer. Source for the driver side: reDM2 (`docs/reference/reference-crosscheck.md`).
+The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go to one exit that does nothing. Bit `0x100` selects a second table (functions `0x103`-`0x10a`). The call keeps all registers; every result comes back through the shared buffer (`DGROUP:0x2342` in `IBMIOP.EXE`). Source for the driver side: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x14`, `0x2e`, `0x2f`, `0x30`) and its comments on `0x10010`, `0x13898`, `0x14cb1`; reDM2 read the unpacked `IBMIOP.EXE` code (`docs/reference/reference-crosscheck.md`).
 
 | EAX | Function | Caller |
 |---|---|---|
@@ -89,7 +91,7 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 | `0x0d` | Set the mouse position | hidden function at `0x14c93` (inside `iop_input_unlock`) |
 | `0x0e` | Get mouse x, y, and a third word. Buffer word 0 on entry: `0` = live position, other = position at the last event. Third word: buttons (ours, the game tests bit 1 for the right button) or cursor height (reDM2, from the driver code); open | `mouse_get_state` |
 | `0x0f` | Install the game timer callback on `INT 0x2d`; returns the tick step | `iop_install_timer_isr` |
-| `0x12`, `0x13`, `0x14` | Drive status, volume label (`0x10` bytes). `0x12` does nothing in the driver: the caller at `0x113ad` (`iop_call_return_word`) then reads buffer word 0, which the driver keeps up to date. `0x14` writes an empty string if the drive has no label | `disk_get_drive_status`, `disk_get_volume_label` |
+| `0x12`, `0x13`, `0x14` | Drive status, volume label (`0x10` bytes). `0x12` does nothing in the driver: the caller at `0x113ad` (`iop_call_return_word`) then reads buffer word 0, which the driver keeps up to date; the game uses that word as the drive status, so the name `disk_get_drive_status` stays. `0x14` first writes a zero byte, so the result is an empty string if the drive has no label | `disk_get_drive_status`, `disk_get_volume_label` |
 | `0x15` | Drive information | `disk_query_drive_info` |
 | `0x1b` | Key code to ASCII | `kbd_key_to_ascii` |
 | `0x28` | 3 bytes of drive path data | `disk_get_drive_path` |
@@ -103,7 +105,7 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 | `0x105` | Scroll the message area by one line height | `shift_message_area` (`0x139e4`) |
 | `0x106` | Video state on or off | `iop_set_video_state` |
 | `0x109` | Present the viewport (flags 8 or `0x8008`) | `play_present_viewport` |
-| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,254)`; the first result word goes to `0x7f07c`. Ours: set the palette (256 × 4 bytes). reDM2: cursor image upload. Open | `pal_set_palette` |
+| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,254)`; the first result word goes to `0x7f07c`. Ours: set the palette (256 × 4 bytes). reDM2: cursor image upload, marked as an inference. Open | `pal_set_palette` |
 
 Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga_wait_vblank` polls port `0x3da`.
 

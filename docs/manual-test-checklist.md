@@ -351,7 +351,6 @@ Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next 
 Do not report these documented deviations as bugs. Details are in `docs/skull-formats.md`.
 
 - The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/advanced-mode.md`).
-- Only the SVGA movies; the movie screen is the largest 4:3 rectangle of the window with linear filtering; a key does not skip a movie; RESTART plays no movies (section 15).
 - No DOS layer: no disk, drive, or memory dialogs; menus and dialogs wait without busy loops (section 14).
 - `--save PATH` starts the game at once, without the start menu and without the dialog after a load (section 14).
 - RESTART starts the program again; the dialog texts show the last folder of the `--data` path in capitals as the drive path (section 14).
@@ -360,10 +359,7 @@ Do not report these documented deviations as bugs. Details are in `docs/skull-fo
 - The walking frame stretch uses nearest neighbour; its exact rounding is unverified (section 10).
 - The pit fall view shows at the next screen update, not in the middle of the step (section 10).
 - The message area scroll by 7 pixels is a port reconstruction (section 9).
-- Sound: the pan curve is a linear balance, not the unknown SOS curve; the mix runs at 44100 Hz; the pan overflow of the original near the center is fixed; every sound counts as loaded, so a sound can play where DOS has not loaded it (sections 1 and 11).
-- Music: Nuked-OPL3 in OPL2 mode, the same signal on both sides (section 5, "Deviations of the C port (Step 19)").
+- Sound: every sound counts as loaded, so a sound can play where DOS has not loaded it (section 11).
 - Fixed technical bugs of the original (uninitialized values, reads past tables, divisions by 0, endless loops in the shop display) can make a rare case differ from DOS (sections 8, 11, 12, 13, 14).
 - A creature AI keeps its plan data; the DOS image cache can make a group plan again (section 12).
 - With no free active group, a creature group stays inactive; DOS discards a group instead (section 12).
-- No SVGA mode: the SVGA option changes only the movies (section 3).
-- The real game rate of DOS is an open measurement (section 6).
