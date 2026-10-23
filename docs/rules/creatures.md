@@ -31,8 +31,22 @@ The rules of the creatures: the creature data, the updates of the creature group
 - No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive. The table has room for 100 more groups than the dungeon has.
 - Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range reads 0 (the original reads any word of the active group).
 - The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
-- Bounds fixes: reads past the creature info table, the animation frames, the item filter table, the AI level table, and the candidate records; a square read at the map edge (not a pit); a division by 0 for an animation of length 0 and for a minion map strip of 1 icon; the minion map square read outside the map; a path step read without a stored path (address 0 in the original); a write outside an item class set for a number without a class letter; the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook); the step of an AI command with direction -1: the original reads the words before its direction tables, the step (0, -1), and the port takes the step north (`step_dir` in `engine/ai_move.c`).
+- Bounds fixes:
+  - reads past the creature info table, the animation frames, the item filter table, the AI level table, and the candidate records
+  - a square read at the map edge (not a pit)
+  - a division by 0 for an animation of length 0 and for a minion map strip of 1 icon
+  - the minion map square read outside the map
+  - a path step read without a stored path (address 0 in the original)
+  - a write outside an item class set for a number without a class letter
+  - the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook)
+  - the step of an AI command with direction -1: the original reads the words before its direction tables, the step (0, -1), and the port takes the step north (`step_dir` in `engine/ai_move.c`)
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
 - `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
-- Kept quirks of the original: the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as the original global does; `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect; a projectile compares directions without a wrap, so only flights to the north and east can face a champion; a projectile move also writes the direction into its freed event; the power that the sensors test after a door spell comes from the door record; `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables.
+- Kept quirks of the original:
+  - the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as the original global does
+  - `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect
+  - a projectile compares directions without a wrap, so only flights to the north and east can face a champion
+  - a projectile move also writes the direction into its freed event
+  - the power that the sensors test after a door spell comes from the door record
+  - `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables

@@ -64,7 +64,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 2. `world_update_day_night(0)` (`0x5a073`): hour light and weather.
 3. `view_draw_dungeon(dir, x, y)` (`0x54b3f`) and `play_present_viewport`, unless the party sleeps or the inventory is open.
 4. `champ_apply_pending_damage` (`0x47113`); every 64 steps `champ_apply_time_effects`.
-5. `sound_flush_requests`; `g_game_time` + 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
+5. `sound_flush_requests`; `g_game_time` goes up by 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
 6. `command_process_queue` (`0x224a9`) until the tick flag `g_tick_elapsed` (`0x717f2`) is set.
 7. Map change through `g_new_map_index` (`0x717f4`) and `game_enter_map`; `music_update_for_map`.
 8. On the game end flag: `input_reset_states`, then return.

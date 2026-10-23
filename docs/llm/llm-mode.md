@@ -103,7 +103,7 @@ uv run dm2-play new_game
 - A client sends one JSON object per line and gets one JSON object per line.
 - Each request has a `cmd` field.
 - A successful reply has `"ok": true`. A failed reply is `{"ok": false, "error": "<reason>"}`.
-- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte. A client that connects again right after a reply is not refused with `busy`.
+- One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte. A client that connects again right after a reply does not get `busy`.
 - While a turn or a wait runs, the game reads no next request.
 - A request line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error. Replies have no size limit.
 - String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is. In the turn-based commands, a string value cannot contain a `"` character.
@@ -245,7 +245,7 @@ Writes a PNG file of 320 × 200 pixels: the screen with the palette and the curs
 
 ### quit
 
-Ends the program the same way as a closed window. The exit code is 0 in the game. The socket file is removed.
+Ends the program the same way as a closed window. The exit code is 0 in the game. The game removes the socket file.
 
 ```json
 {"cmd": "quit"}
@@ -320,7 +320,7 @@ The reply of `act` has `stopped` only when the dungeon displaced the party:
 
 ### Batches
 
-`act_many` takes `actions`, a list. An item is an action name (`"turn_left"`) or an object (`{"action":"take_object","args":{"cell":2}}`). Items are separated by spaces and commas only. A string holds no `"` character.
+`act_many` takes `actions`, a list. An item is an action name (`"turn_left"`) or an object (`{"action":"take_object","args":{"cell":2}}`). Only spaces and commas separate the items. A string holds no `"` character.
 
 The batch runs the items in order, one turn each. After each turn it stops when one of these is true. The checks run in this order:
 
