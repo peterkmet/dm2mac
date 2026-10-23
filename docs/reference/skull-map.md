@@ -9,7 +9,7 @@ Related files:
 - `docs/rules/`: the game rules of the port.
 - `docs/reference/symbols/`: per-range analysis notes (layout, data structures, open questions).
 - `docs/reference/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
-- `reference/decomp/SKULL.c`: Ghidra output with the names from `docs/reference/skull-symbols.csv` (`tools/decompile-skull.sh`).
+- `reference/decomp/SKULL.c`: the local Ghidra output of `tools/decompile-skull.sh`, with the names from `docs/reference/skull-symbols.csv`. Git ignores it.
 
 Conventions:
 

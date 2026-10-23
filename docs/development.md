@@ -27,7 +27,7 @@ Run the game with `build/dm2`. Run a save with `build/dm2 --save game/DATA/SKSAV
 ### Windows build
 
 1. Install MinGW-w64: `brew install mingw-w64`.
-2. Copy the SDL3 MinGW package into `build/sdl-mingw/`. The `make` rule copies it from `../dm/build/sdl-mingw`. In a worktree, name the `dm` folder:
+2. Unpack `SDL3-devel-3.4.18-mingw.tar.gz` from the [SDL releases](https://github.com/libsdl-org/SDL/releases) into `build/sdl-mingw/`. Without it, the `make` rule copies `build/sdl-mingw` of the `dm` folder (default `../dm`):
 
    ```sh
    make windows DM_DIR=<path to the dm folder>
