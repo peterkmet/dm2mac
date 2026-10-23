@@ -66,7 +66,7 @@ The items marked "control socket" ran over `docs/llm/llm-mode.md` with the saves
 - The game files of Dungeon Master II (PC DOS, English, 1995) in `game/`, with `game/DATA/GRAPHICS.DAT`, `game/DATA/DUNGEON.DAT`, `game/DATA/SONGLIST.DAT`, `game/MELODIC.BNK`, and `game/DRUM.BNK`.
 - DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
 - `make` and `uv run pytest` pass (plan Step 21).
-- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/advanced-mode.md`).
+- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/manual.md`).
 - Optional: a DOS save near the end of the game, for the end sensor (item J16).
 
 ## Build and start
@@ -270,7 +270,7 @@ Items marked `[x]` with "Covered by" are checked by automated tests against the 
 
 ## L. Advanced mode
 
-Details: `docs/advanced-mode.md`.
+Details: `docs/manual.md`.
 
 - [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, as the arrow keys.
 - [ ] L2. Run `build/dm2 --mode vanilla --save tests/saves/start.DAT`. Press W, Q, F5, and F9. Expected: nothing happens; no `game/DATA/QUICK.DAT` is written.

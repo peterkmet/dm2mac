@@ -23,7 +23,7 @@ This repository contains no game data. You must provide your own game files and 
 | `F5`, `F9` | Quick save, quick load |
 | `Tab` | Close the open inventory |
 
-[Advanced mode](docs/advanced-mode.md) has all keys, the cheats, and the options menu.
+[Player manual](docs/manual.md) has all keys, the cheats, and the options menu.
 
 ## Build and run
 
@@ -44,7 +44,7 @@ build/dm2 --mode turnbased --saves DIR      # Turn-based mode
 
 ## More
 
-- [Advanced mode](docs/advanced-mode.md)
+- [Player manual](docs/manual.md)
 - [LLM mode](docs/llm/llm-mode.md)
 - [Coding standard](docs/coding-standard.md)
 - [Changelog](CHANGELOG.md)

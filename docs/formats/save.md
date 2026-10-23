@@ -76,6 +76,36 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The C port gives the same bytes as the original writer for `start.DAT`, and for the original output.
 - A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets another bit stream position than its record index, so the deferred links use the written positions.
 
+## AMAP and CHTS blocks
+
+In the advanced mode, a slot save and the quick save `QUICK.DAT` end with two blocks after the original save data: the AMAP block, then the CHTS block. The turn-based mode writes only the AMAP block. The bytes before the blocks are the same as in the vanilla mode. The AMAP block holds the seen squares of the automap, the CHTS block the cheats ([manual.md](../manual.md#advanced-features)).
+
+The AMAP block:
+
+| Bytes | Content |
+| --- | --- |
+| 4 | `AMAP` |
+| 1 | Version: 1 |
+| 1 | Map count |
+| 2 per map | Width and height of the map |
+| 1 per square | 1: seen, 0: not seen. The maps one after another, each map column by column (x, then y). |
+
+The CHTS block:
+
+| Bytes | Content |
+| --- | --- |
+| 4 | `CHTS` |
+| 1 | Version: 1 |
+| 1 | Cheat bits: 0x01 full light, 0x02 immortal, 0x04 food and water, 0x08 one-hit kill, 0x10 walk through walls, 0x20 reveal map |
+
+A load reads the blocks when they are there.
+
+- AMAP: a missing block, a block with different map sizes, or a value other than 0 or 1 gives an empty automap. After the block, only the end of the file or a valid CHTS block can come; other bytes give an empty automap.
+- CHTS: in the advanced mode, the cheats come from the block. A missing block, a wrong version, an unknown bit, bytes after the block, or a damaged AMAP block give no cheats. The vanilla and turn-based modes ignore the block and use no cheats.
+- The game loads in all these cases. A save with only the original data (vanilla) loads with an empty automap and no cheats.
+
+The original game loads a save with the blocks: its loader stops at the last bit of the game state. A save in the original game writes the file again without the blocks.
+
 ## Deviations from the original
 
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).

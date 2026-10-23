@@ -27,7 +27,7 @@
 - `save_write` gives different bytes on two writes in a row right after `projectile_create` (one byte at offset 30196) and changes `g_random_seed`; found by `tests/port/test_projectile_flight.py`.
 - A damaged CHTS block also clears the AMAP block on load; consider keeping the automap.
 - A one-off failure in a run of `test_automap`, `test_modes`, and `test_control` (73 tests counted instead of 72) during the cheat screen work; not reproduced.
-- Esc in the advanced mode (`src/ui/input.c`): `CMD_OPTIONS` needs a champion, no candidate, and an idle party, so before the first recruit or with the eye or mouth held Esc does nothing (the original pause has no condition). Drop the `idle` condition or document the difference in `docs/advanced-mode.md`.
+- Esc in the advanced mode (`src/ui/input.c`): `CMD_OPTIONS` needs a champion, no candidate, and an idle party, so before the first recruit or with the eye or mouth held Esc does nothing (the original pause has no condition). Drop the `idle` condition or document the difference in `docs/manual.md`.
 - Smooth projectile flight (`src/ui/view.c`): tracks match by thing id, so a projectile record freed in one step and reused in the next slides in from the place of the old projectile for one step. Also compare the square position.
 - Cheat cast (`src/ui/cheats.c`, `src/engine/magic.c`): a dead leader with no open spell panel fails the cast without a message. Print a message or take the first living champion.
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.

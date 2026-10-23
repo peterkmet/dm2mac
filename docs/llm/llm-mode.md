@@ -2,7 +2,7 @@
 
 `build/dm2 --control PATH` opens a Unix domain socket. A program or an LLM (for example Claude Code through Bash) sends requests over it and reads the replies: the game state, the view, and screenshots. The window shows the game, so a person can watch.
 
-The game has three modes: `vanilla`, `advanced`, and `turnbased` ([advanced-mode.md](../advanced-mode.md)).
+The game has three modes: `vanilla`, `advanced`, and `turnbased` ([Modes](../manual.md#modes)).
 
 - In the `vanilla` and `advanced` modes the game runs in real time, and the requests do not stop the game time. A client sends raw input with the [Commands](#commands). Use them for manual-style UI tests.
 - In the `turnbased` mode the game time stands still between requests. A request is one turn: the game runs until the party can act again, then the reply gives the state and the view as JSON. See [The turn-based mode](#the-turn-based-mode).
@@ -25,7 +25,7 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([advanced-mode
    ```
 
    - `--control PATH`: the socket file. The game replaces an old socket at `PATH`. When `PATH` is another file, the game does not start and the file stays. The game makes the last folder level of `PATH` only, not the folders above it.
-   - `--save PATH`: optional. Without it, the game shows the splash picture and the movies `FTL` and `INTRO`, then the start menu (see [Movies](#movies)).
+   - The other options of a normal start (`--save`, `--data`, `--mode`, `--filter`) and the start movies are in [manual.md](../manual.md#options).
    - Without the two `SDL_*_DRIVER` variables, the window and the sound stay on.
 
 3. Send requests with [dm2-play](#play-from-the-shell-dm2-play).
@@ -139,9 +139,9 @@ Reads the game state.
 | `hand` | The leader hand object: `{"thing": n, "name": "..."}`, or `null`. |
 | `sound_volume`, `music_volume` | Volume settings 0 to 7. |
 | `end`, `quit` | The end flag of the game (party dead or quit) and the program end flag. |
-| `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` ([advanced-mode.md](../advanced-mode.md), [The turn-based mode](#the-turn-based-mode)). |
+| `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` ([Modes](../manual.md#modes), [The turn-based mode](#the-turn-based-mode)). |
 | `automap` | 1 while the automap is open, else 0. |
-| `cheat_immortal`, `cheat_food`, `cheat_light`, `cheat_kill`, `cheat_walls`, `cheat_map` | 1 while the cheat is on, else 0 ([Cheats](../advanced-mode.md#cheats)). |
+| `cheat_immortal`, `cheat_food`, `cheat_light`, `cheat_kill`, `cheat_walls`, `cheat_map` | 1 while the cheat is on, else 0 ([Cheats](../manual.md#cheats)). |
 
 The message area text is not in the state. Use a screenshot to read it.
 
@@ -377,7 +377,7 @@ Slot names (`slots[].where`): `ready_hand` (0), `action_hand` (1), `head`, `tors
 
 `get_view` gives the squares that the party sees now (the seen rule), with `facing`, `darkness`, `squares` (each with `depth`, `side`, `x`, `y`, `element`, and, where the view draws them, `creatures`, `objects`, `flying`, `door`, `button`, `floor_ornament`, `front_face`, `side_face`), `piles` (the objects of cells 0 to 3, top first), `alcove` (cell 4), and `wall_ahead_clickable`. It shows no creature health and nothing behind a wall.
 
-`get_map` gives the explored squares of the party map: `map`, `level`, `width`, `height`, `party`, `facing`, `legend`, `rows`, and `grid` (the rows with an `x mod 10` header and the `y` in front). The explored squares are the seen squares of the automap ([Seen squares](../advanced-mode.md#seen-squares)).
+`get_map` gives the explored squares of the party map: `map`, `level`, `width`, `height`, `party`, `facing`, `legend`, `rows`, and `grid` (the rows with an `x mod 10` header and the `y` in front). The explored squares are the seen squares of the automap ([Seen squares](../manual.md#seen-squares)).
 
 ### Cells
 
@@ -426,7 +426,7 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 
 ## Movies
 
-Without `--save`, the program shows the splash picture (3 seconds), then the movies `FTL` and `INTRO`, then the start menu. After a completed game it plays `END` and `CREDITS`; after QUIT GAME of a dead party it plays `CREDITS` ([movies.md](../formats/movies.md)). While one of them plays:
+The program plays the start movies and the end movies of [Start screens](../manual.md#start-screens) ([movies.md](../formats/movies.md)). While one of them plays:
 
 - `state` gives `"mode": "movie"` and `"dialog": null`.
 - `click` and `press` skip: in the `advanced` mode always; in the `vanilla` mode only `INTRO`, `END`, and `CREDITS`. `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
