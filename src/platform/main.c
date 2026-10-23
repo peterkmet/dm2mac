@@ -452,6 +452,7 @@ static void choose_mode(void)
         for (int i = 0; i < PIT_TICKS_PER_GAME_TICK; i++)
             plat_wait_tick();
     }
+    memset(g_video_fb, 0, sizeof g_video_fb); /* the mode screen does not show under the game palette */
     load_palette();
     if (mode_screen_is_done())
         select_mode(g_game_mode_names[mode_screen_cursor()]);
