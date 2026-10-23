@@ -1,4 +1,4 @@
-# Dungeon Master II: player manual
+# LLM player manual
 
 You play Dungeon Master II (PC DOS `SKULL.EXE`) in this C port, through the turn-based mode. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
 
@@ -98,7 +98,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - **Switches and plates:** wall switches and floor plates open doors, close doors, open pits, move walls, or start traps. Some are hidden.
 - **Walls:** some walls are illusions that the party can walk through.
 - **Pits:** a pit can be the way down or a trap.
-- **Teleporters:** a teleporter moves the party or objects to another square. A teleporter shows only while it is on and visible; else it looks like floor.
+- **Teleporters:** a teleporter moves the party or objects to another square. A teleporter shows only while it is on and visible; otherwise it looks like floor.
 - **Stairs:** stairs lead to the level above or below.
 - **Alcoves:** an alcove holds objects. `view.alcove` lists them. Some alcoves react to the object that you put in.
 - **Machines:** some wall and floor places move objects to another place.
@@ -136,7 +136,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - `state.outdoor` is `true` when the party sees the sky. Only then the state has `weather` and `day_time`.
 - `weather.clouds` and `weather.rain` are `none`, `light`, `medium`, or `heavy`. `weather.wind` (`north`, `east`, `south`, `west`) is present only while rain falls in the view.
 - `day_time` is `day`, `night`, or `dawn_dusk`. One hour is 1365 game ticks; a day has 24 hours. The night is dark: carry a light.
-- A storm comes and goes. In a strong storm, lightning can strike floor squares, also the party square. Get under a roof in a heavy storm.
+- A storm comes and goes. In a strong storm, lightning can strike floor squares, even the party square. Get under a roof in a heavy storm.
 
 ## Saves
 
@@ -151,7 +151,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## When you are stuck
 
 1. Stop moving. Save.
-2. Read your own notes again: every lock, key, door, merchant, and shop in the map of the level and in `items.md`. Try each key that you carry in each lock that you know, also in locks that you did not list as exits.
+2. Read your own notes again: every lock, key, door, merchant, and shop in the map of the level and in `items.md`. Try each key that you carry in each lock that you know, even in locks that you did not list as exits.
 3. Walk over each square of the area once and look at the objects on the floor in the view. Turn to each wall of a dead end.
 4. Write a list into `progress.md` under "Not tried yet": wall features you have not clicked, keys and items you have not tried on each lock or alcove, piles you did not empty, wall texts you did not read, goods you did not buy, unexplored edges of the map, walls you did not test for an illusion, doors you could not open.
 5. Rank the list. Visible things come first: keys, piles, alcoves, switches, locks, doors, shops. Hidden switches and illusory walls come last.

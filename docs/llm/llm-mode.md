@@ -65,7 +65,7 @@ uv run dm2-play [--socket PATH] [--brief] act_many '<json-list>'
 
 - `<cmd>`: the request command, for example `state`.
 - `<json-fields>`: the other fields of the request as one JSON object. For `act`: the action, then its `args` as one JSON object. For `act_many`: the `actions` as one JSON list.
-- `--socket PATH`: the socket path. Without it, `dm2-play` uses `$DM2_CONTROL`, else `~/.dm2/control.sock`.
+- `--socket PATH`: the socket path. Without it, `dm2-play` uses `$DM2_CONTROL`, otherwise `~/.dm2/control.sock`.
 - `--brief` (before the command) prints a short text summary instead of the JSON: the turn (`ticks`, `ran`, `stopped`, `error`, `game_over`, `action_damage`, `health_lost`, `path`, and `BUMPED`), the `look:` line, the `seen:` line, the party position, the leader hand, the candidate, each champion, the open panels, the messages, and the squares ahead (side words: `left` and `right`, `far left` and `far right` at 2 squares from the lane, `outer left` and `outer right` at 3 squares). For `get_map`, it prints the `grid`.
 - The exit code is 1 when the reply has `"ok": false`, even when the game is not reachable.
 - A relative screenshot `path` becomes an absolute path before it goes to the game, because the game runs in another directory.
@@ -131,7 +131,7 @@ Reads the game state.
 | `time` | Game time in game steps (`g_game.game_time`). It stands still during a pause and in dialogs. |
 | `ticks` | Timer ticks at 60 Hz since the program start (`g_main_loop.timer_ticks`). `wait` counts these. |
 | `mode` | Input mode: `menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`; `movie` while the splash picture or a movie plays (see [Movies](#movies)). |
-| `dialog` | The dialog id (`DialogState.id`, `src/ui/include/dialog.h`) while `mode` is `dialog`, else `null`. |
+| `dialog` | The dialog id (`DialogState.id`, `src/ui/include/dialog.h`) while `mode` is `dialog`, otherwise `null`. |
 | `party` | Map, x, y, and direction (0 north, 1 east, 2 south, 3 west). |
 | `champion_count`, `leader` | Champions in the party; the leader index, -1 for none. |
 | `champions` | Per champion: name, `[current, maximum]` of health, stamina, and mana (stored values; the screen shows stamina in tenths), and the load in 1/10 kg. |
@@ -140,8 +140,8 @@ Reads the game state.
 | `sound_volume`, `music_volume` | Volume settings 0 to 7. |
 | `end`, `quit` | The end flag of the game (party dead or quit) and the program end flag. |
 | `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` ([Modes](../manual.md#modes), [The turn-based mode](#the-turn-based-mode)). |
-| `automap` | 1 while the automap is open, else 0. |
-| `cheat_immortal`, `cheat_food`, `cheat_light`, `cheat_kill`, `cheat_walls`, `cheat_map` | 1 while the cheat is on, else 0 ([Cheats](../manual.md#cheats)). |
+| `automap` | 1 while the automap is open, otherwise 0. |
+| `cheat_immortal`, `cheat_food`, `cheat_light`, `cheat_kill`, `cheat_walls`, `cheat_map` | 1 while the cheat is on, otherwise 0 ([Cheats](../manual.md#cheats)). |
 
 The message area text is not in the state. Use a screenshot to read it.
 
@@ -364,12 +364,12 @@ The reply of a batch has `ran` (the turns that ran), `stopped`, `error` (only wi
 | Field | Content |
 |---|---|
 | `time`, `game_mode`, `mode` | The game step, `turnbased`, and the input mode (`menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`). |
-| `dialog` | `{id, buttons}` while `mode` is `dialog`, else `null`. |
+| `dialog` | `{id, buttons}` while `mode` is `dialog`, otherwise `null`. |
 | `party` | `map`, `level`, `x`, `y`, `facing`, `darkness`, `can_move`, `sleeping`, `dead`. |
 | `leader`, `leader_hand` | The index of the leader and the object in its hand. |
-| `candidate` | The champion that a mirror shows, with the fields of a champion, else `null`. A candidate is not in `champions`. |
+| `candidate` | The champion that a mirror shows, with the fields of a champion, otherwise `null`. A candidate is not in `champions`. |
 | `champions` | The members: `index`, `name`, `title`, `alive`, `health`, `stamina`, `mana` (each `[value, maximum]`), `food`, `water`, `load_kg`, `position`, `poisoned`, `statistics`, `skills`, `wounds`, `slots`, `hands`, `runes`, `busy`. |
-| `action_menu`, `spell`, `inventory`, `chest`, `money_box`, `minion_map` | The open panel, else `null`. |
+| `action_menu`, `spell`, `inventory`, `chest`, `money_box`, `minion_map` | The open panel, otherwise `null`. |
 | `messages` | The text of the message rows. |
 | `outdoor`, `weather`, `day_time` | The sky, only outdoors. |
 
@@ -397,7 +397,7 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 |---|---|---|---|
 | `move_forward`, `move_back`, `move_left`, `move_right` | none | One step. | `close the inventory first (close_inventory)` |
 | `turn_left`, `turn_right` | none | A turn on the spot. | same |
-| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead; else touches the plain wall. | `the view takes no click now`, `nothing to click on the wall ahead`, `the leader hand is not empty: nothing to use it on ahead` |
+| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead; otherwise touches the plain wall. | `the view takes no click now`, `nothing to click on the wall ahead`, `the leader hand is not empty: nothing to use it on ahead` |
 | `take_object` | `cell` 0-3 | The leader takes the top object of the cell. | `cell must be 0-3 (see get_view piles)`, `the leader hand is not empty: drop or store the object first`, `no leader`, `no object at this cell` |
 | `drop_object` | `cell` 0-4 | The leader drops the hand object. | `cell must be 0-4`, `the leader hand is empty`, `no floor ahead`, `no floor to drop on ahead`, `no alcove ahead` |
 | `open_inventory` | `champion` | Opens the inventory of the champion. | `no living champion with this index`, `the inventory cannot open now` |
@@ -476,7 +476,7 @@ Each line lists the names of one table of the protocol, in table order.
 - Hands (`hands`, and `hand` of `choose_action`): `ready`, `action`.
 - Minion map options (`option` of `minion_map_option`): `creatures`, `details`, `items`, `hold`.
 - Sky amounts (`weather`): `none`, `light`, `medium`, `heavy`.
-- View sides (`side` of a square in `get_view`): `left_3`, `left_2`, `left`, `center`, `right`, `right_2`, `right_3`.
+- View sides (`side` in `seen`): `left_3`, `left_2`, `left`, `center`, `right`, `right_2`, `right_3`.
 - Explosions (in `get_view`): `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, `smoke`.
 - Runes (`runes`): the power runes `lo`, `um`, `on`, `ee`, `pal`, `mon`, then the three rune sets `ya`, `vi`, `oh`, `ful`, `des`, `zo`, `ven`, `ew`, `kath`, `ir`, `bro`, `gor`, `ku`, `ros`, `dain`, `neta`, `ra`, `sar`.
 - Actions (`act`): `move_forward`, `move_back`, `move_left`, `move_right`, `turn_left`, `turn_right`, `click_wall_ahead`, `take_object`, `drop_object`, `open_inventory`, `close_inventory`, `put_in_slot`, `take_from_slot`, `eat`, `drink`, `choose_action`, `pass`, `set_caster`, `add_rune`, `delete_rune`, `cast`, `recruit`, `set_leader`, `sleep`, `wake`, `swap_champions`, `look`, `take_coin`, `minion_map_option`, `click`, `key` (see [Actions](#actions)).
@@ -490,12 +490,12 @@ Each line lists the names of one table of the protocol, in table order.
 - The skill ranks of the JSON are the texts of the skills panel. The panel shows the master ranks with a power rune glyph of the font (`` ` `` and `a` to `e`, characters `0x60` to `0x65`); the JSON gives the upper-case rune name for it: `LO`, `UM`, `ON`, `EE`, `PAL`, `MON` (`LO MASTER FIGHTER`).
 - The slot dialogs (`0x80` load, `0x81` save) do not set the dialog id (`g_dialog.id`); the JSON gives the id and the button texts of the last dialog that `dialog_draw` drew.
 - The JSON names the champion slots by their place in the inventory picture: `ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`, `neck` (10); the slots that the ready hand loads from, `ready_quiver_1` (11) and `ready_quiver_2` (6); the slots that the action hand loads from, `action_quiver_1` (12) to `action_quiver_4` (7, 8, 9); the backpack, `backpack_1` (13, left of the second row) to `backpack_17` (14 to 21 in the first row, 22 to 29 in the second).
-- The weather of the JSON uses the thresholds of the sky pictures: clouds from the cloud cover (`light` from 64, `medium` from 128, `heavy` from 192), rain from the sky darkness (16, 64, 128), wind as the direction of `g_game.wind_dir`. The JSON gives only the weather that the player sees: rain or clouds are `none` when the sky set of the map has no rain or cloud picture, and `wind` is present only while falling rain shows over the view (its slant shows the wind). The time of day comes from the light of the hour: 1 `day`, 5 `night`, else `dawn_dusk`.
-- The view JSON (`state_json_view`) gives the squares of the seen rule (`seen_visible`), from the walk position while the party walks. It gives only what the view draws there (`view_draws`): wall faces as the wall face table of the view (`side_face`, `front_face`); creatures, objects, missiles, and explosions only on the view positions and square aspects that draw them (no things at depth 2 side 2; at depth 4 only creatures, only on a floor, pit, teleporter, or door seen from the front, nothing at side 3; nothing on a door seen from the front beside the party; no creature on the party square while the party walks); a floor ornament from depth 0 to 3 (also the party row, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key; a door button only to depth 3. The element, door state, and map glyph show at every depth, as the automap shows them.
-- A wall face gives what its ornament (the one that `aspect_get` gives the face) holds, by the ornament kind and value keys: `mirror` (portrait kind), `alcove`, `shop`, `fountain` (the touch key). Else `switch` (a click sensor with an ornament, or a hand switch text) and `lock` (the ornament index of a sensor or an item holder text that takes an object); else `ornament` (the index). A text plate gives `text` on the front face and `null` on a side face or for a hidden text, as the view draws text only on a front plate. `shop` is the name of the item that the display shows, `true` before the display chose an item.
+- The weather of the JSON uses the thresholds of the sky pictures: clouds from the cloud cover (`light` from 64, `medium` from 128, `heavy` from 192), rain from the sky darkness (16, 64, 128), wind as the direction of `g_game.wind_dir`. The JSON gives only the weather that the player sees: rain or clouds are `none` when the sky set of the map has no rain or cloud picture, and `wind` is present only while falling rain shows over the view (its slant shows the wind). The time of day comes from the light of the hour: 1 `day`, 5 `night`, otherwise `dawn_dusk`.
+- The view JSON (`state_json_view`) gives the squares of the seen rule (`seen_visible`), from the walk position while the party walks. It gives only what the view draws there (`view_draws`): wall faces as the wall face table of the view (`side_face`, `front_face`); creatures, objects, missiles, and explosions only on the view positions and square aspects that draw them (no things at depth 2 side 2; at depth 4 only creatures, only on a floor, pit, teleporter, or door seen from the front, nothing at side 3; nothing on a door seen from the front beside the party; no creature on the party square while the party walks); a floor ornament from depth 0 to 3 (the party row too, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key; a door button only to depth 3. The element, door state, and map glyph show at every depth, as the automap shows them.
+- A wall face gives what its ornament (the one that `aspect_get` gives the face) holds, by the ornament kind and value keys: `mirror` (portrait kind), `alcove`, `shop`, `fountain` (the touch key). Otherwise `switch` (a click sensor with an ornament, or a hand switch text) and `lock` (the ornament index of a sensor or an item holder text that takes an object); otherwise `ornament` (the index). A text plate gives `text` on the front face and `null` on a side face or for a hidden text, as the view draws text only on a front plate. `shop` is the name of the item that the display shows, `true` before the display chose an item.
 - Each creature group of a square is one entry with `count` 1: a DM2 group record holds one creature. The JSON has no creature names, wall ornament names, or floor ornament names (the game data has none); it gives the index.
 - `piles` lists the object zones 0 to 3 of the last drawn view (cells seen from the party: 0 and 1 on the party square, 2 and 3 on the square ahead), `alcove` the alcove zone ahead as cell 4; both are empty and `wall_ahead_clickable` is false while the inventory hides the view.
-- The view JSON lists things that the view does not draw in these cases: the objects and missiles in the back cells of the party square (the view draws only its two front cells); the things in the far cells of a closed door, which the door hides. `button` shows also for a door seen from the side (`door_has_button`, as the minion map).
+- The view JSON lists things that the view does not draw in these cases: the objects and missiles in the back cells of the party square (the view draws only its two front cells); the things in the far cells of a closed door, which the door hides. `button` shows even for a door seen from the side (`door_has_button`, as the minion map).
 - The map JSON (`state_json_map`) marks a floor square with `_` when the minion map draws its floor ornament without the details option (`mmap_shows_floor_ornament`). It shows no floor sensor without an ornament and no wall feature.
 - A turn tells a bump (`bumped`) from a displacement (`stopped` `moved` or `turned`) by the party square, map, and facing before and after the action. DM has a teleport counter for a teleporter that sends the party back to its square; DM2 has none, so such a teleporter counts as a bump.
 - The seen record of a turn (`seen.creature_changes`) gives `before` 1 and `after` 0 for a creature group that the party saw and that the game killed: a DM2 group record holds one creature, and a group that left the view and whose record is free (its link is `THING_NONE`, as `creature_delete_group_at` leaves it) counts as killed.

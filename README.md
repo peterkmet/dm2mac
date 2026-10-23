@@ -42,7 +42,7 @@ DM2_CONTROL=/tmp/dm2.sock uv run dm2-play act move_forward
 
 [LLM mode: play over the control socket](docs/llm/llm-mode.md) has the protocol, the actions, and the setup.
 [LLM runs](docs/llm/llm-runs.md) describes playthroughs with a coordinator and player agents, and
-[Dungeon Master II: player manual](docs/llm/llm-playbook.md) is the manual of the player agent.
+[LLM player manual](docs/llm/llm-playbook.md) is the manual of the player agent.
 
 ## Build
 

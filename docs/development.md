@@ -85,7 +85,7 @@ uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased
 | Command | Result |
 |---|---|
 | `make check` | `ruff`, `tests/standard`, then the full suite. |
-| `make format` | `clang-format` over the C files. Run it before a commit. |
+| `make format` | `clang-format` over the C files ([Format](coding-standard.md#format)). |
 | `tools/standard-allowlist` | Regenerates `tests/standard/allowlist.txt` from the violations that the standard check finds. |
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
 

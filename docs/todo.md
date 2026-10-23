@@ -13,16 +13,16 @@
 - Message area scroll: IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows up and keeps the bottom rows (`shift_message_area` in `src/ui/text.c`); check it against the original in DOSBox.
 - Chest picture out of bounds: `pick_object_picture` (`src/ui/view.c`) reads `object_picture[open_state]` with chest open states 2 and 3, past the 2 rows of the table (rule 10.5). `main` does the same; the 4 bytes after the table are 0. Check the original, use a defined value, and record it in `docs/rules/view.md`.
 - Check the driver offset of "Instrument to voice" in `HMIMDRV.386`: `docs/formats/music.md` has `0x1ff8` and `0x201e`.
-- `creature_is_flying` crashed on 3 maps in a check script of the dm style refactor, also with the library of `main`. Find the cause.
+- `creature_is_flying` crashed on 3 maps in a check script, even with the library of `main`. Find the cause.
 - `make` does not rebuild an object with the same modification time as its source (seen after scripted rebases). After a scripted rebase, build with `make -B`.
 - `long` in `src/control/control.c` and `src/control/turn.c` (38 uses, rule 5.3).
 - Naming: `advanced_screen_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4); the in/out parameters of `zone_compute_rect` (`out_w`, `out_h`) and `dungeon_location_on_map` (`out_x`, `out_y`) have an `out_` name.
 - Scroll color: a scroll is white on a table and yellowish in the hand, in the inventory, and while it is read. `main` does the same. Compare with the original.
 - Dark dots in letters: with `--filter scale2x` and `scale3x`, the "D" of READY and the "O" of TO in "GAME LOADED, READY TO PLAY" have a dark dot; the "O" of OK has none. `main` does the same. Compare with `--filter none` to find out if the filter or the background causes it.
-- End picture: after QUIT the end picture shows until a click and goes at once, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.
-- Sound under Wine: `build/dm2.exe` under Wine CX crackles, also the music; the port `dm` crackles the same way. Not checked on real Windows.
+- End picture: after QUIT the end picture shows until a click and goes immediately, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.
+- Sound under Wine: `build/dm2.exe` under Wine CX crackles, the music too; the port `dm` crackles the same way. Not checked on real Windows.
 - Esc (the pause) cancels a champion drag, a right click does not.
-- Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (today the outdoor sections around Skullkeep show one at a time).
+- Automap (advanced mode): show the whole play area of the level, all maps of the level together, not only the party map (the outdoor sections around Skullkeep show one at a time).
 - Cheat screen spell names that are port guesses: HASTE (OH IR ROS), MISSILE WALL (ZO BRO ROS), YA EW ITEM, SCOUT, CARRIER, ARMY MINION (ZO EW KU/NETA/ROS). Check them against the DM2 manual.
 - `save_write` gives different bytes on two writes in a row right after `projectile_create` (one byte at offset 30196) and changes `g_random_seed`; found by `tests/port/test_projectile_flight.py`.
 - A damaged CHTS block also clears the AMAP block on load; consider keeping the automap.
@@ -31,7 +31,7 @@
 - Smooth projectile flight (`src/ui/view.c`): tracks match by thing id, so a projectile record freed in one step and reused in the next slides in from the place of the old projectile for one step. Also compare the square position.
 - Cheat cast (`src/ui/cheats.c`, `src/engine/magic.c`): a dead leader with no open spell panel fails the cast without a message. Print a message or take the first living champion.
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
-- ONE-HIT KILL (`src/engine/creature.c`): `kills` forces an immediate creature update also for a creature that cannot be hurt (defense 0xff), so it acts at once instead of at its scheduled time. Add `info->defense != CREATURE_NO_HURT` or note it in the doc.
+- ONE-HIT KILL (`src/engine/creature.c`): `kills` forces an immediate creature update even for a creature that cannot be hurt (defense 0xff), so it acts immediately instead of at its scheduled time. Add `info->defense != CREATURE_NO_HURT` or note it in the doc.
 - `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.
 - `tools/ghidra/decompile.sh` runs `CreateFunctionAfterTerminals.java`, which is not in `tools/ghidra/`; add the script or remove the step.
 - Check in `SKULL.EXE` whether the key table rows with language nibble 0 load for every language (`docs/reference/skull-map.md`, "GDAT database in memory").

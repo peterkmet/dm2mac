@@ -5,11 +5,11 @@ Use this checklist for the manual test of the C port. Use DOSBox only for the it
 ## Prerequisites
 
 - macOS with SDL3 from Homebrew: `brew install sdl3`.
-- For the Windows build (section W): MinGW-w64 (`brew install mingw-w64`) and the SDL3 MinGW package 3.4.18 in `../dm/build/sdl-mingw/` (`make windows DM_DIR=PATH` names another `dm` folder). The Wine settings are in [development.md](development.md).
-- The game files of Dungeon Master II (PC DOS, English, 1995) in `game/`, with `game/DATA/GRAPHICS.DAT`, `game/DATA/DUNGEON.DAT`, `game/DATA/SONGLIST.DAT`, `game/MELODIC.BNK`, and `game/DRUM.BNK`.
+- For the Windows build (section W): the tools and the Wine settings of [Windows build](development.md#windows-build).
+- The game files of Dungeon Master II (PC DOS, English, 1995) in `game/` ([Run the game](manual.md#run-the-game)).
 - DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
 - `make` and `uv run pytest` pass.
-- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original (`docs/manual.md`).
+- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original ([Modes](manual.md#modes)).
 - Optional: a DOS save near the end of the game, for the end sensor (item J16).
 
 ## Build and start
@@ -107,7 +107,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - C7. Click the sleep button. Expected: the party sleeps (the sleep message shows, time runs faster); a key or click wakes the party. Covered by `tests/differential/test_input.py::test_sleep_and_wake_match_original`, `tests/differential/test_interface.py::test_party_states_match_original`.
 - C8. Click a wall button and a lever. Expected: the click feedback shows and the sensor acts as in DOS. Covered by `tests/differential/test_move.py::test_wall_clicks_on_all_wall_cells`, `tests/differential/test_move.py::test_square_events_on_all_sensors`.
 - C9. Click the champion hands and the action icons. Expected: the action menu opens; the choice runs. Covered by `tests/differential/test_input.py::test_champion_clicks_match_original`, `tests/differential/test_interface.py::test_action_area_panels_match_original`, `tests/differential/test_interface.py::test_action_results_match_original`, `tests/differential/test_magic.py::test_icon_click_feedback_matches_original`.
-- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; `docs/formats/runtime.md` "Unknown values" marks the real DOS rate as an open measurement).
+- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; [Unknown values](formats/runtime.md#unknown-values) marks the real DOS rate as an open measurement).
 
 ## D. Champions, inventory, items, money, and shops
 
@@ -187,7 +187,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - [ ] J7. Quit, start `build/dm2`, and load the save. Expected: "LOADING GAME...", then "GAME LOADED, READY TO PLAY"; the game continues in the same state.
 - [ ] J8. Save with an object in the leader hand, a magic light, and an aura; load. Expected: the object is back in the hand; the light and the aura continue.
 - [ ] J9. Choose QUIT more than 100 ticks after the last save. Expected: the program asks before the quit; then the end picture shows until a click.
-- [ ] J10. Choose RESTART. Expected: the program starts again with the start menu, also when it started with `--save`.
+- [ ] J10. Choose RESTART. Expected: the program starts again with the start menu, even when it started with `--save`.
 - [ ] J11. Open a champion's inventory and click the speaker button (zone 0x238, command 0x8d); the dialog has no key. Expected: the sound and music volumes go from 0 to 7.
 - [ ] J12. Rename a champion with the name editor. Expected: the keys edit the name and the title.
 - [ ] J13. Let the whole party die. Expected: the scream, then "THE END"; RESTART GAME loads the last save; QUIT GAME ends with exit code 2.
@@ -207,7 +207,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## L. Advanced mode
 
-Details: `docs/manual.md`.
+Details: [Advanced features](manual.md#advanced-features).
 
 - [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, as the arrow keys.
 - [ ] L2. Run `build/dm2 --mode vanilla --save tests/saves/start.DAT`. Press W, Q, F5, and F9. Expected: nothing happens; no `game/DATA/QUICK.DAT` is written.
@@ -233,11 +233,11 @@ Details: `docs/manual.md`.
 - [ ] L21. Press F5 with all cheats off, turn cheats on with C, then press F9. Expected: the cheat screen shows all cheats OFF. On the SPELLS pages, click NEXT up to page 5, then NEXT (page 1) and BACK (the cheat page). Click FUL IR (X,4,4) FIREBALL. Expected: the screen closes, the fireball flies, the mana and the experience do not change.
 - [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
 - [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
-- [ ] L24. In the advanced mode, press Esc in the dungeon view. Expected: the viewport shows OPTIONS with FILTER NONE and CONTINUE; the game time stops. Press A, D, Return, and click FILTER. Expected: the filter changes at once through NONE, SCALE2X, SCALE3X and wraps; `game/DATA/SETTINGS.TXT` holds the filter. Press Esc, or click CONTINUE. Expected: the menu closes and the game goes on.
+- [ ] L24. In the advanced mode, press Esc in the dungeon view. Expected: the viewport shows OPTIONS with FILTER NONE and CONTINUE; the game time stops. Press A, D, Return, and click FILTER. Expected: the filter changes immediately through NONE, SCALE2X, SCALE3X and wraps; `game/DATA/SETTINGS.TXT` holds the filter. Press Esc, or click CONTINUE. Expected: the menu closes and the game goes on.
 - [ ] L25. Start `build/dm2` again. Expected: the filter of `SETTINGS.TXT` is on. Start with `--filter none`. Expected: no filter; Esc, then D, writes the file again. With `--mode vanilla` Esc pauses and the file is not read. Make `SETTINGS.TMP` a folder and change the filter. Expected: "UNABLE TO SAVE OPTIONS" once; the filter still changes.
 - [ ] L26. In the advanced mode, open an inventory and press Tab. Expected: the inventory closes. Open the name editor and press Tab. Expected: the editor moves to the next field; the inventory stays. In the vanilla mode, press Tab in an inventory. Expected: nothing.
-- [ ] L27. In the advanced mode, hit a creature with a weapon. Expected: the damage star stays visible about twice as long as in the vanilla mode. Click in the action area while the star shows. Expected: the hand icons show at once and the click works as usual (it opens the hand menu). In the vanilla mode, the star disappears after one step.
-- [ ] L28. In the advanced mode, stand still and cast a fireball, or throw a dagger, down a long corridor. Expected: the projectile glides smoothly away, with no jumps or steps back. Turn while it flies. Expected: the view turns at once; no projectile jumps. In the vanilla mode the projectile moves in steps.
+- [ ] L27. In the advanced mode, hit a creature with a weapon. Expected: the damage star stays visible about twice as long as in the vanilla mode. Click in the action area while the star shows. Expected: the hand icons show immediately and the click works as usual (it opens the hand menu). In the vanilla mode, the star disappears after one step.
+- [ ] L28. In the advanced mode, stand still and cast a fireball, or throw a dagger, down a long corridor. Expected: the projectile glides smoothly away, with no jumps or steps back. Turn while it flies. Expected: the view turns immediately; no projectile jumps. In the vanilla mode the projectile moves in steps.
 
 ## Movies
 
@@ -246,24 +246,24 @@ Start `build/dm2` without `--save` unless an item says otherwise. Use a window w
 - [ ] M1. Start. Expected: the Interplay picture for 3 seconds, then `FTL` with sound, then `INTRO` with sound, then the start menu with its music and its colors.
 - [ ] M2. Look at the size of the pictures. Expected: `FTL` small in the middle of a 4:3 area; `INTRO` fills about 90 % of the 4:3 area; black borders on the sides of a wide window.
 - [ ] M3. `--mode vanilla`: click during the splash and during `FTL`. Expected: they go on. Click during `INTRO`. Expected: the start menu shows.
-- [ ] M4. `--mode advanced`: click during the splash, `FTL`, and `INTRO`. Expected: each stops at once. Press keys during a movie. Expected: nothing; the start menu does not get the keys.
-- [ ] M5. Start with `--save game/DATA/SKSAVE0.DAT`. Expected: no movie; the game starts at once.
+- [ ] M4. `--mode advanced`: click during the splash, `FTL`, and `INTRO`. Expected: each stops immediately. Press keys during a movie. Expected: nothing; the start menu does not get the keys.
+- [ ] M5. Start with `--save game/DATA/SKSAVE0.DAT`. Expected: no movie; the game starts immediately.
 - [ ] M6. Complete the game (the end sensor). Expected: the screen goes black, `END` plays, then `CREDITS`, then the program ends with exit code 1. A click in `END` starts `CREDITS`.
 - [ ] M7. Let the party die and choose QUIT GAME. Expected: `CREDITS` plays, then the program ends with exit code 2.
-- [ ] M8. Close the window during `INTRO`, and during `CREDITS` of M7. Expected: the program ends at once (exit code 0 and 2); no start menu. Send `quit` over the control socket during `INTRO`. Expected: the same.
-- [ ] M8b. Let the party die. Close the window (or send `quit`) during the "THE END" dialog. Expected: the program ends at once with exit code 2; no `CREDITS`.
+- [ ] M8. Close the window during `INTRO`, and during `CREDITS` of M7. Expected: the program ends immediately (exit code 0 and 2); no start menu. Send `quit` over the control socket during `INTRO`. Expected: the same.
+- [ ] M8b. Let the party die. Close the window (or send `quit`) during the "THE END" dialog. Expected: the program ends immediately with exit code 2; no `CREDITS`.
 - [ ] M9. Choose RESTART in the save menu. Expected: the start menu, no movie.
 - [ ] M10. Resize the window during a movie. Expected: the picture stays 4:3 with black borders.
 - [ ] M11. Watch `INTRO`, `END`, and `CREDITS` to the end. Expected: clean pictures without broken blocks; the sound fits the picture.
 - [ ] M12. Rename `game/FTL` and start. Expected: the splash, then `INTRO`, then the start menu. Rename it back.
-- [ ] M13. With the control socket (`docs/llm/llm-mode.md`, section "Movies"): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
+- [ ] M13. With the control socket ([Movies](llm/llm-mode.md#movies)): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
 - [ ] M14. Optional, DOSBox (`tools/dosbox-dm2.conf`): compare the size and the position of the `INTRO` picture with the port.
 
 ## T. Turn-based mode
 
-Details: `docs/llm/llm-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
+Details: [The turn-based mode](llm/llm-mode.md#the-turn-based-mode). Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
 
-- [ ] T1. Start the game. Expected: no start menu and no movie; the dungeon view shows at once; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
+- [ ] T1. Start the game. Expected: no start menu and no movie; the dungeon view shows immediately; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
 - [ ] T2. Send `new_game`. Expected: the party is on the start square (map 0, x 1, y 8, facing north); the reply has `state`.
 - [ ] T3. Send `act nothing`. Expected: the error `unknown action`; the game time and the screen do not change.
 - [ ] T4. Send `uv run dm2-play act take_object '{"cell": 2}'` and `uv run dm2-play act_many '["turn_left", "turn_right"]'`. Expected: the game gets the action and its args (an error text about the cell or the view, or the turn), and the batch runs two turns (`ran` 2).
@@ -278,7 +278,7 @@ Details: `docs/llm/llm-mode.md`. Run the game with `SDL_AUDIO_DRIVER=dummy build
 
 ## W. Windows
 
-Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`. Start the program from the repo root with the Wine settings of the Prerequisites.
+Copy `SDL3.dll` next to `build/dm2.exe` and set the Wine settings ([Windows build](development.md#windows-build)). Start the program from the repo root.
 
 - [ ] W1. Remove `SDL3.dll` from `build/` and run `"$WINE" build/dm2.exe`. Expected: Windows reports the missing `SDL3.dll`. Copy it back.
 - [ ] W2. Run `"$WINE" build/dm2.exe`. Expected: the program starts a new game with `game/`: the splash picture, the movies, and the start menu, with image and sound.
@@ -286,4 +286,4 @@ Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next 
 
 ## Known deviations
 
-Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/` and `docs/llm/llm-mode.md`.
+Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/`, and [llm-mode.md](llm/llm-mode.md#deviations-from-the-original).

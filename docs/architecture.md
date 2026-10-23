@@ -286,7 +286,7 @@ no console.
 - A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration (rule 2.5 of
   [coding-standard.md](coding-standard.md#2-headers-and-includes)).
 
-The test folders are in the Layout section of `CLAUDE.md`.
+The test folders are in [Tests](development.md#tests).
 
 ## Add a game rule
 
