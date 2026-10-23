@@ -7,19 +7,16 @@ The DOS runtime of `SKULL.EXE`: the SVGA option of the installer, the PIT diviso
 - The SVGA option changes only the movies. It does not change the game. The game always runs in VGA mode `0x13` (320×200, 256 colors).
 - `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie. It writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, probably for SVGA only, the switch ` +VS`.
 - The movies are Interplay MVE players with appended MVE data. SVGA movies use VESA mode `0x101` (640×480), video 54×40 blocks (432×320 pixels). VGA movies use mode `0x13` with 40×25 blocks (320×200).
-- `IBMIOP.EXE` holds two launch scripts. SVGA: `splash intrplay.pcx 3`, `ftl noabort`, `intro 640x350 wide`, game, `end 640x350 wide`, `credits 640x350 wide`. VGA: the same with `noabort` and `splash credits.pcx 10` at the end.
+- `IBMIOP.EXE` holds two launch scripts, one for SVGA and one for VGA ([movies.md](movies.md#launcher-script-ibmiopexe)).
 
 The files show this:
 
 - `INSTALL.EXE` and `IBMIOP.EXE` are LZEXE 0.91 (`LZ91`) files. Decompressed strings: the copy lists, the SVGA prompt, `IBMIOP SKULL.EXE`, ` +VS`, `DM2.BAT`.
-- MVE opcode `0x0a` (set video mode) in each movie: `INTRO`, `END`, `FTL`, `CREDITS` = `(640, 480, 0x101)`. `*.VGA` = `(320, 200, 0x13)`.
+- The MVE opcode `0x0a` (set video mode) of each movie gives its video mode ([movies.md](movies.md#mve-stream)).
 - `IBMIOP.EXE` (decompressed `0x19fe`): `int 10h` with `AX=0x0013`. `SKULL.EXE` has no `int 10h` and no VESA call.
-- `IBMIOP.EXE` script tables at decompressed `0x3f62` (SVGA) and `0x40a0` (VGA).
-- The script records and the arguments of the movie player: [movies.md](movies.md).
+- The script tables, the script records, and the arguments of the movie player: [movies.md](movies.md).
 
 Confidence: high for the effect. Medium for the exact ` +VS` usage.
-
-The SVGA option gives no better game image.
 
 ## PIT divisor and tick rates
 
@@ -72,4 +69,4 @@ Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` 
 
 ## Deviations from the original
 
-- No SVGA mode: the port implements no SVGA mode for the game. The SVGA option changes only the movies, and the port plays the SVGA movies ([movies.md](movies.md)).
+- No SVGA mode: the port implements no SVGA mode for the game. It plays the SVGA movies ([movies.md](movies.md)).

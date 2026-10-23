@@ -64,7 +64,7 @@ The sound output is `src/ui/sound.c`.
 - Pan ratio overflow fixed. `FUN_00010877` divides `|lateral| << 11` by `|forward|` in 32 bits, but compares only the low 16 bits with `THRESH`. For `|lateral| >= 32` and a small `|forward|`, the ratio wraps and the sound pans near the center (example: lateral 32, forward 1 gives `0x8f00`, not `0xf800`). The port compares the full ratio. The differential test skips these inputs and checks the fix separately.
 - Mixing: the port mixes at 44100 Hz (4 × 11025) in interleaved signed 16-bit stereo. Each sample repeats 4 times. SDL3 converts to the device rate.
 - Pan law: the SOS pan curve is not known. The port uses a linear balance with the center at full volume on both sides: left gain = `min(0x8000, 0x10000 − pan) / 0x8000`, right gain = `min(0x8000, pan) / 0x8000`, times the SOS volume `vol8 << 7 | vol8 >> 1`.
-- Voices: 64, as in the original. A new sound takes the first free voice. When all play, the sound is dropped. The priority sort of `FUN_00010573` is not ported yet; it belongs to the request queues.
+- Voices: 64, as in the original. A new sound takes the first free voice. When all play, the sound is dropped.
 - The port keeps the samples signed and skips the XOR `0x80` of `FUN_000104ea`.
 - `sound_party_offset` takes the party direction 0 to 3. For other values the original keeps stale locals; the port treats them as north.
 - The audio output (`src/platform/platform.c`) fills the SDL audio stream from `plat_wait_tick` on the main thread, up to 2048 frames ahead. A music source can be added with `plat_audio_music`. It is mixed before the sound effects.

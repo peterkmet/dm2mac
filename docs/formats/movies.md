@@ -6,6 +6,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 
 - The SVGA script table at the decompressed offset `0x3f62` has one record of 53 bytes per step: the program name (14 bytes; `@1` is the game), the arguments (32 bytes), two flag bytes, the highest exit code that the record handles (offset `0x30`), and the next step for each exit code (offset `0x31`, 1-based; 0 ends the launcher). An exit code above the highest gives the next step of exit code 0 (code at `0x3cea`-`0x3d17`).
 - Steps: 1 `splash intrplay.pcx 3`, 2 `ftl noabort`, 3 `intro 640x350 wide`, 4 the game, 5 `end 640x350 wide`, 6 `credits 640x350 wide`.
+- The VGA script table at the decompressed offset `0x40a0` has the same steps with `noabort` and `splash credits.pcx 10` at the end.
 - The game: exit code 0 (quit) ends; 1 (completed) goes to `END`, then `CREDITS`; 2 (QUIT GAME of a dead party) goes to `CREDITS`; 3 (RESTART) starts the game step again; every other code ends.
 
 ## Movie player
@@ -30,7 +31,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 | `0x05` v2 | word width, word height in blocks of 8 × 8 | 54 × 40 blocks: 432 × 320. |
 | `0x07` v1 | word first color, word count, word ? | Shows the picture. |
 | `0x08`, `0x09` | word sequence, word stream mask, word length, samples (`0x08` only) | Audio and silence; the port plays stream mask bit 0. |
-| `0x0a` | word width, word height, word VESA mode | `(640, 480, 0x101)`; the VGA movies `(320, 200, 0x13)`. |
+| `0x0a` | word width, word height, word VESA mode | `INTRO`, `END`, `FTL`, `CREDITS`: `(640, 480, 0x101)`; the VGA movies `*.VGA`: `(320, 200, 0x13)`. |
 | `0x0c` | word first color, word count, 6-bit RGB | Palette. |
 | `0x0f` | 4 bits per block | Decoding map of the next video data. |
 | `0x11` v3 | 14-byte header (word flags at 12), block data | Video data; flag bit 0 swaps the frames before the decode. |
