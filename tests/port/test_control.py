@@ -240,13 +240,15 @@ def test_a_client_that_leaves_during_a_wait_frees_the_socket(control, lib):
 
 def test_a_second_client_gets_busy(control, lib):
     path, *_ = control
-    with pumped(lib, ticks=False), socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as first:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as first:
         first.connect(path)
         first.sendall(b'{"cmd": "wait", "ticks": 6000}\n')
-        time.sleep(0.05)
+        lib.transport_poll()  # accepts the first client and starts its wait (no game ticks: it never ends)
+        lib.transport_poll()
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as second:
             second.settimeout(5)
             second.connect(path)  # sends nothing: the server sends busy and closes before it reads
+            lib.transport_poll()
             assert json.loads(second.makefile().readline()) == {"ok": False, "error": "busy"}
 
 
