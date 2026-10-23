@@ -6,7 +6,8 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import session  # noqa: F401 (session is a fixture)
+from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
+from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
@@ -264,3 +265,28 @@ def test_a_closing_door_hurts_the_party_only_without_the_cheat(lib, game, cheat)
     lib.timeline_event_door_animation(ctypes.byref(event))
     assert (sum(damage) > 0) != cheat
     assert square[0] & C.SQUARE_DOOR_STATE == C.DOOR_STATE_OPEN, "the door opens again over the party"
+
+
+def leader_hand(lib):
+    return ctypes.c_uint16.from_address(ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_game")) + GAME_LEADER_HAND).value
+
+
+@pytest.mark.parametrize("wanted", [None, is_wall, is_closed_door], ids=["floor", "wall", "closed door"])
+def test_no_drop_inside_a_wall(lib, game, wanted):
+    """With the cheat, a drop on the party square does nothing while the party stands in a wall or a closed door."""
+    if wanted:
+        place = find_place(lib, game, lambda m, x, y: wanted(lib, m, x, y))
+        walk(lib, game, place, True)
+    else:
+        enter(lib, game, *find_place(lib, game, lambda m, x, y: is_wall(lib, m, x, y)))
+    lib.game_set_cheats(C.CHEAT_WALLS)
+    lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
+    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.champ_take_from_leader_hand()
+    thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
+    lib.champ_put_in_leader_hand(thing, 0)
+    view, cell = (ctypes.c_int16 * 4)(), (ctypes.c_int16 * 4)()
+    assert lib.zone_get_rect(C.ZONE_VIEWPORT, view) and lib.zone_get_rect(C.ZONE_DROP_CELL_FIRST, cell)
+    lib.input_mouse_click(view[0] + cell[0] + cell[2] // 2, view[1] + cell[1] + cell[3] // 2, C.INPUT_BUTTON_LEFT)
+    run_ticks(lib, 10)
+    assert (leader_hand(lib) == thing) == bool(wanted)

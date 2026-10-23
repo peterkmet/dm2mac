@@ -1974,12 +1974,21 @@ static void click_take_object(int x, int y, int index)
     game_set_command_stop(true);
 }
 
+/* True when the party stands in a wall, a closed fake wall, or a closed door (walk-through-walls cheat). */
+static bool is_party_in_wall(void)
+{
+    return game_has_cheat(CHEAT_WALLS) &&
+           dun_square_blocks_movement(dungeon_square(g_party.cur_map, g_game.party_x, g_game.party_y));
+}
+
 /* Drops the leader hand object into cell of the square (x, y): 0 to 3 a floor cell, 4 to 7 a possession cell of
    a static creature, relative to the party direction. True when done. */
 static bool click_drop_object(int x, int y, int cell)
 {
     if ((int16_t)g_game.leader == -1)
         return false;
+    if (x == g_game.party_x && y == g_game.party_y && is_party_in_wall())
+        return true; /* no drop inside a wall: the object stays in the hand */
     int dir_cell = dir_turn(g_game.party_dir, cell);
     uint16_t group = creature_group_at(g_party.cur_map, x, y);
     bool possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
