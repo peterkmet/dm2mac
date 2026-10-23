@@ -28,3 +28,4 @@
 - `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.
 - Check in `SKULL.EXE` whether the key table rows with language nibble 0 load for every language (`docs/reference/skull-map.md`, "GDAT database in memory").
 - `docs/reference/reference-crosscheck.md`: the 1405 reDM2 function starts do not equal the table sum 473 + 151 + 27 + 677 + 79 = 1407. Check the count against the reDM2 data.
+- Advanced mode: a click anywhere on a champion status box opens the inventory of the champion, not only a click on the name. The two hands keep their click (they take and put objects).
