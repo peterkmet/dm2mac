@@ -150,6 +150,11 @@ typedef struct {
     int16_t x, y;
 } Location;
 
+/* A square with its map. */
+typedef struct {
+    int16_t map, x, y;
+} Position;
+
 /* Byte offsets of thing record fields. Every record starts with the link to the next thing. */
 #define THING_NEXT        0x00
 #define TELEPORTER_TARGET 0x02 /* x bits 0-4, y bits 5-9, rotation bits 10-11, bit 12 absolute, scope bits 13-14 */

@@ -103,11 +103,6 @@
 /* The powers of a magic light event (its event data is the power, negative for darkness). */
 #define LIGHT_POWER_COUNT 16
 
-/* A square with its map. */
-typedef struct {
-    int16_t map, x, y;
-} Position;
-
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
    animated ornament (0x2c), shop display (0x30), activation with sound (0x32), and four of unknown use. */
 static const uint8_t sensors_with_data[] = {0x27, 0x1b, 0x1d, 0x41, 0x2c, 0x32, 0x30, 0x2d};
