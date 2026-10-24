@@ -239,6 +239,7 @@ Details: [Advanced features](manual.md#advanced-features).
 - [ ] L26. In the advanced mode, open an inventory and press Tab. Expected: the inventory closes. Open the name editor and press Tab. Expected: the editor moves to the next field; the inventory stays. In the vanilla mode, press Tab in an inventory. Expected: nothing.
 - [ ] L27. In the advanced mode, hit a creature with a weapon. Expected: the damage star stays visible about twice as long as in the vanilla mode. Click in the action area while the star shows. Expected: the hand icons show immediately and the click works as usual (it opens the hand menu). In the vanilla mode, the star disappears after one step.
 - [ ] L28. In the advanced mode, stand still and cast a fireball, or throw a dagger, down a long corridor. Expected: the projectile glides smoothly away, with no jumps or steps back. Turn while it flies. Expected: the view turns immediately; no projectile jumps. In the vanilla mode the projectile moves in steps.
+- [ ] L29. In the advanced mode, open the automap, the cheat screen, and the options menu in turn, and right-click in each. Expected: each closes and the dungeon view comes back. Open an inventory, press Alt+S, and right-click. Expected: the save menu closes and the inventory shows again. Click SAVE and right-click in the slot list. Expected: the save menu shows again. Wait more than 100 game steps after the last save, click QUIT, and right-click. Expected: the save menu shows again. In the vanilla mode, right-click in the save menu. Expected: nothing.
 
 ## Movies
 
