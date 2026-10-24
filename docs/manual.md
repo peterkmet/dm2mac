@@ -141,16 +141,16 @@ The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#qu
 
 ### Automap
 
-The automap shows the squares of the party map that the dungeon view has shown. It covers the viewport. The party square is in the middle of the viewport, north is up.
+The automap shows the seen squares of all maps of the party level, each at its place on the level. It covers the viewport. The party square is in the middle of the viewport, north is up.
 
 - The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. A red frame and the champion icons of a minion map item mark the party square. The side of the frame toward the direction that the party faces is white.
-- A white frame of 1 pixel surrounds the whole map, just outside its last squares. It shows the end of the map, even for squares that are not seen.
+- A white frame of 1 pixel surrounds the whole level, just outside its last squares. It shows the end of the level, even for squares that are not seen.
 - An imaginary wall (a closed fake wall that the party can walk through) shows as the wall icon with a light gray checkerboard, so it differs from a real wall.
 - A pressure pad shows as a small gray square in the middle of its floor square. A pressure pad is a floor square with a floor sensor whose floor ornament the dungeon view draws. The party, a creature, or an item triggers the sensor (sensor types any, party or creature, party, creature, party possesses an item, item). A floor trigger without an ornament stays hidden.
-- Only the seen squares show. Unseen squares stay black. With the reveal map cheat, all squares of the map show.
+- Only the seen squares show. Unseen squares stay black. With the reveal map cheat, all squares of the level show.
 - The readout at the top left shows `LEVEL n  X x  Y y` and the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`).
 - The game time stops while the automap is open. Keys other than the automap keys do nothing.
-- Drag the map with the left mouse button. The map moves in whole squares. The middle of the map stays on the map. The next automap opens on the party again.
+- Drag the map with the left mouse button. The map moves in whole squares. The middle of the map stays inside the level. The next automap opens on the party again.
 
 ### Seen squares
 
@@ -173,7 +173,7 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 - Food and water: food and water do not go down over time. Eating and drinking still raise them.
 - One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt stays unhurt; a creature that others cannot hit stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall. In a wall, a closed fake wall, or a closed door, the party cannot drop an object on its own square: the object stays in the hand.
-- Reveal map: the automap shows every square of the map. The seen squares do not change.
+- Reveal map: the automap shows every square of the level. The seen squares do not change.
 
 ### Cheat screen
 
