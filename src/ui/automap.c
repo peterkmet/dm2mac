@@ -19,6 +19,9 @@
 #define PAD_MARK_SIZE   3
 #define PAD_MARK_OFFSET ((MAP_ICON_W - PAD_MARK_SIZE) / 2)
 
+/* The squares around a map that the view draws as its edge walls (dungeon_square_edge). */
+#define MAP_MARGIN 1
+
 /* The first and the last level column (or row) that the automap draws. */
 typedef struct {
     int first, last;
@@ -51,15 +54,17 @@ static Location middle_square(void)
     return (Location){party.x + scroll_x, party.y + scroll_y};
 }
 
-/* The smallest rect of level positions (level x, y, width, height) that holds all maps of the party level. */
+/* The smallest rect of level positions (level x, y, width, height) that holds all maps of the party level with their
+   margins. */
 static void level_rect(int16_t *rect)
 {
     int map = g_game.party_map;
-    int x0 = dungeon_map_offset_x(map), y0 = dungeon_map_offset_y(map);
-    int x1 = x0 + dungeon_map_width(map), y1 = y0 + dungeon_map_height(map);
+    int x0 = dungeon_map_offset_x(map) - MAP_MARGIN, y0 = dungeon_map_offset_y(map) - MAP_MARGIN;
+    int x1 = x0 + dungeon_map_width(map) + 2 * MAP_MARGIN, y1 = y0 + dungeon_map_height(map) + 2 * MAP_MARGIN;
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++) {
-        int left = dungeon_map_offset_x(*m), top = dungeon_map_offset_y(*m);
-        int right = left + dungeon_map_width(*m), bottom = top + dungeon_map_height(*m);
+        int left = dungeon_map_offset_x(*m) - MAP_MARGIN, top = dungeon_map_offset_y(*m) - MAP_MARGIN;
+        int right = left + dungeon_map_width(*m) + 2 * MAP_MARGIN,
+            bottom = top + dungeon_map_height(*m) + 2 * MAP_MARGIN;
         x0 = left < x0 ? left : x0;
         y0 = top < y0 ? top : y0;
         x1 = right > x1 ? right : x1;
@@ -110,6 +115,25 @@ static bool covers(int16_t map, Location level_at, Position *position)
            position->y < dungeon_map_height(map);
 }
 
+/* True when the level position level_at is in the margin of map; *position is the margin square of map there. */
+static bool in_margin(int16_t map, Location level_at, Position *position)
+{
+    if (covers(map, level_at, position))
+        return false;
+    return position->x >= -MAP_MARGIN && position->x < dungeon_map_width(map) + MAP_MARGIN &&
+           position->y >= -MAP_MARGIN && position->y < dungeon_map_height(map) + MAP_MARGIN;
+}
+
+/* True when a map of the party level covers the level position level_at. */
+static bool covered(Location level_at)
+{
+    Position position;
+    for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
+        if (covers(*m, level_at, &position))
+            return true;
+    return false;
+}
+
 bool automap_level_square(Location level_at, Position *position)
 {
     int16_t party_map = g_game.party_map;
@@ -129,6 +153,21 @@ bool automap_level_square(Location level_at, Position *position)
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
         if (covers(*m, level_at, position))
             return true;
+    /* no map covers it: the edge wall that the view draws in the margin of a map */
+    for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
+        if (in_margin(*m, level_at, position) &&
+            square_type(dungeon_square_edge(*m, position->x, position->y)) == SQUARE_WALL)
+            return true;
+    return false;
+}
+
+/* True when map has seen a square of its own next to its margin square position. */
+static bool margin_seen(const Position *position)
+{
+    for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++)
+            if (seen_is_seen(position->map, (int16_t)(position->x + dx), (int16_t)(position->y + dy)))
+                return true;
     return false;
 }
 
@@ -137,6 +176,12 @@ bool automap_level_seen(Location level_at)
     Position position;
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
         if (covers(*m, level_at, &position) && seen_is_seen(position.map, position.x, position.y))
+            return true;
+    if (covered(level_at))
+        return false;
+    /* an edge wall counts as seen with a seen square next to it: the view shows it from there */
+    for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
+        if (in_margin(*m, level_at, &position) && margin_seen(&position))
             return true;
     return false;
 }
@@ -201,6 +246,8 @@ static void show_level_square(Offscreen *o, const int16_t *clip, Location level_
     dun_set_current_map(position.map);
     SquareIcon icon = {position.x, position.y, x, y, party ? mmap_party_icons_item() : -1, g_game.party_dir};
     mmap_draw_square_icon(o, clip, &icon);
+    if (!covers(position.map, level_at, &position))
+        return; /* an edge wall has no imaginary wall and no pad */
     if (automap_is_imaginary_wall(dungeon_square(position.map, position.x, position.y)))
         checker_overlay(o, clip, x, y);
     else if (automap_is_pressure_pad(position.map, position.x, position.y))

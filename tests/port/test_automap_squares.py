@@ -96,3 +96,16 @@ def test_level_position_is_seen_when_any_covering_map_saw_it(lib, session):  # n
     lib.seen_mark(12, 25, 1, C.DIR_NORTH)  # the view marks the square of map 12 that shows map 40
     assert lib.automap_level_seen(Location(52, 28)) and not lib.seen_is_seen(40, 6, 6)
     lib.seen_reset()
+
+
+def test_edge_wall_in_a_margin_that_no_map_covers(lib, session):  # noqa: F811
+    # The view draws the edge wall of map 12 at (13, -1) (dungeon_square_edge); the automap shows it once a square
+    # of map 12 next to it is seen.
+    assert level_square(lib, 40, 26) == (12, 13, -1)
+    assert level_square(lib, 21, 35) is None  # the margin of map 0 beside no open square: outside
+    lib.seen_reset()
+    lib.seen_mark(12, 13, 2, C.DIR_SOUTH)  # the squares two rows away
+    assert not lib.automap_level_seen(Location(40, 26))
+    lib.seen_mark(12, 13, 0, C.DIR_NORTH)  # the square next to the edge wall
+    assert lib.automap_level_seen(Location(40, 26))
+    lib.seen_reset()

@@ -424,11 +424,11 @@ def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
     assert party_frame(lib, 1) == red(lib)
     lib.input_mouse_click(start_x, start_y, INPUT_BUTTON_LEFT)
     run_ticks(lib, 2)
-    mouse_x.value = start_x + 40 * CELL  # far past the left edge of the map: the middle stops at column 0
+    mouse_x.value = start_x + 40 * CELL  # far past the left edge: the middle stops at the margin column -1
     lib.input_mouse_click(mouse_x.value, start_y, INPUT_LEFT_RELEASED)
     run_ticks(lib, 2)
     game, _ = automap
-    assert party_frame(lib, game.party_x) == red(lib)
+    assert party_frame(lib, game.party_x + 1) == red(lib)
     press(lib, KEY_TAB)
     press(lib, KEY_TAB)
     assert party_frame(lib) == red(lib), "a closed automap opens on the party"
