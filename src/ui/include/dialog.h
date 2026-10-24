@@ -42,7 +42,8 @@ typedef struct {
     uint8_t button_category, button_index, button_entry; /* the picture of a pressed button */
     int progress_enabled;
     int16_t progress_width;
-    int id; /* the dialog of the last dialog_draw */
+    int id;           /* the dialog of the last dialog_draw */
+    int right_choice; /* the advanced mode: the choice of a right click in the open dialog, 0 for none */
 } DialogState;
 extern DialogState g_dialog;
 
@@ -55,6 +56,8 @@ int dialog_draw(int id, int message);
 /* Waits until the player clicks a button of dialog id; returns the text entry of the button (the volume dialog: the
    command). */
 int dialog_run(int id);
+/* dialog_run, and in the advanced mode a right click chooses the button of text entry cancel. */
+int dialog_run_cancel(int id, int cancel);
 /* Draws the pressed button picture over the clicked button of zone. */
 void dialog_draw_button(int zone, int highlighted);
 /* Draws the bar of a progress dialog at permille of its length. */

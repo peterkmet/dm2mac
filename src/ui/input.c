@@ -1140,6 +1140,16 @@ static const InputCommand *find_command_entry(const InputNode *node, uint16_t co
     return NULL;
 }
 
+/* In the advanced mode a right click in a dialog with a cancel button chooses that button; true when it did. */
+static bool right_click_cancels_dialog(int type)
+{
+    if (type != INPUT_BUTTON_RIGHT || g_game_mode != GAME_MODE_ADVANCED || in.mode != INPUT_MODE_DIALOG ||
+        !g_dialog.right_choice)
+        return false;
+    g_input_match.choice = (int16_t)g_dialog.right_choice;
+    return true;
+}
+
 /* The command of a click; in the advanced mode a left click on a status box outside the hands is a click on the
    bars when the leader hand holds an object (it stores the object), else a click on the name (it opens the
    inventory of the champion). */
@@ -1815,7 +1825,8 @@ void input_poll(void)
                     else if (type & EVENT_CLICK_TYPES) {
                         if (type == INPUT_BUTTON_LEFT)
                             area_end_damage_hold((int16_t)x, (int16_t)y);
-                        command = click_command(in.mode, x, y, type);
+                        if (!right_click_cancels_dialog(type))
+                            command = click_command(in.mode, x, y, type);
                     }
                 } else if (type == INPUT_KEY) {
                     command = key_command(in.mode, (uint16_t)x);

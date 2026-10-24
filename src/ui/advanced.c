@@ -303,7 +303,9 @@ static void options_event(int type, int16_t x, int16_t y)
 
 void advanced_screen_event(int type, int16_t x, int16_t y)
 {
-    if (g_advanced_screen == ADVANCED_SCREEN_AUTOMAP)
+    if (type == INPUT_BUTTON_RIGHT)
+        close_screen();
+    else if (g_advanced_screen == ADVANCED_SCREEN_AUTOMAP)
         map_event(type, x, y);
     else if (g_advanced_screen == ADVANCED_SCREEN_CHEATS)
         cheat_event(type, x, y);

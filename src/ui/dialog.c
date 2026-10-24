@@ -37,6 +37,9 @@ static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 
 /* The volume settings 0 to 7 of the volume dialog. */
 #define VOLUME_LEVELS 8
 
+/* The cancel of a dialog without a button for a right click. */
+#define DIALOG_NO_CANCEL (-1)
+
 /* The test sound of a new sound volume. */
 #define TEST_SOUND_INDEX 0
 
@@ -151,6 +154,11 @@ int dialog_draw(int id, int message)
 
 int dialog_run(int id)
 {
+    return dialog_run_cancel(id, DIALOG_NO_CANCEL);
+}
+
+int dialog_run_cancel(int id, int cancel)
+{
     const gdat_t *g = gdat_current();
     uint8_t values[DIALOG_TEXT_COUNT];
     int count = 0;
@@ -162,6 +170,11 @@ int dialog_run(int id)
         uint8_t value = (uint8_t)gdat_entry_index(g, CAT_DIALOG, id, GDAT_TYPE_VALUE, e);
         values[count++] = value ? value : (uint8_t)e;
     }
+    int right_choice = g_dialog.right_choice;
+    g_dialog.right_choice = 0;
+    for (int i = 0; i < count; i++)
+        if (values[i] == cancel)
+            g_dialog.right_choice = i + 1;
     g_dialog.button_count = id == DIALOG_VOLUME ? DIALOG_VOLUME_BUTTONS : count;
     input_push_mode(INPUT_MODE_DIALOG);
     g_input_match.choice = DIALOG_NO_CHOICE;
@@ -175,6 +188,7 @@ int dialog_run(int id)
     int result = id == DIALOG_VOLUME ? g_input_match.value : choice >= 1 && choice <= count ? values[choice - 1] : 0;
     game_set_screen_refresh(true);
     input_pop_mode();
+    g_dialog.right_choice = right_choice;
     return result;
 }
 

@@ -219,6 +219,7 @@ void session_open_slot_dialog(int id, int buttons)
 
 void session_close_slot_dialog(void)
 {
+    g_dialog.right_choice = 0;
     input_pop_mode();
     game_set_screen_refresh(true);
 }
@@ -315,6 +316,7 @@ static int choose_save_slot(void)
 {
     char *name = g_session.save_name;
     session_open_slot_dialog(DIALOG_SAVE_SLOTS, SLOT_BUTTONS_SAVE);
+    g_dialog.right_choice = SLOT_CANCEL;
     int chosen = first_save_slot(name);
     int length = 0;
     bool done = false;
@@ -466,7 +468,7 @@ static bool write_slot(int slot)
 static int run_save_menu(bool *quit)
 {
     for (;;) {
-        int choice = dialog_run(dialog_draw(DIALOG_SAVE_MENU, MESSAGE_NONE));
+        int choice = dialog_run_cancel(dialog_draw(DIALOG_SAVE_MENU, MESSAGE_NONE), SAVE_MENU_RESUME);
         if (g_main_loop.quit || choice == SAVE_MENU_RESUME)
             return SAVE_SLOT_NONE;
         if (choice == SAVE_MENU_QUIT || choice == SAVE_MENU_RESTART) {
@@ -474,7 +476,7 @@ static int run_save_menu(bool *quit)
                 game_set_restart(true); /* a cancel below keeps it, as in the original */
             if (g_session.load_time + QUIT_SAFE_TICKS < g_game.game_time &&
                 g_session.save_time + QUIT_SAFE_TICKS < g_game.game_time &&
-                dialog_run(dialog_draw(DIALOG_NOT_SAVED, MESSAGE_NONE)) == NOT_SAVED_CANCEL)
+                dialog_run_cancel(dialog_draw(DIALOG_NOT_SAVED, MESSAGE_NONE), NOT_SAVED_CANCEL) == NOT_SAVED_CANCEL)
                 continue;
             game_set_offer_restore(false);
             *quit = true;
