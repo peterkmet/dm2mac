@@ -529,3 +529,42 @@ def test_quick_load_takes_the_saved_cheats(lib, automap):
     assert not flag(lib, "g_advanced_screen").value
     assert lib.game_get_cheats() == C.CHEAT_FOOD | C.CHEAT_KILL, "a session start keeps the cheats"
 
+
+
+
+TREE, MOVING, CREATURE_STATIC = 20, 27, 0x0001  # a static tree of the outdoor maps; a creature that map 0 takes
+GROUP_CREATURE = 4  # the creature type byte of a group record
+
+
+def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib, automap):
+    # A static creature (a tree) on a seen square shows; a moving creature does not. The map draws without a game
+    # step: the AI never runs the tree that was a moving group.
+    game, _ = automap
+    lib.creature_create_group.restype = ctypes.c_uint16
+    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
+    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint16)
+    lib.creature_group_info.argtypes = [ctypes.c_uint16]
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
+    m, d = game.party_map, game.party_dir
+    squares = [ahead(game.party_x, game.party_y, d, depth) for depth in (1, 2)]
+    assert all(lib.dungeon_square(m, x, y) >> 5 == 1 and (x, y) in seen_squares(lib, m) for x, y in squares)
+    press(lib, KEY_TAB)
+
+    def cell(x, y):
+        lib.advanced_draw_automap()
+        vx, vy, w, h = viewport(lib)
+        left = vx + (w - CELL) // 2 + (x - game.party_x) * CELL
+        top = vy + (h - CELL) // 2 + (y - game.party_y) * CELL
+        return [bytes(screen(lib)[(top + r) * SCREEN_W + left:(top + r) * SCREEN_W + left + CELL]) for r in range(CELL)]
+
+    for (x, y), kind in zip(squares, (MOVING, TREE)):
+        before = cell(x, y)
+        lib.dun_set_current_map(m)
+        g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, x, y)
+        assert g != 0xFFFF
+        lib.dungeon_thing_record(g)[GROUP_CREATURE] = kind
+        static = bool(lib.creature_group_info(g)[0] & CREATURE_STATIC)
+        assert static == (kind == TREE)
+        assert (cell(x, y) != before) == static, kind
+    press(lib, KEY_TAB)

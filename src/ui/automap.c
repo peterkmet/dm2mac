@@ -244,7 +244,14 @@ static void show_level_square(Offscreen *o, const int16_t *clip, Location level_
         return;
     bool party = position.map == g_game.party_map && position.x == g_game.party_x && position.y == g_game.party_y;
     dun_set_current_map(position.map);
-    SquareIcon icon = {position.x, position.y, x, y, party ? mmap_party_icons_item() : -1, g_game.party_dir};
+    /* the things of a minion map without options: the static creatures */
+    SquareIcon icon = {.sx = position.x,
+                       .sy = position.y,
+                       .x = x,
+                       .y = y,
+                       .party_item = party ? mmap_party_icons_item() : -1,
+                       .party_dir = g_game.party_dir,
+                       .flags = MAP_STATIC_CREATURES};
     mmap_draw_square_icon(o, clip, &icon);
     if (!covers(position.map, level_at, &position))
         return; /* an edge wall has no imaginary wall and no pad */

@@ -535,8 +535,13 @@ void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, const SquareI
         show_party_frame(icon->x, icon->y);
         show_party_facing(icon->x, icon->y, icon->party_dir);
     }
-    MapSquare sq = {
-        .sx = icon->sx, .sy = icon->sy, .x = icon->x, .y = icon->y, .dir = DIR_NORTH, .map_thing = THING_NONE};
+    MapSquare sq = {.sx = icon->sx,
+                    .sy = icon->sy,
+                    .x = icon->x,
+                    .y = icon->y,
+                    .dir = DIR_NORTH,
+                    .map_thing = THING_NONE,
+                    .flags = icon->flags};
     show_square(&sq, dungeon_map_wallset(g_party.cur_map));
     if (icon->party_item >= 0) {
         Strip p = {draw_gdat_image(CAT_CONTAINER, icon->party_item, GFX_MAP_ITEM_ICONS),
