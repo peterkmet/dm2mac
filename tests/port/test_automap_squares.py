@@ -1,4 +1,4 @@
-"""The square kinds of the advanced automap (src/ui/automap.c): the imaginary wall and the pressure pad."""
+"""The square kinds of the advanced automap (src/ui/automap.c): the imaginary wall, the pressure pad, and the level squares."""
 
 import ctypes
 
@@ -17,6 +17,14 @@ STEP_TYPES = (FLOOR_ANY, 2, 3, 4, 7, 8)  # floor sensors that a step or an item 
 ORNAMENT_SHIFT = 12  # the ornament ordinal is bits 12-15 of the sensor flags (0: none)
 
 
+class Location(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
+
+
+class Position(ctypes.Structure):
+    _fields_ = [("map", ctypes.c_int16), ("x", ctypes.c_int16), ("y", ctypes.c_int16)]
+
+
 @pytest.fixture(scope="module")
 def lib():
     lib = load_lib()
@@ -26,6 +34,11 @@ def lib():
     lib.automap_is_pressure_pad.restype = ctypes.c_bool
     lib.dungeon_square.restype = ctypes.c_uint8
     lib.thing_word.restype = ctypes.c_uint16
+    lib.automap_level_square.argtypes = [Location, ctypes.POINTER(Position)]
+    lib.automap_level_square.restype = ctypes.c_bool
+    lib.automap_level_seen.argtypes = [Location]
+    lib.automap_level_seen.restype = ctypes.c_bool
+    lib.seen_is_seen.restype = ctypes.c_bool
     return lib
 
 
@@ -61,3 +74,24 @@ def test_pressure_pad_is_a_floor_trigger_that_the_view_draws(lib, session):  # n
     assert visible and hidden
     assert all(lib.automap_is_pressure_pad(*p) for p in visible if p not in hidden)
     assert not any(lib.automap_is_pressure_pad(*p) for p in hidden if p not in visible)
+
+
+def level_square(lib, x, y):
+    p = Position()
+    return (p.map, p.x, p.y) if lib.automap_level_square(Location(x, y), ctypes.byref(p)) else None
+
+
+def test_level_square_takes_the_map_that_has_the_square(lib, session):  # noqa: F811
+    # The owner rule of the original minion map; a position without an owner keeps the square of its first map.
+    assert level_square(lib, 22, 44) == (0, 1, 8)    # the party square
+    assert level_square(lib, 52, 28) == (40, 6, 6)   # map 12 has SQUARE_UNKNOWN there, map 40 a wall
+    assert level_square(lib, 23, 0) == (35, 0, 0)    # SQUARE_UNKNOWN of map 35, no owner
+    assert level_square(lib, 21, 0) is None          # no map covers it
+
+
+def test_level_position_is_seen_when_any_covering_map_saw_it(lib, session):  # noqa: F811
+    lib.seen_reset()
+    assert not lib.automap_level_seen(Location(52, 28))
+    lib.seen_mark(12, 25, 1, C.DIR_NORTH)  # the view marks the square of map 12 that shows map 40
+    assert lib.automap_level_seen(Location(52, 28)) and not lib.seen_is_seen(40, 6, 6)
+    lib.seen_reset()
