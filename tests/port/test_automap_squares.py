@@ -85,6 +85,7 @@ def test_level_square_takes_the_map_that_has_the_square(lib, session):  # noqa: 
     # The owner rule of the original minion map; a position without an owner keeps the square of its first map.
     assert level_square(lib, 22, 44) == (0, 1, 8)    # the party square
     assert level_square(lib, 52, 28) == (40, 6, 6)   # map 12 has SQUARE_UNKNOWN there, map 40 a wall
+    assert level_square(lib, 49, 26) == (40, 3, 4)   # in the margin of map 12, inside map 40
     assert level_square(lib, 23, 0) == (35, 0, 0)    # SQUARE_UNKNOWN of map 35, no owner
     assert level_square(lib, 21, 0) is None          # no map covers it
 
