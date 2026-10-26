@@ -85,7 +85,7 @@ def test_level_square_takes_the_map_that_has_the_square(lib, session):  # noqa: 
     # The owner rule of the original minion map; a position without an owner keeps the square of its first map.
     assert level_square(lib, 22, 44) == (0, 1, 8)    # the party square
     assert level_square(lib, 52, 28) == (40, 6, 6)   # map 12 has SQUARE_UNKNOWN there, map 40 a wall
-    assert level_square(lib, 49, 26) == (40, 3, 4)   # in the margin of map 12, inside map 40
+    assert level_square(lib, 49, 26) == (12, 22, -1)  # SQUARE_UNKNOWN of map 40, the edge wall of map 12
     assert level_square(lib, 23, 0) == (35, 0, 0)    # SQUARE_UNKNOWN of map 35, no owner
     assert level_square(lib, 21, 0) is None          # no map covers it
 
@@ -109,3 +109,19 @@ def test_edge_wall_in_a_margin_that_no_map_covers(lib, session):  # noqa: F811
     lib.seen_mark(12, 13, 0, C.DIR_NORTH)  # the square next to the edge wall
     assert lib.automap_level_seen(Location(40, 26))
     lib.seen_reset()
+
+
+def test_edge_wall_over_an_unknown_square_of_another_map(lib, session):  # noqa: F811
+    # Map 17 has SQUARE_UNKNOWN at the level position (34, 60), the margin of map 24 below (4, 3); the view of map 24
+    # draws the edge wall there, so the automap shows it too.
+    game, _ = session
+    saved = game.party_map, game.party_x, game.party_y
+    game.party_map, game.party_x, game.party_y = 24, 4, 3
+    try:
+        assert level_square(lib, 34, 60) == (24, 4, 4)
+        lib.seen_reset()
+        lib.seen_mark(24, 4, 3, C.DIR_SOUTH)
+        assert lib.automap_level_seen(Location(34, 60))
+    finally:
+        game.party_map, game.party_x, game.party_y = saved
+        lib.seen_reset()

@@ -124,12 +124,19 @@ static bool in_margin(int16_t map, Location level_at, Position *position)
            position->y >= -MAP_MARGIN && position->y < dungeon_map_height(map) + MAP_MARGIN;
 }
 
-/* True when a map of the party level covers the level position level_at. */
+/* True when map covers the level position level_at with a square that is not SQUARE_UNKNOWN. */
+static bool covers_known(int16_t map, Location level_at, Position *position)
+{
+    return covers(map, level_at, position) &&
+           square_type(dungeon_square(map, position->x, position->y)) != SQUARE_UNKNOWN;
+}
+
+/* True when a map of the party level covers the level position level_at with a square that is not SQUARE_UNKNOWN. */
 static bool covered(Location level_at)
 {
     Position position;
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
-        if (covers(*m, level_at, &position))
+        if (covers_known(*m, level_at, &position))
             return true;
     return false;
 }
@@ -151,12 +158,15 @@ bool automap_level_square(Location level_at, Position *position)
             return true; /* a found square in the margin of its map does not count */
     } while (next != 0);
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
-        if (covers(*m, level_at, position))
+        if (covers_known(*m, level_at, position))
             return true;
-    /* no map covers it: the edge wall that the view draws in the margin of a map */
+    /* no map has a square there: the edge wall that the view draws in the margin of a map */
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
         if (in_margin(*m, level_at, position) &&
             square_type(dungeon_square_edge(*m, position->x, position->y)) == SQUARE_WALL)
+            return true;
+    for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
+        if (covers(*m, level_at, position))
             return true;
     return false;
 }
