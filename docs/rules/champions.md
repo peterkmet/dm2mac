@@ -1,10 +1,10 @@
 # Champions, inventory, items, money, and shops
 
-The rules of the champions: the leader hand, damage and time effects, the actions, money and shops, item creation by a sensor, merchant trading, the cursor, and the first room of `start.DAT`. The code is in `src/engine/champion.c`, `src/engine/champion_damage.c`, `src/engine/champion_action.c`, `src/engine/inventory.c`, `src/engine/item.c`, `src/engine/money.c`, `src/engine/merchant.c`, `src/engine/recruit.c`, and `src/ui/input.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The rules of the champions: the leader hand, damage and time effects, the actions, money and shops, item creation by a sensor, merchant trading, the cursor, and the first room of `start.DAT`. The code is in `src/engine/champion.c`, `src/engine/champion_damage.c`, `src/engine/champion_action.c`, `src/engine/champion_inventory.c`, `src/engine/item.c`, `src/engine/money.c`, `src/engine/merchant.c`, `src/engine/recruit.c`, and `src/ui/input.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## The leader hand
 
-- `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `g_leader_hand` (`src/engine/include/inventory.h`) and draws the icon at the mouse pointer.
+- `g_leader_hand_object` holds the object of the leader hand. Beside it the original keeps its attribute word, its weight, and its 16 × 16 icon. The port keeps them in `g_leader_hand` (`src/engine/include/champion.h`) and draws the icon at the mouse pointer.
 - A click on an object zone of the view takes the object (`click_take_object`). With an object in the hand, the click places the object in the cell (`click_place_object`), in an alcove, or into an open chest. A click in the upper view throws the hand object (`click_throw_object`). The commands `0x14` to `0x41` click the inventory slots, `0xea` to `0xed` put the hand object into a free slot.
 - `champ_apply_item_effects` adds or removes the stat effects of an item in a slot. Mode 0 is the load, 1 adds, -1 removes, 2 and -2 are the timed effects of eaten items, 3 restores. The load applies mode 0 to all slots. Then `restore_timed_effects` restores the light power and the timed effects.
 

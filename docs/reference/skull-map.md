@@ -60,7 +60,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 
 `game_loop` (`0x24691`). `g_tick_threshold` (`0x7f268`) is set to 8 timer ticks per step. One iteration is one game step:
 
-1. `timeline_process` (`0x59a5c`): runs all due events.
+1. `game_process_timeline` (`0x59a5c`): runs all due events.
 2. `world_update_day_night(0)` (`0x5a073`): hour light and weather.
 3. `view_draw_dungeon(dir, x, y)` (`0x54b3f`) and `play_present_viewport`, unless the party sleeps or the inventory is open.
 4. `champ_apply_pending_damage` (`0x47113`); every 64 steps `champ_apply_time_effects`.

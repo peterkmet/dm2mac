@@ -87,16 +87,16 @@ void timeline_compact(void);
 /* True when the next event is due at game_time. */
 bool timeline_is_event_due(uint32_t game_time);
 
-/* The event loop (game.c) and the event handlers of other modules. */
+/* The event handlers. */
 /* A step of an altar rebirth (EVENT_ALTAR_REBIRTH). */
 void timeline_event_altar_rebirth(TimelineEvent *e);
 /* Runs a due group move event: the group moves to the square that it could not enter before. */
 void timeline_event_move_group(TimelineEvent *e);
-/* Runs the due timeline events. */
-void timeline_process(void);
 /* The timed effect of an eaten item (EVENT_ITEM_EFFECT) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
    for a loaded game. */
 void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
+
+/* The event handlers of other modules. */
 /* Runs a due square event or door event. */
 void timeline_event_square(TimelineEvent *e);
 /* Runs a due door animation step. */

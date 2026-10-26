@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_CHAMPION_INTERNAL_H
 #define DM2_ENGINE_CHAMPION_INTERNAL_H
-/* Prefixes: champ_ champion */
+/* Prefixes: champ_ champion inv_ */
 
-/* The actions of the champions: the commands, the charges, and the repeats of an action. */
+/* The private declarations of the champion module: the commands, charges, and repeats of the actions, and the name
+   message of an object. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -23,6 +24,8 @@ typedef struct {
 int champ_find_hand_source_slot(int champ, int hand);
 /* Champ throws the item in hand (-1: the leader hand object) to the left or right side; true when it flies. */
 bool champ_throw_object(int champ, int hand, int side);
+/* Prints the name of thing in the message area. */
+void inv_show_object_name(uint16_t thing);
 
 /* The repeats of the actions of each champion and hand; exported for the tests. */
 extern ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];

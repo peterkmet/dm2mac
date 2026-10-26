@@ -3,7 +3,7 @@
 #define DM2_ENGINE_GAME_H
 /* Prefixes: game_ */
 
-/* The main loop state of the game rules: the step timing, the map changes, and the party wake. */
+/* The main loop state of the game rules: the step timing, the map changes, and the timeline events. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -107,6 +107,8 @@ extern const char *const g_game_mode_names[GAME_MODE_COUNT];
 
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving);
+/* Runs the due timeline events. */
+void game_process_timeline(void);
 
 /* The game step */
 /* The party arrives on the map that it entered in this step (g_party.new_map): the walk ends there. */

@@ -15,7 +15,6 @@
 #include "game_text.h"
 #include "gdat.h"
 #include "ids.h"
-#include "inventory.h"
 #include "item.h"
 #include "le.h"
 #include "magic.h"

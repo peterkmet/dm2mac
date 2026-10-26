@@ -487,3 +487,15 @@ uint16_t item_find_link_projectile(uint16_t group, uint16_t payload)
             return t;
     return 0;
 }
+
+/* Item charges. */
+
+bool item_use_charge(uint16_t thing)
+{
+    if (!(item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_REFILLS) || !item_charges(thing))
+        return false;
+    item_add_charges(thing, -1);
+    if (thing == g_game.leader_hand)
+        champ_put_in_leader_hand(thing, 0);
+    return true;
+}

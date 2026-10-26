@@ -40,9 +40,9 @@ the layers before it, so the compiler rejects an include of a later layer:
 
 A module is one `.c` file with one public header. Each header states its prefixes and has one purpose
 paragraph. A module with several `.c` files has one `<module>_internal.h` for its private declarations:
-`data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_data.c`, `ai_move.c`), and `ui/ui` (`ui.c`,
-`ui_hooks.c`). `engine/champion.c` and
-`engine/champion_damage.c` share `engine/champion.h`. The tables do not show the internal headers.
+`data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_data.c`, `ai_move.c`), `engine/champion`
+(`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), and `ui/ui` (`ui.c`,
+`ui_hooks.c`). The tables do not show the internal headers.
 
 ### data/
 
@@ -65,13 +65,12 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/action.h` | `action_` | The action area of the panel: its modes, the action hands, and the spell and money box views. |
 | `engine/ai.h` | `ai_` | The creature AI: its update context, the plan commands, the record fields of the AI markers, and the perception, tests, and path search of creature movement. |
 | `engine/aspect.h` | `aspect_` `cell_grid_` | What the party sees of a square: its aspect, and the cell grid of a square. |
-| `engine/champion.h` | `champ_` `champion` | The champions: their slots, statistics, wounds, and the effects of their actions. |
+| `engine/champion.h` | `champ_` `champion` `inv_` | The champions: the leader hand, their slots, statistics, wounds, and the effects of their items and actions. |
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the update of the groups. |
 | `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `textrec_` | The dungeon: the things, their record layout, the squares, and the maps. |
-| `engine/game.h` | `game_` | The main loop state of the game rules: the step timing, the map changes, and the party wake. |
+| `engine/game.h` | `game_` | The main loop state of the game rules: the step timing, the map changes, and the timeline events. |
 | `engine/game_text.h` | `gtext_` | The game texts and the UI colors: decoding, formatting, and GDAT text items. |
 | `engine/hooks.h` | none | Calls of the game rules into the user interface, for events that must run the interface inside the rule. |
-| `engine/inventory.h` | `inv_` | The leader hand and the champion slots, and the effects of the items that a champion holds. |
 | `engine/item.h` | `item_` | The items: their record fields, their GDAT types, and what the party possesses. |
 | `engine/magic.h` | `magic_` | Magic: the spell table, runes, spell casting, and the magic light. |
 | `engine/merchant.h` | `shop_` | Merchant trading: the plan commands of the creature AI that a shopkeeper runs with the party in front of it. |
@@ -190,7 +189,7 @@ the command queue (`command_process_queue`, `ui/input.c`). The command queue fir
 
 - `step_after_input`: a pending map change, the repeated actions of the champions
   (`champ_process_repeated_actions`), and the music of the party map.
-- `step_before_input`: the timeline (`timeline_process`), the day and night, the dungeon view, the input poll,
+- `step_before_input`: the timeline (`game_process_timeline`), the day and night, the dungeon view, the input poll,
   the pending sounds and damage, the party clocks (`game_run_party_clocks`, `engine/game.c`), the status
   boxes of the champions, and the game time (`game_advance_time`, `engine/game.c`).
 

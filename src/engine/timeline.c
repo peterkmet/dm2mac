@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "timeline.h"
 #include <stdlib.h>
+#include "champion.h"
 #include "creature.h"
+#include "dungeon.h"
 #include "gdat.h"
+#include "item.h"
 #include "le.h"
 #include "move.h"
 #include "os.h"
+#include "projectile.h"
 #include "sensor.h"
 #include "sound_request.h"
 
@@ -13,6 +17,12 @@
 #define END_OF_FREE_LIST           (-1)
 #define SYSTEM_ERROR_NO_QUEUE_SLOT 70
 #define SYSTEM_ERROR_TIMELINE_FULL 45
+/* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */
+#define REBIRTH_REVIVE             0
+#define REBIRTH_BONES              1
+#define REBIRTH_SMOKE              2
+/* Game steps of the rebirth smoke. */
+#define SMOKE_TIME                 5
 
 Timeline g_timeline;
 
@@ -228,10 +238,55 @@ bool timeline_is_event_due(uint32_t game_time)
 
 /* The event handlers. */
 
+void timeline_event_altar_rebirth(TimelineEvent *e)
+{
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
+    int cell = e->data[EVENT_CELL];
+    int champ = e->priority;
+    switch (e->data[ALTAR_EVENT_STEPS]) {
+    case REBIRTH_REVIVE:
+        champ_revive(champ);
+        return;
+    case REBIRTH_SMOKE:
+        explosion_create(EXPLOSION_SMOKE, 0, x, y, cell);
+        e->time_map += SMOKE_TIME;
+        break;
+    case REBIRTH_BONES: {
+        uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
+        for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+            if (thing_cell(t) == cell && item_gdat_category(t) == CAT_MISC && item_gdat_index(t) == ITEM_BONES &&
+                (int16_t)item_add_charges(t, 0) == champ)
+                break;
+        if (t == THING_ENDOFLIST)
+            return;
+        dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
+        thing_set_word(t, THING_NEXT, THING_NONE);
+        e->time_map++;
+        break;
+    }
+    default:
+        return;
+    }
+    e->data[ALTAR_EVENT_STEPS]--;
+    timeline_add_event(e);
+}
+
 void timeline_event_move_group(TimelineEvent *e)
 {
     int x = e->data[0], y = e->data[1];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
         sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
                        1);
+}
+
+void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
+{
+    /* the effect ends: a record of the item type stands in for the eaten item, with its kind */
+    uint16_t thing = thing_make(le16(e->data + EFFECT_DATA_TYPE), 0);
+    uint8_t saved[DUNGEON_RECORD_MAX];
+    dungeon_save_record(thing, saved);
+    item_set_gdat_index(thing, e->data[EFFECT_DATA_INDEX]);
+    champ_apply_item_effects(e->priority, thing, -1, mode);
+    dungeon_restore_record(thing, saved);
 }

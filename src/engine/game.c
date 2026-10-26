@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* The rules of the main loop: the timeline, map changes, the wake of the party. */
+/* The rules of the main loop: the timeline and the map changes. */
 #include "game.h"
 #include <stdbool.h>
 #include <string.h>
@@ -8,7 +8,6 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "hooks.h"
-#include "inventory.h"
 #include "le.h"
 #include "magic.h"
 #include "move.h"
@@ -34,15 +33,6 @@ const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "
 #define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
 #define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
 #define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
-
-void champ_wake_party(void)
-{
-    g_input_command_stop = 1;
-    g_party_sleeping = 0;
-    g_main_loop.tick_threshold = STEP_TICKS;
-    g_hooks.clear_viewport();
-    g_hooks.set_input_mode(INPUT_MODE_MOVE);
-}
 
 void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving)
 {
@@ -181,7 +171,7 @@ static void process_party_event(TimelineEvent *e, uint16_t word)
     }
 }
 
-void timeline_process(void)
+void game_process_timeline(void)
 {
     while (timeline_is_event_due(g_game.game_time)) {
         g_hooks.poll_input();

@@ -10,7 +10,6 @@
 #include "game.h"
 #include "gdat.h"
 #include "ids.h"
-#include "inventory.h"
 #include "le.h"
 #include "os.h"
 #include "random.h"

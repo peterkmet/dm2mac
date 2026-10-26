@@ -16,14 +16,12 @@
 #include "gdat.h"
 #include "ids.h"
 #include "input.h"
-#include "inventory.h"
 #include "move.h"
 #include "music.h"
 #include "random.h"
 #include "seen.h"
 #include "sound_request.h"
 #include "text.h"
-#include "timeline.h"
 #include "ui.h"
 #include "view.h"
 #include "weather.h"
@@ -139,7 +137,7 @@ static bool step_view(void)
     for (;;) {
         if (g_party.new_map != -1)
             game_enter_new_map();
-        timeline_process();
+        game_process_timeline();
         if (g_party.new_map != -1)
             continue;
         world_update_day_night(0);

@@ -532,7 +532,7 @@ class Scenario(CreatureOracle):
 
     def step(self):
         """The game loop part that this test runs per step: the timeline, the weather, the walk, and the cooldowns."""
-        self.lib.timeline_process()
+        self.lib.game_process_timeline()
         self.emu.call(TIMELINE_PROCESS)
         self.lib.world_update_day_night(0)
         self.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)

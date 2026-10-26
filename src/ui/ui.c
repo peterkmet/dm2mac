@@ -12,7 +12,6 @@
 #include "game_text.h"
 #include "ids.h"
 #include "input.h"
-#include "inventory.h"
 #include "item.h"
 #include "money.h"
 #include "play.h"

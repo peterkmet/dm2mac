@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_CHAMPION_H
 #define DM2_ENGINE_CHAMPION_H
-/* Prefixes: champ_ champion */
+/* Prefixes: champ_ champion inv_ */
 
-/* The champions: their slots, statistics, wounds, and the effects of their actions. */
+/* The champions: the leader hand, their slots, statistics, wounds, and the effects of their items and actions. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -168,6 +168,37 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define MAGIC_HASTE         4
 #define HASTE_MAX           255
 
+/* Modes of champ_apply_item_effects: how an item changes the champion that holds it. */
+#define EFFECT_MODE_LOAD        0    /* a loaded game: the bonuses of the items that the champion holds */
+#define EFFECT_MODE_ADD         1    /* the item goes into a slot or the hand */
+#define EFFECT_MODE_REMOVE      (-1) /* the item leaves a slot or the hand */
+#define EFFECT_MODE_CONSUME     2    /* the champion eats or drinks the item */
+#define EFFECT_MODE_CONSUME_END (-2) /* the timed effect of a consumed item ends */
+#define EFFECT_MODE_RESTORE     3    /* a loaded game: a timed effect of a consumed item */
+/* Data bytes of an item effect event: the thing type and the GDAT index of the consumed item. */
+#define EFFECT_DATA_TYPE        0
+#define EFFECT_DATA_INDEX       2
+/* The leader hand icon: its size in pixels, its color numbers, and the color number that stays clear. */
+#define HAND_ICON_SIZE          16
+#define HAND_ICON_COLORS        16
+#define HAND_ICON_KEY           12
+/* The icon entry of no leader hand icon. */
+#define HAND_ICON_NONE          0xff
+/* The mouth picture of the inventory: GDAT (9, 0x5b, 1, entry). */
+#define MOUTH_CATEGORY          0x09
+#define MOUTH_INDEX             0x5b
+
+/* The leader hand object as the original keeps it beside g_game.leader_hand. */
+typedef struct {
+    uint16_t attr;                                   /* item attribute 0 (flags) of the object */
+    uint16_t weight;                                 /* its weight when it went into the hand */
+    uint8_t icon;                                    /* the icon entry that the cursor shows, HAND_ICON_NONE none */
+    uint8_t cursor[HAND_ICON_SIZE * HAND_ICON_SIZE]; /* the icon: color numbers 0 to 15, HAND_ICON_KEY clear */
+    uint8_t palette[HAND_ICON_COLORS];               /* the palette colors of the color numbers */
+} LeaderHand;
+
+extern LeaderHand g_leader_hand;
+
 /* One action of an item in a champion's hand: its GDAT text (category, index, 5, entry). */
 typedef struct {
     uint8_t category, index, entry;
@@ -225,6 +256,8 @@ int champ_get_index_in_cell(int16_t cell);
 void champ_set_leader(int champ);
 /* Turns the party to dir; the champions turn with it. */
 void champ_set_party_direction(int16_t dir);
+/* The party wakes up. */
+void champ_wake_party(void);
 
 /* Damage, poison, and death (champion_damage.c). */
 /* The damage of this game step, applied at its end; exported for the tests. */
@@ -250,7 +283,7 @@ void champ_decrease_stamina(int champ, int amount);
 int champ_damage_party(int damage, int wound_mask, int attack_type);
 /* Poisons champ: damage now, and a poison event that repeats with less. */
 void champ_poison(int champ, int amount);
-/* Takes amount away from the poison events of champ. */
+/* Takes amount away from the poison events of champ; exported for the tests. */
 void champ_cure_poison(int champ, int amount);
 /* A click on the face of a champion in cell: the first click takes the face, the second swaps it with the champion
    of the second cell. */
@@ -288,24 +321,30 @@ void champ_process_repeated_actions(void);
 /* The leader throws the object in the leader hand; true when it flies. */
 bool champ_throw_leader_hand_object(int side);
 
-/* The party wakes up (game.c). */
-void champ_wake_party(void);
-
-/* Champion objects and statistics (inventory.c). */
+/* The leader hand, the champion slots, and the item effects (champion_inventory.c). */
+/* Computes the load of the champion: its slots and the items of its open chest. */
+void champ_compute_load(int champ);
+/* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
+void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode);
+/* The object of the leader hand that the cursor shows, THING_NONE none. */
+uint16_t inv_cursor_object(void);
 /* Puts thing into the hand of the leader; defer_cursor: the original changes the mouse cursor later. */
 void champ_put_in_leader_hand(uint16_t thing, int defer_cursor);
 /* Takes the object out of the hand of the leader; THING_NONE when the hand is empty. */
 uint16_t champ_take_from_leader_hand(void);
-/* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
-void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode);
-/* Computes the load of the champion: its slots and the items of its open chest. */
-void champ_compute_load(int champ);
-/* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
-void champ_adjust_stat(uint8_t *stat_values, int delta);
+/* Updates the cursor when the icon of the animated leader hand object changes. */
+void inv_update_hand_cursor(void);
 /* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
 uint16_t champ_remove_object_from_slot(int champ, int16_t slot);
 /* Puts thing into slot of champ. */
 void champ_add_object_to_slot(int champ, uint16_t thing, int16_t slot);
+/* A click on a slot: 0 to 7 the hands in the status boxes, then the inventory slots, then the open chest. The leader
+   hand object and the item in the slot change places. */
+void inv_click_slot(int16_t slot);
+/* Puts the leader hand object into the first free pouch or pack slot of champ. */
+void inv_store_leader_hand_object(int champ);
+/* Puts thing into the first free slot of champ that takes it. */
+void inv_put_in_free_slot(int champ, uint16_t thing);
 /* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
    champion of the open inventory (a click on the mouth). */
 void champ_consume_object(int champ, uint16_t thing, int16_t slot);

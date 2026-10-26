@@ -7,8 +7,8 @@
 #include "game.h"
 #include "game_text.h"
 #include "gdat.h"
+#include "hooks.h"
 #include "ids.h"
-#include "inventory.h"
 #include "item.h"
 #include "move.h"
 #include "random.h"
@@ -336,6 +336,15 @@ void champ_set_party_direction(int16_t dir)
         g_party.alt_view_dir = (int16_t)dir_turn(g_party.alt_view_dir, turn);
         g_party.ref_dir = g_party.alt_view_dir;
     }
+}
+
+void champ_wake_party(void)
+{
+    g_input_command_stop = 1;
+    g_party_sleeping = 0;
+    g_main_loop.tick_threshold = STEP_TICKS;
+    g_hooks.clear_viewport();
+    g_hooks.set_input_mode(INPUT_MODE_MOVE);
 }
 
 void champ_set_party_sleeping(bool on)

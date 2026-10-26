@@ -133,7 +133,7 @@ bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing);
 /* True when thing has an action with command for champ. */
 bool item_has_action_command(int champ, uint16_t thing, int command);
 
-/* Item charges (inventory.c). */
+/* Item charges. */
 /* Uses a charge of an item that holds water; true when it had one. */
 bool item_use_charge(uint16_t thing);
 

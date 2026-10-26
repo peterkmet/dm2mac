@@ -10,7 +10,6 @@
 #include "gfx.h"
 #include "hooks.h"
 #include "ids.h"
-#include "inventory.h"
 #include "le.h"
 #include "move.h"
 #include "random.h"

@@ -808,7 +808,7 @@ address,name,signature,subsystem
 0x00045869,champ_set_party_direction,void champ_set_party_direction(int16_t dir),champions
 0x000458f4,champ_get_index_in_cell,int champ_get_index_in_cell(uint16_t cell),champions
 0x00045938,move_nearest_champion_at,"int16_t move_nearest_champion_at(int16_t x, int16_t y)",champions
-0x000459c8,champ_adjust_stat,"void champ_adjust_stat(uint8_t *champ, uint16_t stat, int16_t delta)",champions
+0x000459c8,adjust_stat,"void adjust_stat(uint8_t *champ, uint16_t stat, int16_t delta)",champions
 0x00045a41,item_get_stat_modifier,"int16_t item_get_stat_modifier(uint16_t thing, uint8_t attribute, int equipped, int16_t mode)",items
 0x00045a9d,champ_apply_item_effects,"void champ_apply_item_effects(int16_t champ, uint16_t thing, int16_t slot, int16_t mode)",inventory
 0x00045d6b,inv_store_leader_hand_object,void inv_store_leader_hand_object(int16_t champ),inventory
@@ -1031,7 +1031,7 @@ address,name,signature,subsystem
 0x0005961b,timeline_event_sensor_animation_end,void timeline_event_sensor_animation_end(uint8_t *event),Skullkeep machines
 0x0005964e,timeline_event_sensor_ambient_sound,void timeline_event_sensor_ambient_sound(uint8_t *event),Skullkeep machines
 0x00059785,sensor_process_map_entry,void sensor_process_map_entry(int night),Skullkeep machines
-0x00059a5c,timeline_process,void timeline_process(uint32_t until),timeline
+0x00059a5c,game_process_timeline,void game_process_timeline(uint32_t until),timeline
 0x00059f12,schedule_storm_step,void schedule_storm_step(int32_t delay),weather
 0x00059f38,weather_init,void weather_init(int keep_state),weather
 0x0005a073,world_update_day_night,void world_update_day_night(int storm_step),weather

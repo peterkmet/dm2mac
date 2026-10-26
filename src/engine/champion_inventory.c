@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The leader hand, the champion slots, and the effects of the items that the champions hold. */
-#include "inventory.h"
 #include <string.h>
 #include "action.h"
 #include "champion.h"
+#include "champion_internal.h"
 #include "dungeon.h"
 #include "game.h"
 #include "hooks.h"
@@ -36,9 +36,6 @@
 #define STAT_STEP              20 /* a statistic change shrinks by a quarter for each step away from the maximum */
 /* The message color of an object name. */
 #define MESSAGE_OBJECT_NAME    13
-/* Data bytes of an item effect event: the thing type and the GDAT index of the consumed item. */
-#define EFFECT_DATA_TYPE       0
-#define EFFECT_DATA_INDEX      2
 /* inv_click_slot slots 0 to 7: the hands of the status boxes. */
 #define CLICK_STATUS_HANDS     8
 /* Eating and drinking. */
@@ -87,7 +84,8 @@ static int stat_modifier(uint16_t thing, int attr, bool equipped, int mode)
     return mode < 0 ? -r : r;
 }
 
-void champ_adjust_stat(uint8_t *stat_values, int delta)
+/* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
+static void adjust_stat(uint8_t *stat_values, int delta)
 {
     int16_t d = (int16_t)delta;
     int16_t diff = (int16_t)(stat_values[0] + d - stat_values[1]);
@@ -130,7 +128,7 @@ static void apply_stat_modifiers(Champion *c, uint16_t thing, bool equipped, int
         if (mode == EFFECT_MODE_ADD || mode == EFFECT_MODE_REMOVE)
             c->stat_bonus[s] = (int8_t)(c->stat_bonus[s] + m);
         else
-            champ_adjust_stat(c->stats[s], m);
+            adjust_stat(c->stats[s], m);
         c->redraw |= REDRAW_STATS;
     }
 }
@@ -347,32 +345,11 @@ void inv_put_in_free_slot(int champ, uint16_t thing)
             }
 }
 
-void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
-{
-    /* the effect ends: a record of the item type stands in for the eaten item, with its kind */
-    uint16_t thing = thing_make(le16(e->data + EFFECT_DATA_TYPE), 0);
-    uint8_t saved[DUNGEON_RECORD_MAX];
-    dungeon_save_record(thing, saved);
-    item_set_gdat_index(thing, e->data[EFFECT_DATA_INDEX]);
-    champ_apply_item_effects(e->priority, thing, -1, mode);
-    dungeon_restore_record(thing, saved);
-}
-
 /* ---- Eating and drinking ---- */
 
 static int16_t min16(int a, int b)
 {
     return (int16_t)a < (int16_t)b ? (int16_t)a : (int16_t)b;
-}
-
-bool item_use_charge(uint16_t thing)
-{
-    if (!(item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_REFILLS) || !item_charges(thing))
-        return false;
-    item_add_charges(thing, -1);
-    if (thing == g_game.leader_hand)
-        champ_put_in_leader_hand(thing, 0);
-    return true;
 }
 
 /* A mana potion of gain value adds mana; above the maximum it adds only half. */
@@ -412,16 +389,16 @@ static bool drink_potion(int champ, uint16_t thing)
     int16_t value = (int16_t)(power / POTION_GAIN_DIVISOR + POTION_GAIN_BASE);
     switch (potion_type(thing)) {
     case POTION_DEXTERITY:
-        champ_adjust_stat(c->stats[STAT_DEXTERITY], value);
+        adjust_stat(c->stats[STAT_DEXTERITY], value);
         break;
     case POTION_STRENGTH:
-        champ_adjust_stat(c->stats[STAT_STRENGTH], (int16_t)(power / STRENGTH_GAIN_DIVISOR + STRENGTH_GAIN_BASE));
+        adjust_stat(c->stats[STAT_STRENGTH], (int16_t)(power / STRENGTH_GAIN_DIVISOR + STRENGTH_GAIN_BASE));
         break;
     case POTION_WISDOM:
-        champ_adjust_stat(c->stats[STAT_WISDOM], value);
+        adjust_stat(c->stats[STAT_WISDOM], value);
         break;
     case POTION_VITALITY:
-        champ_adjust_stat(c->stats[STAT_VITALITY], value);
+        adjust_stat(c->stats[STAT_VITALITY], value);
         break;
     case POTION_ANTIDOTE: {
         unsigned square = (uint16_t)((power / ANTIDOTE_POWER_DIVISOR) * (power / ANTIDOTE_POWER_DIVISOR));

@@ -4,15 +4,15 @@
 #include <string.h>
 #include "action.h"
 #include "champion.h"
+#include "champion_internal.h"
 #include "dungeon.h"
 #include "game.h"
 #include "hooks.h"
-#include "inventory.h"
 #include "item.h"
 #include "move.h"
-#include "projectile.h"
 #include "random.h"
 #include "sensor.h"
+#include "timeline.h"
 #include "weather.h"
 
 /* Attack and wound bits. */
@@ -92,12 +92,6 @@
 /* Masks of the game time at which the statistics move toward their maximum. */
 #define STATS_TIME_MASK            0xff
 #define STATS_TIME_MASK_ASLEEP     0x3f
-/* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */
-#define REBIRTH_REVIVE             0
-#define REBIRTH_BONES              1
-#define REBIRTH_SMOKE              2
-/* Game steps of the rebirth smoke. */
-#define SMOKE_TIME                 5
 
 int16_t g_champ_pending_damage[CHAMPION_MAX];
 uint16_t g_champ_pending_wounds[CHAMPION_MAX];
@@ -725,38 +719,4 @@ void champ_revive(int champ)
     c->aura = 0;
     c->aura_value = 0;
     g_hooks.refresh_input_mode();
-}
-
-void timeline_event_altar_rebirth(TimelineEvent *e)
-{
-    int x = e->data[EVENT_X];
-    int y = e->data[EVENT_Y];
-    int cell = e->data[EVENT_CELL];
-    int champ = e->priority;
-    switch (e->data[ALTAR_EVENT_STEPS]) {
-    case REBIRTH_REVIVE:
-        champ_revive(champ);
-        return;
-    case REBIRTH_SMOKE:
-        explosion_create(EXPLOSION_SMOKE, 0, x, y, cell);
-        e->time_map += SMOKE_TIME;
-        break;
-    case REBIRTH_BONES: {
-        uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
-        for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-            if (thing_cell(t) == cell && item_gdat_category(t) == CAT_MISC && item_gdat_index(t) == ITEM_BONES &&
-                (int16_t)item_add_charges(t, 0) == champ)
-                break;
-        if (t == THING_ENDOFLIST)
-            return;
-        dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
-        thing_set_word(t, THING_NEXT, THING_NONE);
-        e->time_map++;
-        break;
-    }
-    default:
-        return;
-    }
-    e->data[ALTAR_EVENT_STEPS]--;
-    timeline_add_event(e);
 }
