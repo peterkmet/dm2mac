@@ -516,7 +516,7 @@ static void reset_idle_animation(uint16_t group)
 
 int creature_current_step_acts(uint16_t group)
 {
-    if (!creature_active(group))
+    if (!(creature_group_info(group)->flags & CREATURE_STATIC) && !creature_active(group))
         return 0;
     uint16_t *words = creature_anim_words(group);
     return anim_current_step(group_creature(group), words[0], words + 1)[STEP_SOUND] >> STEP_ACTS_SHIFT;
