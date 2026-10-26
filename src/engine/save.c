@@ -873,6 +873,8 @@ static void restore_timed_effects(void)
                     champion(c)->aura_value = (int16_t)(champion(c)->aura_value + v);
             break;
         case EVENT_POISON:
+            if (e->priority >= CHAMPION_MAX) /* fix: the original does not check the champion */
+                break;
             champion(e->priority)->poisoned++;
             champion(e->priority)->poison = (int16_t)(champion(e->priority)->poison + v);
             break;

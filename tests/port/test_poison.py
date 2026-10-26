@@ -6,6 +6,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.input import session  # noqa: F401 (session is a fixture)
+from dm2test.interface import GAME_CHAMPIONS
 from dm2test.lib import load_lib
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import Event, Timeline
@@ -50,3 +51,29 @@ def test_the_cure_finds_a_poison_event_past_the_event_count_only_in_the_advanced
         assert (timeline.events[slot].type != C.EVENT_POISON) == cured
     finally:
         set_mode(lib, VANILLA)
+
+
+TAIL = 512  # bytes after the champion records: the rest of g_game and the globals behind it
+
+
+def bytes_after_the_champions(lib, gdat, start, folder, with_event):
+    """Loads start.DAT, saves it with or without a poison event of champion CHAMPION_MAX, loads that save."""
+    path = folder / "SKSAVE0.DAT"
+    path.write_bytes(start)
+    assert lib.save_load(str(path).encode(), gdat) == C.SAVE_OK
+    if with_event:
+        event = Event(time_map=0, type=C.EVENT_POISON, priority=C.CHAMPION_MAX)
+        event.data[0] = POISON
+        assert lib.timeline_add_event(ctypes.byref(event)) >= 0
+    assert lib.save_write(str(path).encode(), str(path.with_suffix(".BAK")).encode(), b"POISON", gdat) == C.SAVE_OK
+    assert lib.save_load(str(path).encode(), gdat) == C.SAVE_OK
+    game = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_game"))
+    address = game + GAME_CHAMPIONS + C.CHAMPION_MAX * C.CHAMPION_SIZE
+    return ctypes.string_at(address, TAIL)
+
+
+def test_load_ignores_a_poison_event_of_a_missing_champion(lib, gdat, start, tmp_path):
+    # regression: the load wrote the poison of a champion past the last record
+    clean = bytes_after_the_champions(lib, gdat, start, tmp_path, with_event=False)
+    poisoned = bytes_after_the_champions(lib, gdat, start, tmp_path, with_event=True)
+    assert poisoned == clean

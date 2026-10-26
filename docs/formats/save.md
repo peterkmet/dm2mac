@@ -111,3 +111,4 @@ The original game loads a save with the blocks: its loader stops at the last bit
 
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).
 - Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than the queue holds, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.
+- A poison event of a champion that does not exist is skipped on load (the original writes to the record past the last champion).
