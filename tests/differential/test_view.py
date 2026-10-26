@@ -439,8 +439,8 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     assert view
     x, y, front_x, front_y = view
     thing = lib.dungeon_unused_thing(C.THING_WEAPON) & 0xFFFF | 3 << C.THING_CELL_SHIFT  # south west: the near left cell for a party looking north
-    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
-    lib.set_thing_word(thing, 2, index)
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.thing_set_word(thing, 2, index)
     assert lib.dungeon_link_thing_to_square(thing, map_, front_x, front_y)
     with_object = c_view(lib, map_, x, y, 0, 0)
     lib.dungeon_unlink_thing_from_square(thing, map_, front_x, front_y)

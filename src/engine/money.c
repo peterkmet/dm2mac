@@ -93,7 +93,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX])
 int money_coin_type_for_slot(uint16_t box, int16_t slot)
 {
     char text[TEXT_SIZE];
-    const char *p = text_gdat(CAT_CONTAINER, item_gdat_index(box), GFX_MONEYBOX_TEXT, text);
+    const char *p = gtext_gdat(CAT_CONTAINER, item_gdat_index(box), GFX_MONEYBOX_TEXT, text);
     if (!*p)
         return -1;
     /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */
@@ -162,7 +162,7 @@ bool money_add_coin_to_box(uint16_t box, uint16_t coin)
             return false;
         if (item_type(t) == item_type(coin) && misc_stack(t) < MISC_STACK_MASK) {
             misc_set_stack(t, misc_stack(t) + 1);
-            set_thing_word(coin, THING_NEXT, THING_NONE);
+            thing_set_word(coin, THING_NEXT, THING_NONE);
             return true;
         }
     }
@@ -239,7 +239,7 @@ bool money_normalize_coins(bool check_only, uint16_t box)
         return differs;
     for (int t = 0; t < money_coin_type_count(); t++)
         for (uint16_t coin; (coin = money_take_coin_from_box(box, t)) != THING_NONE;)
-            set_thing_word(coin, THING_NEXT, THING_NONE);
+            thing_set_word(coin, THING_NEXT, THING_NONE);
     for (int t = 0; t < money_coin_type_count(); t++)
         while (wanted[t]--) {
             uint16_t coin = item_create_by_index(money_coin_item(t));
@@ -255,7 +255,7 @@ int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, in
 {
     char text[TEXT_SIZE];
     memset(bitset, 0, SHOP_CLASS_SET_SIZE);
-    const char *p = text_gdat(CAT_CREATURE, creature, (uint8_t)(class_list + GFX_CREATURE_CLASS_TEXT), text);
+    const char *p = gtext_gdat(CAT_CREATURE, creature, (uint8_t)(class_list + GFX_CREATURE_CLASS_TEXT), text);
     if (!*p)
         return 0;
     int16_t number = 0, low = -1, base = -1;

@@ -290,7 +290,7 @@ void area_draw_name(int i, int highlight)
                               ZONE_ACTION_BUTTON_FIRST + i, GFX_OPAQUE);
     offscreen_draw_shadow_text(&area, ZONE_ACTION_NAME_FIRST + i, g_ui_colors[UI_WHITE],
                                g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
-                               text_gdat_label(a->category, a->index, a->entry));
+                               gtext_gdat_label(a->category, a->index, a->entry));
 }
 
 /* ---- Redraw ---- */

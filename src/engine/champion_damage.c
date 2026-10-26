@@ -730,7 +730,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
         if (t == THING_ENDOFLIST)
             return;
         dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
-        set_thing_word(t, THING_NEXT, THING_NONE);
+        thing_set_word(t, THING_NEXT, THING_NONE);
         e->time_map++;
         break;
     }

@@ -380,9 +380,9 @@ static void bump_champion(int champ, int x, int y)
     if (champ < 0)
         return;
     if (champ_take_damage(champ, 1, BUMP_WOUNDS, ATTACK_TYPE_SELF))
-        sound_request_with_fallback((SoundCue){CAT_CHAMPION, champion(champ)->portrait, SOUND_ENTRY_PUSHED,
-                                               SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
-                                    SOUND_FALLBACK, x, y, 1);
+        sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(champ)->portrait, SOUND_ENTRY_PUSHED,
+                                                SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
+                                     SOUND_FALLBACK, x, y, 1);
 }
 
 BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int step)
@@ -748,9 +748,9 @@ int dun_find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_
                      t != THING_ENDOFLIST && thing_type(t) < THING_GROUP; t = dungeon_next_thing(t)) {
                     if (mode < MARKER_FIND_NTH || mode > MARKER_FIND_SET || thing_type(t) != THING_TEXT)
                         continue;
-                    if (text_kind(t) != TEXT_KIND_ORNAMENT)
+                    if (textrec_kind(t) != TEXT_KIND_ORNAMENT)
                         continue;
-                    int kind = text_subtype(t), id = text_value(t);
+                    int kind = textrec_subtype(t), id = textrec_value(t);
                     bool hit = false;
                     if (kind == MARKER_TARGET && id == marker) {
                         if (mode == MARKER_COUNT)
@@ -759,9 +759,9 @@ int dun_find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_
                             hit = --nth == 0;
                     } else if (kind == MARKER_SWITCH) {
                         if (mode == MARKER_CLEAR_ALL)
-                            text_set_visible(t, false);
+                            textrec_set_visible(t, false);
                         else
-                            hit = mode == MARKER_FIND_SET && text_is_visible(t);
+                            hit = mode == MARKER_FIND_SET && textrec_is_visible(t);
                     } else if (kind == MARKER_POSITION && id == marker) {
                         *out_x = (int16_t)mx;
                         *out_y = (int16_t)my;
@@ -842,8 +842,9 @@ static bool transit_teleporter(Transit *t, uint8_t square)
     if (t->thing == THING_NONE) {
         set_party_position(t->x, t->y);
         if (audible)
-            sound_request((SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
-                          g_game.party_x, g_game.party_y, -1);
+            sndreq_request(
+                (SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
+                g_game.party_x, g_game.party_y, -1);
         if (t->start_map != t->map)
             t->draw_fall = false; /* the original keeps it only with its debug flag */
         int base = absolute ? 0 : g_game.party_dir;
@@ -853,13 +854,14 @@ static bool transit_teleporter(Transit *t, uint8_t square)
             if (g_party.cur_map != t->start_map) {
                 int saved = g_party.cur_map;
                 dun_set_current_map(t->start_map);
-                sound_request(
+                sndreq_request(
                     (SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
                     t->src_x, t->src_y, 1);
                 dun_set_current_map(saved);
             }
-            sound_request((SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
-                          t->x, t->y, 1);
+            sndreq_request(
+                (SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, t->x,
+                t->y, 1);
         }
         creature_turn_group(t->thing, absolute, rotation);
     } else if (t->type == THING_PROJECTILE) {
@@ -885,7 +887,7 @@ static void transit_party_lands(Transit *t)
             if (base > FALL_DAMAGE_MAX)
                 base = FALL_DAMAGE_MAX;
             champ_take_damage(i, (int16_t)((rand_2bits() + base) * t->falls), FALL_WOUNDS, ATTACK_TYPE_SELF);
-            sound_request_with_fallback(
+            sndreq_request_with_fallback(
                 (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_SCREAM, SOUND_PRIORITY_FALL, SOUND_VOLUME_FULL},
                 SOUND_FALLBACK, g_game.party_x, g_game.party_y, -1);
         }
@@ -903,8 +905,8 @@ static void transit_pit_marker(Transit *t)
             break;
         if (t->type != THING_TEXT)
             continue;
-        if (text_kind(th) == TEXT_KIND_ORNAMENT && text_subtype(th) == MARKER_PIT_TARGET) {
-            marker = text_value(th);
+        if (textrec_kind(th) == TEXT_KIND_ORNAMENT && textrec_subtype(th) == MARKER_PIT_TARGET) {
+            marker = textrec_value(th);
             break;
         }
     }
@@ -984,9 +986,9 @@ static void transit_finish(const Transit *t)
     g_party.dest_map = (int16_t)t->map;
     g_party.dest_cell = (int16_t)thing_cell(t->thing);
     if (t->falls && t->creature_sound && t->thing != THING_NONE)
-        sound_request_with_fallback((SoundCue){item_gdat_category(t->thing), item_gdat_index(t->thing),
-                                               SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                    SOUND_FALLBACK, t->x, t->y, 1);
+        sndreq_request_with_fallback((SoundCue){item_gdat_category(t->thing), item_gdat_index(t->thing),
+                                                SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                     SOUND_FALLBACK, t->x, t->y, 1);
     if (!t->fell_hurt)
         return;
     int saved_map = g_party.cur_map, px = g_game.party_x, py = g_game.party_y, pmap = g_game.party_map;
@@ -994,7 +996,7 @@ static void transit_finish(const Transit *t)
     dun_set_party_location(t->x, t->y, t->map);
     for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
-            sound_request_with_fallback(
+            sndreq_request_with_fallback(
                 (SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
                 SOUND_FALLBACK, t->x, t->y, 2);
     dun_set_party_location(px, py, pmap);
@@ -1048,7 +1050,7 @@ bool move_follow_square_transitions(uint16_t thing, MovePath route, bool creatur
     }
     transit_finish(&t);
     dun_set_current_map(t.start_map);
-    sound_flush_requests(1);
+    sndreq_flush_requests(1);
     return t.flying;
 }
 
@@ -1089,7 +1091,7 @@ static bool push_party_aside(uint16_t thing, int x, int y)
     int damage =
         rand_below(DISPLACE_DAMAGE_ROLL) + (creature_group_info(thing)->push_resistance >> DISPLACE_RESISTANCE_SHIFT);
     champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
-    sound_request_with_fallback(
+    sndreq_request_with_fallback(
         (SoundCue){CAT_CHAMPION, SOUND_FALLBACK, SOUND_ENTRY_PUSHED, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
         SOUND_FALLBACK, x, y, 1);
     move_thing(THING_NONE, x, y, nx, ny);
@@ -1449,7 +1451,7 @@ static uint16_t discard_scan_map(int type, int subtype, int map, bool second)
                     }
                 } else if (tt == THING_TEXT) {
                     /* an item holder protects the things of its square */
-                    stop = text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == SUBTYPE_ITEM_HOLDER;
+                    stop = textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == SUBTYPE_ITEM_HOLDER;
                 } else if (!(tt > THING_SENSOR && near)) {
                     if (tt == type) {
                         if (discard_take(t, type, subtype, at, &reserved))

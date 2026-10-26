@@ -233,10 +233,10 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
     for (int entry = GFX_ACTION_FIRST; entry <= GFX_ACTION_LAST && count < CHAMPION_ACTION_MAX; entry++) {
         if (!gdat_exists(gdat_current(), category, index, GDAT_TYPE_TEXT, entry))
             continue;
-        int command = text_gdat_field(category, index, entry, FIELD_COMMAND);
+        int command = gtext_gdat_field(category, index, entry, FIELD_COMMAND);
         if (!command)
             continue;
-        int16_t needs_hand = text_gdat_field(category, index, entry, FIELD_HAND);
+        int16_t needs_hand = gtext_gdat_field(category, index, entry, FIELD_HAND);
         if (needs_hand && needs_hand - 1 != hand)
             continue;
         if (thing == THING_NONE) {
@@ -245,7 +245,7 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
         } else {
             if (!is_command_allowed(thing, command))
                 continue;
-            int16_t needs = text_gdat_field(category, index, entry, FIELD_CHARGES);
+            int16_t needs = gtext_gdat_field(category, index, entry, FIELD_CHARGES);
             if (needs == CHARGES_EMPTY) {
                 if (item_charges(thing))
                     continue;
@@ -256,8 +256,8 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
                     continue;
             }
         }
-        uint16_t skill = (uint16_t)text_gdat_field(category, index, entry, FIELD_SKILL);
-        uint16_t level = (uint16_t)text_gdat_field(category, index, entry, FIELD_LEVEL);
+        uint16_t skill = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_SKILL);
+        uint16_t level = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_LEVEL);
         if (level <= (uint16_t)champ_get_skill_level(champ, skill, 1))
             g_champ_actions[count++] = (ChampionAction){(uint8_t)category, (uint8_t)index, (uint8_t)entry};
     }

@@ -132,8 +132,8 @@ typedef struct {
    things behind it in its cell do not show. Returns false when the text shows no ornament. */
 static bool wall_text_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentState *o)
 {
-    int kind = text_kind(thing), subtype = text_subtype(thing);
-    bool visible = text_is_visible(thing);
+    int kind = textrec_kind(thing), subtype = textrec_subtype(thing);
+    bool visible = textrec_is_visible(thing);
     if (kind == TEXT_KIND_TEXT || (kind == TEXT_KIND_ORNAMENT && subtype == SUBTYPE_PLATE)) {
         s->side[face] = ORNAMENT_PLATE;
         if (face == SIDE_FRONT)
@@ -143,7 +143,7 @@ static bool wall_text_ornament(ViewSquare *s, uint16_t thing, int face, Ornament
     }
     if (kind != TEXT_KIND_ORNAMENT)
         return false;
-    o->ornament = text_value(thing);
+    o->ornament = textrec_value(thing);
     switch (subtype) {
     case SUBTYPE_STILL:
     case SUBTYPE_LADDER:
@@ -265,10 +265,10 @@ static uint16_t apply_wall_things(ViewSquare *s, int map, uint16_t thing, int di
    shows no ornament. */
 static bool floor_text_ornament(ViewSquare *s, uint16_t thing, uint8_t square, OrnamentState *o)
 {
-    if (text_kind(thing) != TEXT_KIND_ORNAMENT)
+    if (textrec_kind(thing) != TEXT_KIND_ORNAMENT)
         return false;
-    o->ornament = text_value(thing);
-    switch (text_subtype(thing)) {
+    o->ornament = textrec_value(thing);
+    switch (textrec_subtype(thing)) {
     case SUBTYPE_STILL:
     case SUBTYPE_TRAP_TELEPORT:
     case SUBTYPE_WARP:
@@ -277,7 +277,7 @@ static bool floor_text_ornament(ViewSquare *s, uint16_t thing, uint8_t square, O
         o->animated = true;
         break;
     case SUBTYPE_TOGGLE:
-        o->animated = text_is_visible(thing);
+        o->animated = textrec_is_visible(thing);
         break;
     case SUBTYPE_WARP_ONCE:
         o->frame = 1;

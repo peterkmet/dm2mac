@@ -136,7 +136,7 @@ uint16_t thing_word(uint16_t thing, int field)
     return le16(dungeon_thing_record(thing) + field);
 }
 
-void set_thing_word(uint16_t thing, int field, uint16_t word)
+void thing_set_word(uint16_t thing, int field, uint16_t word)
 {
     put_le16(dungeon_thing_record(thing) + field, word);
 }
@@ -391,7 +391,7 @@ static uint16_t merge_object_lists(uint16_t a, uint16_t b)
         return a;
     while (b != THING_ENDOFLIST && thing_type(b) <= THING_SENSOR) {
         uint16_t next = dungeon_next_thing(b);
-        set_thing_word(b, THING_NEXT, a);
+        thing_set_word(b, THING_NEXT, a);
         a = b;
         b = next;
     }
@@ -417,8 +417,8 @@ static bool link_teleporters(uint16_t teleporter, int x, int y, int map)
     found |= number_linked_actuators(teleporter, map, &numbered);
     if (numbered == 2) {
         uint16_t merged = merge_object_lists(dungeon_next_thing(teleporter), dungeon_next_thing(other));
-        set_thing_word(other, THING_NEXT, merged);
-        set_thing_word(teleporter, THING_NEXT, merged);
+        thing_set_word(other, THING_NEXT, merged);
+        thing_set_word(teleporter, THING_NEXT, merged);
         return true;
     }
     return numbered || !found;
@@ -429,23 +429,23 @@ static bool link_teleporters(uint16_t teleporter, int x, int y, int map)
 static void prepare_group(uint16_t group, int x, int y, int map)
 {
     const CreatureInfo *info = creature_info(gdat_current(), group_creature(group));
-    set_thing_word(group, GROUP_HEALTH, info->max_health);
+    thing_set_word(group, GROUP_HEALTH, info->max_health);
     group_set_mood(group, 0);
     if (!(info->flags & CREATURE_STATIC)) {
-        set_thing_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, map));
+        thing_set_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, map));
         return;
     }
-    set_thing_word(group, GROUP_ANIM_SEQUENCE, 0);
+    thing_set_word(group, GROUP_ANIM_SEQUENCE, 0);
     if (group_flag(group, GROUP_KEEP_CELLS))
         return;
     uint16_t t = thing_word(group, GROUP_POSSESSIONS);
     if (t == THING_ENDOFLIST)
         return;
-    set_thing_word(group, GROUP_POSSESSIONS, (uint16_t)thing_with_cell(t, rand_2bits()));
+    thing_set_word(group, GROUP_POSSESSIONS, (uint16_t)thing_with_cell(t, rand_2bits()));
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         uint16_t next = dungeon_next_thing(t);
         if (next != THING_ENDOFLIST)
-            set_thing_word(t, THING_NEXT, (uint16_t)thing_with_cell(next, rand_2bits()));
+            thing_set_word(t, THING_NEXT, (uint16_t)thing_with_cell(next, rand_2bits()));
     }
 }
 
@@ -469,13 +469,13 @@ static bool link_thing(uint16_t t, int x, int y, int map)
     case THING_TELEPORTER:
         return link_teleporters(t, x, y, map);
     case THING_TEXT: {
-        if (text_kind(t) != TEXT_KIND_ORNAMENT)
+        if (textrec_kind(t) != TEXT_KIND_ORNAMENT)
             break;
-        int subtype = text_subtype(t);
+        int subtype = textrec_subtype(t);
         if (subtype == SUBTYPE_LADDER || subtype == SUBTYPE_LADDER_HIDDEN)
             mark_level_link(x + g_dir_dx[cell], y + g_dir_dy[cell], map);
         else if (subtype == SUBTYPE_ITEM_HOLDER_MARKER)
-            text_set_visible(t, true);
+            textrec_set_visible(t, true);
         break;
     }
     case THING_SENSOR: {
@@ -540,8 +540,8 @@ void dungeon_read_level_table(void)
     uint16_t t = dungeon_square_first_thing(0, location_x(dun.party_start), location_y(dun.party_start));
     while (t != THING_ENDOFLIST && thing_type(t) != THING_TEXT)
         t = dungeon_next_thing(t);
-    if (t != THING_ENDOFLIST && text_kind(t) == TEXT_KIND_TEXT)
-        text_decode_dungeon(text, sizeof text, t, LEVEL_TEXT_MODE);
+    if (t != THING_ENDOFLIST && textrec_kind(t) == TEXT_KIND_TEXT)
+        gtext_decode_dungeon(text, sizeof text, t, LEVEL_TEXT_MODE);
     const char *p = text;
     for (int level = 0; level <= last; level++) {
         while (p < text + sizeof text - 1 && (*p == '\0' || *p == '\n' || *p == ' '))
@@ -930,12 +930,12 @@ void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list)
         link = dungeon_thing_record(le16(link)) + THING_NEXT;
     if (le16(link) != THING_ENDOFLIST)
         put_le16(link, dungeon_next_thing(le16(link)));
-    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+    thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
 }
 
 void dungeon_append_thing(uint16_t thing, uint16_t *list)
 {
-    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+    thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
     uint8_t *link = NULL;
     for (uint16_t t = *list; t != THING_ENDOFLIST; t = le16(link))
         link = dungeon_thing_record(t) + THING_NEXT;
@@ -954,12 +954,12 @@ static void shift_later_columns(int map, int x, int count)
 
 bool dungeon_link_thing_to_square(uint16_t thing, int16_t map, int16_t x, int16_t y)
 {
-    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+    thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
     uint16_t last = dungeon_square_first_thing(map, x, y);
     if (last != THING_ENDOFLIST) {
         while (dungeon_next_thing(last) != THING_ENDOFLIST)
             last = dungeon_next_thing(last);
-        set_thing_word(last, THING_NEXT, thing);
+        thing_set_word(last, THING_NEXT, thing);
         return true;
     }
     uint16_t *table = dun.square_first_things;
@@ -994,9 +994,9 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, in
         while (dungeon_next_thing(prev) != THING_ENDOFLIST && (dungeon_next_thing(prev) & THING_ID_MASK) != id)
             prev = dungeon_next_thing(prev);
         if (dungeon_next_thing(prev) != THING_ENDOFLIST)
-            set_thing_word(prev, THING_NEXT, dungeon_next_thing(thing));
+            thing_set_word(prev, THING_NEXT, dungeon_next_thing(thing));
     }
-    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+    thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
 }
 
 uint16_t dungeon_unused_thing(int type)
@@ -1012,8 +1012,8 @@ uint16_t dungeon_unused_thing(int type)
     if (thing == THING_NONE)
         return THING_NONE;
     memset(dungeon_thing_record(thing), 0, thing_size[type]);
-    set_thing_word(thing, THING_NEXT, THING_ENDOFLIST);
+    thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
     if (type == THING_CONTAINER)
-        set_thing_word(thing, CONTAINER_CONTENTS, THING_ENDOFLIST);
+        thing_set_word(thing, CONTAINER_CONTENTS, THING_ENDOFLIST);
     return thing;
 }

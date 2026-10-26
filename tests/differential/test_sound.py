@@ -19,11 +19,11 @@ def lib():
 GDAT = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 SOUND_COMPUTE_VOLUME_PAN = 0x10877
 SOUND_SET_VOLUME, SOS_DIGI_SET_MASTER_VOLUME, G_DIGI_ENABLED = 0x10736, 0x61A45, 0x704BE
-# sound_request: from the party direction switch to the end of the distance scaling
+# sndreq_request: from the party direction switch to the end of the distance scaling
 OFFSET_BEGIN, OFFSET_END = 0x15E81, 0x16053
 CREATURE_GET_PARTY_DISTANCE = 0x2FACC
 G_PARTY_DIR, G_PARTY_X, G_PARTY_Y, G_REQUEST_COUNT = 0x7F254, 0x7F26C, 0x7F26E, 0x71690
-# sound_request locals, offsets from ESP
+# sndreq_request locals, offsets from ESP
 L_X, L_Y, L_MODE, L_LATERAL, L_FORWARD = 0x44, 0x48, 0x4C, 0x18, 0x1C
 PAN_LEFT, PAN_CENTER, PAN_RIGHT = 0x0800, C.SOUND_PAN_CENTER, 0xF800
 
@@ -31,9 +31,9 @@ PAN_LEFT, PAN_CENTER, PAN_RIGHT = 0x0800, C.SOUND_PAN_CENTER, 0xF800
 @pytest.fixture(scope="module")
 def snd(lib):
     c_int_p = ctypes.POINTER(ctypes.c_int)
-    lib.sound_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
-    lib.sound_party_offset.argtypes = [ctypes.c_int] * 4 + [ctypes.POINTER(SoundOffset)]
-    lib.sound_volume_pan.argtypes = [ctypes.c_uint8, ctypes.c_int, ctypes.c_int, c_int_p, c_int_p]
+    lib.sndreq_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
+    lib.sndreq_party_offset.argtypes = [ctypes.c_int] * 4 + [ctypes.POINTER(SoundOffset)]
+    lib.sndreq_volume_pan.argtypes = [ctypes.c_uint8, ctypes.c_int, ctypes.c_int, c_int_p, c_int_p]
     lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
     lib.sound_play.restype = ctypes.c_bool
     lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
@@ -50,7 +50,7 @@ def emu():
 
 def c_volume_pan(lib, volume, lateral, forward):
     loudness, pan = ctypes.c_int(), ctypes.c_int()
-    lib.sound_volume_pan(volume, lateral, forward, ctypes.byref(loudness), ctypes.byref(pan))
+    lib.sndreq_volume_pan(volume, lateral, forward, ctypes.byref(loudness), ctypes.byref(pan))
     return loudness.value, pan.value
 
 
@@ -83,7 +83,7 @@ def test_volume_pan_fixes_ratio_overflow(snd, emu):
 
 def c_offset(lib, x, y, px, py, direction, path):
     offset = SoundOffset()
-    ok = lib.sound_party_offset(x - px, y - py, direction, path, ctypes.byref(offset))
+    ok = lib.sndreq_party_offset(x - px, y - py, direction, path, ctypes.byref(offset))
     return ok, offset.lateral, offset.forward
 
 
@@ -123,11 +123,11 @@ def test_sound_load_sample_count(snd):
     snd.gdat_free.argtypes = [ctypes.c_void_p]
     assert snd.gdat_load(str(GDAT).encode(), ctypes.byref(g)) == 0
     s = Sound()
-    assert snd.sound_load(g, C.CAT_DUNGEON, 0, C.SOUND_EXPLODE, ctypes.byref(s)) == 0
+    assert snd.sndreq_load(g, C.CAT_DUNGEON, 0, C.SOUND_EXPLODE, ctypes.byref(s)) == 0
     assert s.length == 7927
     assert s.data[:4] == [127, 107, 32, -51]  # signed PCM after the 6-byte header
     assert ctypes.string_at(ctypes.addressof(s.data.contents) - 6, 6) == bytes.fromhex("772b08010000")
-    assert snd.sound_load(g, 3, 0, 250, ctypes.byref(s)) != 0
+    assert snd.sndreq_load(g, 3, 0, 250, ctypes.byref(s)) != 0
     snd.gdat_free(g)
 
 

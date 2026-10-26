@@ -56,7 +56,7 @@ class ActionArea(ctypes.Structure):
 
 class OriginalUi(OriginalView):
     """The original interface drawing on start.DAT: screen at 0xA0000, the view picture, texts formatted by the
-    original text_format."""
+    original gtext_format."""
 
     def __init__(self, lib, gdat, data):
         super().__init__(lib, gdat, data)
@@ -86,7 +86,7 @@ class OriginalUi(OriginalView):
         self.emu.write(DATA_START, self.data_snapshot)
 
     def text(self, category, index, entry, buf):
-        """gdat_get_text: the decrypted text goes through the original text_format (a jump with the caller's return)."""
+        """gdat_get_text: the decrypted text goes through the original gtext_format (a jump with the caller's return)."""
         raw = ctypes.create_string_buffer(512)
         self.lib.gdat_text(self.gdat, GdatKey(category & 0xFF, index & 0xFF, entry & 0xFF), raw, 512)
         raw_addr = self.put(raw.value + b"\0")

@@ -164,9 +164,9 @@ def flasks(lib, n):
 def set_flask(scenario, thing):
     lib = scenario.lib
     lib.thing_word.restype = ctypes.c_uint16
-    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     w = lib.thing_word(thing, 2) & 0x80FF | 0x14 << C.POTION_TYPE_SHIFT
-    lib.set_thing_word(thing, 2, w)
+    lib.thing_set_word(thing, 2, w)
     record = scenario.emu.read_u32(0x7F288 + 4 * C.THING_POTION) + (thing & C.THING_INDEX_MASK) * 4
     scenario.emu.write(record + 2, struct.pack("<H", w))
 
@@ -550,8 +550,8 @@ def record_address(emu, thing):
 
 
 def set_word(lib, emu, thing, offset, value):
-    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
-    lib.set_thing_word(thing, offset, value)
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.thing_set_word(thing, offset, value)
     emu.write(record_address(emu, thing) + offset, struct.pack("<H", value))
 
 

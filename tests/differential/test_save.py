@@ -150,14 +150,14 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     lib.thing_word.restype = ctypes.c_uint16
 
     projectile = lib.dungeon_unused_thing(C.THING_PROJECTILE)
-    lib.set_thing_word(projectile, 2, C.SPELL_FIREBALL | 5)  # payload: a spell
-    lib.set_thing_word(projectile, 4, 0x1234)
+    lib.thing_set_word(projectile, 2, C.SPELL_FIREBALL | 5)  # payload: a spell
+    lib.thing_set_word(projectile, 4, 0x1234)
     move = Event(game.game_time + 10, C.EVENT_PROJECTILE_MOVE, 0, (ctypes.c_uint8 * 6)(*struct.pack("<H4x", projectile | 1 << C.THING_CELL_SHIFT)))
-    lib.set_thing_word(projectile, 6, lib.timeline_add_event(ctypes.byref(move)))
+    lib.thing_set_word(projectile, 6, lib.timeline_add_event(ctypes.byref(move)))
     assert lib.dungeon_link_thing_to_square(projectile | 1 << C.THING_CELL_SHIFT, *square) == 1
 
     explosion = lib.dungeon_unused_thing(C.THING_EXPLOSION)
-    lib.set_thing_word(explosion, 2, C.SPELL_POISON_CLOUD)
+    lib.thing_set_word(explosion, 2, C.SPELL_POISON_CLOUD)
     step = Event(game.game_time + 3, C.EVENT_EXPLOSION, 0, (ctypes.c_uint8 * 6)(*struct.pack("<2xH2x", explosion | 2 << C.THING_CELL_SHIFT)))
     lib.timeline_add_event(ctypes.byref(step))
     assert lib.dungeon_link_thing_to_square(explosion | 2 << C.THING_CELL_SHIFT, *square) == 1
@@ -252,17 +252,17 @@ def link_things(lib, game):
                          if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == GROUP and t & C.THING_INDEX_MASK)
     minion_map = next(CONTAINER << 10 | i for i in range(lib.dungeon_thing_count(CONTAINER))
                       if lib.thing_word(CONTAINER << 10 | i, 0) != NONE and lib.thing_word(CONTAINER << 10 | i, 4) >> 1 & 3 == 1)
-    lib.set_thing_word(minion_map, 2, GROUP << 10)
+    lib.thing_set_word(minion_map, 2, GROUP << 10)
 
     gap = add_event(lib, C.EVENT_DOOR_ANIMATION, game.game_time + 1, bytes(6))
     lib.dungeon_unlink_thing_from_square(group, *square)
     add_event(lib, C.EVENT_MOVE_GROUP, game.game_time + 2, struct.pack("<2xH2x", group))
     projectile = lib.dungeon_unused_thing(PROJECTILE)
-    lib.set_thing_word(projectile, 2, C.SPELL_FIREBALL | 5)
-    lib.set_thing_word(projectile, 6, add_event(lib, C.EVENT_PROJECTILE_MOVE, game.game_time + 10, struct.pack("<H4x", projectile | 1 << C.THING_CELL_SHIFT)))
+    lib.thing_set_word(projectile, 2, C.SPELL_FIREBALL | 5)
+    lib.thing_set_word(projectile, 6, add_event(lib, C.EVENT_PROJECTILE_MOVE, game.game_time + 10, struct.pack("<H4x", projectile | 1 << C.THING_CELL_SHIFT)))
     assert lib.dungeon_link_thing_to_square(projectile | 1 << C.THING_CELL_SHIFT, *square) == 1
     explosion = lib.dungeon_unused_thing(EXPLOSION)
-    lib.set_thing_word(explosion, 2, C.SPELL_POISON_CLOUD)
+    lib.thing_set_word(explosion, 2, C.SPELL_POISON_CLOUD)
     add_event(lib, C.EVENT_EXPLOSION, game.game_time + 3, struct.pack("<2xH2x", explosion | 2 << C.THING_CELL_SHIFT))
     assert lib.dungeon_link_thing_to_square(explosion | 2 << C.THING_CELL_SHIFT, *square) == 1
     lib.timeline_delete_event(gap)

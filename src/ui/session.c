@@ -202,8 +202,8 @@ static void list_slots(void)
 void session_open_slot_dialog(int id, int buttons)
 {
     char text[SLOT_TEXT_COUNT][TEXT_SIZE];
-    text_gdat(CAT_DIALOG, id, 0, text[0]);
-    text_gdat(CAT_DIALOG, id, 1, text[1]);
+    gtext_gdat(CAT_DIALOG, id, 0, text[0]);
+    gtext_gdat(CAT_DIALOG, id, 1, text[1]);
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &g_view_viewport, r, GFX_OPAQUE,
@@ -604,7 +604,7 @@ void session_end(int party_dead)
 {
     if (party_dead && !g_session.completed) {
         int portrait = g_game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
-        sound_request_with_fallback(
+        sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, END_SOUND_PRIORITY, SOUND_VOLUME_FULL},
             SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
         play_wait_frames(END_SOUND_VBLANKS);

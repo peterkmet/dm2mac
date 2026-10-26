@@ -60,7 +60,7 @@ static void add_to_party(int portrait, int index, int dir)
     for (int s = 0; s < SLOT_COUNT; s++)
         c->slots[s] = THING_NONE;
     char text[TEXT_SIZE];
-    const char *p = text_gdat(CAT_CHAMPION, portrait, GFX_PORTRAIT_TEXT, text);
+    const char *p = gtext_gdat(CAT_CHAMPION, portrait, GFX_PORTRAIT_TEXT, text);
     char ch;
     /* the name ends at a space or after 7 characters; the title follows (the 8th character of a long name is lost) */
     for (int i = 0;; i++) {
@@ -174,8 +174,8 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
     if (!recruit_silent) {
         g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
         g_hooks.present_viewport();
-        sound_request((SoundCue){MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD},
-                      g_game.party_x, g_game.party_y, 0);
+        sndreq_request((SoundCue){MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD},
+                       g_game.party_x, g_game.party_y, 0);
     }
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);
@@ -193,7 +193,7 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
         g_text_args.champion = (int16_t)champ;
         g_hooks.print_newline();
         char text[TEXT_SIZE];
-        g_hooks.print_message(message_colors[champ], text_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
+        g_hooks.print_message(message_colors[champ], gtext_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
         if (g_ui.inventory) {
             g_hooks.toggle_inventory(CHAMPION_MAX);
             g_hooks.show_view();

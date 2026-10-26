@@ -64,7 +64,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 2. `world_update_day_night(0)` (`0x5a073`): hour light and weather.
 3. `view_draw_dungeon(dir, x, y)` (`0x54b3f`) and `play_present_viewport`, unless the party sleeps or the inventory is open.
 4. `champ_apply_pending_damage` (`0x47113`); every 64 steps `champ_apply_time_effects`.
-5. `sound_flush_requests`; `g_game_time` goes up by 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
+5. `sndreq_flush_requests`; `g_game_time` goes up by 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
 6. `command_process_queue` (`0x224a9`) until the tick flag `g_tick_elapsed` (`0x717f2`) is set.
 7. Map change through `g_new_map_index` (`0x717f4`) and `game_enter_map`; `music_update_for_map`.
 8. On the game end flag: `input_reset_states`, then return.
@@ -223,7 +223,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 - Active group (`0x22` bytes, `g_active_groups` `0x7f898`): `+0` group thing index (`0xffff` free), `+2` timeline event, `+4` last action time, `+6` regeneration time, `+7` animation bits, `+0x0c`-`+0x10` counters and plan variables (merchant offer and payment sums), `+0x12` plan table index, `+0x13` plan step, `+0x14` accumulated damage, `+0x16` behavior entry, `+0x17` next action, `+0x18` destination (x bits 0-4, y bits 5-9, map bits 10-15), `+0x1a` action code, `+0x1b` direction, `+0x1c` cell or side, `+0x1d` facing, `+0x1e` sub-command, `+0x1f` phase, `+0x20` mode, `+0x21` interrupt. Count `g_active_group_count` (`0x7301c`), maximum `g_active_group_max` (`0x7f89c`).
 - AI context (`0x350` bytes at `0x7f548`, saved and restored by `ai_begin` and `ai_end`): `g_ai_group_thing` `0x7f548`, `g_ai_group` `0x7f54a`, `g_ai_creature_info` `0x7f54e`, `g_ai_active_group` `0x7f552`, animation pointers `0x7f556`/`0x7f55a`, event copy `0x7f55e`, position `g_ai_group_x`/`_y`/`_map` (`0x7f564`, `0x7f565`, `0x7f56d`), `g_ai_command_result` `0x7f56b` (`0xfc` issued, `0xfd` failed, `0xfe` no move), permission masks `0x7f572`-`0x7f57a`, `g_ai_class` `0x7f580` (into `g_creature_class_flags` `0x7507a`), candidates `0x7f670`/`0x7f674`, item filter cache `g_item_filter_bitmaps` `0x7f7ea`, scratch `g_ai_scratch` `0x7f894`.
 - AI action codes (`+0x1a`, dispatcher `execute_action` `0x2b75e`): 1, 2, 9 move; 6, 7 turn; 8, `0x26` melee; `0x0a` steal; `0x0e`, `0x0f` throw; `0x13` vanish; `0x17`, `0x18` give and take items; `0x27`, `0x28` shoot; `0x2f`-`0x31` use wall actuator; `0x35`-`0x3a` stairs or teleporter; `0x3b`-`0x40` transform, explode, spawn; `0x55` cloud explosion. Plan tables at `0x74f7e` (7-byte steps).
-- Path search: `ai_search_area` (`0x3188a`) is a breadth-first search on a 32 × 32 map. It also fills `g_party_distance_map` (`0x7f8c8`), which `sound_request` uses for sound propagation.
+- Path search: `ai_search_area` (`0x3188a`) is a breadth-first search on a 32 × 32 map. It also fills `g_party_distance_map` (`0x7f8c8`), which `sndreq_request` uses for sound propagation.
 
 ### Timeline
 
@@ -237,7 +237,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 | `0x0c` | Hide damage display |
 | `0x0d` | Altar rebirth |
 | `0x0e` | Apply item effect |
-| `0x15` | `sound_request_delayed` |
+| `0x15` | `sndreq_request_delayed` |
 | `0x19` | Explosion step |
 | `0x1d`, `0x1e` | Projectile move |
 | `0x21`, `0x22` | Creature animation, creature think (`creature_process_event`) |
@@ -384,6 +384,6 @@ Library signatures (clib, DPMI, HMI) are firm only for the names. `dpmi_map_phys
 3. `0x7f278` with `0x7f25c`, `0x7f25e`, `0x7f272`: alternate view position or arrival position after a map link. Also the difference between `g_party_square_*` (`0x7f27a`-`0x7f27e`) and `g_party_x`/`g_party_y`.
 4. Creature AI plan tables (`0x74f7e`) and scanner kinds: a table dump is necessary to give each plan command and scanner a game meaning.
 5. Sensor types `0x2c`, `0x32`, `0x3f`, `0x41`, `0x46`, `0x4a`, `0x7e` and the wall-view effects in `dun_apply_wall_things_to_aspect`.
-6. Functions that did not decompile: `sound_request_with_fallback` (`0x15baa`), `melee_attack_group` (`0x18a57`), `pal_get_dimmed_remap` (`0x1b2be`), `render_offscreen` (`0x4e620`). The disassembly gives their code.
+6. Functions that did not decompile: `sndreq_request_with_fallback` (`0x15baa`), `melee_attack_group` (`0x18a57`), `pal_get_dimmed_remap` (`0x1b2be`), `render_offscreen` (`0x4e620`). The disassembly gives their code.
 7. Ghidra function boundaries: hidden functions at `0x113dd`, `0x114d2`, `0x14c93`, `0x5b577`, `0x62e81` (PIT ISR) are inside other functions.
 8. Meaning of the GDAT text fields `BZ TR PA TA EX PB MS SD RP HN AT`, and of event `0x0e` (`timeline_event_apply_item_effect`).

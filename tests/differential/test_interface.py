@@ -438,7 +438,7 @@ def test_text_format_matches_original(port, original):
         _fields_ = [("champion", ctypes.c_int16), ("number", ctypes.c_int16 * 5), ("entry", ctypes.c_uint8)]
 
     args = Args.in_dll(lib, "g_text_args")
-    lib.text_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    lib.gtext_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     rng = random.Random(15)
     number_addresses = (0x7F996, 0x7F98A, 0x7F994, 0x7F992, 0x7F986)
     src, dst = original.alloc(256), original.alloc(512)
@@ -460,7 +460,7 @@ def test_text_format_matches_original(port, original):
         emu.write(src, fmt + b"\0")
         emu.call(TEXT_FORMAT, src, dst)
         mine = ctypes.create_string_buffer(512)
-        lib.text_format(fmt, mine)
+        lib.gtext_format(fmt, mine)
         assert mine.value == emu.read(dst, 512).split(b"\0")[0], (case, fmt)
 
 
@@ -645,7 +645,7 @@ def test_item_names_match_original(port, original):
     lib.item_name.argtypes = [ctypes.c_uint16]
     lib.thing_word.restype = ctypes.c_uint16
     lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
-    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
 
     def with_index(kind, word, index):
         if kind == C.THING_SCROLL:  # a scroll has only index 0
@@ -663,7 +663,7 @@ def test_item_names_match_original(port, original):
         word = lib.thing_word(thing, offset)
         for index in range(count):
             value = with_index(kind, word, index)
-            lib.set_thing_word(thing, offset, value)
+            lib.thing_set_word(thing, offset, value)
             emu.write(record + offset, struct.pack("<H", value))
             emu.call(ITEM_GET_NAME, thing)
             theirs = emu.read(G_OBJECT_NAME, 64).split(b"\0")[0]

@@ -155,7 +155,7 @@ DUN_GET_THING_DATA = 0x1D2DA
 
 def write_word(loop, thing, offset, value):
     """Writes a word of a thing record in both."""
-    loop.lib.set_thing_word(thing, offset, value)
+    loop.lib.thing_set_word(thing, offset, value)
     loop.emu.write(loop.emu.call(DUN_GET_THING_DATA, thing & C.THING_ID_MASK) + offset, struct.pack("<H", value))
 
 

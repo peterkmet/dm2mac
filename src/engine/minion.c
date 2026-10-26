@@ -79,7 +79,7 @@ bool minion_map_set_location(uint16_t thing, int16_t x, int16_t y, int16_t map)
     dun_set_current_map(map);
     bool inside = x >= 0 && x < dungeon_map_width(g_party.cur_map) && y >= 0 && y < dungeon_map_height(g_party.cur_map);
     if (inside)
-        set_thing_word(thing, MINION_MAP_LOCATION, (uint16_t)location_pack(x, y, map));
+        thing_set_word(thing, MINION_MAP_LOCATION, (uint16_t)location_pack(x, y, map));
     dun_set_current_map(saved);
     return inside;
 }

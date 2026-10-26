@@ -178,7 +178,7 @@ static void step_before_input(void)
         input_poll();
     }
     input_release_move_arrow();
-    sound_flush_requests(0);
+    sndreq_flush_requests(0);
     champ_apply_pending_damage();
     game_run_party_clocks();
     inv_update_hand_cursor();

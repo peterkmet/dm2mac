@@ -569,7 +569,7 @@ def sound_keys(lib, gdat):
                      C.CAT_SKY, C.CAT_TELEPORTER):
         for index in range(64):
             for entry in (0, 1, 2, 0x81, 0x82, 0x88, 0x89, 0x8A):
-                if lib.sound_load(gdat, category, index, entry, ctypes.byref(s)) == 0:
+                if lib.sndreq_load(gdat, category, index, entry, ctypes.byref(s)) == 0:
                     keys.append((category, index, entry))
     return keys
 
@@ -610,12 +610,12 @@ def test_sound_requests_match_original(world, lib, gdat):
                 step = rng.choice(((0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)))
                 args = last[:5] + (last[5] + step[0], last[6] + step[1], last[7])
             last = args
-            lib.sound_request(SoundCue(*args[:5]), *args[5:])
+            lib.sndreq_request(SoundCue(*args[:5]), *args[5:])
             sc.emu.call(SOUND_REQUEST, *args)
         lib.dun_set_current_map(map_)
         sc.emu.call(DUN_SET_CURRENT_MAP, map_)
         if rng.random() < 0.5:
-            lib.sound_flush_requests(1)
+            lib.sndreq_flush_requests(1)
             sc.emu.call(0x1616D, 1)
         if passage:
             sc.party.alt_view_map = -1

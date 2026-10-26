@@ -153,7 +153,7 @@ static void process_party_event(TimelineEvent *e, uint16_t word)
         timeline_event_apply_item_effect(e, EFFECT_MODE_CONSUME_END);
         break;
     case EVENT_DELAYED_SOUND:
-        sound_request_delayed(word);
+        sndreq_request_delayed(word);
         break;
     case EVENT_MAGIC_LIGHT:
         dun_set_current_map(g_game.party_map);

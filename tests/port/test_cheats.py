@@ -33,7 +33,7 @@ def lib():
     lib.game_has_cheat.argtypes = [ctypes.c_uint8]
     lib.game_has_cheat.restype = ctypes.c_bool
     lib.thing_word.restype = ctypes.c_uint16
-    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     lib.dungeon_square.restype = ctypes.c_uint8
     lib.creature_get_group_at.restype = ctypes.c_uint16
     lib.creature_info.restype = ctypes.POINTER(ctypes.c_uint8)
@@ -99,7 +99,7 @@ def unhurt_creature(lib, gdat):  # noqa: F811
 
 def hit(lib, group, x, y, damage):
     """A hit of damage on the group, with much health first; returns True when the group is gone."""
-    lib.set_thing_word(group, C.GROUP_HEALTH, HEALTH)
+    lib.thing_set_word(group, C.GROUP_HEALTH, HEALTH)
     lib.creature_alert(group, Location(x, y), 0, 0, damage)
     lib.creature_process_event(x, y, C.EVENT_CREATURE_THINK)
     return lib.creature_get_group_at(x, y) != group or lib.thing_word(group, C.GROUP_HEALTH) <= 1
@@ -117,7 +117,7 @@ def test_one_hit_kill(lib, gdat, game, cheat):  # noqa: F811
 def test_one_hit_kill_keeps_a_creature_that_cannot_be_hurt(lib, gdat, game):  # noqa: F811
     group, x, y = first_group(lib, gdat, game)
     word = lib.thing_word(group, C.GROUP_CREATURE)
-    lib.set_thing_word(group, C.GROUP_CREATURE, word & 0xFF00 | unhurt_creature(lib, gdat))
+    lib.thing_set_word(group, C.GROUP_CREATURE, word & 0xFF00 | unhurt_creature(lib, gdat))
     lib.game_set_cheats(C.CHEAT_KILL)
     assert not hit(lib, group, x, y, 3)
     assert lib.thing_word(group, C.GROUP_HEALTH) == HEALTH
@@ -127,7 +127,7 @@ def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(li
     # regression: a hit with the cheat moved the next update of the creature to the next game step
     group, x, y = first_group(lib, gdat, game)
     word = lib.thing_word(group, C.GROUP_CREATURE)
-    lib.set_thing_word(group, C.GROUP_CREATURE, word & 0xFF00 | unhurt_creature(lib, gdat))
+    lib.thing_set_word(group, C.GROUP_CREATURE, word & 0xFF00 | unhurt_creature(lib, gdat))
     lib.game_set_cheats(C.CHEAT_KILL)
     game.game_time += 100  # the scheduled update lies before the next game step
     timeline = Timeline.in_dll(lib, "g_timeline")
@@ -272,7 +272,7 @@ def test_a_closing_door_hurts_the_party_only_without_the_cheat(lib, game, cheat)
     square = lib.dungeon_square_byte(m, x, y)
     square[0] = square[0] & ~C.SQUARE_DOOR_STATE | 1  # nearly open
     door = lib.dungeon_square_first_thing(m, x, y)
-    lib.set_thing_word(door, C.DOOR_DATA, lib.thing_word(door, C.DOOR_DATA) & ~C.DOOR_OPENING | C.DOOR_MOVING)
+    lib.thing_set_word(door, C.DOOR_DATA, lib.thing_word(door, C.DOOR_DATA) & ~C.DOOR_OPENING | C.DOOR_MOVING)
     damage = (ctypes.c_int16 * C.CHAMPION_MAX).in_dll(lib, "g_champ_pending_damage")
     ctypes.memset(damage, 0, ctypes.sizeof(damage))
     event = TimelineEvent(type=C.EVENT_DOOR_ANIMATION)

@@ -300,7 +300,7 @@ class Scenario(CreatureOracle):
     def sound_setup(self):
         """The sound buffers of the original, its sound table filled on demand, and the recorder of its driver calls."""
         emu, lib, view = self.emu, self.lib, self.view
-        lib.sound_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
+        lib.sndreq_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
         for addr, size in ((G_DELAYED_SOUNDS, 0x70), (G_SOUND_DEFERRED, 0x48), (G_SOUND_REQUESTS, 0xF0),
                            (G_SOUND_TABLE, 7 * SOUND_TABLE_MAX), (G_SAMPLE_DESCS, 16 * SOUND_TABLE_MAX)):
             emu.write_u32(addr, view.put(bytes(size)))
@@ -311,7 +311,7 @@ class Scenario(CreatureOracle):
         def find_loaded(category, index, entry, *_):
             key = (category & 0xFF, index & 0xFF, entry & 0xFF)
             s = Sound()
-            if lib.sound_load(self.gdat, *key, ctypes.byref(s)) != 0:
+            if lib.sndreq_load(self.gdat, *key, ctypes.byref(s)) != 0:
                 return 0
             if key not in self.sound_keys:
                 n = len(self.sound_keys)
@@ -345,11 +345,11 @@ class Scenario(CreatureOracle):
         ctypes.c_int.in_dll(lib, "g_sound_played_count").value = 0
         ctypes.c_int.in_dll(lib, "g_sound_started_count").value = 0
         lib.sound_stop_all()
-        lib.sound_reset_requests()  # both start from the sound state of the program start
+        lib.sndreq_reset_requests()  # both start from the sound state of the program start
 
     def flush_sounds(self):
         """The end of a game step: the sound requests of the step play in both."""
-        self.lib.sound_flush_requests(0)
+        self.lib.sndreq_flush_requests(0)
         self.emu.call(SOUND_FLUSH_REQUESTS, 0)
 
     def assert_same_sounds(self, where):

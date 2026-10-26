@@ -764,7 +764,7 @@ static void step_relative(int dir, int forward, int right, int *x, int *y)
 void view_enter_map(int16_t map)
 {
     const gdat_t *g = gdat_current();
-    sound_clear_requests();
+    sndreq_clear_requests();
     view.map = view.party_map = map;
     view.gfx_set = dungeon_map_wallset(map);
     view.door_types[0] = dungeon_map_door_type(map, 0);
@@ -2230,7 +2230,7 @@ static void show_shop_label(uint16_t shop, uint16_t item, int creature, uint8_t 
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
     char raw[TEXT_SIZE], name[TEXT_SIZE];
     show_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
-                        text_format(text_gdat(category, index, GFX_ITEM_NAME, raw), name));
+                        gtext_format(gtext_gdat(category, index, GFX_ITEM_NAME, raw), name));
     int list = sensor_delay(shop);
     PriceTerms buying = {creature, list, true, true};
     PriceTerms selling = {creature, list, false, true};
@@ -2325,7 +2325,7 @@ static void show_wall_text(int pos, int entry, const PicturePlace *place)
     if (!plate_image || !font)
         return;
     char text[WALL_TEXT_SIZE];
-    text_decode_raw(g_view_squares[pos].text, 0, text, sizeof text);
+    gtext_decode_raw(g_view_squares[pos].text, 0, text, sizeof text);
     int lines = 1;
     for (const char *p = text; *p; p++)
         lines += *p == '\n';

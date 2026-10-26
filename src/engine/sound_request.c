@@ -75,21 +75,21 @@ static struct {
 
 /* Setup */
 
-void sound_reset_requests(void)
+void sndreq_reset_requests(void)
 {
     queues.request_count = 0;
     queues.deferred_count = 0;
     memset(queues.delayed, 0, sizeof queues.delayed);
 }
 
-void sound_clear_requests(void)
+void sndreq_clear_requests(void)
 {
     queues.request_count = 0;
 }
 
 /* Queries */
 
-int sound_load(const gdat_t *g, int category, int index, int entry, Sound *sound)
+int sndreq_load(const gdat_t *g, int category, int index, int entry, Sound *sound)
 {
     uint32_t size;
     int item = gdat_find(g, category, index, GDAT_TYPE_SOUND, entry);
@@ -111,7 +111,7 @@ static int push_away(int c, int scale)
     return (c * scale + SCALE_ROUND) >> SCALE_SHIFT;
 }
 
-bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset)
+bool sndreq_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset)
 {
     int lat;
     int fwd;
@@ -148,7 +148,7 @@ bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundO
     return true;
 }
 
-void sound_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan)
+void sndreq_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan)
 {
     *loudness = ((volume << VOLUME_SHIFT) / (forward * forward + lateral * lateral + DISTANCE_BIAS)) >> LOUDNESS_SHIFT;
     if (lateral == 0) {
@@ -182,7 +182,7 @@ static void start_requests(const Pending *list, int count)
     for (int i = 0; i < count; i++) {
         if (g_sound_played_count < SOUND_PLAYED_MAX)
             g_sound_played[g_sound_played_count++] = list[i].r;
-        sound_volume_pan(list[i].r.volume, list[i].r.lateral, list[i].r.forward, &loudness[i], &pan[i]);
+        sndreq_volume_pan(list[i].r.volume, list[i].r.lateral, list[i].r.forward, &loudness[i], &pan[i]);
         order[i] = i;
     }
     for (bool swapped = true; swapped;) {
@@ -228,7 +228,7 @@ static void request_later(const SoundCue *cue, int x, int y, int delay)
     timeline_add_event(&e);
 }
 
-void sound_request(SoundCue cue, int16_t x, int16_t y, int delay)
+void sndreq_request(SoundCue cue, int16_t x, int16_t y, int delay)
 {
     delay = (int16_t)delay;
     if (delay > 0 && g_party.cur_map != g_party.square_map && g_party.cur_map != g_party.alt_view_map)
@@ -236,7 +236,7 @@ void sound_request(SoundCue cue, int16_t x, int16_t y, int delay)
     if (queues.request_count == REQUESTS_MAX)
         return;
     Sound sound;
-    if (sound_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
+    if (sndreq_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
         return;
     cue.volume = (int16_t)cue.volume;
     if (g_party_sleeping)
@@ -254,7 +254,7 @@ void sound_request(SoundCue cue, int16_t x, int16_t y, int delay)
     int dx = (int16_t)x - g_game.party_x;
     int dy = (int16_t)y - g_game.party_y;
     SoundOffset offset;
-    sound_party_offset(dx, dy, g_game.party_dir, 0, &offset);
+    sndreq_party_offset(dx, dy, g_game.party_dir, 0, &offset);
     Pending *queue = queues.requests;
     int *count = &queues.request_count;
     if (delay < 0) {
@@ -269,7 +269,7 @@ void sound_request(SoundCue cue, int16_t x, int16_t y, int delay)
             return;
     if (abs(offset.lateral) + abs(offset.forward) > 1) {
         int path = creature_get_party_distance(map_x, map_y);
-        if (!sound_party_offset(dx, dy, g_game.party_dir, path, &offset))
+        if (!sndreq_party_offset(dx, dy, g_game.party_dir, path, &offset))
             return;
     }
     Pending *p = &queue[*count]; /* a sound of delay 0 uses the next free entry for itself */
@@ -284,25 +284,25 @@ void sound_request(SoundCue cue, int16_t x, int16_t y, int delay)
         (*count)++;
 }
 
-void sound_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay)
+void sndreq_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay)
 {
     Sound sound;
-    if (sound_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
+    if (sndreq_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
         cue.index = fallback;
-    sound_request(cue, x, y, delay);
+    sndreq_request(cue, x, y, delay);
 }
 
-void sound_request_delayed(int16_t slot)
+void sndreq_request_delayed(int16_t slot)
 {
     Delayed *d = &queues.delayed[slot & (DELAYED_MAX - 1)]; /* fix: a slot from the save stays in the table */
     int map = (int8_t)d->map;
     if (map == g_party.square_map || map == g_party.alt_view_map)
-        sound_request((SoundCue){d->category, d->index, d->entry, d->priority, d->volume}, (int8_t)d->x, (int8_t)d->y,
-                      DELAY_STEP);
+        sndreq_request((SoundCue){d->category, d->index, d->entry, d->priority, d->volume}, (int8_t)d->x, (int8_t)d->y,
+                       DELAY_STEP);
     d->used = false;
 }
 
-void sound_flush_requests(int queue)
+void sndreq_flush_requests(int queue)
 {
     if (queue) {
         if (queues.deferred_count > 0)

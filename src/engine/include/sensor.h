@@ -22,7 +22,7 @@ static inline uint16_t sensor_data(uint16_t sensor)
 }
 static inline void sensor_set_data(uint16_t sensor, uint16_t data)
 {
-    set_thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK, data);
+    thing_set_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK, data);
 }
 static inline uint16_t sensor_frame(uint16_t sensor)
 {
@@ -38,7 +38,7 @@ static inline bool sensor_flag(uint16_t sensor, uint16_t bit)
 }
 static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on)
 {
-    set_thing_bit(sensor, SENSOR_FLAGS, bit, on);
+    thing_set_bit(sensor, SENSOR_FLAGS, bit, on);
 }
 /* The effect on the target: EFFECT_SET, EFFECT_CLEAR, EFFECT_TOGGLE, or EFFECT_HOLD. */
 static inline uint16_t sensor_effect(uint16_t sensor)

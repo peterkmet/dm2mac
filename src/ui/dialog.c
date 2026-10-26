@@ -117,7 +117,7 @@ int dialog_draw(int id, int message)
     static char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
     int count = 0;
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++)
-        if (*text_gdat(CAT_DIALOG, id, e, texts[count]))
+        if (*gtext_gdat(CAT_DIALOG, id, e, texts[count]))
             count++;
     int16_t r[RECT_SIZE];
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
@@ -133,13 +133,13 @@ int dialog_draw(int id, int message)
         int colors[MESSAGE_TEXTS];
         if (message && id == DIALOG_ERROR) {
             colors[0] = g_ui_colors[UI_WHITE];
-            shown[0] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[0]);
+            shown[0] = gtext_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[0]);
         } else {
             colors[0] = g_ui_colors[UI_YELLOW];
-            shown[0] = text_gdat(CAT_DIALOG, id, GFX_DIALOG_MESSAGE, message_texts[0]);
+            shown[0] = gtext_gdat(CAT_DIALOG, id, GFX_DIALOG_MESSAGE, message_texts[0]);
             if (message) {
                 colors[1] = g_ui_colors[UI_WHITE];
-                shown[1] = text_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[1]);
+                shown[1] = gtext_gdat(CAT_DIALOG, DIALOG_ERROR, message, message_texts[1]);
             }
         }
         render_message(r, shown, colors);
@@ -230,9 +230,9 @@ void sound_set_volume_and_test(int level, int device)
 {
     if (device == DEVICE_SOUND) {
         save_set_sound_volume((uint8_t)level);
-        sound_request((SoundCue){CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM,
-                                 SOUND_VOLUME_LOUD},
-                      g_game.party_x, g_game.party_y, 0);
+        sndreq_request((SoundCue){CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM,
+                                  SOUND_VOLUME_LOUD},
+                       g_game.party_x, g_game.party_y, 0);
         sound_set_volume(level);
     } else if (device == DEVICE_MUSIC) {
         save_set_music_volume((uint8_t)level);
@@ -251,7 +251,7 @@ static void render_volume_buttons(int setting, int button_zone, int text_zone, i
             text[0] = (char)('0' + level);
             text[1] = '\0';
         } else {
-            text_gdat(CAT_DIALOG, DIALOG_VOLUME, off_entry, text);
+            gtext_gdat(CAT_DIALOG, DIALOG_VOLUME, off_entry, text);
         }
         text_draw_in_zone(text_zone + level, g_ui_colors[UI_YELLOW], text);
     }
@@ -264,9 +264,9 @@ void dialog_volume(void)
         return;
     dialog_draw(DIALOG_VOLUME, MESSAGE_NONE);
     text_draw_in_zone(ZONE_SOUND_LABEL, g_ui_colors[UI_YELLOW],
-                      text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_SOUND_LABEL, text));
+                      gtext_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_SOUND_LABEL, text));
     text_draw_in_zone(ZONE_MUSIC_LABEL, g_ui_colors[UI_YELLOW],
-                      text_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_MUSIC_LABEL, text));
+                      gtext_gdat(CAT_DIALOG, DIALOG_VOLUME, GFX_VOLUME_MUSIC_LABEL, text));
     for (;;) {
         render_volume_buttons(g_game.sound_volume, ZONE_SOUND_BUTTON, ZONE_SOUND_TEXT, GFX_VOLUME_SOUND_OFF);
         render_volume_buttons(g_game.music_volume, ZONE_MUSIC_BUTTON, ZONE_MUSIC_TEXT, GFX_VOLUME_MUSIC_OFF);

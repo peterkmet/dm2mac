@@ -147,7 +147,7 @@ def test_slot_dialogs_match_original(ui, original, tmp_path):
     for n, slot in enumerate((0, 3)):
         (tmp_path / "DATA" / f"SKSAVE{slot}.DAT").write_bytes(start[C.SAVE_HEADER_SIZE * n:C.SAVE_HEADER_SIZE * (n + 1)])
     Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
-    for i in range(2):  # the file names go through the 2 format buffers of text_format
+    for i in range(2):  # the file names go through the 2 format buffers of gtext_format
         emu.write_u32(G_FORMAT_BUFFERS + 4 * i, original.alloc(128))
     names = []
 

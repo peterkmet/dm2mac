@@ -13,8 +13,8 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 ## UI colors and text formats
 
 - GDAT `(1, 0, 13, 0xfe)` holds 16 palette indices: the UI colors (`enum ui_color` in `src/ui/include/text.h`). The interface draws with UI color indices, not palette indices.
-- `text_format` replaces format codes: `.Z` and 3 decimal digits, or byte 1 and the code + 32. The inserted text is formatted again. Codes: 2 and 27 texts `(1, 0xfe, 5, 0)` and `(1, 0xfe, 5, 6)`; 7 a champion name (word `0x7f988`); 10 to 14 the numbers in the words `0x7f996`, `0x7f98a`, `0x7f994`, `0x7f992`, `0x7f986`; 17 the text `(7, 0, 5, byte 0x7f990)`. The other codes (0, 1, 3, 4, 8, 9, 15, 20, 22 to 26, 28) give drive paths, disk sizes, error codes, and save names for the dialogs. An unknown code inserts an empty text.
-- `text_gdat` (`gdat_get_text` in the original) decrypts a text entry and formats it. The inventory sets the numbers before it formats a text, for example `(7, 0, 5, 0x2a)` (load) and `(7, 0, 5, 0x1f)` (weight).
+- `gtext_format` replaces format codes: `.Z` and 3 decimal digits, or byte 1 and the code + 32. The inserted text is formatted again. Codes: 2 and 27 texts `(1, 0xfe, 5, 0)` and `(1, 0xfe, 5, 6)`; 7 a champion name (word `0x7f988`); 10 to 14 the numbers in the words `0x7f996`, `0x7f98a`, `0x7f994`, `0x7f992`, `0x7f986`; 17 the text `(7, 0, 5, byte 0x7f990)`. The other codes (0, 1, 3, 4, 8, 9, 15, 20, 22 to 26, 28) give drive paths, disk sizes, error codes, and save names for the dialogs. An unknown code inserts an empty text.
+- `gtext_gdat` (`gdat_get_text` in the original) decrypts a text entry and formats it. The inventory sets the numbers before it formats a text, for example `(7, 0, 5, 0x2a)` (load) and `(7, 0, 5, 0x1f)` (weight).
 
 ## Message area
 
@@ -42,5 +42,5 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 - The action area reads the wall set of the party map from the map descriptor; the original reads `g_map_gfx_set`, which `game_enter_map` sets from the same descriptor.
 - `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
-- `text_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `text_decode_raw` in `engine/game_text.c`. `text_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
+- `gtext_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `gtext_decode_raw` in `engine/game_text.c`. `gtext_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
 - Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types.

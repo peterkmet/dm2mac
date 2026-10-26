@@ -290,7 +290,7 @@ static void object_json(Json *j, uint16_t thing)
     key_str(j, "kind", object_kind(thing));
     if (thing_type(thing) == THING_SCROLL) {
         char text[SCROLL_TEXT_SIZE];
-        key_str(j, "text", text_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
+        key_str(j, "text", gtext_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
     }
     json_close(j, '}');
 }
@@ -377,7 +377,7 @@ static void put_action_names(Json *j)
     json_open(j, '[');
     for (int i = 0; i < g_champ_action_count; i++) {
         const ChampionAction *a = &g_champ_actions[i];
-        const char *label = text_gdat_label(a->category, a->index, a->entry);
+        const char *label = gtext_gdat_label(a->category, a->index, a->entry);
         trimmed(j, label ? label : "", TEXT_SIZE);
     }
     json_close(j, ']');
@@ -489,7 +489,7 @@ static void put_dialog(Json *j, int mode)
     json_open(j, '[');
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++) {
         char text[TEXT_SIZE];
-        if (*text_gdat(CAT_DIALOG, g_dialog.id, e, text))
+        if (*gtext_gdat(CAT_DIALOG, g_dialog.id, e, text))
             json_str(j, text);
     }
     json_close(j, ']');
@@ -649,7 +649,7 @@ static void put_money_box(Json *j)
         json_open(j, '{');
         key_int(j, "slot", slot);
         json_key(j, "coin");
-        trimmed(j, text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, name),
+        trimmed(j, gtext_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, name),
                 TEXT_SIZE);
         key_int(j, "count", counts[type]);
         json_close(j, '}');
@@ -996,7 +996,7 @@ static void put_shop(Json *j, uint16_t shop)
             continue;
         uint16_t item = sensor_data(t);
         char name[TEXT_SIZE];
-        trimmed(j, text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, name),
+        trimmed(j, gtext_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, name),
                 TEXT_SIZE);
         return;
     }
@@ -1013,8 +1013,8 @@ static bool wall_sensors_json(Json *j, int ornament, int face, int x, int y)
          t = dungeon_next_thing(t)) {
         if (thing_cell(t) != face)
             continue;
-        if (thing_type(t) == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
-            int sub = text_subtype(t);
+        if (thing_type(t) == THING_TEXT && textrec_kind(t) == TEXT_KIND_ORNAMENT) {
+            int sub = textrec_subtype(t);
             click |= sub == SUBTYPE_HAND_SWITCH;
             takes |= sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER;
         }
@@ -1081,7 +1081,7 @@ static void wall_face_json(Json *j, const char *key, const ViewWall *w, int k)
         wall_ornament_json(j, w, k, face);
     } else if (k == SIDE_FRONT && thing_type(w->look.text) == THING_TEXT) {
         char text[SCROLL_TEXT_SIZE];
-        key_str(j, "text", text_decode_dungeon(text, sizeof text, w->look.text, 0));
+        key_str(j, "text", gtext_decode_dungeon(text, sizeof text, w->look.text, 0));
     } else {
         json_key(j, "text");
         put_null(j);

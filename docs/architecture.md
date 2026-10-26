@@ -69,9 +69,9 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/champ_action.h` | none | The actions of the champions: the commands, the charges, and the repeats of an action. |
 | `engine/champion.h` | `champ_` `champion` | The champions: their slots, statistics, wounds, and the effects of their actions. |
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the update of the groups. |
-| `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `set_thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `text_is_` `text_kind` `text_offset` `text_set_visible` `text_subtype` `text_value` | The dungeon: the things, their record layout, the squares, and the maps. |
+| `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `textrec_` | The dungeon: the things, their record layout, the squares, and the maps. |
 | `engine/game.h` | `game_` | The main loop state of the game rules: the step timing, the map changes, and the party wake. |
-| `engine/game_text.h` | `text_decode_` `text_format` `text_gdat` | The game texts and the UI colors: decoding, formatting, and GDAT text items. |
+| `engine/game_text.h` | `gtext_` | The game texts and the UI colors: decoding, formatting, and GDAT text items. |
 | `engine/hooks.h` | none | Calls of the game rules into the user interface, for events that must run the interface inside the rule. |
 | `engine/inventory.h` | `inv_` | The leader hand and the champion slots, and the effects of the items that a champion holds. |
 | `engine/item.h` | `item_` | The items: their record fields, their GDAT types, and what the party possesses. |
@@ -86,7 +86,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/save.h` | `save_` | The save game: its blocks, its layout, and reading and writing the file. |
 | `engine/seen.h` | `seen_` | The squares of the automap that the dungeon view has shown, one byte per square of every map. |
 | `engine/sensor.h` | `sensor_` | Floor and wall sensors: their record fields, their timeline events, and the missiles. |
-| `engine/sound_request.h` | `sound_clear_` `sound_flush_` `sound_load` `sound_party_` `sound_request` `sound_reset_` `sound_volume_` | The sound requests of the game rules: the queues of a game step and the delayed sounds. |
+| `engine/sound_request.h` | `sndreq_` | The sound requests of the game rules: the queues of a game step and the delayed sounds. |
 | `engine/timeline.h` | `timeline_` | The timeline of the game: the scheduled events and their handlers. |
 | `engine/weather.h` | `weather_` `light_` `world_` | Weather, day and night, and the party light. |
 

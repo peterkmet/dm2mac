@@ -49,15 +49,15 @@ static void close_container(void)
         if (t == THING_NONE)
             continue;
         g_action.open_items[i] = THING_NONE;
-        set_thing_word(t, THING_NEXT, THING_ENDOFLIST);
+        thing_set_word(t, THING_NEXT, THING_ENDOFLIST);
         uint16_t last = thing_word(container, CONTAINER_CONTENTS);
         if (last == THING_ENDOFLIST) {
-            set_thing_word(container, CONTAINER_CONTENTS, t);
+            thing_set_word(container, CONTAINER_CONTENTS, t);
             continue;
         }
         while (dungeon_next_thing(last) != THING_ENDOFLIST)
             last = dungeon_next_thing(last);
-        set_thing_word(last, THING_NEXT, t);
+        thing_set_word(last, THING_NEXT, t);
     }
 }
 
@@ -83,8 +83,8 @@ void action_open_container(uint16_t container)
         g_action.open_items[i] = t;
         uint16_t contents = t;
         /* unlink the first item from the contents list */
-        set_thing_word(container, CONTAINER_CONTENTS, dungeon_next_thing(contents));
-        set_thing_word(contents, THING_NEXT, THING_ENDOFLIST);
+        thing_set_word(container, CONTAINER_CONTENTS, dungeon_next_thing(contents));
+        thing_set_word(contents, THING_NEXT, THING_ENDOFLIST);
     }
     for (; i < CONTAINER_SLOTS; i++)
         g_action.open_items[i] = THING_NONE;

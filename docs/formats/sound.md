@@ -55,7 +55,7 @@ The SOS structure field names are probable.
 
 Disagreement with reDM2: reDM2 (`docs/formats.md`, "There is no audio in GRAPHICS.DAT") states that the archive holds no digital samples. It lists the 292 type-2 rows as "image?, inferred, no reader". The evidence for samples is the reader `FUN_0001623b`, which loads exactly these 292 items as sound descriptors, and the constant 6-byte sample header. This page keeps the sample reading. reDM2 names `FUN_000104ea` `hilite_node_add` and marks its role as not verified. The caller passes the sample descriptors, and an XOR of bit 7 is the signed to unsigned PCM conversion. The symbol table keeps `sound_prepare_sample`.
 
-The port loads the sounds from GDAT type `2` and skips the 6-byte header (`sound_load`, `src/engine/sound_request.c`). `tests/differential/test_sound.py` compares the port of `FUN_00010877` and of the scaling in `FUN_00015ca9` with the original.
+The port loads the sounds from GDAT type `2` and skips the 6-byte header (`sndreq_load`, `src/engine/sound_request.c`). `tests/differential/test_sound.py` compares the port of `FUN_00010877` and of the scaling in `FUN_00015ca9` with the original.
 
 ## Deviations from the original
 
@@ -66,5 +66,5 @@ The sound output is `src/ui/sound.c`.
 - Pan law: the SOS pan curve is not known. The port uses a linear balance with the center at full volume on both sides: left gain = `min(0x8000, 0x10000 − pan) / 0x8000`, right gain = `min(0x8000, pan) / 0x8000`, times the SOS volume `vol8 << 7 | vol8 >> 1`.
 - Voices: 64, as in the original. A new sound takes the first free voice. When all play, the sound is dropped.
 - The port keeps the samples signed and skips the XOR `0x80` of `FUN_000104ea`.
-- `sound_party_offset` takes the party direction 0 to 3. For other values the original keeps stale locals; the port treats them as north.
+- `sndreq_party_offset` takes the party direction 0 to 3. For other values the original keeps stale locals; the port treats them as north.
 - The audio output (`src/platform/platform.c`) fills the SDL audio stream from `plat_wait_tick` on the main thread, up to 2048 frames ahead. A music source can be added with `plat_audio_music`. It is mixed before the sound effects.

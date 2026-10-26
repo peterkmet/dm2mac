@@ -145,12 +145,12 @@ address,name,signature,subsystem
 0x00015a02,get_thing_position,"int16_t get_thing_position(uint16_t thing, int16_t dir)",dungeon view
 0x00015a91,sound_alloc_buffers,void sound_alloc_buffers(void),sound
 0x00015b4a,sound_set_volume_and_test,"void sound_set_volume_and_test(int16_t volume, int16_t device)",sound
-0x00015baa,sound_request_with_fallback,"void sound_request_with_fallback(uint8_t category, uint8_t index, uint8_t entry, uint8_t fallback_index, int16_t x, int16_t y, int16_t delay, int16_t priority, int16_t volume)",sound
+0x00015baa,sndreq_request_with_fallback,"void sndreq_request_with_fallback(uint8_t category, uint8_t index, uint8_t entry, uint8_t fallback_index, int16_t x, int16_t y, int16_t delay, int16_t priority, int16_t volume)",sound
 0x00015c10,sound_find_loaded,"int sound_find_loaded(uint8_t category, uint8_t index, uint8_t entry)",sound
 0x00015c5f,sound_find_by_gdat_entry,uint16_t sound_find_by_gdat_entry(int16_t raw_entry),sound
-0x00015ca9,sound_request,"void sound_request(uint8_t category, uint8_t index, uint8_t entry, int16_t priority, int16_t volume, int16_t x, int16_t y, int16_t delay)",sound
-0x000160db,sound_request_delayed,void sound_request_delayed(int16_t slot),sound
-0x0001616d,sound_flush_requests,void sound_flush_requests(int queue),sound
+0x00015ca9,sndreq_request,"void sndreq_request(uint8_t category, uint8_t index, uint8_t entry, int16_t priority, int16_t volume, int16_t x, int16_t y, int16_t delay)",sound
+0x000160db,sndreq_request_delayed,void sndreq_request_delayed(int16_t slot),sound
+0x0001616d,sndreq_flush_requests,void sndreq_flush_requests(int queue),sound
 0x000161c8,sound_wait_and_clear_requests,void sound_wait_and_clear_requests(void),sound
 0x000161d9,sound_register,"void sound_register(uint8_t category, uint8_t index, uint8_t entry)",sound
 0x0001623b,sound_load_registered,void sound_load_registered(void),sound
@@ -656,7 +656,7 @@ address,name,signature,subsystem
 0x0003a12a,inv_draw_skills_and_statistics,void inv_draw_skills_and_statistics(void),inventory
 0x0003a409,input_hold_right_button,void input_hold_right_button(void),input
 0x0003a464,ui_toggle_inventory,void ui_toggle_inventory(int16_t champion),inventory
-0x0003a6ab,text_format,"char *text_format(const char *fmt, char *dst)",text
+0x0003a6ab,gtext_format,"char *gtext_format(const char *fmt, char *dst)",text
 0x0003a921,gdat_get_text,"char *gdat_get_text(uint8_t category, uint8_t index, uint8_t entry, char *dst)",text
 0x0003a9de,data_path_init,void data_path_init(void),file I/O
 0x0003aa32,gdat_preload_add,void gdat_preload_add(uint32_t key),graphics
@@ -853,7 +853,7 @@ address,name,signature,subsystem
 0x0004807f,ui_draw_champion_face_icon,"uint8_t *ui_draw_champion_face_icon(uint8_t *dst, int16_t champ, uint8_t *palette)",interface
 0x00048140,ui_status_box_begin_draw,"void ui_status_box_begin_draw(uint16_t champ, int clear)",interface
 0x000481dc,ui_draw_champion_bars,void ui_draw_champion_bars(uint16_t champ),interface
-0x00048332,text_format_number,"char *text_format_number(uint16_t value, int pad, uint16_t width)",text
+0x00048332,gtext_format_number,"char *gtext_format_number(uint16_t value, int pad, uint16_t width)",text
 0x000483cb,ui_draw_value_pair,"void ui_draw_value_pair(int16_t zone, uint16_t value, uint16_t maximum)",interface
 0x00048441,ui_draw_champion_values,void ui_draw_champion_values(uint8_t *champ),interface
 0x000484b0,ui_draw_champion_slot,"int ui_draw_champion_slot(uint16_t champ, uint16_t slot, int force)",interface

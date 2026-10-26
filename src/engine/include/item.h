@@ -17,7 +17,7 @@ static inline uint16_t item_type(uint16_t item)
 }
 static inline void item_set_type(uint16_t item, int type)
 {
-    set_thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK, type);
+    thing_set_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK, type);
 }
 /* The dungeon keeps the item: no record reuse, and creatures do not consume it. */
 static inline bool item_is_kept(uint16_t item)
@@ -26,7 +26,7 @@ static inline bool item_is_kept(uint16_t item)
 }
 static inline void item_set_kept(uint16_t item, bool kept)
 {
-    set_thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD,
+    thing_set_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD,
                   kept);
 }
 

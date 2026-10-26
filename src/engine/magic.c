@@ -751,9 +751,9 @@ bool move_party_warp_to_marker(void)
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;
-        if (text_kind(t) != TEXT_KIND_ORNAMENT)
+        if (textrec_kind(t) != TEXT_KIND_ORNAMENT)
             continue;
-        int subtype = text_subtype(t), mode;
+        int subtype = textrec_subtype(t), mode;
         if (subtype == SUBTYPE_WARP_ONCE)
             mode = MARKER_CLEAR_ALL;
         else if (subtype == SUBTYPE_WARP)
@@ -761,16 +761,16 @@ bool move_party_warp_to_marker(void)
         else
             continue;
         int16_t x, y;
-        uint8_t marker = text_value(t);
+        uint8_t marker = textrec_value(t);
         int map = dun_find_marker(mode, 0, marker, &x, &y);
         if (map < 0)
             continue;
         move_party_to(x, y, map, g_game.party_dir);
-        sound_request_with_fallback(
+        sndreq_request_with_fallback(
             (SoundCue){CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
             SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
         if (mode == MARKER_CLEAR_ALL)
-            text_set_visible(t, true);
+            textrec_set_visible(t, true);
         return true;
     }
     return false;

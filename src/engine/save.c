@@ -325,7 +325,7 @@ static void relink_events(void)
             put_le16(g_game.champions[e->priority] + CHAMPION_DAMAGE_EVENT, (uint16_t)i);
         if ((e->type == EVENT_PROJECTILE_MOVE || e->type == EVENT_PROJECTILE_MOVE_2) &&
             thing_type(thing) == THING_PROJECTILE && dungeon_thing_valid(thing))
-            set_thing_word(thing, PROJECTILE_EVENT, i);
+            thing_set_word(thing, PROJECTILE_EVENT, i);
     }
 }
 
@@ -658,7 +658,7 @@ static bool read_held_things(uint16_t thing, const uint8_t *mask, bool carried)
         io.in_group = true;
         bool ok = read_thing_list(NULL, &possessions, mask != group_mask, true);
         io.in_group = false;
-        set_thing_word(thing, GROUP_POSSESSIONS, possessions);
+        thing_set_word(thing, GROUP_POSSESSIONS, possessions);
         return ok;
     }
     case THING_CONTAINER: {
@@ -666,7 +666,7 @@ static bool read_held_things(uint16_t thing, const uint8_t *mask, bool carried)
         if (carried) {
             if (!read_value(&value, MORE_MASK))
                 return false;
-            set_thing_word(thing, CONTAINER_CONTENTS, contents);
+            thing_set_word(thing, CONTAINER_CONTENTS, contents);
             return !value || defer_thing(thing);
         }
         bool moneybox = is_moneybox(thing);
@@ -675,7 +675,7 @@ static bool read_held_things(uint16_t thing, const uint8_t *mask, bool carried)
         bool ok = read_thing_list(NULL, &contents, false, true);
         if (moneybox)
             io.misc_mask = misc_mask;
-        set_thing_word(thing, CONTAINER_CONTENTS, contents);
+        thing_set_word(thing, CONTAINER_CONTENTS, contents);
         return ok;
     }
     case THING_PROJECTILE: {
@@ -687,7 +687,7 @@ static bool read_held_things(uint16_t thing, const uint8_t *mask, bool carried)
         io.in_projectile = true;
         bool ok = read_thing_list(NULL, &payload, false, false);
         io.in_projectile = false;
-        set_thing_word(thing, PROJECTILE_PAYLOAD, payload);
+        thing_set_word(thing, PROJECTILE_PAYLOAD, payload);
         return ok;
     }
     case THING_EXPLOSION:
@@ -755,13 +755,13 @@ static void free_movable_things(void)
                 for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST;
                      t = dungeon_next_thing(t))
                     if (thing_type(t) > THING_SENSOR) {
-                        set_thing_word(t, THING_NEXT, THING_ENDOFLIST);
+                        thing_set_word(t, THING_NEXT, THING_ENDOFLIST);
                         dungeon_unlink_thing_from_square(t, map, x, y);
                         break;
                     }
     for (int type = THING_GROUP; type < THING_TYPE_COUNT; type++)
         for (int i = 0; i < dungeon_thing_count(type); i++)
-            set_thing_word(thing_make(type, i), THING_NEXT, THING_NONE);
+            thing_set_word(thing_make(type, i), THING_NEXT, THING_NONE);
 }
 
 /* Reads the saved bits of each square, the bits of its fixed things, and its movable things. */
@@ -809,7 +809,7 @@ static bool read_deferred(void)
         uint16_t target = thing_make(target_type, index);
         if (!dungeon_thing_valid(target))
             return false;
-        set_thing_word(thing, CONTAINER_CONTENTS, target);
+        thing_set_word(thing, CONTAINER_CONTENTS, target);
     }
     return true;
 }

@@ -40,7 +40,7 @@ static const char field_names[FIELD_COUNT][3] = {"SK", "LV", "CM", "BZ", "TR", "
 #define NUMBER_WIDTH 4
 #define NUMBER_SPARE 4
 
-const char *text_format_number(int value, int pad, int width)
+const char *gtext_format_number(int value, int pad, int width)
 {
     static char buf[NUMBER_SPARE + NUMBER_WIDTH + 1];
     char *end = buf + NUMBER_SPARE + NUMBER_WIDTH, *p = end;
@@ -63,7 +63,7 @@ static char *append(char *dst, const char *src)
     return dst + strlen(dst);
 }
 
-char *text_format(const char *fmt, char *dst)
+char *gtext_format(const char *fmt, char *dst)
 {
     char *out = dst;
     for (;;) {
@@ -93,9 +93,9 @@ char *text_format(const char *fmt, char *dst)
         } else if (code >= FORMAT_NUMBER_FIRST && code <= FORMAT_NUMBER_LAST) {
             snprintf(value, sizeof value, "%d", g_text_args.number[code - FORMAT_NUMBER_FIRST]);
         } else if (code == FORMAT_TEXT) {
-            text_gdat(FORMAT_TEXT_CATEGORY, 0, g_text_args.entry, value);
+            gtext_gdat(FORMAT_TEXT_CATEGORY, 0, g_text_args.entry, value);
         } else if (code == FORMAT_TITLE || code == FORMAT_TITLE_2) {
-            text_gdat(CAT_INTERFACE, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : GFX_FORMAT_TITLE_2, value);
+            gtext_gdat(CAT_INTERFACE, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : GFX_FORMAT_TITLE_2, value);
         } else if (code == FORMAT_DATA_PATH || code == FORMAT_SAVE_PATH || code == FORMAT_DISK_PATH) {
             size_t len = strlen(g_text_drive_path);
             while (len > 1 && g_text_drive_path[len - 1] == '/')
@@ -108,27 +108,27 @@ char *text_format(const char *fmt, char *dst)
             for (char *p = value; *p; p++)
                 *p = (char)toupper((unsigned char)*p); /* the font has no lowercase */
         } /* the error, memory, and file name codes of the DOS layer give "" */
-        out = append(dst, text_format(value, inner));
+        out = append(dst, gtext_format(value, inner));
     }
     *out = '\0';
     return dst;
 }
 
-char *text_gdat(int category, int index, int entry, char *dst)
+char *gtext_gdat(int category, int index, int entry, char *dst)
 {
     char raw[TEXT_SIZE];
     dst[0] = '\0';
     if (!gdat_current())
         return dst;
     gdat_text(gdat_current(), (GdatKey){category, index, entry}, raw, sizeof raw);
-    return text_format(raw, dst);
+    return gtext_format(raw, dst);
 }
 
-const char *text_gdat_label(int category, int index, int entry)
+const char *gtext_gdat_label(int category, int index, int entry)
 {
     static char label[TEXT_SIZE];
     char text[TEXT_SIZE];
-    if (!*text_gdat(category, index, entry, text))
+    if (!*gtext_gdat(category, index, entry, text))
         return NULL;
     size_t n = strcspn(text, ":");
     memcpy(label, text, n);
@@ -136,10 +136,10 @@ const char *text_gdat_label(int category, int index, int entry)
     return label;
 }
 
-int16_t text_gdat_field(int category, int index, int entry, int field)
+int16_t gtext_gdat_field(int category, int index, int entry, int field)
 {
     char text[TEXT_SIZE];
-    if ((unsigned)field >= FIELD_COUNT || !*text_gdat(category, index, entry, text))
+    if ((unsigned)field >= FIELD_COUNT || !*gtext_gdat(category, index, entry, text))
         return 0;
     return (int16_t)gdat_text_int_field(text, field_names[field]);
 }
@@ -170,7 +170,7 @@ static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
 /* The characters of the packed text at text, into out up to end; returns the end of the output. */
 static char *decode_words(uint16_t text, char *o, char *end)
 {
-    const uint16_t *p = dungeon_text_data() + text_offset(text);
+    const uint16_t *p = dungeon_text_data() + textrec_offset(text);
     const uint16_t *text_end = dungeon_text_data() + dungeon_text_word_count();
     uint16_t word = 0;
     int escape = 0;
@@ -202,7 +202,7 @@ static char *decode_words(uint16_t text, char *o, char *end)
     return o;
 }
 
-void text_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
+void gtext_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
 {
     char *o = dst, *end = dst + size - 1;
     unsigned ornament = NO_ORNAMENT_TEXT;
@@ -217,13 +217,13 @@ void text_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
         return;
     }
     if (ornament == NO_ORNAMENT_TEXT) {
-        int kind = text_kind(text);
-        if (kind && (kind != TEXT_KIND_ORNAMENT || text_subtype(text) != SUBTYPE_PLATE))
+        int kind = textrec_kind(text);
+        if (kind && (kind != TEXT_KIND_ORNAMENT || textrec_subtype(text) != SUBTYPE_PLATE))
             return;
-        if (!text_is_visible(text) && !(mode & TEXT_MODE_HIDDEN))
+        if (!textrec_is_visible(text) && !(mode & TEXT_MODE_HIDDEN))
             return;
         if (kind == TEXT_KIND_ORNAMENT)
-            ornament = text_value(text);
+            ornament = textrec_value(text);
     }
     if ((mode & TEXT_MODE_MASK) == TEXT_MODE_NEW_LINE && o < end)
         *o++ = '\n';
@@ -236,26 +236,26 @@ void text_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
     *o = '\0';
 }
 
-char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
+char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
 {
     char raw[TEXT_SIZE * 2], formatted[TEXT_SIZE];
-    text_decode_raw(thing, mode, raw, sizeof raw);
-    text_format(raw, formatted);
+    gtext_decode_raw(thing, mode, raw, sizeof raw);
+    gtext_format(raw, formatted);
     snprintf(dst, size, "%s", formatted);
     return dst;
 }
 
-void text_gdat_set_ui_colors(const uint8_t *colors)
+void gtext_gdat_set_ui_colors(const uint8_t *colors)
 {
     g_ui_colors = colors;
 }
 
-void text_format_set_number(int index, int value)
+void gtext_format_set_number(int index, int value)
 {
     g_text_args.number[index] = (int16_t)value;
 }
 
-void text_format_set_entry(int entry)
+void gtext_format_set_entry(int entry)
 {
     g_text_args.entry = (uint8_t)entry;
 }

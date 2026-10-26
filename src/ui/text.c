@@ -54,7 +54,7 @@ bool text_init(const gdat_t *gdat)
     if (!p || !colors)
         return false;
     memcpy(font, p, FONT_SIZE);
-    text_gdat_set_ui_colors(colors);
+    gtext_gdat_set_ui_colors(colors);
     text_set_message_cursor(0, MESSAGE_ROWS - 1);
     for (int i = 0; i < MESSAGE_ROWS; i++) {
         g_text_message_expiry[i] = MESSAGE_NEVER;

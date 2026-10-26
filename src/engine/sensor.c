@@ -34,7 +34,7 @@
 /* The frame count in the ORNAMENT_KEY_FRAMES value. */
 #define ORNAMENT_FRAMES_MASK     0x7fff
 
-/* Sound arguments (entry, priority) of sound_request_with_fallback and sound_request. */
+/* Sound arguments (entry, priority) of sndreq_request_with_fallback and sndreq_request. */
 #define SOUND_PRIORITY_MAP_SOUND 0x73
 #define SOUND_ENTRY_DOOR_MOVE    0x8e
 #define SOUND_ENTRY_DOOR_SHUT    0x8f
@@ -163,9 +163,9 @@ static int wall_or_floor_ornament(uint16_t sensor, int wall)
 /* The sound of the ornament of a sensor at (x, y), with delay. */
 static void ornament_sound(uint16_t sensor, int wall, int x, int y, int delay)
 {
-    sound_request_with_fallback((SoundCue){ornament_category(wall), wall_or_floor_ornament(sensor, wall),
-                                           SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                                SOUND_FALLBACK, x, y, delay);
+    sndreq_request_with_fallback((SoundCue){ornament_category(wall), wall_or_floor_ornament(sensor, wall),
+                                            SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
+                                 SOUND_FALLBACK, x, y, delay);
 }
 
 /* A wall sound comes from the square in front of the wall side, unless the party stands in the wall square. */
@@ -284,7 +284,8 @@ static void fall_risk(uint16_t text, int x, int y, int on_square)
         if (c->health)
             load = (int16_t)(load + (uint16_t)champ_get_load(i) / (int)((uint16_t)champ_get_max_load(c) >> 1));
     }
-    int chance = (int16_t)(load * FALL_LOAD_FACTOR + (text_is_visible(text) ? FALL_CHANCE_SHOWN : FALL_CHANCE_HIDDEN));
+    int chance =
+        (int16_t)(load * FALL_LOAD_FACTOR + (textrec_is_visible(text) ? FALL_CHANCE_SHOWN : FALL_CHANCE_HIDDEN));
     if (chance > FALL_CHANCE_MAX)
         chance = FALL_CHANCE_MAX;
     if (!on_square && (int)rand_below(PERCENT) < chance) {
@@ -296,13 +297,13 @@ static void fall_risk(uint16_t text, int x, int y, int on_square)
         int c = rand_2bits();
         if (!champion(c)->health)
             c = g_game.leader;
-        sound_request_with_fallback(
+        sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
             SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
     } else {
-        sound_request((SoundCue){CAT_FLOOR_ORNAMENT, text_value(text), SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK,
-                                 SOUND_VOLUME_NORMAL},
-                      g_game.party_x, g_game.party_y, 1);
+        sndreq_request((SoundCue){CAT_FLOOR_ORNAMENT, textrec_value(text), SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK,
+                                  SOUND_VOLUME_NORMAL},
+                       g_game.party_x, g_game.party_y, 1);
     }
 }
 
@@ -337,9 +338,9 @@ static void floor_scan(FloorMove *m, int x, int y)
                     m->same_item = true;
                 m->creature = true;
             } else if (tt == THING_TEXT && m->type == -1 && m->enter && !m->on_square) {
-                if (text_kind(t) == TEXT_KIND_TEXT && text_is_visible(t)) {
+                if (textrec_kind(t) == TEXT_KIND_TEXT && textrec_is_visible(t)) {
                     char text[TEXT_SIZE];
-                    g_hooks.print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
+                    g_hooks.print_message(UI_WHITE, gtext_decode_dungeon(text, sizeof text, t, 1));
                 }
             } else if (tt > THING_GROUP && tt < THING_PROJECTILE) {
                 m->items = true;
@@ -426,13 +427,13 @@ static int wall_sensor_trigger(const FloorMove *m, uint16_t t, int kind, int dat
 /* An ornament text of the square reacts to the move: a random pit, a fall risk, an item holder on a wall. */
 static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
 {
-    if (text_kind(t) != TEXT_KIND_ORNAMENT)
+    if (textrec_kind(t) != TEXT_KIND_ORNAMENT)
         return;
-    int sub = text_subtype(t);
+    int sub = textrec_subtype(t);
     if (m->cell == -1) {
         if (sub == SUBTYPE_RANDOM_PIT) {
-            if (m->type == -1 && !m->on_square && g_game.champion_count && rand_below(PERCENT) < text_value(t) &&
-                text_is_visible(t) != m->enter) {
+            if (m->type == -1 && !m->on_square && g_game.champion_count && rand_below(PERCENT) < textrec_value(t) &&
+                textrec_is_visible(t) != m->enter) {
                 sensor_schedule_square_event(x, y, 0, EFFECT_SET, g_game.game_time + 1);
                 sensor_schedule_square_event(x, y, 0, EFFECT_CLEAR, g_game.game_time + PIT_OPEN_TICKS);
             }
@@ -440,8 +441,8 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
             fall_risk(t, x, y, m->on_square);
         }
     } else if (m->cell == thing_cell(t) && (sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER) &&
-               !m->same_item && text_is_visible(t) != m->enter && m->item == holder_item(text_value(t))) {
-        text_set_visible(t, m->enter & 1);
+               !m->same_item && textrec_is_visible(t) != m->enter && m->item == holder_item(textrec_value(t))) {
+        textrec_set_visible(t, m->enter & 1);
     }
 }
 
@@ -790,7 +791,7 @@ void sensor_start_timers(void)
 
 static void text_set_shown(uint16_t text, int effect)
 {
-    text_set_visible(text, effect == EFFECT_TOGGLE ? !text_is_visible(text) : effect == EFFECT_SET);
+    textrec_set_visible(text, effect == EFFECT_TOGGLE ? !textrec_is_visible(text) : effect == EFFECT_SET);
 }
 
 /* Text subtypes of the square events: generators and sounds. */
@@ -804,10 +805,10 @@ static void text_set_shown(uint16_t text, int effect)
 /* A wall text of subtype 7 shows the same state as its twin on the level above or below. */
 static void text_update_linked(const TimelineEvent *e, uint16_t text)
 {
-    bool visible = text_is_visible(text);
-    int delta = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, text_value(text), GDAT_TYPE_VALUE, ORNAMENT_KEY_UP)
-                    ? -1
-                    : 1;
+    bool visible = textrec_is_visible(text);
+    int delta =
+        gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(text), GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1
+                                                                                                                   : 1;
     int16_t x = e->data[EVENT_X];
     int16_t y = e->data[EVENT_Y];
     int map = dungeon_location_on_map(g_game.party_map, delta, &x, &y);
@@ -818,8 +819,8 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT || thing_cell(t) != e->data[EVENT_CELL])
             continue;
-        if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == SUBTYPE_LADDER_HIDDEN)
-            text_set_visible(t, visible);
+        if (textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == SUBTYPE_LADDER_HIDDEN)
+            textrec_set_visible(t, visible);
     }
     dun_set_current_map(saved);
 }
@@ -828,9 +829,9 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
 static void text_play_sound(uint16_t text, int x, int y)
 {
     /* sound (CAT_DUNGEON, map + 1, entry): a sound of a map */
-    sound_request(
-        (SoundCue){CAT_DUNGEON, g_party.cur_map + 1, text_value(text), SOUND_PRIORITY_MAP_SOUND, SOUND_VOLUME_LOUD}, x,
-        y, 1);
+    sndreq_request(
+        (SoundCue){CAT_DUNGEON, g_party.cur_map + 1, textrec_value(text), SOUND_PRIORITY_MAP_SOUND, SOUND_VOLUME_LOUD},
+        x, y, 1);
 }
 
 /* A counter sensor reaches zero (or leaves it): true when its count is zero or below. */
@@ -945,7 +946,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
                         dungeon_unlink_thing_from_list(t, possessions);
                     else
                         dungeon_unlink_thing_from_square(t, g_party.cur_map, fx, fy);
-                    set_thing_word(t, THING_NEXT, THING_NONE);
+                    thing_set_word(t, THING_NEXT, THING_NONE);
                     champ_revive(item_add_charges(t, 0));
                     continue;
                 }
@@ -1050,9 +1051,9 @@ static void generate_creature(uint16_t t)
     int dir = sensor_flag(t, SENSOR_STATE) ? rand_2bits() : sensor_effect(t);
     uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, tx, ty);
     if (sensor_flag(t, SENSOR_INVERTED) && g != THING_NONE)
-        set_thing_word(g, GROUP_ITEM_CLASS, sensor_delay(t));
+        thing_set_word(g, GROUP_ITEM_CLASS, sensor_delay(t));
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_request(
+        sndreq_request(
             (SoundCue){CAT_CREATURE_APPEARS, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, tx, ty,
             1);
 }
@@ -1190,9 +1191,9 @@ static void wall_square_event(TimelineEvent *e)
         if (thing_cell(t) != e->data[EVENT_CELL])
             continue;
         if (thing_type(t) == THING_TEXT) {
-            if (text_kind(t) > TEXT_KIND_ORNAMENT)
+            if (textrec_kind(t) > TEXT_KIND_ORNAMENT)
                 continue;
-            int sub = text_subtype(t);
+            int sub = textrec_subtype(t);
             if (sub == SUBTYPE_TOGGLE || sub == SUBTYPE_LADDER_HIDDEN) {
                 text_set_shown(t, effect);
                 if (sub == SUBTYPE_LADDER_HIDDEN)
@@ -1218,22 +1219,22 @@ static void text_schedule_spawn(uint16_t t, int sub, bool was_visible, int x, in
                         .type = EVENT_SPAWN_CREATURE};
     ev.data[EVENT_X] = (uint8_t)x;
     ev.data[EVENT_Y] = (uint8_t)y;
-    ev.data[SPAWN_EVENT_CREATURE] = text_value(t);
+    ev.data[SPAWN_EVENT_CREATURE] = textrec_value(t);
     timeline_add_event(&ev);
 }
 
 /* A floor text reacts to a square event: it shows or hides (a visible message prints), spawns, or plays its sound. */
 static void floor_text_event(uint16_t t, int effect, int x, int y)
 {
-    if (text_kind(t) > TEXT_KIND_ORNAMENT)
+    if (textrec_kind(t) > TEXT_KIND_ORNAMENT)
         return;
-    int sub = text_subtype(t);
-    bool was_visible = text_is_visible(t);
+    int sub = textrec_subtype(t);
+    bool was_visible = textrec_is_visible(t);
     if (sub == SUBTYPE_TOGGLE) {
         text_set_shown(t, effect);
-        if (text_kind(t) == TEXT_KIND_TEXT && !was_visible && text_is_visible(t) && dun_on_party_square(x, y)) {
+        if (textrec_kind(t) == TEXT_KIND_TEXT && !was_visible && textrec_is_visible(t) && dun_on_party_square(x, y)) {
             char text[TEXT_SIZE];
-            g_hooks.print_message(UI_WHITE, text_decode_dungeon(text, sizeof text, t, 1));
+            g_hooks.print_message(UI_WHITE, gtext_decode_dungeon(text, sizeof text, t, 1));
         }
     } else if ((sub == TEXT_GENERATOR_SLOW || sub == TEXT_GENERATOR_FAST) && effect == EFFECT_SET) {
         text_schedule_spawn(t, sub, was_visible, x, y);
@@ -1452,9 +1453,9 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
                 game_has_cheat(CHEAT_WALLS) ? 0 : champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
             for (int i = 0; i < CHAMPION_MAX; i++)
                 if (hurt >> i & 1)
-                    sound_request_with_fallback((SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_PUSHED,
-                                                           SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
-                                                SOUND_FALLBACK, x, y, 1);
+                    sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_PUSHED,
+                                                            SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
+                                                 SOUND_FALLBACK, x, y, 1);
         }
     }
     uint16_t g = creature_group_at(g_party.cur_map, x, y);
@@ -1472,10 +1473,10 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
     creature_alert(g, (Location){x, y}, ALERT_STARTLED, ALERT_ALWAYS, (uint16_t)damage);
     *state = *state ? *state - 1 : 0;
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | *state);
-    sound_request_with_fallback(
+    sndreq_request_with_fallback(
         (SoundCue){CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL},
         SOUND_FALLBACK, x, y, 1);
-    sound_request_with_fallback(
+    sndreq_request_with_fallback(
         (SoundCue){CAT_MISC, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL},
         SOUND_FALLBACK, x, y, 1);
     return true;
@@ -1514,7 +1515,7 @@ void timeline_event_door_animation(TimelineEvent *e)
         *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | (state & SQUARE_DOOR_STATE));
         if (opening ? state != DOOR_STATE_OPEN : state != DOOR_STATE_CLOSED)
             again = 1;
-        sound_request_with_fallback(
+        sndreq_request_with_fallback(
             (SoundCue){CAT_DOOR, dun_get_door_type(door),
                        !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT : SOUND_ENTRY_DOOR_MOVE,
                        SOUND_PRIORITY_DOOR, SOUND_VOLUME_NORMAL},
@@ -1637,7 +1638,7 @@ void timeline_event_sensor(TimelineEvent *e)
         door_set_flag(thing, DOOR_BUTTON_PRESSED, false);
         break;
     case EVENT_SET_MARKER:
-        text_set_visible(thing, true);
+        textrec_set_visible(thing, true);
         break;
     }
 }
@@ -1664,10 +1665,10 @@ void sensor_process_map_entry(bool entering)
                         start_ambient_sound(t, x, y, (uint16_t)ornament_cycle(t, wall), wall);
                     }
                 } else if (thing_type(t) == THING_TEXT && entering) {
-                    if (text_kind(t) == TEXT_KIND_ORNAMENT && text_subtype(t) == TEXT_GENERATOR_ON_ENTRY &&
-                        !text_is_visible(t)) {
-                        text_set_visible(t, true);
-                        creature_create_group(text_value(t), GROUP_COUNT_FULL_HEALTH, rand_2bits(), x, y);
+                    if (textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == TEXT_GENERATOR_ON_ENTRY &&
+                        !textrec_is_visible(t)) {
+                        textrec_set_visible(t, true);
+                        creature_create_group(textrec_value(t), GROUP_COUNT_FULL_HEALTH, rand_2bits(), x, y);
                     }
                 }
             }
@@ -1783,9 +1784,9 @@ static void wall_click_fountain(WallClick *c)
         for (int i = 0; i < CHAMPION_MAX; i++)
             if (champion(i)->health)
                 champion(i)->water = WATER_FULL;
-        sound_request_with_fallback((SoundCue){CAT_CHAMPION, champion(g_game.leader)->portrait, SOUND_ENTRY_SWALLOW,
-                                               SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
-                                    SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
+        sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(g_game.leader)->portrait, SOUND_ENTRY_SWALLOW,
+                                                SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
+                                     SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
     } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
         item_add_charges(hand, CHARGES_FULL_AMOUNT);
         c->take = 1;
@@ -1816,7 +1817,7 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
         return 0;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_request_with_fallback(
+        sndreq_request_with_fallback(
             (SoundCue){CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
             SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
     sensor_trigger_target(t, EFFECT_SET, *extra);
@@ -1892,7 +1893,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
     case WALL_CLICK_ITEM: {
         bool match = item_get_index(c->hand) == data;
         if (match && sensor_flag(t, SENSOR_STATE))
-            set_thing_word(champ_take_from_leader_hand(), THING_NEXT, THING_NONE); /* frees it */
+            thing_set_word(champ_take_from_leader_hand(), THING_NEXT, THING_NONE); /* frees it */
         return match == sensor_flag(t, SENSOR_INVERTED);
     }
     case WALL_CLICK_TOGGLE:
@@ -1948,7 +1949,7 @@ static void wall_click_sensor(WallClick *c, uint16_t t)
         return;
     c->stop = 1;
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sound_request_with_fallback(
+        sndreq_request_with_fallback(
             (SoundCue){CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
             SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
     sensor_trigger_target(t, effect, extra);
@@ -1989,10 +1990,10 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
 /* A clicked ornament text: an item holder, a ladder, or a switch. */
 static void wall_click_text(WallClick *c, uint16_t t)
 {
-    if (text_kind(t) != TEXT_KIND_ORNAMENT || !c->has_leader)
+    if (textrec_kind(t) != TEXT_KIND_ORNAMENT || !c->has_leader)
         return;
-    int value = text_value(t), sub = text_subtype(t);
-    bool visible = text_is_visible(t);
+    int value = textrec_value(t), sub = textrec_subtype(t);
+    bool visible = textrec_is_visible(t);
     if (sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER) {
         wall_click_holder_text(c, t, sub, value, visible);
     } else if ((sub == SUBTYPE_LADDER_HIDDEN && !visible) || sub == SUBTYPE_LADDER) {
@@ -2008,7 +2009,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
             g_hooks.flush_input();
         }
     } else if (sub == SUBTYPE_HAND_SWITCH && c->hand == THING_NONE) {
-        text_set_visible(t, !visible);
+        textrec_set_visible(t, !visible);
     }
 }
 

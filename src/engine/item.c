@@ -104,11 +104,11 @@ uint8_t item_gdat_index(uint16_t thing)
             break;
         case THING_TEXT: {
             /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
-            int sub = text_subtype(thing);
-            if (text_kind(thing) != TEXT_KIND_ORNAMENT || (sub != SUBTYPE_STILL && sub != SUBTYPE_ANIMATED &&
-                                                           sub != SUBTYPE_TOGGLE && sub != SUBTYPE_HAND_SWITCH))
+            int sub = textrec_subtype(thing);
+            if (textrec_kind(thing) != TEXT_KIND_ORNAMENT || (sub != SUBTYPE_STILL && sub != SUBTYPE_ANIMATED &&
+                                                              sub != SUBTYPE_TOGGLE && sub != SUBTYPE_HAND_SWITCH))
                 return GDAT_NO_INDEX;
-            return text_value(thing);
+            return textrec_value(thing);
         }
         case THING_SENSOR: {
             int index = sensor_ornament_index(thing);
@@ -375,8 +375,8 @@ bool item_has_charged_action(uint16_t thing)
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
     for (int entry = GFX_ACTION_FIRST; entry <= GFX_ACTION_LAST; entry++)
         if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_TEXT, entry) &&
-            text_gdat_field(category, index, entry, FIELD_COMMAND) &&
-            text_gdat_field(category, index, entry, FIELD_CHARGES))
+            gtext_gdat_field(category, index, entry, FIELD_COMMAND) &&
+            gtext_gdat_field(category, index, entry, FIELD_CHARGES))
             return true;
     return false;
 }
@@ -392,8 +392,8 @@ const char *item_name(uint16_t thing)
             g_text_args.champion = (int16_t)champion;
     }
     char raw[TEXT_SIZE];
-    /* text_gdat formats the name and text_format formats it a second time, as in the original */
-    return text_format(text_gdat(category, index, GFX_ITEM_NAME, raw), name);
+    /* gtext_gdat formats the name and gtext_format formats it a second time, as in the original */
+    return gtext_format(gtext_gdat(category, index, GFX_ITEM_NAME, raw), name);
 }
 
 /* Item commands */
@@ -441,7 +441,7 @@ void item_set_gdat_index(uint16_t thing, int index)
         int old_kind = container_kind(thing);
         container_set_gdat_index(thing, (uint16_t)index);
         if (old_kind == CONTAINER_MINION_MAP)
-            set_thing_word(thing, MINION_MAP_LOCATION, THING_NONE);
+            thing_set_word(thing, MINION_MAP_LOCATION, THING_NONE);
         break;
     }
     }

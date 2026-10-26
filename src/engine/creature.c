@@ -637,7 +637,7 @@ void creature_activate_groups_on_map(void)
             now |= keep;
             if ((state & (ANIM_LOOP | ANIM_FRAME_MASK)) == ANIM_SINGLE_LOOP)
                 now = (uint16_t)((now & (uint16_t)~(ANIM_LOOP | ANIM_FRAME_MASK)) | keep | ANIM_SINGLE_LOOP);
-            set_thing_word(g, GROUP_ANIM_STATE, now);
+            thing_set_word(g, GROUP_ANIM_STATE, now);
         }
 }
 
@@ -889,9 +889,9 @@ uint32_t creature_animate_step(void)
     g_ai.anim[0] = anim[0];
     g_ai.anim[1] = anim[1];
     if ((step[STEP_SOUND] & STEP_SOUND_MASK) != STEP_NO_SOUND)
-        sound_request((SoundCue){CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE,
-                                 SOUND_VOLUME_NORMAL},
-                      g_ai.event.data[0], g_ai.event.data[1], 1);
+        sndreq_request((SoundCue){CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE,
+                                  SOUND_VOLUME_NORMAL},
+                       g_ai.event.data[0], g_ai.event.data[1], 1);
     int16_t delay = anim_step_delay(step);
     if (own_step)
         g_ai.anim_step = NULL;
@@ -910,7 +910,7 @@ void creature_process_event(int16_t x, int16_t y, int type)
     a->event = EVENT_NO_SLOT;
     if (!thing_word(group, GROUP_HEALTH)) {
         a->damage = 1;
-        set_thing_word(group, GROUP_HEALTH, a->damage);
+        thing_set_word(group, GROUP_HEALTH, a->damage);
     }
     int16_t damage = (int16_t)a->damage;
     bool hit = damage > 0;
@@ -926,7 +926,7 @@ void creature_process_event(int16_t x, int16_t y, int type)
             if (info->regeneration < 0)
                 damage = (int16_t)(damage + q);
             else if (thing_word(group, GROUP_HEALTH) < info->max_health)
-                set_thing_word(group, GROUP_HEALTH, (uint16_t)(thing_word(group, GROUP_HEALTH) + q));
+                thing_set_word(group, GROUP_HEALTH, (uint16_t)(thing_word(group, GROUP_HEALTH) + q));
             a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - elapsed % regen);
         }
     }
@@ -985,9 +985,9 @@ void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, i
                 uint16_t t = thing_with_cell(item, drop_cell(x, y));
                 move_thing(t, MOVE_NEW_ITEM, 0, x, y);
                 if ((int16_t)sound_map >= 0)
-                    sound_request_with_fallback((SoundCue){item_gdat_category(item), item_gdat_index(item),
-                                                           SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                                SOUND_FALLBACK, x, y, (int16_t)sound_map);
+                    sndreq_request_with_fallback((SoundCue){item_gdat_category(item), item_gdat_index(item),
+                                                            SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                                 SOUND_FALLBACK, x, y, (int16_t)sound_map);
             }
         }
     }
@@ -997,13 +997,13 @@ void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, i
         if (!(creature_group_info(group)->flags & CREATURE_STATIC))
             t = thing_with_cell(t, drop_cell(x, y));
         if (thing_type(t) == THING_PROJECTILE) {
-            set_thing_word(t, THING_NEXT, THING_NONE);
+            thing_set_word(t, THING_NEXT, THING_NONE);
         } else {
             move_thing(t, MOVE_NEW_ITEM, 0, x, y);
             if ((int16_t)sound_map >= 0)
-                sound_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
-                                                       SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                            SOUND_FALLBACK, x, y, (int16_t)sound_map);
+                sndreq_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
+                                                        SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                             SOUND_FALLBACK, x, y, (int16_t)sound_map);
         }
         t = next;
     }
@@ -1034,7 +1034,7 @@ void creature_delete_group_at(int16_t x, int16_t y, int mode, int sound_map)
     move_thing(group, x, y, MOVE_CREATED, 0);
     creature_drop_possessions(group, x, y, mode, sound_map);
     ai_free_cached_data(group);
-    set_thing_word(group, THING_NEXT, THING_NONE);
+    thing_set_word(group, THING_NEXT, THING_NONE);
 }
 
 /* True when (x, y) of map is near the party, in front of it, and the party sees it. */
@@ -1065,7 +1065,7 @@ bool creature_damage_current_group(int damage)
     }
     uint16_t health = thing_word(g_ai.group_thing, GROUP_HEALTH);
     if (health <= damage) {
-        set_thing_word(g_ai.group_thing, GROUP_HEALTH, 1);
+        thing_set_word(g_ai.group_thing, GROUP_HEALTH, 1);
         if (!is_static) {
             if (class_flags & AI_CLASS_DIES_NEAR_PARTY) {
                 if (!is_near_party_front(g_ai.event.data[0], g_ai.event.data[1], g_ai.map))
@@ -1089,12 +1089,12 @@ bool creature_damage_current_group(int damage)
                 scream = !rand_2bits();
         }
         if (scream)
-            sound_request((SoundCue){CAT_CREATURE, group_creature(g_ai.group_thing),
-                                     SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_CREATURE,
-                                     SOUND_VOLUME_NORMAL},
-                          g_ai.event.data[0], g_ai.event.data[1], 1);
+            sndreq_request((SoundCue){CAT_CREATURE, group_creature(g_ai.group_thing),
+                                      SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_CREATURE,
+                                      SOUND_VOLUME_NORMAL},
+                           g_ai.event.data[0], g_ai.event.data[1], 1);
     }
-    set_thing_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
+    thing_set_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
     return false;
 }
 
@@ -1260,12 +1260,12 @@ uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_
     uint16_t group = dungeon_unused_thing(THING_GROUP);
     if (group == THING_NONE || g_active_group_count >= g_active_group_max) {
         if (minion)
-            set_thing_word(projectile, THING_NEXT, THING_NONE);
+            thing_set_word(projectile, THING_NEXT, THING_NONE);
         return THING_NONE;
     }
     group_set_creature(group, (uint8_t)creature_type);
     const CreatureInfo *info = creature_info(gdat_current(), creature_type);
-    set_thing_word(group, GROUP_POSSESSIONS, THING_ENDOFLIST);
+    thing_set_word(group, GROUP_POSSESSIONS, THING_ENDOFLIST);
     group_set_flag(group, GROUP_DO_NOT_DISCARD, false);
     group_set_dir(group, dir);
     group_set_active(group, GROUP_NOT_ACTIVE);
@@ -1274,17 +1274,17 @@ uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_
     int n = (count < GROUP_SIZE_MAX ? count : GROUP_SIZE_MAX) + 1;
     uint16_t health = (uint16_t)((info->max_health * (uint16_t)n) >> GROUP_HEALTH_SHIFT);
     health = (uint16_t)(health + rand_below((uint16_t)((health >> GROUP_HEALTH_SHIFT) + 1)));
-    set_thing_word(group, GROUP_HEALTH, health);
+    thing_set_word(group, GROUP_HEALTH, health);
     group_set_mood(group, 0);
-    set_thing_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, g_party.cur_map));
-    set_thing_word(group, GROUP_ITEM_CLASS, THING_NONE);
+    thing_set_word(group, GROUP_HOME, (uint16_t)location_pack(x, y, g_party.cur_map));
+    thing_set_word(group, GROUP_ITEM_CLASS, THING_NONE);
     if (move_thing(group, MOVE_CREATED, 0, x, y) == MOVE_LEFT_DUNGEON) {
         /* the original frees a stale thing here when the group links no projectile */
         if (minion)
-            set_thing_word(projectile, THING_NEXT, THING_NONE);
+            thing_set_word(projectile, THING_NEXT, THING_NONE);
         return THING_NONE;
     }
-    set_thing_word(group, GROUP_ITEM_CLASS, 0);
+    thing_set_word(group, GROUP_ITEM_CLASS, 0);
     return group;
 }
 
@@ -1325,7 +1325,7 @@ uint16_t creature_summon_group(CreatureSummon summon)
         uint16_t t = thing_word(group, GROUP_POSSESSIONS);
         while (t != THING_ENDOFLIST && thing_type(t) != THING_PROJECTILE)
             t = dungeon_next_thing(t);
-        set_thing_word(t, PROJECTILE_PAYLOAD, (uint16_t)link);
+        thing_set_word(t, PROJECTILE_PAYLOAD, (uint16_t)link);
     }
     dun_set_current_map(saved);
     return group;
@@ -1363,7 +1363,7 @@ void move_update_carried_missiles(uint16_t holder, int16_t x, int16_t y, int16_t
     for (uint16_t t = thing_word(holder, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_PROJECTILE)
             continue;
-        set_thing_word(t, PROJECTILE_LOCATION, (uint16_t)location_pack(x, y, map));
+        thing_set_word(t, PROJECTILE_LOCATION, (uint16_t)location_pack(x, y, map));
         projectile_set_holder_waits(t, flag & 1);
     }
 }
@@ -1385,8 +1385,8 @@ void timeline_event_move_group(TimelineEvent *e)
 {
     int x = e->data[0], y = e->data[1];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
-        sound_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
-                      1);
+        sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
+                       1);
 }
 
 int creature_get_party_distance(int16_t x, int16_t y)
@@ -1522,7 +1522,7 @@ void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength)
         Champion *c = champion(i);
         if (!c->health)
             continue;
-        sound_request_with_fallback(
+        sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
             SOUND_FALLBACK, x, y, 1);
         load = (int16_t)(load + (uint16_t)champ_get_load(i) / LOAD_PUSH_DIVISOR);
@@ -1553,7 +1553,7 @@ void move_push_creature(int arrow)
     if (!move_party_can_push_group(g)) {
         for (int i = 0; i < g_game.champion_count; i++)
             if (champion(i)->health && (i == g_game.leader || !rand_2bits()))
-                sound_request_with_fallback(
+                sndreq_request_with_fallback(
                     (SoundCue){CAT_CHAMPION, i, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD}, SOUND_FALLBACK,
                     g_game.party_x, g_game.party_y, 1);
         return;

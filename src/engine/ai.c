@@ -1973,7 +1973,7 @@ static int cmd_consume(void)
     }
     if (used) {
         dungeon_unlink_thing_from_list(t, group_possessions(g_ai.group_thing));
-        set_thing_word(t, THING_NEXT, THING_NONE);
+        thing_set_word(t, THING_NEXT, THING_NONE);
         g_ai.active->action = 0;
         return AI_RESULT_DONE;
     }
@@ -1993,9 +1993,9 @@ static int cmd_check_transform(void)
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;
-        if (text_kind(t) != TEXT_KIND_ORNAMENT || text_subtype(t) != TEXT_TRANSFORM)
+        if (textrec_kind(t) != TEXT_KIND_ORNAMENT || textrec_subtype(t) != TEXT_TRANSFORM)
             continue;
-        g_ai.active->sub = (int8_t)text_value(t);
+        g_ai.active->sub = (int8_t)textrec_value(t);
         g_ai.active->action = ACTION_TRANSFORM;
         return AI_RESULT_DONE;
     }
@@ -2194,11 +2194,11 @@ int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t
                     *out_sensor = t;
                     return d;
                 }
-            } else if (type == THING_TEXT && text_kind(t) == TEXT_KIND_ORNAMENT) {
-                int kind = text_subtype(t);
+            } else if (type == THING_TEXT && textrec_kind(t) == TEXT_KIND_ORNAMENT) {
+                int kind = textrec_subtype(t);
                 if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST)
                     continue;
-                int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, text_value(t),
+                int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(t),
                                                        GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
                 if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
                     *out_sensor = THING_NONE;
@@ -2613,9 +2613,9 @@ static int act_turn_pick_up(void)
 static void drop_sound(uint16_t t, int n)
 {
     if (n == 1)
-        sound_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
-                                               SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                    SOUND_FALLBACK, ai_state.dest_x, ai_state.dest_y, 1);
+        sndreq_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
+                                                SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                     SOUND_FALLBACK, ai_state.dest_x, ai_state.dest_y, 1);
 }
 
 /* Action: the creature drops its items of the filter on its destination square. */
@@ -2742,7 +2742,7 @@ static void become_creature(int type)
     group_set_creature(g_ai.group_thing, (uint8_t)type);
     g_ai.info = creature_info(gdat_current(), type);
     int16_t max = (int16_t)g_ai.info->max_health;
-    set_thing_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(max + rand_below((uint16_t)((max >> 3) + 1))));
+    thing_set_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(max + rand_below((uint16_t)((max >> 3) + 1))));
     creature_anim_start(type, (int8_t)g_ai.active->action, g_ai.anim, &g_ai.anim_step, 0);
     if (!creature_is_native_to_map(g_ai.group_thing, g_ai.map)) {
         creature_delete_group_at(g_ai.event.data[0], g_ai.event.data[1], 0, 1);
@@ -2779,7 +2779,7 @@ static void act_transform(void)
     } else {
         explosion_create(EXPLOSION_DEATH_CLOUD, POWER_MAX, x, y, EXPLOSION_AT_CENTER);
     }
-    sound_request((SoundCue){CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD}, x, y, 1);
+    sndreq_request((SoundCue){CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD}, x, y, 1);
 }
 
 /* Action: the creature explodes, spawns a creature, or becomes another creature type. */

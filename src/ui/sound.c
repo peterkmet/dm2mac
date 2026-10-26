@@ -35,7 +35,7 @@ void sound_set_volume(int level)
 bool sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
 {
     int loudness, pan;
-    sound_volume_pan(volume, lateral, forward, &loudness, &pan);
+    sndreq_volume_pan(volume, lateral, forward, &loudness, &pan);
     for (int i = 0; i < SOUND_VOICES; i++) {
         Voice *v = &voices[i];
         if (v->data)

@@ -21,7 +21,7 @@ def lib():
     lib.creature_info.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.thing_word.restype = ctypes.c_uint16
-    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     return lib
 
 
@@ -47,5 +47,5 @@ def test_a_stale_active_index_reads_no_active_group(lib, gdat, start, tmp_path):
     assert lib.save_load(str(path).encode(), gdat) == 0
     group = walking_group(lib, gdat)
     word = lib.thing_word(group, C.GROUP_CREATURE)
-    lib.set_thing_word(group, C.GROUP_CREATURE, word & 0xFF | STALE_INDEX << 8)
+    lib.thing_set_word(group, C.GROUP_CREATURE, word & 0xFF | STALE_INDEX << 8)
     assert not lib.creature_is_flying(group)

@@ -875,13 +875,13 @@ def add_thing(ai, type_, words, map_, x, y, cell):
     """Adds the same new thing (record words from +2) on (x, y) of map_ in both; returns it."""
     lib, emu = ai.lib, ai.emu
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.set_thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     mine = lib.dungeon_unused_thing(type_)
     theirs = emu.call(DUN_GET_UNUSED_THING, type_) & 0xFFFF
     assert mine == theirs
     record = emu.read_u32(0x7F288 + 4 * type_) + (mine & C.THING_INDEX_MASK) * THING_SIZES[type_]
     for i, w in enumerate(words):
-        lib.set_thing_word(mine, 2 + 2 * i, w)
+        lib.thing_set_word(mine, 2 + 2 * i, w)
         emu.write(record + 2 + 2 * i, struct.pack("<H", w))
     thing = mine | cell << C.THING_CELL_SHIFT
     saved = ai.sc.party.cur_map
@@ -903,7 +903,7 @@ def add_projectile(ai, payload, direction, map_, x, y, cell):
     emu.write(buf, bytes(event))
     index = lib.timeline_add_event(ctypes.byref(event))
     assert index == emu.call(TIMELINE_ADD_EVENT, buf) & 0xFFFF
-    lib.set_thing_word(thing, 6, index)
+    lib.thing_set_word(thing, 6, index)
     record = emu.read_u32(0x7F288 + 4 * 14) + (thing & C.THING_INDEX_MASK) * 8
     emu.write(record + 6, struct.pack("<H", index))
     return thing
@@ -983,7 +983,7 @@ GROUP_DIR_WORD, WEST = C.GROUP_DIR, C.DIR_WEST
 
 
 def set_word(ai, thing, offset, value):
-    ai.lib.set_thing_word(thing, offset, value)
+    ai.lib.thing_set_word(thing, offset, value)
     ai.emu.write(ai.emu.call(DUN_GET_THING_DATA, thing & C.THING_ID_MASK) + offset, struct.pack("<H", value))
 
 

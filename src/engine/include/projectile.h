@@ -17,7 +17,7 @@ static inline uint8_t projectile_energy(uint16_t projectile)
 }
 static inline void projectile_set_energy(uint16_t projectile, int energy)
 {
-    set_thing_byte(projectile, PROJECTILE_ENERGY, energy);
+    thing_set_byte(projectile, PROJECTILE_ENERGY, energy);
 }
 static inline uint8_t projectile_hit_chance(uint16_t projectile)
 {
@@ -25,11 +25,11 @@ static inline uint8_t projectile_hit_chance(uint16_t projectile)
 }
 static inline void projectile_set_hit_chance(uint16_t projectile, int chance)
 {
-    set_thing_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
+    thing_set_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
 }
 static inline void projectile_set_holder_waits(uint16_t projectile, bool waits)
 {
-    set_thing_bit(projectile, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, waits);
+    thing_set_bit(projectile, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, waits);
 }
 static inline uint16_t explosion_type(uint16_t explosion)
 {
@@ -37,7 +37,7 @@ static inline uint16_t explosion_type(uint16_t explosion)
 }
 static inline void explosion_set_type(uint16_t explosion, int type)
 {
-    set_thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
+    thing_set_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
 }
 static inline bool explosion_is_centered(uint16_t explosion)
 {
@@ -45,7 +45,7 @@ static inline bool explosion_is_centered(uint16_t explosion)
 }
 static inline void explosion_set_centered(uint16_t explosion, bool centered)
 {
-    set_thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
+    thing_set_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
 }
 static inline uint16_t explosion_power(uint16_t explosion)
 {
@@ -53,7 +53,7 @@ static inline uint16_t explosion_power(uint16_t explosion)
 }
 static inline void explosion_set_power(uint16_t explosion, int power)
 {
-    set_thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);
+    thing_set_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);
 }
 
 /* Projectiles (thrown objects, spell missiles, missiles of sensors) and explosions. */

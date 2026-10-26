@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_GAME_TEXT_H
 #define DM2_ENGINE_GAME_TEXT_H
-/* Prefixes: text_decode_ text_format text_gdat */
+/* Prefixes: gtext_ */
 
 /* The game texts and the UI colors: decoding, formatting, and GDAT text items. */
 
@@ -65,27 +65,27 @@ extern char g_text_drive_path[TEXT_SIZE];
 #define FIELD_HAND       17
 
 /* A number as decimal text; pad right-aligns it in width characters with spaces. Uses one static buffer. */
-const char *text_format_number(int value, int pad, int width);
+const char *gtext_format_number(int value, int pad, int width);
 /* Copies fmt to dst with the format codes replaced; returns dst (TEXT_SIZE bytes). */
-char *text_format(const char *fmt, char *dst);
+char *gtext_format(const char *fmt, char *dst);
 /* The text entry (category, index, 5, entry), decrypted and formatted, in dst (TEXT_SIZE bytes). */
-char *text_gdat(int category, int index, int entry, char *dst);
+char *gtext_gdat(int category, int index, int entry, char *dst);
 /* The part of a text entry before its first ':', NULL for an absent text. Uses one static buffer. */
-const char *text_gdat_label(int category, int index, int entry);
+const char *gtext_gdat_label(int category, int index, int entry);
 /* The number of field (0 SK, 1 LV, 2 CM, ... 17 WH) of a text entry, 0 when it is absent. */
-int16_t text_gdat_field(int category, int index, int entry, int field);
+int16_t gtext_gdat_field(int category, int index, int entry, int field);
 
-/* The text of a scroll or a text thing as stored, without the format pass; mode as in text_decode_dungeon. */
-void text_decode_raw(uint16_t thing, int mode, char *dst, size_t size);
+/* The text of a scroll or a text thing as stored, without the format pass; mode as in gtext_decode_dungeon. */
+void gtext_decode_raw(uint16_t thing, int mode, char *dst, size_t size);
 /* The text of a scroll or a text thing with its format codes replaced; mode 1 starts with a new line, mode bit 15
    also gives a hidden text. */
-char *text_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);
+char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);
 
 /* The UI colors that the font item of the interface GDAT gives (text_init). */
-void text_gdat_set_ui_colors(const uint8_t *colors);
+void gtext_gdat_set_ui_colors(const uint8_t *colors);
 /* The number that format code 10 + index inserts. */
-void text_format_set_number(int index, int value);
+void gtext_format_set_number(int index, int value);
 /* The text (7, 0, entry) that format code 17 inserts. */
-void text_format_set_entry(int entry);
+void gtext_format_set_entry(int entry);
 
 #endif /* DM2_ENGINE_GAME_TEXT_H */

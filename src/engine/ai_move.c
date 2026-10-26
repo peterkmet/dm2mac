@@ -1962,7 +1962,7 @@ void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell)
         }
         if (match) {
             dungeon_unlink_thing_from_list(t, list_head);
-            set_thing_word(t, THING_NEXT, THING_NONE);
+            thing_set_word(t, THING_NEXT, THING_NONE);
         }
     }
 }
@@ -1990,10 +1990,10 @@ int ai_find_marker(int level_delta, uint16_t id_mask)
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;
-        if (text_kind(t) != TEXT_KIND_AI_MARKER)
+        if (textrec_kind(t) != TEXT_KIND_AI_MARKER)
             continue;
         int level = ai_marker_level(t);
-        if ((level == (int16_t)level_delta || (level == other && text_is_visible(t))) &&
+        if ((level == (int16_t)level_delta || (level == other && textrec_is_visible(t))) &&
             (1 << ai_marker_kind(t)) & id_mask)
             return ai_marker_id(t);
     }
@@ -2006,7 +2006,7 @@ int ai_find_marker_by_id(int level_delta, int id)
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;
-        if (text_kind(t) == TEXT_KIND_AI_MARKER && ai_marker_level(t) == (int16_t)level_delta &&
+        if (textrec_kind(t) == TEXT_KIND_AI_MARKER && ai_marker_level(t) == (int16_t)level_delta &&
             ai_marker_kind(t) == (int16_t)id)
             return ai_marker_id(t);
     }

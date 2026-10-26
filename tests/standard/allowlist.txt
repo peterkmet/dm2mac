@@ -150,9 +150,6 @@ long engine/ai.c:test_condition rule 5.8: one short case for each target conditi
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
 module engine/include/ai_move.h rule 1.7: ai_move.h is a second public header of the module ai (removed by Task 18)
 module platform/main.c rule 1.7: the entry point has no header
-prefix engine/include/dungeon.h rule 1.8: the text record accessors text_ share the first word of ui/text.h (removed by Task 17)
-prefix engine/include/game_text.h rule 1.8: text_ shares the first word of ui/text.h (removed by Task 17)
-prefix engine/include/sound_request.h rule 1.8: sound_ shares the first word of ui/sound.h (removed by Task 17)
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-local control/control.c rule 7.6: the mutable static locals raw, z, screen (removed by Task 39)
 static-local control/turn.c rule 7.6: the mutable static locals error of two functions (removed by Task 39)

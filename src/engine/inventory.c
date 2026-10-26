@@ -471,7 +471,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
             champ_take_from_leader_hand(); /* the original also animates the mouth */
         c->food = min16(c->food + food, FOOD_MAX);
         champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_CONSUME);
-        set_thing_word(thing, THING_NEXT, THING_NONE);
+        thing_set_word(thing, THING_NEXT, THING_NONE);
         if (slot != -1)
             c->slots[slot] = THING_NONE;
     } else if (item_use_charge(thing)) {
@@ -483,7 +483,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
             return;
         if (slot == -1)
             champ_take_from_leader_hand();
-        set_thing_word(thing, THING_NEXT, THING_NONE);
+        thing_set_word(thing, THING_NEXT, THING_NONE);
         uint16_t flask = dungeon_unused_thing(THING_POTION);
         if (flask == THING_NONE)
             return;
@@ -497,7 +497,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
         c->stamina = c->max_stamina;
     if (c->health > c->max_health)
         c->health = c->max_health;
-    sound_request_with_fallback(
+    sndreq_request_with_fallback(
         (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
         SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
     c->redraw |= REDRAW_EATEN;

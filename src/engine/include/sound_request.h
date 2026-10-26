@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_SOUND_REQUEST_H
 #define DM2_ENGINE_SOUND_REQUEST_H
-/* Prefixes: sound_clear_ sound_flush_ sound_load sound_party_ sound_request sound_reset_ sound_volume_ */
+/* Prefixes: sndreq_ */
 
 /* The sound requests of the game rules: the queues of a game step and the delayed sounds. */
 
@@ -72,29 +72,29 @@ extern int g_sound_started_count;                     /* exported for the tests 
 
 /* Setup */
 /* Clears all queues and delayed sounds: the state of the program start. */
-void sound_reset_requests(void); /* exported for the tests */
+void sndreq_reset_requests(void); /* exported for the tests */
 /* Drops the requests of the game step: a map change loads other sounds. */
-void sound_clear_requests(void);
+void sndreq_clear_requests(void);
 
 /* Queries */
 /* Finds sound (category, index, entry) in GRAPHICS.DAT; the data stays in g. */
-int sound_load(const gdat_t *g, int category, int index, int entry, Sound *sound); /* exported for the tests */
+int sndreq_load(const gdat_t *g, int category, int index, int entry, Sound *sound); /* exported for the tests */
 /* The place of a sound at (dx, dy) from the party seen by the party facing party_dir. A sound that comes around
    walls (path_distance above the straight distance) is pushed further away. path_distance is the party distance
    map value at the square of the sound; false when it is negative (no path). Also exported for the tests. */
-bool sound_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset);
+bool sndreq_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset);
 /* The loudness (0-255) and stereo pan (0x0800 left to 0xf800 right) of a sound at lateral, forward. */
-void sound_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan);
+void sndreq_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan);
 
 /* Requests */
 /* Asks for the sound of cue at (x, y) of the current map: delay 0 plays it now, 1 at the end of the game step, a
-   negative delay at the next sound_flush_requests(1), a longer delay through the timeline. */
-void sound_request(SoundCue cue, int16_t x, int16_t y, int delay);
-/* sound_request with the sound of index fallback when the index of cue has no such sound. */
-void sound_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay);
+   negative delay at the next sndreq_flush_requests(1), a longer delay through the timeline. */
+void sndreq_request(SoundCue cue, int16_t x, int16_t y, int delay);
+/* sndreq_request with the sound of index fallback when the index of cue has no such sound. */
+void sndreq_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay);
 /* A delayed sound (EVENT_DELAYED_SOUND) is due: it plays when the party is still on its map. */
-void sound_request_delayed(int16_t slot);
+void sndreq_request_delayed(int16_t slot);
 /* Plays the requests of the game step (queue 0) or the deferred requests (queue 1). */
-void sound_flush_requests(int queue);
+void sndreq_flush_requests(int queue);
 
 #endif /* DM2_ENGINE_SOUND_REQUEST_H */

@@ -324,7 +324,7 @@ static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int c
             continue;
         total += money_coin_value(type) * counts[type];
         uint16_t item = money_coin_item(type);
-        text_format(text_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, raw), name);
+        gtext_format(gtext_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, raw), name);
         snprintf(coin, sizeof coin, "%s %d", name, counts[type]);
         count = info_append(lines, count, line, coin);
     }
@@ -340,12 +340,12 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
     int type = thing_type(thing);
     int count = info_add(lines, 0, "%s", item_name(thing));
     uint16_t weight = (uint16_t)item_weight(thing);
-    text_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
-    text_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
     char text[TEXT_SIZE * 2];
-    count = info_add_text(lines, count, text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
+    count = info_add_text(lines, count, gtext_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_SCROLL)
-        return info_add_text(lines, count, text_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
+        return info_add_text(lines, count, gtext_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
     if (type == THING_CONTAINER) {
         if (item_is_chest(thing))
             return info_add_contents(lines, count, thing);
@@ -364,8 +364,8 @@ char *ui_skill_rank_text(int champ, int skill, char *text)
     int level = champ_get_skill_level(champ, skill, 1);
     if (level > SKILL_LEVEL_MAX)
         level = SKILL_LEVEL_MAX;
-    text_format_set_entry(skill);
-    return text_gdat(CAT_PANEL, 0, skill_level_texts[level], text);
+    gtext_format_set_entry(skill);
+    return gtext_gdat(CAT_PANEL, 0, skill_level_texts[level], text);
 }
 
 /* ---- Offscreen bitmaps ---- */
@@ -771,16 +771,16 @@ static void show_damage_number(int champ)
     offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE},
                               ZONE_STATUS_DAMAGE + champ, DAMAGE_STAR_KEY);
     offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ, g_ui_colors[UI_WHITE], g_ui_colors[UI_RED],
-                                text_format_number(champion(champ)->damage, 0, NUMBER_DIGITS));
+                                gtext_format_number(champion(champ)->damage, 0, NUMBER_DIGITS));
 }
 
 /* Draws a value and its maximum ("83/ 83") in zone of the inventory. */
 static void show_value_pair(int zone, unsigned value, unsigned maximum)
 {
     char s[TEXT_SIZE];
-    strcpy(s, text_format_number(value, 1, NUMBER_DIGITS));
+    strcpy(s, gtext_format_number(value, 1, NUMBER_DIGITS));
     strcat(s, "/");
-    strcat(s, text_format_number(maximum, 1, NUMBER_DIGITS));
+    strcat(s, gtext_format_number(maximum, 1, NUMBER_DIGITS));
     text_draw_in_zone_shadowed(zone, g_ui_colors[UI_LIGHT_GRAY], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
 }
 
@@ -994,7 +994,7 @@ static void show_scroll_line(int center_x, int y, const char *line)
 static void show_scroll(uint16_t scroll)
 {
     char text[TEXT_SIZE * 2], line[TEXT_SIZE * 2];
-    text_decode_dungeon(text, sizeof text, scroll, SCROLL_TEXT_MODE);
+    gtext_decode_dungeon(text, sizeof text, scroll, SCROLL_TEXT_MODE);
     game_set_panel_mode(PANEL_MODE_SCROLL);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     ui_draw_viewport_image(CAT_SCROLL, 0, GFX_SCROLL_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
@@ -1138,10 +1138,10 @@ static bool show_object_info(uint16_t thing, bool full)
     text_draw_in_zone(ZONE_OBJECT_NAME, g_ui_colors[UI_LIGHT_GRAY], item_name(thing));
     show_slot(thing, SLOT_INFO, false, false, false);
     uint16_t weight = (uint16_t)item_weight(thing);
-    text_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
-    text_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
     char text[TEXT_SIZE];
-    show_description(text_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
+    show_description(gtext_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_CONTAINER) {
         if (item_is_chest(thing))
             show_chest_contents(thing);
@@ -1197,13 +1197,13 @@ static void show_skills_and_stats(void)
     zone_get_position(ZONE_STATS, &stat_x, &unused);
     y = unused;
     for (int stat = 1; stat < STAT_COUNT; stat++) {
-        text_draw_in_viewport(x, y, g_ui_colors[UI_LIGHT_GRAY], text_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
+        text_draw_in_viewport(x, y, g_ui_colors[UI_LIGHT_GRAY], gtext_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
         int16_t current = (int16_t)champ_get_stat(c, stat, 0);
         int maximum = (uint16_t)champ_get_stat(c, stat, 1);
         int color = current < maximum ? UI_RED : current > maximum ? UI_GREEN : UI_LIGHT_GRAY;
-        text_draw_in_viewport(stat_x, y, g_ui_colors[color], text_format_number((uint16_t)current, 1, NUMBER_DIGITS));
+        text_draw_in_viewport(stat_x, y, g_ui_colors[color], gtext_format_number((uint16_t)current, 1, NUMBER_DIGITS));
         strcpy(text, "/");
-        strcat(text, text_format_number((uint16_t)maximum, 1, NUMBER_DIGITS));
+        strcat(text, gtext_format_number((uint16_t)maximum, 1, NUMBER_DIGITS));
         text_draw_in_viewport((int16_t)(FONT_ADVANCE * NUMBER_DIGITS + stat_x), y, g_ui_colors[UI_LIGHT_GRAY], text);
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
@@ -1229,12 +1229,12 @@ static void show_load(int champ)
     int color = load > max_load                                       ? UI_RED
                 : load * LOAD_HIGH_WHOLE > max_load * LOAD_HIGH_PARTS ? UI_YELLOW
                                                                       : UI_LIGHT_GRAY;
-    text_format_set_number(ARG_LOAD_KG, (int16_t)(load / WEIGHT_TENTHS));
-    text_format_set_number(ARG_LOAD_TENTHS, (int16_t)(load % WEIGHT_TENTHS));
-    text_format_set_number(ARG_LOAD_MAX_KG, (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_LOAD_KG, (int16_t)(load / WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_LOAD_TENTHS, (int16_t)(load % WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_LOAD_MAX_KG, (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS));
     char text[TEXT_SIZE];
     text_draw_in_zone_shadowed(ZONE_LOAD, g_ui_colors[color], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
-                               text_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
+                               gtext_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
 }
 
 /* Draws the inventory buttons whose pressed state changed; returns the redraw flags that they add. */

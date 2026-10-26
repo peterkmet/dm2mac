@@ -1974,9 +1974,9 @@ static void click_creature(uint16_t group, int x, int y, int square_x, int squar
     if (!view_hit_test_creature(x, y, square_x, square_y, &side))
         return;
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
-        sound_request_with_fallback((SoundCue){CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK,
-                                               SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                                    SOUND_FALLBACK, square_x, square_y, 0);
+        sndreq_request_with_fallback((SoundCue){CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK,
+                                                SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
+                                     SOUND_FALLBACK, square_x, square_y, 0);
     } else if (!side) {
         move_set_push_mode(true);
         ui_draw_movement_arrows();
@@ -1992,17 +1992,17 @@ static void click_front_wall(bool passable, int x, int y)
     if (!g_game.champion_count)
         return;
     if (!passable)
-        sound_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
-                                               SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
-                                    SOUND_FALLBACK, x, y, 0);
+        sndreq_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
+                                                SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
+                                     SOUND_FALLBACK, x, y, 0);
     game_set_command_stop(true);
 }
 
 /* A door button of the door at (x, y): the door toggles, the button shows pressed until the next game step. */
 static void click_door_button(int x, int y, uint16_t door)
 {
-    sound_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                  g_game.party_x, g_game.party_y, 1);
+    sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
+                   g_game.party_x, g_game.party_y, 1);
     sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, g_game.game_time + 1);
     TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_party.cur_map),
                        .type = EVENT_DOOR_BUTTON_RELEASE};

@@ -234,11 +234,11 @@ void projectile_create(const ProjectileLaunch *launch)
             move_thing(thing_with_cell(payload, launch->cell), -1, 0, launch->x, launch->y);
         return;
     }
-    sound_request_with_fallback((SoundCue){item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH,
-                                           SOUND_PRIORITY_LAUNCH, SOUND_VOLUME_NORMAL},
-                                SOUND_FALLBACK, launch->x, launch->y, 1);
+    sndreq_request_with_fallback((SoundCue){item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH,
+                                            SOUND_PRIORITY_LAUNCH, SOUND_VOLUME_NORMAL},
+                                 SOUND_FALLBACK, launch->x, launch->y, 1);
     t = thing_with_cell(t, launch->cell);
-    set_thing_word(t, PROJECTILE_PAYLOAD, payload);
+    thing_set_word(t, PROJECTILE_PAYLOAD, payload);
     projectile_set_energy(t, launch->energy);
     projectile_set_hit_chance(t, launch->hit_chance);
     dungeon_link_thing_to_square(t, g_party.cur_map, launch->x, launch->y);
@@ -250,7 +250,7 @@ void projectile_create(const ProjectileLaunch *launch)
     put_le16(e.data + PROJECTILE_EVENT_POSITION,
              (uint16_t)(event_square_dir(launch->x, launch->y, launch->dir) | (launch->step & POSITION_STEP_MASK)
                                                                                   << POSITION_STEP_SHIFT));
-    set_thing_word(t, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
+    thing_set_word(t, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
 }
 
 void projectile_event_set_position(TimelineEvent *e, int16_t x, int16_t y, int16_t dir)
@@ -348,7 +348,7 @@ void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell)
                      ? SOUND_VOLUME_FULL
                      : min16(SOUND_VOLUME_FULL, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
     SoundCue cue = {CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE, volume};
-    sound_request_with_fallback(cue, SOUND_FALLBACK, ex, ey, 1);
+    sndreq_request_with_fallback(cue, SOUND_FALLBACK, ex, ey, 1);
     dungeon_link_thing_to_square(t, g_party.cur_map, ex, ey);
     int16_t delay = (uint16_t)type == EXPLOSION_SMOKE      ? SMOKE_DURATION
                     : (uint16_t)type == SPELL_MISSILE_WALL ? (int16_t)((uint16_t)power >> 1)
@@ -411,11 +411,11 @@ void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t 
                 move_thing(thing_with_cell(payload, thing_cell(projectile)), -2, 0, (int16_t)x, (int16_t)y);
             }
         }
-        sound_request_with_fallback((SoundCue){item_gdat_category(projectile), item_gdat_index(projectile),
-                                               SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                    SOUND_FALLBACK, (int16_t)x, (int16_t)y, 1);
+        sndreq_request_with_fallback((SoundCue){item_gdat_category(projectile), item_gdat_index(projectile),
+                                                SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
+                                     SOUND_FALLBACK, (int16_t)x, (int16_t)y, 1);
     }
-    set_thing_word(projectile, THING_NEXT, THING_NONE);
+    thing_set_word(projectile, THING_NEXT, THING_NONE);
 }
 
 /* The attack of a hit of projectile with payload, with its extra damage and its attack type. */
@@ -659,8 +659,8 @@ static uint16_t hit_explode(Hit *h, int16_t x, int16_t y, int cell)
     uint16_t power;
     uint16_t push_strength = 0;
     if (h->potion_bomb) {
-        set_thing_word(h->potion, THING_NEXT, THING_NONE);
-        set_thing_word(h->projectile, PROJECTILE_PAYLOAD, h->blast_type);
+        thing_set_word(h->potion, THING_NEXT, THING_NONE);
+        thing_set_word(h->projectile, PROJECTILE_PAYLOAD, h->blast_type);
         h->payload = h->blast_type;
         power = (uint16_t)h->blast_power;
     } else {
@@ -862,7 +862,7 @@ void projectile_process_event(TimelineEvent *event)
     }
     e.time_map++;
     put_le16(e.data + PROJECTILE_EVENT_THING, projectile);
-    set_thing_word(projectile, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
+    thing_set_word(projectile, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
 }
 
 /* ---- Explosion events ---- */
@@ -949,7 +949,7 @@ void explosion_process_event(TimelineEvent *e)
                 explosion_set_power(t, (unsigned)(power - DEATH_CLOUD_DECAY));
             break;
         case BLAST_SMOKE:
-            sound_request_with_fallback(
+            sndreq_request_with_fallback(
                 (SoundCue){CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE, SOUND_VOLUME_LOUD},
                 SOUND_FALLBACK, x, y, 1);
             explosion_set_type(t, explosion_type(t) + 1);
@@ -969,7 +969,7 @@ void explosion_process_event(TimelineEvent *e)
         (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_FADING))
         g_party.redraw |= REDRAW_VIEW;
     dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
-    set_thing_word(t, THING_NEXT, THING_NONE);
+    thing_set_word(t, THING_NEXT, THING_NONE);
 }
 
 /* ---- Creature attacks ---- */
@@ -1080,7 +1080,7 @@ int creature_attack_champion(uint16_t group, int champ)
                 power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
             damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
             if (damage) {
-                sound_request_with_fallback(
+                sndreq_request_with_fallback(
                     (SoundCue){CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
                     SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_DELAY_HURT);
                 int16_t poison;
