@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ids.h"
+#include "os.h"
 #include "video.h"
 #include "zone.h"
 
@@ -37,7 +38,7 @@ static void rebuild_cache(void)
     image_count = cache_owner ? gdat_item_count(cache_owner) : 0;
     images = calloc(image_count ? image_count : 1, sizeof *images);
     if (!images)
-        image_count = 0;
+        os_fatal("out of memory");
 }
 
 /* Rebuilds the image cache when another GRAPHICS.DAT is selected. */
