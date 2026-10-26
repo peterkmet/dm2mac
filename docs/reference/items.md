@@ -1,22 +1,22 @@
 # Items
 
-The values of every item of `GRAPHICS.DAT` (PC DOS, English), by category. The game reads them from the GDAT value keys `(category, index, 0x0b, entry)` with `item_attr`; the names and the actions are the texts `(category, index, 5, entry)`. The tables use the GDAT names; a rune glyph of a name shows as the upper-case rune name (`VI POTION`).
+The values of every item of `GRAPHICS.DAT` (PC DOS, English), by category. The game reads them from the GDAT value keys `(category, index, 0x0b, entry)` with `item_attr`; the names and the actions are the texts `(category, index, 5, entry)`. The tables use the GDAT names; a rune glyph of a name shows as the upper-case rune name (`VI POTION`). `dm2-items` writes this page.
 
 ## Columns
 
 | Column | GDAT entry | Meaning |
 |---|---|---|
-| Index | | The GDAT index of the item in its category. |
+| Index |  | The GDAT index of the item in its category. |
 | Weight (kg) | `0x01` | The weight, in tenths of a kilogram in the data. |
 | Value | `0x02` | The value in copper coins (copper coin 1, silver coin 4, gold coin 16). Merchants change it with their price factors. |
-| Strength | `0x08` | The melee bonus: a melee action adds it to the champion strength ([champions.md](../rules/champions.md)). |
+| Strength | `0x08` | The melee bonus: a melee action adds it to the champion strength. |
 | Throw | `0x09` | The throw power: a throw or a shot adds it. |
 | Worn on | `0x04` | The body slots that the clothing fits. |
 | Armour | `0x0b` bits 0–7 | The defense of the clothing. |
 | Sharp | `0x0b` bits 8–10 | The sharp factor: against a sharp attack the defense is armour × (sharp + 4) / 8. |
-| Effect | | The effect of a potion when a champion drinks it; the power of the potion sets the amount. |
-| Actions | texts `0x08`–`0x0b` | The actions of the item in the action hand (see [Actions](#actions)). |
-| Special | | Flags and modifiers (see [Special](#special)). |
+| Effect |  | The effect of a potion when a champion drinks it; the power of the potion sets the amount. |
+| Actions | texts `0x08`–`0x0b` | The actions of the item in the action hand. |
+| Special |  | Flags and modifiers. |
 
 ## Actions
 
@@ -27,6 +27,7 @@ An action shows its name, then its effect, the skill that it trains and needs, a
 - `level n`: the action shows only from this skill level.
 - `n charges`: the action needs and uses n charges of the item.
 - The skills are the 4 base skills (fighter, ninja, priest, wizard) and their 16 sub-skills, 4 for each base skill: swing, thrust, club, parry; steal, fight, throw, shoot; identify, heal, influence, defend; fire, air, earth, water. The names thrust, club, identify, defend, fire, air, earth, and water are the sub-skill names of Dungeon Master; they are unverified for Dungeon Master II, because the port has no names for these skills.
+- The minion actions summon the minion of their command, as in the original: the ATTACK MINION item summons a scout minion, the GUARD MINION item a carrier minion.
 
 ## Special
 
@@ -180,10 +181,10 @@ An action shows its name, then its effect, the skill that it trains and needs, a
 | 1 | BAG | 0.7 | 5 |  | does not go into a container |
 | 2 | MONEY BOX | 1.1 | 35 |  |  |
 | 3 | QUIVER | 0.7 | 5 |  | does not go into a container |
-| 8 | MAGIC MAP | 0.3 | 100 | S (minion attacks)<br>K (dismisses the minion) |  |
-| 9 | SCOUT MAP | 0.3 | 300 | S (minion attacks)<br>K (dismisses the minion) |  |
-| 10 | MINION MAP | 0.3 | 625 | C (minion guards)<br>F (minion fetches)<br>M (sets the minion target)<br>K (dismisses the minion) |  |
-| 11 | MAGIC MAP | 0.3 | 100 | S (minion attacks)<br>K (dismisses the minion) |  |
+| 8 | MAGIC MAP | 0.3 | 100 | S (an attack minion comes and goes to the target)<br>K (dismisses the minion) |  |
+| 9 | SCOUT MAP | 0.3 | 300 | S (an attack minion comes and goes to the target)<br>K (dismisses the minion) |  |
+| 10 | MINION MAP | 0.3 | 625 | C (the minion guards, else a guard minion comes)<br>F (the minion fetches, else a fetch minion comes)<br>M (sets the minion target)<br>K (dismisses the minion) |  |
+| 11 | MAGIC MAP | 0.3 | 100 | S (an attack minion comes and goes to the target)<br>K (dismisses the minion) |  |
 
 ## Miscellaneous items
 
@@ -250,6 +251,6 @@ An action shows its name, then its effect, the skill that it trains and needs, a
 | 60 | TANKARD | 0.5 | 4 | DRINK (eat or drink, needs a charge, uses none) | holds water; weight per charge 0.3 kg |
 | 61 | BONE | 1.5 | 0 |  |  |
 | 62 | YA EW | 1.5 | 0 |  |  |
-| 63 | ATTACK MINION | 1 | 240 | MON ZO EW KU (summons a minion, fire, uses all charges) | vanishes with its last charge |
-| 64 | GUARD MINION | 1 | 200 | EE ZO EW NETA (summons a minion, earth, uses all charges) | vanishes with its last charge |
+| 63 | ATTACK MINION | 1 | 240 | MON ZO EW KU (summons a scout minion, fire, uses all charges) | vanishes with its last charge |
+| 64 | GUARD MINION | 1 | 200 | EE ZO EW NETA (summons a carrier minion, earth, uses all charges) | vanishes with its last charge |
 | 66 | TECHEYE | 3 | 0 |  |  |

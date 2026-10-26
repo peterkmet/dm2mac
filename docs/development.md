@@ -89,6 +89,7 @@ uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased
 | `make format` | `clang-format` over the C files ([Format](coding-standard.md#format)). |
 | `tools/standard-allowlist` | Regenerates `tests/standard/allowlist.txt` from the violations that the standard check finds. |
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
+| `uv run dm2-items docs/reference/items.md` | Regenerates [items.md](reference/items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
 
 ## Layout
 
