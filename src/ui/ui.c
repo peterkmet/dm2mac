@@ -945,18 +945,28 @@ static void show_description(const char *text)
     char buf[TEXT_SIZE];
     snprintf(buf, sizeof buf, "%s", text);
     for (char *line = buf; *line;) {
-        char *brk = NULL;
+        char *next = line + strlen(line);
         if (strlen(line) > DESCRIPTION_LINE) {
-            for (brk = line + DESCRIPTION_BREAK; *brk != ' '; brk--) {
+            char *brk = line + DESCRIPTION_BREAK;
+            while (brk > line && *brk != ' ')
+                brk--;
+            if (*brk == ' ') {
+                *brk = '\0';
+                next = brk + 1;
+            } else {
+                next = line + DESCRIPTION_LINE;
+                char kept = *next;
+                *next = '\0';
+                text_draw_in_viewport(cache.description_x, cache.description_y, g_ui_colors[UI_LIGHT_GRAY], line);
+                cache.description_y = (int16_t)(cache.description_y + TEXT_LINE_HEIGHT);
+                *next = kept;
+                line = next;
+                continue;
             }
-            *brk = '\0';
         }
         text_draw_in_viewport(cache.description_x, cache.description_y, g_ui_colors[UI_LIGHT_GRAY], line);
         cache.description_y = (int16_t)(cache.description_y + TEXT_LINE_HEIGHT);
-        if (brk)
-            line = brk + 1;
-        else
-            *line = '\0';
+        line = next;
     }
 }
 

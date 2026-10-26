@@ -12,6 +12,7 @@
 #include "ids.h"
 #include "input.h"
 #include "item.h"
+#include "le.h"
 #include "money.h"
 #include "move.h"
 #include "projectile.h"
@@ -1858,7 +1859,6 @@ static void show_missiles(uint16_t thing, int pos, int position)
                                       .key = THING_KEY,
                                       .key2 = NO_KEY},
                       category, index, pic.entry);
-        view.ctx.src_x = (int16_t)(view.ctx.src_x + gfx_scale_64(0, (int16_t)offset_scale));
         view.ctx.src_y = (int16_t)(view.ctx.src_y + gfx_scale_64(MISSILE_DY, (int16_t)offset_scale));
         flush_projectile(thing, pos);
     }
@@ -2135,13 +2135,13 @@ static void show_centered_label(int x, int y, const char *text)
 }
 
 /* The price table of a shop ornament and its word count in *count; NULL when the ornament has none. */
-static const uint16_t *price_table(uint8_t ornament, int *count)
+static const uint8_t *price_table(uint8_t ornament, int *count)
 {
     int item = gdat_find(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, GFX_ORN_SHOP_TABLE);
     uint32_t size = 0;
     const uint8_t *data = item < 0 ? NULL : gdat_item(gdat_current(), item, &size);
     *count = (int)(size / 2);
-    return (const uint16_t *)data;
+    return data;
 }
 
 /* Chooses the item that the display shows: the next or the last item of the price list that the merchant sells. */
@@ -2153,9 +2153,9 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
     int list = sensor_delay(shop); /* the delay bits of a shop: its price list */
     if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, 0)) {
         int count, at = item;
-        const uint16_t *table = price_table(ornament, &count);
+        const uint8_t *table = price_table(ornament, &count);
         if (table)
-            for (at = 0; at < count && (table[at] & ITEM_INDEX_NONE) != item; at++) {
+            for (at = 0; at < count && (le16(table + 2 * at) & ITEM_INDEX_NONE) != item; at++) {
             }
         /* fix: the original loops for ever when the merchant sells no item of the list */
         for (int tries = 0; tries <= ITEM_INDEX_NONE; tries++) {
@@ -2165,7 +2165,7 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
                     at = count - 1;
                 else if (at >= count)
                     at = 0;
-                item = table[at] & ITEM_INDEX_NONE;
+                item = le16(table + 2 * at) & ITEM_INDEX_NONE;
             } else {
                 at &= ITEM_INDEX_NONE;
                 item = (uint16_t)at;
@@ -2271,11 +2271,11 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
     flush_picture();
     if (!target_has_item(shop, item, 1) && !target_has_item(display, item, 0)) {
         int count, at = 0;
-        const uint16_t *table = price_table(ornament, &count);
+        const uint8_t *table = price_table(ornament, &count);
         if (table)
-            for (; at < count && (table[at] & ITEM_INDEX_NONE) != item; at++) {
+            for (; at < count && (le16(table + 2 * at) & ITEM_INDEX_NONE) != item; at++) {
             }
-        uint16_t made = !flight.step_ticks && table && at < count && table[at] & SHOP_TABLE_CREATE
+        uint16_t made = !flight.step_ticks && table && at < count && le16(table + 2 * at) & SHOP_TABLE_CREATE
                             ? item_create_by_index(item)
                             : THING_NONE;
         if (made != THING_NONE) {
