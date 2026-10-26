@@ -4,19 +4,26 @@ The values come from GRAPHICS.DAT through the port library (build/libdm2.dylib):
 keys (category, index, 0x0b, entry) and gdat_text for the texts (category, index, 5, entry).
 """
 
+import base64
 import ctypes
 import html
 import json
 import re
+import struct
 import sys
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBRARY = ROOT / "build" / "libdm2.dylib"
 GRAPHICS = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 
-TYPE_TEXT, TYPE_VALUE = 0x05, 0x0b
+TYPE_IMAGE, TYPE_TEXT, TYPE_VALUE = 0x01, 0x05, 0x0b
 ENTRY_NAME, ACTION_FIRST, ACTION_LAST = 0x18, 0x08, 0x0b
+ENTRY_FLOOR_PICTURE, ENTRY_ICON = 0x00, 0x18  # the picture of the item on the floor; its first inventory icon
+IMAGE_4BPP = 4
+ICON_KEY = 12  # the transparent local color of a 4 bpp item icon
+PICTURE_KEY = 10  # the transparent color of an 8 bpp thing picture
 RUNE_GLYPH_FIRST = 0x60
 RUNES = ["lo", "um", "on", "ee", "pal", "mon", "ya", "vi", "oh", "ful", "des", "zo",
          "ven", "ew", "kath", "ir", "bro", "gor", "ku", "ros", "dain", "neta", "ra", "sar"]
@@ -71,7 +78,16 @@ class Gdat:
         lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
         lib.gdat_entry_index.restype = ctypes.c_uint16
         lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+        lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+        int_p = ctypes.POINTER(ctypes.c_int)
+        u8_p = ctypes.POINTER(ctypes.c_uint8)
+        lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int, int_p, int_p, int_p]
+        lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
+        lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.gdat_image_colormap.restype = u8_p
+        lib.gdat_palette_color.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p]
         self.lib = lib
+        self.palette = {}
         self.handle = ctypes.c_void_p()
         if lib.gdat_load(str(graphics).encode(), ctypes.byref(self.handle)) != 0:
             raise SystemExit(f"cannot load {graphics}")
@@ -88,6 +104,52 @@ class Gdat:
         if not self.lib.gdat_exists(self.handle, cat, index, TYPE_VALUE, entry):
             return 0
         return self.lib.gdat_entry_index(self.handle, cat, index, TYPE_VALUE, entry)
+
+    def picture(self, cat, index, entry):
+        """The image (cat, index, 1, entry) as (width, height, RGBA bytes) with its key color transparent; None if
+        absent."""
+        lib, handle = self.lib, self.handle
+        item = lib.gdat_find(handle, cat, index, TYPE_IMAGE, entry)
+        if item < 0:
+            return None
+        w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
+        size = lib.gdat_image_size(handle, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
+        if size <= 0:
+            return None
+        pixels = (ctypes.c_uint8 * size)()
+        if lib.gdat_decode_image(handle, item, pixels, size) != 0:
+            return None
+        w, h = w.value, h.value
+        if bpp.value == IMAGE_4BPP:
+            colormap = lib.gdat_image_colormap(handle, item)
+            stride = (w + 1) // 2
+            local = [pixels[y * stride + x // 2] >> 4 if x % 2 == 0 else pixels[y * stride + x // 2] & 0x0f
+                     for y in range(h) for x in range(w)]
+            colors = [None if c == ICON_KEY else colormap[c] for c in local]
+        else:
+            colors = [None if c == PICTURE_KEY else c for c in pixels[: w * h]]
+        rgba = bytearray()
+        for c in colors:
+            rgba += b"\0\0\0\0" if c is None else bytes(self.rgb(c)) + b"\xff"
+        return w, h, bytes(rgba)
+
+    def rgb(self, color):
+        """The 8-bit red, green and blue of a palette color (6-bit VGA values in the data)."""
+        if color not in self.palette:
+            v = (ctypes.c_uint8 * 3)()
+            self.lib.gdat_palette_color(self.handle, color, v)
+            self.palette[color] = tuple(c << 2 | c >> 4 for c in v)
+        return self.palette[color]
+
+
+def png_data_uri(width, height, rgba):
+    """An RGBA image as a PNG data URI."""
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    rows = b"".join(b"\0" + rgba[y * width * 4:(y + 1) * width * 4] for y in range(height))
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b""))
+    return "data:image/png;base64," + base64.b64encode(png).decode()
 
 
 def rune_names(text):
@@ -286,17 +348,21 @@ def inline_code(text):
     return re.sub(r"`([^`]*)`", r"<code>\1</code>", html.escape(text))
 
 
-def html_page(data):
-    """The HTML page: the template with the items as JSON; the page script draws the cards."""
+def html_page(g, data):
+    """The HTML page: the template with the items and their pictures as JSON; the page script draws the cards."""
     template = Path(__file__).with_name("items_page.html").read_text()
     keys = {"Weight (kg)": "weight", "Value": "value", "Strength": "strength", "Throw": "throw", "Worn on": "worn",
             "Armour": "armour", "Sharp": "sharp", "Effect": "effect", "Special": "special"}
     categories = []
-    for title, rows in data:
+    for (cat, _), (title, rows) in zip(CATEGORIES, data):
         out = []
         for r in rows:
             item = {"index": int(r["Index"]), "name": r["Name"]}
             item.update({k: r[c] for c, k in keys.items() if r[c]})
+            for key, entry in (("icon", ENTRY_ICON), ("floor", ENTRY_FLOOR_PICTURE)):
+                picture = g.picture(cat, item["index"], entry)
+                if picture:
+                    item[key] = {"src": png_data_uri(*picture), "w": picture[0], "h": picture[1]}
             item["actions"] = [dict(zip(("name", "kind", "effect", "skill", "charges"), a)) for a in r["action_parts"]]
             out.append(item)
         categories.append({"id": re.sub(r"[^a-z]+", "-", title.lower()).strip("-"), "title": title, "items": out})
@@ -313,5 +379,6 @@ def main(argv=None):
     if len(args) != 1 or Path(args[0]).suffix not in (".md", ".html"):
         raise SystemExit("usage: dm2-items OUT.md|OUT.html")
     out = Path(args[0])
-    data = collect(Gdat())
-    out.write_text(markdown(data) if out.suffix == ".md" else html_page(data))
+    g = Gdat()
+    data = collect(g)
+    out.write_text(markdown(data) if out.suffix == ".md" else html_page(g, data))
