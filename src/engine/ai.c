@@ -568,6 +568,8 @@ bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved)
     g_ai.prepared = 0;
     g_ai.group_thing = group;
     g_ai.active = creature_active(group);
+    if (!g_ai.active)
+        return restored;
     g_ai.info = creature_group_info(group);
     g_ai.anim = creature_anim_words(group);
     g_ai.map = (uint8_t)map;
@@ -583,7 +585,6 @@ bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved)
         g_ai.arg1 = g_ai.arg2 = 0;
         g_ai.previous_action = g_ai.active->action == ACTIVE_ACTION_NONE ? 0 : g_ai.active->action;
         g_ai.active->destination = 0;
-        g_ai.active->action = 0;
         g_ai.active->direction = 0;
         g_ai.active->cell = g_ai.active->facing = g_ai.active->sub = g_ai.active->phase = 0;
         g_ai.active->mode = g_ai.active->interrupt = 0;

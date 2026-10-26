@@ -516,6 +516,8 @@ static void reset_idle_animation(uint16_t group)
 
 int creature_current_step_acts(uint16_t group)
 {
+    if (!creature_active(group))
+        return 0;
     uint16_t *words = creature_anim_words(group);
     return anim_current_step(group_creature(group), words[0], words + 1)[STEP_SOUND] >> STEP_ACTS_SHIFT;
 }
@@ -731,7 +733,8 @@ void creature_activate_group(uint16_t group, int16_t x, int16_t y)
 
 void creature_deactivate_group(int active_index)
 {
-    if (active_index > g_active_group_max)
+    /* fix: the original reads one entry past the table */
+    if (active_index < 0 || active_index >= g_active_group_max)
         return;
     ActiveGroup *a = g_active_groups + active_index;
     if (a->group == ACTIVE_FREE)
@@ -1352,15 +1355,15 @@ uint16_t creature_summon_group(CreatureSummon summon)
 }
 
 /* The minion of an item vanishes. */
-void minion_dismiss(uint16_t link)
+void minion_dismiss(uint16_t group)
 {
-    uint16_t projectile = minion_find_link_projectile(link, THING_NONE);
+    uint16_t projectile = minion_find_link_projectile(group, THING_NONE);
     int saved = g_party.cur_map;
     if (!projectile)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
     dun_set_current_map(location_map(at));
-    creature_set_next_action(link, location_x(at), location_y(at), CREATURE_ACTION_VANISH, 1);
+    creature_set_next_action(group, location_x(at), location_y(at), CREATURE_ACTION_VANISH, 1);
     dun_set_current_map(saved);
 }
 

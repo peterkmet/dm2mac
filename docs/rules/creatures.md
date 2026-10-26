@@ -38,6 +38,8 @@ The rules of the creatures: the creature data, the updates of the creature group
   - the minion map square read outside the map
   - a path step read without a stored path (address 0 in the original)
   - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`); the port reads none
+  - `creature_deactivate_group` with an active index at or past the end of the table: the original reads one entry past it, the port returns
+  - `creature_current_step_acts` and `ai_begin` for a group without an active entry: the original reads a null entry, the port returns 0 and leaves the AI context without an active group
   - the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook)
   - the step of an AI command with direction -1: the original reads the words before its direction tables, the step (0, -1), and the port takes the step north (`step_dir` in `engine/ai_move.c`)
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
