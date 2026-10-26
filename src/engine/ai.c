@@ -2281,7 +2281,7 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
     else
         count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
     if (a->cell == CELL_NEAREST) {
-        int c = move_get_nearest_at(x, y, CELL_ANY);
+        int c = move_nearest_champion_at(x, y, CELL_ANY);
         if (c != -1)
             a->cell = champion(c)->cell;
     }
@@ -2306,7 +2306,7 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
             int d = dun_get_direction_to(dx, dy, x, y);
             cell = dir_turn(cell, (d + cell) & 1 ? -1 : 1);
             if (c == -1)
-                c = move_get_nearest_at(x, y, CELL_ANY);
+                c = move_nearest_champion_at(x, y, CELL_ANY);
             if (c == -1)
                 continue;
         }

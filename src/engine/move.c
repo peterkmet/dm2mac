@@ -67,7 +67,7 @@
 #define PUSH_COST_SHIFT    2  /* a push costs a quarter of the resistance, at least PUSH_FAIL_STAMINA */
 
 /* Places in the orders of cells and sides. */
-#define CELL_ORDER_BACK  2 /* move_get_nearest_at: the first of the two back cells */
+#define CELL_ORDER_BACK  2 /* move_nearest_champion_at: the first of the two back cells */
 #define FREE_SQUARE_ROWS 4 /* find_free_adjacent_square: one row for each value of a 2-bit roll */
 #define BACK_STEP        2 /* the step of CMD_MOVE_BACK, counted from CMD_MOVE_FORWARD */
 
@@ -276,7 +276,7 @@ static void swap_cells(uint8_t *pair)
     pair[1] = c;
 }
 
-int move_get_nearest_at(int16_t x, int16_t y, int16_t cell)
+int move_nearest_champion_at(int16_t x, int16_t y, int16_t cell)
 {
     static const uint8_t attack_cell_orders[DIR_COUNT * 2][DIR_COUNT] = {
         {0, 1, 3, 2},
@@ -330,8 +330,8 @@ BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int st
 {
     int side = step + dir + 2;
     BumpedChampions bumped;
-    bumped.first = (int16_t)move_get_nearest_at(x, y, side & DIR_MASK);
-    bumped.second = (int16_t)move_get_nearest_at(x, y, dir_turn(side, TURN_RIGHT));
+    bumped.first = (int16_t)move_nearest_champion_at(x, y, side & DIR_MASK);
+    bumped.second = (int16_t)move_nearest_champion_at(x, y, dir_turn(side, TURN_RIGHT));
     bump_champion(bumped.first, x, y);
     if (bumped.second != bumped.first)
         bump_champion(bumped.second, x, y);

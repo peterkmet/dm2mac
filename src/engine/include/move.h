@@ -107,7 +107,7 @@ bool dun_get_linked_teleporter_dest(PassageEnd *end, int16_t x, int16_t y);
 /* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
 int dun_get_direction_to(int x1, int y1, int x2, int y2);
 /* The champion nearest to the side of the party square that faces (x, y), seen from cell (0xff: any); -1 none. */
-int move_get_nearest_at(int16_t x, int16_t y, int16_t cell);
+int move_nearest_champion_at(int16_t x, int16_t y, int16_t cell);
 /* Damage of a bump into a wall or a creature at (x, y) for the two champions on that side; returns them. */
 BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int step);
 

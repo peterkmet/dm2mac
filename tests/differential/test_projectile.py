@@ -369,7 +369,7 @@ def test_missile_launchers(pj, lib):
 
 
 def test_champions_throw(pj, lib):
-    # projectile_launch_projectile: champions throw objects and cast spells from the party square.
+    # projectile_launch_from_champion: champions throw objects and cast spells from the party square.
     rng = random.Random(165)
     things = objects(lib)
     rng.shuffle(things)
@@ -380,7 +380,7 @@ def test_champions_throw(pj, lib):
         champ = rng.randrange(C.CHAMPION_MAX)
         payload = t if n % 2 else rng.choice(SPELLS)
         args = (payload, rng.randrange(-10, 300), rng.randrange(-10, 300), rng.randrange(-5, 20))
-        lib.projectile_launch_projectile(champ, *args)
+        lib.projectile_launch_from_champion(champ, *args)
         pj.emu.call(CHAMP_LAUNCH_PROJECTILE, G_CHAMPIONS + champ * CHAMPION_SIZE, *args)
         assert (pj.game.throw_cooldown, pj.game.throw_dir) == struct.unpack("<HH", pj.emu.read(0x7F25A, 2)
                                                                               + pj.emu.read(0x7F270, 2)), n

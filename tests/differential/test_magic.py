@@ -477,13 +477,13 @@ def test_magic_light_events_match_original(magic):
     from dm2test.save import Event
     from dm2test.scenario import COMMAND_RECORD
     lib, emu = magic.lib, magic.emu
-    lib.magic_event_magic_light.argtypes = [ctypes.c_void_p]
+    lib.magic_event_light.argtypes = [ctypes.c_void_p]
     rng = random.Random(18)
     for level in range(-15, 16):
         magic.set_magic(struct.pack("<h", rng.randrange(-300, 300)) + bytes(4))
         e = Event(magic.time() | magic.game.party_map << C.EVENT_MAP_SHIFT, C.EVENT_MAGIC_LIGHT, 0, (ctypes.c_uint8 * 6)(*struct.pack("<h", level), 0, 0, 0, 0))
         emu.write(COMMAND_RECORD, bytes(e))
-        lib.magic_event_magic_light(ctypes.byref(e))
+        lib.magic_event_light(ctypes.byref(e))
         emu.call(TIMELINE_EVENT_MAGIC_LIGHT, COMMAND_RECORD)
         magic.assert_magic_state(level)
     for _ in range(150):

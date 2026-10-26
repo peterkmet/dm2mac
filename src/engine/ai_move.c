@@ -676,7 +676,7 @@ static int steal_target_cell(int x, int y)
 {
     int cell = -1;
     for (int16_t i = 0; i < DIR_COUNT; i++) {
-        int c = move_get_nearest_at(x, y, i);
+        int c = move_nearest_champion_at(x, y, i);
         if (c == -1)
             continue;
         uint16_t action = champion(c)->slots[SLOT_ACTION_HAND];
@@ -744,7 +744,7 @@ static int party_door_stops_attack(int x, int y)
 static int attack_cell(int mode, AiLocation from, int dir, bool melee, int *r)
 {
     if (melee) {
-        int c = mode > ATTACK_MODE_PARTY_RANGED ? -1 : move_get_nearest_at(from.x, from.y, CELL_ANY);
+        int c = mode > ATTACK_MODE_PARTY_RANGED ? -1 : move_nearest_champion_at(from.x, from.y, CELL_ANY);
         return c == -1 ? dir_turn(dir, *r + 2) : champion(c)->cell;
     }
     if (mode <= ATTACK_MODE_PARTY_RANGED && rand_2bits()) {

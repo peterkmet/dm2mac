@@ -1219,7 +1219,7 @@ void projectile_launch_missile(uint16_t sensor, const TimelineEvent *e)
     }
 }
 
-void projectile_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step)
+void projectile_launch_from_champion(int champ, uint16_t payload, int energy, int attack, int step)
 {
     const Champion *c = champion(champ);
     int dir = c->dir;

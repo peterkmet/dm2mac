@@ -807,7 +807,7 @@ address,name,signature,subsystem
 0x00045815,magic_cast_party_aura,"int magic_cast_party_aura(uint8_t *champ, uint8_t aura, uint16_t power, int16_t use_mana)",magic
 0x00045869,champ_set_party_direction,void champ_set_party_direction(int16_t dir),champions
 0x000458f4,champ_get_index_in_cell,int champ_get_index_in_cell(uint16_t cell),champions
-0x00045938,move_get_nearest_at,"int16_t move_get_nearest_at(int16_t x, int16_t y)",champions
+0x00045938,move_nearest_champion_at,"int16_t move_nearest_champion_at(int16_t x, int16_t y)",champions
 0x000459c8,champ_adjust_stat,"void champ_adjust_stat(uint8_t *champ, uint16_t stat, int16_t delta)",champions
 0x00045a41,item_get_stat_modifier,"int16_t item_get_stat_modifier(uint16_t thing, uint8_t attribute, int equipped, int16_t mode)",items
 0x00045a9d,champ_apply_item_effects,"void champ_apply_item_effects(int16_t champ, uint16_t thing, int16_t slot, int16_t mode)",inventory
@@ -841,7 +841,7 @@ address,name,signature,subsystem
 0x000475d3,champ_cure_poison,"void champ_cure_poison(int16_t champ, int16_t amount)",champions
 0x0004766b,champ_damage_party,"uint16_t champ_damage_party(int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
 0x00047707,champ_decrease_stamina,"void champ_decrease_stamina(int16_t champ, int16_t amount)",champions
-0x00047773,projectile_launch_projectile,"void projectile_launch_projectile(uint8_t *champ, uint16_t thing, int16_t kinetic, int16_t attack, int16_t step)",projectiles
+0x00047773,projectile_launch_from_champion,"void projectile_launch_from_champion(uint8_t *champ, uint16_t thing, int16_t kinetic, int16_t attack, int16_t step)",projectiles
 0x00047813,magic_cast_projectile_spell,"int magic_cast_projectile_spell(uint16_t champ, uint16_t thing, uint16_t power, uint16_t mana_cost)",magic
 0x000478a1,champ_throw_object,"int champ_throw_object(uint16_t champ, int16_t slot, int side)",champions
 0x00047b0a,champ_throw_leader_hand_object,int champ_throw_leader_hand_object(int side),champions
@@ -1021,7 +1021,7 @@ address,name,signature,subsystem
 0x00058fc2,timeline_event_move_group,void timeline_event_move_group(uint8_t *event),creatures
 0x00059026,hide_damage,void hide_damage(uint16_t champion),champions
 0x00059050,timeline_event_altar_rebirth,void timeline_event_altar_rebirth(uint8_t *event),champions
-0x0005917d,magic_event_magic_light,void magic_event_magic_light(uint8_t *event),magic
+0x0005917d,magic_event_light,void magic_event_light(uint8_t *event),magic
 0x00059207,timeline_event_apply_item_effect,"void timeline_event_apply_item_effect(uint8_t *event, int16_t slot)",items
 0x00059293,timeline_event_sensor_animation_step,uint32_t timeline_event_sensor_animation_step(uint8_t *event),Skullkeep machines
 0x000592fa,schedule_timer,"void schedule_timer(uint8_t *sensor, uint16_t sensor_thing)",Skullkeep machines

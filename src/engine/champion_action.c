@@ -800,7 +800,7 @@ static bool run_shoot(ActionRun *a)
     uint16_t attack = (uint16_t)(item_attr(a->item, ATTR_SHOOT_ATTACK) + level * 2);
     uint16_t kinetic =
         (uint16_t)(level + item_attr(a->item, ATTR_THROW_POWER_SHOOT) + item_attr(ammo, ATTR_THROW_POWER_SHOOT));
-    projectile_launch_projectile(a->champ, ammo, kinetic, attack, step);
+    projectile_launch_from_champion(a->champ, ammo, kinetic, attack, step);
     a->silent = true;
     return true;
 }

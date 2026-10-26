@@ -154,6 +154,6 @@ void projectile_check_missiles_hit_party(int from_x, int from_y, int to_x, int t
 /* A missile launcher sensor shoots the objects of its square or new objects or spells. */
 void projectile_launch_missile(uint16_t sensor, const TimelineEvent *e);
 /* A champion throws or casts payload from the party square. */
-void projectile_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step);
+void projectile_launch_from_champion(int champ, uint16_t payload, int energy, int attack, int step);
 
 #endif /* DM2_ENGINE_PROJECTILE_H */

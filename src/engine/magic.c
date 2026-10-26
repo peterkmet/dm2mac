@@ -362,7 +362,7 @@ void magic_add_light(int kind, int power)
     light_update_party_light();
 }
 
-void magic_event_magic_light(TimelineEvent *e)
+void magic_event_light(TimelineEvent *e)
 {
     int16_t level = (int16_t)read_event_word(e);
     if (!level)
@@ -458,7 +458,7 @@ bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
         power += MISSILE_POWER_PER_STEP;
         step = (int16_t)power >> MISSILE_POWER_STEP_SHIFT;
     }
-    projectile_launch_projectile((int)(c - champion(0)), thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
+    projectile_launch_from_champion((int)(c - champion(0)), thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
     return true;
 }
 
