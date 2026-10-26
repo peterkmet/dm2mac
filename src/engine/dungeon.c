@@ -222,6 +222,15 @@ static void build_level_lists(void)
     }
 }
 
+/* Allocates a section buffer; stops the program when memory runs out. */
+static void *alloc_checked(size_t size)
+{
+    void *p = malloc(size);
+    if (!p && size)
+        os_fatal("out of memory");
+    return p;
+}
+
 /* Reads the DUNGEON.DAT sections in file order: header, maps, thing lists, text, things, squares. */
 static bool read_dungeon(FILE *f, bool new_game)
 {
@@ -245,7 +254,7 @@ static bool read_dungeon(FILE *f, bool new_game)
         column_count += dungeon_map_width(map);
     }
     dun.column_count = column_count;
-    dun.column_first_thing = malloc(column_count * sizeof(uint16_t));
+    dun.column_first_thing = alloc_checked(column_count * sizeof(uint16_t));
     if (!read_words(f, dun.column_first_thing, column_count))
         return false;
 
@@ -253,7 +262,7 @@ static bool read_dungeon(FILE *f, bool new_game)
     int slack = new_game ? SQUARE_THING_SLACK : 0;
     if (square_things + slack == 0)
         return false;
-    dun.square_first_things = malloc((square_things + slack) * sizeof(uint16_t));
+    dun.square_first_things = alloc_checked((square_things + slack) * sizeof(uint16_t));
     if (!read_words(f, dun.square_first_things, square_things))
         return false;
     for (int i = 0; i < slack; i++)
@@ -262,7 +271,7 @@ static bool read_dungeon(FILE *f, bool new_game)
     put_le16(header + HEADER_SQUARE_THINGS, dun.square_thing_count);
 
     dun.text_word_count = le16(header + HEADER_TEXT_WORDS);
-    dun.text_data = malloc(dun.text_word_count * sizeof(uint16_t));
+    dun.text_data = alloc_checked(dun.text_word_count * sizeof(uint16_t));
     if (!read_words(f, dun.text_data, dun.text_word_count))
         return false;
 
@@ -271,7 +280,7 @@ static bool read_dungeon(FILE *f, bool new_game)
             return false;
 
     int map_data_size = le16(header + HEADER_MAP_DATA_SIZE);
-    dun.map_data = malloc(map_data_size);
+    dun.map_data = alloc_checked(map_data_size);
     if (!read_bytes(f, dun.map_data, map_data_size))
         return false;
     for (int map = 0; map < dun.map_count; map++)
