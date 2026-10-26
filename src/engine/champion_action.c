@@ -27,7 +27,6 @@
 /* Item attribute bits and masks. */
 #define ALL_CHARGES            0x000f /* the charges that CHARGES_USE_ALL takes */
 #define ATTR_USED_UP           0x0800 /* ATTR_FLAGS bit: the item vanishes with its last charge */
-#define AMMO_KINDS             0x7fff
 /* Flag bits of the action area, the attacks, the creature alerts, the creature info and the redraw. */
 #define CREATURE_MELEE_REACHES 0x0020 /* creature info flag: mode 1 attacks reach the creature */
 #define FLAGS_KEEP_OPEN        0x0400 /* g_action.flags bit that the action area clears after an action */
@@ -171,35 +170,6 @@ static int16_t current_field(int field)
     return gtext_gdat_field(current.category, current.index, current.entry, field);
 }
 
-void action_area_open_hand(int champ, int hand)
-{
-    if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand))
-        return;
-    g_action.flash = (int16_t)(champ + 1);
-    g_action.redraw_delay = 1;
-    g_action.flags = 0;
-    g_action.flash_hand = (int16_t)hand;
-    g_action.champion = g_action.flash;
-    g_action.hand = (int16_t)hand;
-    champ_drag_cancel();
-    g_hooks.update_action_area(0);
-    g_hooks.draw_champion_state(champ);
-}
-
-void action_area_open_spells(int champ)
-{
-    if (!champion(champ)->health)
-        return;
-    g_action.hand = ACTION_HAND_SPELL;
-    g_action.flash_hand = ACTION_HAND_SPELL;
-    g_action.flash = (int16_t)(champ + 1);
-    g_action.redraw_delay = 1;
-    g_action.flags = 0;
-    g_action.champion = g_action.flash;
-    champ_drag_cancel();
-    g_hooks.update_action_area(0);
-}
-
 void champ_add_action_delay(int champ, uint16_t ticks, int hand)
 {
     Champion *c = champion(champ);
@@ -232,36 +202,6 @@ bool champ_use_action_charge(int champ)
         thing_set_word(g_champ_action_thing, THING_NEXT, THING_NONE);
     }
     return empty;
-}
-
-bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing)
-{
-    uint16_t launcher = champion(champ)->slots[hand];
-    if (thing == THING_NONE || launcher == THING_NONE)
-        return false;
-    uint16_t kinds = item_attr(launcher, ATTR_AMMO);
-    if (!(kinds & AMMO_LAUNCHER))
-        return false;
-    uint16_t ammo = item_attr(thing, ATTR_AMMO);
-    return !(ammo & AMMO_LAUNCHER) && ammo & AMMO_KINDS & kinds;
-}
-
-bool item_has_action_command(int champ, uint16_t thing, int command)
-{
-    bool found = false;
-    if (thing == THING_NONE)
-        return false;
-    if (champ_list_actions(champ, thing, -1)) {
-        for (int i = 0; i < g_champ_action_count; i++)
-            if ((uint16_t)gtext_gdat_field(g_champ_actions[i].category, g_champ_actions[i].index,
-                                           g_champ_actions[i].entry, FIELD_COMMAND) == (uint16_t)command) {
-                found = true;
-                break;
-            }
-    }
-    if (g_action.champion && (g_action.hand == SLOT_READY_HAND || g_action.hand == SLOT_ACTION_HAND))
-        champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
-    return found;
 }
 
 /* The first ammunition or throwing item for the hand of champ in the quiver (slot 12, the chest in it, slots 7 to 9),

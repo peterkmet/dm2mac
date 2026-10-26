@@ -96,14 +96,4 @@ void timeline_event_move_group(TimelineEvent *e);
    for a loaded game. */
 void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
 
-/* The event handlers of other modules. */
-/* Runs a due square event or door event. */
-void timeline_event_square(TimelineEvent *e);
-/* Runs a due door animation step. */
-void timeline_event_door_animation(TimelineEvent *e);
-/* Runs a due door destruction event. */
-void timeline_event_door_destruction(TimelineEvent *e);
-/* Runs a due sensor animation, timer, or busy event. */
-void timeline_event_sensor(TimelineEvent *e);
-
 #endif /* DM2_ENGINE_TIMELINE_H */

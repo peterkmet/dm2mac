@@ -277,7 +277,7 @@ def test_a_closing_door_hurts_the_party_only_without_the_cheat(lib, game, cheat)
     ctypes.memset(damage, 0, ctypes.sizeof(damage))
     event = TimelineEvent(type=C.EVENT_DOOR_ANIMATION)
     event.data[C.EVENT_X], event.data[C.EVENT_Y] = x, y
-    lib.timeline_event_door_animation(ctypes.byref(event))
+    lib.sensor_event_door_animation(ctypes.byref(event))
     assert (sum(damage) > 0) != cheat
     assert square[0] & C.SQUARE_DOOR_STATE == C.DOOR_STATE_OPEN, "the door opens again over the party"
 

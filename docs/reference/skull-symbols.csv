@@ -888,7 +888,7 @@ address,name,signature,subsystem
 0x0004bc4c,sensor_trigger_target,"void sensor_trigger_target(uint8_t *sensor, uint16_t effect, int16_t extra_delay)",Skullkeep machines
 0x0004bca2,contains_item_type,"int contains_item_type(uint16_t container_thing, int16_t object_type)",items
 0x0004bd17,dun_find_object_type_on_square,"uint16_t dun_find_object_type_on_square(int16_t x, int16_t y, int16_t cell, uint16_t object_type)",dungeon data
-0x0004bd6c,item_party_possesses_type,int item_party_possesses_type(int16_t object_type),items
+0x0004bd6c,sensor_party_possesses_type,int sensor_party_possesses_type(int16_t object_type),items
 0x0004bed2,move_party_to,"void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir)",champions
 0x0004bfd4,move_party_warp_to_marker,int move_party_warp_to_marker(void),magic
 0x0004c134,sensor_process_wall_click,"void sensor_process_wall_click(int16_t x, int16_t y, int16_t side, uint16_t actor_thing, uint16_t hand_object)",Skullkeep machines
@@ -994,10 +994,10 @@ address,name,signature,subsystem
 0x00056390,timeline_add_event,int timeline_add_event(void *event),timeline
 0x0005643d,timeline_pop_first_event,void timeline_pop_first_event(void *event),timeline
 0x0005646f,timeline_is_event_due,int timeline_is_event_due(void),timeline
-0x000564c6,timeline_event_door_animation,void timeline_event_door_animation(uint8_t *event),timeline
+0x000564c6,sensor_event_door_animation,void sensor_event_door_animation(uint8_t *event),timeline
 0x000568f7,doorway_event,void doorway_event(uint8_t *event),timeline
 0x00056a03,fake_wall_event,void fake_wall_event(uint8_t *event),timeline
-0x00056af9,timeline_event_door_destruction,void timeline_event_door_destruction(uint8_t *event),timeline
+0x00056af9,sensor_event_door_destruction,void sensor_event_door_destruction(uint8_t *event),timeline
 0x00056b39,set_creatures_facing,"void set_creatures_facing(uint8_t *event, uint8_t *sensor)",Skullkeep machines
 0x00056ba5,affect_creatures_in_area,"void affect_creatures_in_area(uint16_t power, uint16_t creature_type, int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t sensor_type, int16_t effect)",Skullkeep machines
 0x00056cf4,ornament_cycle,"uint16_t ornament_cycle(uint8_t *sensor, int on_wall)",Skullkeep machines

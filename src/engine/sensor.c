@@ -5,7 +5,6 @@
 #include <string.h>
 #include "action.h"
 #include "ai.h"
-#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -79,14 +78,6 @@
 /* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
 #define TIMER_SLOW_FACTOR         8
 
-/* The first word variable and the end of the script variables. */
-#define GLOBAL_WORD_FIRST 0x80
-#define GLOBAL_VAR_END    0xc0
-/* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
-#define GLOBAL_BIT_SHIFT  3
-/* The bit of a flag variable in its byte. */
-#define GLOBAL_BIT_MASK   0x07
-
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET    1
 #define SQUARE_PRIORITY_TOGGLE 2
@@ -126,11 +117,6 @@ static uint32_t current_map_time(uint32_t time)
 }
 
 /* ---- Doors and square events ---- */
-
-int dun_get_door_type(uint16_t door)
-{
-    return dungeon_map_door_type(g_party.cur_map, door_map_type(door));
-}
 
 uint16_t sensor_door_value(uint16_t door, int key)
 {
@@ -195,7 +181,7 @@ static bool contains_item_type(uint16_t thing, int type)
     return false;
 }
 
-int item_party_possesses_type(int type)
+int sensor_party_possesses_type(int type)
 {
     for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
@@ -403,7 +389,7 @@ static int floor_sensor_trigger(const FloorMove *m, int kind, int data)
     case FLOOR_CREATURE:
         return m->type > THING_GROUP || m->type == -1 || m->creature ? -1 : m->enter;
     case FLOOR_PARTY_POSSESSES:
-        return m->type != -1 ? -1 : item_party_possesses_type(data);
+        return m->type != -1 ? -1 : sensor_party_possesses_type(data);
     }
     return -1;
 }
@@ -571,58 +557,6 @@ static void forward_effect(const TimelineEvent *e, uint16_t sensor, int delay)
     if (!effect_activates(sensor, effect))
         return;
     sensor_trigger_target(sensor, sensor_effect(sensor), delay);
-}
-
-int dun_modify_global_var(int var, int value, int op)
-{
-    int old = dun_get_global_var(var), v = old;
-    switch (op) {
-    case GLOBAL_VAR_SET:
-        v = 1;
-        break;
-    case GLOBAL_VAR_CLEAR:
-        v = 0;
-        break;
-    case GLOBAL_VAR_TOGGLE:
-        v = !old;
-        break;
-    case GLOBAL_VAR_ADD:
-        v = old + value;
-        break;
-    case GLOBAL_VAR_SUBTRACT:
-        v = old - value;
-        break;
-    case GLOBAL_VAR_ASSIGN:
-        v = value;
-        break;
-    }
-    if (var < GLOBAL_BYTE_FIRST) {
-        uint8_t bit = (uint8_t)(1 << (var & GLOBAL_BIT_MASK));
-        if ((int16_t)v)
-            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
-        else
-            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
-        return (int16_t)v != 0;
-    }
-    v = (int16_t)v;
-    if (var < GLOBAL_WORD_FIRST) {
-        v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
-        g_game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
-    } else if (var < GLOBAL_VAR_END) {
-        g_game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
-    }
-    return v;
-}
-
-int dun_get_global_var(int var)
-{
-    if (var < GLOBAL_BYTE_FIRST)
-        return g_game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
-    if (var < GLOBAL_WORD_FIRST)
-        return g_game.global_bytes[var - GLOBAL_BYTE_FIRST];
-    if (var < GLOBAL_VAR_END)
-        return g_game.global_words[var - GLOBAL_WORD_FIRST];
-    return 0;
 }
 
 /* Sets, clears, or toggles the script variable of the sensor data; an inverted sensor adds or subtracts 1. */
@@ -1326,46 +1260,6 @@ static void floor_square_event(TimelineEvent *e)
     }
 }
 
-/* A pit or teleporter turns on: the party, a creature, and the objects on it go through. */
-void move_square_contents_through(int16_t x, int16_t y)
-{
-    if (dun_on_party_square(x, y))
-        move_thing(THING_NONE, x, y, x, y);
-    uint16_t g = creature_group_at(g_party.cur_map, x, y);
-    if (g != THING_NONE)
-        move_thing(g, x, y, x, y);
-    uint16_t t = dungeon_square_first_object(g_party.cur_map, x, y);
-    int count = 0;
-    for (uint16_t u = t; u != THING_ENDOFLIST; u = dungeon_next_thing(u))
-        if (thing_type(u) > THING_GROUP)
-            count++;
-    while (t != THING_ENDOFLIST && count) {
-        uint16_t thing = t;
-        t = dungeon_next_thing(thing);
-        int type = thing_type(thing);
-        if (type <= THING_GROUP)
-            continue;
-        count--;
-        move_thing(thing, x, y, x, y);
-        if (type == THING_PROJECTILE) {
-            TimelineEvent *ev = &g_timeline.events[thing_word(thing, PROJECTILE_EVENT)];
-            projectile_event_set_position(ev, g_party.dest_x, g_party.dest_y, g_party.dest_dir);
-            put_le16(ev->data + PROJECTILE_EVENT_THING, thing_with_cell(thing, g_party.dest_cell));
-            timeline_set_event_map(ev, g_party.dest_map);
-        } else if (type == THING_EXPLOSION) {
-            for (int i = 0; i < g_timeline.used_end; i++) {
-                TimelineEvent *ev = &g_timeline.events[i];
-                if (ev->type != EVENT_EXPLOSION || le16(ev->data + EXPLOSION_EVENT_THING) != thing)
-                    continue;
-                ev->data[EXPLOSION_EVENT_X] = (uint8_t)g_party.dest_x;
-                ev->data[EXPLOSION_EVENT_Y] = (uint8_t)g_party.dest_y;
-                put_le16(ev->data + EXPLOSION_EVENT_THING, thing_with_cell(thing, g_party.dest_cell));
-                timeline_set_event_map(ev, g_party.dest_map);
-            }
-        }
-    }
-}
-
 /* A square event opens, closes, or toggles a pit or a teleporter (on_bit); an opened one moves the square contents. */
 static void pit_or_teleporter_event(TimelineEvent *e, uint8_t on_bit)
 {
@@ -1447,7 +1341,7 @@ static void fake_wall_event(TimelineEvent *e)
         g_party.redraw = REDRAW_ALL_VIEW;
 }
 
-void timeline_event_square(TimelineEvent *e)
+void sensor_event_square(TimelineEvent *e)
 {
     switch (square_type(dungeon_square(g_party.cur_map, e->data[EVENT_X], e->data[EVENT_Y]))) {
     case SQUARE_WALL:
@@ -1474,7 +1368,7 @@ void timeline_event_square(TimelineEvent *e)
     }
 }
 
-void timeline_event_door_destruction(TimelineEvent *e)
+void sensor_event_door_destruction(TimelineEvent *e)
 {
     uint8_t *square = current_square(e->data[EVENT_X], e->data[EVENT_Y]);
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
@@ -1527,7 +1421,7 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
     return true;
 }
 
-void timeline_event_door_animation(TimelineEvent *e)
+void sensor_event_door_animation(TimelineEvent *e)
 {
     int x = e->data[EVENT_X], y = e->data[EVENT_Y];
     uint8_t *square = current_square(x, y);
@@ -1646,7 +1540,7 @@ static void timer_event(TimelineEvent *e, uint16_t thing)
     }
 }
 
-void timeline_event_sensor(TimelineEvent *e)
+void sensor_process_event(TimelineEvent *e)
 {
     uint16_t thing = le16(e->data + SENSOR_EVENT_THING);
     switch (e->type) {
@@ -1724,7 +1618,6 @@ void sensor_process_map_entry(bool entering)
 /* ---- Wall clicks ---- */
 
 /* Values of the wall ornament GDAT entries of the wall clicks. */
-#define ORNAMENT_KEY_ALCOVE       0x0a /* ornament value 1: an alcove */
 #define ORNAMENT_KEY_MARKER_DELAY 0x12
 /* The water of a champion after a drink from a fountain. */
 #define WATER_FULL                2048
@@ -1733,16 +1626,6 @@ void sensor_process_map_entry(bool entering)
 #define FLASK_FULL_INDEX          0x00f
 /* A wall sensor that does not react to the click. */
 #define CLICK_IGNORED             (-1)
-
-/* True when the thing on a wall cell is the alcove ornament that the wall face shows. */
-bool dun_is_alcove_shown(uint16_t first, uint16_t thing)
-{
-    int ornament = item_gdat_index(thing);
-    if (ornament == GDAT_NO_INDEX ||
-        gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
-        return 0;
-    return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
-}
 
 /* A GDAT value of the wall ornament of thing, 0 for none. */
 static int ornament_value(uint16_t thing, int key)

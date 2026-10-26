@@ -297,18 +297,6 @@
 /* A link sensor: the exit direction does not turn with the link. */
 #define SENSOR_LINK_FIXED SENSOR_INVERTED
 
-/* The ornament subtypes of the stairs markers. */
-#define TEXT_LINK_FIRST 0x06 /* text kinds 6 and 7: stairs markers */
-#define TEXT_LINK_LAST  0x07
-
-/* The GDAT value of a wall ornament that leads up. */
-#define WALL_ORNAMENT_GOES_UP 0x11 /* GDAT value (9, ornament, 0x0b, 0x11) */
-
-/* The modes of the pit or teleporter change. */
-#define PIT_STATE_OPEN   0
-#define PIT_STATE_CLOSED 1
-#define PIT_STATE_TOGGLE 2
-
 /* The cell of a melee attack on the nearest champion. */
 #define CELL_NEAREST 4
 
@@ -2171,69 +2159,6 @@ static void decide(void)
         a->action = ACTION_RESCAN;
     }
     ai_scratch_pop();
-}
-
-/* Level links and pits for the creature moves. */
-
-/* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *out_sensor)
-{
-    for (int d = 0; d < DIR_COUNT; d++) {
-        int16_t sx = (int16_t)(x + g_dir_dx[d]), sy = (int16_t)(y + g_dir_dy[d]);
-        for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, sx, sy); t != THING_ENDOFLIST;
-             t = dungeon_next_thing(t)) {
-            int type = thing_type(t);
-            if (type > THING_SENSOR)
-                break;
-            if (type == THING_SENSOR) {
-                if (sensor_type(t) == SENSOR_LEVEL_LINK &&
-                    level_delta == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) -
-                                       (dungeon_map_level(g_party.cur_map) & MAP_LEVEL_MASK)) {
-                    *out_sensor = t;
-                    return d;
-                }
-            } else if (type == THING_TEXT && textrec_kind(t) == TEXT_KIND_ORNAMENT) {
-                int kind = textrec_subtype(t);
-                if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST)
-                    continue;
-                int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(t),
-                                                       GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
-                if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
-                    *out_sensor = THING_NONE;
-                    return d;
-                }
-            }
-        }
-    }
-    *out_sensor = THING_NONE;
-    return -1;
-}
-
-/* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
-bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode)
-{
-    uint8_t *square = dungeon_square_byte(g_party.cur_map, x, y);
-    uint8_t on_flag;
-    if (square_type(*square) == SQUARE_PIT) {
-        on_flag = SQUARE_PIT_OPEN;
-    } else if (square_type(*square) == SQUARE_TELEPORTER) {
-        if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, x, y)))
-            return false;
-        on_flag = SQUARE_TELEPORTER_ON;
-    } else {
-        return false;
-    }
-    bool open = (*square & on_flag) != 0;
-    /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
-    if (mode == PIT_STATE_TOGGLE)
-        mode = open;
-    if (mode == PIT_STATE_OPEN) {
-        *square |= on_flag;
-        move_square_contents_through(x, y);
-        return !open;
-    }
-    *square &= (uint8_t)~on_flag;
-    return open;
 }
 
 /* Actions: what a creature does at the acting step of its animation. The result of each is 0 when it was done. */

@@ -99,6 +99,37 @@ void action_tick_hands(void)
                 champ_reload_hand(i, k);
 }
 
+/* The action area of a hand or of the spells. */
+
+void action_area_open_hand(int champ, int hand)
+{
+    if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand))
+        return;
+    g_action.flash = (int16_t)(champ + 1);
+    g_action.redraw_delay = 1;
+    g_action.flags = 0;
+    g_action.flash_hand = (int16_t)hand;
+    g_action.champion = g_action.flash;
+    g_action.hand = (int16_t)hand;
+    champ_drag_cancel();
+    g_hooks.update_action_area(0);
+    g_hooks.draw_champion_state(champ);
+}
+
+void action_area_open_spells(int champ)
+{
+    if (!champion(champ)->health)
+        return;
+    g_action.hand = ACTION_HAND_SPELL;
+    g_action.flash_hand = ACTION_HAND_SPELL;
+    g_action.flash = (int16_t)(champ + 1);
+    g_action.redraw_delay = 1;
+    g_action.flags = 0;
+    g_action.champion = g_action.flash;
+    champ_drag_cancel();
+    g_hooks.update_action_area(0);
+}
+
 void action_request_redraw(void)
 {
     if (!g_action.champion)

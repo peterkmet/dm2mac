@@ -127,7 +127,7 @@ uint16_t item_create_by_index(uint16_t item);
 /* The projectile among the possessions of group that carries payload (THING_NONE: any); 0 when none. */
 uint16_t item_find_link_projectile(uint16_t group, uint16_t payload);
 
-/* Items of the champion actions (champion_action.c). */
+/* Items of the champion actions. */
 /* True when thing is ammunition for the launcher in hand of champ. */
 bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing);
 /* True when thing has an action with command for champ. */
@@ -136,9 +136,5 @@ bool item_has_action_command(int champ, uint16_t thing, int command);
 /* Item charges. */
 /* Uses a charge of an item that holds water; true when it had one. */
 bool item_use_charge(uint16_t thing);
-
-/* Items of the party (sensor.c). */
-/* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
-int item_party_possesses_type(int type);
 
 #endif /* DM2_ENGINE_ITEM_H */

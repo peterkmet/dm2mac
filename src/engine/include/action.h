@@ -72,7 +72,7 @@ void action_open_container(uint16_t container);
 /* One game tick: the busy hands count down; a free hand reloads. */
 void action_tick_hands(void);
 
-/* The action area of a hand or of the spells (champion_action.c). */
+/* The action area of a hand or of the spells. */
 /* Opens the action menu of a hand of champ (0 to 3) in the action area. */
 void action_area_open_hand(int champ, int hand);
 /* Opens the spell panel of champ in the action area. */

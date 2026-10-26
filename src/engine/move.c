@@ -11,11 +11,13 @@
 #include "gdat.h"
 #include "hooks.h"
 #include "item.h"
+#include "le.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
 #include "sound_request.h"
+#include "timeline.h"
 #include "weather.h"
 
 /* Graphics and creature values that the moves read. */
@@ -51,6 +53,24 @@
 #define BUMP_ALERT_CHANCE         5
 #define ARRIVAL_ALERT_SHIFT 2 /* a creature that the party pushes aside: alert damage of a quarter of the step time */
 #define PUSH_ALERT_SHIFT 2 /* a creature that another pushes aside: alert damage of a quarter of the push resistance */
+
+/* The ornament subtypes of the stairs markers. */
+#define TEXT_LINK_FIRST 0x06 /* text kinds 6 and 7: stairs markers */
+#define TEXT_LINK_LAST  0x07
+
+/* The GDAT value of a wall ornament that leads up. */
+#define WALL_ORNAMENT_GOES_UP 0x11 /* GDAT value (9, ornament, 0x0b, 0x11) */
+
+/* The GDAT value of a wall ornament that is an alcove. */
+#define ORNAMENT_KEY_ALCOVE 0x0a /* ornament value 1: an alcove */
+
+/* The first word variable and the end of the script variables. */
+#define GLOBAL_WORD_FIRST 0x80
+#define GLOBAL_VAR_END    0xc0
+/* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
+#define GLOBAL_BIT_SHIFT  3
+/* The bit of a flag variable in its byte. */
+#define GLOBAL_BIT_MASK   0x07
 
 /* Random parts of the champion values. */
 #define BASH_ROLL_MASK 0x0f /* the random part of the strength of a champion who bashes a door */
@@ -1414,6 +1434,106 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
     }
 }
 
+/* Level links, pits, and teleporters. */
+
+int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *out_sensor)
+{
+    for (int d = 0; d < DIR_COUNT; d++) {
+        int16_t sx = (int16_t)(x + g_dir_dx[d]), sy = (int16_t)(y + g_dir_dy[d]);
+        for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, sx, sy); t != THING_ENDOFLIST;
+             t = dungeon_next_thing(t)) {
+            int type = thing_type(t);
+            if (type > THING_SENSOR)
+                break;
+            if (type == THING_SENSOR) {
+                if (sensor_type(t) == SENSOR_LEVEL_LINK &&
+                    level_delta == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) -
+                                       (dungeon_map_level(g_party.cur_map) & MAP_LEVEL_MASK)) {
+                    *out_sensor = t;
+                    return d;
+                }
+            } else if (type == THING_TEXT && textrec_kind(t) == TEXT_KIND_ORNAMENT) {
+                int kind = textrec_subtype(t);
+                if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST)
+                    continue;
+                int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(t),
+                                                       GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
+                if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
+                    *out_sensor = THING_NONE;
+                    return d;
+                }
+            }
+        }
+    }
+    *out_sensor = THING_NONE;
+    return -1;
+}
+
+bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode)
+{
+    uint8_t *square = dungeon_square_byte(g_party.cur_map, x, y);
+    uint8_t on_flag;
+    if (square_type(*square) == SQUARE_PIT) {
+        on_flag = SQUARE_PIT_OPEN;
+    } else if (square_type(*square) == SQUARE_TELEPORTER) {
+        if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, x, y)))
+            return false;
+        on_flag = SQUARE_TELEPORTER_ON;
+    } else {
+        return false;
+    }
+    bool open = (*square & on_flag) != 0;
+    /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
+    if (mode == PIT_STATE_TOGGLE)
+        mode = open;
+    if (mode == PIT_STATE_OPEN) {
+        *square |= on_flag;
+        move_square_contents_through(x, y);
+        return !open;
+    }
+    *square &= (uint8_t)~on_flag;
+    return open;
+}
+
+void move_square_contents_through(int16_t x, int16_t y)
+{
+    if (dun_on_party_square(x, y))
+        move_thing(THING_NONE, x, y, x, y);
+    uint16_t g = creature_group_at(g_party.cur_map, x, y);
+    if (g != THING_NONE)
+        move_thing(g, x, y, x, y);
+    uint16_t t = dungeon_square_first_object(g_party.cur_map, x, y);
+    int count = 0;
+    for (uint16_t u = t; u != THING_ENDOFLIST; u = dungeon_next_thing(u))
+        if (thing_type(u) > THING_GROUP)
+            count++;
+    while (t != THING_ENDOFLIST && count) {
+        uint16_t thing = t;
+        t = dungeon_next_thing(thing);
+        int type = thing_type(thing);
+        if (type <= THING_GROUP)
+            continue;
+        count--;
+        move_thing(thing, x, y, x, y);
+        if (type == THING_PROJECTILE) {
+            TimelineEvent *ev = &g_timeline.events[thing_word(thing, PROJECTILE_EVENT)];
+            projectile_event_set_position(ev, g_party.dest_x, g_party.dest_y, g_party.dest_dir);
+            put_le16(ev->data + PROJECTILE_EVENT_THING, thing_with_cell(thing, g_party.dest_cell));
+            timeline_set_event_map(ev, g_party.dest_map);
+        } else if (type == THING_EXPLOSION) {
+            for (int i = 0; i < g_timeline.used_end; i++) {
+                TimelineEvent *ev = &g_timeline.events[i];
+                if (ev->type != EVENT_EXPLOSION || le16(ev->data + EXPLOSION_EVENT_THING) != thing)
+                    continue;
+                ev->data[EXPLOSION_EVENT_X] = (uint8_t)g_party.dest_x;
+                ev->data[EXPLOSION_EVENT_Y] = (uint8_t)g_party.dest_y;
+                put_le16(ev->data + EXPLOSION_EVENT_THING, thing_with_cell(thing, g_party.dest_cell));
+                timeline_set_event_map(ev, g_party.dest_map);
+            }
+        }
+    }
+}
+
 /* Pushing creature groups. */
 
 bool move_party_can_push_group(uint16_t group)
@@ -1480,6 +1600,74 @@ bool move_party_warp_to_marker(void)
         return true;
     }
     return false;
+}
+
+/* Dungeon reads: alcoves, script variables, and doors. */
+
+bool dun_is_alcove_shown(uint16_t first, uint16_t thing)
+{
+    int ornament = item_gdat_index(thing);
+    if (ornament == GDAT_NO_INDEX ||
+        gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
+        return 0;
+    return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
+}
+
+int dun_get_global_var(int var)
+{
+    if (var < GLOBAL_BYTE_FIRST)
+        return g_game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
+    if (var < GLOBAL_WORD_FIRST)
+        return g_game.global_bytes[var - GLOBAL_BYTE_FIRST];
+    if (var < GLOBAL_VAR_END)
+        return g_game.global_words[var - GLOBAL_WORD_FIRST];
+    return 0;
+}
+
+int dun_modify_global_var(int var, int value, int op)
+{
+    int old = dun_get_global_var(var), v = old;
+    switch (op) {
+    case GLOBAL_VAR_SET:
+        v = 1;
+        break;
+    case GLOBAL_VAR_CLEAR:
+        v = 0;
+        break;
+    case GLOBAL_VAR_TOGGLE:
+        v = !old;
+        break;
+    case GLOBAL_VAR_ADD:
+        v = old + value;
+        break;
+    case GLOBAL_VAR_SUBTRACT:
+        v = old - value;
+        break;
+    case GLOBAL_VAR_ASSIGN:
+        v = value;
+        break;
+    }
+    if (var < GLOBAL_BYTE_FIRST) {
+        uint8_t bit = (uint8_t)(1 << (var & GLOBAL_BIT_MASK));
+        if ((int16_t)v)
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
+        else
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
+        return (int16_t)v != 0;
+    }
+    v = (int16_t)v;
+    if (var < GLOBAL_WORD_FIRST) {
+        v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
+        g_game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
+    } else if (var < GLOBAL_VAR_END) {
+        g_game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
+    }
+    return v;
+}
+
+int dun_get_door_type(uint16_t door)
+{
+    return dungeon_map_door_type(g_party.cur_map, door_map_type(door));
 }
 
 /* Party state that the interface sets. */

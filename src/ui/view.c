@@ -2176,7 +2176,7 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
                                  GDAT_TYPE_VALUE, ATTR_FLAGS) &
                     ITEM_FLAG_UNIQUE &&
                 !target_has_item(shop, item, 1) && !target_has_item(display, item, 0) &&
-                !item_party_possesses_type(item))
+                !sensor_party_possesses_type(item))
                 continue;
             break;
         }

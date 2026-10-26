@@ -137,11 +137,17 @@ MoveResult move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y
    any) that may go, away from the party; THING_NONE when there is none. */
 uint16_t dun_get_discarded_thing(int type, int subtype);
 
-/* Dungeon squares of ai.c. */
+/* Level links, pits, and teleporters. */
+/* The modes of the pit or teleporter change. */
+#define PIT_STATE_OPEN   0
+#define PIT_STATE_CLOSED 1
+#define PIT_STATE_TOGGLE 2
 /* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
 int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *out_sensor);
 /* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
 bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode);
+/* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
+void move_square_contents_through(int16_t x, int16_t y);
 
 /* Pushing creature groups. */
 /* True when the champions push the group; the push costs stamina. */
@@ -151,11 +157,7 @@ bool move_party_can_push_group(uint16_t group);
 /* The party on a warp marker text moves to the marker of its id; true when it moved. */
 bool move_party_warp_to_marker(void);
 
-/* Moves through squares of sensor.c. */
-/* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
-void move_square_contents_through(int16_t x, int16_t y);
-
-/* Dungeon reads of sensor.c. */
+/* Dungeon reads: alcoves, script variables, and doors. */
 /* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
 bool dun_is_alcove_shown(uint16_t first, uint16_t thing);
 /* The value of the global variable var: a flag bit, a byte, or a word of the game record; 0 for an unknown var. */

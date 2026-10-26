@@ -75,13 +75,13 @@ static bool process_world_event(TimelineEvent *e)
 {
     switch (e->type) {
     case EVENT_DOOR_ANIMATION:
-        timeline_event_door_animation(e);
+        sensor_event_door_animation(e);
         break;
     case EVENT_DOOR_DESTRUCTION:
-        timeline_event_door_destruction(e);
+        sensor_event_door_destruction(e);
         break;
     case EVENT_SQUARE:
-        timeline_event_square(e);
+        sensor_event_square(e);
         break;
     case EVENT_ALTAR_REBIRTH:
         timeline_event_altar_rebirth(e);
@@ -112,7 +112,7 @@ static bool process_world_event(TimelineEvent *e)
     case EVENT_SENSOR_AMBIENT_SOUND:
     case EVENT_SENSOR_READY:
     case EVENT_SET_MARKER:
-        timeline_event_sensor(e);
+        sensor_process_event(e);
         break;
     case EVENT_SPAWN_CREATURE: {
         int dir = rand_2bits()

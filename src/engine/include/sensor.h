@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
+#include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint16_t sensor_type(uint16_t sensor)
@@ -202,6 +203,8 @@ static inline uint16_t sensor_area_creature(uint16_t sensor)
 /* Doors and square events. */
 /* A GDAT value of the door type of a door thing. */
 uint16_t sensor_door_value(uint16_t door, int key);
+/* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
+int sensor_party_possesses_type(int type);
 /* Queues a square event for (x, y) of the current map at time. */
 void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect, uint32_t time);
 /* Queues the square event of the target of sensor with effect, delay ticks after its own delay. */
@@ -222,7 +225,17 @@ void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, b
 /* A new game starts the timer sensors that are on and stops the others. */
 void sensor_start_timers(void);
 
+/* Square events. */
+/* Runs a due square event or door event. */
+void sensor_event_square(TimelineEvent *e);
+/* Runs a due door destruction event. */
+void sensor_event_door_destruction(TimelineEvent *e);
+/* Runs a due door animation step. */
+void sensor_event_door_animation(TimelineEvent *e);
+
 /* Sensor timeline events. */
+/* Runs a due sensor animation, timer, or busy event. */
+void sensor_process_event(TimelineEvent *e);
 /* The party enters (entering) or leaves the party map: the map entry sensors and the creature generators. */
 void sensor_process_map_entry(bool entering);
 

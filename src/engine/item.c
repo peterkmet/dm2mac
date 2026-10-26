@@ -24,6 +24,8 @@
 #define COINS_PER_WEIGHT         5   /* the coins of a money box weigh one unit per 5 coins, rounded up */
 /* The miscellaneous item 0 (a champion token) names its champion. */
 #define TEXT_CHAMPION_TOKEN      0
+/* The ammunition kinds of ATTR_AMMO. */
+#define AMMO_KINDS               0x7fff
 /* Item index kinds: item index / ITEM_KIND_ITEMS. */
 #define ITEM_KIND_WEAPON         0
 #define ITEM_KIND_CLOTHING       1
@@ -486,6 +488,38 @@ uint16_t item_find_link_projectile(uint16_t group, uint16_t payload)
             (payload == THING_NONE || payload == record_word(t, PROJECTILE_PAYLOAD)))
             return t;
     return 0;
+}
+
+/* Items of the champion actions. */
+
+bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing)
+{
+    uint16_t launcher = champion(champ)->slots[hand];
+    if (thing == THING_NONE || launcher == THING_NONE)
+        return false;
+    uint16_t kinds = item_attr(launcher, ATTR_AMMO);
+    if (!(kinds & AMMO_LAUNCHER))
+        return false;
+    uint16_t ammo = item_attr(thing, ATTR_AMMO);
+    return !(ammo & AMMO_LAUNCHER) && ammo & AMMO_KINDS & kinds;
+}
+
+bool item_has_action_command(int champ, uint16_t thing, int command)
+{
+    bool found = false;
+    if (thing == THING_NONE)
+        return false;
+    if (champ_list_actions(champ, thing, -1)) {
+        for (int i = 0; i < g_champ_action_count; i++)
+            if ((uint16_t)gtext_gdat_field(g_champ_actions[i].category, g_champ_actions[i].index,
+                                           g_champ_actions[i].entry, FIELD_COMMAND) == (uint16_t)command) {
+                found = true;
+                break;
+            }
+    }
+    if (g_action.champion && (g_action.hand == SLOT_READY_HAND || g_action.hand == SLOT_ACTION_HAND))
+        champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
+    return found;
 }
 
 /* Item charges. */
