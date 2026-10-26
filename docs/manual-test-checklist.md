@@ -231,7 +231,7 @@ Details: [Advanced features](manual.md#advanced-features).
 - [x] L17c. Outdoors, walk to the edge of a map that has no map beyond it, where the view shows trees ahead, and open the automap. Expected: the trees show as walls beyond the last floor squares; the white frame is outside them.
 - [x] L17d. Outdoors, stand in front of a tree on a floor square and open the automap, then a magic map without options. Expected: both show the tree. Near a merchant and a walking creature, open the automap. Expected: neither shows, as on the magic map without options.
 - [x] L17e. Outdoors, stand at the edge of a map where another map of the level covers the squares beyond it only with unknown squares (level 6, map 24, the south edge), with the view showing trees ahead, and open the automap. Expected: the trees show as walls, as on the magic map.
-- [x] L17f. Press M, then C, then O while the party walks a step. Expected: each screen fills the whole viewport.
+- [x] L17f. Press M, then C, then Esc (the options menu) while the party walks a step. Expected: each screen fills the whole viewport.
 - [ ] L18. Press C, turn IMMORTAL on, close the screen, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
 - [ ] L19. On the cheat screen, turn FOOD AND WATER on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
 - [ ] L20. In a dark place, turn FULL LIGHT on with C and close the screen. Expected: the dungeon view shows full light.
