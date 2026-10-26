@@ -1,7 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "timeline.h"
 #include <stdlib.h>
+#include "creature.h"
+#include "gdat.h"
+#include "le.h"
+#include "move.h"
 #include "os.h"
+#include "sensor.h"
+#include "sound_request.h"
 
 /* The end of the free list, and the system errors of the original: no queue slot, a full timeline. */
 #define END_OF_FREE_LIST           (-1)
@@ -218,4 +224,14 @@ bool timeline_is_event_due(uint32_t game_time)
 {
     fix_pending_slot();
     return g_timeline.count != 0 && time_of_event(g_timeline.queue[0]) <= game_time;
+}
+
+/* The event handlers. */
+
+void timeline_event_move_group(TimelineEvent *e)
+{
+    int x = e->data[0], y = e->data[1];
+    if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
+        sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
+                       1);
 }

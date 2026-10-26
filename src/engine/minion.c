@@ -4,10 +4,12 @@
 #include "action.h"
 #include "ai.h"
 #include "champion.h"
+#include "creature.h"
 #include "dungeon.h"
 #include "gfx.h"
 #include "hooks.h"
 #include "ids.h"
+#include "item.h"
 #include "move.h"
 
 /* Game ticks between the mana points of an open minion map. */
@@ -96,7 +98,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     if (px % (MAP_ICON_W + GAP_X) < GAP_X || py % (MAP_ICON_H + GAP_Y) < GAP_Y)
         return;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    if (!minion_find_link_projectile(group, thing))
+    if (!item_find_link_projectile(group, thing))
         return;
     int col = px / (MAP_ICON_W + GAP_X);
     int row = py / (MAP_ICON_H + GAP_Y);
@@ -129,5 +131,17 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         ai_free_cached_data(group);
         g_hooks.update_action_area(0);
     }
+    dun_set_current_map(saved);
+}
+
+void minion_dismiss(uint16_t group)
+{
+    uint16_t projectile = item_find_link_projectile(group, THING_NONE);
+    int saved = g_party.cur_map;
+    if (!projectile)
+        return;
+    uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
+    dun_set_current_map(location_map(at));
+    creature_set_next_action(group, location_x(at), location_y(at), CREATURE_ACTION_VANISH, 1);
     dun_set_current_map(saved);
 }

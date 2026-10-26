@@ -53,7 +53,7 @@ F = {
     "ai_find_marker": 0x3161E, "ai_find_marker_by_id": 0x31724,
     "ai_blocks_line_except_self": 0x317EE, "ai_search_area": 0x3188A,
     "ai_load_cached_path": 0x33DF9, "ai_next_path_step": 0x33E61,
-    "ai_plan_path": 0x33EF3, "creature_refresh_party_maps": 0x2F8F5,
+    "ai_plan_path": 0x33EF3, "ai_refresh_party_maps": 0x2F8F5,
 }
 # The fields of the AI context: (C offset, original offset, size).
 AI_FIELDS = {
@@ -110,8 +110,8 @@ class Ai:
         for addr in (0x3BCA5, 0x3F406, 0x3F3C2):
             if addr in sc.view.no_ops:
                 emu.uc.hook_del(sc.view.no_ops.pop(addr))
-        if F["creature_refresh_party_maps"] in sc.stubs:  # dm2test.scenario.STUBS: the hook of Step 14
-            emu.uc.hook_del(sc.stubs.pop(F["creature_refresh_party_maps"]))
+        if F["ai_refresh_party_maps"] in sc.stubs:  # dm2test.scenario.STUBS: the hook of Step 14
+            emu.uc.hook_del(sc.stubs.pop(F["ai_refresh_party_maps"]))
         emu.write_u32(G_MEM_FREE_BYTES, 0x7FFFFFFF)
         self.fix_cell_mask()
         self.sync_map_values()
@@ -856,7 +856,7 @@ def test_refresh_party_maps(ai):
         redraw = rng.choice((1, 2, 3, 3))
         sc.party.redraw = redraw
         emu.write_u32(G_VIEW_REDRAW, redraw)
-        mine, theirs = ai.call("creature_refresh_party_maps")
+        mine, theirs = ai.call("ai_refresh_party_maps")
         for c_map, o_map in distance_maps(ai):
             assert c_map[:2] == o_map[:2], (n, m, x, y)
             assert c_map[2].hex() == o_map[2].hex(), (n, m, x, y)

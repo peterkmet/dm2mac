@@ -79,9 +79,7 @@ void minion_toggle_map_option(int option);
 bool minion_map_set_location(uint16_t thing, int16_t x, int16_t y, int16_t map);
 /* A click (command) at (x, y) of the screen on the grid of a minion location map sends its minion there. */
 void minion_map_click_set_destination(int command, int16_t x, int16_t y);
-/* Minions of creature.c and item.c. */
+/* The minion of an item vanishes. */
 void minion_dismiss(uint16_t group);
-/* The projectile among the possessions of group that carries payload (THING_NONE: any); 0 when none. */
-uint16_t minion_find_link_projectile(uint16_t group, uint16_t payload);
 
 #endif /* DM2_ENGINE_MINION_H */

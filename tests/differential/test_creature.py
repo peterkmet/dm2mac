@@ -96,7 +96,7 @@ def test_push_creatures(creatures, lib):
         random_champions(creatures, rng)
         creatures.place(map_, x, y, d)
         arrow = rng.randrange(C.PUSH_ARROW_COUNT)
-        lib.move_push_creature(arrow)
+        lib.creature_push_creature(arrow)
         creatures.emu.call(MOVE_PUSH_CREATURE, arrow)
         creatures.assert_same((n, map_, x, y, d, arrow, "push"))
         for _ in range(rng.randrange(1, 5)):

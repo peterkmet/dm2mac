@@ -2953,7 +2953,7 @@ bool ai_plan_path(void)
     return result;
 }
 
-void creature_refresh_party_maps(void)
+void ai_refresh_party_maps(void)
 {
     int saved = g_party.cur_map;
     dun_set_current_map(g_game.party_map);

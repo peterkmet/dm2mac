@@ -220,6 +220,9 @@ int ai_find_marker(int level_delta, uint16_t id_mask);
 /* Points g_ai.cached_path to the stored path of the group; a lost path clears the path state.
    It is exported for the tests. */
 void ai_load_cached_path(void);
+/* After the party moved or the squares changed: the distance maps of the squares around the party on the party map
+   and on the map of the alternate view; after a view change also the light sums of the light sources near the party. */
+void ai_refresh_party_maps(void);
 
 /* Creature perception and movement (ai_move.c): squares, lines of sight, item filters, the tests of the AI
    commands, and the path search. The functions work on the AI context and set g_ai.command_result. */

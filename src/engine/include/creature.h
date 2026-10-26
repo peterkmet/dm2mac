@@ -361,13 +361,10 @@ int creature_get_party_distance(int16_t x, int16_t y);
 bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_group);
 /* Pushes the group on (x, y) one square in dir; a push into the party moves the party. */
 void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength);
+/* The party pushes the creature in front by a push arrow. */
+void creature_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */
 void creature_continue_push(int command);
-
-/* Creature maps of ai_move.c. */
-/* After the party moved or the squares changed: the distance maps of the squares around the party on the party map
-   and on the map of the alternate view; after a view change also the light sums of the light sources near the party. */
-void creature_refresh_party_maps(void);
 
 /* Creature groups of move.c. */
 /* The creature group whose body covers the point of cell (0xff: any cell) of the square (*out_x, *out_y) of the current

@@ -8,7 +8,6 @@
 #include "game_text.h"
 #include "gdat.h"
 #include "ids.h"
-#include "minion.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -476,9 +475,9 @@ uint16_t item_create_by_index(uint16_t item)
     return thing;
 }
 
-/* Minion links (minion.h) */
+/* Minion links. */
 
-uint16_t minion_find_link_projectile(uint16_t group, uint16_t payload)
+uint16_t item_find_link_projectile(uint16_t group, uint16_t payload)
 {
     if (group == THING_NONE || group == THING_ENDOFLIST || record_word(group, THING_NEXT) == THING_NONE)
         return 0;

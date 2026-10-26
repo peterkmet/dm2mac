@@ -24,7 +24,7 @@ typedef struct {
 extern Weather g_weather;
 /* The party light level, 0 (bright) to DARKEST_LIGHT (light_update_party_light). */
 extern int g_view_light_level;
-/* The light of the squares around the party and of the explosions near it; creature_refresh_party_maps (Step 16)
+/* The light of the squares around the party and of the explosions near it; ai_refresh_party_maps (Step 16)
    clears them and adds each square with light_add_square_light. */
 extern int16_t g_light_source_sum, g_explosion_light_sum;
 

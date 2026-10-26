@@ -54,7 +54,7 @@ GLOBALS = {
     "redraw": (0x7F38C, "<I"),
 }
 G_MAP_LIGHT, G_MAP_WALL_COST = 0x7F3F4, 0x7F3FC  # the light radius and wall cost of the party map graphics
-G_DISTANCE_MAPS = (0x7F8C8, 0x7F8C4)  # the party distance maps of creature_refresh_party_maps
+G_DISTANCE_MAPS = (0x7F8C8, 0x7F8C4)  # the party distance maps of ai_refresh_party_maps
 G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, G_PUSH_PENDING = 0x7F22C, 0x7F26A, 0x7F25A, 0x72FFC
 G_ACTIVE_GROUPS, G_COMMAND_STOP = 0x7F898, 0x7F484
 COMMAND_RECORD = SCRATCH + 0xF8000

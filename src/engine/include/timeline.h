@@ -90,7 +90,7 @@ bool timeline_is_event_due(uint32_t game_time);
 /* The event loop (game.c) and the event handlers of other modules. */
 /* A step of an altar rebirth (EVENT_ALTAR_REBIRTH). */
 void timeline_event_altar_rebirth(TimelineEvent *e);
-/* Runs a due group move event. */
+/* Runs a due group move event: the group moves to the square that it could not enter before. */
 void timeline_event_move_group(TimelineEvent *e);
 /* Runs the due timeline events. */
 void timeline_process(void);

@@ -10,7 +10,6 @@
 #include "ids.h"
 #include "inventory.h"
 #include "item.h"
-#include "minion.h"
 #include "move.h"
 #include "random.h"
 #include "recruit.h"
@@ -198,7 +197,7 @@ static bool is_command_allowed(uint16_t thing, int command)
     if (type < MINION_MAP_FIRST_TYPE || type > MINION_MAP_LAST_TYPE)
         return false;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    if (!minion_find_link_projectile(group, thing)) {
+    if (!item_find_link_projectile(group, thing)) {
         if (command == COMMAND_MINION_ATTACK || command == COMMAND_MINION_MAP_SET)
             return true;
         if (thing_word(thing, MINION_MAP_LOCATION) == THING_NONE)

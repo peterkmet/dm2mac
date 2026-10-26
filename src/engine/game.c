@@ -3,6 +3,7 @@
 #include "game.h"
 #include <stdbool.h>
 #include <string.h>
+#include "ai.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -52,7 +53,7 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving)
     sensor_process_map_entry(1);
     creature_activate_groups_on_map();
     g_party.redraw |= REDRAW_SQUARES;
-    creature_refresh_party_maps();
+    ai_refresh_party_maps();
     g_hooks.flush_input();
 }
 

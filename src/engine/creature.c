@@ -12,10 +12,8 @@
 #include "ids.h"
 #include "item.h"
 #include "le.h"
-#include "minion.h"
 #include "move.h"
 #include "os.h"
-#include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -162,23 +160,10 @@
 #define ALERT_HIT_CHANCE    60
 #define ALERT_PUSHED_CHANCE 10
 
-/* The retry of a group move. */
-#define GROUP_RETRY_DELAY 5
-#define EVENT_GROUP_WORD  2 /* group retry event: data bytes 2-3 hold the group */
-
 /* Pushing creatures. */
-#define PUSH_FAIL_STAMINA  5
-#define PUSH_LIGHT         46 /* creatures below this resistance are easy to push */
 #define PUSH_BASE_STRENGTH 40
-#define PUSH_LEADER_SHIFT  3  /* the leader pushes with 1/8 more strength */
-#define PUSH_LIGHT_SHIFT   2  /* a light creature: 1/4 more strength */
-#define PUSH_STAMINA_SHIFT 4  /* a push costs stamina when a champion has more than 1/16 of the maximum */
-#define PUSH_COST_SHIFT    2  /* a push costs a quarter of the resistance, at least PUSH_FAIL_STAMINA */
 #define PUSH_STOP_SHIFT    2  /* a weak push stops with chance 1 in (resistance - strength) / 4 + 1 */
 #define LOAD_PUSH_DIVISOR  10 /* the push strength of the party: its load / 10 per champion */
-
-/* The power of a vanish sensor that makes the creatures vanish. */
-#define VANISH_POWER 2
 
 ActiveGroup *g_active_groups;
 int g_active_group_max;
@@ -1331,19 +1316,6 @@ uint16_t creature_summon_group(CreatureSummon summon)
     return group;
 }
 
-/* The minion of an item vanishes. */
-void minion_dismiss(uint16_t group)
-{
-    uint16_t projectile = minion_find_link_projectile(group, THING_NONE);
-    int saved = g_party.cur_map;
-    if (!projectile)
-        return;
-    uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
-    dun_set_current_map(location_map(at));
-    creature_set_next_action(group, location_x(at), location_y(at), CREATURE_ACTION_VANISH, 1);
-    dun_set_current_map(saved);
-}
-
 void creature_turn_group(uint16_t group, int absolute, int16_t dir)
 {
     int old = group_dir(group);
@@ -1355,38 +1327,6 @@ void creature_turn_group(uint16_t group, int absolute, int16_t dir)
     int turn = dir_relative(dir, old);
     for (uint16_t *link = group_possessions(group); *link != THING_ENDOFLIST; link = thing_list(*link, THING_NEXT))
         *link = thing_with_cell(*link, dir_turn(thing_cell(*link), turn));
-}
-
-/* Keeps the position of the projectiles that a group carries. */
-void move_update_carried_missiles(uint16_t holder, int16_t x, int16_t y, int16_t map, int flag)
-{
-    for (uint16_t t = thing_word(holder, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (thing_type(t) != THING_PROJECTILE)
-            continue;
-        thing_set_word(t, PROJECTILE_LOCATION, (uint16_t)location_pack(x, y, map));
-        projectile_set_holder_waits(t, flag & 1);
-    }
-}
-
-/* Schedules a new try of a group move that a full square stopped. */
-void move_schedule_group_retry(uint16_t group, int16_t x, int16_t y, int16_t map, int audible)
-{
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + GROUP_RETRY_DELAY, map)};
-    e.type = audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP;
-    e.data[0] = (uint8_t)x;
-    e.data[1] = (uint8_t)y;
-    put_le16(e.data + EVENT_GROUP_WORD, group);
-    move_update_carried_missiles(group, x, y, map, 1);
-    timeline_add_event(&e);
-}
-
-/* A group moves to the square that it could not enter before. */
-void timeline_event_move_group(TimelineEvent *e)
-{
-    int x = e->data[0], y = e->data[1];
-    if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
-        sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
-                       1);
 }
 
 int creature_get_party_distance(int16_t x, int16_t y)
@@ -1452,40 +1392,6 @@ bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_gro
     return true;
 }
 
-/* True when the champions push the group; the push costs stamina. */
-bool move_party_can_push_group(uint16_t group)
-{
-    int16_t resistance = creature_group_info(group)->push_resistance;
-    if (resistance >= PUSH_IMMOVABLE)
-        return false;
-    bool pushed = false;
-    for (int i = 0; i < g_game.champion_count; i++) {
-        Champion *c = champion(i);
-        if (!c->health)
-            continue;
-        int16_t s = (int16_t)champ_get_stat(c, STAT_STRENGTH, 0);
-        if (i == g_game.leader)
-            s = (int16_t)(s + (s >> PUSH_LEADER_SHIFT));
-        if (resistance < PUSH_LIGHT)
-            s = (int16_t)(s + (s >> PUSH_LIGHT_SHIFT));
-        s = (int16_t)champ_scale_by_stamina(c, s);
-        if (resistance <= s || !rand_below((uint16_t)(((resistance - s) >> 1) + 1))) {
-            pushed = true;
-            break;
-        }
-    }
-    for (int i = 0; i < g_game.champion_count; i++) {
-        Champion *c = champion(i);
-        if (c->health && c->max_stamina >> PUSH_STAMINA_SHIFT < c->stamina) {
-            int16_t cost = PUSH_FAIL_STAMINA;
-            if (pushed && resistance >> PUSH_COST_SHIFT > PUSH_FAIL_STAMINA)
-                cost = (int16_t)(resistance >> PUSH_COST_SHIFT);
-            champ_decrease_stamina(i, cost);
-        }
-    }
-    return pushed;
-}
-
 void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength)
 {
     uint16_t g;
@@ -1535,8 +1441,7 @@ void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength)
         move_party(dir_relative(dir, g_game.party_dir) + CMD_MOVE_FORWARD);
 }
 
-/* The party pushes the creature in front by a push arrow. */
-void move_push_creature(int arrow)
+void creature_push_creature(int arrow)
 {
     static const int8_t turns[PUSH_ARROW_COUNT] = {0, CMD_TURN_RIGHT, CMD_TURN_LEFT, 0, CMD_TURN_RIGHT, CMD_TURN_LEFT};
     static const int8_t commands[PUSH_ARROW_COUNT] = {CMD_MOVE_FORWARD, CMD_MOVE_FORWARD, CMD_MOVE_RIGHT,
@@ -1588,43 +1493,4 @@ void creature_continue_push(int command)
         }
     }
     dun_set_current_map(g_game.party_map);
-}
-
-/* Creature sensors. */
-
-void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor)
-{
-    /* an inverted sensor turns the creatures on effect 1 instead of 0 */
-    if (e->data[EVENT_EFFECT] != (sensor_flag(sensor, SENSOR_INVERTED) ? 1 : 0))
-        return;
-    uint16_t g = creature_get_group_at(sensor_target_x(sensor), sensor_target_y(sensor));
-    if (g != THING_NONE)
-        creature_turn_group(g, 1, sensor_turn_dir(sensor));
-}
-
-void sensor_affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int effect)
-{
-    int power = sensor_area_power(sensor), creature_type = sensor_area_creature(sensor);
-    int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor), kind = sensor_type(sensor);
-    int rx = abs((int16_t)(x - tx)), ry = abs((int16_t)(y - ty));
-    int left = x - rx, top = y - ry;
-    for (int row = ry * 2; row >= 0; row--)
-        for (int col = rx * 2; col >= 0; col--) {
-            int16_t sx = (int16_t)(left + col), sy = (int16_t)(top + row);
-            if (sx < 0 || sx >= dungeon_map_width(g_party.cur_map) || sy < 0 ||
-                sy >= dungeon_map_height(g_party.cur_map))
-                continue;
-            uint16_t g = creature_get_group_at(sx, sy);
-            if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != (uint16_t)creature_type)
-                continue;
-            if (kind == SENSOR_VANISH) {
-                if ((uint16_t)power > 1) {
-                    if ((uint16_t)power != VANISH_POWER)
-                        return;
-                    creature_set_next_action(g, sx, sy, CREATURE_ACTION_VANISH, 1);
-                }
-            } else if (kind == SENSOR_ALERT) {
-                creature_alert(g, (Location){sx, sy}, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
-            }
-        }
 }

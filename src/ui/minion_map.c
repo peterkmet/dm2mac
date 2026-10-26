@@ -582,7 +582,7 @@ static void find_minion_and_marker(uint16_t thing, int flags, MinionSquares *ms)
     *ms = (MinionSquares){.linked_map = -1};
     if (flags & MAP_MINION) {
         uint16_t w =
-            thing_word(minion_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing), PROJECTILE_LOCATION);
+            thing_word(item_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing), PROJECTILE_LOCATION);
         ms->x = location_x(w);
         ms->y = location_y(w);
         ms->map = location_map(w);
@@ -742,7 +742,7 @@ void mmap_draw(uint16_t thing)
     if (kind != MAP_KIND_NO_OPTIONS) {
         action_set_map_flags(MAP_HAS_OPTIONS, true);
         if (kind != MAP_KIND_PLAIN) {
-            link = minion_find_link_projectile(group, thing);
+            link = item_find_link_projectile(group, thing);
             if (link)
                 action_set_map_flags(MAP_MINION, true);
             else if (g_action.flags & MAP_MINION)

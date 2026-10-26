@@ -37,6 +37,9 @@
 #define MOVE_RETRY    (-3) /* move_thing: a group that waited enters its square */
 #define MOVE_CREATED  (-4) /* move_thing: the group is new, or it leaves the dungeon */
 
+/* The group move events (EVENT_MOVE_GROUP, EVENT_MOVE_GROUP_2): data bytes 2-3 hold the group. */
+#define EVENT_GROUP_WORD 2
+
 /* Marker modes of dun_find_marker. */
 #define MARKER_FIND_NTH  2
 #define MARKER_COUNT     3
@@ -147,15 +150,9 @@ int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t
 /* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
 bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode);
 
-/* Moves of creature groups (creature.c). */
-/* Schedules a new try of a group move that a full square stopped. */
-void move_schedule_group_retry(uint16_t group, int16_t x, int16_t y, int16_t map, int audible);
-/* Keeps the position of the projectiles that a group carries. */
-void move_update_carried_missiles(uint16_t holder, int16_t x, int16_t y, int16_t map, int flag);
+/* Pushing creature groups. */
 /* True when the champions push the group; the push costs stamina. */
 bool move_party_can_push_group(uint16_t group);
-/* The party pushes the creature in front by a push arrow. */
-void move_push_creature(int arrow);
 
 /* The warp of the party (magic.c). */
 /* The party on a warp marker text moves to the marker of its id; true when it moved. */
@@ -179,7 +176,7 @@ int dun_modify_global_var(int var, int value, int op); /* returns the new value 
 /* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */
 int dun_get_door_type(uint16_t door);
 
-/* Party state that the interface sets (move.c). */
+/* Party state that the interface sets. */
 /* The movement arrows show the push arrows (on) or the move arrows: the party and the interface flag. */
 void move_set_push_mode(bool on);
 /* The push arrow under the mouse, PUSH_ARROW_NONE for none. */

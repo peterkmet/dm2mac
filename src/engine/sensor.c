@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Floor and wall sensors, square events, doors, pits, teleporters, and fake walls. */
 #include "sensor.h"
+#include <stdlib.h>
 #include <string.h>
 #include "action.h"
 #include "ai.h"
@@ -100,9 +101,13 @@
 #define FALL_CHANCE_SHOWN      50 /* the text is visible */
 #define FALL_CHANCE_HIDDEN     25
 #define FALL_CHANCE_MAX        90
+
+/* The power of a vanish sensor that makes the creatures vanish. */
+#define VANISH_POWER 2
+
 /* The delay of the next creature of a generator text: a base and a random part as large. */
-#define GENERATOR_SLOW_DELAY   512
-#define GENERATOR_FAST_DELAY   8192
+#define GENERATOR_SLOW_DELAY        512
+#define GENERATOR_FAST_DELAY        8192
 #define GENERATOR_SLOW_SHOWN_FACTOR 4 /* a visible generator text waits longer */
 
 static uint8_t *current_square(int x, int y)
@@ -985,6 +990,17 @@ static void create_item(uint16_t sensor)
 #define COUNTDOWN_MAX 400
 #define CHANCE_END    500
 
+/* A sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */
+static void set_creatures_facing(const TimelineEvent *e, uint16_t sensor)
+{
+    /* an inverted sensor turns the creatures on effect 1 instead of 0 */
+    if (e->data[EVENT_EFFECT] != (sensor_flag(sensor, SENSOR_INVERTED) ? 1 : 0))
+        return;
+    uint16_t g = creature_get_group_at(sensor_target_x(sensor), sensor_target_y(sensor));
+    if (g != THING_NONE)
+        creature_turn_group(g, 1, sensor_turn_dir(sensor));
+}
+
 /* The sensor types that react the same way to a square event on a wall and on a floor; returns 0 for another type. */
 static int shared_event(TimelineEvent *e, uint16_t t, int wall)
 {
@@ -1019,7 +1035,7 @@ static int shared_event(TimelineEvent *e, uint16_t t, int wall)
         transfer_objects((ObjectTransfer){.e = e, .sensor = t, .reverse = true, .first_only = true}, THING_NONE, NULL);
         return 1;
     case SENSOR_TURN_CREATURES:
-        sensor_turn_creatures(e, t);
+        set_creatures_facing(e, t);
         return 1;
     case SENSOR_SET_GLOBAL:
         set_global_flag(e, t);
@@ -1243,6 +1259,35 @@ static void floor_text_event(uint16_t t, int effect, int x, int y)
     }
 }
 
+/* A sensor reaches the groups of the creature type of its data in the rectangle around (x, y) that its target spans:
+   SENSOR_VANISH makes them vanish (power 2), SENSOR_ALERT sets mood bit power (cleared when effect is set). */
+static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int effect)
+{
+    int power = sensor_area_power(sensor), creature_type = sensor_area_creature(sensor);
+    int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor), kind = sensor_type(sensor);
+    int rx = abs((int16_t)(x - tx)), ry = abs((int16_t)(y - ty));
+    int left = x - rx, top = y - ry;
+    for (int row = ry * 2; row >= 0; row--)
+        for (int col = rx * 2; col >= 0; col--) {
+            int16_t sx = (int16_t)(left + col), sy = (int16_t)(top + row);
+            if (sx < 0 || sx >= dungeon_map_width(g_party.cur_map) || sy < 0 ||
+                sy >= dungeon_map_height(g_party.cur_map))
+                continue;
+            uint16_t g = creature_get_group_at(sx, sy);
+            if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != (uint16_t)creature_type)
+                continue;
+            if (kind == SENSOR_VANISH) {
+                if ((uint16_t)power > 1) {
+                    if ((uint16_t)power != VANISH_POWER)
+                        return;
+                    creature_set_next_action(g, sx, sy, CREATURE_ACTION_VANISH, 1);
+                }
+            } else if (kind == SENSOR_ALERT) {
+                creature_alert(g, (Location){sx, sy}, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
+            }
+        }
+}
+
 /* A square event on a floor: the texts and the sensors of the square react. */
 static void floor_square_event(TimelineEvent *e)
 {
@@ -1262,7 +1307,7 @@ static void floor_square_event(TimelineEvent *e)
             break;
         case SENSOR_VANISH:
         case SENSOR_ALERT:
-            sensor_affect_creatures_in_area(t, x, y, effect);
+            affect_creatures_in_area(t, x, y, effect);
             break;
         case SENSOR_PARTY_TELEPORT: { /* moves the party to its target (or to this square) */
             int tx = x, ty = y;

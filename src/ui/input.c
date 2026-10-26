@@ -2209,7 +2209,7 @@ void view_click_in_viewport(int16_t x, int16_t y)
     dun_set_current_map(g_game.party_map);
     if (g_party.push_mode) {
         move_set_push_mode(false);
-        move_push_creature(g_party.push_arrow);
+        creature_push_creature(g_party.push_arrow);
         ui_draw_movement_arrows();
         return;
     }

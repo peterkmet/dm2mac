@@ -6,6 +6,7 @@
 #include "action.h"
 #include "action_area.h"
 #include "advanced.h"
+#include "ai.h"
 #include "champion.h"
 #include "creature.h"
 #include "dialog.h"
@@ -148,7 +149,7 @@ static bool step_view(void)
             play_show_view();
         if (!g_ui.inventory) {
             if (g_party.redraw)
-                creature_refresh_party_maps();
+                ai_refresh_party_maps();
             if (g_party.move_steps)
                 view_draw_dungeon(g_party.view_dir, g_party.view_x, g_party.view_y);
             else
@@ -222,7 +223,7 @@ void play_start_session(void)
     ui_draw_movement_arrows();
     champ_init_party_state();
     game_set_offer_restore(true);
-    creature_refresh_party_maps();
+    ai_refresh_party_maps();
     creature_reset_active_groups();
     if (g_session.new_game)
         move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);

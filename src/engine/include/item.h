@@ -123,6 +123,10 @@ void item_set_do_not_discard(uint16_t thing, int keep);
    dungeon has no free record. */
 uint16_t item_create_by_index(uint16_t item);
 
+/* Minion links. */
+/* The projectile among the possessions of group that carries payload (THING_NONE: any); 0 when none. */
+uint16_t item_find_link_projectile(uint16_t group, uint16_t payload);
+
 /* Items of the champion actions (champion_action.c). */
 /* True when thing is ammunition for the launcher in hand of champ. */
 bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing);

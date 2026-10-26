@@ -64,6 +64,17 @@
 /* Random parts of the champion values. */
 #define BASH_ROLL_MASK 0x0f /* the random part of the strength of a champion who bashes a door */
 
+/* The retry of a group move. */
+#define GROUP_RETRY_DELAY 5
+
+/* Pushing creatures. */
+#define PUSH_FAIL_STAMINA  5
+#define PUSH_LIGHT         46 /* creatures below this resistance are easy to push */
+#define PUSH_LEADER_SHIFT  3  /* the leader pushes with 1/8 more strength */
+#define PUSH_LIGHT_SHIFT   2  /* a light creature: 1/4 more strength */
+#define PUSH_STAMINA_SHIFT 4  /* a push costs stamina when a champion has more than 1/16 of the maximum */
+#define PUSH_COST_SHIFT    2  /* a push costs a quarter of the resistance, at least PUSH_FAIL_STAMINA */
+
 /* Places in the orders of cells and sides. */
 #define CELL_ORDER_BACK  2 /* champ_get_nearest_at: the first of the two back cells */
 #define FREE_SQUARE_ROWS 4 /* find_free_adjacent_square: one row for each value of a 2-bit roll */
@@ -1118,6 +1129,29 @@ static int get_party_step_time(void)
     return sum;
 }
 
+/* Keeps the position of the projectiles that a group carries. */
+static void update_carried_missiles(uint16_t holder, int16_t x, int16_t y, int16_t map, int flag)
+{
+    for (uint16_t t = thing_word(holder, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+        if (thing_type(t) != THING_PROJECTILE)
+            continue;
+        thing_set_word(t, PROJECTILE_LOCATION, (uint16_t)location_pack(x, y, map));
+        projectile_set_holder_waits(t, flag & 1);
+    }
+}
+
+/* Schedules a new try of a group move that a full square stopped. */
+static void schedule_group_retry(uint16_t group, int16_t x, int16_t y, int16_t map, int audible)
+{
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + GROUP_RETRY_DELAY, map)};
+    e.type = audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP;
+    e.data[0] = (uint8_t)x;
+    e.data[1] = (uint8_t)y;
+    put_le16(e.data + EVENT_GROUP_WORD, group);
+    update_carried_missiles(group, x, y, map, 1);
+    timeline_add_event(&e);
+}
+
 /* The party arrives on the destination of m: a creature there moves aside or away, then the floor sensors react. */
 static void arrive_party(const ThingMove *m)
 {
@@ -1152,7 +1186,7 @@ static void arrive_party(const ThingMove *m)
         if (!displaced) {
             creature_cancel_update(g);
             if (!move_thing(g, g_game.party_x, g_game.party_y, MOVE_RETRY, 0))
-                move_schedule_group_retry(g, g_game.party_x, g_game.party_y, map, 0);
+                schedule_group_retry(g, g_game.party_x, g_game.party_y, map, 0);
         }
     }
     if (map == m->start_map)
@@ -1178,7 +1212,7 @@ static GroupArrival meet_target_square(uint16_t thing, int map, int dst_x, int d
             return ARRIVAL_WAIT;
         if (!find_free_adjacent_square(other, dst_x, dst_y, &nx, &ny)) {
             creature_cancel_update(thing);
-            move_schedule_group_retry(thing, dst_x, dst_y, map, 0);
+            schedule_group_retry(thing, dst_x, dst_y, map, 0);
             return ARRIVAL_DONE;
         }
     } else if (oi->flags & CREATURE_STATIC && oi->push_resistance >= PUSH_IMMOVABLE) {
@@ -1208,7 +1242,7 @@ static bool arrive_group(const ThingMove *m)
     if (arrival == ARRIVAL_WAIT) {
         if (active != GROUP_NOT_ACTIVE)
             creature_deactivate_group(active);
-        move_schedule_group_retry(thing, dst_x, dst_y, map, g_party.teleporter_flag);
+        schedule_group_retry(thing, dst_x, dst_y, map, g_party.teleporter_flag);
         return true;
     }
     if (arrival == ARRIVAL_DONE)
@@ -1217,7 +1251,7 @@ static bool arrive_group(const ThingMove *m)
         dungeon_link_thing_to_square(thing, g_party.cur_map, dst_x, dst_y);
     else
         sensor_enter_square(dst_x, dst_y, thing, false, false);
-    move_update_carried_missiles(thing, dst_x, dst_y, map, 0);
+    update_carried_missiles(thing, dst_x, dst_y, map, 0);
     if (active == GROUP_NOT_ACTIVE) {
         if (!(creature_group_info(thing)->flags & CREATURE_STATIC))
             creature_activate_group(thing, dst_x, dst_y);
@@ -1502,6 +1536,43 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
         }
     }
 }
+
+/* Pushing creature groups. */
+
+bool move_party_can_push_group(uint16_t group)
+{
+    int16_t resistance = creature_group_info(group)->push_resistance;
+    if (resistance >= PUSH_IMMOVABLE)
+        return false;
+    bool pushed = false;
+    for (int i = 0; i < g_game.champion_count; i++) {
+        Champion *c = champion(i);
+        if (!c->health)
+            continue;
+        int16_t s = (int16_t)champ_get_stat(c, STAT_STRENGTH, 0);
+        if (i == g_game.leader)
+            s = (int16_t)(s + (s >> PUSH_LEADER_SHIFT));
+        if (resistance < PUSH_LIGHT)
+            s = (int16_t)(s + (s >> PUSH_LIGHT_SHIFT));
+        s = (int16_t)champ_scale_by_stamina(c, s);
+        if (resistance <= s || !rand_below((uint16_t)(((resistance - s) >> 1) + 1))) {
+            pushed = true;
+            break;
+        }
+    }
+    for (int i = 0; i < g_game.champion_count; i++) {
+        Champion *c = champion(i);
+        if (c->health && c->max_stamina >> PUSH_STAMINA_SHIFT < c->stamina) {
+            int16_t cost = PUSH_FAIL_STAMINA;
+            if (pushed && resistance >> PUSH_COST_SHIFT > PUSH_FAIL_STAMINA)
+                cost = (int16_t)(resistance >> PUSH_COST_SHIFT);
+            champ_decrease_stamina(i, cost);
+        }
+    }
+    return pushed;
+}
+
+/* Party state that the interface sets. */
 
 void move_set_push_mode(bool on)
 {

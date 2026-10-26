@@ -323,7 +323,7 @@ address,name,signature,subsystem
 0x0001f9ff,creature_is_native_to_map,"int creature_is_native_to_map(uint16_t group_thing, uint16_t map)",creatures
 0x0001fa8f,item_is_minion_map,int item_is_minion_map(uint16_t thing),minions
 0x0001fac8,minion_map_set_location,"int minion_map_set_location(uint16_t map_item, int16_t x, int16_t y, int16_t map)",minions
-0x0001fb62,minion_find_link_projectile,"void *minion_find_link_projectile(uint16_t group_thing, uint16_t map_item)",minions
+0x0001fb62,item_find_link_projectile,"void *item_find_link_projectile(uint16_t group_thing, uint16_t map_item)",minions
 0x0001fbd0,dun_get_text_ornament,uint8_t dun_get_text_ornament(uint16_t thing),dungeon data
 0x0001fc2c,dun_get_sensor_wall_ornament,uint8_t dun_get_sensor_wall_ornament(const void *sensor),dungeon data
 0x0001fc82,dun_get_sensor_floor_ornament,uint8_t dun_get_sensor_floor_ornament(const void *sensor),dungeon data
@@ -404,7 +404,7 @@ address,name,signature,subsystem
 0x00023d13,get_step_result,"int16_t get_step_result(int16_t move_dir, uint16_t from_square, uint16_t to_square, int16_t x, int16_t y, int16_t *group)",champions
 0x00023e0d,is_side_blocked,"int is_side_blocked(uint8_t *group, int16_t dir)",creatures
 0x00023e5b,move_party_can_push_group,int move_party_can_push_group(uint16_t group_thing),creatures
-0x00023f9b,move_push_creature,void move_push_creature(uint16_t arrow),creatures
+0x00023f9b,creature_push_creature,void creature_push_creature(uint16_t arrow),creatures
 0x00024171,creature_can_be_pushed,"int creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, int16_t *group)",creatures
 0x00024328,creature_push_group,"void creature_push_group(int16_t x, int16_t y, int16_t dir, int16_t strength)",creatures
 0x00024629,game_enter_map,"void game_enter_map(int16_t x, int16_t y, int16_t map, int redraw)",main loop
@@ -543,7 +543,7 @@ address,name,signature,subsystem
 0x0002f636,ai_thing_matches_filter,"uint16_t ai_thing_matches_filter(uint16_t thing, uint16_t filter)",creatures
 0x0002f85a,ai_free_cached_data,void ai_free_cached_data(uint16_t group_thing),creatures
 0x0002f8d6,creature_get_anim_state,"uint8_t *creature_get_anim_state(uint8_t *group, const uint8_t *info)",creatures
-0x0002f8f5,creature_refresh_party_maps,void creature_refresh_party_maps(void),creatures
+0x0002f8f5,ai_refresh_party_maps,void ai_refresh_party_maps(void),creatures
 0x0002facc,creature_get_party_distance,"int16_t creature_get_party_distance(int16_t x, int16_t y)",creatures
 0x0002fba9,creature_get_group_at,"uint16_t creature_get_group_at(int16_t x, int16_t y)",creatures
 0x0002fbe0,creature_find_group_near_point,"uint16_t creature_find_group_near_point(int16_t *x, int16_t *y, uint16_t cell)",creatures
@@ -875,8 +875,8 @@ address,name,signature,subsystem
 0x00049ef8,creature_turn_group,"void creature_turn_group(uint16_t group_thing, int absolute, uint16_t dir)",creatures
 0x00049f7c,rotate_projectile,"uint16_t rotate_projectile(uint8_t *teleporter, uint16_t thing)",dungeon data
 0x00049fcb,is_flying_thing,int is_flying_thing(uint16_t thing),dungeon data
-0x0004a005,move_update_carried_missiles,"void move_update_carried_missiles(uint16_t holder_thing, uint8_t x, uint8_t y, uint16_t map, uint8_t flag)",projectiles
-0x0004a096,move_schedule_group_retry,"void move_schedule_group_retry(uint16_t group_thing, int16_t x, int16_t y, int16_t map, int audible)",creatures
+0x0004a005,update_carried_missiles,"void update_carried_missiles(uint16_t holder_thing, uint8_t x, uint8_t y, uint16_t map, uint8_t flag)",projectiles
+0x0004a096,schedule_group_retry,"void schedule_group_retry(uint16_t group_thing, int16_t x, int16_t y, int16_t map, int audible)",creatures
 0x0004a0fe,move_check_missiles_hit_party,"void move_check_missiles_hit_party(int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",projectiles
 0x0004a34a,move_follow_square_transitions,"int move_follow_square_transitions(uint16_t thing, int16_t x, int16_t y, int16_t map, int fall_allowed)",dungeon data
 0x0004ae20,move_compute_map_arrival,"void move_compute_map_arrival(int16_t x, int16_t y, int16_t map)",dungeon data
@@ -998,8 +998,8 @@ address,name,signature,subsystem
 0x000568f7,doorway_event,void doorway_event(uint8_t *event),timeline
 0x00056a03,fake_wall_event,void fake_wall_event(uint8_t *event),timeline
 0x00056af9,timeline_event_door_destruction,void timeline_event_door_destruction(uint8_t *event),timeline
-0x00056b39,sensor_turn_creatures,"void sensor_turn_creatures(uint8_t *event, uint8_t *sensor)",Skullkeep machines
-0x00056ba5,sensor_affect_creatures_in_area,"void sensor_affect_creatures_in_area(uint16_t power, uint16_t creature_type, int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t sensor_type, int16_t effect)",Skullkeep machines
+0x00056b39,set_creatures_facing,"void set_creatures_facing(uint8_t *event, uint8_t *sensor)",Skullkeep machines
+0x00056ba5,affect_creatures_in_area,"void affect_creatures_in_area(uint16_t power, uint16_t creature_type, int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t sensor_type, int16_t effect)",Skullkeep machines
 0x00056cf4,ornament_cycle,"uint16_t ornament_cycle(uint8_t *sensor, int on_wall)",Skullkeep machines
 0x00056d6a,start_ambient_sound,"void start_ambient_sound(uint8_t *sensor, uint16_t sensor_thing, int16_t x, int16_t y, uint16_t period, int on_wall)",Skullkeep machines
 0x00056f11,toggle_animation,"void toggle_animation(uint16_t sensor_thing, uint8_t *event, uint8_t *sensor, int on_wall)",Skullkeep machines

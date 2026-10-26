@@ -245,13 +245,6 @@ void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
 #define GLOBAL_BYTE_FIRST   (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT)
 #define GLOBAL_BYTE_MAX     255
 
-/* Sensors that act on creatures (creature.c). */
-/* Creature sensors: a sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */
-void sensor_turn_creatures(const TimelineEvent *e, uint16_t sensor);
-/* A sensor reaches the groups of the creature type of its data in the rectangle around (x, y) that its target spans:
-   SENSOR_VANISH makes them vanish (power 2), SENSOR_ALERT sets mood bit power (cleared when effect is set). */
-void sensor_affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int effect);
-
 /* Missile launchers (projectile.c). */
 /* A missile launcher sensor shoots the objects of its square or new objects or spells. */
 void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);

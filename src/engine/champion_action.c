@@ -649,7 +649,7 @@ static bool run_minion_command(ActionRun *a, int command)
         return true;
     case COMMAND_MINION_GUARD:
     case COMMAND_MINION_FETCH:
-        if (minion_find_link_projectile(group, map_item)) {
+        if (item_find_link_projectile(group, map_item)) {
             group_set_creature(group, command == COMMAND_MINION_GUARD ? MINION_GUARD : MINION_FETCH);
             ai_free_cached_data(group);
             return true;
