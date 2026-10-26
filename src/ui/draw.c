@@ -117,6 +117,17 @@ void draw_free_temp(void)
     }
 }
 
+void draw_free(void)
+{
+    draw_free_temp();
+    for (int i = 0; i < image_count; i++)
+        free(images[i].pixels);
+    free(images);
+    images = NULL;
+    image_count = 0;
+    cache_owner = NULL;
+}
+
 /* Adds a packed offset (x in the high byte, y in the low byte) to the offset of ctx. */
 static void add_offset(DrawCtx *ctx, int packed)
 {

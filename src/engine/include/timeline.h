@@ -67,6 +67,8 @@ extern Timeline g_timeline;
 
 /* Starts an empty timeline with room for capacity events. */
 void timeline_init(uint16_t capacity);
+/* Frees the event and queue storage; safe to call twice. */
+void timeline_free(void);
 /* Queues a copy of event; returns its event index, or -1 for an event without a type. */
 int timeline_add_event(const TimelineEvent *event);
 /* Removes a queued event and frees it. The last queue entry fills its slot; the next operation restores the heap

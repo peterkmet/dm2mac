@@ -64,6 +64,13 @@ static uint8_t *known_byte(int map, int x, int y)
     return seen + map_first_square(map) + (size_t)x * dungeon_map_height(map) + y;
 }
 
+void seen_free(void)
+{
+    free(seen);
+    seen = NULL;
+    seen_size = 0;
+}
+
 void seen_mark(int16_t map, int16_t x, int16_t y, int16_t dir)
 {
     SeenSquare squares[SEEN_VISIBLE_MAX];

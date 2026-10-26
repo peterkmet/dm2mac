@@ -23,10 +23,12 @@
 #include "play.h"
 #include "save.h"
 #include "scale.h"
+#include "seen.h"
 #include "session.h"
 #include "settings.h"
 #include "sound.h"
 #include "text.h"
+#include "timeline.h"
 #include "transport.h"
 #include "video.h"
 #include "zone.h"
@@ -524,6 +526,9 @@ static void close_platform(void)
 {
     transport_close();
     music_quit();
+    draw_free();
+    timeline_free();
+    seen_free();
     plat_quit();
 }
 

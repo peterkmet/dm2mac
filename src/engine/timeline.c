@@ -91,6 +91,17 @@ void timeline_init(uint16_t capacity)
     g_timeline.fix_slot = TIMELINE_NO_SLOT;
 }
 
+void timeline_free(void)
+{
+    free(g_timeline.events);
+    free(g_timeline.queue);
+    g_timeline.events = NULL;
+    g_timeline.queue = NULL;
+    g_timeline.capacity = 0;
+    g_timeline.count = 0;
+    g_timeline.used_end = 0;
+}
+
 int timeline_add_event(const TimelineEvent *event)
 {
     if (event->type == EVENT_NONE)

@@ -47,6 +47,8 @@ const uint8_t *draw_gdat_image_palette(int category, int index, int entry);
 Bitmap *draw_temp_bitmap(int width, int height, int bpp);
 /* Frees all temporary bitmaps. */
 void draw_free_temp(void);
+/* Frees the temporary bitmaps and the decoded images; safe to call twice. */
+void draw_free(void);
 
 /* Starts a context for the GDAT image (category, index, entry) at its GDAT offset, to the screen. */
 DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry);

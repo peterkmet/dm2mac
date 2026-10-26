@@ -22,6 +22,8 @@ typedef struct {
 
 /* Forgets every seen square and sizes the storage from the loaded dungeon. */
 void seen_reset(void);
+/* Frees the seen squares; safe to call twice. */
+void seen_free(void);
 /* Marks the squares that the dungeon view shows to a party at (x, y) of map looking to dir. */
 void seen_mark(int16_t map, int16_t x, int16_t y, int16_t dir);
 /* Writes to squares the squares that the dungeon view shows now to a party at (x, y) of map looking to dir,
