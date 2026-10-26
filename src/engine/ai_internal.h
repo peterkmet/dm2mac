@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include "ai.h"
 #include "dungeon.h"
+#include "move.h"
 
 /* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
 #define AI_SCRIPTS_BASE        0x73020u
@@ -135,5 +136,24 @@ bool ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int16_t 
 /* The breadth-first search from the square from with the move command: the nearest of count candidates; returns its index,
    -1 for none. out_path gets the steps to it (2 bytes each). */
 int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *out_path);
+
+/* Shared state of the creature movement (ai_move.c): the move directions past the map, the last read square. */
+/* The directions of a move test past the four map directions. */
+#define DIR_LEVEL_UP    4
+#define DIR_LEVEL_DOWN  5
+#define DIR_KEEP_FACING 6 /* a move to the given square that keeps the facing */
+
+/* More of the square that the AI read last (0x7f8b2 to 0x7f8bf of SKULL.EXE); ai_cache_square resets it. */
+typedef struct {
+    uint8_t blocking; /* the square stops the search: a costly wall, a failed move */
+    uint8_t passage;  /* the square is a seamless passage; end is its other side */
+    PassageEnd end;
+    uint8_t unused;
+    int8_t items_elsewhere;   /* -1 not read; 1: items or ornaments that the creature cannot reach */
+    uint8_t facing_ornament;  /* a wall: the face toward the creature shows an alcove */
+    int8_t cells[CELL_COUNT]; /* a floor: the cells that the creature reaches (cells[0] 0xff: not read);
+                                   a wall: cells[0] is the face toward the creature */
+} AiSquareScan;
+extern AiSquareScan g_ai_square_scan;
 
 #endif /* DM2_ENGINE_AI_INTERNAL_H */

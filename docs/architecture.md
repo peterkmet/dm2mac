@@ -41,7 +41,7 @@ the layers before it, so the compiler rejects an include of a later layer:
 A module is one `.c` file with one public header. Each header states its prefixes and has one purpose
 paragraph. A module with several `.c` files has one `<module>_internal.h` for its private declarations:
 `data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_data.c`, `ai_move.c`), and `ui/ui` (`ui.c`,
-`ui_hooks.c`). `ai_move_internal.h` holds the shared state of `ai_move.c`. `engine/champion.c` and
+`ui_hooks.c`). `engine/champion.c` and
 `engine/champion_damage.c` share `engine/champion.h`. The tables do not show the internal headers.
 
 ### data/
@@ -63,8 +63,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | Header | Prefixes | Purpose |
 |---|---|---|
 | `engine/action.h` | `action_` | The action area of the panel: its modes, the action hands, and the spell and money box views. |
-| `engine/ai.h` | `ai_` | The creature AI: its update context, the plan commands, and the record fields of the AI markers. |
-| `engine/ai_move.h` | none | Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the path search. |
+| `engine/ai.h` | `ai_` | The creature AI: its update context, the plan commands, the record fields of the AI markers, and the perception, tests, and path search of creature movement. |
 | `engine/aspect.h` | `aspect_` `cell_grid_` | What the party sees of a square: its aspect, and the cell grid of a square. |
 | `engine/champ_action.h` | none | The actions of the champions: the commands, the charges, and the repeats of an action. |
 | `engine/champion.h` | `champ_` `champion` | The champions: their slots, statistics, wounds, and the effects of their actions. |

@@ -21,7 +21,6 @@
 - Cheat screen spell names that are port guesses: HASTE (OH IR ROS), MISSILE WALL (ZO BRO ROS), YA EW ITEM, SCOUT, CARRIER, ARMY MINION (ZO EW KU/NETA/ROS). Check them against the DM2 manual.
 - A one-off failure in a run of `test_automap`, `test_modes`, and `test_control` (73 tests counted instead of 72) during the cheat screen work; not reproduced.
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
-- `src/engine/include/ai_move_internal.h` serves only `ai_move.c` and does not fit rule 1.7 of `docs/coding-standard.md`.
 - Check in `SKULL.EXE` whether the key table rows with language nibble 0 load for every language (`docs/reference/skull-map.md`, "GDAT database in memory").
 - `docs/reference/reference-crosscheck.md`: the 1405 reDM2 function starts do not equal the table sum 473 + 151 + 27 + 677 + 79 = 1407. Check the count against the reDM2 data.
 - Item handling (proposal): while the leader hand holds an item, a click on the name of a champion opens the inventory of that champion, and the item stays in the leader hand. Check first what the click does in the original and in the port, and decide if the change is an advanced-mode feature.

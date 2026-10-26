@@ -4,7 +4,6 @@
 #include <stddef.h>
 #include <string.h>
 #include "ai_internal.h"
-#include "ai_move.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"

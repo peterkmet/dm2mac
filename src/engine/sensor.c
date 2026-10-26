@@ -3,7 +3,7 @@
 #include "sensor.h"
 #include <string.h>
 #include "action.h"
-#include "ai_move.h"
+#include "ai.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
