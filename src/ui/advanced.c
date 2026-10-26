@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The advanced mode: the movement letter keys, the quick save and quick load, the automap, the cheat screen, and the options menu. */
 #include "advanced.h"
-#include "ids.h"
 #include "os.h"
 #include "dungeon.h"
 #include "game.h"
@@ -189,7 +188,9 @@ void advanced_draw_automap(void)
 {
     Offscreen o;
     char line[TEXT_SIZE];
-    offscreen_create(&o, ZONE_VIEWPORT, true);
+    if (!zone_get_viewport_rect(o.rect))
+        return;
+    offscreen_create(&o, -1, true);
     if (!o.bitmap)
         return;
     automap_draw(&o, o.rect);
@@ -226,8 +227,8 @@ static void map_event(int type, int16_t x, int16_t y)
     } else if (type == INPUT_LEFT_RELEASED) {
         advanced_automap_drag(x, y);
         drag.active = false;
-    } else if (type & INPUT_BUTTON_LEFT && zone_get_rect(ZONE_VIEWPORT, r) && x >= r[RECT_X] &&
-               x < r[RECT_X] + r[RECT_W] && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
+    } else if (type & INPUT_BUTTON_LEFT && zone_get_viewport_rect(r) && x >= r[RECT_X] && x < r[RECT_X] + r[RECT_W] &&
+               y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
         drag.active = true;
         drag.x = x;
         drag.y = y;

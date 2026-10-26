@@ -402,6 +402,21 @@ def test_automap_draws_inside_the_viewport_with_the_party_icon(lib, automap):
     assert party_frame(lib) == red(lib)
 
 
+@pytest.mark.parametrize("draw", ["advanced_draw_automap", "cheats_open"])
+def test_screen_fills_the_whole_viewport_while_the_party_walks(lib, automap, draw):
+    # A screen opened during a step: the walk clips the view zones to g_zone_walk_view_rect, not the screens.
+    x, y, w, h = viewport(lib)
+    fb = screen(lib)
+    for py in range(y, y + h):
+        fb[py * SCREEN_W + x:py * SCREEN_W + x + w] = bytes([FILLER]) * w
+    lib.move_set_walk_steps(2)
+    try:
+        getattr(lib, draw)()
+    finally:
+        lib.move_set_walk_steps(0)
+    assert FILLER not in viewport_pixels(lib)
+
+
 def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
     lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
     press(lib, KEY_TAB)

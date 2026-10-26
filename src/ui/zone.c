@@ -374,6 +374,15 @@ int16_t *zone_get_rect(int zone, int16_t *rect)
     return zone_get_rect_clipped(zone, rect, ZONE_SCALE_FULL, ZONE_SCALE_FULL);
 }
 
+int16_t *zone_get_viewport_rect(int16_t *rect)
+{
+    int steps = g_party.move_steps;
+    move_set_walk_steps(0);
+    int16_t *result = zone_get_rect(ZONE_VIEWPORT, rect);
+    move_set_walk_steps(steps);
+    return result;
+}
+
 bool zone_interpolate_offset(int from, int to, int percent, int16_t *out_dx, int16_t *out_dy)
 {
     const int16_t *a = find_zone(from), *b = find_zone(to);

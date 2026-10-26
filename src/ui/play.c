@@ -48,10 +48,7 @@ void play_present_viewport(void)
 {
     int steps = g_party.move_steps;
     int16_t r[RECT_SIZE];
-    move_set_walk_steps(0);
-    bool ok = zone_get_rect(ZONE_VIEWPORT, r) != NULL;
-    move_set_walk_steps(steps);
-    if (!ok)
+    if (!zone_get_viewport_rect(r))
         return;
     for (int y = 0; y < VIEWPORT_HEIGHT; y++) {
         uint8_t *dst = g_draw_screen.pixels + (r[RECT_Y] + y) * g_draw_screen.width + r[RECT_X];

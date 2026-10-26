@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "rows.h"
-#include "ids.h"
 #include "game_text.h"
 #include "text.h"
 #include "ui.h"
@@ -23,7 +22,9 @@ static void show_line(Offscreen *o, int16_t top, int color, const char *line)
 void rows_draw(const char *title, const char *const *rows, int16_t row_count, int16_t selected)
 {
     Offscreen o;
-    offscreen_create(&o, ZONE_VIEWPORT, true);
+    if (!zone_get_viewport_rect(o.rect))
+        return;
+    offscreen_create(&o, -1, true);
     if (!o.bitmap)
         return;
     offscreen_fill_rect(&o, o.rect, g_ui_colors[UI_BLACK]);
@@ -37,7 +38,7 @@ void rows_draw(const char *title, const char *const *rows, int16_t row_count, in
 int16_t rows_find_row(int16_t x, int16_t y, int16_t row_count)
 {
     int16_t r[RECT_SIZE];
-    if (!zone_get_rect(ZONE_VIEWPORT, r) || x < r[RECT_X] || x >= r[RECT_X] + r[RECT_W] || y < r[RECT_Y] + TOP ||
+    if (!zone_get_viewport_rect(r) || x < r[RECT_X] || x >= r[RECT_X] + r[RECT_W] || y < r[RECT_Y] + TOP ||
         y >= r[RECT_Y] + r[RECT_H])
         return -1;
     int16_t row = (int16_t)((y - r[RECT_Y] - TOP) / HEIGHT);

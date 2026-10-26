@@ -47,6 +47,8 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
 int16_t *zone_get_rect_clipped(int zone, int16_t *rect, unsigned w_scale, unsigned h_scale);
 /* The rect of zone at the full size of its parent size zone. */
 int16_t *zone_get_rect(int zone, int16_t *rect);
+/* The rect of the whole viewport, also while the party walks (zone_get_rect then cuts it to the walk view). */
+int16_t *zone_get_viewport_rect(int16_t *rect);
 /* The offset (*out_dx, *out_dy) at percent (0 to 100) of the way from zone from to zone to; returns false for an unknown
    zone. */
 bool zone_interpolate_offset(int from, int to, int percent, int16_t *out_dx, int16_t *out_dy);
