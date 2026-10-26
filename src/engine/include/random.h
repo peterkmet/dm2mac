@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+_Static_assert((-1 >> 1) == -1, "the port assumes an arithmetic right shift");
+
 /* The state of the random number generator; the save game stores it. */
 extern uint32_t g_random_seed;
 

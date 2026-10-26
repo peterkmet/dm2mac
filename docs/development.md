@@ -20,7 +20,7 @@ uv sync
 | `make windows` | `build/dm2.exe` for Windows x86-64. |
 | `make clean` | Remove `build/`. |
 
-The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g`.
+The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g -fwrapv`.
 
 Run the game with `build/dm2`. Run a save with `build/dm2 --save game/DATA/SKSAVE0.DAT`.
 

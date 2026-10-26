@@ -178,7 +178,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 4. A cast is allowed only where it changes the result (16-bit wrap, sign, truncation), with a short comment
    when the reason is not obvious. No cast that only repeats the x86 operand size of the Watcom code, no double
    integer cast. [packed; the rest review only]
-5. The port assumes an arithmetic right shift of a negative value. [review only]
+5. The port assumes an arithmetic right shift of a negative value: `random.h` asserts it, and the build passes `-fwrapv` so signed overflow wraps. [review only]
 6. One statement per line: no comma operator outside the header of a `for`, no chained assignment, at most
    one variable with an initializer per declaration. [format; review only]
 7. Use `for`, `while`, `switch`, and early `return`. `goto` only for one cleanup label in a function that

@@ -1,7 +1,7 @@
 # The Dungeon Master II port: the game, the test library, and the Windows build.
 CC          = clang
 BASE_CFLAGS = -std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla \
-              -Wimplicit-fallthrough -O2 -g
+              -Wimplicit-fallthrough -O2 -g -fwrapv
 CFLAGS      = $(BASE_CFLAGS)
 CPPFLAGS    = -isystem src/third_party -MMD -MP
 # The include path of a layer: its own public headers and those of the layers before it. A private *_internal.h
