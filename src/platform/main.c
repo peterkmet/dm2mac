@@ -405,8 +405,9 @@ _Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCAL
                    SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
                "filter numbers");
 
-/* Reads the values of the command line options into options; the option without a value, NULL when all have one. */
-static const char *read_options(int argc, char **argv, Options *options)
+/* Reads the values of the command line options into options; the option without a value, NULL when all have one.
+   *unknown is the first argument that starts with -- and matches no option, or NULL. */
+static const char *read_options(int argc, char **argv, Options *options, const char **unknown)
 {
     const struct {
         const char *name;
@@ -419,16 +420,33 @@ static const char *read_options(int argc, char **argv, Options *options)
         {"--mode",    &options->mode   },
         {"--saves",   &options->saves  },
     };
-    for (int i = 1; i < argc; i++)
-        for (size_t n = 0; n < sizeof names / sizeof names[0]; n++) {
+    *unknown = NULL;
+    for (int i = 1; i < argc; i++) {
+        bool known = false;
+        for (size_t n = 0; n < sizeof names / sizeof names[0] && !known; n++) {
             if (strcmp(argv[i], names[n].name))
                 continue;
             if (i + 1 == argc)
                 return argv[i];
             *names[n].value = argv[++i];
-            break;
+            known = true;
         }
+        if (!known && !*unknown && !strncmp(argv[i], "--", 2))
+            *unknown = argv[i];
+    }
     return NULL;
+}
+
+/* False with a message for an option without a value or an unknown option. */
+static bool options_are_valid(const char *missing, const char *unknown)
+{
+    if (missing)
+        os_log("%s needs a value", missing);
+    else if (unknown) {
+        os_log("unknown option %s", unknown);
+        os_log("usage: dm2 [--data DIR] [--save FILE] [--saves DIR] [--filter NAME] [--mode NAME] [--control PATH]");
+    }
+    return !missing && !unknown;
 }
 
 /* Sets g_game_mode from its name; false with a message for an unknown name. */
@@ -591,17 +609,16 @@ static bool open_game(const Options *options, int factor)
 int main(int argc, char **argv)
 {
     Options options = {.data = "game", .filter = SDL_getenv("DM2_FILTER")};
-    const char *missing = read_options(argc, argv, &options);
+    const char *unknown;
+    const char *missing = read_options(argc, argv, &options, &unknown);
     bool mode_given = options.mode != NULL;
     if (!mode_given)
         options.mode = g_game_mode_names[GAME_MODE_ADVANCED];
 #ifdef _WIN32
     open_log(options.data); /* before the first message: the Windows build has no console */
 #endif
-    if (missing) {
-        os_log("%s needs a value", missing);
+    if (!options_are_valid(missing, unknown))
         return EXIT_USAGE;
-    }
     if (!select_mode(options.mode))
         return EXIT_USAGE;
     if (!transport_is_available() && (g_game_mode == GAME_MODE_TURNBASED || options.control)) {

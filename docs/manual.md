@@ -26,6 +26,7 @@ build/dm2 --save game/DATA/SKSAVE0.DAT
 build/dm2 --filter scale2x
 ```
 
+- An unknown argument that starts with `--` prints the usage line and ends the program with a nonzero code.
 - The environment variable `DM2_FILTER` sets the filter as `--filter` does. The option has priority.
 - `--save` without `--mode` plays the advanced mode.
 - An option without a value stops the program with exit code 2 and the message `OPTION needs a value`, for example `--data needs a value`.
