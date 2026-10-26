@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "champion.h"
 #include "action.h"
-#include "champ_action.h"
+#include "champion_internal.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"

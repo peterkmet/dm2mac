@@ -3,7 +3,7 @@
 byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate record of SKULL.EXE that the differential tests compare
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
-decimal engine/champ_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
+decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c rule 3.1: the plain number 2 of the byte buffer le (removed by Task 33)

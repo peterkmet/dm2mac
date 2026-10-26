@@ -123,7 +123,7 @@ void item_set_do_not_discard(uint16_t thing, int keep);
    dungeon has no free record. */
 uint16_t item_create_by_index(uint16_t item);
 
-/* Items of the champion actions (champ_action.c). */
+/* Items of the champion actions (champion_action.c). */
 /* True when thing is ammunition for the launcher in hand of champ. */
 bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing);
 /* True when thing has an action with command for champ. */

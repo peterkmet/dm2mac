@@ -1,6 +1,6 @@
 # Champions, inventory, items, money, and shops
 
-The rules of the champions: the leader hand, damage and time effects, the actions, money and shops, item creation by a sensor, merchant trading, the cursor, and the first room of `start.DAT`. The code is in `src/engine/champion.c`, `src/engine/champion_damage.c`, `src/engine/champ_action.c`, `src/engine/inventory.c`, `src/engine/item.c`, `src/engine/money.c`, `src/engine/merchant.c`, `src/engine/recruit.c`, and `src/ui/input.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The rules of the champions: the leader hand, damage and time effects, the actions, money and shops, item creation by a sensor, merchant trading, the cursor, and the first room of `start.DAT`. The code is in `src/engine/champion.c`, `src/engine/champion_damage.c`, `src/engine/champion_action.c`, `src/engine/inventory.c`, `src/engine/item.c`, `src/engine/money.c`, `src/engine/merchant.c`, `src/engine/recruit.c`, and `src/ui/input.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## The leader hand
 

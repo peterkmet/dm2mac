@@ -65,7 +65,6 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/action.h` | `action_` | The action area of the panel: its modes, the action hands, and the spell and money box views. |
 | `engine/ai.h` | `ai_` | The creature AI: its update context, the plan commands, the record fields of the AI markers, and the perception, tests, and path search of creature movement. |
 | `engine/aspect.h` | `aspect_` `cell_grid_` | What the party sees of a square: its aspect, and the cell grid of a square. |
-| `engine/champ_action.h` | none | The actions of the champions: the commands, the charges, and the repeats of an action. |
 | `engine/champion.h` | `champ_` `champion` | The champions: their slots, statistics, wounds, and the effects of their actions. |
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the update of the groups. |
 | `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `textrec_` | The dungeon: the things, their record layout, the squares, and the maps. |

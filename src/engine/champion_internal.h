@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-#ifndef DM2_ENGINE_CHAMP_ACTION_H
-#define DM2_ENGINE_CHAMP_ACTION_H
-/* Prefixes: none */
+#ifndef DM2_ENGINE_CHAMPION_INTERNAL_H
+#define DM2_ENGINE_CHAMPION_INTERNAL_H
+/* Prefixes: champ_ champion */
 
 /* The actions of the champions: the commands, the charges, and the repeats of an action. */
 
@@ -18,6 +18,11 @@ typedef struct {
     uint8_t action; /* the index in g_champ_actions */
     uint16_t thing; /* the item in the hand; another item stops the repeats */
 } ActionRepeat;
+
+/* The slot that a hand loads from (12 or 7-9 for the action hand, 11 or 6 for the ready hand), -1 none. */
+int champ_find_hand_source_slot(int champ, int hand);
+/* Champ throws the item in hand (-1: the leader hand object) to the left or right side; true when it flies. */
+bool champ_throw_object(int champ, int hand, int side);
 
 /* The repeats of the actions of each champion and hand; exported for the tests. */
 extern ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
@@ -63,4 +68,4 @@ extern ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
 /* The champ_perform_action flag of a repeat: no delay, stamina, experience. */
 #define ACTION_REPEATED          0x8000
 
-#endif /* DM2_ENGINE_CHAMP_ACTION_H */
+#endif /* DM2_ENGINE_CHAMPION_INTERNAL_H */

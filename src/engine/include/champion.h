@@ -212,8 +212,6 @@ int champ_get_max_load(Champion *c);
 int champ_get_load(int champ);
 
 /* Hands and actions */
-/* The slot that a hand loads from (12 or 7-9 for the action hand, 11 or 6 for the ready hand), -1 none. */
-int champ_find_hand_source_slot(int champ, int hand);
 /* Lists in g_champ_actions the actions of the thing in hand (THING_NONE: the champion's own actions);
    true when the action area has something to show. */
 bool champ_list_actions(int champ, uint16_t thing, int hand);
@@ -234,7 +232,7 @@ extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and hea
 void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
 int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack);
-/* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100. */
+/* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100; exported for the tests. */
 int champ_get_strength(int champ, int hand, int skill);
 /* The dexterity of champ with its load, 1 to 100. */
 int champ_get_dexterity(int champ);
@@ -262,27 +260,25 @@ void champ_burn_held_lights(void);
 /* Brings champ back to life in a free cell, without items, with less maximum health. */
 void champ_revive(int champ);
 
-/* Champion actions (champ_action.c). */
+/* Champion actions (champion_action.c). */
 /* g_action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
 extern int16_t g_champ_action_result;
-/* Runs action (0 to 2, -1: none) of the open action menu; true when the action was done. */
-bool champ_execute_selected_action(int action);
-/* Champ performs action (an index in g_champ_actions, bit 15: a repeat) with the item in the open hand. */
-int champ_perform_action(int champ, int action);
 /* Makes the hand (-1: both hands and the spell) of champ busy for about ticks game steps. */
 void champ_add_action_delay(int champ, uint16_t ticks, int hand);
-/* Takes the charges of the current action from its item; true when the item has no charges left. */
+/* Takes the charges of the current action from its item; true when the item has no charges left; exported for the tests. */
 bool champ_use_action_charge(int champ);
 /* The hand of champ is free again: a shooter or a thrower takes the next ammunition or throwing item. */
 void champ_reload_hand(int champ, int hand);
-/* The repeats of the actions of all champions. */
-void champ_process_repeated_actions(void);
-/* Adds experience in skill; each new level raises the statistics and prints a message. */
-void champ_add_experience(int champ, int skill, uint32_t experience);
 /* The level of the whole party: from the sum of the base skill experience of all champions. */
 int champ_get_party_level(void);
-/* Champ throws the item in hand (-1: the leader hand object) to the left or right side; true when it flies. */
-bool champ_throw_object(int champ, int hand, int side);
+/* Adds experience in skill; each new level raises the statistics and prints a message. */
+void champ_add_experience(int champ, int skill, uint32_t experience);
+/* Champ performs action (an index in g_champ_actions, bit 15: a repeat) with the item in the open hand; exported for the tests. */
+int champ_perform_action(int champ, int action);
+/* Runs action (0 to 2, -1: none) of the open action menu; true when the action was done. */
+bool champ_execute_selected_action(int action);
+/* The repeats of the actions of all champions. */
+void champ_process_repeated_actions(void);
 /* The leader throws the object in the leader hand; true when it flies. */
 bool champ_throw_leader_hand_object(int side);
 
