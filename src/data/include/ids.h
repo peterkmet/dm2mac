@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_DATA_IDS_H
 #define DM2_DATA_IDS_H
-/* Prefixes: GFX_ ZONE_ ICON_ TEXT_ */
+/* Prefixes: none */
 
 /* Graphic entry numbers of GRAPHICS.DAT (one block per category and item type), layout zone numbers, minion map
    icon numbers and string numbers, one block per kind, sorted by value. */

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_HOOKS_H
 #define DM2_ENGINE_HOOKS_H
-/* Prefixes: Hooks */
+/* Prefixes: none */
 
 /* Calls of the game rules into the user interface, for events that must run the interface inside the rule.
    ui/ui_hooks.c sets every member. */

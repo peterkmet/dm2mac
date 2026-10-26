@@ -41,9 +41,13 @@ that this port cannot use keeps its number with "No rule in dm2".
 7. A module is one `.c` file with one public header. A module with several `.c` files has one public header
    and one `<module>_internal.h` for the shared private declarations; both carry the prefix of the module.
    The entry point `platform/main.c` is the one exception. It has no header. [module]
-8. Each header states its prefixes in one comment line, `/* Prefixes: sensor_ */`. A prefix belongs to one
-   module; no prefix starts with the prefix of another module. The header that owns a prefix declares every
-   function with that prefix; the line also covers function-like macros. [prefix]
+8. Each header states the prefixes of its functions and function-like macros in one comment line,
+   `/* Prefixes: sensor_ */`. A header without them writes `/* Prefixes: none */`. A standalone name (`le16`)
+   may be listed as a name. Type names, constant names and globals are not prefixes. The first word of a
+   prefix is its text up to and including the first `_`, or the whole prefix without `_`. Two modules never
+   state prefixes with the same first word. The prefixes of one module may share a first word (`champ_` and
+   `champion` in `champion.h`), and a module may state several prefixes (`input_ command_ kbd_ rect_` in
+   `input.h`). The header that owns a prefix declares every function with that prefix. [prefix]
 9. `src/third_party/` is vendored code (`opl3/`), the one folder of `src/` outside the layers. The folder is
    outside every check, including the format check. [layer]
 
@@ -334,7 +338,7 @@ their allowlist key:
 | `platform` | an operating system header or `_WIN32` outside `platform/`; `fprintf(stderr` or `exit(` outside `platform/` and `data/os.c` |
 | `engine-write` | a write of `ui/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals |
 | `module` | a `.c` file without its header, a second public header of one module |
-| `prefix` | a header without a prefix line, a prefix that another header owns or extends, a name outside its prefixes |
+| `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |
 | `include` | a header the file does not use |
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |

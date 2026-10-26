@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_UI_OPTMENU_H
 #define DM2_UI_OPTMENU_H
-/* Prefixes: optmenu_ g_optmenu_ */
+/* Prefixes: optmenu_ */
 
 /* The options menu of the advanced mode (not in the original game), a viewport screen: the FILTER row and CONTINUE.
    A change of the filter shows at once and goes to SETTINGS.TXT in the save folder. */

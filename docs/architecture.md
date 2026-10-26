@@ -51,7 +51,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `data/gdat.h` | `gdat_` `image_` | GRAPHICS.DAT: a header with item sizes, a key table (item 0), then the items. |
 | `data/gfx.h` | `gfx_` `pal_` | Blitting, scaling, and palette handling of 8 bpp pictures and the screen. |
 | `data/hmp.h` | `hmp_` | The HMP song player of the HMI SOS MIDI library in SKULL.EXE: tracks, delta times, HMI loops, volumes. |
-| `data/ids.h` | `GFX_` `ZONE_` `ICON_` `TEXT_` | Graphic entry numbers of GRAPHICS.DAT, layout zone numbers, minion map icon numbers, and string numbers, one block per kind, sorted by value. |
+| `data/ids.h` | none | Graphic entry numbers of GRAPHICS.DAT, layout zone numbers, minion map icon numbers, and string numbers, one block per kind, sorted by value. |
 | `data/le.h` | `le16` `le32` `put_le16` `put_le32` `put_be32` | Little-endian reads and writes of the DOS file formats. |
 | `data/mve.h` | `mve_` | Interplay MVE movies: chunks, opcodes, 8-bit video, audio; from memory only. |
 | `data/os.h` | `os_` | The operating system services that `data/`, `engine/`, `ui/`, and `control/` need: the log, fatal errors, and full paths. |
@@ -64,15 +64,15 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 |---|---|---|
 | `engine/action.h` | `action_` | The action area of the panel: its modes, the action hands, and the spell and money box views. |
 | `engine/ai.h` | `ai_` | The creature AI: its update context, the plan commands, and the record fields of the AI markers. |
-| `engine/ai_move.h` | `AI_MOVE_` `MOVE_KIND_` | Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the path search. |
+| `engine/ai_move.h` | none | Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the path search. |
 | `engine/aspect.h` | `aspect_` `cell_grid_` | What the party sees of a square: its aspect, and the cell grid of a square. |
-| `engine/champ_action.h` | `ActionRepeat` | The actions of the champions: the commands, the charges, and the repeats of an action. |
+| `engine/champ_action.h` | none | The actions of the champions: the commands, the charges, and the repeats of an action. |
 | `engine/champion.h` | `champ_` `champion` | The champions: their slots, statistics, wounds, and the effects of their actions. |
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the update of the groups. |
 | `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `set_thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `text_is_` `text_kind` `text_offset` `text_set_visible` `text_subtype` `text_value` | The dungeon: the things, their record layout, the squares, and the maps. |
 | `engine/game.h` | `game_` | The main loop state of the game rules: the step timing, the map changes, and the party wake. |
 | `engine/game_text.h` | `text_decode_` `text_format` `text_gdat` | The game texts and the UI colors: decoding, formatting, and GDAT text items. |
-| `engine/hooks.h` | `Hooks` | Calls of the game rules into the user interface, for events that must run the interface inside the rule. |
+| `engine/hooks.h` | none | Calls of the game rules into the user interface, for events that must run the interface inside the rule. |
 | `engine/inventory.h` | `inv_` | The leader hand and the champion slots, and the effects of the items that a champion holds. |
 | `engine/item.h` | `item_` | The items: their record fields, their GDAT types, and what the party possesses. |
 | `engine/magic.h` | `magic_` | Magic: the spell table, runes, spell casting, and the magic light. |
@@ -107,7 +107,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `ui/mode_screen.h` | `mode_screen_` | The mode screen of the program start: the cursor on VANILLA or ADVANCED, its keys, its clicks, and its picture. |
 | `ui/movie.h` | `movie_` | The movie script of the DOS launcher IBMIOP.EXE. |
 | `ui/music.h` | `music_` | Game music: the song of each map from SONGLIST.DAT, played by the HMP player on the FM driver. |
-| `ui/optmenu.h` | `optmenu_` `g_optmenu_` | The options menu of the advanced mode (not in the original game): the FILTER row and CONTINUE. |
+| `ui/optmenu.h` | `optmenu_` | The options menu of the advanced mode (not in the original game): the FILTER row and CONTINUE. |
 | `ui/play.h` | `play_` | The main loop: timer ticks, game steps, the view of the party, and sleep. |
 | `ui/rows.h` | `rows_` | The rows of text of the viewport screens of the advanced mode (not in the original game). |
 | `ui/session.h` | `session_` `args_` `menu_` | The start menu, new games, loads and saves through the slot dialogs, and the end of the game. |

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_CHAMP_ACTION_H
 #define DM2_ENGINE_CHAMP_ACTION_H
-/* Prefixes: ActionRepeat */
+/* Prefixes: none */
 
 /* The actions of the champions: the commands, the charges, and the repeats of an action. */
 

@@ -33,7 +33,8 @@ RECORD = re.compile(r"\bdungeon_thing_record\(")
 CONST_DEF = re.compile(r"\s*(?:static\s+)?const\s+\w+\s+[A-Z][A-Z0-9_]*\s*=")
 ENUM = re.compile(r"\benum\b[^{};]*\{([^}]*)\}")
 DEFINE = re.compile(r"^\s*#define\s+([A-Z][A-Z0-9_]*)\b", re.M)
-DECL = re.compile(r"^((?:(?:static|inline|const|struct|unsigned|_Noreturn)\s+)*[A-Za-z_]\w*[\s*]+)([a-z_]\w*)\s*\(", re.M)
+DECL = re.compile(r"^((?:(?:static|inline|const|struct|enum|unsigned|_Noreturn)\s+)*[A-Za-z_]\w*[\s*]+)([a-z_]\w*)\s*\(", re.M)
+MACRO = re.compile(r"^\s*#\s*define\s+([a-z_]\w*)\(", re.M)
 PREFIXES = re.compile(r"^/\* Prefixes: ([\w ]+?) \*/$", re.M)
 PREDICATE = re.compile(r"(?:^|_)(?:is|has|can)_")
 FUNC_START = re.compile(r"^(?:static\s+)?[A-Za-z_][\w *]*?\b([a-z_]\w*)\s*\([^;]*$")
@@ -270,26 +271,35 @@ def module_stem(name):
     return name.replace("/include/", "/").removesuffix(".h").removesuffix("_internal")
 
 
+def first_word(prefix):
+    """The text of a prefix up to and including the first _, or the whole prefix without _."""
+    return prefix[:prefix.index("_") + 1] if "_" in prefix else prefix
+
+
 def test_headers_state_unique_prefixes():
     ok = allowed()
     owner, found = {}, []
     for path in sources():
         if path.suffix != ".h" or ("prefix", rel(path)) in ok:
             continue
-        names = [name for _, name in declarations(path)]
+        names = [name for _, name in declarations(path)] + MACRO.findall(strip(path.read_text(errors="replace")))
         match = PREFIXES.search(path.read_text(errors="replace"))
         if not match:
             if names:
                 found.append(f"prefix {rel(path)}  | no Prefixes line")
             continue
         prefixes = match.group(1).split()
+        if prefixes == ["none"]:
+            found += [f"prefix {rel(path)}  | {name} with Prefixes: none" for name in names]
+            continue
+        if not names:
+            found.append(f"prefix {rel(path)}  | no functions: the line must say none")
         for prefix in prefixes:
-            for other, other_path in owner.items():
-                if module_stem(other_path) == module_stem(rel(path)):
-                    continue  # rule 1.7: an internal header shares the prefixes of its public header
-                if prefix.startswith(other) or other.startswith(prefix):
-                    found.append(f"prefix {rel(path)}  | {prefix} collides with {other} of {other_path}")
-            owner[prefix] = rel(path)
+            word = first_word(prefix)
+            other, other_path = owner.get(word, (None, None))
+            if other_path and module_stem(other_path) != module_stem(rel(path)):  # rule 1.7: an internal header shares its module's prefixes
+                found.append(f"prefix {rel(path)}  | {prefix} has the first word {word} of {other} of {other_path}")
+            owner.setdefault(word, (prefix, rel(path)))
         found += [f"prefix {rel(path)}  | {name}" for name in names if not name.startswith(tuple(prefixes))]
     report("prefix", found)
 
@@ -335,7 +345,7 @@ def test_truth_values_are_bool():
 def all_prefixes():
     """Every prefix that a header states, longest first."""
     found = {p for h in headers() if (m := PREFIXES.search(h.read_text(errors="replace"))) for p in m.group(1).split()}
-    return sorted(found, key=len, reverse=True)
+    return sorted(found - {"none"}, key=len, reverse=True)
 
 
 MAX_NAME_CHARS, MAX_NAME_WORDS = 40, 4

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_AI_MOVE_H
 #define DM2_ENGINE_AI_MOVE_H
-/* Prefixes: AI_MOVE_ MOVE_KIND_ */
+/* Prefixes: none */
 
 /* Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the
    path search (ai_move.c). The functions work on the AI context (ai.h) and set g_ai.command_result. */

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_ENGINE_AI_MOVE_INTERNAL_H
 #define DM2_ENGINE_AI_MOVE_INTERNAL_H
-/* Prefixes: AI_MOVE_ MOVE_KIND_ */
+/* Prefixes: none */
 
 /* Shared state of the creature movement (ai_move.c): the move directions past the map, the last read square. */
 
