@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "game_text.h"
-#include "gdat.h"
-#include "ids.h"
-#include "dungeon.h"
-#include "save.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include "dungeon.h"
+#include "gdat.h"
+#include "ids.h"
+#include "save.h"
 
 /* The format code bytes: this byte, then the code + FORMAT_CODE_BASE. */
 #define FORMAT_CODE_BYTE     0x01

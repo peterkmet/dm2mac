@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "gfx.h"
-#include "ids.h"
-#include "le.h"
 #include <stdlib.h>
 #include <string.h>
+#include "ids.h"
+#include "le.h"
 
 /* The high nibble of a 4 bpp byte. */
 #define HIGH_NIBBLE_MASK 0xf0

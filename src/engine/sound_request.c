@@ -2,17 +2,17 @@
 /* The sound requests of the game: the queues of a game step, delayed sounds, and the place of a sound seen by the
    party. sound.c plays them. */
 #include "sound_request.h"
-#include "gdat.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
+#include "gdat.h"
 #include "hooks.h"
 #include "move.h"
 #include "save.h"
 #include "sensor.h"
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* Sizes of the request queues and the delays of a request. */
 #define REQUESTS_MAX 20 /* requests of a game step */

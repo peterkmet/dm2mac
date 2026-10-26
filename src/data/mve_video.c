@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
+#include <string.h>
 #include "le.h"
 #include "mve.h"
 #include "mve_internal.h"
-#include <string.h>
 
 /* The video data header: its size and the offset of its flags. */
 #define VIDEO_HEADER_SIZE 14 /* frame numbers, position, size, and flags before the blocks */

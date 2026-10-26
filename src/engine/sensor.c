@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Floor and wall sensors, square events, doors, pits, teleporters, and fake walls. */
 #include "sensor.h"
-#include "gdat.h"
-#include "le.h"
+#include <string.h>
 #include "action.h"
 #include "ai_move.h"
 #include "aspect.h"
@@ -11,8 +10,10 @@
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
+#include "gdat.h"
 #include "hooks.h"
 #include "item.h"
+#include "le.h"
 #include "money.h"
 #include "move.h"
 #include "projectile.h"
@@ -20,7 +21,6 @@
 #include "recruit.h"
 #include "save.h"
 #include "sound_request.h"
-#include <string.h>
 
 /* The sound category of a creature that a generator creates: sound (0, 0, 0x89). */
 #define CAT_CREATURE_APPEARS     0x00

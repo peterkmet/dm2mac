@@ -5,9 +5,9 @@
 
 /* Mouse and keyboard input: key codes, rectangles and the command queue. */
 
-#include "gfx.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "gfx.h"
 
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
 #define KEY_EXTENDED  0x1000

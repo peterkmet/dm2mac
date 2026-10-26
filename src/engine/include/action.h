@@ -5,10 +5,10 @@
 
 /* The action area of the panel: its modes, the action hands, and the spell and money box views. */
 
-#include "champion.h"
-#include "save.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "champion.h"
+#include "save.h"
 
 /* What the action area shows. */
 #define ACTION_MODE_HANDS      0

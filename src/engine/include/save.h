@@ -5,9 +5,9 @@
 
 /* The save game: its blocks, its layout, and reading and writing the file. */
 
+#include <stdint.h>
 #include "gdat.h"
 #include "le.h"
-#include <stdint.h>
 
 /* Sizes of the game state blocks of the save. */
 #define CHAMPION_MAX      4

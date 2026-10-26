@@ -6,8 +6,8 @@
 /* Turns of the turn-based mode: an action gives its inputs to the input queue, the game runs one game step per frame
    until the party can act again; a batch runs a list of actions and a wait runs game steps, both stop on news. */
 
-#include "state_json.h"
 #include <stdbool.h>
+#include "state_json.h"
 
 /* The state of the turn */
 

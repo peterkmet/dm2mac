@@ -1,12 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The rules of the main loop: the timeline, map changes, the wake of the party. */
 #include "game.h"
-#include "le.h"
+#include <stdbool.h>
+#include <string.h>
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "hooks.h"
 #include "inventory.h"
+#include "le.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -14,8 +16,6 @@
 #include "sensor.h"
 #include "sound_request.h"
 #include "weather.h"
-#include <stdbool.h>
-#include <string.h>
 
 MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
 UiState g_ui;

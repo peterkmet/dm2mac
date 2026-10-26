@@ -6,9 +6,9 @@
 /* Calls of the game rules into the user interface, for events that must run the interface inside the rule.
    ui/ui_hooks.c sets every member. */
 
-#include "sound_request.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "sound_request.h"
 
 typedef struct {
     void (*print_message)(int color, const char *text); /* a line in the message area */

@@ -5,9 +5,9 @@
 
 /* The champions: their slots, statistics, wounds, and the effects of their actions. */
 
-#include "save.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "save.h"
 
 /* Champion slots: the hands, the body and pack slots (to 29), then the slots of an open container. */
 #define SLOT_READY_HAND      0

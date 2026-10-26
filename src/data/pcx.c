@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "pcx.h"
-#include "le.h"
 #include <string.h>
+#include "le.h"
 
 /* The sizes of the header and of the palette at the end. */
 #define PCX_HEADER_SIZE  128

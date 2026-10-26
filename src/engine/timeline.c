@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "timeline.h"
-#include "os.h"
 #include <stdlib.h>
+#include "os.h"
 
 /* The end of the free list, and the system errors of the original: no queue slot, a full timeline. */
 #define END_OF_FREE_LIST           (-1)

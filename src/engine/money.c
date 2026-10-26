@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Coins in money boxes, the money box panel, and the prices of the shops. */
 #include "money.h"
-#include "gdat.h"
-#include "ids.h"
+#include <string.h>
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game_text.h"
+#include "gdat.h"
 #include "hooks.h"
+#include "ids.h"
 #include "item.h"
-#include <string.h>
 
 /* Creature attributes of a price list: MERCHANT_ATTR_* + list * MERCHANT_LIST_ATTRS: the margin, then two price
    factors; the class texts MERCHANT_CLASS_* + list * MERCHANT_LIST_ATTRS: the item class sets of the factors. */

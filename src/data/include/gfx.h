@@ -5,9 +5,9 @@
 
 /* Blitting, scaling, and palette handling of 8 bpp pictures and the screen. */
 
-#include "gdat.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "gdat.h"
 
 /* Rectangle fields: int16_t rect[RECT_SIZE] = x, y, width, height. */
 #define RECT_X    0

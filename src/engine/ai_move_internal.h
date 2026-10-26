@@ -5,9 +5,9 @@
 
 /* Shared state of the creature movement (ai_move.c): the move directions past the map, the last read square. */
 
+#include <stdint.h>
 #include "dungeon.h"
 #include "move.h"
-#include <stdint.h>
 
 /* The directions of a move test past the four map directions. */
 #define DIR_LEVEL_UP    4

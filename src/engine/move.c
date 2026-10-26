@@ -1,12 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Party movement and thing movement through pits, teleporters, and stairs. */
 #include "move.h"
-#include "gdat.h"
+#include <stdlib.h>
+#include <string.h>
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
+#include "gdat.h"
 #include "hooks.h"
 #include "item.h"
 #include "projectile.h"
@@ -15,8 +17,6 @@
 #include "sensor.h"
 #include "sound_request.h"
 #include "weather.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* Graphics and creature values that the moves read. */
 #define MAP_KEY_PIT_TO_MARKER 0x6a /* map graphics value: pits lead to a random marker, not one level down */

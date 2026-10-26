@@ -5,8 +5,8 @@
 
 /* The action area: the hands and spell icons of the party, and the panels that open in it. */
 
-#include "ui.h"
 #include <stdbool.h>
+#include "ui.h"
 
 /* ---- Setup ---- */
 

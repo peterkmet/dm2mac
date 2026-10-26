@@ -5,10 +5,10 @@
 
 /* The JSON text writer of the control replies, and the state of the game as JSON: party, champions, view, map. */
 
-#include "seen.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "seen.h"
 
 /* The parts of the game state that state_json_string gives. */
 #define STATE_JSON_STATE 0

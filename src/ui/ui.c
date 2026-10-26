@@ -1,26 +1,26 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "ui.h"
-#include "ids.h"
-#include "action.h"
-#include "champion.h"
-#include "dungeon.h"
-#include "game.h"
-#include "game_text.h"
-#include "inventory.h"
-#include "item.h"
-#include "money.h"
-#include "save.h"
-#include "action_area.h"
-#include "input.h"
-#include "play.h"
-#include "text.h"
-#include "ui_internal.h"
-#include "view.h"
-#include "zone.h"
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "action.h"
+#include "action_area.h"
+#include "champion.h"
+#include "dungeon.h"
+#include "game.h"
+#include "game_text.h"
+#include "ids.h"
+#include "input.h"
+#include "inventory.h"
+#include "item.h"
+#include "money.h"
+#include "play.h"
+#include "save.h"
+#include "text.h"
+#include "ui_internal.h"
+#include "view.h"
+#include "zone.h"
 
 /* Frames, shadows, and offsets of the interface pictures, in pixels. */
 #define ICON_FRAME       1 /* the slot frame around an icon */

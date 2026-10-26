@@ -2,22 +2,22 @@
 /* The action area: the hands and the spell icons of the party, the open hand or spell panel, and the result of
    an action. */
 #include "action_area.h"
-#include "ids.h"
+#include <string.h>
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
+#include "ids.h"
+#include "input.h"
 #include "item.h"
 #include "minion.h"
+#include "minion_map.h"
 #include "money.h"
 #include "random.h"
-#include "input.h"
-#include "minion_map.h"
 #include "text.h"
 #include "ui.h"
 #include "zone.h"
-#include <string.h>
 
 /* The damage star of an action result: the damage limits of its sizes, its scales, and its digits. */
 #define RESULT_SMALL_MAX   15 /* damage up to this shows the small damage star */

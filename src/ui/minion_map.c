@@ -1,25 +1,25 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The minion map panel in the action area: the grid of square icons around the party, a minion, or a marker. */
 #include "minion_map.h"
-#include "gdat.h"
-#include "ids.h"
+#include <string.h>
 #include "action.h"
+#include "action_area.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game_text.h"
+#include "gdat.h"
+#include "ids.h"
 #include "item.h"
 #include "minion.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
-#include "action_area.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
 #include "zone.h"
-#include <string.h>
 
 /* The label of the first option button; the other buttons take the next letters. */
 #define OPTION_LABEL_FIRST 'r'

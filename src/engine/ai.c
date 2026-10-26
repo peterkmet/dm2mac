@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Creature AI: the update context, moods, plans, and the update of a creature that acts. */
 #include "ai.h"
-#include "le.h"
+#include <stddef.h>
+#include <string.h>
 #include "ai_internal.h"
 #include "ai_move.h"
 #include "champion.h"
@@ -9,6 +10,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "item.h"
+#include "le.h"
 #include "merchant.h"
 #include "minion.h"
 #include "move.h"
@@ -17,8 +19,6 @@
 #include "save.h"
 #include "sensor.h"
 #include "sound_request.h"
-#include <stddef.h>
-#include <string.h>
 
 /* The sizes of the AI state of the groups and of the nested updates. */
 #define AI_GROUP_KEY_COUNT 1024 /* group record indices */

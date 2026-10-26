@@ -6,8 +6,8 @@
 /* Creature perception and movement: squares, lines of sight, item filters, the tests of the AI commands, and the
    path search (ai_move.c). The functions work on the AI context (ai.h) and set g_ai.command_result. */
 
-#include "money.h"
 #include <stdint.h>
+#include "money.h"
 
 /* Bits of the command byte of the AI tests (AI_EXECUTE in ai.h). */
 #define AI_MODE_MASK             0x7f

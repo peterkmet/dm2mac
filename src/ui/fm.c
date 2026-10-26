@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "fm.h"
-#include "hmp.h"
-#include "le.h"
-#include <opl3/opl3.h>
 #include <stdlib.h>
 #include <string.h>
+#include <opl3/opl3.h>
+#include "hmp.h"
+#include "le.h"
 
 /* AdLib BNK file: the header offsets of the instrument count, the 12-byte names and the 30-byte instrument records. */
 #define BNK_USED    0x08

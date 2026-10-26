@@ -5,9 +5,9 @@
 
 /* The items: their record fields, their GDAT types, and what the party possesses. */
 
-#include "dungeon.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 /* The type (GDAT index) of a weapon, armour, or miscellaneous item. */

@@ -5,10 +5,10 @@
 
 /* Floor and wall sensors: their record fields, their timeline events, and the missiles. */
 
-#include "dungeon.h"
-#include "timeline.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
+#include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint16_t sensor_type(uint16_t sensor)

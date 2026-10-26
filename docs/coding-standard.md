@@ -71,10 +71,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 2. A header includes only what its declarations need; a struct that appears only behind a pointer is
    forward-declared. [include]
-3. A `.c` file includes exactly the headers it uses, in this order: its own header; project headers by layer
-   order and alphabetical inside a layer; third-party headers; system headers. `.clang-format` sorts them.
-   The include categories of `.clang-format` name the headers of each layer. There is no umbrella header
-   per layer. [format, include]
+3. A `.c` file includes exactly the headers it uses. A `.h` and a `.c` file use one order: the own header (in a
+   `.c`); C standard headers; third-party headers; project headers, alphabetical. `.clang-format` sorts them by the
+   angle-bracket and quote forms. There is no umbrella header per layer. [format, include]
 4. The one-line comment of a public function is in the header above its prototype. [comment]
 5. A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration.
    [dead-api]

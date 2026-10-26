@@ -8,9 +8,9 @@
    (engine/magic). It switches the cheats through engine/game; advanced/ opens and closes the screen, maps the keys,
    and runs quick save and quick load. */
 
-#include "magic.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "magic.h"
 
 /* The cheat page; the spell pages count from 1. */
 #define CHEATS_PAGE 0

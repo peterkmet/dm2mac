@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "mve.h"
+#include <string.h>
 #include "le.h"
 #include "mve_internal.h"
-#include <string.h>
 
 /* The file header: the signature and three magic words. */
 #define MVE_SIGNATURE    "Interplay MVE File\x1a"

@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Minion maps: the mana of the map panel, its option buttons, and the clicks that send a minion. */
 #include "minion.h"
-#include "gfx.h"
-#include "ids.h"
 #include "action.h"
 #include "ai.h"
 #include "champion.h"
 #include "dungeon.h"
+#include "gfx.h"
 #include "hooks.h"
+#include "ids.h"
 #include "move.h"
 
 /* Game ticks between the mana points of an open minion map. */

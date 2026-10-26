@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "cheats.h"
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
 #include "action.h"
 #include "champion.h"
 #include "game.h"
 #include "game_text.h"
-#include "save.h"
 #include "rows.h"
+#include "save.h"
 #include "text.h"
-#include <ctype.h>
-#include <stdio.h>
-#include <string.h>
 
 /* The rows of the cheat page: the six cheats, then the items. */
 #define ROW_LIGHT         0

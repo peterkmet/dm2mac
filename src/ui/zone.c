@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "zone.h"
+#include <stdlib.h>
 #include "ids.h"
 #include "le.h"
 #include "move.h"
-#include <stdlib.h>
 
 /* GDAT (1, 0, 4, 0), little-endian words: signature, range count, the first and last zone of each range,
    then 4 words per zone of each range. */

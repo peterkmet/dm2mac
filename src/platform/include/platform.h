@@ -5,9 +5,9 @@
 
 /* The window, the sound output and the input events: the SDL3 side of the game screen. */
 
-#include "movie.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "movie.h"
 
 /* Types of a platform event. */
 #define PLAT_QUIT     0

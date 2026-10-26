@@ -5,9 +5,9 @@
 
 /* Magic: the spell table, runes, spell casting, and the magic light. */
 
-#include "champion.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "champion.h"
 
 /* A spell of the spell table. */
 typedef struct {

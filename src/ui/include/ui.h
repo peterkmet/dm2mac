@@ -5,12 +5,12 @@
 
 /* The offscreen bitmaps shared by the panels and the drawing of the interface pictures. */
 
-#include "gdat.h"
-#include "gfx.h"
-#include "draw.h"
-#include "text.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "draw.h"
+#include "gdat.h"
+#include "gfx.h"
+#include "text.h"
 
 /* The number of movement arrow zones. */
 #define ZONE_ARROW_COUNT 6

@@ -6,10 +6,10 @@
 /* The line protocol of the control of the running game: one JSON request per line, one JSON reply per line
    (docs/llm/llm-mode.md). platform/transport.c carries the lines over the socket; no socket, no SDL. */
 
-#include "state_json.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "state_json.h"
 
 /* The limits of a request. */
 #define KEY_CODE_MAX 65535 /* the largest key code of a request */

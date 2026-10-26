@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Weather, day and night, and the party light. */
 #include "weather.h"
-#include "gdat.h"
-#include "gfx.h"
-#include "ids.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
+#include "gdat.h"
+#include "gfx.h"
 #include "hooks.h"
+#include "ids.h"
 #include "item.h"
 #include "move.h"
 #include "projectile.h"

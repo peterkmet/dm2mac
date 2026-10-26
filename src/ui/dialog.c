@@ -1,23 +1,23 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Dialogs: messages, questions, progress, and the volume settings. */
 #include "dialog.h"
-#include "gdat.h"
-#include "ids.h"
+#include <stdbool.h>
+#include <string.h>
+#include "draw.h"
 #include "game.h"
 #include "game_text.h"
-#include "save.h"
-#include "sound_request.h"
-#include "draw.h"
+#include "gdat.h"
+#include "ids.h"
 #include "input.h"
 #include "music.h"
 #include "play.h"
+#include "save.h"
 #include "sound.h"
+#include "sound_request.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
 #include "zone.h"
-#include <stdbool.h>
-#include <string.h>
 
 /* The buttons of the dialogs. */
 #define DIALOG_VOLUME_BUTTONS 7

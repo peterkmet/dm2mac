@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "item.h"
-#include "gdat.h"
-#include "ids.h"
+#include <stdio.h>
+#include <string.h>
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game_text.h"
+#include "gdat.h"
+#include "ids.h"
 #include "minion.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
-#include <stdio.h>
-#include <string.h>
 
 /* Explosion things: thing values of explosion types; the low 7 bits are the GDAT index. */
 #define EXPLOSION_THING_FIRST    0xff80

@@ -1,25 +1,25 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The advanced mode: the movement letter keys, the quick save and quick load, the automap, the cheat screen, and the options menu. */
 #include "advanced.h"
-#include "os.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include "automap.h"
+#include "cheats.h"
+#include "draw.h"
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
 #include "minion.h"
-#include "save.h"
-#include "timeline.h"
-#include "automap.h"
-#include "cheats.h"
-#include "draw.h"
 #include "music.h"
 #include "optmenu.h"
+#include "os.h"
+#include "save.h"
 #include "session.h"
 #include "sound.h"
 #include "text.h"
+#include "timeline.h"
 #include "ui.h"
 #include "zone.h"
-#include <stdbool.h>
-#include <stdio.h>
 
 /* The name in the header of QUICK.DAT. */
 #define QUICK_SAVE_NAME "QUICK SAVE"

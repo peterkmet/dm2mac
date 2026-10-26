@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "music.h"
-#include "hmp.h"
-#include "fm.h"
-#include "sound.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "fm.h"
+#include "hmp.h"
+#include "sound.h"
 
 /* The GDAT type and entry of a song in CAT_MUSIC. */
 #define SONG_TYPE  0x03

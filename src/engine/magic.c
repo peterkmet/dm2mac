@@ -1,24 +1,24 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Magic: runes, spell casting, magic light, party auras, and missile spells. */
 #include "magic.h"
-#include "gdat.h"
-#include "ids.h"
-#include "le.h"
+#include <stdbool.h>
+#include <stddef.h>
 #include "action.h"
 #include "ai.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
+#include "gdat.h"
 #include "hooks.h"
+#include "ids.h"
 #include "item.h"
+#include "le.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
 #include "sensor.h"
 #include "sound_request.h"
 #include "weather.h"
-#include <stdbool.h>
-#include <stddef.h>
 
 /* The size of the spell table. */
 #define SPELL_COUNT 34

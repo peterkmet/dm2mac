@@ -5,9 +5,9 @@
 
 /* Party movement and thing movement: the movement commands, the redraw flags, and the doors. */
 
-#include "dungeon.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 
 /* Movement commands: turn left and right, then step forward, right, back, and left. */
 #define CMD_TURN_LEFT    0x01

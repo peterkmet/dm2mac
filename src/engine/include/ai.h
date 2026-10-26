@@ -5,11 +5,11 @@
 
 /* The creature AI: its update context, the plan commands, and the record fields of the AI markers. */
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "creature.h"
 #include "dungeon.h"
 #include "timeline.h"
-#include <stdbool.h>
-#include <stdint.h>
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint16_t ai_marker_id(uint16_t text)

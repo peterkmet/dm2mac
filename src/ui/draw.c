@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "draw.h"
-#include "ids.h"
-#include "video.h"
-#include "zone.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ids.h"
+#include "video.h"
+#include "zone.h"
 
 /* Value key (category, index, 0x0c, 0xfe): offset of all images of an index; the index of the placeholder image. */
 #define OFFSET_ENTRY      0xfe

@@ -1,32 +1,32 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The main loop: timer ticks, game steps, the view of the party, sleep. */
 #include "play.h"
-#include "gdat.h"
-#include "ids.h"
+#include <stdbool.h>
+#include <string.h>
 #include "action.h"
+#include "action_area.h"
+#include "advanced.h"
 #include "champion.h"
 #include "creature.h"
+#include "dialog.h"
+#include "draw.h"
 #include "game.h"
 #include "game_text.h"
+#include "gdat.h"
+#include "ids.h"
+#include "input.h"
 #include "inventory.h"
 #include "move.h"
+#include "music.h"
 #include "random.h"
 #include "seen.h"
 #include "sound_request.h"
-#include "timeline.h"
-#include "weather.h"
-#include "action_area.h"
-#include "advanced.h"
-#include "dialog.h"
-#include "draw.h"
-#include "input.h"
-#include "music.h"
 #include "text.h"
+#include "timeline.h"
 #include "ui.h"
 #include "view.h"
+#include "weather.h"
 #include "zone.h"
-#include <stdbool.h>
-#include <string.h>
 
 static int tick_elapsed;
 void (*g_play_frame_hook)(void);

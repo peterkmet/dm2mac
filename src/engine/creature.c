@@ -1,26 +1,26 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Creature groups: creature info, animation, active groups, and the creature update events. */
 #include "creature.h"
-#include "gdat.h"
-#include "ids.h"
-#include "le.h"
-#include "os.h"
+#include <stdlib.h>
+#include <string.h>
 #include "ai.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
+#include "gdat.h"
 #include "hooks.h"
+#include "ids.h"
 #include "item.h"
+#include "le.h"
 #include "minion.h"
 #include "move.h"
+#include "os.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
 #include "sound_request.h"
 #include "timeline.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* GDAT value key: the index of the creature info record. */
 #define CREATURE_KEY_INFO 0x05

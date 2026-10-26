@@ -5,9 +5,9 @@
 
 /* The sound requests of the game rules: the queues of a game step and the delayed sounds. */
 
-#include "gdat.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "gdat.h"
 
 /* The stereo pan of a sound straight ahead or behind. */
 #define SOUND_PAN_CENTER 0x8000

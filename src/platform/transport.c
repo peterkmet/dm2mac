@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The control socket: accepts one client, cuts its bytes into request lines, and sends the replies of control.c. */
 #include "transport.h"
-#include "control.h"
-#include "state_json.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -12,6 +10,8 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include "control.h"
+#include "state_json.h"
 
 /* The size of the request buffer. */
 #define INPUT_SIZE 4096 /* a request line up to its newline */

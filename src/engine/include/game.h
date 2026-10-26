@@ -5,9 +5,9 @@
 
 /* The main loop state of the game rules: the step timing, the map changes, and the party wake. */
 
-#include "save.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "save.h"
 
 /* The timing of the main loop. */
 #define STEP_TICKS 8 /* timer ticks (60 Hz) of a game step */

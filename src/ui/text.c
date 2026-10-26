@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "text.h"
-#include "ids.h"
-#include "game_text.h"
-#include "save.h"
+#include <stdio.h>
+#include <string.h>
 #include "draw.h"
+#include "game_text.h"
+#include "ids.h"
+#include "save.h"
 #include "video.h"
 #include "view.h"
 #include "zone.h"
-#include <stdio.h>
-#include <string.h>
 
 /* GDAT index and type of the font and the UI colors. */
 #define FONT_INDEX 0x00

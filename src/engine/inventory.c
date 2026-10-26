@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The leader hand, the champion slots, and the effects of the items that the champions hold. */
 #include "inventory.h"
+#include <string.h>
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
@@ -12,7 +13,6 @@
 #include "sensor.h"
 #include "sound_request.h"
 #include "weather.h"
-#include <string.h>
 
 /* ATTR_FLAGS bits of the effects. */
 #define ATTR_HAS_EFFECTS       0x2000 /* ATTR_FLAGS bit: the item changes the champion */

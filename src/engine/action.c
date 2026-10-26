@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "action.h"
+#include <string.h>
 #include "champion.h"
 #include "dungeon.h"
 #include "hooks.h"
-#include <string.h>
 
 ActionArea g_action;
 

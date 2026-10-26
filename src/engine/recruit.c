@@ -1,21 +1,21 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "recruit.h"
-#include "gdat.h"
-#include "gfx.h"
-#include "ids.h"
-#include "le.h"
+#include <string.h>
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
+#include "gdat.h"
+#include "gfx.h"
 #include "hooks.h"
+#include "ids.h"
 #include "inventory.h"
+#include "le.h"
 #include "move.h"
 #include "random.h"
 #include "sensor.h"
 #include "sound_request.h"
-#include <string.h>
 
 /* The sensor flag of a mirror that still holds its champion. */
 #define MIRROR_ACTIVE         SENSOR_STATE

@@ -5,10 +5,10 @@
 
 /* Creature groups: the creature info records and the update of the groups. */
 
-#include "gdat.h"
-#include "dungeon.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
+#include "gdat.h"
 
 /* A creature info record of SKULL.EXE (36 bytes, the same layout). */
 typedef struct {

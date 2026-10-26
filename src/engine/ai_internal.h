@@ -6,10 +6,10 @@
 /* The shared private declarations of the creature AI (ai.c, ai_data.c, ai_move.c): the AI tables of SKULL.EXE, the
    square that the AI read last, and the perception, command test and path functions of ai_move.c that ai.c calls. */
 
-#include "ai.h"
-#include "dungeon.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "ai.h"
+#include "dungeon.h"
 
 /* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
 #define AI_SCRIPTS_BASE        0x73020u

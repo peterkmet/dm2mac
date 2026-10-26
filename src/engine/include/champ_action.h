@@ -5,10 +5,10 @@
 
 /* The actions of the champions: the commands, the charges, and the repeats of an action. */
 
-#include "champion.h"
-#include "save.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "champion.h"
+#include "save.h"
 
 /* An action that repeats by itself in the next game steps (a flurry of blows). */
 typedef struct {

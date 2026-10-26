@@ -5,10 +5,10 @@
 
 /* Projectiles and explosions: their record fields and their timeline events. */
 
-#include "dungeon.h"
-#include "timeline.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
+#include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint8_t projectile_energy(uint16_t projectile)

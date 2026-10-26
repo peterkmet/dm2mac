@@ -5,9 +5,9 @@
 
 /* Sound output: the sample mixer, the voices and the volume settings. */
 
-#include "sound_request.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "sound_request.h"
 
 /* The sample rates, the voices and the volume settings of the sound output. */
 #define SOUND_RATE         11025 /* the SOS driver mix rate; the samples play at this rate */

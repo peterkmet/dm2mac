@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* What the party sees of a square: its aspect, ornaments, and first thing; the 5 x 5 cell grid of a square. */
 #include "aspect.h"
-#include "gdat.h"
-#include "ids.h"
+#include <string.h>
 #include "creature.h"
 #include "dungeon.h"
+#include "gdat.h"
+#include "ids.h"
 #include "move.h"
 #include "save.h"
 #include "sensor.h"
-#include <string.h>
 
 /* The square byte that the floor things see on an open fake wall. */
 #define FAKE_WALL_FLOOR_SQUARE  1

@@ -5,8 +5,8 @@
 
 /* The start menu, new games, loads and saves through the slot dialogs, and the end of the game. */
 
-#include "champion.h"
 #include <stdbool.h>
+#include "champion.h"
 
 /* g_session.new_game while the start menu waits. */
 #define MENU_WAITING 99

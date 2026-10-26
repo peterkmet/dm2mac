@@ -1,12 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "view.h"
-#include "ids.h"
+#include <stdlib.h>
+#include <string.h>
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
+#include "draw.h"
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
+#include "ids.h"
+#include "input.h"
 #include "item.h"
 #include "money.h"
 #include "move.h"
@@ -15,14 +19,10 @@
 #include "save.h"
 #include "sensor.h"
 #include "sound_request.h"
-#include "weather.h"
-#include "draw.h"
-#include "input.h"
 #include "text.h"
 #include "ui.h"
+#include "weather.h"
 #include "zone.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* Value keys of two bytes: the first value in the high byte, the second in the low byte. */
 #define LOW_BYTE(v)  ((v) & BYTE_MASK)

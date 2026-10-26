@@ -5,9 +5,9 @@
 
 /* Weather, day and night, and the party light. */
 
-#include "gdat.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "gdat.h"
 
 /* Weather and day state that the save file does not keep (the saved part is in game). */
 typedef struct {

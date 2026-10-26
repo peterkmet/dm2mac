@@ -1,30 +1,30 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "turn.h"
-#include "ids.h"
-#include "os.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "action.h"
+#include "advanced.h"
 #include "champion.h"
+#include "control.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
+#include "ids.h"
+#include "input.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"
 #include "money.h"
 #include "move.h"
+#include "os.h"
 #include "projectile.h"
 #include "recruit.h"
-#include "advanced.h"
-#include "input.h"
 #include "text.h"
 #include "ui.h"
 #include "video.h"
 #include "view.h"
 #include "zone.h"
-#include "control.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* Limits of a turn, a batch, and their texts. */
 #define TURN_MIN_TICKS        2 /* an action shows its result before the turn ends */

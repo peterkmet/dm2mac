@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "optmenu.h"
-#include "settings.h"
+#include <stdio.h>
+#include "advanced.h"
 #include "game.h"
 #include "game_text.h"
-#include "advanced.h"
 #include "rows.h"
+#include "settings.h"
 #include "text.h"
-#include <stdio.h>
 
 /* The text of a row. */
 #define FILTER_ROW_SIZE 40

@@ -5,9 +5,9 @@
 
 /* Game music: the song of each map from SONGLIST.DAT, played by the HMP player on the FM driver. */
 
-#include "gdat.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "gdat.h"
 
 /* The output rate of the music and the size of SONGLIST.DAT. */
 #define MUSIC_SAMPLE_RATE 44100

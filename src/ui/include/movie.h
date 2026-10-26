@@ -5,9 +5,9 @@
 
 /* The movie script of the DOS launcher IBMIOP.EXE; platform/main.c drives it (docs/formats/movies.md). */
 
-#include "mve.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "mve.h"
 
 /* The movie scripts of the launcher. */
 #define MOVIE_SCRIPT_NONE       0

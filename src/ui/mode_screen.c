@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "mode_screen.h"
-#include "gfx.h"
+#include <string.h>
 #include "game.h"
+#include "gfx.h"
 #include "text.h"
 #include "video.h"
-#include <string.h>
 
 /* The layout of the mode screen. */
 #define HEADING_TOP 56 /* top of the heading line */

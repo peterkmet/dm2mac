@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "movie.h"
-#include "pcx.h"
-#include "game.h"
-#include "session.h"
-#include "sound.h"
-#include "video.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "game.h"
+#include "pcx.h"
+#include "session.h"
+#include "sound.h"
+#include "video.h"
 
 /* The times of the script. */
 #define SPLASH_NS 3000000000ull /* splash intrplay.pcx 3: three seconds */

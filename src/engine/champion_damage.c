@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Champion statistics in fights, damage, wounds, poison, death, and the effects of time. */
+#include <string.h>
 #include "action.h"
 #include "champion.h"
 #include "dungeon.h"
@@ -12,7 +13,6 @@
 #include "random.h"
 #include "sensor.h"
 #include "weather.h"
-#include <string.h>
 
 /* Attack and wound bits. */
 #define ATTACK_TYPE_MASK           0x7fff

@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "platform.h"
-#include "os.h"
+#include <SDL3/SDL.h>
 #include "movie.h"
 #include "music.h"
+#include "os.h"
+#include "scale.h"
 #include "sound.h"
 #include "video.h"
-#include "scale.h"
-#include <SDL3/SDL.h>
 
 _Static_assert(MUSIC_SAMPLE_RATE == SOUND_OUTPUT_RATE, "the audio stream plays the music at the sound output rate");
 

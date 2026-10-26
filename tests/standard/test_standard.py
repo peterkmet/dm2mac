@@ -706,17 +706,6 @@ def test_sources_are_formatted():
     assert result.returncode == 0, result.stderr[-4000:]
 
 
-INCLUDE_CATEGORY = re.compile(r"""^  - Regex: '\^"\(([\w|]+)\)\\\.h"\$'\n    Priority: (\d)$""", re.M)
-
-
-def test_include_categories_name_the_headers_of_each_layer():
-    """.clang-format sorts the project includes by layer: the category of a layer names each of its headers."""
-    categories = {int(priority): sorted(names.split("|"))
-                  for names, priority in INCLUDE_CATEGORY.findall((ROOT / ".clang-format").read_text())}
-    expected = {number: sorted(p.stem for p in (SRC / layer).rglob("*.h")) for number, layer in enumerate(LAYERS, 1)}
-    assert categories == expected
-
-
 BRIDGE = re.compile(r"rule \d+\.\d+: \S.* \(removed by Task \d+\)$")
 
 

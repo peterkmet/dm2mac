@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The actions of the champions: the action menu, the actions, their delays and repeats, experience, throwing. */
 #include "champ_action.h"
-#include "ids.h"
 #include "action.h"
 #include "ai.h"
 #include "champion.h"
@@ -10,6 +9,7 @@
 #include "game.h"
 #include "game_text.h"
 #include "hooks.h"
+#include "ids.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"

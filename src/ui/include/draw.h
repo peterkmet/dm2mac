@@ -5,9 +5,9 @@
 
 /* Drawing of GDAT images into the frame buffer: blits, transparency and the interface colors. */
 
+#include <stdint.h>
 #include "gdat.h"
 #include "gfx.h"
-#include <stdint.h>
 
 /* Special transparent values. */
 #define DRAW_NO_BLIT  (-2) /* compute the rectangle, draw nothing */

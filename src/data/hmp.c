@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "hmp.h"
-#include "le.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include "le.h"
 
 /* HMP header. */
 #define HMP_SIGNATURE "HMIMIDIP013195"

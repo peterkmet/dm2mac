@@ -7,10 +7,10 @@
    place the zone at (x, y) of its parent (center, top left, top right, bottom right, bottom left, top, right,
    bottom, left); 9 gives a size (x, y = width, height); 10 to 18 place it relative to the parent's anchor. */
 
-#include "gdat.h"
-#include "gfx.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "gdat.h"
+#include "gfx.h"
 
 /* Zone flag: add the offsets in *w and *h to the zone position. */
 #define ZONE_RELATIVE 0x8000

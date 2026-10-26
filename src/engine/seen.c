@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The seen squares of the automap and their save block. */
 #include "seen.h"
-#include "os.h"
+#include <stdlib.h>
+#include <string.h>
 #include "dungeon.h"
 #include "game.h"
 #include "move.h"
+#include "os.h"
 #include "weather.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* The block header: the magic, the version byte, the map count byte; then the width and height byte of each map. */
 #define AMAP_MAGIC       "AMAP"

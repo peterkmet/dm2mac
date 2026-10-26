@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "dungeon.h"
-#include "gdat.h"
-#include "le.h"
-#include "os.h"
-#include "creature.h"
-#include "game_text.h"
-#include "move.h"
-#include "random.h"
-#include "sensor.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "creature.h"
+#include "game_text.h"
+#include "gdat.h"
+#include "le.h"
+#include "move.h"
+#include "os.h"
+#include "random.h"
+#include "sensor.h"
 
 /* Sizes of the DUNGEON.DAT sections and limits of the loaded dungeon. */
 #define HEADER_SIZE          44

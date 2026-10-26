@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "gdat.h"
-#include "ids.h"
-#include "le.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "ids.h"
+#include "le.h"
 
 /* File signature of GRAPHICS.DAT. */
 #define GDAT_SIGNATURE 0x8005

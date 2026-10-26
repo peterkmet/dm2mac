@@ -5,10 +5,10 @@
 
 /* Text: the font, message wrapping and printing into the screen. */
 
-#include "gdat.h"
-#include "gfx.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "gdat.h"
+#include "gfx.h"
 
 /* The font: 6 rows of 128 bytes in GDAT (1, 0, 7, 0), one byte per character and row, 5 pixels in bits 4 to 0. */
 #define FONT_GLYPH_WIDTH  5

@@ -1,23 +1,23 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "save.h"
-#include "gdat.h"
-#include "ids.h"
-#include "le.h"
-#include "os.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
+#include "gdat.h"
+#include "ids.h"
 #include "inventory.h"
+#include "le.h"
+#include "os.h"
 #include "random.h"
 #include "seen.h"
 #include "sensor.h"
 #include "timeline.h"
 #include "weather.h"
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* Save file: a 42-byte header, the dungeon image, then the game state as one bit stream. Each record
    of the bit stream stores only the bits that its mask table selects, most significant bit first.

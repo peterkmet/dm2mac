@@ -1,27 +1,27 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "control.h"
-#include "le.h"
-#include "os.h"
-#include "champion.h"
-#include "dungeon.h"
-#include "game.h"
-#include "item.h"
-#include "save.h"
-#include "advanced.h"
-#include "dialog.h"
-#include "input.h"
-#include "movie.h"
-#include "play.h"
-#include "session.h"
-#include "video.h"
-#include "state_json.h"
-#include "turn.h"
 #include <ctype.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "advanced.h"
+#include "champion.h"
+#include "dialog.h"
+#include "dungeon.h"
+#include "game.h"
+#include "input.h"
+#include "item.h"
+#include "le.h"
+#include "movie.h"
+#include "os.h"
+#include "play.h"
+#include "save.h"
+#include "session.h"
+#include "state_json.h"
+#include "turn.h"
+#include "video.h"
 
 /* Sizes and limits of the requests and the replies. */
 #define REPLY_LINE_SIZE 256 /* one piece of a reply written by put */

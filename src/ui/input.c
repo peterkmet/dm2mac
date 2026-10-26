@@ -1,40 +1,40 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Mouse and keyboard input: the input tree of SKULL.EXE maps clicks and keys to commands; the command queue. */
 #include "input.h"
-#include "gdat.h"
-#include "ids.h"
-#include "le.h"
+#include <stdlib.h>
+#include <string.h>
 #include "action.h"
+#include "action_area.h"
+#include "advanced.h"
 #include "champion.h"
 #include "creature.h"
+#include "dialog.h"
+#include "draw.h"
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
+#include "gdat.h"
+#include "ids.h"
 #include "inventory.h"
 #include "item.h"
+#include "le.h"
 #include "magic.h"
 #include "minion.h"
+#include "minion_map.h"
 #include "money.h"
 #include "move.h"
+#include "music.h"
+#include "play.h"
 #include "recruit.h"
 #include "save.h"
 #include "sensor.h"
-#include "sound_request.h"
-#include "action_area.h"
-#include "advanced.h"
-#include "dialog.h"
-#include "draw.h"
-#include "minion_map.h"
-#include "music.h"
-#include "play.h"
 #include "session.h"
+#include "sound_request.h"
 #include "text.h"
 #include "ui.h"
 #include "video.h"
 #include "view.h"
 #include "zone.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* Sizes of the input tables of SKULL.EXE. */
 #define INPUT_NODE_COUNT    76

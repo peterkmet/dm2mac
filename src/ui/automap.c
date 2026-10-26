@@ -6,11 +6,11 @@
 #include "game.h"
 #include "game_text.h"
 #include "minion.h"
+#include "minion_map.h"
 #include "move.h"
 #include "save.h"
 #include "seen.h"
 #include "sensor.h"
-#include "minion_map.h"
 
 /* The gap left of and above each square icon. */
 #define ICON_GAP 1
