@@ -336,6 +336,11 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
     for (int i = 0; i < *count; i++) {
         const uint8_t *rs = ramps.of_color + RAMP_OF_COLOR_SIZE * (identity ? i : table[i]);
         int r = rs[0];
+        if (r >= ramps.count || rs[1] >= ramps.length[r]) {
+            if (identity)
+                table[i] = (uint8_t)i;
+            continue;
+        }
         int last = ramps.length[r] - 1;
         const uint8_t *brightness = ramps.brightness[r];
         const uint8_t *colors = ramps.colors[r];
