@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ai.h"
+#include "aspect.h"
 #include "champion.h"
 #include "dungeon.h"
 #include "game.h"
@@ -164,6 +165,15 @@
 #define PUSH_BASE_STRENGTH 40
 #define PUSH_STOP_SHIFT    2  /* a weak push stops with chance 1 in (resistance - strength) / 4 + 1 */
 #define LOAD_PUSH_DIVISOR  10 /* the push strength of the party: its load / 10 per champion */
+
+/* Creature groups near a point. */
+#define HIT_OFFSETS_PER_CELL 2 /* creature_find_group_near_point: the squares to check by cell */
+#define HIT_OFFSETS_READ     4
+
+/* The step from a square to a square beside it. */
+typedef struct {
+    int16_t dx, dy;
+} SquareStep;
 
 ActiveGroup *g_active_groups;
 int g_active_group_max;
@@ -1493,4 +1503,61 @@ void creature_continue_push(int command)
         }
     }
     dun_set_current_map(g_game.party_map);
+}
+
+/* Creature groups near a point. */
+
+uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell)
+{
+    /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
+       cell (its table has rows of 4 pairs), which this table keeps. */
+    static const SquareStep hit_offsets[HIT_OFFSETS_PER_CELL * (DIR_COUNT - 1) + HIT_OFFSETS_READ] = {
+        {-1, 0 },
+        {0,  -1},
+        {0,  -1},
+        {1,  0 },
+        {1,  0 },
+        {0,  1 },
+        {-1, 0 },
+        {0,  1 },
+        {0,  1 },
+        {0,  -1}
+    };
+    static const SquareStep hit_offsets_any_cell[HIT_OFFSETS_READ] = {
+        {0,  1 },
+        {0,  -1},
+        {1,  0 },
+        {-1, 0 }
+    };
+    static const int16_t hit_radius_sq[] = {0, 3, 6, 6};
+    /* the centers of the four cells of the square in the 5 x 5 grid */
+    static const uint16_t cell_grid[DIR_COUNT] = {cell_grid_index(1, 1), cell_grid_index(1, 3), cell_grid_index(3, 3),
+                                                  cell_grid_index(3, 1)};
+    int16_t sx = *out_x, sy = *out_y, px, py, cx, cy;
+    aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell], &px, &py);
+    for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
+        uint16_t g = creature_group_at(g_party.cur_map, sx, sy);
+        if (g != THING_NONE) {
+            int size = (int8_t)creature_group_info(g)->hit_size;
+            int zone = aspect_creature_cell(g, dir_relative(DIR_NORTH, group_dir(g)));
+            aspect_cell_to_xy(sx, sy, (uint16_t)zone, &cx, &cy);
+            cx = (int16_t)(cx - px);
+            cy = (int16_t)(cy - py);
+            if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size]) {
+                *out_x = sx;
+                *out_y = sy;
+                return g;
+            }
+        }
+        if (i == HIT_OFFSETS_READ)
+            break;
+        if (cell == CELL_ANY) {
+            sx = (int16_t)(*out_x + hit_offsets_any_cell[i].dx);
+            sy = (int16_t)(*out_y + hit_offsets_any_cell[i].dy);
+        } else {
+            sx = (int16_t)(*out_x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
+            sy = (int16_t)(*out_y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
+        }
+    }
+    return THING_NONE;
 }

@@ -10,6 +10,7 @@
 #include "hooks.h"
 #include "inventory.h"
 #include "le.h"
+#include "magic.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -158,7 +159,7 @@ static void process_party_event(TimelineEvent *e, uint16_t word)
         break;
     case EVENT_MAGIC_LIGHT:
         dun_set_current_map(g_game.party_map);
-        timeline_event_magic_light(e);
+        magic_event_magic_light(e);
         light_update_party_light();
         break;
     case EVENT_INVISIBILITY: /* invisibility ends */

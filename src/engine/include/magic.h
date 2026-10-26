@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "champion.h"
+#include "timeline.h"
 
 /* A spell of the spell table. */
 typedef struct {
@@ -47,6 +48,8 @@ const char *magic_get_rune_name(int rune);
 /* Light and auras */
 /* Adds magic light (or darkness) of a kind and power; it fades through timeline events. */
 void magic_add_light(int kind, int power);
+/* A magic light event: the light fades one level. */
+void magic_event_magic_light(TimelineEvent *e);
 /* Gives the living champions of champion_mask aura type with value for duration game ticks. */
 void magic_add_party_aura(int champion_mask, int type, int value, uint16_t duration);
 /* A party aura from champion c; pay: it costs 4 mana (less mana halves it). Returns false when it was not paid in full. */

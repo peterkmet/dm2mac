@@ -168,8 +168,8 @@ address,name,signature,subsystem
 0x00018395,explosion_process_event,void explosion_process_event(void *event),projectiles
 0x0001861b,math_square_distance,"int16_t math_square_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
 0x0001863d,dun_get_direction_to,"uint16_t dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
-0x0001869a,creature_order_attack_cells,"void creature_order_attack_cells(uint8_t *cells, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t cell)",creatures
-0x00018758,creature_attack_champion,"int16_t creature_attack_champion(uint8_t *group, uint16_t champion_index)",creatures
+0x0001869a,projectile_order_attack_cells,"void projectile_order_attack_cells(uint8_t *cells, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t cell)",creatures
+0x00018758,projectile_attack_champion,"int16_t projectile_attack_champion(uint8_t *group, uint16_t champion_index)",creatures
 0x00018a57,melee_attack_group,"int16_t melee_attack_group(uint8_t *champion, uint16_t champion_index, uint16_t group_thing, uint16_t cell, int16_t action_value, uint16_t flags, uint16_t skill, int16_t x, int16_t y)",champions
 0x00018d9e,dun_door_try_destroy,"int dun_door_try_destroy(int16_t x, int16_t y, int16_t attack, int magic, int16_t delay)",dungeon data
 0x00018e7f,aspect_cell_to_xy,"void aspect_cell_to_xy(int16_t base_x, int16_t base_y, uint16_t cell, int16_t *x, int16_t *y)",dungeon view
@@ -807,7 +807,7 @@ address,name,signature,subsystem
 0x00045815,magic_cast_party_aura,"int magic_cast_party_aura(uint8_t *champ, uint8_t aura, uint16_t power, int16_t use_mana)",magic
 0x00045869,champ_set_party_direction,void champ_set_party_direction(int16_t dir),champions
 0x000458f4,champ_get_index_in_cell,int champ_get_index_in_cell(uint16_t cell),champions
-0x00045938,champ_get_nearest_at,"int16_t champ_get_nearest_at(int16_t x, int16_t y)",champions
+0x00045938,move_get_nearest_at,"int16_t move_get_nearest_at(int16_t x, int16_t y)",champions
 0x000459c8,champ_adjust_stat,"void champ_adjust_stat(uint8_t *champ, uint16_t stat, int16_t delta)",champions
 0x00045a41,item_get_stat_modifier,"int16_t item_get_stat_modifier(uint16_t thing, uint8_t attribute, int equipped, int16_t mode)",items
 0x00045a9d,champ_apply_item_effects,"void champ_apply_item_effects(int16_t champ, uint16_t thing, int16_t slot, int16_t mode)",inventory
@@ -841,7 +841,7 @@ address,name,signature,subsystem
 0x000475d3,champ_cure_poison,"void champ_cure_poison(int16_t champ, int16_t amount)",champions
 0x0004766b,champ_damage_party,"uint16_t champ_damage_party(int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
 0x00047707,champ_decrease_stamina,"void champ_decrease_stamina(int16_t champ, int16_t amount)",champions
-0x00047773,champ_launch_projectile,"void champ_launch_projectile(uint8_t *champ, uint16_t thing, int16_t kinetic, int16_t attack, int16_t step)",projectiles
+0x00047773,projectile_launch_projectile,"void projectile_launch_projectile(uint8_t *champ, uint16_t thing, int16_t kinetic, int16_t attack, int16_t step)",projectiles
 0x00047813,magic_cast_projectile_spell,"int magic_cast_projectile_spell(uint16_t champ, uint16_t thing, uint16_t power, uint16_t mana_cost)",magic
 0x000478a1,champ_throw_object,"int champ_throw_object(uint16_t champ, int16_t slot, int side)",champions
 0x00047b0a,champ_throw_leader_hand_object,int champ_throw_leader_hand_object(int side),champions
@@ -877,7 +877,7 @@ address,name,signature,subsystem
 0x00049fcb,is_flying_thing,int is_flying_thing(uint16_t thing),dungeon data
 0x0004a005,update_carried_missiles,"void update_carried_missiles(uint16_t holder_thing, uint8_t x, uint8_t y, uint16_t map, uint8_t flag)",projectiles
 0x0004a096,schedule_group_retry,"void schedule_group_retry(uint16_t group_thing, int16_t x, int16_t y, int16_t map, int audible)",creatures
-0x0004a0fe,move_check_missiles_hit_party,"void move_check_missiles_hit_party(int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",projectiles
+0x0004a0fe,projectile_check_missiles_hit_party,"void projectile_check_missiles_hit_party(int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",projectiles
 0x0004a34a,move_follow_square_transitions,"int move_follow_square_transitions(uint16_t thing, int16_t x, int16_t y, int16_t map, int fall_allowed)",dungeon data
 0x0004ae20,move_compute_map_arrival,"void move_compute_map_arrival(int16_t x, int16_t y, int16_t map)",dungeon data
 0x0004af50,set_party_position,"void set_party_position(int16_t x, int16_t y)",champions
@@ -893,7 +893,7 @@ address,name,signature,subsystem
 0x0004bfd4,move_party_warp_to_marker,int move_party_warp_to_marker(void),magic
 0x0004c134,sensor_process_wall_click,"void sensor_process_wall_click(int16_t x, int16_t y, int16_t side, uint16_t actor_thing, uint16_t hand_object)",Skullkeep machines
 0x0004cdcc,process_floor,"void process_floor(int16_t x, int16_t y, uint16_t thing, int party_on_square, int entering, int creature_holder)",Skullkeep machines
-0x0004d88a,dun_find_marker,"int16_t dun_find_marker(uint16_t mode, int16_t nth, uint16_t marker_id, int16_t *out_x, int16_t *out_y)",dungeon data
+0x0004d88a,find_marker,"int16_t find_marker(uint16_t mode, int16_t nth, uint16_t marker_id, int16_t *out_x, int16_t *out_y)",dungeon data
 0x0004db2e,game_init_stub,void game_init_stub(void),main loop
 0x0004db2f,aspect_creature_cell,"int16_t aspect_creature_cell(uint8_t *group, int16_t dir)",creatures
 0x0004db9b,dun_map_gfx_flag20_clear,int dun_map_gfx_flag20_clear(int16_t map),dungeon data
@@ -1009,7 +1009,7 @@ address,name,signature,subsystem
 0x0005737c,set_global_flag,"void set_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
 0x000573e9,test_global_flag,"void test_global_flag(uint8_t *event, uint8_t *sensor)",Skullkeep machines
 0x00057476,floor_square_event,void floor_square_event(uint8_t *event),timeline
-0x00057a63,sensor_launch_missile,"void sensor_launch_missile(uint8_t *sensor, uint8_t *event)",Skullkeep machines
+0x00057a63,projectile_launch_missile,"void projectile_launch_missile(uint8_t *sensor, uint8_t *event)",Skullkeep machines
 0x00057d21,sensor_nop,void sensor_nop(void),Skullkeep machines
 0x00057d27,apply_effect,"int apply_effect(uint16_t effect, uint16_t state)",Skullkeep machines
 0x00057d4c,transfer_object,"void transfer_object(uint16_t thing, uint8_t *sensor, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y, uint16_t to_cell, int party_hand, int keep_charges)",Skullkeep machines
@@ -1021,7 +1021,7 @@ address,name,signature,subsystem
 0x00058fc2,timeline_event_move_group,void timeline_event_move_group(uint8_t *event),creatures
 0x00059026,hide_damage,void hide_damage(uint16_t champion),champions
 0x00059050,timeline_event_altar_rebirth,void timeline_event_altar_rebirth(uint8_t *event),champions
-0x0005917d,timeline_event_magic_light,void timeline_event_magic_light(uint8_t *event),magic
+0x0005917d,magic_event_magic_light,void magic_event_magic_light(uint8_t *event),magic
 0x00059207,timeline_event_apply_item_effect,"void timeline_event_apply_item_effect(uint8_t *event, int16_t slot)",items
 0x00059293,timeline_event_sensor_animation_step,uint32_t timeline_event_sensor_animation_step(uint8_t *event),Skullkeep machines
 0x000592fa,schedule_timer,"void schedule_timer(uint8_t *sensor, uint16_t sensor_thing)",Skullkeep machines

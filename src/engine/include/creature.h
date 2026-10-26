@@ -366,15 +366,9 @@ void creature_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */
 void creature_continue_push(int command);
 
-/* Creature groups of move.c. */
+/* Creature groups near a point. */
 /* The creature group whose body covers the point of cell (0xff: any cell) of the square (*out_x, *out_y) of the current
    map or of a square next to it; moves *out_x, *out_y to that square. THING_NONE when there is none. */
 uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell);
-
-/* Creature attacks (projectile.c). */
-/* The 4 cells of the party on party_at that a creature on at attacks first to last; cell 0xff: random order. */
-void creature_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell);
-/* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
-int creature_attack_champion(uint16_t group, int champ);
 
 #endif /* DM2_ENGINE_CREATURE_H */

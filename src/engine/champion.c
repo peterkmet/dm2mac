@@ -28,6 +28,13 @@
 #define WOUND_LEGS_LOAD_SHIFT  2
 /* Each doubling of the experience above this is one more level. */
 #define SKILL_LEVEL_EXPERIENCE 512
+/* The move delay of a champion. */
+#define LOAD_HEAVY_PART        5 /* a load above 5/8 of the maximum load slows the champion */
+#define LOAD_HEAVY_EIGHTHS     8
+#define MOVE_DELAY_HEAVY       3
+#define MOVE_DELAY_LIGHT       2
+#define OVERLOAD_DELAY_FACTOR  4 /* an overloaded champion: (load - max) * 4 / max + 4 */
+#define OVERLOAD_DELAY_BASE    4
 /* No slot that a hand loads from. */
 #define NO_SLOT                (-1)
 /* The container types of the minion maps. */
@@ -164,6 +171,30 @@ int champ_get_load(int champ)
     return load;
 }
 
+int champ_get_move_delay(int champ)
+{
+    if (g_game.magic_light[MAGIC_HASTE])
+        return 1;
+    Champion *c = champion(champ);
+    unsigned max = (uint16_t)champ_get_max_load(c), load = (uint16_t)champ_get_load(champ);
+    int delay, wounded_extra;
+    if (max > load) {
+        delay = load * LOAD_HEAVY_EIGHTHS > max * LOAD_HEAVY_PART ? MOVE_DELAY_HEAVY : MOVE_DELAY_LIGHT;
+        wounded_extra = 1;
+    } else {
+        delay = (int)((load - max) * OVERLOAD_DELAY_FACTOR) / (int)max + OVERLOAD_DELAY_BASE;
+        wounded_extra = 2;
+    }
+    if (c->wounds & WOUND_FEET)
+        delay += wounded_extra;
+    delay = (int16_t)(delay - (int8_t)c->move_speed);
+    if (delay < 1)
+        delay = 1;
+    if (delay > 2)
+        delay = (delay + 1) & ~1;
+    return delay;
+}
+
 /* Hands and actions */
 
 int champ_find_hand_source_slot(int champ, int hand)
@@ -285,6 +316,26 @@ void champ_set_leader(int champ)
     g_game.leader = (uint16_t)champ;
     if (champ != -1 && champ + 1 != g_ui.candidate)
         champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
+}
+
+void champ_set_party_direction(int16_t dir)
+{
+    if (dir == g_game.party_dir)
+        return;
+    int turn = dir - g_game.party_dir;
+    if (turn < 0)
+        turn += DIR_COUNT;
+    for (int i = 0; i < g_game.champion_count; i++) {
+        Champion *c = champion(i);
+        c->cell = (uint8_t)dir_turn(c->cell, turn);
+        c->dir = (uint8_t)dir_turn(c->dir, turn);
+    }
+    g_game.party_dir = (uint16_t)dir;
+    g_party.ref_dir = (int16_t)dir;
+    if (g_party.alt_view_active) {
+        g_party.alt_view_dir = (int16_t)dir_turn(g_party.alt_view_dir, turn);
+        g_party.ref_dir = g_party.alt_view_dir;
+    }
 }
 
 void champ_set_party_sleeping(bool on)

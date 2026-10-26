@@ -13,6 +13,7 @@
 #include "move.h"
 #include "save.h"
 #include "sensor.h"
+#include "timeline.h"
 
 /* Sizes of the request queues and the delays of a request. */
 #define REQUESTS_MAX 20 /* requests of a game step */

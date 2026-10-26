@@ -261,7 +261,7 @@ def safe_command(s, rng):
 
 def test_party_walks_into_missiles(pj, lib):
     # Missiles fly toward the party from up to 3 squares; the party walks and turns meanwhile, into the missiles
-    # and out of their way (move_check_missiles_hit_party in move_thing), and the missiles hit the party square.
+    # and out of their way (projectile_check_missiles_hit_party in move_thing), and the missiles hit the party square.
     rng = random.Random(162)
     places = squares(lib, (C.SQUARE_FLOOR,))
     things = objects(lib)
@@ -299,7 +299,7 @@ def test_party_walks_into_missiles(pj, lib):
 
 
 def test_missiles_hit_party_on_moves(pj, lib):
-    # move_check_missiles_hit_party directly: projectiles in all cells of the square that the party leaves and of the
+    # projectile_check_missiles_hit_party directly: projectiles in all cells of the square that the party leaves and of the
     # square that it enters, with 1 to 4 champions in random cells.
     rng = random.Random(163)
     places = squares(lib, (C.SQUARE_FLOOR,))
@@ -319,7 +319,7 @@ def test_missiles_hit_party_on_moves(pj, lib):
                    rng.randrange(256), rng.randrange(16))
         for _ in range(rng.randrange(4)):
             pj.step()  # the first move at the second step: the events become 0x1e
-        pj.lib.move_check_missiles_hit_party(x, y, tx, ty)
+        pj.lib.projectile_check_missiles_hit_party(x, y, tx, ty)
         pj.emu.call(MOVE_CHECK_MISSILES, x, y, tx, ty)
         hit += bool(pj.damage)
         check(pj, ("check", n, map_, x, y, tx, ty))
@@ -369,7 +369,7 @@ def test_missile_launchers(pj, lib):
 
 
 def test_champions_throw(pj, lib):
-    # champ_launch_projectile: champions throw objects and cast spells from the party square.
+    # projectile_launch_projectile: champions throw objects and cast spells from the party square.
     rng = random.Random(165)
     things = objects(lib)
     rng.shuffle(things)
@@ -380,7 +380,7 @@ def test_champions_throw(pj, lib):
         champ = rng.randrange(C.CHAMPION_MAX)
         payload = t if n % 2 else rng.choice(SPELLS)
         args = (payload, rng.randrange(-10, 300), rng.randrange(-10, 300), rng.randrange(-5, 20))
-        lib.champ_launch_projectile(champ, *args)
+        lib.projectile_launch_projectile(champ, *args)
         pj.emu.call(CHAMP_LAUNCH_PROJECTILE, G_CHAMPIONS + champ * CHAMPION_SIZE, *args)
         assert (pj.game.throw_cooldown, pj.game.throw_dir) == struct.unpack("<HH", pj.emu.read(0x7F25A, 2)
                                                                               + pj.emu.read(0x7F270, 2)), n
@@ -390,7 +390,7 @@ def test_champions_throw(pj, lib):
 
 
 def test_creature_attacks_champions(pj, lib):
-    # creature_attack_champion for every creature group of the dungeon on random champions, awake and asleep,
+    # projectile_attack_champion for every creature group of the dungeon on random champions, awake and asleep,
     # visible and invisible, in light and darkness: the damage hook arguments and the random numbers.
     from dm2test.interface import set_magic
     rng = random.Random(166)
@@ -408,7 +408,7 @@ def test_creature_attacks_champions(pj, lib):
         woken = pj.woken
         champ = rng.randrange(5)
         record = pj.emu.read_u32(G_THINGS + 4 * 4) + (g & C.THING_INDEX_MASK) * 16
-        mine = ctypes.c_int16(lib.creature_attack_champion(g, champ)).value
+        mine = ctypes.c_int16(lib.projectile_attack_champion(g, champ)).value
         theirs = ctypes.c_int16(pj.emu.call(CREATURE_ATTACK_CHAMPION, record, champ)).value
         assert mine == theirs, (n, g, champ)
         assert sleeping.value == struct.unpack("<i", pj.emu.read(G_PARTY_SLEEPING, 4))[0], (n, g, champ)
@@ -424,14 +424,14 @@ class Location(ctypes.Structure):
 
 
 def test_ordered_attack_cells(pj, lib):
-    # creature_order_attack_cells from all directions and cells, and in random order.
+    # projectile_order_attack_cells from all directions and cells, and in random order.
     rng = random.Random(167)
     order = (ctypes.c_uint8 * 4)()
     for n in range(400):
         x, y = rng.randrange(32), rng.randrange(32)
         px, py = x + rng.randrange(-2, 3), y + rng.randrange(-2, 3)
         cell = rng.choice((*range(C.CELL_COUNT), C.CELL_ANY))
-        lib.creature_order_attack_cells(order, Location(x, y), Location(px, py), cell)
+        lib.projectile_order_attack_cells(order, Location(x, y), Location(px, py), cell)
         pj.emu.call(CREATURE_GET_ORDERED_ATTACK_CELLS, SCRATCH_OUT, x, y, px, py, cell)
         assert bytes(order) == pj.emu.read(SCRATCH_OUT, 4), (n, x, y, px, py, cell)
         assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == pj.emu.read_u32(0x70518), n

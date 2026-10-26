@@ -1172,7 +1172,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
     case LAUNCH_SPELLS:
     case LAUNCH_OBJECT:
     case LAUNCH_OBJECTS:
-        sensor_launch_missile(t, e);
+        projectile_launch_missile(t, e);
         break;
     case SENSOR_MAP_RELAY:
         relay_to_map(e, t);

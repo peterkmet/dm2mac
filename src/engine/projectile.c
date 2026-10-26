@@ -974,7 +974,7 @@ void explosion_process_event(TimelineEvent *e)
 
 /* ---- Creature attacks ---- */
 
-void creature_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell)
+void projectile_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell)
 {
     int dir = dun_get_direction_to(at.x, at.y, party_at.x, party_at.y);
     if ((uint16_t)cell == CELL_ANY) {
@@ -1039,7 +1039,7 @@ static uint16_t attack_wounds(const CreatureInfo *info)
     return melee_wounds[location];
 }
 
-int creature_attack_champion(uint16_t group, int champ)
+int projectile_attack_champion(uint16_t group, int champ)
 {
     if ((uint16_t)champ >= g_game.champion_count)
         return 0;
@@ -1106,7 +1106,7 @@ static int16_t steps_between(int x1, int y1, int x2, int y2)
     return (int16_t)((dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy));
 }
 
-void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y)
+void projectile_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y)
 {
     /* by cell: the cell of the champion that a projectile there hits, -1 none */
     int8_t champs[CELL_COUNT];
@@ -1168,7 +1168,7 @@ static uint16_t launch_object(int x, int y, int dir)
     return t;
 }
 
-void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e)
+void projectile_launch_missile(uint16_t sensor, const TimelineEvent *e)
 {
     int16_t x = e->data[EVENT_X];
     int16_t y = e->data[EVENT_Y];
@@ -1219,7 +1219,7 @@ void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e)
     }
 }
 
-void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step)
+void projectile_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step)
 {
     const Champion *c = champion(champ);
     int dir = c->dir;

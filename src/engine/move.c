@@ -40,16 +40,9 @@
 #define LOAD_PER_STEP_FACTOR      3 /* stamina for a step: 3 * load / max load + 1 */
 #define LOAD_PER_FALL_FACTOR      25
 #define FALL_DAMAGE_MAX           17
-#define STAMINA_REDRAW_LIMIT      10
 #define LOAD_TIME_DIVISOR         10 /* the step time of a champion for a creature alert: load / 10 */
 #define WALK_TIME_SLOW            50
 #define WALK_TIME                 40
-#define LOAD_HEAVY_PART           5 /* a load above 5/8 of the maximum load slows the champion */
-#define LOAD_HEAVY_EIGHTHS        8
-#define MOVE_DELAY_HEAVY          3
-#define MOVE_DELAY_LIGHT          2
-#define OVERLOAD_DELAY_FACTOR     4 /* an overloaded champion: (load - max) * 4 / max + 4 */
-#define OVERLOAD_DELAY_BASE       4
 /* the damage of a creature that lands on the party: 0 to 9, plus its push resistance / 8 */
 #define DISPLACE_DAMAGE_ROLL      10
 #define DISPLACE_RESISTANCE_SHIFT 3
@@ -58,8 +51,6 @@
 #define BUMP_ALERT_CHANCE         5
 #define ARRIVAL_ALERT_SHIFT 2 /* a creature that the party pushes aside: alert damage of a quarter of the step time */
 #define PUSH_ALERT_SHIFT 2 /* a creature that another pushes aside: alert damage of a quarter of the push resistance */
-#define HIT_OFFSETS_PER_CELL 2 /* creature_find_group_near_point: the squares to check by cell */
-#define HIT_OFFSETS_READ     4
 
 /* Random parts of the champion values. */
 #define BASH_ROLL_MASK 0x0f /* the random part of the strength of a champion who bashes a door */
@@ -76,18 +67,19 @@
 #define PUSH_COST_SHIFT    2  /* a push costs a quarter of the resistance, at least PUSH_FAIL_STAMINA */
 
 /* Places in the orders of cells and sides. */
-#define CELL_ORDER_BACK  2 /* champ_get_nearest_at: the first of the two back cells */
+#define CELL_ORDER_BACK  2 /* move_get_nearest_at: the first of the two back cells */
 #define FREE_SQUARE_ROWS 4 /* find_free_adjacent_square: one row for each value of a 2-bit roll */
 #define BACK_STEP        2 /* the step of CMD_MOVE_BACK, counted from CMD_MOVE_FORWARD */
+
+/* Marker modes of find_marker. */
+#define MARKER_FIND_NTH  2
+#define MARKER_COUNT     3
+#define MARKER_CLEAR_ALL 4
+#define MARKER_FIND_SET  5
 
 /* The discard search. */
 #define SENSOR_KIND_TABLE 44 /* the sensor kinds of sensor_blocks_discard */
 #define DISCARD_NEAR      5  /* the things this near to the party on its map stay */
-
-/* The step from a square to a square beside it. */
-typedef struct {
-    int16_t dx, dy;
-} SquareStep;
 
 /* What a step of the party meets. */
 typedef enum {
@@ -261,67 +253,6 @@ bool dun_get_linked_teleporter_dest(PassageEnd *end, int16_t x, int16_t y)
 
 /* ---- Champions ---- */
 
-void champ_set_party_direction(int16_t dir)
-{
-    if (dir == g_game.party_dir)
-        return;
-    int turn = dir - g_game.party_dir;
-    if (turn < 0)
-        turn += DIR_COUNT;
-    for (int i = 0; i < g_game.champion_count; i++) {
-        Champion *c = champion(i);
-        c->cell = (uint8_t)dir_turn(c->cell, turn);
-        c->dir = (uint8_t)dir_turn(c->dir, turn);
-    }
-    g_game.party_dir = (uint16_t)dir;
-    g_party.ref_dir = (int16_t)dir;
-    if (g_party.alt_view_active) {
-        g_party.alt_view_dir = (int16_t)dir_turn(g_party.alt_view_dir, turn);
-        g_party.ref_dir = g_party.alt_view_dir;
-    }
-}
-
-int champ_get_move_delay(int champ)
-{
-    if (g_game.magic_light[MAGIC_HASTE])
-        return 1;
-    Champion *c = champion(champ);
-    unsigned max = (uint16_t)champ_get_max_load(c), load = (uint16_t)champ_get_load(champ);
-    int delay, wounded_extra;
-    if (max > load) {
-        delay = load * LOAD_HEAVY_EIGHTHS > max * LOAD_HEAVY_PART ? MOVE_DELAY_HEAVY : MOVE_DELAY_LIGHT;
-        wounded_extra = 1;
-    } else {
-        delay = (int)((load - max) * OVERLOAD_DELAY_FACTOR) / (int)max + OVERLOAD_DELAY_BASE;
-        wounded_extra = 2;
-    }
-    if (c->wounds & WOUND_FEET)
-        delay += wounded_extra;
-    delay = (int16_t)(delay - (int8_t)c->move_speed);
-    if (delay < 1)
-        delay = 1;
-    if (delay > 2)
-        delay = (delay + 1) & ~1;
-    return delay;
-}
-
-void champ_decrease_stamina(int champ, int amount)
-{
-    if (champ == -1)
-        return;
-    Champion *c = champion(champ);
-    c->stamina = (int16_t)(c->stamina - amount);
-    if (c->stamina <= 0) {
-        int16_t missing = c->stamina;
-        c->stamina = 0;
-        champ_take_damage(champ, (int16_t)(-missing >> 1), 0, 0);
-    } else if (c->stamina > c->max_stamina) {
-        c->stamina = c->max_stamina;
-    }
-    if (abs((int16_t)amount) >= STAMINA_REDRAW_LIMIT)
-        c->redraw |= REDRAW_BARS;
-}
-
 int dun_get_direction_to(int x1, int y1, int x2, int y2)
 {
     int dx = (int16_t)(x1 - x2), dy = (int16_t)(y1 - y2);
@@ -345,8 +276,7 @@ static void swap_cells(uint8_t *pair)
     pair[1] = c;
 }
 
-/* The champion of the cell nearest to the side of the party square that faces (x, y), -1 none. */
-int champ_get_nearest_at(int16_t x, int16_t y, int16_t cell)
+int move_get_nearest_at(int16_t x, int16_t y, int16_t cell)
 {
     static const uint8_t attack_cell_orders[DIR_COUNT * 2][DIR_COUNT] = {
         {0, 1, 3, 2},
@@ -400,8 +330,8 @@ BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int st
 {
     int side = step + dir + 2;
     BumpedChampions bumped;
-    bumped.first = (int16_t)champ_get_nearest_at(x, y, side & DIR_MASK);
-    bumped.second = (int16_t)champ_get_nearest_at(x, y, dir_turn(side, TURN_RIGHT));
+    bumped.first = (int16_t)move_get_nearest_at(x, y, side & DIR_MASK);
+    bumped.second = (int16_t)move_get_nearest_at(x, y, dir_turn(side, TURN_RIGHT));
     bump_champion(bumped.first, x, y);
     if (bumped.second != bumped.first)
         bump_champion(bumped.second, x, y);
@@ -409,61 +339,6 @@ BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int st
 }
 
 /* ---- Steps ---- */
-
-uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell)
-{
-    /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
-       cell (its table has rows of 4 pairs), which this table keeps. */
-    static const SquareStep hit_offsets[HIT_OFFSETS_PER_CELL * (DIR_COUNT - 1) + HIT_OFFSETS_READ] = {
-        {-1, 0 },
-        {0,  -1},
-        {0,  -1},
-        {1,  0 },
-        {1,  0 },
-        {0,  1 },
-        {-1, 0 },
-        {0,  1 },
-        {0,  1 },
-        {0,  -1}
-    };
-    static const SquareStep hit_offsets_any_cell[HIT_OFFSETS_READ] = {
-        {0,  1 },
-        {0,  -1},
-        {1,  0 },
-        {-1, 0 }
-    };
-    static const int16_t hit_radius_sq[] = {0, 3, 6, 6};
-    /* the centers of the four cells of the square in the 5 x 5 grid */
-    static const uint16_t cell_grid[DIR_COUNT] = {cell_grid_index(1, 1), cell_grid_index(1, 3), cell_grid_index(3, 3),
-                                                  cell_grid_index(3, 1)};
-    int16_t sx = *out_x, sy = *out_y, px, py, cx, cy;
-    aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell], &px, &py);
-    for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
-        uint16_t g = creature_group_at(g_party.cur_map, sx, sy);
-        if (g != THING_NONE) {
-            int size = (int8_t)creature_group_info(g)->hit_size;
-            int zone = aspect_creature_cell(g, dir_relative(DIR_NORTH, group_dir(g)));
-            aspect_cell_to_xy(sx, sy, (uint16_t)zone, &cx, &cy);
-            cx = (int16_t)(cx - px);
-            cy = (int16_t)(cy - py);
-            if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size]) {
-                *out_x = sx;
-                *out_y = sy;
-                return g;
-            }
-        }
-        if (i == HIT_OFFSETS_READ)
-            break;
-        if (cell == CELL_ANY) {
-            sx = (int16_t)(*out_x + hit_offsets_any_cell[i].dx);
-            sy = (int16_t)(*out_y + hit_offsets_any_cell[i].dy);
-        } else {
-            sx = (int16_t)(*out_x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
-            sy = (int16_t)(*out_y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
-        }
-    }
-    return THING_NONE;
-}
 
 /* True when the creature in front stands on a side cell that blocks the step. */
 static bool is_side_blocked(uint16_t group, int dir)
@@ -749,7 +624,9 @@ void move_compute_map_arrival(int16_t x, int16_t y, int16_t map)
     dun_set_current_map(map);
 }
 
-int dun_find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_y)
+/* Marker search over all maps by a MARKER_* mode: the map of the marker that it finds, with its square in *out_x, *out_y,
+   or the count of the pit target markers of marker. */
+static int find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_y)
 {
     int count = 0, found = -1;
     for (int map = 0; map < dungeon_map_count(); map++) {
@@ -922,8 +799,8 @@ static void transit_pit_marker(Transit *t)
         }
     }
     int16_t mx = (int16_t)t->x, my = (int16_t)t->y;
-    int count = dun_find_marker(MARKER_COUNT, 0, marker, &mx, &my);
-    t->map = dun_find_marker(MARKER_FIND_NTH, rand_below((uint16_t)count) + 1, marker, &mx, &my);
+    int count = find_marker(MARKER_COUNT, 0, marker, &mx, &my);
+    t->map = find_marker(MARKER_FIND_NTH, rand_below((uint16_t)count) + 1, marker, &mx, &my);
     t->x = mx;
     t->y = my;
 }
@@ -1360,7 +1237,7 @@ MoveResult move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y
     if (thing == THING_NONE) {
         g_party.redraw = REDRAW_ALL_VIEW;
         if (src_x >= 0)
-            move_check_missiles_hit_party(src_x, src_y, dst_x, dst_y);
+            projectile_check_missiles_hit_party(src_x, src_y, dst_x, dst_y);
     } else {
         m.type = thing_type(thing);
         m.cell = thing_cell(thing);
@@ -1570,6 +1447,39 @@ bool move_party_can_push_group(uint16_t group)
         }
     }
     return pushed;
+}
+
+/* The warp of the party. */
+
+bool move_party_warp_to_marker(void)
+{
+    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, g_game.party_x, g_game.party_y);
+         t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
+        if (thing_type(t) != THING_TEXT)
+            continue;
+        if (textrec_kind(t) != TEXT_KIND_ORNAMENT)
+            continue;
+        int subtype = textrec_subtype(t), mode;
+        if (subtype == SUBTYPE_WARP_ONCE)
+            mode = MARKER_CLEAR_ALL;
+        else if (subtype == SUBTYPE_WARP)
+            mode = MARKER_FIND_SET;
+        else
+            continue;
+        int16_t x, y;
+        uint8_t marker = textrec_value(t);
+        int map = find_marker(mode, 0, marker, &x, &y);
+        if (map < 0)
+            continue;
+        move_party_to(x, y, map, g_game.party_dir);
+        sndreq_request_with_fallback(
+            (SoundCue){CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
+        if (mode == MARKER_CLEAR_ALL)
+            textrec_set_visible(t, true);
+        return true;
+    }
+    return false;
 }
 
 /* Party state that the interface sets. */

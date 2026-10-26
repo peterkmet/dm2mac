@@ -210,6 +210,8 @@ int champ_scale_by_stamina(const Champion *c, int value);
 int champ_get_max_load(Champion *c);
 /* The load in 1/10 kg that the champion carries, with the leader hand object for the leader. */
 int champ_get_load(int champ);
+/* The number of game steps that the champion needs for a move (load, wounds, haste). */
+int champ_get_move_delay(int champ);
 
 /* Hands and actions */
 /* Lists in g_champ_actions the actions of the thing in hand (THING_NONE: the champion's own actions);
@@ -221,6 +223,8 @@ bool champ_list_actions(int champ, uint16_t thing, int hand);
 int champ_get_index_in_cell(int16_t cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
+/* Turns the party to dir; the champions turn with it. */
+void champ_set_party_direction(int16_t dir);
 
 /* Damage, poison, and death (champion_damage.c). */
 /* The damage of this game step, applied at its end; exported for the tests. */
@@ -240,6 +244,8 @@ int champ_get_dexterity(int champ);
 bool champ_test_luck(Champion *c, int chance);
 /* Wounds and damages champ (the damage shows at the end of the step); returns the damage, 0 when none. */
 int champ_take_damage(int champ, int damage, int wound_mask, int attack_type);
+/* Takes stamina from a champion. */
+void champ_decrease_stamina(int champ, int amount);
 /* Damages each champion by about damage; returns the mask of the champions that took damage. */
 int champ_damage_party(int damage, int wound_mask, int attack_type);
 /* Poisons champ: damage now, and a poison event that repeats with less. */
@@ -303,20 +309,6 @@ void champ_add_object_to_slot(int champ, uint16_t thing, int16_t slot);
 /* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
    champion of the open inventory (a click on the mouth). */
 void champ_consume_object(int champ, uint16_t thing, int16_t slot);
-
-/* Champion movement (move.c). */
-/* Turns the party to dir; the champions turn with it. */
-void champ_set_party_direction(int16_t dir);
-/* The number of game steps that the champion needs for a move (load, wounds, haste). */
-int champ_get_move_delay(int champ);
-/* The champion nearest to the square (x, y) next to the party, seen from cell (0xff: any); -1 none. */
-int champ_get_nearest_at(int16_t x, int16_t y, int16_t cell);
-/* Takes stamina from a champion. */
-void champ_decrease_stamina(int champ, int amount);
-
-/* Champion launches (projectile.c). */
-/* A champion throws or casts payload from the party square. */
-void champ_launch_projectile(int champ, uint16_t payload, int energy, int attack, int step);
 
 /* Party state that the interface sets (champion.c). */
 /* The party falls asleep (on) or wakes; only the flag. */

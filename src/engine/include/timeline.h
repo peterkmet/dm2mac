@@ -97,8 +97,6 @@ void timeline_process(void);
 /* The timed effect of an eaten item (EVENT_ITEM_EFFECT) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
    for a loaded game. */
 void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
-/* A magic light event: the light fades one level. */
-void timeline_event_magic_light(TimelineEvent *e);
 /* Runs a due square event or door event. */
 void timeline_event_square(TimelineEvent *e);
 /* Runs a due door animation step. */

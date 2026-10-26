@@ -8,7 +8,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
-#include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
 static inline uint16_t sensor_type(uint16_t sensor)
@@ -244,9 +243,5 @@ void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
 /* The first byte variable, and the largest value of a byte variable. */
 #define GLOBAL_BYTE_FIRST   (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT)
 #define GLOBAL_BYTE_MAX     255
-
-/* Missile launchers (projectile.c). */
-/* A missile launcher sensor shoots the objects of its square or new objects or spells. */
-void sensor_launch_missile(uint16_t sensor, const TimelineEvent *e);
 
 #endif /* DM2_ENGINE_SENSOR_H */

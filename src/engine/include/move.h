@@ -40,12 +40,6 @@
 /* The group move events (EVENT_MOVE_GROUP, EVENT_MOVE_GROUP_2): data bytes 2-3 hold the group. */
 #define EVENT_GROUP_WORD 2
 
-/* Marker modes of dun_find_marker. */
-#define MARKER_FIND_NTH  2
-#define MARKER_COUNT     3
-#define MARKER_CLEAR_ALL 4
-#define MARKER_FIND_SET  5
-
 /* Results of move_thing. */
 typedef enum { MOVE_DONE, MOVE_LEFT_DUNGEON, MOVE_WAIT } MoveResult;
 
@@ -112,6 +106,8 @@ bool dun_get_linked_teleporter_dest(PassageEnd *end, int16_t x, int16_t y);
 
 /* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
 int dun_get_direction_to(int x1, int y1, int x2, int y2);
+/* The champion nearest to the side of the party square that faces (x, y), seen from cell (0xff: any); -1 none. */
+int move_get_nearest_at(int16_t x, int16_t y, int16_t cell);
 /* Damage of a bump into a wall or a creature at (x, y) for the two champions on that side; returns them. */
 BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int step);
 
@@ -125,9 +121,6 @@ bool move_party(int command);
 void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir);
 /* Sets the alternate view position of a party at (x, y) of map beside a seamless passage. */
 void move_compute_map_arrival(int16_t x, int16_t y, int16_t map);
-/* Marker search over all maps by a MARKER_* mode: the map of the marker that it finds, with its square in *out_x, *out_y,
-   or the count of the pit target markers of marker. */
-int dun_find_marker(int mode, int nth, int marker, int16_t *out_x, int16_t *out_y);
 
 /* ---- Moving things ---- */
 
@@ -154,13 +147,9 @@ bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode);
 /* True when the champions push the group; the push costs stamina. */
 bool move_party_can_push_group(uint16_t group);
 
-/* The warp of the party (magic.c). */
+/* The warp of the party. */
 /* The party on a warp marker text moves to the marker of its id; true when it moved. */
 bool move_party_warp_to_marker(void);
-
-/* Missiles that the party walks into (projectile.c). */
-/* The party moves from (from_x, from_y) to (to_x, to_y): the projectiles there hit the champions. */
-void move_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
 
 /* Moves through squares of sensor.c. */
 /* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */

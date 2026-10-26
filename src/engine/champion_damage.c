@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Champion statistics in fights, damage, wounds, poison, death, and the effects of time. */
+#include <stdlib.h>
 #include <string.h>
 #include "action.h"
 #include "champion.h"
@@ -56,6 +57,8 @@
 #define POISON_DAMAGE_SHIFT        6
 #define DAMAGE_SHOW_TIME           5
 #define CURE_ALL                   10000
+/* A stamina change of at least this redraws the bars. */
+#define STAMINA_REDRAW_LIMIT       10
 /* Redraw flags of a poisoned champion and of the statistics and skills. */
 #define REDRAW_POISON              (REDRAW_TITLE_ALL | REDRAW_BARS)
 #define REDRAW_STATS_SKILLS        (REDRAW_TITLE_ALL | REDRAW_LOAD)
@@ -344,6 +347,23 @@ int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
     }
     g_champ_pending_damage[champ] = (int16_t)(g_champ_pending_damage[champ] + d);
     return d;
+}
+
+void champ_decrease_stamina(int champ, int amount)
+{
+    if (champ == -1)
+        return;
+    Champion *c = champion(champ);
+    c->stamina = (int16_t)(c->stamina - amount);
+    if (c->stamina <= 0) {
+        int16_t missing = c->stamina;
+        c->stamina = 0;
+        champ_take_damage(champ, (int16_t)(-missing >> 1), 0, 0);
+    } else if (c->stamina > c->max_stamina) {
+        c->stamina = c->max_stamina;
+    }
+    if (abs((int16_t)amount) >= STAMINA_REDRAW_LIMIT)
+        c->redraw |= REDRAW_BARS;
 }
 
 int champ_damage_party(int damage, int wound_mask, int attack_type)

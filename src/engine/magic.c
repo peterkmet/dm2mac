@@ -17,7 +17,6 @@
 #include "projectile.h"
 #include "random.h"
 #include "sensor.h"
-#include "sound_request.h"
 #include "weather.h"
 
 /* The size of the spell table. */
@@ -363,7 +362,7 @@ void magic_add_light(int kind, int power)
     light_update_party_light();
 }
 
-void timeline_event_magic_light(TimelineEvent *e)
+void magic_event_magic_light(TimelineEvent *e)
 {
     int16_t level = (int16_t)read_event_word(e);
     if (!level)
@@ -459,7 +458,7 @@ bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
         power += MISSILE_POWER_PER_STEP;
         step = (int16_t)power >> MISSILE_POWER_STEP_SHIFT;
     }
-    champ_launch_projectile((int)(c - champion(0)), thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
+    projectile_launch_projectile((int)(c - champion(0)), thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
     return true;
 }
 
@@ -743,35 +742,4 @@ void magic_remove_last_rune(void)
     g_action.redraw_delay = 1;
     g_hooks.update_action_area(0);
     g_hooks.refresh_input_mode();
-}
-
-bool move_party_warp_to_marker(void)
-{
-    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, g_game.party_x, g_game.party_y);
-         t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
-        if (thing_type(t) != THING_TEXT)
-            continue;
-        if (textrec_kind(t) != TEXT_KIND_ORNAMENT)
-            continue;
-        int subtype = textrec_subtype(t), mode;
-        if (subtype == SUBTYPE_WARP_ONCE)
-            mode = MARKER_CLEAR_ALL;
-        else if (subtype == SUBTYPE_WARP)
-            mode = MARKER_FIND_SET;
-        else
-            continue;
-        int16_t x, y;
-        uint8_t marker = textrec_value(t);
-        int map = dun_find_marker(mode, 0, marker, &x, &y);
-        if (map < 0)
-            continue;
-        move_party_to(x, y, map, g_game.party_dir);
-        sndreq_request_with_fallback(
-            (SoundCue){CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
-        if (mode == MARKER_CLEAR_ALL)
-            textrec_set_visible(t, true);
-        return true;
-    }
-    return false;
 }

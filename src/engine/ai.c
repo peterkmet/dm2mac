@@ -2281,7 +2281,7 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
     else
         count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
     if (a->cell == CELL_NEAREST) {
-        int c = champ_get_nearest_at(x, y, CELL_ANY);
+        int c = move_get_nearest_at(x, y, CELL_ANY);
         if (c != -1)
             a->cell = champion(c)->cell;
     }
@@ -2306,12 +2306,12 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
             int d = dun_get_direction_to(dx, dy, x, y);
             cell = dir_turn(cell, (d + cell) & 1 ? -1 : 1);
             if (c == -1)
-                c = champ_get_nearest_at(x, y, CELL_ANY);
+                c = move_get_nearest_at(x, y, CELL_ANY);
             if (c == -1)
                 continue;
         }
         hit = true;
-        int16_t damage = (int16_t)(creature_attack_champion(g_ai.group_thing, c) + 1);
+        int16_t damage = (int16_t)(projectile_attack_champion(g_ai.group_thing, c) + 1);
         Champion *ch = champion(c);
         if (damage > ch->hit_damage) {
             ch->hit_damage = (uint8_t)damage;
