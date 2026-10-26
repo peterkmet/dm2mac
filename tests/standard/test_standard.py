@@ -20,7 +20,7 @@ TESTS = ROOT / "tests"
 ALLOWLIST = Path(__file__).with_name("allowlist.txt")
 LAYERS = ["data", "engine", "ui", "control", "platform"]
 MAX_FUNCTION_LINES = 60
-EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "4.8", "5.8"}  # the rules of docs/coding-standard.md that name an exception
+EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "4.8", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
 
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
 DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[2-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;")
@@ -479,6 +479,111 @@ def test_byte_order_helpers_only_in_le_header():
     report("byteorder", found)
 
 
+PACKED_STRUCT = re.compile(r"__attribute__\s*\(\(\s*packed\s*\)\)|^\s*#\s*pragma\s+pack\b", re.M)
+STRUCT_TYPE = re.compile(r"\btypedef\s+struct\b[^{;]*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}\s*(\w+)\s*;|\bstruct\s+(\w+)\s*\{")
+FILE_COPY = re.compile(r"\b(?:fread|fwrite|memcpy)\s*\(\s*&\s*(\w+)\s*[,)]")
+TYPEDEF_NAME = re.compile(r"\}\s*(\w+)\s*;")
+
+
+def struct_types():
+    """The names of the struct types of src/: typedef names and struct tags."""
+    names = set()
+    for path in sources():
+        names.update(a or b for a, b in STRUCT_TYPE.findall(strip(path.read_text(errors="replace"))))
+    return names
+
+
+def declared_type(name, text):
+    """The type of the last declaration of the variable name in text, '*' for a pointer, or None."""
+    found = re.findall(rf"\b(?:struct\s+)?(\w+)\s+(\**)\s*{name}\s*[;=\[,)]", text)
+    return (found[-1][1] or found[-1][0]) if found else None
+
+
+def is_struct_copy(match, text, types, globals_):
+    """True when the & operand of a copy is a variable of a struct type: its declaration in the file, or a global."""
+    kind = declared_type(match.group(1), text[:match.start()])
+    return kind in types if kind else match.group(1) in globals_
+
+
+def test_no_packed_structs():
+    """No packed struct and no file or memory copy between bytes and a struct, except a layout of SKULL.EXE (rule 10.7)."""
+    ok = allowed()
+    types = struct_types()
+    texts = {path: strip(path.read_text(errors="replace")) for path in sources()}
+    globals_ = {name for text in texts.values() for name in re.findall(r"^extern\s+(?:struct\s+)?(?:" + "|".join(sorted(types))
+                                                                      + r")\s+(\w+)", text, re.M)}
+    found = []
+    for path, text in texts.items():
+        for m in PACKED_STRUCT.finditer(text):
+            end = TYPEDEF_NAME.search(text, m.end())
+            target = f"{rel(path)}:{end.group(1) if end else ''}"
+            if ("byteorder", target) not in ok:
+                found.append(f"byteorder {target}  | {text.count(chr(10), 0, m.start()) + 1}: {m.group().strip()}")
+        found += [f"byteorder {rel(path)}  | {text.count(chr(10), 0, m.start()) + 1}: {m.group()}"
+                  for m in FILE_COPY.finditer(text) if is_struct_copy(m, text, types, globals_)]
+    report("byteorder", found)
+
+
+def function_bodies(path):
+    """(first line, body text) of each function that the file defines; the body keeps its line breaks."""
+    text = strip(path.read_text(errors="replace"))
+    starts = [0] + [i + 1 for i, ch in enumerate(text) if ch == "\n"]
+    for function in functions(path):
+        if not function.definition:
+            continue
+        open_at = text.index("{", starts[function.line - 1])
+        depth, i = 0, open_at
+        while i < len(text):
+            depth += {"{": 1, "}": -1}.get(text[i], 0)
+            i += 1
+            if depth == 0:
+                break
+        yield text.count("\n", 0, open_at) + 1, text[open_at:i]
+
+
+STATIC_LOCAL = re.compile(r"^\s*static\b(?![^;]*\bconst\b)[^;]*", re.M)
+
+
+def test_no_mutable_static_locals():
+    """A function keeps no mutable static variable (rule 7.6)."""
+    ok = allowed()
+    found = []
+    for path in sources():
+        if path.suffix != ".c" or ("static-local", rel(path)) in ok:
+            continue
+        for first, body in function_bodies(path):
+            found += [f"static-local {rel(path)}  | {first + body.count(chr(10), 0, m.start())}: {' '.join(m.group().split())}"
+                      for m in STATIC_LOCAL.finditer(body)]
+    report("static-local", found)
+
+
+TABLE = re.compile(r"^(?!.*\bconst\b)(static\s+)?[A-Za-z_][\w\s*]*?\b([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)+=\s*\{", re.M)
+
+
+def element_write(name):
+    """A write to an element of the array name: an assignment, an increment, a decrement, a memcpy into it, or a return of it."""
+    element = rf"\b{name}\s*(?:\[[^;\]\[]*(?:\[[^;\]\[]*\][^;\]\[]*)*\]\s*)+(?:\.\w+\s*)*"
+    return re.compile(rf"{element}(?:[-+*/%|&^]|<<|>>)?=(?!=)|{element}(?:\+\+|--)|(?:\+\+|--)\s*{element}"
+                      rf"|\bmemcpy\s*\(\s*{name}\b|\breturn\s+{name}\s*;")
+
+
+def test_tables_are_const():
+    """A file-scope array with an initializer list that no function writes is const (rule 3.13)."""
+    ok = allowed()
+    texts = {path: strip(path.read_text(errors="replace")) for path in sources()}
+    found = []
+    for path, text in texts.items():
+        if ("const", rel(path)) in ok:
+            continue
+        for m in TABLE.finditer(text):
+            static, name = m.group(1), m.group(2)
+            rest = text[:m.start()] + text[m.end():]
+            scope = [rest] if static else [rest] + [other for other_path, other in texts.items() if other_path != path]
+            if not any(element_write(name).search(other) for other in scope):
+                found.append(f"const {rel(path)}  | {text.count(chr(10), 0, m.start()) + 1}: {name}")
+    report("const", found)
+
+
 PLATFORM_CODE = re.compile(r"^\s*#\s*if.*\b_WIN32\b|^\s*#\s*include\s*<(?:unistd|dirent|strings|execinfo|fcntl|poll"
                            r"|windows|direct|io)\.h>|^\s*#\s*include\s*<(?:sys|arpa|netinet)/", re.M)
 STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\bexit\s*\(")
@@ -595,15 +700,18 @@ def test_include_categories_name_the_headers_of_each_layer():
     assert categories == expected
 
 
+BRIDGE = re.compile(r"rule \d+\.\d+: \S.* \(removed by Task \d+\)$")
+
+
 def test_allowlist_names_documented_reasons():
-    """Each allowlist line names an exception rule of the standard."""
+    """Each allowlist line names an exception rule of the standard, or is a bridge line that a named task removes."""
     found = []
     for number, line in enumerate(ALLOWLIST.read_text().splitlines(), 1):
         if not line.strip() or line.startswith("#"):
             continue
         check, target, reason = line.split(maxsplit=2)
         rule = re.match(r"rule (\d+\.\d+): \S", reason)
-        if not (rule and rule.group(1) in EXCEPTION_RULES):
+        if not (rule and rule.group(1) in EXCEPTION_RULES) and not BRIDGE.match(reason):
             found.append(f"allowlist {check}:{target}  | {number}: {reason}")
     report("allowlist", found)
 

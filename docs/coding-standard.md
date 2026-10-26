@@ -134,6 +134,8 @@ that this port cannot use keeps its number with "No rule in dm2".
     one-line comment that tells its game meaning; no unexplained number or string. The PC keyboard scan code
     tables (`control/control.c`, `platform/main.c`) stay in the source too. The allowlist names each file of
     these tables with the reason `rule 3.12: <table>`. [decimal, hex, allowlist]
+13. A file-scope array with an initializer list that no function writes is `const`. A write is an assignment,
+    an increment or a decrement of an element, a `memcpy` into the array, or a `return` of the array. [const]
 
 ## 4. Naming
 
@@ -210,6 +212,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 4. Data of one entity lives in the struct of the entity, not in parallel arrays. [review only]
 5. Session state lives in the `Session` struct of `engine/game.h`; the calls of the rules into the user
    interface live in `g_hooks` (`engine/hooks.h`). [review only]
+6. No mutable `static` variable inside a function, in all layers. A returned buffer moves into the module
+   struct; the function keeps returning a pointer to it, and its comment says how long the pointer stays valid.
+   A `static const` table inside a function is allowed. [static-local]
 
 ## 8. File order
 
@@ -273,6 +278,11 @@ that this port cannot use keeps its number with "No rule in dm2".
    `docs/llm/llm-mode.md`, mask it in the tests. Keep a quirk of the original only when it changes what the
    player sees. [review only]
 6. No rule in dm2: the port plays one game, so no code detects the adventure (`g_adventure`).
+7. No packed struct attribute (`__attribute__((packed))`, `#pragma pack`), and no `fread`, `fwrite` or `memcpy`
+   between bytes and a struct variable: read and write the fields through the byte order helpers of rule 3.10.
+   Exception: a packed struct that mirrors a record or a memory layout of `SKULL.EXE` that the save or the
+   differential tests use; its allowlist line names the struct as `<file>:<type>` and gives `rule 10.7`.
+   [byteorder]
 
 ## 11. Tests
 
@@ -320,11 +330,13 @@ their allowlist key:
 | `duplicate` | a constant name defined in more than one header |
 | `numbered` | an event number, a byte offset or an address in a name |
 | `packed` | a shift by 8, 16, 24 or a foreign `*_SHIFT` at a call site, a double integer cast |
-| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h` |
+| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable |
 | `record` | a `dungeon_thing_record(` call outside `engine/dungeon.c` and `engine/include/dungeon.h` |
 | `name` | a function name above four words after the prefix or above 32 characters |
 | `static-prefix` | a static function with a module prefix |
 | `bool` | a predicate, a truth local or a "Returns 0/1" function that is not `bool` |
+| `static-local` | a `static` declaration without `const` inside a function |
+| `const` | a file-scope array with an initializer list and without `const` that no function writes |
 | `global` | an `extern` without `g_`, a file-static with `g_` |
 | `decompiler` | a decompiler name |
 | `ordinal` | `_ordinal` or `_plus_1` in a name |
@@ -337,4 +349,4 @@ their allowlist key:
 | `todo` | a TODO marker in code |
 | `tests` | a `from test_` or `conftest` import, a machine path, a clang call in `tests/` |
 | `format` | a file that `clang-format --dry-run --Werror` reports |
-| `allowlist` | an allowlist line with a reason that this document does not name |
+| `allowlist` | an allowlist line with a reason that this document does not name and that is not a temporary bridge line `rule <n.m>: <text> (removed by Task <N>)` |

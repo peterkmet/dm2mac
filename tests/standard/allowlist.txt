@@ -1,5 +1,8 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
+byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate record of SKULL.EXE that the differential tests compare
+byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
+byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
 decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c rule 3.12: a table of SKULL.EXE
@@ -33,3 +36,14 @@ long engine/ai.c:test_condition rule 5.8: one short case for each target conditi
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
 module platform/main.c rule 1.7: the entry point has no header
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
+static-local control/control.c rule 7.6: the mutable static locals raw, z, screen (removed by Task 39)
+static-local control/turn.c rule 7.6: the mutable static locals error of two functions (removed by Task 39)
+static-local engine/ai_move.c rule 7.6: the mutable static local uncached (removed by Task 29)
+static-local engine/game_text.c rule 7.6: the mutable static locals buf, label (removed by Task 33)
+static-local engine/item.c rule 7.6: the mutable static local name (removed by Task 34)
+static-local platform/main.c rule 7.6: the mutable static locals saved, gdat, argb, window_x, window_y, path (removed by Task 39)
+static-local platform/platform.c rule 7.6: the mutable static local buf (removed by Task 39)
+static-local ui/dialog.c rule 7.6: the mutable static locals texts, message_texts (removed by Task 38)
+static-local ui/icon.c rule 7.6: the mutable static local px (removed by Task 38)
+static-local ui/input.c rule 7.6: the mutable static local object_cursor (removed by Task 36)
+static-local ui/view.c rule 7.6: the mutable static local palette (removed by Task 37)
