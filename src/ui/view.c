@@ -984,7 +984,7 @@ static void load_walking_party_square(ViewSquare *s)
     }
 }
 
-void view_load_square(int16_t x, int16_t y, int pos, int dir)
+void view_load_square(int16_t x, int16_t y, int pos, int16_t dir)
 {
     int square_x = x, square_y = y;
     step_relative(dir, view_offset[pos][1], view_offset[pos][0], &square_x, &square_y);
@@ -1050,7 +1050,7 @@ void view_mark_hidden_squares(void)
 
 /* ---- Pictures ---- */
 
-int zone_id_for_view_cell(int base, int grid_cell, int dir)
+int zone_id_for_view_cell(int base, int grid_cell, int16_t dir)
 {
     return base * ZONE_CELL_GRID + aspect_rotate_cell(grid_cell, dir) + ZONE_VIEW_CELLS;
 }
@@ -3399,7 +3399,7 @@ static void start_tracks(int dir, int16_t x, int16_t y)
     flight.time = g_game.game_time;
 }
 
-void view_draw_dungeon(int dir, int16_t x, int16_t y)
+void view_draw_dungeon(int16_t dir, int16_t x, int16_t y)
 {
     view.map = view.party_map = g_game.party_map;
     view.party_dir = dir;

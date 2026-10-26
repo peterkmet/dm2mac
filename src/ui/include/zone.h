@@ -61,6 +61,6 @@ int16_t *zone_get_icon_rect(int zone, int16_t *rect);
 /* The screen position of zone for a point (1 x 1 pixels). */
 void zone_get_position(int zone, int16_t *out_x, int16_t *out_y);
 /* The view zone of grid cell grid_cell (0 to 24, 5 x 5) of view element base, turned by dir. */
-int zone_id_for_view_cell(int base, int grid_cell, int dir);
+int zone_id_for_view_cell(int base, int grid_cell, int16_t dir);
 
 #endif /* DM2_UI_ZONE_H */

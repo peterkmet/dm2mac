@@ -97,7 +97,7 @@ extern uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];  /* exported for the tes
    exported for the tests. */
 void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t creature_size, int16_t *out_x, int16_t *out_y);
 /* Loads the view square at view position pos for the party at (x, y) looking to dir. */
-void view_load_square(int16_t x, int16_t y, int pos, int dir); /* exported for the tests */
+void view_load_square(int16_t x, int16_t y, int pos, int16_t dir); /* exported for the tests */
 /* Shows the squares behind a seamless passage that view_mark_hidden_squares hid. */
 void view_unhide_linked_squares(void); /* exported for the tests */
 /* Hides the wall squares that walls in front of them cover. */
@@ -127,7 +127,7 @@ bool view_shows_floor_ornament(int pos, int ornament);
 /* True when the last view picture shows the party position and direction. */
 bool view_shows_party(void);
 /* Draws the view of the party at (x, y) of the party map looking to dir into g_view_viewport. */
-void view_draw_dungeon(int dir, int16_t x, int16_t y);
+void view_draw_dungeon(int16_t dir, int16_t x, int16_t y);
 
 /* ---- Projectile flight ---- */
 

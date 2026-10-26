@@ -78,7 +78,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 ## 3. Constants
 
 1. Name every game value. Plain numbers are allowed only for 0, 1, -1, and for 2 when the 2 halves or doubles a
-   value. Every other number is a named constant, also in an array size and in a loop bound. The base
+   value. A byte or nibble mask (`0xf`, `0x0f`, `0xff`, `0xffff`) is allowed as an operand of `&`, `|`, `^`, `<<`
+   and `>>` (also `&=`, `|=`, `^=`). `3` and `4` are allowed as the size or the index of a fixed tuple (RGB, a 2D
+   or 4D vector). Every other number is a named constant, also in an array size and in a loop bound. The base
    argument of `strtol` and its siblings is a plain number. The names cover thing types (`THING_DOOR`), no
    thing (`THING_NONE`) and the end of a list (`THING_ENDOFLIST`), directions, cells, champion slots
    (`SLOT_HAND_READY`), statistics, skills, square types, sensor types, door states, timeline event types,
@@ -123,7 +125,8 @@ that this port cannot use keeps its number with "No rule in dm2".
    site, and no shift by a `*_SHIFT` constant of another module. [packed]
 10. The byte order helpers `le16`, `le32`, `put_le16`, `put_le32` (little-endian, the DOS file formats) and
     `put_be32` (big-endian, the PNG files) are `static inline` functions in `data/le.h` only. No other file
-    defines a byte order helper. [byteorder]
+    defines a function or a macro whose name starts with `le16`, `le32`, `put_le16`, `put_le32`, `put_be32` or
+    `read_u32`. [byteorder]
 11. The record layout belongs to `engine/dungeon.h`: the field offsets and bits. The named accessors of a thing
     type can be in the header of its module (`sensor.h`, `projectile.h`, `item.h`, `ai.h`); they use the field
     constants of `dungeon.h`. No file outside `engine/dungeon.c` and `engine/include/dungeon.h` calls
@@ -139,8 +142,8 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 ## 4. Naming
 
-1. Functions: `<prefix><verb>_<object>` in `snake_case`, at most four words after the prefix, at most 32
-   characters. [name]
+1. Functions: `<prefix><verb>_<object>` in `snake_case`, at most four words after the prefix, at most 40
+   characters for the whole name. [name; `<verb>_<object>` review only]
 2. A static function has no module prefix. [static-prefix]
 3. Record accessors are nouns after the prefix of the thing type: `<type>_<field>` and `<type>_set_<field>`
    (`sensor_type(t)`, `door_state(t)`, `group_set_dir(t, dir)`). [prefix]
@@ -162,19 +165,24 @@ that this port cannot use keeps its number with "No rule in dm2".
 ## 5. Types and values
 
 1. One value has one type on its whole path (field, parameter, local, return value), so that no cast is needed
-   to pass it on. Game values keep the 16-bit types of the original. The type of each game value kind: [type]
+   to pass it on. Game values keep the 16-bit types of the original. The type of each game value kind: [type
+   for the parameter names `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks`, `square`;
+   the rest review only]
 
    | Value kind | Type | None |
    |---|---|---|
-   | `champion_index`, `cell`, `direction`, `map`, `slot`, `x`, `y` | `int16_t` | -1 |
+   | `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y` | `int16_t` | -1 |
    | pixel coordinates and sizes | `int16_t` | |
    | `thing` | `uint16_t` | `THING_NONE` |
    | `ticks` | `uint16_t` | |
+   | `square` (the square byte), byte buffers | `uint8_t` | |
    | game time | `uint32_t` | |
    | C sizes, C array counts and indices, file offsets, SDL values | `int` or `size_t` | |
 
 2. Every truth value is `bool`: predicates, locals, parameters, return values. A flag in a game record or a
-   save file keeps its stored type. [bool]
+   save file keeps its stored type. [bool for the predicates; the locals set from a comparison or from
+   `true`/`false` and the functions whose comment says they return 1 or 0 are a heuristic of the check; the
+   rest review only]
 3. No `long`, because it has 32 bits on Windows and 64 bits on macOS. A value wider than `int` uses a fixed-width
    type with the `<inttypes.h>` formats. [review only]
 4. A cast is allowed only where it changes the result (16-bit wrap, sign, truncation), with a short comment
@@ -193,7 +201,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 1. Two outcomes: `bool`. More outcomes: an `enum` type with named values (`enum MoveResult`). A lookup
    returns `NULL`. A count returns the count. No `0/-1`, no `1/0/-1`, no value encoded in a return value
-   (`index + 2`). [result]
+   (`index + 2`). [result for a comment that gives 0 or -1 as a result, a heuristic; the rest review only]
 2. At most five parameters; a function that needs more takes a struct. [params]
 3. A square passes as `Location {int16_t x, y;}`, a square with its map as `Position {int16_t map, x, y;}`.
    [review only]
@@ -222,9 +230,10 @@ that this port cannot use keeps its number with "No rule in dm2".
 2. The public functions are in the order of the header. The header lists them by topic: setup and reset
    first, then queries, then commands; a one-line section comment names each topic in the header and in the
    `.c` file. [order]
-3. A static helper is directly above the first function that calls it; a helper that several sections
-   share is at the top of the functions. A forward declaration of a static function is allowed only for
-   mutual recursion, with a comment that names the pair. [order]
+3. A static helper is above its first caller in the same section; a helper that callers in several sections
+   use is at the top of the functions. A forward declaration of a static function is allowed only for mutual
+   recursion, with a comment that names the pair. [order for the forward declarations; the place of a helper
+   review only]
 
    ```c
    /* SPDX-License-Identifier: GPL-3.0-or-later */
@@ -251,7 +260,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 ## 9. Comments
 
 1. Each non-trivial function has a one-line comment that tells what it does in game terms: a public function
-   in the header above its prototype, a static function above its definition, never both. [comment]
+   in the header above its prototype, a static function above its definition, never both. A static function
+   is non-trivial when its body has more than 5 lines. A field accessor (`<type>_<field>`, `<type>_set_<field>`)
+   in a group of prototypes under one comment line needs no comment of its own. [comment]
 2. A comment does not repeat the code, and does not name an original symbol, address or event number. It
    names the constant. The original name and address belong in `docs/reference/skull-symbols.csv`. [event-comment; the
    rest review only]
@@ -321,9 +332,9 @@ their allowlist key:
 | `prefix` | a header without a prefix line, a prefix that another header owns or extends, a name outside its prefixes |
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |
 | `include` | a header the file does not use |
-| `comment` | a public prototype or a non-trivial static definition without a comment line above it, or a comment on both |
+| `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
 | `dead-api` | an exported name with no use outside its file and no test marker |
-| `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` and `< N;` |
+| `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[3]` and `[4]`) and `< N;`; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
 | `enum` | an `enum` that is not a result type |
 | `block` | a constant block without a comment line above it |
 | `notation` | a block that mixes hex and decimal, a flag block in decimal, a count block in hex |
@@ -332,17 +343,17 @@ their allowlist key:
 | `packed` | a shift by 8, 16, 24 or a foreign `*_SHIFT` at a call site, a double integer cast |
 | `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable |
 | `record` | a `dungeon_thing_record(` call outside `engine/dungeon.c` and `engine/include/dungeon.h` |
-| `name` | a function name above four words after the prefix or above 32 characters |
+| `name` | a function name above four words after the prefix or above 40 characters |
 | `static-prefix` | a static function with a module prefix |
-| `bool` | a predicate, a truth local or a "Returns 0/1" function that is not `bool` |
+| `bool` | a predicate that is not `bool`; heuristic: a local set from a comparison or `true`/`false`, a "Returns 0/1" comment |
 | `static-local` | a `static` declaration without `const` inside a function |
 | `const` | a file-scope array with an initializer list and without `const` that no function writes |
 | `global` | an `extern` without `g_`, a file-static with `g_` |
 | `decompiler` | a decompiler name |
 | `ordinal` | `_ordinal` or `_plus_1` in a name |
-| `type` | a parameter name with two types across the headers of a layer |
+| `type` | a parameter `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks` or `square` in the headers of a layer with another type than the table of rule 5.1 |
 | `long` | a function above 60 lines without an allowlist reason |
-| `result` | a function whose comment says "Returns 0" or "-1" for success |
+| `result` | heuristic: a function whose comment gives 0 or -1 as a result ("0 on success", "-1 on error", "Returns -1", "1/0/-1") |
 | `params` | a prototype with more than five parameters |
 | `order` | a `.c` file whose public definitions are not in header order, or a forward declaration without a recursion comment |
 | `event-comment` | an event number in a comment (`event 11`) |

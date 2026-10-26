@@ -29,11 +29,11 @@ typedef struct {
    line of 64 characters or more are skipped, a text above SETTINGS_MAX_SIZE gives all defaults;
    exported for the tests. */
 Settings settings_parse(const char *file_text, size_t length);
-/* The values of the settings file in dir, as settings_parse; a missing file gives the defaults. */
-Settings settings_load(const char *dir);
+/* The values of the settings file in folder, as settings_parse; a missing file gives the defaults. */
+Settings settings_load(const char *folder);
 
 /* Commands */
-/* Writes the values to the settings file in dir through SETTINGS.TMP. False when the write fails; the old file then stays. */
-bool settings_save(const char *dir, const Settings *settings);
+/* Writes the values to the settings file in folder through SETTINGS.TMP. False when the write fails; the old file then stays. */
+bool settings_save(const char *folder, const Settings *settings);
 
 #endif /* DM2_DATA_SETTINGS_H */

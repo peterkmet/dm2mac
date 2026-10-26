@@ -57,11 +57,11 @@ Settings settings_parse(const char *file_text, size_t length)
     return settings;
 }
 
-Settings settings_load(const char *dir)
+Settings settings_load(const char *folder)
 {
     char path[SETTINGS_PATH_SIZE], text[SETTINGS_MAX_SIZE + 1];
     size_t length = 0;
-    if (snprintf(path, sizeof path, "%s/%s", dir, SETTINGS_FILE) < (int)sizeof path) {
+    if (snprintf(path, sizeof path, "%s/%s", folder, SETTINGS_FILE) < (int)sizeof path) {
         FILE *file = fopen(path, "rb");
         if (file) {
             length = fread(text, 1, sizeof text, file); /* one byte above the limit tells a file that is too large */
@@ -73,11 +73,11 @@ Settings settings_load(const char *dir)
 
 /* Commands */
 
-bool settings_save(const char *dir, const Settings *settings)
+bool settings_save(const char *folder, const Settings *settings)
 {
     char path[SETTINGS_PATH_SIZE], temporary[SETTINGS_PATH_SIZE], text[LINE_SIZE];
-    if (snprintf(path, sizeof path, "%s/%s", dir, SETTINGS_FILE) >= (int)sizeof path ||
-        snprintf(temporary, sizeof temporary, "%s/%s", dir, TEMPORARY_FILE) >= (int)sizeof temporary ||
+    if (snprintf(path, sizeof path, "%s/%s", folder, SETTINGS_FILE) >= (int)sizeof path ||
+        snprintf(temporary, sizeof temporary, "%s/%s", folder, TEMPORARY_FILE) >= (int)sizeof temporary ||
         settings->filter < SETTINGS_FILTER_NONE || settings->filter > SETTINGS_FILTER_SCALE3X)
         return false;
     int length = snprintf(text, sizeof text, "filter=%s\n", filter_names[settings->filter - SETTINGS_FILTER_NONE]);

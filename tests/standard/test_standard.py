@@ -23,7 +23,10 @@ MAX_FUNCTION_LINES = 60
 EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "4.8", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
 
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
-DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[2-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;")
+DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[25-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;")
+BIT_OPERATOR = r"(?:<<|>>|(?<![&|])[&|^](?![&|]))=?"
+MASK = r"0x(?:0?[fF]|[fF]{2}|[fF]{4})[uU]?\b"
+MASK_OPERAND = re.compile(rf"{BIT_OPERATOR}\s*\(?\s*{MASK}|\b{MASK}\s*\)?\s*{BIT_OPERATOR}")
 STRTOL_BASE = re.compile(r"\bstrto\w*\s*\([^;]*?,\s*10\s*\)")
 DECOMPILER = re.compile(r"\b(?:[uisbcp]Var\d+|local_[0-9a-f]+|arg_[0-9a-f]+|param_\d+|in_[AD][0-7]\w*|CONCAT\d+|DAT_[0-9a-f]+|FUN_[0-9a-f]+)\b")
 RECORD = re.compile(r"\bdungeon_thing_record\(")
@@ -185,7 +188,7 @@ def definitions(path):
 
 
 def test_no_hex_literals():
-    line_check("hex", HEX)
+    line_check("hex", HEX, ignore=MASK_OPERAND)
 
 
 def test_no_decimal_literals():
@@ -331,11 +334,11 @@ def all_prefixes():
     return sorted(found, key=len, reverse=True)
 
 
-MAX_NAME_CHARS, MAX_NAME_WORDS = 32, 4
+MAX_NAME_CHARS, MAX_NAME_WORDS = 40, 4
 
 
 def test_function_names_are_short():
-    """<prefix><verb>_<object>: at most four words after the prefix and at most 32 characters."""
+    """At most four words after the prefix and at most 40 characters for the whole name."""
     prefixes, ok, found, seen = all_prefixes(), allowed(), [], set()
     for path in sources():
         for f in functions(path):
@@ -806,11 +809,32 @@ def test_includes_are_used():
     report("include", found)
 
 
-TRIVIAL_BODY_LINES = 3
+TRIVIAL_BODY_LINES = 5
+
+
+def is_field_accessor(f):
+    """A getter <type>_<field> with one parameter, or a setter <type>_set_<field> with two that returns void."""
+    if "_set_" in f.name:
+        return len(f.params) == 2 and f.ret == "void"
+    return len(f.params) == 1 and f.ret != "void"
+
+
+def grouped_accessors(lines, prototypes):
+    """The names of the field accessors that follow a commented prototype without a blank or comment line between."""
+    found, previous, grouped = set(), None, False
+    for f in sorted(prototypes, key=lambda f: f.line):
+        between = lines[previous.line - 1:f.line - 1] if previous else []
+        joined = previous and all(line.strip() and "/*" not in line for line in between)
+        grouped = bool(joined and (grouped or comment_above(lines, previous.line)) and is_field_accessor(f))
+        if grouped:
+            found.add(f.name)
+        previous = f
+    return found
 
 
 def test_function_comments():
-    """A public function has its comment above the prototype, a non-trivial static function above its definition; never both."""
+    """A public function has its comment above the prototype (a grouped field accessor needs none), a non-trivial static
+    function above its definition; never both."""
     ok = allowed()
     found = []
     for header in headers():
@@ -820,15 +844,17 @@ def test_function_comments():
             if c.suffix == ".c":
                 clines = c.read_text(errors="replace").splitlines()
                 bodies.update({name: (c, clines, start) for name, start, _, static in definitions(c) if not static})
-        for f in functions(header):
-            if f.static or ("comment", rel(header)) in ok:
+        prototypes = [f for f in functions(header) if not f.static]
+        grouped = grouped_accessors(hlines, prototypes)
+        for f in prototypes:
+            if ("comment", rel(header)) in ok:
                 continue
             in_header = comment_above(hlines, f.line)
             body = bodies.get(f.name)
             in_source = body and comment_above(body[1], body[2])
             if in_header and in_source:
                 found.append(f"comment {rel(header)}  | {f.name}: a comment above the prototype and the definition in {rel(body[0])}")
-            elif not in_header:
+            elif not in_header and f.name not in grouped:
                 found.append(f"comment {rel(header)}  | {f.name}: no comment above the prototype")
     for path in sources():
         if path.suffix != ".c" or ("comment", rel(path)) in ok:
@@ -872,8 +898,9 @@ def test_file_order():
     report("order", found)
 
 
-TYPE_TABLE = {"champion_index": "int16_t", "cell": "int16_t", "direction": "int16_t", "map": "int16_t",
-              "slot": "int16_t", "x": "int16_t", "y": "int16_t", "thing": "uint16_t", "ticks": "uint16_t"}
+TYPE_TABLE = {"champion_index": "int16_t", "cell": "int16_t", "dir": "int16_t", "map": "int16_t",
+              "slot": "int16_t", "x": "int16_t", "y": "int16_t", "thing": "uint16_t", "ticks": "uint16_t",
+              "square": "uint8_t"}
 
 
 def parameter(text):
@@ -888,7 +915,7 @@ def parameter(text):
 
 
 def test_one_type_per_parameter_name():
-    """A parameter name has one type in the headers of a layer, and the type of the table for a game value kind."""
+    """A reserved parameter name of a game value kind has the type of the table in the headers of a layer."""
     ok = allowed()
     found = []
     for layer in LAYERS:
@@ -905,8 +932,6 @@ def test_one_type_per_parameter_name():
                 continue
             if expected and kinds != {expected}:
                 found.append(f"type {key}  | {sorted(kinds)}; the table says {expected}")
-            elif not expected and len(kinds) > 1:
-                found.append(f"type {key}  | {sorted(kinds)}")
     report("type", found)
 
 

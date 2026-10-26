@@ -176,7 +176,7 @@ def test_clicks_in_the_view(scenario, lib):
     # The party faces walls with sensors (and doors); both draw the view, then a click goes to the center of each
     # click zone of the view (wall ornaments, door buttons, objects) and to the front wall.
     from dm2test import view as tv
-    scenario.lib.view_draw_dungeon.argtypes = [ctypes.c_int, ctypes.c_int16, ctypes.c_int16]
+    scenario.lib.view_draw_dungeon.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
     zones = (ctypes.c_uint8 * (C.VIEW_CLICK_ZONE_MAX * 12)).in_dll(lib, "g_view_click_zones")
     count = ctypes.c_int.in_dll(lib, "g_view_click_zone_count")
     seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")

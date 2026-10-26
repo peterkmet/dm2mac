@@ -18,12 +18,12 @@ engine/     game rules: dungeon, party, champions, creatures, timeline, saves
 data/       file formats of the game files, byte order, the operating system services
 ```
 
-A file includes only headers of its own layer and of the layers below it in the diagram. The rules of the
+A file includes only headers of its own layer and of the layers before it (below it in the diagram). The rules of the
 layers are in section 1 of [coding-standard.md](coding-standard.md#1-layers-and-modules). This page names a
 header with its layer: `engine/game.h` is `src/engine/include/game.h`.
 
 The root `Makefile` gives each layer its include path. The path holds the `include/` folders of the layer and of
-the layers below it, so the compiler rejects an include of a higher layer:
+the layers before it, so the compiler rejects an include of a later layer:
 
 | Layer | Include path |
 |---|---|
@@ -255,7 +255,7 @@ The state of one module is `static` in its `.c` file ([coding-standard.md](codin
 
 ## Hooks between layers
 
-A hook is a function pointer that a higher layer sets, so that a lower layer can call it without an include.
+A hook is a function pointer that a later layer sets, so that a layer before it can call it without an include.
 
 `g_hooks` (`engine/hooks.h`) holds the calls of the game rules into the user interface: the messages, the sounds,
 the layout zones, the action area, the input, the view, the status boxes of the champions, and the end of the
