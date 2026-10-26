@@ -3,33 +3,147 @@
 byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate record of SKULL.EXE that the differential tests compare
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
-decimal engine/champ_action.c rule 3.12: furniture creature infos of SKULL.EXE
-decimal engine/champion_damage.c rule 3.12: slot drop order of SKULL.EXE
-decimal engine/creature.c rule 3.12: a table of SKULL.EXE
-decimal engine/dungeon.c rule 3.12: a table of SKULL.EXE
-decimal engine/game_text.c rule 3.12: the field names of an action text of SKULL.EXE
-decimal engine/magic.c rule 3.12: a table of SKULL.EXE
-decimal engine/save.c rule 3.12: magic light by power of SKULL.EXE
-decimal engine/sensor.c rule 3.12: a table of SKULL.EXE
-decimal engine/weather.c rule 3.12: a table of SKULL.EXE
-decimal ui/action_area.c rule 3.12: coin pile offsets of SKULL.EXE
-decimal ui/fm.c rule 3.12: a table of SKULL.EXE
-decimal ui/input.c rule 3.12: a table of SKULL.EXE
-decimal ui/view.c rule 3.12: a table of SKULL.EXE
+decimal engine/champ_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
+decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
+decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
+decimal engine/dungeon.c rule 3.1: the plain number 2 of the byte buffer le (removed by Task 33)
+decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
+decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
+decimal engine/magic.c:light_power rule 3.12: a table of SKULL.EXE
+decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
+decimal engine/save.c:light_power rule 3.12: magic light by power of SKULL.EXE
+decimal engine/sensor.c:ambient_wall_dx rule 3.12: a table of SKULL.EXE
+decimal engine/sensor.c:ambient_wall_dy rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:creature_lightning rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:light_falloff rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:light_power rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
+decimal ui/action_area.c rule 3.1: the plain numbers of the rectangle indices and of the one-rune strings s (removed by Task 38)
+decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
+decimal ui/fm.c:level_attenuation rule 3.12: a table of SKULL.EXE
+decimal ui/fm.c:op_carrier rule 3.12: a table of SKULL.EXE
+decimal ui/fm.c:op_modulator rule 3.12: a table of SKULL.EXE
+decimal ui/input.c rule 3.1: the plain number 2 of the one-rune string text (removed by Task 36)
+decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
+decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
+decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
+decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
+decimal ui/view.c rule 3.1: the plain numbers of POS_BIT, door_types, the four ornament sides and a loop of 4 (removed by Task 37)
+decimal ui/view.c:arrow_cells rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:arrow_scales rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:cell_view_position rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:depth_center rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:depth_light rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:depth_scale rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:door_side_frame rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:door_top_frame rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:door_top_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:door_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:eye_cell rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:far_order rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:floor_pit_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:floor_pit_entry_up rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:floor_pit_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:frames rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:hide_row2 rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:hide_row3 rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:hide_row4 rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:jitter rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:jitter_offset rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:linked_squares rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:missile_scale rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:object_picture rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:possession_cells rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:possession_column_shift rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:possession_lift rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:possession_row_shift rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:side_ornament_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:sky_state_rain rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:sparkle_field rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:square_grid_corner rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:stairs_front_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:stairs_front_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:stairs_side_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:stairs_side_flipped_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:stairs_side_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:thing_cell_order rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:thing_scale rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:toward_party_diagonal rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:view_mirror rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
 engine-write ui/action_area.c rule 1.5: the action area keeps the order of the original: it sets the mode, the result and the redraw state of g_action while it draws
-hex control/control.c rule 3.12: the PC keyboard scan codes of the key names
-hex engine/ai_data.c rule 3.12: a table of SKULL.EXE
-hex engine/creature.c rule 3.12: a table of SKULL.EXE
-hex engine/item.c rule 3.12: GDAT categories, item index bases, and slot masks of SKULL.EXE
-hex engine/magic.c rule 3.12: a table of SKULL.EXE
-hex engine/save.c rule 3.12: bit mask tables and sensor types of SKULL.EXE
-hex engine/sound_request.c rule 3.12: a table of SKULL.EXE
-hex platform/main.c rule 3.12: the PC keyboard scan codes of the SDL keys
-hex ui/dialog.c rule 3.12: a table of SKULL.EXE
-hex ui/fm.c rule 3.12: a table of SKULL.EXE
-hex ui/input.c rule 3.12: a table of SKULL.EXE
-hex ui/ui.c rule 3.12: a table of SKULL.EXE
-hex ui/view.c rule 3.12: a table of SKULL.EXE
+hex control/control.c:key_names rule 3.12: the PC keyboard scan codes of the key names
+hex engine/ai_data.c:g_ai_action_flags rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_after_command_table rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_behaviors rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_class_flags rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_command_enabled rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_kind_flags rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_plans rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_possession_cells rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_scripts rule 3.12: a table of SKULL.EXE
+hex engine/creature.c:cells rule 3.12: a table of SKULL.EXE
+hex engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
+hex engine/item.c:item_index_base rule 3.12: item index bases of SKULL.EXE
+hex engine/item.c:slot_item_masks rule 3.12: slot masks of SKULL.EXE
+hex engine/item.c:thing_gdat_category rule 3.12: GDAT categories of SKULL.EXE
+hex engine/magic.c:spells rule 3.12: a table of SKULL.EXE
+hex engine/save.c:all_bits rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:armour_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:carried_projectile_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:champion_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:container_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:door_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:event_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:game_record_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:group_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:magic_light_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:minion_map_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:misc_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:moneybox_misc_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:projectile_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:sensor_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:sensors_with_data rule 3.12: sensor types of SKULL.EXE
+hex engine/save.c:static_group_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:text_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:weapon_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/save.c:word_mask rule 3.12: a bit mask table of SKULL.EXE
+hex engine/sound_request.c:pan_thresholds rule 3.12: a table of SKULL.EXE
+hex engine/sound_request.c:pan_values rule 3.12: a table of SKULL.EXE
+hex platform/main.c:scan_codes rule 3.12: the PC keyboard scan codes of the SDL keys
+hex ui/dialog.c:button_text_zones rule 3.12: a table of SKULL.EXE
+hex ui/fm.c:note_freq_table rule 3.12: a table of SKULL.EXE
+hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
+hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
+hex ui/input.c:cursor_hand rule 3.12: a table of SKULL.EXE
+hex ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
+hex ui/input.c:entries rule 3.12: a table of SKULL.EXE
+hex ui/input.c:input_children rule 3.12: a table of SKULL.EXE
+hex ui/input.c:input_commands rule 3.12: a table of SKULL.EXE
+hex ui/input.c:input_keys rule 3.12: a table of SKULL.EXE
+hex ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
+hex ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
+hex ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
+hex ui/input.c:zones rule 3.12: a table of SKULL.EXE
+hex ui/ui.c:skill_level_texts rule 3.12: a table of SKULL.EXE
+hex ui/ui.c:slot_layout rule 3.12: a table of SKULL.EXE
+hex ui/view.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE
+hex ui/view.c:alcove_explosion_size rule 3.12: a table of SKULL.EXE
+hex ui/view.c:arrow_cells rule 3.12: a table of SKULL.EXE
+hex ui/view.c:arrow_scales rule 3.12: a table of SKULL.EXE
+hex ui/view.c:hide_row1 rule 3.12: a table of SKULL.EXE
+hex ui/view.c:hide_row2 rule 3.12: a table of SKULL.EXE
+hex ui/view.c:hide_row3 rule 3.12: a table of SKULL.EXE
+hex ui/view.c:hide_row4 rule 3.12: a table of SKULL.EXE
+hex ui/view.c:missile_scale rule 3.12: a table of SKULL.EXE
+hex ui/view.c:sparkle_field rule 3.12: a table of SKULL.EXE
+hex ui/view.c:thing_scale rule 3.12: a table of SKULL.EXE
 long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition

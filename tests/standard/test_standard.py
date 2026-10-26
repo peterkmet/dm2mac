@@ -96,6 +96,26 @@ def code_lines(path):
             yield number, line
 
 
+TABLE_START = re.compile(r"\b([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{")
+
+
+def tables(path):
+    """Each table name of the file and the 1-based lines of its initializer, from the name to the closing brace."""
+    text = strip(path.read_text(errors="replace"))
+    found, end = {}, 0
+    for m in TABLE_START.finditer(text):
+        if m.start() < end:
+            continue
+        depth, i = 1, m.end()
+        while depth and i < len(text):
+            depth += {"{": 1, "}": -1}.get(text[i], 0)
+            i += 1
+        first = text.count("\n", 0, m.start()) + 1
+        end = i
+        found.setdefault(m.group(1), set()).update(range(first, text.count("\n", 0, i) + 2))
+    return found
+
+
 def report(check, found):
     """Fails with one allowlist key and the evidence for each violation."""
     if found and (dump := os.environ.get("DM2_STANDARD_DUMP")):
@@ -105,14 +125,20 @@ def report(check, found):
 
 
 def line_check(check, pattern, owners=(), ignore=None):
-    """Each code line that matches pattern, outside the owner files; ignore removes allowed text first."""
+    """Each code line that matches pattern, outside the owner files and the allowed tables (target file:table);
+    ignore removes allowed text first."""
     ok = allowed()
     found = []
     for path in sources():
         if (check, rel(path)) in ok or path.name in owners:
             continue
-        found += [f"{check} {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path)
-                  if pattern.search(ignore.sub("", line) if ignore else line)]
+        table_lines = {n: name for name, lines in tables(path).items() for n in lines}
+        for n, line in code_lines(path):
+            if not pattern.search(ignore.sub("", line) if ignore else line):
+                continue
+            target = f"{rel(path)}:{table_lines[n]}" if n in table_lines else rel(path)
+            if (check, target) not in ok:
+                found.append(f"{check} {target}  | {n}: {line.strip()}")
     report(check, found)
 
 
