@@ -58,4 +58,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
 - The push arrow under the mouse stays pressed in the arrow panel while the mouse selects it in push mode (`input_release_move_arrow`). The original draws it pressed on the screen and waits for a vertical blank, then releases it in the same game step. The port presents the screen only after the step, so the original order shows no pressed arrow.
 - The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified (manual check B7).
+- Kept quirks of the original:
+  - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map
+  - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square
 - Not ported: the enter and leave events of the cursor zones ([champions.md](champions.md#the-cursor)); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.

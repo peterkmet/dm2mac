@@ -52,3 +52,6 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a projectile move also writes the direction into its freed event
   - the power that the sensors test after a door spell comes from the door record
   - `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables
+  - `dun_set_pit_teleporter_state` with `PIT_STATE_TOGGLE` closes an open pit or teleporter and opens a closed one
+  - the loop schedule of a static creature (`schedule_loop` in `src/engine/creature.c`) adds the first frame of the sequence to the game time without the shift (`ANIM_START_MASK`, bits 6 to 11), so the loop phase differs from the first frame; one function in the port does the work of `0x25204` and `0x252c3`
+  - `magic_add_party_aura` with a new aura type removes the whole champion mask of the cast from the aura events, not only the bit of the champion whose aura ends

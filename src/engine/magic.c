@@ -292,7 +292,7 @@ static void set_event_word(TimelineEvent *e, uint16_t v)
     put_le16(e->data, v);
 }
 
-/* The runes of a champion with the byte after them (the end mark of 4 runes). */
+/* The runes of a champion with the byte after them: the end mark of 4 runes is unknown_26[0], as in the original. */
 static uint8_t *runes_of(Champion *c)
 {
     return (uint8_t *)c + offsetof(Champion, runes);
@@ -399,6 +399,7 @@ void magic_add_party_aura(int champion_mask, int type, int value, uint16_t durat
             if (type != c->aura || !c->health) {
                 /* a new aura type: the old aura and its events end */
                 c->aura_value = 0;
+                /* the cleanup takes the whole champion_mask off the events, as in the original */
                 for (int k = 0; k < g_timeline.used_end; k++) {
                     TimelineEvent *e = &g_timeline.events[k];
                     if (e->type != EVENT_AURA || !(e->priority & champion_mask))

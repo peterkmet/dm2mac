@@ -392,6 +392,7 @@ const char *item_name(uint16_t thing)
             g_text_args.champion = (int16_t)champion;
     }
     char raw[TEXT_SIZE];
+    /* text_gdat formats the name and text_format formats it a second time, as in the original */
     return text_format(text_gdat(category, index, GFX_ITEM_NAME, raw), name);
 }
 

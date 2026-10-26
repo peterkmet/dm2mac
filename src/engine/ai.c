@@ -309,7 +309,7 @@
 /* The modes of the pit or teleporter change. */
 #define PIT_STATE_OPEN   0
 #define PIT_STATE_CLOSED 1
-#define PIT_STATE_SAME   2
+#define PIT_STATE_TOGGLE 2
 
 /* The cell of a melee attack on the nearest champion. */
 #define CELL_NEAREST 4
@@ -2215,24 +2215,26 @@ int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t
 bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode)
 {
     uint8_t *square = dungeon_square_byte(g_party.cur_map, x, y);
-    bool open = false;
+    uint8_t on_flag;
     if (square_type(*square) == SQUARE_PIT) {
-        open = (*square & SQUARE_PIT_OPEN) != 0;
+        on_flag = SQUARE_PIT_OPEN;
     } else if (square_type(*square) == SQUARE_TELEPORTER) {
         if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, x, y)))
             return false;
-        open = (*square & SQUARE_TELEPORTER_ON) != 0;
+        on_flag = SQUARE_TELEPORTER_ON;
     } else {
         return false;
     }
-    if (mode == PIT_STATE_SAME)
+    bool open = (*square & on_flag) != 0;
+    /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
+    if (mode == PIT_STATE_TOGGLE)
         mode = open;
     if (mode == PIT_STATE_OPEN) {
-        *square |= 8;
+        *square |= on_flag;
         move_square_contents_through(x, y);
         return !open;
     }
-    *square &= ~8;
+    *square &= (uint8_t)~on_flag;
     return open;
 }
 

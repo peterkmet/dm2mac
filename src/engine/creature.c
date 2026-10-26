@@ -777,40 +777,21 @@ void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, 
     schedule_update(x, y);
 }
 
-/* A looping animation of a static creature: the next update comes when the loop reaches its first frame. */
-static void schedule_loop_start(void)
+/* The loop of a static creature: the next update comes at the first frame of the loop, or with to_end at its end. */
+static void schedule_loop(bool to_end)
 {
     uint16_t *state = g_ai.anim + 1;
-    if ((*state & ANIM_KIND_MASK) == ANIM_SINGLE_LOOP)
+    if (to_end ? (*state & (ANIM_LOOP | ANIM_STILL | ANIM_LOOP_ALT)) == ANIM_LOOP && (*state & ANIM_FRAME_MASK) > 1
+               : (*state & ANIM_KIND_MASK) == ANIM_SINGLE_LOOP)
         return;
     int length = anim_sequence_length(group_creature(g_ai.group_thing), g_ai.anim[0]);
-    uint16_t start = *state & ANIM_START_MASK;
+    uint16_t start = *state & ANIM_START_MASK; /* unshifted first frame in the sum, as in the original */
     unsigned at = (start + g_game.game_time) % (unsigned)length;
     if (!(uint16_t)at) {
-        *state = start | ANIM_SINGLE_LOOP;
+        *state = to_end ? (uint16_t)(start | length | ANIM_LOOP) : (uint16_t)(start | ANIM_SINGLE_LOOP);
         return;
     }
-    *state = (uint16_t)(start | length | ANIM_LOOP | ANIM_STILL);
-    creature_cancel_update(g_ai.group_thing);
-    g_ai.event.time_map = timeline_time_map((uint32_t)(length - (int16_t)at) + g_game.game_time, g_ai.map);
-    g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
-}
-
-/* A static creature that plays its sequence to the end: the next update comes at the end of the loop. */
-static void schedule_loop_end(void)
-{
-    uint16_t *state = g_ai.anim + 1;
-    if ((*state & (ANIM_LOOP | ANIM_STILL | ANIM_LOOP_ALT)) == ANIM_LOOP && (*state & ANIM_FRAME_MASK) > 1)
-        return;
-    int length = anim_sequence_length(group_creature(g_ai.group_thing), g_ai.anim[0]);
-    uint16_t start = *state & ANIM_START_MASK;
-    unsigned at = (start + g_game.game_time) % (unsigned)length;
-    uint16_t word = (uint16_t)(length | start);
-    if (!(uint16_t)at) {
-        *state = word | ANIM_LOOP;
-        return;
-    }
-    *state = word | ANIM_LOOP | ANIM_LOOP_ALT;
+    *state = (uint16_t)(start | length | ANIM_LOOP | (to_end ? ANIM_LOOP_ALT : ANIM_STILL));
     creature_cancel_update(g_ai.group_thing);
     g_ai.event.time_map = timeline_time_map((uint32_t)(length - (int16_t)at) + g_game.game_time, g_ai.map);
     g_ai.active->event = (int16_t)timeline_add_event(&g_ai.event);
@@ -825,12 +806,8 @@ void creature_update_anim_at(int16_t x, int16_t y, int alt)
         creature_activate_group(group, x, y);
     AiContext saved;
     bool restored = ai_begin(group, x, y, EVENT_CREATURE_ANIMATION, &saved);
-    if (g_ai.active) {
-        if (!alt)
-            schedule_loop_start();
-        else
-            schedule_loop_end();
-    }
+    if (g_ai.active)
+        schedule_loop(alt != 0);
     ai_end(restored, &saved);
 }
 
@@ -969,9 +946,9 @@ void creature_process_event(int16_t x, int16_t y, int type)
         ai_update_group();
     } else {
         if (g_ai.anim[1] & ANIM_STILL)
-            schedule_loop_start();
+            schedule_loop(false);
         else if (g_ai.anim[1] & ANIM_LOOP_ALT)
-            schedule_loop_end();
+            schedule_loop(true);
         if (a->event == EVENT_NO_SLOT)
             creature_deactivate_group(group_active(g_ai.group_thing));
     }

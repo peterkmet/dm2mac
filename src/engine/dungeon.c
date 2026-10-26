@@ -794,6 +794,7 @@ int dungeon_location_on_map_from(int16_t map, int level_delta, int16_t *out_x, i
     for (const uint8_t *m = maps + start; *m != LEVEL_LIST_END; m++) {
         int ox = dungeon_map_offset_x(*m);
         int oy = dungeon_map_offset_y(*m);
+        /* the unsigned upper compares reject ax or ay = -1 on a map at offset 0, as in the original */
         if (ax < ox - 1 || (unsigned)ax > (unsigned)(ox + dungeon_map_width(*m)) || ay < oy - 1 ||
             (unsigned)ay > (unsigned)(oy + dungeon_map_height(*m)))
             continue;

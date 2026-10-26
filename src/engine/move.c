@@ -898,7 +898,7 @@ static void transit_pit_marker(Transit *t)
 {
     int marker = 0;
     for (uint16_t th = first_thing(t->x, t->y); th != THING_ENDOFLIST; th = dungeon_next_thing(th)) {
-        t->type = thing_type(th); /* the original reuses its thing type variable here */
+        t->type = thing_type(th); /* t->type keeps the type of the last thing read, as in the original */
         if (t->type > THING_SENSOR)
             break;
         if (t->type != THING_TEXT)
