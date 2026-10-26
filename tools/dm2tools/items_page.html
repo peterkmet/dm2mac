@@ -1,125 +1,243 @@
 <title>Dungeon Master II Items</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: one reading column; a sticky search bar with category chips; one scrollable table per category. */
+/* Layout: a carved title band, a sticky control deck (category tabs, filter, quick filters, sort), then a card grid. */
 :root {
-  --bg: #f2f3f0; --surface: #ffffff; --fg: #1c2321; --muted: #5a6561; --line: #d6dad5;
-  --accent: #2f5b86; --accent-soft: #e2eaf2;
+  --bg: #e9ece7; --surface: #f9faf7; --raised: #ffffff; --fg: #1a201e; --muted: #5b6662; --line: #d2d8d1;
+  --accent: #2c5d8c; --accent-soft: #dde7f0; --on-accent: #ffffff;
+  --melee: #8e5a26; --spell: #6447b0; --other: #3f6f5d; --bar: #c9d3dc;
   --display: "Cinzel", "Trajan Pro", Georgia, serif;
   --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --radius: 10px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #131716; --surface: #1b201f; --fg: #e2e6e3; --muted: #95a09b; --line: #2d3432;
-    --accent: #86b0dc; --accent-soft: #22303d; color-scheme: dark;
+    --bg: #0e1211; --surface: #161c1a; --raised: #1c2321; --fg: #e3e6e0; --muted: #929e98; --line: #29312f;
+    --accent: #8cb6e4; --accent-soft: #1f2d3a; --on-accent: #0e1211;
+    --melee: #dca468; --spell: #b39cf2; --other: #8cbca9; --bar: #2c3a46; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #131716; --surface: #1b201f; --fg: #e2e6e3; --muted: #95a09b; --line: #2d3432;
-  --accent: #86b0dc; --accent-soft: #22303d; color-scheme: dark;
+  --bg: #0e1211; --surface: #161c1a; --raised: #1c2321; --fg: #e3e6e0; --muted: #929e98; --line: #29312f;
+  --accent: #8cb6e4; --accent-soft: #1f2d3a; --on-accent: #0e1211;
+  --melee: #dca468; --spell: #b39cf2; --other: #8cbca9; --bar: #2c3a46; color-scheme: dark;
 }
+* { box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
-.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; display: grid; gap: 28px; }
-header { display: grid; gap: 8px; }
-h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: 0.04em; text-wrap: balance; margin: 0; }
-h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); }
-h2 { font-size: 1.25rem; display: flex; align-items: baseline; gap: 10px; }
-h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 16px 0 6px; }
-.lede { margin: 0; color: var(--muted); max-width: 68ch; }
-.count, .chip span { font: 600 0.75rem var(--mono); color: var(--muted); }
-.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
-.bar input { flex: 1 1 240px; min-width: 0; font: inherit; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
-.bar input:focus-visible, button:focus-visible, .chip:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-nav { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { text-decoration: none; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 0.85rem; display: inline-flex; gap: 6px; align-items: baseline; }
-.status { font-size: 0.85rem; color: var(--muted); }
-details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
-summary { cursor: pointer; font-weight: 600; }
-dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; }
-dt { font-weight: 600; } dd { margin: 0; color: var(--muted); }
-details ul { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px; }
-code { font: 0.85em var(--mono); background: var(--accent-soft); padding: 1px 4px; border-radius: 3px; }
-.category { display: grid; gap: 10px; scroll-margin-top: 80px; }
-.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
-th, td { padding: 7px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
-tbody tr:last-child > * { border-bottom: 0; }
-thead th { position: sticky; top: 0; background: var(--surface); white-space: nowrap; }
-thead button { all: unset; cursor: pointer; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
-thead th[aria-sort] button { color: var(--accent); }
-thead th[aria-sort="ascending"] button::after { content: " ▲"; }
-thead th[aria-sort="descending"] button::after { content: " ▼"; }
-.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-th.name { font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; }
-td.actions div, td.special div { padding-block: 1px; }
-td.actions { min-width: 18rem; } td.special { min-width: 14rem; color: var(--muted); }
-td.actions div::before { content: "› "; color: var(--accent); }
-.empty { color: var(--muted); }
-@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.inner { max-width: 1280px; margin: 0 auto; }
+
+/* Title band */
+.hero { padding-block: 40px 22px; }
+.hero .inner { display: grid; gap: 10px; }
+.eyebrow { font: 600 0.72rem var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(2rem, 5.5vw, 3.4rem)/1.05 var(--display); letter-spacing: 0.05em; margin: 0; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--accent); }
+.lede { margin: 0; max-width: 64ch; color: var(--muted); font-size: 1.02rem; }
+
+/* Control deck */
+.deck { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); padding-block: 10px; }
+.deck .inner { display: grid; gap: 10px; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; font: 600 0.92rem var(--body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; transition: background .15s, color .15s, border-color .15s; }
+.tab span { font: 600 0.72rem var(--mono); color: var(--muted); }
+.tab:hover { border-color: var(--accent); }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.tab[aria-selected="true"] span { color: var(--on-accent); opacity: .8; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.search { flex: 1 1 260px; min-width: 0; position: relative; }
+.search input { width: 100%; font: inherit; padding: 8px 12px 8px 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); color: var(--fg); }
+.search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; stroke: var(--muted); fill: none; }
+.facets { display: flex; flex-wrap: wrap; gap: 6px; }
+.facet { font: 600 0.82rem var(--body); color: var(--muted); background: transparent; border: 1px dashed var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.facet i { width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--muted)); }
+.facet[aria-pressed="true"] { color: var(--fg); background: var(--surface); border-style: solid; border-color: var(--fg); }
+.sort { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--muted); }
+.sort select { font: inherit; color: var(--fg); background: var(--raised); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+.status { font: 0.8rem var(--mono); color: var(--muted); margin-left: auto; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Content */
+main { padding-block: 22px 72px; }
+main .inner { display: grid; gap: 22px; }
+details.guide { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; }
+details.guide summary { cursor: pointer; font-weight: 700; }
+details.guide dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; }
+details.guide dt { font-weight: 600; } details.guide dd { margin: 0; color: var(--muted); }
+details.guide h3 { font: 600 0.72rem var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; }
+details.guide ul { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px; max-width: 90ch; }
+code { font: 0.84em var(--mono); background: var(--accent-soft); padding: 1px 4px; border-radius: 3px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.card header { display: flex; align-items: baseline; gap: 10px; }
+.card h2 { font: 600 1.02rem/1.25 var(--display); letter-spacing: 0.06em; margin: 0; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.idx { font: 0.72rem var(--mono); color: var(--muted); white-space: nowrap; }
+.cat { font: 600 0.66rem var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.stat { display: grid; gap: 3px; }
+.stat b { font: 600 1rem var(--mono); font-variant-numeric: tabular-nums; }
+.stat small { font: 600 0.64rem var(--body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.meter { height: 4px; border-radius: 2px; background: var(--bar); overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--accent); }
+.line { font-size: 0.9rem; } .line small { color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.66rem; margin-right: 6px; }
+.actions { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.actions li { display: grid; grid-template-columns: 10px 1fr; gap: 0 9px; font-size: 0.9rem; }
+.actions li::before { content: ""; width: 8px; height: 8px; border-radius: 2px; margin-top: 7px; background: var(--k); transform: rotate(45deg); }
+.actions .melee { --k: var(--melee); } .actions .spell { --k: var(--spell); } .actions .other { --k: var(--other); }
+.actions strong { font-weight: 700; letter-spacing: 0.02em; }
+.actions .fx { color: var(--fg); } .actions .meta { grid-column: 2; color: var(--muted); font-size: 0.82rem; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { font-size: 0.78rem; padding: 2px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--fg); }
+.tag.minus { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.empty { text-align: center; color: var(--muted); padding: 48px 16px; border: 1px dashed var(--line); border-radius: var(--radius); }
+.empty button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; text-decoration: underline; }
+footer { color: var(--muted); font-size: 0.82rem; }
+@media (prefers-reduced-motion: no-preference) { .card { animation: rise .25s ease both; } @keyframes rise { from { transform: translateY(4px); } } }
 </style>
-<div class="wrap">
-  <header>
-    <h1>Dungeon Master II Items</h1>
-    <p class="lede">Every item of the English PC DOS GRAPHICS.DAT, with the values and actions that the game reads. {{TOTAL}} items in six categories. Click a column name to sort.</p>
-  </header>
-  <div class="bar">
-    <input id="filter" type="search" placeholder="Filter by name, action or effect (fireball, swing, luck…)" aria-label="Filter items">
-    <nav>{{NAV}}</nav>
-    <span class="status" id="status" aria-live="polite"></span>
+
+<section class="hero gutter">
+  <div class="inner">
+    <span class="eyebrow">Skullkeep · GRAPHICS.DAT · PC DOS English</span>
+    <h1>Dungeon Master II <em>Items</em></h1>
+    <p class="lede">All {{TOTAL}} items of the game, with the values and actions that the game reads: weapon strength, armour, weight, value, the actions of each hand, and the bonuses of rings, gems and food.</p>
   </div>
-  <details>
-    <summary>How to read the tables</summary>
-    {{NOTES}}
-  </details>
-  {{SECTIONS}}
-  <p class="empty" id="empty" hidden>No item matches the filter.</p>
+</section>
+
+<div class="deck gutter">
+  <div class="inner">
+    <div class="tabs" role="tablist" aria-label="Category" id="tabs"></div>
+    <div class="row">
+      <label class="search"><svg viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input id="q" type="search" placeholder="Name, action, spell or bonus" aria-label="Filter items"></label>
+      <div class="facets" id="facets"></div>
+      <label class="sort">Sort <select id="sort">
+        <option value="index">Index</option><option value="name">Name</option><option value="strength">Strength</option>
+        <option value="throw">Throw</option><option value="armour">Armour</option><option value="value">Value</option>
+        <option value="weight">Weight</option></select></label>
+      <span class="status" id="status" aria-live="polite"></span>
+    </div>
+  </div>
 </div>
+
+<main class="gutter">
+  <div class="inner">
+    <details class="guide"><summary>How to read the cards</summary>{{NOTES}}</details>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>No item matches. <button type="button" id="reset">Clear the filters</button></div>
+    <footer>Generated by <code>dm2-items</code> from the game data through the port library. Rune glyphs in names show as rune names.</footer>
+  </div>
+</main>
+
+<script id="data" type="application/json">{{DATA}}</script>
 <script>
 (() => {
-  const input = document.getElementById("filter");
-  const status = document.getElementById("status");
-  const empty = document.getElementById("empty");
-  const rows = [...document.querySelectorAll("tbody tr")];
-  rows.forEach(r => { r.dataset.text = r.textContent.toLowerCase(); });
-  function apply() {
-    const q = input.value.trim().toLowerCase();
-    let shown = 0;
-    document.querySelectorAll(".category").forEach(sec => {
-      let n = 0;
-      sec.querySelectorAll("tbody tr").forEach(r => {
-        const hit = !q || r.dataset.text.includes(q);
-        r.hidden = !hit;
-        if (hit) n++;
-      });
-      sec.hidden = n === 0;
-      shown += n;
-    });
-    empty.hidden = shown > 0;
-    status.textContent = q ? `${shown} of ${rows.length}` : "";
-    try { localStorage.setItem("dm2-items-filter", input.value); } catch (e) {}
-  }
-  input.addEventListener("input", apply);
-  try { input.value = localStorage.getItem("dm2-items-filter") || ""; } catch (e) {}
-  apply();
-  document.querySelectorAll("table").forEach(table => {
-    const heads = [...table.tHead.rows[0].cells];
-    heads.forEach((th, col) => th.querySelector("button").addEventListener("click", () => {
-      const dir = th.getAttribute("aria-sort") === "ascending" ? "descending" : "ascending";
-      heads.forEach(h => h.removeAttribute("aria-sort"));
-      th.setAttribute("aria-sort", dir);
-      const numeric = th.classList.contains("num");
-      const key = r => { const t = r.cells[col].textContent.trim(); return numeric ? (t === "" ? -1 : parseFloat(t)) : t; };
-      const body = table.tBodies[0];
-      [...body.rows].sort((a, b) => {
-        const x = key(a), y = key(b);
-        const c = numeric ? x - y : String(x).localeCompare(String(y));
-        return dir === "ascending" ? c : -c;
-      }).forEach(r => body.appendChild(r));
-    }));
+  const cats = JSON.parse(document.getElementById("data").textContent);
+  const all = cats.flatMap(c => c.items.map(it => ({ ...it, cat: c.id, catTitle: c.title.replace(" items", "") })));
+  all.forEach(it => {
+    it.text = [it.name, it.effect, it.worn, ...(it.special || []), ...it.actions.flatMap(a => [a.name, a.effect, a.skill, a.charges])]
+      .filter(Boolean).join(" ").toLowerCase();
   });
+  const num = (it, k) => parseFloat(it[k]) || 0;
+  const max = k => Math.max(...all.map(it => num(it, k)));
+  const scale = { strength: max("strength"), throw: max("throw"), armour: max("armour") };
+  const isBonus = s => /[+-]\d+ (worn or held|in any slot|when eaten)$/.test(s);
+  const facets = [
+    { id: "melee", label: "Melee", dot: "var(--melee)", test: it => it.actions.some(a => a.kind === "melee") },
+    { id: "spell", label: "Spells", dot: "var(--spell)", test: it => it.actions.some(a => a.kind === "spell") },
+    { id: "bonus", label: "Bonuses", test: it => (it.special || []).some(isBonus) },
+    { id: "light", label: "Light", test: it => (it.special || []).some(s => s.startsWith("gives light") || s.startsWith("light ")) },
+    { id: "food", label: "Food", test: it => (it.special || []).some(s => s.startsWith("food")) },
+    { id: "charges", label: "Charges", test: it => it.actions.some(a => a.charges) },
+  ];
+  const state = { cat: "all", q: "", on: new Set(), sort: "index" };
+  try { Object.assign(state, JSON.parse(localStorage.getItem("dm2-items") || "{}")); state.on = new Set(state.on || []); } catch (e) {}
+  const hash = location.hash.slice(1);
+  if (hash === "all" || cats.some(c => c.id === hash)) state.cat = hash;
+
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const tabs = document.getElementById("tabs");
+  [{ id: "all", title: "All", n: all.length }, ...cats.map(c => ({ id: c.id, title: c.title.replace(" items", ""), n: c.items.length }))].forEach(t => {
+    const b = el("button", "tab", t.title);
+    b.type = "button"; b.setAttribute("role", "tab"); b.dataset.id = t.id;
+    b.append(el("span", null, String(t.n)));
+    b.addEventListener("click", () => { state.cat = t.id; history.replaceState(null, "", "#" + t.id); render(); });
+    tabs.append(b);
+  });
+  const fbox = document.getElementById("facets");
+  facets.forEach(f => {
+    const b = el("button", "facet");
+    b.type = "button"; b.dataset.id = f.id;
+    if (f.dot) { const i = el("i"); i.style.setProperty("--dot", f.dot); b.append(i); }
+    b.append(f.label);
+    b.addEventListener("click", () => { state.on.has(f.id) ? state.on.delete(f.id) : state.on.add(f.id); render(); });
+    fbox.append(b);
+  });
+  const q = document.getElementById("q"), sort = document.getElementById("sort");
+  q.value = state.q; sort.value = state.sort;
+  q.addEventListener("input", () => { state.q = q.value; render(); });
+  sort.addEventListener("change", () => { state.sort = sort.value; render(); });
+  document.getElementById("reset").addEventListener("click", () => { state.q = ""; q.value = ""; state.on.clear(); state.cat = "all"; render(); });
+
+  function stat(label, value, key) {
+    const s = el("div", "stat");
+    s.append(el("b", null, value), el("small", null, label));
+    if (key && scale[key]) { const m = el("div", "meter"), f = el("span"); f.style.width = (100 * num({ v: value }, "v") / scale[key]) + "%"; m.append(f); s.append(m); }
+    return s;
+  }
+  function card(it, showCat) {
+    const c = el("article", "card");
+    const h = el("header");
+    h.append(el("h2", null, it.name));
+    if (showCat) h.append(el("span", "cat", it.catTitle));
+    h.append(el("span", "idx", "#" + it.index));
+    c.append(h);
+    const st = el("div", "stats");
+    if (it.strength) st.append(stat("Strength", it.strength, "strength"));
+    if (it.throw) st.append(stat("Throw", it.throw, "throw"));
+    if (it.armour) st.append(stat("Armour", it.armour, "armour"));
+    if (it.sharp) st.append(stat("Sharp", it.sharp));
+    st.append(stat("Weight kg", it.weight || "0"), stat("Value", it.value || "0"));
+    c.append(st);
+    if (it.worn) { const l = el("div", "line"); l.append(el("small", null, "Worn on"), it.worn); c.append(l); }
+    if (it.effect) { const l = el("div", "line"); l.append(el("small", null, "Effect"), it.effect); c.append(l); }
+    if (it.actions.length) {
+      const ul = el("ul", "actions");
+      it.actions.forEach(a => {
+        const li = el("li", a.kind), main = el("div");
+        main.append(el("strong", null, a.name), " · ", el("span", "fx", a.effect));
+        li.append(main);
+        const meta = [a.skill, a.charges].filter(Boolean).join(" · ");
+        if (meta) li.append(el("div", "meta", meta));
+        ul.append(li);
+      });
+      c.append(ul);
+    }
+    if (it.special && it.special.length) {
+      const t = el("div", "tags");
+      it.special.forEach(s => t.append(el("span", "tag" + (/ -\d+ /.test(s) ? " minus" : ""), s)));
+      c.append(t);
+    }
+    return c;
+  }
+  function render() {
+    tabs.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.id === state.cat)));
+    fbox.querySelectorAll(".facet").forEach(b => b.setAttribute("aria-pressed", String(state.on.has(b.dataset.id))));
+    const words = state.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const active = facets.filter(f => state.on.has(f.id));
+    let list = all.filter(it => (state.cat === "all" || it.cat === state.cat) && words.every(w => it.text.includes(w)) && active.every(f => f.test(it)));
+    const k = state.sort;
+    list = list.slice().sort((a, b) => k === "name" ? a.name.localeCompare(b.name)
+      : k === "index" ? (state.cat === "all" ? 0 : a.index - b.index) : num(b, k) - num(a, k));
+    const grid = document.getElementById("grid");
+    grid.replaceChildren(...list.map(it => card(it, state.cat === "all")));
+    document.getElementById("empty").hidden = list.length > 0;
+    document.getElementById("status").textContent = `${list.length} of ${all.length}`;
+    try { localStorage.setItem("dm2-items", JSON.stringify({ ...state, on: [...state.on] })); } catch (e) {}
+  }
+  render();
 })();
 </script>

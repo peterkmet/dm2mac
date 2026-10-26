@@ -6,6 +6,7 @@ keys (category, index, 0x0b, entry) and gdat_text for the texts (category, index
 
 import ctypes
 import html
+import json
 import re
 import sys
 from pathlib import Path
@@ -99,34 +100,44 @@ def action_fields(text):
     return {k: int(n) for k, n in re.findall(r"([A-Z]{2})(-?\d+)", text) if k in FIELDS}
 
 
-def describe_action(text):
-    """An action text as 'NAME (effect, skill level, charges)'; None for an action without a name."""
+def action_parts(text):
+    """An action text as (name, kind, effect, skill, charges); None for an action without a name. The kind is melee,
+    spell (a missile or an aura), or other."""
     label, _, rest = text.partition(":")
     if not label.strip():
         return None
     f = action_fields(rest)
     cm = f.get("CM", 0)
-    parts = []
+    kind = "other"
     if cm in (COMMAND_MELEE, COMMAND_MELEE_2):
-        parts.append(f"damage ×{f.get('DM', 0) / DAMAGE_FACTOR_SCALE:.2f}")
+        kind = "melee"
+        effect = f"damage ×{f.get('DM', 0) / DAMAGE_FACTOR_SCALE:.2f}"
         if f.get("AT") == 1:
-            parts.append("full damage to half-damage creatures")
+            effect += ", full damage to half-damage creatures"
         if f.get("HN"):
-            parts.append("pierces")
+            effect += ", pierces"
     elif cm == COMMAND_SPELL:
-        parts.append(f"{MISSILES.get(f.get('PA', 0), 'missile %d' % f.get('PA', 0))}, power {f.get('ST', 0)}")
+        kind = "spell"
+        effect = f"{MISSILES.get(f.get('PA', 0), 'missile %d' % f.get('PA', 0))}, power {f.get('ST', 0)}"
     elif cm in AURAS:
-        parts.append(f"{AURAS[cm]}, power {f.get('ST', 0)}")
+        kind = "spell"
+        effect = f"{AURAS[cm]}, power {f.get('ST', 0)}"
     elif cm in COMMANDS:
-        parts.append(COMMANDS[cm] + (f", power {f['ST']}" if cm in POWERED and f.get("ST") else ""))
+        effect = COMMANDS[cm] + (f", power {f['ST']}" if cm in POWERED and f.get("ST") else "")
     else:
-        parts.append(f"command {cm}")
+        effect = f"command {cm}"
+    skill = ""
     if "SK" in f and f["SK"] < len(SKILLS):
-        parts.append(SKILLS[f["SK"]] + (f" level {f['LV']}" if f.get("LV") else ""))
+        skill = SKILLS[f["SK"]] + (f" level {f['LV']}" if f.get("LV") else "")
     nc = f.get("NC")
-    if nc:
-        parts.append(CHARGES.get(nc, f"{nc} charge" + ("s" if nc > 1 else "")))
-    return f"{rune_names(label)} ({', '.join(parts)})"
+    charges = CHARGES.get(nc, f"{nc} charge" + ("s" if nc > 1 else "")) if nc else ""
+    return rune_names(label), kind, effect, skill, charges
+
+
+def describe_action(parts):
+    """An action as 'NAME (effect, skill level, charges)'."""
+    name, _, *details = parts
+    return f"{name} ({', '.join(d for d in details if d)})"
 
 
 def signed(byte):
@@ -190,6 +201,7 @@ def items(g, cat):
         eats = any(action_fields(t).get("CM") == COMMAND_CONSUME for t in texts)
         armour = g.value(cat, i, ATTR_ARMOUR)
         clothing = cat == CAT_CLOTHING and armour
+        actions = [a for a in map(action_parts, texts) if a]
         yield {
             "Index": str(i),
             "Name": rune_names(g.text(cat, i, ENTRY_NAME).lstrip("\x01'")),
@@ -201,13 +213,14 @@ def items(g, cat):
             "Armour": str(armour & ARMOUR_MASK) if clothing else "",
             "Sharp": str((armour >> SHARP_SHIFT) & SHARP_MASK) if clothing else "",
             "Effect": POTIONS.get(i, "") if cat == CAT_POTION else "",
-            "Actions": [a for a in map(describe_action, texts) if a],
+            "Actions": [describe_action(a) for a in actions],
             "Special": specials(g, cat, i, eats),
+            "action_parts": actions,
         }
 
 
 def columns(rows):
-    return [c for c in rows[0] if c in ("Index", "Name") or any(r[c] for r in rows)]
+    return [c for c in rows[0] if c[0].isupper() and (c in ("Index", "Name") or any(r[c] for r in rows))]
 
 
 def collect(g):
@@ -274,38 +287,25 @@ def inline_code(text):
 
 
 def html_page(data):
-    template = (Path(__file__).with_name("items_page.html")).read_text()
-    sections, nav = [], []
-    numeric = {"Index", "Weight (kg)", "Value", "Strength", "Throw", "Armour", "Sharp"}
+    """The HTML page: the template with the items as JSON; the page script draws the cards."""
+    template = Path(__file__).with_name("items_page.html").read_text()
+    keys = {"Weight (kg)": "weight", "Value": "value", "Strength": "strength", "Throw": "throw", "Worn on": "worn",
+            "Armour": "armour", "Sharp": "sharp", "Effect": "effect", "Special": "special"}
+    categories = []
     for title, rows in data:
-        slug = re.sub(r"[^a-z]+", "-", title.lower()).strip("-")
-        cols = columns(rows)
-        nav.append(f'<a class="chip" href="#{slug}">{html.escape(title)} <span>{len(rows)}</span></a>')
-        head = "".join(f'<th{" class=num" if c in numeric else ""} scope="col"><button type="button">'
-                       f"{html.escape(c)}</button></th>" for c in cols)
-        body = []
+        out = []
         for r in rows:
-            cells = []
-            for c in cols:
-                if c in ("Actions", "Special"):
-                    cells.append(f'<td class="{c.lower()}">' + "".join(f"<div>{html.escape(x)}</div>" for x in r[c])
-                                 + "</td>")
-                elif c in numeric:
-                    cells.append(f'<td class="num">{html.escape(r[c])}</td>')
-                elif c == "Name":
-                    cells.append(f'<th scope="row" class="name">{html.escape(r[c])}</th>')
-                else:
-                    cells.append(f"<td>{html.escape(r[c])}</td>")
-            body.append("<tr>" + "".join(cells) + "</tr>")
-        sections.append(f'<section id="{slug}" class="category"><h2>{html.escape(title)} <span class="count">'
-                        f'{len(rows)}</span></h2><div class="scroll"><table><thead><tr>{head}</tr></thead><tbody>'
-                        + "".join(body) + "</tbody></table></div></section>")
+            item = {"index": int(r["Index"]), "name": r["Name"]}
+            item.update({k: r[c] for c, k in keys.items() if r[c]})
+            item["actions"] = [dict(zip(("name", "kind", "effect", "skill", "charges"), a)) for a in r["action_parts"]]
+            out.append(item)
+        categories.append({"id": re.sub(r"[^a-z]+", "-", title.lower()).strip("-"), "title": title, "items": out})
     notes = ("<dl>" + "".join(f"<dt>{html.escape(c)}</dt><dd>{inline_code(m)}</dd>" for c, _, m in COLUMN_NOTES)
              + "</dl><h3>Actions</h3><ul>" + "".join(f"<li>{inline_code(n)}</li>" for n in ACTION_NOTES)
              + "</ul><h3>Special</h3><ul>" + "".join(f"<li>{inline_code(n)}</li>" for n in SPECIAL_NOTES) + "</ul>")
+    payload = json.dumps(categories, ensure_ascii=False).replace("</", "<\\/")
     total = sum(len(rows) for _, rows in data)
-    return (template.replace("{{NAV}}", "".join(nav)).replace("{{SECTIONS}}", "".join(sections))
-            .replace("{{NOTES}}", notes).replace("{{TOTAL}}", str(total)))
+    return template.replace("{{DATA}}", payload).replace("{{NOTES}}", notes).replace("{{TOTAL}}", str(total))
 
 
 def main(argv=None):
