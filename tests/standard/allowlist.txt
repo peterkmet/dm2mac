@@ -34,6 +34,7 @@ long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan comman
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
+module engine/include/ai_move.h rule 1.7: ai_move.h is a second public header of the module ai (removed by Task 18)
 module platform/main.c rule 1.7: the entry point has no header
 prefix engine/include/dungeon.h rule 1.8: the text record accessors text_ share the first word of ui/text.h (removed by Task 17)
 prefix engine/include/game_text.h rule 1.8: text_ shares the first word of ui/text.h (removed by Task 17)

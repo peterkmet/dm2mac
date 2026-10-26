@@ -472,7 +472,7 @@ def test_no_packed_fields_at_call_sites():
     found = []
     for path in sources():
         if path.suffix == ".c" and ("packed", rel(path)) not in ok:
-            module = module_stem(owner_header(path).name) if owner_header(path) else path.stem
+            module = module_stem(header.name) if (header := base_header(path)) else path.stem
             found += [f"packed {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path)
                       if PACKED.search(line) or any(owner.get(name, module) != module for name in NAMED_SHIFT.findall(line))]
     report("packed", found)
@@ -723,33 +723,36 @@ def test_allowlist_names_documented_reasons():
 
 
 def module_files(header):
-    """The header, its _internal.h and the .c files of its module (same stem or <stem>_*)."""
+    """The public header, its _internal.h and the .c files of its module (rule 1.7: the longest header prefix)."""
     base = header.stem.removesuffix("_internal")
+    public = public_header(layer_of(header), base)
     layer = SRC / layer_of(header)
     return {p for p in [*layer.iterdir(), *(layer / "include").iterdir()]
-            if p.suffix in (".c", ".h") and (p.stem == base or p.stem.startswith(base + "_"))}
+            if p == public or p.name == f"{base}_internal.h" or (p.suffix == ".c" and base_header(p) == public)}
 
 
 def base_header(path):
-    """The public header <m>.h of a file named <m>_<x>, or None."""
-    return next((h for h in sorted((SRC / layer_of(path) / "include").glob("*.h")) if h != path
-                 and path.stem.startswith(h.stem + "_")), None)
+    """The public header <m>.h with the longest stem m that is the stem of the file or prefixes it as <m>_, or None."""
+    return max((h for h in (SRC / layer_of(path) / "include").glob("*.h") if h != path
+                and (path.stem == h.stem or path.stem.startswith(h.stem + "_"))), key=lambda h: len(h.stem), default=None)
 
 
 def test_one_public_header_per_module():
+    """A .c file belongs to a public header; a module has one public header."""
     ok = allowed()
     found = []
     for path in sources():
         if ("module", rel(path)) in ok:
             continue
         own = public_header(layer_of(path), path.stem.removesuffix("_internal"))
-        if path.suffix == ".c" and not own.exists() and not base_header(path):
+        if path.suffix == ".c" and not base_header(path):
             found.append(f"module {rel(path)}  | no header")
         elif path.suffix == ".h" and path.stem.endswith("_internal"):
             if not own.exists():
                 found.append(f"module {rel(path)}  | an internal header without its public header")
-        elif path.suffix == ".h" and (base := base_header(path)) and not (SRC / layer_of(path) / f"{path.stem}.c").exists() \
-                and any(not f.static for f in functions(path)):
+        elif path.suffix == ".h" and (base := base_header(path)) and (
+                (SRC / layer_of(path) / f"{base.stem}_internal.h").exists()  # <m>_<x>.h of a module m of several files
+                or not (SRC / layer_of(path) / f"{path.stem}.c").exists() and any(not f.static for f in functions(path))):
             found.append(f"module {rel(path)}  | a second public header of {base.name}")
     report("module", found)
 
@@ -872,11 +875,6 @@ def test_function_comments():
 FORWARD_STATIC = re.compile(r"^static\b[^=;{]*?\b(\w+)\s*\([^;{]*\)\s*;", re.M)
 
 
-def owner_header(path):
-    own = public_header(layer_of(path), path.stem)
-    return own if own.exists() else base_header(path)
-
-
 def test_file_order():
     """Public definitions follow the header order; a static forward declaration names its recursion."""
     ok = allowed()
@@ -884,7 +882,7 @@ def test_file_order():
     for path in sources():
         if path.suffix != ".c" or ("order", rel(path)) in ok:
             continue
-        header = owner_header(path)
+        header = base_header(path)
         if header:
             order = [f.name for f in functions(header) if not f.static]
             defined = [name for name, _, _, static in definitions(path) if not static and name in order]

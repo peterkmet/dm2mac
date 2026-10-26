@@ -38,9 +38,12 @@ that this port cannot use keeps its number with "No rule in dm2".
    allowlist lines give `rule 1.5`. [engine-write]
 6. `control/` is a client of `ui/` and `engine/`; it holds no socket. The socket is `platform/transport.c`; it
    calls `control/`, never the reverse. [platform]
-7. A module is one `.c` file with one public header. A module with several `.c` files has one public header
-   and one `<module>_internal.h` for the shared private declarations; both carry the prefix of the module.
-   The entry point `platform/main.c` is the one exception. It has no header. [module]
+7. A module is one public header `<module>.h`, the files `<module>.c` and `<module>_<part>.c`, and an optional
+   `<module>_internal.h` for the shared private declarations of its files; both headers carry the prefix of the
+   module. A `.c` file belongs to the module of the public header with the longest name that is a prefix of the
+   file name (`mve_video.c` belongs to `mve.h`). `<module>_none.c` is an alternative implementation
+   (`transport_none.c`). `ui/ui_hooks.c` is the one file that sets `g_hooks` of `engine/hooks.h`; it belongs to
+   the module `ui`. The entry point `platform/main.c` is the one exception. It has no header. [module]
 8. Each header states the prefixes of its functions and function-like macros in one comment line,
    `/* Prefixes: sensor_ */`. A header without them writes `/* Prefixes: none */`. A standalone name (`le16`)
    may be listed as a name. Type names, constant names and globals are not prefixes. The first word of a
