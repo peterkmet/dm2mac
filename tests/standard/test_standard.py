@@ -195,12 +195,11 @@ def test_no_decimal_literals():
     line_check("decimal", DECIMAL, ignore=STRTOL_BASE)
 
 
-ENUM_ANY = re.compile(r"\b(?:typedef\s+)?enum\b\s*(\w+)?\s*\{[^}]*\}\s*(\w+)?\s*;", re.S)
-RETURN_TYPE = re.compile(r"^(?:static\s+)?(?:enum\s+)?([A-Z]\w*)\s+\**\s*[a-z_]\w*\s*\(", re.M)
+ENUM_ANY = re.compile(r"\b(?:typedef\s+)?enum\b\s*(\w+)?\s*\{([^}]*)\}\s*(\w+)?\s*;", re.S)
+ENUM_MEMBER = re.compile(r"^\s*([A-Za-z_]\w*)")
 
 
-def test_enum_names_a_result_type():
-    returned = {name for path in sources() for name in RETURN_TYPE.findall(strip(path.read_text(errors="replace")))}
+def test_enums_are_named_types():
     ok = allowed()
     found = []
     for path in sources():
@@ -208,9 +207,14 @@ def test_enum_names_a_result_type():
             continue
         text = strip(path.read_text(errors="replace"))
         for m in ENUM_ANY.finditer(text):
-            name = m.group(1) or m.group(2)
-            if not name or name not in returned:
-                found.append(f"enum {rel(path)}  | {text.count(chr(10), 0, m.start()) + 1}: enum {name or '{...}'}")
+            name = m.group(1) or m.group(3)
+            members = [hit.group(1) for part in m.group(2).split(",") if (hit := ENUM_MEMBER.match(part))]
+            line = text.count(chr(10), 0, m.start()) + 1
+            at_file_scope = text.count("{", 0, m.start()) == text.count("}", 0, m.start())
+            if not name and at_file_scope:
+                found.append(f"enum {rel(path)}  | {line}: anonymous enum")
+            elif len({member.split("_")[0] for member in members}) > 1:
+                found.append(f"enum {rel(path)}  | {line}: enum {name or '{...}'} members without one first word")
     report("enum", found)
 
 

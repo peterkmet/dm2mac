@@ -87,7 +87,12 @@ that this port cannot use keeps its number with "No rule in dm2".
    commands, and the systems of Dungeon Master II: money types, minion types (`MINION_GUARD`), weather states,
    and the states of the Skullkeep machines. [hex, decimal]
 2. A constant is `#define NAME value` with the value written out; a negative value is in parentheses:
-   `#define COLOR_NONE (-1)`. No `enum` for constants; `enum` names a result type only (rule 6.1). [enum]
+   `#define COLOR_NONE (-1)`. A closed set of symbolic values (a result type of rule 6.1, a mode, a state) is a
+   named `enum` type whose members share one first word (`MOVE_DONE`, `MOVE_WAIT` of `MoveResult`), if no
+   fixed-width field of a game record or a save stores it. `#define` stays for bit masks, file-format ids, GDAT ids,
+   and values in fixed-width fields. A struct field that a test mirrors as `c_int16` or `c_uint16` keeps its
+   fixed-width type and stores the enum value; parameters, returns and locals take the enum type. [enum for an
+   anonymous `enum` and for members without one first word; the rest review only]
 3. Related constants are in one block without blank lines, with one comment line above the block that
    names the set; `clang-format` aligns the values. [block]
 4. Notation is per block. A block of bit flags, masks, packed layouts and file format bytes is hex in every
@@ -199,7 +204,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 ## 6. Results and parameters
 
-1. Two outcomes: `bool`. More outcomes: an `enum` type with named values (`enum MoveResult`). A lookup
+1. Two outcomes: `bool`. More outcomes: an `enum` type with named values (`enum MoveResult`, rule 3.2). A lookup
    returns `NULL`. A count returns the count. No `0/-1`, no `1/0/-1`, no value encoded in a return value
    (`index + 2`). [result for a comment that gives 0 or -1 as a result, a heuristic; the rest review only]
 2. At most five parameters; a function that needs more takes a struct. [params]
@@ -335,7 +340,7 @@ their allowlist key:
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
 | `dead-api` | an exported name with no use outside its file and no test marker |
 | `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[3]` and `[4]`) and `< N;`; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
-| `enum` | an `enum` that is not a result type |
+| `enum` | an anonymous `enum` at file scope, an `enum` whose members do not share one first word |
 | `block` | a constant block without a comment line above it |
 | `notation` | a block that mixes hex and decimal, a flag block in decimal, a count block in hex |
 | `duplicate` | a constant name defined in more than one header |
