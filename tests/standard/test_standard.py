@@ -732,18 +732,15 @@ def test_sources_are_formatted():
     assert result.returncode == 0, result.stderr[-4000:]
 
 
-BRIDGE = re.compile(r"rule \d+\.\d+: \S.* \(removed by Task \d+\)$")
-
-
 def test_allowlist_names_documented_reasons():
-    """Each allowlist line names an exception rule of the standard, or is a bridge line that a named task removes."""
+    """Each allowlist line names an exception rule of the standard."""
     found = []
     for number, line in enumerate(ALLOWLIST.read_text().splitlines(), 1):
         if not line.strip() or line.startswith("#"):
             continue
         check, target, reason = line.split(maxsplit=2)
         rule = re.match(r"rule (\d+\.\d+): \S", reason)
-        if not (rule and rule.group(1) in EXCEPTION_RULES) and not BRIDGE.match(reason):
+        if not (rule and rule.group(1) in EXCEPTION_RULES):
             found.append(f"allowlist {check}:{target}  | {number}: {reason}")
     report("allowlist", found)
 

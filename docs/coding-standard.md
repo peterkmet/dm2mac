@@ -371,4 +371,4 @@ their allowlist key:
 | `todo` | a TODO marker in code |
 | `tests` | a `from test_` or `conftest` import, a machine path, a clang call in `tests/` |
 | `format` | a file that `clang-format --dry-run --Werror` reports |
-| `allowlist` | an allowlist line with a reason that this document does not name and that is not a temporary bridge line `rule <n.m>: <text> (removed by Task <N>)` |
+| `allowlist` | an allowlist line with a reason that this document does not name |
