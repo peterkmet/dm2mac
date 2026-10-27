@@ -483,3 +483,14 @@ def test_left_click_on_a_status_box_stores_or_opens_the_inventory_in_the_advance
                             want = C.CMD_INVENTORY_FIRST if thing == C.THING_NONE else C.CMD_STORE_FIRST
                             assert mine == want + champ, (champ, x, y, thing)
     hand.value = C.THING_NONE
+
+
+def test_key_repeat_waits_for_idle_input(lib, session):  # noqa: F811
+    # The advanced mode takes an autorepeat of a held key only when no input waits: the party stops at the release.
+    lib.input_key_down.argtypes = lib.input_key_repeat.argtypes = [ctypes.c_uint16]
+    lib.input_read_key.restype = ctypes.c_uint16
+    lib.input_flush()
+    lib.input_key_repeat(SCAN_W)
+    lib.input_key_repeat(SCAN_W)
+    assert lib.input_read_key() == SCAN_W
+    assert lib.input_read_key() == 0

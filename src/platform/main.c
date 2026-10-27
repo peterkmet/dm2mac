@@ -255,7 +255,9 @@ static void pump_events(void)
             end_by_platform();
         } else if (e.type == PLAT_KEY) {
             uint16_t key = pc_key_code(e.scancode, e.mod);
-            if (key)
+            if (key && e.repeat && g_game_mode == GAME_MODE_ADVANCED)
+                input_key_repeat(key);
+            else if (key)
                 input_key_down(key);
         } else if (e.type == PLAT_MOUSE) {
             input_mouse_down(e.x, e.y, e.button == SDL_BUTTON_RIGHT ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);

@@ -174,6 +174,8 @@ void input_mouse_down(int16_t x, int16_t y, int button);
 void input_mouse_up(int16_t x, int16_t y, int button);
 /* A key press of the keyboard (key code with KEY_* bits); input_poll reads it. */
 void input_key_down(uint16_t key);
+/* An autorepeat of a held key: a key press only when the input is idle, so that a held key does not fill the queue. */
+void input_key_repeat(uint16_t key);
 /* Clears the pending keys, clicks, and commands. */
 void input_flush(void);
 

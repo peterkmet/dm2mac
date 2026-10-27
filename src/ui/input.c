@@ -1445,6 +1445,12 @@ void input_key_down(uint16_t key)
         in.keys[in.key_count++] = key;
 }
 
+void input_key_repeat(uint16_t key)
+{
+    if (input_is_idle())
+        input_key_down(key);
+}
+
 void input_flush(void)
 {
     in.key_count = 0;

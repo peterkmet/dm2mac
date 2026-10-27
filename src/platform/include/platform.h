@@ -19,6 +19,7 @@ typedef struct {
     int type;
     int key;           /* SDL keycode for PLAT_KEY */
     int scancode, mod; /* SDL scancode and modifier keys for PLAT_KEY */
+    bool repeat;       /* PLAT_KEY: an autorepeat of a held key */
     int button, x, y;  /* PLAT_MOUSE and PLAT_MOUSE_UP, x and y in game screen pixels */
 } PlatEvent;
 

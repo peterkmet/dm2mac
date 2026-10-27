@@ -231,6 +231,7 @@ bool plat_poll(PlatEvent *e)
             e->key = ev.key.key;
             e->scancode = ev.key.scancode;
             e->mod = ev.key.mod;
+            e->repeat = ev.key.repeat;
             return true;
         case SDL_EVENT_MOUSE_MOTION:
             SDL_ConvertEventToRenderCoordinates(platform.ren, &ev); /* window points -> output pixels */
