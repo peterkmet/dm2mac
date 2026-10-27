@@ -138,16 +138,15 @@ void explosion_process_event(TimelineEvent *e);
 
 /* ---- Creature attacks ---- */
 
-/* The 4 cells of the party on party_at that a creature on at attacks first to last; cell 0xff: random order.
-   It is exported for the tests. */
+/* The 4 cells of the party on party_at that a creature on at attacks first to last; cell 0xff: random order. */
 void projectile_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell);
 /* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
 int projectile_attack_champion(uint16_t group, int champ);
 
 /* ---- Missiles that the party walks into ---- */
 
-/* The party moves from (from_x, from_y) to (to_x, to_y): the projectiles there hit the champions. */
-void projectile_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y);
+/* The party moves from from to to (to.x -1: no step): the projectiles there hit the champions. */
+void projectile_check_missiles_hit_party(Location from, Location to);
 
 /* ---- Launches of sensors and champions ---- */
 

@@ -137,6 +137,10 @@ def take(s, x, y, thing):
     s.emu.call(DUN_UNLINK_THING, thing, 0, x, y)
 
 
+class Location(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
+
+
 class ProjectileLaunch(ctypes.Structure):
     _fields_ = [("payload", ctypes.c_uint16), ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("cell", ctypes.c_int16),
                 ("dir", ctypes.c_int16), ("energy", ctypes.c_uint8), ("hit_chance", ctypes.c_uint8),
@@ -319,7 +323,7 @@ def test_missiles_hit_party_on_moves(pj, lib):
                    rng.randrange(256), rng.randrange(16))
         for _ in range(rng.randrange(4)):
             pj.step()  # the first move at the second step: the events become 0x1e
-        pj.lib.projectile_check_missiles_hit_party(x, y, tx, ty)
+        pj.lib.projectile_check_missiles_hit_party(Location(x, y), Location(tx, ty))
         pj.emu.call(MOVE_CHECK_MISSILES, x, y, tx, ty)
         hit += bool(pj.damage)
         check(pj, ("check", n, map_, x, y, tx, ty))
@@ -417,10 +421,6 @@ def test_creature_attacks_champions(pj, lib):
         check(pj, ("attack", n, map_, x, y, hex(g), champ))
     assert attacks > 50 and woke > 5
     sleeping.value = 0
-
-
-class Location(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
 def test_ordered_attack_cells(pj, lib):
@@ -621,9 +621,9 @@ def test_projectiles_at_wall_sensors(pj, lib):
     assert_saves(pj, "end")
 
 
-def test_missile_walls_and_packed_explosions(pj, lib):
-    # Spells fly into a lasting missile wall (explosion 0xff8e) and turn back; explosions get the packed squares of a
-    # hit (x above 0xff: the hit square in the low bytes, the explosion square in the high bytes).
+def test_missile_walls_and_explosions(pj, lib):
+    # Spells fly into a lasting missile wall (explosion 0xff8e) and turn back; explosions next to the square of the
+    # party.
     rng = random.Random(171)
     four_champions(pj, rng)
     places = squares(lib, (C.SQUARE_FLOOR,))
@@ -638,10 +638,9 @@ def test_missile_walls_and_packed_explosions(pj, lib):
             both(pj, lib.explosion_create, EXPLOSION_CREATE, C.SPELL_MISSILE_WALL, rng.randrange(20, 256), x, y, C.EXPLOSION_AT_CENTER)
             launch(pj, rng.choice(SPELLS), sx, sy, rng.randrange(C.DIR_COUNT), d, rng.randrange(1, 256), rng.randrange(256), 1)
         else:
-            hx, hy = x - DIRS[d][0], y - DIRS[d][1]
             both(pj, lib.explosion_create, EXPLOSION_CREATE, rng.choice((C.SPELL_FIREBALL, C.SPELL_LIGHTNING, C.EXPLOSION_STORM_LIGHTNING, C.EXPLOSION_STORM_BLAST,
                          C.SPELL_POISON_CLOUD)),
-                 rng.randrange(256), hx | (x + 1) << 8, hy | y << 8, rng.randrange(C.DIR_COUNT))
+                 rng.randrange(256), x, y, rng.randrange(C.DIR_COUNT))
         check(pj, ("start", n))
         run_out(pj, ("wall", n, map_, x, y), limit=300)
     assert_saves(pj, "end")
