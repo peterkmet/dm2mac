@@ -144,6 +144,5 @@ long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan comman
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
-long engine/aspect.c:wall_sensor_ornament rule 5.8: one short case for each wall sensor type
 module platform/main.c rule 1.7: the entry point has no header
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit

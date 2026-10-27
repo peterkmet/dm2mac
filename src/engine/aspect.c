@@ -171,6 +171,17 @@ static bool wall_text_ornament(ViewSquare *s, uint16_t thing, int face, Ornament
     return true;
 }
 
+/* A shown altar sensor animates its ornament, hides the things behind it, and on the front face sets the text of s. */
+static void altar_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentState *o)
+{
+    if (sensor_flag(thing, SENSOR_ALTAR_SHOWN)) {
+        if (face == SIDE_FRONT)
+            s->text = sensor_data(thing);
+        o->hides_rest = true;
+        o->animated = true;
+    }
+}
+
 /* The ornament of a wall sensor on face of s by its sensor type; wall text and altar sensors set the text of s.
    Sets o->hides_rest when the things behind it in its cell do not show. Returns false when the sensor has no
    ornament. */
@@ -225,12 +236,7 @@ static bool wall_sensor_ornament(ViewSquare *s, int map, uint16_t thing, int fac
         o->frame = active;
         break;
     case SENSOR_ALTAR:
-        if (sensor_flag(thing, SENSOR_ALTAR_SHOWN)) {
-            if (face == SIDE_FRONT)
-                s->text = sensor_data(thing);
-            o->hides_rest = true;
-            o->animated = true;
-        }
+        altar_ornament(s, thing, face, o);
         break;
     }
     return true;
