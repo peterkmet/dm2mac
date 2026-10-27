@@ -38,6 +38,7 @@ enum ActionMode {
 
 /* Action area state; Step 14 (clicks) and Step 15 (actions) change it. */
 typedef struct {
+    /* ordinal as in the original: the input tree compares it with node arguments */
     int16_t champion;     /* champion ordinal whose hand or spell panel is open, 0: the hands of the party */
     int16_t hand;         /* the open hand, ACTION_HAND_SPELL for the spell panel */
     int16_t mode;         /* an ActionMode */
@@ -47,7 +48,8 @@ typedef struct {
     int16_t result;       /* the result to show: damage (>= 0) or a failure (< 0), 0 none */
     int16_t result_flag;  /* for result -2: 0 shows "no ammunition" with the champion's hand picture */
     uint16_t result_ammo; /* for result -2: the ammunition kinds (weapon attribute 5) that the action needs */
-    int16_t flash;        /* champion ordinal whose icon flashes (> 0 on, < 0 off), 0 none */
+    /* ordinal as in the original: the input tree compares it with node arguments */
+    int16_t flash; /* champion ordinal whose icon flashes (> 0 on, < 0 off), 0 none */
     int16_t flash_hand;
     uint8_t map_item;                                   /* GDAT index of the open minion map */
     uint16_t open_items[CONTAINER_SLOTS];               /* the items of the open container */

@@ -28,7 +28,9 @@ extern MainLoop g_main_loop;
 
 /* Interface state that the drawing reads. */
 typedef struct {
-    int16_t inventory;         /* champion ordinal (champion + 1) of the open inventory, 0 none */
+    /* ordinal as in the original: the input tree compares it with node arguments */
+    int16_t inventory; /* champion ordinal (champion + 1) of the open inventory, 0 none */
+    /* ordinal as in the original: the input tree compares it with node arguments */
     uint16_t candidate;        /* champion ordinal of a champion that is being recruited, 0 none */
     bool screen_needs_refresh; /* the next drawing of the champion states redraws the whole open inventory */
     uint16_t buttons;          /* inventory buttons that show pressed */
@@ -68,6 +70,7 @@ enum InputMode {
 /* The last command stops the command processing of this tick. */
 extern bool g_input_command_stop;
 /* A champion portrait or an object is dragged, 0 none. */
+/* ordinal as in the original: the input tree compares it with node arguments */
 extern int g_input_drag_state;
 /* Mouse event types: buttons (bit 1 left, bit 0 right), a released left button (only while the eye or the mouth is
    held or the automap is open), a key. */
