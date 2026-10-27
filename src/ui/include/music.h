@@ -17,12 +17,14 @@
 #define MUSIC_NO_SONG 0xff
 
 typedef struct {
-    int enabled; /* the FM driver has its banks */
-    int songlist_loaded;
+    bool enabled; /* the FM driver has its banks */
+    bool songlist_loaded;
     uint8_t songlist[SONGLIST_MAX]; /* song number of each map */
     int songlist_size;
     int16_t fade; /* game steps left of the fade-out before the next song; 0: no fade */
-    int paused, playing, started;
+    bool paused;
+    bool playing;
+    bool started;
     int16_t requested_song; /* last song asked for, -1 at start */
     uint8_t current_song, next_song;
     int16_t volume; /* music volume setting, 0 to 7 */

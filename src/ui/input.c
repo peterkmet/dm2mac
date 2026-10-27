@@ -1602,7 +1602,7 @@ static void feedback_rune_button(Feedback *f)
     const Bitmap *image = draw_gdat_image(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED);
     if (!image)
         return;
-    int16_t r[RECT_SIZE], w, h;
+    int16_t r[RECT_SIZE];
     feedback_init_rect(f, r, image->width, image->height);
     offscreen_blit(
         &f->o,
@@ -1613,8 +1613,8 @@ static void feedback_rune_button(Feedback *f)
     /* the rune of the pressed button in the next rune set */
     int set = champion(g_action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
     char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
-    text_measure(text, &w, &h);
-    rect_center_in(r, f->o.rect, w, h);
+    TextSize size = text_measure(text);
+    rect_center_in(r, f->o.rect, size.w, size.h);
     offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1,
                            (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_CYAN]}, text);
 }

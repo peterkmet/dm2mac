@@ -195,9 +195,9 @@ static bool load_graphics(const char *data)
 static void set_icon(void)
 {
     static uint32_t argb[ICON_MAX_PIXELS];
-    int w, h;
-    if (icon_build(gdat_current(), argb, ICON_MAX_PIXELS, &w, &h))
-        plat_set_icon(argb, w, h);
+    IconSize size = icon_build(gdat_current(), argb, ICON_MAX_PIXELS);
+    if (size.width)
+        plat_set_icon(argb, size.width, size.height);
 }
 
 /* Loads a save and starts its game at once; false with a message on an error. */

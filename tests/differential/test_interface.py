@@ -393,11 +393,16 @@ def test_draw_text_matches_original(port, original):
         assert bytes(mine) == emu.read(src, size), (case, s, x, y, color, bg, bpp)
 
 
+class TextSize(ctypes.Structure):
+    _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
+
+
 def test_measure_and_wrap_match_original(port, original):
     lib = port
     emu = original.emu
     lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
-    lib.text_measure.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.POINTER(ctypes.c_int16)]
+    lib.text_measure.argtypes = [ctypes.c_char_p]
+    lib.text_measure.restype = TextSize
     rng = random.Random(14)
     text, line, out = original.alloc(256), original.alloc(256), original.alloc(16)
     for case in range(300):
@@ -407,11 +412,11 @@ def test_measure_and_wrap_match_original(port, original):
         if rng.random() < 0.3:
             s = s.replace(b" ", b"\n", 1)
         emu.write(text, s + b"\0")
-        w, h = ctypes.c_int16(), ctypes.c_int16()
         theirs = emu.call(TEXT_MEASURE, text, out, out + 2)
-        assert lib.text_measure(s, ctypes.byref(w), ctypes.byref(h)) == theirs
+        size = lib.text_measure(s)
+        assert (size.w != 0) == bool(theirs)
         if theirs:
-            assert (w.value, h.value) == struct.unpack("<hh", emu.read(out, 4))
+            assert (size.w, size.h) == struct.unpack("<hh", emu.read(out, 4))
         max_width = rng.randrange(1, 200)
         pos = ctypes.c_int16(0)
         emu.write(out, bytes(2))

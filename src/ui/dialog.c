@@ -52,7 +52,9 @@ void dialog_present(void)
         play_present_viewport();
         return;
     }
-    int16_t r[RECT_SIZE], x = 0, y = 0;
+    int16_t r[RECT_SIZE];
+    int16_t x = 0;
+    int16_t y = 0;
     if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y))
         ui_blit_bitmap(&(BlitSource){.bitmap = &g_view_viewport, .x = x, .y = y, .transparent = GFX_OPAQUE},
                        &g_draw_screen, r);
@@ -61,13 +63,16 @@ void dialog_present(void)
 /* The message texts of a dialog, centered in rect: each text wraps to a width near the zone width. */
 static void render_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], const int colors[MESSAGE_TEXTS])
 {
-    int16_t widths[MESSAGE_TEXTS] = {0}, heights[MESSAGE_TEXTS] = {0};
+    int16_t widths[MESSAGE_TEXTS] = {0};
+    int16_t heights[MESSAGE_TEXTS] = {0};
     int total = 0;
     char line[TEXT_SIZE];
     for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i])
             continue;
-        text_measure(texts[i], &widths[i], &heights[i]);
+        TextSize size = text_measure(texts[i]);
+        widths[i] = size.w;
+        heights[i] = size.h;
         int w = rect[RECT_W];
         if (widths[i] > w - (w >> WRAP_MARGIN_SHIFT))
             widths[i] = widths[i] < w + (w >> WRAP_SHRINK_SHIFT)
@@ -109,7 +114,7 @@ int dialog_draw(int id, int message)
     g_dialog.id = id;
     if (present)
         dialog_screen_mode(1);
-    static char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
+    char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
     int count = 0;
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++)
         if (*gtext_gdat(CAT_DIALOG, id, e, texts[count]))
@@ -123,7 +128,7 @@ int dialog_draw(int id, int message)
     for (int i = 0; i < count; i++)
         text_draw_in_zone(button_text_zones[first + i], g_ui_colors[UI_YELLOW], texts[i]);
     if (id != DIALOG_VOLUME && zone_get_rect(count < 2 ? ZONE_DIALOG_MESSAGE_WIDE : ZONE_DIALOG_MESSAGE, r)) {
-        static char message_texts[MESSAGE_TEXTS][TEXT_SIZE];
+        char message_texts[MESSAGE_TEXTS][TEXT_SIZE];
         char *shown[MESSAGE_TEXTS] = {NULL, NULL};
         int colors[MESSAGE_TEXTS];
         if (message && id == DIALOG_ERROR) {

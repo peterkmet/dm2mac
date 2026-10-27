@@ -3,7 +3,7 @@ import ctypes
 
 import pytest
 
-from dm2test.gdat import OK, c_int_p, gd  # noqa: F401
+from dm2test.gdat import OK, gd  # noqa: F401
 from dm2test.lib import load_lib
 
 
@@ -18,14 +18,17 @@ FACE = (ICON_W // 2, ICON_H // 3)
 MIN_OPAQUE = 1000
 
 
+class IconSize(ctypes.Structure):
+    _fields_ = [("width", ctypes.c_int), ("height", ctypes.c_int)]
+
+
 @pytest.fixture(scope="module")
 def icon(lib, gd):
-    lib.icon_build.restype = ctypes.c_bool
-    lib.icon_build.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int, c_int_p, c_int_p]
+    lib.icon_build.restype = IconSize
+    lib.icon_build.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int]
     argb = (ctypes.c_uint32 * (ICON_W * ICON_H))()
-    w, h = ctypes.c_int(), ctypes.c_int()
-    assert lib.icon_build(gd, argb, len(argb), ctypes.byref(w), ctypes.byref(h)) == 1
-    return w.value, h.value, argb
+    size = lib.icon_build(gd, argb, len(argb))
+    return size.width, size.height, argb
 
 
 def test_size(icon):
@@ -57,5 +60,5 @@ def test_most_pixels_opaque(icon):
 
 def test_too_small_buffer(lib, gd, icon):
     argb = (ctypes.c_uint32 * 10)()
-    w, h = ctypes.c_int(), ctypes.c_int()
-    assert lib.icon_build(gd, argb, len(argb), ctypes.byref(w), ctypes.byref(h)) == 0
+    size = lib.icon_build(gd, argb, len(argb))
+    assert (size.width, size.height) == (0, 0)

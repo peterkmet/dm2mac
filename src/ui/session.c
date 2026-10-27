@@ -106,7 +106,9 @@ static bool file_exists(const char *path)
 static void render_screen_picture(int category, int index, int entry)
 {
     const Bitmap *image = draw_gdat_image(category, index, entry);
-    int16_t r[RECT_SIZE], x = 0, y = 0;
+    int16_t r[RECT_SIZE];
+    int16_t x = 0;
+    int16_t y = 0;
     if (image && zone_compute_rect(image, r, ZONE_SCREEN, &x, &y))
         ui_blit_bitmap(&(BlitSource){.bitmap = image,
                                      .x = x,
@@ -226,7 +228,9 @@ void session_close_slot_dialog(void)
 /* The slot of a click in the slot list. */
 static int clicked_slot(void)
 {
-    int16_t r[RECT_SIZE] = {0}, x = 0, y = 0;
+    int16_t r[RECT_SIZE] = {0};
+    int16_t x = 0;
+    int16_t y = 0;
     zone_get_rect(g_input_match.zone, r);
     zone_get_position(g_input_match.origin, &x, &y);
     int slot = (int16_t)(g_input_match.y - (r[RECT_Y] + y)) / TEXT_LINE_HEIGHT;
@@ -504,7 +508,7 @@ void session_save(void)
     }
     creature_activate_all_maps();
     if (quit) {
-        session_end(0);
+        session_end(false);
         return;
     }
     play_show_view();
@@ -599,7 +603,7 @@ void session_complete(void)
         session_quit(); /* the turn-based mode stays for the next load or new game */
 }
 
-void session_end(int party_dead)
+void session_end(bool party_dead)
 {
     if (party_dead && !g_session.completed) {
         int portrait = g_game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;

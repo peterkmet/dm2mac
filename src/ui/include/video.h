@@ -32,6 +32,11 @@ typedef struct {
     int x, y;
 } VideoPoint;
 
+/* The game screen in the output: its scale and the output position of its top left corner. */
+typedef struct {
+    float scale, x, y;
+} VideoLayout;
+
 /* The game screen: one palette index per pixel. */
 extern uint8_t g_video_fb[SCREEN_H][SCREEN_W];
 /* The VGA palette: red, green, and blue of each color, 6 bits each (0 to 63). */
@@ -42,7 +47,7 @@ uint8_t video_vga_to_8bit(uint8_t v);
 /* ARGB8888 of a palette color. */
 uint32_t video_argb(uint8_t palette_color);
 /* Largest scale (fractional) that fits the output, centered (letterbox). */
-void video_layout(int output_w, int output_h, float *scale, float *ox, float *oy);
+VideoLayout video_layout(int output_w, int output_h);
 /* Maps output pixel coordinates to game coordinates, clamped to the screen. */
 VideoPoint video_map_mouse(int output_w, int output_h, int output_x, int output_y);
 

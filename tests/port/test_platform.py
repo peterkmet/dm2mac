@@ -17,13 +17,16 @@ class VideoPoint(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int), ("y", ctypes.c_int)]
 
 
+class VideoLayout(ctypes.Structure):
+    _fields_ = [("scale", ctypes.c_float), ("x", ctypes.c_float), ("y", ctypes.c_float)]
+
+
 def test_layout_fractional(lib):
-    lib.video_layout.argtypes = [ctypes.c_int, ctypes.c_int] + [ctypes.POINTER(ctypes.c_float)] * 3
-    s, ox, oy = (ctypes.c_float() for _ in range(3))
-    lib.video_layout(1000, 700, s, ox, oy)
-    assert (s.value, ox.value, oy.value) == pytest.approx((3.125, 0, 37.5))
-    lib.video_layout(0, 0, s, ox, oy)  # minimized window
-    assert s.value == 1
+    lib.video_layout.argtypes = [ctypes.c_int, ctypes.c_int]
+    lib.video_layout.restype = VideoLayout
+    layout = lib.video_layout(1000, 700)
+    assert (layout.scale, layout.x, layout.y) == pytest.approx((3.125, 0, 37.5))
+    assert lib.video_layout(0, 0).scale == 1  # minimized window
 
 
 def test_map_mouse_fractional(lib):

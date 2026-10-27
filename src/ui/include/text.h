@@ -38,13 +38,18 @@ typedef struct {
     int color, bg;
 } TextColors;
 
+/* The width and height in pixels of a text line. */
+typedef struct {
+    int16_t w, h;
+} TextSize;
+
 /* Loads the font and the UI colors and clears the message area state; returns false when they are missing. */
 bool text_init(const Gdat *gdat);
 
 /* Draws text into dst with its base line at y. */
 void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);
-/* The width and height in pixels of a text line; returns false for an empty text. */
-bool text_measure(const char *text, int16_t *out_w, int16_t *out_h);
+/* The size of a text line; {0, 0} for an empty text. */
+TextSize text_measure(const char *text);
 /* Copies the part of text from *out_pos that fits in max_width pixels into line, broken at a space when it does
    not fit; *out_pos goes to the rest. Returns the width of line. */
 int text_wrap_line(const char *text, char *line, int16_t *out_pos, int max_width);

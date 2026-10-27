@@ -20,7 +20,6 @@ decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_power rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
-decimal ui/action_area.c rule 3.1: the plain numbers of the rectangle indices and of the one-rune strings s (removed by Task 38)
 decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/fm.c:level_attenuation rule 3.12: a table of SKULL.EXE
 decimal ui/fm.c:op_carrier rule 3.12: a table of SKULL.EXE
@@ -156,7 +155,5 @@ static-local engine/game_text.c rule 7.6: the mutable static locals buf, label (
 static-local engine/item.c rule 7.6: the mutable static local name (removed by Task 34)
 static-local platform/main.c rule 7.6: the mutable static locals saved, gdat, argb, window_x, window_y, path (removed by Task 39)
 static-local platform/platform.c rule 7.6: the mutable static local buf (removed by Task 39)
-static-local ui/dialog.c rule 7.6: the mutable static locals texts, message_texts (removed by Task 38)
-static-local ui/icon.c rule 7.6: the mutable static local px (removed by Task 38)
 static-local ui/input.c rule 7.6: the mutable static local object_cursor (removed by Task 36)
 static-local ui/view.c rule 7.6: the mutable static local palette (removed by Task 37)

@@ -93,7 +93,8 @@ bool zone_load(const Gdat *gdat)
     layout.count = 0;
     if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE)
         return false;
-    int count = le16(p + LAYOUT_RANGE_COUNT), zones = 0;
+    int count = le16(p + LAYOUT_RANGE_COUNT);
+    int zones = 0;
     if (count < 0 || count > RANGE_MAX || LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count > size)
         return false;
     for (int i = 0; i < count; i++) {
@@ -118,9 +119,8 @@ bool zone_load(const Gdat *gdat)
 }
 
 /* The record of zone, NULL for zone 0 or an unknown zone; the first range that holds it wins. */
-static const int16_t *find_zone(int zone)
+static const int16_t *find_zone(int16_t zone)
 {
-    zone = (int16_t)zone;
     if (zone == 0)
         return NULL;
     for (int i = 0; i < layout.count; i++)
@@ -188,7 +188,8 @@ static const int16_t *place_relative(const int16_t *rec, int child, Placement *a
     const int16_t *p = find_zone(rec[ZONE_PARENT]);
     if (!p)
         return NULL;
-    int16_t dx = p[ZONE_X], dy = p[ZONE_Y];
+    int16_t dx = p[ZONE_X];
+    int16_t dy = p[ZONE_Y];
     int parent_anchor = (uint16_t)p[ZONE_TYPE];
     at->last_parent = p[ZONE_PARENT];
     const int16_t *size = find_zone(p[ZONE_PARENT]);
@@ -234,7 +235,8 @@ static bool place_in_parents(const int16_t *rec, Placement *at)
         if (!p)
             break;
         at->last_parent = rec[ZONE_PARENT];
-        int16_t dx = p[SIZE_W], dy = p[SIZE_H];
+        int16_t dx = p[SIZE_W];
+        int16_t dy = p[SIZE_H];
         int parent_type = (uint16_t)p[ZONE_TYPE];
         if (parent_type == ANCHOR_TOP_LEFT) {
             at->x += dx;
@@ -267,8 +269,10 @@ static bool place_in_parents(const int16_t *rec, Placement *at)
 /* Clips the *w x *h box at rect to clip; *w and *h then get the clipped left and top pixel counts. */
 static int16_t *clip_placed(int16_t *rect, const int16_t *clip, int16_t *w, int16_t *h)
 {
-    int16_t width = *w, height = *h;
-    int16_t d = (int16_t)(clip[RECT_X] - rect[RECT_X]), limit;
+    int16_t width = *w;
+    int16_t height = *h;
+    int16_t d = (int16_t)(clip[RECT_X] - rect[RECT_X]);
+    int16_t limit;
     if (d <= 0) {
         *w = 0;
         limit = (int16_t)(clip[RECT_W] + d);
@@ -390,7 +394,8 @@ int16_t *zone_get_viewport_rect(int16_t *rect)
 
 bool zone_interpolate_offset(int from, int to, int percent, int16_t *out_dx, int16_t *out_dy)
 {
-    const int16_t *a = find_zone(from), *b = find_zone(to);
+    const int16_t *a = find_zone(from);
+    const int16_t *b = find_zone(to);
     if (!a || !b)
         return false;
     percent = percent < 0 ? 0 : percent > PERCENT ? PERCENT : percent;
@@ -411,7 +416,8 @@ void zone_set_clip_margins(int left, int top, int right, int bottom)
 
 int16_t *zone_get_icon_rect(int zone, int16_t *rect)
 {
-    int16_t w = ICON_SIZE, h = ICON_SIZE;
+    int16_t w = ICON_SIZE;
+    int16_t h = ICON_SIZE;
     zone_compute_rect(NULL, rect, (int16_t)zone, &w, &h);
     rect[RECT_X] -= ICON_FRAME;
     rect[RECT_Y] -= ICON_FRAME;
@@ -422,7 +428,9 @@ int16_t *zone_get_icon_rect(int zone, int16_t *rect)
 
 void zone_get_position(int zone, int16_t *out_x, int16_t *out_y)
 {
-    int16_t r[RECT_SIZE] = {0}, w = 1, h = 1;
+    int16_t r[RECT_SIZE] = {0};
+    int16_t w = 1;
+    int16_t h = 1;
     zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
     *out_x = r[RECT_X];
     *out_y = r[RECT_Y];

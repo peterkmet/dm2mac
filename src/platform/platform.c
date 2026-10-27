@@ -76,10 +76,9 @@ static SDL_FRect last_picture_rect(int w, int h)
 static void render_frame(void)
 {
     int w, h;
-    float s, ox, oy;
     SDL_GetCurrentRenderOutputSize(platform.ren, &w, &h);
-    video_layout(w, h, &s, &ox, &oy);
-    SDL_FRect dst = {ox, oy, SCREEN_W * s, SCREEN_H * s};
+    VideoLayout layout = video_layout(w, h);
+    SDL_FRect dst = {layout.x, layout.y, SCREEN_W * layout.scale, SCREEN_H * layout.scale};
     SDL_Texture *tex = platform.tex;
     if (platform.movie_last) {
         dst = last_picture_rect(w, h);

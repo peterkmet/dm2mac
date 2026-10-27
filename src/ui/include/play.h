@@ -25,7 +25,7 @@ void play_hide_view(void);
 void play_sleep(void);
 
 /* The main loop */
-/* Prepares a loaded game for play: input mode, map, screen (the original game_start_session). */
+/* Prepares a loaded game for play: input mode, map, screen. */
 void play_start_session(void);
 /* One timer tick of the main loop: input, commands, and at the end of a step the next game step. */
 void play_tick(void);

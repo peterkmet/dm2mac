@@ -30,20 +30,20 @@
 #define MESSAGE_LINE_BASE     (TEXT_LINE_HEIGHT - FONT_BASELINE - 2) /* base line of the text in the new row bitmap */
 
 uint32_t g_text_message_expiry[MESSAGE_ROWS];
-/* The text of each message row, as its pixels show it. */
-static char message_text[MESSAGE_ROWS][MESSAGE_TEXT_SIZE];
-
-static uint8_t font[FONT_SIZE + FONT_CHARS]; /* characters 128 to 255 of the last row read past the font: zeros */
-static uint8_t glyph[FONT_GLYPH_HEIGHT * GLYPH_BYTES_PER_ROW];
 
 static struct {
-    int16_t column; /* pixel column of the next text */
+    uint8_t font[FONT_SIZE + FONT_CHARS]; /* characters 128 to 255 of the last row read past the font: zeros */
+    uint8_t glyph[FONT_GLYPH_HEIGHT * GLYPH_BYTES_PER_ROW]; /* the glyph that build_glyph made last */
+    char message_text[MESSAGE_ROWS][MESSAGE_TEXT_SIZE];     /* the text of each message row, as its pixels show it */
+    int16_t column;                                         /* pixel column of the next text */
     int16_t row;
     int16_t top;         /* y of the first row in the message area */
     bool scroll_pending; /* the new row is in the row bitmap; the area scrolls before the next text */
     uint8_t line[TEXT_LINE_HEIGHT * SCREEN_W];
-} message;
-static Bitmap message_line = {message.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8BPP};
+    Bitmap line_bitmap; /* the row bitmap over line */
+} text_state = {
+    .line_bitmap = {text_state.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8BPP}
+};
 
 bool text_init(const Gdat *gdat)
 {
@@ -53,42 +53,44 @@ bool text_init(const Gdat *gdat)
         gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &size);
     if (!p || !colors)
         return false;
-    memcpy(font, p, FONT_SIZE);
+    memcpy(text_state.font, p, FONT_SIZE);
     gtext_gdat_set_ui_colors(colors);
     text_set_message_cursor(0, MESSAGE_ROWS - 1);
     for (int i = 0; i < MESSAGE_ROWS; i++) {
         g_text_message_expiry[i] = MESSAGE_NEVER;
-        message_text[i][0] = '\0';
+        text_state.message_text[i][0] = '\0';
     }
     int16_t r[RECT_SIZE] = {0};
     zone_get_rect(ZONE_MESSAGE_AREA, r);
-    message.top = (int16_t)((r[RECT_H] - (TEXT_LINE_HEIGHT * MESSAGE_ROWS - FONT_SPACING)) >> 1);
+    text_state.top = (int16_t)((r[RECT_H] - (TEXT_LINE_HEIGHT * MESSAGE_ROWS - FONT_SPACING)) >> 1);
     return true;
 }
 
 /* A 4 bpp glyph of 6 x 6 pixels (3 bytes a row): fg on the set bits, bg on the others. */
 static const uint8_t *build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
 {
-    uint8_t *out = glyph;
+    uint8_t *out = text_state.glyph;
     for (int row = 0; row < FONT_GLYPH_HEIGHT; row++) {
-        uint8_t bits = font[row * FONT_CHARS + c];
+        uint8_t bits = text_state.font[row * FONT_CHARS + c];
         for (int pair = 0; pair < GLYPH_BYTES_PER_ROW; pair++, bits = (uint8_t)(bits << GLYPH_PAIR_SHIFT)) {
-            uint8_t first = bits & GLYPH_BIT_FIRST ? fg : bg, second = bits & GLYPH_BIT_SECOND ? fg : bg;
+            uint8_t first = bits & GLYPH_BIT_FIRST ? fg : bg;
+            uint8_t second = bits & GLYPH_BIT_SECOND ? fg : bg;
             *out++ = (uint8_t)(first << NIBBLE_BIT_COUNT | second);
         }
     }
-    return glyph;
+    return text_state.glyph;
 }
 
 void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text)
 {
     if (!*text)
         return;
-    int color = colors.color, bg = colors.bg;
+    int color = colors.color;
+    int bg = colors.bg;
     int transparent = GFX_OPAQUE;
     if (bg & TEXT_TRANSPARENT) {
         bg &= ~TEXT_TRANSPARENT;
-        transparent = (int16_t)bg;
+        transparent = bg;
     }
     uint8_t colormap[TEXT_COLOR_COUNT] = {(uint8_t)color, (uint8_t)bg};
     if (dst->bpp != IMAGE_4BPP) { /* the glyph holds 0 and 1, the colormap gives the colors */
@@ -113,24 +115,26 @@ void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char 
     }
 }
 
-bool text_measure(const char *text, int16_t *out_w, int16_t *out_h)
+TextSize text_measure(const char *text)
 {
     if (!text)
-        return false;
+        return (TextSize){0, 0};
     int16_t w = -FONT_SPACING;
     for (; *text; text++)
         w += FONT_ADVANCE;
     if (w <= 0)
-        return false;
-    *out_w = w;
-    *out_h = FONT_GLYPH_HEIGHT - FONT_BASELINE;
-    return true;
+        return (TextSize){0, 0};
+    return (TextSize){w, FONT_GLYPH_HEIGHT - FONT_BASELINE};
 }
 
 int text_wrap_line(const char *text, char *line, int16_t *out_pos, int max_width)
 {
-    int16_t p = *out_pos, out = 0, width = 0;
-    int16_t space = -1, space_out = 0, space_width = 0;
+    int16_t p = *out_pos;
+    int16_t out = 0;
+    int16_t width = 0;
+    int16_t space = -1;
+    int16_t space_out = 0;
+    int16_t space_width = 0;
     for (;;) {
         line[out] = '\0';
         char c = text[p];
@@ -159,11 +163,12 @@ int text_wrap_line(const char *text, char *line, int16_t *out_pos, int max_width
 
 void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text)
 {
-    int16_t w, h;
-    if (!text_measure(text, &w, &h))
+    TextSize size = text_measure(text);
+    if (!size.w)
         return;
     if (!(colors.bg & TEXT_TRANSPARENT)) {
-        int16_t box[RECT_SIZE] = {(int16_t)(x - 1), (int16_t)(y - h), (int16_t)(w + 2), (int16_t)(h + 2)};
+        int16_t box[RECT_SIZE] = {(int16_t)(x - 1), (int16_t)(y - size.h), (int16_t)(size.w + 2),
+                                  (int16_t)(size.h + 2)};
         gfx_fill_rect(dst->pixels, box, (uint16_t)colors.bg, dst->width, IMAGE_8BPP);
     }
     TextColors shadow = {g_ui_colors[UI_BLACK], g_ui_colors[UI_WHITE] | TEXT_TRANSPARENT};
@@ -185,8 +190,9 @@ void text_draw_in_viewport(int16_t x, int16_t y, int color, const char *text)
 /* The base line start of text placed in zone; returns false when it is not visible. */
 static bool baseline_in_zone(int zone, const char *text, int16_t *x, int16_t *y)
 {
-    int16_t w, h, r[RECT_SIZE];
-    if (!text_measure(text, &w, &h) || !zone_compute_rect(NULL, r, (int16_t)zone, &w, &h))
+    TextSize size = text_measure(text);
+    int16_t r[RECT_SIZE];
+    if (!size.w || !zone_compute_rect(NULL, r, (int16_t)zone, &size.w, &size.h))
         return false;
     *x = r[RECT_X];
     *y = (int16_t)(r[RECT_Y] + r[RECT_H] - 1);
@@ -211,15 +217,16 @@ void text_set_message_cursor(int column, int row)
 {
     if (column < 0)
         column = 0;
-    int16_t x = (int16_t)(column * FONT_ADVANCE), limit = MESSAGE_WIDTH - FONT_ADVANCE;
-    message.column = x < limit ? x : limit;
-    message.row = (int16_t)(row < 0 ? 0 : row > MESSAGE_ROWS - 1 ? MESSAGE_ROWS - 1 : row);
-    message.scroll_pending = false;
+    int16_t x = (int16_t)(column * FONT_ADVANCE);
+    int16_t limit = MESSAGE_WIDTH - FONT_ADVANCE;
+    text_state.column = x < limit ? x : limit;
+    text_state.row = (int16_t)(row < 0 ? 0 : row > MESSAGE_ROWS - 1 ? MESSAGE_ROWS - 1 : row);
+    text_state.scroll_pending = false;
 }
 
 const char *text_message_row(int row)
 {
-    return row >= 0 && row < MESSAGE_ROWS ? message_text[row] : "";
+    return row >= 0 && row < MESSAGE_ROWS ? text_state.message_text[row] : "";
 }
 
 void text_clear_expired_rows(void)
@@ -229,11 +236,11 @@ void text_clear_expired_rows(void)
     for (int i = 0; i < MESSAGE_ROWS; i++) {
         if (g_text_message_expiry[i] == MESSAGE_NEVER || g_text_message_expiry[i] > g_game.game_time)
             continue;
-        int16_t row[RECT_SIZE] = {r[RECT_X], (int16_t)(message.top + TEXT_LINE_HEIGHT * i + r[RECT_Y]), r[RECT_W],
+        int16_t row[RECT_SIZE] = {r[RECT_X], (int16_t)(text_state.top + TEXT_LINE_HEIGHT * i + r[RECT_Y]), r[RECT_W],
                                   FONT_GLYPH_HEIGHT};
         gfx_fill_rect(g_draw_screen.pixels, row, g_ui_colors[UI_BLACK], g_draw_screen.width, IMAGE_8BPP);
         g_text_message_expiry[i] = MESSAGE_NEVER;
-        message_text[i][0] = '\0';
+        text_state.message_text[i][0] = '\0';
     }
 }
 
@@ -248,7 +255,7 @@ static void shift_message_area(void)
                g_draw_screen.pixels + (y + MESSAGE_SCROLL_HEIGHT) * g_draw_screen.width + r[RECT_X], r[RECT_W]);
     r[RECT_Y] = (int16_t)(r[RECT_Y] + r[RECT_H] - FONT_GLYPH_HEIGHT);
     r[RECT_H] = FONT_GLYPH_HEIGHT;
-    Blit blit = {.src = message.line,
+    Blit blit = {.src = text_state.line,
                  .dst = g_draw_screen.pixels,
                  .src_width = MESSAGE_WIDTH,
                  .dst_width = g_draw_screen.width,
@@ -262,21 +269,21 @@ static void shift_message_area(void)
 /* Goes to the next message row; at the bottom row the new row waits in the row bitmap. */
 static void new_message_line(void)
 {
-    if (message.row != MESSAGE_ROWS - 1) {
-        message.scroll_pending = false;
-        message.row++;
+    if (text_state.row != MESSAGE_ROWS - 1) {
+        text_state.scroll_pending = false;
+        text_state.row++;
         return;
     }
-    if (message.scroll_pending)
+    if (text_state.scroll_pending)
         shift_message_area();
-    gfx_fill_bitmap(&message_line, g_ui_colors[UI_BLACK]);
-    message.scroll_pending = true;
+    gfx_fill_bitmap(&text_state.line_bitmap, g_ui_colors[UI_BLACK]);
+    text_state.scroll_pending = true;
     for (int i = 0; i < MESSAGE_ROWS - 1; i++) {
         g_text_message_expiry[i] = g_text_message_expiry[i + 1];
-        memcpy(message_text[i], message_text[i + 1], MESSAGE_TEXT_SIZE);
+        memcpy(text_state.message_text[i], text_state.message_text[i + 1], MESSAGE_TEXT_SIZE);
     }
     g_text_message_expiry[MESSAGE_ROWS - 1] = MESSAGE_NEVER;
-    message_text[MESSAGE_ROWS - 1][0] = '\0';
+    text_state.message_text[MESSAGE_ROWS - 1][0] = '\0';
 }
 
 /* Draws a message line at the cursor (or into the pending row) and starts its show time. */
@@ -284,15 +291,16 @@ static void show_message_line(int color, const char *line)
 {
     int16_t r[RECT_SIZE];
     zone_get_rect(ZONE_MESSAGE_AREA, r);
-    if (message.scroll_pending)
-        text_draw(&message_line, message.column, MESSAGE_LINE_BASE, (TextColors){color, g_ui_colors[UI_BLACK]}, line);
+    if (text_state.scroll_pending)
+        text_draw(&text_state.line_bitmap, text_state.column, MESSAGE_LINE_BASE,
+                  (TextColors){color, g_ui_colors[UI_BLACK]}, line);
     else
-        text_draw_on_screen(
-            (int16_t)(r[RECT_X] + message.column),
-            (int16_t)(message.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT - FONT_BASELINE - 1 + message.top),
-            color, g_ui_colors[UI_BLACK], line);
-    g_text_message_expiry[message.row] = g_game.game_time + MESSAGE_SHOW_TIME;
-    char *text = message_text[message.row];
+        text_draw_on_screen((int16_t)(r[RECT_X] + text_state.column),
+                            (int16_t)(text_state.row * TEXT_LINE_HEIGHT + r[RECT_Y] + FONT_GLYPH_HEIGHT -
+                                      FONT_BASELINE - 1 + text_state.top),
+                            color, g_ui_colors[UI_BLACK], line);
+    g_text_message_expiry[text_state.row] = g_game.game_time + MESSAGE_SHOW_TIME;
+    char *text = text_state.message_text[text_state.row];
     size_t length = strlen(text);
     snprintf(text + length, MESSAGE_TEXT_SIZE - length, "%s", line);
 }
@@ -300,11 +308,11 @@ static void show_message_line(int color, const char *line)
 /* Shows the row bitmap of a new row that is still pending. */
 static void flush_pending_row(void)
 {
-    if (!message.scroll_pending)
+    if (!text_state.scroll_pending)
         return;
     shift_message_area();
-    gfx_fill_bitmap(&message_line, g_ui_colors[UI_BLACK]);
-    message.scroll_pending = false;
+    gfx_fill_bitmap(&text_state.line_bitmap, g_ui_colors[UI_BLACK]);
+    text_state.scroll_pending = false;
 }
 
 void text_print_message(int color, const char *text)
@@ -314,19 +322,19 @@ void text_print_message(int color, const char *text)
     char line[TEXT_SIZE];
     int16_t pos = 0;
     while (text[pos]) {
-        int width = text_wrap_line(text, line, &pos, MESSAGE_WIDTH - message.column);
+        int width = text_wrap_line(text, line, &pos, MESSAGE_WIDTH - text_state.column);
         if (text[pos] == '\n') {
             new_message_line();
             show_message_line(c, line);
-            message.column = 0;
+            text_state.column = 0;
             pos++;
         } else if (text[pos] == '\0') {
             show_message_line(c, line);
-            message.column = (int16_t)(message.column + width);
+            text_state.column = (int16_t)(text_state.column + width);
         } else {
             show_message_line(c, line);
             new_message_line();
-            message.column = MESSAGE_INDENT;
+            text_state.column = MESSAGE_INDENT;
         }
     }
     flush_pending_row();

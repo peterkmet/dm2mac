@@ -17,7 +17,7 @@
 /* The save slots of the slot dialogs. */
 #define SAVE_SLOT_COUNT 10
 
-/* Exit codes of the program (the original system_shutdown): the launcher of the DOS game reads them. */
+/* Exit codes of the program: the launcher of the DOS game reads them. */
 #define EXIT_QUIT       0
 #define EXIT_COMPLETED  1
 #define EXIT_PARTY_DEAD 2
@@ -63,9 +63,9 @@ void session_quit(void);
 /* The party finished the game: the screen goes black and the program ends; the turn-based mode only sets
    g_session.completed. */
 void session_complete(void);
-/* The end of a game: the party died (party_dead 1) or the player quit (0). Offers the load of the last slot; returns
-   when a game loaded again, else quits. */
-void session_end(int party_dead);
+/* The end of a game: the party died (party_dead) or the player quit. Offers the load of the last slot; returns when a
+   game loaded again, else quits. */
+void session_end(bool party_dead);
 
 /* ---- Champion names ---- */
 /* The player edits the name and the title of a champion in the inventory. */

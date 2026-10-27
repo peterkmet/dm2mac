@@ -2118,13 +2118,14 @@ static bool target_has_item(uint16_t record, int type, int loose)
 /* Draws text centered at x with its base line at y in the view, in the view shade. */
 static void show_centered_label(int x, int y, const char *text)
 {
-    int16_t width, height, count = UI_COLOR_COUNT;
-    if (!text_measure(text, &width, &height))
+    int16_t count = UI_COLOR_COUNT;
+    TextSize size = text_measure(text);
+    if (!size.w)
         return;
     uint8_t colors[UI_COLOR_COUNT];
     memcpy(colors, g_ui_colors, sizeof colors);
     pal_apply_dim_remap(colors, view.shade, NO_KEY, NO_KEY, &count);
-    text_draw_with_shadow(&g_view_viewport, x - (width >> 1), y,
+    text_draw_with_shadow(&g_view_viewport, x - (size.w >> 1), y,
                           (TextColors){colors[UI_WHITE], colors[UI_BLACK] | TEXT_TRANSPARENT}, text);
 }
 
