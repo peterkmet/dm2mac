@@ -43,20 +43,20 @@
 #define SPELL_SUMMON  0x04
 
 /* Types of the SPELL_OTHER spells. */
-#define OTHER_LIGHT        0x00
-#define OTHER_DARKNESS     0x01
-#define OTHER_AURA_1       0x02
-#define OTHER_INVISIBILITY 0x03
-#define OTHER_AURA_2       0x04
-#define OTHER_TORCH        0x05
-#define OTHER_AURA_5       0x06
-#define OTHER_AURA_4       0x07
-#define OTHER_AURA_0       0x08
-#define OTHER_AURA_6       0x09
-#define OTHER_AURA_3       0x0a
-#define OTHER_HASTE        0x0b
-#define OTHER_EXPLOSION    0x0e
-#define OTHER_CREATE_ITEM  0x0f
+#define OTHER_LIGHT          0x00
+#define OTHER_DARKNESS       0x01
+#define OTHER_SPELL_SHIELD   0x02
+#define OTHER_INVISIBILITY   0x03
+#define OTHER_PARTY_SHIELD   0x04
+#define OTHER_TORCH          0x05
+#define OTHER_AURA_WISDOM    0x06
+#define OTHER_AURA_DEXTERITY 0x07
+#define OTHER_FIRE_SHIELD    0x08
+#define OTHER_AURA_VITALITY  0x09
+#define OTHER_AURA_STRENGTH  0x0a
+#define OTHER_HASTE          0x0b
+#define OTHER_EXPLOSION      0x0e
+#define OTHER_CREATE_ITEM    0x0f
 
 /* Spell types and ids that the rules single out. */
 #define MISSILE_DOUBLE_SKILL   0x04 /* this missile spell counts the skill twice */
@@ -218,15 +218,15 @@ static const SpellName spell_names[] = {
     {SPELL_MISSILE, SPELL_PULL - SPELL_THING_FIRST,              "PULL"             },
     {SPELL_OTHER,   OTHER_LIGHT,                                 "LIGHT"            },
     {SPELL_OTHER,   OTHER_DARKNESS,                              "DARKNESS"         },
-    {SPELL_OTHER,   OTHER_AURA_1,                                "SPELL SHIELD"     },
+    {SPELL_OTHER,   OTHER_SPELL_SHIELD,                          "SPELL SHIELD"     },
     {SPELL_OTHER,   OTHER_INVISIBILITY,                          "INVISIBILITY"     },
-    {SPELL_OTHER,   OTHER_AURA_2,                                "PARTY SHIELD"     },
+    {SPELL_OTHER,   OTHER_PARTY_SHIELD,                          "PARTY SHIELD"     },
     {SPELL_OTHER,   OTHER_TORCH,                                 "MAGIC TORCH"      },
-    {SPELL_OTHER,   OTHER_AURA_5,                                "AURA OF WISDOM"   },
-    {SPELL_OTHER,   OTHER_AURA_4,                                "AURA OF DEXTERITY"},
-    {SPELL_OTHER,   OTHER_AURA_0,                                "FIRE SHIELD"      },
-    {SPELL_OTHER,   OTHER_AURA_6,                                "AURA OF VITALITY" },
-    {SPELL_OTHER,   OTHER_AURA_3,                                "AURA OF STRENGTH" },
+    {SPELL_OTHER,   OTHER_AURA_WISDOM,                           "AURA OF WISDOM"   },
+    {SPELL_OTHER,   OTHER_AURA_DEXTERITY,                        "AURA OF DEXTERITY"},
+    {SPELL_OTHER,   OTHER_FIRE_SHIELD,                           "FIRE SHIELD"      },
+    {SPELL_OTHER,   OTHER_AURA_VITALITY,                         "AURA OF VITALITY" },
+    {SPELL_OTHER,   OTHER_AURA_STRENGTH,                         "AURA OF STRENGTH" },
     {SPELL_OTHER,   OTHER_HASTE,                                 "HASTE"            },
     {SPELL_OTHER,   OTHER_EXPLOSION,                             "MISSILE WALL"     },
     {SPELL_OTHER,   OTHER_CREATE_ITEM,                           "YA EW ITEM"       },
@@ -367,7 +367,7 @@ void magic_event_light(TimelineEvent *e)
     int16_t level = (int16_t)read_event_word(e);
     if (!level)
         return;
-    int fading_light = level < 0; /* light events count up from minus the level, darkness events down */
+    bool fading_light = level < 0; /* light events count up from minus the level, darkness events down */
     if (fading_light)
         level = (int16_t)-level;
     int16_t next = (int16_t)(level - 1);
@@ -388,7 +388,7 @@ void magic_event_light(TimelineEvent *e)
 
 void magic_add_party_aura(int champion_mask, int type, int value, uint16_t duration)
 {
-    int big = 0;
+    bool big = false;
     for (int i = 0; i < CHAMPION_MAX; i++) {
         Champion *c = champion(i);
         int bit = 1 << i;
@@ -411,7 +411,7 @@ void magic_add_party_aura(int champion_mask, int type, int value, uint16_t durat
             }
         }
         if (c->aura_value > AURA_BIG)
-            big = 1;
+            big = true;
     }
     if (big)
         value = (int16_t)(value >> AURA_BIG_SHIFT);
@@ -510,7 +510,12 @@ static void cast_create_item(void)
 /* The spells that are neither potions, missiles, nor summons. */
 static void cast_other(Champion *c, int type, int skill, int power)
 {
-    static const int8_t aura_types[OTHER_CREATE_ITEM + 1] = {-1, -1, 1, -1, 2, -1, 5, 4, 0, 6, 3};
+    /* the aura type of each aura spell */
+    static const int8_t aura_types[OTHER_CREATE_ITEM + 1] = {
+        [OTHER_FIRE_SHIELD] = AURA_FIRE_SHIELD,  [OTHER_SPELL_SHIELD] = AURA_SPELL_SHIELD,
+        [OTHER_PARTY_SHIELD] = AURA_DEFENSE,     [OTHER_AURA_STRENGTH] = AURA_STRENGTH,
+        [OTHER_AURA_DEXTERITY] = AURA_DEXTERITY, [OTHER_AURA_WISDOM] = AURA_WISDOM,
+        [OTHER_AURA_VITALITY] = AURA_VITALITY};
     int steps = (power + 1) * OTHER_STEPS_PER_POWER;
     switch (type) {
     case OTHER_LIGHT:
@@ -529,17 +534,17 @@ static void cast_other(Champion *c, int type, int skill, int power)
         timeline_add_event(&e);
         return;
     }
-    case OTHER_AURA_0:
-    case OTHER_AURA_1:
+    case OTHER_FIRE_SHIELD:
+    case OTHER_SPELL_SHIELD:
         magic_cast_party_aura(c, aura_types[type], (uint16_t)(steps * steps + AURA_STRONG_BASE), 0);
         return;
-    case OTHER_AURA_2:
+    case OTHER_PARTY_SHIELD:
         magic_cast_party_aura(c, aura_types[type], (uint16_t)(steps * steps), 0);
         return;
-    case OTHER_AURA_3:
-    case OTHER_AURA_4:
-    case OTHER_AURA_5:
-    case OTHER_AURA_6:
+    case OTHER_AURA_STRENGTH:
+    case OTHER_AURA_DEXTERITY:
+    case OTHER_AURA_WISDOM:
+    case OTHER_AURA_VITALITY:
         magic_cast_party_aura(c, aura_types[type], (uint16_t)((steps + AURA_STEPS_BASE) * (steps + AURA_STEPS_BASE)),
                               0);
         return;

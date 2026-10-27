@@ -807,11 +807,11 @@ void dungeon_append_thing(uint16_t thing, uint16_t *list);
 bool dungeon_link_thing_to_square(uint16_t thing, int16_t map, int16_t x, int16_t y);
 /* Removes thing from the square's thing list. */
 void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, int16_t y);
-/* type | THING_ANY_RECORD: a miscellaneous item may take the records that the dungeon keeps for the game. */
-#define THING_ANY_RECORD 0x8000
 /* Takes a free record of type, cleared, without cell bits. When the table is full, it reuses a thing from
    dun_get_discarded_thing; THING_NONE when there is none. */
 uint16_t dungeon_unused_thing(int type);
+/* As dungeon_unused_thing; a miscellaneous item may also take the records that the dungeon keeps for the game. */
+uint16_t dungeon_unused_thing_any_record(int type);
 /* dun_get_discarded_thing (move.h): a thing of any kind. */
 #define DISCARD_ANY_KIND 0xff
 /* The map where the last search for each thing type ended; the next search starts there. */

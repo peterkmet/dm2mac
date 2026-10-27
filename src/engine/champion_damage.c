@@ -480,7 +480,7 @@ static void kill_champion(int champ)
     }
     drop_all_objects(champ);
     int cell = c->cell;
-    uint16_t bones = dungeon_unused_thing(THING_MISC | THING_ANY_RECORD);
+    uint16_t bones = dungeon_unused_thing_any_record(THING_MISC);
     if (bones != THING_NONE) {
         item_set_type(bones, ITEM_BONES);
         item_set_kept(bones, true);

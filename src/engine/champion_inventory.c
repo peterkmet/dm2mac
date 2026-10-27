@@ -143,15 +143,15 @@ static void add_effect_end_event(int champ, uint16_t thing)
 
 void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode)
 {
-    if ((int16_t)champ < 0 || thing == THING_NONE)
+    if (champ < 0 || thing == THING_NONE)
         return;
-    if ((int16_t)slot < SLOT_COUNT) {
+    if (slot < SLOT_COUNT) {
         uint16_t flags = item_attr(thing, ATTR_FLAGS);
         if (mode && flags & ITEM_FLAG_LIGHT)
             light_update_party_light();
         if (flags & ATTR_HAS_EFFECTS) {
             Champion *c = champion(champ);
-            bool equipped = item_fits_slot(thing, slot, 1) != 0;
+            bool equipped = item_fits_slot(thing, slot, true);
             bool timed = false;
             int m;
             if (mode != EFFECT_MODE_LOAD && mode != EFFECT_MODE_RESTORE && mode != EFFECT_MODE_CONSUME_END)
@@ -225,7 +225,7 @@ void inv_update_hand_cursor(void)
 {
     if (g_game.leader_hand == THING_NONE || !(item_attr(g_game.leader_hand, ATTR_FLAGS) & ITEM_FLAG_ICON_IN_HAND))
         return;
-    uint8_t icon = (uint8_t)item_icon_index(g_game.leader_hand, -1, 1);
+    uint8_t icon = (uint8_t)item_icon_index(g_game.leader_hand, -1, true);
     if (icon == g_leader_hand.icon)
         return;
     g_hooks.render_hand_icon();
@@ -286,7 +286,7 @@ void inv_click_slot(int16_t slot)
     uint16_t thing = slot_thing(champ, slot);
     if (thing == THING_NONE && hand == THING_NONE)
         return;
-    if (hand != THING_NONE && !item_fits_slot(hand, slot, 0))
+    if (hand != THING_NONE && !item_fits_slot(hand, slot, false))
         return;
     if (hand != THING_NONE)
         champ_take_from_leader_hand();
@@ -297,8 +297,8 @@ void inv_click_slot(int16_t slot)
     if (hand != THING_NONE)
         champ_add_object_to_slot(champ, hand, slot);
     g_hooks.draw_all_champion_states(0);
-    if (slot == SLOT_QUIVER_READY || slot == SLOT_QUIVER_FIRST || slot == SLOT_QUIVER_ACTION ||
-        (slot > SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot >= SLOT_COUNT) {
+    if ((slot >= SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot == SLOT_QUIVER_READY ||
+        slot == SLOT_QUIVER_ACTION || slot >= SLOT_COUNT) {
         g_action.redraw_delay = 1;
         g_hooks.update_action_area(0);
     }
@@ -333,7 +333,7 @@ void inv_put_in_free_slot(int champ, uint16_t thing)
     };
     for (size_t r = 0; r < sizeof ranges / sizeof *ranges; r++)
         for (int slot = ranges[r].first; slot <= ranges[r].last; slot++)
-            if (champion(champ)->slots[slot] == THING_NONE && item_fits_slot(thing, slot, 0) &&
+            if (champion(champ)->slots[slot] == THING_NONE && item_fits_slot(thing, slot, false) &&
                 (ranges[r].type < 0 || ranges[r].type == (int)thing_type(thing))) {
                 champ_add_object_to_slot(champ, thing, slot);
                 return;

@@ -40,6 +40,8 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define ITEM_FIRST_CREATURE  0x01b0
 #define ITEM_FIRST_CONTAINER 0x01e0
 #define ITEM_SCROLL          0x01fc
+/* Item index bit: a miscellaneous item may take the records that the dungeon keeps for the game. */
+#define ITEM_ANY_RECORD      0x8000
 /* Miscellaneous item 0 (CAT_MISC index): the bones of a champion. */
 #define ITEM_BONES           0
 
@@ -94,9 +96,9 @@ int item_charges(uint16_t thing);
 /* The highest charge count of the thing type. */
 int item_max_charges(uint16_t thing);
 /* True when thing may go into slot. strict: only the champion slots 0 to 12 (or -1, a hand) count. */
-int item_fits_slot(uint16_t thing, int16_t slot, int strict);
+bool item_fits_slot(uint16_t thing, int16_t slot, bool strict);
 /* The icon entry of an item in slot (animated: by its icon animation attribute). */
-int item_icon_index(uint16_t thing, int16_t slot, int animated);
+int item_icon_index(uint16_t thing, int16_t slot, bool animated);
 /* True when the thing is a money box: a chest with coin slots. */
 bool item_is_moneybox(uint16_t thing);
 /* True when the thing is a chest that is no money box. */
@@ -109,7 +111,8 @@ int item_weight(uint16_t thing);
 uint16_t item_get_value(uint16_t thing);
 /* True when one of the actions of the item uses charges. */
 bool item_has_charged_action(uint16_t thing);
-/* The name of an item: GDAT text (category, index, 0x18) with its format codes. Uses one static buffer. */
+/* The name of an item: GDAT text (category, index, 0x18) with its format codes. The text stays valid until the next
+   call. */
 const char *item_name(uint16_t thing);
 
 /* Item commands */
@@ -118,9 +121,9 @@ int item_add_charges(uint16_t thing, int delta);
 /* Changes the GDAT index (the kind) of an item or creature group. */
 void item_set_gdat_index(uint16_t thing, int index);
 /* Sets or clears the bit that keeps a thing from being reused when the dungeon runs out of records. */
-void item_set_do_not_discard(uint16_t thing, int keep);
-/* A new item of item index item (bit 15: a miscellaneous item may take the kept records); THING_NONE when the
-   dungeon has no free record. */
+void item_set_do_not_discard(uint16_t thing, bool keep);
+/* A new item of item index item (with ITEM_ANY_RECORD: a miscellaneous item may take the kept records); THING_NONE
+   when the dungeon has no free record. */
 uint16_t item_create_by_index(uint16_t item);
 
 /* Minion links. */

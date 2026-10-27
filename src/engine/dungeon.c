@@ -1001,10 +1001,11 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, in
     thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
 }
 
-uint16_t dungeon_unused_thing(int type)
+/* Takes a free record of type; any_record: a miscellaneous item may take the records that the dungeon keeps. */
+static uint16_t take_unused_thing(int type, bool any_record)
 {
-    int count = dun.thing_count[type & THING_TYPE_MASK] - (type == THING_MISC ? MISC_RESERVED : 0);
     type &= THING_TYPE_MASK;
+    int count = dun.thing_count[type] - (type == THING_MISC && !any_record ? MISC_RESERVED : 0);
     uint16_t thing = THING_NONE;
     for (int i = 0; i < count && thing == THING_NONE; i++)
         if (dungeon_next_thing(thing_make(type, i)) == THING_NONE)
@@ -1018,4 +1019,14 @@ uint16_t dungeon_unused_thing(int type)
     if (type == THING_CONTAINER)
         thing_set_word(thing, CONTAINER_CONTENTS, THING_ENDOFLIST);
     return thing;
+}
+
+uint16_t dungeon_unused_thing(int type)
+{
+    return take_unused_thing(type, false);
+}
+
+uint16_t dungeon_unused_thing_any_record(int type)
+{
+    return take_unused_thing(type, true);
 }

@@ -63,18 +63,17 @@ static const uint16_t slot_item_masks[] = {0x0200, 0x0100, 0x0001, 0x0004, 0x000
 /* The champion slots that have a slot mask. */
 #define SLOT_MASK_COUNT ((int)(sizeof slot_item_masks / sizeof *slot_item_masks))
 
-/* The 16-bit field of a thing record at byte offset offset. */
-static uint16_t record_word(uint16_t thing, int offset)
-{
-    return thing_word(thing, offset);
-}
+/* The text that item_name returns. */
+static struct {
+    char name[TEXT_SIZE];
+} items;
 
 /* GDAT keys of things and item indices */
 
 uint8_t item_gdat_category(uint16_t thing)
 {
     while (thing != THING_NONE && thing_type(thing) == THING_PROJECTILE)
-        thing = record_word(thing, PROJECTILE_PAYLOAD);
+        thing = thing_word(thing, PROJECTILE_PAYLOAD);
     return thing == THING_NONE ? CAT_NONE : thing_gdat_category[thing_type(thing)];
 }
 
@@ -101,7 +100,7 @@ uint8_t item_gdat_index(uint16_t thing)
         case THING_CONTAINER:
             return (uint8_t)container_gdat_index(thing);
         case THING_PROJECTILE:
-            thing = record_word(thing, PROJECTILE_PAYLOAD);
+            thing = thing_word(thing, PROJECTILE_PAYLOAD);
             break;
         case THING_TEXT: {
             /* the ornament of a data text: subtypes 0, 2, 5, and 13 */
@@ -232,26 +231,26 @@ int item_max_charges(uint16_t thing)
                                                         : 0;
 }
 
-int item_fits_slot(uint16_t thing, int16_t slot, int strict)
+bool item_fits_slot(uint16_t thing, int16_t slot, bool strict)
 {
     uint16_t slots = item_attr(thing, ATTR_SLOTS);
     if (strict) {
         if (slot >= SLOT_MASK_COUNT)
-            return 0;
+            return false;
         return slots & (slot < 0 ? SLOT_MASK_HAND : slot_item_masks[slot]);
     }
     if (slot >= SLOT_HAND_COUNT && slot < SLOT_MASK_COUNT)
         return slots & slot_item_masks[slot];
     if (slot >= SLOT_CONTAINER_FIRST && slot < SLOT_CONTAINER_FIRST + CONTAINER_SLOTS) {
         if (slots & SLOT_MASK_NO_CONTAINER)
-            return 0;
-        if (item_fits_slot(action_open_hand_item(), SLOT_CONTAINER_TEST, 0))
+            return false;
+        if (item_fits_slot(action_open_hand_item(), SLOT_CONTAINER_TEST, false))
             return slots & SLOT_MASK_POUCH;
     }
-    return 1;
+    return true;
 }
 
-int item_icon_index(uint16_t thing, int16_t slot, int animated)
+int item_icon_index(uint16_t thing, int16_t slot, bool animated)
 {
     uint8_t icon = GFX_ITEM_ICON;
     if (!animated)
@@ -260,13 +259,13 @@ int item_icon_index(uint16_t thing, int16_t slot, int animated)
     uint16_t frames = attr & ICON_FRAMES_MASK;
     if (!frames)
         return icon;
-    int special = 0;
-    if (attr & ICON_IN_SLOT && !(special = item_fits_slot(thing, slot, 1)))
+    bool special = false;
+    if (attr & ICON_IN_SLOT && !(special = item_fits_slot(thing, slot, true)))
         return icon;
     if (attr & ICON_IN_ACTION_HAND) {
         if (!g_action.champion || thing != action_open_hand_item())
             return icon;
-        special = 1;
+        special = true;
     }
     if (special) {
         icon++;
@@ -345,7 +344,7 @@ static int sum_attr(uint16_t thing, int entry)
         return sum;
     bool moneybox = item_is_moneybox(thing);
     int coin_sum = 0;
-    for (uint16_t t = record_word(thing, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    for (uint16_t t = thing_word(thing, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!moneybox || thing_type(t) != THING_MISC) {
             sum += sum_attr(t, entry);
         } else {
@@ -373,7 +372,8 @@ bool item_has_charged_action(uint16_t thing)
 {
     if (thing == THING_NONE)
         return false;
-    int category = item_gdat_category(thing), index = item_gdat_index(thing);
+    int category = item_gdat_category(thing);
+    int index = item_gdat_index(thing);
     for (int entry = GFX_ACTION_FIRST; entry <= GFX_ACTION_LAST; entry++)
         if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_TEXT, entry) &&
             gtext_gdat_field(category, index, entry, FIELD_COMMAND) &&
@@ -384,8 +384,8 @@ bool item_has_charged_action(uint16_t thing)
 
 const char *item_name(uint16_t thing)
 {
-    static char name[TEXT_SIZE];
-    int category = item_gdat_category(thing), index = item_gdat_index(thing);
+    int category = item_gdat_category(thing);
+    int index = item_gdat_index(thing);
     g_text_args.champion = -1;
     if (category == CAT_MISC && index == TEXT_CHAMPION_TOKEN) {
         int champion = misc_charges(thing); /* the champion of the token */
@@ -394,7 +394,7 @@ const char *item_name(uint16_t thing)
     }
     char raw[TEXT_SIZE];
     /* gtext_gdat formats the name and gtext_format formats it a second time, as in the original */
-    return gtext_format(gtext_gdat(category, index, GFX_ITEM_NAME, raw), name);
+    return gtext_format(gtext_gdat(category, index, GFX_ITEM_NAME, raw), items.name);
 }
 
 /* Item commands */
@@ -448,17 +448,17 @@ void item_set_gdat_index(uint16_t thing, int index)
     }
 }
 
-void item_set_do_not_discard(uint16_t thing, int keep)
+void item_set_do_not_discard(uint16_t thing, bool keep)
 {
     switch (thing_type(thing)) {
     case THING_WEAPON:
     case THING_ARMOUR:
     case THING_MISC:
     case THING_POTION:
-        item_set_kept(thing, keep & 1);
+        item_set_kept(thing, keep);
         break;
     case THING_GROUP:
-        group_set_flag(thing, GROUP_DO_NOT_DISCARD, keep & 1);
+        group_set_flag(thing, GROUP_DO_NOT_DISCARD, keep);
         break;
     default:
         break;
@@ -471,7 +471,7 @@ uint16_t item_create_by_index(uint16_t item)
     if (type < 0)
         return THING_NONE; /* fix: the original asks for a record of the type 0xffff */
     /* when the records run out, the dungeon reuses a discarded item */
-    uint16_t thing = dungeon_unused_thing(type | (item & THING_ANY_RECORD));
+    uint16_t thing = item & ITEM_ANY_RECORD ? dungeon_unused_thing_any_record(type) : dungeon_unused_thing(type);
     if (thing != THING_NONE)
         item_set_gdat_index(thing, item_index_gdat_index(item));
     return thing;
@@ -481,11 +481,11 @@ uint16_t item_create_by_index(uint16_t item)
 
 uint16_t item_find_link_projectile(uint16_t group, uint16_t payload)
 {
-    if (group == THING_NONE || group == THING_ENDOFLIST || record_word(group, THING_NEXT) == THING_NONE)
+    if (group == THING_NONE || group == THING_ENDOFLIST || thing_word(group, THING_NEXT) == THING_NONE)
         return 0;
-    for (uint16_t t = record_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
+    for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_PROJECTILE &&
-            (payload == THING_NONE || payload == record_word(t, PROJECTILE_PAYLOAD)))
+            (payload == THING_NONE || payload == thing_word(t, PROJECTILE_PAYLOAD)))
             return t;
     return 0;
 }

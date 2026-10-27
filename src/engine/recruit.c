@@ -26,6 +26,7 @@
 #define DATA_MANA             2
 #define DATA_STATS            3
 #define DATA_SKILLS           6
+#define DATA_WORD_SIZE        2 /* bytes per word of the champion data */
 /* Start values of a new champion. */
 #define STAT_START_MIN        30
 #define SKILL_EXPERIENCE_BASE 64
@@ -75,19 +76,19 @@ static void add_to_party(int portrait, int index, int dir)
         gdat_item(gdat_current(), gdat_find(gdat_current(), CAT_CHAMPION, portrait, PORTRAIT_DATA_TYPE, 0), &size);
     if (!d)
         return; /* fix: the original reads no data */
-    c->health = (int16_t)le16(d + 2 * DATA_HEALTH);
+    c->health = (int16_t)le16(d + DATA_WORD_SIZE * DATA_HEALTH);
     c->max_health = c->health;
-    c->stamina = (int16_t)le16(d + 2 * DATA_STAMINA);
+    c->stamina = (int16_t)le16(d + DATA_WORD_SIZE * DATA_STAMINA);
     c->max_stamina = c->stamina;
-    c->mana = (int16_t)le16(d + 2 * DATA_MANA);
+    c->mana = (int16_t)le16(d + DATA_WORD_SIZE * DATA_MANA);
     c->max_mana = c->mana;
     for (int s = 0; s < STAT_COUNT; s++) {
-        int16_t v = (int16_t)le16(d + 2 * (DATA_STATS + s));
+        int16_t v = (int16_t)le16(d + DATA_WORD_SIZE * (DATA_STATS + s));
         c->stats[s][STAT_CURRENT] = (uint8_t)(v > STAT_START_MIN ? v : STAT_START_MIN);
         c->stats[s][STAT_MAXIMUM] = c->stats[s][STAT_CURRENT];
     }
     for (int s = SKILL_BASE_COUNT; s < SKILL_COUNT; s++) {
-        uint16_t level = le16(d + 2 * (DATA_SKILLS + s));
+        uint16_t level = le16(d + DATA_WORD_SIZE * (DATA_SKILLS + s));
         c->experience[s] = level ? (uint32_t)SKILL_EXPERIENCE_BASE << level : 0;
     }
     for (int b = 0; b < SKILL_BASE_COUNT; b++) {
@@ -117,7 +118,8 @@ bool recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)
         return false;
     int saved = g_party.cur_map;
     dun_set_current_map(map);
-    int fx = x + g_dir_dx[dir], fy = y + g_dir_dy[dir];
+    int fx = x + g_dir_dx[dir];
+    int fy = y + g_dir_dy[dir];
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror == THING_NONE) { /* fix: the original then takes an uninitialized portrait */
         dun_set_current_map(saved);
@@ -179,7 +181,8 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);
     g_ui.candidate = 0;
-    int fx = x + g_dir_dx[dir], fy = y + g_dir_dy[dir];
+    int fx = x + g_dir_dx[dir];
+    int fy = y + g_dir_dy[dir];
     for (int s = 0; s < SLOT_COUNT; s++)
         if (c->slots[s] != THING_NONE)
             dungeon_unlink_thing_from_square(c->slots[s], g_party.cur_map, fx, fy);
