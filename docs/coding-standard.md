@@ -135,8 +135,8 @@ that this port cannot use keeps its number with "No rule in dm2".
    (`timeline_time_map()`, `timeline_event_map()` in `engine/timeline.h`). No shift by 8, 16 or 24 at a call
    site, and no shift by a `*_SHIFT` constant of another module. [packed]
 10. The byte order helpers `le16`, `le32`, `put_le16`, `put_le32` (little-endian, the DOS file formats) and
-    `put_be32` (big-endian, the PNG files) are `static inline` functions in `data/le.h` only. No other file
-    defines a function or a macro whose name starts with `le16`, `le32`, `put_le16`, `put_le32`, `put_be32` or
+    `be16`, `put_be32` (big-endian, the PNG files) are `static inline` functions in `data/le.h` only. No other file
+    defines a function or a macro whose name starts with `le16`, `le32`, `be16`, `put_le16`, `put_le32`, `put_be32` or
     `read_u32`. [byteorder]
 11. The record layout belongs to `engine/dungeon.h`: the field offsets and bits. The named accessors of a thing
     type can be in the header of its module (`sensor.h`, `projectile.h`, `item.h`, `ai.h`); they use the field
@@ -147,7 +147,7 @@ that this port cannot use keeps its number with "No rule in dm2".
     source. A table that exists only in `SKULL.EXE` goes into the source as a named `const` array with a
     one-line comment that tells its game meaning; no unexplained number or string. The PC keyboard scan code
     tables (`control/control.c`, `platform/main.c`) stay in the source too. The allowlist names each file of
-    these tables with the reason `rule 3.12: <table>`. [decimal, hex, allowlist]
+    these tables with the key `<file>:<table>` and the reason `rule 3.12`. [decimal, hex, allowlist]
 13. A file-scope array with an initializer list that no function writes is `const`. A write is an assignment,
     an increment or a decrement of an element, a `memcpy` into the array, or a `return` of the array. [const]
 
@@ -199,7 +199,8 @@ that this port cannot use keeps its number with "No rule in dm2".
 4. A cast is allowed only where it changes the result (16-bit wrap, sign, truncation), with a short comment
    when the reason is not obvious. No cast that only repeats the x86 operand size of the Watcom code, no double
    integer cast. [packed; the rest review only]
-5. The port assumes an arithmetic right shift of a negative value: `random.h` asserts it, and the build passes `-fwrapv` so signed overflow wraps. [review only]
+5. The port assumes an arithmetic right shift of a negative value: `random.h` asserts it,
+   and the build passes `-fwrapv` so signed overflow wraps. [review only]
 6. One statement per line: no comma operator outside the header of a `for`, no chained assignment, at most
    one variable with an initializer per declaration. [format; review only]
 7. Use `for`, `while`, `switch`, and early `return`. `goto` only for one cleanup label in a function that
