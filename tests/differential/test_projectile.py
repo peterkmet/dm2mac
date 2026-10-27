@@ -395,7 +395,7 @@ def test_creature_attacks_champions(pj, lib):
     from dm2test.interface import set_magic
     rng = random.Random(166)
     light = ctypes.c_int.in_dll(lib, "g_view_light_level")
-    sleeping = ctypes.c_int.in_dll(lib, "g_party_sleeping")
+    sleeping = ctypes.c_bool.in_dll(lib, "g_party_sleeping")
     attacks = woke = 0
     for n, (map_, x, y, g) in enumerate(groups(lib) * 3):
         four_champions(pj, rng)

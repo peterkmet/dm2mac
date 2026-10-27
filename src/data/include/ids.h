@@ -333,10 +333,13 @@
 #define ICON_MARKER_ABOVE    0x0b
 
 /* String numbers of the interface (CAT_INTERFACE, 0, GDAT_TYPE_TEXT, entry). */
-#define TEXT_LEVEL_FIRST 0x06 /* GDAT texts (1, 0, 6 to 9): a champion gains a level of a base skill */
-#define TEXT_JOINED      0x0e /* GDAT text (1, 0, 0x0e): a champion joins the party */
-#define TEXT_SLEEPING    0x11 /* GDAT text (1, 0, 0x11): the sleep message */
-#define TEXT_PAUSED      0x12 /* GDAT text (1, 0, 0x12): the pause message */
+#define TEXT_LEVEL_FIGHTER 0x06 /* GDAT text (1, 0, 6): a champion gains a fighter level */
+#define TEXT_LEVEL_NINJA   0x07 /* GDAT text (1, 0, 7): a champion gains a ninja level */
+#define TEXT_LEVEL_PRIEST  0x08 /* GDAT text (1, 0, 8): a champion gains a priest level */
+#define TEXT_LEVEL_WIZARD  0x09 /* GDAT text (1, 0, 9): a champion gains a wizard level */
+#define TEXT_JOINED        0x0e /* GDAT text (1, 0, 0x0e): a champion joins the party */
+#define TEXT_SLEEPING      0x11 /* GDAT text (1, 0, 0x11): the sleep message */
+#define TEXT_PAUSED        0x12 /* GDAT text (1, 0, 0x12): the pause message */
 
 /* Inventory texts (7, 0, 5, entry). */
 #define TEXT_WEIGHT     0x1f

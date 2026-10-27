@@ -252,7 +252,7 @@ def test_drag_cancel_of_a_dead_champion_changes_nothing(port):
 
 
 def set_sleeping(lib, original, value):
-    ctypes.c_int.in_dll(lib, "g_party_sleeping").value = value
+    ctypes.c_bool.in_dll(lib, "g_party_sleeping").value = value
     original.emu.write(G_PARTY_SLEEPING, struct.pack("<I", value))
 
 

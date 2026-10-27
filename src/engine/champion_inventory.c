@@ -57,11 +57,6 @@
 
 LeaderHand g_leader_hand = {.icon = HAND_ICON_NONE};
 
-static int16_t clamp16(int low, int v, int high)
-{
-    return (int16_t)(v < low ? low : v > high ? high : v);
-}
-
 /* The magic light of the party (the first word of g_game.magic_light). */
 static void add_magic_light(int delta)
 {
@@ -93,7 +88,7 @@ static void adjust_stat(uint8_t *stat_values, int delta)
         for (int16_t left = (int16_t)(diff < 0 ? -diff : diff); left > STAT_STEP; left = (int16_t)(left - STAT_STEP))
             d = (int16_t)(d - (d >> 2));
     }
-    stat_values[0] = (uint8_t)clamp16(STAT_MIN, (int16_t)(stat_values[0] + d), STAT_MAX);
+    stat_values[0] = (uint8_t)champ_clamp16(STAT_MIN, (int16_t)(stat_values[0] + d), STAT_MAX);
 }
 
 void champ_compute_load(int champ)
@@ -118,7 +113,7 @@ static void apply_stat_modifiers(Champion *c, uint16_t thing, bool equipped, enu
         if (mode == EFFECT_MODE_ADD || mode == EFFECT_MODE_REMOVE)
             c->max_mana = (int16_t)(c->max_mana + m);
         else if (mode == EFFECT_MODE_CONSUME)
-            c->mana = clamp16(0, (int16_t)(m + c->mana), MANA_MAX);
+            c->mana = champ_clamp16(0, (int16_t)(m + c->mana), MANA_MAX);
         c->redraw |= REDRAW_BARS;
     }
     for (int s = 0; s < STAT_COUNT; s++) {
@@ -197,7 +192,7 @@ void inv_show_object_name(uint16_t thing)
     g_hooks.print_message(MESSAGE_OBJECT_NAME, item_name(thing));
 }
 
-void champ_put_in_leader_hand(uint16_t thing, int defer_cursor)
+void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor)
 {
     if (thing == THING_NONE)
         return;
@@ -347,15 +342,10 @@ void inv_put_in_free_slot(int champ, uint16_t thing)
 
 /* ---- Eating and drinking ---- */
 
-static int16_t min16(int a, int b)
-{
-    return (int16_t)a < (int16_t)b ? (int16_t)a : (int16_t)b;
-}
-
 /* A mana potion of gain value adds mana; above the maximum it adds only half. */
 static void drink_mana_potion(Champion *c, int16_t value)
 {
-    int16_t mana = min16(MANA_POTION_MAX, c->mana + value * 2 - MANA_GAIN_LOSS);
+    int16_t mana = champ_min16(MANA_POTION_MAX, c->mana + value * 2 - MANA_GAIN_LOSS);
     if ((uint16_t)mana > c->max_mana) {
         int16_t limit = c->max_mana > c->mana ? c->max_mana : c->mana;
         mana = (int16_t)((uint16_t)mana - (((uint16_t)mana - limit) >> 1));
@@ -406,7 +396,8 @@ static bool drink_potion(int champ, uint16_t thing)
         break;
     }
     case POTION_STAMINA:
-        c->stamina = (int16_t)(c->stamina + min16(c->max_stamina / (uint16_t)divisor, c->max_stamina - c->stamina));
+        c->stamina =
+            (int16_t)(c->stamina + champ_min16(c->max_stamina / (uint16_t)divisor, c->max_stamina - c->stamina));
         break;
     case POTION_DEFENSE: {
         int16_t amount = (int16_t)((uint16_t)value + ((uint16_t)value >> 1));
@@ -420,7 +411,7 @@ static bool drink_potion(int champ, uint16_t thing)
         drink_health_potion(c, power, divisor);
         break;
     case POTION_WATER:
-        c->water = min16(c->water + WATER_PER_POTION, FOOD_MAX);
+        c->water = champ_min16(c->water + WATER_PER_POTION, FOOD_MAX);
         break;
     default:
         return false;
@@ -446,13 +437,13 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
     if (food) {
         if (slot == -1)
             champ_take_from_leader_hand(); /* the original also animates the mouth */
-        c->food = min16(c->food + food, FOOD_MAX);
+        c->food = champ_min16(c->food + food, FOOD_MAX);
         champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_CONSUME);
         thing_set_word(thing, THING_NEXT, THING_NONE);
         if (slot != -1)
             c->slots[slot] = THING_NONE;
     } else if (item_use_charge(thing)) {
-        c->water = min16(c->water + WATER_PER_DRINK, FOOD_MAX);
+        c->water = champ_min16(c->water + WATER_PER_DRINK, FOOD_MAX);
         if (slot != -1)
             c->slots[slot] = thing;
     } else {

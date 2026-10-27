@@ -95,7 +95,7 @@ class Rules:
                 champion_bytes(lib, champ, CH[name], data)
         sync_champions(lib, self.s)
         sleeping = int(rng.random() < 0.2)
-        ctypes.c_int.in_dll(lib, "g_party_sleeping").value = sleeping
+        ctypes.c_bool.in_dll(lib, "g_party_sleeping").value = sleeping
         self.emu.write(G_PARTY_SLEEPING, struct.pack("<I", sleeping))
 
     def pick_up_pool(self):
@@ -193,6 +193,7 @@ def test_damage_rules_match_original(rules, lib):
 CHAMP_CONSUME_OBJECT, CHAMP_LIST_ACTIONS, CHAMP_PERFORM_ACTION = 0x39C3F, 0x3F9F5, 0x414A5
 CHAMP_USE_ACTION_CHARGE, CHAMP_RELOAD_HAND, CHAMP_PROCESS_REPEATED_ACTIONS = 0x40D39, 0x40AA6, 0x40EE2
 G_ACTION_LIST, G_ACTION_THING, G_ACTION_COUNT, G_ACTION_REPEAT = 0x7FB3C, 0x7FB4C, 0x7FB76, 0x7FAD8
+ACTION_REPEATED = 0x8000  # the repeat bit of the action argument of the original champ_perform_action
 G_ACTION_HAND, G_ACTION_RESULT, G_ACTION_RESULT_FLAG, G_ACTION_RESULT_AMMO, G_ACTION_DELAY = (
     0x7FB72, 0x7FB78, 0x7FB6E, 0x7FB74, 0x7FB68)
 POTION, MISC = C.THING_POTION, C.THING_MISC
@@ -245,6 +246,10 @@ class ActionState(ctypes.Structure):
                 ("result", ctypes.c_int16), ("result_flag", ctypes.c_int16), ("result_ammo", ctypes.c_uint16)]
 
 
+class ChampionAction(ctypes.Structure):
+    _fields_ = [("category", ctypes.c_uint8), ("index", ctypes.c_uint8), ("entry", ctypes.c_uint8)]
+
+
 class PriceTerms(ctypes.Structure):
     _fields_ = [("creature", ctypes.c_int), ("list", ctypes.c_int), ("buying", ctypes.c_bool),
                 ("apply_margin", ctypes.c_bool)]
@@ -274,6 +279,11 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     from dm2test.scenario import squares
     rng, emu, scenario = rules.rng, rules.emu, rules.s
     lib.champ_list_actions.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
+    lib.champ_perform_action.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_bool]
+    lib.champ_perform_action.restype = ctypes.c_bool
+    lib.champ_use_action_charge.argtypes = [ctypes.c_int, ChampionAction]
+    lib.champ_use_action_charge.restype = ctypes.c_bool
+    actions = (ChampionAction * C.CHAMPION_ACTION_MAX).in_dll(lib, "g_champ_actions")
     potions = [lib.dungeon_unused_thing(POTION) for _ in range(4)]
     misc = [lib.dungeon_unused_thing(MISC) for _ in range(4)]
     for t in potions + misc:
@@ -357,14 +367,15 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             assert mine == theirs, n
             count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             if count:
-                index = rng.randrange(count) | rng.choice((0, 0, 0x8000))
-                mine = lib.champ_perform_action(champ, index)
-                theirs = emu.call(CHAMP_PERFORM_ACTION, champ, index)
+                index, repeated = rng.randrange(count), rng.choice((False, False, True))
+                action = ChampionAction.from_buffer_copy(actions[index])
+                mine = lib.champ_perform_action(champ, index, repeated)
+                theirs = emu.call(CHAMP_PERFORM_ACTION, champ, index | ACTION_REPEATED * repeated)
                 assert mine == theirs, n
                 performed += 1
                 commands.add(bytes(champion_records(lib))[champ * CHAMPION_SIZE + CH["last_command"] + hand])
                 if rng.random() < 0.5:
-                    assert lib.champ_use_action_charge(champ) == emu.call(CHAMP_USE_ACTION_CHARGE, champ), n
+                    assert lib.champ_use_action_charge(champ, action) == emu.call(CHAMP_USE_ACTION_CHARGE, champ), n
                 for _ in range(rng.choice((0, 0, 2, 3))):  # the repeats of the next game steps
                     lib.champ_process_repeated_actions()
                     emu.call(CHAMP_PROCESS_REPEATED_ACTIONS)
@@ -399,7 +410,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             listed |= {(index, a) for a in range(count)}
             if action < count:
-                assert lib.champ_perform_action(0, action) == emu.call(CHAMP_PERFORM_ACTION, 0, action), (index, action)
+                assert lib.champ_perform_action(0, action, False) == emu.call(CHAMP_PERFORM_ACTION, 0, action), (index, action)
                 exercised.add((index, action))
             rules.assert_same((index, action))
             assert_same_actions(rules, (index, action))
