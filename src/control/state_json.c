@@ -43,6 +43,9 @@
 #define MAP_GRID_PREFIX  3               /* the "yy " in front of each grid row */
 #define PILE_ALCOVE      CELL_COUNT      /* the cell number of the alcove pile, after the 4 floor cells */
 
+/* The first skill level that the skills panel shows with a rank text. */
+#define RANK_LEVEL_MIN 2
+
 /* The counts of the name tables. */
 #define EXPLOSION_NAME_COUNT (sizeof explosion_names / sizeof explosion_names[0])
 
@@ -51,6 +54,13 @@ typedef struct {
     ViewSquare look;
     int dir, x, y;
 } ViewWall;
+
+/* The open action menu, kept while the state lists the actions of the other hands. */
+typedef struct {
+    ChampionAction actions[CHAMPION_ACTION_MAX];
+    int count;
+    uint16_t thing;
+} SavedActionMenu;
 
 /* Appends n bytes; the buffer doubles when they do not fit. */
 static void put(Json *j, const char *text, size_t n)
@@ -335,7 +345,7 @@ static void skills_json(Json *j, int champ)
         json_open(j, '{');
         key_int(j, "level", level);
         json_key(j, "rank");
-        if (level < 2)
+        if (level < RANK_LEVEL_MIN)
             put_null(j);
         else
             rank_json(j, ui_skill_rank_text(champ, s, text));
@@ -349,7 +359,8 @@ static void statistics_json(Json *j, Champion *c)
 {
     json_open(j, '{');
     for (int s = STAT_STRENGTH; s < STAT_COUNT; s++)
-        pair(j, statistic_names[s], (int16_t)champ_get_stat(c, s, 0), (uint16_t)champ_get_stat(c, s, 1));
+        pair(j, statistic_names[s], (int16_t)champ_get_stat(c, s, STAT_CURRENT),
+             (uint16_t)champ_get_stat(c, s, STAT_MAXIMUM));
     json_close(j, '}');
 }
 
@@ -382,41 +393,52 @@ static void put_action_names(Json *j)
     json_close(j, ']');
 }
 
+/* Keeps the open action menu in saved before the state lists the actions of a hand. */
+static void remember_action_menu(SavedActionMenu *saved)
+{
+    memcpy(saved->actions, g_champ_actions, sizeof saved->actions);
+    saved->count = g_champ_action_count;
+    saved->thing = g_champ_action_thing;
+}
+
+/* Gives the open action menu back after the state listed the actions of a hand. */
+static void restore_action_menu(const SavedActionMenu *saved)
+{
+    memcpy(g_champ_actions, saved->actions, sizeof saved->actions);
+    g_champ_action_count = saved->count;
+    g_champ_action_thing = saved->thing;
+}
+
+/* Lists in g_champ_actions the actions of a hand of a champion; none for a dead champion. */
+static void list_hand_actions(int champ, int hand)
+{
+    g_champ_action_count = 0;
+    if (champion(champ)->health)
+        champ_list_actions(champ, champion(champ)->slots[hand], hand);
+}
+
 /* The action menu that each hand of a living champion opens; the open action menu stays as it is. */
 static void hands_json(Json *j, int champ)
 {
-    ChampionAction saved[CHAMPION_ACTION_MAX];
-    int saved_count = g_champ_action_count;
-    uint16_t saved_thing = g_champ_action_thing;
-    memcpy(saved, g_champ_actions, sizeof saved);
+    SavedActionMenu saved;
+    remember_action_menu(&saved);
     json_open(j, '{');
     for (int hand = SLOT_READY_HAND; hand < SLOT_HAND_COUNT; hand++) {
-        g_champ_action_count = 0;
-        if (champion(champ)->health)
-            champ_list_actions(champ, champion(champ)->slots[hand], hand);
+        list_hand_actions(champ, hand);
         json_key(j, hand_names[hand]);
         put_action_names(j);
     }
     json_close(j, '}');
-    memcpy(g_champ_actions, saved, sizeof saved);
-    g_champ_action_count = saved_count;
-    g_champ_action_thing = saved_thing;
+    restore_action_menu(&saved);
 }
 
 int state_json_hand_action_count(int champ, int hand)
 {
-    ChampionAction saved[CHAMPION_ACTION_MAX];
-    int saved_count = g_champ_action_count;
-    int count = 0;
-    uint16_t saved_thing = g_champ_action_thing;
-    memcpy(saved, g_champ_actions, sizeof saved);
-    g_champ_action_count = 0;
-    if (champion(champ)->health)
-        champ_list_actions(champ, champion(champ)->slots[hand], hand);
-    count = g_champ_action_count;
-    memcpy(g_champ_actions, saved, sizeof saved);
-    g_champ_action_count = saved_count;
-    g_champ_action_thing = saved_thing;
+    SavedActionMenu saved;
+    remember_action_menu(&saved);
+    list_hand_actions(champ, hand);
+    int count = g_champ_action_count;
+    restore_action_menu(&saved);
     return count;
 }
 

@@ -40,7 +40,7 @@
 
 /* Sizes of the window, the icon, and the paths. */
 #define WINDOW_SCALE    3
-#define ICON_MAX_PIXELS (128 * 128)
+#define ICON_MAX_PIXELS 16384 /* 128 x 128 */
 #define PATH_SIZE       1024
 
 /* The exit status of a bad command line. */
@@ -150,18 +150,25 @@ static const ScanCode scan_codes[] = {
     {SDL_SCANCODE_KP_PERIOD,    0x53},
 };
 
+/* The log file, the graphics, the window icon, the pointer, and the buffers of the program. */
+static struct {
 #ifdef _WIN32
-static FILE *log_file; /* dm2.log; NULL when it cannot open */
+    FILE *log_file; /* dm2.log; NULL when it cannot open */
 #endif
+    uint8_t saved_screen[SCREEN_H][SCREEN_W]; /* the screen without the cursor while the cursor is shown */
+    Gdat *gdat;                               /* GRAPHICS.DAT, loaded for the whole run */
+    uint32_t icon[ICON_MAX_PIXELS];           /* the ARGB pixels of the window icon */
+    int window_x, window_y;                   /* the last pointer position of the window; -1 before the first */
+    char control_path[PATH_SIZE];             /* the default control socket path; options.control points to it */
+} program = {.window_x = -1, .window_y = -1};
 
 /* Shows g_video_fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
 static void present_with_cursor(void)
 {
-    static uint8_t saved[SCREEN_H][SCREEN_W];
-    memcpy(saved, g_video_fb, sizeof saved);
+    memcpy(program.saved_screen, g_video_fb, sizeof program.saved_screen);
     input_draw_cursor(&g_video_fb[0][0], g_input_mouse_x, g_input_mouse_y);
     plat_present();
-    memcpy(g_video_fb, saved, sizeof saved);
+    memcpy(g_video_fb, program.saved_screen, sizeof program.saved_screen);
 }
 
 /* Sets the palette of GRAPHICS.DAT. */
@@ -176,16 +183,15 @@ static bool load_graphics(const char *data)
 {
     char graphics[PATH_SIZE];
     snprintf(graphics, sizeof graphics, "%s/DATA/GRAPHICS.DAT", data);
-    static Gdat *gdat;
-    if (gdat_load(graphics, &gdat) != GDAT_OK) {
+    if (gdat_load(graphics, &program.gdat) != GDAT_OK) {
         os_log("cannot read %s", graphics);
         return false;
     }
-    if (!zone_load(gdat) || !pal_load_color_ramps(gdat) || !text_init(gdat)) {
+    if (!zone_load(program.gdat) || !pal_load_color_ramps(program.gdat) || !text_init(program.gdat)) {
         os_log("%s has no screen layout, color ramps, or font", graphics);
         return false;
     }
-    draw_init(gdat);
+    draw_init(program.gdat);
     load_palette();
     input_init();
     return true;
@@ -194,10 +200,9 @@ static bool load_graphics(const char *data)
 /* Gives the window the mummy icon from GRAPHICS.DAT; without the graphic, SDL keeps its icon. */
 static void set_icon(void)
 {
-    static uint32_t argb[ICON_MAX_PIXELS];
     int w, h;
-    if (icon_build(gdat_current(), argb, ICON_MAX_PIXELS, &w, &h))
-        plat_set_icon(argb, w, h);
+    if (icon_build(gdat_current(), program.icon, ICON_MAX_PIXELS, &w, &h))
+        plat_set_icon(program.icon, w, h);
 }
 
 /* Loads a save and starts its game at once; false with a message on an error. */
@@ -243,8 +248,6 @@ static void end_by_platform(void)
    A mouse move of the window and a move request of the control both set the pointer. */
 static void pump_events(void)
 {
-    static int window_x = -1;
-    static int window_y = -1;
     int x, y;
     PlatEvent e;
     while (plat_poll(&e)) {
@@ -261,9 +264,9 @@ static void pump_events(void)
         }
     }
     plat_mouse_position(&x, &y);
-    if (x != window_x || y != window_y) {
-        window_x = x;
-        window_y = y;
+    if (x != program.window_x || y != program.window_y) {
+        program.window_x = x;
+        program.window_y = y;
         g_input_mouse_x = x;
         g_input_mouse_y = y;
     }
@@ -480,14 +483,13 @@ static void choose_mode(void)
 /* Builds the default control socket path $HOME/.dm2/control.sock of the turn-based mode; false without HOME. */
 static bool default_control_path(const char **control)
 {
-    static char path[PATH_SIZE];
     const char *home = getenv("HOME");
     if (!home) {
         os_log("HOME is not set: use --control PATH");
         return false;
     }
-    snprintf(path, sizeof path, "%s/.dm2/control.sock", home);
-    *control = path;
+    snprintf(program.control_path, sizeof program.control_path, "%s/.dm2/control.sock", home);
+    *control = program.control_path;
     return true;
 }
 
@@ -522,8 +524,8 @@ static bool full_path(const char *path, char *full, size_t size)
 /* The log and fatal error hook of the Windows build: a line of dm2.log, as the build has no console. */
 static void log_to_file(const char *message)
 {
-    fprintf(log_file, "%s\n", message);
-    fflush(log_file);
+    fprintf(program.log_file, "%s\n", message);
+    fflush(program.log_file);
 }
 
 /* Opens dm2.log in the game folder and sends the messages to it. */
@@ -531,7 +533,8 @@ static void open_log(const char *data)
 {
     char path[PATH_SIZE];
     snprintf(path, sizeof path, "%s/%s", data, LOG_FILE);
-    if (!(log_file = fopen(path, "w")))
+    program.log_file = fopen(path, "w");
+    if (!program.log_file)
         return;
     g_os_log_hook = log_to_file;
     g_os_fatal_hook = log_to_file;

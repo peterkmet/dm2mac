@@ -20,6 +20,7 @@
 #include "os.h"
 #include "projectile.h"
 #include "recruit.h"
+#include "save.h"
 #include "text.h"
 #include "ui.h"
 #include "video.h"
@@ -42,6 +43,7 @@
 #define DROP_FRONT_CELL_FIRST    2          /* drop_object cells 2 and 3 are on the square ahead */
 #define DROP_ALCOVE_CELL         CELL_COUNT /* drop_object cell 4: the alcove ahead */
 #define CORNER_INSET             1          /* a click on a corner of a spell icon goes one pixel inside */
+#define NAME_QUOTE_COUNT         2          /* the quotes around a name item of an act_many list */
 
 /* The kinds of the inputs of an action. */
 #define INPUT_KEY_PRESS 0
@@ -82,55 +84,57 @@ typedef const char *(*ActionFn)(const char *request);
 /* The result of reading the next item of an act_many list. */
 typedef enum { ELEMENT_FOUND, ELEMENT_END, ELEMENT_BAD } ElementResult;
 
+/* The turn, the batch, what the party saw, and the error text of an action. */
 static struct {
     bool pending, wait_only, reply_dropped;
     uint32_t start_time;
-    long frames, min_ticks, max_ticks;
+    uint32_t frames, min_ticks, max_ticks;
     TurnInput inputs[TURN_INPUT_MAX];
     int input_count, inputs_given;
     bool moving; /* the action was a step: forward and right in squares */
     int16_t step_forward, step_right, rotation;
-    int16_t map, x, y, dir; /* the party before the action */
-    bool has_damage;        /* choose_action: the reply has action_damage */
-    bool looking;           /* look: the turn records the eye panel text before the release */
-    const char *stop;       /* wait: the news that ended it early */
+    int16_t map, x, y, dir;      /* the party before the action */
+    bool has_damage;             /* choose_action: the reply has action_damage */
+    bool looking;                /* look: the turn records the eye panel text before the release */
+    const char *stop;            /* wait: the news that ended it early */
+    char error[TURN_ERROR_SIZE]; /* the reason of click and wait; valid until the next action or wait */
+
+    /* A batch: act_many runs a list of actions; each item is one turn. */
+    struct {
+        bool active;
+        int ran;
+        int16_t damages[BATCH_DAMAGE_MAX]; /* the action damage of each choose_action, in order */
+        int damage_count;
+        char *actions; /* owned: a copy of the request from its actions list; next is the rest */
+        const char *next;
+        uint32_t start_time;
+        const char *stop, *error;
+    } batch;
+
+    /* The eye panel text of a look action, for the turn reply. */
+    struct {
+        bool shown;
+        int count;
+        char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE];
+    } looked;
+
+    /* What the party knew before a turn: wait stops on news against it. */
+    struct {
+        int16_t health[CHAMPION_MAX];
+        uint16_t groups[STATE_JSON_VISIBLE_GROUPS_MAX];
+        int group_count;
+        uint32_t message_expiry;
+    } seen;
+
+    /* What the party saw during a request. */
+    struct {
+        int explosion_count, group_count;
+        WitnessedExplosion explosions[WITNESSED_EXPLOSIONS_MAX];
+        WitnessedGroup groups[WITNESSED_GROUPS_MAX];
+        int16_t health[CHAMPION_MAX]; /* the health of each champion at the start of the request */
+        uint16_t champion_count;
+    } witnessed;
 } turn;
-
-/* A batch: act_many runs a list of actions; each item is one turn. */
-static struct {
-    bool active;
-    int ran;
-    int16_t damages[BATCH_DAMAGE_MAX]; /* the action damage of each choose_action, in order */
-    int damage_count;
-    char *actions; /* a copy of the request from its actions list; next is the rest */
-    const char *next;
-    uint32_t start_time;
-    const char *stop, *error;
-} batch;
-
-/* The eye panel text of a look action, for the turn reply. */
-static struct {
-    bool shown;
-    int count;
-    char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE];
-} looked;
-
-/* What the party knew before a turn: wait stops on news against it. */
-static struct {
-    int16_t health[CHAMPION_MAX];
-    uint16_t groups[STATE_JSON_VISIBLE_GROUPS_MAX];
-    int group_count;
-    uint32_t message_expiry;
-} seen;
-
-/* What the party saw during a request. */
-static struct {
-    int explosion_count, group_count;
-    WitnessedExplosion explosions[WITNESSED_EXPLOSIONS_MAX];
-    WitnessedGroup groups[WITNESSED_GROUPS_MAX];
-    int16_t health[CHAMPION_MAX]; /* the health of each champion at the start of the request */
-    uint16_t champion_count;
-} witnessed;
 
 /* The state of the turn */
 
@@ -207,42 +211,42 @@ static void witness(void)
     for (int i = 0; i < count; i++) {
         uint16_t type = explosion_type(things[i].thing);
         bool known = false;
-        for (int k = 0; k < witnessed.explosion_count; k++)
-            known |= witnessed.explosions[k].type == type && witnessed.explosions[k].at.x == things[i].x &&
-                     witnessed.explosions[k].at.y == things[i].y;
-        if (!known && witnessed.explosion_count < WITNESSED_EXPLOSIONS_MAX)
-            witnessed.explosions[witnessed.explosion_count++] = (WitnessedExplosion){things[i], type};
+        for (int k = 0; k < turn.witnessed.explosion_count; k++)
+            known |= turn.witnessed.explosions[k].type == type && turn.witnessed.explosions[k].at.x == things[i].x &&
+                     turn.witnessed.explosions[k].at.y == things[i].y;
+        if (!known && turn.witnessed.explosion_count < WITNESSED_EXPLOSIONS_MAX)
+            turn.witnessed.explosions[turn.witnessed.explosion_count++] = (WitnessedExplosion){things[i], type};
     }
-    for (int k = 0; k < witnessed.group_count; k++)
-        witnessed.groups[k].in_view = false;
+    for (int k = 0; k < turn.witnessed.group_count; k++)
+        turn.witnessed.groups[k].in_view = false;
     count = state_json_visible_things(THING_GROUP, things, STATE_JSON_VISIBLE_GROUPS_MAX);
     for (int i = 0; i < count; i++) {
         int k = 0;
-        while (k < witnessed.group_count && witnessed.groups[k].at.thing != things[i].thing)
+        while (k < turn.witnessed.group_count && turn.witnessed.groups[k].at.thing != things[i].thing)
             k++;
         if (k == WITNESSED_GROUPS_MAX)
             continue;
-        if (k == witnessed.group_count) { /* a group seen first: count it once, not on each tick */
-            witnessed.groups[k] =
+        if (k == turn.witnessed.group_count) { /* a group seen first: count it once, not on each tick */
+            turn.witnessed.groups[k] =
                 (WitnessedGroup){.creature = group_creature(things[i].thing), .before = GROUP_CREATURES};
-            witnessed.group_count++;
+            turn.witnessed.group_count++;
         }
-        witnessed.groups[k].at = things[i];
-        witnessed.groups[k].after = GROUP_CREATURES;
-        witnessed.groups[k].in_view = true;
+        turn.witnessed.groups[k].at = things[i];
+        turn.witnessed.groups[k].after = GROUP_CREATURES;
+        turn.witnessed.groups[k].in_view = true;
     }
-    for (int k = 0; k < witnessed.group_count; k++) /* a killed group frees its record: its link is THING_NONE */
-        witnessed.groups[k].killed |=
-            !witnessed.groups[k].in_view && dungeon_next_thing(witnessed.groups[k].at.thing) == THING_NONE;
+    for (int k = 0; k < turn.witnessed.group_count; k++) /* a killed group frees its record: its link is THING_NONE */
+        turn.witnessed.groups[k].killed |=
+            !turn.witnessed.groups[k].in_view && dungeon_next_thing(turn.witnessed.groups[k].at.thing) == THING_NONE;
 }
 
 /* Starts the record of what the party sees during a request. */
 static void start_witnessing(void)
 {
-    memset(&witnessed, 0, sizeof witnessed);
-    witnessed.champion_count = g_game.champion_count;
+    memset(&turn.witnessed, 0, sizeof turn.witnessed);
+    turn.witnessed.champion_count = g_game.champion_count;
     for (uint16_t i = 0; i < g_game.champion_count; i++)
-        witnessed.health[i] = champion(i)->health;
+        turn.witnessed.health[i] = champion(i)->health;
     witness();
 }
 
@@ -263,35 +267,35 @@ static void put_seen_place(Json *j, const StateJsonSeenThing *at)
 static void put_seen(Json *j)
 {
     int changes = 0;
-    for (int k = 0; k < witnessed.group_count; k++)
-        changes += witnessed.groups[k].killed || witnessed.groups[k].after < witnessed.groups[k].before;
-    if (!changes && !witnessed.explosion_count)
+    for (int k = 0; k < turn.witnessed.group_count; k++)
+        changes += turn.witnessed.groups[k].killed || turn.witnessed.groups[k].after < turn.witnessed.groups[k].before;
+    if (!changes && !turn.witnessed.explosion_count)
         return;
     json_key(j, "seen");
     json_open(j, '{');
     json_key(j, "explosions");
     json_open(j, '[');
-    for (int k = 0; k < witnessed.explosion_count; k++) {
+    for (int k = 0; k < turn.witnessed.explosion_count; k++) {
         json_open(j, '{');
         json_key(j, "name");
-        state_json_explosion_name(j, witnessed.explosions[k].type);
-        put_seen_place(j, &witnessed.explosions[k].at);
+        state_json_explosion_name(j, turn.witnessed.explosions[k].type);
+        put_seen_place(j, &turn.witnessed.explosions[k].at);
         json_close(j, '}');
     }
     json_close(j, ']');
     json_key(j, "creature_changes");
     json_open(j, '[');
-    for (int k = 0; k < witnessed.group_count; k++) {
-        if (!witnessed.groups[k].killed && witnessed.groups[k].after >= witnessed.groups[k].before)
+    for (int k = 0; k < turn.witnessed.group_count; k++) {
+        if (!turn.witnessed.groups[k].killed && turn.witnessed.groups[k].after >= turn.witnessed.groups[k].before)
             continue;
         json_open(j, '{');
         json_key(j, "type");
-        state_json_creature_name(j, witnessed.groups[k].creature);
-        put_seen_place(j, &witnessed.groups[k].at);
+        state_json_creature_name(j, turn.witnessed.groups[k].creature);
+        put_seen_place(j, &turn.witnessed.groups[k].at);
         json_key(j, "before");
-        json_int(j, witnessed.groups[k].before);
+        json_int(j, turn.witnessed.groups[k].before);
         json_key(j, "after");
-        json_int(j, witnessed.groups[k].killed ? 0 : witnessed.groups[k].after);
+        json_int(j, turn.witnessed.groups[k].killed ? 0 : turn.witnessed.groups[k].after);
         json_close(j, '}');
     }
     json_close(j, ']');
@@ -302,14 +306,14 @@ static void put_seen(Json *j)
 static void health_lost_json(Json *j)
 {
     bool any = false;
-    for (uint16_t i = 0; i < witnessed.champion_count; i++)
-        any |= champion(i)->health < witnessed.health[i];
+    for (uint16_t i = 0; i < turn.witnessed.champion_count; i++)
+        any |= champion(i)->health < turn.witnessed.health[i];
     if (!any)
         return;
     json_key(j, "health_lost");
     json_open(j, '[');
-    for (uint16_t i = 0; i < witnessed.champion_count; i++) {
-        int lost = witnessed.health[i] - champion(i)->health;
+    for (uint16_t i = 0; i < turn.witnessed.champion_count; i++) {
+        int lost = turn.witnessed.health[i] - champion(i)->health;
         json_int(j, lost > 0 ? lost : 0);
     }
     json_close(j, ']');
@@ -331,9 +335,9 @@ static uint32_t latest_message_expiry(void)
 static void snapshot(void)
 {
     for (uint16_t i = 0; i < g_game.champion_count; i++)
-        seen.health[i] = champion(i)->health;
-    seen.group_count = state_json_visible_groups(seen.groups);
-    seen.message_expiry = latest_message_expiry();
+        turn.seen.health[i] = champion(i)->health;
+    turn.seen.group_count = state_json_visible_groups(turn.seen.groups);
+    turn.seen.message_expiry = latest_message_expiry();
 }
 
 /* A creature group is in view that was not in view at the snapshot. */
@@ -343,8 +347,8 @@ static bool new_group_in_view(void)
     int count = state_json_visible_groups(groups);
     for (int i = 0; i < count; i++) {
         bool known = false;
-        for (int k = 0; k < seen.group_count; k++)
-            known |= groups[i] == seen.groups[k];
+        for (int k = 0; k < turn.seen.group_count; k++)
+            known |= groups[i] == turn.seen.groups[k];
         if (!known)
             return true;
     }
@@ -357,11 +361,11 @@ static const char *news(void)
     if (state_json_game_over())
         return "game_over";
     for (uint16_t i = 0; i < g_game.champion_count; i++)
-        if (champion(i)->health < seen.health[i])
+        if (champion(i)->health < turn.seen.health[i])
             return "damage";
     if (new_group_in_view())
         return "creature";
-    if (latest_message_expiry() > seen.message_expiry)
+    if (latest_message_expiry() > turn.seen.message_expiry)
         return "message";
     return NULL;
 }
@@ -398,13 +402,13 @@ static bool hand_is_empty(void)
 }
 static bool has_leader(void)
 {
-    return (int16_t)g_game.leader != -1;
+    return g_game.leader != LEADER_NONE;
 }
 
 /* The champion of the request key: a living member of the party, not the candidate; -1 none. */
 static int requested_champion(const char *request, const char *key)
 {
-    long c = control_get_int(request, key, -1);
+    int64_t c = control_get_int(request, key, -1);
     int members = g_game.champion_count - (g_ui.candidate ? 1 : 0);
     if (c < 0 || c >= members || c >= CHAMPION_MAX || champion((int)c)->health <= 0)
         return -1;
@@ -557,7 +561,7 @@ static const char *click_wall_ahead(const char *r)
 /* The leader takes the top object of a cell of the view (the cells of get_view piles). */
 static const char *take_object(const char *r)
 {
-    long cell = control_get_int(r, "cell", -1);
+    int64_t cell = control_get_int(r, "cell", -1);
     const char *error = need_view();
     if (error)
         return error;
@@ -589,7 +593,7 @@ static bool front_floor_clickable(void)
    alcove ahead (4). */
 static const char *drop_object(const char *r)
 {
-    long cell = control_get_int(r, "cell", -1);
+    int64_t cell = control_get_int(r, "cell", -1);
     int16_t zone[RECT_SIZE];
     const char *error = need_view();
     if (error)
@@ -637,7 +641,7 @@ static const char *close_inventory(const char *r)
 
 /* The command of a click on a slot of champion c: a hand of a status box, a slot of the open inventory, or a slot of
    the open chest (30 to 37); NULL, or the reason why the slot cannot be clicked now. */
-static const char *slot_command(int c, long slot, uint16_t *command)
+static const char *slot_command(int c, int64_t slot, uint16_t *command)
 {
     if (slot < 0 || slot >= SLOT_CONTAINER_FIRST + CONTAINER_SLOTS)
         return "slot must be 0-37";
@@ -707,7 +711,7 @@ static const char *choose_action(const char *r)
 {
     char name[ACTION_NAME_SIZE] = "";
     int c = requested_champion(r, "champion");
-    long index = control_get_int(r, "index", -1);
+    int64_t index = control_get_int(r, "index", -1);
     if (c < 0)
         return NO_CHAMPION;
     control_get_string(r, "hand", name, sizeof name);
@@ -787,7 +791,7 @@ static int spell_caster(void)
 /* The caster of the open spell panel enters a rune of the next rune set. */
 static const char *add_rune(const char *r)
 {
-    long symbol = control_get_int(r, "symbol", -1);
+    int64_t symbol = control_get_int(r, "symbol", -1);
     int caster = spell_caster();
     if (symbol < 0 || symbol >= SPELL_RUNES_PER_SET)
         return "symbol must be 0-5";
@@ -880,7 +884,7 @@ static const char *look(const char *r)
 {
     uint16_t command = 0;
     int16_t eye[RECT_SIZE];
-    long slot = control_get_int(r, "slot", -1);
+    int64_t slot = control_get_int(r, "slot", -1);
     if (!g_ui.inventory)
         return "open an inventory first (open_inventory): the eye is in the inventory";
     if (!input_command_rect(CMD_EYE, eye))
@@ -915,7 +919,7 @@ static const char *look(const char *r)
 /* One coin of a slot of the open money box goes to the leader hand. */
 static const char *take_coin(const char *r)
 {
-    long slot = control_get_int(r, "slot", -1);
+    int64_t slot = control_get_int(r, "slot", -1);
     if (g_action.mode != ACTION_MODE_MONEY_BOX || !g_action.champion)
         return "open a money box first (choose_action on the hand that holds it)";
     if (slot < 0 || slot > CMD_COIN_LAST - CMD_COIN_FIRST)
@@ -928,7 +932,7 @@ static const char *take_coin(const char *r)
 /* Switches an option button of the open minion map. */
 static const char *switch_map_option(const char *r)
 {
-    long option = control_get_int(r, "option", -1);
+    int64_t option = control_get_int(r, "option", -1);
     if (g_action.mode != ACTION_MODE_MINION_MAP)
         return "open a minion map first";
     if (!(g_action.flags & MAP_HAS_OPTIONS))
@@ -941,13 +945,12 @@ static const char *switch_map_option(const char *r)
 /* A raw click of the left or the right button at a point of the screen. */
 static const char *click(const char *r)
 {
-    static char error[TURN_ERROR_SIZE];
     char button[ACTION_NAME_SIZE] = "left";
-    long x = control_get_int(r, "x", -1);
-    long y = control_get_int(r, "y", -1);
+    int64_t x = control_get_int(r, "x", -1);
+    int64_t y = control_get_int(r, "y", -1);
     if (x < 0 || y < 0 || x >= SCREEN_W || y >= SCREEN_H) {
-        snprintf(error, sizeof error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
-        return error;
+        snprintf(turn.error, sizeof turn.error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
+        return turn.error;
     }
     control_get_string(r, "button", button, sizeof button);
     bool right = !strcmp(button, "right");
@@ -961,7 +964,7 @@ static const char *click(const char *r)
 static const char *key(const char *r)
 {
     char name[ACTION_NAME_SIZE];
-    long code = control_get_int(r, "key", 0);
+    int64_t code = control_get_int(r, "key", 0);
     if (control_get_string(r, "key", name, sizeof name))
         code = control_key_code(name);
     if (code <= 0 || code > KEY_CODE_MAX)
@@ -1016,7 +1019,7 @@ static void forget_action(void)
     turn.rotation = 0;
     turn.input_count = 0;
     turn.inputs_given = 0;
-    looked.shown = false;
+    turn.looked.shown = false;
 }
 
 /* Lists the inputs of action name with the args in request; NULL, or the reason why it cannot. A candidate on the
@@ -1044,7 +1047,7 @@ static const char *run_action(const char *name, const char *request)
 /* Turns. */
 
 /* The turn runs from now: at least min_ticks and at most max_ticks game ticks; a wait runs without inputs. */
-static void start_turn(long min_ticks, long max_ticks, bool wait_only)
+static void start_turn(uint32_t min_ticks, uint32_t max_ticks, bool wait_only)
 {
     turn.pending = true;
     turn.wait_only = wait_only;
@@ -1071,16 +1074,15 @@ const char *turn_act(const char *request)
 
 const char *turn_wait(const char *request)
 {
-    static char error[TURN_ERROR_SIZE];
-    long ticks = control_get_int(request, "ticks", 1);
+    int64_t ticks = control_get_int(request, "ticks", 1);
     if (ticks < 1 || ticks > TURN_WAIT_MAX_TICKS) {
-        snprintf(error, sizeof error, "ticks must be 1-%d", TURN_WAIT_MAX_TICKS);
-        return error;
+        snprintf(turn.error, sizeof turn.error, "ticks must be 1-%d", TURN_WAIT_MAX_TICKS);
+        return turn.error;
     }
     forget_action();
     snapshot();
     start_witnessing();
-    start_turn(ticks, ticks, true);
+    start_turn((uint32_t)ticks, (uint32_t)ticks, true);
     return NULL;
 }
 
@@ -1089,15 +1091,15 @@ const char *turn_wait(const char *request)
 /* Ends the batch: the reply gives the stop and the error. */
 static void batch_finish(const char *stop, const char *error)
 {
-    batch.stop = stop;
-    batch.error = error;
+    turn.batch.stop = stop;
+    turn.batch.error = error;
 }
 
 /* Frees the batch after its reply, or when its client left. */
 static void batch_clear(void)
 {
-    free(batch.actions);
-    memset(&batch, 0, sizeof batch);
+    free(turn.batch.actions);
+    memset(&turn.batch, 0, sizeof turn.batch);
 }
 
 /* Why a batch stops after a turn, or NULL to go on. */
@@ -1115,7 +1117,7 @@ static const char *batch_stop_reason(void)
    end of the list, ELEMENT_BAD for an item that is not an action. Strings hold no '"' (docs/llm/llm-mode.md). */
 static ElementResult next_element(char *out, size_t size)
 {
-    const char *p = batch.next;
+    const char *p = turn.batch.next;
     while (*p == ' ' || *p == ',')
         p++;
     const char *start = p;
@@ -1145,7 +1147,7 @@ static ElementResult next_element(char *out, size_t size)
         return ELEMENT_BAD;
     memcpy(out, start, (size_t)(p - start));
     out[p - start] = 0;
-    batch.next = p;
+    turn.batch.next = p;
     return ELEMENT_FOUND;
 }
 
@@ -1162,7 +1164,7 @@ static bool batch_next(void)
         return false;
     }
     if (element[0] == '"')
-        snprintf(name, sizeof name, "%.*s", (int)strlen(element) - 2, element + 1);
+        snprintf(name, sizeof name, "%.*s", (int)strlen(element) - NAME_QUOTE_COUNT, element + 1);
     else if (!control_get_string(element, "action", name, sizeof name))
         name[0] = 0;
     const char *error = run_action(name, element);
@@ -1178,9 +1180,9 @@ static bool batch_next(void)
    when the next item started. */
 static bool batch_after_turn(void)
 {
-    batch.ran++;
-    if (turn.has_damage && batch.damage_count < BATCH_DAMAGE_MAX)
-        batch.damages[batch.damage_count++] = g_champ_action_result;
+    turn.batch.ran++;
+    if (turn.has_damage && turn.batch.damage_count < BATCH_DAMAGE_MAX)
+        turn.batch.damages[turn.batch.damage_count++] = g_champ_action_result;
     const char *stop = batch_stop_reason();
     if (stop) {
         batch_finish(stop, NULL);
@@ -1195,12 +1197,12 @@ const char *turn_act_many(const char *request)
     if (!list || *list != '[')
         return "actions must be a list";
     batch_clear();
-    batch.actions = strdup(list + 1);
-    if (!batch.actions)
+    turn.batch.actions = strdup(list + 1);
+    if (!turn.batch.actions)
         os_fatal("out of memory");
-    batch.next = batch.actions;
-    batch.active = true;
-    batch.start_time = g_game.game_time;
+    turn.batch.next = turn.batch.actions;
+    turn.batch.active = true;
+    turn.batch.start_time = g_game.game_time;
     forget_action();
     start_witnessing();
     batch_next();
@@ -1213,7 +1215,7 @@ const char *turn_act_many(const char *request)
    game that does not tick ends the turn after a frame limit. */
 static bool has_ended(void)
 {
-    long ticks = (long)(g_game.game_time - turn.start_time);
+    uint32_t ticks = g_game.game_time - turn.start_time;
     if (turn.wait_only && (turn.stop = news()))
         return true;
     if (state_json_game_over())
@@ -1227,8 +1229,8 @@ static bool has_ended(void)
 /* The eye panel text of the leader hand object while the eye is held. */
 static void record_look(void)
 {
-    looked.count = ui_object_info_lines(g_game.leader_hand, looked.lines);
-    looked.shown = true;
+    turn.looked.count = ui_object_info_lines(g_game.leader_hand, turn.looked.lines);
+    turn.looked.shown = true;
 }
 
 bool turn_poll(void)
@@ -1247,7 +1249,7 @@ bool turn_poll(void)
         return false;
     }
     turn.pending = false;
-    if (batch.active && !turn.reply_dropped && batch_after_turn())
+    if (turn.batch.active && !turn.reply_dropped && batch_after_turn())
         return false; /* the next action of the batch runs */
     if (turn.reply_dropped)
         batch_clear();
@@ -1258,14 +1260,14 @@ bool turn_poll(void)
    action. */
 static void stop_json(Json *j)
 {
-    if (batch.active) {
+    if (turn.batch.active) {
         json_key(j, "ran");
-        json_int(j, batch.ran);
+        json_int(j, turn.batch.ran);
         json_key(j, "stopped");
-        json_str(j, batch.stop);
-        if (batch.error) {
+        json_str(j, turn.batch.stop);
+        if (turn.batch.error) {
             json_key(j, "error");
-            json_str(j, batch.error);
+            json_str(j, turn.batch.error);
         }
         return;
     }
@@ -1279,32 +1281,32 @@ static void stop_json(Json *j)
 /* The result of choose_action: one value after act, the list of the choose_action items after act_many. */
 static void put_action_damage(Json *j)
 {
-    if (batch.active ? !batch.damage_count : !turn.has_damage)
+    if (turn.batch.active ? !turn.batch.damage_count : !turn.has_damage)
         return;
     json_key(j, "action_damage");
-    if (!batch.active) {
+    if (!turn.batch.active) {
         json_int(j, g_champ_action_result);
         return;
     }
     json_open(j, '[');
-    for (int i = 0; i < batch.damage_count; i++)
-        json_int(j, batch.damages[i]);
+    for (int i = 0; i < turn.batch.damage_count; i++)
+        json_int(j, turn.batch.damages[i]);
     json_close(j, ']');
 }
 
-/* The eye panel text of a look action: the object name and the other lines, only when the turn looked. */
+/* The eye panel text of a look action: the object name and the other lines, only when the turn turn.looked. */
 static void look_json(Json *j)
 {
-    if (!looked.shown)
+    if (!turn.looked.shown)
         return;
     json_key(j, "look");
     json_open(j, '{');
     json_key(j, "name");
-    json_str(j, looked.count ? looked.lines[0] : "");
+    json_str(j, turn.looked.count ? turn.looked.lines[0] : "");
     json_key(j, "lines");
     json_open(j, '[');
-    for (int i = 1; i < looked.count; i++)
-        json_str(j, looked.lines[i]);
+    for (int i = 1; i < turn.looked.count; i++)
+        json_str(j, turn.looked.lines[i]);
     json_close(j, ']');
     json_close(j, '}');
 }
@@ -1315,7 +1317,7 @@ void turn_reply(Json *j)
     json_key(j, "ok");
     json_bool(j, true);
     json_key(j, "ticks");
-    json_int(j, g_game.game_time - (batch.active ? batch.start_time : turn.start_time));
+    json_int(j, g_game.game_time - (turn.batch.active ? turn.batch.start_time : turn.start_time));
     stop_json(j);
     json_key(j, "game_over");
     json_bool(j, state_json_game_over());

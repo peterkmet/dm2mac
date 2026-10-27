@@ -50,6 +50,57 @@ static void close_client(void)
     control_drop_client();
 }
 
+/* Setup */
+
+bool transport_open(const char *path)
+{
+    struct sockaddr_un address = {.sun_family = AF_UNIX};
+    struct stat old;
+    char dir[sizeof transport.socket_path];
+    if (strlen(path) >= sizeof address.sun_path)
+        return false;
+    if (!lstat(path, &old) && !S_ISSOCK(old.st_mode))
+        return false; /* never remove another file */
+    snprintf(dir, sizeof dir, "%s", path);
+    char *slash = strrchr(dir, '/');
+    if (slash && slash != dir) {
+        *slash = 0;
+        mkdir(dir, SOCKET_DIR_MODE);
+    }
+    snprintf(address.sun_path, sizeof address.sun_path, "%s", path);
+    snprintf(transport.socket_path, sizeof transport.socket_path, "%s", path);
+    unlink(path);
+    transport.listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (transport.listen_fd < 0)
+        return false;
+    if (bind(transport.listen_fd, (struct sockaddr *)&address, sizeof address) || listen(transport.listen_fd, 1) ||
+        fcntl(transport.listen_fd, F_SETFL, O_NONBLOCK)) {
+        transport_close();
+        return false;
+    }
+    return true;
+}
+
+void transport_close(void)
+{
+    close_client();
+    if (transport.listen_fd >= 0) {
+        close(transport.listen_fd);
+        unlink(transport.socket_path);
+    }
+    transport.listen_fd = -1;
+    control_reset();
+}
+
+/* Queries */
+
+bool transport_is_available(void)
+{
+    return true;
+}
+
+/* Requests */
+
 /* Sends reply as one line and frees it. */
 static void send_line(Json *reply)
 {
@@ -170,57 +221,6 @@ static void read_requests(void)
         transport.input_length = 0;
     }
 }
-
-/* Setup */
-
-bool transport_open(const char *path)
-{
-    struct sockaddr_un address = {.sun_family = AF_UNIX};
-    struct stat old;
-    char dir[sizeof transport.socket_path];
-    if (strlen(path) >= sizeof address.sun_path)
-        return false;
-    if (!lstat(path, &old) && !S_ISSOCK(old.st_mode))
-        return false; /* never remove another file */
-    snprintf(dir, sizeof dir, "%s", path);
-    char *slash = strrchr(dir, '/');
-    if (slash && slash != dir) {
-        *slash = 0;
-        mkdir(dir, SOCKET_DIR_MODE);
-    }
-    snprintf(address.sun_path, sizeof address.sun_path, "%s", path);
-    snprintf(transport.socket_path, sizeof transport.socket_path, "%s", path);
-    unlink(path);
-    transport.listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (transport.listen_fd < 0)
-        return false;
-    if (bind(transport.listen_fd, (struct sockaddr *)&address, sizeof address) || listen(transport.listen_fd, 1) ||
-        fcntl(transport.listen_fd, F_SETFL, O_NONBLOCK)) {
-        transport_close();
-        return false;
-    }
-    return true;
-}
-
-void transport_close(void)
-{
-    close_client();
-    if (transport.listen_fd >= 0) {
-        close(transport.listen_fd);
-        unlink(transport.socket_path);
-    }
-    transport.listen_fd = -1;
-    control_reset();
-}
-
-/* Queries */
-
-bool transport_is_available(void)
-{
-    return true;
-}
-
-/* Requests */
 
 void transport_poll(void)
 {

@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "control.h"
 #include <ctype.h>
-#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,15 +81,19 @@
 #define STORED_BLOCK_COUNT       ((PNG_RAW_SIZE + STORED_BLOCK_MAX - 1) / STORED_BLOCK_MAX)
 #define ZLIB_SIZE (ZLIB_HEADER_SIZE + PNG_RAW_SIZE + STORED_BLOCK_HEADER_SIZE * STORED_BLOCK_COUNT + ADLER_SIZE)
 
-/* A wait request: the reply goes out when g_main_loop.timer_ticks reached start + ticks. */
+/* The wait request, the screenshot buffers, and the game state of the control. */
 static struct {
-    bool pending;
-    uint32_t start, ticks;
-} waiting;
-
-static uint32_t crc_table[CRC_TABLE_SIZE];
-
-static bool game_lost; /* a damaged save and a failed restore left no game to play */
+    /* A wait request: the reply goes out when g_main_loop.timer_ticks reached start + ticks. */
+    struct {
+        bool pending;
+        uint32_t start, ticks;
+    } waiting;
+    uint32_t crc_table[CRC_TABLE_SIZE]; /* the CRC-32 of each byte value; filled on the first use */
+    uint8_t png_raw[PNG_RAW_SIZE];      /* the filtered rows of a screenshot */
+    uint8_t png_zlib[ZLIB_SIZE];        /* the zlib stream of the rows */
+    uint8_t screen[SCREEN_H][SCREEN_W]; /* the screen of a screenshot, with the cursor */
+    bool game_lost;                     /* a damaged save and a failed restore left no game to play */
+} control;
 
 /* PC scan codes of the keys without a character; the arrows give the keypad codes that main.c gives them. */
 static const struct {
@@ -145,7 +148,7 @@ static const struct {
 
 void control_reset(void)
 {
-    game_lost = false;
+    control.game_lost = false;
 }
 
 /* Requests: a flat search for "key": value. */
@@ -168,9 +171,9 @@ const char *control_find_value(const char *line, const char *key)
 }
 
 /* Four hex digits at p, -1 when they are not. */
-static long hex4(const char *p)
+static int32_t hex4(const char *p)
 {
-    long value = 0;
+    int32_t value = 0;
     for (int i = 0; i < HEX_DIGITS; i++) {
         if (!isxdigit((unsigned char)p[i]))
             return -1;
@@ -182,7 +185,7 @@ static long hex4(const char *p)
 }
 
 /* Appends code point c as UTF-8; false when it does not fit. */
-static bool put_utf8(char *out, size_t size, size_t *n, long c)
+static bool put_utf8(char *out, size_t size, size_t *n, int32_t c)
 {
     char bytes[UTF8_MAX_BYTES];
     int count = c < UTF8_ONE_BYTE_END ? 1 : c < UTF8_TWO_BYTE_END ? 2 : c < UTF8_THREE_BYTE_END ? 3 : UTF8_MAX_BYTES;
@@ -228,7 +231,7 @@ bool control_get_string(const char *line, const char *key, char *out, size_t siz
     if (!p || *p++ != '"')
         return false;
     while (*p != '"') {
-        long c = (unsigned char)*p++;
+        int32_t c = (unsigned char)*p++;
         if (!c)
             return false;
         if (c == '\\') {
@@ -241,7 +244,7 @@ bool control_get_string(const char *line, const char *key, char *out, size_t siz
             else {
                 p += HEX_DIGITS;
                 if (c >= SURROGATE_HIGH && c < SURROGATE_LOW && p[0] == '\\' && p[1] == 'u') { /* a surrogate pair */
-                    long low = hex4(p + UNICODE_ESCAPE_PREFIX);
+                    int32_t low = hex4(p + UNICODE_ESCAPE_PREFIX);
                     if (low < SURROGATE_LOW || low >= SURROGATE_END)
                         return false;
                     c = UTF8_THREE_BYTE_END + ((c - SURROGATE_HIGH) << SURROGATE_SHIFT) + (low - SURROGATE_LOW);
@@ -262,13 +265,13 @@ bool control_get_string(const char *line, const char *key, char *out, size_t siz
     return true;
 }
 
-long control_get_int(const char *line, const char *key, long missing)
+int64_t control_get_int(const char *line, const char *key, int64_t missing)
 {
     const char *p = control_find_value(line, key);
     char *end;
     if (!p)
         return missing;
-    long value = strtol(p, &end, DECIMAL_BASE);
+    int64_t value = strtoll(p, &end, DECIMAL_BASE);
     return end == p ? missing : value;
 }
 
@@ -378,16 +381,16 @@ static void put_state(Json *reply)
 /* The CRC-32 of PNG after n more bytes at p. */
 static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
 {
-    if (!crc_table[1])
+    if (!control.crc_table[1])
         for (uint32_t i = 0; i < CRC_TABLE_SIZE; i++) {
             uint32_t c = i;
             for (int k = 0; k < BYTE_BIT_COUNT; k++)
                 c = c & 1 ? CRC32_POLYNOMIAL ^ c >> 1 : c >> 1;
-            crc_table[i] = c;
+            control.crc_table[i] = c;
         }
     crc = ~crc;
     while (n--)
-        crc = crc_table[(crc ^ *p++) & BYTE_MASK] ^ crc >> BYTE_BIT_COUNT;
+        crc = control.crc_table[(crc ^ *p++) & BYTE_MASK] ^ crc >> BYTE_BIT_COUNT;
     return ~crc;
 }
 
@@ -408,7 +411,8 @@ static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n
 /* Writes screen with the palette as an RGB PNG with stored (not compressed) deflate blocks. */
 static bool write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 {
-    static uint8_t raw[PNG_RAW_SIZE], z[ZLIB_SIZE];
+    uint8_t *raw = control.png_raw;
+    uint8_t *z = control.png_zlib;
     for (int y = 0; y < SCREEN_H; y++) {
         uint8_t *p = raw + y * PNG_ROW_SIZE;
         *p++ = 0; /* filter: none */
@@ -458,12 +462,11 @@ static bool write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 /* The screen as the window shows it, with the cursor image at the pointer (none while the pointer is unset). */
 static void screenshot(const char *path, Json *reply)
 {
-    static uint8_t screen[SCREEN_H][SCREEN_W];
     char absolute[FULL_PATH_SIZE];
-    memcpy(screen, g_video_fb, sizeof screen);
+    memcpy(control.screen, g_video_fb, sizeof control.screen);
     if (g_input_mouse_x >= 0 && g_input_mouse_y >= 0)
-        input_draw_cursor(&screen[0][0], g_input_mouse_x, g_input_mouse_y);
-    if (!write_png(path, screen) || !os_get_full_path(path, absolute, sizeof absolute)) {
+        input_draw_cursor(&control.screen[0][0], g_input_mouse_x, g_input_mouse_y);
+    if (!write_png(path, control.screen) || !os_get_full_path(path, absolute, sizeof absolute)) {
         put_error(reply, "cannot write the PNG file");
         return;
     }
@@ -475,8 +478,8 @@ static void screenshot(const char *path, Json *reply)
 /* A screen position of a request; false with an error reply when it is missing or off the screen. */
 static bool get_position(const char *request, int *x, int *y, Json *reply)
 {
-    long px = control_get_int(request, "x", -1);
-    long py = control_get_int(request, "y", -1);
+    int64_t px = control_get_int(request, "x", -1);
+    int64_t py = control_get_int(request, "y", -1);
     char error[ERROR_SIZE];
     if (px >= 0 && py >= 0 && px < SCREEN_W && py < SCREEN_H) {
         *x = (int)px;
@@ -492,7 +495,7 @@ static bool get_position(const char *request, int *x, int *y, Json *reply)
 static void handle_key(const char *request, Json *reply)
 {
     char name[NAME_SIZE];
-    long code = control_get_int(request, "key", 0);
+    int64_t code = control_get_int(request, "key", 0);
     if (control_get_string(request, "key", name, sizeof name))
         code = control_key_code(name);
     if (code <= 0 || code > KEY_CODE_MAX) {
@@ -577,7 +580,7 @@ static void forget_game_end(void)
 {
     g_main_loop.end = 0;
     g_session.completed = 0;
-    game_lost = false;
+    control.game_lost = false;
 }
 
 /* Loads QUICK.DAT of the save folder; a missing or damaged file keeps the game, a failed restore loses it. */
@@ -589,7 +592,7 @@ static void handle_load(Json *reply)
     g_main_loop.end = 0; /* the loaded game starts with a full game step, as after the load of a slot */
     enum QuickLoadResult result = advanced_quick_load();
     if (result == QUICK_LOST)
-        game_lost = true;
+        control.game_lost = true;
     if (result != QUICK_LOADED) {
         g_main_loop.end = end;
         put_error(reply, result == QUICK_MISSING   ? "no saved game (use save first)"
@@ -607,7 +610,7 @@ static void handle_new_game(Json *reply)
     if (refuse_in_modal_loop(reply))
         return;
     if (!session_start_new_game()) {
-        game_lost = true;
+        control.game_lost = true;
         put_error(reply, "cannot start the new game");
         return;
     }
@@ -676,7 +679,7 @@ static bool handle_turnbased_request(const char *request, const char *cmd, Json 
         handle_new_game(reply);
         return true;
     }
-    if (game_lost) {
+    if (control.game_lost) {
         put_error(reply, "no game is running: use load or new_game");
         return true;
     }
@@ -691,7 +694,7 @@ static bool handle_turnbased_request(const char *request, const char *cmd, Json 
 /* Answers one request of the real-time and the turn-based mode; no reply while a wait or a turn holds it. */
 static void handle_request(const char *request, Json *reply)
 {
-    char cmd[NAME_SIZE], path[PATH_MAX];
+    char cmd[NAME_SIZE], path[FULL_PATH_SIZE];
     int x, y;
     if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         put_error(reply, "missing cmd");
@@ -714,7 +717,7 @@ static void handle_request(const char *request, Json *reply)
         g_input_mouse_y = y;
         put_ok(reply);
     } else if (!strcmp(cmd, "command")) {
-        long id = control_get_int(request, "id", -1);
+        int64_t id = control_get_int(request, "id", -1);
         if (id < 0 || id > KEY_CODE_MAX)
             put_error(reply, "missing id");
         else {
@@ -723,15 +726,15 @@ static void handle_request(const char *request, Json *reply)
             put_ok(reply);
         }
     } else if (!strcmp(cmd, "wait")) {
-        long ticks = control_get_int(request, "ticks", 0);
+        int64_t ticks = control_get_int(request, "ticks", 0);
         if (ticks < 1 || ticks > WAIT_MAX_TICKS) {
             char error[ERROR_SIZE];
             snprintf(error, sizeof error, "ticks must be 1-%d", WAIT_MAX_TICKS);
             put_error(reply, error);
         } else {
-            waiting.pending = true;
-            waiting.start = g_main_loop.timer_ticks;
-            waiting.ticks = (uint32_t)ticks;
+            control.waiting.pending = true;
+            control.waiting.start = g_main_loop.timer_ticks;
+            control.waiting.ticks = (uint32_t)ticks;
         }
     } else if (!strcmp(cmd, "screenshot")) {
         if (!control_get_string(request, "path", path, sizeof path))
@@ -750,16 +753,16 @@ static void handle_request(const char *request, Json *reply)
 bool control_handle_line(const char *line, Json *reply)
 {
     handle_request(line, reply);
-    return !waiting.pending && !turn_is_pending();
+    return !control.waiting.pending && !turn_is_pending();
 }
 
 bool control_end_turn(Json *reply)
 {
-    if (waiting.pending) {
-        uint32_t ran = g_main_loop.timer_ticks - waiting.start;
-        if (ran < waiting.ticks)
+    if (control.waiting.pending) {
+        uint32_t ran = g_main_loop.timer_ticks - control.waiting.start;
+        if (ran < control.waiting.ticks)
             return false;
-        waiting.pending = false;
+        control.waiting.pending = false;
         put(reply, "{\"ok\":true,\"ticks\":%u}", ran);
         return true;
     }
@@ -776,7 +779,7 @@ bool control_is_turn_pending(void)
 
 void control_drop_client(void)
 {
-    waiting.pending = false;
+    control.waiting.pending = false;
     if (turn_is_pending())
         turn_drop_reply();
 }

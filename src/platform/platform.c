@@ -40,6 +40,7 @@ static struct {
     int filter; /* upscale factor: 1 none, 2 Scale2x, 3 Scale3x */
     uint8_t big[SCREEN_H * FILTER_MAX][SCREEN_W * FILTER_MAX];
     SDL_AudioStream *audio;
+    int16_t audio_frames[AUDIO_QUEUE_FRAMES * AUDIO_CHANNELS]; /* the mixed frames that top up the audio queue */
     PlatMixer *music_mixer;
     SDL_Texture *movie_tex;
     int movie_tex_w, movie_tex_h;
@@ -267,8 +268,8 @@ void plat_mouse_position(int *out_x, int *out_y)
 /* Tops up the audio queue on the main thread, so that the mixers need no lock. */
 static void pump_audio(void)
 {
-    static int16_t buf[AUDIO_QUEUE_FRAMES * AUDIO_CHANNELS];
-    const int frame_bytes = sizeof(buf[0]) * AUDIO_CHANNELS;
+    int16_t *buf = platform.audio_frames;
+    const int frame_bytes = sizeof platform.audio_frames[0] * AUDIO_CHANNELS;
     if (!platform.audio)
         return;
     int frames = AUDIO_QUEUE_FRAMES - SDL_GetAudioStreamQueued(platform.audio) / frame_bytes;
