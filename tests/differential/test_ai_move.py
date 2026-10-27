@@ -77,6 +77,11 @@ class AiLocation(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
+class AiCommand(ctypes.Structure):
+    """The outcome of a command test of the port: the test passed, and the command result after it."""
+    _fields_ = [("passed", ctypes.c_bool), ("result", ctypes.c_uint8)]
+
+
 class AiLineTarget(ctypes.Structure):
     """The result of the line search of the port."""
     _fields_ = [("found", ctypes.c_bool), ("location", ctypes.c_uint16)]
@@ -132,7 +137,8 @@ class Ai:
         for name in SQUARE_ARGS:
             getattr(lib, name).argtypes = [ctypes.c_int, AiLocation, AiLocation, ctypes.c_int16] + [ctypes.c_int] * (
                 1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
-            getattr(lib, name).restype = ctypes.c_bool
+            getattr(lib, name).restype = AiCommand
+        lib.ai_turn_toward.restype = AiCommand
         lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int16]
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
@@ -219,6 +225,9 @@ class Ai:
         """Calls the C function and the original with the same arguments; returns both results."""
         mine = getattr(self.lib, name)(*c_args(name, args))
         theirs = self.emu.call(F[name], *(args if emu_args is None else emu_args))
+        if isinstance(mine, AiCommand):  # the command tests return the command result that the AI context holds
+            assert mine.result == ctypes.string_at(self.ai + AI_FIELDS["command_result"][0], 1)[0], name
+            mine = mine.passed
         return mine, theirs
 
     def ai_field(self, name):

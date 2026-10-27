@@ -225,7 +225,8 @@ void ai_load_cached_path(void);
 void ai_refresh_party_maps(void);
 
 /* Creature perception and movement (ai_move.c): squares, lines of sight, item filters, the tests of the AI
-   commands, and the path search. The functions work on the AI context and set g_ai.command_result. */
+   commands, and the path search. The functions work on the AI context; the command tests set g_ai.command_result and
+   return it. */
 /* Bits of the command byte of the AI tests (AI_EXECUTE in ai.h). */
 #define AI_MODE_MASK             0x7f
 #define AI_MOVE_KIND_MASK        0x1f /* ai_try_move: the kind of the move */

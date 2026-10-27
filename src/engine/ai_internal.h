@@ -70,6 +70,13 @@ static inline AiLocation ai_group_square(void)
     return ai_location(g_ai.event.data[0], g_ai.event.data[1]);
 }
 
+/* The outcome of an AI command test: passed, and the command result (AI_RESULT_*) of g_ai.command_result after it.
+   A test that sets no result keeps the result of the command before, as in the original. */
+typedef struct {
+    bool passed;
+    uint8_t result;
+} AiCommand;
+
 /* A target that the line search found: found false for none; location: x bits 0-4, y bits 5-9, map bits 10-15. */
 typedef struct {
     bool found;
@@ -92,8 +99,8 @@ bool ai_square_is_obstacle(int16_t x, int16_t y);
 int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int16_t x, int16_t y));
 /* Makes (x, y) of the current map the square that the AI reads; keeps the cache when it is the same square. */
 void ai_cache_square(int16_t x, int16_t y);
-/* Turns the group toward dir (action turn left or right); false when it already faces dir. */
-bool ai_turn_toward(int16_t dir);
+/* Turns the group toward dir (action turn left or right); not passed when it already faces dir. */
+AiCommand ai_turn_toward(int16_t dir);
 /* True when a dangerous projectile flies toward (x, y) within 3 squares in a direction that the creature sees. */
 bool ai_projectile_incoming(int16_t x, int16_t y);
 /* Removes and frees the items of filter from a thing list (cell CELL_ANY: any cell); the matching items inside a
@@ -120,19 +127,19 @@ bool ai_plan_path(void);
 AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, AiLocation from, int16_t dir, bool ranged);
 /* Tests (and with AI_EXECUTE starts) an attack (ATTACK_MODE_*) from the square from on the square to
    (AI_SQUARE_IN_DIR: the square in dir). */
-bool ai_try_attack(int mode, AiLocation from, AiLocation to, int16_t dir);
+AiCommand ai_try_attack(int mode, AiLocation from, AiLocation to, int16_t dir);
 /* Tests (and with AI_EXECUTE starts) an action (DOOR_MODE_*) on the door on the square to
    (AI_SQUARE_IN_DIR: the square in dir). */
-bool ai_try_door_action(int mode, AiLocation from, AiLocation to, int16_t dir);
+AiCommand ai_try_door_action(int mode, AiLocation from, AiLocation to, int16_t dir);
 /* Tests (and with AI_EXECUTE starts) a move (MOVE_KIND_*) of the group from the square from to the square to
    (AI_SQUARE_IN_DIR: the square in dir); dir DIR_LEVEL_UP and DIR_LEVEL_DOWN change the level, DIR_KEEP_FACING keeps the facing. */
-bool ai_try_move(int command, AiLocation from, AiLocation to, int16_t dir);
+AiCommand ai_try_move(int command, AiLocation from, AiLocation to, int16_t dir);
 /* Tests (and with AI_EXECUTE starts) taking or giving (ITEM_MODE_*) an item of filter on the square to
    (AI_SQUARE_IN_DIR: the square in dir): from the floor, an alcove, a chest, or a group. */
-bool ai_try_take_item(int mode, AiLocation from, AiLocation to, int16_t dir, int filter);
+AiCommand ai_try_take_item(int mode, AiLocation from, AiLocation to, int16_t dir, int filter);
 /* Tests (and with AI_EXECUTE starts) the use of a wall actuator on the square to (AI_SQUARE_IN_DIR: the square in
    dir) from the slot of the creature type on that wall face. */
-bool ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int16_t dir, int filter);
+AiCommand ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int16_t dir, int filter);
 /* The breadth-first search from the square from with the move command: the nearest of count candidates; returns its index,
    -1 for none. out_path gets the steps to it (2 bytes each). */
 int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *out_path);
