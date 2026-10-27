@@ -25,8 +25,8 @@ typedef struct {
     uint16_t attack_skills;   /* AI_ATTACK_* */
     uint16_t door_skills;     /* AI_DOOR_* */
     uint16_t actuator_skills; /* how the creature uses wall actuators */
-    uint16_t unknown_14;
-    uint16_t speed; /* bits 0-3 think speed, 4-7 fear resistance, 8-11 experience, 12-15 turn chance */
+    uint16_t sight_and_range; /* bits 0-3 sight, 12-15 attack range */
+    uint16_t speed;           /* bits 0-3 think speed, 4-7 fear resistance, 8-11 experience, 12-15 turn chance */
     uint8_t unknown_18;
     uint8_t door_flags; /* bits 0-3 armor, CREATURE_RESISTS_NON_FIRE */
     uint8_t unknown_1a, unknown_1b, unknown_1c;
@@ -127,6 +127,18 @@ static inline uint16_t creature_armor(const CreatureInfo *info)
 static inline uint16_t creature_door_size(const CreatureInfo *info)
 {
     return info->flags >> CREATURE_DOOR_LEVEL_SHIFT & CREATURE_DOOR_LEVEL_MASK;
+}
+/* The shift of the attack range in CreatureInfo.sight_and_range. */
+#define ATTACK_RANGE_SHIFT 12
+/* The squares that the attacks of the creature reach. */
+static inline uint16_t creature_attack_range(const CreatureInfo *info)
+{
+    return info->sight_and_range >> ATTACK_RANGE_SHIFT;
+}
+/* How well the creature sees an invisible party or a party in the dark. */
+static inline uint16_t creature_sight(const CreatureInfo *info)
+{
+    return info->sight_and_range & INFO_NIBBLE_MASK;
 }
 
 /* GDAT value keys (0x0f, creature type, 0x0b, key) of a creature type. */

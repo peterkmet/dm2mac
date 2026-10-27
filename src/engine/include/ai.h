@@ -45,7 +45,7 @@ typedef struct __attribute__((packed)) {
     uint16_t marker;      /* +0x0c */
     int8_t plan;          /* +0x0e */
     int8_t scan_arg;      /* +0x0f */
-    uint8_t unknown_10;   /* +0x10 */
+    uint8_t kind_flags;   /* +0x10 the flags of the target kind (KIND_*) */
     int8_t scan_kind;     /* +0x11 */
     uint32_t targets;     /* +0x12 address of the target list */
 } AiCandidate;
@@ -206,11 +206,11 @@ int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
 uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int filter);
 /* True when the wall actuator reacts to the creature in mode (ACTUATOR_MODE_*) with an item of filter; state: the
    state bits of the creature slot; exported for the tests. */
-int ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, uint16_t state);
+bool ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, uint16_t state);
 
-/* True (1, or FILTER_INVERT for an inverted filter) when thing belongs to the item filter of the group in the AI
-   context: classes of items, creatures, and wall actuators that the creature text lists, or money boxes. */
-int ai_thing_matches_filter(uint16_t thing, int filter);
+/* True when thing belongs to the item filter of the group in the AI context: classes of items, creatures, and wall
+   actuators that the creature text lists, or money boxes. */
+bool ai_thing_matches_filter(uint16_t thing, int filter);
 /* The first item of filter in a thing list (cell CELL_ANY: any cell), THING_ENDOFLIST for none. */
 uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int16_t cell);
 

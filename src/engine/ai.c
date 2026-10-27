@@ -501,7 +501,7 @@ static int dest_y(void)
     return location_y(g_ai.active->destination);
 }
 
-static AiLocation dest_square(void)
+static Location dest_square(void)
 {
     return ai_location(dest_x(), dest_y());
 }
@@ -1590,7 +1590,7 @@ static bool flee_or_dodge(bool second_round)
 static bool try_flee(uint32_t class_flags)
 {
     bool second_round = rand_2bits() == 0;
-    AiLocation at = ai_group_square();
+    Location at = ai_group_square();
     if (class_flags & AI_CLASS_NO_FLEE || ai_try_move(g_ai.search_flags, at, at, -1).passed)
         return false;
     bool flee = (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(at.x, at.y)) || !g_ai.alert ||

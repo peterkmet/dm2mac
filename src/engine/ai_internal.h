@@ -52,20 +52,16 @@ typedef struct {
 } AiSquare;
 extern AiSquare g_ai_square;
 
-/* A square of the current map. */
-typedef struct {
-    int16_t x, y;
-} AiLocation;
 /* The target square of an AI command test that means the square in the direction of the test. */
-#define AI_SQUARE_IN_DIR ((AiLocation){-1, -1})
+#define AI_SQUARE_IN_DIR ((Location){-1, -1})
 
 /* The square (x, y) of the current map. */
-static inline AiLocation ai_location(int16_t x, int16_t y)
+static inline Location ai_location(int16_t x, int16_t y)
 {
-    return (AiLocation){(int16_t)x, (int16_t)y};
+    return (Location){x, y};
 }
 /* The square of the group in the AI context. */
-static inline AiLocation ai_group_square(void)
+static inline Location ai_group_square(void)
 {
     return ai_location(g_ai.event.data[0], g_ai.event.data[1]);
 }
@@ -96,7 +92,7 @@ uint8_t *ai_find_path(void);
 bool ai_square_is_obstacle(int16_t x, int16_t y);
 /* Walks the squares of the line from (x2, y2) toward (x1, y1): the square distance of the ends (1 for adjacent
    squares), 0 when blocked() stops it. */
-int ai_trace_line(int x1, int y1, int x2, int y2, bool (*blocked)(int16_t x, int16_t y));
+int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked)(int16_t x, int16_t y));
 /* Makes (x, y) of the current map the square that the AI reads; keeps the cache when it is the same square. */
 void ai_cache_square(int16_t x, int16_t y);
 /* Turns the group toward dir (action turn left or right); not passed when it already faces dir. */
@@ -124,25 +120,25 @@ bool ai_plan_path(void);
    ranged attack a wall ornament that is a shooting target; then tests the attack from the farthest square of the
    line that the search reached no later. distance_map: the map of the search (4 bytes per square, 32 squares per
    column). It is exported for the tests. */
-AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, AiLocation from, int16_t dir, bool ranged);
+AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, Location from, int16_t dir, bool ranged);
 /* Tests (and with AI_EXECUTE starts) an attack (ATTACK_MODE_*) from the square from on the square to
    (AI_SQUARE_IN_DIR: the square in dir). */
-AiCommand ai_try_attack(int mode, AiLocation from, AiLocation to, int16_t dir);
+AiCommand ai_try_attack(int mode, Location from, Location to, int16_t dir);
 /* Tests (and with AI_EXECUTE starts) an action (DOOR_MODE_*) on the door on the square to
    (AI_SQUARE_IN_DIR: the square in dir). */
-AiCommand ai_try_door_action(int mode, AiLocation from, AiLocation to, int16_t dir);
+AiCommand ai_try_door_action(int mode, Location from, Location to, int16_t dir);
 /* Tests (and with AI_EXECUTE starts) a move (MOVE_KIND_*) of the group from the square from to the square to
    (AI_SQUARE_IN_DIR: the square in dir); dir DIR_LEVEL_UP and DIR_LEVEL_DOWN change the level, DIR_KEEP_FACING keeps the facing. */
-AiCommand ai_try_move(int command, AiLocation from, AiLocation to, int16_t dir);
+AiCommand ai_try_move(int command, Location from, Location to, int16_t dir);
 /* Tests (and with AI_EXECUTE starts) taking or giving (ITEM_MODE_*) an item of filter on the square to
    (AI_SQUARE_IN_DIR: the square in dir): from the floor, an alcove, a chest, or a group. */
-AiCommand ai_try_take_item(int mode, AiLocation from, AiLocation to, int16_t dir, int filter);
+AiCommand ai_try_take_item(int mode, Location from, Location to, int16_t dir, int filter);
 /* Tests (and with AI_EXECUTE starts) the use of a wall actuator on the square to (AI_SQUARE_IN_DIR: the square in
    dir) from the slot of the creature type on that wall face. */
-AiCommand ai_try_use_wall_actuator(int mode, AiLocation from, AiLocation to, int16_t dir, int filter);
+AiCommand ai_try_use_wall_actuator(int mode, Location from, Location to, int16_t dir, int filter);
 /* The breadth-first search from the square from with the move command: the nearest of count candidates; returns its index,
    -1 for none. out_path gets the steps to it (2 bytes each). */
-int ai_search_area(AiLocation from, int command, int count, AiCandidate *candidates, uint8_t *out_path);
+int ai_search_area(Location from, int command, int count, AiCandidate *candidates, uint8_t *out_path);
 
 /* Shared state of the creature movement (ai_move.c): the move directions past the map, the last read square. */
 /* The directions of a move test past the four map directions. */

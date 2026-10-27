@@ -72,7 +72,7 @@ def s16(v):
     return ctypes.c_int16(v & 0xFFFF).value
 
 
-class AiLocation(ctypes.Structure):
+class Location(ctypes.Structure):
     """A square of the current map as the port passes it."""
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
@@ -87,17 +87,17 @@ class AiLineTarget(ctypes.Structure):
     _fields_ = [("found", ctypes.c_bool), ("location", ctypes.c_uint16)]
 
 
-# The command tests of the port take each square as one AiLocation: the index of its x in the arguments of the original.
+# The command tests of the port take each square as one Location: the index of its x in the arguments of the original.
 SQUARE_ARGS = {name: (1, 3) for name in ("ai_try_attack", "ai_try_door_action", "ai_try_move", "ai_try_take_item",
                                          "ai_try_use_wall_actuator")}
 
 
 def c_args(name, args):
-    """The arguments of the C function from the arguments of the original: each (x, y) pair becomes an AiLocation."""
+    """The arguments of the C function from the arguments of the original: each (x, y) pair becomes a Location."""
     squares, out, i = SQUARE_ARGS.get(name, ()), [], 0
     while i < len(args):
         if i in squares:
-            out.append(AiLocation(args[i], args[i + 1]))
+            out.append(Location(args[i], args[i + 1]))
             i += 2
         else:
             out.append(args[i])
@@ -130,15 +130,16 @@ class Ai:
         lib.ai_scratch_push.restype = ctypes.c_void_p
         lib.dun_set_current_map.argtypes = [ctypes.c_int16]
         for name in ("ai_trace_line",):
-            getattr(lib, name).argtypes = [ctypes.c_int] * 4 + [ctypes.c_void_p]
-        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, AiLocation, ctypes.c_int16, ctypes.c_bool]
+            getattr(lib, name).argtypes = [ctypes.c_int16] * 4 + [ctypes.c_void_p]
+        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]
         lib.ai_find_target_in_lines.restype = AiLineTarget
-        lib.ai_search_area.argtypes = [AiLocation] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
+        lib.ai_search_area.argtypes = [Location] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
         for name in SQUARE_ARGS:
-            getattr(lib, name).argtypes = [ctypes.c_int, AiLocation, AiLocation, ctypes.c_int16] + [ctypes.c_int] * (
+            getattr(lib, name).argtypes = [ctypes.c_int, Location, Location, ctypes.c_int16] + [ctypes.c_int] * (
                 1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
             getattr(lib, name).restype = AiCommand
         lib.ai_turn_toward.restype = AiCommand
+        lib.ai_thing_matches_filter.restype = ctypes.c_bool
         lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int16]
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
@@ -617,8 +618,8 @@ def test_item_filters(ai):
             for t in rng.sample(things, 120):
                 for flt in (f, f | 0x80):
                     mine, theirs = ai.call("ai_thing_matches_filter", t, flt)
-                    assert mine == theirs, (g, hex(t), hex(flt))
-                    matched += mine == 1
+                    assert mine == (theirs != 0), (g, hex(t), hex(flt))  # the original returns FILTER_INVERT for true
+                    matched += theirs == 1
             ai.check((g, f))
         ai.end()
     assert matched > 100
@@ -718,7 +719,7 @@ def test_find_target_in_lines(ai):
                 cells[i] = rng.choice((0, 0, 1, 2, 3, 4, 5))
             dist.put(bytes(cells))
             args = (rng.choice(fs), dist, out, x, y, rng.choice((-1, rng.randrange(4))), rng.randrange(2))
-            target = ai.lib.ai_find_target_in_lines(args[0], dist.c, AiLocation(x, y), *args[5:])
+            target = ai.lib.ai_find_target_in_lines(args[0], dist.c, Location(x, y), *args[5:])
             mine = int(target.found)
             if target.found:  # the original writes the target square to out
                 ctypes.memmove(out.c, struct.pack("<H", target.location), 2)
@@ -760,7 +761,7 @@ def test_search_area(ai):
             path = Buffers(ai, 0x64)
             cands.put(b"".join(random_candidate(rng, fs, x, y, m) for _ in range(count)))
             command = rng.choice((0, 2, 3, 4, 5, 7, 8)) | rng.choice((0, 0, C.AI_MOVE_ATTACK_GROUPS, C.AI_MOVE_NO_MOVERS))
-            mine = lib.ai_search_area(AiLocation(x, y), command, count, cands.c, path.c)
+            mine = lib.ai_search_area(Location(x, y), command, count, cands.c, path.c)
             theirs = ai.emu.call(F["ai_search_area"], x, y, command, 0, count, cands.emu, path.emu)
             where = (g, x, y, n, hex(command), cands.c.raw.hex())
             assert mine == s16(theirs), where
@@ -809,7 +810,7 @@ def test_plan_path_and_next_step(ai):
         cands, path = Buffers(ai, 22), Buffers(ai, 0x64)
         cands.put(cand)
         command = rng.choice((0, 3, 5))
-        mine = lib.ai_search_area(AiLocation(x, y), command, 1, cands.c, path.c)
+        mine = lib.ai_search_area(Location(x, y), command, 1, cands.c, path.c)
         theirs = ai.emu.call(F["ai_search_area"], x, y, command, 0, 1, cands.emu, path.emu)
         assert mine == s16(theirs) and cands.both()[0] == cands.both()[1] and path.both()[0] == path.both()[1], (g, x, y)
         record = cands.c.raw
