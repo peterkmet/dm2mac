@@ -28,7 +28,6 @@ decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-decimal ui/view.c rule 3.1: the plain numbers of POS_BIT, door_types, the four ornament sides and a loop of 4 (removed by Task 37)
 decimal ui/view.c:arrow_cells rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:arrow_scales rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
@@ -150,4 +149,3 @@ module platform/main.c rule 1.7: the entry point has no header
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-local engine/item.c rule 7.6: the mutable static local name (removed by Task 34)
 static-local ui/input.c rule 7.6: the mutable static local object_cursor (removed by Task 36)
-static-local ui/view.c rule 7.6: the mutable static local palette (removed by Task 37)
