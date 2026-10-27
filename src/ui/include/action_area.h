@@ -8,6 +8,9 @@
 #include <stdbool.h>
 #include "ui.h"
 
+/* The size of the text of one rune: a rune glyph and the end of the text. */
+#define RUNE_TEXT_SIZE 2
+
 /* ---- Setup ---- */
 
 /* Clears the drawn state of the action area and its bitmap. */

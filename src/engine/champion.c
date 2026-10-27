@@ -333,6 +333,11 @@ void champ_set_party_direction(int16_t dir)
     }
 }
 
+void champ_set_direction(int16_t champion_index, int16_t dir)
+{
+    champion(champion_index)->dir = (uint8_t)dir;
+}
+
 void champ_wake_party(void)
 {
     g_input_command_stop = 1;

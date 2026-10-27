@@ -192,12 +192,12 @@ int dialog_run_cancel(int id, int cancel)
     return result;
 }
 
-void dialog_draw_button(int zone, int highlighted)
+void dialog_draw_button(int zone, int highlighted, GdatKey picture)
 {
     (void)zone;
     if (!highlighted)
         return;
-    const Bitmap *image = draw_gdat_image(g_dialog.button_category, g_dialog.button_index, g_dialog.button_entry);
+    const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
     if (!image)
         return;
     int16_t r[RECT_SIZE];
@@ -209,7 +209,7 @@ void dialog_draw_button(int zone, int highlighted)
         r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
     }
     gfx_blit_to_bitmap(image, &g_view_viewport, r, BUTTON_KEY,
-                       draw_gdat_image_palette(g_dialog.button_category, g_dialog.button_index, g_dialog.button_entry));
+                       draw_gdat_image_palette(picture.category, picture.index, picture.entry));
     play_wait_frames(BUTTON_PRESS_VBLANKS);
 }
 

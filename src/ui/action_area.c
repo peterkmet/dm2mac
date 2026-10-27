@@ -57,7 +57,6 @@
 #define ICON_BPP        8
 #define FACE_BPP        4
 #define JITTER_CENTER   2 /* haste_jitter: a roll of 1 to 3 moves by -1 to 1 */
-#define RUNE_TEXT_SIZE  2 /* a rune glyph and the end of the text */
 
 /* The offsets of up to 32 coins in a pile, from SKULL.EXE. */
 static const int8_t coin_pile[COIN_PILE_MAX][2] = {

@@ -108,8 +108,8 @@ typedef struct {
     int16_t rect[RECT_SIZE]; /* the screen rect of the zone of the entry */
 } InputMatch;
 
-/* A cursor image (mouse_set_cursor_image): bpp 4 (high nibble first) or 8, the hot spot at the pointer, the clear
-   color number, and the palette colors of the color numbers (NULL: the numbers are palette colors). */
+/* A cursor image: bpp 4 (high nibble first) or 8, the hot spot at the pointer, the clear color number, and the
+   palette colors of the color numbers (NULL: the numbers are palette colors). */
 typedef struct {
     const uint8_t *bits, *palette;
     int bpp, width, height, hot_x, hot_y, key;
@@ -118,7 +118,7 @@ typedef struct {
 /* The last matched command entry. */
 extern InputMatch g_input_match;
 /* A click feedback script waits for the next game step. */
-extern int g_input_feedback_busy;
+extern bool g_input_feedback_busy;
 /* The mouse position on the screen (main.c sets it before each tick). */
 extern int g_input_mouse_x, g_input_mouse_y;
 
@@ -152,12 +152,13 @@ void input_pop_mode(void);
 
 /* ---- The cursor ---- */
 
-/* The cursor image at (x, y) of the screen (the original mouse_move_event): the held object or the hand over a
-   cursor zone of kind 1, the dragged champion over a zone of kind 2, else the arrow. */
+/* The cursor image at (x, y) of the screen: the held object or the hand over a cursor zone of kind 1, the dragged
+   champion over a zone of kind 2, else the arrow. */
 int input_cursor_at(int16_t x, int16_t y); /* exported for the tests */
-/* Draws the face of champ into the dragged champion cursor (champ_drag_click). */
+/* Draws the face of champ into the dragged champion cursor. */
 void input_set_champion_cursor(int champ);
-/* The image of a cursor of input_cursor_at. */
+/* The image of a cursor of input_cursor_at. The bits of the object cursor stay valid until the next call for the
+   object cursor, the bits of the champion cursor until the next input_set_champion_cursor. */
 CursorImage input_cursor_image(int cursor); /* exported for the tests */
 /* Draws the cursor image of input_cursor_at(x, y) with its hot spot at (x, y) into the screen pixels. */
 void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y);

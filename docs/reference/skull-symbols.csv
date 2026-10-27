@@ -1734,6 +1734,7 @@ address,name,signature,subsystem
 0x0007f422,g_last_discarded_map,uint8_t[16],dungeon data
 0x0007f434,g_quit_exit_code,int16_t,end of game
 0x0007f438,g_main_jmpbuf,jmp_buf,main loop
+0x0007f474,g_click_feedback_waiting,int16_t,input
 0x0007f478,g_input_deferred_click,int16_t,input
 0x0007f47c,g_click_feedback_script,uint8_t *,input
 0x0007f484,g_command_stop,int16_t,input

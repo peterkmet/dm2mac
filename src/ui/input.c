@@ -825,19 +825,19 @@ static const uint8_t click_feedback_scripts[CLICK_FEEDBACK_SIZE] = {
     0x1a, 0xfe, 0x01, 0x00, 0x04, 0x85, 0x06, 0x83,
 };
 
-static uint8_t child_list_start[INPUT_CHILD_COUNT]; /* position of each child list */
-static int16_t command_list_start[INPUT_COMMAND_COUNT];
-static int16_t key_list_start[INPUT_KEY_COUNT];
-
 static struct {
+    uint8_t child_list_start[INPUT_CHILD_COUNT]; /* position of each child list */
+    int16_t command_list_start[INPUT_COMMAND_COUNT];
+    int16_t key_list_start[INPUT_KEY_COUNT];
     enum InputMode mode, saved_mode;
     struct {
         int16_t type, x, y;
     } events[EVENT_RING];
     int event_head, event_tail, event_count;
-    int events_locked;
-    int deferred, deferred_x, deferred_y, deferred_type;
-    int dropped_left; /* a left click did not fit: a right release still may */
+    bool events_locked;
+    bool deferred;
+    int deferred_x, deferred_y, deferred_type;
+    bool dropped_left; /* a left click did not fit: a right release still may */
     uint16_t keys[KEY_BUFFER];
     int key_count;
     Command current; /* the command of the last event */
@@ -845,43 +845,44 @@ static struct {
     int queue_head, queue_tail;
     int disabled;            /* commands queued by feedback scripts that wait */
     int wait;                /* ticks without new commands */
-    int16_t rect[RECT_SIZE]; /* the rectangle of the matched command */
+    int16_t rect[RECT_SIZE]; /* the rectangle of the last command lookup of input_poll */
     const uint8_t *script;   /* the running click feedback script */
     int script_delay;
     uint32_t last_ticks;
-    int feedback_waiting; /* the original 0x7f474: the script waits for the next queue run */
+    bool feedback_waiting; /* the script waits for the next queue run */
     bool arrow_pressed;
     int arrow_zone, arrow_entry;
-    uint8_t zone_active[INPUT_ZONE_COUNT];  /* the input zones of the input tree of the mode */
+    bool zone_active[INPUT_ZONE_COUNT];     /* the input zones of the input tree of the mode */
     uint8_t cursor_list[CURSOR_ZONE_COUNT]; /* the shown cursor zones (from 1), by priority */
     int cursor_count;
+    uint8_t champion_cursor[FACE_SIZE * FACE_SIZE];                 /* the dragged champion cursor */
+    uint8_t champion_cursor_key;                                    /* its clear color */
+    uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE]; /* the held object cursor */
 } in;
 
-static uint8_t champion_cursor[FACE_SIZE * FACE_SIZE];
-static uint8_t champion_cursor_key;
-
 InputMatch g_input_match = {.zone = ZONE_NONE, .origin = -1};
-int g_input_feedback_busy;
-int g_input_mouse_x = -1, g_input_mouse_y = -1;
+bool g_input_feedback_busy;
+int g_input_mouse_x = -1;
+int g_input_mouse_y = -1;
 
 /* ---- Setup ---- */
 
 void input_init(void)
 {
+    memset(&in, 0, sizeof in);
+    in.event_tail = EVENT_RING - 1;
     int n = 0;
     for (int i = 0; i < INPUT_COMMAND_COUNT; i++)
         if (input_commands[i].command & LIST_START)
-            command_list_start[n++] = (int16_t)i;
+            in.command_list_start[n++] = (int16_t)i;
     n = 0;
     for (int i = 0; i < INPUT_KEY_COUNT; i++)
         if (input_keys[i].command & LIST_START)
-            key_list_start[n++] = (int16_t)i;
+            in.key_list_start[n++] = (int16_t)i;
     n = 0;
     for (int i = 0; i < INPUT_CHILD_COUNT; i++)
         if (input_children[i] & NODE_HAS_CHILDREN)
-            child_list_start[n++] = (uint8_t)i;
-    memset(&in, 0, sizeof in);
-    in.event_tail = EVENT_RING - 1;
+            in.child_list_start[n++] = (uint8_t)i;
 }
 
 bool input_is_waiting(void)
@@ -945,12 +946,12 @@ static bool condition_holds(int cond, int arg)
 
 static const InputNode *node_child(const InputNode *node, int i)
 {
-    return &input_nodes[input_children[child_list_start[node->link] + i] & NODE_INDEX_MASK];
+    return &input_nodes[input_children[in.child_list_start[node->link] + i] & NODE_INDEX_MASK];
 }
 
 static bool node_child_end(const InputNode *node, int i)
 {
-    return i > 0 && input_children[child_list_start[node->link] + i] & NODE_HAS_CHILDREN;
+    return i > 0 && input_children[in.child_list_start[node->link] + i] & NODE_HAS_CHILDREN;
 }
 
 /* The screen rectangle of an input zone. */
@@ -975,7 +976,7 @@ static bool point_in_rect(const int16_t *r, int x, int y)
 static const InputCommand *node_commands(const InputNode *node)
 {
     int list = input_zones[node->link].commands;
-    return list == -1 ? NULL : &input_commands[command_list_start[list]];
+    return list == -1 ? NULL : &input_commands[in.command_list_start[list]];
 }
 
 /* The zone that the position of a command zone is relative to: the inventory panel, the action area, or none. */
@@ -988,8 +989,8 @@ static int16_t origin_of_zone(uint16_t zone)
     return -1;
 }
 
-/* Remembers the matched command entry: its zone, the click position, and its place in its list. */
-static void select_entry(const InputCommand *list, const InputCommand *e, int x, int y)
+/* Remembers the matched command entry: its zone, the click position, its place in its list, and its rect. */
+static void select_entry(const InputCommand *list, const InputCommand *e, int x, int y, const int16_t *rect)
 {
     uint16_t command = e->command & COMMAND_MASK;
     g_input_match.zone = e->zone & ZONE_ID_MASK;
@@ -998,49 +999,55 @@ static void select_entry(const InputCommand *list, const InputCommand *e, int x,
     g_input_match.choice = (int16_t)(command - ((list->command & COMMAND_MASK) - 1));
     g_input_match.x = (int16_t)x;
     g_input_match.y = (int16_t)y;
-    memcpy(g_input_match.rect, in.rect, sizeof g_input_match.rect);
+    memcpy(g_input_match.rect, rect, sizeof g_input_match.rect);
 }
 
-/* The command of the first entry of a command list whose buttons and zone take the click, 0 for none. */
-static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int buttons)
+/* The command of the first entry of a command list whose buttons and zone take the click, 0 for none; rect becomes
+   the rect of its zone. */
+static uint16_t match_click_in_list(const InputCommand *list, int x, int y, int buttons, int16_t *rect)
 {
     if (!list)
         return 0;
     const InputCommand *e = list;
     do {
-        if (!(e->flags & COMMAND_OFF) && buttons & e->buttons && get_input_zone_rect(e->zone, in.rect) &&
-            point_in_rect(in.rect, x, y)) {
-            select_entry(list, e, x, y);
+        if (!(e->flags & COMMAND_OFF) && buttons & e->buttons && get_input_zone_rect(e->zone, rect) &&
+            point_in_rect(rect, x, y)) {
+            select_entry(list, e, x, y, rect);
             g_input_match.key = 0;
             return e->command & COMMAND_MASK;
         }
         e++;
     } while (!(e->command & LIST_START));
-    in.rect[RECT_W] = in.rect[RECT_H] = 0;
+    rect[RECT_W] = 0;
+    rect[RECT_H] = 0;
     return 0;
 }
 
-/* Remembers the entry of command in a command list as the matched entry, or only the command without an entry. */
-static void select_command_in_list(uint16_t command, const InputCommand *list)
+/* Remembers the entry of command in a command list as the matched entry, or only the command without an entry; rect
+   becomes the rect of the zone of the entry. */
+static void select_command_in_list(uint16_t command, const InputCommand *list, int16_t *rect)
 {
     g_input_match.origin = -1;
     if (list)
         for (const InputCommand *e = list; e->command & COMMAND_MASK; e++)
             if (!(e->flags & COMMAND_OFF) && (e->command & COMMAND_MASK) == command) {
-                get_input_zone_rect(e->zone, in.rect);
-                select_entry(list, e, in.rect[RECT_X], in.rect[RECT_Y]);
+                get_input_zone_rect(e->zone, rect);
+                select_entry(list, e, rect[RECT_X], rect[RECT_Y], rect);
                 return;
             }
-    if (list)
-        in.rect[RECT_W] = in.rect[RECT_H] = 0;
+    if (list) {
+        rect[RECT_W] = 0;
+        rect[RECT_H] = 0;
+    }
     g_input_match.zone = ZONE_NONE;
-    g_input_match.x = g_input_match.y = 0;
+    g_input_match.x = 0;
+    g_input_match.y = 0;
     g_input_match.value = command;
     g_input_match.choice = 0;
 }
 
-/* The command of a click in the input tree below node, 0 for none. */
-static uint16_t find_click_command(const InputNode *node, int x, int y, int buttons)
+/* The command of a click in the input tree below node, 0 for none; rect becomes the rect of its zone. */
+static uint16_t find_click_command(const InputNode *node, int x, int y, int buttons, int16_t *rect)
 {
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
@@ -1048,12 +1055,12 @@ static uint16_t find_click_command(const InputNode *node, int x, int y, int butt
         if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
             continue;
         if (child->cond & NODE_HAS_CHILDREN) {
-            command = find_click_command(child, x, y, buttons);
+            command = find_click_command(child, x, y, buttons, rect);
         } else {
             int16_t r[RECT_SIZE];
             if (!get_input_zone_rect(input_zones[child->link].zone, r) || !point_in_rect(r, x, y))
                 continue;
-            command = match_click_in_list(node_commands(child), x, y, buttons);
+            command = match_click_in_list(node_commands(child), x, y, buttons, rect);
         }
         if (command)
             return command;
@@ -1061,8 +1068,8 @@ static uint16_t find_click_command(const InputNode *node, int x, int y, int butt
     return command;
 }
 
-/* The command of key in the input tree below node, 0 for none. */
-static uint16_t find_key_command(const InputNode *node, uint16_t key)
+/* The command of key in the input tree below node, 0 for none; rect becomes the rect of the zone of its command. */
+static uint16_t find_key_command(const InputNode *node, uint16_t key, int16_t *rect)
 {
     uint16_t command = 0;
     for (int i = 0; !node_child_end(node, i); i++) {
@@ -1070,7 +1077,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
         if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
             continue;
         if (child->cond & NODE_HAS_CHILDREN) {
-            command = find_key_command(child, key);
+            command = find_key_command(child, key, rect);
             if (command)
                 return command;
             continue;
@@ -1078,11 +1085,11 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
         int list = input_zones[child->link].keys;
         if (list == -1)
             continue;
-        const InputKey *k = &input_keys[key_list_start[list]];
+        const InputKey *k = &input_keys[in.key_list_start[list]];
         do {
             if (k->key == key) {
                 command = k->command & COMMAND_MASK;
-                select_command_in_list(command, node_commands(child));
+                select_command_in_list(command, node_commands(child), rect);
                 g_input_match.key = key;
                 break;
             }
@@ -1096,12 +1103,12 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 
 /* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
    load, Tab and M there open the automap, C the cheat screen, Esc the options menu (instead of the pause), Tab in the inventory closes it, and a letter key W S A D Q E without a command gives
-   the command of its keypad key. */
-static uint16_t key_command(enum InputMode mode, uint16_t key)
+   the command of its keypad key. rect becomes the rect of the zone of the command. */
+static uint16_t key_command(enum InputMode mode, uint16_t key, int16_t *rect)
 {
     if (g_game_mode == GAME_MODE_ADVANCED && mode == INPUT_MODE_MOVE && key == KEY_OPTIONS)
         return CMD_OPTIONS;
-    uint16_t command = find_key_command(&input_mode_roots[mode], key);
+    uint16_t command = find_key_command(&input_mode_roots[mode], key, rect);
     if (command || g_game_mode != GAME_MODE_ADVANCED)
         return command;
     if (mode == INPUT_MODE_MOVE && (key == KEY_QUICK_SAVE || key == KEY_QUICK_LOAD))
@@ -1113,7 +1120,7 @@ static uint16_t key_command(enum InputMode mode, uint16_t key)
     if (mode == INPUT_MODE_INVENTORY && key == KEY_AUTOMAP && !g_ui.candidate)
         return CMD_INVENTORY_LEADER;
     uint16_t keypad = advanced_movement_key(key);
-    return keypad ? find_key_command(&input_mode_roots[mode], keypad) : 0;
+    return keypad ? find_key_command(&input_mode_roots[mode], keypad, rect) : 0;
 }
 
 /* The command entry of command in the input tree under node, NULL for none. */
@@ -1150,10 +1157,10 @@ static bool right_click_cancels_dialog(int type)
 
 /* The command of a click; in the advanced mode a left click on a status box outside the hands is a click on the
    bars when the leader hand holds an object (it stores the object), else a click on the name (it opens the
-   inventory of the champion). */
-static uint16_t click_command(enum InputMode mode, int x, int y, int buttons)
+   inventory of the champion). rect becomes the rect of the zone of the command. */
+static uint16_t click_command(enum InputMode mode, int x, int y, int buttons, int16_t *rect)
 {
-    uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons);
+    uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons, rect);
     if (g_game_mode != GAME_MODE_ADVANCED || buttons != INPUT_BUTTON_LEFT)
         return command;
     for (int champ = 0; champ < CHAMPION_MAX; champ++) {
@@ -1166,7 +1173,7 @@ static uint16_t click_command(enum InputMode mode, int x, int y, int buttons)
         const InputCommand *e =
             find_command_entry(&input_mode_roots[mode], g_game.leader_hand != THING_NONE ? store : open);
         if (e && get_input_zone_rect(e->zone, target))
-            return find_click_command(&input_mode_roots[mode], target[RECT_X], target[RECT_Y], buttons);
+            return find_click_command(&input_mode_roots[mode], target[RECT_X], target[RECT_Y], buttons, rect);
         return command;
     }
     return command;
@@ -1174,20 +1181,16 @@ static uint16_t click_command(enum InputMode mode, int x, int y, int buttons)
 
 uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int buttons, int16_t *rect)
 {
-    uint16_t command = click_command(mode, x, y, buttons);
-    memcpy(rect, in.rect, sizeof in.rect);
-    return command;
+    return click_command(mode, x, y, buttons, rect);
 }
 
 uint16_t input_key_command(enum InputMode mode, uint16_t key, int16_t *rect)
 {
-    uint16_t command = key_command(mode, key);
-    memcpy(rect, in.rect, sizeof in.rect);
-    return command;
+    return key_command(mode, key, rect);
 }
 
 /* Marks the zones of the input tree below node whose conditions hold. */
-static void mark_active_zones(const InputNode *node, uint8_t *active)
+static void mark_active_zones(const InputNode *node, bool *active)
 {
     for (int i = 0; !node_child_end(node, i); i++) {
         const InputNode *child = node_child(node, i);
@@ -1196,11 +1199,11 @@ static void mark_active_zones(const InputNode *node, uint8_t *active)
         if (child->cond & NODE_HAS_CHILDREN)
             mark_active_zones(child, active);
         else
-            active[child->link] = 1;
+            active[child->link] = true;
     }
 }
 
-/* Shows the cursor zone c in front of the zones of the same or a lower priority (mouse_area_add). */
+/* Shows the cursor zone c in front of the zones of the same or a lower priority. */
 static void cursor_zone_add(int c)
 {
     if (memchr(in.cursor_list, c, (size_t)in.cursor_count))
@@ -1213,7 +1216,7 @@ static void cursor_zone_add(int c)
     in.cursor_count++;
 }
 
-/* Hides the cursor zone c (mouse_area_remove). */
+/* Hides the cursor zone c. */
 static void cursor_zone_remove(int c)
 {
     uint8_t *e = memchr(in.cursor_list, c, (size_t)in.cursor_count);
@@ -1226,7 +1229,8 @@ static void cursor_zone_remove(int c)
    becomes inactive hides; with both changes it stays as it is, as in the original. */
 static void update_active_zones(void)
 {
-    uint8_t active[INPUT_ZONE_COUNT] = {0}, change[CURSOR_ZONE_COUNT + 1] = {0};
+    bool active[INPUT_ZONE_COUNT] = {false};
+    uint8_t change[CURSOR_ZONE_COUNT + 1] = {0};
     mark_active_zones(&input_mode_roots[in.mode], active);
     for (int i = 0; i < INPUT_ZONE_COUNT; i++)
         if (active[i] != in.zone_active[i]) {
@@ -1286,12 +1290,12 @@ int input_cursor_at(int16_t x, int16_t y)
     }
     if (kind == CURSOR_KIND_CHAMPION)
         return CURSOR_CHAMPION;
-    if (kind != CURSOR_KIND_HAND || (int16_t)g_game.leader < 0)
+    if (kind != CURSOR_KIND_HAND || g_game.leader == LEADER_NONE)
         return CURSOR_ARROW;
     return inv_cursor_object() == THING_NONE ? CURSOR_HAND : CURSOR_OBJECT;
 }
 
-/* The arrow (g_cursor_arrow_bitmap) and the hand (g_cursor_hand_bitmap) of input_init: 4 bpp, color 12 clear. */
+/* The arrow and the hand cursors: 4 bpp, color 12 clear. */
 static const uint8_t cursor_arrow[ARROW_W * CURSOR_H / 2] = {
     0x00, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x0f, 0x0c, 0xcc, 0xcc, 0xcc, 0xcc, 0x0f, 0xf0, 0xcc, 0xcc,
     0xcc, 0xcc, 0x0f, 0xff, 0x0c, 0xcc, 0xcc, 0xcc, 0x0f, 0xff, 0xf0, 0xcc, 0xcc, 0xcc, 0x0f, 0xff,
@@ -1318,11 +1322,11 @@ void input_set_champion_cursor(int champ)
     memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
     uint8_t colors[FACE_ICON_COLORS];
     ui_draw_champion_face_icon(face, champ, colors);
-    Bitmap cursor = {champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
-    memset(champion_cursor, UI_KEY, sizeof champion_cursor);
+    Bitmap cursor = {in.champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
+    memset(in.champion_cursor, UI_KEY, sizeof in.champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     ui_blit_bitmap(&(BlitSource){.bitmap = face, .transparent = FACE_CURSOR_SKIP, .colormap = colors}, &cursor, r);
-    champion_cursor_key = colors[UI_KEY];
+    in.champion_cursor_key = colors[UI_KEY];
     draw_free_temp();
 }
 
@@ -1332,23 +1336,23 @@ CursorImage input_cursor_image(int cursor)
     case CURSOR_HAND:
         return (CursorImage){cursor_hand, g_ui_colors, IMAGE_4BPP, HAND_W, CURSOR_H, 0, 0, UI_KEY};
     case CURSOR_OBJECT: {
-        static uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE];
-        uint8_t key = g_leader_hand.palette[HAND_ICON_KEY], shadow[HAND_ICON_COLORS];
+        uint8_t key = g_leader_hand.palette[HAND_ICON_KEY];
+        uint8_t shadow[HAND_ICON_COLORS];
         memset(shadow, g_ui_colors[UI_BLACK], sizeof shadow);
-        memset(object_cursor, key, sizeof object_cursor);
+        memset(in.object_cursor, key, sizeof in.object_cursor);
         const Bitmap icon = {g_leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
-        Bitmap image = {object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
+        Bitmap image = {in.object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
         ui_blit_bitmap(&(BlitSource){.bitmap = &icon, .transparent = HAND_ICON_KEY, .colormap = shadow}, &image, s);
         ui_blit_bitmap(&(BlitSource){.bitmap = &icon, .transparent = HAND_ICON_KEY, .colormap = g_leader_hand.palette},
                        &image, r);
-        return (CursorImage){object_cursor,      NULL,       IMAGE_8BPP, OBJECT_CURSOR_SIZE,
+        return (CursorImage){in.object_cursor,   NULL,       IMAGE_8BPP, OBJECT_CURSOR_SIZE,
                              OBJECT_CURSOR_SIZE, OBJECT_HOT, OBJECT_HOT, key};
     }
     case CURSOR_CHAMPION:
-        return (CursorImage){champion_cursor, NULL,       IMAGE_8BPP, FACE_SIZE,
-                             FACE_SIZE,       FACE_HOT_X, FACE_HOT_Y, champion_cursor_key};
+        return (CursorImage){in.champion_cursor, NULL,       IMAGE_8BPP, FACE_SIZE,
+                             FACE_SIZE,          FACE_HOT_X, FACE_HOT_Y, in.champion_cursor_key};
     default:
         return (CursorImage){cursor_arrow, g_ui_colors, IMAGE_4BPP, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
     }
@@ -1375,7 +1379,7 @@ void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y)
 void input_mouse_click(int16_t x, int16_t y, int type)
 {
     if (in.events_locked) {
-        in.deferred = 1;
+        in.deferred = true;
         in.deferred_x = x;
         in.deferred_y = y;
         in.deferred_type = type;
@@ -1385,7 +1389,7 @@ void input_mouse_click(int16_t x, int16_t y, int type)
         (type == INPUT_LEFT_RELEASED && !in.dropped_left) || type == EVENT_ENTER_AREA || type == EVENT_LEAVE_AREA
             ? EVENT_LIMIT_SPECIAL
             : EVENT_LIMIT;
-    in.dropped_left = 0;
+    in.dropped_left = false;
     if (in.event_count < limit) {
         in.event_tail = (in.event_tail + 1) % EVENT_RING;
         in.events[in.event_tail].type = (int16_t)type;
@@ -1393,7 +1397,7 @@ void input_mouse_click(int16_t x, int16_t y, int type)
         in.events[in.event_tail].y = y;
         in.event_count++;
     } else if (type == INPUT_BUTTON_LEFT) {
-        in.dropped_left = 1;
+        in.dropped_left = true;
     }
 }
 
@@ -1415,7 +1419,7 @@ static void flush_deferred_click(void)
 {
     if (!in.deferred)
         return;
-    in.deferred = 0;
+    in.deferred = false;
     input_mouse_click(in.deferred_x, in.deferred_y, in.deferred_type);
 }
 
@@ -1428,7 +1432,7 @@ static void enqueue_key(uint16_t key)
         in.events[in.event_tail].x = (int16_t)key;
         in.event_count++;
     }
-    in.events_locked = 0;
+    in.events_locked = false;
     flush_deferred_click();
 }
 
@@ -1459,13 +1463,15 @@ void input_flush(void)
     }
     in.disabled = 0;
     in.queue_head = in.queue_tail = 0;
-    in.rect[RECT_W] = in.rect[RECT_H] = 0;
+    in.rect[RECT_W] = 0;
+    in.rect[RECT_H] = 0;
     g_input_match.zone = ZONE_NONE;
     g_input_match.origin = -1;
-    g_input_match.x = g_input_match.y = 0;
+    g_input_match.x = 0;
+    g_input_match.y = 0;
     g_input_match.value = 0;
     g_input_match.choice = 0;
-    in.events_locked = 0;
+    in.events_locked = false;
     flush_deferred_click();
 }
 
@@ -1543,7 +1549,7 @@ static const uint8_t *click_feedback_script(Command *c)
     else if (command >= CMD_MAP_OPTION_FIRST && command <= CMD_MAP_OPTION_LAST)
         offset = (command - CMD_MAP_OPTION_FIRST) * SCRIPT_MAP_OPTION_SIZE + SCRIPT_MAP_OPTION_FIRST;
     else if (command >= CMD_DIALOG_BUTTON_FIRST && command <= CMD_DIALOG_BUTTON_LAST)
-        offset = SCRIPT_EXECUTE; /* dialog buttons (Step 20) */
+        offset = SCRIPT_EXECUTE; /* dialog buttons */
     else
         offset = command == CMD_VIEWPORT ? SCRIPT_VIEWPORT : SCRIPT_QUEUE;
     return click_feedback_scripts + offset;
@@ -1611,8 +1617,9 @@ static void feedback_rune_button(Feedback *f)
                       .colormap = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED)},
         r);
     /* the rune of the pressed button in the next rune set */
-    int set = champion(g_action.champion - 1)->rune_count, rune = in.current.command - CMD_RUNE_FIRST;
-    char text[2] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
+    int set = champion(g_action.champion - 1)->rune_count;
+    int rune = in.current.command - CMD_RUNE_FIRST;
+    char text[RUNE_TEXT_SIZE] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
     TextSize size = text_measure(text);
     rect_center_in(r, f->o.rect, size.w, size.h);
     offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1,
@@ -1686,11 +1693,8 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         break;
     case FB_DIALOG_BUTTON:
     case FB_DIALOG_BUTTON_2:
-        g_dialog.button_category = p[PICTURE_CATEGORY];
-        g_dialog.button_index = p[PICTURE_INDEX];
-        g_dialog.button_entry = p[PICTURE_ENTRY];
+        dialog_draw_button(g_input_match.zone, 1, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
         p += DIALOG_BUTTON_ARGS;
-        dialog_draw_button(g_input_match.zone, 1);
         f->opened = false; /* the original forgets the open feedback bitmap */
         dialog_present();
         break;
@@ -1711,10 +1715,10 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
         release_queue();
         break;
     case FB_WAIT_QUEUE:
-        in.feedback_waiting = 1;
+        in.feedback_waiting = true;
         break;
     case FB_WAIT_STEP:
-        g_input_feedback_busy = 1;
+        g_input_feedback_busy = true;
         break;
     case FB_QUEUE:
     case FB_QUEUE_AND_RELEASE:
@@ -1808,7 +1812,7 @@ void input_poll(void)
             for (int i = 0; i < in.key_count; i++)
                 enqueue_key(in.keys[i]);
             in.key_count = 0;
-            in.events_locked = 1;
+            in.events_locked = true;
             uint16_t command = 0;
             while (!command) {
                 if (!in.event_count)
@@ -1824,10 +1828,10 @@ void input_poll(void)
                         if (type == INPUT_BUTTON_LEFT)
                             area_end_damage_hold((int16_t)x, (int16_t)y);
                         if (!right_click_cancels_dialog(type))
-                            command = click_command(in.mode, x, y, type);
+                            command = click_command(in.mode, x, y, type, in.rect);
                     }
                 } else if (type == INPUT_KEY) {
-                    command = key_command(in.mode, (uint16_t)x);
+                    command = key_command(in.mode, (uint16_t)x, in.rect);
                 } else if (type == EVENT_ENTER_AREA) {
                     command = CMD_DRAG_CANCEL;
                 } else if (type == EVENT_LEAVE_AREA) {
@@ -1840,7 +1844,7 @@ void input_poll(void)
                     in.current.command = command;
                 }
             }
-            in.events_locked = 0;
+            in.events_locked = false;
             flush_deferred_click();
             if (!command)
                 break;
@@ -1855,8 +1859,8 @@ void input_reset_states(void)
 {
     game_release_eye_and_mouth();
     move_set_push_mode(false);
-    g_input_feedback_busy = 0;
-    in.feedback_waiting = 0;
+    g_input_feedback_busy = false;
+    in.feedback_waiting = false;
     in.script = NULL;
     game_clear_drag();
 }
@@ -2020,7 +2024,7 @@ static void clear_moneybox_placed(uint16_t thing)
 /* A click with an empty hand on the object of click zone index: the leader takes the object. */
 static void click_take_object(int x, int y, int index)
 {
-    if ((int16_t)g_game.leader == -1)
+    if (g_game.leader == LEADER_NONE)
         return;
     const ViewClickZone *z = &g_view_click_zones[index];
     int sx = g_game.party_x, sy = g_game.party_y;
@@ -2050,7 +2054,7 @@ static bool is_party_in_wall(void)
    a static creature, relative to the party direction. True when done. */
 static bool click_drop_object(int x, int y, int cell)
 {
-    if ((int16_t)g_game.leader == -1)
+    if (g_game.leader == LEADER_NONE)
         return false;
     if (x == g_game.party_x && y == g_game.party_y && is_party_in_wall())
         return true; /* no drop inside a wall: the object stays in the hand */
@@ -2155,7 +2159,7 @@ static bool click_zones_hit(const ViewSquares *v, int x, int y, uint16_t hand)
             }
             break;
         case CLICK_DOOR_BUTTON:
-            if ((int16_t)g_game.leader != -1)
+            if (g_game.leader != LEADER_NONE)
                 click_door_button_zone(v, z, hand);
             break;
         case CLICK_WALL_ORNAMENT:
@@ -2306,8 +2310,9 @@ static bool execute_party_command(const Command *c, bool idle)
         move_party(command);
     } else if (command == CMD_ROTATE_LEFT || command == CMD_ROTATE_RIGHT) {
         if (g_action.champion) {
-            Champion *ch = champion(g_action.champion - 1);
-            ch->dir = (uint8_t)dir_turn(ch->dir, command == CMD_ROTATE_LEFT ? -1 : 1);
+            int16_t champ = g_action.champion - 1;
+            int16_t turn = command == CMD_ROTATE_LEFT ? TURN_LEFT : TURN_RIGHT;
+            champ_set_direction(champ, dir_turn(champion(champ)->dir, turn));
         }
         area_update(0);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
@@ -2320,7 +2325,7 @@ static bool execute_party_command(const Command *c, bool idle)
         else if (champ == CHAMPION_MAX || champ < g_game.champion_count)
             ui_toggle_inventory(champ);
     } else if (command == CMD_LEADER_INVENTORY) {
-        if ((int16_t)g_game.leader != -1)
+        if (g_game.leader != LEADER_NONE)
             ui_toggle_inventory(g_game.leader);
     } else if (command == CMD_VIEWPORT) {
         click_in_viewport(c->x, c->y);
@@ -2454,7 +2459,7 @@ void command_process_queue(void)
 {
     if (in.wait)
         in.wait--;
-    in.feedback_waiting = 0;
+    in.feedback_waiting = false;
     do {
         input_poll();
         if (in.queue_head == in.queue_tail || g_advanced_screen)

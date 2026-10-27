@@ -264,6 +264,8 @@ int champ_get_index_in_cell(int16_t cell);
 void champ_set_leader(int champ);
 /* Turns the party to dir; the champions turn with it. */
 void champ_set_party_direction(int16_t dir);
+/* Turns one champion to dir; the party keeps its direction. */
+void champ_set_direction(int16_t champion_index, int16_t dir);
 /* The party wakes up. */
 void champ_wake_party(void);
 
