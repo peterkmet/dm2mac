@@ -173,7 +173,7 @@ static void step_before_input(void)
     tick_elapsed = 0;
     game_reset_step_ticks();
     if (step_view()) {
-        g_input_feedback_busy = 0;
+        g_input_feedback_busy = false;
         input_poll();
     }
     input_release_move_arrow();

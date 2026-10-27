@@ -11,8 +11,7 @@ G_DIALOG_SCREEN_MODE, G_SCREEN_BITMAP, G_DISK_PATH_KIND, G_DATA_PATH, G_SAVE_PAT
 
 
 class DialogState(ctypes.Structure):
-    _fields_ = [("screen_mode", ctypes.c_int), ("button_count", ctypes.c_int), ("button_category", ctypes.c_uint8),
-                ("button_index", ctypes.c_uint8), ("button_entry", ctypes.c_uint8), ("progress_enabled", ctypes.c_int),
+    _fields_ = [("screen_mode", ctypes.c_int), ("button_count", ctypes.c_int), ("progress_enabled", ctypes.c_int),
                 ("progress_width", ctypes.c_int16), ("id", ctypes.c_int)]
 
 

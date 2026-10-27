@@ -6,6 +6,7 @@
 /* Dialogs: message, question and progress pictures with buttons, and the volume settings. */
 
 #include <stdint.h>
+#include "gdat.h"
 
 /* Dialogs: a picture of GDAT category 0x1a in the viewport with up to 4 buttons and a message. */
 #define DIALOG_ERROR      0x00
@@ -35,7 +36,6 @@
 typedef struct {
     int screen_mode;  /* 1: the dialogs draw on a black screen; 0: in the game viewport */
     int button_count; /* the buttons of the open dialog (7 for the volume dialog) */
-    uint8_t button_category, button_index, button_entry; /* the picture of a pressed button */
     int progress_enabled;
     int16_t progress_width;
     int id;           /* the dialog of the last dialog_draw */
@@ -55,7 +55,7 @@ int dialog_run(int id);
 /* dialog_run, and in the advanced mode a right click chooses the button of text entry cancel. */
 int dialog_run_cancel(int id, int cancel);
 /* Draws the pressed button picture over the clicked button of zone. */
-void dialog_draw_button(int zone, int highlighted);
+void dialog_draw_button(int zone, int highlighted, GdatKey picture);
 /* Draws the bar of a progress dialog at permille of its length. */
 void dialog_draw_progress_bar(int permille); /* exported for the tests */
 /* The dialog of the sound and music volumes. */

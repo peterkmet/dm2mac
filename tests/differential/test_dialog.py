@@ -12,6 +12,7 @@ from dm2test.dialog import (  # noqa: F401 (program_start_after is an autouse fi
     G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch, Session,
     main_loop_quit, program_start_after,
 )
+from dm2test.gdat import GdatKey
 from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixtures)
     SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff, gdat, original, port,
 )
@@ -294,6 +295,7 @@ def test_pressed_buttons_match_original(ui, original):
     from dm2test.dialog import find_point
     lib, emu = ui, original.emu
     lib.input_init()
+    lib.dialog_draw_button.argtypes = [ctypes.c_int, ctypes.c_int, GdatKey]
     match = InputMatch.in_dll(lib, "g_input_match")
     state = DialogState.in_dll(lib, "g_dialog")
     for dialog, buttons in ((C.DIALOG_SAVE_MENU, 4), (C.DIALOG_THE_END, 2)):
@@ -304,11 +306,10 @@ def test_pressed_buttons_match_original(ui, original):
                 emu.call(UI_DIALOG_DRAW, dialog, 0)
                 state.button_count = buttons
                 find_point(lib, C.INPUT_MODE_DIALOG, lambda m: m.choice == choice)
-                state.button_category, state.button_index, state.button_entry = C.CAT_DIALOG, 0xFE, entry
                 emu.write(G_MATCH_RECT, bytes(match.rect))
                 emu.write(G_MATCH_ORIGIN, struct.pack("<h", match.origin))
                 emu.write(G_BUTTON_PICTURE, bytes([C.CAT_DIALOG, 0xFE, entry]))
-                lib.dialog_draw_button(match.zone, 1)
+                lib.dialog_draw_button(match.zone, 1, GdatKey(C.CAT_DIALOG, 0xFE, entry))
                 emu.call(UI_DIALOG_DRAW_BUTTON, match.zone, 1)
                 assert_same(lib, original, (dialog, choice, entry), screen=False)
 
