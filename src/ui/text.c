@@ -45,7 +45,7 @@ static struct {
 } message;
 static Bitmap message_line = {message.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8BPP};
 
-bool text_init(const gdat_t *gdat)
+bool text_init(const Gdat *gdat)
 {
     uint32_t size;
     const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, FONT_TYPE, GFX_FONT), &size);

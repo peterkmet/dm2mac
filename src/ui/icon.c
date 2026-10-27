@@ -10,7 +10,7 @@
 /* Size of the decode buffer in pixels. */
 #define ICON_MAX_BYTES 65536
 
-bool icon_build(const gdat_t *g, uint32_t *pixels, int max, int *out_width, int *out_height)
+bool icon_build(const Gdat *g, uint32_t *pixels, int max, int *out_width, int *out_height)
 {
     static uint8_t px[ICON_MAX_BYTES];
     int bpp, item = gdat_find(g, CAT_CREATURE, ICON_INDEX, GDAT_TYPE_IMAGE, GFX_ICON);

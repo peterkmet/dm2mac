@@ -84,7 +84,7 @@ static struct {
     int16_t (*records)[ZONE_FIELDS];
 } layout;
 
-bool zone_load(const gdat_t *gdat)
+bool zone_load(const Gdat *gdat)
 {
     uint32_t size;
     const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);

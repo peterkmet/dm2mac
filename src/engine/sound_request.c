@@ -90,7 +90,7 @@ void sndreq_clear_requests(void)
 
 /* Queries */
 
-enum GdatResult sndreq_load(const gdat_t *g, int category, int index, int entry, Sound *sound)
+enum GdatResult sndreq_load(const Gdat *g, int category, int index, int entry, Sound *sound)
 {
     uint32_t size;
     int item = gdat_find(g, category, index, GDAT_TYPE_SOUND, entry);

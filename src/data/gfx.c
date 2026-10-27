@@ -61,6 +61,8 @@ static void put_pixel(uint8_t *p, int bpp, int i, int color)
                : (*b & NIBBLE_MASK) | (uint8_t)(color << NIBBLE_BIT_COUNT);
 }
 
+/* Blits */
+
 void gfx_blit(const Blit *blit, const int16_t *rect)
 {
     int src_width = blit->src_width;
@@ -268,6 +270,8 @@ void gfx_blit_to_bitmap(const Bitmap *source, Bitmap *target, const int16_t *rec
     gfx_blit(&blit, rect);
 }
 
+/* Fills */
+
 void gfx_fill_rect(uint8_t *dst, const int16_t *rect, int color, int dst_width, int bpp)
 {
     for (int row = 0; row < rect[RECT_H]; row++)
@@ -282,12 +286,16 @@ void gfx_fill_bitmap(Bitmap *target, int color)
     gfx_fill_rect(target->pixels, rect, color, width, target->bpp);
 }
 
+/* Scaled values */
+
 int16_t gfx_scale_64(int16_t value, int16_t scale)
 {
     return (int16_t)((value * scale + (scale >> 1)) >> DIM_SHIFT);
 }
 
-bool pal_load_color_ramps(const gdat_t *gdat)
+/* Color ramps and dimming */
+
+bool pal_load_color_ramps(const Gdat *gdat)
 {
     uint32_t size;
     const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, RAMP_TYPE, GFX_RAMP), &size);
@@ -364,7 +372,7 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
     return table;
 }
 
-uint8_t *pal_get_dimmed_remap(const gdat_t *gdat, uint8_t *table, const DimmedRemap *remap, int16_t *count)
+uint8_t *pal_get_dimmed_remap(const Gdat *gdat, uint8_t *table, const DimmedRemap *remap, int16_t *count)
 {
     uint32_t size;
     const uint8_t *colors =

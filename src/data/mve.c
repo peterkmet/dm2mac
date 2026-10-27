@@ -59,6 +59,8 @@
 #define OP_DECODING_MAP  0x0f
 #define OP_VIDEO_DATA    0x11
 
+/* Setup */
+
 enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size)
 {
     memset(m, 0, offsetof(MveStream, buffers));
@@ -76,6 +78,8 @@ enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size)
     }
     return MVE_ERROR;
 }
+
+/* Playback */
 
 /* Enters the next chunk; false when the stream ends inside its header or its data. */
 static bool next_chunk(MveStream *m)
@@ -108,10 +112,12 @@ static enum MveResult init_video(MveStream *m, const uint8_t *body, int size)
 {
     if (size < VIDEO_INIT_SIZE)
         return MVE_ERROR;
-    int width = le16(body) * MVE_BLOCK_SIZE, height = le16(body + VIDEO_INIT_HEIGHT_AT) * MVE_BLOCK_SIZE;
+    int width = le16(body) * MVE_BLOCK_SIZE;
+    int height = le16(body + VIDEO_INIT_HEIGHT_AT) * MVE_BLOCK_SIZE;
     if (!width || !height || width > MVE_WIDTH_MAX || height > MVE_HEIGHT_MAX)
         return MVE_ERROR;
-    m->width = width, m->height = height;
+    m->width = width;
+    m->height = height;
     memset(m->buffers, 0, sizeof m->buffers);
     return MVE_OK;
 }
@@ -136,7 +142,8 @@ static enum MveResult set_palette(MveStream *m, const uint8_t *body, int size)
 {
     if (size < PALETTE_HEADER_SIZE)
         return MVE_ERROR;
-    int first = le16(body), count = le16(body + PALETTE_COUNT_AT);
+    int first = le16(body);
+    int count = le16(body + PALETTE_COUNT_AT);
     if (first + count > MVE_PALETTE_COLORS || size - PALETTE_HEADER_SIZE < count * MVE_RGB)
         return MVE_ERROR;
     for (int c = 0; c < count; c++)
@@ -172,12 +179,14 @@ static enum MveResult run_opcode(MveStream *m, int type, int version, const uint
     case OP_VIDEO_MODE:
         if (size < MODE_SIZE)
             return MVE_ERROR;
-        m->mode_width = le16(body), m->mode_height = le16(body + MODE_HEIGHT_AT);
+        m->mode_width = le16(body);
+        m->mode_height = le16(body + MODE_HEIGHT_AT);
         return MVE_OK;
     case OP_PALETTE:
         return set_palette(m, body, size);
     case OP_DECODING_MAP:
-        m->map = body, m->map_size = size;
+        m->map = body;
+        m->map_size = size;
         return MVE_OK;
     case OP_VIDEO_DATA:
         return mve_decode_video(m, body, size) ? MVE_OK : MVE_ERROR;

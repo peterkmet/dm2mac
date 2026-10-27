@@ -25,7 +25,7 @@
 #define STEREO          2
 
 Music g_music = {.requested_song = -1, .current_song = MUSIC_NO_SONG};
-static const gdat_t *gdat;
+static const Gdat *gdat;
 static uint32_t tick_phase;
 
 /* Stops the song and its fade; a paused song does not resume. */
@@ -64,7 +64,7 @@ static bool load_bank(const char *data_dir, const char *name, int bank)
     return ok;
 }
 
-bool music_init(const gdat_t *g, const char *data_dir)
+bool music_init(const Gdat *g, const char *data_dir)
 {
     gdat = g;
     fm_reset(MUSIC_SAMPLE_RATE);

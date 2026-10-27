@@ -256,7 +256,7 @@ void weather_init(bool keep_state)
     g_weather.first_init = 0;
 }
 
-void weather_load(const gdat_t *g)
+void weather_load(const Gdat *g)
 {
     /* (CAT_DUNGEON, 0, 0x0b, 0): the hour of the day at the start of the dungeon */
     int hour = clamp(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);

@@ -22,6 +22,7 @@ typedef struct {
     uint8_t palette[PCX_PALETTE_COLORS][PCX_RGB];
 } PcxImage;
 
+/* Decoding */
 /* Decodes the picture (width bytes per row) and its 8-bit palette; PCX_ERR_DATA for another kind, size, or short data. */
 enum PcxResult pcx_decode(const uint8_t *data, size_t size, PcxImage *image);
 

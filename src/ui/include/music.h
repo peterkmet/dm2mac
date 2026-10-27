@@ -34,7 +34,7 @@ extern Music g_music; /* exported for the tests */
 /* Setup */
 /* Loads the FM banks and SONGLIST.DAT from data_dir, takes songs from g, and sets volume 5. Returns false when
    MELODIC.BNK or DRUM.BNK is missing or bad; music stays off. */
-bool music_init(const gdat_t *g, const char *data_dir);
+bool music_init(const Gdat *g, const char *data_dir);
 /* Stops the song and frees the FM banks. */
 void music_quit(void);
 

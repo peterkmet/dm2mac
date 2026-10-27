@@ -275,7 +275,7 @@ static void show_group(uint16_t group, const MapSquare *at)
 static int missile_image_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing), index = item_gdat_index(thing);
-    const gdat_t *g = gdat_current();
+    const Gdat *g = gdat_current();
     if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_FRONT))
         return MISSILE_NO_PICTURE;
     if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_SIDE))

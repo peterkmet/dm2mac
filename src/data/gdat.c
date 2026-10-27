@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "gdat.h"
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,18 +111,19 @@
 #define VGA_DAC_SHIFT      2 /* the file holds 8-bit values, the VGA DAC takes 6 bits */
 
 struct gdat {
-    uint8_t *file;
+    uint8_t *file; /* owned: the whole file */
     int count;
-    uint32_t *offset, *size;
-    const uint8_t *rows;
+    uint32_t *offset;    /* owned: the file offset of each item */
+    uint32_t *size;      /* owned: the byte size of each item */
+    const uint8_t *rows; /* the key rows inside file */
     int row_count;
 };
 
 typedef struct {
     const uint8_t *src;
     size_t pos, end;
-    int bad;
-} nibbles_t;
+    bool bad;
+} Nibbles;
 
 /* A parsed image header; format is the format bits of the stream. */
 typedef struct {
@@ -130,16 +132,10 @@ typedef struct {
     int width, height, bpp, format;
 } ImageHeader;
 
-static const gdat_t *current;
-
-/* The key table is big-endian. */
-static unsigned be16(const uint8_t *p)
-{
-    return p[0] << BYTE_BIT_COUNT | p[1];
-}
+static const Gdat *current;
 
 /* Checks the header, item sizes, and key table, and builds the item offset table. */
-static enum GdatResult parse_file(gdat_t *g, size_t file_size)
+static enum GdatResult parse_file(Gdat *g, size_t file_size)
 {
     const uint8_t *f = g->file;
     if (file_size < HEADER_ITEM_SIZES || le16(f) != GDAT_SIGNATURE)
@@ -171,10 +167,10 @@ static enum GdatResult parse_file(gdat_t *g, size_t file_size)
 
 /* Loading */
 
-enum GdatResult gdat_load(const char *path, gdat_t **out)
+enum GdatResult gdat_load(const char *path, Gdat **out)
 {
     *out = NULL;
-    gdat_t *g = calloc(1, sizeof *g);
+    Gdat *g = calloc(1, sizeof *g);
     FILE *fp = fopen(path, "rb");
     if (!g || !fp) {
         free(g);
@@ -182,11 +178,14 @@ enum GdatResult gdat_load(const char *path, gdat_t **out)
             fclose(fp);
         return GDAT_ERR_IO;
     }
-    long file_size = fseek(fp, 0, SEEK_END) ? -1 : ftell(fp);
+    int64_t file_size = -1;
+    if (!fseek(fp, 0, SEEK_END))
+        file_size = ftell(fp);
     enum GdatResult err = GDAT_ERR_IO;
-    if (file_size >= 0 && !fseek(fp, 0, SEEK_SET) && (g->file = malloc(file_size ? file_size : 1)) &&
-        fread(g->file, 1, file_size, fp) == (size_t)file_size)
-        err = parse_file(g, file_size);
+    if (file_size >= 0 && !fseek(fp, 0, SEEK_SET))
+        g->file = malloc(file_size ? (size_t)file_size : 1);
+    if (g->file && fread(g->file, 1, (size_t)file_size, fp) == (size_t)file_size)
+        err = parse_file(g, (size_t)file_size);
     fclose(fp);
     if (err != GDAT_OK)
         gdat_free(g);
@@ -195,7 +194,7 @@ enum GdatResult gdat_load(const char *path, gdat_t **out)
     return err;
 }
 
-void gdat_free(gdat_t *g)
+void gdat_free(Gdat *g)
 {
     if (!g)
         return;
@@ -205,23 +204,23 @@ void gdat_free(gdat_t *g)
     free(g);
 }
 
-const gdat_t *gdat_current(void)
+const Gdat *gdat_current(void)
 {
     return current;
 }
-void gdat_select(const gdat_t *g)
+void gdat_select(const Gdat *g)
 {
     current = g;
 }
 
 /* Items and keys */
 
-int gdat_item_count(const gdat_t *g)
+int gdat_item_count(const Gdat *g)
 {
     return g->count;
 }
 
-const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *out_size)
+const uint8_t *gdat_item(const Gdat *g, int item, uint32_t *out_size)
 {
     if (item < 0 || item >= g->count)
         return NULL;
@@ -229,7 +228,7 @@ const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *out_size)
     return g->file + g->offset[item];
 }
 
-int gdat_find(const gdat_t *g, int category, int index, int type, int entry)
+int gdat_find(const Gdat *g, int category, int index, int type, int entry)
 {
     for (int i = 0; i < g->row_count; i++) {
         const uint8_t *r = g->rows + i * ROW_SIZE;
@@ -255,7 +254,7 @@ static size_t decoded_size(unsigned width, unsigned height, int bpp)
 }
 
 /* Reads the image header of an item; returns its format or an error. */
-static int read_image_header(const gdat_t *g, int item, ImageHeader *h)
+static int read_image_header(const Gdat *g, int item, ImageHeader *h)
 {
     h->data = gdat_item(g, item, &h->size);
     if (!h->data)
@@ -280,7 +279,7 @@ static int read_image_header(const gdat_t *g, int item, ImageHeader *h)
 
 /* Images */
 
-int gdat_image_size(const gdat_t *g, int item, int *out_width, int *out_height, int *out_bpp)
+int gdat_image_size(const Gdat *g, int item, int *out_width, int *out_height, int *out_bpp)
 {
     ImageHeader h;
     int format = read_image_header(g, item, &h);
@@ -292,7 +291,7 @@ int gdat_image_size(const gdat_t *g, int item, int *out_width, int *out_height, 
     return (int)decoded_size(h.width, h.height, h.bpp);
 }
 
-enum GdatResult gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size)
+enum GdatResult gdat_decode_image(const Gdat *g, int item, uint8_t *dst, size_t dst_size)
 {
     ImageHeader h;
     int format = read_image_header(g, item, &h);
@@ -311,7 +310,7 @@ enum GdatResult gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_
     return GDAT_OK;
 }
 
-const uint8_t *gdat_image_colormap(const gdat_t *g, int item)
+const uint8_t *gdat_image_colormap(const Gdat *g, int item)
 {
     ImageHeader h;
     if (read_image_header(g, item, &h) < 0 || h.bpp != IMAGE_4BPP || h.size < COLORMAP_SIZE)
@@ -319,7 +318,7 @@ const uint8_t *gdat_image_colormap(const gdat_t *g, int item)
     return h.data + h.size - COLORMAP_SIZE;
 }
 
-enum GdatResult gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_RGB_SIZE])
+enum GdatResult gdat_palette_color(const Gdat *g, int color, uint8_t rgb[GDAT_RGB_SIZE])
 {
     uint32_t size;
     const uint8_t *palette = gdat_item(g, gdat_find(g, CAT_INTERFACE, PALETTE_INDEX, PALETTE_TYPE, GFX_PALETTE), &size);
@@ -333,10 +332,10 @@ enum GdatResult gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_
 }
 
 /* The next nibble of the stream; flags the stream as bad at its end. */
-static int next_nibble(nibbles_t *n)
+static int next_nibble(Nibbles *n)
 {
     if (n->pos >= n->end) {
-        n->bad = 1;
+        n->bad = true;
         return 0;
     }
     uint8_t b = n->src[n->pos / 2];
@@ -344,7 +343,7 @@ static int next_nibble(nibbles_t *n)
 }
 
 /* A run length: 2 to 16 in one nibble, 17 to 271 in two, any 16-bit count in four more. */
-static unsigned run_length(nibbles_t *n)
+static unsigned run_length(Nibbles *n)
 {
     unsigned v = next_nibble(n);
     if (v != RUN_LONG)
@@ -375,11 +374,12 @@ enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uin
 {
     if (src_size < NIBBLE_START / 2)
         return GDAT_ERR_DATA;
-    unsigned width = read_dimension(src, IMAGE_WIDTH), row = (width + 1) & ~1u;
+    unsigned width = read_dimension(src, IMAGE_WIDTH);
+    unsigned row = (width + 1) & ~1u;
     size_t total = (size_t)row * read_dimension(src, IMAGE_HEIGHT);
     if (total / 2 > dst_size)
         return GDAT_ERR_SPACE;
-    nibbles_t n = {src, NIBBLE_START, src_size * 2, 0};
+    Nibbles n = {src, NIBBLE_START, src_size * 2, false};
     int colors = base ? DELTA_LOCAL_COLORS : LOCAL_COLORS;
     int local[LOCAL_COLORS];
     for (int i = 0; i < colors; i++)
@@ -387,7 +387,9 @@ enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uin
     size_t pos = 0;
     unsigned x = 0;
     while (pos < total) {
-        int code = next_nibble(&n), kind = code & CMD_KIND_MASK, color = 0;
+        int code = next_nibble(&n);
+        int kind = code & CMD_KIND_MASK;
+        int color = 0;
         if (kind == CMD_COLOR_NIBBLE)
             color = next_nibble(&n);
         else if (kind < colors)
@@ -416,8 +418,10 @@ enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uin
    a reference holds length - 3 in its low length_bits and the distance back in the other bits. */
 static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size, int length_bits)
 {
-    size_t in = 0, out = 0;
-    int flags = 0, flags_left = 0;
+    size_t in = 0;
+    size_t out = 0;
+    int flags = 0;
+    int flags_left = 0;
     for (;;) {
         if (flags_left == 0) {
             if (in >= src_size)
@@ -425,7 +429,7 @@ static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t
             flags = src[in++];
             flags_left = FLAG_BIT_COUNT;
         }
-        int literal = flags & 1;
+        bool literal = flags & 1;
         flags >>= 1;
         flags_left--;
         if (literal) {
@@ -453,7 +457,7 @@ enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *
 {
     if (src_size < LZSS_DATA)
         return GDAT_ERR_DATA;
-    size_t bytes = decoded_size(read_dimension(src, IMAGE_WIDTH), read_dimension(src, IMAGE_HEIGHT), 8);
+    size_t bytes = decoded_size(read_dimension(src, IMAGE_WIDTH), read_dimension(src, IMAGE_HEIGHT), IMAGE_8BPP);
     if (bytes > dst_size)
         return GDAT_ERR_SPACE;
     int length_bits;
@@ -473,7 +477,7 @@ enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *
 
 /* Values and texts */
 
-uint16_t gdat_entry_index(const gdat_t *g, int category, int index, int type, int entry)
+uint16_t gdat_entry_index(const Gdat *g, int category, int index, int type, int entry)
 {
     int value = gdat_find(g, category, index, type, entry);
     if (value >= 0)
@@ -481,17 +485,17 @@ uint16_t gdat_entry_index(const gdat_t *g, int category, int index, int type, in
     return type == GDAT_TYPE_VALUE || type == GDAT_TYPE_VALUE2 ? 0 : GDAT_NO_ITEM;
 }
 
-int gdat_exists(const gdat_t *g, int category, int index, int type, int entry)
+bool gdat_exists(const Gdat *g, int category, int index, int type, int entry)
 {
     return gdat_find(g, category, index, type, entry) >= 0;
 }
 
-char *gdat_text(const gdat_t *g, GdatKey entry_key, char *buffer, size_t buffer_size)
+char *gdat_text(const Gdat *g, GdatKey entry_key, char *buffer, size_t buffer_size)
 {
     uint32_t size;
     const uint8_t *text =
         gdat_item(g, gdat_find(g, entry_key.category, entry_key.index, GDAT_TYPE_TEXT, entry_key.entry), &size);
-    int encrypted =
+    bool encrypted =
         gdat_entry_index(g, FLAGS_CATEGORY, FLAGS_INDEX, GDAT_TYPE_VALUE, FLAGS_ENTRY) & FLAG_ENCRYPTED_TEXT;
     size_t n = 0;
     for (; text && n < size && n + 1 < buffer_size; n++) {
@@ -522,7 +526,7 @@ int gdat_text_int_field(const char *text, const char *key)
     return value;
 }
 
-int gdat_image_offset(const gdat_t *g, int category, int index, int entry)
+int gdat_image_offset(const Gdat *g, int category, int index, int entry)
 {
     uint32_t size;
     const uint8_t *data = gdat_item(g, gdat_find(g, category, index, GDAT_TYPE_IMAGE, entry), &size);

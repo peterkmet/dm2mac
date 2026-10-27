@@ -324,7 +324,7 @@ int creature_gdat_attr(int creature_type, int attr)
     return gdat_entry_index(gdat_current(), CAT_CREATURE, creature_type, GDAT_TYPE_VALUE, attr);
 }
 
-const CreatureInfo *creature_info(const gdat_t *g, int creature_type)
+const CreatureInfo *creature_info(const Gdat *g, int creature_type)
 {
     const CreatureInfo *info =
         creature_info_at(gdat_entry_index(g, CAT_CREATURE, creature_type, GDAT_TYPE_VALUE, CREATURE_KEY_INFO));
@@ -353,7 +353,7 @@ uint16_t *creature_anim_words(uint16_t group)
 /* The raw GDAT data (0x0f, creature type, type, entry). */
 static const uint8_t *read_creature_data(int creature_type, int type, int entry, uint32_t *size)
 {
-    const gdat_t *g = gdat_current();
+    const Gdat *g = gdat_current();
     uint32_t n = 0;
     const uint8_t *data = gdat_item(g, gdat_find(g, CAT_CREATURE, creature_type, type, entry), &n);
     if (size)
@@ -377,7 +377,7 @@ static unsigned anim_frame_offset(uint16_t *state)
     return length ? (start + g_game.game_time) % length : 0; /* fix: the original divides by 0 */
 }
 
-void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE])
+void creature_anim_frame(const Gdat *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE])
 {
     int type = group_creature(group);
     uint16_t sequence = 0, state = 0;
@@ -393,7 +393,7 @@ void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE
     creature_anim_frame_of(g, type, (uint16_t)index, ANIM_STILL, frame);
 }
 
-void creature_anim_frame_of(const gdat_t *g, int type, uint16_t sequence, uint16_t state,
+void creature_anim_frame_of(const Gdat *g, int type, uint16_t sequence, uint16_t state,
                             uint8_t frame[CREATURE_FRAME_SIZE])
 {
     unsigned index = (uint16_t)(anim_frame_offset(&state) + sequence);

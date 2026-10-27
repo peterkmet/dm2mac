@@ -66,16 +66,24 @@ typedef struct {
     uint8_t channel;
 } Track;
 
-static uint8_t *song;
-static size_t song_size;
-static HmpSend send;
-static Track tracks[HMP_MAX_TRACKS];
-static int track_count, active_tracks, playing, paused, muted;
-static int song_volume = MIDI_MAX, master_volume = MIDI_MAX;
-/* Last volume of each channel; it stays from song to song. */
-static uint8_t channel_volume[MIDI_CHANNELS] = {
-    MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX,
-    MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX,
+static struct {
+    uint8_t *song; /* owned copy of the playing song */
+    size_t song_size;
+    HmpSend send;
+    Track tracks[HMP_MAX_TRACKS];
+    int track_count;
+    int active_tracks;
+    bool playing;
+    bool paused;
+    bool muted;
+    int song_volume;
+    int master_volume;
+    uint8_t channel_volume[MIDI_CHANNELS]; /* last volume of each channel; it stays from song to song */
+} hmp = {
+    .song_volume = MIDI_MAX,
+    .master_volume = MIDI_MAX,
+    .channel_volume = {MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX,
+                       MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX, MIDI_MAX},
 };
 
 /* Reads a delta time: 7-bit groups, low group first; the last byte has bit 7 set. */
@@ -83,7 +91,7 @@ static uint32_t read_delta(Track *tr)
 {
     uint32_t value = 0;
     for (int shift = 0; tr->cursor < tr->end; shift += VARLEN_GROUP_WIDTH) {
-        uint8_t b = song[tr->cursor++];
+        uint8_t b = hmp.song[tr->cursor++];
         value |= (uint32_t)(b & ~VARLEN_LAST) << (shift & VARLEN_BIT_MASK);
         if (b & VARLEN_LAST)
             break;
@@ -95,29 +103,29 @@ static uint32_t read_delta(Track *tr)
 static void send_event(const uint8_t *event)
 {
     if ((event[MIDI_STATUS] & MIDI_STATUS_MASK) != MIDI_CONTROL || event[MIDI_DATA1] != MIDI_CTRL_VOLUME) {
-        send(event);
+        hmp.send(event);
         return;
     }
-    channel_volume[event[MIDI_STATUS] & MIDI_CHANNEL_MASK] = event[MIDI_DATA2];
-    int volume = master_volume * (event[MIDI_DATA2] * song_volume >> MIDI_VOLUME_SHIFT) >> MIDI_VOLUME_SHIFT;
-    uint8_t scaled[MIDI_EVENT_SIZE] = {event[MIDI_STATUS], event[MIDI_DATA1], (uint8_t)(muted ? 0 : volume)};
-    send(scaled);
+    hmp.channel_volume[event[MIDI_STATUS] & MIDI_CHANNEL_MASK] = event[MIDI_DATA2];
+    int volume = hmp.master_volume * (event[MIDI_DATA2] * hmp.song_volume >> MIDI_VOLUME_SHIFT) >> MIDI_VOLUME_SHIFT;
+    uint8_t scaled[MIDI_EVENT_SIZE] = {event[MIDI_STATUS], event[MIDI_DATA1], (uint8_t)(hmp.muted ? 0 : volume)};
+    hmp.send(scaled);
 }
 
 static void send3(int status, int data1, int data2)
 {
     uint8_t event[MIDI_EVENT_SIZE] = {(uint8_t)status, (uint8_t)data1, (uint8_t)data2};
-    send(event);
+    hmp.send(event);
 }
 
 /* Sends the stored channel volume of each playing track again. */
 static void resend_volumes(void)
 {
-    for (int t = 0; t < track_count; t++) {
-        if (!tracks[t].cursor)
+    for (int t = 0; t < hmp.track_count; t++) {
+        if (!hmp.tracks[t].cursor)
             continue;
-        uint8_t event[MIDI_EVENT_SIZE] = {MIDI_CONTROL | tracks[t].channel, MIDI_CTRL_VOLUME,
-                                          channel_volume[tracks[t].channel]};
+        uint8_t event[MIDI_EVENT_SIZE] = {MIDI_CONTROL | hmp.tracks[t].channel, MIDI_CTRL_VOLUME,
+                                          hmp.channel_volume[hmp.tracks[t].channel]};
         send_event(event);
     }
 }
@@ -125,8 +133,8 @@ static void resend_volumes(void)
 /* Notes off, controllers reset, pitch bend center, and volume 0 on the channels of tracks 1 and up. */
 static void silence(void)
 {
-    for (int t = 1; t < track_count; t++) {
-        int ch = tracks[t].channel;
+    for (int t = 1; t < hmp.track_count; t++) {
+        int ch = hmp.tracks[t].channel;
         send3(MIDI_CONTROL | ch, MIDI_CTRL_NOTES_OFF, 0);
         send3(MIDI_CONTROL | ch, MIDI_CTRL_RESET, 0);
         send3(MIDI_PITCH_BEND | ch, BEND_CENTER, BEND_CENTER);
@@ -134,22 +142,26 @@ static void silence(void)
     }
 }
 
+/* Song playback */
+
 enum HmpResult hmp_start(const uint8_t *data, size_t size, HmpSend to_driver)
 {
     hmp_stop();
     if (size < HMP_FIRST_TRACK || memcmp(data, HMP_SIGNATURE, strlen(HMP_SIGNATURE)) || !le32(data + HMP_TICK_RATE))
         return HMP_ERR_FORMAT;
-    uint32_t count = le32(data + HMP_TRACK_COUNT), branches = le32(data + HMP_BRANCHES);
+    uint32_t count = le32(data + HMP_TRACK_COUNT);
+    uint32_t branches = le32(data + HMP_BRANCHES);
     if (count < 1 || count > HMP_MAX_TRACKS || branches > size || size - branches < count)
         return HMP_ERR_FORMAT;
-    uint32_t offset = HMP_FIRST_TRACK, record = branches + count;
+    uint32_t offset = HMP_FIRST_TRACK;
+    uint32_t record = branches + count;
     for (uint32_t t = 0; t < count; t++) {
         if (size - offset < TRACK_DATA)
             return HMP_ERR_FORMAT;
         uint32_t chunk = le32(data + offset + TRACK_SIZE);
         if (chunk < TRACK_DATA || chunk > size - offset)
             return HMP_ERR_FORMAT;
-        Track *tr = &tracks[t];
+        Track *tr = &hmp.tracks[t];
         *tr = (Track){.start = offset + TRACK_DATA,
                       .end = offset + chunk,
                       .branches = record,
@@ -158,43 +170,45 @@ enum HmpResult hmp_start(const uint8_t *data, size_t size, HmpSend to_driver)
         for (int b = 0; b < tr->branch_count; b++, record += BRANCH_SIZE) {
             if (size - BRANCH_SIZE < record)
                 return HMP_ERR_FORMAT;
-            uint32_t ctrls = le32(data + record + BRANCH_CTRLS), point = le32(data + record + BRANCH_OFFSET);
+            uint32_t ctrls = le32(data + record + BRANCH_CTRLS);
+            uint32_t point = le32(data + record + BRANCH_OFFSET);
             if (ctrls > size || size - ctrls < data[record + BRANCH_CTRL_BYTES] || point >= chunk - TRACK_DATA)
                 return HMP_ERR_FORMAT;
         }
         offset += chunk;
     }
-    song = malloc(size);
-    if (!song)
+    hmp.song = malloc(size);
+    if (!hmp.song)
         return HMP_ERR_MEMORY;
-    memcpy(song, data, size);
-    song_size = size;
-    send = to_driver;
-    track_count = active_tracks = (int)count;
-    for (int t = 0; t < track_count; t++) {
-        tracks[t].cursor = tracks[t].start;
-        tracks[t].delta = read_delta(&tracks[t]);
+    memcpy(hmp.song, data, size);
+    hmp.song_size = size;
+    hmp.send = to_driver;
+    hmp.track_count = (int)count;
+    hmp.active_tracks = (int)count;
+    for (int t = 0; t < hmp.track_count; t++) {
+        hmp.tracks[t].cursor = hmp.tracks[t].start;
+        hmp.tracks[t].delta = read_delta(&hmp.tracks[t]);
     }
-    playing = 1;
-    paused = 0;
+    hmp.playing = true;
+    hmp.paused = false;
     return HMP_OK;
 }
 
 void hmp_stop(void)
 {
-    if (playing)
+    if (hmp.playing)
         silence();
-    playing = 0;
-    free(song);
-    song = NULL;
-    track_count = 0;
+    hmp.playing = false;
+    free(hmp.song);
+    hmp.song = NULL;
+    hmp.track_count = 0;
 }
 
 /* Finds the loop record of a track with a loop point id. */
 static uint8_t *find_branch(int t, int id)
 {
-    for (int b = 0; b < tracks[t].branch_count; b++) {
-        uint8_t *rec = song + tracks[t].branches + b * BRANCH_SIZE;
+    for (int b = 0; b < hmp.tracks[t].branch_count; b++) {
+        uint8_t *rec = hmp.song + hmp.tracks[t].branches + b * BRANCH_SIZE;
         if (rec[BRANCH_ID] == id)
             return rec;
     }
@@ -204,7 +218,7 @@ static uint8_t *find_branch(int t, int id)
 /* Moves a track to its loop point id and sends the program and controllers of the loop point. */
 static void jump(int t, int id)
 {
-    Track *tr = &tracks[t];
+    Track *tr = &hmp.tracks[t];
     const uint8_t *rec = find_branch(t, id);
     if (!rec)
         return; /* fix: the original searches past the loop records of the track */
@@ -213,10 +227,10 @@ static void jump(int t, int id)
     tr->elapsed = 0;
     if (tr->cursor >= tr->end)
         return;
-    int ch = song[tr->cursor] & MIDI_CHANNEL_MASK;
+    int ch = hmp.song[tr->cursor] & MIDI_CHANNEL_MASK;
     uint8_t program[MIDI_EVENT_SIZE] = {MIDI_PROGRAM | ch, rec[BRANCH_PROGRAM], 0};
     send_event(program);
-    const uint8_t *pairs = song + le32(rec + BRANCH_CTRLS);
+    const uint8_t *pairs = hmp.song + le32(rec + BRANCH_CTRLS);
     for (int i = 0; i + 1 < rec[BRANCH_CTRL_BYTES]; i += 2) {
         uint8_t event[MIDI_EVENT_SIZE] = {MIDI_CONTROL | ch, pairs[i], pairs[i + 1]};
         send_event(event);
@@ -230,8 +244,8 @@ static bool hmi_control(int t, const uint8_t *event)
     if (!rec)
         return false;
     if (event[MIDI_DATA1] == HMI_SET_LOOPS) {
-        if (tracks[t].cursor + HMI_SET_LOOPS_VALUE < song_size)
-            rec[BRANCH_LOOPS] = song[tracks[t].cursor + HMI_SET_LOOPS_VALUE];
+        if (hmp.tracks[t].cursor + HMI_SET_LOOPS_VALUE < hmp.song_size)
+            rec[BRANCH_LOOPS] = hmp.song[hmp.tracks[t].cursor + HMI_SET_LOOPS_VALUE];
         return false;
     }
     if (event[MIDI_DATA1] != HMI_LOOP && event[MIDI_DATA1] != HMI_LOOP_2)
@@ -241,8 +255,8 @@ static bool hmi_control(int t, const uint8_t *event)
         loops = --rec[BRANCH_LOOPS];
     if (!loops)
         return false;
-    for (int k = 1; k < track_count; k++)
-        if (tracks[k].cursor)
+    for (int k = 1; k < hmp.track_count; k++)
+        if (hmp.tracks[k].cursor)
             jump(k, event[MIDI_DATA2]);
     return true;
 }
@@ -250,24 +264,24 @@ static bool hmi_control(int t, const uint8_t *event)
 /* Ends a track; returns true when the song ended. */
 static bool end_track(int t)
 {
-    tracks[t].cursor = 0;
-    if (active_tracks == 2 && tracks[0].cursor) {
-        active_tracks--;
-        tracks[0].cursor = 0;
+    hmp.tracks[t].cursor = 0;
+    if (hmp.active_tracks == 2 && hmp.tracks[0].cursor) {
+        hmp.active_tracks--;
+        hmp.tracks[0].cursor = 0;
     }
-    if (--active_tracks)
+    if (--hmp.active_tracks)
         return false;
-    playing = 0;
+    hmp.playing = false;
     silence();
     return true;
 }
 
 void hmp_tick(void)
 {
-    if (!playing || paused)
+    if (!hmp.playing || hmp.paused)
         return;
-    for (int t = 0; t < track_count; t++) {
-        Track *tr = &tracks[t];
+    for (int t = 0; t < hmp.track_count; t++) {
+        Track *tr = &hmp.tracks[t];
         tr->elapsed++;
         if (!tr->cursor || tr->delta > tr->elapsed)
             continue;
@@ -277,11 +291,11 @@ void hmp_tick(void)
                     return;
                 break;
             }
-            const uint8_t *event = song + tr->cursor;
+            const uint8_t *event = hmp.song + tr->cursor;
             uint8_t status = event[MIDI_STATUS];
             uint32_t length = status < MIDI_SYSTEM ? channel_event_length[status >> NIBBLE_BIT_COUNT]
                                                    : system_event_length[status & MIDI_CHANNEL_MASK];
-            int next_delta = 1;
+            bool next_delta = true;
             if (event[MIDI_STATUS] == MIDI_META) {
                 if (event[MIDI_DATA1] == META_END_OF_TRACK) {
                     if (end_track(t))
@@ -292,8 +306,10 @@ void hmp_tick(void)
                     length = META_TEMPO_LENGTH;
             } else if ((event[MIDI_STATUS] & MIDI_STATUS_MASK) == MIDI_CONTROL && event[MIDI_DATA1] >= HMI_FIRST &&
                        event[MIDI_DATA1] <= HMI_LAST) {
-                if (hmi_control(t, event))
-                    length = next_delta = 0;
+                if (hmi_control(t, event)) {
+                    length = 0;
+                    next_delta = false;
+                }
             } else if (t) {
                 send_event(event);
             }
@@ -309,40 +325,42 @@ void hmp_tick(void)
 
 int hmp_tick_rate(void)
 {
-    return song ? (int)le32(song + HMP_TICK_RATE) : 0;
+    return hmp.song ? (int)le32(hmp.song + HMP_TICK_RATE) : 0;
 }
+
+/* Volumes and pause */
 
 void hmp_set_song_volume(int volume)
 {
-    song_volume = volume;
+    hmp.song_volume = volume;
     resend_volumes();
 }
 
 void hmp_set_master_volume(int volume)
 {
-    master_volume = volume;
-    if (playing)
+    hmp.master_volume = volume;
+    if (hmp.playing)
         resend_volumes();
 }
 
 void hmp_pause(void)
 {
-    paused = 1;
-    muted = 1;
+    hmp.paused = true;
+    hmp.muted = true;
     resend_volumes();
 }
 
 void hmp_resume(void)
 {
-    paused = 0;
-    if (!muted)
+    hmp.paused = false;
+    if (!hmp.muted)
         return;
-    muted = 0;
+    hmp.muted = false;
     resend_volumes();
 }
 
 void hmp_unmute(void)
 {
-    muted = 0;
+    hmp.muted = false;
     resend_volumes();
 }

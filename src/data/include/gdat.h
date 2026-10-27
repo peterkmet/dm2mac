@@ -5,6 +5,7 @@
 
 /* GRAPHICS.DAT: a header with item sizes, a key table (item 0), then the items. */
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -75,35 +76,35 @@ typedef struct {
     int entry;
 } GdatKey;
 
-typedef struct gdat gdat_t;
+typedef struct gdat Gdat;
 
 /* Loading */
 /* Reads the whole file; *out is NULL on error. */
-enum GdatResult gdat_load(const char *path, gdat_t **out);
+enum GdatResult gdat_load(const char *path, Gdat **out);
 /* Frees a loaded file; exported for the tests. */
-void gdat_free(gdat_t *g);
+void gdat_free(Gdat *g);
 /* The GRAPHICS.DAT that the game reads; NULL before the first gdat_select. */
-const gdat_t *gdat_current(void);
+const Gdat *gdat_current(void);
 /* Sets the GRAPHICS.DAT that the game reads. */
-void gdat_select(const gdat_t *g);
+void gdat_select(const Gdat *g);
 
 /* Items and keys */
 /* The number of items of the file. */
-int gdat_item_count(const gdat_t *g);
+int gdat_item_count(const Gdat *g);
 /* The raw bytes of an item, NULL for a bad item number. */
-const uint8_t *gdat_item(const gdat_t *g, int item, uint32_t *out_size);
+const uint8_t *gdat_item(const Gdat *g, int item, uint32_t *out_size);
 /* The value of key (category, index, type, entry) for the English game, -1 if absent. */
-int gdat_find(const gdat_t *g, int category, int index, int type, int entry);
+int gdat_find(const Gdat *g, int category, int index, int type, int entry);
 
 /* Images */
 /* Width, height, and bits per pixel (4 or 8) of an image item; returns the decoded byte size or an error. */
-int gdat_image_size(const gdat_t *g, int item, int *out_width, int *out_height, int *out_bpp);
+int gdat_image_size(const Gdat *g, int item, int *out_width, int *out_height, int *out_bpp);
 /* Decodes an image item into dst. 4 bpp rows hold an even pixel count, high nibble first; pad nibbles keep the dst content. */
-enum GdatResult gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size);
+enum GdatResult gdat_decode_image(const Gdat *g, int item, uint8_t *dst, size_t dst_size);
 /* The 16 palette indices of the colors of a 4 bpp image, NULL for an 8 bpp image. */
-const uint8_t *gdat_image_colormap(const gdat_t *g, int item);
+const uint8_t *gdat_image_colormap(const Gdat *g, int item);
 /* The 6-bit VGA red, green, blue of a color of the game palette. */
-enum GdatResult gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_RGB_SIZE]);
+enum GdatResult gdat_palette_color(const Gdat *g, int color, uint8_t rgb[GDAT_RGB_SIZE]);
 /* A 4 bpp image stream; with base, nibble command 5 copies pixels from the same place of base. A command sets a run of
    pixels to a local color, a literal color, the pixels one row above, or (delta images) the pixels of base; runs wrap
    at the row end; exported for the tests. */
@@ -114,15 +115,15 @@ enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *
 
 /* Values and texts */
 /* The original lookup: the value of a value key or 0, else the item of the key or GDAT_NO_ITEM. */
-uint16_t gdat_entry_index(const gdat_t *g, int category, int index, int type, int entry);
+uint16_t gdat_entry_index(const Gdat *g, int category, int index, int type, int entry);
 /* Whether the key (category, index, type, entry) exists. */
-int gdat_exists(const gdat_t *g, int category, int index, int type, int entry);
+bool gdat_exists(const Gdat *g, int category, int index, int type, int entry);
 /* The text entry (category, index, 5, entry), decrypted, in buffer; an empty string when it is absent. */
-char *gdat_text(const gdat_t *g, GdatKey entry_key, char *buffer, size_t buffer_size);
+char *gdat_text(const Gdat *g, GdatKey entry_key, char *buffer, size_t buffer_size);
 /* The number after the last key in text, as the original parses "key=number" fields. */
 int gdat_text_int_field(const char *text, const char *key);
 /* The drawing offset of an image: x in the high byte, y in the low byte, each signed. */
-int gdat_image_offset(const gdat_t *g, int category, int index, int entry);
+int gdat_image_offset(const Gdat *g, int category, int index, int entry);
 /* The shift of x in the packed drawing offset. */
 #define GDAT_OFFSET_X_SHIFT 8
 static inline int8_t gdat_offset_x(int offset)

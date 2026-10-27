@@ -39,7 +39,7 @@ typedef struct {
 } TextColors;
 
 /* Loads the font and the UI colors and clears the message area state; returns false when they are missing. */
-bool text_init(const gdat_t *gdat);
+bool text_init(const Gdat *gdat);
 
 /* Draws text into dst with its base line at y. */
 void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);

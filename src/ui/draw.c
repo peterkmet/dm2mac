@@ -17,8 +17,8 @@
 
 Bitmap g_draw_screen = {&g_video_fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
 
-static const gdat_t *cache_owner; /* the GRAPHICS.DAT of the decoded images */
-static Bitmap *images;            /* decoded images by GDAT item */
+static const Gdat *cache_owner; /* the GRAPHICS.DAT of the decoded images */
+static Bitmap *images;          /* decoded images by GDAT item */
 static int image_count;
 
 /* Temporary bitmaps of one frame, freed together. */
@@ -48,7 +48,7 @@ static void follow_gdat(void)
         rebuild_cache();
 }
 
-void draw_init(const gdat_t *g)
+void draw_init(const Gdat *g)
 {
     gdat_select(g);
     rebuild_cache();
@@ -81,7 +81,7 @@ static const Bitmap *decoded(int item)
 /* The GDAT item of an image, or of the placeholder image when it is missing. */
 static int find_item(int category, int index, int entry)
 {
-    const gdat_t *gdat = gdat_current();
+    const Gdat *gdat = gdat_current();
     int item = gdat_find(gdat, category, index, GDAT_TYPE_IMAGE, entry);
     return item >= 0 ? item : gdat_find(gdat, CAT_MISC, PLACEHOLDER_INDEX, GDAT_TYPE_IMAGE, GFX_PLACEHOLDER);
 }
@@ -93,7 +93,7 @@ const Bitmap *draw_gdat_image(int category, int index, int entry)
 
 const uint8_t *draw_gdat_image_palette(int category, int index, int entry)
 {
-    const gdat_t *gdat = gdat_current();
+    const Gdat *gdat = gdat_current();
     return gdat ? gdat_image_colormap(gdat, find_item(category, index, entry)) : NULL;
 }
 
@@ -147,7 +147,7 @@ DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->anchor = ZONE_NO_ANCHOR;
     ctx->dst = &g_draw_screen;
     ctx->transparent = GFX_OPAQUE;
-    const gdat_t *gdat = gdat_current();
+    const Gdat *gdat = gdat_current();
     if ((uint8_t)category == CAT_NONE || !gdat)
         return ctx;
     ctx->item = (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_IMAGE, entry);

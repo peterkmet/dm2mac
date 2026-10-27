@@ -78,6 +78,11 @@ typedef struct {
     uint64_t bits;
 } Palette;
 
+/* A motion vector: the source block is dx, dy pixels from the block. */
+typedef struct {
+    int dx, dy;
+} Motion;
+
 /* Cells of cell_w × cell_h pixels in cols × rows from (x, y) of a block. */
 typedef struct {
     int x, y, cols, rows, cell_w, cell_h;
@@ -140,7 +145,8 @@ static void halves(Block *b, bool vertical, Palette first, Palette second, int b
 static void copy_from(Block *b, const uint8_t *frame, int dx, int dy)
 {
     MveStream *m = b->m;
-    int sx = b->x + dx, sy = b->y + dy;
+    int sx = b->x + dx;
+    int sy = b->y + dy;
     if (sx < 0 || sy < 0 || sx + MVE_BLOCK_SIZE > m->width || sy + MVE_BLOCK_SIZE > m->height) {
         m->bad_blocks++;
         return;
@@ -150,15 +156,12 @@ static void copy_from(Block *b, const uint8_t *frame, int dx, int dy)
 }
 
 /* The motion of encodings 2 and 3: the next 7 columns of the same rows, or 29 columns of the next rows. */
-static void near_motion(uint8_t v, int *dx, int *dy)
+static Motion near_motion(uint8_t v)
 {
-    if (v < NEAR_MOTION_LIMIT) {
-        *dx = MVE_BLOCK_SIZE + v % NEAR_MOTION_COLUMNS;
-        *dy = v / NEAR_MOTION_COLUMNS;
-    } else {
-        *dx = -FAR_MOTION_LEFT + (v - NEAR_MOTION_LIMIT) % FAR_MOTION_COLUMNS;
-        *dy = MVE_BLOCK_SIZE + (v - NEAR_MOTION_LIMIT) / FAR_MOTION_COLUMNS;
-    }
+    if (v < NEAR_MOTION_LIMIT)
+        return (Motion){MVE_BLOCK_SIZE + v % NEAR_MOTION_COLUMNS, v / NEAR_MOTION_COLUMNS};
+    return (Motion){-FAR_MOTION_LEFT + (v - NEAR_MOTION_LIMIT) % FAR_MOTION_COLUMNS,
+                    MVE_BLOCK_SIZE + (v - NEAR_MOTION_LIMIT) / FAR_MOTION_COLUMNS};
 }
 
 /* Encoding 7: two colors, one bit per pixel, or per 2 × 2 cell when the first color is the higher one. */
@@ -256,7 +259,8 @@ static void plain_colors(Block *b, int encoding)
     default: /* ENC_DITHER */
         get_colors(&b->r, p, TWO_COLORS);
         for (int i = 0; i < BLOCK_PIXELS; i++) {
-            int x = i % MVE_BLOCK_SIZE, y = i / MVE_BLOCK_SIZE;
+            int x = i % MVE_BLOCK_SIZE;
+            int y = i / MVE_BLOCK_SIZE;
             fill(b, (Rect){x, y, 1, 1}, p[(x + y) & 1]);
         }
     }
@@ -266,8 +270,9 @@ static void plain_colors(Block *b, int encoding)
 static void decode_block(Block *b, int encoding)
 {
     MveStream *m = b->m;
-    const uint8_t *previous = m->buffers[m->current ^ 1], *current = m->buffers[m->current];
-    int dx, dy;
+    const uint8_t *previous = m->buffers[m->current ^ 1];
+    const uint8_t *current = m->buffers[m->current];
+    Motion motion;
     uint8_t v;
     switch (encoding) {
     case ENC_PREVIOUS:
@@ -277,10 +282,10 @@ static void decode_block(Block *b, int encoding)
         break;
     case ENC_NEAR_AHEAD:
     case ENC_NEAR_BEHIND:
-        near_motion(get8(&b->r), &dx, &dy);
+        motion = near_motion(get8(&b->r));
         if (encoding == ENC_NEAR_BEHIND)
-            dx = -dx, dy = -dy;
-        copy_from(b, current, dx, dy);
+            motion = (Motion){-motion.dx, -motion.dy};
+        copy_from(b, current, motion.dx, motion.dy);
         break;
     case ENC_PREVIOUS_NEAR:
         v = get8(&b->r);
@@ -288,9 +293,9 @@ static void decode_block(Block *b, int encoding)
                   (v >> NIBBLE_BIT_COUNT) - PREVIOUS_MOTION_CENTER);
         break;
     case ENC_PREVIOUS_FAR:
-        dx = (int8_t)get8(&b->r);
-        dy = (int8_t)get8(&b->r);
-        copy_from(b, previous, dx, dy);
+        motion.dx = (int8_t)get8(&b->r);
+        motion.dy = (int8_t)get8(&b->r);
+        copy_from(b, previous, motion.dx, motion.dy);
         break;
     case ENC_UNUSED:
         m->bad_blocks++;
@@ -314,7 +319,8 @@ static void decode_block(Block *b, int encoding)
 
 bool mve_decode_video(MveStream *m, const uint8_t *video, int video_size)
 {
-    int columns = m->width / MVE_BLOCK_SIZE, rows = m->height / MVE_BLOCK_SIZE;
+    int columns = m->width / MVE_BLOCK_SIZE;
+    int rows = m->height / MVE_BLOCK_SIZE;
     if (video_size < VIDEO_HEADER_SIZE || !columns || m->map_size * ENCODINGS_PER_BYTE < columns * rows)
         return false;
     if (le16(video + VIDEO_FLAGS_AT) & VIDEO_FLAG_SWAP)
@@ -323,7 +329,8 @@ bool mve_decode_video(MveStream *m, const uint8_t *video, int video_size)
         .m = m, .r = {video + VIDEO_HEADER_SIZE, video + video_size, false}
     };
     for (int i = 0; i < columns * rows && !b.r.short_data; i++) {
-        b.x = i % columns * MVE_BLOCK_SIZE, b.y = i / columns * MVE_BLOCK_SIZE;
+        b.x = i % columns * MVE_BLOCK_SIZE;
+        b.y = i / columns * MVE_BLOCK_SIZE;
         b.dst = m->buffers[m->current] + b.y * m->width + b.x;
         decode_block(&b, m->map[i / ENCODINGS_PER_BYTE] >> (i % ENCODINGS_PER_BYTE * NIBBLE_BIT_COUNT) & NIBBLE_MASK);
     }

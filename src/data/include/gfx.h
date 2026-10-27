@@ -69,6 +69,7 @@ typedef struct {
     int key1, key2;
 } DimmedRemap;
 
+/* Blits */
 /* Copies rect of blit->dst from blit->src at (src_x, src_y). */
 void gfx_blit(const Blit *blit, const int16_t *rect);
 /* Scales a whole 4 bpp image to the width x height of target; colormap (or NULL) maps each pixel. */
@@ -85,19 +86,22 @@ void gfx_blit_image(const Bitmap *source, Bitmap *target, int mirror);
 /* Copies a whole bitmap into rect of the 8 bpp target. */
 void gfx_blit_to_bitmap(const Bitmap *source, Bitmap *target, const int16_t *rect, int transparent,
                         const uint8_t *colormap);
+/* Fills */
 /* Fills rect of dst with one color. */
 void gfx_fill_rect(uint8_t *dst, const int16_t *rect, int color, int dst_width, int bpp);
 /* Fills a whole bitmap with one color. */
 void gfx_fill_bitmap(Bitmap *target, int color);
+/* Scaled values */
 /* value * scale / 64, rounded the way of the original. */
 int16_t gfx_scale_64(int16_t value, int16_t scale);
 
+/* Color ramps and dimming */
 /* Loads the color ramps of GRAPHICS.DAT, which the dimming uses; returns false when they are missing. */
-bool pal_load_color_ramps(const gdat_t *gdat);
+bool pal_load_color_ramps(const Gdat *gdat);
 /* Dims a color remap table: each color becomes the color of its ramp nearest to its brightness * (64 - dim) / 64,
    never key1 or key2 (they stay mapped to themselves). *count <= 0 starts from the identity table of 256 colors. */
 uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_t *count);
 /* Remaps table through the GDAT color table of remap, then dims it. */
-uint8_t *pal_get_dimmed_remap(const gdat_t *gdat, uint8_t *table, const DimmedRemap *remap, int16_t *count);
+uint8_t *pal_get_dimmed_remap(const Gdat *gdat, uint8_t *table, const DimmedRemap *remap, int16_t *count);
 
 #endif /* DM2_DATA_GFX_H */

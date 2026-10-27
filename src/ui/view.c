@@ -762,7 +762,7 @@ static void step_relative(int dir, int forward, int right, int *x, int *y)
 
 void view_enter_map(int16_t map)
 {
-    const gdat_t *g = gdat_current();
+    const Gdat *g = gdat_current();
     sndreq_clear_requests();
     view.map = view.party_map = map;
     view.gfx_set = dungeon_map_wallset(map);
@@ -1488,7 +1488,7 @@ static void flush_projectile(uint16_t thing, int pos)
 /* Draws an object at its cell of the square at pos, as look tells. */
 static void show_object(uint16_t thing, int pos, const ObjectLook *look)
 {
-    const gdat_t *g = gdat_current();
+    const Gdat *g = gdat_current();
     int cell = CELL_CENTER, row, zone, dx = 0, dy = look->dy, spot = look->spot;
     uint16_t group = look->group;
     if (group != THING_NONE) {
@@ -1627,7 +1627,7 @@ static SidePicture pick_side_picture(int type, const uint8_t *frame, int side, i
 /* Draws a creature group of the square at pos at depth: its animation frame, from the side it shows. */
 static void show_creature(int pos, int depth, uint16_t group)
 {
-    const gdat_t *g = gdat_current();
+    const Gdat *g = gdat_current();
     int type = group_creature(group);
     uint8_t frame[CREATURE_FRAME_SIZE];
     creature_anim_frame(g, group, frame);

@@ -140,6 +140,7 @@ def original_view(lib, gdat, start):
     lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lib.gdat_exists.restype = ctypes.c_bool
     lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1

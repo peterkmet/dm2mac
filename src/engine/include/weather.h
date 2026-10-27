@@ -78,7 +78,7 @@ bool weather_sky_has_clouds(void);
    exported for the tests */
 void weather_init(bool keep_state);
 /* The weather part of a dungeon load: the time of day of the dungeon, then weather_init. */
-void weather_load(const gdat_t *g);
+void weather_load(const Gdat *g);
 /* The weather of a game step (storm_step 0): hour, rain, clouds, sky objects, lightning; or a storm step (1). */
 void world_update_day_night(int storm_step);
 /* Computes the party light level (g_view_light_level) from the hand lights, the square lights, magic, the map, the

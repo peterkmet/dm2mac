@@ -26,8 +26,11 @@ static void parse_line(char *line, Settings *settings)
     if (!value)
         return;
     *value++ = '\0';
-    if (!strcmp(line, "filter") && parse_filter(value))
-        settings->filter = parse_filter(value);
+    if (strcmp(line, "filter"))
+        return;
+    int filter = parse_filter(value);
+    if (filter)
+        settings->filter = filter;
 }
 
 /* Queries */

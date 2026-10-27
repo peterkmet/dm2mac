@@ -40,6 +40,7 @@ enum HmpResult {
 /* Receives a 3-byte MIDI channel message for the music driver. */
 typedef void (*HmpSend)(const uint8_t *event);
 
+/* Song playback */
 /* Copies a song and starts it; send gets the events of tracks 1 and up. */
 enum HmpResult hmp_start(const uint8_t *data, size_t size, HmpSend send);
 /* Stops the song and silences the channels of its tracks. */
@@ -48,6 +49,7 @@ void hmp_stop(void);
 void hmp_tick(void);
 /* Song timer ticks per second from the song header, 0 without a song. */
 int hmp_tick_rate(void);
+/* Volumes and pause */
 /* Song volume, 0 to 127; it scales the channel volume messages. */
 void hmp_set_song_volume(int volume);
 /* Master volume, 0 to 127; it scales the channel volume messages. */

@@ -99,7 +99,7 @@ static void render_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], cons
 
 int dialog_draw(int id, int message)
 {
-    const gdat_t *g = gdat_current();
+    const Gdat *g = gdat_current();
     bool present = !((id == DIALOG_LOADING || id == DIALOG_VOLUME) && message);
     if (message && id != DIALOG_ERROR && id != DIALOG_LOADING &&
         gdat_exists(g, CAT_DIALOG, DIALOG_ERROR, GDAT_TYPE_IMAGE, GFX_DIALOG_PICTURE)) {
@@ -154,7 +154,7 @@ int dialog_run(int id)
 
 int dialog_run_cancel(int id, int cancel)
 {
-    const gdat_t *g = gdat_current();
+    const Gdat *g = gdat_current();
     uint8_t values[DIALOG_TEXT_COUNT];
     int count = 0;
     char text[TEXT_SIZE];

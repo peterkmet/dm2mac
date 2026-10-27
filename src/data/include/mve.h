@@ -47,8 +47,10 @@ typedef struct {
     uint8_t buffers[MVE_FRAME_BUFFERS][MVE_PIXELS_MAX]; /* the current frame and the frame before it */
 } MveStream;
 
+/* Setup */
 /* Finds the MVE data after the player program of a movie file; MVE_ERROR when the file has none. */
 enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size);
+/* Playback */
 /* Runs the opcodes up to the next audio frame, picture, or the end. */
 enum MveResult mve_step(MveStream *m);
 /* The picture of the last MVE_SHOW: width × height palette indexes. */

@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_DATA_LE_H
 #define DM2_DATA_LE_H
-/* Prefixes: le16 le32 put_le16 put_le32 put_be32 */
+/* Prefixes: le16 le32 put_le16 put_le32 be16 put_be32 */
 
-/* Little-endian reads and writes of the DOS file formats. */
+/* Byte order reads and writes: little-endian for the DOS file formats, big-endian for the GDAT keys and PNG. */
 
 #include <stdint.h>
 
@@ -38,6 +38,12 @@ static inline void put_le32(uint8_t *p, uint32_t dword)
 {
     put_le16(p, (uint16_t)dword);
     put_le16(p + 2, dword >> LE16_BIT_COUNT);
+}
+
+/* A big-endian read of the GDAT key table. */
+static inline uint16_t be16(const uint8_t *p)
+{
+    return (uint16_t)(p[0] << BYTE_BIT_COUNT | p[1]);
 }
 
 /* Big-endian writes of the PNG files. */

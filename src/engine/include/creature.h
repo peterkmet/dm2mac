@@ -260,7 +260,7 @@ const CreatureInfo *creature_info_at(int index);
 /* A GDAT value (0x0f, creature type, 0x0b, attr) of a creature type. */
 int creature_gdat_attr(int creature_type, int attr);
 /* The info record of a creature type, read through GDAT (0x0f, type, 0x0b, 5). */
-const CreatureInfo *creature_info(const gdat_t *g, int creature_type);
+const CreatureInfo *creature_info(const Gdat *g, int creature_type);
 /* The info record of the creature of a group thing. */
 const CreatureInfo *creature_group_info(uint16_t group);
 /* The active group of a creature group, NULL when it has none. */
@@ -270,9 +270,9 @@ ActiveGroup *creature_active(uint16_t group);
 /* The animation sequence and state words of a group record: in the record of a static creature, else in its active group. */
 uint16_t *creature_anim_words(uint16_t group);
 /* The current animation frame of a creature group. */
-void creature_anim_frame(const gdat_t *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE]);
+void creature_anim_frame(const Gdat *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE]);
 /* The frame of an animation state of a creature type. */
-void creature_anim_frame_of(const gdat_t *g, int creature_type, uint16_t sequence, uint16_t state,
+void creature_anim_frame_of(const Gdat *g, int creature_type, uint16_t sequence, uint16_t state,
                             uint8_t frame[CREATURE_FRAME_SIZE]);
 /* Moves *out_step to the next step of a sequence, through the random chances of its steps; *out_frame gets the step.
    True when the step has a duration. */

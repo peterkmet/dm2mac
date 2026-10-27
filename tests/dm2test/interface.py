@@ -132,6 +132,7 @@ def gdat(lib):
     lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lib.gdat_exists.restype = ctypes.c_bool
     lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g

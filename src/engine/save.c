@@ -173,11 +173,11 @@ static struct {
     uint16_t *group_order;     /* written: position of each group record in the bit stream */
     uint16_t *container_order; /* written: position of each container record in the bit stream */
     int group_count, container_count;
-    const gdat_t *gdat;
+    const Gdat *gdat;
 } io;
 
 /* Starts a load or a write of the bit stream of f. */
-static void start_io(FILE *f, const gdat_t *gdat)
+static void start_io(FILE *f, const Gdat *gdat)
 {
     memset(&io, 0, sizeof io);
     io.f = f;
@@ -953,7 +953,7 @@ static void read_extension(FILE *f)
     game_set_cheats(amap && tail == TAIL_CHEATS && g_game_mode == GAME_MODE_ADVANCED ? cheats : 0);
 }
 
-SaveResult save_load(const char *path, const gdat_t *gdat)
+SaveResult save_load(const char *path, const Gdat *gdat)
 {
     FILE *f = fopen(path, "rb");
     if (!f)
@@ -977,7 +977,7 @@ SaveResult save_load(const char *path, const gdat_t *gdat)
     return result;
 }
 
-SaveResult save_write(const char *path, const char *bak_path, const char *name, const gdat_t *gdat)
+SaveResult save_write(const char *path, const char *bak_path, const char *name, const Gdat *gdat)
 {
     uint8_t header[SAVE_HEADER_SIZE] = {0}; /* fix: without an old file the original writes uninitialized bytes */
     uint16_t *group_order = calloc(dungeon_thing_count(THING_GROUP) + 1, sizeof *group_order);

@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/* Messages and fatal errors. platform/ sets the hooks to its log; tests set their own. */
+/* Messages and fatal errors */
 typedef void (*OsLogHook)(const char *message);
 typedef void (*OsFatalHook)(const char *message);
 extern OsLogHook g_os_log_hook;     /* NULL: the message goes to the error output */
@@ -19,6 +19,7 @@ void os_log(const char *format, ...) __attribute__((format(printf, 1, 2)));
 /* Formats a message as printf, reports it, and ends the program: a port bug or a system error of the original. */
 _Noreturn void os_fatal(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
+/* Full paths */
 /* The absolute path of an existing file. */
 typedef bool (*OsFullPathHook)(const char *path, char *full, size_t size);
 extern OsFullPathHook g_os_full_path_hook; /* platform/ sets it; NULL: no full path */

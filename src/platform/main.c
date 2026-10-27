@@ -176,7 +176,7 @@ static bool load_graphics(const char *data)
 {
     char graphics[PATH_SIZE];
     snprintf(graphics, sizeof graphics, "%s/DATA/GRAPHICS.DAT", data);
-    static gdat_t *gdat;
+    static Gdat *gdat;
     if (gdat_load(graphics, &gdat) != GDAT_OK) {
         os_log("cannot read %s", graphics);
         return false;
