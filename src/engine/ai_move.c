@@ -1392,8 +1392,8 @@ static bool test_move(Move *m, int command)
         return false;
     }
     ai_cache_square(m->tx, m->ty);
-    if (g_ai.attr7 && m->d != DIR_KEEP_FACING) {
-        int16_t sides = (int16_t)ai_find_marker(MARKER_LEVEL_SIDES, (uint16_t)g_ai.attr7);
+    if (g_ai.marker_mask && m->d != DIR_KEEP_FACING) {
+        int16_t sides = (int16_t)ai_find_marker(MARKER_LEVEL_SIDES, (uint16_t)g_ai.marker_mask);
         if (sides != -1 && (1 << dir_opposite(m->d)) & sides)
             return true;
     }
@@ -2376,7 +2376,7 @@ static int test_entered(Search *s, int i)
     case TARGET_MARKER_SIDE: {
         if (s->dir == -1 || !(g_ai_square.square & SQUARE_HAS_THINGS))
             return 0;
-        int16_t sides = (int16_t)ai_find_marker(MARKER_LEVEL_SIDES, (uint16_t)g_ai.attr7);
+        int16_t sides = (int16_t)ai_find_marker(MARKER_LEVEL_SIDES, (uint16_t)g_ai.marker_mask);
         return sides != -1 && !((1 << dir_opposite(s->dir)) & sides);
     }
     case TARGET_PARTY_DISTANCE:

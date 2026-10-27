@@ -43,7 +43,7 @@ extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
 /* A candidate or plan state without a found thing or marker. */
 #define FOUND_NONE  0xffff
 
-/* The square that the AI read last (g_ai_sq_* of SKULL.EXE); x -1: none. */
+/* The square that the AI read last; x -1: none. */
 typedef struct {
     int16_t x, y, map;
     uint8_t square;
@@ -143,7 +143,7 @@ int ai_search_area(AiLocation from, int command, int count, AiCandidate *candida
 #define DIR_LEVEL_DOWN  5
 #define DIR_KEEP_FACING 6 /* a move to the given square that keeps the facing */
 
-/* More of the square that the AI read last (0x7f8b2 to 0x7f8bf of SKULL.EXE); ai_cache_square resets it. */
+/* More of the square that the AI read last; ai_cache_square resets it. */
 typedef struct {
     uint8_t blocking; /* the square stops the search: a costly wall, a failed move */
     uint8_t passage;  /* the square is a seamless passage; end is its other side */

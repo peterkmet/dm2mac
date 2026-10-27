@@ -1455,6 +1455,7 @@ address,name,signature,subsystem
 0x000752ac,g_creature_hit_offsets,int16_t[][4][2],creatures
 0x000752cc,g_creature_hit_offsets_any_cell,int16_t[4][2],creatures
 0x000752dc,g_creature_hit_radius_sq,int16_t[],creatures
+0x000752e8,g_search_direction_bits,uint16_t,creatures
 0x00075308,g_save_slot,int16_t,save and load
 0x0007530a,g_dungeon_fd,int16_t,file I/O
 0x0007530c,g_save_container_count,int16_t,save and load
@@ -1770,8 +1771,11 @@ address,name,signature,subsystem
 0x0007f580,g_ai_class,int16_t,creatures
 0x0007f584,g_ai_behavior_entry,uint16_t *,creatures
 0x0007f589,g_ai_alert,uint8_t,creatures
+0x0007f60a,g_ai_path,uint8_t[100],creatures
 0x0007f670,g_ai_candidate_count,int8_t,creatures
 0x0007f674,g_ai_candidates,uint8_t[16][0x16],creatures
+0x0007f7d4,g_ai_plan_cache,uint8_t[14],creatures
+0x0007f7e2,g_ai_cached_path,uint8_t *,creatures
 0x0007f7e6,g_ai_context_active,uint8_t,creatures
 0x0007f7ea,g_item_filter_bitmaps,uint8_t *[],creatures
 0x0007f892,g_item_filter_free,int16_t,creatures
@@ -1787,6 +1791,7 @@ address,name,signature,subsystem
 0x0007f8ac,g_ai_sq_first_thing,uint16_t,creatures
 0x0007f8ae,g_ai_sq_first_object,uint16_t,creatures
 0x0007f8b0,g_ai_sq_first_group,uint16_t,creatures
+0x0007f8b2,g_ai_square_scan,uint8_t[14],creatures
 0x0007f8c0,g_ai_sq_cost,int16_t,creatures
 0x0007f8c4,g_alt_distance_map,uint8_t *,creatures
 0x0007f8c8,g_party_distance_map,uint8_t *,creatures

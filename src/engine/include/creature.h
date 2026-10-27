@@ -130,8 +130,8 @@ static inline uint16_t creature_door_size(const CreatureInfo *info)
 }
 
 /* GDAT value keys (0x0f, creature type, 0x0b, key) of a creature type. */
-#define CREATURE_ATTR_CLASS 0x01 /* GDAT value key: the AI class */
-#define CREATURE_ATTR_7     0x07
+#define CREATURE_ATTR_CLASS       0x01 /* GDAT value key: the AI class */
+#define CREATURE_ATTR_MARKER_MASK 0x07 /* GDAT value key: the kinds of the AI markers that the creature heeds */
 
 /* The sound of an item that a creature drops. */
 #define SOUND_ENTRY_DROP    0x85

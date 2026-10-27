@@ -32,10 +32,10 @@ static inline uint16_t ai_marker_level(uint16_t text)
 #define AI_CLASS_COUNT 47
 extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
 
-/* A candidate destination of a plan: the 22-byte record of SKULL.EXE (g_ai_candidates, 0x7f674), same layout. */
+/* A candidate destination of a plan: a 22-byte record with the layout of the original. */
 typedef struct __attribute__((packed)) {
     int8_t cost;          /* +0x00 */
-    uint8_t value;        /* +0x01 target value_9 */
+    uint8_t value;        /* +0x01 the value of the target */
     uint16_t destination; /* +0x02 filled by the search: x bits 0-4, y bits 5-9, map bits 10-15 */
     uint16_t found;       /* +0x04 filled by the search */
     int8_t path_length;   /* +0x06 filled by the search */
@@ -61,16 +61,16 @@ _Static_assert(sizeof(AiCandidate) == AI_CANDIDATE_SIZE, "the candidates of SKUL
 /* The bits of a shift count that the x86 shift uses: the low 5 bits. */
 #define BIT_INDEX_MASK   0x1f
 
-/* The plan state of a group that lasts from one update to the next: the 14 bytes at 0x7f7d4 of SKULL.EXE. */
+/* The plan state of a group that lasts from one update to the next: 14 bytes with the layout of the original. */
 typedef struct __attribute__((packed)) {
-    uint8_t path_length; /* 0x7f7d4 */
-    uint8_t path_left;   /* 0x7f7d5 */
-    int8_t scan_kind;    /* 0x7f7d6 */
-    int8_t kind;         /* 0x7f7d7, -1 none */
-    uint16_t item;       /* 0x7f7d8 */
-    uint16_t mask;       /* 0x7f7da */
-    uint16_t found;      /* 0x7f7dc */
-    uint32_t targets;    /* 0x7f7de */
+    uint8_t path_length;
+    uint8_t path_left;
+    int8_t scan_kind;
+    int8_t kind; /* -1 none */
+    uint16_t item;
+    uint16_t mask;
+    uint16_t found;
+    uint32_t targets;
 } AiPlanCache;
 
 /* The sizes of the item counts of a creature update. */
@@ -96,26 +96,26 @@ typedef struct {
     TimelineEvent event;      /* the next update event: x in data[0], y in data[1] */
     uint8_t previous_action;
     uint8_t command_result; /* AI_RESULT_* */
-    uint8_t removed;        /* the group left the dungeon */
+    bool removed;           /* the group left the dungeon */
     uint8_t map;
     int16_t arg1, arg2; /* the arguments of the plan command */
     uint16_t move_flags, attack_flags, door_flags, item_flags, actuator_flags;
     uint16_t candidate_mask;
-    int16_t attr7;
+    int16_t marker_mask; /* the kinds of the AI markers that the creature heeds */
     int16_t class_index; /* -1 until read */
     int16_t mood;
     uint32_t mood_entry; /* address of the mood entry */
-    uint8_t counts_dirty;
-    uint8_t alert;
+    bool counts_dirty;
+    bool alert;
     AiItemCounts item_counts[AI_COUNT_LISTS];
-    uint8_t path[AI_PATH_BYTES]; /* 0x7f60a: the path of the search (2 bytes per step) */
+    uint8_t path[AI_PATH_BYTES]; /* the path of the search (2 bytes per step) */
     uint8_t candidate_count;
     int8_t chosen;
     AiCandidate candidates[AI_CANDIDATE_MAX];
     AiPlanCache cache;
-    uint8_t *cached_path; /* 0x7f7e2: the stored path of the group, NULL none */
-    uint8_t active_flag;  /* a context is in use: a nested update saves it */
-    uint8_t prepared;
+    uint8_t *cached_path; /* the stored path of the group, NULL none */
+    bool active_flag;     /* a context is in use: a nested update saves it */
+    bool prepared;
     uint8_t plan_flags;
     uint8_t search_flags;
     uint8_t *filters[FILTER_SLOTS]; /* item class bitmaps of the filters, NULL until parsed */
@@ -132,7 +132,7 @@ extern AiContext g_ai;
 #define AI_RESULT_DONE   0xfe /* nothing to do: the goal is reached */
 #define AI_EXECUTE       0x80 /* ai_try_* mode bit: set the action when the test passes */
 
-/* The party position as the current map sees it (g_ai_target_* of SKULL.EXE). */
+/* The party position as the current map sees it. */
 typedef struct {
     int16_t x, y, map, dir;
 } AiPartyView;
@@ -382,7 +382,7 @@ void ai_refresh_party_maps(void);
 
 /* The light sums of the last light search and the party map of the last refresh; exported for the tests. */
 extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
-/* The shift register that picks the first search direction (0x752e8 of SKULL.EXE); exported for the tests. */
+/* The shift register that picks the first search direction; exported for the tests. */
 extern uint16_t g_search_direction_bits;
 
 /* The bit set of the item indexes of an item class (GDAT text entry of a creature type, money.h). */

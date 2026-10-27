@@ -57,7 +57,7 @@ F = {
 }
 # The fields of the AI context: (C offset, original offset, size).
 AI_FIELDS = {
-    "command_result": (53, 0x23, 1), "map": (55, 0x25, 1), "flags": (60, 0x2A, 12), "attr7": (72, 0x36, 4),
+    "command_result": (53, 0x23, 1), "map": (55, 0x25, 1), "flags": (60, 0x2A, 12), "marker_mask": (72, 0x36, 4),
     "path": (216, 0xC2, 0x64), "candidate_count": (316, 0x128, 2), "candidates": (318, 0x12C, 16 * 22),
     "cache": (670, 0x28C, 14), "filter_free": (1040, 0x34A, 2),
 }
