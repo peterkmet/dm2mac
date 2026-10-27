@@ -34,7 +34,8 @@ static uint32_t time_of_event(uint16_t index)
 /* True when event a runs before event b: earlier time, then higher type, then higher priority, then lower index. */
 static bool runs_before(uint16_t a, uint16_t b)
 {
-    const TimelineEvent *ea = &g_timeline.events[a], *eb = &g_timeline.events[b];
+    const TimelineEvent *ea = &g_timeline.events[a];
+    const TimelineEvent *eb = &g_timeline.events[b];
     if (time_of_event(a) != time_of_event(b))
         return time_of_event(a) < time_of_event(b);
     if (ea->type != eb->type)
@@ -274,7 +275,8 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
 
 void timeline_event_move_group(TimelineEvent *e)
 {
-    int x = e->data[0], y = e->data[1];
+    int x = e->data[0];
+    int y = e->data[1];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
         sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
                        1);

@@ -1093,7 +1093,8 @@ int creature_attack_group_at(int16_t x, int16_t y)
     uint16_t group = creature_get_group_at(x, y);
     if (group == THING_NONE)
         return -1;
-    const CreatureInfo *target = creature_group_info(group), *attacker = g_ai.info;
+    const CreatureInfo *target = creature_group_info(group);
+    const CreatureInfo *attacker = g_ai.info;
     if (target->dexterity == CREATURE_NO_HURT)
         return 0;
     int16_t hit = (int16_t)((rand_next() & ROLL_COMBAT) + attacker->dexterity);
@@ -1464,8 +1465,8 @@ void creature_push_creature(int arrow)
     if (arrow < 0 || arrow >= PUSH_ARROW_COUNT)
         return;
     int dir = dir_turn(g_game.party_dir, dirs[arrow]);
-    int16_t x = (int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
-            y = (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]);
+    int16_t x = (int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]);
+    int16_t y = (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]);
     uint16_t g;
     if (!creature_can_be_pushed(x, y, dir, &g))
         return;

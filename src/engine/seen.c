@@ -117,7 +117,8 @@ static int visible_depths(void)
 int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squares[SEEN_VISIBLE_MAX])
 {
     uint8_t open[VIEW_DEPTHS][VIEW_WIDTH] = {{0}}; /* seen, and the view looks on through it */
-    int depths = visible_depths(), count = 0;
+    int depths = visible_depths();
+    int count = 0;
     for (int depth = 0; depth < depths; depth++) {
         for (int side = 0; side <= row_half_width[depth]; side++)
             for (int sign = 1; sign >= -1; sign -= 2) {
@@ -129,7 +130,8 @@ int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squa
                     (!depth && !side) || (side && open[depth][column - sign]) || (depth && open[depth - 1][column]);
                 if (!visible)
                     continue;
-                int16_t sx = (int16_t)x, sy = (int16_t)y;
+                int16_t sx = (int16_t)x;
+                int16_t sy = (int16_t)y;
                 dun_move_relative(dir, depth, side * sign, &sx, &sy);
                 squares[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), sx, sy};
                 open[depth][column] = !blocks_sight(map, sx, sy);

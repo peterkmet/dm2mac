@@ -93,8 +93,8 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         return;
     int16_t r[RECT_SIZE];
     g_hooks.zone_rect(ZONE_MAP_GRID, r);
-    int16_t px = (int16_t)(x - (r[RECT_X] - g_minion_map.x_offset)),
-            py = (int16_t)(y - (r[RECT_Y] - g_minion_map.y_offset));
+    int16_t px = (int16_t)(x - (r[RECT_X] - g_minion_map.x_offset));
+    int16_t py = (int16_t)(y - (r[RECT_Y] - g_minion_map.y_offset));
     if (px % (MAP_ICON_W + GAP_X) < GAP_X || py % (MAP_ICON_H + GAP_Y) < GAP_Y)
         return;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);

@@ -1137,7 +1137,8 @@ static GroupArrival meet_target_square(uint16_t thing, int map, int dst_x, int d
     if (other == THING_NONE)
         return ARRIVAL_ENTER;
     int push = creature_group_info(thing)->push_resistance;
-    const CreatureInfo *oi = creature_group_info(other), *ti = creature_group_info(thing);
+    const CreatureInfo *oi = creature_group_info(other);
+    const CreatureInfo *ti = creature_group_info(thing);
     int16_t nx, ny;
     if (ti->flags & CREATURE_STATIC && push >= PUSH_IMMOVABLE) {
         if (oi->flags & CREATURE_STATIC && oi->push_resistance >= PUSH_IMMOVABLE)

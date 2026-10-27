@@ -132,7 +132,8 @@ typedef struct {
    things behind it in its cell do not show. Returns false when the text shows no ornament. */
 static bool wall_text_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentState *o)
 {
-    int kind = textrec_kind(thing), subtype = textrec_subtype(thing);
+    int kind = textrec_kind(thing);
+    int subtype = textrec_subtype(thing);
     bool visible = textrec_is_visible(thing);
     if (kind == TEXT_KIND_TEXT || (kind == TEXT_KIND_ORNAMENT && subtype == SUBTYPE_PLATE)) {
         s->side[face] = ORNAMENT_PLATE;
@@ -178,7 +179,8 @@ static bool wall_sensor_ornament(ViewSquare *s, int map, uint16_t thing, int fac
     o->ornament = listed_ornament(thing, dungeon_map_wall_ornaments(map));
     if (o->ornament == ORNAMENT_NONE)
         return false;
-    bool active = sensor_flag(thing, SENSOR_BUSY), state = sensor_flag(thing, SENSOR_STATE);
+    bool active = sensor_flag(thing, SENSOR_BUSY);
+    bool state = sensor_flag(thing, SENSOR_STATE);
     switch (sensor_type(thing)) {
     case SENSOR_TOGGLE_ORNAMENT:
         o->animated = state;

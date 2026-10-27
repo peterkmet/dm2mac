@@ -197,9 +197,11 @@ static bool load_sky_object(SkyObject *object)
     if (!text[0])
         return false;
     object->zone = (int16_t)gdat_text_int_field(text, "cd");
-    object->dx = object->dy = 0;
+    object->dx = 0;
+    object->dy = 0;
     object->flip = (uint8_t)gdat_text_int_field(text, "fw");
-    object->scale_x = object->scale_y = SCALE_FULL;
+    object->scale_x = SCALE_FULL;
+    object->scale_y = SCALE_FULL;
     return true;
 }
 
@@ -320,7 +322,8 @@ static int max16(int lo, int v)
    or not in front of it are spared; the party square only in a strong storm, late, and after enough storms. */
 static bool lightning_strike(void)
 {
-    int x = rand_below(LIGHTNING_RANGE), y = rand_below(LIGHTNING_RANGE);
+    int x = rand_below(LIGHTNING_RANGE);
+    int y = rand_below(LIGHTNING_RANGE);
     if (x >= dungeon_map_width(g_party.cur_map) || y >= dungeon_map_height(g_party.cur_map))
         return false;
     ViewSquare s;
@@ -359,7 +362,8 @@ static SkyObject *show_lightning(SkyObject *o)
         strikes = (uint16_t)((rand_next() & LIGHTNING_STRIKES_MASK) + 1);
         uint16_t target = map_value(MAP_KEY_LIGHTNING_TARGET);
         if (target) {
-            int x = target >> TARGET_X_SHIFT, y = target & TARGET_Y_MASK;
+            int x = target >> TARGET_X_SHIFT;
+            int y = target & TARGET_Y_MASK;
             sensor_schedule_square_event(x, y, 0, EFFECT_SET, g_game.game_time + 1);
             sndreq_request_with_fallback((SoundCue){CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE,
                                                     SOUND_PRIORITY_EXPLODE,

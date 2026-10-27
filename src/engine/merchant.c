@@ -212,7 +212,8 @@ int shop_cmd_evaluate_offer(void)
         a->counters[1] = 0;
         return AI_RESULT_FAIL;
     }
-    uint16_t price = (uint16_t)price_in_coins(g, dir_opposite(dir)), full = price;
+    uint16_t price = (uint16_t)price_in_coins(g, dir_opposite(dir));
+    uint16_t full = price;
     uint16_t last = (uint16_t)a->counters[1];
     a->counters[1] = (int16_t)offer;
     if (price > DISCOUNT_FROM)
@@ -257,8 +258,10 @@ int shop_cmd_count_payment(void)
     uint16_t g = front_group();
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
-    int cell = dir_turn(dir, g_ai.arg1), goods_cell = dir_opposite(cell);
-    int16_t price = price_in_coins(g, goods_cell), due = price;
+    int cell = dir_turn(dir, g_ai.arg1);
+    int goods_cell = dir_opposite(cell);
+    int16_t price = price_in_coins(g, goods_cell);
+    int16_t due = price;
     int16_t goods = sum_items_value(g, goods_cell, (ItemSum){-1, FILTER_GOODS, 0, 0, 0});
     if (goods != -1)
         due = (int16_t)(due + goods);

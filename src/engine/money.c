@@ -97,9 +97,11 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
     if (!*p)
         return -1;
     /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */
-    int16_t number = 0, counter = 0;
+    int16_t number = 0;
+    int16_t counter = 0;
     for (int done = 0; !done;) {
-        int16_t low = -1, base = -1;
+        int16_t low = -1;
+        int16_t base = -1;
         for (;;) {
             char c = *p++;
             if (c >= '0' && c <= '9') {
@@ -131,8 +133,10 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
 
 int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *coin_count)
 {
-    int16_t left = (int16_t)amount, n = 0;
-    int type = money_coin_type_count() - 1, total = 0;
+    int16_t left = (int16_t)amount;
+    int16_t n = 0;
+    int type = money_coin_type_count() - 1;
+    int total = 0;
     *coin_count = 0;
     while (n < (int16_t)max_coins && left > 0 && type >= 0) {
         int16_t value = money_coin_value(type);
@@ -175,7 +179,8 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type)
 {
     if (coin_type < 0)
         return THING_NONE; /* fix: the original reads before the coin table */
-    uint16_t item = money_coin_item(coin_type), found = THING_NONE;
+    uint16_t item = money_coin_item(coin_type);
+    uint16_t found = THING_NONE;
     uint16_t *contents = container_contents(box);
     for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_MISC)
@@ -251,6 +256,17 @@ bool money_normalize_coins(bool check_only, uint16_t box)
 
 /* Merchant prices */
 
+/* Sets the bits of the item numbers low to number of the item kind that starts at base in the class set. */
+static void set_class_range(uint8_t *bitset, int16_t low, int16_t number, int16_t base)
+{
+    for (; low <= number && low < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT; low++) {
+        int16_t bit = (int16_t)(low + base);
+        /* fix: the original writes outside the set for bad numbers */
+        if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT)
+            bitset[bit / BYTE_BIT_COUNT] |= (uint8_t)(1 << bit % BYTE_BIT_COUNT);
+    }
+}
+
 int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, int skip_containers)
 {
     char text[TEXT_SIZE];
@@ -258,7 +274,9 @@ int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, in
     const char *p = gtext_gdat(CAT_CREATURE, creature, (uint8_t)(class_list + GFX_CREATURE_CLASS_TEXT), text);
     if (!*p)
         return 0;
-    int16_t number = 0, low = -1, base = -1;
+    int16_t number = 0;
+    int16_t low = -1;
+    int16_t base = -1;
     int digits = 0;
     char c;
     do {
@@ -276,14 +294,10 @@ int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, in
         if (digits) {
             if (low < 0)
                 low = number;
-            for (; low <= number && low < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT; low++) {
-                int16_t bit = (int16_t)(low + base);
-                /* fix: the original writes outside the set for bad numbers */
-                if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT)
-                    bitset[bit / BYTE_BIT_COUNT] |= (uint8_t)(1 << bit % BYTE_BIT_COUNT);
-            }
+            set_class_range(bitset, low, number, base);
             number = 0;
-            low = base = -1;
+            low = -1;
+            base = -1;
             digits = 0;
         }
         /* the letters choose the item kind of the next numbers */
@@ -331,8 +345,10 @@ static uint16_t apply_factor(uint16_t price, uint16_t item, int creature, int at
 
 int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges)
 {
-    int creature = terms->creature, list = terms->list;
-    int category = item_index_gdat_category(item), index = item_index_gdat_index(item);
+    int creature = terms->creature;
+    int list = terms->list;
+    int category = item_index_gdat_category(item);
+    int index = item_index_gdat_index(item);
     uint16_t price = gdat_entry_index(gdat_current(), category, index, GDAT_TYPE_VALUE, ATTR_VALUE);
     price = apply_factor(price, item, creature, (uint8_t)(list * MERCHANT_LIST_ATTRS + MERCHANT_ATTR_FACTOR_B),
                          list * MERCHANT_LIST_ATTRS + MERCHANT_CLASS_B);

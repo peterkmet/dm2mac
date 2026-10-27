@@ -476,7 +476,8 @@ static void process_floor(int x, int y, uint16_t thing, FloorMove m, bool posses
         if (tt >= THING_GROUP)
             return;
         if (tt == THING_SENSOR) {
-            int kind = sensor_type(t), data = sensor_data(t);
+            int kind = sensor_type(t);
+            int data = sensor_data(t);
             if (!kind)
                 continue;
             if (m.cell != -1 && m.cell != thing_cell(t))
@@ -531,7 +532,8 @@ static void relay_delayed(const TimelineEvent *e, uint16_t sensor, int scaled)
     int effect = e->data[EVENT_EFFECT];
     if (sensor_flag(sensor, SENSOR_STATE) && !effect_activates(sensor, effect))
         return;
-    unsigned data = sensor_data(sensor), bits = sensor_delay(sensor);
+    unsigned data = sensor_data(sensor);
+    unsigned bits = sensor_delay(sensor);
     uint32_t time = scaled ? (data << bits) + g_game.game_time : g_game.game_time + data + bits;
     sensor_schedule_square_event(sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor),
                                  passed_effect(sensor, effect), time);
@@ -665,7 +667,8 @@ static void run_activation(const TimelineEvent *e, uint16_t sensor, bool wall)
         ev.data[SENSOR_EVENT_WALL] = (uint8_t)wall;
         timeline_add_event(&ev);
         if (sensor_flag(sensor, SENSOR_AUDIBLE)) {
-            int x = e->data[EVENT_X], y = e->data[EVENT_Y];
+            int x = e->data[EVENT_X];
+            int y = e->data[EVENT_Y];
             if (wall)
                 sound_square_in_front(&x, &y, e->data[EVENT_EFFECT] & DIR_MASK);
             int delay = (int16_t)(gdat_entry_index(gdat_current(), ornament_category(wall),
@@ -851,21 +854,21 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
     uint16_t sensor = tr.sensor;
     uint16_t data = sensor_data(sensor);
     bool keep_bones = sensor_flag(sensor, SENSOR_KEEP_BONES);
-    int ex = e->data[EVENT_X], ey = e->data[EVENT_Y], ecell = e->data[EVENT_CELL];
-    int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor), tcell = sensor_target_cell(sensor);
-    int fx = tr.reverse ? tx : ex, fy = tr.reverse ? ty : ey, fcell = tr.reverse ? tcell : ecell;
-    int dx = tr.reverse ? ex : tx, dy = tr.reverse ? ey : ty, dcell = tr.reverse ? ecell : tcell;
+    SquareCell event_square = {e->data[EVENT_X], e->data[EVENT_Y], e->data[EVENT_CELL]};
+    SquareCell target = {sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor)};
+    SquareCell from = tr.reverse ? target : event_square;
+    SquareCell to = tr.reverse ? event_square : target;
     int effect = e->data[EVENT_EFFECT];
     if (!effect_activates(sensor, effect))
         return;
     if (first == THING_NONE) {
-        first = first_thing(fx, fy);
-        if (square_type(*current_square(fx, fy)) != SQUARE_WALL)
+        first = first_thing(from.x, from.y);
+        if (square_type(*current_square(from.x, from.y)) != SQUARE_WALL)
             tr.any_cell = true;
     }
     int count = 0;
     for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (is_object(t) && (tr.any_cell || thing_cell(t) == fcell))
+        if (is_object(t) && (tr.any_cell || thing_cell(t) == from.cell))
             count++;
     uint8_t bits[ITEM_CLASS_SET_SIZE];
     if (tr.use_filter)
@@ -873,7 +876,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
                                    sensor_delay(sensor) * ITEM_CLASS_ENTRY_STEP + ITEM_CLASS_ENTRY_FIRST, bits, 0);
     for (uint16_t t = first, next; t != THING_ENDOFLIST; t = next) {
         next = dungeon_next_thing(t);
-        if (count > 0 && is_object(t) && (tr.any_cell || thing_cell(t) == fcell)) {
+        if (count > 0 && is_object(t) && (tr.any_cell || thing_cell(t) == from.cell)) {
             count--;
             uint16_t item = item_get_index(t);
             bool match;
@@ -885,7 +888,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
                     if (possessions)
                         dungeon_unlink_thing_from_list(t, possessions);
                     else
-                        dungeon_unlink_thing_from_square(t, g_party.cur_map, fx, fy);
+                        dungeon_unlink_thing_from_square(t, g_party.cur_map, from.x, from.y);
                     thing_set_word(t, THING_NEXT, THING_NONE);
                     champ_revive(item_add_charges(t, 0));
                     continue;
@@ -896,7 +899,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
             }
             if (!match)
                 continue;
-            transfer_object(t, sensor, &(SquareCell){fx, fy, fcell}, (SquareCell){dx, dy, dcell}, possessions != NULL);
+            transfer_object(t, sensor, &from, to, possessions != NULL);
             if (tr.first_only)
                 return;
         } else if (!tr.use_filter && thing_type(t) == THING_GROUP) {
@@ -998,7 +1001,8 @@ static void busy_relay(uint16_t t, int effect)
 /* A creature generator creates a group of its data creature type at its target. */
 static void generate_creature(uint16_t t)
 {
-    int tx = sensor_target_x(t), ty = sensor_target_y(t);
+    int tx = sensor_target_x(t);
+    int ty = sensor_target_y(t);
     int dir = sensor_flag(t, SENSOR_STATE) ? rand_2bits() : sensor_effect(t);
     uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, tx, ty);
     if (sensor_flag(t, SENSOR_INVERTED) && g != THING_NONE)
@@ -1046,7 +1050,9 @@ static void countdown_event(uint16_t t, int effect)
 /* Passes the event to a square of another map. */
 static void relay_to_map(const TimelineEvent *e, uint16_t t)
 {
-    int map = sensor_data_map(t), tx = sensor_target_x(t), ty = sensor_target_y(t);
+    int map = sensor_data_map(t);
+    int tx = sensor_target_x(t);
+    int ty = sensor_target_y(t);
     if (map >= dungeon_map_count())
         return; /* fix: the original reads a map outside the dungeon */
     TimelineEvent ev = {.time_map = timeline_time_map(g_game.game_time & EVENT_TIME_MASK, map),
@@ -1136,7 +1142,9 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
 /* A square event on a wall: the texts and the sensors on the event cell react. */
 static void wall_square_event(TimelineEvent *e)
 {
-    int x = e->data[EVENT_X], y = e->data[EVENT_Y], effect = e->data[EVENT_EFFECT];
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
+    int effect = e->data[EVENT_EFFECT];
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
         if (thing_cell(t) != e->data[EVENT_CELL])
@@ -1198,13 +1206,19 @@ static void floor_text_event(uint16_t t, int effect, int x, int y)
    SENSOR_VANISH makes them vanish (power VANISH_POWER), SENSOR_ALERT sets mood bit power (cleared when effect is set). */
 static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int effect)
 {
-    int power = sensor_area_power(sensor), creature_type = sensor_area_creature(sensor);
-    int tx = sensor_target_x(sensor), ty = sensor_target_y(sensor), kind = sensor_type(sensor);
-    int rx = abs((int16_t)(x - tx)), ry = abs((int16_t)(y - ty));
-    int left = x - rx, top = y - ry;
+    int power = sensor_area_power(sensor);
+    int creature_type = sensor_area_creature(sensor);
+    int tx = sensor_target_x(sensor);
+    int ty = sensor_target_y(sensor);
+    int kind = sensor_type(sensor);
+    int rx = abs((int16_t)(x - tx));
+    int ry = abs((int16_t)(y - ty));
+    int left = x - rx;
+    int top = y - ry;
     for (int row = ry * 2; row >= 0; row--)
         for (int col = rx * 2; col >= 0; col--) {
-            int16_t sx = (int16_t)(left + col), sy = (int16_t)(top + row);
+            int16_t sx = (int16_t)(left + col);
+            int16_t sy = (int16_t)(top + row);
             if (sx < 0 || sx >= dungeon_map_width(g_party.cur_map) || sy < 0 ||
                 sy >= dungeon_map_height(g_party.cur_map))
                 continue;
@@ -1226,7 +1240,9 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
 /* A square event on a floor: the texts and the sensors of the square react. */
 static void floor_square_event(TimelineEvent *e)
 {
-    int x = e->data[EVENT_X], y = e->data[EVENT_Y], effect = e->data[EVENT_EFFECT];
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
+    int effect = e->data[EVENT_EFFECT];
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_TEXT) {
@@ -1245,7 +1261,8 @@ static void floor_square_event(TimelineEvent *e)
             affect_creatures_in_area(t, x, y, effect);
             break;
         case SENSOR_PARTY_TELEPORT: { /* moves the party to its target (or to this square) */
-            int tx = x, ty = y;
+            int tx = x;
+            int ty = y;
             if (sensor_flag(t, SENSOR_STATE)) {
                 tx = sensor_target_x(t);
                 ty = sensor_target_y(t);
@@ -1264,7 +1281,8 @@ static void floor_square_event(TimelineEvent *e)
 /* A square event opens, closes, or toggles a pit or a teleporter (on_bit); an opened one moves the square contents. */
 static void pit_or_teleporter_event(TimelineEvent *e, uint8_t on_bit)
 {
-    int x = e->data[EVENT_X], y = e->data[EVENT_Y];
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
     uint8_t *square = current_square(x, y);
     int effect = e->data[EVENT_EFFECT];
     if (effect == EFFECT_TOGGLE)
@@ -1319,7 +1337,8 @@ static void doorway_event(TimelineEvent *e)
 /* A square event opens or closes a fake wall; a party or a creature on it delays the close by one tick. */
 static void fake_wall_event(TimelineEvent *e)
 {
-    int x = e->data[EVENT_X], y = e->data[EVENT_Y];
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
     uint8_t *square = current_square(x, y);
     int effect = e->data[EVENT_EFFECT];
     if (effect == EFFECT_TOGGLE)
@@ -1424,7 +1443,8 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
 
 void sensor_event_door_animation(TimelineEvent *e)
 {
-    int x = e->data[EVENT_X], y = e->data[EVENT_Y];
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
     uint8_t *square = current_square(x, y);
     int state = *square & SQUARE_DOOR_STATE;
     if (state == DOOR_STATE_BROKEN)
@@ -1506,7 +1526,8 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
     bool wall = square_type(dun_get_square(e->data[EVENT_X], e->data[EVENT_Y])) == SQUARE_WALL;
     e->time_map += (uint16_t)ornament_cycle(thing, wall);
     timeline_add_event(e);
-    int16_t x = e->data[EVENT_X], y = e->data[EVENT_Y];
+    int16_t x = e->data[EVENT_X];
+    int16_t y = e->data[EVENT_Y];
     if (wall) { /* the sound comes from the square in front of the wall, unless the party stands there */
         int16_t fx = (int16_t)(x + ambient_wall_step(ambient_wall_dx, thing));
         int16_t fy = (int16_t)(y + ambient_wall_step(ambient_wall_dy, thing));
@@ -1860,7 +1881,8 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
 /* A clicked wall sensor triggers its target (a hold sensor: set when it does not skip, else clear). */
 static void wall_click_sensor(WallClick *c, uint16_t t)
 {
-    int kind = sensor_type(t), effect = sensor_effect(t);
+    int kind = sensor_type(t);
+    int effect = sensor_effect(t);
     if (!c->has_leader && kind != WALL_CLICK_PORTRAIT)
         return;
     int ornament = wall_ornament(t);
@@ -1921,7 +1943,8 @@ static void wall_click_text(WallClick *c, uint16_t t)
 {
     if (textrec_kind(t) != TEXT_KIND_ORNAMENT || !c->has_leader)
         return;
-    int value = textrec_value(t), sub = textrec_subtype(t);
+    int value = textrec_value(t);
+    int sub = textrec_subtype(t);
     bool visible = textrec_is_visible(t);
     if (sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER) {
         wall_click_holder_text(c, t, sub, value, visible);
