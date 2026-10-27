@@ -59,12 +59,15 @@ static Location middle_square(void)
 static void level_rect(int16_t *rect)
 {
     int map = g_game.party_map;
-    int x0 = dungeon_map_offset_x(map) - MAP_MARGIN, y0 = dungeon_map_offset_y(map) - MAP_MARGIN;
-    int x1 = x0 + dungeon_map_width(map) + 2 * MAP_MARGIN, y1 = y0 + dungeon_map_height(map) + 2 * MAP_MARGIN;
+    int x0 = dungeon_map_offset_x(map) - MAP_MARGIN;
+    int y0 = dungeon_map_offset_y(map) - MAP_MARGIN;
+    int x1 = x0 + dungeon_map_width(map) + 2 * MAP_MARGIN;
+    int y1 = y0 + dungeon_map_height(map) + 2 * MAP_MARGIN;
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++) {
-        int left = dungeon_map_offset_x(*m) - MAP_MARGIN, top = dungeon_map_offset_y(*m) - MAP_MARGIN;
-        int right = left + dungeon_map_width(*m) + 2 * MAP_MARGIN,
-            bottom = top + dungeon_map_height(*m) + 2 * MAP_MARGIN;
+        int left = dungeon_map_offset_x(*m) - MAP_MARGIN;
+        int top = dungeon_map_offset_y(*m) - MAP_MARGIN;
+        int right = left + dungeon_map_width(*m) + 2 * MAP_MARGIN;
+        int bottom = top + dungeon_map_height(*m) + 2 * MAP_MARGIN;
         x0 = left < x0 ? left : x0;
         y0 = top < y0 ? top : y0;
         x1 = right > x1 ? right : x1;
@@ -152,7 +155,8 @@ bool automap_level_square(Location level_at, Position *position)
     int next = 0;
     do {
         /* the search writes the square of the map that it finds into x, y */
-        int16_t x = level_at.x - dungeon_map_offset_x(party_map), y = level_at.y - dungeon_map_offset_y(party_map);
+        int16_t x = level_at.x - dungeon_map_offset_x(party_map);
+        int16_t y = level_at.y - dungeon_map_offset_y(party_map);
         int map = dungeon_location_on_map_from(party_map, 0, &x, &y, &next);
         if (map >= 0 && covers(map, level_at, position))
             return true; /* a found square in the margin of its map does not count */
@@ -201,7 +205,8 @@ static void fill_clipped(Offscreen *o, const int16_t *clip, const int16_t *rect,
 {
     int x0 = rect[RECT_X] < clip[RECT_X] ? clip[RECT_X] : rect[RECT_X];
     int y0 = rect[RECT_Y] < clip[RECT_Y] ? clip[RECT_Y] : rect[RECT_Y];
-    int x1 = rect[RECT_X] + rect[RECT_W], y1 = rect[RECT_Y] + rect[RECT_H];
+    int x1 = rect[RECT_X] + rect[RECT_W];
+    int y1 = rect[RECT_Y] + rect[RECT_H];
     x1 = x1 < clip[RECT_X] + clip[RECT_W] ? x1 : clip[RECT_X] + clip[RECT_W];
     y1 = y1 < clip[RECT_Y] + clip[RECT_H] ? y1 : clip[RECT_Y] + clip[RECT_H];
     if (x1 <= x0 || y1 <= y0)
@@ -223,9 +228,12 @@ static void checker_overlay(Offscreen *o, const int16_t *clip, int x, int y)
 static void map_frame(Offscreen *o, const int16_t *clip, int left, int top, const int16_t *rect)
 {
     int color = g_ui_colors[UI_WHITE];
-    int x0 = left + rect[RECT_X] * MAP_CELL_SIZE - ICON_GAP, y0 = top + rect[RECT_Y] * MAP_CELL_SIZE - ICON_GAP;
-    int right = x0 + rect[RECT_W] * MAP_CELL_SIZE, bottom = y0 + rect[RECT_H] * MAP_CELL_SIZE;
-    int16_t w = (int16_t)(right - x0 + 1), h = (int16_t)(bottom - y0 + 1);
+    int x0 = left + rect[RECT_X] * MAP_CELL_SIZE - ICON_GAP;
+    int y0 = top + rect[RECT_Y] * MAP_CELL_SIZE - ICON_GAP;
+    int right = x0 + rect[RECT_W] * MAP_CELL_SIZE;
+    int bottom = y0 + rect[RECT_H] * MAP_CELL_SIZE;
+    int16_t w = (int16_t)(right - x0 + 1);
+    int16_t h = (int16_t)(bottom - y0 + 1);
     fill_clipped(o, clip, (int16_t[RECT_SIZE]){(int16_t)x0, (int16_t)y0, w, 1}, color);
     fill_clipped(o, clip, (int16_t[RECT_SIZE]){(int16_t)x0, (int16_t)bottom, w, 1}, color);
     fill_clipped(o, clip, (int16_t[RECT_SIZE]){(int16_t)x0, (int16_t)y0, 1, h}, color);
@@ -236,7 +244,8 @@ static void map_frame(Offscreen *o, const int16_t *clip, int left, int top, cons
    clip_len long; origin is the screen place of level column 0. */
 static Span visible_span(int origin, int start, int count, int clip_start, int clip_len)
 {
-    int from = clip_start - (origin + start * MAP_CELL_SIZE), to = from + clip_len - 1;
+    int from = clip_start - (origin + start * MAP_CELL_SIZE);
+    int to = from + clip_len - 1;
     Span span = {start + (from > 0 ? from / MAP_CELL_SIZE : 0), start + count - 1};
     if (to < 0)
         span.last = start - 1;

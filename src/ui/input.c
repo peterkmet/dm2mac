@@ -1165,7 +1165,8 @@ static uint16_t click_command(enum InputMode mode, int x, int y, int buttons, in
         return command;
     for (int champ = 0; champ < CHAMPION_MAX; champ++) {
         int16_t box[RECT_SIZE], target[RECT_SIZE];
-        uint16_t open = (uint16_t)(CMD_INVENTORY_FIRST + champ), store = (uint16_t)(CMD_STORE_FIRST + champ);
+        uint16_t open = (uint16_t)(CMD_INVENTORY_FIRST + champ);
+        uint16_t store = (uint16_t)(CMD_STORE_FIRST + champ);
         if (!zone_get_rect(ZONE_STATUS_BOX + champ, box) || !point_in_rect(box, x, y))
             continue;
         if (command && command != open && command != store)
@@ -1365,7 +1366,9 @@ void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y)
     CursorImage c = input_cursor_image(input_cursor_at(x, y));
     for (int cy = 0; cy < c.height; cy++)
         for (int cx = 0; cx < c.width; cx++) {
-            int sx = x - c.hot_x + cx, sy = y - c.hot_y + cy, i = cy * c.width + cx;
+            int sx = x - c.hot_x + cx;
+            int sy = y - c.hot_y + cy;
+            int i = cy * c.width + cx;
             if (sx < 0 || sy < 0 || sx >= SCREEN_W || sy >= SCREEN_H)
                 continue;
             int n = c.bpp == IMAGE_4BPP ? (c.bits[i / 2] >> (i & 1 ? 0 : NIBBLE_BIT_COUNT)) & NIBBLE_MASK : c.bits[i];
@@ -1448,7 +1451,9 @@ void input_flush(void)
     int pos = (in.event_tail + 1) % EVENT_RING;
     if (pos != in.event_head || in.event_count) {
         /* only area changes and released left buttons stay */
-        int write = in.event_head, read = in.event_head, kept = 0;
+        int write = in.event_head;
+        int read = in.event_head;
+        int kept = 0;
         for (int n = in.event_count; n > 0; n--) {
             int t = in.events[read].type;
             if (t == EVENT_ENTER_AREA || t == EVENT_LEAVE_AREA || t == INPUT_LEFT_RELEASED) {
@@ -1462,7 +1467,8 @@ void input_flush(void)
         in.event_tail = (write + EVENT_RING - 1) % EVENT_RING;
     }
     in.disabled = 0;
-    in.queue_head = in.queue_tail = 0;
+    in.queue_head = 0;
+    in.queue_tail = 0;
     in.rect[RECT_W] = 0;
     in.rect[RECT_H] = 0;
     g_input_match.zone = ZONE_NONE;
@@ -1481,7 +1487,8 @@ void input_refine_champion_click(Command *c)
 {
     int command = c->command;
     if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
-        int n = command - CMD_HAND_FIRST, hand = n & 1;
+        int n = command - CMD_HAND_FIRST;
+        int hand = n & 1;
         int champ = party_cell_champion(n / 2);
         if (champ < 0 || champion(champ)->action_delay[hand] ||
             !champ_list_actions(champ, champion(champ)->slots[hand], hand))
@@ -1589,7 +1596,9 @@ static void feedback_init_rect(Feedback *f, int16_t *r, int w, int h)
 /* Draws the picture of the arguments at p centered in the clicked button. */
 static void feedback_picture(Feedback *f, const uint8_t *p)
 {
-    int category = p[PICTURE_CATEGORY], index = p[PICTURE_INDEX], entry = p[PICTURE_ENTRY];
+    int category = p[PICTURE_CATEGORY];
+    int index = p[PICTURE_INDEX];
+    int entry = p[PICTURE_ENTRY];
     const Bitmap *image = draw_gdat_image(category, index, entry);
     if (!image)
         return;
@@ -1782,7 +1791,9 @@ static void forward_to_screen(void)
     while (g_advanced_screen && (key = input_read_key()))
         advanced_screen_event(INPUT_KEY, key, 0);
     while (g_advanced_screen && in.event_count) {
-        int type = in.events[in.event_head].type, x = in.events[in.event_head].x, y = in.events[in.event_head].y;
+        int type = in.events[in.event_head].type;
+        int x = in.events[in.event_head].x;
+        int y = in.events[in.event_head].y;
         in.event_count--;
         in.event_head = (in.event_head + 1) % EVENT_RING;
         advanced_screen_event(type, x, y);
@@ -1817,8 +1828,9 @@ void input_poll(void)
             while (!command) {
                 if (!in.event_count)
                     break;
-                int type = in.events[in.event_head].type, x = in.events[in.event_head].x,
-                    y = in.events[in.event_head].y;
+                int type = in.events[in.event_head].type;
+                int x = in.events[in.event_head].x;
+                int y = in.events[in.event_head].y;
                 in.event_count--;
                 in.event_head = (in.event_head + 1) % EVENT_RING;
                 if (type < INPUT_KEY) {
@@ -1905,19 +1917,22 @@ void input_update_viewport_arrow(void)
     /* by push arrow: the movement arrow entry and zone, the direction of the push and of the party step */
     static const uint8_t entries[PUSH_ARROW_COUNT] = {0x12, 0x10, 0x14, 0x16, 0x18, 0x0e};
     static const uint16_t zones[PUSH_ARROW_COUNT] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
-    static const uint8_t push_dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, 3},
-                         step_dirs[PUSH_ARROW_COUNT] = {0, 0, 1, 2, 3, 0};
+    static const uint8_t push_dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, 3};
+    static const uint8_t step_dirs[PUSH_ARROW_COUNT] = {0, 0, 1, 2, 3, 0};
     if (!g_view_arrows_enabled || g_party.push_pending_group != THING_NONE)
         return;
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_VIEWPORT, r))
         return;
-    int x = g_input_mouse_x - r[RECT_X], y = g_input_mouse_y - r[RECT_Y];
+    int x = g_input_mouse_x - r[RECT_X];
+    int y = g_input_mouse_y - r[RECT_Y];
     move_set_push_arrow(PUSH_ARROW_NONE);
     input_release_move_arrow();
     if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
         return;
-    int dx = x - VIEWPORT_WIDTH / 2, dy = y - VIEWPORT_HEIGHT / 2, arrow;
+    int dx = x - VIEWPORT_WIDTH / 2;
+    int dy = y - VIEWPORT_HEIGHT / 2;
+    int arrow;
     if (abs(dx) < ARROW_CENTER_X) {
         if (abs(dy) < ARROW_CENTER_Y)
             return;
@@ -1953,7 +1968,9 @@ static void click_wall_sensor(int cell)
 {
     static const int8_t side_turn[DIR_COUNT] = {1, 1, 3,
                                                 2}; /* the face that the party sees of each wall, from its direction */
-    int dir = g_game.party_dir, x = g_game.party_x, y = g_game.party_y;
+    int dir = g_game.party_dir;
+    int x = g_game.party_x;
+    int y = g_game.party_y;
     if (cell == WALL_CELL_LEFT) {
         x += g_dir_dx[dir_turn(dir, TURN_LEFT)];
         y += g_dir_dy[dir_turn(dir, TURN_LEFT)];
@@ -2027,7 +2044,8 @@ static void click_take_object(int x, int y, int index)
     if (g_game.leader == LEADER_NONE)
         return;
     const ViewClickZone *z = &g_view_click_zones[index];
-    int sx = g_game.party_x, sy = g_game.party_y;
+    int sx = g_game.party_x;
+    int sy = g_game.party_y;
     if (z->cell) {
         if (z->cell != POS_FRONT)
             return;
@@ -2121,7 +2139,9 @@ static void click_throw_object(int x, int y)
 /* A click on a door button zone: a door without a button passes the click to the wall beside it. */
 static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z, uint16_t hand)
 {
-    int front = z->cell == POS_FRONT, dx = front ? v->fx : v->px, dy = front ? v->fy : v->py;
+    bool front = z->cell == POS_FRONT;
+    int dx = front ? v->fx : v->px;
+    int dy = front ? v->fy : v->py;
     uint16_t door = dungeon_square_first_thing(g_party.cur_map, dx, dy);
     if (!door_flag(door, DOOR_BUTTON)) {
         int side = dir_turn(v->dir, TURN_RIGHT);

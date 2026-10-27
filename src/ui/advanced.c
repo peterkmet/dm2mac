@@ -206,7 +206,8 @@ void advanced_automap_drag(int16_t x, int16_t y)
 {
     if (!drag.active)
         return;
-    int dx = (x - drag.x) / MAP_CELL_SIZE, dy = (y - drag.y) / MAP_CELL_SIZE;
+    int dx = (x - drag.x) / MAP_CELL_SIZE;
+    int dy = (y - drag.y) / MAP_CELL_SIZE;
     if (!dx && !dy)
         return;
     drag.x += dx * MAP_CELL_SIZE;

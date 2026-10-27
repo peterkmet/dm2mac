@@ -717,7 +717,9 @@ void session_edit_champion_name(Champion *champion)
         int length = (int)strlen(text);
         int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE;
         int y = in_name ? name_y : title_y;
-        for (bool field_done = false, redraw = true; !field_done && !g_main_loop.quit;) {
+        bool field_done = false;
+        bool redraw = true;
+        while (!field_done && !g_main_loop.quit) {
             if (redraw)
                 render_name_fields(champion, x, y);
             redraw = false;
