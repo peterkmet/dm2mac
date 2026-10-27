@@ -87,14 +87,38 @@ class AiLineTarget(ctypes.Structure):
     _fields_ = [("found", ctypes.c_bool), ("location", ctypes.c_uint16)]
 
 
+class AiTest(ctypes.Structure):
+    """A command test of the port: the mode and whether the test sets the action."""
+    _fields_ = [("mode", ctypes.c_uint8), ("execute", ctypes.c_bool)]
+
+
+class AiMoveTest(ctypes.Structure):
+    """A move test of the port: the kind and the flags."""
+    _fields_ = [("kind", ctypes.c_uint8), ("execute", ctypes.c_bool), ("no_movers", ctypes.c_bool),
+                ("attack_groups", ctypes.c_bool)]
+
+
 # The command tests of the port take each square as one Location: the index of its x in the arguments of the original.
 SQUARE_ARGS = {name: (1, 3) for name in ("ai_try_attack", "ai_try_door_action", "ai_try_move", "ai_try_take_item",
                                          "ai_try_use_wall_actuator")}
 
 
+def command_test(name, mode):
+    """The test struct of the port from the packed mode byte of the original."""
+    execute = bool(mode & C.AI_EXECUTE)
+    if name == "ai_try_move":
+        return AiMoveTest(mode & C.AI_MOVE_KIND_MASK, execute, bool(mode & C.AI_MOVE_NO_MOVERS),
+                          bool(mode & C.AI_MOVE_ATTACK_GROUPS))
+    return AiTest(mode & 0xFF, execute)
+
+
 def c_args(name, args):
-    """The arguments of the C function from the arguments of the original: each (x, y) pair becomes a Location."""
+    """The arguments of the C function from the arguments of the original: each (x, y) pair becomes a Location, the
+    packed mode byte of a command test its test struct."""
     squares, out, i = SQUARE_ARGS.get(name, ()), [], 0
+    if squares:
+        out.append(command_test(name, args[0]))
+        i = 1
     while i < len(args):
         if i in squares:
             out.append(Location(args[i], args[i + 1]))
@@ -135,7 +159,8 @@ class Ai:
         lib.ai_find_target_in_lines.restype = AiLineTarget
         lib.ai_search_area.argtypes = [Location] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
         for name in SQUARE_ARGS:
-            getattr(lib, name).argtypes = [ctypes.c_int, Location, Location, ctypes.c_int16] + [ctypes.c_int] * (
+            test = AiMoveTest if name == "ai_try_move" else AiTest
+            getattr(lib, name).argtypes = [test, Location, Location, ctypes.c_int16] + [ctypes.c_int] * (
                 1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
             getattr(lib, name).restype = AiCommand
         lib.ai_turn_toward.restype = AiCommand

@@ -73,6 +73,21 @@ typedef struct {
     uint8_t result;
 } AiCommand;
 
+/* An AI command test (ai_try_attack, ai_try_door_action, ai_try_take_item, ai_try_use_wall_actuator): the mode of the
+   command (the test reads bits 0-6) and whether the test sets the action when it passes. */
+typedef struct {
+    uint8_t mode;
+    bool execute;
+} AiTest;
+
+/* A move test (ai_try_move): the kind (MOVE_KIND_*) and the flags. */
+typedef struct {
+    uint8_t kind;
+    bool execute;       /* set the action when the test passes */
+    bool no_movers;     /* groups that move do not block */
+    bool attack_groups; /* a group of FILTER_ATTACKED_GROUPS in the way gets attacked */
+} AiMoveTest;
+
 /* A target that the line search found: found false for none; location: x bits 0-4, y bits 5-9, map bits 10-15. */
 typedef struct {
     bool found;
@@ -121,21 +136,24 @@ bool ai_plan_path(void);
    line that the search reached no later. distance_map: the map of the search (4 bytes per square, 32 squares per
    column). It is exported for the tests. */
 AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, Location from, int16_t dir, bool ranged);
-/* Tests (and with AI_EXECUTE starts) an attack (ATTACK_MODE_*) from the square from on the square to
+/* Tests (and with test.execute starts) an attack (ATTACK_MODE_*) from the square from on the square to
    (AI_SQUARE_IN_DIR: the square in dir). */
-AiCommand ai_try_attack(int mode, Location from, Location to, int16_t dir);
-/* Tests (and with AI_EXECUTE starts) an action (DOOR_MODE_*) on the door on the square to
+AiCommand ai_try_attack(AiTest test, Location from, Location to, int16_t dir);
+/* Tests (and with test.execute starts) an action (DOOR_MODE_*) on the door on the square to
    (AI_SQUARE_IN_DIR: the square in dir). */
-AiCommand ai_try_door_action(int mode, Location from, Location to, int16_t dir);
-/* Tests (and with AI_EXECUTE starts) a move (MOVE_KIND_*) of the group from the square from to the square to
+AiCommand ai_try_door_action(AiTest test, Location from, Location to, int16_t dir);
+/* The move test of a packed move command byte (the search flags, the command of a search): the kind (bits 0-4) and
+   the flag bits AI_MOVE_ATTACK_GROUPS, AI_MOVE_NO_MOVERS, AI_EXECUTE. */
+AiMoveTest ai_move_test(int command);
+/* Tests (and with test.execute starts) a move (MOVE_KIND_*) of the group from the square from to the square to
    (AI_SQUARE_IN_DIR: the square in dir); dir DIR_LEVEL_UP and DIR_LEVEL_DOWN change the level, DIR_KEEP_FACING keeps the facing. */
-AiCommand ai_try_move(int command, Location from, Location to, int16_t dir);
-/* Tests (and with AI_EXECUTE starts) taking or giving (ITEM_MODE_*) an item of filter on the square to
+AiCommand ai_try_move(AiMoveTest test, Location from, Location to, int16_t dir);
+/* Tests (and with test.execute starts) taking or giving (ITEM_MODE_*) an item of filter on the square to
    (AI_SQUARE_IN_DIR: the square in dir): from the floor, an alcove, a chest, or a group. */
-AiCommand ai_try_take_item(int mode, Location from, Location to, int16_t dir, int filter);
-/* Tests (and with AI_EXECUTE starts) the use of a wall actuator on the square to (AI_SQUARE_IN_DIR: the square in
+AiCommand ai_try_take_item(AiTest test, Location from, Location to, int16_t dir, int filter);
+/* Tests (and with test.execute starts) the use of a wall actuator on the square to (AI_SQUARE_IN_DIR: the square in
    dir) from the slot of the creature type on that wall face. */
-AiCommand ai_try_use_wall_actuator(int mode, Location from, Location to, int16_t dir, int filter);
+AiCommand ai_try_use_wall_actuator(AiTest test, Location from, Location to, int16_t dir, int filter);
 /* The breadth-first search from the square from with the move command: the nearest of count candidates; returns its index,
    -1 for none. out_path gets the steps to it (2 bytes each). */
 int ai_search_area(Location from, int command, int count, AiCandidate *candidates, uint8_t *out_path);

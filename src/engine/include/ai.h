@@ -130,7 +130,6 @@ extern AiContext g_ai;
 #define AI_RESULT_ISSUED 0xfc /* an action was set: the update ends */
 #define AI_RESULT_FAIL   0xfd
 #define AI_RESULT_DONE   0xfe /* nothing to do: the goal is reached */
-#define AI_EXECUTE       0x80 /* ai_try_* mode bit: set the action when the test passes */
 
 /* The party position as the current map sees it. */
 typedef struct {
@@ -227,7 +226,8 @@ void ai_refresh_party_maps(void);
 /* Creature perception and movement (ai_move.c): squares, lines of sight, item filters, the tests of the AI
    commands, and the path search. The functions work on the AI context; the command tests set g_ai.command_result and
    return it. */
-/* Bits of the command byte of the AI tests (AI_EXECUTE in ai.h). */
+/* Bits of a packed move command byte (ai_move_test) and the mode mask of the other command tests (AiTest). */
+#define AI_EXECUTE               0x80 /* set the action when the test passes */
 #define AI_MODE_MASK             0x7f
 #define AI_MOVE_KIND_MASK        0x1f /* ai_try_move: the kind of the move */
 #define AI_MOVE_NO_MOVERS        0x40 /* ... groups that move do not block */
