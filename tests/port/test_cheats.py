@@ -296,7 +296,7 @@ def test_no_drop_inside_a_wall(lib, game, wanted):
         enter(lib, game, *find_place(lib, game, lambda m, x, y: is_wall(lib, m, x, y)))
     lib.game_set_cheats(C.CHEAT_WALLS)
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_bool]
     lib.champ_take_from_leader_hand()
     thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
     lib.champ_put_in_leader_hand(thing, 0)

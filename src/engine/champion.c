@@ -44,7 +44,7 @@
 ChampionAction g_champ_actions[CHAMPION_ACTION_MAX];
 int g_champ_action_count;
 uint16_t g_champ_action_thing = THING_NONE;
-int g_party_sleeping;
+bool g_party_sleeping;
 uint8_t g_champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
 /* Setup */
@@ -85,7 +85,7 @@ void champ_init_party_state(void)
     } else {
         uint16_t leader = g_game.leader;
         g_game.leader = (uint16_t)-1;
-        champ_put_in_leader_hand(g_game.leader_hand, 1);
+        champ_put_in_leader_hand(g_game.leader_hand, true);
         g_game.leader = leader;
     }
     for (int i = 0; i < g_game.champion_count; i++) {
@@ -102,12 +102,6 @@ void champ_init_party_state(void)
 
 /* Statistics and load */
 
-/* v limited to low and high. */
-static int clamp(int low, int v, int high)
-{
-    return v < low ? low : v > high ? high : v;
-}
-
 int champ_get_stat(Champion *c, int stat, int which)
 {
     int v = c->stats[stat][which];
@@ -116,10 +110,10 @@ int champ_get_stat(Champion *c, int stat, int which)
         int aura = c->aura_value > AURA_MAX ? AURA_MAX : c->aura_value;
         v = (uint16_t)(v + rand_below((uint16_t)((aura * v >> AURA_STAT_SHIFT) + 1)) + AURA_BASE);
     }
-    return clamp(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
+    return champ_clamp16(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
 }
 
-int champ_get_skill_level(int champ, int skill, int with_bonus)
+int champ_get_skill_level(int champ, int skill, bool with_bonus)
 {
     if (g_party_sleeping)
         return 1;
@@ -152,7 +146,7 @@ int champ_scale_by_stamina(const Champion *c, int value)
 
 int champ_get_max_load(Champion *c)
 {
-    int strength = champ_get_stat(c, STAT_STRENGTH, 0);
+    int strength = champ_get_stat(c, STAT_STRENGTH, STAT_CURRENT);
     uint16_t load = (uint16_t)champ_scale_by_stamina(c, (int16_t)(strength * LOAD_PER_STRENGTH + LOAD_BASE));
     if (c->wounds)
         load = (uint16_t)(load - (load >> ((c->wounds & WOUND_LEGS) == 0 ? WOUND_LOAD_SHIFT : WOUND_LEGS_LOAD_SHIFT)));
@@ -176,7 +170,8 @@ int champ_get_move_delay(int champ)
     if (g_game.magic_light[MAGIC_HASTE])
         return 1;
     Champion *c = champion(champ);
-    unsigned max = (uint16_t)champ_get_max_load(c), load = (uint16_t)champ_get_load(champ);
+    unsigned max = (uint16_t)champ_get_max_load(c);
+    unsigned load = (uint16_t)champ_get_load(champ);
     int delay, wounded_extra;
     if (max > load) {
         delay = load * LOAD_HEAVY_EIGHTHS > max * LOAD_HEAVY_PART ? MOVE_DELAY_HEAVY : MOVE_DELAY_LIGHT;
@@ -288,7 +283,7 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
         }
         uint16_t skill = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_SKILL);
         uint16_t level = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_LEVEL);
-        if (level <= (uint16_t)champ_get_skill_level(champ, skill, 1))
+        if (level <= (uint16_t)champ_get_skill_level(champ, skill, true))
             g_champ_actions[count++] = (ChampionAction){(uint8_t)category, (uint8_t)index, (uint8_t)entry};
     }
     g_champ_action_count = count;
@@ -341,7 +336,7 @@ void champ_set_party_direction(int16_t dir)
 void champ_wake_party(void)
 {
     g_input_command_stop = 1;
-    g_party_sleeping = 0;
+    g_party_sleeping = false;
     g_main_loop.tick_threshold = STEP_TICKS;
     g_hooks.clear_viewport();
     g_hooks.set_input_mode(INPUT_MODE_MOVE);

@@ -144,7 +144,7 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
     # with an empty leader hand, else the leader hand object.
     path, *_ = control
     ui = UiState.in_dll(lib, "g_ui")
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_bool]
     lib.input_click_command.restype = ctypes.c_uint16
 
     def hold_and_release(x, y, mode):

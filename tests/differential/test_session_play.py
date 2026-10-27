@@ -618,4 +618,4 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
         run_ticks(lib, 16)
         lib.command_execute(ctypes.byref(Command(0, 0, C.CMD_SLEEP)))
     assert player.frames < player.every
-    assert ctypes.c_int.in_dll(lib, "g_party_sleeping").value == 0
+    assert ctypes.c_bool.in_dll(lib, "g_party_sleeping").value == 0

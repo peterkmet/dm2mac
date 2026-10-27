@@ -147,7 +147,7 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
         inventory, sleeping = rng.random() < 0.3, rng.random() < 0.3
         ctypes.c_int16.in_dll(lib, "g_ui").value = inventory  # UiState.inventory
         sc.emu.write(G_INVENTORY, struct.pack("<h", inventory))
-        ctypes.c_int.in_dll(lib, "g_party_sleeping").value = sleeping
+        ctypes.c_bool.in_dll(lib, "g_party_sleeping").value = sleeping
         sc.emu.write_u32(G_PARTY_SLEEPING, sleeping)
         for i in range(40):
             sc.step()
@@ -165,7 +165,7 @@ def test_weather_steps_on_outdoor_maps(world, lib, part):
                 pictures += 1
         ctypes.c_int16.in_dll(lib, "g_ui").value = 0
         sc.emu.write(G_INVENTORY, bytes(2))
-        ctypes.c_int.in_dll(lib, "g_party_sleeping").value = 0
+        ctypes.c_bool.in_dll(lib, "g_party_sleeping").value = 0
         sc.emu.write_u32(G_PARTY_SLEEPING, 0)
     assert strikes > 1 and bolts > 3 and pictures == 56
     sc.assert_equal("end")
@@ -384,7 +384,7 @@ def set_party_state(sc, inventory, sleeping):
     """The open inventory (champion ordinal) and the sleep of the party in both."""
     ctypes.c_int16.in_dll(sc.lib, "g_ui").value = inventory  # UiState.inventory
     sc.emu.write(G_INVENTORY, struct.pack("<h", inventory))
-    ctypes.c_int.in_dll(sc.lib, "g_party_sleeping").value = sleeping
+    ctypes.c_bool.in_dll(sc.lib, "g_party_sleeping").value = sleeping
     sc.emu.write_u32(G_PARTY_SLEEPING, sleeping)
 
 
