@@ -19,9 +19,6 @@
 #define POSITION_SQUARE_DIR 0x0fff /* position word: x, y, and direction */
 /* The energy step in bits 12-15 of the position word. */
 #define POSITION_STEP_SHIFT 12
-/* A coordinate above a byte: the low byte is the square, the high byte the stop square + 1. */
-#define COORD_STOP_SHIFT    8
-#define COORD_STOP_ONE      (1 << COORD_STOP_SHIFT)
 
 /* The impacts of hit_impact besides the square types. */
 #define PROJECTILE_HIT_PARTY_SQUARE (-3)
@@ -89,8 +86,8 @@
 #define STATIC_SPELLS_ONLY        0x0100 /* possessions of a static creature: objects fly through it */
 #define POSSESSIONS_DIRECTION     0x0001 /* possessions bits 0-3: a dropped object lies in the flight direction cell */
 /* Creature info values that projectiles and melee attacks test. */
-#define DODGE_NONE                0x0f /* unknown_18 bits 4-7: explosion dodge; 0xf: explosions do not hurt */
-#define ATTACK_KIND_ANY_DEXTERITY 0x09 /* unknown_1c: melee attack kinds */
+#define DODGE_NONE                0x0f /* CreatureInfo.dodge bits 4-7: explosion dodge; 0xf: explosions do not hurt */
+#define ATTACK_KIND_ANY_DEXTERITY 0x09 /* CreatureInfo.attack_kind: melee attack kinds */
 #define ATTACK_KIND_ALWAYS_HITS   0x08
 #define PUSH_BOUNCES              0xff /* push_resistance: objects bounce off the creature */
 /* The strength of a push or pull spell. */
@@ -305,7 +302,7 @@ static void blast_square(int type, int power, int x, int y, int cell)
             const CreatureInfo *info = creature_group_info(g);
             if (info->door_flags & CREATURE_RESISTS_NON_FIRE && type != SPELL_FIREBALL)
                 damage = (uint16_t)max16(1, (int16_t)(damage >> 2));
-            int dodge = info->unknown_18 >> NIBBLE_BIT_COUNT;
+            int dodge = info->dodge >> NIBBLE_BIT_COUNT;
             if (dodge != DODGE_NONE) {
                 if (info->flags & CREATURE_NON_MATERIAL)
                     damage >>= 2;
@@ -330,14 +327,8 @@ void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell)
     uint16_t t = dungeon_unused_thing(THING_EXPLOSION);
     if (t == THING_NONE)
         return;
-    int16_t ex = (int16_t)x;
-    int16_t ey = (int16_t)y;
-    if ((uint16_t)x > UINT8_MAX) {
-        x = (uint8_t)x;
-        y = (uint8_t)y;
-        ex = (int16_t)(((uint16_t)ex >> COORD_STOP_SHIFT) - 1);
-        ey = (int16_t)((uint16_t)ey >> COORD_STOP_SHIFT);
-    }
+    int16_t ex = x;
+    int16_t ey = y;
     bool centered = (uint16_t)cell == EXPLOSION_AT_CENTER;
     if (!centered)
         t = thing_with_cell(t, cell);
@@ -406,9 +397,10 @@ void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t 
                 int cell = thing_cell(projectile);
                 if ((creature_group_info(g)->possessions & POSSESSIONS_KIND_MASK) == POSSESSIONS_DIRECTION)
                     cell = projectile_dir(projectile);
-                move_thing(thing_with_cell(payload, cell), -2, -1, (int16_t)x, (int16_t)y);
+                move_thing(thing_with_cell(payload, cell), MOVE_DROPPED_PROJECTILE, -1, (int16_t)x, (int16_t)y);
             } else {
-                move_thing(thing_with_cell(payload, thing_cell(projectile)), -2, 0, (int16_t)x, (int16_t)y);
+                move_thing(thing_with_cell(payload, thing_cell(projectile)), MOVE_DROPPED_PROJECTILE, 0, (int16_t)x,
+                           (int16_t)y);
             }
         }
         sndreq_request_with_fallback((SoundCue){item_gdat_category(projectile), item_gdat_index(projectile),
@@ -623,9 +615,9 @@ static bool hit_door(Hit *h)
     return true;
 }
 
-/* Starts a hit of projectile from (x, y): its payload (a bomb potion becomes its blast) and the square where its
+/* Starts a hit of projectile at a square: its payload (a bomb potion becomes its blast) and the square stop where its
    object stops. */
-static void hit_start(Hit *h, uint16_t projectile, int *x, int *y)
+static void hit_start(Hit *h, uint16_t projectile, Location at, Location stop)
 {
     h->projectile = projectile;
     h->payload = thing_word(projectile, PROJECTILE_PAYLOAD);
@@ -640,17 +632,10 @@ static void hit_start(Hit *h, uint16_t projectile, int *x, int *y)
         }
     }
     h->explosive = h->payload_type == THING_EXPLOSION && h->payload != SPELL_SLIME && h->payload != SPELL_POISON_BOLT;
-    if ((int16_t)*x > UINT8_MAX) {
-        h->stop_x = (int16_t)(((int16_t)*x >> COORD_STOP_SHIFT) - 1);
-        h->stop_y = (int8_t)(*y >> COORD_STOP_SHIFT);
-        *x = (uint8_t)*x;
-        *y = (uint8_t)*y;
-    } else {
-        h->stop_x = (int16_t)*x;
-        h->stop_y = (int16_t)*y;
-    }
-    h->x = (int16_t)*x;
-    h->y = (int16_t)*y;
+    h->stop_x = stop.x;
+    h->stop_y = stop.y;
+    h->x = at.x;
+    h->y = at.y;
 }
 
 /* A projectile with an explosive payload explodes at (x, y) in cell; returns the strength of a push or pull spell. */
@@ -681,15 +666,16 @@ static uint16_t hit_explode(Hit *h, int16_t x, int16_t y, int cell)
     return push_strength;
 }
 
-/* The projectile from (x, y) meets impact (PROJECTILE_HIT_*, or a square type); true when it stops. */
-static bool hit_impact(int impact, int x, int y, int cell, uint16_t projectile)
+/* The projectile at a square meets impact (PROJECTILE_HIT_*, or a square type); its object stops at stop. True when
+   it stops. */
+static bool hit_impact(int impact, Location at, Location stop, int cell, uint16_t projectile)
 {
     Hit h = {0};
-    hit_start(&h, projectile, &x, &y);
+    hit_start(&h, projectile, at, stop);
     int16_t fall_x = h.stop_x; /* where the explosion and the object removal happen */
     int16_t fall_y = h.stop_y;
     int16_t kind = (int16_t)impact;
-    if (kind == 0) {
+    if (kind == SQUARE_WALL) {
         if (hit_wall_sensors(fall_x, fall_y, projectile_dir(projectile), projectile))
             return true;
     } else if (kind == SQUARE_DOOR) {
@@ -717,9 +703,15 @@ static bool hit_impact(int impact, int x, int y, int cell, uint16_t projectile)
     if (push_strength) {
         int16_t strength = max16(min16((int16_t)push_strength, SPELL_PUSH_MAX), SPELL_PUSH_MIN);
         int dir = h.payload == SPELL_PUSH ? h.push_dir : dir_opposite(h.push_dir);
-        creature_push_group((int16_t)x, (int16_t)y, (int16_t)dir, strength);
+        creature_push_group(at.x, at.y, (int16_t)dir, strength);
     }
     return true;
+}
+
+/* The projectile on (x, y) meets impact there, and its object stops there; true when it stops. */
+static bool hit_square(int impact, int16_t x, int16_t y, int cell, uint16_t projectile)
+{
+    return hit_impact(impact, (Location){x, y}, (Location){x, y}, cell, projectile);
 }
 
 /* Sets the flight direction in the position word of event. */
@@ -748,28 +740,32 @@ static bool reflect_spell(TimelineEvent *e, uint16_t projectile, int x, int y)
     return true;
 }
 
-/* A creature on the squares ahead of a projectile that flew on notices it. */
-static void alert_creatures_ahead(void)
+/* A creature on the squares ahead of a projectile that flew on to dest notices it. */
+static void alert_creatures_ahead(MoveDest dest)
 {
     int saved = g_party.cur_map;
-    if (g_party.dest_map != g_party.cur_map)
-        dun_set_current_map(g_party.dest_map);
+    if (dest.map != g_party.cur_map)
+        dun_set_current_map(dest.map);
+    Location at = {dest.x, dest.y};
     for (int i = 0; i < ALERT_AHEAD_SQUARES; i++) {
-        g_party.dest_x = (int16_t)(g_party.dest_x + g_dir_dx[g_party.dest_dir]);
-        g_party.dest_y = (int16_t)(g_party.dest_y + g_dir_dy[g_party.dest_dir]);
-        uint16_t g = creature_get_group_at(g_party.dest_x, g_party.dest_y);
+        at.x = (int16_t)(at.x + g_dir_dx[dest.dir]);
+        at.y = (int16_t)(at.y + g_dir_dy[dest.dir]);
+        uint16_t g = creature_get_group_at(at.x, at.y);
         if (g != THING_NONE)
-            creature_alert(g, (Location){g_party.dest_x, g_party.dest_y}, ALERT_STARTLED, ALERT_ALWAYS, 0);
+            creature_alert(g, at, ALERT_STARTLED, ALERT_ALWAYS, 0);
         if (i)
             break;
-        uint8_t square = dun_get_square(g_party.dest_x, g_party.dest_y);
+        uint8_t square = dun_get_square(at.x, at.y);
         int type = square_type(square);
         int state = square & SQUARE_DOOR_STATE;
         if (type == SQUARE_WALL || (type == SQUARE_FAKE_WALL && !(square & SQUARE_FAKE_WALL_OPEN)) ||
             (type == SQUARE_DOOR && state != DOOR_STATE_BROKEN && state > DOOR_STATE_ONE_FOURTH))
             break;
     }
-    if (g_party.dest_map != saved)
+    /* the original walks the destination globals ahead */
+    g_party.dest_x = at.x;
+    g_party.dest_y = at.y;
+    if (dest.map != saved)
         dun_set_current_map(saved);
 }
 
@@ -787,7 +783,7 @@ static SquareEntry enter_next_square(TimelineEvent *e, uint16_t projectile, int1
     int type = square_type(square);
     if ((type == SQUARE_WALL || (type == SQUARE_FAKE_WALL && !(square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0))) ||
          (type == SQUARE_STAIRS && square_type(dungeon_square(g_party.cur_map, from_x, from_y)) == SQUARE_STAIRS)) &&
-        hit_impact(type, from_x, from_y, cell, projectile))
+        hit_square(type, from_x, from_y, cell, projectile))
         return ENTRY_STOPPED;
     for (uint16_t t = dungeon_square_first_object(g_party.cur_map, *x, *y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
@@ -816,9 +812,9 @@ void projectile_process_event(TimelineEvent *event)
     } else {
         int cell = thing_cell(projectile);
         if (!reflect_spell(&e, projectile, x, y)) {
-            if (dun_on_party_square(x, y) && hit_impact(PROJECTILE_HIT_PARTY_SQUARE, x, y, cell, projectile))
+            if (dun_on_party_square(x, y) && hit_square(PROJECTILE_HIT_PARTY_SQUARE, x, y, cell, projectile))
                 return;
-            if (hit_impact(PROJECTILE_HIT_CREATURE, x, y, cell, projectile))
+            if (hit_square(PROJECTILE_HIT_CREATURE, x, y, cell, projectile))
                 return;
         }
         int step = le16(e.data + PROJECTILE_EVENT_POSITION) >> POSITION_STEP_SHIFT;
@@ -846,15 +842,15 @@ void projectile_process_event(TimelineEvent *event)
     }
     int new_cell = dir_turn(cell, (dir & 1) == (cell & 1) ? -1 : 1);
     if (leaves) {
-        move_thing(thing_with_cell(projectile, new_cell), from_x, from_y, x, y);
+        MoveDest dest = move_thing_dest(thing_with_cell(projectile, new_cell), from_x, from_y, x, y).dest;
         if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
             g_party.redraw |= REDRAW_VIEW;
-        projectile_event_set_position(&e, g_party.dest_x, g_party.dest_y, g_party.dest_dir);
-        projectile = thing_with_cell(projectile, g_party.dest_cell);
-        timeline_set_event_map(&e, g_party.dest_map);
-        alert_creatures_ahead();
+        projectile_event_set_position(&e, dest.x, dest.y, dest.dir);
+        projectile = thing_with_cell(projectile, dest.cell);
+        timeline_set_event_map(&e, dest.map);
+        alert_creatures_ahead(dest);
     } else {
-        if (square_type(dun_get_square(x, y)) == SQUARE_DOOR && hit_impact(SQUARE_DOOR, x, y, cell, projectile))
+        if (square_type(dun_get_square(x, y)) == SQUARE_DOOR && hit_square(SQUARE_DOOR, x, y, cell, projectile))
             return;
         dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
         projectile = thing_with_cell(projectile, new_cell);
@@ -1000,10 +996,10 @@ void projectile_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Locat
         order[i] = attack_cell_orders[dir * 2 + (side >> 1 & 1)][i];
 }
 
-/* The chance nibble of a wound location: 4 bits per location in unknown_1a (locations 0, 1) and unknown_1b (2, 3). */
+/* The chance nibble of a wound location: 0 feet, 1 legs (wound_feet_legs), 2 torso, 3 head (wound_torso_head). */
 static int wound_nibble(const CreatureInfo *info, int location)
 {
-    uint8_t chances = location < 2 ? info->unknown_1a : info->unknown_1b;
+    uint8_t chances = location < 2 ? info->wound_feet_legs : info->wound_torso_head;
     return location & 1 ? chances >> NIBBLE_BIT_COUNT : chances & NIBBLE_MASK;
 }
 
@@ -1028,7 +1024,7 @@ static bool attack_missed(const CreatureInfo *info, int champ, uint16_t dexterit
 static uint16_t attack_wounds(const CreatureInfo *info)
 {
     uint32_t r = rand_next();
-    if (!(r & ROLL_WOUND_LOCATION) || (!info->unknown_1a && !info->unknown_1b))
+    if (!(r & ROLL_WOUND_LOCATION) || (!info->wound_feet_legs && !info->wound_torso_head))
         return (uint16_t)((r & 1) + 1);
     uint16_t roll = r & NIBBLE_MASK;
     if (!roll)
@@ -1049,7 +1045,7 @@ int projectile_attack_champion(uint16_t group, int champ)
     int16_t damage = 0;
     int difficulty = dungeon_map_difficulty(g_party.cur_map) * 2;
     const CreatureInfo *info = creature_group_info(group);
-    int kind = info->unknown_1c;
+    int kind = info->attack_kind;
     uint16_t dexterity = info->dexterity;
     if (kind == ATTACK_KIND_ANY_DEXTERITY)
         dexterity = (uint16_t)min16(DEXTERITY_ALWAYS_HITS, (int16_t)(dexterity * 2));
@@ -1106,7 +1102,7 @@ static int16_t steps_between(int x1, int y1, int x2, int y2)
     return (int16_t)((dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy));
 }
 
-void projectile_check_missiles_hit_party(int from_x, int from_y, int to_x, int to_y)
+void projectile_check_missiles_hit_party(Location from, Location to)
 {
     /* by cell: the cell of the champion that a projectile there hits, -1 none */
     int8_t champs[CELL_COUNT];
@@ -1116,8 +1112,8 @@ void projectile_check_missiles_hit_party(int from_x, int from_y, int to_x, int t
         champs[cell] = champ_get_index_in_cell(cell) >= 0 ? (int8_t)cell : -1;
         next[cell] = -1;
     }
-    if ((int16_t)to_x >= 0 && steps_between(from_x, from_y, to_x, to_y) == 1) {
-        int dir = dun_get_direction_to((int16_t)from_x, (int16_t)from_y, (int16_t)to_x, (int16_t)to_y);
+    if (to.x >= 0 && steps_between(from.x, from.y, to.x, to.y) == 1) {
+        int dir = dun_get_direction_to(from.x, from.y, to.x, to.y);
         int dir2 = dir_turn(dir, TURN_RIGHT);
         next[dir_turn(dir, TURN_LEFT)] = champs[dir];
         next[dir_turn(dir2, TURN_RIGHT)] = champs[dir2];
@@ -1127,29 +1123,25 @@ void projectile_check_missiles_hit_party(int from_x, int from_y, int to_x, int t
         if (champs[dir2] < 0)
             champs[dir2] = champs[dir_turn(dir2, TURN_RIGHT)];
     }
-    int x = from_x; /* x, y: the hit argument; sx, sy: the square */
-    int y = from_y;
-    int sx = from_x;
-    int sy = from_y;
+    Location stop = from; /* where a hit projectile falls; the projectiles are on square */
+    Location square = from;
     for (;;) {
-        uint16_t t = dungeon_square_first_thing(g_party.cur_map, sx, sy);
+        uint16_t t = dungeon_square_first_thing(g_party.cur_map, square.x, square.y);
         while (t != THING_ENDOFLIST) {
             if (thing_type(t) == THING_PROJECTILE &&
                 g_timeline.events[thing_word(t, PROJECTILE_EVENT)].type != EVENT_PROJECTILE_MOVE &&
                 champs[thing_cell(t)] >= 0 &&
-                hit_impact(PROJECTILE_HIT_PARTY_SQUARE, (int16_t)x, (int16_t)y, champs[thing_cell(t)], t)) {
+                hit_impact(PROJECTILE_HIT_PARTY_SQUARE, from, stop, champs[thing_cell(t)], t)) {
                 projectile_cancel_event(t);
-                t = dungeon_square_first_thing(g_party.cur_map, sx, sy);
+                t = dungeon_square_first_thing(g_party.cur_map, square.x, square.y);
                 continue;
             }
             t = dungeon_next_thing(t);
         }
         if (!again)
             return;
-        sx = to_x;
-        sy = to_y;
-        x = (uint16_t)(from_x | (((uint16_t)to_x << COORD_STOP_SHIFT) + COORD_STOP_ONE));
-        y = (uint16_t)(from_y | (uint16_t)to_y << COORD_STOP_SHIFT);
+        square = to;
+        stop = to;
         for (int i = 0; i < CELL_COUNT; i++)
             champs[i] = next[i];
         again = false;

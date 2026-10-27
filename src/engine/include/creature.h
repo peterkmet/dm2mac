@@ -27,9 +27,11 @@ typedef struct {
     uint16_t actuator_skills; /* how the creature uses wall actuators */
     uint16_t sight_and_range; /* bits 0-3 sight, 12-15 attack range */
     uint16_t speed;           /* bits 0-3 think speed, 4-7 fear resistance, 8-11 experience, 12-15 turn chance */
-    uint8_t unknown_18;
-    uint8_t door_flags; /* bits 0-3 armor, CREATURE_RESISTS_NON_FIRE */
-    uint8_t unknown_1a, unknown_1b, unknown_1c;
+    uint8_t dodge;            /* bits 4-7: how much explosion damage the creature dodges */
+    uint8_t door_flags;       /* bits 0-3 armor, CREATURE_RESISTS_NON_FIRE */
+    uint8_t wound_feet_legs;  /* chance nibbles of a melee wound: bits 0-3 feet, 4-7 legs */
+    uint8_t wound_torso_head; /* ... bits 0-3 torso, 4-7 head */
+    uint8_t attack_kind;      /* ATTACK_KIND_*: how the melee attack uses the dexterity */
     uint8_t push_resistance;  /* against the party strength; 0xfe and 0xff: the creature cannot be pushed */
     uint16_t possessions;     /* how a static creature shows the items it holds */
     uint16_t possession_zone; /* the view zone of the possessions that the creature hides */
@@ -222,6 +224,14 @@ _Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 
 /* The results of creature_anim_next_step: the step is the last, more steps follow, or the sequence ended. */
 typedef enum { ANIM_LAST_STEP, ANIM_MORE_STEPS, ANIM_SEQUENCE_END } AnimStepResult;
 
+/* A step of a creature animation: the sequence, the state word, the step record, and how the animation goes on. */
+typedef struct {
+    uint16_t sequence;     /* the first step of the sequence */
+    uint16_t state;        /* the animation state word */
+    const uint8_t *frame;  /* the step (4 bytes); NULL: the start of a static creature keeps the step */
+    AnimStepResult result; /* ANIM_MORE_STEPS: the step has a duration or more steps follow */
+} AnimStep;
+
 /* Creature types of minions, by the command that makes them. */
 #define MINION_ATTACK  0x30
 #define MINION_SCOUT   0x31
@@ -286,18 +296,16 @@ void creature_anim_frame(const Gdat *g, uint16_t group, uint8_t frame[CREATURE_F
 /* The frame of an animation state of a creature type. */
 void creature_anim_frame_of(const Gdat *g, int creature_type, uint16_t sequence, uint16_t state,
                             uint8_t frame[CREATURE_FRAME_SIZE]);
-/* Moves *out_step to the next step of a sequence, through the random chances of its steps; *out_frame gets the step.
-   True when the step has a duration. */
-bool creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t *out_step,
-                                    const uint8_t **out_frame);
-/* Moves *out_step by the jump of the current step; *out_frame gets the step. */
-AnimStepResult creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t *out_step,
-                                       const uint8_t **out_frame);
-/* Starts the animation sequence of action: anim[0] the sequence, anim[1] the state, *out_frame the first step; true when
-   the step has a duration. start: the first frame of a looping sequence of a static creature. */
-bool creature_anim_start(int creature_type, int action, uint16_t *anim, const uint8_t **out_frame, uint16_t start);
+/* The next step of a sequence after state, through the random chances of its steps; ANIM_MORE_STEPS when the step has
+   a duration. */
+AnimStep creature_anim_next_random_step(int creature_type, uint16_t sequence, uint16_t state);
+/* The step after state by the jump of the current step. */
+AnimStep creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t state);
+/* Starts the animation sequence of action; ANIM_MORE_STEPS when the step has a duration. start: the first frame of a
+   looping sequence of a static creature. */
+AnimStep creature_anim_start(int creature_type, int action, uint16_t start);
 /* True when the current animation step of a group is a step at which the creature acts. */
-int creature_current_step_acts(uint16_t group);
+bool creature_current_step_acts(uint16_t group);
 
 /* Groups on squares. */
 /* The creature group on (x, y) of the current map, THING_NONE for none. */
@@ -315,7 +323,7 @@ int creature_cell_mask(uint16_t possessions);
 /* The timeline event of the next update of an active group. */
 int creature_active_group_event(int active_index);
 /* True while the creature of a group is in the air in a fall or jump. */
-int creature_group_jumps(uint16_t group);
+bool creature_group_jumps(uint16_t group);
 /* Drops the active groups of the last game (a load). */
 void creature_free_active_groups(void);
 /* Allocates the active groups for the groups of the dungeon; exported for the tests */
@@ -335,9 +343,9 @@ void creature_activate_group(uint16_t group, int16_t x, int16_t y);
 /* Frees an active group; a creature that vanished leaves the dungeon. */
 void creature_deactivate_group(int active_index);
 /* Sets the action of the next update of a group; now: the update comes at once, or the current action stops. */
-void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, int now);
-/* Schedules the next animation update of the static creature on (x, y). */
-void creature_update_anim_at(int16_t x, int16_t y, int alt);
+void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, bool now);
+/* Schedules the next animation update of the static creature on (x, y); alt: at the end of its loop. */
+void creature_update_anim_at(int16_t x, int16_t y, bool alt);
 /* Animates the creature in the AI context by one step (picture shift, mirror, sound); returns the time of its next
    update. */
 uint32_t creature_animate_step(void);

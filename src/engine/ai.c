@@ -512,6 +512,16 @@ static void set_destination(int x, int y)
     g_ai.active->destination = (uint16_t)location_set_xy(g_ai.active->destination, x, y);
 }
 
+/* Keeps an animation step as the animation of the group; returns how the animation goes on. */
+static AnimStepResult set_animation(AnimStep step)
+{
+    g_ai.anim[0] = step.sequence;
+    g_ai.anim[1] = step.state;
+    if (step.frame)
+        g_ai.anim_step = step.frame;
+    return step.result;
+}
+
 /* Setup */
 
 void ai_forget_all(void)
@@ -2735,7 +2745,7 @@ static void become_creature(int type)
     g_ai.info = creature_info(gdat_current(), type);
     int16_t max = (int16_t)g_ai.info->max_health;
     thing_set_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(max + rand_below((uint16_t)((max >> 3) + 1))));
-    creature_anim_start(type, (int8_t)g_ai.active->action, g_ai.anim, &g_ai.anim_step, 0);
+    set_animation(creature_anim_start(type, (int8_t)g_ai.active->action, 0));
     if (!creature_is_native_to_map(g_ai.group_thing, g_ai.map)) {
         creature_delete_group_at(g_ai.event.data[0], g_ai.event.data[1], 0, 1);
         g_ai.removed = true;
@@ -2936,7 +2946,7 @@ static int run_animation(bool think, int r)
         }
         if (!a->interrupt || !(g_ai.anim_step[STEP_JUMP] & STEP_INTERRUPTIBLE))
             break;
-        r = creature_anim_next_step(group_creature(g_ai.group_thing), g_ai.anim[0], g_ai.anim + 1, &g_ai.anim_step);
+        r = set_animation(creature_anim_next_step(group_creature(g_ai.group_thing), g_ai.anim[0], g_ai.anim[1]));
         if ((uint16_t)r == ANIM_SEQUENCE_END)
             break;
     }
@@ -2960,9 +2970,9 @@ static bool run_next_action(void)
                 timeline_time_map((uint32_t)(action - ACTION_WAIT_FIRST) + g_game.game_time, g_ai.map);
             return true;
         }
-        r = creature_anim_start(group_creature(g_ai.group_thing), action, anim, &g_ai.anim_step, 0);
+        r = set_animation(creature_anim_start(group_creature(g_ai.group_thing), action, 0));
     } else {
-        r = creature_anim_next_random_step(group_creature(g_ai.group_thing), anim[0], anim + 1, &g_ai.anim_step);
+        r = set_animation(creature_anim_next_random_step(group_creature(g_ai.group_thing), anim[0], anim[1]));
     }
     r = run_animation(think, r);
     g_ai.event.type = (uint16_t)r != ANIM_MORE_STEPS ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;

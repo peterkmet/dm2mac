@@ -33,9 +33,10 @@
 #define PUSH_ARROW_NONE       PUSH_ARROW_COUNT
 
 /* Special source and destination x of move_thing. */
-#define MOVE_NEW_ITEM (-1)
-#define MOVE_RETRY    (-3) /* move_thing: a group that waited enters its square */
-#define MOVE_CREATED  (-4) /* move_thing: the group is new, or it leaves the dungeon */
+#define MOVE_NEW_ITEM           (-1)
+#define MOVE_DROPPED_PROJECTILE (-2) /* move_thing: the object of a projectile drops; teleporters keep its cell */
+#define MOVE_RETRY              (-3) /* move_thing: a group that waited enters its square */
+#define MOVE_CREATED            (-4) /* move_thing: the group is new, or it leaves the dungeon */
 
 /* The group move events (EVENT_MOVE_GROUP, EVENT_MOVE_GROUP_2): data bytes 2-3 hold the group. */
 #define EVENT_GROUP_WORD 2
@@ -78,6 +79,23 @@ typedef struct {
     int16_t src_x, src_y; /* a negative src_x: the thing is new */
     int16_t dst_x, dst_y;
 } MovePath;
+
+/* Where a move puts a thing: its square, map, and cell, and the flight direction of a projectile. */
+typedef struct {
+    int16_t x, y, map, cell, dir;
+} MoveDest;
+
+/* The end of move_follow_square_transitions: where the thing ends, and true for a flying thing. */
+typedef struct {
+    MoveDest dest;
+    bool flying;
+} Transition;
+
+/* The result of move_thing_dest, and where the thing ends (x -1: no destination; cell -1: no transition). */
+typedef struct {
+    MoveResult result;
+    MoveDest dest;
+} MoveOutcome;
 
 extern Party g_party;
 /* The square step of each direction. */
@@ -124,12 +142,14 @@ void move_compute_map_arrival(int16_t x, int16_t y, int16_t map);
 
 /* ---- Moving things ---- */
 
-/* Follows pits, teleporters, and stairs from the destination of route; leaves the end in g_party.dest_*.
-   creature_sound: the teleporter sounds, the fall alert, and the drop sound play. True for a flying thing. */
-bool move_follow_square_transitions(uint16_t thing, MovePath route, bool creature_sound);
+/* Follows pits, teleporters, and stairs from the destination of route; returns the end, also in g_party.dest_*.
+   creature_sound: the teleporter sounds, the fall alert, and the drop sound play. */
+Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool creature_sound);
 /* Moves a thing (THING_NONE: the party) from (src_x, src_y) to (dst_x, dst_y) of the current map, through
    pits, teleporters, and stairs; a negative src_x adds it, a negative dst_x removes it. */
 MoveResult move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
+/* move_thing, with where the thing ends (also in g_party.dest_*). */
+MoveOutcome move_thing_dest(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
 
 /* ---- Discarded things ---- */
 
