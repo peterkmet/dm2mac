@@ -109,7 +109,7 @@ static void sum_thing(uint16_t t, ItemSum *s)
     s->sum = (int16_t)(s->sum + money_get_item_value(item_get_index(t), &terms, (int16_t)charges));
 }
 
-/* Adds the values of the items of a thing list in cell (ANY_CELL: any), also inside chests (dun_find_thing_in_list). */
+/* Adds the values of the items of a thing list in cell (ANY_CELL: any), also inside chests. */
 static void sum_list(uint16_t first, int cell, ItemSum *s)
 {
     for (uint16_t t = first; t != THING_ENDOFLIST && t != THING_NONE; t = dungeon_next_thing(t)) {

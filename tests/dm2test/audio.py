@@ -18,6 +18,10 @@ class SoundOffset(ctypes.Structure):
     _fields_ = [("lateral", ctypes.c_int), ("forward", ctypes.c_int)]
 
 
+class SoundLevel(ctypes.Structure):
+    _fields_ = [("loudness", ctypes.c_int), ("pan", ctypes.c_int)]
+
+
 class Music(ctypes.Structure):
     _fields_ = [("enabled", ctypes.c_bool), ("songlist_loaded", ctypes.c_bool), ("songlist", ctypes.c_uint8 * 63),
                 ("songlist_size", ctypes.c_int), ("fade", ctypes.c_int16), ("paused", ctypes.c_bool),

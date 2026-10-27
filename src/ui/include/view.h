@@ -78,11 +78,6 @@ typedef struct {
     int16_t x, y;
 } ViewPoint;
 
-/* A point of the thing grid, in thing grid cells. */
-typedef struct {
-    int16_t x, y;
-} ViewGridPoint;
-
 /* ---- Map graphics ---- */
 
 /* Sets up the map graphics of map for the view: the view part of entering a map. */
@@ -99,7 +94,7 @@ extern uint8_t g_view_object_grid[VIEW_GRID_SIZE]; /* exported for the tests */
 extern uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT]; /* exported for the tests */
 extern uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];  /* exported for the tests */
 /* The place of a creature of size 1 to 3 at creature moved toward the party eye at eye; exported for the tests. */
-ViewGridPoint view_offset_toward_party(ViewGridPoint eye, ViewGridPoint creature, int16_t creature_size);
+GridPoint view_offset_toward_party(GridPoint eye, GridPoint creature, int16_t creature_size);
 /* Loads the view square at view position pos for the party at (x, y) looking to dir. */
 void view_load_square(int16_t x, int16_t y, int pos, int16_t dir); /* exported for the tests */
 /* Shows the squares behind a seamless passage that view_mark_hidden_squares hid. */

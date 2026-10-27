@@ -173,7 +173,7 @@ static void sound_square_in_front(int *x, int *y, int side)
 /* True when the party carries an item of the item index type. */
 static bool contains_item_type(uint16_t thing, int type)
 {
-    if (thing_type(thing) != THING_CONTAINER || item_gdat_index(thing) >= 8)
+    if (thing_type(thing) != THING_CONTAINER || container_kind(thing) != CONTAINER_CHEST)
         return false;
     for (uint16_t t = thing_word(thing, CONTAINER_CONTENTS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (item_get_index(t) == type || contains_item_type(t, type))
@@ -590,7 +590,8 @@ static unsigned ornament_cycle(uint16_t sensor, int wall)
         return frames & ORNAMENT_FRAMES_MASK;
     char text[TEXT_SIZE];
     gdat_text(gdat_current(), (GdatKey){category, ornament, ORNAMENT_KEY_FRAMES}, text, sizeof text);
-    return text[0] && strlen(text) ? (uint16_t)strlen(text) : 1;
+    size_t length = strlen(text);
+    return length ? (uint16_t)length : 1;
 }
 
 /* An audible animated ornament starts its repeating sound at the next start of its animation cycle. */
@@ -924,11 +925,11 @@ static void create_item(uint16_t sensor)
 #define COUNTDOWN_MAX 400
 #define CHANCE_END    500
 
-/* A sensor turns the group on its target square (event effect 0, or 1 with sensor flag 0x20). */
+/* A sensor turns the group on its target square (event effect EFFECT_SET, or EFFECT_CLEAR with SENSOR_INVERTED). */
 static void set_creatures_facing(const TimelineEvent *e, uint16_t sensor)
 {
-    /* an inverted sensor turns the creatures on effect 1 instead of 0 */
-    if (e->data[EVENT_EFFECT] != (sensor_flag(sensor, SENSOR_INVERTED) ? 1 : 0))
+    /* an inverted sensor turns the creatures on EFFECT_CLEAR instead of EFFECT_SET */
+    if (e->data[EVENT_EFFECT] != (sensor_flag(sensor, SENSOR_INVERTED) ? EFFECT_CLEAR : EFFECT_SET))
         return;
     uint16_t g = creature_get_group_at(sensor_target_x(sensor), sensor_target_y(sensor));
     if (g != THING_NONE)
@@ -1194,7 +1195,7 @@ static void floor_text_event(uint16_t t, int effect, int x, int y)
 }
 
 /* A sensor reaches the groups of the creature type of its data in the rectangle around (x, y) that its target spans:
-   SENSOR_VANISH makes them vanish (power 2), SENSOR_ALERT sets mood bit power (cleared when effect is set). */
+   SENSOR_VANISH makes them vanish (power VANISH_POWER), SENSOR_ALERT sets mood bit power (cleared when effect is set). */
 static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int effect)
 {
     int power = sensor_area_power(sensor), creature_type = sensor_area_creature(sensor);
@@ -1475,7 +1476,7 @@ void sensor_event_door_animation(TimelineEvent *e)
 
 /* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
    with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
-   the data after those tables in SKULL.EXE (0x717f8 and 0x71800); these are the values it reads. */
+   the data after those tables in SKULL.EXE; these are the values it reads. */
 static const int16_t ambient_wall_dx[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
     {2052, 4, 0,   1032},
     {0,    0, 0,   0   },
@@ -1659,10 +1660,10 @@ static uint16_t wall_item(int x, int y, int cell, int item)
 /* A click on a wall cell of (x, y) by the party or a creature. */
 typedef struct {
     int x, y, cell;
-    uint16_t hand;        /* the object in the hand, THING_NONE after it went to the wall */
-    uint16_t give;        /* the object that goes into the hand */
-    int take, stop, done; /* the hand object goes to the wall, the click stops, the click ends */
-    int has_leader;
+    uint16_t hand;         /* the object in the hand, THING_NONE after it went to the wall */
+    uint16_t give;         /* the object that goes into the hand */
+    bool take, stop, done; /* the hand object goes to the wall, the click stops, the click ends */
+    bool has_leader;
 } WallClick;
 
 /* The hand takes the item of an item holder on the clicked cell, with full charges; false when there is none. */
@@ -1680,7 +1681,7 @@ static bool wall_click_give(WallClick *c, int item)
 /* The hand object goes to the clicked cell. */
 static void wall_click_put(WallClick *c)
 {
-    c->take = 1;
+    c->take = true;
     move_thing(thing_with_cell(c->hand, c->cell), -1, 0, c->x, c->y);
 }
 
@@ -1717,11 +1718,11 @@ static void wall_click_fountain(WallClick *c)
                                      SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
     } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
         item_add_charges(hand, CHARGES_FULL_AMOUNT);
-        c->take = 1;
+        c->take = true;
         c->give = hand;
     } else if (item_get_index(hand) == ITEM_EMPTY_FLASK) {
         item_set_gdat_index(hand, FLASK_FULL_INDEX);
-        c->take = 1;
+        c->take = true;
         c->give = hand;
     }
 }
@@ -1743,7 +1744,7 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
         *extra = BUTTON_INVERTED_DELAY;
     if (sensor_effect(t) != EFFECT_HOLD)
         return 0;
-    c->stop = 1;
+    c->stop = true;
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sndreq_request_with_fallback(
             (SoundCue){CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
@@ -1759,7 +1760,7 @@ static int wall_click_item_holder(WallClick *c, uint16_t t, int ornament)
     int item = holder_item(ornament);
     if (sensor_flag(t, SENSOR_STATE)) {
         if (c->hand != THING_NONE) {
-            c->done = 1;
+            c->done = true;
             return CLICK_IGNORED;
         }
         if (!wall_click_give(c, item))
@@ -1771,7 +1772,7 @@ static int wall_click_item_holder(WallClick *c, uint16_t t, int ornament)
     }
     c->hand = THING_NONE;
     g_party.redraw |= REDRAW_VIEW;
-    c->done = 1;
+    c->done = true;
     return CLICK_IGNORED;
 }
 
@@ -1782,7 +1783,7 @@ static int wall_click_counted_item(WallClick *c, uint16_t t, int ornament)
     unsigned data = sensor_data(t);
     if (!data || item_get_index(c->hand) != holder_item(ornament))
         return CLICK_IGNORED;
-    c->take = 1;
+    c->take = true;
     c->hand = THING_NONE;
     sensor_set_data(t, --data);
     if ((uint16_t)data)
@@ -1840,7 +1841,7 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
         if (!sensor_flag(t, SENSOR_STATE) || c->cell != dir_opposite(g_game.party_dir))
             return 1;
         recruit_start(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map);
-        c->done = 1;
+        c->done = true;
         return 0;
     case WALL_ITEM_HOLDER:
         return wall_click_item_holder(c, t, ornament);
@@ -1875,7 +1876,7 @@ static void wall_click_sensor(WallClick *c, uint16_t t)
     }
     if (skip)
         return;
-    c->stop = 1;
+    c->stop = true;
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sndreq_request_with_fallback(
             (SoundCue){CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
@@ -1890,7 +1891,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
     int item = holder_item(value);
     if (visible) {
         if (c->hand != THING_NONE) {
-            c->done = 1;
+            c->done = true;
             return;
         }
         if (!wall_click_give(c, item))
@@ -1912,7 +1913,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
         c->hand = THING_NONE;
     }
     g_party.redraw |= REDRAW_VIEW;
-    c->done = 1;
+    c->done = true;
 }
 
 /* A clicked ornament text: an item holder, a ladder, or a switch. */
@@ -1943,7 +1944,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
 
 void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held)
 {
-    WallClick c = {.x = x, .y = y, .hand = held, .give = THING_NONE, .has_leader = (int16_t)g_game.leader != -1};
+    WallClick c = {.x = x, .y = y, .hand = held, .give = THING_NONE, .has_leader = g_game.leader != LEADER_NONE};
     uint16_t first = first_thing(x, y);
     for (uint16_t t = first; t != THING_ENDOFLIST && !c.done; t = dungeon_next_thing(t)) {
         c.cell = thing_cell(t);

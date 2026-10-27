@@ -280,7 +280,7 @@ class AnchoredZone(ctypes.Structure):
     _fields_ = [("zone", ctypes.c_int), ("anchor", ctypes.c_int)]
 
 
-class ViewGridPoint(ctypes.Structure):
+class GridPoint(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
@@ -298,15 +298,15 @@ def read_xy(emu):
 
 
 def test_grid5_cell_to_xy_matches_original(lib, image_emu):
-    lib.aspect_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, i16_p, i16_p]
+    lib.aspect_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+    lib.aspect_cell_to_xy.restype = GridPoint
     rng = random.Random(21)
-    x, y = ctypes.c_int16(), ctypes.c_int16()
     for _ in range(1000):
         base_x, base_y = rng.randrange(-40, 40), rng.randrange(-40, 40)
         cell = rng.randrange(C.CELL_GRID_COUNT) if rng.random() < 0.8 else rng.randrange(0x10000)
         image_emu.call(VIEW_GRID5_CELL_TO_XY, base_x, base_y, cell, OUT_X, OUT_Y)
-        lib.aspect_cell_to_xy(base_x, base_y, cell, ctypes.byref(x), ctypes.byref(y))
-        assert (x.value, y.value) == read_xy(image_emu), (base_x, base_y, cell)
+        point = lib.aspect_cell_to_xy(base_x, base_y, cell)
+        assert (point.x, point.y) == read_xy(image_emu), (base_x, base_y, cell)
 
 
 def test_rotate_grid5_cell_matches_original(lib, image_emu):
@@ -317,8 +317,8 @@ def test_rotate_grid5_cell_matches_original(lib, image_emu):
 
 
 def test_offset_creature_toward_party_matches_original(lib, image_emu):
-    lib.view_offset_toward_party.argtypes = [ViewGridPoint, ViewGridPoint, ctypes.c_int16]
-    lib.view_offset_toward_party.restype = ViewGridPoint
+    lib.view_offset_toward_party.argtypes = [GridPoint, GridPoint, ctypes.c_int16]
+    lib.view_offset_toward_party.restype = GridPoint
     rng = random.Random(22)
     cases = [(px, py, 8, 8, size) for px in range(5, 12) for py in range(5, 12) for size in range(5)]
     cases += [(rng.randrange(-30, 90), rng.randrange(-30, 90), rng.randrange(-30, 90), rng.randrange(-30, 90),
@@ -327,7 +327,7 @@ def test_offset_creature_toward_party_matches_original(lib, image_emu):
         image_emu.write(OUT_X, struct.pack("<h", cx))
         image_emu.write(OUT_Y, struct.pack("<h", cy))
         image_emu.call(VIEW_OFFSET_CREATURE, party_x, party_y, size, OUT_X, OUT_Y)
-        moved = lib.view_offset_toward_party(ViewGridPoint(party_x, party_y), ViewGridPoint(cx, cy), size)
+        moved = lib.view_offset_toward_party(GridPoint(party_x, party_y), GridPoint(cx, cy), size)
         assert (moved.x, moved.y) == read_xy(image_emu), (party_x, party_y, cx, cy, size)
 
 

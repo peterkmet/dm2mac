@@ -15,16 +15,16 @@ typedef struct {
     uint16_t storm_previous;  /* the storm intensity before the last storm step */
     int16_t hour_light;       /* the darkness of the hour: 1 (day) to 5 (night) */
     uint32_t day_time_offset; /* the game time that the day starts with */
-    int first_init;           /* the first weather_init of the run: a short calm start */
-    int thunder_toggle;       /* only every second lightning bolt thunders */
-    int lightning_flash;      /* a lightning shows in this step: full light */
-    int dungeon_loaded;       /* a dungeon load happened in this run: a load keeps the weather */
+    bool first_init;          /* the first weather_init of the run: a short calm start */
+    bool thunder_toggle;      /* only every second lightning bolt thunders */
+    bool lightning_flash;     /* a lightning shows in this step: full light */
+    bool dungeon_loaded;      /* a dungeon load happened in this run: a load keeps the weather */
 } Weather;
 
 extern Weather g_weather;
 /* The party light level, 0 (bright) to DARKEST_LIGHT (light_update_party_light). */
 extern int g_view_light_level;
-/* The light of the squares around the party and of the explosions near it; ai_refresh_party_maps (Step 16)
+/* The light of the squares around the party and of the explosions near it; ai_refresh_party_maps
    clears them and adds each square with light_add_square_light. */
 extern int16_t g_light_source_sum, g_explosion_light_sum;
 

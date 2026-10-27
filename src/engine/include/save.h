@@ -73,6 +73,7 @@ static inline void save_set_magic_light(int16_t light)
     put_le16(g_game.magic_light, (uint16_t)light);
 }
 
+/* Load and write. */
 /* Loads a save file (SKSAVEn.DAT or .BAK) into the dungeon, the timeline, the random seed, and g_game.
    gdat answers the creature and container questions of the format. On an error the dungeon is empty. */
 SaveResult save_load(const char *path, const Gdat *gdat);
@@ -80,6 +81,7 @@ SaveResult save_load(const char *path, const Gdat *gdat);
    keeps the header bytes after the name from it; name goes into the header. */
 SaveResult save_write(const char *path, const char *bak_path, const char *name, const Gdat *gdat);
 
+/* Party and settings. */
 /* The party has no champions and an empty leader hand: the state before a load or a new game. */
 void save_clear_party(void);
 /* The party stands at (x, y) of map and looks to dir. */

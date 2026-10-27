@@ -1539,16 +1539,15 @@ uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t 
                                                   cell_grid_index(3, 1)};
     int16_t sx = *out_x;
     int16_t sy = *out_y;
-    int16_t px, py, cx, cy;
-    aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell], &px, &py);
+    GridPoint p = aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell]);
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
         uint16_t g = creature_group_at(g_party.cur_map, sx, sy);
         if (g != THING_NONE) {
             int size = (int8_t)creature_group_info(g)->hit_size;
             int zone = aspect_creature_cell(g, dir_relative(DIR_NORTH, group_dir(g)));
-            aspect_cell_to_xy(sx, sy, (uint16_t)zone, &cx, &cy);
-            cx = (int16_t)(cx - px);
-            cy = (int16_t)(cy - py);
+            GridPoint z = aspect_cell_to_xy(sx, sy, (uint16_t)zone);
+            int16_t cx = (int16_t)(z.x - p.x);
+            int16_t cy = (int16_t)(z.y - p.y);
             if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size]) {
                 *out_x = sx;
                 *out_y = sy;

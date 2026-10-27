@@ -55,17 +55,16 @@ void sound_set_volume_and_test(int level, int device)
 
 bool sound_play(const Sound *s, uint8_t volume, int8_t lateral, int8_t forward)
 {
-    int loudness, pan;
-    sndreq_volume_pan(volume, lateral, forward, &loudness, &pan);
+    SoundLevel level = sndreq_volume_pan(volume, lateral, forward);
     for (int i = 0; i < SOUND_VOICES; i++) {
         Voice *v = &voices[i];
         if (v->data)
             continue;
-        int sos_volume = loudness << SOS_VOLUME_SHIFT | loudness >> 1;
+        int sos_volume = level.loudness << SOS_VOLUME_SHIFT | level.loudness >> 1;
         /* Linear balance: the center plays at full volume on both sides. */
         int half = PAN_FULL / 2;
-        v->left = sos_volume * (PAN_FULL - pan < half ? PAN_FULL - pan : half) / half;
-        v->right = sos_volume * (pan < half ? pan : half) / half;
+        v->left = sos_volume * (PAN_FULL - level.pan < half ? PAN_FULL - level.pan : half) / half;
+        v->right = sos_volume * (level.pan < half ? level.pan : half) / half;
         v->data = s->data;
         v->end = s->length * UPSAMPLE;
         v->pos = 0;

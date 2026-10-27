@@ -51,6 +51,11 @@ typedef struct {
     int lateral, forward;
 } SoundOffset;
 
+/* The loudness (0-255) and stereo pan (0x0800 left to 0xf800 right) of a sound. */
+typedef struct {
+    int loudness, pan;
+} SoundLevel;
+
 /* A sound that the game asks for: the GDAT sound (category, index, entry), its priority, its volume, and its place
    seen by the party (lateral: right is positive). */
 typedef struct {
@@ -83,8 +88,8 @@ enum GdatResult sndreq_load(const Gdat *g, int category, int index, int entry, S
    walls (path_distance above the straight distance) is pushed further away. path_distance is the party distance
    map value at the square of the sound; false when it is negative (no path). Also exported for the tests. */
 bool sndreq_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset);
-/* The loudness (0-255) and stereo pan (0x0800 left to 0xf800 right) of a sound at lateral, forward. */
-void sndreq_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan);
+/* The loudness and stereo pan of a sound at lateral, forward. */
+SoundLevel sndreq_volume_pan(uint8_t volume, int lateral, int forward);
 
 /* Requests */
 /* Asks for the sound of cue at (x, y) of the current map: delay 0 plays it now, 1 at the end of the game step, a

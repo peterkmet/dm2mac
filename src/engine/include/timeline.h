@@ -55,10 +55,10 @@ static inline void timeline_set_event_map(TimelineEvent *e, int16_t map)
 }
 
 typedef struct {
-    TimelineEvent *events;
-    uint16_t *queue;    /* binary heap of event indices, the next event in queue[0] */
-    int16_t fix_slot;   /* queue slot whose heap order the next operation restores, or TIMELINE_NO_SLOT */
-    int16_t first_free; /* first free event, -1 when all are in use */
+    TimelineEvent *events; /* owned: capacity events */
+    uint16_t *queue;       /* owned: binary heap of event indices, the next event in queue[0] */
+    int16_t fix_slot;      /* queue slot whose heap order the next operation restores, or TIMELINE_NO_SLOT */
+    int16_t first_free;    /* first free event, -1 when all are in use */
     uint16_t capacity;
     uint16_t count;
     int16_t used_end; /* one past the highest event index in use */

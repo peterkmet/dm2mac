@@ -875,7 +875,7 @@ static int position_to_cell(int position)
     return position == CELL_CENTER ? DIR_COUNT : -1;
 }
 
-ViewGridPoint view_offset_toward_party(ViewGridPoint eye, ViewGridPoint creature, int16_t creature_size)
+GridPoint view_offset_toward_party(GridPoint eye, GridPoint creature, int16_t creature_size)
 {
     if (!creature_size)
         return creature;
@@ -928,11 +928,10 @@ static void load_square_things(int pos, const ViewEye *eye, int x, int y)
             if (s->aspect != ASPECT_FLOOR || s->side[SIDE_SHOP_DISPLAY] != 0)
                 g_view_object_masks[pos] |= 1u << get_thing_position(thing, dir);
         } else if (type == THING_GROUP) {
-            ViewGridPoint c;
             /* this adds the cell of the push arrow for a creature in front of the party */
-            aspect_cell_to_xy(x, y, (uint16_t)get_thing_position(thing, DIR_NORTH), &c.x, &c.y);
+            GridPoint c = aspect_cell_to_xy(x, y, (uint16_t)get_thing_position(thing, DIR_NORTH));
             if (pos != POS_PARTY)
-                c = view_offset_toward_party((ViewGridPoint){eye->x, eye->y}, c,
+                c = view_offset_toward_party((GridPoint){eye->x, eye->y}, c,
                                              (int8_t)creature_info(gdat_current(), group_creature(thing))->size);
             int16_t lateral, forward;
             switch (dir) {
@@ -1019,8 +1018,8 @@ void view_load_square(int16_t x, int16_t y, int pos, int16_t dir)
     aspect_get(s, view.map, dir, square_x, square_y);
     if (view.walking && pos == POS_PARTY)
         load_walking_party_square(s);
-    ViewEye eye = {.dir = dir};
-    aspect_cell_to_xy(x, y, eye_cell[dir], &eye.x, &eye.y);
+    GridPoint point = aspect_cell_to_xy(x, y, eye_cell[dir]);
+    ViewEye eye = {.dir = dir, .x = point.x, .y = point.y};
     load_square_things(pos, &eye, square_x, square_y);
 }
 

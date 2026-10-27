@@ -153,7 +153,7 @@ static const uint8_t creature_lightning[CREATURE_INFO_COUNT] = {
     65,  75,  115, 255, 70,  255, 100, 75,  115, 255, 90,  255, 255, 140, 255, 100, 110, 140, 255, 100, 75,
 };
 
-Weather g_weather = {.first_init = 1};
+Weather g_weather = {.first_init = true};
 int16_t g_light_source_sum, g_explosion_light_sum;
 
 static int clamp(int lo, int v, int hi)
@@ -253,7 +253,7 @@ void weather_init(bool keep_state)
     }
     g_weather.strike_threshold = (int16_t)(rand_below(STRIKE_THRESHOLD_SPAN) + STRIKE_THRESHOLD_MIN);
     set_hour_light();
-    g_weather.first_init = 0;
+    g_weather.first_init = false;
 }
 
 void weather_load(const Gdat *g)
@@ -262,7 +262,7 @@ void weather_load(const Gdat *g)
     int hour = clamp(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);
     g_weather.day_time_offset = (uint32_t)hour * HOUR_TICKS;
     weather_init(g_weather.dungeon_loaded);
-    g_weather.dungeon_loaded = 1;
+    g_weather.dungeon_loaded = true;
 }
 
 /* A storm step: the storm intensity follows its curve; after the last step a new weather cycle starts. */
@@ -394,12 +394,12 @@ static SkyObject *show_lightning(SkyObject *o)
             sndreq_request(
                 (SoundCue){CAT_SKY, dungeon_map_wallset(g_game.party_map), 0, THUNDER_PRIORITY, THUNDER_VOLUME},
                 g_game.party_x, g_game.party_y, delay);
-            g_weather.thunder_toggle = 1;
+            g_weather.thunder_toggle = true;
         } else {
-            g_weather.thunder_toggle = 0;
+            g_weather.thunder_toggle = false;
         }
     }
-    g_weather.lightning_flash = 1;
+    g_weather.lightning_flash = true;
     light_update_party_light();
     return o;
 }
@@ -428,7 +428,7 @@ void world_update_day_night(int storm_step)
     if (!g_game.weather_visible)
         return;
     if (g_weather.lightning_flash) {
-        g_weather.lightning_flash = 0;
+        g_weather.lightning_flash = false;
         light_update_party_light();
     }
     SkyObject *o = weather_sky_objects();
@@ -467,7 +467,7 @@ void light_update_party_light(void)
                 if (item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_LIGHT)
                     lights[n++] = (int16_t)item_add_charges(thing, 0);
             }
-        /* one bubble pass, as the original: the brightest torch moves up by one place only */
+        /* one bubble pass, as in the original: the brightest torch moves up by one place only */
         for (int i = 0; i < n - 1; i++)
             if (lights[i] > lights[i + 1]) {
                 int16_t t = lights[i];
@@ -564,7 +564,7 @@ static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int x, int y)
     if (floor && ornament != ORNAMENT_MASK) {
         bool animated_only;
         uint16_t v = ornament_light(CAT_FLOOR_ORNAMENT, ornament, &animated_only);
-        /* like the original, a floor ornament without light also hides the other light of its square */
+        /* as in the original, a floor ornament without light also hides the other light of its square */
         if (!v && !animated_only)
             return false;
         PassageEnd end;

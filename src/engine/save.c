@@ -38,6 +38,9 @@
 #define CHEAT_BITS_AT    (CHEAT_MAGIC_SIZE + 1)
 #define CHEAT_BLOCK_SIZE (CHEAT_MAGIC_SIZE + 2)
 
+/* The most significant bit of a byte: the bit stream stores it first. */
+#define BYTE_TOP_BIT (BYTE_BIT_COUNT - 1)
+
 /* Byte offsets in a champion record. */
 #define CHAMPION_SLOTS        0xc3 /* 30 thing words: hands, body, pouches, quiver, backpack */
 #define CHAMPION_DAMAGE_EVENT 0x2e /* the timeline event that ends the damage display */
@@ -156,6 +159,9 @@ static const uint8_t *const thing_masks[THING_TYPE_COUNT] = {
     word_mask, container_mask, misc_mask, NULL,        NULL,       NULL,        projectile_mask, word_mask,
 };
 
+/* What follows the AMAP block. */
+enum SaveTail { TAIL_END, TAIL_CHEATS, TAIL_OTHER };
+
 Game g_game = {
     .leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START}; /* no leader */
 
@@ -176,6 +182,8 @@ static struct {
     const Gdat *gdat;
 } io;
 
+/* ---- Load and write ---- */
+
 /* Starts a load or a write of the bit stream of f. */
 static void start_io(FILE *f, const Gdat *gdat)
 {
@@ -190,11 +198,11 @@ static bool write_packed(const uint8_t *src, const uint8_t *mask, int size, int 
 {
     for (int r = 0; r < count; r++, src += size)
         for (int i = 0; i < size; i++)
-            for (int bit = 7; bit >= 0; bit--) {
+            for (int bit = BYTE_TOP_BIT; bit >= 0; bit--) {
                 if (!(mask[i] >> bit & 1))
                     continue;
                 io.byte = (uint8_t)(io.byte << 1 | (src[i] >> bit & 1));
-                if (++io.bits < 8)
+                if (++io.bits < BYTE_BIT_COUNT)
                     continue;
                 if (fputc(io.byte, io.f) == EOF)
                     return false;
@@ -210,7 +218,7 @@ static bool read_packed(uint8_t *dst, const uint8_t *mask, int size, int count, 
     for (int r = 0; r < count; r++, dst += size)
         for (int i = 0; i < size; i++) {
             uint8_t value = keep ? dst[i] : 0;
-            for (int bit = 7; bit >= 0; bit--) {
+            for (int bit = BYTE_TOP_BIT; bit >= 0; bit--) {
                 if (!(mask[i] >> bit & 1))
                     continue;
                 if (io.bits == 0) {
@@ -219,9 +227,10 @@ static bool read_packed(uint8_t *dst, const uint8_t *mask, int size, int count, 
                         return false; /* fix: the original reads on with a stale byte */
                     io.byte = (uint8_t)c;
                 }
-                value = io.byte >> 7 ? value | 1 << bit : value & ~(1 << bit); /* most significant bit first */
+                value =
+                    io.byte >> BYTE_TOP_BIT ? value | 1 << bit : value & ~(1 << bit); /* most significant bit first */
                 io.byte <<= 1;
-                io.bits = (io.bits + 1) % 8;
+                io.bits = (io.bits + 1) % BYTE_BIT_COUNT;
             }
             dst[i] = value;
         }
@@ -255,7 +264,7 @@ static bool flush_bits(void)
 {
     if (io.bits == 0)
         return true;
-    bool ok = fputc((uint8_t)(io.byte << (8 - io.bits)), io.f) != EOF;
+    bool ok = fputc((uint8_t)(io.byte << (BYTE_BIT_COUNT - io.bits)), io.f) != EOF;
     io.byte = 0;
     io.bits = 0;
     return ok;
@@ -914,9 +923,6 @@ static bool read_state(void)
     return true;
 }
 
-/* What follows the AMAP block. */
-enum SaveTail { TAIL_END, TAIL_CHEATS, TAIL_OTHER };
-
 /* Writes the CHTS block with the cheats that are on; returns false on an error. */
 static bool write_cheats(FILE *f)
 {
@@ -1021,6 +1027,8 @@ SaveResult save_write(const char *path, const char *bak_path, const char *name, 
     creature_activate_all_maps();
     return ok ? SAVE_OK : SAVE_ERR_IO;
 }
+
+/* ---- Party and settings ---- */
 
 void save_clear_party(void)
 {

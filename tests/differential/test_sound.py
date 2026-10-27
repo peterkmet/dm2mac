@@ -5,7 +5,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.audio import UPSAMPLE, Sound, SoundOffset, mix
+from dm2test.audio import UPSAMPLE, Sound, SoundLevel, SoundOffset, mix
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
@@ -30,10 +30,10 @@ PAN_LEFT, PAN_CENTER, PAN_RIGHT = 0x0800, C.SOUND_PAN_CENTER, 0xF800
 
 @pytest.fixture(scope="module")
 def snd(lib):
-    c_int_p = ctypes.POINTER(ctypes.c_int)
     lib.sndreq_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
     lib.sndreq_party_offset.argtypes = [ctypes.c_int] * 4 + [ctypes.POINTER(SoundOffset)]
-    lib.sndreq_volume_pan.argtypes = [ctypes.c_uint8, ctypes.c_int, ctypes.c_int, c_int_p, c_int_p]
+    lib.sndreq_volume_pan.argtypes = [ctypes.c_uint8, ctypes.c_int, ctypes.c_int]
+    lib.sndreq_volume_pan.restype = SoundLevel
     lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
     lib.sound_play.restype = ctypes.c_bool
     lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
@@ -49,9 +49,8 @@ def emu():
 
 
 def c_volume_pan(lib, volume, lateral, forward):
-    loudness, pan = ctypes.c_int(), ctypes.c_int()
-    lib.sndreq_volume_pan(volume, lateral, forward, ctypes.byref(loudness), ctypes.byref(pan))
-    return loudness.value, pan.value
+    level = lib.sndreq_volume_pan(volume, lateral, forward)
+    return level.loudness, level.pan
 
 
 def emu_volume_pan(emu, volume, lateral, forward):

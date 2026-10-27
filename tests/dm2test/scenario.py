@@ -114,8 +114,8 @@ G_GFX_HAS_CLOUDS, G_GFX_HAS_RAIN, G_GFX_HAS_LIGHTNING = 0x80475, 0x80476, 0x8047
 class WeatherState(ctypes.Structure):
     """The C weather.h Weather."""
     _fields_ = [("strike_threshold", ctypes.c_int16), ("storm_previous", ctypes.c_uint16), ("hour_light", ctypes.c_int16),
-                ("day_time_offset", ctypes.c_uint32), ("first_init", ctypes.c_int), ("thunder_toggle", ctypes.c_int),
-                ("lightning_flash", ctypes.c_int), ("dungeon_loaded", ctypes.c_int)]
+                ("day_time_offset", ctypes.c_uint32), ("first_init", ctypes.c_bool), ("thunder_toggle", ctypes.c_bool),
+                ("lightning_flash", ctypes.c_bool), ("dungeon_loaded", ctypes.c_bool)]
 
 
 def c_weather(lib):

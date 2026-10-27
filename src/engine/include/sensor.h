@@ -77,7 +77,7 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
     return thing_field(sensor, SENSOR_TARGET, LAUNCH_STEP_SHIFT, LAUNCH_STEP_MASK);
 }
 
-/* Timeline event types of Step 14. */
+/* Timeline event types. */
 #define EVENT_DOOR_ANIMATION        0x01
 #define EVENT_DOOR_DESTRUCTION      0x02
 #define EVENT_SQUARE                0x04

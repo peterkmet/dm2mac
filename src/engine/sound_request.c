@@ -149,21 +149,24 @@ bool sndreq_party_offset(int dx, int dy, int party_dir, int path_distance, Sound
     return true;
 }
 
-void sndreq_volume_pan(uint8_t volume, int lateral, int forward, int *loudness, int *pan)
+SoundLevel sndreq_volume_pan(uint8_t volume, int lateral, int forward)
 {
-    *loudness = ((volume << VOLUME_SHIFT) / (forward * forward + lateral * lateral + DISTANCE_BIAS)) >> LOUDNESS_SHIFT;
+    SoundLevel level;
+    level.loudness =
+        ((volume << VOLUME_SHIFT) / (forward * forward + lateral * lateral + DISTANCE_BIAS)) >> LOUDNESS_SHIFT;
     if (lateral == 0) {
-        *pan = SOUND_PAN_CENTER;
+        level.pan = SOUND_PAN_CENTER;
     } else if (forward == 0) {
-        *pan = pan_values[lateral < 0 ? 0 : PAN_STEPS - 1];
+        level.pan = pan_values[lateral < 0 ? 0 : PAN_STEPS - 1];
     } else {
         /* Fix: the original keeps only 16 bits of the ratio and pans |lateral| >= 32 near the center. */
         int ratio = (abs(lateral) << PAN_RATIO_SHIFT) / abs(forward);
         int i = 0;
         while (pan_thresholds[i] > ratio)
             i++;
-        *pan = pan_values[lateral < 0 ? i : PAN_STEPS - 1 - i];
+        level.pan = pan_values[lateral < 0 ? i : PAN_STEPS - 1 - i];
     }
+    return level;
 }
 
 /* Requests */
@@ -179,17 +182,19 @@ static bool has_priority(const Pending *a, int loud_a, const Pending *b, int lou
 /* Starts the sounds of a request list, the most important first, while voices are free. */
 static void start_requests(const Pending *list, int count)
 {
-    int order[REQUESTS_MAX], loudness[REQUESTS_MAX], pan[REQUESTS_MAX];
+    int order[REQUESTS_MAX];
+    SoundLevel level[REQUESTS_MAX];
     for (int i = 0; i < count; i++) {
         if (g_sound_played_count < SOUND_PLAYED_MAX)
             g_sound_played[g_sound_played_count++] = list[i].r;
-        sndreq_volume_pan(list[i].r.volume, list[i].r.lateral, list[i].r.forward, &loudness[i], &pan[i]);
+        level[i] = sndreq_volume_pan(list[i].r.volume, list[i].r.lateral, list[i].r.forward);
         order[i] = i;
     }
     for (bool swapped = true; swapped;) {
         swapped = false;
         for (int i = 1; i < count; i++)
-            if (!has_priority(&list[order[i - 1]], loudness[order[i - 1]], &list[order[i]], loudness[order[i]])) {
+            if (!has_priority(&list[order[i - 1]], level[order[i - 1]].loudness, &list[order[i]],
+                              level[order[i]].loudness)) {
                 int t = order[i - 1];
                 order[i - 1] = order[i];
                 order[i] = t;
@@ -201,7 +206,8 @@ static void start_requests(const Pending *list, int count)
         if (!g_hooks.play_sound(&p->sound, p->r.volume, p->r.lateral, p->r.forward))
             return;
         if (g_sound_started_count < SOUND_PLAYED_MAX)
-            g_sound_started[g_sound_started_count++] = (SoundStart){p->sound.data, loudness[order[i]], pan[order[i]]};
+            g_sound_started[g_sound_started_count++] =
+                (SoundStart){p->sound.data, level[order[i]].loudness, level[order[i]].pan};
     }
 }
 
