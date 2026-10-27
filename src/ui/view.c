@@ -59,9 +59,8 @@
 #define PORTRAIT_OFFSET_ENTRY    0xfd
 
 /* Zones of the view elements, and cells of their 5 x 5 grid. */
-#define ZONE_ROW_SIZE     4  /* zones of one ornament row */
-#define ZONE_CELL_GRID    25 /* zones of the 5 x 5 grid of a view element */
-#define CELL_FAR_MIDDLE   2  /* the middle cell of the far row */
+#define ZONE_ROW_SIZE     4 /* zones of one ornament row */
+#define CELL_FAR_MIDDLE   2 /* the middle cell of the far row */
 #define CELL_LEFT_MIDDLE  10
 #define CELL_RIGHT_MIDDLE 14
 /* The cells of a square, as the party sees them. */
@@ -1050,11 +1049,6 @@ void view_mark_hidden_squares(void)
 }
 
 /* ---- Pictures ---- */
-
-int zone_id_for_view_cell(int base, int grid_cell, int16_t dir)
-{
-    return base * ZONE_CELL_GRID + aspect_rotate_cell(grid_cell, dir) + ZONE_VIEW_CELLS;
-}
 
 static int element_zone(int element, int offset, int use_table)
 {

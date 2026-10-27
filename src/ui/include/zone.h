@@ -23,6 +23,9 @@
 #define VIEWPORT_WIDTH  224
 #define VIEWPORT_HEIGHT 136
 
+/* The zones of the 5 x 5 grid of a view element. */
+#define ZONE_CELL_GRID 25
+
 /* A zone and the anchor type that replaces the one of its record (ZONE_NO_ANCHOR keeps it). */
 typedef struct {
     int zone;
@@ -55,7 +58,7 @@ bool zone_interpolate_offset(int from, int to, int percent, int16_t *out_dx, int
 /* Clips the next zones to the viewport minus these margins. */
 void zone_set_clip_margins(int left, int top, int right, int bottom);
 
-/* Zones of the interface (ui.c, view.c). */
+/* Zones of the interface. */
 /* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame. */
 int16_t *zone_get_icon_rect(int zone, int16_t *rect);
 /* The screen position of zone for a point (1 x 1 pixels). */

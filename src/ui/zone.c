@@ -1,14 +1,19 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "zone.h"
 #include <stdlib.h>
+#include "aspect.h"
 #include "ids.h"
 #include "le.h"
 #include "move.h"
+#include "ui.h"
 
 /* GDAT (1, 0, 4, 0), little-endian words: signature, range count, the first and last zone of each range,
    then 4 words per zone of each range. */
 #define LAYOUT_INDEX 0x00
 #define LAYOUT_TYPE  0x04
+
+/* The slot frame around an icon, in pixels. */
+#define ICON_FRAME 1
 
 /* The first word of the layout item. */
 #define LAYOUT_SIGNATURE 0xfc0d
@@ -400,4 +405,30 @@ void zone_set_clip_margins(int left, int top, int right, int bottom)
     g_zone_clip_rect[RECT_Y] = (int16_t)top;
     g_zone_clip_rect[RECT_W] = (int16_t)(VIEWPORT_WIDTH - right - left);
     g_zone_clip_rect[RECT_H] = (int16_t)(VIEWPORT_HEIGHT - bottom - top);
+}
+
+/* Zones of the interface */
+
+int16_t *zone_get_icon_rect(int zone, int16_t *rect)
+{
+    int16_t w = ICON_SIZE, h = ICON_SIZE;
+    zone_compute_rect(NULL, rect, (int16_t)zone, &w, &h);
+    rect[RECT_X] -= ICON_FRAME;
+    rect[RECT_Y] -= ICON_FRAME;
+    rect[RECT_W] += 2 * ICON_FRAME;
+    rect[RECT_H] += 2 * ICON_FRAME;
+    return rect;
+}
+
+void zone_get_position(int zone, int16_t *out_x, int16_t *out_y)
+{
+    int16_t r[RECT_SIZE] = {0}, w = 1, h = 1;
+    zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
+    *out_x = r[RECT_X];
+    *out_y = r[RECT_Y];
+}
+
+int zone_id_for_view_cell(int base, int grid_cell, int16_t dir)
+{
+    return base * ZONE_CELL_GRID + aspect_rotate_cell(grid_cell, dir) + ZONE_VIEW_CELLS;
 }

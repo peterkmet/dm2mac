@@ -32,10 +32,6 @@
 #define DIALOG_VERSION_TEXT "V1.0"
 #define DIALOG_TEXT_COUNT   20 /* text entries 0 to 19: the buttons */
 
-/* Sets the sound (DEVICE_SOUND, plays a test sound) or music (DEVICE_MUSIC) volume setting, 0 to 7. */
-#define DEVICE_SOUND 0
-#define DEVICE_MUSIC 10
-
 typedef struct {
     int screen_mode;  /* 1: the dialogs draw on a black screen; 0: in the game viewport */
     int button_count; /* the buttons of the open dialog (7 for the volume dialog) */

@@ -9,11 +9,9 @@
 #include "gdat.h"
 #include "ids.h"
 #include "input.h"
-#include "music.h"
 #include "play.h"
 #include "save.h"
 #include "sound.h"
-#include "sound_request.h"
 #include "text.h"
 #include "ui.h"
 #include "view.h"
@@ -39,9 +37,6 @@ static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 
 
 /* The cancel of a dialog without a button for a right click. */
 #define DIALOG_NO_CANCEL (-1)
-
-/* The test sound of a new sound volume. */
-#define TEST_SOUND_INDEX 0
 
 DialogState g_dialog = {.screen_mode = 1};
 
@@ -224,20 +219,6 @@ void dialog_draw_progress_bar(int permille)
     g_dialog.progress_width = r[RECT_W];
     gfx_fill_rect(g_view_viewport.pixels, r, g_ui_colors[UI_GOLD], g_view_viewport.width, IMAGE_8BPP);
     dialog_present();
-}
-
-void sound_set_volume_and_test(int level, int device)
-{
-    if (device == DEVICE_SOUND) {
-        save_set_sound_volume((uint8_t)level);
-        sndreq_request((SoundCue){CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM,
-                                  SOUND_VOLUME_LOUD},
-                       g_game.party_x, g_game.party_y, 0);
-        sound_set_volume(level);
-    } else if (device == DEVICE_MUSIC) {
-        save_set_music_volume((uint8_t)level);
-        music_set_volume(level);
-    }
 }
 
 /* The buttons of the settings of one volume, the chosen one lit, and their texts (0: "off"). */

@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "sound.h"
 #include <stdlib.h>
+#include "gdat.h"
+#include "music.h"
+#include "save.h"
+#include "sound_request.h"
 
 /* The output frames of one sample. */
 #define UPSAMPLE (SOUND_OUTPUT_RATE / SOUND_RATE)
@@ -12,6 +16,9 @@
 #define SOS_VOLUME_SHIFT 7
 #define GAIN_SHIFT       15
 #define SAMPLE_TO_S16    8
+
+/* The test sound of a new sound volume. */
+#define TEST_SOUND_INDEX 0
 
 typedef struct {
     const int8_t *data;
@@ -28,6 +35,20 @@ static int master_volume = VOLUME_SETTING_MAX;
 void sound_set_volume(int level)
 {
     master_volume = level < 0 ? 0 : level > VOLUME_SETTING_MAX ? VOLUME_SETTING_MAX : level;
+}
+
+void sound_set_volume_and_test(int level, int device)
+{
+    if (device == DEVICE_SOUND) {
+        save_set_sound_volume((uint8_t)level);
+        sndreq_request((SoundCue){CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM,
+                                  SOUND_VOLUME_LOUD},
+                       g_game.party_x, g_game.party_y, 0);
+        sound_set_volume(level);
+    } else if (device == DEVICE_MUSIC) {
+        save_set_music_volume((uint8_t)level);
+        music_set_volume(level);
+    }
 }
 
 /* Voices */

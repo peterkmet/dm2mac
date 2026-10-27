@@ -392,7 +392,7 @@ address,name,signature,subsystem
 0x000227ea,click_drop_object,"int click_drop_object(int16_t x, int16_t y, uint16_t cell)",dungeon view
 0x00022942,click_throw_object,"int click_throw_object(int16_t x, int16_t y)",dungeon view
 0x000229bb,click_place_object,"int click_place_object(int16_t click_x, int16_t click_y, int16_t square_x, int16_t square_y, int16_t cell, int16_t mode, int16_t kind)",dungeon view
-0x00022a68,view_click_in_viewport,"void view_click_in_viewport(int16_t x, int16_t y)",dungeon view
+0x00022a68,click_in_viewport,"void click_in_viewport(int16_t x, int16_t y)",dungeon view
 0x000231b1,view_click_object_zone_by_kind,void view_click_object_zone_by_kind(uint16_t kind),dungeon view
 0x00023233,show_move_arrow,"void show_move_arrow(uint8_t arrow, uint16_t zone, int pressed)",interface
 0x000232b8,input_release_move_arrow,void input_release_move_arrow(void),interface

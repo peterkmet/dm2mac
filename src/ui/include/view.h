@@ -157,7 +157,5 @@ bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y);
    thing is the leader hand object that goes there. Returns the object, THING_NONE when the click is done (a chest
    changed, or thing went into an open chest), THING_ENDOFLIST when thing must drop; thing when nothing is hit. */
 uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing);
-/* A click in the dungeon view: walls, doors, objects, creatures (input.c). */
-void view_click_in_viewport(int16_t x, int16_t y);
 
 #endif /* DM2_UI_VIEW_H */

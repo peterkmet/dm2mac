@@ -15,10 +15,14 @@
 #define SOUND_VOICES       64
 #define VOLUME_SETTING_MAX 7 /* the sound and music volume settings: 0 to 7 */
 
+/* The devices of sound_set_volume_and_test. */
+#define DEVICE_SOUND 0
+#define DEVICE_MUSIC 10
+
 /* Settings */
 /* The master volume of the voices, 0 (off) to 7 (the sound volume setting). */
 void sound_set_volume(int level);
-/* The volume of the sound setting (dialog.c). */
+/* Sets the sound (DEVICE_SOUND, plays a test sound) or music (DEVICE_MUSIC) volume setting, 0 to 7. */
 void sound_set_volume_and_test(int level, int device);
 
 /* Voices */

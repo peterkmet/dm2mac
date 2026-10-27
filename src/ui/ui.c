@@ -22,7 +22,6 @@
 #include "zone.h"
 
 /* Frames, shadows, and offsets of the interface pictures, in pixels. */
-#define ICON_FRAME       1 /* the slot frame around an icon */
 #define BAR_SHADOW       1 /* the status bars have a shadow 1 pixel down and right */
 #define GAUGE_SHADOW     2
 #define GAUGE_GLYPH_LEFT 9 /* the gauge glyph stands this far left of the gauge */
@@ -635,25 +634,6 @@ void ui_fill_zone_screen(int zone, int color)
     int16_t r[RECT_SIZE];
     if (zone_get_rect(zone, r))
         gfx_fill_rect(g_draw_screen.pixels, r, color, g_draw_screen.width, IMAGE_8BPP);
-}
-
-int16_t *zone_get_icon_rect(int zone, int16_t *rect)
-{
-    int16_t w = ICON_SIZE, h = ICON_SIZE;
-    zone_compute_rect(NULL, rect, (int16_t)zone, &w, &h);
-    rect[RECT_X] -= ICON_FRAME;
-    rect[RECT_Y] -= ICON_FRAME;
-    rect[RECT_W] += 2 * ICON_FRAME;
-    rect[RECT_H] += 2 * ICON_FRAME;
-    return rect;
-}
-
-void zone_get_position(int zone, int16_t *out_x, int16_t *out_y)
-{
-    int16_t r[RECT_SIZE] = {0}, w = 1, h = 1;
-    zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
-    *out_x = r[RECT_X];
-    *out_y = r[RECT_Y];
 }
 
 void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *face_colors)

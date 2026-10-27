@@ -7,7 +7,6 @@
 #include <SDL3/SDL.h>
 #include "advanced.h"
 #include "control.h"
-#include "dialog.h"
 #include "draw.h"
 #include "game.h"
 #include "game_text.h"

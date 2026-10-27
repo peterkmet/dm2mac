@@ -2203,7 +2203,8 @@ static void click_with_object(const ViewSquares *v, int x, int y, bool front_blo
     click_throw_object(x, y);
 }
 
-void view_click_in_viewport(int16_t x, int16_t y)
+/* A click in the dungeon view: walls, doors, objects, creatures. */
+static void click_in_viewport(int16_t x, int16_t y)
 {
     dun_set_current_map(g_game.party_map);
     if (g_party.push_mode) {
@@ -2323,7 +2324,7 @@ static bool execute_party_command(const Command *c, bool idle)
         if ((int16_t)g_game.leader != -1)
             ui_toggle_inventory(g_game.leader);
     } else if (command == CMD_VIEWPORT) {
-        view_click_in_viewport(c->x, c->y);
+        click_in_viewport(c->x, c->y);
     } else if (command == CMD_CAST_SPELL) {
         game_set_command_stop(magic_cast_entered_runes());
     } else if (command == CMD_REMOVE_RUNE) {
