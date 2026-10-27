@@ -56,9 +56,13 @@ All notable changes to this project are in this file. The format follows [Keep a
 - `docs/coding-standard.md`: rule 10 (packed fields), the notation of constants (hex or decimal), accessor headers (rule 2), and prefix owners (rule 7). The build uses `-Wmissing-prototypes`.
 - The decompiled code is in `reference/decomp/`. `tools/test-suite` replaces `scripts/test-suite`. `docs/todo.md` replaces `TODO.md`.
 - The dm style refactor: the C port moves from `port/src/` to `src/` with five layers (`data/`, `engine/`, `ui/`, `control/`, `platform/`); the Python tools move to `tools/dm2tools/` and the test helpers to `tests/dm2test/`; `docs/coding-standard.md` has the new rules, and `tests/standard/test_standard.py` checks them with no open violation; one type per parameter name; `ui/` changes engine state only through engine functions; `make` fails on a warning.
+- Review cleanup: the coding standard has the new rules 7.6, 3.13, and 10.7 with checks, the changed rules 1.7, 1.8, 2.1, 3.1, 3.2, 4.1, 5.1, 8.3, and 9.1, and `-fwrapv`; one owner per prefix and module (`champion_inventory.c`, one public `ai.h`); enum types for the game, screen, input, panel, action, and effect modes and the GDAT result; the code of all modules follows the standard; the kept quirks of the original have comments and deviation entries.
 - The docs in the style of the dm port: `README.md` with a screenshot, the new pages `docs/manual.md`, `architecture.md`, `development.md` and `decompiling.md`, and the folders `docs/formats/`, `rules/`, `llm/` and `reference/`; `docs/skull-formats.md`, `llm-control.md`, `turnbased-mode.md` and `advanced-mode.md` are gone. `tests/standard/test_docs.py` checks the doc links, `tests/standard/test_vocabulary.py` the protocol vocabulary.
 
 ### Fixed
+
+- Advanced mode: a held key no longer fills the input queue; the party stops when the key goes up.
+- A damaged save with a poison event for a missing champion no longer writes outside the champions; guards for inactive creature groups; a melee attack with bit 15 pierces as in the original; the item description breaks lines at the line start; the price table reads its prices byte-order safe; an unknown `--` option ends with a usage line; the image cache, the timeline, and the seen squares are freed at shutdown; the color ramps are checked against their bounds.
 
 - `test_sleep_and_wake_match_original` failed on some parallel runs: the cursor test left a dragged champion in the shared test library.
 - `tests/test_ai_move.py` reads the `AiContext` fields at named offsets, so the struct needs no padding field.
