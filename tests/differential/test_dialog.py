@@ -10,7 +10,7 @@ from unicorn import UC_PROT_ALL
 from dm2test import constants as C
 from dm2test.dialog import (  # noqa: F401 (program_start_after is an autouse fixture)
     G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch, Session,
-    program_start_after,
+    main_loop_quit, program_start_after,
 )
 from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixtures)
     SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff, gdat, original, port,
@@ -257,7 +257,6 @@ GAME_END, GAME_QUIT, SAVE_CHECK_DISK = 0x1FEF6, 0x2005B, 0x346D1
 
 def test_quit_picture_matches_original(ui, original):
     # The end after the QUIT button of the save menu: the picture GDAT (6, 0, 1, 1) until a click, then the end.
-    from dm2test.dialog import main_loop_quit
     lib, emu = ui, original.emu
     quits = []
 
@@ -342,7 +341,7 @@ def test_enter_presses_first_button_like_original(ui, original):
         if len(frames) == 1:
             lib.input_key_down(C.KEY_ENTER)
         if len(frames) > 100:  # no choice: the program ends, the test fails
-            ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "g_main_loop")) + 24).value = 1
+            main_loop_quit(lib).value = 1
 
     hook = ctypes.CFUNCTYPE(None)(frame)
     ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value

@@ -5,6 +5,7 @@
 
 /* The game texts and the UI colors: decoding, formatting, and GDAT text items. */
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -64,13 +65,15 @@ extern char g_text_drive_path[TEXT_SIZE];
 #define FIELD_MELEE_KIND 16 /* 1: full damage to creatures that take half damage from other hits */
 #define FIELD_HAND       17
 
-/* A number as decimal text; pad right-aligns it in width characters with spaces. Uses one static buffer. */
-const char *gtext_format_number(int value, int pad, int width);
+/* A number as decimal text; pad right-aligns it in width characters with spaces. The text stays valid until the
+   next call. */
+const char *gtext_format_number(int value, bool pad, int width);
 /* Copies fmt to dst with the format codes replaced; returns dst (TEXT_SIZE bytes). */
 char *gtext_format(const char *fmt, char *dst);
 /* The text entry (category, index, 5, entry), decrypted and formatted, in dst (TEXT_SIZE bytes). */
 char *gtext_gdat(int category, int index, int entry, char *dst);
-/* The part of a text entry before its first ':', NULL for an absent text. Uses one static buffer. */
+/* The part of a text entry before its first ':', NULL for an absent text. The text stays valid until the next
+   call. */
 const char *gtext_gdat_label(int category, int index, int entry);
 /* The number of field (0 SK, 1 LV, 2 CM, ... 17 WH) of a text entry, 0 when it is absent. */
 int16_t gtext_gdat_field(int category, int index, int entry, int field);

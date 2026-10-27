@@ -84,9 +84,8 @@ static struct {
     uint8_t *map_data;
     uint8_t level_start[LEVEL_COUNT];
     uint8_t level_maps[LEVEL_COUNT + MAP_COUNT_MAX];
+    uint8_t level_digits[LEVEL_COUNT]; /* the level digit of each level (dungeon_level_digit) */
 } dun;
-
-static uint8_t level_digits[LEVEL_COUNT];
 
 static const uint8_t *map_desc(int map)
 {
@@ -151,7 +150,7 @@ static bool read_bytes(FILE *f, void *dst, size_t size)
 /* Reads count little-endian words into dst. */
 static bool read_words(FILE *f, uint16_t *dst, int count)
 {
-    if (!read_bytes(f, dst, 2 * (size_t)count))
+    if (!read_bytes(f, dst, (size_t)count * sizeof *dst))
         return false;
     for (int i = 0; i < count; i++)
         dst[i] = le16((const uint8_t *)(dst + i));
@@ -322,9 +321,9 @@ static bool write_bytes(FILE *f, const void *src, size_t size)
 static bool write_words(FILE *f, const uint16_t *src, int count)
 {
     for (int i = 0; i < count; i++) {
-        uint8_t le[2];
+        uint8_t le[sizeof *src];
         put_le16(le, src[i]);
-        if (!write_bytes(f, le, 2))
+        if (!write_bytes(f, le, sizeof le))
             return false;
     }
     return true;
@@ -353,7 +352,10 @@ void dungeon_free(void)
     free(dun.map_data);
     for (int type = 0; type < THING_TYPE_COUNT; type++)
         free(dun.things[type]);
+    uint8_t level_digits[LEVEL_COUNT];
+    memcpy(level_digits, dun.level_digits, sizeof level_digits);
     memset(&dun, 0, sizeof dun);
+    memcpy(dun.level_digits, level_digits, sizeof level_digits); /* only the first load reads the level table */
 }
 
 /* Marks (x, y) of map as a square with a link to another level. */
@@ -546,7 +548,7 @@ void dungeon_read_level_table(void)
     for (int level = 0; level <= last; level++) {
         while (p < text + sizeof text - 1 && (*p == '\0' || *p == '\n' || *p == ' '))
             p++;
-        level_digits[level] = (uint8_t)(*p++ - '0');
+        dun.level_digits[level] = (uint8_t)(*p++ - '0');
     }
 }
 
@@ -659,7 +661,7 @@ const uint8_t *dungeon_level_maps(int level)
 
 int dungeon_level_digit(int level)
 {
-    return level >= 0 && level < LEVEL_COUNT ? level_digits[level] : 0;
+    return level >= 0 && level < LEVEL_COUNT ? dun.level_digits[level] : 0;
 }
 
 int dungeon_text_word_count(void)

@@ -6,7 +6,6 @@ byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion re
 decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
-decimal engine/dungeon.c rule 3.1: the plain number 2 of the byte buffer le (removed by Task 33)
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:light_power rule 3.12: a table of SKULL.EXE
@@ -152,7 +151,6 @@ module platform/main.c rule 1.7: the entry point has no header
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-local control/control.c rule 7.6: the mutable static locals raw, z, screen (removed by Task 39)
 static-local control/turn.c rule 7.6: the mutable static locals error of two functions (removed by Task 39)
-static-local engine/game_text.c rule 7.6: the mutable static locals buf, label (removed by Task 33)
 static-local engine/item.c rule 7.6: the mutable static local name (removed by Task 34)
 static-local platform/main.c rule 7.6: the mutable static locals saved, gdat, argb, window_x, window_y, path (removed by Task 39)
 static-local platform/platform.c rule 7.6: the mutable static local buf (removed by Task 39)

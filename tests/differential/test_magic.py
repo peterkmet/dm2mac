@@ -393,7 +393,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
                 if clicks.random() < 0.5:
                     click_feedback(lib, original, CMD_CAST_SPELL, n)  # it queues the command
                 assert command(lib, emu, CMD_CAST_SPELL) == (1, 1)
-                mine = ctypes.c_int.in_dll(lib, "g_input_command_stop").value
+                mine = int(ctypes.c_bool.in_dll(lib, "g_input_command_stop").value)
                 theirs = struct.unpack("<H", emu.read(G_COMMAND_STOP, 2))[0]
             assert mine == theirs, n
             results.add((mine, champion_records(lib)[CH_RUNE_COUNT] > 0))
