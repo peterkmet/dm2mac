@@ -356,7 +356,9 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
         int k = nearest_step(brightness, last, target);
         int color = colors[k];
         /* the keys keep their meaning: take the nearest other step, alternating below and above */
-        for (int lo = k - 1, hi = k + 1; color == key1 || color == key2;) {
+        int lo = k - 1;
+        int hi = k + 1;
+        while (color == key1 || color == key2) {
             if (lo < 0 || (hi <= last && brightness[hi] - target < target - brightness[lo]))
                 k = hi++;
             else
