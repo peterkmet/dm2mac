@@ -33,6 +33,7 @@
 #define FRIGHTEN_ALERT_FLAGS   0x2005
 #define REDRAW_LEVEL           0x3800
 #define MELEE_ALERT_FLAGS      0x6002
+#define MELEE_ATTACK_PIERCES   0x8000 /* FIELD_ATTACK bit: the hit reaches creatures that CREATURE_NOT_DOOR_HIT marks */
 /* The random masks of the hit rolls and the throw. */
 #define MELEE_WEAK_RANDOM      0x0f /* the random part of the rest of a weak hit */
 #define MELEE_RANDOM           0x1f /* the random part of the hit chance, the defense, the damage, and the armor test */
@@ -492,7 +493,9 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
         return false;
     uint16_t attack = (uint16_t)field_of(a->action, FIELD_ATTACK);
     uint16_t wounds = (uint16_t)field_of(a->action, FIELD_WOUNDS);
-    bool pierces = field_of(a->action, FIELD_PIERCES) != 0;
+    /* as in the original, bit 15 of the attack value also makes the hit pierce, and the hit chance ignores it */
+    bool pierces = field_of(a->action, FIELD_PIERCES) != 0 || attack & MELEE_ATTACK_PIERCES;
+    attack &= (uint16_t)~MELEE_ATTACK_PIERCES;
     g_action.result = (int16_t)melee_attack_group(a, attack, wounds, kind, pierces);
     return true;
 }
