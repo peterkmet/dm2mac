@@ -34,8 +34,8 @@ static void stop_song(void)
     if (!g_music.enabled || !g_music.playing)
         return;
     hmp_stop();
-    g_music.playing = 0;
-    g_music.paused = 0;
+    g_music.playing = false;
+    g_music.paused = false;
     g_music.fade = 0;
 }
 
@@ -72,11 +72,11 @@ bool music_init(const Gdat *g, const char *data_dir)
         fm_free_banks();
         return false;
     }
-    g_music.enabled = 1;
+    g_music.enabled = true;
     size_t size;
     if (read_file(data_dir, "DATA/SONGLIST.DAT", g_music.songlist, SONGLIST_MAX, &size)) {
         g_music.songlist_size = (int)size;
-        g_music.songlist_loaded = 1;
+        g_music.songlist_loaded = true;
     }
     music_set_volume(VOLUME_DEFAULT);
     return true;
@@ -86,7 +86,7 @@ void music_quit(void)
 {
     stop_song();
     fm_free_banks();
-    g_music.enabled = 0;
+    g_music.enabled = false;
 }
 
 /* Songs */
@@ -102,8 +102,8 @@ void music_play_song(int song)
             return;
         hmp_set_song_volume(SONG_VOLUME_FULL);
         hmp_unmute();
-        g_music.started = 1;
-        g_music.playing = 1;
+        g_music.started = true;
+        g_music.playing = true;
     }
     g_music.requested_song = (int16_t)song;
 }
@@ -113,7 +113,7 @@ void music_pause(void)
     if (!g_music.enabled || !g_music.playing)
         return;
     hmp_pause();
-    g_music.paused = 1;
+    g_music.paused = true;
 }
 
 void music_update_for_map(int16_t map)
@@ -122,7 +122,7 @@ void music_update_for_map(int16_t map)
         return;
     if (g_music.paused) {
         hmp_resume();
-        g_music.paused = 0;
+        g_music.paused = false;
     }
     if (g_music.fade > 1) {
         hmp_set_song_volume(g_music.fade);

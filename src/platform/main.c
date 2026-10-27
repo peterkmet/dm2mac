@@ -200,9 +200,9 @@ static bool load_graphics(const char *data)
 /* Gives the window the mummy icon from GRAPHICS.DAT; without the graphic, SDL keeps its icon. */
 static void set_icon(void)
 {
-    int w, h;
-    if (icon_build(gdat_current(), program.icon, ICON_MAX_PIXELS, &w, &h))
-        plat_set_icon(program.icon, w, h);
+    IconSize size = icon_build(gdat_current(), program.icon, ICON_MAX_PIXELS);
+    if (size.width)
+        plat_set_icon(program.icon, size.width, size.height);
 }
 
 /* Loads a save and starts its game at once; false with a message on an error. */

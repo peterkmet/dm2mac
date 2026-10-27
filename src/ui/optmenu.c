@@ -51,7 +51,8 @@ void optmenu_start(int filter)
     menu.row = OPTMENU_ROW_FILTER;
     menu.save_failed = false;
     if (filter) {
-        menu.filter = menu.saved = filter;
+        menu.filter = filter;
+        menu.saved = filter;
         return;
     }
     char dir[SAVE_DIR_SIZE + sizeof "/DATA"];

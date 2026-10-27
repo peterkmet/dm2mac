@@ -129,7 +129,7 @@ static uint8_t *load_file(const char *name, size_t *size)
     if (!f)
         return NULL;
     uint8_t *data = NULL;
-    long length = fseek(f, 0, SEEK_END) ? -1 : ftell(f);
+    int64_t length = fseek(f, 0, SEEK_END) ? -1 : ftell(f);
     if (length > 0 && !fseek(f, 0, SEEK_SET) && (data = malloc((size_t)length)) &&
         fread(data, 1, (size_t)length, f) != (size_t)length) {
         free(data);

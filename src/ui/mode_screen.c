@@ -60,10 +60,12 @@ bool mode_screen_is_done(void)
 
 bool mode_screen_item_box(int16_t item, int16_t *rect)
 {
-    int16_t w, h;
-    if (item < 0 || item >= ITEM_COUNT || !text_measure(items[item], &w, &h))
+    if (item < 0 || item >= ITEM_COUNT)
         return false;
-    rect[RECT_W] = (int16_t)(w + 2 * ITEM_MARGIN);
+    TextSize size = text_measure(items[item]);
+    if (!size.w)
+        return false;
+    rect[RECT_W] = (int16_t)(size.w + 2 * ITEM_MARGIN);
     rect[RECT_H] = LINE_HEIGHT;
     rect[RECT_X] = (int16_t)((SCREEN_W - rect[RECT_W]) / 2);
     rect[RECT_Y] = (int16_t)(ITEM_TOP + item * ITEM_STEP);
@@ -100,12 +102,12 @@ void mode_screen_click(int16_t x, int16_t y)
 /* Draws text centered in the screen rectangle r. */
 static void print_centered(const int16_t r[RECT_SIZE], int color, const char *text)
 {
-    int16_t w, h;
-    if (!text_measure(text, &w, &h))
+    TextSize size = text_measure(text);
+    if (!size.w)
         return;
-    int16_t x = (int16_t)(r[RECT_X] + (r[RECT_W] - w) / 2);
-    int16_t top = (int16_t)(r[RECT_Y] + (r[RECT_H] - h) / 2);
-    text_draw_on_screen(x, (int16_t)(top + h - 1), color, COLOR_BLACK, text);
+    int16_t x = (int16_t)(r[RECT_X] + (r[RECT_W] - size.w) / 2);
+    int16_t top = (int16_t)(r[RECT_Y] + (r[RECT_H] - size.h) / 2);
+    text_draw_on_screen(x, (int16_t)(top + size.h - 1), color, COLOR_BLACK, text);
 }
 
 void mode_screen_draw(void)

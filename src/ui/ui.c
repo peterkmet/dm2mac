@@ -521,7 +521,9 @@ void offscreen_blit(Offscreen *o, const BlitSource *source, const int16_t *rect)
 void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int transparent)
 {
     const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
-    int16_t r[RECT_SIZE], sx = 0, sy = 0;
+    int16_t r[RECT_SIZE];
+    int16_t sx = 0;
+    int16_t sy = 0;
     if (!image)
         return;
     int16_t *rect = zone_compute_rect(image, r, (int16_t)zone, &sx, &sy);
@@ -541,7 +543,8 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
     if ((int16_t)zone == -1) {
         memcpy(r, ctx->rect, sizeof r);
     } else {
-        int16_t w = ctx->w, h = ctx->h;
+        int16_t w = ctx->w;
+        int16_t h = ctx->h;
         if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h))
             return;
         /* like the original, the clipped part goes into the size of the picture part, not its position */
@@ -557,23 +560,23 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
 
 void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors colors, const char *text)
 {
-    int16_t w, h;
-    if (!text_measure(text, &w, &h))
+    TextSize size = text_measure(text);
+    if (!size.w)
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]), colors, text);
     /* like the original, the changed rect starts at the base line */
-    const int16_t r[RECT_SIZE] = {[RECT_X] = x, [RECT_Y] = y, [RECT_W] = w, [RECT_H] = h};
+    const int16_t r[RECT_SIZE] = {[RECT_X] = x, [RECT_Y] = y, [RECT_W] = size.w, [RECT_H] = size.h};
     add_dirty_rect(o, r);
 }
 
 /* The base line start of text in zone (screen coordinates) and its rectangle; NULL when it is not visible. */
 static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
 {
-    int16_t w, h;
-    if (!text_measure(text, &w, &h))
+    TextSize size = text_measure(text);
+    if (!size.w)
         return NULL;
-    return zone_compute_rect(NULL, r, (int16_t)zone, &w, &h);
+    return zone_compute_rect(NULL, r, (int16_t)zone, &size.w, &size.h);
 }
 
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
@@ -624,7 +627,8 @@ void ui_draw_viewport_image(int category, int index, int entry, int zone, int tr
     draw_ctx_init(&c, category, index, entry);
     c.transparent = (int16_t)transparent;
     c.dst = &g_view_viewport;
-    c.dx = c.dy = 0;
+    c.dx = 0;
+    c.dy = 0;
     c.zone = (int16_t)zone;
     draw_ctx_draw(draw_ctx_prepare(&c));
 }
@@ -658,7 +662,9 @@ void ui_render_hand_icon(void)
     for (int i = 0; i < HAND_ICON_COLORS; i++)
         identity[i] = (uint8_t)i;
     uint16_t t = g_game.leader_hand;
-    int category = item_gdat_category(t), index = item_gdat_index(t), entry = item_icon_index(t, -1, 1);
+    int category = item_gdat_category(t);
+    int index = item_gdat_index(t);
+    int entry = item_icon_index(t, -1, 1);
     const Bitmap *image = draw_gdat_image(category, index, entry);
     const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
     Bitmap cursor = {g_leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
@@ -875,7 +881,10 @@ static bool show_changed_slot(int champ, int slot, bool force)
     }
     const Champion *c = champion(champ);
     uint16_t thing = c->slots[slot];
-    bool redraw_frame = force, active = false, wounded = false, changed = force;
+    bool redraw_frame = force;
+    bool active = false;
+    bool wounded = false;
+    bool changed = force;
     if (slot < SLOT_HAND_COUNT) {
         active = champ + 1 == g_action.champion && slot == g_action.hand;
         if (!(cache.slots[entry].flags & SLOT_ACTIVE) != !active) {
@@ -952,8 +961,8 @@ static void show_description(const char *text)
 /* Draws a centered line of a scroll in the scroll font. */
 static void show_scroll_line(int center_x, int y, const char *line)
 {
-    int16_t w, h;
-    if (!text_measure(line, &w, &h))
+    TextSize size = text_measure(line);
+    if (!size.w)
         return;
     char mapped[TEXT_SIZE];
     size_t n = 0;
@@ -966,7 +975,7 @@ static void show_scroll_line(int center_x, int y, const char *line)
         mapped[n] = (char)c;
     }
     mapped[n] = '\0';
-    text_draw_in_viewport((int16_t)(center_x - (w >> 1)), y, g_ui_colors[UI_BLACK], mapped);
+    text_draw_in_viewport((int16_t)(center_x - (size.w >> 1)), y, g_ui_colors[UI_BLACK], mapped);
 }
 
 /* Draws an open scroll with its text in the inventory panel. */
@@ -1036,7 +1045,8 @@ static void show_object_gauge(int zone, int value, int high, uint8_t glyph, int 
     if (!zone_get_rect(zone, r))
         return;
     show_gauge_bar(value, zone, color, (GaugeRange){0, high}, GAUGE_REST_COLOR);
-    int y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE), bg = g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
+    int y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE);
+    int bg = g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
     char s[GLYPH_TEXT_SIZE] = {(char)glyph, '\0'};
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,
                           (TextColors){g_ui_colors[color], bg}, s);
@@ -1053,7 +1063,8 @@ static void show_coin_counts(uint16_t box)
 {
     int16_t counts[COIN_TYPE_MAX];
     money_count_coins_in_box(box, counts);
-    int total = 0, zone = ZONE_COINS_FIRST;
+    int total = 0;
+    int zone = ZONE_COINS_FIRST;
     char s[TEXT_SIZE];
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
         int type = money_coin_type_for_slot(box, slot);
@@ -1110,7 +1121,8 @@ static bool show_object_info(uint16_t thing, bool full)
     if (!full)
         return false;
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
-    int index = item_gdat_index(thing), category = item_gdat_category(thing);
+    int index = item_gdat_index(thing);
+    int category = item_gdat_category(thing);
     if (gdat_exists(gdat_current(), category, index, GDAT_TYPE_IMAGE, GFX_OBJECT_PICTURE))
         ui_draw_viewport_image(category, index, GFX_OBJECT_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_OBJECT_NAME, ZONE_OBJECT_NAME_BACK, UI_KEY);
