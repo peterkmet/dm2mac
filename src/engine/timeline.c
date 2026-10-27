@@ -280,7 +280,7 @@ void timeline_event_move_group(TimelineEvent *e)
                        1);
 }
 
-void timeline_event_apply_item_effect(const TimelineEvent *e, int mode)
+void timeline_event_apply_item_effect(const TimelineEvent *e, enum EffectMode mode)
 {
     /* the effect ends: a record of the item type stands in for the eaten item, with its kind */
     uint16_t thing = thing_make(le16(e->data + EFFECT_DATA_TYPE), 0);

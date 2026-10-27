@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "champion.h"
 
 /* Event type of a free event. */
 #define EVENT_NONE 0x00
@@ -94,6 +95,6 @@ void timeline_event_altar_rebirth(TimelineEvent *e);
 void timeline_event_move_group(TimelineEvent *e);
 /* The timed effect of an eaten item (EVENT_ITEM_EFFECT) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
    for a loaded game. */
-void timeline_event_apply_item_effect(const TimelineEvent *e, int mode);
+void timeline_event_apply_item_effect(const TimelineEvent *e, enum EffectMode mode);
 
 #endif /* DM2_ENGINE_TIMELINE_H */

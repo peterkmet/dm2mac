@@ -69,7 +69,7 @@ static void add_magic_light(int delta)
 }
 
 /* The modifier of attribute attr of thing for mode; equipped: the item is in a slot that fits it. */
-static int stat_modifier(uint16_t thing, int attr, bool equipped, int mode)
+static int stat_modifier(uint16_t thing, int attr, bool equipped, enum EffectMode mode)
 {
     uint16_t v = item_attr(thing, attr);
     if (!v)
@@ -111,7 +111,7 @@ void champ_compute_load(int champ)
 }
 
 /* The mana and statistic modifiers of thing change champion c. */
-static void apply_stat_modifiers(Champion *c, uint16_t thing, bool equipped, int mode)
+static void apply_stat_modifiers(Champion *c, uint16_t thing, bool equipped, enum EffectMode mode)
 {
     int m = stat_modifier(thing, ATTR_MANA_MAXIMUM, equipped, mode);
     if (m) {
@@ -146,7 +146,7 @@ static void add_effect_end_event(int champ, uint16_t thing)
     timeline_add_event(&e);
 }
 
-void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode)
+void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode)
 {
     if ((int16_t)champ < 0 || thing == THING_NONE)
         return;

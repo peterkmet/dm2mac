@@ -70,7 +70,6 @@
 #define END_SOUND_PRIORITY 0xff
 
 /* The name and title fields of the inventory while a name changes. */
-#define NAME_PANEL_MODE 8
 #define CHAMP_NAME_MAX  7
 #define CHAMP_TITLE_MAX 15
 
@@ -700,7 +699,7 @@ void session_edit_champion_name(Champion *champion)
     memcpy(name, champion->name, sizeof name);
     memcpy(title, champion->title, sizeof title);
     int16_t name_x, name_y, title_x, title_y;
-    game_set_panel_mode(NAME_PANEL_MODE);
+    game_set_panel_mode(PANEL_MODE_NAME);
     zone_get_position(ZONE_NAME, &name_x, &name_y);
     zone_get_position(ZONE_TITLE, &title_x, &title_y);
     input_push_mode(INPUT_MODE_NAME);

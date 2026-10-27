@@ -34,8 +34,6 @@
 /* Flags: a weapon value that is not ammunition, and the minion map header in action.flags. */
 #define AMMO_NOT_AMMO       0x8000
 #define FLAGS_MINION_HEADER 0x0400
-/* No input zone refresh yet for the current panels: the next action area update refreshes them. */
-#define INPUT_MODE_STALE    -1
 
 /* The drawn cell of a champion that the party icons do not show. */
 #define NO_CELL 0xff
@@ -105,7 +103,7 @@ static struct {
     bool invisible;
     uint16_t aura_mask;
     int16_t leader;
-    int16_t input_mode; /* the action mode of the last input zone refresh, INPUT_MODE_STALE for none */
+    int16_t action_mode; /* the action mode of the last input zone refresh, ACTION_MODE_STALE for none */
 } drawn;
 
 /* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
@@ -122,7 +120,7 @@ void area_reset(void)
     memset(&drawn, 0, sizeof drawn);
     drawn.gfx_set = NO_CELL;
     drawn.leader = -1;
-    drawn.input_mode = INPUT_MODE_STALE;
+    drawn.action_mode = ACTION_MODE_STALE;
     area.bitmap = NULL;
 }
 
@@ -546,7 +544,7 @@ static void show_party_hands(bool full, bool changed)
     bool party_changed = changed;
     g_action.mode = ACTION_MODE_HANDS;
     if (full || changed)
-        drawn.input_mode = INPUT_MODE_STALE;
+        drawn.action_mode = ACTION_MODE_STALE;
     for (int i = 0; i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
         if (!c->health && is_cell_taken(c))
@@ -556,7 +554,7 @@ static void show_party_hands(bool full, bool changed)
         if (alive != drawn.alive[i]) {
             drawn.alive[i] = alive;
             redraw = true;
-            drawn.input_mode = INPUT_MODE_STALE;
+            drawn.action_mode = ACTION_MODE_STALE;
         }
         bool flash_this = (g_action.flash < 0 ? -g_action.flash : g_action.flash) - 1 == i;
         show_hand_icons(i, full, redraw, flash_this);
@@ -620,10 +618,10 @@ static bool party_icons_changed(void)
    example the cursor zone of a money box, depend on the action mode. */
 static void refresh_input_zones(void)
 {
-    if (drawn.input_mode == g_action.mode)
+    if (drawn.action_mode == g_action.mode)
         return;
     input_refresh_mode();
-    drawn.input_mode = (int16_t)g_action.mode;
+    drawn.action_mode = (int16_t)g_action.mode;
 }
 
 /* Draws the panel of the open hand: a minion map, a money box, a chest, or the action menu; with nothing to show,
@@ -650,7 +648,7 @@ static void show_hand_panel(void)
         show_action_menu();
     } else if (g_action.mode == ACTION_MODE_MINION_MAP) {
         if (!(g_action.flags & FLAGS_MINION_HEADER))
-            drawn.input_mode = INPUT_MODE_STALE;
+            drawn.action_mode = ACTION_MODE_STALE;
         mmap_draw(thing);
     } else {
         g_action.champion = 0;

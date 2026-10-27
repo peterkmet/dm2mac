@@ -34,8 +34,19 @@ typedef struct {
     uint16_t buttons;   /* inventory buttons that show pressed */
     int16_t eye, mouth; /* the eye or the mouth of the inventory is held */
     int16_t push_mode;  /* the movement arrows show the push arrows */
-    int16_t panel_mode; /* what the inventory panel shows */
+    int16_t panel_mode; /* what the inventory panel shows: a PanelMode */
 } UiState;
+
+/* What the inventory panel shows (g_ui.panel_mode). */
+enum PanelMode {
+    PANEL_MODE_NONE = 0,
+    PANEL_MODE_FOOD = 1,
+    PANEL_MODE_SKILLS = 2,
+    PANEL_MODE_OBJECT = 3,
+    PANEL_MODE_SCROLL = 5,
+    PANEL_MODE_MOUTH = 7,
+    PANEL_MODE_NAME = 8 /* the name and title fields while a name changes */
+};
 
 extern UiState g_ui;
 
@@ -146,7 +157,7 @@ void game_set_screen_refresh(bool on);
 /* The inventory buttons that show pressed. */
 void game_set_inventory_buttons(uint16_t buttons);
 /* What the inventory panel shows. */
-void game_set_panel_mode(int mode);
+void game_set_panel_mode(enum PanelMode mode);
 /* The champion ordinal (champion + 1) of the open inventory, 0 none. */
 void game_set_open_inventory(int inventory);
 /* The eye of the inventory is held (on) or released. */

@@ -9,13 +9,15 @@
 #include <stdint.h>
 
 /* Results of the loaders and decoders. */
-#define GDAT_OK            0
-#define GDAT_ERR_IO        (-1) /* the file cannot be read */
-#define GDAT_ERR_FORMAT    (-2) /* bad signature, bad key table, or file size not equal to the item sizes */
-#define GDAT_ERR_ITEM      (-3) /* item number out of range */
-#define GDAT_ERR_NOT_IMAGE (-4) /* the item has no image header */
-#define GDAT_ERR_DATA      (-5) /* the compressed stream is damaged or uses an unsupported codec */
-#define GDAT_ERR_SPACE     (-6) /* the destination buffer is too small */
+enum GdatResult {
+    GDAT_OK = 0,
+    GDAT_ERR_IO = -1,        /* the file cannot be read */
+    GDAT_ERR_FORMAT = -2,    /* bad signature, bad key table, or file size not equal to the item sizes */
+    GDAT_ERR_ITEM = -3,      /* item number out of range */
+    GDAT_ERR_NOT_IMAGE = -4, /* the item has no image header */
+    GDAT_ERR_DATA = -5,      /* the compressed stream is damaged or uses an unsupported codec */
+    GDAT_ERR_SPACE = -6      /* the destination buffer is too small */
+};
 
 /* GDAT key types: the third part of a key; value keys hold a number, not an item number; type 7 depends on the category. */
 #define GDAT_TYPE_IMAGE         0x01
@@ -77,7 +79,7 @@ typedef struct gdat gdat_t;
 
 /* Loading */
 /* Reads the whole file; *out is NULL on error. */
-int gdat_load(const char *path, gdat_t **out);
+enum GdatResult gdat_load(const char *path, gdat_t **out);
 /* Frees a loaded file; exported for the tests. */
 void gdat_free(gdat_t *g);
 /* The GRAPHICS.DAT that the game reads; NULL before the first gdat_select. */
@@ -97,17 +99,18 @@ int gdat_find(const gdat_t *g, int category, int index, int type, int entry);
 /* Width, height, and bits per pixel (4 or 8) of an image item; returns the decoded byte size or an error. */
 int gdat_image_size(const gdat_t *g, int item, int *out_width, int *out_height, int *out_bpp);
 /* Decodes an image item into dst. 4 bpp rows hold an even pixel count, high nibble first; pad nibbles keep the dst content. */
-int gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size);
+enum GdatResult gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size);
 /* The 16 palette indices of the colors of a 4 bpp image, NULL for an 8 bpp image. */
 const uint8_t *gdat_image_colormap(const gdat_t *g, int item);
 /* The 6-bit VGA red, green, blue of a color of the game palette. */
-int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_RGB_SIZE]);
+enum GdatResult gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_RGB_SIZE]);
 /* A 4 bpp image stream; with base, nibble command 5 copies pixels from the same place of base. A command sets a run of
    pixels to a local color, a literal color, the pixels one row above, or (delta images) the pixels of base; runs wrap
    at the row end; exported for the tests. */
-int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst, size_t dst_size);
+enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst,
+                                  size_t dst_size);
 /* An 8 bpp image stream: header, codec byte, LZSS data; exported for the tests. */
-int image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size);
+enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size);
 
 /* Values and texts */
 /* The original lookup: the value of a value key or 0, else the item of the key or GDAT_NO_ITEM. */

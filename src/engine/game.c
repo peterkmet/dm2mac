@@ -278,7 +278,7 @@ void game_set_inventory_buttons(uint16_t buttons)
     g_ui.buttons = buttons;
 }
 
-void game_set_panel_mode(int mode)
+void game_set_panel_mode(enum PanelMode mode)
 {
     g_ui.panel_mode = (int16_t)mode;
 }

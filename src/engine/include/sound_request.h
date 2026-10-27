@@ -77,8 +77,8 @@ void sndreq_reset_requests(void); /* exported for the tests */
 void sndreq_clear_requests(void);
 
 /* Queries */
-/* Finds sound (category, index, entry) in GRAPHICS.DAT; the data stays in g. */
-int sndreq_load(const gdat_t *g, int category, int index, int entry, Sound *sound); /* exported for the tests */
+/* Finds sound (category, index, entry) in GRAPHICS.DAT; the data stays in g; exported for the tests. */
+enum GdatResult sndreq_load(const gdat_t *g, int category, int index, int entry, Sound *sound);
 /* The place of a sound at (dx, dy) from the party seen by the party facing party_dir. A sound that comes around
    walls (path_distance above the straight distance) is pushed further away. path_distance is the party distance
    map value at the square of the sound; false when it is negative (no path). Also exported for the tests. */

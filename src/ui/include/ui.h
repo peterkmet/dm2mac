@@ -15,14 +15,6 @@
 /* The number of movement arrow zones. */
 #define ZONE_ARROW_COUNT 6
 
-/* What the inventory panel shows (g_ui.panel_mode). */
-#define PANEL_MODE_NONE   0
-#define PANEL_MODE_FOOD   1
-#define PANEL_MODE_SKILLS 2
-#define PANEL_MODE_OBJECT 3
-#define PANEL_MODE_SCROLL 5
-#define PANEL_MODE_MOUTH  7
-
 /* The units of the inventory values on the screen. */
 #define STAMINA_DISPLAY_UNIT 10 /* the screen shows the stamina divided by this */
 #define WEIGHT_TENTHS        10 /* weights and loads are in tenths of a kilogram */

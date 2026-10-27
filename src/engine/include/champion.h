@@ -169,24 +169,26 @@ _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record 
 #define HASTE_MAX           255
 
 /* Modes of champ_apply_item_effects: how an item changes the champion that holds it. */
-#define EFFECT_MODE_LOAD        0    /* a loaded game: the bonuses of the items that the champion holds */
-#define EFFECT_MODE_ADD         1    /* the item goes into a slot or the hand */
-#define EFFECT_MODE_REMOVE      (-1) /* the item leaves a slot or the hand */
-#define EFFECT_MODE_CONSUME     2    /* the champion eats or drinks the item */
-#define EFFECT_MODE_CONSUME_END (-2) /* the timed effect of a consumed item ends */
-#define EFFECT_MODE_RESTORE     3    /* a loaded game: a timed effect of a consumed item */
+enum EffectMode {
+    EFFECT_MODE_LOAD = 0,         /* a loaded game: the bonuses of the items that the champion holds */
+    EFFECT_MODE_ADD = 1,          /* the item goes into a slot or the hand */
+    EFFECT_MODE_REMOVE = -1,      /* the item leaves a slot or the hand */
+    EFFECT_MODE_CONSUME = 2,      /* the champion eats or drinks the item */
+    EFFECT_MODE_CONSUME_END = -2, /* the timed effect of a consumed item ends */
+    EFFECT_MODE_RESTORE = 3       /* a loaded game: a timed effect of a consumed item */
+};
 /* Data bytes of an item effect event: the thing type and the GDAT index of the consumed item. */
-#define EFFECT_DATA_TYPE        0
-#define EFFECT_DATA_INDEX       2
+#define EFFECT_DATA_TYPE  0
+#define EFFECT_DATA_INDEX 2
 /* The leader hand icon: its size in pixels, its color numbers, and the color number that stays clear. */
-#define HAND_ICON_SIZE          16
-#define HAND_ICON_COLORS        16
-#define HAND_ICON_KEY           12
+#define HAND_ICON_SIZE    16
+#define HAND_ICON_COLORS  16
+#define HAND_ICON_KEY     12
 /* The icon entry of no leader hand icon. */
-#define HAND_ICON_NONE          0xff
+#define HAND_ICON_NONE    0xff
 /* The mouth picture of the inventory: GDAT (9, 0x5b, 1, entry). */
-#define MOUTH_CATEGORY          0x09
-#define MOUTH_INDEX             0x5b
+#define MOUTH_CATEGORY    0x09
+#define MOUTH_INDEX       0x5b
 
 /* The leader hand object as the original keeps it beside g_game.leader_hand. */
 typedef struct {
@@ -325,7 +327,7 @@ bool champ_throw_leader_hand_object(int side);
 /* Computes the load of the champion: its slots and the items of its open chest. */
 void champ_compute_load(int champ);
 /* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
-void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, int mode);
+void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode);
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
 /* Puts thing into the hand of the leader; defer_cursor: the original changes the mouse cursor later. */

@@ -11,14 +11,17 @@
 #include "save.h"
 
 /* What the action area shows. */
-#define ACTION_MODE_HANDS      0
-#define ACTION_MODE_MENU       1
-#define ACTION_MODE_SPELL      2
-#define ACTION_MODE_MINION_MAP 3
-#define ACTION_MODE_MONEY_BOX  4
-#define ACTION_MODE_CONTAINER  5
-#define ACTION_MODE_RESULT     6
-#define ACTION_MODE_NONE       (-1)
+enum ActionMode {
+    ACTION_MODE_HANDS = 0,
+    ACTION_MODE_MENU = 1,
+    ACTION_MODE_SPELL = 2,
+    ACTION_MODE_MINION_MAP = 3,
+    ACTION_MODE_MONEY_BOX = 4,
+    ACTION_MODE_CONTAINER = 5,
+    ACTION_MODE_RESULT = 6,
+    ACTION_MODE_NONE = -1,
+    ACTION_MODE_STALE = -1 /* no input zone refresh yet for the current panels */
+};
 /* The spell panel: the hand index that opens it and the runes of a rune set. */
 #define ACTION_HAND_SPELL      2
 #define SPELL_RUNES_PER_SET    6
@@ -37,7 +40,7 @@
 typedef struct {
     int16_t champion;     /* champion ordinal whose hand or spell panel is open, 0: the hands of the party */
     int16_t hand;         /* the open hand, ACTION_HAND_SPELL for the spell panel */
-    int16_t mode;         /* ACTION_MODE_* */
+    int16_t mode;         /* an ActionMode */
     int16_t dirty;        /* the whole area redraws */
     int16_t redraw_delay; /* updates to wait before the open panel redraws */
     uint16_t flags;       /* minion map flags */

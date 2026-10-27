@@ -139,7 +139,7 @@ static unsigned be16(const uint8_t *p)
 }
 
 /* Checks the header, item sizes, and key table, and builds the item offset table. */
-static int parse_file(gdat_t *g, size_t file_size)
+static enum GdatResult parse_file(gdat_t *g, size_t file_size)
 {
     const uint8_t *f = g->file;
     if (file_size < HEADER_ITEM_SIZES || le16(f) != GDAT_SIGNATURE)
@@ -171,7 +171,7 @@ static int parse_file(gdat_t *g, size_t file_size)
 
 /* Loading */
 
-int gdat_load(const char *path, gdat_t **out)
+enum GdatResult gdat_load(const char *path, gdat_t **out)
 {
     *out = NULL;
     gdat_t *g = calloc(1, sizeof *g);
@@ -183,12 +183,12 @@ int gdat_load(const char *path, gdat_t **out)
         return GDAT_ERR_IO;
     }
     long file_size = fseek(fp, 0, SEEK_END) ? -1 : ftell(fp);
-    int err = GDAT_ERR_IO;
+    enum GdatResult err = GDAT_ERR_IO;
     if (file_size >= 0 && !fseek(fp, 0, SEEK_SET) && (g->file = malloc(file_size ? file_size : 1)) &&
         fread(g->file, 1, file_size, fp) == (size_t)file_size)
         err = parse_file(g, file_size);
     fclose(fp);
-    if (err)
+    if (err != GDAT_OK)
         gdat_free(g);
     else
         *out = g;
@@ -292,12 +292,12 @@ int gdat_image_size(const gdat_t *g, int item, int *out_width, int *out_height, 
     return (int)decoded_size(h.width, h.height, h.bpp);
 }
 
-int gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size)
+enum GdatResult gdat_decode_image(const gdat_t *g, int item, uint8_t *dst, size_t dst_size)
 {
     ImageHeader h;
     int format = read_image_header(g, item, &h);
     if (format < 0)
-        return format;
+        return (enum GdatResult)format;
     if (format == FORMAT_8BPP)
         return image_decode_8bpp(h.data, h.size, dst, dst_size);
     if (format != FORMAT_RAW)
@@ -319,7 +319,7 @@ const uint8_t *gdat_image_colormap(const gdat_t *g, int item)
     return h.data + h.size - COLORMAP_SIZE;
 }
 
-int gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_RGB_SIZE])
+enum GdatResult gdat_palette_color(const gdat_t *g, int color, uint8_t rgb[GDAT_RGB_SIZE])
 {
     uint32_t size;
     const uint8_t *palette = gdat_item(g, gdat_find(g, CAT_INTERFACE, PALETTE_INDEX, PALETTE_TYPE, GFX_PALETTE), &size);
@@ -370,7 +370,8 @@ static void set_pixel(uint8_t *buf, size_t pos, int color)
     *p = pos & 1 ? (*p & ~NIBBLE_MASK) | color : (*p & NIBBLE_MASK) | color << NIBBLE_BIT_COUNT;
 }
 
-int image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst, size_t dst_size)
+enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst,
+                                  size_t dst_size)
 {
     if (src_size < NIBBLE_START / 2)
         return GDAT_ERR_DATA;
@@ -448,7 +449,7 @@ static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t
     return (int)out;
 }
 
-int image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size)
+enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size)
 {
     if (src_size < LZSS_DATA)
         return GDAT_ERR_DATA;
