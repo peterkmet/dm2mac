@@ -28,7 +28,7 @@
 #define HASH_MAP_FACTOR       11
 #define RANDOM_ORNAMENT_SLOTS 30 /* random wall ornament hash: one of 30 values picks an ornament of the list */
 
-/* Random wall ornaments: the list of the map that view_enter_map entered last. */
+/* Random wall ornaments: the list of the map that aspect_enter_map entered last. */
 static const uint8_t *wall_ornaments;
 
 /* ---- Setup ---- */

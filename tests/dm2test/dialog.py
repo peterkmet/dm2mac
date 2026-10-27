@@ -17,9 +17,9 @@ class DialogState(ctypes.Structure):
 
 
 class Session(ctypes.Structure):
-    _fields_ = [(n, ctypes.c_int) for n in ("new_game", "use_dungenb", "loaded", "completed", "restart", "offer_restore",
-                                            "quit_code", "slot")] + [
-        ("load_time", ctypes.c_uint32), ("save_time", ctypes.c_uint32), ("exit_code", ctypes.c_int),
+    _fields_ = [("new_game", ctypes.c_int)] + [
+        (n, ctypes.c_bool) for n in ("use_dungenb", "loaded", "completed", "restart", "offer_restore")] + [
+        ("quit_code", ctypes.c_int), ("slot", ctypes.c_int), ("load_time", ctypes.c_uint32), ("save_time", ctypes.c_uint32), ("exit_code", ctypes.c_int),
         ("save_name", ctypes.c_char * 32), ("data_dir", ctypes.c_char * 1024),
         ("save_dir", ctypes.c_char * 1024)]
 
@@ -32,7 +32,7 @@ def reset_session(lib):
     session.slot = -1
     state = DialogState.in_dll(lib, "g_dialog")
     state.screen_mode, state.button_count = 1, 0
-    ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "g_main_loop")) + 24).value = 0  # MainLoop.quit
+    main_loop_quit(lib).value = 0
     ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = None
 
 
@@ -48,8 +48,9 @@ class InputMatch(ctypes.Structure):
 
 
 def main_loop_quit(lib):
-    """MainLoop.quit (after tick_threshold, tick_count, timer_ticks, running, view_hidden, end)."""
-    return ctypes.c_int.from_address(ctypes.addressof(ctypes.c_int.in_dll(lib, "g_main_loop")) + 24)
+    """MainLoop.quit."""
+    from dm2test.input import MainLoop
+    return ctypes.c_bool.from_address(ctypes.addressof(MainLoop.in_dll(lib, "g_main_loop")) + MainLoop.quit.offset)
 
 
 def find_point(lib, mode, test):

@@ -18,9 +18,9 @@
 #include "sound_request.h"
 #include "weather.h"
 
-MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = 1};
+MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = true};
 UiState g_ui;
-int g_input_command_stop;
+bool g_input_command_stop;
 int g_input_drag_state;
 int g_input_mouse_buttons;
 Session g_session = {.slot = SAVE_SLOT_NONE};
@@ -34,7 +34,7 @@ const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "
 #define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
 #define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
 
-void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving)
+void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
         sensor_process_map_entry(0);
@@ -218,9 +218,9 @@ void game_start_play(void)
 {
     g_party_sleeping = 0;
     g_party.push_mode = 0;
-    g_main_loop.view_hidden = 0;
+    g_main_loop.view_hidden = false;
     g_main_loop.tick_threshold = STEP_TICKS;
-    g_main_loop.running = 1;
+    g_main_loop.running = true;
 }
 
 void game_set_running(bool on)
@@ -255,12 +255,12 @@ void game_reset_step_ticks(void)
 
 void game_clear_end(void)
 {
-    g_main_loop.end = 0;
+    g_main_loop.end = false;
 }
 
 void game_request_quit(void)
 {
-    g_main_loop.quit = 1;
+    g_main_loop.quit = true;
 }
 
 void game_clear_ui_state(void)
@@ -295,7 +295,8 @@ void game_set_eye_held(bool on)
 
 void game_release_eye_and_mouth(void)
 {
-    g_ui.eye = g_ui.mouth = 0;
+    g_ui.eye = false;
+    g_ui.mouth = false;
 }
 
 void game_set_command_stop(bool on)
@@ -337,7 +338,7 @@ void game_note_slot_loaded(void)
 {
     g_session.new_game = 0;
     g_session.load_time = g_game.game_time;
-    g_session.loaded = 1;
+    g_session.loaded = true;
 }
 
 void game_note_slot_saved(void)

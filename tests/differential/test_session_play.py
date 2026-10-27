@@ -150,7 +150,8 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
 def test_hide_game_view_cancels_the_champion_drag(lib):
     # The original game_hide_view cancels a champion drag inside its guard (SKULL.c:54260).
     drag = ctypes.c_int.in_dll(lib, "g_input_drag_state")
-    hidden = ctypes.c_int.from_address(ctypes.addressof(main_loop_quit(lib)) - 8)  # MainLoop.view_hidden
+    from dm2test.input import MainLoop
+    hidden = ctypes.c_bool.from_address(ctypes.addressof(MainLoop.in_dll(lib, "g_main_loop")) + MainLoop.view_hidden.offset)
     DialogState.in_dll(lib, "g_dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
     lib.play_hide_view()
     assert (hidden.value, drag.value) == (1, 0)

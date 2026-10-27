@@ -40,12 +40,18 @@ static const char field_names[FIELD_COUNT][3] = {"SK", "LV", "CM", "BZ", "TR", "
 #define NUMBER_WIDTH 4
 #define NUMBER_SPARE 4
 
-const char *gtext_format_number(int value, int pad, int width)
+/* The texts that gtext_format_number and gtext_gdat_label return. */
+static struct {
+    char number[NUMBER_SPARE + NUMBER_WIDTH + 1];
+    char label[TEXT_SIZE];
+} gtext;
+
+const char *gtext_format_number(int value, bool pad, int width)
 {
-    static char buf[NUMBER_SPARE + NUMBER_WIDTH + 1];
-    char *end = buf + NUMBER_SPARE + NUMBER_WIDTH, *p = end;
+    char *end = gtext.number + NUMBER_SPARE + NUMBER_WIDTH;
+    char *p = end;
     if (pad)
-        memset(buf + NUMBER_SPARE, ' ', NUMBER_WIDTH);
+        memset(gtext.number + NUMBER_SPARE, ' ', NUMBER_WIDTH);
     *end = '\0';
     value = (uint16_t)value;
     if (!value)
@@ -126,14 +132,13 @@ char *gtext_gdat(int category, int index, int entry, char *dst)
 
 const char *gtext_gdat_label(int category, int index, int entry)
 {
-    static char label[TEXT_SIZE];
     char text[TEXT_SIZE];
     if (!*gtext_gdat(category, index, entry, text))
         return NULL;
     size_t n = strcspn(text, ":");
-    memcpy(label, text, n);
-    label[n] = '\0';
-    return label;
+    memcpy(gtext.label, text, n);
+    gtext.label[n] = '\0';
+    return gtext.label;
 }
 
 int16_t gtext_gdat_field(int category, int index, int entry, int field)
@@ -204,7 +209,8 @@ static char *decode_words(uint16_t text, char *o, char *end)
 
 void gtext_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
 {
-    char *o = dst, *end = dst + size - 1;
+    char *o = dst;
+    char *end = dst + size - 1;
     unsigned ornament = NO_ORNAMENT_TEXT;
     uint16_t text = thing;
     *o = '\0';

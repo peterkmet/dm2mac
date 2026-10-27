@@ -17,24 +17,25 @@ typedef struct {
     int tick_threshold;   /* timer ticks per game step */
     int tick_count;       /* timer ticks since the step started */
     uint32_t timer_ticks; /* all timer ticks */
-    int running;          /* 0 while the game is paused */
-    int view_hidden;      /* the viewport shows no dungeon (pause, sleep) */
-    int end;              /* the party died or the player quit: the loop stops (g_game_end_flag) */
-    int quit;             /* the program ends (session_quit) */
-    int closed;           /* the platform ended the program (closed window, control quit): no end movies */
+    bool running;         /* false while the game is paused */
+    bool view_hidden;     /* the viewport shows no dungeon (pause, sleep) */
+    bool end;             /* the party died or the player quit: the loop stops */
+    bool quit;            /* the program ends (session_quit) */
+    bool closed;          /* the platform ended the program (closed window, control quit): no end movies */
 } MainLoop;
 
 extern MainLoop g_main_loop;
 
-/* Interface state that the drawing reads. Later steps change it (Step 14: input, Step 15: champions). */
+/* Interface state that the drawing reads. */
 typedef struct {
-    int16_t inventory;  /* champion ordinal (champion + 1) of the open inventory, 0 none */
-    uint16_t candidate; /* champion ordinal of a champion that is being recruited, 0 none */
-    int16_t screen_needs_refresh;
-    uint16_t buttons;   /* inventory buttons that show pressed */
-    int16_t eye, mouth; /* the eye or the mouth of the inventory is held */
-    int16_t push_mode;  /* the movement arrows show the push arrows */
-    int16_t panel_mode; /* what the inventory panel shows: a PanelMode */
+    int16_t inventory;         /* champion ordinal (champion + 1) of the open inventory, 0 none */
+    uint16_t candidate;        /* champion ordinal of a champion that is being recruited, 0 none */
+    bool screen_needs_refresh; /* the next drawing of the champion states redraws the whole open inventory */
+    uint16_t buttons;          /* inventory buttons that show pressed */
+    bool eye;                  /* the eye of the inventory is held */
+    bool mouth;                /* the mouth of the inventory is held */
+    bool push_mode;            /* the movement arrows show the push arrows */
+    int16_t panel_mode;        /* what the inventory panel shows: a PanelMode */
 } UiState;
 
 /* What the inventory panel shows (g_ui.panel_mode). */
@@ -62,11 +63,11 @@ enum InputMode {
     INPUT_MODE_RECRUIT,
     INPUT_MODE_INVENTORY,
     INPUT_MODE_NAME,
-    INPUT_MODE_COUNT /* the size of the input tree root table of SKULL.EXE */
+    INPUT_MODE_COUNT /* the number of input modes */
 };
-/* The last command stops the command processing of this tick (the original g_command_stop). */
-extern int g_input_command_stop;
-/* A champion portrait or an object is dragged (Step 15), 0 none. */
+/* The last command stops the command processing of this tick. */
+extern bool g_input_command_stop;
+/* A champion portrait or an object is dragged, 0 none. */
 extern int g_input_drag_state;
 /* Mouse event types: buttons (bit 1 left, bit 0 right), a released left button (only while the eye or the mouth is
    held or the automap is open), a key. */
@@ -74,7 +75,7 @@ extern int g_input_drag_state;
 #define INPUT_BUTTON_LEFT   0x02
 #define INPUT_LEFT_RELEASED 0x04
 #define INPUT_KEY           0x20
-/* The mouse buttons that are down: INPUT_BUTTON_* bits (the original mouse_get_state). */
+/* The mouse buttons that are down: INPUT_BUTTON_* bits. */
 extern int g_input_mouse_buttons;
 
 /* The save slot and the sizes of the session paths. */
@@ -83,15 +84,16 @@ extern int g_input_mouse_buttons;
 #define SAVE_FILE_SIZE 28   /* the longest part after the folder: "/DATA/SKSAVE<int>.BAK" with an 11-character int */
 #define SAVE_PATH_SIZE (SAVE_DIR_SIZE + SAVE_FILE_SIZE) /* a folder and its longest file part, without cutting */
 typedef struct {
-    int new_game;                  /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot */
-    int use_dungenb;               /* the new game reads DUNGENB.DAT when it exists */
-    int loaded;                    /* a game is in memory: the end of the game can load the last slot again */
-    int completed;                 /* the party finished the game */
-    int restart;                   /* the player chose to restart the program */
-    int offer_restore;             /* the end of the game offers the load of the last slot */
-    int quit_code;                 /* the exit code that session_quit gives a non-zero value: the party died */
-    int slot;                      /* the slot of the last load or save, SAVE_SLOT_NONE */
-    uint32_t load_time, save_time; /* the game time of the last load and save */
+    int new_game;       /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot */
+    bool use_dungenb;   /* the new game reads DUNGENB.DAT when it exists */
+    bool loaded;        /* a game is in memory: the end of the game can load the last slot again */
+    bool completed;     /* the party finished the game */
+    bool restart;       /* the player chose to restart the program */
+    bool offer_restore; /* the end of the game offers the load of the last slot */
+    int quit_code;      /* the exit code that session_quit gives a non-zero value: the party died */
+    int slot;           /* the slot of the last load or save, SAVE_SLOT_NONE */
+    uint32_t load_time; /* the game time of the last load */
+    uint32_t save_time; /* the game time of the last save */
     int exit_code;
     char save_name[SAVE_NAME_SIZE]; /* the name of the slot in the save dialog */
     char data_dir[SAVE_DIR_SIZE];   /* the game folder: DATA holds the dungeon and the saves */
@@ -117,7 +119,7 @@ extern const char *const g_game_mode_names[GAME_MODE_COUNT];
 #define CHEAT_ALL      0x3f
 
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
-void game_enter_map(int16_t x, int16_t y, int16_t map, int leaving);
+void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving);
 /* Runs the due timeline events. */
 void game_process_timeline(void);
 

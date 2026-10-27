@@ -40,9 +40,9 @@ G_SKILL_RAISED, G_MAP_GFX_SET = 0x7FFF8, 0x75BFE
 
 
 class UiState(ctypes.Structure):
-    _fields_ = [("inventory", ctypes.c_int16), ("candidate", ctypes.c_uint16), ("screen_needs_refresh", ctypes.c_int16),
-                ("buttons", ctypes.c_uint16), ("eye", ctypes.c_int16), ("mouth", ctypes.c_int16),
-                ("push_mode", ctypes.c_int16), ("panel_mode", ctypes.c_int16)]
+    _fields_ = [("inventory", ctypes.c_int16), ("candidate", ctypes.c_uint16), ("screen_needs_refresh", ctypes.c_bool),
+                ("buttons", ctypes.c_uint16), ("eye", ctypes.c_bool), ("mouth", ctypes.c_bool),
+                ("push_mode", ctypes.c_bool), ("panel_mode", ctypes.c_int16)]
 
 
 class ActionArea(ctypes.Structure):
