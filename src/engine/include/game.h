@@ -130,6 +130,8 @@ void game_enter_new_map(void);
 void game_run_party_clocks(void);
 /* The game time goes on one step: held lights burn down, the action effect and the cooldowns run down. */
 void game_advance_time(void);
+/* Adds 1 to the global byte variable index (GLOBAL_BYTE_FIRST and up), up to GLOBAL_BYTE_MAX. */
+void game_global_byte_add(int index);
 
 /* The main loop */
 /* The party is awake and pushes nothing; the main loop runs game steps at the normal speed. */

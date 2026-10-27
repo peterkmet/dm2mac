@@ -280,6 +280,10 @@ class AnchoredZone(ctypes.Structure):
     _fields_ = [("zone", ctypes.c_int), ("anchor", ctypes.c_int)]
 
 
+class ViewGridPoint(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
+
+
 @pytest.fixture(scope="module")
 def image_emu():
     from dm2tools.emu import Emu
@@ -313,9 +317,9 @@ def test_rotate_grid5_cell_matches_original(lib, image_emu):
 
 
 def test_offset_creature_toward_party_matches_original(lib, image_emu):
-    lib.view_offset_toward_party.argtypes = [ctypes.c_int16] * 3 + [i16_p, i16_p]
+    lib.view_offset_toward_party.argtypes = [ViewGridPoint, ViewGridPoint, ctypes.c_int16]
+    lib.view_offset_toward_party.restype = ViewGridPoint
     rng = random.Random(22)
-    x, y = ctypes.c_int16(), ctypes.c_int16()
     cases = [(px, py, 8, 8, size) for px in range(5, 12) for py in range(5, 12) for size in range(5)]
     cases += [(rng.randrange(-30, 90), rng.randrange(-30, 90), rng.randrange(-30, 90), rng.randrange(-30, 90),
                rng.randrange(6)) for _ in range(1000)]
@@ -323,9 +327,8 @@ def test_offset_creature_toward_party_matches_original(lib, image_emu):
         image_emu.write(OUT_X, struct.pack("<h", cx))
         image_emu.write(OUT_Y, struct.pack("<h", cy))
         image_emu.call(VIEW_OFFSET_CREATURE, party_x, party_y, size, OUT_X, OUT_Y)
-        x.value, y.value = cx, cy
-        lib.view_offset_toward_party(party_x, party_y, size, ctypes.byref(x), ctypes.byref(y))
-        assert (x.value, y.value) == read_xy(image_emu), (party_x, party_y, cx, cy, size)
+        moved = lib.view_offset_toward_party(ViewGridPoint(party_x, party_y), ViewGridPoint(cx, cy), size)
+        assert (moved.x, moved.y) == read_xy(image_emu), (party_x, party_y, cx, cy, size)
 
 
 def original_thing_grids(original_view, map_, x, y, direction):

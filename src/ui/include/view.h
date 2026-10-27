@@ -78,6 +78,11 @@ typedef struct {
     int16_t x, y;
 } ViewPoint;
 
+/* A point of the thing grid, in thing grid cells. */
+typedef struct {
+    int16_t x, y;
+} ViewGridPoint;
+
 /* ---- Map graphics ---- */
 
 /* Sets up the map graphics of map for the view: the view part of entering a map. */
@@ -93,9 +98,8 @@ extern uint8_t g_view_object_grid[VIEW_GRID_SIZE]; /* exported for the tests */
 /* By view position: bit n set when grid cell n of the square holds a missile, or an object. */
 extern uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT]; /* exported for the tests */
 extern uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];  /* exported for the tests */
-/* Moves a creature of size 1 to 3 at (*out_x, *out_y) toward the party eye at (party_x, party_y), in thing grid cells;
-   exported for the tests. */
-void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t creature_size, int16_t *out_x, int16_t *out_y);
+/* The place of a creature of size 1 to 3 at creature moved toward the party eye at eye; exported for the tests. */
+ViewGridPoint view_offset_toward_party(ViewGridPoint eye, ViewGridPoint creature, int16_t creature_size);
 /* Loads the view square at view position pos for the party at (x, y) looking to dir. */
 void view_load_square(int16_t x, int16_t y, int pos, int16_t dir); /* exported for the tests */
 /* Shows the squares behind a seamless passage that view_mark_hidden_squares hid. */
@@ -115,7 +119,7 @@ void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int color_key); 
 /* The view picture, 224 x 136 pixels. */
 extern Bitmap g_view_viewport;
 /* The viewport shows the push arrows (the party pushes or can push a creature). */
-extern int g_view_arrows_enabled;
+extern bool g_view_arrows_enabled;
 /* Fills the cleared band of the viewport (a gap that the floor and ceiling leave). */
 void view_clear_viewport(void);
 /* The view position of the square at depth (0 to 4) and side (negative to the left), -1 when the view has none. */
@@ -149,7 +153,7 @@ extern int g_view_click_zone_count;
    a shop click above the center shows the next item, else the last item. */
 extern int16_t g_view_hit_offset_y; /* exported for the tests */
 /* True when a click at (x, y) of the viewport hits the creature on (square_x, square_y) in front of the party; *out_side:
-   0 its middle, 1 its right, 3 its left. */
+   0 its middle, TURN_RIGHT its right, TURN_LEFT its left. */
 bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side);
 /* True when the ornament of the wall at view position pos (0 to 3) shows a pixel at (x, y) of the viewport. */
 bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y);

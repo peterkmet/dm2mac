@@ -214,6 +214,13 @@ void game_advance_time(void)
         g_game.throw_cooldown--;
 }
 
+void game_global_byte_add(int index)
+{
+    uint8_t *value = g_game.global_bytes + index - GLOBAL_BYTE_FIRST;
+    if (*value < GLOBAL_BYTE_MAX)
+        ++*value;
+}
+
 void game_start_play(void)
 {
     g_party_sleeping = 0;
