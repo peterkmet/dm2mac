@@ -334,7 +334,7 @@ static void put_error(Json *reply, const char *error)
    hand, volumes, end, game mode, automap, cheats. */
 static void put_state(Json *reply)
 {
-    int mode = input_get_mode();
+    enum InputMode mode = input_get_mode();
     bool movie = movie_is_playing();
     const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
     put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", g_game.game_time,
@@ -558,7 +558,7 @@ static void start_turn_or_fail(const char *error, Json *reply)
 /* The input modes in which the game runs a modal loop: save, load, and a new game wait until it closes. */
 static bool modal_mode(void)
 {
-    int mode = input_get_mode();
+    enum InputMode mode = input_get_mode();
     return mode == INPUT_MODE_MENU || mode == INPUT_MODE_PICTURE || mode == INPUT_MODE_DIALOG ||
            mode == INPUT_MODE_NAME;
 }

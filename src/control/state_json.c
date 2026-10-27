@@ -44,7 +44,6 @@
 #define PILE_ALCOVE      CELL_COUNT      /* the cell number of the alcove pile, after the 4 floor cells */
 
 /* The counts of the name tables. */
-#define MODE_COUNT           ((int)(sizeof mode_names / sizeof mode_names[0]))
 #define EXPLOSION_NAME_COUNT (sizeof explosion_names / sizeof explosion_names[0])
 
 /* A wall square of the view: what the view draws there, seen to dir, and its square. */
@@ -142,7 +141,7 @@ void json_key(Json *j, const char *key)
 /* ---- The game state ---- */
 
 /* The input modes by number (the roots of the input tree in input.c). */
-static const char *const mode_names[] = {
+static const char *const mode_names[INPUT_MODE_COUNT] = {
     [INPUT_MODE_MENU] = "menu",   [INPUT_MODE_PICTURE] = "picture", [INPUT_MODE_SLEEP] = "sleep",
     [INPUT_MODE_PAUSE] = "pause", [INPUT_MODE_DIALOG] = "dialog",   [INPUT_MODE_MOVE] = "move",
     [INPUT_MODE_PUSH] = "push",   [INPUT_MODE_RECRUIT] = "recruit", [INPUT_MODE_INVENTORY] = "inventory",
@@ -198,9 +197,9 @@ static const char *const map_option_names[MAP_OPTION_COUNT] = {"creatures", "det
 /* The amounts of rain and clouds that the sky shows. */
 static const char *const amount_names[] = {"none", "light", "medium", "heavy"};
 
-const char *state_json_mode_name(int mode)
+const char *state_json_mode_name(enum InputMode mode)
 {
-    return mode >= 0 && mode < MODE_COUNT && mode_names[mode] ? mode_names[mode] : "unknown";
+    return mode >= 0 && mode < INPUT_MODE_COUNT && mode_names[mode] ? mode_names[mode] : "unknown";
 }
 
 bool state_json_game_over(void)
@@ -477,7 +476,7 @@ static void put_champion(Json *j, int champ)
 
 /* The open dialog and its button texts. The slot dialogs do not set g_dialog.id: they give the id of the last
    dialog (docs/llm/llm-mode.md). */
-static void put_dialog(Json *j, int mode)
+static void put_dialog(Json *j, enum InputMode mode)
 {
     if (mode != INPUT_MODE_DIALOG) {
         put_null(j);
@@ -497,7 +496,7 @@ static void put_dialog(Json *j, int mode)
 }
 
 /* The party: square, direction, darkness, and whether it can move, sleeps, or died. */
-static void party_json(Json *j, int mode)
+static void party_json(Json *j, enum InputMode mode)
 {
     json_open(j, '{');
     key_int(j, "map", g_game.party_map);
@@ -710,7 +709,7 @@ static void outdoor_json(Json *j)
 void state_json_state(Json *j)
 {
     uint32_t seed = g_random_seed; /* a stat aura draws a random number in champ_get_stat: the read changes no game */
-    int mode = input_get_mode();
+    enum InputMode mode = input_get_mode();
     json_open(j, '{');
     key_int(j, "time", g_game.game_time);
     key_str(j, "game_mode", g_game_mode_names[g_game_mode]);

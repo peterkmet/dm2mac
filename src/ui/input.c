@@ -38,7 +38,6 @@
 /* Sizes of the input tables of SKULL.EXE. */
 #define INPUT_NODE_COUNT    76
 #define INPUT_CHILD_COUNT   83
-#define INPUT_MODE_COUNT    10
 #define INPUT_ZONE_COUNT    62
 #define INPUT_COMMAND_COUNT 264
 #define INPUT_KEY_COUNT     121
@@ -831,7 +830,7 @@ static int16_t command_list_start[INPUT_COMMAND_COUNT];
 static int16_t key_list_start[INPUT_KEY_COUNT];
 
 static struct {
-    int mode, saved_mode;
+    enum InputMode mode, saved_mode;
     struct {
         int16_t type, x, y;
     } events[EVENT_RING];
@@ -1098,7 +1097,7 @@ static uint16_t find_key_command(const InputNode *node, uint16_t key)
 /* The command of key in mode. In the advanced mode, F5 and F9 in the movement mode give the quick save and the quick
    load, Tab and M there open the automap, C the cheat screen, Esc the options menu (instead of the pause), Tab in the inventory closes it, and a letter key W S A D Q E without a command gives
    the command of its keypad key. */
-static uint16_t key_command(int mode, uint16_t key)
+static uint16_t key_command(enum InputMode mode, uint16_t key)
 {
     if (g_game_mode == GAME_MODE_ADVANCED && mode == INPUT_MODE_MOVE && key == KEY_OPTIONS)
         return CMD_OPTIONS;
@@ -1152,7 +1151,7 @@ static bool right_click_cancels_dialog(int type)
 /* The command of a click; in the advanced mode a left click on a status box outside the hands is a click on the
    bars when the leader hand holds an object (it stores the object), else a click on the name (it opens the
    inventory of the champion). */
-static uint16_t click_command(int mode, int x, int y, int buttons)
+static uint16_t click_command(enum InputMode mode, int x, int y, int buttons)
 {
     uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons);
     if (g_game_mode != GAME_MODE_ADVANCED || buttons != INPUT_BUTTON_LEFT)
@@ -1173,14 +1172,14 @@ static uint16_t click_command(int mode, int x, int y, int buttons)
     return command;
 }
 
-uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect)
+uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int buttons, int16_t *rect)
 {
     uint16_t command = click_command(mode, x, y, buttons);
     memcpy(rect, in.rect, sizeof in.rect);
     return command;
 }
 
-uint16_t input_key_command(int mode, uint16_t key, int16_t *rect)
+uint16_t input_key_command(enum InputMode mode, uint16_t key, int16_t *rect)
 {
     uint16_t command = key_command(mode, key);
     memcpy(rect, in.rect, sizeof in.rect);
@@ -1242,7 +1241,7 @@ static void update_active_zones(void)
     }
 }
 
-void input_set_mode(int mode)
+void input_set_mode(enum InputMode mode)
 {
     if (mode != in.mode)
         input_flush();
@@ -1250,7 +1249,7 @@ void input_set_mode(int mode)
     update_active_zones();
 }
 
-int input_get_mode(void)
+enum InputMode input_get_mode(void)
 {
     return in.mode;
 }
@@ -1260,7 +1259,7 @@ void input_refresh_mode(void)
     update_active_zones();
 }
 
-void input_push_mode(int mode)
+void input_push_mode(enum InputMode mode)
 {
     in.saved_mode = in.mode;
     input_reset_states();

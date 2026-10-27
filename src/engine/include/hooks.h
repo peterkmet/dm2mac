@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "game.h"
 #include "sound_request.h"
 
 typedef struct {
@@ -28,7 +29,7 @@ typedef struct {
     void (*flush_input)(void);                     /* drops the waiting clicks and keys */
     void (*poll_input)(void);                      /* reads the clicks and keys that came since the last read */
     void (*clear_viewport)(void);                  /* fills the cleared band of the viewport */
-    void (*set_input_mode)(int mode);              /* the clicks and keys map to the commands of an INPUT_MODE_* */
+    void (*set_input_mode)(enum InputMode mode);   /* the clicks and keys map to the commands of an INPUT_MODE_* */
     void (*show_view)(void);                       /* shows the dungeon view again (recruit) */
     void (*hide_view)(void);                       /* hides the dungeon view (recruit) */
     void (*present_viewport)(void);                /* copies the view picture to the screen */

@@ -26,7 +26,7 @@ int g_input_mouse_buttons;
 Session g_session = {.slot = SAVE_SLOT_NONE};
 /* The cheat bits that are on (CHEAT_*). */
 static uint8_t cheats;
-int g_game_mode = GAME_MODE_VANILLA;
+enum GameMode g_game_mode = GAME_MODE_VANILLA;
 const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
 
 /* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */

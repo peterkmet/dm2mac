@@ -29,7 +29,7 @@
 #define READOUT_POSITION  0
 #define READOUT_DIRECTION 1
 
-int g_advanced_screen;
+enum AdvancedScreen g_advanced_screen;
 
 static struct {
     bool active;

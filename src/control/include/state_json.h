@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "game.h"
 #include "seen.h"
 
 /* The parts of the game state that state_json_string gives. */
@@ -52,7 +53,7 @@ void json_key(Json *j, const char *key);
 /* The game state */
 
 /* The name of an input mode (the roots of the input tree in input.c), "unknown" for another number. */
-const char *state_json_mode_name(int mode);
+const char *state_json_mode_name(enum InputMode mode);
 /* The party died or finished the game. */
 bool state_json_game_over(void);
 /* The count of the actions in the action menu of a hand of a champion, as champions[].hands lists them; the open

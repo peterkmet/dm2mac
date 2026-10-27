@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "game.h"
 
 /* The actions of the mode screen keys. */
 #define MODE_SCREEN_UP    0
@@ -22,7 +23,7 @@ void mode_screen_start(void);
 /* ---- Queries ---- */
 
 /* The game mode of the item at the cursor (GAME_MODE_VANILLA or GAME_MODE_ADVANCED). */
-int mode_screen_cursor(void);
+enum GameMode mode_screen_cursor(void);
 /* The player selected the mode at the cursor. */
 bool mode_screen_is_done(void);
 /* The screen rectangle of an item box; false for an item outside the list. */

@@ -40,16 +40,19 @@ typedef struct {
 extern UiState g_ui;
 
 /* Input modes: the root of the input tree that maps clicks and keys to commands. */
-#define INPUT_MODE_MENU      0
-#define INPUT_MODE_PICTURE   1
-#define INPUT_MODE_SLEEP     2
-#define INPUT_MODE_PAUSE     3
-#define INPUT_MODE_DIALOG    4
-#define INPUT_MODE_MOVE      5
-#define INPUT_MODE_PUSH      6
-#define INPUT_MODE_RECRUIT   7
-#define INPUT_MODE_INVENTORY 8
-#define INPUT_MODE_NAME      9
+enum InputMode {
+    INPUT_MODE_MENU,
+    INPUT_MODE_PICTURE,
+    INPUT_MODE_SLEEP,
+    INPUT_MODE_PAUSE,
+    INPUT_MODE_DIALOG,
+    INPUT_MODE_MOVE,
+    INPUT_MODE_PUSH,
+    INPUT_MODE_RECRUIT,
+    INPUT_MODE_INVENTORY,
+    INPUT_MODE_NAME,
+    INPUT_MODE_COUNT /* the size of the input tree root table of SKULL.EXE */
+};
 /* The last command stops the command processing of this tick (the original g_command_stop). */
 extern int g_input_command_stop;
 /* A champion portrait or an object is dragged (Step 15), 0 none. */
@@ -89,11 +92,8 @@ extern Session g_session;
    load (F9), the automap (Tab or M), and the cheats; turnbased plays turn by turn over the control socket, with the
    seen squares and the AMAP block of advanced, without its keys and cheats. Without the cheats the game rules are the
    same in all modes. */
-#define GAME_MODE_VANILLA   0
-#define GAME_MODE_ADVANCED  1
-#define GAME_MODE_TURNBASED 2
-#define GAME_MODE_COUNT     3
-extern int g_game_mode; /* GAME_MODE_VANILLA in the library; main.c sets the --mode value */
+enum GameMode { GAME_MODE_VANILLA, GAME_MODE_ADVANCED, GAME_MODE_TURNBASED, GAME_MODE_COUNT };
+extern enum GameMode g_game_mode; /* GAME_MODE_VANILLA in the library; main.c sets the --mode value */
 extern const char *const g_game_mode_names[GAME_MODE_COUNT];
 /* The cheat bits of the advanced mode, as the CHTS block of the save file holds them (game_get_cheats). A new game
    turns them off; a load takes them from the save file. */

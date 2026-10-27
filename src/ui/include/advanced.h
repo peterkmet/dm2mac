@@ -41,12 +41,9 @@
 enum QuickLoadResult { QUICK_LOADED, QUICK_MISSING, QUICK_DAMAGED, QUICK_BLOCKED, QUICK_LOST };
 
 /* The screens that cover the viewport, one at a time; the game time stops while one is open. */
-#define ADVANCED_SCREEN_NONE    0
-#define ADVANCED_SCREEN_AUTOMAP 1
-#define ADVANCED_SCREEN_CHEATS  2
-#define ADVANCED_SCREEN_OPTIONS 3
+enum AdvancedScreen { ADVANCED_SCREEN_NONE, ADVANCED_SCREEN_AUTOMAP, ADVANCED_SCREEN_CHEATS, ADVANCED_SCREEN_OPTIONS };
 
-extern int g_advanced_screen; /* the open viewport screen (ADVANCED_SCREEN_*) */
+extern enum AdvancedScreen g_advanced_screen; /* the open viewport screen */
 
 /* Setup */
 /* Closes the open viewport screen: a new or loaded game starts. */

@@ -35,7 +35,7 @@ static const uint8_t screen_palette[SCREEN_COLORS][RGB_CHANNELS] = {
     {VGA_FULL,       VGA_TWO_THIRDS, 0             },
 };
 
-static int16_t cursor = GAME_MODE_ADVANCED;
+static enum GameMode cursor = GAME_MODE_ADVANCED;
 static bool done;
 
 /* ---- Setup ---- */
@@ -48,7 +48,7 @@ void mode_screen_start(void)
 
 /* ---- Queries ---- */
 
-int mode_screen_cursor(void)
+enum GameMode mode_screen_cursor(void)
 {
     return cursor;
 }
@@ -91,7 +91,7 @@ void mode_screen_click(int16_t x, int16_t y)
         return;
     for (int16_t i = 0; mode_screen_item_box(i, r); i++)
         if (x >= r[RECT_X] && x < r[RECT_X] + r[RECT_W] && y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
-            cursor = i;
+            cursor = (enum GameMode)i;
             done = true;
             return;
         }
@@ -115,5 +115,5 @@ void mode_screen_draw(void)
     memcpy(g_video_palette, screen_palette, sizeof screen_palette);
     print_centered((const int16_t[RECT_SIZE]){0, HEADING_TOP, SCREEN_W, LINE_HEIGHT}, COLOR_LIGHT_GRAY, heading);
     for (int16_t i = 0; mode_screen_item_box(i, r); i++)
-        print_centered(r, i == cursor ? COLOR_GOLD : COLOR_LIGHT_GRAY, items[i]);
+        print_centered(r, (enum GameMode)i == cursor ? COLOR_GOLD : COLOR_LIGHT_GRAY, items[i]);
 }

@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "game.h"
 #include "gfx.h"
 
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
@@ -132,19 +133,20 @@ bool input_is_idle(void);
 
 /* ---- The input tree ---- */
 
-/* The command of a click with buttons at (x, y) in mode, and the rectangle of its zone; 0 for none. */
-uint16_t input_click_command(int mode, int16_t x, int16_t y, int buttons, int16_t *rect); /* exported for the tests */
+/* The command of a click with buttons at (x, y) in mode, and the rectangle of its zone; 0 for none;
+   exported for the tests. */
+uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int buttons, int16_t *rect);
 /* The command of key in mode, and the rectangle of its zone; 0 for none. */
-uint16_t input_key_command(int mode, uint16_t key, int16_t *rect); /* exported for the tests */
+uint16_t input_key_command(enum InputMode mode, uint16_t key, int16_t *rect); /* exported for the tests */
 /* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
-void input_set_mode(int mode);
+void input_set_mode(enum InputMode mode);
 /* The current input mode. */
-int input_get_mode(void);
+enum InputMode input_get_mode(void);
 /* Recomputes the active zones of the current mode. */
 void input_refresh_mode(void);
 /* Remembers the current mode for input_pop_mode, ends the push mode, the click feedback and a drag, and selects
    mode. */
-void input_push_mode(int mode);
+void input_push_mode(enum InputMode mode);
 /* The mode of before the last input_push_mode returns. */
 void input_pop_mode(void);
 
