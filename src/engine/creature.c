@@ -894,6 +894,10 @@ void creature_process_event(int16_t x, int16_t y, int type)
         return;
     AiContext saved;
     bool restored = ai_begin(group, x, y, type, &saved);
+    if (!g_ai.active) { /* fix: the original reads a null active entry */
+        ai_end(restored, &saved);
+        return;
+    }
     ActiveGroup *a = g_ai.active;
     const CreatureInfo *info = g_ai.info;
     a->event = EVENT_NO_SLOT;
