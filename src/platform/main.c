@@ -41,7 +41,6 @@
 /* Sizes of the window, the icon, and the paths. */
 #define WINDOW_SCALE    3
 #define ICON_MAX_PIXELS 16384 /* 128 x 128 */
-#define PATH_SIZE       1024
 
 /* The exit status of a bad command line. */
 #define EXIT_USAGE 2
@@ -159,7 +158,7 @@ static struct {
     Gdat *gdat;                               /* GRAPHICS.DAT, loaded for the whole run */
     uint32_t icon[ICON_MAX_PIXELS];           /* the ARGB pixels of the window icon */
     int window_x, window_y;                   /* the last pointer position of the window; -1 before the first */
-    char control_path[PATH_SIZE];             /* the default control socket path; options.control points to it */
+    char control_path[OS_DIR_SIZE];           /* the default control socket path; options.control points to it */
 } program = {.window_x = -1, .window_y = -1};
 
 /* Shows g_video_fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
@@ -181,7 +180,7 @@ static void load_palette(void)
 /* Loads GRAPHICS.DAT, the screen layout, the colors, and the font; false with a message on an error. */
 static bool load_graphics(const char *data)
 {
-    char graphics[PATH_SIZE];
+    char graphics[OS_PATH_SIZE];
     snprintf(graphics, sizeof graphics, "%s/DATA/GRAPHICS.DAT", data);
     if (gdat_load(graphics, &program.gdat) != GDAT_OK) {
         os_log("cannot read %s", graphics);
@@ -533,7 +532,7 @@ static void log_to_file(const char *message)
 /* Opens dm2.log in the game folder and sends the messages to it. */
 static void open_log(const char *data)
 {
-    char path[PATH_SIZE];
+    char path[OS_PATH_SIZE];
     snprintf(path, sizeof path, "%s/%s", data, LOG_FILE);
     program.log_file = fopen(path, "w");
     if (!program.log_file)

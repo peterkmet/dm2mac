@@ -74,8 +74,7 @@
 #define STORED_BLOCK_HEADER_SIZE 5 /* the last block flag, the length, and its complement */
 #define ADLER_SIZE               4
 #define CRC_TABLE_SIZE           256
-#define ADLER_SUM_SHIFT          16   /* the Adler-32 checksum: the second sum in the high half */
-#define FULL_PATH_SIZE           1024 /* the absolute path of a screenshot, as PATH_MAX of macOS */
+#define ADLER_SUM_SHIFT          16 /* the Adler-32 checksum: the second sum in the high half */
 #define PNG_ROW_SIZE             (1 + RGB_CHANNELS * SCREEN_W) /* the filter byte and the pixels of a row */
 #define PNG_RAW_SIZE             (PNG_ROW_SIZE * SCREEN_H)
 #define STORED_BLOCK_COUNT       ((PNG_RAW_SIZE + STORED_BLOCK_MAX - 1) / STORED_BLOCK_MAX)
@@ -462,7 +461,7 @@ static bool write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 /* The screen as the window shows it, with the cursor image at the pointer (none while the pointer is unset). */
 static void screenshot(const char *path, Json *reply)
 {
-    char absolute[FULL_PATH_SIZE];
+    char absolute[OS_DIR_SIZE];
     memcpy(control.screen, g_video_fb, sizeof control.screen);
     if (g_input_mouse_x >= 0 && g_input_mouse_y >= 0)
         input_draw_cursor(&control.screen[0][0], g_input_mouse_x, g_input_mouse_y);
@@ -694,7 +693,7 @@ static bool handle_turnbased_request(const char *request, const char *cmd, Json 
 /* Answers one request of the real-time and the turn-based mode; no reply while a wait or a turn holds it. */
 static void handle_request(const char *request, Json *reply)
 {
-    char cmd[NAME_SIZE], path[FULL_PATH_SIZE];
+    char cmd[NAME_SIZE], path[OS_DIR_SIZE];
     int x, y;
     if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         put_error(reply, "missing cmd");

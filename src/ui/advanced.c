@@ -90,9 +90,9 @@ uint16_t advanced_movement_key(uint16_t key)
 static char *quick_path(char *path, const char *extension)
 {
     if (g_session.save_dir[0])
-        snprintf(path, SAVE_PATH_SIZE, "%s/QUICK.%s", g_session.save_dir, extension);
+        snprintf(path, OS_PATH_SIZE, "%s/QUICK.%s", g_session.save_dir, extension);
     else
-        snprintf(path, SAVE_PATH_SIZE, "%s/DATA/QUICK.%s", g_session.data_dir, extension);
+        snprintf(path, OS_PATH_SIZE, "%s/DATA/QUICK.%s", g_session.data_dir, extension);
     return path;
 }
 
@@ -113,7 +113,7 @@ static bool write_game(const char *path, const char *bak)
 
 bool advanced_quick_save(void)
 {
-    char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
+    char path[OS_PATH_SIZE], bak[OS_PATH_SIZE];
     bool ok = write_game(quick_path(path, "DAT"), quick_path(bak, "BAK"));
     if (ok)
         remove(bak);
@@ -125,7 +125,7 @@ bool advanced_quick_save(void)
 
 enum QuickLoadResult advanced_quick_load(void)
 {
-    char path[SAVE_PATH_SIZE], keep[SAVE_PATH_SIZE];
+    char path[OS_PATH_SIZE], keep[OS_PATH_SIZE];
     FILE *f = fopen(quick_path(path, "DAT"), "rb");
     if (!f) {
         print_line("NO QUICK SAVE");

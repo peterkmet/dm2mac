@@ -55,7 +55,7 @@ void optmenu_start(int filter)
         menu.saved = filter;
         return;
     }
-    char dir[SAVE_DIR_SIZE + sizeof "/DATA"];
+    char dir[OS_DIR_SIZE + sizeof "/DATA"];
     menu.filter = SETTINGS_FILTER_NONE;
     if (g_game_mode == GAME_MODE_ADVANCED) {
         menu.filter = settings_load(find_folder(dir, sizeof dir)).filter;
@@ -88,7 +88,7 @@ void optmenu_open(void)
 /* Writes SETTINGS.TXT when the filter differs from the file; a failed write says so once per failure run. */
 static void write_change(void)
 {
-    char dir[SAVE_DIR_SIZE + sizeof "/DATA"];
+    char dir[OS_DIR_SIZE + sizeof "/DATA"];
     if (menu.filter == menu.saved)
         return;
     if (settings_save(find_folder(dir, sizeof dir), &(Settings){menu.filter})) {
