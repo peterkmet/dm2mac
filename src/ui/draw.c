@@ -193,7 +193,7 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
     }
     if (ctx->flip & MIRROR_H)
         ctx->dx = (int16_t)-ctx->dx;
-    if (ctx->transparent == DRAW_NO_IMAGE)
+    if (ctx->mode == DRAW_NO_IMAGE)
         return ctx;
     const Bitmap *src = given ? ctx->image : draw_gdat_image(ctx->category, ctx->index, ctx->entry);
     if (!scaled || !src) {
@@ -255,7 +255,7 @@ void draw_ctx_draw(DrawCtx *ctx)
     if (ctx->flip & MIRROR_V)
         sy = 0;
     sy = (int16_t)(sy + fy);
-    if (ctx->transparent != DRAW_NO_BLIT) {
+    if (ctx->mode != DRAW_RECT_ONLY) {
         Blit blit = {.src = image->pixels,
                      .dst = ctx->dst->pixels,
                      .src_x = sx,

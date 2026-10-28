@@ -9,9 +9,8 @@
 #include "gdat.h"
 #include "gfx.h"
 
-/* Special transparent values. */
-#define DRAW_NO_BLIT  (-2) /* compute the rectangle, draw nothing */
-#define DRAW_NO_IMAGE (-3) /* do not even load the image */
+/* What a context does: draw its image, only compute its rectangle, or not even load the image. */
+enum DrawMode { DRAW_BLIT, DRAW_RECT_ONLY, DRAW_NO_IMAGE };
 
 /* Colors of a 4 bpp picture. */
 #define IMAGE_COLORS 16
@@ -28,6 +27,7 @@ typedef struct {
     int16_t rect[RECT_SIZE];
     Bitmap *dst;
     int16_t transparent;
+    enum DrawMode mode;
     int16_t flip;             /* mirror mode */
     int16_t scale_x, scale_y; /* SCALE_FULL is 100 % */
     int16_t palette_count;    /* entries of palette, <= 0: no color remap */
