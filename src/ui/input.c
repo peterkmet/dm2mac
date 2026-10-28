@@ -1951,9 +1951,9 @@ void input_update_viewport_arrow(void)
     if (dun_square_blocks_movement(dun_get_square(
             (Location){(int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step])})))
         return;
-    if (!creature_can_be_pushed((int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
-                                (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]),
-                                dir_turn(push_dirs[arrow], g_game.party_dir), NULL))
+    Location front = {(int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
+                      (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir])};
+    if (!creature_can_be_pushed(front, dir_turn(push_dirs[arrow], g_game.party_dir), false, NULL))
         return;
     show_move_arrow(entries[arrow], zones[arrow], true);
     move_set_push_arrow(arrow);
@@ -2006,7 +2006,7 @@ static void click_creature(uint16_t group, int x, int y, int square_x, int squar
         ui_draw_movement_arrows();
         move_set_push_arrow(PUSH_ARROW_NONE);
     } else {
-        creature_turn_group(group, 0, side);
+        creature_turn_group(group, false, side);
     }
 }
 
@@ -2078,7 +2078,7 @@ static bool click_drop_object(int x, int y, int cell)
     if (x == g_game.party_x && y == g_game.party_y && is_party_in_wall())
         return true; /* no drop inside a wall: the object stays in the hand */
     int dir_cell = dir_turn(g_game.party_dir, cell);
-    uint16_t group = creature_group_at(g_party.cur_map, x, y);
+    uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
     bool possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
     if (group != THING_NONE) {
         const CreatureInfo *info = creature_group_info(group);
@@ -2214,7 +2214,7 @@ static void click_with_object(const ViewSquares *v, int x, int y, bool front_blo
         if (point_in_zone(ZONE_DROP_CELL_FIRST + k, x, y) && click_drop_object(v->fx, v->fy, k))
             return;
     }
-    uint16_t g = creature_group_at(g_party.cur_map, v->fx, v->fy);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, v->fx, v->fy});
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
         const CreatureInfo *info = creature_group_info(g);
         for (int k = 0; k < (info->possessions & POSSESSIONS_KIND_MASK); k++) {
@@ -2261,7 +2261,7 @@ static void click_in_viewport(int16_t x, int16_t y)
         click_front_wall(passable, v.fx, v.fy);
         return;
     }
-    uint16_t g = creature_group_at(g_party.cur_map, v.fx, v.fy);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, v.fx, v.fy});
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC)
         click_creature(g, x, y, v.fx, v.fy);
 }

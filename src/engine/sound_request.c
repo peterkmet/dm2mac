@@ -294,7 +294,7 @@ void sndreq_request(SoundCue cue, int16_t x, int16_t y, enum SoundWhen when)
             queue[i].r.forward == offset.forward)
             return;
     if (abs(offset.lateral) + abs(offset.forward) > 1) {
-        int path = creature_get_party_distance(map_x, map_y);
+        int path = creature_get_party_distance((Location){map_x, map_y});
         if (!sndreq_party_offset(dx, dy, g_game.party_dir, path, &offset))
             return;
     }

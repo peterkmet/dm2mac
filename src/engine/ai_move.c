@@ -689,7 +689,7 @@ AiLineTarget ai_find_target_in_lines(int16_t filter, uint8_t *distance_map, Loca
                     if (found)
                         break;
                 } else if (!ranged && !at_group(tx, ty)) {
-                    uint16_t g = creature_get_group_at(tx, ty);
+                    uint16_t g = creature_get_group_at((Location){tx, ty});
                     if (g != THING_NONE && ai_thing_matches_filter(g, filter)) {
                         found = true;
                         break;
@@ -1581,12 +1581,10 @@ AiCommand ai_try_move(AiMoveTest test, Location from, Location to, int16_t dir)
 /* The cells of the possessions of a static creature seen from side. */
 static int possession_cell_mask(uint16_t possessions, int side)
 {
-    if (!(possessions & STATIC_POSSESSIONS_SHOWN) || possessions & STATIC_POSSESSIONS_ALL)
-        return CELLS_ALL;
     /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
     if ((uint16_t)side >= DIR_COUNT)
         return CELLS_ALL;
-    return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];
+    return creature_cell_mask(possessions, (int16_t)side);
 }
 
 AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int side)
@@ -2367,7 +2365,7 @@ static bool damage_group_at(const AiCandidate *c, int16_t x, int16_t y)
     uint16_t g = ai_cached_first_group();
     if (g == THING_ENDOFLIST || !ai_thing_matches_filter(g, c->item))
         return false;
-    creature_apply_damage_kind(g, x, y, (int16_t)c->mask);
+    creature_apply_damage_kind(g, (Location){x, y}, (int16_t)c->mask);
     return true;
 }
 
@@ -2495,7 +2493,7 @@ static bool blocked_group_in_front(Search *s, const AiCandidate *c, int16_t x, i
     int16_t ny = (int16_t)(y + g_dir_dy[s->dir]);
     bool r = at_party(nx, ny);
     if (!r) {
-        uint16_t other = creature_get_group_at(nx, ny);
+        uint16_t other = creature_get_group_at((Location){nx, ny});
         r = other != THING_NONE && !(creature_group_info(other)->flags & CREATURE_STATIC);
     }
     if (!r)

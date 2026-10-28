@@ -95,7 +95,7 @@ static bool process_world_event(TimelineEvent *e)
         break;
     case EVENT_CREATURE_ANIMATION:
     case EVENT_CREATURE_THINK:
-        creature_process_event(e->data[EVENT_X], e->data[EVENT_Y], e->type);
+        creature_process_event((Location){e->data[EVENT_X], e->data[EVENT_Y]}, e->type);
         break;
     case EVENT_MOVE_GROUP:
     case EVENT_MOVE_GROUP_2:
@@ -118,8 +118,8 @@ static bool process_world_event(TimelineEvent *e)
         int dir = rand_2bits()
                       ? dun_get_direction_to(e->data[EVENT_X], e->data[EVENT_Y], g_game.party_x, g_game.party_y)
                       : rand_2bits();
-        creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir, e->data[EVENT_X],
-                              e->data[EVENT_Y]);
+        creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir,
+                              (Location){e->data[EVENT_X], e->data[EVENT_Y]});
         break;
     }
     default:

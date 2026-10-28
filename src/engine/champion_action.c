@@ -425,7 +425,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
     int16_t damage = 0;
     int16_t stamina;
     bool hit = info->dexterity != DEXTERITY_UNHITTABLE;
-    uint16_t at = creature_group_at(g_party.cur_map, x, y);
+    uint16_t at = creature_group_at((Position){g_party.cur_map, x, y});
     if (hit && at != THING_NONE && creature_current_step_acts(at))
         hit = false;
     if (hit && info->flags & CREATURE_NON_MATERIAL && !pierces)
@@ -483,7 +483,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
     Champion *c = a->c;
     if (a->target == THING_NONE)
         return false;
-    uint16_t group = creature_group_at(g_party.cur_map, a->fx, a->fy);
+    uint16_t group = creature_group_at((Position){g_party.cur_map, a->fx, a->fy});
     if (group == THING_NONE)
         return false;
     int rel = dir_relative(c->cell, c->dir);
@@ -511,7 +511,7 @@ static void summon_minions(const ActionRun *a, int command)
 {
     static const uint8_t summoned[] = {MINION_SCOUT, MINION_CARRIER, MINION_ARMY};
     CreatureSummon summon = {.creature_type = summoned[command - COMMAND_SUMMON_FIRST],
-                             .level = (uint16_t)(a->power >> SUMMON_POWER_SHIFT),
+                             .count = (uint16_t)(a->power >> SUMMON_POWER_SHIFT),
                              .dir = dir_opposite(g_game.party_dir),
                              .x = g_game.party_x,
                              .y = g_game.party_y,
@@ -547,7 +547,7 @@ static bool send_minion(ActionRun *a, int command)
     }
     int level = champ_get_skill_level(a->champ, a->skill, true);
     CreatureSummon summon = {.creature_type = type,
-                             .level = level,
+                             .count = (uint16_t)level,
                              .dir = dir,
                              .x = x,
                              .y = y,
@@ -671,7 +671,7 @@ static void run_levitate_down(ActionRun *a)
     int px = g_game.party_x + g_dir_dx[g_game.party_dir];
     int py = g_game.party_y + g_dir_dy[g_game.party_dir];
     bool open = true;
-    uint16_t g = creature_group_at(g_party.cur_map, px, py);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, px, py});
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID))
         open = false;
     if (square_type(dun_get_square((Location){px, py})) == SQUARE_PIT && open) {
@@ -934,7 +934,7 @@ bool champ_perform_action(int champ, int index, bool repeated)
         .champ = champ, .hand = hand, .repeated = repeated, .c = c, .item = c->slots[hand], .action = action};
     a.fx = (int16_t)(g_game.party_x + g_dir_dx[c->dir]);
     a.fy = (int16_t)(g_game.party_y + g_dir_dy[c->dir]);
-    a.target = creature_group_at(g_party.cur_map, a.fx, a.fy);
+    a.target = creature_group_at((Position){g_party.cur_map, a.fx, a.fy});
     a.delay = (uint16_t)field_of(action, FIELD_DELAY);
     a.skill = (uint16_t)field_of(action, FIELD_SKILL);
     int16_t stamina = field_of(action, FIELD_STAMINA);

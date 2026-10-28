@@ -31,6 +31,11 @@ static inline uint16_t ai_marker_level(uint16_t text)
 #define AI_CLASS_COUNT 47
 extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
 
+/* The cells of the possessions of a static creature by display kind and side (ai_data.c; creature_cell_mask reads
+   it). */
+#define AI_POSSESSION_KINDS 16 /* the display kinds, with the data after the table */
+extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
+
 /* A candidate destination of a plan: a 22-byte record with the layout of the original. */
 typedef struct __attribute__((packed)) {
     int8_t cost;          /* +0x00 */
@@ -179,6 +184,10 @@ void ai_prepare(void);
 uint8_t *ai_store_path(int path_size);
 /* The flags of an action: how it moves, waits, or follows the path. */
 uint8_t ai_action_flag(int action);
+/* Flags of ai_action_flag. */
+#define AI_ACTION_FLAG_WAKES     0x02 /* a mood alert of a waking class stops the action */
+#define AI_ACTION_FLAG_PATH      0x04 /* the action moves the creature along its path and drops the cached path */
+#define AI_ACTION_FLAG_INTERRUPT 0x10 /* a new action waits for the end of the animation step */
 
 /* Plan commands that the merchant commands use */
 
@@ -365,7 +374,8 @@ void ai_refresh_party_maps(void);
 #define ACTION_TAKE_FROM_WALL    0x1a
 #define ACTION_CHECK_AHEAD       0x1d
 #define ACTION_PLACE_WAIT        0x1e
-#define ACTION_STAND             0x23
+#define ACTION_STAND             0x23 /* 0x23 to 0x25: the three stands of the wander mood */
+#define ACTION_STAND_LAST        0x25
 #define ACTION_MELEE_2           0x26
 #define ACTION_SHOOT             0x27
 #define ACTION_SHOOT_2           0x28

@@ -578,7 +578,7 @@ static bool front_floor_clickable(void)
 {
     int x = g_game.party_x + g_dir_dx[g_game.party_dir];
     int y = g_game.party_y + g_dir_dy[g_game.party_dir];
-    uint16_t group = creature_group_at(g_game.party_map, x, y);
+    uint16_t group = creature_group_at((Position){g_game.party_map, x, y});
     if (group == THING_NONE)
         return true;
     const CreatureInfo *info = creature_group_info(group);

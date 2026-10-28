@@ -57,7 +57,6 @@
 
 /* The flags of an action in the AI action table. */
 #define AI_ACTION_FLAG_TIMED 0x03 /* the action sets the time of the last action */
-#define AI_ACTION_FLAG_PATH  0x04 /* the action moves the creature along its path and drops the cached path */
 
 /* The flags of an AI class (g_ai_class_flags). */
 #define AI_CLASS_ALWAYS_SCANS   0x0001 /* the creature scans for plans on each update */
@@ -315,9 +314,6 @@
 /* The sparks of a transform. */
 #define SPARK_CELLS      5 /* the four cells and the center */
 #define TRANSFORM_PHASES 3 /* the phases of sparks before the creature becomes the new type */
-
-/* The creature flag of the move action. */
-#define CREATURE_ATTACKS_FIRST 0x0100 /* flags: the creature attacks before it moves */
 
 /* The item filter bit of an action that repeats for all matching items. */
 #define SUB_REPEAT 0x40
@@ -775,7 +771,7 @@ static bool cond_static_ahead(int16_t x, int16_t y)
     if (g_ai.map != g_ai_party.map)
         return false;
     int d = group_dir(g_ai.group_thing);
-    uint16_t g = creature_get_group_at((uint16_t)(x + g_dir_dx[d]), (uint16_t)(y + g_dir_dy[d]));
+    uint16_t g = creature_get_group_at((Location){(x + g_dir_dx[d]), (y + g_dir_dy[d])});
     return g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC && party_beside_special_wall();
 }
 
@@ -788,7 +784,7 @@ static bool cond_few_of_type(int16_t creature_type)
     int map = g_party.cur_map;
     for (int sx = 0; sx < dungeon_map_width(map); sx++)
         for (int sy = 0; sy < dungeon_map_height(map); sy++) {
-            uint16_t g = creature_group_at(map, sx, sy);
+            uint16_t g = creature_group_at((Position){map, sx, sy});
             if (g == THING_NONE)
                 continue;
             int type = group_creature(g);
@@ -1723,8 +1719,8 @@ static int cmd_place_on_sensor(void)
     uint16_t item = sensor_data(sensor);
     if (g_ai.arg2 == 2) {
         int f = facing();
-        uint16_t g = creature_get_group_at((uint16_t)(g_ai.event.data[EVENT_X] + g_dir_dx[f]),
-                                           (uint16_t)(g_ai.event.data[EVENT_Y] + g_dir_dy[f]));
+        uint16_t g = creature_get_group_at(
+            (Location){g_ai.event.data[EVENT_X] + g_dir_dx[f], g_ai.event.data[EVENT_Y] + g_dir_dy[f]});
         if (g == THING_NONE)
             return AI_RESULT_FAIL;
         return has_possession(g, item, dir_opposite(f)) ? AI_RESULT_DONE : AI_RESULT_FAIL;
@@ -1776,8 +1772,8 @@ int ai_cmd_front_group_carries(void)
     if (cell != CELL_ANY)
         cell = dir_turn(cell, facing() + 2);
     int f = facing();
-    uint16_t g = creature_get_group_at((uint16_t)(g_ai.event.data[EVENT_X] + g_dir_dx[f]),
-                                       (uint16_t)(g_ai.event.data[EVENT_Y] + g_dir_dy[f]));
+    uint16_t g = creature_get_group_at(
+        (Location){g_ai.event.data[EVENT_X] + g_dir_dx[f], g_ai.event.data[EVENT_Y] + g_dir_dy[f]});
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
     return ai_find_matching_item(g_ai.arg1, thing_word(g, GROUP_POSSESSIONS), cell) != THING_ENDOFLIST ? AI_RESULT_DONE
@@ -1805,7 +1801,7 @@ static int cmd_check_party_ahead(void)
     int f = facing();
     uint16_t x = (uint16_t)(g_dir_dx[f] * 2 + g_ai.event.data[EVENT_X]);
     uint16_t y = (uint16_t)(g_dir_dy[f] * 2 + g_ai.event.data[EVENT_Y]);
-    uint16_t g = creature_get_group_at(x, y);
+    uint16_t g = creature_get_group_at((Location){x, y});
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_STATIC))
         return AI_RESULT_DONE;
     if (g_party.cur_map == g_ai_party.map && (int16_t)x == g_ai_party.x && (int16_t)y == g_ai_party.y)
@@ -1832,7 +1828,7 @@ static int cmd_take_from_front(void)
     g_ai.active->cell = (uint8_t)(dir_opposite(f));
     g_ai.active->sub = (int8_t)filter;
     set_destination(dest_x() + g_dir_dx[f], dest_y() + g_dir_dy[f]);
-    uint16_t g = creature_get_group_at(dest_x(), dest_y());
+    uint16_t g = creature_get_group_at((Location){dest_x(), dest_y()});
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
     if (ai_find_matching_item(filter, thing_word(g, GROUP_POSSESSIONS), g_ai.active->cell) == THING_ENDOFLIST)
@@ -2072,7 +2068,8 @@ static int cmd_check_transform(void)
         g_ai.active->action = ACTION_TRANSFORM;
         return AI_RESULT_DONE;
     }
-    creature_set_next_action(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], ACTION_VANISH, 1);
+    creature_set_next_action(g_ai.group_thing, (Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]},
+                             ACTION_VANISH, true);
     g_ai.active->action = ACTION_RESCAN;
     return AI_RESULT_FAIL;
 }
@@ -2374,7 +2371,7 @@ static bool act_melee_attack(void)
         }
         if (at_self)
             return true;
-        if ((int16_t)creature_attack_group_at(dx, dy) < 0)
+        if (!creature_attack_group_at((Location){dx, dy}, NULL))
             return true;
     }
     if (a->action == ACTION_MELEE_2) {
@@ -2384,7 +2381,7 @@ static bool act_melee_attack(void)
         else
             push = rand_2bits() != 0;
         if (push)
-            creature_push_group(dx, dy, dir, PUSH_BY_CREATURE);
+            creature_push_group((Location){dx, dy}, dir, PUSH_BY_CREATURE);
     }
     return false;
 }
@@ -2674,7 +2671,7 @@ static bool act_drop_items(void)
 /* Action: the creature leaves the dungeon. */
 static void act_vanish(void)
 {
-    creature_delete_group_at(g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], 0, 1);
+    creature_delete_group_at((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, DROP_ALL, true);
     g_ai.removed = true;
 }
 
@@ -2700,10 +2697,10 @@ static bool act_throw_item(void)
 /* Action: the creature turns the group on its destination square. */
 static bool act_turn_target_group(void)
 {
-    uint16_t g = creature_get_group_at(ai_state.dest_x, ai_state.dest_y);
+    uint16_t g = creature_get_group_at((Location){ai_state.dest_x, ai_state.dest_y});
     if (g == THING_NONE)
         return true;
-    creature_turn_group(g, 0, g_ai.active->facing);
+    creature_turn_group(g, false, g_ai.active->facing);
     return false;
 }
 
@@ -2711,7 +2708,7 @@ static bool act_turn_target_group(void)
 static bool act_give_items(void)
 {
     int n = 0;
-    uint16_t g = creature_get_group_at(ai_state.dest_x, ai_state.dest_y);
+    uint16_t g = creature_get_group_at((Location){ai_state.dest_x, ai_state.dest_y});
     if (g == THING_NONE || !(creature_group_info(g)->flags & CREATURE_STATIC))
         return true;
     do {
@@ -2736,7 +2733,7 @@ static bool act_give_items(void)
 static bool act_take_items(void)
 {
     int n = 0;
-    uint16_t g = creature_get_group_at(ai_state.dest_x, ai_state.dest_y);
+    uint16_t g = creature_get_group_at((Location){ai_state.dest_x, ai_state.dest_y});
     if (g == THING_NONE || !(creature_group_info(g)->flags & CREATURE_STATIC))
         return true;
     do {
@@ -2780,7 +2777,7 @@ static void become_creature(int type)
                    (uint16_t)(max + rand_below((uint16_t)((max >> NEW_TYPE_HEALTH_SHIFT) + 1))));
     set_animation(creature_anim_start(type, (int8_t)g_ai.active->action, 0));
     if (!creature_is_native_to_map(g_ai.group_thing, g_ai.map)) {
-        creature_delete_group_at(g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], 0, 1);
+        creature_delete_group_at((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, DROP_ALL, true);
         g_ai.removed = true;
     }
 }
@@ -2833,12 +2830,12 @@ static bool act_explode_or_spawn(void)
     } else if (a->mode == MODE_SPAWN) {
         int dir = rand_2bits();
         CreatureSummon summon = {.creature_type = a->sub,
-                                 .level = GROUP_COUNT_FULL_HEALTH,
+                                 .count = GROUP_COUNT_FULL_HEALTH,
                                  .dir = dir,
                                  .x = g_ai.event.data[EVENT_X],
                                  .y = g_ai.event.data[EVENT_Y],
                                  .map = g_ai.map,
-                                 .link = -1,
+                                 .link = THING_NONE,
                                  .search_dir = (int8_t)facing()};
         if (creature_summon_group(summon).group == THING_NONE)
             return true;

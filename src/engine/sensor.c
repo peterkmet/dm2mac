@@ -282,7 +282,7 @@ typedef struct {
 /* The static creature on (x, y) whose possessions take or give thing, THING_NONE for the square. */
 static uint16_t floor_holder(int x, int y, bool enter, bool possessions)
 {
-    uint16_t g = creature_group_at(g_party.cur_map, x, y);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
     if (g == THING_NONE || !possessions)
         return THING_NONE;
     const CreatureInfo *info = creature_group_info(g);
@@ -906,9 +906,9 @@ static void set_creatures_facing(const TimelineEvent *e, uint16_t sensor)
     /* an inverted sensor turns the creatures on EFFECT_CLEAR instead of EFFECT_SET */
     if (e->data[EVENT_EFFECT] != (sensor_flag(sensor, SENSOR_INVERTED) ? EFFECT_CLEAR : EFFECT_SET))
         return;
-    uint16_t g = creature_get_group_at(sensor_target_x(sensor), sensor_target_y(sensor));
+    uint16_t g = creature_get_group_at((Location){sensor_target_x(sensor), sensor_target_y(sensor)});
     if (g != THING_NONE)
-        creature_turn_group(g, 1, sensor_turn_dir(sensor));
+        creature_turn_group(g, true, sensor_turn_dir(sensor));
 }
 
 /* The sensor types that react the same way to a square event on a wall and on a floor; returns 0 for another type. */
@@ -976,7 +976,7 @@ static void generate_creature(uint16_t t)
     int tx = sensor_target_x(t);
     int ty = sensor_target_y(t);
     int dir = sensor_flag(t, SENSOR_STATE) ? rand_2bits() : sensor_effect(t);
-    uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, tx, ty);
+    uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, (Location){tx, ty});
     if (sensor_flag(t, SENSOR_INVERTED) && g != THING_NONE)
         thing_set_word(g, GROUP_ITEM_CLASS, sensor_delay(t));
     if (sensor_flag(t, SENSOR_AUDIBLE))
@@ -1195,14 +1195,14 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
             if (sx < 0 || sx >= dungeon_map_width(g_party.cur_map) || sy < 0 ||
                 sy >= dungeon_map_height(g_party.cur_map))
                 continue;
-            uint16_t g = creature_get_group_at(sx, sy);
+            uint16_t g = creature_get_group_at((Location){sx, sy});
             if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != (uint16_t)creature_type)
                 continue;
             if (kind == SENSOR_VANISH) {
                 if ((uint16_t)power > 1) {
                     if ((uint16_t)power != VANISH_POWER)
                         return;
-                    creature_set_next_action(g, sx, sy, CREATURE_ACTION_VANISH, 1);
+                    creature_set_next_action(g, (Location){sx, sy}, ACTION_VANISH, true);
                 }
             } else if (kind == SENSOR_ALERT) {
                 creature_alert(g, (Location){sx, sy}, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
@@ -1245,7 +1245,7 @@ static void floor_square_event(TimelineEvent *e)
             break;
         }
         case SENSOR_CREATURE_ANIMATION:
-            creature_update_anim_at(x, y, effect == EFFECT_SET);
+            creature_update_anim_at((Location){x, y}, effect == EFFECT_SET);
             break;
         }
     }
@@ -1318,7 +1318,7 @@ static void fake_wall_event(TimelineEvent *e)
         effect = (*square & SQUARE_FAKE_WALL_OPEN) != 0;
     if (effect == EFFECT_CLEAR) {
         int blocked = dun_on_party_square((Location){x, y});
-        uint16_t g = creature_group_at(g_party.cur_map, x, y);
+        uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
         if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NON_MATERIAL))
             blocked = 1;
         if (blocked) {
@@ -1390,7 +1390,7 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
                                                  SOUND_FALLBACK, x, y, SOUND_STEP_END);
         }
     }
-    uint16_t g = creature_group_at(g_party.cur_map, x, y);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
     if (g == THING_NONE)
         return hit;
     const CreatureInfo *info = creature_group_info(g);
@@ -1602,7 +1602,8 @@ void sensor_process_map_entry(bool entering)
                     if (textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == TEXT_GENERATOR_ON_ENTRY &&
                         !textrec_is_visible(t)) {
                         textrec_set_visible(t, true);
-                        creature_create_group(textrec_value(t), GROUP_COUNT_FULL_HEALTH, rand_2bits(), x, y);
+                        creature_create_group(textrec_value(t), GROUP_COUNT_FULL_HEALTH, rand_2bits(),
+                                              (Location){x, y});
                     }
                 }
             }

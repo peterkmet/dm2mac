@@ -37,9 +37,10 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a division by 0 for an animation of length 0 and for a minion map strip of 1 icon
   - the minion map square read outside the map: a wall square of another map of the level, and the pit one level up
   - a path step read without a stored path (address 0 in the original)
-  - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`); the port reads none
+  - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`, `creature_alert`); the port reads none (`creature_alert` returns)
   - `creature_deactivate_group` with an active index at or past the end of the table: the original reads one entry past it, the port returns
-  - `creature_current_step_acts` and `ai_begin` for a non-static group without an active entry: the original reads a null entry, the port returns 0 and leaves the AI context without an active group
+  - `creature_current_step_acts`, `ai_begin`, and `creature_process_event` for a non-static group without an active entry: the original reads a null entry, the port returns 0 and leaves the AI context without an active group (`creature_process_event` ends the update)
+  - a new group that leaves the dungeon at once (`create_group` in `src/engine/creature.c`): the original frees a stale thing when the group links no projectile, the port frees only the projectile of a minion group
   - the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook)
   - the step of an AI command with direction -1: the original reads the words before its direction tables, the step (0, -1), and the port takes the step north (`step_dir` in `engine/ai_move.c`)
   - an item filter without a scratch block of the AI: the original writes the class bitmap to address 0, the port parses the filter without a cache (`filter_bitmap`)
@@ -57,6 +58,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a projectile that flies on leaves the last square ahead that a creature can notice it on in the destination globals of the party move (`g_party.dest_x`, `g_party.dest_y`)
   - the power that the sensors test after a door spell comes from the door record
   - `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables
+  - `creature_find_group_near_point` reads 4 offset pairs from an offset of 2 pairs per cell, so a cell reads into the row of the next cell; the port table keeps these pairs
   - the AI commands past `g_ai_command_enabled` read their enabled byte from the data after it: the commands `0x14` to `0x1f` from the distance map and light globals, the commands `0x20` to `0x5b` from the hit offset and hit radius tables of `creature_find_group_near_point` (`g_ai_command_enabled_overrun` in `src/engine/ai_data.c`); the port gives 0 for the commands after them
   - an AI command test that sets no result keeps the result of the command before (`AiCommand` in `src/engine/ai_internal.h`)
   - the activation target of a search (`setup_target_kind`) compares the activation position with the party position in another order: its x with the party map, its y with the party x, its map with the party y

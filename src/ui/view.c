@@ -2,6 +2,7 @@
 #include "view.h"
 #include <stdlib.h>
 #include <string.h>
+#include "ai.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
@@ -1600,7 +1601,7 @@ static void show_cell_objects(uint16_t thing, int pos, int cell, uint16_t group)
         show_object(thing, pos, &(ObjectLook){.spot = spot, .group = group, .record_click = true});
         spot = (spot + 1) % JITTER_COUNT;
         if (info) {
-            if (creature_cell_mask(info->possessions) >> cell & 1)
+            if (creature_cell_mask(info->possessions, DIR_NORTH) >> cell & 1)
                 set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, pos, CLICK_POSSESSIONS);
         } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > CELL_FRONT_RIGHT)) {
             Location at = {g_view_squares[pos].x, g_view_squares[pos].y};
@@ -1667,7 +1668,7 @@ static void show_creature(int pos, int depth, uint16_t group)
     uint8_t still[CREATURE_FRAME_SIZE];
     memcpy(still, frame, sizeof still);
     ActiveGroup *active = creature_active(group);
-    if (active && active->action == CREATURE_ACTION_VANISH)
+    if (active && active->action == ACTION_VANISH)
         creature_anim_frame_of(g, type, (uint16_t)active->counters[0], (uint16_t)active->counters[1], still);
     int anim = active ? active->anim_bits : 0;
     int side = creature_info(g, type)->flags & CREATURE_FACES_PARTY ? DIR_SOUTH
@@ -3567,7 +3568,7 @@ static bool hit_test_picture(int x, int y, int key)
 
 bool view_hit_test_creature(int16_t x, int16_t y, Location at, int *out_side)
 {
-    uint16_t group = creature_get_group_at(at.x, at.y);
+    uint16_t group = creature_get_group_at(at);
     if (group == THING_NONE)
         return false;
     show_creature(POS_FRONT, HIT_DEPTH, group);
@@ -3664,7 +3665,7 @@ uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool
 {
     uint16_t group = THING_NONE, t;
     if (click->kind == CLICK_POSSESSIONS) {
-        group = creature_group_at(g_party.cur_map, click->at.x, click->at.y);
+        group = creature_group_at((Position){g_party.cur_map, click->at.x, click->at.y});
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
         t = dungeon_square_first_thing(g_party.cur_map, click->at.x, click->at.y);

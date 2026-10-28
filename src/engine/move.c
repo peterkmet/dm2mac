@@ -374,7 +374,7 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
         return STEP_STAIRS_AHEAD;
     if (dun_square_blocks_movement(s->ahead) && !can_walk_through(s))
         return STEP_BLOCKED;
-    *group = creature_group_at(g_party.cur_map, s->x, s->y);
+    *group = creature_group_at((Position){g_party.cur_map, s->x, s->y});
     if (*group == THING_NONE || creature_group_info(*group)->flags & CREATURE_NOT_SOLID) {
         uint16_t g = creature_find_group_near_point((Location){s->x, s->y}, CELL_ANY).group;
         if (g == THING_NONE || creature_group_info(g)->flags & CREATURE_NOT_SOLID)
@@ -480,12 +480,12 @@ static bool push_creature_ahead(const PartyStep *s, uint16_t group)
     if (is_static || creature_group_info(group)->push_resistance == PUSH_WALL)
         move_party_bump_damage((Location){s->x, s->y}, s->dir, s->step);
     int push_dir = dir_turn(s->dir, s->step);
-    if (!creature_can_be_pushed(s->x, s->y, push_dir, &group) || !move_party_can_push_group(group)) {
+    if (!creature_can_be_pushed((Location){s->x, s->y}, push_dir, true, &group) || !move_party_can_push_group(group)) {
         if (!is_static)
             creature_alert(THING_NONE, (Location){s->x, s->y}, ALERT_ANGER | ALERT_MOOD_BORED, BUMP_ALERT_CHANCE, 0);
         return false;
     }
-    creature_push_group(s->x, s->y, push_dir, PUSH_STRENGTH_PARTY);
+    creature_push_group((Location){s->x, s->y}, push_dir, PUSH_STRENGTH_PARTY);
     return true;
 }
 
@@ -1035,7 +1035,7 @@ static Location find_free_adjacent_square(uint16_t thing, Location at)
         if (thing != THING_NONE && thing_type(thing) == THING_GROUP &&
             (type == SQUARE_TELEPORTER || type == SQUARE_PIT))
             continue;
-        uint16_t g = creature_group_at(g_party.cur_map, next.x, next.y);
+        uint16_t g = creature_group_at((Position){g_party.cur_map, next.x, next.y});
         if (g != THING_NONE && !(thing == THING_NONE && creature_group_info(g)->flags & CREATURE_NOT_SOLID))
             continue;
         return next;
@@ -1110,7 +1110,7 @@ static void arrive_party(const ThingMove *m)
     int dst_y = m->path.dst_y;
     dun_set_current_map(map);
     move_compute_map_arrival((Position){(int16_t)map, (int16_t)dst_x, (int16_t)dst_y});
-    uint16_t g = creature_group_at(g_party.cur_map, g_game.party_x, g_game.party_y);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, g_game.party_x, g_game.party_y});
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID)) {
         Location dst = {(int16_t)dst_x, (int16_t)dst_y};
         const CreatureInfo *info = creature_group_info(g);
@@ -1156,7 +1156,7 @@ static GroupArrival meet_target_square(uint16_t thing, Position to)
     if (to.map == g_party.square_map && to.x == g_party.square_x && to.y == g_party.square_y &&
         !(creature_group_info(thing)->flags & CREATURE_NOT_SOLID) && !push_party_aside(thing, dst))
         return ARRIVAL_WAIT;
-    uint16_t other = creature_group_at(g_party.cur_map, to.x, to.y);
+    uint16_t other = creature_group_at((Position){g_party.cur_map, to.x, to.y});
     if (other == THING_NONE)
         return ARRIVAL_ENTER;
     int push = creature_group_info(thing)->push_resistance;
@@ -1214,7 +1214,7 @@ static bool arrive_group(const ThingMove *m)
     update_carried_missiles(thing, dst_x, dst_y, map, false);
     if (active == GROUP_NOT_ACTIVE) {
         if (!(creature_group_info(thing)->flags & CREATURE_STATIC))
-            creature_activate_group(thing, dst_x, dst_y);
+            creature_activate_group(thing, (Location){dst_x, dst_y});
     } else {
         int event = creature_active_group_event(active);
         if (event != -1) {
@@ -1240,7 +1240,7 @@ static void arrive_object(const ThingMove *m)
     bool added = m->path.src_x < 0 && m->path.src_y == MOVE_IN_POSSESSIONS;
     bool under_static = added;
     if (!added && m->map != m->start_map) {
-        uint16_t g = creature_group_at(g_party.cur_map, dst_x, dst_y);
+        uint16_t g = creature_group_at((Position){g_party.cur_map, dst_x, dst_y});
         if (g != THING_NONE)
             under_static = creature_group_info(g)->flags & CREATURE_STATIC;
     }
@@ -1289,10 +1289,10 @@ static bool reach_destination(ThingMove *m)
     m->map = way.dest.map;
     dun_set_current_map(m->map);
     if (m->type == THING_GROUP && !creature_is_native_to_map(m->thing, m->map)) {
-        creature_drop_possessions(m->thing, m->path.dst_x, m->path.dst_y, DROP_ALL, 1);
+        creature_drop_possessions(m->thing, (Location){m->path.dst_x, m->path.dst_y}, DROP_ALL, true);
         dun_set_current_map(m->start_map);
         if (m->path.src_x >= 0)
-            creature_delete_group_at(m->path.src_x, m->path.src_y, DROP_NOTHING, -1);
+            creature_delete_group_at((Location){m->path.src_x, m->path.src_y}, DROP_NOTHING, false);
         return false;
     }
     m->same = m->map == m->start_map && m->path.dst_x == m->path.src_x && m->path.dst_y == m->path.src_y;
@@ -1401,7 +1401,7 @@ static bool discard_take(uint16_t t, int type, int subtype, DiscardSquare at, in
             (subtype != DISCARD_ANY_KIND && subtype != group_creature(t)))
             return false;
         dun_set_current_map(at.map);
-        creature_delete_group_at(at.x, at.y, DROP_POSSESSIONS, -1);
+        creature_delete_group_at((Location){at.x, at.y}, DROP_POSSESSIONS, false);
         return true;
     case THING_PROJECTILE:
         if (subtype != DISCARD_ANY_KIND && item_gdat_index(thing_word(t, PROJECTILE_PAYLOAD)) != subtype)
@@ -1584,7 +1584,7 @@ void move_square_contents_through(Location at)
     int16_t y = at.y;
     if (dun_on_party_square(at))
         move_thing(THING_NONE, x, y, x, y);
-    uint16_t g = creature_group_at(g_party.cur_map, x, y);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
     if (g != THING_NONE)
         move_thing(g, x, y, x, y);
     uint16_t t = dungeon_square_first_object(g_party.cur_map, x, y);

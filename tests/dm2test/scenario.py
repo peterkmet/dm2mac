@@ -150,6 +150,11 @@ def ignore_stale(state):
     return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
 
 
+class Location(ctypes.Structure):
+    """A square of the current map (dungeon.h, Location)."""
+    _fields_ = [(name, ctypes.c_int16) for name in ("x", "y")]
+
+
 class Position(ctypes.Structure):
     """A square with its map (dungeon.h, Position)."""
     _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]

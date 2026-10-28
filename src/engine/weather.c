@@ -319,7 +319,7 @@ static bool lightning_strike(void)
         (weak || g_game.game_time < STRIKE_PARTY_TIME || dun_get_global_var(VAR_STORMS) <= g_weather.strike_threshold))
         return false;
     int distance = (int16_t)(abs_int((int16_t)(g_game.party_x - x)) + abs_int((int16_t)(g_game.party_y - y)));
-    uint16_t group = creature_group_at(g_party.cur_map, x, y);
+    uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
     if (group != THING_NONE) {
         if (creature_lightning[creature_group_info(group) - creature_info_at(0)] == CREATURE_LIGHTNING_PROOF)
             return false;
@@ -580,7 +580,7 @@ void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, uns
         if ((flags & LIGHT_FLOOR) && !add_floor_light(&sum, &s, x, y))
             break;
         if (flags & LIGHT_CREATURES) {
-            uint16_t group = creature_group_at(g_party.cur_map, x, y);
+            uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
             if (group != THING_NONE)
                 sum.light = (int16_t)(sum.light + (item_attr(group, ATTR_LIGHT_SOURCE) & LIGHT_AMOUNT_MASK));
         }

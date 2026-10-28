@@ -18,10 +18,8 @@ decimal engine/ai_data.c:g_ai_possession_cells bridge: task 19
 decimal engine/ai_move.c bridge: task 21
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor rule 3.12: wound location defense factors of SKULL.EXE
-decimal engine/creature.c:cell_grid bridge: task 24
-decimal engine/creature.c:cells bridge: task 24
 decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
-decimal engine/creature.c:hit_radius_sq bridge: task 24
+decimal engine/creature.c:hit_radius_sq rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
@@ -123,7 +121,6 @@ hex engine/ai_data.c:g_ai_kind_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_plans rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_possession_cells rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_scripts rule 3.12: a table of SKULL.EXE
-hex engine/creature.c:cells rule 3.12: a table of SKULL.EXE
 hex engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
 hex engine/item.c:item_index_base rule 3.12: item index bases of SKULL.EXE
 hex engine/item.c:slot_item_masks rule 3.12: slot masks of SKULL.EXE
@@ -211,11 +208,6 @@ type engine/champion_inventory.c:set_slot_thing bridge: task 28
 type engine/champion_inventory.c:slot_thing bridge: task 28
 type engine/ai_move.c:line_slope bridge: task 21
 type engine/ai_move.c:search_cell bridge: task 21
-type engine/creature.c:alert_anger bridge: task 24
-type engine/creature.c:alert_turn bridge: task 24
-type engine/creature.c:drop_cell bridge: task 24
-type engine/creature.c:is_near_party_front bridge: task 24
-type engine/creature.c:schedule_update bridge: task 24
 type engine/dungeon.c:edge_wall bridge: task 25
 type engine/dungeon.c:first_thing_index bridge: task 25
 type engine/dungeon.c:is_closed_teleporter bridge: task 25

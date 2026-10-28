@@ -284,7 +284,7 @@ static void blast_square(uint16_t type, int power, int16_t x, int16_t y, int16_t
     int16_t ny = y;
     int16_t hx = x;
     int16_t hy = y;
-    uint16_t g = creature_get_group_at(x, y);
+    uint16_t g = creature_get_group_at((Location){x, y});
     for (bool first = true;; first = false) {
         if (g != THING_NONE && !creature_current_step_acts(g)) {
             const CreatureInfo *info = creature_group_info(g);
@@ -383,7 +383,7 @@ void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t 
         if (list) {
             dungeon_append_thing(payload, list);
         } else {
-            uint16_t g = creature_get_group_at(x, y);
+            uint16_t g = creature_get_group_at((Location){x, y});
             if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
                 int cell = thing_cell(projectile);
                 if ((creature_group_info(g)->possessions & POSSESSIONS_KIND_MASK) == POSSESSIONS_DIRECTION)
@@ -694,7 +694,7 @@ static bool hit_impact(int impact, Location at, Location stop, int16_t cell, uin
     if (push_strength) {
         int16_t strength = max_int((int16_t)min_int((int16_t)push_strength, SPELL_PUSH_MAX), SPELL_PUSH_MIN);
         int dir = h.payload == SPELL_PUSH ? h.push_dir : dir_opposite(h.push_dir);
-        creature_push_group(at.x, at.y, (int16_t)dir, strength);
+        creature_push_group(at, (int16_t)dir, strength);
     }
     return true;
 }
@@ -717,7 +717,7 @@ static void set_event_dir(TimelineEvent *e, int16_t dir)
    spells (then the projectile hits nothing on this square). */
 static bool reflect_spell(TimelineEvent *e, uint16_t projectile, int16_t x, int16_t y)
 {
-    uint16_t g = creature_get_group_at(x, y);
+    uint16_t g = creature_get_group_at((Location){x, y});
     if (g == THING_NONE || !(creature_group_info(g)->flags & CREATURE_REFLECTS_SPELLS) ||
         thing_word(projectile, PROJECTILE_PAYLOAD) < SPELL_THING_FIRST)
         return false;
@@ -741,7 +741,7 @@ static void alert_creatures_ahead(MoveDest dest)
     for (int i = 0; i < ALERT_AHEAD_SQUARES; i++) {
         at.x = (int16_t)(at.x + g_dir_dx[dest.dir]);
         at.y = (int16_t)(at.y + g_dir_dy[dest.dir]);
-        uint16_t g = creature_get_group_at(at.x, at.y);
+        uint16_t g = creature_get_group_at(at);
         if (g != THING_NONE)
             creature_alert(g, at, ALERT_STARTLED, ALERT_ALWAYS, 0);
         if (i)
@@ -918,7 +918,7 @@ void explosion_process_event(TimelineEvent *e)
         uint16_t attack;
         if (dun_on_party_square((Location){x, y}) && (attack = (uint16_t)explosion_get_attack(t, THING_NONE)))
             champ_damage_party(attack, 0, 0);
-        uint16_t g = creature_get_group_at(x, y);
+        uint16_t g = creature_get_group_at((Location){x, y});
         if (g != THING_NONE && !creature_current_step_acts(g) && (attack = (uint16_t)explosion_get_attack(t, g)))
             creature_alert(g, (Location){x, y}, ALERT_HIT, ALERT_ALWAYS, attack);
         bool lasts = true;
