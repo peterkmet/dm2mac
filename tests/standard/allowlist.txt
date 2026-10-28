@@ -1,6 +1,7 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
 byteorder engine/dungeon.c bridge: task 25
+byteorder engine/ai.c bridge: task 20
 byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate record of SKULL.EXE that the differential tests compare
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
@@ -254,6 +255,11 @@ type engine/dungeon.c:mark_level_link bridge: task 25
 type engine/dungeon.c:number_linked_actuators bridge: task 25
 type engine/dungeon.c:prepare_group bridge: task 25
 type engine/dungeon.c:shift_later_columns bridge: task 25
+type engine/merchant.c:front_customer_has_goods bridge: task 30
+type engine/merchant.c:offered_value bridge: task 30
+type engine/merchant.c:price_in_coins bridge: task 30
+type engine/merchant.c:sum_items_value bridge: task 30
+type engine/merchant.c:sum_list bridge: task 30
 type engine/move.c:bash_door bridge: task 32
 type engine/move.c:bump_champion bridge: task 32
 type engine/move.c:discard_next_map bridge: task 32
