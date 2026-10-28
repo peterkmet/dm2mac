@@ -32,6 +32,8 @@
 #include "video.h"
 #include "zone.h"
 #ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
 #include <process.h>
 #include <sys/stat.h>
 #else
@@ -529,16 +531,33 @@ static void log_to_file(const char *message)
     fflush(program.log_file);
 }
 
-/* Opens dm2.log in the game folder and sends the messages to it. */
+/* Opens dm2.log in the game folder and sends the messages to it; the program that a RESTART starts does not inherit
+   the file. */
 static void open_log(const char *data)
 {
     char path[OS_PATH_SIZE];
     snprintf(path, sizeof path, "%s/%s", data, LOG_FILE);
-    program.log_file = fopen(path, "w");
-    if (!program.log_file)
+    int fd = _open(path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_TEXT | _O_NOINHERIT, _S_IREAD | _S_IWRITE);
+    if (fd < 0)
         return;
+    program.log_file = _fdopen(fd, "w");
+    if (!program.log_file) {
+        _close(fd);
+        return;
+    }
     g_os_log_hook = log_to_file;
     g_os_fatal_hook = log_to_file;
+}
+
+/* Sends the messages to the error output again and closes dm2.log. */
+static void close_log(void)
+{
+    if (!program.log_file)
+        return;
+    g_os_log_hook = NULL;
+    g_os_fatal_hook = NULL;
+    fclose(program.log_file);
+    program.log_file = NULL;
 }
 #endif
 
@@ -665,5 +684,8 @@ int main(int argc, char **argv)
     close_platform();
     if (g_session.exit_code == EXIT_RESTART)
         restart(argc, argv, mode_given);
+#ifdef _WIN32
+    close_log();
+#endif
     return g_session.exit_code;
 }
