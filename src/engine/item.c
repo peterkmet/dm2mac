@@ -297,8 +297,8 @@ int item_icon_index(uint16_t thing, int16_t slot, bool animated)
     case ICON_BY_CHARGES_AND_TIME: {
         int step = (attr & ICON_STEP_MASK) >> ICON_STEP_SHIFT;
         int charges = item_charges(thing);
-        if (!charges)
-            return icon;
+        if (!charges || !step)
+            return icon; /* fix: the original divides by a step of 0 */
         int frame = frames / step * charges / (item_max_charges(thing) + 1) * step + 1 + (uint16_t)(time % step);
         return (uint8_t)(icon + frame);
     }
@@ -388,9 +388,9 @@ const char *item_name(uint16_t thing)
     int index = item_gdat_index(thing);
     g_text_args.champion = -1;
     if (category == CAT_MISC && index == TEXT_CHAMPION_TOKEN) {
-        int champion = misc_charges(thing); /* the champion of the token */
-        if (champion < g_game.champion_count)
-            g_text_args.champion = (int16_t)champion;
+        int token_champion = misc_charges(thing);
+        if (token_champion < g_game.champion_count)
+            g_text_args.champion = (int16_t)token_champion;
     }
     char raw[TEXT_SIZE];
     /* gtext_gdat formats the name and gtext_format formats it a second time, as in the original */
@@ -482,12 +482,12 @@ uint16_t item_create_by_index(uint16_t item)
 uint16_t item_find_link_projectile(uint16_t group, uint16_t payload)
 {
     if (group == THING_NONE || group == THING_ENDOFLIST || thing_word(group, THING_NEXT) == THING_NONE)
-        return 0;
+        return THING_NONE;
     for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_PROJECTILE &&
             (payload == THING_NONE || payload == thing_word(t, PROJECTILE_PAYLOAD)))
             return t;
-    return 0;
+    return THING_NONE;
 }
 
 /* Items of the champion actions. */
@@ -517,6 +517,7 @@ bool item_has_action_command(int champ, uint16_t thing, int command)
                 break;
             }
     }
+    /* restores the action list of the open hand that the search overwrote */
     if (g_action.champion && (g_action.hand == SLOT_READY_HAND || g_action.hand == SLOT_ACTION_HAND))
         champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
     return found;
@@ -530,6 +531,6 @@ bool item_use_charge(uint16_t thing)
         return false;
     item_add_charges(thing, -1);
     if (thing == g_game.leader_hand)
-        champ_put_in_leader_hand(thing, 0);
+        champ_put_in_leader_hand(thing);
     return true;
 }

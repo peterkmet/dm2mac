@@ -92,6 +92,7 @@
 #define FREQ_STEP_MAX    719 /* a bend step above this crosses a block border */
 #define FREQ_BEND_STEP   114 /* index of the bend-down steps by range */
 #define FREQ_HALF_FNUM   115 /* index of the F-numbers one block up, from note B down to C */
+#define FREQ_ENTRIES     151 /* the entries of the frequency table */
 #define BEND_SCALE       1000
 #define BEND_SHIFT       6
 
@@ -105,40 +106,6 @@
 #define QUEUED_VELOCITY 1
 #define QUEUED_CHANNEL  2
 #define QUEUED_SIZE     3
-
-/* Operator offsets of the 9 voices (OPL2 register layout). */
-static const uint8_t op_modulator[VOICES] = {0, 1, 2, 8, 9, 10, 16, 17, 18};
-static const uint8_t op_carrier[VOICES] = {3, 4, 5, 11, 12, 13, 19, 20, 21};
-
-/* Velocity and volume level / 2 to OPL attenuation (driver table). */
-static const uint8_t level_attenuation[LEVEL_STEPS] = {
-    63, 58, 53, 48, 44, 41, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22,
-    21, 20, 19, 18, 17, 16, 15, 14, 14, 13, 13, 12, 12, 11, 11, 10, 10, 9,  9,  8,  8,  7,
-    7,  6,  6,  6,  5,  5,  5,  4,  4,  4,  4,  3,  3,  3,  2,  2,  2,  1,  1,  0,
-};
-
-/* Block and F-number of each MIDI note as the driver reads them: its frequency table holds notes 12 to 114,
-   notes 0 to 11 read the bytes of the attenuation table before it, and the bend tables follow it. */
-static const uint32_t note_freq_table[] = {
-    0x0d0e0e0f, 0x0b0c0c0d, 0x090a0a0b, 0x07080809, 0x06060607, 0x04050505, 0x03040404, 0x02020303, 0x00010102, 0x0,
-    0x0,        0x0,        0x157,      0x16b,      0x181,      0x198,      0x1b0,      0x1ca,      0x1e5,      0x202,
-    0x220,      0x241,      0x263,      0x287,      0x557,      0x56b,      0x581,      0x598,      0x5b0,      0x5ca,
-    0x5e5,      0x602,      0x620,      0x641,      0x663,      0x687,      0x957,      0x96b,      0x981,      0x998,
-    0x9b0,      0x9ca,      0x9e5,      0xa02,      0xa20,      0xa41,      0xa63,      0xa87,      0xd57,      0xd6b,
-    0xd81,      0xd98,      0xdb0,      0xdca,      0xde5,      0xe02,      0xe20,      0xe41,      0xe63,      0xe87,
-    0x1157,     0x116b,     0x1181,     0x1198,     0x11b0,     0x11ca,     0x11e5,     0x1202,     0x1220,     0x1241,
-    0x1263,     0x1287,     0x1557,     0x156b,     0x1581,     0x1598,     0x15b0,     0x15ca,     0x15e5,     0x1602,
-    0x1620,     0x1641,     0x1663,     0x1687,     0x1957,     0x196b,     0x1981,     0x1998,     0x19b0,     0x19ca,
-    0x19e5,     0x1a02,     0x1a20,     0x1a41,     0x1a63,     0x1a87,     0x1d57,     0x1d6b,     0x1d81,     0x1d98,
-    0x1db0,     0x1dca,     0x1de5,     0x1e02,     0x1e20,     0x1e41,     0x1e63,     0x1e87,     0x1eae,     0x1eb7,
-    0x1f02,     0x1f30,     0x1f60,     0x1f94,     0x1fca,     0x144,      0x132,      0x121,      0x110,      0x101,
-    0xf8,       0xe5,       0xd8,       0xcc,       0xc1,       0xb6,       0xac,       0xa1,       0x90,       0x99,
-    0x86,       0x81,       0x7c,       0x73,       0x6c,       0x66,       0x60,       0x5b,       0x56,       0x2ae,
-    0x2d6,      0x302,      0x330,      0x360,      0x394,      0x3de,      0x404,      0x440,      0x482,      0x4c6,
-    0x50e,
-};
-/* The entries of the frequency table. */
-#define FREQ_ENTRIES ((int)(sizeof note_freq_table / sizeof note_freq_table[0]))
 
 /* An instrument bank file, its instruments packed into OPL register bytes. */
 typedef struct {
@@ -160,6 +127,38 @@ typedef struct {
     uint8_t sustain_queue[SUSTAIN_QUEUE][QUEUED_SIZE]; /* the note offs that wait for the sustain pedal */
     int sustain_count;
 } Channel;
+
+/* Operator offsets of the 9 voices (OPL2 register layout). */
+static const uint8_t op_modulator[VOICES] = {0, 1, 2, 8, 9, 10, 16, 17, 18};
+static const uint8_t op_carrier[VOICES] = {3, 4, 5, 11, 12, 13, 19, 20, 21};
+
+/* Velocity and volume level / 2 to OPL attenuation (driver table). */
+static const uint8_t level_attenuation[LEVEL_STEPS] = {
+    63, 58, 53, 48, 44, 41, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22,
+    21, 20, 19, 18, 17, 16, 15, 14, 14, 13, 13, 12, 12, 11, 11, 10, 10, 9,  9,  8,  8,  7,
+    7,  6,  6,  6,  5,  5,  5,  4,  4,  4,  4,  3,  3,  3,  2,  2,  2,  1,  1,  0,
+};
+
+/* Block and F-number of each MIDI note as the driver reads them: its frequency table holds notes 12 to 114,
+   notes 0 to 11 read the bytes of the attenuation table before it, and the bend tables follow it. */
+static const uint32_t note_freq_table[FREQ_ENTRIES] = {
+    0x0d0e0e0f, 0x0b0c0c0d, 0x090a0a0b, 0x07080809, 0x06060607, 0x04050505, 0x03040404, 0x02020303, 0x00010102, 0x0,
+    0x0,        0x0,        0x157,      0x16b,      0x181,      0x198,      0x1b0,      0x1ca,      0x1e5,      0x202,
+    0x220,      0x241,      0x263,      0x287,      0x557,      0x56b,      0x581,      0x598,      0x5b0,      0x5ca,
+    0x5e5,      0x602,      0x620,      0x641,      0x663,      0x687,      0x957,      0x96b,      0x981,      0x998,
+    0x9b0,      0x9ca,      0x9e5,      0xa02,      0xa20,      0xa41,      0xa63,      0xa87,      0xd57,      0xd6b,
+    0xd81,      0xd98,      0xdb0,      0xdca,      0xde5,      0xe02,      0xe20,      0xe41,      0xe63,      0xe87,
+    0x1157,     0x116b,     0x1181,     0x1198,     0x11b0,     0x11ca,     0x11e5,     0x1202,     0x1220,     0x1241,
+    0x1263,     0x1287,     0x1557,     0x156b,     0x1581,     0x1598,     0x15b0,     0x15ca,     0x15e5,     0x1602,
+    0x1620,     0x1641,     0x1663,     0x1687,     0x1957,     0x196b,     0x1981,     0x1998,     0x19b0,     0x19ca,
+    0x19e5,     0x1a02,     0x1a20,     0x1a41,     0x1a63,     0x1a87,     0x1d57,     0x1d6b,     0x1d81,     0x1d98,
+    0x1db0,     0x1dca,     0x1de5,     0x1e02,     0x1e20,     0x1e41,     0x1e63,     0x1e87,     0x1eae,     0x1eb7,
+    0x1f02,     0x1f30,     0x1f60,     0x1f94,     0x1fca,     0x144,      0x132,      0x121,      0x110,      0x101,
+    0xf8,       0xe5,       0xd8,       0xcc,       0xc1,       0xb6,       0xac,       0xa1,       0x90,       0x99,
+    0x86,       0x81,       0x7c,       0x73,       0x6c,       0x66,       0x60,       0x5b,       0x56,       0x2ae,
+    0x2d6,      0x302,      0x330,      0x360,      0x394,      0x3de,      0x404,      0x440,      0x482,      0x4c6,
+    0x50e,
+};
 
 /* Driver state per voice, operator, and MIDI channel. */
 static struct {

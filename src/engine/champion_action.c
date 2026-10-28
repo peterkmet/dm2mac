@@ -21,20 +21,17 @@
 #include "sound_request.h"
 #include "weather.h"
 
-/* Item attributes that the actions read. */
-#define ATTR_THROW_POWER_SHOOT 0x09
-#define ATTR_SHOOT_ATTACK      0x0a
-#define ATTR_STEP              0x0c /* item attribute: the flight step of a missile */
-/* Item attribute bits and masks. */
-#define ALL_CHARGES            0x000f /* the charges that CHARGES_USE_ALL takes */
-#define ATTR_USED_UP           0x0800 /* ATTR_FLAGS bit: the item vanishes with its last charge */
-/* Flag bits of the action area, the attacks, the creature alerts, the creature info and the redraw. */
-#define CREATURE_MELEE_REACHES 0x0020 /* creature info flag: mode 1 attacks reach the creature */
-#define FLAGS_KEEP_OPEN        0x0400 /* g_action.flags bit that the action area clears after an action */
-#define FRIGHTEN_ALERT_FLAGS   0x2005
-#define REDRAW_LEVEL           0x3800
-#define MELEE_ALERT_FLAGS      0x6002
-#define MELEE_ATTACK_PIERCES   0x8000 /* FIELD_ATTACK bit: the hit reaches creatures that CREATURE_NOT_DOOR_HIT marks */
+/* The charges that CHARGES_USE_ALL takes. */
+#define ALL_CHARGES            0x000f
+/* The g_action.flags bit that the action area clears after an action. */
+#define FLAGS_KEEP_OPEN        0x0400
+/* The alerts of a fear and of a melee hit: loud, set mood bit 5 (MOOD_BORED); may anger, loud, set mood bit 2
+   (MOOD_ANGRY). */
+#define FRIGHTEN_ALERT_FLAGS   (ALERT_LOUD | 0x0005)
+#define MELEE_ALERT_FLAGS      (ALERT_ANGER | ALERT_LOUD | 0x0002)
+/* The redraw of a level gain: the titles, the load, and the bars. */
+#define REDRAW_LEVEL           (REDRAW_TITLE_ALL | REDRAW_LOAD | REDRAW_BARS)
+#define MELEE_ATTACK_PIERCES   0x8000 /* FIELD_ATTACK bit: the hit reaches CREATURE_NON_MATERIAL creatures */
 /* The random masks of the hit rolls and the throw. */
 #define MELEE_WEAK_RANDOM      0x0f /* the random part of the rest of a weak hit */
 #define MELEE_RANDOM           0x1f /* the random part of the hit chance, the defense, the damage, and the armor test */
@@ -52,12 +49,6 @@
 #define VAR_BLOCKED_ACTIONS    0x42
 #define VAR_NO_AMMO_ACTIONS    0x43
 #define VAR_CANT_ACTIONS       0x47
-/* The explosion types of the actions, and the cell of an explosion in the square center. */
-#define CENTER_CELL            0x00ff
-#define EXPLOSION_COMMAND      0xff8e
-#define EXPLOSION_SUMMON_FAIL  0xffa8
-/* g_action.result of a melee action when a champion stands in front. */
-#define RESULT_BLOCKED         (-1)
 /* The delays of the actions in game steps. */
 #define DELAY_BASE             2
 #define DELAY_EXTRA_SHIFT      2 /* an action delay grows by a quarter */
@@ -82,7 +73,7 @@
 #define AURA_POWER_SHIFT       2
 #define SUMMON_POWER_SHIFT     3 /* the level of a summoned group: the power / 8 */
 /* The melee hit: its chance, damage, experience, and stamina, and the alert chances. */
-#define MELEE_MODE_REACH       1  /* FIELD_MODE of an attack that reaches only CREATURE_MELEE_REACHES creatures */
+#define MELEE_MODE_REACH       1  /* FIELD_MODE of an attack that reaches only CREATURE_NON_MATERIAL creatures */
 #define MELEE_KIND_FULL        1  /* FIELD_MELEE_KIND: full damage to creatures that take half damage */
 #define MELEE_LUCK_BASE        75 /* a missed hit gets a luck test of 75 - attack */
 #define MELEE_ALERT_CHANCE     90
@@ -108,7 +99,7 @@
 #define STEP_BASE              11
 #define THROW_FATIGUE_STEP     10 /* a throw costs half the weight up to 10, then half of each further part */
 /* The last sub-skill of the fighter and the ninja: these sub-skills learn less away from fights. */
-#define SKILL_LAST_FIGHT       11
+#define SKILL_LAST_FIGHT       SKILL_SHOOT
 /* Experience, levels, and the limits of the statistics that a level raises. */
 #define FIGHT_TIME_LONG        150
 #define FIGHT_TIME_SHORT       40
@@ -141,8 +132,8 @@ typedef struct {
 ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
 /* g_action.result after the last champ_perform_action (damage >= 0, failure < 0). */
 int16_t g_champ_action_result;
-/* The creature info records of things that a blow does not hurt (static, without the bytes 2 and 8 of a fighter), from SKULL.EXE. */
-static const uint8_t furniture_infos[] = {0, 1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 20, 37, 38, 39, 45, 51, 56, 60};
+
+/* Champion actions */
 
 /* A field of the GDAT text of action. */
 static int16_t field_of(ChampionAction action, int field)
@@ -155,7 +146,7 @@ void champ_action_clear_result(void)
     g_champ_action_result = 0;
 }
 
-void champ_add_action_delay(int champ, uint16_t ticks, int16_t hand)
+void champ_add_action_delay(int champ, uint16_t ticks, int hand)
 {
     Champion *c = champion(champ);
     uint16_t delay = (uint16_t)(ticks + (ticks >> DELAY_EXTRA_SHIFT));
@@ -182,11 +173,17 @@ bool champ_use_action_charge(int champ, ChampionAction action)
     if (charges != CHARGES_USE_NONE && charges != CHARGES_EMPTY)
         item_add_charges(g_champ_action_thing, (int16_t)-charges);
     bool empty = item_add_charges(g_champ_action_thing, 0) == 0;
-    if (empty && item_attr(g_champ_action_thing, ATTR_FLAGS) & ATTR_USED_UP) {
+    if (empty && item_attr(g_champ_action_thing, ATTR_FLAGS) & ITEM_FLAG_USED_UP) {
         champ_remove_object_from_slot(champ, g_action.hand);
         thing_set_word(g_champ_action_thing, THING_NEXT, THING_NONE);
     }
     return empty;
+}
+
+/* True when thing is a throwing item (throwing) or ammunition for the launcher in the hand of champ. */
+static bool is_missile_for_hand(int champ, int hand, uint16_t thing, bool throwing)
+{
+    return throwing ? item_has_action_command(champ, thing, COMMAND_THROW) : item_is_ammo_for_hand(champ, hand, thing);
 }
 
 /* The first ammunition or throwing item for the hand of champ in the quiver (slot 12, the chest in it, slots 7 to 9),
@@ -194,28 +191,24 @@ bool champ_use_action_charge(int champ, ChampionAction action)
 static uint16_t take_next_missile(int champ, int hand, bool throwing)
 {
     Champion *c = champion(champ);
-    int slot = SLOT_CONTAINER_TEST;
-    bool ok = throwing ? item_has_action_command(champ, c->slots[slot], COMMAND_THROW)
-                       : item_is_ammo_for_hand(champ, hand, c->slots[slot]);
-    if (!ok) {
-        uint16_t quiver = c->slots[SLOT_CONTAINER_TEST];
+    int slot = SLOT_QUIVER_ACTION;
+    if (!is_missile_for_hand(champ, hand, c->slots[slot], throwing)) {
+        uint16_t quiver = c->slots[SLOT_QUIVER_ACTION];
         if (item_is_chest(quiver)) {
             uint16_t *contents = container_contents(quiver);
             for (uint16_t t = *contents; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-                if (throwing ? item_has_action_command(champ, t, COMMAND_THROW)
-                             : item_is_ammo_for_hand(champ, hand, t)) {
+                if (is_missile_for_hand(champ, hand, t, throwing)) {
                     dungeon_unlink_thing_from_list(t, contents);
                     return t;
                 }
         }
         for (slot = SLOT_QUIVER_FIRST + 1; slot <= SLOT_QUIVER_LAST; slot++)
-            if (throwing ? item_has_action_command(champ, c->slots[slot], COMMAND_THROW)
-                         : item_is_ammo_for_hand(champ, hand, c->slots[slot]))
+            if (is_missile_for_hand(champ, hand, c->slots[slot], throwing))
                 break;
         if (slot > SLOT_QUIVER_LAST) {
             if (!throwing)
                 return THING_NONE;
-            slot = SLOT_CONTAINER_TEST; /* the original then takes what lies in the quiver slot */
+            slot = SLOT_QUIVER_ACTION; /* as in the original, the hand then takes what lies in the quiver slot */
         }
     }
     return champ_remove_object_from_slot(champ, slot);
@@ -297,12 +290,13 @@ static void raise_level(int champ, int base, uint16_t level)
     static const uint8_t message_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED, UI_BLUE};
     Champion *c = champion(champ);
     uint32_t gain = level;
-    int bit_a = rand_bit();
-    int bit_b = rand_bit() + 1;
-    int bit_c = rand_bit();
+    int raise_one = rand_bit();
+    int raise_one_or_two = rand_bit() + 1;
+    int raise_vitality = rand_bit();
+    /* a random point of vitality only at an odd level (a priest at each level), of anti-fire only at an even level */
     if (base != SKILL_PRIEST)
-        bit_c &= (int)gain;
-    raise_maximum(c, STAT_VITALITY, bit_c);
+        raise_vitality &= (int)gain;
+    raise_maximum(c, STAT_VITALITY, raise_vitality);
     uint16_t stamina = (uint16_t)c->max_stamina;
     raise_maximum(c, STAT_ANTI_FIRE, rand_bit() & ~gain & BYTE_MASK);
     int text;
@@ -311,22 +305,22 @@ static void raise_level(int champ, int base, uint16_t level)
         text = TEXT_LEVEL_FIGHTER;
         stamina = (uint16_t)(stamina >> FIGHTER_STAMINA_SHIFT);
         gain *= FIGHTER_HEALTH_FACTOR;
-        raise_maximum(c, STAT_STRENGTH, bit_b);
-        raise_maximum(c, STAT_DEXTERITY, bit_a);
+        raise_maximum(c, STAT_STRENGTH, raise_one_or_two);
+        raise_maximum(c, STAT_DEXTERITY, raise_one);
         break;
     case SKILL_NINJA:
         text = TEXT_LEVEL_NINJA;
         stamina = (uint16_t)(stamina / NINJA_STAMINA_DIVISOR);
         gain *= 2;
-        raise_maximum(c, STAT_STRENGTH, bit_a);
-        raise_maximum(c, STAT_DEXTERITY, bit_b);
+        raise_maximum(c, STAT_STRENGTH, raise_one);
+        raise_maximum(c, STAT_DEXTERITY, raise_one_or_two);
         break;
     case SKILL_PRIEST:
         text = TEXT_LEVEL_PRIEST;
         stamina = (uint16_t)(stamina / PRIEST_STAMINA_DIVISOR);
         c->max_mana = (int16_t)(c->max_mana + gain);
         gain += (gain + 1) >> 1;
-        raise_maximum(c, STAT_WISDOM, bit_a);
+        raise_maximum(c, STAT_WISDOM, raise_one);
         raise_magic(c, level);
         break;
     case SKILL_WIZARD:
@@ -334,7 +328,7 @@ static void raise_level(int champ, int base, uint16_t level)
         text = TEXT_LEVEL_WIZARD;
         stamina = (uint16_t)(stamina >> WIZARD_STAMINA_SHIFT);
         c->max_mana = (int16_t)(c->max_mana + gain + (gain >> 1));
-        raise_maximum(c, STAT_WISDOM, bit_b);
+        raise_maximum(c, STAT_WISDOM, raise_one_or_two);
         raise_magic(c, level);
         break;
     }
@@ -415,7 +409,7 @@ static int16_t melee_hit_damage(int strength, uint16_t factor, const CreatureInf
 }
 
 /* A melee hit of the champion of the action on the creature group in front: attack sets the hit chance, factor the
-   damage; pierces: it hits creatures that only piercing hits reach (CREATURE_NOT_DOOR_HIT). Returns the damage. */
+   damage; pierces: it reaches CREATURE_NON_MATERIAL creatures. Returns the damage. */
 static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t factor, int kind, bool pierces)
 {
     uint16_t group = a->target;
@@ -434,7 +428,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
     uint16_t at = creature_group_at(g_party.cur_map, x, y);
     if (hit && at != THING_NONE && creature_current_step_acts(at))
         hit = false;
-    if (hit && info->flags & CREATURE_NOT_DOOR_HIT && !pierces)
+    if (hit && info->flags & CREATURE_NON_MATERIAL && !pierces)
         hit = false;
     if (hit) {
         int16_t chance = (int16_t)(((int)(rand_next() & MELEE_RANDOM) + info->dexterity + difficulty +
@@ -444,7 +438,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
             hit = champ_test_luck(c, (uint16_t)(MELEE_LUCK_BASE - attack));
     }
     if (hit) {
-        damage = melee_hit_damage((int16_t)champ_get_strength(champ, g_action.hand, skill), factor, info, difficulty);
+        damage = melee_hit_damage((int16_t)champ_get_strength(champ, a->hand, skill), factor, info, difficulty);
         hit = damage != 0;
     }
     if (hit) {
@@ -457,7 +451,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
         unsigned roll = rand_next() & MELEE_CRITICAL_ROLL;
         if ((uint16_t)champ_get_skill_level(champ, skill, true) > roll)
             damage = (int16_t)(damage + damage + MELEE_CRITICAL_BONUS);
-        uint16_t extra = item_attr(c->slots[g_action.hand], ATTR_EXTRA_DAMAGE);
+        uint16_t extra = item_attr(c->slots[a->hand], ATTR_EXTRA_DAMAGE);
         if (extra && damage > (int16_t)(rand_next() & MELEE_RANDOM))
             damage = (int16_t)(damage + creature_roll_armor_factor(group, extra));
         int worth = creature_experience(info);
@@ -475,6 +469,14 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
     return damage;
 }
 
+/* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
+static void show_failure(int result, int counter)
+{
+    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
+    g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
+    g_action.result = (int16_t)result;
+}
+
 /* A melee attack of the champion of the action on the creature group in front; true when the attack happened. */
 static bool melee_attack_front(const ActionRun *a, int mode, int kind)
 {
@@ -489,13 +491,11 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
         int other = dir_turn(c->cell, rel == 2 ? TURN_LEFT : TURN_RIGHT);
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
-            g_action.result = RESULT_BLOCKED;
-            g_action.redraw_delay = (int16_t)max_int(
-                1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_ACTIONS, 1, GLOBAL_VAR_ADD)));
+            show_failure(RESULT_NOTHING, VAR_BLOCKED_ACTIONS);
             return false;
         }
     }
-    if ((int16_t)mode == MELEE_MODE_REACH && !(creature_group_info(a->target)->flags & CREATURE_MELEE_REACHES))
+    if (mode == MELEE_MODE_REACH && !(creature_group_info(a->target)->flags & CREATURE_NON_MATERIAL))
         return false;
     uint16_t attack = (uint16_t)field_of(a->action, FIELD_ATTACK);
     uint16_t wounds = (uint16_t)field_of(a->action, FIELD_WOUNDS);
@@ -511,7 +511,7 @@ static void summon_minions(const ActionRun *a, int command)
 {
     static const uint8_t summoned[] = {MINION_SCOUT, MINION_CARRIER, MINION_ARMY};
     CreatureSummon summon = {.creature_type = summoned[command - COMMAND_SUMMON_FIRST],
-                             .level = (uint16_t)((int16_t)a->power >> SUMMON_POWER_SHIFT),
+                             .level = (uint16_t)(a->power >> SUMMON_POWER_SHIFT),
                              .dir = dir_opposite(g_game.party_dir),
                              .x = g_game.party_x,
                              .y = g_game.party_y,
@@ -519,7 +519,8 @@ static void summon_minions(const ActionRun *a, int command)
                              .link = a->item,
                              .search_dir = (int8_t)g_game.party_dir};
     if (creature_summon_group(summon).group == THING_NONE)
-        explosion_create(EXPLOSION_SUMMON_FAIL, EXPLOSION_SUMMON_POWER, g_game.party_x, g_game.party_y, CENTER_CELL);
+        explosion_create(EXPLOSION_DEATH_CLOUD, EXPLOSION_SUMMON_POWER, g_game.party_x, g_game.party_y,
+                         EXPLOSION_AT_CENTER);
 }
 
 /* A new guard, fetch, or attack minion of the minion map: at the party, a fetch minion at its location; true when it
@@ -544,7 +545,7 @@ static bool send_minion(ActionRun *a, int command)
     } else if (command == COMMAND_MINION_GUARD) {
         type = MINION_GUARD;
     }
-    int level = (uint16_t)champ_get_skill_level(a->champ, a->skill, true);
+    int level = champ_get_skill_level(a->champ, a->skill, true);
     CreatureSummon summon = {.creature_type = type,
                              .level = level,
                              .dir = dir,
@@ -557,7 +558,7 @@ static bool send_minion(ActionRun *a, int command)
     if (summoned.group == THING_NONE) {
         a->experience = (int16_t)(a->experience >> 2);
         a->delay = (uint16_t)(a->delay >> 1);
-        explosion_create(EXPLOSION_SUMMON_FAIL, EXPLOSION_SUMMON_POWER, x, y, CENTER_CELL);
+        explosion_create(EXPLOSION_DEATH_CLOUD, EXPLOSION_SUMMON_POWER, x, y, EXPLOSION_AT_CENTER);
         return false;
     }
     if (command == COMMAND_MINION_ATTACK)
@@ -588,7 +589,7 @@ static bool run_minion_command(ActionRun *a, int command)
         return true;
     case COMMAND_MINION_GUARD:
     case COMMAND_MINION_FETCH:
-        if (item_find_link_projectile(group, map_item)) {
+        if (item_find_link_projectile(group, map_item) != THING_NONE) {
             group_set_creature(group, command == COMMAND_MINION_GUARD ? MINION_GUARD : MINION_FETCH);
             ai_free_cached_data(group);
             return true;
@@ -598,14 +599,6 @@ static bool run_minion_command(ActionRun *a, int command)
         break;
     }
     return send_minion(a, command);
-}
-
-/* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
-static void show_failure(int result, int counter)
-{
-    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
-    g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
-    g_action.result = (int16_t)result;
 }
 
 /* The party becomes invisible for power game steps, at least POWER_MIN. */
@@ -636,21 +629,18 @@ static bool run_spell_projectile(ActionRun *a)
     return done;
 }
 
-/* True when the creature group is furniture that a blow does not hurt. */
-static bool is_furniture(uint16_t group)
+/* True when the creature is furniture that a blow does not hurt: static, not hurt, and not hit. */
+static bool is_furniture(const CreatureInfo *info)
 {
-    int index = (int)(creature_group_info(group) - creature_info_at(0));
-    for (size_t i = 0; i < sizeof furniture_infos; i++)
-        if (furniture_infos[i] == index)
-            return true;
-    return false;
+    return info->flags & CREATURE_STATIC && info->defense == CREATURE_NO_HURT &&
+           info->dexterity == DEXTERITY_UNHITTABLE;
 }
 
 /* A melee action: it bashes a closed door in front, or attacks the creature group in front. */
 static bool run_melee(ActionRun *a)
 {
     if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
-        sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
+        sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), false, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sndreq_request_with_fallback(
             (SoundCue){CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
@@ -659,7 +649,7 @@ static bool run_melee(ActionRun *a)
         return true;
     }
     bool done = true;
-    if (a->target != THING_NONE && is_furniture(a->target)) {
+    if (a->target != THING_NONE && is_furniture(creature_group_info(a->target))) {
         a->experience = (int16_t)(a->experience >> 1);
     } else {
         done = melee_attack_front(a, field_of(a->action, FIELD_MODE), field_of(a->action, FIELD_MELEE_KIND));
@@ -739,8 +729,7 @@ static bool run_shoot(ActionRun *a)
     int level = champ_get_skill_level(a->champ, SKILL_SHOOT, true);
     uint16_t step = item_attr(ammo, ATTR_STEP);
     uint16_t attack = (uint16_t)(item_attr(a->item, ATTR_SHOOT_ATTACK) + level * 2);
-    uint16_t kinetic =
-        (uint16_t)(level + item_attr(a->item, ATTR_THROW_POWER_SHOOT) + item_attr(ammo, ATTR_THROW_POWER_SHOOT));
+    uint16_t kinetic = (uint16_t)(level + item_attr(a->item, ATTR_THROW_POWER) + item_attr(ammo, ATTR_THROW_POWER));
     projectile_launch_from_champion(a->champ, ammo, kinetic, attack, step);
     a->silent = true;
     return true;
@@ -783,8 +772,8 @@ static void run_party_magic(ActionRun *a, int command)
         magic_add_light(command, a->power);
         break;
     case COMMAND_EXPLOSION:
-        explosion_create(EXPLOSION_COMMAND, (uint16_t)max_int(EXPLOSION_POWER_MIN, (int16_t)a->power), g_game.party_x,
-                         g_game.party_y, CENTER_CELL);
+        explosion_create(SPELL_MISSILE_WALL, (uint16_t)max_int(EXPLOSION_POWER_MIN, (int16_t)a->power), g_game.party_x,
+                         g_game.party_y, EXPLOSION_AT_CENTER);
         break;
     case COMMAND_HASTE:
         a->power = (int16_t)max_int(POWER_MIN, (int16_t)a->power);
@@ -823,7 +812,7 @@ static int throw_fatigue(uint16_t thing)
 }
 
 /* Champ throws the item in hand (-1: the leader hand object) to the left or the right side; true when it flies. */
-static bool throw_object(int champ, int16_t hand, bool right_side)
+static bool throw_object(int champ, int hand, bool right_side)
 {
     Champion *c = champion(champ);
     bool from_leader_hand = false;
@@ -856,7 +845,7 @@ static bool throw_object(int champ, int16_t hand, bool right_side)
         experience = (throw_power >> THROW_EXPERIENCE_SHIFT) + THROW_EXPERIENCE_BASE;
         power = throw_power;
     }
-    champ_add_experience(champ, SKILL_THROW, (uint16_t)experience);
+    champ_add_experience(champ, SKILL_THROW, experience);
     kinetic = (int16_t)(kinetic + power);
     int level = champ_get_skill_level(champ, SKILL_THROW, true);
     kinetic =
@@ -870,7 +859,7 @@ static bool throw_object(int champ, int16_t hand, bool right_side)
     projectile_create(&(ProjectileLaunch){.payload = thing,
                                           .x = g_game.party_x,
                                           .y = g_game.party_y,
-                                          .cell = (int16_t)dir_turn(g_game.party_dir, right_side),
+                                          .cell = (int16_t)dir_turn(g_game.party_dir, right_side ? TURN_RIGHT : 0),
                                           .dir = g_game.party_dir,
                                           .energy = (uint8_t)kinetic,
                                           .hit_chance = (uint8_t)attack,
@@ -1007,13 +996,13 @@ bool champ_execute_selected_action(int index)
         action_area_close();
     else
         g_action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     return done;
 }
 
 void champ_process_repeated_actions(void)
 {
-    int16_t saved = -1;
+    bool ran = false;
     for (int champ = 0; champ < g_game.champion_count; champ++)
         for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
             ActionRepeat *r = &g_action_repeats[champ][hand];
@@ -1028,7 +1017,8 @@ void champ_process_repeated_actions(void)
                 continue;
             }
             r->left--;
-            saved = g_action.hand;
+            ran = true;
+            int16_t saved = g_action.hand;
             g_action.hand = (int16_t)hand;
             champ_list_actions(champ, r->thing, hand);
             ChampionAction action = g_champ_actions[r->action];
@@ -1040,7 +1030,7 @@ void champ_process_repeated_actions(void)
             }
             g_action.hand = saved;
         }
-    if (g_action.champion && saved >= 0 && g_action.hand <= SLOT_ACTION_HAND)
+    if (g_action.champion && ran && g_action.hand >= 0 && g_action.hand <= SLOT_ACTION_HAND)
         champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
 }
 

@@ -1656,7 +1656,7 @@ static void feedback_hand_icon(int icon)
             return;
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
-    area_draw_hand_icon(champ, icon, 1);
+    area_draw_hand_icon(champ, icon, true);
     present_action_area();
 }
 
@@ -1666,7 +1666,7 @@ static void feedback_spell_icon(int cell)
     int champ = party_cell_champion(cell);
     if (champ < 0)
         return;
-    area_draw_spell_icon(champ, 1);
+    area_draw_spell_icon(champ, true);
     present_action_area();
 }
 
@@ -1688,7 +1688,7 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         feedback_hand_icon(*p++);
         break;
     case FB_ACTION_NAME:
-        area_draw_name(*p++, 1);
+        area_draw_name(*p++, true);
         present_action_area();
         break;
     case FB_ENTERED_RUNES:
@@ -2056,7 +2056,7 @@ static void click_take_object(int x, int y, int index)
     if (thing != THING_NONE) {
         move_thing(thing, sx, sy, MOVE_NO_SQUARE, z->kind == CLICK_POSSESSIONS ? MOVE_IN_POSSESSIONS : 0);
         clear_moneybox_placed(thing);
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
     }
     game_set_command_stop(true);
 }
@@ -2334,7 +2334,7 @@ static bool execute_party_command(const Command *c, bool idle)
             int16_t turn = command == CMD_ROTATE_LEFT ? TURN_LEFT : TURN_RIGHT;
             champ_set_direction(champ, dir_turn(champion(champ)->dir, turn));
         }
-        area_update(0);
+        area_update(false);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
         champ_set_leader(party_cell_champion(command - CMD_LEADER_FIRST));
         ui_draw_all_champion_states(0);
@@ -2413,7 +2413,7 @@ static bool execute_champion_command(int command, bool idle)
         else
             champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
-        area_update(0);
+        area_update(false);
     } else if (command >= CMD_QUICK_SAVE && command <= CMD_OPTIONS) {
         if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)

@@ -1201,7 +1201,7 @@ static const uint8_t *get_shaded_palette(int category, int index, int entry, int
     } else if (view.shade == VIEW_SHADE_MAX) {
         return NULL;
     }
-    return pal_apply_dim_remap(view.shaded_palette, (uint8_t)view.shade, key, NO_KEY, &count);
+    return pal_apply_dim_remap(view.shaded_palette, view.shade, key, NO_KEY, &count);
 }
 
 /* Copies a bitmap mirrored left to right. */
@@ -1215,7 +1215,7 @@ static void show_map_picture(int entry, int zone, int key, int flip)
 {
     DrawCtx c;
     draw_ctx_init(&c, CAT_WALLSET, view.gfx_set, entry);
-    pal_apply_dim_remap(c.palette, (uint8_t)view.shade, key, NO_KEY, &c.palette_count);
+    pal_apply_dim_remap(c.palette, view.shade, key, NO_KEY, &c.palette_count);
     c.transparent = (int16_t)key;
     c.dst = &g_view_viewport;
     c.flip = (int16_t)flip;
@@ -1912,7 +1912,7 @@ static void setup_explosion_picture(int type, int size, int flip, int zone)
     c->flip = (int16_t)flip;
     c->scale_y = (int16_t)scale;
     c->scale_x = c->scale_y;
-    pal_apply_dim_remap(c->palette, (uint8_t)view.shade, THING_KEY, NO_KEY, &c->palette_count);
+    pal_apply_dim_remap(c->palette, view.shade, THING_KEY, NO_KEY, &c->palette_count);
     draw_ctx_prepare(c);
 }
 
@@ -2184,7 +2184,7 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
     uint16_t item = sensor_data(display);
     uint8_t set[ITEM_CLASS_SET_SIZE];
     int list = sensor_delay(shop); /* the delay bits of a shop: its price list */
-    if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, 0)) {
+    if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, false)) {
         int count, at = item;
         const uint8_t *table = price_table(ornament, &count);
         if (table)
@@ -3649,7 +3649,7 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
             dungeon_append_thing(thing, contents);
         } else if (count > 0) {
             dungeon_unlink_thing_from_list(last, contents);
-            champ_put_in_leader_hand(last, 1);
+            champ_put_in_leader_hand(last);
         }
         break;
     }

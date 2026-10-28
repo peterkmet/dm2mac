@@ -115,7 +115,7 @@ bool optmenu_process_key(uint16_t key)
     switch (key) {
     case SCAN_ESCAPE:
         return true;
-    case SCAN_RETURN:
+    case KEY_ENTER:
         if (menu.row == OPTMENU_ROW_CONTINUE)
             return true;
         change_filter(1);

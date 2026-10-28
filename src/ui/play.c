@@ -101,7 +101,7 @@ void play_hide_view(void)
     game_set_view_hidden(true);
     if (g_input_drag_state) {
         champ_drag_cancel();
-        area_update(0);
+        area_update(false);
     }
     input_cancel_push_mode();
     input_release_move_arrow();
