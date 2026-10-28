@@ -6,7 +6,6 @@ byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate recor
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
 byteorder engine/magic.c rule 10.7: runes_of reads the single rune bytes of the champion record and the end mark after them
-byteorder ui/draw.c bridge: task 43
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
@@ -52,7 +51,7 @@ decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
 decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
-decimal ui/dialog.c bridge: task 43
+decimal ui/dialog.c:button_zone_first rule 3.12: the first button text zone by button count of SKULL.EXE
 decimal ui/fm.c:level_attenuation rule 3.12: a table of SKULL.EXE
 decimal ui/fm.c:op_carrier rule 3.12: a table of SKULL.EXE
 decimal ui/fm.c:op_modulator rule 3.12: a table of SKULL.EXE
@@ -202,6 +201,7 @@ order engine/game.c:sections bridge: task 26
 order engine/sensor.c:sections bridge: task 37
 order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
+order ui/fm.c:sections bridge: task 44
 order ui/minion_map.c:sections bridge: task 46
 order ui/view.c:sections bridge: task 52
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit

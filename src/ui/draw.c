@@ -15,13 +15,14 @@
 /* Palette count of a context without a color remap. */
 #define NO_PALETTE (-1)
 
-Bitmap g_draw_screen = {&g_video_fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
-
-/* Temporary bitmaps of one frame, freed together. */
+/* Temporary bitmaps of one frame, freed together; the pixels follow the record. */
 typedef struct Temp {
     struct Temp *next;
     Bitmap bitmap;
+    uint8_t pixels[];
 } Temp;
+
+Bitmap g_draw_screen = {&g_video_fb[0][0], SCREEN_W, SCREEN_H, IMAGE_8BPP};
 
 static struct {
     const Gdat *cache_owner; /* the GRAPHICS.DAT of the decoded images */
@@ -50,11 +51,26 @@ static void follow_gdat(void)
         rebuild_cache();
 }
 
+/* Setup */
+
 void draw_init(const Gdat *g)
 {
     gdat_select(g);
     rebuild_cache();
 }
+
+void draw_free(void)
+{
+    draw_free_temp();
+    for (int i = 0; i < draw_state.image_count; i++)
+        free(draw_state.images[i].pixels);
+    free(draw_state.images);
+    draw_state.images = NULL;
+    draw_state.image_count = 0;
+    draw_state.cache_owner = NULL;
+}
+
+/* Images */
 
 /* The decoded image of a GDAT item, decoded on first use; NULL when it cannot be decoded. */
 static const Bitmap *decoded(int item)
@@ -66,8 +82,10 @@ static const Bitmap *decoded(int item)
     if (b->pixels)
         return b;
     ImageInfo info;
-    if (gdat_image_info(draw_state.cache_owner, item, &info) != GDAT_OK ||
-        !(b->pixels = malloc(info.size ? info.size : 1)))
+    if (gdat_image_info(draw_state.cache_owner, item, &info) != GDAT_OK)
+        return NULL;
+    b->pixels = malloc(info.size ? info.size : 1);
+    if (!b->pixels)
         return NULL;
     if (gdat_decode_image(draw_state.cache_owner, item, b->pixels, info.size) != GDAT_OK) {
         free(b->pixels);
@@ -99,13 +117,15 @@ const uint8_t *draw_gdat_image_palette(int category, int index, int entry)
     return gdat ? gdat_image_colormap(gdat, find_item(category, index, entry)) : NULL;
 }
 
+/* Temporary bitmaps */
+
 Bitmap *draw_temp_bitmap(int width, int height, int bpp)
 {
     size_t size = bpp == IMAGE_4BPP ? (size_t)(width + 1) / 2 * height : (size_t)width * height;
     Temp *t = malloc(sizeof *t + (size ? size : 1));
     if (!t)
         return NULL;
-    t->bitmap = (Bitmap){(uint8_t *)(t + 1), (int16_t)width, (int16_t)height, (uint8_t)bpp};
+    t->bitmap = (Bitmap){t->pixels, (int16_t)width, (int16_t)height, (uint8_t)bpp};
     t->next = draw_state.temps;
     draw_state.temps = t;
     return &t->bitmap;
@@ -120,16 +140,7 @@ void draw_free_temp(void)
     }
 }
 
-void draw_free(void)
-{
-    draw_free_temp();
-    for (int i = 0; i < draw_state.image_count; i++)
-        free(draw_state.images[i].pixels);
-    free(draw_state.images);
-    draw_state.images = NULL;
-    draw_state.image_count = 0;
-    draw_state.cache_owner = NULL;
-}
+/* Contexts */
 
 /* Adds a packed offset (x in the high byte, y in the low byte) to the offset of ctx. */
 static void add_offset(DrawCtx *ctx, int packed)
@@ -182,7 +193,7 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
     }
     if (ctx->flip & MIRROR_H)
         ctx->dx = (int16_t)-ctx->dx;
-    if (ctx->transparent == DRAW_NO_IMAGE)
+    if (ctx->mode == DRAW_NO_IMAGE)
         return ctx;
     const Bitmap *src = given ? ctx->image : draw_gdat_image(ctx->category, ctx->index, ctx->entry);
     if (!scaled || !src) {
@@ -208,7 +219,7 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
 }
 
 /* The source start of a mirrored blit: the part of the image beyond the drawn part. */
-static int16_t mirrored_start(int16_t start, int16_t size, int16_t image_size, int mirrored)
+static int16_t mirrored_start(int16_t start, int16_t size, int16_t image_size, bool mirrored)
 {
     int16_t end = (int16_t)(size + start);
     return mirrored && image_size > end ? (int16_t)(image_size - end) : 0;
@@ -244,7 +255,7 @@ void draw_ctx_draw(DrawCtx *ctx)
     if (ctx->flip & MIRROR_V)
         sy = 0;
     sy = (int16_t)(sy + fy);
-    if (ctx->transparent != DRAW_NO_BLIT) {
+    if (ctx->mode != DRAW_RECT_ONLY) {
         Blit blit = {.src = image->pixels,
                      .dst = ctx->dst->pixels,
                      .src_x = sx,

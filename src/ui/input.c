@@ -1708,7 +1708,7 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         break;
     case FB_DIALOG_BUTTON:
     case FB_DIALOG_BUTTON_2:
-        dialog_draw_button(g_input_match.zone, 1, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
+        dialog_draw_button(true, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
         p += DIALOG_BUTTON_ARGS;
         f->opened = false; /* the original forgets the open feedback bitmap */
         dialog_present();
