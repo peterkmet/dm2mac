@@ -253,7 +253,7 @@ static enum CheatsResult process_cheat_key(int16_t key)
         return CHEATS_QUICK_SAVE;
     case KEY_QUICK_LOAD:
         return CHEATS_QUICK_LOAD;
-    case SCAN_RETURN:
+    case KEY_ENTER:
         return cheats_run_selected_row();
     case KEYPAD_FORWARD:
     case SCAN_W:
