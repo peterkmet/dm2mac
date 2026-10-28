@@ -207,6 +207,8 @@ uint16_t sensor_door_value(uint16_t door, int key);
 int sensor_party_possesses_type(int type);
 /* Queues a square event for (x, y) of the current map at time. */
 void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect, uint32_t time);
+/* Presses the button of door at the square: toggles the door next tick and queues the button release. */
+void sensor_press_door_button(Location at, uint16_t door);
 /* Queues the square event of the target of sensor with effect, delay ticks after its own delay. */
 void sensor_trigger_target(uint16_t sensor, int effect, int delay);
 /* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).

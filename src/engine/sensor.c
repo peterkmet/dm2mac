@@ -221,6 +221,15 @@ void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect
     timeline_add_event(&e);
 }
 
+void sensor_press_door_button(Location at, uint16_t door)
+{
+    sensor_schedule_square_event(at.x, at.y, 0, EFFECT_TOGGLE, g_game.game_time + 1);
+    TimelineEvent e = {.time_map = current_map_time(g_game.game_time + 1), .type = EVENT_DOOR_BUTTON_RELEASE};
+    put_le16(e.data + SENSOR_EVENT_THING, first_thing(at.x, at.y));
+    timeline_add_event(&e);
+    door_set_flag(door, DOOR_BUTTON_PRESSED, true);
+}
+
 void sensor_trigger_target(uint16_t sensor, int effect, int delay)
 {
     sensor_schedule_square_event(sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor), effect,
