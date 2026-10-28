@@ -31,6 +31,8 @@
 /* Sound (CAT_DUNGEON, 0, SOUND_ENTRY_TRANSFORM): a creature transforms; the volume dialog plays it as its test sound. */
 #define SOUND_ENTRY_TRANSFORM    0x8b
 #define SOUND_PRIORITY_TRANSFORM 0x6c
+/* Sound (CAT_DUNGEON, 0, SOUND_ENTRY_TRANSFORMED): a creature transformed. */
+#define SOUND_ENTRY_TRANSFORMED  0x81
 
 /* The data byte of event EVENT_DELAYED_SOUND that holds the slot of its sound. */
 #define DELAYED_EVENT_SLOT 0x00

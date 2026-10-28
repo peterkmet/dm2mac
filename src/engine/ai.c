@@ -319,9 +319,6 @@
 /* The creature flag of the move action. */
 #define CREATURE_ATTACKS_FIRST 0x0100 /* flags: the creature attacks before it moves */
 
-/* The sound entry of a creature that transformed. */
-#define SOUND_ENTRY_TRANSFORMED 0x81
-
 /* The item filter bit of an action that repeats for all matching items. */
 #define SUB_REPEAT 0x40
 
