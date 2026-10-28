@@ -139,8 +139,9 @@ static const uint8_t event_mask[TIMELINE_EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 
 static const uint8_t door_mask[] = {0x00, 0x00, 0x00, 0x3e};
 static const uint8_t text_mask[] = {0x00, 0x00, 0x01, 0x00};
 static const uint8_t sensor_mask[] = {0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00};
-static const uint8_t group_mask[] = {0, 0, 0, 0, 0, 0, 0xff, 0x3f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x80, 0x07};
-static const uint8_t static_group_mask[] = {0,    0,    0,    0,    0,    0,    0xff, 0x3f,
+static const uint8_t group_mask[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x3f,
+                                     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x80, 0x07};
+static const uint8_t static_group_mask[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x3f,
                                             0xff, 0x07, 0xff, 0xff, 0x3f, 0x00, 0x00, 0x07};
 static const uint8_t weapon_mask[] = {0x00, 0x00, 0xff, 0x3d};
 static const uint8_t armour_mask[] = {0x00, 0x00, 0xff, 0x1f};
@@ -161,8 +162,7 @@ static const uint8_t *const thing_masks[THING_TYPE_COUNT] = {
 /* What follows the AMAP block. */
 enum SaveTail { TAIL_END, TAIL_CHEATS, TAIL_OTHER };
 
-Game g_game = {
-    .leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START}; /* no leader */
+Game g_game = {.leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START};
 
 /* State of one load or write. */
 static struct {
