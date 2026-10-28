@@ -171,18 +171,22 @@
 #define WALL_CELL_LEFT  1
 #define WALL_CELL_RIGHT 2
 #define WALL_CELL_FRONT 3
+#define WALL_CELL_COUNT 4
 
 /* The push resistance of a creature that never moves: a click on it only sounds. */
 #define PUSH_RESISTANCE_FIXED 0xff
 
 /* Relative cells of the squares of a view click. */
 #define HALF_CELLS                 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
+#define RIGHT_COLUMN_FIRST         1 /* relative cells 1 and 2: the right column of a square */
+#define RIGHT_COLUMN_LAST          2
 #define POSSESSION_VIEW_CELL_FIRST HALF_CELLS /* the possessions of a static creature show in the back half */
 #define ALCOVE_CELL                2          /* the alcove in front keeps its objects in relative cell 2 */
 
 /* The middle part of the viewport without a push arrow. */
-#define ARROW_CENTER_X 20 /* half size of the middle part of the viewport, without an arrow */
-#define ARROW_CENTER_Y 15
+#define ARROW_CENTER_X       20 /* half size of the middle part of the viewport, without an arrow */
+#define ARROW_CENTER_Y       15
+#define ARROW_PRESSED_OFFSET 1 /* the graphic entry of a pressed movement arrow after the released one */
 
 /* The PC scan codes that have a character (kbd_key_to_ascii), and the scan code of a key code. */
 #define CHAR_SCAN_FIRST 0x02
@@ -1478,13 +1482,13 @@ void input_refine_champion_click(Command *c)
     int command = c->command;
     if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
         int n = command - CMD_HAND_FIRST;
-        int hand = n & 1;
-        int champ = party_cell_champion(n / 2);
+        int hand = n % SLOT_HAND_COUNT;
+        int champ = party_cell_champion(n / SLOT_HAND_COUNT);
         if (champ < 0 || champion(champ)->action_delay[hand] ||
             !champ_list_actions(champ, champion(champ)->slots[hand], hand))
             c->command = 0;
         else
-            c->command = (uint16_t)(CMD_HAND_FIRST + champ * 2 + hand);
+            c->command = (uint16_t)(CMD_HAND_FIRST + champ * SLOT_HAND_COUNT + hand);
         return;
     }
     if (command < CMD_PARTY_ICON_FIRST || command > CMD_PARTY_ICON_LAST)
@@ -1497,8 +1501,9 @@ void input_refine_champion_click(Command *c)
     }
     const int16_t *r = c->rect;
     /* the distances to the edges of the icon that face the party center */
-    int16_t dy = (int16_t)(icon < 2 ? r[RECT_Y] + r[RECT_H] - 1 - c->y : c->y - r[RECT_Y]);
-    int16_t dx = (int16_t)(icon == 1 || icon == 2 ? c->x - r[RECT_X] : r[RECT_X] + r[RECT_W] - 1 - c->x);
+    int16_t dy = (int16_t)(icon < HALF_CELLS ? r[RECT_Y] + r[RECT_H] - 1 - c->y : c->y - r[RECT_Y]);
+    int16_t dx = (int16_t)(icon >= RIGHT_COLUMN_FIRST && icon <= RIGHT_COLUMN_LAST ? c->x - r[RECT_X]
+                                                                                   : r[RECT_X] + r[RECT_W] - 1 - c->x);
     if (dx <= dy)
         c->command = (uint16_t)(CMD_LEADER_FIRST + icon);
     else if (champion(champ)->action_delay[ACTION_SPELL])
@@ -1596,7 +1601,7 @@ static void feedback_picture(Feedback *f, const uint8_t *p)
     feedback_init_rect(f, r, image->width, image->height);
     offscreen_blit(&f->o,
                    &(BlitSource){.bitmap = image,
-                                 .transparent = (int8_t)p[PICTURE_KEY],
+                                 .transparent = (int8_t)p[PICTURE_KEY], /* 0xff in the script is GFX_OPAQUE */
                                  .colormap = draw_gdat_image_palette(category, index, entry)},
                    r);
 }
@@ -1888,7 +1893,8 @@ static void show_move_arrow(int entry, int zone, bool pressed)
     Offscreen o;
     offscreen_create(&o, zone, true);
     gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
-    offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry + pressed}, zone, GFX_OPAQUE);
+    offscreen_draw_gdat_image(
+        &o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry + (pressed ? ARROW_PRESSED_OFFSET : 0)}, zone, GFX_OPAQUE);
     offscreen_flush(&o, true);
     draw_free_temp();
 }
@@ -1906,11 +1912,20 @@ void input_release_move_arrow(void)
 
 void input_update_viewport_arrow(void)
 {
-    /* by push arrow: the movement arrow entry and zone, the direction of the push and of the party step */
-    static const uint8_t entries[PUSH_ARROW_COUNT] = {0x12, 0x10, 0x14, 0x16, 0x18, 0x0e};
-    static const uint16_t zones[PUSH_ARROW_COUNT] = {0x2a, 0x29, 0x2b, 0x2c, 0x2d, 0x28};
-    static const uint8_t push_dirs[PUSH_ARROW_COUNT] = {0, 1, 2, 2, 2, 3};
-    static const uint8_t step_dirs[PUSH_ARROW_COUNT] = {0, 0, 1, 2, 3, 0};
+    /* by push arrow: the movement arrow entry and zone, the turn from the party direction to the push and to the
+       party step (0: ahead) */
+    static const struct {
+        uint8_t entry;
+        uint16_t zone;
+        int8_t push_turn, step_turn;
+    } push_arrows[PUSH_ARROW_COUNT] = {
+        {0x12, 0x2a, 0,          0         },
+        {0x10, 0x29, TURN_RIGHT, 0         },
+        {0x14, 0x2b, TURN_BACK,  TURN_RIGHT},
+        {0x16, 0x2c, TURN_BACK,  TURN_BACK },
+        {0x18, 0x2d, TURN_BACK,  TURN_LEFT },
+        {0x0e, 0x28, TURN_LEFT,  0         },
+    };
     if (!g_view_arrows_enabled || g_party.push_pending_group != THING_NONE)
         return;
     int16_t r[RECT_SIZE];
@@ -1934,15 +1949,15 @@ void input_update_viewport_arrow(void)
     } else {
         arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
     }
-    int step = dir_turn(step_dirs[arrow], g_game.party_dir);
+    int step = dir_turn(push_arrows[arrow].step_turn, g_game.party_dir);
     if (dun_square_blocks_movement(dun_get_square(
             (Location){(int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step])})))
         return;
     if (!creature_can_be_pushed((int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
                                 (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]),
-                                dir_turn(push_dirs[arrow], g_game.party_dir), NULL))
+                                dir_turn(push_arrows[arrow].push_turn, g_game.party_dir), NULL))
         return;
-    show_move_arrow(entries[arrow], zones[arrow], true);
+    show_move_arrow(push_arrows[arrow].entry, push_arrows[arrow].zone, true);
     move_set_push_arrow(arrow);
 }
 
@@ -1958,8 +1973,8 @@ static bool point_in_zone(int16_t zone, int16_t x, int16_t y)
 /* A click on a wall ornament of the view (cell: a WALL_CELL_* square). */
 static void click_wall_sensor(int16_t cell)
 {
-    static const int8_t side_turn[DIR_COUNT] = {1, 1, 3,
-                                                2}; /* the face that the party sees of each wall, from its direction */
+    /* the turn from the party direction to the wall face it sees, by wall cell */
+    static const int8_t wall_side_turn[WALL_CELL_COUNT] = {TURN_RIGHT, TURN_RIGHT, TURN_LEFT, TURN_BACK};
     int16_t dir = (int16_t)g_game.party_dir;
     int16_t x = (int16_t)g_game.party_x;
     int16_t y = (int16_t)g_game.party_y;
@@ -1975,7 +1990,7 @@ static void click_wall_sensor(int16_t cell)
     }
     if (x < 0 || x >= dungeon_map_width(g_party.cur_map) || y < 0 || y >= dungeon_map_height(g_party.cur_map))
         return;
-    sensor_process_wall_click(x, y, dir_turn(dir, side_turn[cell & DIR_MASK]), THING_NONE, g_game.leader_hand);
+    sensor_process_wall_click(x, y, dir_turn(dir, wall_side_turn[cell]), THING_NONE, g_game.leader_hand);
 }
 
 /* A click on a static creature in front: a push of its middle starts the push arrows, a side turns it. */

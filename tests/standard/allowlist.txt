@@ -59,9 +59,6 @@ decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:push_dirs bridge: task 45
-decimal ui/input.c:side_turn bridge: task 45
-decimal ui/input.c:step_dirs bridge: task 45
 decimal ui/minion_map.c:creature_side_dir bridge: task 46
 decimal ui/minion_map.c:mirror_one_side bridge: task 46
 decimal ui/minion_map.c:mirror_two_sides bridge: task 46
@@ -167,14 +164,13 @@ hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_hand rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:entries rule 3.12: a table of SKULL.EXE
+hex ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_children rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_commands rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_keys rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:zones rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:skill_level_texts rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:slot_layout rule 3.12: a table of SKULL.EXE
 hex ui/view.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE
