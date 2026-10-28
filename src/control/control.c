@@ -36,6 +36,7 @@
 #define UTF8_PAYLOAD_SHIFT    6
 #define UTF8_MAX_BYTES        4
 #define SURROGATE_SHIFT       10
+#define ESCAPE_NONE           '\0' /* no one-character escape: \u or a bad escape */
 
 /* The first code point of 2, 3, and 4 UTF-8 bytes. */
 #define UTF8_ONE_BYTE_END   0x00080
@@ -192,8 +193,11 @@ static bool hex4(const char *p, int32_t *value)
 /* Appends code point c as UTF-8; false when it does not fit. */
 static bool put_utf8(char *out, size_t size, size_t *n, int32_t c)
 {
+    static const int32_t byte_ends[UTF8_MAX_BYTES - 1] = {UTF8_ONE_BYTE_END, UTF8_TWO_BYTE_END, UTF8_THREE_BYTE_END};
     char bytes[UTF8_MAX_BYTES];
-    int count = c < UTF8_ONE_BYTE_END ? 1 : c < UTF8_TWO_BYTE_END ? 2 : c < UTF8_THREE_BYTE_END ? 3 : UTF8_MAX_BYTES;
+    int count = 1;
+    while (count < UTF8_MAX_BYTES && c >= byte_ends[count - 1])
+        count++;
     if (count == 1)
         bytes[0] = (char)c;
     else {
@@ -208,7 +212,7 @@ static bool put_utf8(char *out, size_t size, size_t *n, int32_t c)
     return true;
 }
 
-/* The character that a backslash and c stand for in a JSON string; 0 for \u and a bad escape. */
+/* The character that a backslash and c stand for in a JSON string; ESCAPE_NONE for \u and a bad escape. */
 static char unescape(char c)
 {
     static const struct {
@@ -226,7 +230,7 @@ static char unescape(char c)
     for (size_t i = 0; i < sizeof escapes / sizeof escapes[0]; i++)
         if (c == escapes[i].escaped)
             return escapes[i].plain;
-    return 0;
+    return ESCAPE_NONE;
 }
 
 bool control_get_string(const char *line, const char *key, char *out, size_t size)
@@ -241,7 +245,7 @@ bool control_get_string(const char *line, const char *key, char *out, size_t siz
             return false;
         if (c == '\\') {
             char plain = unescape(*p);
-            if (plain) {
+            if (plain != ESCAPE_NONE) {
                 c = plain;
                 p++;
             } else if (*p++ != 'u' || !hex4(p, &c))
@@ -361,7 +365,7 @@ static void put_state(Json *reply)
         put(reply, ",\"health\":[%d,%d],\"stamina\":[%d,%d],\"mana\":[%d,%d],\"load\":%d}", c->health, c->max_health,
             c->stamina, c->max_stamina, c->mana, c->max_mana, champ_get_load(i));
     }
-    put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", g_ui.inventory - 1, (int)g_ui.candidate - 1);
+    put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", g_ui.inventory - 1, g_ui.candidate - 1);
     if (!g_game.champion_count || g_game.leader_hand == THING_NONE)
         put(reply, "null");
     else {

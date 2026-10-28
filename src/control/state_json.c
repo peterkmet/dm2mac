@@ -8,7 +8,6 @@
 #include "action.h"
 #include "aspect.h"
 #include "champion.h"
-#include "creature.h"
 #include "dialog.h"
 #include "dungeon.h"
 #include "game.h"
@@ -345,7 +344,7 @@ static void skills_json(Json *j, int champ)
 {
     json_open(j, '{');
     for (int s = 0; s < SKILL_BASE_COUNT; s++) {
-        int level = champ_get_skill_level(champ, s, 1);
+        int level = champ_get_skill_level(champ, s, true);
         char text[TEXT_SIZE];
         json_key(j, skill_names[s]);
         json_open(j, '{');
@@ -773,8 +772,6 @@ static const char *const explosion_names[] = {
     [EXPLOSION_STORM_BLAST - SPELL_THING_FIRST] = "storm_blast",
     [EXPLOSION_SMOKE - SPELL_THING_FIRST] = "smoke",
 };
-/* Creature names by creature type: no names in the game data; add a name here when a player names it. */
-static const char *const creature_names[CREATURE_INFO_COUNT] = {0};
 
 const char *state_json_side_name(int side)
 {
@@ -791,10 +788,7 @@ void state_json_explosion_name(Json *j, uint16_t type)
 
 void state_json_creature_name(Json *j, uint16_t type)
 {
-    if (type < CREATURE_INFO_COUNT && creature_names[type])
-        json_str(j, creature_names[type]);
-    else
-        json_int(j, type);
+    json_int(j, type); /* the game data has no creature names */
 }
 
 /* Where the view stands: the party square, or the walk position while the party walks. */

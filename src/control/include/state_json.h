@@ -66,7 +66,7 @@ void state_json_state(Json *j);
 const char *state_json_side_name(int side);
 /* Appends the name of an explosion type, or its number when the name table has none. */
 void state_json_explosion_name(Json *j, uint16_t type);
-/* Appends the name of a creature type, or its number when the name table has none. */
+/* Appends a creature type as its number: the game data has no creature names. */
 void state_json_creature_name(Json *j, uint16_t type);
 /* Writes to things (at most max) the things of a thing type that the view draws on the visible non-wall squares, in
    view order; returns the count. */

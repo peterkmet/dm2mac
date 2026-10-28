@@ -7,14 +7,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TABLE = re.compile(r"static const char \*const (\w+)\[[^\]]*\] = \{(.*?)\};", re.S)
 ACTION = re.compile(r'\{"(\w+)",\s*\w+\s*\}')
-# creature_names is skipped: it is empty, so it gives no name.
-SKIPPED = {"creature_names"}
 # Only this table of src/engine/magic.c is part of the protocol.
 MAGIC_TABLES = {"rune_names"}
 STATE_TABLES = {
     "mode_names", "direction_names", "party_cell_names", "statistic_names", "skill_names", "wound_names",
     "slot_names", "hand_names", "map_option_names", "amount_names", "side_names", "explosion_names",
-    "creature_names",
 }  # fmt: skip
 
 
@@ -41,9 +38,8 @@ def protocol_names():
     assert set(state) == STATE_TABLES, f"state_json.c tables found: {sorted(state)}"
     assert set(magic) == MAGIC_TABLES, f"magic.c tables found: {sorted(magic)}"
     for found in (state, magic):
-        for name, table in found.items():
-            if name not in SKIPPED:
-                names |= table
+        for table in found.values():
+            names |= table
     actions = set(ACTION.findall((ROOT / "src/control/turn.c").read_text()))
     assert actions, "no action table found in src/control/turn.c"
     names |= actions
