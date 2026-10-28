@@ -140,7 +140,7 @@ static bool step_view(void)
         game_process_timeline();
         if (g_party.new_map != -1)
             continue;
-        world_update_day_night(0);
+        world_update_day_night(false);
         if (g_party_sleeping)
             return false;
         if (!g_ui.candidate)

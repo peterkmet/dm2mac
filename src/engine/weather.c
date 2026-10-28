@@ -400,7 +400,7 @@ static int sky_entry(int amount, int medium, int heavy, int first)
     return first + (amount >= medium) + (amount >= heavy);
 }
 
-void world_update_day_night(int storm_step)
+void world_update_day_night(bool storm_step)
 {
     uint16_t sky = map_value(MAP_KEY_SKY_STATE);
     g_game.weather_visible = sky < sizeof sky_state_weather && sky_state_weather[sky]; /* fix: no read past the table */
@@ -414,7 +414,7 @@ void world_update_day_night(int storm_step)
         if (g_game.weather_visible)
             light_update_party_light();
     }
-    int lightning = update_rain();
+    bool lightning = update_rain();
     if (!g_game.weather_visible)
         return;
     if (g_weather.lightning_flash) {
