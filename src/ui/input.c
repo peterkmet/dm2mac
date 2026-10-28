@@ -1656,7 +1656,7 @@ static void feedback_hand_icon(int icon)
             return;
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
-    area_draw_hand_icon(champ, icon, 1);
+    area_draw_hand_icon(champ, icon, true);
     present_action_area();
 }
 
@@ -1666,7 +1666,7 @@ static void feedback_spell_icon(int cell)
     int champ = party_cell_champion(cell);
     if (champ < 0)
         return;
-    area_draw_spell_icon(champ, 1);
+    area_draw_spell_icon(champ, true);
     present_action_area();
 }
 
@@ -1688,7 +1688,7 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         feedback_hand_icon(*p++);
         break;
     case FB_ACTION_NAME:
-        area_draw_name(*p++, 1);
+        area_draw_name(*p++, true);
         present_action_area();
         break;
     case FB_ENTERED_RUNES:
@@ -1708,7 +1708,7 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         break;
     case FB_DIALOG_BUTTON:
     case FB_DIALOG_BUTTON_2:
-        dialog_draw_button(g_input_match.zone, 1, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
+        dialog_draw_button(true, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
         p += DIALOG_BUTTON_ARGS;
         f->opened = false; /* the original forgets the open feedback bitmap */
         dialog_present();
@@ -2001,7 +2001,7 @@ static void click_creature(uint16_t group, int x, int y, int square_x, int squar
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
         sndreq_request_with_fallback((SoundCue){CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK,
                                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, square_x, square_y, 0);
+                                     SOUND_FALLBACK, square_x, square_y, SOUND_NOW);
     } else if (!side) {
         move_set_push_mode(true);
         ui_draw_movement_arrows();
@@ -2019,7 +2019,7 @@ static void click_front_wall(bool passable, int x, int y)
     if (!passable)
         sndreq_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
                                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
-                                     SOUND_FALLBACK, x, y, 0);
+                                     SOUND_FALLBACK, x, y, SOUND_NOW);
     game_set_command_stop(true);
 }
 
@@ -2027,7 +2027,7 @@ static void click_front_wall(bool passable, int x, int y)
 static void click_door_button(int x, int y, uint16_t door)
 {
     sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                   g_game.party_x, g_game.party_y, 1);
+                   g_game.party_x, g_game.party_y, SOUND_STEP_END);
     sensor_press_door_button((Location){(int16_t)x, (int16_t)y}, door);
     game_set_command_stop(true);
 }
@@ -2056,7 +2056,7 @@ static void click_take_object(int x, int y, int index)
     if (thing != THING_NONE) {
         move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
         clear_moneybox_placed(thing);
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
     }
     game_set_command_stop(true);
 }
@@ -2334,7 +2334,7 @@ static bool execute_party_command(const Command *c, bool idle)
             int16_t turn = command == CMD_ROTATE_LEFT ? TURN_LEFT : TURN_RIGHT;
             champ_set_direction(champ, dir_turn(champion(champ)->dir, turn));
         }
-        area_update(0);
+        area_update(false);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
         champ_set_leader(party_cell_champion(command - CMD_LEADER_FIRST));
         ui_draw_all_champion_states(0);
@@ -2413,7 +2413,7 @@ static bool execute_champion_command(int command, bool idle)
         else
             champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
-        area_update(0);
+        area_update(false);
     } else if (command >= CMD_QUICK_SAVE && command <= CMD_OPTIONS) {
         if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)

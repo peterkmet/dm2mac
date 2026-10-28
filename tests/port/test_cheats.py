@@ -297,10 +297,10 @@ def test_no_drop_inside_a_wall(lib, game, wanted):
         enter(lib, game, *find_place(lib, game, lambda m, x, y: is_wall(lib, m, x, y)))
     lib.game_set_cheats(C.CHEAT_WALLS)
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_bool]
+    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16]
     lib.champ_take_from_leader_hand()
     thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
-    lib.champ_put_in_leader_hand(thing, 0)
+    lib.champ_put_in_leader_hand(thing)
     view, cell = (ctypes.c_int16 * 4)(), (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, view) and lib.zone_get_rect(C.ZONE_DROP_CELL_FIRST, cell)
     lib.input_mouse_click(view[0] + cell[0] + cell[2] // 2, view[1] + cell[1] + cell[3] // 2, C.INPUT_BUTTON_LEFT)

@@ -8,13 +8,14 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "input.h"
 
 /* PC scan codes of the quick save and quick load keys. */
 #define KEY_QUICK_SAVE 0x3f /* F5 */
 #define KEY_QUICK_LOAD 0x43 /* F9 */
 
 /* PC scan codes of the keys that open the automap, the cheat screen, and the options menu. */
-#define KEY_AUTOMAP   0x0f        /* Tab */
+#define KEY_AUTOMAP   KEY_TAB
 #define KEY_AUTOMAP_M 0x32        /* M */
 #define KEY_CHEATS    0x2e        /* C */
 #define KEY_OPTIONS   SCAN_ESCAPE /* in the movement mode of the advanced mode */
@@ -27,7 +28,7 @@
 #define KEYPAD_BACK       0x50
 #define KEYPAD_RIGHT      0x51
 
-/* PC scan codes of the letter keys that move and turn the party, and of Esc and Return on the viewport screens. */
+/* PC scan codes of the letter keys that move and turn the party, and of Esc on the viewport screens. */
 #define SCAN_Q      0x10
 #define SCAN_W      0x11
 #define SCAN_E      0x12
@@ -35,7 +36,6 @@
 #define SCAN_S      0x1f
 #define SCAN_D      0x20
 #define SCAN_ESCAPE 0x01
-#define SCAN_RETURN 0x1c
 
 /* The results of a quick load. */
 enum QuickLoadResult { QUICK_LOADED, QUICK_MISSING, QUICK_DAMAGED, QUICK_BLOCKED, QUICK_LOST };

@@ -46,17 +46,22 @@ typedef struct {
 _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info records of SKULL.EXE have 36 bytes");
 
 /* Bits of CreatureInfo.flags. */
-#define CREATURE_STATIC         0x0001 /* the creature does not act: no active group, animation state in its record */
-#define CREATURE_FACES_PARTY    0x0004 /* the creature always shows its front */
-#define CREATURE_ATTACKS_ALL    0x0008 /* a melee attack hits several champions */
-#define CREATURE_ATTACKS_RANDOM 0x0010 /* ... random champions */
-#define CREATURE_NOT_DOOR_HIT   0x0020 /* a closing door does not hit the creature */
-#define CREATURE_ATTACKS_FIRST  0x0100 /* flags: the creature attacks before it moves */
-#define CREATURE_SEES_INVISIBLE 0x0400 /* flags: the party spell of invisibility does not hide the party */
-#define CREATURE_SEES_IN_DARK   0x0800 /* flags: the light does not limit its sight */
-#define CREATURE_FAST_VANISH    0x1000 /* flags: the creature vanishes quickly in a party action effect */
-#define CREATURE_WANDERER       0x4000 /* the creature may enter any map */
-#define CREATURE_NOT_SOLID      0x8000 /* the party and objects pass the creature */
+#define CREATURE_STATIC          0x0001 /* the creature does not act: no active group, animation state in its record */
+#define CREATURE_REFLECTS_SPELLS 0x0002 /* spells do not hit the creature: they turn away or fly on */
+#define CREATURE_FACES_PARTY     0x0004 /* the creature always shows its front */
+#define CREATURE_ATTACKS_ALL     0x0008 /* a melee attack hits several champions */
+#define CREATURE_ATTACKS_RANDOM  0x0010 /* ... random champions */
+/* CREATURE_NON_MATERIAL: a closing door does not hit the creature, a melee hit reaches it only when the hit pierces, a
+   MELEE_MODE_REACH attack of the champions reaches only it, a missile hits it only as harm non-material, and the sight
+   of creatures passes it. */
+#define CREATURE_NON_MATERIAL    0x0020
+#define CREATURE_ATTACKS_FIRST   0x0100 /* flags: the creature attacks before it moves */
+#define CREATURE_CATCHES_OBJECTS 0x0200 /* the creature takes a thrown object with ITEM_FLAG_CAUGHT that hits it */
+#define CREATURE_SEES_INVISIBLE  0x0400 /* flags: the party spell of invisibility does not hide the party */
+#define CREATURE_SEES_IN_DARK    0x0800 /* flags: the light does not limit its sight */
+#define CREATURE_FAST_VANISH     0x1000 /* flags: the creature vanishes quickly in a party action effect */
+#define CREATURE_WANDERER        0x4000 /* the creature may enter any map */
+#define CREATURE_NOT_SOLID       0x8000 /* the party and objects pass the creature */
 
 /* Bits 6-7 of CreatureInfo.flags: the door height that the creature blocks. */
 #define CREATURE_DOOR_LEVEL_MASK 0x3

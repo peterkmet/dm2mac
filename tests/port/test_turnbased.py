@@ -363,9 +363,9 @@ def test_drop_object_ahead_of_a_floor_hiding_creature_is_refused(tb, lib):
     lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
     lib.dungeon_thing_record(group)[GROUP_CREATURE] = FLOOR_HIDING_CREATURE  # map 0 takes no static creature type
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_bool]
+    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16]
     thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
-    lib.champ_put_in_leader_hand(thing, 0)
+    lib.champ_put_in_leader_hand(thing)
     before = game.game_time
     assert act(path, "drop_object", cell=2) == {"ok": False, "error": "no floor to drop on ahead"}
     after = request({"cmd": "get_state"}, path)["state"]

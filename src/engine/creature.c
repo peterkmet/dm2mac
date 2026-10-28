@@ -113,9 +113,6 @@
 #define DROP_RANDOM_SHIFT 4
 #define DROP_ITEM_SHIFT   7
 
-/* The sound delay of a dropped item. */
-#define DROP_SOUND_DELAY 1
-
 /* The sound of a hurt creature. */
 #define SOUND_ENTRY_HURT 0x09 /* and 10 */
 
@@ -890,7 +887,7 @@ uint32_t creature_animate_step(void)
     if ((step[STEP_SOUND] & STEP_SOUND_MASK) != STEP_NO_SOUND)
         sndreq_request((SoundCue){CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE,
                                   SOUND_VOLUME_NORMAL},
-                       g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], 1);
+                       g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], SOUND_STEP_END);
     int16_t delay = anim_step_delay(step);
     if (own_step)
         g_ai.anim_step = NULL;
@@ -990,7 +987,7 @@ void creature_drop_possessions(uint16_t group, Location at, DropMode mode, bool 
                 if (audible)
                     sndreq_request_with_fallback((SoundCue){item_gdat_category(item), item_gdat_index(item),
                                                             SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                                 SOUND_FALLBACK, at.x, at.y, DROP_SOUND_DELAY);
+                                                 SOUND_FALLBACK, at.x, at.y, SOUND_STEP_END);
             }
         }
     }
@@ -1006,7 +1003,7 @@ void creature_drop_possessions(uint16_t group, Location at, DropMode mode, bool 
             if (audible)
                 sndreq_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
                                                         SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                             SOUND_FALLBACK, at.x, at.y, DROP_SOUND_DELAY);
+                                             SOUND_FALLBACK, at.x, at.y, SOUND_STEP_END);
         }
         t = next;
     }
@@ -1094,7 +1091,7 @@ bool creature_damage_current_group(int damage)
             sndreq_request((SoundCue){CAT_CREATURE, group_creature(g_ai.group_thing),
                                       SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_CREATURE,
                                       SOUND_VOLUME_NORMAL},
-                           g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], 1);
+                           g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], SOUND_STEP_END);
     }
     thing_set_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
     return false;
@@ -1444,7 +1441,7 @@ void creature_push_group(Location at, int16_t dir, int16_t strength)
             continue;
         sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
-            SOUND_FALLBACK, at.x, at.y, 1);
+            SOUND_FALLBACK, at.x, at.y, SOUND_STEP_END);
         load = (int16_t)(load + (uint16_t)champ_get_load(i) / LOAD_PUSH_DIVISOR);
         alive++;
     }
@@ -1477,7 +1474,7 @@ void creature_push_creature(int arrow)
             if (champion(i)->health && (i == g_game.leader || !rand_2bits()))
                 sndreq_request_with_fallback(
                     (SoundCue){CAT_CHAMPION, i, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD}, SOUND_FALLBACK,
-                    g_game.party_x, g_game.party_y, 1);
+                    g_game.party_x, g_game.party_y, SOUND_STEP_END);
         return;
     }
     push.at = front;

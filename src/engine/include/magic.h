@@ -18,11 +18,8 @@ typedef struct {
     uint16_t effect; /* kind in bits 0-3, type in bits 4-9, action delay factor in bits 10-15 */
 } Spell;
 
-/* Results of a cast: 0 success, else a failure kind ORed with the base skill (0 to 3). */
-#define CAST_FAILED        0x10
-#define CAST_UNKNOWN_SPELL 0x20
-#define CAST_NEEDS_FLASK   0x30
-#define CAST_KIND_MASK     0xf0 /* the failure kind of a cast result */
+/* The result of a cast: success, or why it failed. */
+typedef enum { CAST_OK, CAST_FAILED, CAST_UNKNOWN_SPELL, CAST_NEEDS_FLASK } CastResult;
 
 /* Kinds of magic light (magic_add_light). */
 #define LIGHT_DARKNESS 0x06
@@ -58,11 +55,11 @@ bool magic_cast_party_aura(Champion *c, int type, int power, bool pay);
 /* Casting */
 /* Champion champ shoots the missile thing with power for cost mana; returns false without the mana. */
 bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost);
-/* Champion champ casts spell with power 1 to 6; returns the cast result (CAST_*), 0 for success. */
-int magic_cast_spell(int champ, const Spell *spell, int power); /* exported for the tests */
+/* Champion champ casts spell with power 1 to 6; returns the cast result. */
+CastResult magic_cast_spell(int champ, const Spell *spell, int power); /* exported for the tests */
 /* Champion champ casts spell from the cheat screen at the power of its power rune (POWER_MON for any power), without
-   the failure roll and without experience; a potion still needs an empty flask. Returns the cast result (CAST_*). */
-int magic_cast_cheat_spell(int champ, const Spell *spell);
+   the failure roll and without experience; a potion still needs an empty flask. Returns the cast result. */
+CastResult magic_cast_cheat_spell(int champ, const Spell *spell);
 /* The champion of the open spell panel casts the entered runes; returns true when the cast failed. */
 bool magic_cast_entered_runes(void);
 

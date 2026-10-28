@@ -6,8 +6,9 @@
 /* The save game: its blocks, its layout, and reading and writing the file. */
 
 #include <stdint.h>
-#include "gdat.h"
 #include "le.h"
+
+typedef struct gdat Gdat;
 
 /* Sizes of the game state blocks of the save. */
 #define CHAMPION_MAX      4
@@ -18,9 +19,13 @@
 #define MAGIC_LIGHT_SIZE  6
 
 /* The save file header. */
-#define SAVE_NAME_SIZE   32 /* a slot name of up to 31 characters and its end mark */
-#define SAVE_HEADER_SIZE 42 /* the save file header: format word, slot name, empty slot mark */
-#define SAVE_HEADER_NAME 2  /* the offset of the slot name in the header */
+#define SAVE_NAME_SIZE         32 /* a slot name of up to 31 characters and its end mark */
+#define SAVE_HEADER_SIZE       42 /* the save file header: format word, slot name, empty slot mark */
+#define SAVE_HEADER_NAME       2  /* the offset of the slot name in the header */
+#define SAVE_HEADER_EMPTY_MARK 38 /* the offset of SAVE_EMPTY_SLOT_MARK in the header of an empty slot */
+
+/* The mark of an empty slot in the slot list. */
+#define SAVE_EMPTY_SLOT_MARK 0xdeadbeefu
 
 /* Start values of a loaded or new game. */
 #define EVENT_SLACK          50 /* timeline events beyond one for each group, projectile, and explosion record */
@@ -37,8 +42,8 @@ typedef enum {
     SAVE_ERR_DATA = -3,   /* the bit-packed game state is damaged or ends too early */
 } SaveResult;
 
-/* Game state that the save file stores beside the dungeon, the timeline, and the random seed.
-   The modules of later steps take these fields over. */
+/* Game state that the save file stores beside the dungeon, the timeline, and the random seed: the party, the leader,
+   the cooldowns, the weather, the script variables, the champion records, and the magic light. */
 typedef struct {
     uint32_t game_time;
     uint16_t champion_count;
@@ -77,7 +82,7 @@ static inline void save_set_magic_light(int16_t light)
 /* Loads a save file (SKSAVEn.DAT or .BAK) into the dungeon, the timeline, the random seed, and g_game.
    gdat answers the creature and container questions of the format. On an error the dungeon is empty. */
 SaveResult save_load(const char *path, const Gdat *gdat);
-/* Writes the game to path. Like the original, it first renames an old file at path to bak_path and
+/* Writes the game to path. As in the original, it first renames an old file at path to bak_path and
    keeps the header bytes after the name from it; name goes into the header. */
 SaveResult save_write(const char *path, const char *bak_path, const char *name, const Gdat *gdat);
 

@@ -46,3 +46,4 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 - Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types; the dungeon text decoder stops at the end of the text data (the original reads past it in a damaged dungeon).
 - Kept quirks of the original:
   - the action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`)
+  - the minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dun_set_current_map`, which also sets `g_party.square_x`, `square_y`, `square_map`, and `ref_dir` again

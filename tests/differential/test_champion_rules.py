@@ -440,6 +440,12 @@ def test_money_and_prices_match_original(rules, lib):
     lib.money_take_coin_from_box.restype = ctypes.c_uint16
     lib.money_add_coin_to_box.argtypes = [ctypes.c_uint16, ctypes.c_uint16]
     lib.money_get_item_value.argtypes = [ctypes.c_uint16, ctypes.POINTER(PriceTerms), ctypes.c_int16]
+    lib.money_get_item_value.restype = ctypes.c_uint16
+    lib.money_split_amount.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.POINTER(ctypes.c_uint8),
+                                       ctypes.POINTER(ctypes.c_int16)]
+    lib.money_split_amount.restype = ctypes.c_int16
+    lib.money_parse_item_class_set.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8), ctypes.c_bool]
+    lib.money_parse_item_class_set.restype = ctypes.c_bool
     buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
     creatures = [t for t in range(0x100) if lib.gdat_exists(rules.s.gdat, C.CAT_CREATURE, t, 5, 0x10)]
     action_state = ActionState.in_dll(lib, "g_action")

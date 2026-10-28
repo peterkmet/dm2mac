@@ -9,7 +9,7 @@ from unicorn import UC_PROT_ALL
 from unicorn.x86_const import UC_X86_REG_ESP
 
 from dm2test import constants as C
-from dm2test.gdat import GdatKey
+from dm2test.gdat import GdatKey, ImageInfo
 from dm2test.markers import ROOT
 from dm2test.save import GRAPHICS, START, Game
 from dm2test.view import OriginalView, u8_p
@@ -129,7 +129,7 @@ def gdat(lib):
     lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.gdat_image_colormap.restype = u8_p
     lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
-    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
+    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     lib.gdat_exists.restype = ctypes.c_bool

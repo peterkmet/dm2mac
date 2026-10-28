@@ -73,12 +73,12 @@ enum PcxResult pcx_decode(const uint8_t *data, size_t size, PcxImage *image)
                     return PCX_ERR_DATA;
                 value = *p++;
                 run = 1;
-                if ((value & PCX_RUN_FLAGS) != PCX_RUN_FLAGS)
-                    continue;
-                if (p >= end)
-                    return PCX_ERR_DATA;
-                run = value & PCX_RUN_MASK;
-                value = *p++;
+                if ((value & PCX_RUN_FLAGS) == PCX_RUN_FLAGS) {
+                    if (p >= end)
+                        return PCX_ERR_DATA;
+                    run = value & PCX_RUN_MASK;
+                    value = *p++;
+                }
             }
             run--;
             if (x < image->width)

@@ -638,10 +638,11 @@ ViewSquare g_view_squares[VIEW_SQUARE_COUNT];
 static uint8_t viewport_pixels[VIEWPORT_WIDTH * VIEWPORT_HEIGHT];
 Bitmap g_view_viewport = {viewport_pixels, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, IMAGE_8BPP};
 
-/* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, and the transparent
-   colors of its color remap. */
+/* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, the transparent
+   colors of its color remap, and its draw mode. */
 typedef struct {
     int flip, scale_x, scale_y, dx, dy, depth, zone, anchor, key, key2;
+    enum DrawMode mode;
 } PicturePlace;
 
 /* How an object shows: lifted by dy, at a jitter spot that keeps the objects of a cell apart (-1 none), as a
@@ -1128,6 +1129,7 @@ static void setup_picture(const PicturePlace *p, int category, int index, int en
     c->anchor = (int16_t)p->anchor;
     c->dst = &g_view_viewport;
     c->transparent = (int16_t)p->key;
+    c->mode = p->mode;
     get_depth_shading(c->palette, depth, p->key, p->key2, &c->palette_count);
     draw_ctx_prepare(c);
 }
@@ -1202,7 +1204,7 @@ static const uint8_t *get_shaded_palette(int category, int index, int entry, int
     } else if (view.shade == VIEW_SHADE_MAX) {
         return NULL;
     }
-    return pal_apply_dim_remap(view.shaded_palette, (uint8_t)view.shade, key, NO_KEY, &count);
+    return pal_apply_dim_remap(view.shaded_palette, view.shade, key, NO_KEY, &count);
 }
 
 /* Copies a bitmap mirrored left to right. */
@@ -1216,7 +1218,7 @@ static void show_map_picture(int entry, int zone, int key, int flip)
 {
     DrawCtx c;
     draw_ctx_init(&c, CAT_WALLSET, view.gfx_set, entry);
-    pal_apply_dim_remap(c.palette, (uint8_t)view.shade, key, NO_KEY, &c.palette_count);
+    pal_apply_dim_remap(c.palette, view.shade, key, NO_KEY, &c.palette_count);
     c.transparent = (int16_t)key;
     c.dst = &g_view_viewport;
     c.flip = (int16_t)flip;
@@ -1569,7 +1571,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
                                   .key2 = NO_KEY},
                   category, index, pic.entry);
     if (!look->record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_projectile(look->projectile, pos);
 }
 
@@ -1913,7 +1915,7 @@ static void setup_explosion_picture(int type, int size, int flip, int zone)
     c->flip = (int16_t)flip;
     c->scale_y = (int16_t)scale;
     c->scale_x = c->scale_y;
-    pal_apply_dim_remap(c->palette, (uint8_t)view.shade, THING_KEY, NO_KEY, &c->palette_count);
+    pal_apply_dim_remap(c->palette, view.shade, THING_KEY, NO_KEY, &c->palette_count);
     draw_ctx_prepare(c);
 }
 
@@ -2185,7 +2187,7 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
     uint16_t item = sensor_data(display);
     uint8_t set[ITEM_CLASS_SET_SIZE];
     int list = sensor_delay(shop); /* the delay bits of a shop: its price list */
-    if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, 0)) {
+    if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, false)) {
         int count, at = item;
         const uint8_t *table = price_table(ornament, &count);
         if (table)
@@ -2422,7 +2424,7 @@ static void show_wall_portrait(int pos, uint8_t ornament, const PicturePlace *p,
                                   .key2 = NO_KEY},
                   CAT_CHAMPION, (uint8_t)g_view_squares[pos].text, GFX_PORTRAIT);
     if (!record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     if (record_click && p->depth == DEPTH_FRONT)
         add_click_zone(view.ctx.rect, CLICK_WALL_ORNAMENT, pos);
@@ -2451,7 +2453,7 @@ static void show_wall_plate(int pos, int side, const PicturePlace *p, int record
                                   .key2 = NO_KEY},
                   CAT_WALLSET, view.gfx_set, entry);
     if (!record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     if (side == 0 && g_view_squares[pos].text != THING_TEXT_NONE)
         show_wall_text(pos, entry, p);
@@ -2467,8 +2469,9 @@ static void show_wet_wall_ornament(uint8_t ornament, int entry, const PicturePla
                                   .depth = p->depth,
                                   .zone = p->zone,
                                   .anchor = p->anchor,
-                                  .key = DRAW_NO_IMAGE,
-                                  .key2 = DRAW_NO_IMAGE},
+                                  .key = NO_KEY,
+                                  .key2 = NO_KEY,
+                                  .mode = DRAW_NO_IMAGE},
                   CAT_WALL_ORNAMENT, ornament, entry);
     setup_picture(&(PicturePlace){.flip = p->flip,
                                   .scale_x = p->scale_x,
@@ -2482,7 +2485,7 @@ static void show_wet_wall_ornament(uint8_t ornament, int entry, const PicturePla
                                   .key2 = NO_KEY},
                   CAT_WALL_ORNAMENT, ornament, GFX_ORN_WET_BACKGROUND);
     if (!record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     DrawCtx c;
     Bitmap *offscreen = render_offscreen(
@@ -2520,7 +2523,7 @@ static void show_ornament_contents(int pos, uint8_t ornament, int kind, const Pi
                                           .key2 = NO_KEY},
                           CAT_WALL_ORNAMENT, ornament, GFX_ORN_OVERLAY);
             if (!record_click)
-                view.ctx.transparent = DRAW_NO_BLIT;
+                view.ctx.mode = DRAW_RECT_ONLY;
             flush_picture();
         }
     } else if (kind == KIND_ALCOVE) {
@@ -2594,7 +2597,7 @@ static int show_wall_ornament(int pos, int side, int record_click)
     } else {
         setup_picture(&p, CAT_WALL_ORNAMENT, ornament, entry);
         if (!record_click)
-            view.ctx.transparent = DRAW_NO_BLIT;
+            view.ctx.mode = DRAW_RECT_ONLY;
         flush_picture();
         if (!record_click)
             return key;
@@ -2795,8 +2798,9 @@ static bool show_floor_ornament(int pos)
         return false;
     }
     PicturePlace no_image = p;
-    no_image.key = DRAW_NO_IMAGE;
-    no_image.key2 = DRAW_NO_IMAGE;
+    no_image.key = NO_KEY;
+    no_image.key2 = NO_KEY;
+    no_image.mode = DRAW_NO_IMAGE;
     setup_picture(&no_image, CAT_FLOOR_ORNAMENT, ornament, entry);
     if (lateral_of(pos) == 0) {
         PicturePlace background = p;
@@ -3570,7 +3574,7 @@ bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, in
         return false;
     show_creature(POS_FRONT, HIT_DEPTH, group);
     int key = view.ctx.transparent;
-    view.ctx.transparent = DRAW_NO_BLIT;
+    view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     if (!hit_test_picture(x, y, key)) {
         draw_free_temp();
@@ -3650,7 +3654,7 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
             dungeon_append_thing(thing, contents);
         } else if (count > 0) {
             dungeon_unlink_thing_from_list(last, contents);
-            champ_put_in_leader_hand(last, 1);
+            champ_put_in_leader_hand(last);
         }
         break;
     }
