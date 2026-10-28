@@ -842,7 +842,7 @@ static bool read_things(void)
     for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
             champ_apply_item_effects(c, champion(c)->slots[s], s, EFFECT_MODE_LOAD);
-    champ_apply_item_effects((int16_t)g_game.leader, g_game.leader_hand, -1, EFFECT_MODE_LOAD);
+    champ_apply_item_effects(champ_leader(), g_game.leader_hand, -1, EFFECT_MODE_LOAD);
     for (int i = 0; i < g_timeline.count; i++) {
         TimelineEvent *e = &g_timeline.events[i];
         if (!is_move_group_event(e))

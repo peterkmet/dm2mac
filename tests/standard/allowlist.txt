@@ -73,6 +73,10 @@ decimal ui/view.c:view_mirror rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
+dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
+dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
+dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
+dead-api engine/include/champion.h:champ_set_name bridge: task 48
 engine-write control/control.c:forget_game_end bridge: task 10
 engine-write control/control.c:handle_load bridge: task 10
 engine-write control/control.c:handle_request bridge: task 10
