@@ -248,15 +248,11 @@ static bool read_dungeon(FILE *f, bool new_game)
         return false;
     dun.party_start = le16(header + HEADER_PARTY_START);
     dun.map_count = header[HEADER_MAP_COUNT];
-    dun.map_descs = malloc(dun.map_count * MAP_DESC_SIZE);
-    if (!dun.map_descs)
-        os_fatal("out of memory");
+    dun.map_descs = alloc_checked(dun.map_count * MAP_DESC_SIZE);
     if (!read_bytes(f, dun.map_descs, dun.map_count * MAP_DESC_SIZE))
         return false;
 
-    dun.map_first_column = malloc(dun.map_count * sizeof(uint16_t));
-    if (!dun.map_first_column)
-        os_fatal("out of memory");
+    dun.map_first_column = alloc_checked(dun.map_count * sizeof(uint16_t));
     int column_count = 0;
     for (int map = 0; map < dun.map_count; map++) {
         dun.map_first_column[map] = column_count;
