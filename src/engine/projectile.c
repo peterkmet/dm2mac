@@ -112,7 +112,6 @@
 
 /* Alert flags (creature_alert). */
 #define ALERT_HIT           0x200d
-#define ALERT_ATTACKED      0x0002
 /* Alert damage and chances of a projectile hit. */
 #define ALERT_WEAK_DAMAGE   5 /* a hit below this damage (not a poison cloud) alerts with the weak chance */
 #define ALERT_CHANCE_WEAK   30
@@ -565,7 +564,7 @@ static bool hit_creature(Hit *h, int16_t cell)
     if (h->potion_bomb || h->payload_type == THING_WEAPON ||
         (h->payload_type == THING_EXPLOSION && payload != SPELL_DOOR_TOGGLE &&
          (payload < SPELL_PUSH || payload > SPELL_MISSILE_WALL)))
-        creature_alert(g, near.at, ALERT_ATTACKED,
+        creature_alert(g, near.at, ALERT_MOOD_ANGRY,
                        h->damage < ALERT_WEAK_DAMAGE && payload != SPELL_POISON_CLOUD ? ALERT_CHANCE_WEAK
                                                                                       : ALERT_CHANCE_STRONG,
                        0);
