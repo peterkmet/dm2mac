@@ -198,6 +198,12 @@ static int flight_dir(const TimelineEvent *e)
     return location_dir(le16(e->data + PROJECTILE_EVENT_POSITION));
 }
 
+/* The cell beside cell across the flight direction dir (or its opposite): the cell where a projectile goes on. */
+static int cell_across(int16_t cell, int16_t dir)
+{
+    return dir_turn(cell, (dir & 1) == (cell & 1) ? TURN_LEFT : TURN_RIGHT);
+}
+
 /* ---- Projectile events ---- */
 
 int projectile_dir(uint16_t projectile)
@@ -527,8 +533,7 @@ static bool hit_creature(Hit *h, int16_t cell)
         int back = dir_opposite(projectile_dir(h->projectile));
         h->stop_x = (int16_t)(h->stop_x + g_dir_dx[back]);
         h->stop_y = (int16_t)(h->stop_y + g_dir_dy[back]);
-        int c = thing_cell(h->projectile);
-        h->projectile = thing_with_cell(h->projectile, (back & 1) == (c & 1) ? c - 1 : c + 1);
+        h->projectile = thing_with_cell(h->projectile, cell_across(thing_cell(h->projectile), back));
     }
     HitAttack a = roll_attack(h->projectile, payload);
     h->damage = (uint16_t)((uint16_t)(a.attack << DEFENSE_SCALE_SHIFT) / info->defense);
@@ -823,7 +828,7 @@ void projectile_process_event(TimelineEvent *event)
             return;
         leaves = entry == ENTRY_ENTERED;
     }
-    int new_cell = dir_turn(cell, (dir & 1) == (cell & 1) ? -1 : 1);
+    int new_cell = cell_across(cell, dir);
     if (leaves) {
         MoveDest dest = move_thing_dest(thing_with_cell(projectile, new_cell), from_x, from_y, x, y).dest;
         if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
