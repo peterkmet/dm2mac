@@ -47,7 +47,8 @@
 /* Results of move_thing. */
 typedef enum { MOVE_DONE, MOVE_LEFT_DUNGEON, MOVE_WAIT } MoveResult;
 
-/* Movement state of the party and of the dungeon reads (the original globals). */
+/* Movement state of the party and of the dungeon reads (the original globals). The int fields stay int:
+   tests/dm2test/scenario.py mirrors the layout (alt_view_active has 32 bits in the original). */
 typedef struct {
     int16_t cur_map;                        /* the map that the square reads of the original use, -1 none */
     int16_t square_x, square_y, square_map; /* the party position as the current map sees it */
@@ -101,6 +102,8 @@ typedef struct {
 } MoveOutcome;
 
 extern Party g_party;
+/* The map where the last discard search of each thing type ended and the next starts; exported for the tests. */
+extern uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 /* The square step of each direction. */
 extern const int8_t g_dir_dx[DIR_COUNT], g_dir_dy[DIR_COUNT];
 

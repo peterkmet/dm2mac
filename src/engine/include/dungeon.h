@@ -814,7 +814,5 @@ uint16_t dungeon_unused_thing(int type);
 uint16_t dungeon_unused_thing_any_record(int type);
 /* dun_get_discarded_thing (move.h): a thing of any kind. */
 #define DISCARD_ANY_KIND 0xff
-/* The map where the last search for each thing type ended; the next search starts there. */
-extern uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 
 #endif /* DM2_ENGINE_DUNGEON_H */

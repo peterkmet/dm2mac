@@ -215,6 +215,13 @@ void dun_set_current_map(int16_t map)
     }
 }
 
+/* Makes map current and reads the party position as seen from it again, also when map is current already. */
+static void reload_current_map(int16_t map)
+{
+    g_party.cur_map = -1;
+    dun_set_current_map(map);
+}
+
 void dun_set_party_position(Position at)
 {
     g_game.party_map = (uint16_t)at.map;
@@ -629,8 +636,7 @@ void move_compute_map_arrival(Position at)
         g_party.alt_view_map = end.map;
         g_party.alt_view_dir = (int16_t)dir_turn(g_game.party_dir, turn);
     }
-    g_party.cur_map = -1;
-    dun_set_current_map(at.map);
+    reload_current_map(at.map);
 }
 
 /* Visits the ornament markers of all maps: a position marker of the id sets s->at; true when visit stops at a
@@ -752,11 +758,9 @@ static uint16_t first_thing(int16_t x, int16_t y)
 /* Moves the party to at on the current map; the party square is read again. */
 static void set_party_square(Location at)
 {
-    int map = g_party.cur_map;
-    g_party.cur_map = -1;
     g_game.party_x = (uint16_t)at.x;
     g_game.party_y = (uint16_t)at.y;
-    dun_set_current_map(map);
+    reload_current_map(g_party.cur_map);
 }
 
 /* The teleporter at (x, y) moves the thing and turns it; false when the thing stays there. */
@@ -948,7 +952,7 @@ static MoveDest transit_finish(const Transit *t)
     int px = g_game.party_x;
     int py = g_game.party_y;
     int pmap = g_game.party_map;
-    g_party.cur_map = -1;
+    g_party.cur_map = -1; /* dun_set_party_position reads the party position again */
     dun_set_party_position((Position){t->map, t->x, t->y});
     for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
