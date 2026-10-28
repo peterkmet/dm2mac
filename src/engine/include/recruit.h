@@ -18,7 +18,8 @@
 bool recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map);
 /* The candidate joins the party, or goes back to its mirror (command CMD_RECRUIT_CANCEL). */
 void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command);
-/* The champion of the mirror in front of (x, y) of map joins at once, without the inventory and the message. */
-void recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map);
+/* The champion of the mirror in front of (x, y) of map joins at once, without the inventory and the message; false
+   when it cannot join (recruit_start). */
+bool recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map);
 
 #endif /* DM2_ENGINE_RECRUIT_H */

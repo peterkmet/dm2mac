@@ -65,7 +65,8 @@ static void add_start_champion(void)
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_type(t) != WALL_CLICK_PORTRAIT)
             continue;
-        recruit_start_champion(0, 1, DIR_NORTH, g_game.party_map);
+        if (!recruit_start_champion(0, 1, DIR_NORTH, g_game.party_map))
+            return;
         champion(0)->dir = (uint8_t)g_game.party_dir;
         champion(0)->cell = (uint8_t)g_game.party_dir;
         set_redraw_flags(REDRAW_STATUS_BOX);

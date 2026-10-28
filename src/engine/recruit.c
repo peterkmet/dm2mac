@@ -204,10 +204,12 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
     dun_set_current_map(saved);
 }
 
-void recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map)
+bool recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map)
 {
     recruit_silent = true;
-    recruit_start(x, y, dir, map);
-    recruit_finish(x, y, dir, map, CMD_RECRUIT);
+    bool started = recruit_start(x, y, dir, map);
+    if (started) /* fix: without a candidate recruit_finish unlinks the slots of champion -1 */
+        recruit_finish(x, y, dir, map, CMD_RECRUIT);
     recruit_silent = false;
+    return started;
 }
