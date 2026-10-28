@@ -2364,7 +2364,7 @@ static void show_wall_text(int pos, int entry, const PicturePlace *place)
     if (!plate_image || !font)
         return;
     char text[WALL_TEXT_SIZE];
-    gtext_decode_raw(g_view_squares[pos].text, 0, text, sizeof text);
+    gtext_decode_raw(text, sizeof text, g_view_squares[pos].text, false, false);
     int lines = 1;
     for (const char *p = text; *p; p++)
         lines += *p == '\n';

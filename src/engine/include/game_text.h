@@ -78,11 +78,12 @@ const char *gtext_gdat_label(int category, int index, int entry);
 /* The number of field (0 SK, 1 LV, 2 CM, ... 17 WH) of a text entry, 0 when it is absent. */
 int16_t gtext_gdat_field(int category, int index, int entry, int field);
 
-/* The text of a scroll or a text thing as stored, without the format pass; mode as in gtext_decode_dungeon. */
-void gtext_decode_raw(uint16_t thing, int mode, char *dst, size_t size);
-/* The text of a scroll or a text thing with its format codes replaced; mode 1 starts with a new line, mode bit 15
+/* The text of a scroll or a text thing as stored, without the format pass; new_line and hidden as in
+   gtext_decode_dungeon. */
+void gtext_decode_raw(char *dst, size_t size, uint16_t thing, bool new_line, bool hidden);
+/* The text of a scroll or a text thing with its format codes replaced; new_line starts it with a new line, hidden
    also gives a hidden text. */
-char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode);
+char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, bool new_line, bool hidden);
 
 /* The UI colors that the font item of the interface GDAT gives (text_init). */
 void gtext_gdat_set_ui_colors(const uint8_t *colors);

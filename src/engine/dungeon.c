@@ -59,8 +59,6 @@
 #define LEVEL_TEXT_SIZE          200
 #define LEVEL_TEXT_FILLED        64
 #define LEVEL_TEXT_FILL          '1' /* the level digit of the levels that the start text does not name */
-/* The text decode mode: a hidden text too. */
-#define LEVEL_TEXT_MODE          0x8002
 
 /* The record size in bytes of each thing type. */
 static const uint8_t thing_size[THING_TYPE_COUNT] = {4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4};
@@ -552,7 +550,7 @@ void dungeon_read_level_table(void)
     while (t != THING_ENDOFLIST && thing_type(t) != THING_TEXT)
         t = dungeon_next_thing(t);
     if (t != THING_ENDOFLIST && textrec_kind(t) == TEXT_KIND_TEXT)
-        gtext_decode_dungeon(text, sizeof text, t, LEVEL_TEXT_MODE);
+        gtext_decode_dungeon(text, sizeof text, t, false, true);
     const char *p = text;
     for (int level = 0; level <= last; level++) {
         while (p < text + sizeof text - 1 && (*p == '\0' || *p == '\n' || *p == ' '))
