@@ -344,8 +344,9 @@ dependency group (version 23). [format]
 
 ## Checks before a commit
 
-`make` (clang) and `make windows` (MinGW-w64 GCC) build with 0 warnings under `-Wall -Wextra -Werror
--Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough`.
+`make` (clang) builds with 0 warnings under `-Wall -Wextra -Werror -Wshadow -Wmissing-prototypes
+-Wstrict-prototypes -Wvla -Wimplicit-fallthrough`. `make windows` (MinGW-w64 GCC, the same flags) builds with 0
+warnings before a merge to `main`; a series of commits runs it once at its end.
 
 `make check` runs the checks ([Development](development.md#tests)). The checks of `tests/standard/test_standard.py`, by
 their allowlist key:
