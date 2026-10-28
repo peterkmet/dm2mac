@@ -14,6 +14,7 @@
 #include "minion.h"
 #include "minion_map.h"
 #include "money.h"
+#include "num.h"
 #include "random.h"
 #include "text.h"
 #include "ui.h"
@@ -32,6 +33,9 @@
 
 /* Nothing drawn: no drawn cell or direction of a champion, no drawn wall set. */
 #define DRAWN_NONE 0xff
+
+/* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
+#define DAMAGE_HOLD_EXTRA_TICKS 1
 
 /* The index of a coin in the pile offsets wraps at 32. */
 #define COIN_PILE_MASK 0x1f
@@ -99,9 +103,6 @@ static struct {
     int16_t leader;
     int16_t action_mode; /* the action mode of the last input zone refresh, ACTION_MODE_STALE for none */
 } drawn;
-
-/* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
-#define DAMAGE_HOLD_EXTRA_TICKS 1
 
 /* The ticks to wait for the redraw after the damage shows: one for the original delay, then the extra ones. */
 static int16_t damage_hold_ticks;
@@ -258,7 +259,8 @@ void area_draw_entered_runes(bool clear)
         offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNES_BACK},
                                   ZONE_RUNES_BACK, GFX_OPAQUE);
     const Champion *c = champion(g_action.champion - 1);
-    size_t n = strnlen(c->runes, CHAMPION_SIZE - offsetof(Champion, runes));
+    /* as in the original: the end mark of four runes is in unknown_26[0] */
+    size_t n = strnlen(c->runes, CHAMPION_RUNES_SIZE + 1);
     for (size_t i = 0; i < n; i++) {
         char s[RUNE_TEXT_SIZE] = {c->runes[i], '\0'};
         offscreen_draw_text_in_zone(&area, ZONE_RUNE_ENTERED_FIRST + (int)i, g_ui_colors[UI_BLACK],
@@ -419,6 +421,35 @@ static void show_action_menu(void)
     show_panel_face();
 }
 
+/* Draws the coin of pile offset at over the pile rectangle r, clipped to the action area. */
+static void put_coin(const Bitmap *image, const uint8_t *colors, const int16_t *r, int at)
+{
+    int16_t coin[RECT_SIZE] = {(int16_t)(r[RECT_X] + coin_pile[at][0]), (int16_t)(r[RECT_Y] + coin_pile[at][1]),
+                               r[RECT_W], r[RECT_H]};
+    int16_t cx = 0;
+    int16_t cy = 0;
+    int16_t d = (int16_t)(area.rect[RECT_X] - coin[RECT_X]);
+    if (d > 0) {
+        cx = d;
+        coin[RECT_X] += d;
+        coin[RECT_W] -= d;
+    }
+    d = (int16_t)(area.rect[RECT_Y] - coin[RECT_Y]);
+    if (d > 0) {
+        cy = d;
+        coin[RECT_Y] += d;
+        coin[RECT_H] -= d;
+    }
+    d = (int16_t)((coin[RECT_W] + coin[RECT_X] - 1) - (area.rect[RECT_X] + area.rect[RECT_W] - 1));
+    if (d > 0)
+        coin[RECT_W] -= d;
+    d = (int16_t)((coin[RECT_H] + coin[RECT_Y] - 1) - (area.rect[RECT_Y] + area.rect[RECT_H] - 1));
+    if (d > 0)
+        coin[RECT_H] -= d;
+    offscreen_blit(&area, &(BlitSource){.bitmap = image, .x = cx, .y = cy, .transparent = UI_KEY, .colormap = colors},
+                   coin);
+}
+
 /* Draws an open money box with a pile of coins for each coin slot. */
 static void show_money_box(uint16_t box)
 {
@@ -439,37 +470,13 @@ static void show_money_box(uint16_t box)
         int16_t sx = 0;
         int16_t sy = 0;
         zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy);
-        int n = counts[type];
-        int at = slot * PILE_SLOT_STEP + (n > COIN_PILE_MAX ? n - COIN_PILE_MAX : 0);
-        n = n < COIN_PILE_MAX ? n : COIN_PILE_MAX;
-        do {
+        /* the pile shows the last COIN_PILE_MAX coins */
+        int at = slot * PILE_SLOT_STEP + max_int(counts[type] - COIN_PILE_MAX, 0);
+        int n = min_int(counts[type], COIN_PILE_MAX);
+        for (int k = 0; k < n; k++) {
             at = (at + 1) & COIN_PILE_MASK;
-            int16_t coin[RECT_SIZE] = {(int16_t)(r[RECT_X] + coin_pile[at][0]), (int16_t)(r[RECT_Y] + coin_pile[at][1]),
-                                       r[RECT_W], r[RECT_H]};
-            int16_t cx = 0;
-            int16_t cy = 0;
-            int16_t d;
-            /* clip the coin to the action area */
-            if ((d = (int16_t)(area.rect[RECT_X] - coin[RECT_X])) > 0) {
-                cx = d;
-                coin[RECT_X] += d;
-                coin[RECT_W] -= d;
-            }
-            if ((d = (int16_t)(area.rect[RECT_Y] - coin[RECT_Y])) > 0) {
-                cy = d;
-                coin[RECT_Y] += d;
-                coin[RECT_H] -= d;
-            }
-            d = (int16_t)((coin[RECT_W] + coin[RECT_X] - 1) - (area.rect[RECT_X] + area.rect[RECT_W] - 1));
-            if (d > 0)
-                coin[RECT_W] -= d;
-            d = (int16_t)((coin[RECT_H] + coin[RECT_Y] - 1) - (area.rect[RECT_Y] + area.rect[RECT_H] - 1));
-            if (d > 0)
-                coin[RECT_H] -= d;
-            offscreen_blit(&area,
-                           &(BlitSource){.bitmap = image, .x = cx, .y = cy, .transparent = UI_KEY, .colormap = colors},
-                           coin);
-        } while (--n > 0);
+            put_coin(image, colors, r, at);
+        }
     }
 }
 
@@ -692,7 +699,7 @@ static bool show_open_panel(bool full, bool party_changed, bool tick)
 /* The face of the champion of the open panel redraws while it has an aura, and once after the aura ends. */
 static void show_panel_face_aura(void)
 {
-    static const uint8_t mode_shows_face[] = {0, 1, 1, 0, 0, 0, 0};
+    static const bool mode_shows_face[ACTION_MODE_RESULT + 1] = {[ACTION_MODE_MENU] = true, [ACTION_MODE_SPELL] = true};
     if (g_action.champion <= 0 || g_action.mode < 0 || !mode_shows_face[g_action.mode])
         return;
     const Champion *c = champion(g_action.champion - 1);

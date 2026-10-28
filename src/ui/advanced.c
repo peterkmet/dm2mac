@@ -31,16 +31,15 @@
 
 enum AdvancedScreen g_advanced_screen;
 
+/* The state of the viewport screens and of the quick load. */
 static struct {
-    bool active;
-    int x, y; /* the mouse position that matches the current scroll */
-} drag;
-
-/* true after a quick load lost the game: there is no running game to keep. */
-static bool lost;
-
-/* The key that the closed screen leaves for the game (F9 of QUICK LOAD), 0 for none. */
-static uint16_t pending_key;
+    struct {
+        bool active;
+        int x, y; /* the mouse position that matches the current scroll */
+    } drag;
+    bool lost;            /* a quick load lost the game: there is no running game to keep */
+    uint16_t pending_key; /* the key that the closed screen leaves for the game (F9 of QUICK LOAD), 0 for none */
+} advanced;
 
 static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH", "WEST"};
 
@@ -48,7 +47,7 @@ static const char *const direction_names[DIR_COUNT] = {"NORTH", "EAST", "SOUTH",
 static void close_screen(void)
 {
     g_advanced_screen = ADVANCED_SCREEN_NONE;
-    drag.active = false;
+    advanced.drag.active = false;
     automap_scroll_reset();
 }
 
@@ -57,8 +56,8 @@ static void close_screen(void)
 void advanced_reset(void)
 {
     close_screen();
-    lost = false;
-    pending_key = 0;
+    advanced.lost = false;
+    advanced.pending_key = 0;
 }
 
 /* Movement keys */
@@ -134,7 +133,7 @@ enum QuickLoadResult advanced_quick_load(void)
     fclose(f);
     /* the running game goes to QUICK.TMP first: a damaged quick save loads it back (the same path: no backup) */
     quick_path(keep, "TMP");
-    if (!lost && !write_game(keep, keep)) {
+    if (!advanced.lost && !write_game(keep, keep)) {
         print_line("UNABLE TO SAVE");
         return QUICK_BLOCKED;
     }
@@ -143,7 +142,7 @@ enum QuickLoadResult advanced_quick_load(void)
     game_set_session_loaded(false);
     game_set_new_game(0);
     bool loaded = session_start_save(path);
-    bool restored = loaded || (!lost && session_start_save(keep));
+    bool restored = loaded || (!advanced.lost && session_start_save(keep));
     if (restored)
         remove(keep); /* else QUICK.TMP keeps the running game */
     game_restore_session(&kept);
@@ -154,10 +153,10 @@ enum QuickLoadResult advanced_quick_load(void)
             session_quit();
             game_set_exit_code(EXIT_GAME_LOST);
         }
-        lost = true;
+        advanced.lost = true;
         return QUICK_LOST;
     }
-    lost = false;
+    advanced.lost = false;
     if (loaded) {
         /* a quick load is not a saved game for the QUIT question */
         game_clear_save_times();
@@ -204,14 +203,14 @@ void advanced_draw_automap(void)
 
 void advanced_automap_drag(int16_t x, int16_t y)
 {
-    if (!drag.active)
+    if (!advanced.drag.active)
         return;
-    int dx = (x - drag.x) / MAP_CELL_SIZE;
-    int dy = (y - drag.y) / MAP_CELL_SIZE;
+    int dx = (x - advanced.drag.x) / MAP_CELL_SIZE;
+    int dy = (y - advanced.drag.y) / MAP_CELL_SIZE;
     if (!dx && !dy)
         return;
-    drag.x += dx * MAP_CELL_SIZE;
-    drag.y += dy * MAP_CELL_SIZE;
+    advanced.drag.x += dx * MAP_CELL_SIZE;
+    advanced.drag.y += dy * MAP_CELL_SIZE;
     automap_scroll(-dx, -dy);
     advanced_draw_automap();
 }
@@ -227,12 +226,12 @@ static void map_event(int type, int16_t x, int16_t y)
             close_screen();
     } else if (type == INPUT_LEFT_RELEASED) {
         advanced_automap_drag(x, y);
-        drag.active = false;
+        advanced.drag.active = false;
     } else if (type & INPUT_BUTTON_LEFT && zone_get_viewport_rect(r) && x >= r[RECT_X] && x < r[RECT_X] + r[RECT_W] &&
                y >= r[RECT_Y] && y < r[RECT_Y] + r[RECT_H]) {
-        drag.active = true;
-        drag.x = x;
-        drag.y = y;
+        advanced.drag.active = true;
+        advanced.drag.x = x;
+        advanced.drag.y = y;
     }
 }
 
@@ -279,7 +278,7 @@ static void cheat_event(int type, int16_t x, int16_t y)
         advanced_quick_save();
     } else if (result == CHEATS_QUICK_LOAD) {
         close_screen();
-        pending_key = KEY_QUICK_LOAD; /* the load runs as a game command, not inside the input poll */
+        advanced.pending_key = KEY_QUICK_LOAD; /* the load runs as a game command, not inside the input poll */
     } else if (result == CHEATS_CLOSE) {
         close_screen();
     }
@@ -317,7 +316,7 @@ void advanced_screen_event(int type, int16_t x, int16_t y)
 
 uint16_t advanced_take_pending_key(void)
 {
-    uint16_t key = pending_key;
-    pending_key = 0;
+    uint16_t key = advanced.pending_key;
+    advanced.pending_key = 0;
     return key;
 }
