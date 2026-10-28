@@ -551,6 +551,9 @@ static void close_platform(void)
     draw_free();
     timeline_free();
     seen_free();
+    gdat_select(NULL);
+    gdat_free(program.gdat);
+    program.gdat = NULL;
     plat_quit();
 }
 
