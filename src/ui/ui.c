@@ -91,6 +91,12 @@
 #define DESCRIPTION_LINE  18
 #define DESCRIPTION_BREAK 17
 
+/* Each movement arrow has a normal and a pressed picture. */
+#define ARROW_PICTURES 2
+
+/* A gauge bar without a split fill (UI color 0), as in the original. */
+#define GAUGE_NO_SPLIT 0
+
 /* The highest skill level that the skills panel names. */
 #define SKILL_LEVEL_MAX 16
 
@@ -571,7 +577,7 @@ void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors color
 }
 
 /* The base line start of text in zone (screen coordinates) and its rectangle; NULL when it is not visible. */
-static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
+static int16_t *zoned_text_rect(int zone, const char *text, int16_t *r)
 {
     TextSize size = text_measure(text);
     if (!size.w)
@@ -582,7 +588,7 @@ static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
 {
     int16_t r[RECT_SIZE];
-    if (!text_rect_in_zone(zone, text, r))
+    if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]), (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
@@ -593,7 +599,7 @@ void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, cons
 void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text)
 {
     int16_t r[RECT_SIZE];
-    if (!text_rect_in_zone(zone, text, r))
+    if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw_with_shadow(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]),
@@ -701,7 +707,7 @@ void ui_draw_movement_arrows(void)
     int entry = g_ui.push_mode ? GFX_PUSH_ARROWS : GFX_ARROWS;
     offscreen_create(&o, ZONE_MOVEMENT_ARROWS, true);
     gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
-    for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += 2)
+    for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += ARROW_PICTURES)
         offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry}, zone, GFX_OPAQUE);
     offscreen_flush(&o, true);
     draw_free_temp();
@@ -1004,7 +1010,8 @@ static void show_scroll(uint16_t scroll)
     }
 }
 
-/* A gauge bar in zone: value from range.low to range.high; split fills the rest of the zone with UI color split. */
+/* A gauge bar in zone: value from range.low to range.high; split fills the rest of the zone with UI color split
+   (GAUGE_NO_SPLIT: no fill). */
 static void show_gauge_bar(int16_t value, int zone, int color, GaugeRange range, int split)
 {
     if (value < GAUGE_STARVING)
@@ -1016,11 +1023,11 @@ static void show_gauge_bar(int16_t value, int zone, int color, GaugeRange range,
     uint16_t scale = (uint16_t)((int16_t)(value - range.low) * SCALE_PARTS / (range.high - range.low));
     if (!zone_get_rect_clipped(zone, bar, scale, SCALE_PARTS))
         return;
-    if (split) {
+    if (split != GAUGE_NO_SPLIT) {
         zone_get_rect(zone, full);
         memcpy(shadow, full, sizeof shadow);
         if (bar[RECT_X] + bar[RECT_W] - 1 == full[RECT_X] + full[RECT_W] - 1) {
-            split = 0;
+            split = GAUGE_NO_SPLIT;
         } else {
             full[RECT_W] = (int16_t)((full[RECT_X] + full[RECT_W] - 1) - (bar[RECT_X] + bar[RECT_W] - 1));
             full[RECT_X] = (int16_t)(bar[RECT_X] + bar[RECT_W]);
@@ -1032,7 +1039,7 @@ static void show_gauge_bar(int16_t value, int zone, int color, GaugeRange range,
     shadow[RECT_Y] = (int16_t)(shadow[RECT_Y] + GAUGE_SHADOW);
     gfx_fill_rect(g_view_viewport.pixels, shadow, g_ui_colors[UI_BLACK], g_view_viewport.width, IMAGE_8BPP);
     gfx_fill_rect(g_view_viewport.pixels, bar, g_ui_colors[color], g_view_viewport.width, IMAGE_8BPP);
-    if (split)
+    if (split != GAUGE_NO_SPLIT)
         gfx_fill_rect(g_view_viewport.pixels, full, g_ui_colors[split], g_view_viewport.width, IMAGE_8BPP);
 }
 
@@ -1052,6 +1059,7 @@ static void show_object_gauge(int zone, int value, int high, uint8_t glyph, int 
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
                           (TextColors){g_ui_colors[UI_WHITE], bg}, s);
     s[0] = GLYPH_GAUGE_RIGHT;
+    /* as in the original, the font glyph height places the right end mark */
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y,
                           (TextColors){g_ui_colors[UI_WHITE], bg}, s);
 }
@@ -1147,12 +1155,12 @@ static void show_food_water(void)
     const Champion *c = champion(g_ui.inventory - 1);
     game_set_panel_mode(PANEL_MODE_FOOD);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
-    show_gauge_bar(c->food, ZONE_FOOD_GAUGE, UI_BROWN, (GaugeRange){FOOD_MIN, FOOD_MAX}, 0);
-    show_gauge_bar(c->water, ZONE_WATER_GAUGE, UI_BLUE, (GaugeRange){FOOD_MIN, FOOD_MAX}, 0);
+    show_gauge_bar(c->food, ZONE_FOOD_GAUGE, UI_BROWN, (GaugeRange){FOOD_MIN, FOOD_MAX}, GAUGE_NO_SPLIT);
+    show_gauge_bar(c->water, ZONE_WATER_GAUGE, UI_BLUE, (GaugeRange){FOOD_MIN, FOOD_MAX}, GAUGE_NO_SPLIT);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_FOOD, ZONE_FOOD_LABEL, UI_KEY);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_WATER, ZONE_WATER_LABEL, UI_KEY);
     if (c->poisoned) {
-        show_gauge_bar(c->poison, ZONE_POISON_GAUGE, UI_RED, (GaugeRange){0, POISON_MAX}, 0);
+        show_gauge_bar(c->poison, ZONE_POISON_GAUGE, UI_RED, (GaugeRange){0, POISON_MAX}, GAUGE_NO_SPLIT);
         ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_POISON, ZONE_POISON_LABEL, UI_KEY);
     }
 }
@@ -1184,10 +1192,10 @@ static void show_skills_and_stats(void)
     }
     zone_get_position(ZONE_STATS, &stat_x, &unused);
     y = unused;
-    for (int stat = 1; stat < STAT_COUNT; stat++) {
+    for (int stat = STAT_STRENGTH; stat < STAT_COUNT; stat++) { /* luck has no line */
         text_draw_in_viewport(x, y, g_ui_colors[UI_LIGHT_GRAY], gtext_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
-        int current = champ_get_stat(c, stat, 0);
-        int maximum = champ_get_stat(c, stat, 1);
+        int current = champ_get_stat(c, stat, STAT_CURRENT);
+        int maximum = champ_get_stat(c, stat, STAT_MAXIMUM);
         int color = current < maximum ? UI_RED : current > maximum ? UI_GREEN : UI_LIGHT_GRAY;
         text_draw_in_viewport(stat_x, y, g_ui_colors[color], gtext_format_number(current, true, NUMBER_DIGITS));
         strcpy(text, "/");
@@ -1278,8 +1286,8 @@ static void show_inventory_values(const Champion *c)
     bool bad = c->food < 0 || c->water < 0 || c->poisoned;
     show_state_icon(bad ? GFX_BOX_SLOT_WOUNDED : GFX_BOX_SLOT_FRAME, ZONE_EYE);
     bool lowered = false;
-    for (int stat = 1; stat < STAT_COUNT && !lowered; stat++)
-        lowered = c->stats[stat][0] < c->stats[stat][1];
+    for (int stat = STAT_STRENGTH; stat < STAT_COUNT && !lowered; stat++) /* luck does not count */
+        lowered = c->stats[stat][STAT_CURRENT] < c->stats[stat][STAT_MAXIMUM];
     show_state_icon(lowered ? GFX_BOX_SLOT_WOUNDED : GFX_BOX_SLOT_FRAME, ZONE_MOUTH);
 }
 
@@ -1290,7 +1298,8 @@ static bool show_inventory_panel(const Champion *c, uint16_t flags)
     if (cache.shown_object != object || g_ui.mouth != cache.shown_mouth || g_ui.eye != cache.shown_eye ||
         flags & REDRAW_TITLE_ALL) {
         ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_EYE, ZONE_EYE, GFX_OPAQUE);
-        ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_MOUTH + (g_ui.eye != 0), ZONE_MOUTH, GFX_OPAQUE);
+        /* the mouth picture of the held eye follows the mouth picture */
+        ui_draw_viewport_image(CAT_PANEL, 0, g_ui.eye ? GFX_PANEL_MOUTH + 1 : GFX_PANEL_MOUTH, ZONE_MOUTH, GFX_OPAQUE);
         if (g_ui.eye) {
             if (object == THING_NONE)
                 show_skills_and_stats();

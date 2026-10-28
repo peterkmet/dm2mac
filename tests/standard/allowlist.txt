@@ -209,7 +209,6 @@ static-prefix engine/sensor.c:text_play_sound bridge: task 37
 static-prefix engine/sensor.c:text_schedule_spawn bridge: task 37
 static-prefix engine/sensor.c:text_set_shown bridge: task 37
 static-prefix engine/sensor.c:text_update_linked bridge: task 37
-static-prefix ui/ui.c:text_rect_in_zone bridge: task 50
 type control/control.c:get_position bridge: task 54
 type control/state_json.c:draws_at bridge: task 54
 type control/state_json.c:element_name bridge: task 54
