@@ -100,7 +100,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     if (px % MAP_CELL_SIZE < GAP_X || py % MAP_CELL_SIZE < GAP_Y)
         return;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    if (!item_find_link_projectile(group, thing))
+    if (item_find_link_projectile(group, thing) == THING_NONE)
         return;
     int col = px / MAP_CELL_SIZE;
     int row = py / MAP_CELL_SIZE;
@@ -144,7 +144,7 @@ void minion_dismiss(uint16_t group)
     uint16_t projectile = item_find_link_projectile(group, THING_NONE);
     /* as in the original: switches the current map to the map of the minion map, then back */
     int16_t saved = g_party.cur_map;
-    if (!projectile)
+    if (projectile == THING_NONE)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
     dun_set_current_map(location_map(at));

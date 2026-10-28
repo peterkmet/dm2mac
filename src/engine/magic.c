@@ -481,7 +481,7 @@ static void cast_create_item(void)
     uint16_t thing = item_create_by_index(
         gdat_entry_index(gdat_current(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE, SPELL_ITEM_KEY));
     if (g_game.leader_hand == THING_NONE) {
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
         return;
     }
     int cell = dir_turn(g_game.party_dir, rand_bit());

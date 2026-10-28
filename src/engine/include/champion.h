@@ -356,8 +356,8 @@ void champ_compute_load(int champ);
 void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode);
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
-/* Puts thing into the hand of the leader; defer_cursor: the original changes the mouse cursor later. */
-void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor);
+/* Puts thing into the hand of the leader; the cursor shows it from the next frame on (inv_cursor_object). */
+void champ_put_in_leader_hand(uint16_t thing);
 /* Takes the object out of the hand of the leader; THING_NONE when the hand is empty. */
 uint16_t champ_take_from_leader_hand(void);
 /* Updates the cursor when the icon of the animated leader hand object changes. */
