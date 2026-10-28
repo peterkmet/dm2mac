@@ -18,8 +18,10 @@
 /* The shift of the map in time_map. */
 #define EVENT_MAP_SHIFT 24
 
-/* Sizes of an event and no slot. */
-#define TIMELINE_NO_SLOT         (-1)
+/* No queue slot. */
+#define TIMELINE_NO_SLOT (-1)
+
+/* The sizes of an event and of its data bytes. */
 #define TIMELINE_EVENT_SIZE      12
 #define TIMELINE_EVENT_DATA_SIZE 6
 
@@ -66,10 +68,17 @@ typedef struct {
 
 extern Timeline g_timeline;
 
+/* Setup */
 /* Starts an empty timeline with room for capacity events. */
 void timeline_init(uint16_t capacity);
 /* Frees the event and queue storage; safe to call twice. */
 void timeline_free(void);
+
+/* Queries */
+/* True when the next event is due at game_time. */
+bool timeline_is_event_due(uint32_t game_time);
+
+/* Commands */
 /* Queues a copy of event; returns its event index, or -1 for an event without a type. */
 int timeline_add_event(const TimelineEvent *event);
 /* Removes a queued event and frees it. The last queue entry fills its slot; the next operation restores the heap
@@ -85,8 +94,6 @@ void timeline_build_queue(void);
 void timeline_rebuild_free_list(void);
 /* Moves the events in use to the first count slots and rebuilds the queue. */
 void timeline_compact(void);
-/* True when the next event is due at game_time. */
-bool timeline_is_event_due(uint32_t game_time);
 
 /* The event handlers. */
 /* A step of an altar rebirth (EVENT_ALTAR_REBIRTH). */

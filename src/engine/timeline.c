@@ -13,8 +13,9 @@
 #include "sensor.h"
 #include "sound_request.h"
 
-/* The end of the free list, and the system errors of the original: no queue slot, a full timeline. */
+/* The end of the free list. */
 #define END_OF_FREE_LIST           (-1)
+/* The system errors of the original: no queue slot, a full timeline. */
 #define SYSTEM_ERROR_NO_QUEUE_SLOT 70
 #define SYSTEM_ERROR_TIMELINE_FULL 45
 /* The steps of an altar rebirth: smoke, then the bones of the champion vanish, then the champion lives again. */
@@ -101,6 +102,8 @@ static int16_t find_queue_slot(uint16_t index)
     return slot;
 }
 
+/* Setup */
+
 void timeline_init(uint16_t capacity)
 {
     free(g_timeline.events);
@@ -129,6 +132,16 @@ void timeline_free(void)
     g_timeline.count = 0;
     g_timeline.used_end = 0;
 }
+
+/* Queries */
+
+bool timeline_is_event_due(uint32_t game_time)
+{
+    fix_pending_slot();
+    return g_timeline.count != 0 && time_of_event(g_timeline.queue[0]) <= game_time;
+}
+
+/* Commands */
 
 int timeline_add_event(const TimelineEvent *event)
 {
@@ -233,12 +246,6 @@ void timeline_compact(void)
     timeline_build_queue();
 }
 
-bool timeline_is_event_due(uint32_t game_time)
-{
-    fix_pending_slot();
-    return g_timeline.count != 0 && time_of_event(g_timeline.queue[0]) <= game_time;
-}
-
 /* The event handlers. */
 
 void timeline_event_altar_rebirth(TimelineEvent *e)
@@ -277,8 +284,8 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
 
 void timeline_event_move_group(TimelineEvent *e)
 {
-    int x = e->data[0];
-    int y = e->data[1];
+    int x = e->data[EVENT_X];
+    int y = e->data[EVENT_Y];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
         sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
                        1);
