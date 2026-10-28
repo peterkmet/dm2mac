@@ -62,7 +62,7 @@ static void add_to_party(int portrait, int index, int16_t dir)
     char text[TEXT_SIZE];
     const char *p = gtext_gdat(CAT_CHAMPION, portrait, GFX_PORTRAIT_TEXT, text);
     char ch;
-    /* the name ends at a space or after 7 characters; the title follows (the 8th character of a long name is lost) */
+    /* the name ends at a space or after 7 characters; the 8th character is lost, as in the original */
     for (int i = 0;; i++) {
         ch = *p++;
         if (ch == ' ' || !ch || i >= CHAMPION_NAME_SIZE - 1)
