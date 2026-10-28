@@ -1354,7 +1354,7 @@ static void fake_wall_event(TimelineEvent *e)
     if (effect == EFFECT_CLEAR) {
         int blocked = dun_on_party_square((Location){x, y});
         uint16_t g = creature_group_at(g_party.cur_map, x, y);
-        if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_DOOR_HIT))
+        if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NON_MATERIAL))
             blocked = 1;
         if (blocked) {
             e->time_map++;
@@ -1430,7 +1430,7 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
         return hit;
     const CreatureInfo *info = creature_group_info(g);
     int height = vertical ? creature_door_size(info) : 1;
-    if (info->flags & CREATURE_NOT_DOOR_HIT || *state < height)
+    if (info->flags & CREATURE_NON_MATERIAL || *state < height)
         return hit;
     if (info->door_flags & CREATURE_RESISTS_NON_FIRE) {
         damage >>= 1;

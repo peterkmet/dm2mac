@@ -87,6 +87,7 @@ void champ_init_party_state(void)
     if (g_game.leader_hand == THING_NONE) {
         g_leader_hand.icon = HAND_ICON_NONE;
     } else {
+        /* without a leader the hand applies no item effects: the loaded champions hold them already */
         uint16_t leader = g_game.leader;
         g_game.leader = LEADER_NONE;
         champ_put_in_leader_hand(g_game.leader_hand, true);
@@ -106,7 +107,7 @@ void champ_init_party_state(void)
 
 /* Statistics and load */
 
-int champ_get_stat(Champion *c, int stat, int which)
+int champ_get_stat(const Champion *c, int stat, int which)
 {
     int v = c->stats[stat][which];
     if (which == STAT_CURRENT && c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST &&
@@ -148,7 +149,7 @@ int champ_scale_by_stamina(const Champion *c, int value)
     return value;
 }
 
-int champ_get_max_load(Champion *c)
+int champ_get_max_load(const Champion *c)
 {
     int strength = champ_get_stat(c, STAT_STRENGTH, STAT_CURRENT);
     uint16_t load = (uint16_t)champ_scale_by_stamina(c, (int16_t)(strength * LOAD_PER_STRENGTH + LOAD_BASE));
@@ -376,6 +377,8 @@ void champ_wake_party(void)
     g_hooks.clear_viewport();
     g_hooks.set_input_mode(INPUT_MODE_MOVE);
 }
+
+/* Party state that the interface sets */
 
 void champ_set_party_sleeping(bool on)
 {
