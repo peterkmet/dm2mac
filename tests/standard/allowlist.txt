@@ -306,7 +306,6 @@ type engine/sensor.c:text_schedule_spawn bridge: task 37
 type engine/sensor.c:wall_item bridge: task 37
 type engine/sound_request.c:request_later bridge: task 38
 type engine/timeline.c:fix_queue_slot bridge: task 39
-type platform/scale.c:pixel bridge: task 57
 type ui/input.c:click_command bridge: task 45
 type ui/input.c:click_creature bridge: task 45
 type ui/input.c:click_door_button bridge: task 45

@@ -8,17 +8,17 @@
 #define COLUMN_MIDDLE 1
 #define COLUMN_RIGHT  2
 
-/* The source pixel at (x, y); positions outside the image repeat the edge pixel. */
-static uint8_t pixel(const uint8_t *src, int w, int h, int x, int y)
+/* The source pixel in column and row; positions outside the image repeat the edge pixel. */
+static uint8_t pixel(const uint8_t *src, int w, int h, int column, int row)
 {
-    x = x < 0 ? 0 : x >= w ? w - 1 : x;
-    y = y < 0 ? 0 : y >= h ? h - 1 : y;
-    return src[y * w + x];
+    column = column < 0 ? 0 : column >= w ? w - 1 : column;
+    row = row < 0 ? 0 : row >= h ? h - 1 : row;
+    return src[row * w + column];
 }
 
 void scale2x(const uint8_t *src, int w, int h, uint8_t *dst)
 {
-    /* Neighbors use the AdvMAME names: A B C above, D E F on the row (E the pixel), G H I below. */
+    /* Neighbors use the AdvMAME names, upper case against rule 4.6: B above, D E F on the row (E the pixel), H below. */
     for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++) {
             uint8_t B = pixel(src, w, h, x, y - 1);
@@ -26,17 +26,19 @@ void scale2x(const uint8_t *src, int w, int h, uint8_t *dst)
             uint8_t E = pixel(src, w, h, x, y);
             uint8_t F = pixel(src, w, h, x + 1, y);
             uint8_t H = pixel(src, w, h, x, y + 1);
-            uint8_t *o = dst + 2 * y * 2 * w + 2 * x;
+            uint8_t *o = dst + SCALE2X_FACTOR * y * SCALE2X_FACTOR * w + SCALE2X_FACTOR * x;
             bool on = B != H && D != F;
             o[0] = on && D == B ? D : E;
             o[1] = on && B == F ? F : E;
-            o[2 * w] = on && D == H ? D : E;
-            o[2 * w + 1] = on && H == F ? F : E;
+            o[SCALE2X_FACTOR * w] = on && D == H ? D : E;
+            o[SCALE2X_FACTOR * w + 1] = on && H == F ? F : E;
         }
 }
 
 void scale3x(const uint8_t *src, int w, int h, uint8_t *dst)
 {
+    /* Neighbors use the AdvMAME names, upper case against rule 4.6: A B C above, D E F on the row (E the pixel), G H I
+       below. */
     for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++) {
             uint8_t A = pixel(src, w, h, x - 1, y - 1);
