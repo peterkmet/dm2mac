@@ -5,7 +5,7 @@ byteorder engine/dungeon.c bridge: task 25
 byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate record of SKULL.EXE that the differential tests compare
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
-byteorder engine/magic.c bridge: task 29
+byteorder engine/magic.c rule 10.7: runes_of reads the single rune bytes of the champion record and the end mark after them
 byteorder ui/draw.c bridge: task 43
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
@@ -27,8 +27,8 @@ decimal engine/creature.c:hit_radius_sq bridge: task 24
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
-decimal engine/magic.c:rune_mana bridge: task 29
-decimal engine/magic.c:spells bridge: task 29
+decimal engine/magic.c:rune_mana rule 3.12: rune mana by rune set of SKULL.EXE
+decimal engine/magic.c:spells rule 3.12: the spell table of SKULL.EXE
 decimal engine/minion.c:option_mana bridge: task 31
 decimal engine/move.c bridge: task 32
 decimal engine/move.c:free_square_order_party bridge: task 32
