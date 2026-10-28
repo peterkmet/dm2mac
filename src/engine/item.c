@@ -388,9 +388,9 @@ const char *item_name(uint16_t thing)
     int index = item_gdat_index(thing);
     g_text_args.champion = -1;
     if (category == CAT_MISC && index == TEXT_CHAMPION_TOKEN) {
-        int champion = misc_charges(thing); /* the champion of the token */
-        if (champion < g_game.champion_count)
-            g_text_args.champion = (int16_t)champion;
+        int token_champion = misc_charges(thing);
+        if (token_champion < g_game.champion_count)
+            g_text_args.champion = (int16_t)token_champion;
     }
     char raw[TEXT_SIZE];
     /* gtext_gdat formats the name and gtext_format formats it a second time, as in the original */

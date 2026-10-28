@@ -6,6 +6,7 @@
 #include "champion_internal.h"
 #include "dungeon.h"
 #include "game.h"
+#include "game_text.h"
 #include "hooks.h"
 #include "item.h"
 #include "magic.h"
@@ -34,8 +35,6 @@
 /* Limits of the mana and the statistic changes. */
 #define MANA_MAX               999
 #define STAT_STEP              20 /* a statistic change shrinks by a quarter for each step away from the maximum */
-/* The message color of an object name. */
-#define MESSAGE_OBJECT_NAME    13
 /* inv_click_slot slots 0 to 7: the hands of the status boxes. */
 #define CLICK_STATUS_HANDS     8
 /* Eating and drinking. */
@@ -83,12 +82,12 @@ static int stat_modifier(uint16_t thing, int attr, bool equipped, enum EffectMod
 static void adjust_stat(uint8_t *stat_values, int delta)
 {
     int16_t d = (int16_t)delta;
-    int16_t diff = (int16_t)(stat_values[0] + d - stat_values[1]);
+    int16_t diff = (int16_t)(stat_values[STAT_CURRENT] + d - stat_values[STAT_MAXIMUM]);
     if ((diff < 0) == (d < 0)) {
         for (int16_t left = (int16_t)(diff < 0 ? -diff : diff); left > STAT_STEP; left = (int16_t)(left - STAT_STEP))
             d = (int16_t)(d - (d >> 2));
     }
-    stat_values[0] = (uint8_t)clamp_int(STAT_MIN, (int16_t)(stat_values[0] + d), STAT_MAX);
+    stat_values[STAT_CURRENT] = (uint8_t)clamp_int(STAT_MIN, (int16_t)(stat_values[STAT_CURRENT] + d), STAT_MAX);
 }
 
 void champ_compute_load(int champ)
@@ -189,7 +188,7 @@ uint16_t inv_cursor_object(void)
 void inv_show_object_name(uint16_t thing)
 {
     g_hooks.print_newline();
-    g_hooks.print_message(MESSAGE_OBJECT_NAME, item_name(thing));
+    g_hooks.print_message(UI_LIGHT_GRAY, item_name(thing));
 }
 
 void champ_put_in_leader_hand(uint16_t thing)
@@ -390,8 +389,8 @@ static bool drink_potion(int champ, uint16_t thing)
         adjust_stat(c->stats[STAT_VITALITY], value);
         break;
     case POTION_ANTIDOTE: {
-        unsigned square = (uint16_t)((power / ANTIDOTE_POWER_DIVISOR) * (power / ANTIDOTE_POWER_DIVISOR));
-        champ_cure_poison(champ, (int16_t)(value + power + square));
+        unsigned power_squared = (uint16_t)((power / ANTIDOTE_POWER_DIVISOR) * (power / ANTIDOTE_POWER_DIVISOR));
+        champ_cure_poison(champ, (int16_t)(value + power + power_squared));
         break;
     }
     case POTION_STAMINA:
