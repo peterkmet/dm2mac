@@ -792,7 +792,7 @@ void mmap_draw(uint16_t thing)
         offscreen_draw_gdat_image(area, (GdatKey){CAT_CONTAINER, g_action.map_item, GFX_CONTAINER_PICTURE}, ZONE_PANEL,
                                   GFX_OPAQUE);
         for (int i = 0; i < g_champ_action_count; i++)
-            area_draw_name(i, 0);
+            area_draw_name(i, false);
         mmap_draw_option_buttons(0);
         action_set_map_flags(MAP_PANEL_DRAWN, true);
     }

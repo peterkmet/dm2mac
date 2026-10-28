@@ -134,7 +134,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         }
         minion_map_set_location(thing, (Position){map, sx, sy});
         ai_free_cached_data(group);
-        g_hooks.update_action_area(0);
+        g_hooks.update_action_area(false);
     }
     dun_set_current_map(saved);
 }

@@ -129,7 +129,7 @@ bool recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)
     add_to_party(portrait, index, dir);
     if (index) {
         action_area_close();
-        g_hooks.update_action_area(0);
+        g_hooks.update_action_area(false);
     }
     g_ui.candidate = (uint16_t)(index + 1);
     g_game.champion_count++;

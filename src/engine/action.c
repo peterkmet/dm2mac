@@ -112,7 +112,7 @@ static void open_panel(int champ, int hand)
     g_action.champion = g_action.flash;
     g_action.hand = (int16_t)hand;
     champ_drag_cancel();
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
 }
 
 void action_area_open_hand(int champ, int hand)

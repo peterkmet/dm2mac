@@ -996,7 +996,7 @@ bool champ_execute_selected_action(int index)
         action_area_close();
     else
         g_action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     return done;
 }
 

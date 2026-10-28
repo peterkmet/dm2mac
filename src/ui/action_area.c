@@ -196,7 +196,7 @@ static Bitmap *make_hand_icon(int champ, int hand)
     return icon;
 }
 
-void area_draw_hand_icon(int champ, int hand, int flash)
+void area_draw_hand_icon(int champ, int hand, bool flash)
 {
     begin_draw(false);
     const Champion *c = champion(champ);
@@ -222,7 +222,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
         offscreen_fill_rect_dithered(&area, r, UI_BLACK);
 }
 
-void area_draw_spell_icon(int champ, int flash)
+void area_draw_spell_icon(int champ, bool flash)
 {
     begin_draw(false);
     const Champion *c = champion(champ);
@@ -272,7 +272,7 @@ void area_draw_entered_runes(bool clear)
     }
 }
 
-void area_draw_name(int i, int highlight)
+void area_draw_name(int i, bool highlight)
 {
     begin_draw(false);
     const ChampionAction *a = &g_champ_actions[i];
@@ -421,7 +421,7 @@ static void show_spell_panel(void)
 static void show_action_menu(void)
 {
     for (int i = 0; i < g_champ_action_count; i++)
-        area_draw_name(i, 0);
+        area_draw_name(i, false);
     show_panel_face();
 }
 
@@ -528,7 +528,7 @@ static void show_hand_icons(int champ, bool full, bool redraw, bool flash_this)
 {
     const Champion *c = champion(champ);
     for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
-        int flash = 0;
+        bool flash = false;
         bool update = false;
         if (flash_this && g_action.flash_hand == hand) {
             flash = g_action.flash > 0;
@@ -568,7 +568,7 @@ static void show_party_hands(bool full, bool changed)
         }
         bool flash_this = (g_action.flash < 0 ? -g_action.flash : g_action.flash) - 1 == i;
         show_hand_icons(i, full, redraw, flash_this);
-        int flash = 0;
+        bool flash = false;
         if (flash_this && g_action.flash_hand == ACTION_HAND_SPELL) {
             flash = g_action.flash > 0;
             redraw = true;
@@ -667,7 +667,7 @@ static void show_hand_panel(void)
 }
 
 /* Draws the open hand or spell panel when it changed; returns false while the panel waits for its redraw delay. */
-static bool show_open_panel(bool full, bool party_changed, int tick)
+static bool show_open_panel(bool full, bool party_changed, bool tick)
 {
     if (g_action.redraw_delay || full || party_changed || (g_action.mode == ACTION_MODE_MINION_MAP && tick)) {
         if (g_action.redraw_delay > 1) {
@@ -771,7 +771,7 @@ static void finish_update(void)
 }
 
 /* Draws what changed in the action area since the last update: the result of an action, the hands, the open panel. */
-static void redraw_changes(int tick)
+static void redraw_changes(bool tick)
 {
     bool full = false;
     bool party_changed = false;
@@ -810,7 +810,8 @@ static void redraw_changes(int tick)
         if (g_action.mode != ACTION_MODE_RESULT)
             damage_hold_ticks = 0;
         if (damage_hold_ticks > DAMAGE_HOLD_EXTRA_TICKS) {
-            damage_hold_ticks -= tick != 0;
+            if (tick)
+                damage_hold_ticks--;
             return;
         }
         damage_hold_ticks = 0;
@@ -826,7 +827,7 @@ static void redraw_changes(int tick)
     show_panel_face_aura();
 }
 
-void area_update(int tick)
+void area_update(bool tick)
 {
     if (g_ui.candidate)
         return;
@@ -842,6 +843,6 @@ bool area_end_damage_hold(int16_t x, int16_t y)
         x >= rect[RECT_X] + rect[RECT_W] || y >= rect[RECT_Y] + rect[RECT_H])
         return false;
     damage_hold_ticks = 0;
-    area_update(0);
+    area_update(false);
     return true;
 }
