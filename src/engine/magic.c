@@ -122,7 +122,6 @@
 #define DARKNESS_SIGN             (-2) /* darkness takes twice the light of its level */
 #define TORCH_TICKS               2000 /* the base duration of the light spells */
 #define LIGHT_TICKS               10000
-#define MAGIC_LIGHT_LEVELS        16 /* the light spells reach level 15 */
 #define LIGHT_POWER_SHIFT         3  /* the light strength is power / 8 */
 #define DARKNESS_TICKS            16 /* the duration of darkness: this per strength above the minimum, plus this */
 #define TORCH_TICKS_STRENGTH_BASE 3
@@ -240,8 +239,6 @@ static const char *const rune_names[RUNE_SETS * RUNES_PER_SET] = {
     "lo",  "um", "on",   "ee", "pal", "mon", "ya", "vi",  "oh",   "ful",  "des", "zo",
     "ven", "ew", "kath", "ir", "bro", "gor", "ku", "ros", "dain", "neta", "ra",  "sar",
 };
-/* The light of each magic light level. */
-static const int8_t light_power[MAGIC_LIGHT_LEVELS] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 
 /* The kind of a spell (SPELL_POTION, SPELL_MISSILE, SPELL_OTHER, SPELL_SUMMON). */
 static int spell_kind(const Spell *spell)
@@ -347,7 +344,7 @@ void magic_add_light(int kind, int power)
     TimelineEvent e = party_event(EVENT_MAGIC_LIGHT, ticks);
     set_event_word(&e, (uint16_t)(kind == LIGHT_DARKNESS ? level : -level));
     timeline_add_event(&e);
-    add_spell_light(light_power[level] * sign);
+    add_spell_light(g_light_power[level] * sign);
     light_update_party_light();
 }
 
@@ -360,7 +357,7 @@ void magic_event_light(TimelineEvent *e)
     if (fading_light)
         level = (int16_t)-level;
     int16_t next = (int16_t)(level - 1);
-    int delta = light_power[level] - light_power[next];
+    int delta = g_light_power[level] - g_light_power[next];
     if (fading_light) {
         delta = -delta;
         next = (int16_t)-next;

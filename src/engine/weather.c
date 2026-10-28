@@ -78,7 +78,6 @@
 #define SKY_LIGHTNING_KINDS 3 /* the number of lightning pictures from GFX_SKY_LIGHTNING */
 #define SKY_OBJECT_MAX      5 /* sky objects of the weather, with the end mark */
 #define STORM_STEPS         32
-#define TORCH_CHARGE_COUNT  16
 #define LIGHT_LEVEL_MAX     5
 #define FALLOFF_WEATHER_MAX 8
 #define FALLOFF_MAX         5
@@ -140,8 +139,8 @@ static const int8_t storm_curves[][STORM_STEPS] = {
      -2,                                                                 -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,  -2,  -2,  -2 },
     {2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  4,  4,  4,  4,  4,  4,  4,  4,  -26, -22, -18, -10},
 };
-/* The light of a torch by its charges. */
-static const int8_t light_power[TORCH_CHARGE_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
+/* The light of a torch by its charges, of a magic light by its level or power. */
+const int8_t g_light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 /* The light that each light level needs (level 0 above 99), and the daylight in % by the darkness of the hour. */
 static const int8_t light_levels[LIGHT_LEVEL_MAX + 1] = {99, 75, 50, 25, 1, 0};
 /* What a square light loses by its distance to the party: window light, other light. */
@@ -468,7 +467,7 @@ void light_update_party_light(void)
         int16_t sum = 0;
         int shift = HAND_LIGHT_SHIFT;
         for (int i = 0; i < n; i++) {
-            sum = (int16_t)(sum + ((light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
+            sum = (int16_t)(sum + ((g_light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
             if (shift)
                 shift--;
         }
