@@ -102,24 +102,28 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 #define ALTAR_EVENT_STEPS         0x03
 
 /* Sensor types that launch missiles. */
-#define LAUNCH_ITEM             0x07
-#define LAUNCH_SPELL            0x08
-#define LAUNCH_ITEMS            0x09
-#define LAUNCH_SPELLS           0x0a
-#define LAUNCH_OBJECT           0x0e
-#define LAUNCH_OBJECTS          0x0f
+#define LAUNCH_ITEM              0x07
+#define LAUNCH_SPELL             0x08
+#define LAUNCH_ITEMS             0x09
+#define LAUNCH_SPELLS            0x0a
+#define LAUNCH_OBJECT            0x0e
+#define LAUNCH_OBJECTS           0x0f
 /* Floor sensor types. */
-#define FLOOR_ANY               0x01
-#define FLOOR_PARTY_OR_CREATURE 0x02
-#define FLOOR_PARTY             0x03
-#define FLOOR_ITEM              0x04
-#define FLOOR_CREATURE          0x07
-#define FLOOR_PARTY_POSSESSES   0x08
+#define FLOOR_ANY                0x01
+#define FLOOR_PARTY_OR_CREATURE  0x02
+#define FLOOR_PARTY              0x03
+#define FLOOR_ITEM               0x04
+#define FLOOR_CREATURE           0x07
+#define FLOOR_PARTY_POSSESSES    0x08
 /* Sensor type 0: the sensor does nothing. */
-#define SENSOR_NONE             0x00
+#define SENSOR_NONE              0x00
 /* Floor sensor types that act on the creatures of an area. */
-#define SENSOR_VANISH           0x0b
-#define SENSOR_ALERT            0x28
+#define SENSOR_VANISH            0x0b
+#define SENSOR_ALERT             0x28
+/* Sensor types that react to projectiles and explosions. */
+#define SENSOR_PROJECTILE_HIT    0x22 /* the wall sensor of a cell triggers when an object hits it */
+#define SENSOR_PROJECTILE_PORTAL 0x23 /* the object goes through the wall to the target square */
+#define SENSOR_EXPLOSION         0x26 /* the floor sensor triggers on an explosion */
 
 /* Sensor types of square events. A wall and a floor give some types other meanings. */
 #define SENSOR_GAME_END           0x12
@@ -209,6 +213,8 @@ static inline uint16_t sensor_area_class(uint16_t sensor)
 #define WALL_CLICK_PORTRAIT     0x7e
 /* The ornament value of a fountain: touching the ornament fills the water. */
 #define ORNAMENT_KEY_TOUCH      0x0b
+/* The ornament value of a ladder or stairs marker that goes up: the linked twin is on the level above. */
+#define ORNAMENT_KEY_UP         0x11
 
 /* Doors and square events. */
 /* A GDAT value of the door type of a door thing. */

@@ -75,8 +75,6 @@ enum ClickResult { CLICK_IGNORED, CLICK_MATCH, CLICK_MISMATCH };
 #define TEXT_GENERATOR_ON_ENTRY 0x15
 #define TEXT_GENERATOR_FAST     0x16
 #define TEXT_SOUND              0x17
-/* The ornament value of a ladder that goes up: the linked twin is on the level above. */
-#define ORNAMENT_KEY_UP         0x11
 
 /* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
 #define TRANSFER_CHARGES_FILL   0

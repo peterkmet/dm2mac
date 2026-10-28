@@ -27,7 +27,6 @@
 #define DOOR_KEY_PASS_COST        0x11 /* the search cost of a door square */
 /* The GDAT values of a wall ornament. */
 #define ORNAMENT_KEY_TARGET       0x0e /* the filter value of a wall actuator ornament */
-#define ORNAMENT_KEY_LEVEL_LINK   0x11 /* a level link text: 0 leads down, else up */
 #define ORNAMENT_KEY_SHOOT_TARGET 0xf0 /* a target that ranged creatures shoot at */
 /* The GDAT values of a wall set. */
 #define WALLSET_KEY_WALL_COST     0x72 /* the search cost of a wall square */

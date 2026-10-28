@@ -363,10 +363,6 @@ static inline uint16_t textrec_offset(uint16_t text)
 /* Sensor types of the dungeon links. */
 #define SENSOR_LEVEL_LINK        0x1c /* sensor type: a link to the square of another level */
 #define SENSOR_TELEPORTER_LINK   0x27
-/* Sensor types that react to projectiles and explosions. */
-#define SENSOR_PROJECTILE_HIT    0x22 /* the wall sensor of a cell triggers when an object hits it */
-#define SENSOR_PROJECTILE_PORTAL 0x23 /* the object goes through the wall to the target square */
-#define SENSOR_EXPLOSION         0x26 /* the floor sensor triggers on an explosion */
 /* SENSOR_FLAGS bits. */
 #define SENSOR_BUSY              0x0001 /* the sensor ignores triggers until its animation or its wait ends */
 #define SENSOR_STATE             0x0004 /* on; some sensor types use it as an option */

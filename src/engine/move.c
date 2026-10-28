@@ -56,9 +56,6 @@
 #define TEXT_LINK_FIRST 0x06 /* text kinds 6 and 7: stairs markers */
 #define TEXT_LINK_LAST  0x07
 
-/* The GDAT value of a wall ornament that leads up. */
-#define WALL_ORNAMENT_GOES_UP 0x11 /* GDAT value (9, ornament, 0x0b, 0x11) */
-
 /* Random parts of the champion values. */
 #define BASH_ROLL_MASK 0x0f /* the random part of the strength of a champion who bashes a door */
 
@@ -1526,7 +1523,7 @@ LevelLink dun_find_adjacent_level_link(Location at, int level_delta)
                 if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST)
                     continue;
                 int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(t),
-                                                       GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
+                                                       GDAT_TYPE_VALUE, ORNAMENT_KEY_UP);
                 if ((level_delta == LEVEL_UP && up) || (level_delta == LEVEL_DOWN && !up)) {
                     return (LevelLink){(int16_t)d, THING_NONE};
                 }
