@@ -12,6 +12,7 @@
 #include "le.h"
 #include "merchant.h"
 #include "move.h"
+#include "num.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
@@ -2333,6 +2334,14 @@ static bool melee_attack_party(int16_t x, int16_t y, int dx, int dy)
     return hit;
 }
 
+/* The power roll of an attack of the creature: a quarter of its attack plus one, raised twice by a random part. */
+static uint16_t roll_attack_power(void)
+{
+    uint16_t p = (uint16_t)((g_ai.info->attack >> 2) + 1);
+    p = (uint16_t)(p + rand_below(p));
+    return (uint16_t)(p + rand_below(p));
+}
+
 /* The creature hits the party, a door, or another creature in front of it. */
 static bool act_melee_attack(void)
 {
@@ -2503,15 +2512,13 @@ static bool act_shoot(void)
     /* a creature that always shows its front shoots in any direction */
     if (facing() != (int8_t)a->direction && !(info->flags & CREATURE_FACES_PARTY))
         return true;
-    uint16_t p = (uint16_t)((info->attack >> 2) + 1);
-    p = (uint16_t)(p + rand_below(p));
-    p = (uint16_t)(p + rand_below(p));
+    uint16_t p = roll_attack_power();
     uint8_t sub = (uint8_t)a->sub;
     if (sub == (uint8_t)SPELL_POISON_BOLT)
         p = (uint16_t)(p * POISON_BOLT_POWER_SCALE);
     else if (sub == (uint8_t)SPELL_POISON_CLOUD || sub == (uint8_t)SPELL_PUSH || sub == (uint8_t)SPELL_PULL)
         p = (uint16_t)(p << SPELL_SHOT_POWER_SHIFT);
-    int16_t power = (int16_t)p < SHOT_POWER_MIN ? SHOT_POWER_MIN : (int16_t)p > POWER_MAX ? POWER_MAX : (int16_t)p;
+    int16_t power = (int16_t)clamp_int(SHOT_POWER_MIN, (int16_t)p, POWER_MAX);
     int speed;
     if (power <= SHOT_POWER_WEAK)
         speed = 1;
@@ -2668,10 +2675,7 @@ static bool act_throw_item(void)
     if (t == THING_ENDOFLIST)
         return true;
     dungeon_unlink_thing_from_list(t, group_possessions(g_ai.group_thing));
-    uint16_t p = (uint16_t)((g_ai.info->attack >> 2) + 1);
-    p = (uint16_t)(p + rand_below(p));
-    p = (uint16_t)(p + rand_below(p));
-    int16_t power = (int16_t)p < THROW_POWER_MIN ? THROW_POWER_MIN : (int16_t)p > POWER_MAX ? POWER_MAX : (int16_t)p;
+    int16_t power = (int16_t)clamp_int(THROW_POWER_MIN, (int16_t)roll_attack_power(), POWER_MAX);
     projectile_create(&(ProjectileLaunch){.payload = t,
                                           .x = g_ai.event.data[EVENT_X],
                                           .y = g_ai.event.data[EVENT_Y],
@@ -2810,12 +2814,7 @@ static bool act_explode_or_spawn(void)
 {
     ActiveGroup *a = g_ai.active;
     if (a->mode == MODE_EXPLODE) {
-        uint16_t p = (uint16_t)((g_ai.info->attack >> 2) + 1);
-        p = (uint16_t)(p + rand_below(p));
-        p = (uint16_t)(p + rand_below(p));
-        int16_t power = (int16_t)p < THROW_POWER_MIN ? THROW_POWER_MIN
-                        : (int16_t)p > POWER_MAX     ? POWER_MAX
-                                                     : (int16_t)p;
+        int16_t power = (int16_t)clamp_int(THROW_POWER_MIN, (int16_t)roll_attack_power(), POWER_MAX);
         explosion_create(SPELL_FIREBALL, (uint16_t)power, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y],
                          EXPLOSION_AT_CENTER);
         if (a->sub)
