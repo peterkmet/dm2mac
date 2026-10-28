@@ -208,6 +208,18 @@ static bool are_square_lists_valid(void)
     return true;
 }
 
+/* True when each map has a level of the level tables and lies inside the map data. */
+static bool are_maps_valid(int map_data_size)
+{
+    for (int map = 0; map < dun.map_count; map++) {
+        if (dungeon_map_level(map) >= LEVEL_COUNT) /* fix: the original writes past its level tables */
+            return false;
+        if (map_data_offset(map) + dungeon_map_width(map) * dungeon_map_height(map) > map_data_size)
+            return false;
+    }
+    return true;
+}
+
 /* Lists the maps of each level in map order, each list ended by LEVEL_LIST_END. */
 static void build_level_lists(void)
 {
@@ -282,10 +294,7 @@ static bool read_dungeon(FILE *f, bool new_game)
     dun.map_data = alloc_checked(map_data_size);
     if (!read_bytes(f, dun.map_data, map_data_size))
         return false;
-    for (int map = 0; map < dun.map_count; map++)
-        if (map_data_offset(map) + dungeon_map_width(map) * dungeon_map_height(map) > map_data_size)
-            return false;
-    if (!are_square_lists_valid())
+    if (!are_maps_valid(map_data_size) || !are_square_lists_valid())
         return false;
     build_level_lists();
     return true;
@@ -548,6 +557,8 @@ void dungeon_read_level_table(void)
     for (int level = 0; level <= last; level++) {
         while (p < text + sizeof text - 1 && (*p == '\0' || *p == '\n' || *p == ' '))
             p++;
+        if (p == text + sizeof text - 1) /* fix: the original reads past the text */
+            break;
         dun.level_digits[level] = (uint8_t)(*p++ - '0');
     }
 }

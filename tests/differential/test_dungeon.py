@@ -180,12 +180,13 @@ def test_bad_files(lib, tmp_path):
         columns = 0x2C + 16 * map_count
         widths = sum((struct.unpack_from("<H", data, 0x2C + 16 * m + 8)[0] >> 6 & 0x1F) + 1 for m in range(map_count))
         square_things = columns + 2 * widths
-        damages = {"map_outside": (0x2C, 0xFFFF), "bad_column": (columns, 0xFFFF), "bad_thing": (square_things, C.THING_SENSOR << C.THING_TYPE_SHIFT | C.THING_INDEX_MASK)}
+        damages = {"map_outside": (0x2C, 0xFFFF), "bad_column": (columns, 0xFFFF), "bad_thing": (square_things, C.THING_SENSOR << C.THING_TYPE_SHIFT | C.THING_INDEX_MASK),
+                   "level_63": (0x2C + 8, struct.unpack_from("<H", data, 0x2C + 8)[0] | C.MAP_LEVEL_MASK)}
         for name, (offset, value) in damages.items():
             damaged = bytearray(data)
             struct.pack_into("<H", damaged, offset, value)
             paths.append(tmp_path / f"{name}.dat")
             paths[-1].write_bytes(damaged)
     for path in paths:
-        assert lib.dungeon_load(str(path).encode()) == 0
+        assert lib.dungeon_load(str(path).encode()) == 0, path.name
         assert lib.dungeon_map_count() == 0
