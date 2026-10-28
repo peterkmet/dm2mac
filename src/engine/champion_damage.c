@@ -18,7 +18,6 @@
 
 /* Attack and wound bits. */
 #define ATTACK_TYPE_MASK           0x7fff
-#define ATTR_DEFENDS               0x8000 /* ATTR_ARMOUR_CLASS bit of a hand item: it defends */
 #define WOUND_HAND_BIT(hand)       ((hand) ? 2 : 1)
 /* Masks of the random rolls. */
 #define WOUND_ROLL_MASK            0x7f
@@ -26,9 +25,6 @@
 #define PARRY_ROLL                 0x0f
 #define STRENGTH_ROLL              0x0f
 #define DEXTERITY_ROLL             0x07
-/* Fields of an armour attribute: the defense and the sharp factor. */
-#define ARMOUR_DEFENSE_MASK        0xff
-#define ARMOUR_SHARP_MASK          0x07
 /* The action command of a hand that parries (last_command). */
 #define COMMAND_PARRY              0x01
 /* Fight formulas: bases, limits, and shifts. */
@@ -46,9 +42,8 @@
 #define PARRY_DEFENSE_SHIFT        2 /* a parry adds a quarter of its defense */
 #define HAND_DEFENSE_SHIFT         4 /* a hand item defends its own hand with 1/16 of its value, the rest with 1/32 */
 #define VITALITY_DEFENSE_SHIFT     3
-#define WOUNDED_DEFENSE_LOSS       8 /* a wounded location loses 8 to 11 defense */
-#define PARTY_SPREAD_SHIFT         3 /* party damage varies by an eighth around its value */
-#define ARMOUR_SHARP_SHIFT         8
+#define WOUNDED_DEFENSE_LOSS       8  /* a wounded location loses 8 to 11 defense */
+#define PARTY_SPREAD_SHIFT         3  /* party damage varies by an eighth around its value */
 #define SHARP_FACTOR_BASE          4u /* against a sharp attack: defense * (sharp factor + 4) / 8 */
 #define SHARP_FACTOR_SHIFT         3
 /* Poison and the damage display. */
@@ -141,9 +136,8 @@ int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack)
 static int armor_defense(uint16_t attr, bool sharp)
 {
     if (!sharp)
-        return attr & ARMOUR_DEFENSE_MASK;
-    return (int)((attr & ARMOUR_DEFENSE_MASK) *
-                     (((attr >> ARMOUR_SHARP_SHIFT) & ARMOUR_SHARP_MASK) + SHARP_FACTOR_BASE) >>
+        return item_armour_defense(attr);
+    return (int)(item_armour_defense(attr) * (item_armour_sharp_factor(attr) + SHARP_FACTOR_BASE) >>
                  SHARP_FACTOR_SHIFT);
 }
 
@@ -214,7 +208,7 @@ static int wound_defense(int champ, int location, bool sharp)
     int16_t hands = 0;
     for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
         uint16_t attr = item_attr(c->slots[hand], ATTR_ARMOUR_CLASS);
-        if (!(attr & ATTR_DEFENDS))
+        if (!(attr & ARMOUR_DEFENDS))
             continue;
         int strength = champ_get_strength(champ, hand, SKILL_PARRY);
         int v = (armor_defense(attr, sharp) + strength) * wound_defense_factor[location];

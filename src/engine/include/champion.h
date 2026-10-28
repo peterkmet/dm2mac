@@ -192,9 +192,8 @@ enum EffectMode {
 #define HAND_ICON_KEY     12
 /* The icon entry of no leader hand icon. */
 #define HAND_ICON_NONE    0xff
-/* The mouth picture of the inventory: GDAT (9, 0x5b, 1, entry). */
-#define MOUTH_CATEGORY    0x09
-#define MOUTH_INDEX       0x5b
+/* The mouth picture of the inventory: GDAT (CAT_WALL_ORNAMENT, MOUTH_ORNAMENT, GDAT_TYPE_IMAGE, entry). */
+#define MOUTH_ORNAMENT    0x5b
 
 /* The leader hand object as the original keeps it beside g_game.leader_hand. */
 typedef struct {
@@ -207,7 +206,7 @@ typedef struct {
 
 extern LeaderHand g_leader_hand;
 
-/* One action of an item in a champion's hand: its GDAT text (category, index, 5, entry). */
+/* One action of an item in a champion's hand: its GDAT text (category, index, GDAT_TYPE_TEXT, entry). */
 typedef struct {
     uint8_t category, index, entry;
 } ChampionAction;

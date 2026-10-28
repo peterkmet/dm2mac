@@ -1163,7 +1163,7 @@ static void show_food_water(void)
 /* Draws the closed mouth of the inventory panel while a champion is recruited. */
 static void show_closed_mouth(void)
 {
-    ui_draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_CLOSED, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
+    ui_draw_viewport_image(CAT_WALL_ORNAMENT, MOUTH_ORNAMENT, GFX_MOUTH_CLOSED, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     game_set_panel_mode(PANEL_MODE_MOUTH);
 }
 

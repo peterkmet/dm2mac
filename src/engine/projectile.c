@@ -82,7 +82,6 @@
 
 /* Creature info bits that projectiles test. */
 #define CREATURE_REFLECTS_SPELLS  0x0002 /* flags */
-#define CREATURE_NON_MATERIAL     CREATURE_NOT_DOOR_HIT
 #define CREATURE_CATCHES_OBJECTS  0x0200 /* flags */
 #define STATIC_SPELLS_ONLY        0x0100 /* possessions of a static creature: objects fly through it */
 #define POSSESSIONS_DIRECTION     0x0001 /* possessions bits 0-3: a dropped object lies in the flight direction cell */

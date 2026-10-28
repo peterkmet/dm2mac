@@ -60,7 +60,7 @@
 #define EXPLOSION_THING_BASE    0xff80
 
 /* The creature flag 0x20: a creature that hides the squares behind it. */
-#define CREATURE_NOT_SEEN_THROUGH   CREATURE_NOT_DOOR_HIT
+#define CREATURE_NOT_SEEN_THROUGH   CREATURE_NON_MATERIAL
 /* The AI class flags (g_ai_class_flags). */
 #define AI_CLASS_SEES_ALL_SIDES     0x0100
 #define AI_CLASS_SEES_BEHIND        0x0400

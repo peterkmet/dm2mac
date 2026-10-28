@@ -173,10 +173,12 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
         return;
     }
     if (!recruit_silent) {
-        g_hooks.draw_viewport_image(MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
+        g_hooks.draw_viewport_image(CAT_WALL_ORNAMENT, MOUTH_ORNAMENT, GFX_MOUTH_OPEN, ZONE_INVENTORY_PANEL,
+                                    GFX_OPAQUE);
         g_hooks.present_viewport();
-        sndreq_request((SoundCue){MOUTH_CATEGORY, MOUTH_INDEX, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD},
-                       g_game.party_x, g_game.party_y, 0);
+        sndreq_request(
+            (SoundCue){CAT_WALL_ORNAMENT, MOUTH_ORNAMENT, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD},
+            g_game.party_x, g_game.party_y, 0);
     }
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);
