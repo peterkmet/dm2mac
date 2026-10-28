@@ -2147,7 +2147,7 @@ static void show_explosion(uint16_t thing, int pos, int order, uint32_t cell_mas
     if (!(cell_mask & 1u << turned))
         return;
     int scale = thing_scale[depth * GRID_SQUARE_CELLS + EXPLOSION_SCALE_START - turned / CELL_GRID_SIDE];
-    /* as in the original, the party direction, also behind a passage where show_linked_squares turns the view */
+    /* as in the original, the party direction, not view.party_dir, which show_linked_squares turns */
     int zone = zone_id_for_view_cell(pos, position, g_game.party_dir) | ZONE_RELATIVE;
     int strength = power + 1 > EXPLOSION_POWER_SIZE ? power + 1 : EXPLOSION_POWER_SIZE;
     setup_explosion_picture(type, (int16_t)(scale * strength >> EXPLOSION_SIZE_SHIFT), flip, zone);
@@ -2218,7 +2218,8 @@ static void show_alcove_contents(int pos)
     int depth = depth_of(pos);
     for (uint16_t thing = g_view_squares[pos].first_thing; thing != THING_ENDOFLIST;
          thing = dungeon_next_thing(thing)) {
-        if (thing_cell(thing) != dir_opposite(g_game.party_dir)) /* as in the original, the party direction */
+        /* as in the original, the party direction, not view.party_dir, which show_linked_squares turns */
+        if (thing_cell(thing) != dir_opposite(g_game.party_dir))
             continue;
         if (is_item(thing)) {
             show_object(thing, pos,
@@ -2902,7 +2903,7 @@ static bool show_floor_ornament(int pos)
     bool linked = dungeon_teleporter_link(view.map, s->x, s->y, &link);
     if (depth > DEPTH_FAR && !linked)
         return false;
-    /* as in the original, the party direction, also behind a passage where show_linked_squares turns the view */
+    /* as in the original, the party direction, not view.party_dir, which show_linked_squares turns */
     if (linked && pos != POS_NEAR_SIDE_1 && pos != POS_NEAR_SIDE_2 && link.side != g_game.party_dir &&
         link.side != dir_opposite(g_game.party_dir))
         return false;

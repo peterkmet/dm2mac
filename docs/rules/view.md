@@ -51,7 +51,7 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 - `save.c` reads the static flag from the creature info table of `creature.c`.
 - Kept quirk: in the frame text of an animated ornament (`ornament_frame`), a letter `A` to `Z` gives the frame `letter - 'K'`, as in the original; the letters `A` to `J` give negative frames.
 - Kept quirk: the landmarks of an outdoor map use the first sky object of `weather_sky_objects` as their work record, as in the original. The weather update writes that record again before each use.
-- Kept quirk: on the squares behind a seamless passage, which `show_linked_squares` draws for the direction of the passage, the explosion zones, the cell of the alcove items, and the side test of a passage read the party direction, as in the original.
+- Kept quirk: the explosion zones, the cell of the alcove items, and the side test of a passage read the party direction, not the view direction that `show_linked_squares` turns for the squares behind a passage, as in the original.
 - Kept quirk: a static creature on a door square seen from the front shows only the possessions in the near cells, as in the original.
 - Kept quirk: `show_far_squares` keeps the cell mask from square to square; a stairs square draws its things with the mask of the square drawn before it, as in the original.
 - Kept quirk: a creature of size 3 steps toward the party by (-2, 1) in two octants (`toward_party_diagonal`), as in the original table.
