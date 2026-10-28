@@ -19,9 +19,6 @@
 #define STAMINA_DISPLAY_UNIT 10 /* the screen shows the stamina divided by this */
 #define WEIGHT_TENTHS        10 /* weights and loads are in tenths of a kilogram */
 
-/* The text decode mode of a scroll. */
-#define SCROLL_TEXT_MODE 0x8002 /* decode a scroll text: no leading new line, also when the text is hidden */
-
 /* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
 #define UI_INDEX_STATUS 2
 #define UI_INDEX_ARROWS 3

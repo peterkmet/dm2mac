@@ -305,7 +305,7 @@ static void object_json(Json *j, uint16_t thing)
     key_str(j, "kind", object_kind(thing));
     if (thing_type(thing) == THING_SCROLL) {
         char text[SCROLL_TEXT_SIZE];
-        key_str(j, "text", gtext_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
+        key_str(j, "text", gtext_decode_dungeon(text, sizeof text, thing, false, true));
     }
     json_close(j, '}');
 }
@@ -1103,7 +1103,7 @@ static void wall_face_json(Json *j, const char *key, const ViewWall *w, int k)
         wall_ornament_json(j, w, k, face);
     } else if (k == SIDE_FRONT && thing_type(w->look.text) == THING_TEXT) {
         char text[SCROLL_TEXT_SIZE];
-        key_str(j, "text", gtext_decode_dungeon(text, sizeof text, w->look.text, 0));
+        key_str(j, "text", gtext_decode_dungeon(text, sizeof text, w->look.text, false, false));
     } else {
         json_key(j, "text");
         put_null(j);

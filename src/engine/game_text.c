@@ -58,7 +58,7 @@ const char *gtext_format_number(int value, bool pad, int width)
         *--p = '0';
     for (; value; value /= DECIMAL_BASE)
         *--p = (char)('0' + value % DECIMAL_BASE);
-    return pad ? end - (uint16_t)width : p;
+    return pad ? end - width : p;
 }
 
 /* Appends src to the formatted text in dst. */
@@ -164,11 +164,6 @@ int16_t gtext_gdat_field(int category, int index, int entry, int field)
 static const char *const text_escape_words[TEXT_ESCAPE_WORDS] = {"x", "y", "THE ", "YOU ", "z",
                                                                  "{", "|", "}",    "~",    "\x7f"};
 static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
-/* The flags of the text mode. */
-#define TEXT_MODE_NEW_LINE 0x0001
-#define TEXT_MODE_HIDDEN   0x8000
-#define TEXT_MODE_MASK     0x7fff
-
 /* The ornament value of a text without an ornament. */
 #define NO_ORNAMENT_TEXT 0xff
 
@@ -207,7 +202,7 @@ static char *decode_words(uint16_t text, char *o, char *end)
     return o;
 }
 
-void gtext_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
+void gtext_decode_raw(char *dst, size_t size, uint16_t thing, bool new_line, bool hidden)
 {
     char *o = dst;
     char *end = dst + size - 1;
@@ -226,12 +221,12 @@ void gtext_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
         int kind = textrec_kind(text);
         if (kind && (kind != TEXT_KIND_ORNAMENT || textrec_subtype(text) != SUBTYPE_PLATE))
             return;
-        if (!textrec_is_visible(text) && !(mode & TEXT_MODE_HIDDEN))
+        if (!textrec_is_visible(text) && !hidden)
             return;
         if (kind == TEXT_KIND_ORNAMENT)
             ornament = textrec_value(text);
     }
-    if ((mode & TEXT_MODE_MASK) == TEXT_MODE_NEW_LINE && o < end)
+    if (new_line && o < end)
         *o++ = '\n';
     if (ornament != NO_ORNAMENT_TEXT) {
         if (gdat_current())
@@ -242,10 +237,10 @@ void gtext_decode_raw(uint16_t thing, int mode, char *dst, size_t size)
     *o = '\0';
 }
 
-char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, int mode)
+char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, bool new_line, bool hidden)
 {
     char raw[TEXT_SIZE * 2], formatted[TEXT_SIZE];
-    gtext_decode_raw(thing, mode, raw, sizeof raw);
+    gtext_decode_raw(raw, sizeof raw, thing, new_line, hidden);
     gtext_format(raw, formatted);
     snprintf(dst, size, "%s", formatted);
     return dst;

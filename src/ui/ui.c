@@ -343,7 +343,7 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
     char text[TEXT_SIZE * 2];
     count = info_add_text(lines, count, gtext_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_SCROLL)
-        return info_add_text(lines, count, gtext_decode_dungeon(text, sizeof text, thing, SCROLL_TEXT_MODE));
+        return info_add_text(lines, count, gtext_decode_dungeon(text, sizeof text, thing, false, true));
     if (type == THING_CONTAINER) {
         if (item_is_chest(thing))
             return info_add_contents(lines, count, thing);
@@ -982,7 +982,7 @@ static void show_scroll_line(int center_x, int y, const char *line)
 static void show_scroll(uint16_t scroll)
 {
     char text[TEXT_SIZE * 2], line[TEXT_SIZE * 2];
-    gtext_decode_dungeon(text, sizeof text, scroll, SCROLL_TEXT_MODE);
+    gtext_decode_dungeon(text, sizeof text, scroll, false, true);
     game_set_panel_mode(PANEL_MODE_SCROLL);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     ui_draw_viewport_image(CAT_SCROLL, 0, GFX_SCROLL_PICTURE, ZONE_INVENTORY_PANEL, UI_KEY);
