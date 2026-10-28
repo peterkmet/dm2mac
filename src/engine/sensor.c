@@ -68,6 +68,93 @@ enum ClickResult { CLICK_IGNORED, CLICK_MATCH, CLICK_MISMATCH };
 #define GENERATOR_FAST_DELAY        8192
 #define GENERATOR_SLOW_SHOWN_FACTOR 4 /* a visible generator text waits longer */
 
+/* Text subtypes of the square events: generators and sounds. */
+#define TEXT_GENERATOR_SLOW     0x13
+#define TEXT_GENERATOR_ON_ENTRY 0x15
+#define TEXT_GENERATOR_FAST     0x16
+#define TEXT_SOUND              0x17
+/* The ornament value of a ladder that goes up: the linked twin is on the level above. */
+#define ORNAMENT_KEY_UP         0x11
+
+/* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
+#define TRANSFER_CHARGES_FILL   0
+#define TRANSFER_CHARGES_EMPTY  1
+#define TRANSFER_CHARGES_RANDOM 2
+/* The charge changes of item_add_charges that empty and fill the charges of an object. */
+#define CHARGES_EMPTY_AMOUNT    (-15)
+#define CHARGES_FULL_AMOUNT     CHARGES_MASK
+/* Sensor flags: bones move like other objects; the moved object goes into the possessions of a static creature there. */
+#define SENSOR_KEEP_BONES       SENSOR_STATE
+/* Sensor data: item index 0x1ff, any object; the item class set of SENSOR_TRANSFER_CLASS. */
+#define SENSOR_ANY_ITEM         0x1ff
+#define ITEM_CLASS_SET_MASK     0x0ff
+/* The item class text of SENSOR_TRANSFER_CLASS: the first GDAT entry; the sensor delay bits step by 3 entries. */
+#define ITEM_CLASS_ENTRY_FIRST  0x10
+#define ITEM_CLASS_ENTRY_STEP   0x03
+
+/* SENSOR_COUNTDOWN: a data value up to 400 counts down, a larger one is a chance of data - 400 in 100. */
+#define COUNTDOWN_MAX 400
+#define CHANCE_END    500
+
+/* The values of the index bits 8-9 of a record. */
+#define RECORD_INDEX_HIGH_COUNT 4
+
+/* Values of the wall ornament GDAT entries of the wall clicks. */
+#define ORNAMENT_KEY_MARKER_DELAY 0x12
+/* The water of a champion after a drink from a fountain. */
+#define WATER_FULL                2048
+/* The item index of an empty flask, and the GDAT index of a flask of water. */
+#define ITEM_EMPTY_FLASK          0x194
+#define FLASK_FULL_INDEX          0x00f
+
+/* A thing that moves on or off a square, and what else lies there (on a wall: on its cell). */
+typedef struct {
+    int type, item; /* the thing type and item index of the thing, -1 for the party */
+    int16_t cell;   /* the wall cell, -1 on a floor */
+    bool enter, on_square;
+    bool other_item, same_item, creature, items;
+} FloorMove;
+
+/* A square of the current map and a cell on it. */
+typedef struct {
+    int16_t x, y, cell;
+} SquareCell;
+
+/* An object transfer of a Skullkeep machine: the square event and the sensor, and how the sensor picks the objects. */
+typedef struct {
+    const TimelineEvent *e;
+    uint16_t sensor;
+    bool any_cell;   /* all cells, not only the event cell */
+    bool use_filter; /* the item class of the sensor data */
+    bool reverse;    /* from the sensor target to the event square */
+    bool first_only; /* one object only */
+} ObjectTransfer;
+
+/* A click on a wall cell of (x, y) by the party or a creature. */
+typedef struct {
+    int16_t x, y, cell;
+    uint16_t hand;         /* the object in the hand, THING_NONE after it went to the wall */
+    uint16_t give;         /* the object that goes into the hand */
+    bool take, stop, done; /* the hand object goes to the wall, the click stops, the click ends */
+    bool has_leader;
+} WallClick;
+
+/* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
+   with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
+   the data after those tables in SKULL.EXE; these are the values it reads. */
+static const int16_t ambient_wall_dx[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
+    {2052, 4, 0,   1032},
+    {0,    0, 0,   0   },
+    {0,    0, 0,   0   },
+    {450,  0, 255, 0   }
+};
+static const int16_t ambient_wall_dy[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
+    {0, 0, 25675, 60},
+    {0, 0, 0,     0 },
+    {0, 0, 0,     0 },
+    {0, 0, 0,     0 }
+};
+
 static uint8_t *current_square(int16_t x, int16_t y)
 {
     return dungeon_square_byte(g_party.cur_map, x, y);
@@ -273,14 +360,6 @@ static void fall_risk(uint16_t text, int16_t x, int16_t y, bool on_square)
                        g_game.party_x, g_game.party_y, 1);
     }
 }
-
-/* A thing that moves on or off a square, and what else lies there (on a wall: on its cell). */
-typedef struct {
-    int type, item; /* the thing type and item index of the thing, -1 for the party */
-    int16_t cell;   /* the wall cell, -1 on a floor */
-    bool enter, on_square;
-    bool other_item, same_item, creature, items;
-} FloorMove;
 
 /* The static creature on (x, y) whose possessions take or give thing, THING_NONE for the square. */
 static uint16_t floor_holder(int16_t x, int16_t y, bool enter, bool possessions)
@@ -719,14 +798,6 @@ static void set_text_shown(uint16_t text, int effect)
     textrec_set_visible(text, apply_effect(effect, textrec_is_visible(text)));
 }
 
-/* Text subtypes of the square events: generators and sounds. */
-#define TEXT_GENERATOR_SLOW     0x13
-#define TEXT_GENERATOR_ON_ENTRY 0x15
-#define TEXT_GENERATOR_FAST     0x16
-#define TEXT_SOUND              0x17
-/* The ornament value of a ladder that goes up: the linked twin is on the level above. */
-#define ORNAMENT_KEY_UP         0x11
-
 /* A SUBTYPE_LADDER_HIDDEN wall text shows the same state as its twin on the level above or below. */
 static void update_linked_ladder(const TimelineEvent *e, uint16_t text)
 {
@@ -763,30 +834,10 @@ static bool counter_empty(uint16_t sensor)
     return !sensor_data(sensor) || (sensor_data(sensor) & SENSOR_DATA_SIGN);
 }
 
-/* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
-#define TRANSFER_CHARGES_FILL   0
-#define TRANSFER_CHARGES_EMPTY  1
-#define TRANSFER_CHARGES_RANDOM 2
-/* The charge changes of item_add_charges that empty and fill the charges of an object. */
-#define CHARGES_EMPTY_AMOUNT    (-15)
-#define CHARGES_FULL_AMOUNT     CHARGES_MASK
-/* Sensor flags: bones move like other objects; the moved object goes into the possessions of a static creature there. */
-#define SENSOR_KEEP_BONES       SENSOR_STATE
-/* Sensor data: item index 0x1ff, any object; the item class set of SENSOR_TRANSFER_CLASS. */
-#define SENSOR_ANY_ITEM         0x1ff
-#define ITEM_CLASS_SET_MASK     0x0ff
-/* The item class text of SENSOR_TRANSFER_CLASS: the first GDAT entry; the sensor delay bits step by 3 entries. */
-#define ITEM_CLASS_ENTRY_FIRST  0x10
-#define ITEM_CLASS_ENTRY_STEP   0x03
 static bool is_object(uint16_t thing)
 {
     return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC;
 }
-
-/* A square of the current map and a cell on it. */
-typedef struct {
-    int16_t x, y, cell;
-} SquareCell;
 
 /* Moves thing (from the square from, NULL: a new thing; from_creature: from the possessions of a creature there) to
    the cell of the square to for a transfer sensor, with the charge change of the sensor; on a floor the cell is
@@ -814,16 +865,6 @@ static void transfer_object(uint16_t thing, uint16_t sensor, const SquareCell *f
         move_thing(thing, from->x, from->y, -1, from_creature ? -1 : 0);
     move_thing(thing_with_cell(thing, to.cell), -1, sensor_flag(sensor, SENSOR_KEEP_BONES) ? -1 : 0, to.x, to.y);
 }
-
-/* An object transfer of a Skullkeep machine: the square event and the sensor, and how the sensor picks the objects. */
-typedef struct {
-    const TimelineEvent *e;
-    uint16_t sensor;
-    bool any_cell;   /* all cells, not only the event cell */
-    bool use_filter; /* the item class of the sensor data */
-    bool reverse;    /* from the sensor target to the event square */
-    bool first_only; /* one object only */
-} ObjectTransfer;
 
 /* A Skullkeep machine: the objects of the event square (reverse: of the sensor target) that the sensor wants move
    to the sensor target (reverse: to the event square), also from the creatures there. first: the first thing to
@@ -903,10 +944,6 @@ static void create_item(uint16_t sensor)
     SquareCell target = {sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor)};
     transfer_object(thing, sensor, NULL, target, false);
 }
-
-/* SENSOR_COUNTDOWN: a data value up to 400 counts down, a larger one is a chance of data - 400 in 100. */
-#define COUNTDOWN_MAX 400
-#define CHANCE_END    500
 
 /* A sensor turns the group on its target square (event effect EFFECT_SET, or EFFECT_CLEAR with SENSOR_INVERTED). */
 static void set_creatures_facing(const TimelineEvent *e, uint16_t sensor)
@@ -1473,25 +1510,6 @@ void sensor_event_door_animation(TimelineEvent *e)
 
 /* ---- Sensor timeline events ---- */
 
-/* The values of the index bits 8-9 of a record. */
-#define RECORD_INDEX_HIGH_COUNT 4
-
-/* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
-   with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
-   the data after those tables in SKULL.EXE; these are the values it reads. */
-static const int16_t ambient_wall_dx[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
-    {2052, 4, 0,   1032},
-    {0,    0, 0,   0   },
-    {0,    0, 0,   0   },
-    {450,  0, 255, 0   }
-};
-static const int16_t ambient_wall_dy[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
-    {0, 0, 25675, 60},
-    {0, 0, 0,     0 },
-    {0, 0, 0,     0 },
-    {0, 0, 0,     0 }
-};
-
 /* A value of an ambient wall table for the sensor thing: by its cell and the index bits 8-9 of its record. */
 static int16_t ambient_wall_step(const int16_t table[CELL_COUNT][RECORD_INDEX_HIGH_COUNT], uint16_t thing)
 {
@@ -1621,14 +1639,6 @@ void sensor_process_map_entry(bool entering)
 
 /* ---- Wall clicks ---- */
 
-/* Values of the wall ornament GDAT entries of the wall clicks. */
-#define ORNAMENT_KEY_MARKER_DELAY 0x12
-/* The water of a champion after a drink from a fountain. */
-#define WATER_FULL                2048
-/* The item index of an empty flask, and the GDAT index of a flask of water. */
-#define ITEM_EMPTY_FLASK          0x194
-#define FLASK_FULL_INDEX          0x00f
-
 /* A GDAT value of the wall ornament of thing, 0 for none. */
 static int ornament_value(uint16_t thing, int key)
 {
@@ -1657,15 +1667,6 @@ static uint16_t wall_item(int16_t x, int16_t y, int16_t cell, int item)
     dungeon_link_thing_to_square(t, g_party.cur_map, x, y);
     return t;
 }
-
-/* A click on a wall cell of (x, y) by the party or a creature. */
-typedef struct {
-    int16_t x, y, cell;
-    uint16_t hand;         /* the object in the hand, THING_NONE after it went to the wall */
-    uint16_t give;         /* the object that goes into the hand */
-    bool take, stop, done; /* the hand object goes to the wall, the click stops, the click ends */
-    bool has_leader;
-} WallClick;
 
 /* The hand takes the item of an item holder on the clicked cell, with full charges; false when there is none. */
 static bool wall_click_give(WallClick *c, int item)

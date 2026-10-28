@@ -197,7 +197,6 @@ order engine/aspect.c:sections bridge: task 22
 order data/hmp.c:sections bridge: task 18
 order data/mve_video.c:sections bridge: task 18
 order engine/game.c:sections bridge: task 26
-order engine/sensor.c:sections bridge: task 37
 order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
 order ui/fm.c:sections bridge: task 44
