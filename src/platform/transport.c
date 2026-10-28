@@ -24,7 +24,7 @@
 #define SEND_FLAGS MSG_NOSIGNAL /* a closed client does not raise SIGPIPE (Linux) */
 #else
 /* The flags of a send to the client. */
-#define SEND_FLAGS 0x0 /* SO_NOSIGPIPE does the same (macOS) */
+#define SEND_FLAGS 0x00 /* SO_NOSIGPIPE does the same (macOS) */
 #endif
 
 /* The listening socket, the one client, and the bytes of its next request line. */
@@ -107,6 +107,8 @@ static void send_line(Json *reply)
     json_raw(reply, "\n");
     for (size_t sent = 0; transport.client_fd >= 0 && sent < reply->len;) {
         ssize_t n = send(transport.client_fd, reply->s + sent, reply->len - sent, SEND_FLAGS);
+        if (n < 0 && errno == EINTR)
+            continue; /* fix: a signal stopped the write before a byte went out; send again */
         if (n <= 0)
             close_client();
         else
@@ -158,6 +160,12 @@ static void prepare_connection(int fd)
 #endif
 }
 
+/* True when the result of a recv says that the client closed its connection or that the connection failed. */
+static bool peer_left(ssize_t n)
+{
+    return n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR);
+}
+
 /* Closes the client when it closed its connection and has no unread byte. */
 static void drop_closed_client(void)
 {
@@ -165,7 +173,7 @@ static void drop_closed_client(void)
     if (transport.client_fd < 0)
         return;
     ssize_t n = recv(transport.client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
-    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK))
+    if (peer_left(n))
         close_client(); /* the client left */
 }
 
@@ -192,7 +200,7 @@ static void read_requests(void)
         return;
     ssize_t n = recv(transport.client_fd, transport.input + transport.input_length,
                      sizeof transport.input - transport.input_length, MSG_DONTWAIT);
-    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+    if (peer_left(n)) {
         close_client();
         return;
     }
@@ -226,10 +234,11 @@ void transport_poll(void)
 {
     if (transport.listen_fd < 0)
         return;
-    if (transport.reply_held && !control_is_turn_pending())
-        drop_closed_client(); /* a wait */
-    if (transport.reply_held && !control_is_turn_pending())
-        send_held_reply();
+    if (transport.reply_held && !control_is_turn_pending()) { /* a wait */
+        drop_closed_client();
+        if (transport.reply_held) /* a client that left gets no reply */
+            send_held_reply();
+    }
     if (!transport.reply_held && !control_is_turn_pending())
         read_requests();
     if (control_is_turn_pending()) { /* a client that left gets no reply; the reply goes out when the turn ends */

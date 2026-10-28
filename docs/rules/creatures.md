@@ -35,7 +35,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - reads past the creature info table, the animation frames, the item filter table, the search target kind flags (`g_ai_kind_flags`), and the candidate records
   - a square read at the map edge (not a pit)
   - a division by 0 for an animation of length 0 and for a minion map strip of 1 icon
-  - the minion map square read outside the map
+  - the minion map square read outside the map: a wall square of another map of the level, and the pit one level up
   - a path step read without a stored path (address 0 in the original)
   - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`); the port reads none
   - `creature_deactivate_group` with an active index at or past the end of the table: the original reads one entry past it, the port returns
@@ -64,5 +64,6 @@ The rules of the creatures: the creature data, the updates of the creature group
   - the party distance across maps (`far_party_distance`) wraps the dungeon positions to 16 bits
   - `dun_set_pit_teleporter_state` with `PIT_STATE_TOGGLE` closes an open pit or teleporter and opens a closed one
   - the loop schedule of a static creature (`schedule_loop` in `src/engine/creature.c`) adds the first frame of the sequence to the game time without the shift (`ANIM_START_MASK`, bits 6 to 11), so the loop phase differs from the first frame; one function in the port does the work of `0x25204` and `0x252c3`
+  - the action "move two steps" in phase 2: when the fall of the group waits or the group leaves the dungeon, the AI position takes the destination of the last move inside that move (`g_party.dest_*`; for example a dropped possession or the removal of the group), not the square of the group
   - `ai_free_cached_data` frees the plan state of the group whose index is the OR of the freed group and the group of the update in progress, so during a creature update it can free the plan state of another group, which then plans again
   - `magic_add_party_aura` with a new aura type removes the whole champion mask of the cast from the aura events, not only the bit of the champion whose aura ends
