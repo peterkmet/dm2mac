@@ -150,10 +150,9 @@ bool automap_level_square(Location level_at, Position *position)
     }
     int next = 0;
     do {
-        /* the search writes the square of the map that it finds into x, y */
         int16_t x = level_at.x - dungeon_map_offset_x(party_map);
         int16_t y = level_at.y - dungeon_map_offset_y(party_map);
-        int map = dungeon_location_on_map_from(party_map, 0, &x, &y, &next);
+        int map = dungeon_location_on_map_from((Position){party_map, x, y}, 0, &next).map;
         if (map >= 0 && covers(map, level_at, position))
             return true; /* a found square in the margin of its map does not count */
     } while (next != 0);

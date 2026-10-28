@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 
 /* The grid: 7 x 7 squares (9 x 9 when the grid is shifted) of 7 x 7 pixel icons with 1 pixel gaps. */
 #define MAP_ICON_W       7
@@ -75,8 +76,8 @@ void minion_map_open(int champ);
 void minion_map_drain_mana(void);
 /* Turns option button option (0 to 3) on (for its mana) or off. */
 void minion_toggle_map_option(int option);
-/* Sets the location of the minion map thing to (x, y) of map; returns false outside the map. */
-bool minion_map_set_location(uint16_t thing, int16_t x, int16_t y, int16_t map);
+/* Sets the location of the minion map thing to at; returns false outside the map. */
+bool minion_map_set_location(uint16_t thing, Position at);
 /* A click (command) at (x, y) of the screen on the grid of a minion location map sends its minion there. */
 void minion_map_click_set_destination(int command, int16_t x, int16_t y);
 /* The minion of an item vanishes. */

@@ -761,14 +761,12 @@ static void text_update_linked(const TimelineEvent *e, uint16_t text)
     int delta =
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(text), GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1
                                                                                                                    : 1;
-    int16_t x = e->data[EVENT_X];
-    int16_t y = e->data[EVENT_Y];
-    int map = dungeon_location_on_map(g_game.party_map, delta, &x, &y);
-    if (map < 0)
+    Position at = dungeon_location_on_map((Position){g_game.party_map, e->data[EVENT_X], e->data[EVENT_Y]}, delta);
+    if (at.map < 0)
         return;
     int saved = g_party.cur_map;
-    dun_set_current_map(map);
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    dun_set_current_map(at.map);
+    for (uint16_t t = first_thing(at.x, at.y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT || thing_cell(t) != e->data[EVENT_CELL])
             continue;
         if (textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == SUBTYPE_LADDER_HIDDEN)
@@ -1963,11 +1961,9 @@ static void wall_click_text(WallClick *c, uint16_t t)
             return;
         int delta =
             gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, value, GDAT_TYPE_VALUE, ORNAMENT_KEY_UP) ? -1 : 1;
-        int16_t lx = g_game.party_x;
-        int16_t ly = g_game.party_y;
-        int map = dungeon_location_on_map(g_game.party_map, delta, &lx, &ly);
-        if (map >= 0) {
-            move_party_to((Position){map, lx, ly}, g_game.party_dir);
+        Position to = dungeon_location_on_map((Position){g_game.party_map, g_game.party_x, g_game.party_y}, delta);
+        if (to.map >= 0) {
+            move_party_to(to, g_game.party_dir);
             g_hooks.flush_input();
         }
     } else if (sub == SUBTYPE_HAND_SWITCH && c->hand == THING_NONE) {

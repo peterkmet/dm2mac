@@ -531,11 +531,9 @@ void dungeon_link_things_after_load(void)
                     gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(map), GDAT_TYPE_VALUE,
                                      WALLSET_PIT_TO_MARKER))
                     continue;
-                int16_t bx = x;
-                int16_t by = y;
-                int below = dungeon_location_on_map(map, LEVEL_DOWN, &bx, &by);
-                if (below >= 0)
-                    mark_level_link(bx, by, below); /* fix: the original marks a square of map -1 */
+                Position below = dungeon_location_on_map((Position){(int16_t)map, (int16_t)x, (int16_t)y}, LEVEL_DOWN);
+                if (below.map >= 0)
+                    mark_level_link(below.x, below.y, below.map); /* fix: the original marks a square of map -1 */
             }
 }
 
@@ -788,21 +786,22 @@ const uint16_t *dungeon_square_things(void)
     return dun.square_first_things;
 }
 
-int dungeon_location_on_map(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y)
+Position dungeon_location_on_map(Position from, int level_delta)
 {
-    return dungeon_location_on_map_from(map, level_delta, out_x, out_y, NULL);
+    return dungeon_location_on_map_from(from, level_delta, NULL);
 }
 
-int dungeon_location_on_map_from(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y, int *next)
+Position dungeon_location_on_map_from(Position from, int level_delta, int *next)
 {
-    int ax = *out_x + dungeon_map_offset_x(map);
-    int ay = *out_y + dungeon_map_offset_y(map);
-    int level = dungeon_map_level(map) + level_delta;
+    Position none = {-1, from.x, from.y};
+    int ax = from.x + dungeon_map_offset_x(from.map);
+    int ay = from.y + dungeon_map_offset_y(from.map);
+    int level = dungeon_map_level(from.map) + level_delta;
     int start = next ? *next : 0;
     if (next)
         *next = 0;
     if (level < 0 || level >= LEVEL_COUNT)
-        return -1;
+        return none;
     const uint8_t *maps = dungeon_level_maps(level);
     for (const uint8_t *m = maps + start; *m != LEVEL_LIST_END; m++) {
         int ox = dungeon_map_offset_x(*m);
@@ -816,46 +815,45 @@ int dungeon_location_on_map_from(int16_t map, int level_delta, int16_t *out_x, i
         int type = square_type(dungeon_square_edge(*m, lx, ly));
         if (type == SQUARE_UNKNOWN || (type == SQUARE_TELEPORTER && is_closed_teleporter(*m, lx, ly)))
             continue;
-        *out_x = lx;
-        *out_y = ly;
         if (next)
             *next = (int)(m - maps) + 1;
-        return *m;
+        return (Position){*m, (int16_t)lx, (int16_t)ly};
     }
-    return -1;
+    return none;
 }
 
-int dungeon_find_level_transfer(int16_t *out_x, int16_t *out_y, int16_t map, int level_delta, unsigned flags)
+Position dungeon_find_level_transfer(Position from, int level_delta, unsigned flags)
 {
+    Position none = {-1, from.x, from.y};
     bool fall_into = false;
-    dun_set_current_map(map);
-    uint8_t square = dun_get_square((Location){*out_x, *out_y});
+    dun_set_current_map(from.map);
+    uint8_t square = dun_get_square((Location){from.x, from.y});
     int type = square_type(square);
     if (type == SQUARE_STAIRS) {
         if (!(flags & TRANSFER_STAIRS))
-            return -1;
+            return none;
         if (square & SQUARE_STAIRS_UP ? level_delta != LEVEL_UP : level_delta != LEVEL_DOWN)
-            return -1;
+            return none;
     } else if (!(type == SQUARE_PIT && flags & TRANSFER_PIT && level_delta == LEVEL_DOWN && square & SQUARE_PIT_OPEN &&
                  !(square & SQUARE_FLAG_0))) {
         if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR)
-            return -1;
+            return none;
         uint16_t sensor;
         if (!(flags & TRANSFER_STAIRS) ||
-            dun_find_adjacent_level_link((Location){*out_x, *out_y}, level_delta, &sensor) < 0) {
+            dun_find_adjacent_level_link((Location){from.x, from.y}, level_delta, &sensor) < 0) {
             if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP)
-                return -1;
+                return none;
             fall_into = true;
         }
     }
-    int found = dungeon_location_on_map(map, level_delta, out_x, out_y);
-    if (found >= 0 && fall_into) {
+    Position found = dungeon_location_on_map(from, level_delta);
+    if (found.map >= 0 && fall_into) {
         /* the square above must be an open pit that leads here */
-        dun_set_current_map(found);
-        square = dun_get_square((Location){*out_x, *out_y});
+        dun_set_current_map(found.map);
+        square = dun_get_square((Location){found.x, found.y});
         if (square_type(square) != SQUARE_PIT || !(square & SQUARE_PIT_OPEN) || square & SQUARE_FLAG_0)
-            found = -1;
-        dun_set_current_map(map);
+            found.map = -1;
+        dun_set_current_map(from.map);
     }
     return found;
 }

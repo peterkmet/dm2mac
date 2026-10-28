@@ -561,7 +561,7 @@ static bool send_minion(ActionRun *a, int command)
         return false;
     }
     if (command == COMMAND_MINION_ATTACK)
-        minion_map_set_location(map_item, g_party.dest_x, g_party.dest_y, g_party.dest_map);
+        minion_map_set_location(map_item, (Position){g_party.dest_map, g_party.dest_x, g_party.dest_y});
     thing_set_word(map_item, MINION_MAP_GROUP, summoned);
     return true;
 }
@@ -573,7 +573,7 @@ static bool run_minion_command(ActionRun *a, int command)
     uint16_t group = map_item != THING_NONE ? thing_word(map_item, MINION_MAP_GROUP) : THING_NONE;
     switch (command) {
     case COMMAND_MINION_MAP_SET:
-        if (minion_map_set_location(map_item, g_game.party_x, g_game.party_y, g_game.party_map))
+        if (minion_map_set_location(map_item, (Position){g_game.party_map, g_game.party_x, g_game.party_y}))
             return true;
         a->experience = 0;
         a->delay = 1;

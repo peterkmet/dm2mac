@@ -75,13 +75,14 @@ void minion_toggle_map_option(int option)
     g_minion_map.mana_divisor = (int16_t)(g_minion_map.mana_divisor + mana);
 }
 
-bool minion_map_set_location(uint16_t thing, int16_t x, int16_t y, int16_t map)
+bool minion_map_set_location(uint16_t thing, Position at)
 {
     int saved = g_party.cur_map;
-    dun_set_current_map(map);
-    bool inside = x >= 0 && x < dungeon_map_width(g_party.cur_map) && y >= 0 && y < dungeon_map_height(g_party.cur_map);
+    dun_set_current_map(at.map);
+    bool inside = at.x >= 0 && at.x < dungeon_map_width(g_party.cur_map) && at.y >= 0 &&
+                  at.y < dungeon_map_height(g_party.cur_map);
     if (inside)
-        thing_set_word(thing, MINION_MAP_LOCATION, (uint16_t)location_pack(x, y, map));
+        thing_set_word(thing, MINION_MAP_LOCATION, (uint16_t)location_pack(at.x, at.y, at.map));
     dun_set_current_map(saved);
     return inside;
 }
@@ -104,11 +105,12 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     int row = py / (MAP_ICON_H + GAP_Y);
     Location at = dun_move_relative((Location){g_minion_map.x, g_minion_map.y}, g_minion_map.dir, GRID_RADIUS - row,
                                     col - GRID_RADIUS);
-    int16_t sx = at.x;
-    int16_t sy = at.y;
-    int map = dungeon_location_on_map(g_minion_map.map, 0, &sx, &sy);
-    if (map < 0)
+    Position found = dungeon_location_on_map((Position){g_minion_map.map, at.x, at.y}, 0);
+    if (found.map < 0)
         return;
+    int16_t sx = found.x;
+    int16_t sy = found.y;
+    int map = found.map;
     int saved = g_party.cur_map;
     dun_set_current_map(map);
     uint8_t square = dun_get_square((Location){sx, sy});
@@ -128,7 +130,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
                 map = g_minion_map.below_map;
             }
         }
-        minion_map_set_location(thing, sx, sy, map);
+        minion_map_set_location(thing, (Position){(int16_t)map, sx, sy});
         ai_free_cached_data(group);
         g_hooks.update_action_area(0);
     }

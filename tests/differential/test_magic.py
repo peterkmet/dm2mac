@@ -649,9 +649,11 @@ def static_groups(lib):
 
 def leads(lib, m, x, y, delta):
     """True when the dungeon has a map at delta levels from map m at the position of (x, y)."""
-    lib.dungeon_location_on_map.argtypes = [ctypes.c_int16, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int16)] * 2
-    cx, cy = ctypes.c_int16(x), ctypes.c_int16(y)
-    return lib.dungeon_location_on_map(m, delta, ctypes.byref(cx), ctypes.byref(cy)) >= 0
+    from dm2test.scenario import Position
+
+    lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
+    lib.dungeon_location_on_map.restype = Position
+    return lib.dungeon_location_on_map(Position(m, x, y), delta).map >= 0
 
 
 def set_time(lib, emu, t):
