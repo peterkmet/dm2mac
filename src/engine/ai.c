@@ -683,7 +683,7 @@ static bool party_beside_special_wall(void)
     for (int d = 0; d < DIR_COUNT; d++) {
         int x = g_ai_party.x + g_dir_dx[d];
         int y = g_ai_party.y + g_dir_dy[d];
-        uint8_t square = dun_get_square(x, y);
+        uint8_t square = dun_get_square((Location){x, y});
         if (square_type(square) || !(square & SQUARE_HAS_THINGS))
             continue;
         for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
@@ -736,7 +736,8 @@ static bool cond_party_at_pit(int x, int y)
     if (manhattan(x, y, g_ai_party.x, g_ai_party.y) > 1)
         return false;
     int d = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
-    uint8_t square = dun_get_square((int16_t)(g_ai_party.x + g_dir_dx[d]), (int16_t)(g_ai_party.y + g_dir_dy[d]));
+    uint8_t square =
+        dun_get_square((Location){(int16_t)(g_ai_party.x + g_dir_dx[d]), (int16_t)(g_ai_party.y + g_dir_dy[d])});
     return square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0);
 }
 
@@ -746,7 +747,7 @@ static bool cond_door_behind(int x, int y)
     int d = dir_opposite(group_dir(g_ai.group_thing));
     if (!(g_ai.door_flags & DOOR_SKILL_ANY_SIDE))
         return false;
-    if (square_type(dun_get_square((int16_t)(x + g_dir_dx[d]), (int16_t)(y + g_dir_dy[d]))) != SQUARE_DOOR)
+    if (square_type(dun_get_square((Location){(int16_t)(x + g_dir_dx[d]), (int16_t)(y + g_dir_dy[d])})) != SQUARE_DOOR)
         return false;
     return ai_try_door_action((AiTest){DOOR_MODE_CLOSE, false}, ai_location(x, y), AI_SQUARE_IN_DIR, d).passed;
 }
@@ -1540,14 +1541,15 @@ static void wander_at_random(void)
     int x = (g_ai.event.data[0] + g_dir_dx[dir]) & LOCATION_COORD_MASK;
     int y = (g_ai.event.data[1] + g_dir_dy[dir]) & LOCATION_COORD_MASK;
     a->destination = (uint16_t)location_set_xy(a->destination, x, y);
-    int type = square_type(dun_get_square(x, y));
+    int type = square_type(dun_get_square((Location){x, y}));
     if (type == SQUARE_WALL || type == SQUARE_UNKNOWN) {
         a->action = 0;
         return;
     }
     if (type == SQUARE_TELEPORTER) {
         PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, x, y) && !creature_is_native_to_map(g_ai.group_thing, end.map)) {
+        if (dun_get_linked_teleporter_dest(&end, (Location){x, y}) &&
+            !creature_is_native_to_map(g_ai.group_thing, end.map)) {
             a->action = 0;
             return;
         }
@@ -1967,7 +1969,7 @@ static int cmd_turn_to_party(void)
     int x = g_ai.event.data[0];
     int y = g_ai.event.data[1];
     int dir = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
-    if (square_type(dun_get_square((int16_t)(x + g_dir_dx[dir]), (int16_t)(y + g_dir_dy[dir]))))
+    if (square_type(dun_get_square((Location){(int16_t)(x + g_dir_dx[dir]), (int16_t)(y + g_dir_dy[dir])})))
         return ai_turn_toward(dir).result;
     return AI_RESULT_FAIL;
 }
@@ -2251,7 +2253,7 @@ static void act_arrive(bool closes_pits)
     g_ai.map = (uint8_t)g_party.dest_map;
     ai_set_map(g_ai.map);
     if (closes_pits)
-        dun_set_pit_teleporter_state(g_ai.event.data[0], g_ai.event.data[1], PIT_STATE_OPEN);
+        dun_set_pit_teleporter_state((Location){g_ai.event.data[0], g_ai.event.data[1]}, PIT_STATE_OPEN);
     if (g_ai.cache.path_left)
         g_ai.cache.path_left--;
 }
@@ -2277,7 +2279,7 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
     else
         count = info->traits & CREATURE_TRAIT_TWO_CHAMPIONS ? 2 : 1;
     if (a->cell == CELL_NEAREST) {
-        int c = move_nearest_champion_at(x, y, CELL_ANY);
+        int c = move_nearest_champion_at((Location){x, y}, CELL_ANY);
         if (c != -1)
             a->cell = champion(c)->cell;
     }
@@ -2302,7 +2304,7 @@ static bool melee_attack_party(int x, int y, int dx, int dy)
             int d = dun_get_direction_to(dx, dy, x, y);
             cell = dir_turn(cell, (d + cell) & 1 ? -1 : 1);
             if (c == -1)
-                c = move_nearest_champion_at(x, y, CELL_ANY);
+                c = move_nearest_champion_at((Location){x, y}, CELL_ANY);
             if (c == -1)
                 continue;
         }
@@ -2340,7 +2342,7 @@ static int act_melee_attack(void)
         if (!melee_attack_party(x, y, dx, dy))
             return 1;
     } else {
-        if (square_type(dun_get_square(dx, dy)) == SQUARE_DOOR) {
+        if (square_type(dun_get_square((Location){dx, dy})) == SQUARE_DOOR) {
             int strength = rand_below((uint16_t)(info->attack + (info->attack >> 1)));
             if (sensor_door_try_destroy(dx, dy, (int16_t)strength, 0, 0))
                 return 1;
@@ -2378,7 +2380,7 @@ static int act_move(void)
         return 1;
     bool closes = g_ai.info->traits & TRAIT_CLOSES_PITS;
     if (closes)
-        dun_set_pit_teleporter_state(g_ai.event.data[0], g_ai.event.data[1], PIT_STATE_CLOSED);
+        dun_set_pit_teleporter_state((Location){g_ai.event.data[0], g_ai.event.data[1]}, PIT_STATE_CLOSED);
     if (!move_thing(g_ai.group_thing, g_ai.event.data[0], g_ai.event.data[1], dest_x(), dest_y()))
         act_arrive(closes);
     else
@@ -2430,7 +2432,7 @@ static int act_move_stairs(void)
     if (a->action == ACTION_LINK_UP || a->action == ACTION_LINK_DOWN) {
         int delta = a->action == ACTION_LINK_UP ? -1 : 1;
         uint16_t sensor;
-        int d = dun_find_adjacent_level_link(g_ai.event.data[0], g_ai.event.data[1], delta, &sensor);
+        int d = dun_find_adjacent_level_link((Location){g_ai.event.data[0], g_ai.event.data[1]}, delta, &sensor);
         if (sensor != THING_NONE) {
             int exit = sensor_effect(sensor);
             dir = sensor_flag(sensor, SENSOR_LINK_FIXED) ? exit : dir_turn(exit, (int16_t)d);
@@ -2439,18 +2441,18 @@ static int act_move_stairs(void)
             int16_t y = g_ai.event.data[1];
             int saved = g_party.cur_map;
             dun_set_current_map(dungeon_location_on_map(saved, delta, &x, &y));
-            int d2 = dun_find_adjacent_level_link(x, y, -delta, &sensor);
+            int d2 = dun_find_adjacent_level_link((Location){x, y}, -delta, &sensor);
             dun_set_current_map(saved);
             dir = (int16_t)d2 == -1 ? rand_2bits() : d2;
         }
     }
     bool closes = g_ai.info->traits & TRAIT_CLOSES_PITS;
     if (closes)
-        dun_set_pit_teleporter_state(g_ai.event.data[0], g_ai.event.data[1], PIT_STATE_CLOSED);
+        dun_set_pit_teleporter_state((Location){g_ai.event.data[0], g_ai.event.data[1]}, PIT_STATE_CLOSED);
     move_thing(g_ai.group_thing, g_ai.event.data[0], g_ai.event.data[1], -1, 0);
     ai_set_map(location_map(a->destination));
     if (a->action == ACTION_STAIRS_UP || a->action == ACTION_STAIRS_DOWN)
-        dir = dun_get_stairs_exit_direction(ai_state.dest_x, ai_state.dest_y);
+        dir = dun_get_stairs_exit_direction((Location){ai_state.dest_x, ai_state.dest_y});
     group_set_dir(g_ai.group_thing, dir);
     if (move_thing(g_ai.group_thing, -1, 0, ai_state.dest_x, ai_state.dest_y))
         g_ai.removed = true;

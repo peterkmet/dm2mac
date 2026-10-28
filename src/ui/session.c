@@ -451,7 +451,7 @@ bool session_load(void)
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
     g_dialog.progress_enabled = 1;
     game_clear_end();
-    move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
+    move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
     g_party.redraw = REDRAW_ALL_VIEW;
     return true;
 }
@@ -556,7 +556,7 @@ bool session_start_new_game(void)
     sensor_start_timers();
     game_clear_end();
     game_set_completed(false);
-    move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
+    move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
     g_party.redraw = REDRAW_ALL_VIEW;
     sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
     sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
@@ -577,7 +577,7 @@ bool session_start_save(const char *path)
     ui_reset();
     money_init_coin_table();
     ui_fill_zone_screen(ZONE_SCREEN, 0); /* play_start_session runs champ_init_party_state */
-    move_compute_map_arrival(g_game.party_x, g_game.party_y, g_game.party_map);
+    move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
     g_party.redraw = REDRAW_ALL_VIEW;
     play_start_session();
     return true;

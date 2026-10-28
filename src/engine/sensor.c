@@ -1200,7 +1200,8 @@ static void floor_text_event(uint16_t t, int effect, int x, int y)
     bool was_visible = textrec_is_visible(t);
     if (sub == SUBTYPE_TOGGLE) {
         text_set_shown(t, effect);
-        if (textrec_kind(t) == TEXT_KIND_TEXT && !was_visible && textrec_is_visible(t) && dun_on_party_square(x, y)) {
+        if (textrec_kind(t) == TEXT_KIND_TEXT && !was_visible && textrec_is_visible(t) &&
+            dun_on_party_square((Location){x, y})) {
             char text[TEXT_SIZE];
             g_hooks.print_message(UI_WHITE, gtext_decode_dungeon(text, sizeof text, t, 1));
         }
@@ -1277,7 +1278,7 @@ static void floor_square_event(TimelineEvent *e)
                 ty = sensor_target_y(t);
             }
             int dir = sensor_flag(t, SENSOR_INVERTED) ? sensor_effect(t) : dir_turn(sensor_effect(t), g_game.party_dir);
-            move_party_to(tx, ty, g_party.cur_map, dir);
+            move_party_to((Position){g_party.cur_map, tx, ty}, dir);
             break;
         }
         case SENSOR_CREATURE_ANIMATION:
@@ -1298,7 +1299,7 @@ static void pit_or_teleporter_event(TimelineEvent *e, uint8_t on_bit)
         effect = (*square & on_bit) != 0;
     if (effect == EFFECT_SET) {
         *square |= on_bit;
-        move_square_contents_through(x, y);
+        move_square_contents_through((Location){x, y});
     } else {
         *square &= (uint8_t)~on_bit;
     }
@@ -1353,7 +1354,7 @@ static void fake_wall_event(TimelineEvent *e)
     if (effect == EFFECT_TOGGLE)
         effect = (*square & SQUARE_FAKE_WALL_OPEN) != 0;
     if (effect == EFFECT_CLEAR) {
-        int blocked = dun_on_party_square(x, y);
+        int blocked = dun_on_party_square((Location){x, y});
         uint16_t g = creature_group_at(g_party.cur_map, x, y);
         if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_DOOR_HIT))
             blocked = 1;
@@ -1412,7 +1413,7 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
     bool vertical = door_flag(door, DOOR_VERTICAL);
     bool hit = false;
     int16_t damage = (int16_t)sensor_door_value(door, DOOR_KEY_DAMAGE);
-    if (dun_on_party_square(x, y) && *state) {
+    if (dun_on_party_square((Location){x, y}) && *state) {
         hit = true;
         if (g_game.champion_count) {
             *square &= (uint8_t)~SQUARE_DOOR_STATE;
@@ -1532,7 +1533,7 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
         sensor_set_data(thing, sensor_frame(thing));
         return;
     }
-    bool wall = square_type(dun_get_square(e->data[EVENT_X], e->data[EVENT_Y])) == SQUARE_WALL;
+    bool wall = square_type(dun_get_square((Location){e->data[EVENT_X], e->data[EVENT_Y]})) == SQUARE_WALL;
     e->time_map += (uint16_t)ornament_cycle(thing, wall);
     timeline_add_event(e);
     int16_t x = e->data[EVENT_X];
@@ -1830,7 +1831,7 @@ static int wall_click_teleport(WallClick *c, uint16_t t)
         return CLICK_IGNORED;
     int effect = sensor_effect(t);
     int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, g_game.party_dir);
-    move_party_to(sensor_target_x(t), sensor_target_y(t), sensor_data_map(t), dir);
+    move_party_to((Position){sensor_data_map(t), sensor_target_x(t), sensor_target_y(t)}, dir);
     g_hooks.flush_input();
     return 1;
 }
@@ -1966,7 +1967,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
         int16_t ly = g_game.party_y;
         int map = dungeon_location_on_map(g_game.party_map, delta, &lx, &ly);
         if (map >= 0) {
-            move_party_to(lx, ly, map, g_game.party_dir);
+            move_party_to((Position){map, lx, ly}, g_game.party_dir);
             g_hooks.flush_input();
         }
     } else if (sub == SUBTYPE_HAND_SWITCH && c->hand == THING_NONE) {

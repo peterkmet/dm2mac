@@ -102,15 +102,16 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         return;
     int col = px / (MAP_ICON_W + GAP_X);
     int row = py / (MAP_ICON_H + GAP_Y);
-    int16_t sx = g_minion_map.x;
-    int16_t sy = g_minion_map.y;
-    dun_move_relative(g_minion_map.dir, GRID_RADIUS - row, col - GRID_RADIUS, &sx, &sy);
+    Location at = dun_move_relative((Location){g_minion_map.x, g_minion_map.y}, g_minion_map.dir, GRID_RADIUS - row,
+                                    col - GRID_RADIUS);
+    int16_t sx = at.x;
+    int16_t sy = at.y;
     int map = dungeon_location_on_map(g_minion_map.map, 0, &sx, &sy);
     if (map < 0)
         return;
     int saved = g_party.cur_map;
     dun_set_current_map(map);
-    uint8_t square = dun_get_square(sx, sy);
+    uint8_t square = dun_get_square((Location){sx, sy});
     int type = square_type(square);
     if (type != SQUARE_WALL && type != SQUARE_UNKNOWN &&
         (type != SQUARE_FAKE_WALL || square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0))) {

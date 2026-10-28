@@ -683,7 +683,7 @@ static void run_levitate_down(ActionRun *a)
     uint16_t g = creature_group_at(g_party.cur_map, px, py);
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID))
         open = false;
-    if (square_type(dun_get_square(px, py)) == SQUARE_PIT && open) {
+    if (square_type(dun_get_square((Location){px, py})) == SQUARE_PIT && open) {
         g_party.fell = 1;
         move_thing(THING_NONE, g_game.party_x, g_game.party_y, px, py);
         g_party.fell = 0;
@@ -884,7 +884,7 @@ bool champ_perform_action(int champ, int index, bool repeated)
     a.experience = field_of(action, FIELD_EXPERIENCE);
     a.power = field_of(action, FIELD_POWER);
     c->defense[hand] = (int8_t)field_of(action, FIELD_DEFENSE);
-    a.front = dun_get_square(a.fx, a.fy);
+    a.front = dun_get_square((Location){a.fx, a.fy});
     bool done = run_command(&a, command);
     if (!a.silent)
         sndreq_request_with_fallback(

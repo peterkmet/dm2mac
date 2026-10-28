@@ -466,7 +466,7 @@ static void link_door_flag(uint16_t sensor, int map)
     dun_set_current_map(map);
     int tx = sensor_target_x(sensor);
     int ty = sensor_target_y(sensor);
-    if (square_type(dun_get_square(tx, ty)) != SQUARE_DOOR)
+    if (square_type(dun_get_square((Location){tx, ty})) != SQUARE_DOOR)
         return;
     uint16_t door = dungeon_square_first_thing(map, tx, ty);
     door_set_flag(door, DOOR_SWITCH_ON, sensor_flag(sensor, SENSOR_STATE));
@@ -829,7 +829,7 @@ int dungeon_find_level_transfer(int16_t *out_x, int16_t *out_y, int16_t map, int
 {
     bool fall_into = false;
     dun_set_current_map(map);
-    uint8_t square = dun_get_square(*out_x, *out_y);
+    uint8_t square = dun_get_square((Location){*out_x, *out_y});
     int type = square_type(square);
     if (type == SQUARE_STAIRS) {
         if (!(flags & TRANSFER_STAIRS))
@@ -841,7 +841,8 @@ int dungeon_find_level_transfer(int16_t *out_x, int16_t *out_y, int16_t map, int
         if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR)
             return -1;
         uint16_t sensor;
-        if (!(flags & TRANSFER_STAIRS) || dun_find_adjacent_level_link(*out_x, *out_y, level_delta, &sensor) < 0) {
+        if (!(flags & TRANSFER_STAIRS) ||
+            dun_find_adjacent_level_link((Location){*out_x, *out_y}, level_delta, &sensor) < 0) {
             if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP)
                 return -1;
             fall_into = true;
@@ -851,7 +852,7 @@ int dungeon_find_level_transfer(int16_t *out_x, int16_t *out_y, int16_t map, int
     if (found >= 0 && fall_into) {
         /* the square above must be an open pit that leads here */
         dun_set_current_map(found);
-        square = dun_get_square(*out_x, *out_y);
+        square = dun_get_square((Location){*out_x, *out_y});
         if (square_type(square) != SQUARE_PIT || !(square & SQUARE_PIT_OPEN) || square & SQUARE_FLAG_0)
             found = -1;
         dun_set_current_map(map);

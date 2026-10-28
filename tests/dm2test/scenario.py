@@ -149,6 +149,11 @@ def ignore_stale(state):
     return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
 
 
+class Position(ctypes.Structure):
+    """A square with its map (dungeon.h, Position)."""
+    _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
+
+
 class Party(ctypes.Structure):
     _fields_ = [(name, ctypes.c_int16) for name in ("cur_map", "square_x", "square_y", "square_map", "ref_dir",
                                                      "move_steps")] + [
@@ -512,7 +517,7 @@ class Scenario(CreatureOracle):
         self.emu.write(0x7F254, struct.pack("<h", direction))
         self.party.cur_map = -1
         self.emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
-        self.lib.dun_set_party_location(x, y, map_)
+        self.lib.dun_set_party_location(Position(map_, x, y))
         self.emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
         self.load_map_graphics()
 
