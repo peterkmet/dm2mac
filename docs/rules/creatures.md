@@ -35,7 +35,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - reads past the creature info table, the animation frames, the item filter table, the search target kind flags (`g_ai_kind_flags`), and the candidate records
   - a square read at the map edge (not a pit)
   - a division by 0 for an animation of length 0 and for a minion map strip of 1 icon
-  - the minion map square read outside the map
+  - the minion map square read outside the map: a wall square of another map of the level, and the pit one level up
   - a path step read without a stored path (address 0 in the original)
   - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`); the port reads none
   - `creature_deactivate_group` with an active index at or past the end of the table: the original reads one entry past it, the port returns
