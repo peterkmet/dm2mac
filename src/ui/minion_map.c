@@ -75,27 +75,29 @@ typedef struct {
 typedef struct {
     int16_t sx, sy;
     int16_t x, y;
-    int dir;
+    int16_t dir;
     uint16_t map_thing;
-    int flags;
+    uint16_t flags;
     bool fake_seen;
     bool other_map;
 } MapSquare;
 
-/* The squares that show the minion of a map item: its square and the far end of a teleporter there. */
+/* The squares that show the minion of a map item: its square and the far end of a teleporter there (map -1 none). */
 typedef struct {
-    int x, y, map, linked_x, linked_y, linked_map;
+    Position minion;
+    Position linked;
 } MinionSquares;
 
-/* The grid of the minion map: its middle square (x, y) of map, the direction it looks to, and its pixel shift. */
+/* The grid of the minion map: its middle square, the direction it looks to, and its pixel shift. */
 typedef struct {
-    int x, y, map, dir;
-    int x_offset, y_offset;
+    Position center;
+    int16_t dir;
+    int16_t x_offset, y_offset;
 } GridView;
 
-/* A square of the grid: its location and map, and the icon set that it shows. */
+/* A square of the grid: its position, and the icon set that it shows. */
 typedef struct {
-    int16_t x, y, map;
+    Position at;
     int icon_set;
 } GridSquare;
 
@@ -188,10 +190,16 @@ static void show_icon(const Strip *s, int icon, int16_t x, int16_t y, int mirror
                    r);
 }
 
-/* True for a square of map. */
-static bool inside_map(int map, int x, int y)
+/* True for a square inside its map. */
+static bool inside_map(Position at)
 {
-    return x >= 0 && x < dungeon_map_width(map) && y >= 0 && y < dungeon_map_height(map);
+    return at.x >= 0 && at.x < dungeon_map_width(at.map) && at.y >= 0 && at.y < dungeon_map_height(at.map);
+}
+
+/* The square of a location word. */
+static Position unpack_location(uint16_t w)
+{
+    return (Position){location_map(w), location_x(w), location_y(w)};
 }
 
 /* The level digit icons of the current map: what a square outside the maps of a level shows. */
@@ -252,8 +260,8 @@ static void show_group(uint16_t group, const MapSquare *at)
 {
     int16_t x = at->x;
     int16_t y = at->y;
-    int dir = at->dir;
-    int flags = at->flags;
+    int16_t dir = at->dir;
+    uint16_t flags = at->flags;
     uint16_t map_thing = at->map_thing;
     uint16_t cflags = creature_group_info(group)->flags;
     if (flags & MAP_MINION) {
@@ -308,7 +316,7 @@ static void show_missiles(uint16_t first, const MapSquare *at)
 {
     int16_t x = at->x;
     int16_t y = at->y;
-    int dir = at->dir;
+    int16_t dir = at->dir;
     for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_PROJECTILE)
             continue;
@@ -340,8 +348,8 @@ static void show_things(const ViewSquare *s, const MapSquare *at)
 {
     int16_t x = at->x;
     int16_t y = at->y;
-    int dir = at->dir;
-    int flags = at->flags;
+    int16_t dir = at->dir;
+    uint16_t flags = at->flags;
     uint16_t group = THING_ENDOFLIST;
     uint16_t missiles = THING_ENDOFLIST;
     uint16_t explosions = THING_ENDOFLIST;
@@ -398,7 +406,7 @@ static void show_party_frame(int16_t x, int16_t y)
 }
 
 /* The white side of the party frame around (x, y) toward dir, the direction that the party faces. */
-static void show_party_facing(int16_t x, int16_t y, int dir)
+static void show_party_facing(int16_t x, int16_t y, int16_t dir)
 {
     int16_t r[RECT_SIZE] = {(int16_t)(x - GAP_X), (int16_t)(y - GAP_Y), GAP_X * 2 + MAP_ICON_W, GAP_Y * 2 + MAP_ICON_H};
     int16_t dx;
@@ -416,7 +424,7 @@ static void show_party_facing(int16_t x, int16_t y, int dir)
 }
 
 /* The icon of each living champion at its cell of the party square at (x, y), for a map that looks to dir. */
-static void show_party_icons(const Strip *p, int16_t x, int16_t y, int dir)
+static void show_party_icons(const Strip *p, int16_t x, int16_t y, int16_t dir)
 {
     for (int i = 0; i < g_game.champion_count; i++) {
         const Champion *c = champion(i);
@@ -498,7 +506,7 @@ static void show_party_and_marker(const MapSquare *at)
 static void show_pit_above(const Strip *base, const MapSquare *at)
 {
     Position above = dungeon_location_on_map((Position){g_party.cur_map, at->sx, at->sy}, LEVEL_UP);
-    if (above.map < 0 || !inside_map(above.map, above.x, above.y))
+    if (above.map < 0 || !inside_map(above))
         return; /* fix: as above, no read outside the map */
     uint8_t square = dungeon_square(above.map, above.x, above.y);
     if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN)
@@ -516,9 +524,7 @@ static void show_square(const MapSquare *at, int icon_set)
         show_party_frame(sq.x, sq.y);
     sq.fake_seen = square_type(s.square) == SQUARE_FAKE_WALL && s.square & FAKE_WALL_SEEN;
     sq.other_map = false;
-    int saved_map = 0;
-    int saved_x = 0;
-    int saved_y = 0;
+    Position saved = {0, 0, 0};
     for (;;) {
         if (!show_square_base(&s, &base, &sq))
             return;
@@ -528,30 +534,30 @@ static void show_square(const MapSquare *at, int icon_set)
         show_things(&s, &sq);
         if (s.aspect != ASPECT_WALL || sq.other_map)
             break;
-        saved_x = sq.sx;
-        saved_y = sq.sy;
+        saved.x = sq.sx;
+        saved.y = sq.sy;
         /* a wall square: another map of the level may show a wall there; like the original, the search leaves
            (sx, sy) on the map that it found */
         int next = 0;
-        int m = g_party.cur_map;
-        while (m == g_party.cur_map) {
-            Position p = dungeon_location_on_map_from((Position){g_party.cur_map, sq.sx, sq.sy}, 0, &next);
-            sq.sx = p.x;
-            sq.sy = p.y;
-            m = p.map;
+        Position found = {g_party.cur_map, sq.sx, sq.sy};
+        while (found.map == g_party.cur_map) {
+            found = dungeon_location_on_map_from((Position){g_party.cur_map, sq.sx, sq.sy}, 0, &next);
+            sq.sx = found.x;
+            sq.sy = found.y;
         }
         /* fix: the original reads the square byte also outside the map (out of its column table) */
-        if (m < 0 || !inside_map(m, sq.sx, sq.sy) || square_type(dungeon_square(m, sq.sx, sq.sy)) != SQUARE_WALL)
+        if (found.map < 0 || !inside_map(found) ||
+            square_type(dungeon_square(found.map, found.x, found.y)) != SQUARE_WALL)
             break;
         sq.other_map = true;
-        saved_map = g_party.cur_map;
-        dun_set_current_map(m);
+        saved.map = g_party.cur_map;
+        dun_set_current_map(found.map);
         aspect_get(&s, g_party.cur_map, sq.dir, sq.sx, sq.sy);
     }
     if (sq.other_map) {
-        sq.sx = saved_x;
-        sq.sy = saved_y;
-        dun_set_current_map(saved_map);
+        sq.sx = saved.x;
+        sq.sy = saved.y;
+        dun_set_current_map(saved.map);
         aspect_get(&s, g_party.cur_map, sq.dir, sq.sx, sq.sy);
     }
     show_pit_above(&base, &sq);
@@ -591,11 +597,10 @@ int mmap_party_icons_item(void)
     return -1;
 }
 
-/* Sets the marker square (x, y) of map and the squares that it leads to one level up and down. */
-static void set_marker(int x, int y, int map)
+/* Sets the marker square and the squares that it leads to one level up and down. */
+static void set_marker(Position marker)
 {
     MinionMap *m = &g_minion_map;
-    Position marker = {(int16_t)map, (int16_t)x, (int16_t)y};
     m->marker_x = marker.x;
     m->marker_y = marker.y;
     m->marker_map = marker.map;
@@ -610,120 +615,115 @@ static void set_marker(int x, int y, int map)
 }
 
 /* The minion squares of the map item thing (MAP_MINION) and its marker (MAP_MARKER). */
-static void find_minion_and_marker(uint16_t thing, int flags, MinionSquares *ms)
+static void find_minion_and_marker(uint16_t thing, uint16_t flags, MinionSquares *ms)
 {
-    *ms = (MinionSquares){.linked_map = -1};
+    *ms = (MinionSquares){.linked = {.map = -1}};
     uint16_t link =
         flags & MAP_MINION ? item_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing) : THING_NONE;
     if (link != THING_NONE) {
-        uint16_t w = thing_word(link, PROJECTILE_LOCATION);
-        ms->x = location_x(w);
-        ms->y = location_y(w);
-        ms->map = location_map(w);
-        dun_set_current_map(ms->map);
+        ms->minion = unpack_location(thing_word(link, PROJECTILE_LOCATION));
+        dun_set_current_map(ms->minion.map);
         PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, (Location){ms->x, ms->y})) {
-            ms->linked_x = end.x;
-            ms->linked_y = end.y;
-            ms->linked_map = end.map;
-        }
+        if (dun_get_linked_teleporter_dest(&end, (Location){ms->minion.x, ms->minion.y}))
+            ms->linked = (Position){end.map, end.x, end.y};
     }
-    if (flags & MAP_MARKER) {
-        uint16_t w = thing_word(thing, MINION_MAP_LOCATION);
-        set_marker(location_x(w), location_y(w), location_map(w));
-    }
+    if (flags & MAP_MARKER)
+        set_marker(unpack_location(thing_word(thing, MINION_MAP_LOCATION)));
+}
+
+/* True when the square at is the square (x, y) of map. */
+static bool same_square(Position at, int16_t map, int16_t x, int16_t y)
+{
+    return at.map == map && at.x == x && at.y == y;
 }
 
 /* The square of the grid at row and col from the middle of view, and its icon set; makes its map the current map. */
 static GridSquare grid_square(const GridView *view, int row, int col)
 {
     GridSquare g;
-    Location at = dun_move_relative((Location){(int16_t)view->x, (int16_t)view->y}, (int16_t)view->dir, row, col);
-    Position found = dungeon_location_on_map((Position){(int16_t)view->map, at.x, at.y}, 0);
-    int square_map = found.map;
-    g.x = found.x;
-    g.y = found.y;
-    if (square_map < 0) {
-        dun_set_current_map(view->map);
-        g.icon_set = square_type(dun_get_square((Location){g.x, g.y})) == SQUARE_UNKNOWN
+    Location at = dun_move_relative((Location){view->center.x, view->center.y}, view->dir, row, col);
+    g.at = dungeon_location_on_map((Position){view->center.map, at.x, at.y}, 0);
+    if (g.at.map < 0) {
+        dun_set_current_map(view->center.map);
+        g.icon_set = square_type(dun_get_square((Location){g.at.x, g.at.y})) == SQUARE_UNKNOWN
                          ? level_icon_set()
                          : dungeon_map_wallset(g_party.cur_map);
-        g.map = (int16_t)view->map;
+        g.at.map = view->center.map;
         return g;
     }
-    dun_set_current_map(square_map);
+    dun_set_current_map(g.at.map);
     g.icon_set = dungeon_map_wallset(g_party.cur_map);
-    g.map = (int16_t)square_map;
     return g;
 }
 
 /* The party, minion, and marker flags of the grid square g; show: the ones that the grid shows. */
-static int grid_square_flags(const MinionSquares *ms, const GridSquare *g, int flags, int show)
+static uint16_t grid_square_flags(const MinionSquares *ms, const GridSquare *g, uint16_t flags, uint16_t show)
 {
     MinionMap *mm = &g_minion_map;
-    int16_t sx = g->x;
-    int16_t sy = g->y;
-    int16_t m16 = g->map;
+    Position at = g->at;
     flags &= ~(MAP_PARTY | MAP_MINION | MAP_MARKER);
-    if (show & MAP_MINION && ((sx == ms->x && sy == ms->y && m16 == ms->map) ||
-                              (m16 == ms->linked_map && sx == ms->linked_x && sy == ms->linked_y)))
+    if (show & MAP_MINION && (same_square(at, ms->minion.map, ms->minion.x, ms->minion.y) ||
+                              same_square(at, ms->linked.map, ms->linked.x, ms->linked.y)))
         flags |= MAP_MINION;
     if (show & MAP_MARKER && !mm->marker_state) {
-        if (sx == mm->marker_x && sy == mm->marker_y && m16 == mm->marker_map) {
+        if (same_square(at, mm->marker_map, mm->marker_x, mm->marker_y)) {
             mm->marker_state = MARKER_SHOWN;
-        } else if (sx == mm->above_x && sy == mm->above_y && m16 == mm->above_map) {
+        } else if (same_square(at, mm->above_map, mm->above_x, mm->above_y)) {
             mm->marker_state = MARKER_ABOVE;
-            set_marker(sx, sy, m16);
-        } else if (sx == mm->below_x && sy == mm->below_y && m16 == mm->below_map) {
+            set_marker(at);
+        } else if (same_square(at, mm->below_map, mm->below_x, mm->below_y)) {
             mm->marker_state = MARKER_BELOW;
-            set_marker(sx, sy, m16);
+            set_marker(at);
         }
         if (mm->marker_state)
             flags |= MAP_MARKER;
     }
-    if (show & MAP_PARTY && m16 == g_party.square_map && sx == g_party.square_x && sy == g_party.square_y)
+    if (show & MAP_PARTY && same_square(at, g_party.square_map, g_party.square_x, g_party.square_y))
         flags |= MAP_PARTY;
     return flags;
 }
 
 /* Draws the grid of squares around the middle of view; MAP_OPTION_HOLD draws the last grid again. */
-static void show_grid(uint16_t thing, const GridView *view, int flags)
+static void show_grid(uint16_t thing, const GridView *view, uint16_t flags)
 {
     MinionMap *mm = &g_minion_map;
     GridView v = *view;
     if (flags & MAP_OPTION_HOLD) {
-        v = (GridView){mm->x, mm->y, mm->map, mm->dir, mm->x_offset, mm->y_offset};
+        v = (GridView){
+            {mm->map, mm->x, mm->y},
+            mm->dir, mm->x_offset, mm->y_offset
+        };
     } else {
-        mm->x = (int8_t)v.x;
-        mm->y = (int8_t)v.y;
-        mm->map = (int8_t)v.map;
+        mm->x = (int8_t)v.center.x;
+        mm->y = (int8_t)v.center.y;
+        mm->map = (int8_t)v.center.map;
         mm->dir = (int8_t)v.dir;
-        mm->x_offset = (int16_t)v.x_offset;
-        mm->y_offset = (int16_t)v.y_offset;
+        mm->x_offset = v.x_offset;
+        mm->y_offset = v.y_offset;
     }
     mm->marker_state = MARKER_NONE;
-    int saved_map = g_party.cur_map;
+    int16_t saved_map = g_party.cur_map;
     area = area_begin_draw(false);
     offscreen_fill_rect(area, zone_get_rect(ZONE_MAP_GRID, mm->clip), g_ui_colors[UI_BLACK]);
     mm->clip[RECT_X] += GAP_X;
     mm->clip[RECT_Y] += GAP_Y;
     mm->clip[RECT_W] -= GAP_X * 2;
     mm->clip[RECT_H] -= GAP_Y * 2;
-    int left = mm->clip[RECT_X] + (int16_t)v.x_offset;
+    int16_t left = (int16_t)(mm->clip[RECT_X] + v.x_offset);
     int16_t row_y = (int16_t)(mm->clip[RECT_Y] + v.y_offset);
-    int show = flags & (MAP_PARTY | MAP_MINION | MAP_MARKER);
+    uint16_t show = flags & (MAP_PARTY | MAP_MINION | MAP_MARKER);
     MinionSquares ms;
     find_minion_and_marker(thing, flags, &ms);
-    dun_set_current_map(v.map);
+    dun_set_current_map(v.center.map);
     int first_row = v.y_offset < 0 ? GRID_RADIUS + 1 : GRID_RADIUS;
     int first_col = v.x_offset < 0 ? -GRID_RADIUS - 1 : -GRID_RADIUS;
     for (int row = first_row; row >= -GRID_RADIUS; row--) {
-        int16_t col_x = (int16_t)left;
+        int16_t col_x = left;
         for (int col = first_col; col <= GRID_RADIUS; col++) {
             GridSquare g = grid_square(&v, row, col);
             flags = grid_square_flags(&ms, &g, flags, show);
             MapSquare sq = {
-                .sx = g.x, .sy = g.y, .x = col_x, .y = row_y, .dir = v.dir, .map_thing = thing, .flags = flags};
+                .sx = g.at.x, .sy = g.at.y, .x = col_x, .y = row_y, .dir = v.dir, .map_thing = thing, .flags = flags};
             show_square(&sq, g.icon_set);
             col_x = (int16_t)(col_x + MAP_ICON_W + GAP_X);
         }
@@ -751,21 +751,18 @@ void mmap_draw_option_buttons(int pressed)
 /* The grid follows the minion of link: its square, shifted by where the minion stands in its square. */
 static void follow_minion(uint16_t link, uint16_t group, GridView *view)
 {
-    uint16_t w = thing_word(link, PROJECTILE_LOCATION);
-    view->x = location_x(w);
-    view->y = location_y(w);
-    view->map = location_map(w);
-    int dir = g_game.party_dir;
-    int cell = aspect_creature_cell(group, dir_turn(creature_side_dir[group_dir(group)], dir));
-    int col = (int16_t)cell % VIEW_CELL_ROW;
-    int row = (int16_t)cell / VIEW_CELL_ROW;
+    view->center = unpack_location(thing_word(link, PROJECTILE_LOCATION));
+    int16_t dir = g_game.party_dir;
+    int16_t cell = aspect_creature_cell(group, dir_turn(creature_side_dir[group_dir(group)], dir));
+    int col = cell % VIEW_CELL_ROW;
+    int row = cell / VIEW_CELL_ROW;
     if (col > VIEW_CELL_ROW / 2) {
-        view->x += g_dir_dx[dir_turn(dir, 1)];
-        view->y += g_dir_dy[dir_turn(dir, 1)];
+        view->center.x += g_dir_dx[dir_turn(dir, TURN_RIGHT)];
+        view->center.y += g_dir_dy[dir_turn(dir, TURN_RIGHT)];
     }
     if (row > VIEW_CELL_ROW / 2) {
-        view->x += g_dir_dx[dir_opposite(dir)];
-        view->y += g_dir_dy[dir_opposite(dir)];
+        view->center.x += g_dir_dx[dir_opposite(dir)];
+        view->center.y += g_dir_dy[dir_opposite(dir)];
     }
     view->x_offset = (GAP_X * 2 + MAP_ICON_W + 1) / VIEW_CELL_ROW * cell_shift[col];
     view->y_offset = (GAP_Y * 2 + MAP_ICON_H + 1) / VIEW_CELL_ROW * cell_shift[row];
@@ -797,7 +794,10 @@ void mmap_draw(uint16_t thing)
         mmap_draw_option_buttons(0);
         action_set_map_flags(MAP_PANEL_DRAWN, true);
     }
-    GridView view = {g_game.party_x, g_game.party_y, g_game.party_map, g_game.party_dir, 0, 0};
+    GridView view = {
+        {g_game.party_map, g_game.party_x, g_game.party_y},
+        g_game.party_dir, 0, 0
+    };
     if (kind != MAP_KIND_PLAIN && kind != MAP_KIND_NO_OPTIONS) {
         if (location_map(thing_word(thing, MINION_MAP_LOCATION)) != MAP_LOCATION_NONE)
             action_set_map_flags(MAP_MARKER, true);
@@ -807,10 +807,7 @@ void mmap_draw(uint16_t thing)
             else
                 follow_minion(link, group, &view);
         } else if (g_action.flags & MAP_MARKER) {
-            uint16_t w = thing_word(thing, MINION_MAP_LOCATION);
-            view.x = location_x(w);
-            view.y = location_y(w);
-            view.map = location_map(w);
+            view.center = unpack_location(thing_word(thing, MINION_MAP_LOCATION));
         }
     }
     show_grid(thing, &view, g_action.flags);

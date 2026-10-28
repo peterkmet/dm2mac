@@ -14,11 +14,11 @@
    side of its frame toward party_dir is white; flags: the MAP_ flags of the things that it draws (MAP_STATIC_CREATURES:
    the static creatures, 0: none). */
 typedef struct {
-    int sx, sy;
-    int x, y;
+    int16_t sx, sy;
+    int16_t x, y;
     int party_item;
-    int party_dir;
-    int flags;
+    int16_t party_dir;
+    uint16_t flags;
 } SquareIcon;
 
 /* True when the map draws the floor ornament (an ornament index) without the details option. */
