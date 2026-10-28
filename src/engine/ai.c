@@ -319,9 +319,6 @@
 /* The creature flag of the move action. */
 #define CREATURE_ATTACKS_FIRST 0x0100 /* flags: the creature attacks before it moves */
 
-/* The sound entry of a creature that transformed. */
-#define SOUND_ENTRY_TRANSFORMED 0x81
-
 /* The item filter bit of an action that repeats for all matching items. */
 #define SUB_REPEAT 0x40
 
@@ -2645,7 +2642,7 @@ static void drop_sound(uint16_t t, int n)
     if (n == 1)
         sndreq_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
                                                 SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, ai_state.dest_x, ai_state.dest_y, 1);
+                                     SOUND_FALLBACK, ai_state.dest_x, ai_state.dest_y, SOUND_STEP_END);
 }
 
 /* Action: the creature drops its items of the filter on its destination square. */
@@ -2810,7 +2807,8 @@ static void act_transform(void)
     } else {
         explosion_create(EXPLOSION_DEATH_CLOUD, POWER_MAX, x, y, EXPLOSION_AT_CENTER);
     }
-    sndreq_request((SoundCue){CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD}, x, y, 1);
+    sndreq_request((SoundCue){CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD}, x, y,
+                   SOUND_STEP_END);
 }
 
 /* Action: the creature explodes, spawns a creature, or becomes another creature type. */

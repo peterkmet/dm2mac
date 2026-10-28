@@ -178,7 +178,7 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
         g_hooks.present_viewport();
         sndreq_request(
             (SoundCue){CAT_WALL_ORNAMENT, MOUTH_ORNAMENT, GFX_MOUTH_OPEN, MOUTH_SOUND_PRIORITY, SOUND_VOLUME_LOUD},
-            g_game.party_x, g_game.party_y, 0);
+            g_game.party_x, g_game.party_y, SOUND_NOW);
     }
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);

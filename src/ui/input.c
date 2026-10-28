@@ -2001,7 +2001,7 @@ static void click_creature(uint16_t group, int x, int y, int square_x, int squar
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
         sndreq_request_with_fallback((SoundCue){CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK,
                                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, square_x, square_y, 0);
+                                     SOUND_FALLBACK, square_x, square_y, SOUND_NOW);
     } else if (!side) {
         move_set_push_mode(true);
         ui_draw_movement_arrows();
@@ -2019,7 +2019,7 @@ static void click_front_wall(bool passable, int x, int y)
     if (!passable)
         sndreq_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
                                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
-                                     SOUND_FALLBACK, x, y, 0);
+                                     SOUND_FALLBACK, x, y, SOUND_NOW);
     game_set_command_stop(true);
 }
 
@@ -2027,7 +2027,7 @@ static void click_front_wall(bool passable, int x, int y)
 static void click_door_button(int x, int y, uint16_t door)
 {
     sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                   g_game.party_x, g_game.party_y, 1);
+                   g_game.party_x, g_game.party_y, SOUND_STEP_END);
     sensor_press_door_button((Location){(int16_t)x, (int16_t)y}, door);
     game_set_command_stop(true);
 }

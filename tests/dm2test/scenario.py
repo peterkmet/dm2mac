@@ -356,7 +356,7 @@ class Scenario(CreatureOracle):
 
     def flush_sounds(self):
         """The end of a game step: the sound requests of the step play in both."""
-        self.lib.sndreq_flush_requests(0)
+        self.lib.sndreq_flush_requests(False)
         self.emu.call(SOUND_FLUSH_REQUESTS, 0)
 
     def assert_same_sounds(self, where):
