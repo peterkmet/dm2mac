@@ -789,7 +789,9 @@ static struct {
     int landmark_set; /* graphics set of the landmark bits, -1: none yet */
     bool no_landmarks;
     uint8_t landmarks[(SKY_LANDMARK_MAX + BYTE_BIT_COUNT - 1) / BYTE_BIT_COUNT];
-    DrawCtx ctx;     /* the picture of setup_picture */
+    /* the picture of setup_picture; the callers read back its offset (dx, dy) after a DRAW_NO_IMAGE setup, and its
+       size (w, h) after render_offscreen */
+    DrawCtx ctx;
     DrawCtx alcove;  /* the picture of the last alcove: its items are placed relative to it */
     bool rain_shown; /* the map graphics show rain */
     /* the colors of get_shaded_palette; fix: the original has 16 bytes, which the full table overruns */
@@ -847,6 +849,12 @@ static bool picture_exists(int category, int index, int entry)
 static uint8_t map_door_type(uint16_t door)
 {
     return view.door_types[door_map_type(door)];
+}
+
+/* True for a view between game steps (advanced mode): such a view changes no game state. */
+static bool between_steps(void)
+{
+    return flight.step_ticks != 0;
 }
 
 /* The square forward squares ahead of at and right squares to the right, for the party looking to dir. */
@@ -1219,6 +1227,14 @@ static void flush_picture(void)
     draw_ctx_draw(&view.ctx);
 }
 
+/* Draws the picture of setup_picture, or with draw false only finds its rectangle (for a hit test). */
+static void flush_picture_or_measure(bool draw)
+{
+    if (!draw)
+        view.ctx.mode = DRAW_RECT_ONLY;
+    flush_picture();
+}
+
 /* Adds a click zone at rect. */
 static void add_click_zone(const int16_t *rect, int kind, int16_t cell)
 {
@@ -1552,6 +1568,14 @@ static ThingPicture pick_object_picture(uint16_t thing, int pos, int16_t cell, i
     return pic;
 }
 
+/* The jitter spot of the next object in a cell, or in an alcove. */
+static int next_spot(int spot, bool in_alcove)
+{
+    if (in_alcove)
+        return spot + 1 >= ALCOVE_SPOT_END ? ALCOVE_FIRST_SPOT : spot + 1;
+    return (spot + 1) % JITTER_COUNT;
+}
+
 /* The track of the projectile thing on view square pos in a list of tracks, NULL for none; the cell bits of a
    projectile change in flight. A track on a view square that is not pos or next to it belongs to a freed projectile
    record that a new projectile took. */
@@ -1686,7 +1710,7 @@ static void show_cell_objects(uint16_t thing, int pos, int16_t cell, uint16_t gr
         }
         show_object(thing, pos,
                     &(ObjectLook){.spot = spot, .group = group, .record_click = true, .projectile = THING_NONE});
-        spot = (spot + 1) % JITTER_COUNT;
+        spot = next_spot(spot, false);
         if (info) {
             if (creature_cell_mask(info->possessions) >> cell & 1)
                 set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, pos, CLICK_POSSESSIONS);
@@ -1848,7 +1872,8 @@ static bool show_creatures(uint16_t thing, int pos, uint32_t cell_mask)
         show_creature(pos, depth, thing);
         flush_picture();
         if (!(info->flags & CREATURE_STATIC)) {
-            group_set_mood_flag(thing, GROUP_SEEN, true);
+            if (!between_steps())
+                group_set_mood_flag(thing, GROUP_SEEN, true);
         } else if (info->possessions & POSSESSIONS_KIND_MASK && depth <= DEPTH_FAR) {
             if (g_view_squares[pos].aspect == ASPECT_DOOR_FRONT)
                 cell_mask = THINGS_NEAR; /* like the original, kept */
@@ -2009,9 +2034,8 @@ static void setup_explosion_picture(int type, int size, int flip, int zone)
 /* Adds 1 to a global byte variable of the game, up to GLOBAL_BYTE_MAX. */
 static void global_byte_add(int var)
 {
-    if (flight.step_ticks)
-        return; /* a view between game steps changes no game state */
-    game_global_byte_add(var);
+    if (!between_steps())
+        game_global_byte_add(var);
 }
 
 /* Tints the whole view with an explosion on the party square: a random part of its tint picture, tiled. */
@@ -2088,6 +2112,7 @@ static void show_explosion(uint16_t thing, int pos, int order, uint32_t cell_mas
     if (!(cell_mask & 1u << turned))
         return;
     int scale = thing_scale[depth * GRID_SQUARE_CELLS + EXPLOSION_SCALE_START - turned / CELL_GRID_SIDE];
+    /* as in the original, the party direction, also behind a passage where show_linked_squares turns the view */
     int zone = zone_id_for_view_cell(pos, position, g_game.party_dir) | ZONE_RELATIVE;
     int strength = power + 1 > EXPLOSION_POWER_SIZE ? power + 1 : EXPLOSION_POWER_SIZE;
     setup_explosion_picture(type, (int16_t)(scale * strength >> EXPLOSION_SIZE_SHIFT), flip, zone);
@@ -2158,7 +2183,7 @@ static void show_alcove_contents(int pos)
     int depth = depth_of(pos);
     for (uint16_t thing = g_view_squares[pos].first_thing; thing != THING_ENDOFLIST;
          thing = dungeon_next_thing(thing)) {
-        if (thing_cell(thing) != dir_opposite(g_game.party_dir))
+        if (thing_cell(thing) != dir_opposite(g_game.party_dir)) /* as in the original, the party direction */
             continue;
         if (is_item(thing)) {
             show_object(thing, pos,
@@ -2167,8 +2192,7 @@ static void show_alcove_contents(int pos)
                                       .record_click = true,
                                       .in_alcove = true,
                                       .projectile = THING_NONE});
-            if (++spot >= ALCOVE_SPOT_END)
-                spot = ALCOVE_FIRST_SPOT;
+            spot = next_spot(spot, true);
             if (pos == POS_FRONT)
                 set_click_zone(VIEW_CLICK_ZONE_ALCOVE, thing, POS_FRONT, CLICK_ALCOVE);
             continue;
@@ -2274,6 +2298,15 @@ static const uint8_t *price_table(uint8_t ornament, int *count)
     return data;
 }
 
+/* The place of item in the price table of count words; count when the table does not hold it. */
+static int price_index(const uint8_t *table, int count, uint16_t item)
+{
+    int at = 0;
+    while (at < count && (le16(table + 2 * at) & ITEM_INDEX_NONE) != item)
+        at++;
+    return at;
+}
+
 /* Chooses the item that the display shows: the next or the last item of the price list that the merchant sells. */
 static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, int creature)
 {
@@ -2282,11 +2315,9 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
     uint8_t set[ITEM_CLASS_SET_SIZE];
     int list = sensor_delay(shop); /* the delay bits of a shop: its price list */
     if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, false)) {
-        int count, at = item;
+        int count;
         const uint8_t *table = price_table(ornament, &count);
-        if (table)
-            for (at = 0; at < count && (le16(table + 2 * at) & ITEM_INDEX_NONE) != item; at++) {
-            }
+        int at = table ? price_index(table, count, item) : item;
         /* fix: the original loops for ever when the merchant sells no item of the list */
         for (int tries = 0; tries <= ITEM_INDEX_NONE; tries++) {
             at += forward || g_view_hit_offset_y < 0 ? 1 : -1;
@@ -2387,8 +2418,8 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
     if (display == THING_ENDOFLIST)
         return; /* fix: the original reads a NULL record */
     int creature = sensor_data(shop) & BYTE_MASK;
-    /* a view between game steps changes no game state: it shows the item of the last view */
-    if (!flight.step_ticks && (!sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD)))
+    /* a view between game steps shows the item of the last view */
+    if (!between_steps() && (!sensor_flag(shop, SHOP_SHOWN) || sensor_flag(shop, SHOP_STEP_FORWARD)))
         choose_shop_item(shop, display, ornament, creature);
     uint16_t item = sensor_data(display);
     int category = item_index_gdat_category(item);
@@ -2403,12 +2434,10 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
     setup_picture(&item_place, category, index, 0);
     flush_picture();
     if (!target_has_item(shop, item, true) && !target_has_item(display, item, false)) {
-        int count, at = 0;
+        int count;
         const uint8_t *table = price_table(ornament, &count);
-        if (table)
-            for (; at < count && (le16(table + 2 * at) & ITEM_INDEX_NONE) != item; at++) {
-            }
-        uint16_t made = !flight.step_ticks && table && at < count && le16(table + 2 * at) & SHOP_TABLE_CREATE
+        int at = table ? price_index(table, count, item) : 0;
+        uint16_t made = !between_steps() && table && at < count && le16(table + 2 * at) & SHOP_TABLE_CREATE
                             ? item_create_by_index(item)
                             : THING_NONE;
         if (made != THING_NONE) {
@@ -2516,9 +2545,7 @@ static void show_wall_portrait(int pos, uint8_t ornament, const PicturePlace *p,
                                   .key = NO_KEY,
                                   .key2 = NO_KEY},
                   CAT_CHAMPION, (uint8_t)g_view_squares[pos].text, GFX_PORTRAIT);
-    if (!record_click)
-        view.ctx.mode = DRAW_RECT_ONLY;
-    flush_picture();
+    flush_picture_or_measure(record_click);
     if (record_click && p->depth == DEPTH_FRONT)
         add_click_zone(view.ctx.rect, CLICK_WALL_ORNAMENT, pos);
 }
@@ -2545,9 +2572,7 @@ static void show_wall_plate(int pos, int side, const PicturePlace *p, bool recor
                                   .key = p->key,
                                   .key2 = NO_KEY},
                   CAT_WALLSET, view.gfx_set, entry);
-    if (!record_click)
-        view.ctx.mode = DRAW_RECT_ONLY;
-    flush_picture();
+    flush_picture_or_measure(record_click);
     if (side == 0 && g_view_squares[pos].text != THING_TEXT_NONE)
         show_wall_text(pos, entry, p);
 }
@@ -2577,9 +2602,7 @@ static void show_wet_wall_ornament(uint8_t ornament, int entry, const PicturePla
                                   .key = p->key,
                                   .key2 = NO_KEY},
                   CAT_WALL_ORNAMENT, ornament, GFX_ORN_WET_BACKGROUND);
-    if (!record_click)
-        view.ctx.mode = DRAW_RECT_ONLY;
-    flush_picture();
+    flush_picture_or_measure(record_click);
     DrawCtx c;
     Bitmap *offscreen = render_offscreen(
         &c,
@@ -2615,9 +2638,7 @@ static void show_ornament_contents(int pos, uint8_t ornament, int kind, const Pi
                                           .key = p->key,
                                           .key2 = NO_KEY},
                           CAT_WALL_ORNAMENT, ornament, GFX_ORN_OVERLAY);
-            if (!record_click)
-                view.ctx.mode = DRAW_RECT_ONLY;
-            flush_picture();
+            flush_picture_or_measure(record_click);
         }
     } else if (kind == KIND_ALCOVE) {
         show_alcove_contents(pos);
@@ -2690,9 +2711,7 @@ static int show_wall_ornament(int pos, int side, bool record_click)
         show_wet_wall_ornament(ornament, entry, &p, record_click, click_rect);
     } else {
         setup_picture(&p, CAT_WALL_ORNAMENT, ornament, entry);
-        if (!record_click)
-            view.ctx.mode = DRAW_RECT_ONLY;
-        flush_picture();
+        flush_picture_or_measure(record_click);
         if (!record_click)
             return key;
         memcpy(click_rect, view.ctx.rect, sizeof click_rect);
@@ -2866,6 +2885,7 @@ static bool show_floor_ornament(int pos)
     bool linked = dungeon_teleporter_link(view.map, s->x, s->y, &link);
     if (depth > DEPTH_FAR && !linked)
         return false;
+    /* as in the original, the party direction, also behind a passage where show_linked_squares turns the view */
     if (linked && pos != POS_NEAR_SIDE_1 && pos != POS_NEAR_SIDE_2 && link.side != g_game.party_dir &&
         link.side != dir_opposite(g_game.party_dir))
         return false;
@@ -3626,8 +3646,7 @@ bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, in
         return false;
     show_creature(POS_FRONT, HIT_DEPTH, group);
     int key = view.ctx.transparent;
-    view.ctx.mode = DRAW_RECT_ONLY;
-    flush_picture();
+    flush_picture_or_measure(false);
     if (!hit_test_picture(x, y, key)) {
         draw_free_temp();
         return false;
@@ -3758,13 +3777,7 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
                 break;
             state = CHEST_HIT_NONE;
         }
-        spot++;
-        if (click->kind == CLICK_ALCOVE) {
-            if (spot >= ALCOVE_SPOT_END)
-                spot = ALCOVE_FIRST_SPOT;
-        } else {
-            spot &= JITTER_COUNT - 1;
-        }
+        spot = next_spot(spot, click->kind == CLICK_ALCOVE); /* the spots of the drawing */
     }
     draw_free_temp();
     if (chest == THING_NONE)
