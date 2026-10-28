@@ -9,6 +9,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
+#include "ids.h"
 #include "minion.h"
 #include "music.h"
 #include "optmenu.h"
@@ -189,7 +190,7 @@ void advanced_draw_automap(void)
     char line[TEXT_SIZE];
     if (!zone_get_viewport_rect(o.rect))
         return;
-    offscreen_create(&o, -1, true);
+    offscreen_create(&o, ZONE_NONE, true);
     if (!o.bitmap)
         return;
     automap_draw(&o, o.rect);

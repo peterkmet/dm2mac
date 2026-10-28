@@ -91,6 +91,12 @@
 #define DESCRIPTION_LINE  18
 #define DESCRIPTION_BREAK 17
 
+/* Each movement arrow has a normal and a pressed picture. */
+#define ARROW_PICTURES 2
+
+/* The split color of a gauge bar without a split fill (the original passes 0). */
+#define GAUGE_NO_SPLIT 0
+
 /* The highest skill level that the skills panel names. */
 #define SKILL_LEVEL_MAX 16
 
@@ -124,7 +130,7 @@
 
 /* The values at the ends of a gauge bar. */
 typedef struct {
-    int low, high;
+    int16_t low, high;
 } GaugeRange;
 
 /* A value gauge of the object info: its glyph, value, scale, and the word that the text of the panel gives it. */
@@ -142,6 +148,14 @@ typedef struct {
     bool present;   /* the inventory changed: the view goes to the screen */
     bool box_drawn; /* the status box changed */
 } ChampionRedraw;
+
+/* The coins of a money box: the coin type of each used coin slot, the count of each coin type, and the total value. */
+typedef struct {
+    int type_count;
+    int types[COIN_TYPE_MAX];
+    int16_t counts[COIN_TYPE_MAX];
+    int total;
+} BoxCoins;
 
 /* The zone and the empty slot icon of each slot entry. */
 static const struct {
@@ -220,7 +234,7 @@ static struct {
     int16_t drawn_inventory; /* the inventory that the panel shows */
     uint16_t drawn_buttons;
     uint16_t shown_object; /* the object of the panel */
-    int16_t shown_eye, shown_mouth;
+    bool shown_eye, shown_mouth;
     int16_t description_x, description_y;
     uint8_t shown_raised[SKILL_BASE_COUNT]; /* the raised skill counts that the skills panel showed */
 } cache;
@@ -242,7 +256,7 @@ static bool object_value_gauge(uint16_t thing, int type, ObjectGauge *g)
     } else {
         return false;
     }
-    return (uint16_t)g->value != 0;
+    return g->value != 0;
 }
 
 /* ---- Setup ---- */
@@ -308,27 +322,38 @@ static int info_add_contents(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], in
     return *line ? info_add(lines, count, "%s", line) : count;
 }
 
-/* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
-   total value. */
-static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
+/* Counts the coins of a money box: the coin type of each used coin slot in slot order, and the total value. */
+static void box_coins(uint16_t box, BoxCoins *b)
 {
-    int16_t counts[COIN_TYPE_MAX];
-    money_count_coins_in_box(box, counts);
-    int total = 0;
-    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[COIN_TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
+    money_count_coins_in_box(box, b->counts);
+    b->type_count = 0;
+    b->total = 0;
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
         int type = money_coin_type_for_slot(box, slot);
         if (type < 0)
             continue;
-        total += money_coin_value(type) * counts[type];
+        b->total += money_coin_value(type) * b->counts[type];
+        b->types[b->type_count++] = type;
+    }
+}
+
+/* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
+   total value. */
+static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
+{
+    BoxCoins b;
+    box_coins(box, &b);
+    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[COIN_TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
+    for (int i = 0; i < b.type_count; i++) {
+        int type = b.types[i];
         uint16_t item = money_coin_item(type);
         gtext_format(gtext_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, raw), name);
-        snprintf(coin, sizeof coin, "%s %d", name, counts[type]);
+        snprintf(coin, sizeof coin, "%s %d", name, b.counts[type]);
         count = info_append(lines, count, line, coin);
     }
     if (*line)
         count = info_add(lines, count, "%s", line);
-    return info_add(lines, count, "total %d", total);
+    return info_add(lines, count, "total %d", b.total);
 }
 
 int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE])
@@ -337,9 +362,9 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
         return 0;
     int type = thing_type(thing);
     int count = info_add(lines, 0, "%s", item_name(thing));
-    uint16_t weight = (uint16_t)item_weight(thing);
-    gtext_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
-    gtext_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
+    int weight = item_weight(thing);
+    gtext_format_set_number(ARG_WEIGHT_KG, weight / WEIGHT_TENTHS);
+    gtext_format_set_number(ARG_WEIGHT_TENTHS, weight % WEIGHT_TENTHS);
     char text[TEXT_SIZE * 2];
     count = info_add_text(lines, count, gtext_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_SCROLL)
@@ -349,17 +374,17 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
             return info_add_contents(lines, count, thing);
         return item_is_moneybox(thing) ? info_add_coins(lines, count, thing) : count;
     }
-    if (item_has_charged_action(thing) && (int16_t)item_charges(thing))
-        count = info_add(lines, count, "charges %d/%d", (int16_t)item_charges(thing), (int16_t)item_max_charges(thing));
+    if (item_has_charged_action(thing) && item_charges(thing))
+        count = info_add(lines, count, "charges %d/%d", item_charges(thing), item_max_charges(thing));
     ObjectGauge g;
     if (object_value_gauge(thing, type, &g))
-        count = info_add(lines, count, "%s %d/%d", g.label, (int16_t)g.value, g.high);
+        count = info_add(lines, count, "%s %d/%d", g.label, g.value, g.high);
     return count;
 }
 
-char *ui_skill_rank_text(int champ, int skill, char *text)
+char *ui_skill_rank_text(int16_t champion_index, int skill, char *text)
 {
-    int level = champ_get_skill_level(champ, skill, 1);
+    int level = champ_get_skill_level(champion_index, skill, true);
     if (level > SKILL_LEVEL_MAX)
         level = SKILL_LEVEL_MAX;
     gtext_format_set_entry(skill);
@@ -423,7 +448,7 @@ static void add_dirty_rect(Offscreen *o, const int16_t *rect)
 
 void offscreen_create(Offscreen *o, int zone, bool mark_dirty)
 {
-    if ((int16_t)zone != -1)
+    if (zone != ZONE_NONE)
         zone_get_rect(zone, o->rect);
     o->bitmap = draw_temp_bitmap(o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP);
     o->dirty_count = 0;
@@ -540,14 +565,14 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
 {
     int16_t r[RECT_SIZE];
     ctx->dst = o->bitmap;
-    if ((int16_t)zone == -1) {
+    if (zone == ZONE_NONE) {
         memcpy(r, ctx->rect, sizeof r);
     } else {
         int16_t w = ctx->w;
         int16_t h = ctx->h;
         if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h))
             return;
-        /* like the original, the clipped part goes into the size of the picture part, not its position */
+        /* as in the original, the clipped part goes into the size of the picture part, not its position */
         ctx->w = (int16_t)(ctx->w + w);
         ctx->h = (int16_t)(ctx->h + h);
     }
@@ -565,13 +590,13 @@ void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors color
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]), colors, text);
-    /* like the original, the changed rect starts at the base line */
+    /* as in the original, the changed rect starts at the base line */
     const int16_t r[RECT_SIZE] = {[RECT_X] = x, [RECT_Y] = y, [RECT_W] = size.w, [RECT_H] = size.h};
     add_dirty_rect(o, r);
 }
 
 /* The base line start of text in zone (screen coordinates) and its rectangle; NULL when it is not visible. */
-static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
+static int16_t *zoned_text_rect(int zone, const char *text, int16_t *r)
 {
     TextSize size = text_measure(text);
     if (!size.w)
@@ -582,23 +607,22 @@ static int16_t *text_rect_in_zone(int zone, const char *text, int16_t *r)
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
 {
     int16_t r[RECT_SIZE];
-    if (!text_rect_in_zone(zone, text, r))
+    if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]), (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
-              (TextColors){(uint16_t)color, (uint16_t)bg}, text);
+              (TextColors){color, bg}, text);
     add_dirty_rect(o, r);
 }
 
 void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text)
 {
     int16_t r[RECT_SIZE];
-    if (!text_rect_in_zone(zone, text, r))
+    if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw_with_shadow(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]),
-                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
-                          (TextColors){(uint16_t)color, (int16_t)bg}, text);
+                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), (TextColors){color, bg}, text);
     add_dirty_rect(o, r);
 }
 
@@ -640,17 +664,17 @@ void ui_fill_zone_screen(int zone, int color)
         gfx_fill_rect(g_draw_screen.pixels, r, color, g_draw_screen.width, IMAGE_8BPP);
 }
 
-void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *face_colors)
+void ui_draw_champion_face_icon(Bitmap *dst, int16_t champion_index, uint8_t *face_colors)
 {
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     int frame =
         dir_relative(c->dir, g_game.party_dir) + (g_game.magic_light[MAGIC_INVISIBILITY] ? FACE_INVISIBLE_FRAMES : 0);
-    const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_FACES, champ);
+    const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_FACES, champion_index);
     if (colors)
         memcpy(face_colors, colors, FACE_ICON_COLORS);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     /* the original skips color 2 of the face picture */
-    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champ),
+    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champion_index),
                                  .x = FACE_SIZE * frame,
                                  .transparent = FACE_SKIP_COLOR},
                    dst, r);
@@ -664,7 +688,7 @@ void ui_render_hand_icon(void)
     uint16_t t = g_game.leader_hand;
     int category = item_gdat_category(t);
     int index = item_gdat_index(t);
-    int entry = item_icon_index(t, -1, 1);
+    int entry = item_icon_index(t, -1, true);
     const Bitmap *image = draw_gdat_image(category, index, entry);
     const uint8_t *colors = draw_gdat_image_palette(category, index, entry);
     Bitmap cursor = {g_leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
@@ -693,7 +717,7 @@ void ui_draw_game_screen(void)
     ui_fill_zone_screen(ZONE_SCREEN, 0);
     ui_draw_movement_arrows();
     champ_init_party_state();
-    ui_draw_all_champion_states(1);
+    ui_draw_all_champion_states(true);
 }
 
 void ui_draw_movement_arrows(void)
@@ -702,7 +726,7 @@ void ui_draw_movement_arrows(void)
     int entry = g_ui.push_mode ? GFX_PUSH_ARROWS : GFX_ARROWS;
     offscreen_create(&o, ZONE_MOVEMENT_ARROWS, true);
     gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
-    for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += 2)
+    for (int zone = ZONE_ARROW_FIRST; zone < ZONE_ARROW_FIRST + ZONE_ARROW_COUNT; zone++, entry += ARROW_PICTURES)
         offscreen_draw_gdat_image(&o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry}, zone, GFX_OPAQUE);
     offscreen_flush(&o, true);
     draw_free_temp();
@@ -711,9 +735,15 @@ void ui_draw_movement_arrows(void)
 
 /* ---- Status boxes and inventory ---- */
 
+/* The champion index of the open inventory, -1 for none (g_ui.inventory is an ordinal). */
+static int16_t inventory_champion(void)
+{
+    return (int16_t)(g_ui.inventory - 1);
+}
+
 static bool in_inventory(int champ)
 {
-    return champ + 1 == g_ui.inventory;
+    return champ == inventory_champion();
 }
 
 /* Opens the status box bitmap of champ with its background; clear: the whole box goes to the screen. */
@@ -756,26 +786,25 @@ static void show_damage_number(int champ)
     offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE},
                               ZONE_STATUS_DAMAGE + champ, DAMAGE_STAR_KEY);
     offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ, g_ui_colors[UI_WHITE], g_ui_colors[UI_RED],
-                                gtext_format_number(champion(champ)->damage, 0, NUMBER_DIGITS));
+                                gtext_format_number(champion(champ)->damage, false, NUMBER_DIGITS));
 }
 
 /* Draws a value and its maximum ("83/ 83") in zone of the inventory. */
-static void show_value_pair(int zone, unsigned value, unsigned maximum)
+static void show_value_pair(int zone, int16_t value, int16_t maximum)
 {
     char s[TEXT_SIZE];
-    strcpy(s, gtext_format_number(value, 1, NUMBER_DIGITS));
+    strcpy(s, gtext_format_number(value, true, NUMBER_DIGITS));
     strcat(s, "/");
-    strcat(s, gtext_format_number(maximum, 1, NUMBER_DIGITS));
+    strcat(s, gtext_format_number(maximum, true, NUMBER_DIGITS));
     text_draw_in_zone_shadowed(zone, g_ui_colors[UI_LIGHT_GRAY], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
 }
 
 /* Draws the health, stamina, and mana values of the inventory. */
 static void show_champion_values(const Champion *c)
 {
-    show_value_pair(ZONE_HEALTH_VALUE, (uint16_t)c->health, (uint16_t)c->max_health);
-    show_value_pair(ZONE_STAMINA_VALUE, (uint16_t)(c->stamina / STAMINA_DISPLAY_UNIT),
-                    (uint16_t)(c->max_stamina / STAMINA_DISPLAY_UNIT));
-    show_value_pair(ZONE_MANA_VALUE, (uint16_t)c->mana, (uint16_t)c->max_mana);
+    show_value_pair(ZONE_HEALTH_VALUE, c->health, c->max_health);
+    show_value_pair(ZONE_STAMINA_VALUE, c->stamina / STAMINA_DISPLAY_UNIT, c->max_stamina / STAMINA_DISPLAY_UNIT);
+    show_value_pair(ZONE_MANA_VALUE, c->mana, c->max_mana);
 }
 
 /* Draws the good or bad state icon over the eye or the mouth of the inventory. */
@@ -820,7 +849,7 @@ static void restore_panel_back(int zone)
 }
 
 /* Draws one slot: background, frame (active hand, wound), and the item icon. */
-static void show_slot(uint16_t thing, int slot, bool wounded, bool active, bool draw_frame)
+static void show_slot(uint16_t thing, int16_t slot, bool wounded, bool active, bool draw_frame)
 {
     int category, index, icon;
     if (thing == THING_NONE) {
@@ -830,8 +859,8 @@ static void show_slot(uint16_t thing, int slot, bool wounded, bool active, bool 
     } else {
         category = item_gdat_category(thing);
         index = item_gdat_index(thing);
-        icon =
-            item_icon_index(thing, slot < SLOT_STATUS_COUNT ? slot % SLOT_HAND_COUNT : slot - SLOT_INVENTORY_FIRST, 1);
+        icon = item_icon_index(thing, slot < SLOT_STATUS_COUNT ? slot % SLOT_HAND_COUNT : slot - SLOT_INVENTORY_FIRST,
+                               true);
     }
     int zone = slot_layout[slot].zone;
     int16_t r[RECT_SIZE];
@@ -869,7 +898,7 @@ static void show_slot(uint16_t thing, int slot, bool wounded, bool active, bool 
 }
 
 /* Draws a champion slot when it changed; true when it drew. */
-static bool show_changed_slot(int champ, int slot, bool force)
+static bool show_changed_slot(int champ, int16_t slot, bool force)
 {
     int entry;
     if (in_inventory(champ)) {
@@ -944,6 +973,7 @@ static void show_description(const char *text)
                 *brk = '\0';
                 next = brk + 1;
             } else {
+                /* fix: a word without a space breaks at the line width; the original scans before the buffer */
                 next = line + DESCRIPTION_LINE;
                 char kept = *next;
                 *next = '\0';
@@ -961,7 +991,7 @@ static void show_description(const char *text)
 }
 
 /* Draws a centered line of a scroll in the scroll font. */
-static void show_scroll_line(int center_x, int y, const char *line)
+static void show_scroll_line(int center_x, int16_t y, const char *line)
 {
     TextSize size = text_measure(line);
     if (!size.w)
@@ -993,6 +1023,7 @@ static void show_scroll(uint16_t scroll)
     for (size_t i = 0; i < n; i++)
         newlines += text[i] == '\n';
     int lines = newlines + 1;
+    /* a trailing new line adds no line; two trailing new lines drop one */
     if (n && text[n - 1] == '\n')
         lines = n > 1 && text[n - 2] == '\n' ? newlines - 1 : newlines;
     int16_t r[RECT_SIZE];
@@ -1000,6 +1031,7 @@ static void show_scroll(uint16_t scroll)
     int16_t x = at.x;
     int16_t y = at.y;
     zone_get_rect(ZONE_INVENTORY_PANEL, r);
+    /* centers the text block on the scroll */
     y = (int16_t)(y - ((((int16_t)lines * TEXT_LINE_HEIGHT - FONT_BASELINE - 1) >> 1) - FONT_GLYPH_HEIGHT));
     for (int16_t pos = 0; text[pos];) {
         text_wrap_line(text, line, &pos, r[RECT_W]);
@@ -1010,23 +1042,24 @@ static void show_scroll(uint16_t scroll)
     }
 }
 
-/* A gauge bar in zone: value from range.low to range.high; split fills the rest of the zone with UI color split. */
-static void show_gauge_bar(int value, int zone, int color, GaugeRange range, int split)
+/* A gauge bar in zone: value from range.low to range.high; split fills the rest of the zone with UI color split
+   (GAUGE_NO_SPLIT: no fill). */
+static void show_gauge_bar(int16_t value, int zone, int color, GaugeRange range, int split)
 {
-    value = (int16_t)value;
     if (value < GAUGE_STARVING)
         color = UI_RED;
     else if (value < 0)
         color = UI_YELLOW;
     int16_t bar[RECT_SIZE], full[RECT_SIZE], shadow[RECT_SIZE];
-    uint16_t scale = (uint16_t)((int16_t)(value - range.low) * SCALE_PARTS / (range.high - (int16_t)range.low));
+    /* 16-bit as in the original */
+    uint16_t scale = (uint16_t)((int16_t)(value - range.low) * SCALE_PARTS / (range.high - range.low));
     if (!zone_get_rect_clipped(zone, bar, scale, SCALE_PARTS))
         return;
-    if (split) {
+    if (split != GAUGE_NO_SPLIT) {
         zone_get_rect(zone, full);
         memcpy(shadow, full, sizeof shadow);
         if (bar[RECT_X] + bar[RECT_W] - 1 == full[RECT_X] + full[RECT_W] - 1) {
-            split = 0;
+            split = GAUGE_NO_SPLIT;
         } else {
             full[RECT_W] = (int16_t)((full[RECT_X] + full[RECT_W] - 1) - (bar[RECT_X] + bar[RECT_W] - 1));
             full[RECT_X] = (int16_t)(bar[RECT_X] + bar[RECT_W]);
@@ -1038,7 +1071,7 @@ static void show_gauge_bar(int value, int zone, int color, GaugeRange range, int
     shadow[RECT_Y] = (int16_t)(shadow[RECT_Y] + GAUGE_SHADOW);
     gfx_fill_rect(g_view_viewport.pixels, shadow, g_ui_colors[UI_BLACK], g_view_viewport.width, IMAGE_8BPP);
     gfx_fill_rect(g_view_viewport.pixels, bar, g_ui_colors[color], g_view_viewport.width, IMAGE_8BPP);
-    if (split)
+    if (split != GAUGE_NO_SPLIT)
         gfx_fill_rect(g_view_viewport.pixels, full, g_ui_colors[split], g_view_viewport.width, IMAGE_8BPP);
 }
 
@@ -1058,6 +1091,7 @@ static void show_object_gauge(int zone, int value, int high, uint8_t glyph, int 
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
                           (TextColors){g_ui_colors[UI_WHITE], bg}, s);
     s[0] = GLYPH_GAUGE_RIGHT;
+    /* the original places the right end mark by the font glyph height */
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y,
                           (TextColors){g_ui_colors[UI_WHITE], bg}, s);
 }
@@ -1065,20 +1099,14 @@ static void show_object_gauge(int zone, int value, int high, uint8_t glyph, int 
 /* Draws the coin count of each coin slot of a money box and the total value. */
 static void show_coin_counts(uint16_t box)
 {
-    int16_t counts[COIN_TYPE_MAX];
-    money_count_coins_in_box(box, counts);
-    int total = 0;
-    int zone = ZONE_COINS_FIRST;
+    BoxCoins b;
+    box_coins(box, &b);
     char s[TEXT_SIZE];
-    for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
-        int type = money_coin_type_for_slot(box, slot);
-        if (type < 0)
-            continue;
-        total += money_coin_value(type) * counts[type];
-        snprintf(s, sizeof s, "%d", counts[type]);
-        text_draw_in_zone(zone++, g_ui_colors[UI_LIGHT_GRAY], s);
+    for (int i = 0; i < b.type_count; i++) {
+        snprintf(s, sizeof s, "%d", b.counts[b.types[i]]);
+        text_draw_in_zone(ZONE_COINS_FIRST + i, g_ui_colors[UI_LIGHT_GRAY], s);
     }
-    snprintf(s, sizeof s, "%d", total);
+    snprintf(s, sizeof s, "%d", b.total);
     text_draw_in_zone(ZONE_COIN_TOTAL, g_ui_colors[UI_LIGHT_GRAY], s);
 }
 
@@ -1097,16 +1125,15 @@ static void show_object_gauges(uint16_t thing, int type)
     static const int16_t gauge_zones[OBJECT_GAUGE_COUNT] = {ZONE_OBJECT_GAUGE_FIRST, ZONE_OBJECT_GAUGE_FIRST + 1};
     int gauge = 0;
     if (item_has_charged_action(thing)) {
-        int charges = (int16_t)item_charges(thing);
+        int charges = item_charges(thing);
         if (charges) {
-            show_object_gauge(gauge_zones[0], charges, (int16_t)item_max_charges(thing), GLYPH_CHARGES,
-                              GAUGE_CHARGE_COLOR);
+            show_object_gauge(gauge_zones[0], charges, item_max_charges(thing), GLYPH_CHARGES, GAUGE_CHARGE_COLOR);
             gauge = 1;
         }
     }
     ObjectGauge g;
     if (object_value_gauge(thing, type, &g))
-        show_object_gauge(gauge_zones[gauge], (int16_t)g.value, g.high, g.glyph, GAUGE_VALUE_COLOR);
+        show_object_gauge(gauge_zones[gauge], g.value, g.high, g.glyph, GAUGE_VALUE_COLOR);
 }
 
 /* Draws the info panel of an object (full: its picture, name, weight, and gauges; else only a scroll);
@@ -1132,9 +1159,9 @@ static bool show_object_info(uint16_t thing, bool full)
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_OBJECT_NAME, ZONE_OBJECT_NAME_BACK, UI_KEY);
     text_draw_in_zone(ZONE_OBJECT_NAME, g_ui_colors[UI_LIGHT_GRAY], item_name(thing));
     show_slot(thing, SLOT_INFO, false, false, false);
-    uint16_t weight = (uint16_t)item_weight(thing);
-    gtext_format_set_number(ARG_WEIGHT_KG, (int16_t)(weight / WEIGHT_TENTHS));
-    gtext_format_set_number(ARG_WEIGHT_TENTHS, (int16_t)(weight % WEIGHT_TENTHS));
+    int weight = item_weight(thing);
+    gtext_format_set_number(ARG_WEIGHT_KG, weight / WEIGHT_TENTHS);
+    gtext_format_set_number(ARG_WEIGHT_TENTHS, weight % WEIGHT_TENTHS);
     char text[TEXT_SIZE];
     show_description(gtext_gdat(CAT_PANEL, 0, TEXT_WEIGHT, text));
     if (type == THING_CONTAINER) {
@@ -1151,15 +1178,15 @@ static bool show_object_info(uint16_t thing, bool full)
 /* Draws the food and water gauges (and the poison gauge) of the inventory panel. */
 static void show_food_water(void)
 {
-    const Champion *c = champion(g_ui.inventory - 1);
+    const Champion *c = champion(inventory_champion());
     game_set_panel_mode(PANEL_MODE_FOOD);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
-    show_gauge_bar(c->food, ZONE_FOOD_GAUGE, UI_BROWN, (GaugeRange){FOOD_MIN, FOOD_MAX}, 0);
-    show_gauge_bar(c->water, ZONE_WATER_GAUGE, UI_BLUE, (GaugeRange){FOOD_MIN, FOOD_MAX}, 0);
+    show_gauge_bar(c->food, ZONE_FOOD_GAUGE, UI_BROWN, (GaugeRange){FOOD_MIN, FOOD_MAX}, GAUGE_NO_SPLIT);
+    show_gauge_bar(c->water, ZONE_WATER_GAUGE, UI_BLUE, (GaugeRange){FOOD_MIN, FOOD_MAX}, GAUGE_NO_SPLIT);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_FOOD, ZONE_FOOD_LABEL, UI_KEY);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_WATER, ZONE_WATER_LABEL, UI_KEY);
     if (c->poisoned) {
-        show_gauge_bar(c->poison, ZONE_POISON_GAUGE, UI_RED, (GaugeRange){0, POISON_MAX}, 0);
+        show_gauge_bar(c->poison, ZONE_POISON_GAUGE, UI_RED, (GaugeRange){0, POISON_MAX}, GAUGE_NO_SPLIT);
         ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_POISON, ZONE_POISON_LABEL, UI_KEY);
     }
 }
@@ -1174,7 +1201,7 @@ static void show_closed_mouth(void)
 /* Draws the skill levels and the statistics of the champion in the inventory panel. */
 static void show_skills_and_stats(void)
 {
-    int champ = g_ui.inventory - 1;
+    int16_t champ = inventory_champion();
     Champion *c = champion(champ);
     char text[TEXT_SIZE];
     game_set_panel_mode(PANEL_MODE_SKILLS);
@@ -1183,7 +1210,7 @@ static void show_skills_and_stats(void)
     int16_t x = skills_at.x;
     int16_t y = skills_at.y;
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
-        if (champ_get_skill_level(champ, skill, 1) == 1)
+        if (champ_get_skill_level(champ, skill, true) == 1)
             continue;
         ui_skill_rank_text(champ, skill, text);
         text_draw_in_viewport(x, y, g_ui_colors[g_champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
@@ -1193,14 +1220,14 @@ static void show_skills_and_stats(void)
     ScreenPoint stats_at = zone_get_position(ZONE_STATS);
     int16_t stat_x = stats_at.x;
     y = stats_at.y;
-    for (int stat = 1; stat < STAT_COUNT; stat++) {
+    for (int stat = STAT_STRENGTH; stat < STAT_COUNT; stat++) { /* luck has no line */
         text_draw_in_viewport(x, y, g_ui_colors[UI_LIGHT_GRAY], gtext_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
-        int16_t current = (int16_t)champ_get_stat(c, stat, 0);
-        int maximum = (uint16_t)champ_get_stat(c, stat, 1);
+        int current = champ_get_stat(c, stat, STAT_CURRENT);
+        int maximum = champ_get_stat(c, stat, STAT_MAXIMUM);
         int color = current < maximum ? UI_RED : current > maximum ? UI_GREEN : UI_LIGHT_GRAY;
-        text_draw_in_viewport(stat_x, y, g_ui_colors[color], gtext_format_number((uint16_t)current, 1, NUMBER_DIGITS));
+        text_draw_in_viewport(stat_x, y, g_ui_colors[color], gtext_format_number(current, true, NUMBER_DIGITS));
         strcpy(text, "/");
-        strcat(text, gtext_format_number((uint16_t)maximum, 1, NUMBER_DIGITS));
+        strcat(text, gtext_format_number(maximum, true, NUMBER_DIGITS));
         text_draw_in_viewport((int16_t)(FONT_ADVANCE * NUMBER_DIGITS + stat_x), y, g_ui_colors[UI_LIGHT_GRAY], text);
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
@@ -1221,14 +1248,14 @@ static uint16_t panel_object(const Champion *c)
 static void show_load(int champ)
 {
     restore_panel_back(ZONE_LOAD_BACK);
-    uint16_t load = (uint16_t)champ_get_load(champ);
-    int16_t max_load = (int16_t)champ_get_max_load(champion(champ));
+    int load = champ_get_load(champ);
+    int max_load = champ_get_max_load(champion(champ));
     int color = load > max_load                                       ? UI_RED
                 : load * LOAD_HIGH_WHOLE > max_load * LOAD_HIGH_PARTS ? UI_YELLOW
                                                                       : UI_LIGHT_GRAY;
-    gtext_format_set_number(ARG_LOAD_KG, (int16_t)(load / WEIGHT_TENTHS));
-    gtext_format_set_number(ARG_LOAD_TENTHS, (int16_t)(load % WEIGHT_TENTHS));
-    gtext_format_set_number(ARG_LOAD_MAX_KG, (int16_t)((uint16_t)champ_get_max_load(champion(champ)) / WEIGHT_TENTHS));
+    gtext_format_set_number(ARG_LOAD_KG, load / WEIGHT_TENTHS);
+    gtext_format_set_number(ARG_LOAD_TENTHS, load % WEIGHT_TENTHS);
+    gtext_format_set_number(ARG_LOAD_MAX_KG, max_load / WEIGHT_TENTHS);
     char text[TEXT_SIZE];
     text_draw_in_zone_shadowed(ZONE_LOAD, g_ui_colors[color], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT,
                                gtext_gdat(CAT_PANEL, 0, TEXT_LOAD, text));
@@ -1287,8 +1314,8 @@ static void show_inventory_values(const Champion *c)
     bool bad = c->food < 0 || c->water < 0 || c->poisoned;
     show_state_icon(bad ? GFX_BOX_SLOT_WOUNDED : GFX_BOX_SLOT_FRAME, ZONE_EYE);
     bool lowered = false;
-    for (int stat = 1; stat < STAT_COUNT && !lowered; stat++)
-        lowered = c->stats[stat][0] < c->stats[stat][1];
+    for (int stat = STAT_STRENGTH; stat < STAT_COUNT && !lowered; stat++) /* luck does not count */
+        lowered = c->stats[stat][STAT_CURRENT] < c->stats[stat][STAT_MAXIMUM];
     show_state_icon(lowered ? GFX_BOX_SLOT_WOUNDED : GFX_BOX_SLOT_FRAME, ZONE_MOUTH);
 }
 
@@ -1299,7 +1326,8 @@ static bool show_inventory_panel(const Champion *c, uint16_t flags)
     if (cache.shown_object != object || g_ui.mouth != cache.shown_mouth || g_ui.eye != cache.shown_eye ||
         flags & REDRAW_TITLE_ALL) {
         ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_EYE, ZONE_EYE, GFX_OPAQUE);
-        ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_MOUTH + (g_ui.eye != 0), ZONE_MOUTH, GFX_OPAQUE);
+        /* the mouth picture of the held eye follows the mouth picture */
+        ui_draw_viewport_image(CAT_PANEL, 0, g_ui.eye ? GFX_PANEL_MOUTH + 1 : GFX_PANEL_MOUTH, ZONE_MOUTH, GFX_OPAQUE);
         if (g_ui.eye) {
             if (object == THING_NONE)
                 show_skills_and_stats();
@@ -1377,10 +1405,10 @@ static void show_living_champion(int champ, ChampionRedraw *d)
     }
 }
 
-void ui_draw_champion_state(int champ)
+void ui_draw_champion_state(int16_t champion_index)
 {
-    Champion *c = champion(champ);
-    ChampionRedraw d = {.flags = c->redraw, .inv = in_inventory(champ)};
+    Champion *c = champion(champion_index);
+    ChampionRedraw d = {.flags = c->redraw, .inv = in_inventory(champion_index)};
     if (d.inv) {
         if (g_ui.screen_needs_refresh)
             d.flags |= REDRAW_ALL_INVENTORY;
@@ -1391,20 +1419,20 @@ void ui_draw_champion_state(int champ)
     }
     show_inventory_frame(&d);
     if (d.flags & REDRAW_STATUS_BOX) {
-        status_box_begin(champ, true);
+        status_box_begin(champion_index, true);
         d.box_drawn = true;
         if (c->health) {
             if (d.inv)
-                show_portrait(champ);
+                show_portrait(champion_index);
             d.flags |= d.inv ? REDRAW_BARS : REDRAW_BARS | REDRAW_NAME;
             d.force_slots = true;
         } else {
-            offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champ, g_ui_colors[UI_WHITE],
+            offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champion_index, g_ui_colors[UI_WHITE],
                                        g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
         }
     }
     if (c->health)
-        show_living_champion(champ, &d);
+        show_living_champion(champion_index, &d);
     if (d.box_drawn)
         offscreen_flush(&status_box, true);
     if (d.present) {
@@ -1415,40 +1443,44 @@ void ui_draw_champion_state(int champ)
     draw_free_temp();
 }
 
-void ui_draw_all_champion_states(int tick)
+void ui_draw_all_champion_states(bool tick)
 {
     for (int i = 0; i < g_game.champion_count; i++)
-        if (i + 1 != g_ui.inventory)
+        if (i != inventory_champion())
             ui_draw_champion_state(i);
-    if (g_ui.inventory) {
-        Champion *c = champion(g_ui.inventory - 1);
-        if (c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST)
-            c->redraw |= !g_ui.eye || g_game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
-        ui_draw_champion_state(g_ui.inventory - 1);
+    int16_t open = inventory_champion();
+    if (open >= 0) {
+        Champion *c = champion(open);
+        if (c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST) {
+            bool title_too = g_ui.eye && g_game.leader_hand == THING_NONE; /* the eye shows the stats */
+            c->redraw |= title_too ? REDRAW_LOAD | REDRAW_TITLE_ALL : REDRAW_LOAD;
+        }
+        ui_draw_champion_state(open);
     }
     area_update(tick);
 }
 
-void ui_toggle_inventory(int champ)
+void ui_toggle_inventory(int16_t champion_index)
 {
     game_set_panel_mode(PANEL_MODE_NONE);
     cache.shown_object = THING_NONE;
-    if ((champ < CHAMPION_MAX && !champion(champ)->health) || g_ui.push_mode || g_ui.mouth || g_ui.eye)
+    if ((champion_index < CHAMPION_MAX && !champion(champion_index)->health) || g_ui.push_mode || g_ui.mouth ||
+        g_ui.eye)
         return;
     game_set_command_stop(true);
-    int open = g_ui.inventory;
-    if (champ + 1 == open)
-        champ = CHAMPION_MAX;
-    if (open) {
+    int16_t open = inventory_champion();
+    if (champion_index == open)
+        champion_index = CHAMPION_MAX;
+    if (open >= 0) {
         game_set_open_inventory(0);
-        Champion *c = champion(open - 1);
+        Champion *c = champion(open);
         if (c->health && !g_ui.candidate) {
             c->redraw |= REDRAW_STATUS_BOX;
-            ui_draw_champion_state(open - 1);
+            ui_draw_champion_state(open);
         }
         /* the raised skills that the player saw no longer show green */
-        champ_forget_shown_raises(open - 1, cache.shown_raised);
-        if (g_party_sleeping || champ == CHAMPION_MAX) {
+        champ_forget_shown_raises(open, cache.shown_raised);
+        if (g_party_sleeping || champion_index == CHAMPION_MAX) {
             if (!g_party_sleeping) {
                 if (g_inv_arrows_on_close)
                     ui_draw_movement_arrows();
@@ -1458,10 +1490,10 @@ void ui_toggle_inventory(int champ)
             return;
         }
     }
-    game_set_open_inventory(champ + 1);
+    game_set_open_inventory(champion_index + 1);
     memset(cache.shown_raised, 0, sizeof cache.shown_raised);
-    champion(champ)->redraw |= REDRAW_ALL;
+    champion(champion_index)->redraw |= REDRAW_ALL;
     game_set_inventory_buttons(0);
-    ui_draw_champion_state(champ);
+    ui_draw_champion_state(champion_index);
     input_set_mode(INPUT_MODE_INVENTORY);
 }

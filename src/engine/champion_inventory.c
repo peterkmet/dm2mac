@@ -300,7 +300,7 @@ void inv_click_slot(int16_t slot)
     }
     if (hand != THING_NONE)
         champ_add_object_to_slot(champ, hand, slot);
-    g_hooks.draw_all_champion_states(0);
+    g_hooks.draw_all_champion_states(false);
     if ((slot >= SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot == SLOT_QUIVER_READY ||
         slot == SLOT_QUIVER_ACTION || slot >= SLOT_COUNT) {
         g_action.redraw_delay = 1;
