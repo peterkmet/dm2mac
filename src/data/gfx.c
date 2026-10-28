@@ -308,10 +308,14 @@ bool pal_load_color_ramps(const Gdat *gdat)
     for (int i = 0; i < ramps.count; i++)
         ramps.length[i] = *p++;
     for (int i = 0; i < ramps.count; i++) {
+        if (end - p < ramps.length[i])
+            return false; /* fix: a ramp past the item */
         ramps.brightness[i] = p;
         p += ramps.length[i];
     }
     for (int i = 0; i < ramps.count; i++) {
+        if (end - p < ramps.length[i])
+            return false; /* fix: a ramp past the item */
         ramps.colors[i] = p;
         p += ramps.length[i];
     }
