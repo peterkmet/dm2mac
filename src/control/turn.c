@@ -44,6 +44,7 @@
 #define DROP_ALCOVE_CELL         CELL_COUNT /* drop_object cell 4: the alcove ahead */
 #define CORNER_INSET             1          /* a click on a corner of a spell icon goes one pixel inside */
 #define NAME_QUOTE_COUNT         2          /* the quotes around a name item of an act_many list */
+_Static_assert(WITNESSED_EXPLOSIONS_MAX <= STATE_JSON_VISIBLE_GROUPS_MAX, "the explosion record fits the view buffer");
 
 /* The kinds of the inputs of an action. */
 typedef enum { INPUT_KEY_PRESS, INPUT_CLICK, INPUT_PRESS, INPUT_RELEASE, INPUT_COMMAND } InputKind;
@@ -1039,7 +1040,7 @@ static const char *run_action(const char *name, const char *request)
     return "unknown action";
 }
 
-/* Turns. */
+/* Requests */
 
 /* The turn runs from now: at least min_ticks and at most max_ticks game ticks; a wait runs without inputs. */
 static void start_turn(uint32_t min_ticks, uint32_t max_ticks, bool wait_only)
@@ -1081,7 +1082,7 @@ const char *turn_wait(const char *request)
     return NULL;
 }
 
-/* Batches. */
+/* Requests: batches */
 
 /* Ends the batch: the reply gives the stop and the error. */
 static void batch_finish(const char *stop, const char *error)
@@ -1211,7 +1212,7 @@ const char *turn_act_many(const char *request)
 static bool has_ended(void)
 {
     uint32_t ticks = g_game.game_time - turn.start_time;
-    if (turn.wait_only && (turn.stop = news()))
+    if (turn.wait_only && turn.stop)
         return true;
     if (state_json_game_over())
         return true;
@@ -1239,6 +1240,8 @@ bool turn_poll(void)
         give_input(in);
     }
     witness();
+    if (turn.wait_only)
+        turn.stop = news();
     if (!has_ended()) {
         turn.frames++;
         return false;
@@ -1289,7 +1292,7 @@ static void put_action_damage(Json *j)
     json_close(j, ']');
 }
 
-/* The eye panel text of a look action: the object name and the other lines, only when the turn turn.looked. */
+/* The eye panel text of a look action: the object name and the other lines, only when the turn looked. */
 static void look_json(Json *j)
 {
     if (!turn.looked.shown)
