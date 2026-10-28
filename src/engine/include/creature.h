@@ -371,7 +371,8 @@ void creature_drop_possessions(uint16_t group, Location at, DropMode mode, bool 
 void creature_delete_group_at(Location at, DropMode mode, bool audible);
 /* Damages the group in the AI context; true when it was removed. */
 bool creature_damage_current_group(int damage);
-/* The creature in the AI context hits the group on at; false when no group is there. *damage_out: 0 for a miss. */
+/* The creature in the AI context hits the group on at; false when no group is there. *damage_out (may be NULL) gets
+   the damage, 0 for a miss. */
 bool creature_attack_group_at(Location at, int16_t *damage_out);
 /* Alerts the group (or the group on at for THING_NONE) with the alert flags, chance and damage. */
 void creature_alert(uint16_t group, Location at, unsigned flags, int16_t chance, int damage);

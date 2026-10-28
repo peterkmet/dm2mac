@@ -2371,8 +2371,7 @@ static bool act_melee_attack(void)
         }
         if (at_self)
             return true;
-        int16_t damage;
-        if (!creature_attack_group_at((Location){dx, dy}, &damage))
+        if (!creature_attack_group_at((Location){dx, dy}, NULL))
             return true;
     }
     if (a->action == ACTION_MELEE_2) {

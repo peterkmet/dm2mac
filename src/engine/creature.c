@@ -1102,7 +1102,8 @@ bool creature_attack_group_at(Location at, int16_t *damage_out)
     uint16_t group = creature_get_group_at(at);
     if (group == THING_NONE)
         return false;
-    *damage_out = 0;
+    if (damage_out)
+        *damage_out = 0;
     const CreatureInfo *target = creature_group_info(group);
     const CreatureInfo *attacker = g_ai.info;
     if (target->dexterity == CREATURE_NO_HURT)
@@ -1127,7 +1128,8 @@ bool creature_attack_group_at(Location at, int16_t *damage_out)
     if (rand_bit())
         damage = (int16_t)(damage - rand_below((uint16_t)((damage >> ATTACK_DAMAGE_SHIFT) + 1)));
     creature_alert(group, at, ALERT_SET_ANGRY, ALERT_HIT_CHANCE, damage);
-    *damage_out = damage;
+    if (damage_out)
+        *damage_out = damage;
     return true;
 }
 
@@ -1468,8 +1470,8 @@ void creature_push_creature(int arrow)
     /* ... the move of the party that pushes */
     static const int8_t commands[PUSH_ARROW_COUNT] = {CMD_MOVE_FORWARD, CMD_MOVE_FORWARD, CMD_MOVE_RIGHT,
                                                       CMD_MOVE_BACK,    CMD_MOVE_LEFT,    CMD_MOVE_FORWARD};
-    /* ... the push direction relative to the party direction, in quarter turns (2: the half turn) */
-    static const int8_t dirs[PUSH_ARROW_COUNT] = {0, TURN_RIGHT, 2, 2, 2, TURN_LEFT};
+    /* ... the push direction relative to the party direction, in quarter turns */
+    static const int8_t dirs[PUSH_ARROW_COUNT] = {0, TURN_RIGHT, TURN_BACK, TURN_BACK, TURN_BACK, TURN_LEFT};
     if (arrow < 0 || arrow >= PUSH_ARROW_COUNT)
         return;
     int16_t dir = (int16_t)dir_turn(g_game.party_dir, dirs[arrow]);
