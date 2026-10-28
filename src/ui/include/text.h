@@ -52,7 +52,7 @@ void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char 
 TextSize text_measure(const char *text);
 /* Copies the part of text from *out_pos that fits in max_width pixels into line, broken at a space when it does
    not fit; *out_pos goes to the rest. Returns the width of line. */
-int text_wrap_line(const char *text, char *line, int16_t *out_pos, int max_width);
+int16_t text_wrap_line(const char *text, char *line, int16_t *out_pos, int16_t max_width);
 /* Draws text with a shadow down and right into an 8 bpp dst; bg without TEXT_TRANSPARENT fills a box behind it
    first. */
 void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);
