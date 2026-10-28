@@ -7,6 +7,7 @@
 #include <string.h>
 #include "ids.h"
 #include "le.h"
+#include "os.h"
 
 /* File signature of GRAPHICS.DAT. */
 #define GDAT_SIGNATURE 0x8005
@@ -147,7 +148,7 @@ static enum GdatResult parse_file(Gdat *g, size_t file_size)
     g->offset = malloc(g->count * sizeof *g->offset);
     g->size = malloc(g->count * sizeof *g->size);
     if (!g->offset || !g->size)
-        return GDAT_ERR_IO;
+        os_fatal("out of memory");
     for (int i = 0; i < g->count; i++) {
         g->size[i] =
             i == ITEM_KEYS ? le32(f + HEADER_KEYS_SIZE) : le16(f + HEADER_ITEM_SIZES + ITEM_SIZE_BYTES * (i - 1));
@@ -170,20 +171,21 @@ static enum GdatResult parse_file(Gdat *g, size_t file_size)
 enum GdatResult gdat_load(const char *path, Gdat **out)
 {
     *out = NULL;
-    Gdat *g = calloc(1, sizeof *g);
     FILE *fp = fopen(path, "rb");
-    if (!g || !fp) {
-        free(g);
-        if (fp)
-            fclose(fp);
+    if (!fp)
         return GDAT_ERR_IO;
-    }
+    Gdat *g = calloc(1, sizeof *g);
+    if (!g)
+        os_fatal("out of memory");
     int64_t file_size = -1;
     if (!fseek(fp, 0, SEEK_END))
         file_size = ftell(fp);
     enum GdatResult err = GDAT_ERR_IO;
-    if (file_size >= 0 && !fseek(fp, 0, SEEK_SET))
+    if (file_size >= 0 && !fseek(fp, 0, SEEK_SET)) {
         g->file = malloc(file_size ? (size_t)file_size : 1);
+        if (!g->file)
+            os_fatal("out of memory");
+    }
     if (g->file && fread(g->file, 1, (size_t)file_size, fp) == (size_t)file_size)
         err = parse_file(g, (size_t)file_size);
     fclose(fp);
