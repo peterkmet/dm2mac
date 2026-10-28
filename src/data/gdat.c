@@ -255,8 +255,8 @@ static size_t decoded_size(unsigned width, unsigned height, int bpp)
     return bpp == IMAGE_8BPP ? (size_t)width * height : (size_t)(width + 1) / 2 * height;
 }
 
-/* Reads the image header of an item; returns its format or an error. */
-static int read_image_header(const Gdat *g, int item, ImageHeader *h)
+/* Reads the image header of an item into h. */
+static enum GdatResult read_image_header(const Gdat *g, int item, ImageHeader *h)
 {
     h->data = gdat_item(g, item, &h->size);
     if (!h->data)
@@ -276,32 +276,30 @@ static int read_image_header(const Gdat *g, int item, ImageHeader *h)
         h->bpp = IMAGE_4BPP; /* the format bits of a 4 bpp image can hold its y offset (gdat_image_offset) */
     if (h->bpp != IMAGE_4BPP && h->bpp != IMAGE_8BPP)
         return GDAT_ERR_NOT_IMAGE;
-    return h->format;
+    return GDAT_OK;
 }
 
 /* Images */
 
-int gdat_image_size(const Gdat *g, int item, int *out_width, int *out_height, int *out_bpp)
+enum GdatResult gdat_image_info(const Gdat *g, int item, ImageInfo *out)
 {
     ImageHeader h;
-    int format = read_image_header(g, item, &h);
-    if (format < 0)
-        return format;
-    *out_width = h.width;
-    *out_height = h.height;
-    *out_bpp = h.bpp;
-    return (int)decoded_size(h.width, h.height, h.bpp);
+    enum GdatResult result = read_image_header(g, item, &h);
+    if (result != GDAT_OK)
+        return result;
+    *out = (ImageInfo){h.width, h.height, h.bpp, decoded_size(h.width, h.height, h.bpp)};
+    return GDAT_OK;
 }
 
 enum GdatResult gdat_decode_image(const Gdat *g, int item, uint8_t *dst, size_t dst_size)
 {
     ImageHeader h;
-    int format = read_image_header(g, item, &h);
-    if (format < 0)
-        return (enum GdatResult)format;
-    if (format == FORMAT_8BPP)
+    enum GdatResult result = read_image_header(g, item, &h);
+    if (result != GDAT_OK)
+        return result;
+    if (h.format == FORMAT_8BPP)
         return image_decode_8bpp(h.data, h.size, dst, dst_size);
-    if (format != FORMAT_RAW)
+    if (h.format != FORMAT_RAW)
         return image_decode_4bpp(h.data, h.size, NULL, dst, dst_size);
     size_t bytes = decoded_size(h.width, h.height, h.bpp);
     if (RAW_PIXELS + bytes > h.size)
@@ -315,7 +313,7 @@ enum GdatResult gdat_decode_image(const Gdat *g, int item, uint8_t *dst, size_t 
 const uint8_t *gdat_image_colormap(const Gdat *g, int item)
 {
     ImageHeader h;
-    if (read_image_header(g, item, &h) < 0 || h.bpp != IMAGE_4BPP || h.size < COLORMAP_SIZE)
+    if (read_image_header(g, item, &h) != GDAT_OK || h.bpp != IMAGE_4BPP || h.size < COLORMAP_SIZE)
         return NULL;
     return h.data + h.size - COLORMAP_SIZE;
 }
@@ -417,8 +415,9 @@ enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uin
 }
 
 /* LZSS after reDM2 docs/formats.md "Compression": flag bits from bit 0, 1 = literal byte;
-   a reference holds length - 3 in its low length_bits and the distance back in the other bits. */
-static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size, int length_bits)
+   a reference holds length - 3 in its low length_bits and the distance back in the other bits; true when the stream
+   fills exactly dst_size bytes. */
+static bool lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size, int length_bits)
 {
     size_t in = 0;
     size_t out = 0;
@@ -438,7 +437,7 @@ static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t
             if (in >= src_size)
                 break;
             if (out >= dst_size)
-                return GDAT_ERR_DATA;
+                return false;
             dst[out++] = src[in++];
             continue;
         }
@@ -448,11 +447,11 @@ static int lzss_decode(const uint8_t *src, size_t src_size, uint8_t *dst, size_t
         size_t distance = (size_t)src[in + 1] << (FLAG_BIT_COUNT - length_bits) | src[in] >> length_bits;
         in += LZSS_REF_SIZE;
         if (distance == 0 || distance > out || length > dst_size - out)
-            return GDAT_ERR_DATA;
+            return false;
         for (; length > 0; length--, out++)
             dst[out] = dst[out - distance];
     }
-    return (int)out;
+    return out == dst_size;
 }
 
 enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size)
@@ -473,8 +472,7 @@ enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *
     default:
         return GDAT_ERR_DATA;
     }
-    int out = lzss_decode(src + LZSS_DATA, src_size - LZSS_DATA, dst, bytes, length_bits);
-    return out == (int)bytes ? GDAT_OK : GDAT_ERR_DATA;
+    return lzss_decode(src + LZSS_DATA, src_size - LZSS_DATA, dst, bytes, length_bits) ? GDAT_OK : GDAT_ERR_DATA;
 }
 
 /* Values and texts */
