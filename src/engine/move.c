@@ -926,9 +926,7 @@ static void transit_stairs(Transit *t, uint8_t square)
     int dir = dun_get_stairs_exit_direction((Location){t->x, t->y});
     t->x += g_dir_dx[dir];
     t->y += g_dir_dy[dir];
-    int back = dir_opposite(dir);
-    int cell = dir_turn(back, (((thing_cell(t->thing) - back) + 1) & 2) / 2);
-    t->thing = thing_with_cell(t->thing, cell);
+    t->thing = thing_with_cell(t->thing, dir_side_cell((int16_t)thing_cell(t->thing), (int16_t)dir_opposite(dir)));
 }
 
 /* The end of the way, also in g_party.dest_*; an object that fell and champions that fell hurt make their sounds. */
@@ -1569,22 +1567,10 @@ static void pass_square_contents(Location at)
             continue;
         count--;
         MoveDest dest = move_thing_dest(thing, x, y, x, y).dest;
-        if (type == THING_PROJECTILE) {
-            TimelineEvent *ev = &g_timeline.events[thing_word(thing, PROJECTILE_EVENT)];
-            projectile_event_set_position(ev, dest.x, dest.y, dest.dir);
-            put_le16(ev->data + PROJECTILE_EVENT_THING, thing_with_cell(thing, dest.cell));
-            timeline_set_event_map(ev, dest.map);
-        } else if (type == THING_EXPLOSION) {
-            for (int i = 0; i < g_timeline.used_end; i++) {
-                TimelineEvent *ev = &g_timeline.events[i];
-                if (ev->type != EVENT_EXPLOSION || le16(ev->data + EXPLOSION_EVENT_THING) != thing)
-                    continue;
-                ev->data[EXPLOSION_EVENT_X] = (uint8_t)dest.x;
-                ev->data[EXPLOSION_EVENT_Y] = (uint8_t)dest.y;
-                put_le16(ev->data + EXPLOSION_EVENT_THING, thing_with_cell(thing, dest.cell));
-                timeline_set_event_map(ev, dest.map);
-            }
-        }
+        if (type == THING_PROJECTILE)
+            projectile_move_event(thing, dest);
+        else if (type == THING_EXPLOSION)
+            explosion_move_events(thing, dest);
     }
 }
 
