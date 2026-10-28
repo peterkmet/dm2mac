@@ -117,6 +117,11 @@
 #define SQUARE_LIGHT_MIN 2
 #define MISSILE_FALLOFF  3
 
+/* The light that one square gives: window light by the hour, other light, and the light of missiles and explosions. */
+typedef struct {
+    int16_t window, light, missiles;
+} SquareLight;
+
 /* The sky kinds of the map graphics: the weather shows (rain, clouds, lightning) in kinds 1 and 4. */
 static const uint8_t sky_state_weather[] = {0, 1, 0, 0, 1};
 /* The darkness of each hour of the day. */
@@ -146,6 +151,9 @@ static const uint8_t creature_lightning[CREATURE_INFO_COUNT] = {
 
 Weather g_weather = {.first_init = true};
 int16_t g_light_source_sum, g_explosion_light_sum;
+int g_view_light_level;
+/* The sky objects of the weather, ended by SKY_OBJECT_END. */
+static SkyObject sky_objects[SKY_OBJECT_MAX] = {{.entry = SKY_OBJECT_END}};
 
 static uint16_t map_value(int key)
 {
@@ -156,9 +164,6 @@ static bool sky_has(int entry)
 {
     return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_IMAGE, entry);
 }
-
-/* The sky objects of the weather, ended by SKY_OBJECT_END. */
-static SkyObject sky_objects[SKY_OBJECT_MAX] = {{.entry = SKY_OBJECT_END}};
 
 SkyObject *weather_sky_objects(void)
 {
@@ -194,7 +199,7 @@ static bool load_sky_object(SkyObject *object)
 /* The daylight in % that a window lets in now. */
 static int daylight(void)
 {
-    return light_levels[clamp_int(0, (int16_t)(g_game.heavy_rain + g_weather.hour_light), LIGHT_LEVEL_MAX)];
+    return light_levels[clamp_int(0, g_game.heavy_rain + g_weather.hour_light, LIGHT_LEVEL_MAX)];
 }
 
 static void set_hour_light(void)
@@ -246,7 +251,7 @@ void weather_init(bool keep_state)
 
 void weather_load(const Gdat *g)
 {
-    /* (CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0): the hour of the day at the start of the dungeon */
+    /* (CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), a signed word: the hour of the day at the start of the dungeon */
     int hour = clamp_int(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);
     g_weather.day_time_offset = (uint32_t)hour * HOUR_TICKS;
     weather_init(g_weather.dungeon_loaded);
@@ -264,6 +269,7 @@ static void step_storm(void)
     g_weather.storm_previous = g_game.storm_intensity;
     g_game.storm_intensity = (uint16_t)(g_game.storm_intensity +
                                         g_game.storm_multiplier * storm_curves[g_game.storm_curve][g_game.storm_step]);
+    /* the sum wraps below 0 as a signed word, which clamps to 0 */
     g_game.storm_intensity = (uint16_t)clamp_int(0, (int16_t)g_game.storm_intensity, STORM_MAX);
     schedule_storm_step(rand_below(STORM_RANDOM_SPAN) + STORM_STEP_DELAY);
 }
@@ -341,7 +347,7 @@ static SkyObject *show_lightning(SkyObject *o)
     if ((int16_t)g_game.storm_intensity < STORM_WEAK)
         dun_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
     uint16_t strikes = 0;
-    if (rand_below((uint16_t)(g_game.storm_intensity + 1)) >= STORM_LIGHTNING_HITS) {
+    if (rand_below(g_game.storm_intensity + 1) >= STORM_LIGHTNING_HITS) {
         strikes = (uint16_t)((rand_next() & LIGHTNING_STRIKES_MASK) + 1);
         uint16_t packed = map_value(MAP_KEY_LIGHTNING_TARGET);
         if (packed) {
@@ -349,7 +355,7 @@ static SkyObject *show_lightning(SkyObject *o)
             sensor_schedule_square_event(target.x, target.y, 0, EFFECT_SET, g_game.game_time + 1);
             sndreq_request_with_fallback((SoundCue){CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE,
                                                     SOUND_PRIORITY_EXPLODE,
-                                                    (int16_t)(rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL)},
+                                                    rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL},
                                          SOUND_FALLBACK, target.x, target.y, 1); /* the volume: normal plus 0 to 31 */
         } else {
             while (strikes && !lightning_strike())
@@ -361,8 +367,8 @@ static SkyObject *show_lightning(SkyObject *o)
         o->entry = (uint8_t)(GFX_SKY_LIGHTNING + rand_below(SKY_LIGHTNING_KINDS));
         if (load_sky_object(o)) {
             bolt = true;
-            int percent = (int16_t)rand_below(LIGHTNING_PERCENT);
-            g_hooks.zone_offset(o->zone, (int16_t)(o->zone + 1), percent, &o->dx, &o->dy);
+            int percent = rand_below(LIGHTNING_PERCENT);
+            g_hooks.zone_offset(o->zone, o->zone + 1, percent, &o->dx, &o->dy);
             o->flip = (uint8_t)rand_2bits();
             o++;
         }
@@ -435,8 +441,6 @@ void world_update_day_night(bool storm_step)
     o->entry = SKY_OBJECT_END;
 }
 
-int g_view_light_level;
-
 void light_update_party_light(void)
 {
     int level;
@@ -492,11 +496,6 @@ static uint16_t ornament_light(int category, int ornament, bool *animated_only)
     return v & LIGHT_AMOUNT_MASK;
 }
 
-/* The light that one square gives: window light by the hour, other light, and the light of missiles and explosions. */
-typedef struct {
-    int16_t window, light, missiles;
-} SquareLight;
-
 /* An ornament word of a view square side animates: its frame (the high byte) is not 0. */
 static bool ornament_animated(uint16_t word)
 {
@@ -537,7 +536,7 @@ static void add_missile_light(SquareLight *sum, uint16_t first_thing)
 
 /* The light of a floor ornament and of the things on the square; false when an ornament without light hides the
    other light of the square. */
-static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int x, int y)
+static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int16_t x, int16_t y)
 {
     int ornament = aspect_word_ornament(s->side[SIDE_FLOOR_ORNAMENT]);
     bool animated = ornament_animated(s->side[SIDE_FLOOR_ORNAMENT]);

@@ -43,7 +43,7 @@ decimal engine/sensor.c:ambient_wall_dx rule 3.12: a table of SKULL.EXE
 decimal engine/sensor.c:ambient_wall_dy rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:creature_lightning rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:g_light_power rule 3.12: a table of SKULL.EXE
-decimal engine/weather.c:light_by_hour bridge: task 40
+decimal engine/weather.c:light_by_hour rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_falloff rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
@@ -198,7 +198,6 @@ order data/hmp.c:sections bridge: task 18
 order data/mve_video.c:sections bridge: task 18
 order engine/game.c:sections bridge: task 26
 order engine/sensor.c:sections bridge: task 37
-order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
 order ui/fm.c:sections bridge: task 44
 order ui/minion_map.c:sections bridge: task 46
@@ -299,7 +298,6 @@ type engine/sensor.c:text_schedule_spawn bridge: task 37
 type engine/sensor.c:wall_item bridge: task 37
 type engine/sound_request.c:request_later bridge: task 38
 type engine/timeline.c:fix_queue_slot bridge: task 39
-type engine/weather.c:add_floor_light bridge: task 40
 type platform/scale.c:pixel bridge: task 57
 type ui/automap.c:checker_overlay bridge: task 42
 type ui/automap.c:show_level_square bridge: task 42
