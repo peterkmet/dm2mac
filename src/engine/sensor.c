@@ -1489,7 +1489,7 @@ static int16_t ambient_wall_step(const int16_t table[CELL_COUNT][RECORD_INDEX_HI
 /* The repeating sound of an animated ornament plays while it runs on the party map. */
 static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
 {
-    if (!sensor_flag(thing, SENSOR_BUSY) || (int8_t)timeline_event_map(e) != g_game.party_map) {
+    if (!sensor_flag(thing, SENSOR_BUSY) || timeline_event_map(e) != g_game.party_map) {
         sensor_set_data(thing, sensor_frame(thing));
         return;
     }
