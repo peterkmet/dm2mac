@@ -232,13 +232,13 @@ void inv_update_hand_cursor(void)
 }
 
 /* The thing in the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
-static uint16_t slot_thing(int champ, int slot)
+static uint16_t slot_thing(int champ, int16_t slot)
 {
     return slot < SLOT_COUNT ? champion(champ)->slots[slot] : g_action.open_items[slot - SLOT_CONTAINER_FIRST];
 }
 
 /* Puts thing into the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
-static void set_slot_thing(int champ, int slot, uint16_t thing)
+static void set_slot_thing(int champ, int16_t slot, uint16_t thing)
 {
     if (slot < SLOT_COUNT)
         champion(champ)->slots[slot] = thing;
