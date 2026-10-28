@@ -26,8 +26,9 @@
 #define GFX_OPAQUE (-1)
 
 /* Scale factor of 100 % in 1/64, and the colors of a remap table. */
-#define SCALE_FULL   64
-#define REMAP_COLORS 256
+#define SCALE_FULL       64
+#define SCALE_FULL_SHIFT 6 /* SCALE_FULL = 1 << SCALE_FULL_SHIFT */
+#define REMAP_COLORS     256
 
 /* A bitmap of palette indices: 8 bpp, or 4 bpp with two pixels per byte, high nibble first, and rows of an even pixel count. */
 typedef struct {

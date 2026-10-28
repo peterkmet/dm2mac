@@ -289,7 +289,7 @@ void gfx_fill_bitmap(Bitmap *target, int color)
 
 int16_t gfx_scale_64(int16_t value, int16_t scale)
 {
-    return (int16_t)((value * scale + (scale >> 1)) >> DIM_SHIFT);
+    return (int16_t)((value * scale + (scale >> 1)) >> SCALE_FULL_SHIFT);
 }
 
 /* Color ramps and dimming */
