@@ -286,7 +286,7 @@ static void show_level_square(Offscreen *o, const int16_t *clip, Location level_
 void automap_draw(Offscreen *o, const int16_t *clip)
 {
     offscreen_fill_rect(o, clip, g_ui_colors[UI_BLACK]);
-    if (g_game.party_map < 0 || g_game.party_map >= dungeon_map_count())
+    if (g_game.party_map >= dungeon_map_count())
         return;
     Location middle = middle_square();
     int16_t rect[RECT_SIZE];
@@ -305,7 +305,7 @@ void automap_draw(Offscreen *o, const int16_t *clip)
 
 void automap_scroll(int dx, int dy)
 {
-    if (g_game.party_map < 0 || g_game.party_map >= dungeon_map_count())
+    if (g_game.party_map >= dungeon_map_count())
         return;
     Location middle = middle_square();
     int16_t rect[RECT_SIZE];
