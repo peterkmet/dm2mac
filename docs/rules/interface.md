@@ -47,3 +47,4 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 - Kept quirks of the original:
   - the action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`)
   - the minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dun_set_current_map`, which also sets `g_party.square_x`, `square_y`, `square_map`, and `ref_dir` again
+  - a wall square of the minion map shows also the wall ornaments and the things of the first other map of the level that has a wall on the same square; the search leaves the square on that map, and `show_square` (`src/ui/minion_map.c`) switches the current map to it and back

@@ -504,7 +504,7 @@ static void show_pit_above(const Strip *base, const MapSquare *at)
 {
     Position above = dungeon_location_on_map((Position){g_party.cur_map, at->sx, at->sy}, LEVEL_UP);
     if (above.map < 0 || !inside_map(above))
-        return; /* fix: as above, no read outside the map */
+        return; /* fix: no read outside the map one level up */
     uint8_t square = dungeon_square(above.map, above.x, above.y);
     if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN)
         show_icon(at, base, ICON_PIT_ABOVE, 0);
@@ -533,7 +533,7 @@ static void show_square(const MapSquare *at, int icon_set)
             break;
         saved.x = sq.sx;
         saved.y = sq.sy;
-        /* a wall square: another map of the level may show a wall there; like the original, the search leaves
+        /* a wall square: another map of the level may show a wall there; as in the original, the search leaves
            (sx, sy) on the map that it found */
         int next = 0;
         Position found = {g_party.cur_map, sq.sx, sq.sy};
