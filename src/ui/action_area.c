@@ -668,7 +668,7 @@ static void show_hand_panel(void)
 static bool show_open_panel(bool full, bool party_changed, bool tick)
 {
     if (g_action.redraw_delay || full || party_changed || (g_action.mode == ACTION_MODE_MINION_MAP && tick)) {
-        if (g_action.redraw_delay > 1) {
+        if (g_action.redraw_delay > ACTION_REDRAW_NEXT) {
             g_action.redraw_delay--;
             return false;
         }
@@ -801,7 +801,7 @@ static void redraw_changes(bool tick)
     if (g_action.champion >= 0)
         party_changed = party_icons_changed();
     if (g_action.dirty) {
-        if (g_action.redraw_delay > 1) {
+        if (g_action.redraw_delay > ACTION_REDRAW_NEXT) {
             g_action.redraw_delay--;
             return;
         }

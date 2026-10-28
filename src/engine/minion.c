@@ -41,7 +41,7 @@ void minion_map_drain_mana(void)
     if (!(g_action.flags & MAP_POWERED)) {
         if (c->mana) {
             /* the champion has mana again: the map opens anew */
-            g_action.redraw_delay = 1;
+            g_action.redraw_delay = ACTION_REDRAW_NEXT;
             g_action.flags = 0;
         }
         return;
@@ -49,7 +49,7 @@ void minion_map_drain_mana(void)
     if (--g_minion_map.mana_timer)
         return;
     if (!c->mana) {
-        g_action.redraw_delay = 1;
+        g_action.redraw_delay = ACTION_REDRAW_NEXT;
         g_action.flags = 0;
         return;
     }

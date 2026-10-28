@@ -470,7 +470,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
 static void show_failure(int result, int counter)
 {
     int16_t count = (int16_t)game_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
-    g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
+    g_action.redraw_delay = (int16_t)max_int(ACTION_REDRAW_NEXT, (int16_t)(RESULT_DELAY_BASE - count));
     g_action.result = (int16_t)result;
 }
 

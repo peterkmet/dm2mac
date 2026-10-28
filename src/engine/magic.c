@@ -708,7 +708,7 @@ void magic_add_rune(int rune)
         c->rune_count = (uint8_t)(n + 1);
         runes[n + 1] = 0;
     }
-    g_action.redraw_delay = 1;
+    g_action.redraw_delay = ACTION_REDRAW_NEXT;
     g_hooks.update_action_area(false);
     g_hooks.refresh_input_mode();
     if (added)
@@ -720,7 +720,7 @@ void magic_remove_last_rune(void)
     Champion *c = champion(g_action.champion - 1);
     c->rune_count--;
     runes_of(c)[c->rune_count] = 0;
-    g_action.redraw_delay = 1;
+    g_action.redraw_delay = ACTION_REDRAW_NEXT;
     g_hooks.update_action_area(false);
     g_hooks.refresh_input_mode();
 }
