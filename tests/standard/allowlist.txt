@@ -234,8 +234,6 @@ type engine/ai.c:find_floor_sensor bridge: task 20
 type engine/ai.c:has_possession bridge: task 20
 type engine/ai.c:melee_attack_party bridge: task 20
 type engine/ai.c:set_destination bridge: task 20
-type engine/ai_move.c:line_slope bridge: task 21
-type engine/ai_move.c:search_cell bridge: task 21
 type engine/champion_inventory.c:set_slot_thing bridge: task 28
 type engine/champion_inventory.c:slot_thing bridge: task 28
 type engine/creature.c:alert_anger bridge: task 24

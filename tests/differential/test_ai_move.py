@@ -167,20 +167,23 @@ class Ai:
         lib.ai_scratch_push.restype = ctypes.c_void_p
         lib.dun_set_current_map.argtypes = [ctypes.c_int16]
         lib.ai_trace_line.argtypes = [Location, Location, ctypes.c_void_p]
+        lib.ai_trace_line.restype = ctypes.c_int16
         for name in LOCATION_ARGS:
             getattr(lib, name).argtypes = [Location]
-        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]
+        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int16, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]
         lib.ai_find_target_in_lines.restype = AiLineTarget
         lib.ai_search_area.argtypes = [Location] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
         for name in SQUARE_ARGS:
             test = AiMoveTest if name == "ai_try_move" else AiTest
-            getattr(lib, name).argtypes = [test, Location, Location, ctypes.c_int16] + [ctypes.c_int] * (
+            getattr(lib, name).argtypes = [test, Location, Location, ctypes.c_int16] + [ctypes.c_int16] * (
                 1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
             getattr(lib, name).restype = AiCommand
         lib.ai_turn_toward.restype = AiCommand
         lib.ai_thing_matches_filter.restype = ctypes.c_bool
-        lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int16]
-        lib.ai_count_matching_items.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int16] + [ctypes.c_bool] * 2
+        for name in ("ai_find_marker", "ai_find_marker_by_id"):
+            getattr(lib, name).restype = ctypes.c_int16
+        lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int16, ctypes.c_int16]
+        lib.ai_count_matching_items.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16] + [ctypes.c_bool] * 2
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
         ctypes.c_uint8.from_address(self.ai + AI_ACTIVE_FLAG_C).value = 0

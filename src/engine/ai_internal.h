@@ -111,7 +111,7 @@ uint8_t *ai_find_path(void);
 bool ai_square_is_obstacle(Location at);
 /* Walks the squares of the line from target toward viewer: the square distance of the ends (1 for adjacent
    squares), 0 when blocked() stops it. */
-int ai_trace_line(Location viewer, Location target, bool (*blocked)(Location at));
+int16_t ai_trace_line(Location viewer, Location target, bool (*blocked)(Location at));
 /* Makes the square at of the current map the square that the AI reads; keeps the cache when it is the same square. */
 void ai_cache_square(Location at);
 /* Turns the group toward dir (action turn left or right); not passed when it already faces dir. */
@@ -120,12 +120,12 @@ AiCommand ai_turn_toward(int16_t dir);
 bool ai_projectile_incoming(Location at);
 /* Removes and frees the items of filter from a thing list (cell CELL_ANY: any cell); the matching items inside a
    chest go too, and a matching chest gives its other contents to the list. */
-void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell);
+void ai_remove_matching_items(uint16_t *list_head, int16_t filter, int16_t cell);
 /* The number of items of filter in a thing list (cell CELL_ANY: any cell), with the possessions of groups and the
    contents of chests on request. */
-int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, bool into_groups, bool into_containers);
+int ai_count_matching_items(int16_t filter, uint16_t first_thing, int16_t cell, bool into_groups, bool into_containers);
 /* The AI marker text on the square in the AI cache for the level delta with kind id: its id, -1 none. */
-int ai_find_marker_by_id(int level_delta, int id);
+int16_t ai_find_marker_by_id(int16_t level_delta, int16_t id);
 /* The direction of the next step of the stored path into the action; returns the steps left (0: none). A group
    at the end of its path forgets the found square. */
 int ai_next_path_step(void);
@@ -139,7 +139,7 @@ bool ai_plan_path(void);
    ranged attack a wall ornament that is a shooting target; then tests the attack from the farthest square of the
    line that the search reached no later. distance_map: the map of the search (4 bytes per square, 32 squares per
    column). It is exported for the tests. */
-AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, Location from, int16_t dir, bool ranged);
+AiLineTarget ai_find_target_in_lines(int16_t filter, uint8_t *distance_map, Location from, int16_t dir, bool ranged);
 /* Tests (and with test.execute starts) an attack (ATTACK_MODE_*) from the square from on the square to
    (AI_SQUARE_IN_DIR: the square in dir). */
 AiCommand ai_try_attack(AiTest test, Location from, Location to, int16_t dir);
@@ -154,10 +154,10 @@ AiMoveTest ai_move_test(int command);
 AiCommand ai_try_move(AiMoveTest test, Location from, Location to, int16_t dir);
 /* Tests (and with test.execute starts) taking or giving (ITEM_MODE_*) an item of filter on the square to
    (AI_SQUARE_IN_DIR: the square in dir): from the floor, an alcove, a chest, or a group. */
-AiCommand ai_try_take_item(AiTest test, Location from, Location to, int16_t dir, int filter);
+AiCommand ai_try_take_item(AiTest test, Location from, Location to, int16_t dir, int16_t filter);
 /* Tests (and with test.execute starts) the use of a wall actuator on the square to (AI_SQUARE_IN_DIR: the square in
    dir) from the slot of the creature type on that wall face. */
-AiCommand ai_try_use_wall_actuator(AiTest test, Location from, Location to, int16_t dir, int filter);
+AiCommand ai_try_use_wall_actuator(AiTest test, Location from, Location to, int16_t dir, int16_t filter);
 /* The breadth-first search from the square from with the move command: the nearest of count candidates; returns its index,
    -1 for none. out_path gets the steps to it (2 bytes each). */
 int ai_search_area(Location from, int command, int count, AiCandidate *candidates, uint8_t *out_path);

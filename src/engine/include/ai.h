@@ -205,23 +205,23 @@ uint16_t ai_cached_first_object(void);
 uint16_t ai_cached_first_group(void);
 /* An item of filter inside a chest or in the possessions of a group that the creature may take from: the cell of the
    chest or of the possession, cell -1 for none; exported for the tests. */
-AiInsideItem ai_find_matching_item_inside(uint16_t thing, int filter, int side);
+AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int side);
 /* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
    actuator of the cell; THING_NONE for none; exported for the tests. */
-uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int filter);
+uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int16_t mode, int16_t filter);
 /* True when the wall actuator reacts to the creature in mode (ACTUATOR_MODE_*) with an item of filter; state: the
    state bits of the creature slot; exported for the tests. */
-bool ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, uint16_t state);
+bool ai_wall_actuator_accepts(uint16_t actuator, int16_t mode, int16_t filter, uint16_t state);
 
 /* True when thing belongs to the item filter of the group in the AI context: classes of items, creatures, and wall
    actuators that the creature text lists, or money boxes. */
-bool ai_thing_matches_filter(uint16_t thing, int filter);
+bool ai_thing_matches_filter(uint16_t thing, int16_t filter);
 /* The first item of filter in a thing list (cell CELL_ANY: any cell), THING_ENDOFLIST for none. */
-uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int16_t cell);
+uint16_t ai_find_matching_item(int16_t filter, uint16_t first_thing, int16_t cell);
 
 /* The AI marker text on the square in the AI cache for the level delta (1: also the markers of level 2 with bit 0)
    whose kind is in id_mask: its id (0 to 31), -1 none; exported for the tests. */
-int ai_find_marker(int level_delta, uint16_t id_mask);
+int16_t ai_find_marker(int16_t level_delta, uint16_t id_mask);
 /* Points g_ai.cached_path to the stored path of the group; a lost path clears the path state.
    It is exported for the tests. */
 void ai_load_cached_path(void);
