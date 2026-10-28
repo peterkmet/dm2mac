@@ -41,6 +41,12 @@
 /* The most significant bit of a byte: the bit stream stores it first. */
 #define BYTE_TOP_BIT (BYTE_BIT_COUNT - 1)
 
+/* Byte offsets in a stored timeline event. */
+#define EVENT_TIME_MAP_AT 0
+#define EVENT_TYPE_AT     4
+#define EVENT_PRIORITY_AT 5
+#define EVENT_DATA_AT     6
+
 /* Byte offsets in a champion record. */
 #define CHAMPION_SLOTS        0xc3 /* 30 thing words: hands, body, pouches, quiver, backpack */
 #define CHAMPION_DAMAGE_EVENT 0x2e /* the timeline event that ends the damage display */
@@ -582,7 +588,63 @@ static void unpack_game_record(const uint8_t *r)
     g_game.next_hour_time = le32(r + REC_NEXT_HOUR_TIME);
 }
 
-/* The global words and the timeline events are stored in host order; the host is little-endian like the save file. */
+/* Writes the global words as little-endian words. */
+static bool write_global_words(void)
+{
+    uint8_t word[PACKED_WORD_BYTES];
+    for (int i = 0; i < GLOBAL_WORD_COUNT; i++) {
+        put_le16(word, g_game.global_words[i]);
+        if (!write_packed(word, all_bits, PACKED_WORD_BYTES, 1))
+            return false;
+    }
+    return true;
+}
+
+/* Reads the global words as little-endian words. */
+static bool read_global_words(void)
+{
+    uint8_t word[PACKED_WORD_BYTES];
+    for (int i = 0; i < GLOBAL_WORD_COUNT; i++) {
+        if (!read_packed(word, all_bits, PACKED_WORD_BYTES, 1, false))
+            return false;
+        g_game.global_words[i] = le16(word);
+    }
+    return true;
+}
+
+/* Writes the first count timeline events in the 12-byte little-endian layout of SKULL.EXE. */
+static bool write_events(int count)
+{
+    uint8_t record[TIMELINE_EVENT_SIZE];
+    for (int i = 0; i < count; i++) {
+        const TimelineEvent *e = &g_timeline.events[i];
+        put_le32(record + EVENT_TIME_MAP_AT, e->time_map);
+        record[EVENT_TYPE_AT] = e->type;
+        record[EVENT_PRIORITY_AT] = e->priority;
+        memcpy(record + EVENT_DATA_AT, e->data, TIMELINE_EVENT_DATA_SIZE);
+        if (!write_packed(record, event_mask, TIMELINE_EVENT_SIZE, 1))
+            return false;
+    }
+    return true;
+}
+
+/* Reads the first count timeline events from the 12-byte little-endian layout of SKULL.EXE. */
+static bool read_events(int count)
+{
+    uint8_t record[TIMELINE_EVENT_SIZE];
+    for (int i = 0; i < count; i++) {
+        TimelineEvent *e = &g_timeline.events[i];
+        if (!read_packed(record, event_mask, TIMELINE_EVENT_SIZE, 1, false))
+            return false;
+        e->time_map = le32(record + EVENT_TIME_MAP_AT);
+        e->type = record[EVENT_TYPE_AT];
+        e->priority = record[EVENT_PRIORITY_AT];
+        memcpy(e->data, record + EVENT_DATA_AT, TIMELINE_EVENT_DATA_SIZE);
+    }
+    return true;
+}
+
+/* Writes the game record, the global variables, the champions, the timeline, and the things. */
 static bool write_state(void)
 {
     uint8_t record[GAME_RECORD_SIZE];
@@ -591,11 +653,9 @@ static bool write_state(void)
     pack_game_record(record);
     if (!write_packed(record, game_record_mask, GAME_RECORD_SIZE, 1) ||
         !write_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES) ||
-        !write_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT) ||
-        !write_packed((const uint8_t *)g_game.global_words, all_bits, PACKED_WORD_BYTES, GLOBAL_WORD_COUNT) ||
+        !write_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT) || !write_global_words() ||
         !write_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count) ||
-        !write_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) ||
-        !write_packed((const uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count))
+        !write_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) || !write_events(g_timeline.count))
         return false;
     for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
@@ -907,11 +967,10 @@ static bool read_state(void)
         return false;
     memset(g_game.champions, 0, sizeof g_game.champions);
     if (!read_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES, false) ||
-        !read_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, false) ||
-        !read_packed((uint8_t *)g_game.global_words, all_bits, PACKED_WORD_BYTES, GLOBAL_WORD_COUNT, false) ||
+        !read_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, false) || !read_global_words() ||
         !read_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count, false) ||
         !read_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, false) ||
-        !read_packed((uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count, false))
+        !read_events(g_timeline.count))
         return false;
     for (int i = g_timeline.count; i < g_timeline.capacity; i++)
         g_timeline.events[i].type = EVENT_NONE;
