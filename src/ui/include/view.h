@@ -152,9 +152,18 @@ extern int16_t g_view_hit_offset_y; /* exported for the tests */
 bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side);
 /* True when the ornament of the wall at view position pos (0 to 3) shows a pixel at (x, y) of the viewport. */
 bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y);
-/* The object of a click among the objects in the cell of thing (the cell bits); a chest opens or closes. placing:
-   thing is the leader hand object that goes there. Returns the object, THING_NONE when the click is done (a chest
-   changed, or thing went into an open chest), THING_ENDOFLIST when thing must drop; thing when nothing is hit. */
-uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing);
+/* The outcome of a click on the objects of a square cell. */
+enum ObjectClick {
+    OBJECT_CLICK_HIT,  /* thing: the object that the click hits, or the click thing when it hits no object */
+    OBJECT_CLICK_DONE, /* a chest opened or closed, took the click thing, or gave its last item to the leader */
+    OBJECT_CLICK_DROP  /* the click thing must drop into the cell */
+};
+typedef struct {
+    enum ObjectClick kind;
+    uint16_t thing; /* OBJECT_CLICK_HIT only, else THING_NONE */
+} ObjectClickResult;
+/* The outcome of a click among the objects in the cell of thing (the cell bits); a chest opens or closes. placing:
+   thing is the leader hand object that goes there. */
+ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing);
 
 #endif /* DM2_UI_VIEW_H */

@@ -2052,11 +2052,11 @@ static void click_take_object(int x, int y, int index)
         sx += g_dir_dx[g_game.party_dir];
         sy += g_dir_dy[g_game.party_dir];
     }
-    uint16_t thing = view_hit_test_object(&(ViewObjectClick){x, y, z->cell, sx, sy, z->kind}, z->thing, false);
-    if (thing != THING_NONE) {
-        move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
-        clear_moneybox_placed(thing);
-        champ_put_in_leader_hand(thing);
+    ObjectClickResult hit = view_hit_test_object(&(ViewObjectClick){x, y, z->cell, sx, sy, z->kind}, z->thing, false);
+    if (hit.kind == OBJECT_CLICK_HIT) {
+        move_thing(hit.thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
+        clear_moneybox_placed(hit.thing);
+        champ_put_in_leader_hand(hit.thing);
     }
     game_set_command_stop(true);
 }
@@ -2111,12 +2111,12 @@ static bool click_drop_object(int x, int y, int cell)
 static bool click_place_object(int x, int y, ViewCell at)
 {
     uint16_t hand = thing_with_cell(g_game.leader_hand, dir_turn(g_game.party_dir, at.cell));
-    uint16_t hit = view_hit_test_object(&(ViewObjectClick){x, y, at.pos, at.x, at.y, at.kind}, hand, true);
-    if (hit == THING_NONE) {
+    ObjectClickResult hit = view_hit_test_object(&(ViewObjectClick){x, y, at.pos, at.x, at.y, at.kind}, hand, true);
+    if (hit.kind == OBJECT_CLICK_DONE) {
         champ_take_from_leader_hand();
         return true;
     }
-    if (hit == THING_ENDOFLIST)
+    if (hit.kind == OBJECT_CLICK_DROP)
         return click_drop_object(at.x, at.y, at.kind == CLICK_POSSESSIONS ? at.cell + CELL_POSSESSION_FIRST : at.cell);
     return false;
 }

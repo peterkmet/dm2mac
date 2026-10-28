@@ -3625,15 +3625,16 @@ bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y)
 #define ATTR_SLOTS_NO_CONTAINER 0x8000
 
 /* A click on a chest in the view that hit_state tells: it opens or closes, takes thing (placing), or gives its last
-   item to the leader hand. Returns hit, THING_NONE when done, THING_ENDOFLIST when thing must drop. */
-static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_t thing, bool placing)
+   item to the leader hand. hit: the object that the click hits. */
+static ObjectClickResult chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_t thing, bool placing)
 {
+    const ObjectClickResult drop = {OBJECT_CLICK_DROP, THING_NONE};
     switch (hit_state) {
     case CHEST_HIT_NONE:
         if (placing)
-            return THING_ENDOFLIST;
+            return drop;
         if (!container_is_open(chest))
-            return hit;
+            return (ObjectClickResult){OBJECT_CLICK_HIT, hit};
         container_set_open(chest, false);
         break;
     case CHEST_HIT_OPEN:
@@ -3641,7 +3642,7 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
         break;
     case CHEST_HIT_INSIDE: {
         if (placing && item_attr(thing, ATTR_SLOTS) & ATTR_SLOTS_NO_CONTAINER)
-            return THING_ENDOFLIST;
+            return drop;
         uint16_t *contents = container_contents(chest);
         uint16_t last = *contents;
         int count = 0;
@@ -3649,7 +3650,7 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
             last = c;
         if (placing) {
             if (count >= CHEST_CAPACITY)
-                return THING_ENDOFLIST;
+                return drop;
             dungeon_append_thing(thing, contents);
         } else if (count > 0) {
             dungeon_unlink_thing_from_list(last, contents);
@@ -3658,10 +3659,10 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
         break;
     }
     }
-    return THING_NONE;
+    return (ObjectClickResult){OBJECT_CLICK_DONE, THING_NONE};
 }
 
-uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing)
+ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool placing)
 {
     uint16_t group = THING_NONE, t;
     if (click->kind == CLICK_POSSESSIONS) {
@@ -3671,7 +3672,8 @@ uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool
         t = dungeon_square_first_thing(g_party.cur_map, click->square_x, click->square_y);
     }
     if (t == THING_ENDOFLIST)
-        return placing ? thing : THING_NONE;
+        return placing ? (ObjectClickResult){OBJECT_CLICK_HIT, thing}
+                       : (ObjectClickResult){OBJECT_CLICK_DONE, THING_NONE};
     int spot = click->kind == CLICK_ALCOVE ? ALCOVE_FIRST_SPOT : 0;
     uint16_t hit = THING_NONE;
     uint16_t chest = THING_NONE;
@@ -3714,6 +3716,6 @@ uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool
     }
     draw_free_temp();
     if (chest == THING_NONE)
-        return hit != THING_NONE ? hit : thing;
+        return (ObjectClickResult){OBJECT_CLICK_HIT, hit != THING_NONE ? hit : thing};
     return chest_click(chest, hit, hit_state, thing, placing);
 }
