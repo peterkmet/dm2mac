@@ -3566,9 +3566,9 @@ static bool hit_test_picture(int x, int y, int key)
 #define HIT_SIDE_LIMIT 75 /* percent of the half picture width: a click beyond it hits a side */
 #define HIT_DEPTH      1  /* the depth at which the creature in front is drawn for a hit test */
 
-bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side)
+bool view_hit_test_creature(int16_t x, int16_t y, Location at, int *out_side)
 {
-    uint16_t group = creature_get_group_at(square_x, square_y);
+    uint16_t group = creature_get_group_at(at.x, at.y);
     if (group == THING_NONE)
         return false;
     show_creature(POS_FRONT, HIT_DEPTH, group);
@@ -3665,10 +3665,10 @@ uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool
 {
     uint16_t group = THING_NONE, t;
     if (click->kind == CLICK_POSSESSIONS) {
-        group = creature_group_at(g_party.cur_map, click->square_x, click->square_y);
+        group = creature_group_at(g_party.cur_map, click->at.x, click->at.y);
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
-        t = dungeon_square_first_thing(g_party.cur_map, click->square_x, click->square_y);
+        t = dungeon_square_first_thing(g_party.cur_map, click->at.x, click->at.y);
     }
     if (t == THING_ENDOFLIST)
         return placing ? thing : THING_NONE;
