@@ -94,7 +94,7 @@
 /* Each movement arrow has a normal and a pressed picture. */
 #define ARROW_PICTURES 2
 
-/* A gauge bar without a split fill (UI color 0), as in the original. */
+/* The split color of a gauge bar without a split fill (the original passes 0). */
 #define GAUGE_NO_SPLIT 0
 
 /* The highest skill level that the skills panel names. */
@@ -572,7 +572,7 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
         int16_t h = ctx->h;
         if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h))
             return;
-        /* like the original, the clipped part goes into the size of the picture part, not its position */
+        /* as in the original, the clipped part goes into the size of the picture part, not its position */
         ctx->w = (int16_t)(ctx->w + w);
         ctx->h = (int16_t)(ctx->h + h);
     }
@@ -590,7 +590,7 @@ void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors color
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(x - o->rect[RECT_X]), (int16_t)(y - o->rect[RECT_Y]), colors, text);
-    /* like the original, the changed rect starts at the base line */
+    /* as in the original, the changed rect starts at the base line */
     const int16_t r[RECT_SIZE] = {[RECT_X] = x, [RECT_Y] = y, [RECT_W] = size.w, [RECT_H] = size.h};
     add_dirty_rect(o, r);
 }
@@ -971,6 +971,7 @@ static void show_description(const char *text)
                 *brk = '\0';
                 next = brk + 1;
             } else {
+                /* fix: a word without a space breaks at the line width; the original scans before the buffer */
                 next = line + DESCRIPTION_LINE;
                 char kept = *next;
                 *next = '\0';
@@ -1086,7 +1087,7 @@ static void show_object_gauge(int zone, int value, int high, uint8_t glyph, int 
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + GAUGE_MARK_INSET), y,
                           (TextColors){g_ui_colors[UI_WHITE], bg}, s);
     s[0] = GLYPH_GAUGE_RIGHT;
-    /* as in the original, the font glyph height places the right end mark */
+    /* the original places the right end mark by the font glyph height */
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] + r[RECT_W] - 1 - FONT_GLYPH_HEIGHT - 1), y,
                           (TextColors){g_ui_colors[UI_WHITE], bg}, s);
 }
