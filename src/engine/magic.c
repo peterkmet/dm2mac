@@ -135,9 +135,8 @@
 #define FAILURE_DELAY_BASE        8
 #define FLASK_DELAY_MIN           3
 
-/* The party of an aura cast, and the cast result mask of the base skill. */
-#define AURA_PARTY      0x0f
-#define CAST_SKILL_MASK 0x0f /* the base skill in a cast result */
+/* The party of an aura cast. */
+#define AURA_PARTY 0x0f
 
 /* The item that the item spell creates: GDAT value (0x0d, 0x0f, 0x0b, 0x42). */
 #define SPELL_ITEM_INDEX 0x0f
@@ -552,13 +551,6 @@ static void cast_other(Champion *c, int type, int skill, int power)
     }
 }
 
-/* The cast result of a failure kind: the kind with the base skill of the spell. */
-static int cast_failure(int kind, const Spell *spell)
-{
-    int skill = spell->skill;
-    return kind | champ_base_skill(skill);
-}
-
 /* The hand (1, then 0) that holds an empty flask, -1 none. */
 static int find_flask_in_hands(const Champion *c)
 {
@@ -578,8 +570,8 @@ static int spell_delay(const Spell *spell, int power)
 }
 
 /* The effect of a spell that champion champ casts with power and skill: a potion in a flask, a missile, another
-   spell, or a summon. Returns the cast result: 0, or the failure without an empty flask for a potion. */
-static int cast_effect(int champ, const Spell *spell, int power, int skill)
+   spell, or a summon. Returns the cast result: CAST_NEEDS_FLASK for a potion without an empty flask. */
+static CastResult cast_effect(int champ, const Spell *spell, int power, int skill)
 {
     Champion *c = champion(champ);
     int type = spell_type(spell);
@@ -587,7 +579,7 @@ static int cast_effect(int champ, const Spell *spell, int power, int skill)
     case SPELL_POTION: {
         int hand = find_flask_in_hands(c);
         if (hand < 0)
-            return cast_failure(CAST_NEEDS_FLASK, spell);
+            return CAST_NEEDS_FLASK;
         uint16_t flask = champ_remove_object_from_slot(champ, hand);
         item_set_gdat_index(flask, type);
         potion_set_power(flask, (unsigned)(power * POTION_POWER_PER_POWER + (int)(rand_next() & POTION_ROLL_MASK)));
@@ -609,10 +601,10 @@ static int cast_effect(int champ, const Spell *spell, int power, int skill)
         cast_summon(type, skill, power);
         break;
     }
-    return 0;
+    return CAST_OK;
 }
 
-int magic_cast_spell(int champ, const Spell *spell, int power)
+CastResult magic_cast_spell(int champ, const Spell *spell, int power)
 {
     Champion *c = champion(champ);
     int delay = spell_delay(spell, power);
@@ -625,40 +617,40 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
         int roll = (int)(rand_next() & CAST_ROLL_MASK);
         if (min_int(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
             champ_add_experience(champ, spell->skill, experience >> ((level - skill) & BIT_INDEX_MASK));
-            return cast_failure(CAST_FAILED, spell);
+            return CAST_FAILED;
         }
     }
-    int result = cast_effect(champ, spell, power, skill);
-    if (result)
+    CastResult result = cast_effect(champ, spell, power, skill);
+    if (result != CAST_OK)
         return result;
     if ((int16_t)delay) {
         champ_add_experience(champ, spell->skill, experience);
         champ_add_action_delay(champ, (uint16_t)delay, ACTION_SPELL);
     }
-    return 0;
+    return CAST_OK;
 }
 
-int magic_cast_cheat_spell(int champ, const Spell *spell)
+CastResult magic_cast_cheat_spell(int champ, const Spell *spell)
 {
     if (!champion(champ)->health)
-        return cast_failure(CAST_FAILED, spell);
+        return CAST_FAILED;
     uint8_t power_rune = magic_get_spell_rune(spell, 0);
     int power = power_rune ? power_rune - POWER_RUNE_BASE : POWER_MON;
-    int result = cast_effect(champ, spell, power, champ_get_skill_level(champ, spell->skill, 1));
+    CastResult result = cast_effect(champ, spell, power, champ_get_skill_level(champ, spell->skill, 1));
     int delay = spell_delay(spell, power);
-    if (!result && (int16_t)delay)
+    if (result == CAST_OK && (int16_t)delay)
         champ_add_action_delay(champ, (uint16_t)delay, ACTION_SPELL);
     return result;
 }
 
-/* Shows why a cast failed (CAST_*) and counts it in the global variables. */
-static void report_cast_failure(int result)
+/* Shows why a cast of spell failed and counts it in the global variables; spell is NULL for CAST_UNKNOWN_SPELL. */
+static void report_cast_failure(CastResult result, const Spell *spell)
 {
     int min_delay = 1, var;
-    switch (result & CAST_KIND_MASK) {
+    switch (result) {
     case CAST_FAILED:
         g_action.result =
-            (int16_t)((result & CAST_SKILL_MASK) == SKILL_WIZARD ? RESULT_WIZARD_FAILED : RESULT_PRIEST_FAILED);
+            (int16_t)(champ_base_skill(spell->skill) == SKILL_WIZARD ? RESULT_WIZARD_FAILED : RESULT_PRIEST_FAILED);
         var = GLOBAL_SPELL_FAILED;
         break;
     case CAST_UNKNOWN_SPELL:
@@ -670,7 +662,7 @@ static void report_cast_failure(int result)
         var = GLOBAL_FLASK_MISSING;
         min_delay = FLASK_DELAY_MIN;
         break;
-    default:
+    case CAST_OK:
         return;
     }
     int count = dun_modify_global_var(var, 1, GLOBAL_VAR_ADD);
@@ -683,15 +675,15 @@ bool magic_cast_entered_runes(void)
     Champion *c = champion(champ);
     uint8_t *runes = runes_of(c);
     const Spell *spell = magic_find_spell(runes);
-    int result = spell ? magic_cast_spell(champ, spell, (int16_t)(runes[0] - POWER_RUNE_BASE)) : CAST_UNKNOWN_SPELL;
-    if (result)
-        report_cast_failure(result);
-    if ((result & CAST_KIND_MASK) != CAST_NEEDS_FLASK) {
+    CastResult result =
+        spell ? magic_cast_spell(champ, spell, (int16_t)(runes[0] - POWER_RUNE_BASE)) : CAST_UNKNOWN_SPELL;
+    report_cast_failure(result, spell);
+    if (result != CAST_NEEDS_FLASK) {
         runes[0] = 0;
         c->rune_count = 0;
         action_area_close();
     }
-    return result != 0;
+    return result != CAST_OK;
 }
 
 uint16_t magic_rune_mana_cost(int champ, int rune)
