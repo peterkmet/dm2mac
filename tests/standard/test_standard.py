@@ -20,8 +20,6 @@ TESTS = ROOT / "tests"
 ALLOWLIST = Path(__file__).with_name("allowlist.txt")
 LAYERS = ["data", "engine", "ui", "control", "platform"]
 MAX_FUNCTION_LINES = 60
-# removed by Task 60 of the review follow-up
-BRIDGE_REASON = re.compile(r"^bridge: task \d+$")
 EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
 
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
@@ -780,7 +778,7 @@ def test_allowlist_names_documented_reasons():
             continue
         check, target, reason = line.split(maxsplit=2)
         rule = re.match(r"rule (\d+\.\d+): \S", reason)
-        if not (rule and rule.group(1) in EXCEPTION_RULES) and not BRIDGE_REASON.match(reason):
+        if not (rule and rule.group(1) in EXCEPTION_RULES):
             found.append(f"allowlist {check}:{target}  | {number}: {reason}")
     report("allowlist", found)
 
