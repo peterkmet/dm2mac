@@ -50,10 +50,14 @@
 /* The arguments that a RESTART adds: --mode and its value. */
 #define MODE_OPTION_ARGS 2
 
+/* The start of each command line option. */
+#define OPTION_PREFIX "--"
+
 /* The timer ticks of the main loops. */
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
-/* The environment variable and the files of the program. */
+/* The environment variables and the files of the program. */
+#define FILTER_ENV  "DM2_FILTER"    /* the filter when --filter is not given */
 #define RESTART_ENV "DM2_RESTARTED" /* set for the program that a RESTART starts: the launcher plays no start movies */
 #define LOG_FILE    "dm2.log"       /* the messages of the Windows build, in the game folder */
 
@@ -436,7 +440,7 @@ static const char *read_options(int argc, char **argv, Options *options, const c
             *names[n].value = argv[++i];
             known = true;
         }
-        if (!known && !*unknown && !strncmp(argv[i], "--", 2))
+        if (!known && !*unknown && !strncmp(argv[i], OPTION_PREFIX, strlen(OPTION_PREFIX)))
             *unknown = argv[i];
     }
     return NULL;
@@ -633,7 +637,7 @@ static bool open_game(const Options *options, int factor)
 
 int main(int argc, char **argv)
 {
-    Options options = {.data = "game", .filter = SDL_getenv("DM2_FILTER")};
+    Options options = {.data = "game", .filter = getenv(FILTER_ENV)};
     const char *unknown;
     const char *missing = read_options(argc, argv, &options, &unknown);
     bool mode_given = options.mode != NULL;
