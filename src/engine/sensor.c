@@ -336,13 +336,12 @@ static void fall_risk(uint16_t text, int16_t x, int16_t y, bool on_square)
     for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
         if (c->health)
-            load = (int16_t)(load + (uint16_t)champ_get_load(i) / (int)((uint16_t)champ_get_max_load(c) >> 1));
+            load += champ_get_load(i) / (champ_get_max_load(c) >> 1);
     }
-    int chance =
-        (int16_t)(load * FALL_LOAD_FACTOR + (textrec_is_visible(text) ? FALL_CHANCE_SHOWN : FALL_CHANCE_HIDDEN));
+    int chance = load * FALL_LOAD_FACTOR + (textrec_is_visible(text) ? FALL_CHANCE_SHOWN : FALL_CHANCE_HIDDEN);
     if (chance > FALL_CHANCE_MAX)
         chance = FALL_CHANCE_MAX;
-    if (!on_square && (int)rand_below(PERCENT) < chance) {
+    if (!on_square && rand_below(PERCENT) < chance) {
         /* fix: the original leaves the high bits of the event data uninitialized */
         TimelineEvent e = {.time_map = current_map_time(g_game.game_time), .type = EVENT_TELEPORT_PARTY};
         put_le16(e.data + TELEPORT_EVENT_TARGET, event_square_dir(x, y, g_game.party_dir));
@@ -350,7 +349,7 @@ static void fall_risk(uint16_t text, int16_t x, int16_t y, bool on_square)
         timeline_add_event(&e);
         int c = rand_2bits();
         if (!champion(c)->health)
-            c = g_game.leader;
+            c = champ_leader();
         sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
             SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
@@ -1244,8 +1243,8 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
             if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != group_class)
                 continue;
             if (kind == SENSOR_VANISH) {
-                if ((uint16_t)power > 1) {
-                    if ((uint16_t)power != VANISH_POWER)
+                if (power > 1) {
+                    if (power != VANISH_POWER)
                         return;
                     creature_set_next_action(g, sx, sy, CREATURE_ACTION_VANISH, 1);
                 }
@@ -1715,7 +1714,7 @@ static void wall_click_fountain(WallClick *c)
         for (int i = 0; i < CHAMPION_MAX; i++)
             if (champion(i)->health)
                 champion(i)->water = WATER_FULL;
-        sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(g_game.leader)->portrait, SOUND_ENTRY_SWALLOW,
+        sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(champ_leader())->portrait, SOUND_ENTRY_SWALLOW,
                                                 SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
                                      SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
     } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
