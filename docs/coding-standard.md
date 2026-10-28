@@ -361,7 +361,7 @@ their allowlist key:
 | `include` | a header the file does not use |
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
 | `dead-api` | an exported name with no use outside its module and no test marker; a name of `<module>_internal.h` with no use outside the file that defines it and no test marker |
-| `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[2]`, `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
+| `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[2]`, `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `(`, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
 | `enum` | an anonymous `enum` at file scope, an `enum` whose members do not share one first word |
 | `block` | a constant block without a comment line above it |
 | `notation` | a block that mixes hex and decimal, a flag block in decimal, a count block in hex |
