@@ -201,7 +201,6 @@ order engine/game.c:sections bridge: task 26
 order engine/sensor.c:sections bridge: task 37
 order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
-order ui/fm.c:sections bridge: task 44
 order ui/minion_map.c:sections bridge: task 46
 order ui/view.c:sections bridge: task 52
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
