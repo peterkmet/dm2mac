@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "os.h"
 #include "save.h"
 
 /* The timing of the main loop. */
@@ -83,9 +84,6 @@ extern int g_input_mouse_buttons;
 
 /* The save slot and the sizes of the session paths. */
 #define SAVE_SLOT_NONE (-1)
-#define SAVE_DIR_SIZE  1024 /* a folder of the session: data_dir, save_dir */
-#define SAVE_FILE_SIZE 28   /* the longest part after the folder: "/DATA/SKSAVE<int>.BAK" with an 11-character int */
-#define SAVE_PATH_SIZE (SAVE_DIR_SIZE + SAVE_FILE_SIZE) /* a folder and its longest file part, without cutting */
 typedef struct {
     int new_game;       /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot */
     bool use_dungenb;   /* the new game reads DUNGENB.DAT when it exists */
@@ -99,8 +97,8 @@ typedef struct {
     uint32_t save_time; /* the game time of the last save */
     int exit_code;
     char save_name[SAVE_NAME_SIZE]; /* the name of the slot in the save dialog */
-    char data_dir[SAVE_DIR_SIZE];   /* the game folder: DATA holds the dungeon and the saves */
-    char save_dir[SAVE_DIR_SIZE];   /* the folder of QUICK.DAT (--saves); empty: <data_dir>/DATA */
+    char data_dir[OS_DIR_SIZE];     /* the game folder: DATA holds the dungeon and the saves */
+    char save_dir[OS_DIR_SIZE];     /* the folder of QUICK.DAT (--saves); empty: <data_dir>/DATA */
 } Session;
 extern Session g_session;
 

@@ -2,11 +2,11 @@
 #include "settings.h"
 #include <stdio.h>
 #include <string.h>
+#include "os.h"
 
 /* The text of the settings file. */
-#define LINE_SIZE          64 /* longer lines are unreadable */
-#define SETTINGS_PATH_SIZE 1100
-#define TEMPORARY_FILE     "SETTINGS.TMP"
+#define LINE_SIZE      64 /* longer lines are unreadable */
+#define TEMPORARY_FILE "SETTINGS.TMP"
 
 static const char *const filter_names[] = {"none", "scale2x", "scale3x"}; /* from SETTINGS_FILTER_NONE */
 
@@ -62,7 +62,7 @@ Settings settings_parse(const char *file_text, size_t length)
 
 Settings settings_load(const char *folder)
 {
-    char path[SETTINGS_PATH_SIZE], text[SETTINGS_MAX_SIZE + 1];
+    char path[OS_PATH_SIZE], text[SETTINGS_MAX_SIZE + 1];
     size_t length = 0;
     if (snprintf(path, sizeof path, "%s/%s", folder, SETTINGS_FILE) < (int)sizeof path) {
         FILE *file = fopen(path, "rb");
@@ -78,7 +78,7 @@ Settings settings_load(const char *folder)
 
 bool settings_save(const char *folder, const Settings *settings)
 {
-    char path[SETTINGS_PATH_SIZE], temporary[SETTINGS_PATH_SIZE], text[LINE_SIZE];
+    char path[OS_PATH_SIZE], temporary[OS_PATH_SIZE], text[LINE_SIZE];
     if (snprintf(path, sizeof path, "%s/%s", folder, SETTINGS_FILE) >= (int)sizeof path ||
         snprintf(temporary, sizeof temporary, "%s/%s", folder, TEMPORARY_FILE) >= (int)sizeof temporary ||
         settings->filter < SETTINGS_FILTER_NONE || settings->filter > SETTINGS_FILTER_SCALE3X)

@@ -5,6 +5,7 @@
 #include <string.h>
 #include "fm.h"
 #include "hmp.h"
+#include "os.h"
 #include "sound.h"
 
 /* The GDAT type and entry of a song in CAT_MUSIC. */
@@ -20,9 +21,8 @@
 #define MASTER_VOLUME_SHIFT 4 /* the master volume repeats the level in its high bits */
 
 /* The sizes of the file reads and the channels of an output frame. */
-#define PATH_MAX_LENGTH 1024
-#define BANK_MAX        65536
-#define STEREO          2
+#define BANK_MAX 65536
+#define STEREO   2
 
 Music g_music = {.requested_song = -1, .current_song = MUSIC_NO_SONG};
 static const Gdat *gdat;
@@ -44,7 +44,7 @@ static void stop_song(void)
 /* Reads up to max bytes of data_dir/name into buf and sets size to the byte count; false when the file is missing. */
 static bool read_file(const char *data_dir, const char *name, uint8_t *buf, size_t max, size_t *size)
 {
-    char path[PATH_MAX_LENGTH];
+    char path[OS_PATH_SIZE];
     snprintf(path, sizeof path, "%s/%s", data_dir, name);
     FILE *f = fopen(path, "rb");
     if (!f)

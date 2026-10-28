@@ -60,7 +60,7 @@ static struct {
     int script, index, step; /* the script, the index of its current step, and that step */
     bool skip;               /* a click waits for movie_update */
     uint64_t start_ns;       /* the start of the step */
-    char data_dir[SAVE_PATH_SIZE];
+    char data_dir[OS_PATH_SIZE];
     uint8_t *file; /* the movie file of the step */
     MveStream mve;
     int16_t ring[AUDIO_RING_FRAMES][STEREO_CHANNELS];
@@ -123,7 +123,7 @@ void movie_stop(void)
 /* Reads a file of the data folder into memory; NULL when it is missing, empty, or does not read. */
 static uint8_t *load_file(const char *name, size_t *size)
 {
-    char path[SAVE_PATH_SIZE * 2];
+    char path[OS_PATH_SIZE * 2];
     snprintf(path, sizeof path, "%s/%s", mv.data_dir, name);
     FILE *f = fopen(path, "rb");
     if (!f)

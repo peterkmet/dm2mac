@@ -19,6 +19,11 @@ void os_log(const char *format, ...) __attribute__((format(printf, 1, 2)));
 /* Formats a message as printf, reports it, and ends the program: a port bug or a system error of the original. */
 _Noreturn void os_fatal(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
+/* Path buffer sizes */
+#define OS_DIR_SIZE       1024 /* a folder */
+#define OS_FILE_PART_SIZE 28   /* the longest part after the folder: "/DATA/SKSAVE<int>.BAK" with an 11-character int */
+#define OS_PATH_SIZE      (OS_DIR_SIZE + OS_FILE_PART_SIZE) /* a folder and its longest file part, without cutting */
+
 /* Full paths */
 /* The absolute path of an existing file. */
 typedef bool (*OsFullPathHook)(const char *path, char *full, size_t size);

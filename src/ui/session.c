@@ -83,13 +83,13 @@ static bool editing; /* the player types the slot name or a champion name */
 /* The path of slot in the save folder; bak: the backup file. */
 static char *slot_path(char *path, int slot, bool bak)
 {
-    snprintf(path, SAVE_PATH_SIZE, "%s/DATA/SKSAVE%d.%s", g_session.data_dir, slot, bak ? "BAK" : "DAT");
+    snprintf(path, OS_PATH_SIZE, "%s/DATA/SKSAVE%d.%s", g_session.data_dir, slot, bak ? "BAK" : "DAT");
     return path;
 }
 
 static char *data_path(char *path, const char *name)
 {
-    snprintf(path, SAVE_PATH_SIZE, "%s/DATA/%s", g_session.data_dir, name);
+    snprintf(path, OS_PATH_SIZE, "%s/DATA/%s", g_session.data_dir, name);
     return path;
 }
 
@@ -185,7 +185,7 @@ void session_draw_name_entry(const char *name, int cursor)
 /* Reads the header of each slot; an empty slot gets the name "n UNUSED". */
 static void list_slots(void)
 {
-    char path[SAVE_PATH_SIZE];
+    char path[OS_PATH_SIZE];
     for (int i = 0; i < SAVE_SLOT_COUNT; i++) {
         memset(slots[i], 0, sizeof slots[i]);
         FILE *f = fopen(slot_path(path, i, false), "rb");
@@ -380,7 +380,7 @@ static int choose_save_slot(void)
 /* Reads DUNGEON.DAT (DUNGENB.DAT when chosen and present) for a new game; returns false on a read error. */
 static bool load_new_game(void)
 {
-    char path[SAVE_PATH_SIZE];
+    char path[OS_PATH_SIZE];
     if (!g_session.use_dungenb || !file_exists(data_path(path, "DUNGENB.DAT")))
         data_path(path, "DUNGEON.DAT");
     save_clear_party();
@@ -416,7 +416,7 @@ static bool load_slot(const char *path)
 
 bool session_load(void)
 {
-    char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
+    char path[OS_PATH_SIZE], bak[OS_PATH_SIZE];
     bool from_bak = false;
     if (!g_session.new_game) {
         int slot = choose_load_slot();
@@ -459,7 +459,7 @@ bool session_load(void)
 /* Writes the game into slot; returns false on an error. */
 static bool write_slot(int slot)
 {
-    char path[SAVE_PATH_SIZE], bak[SAVE_PATH_SIZE];
+    char path[OS_PATH_SIZE], bak[OS_PATH_SIZE];
     if (save_write(slot_path(path, slot, false), slot_path(bak, slot, true), g_session.save_name, gdat_current()) !=
         SAVE_OK)
         return false;
