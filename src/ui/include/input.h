@@ -158,8 +158,8 @@ void input_pop_mode(void);
 /* The cursor image at (x, y) of the screen: the held object or the hand over a cursor zone of kind 1, the dragged
    champion over a zone of kind 2, else the arrow. */
 enum CursorKind input_cursor_at(int16_t x, int16_t y); /* exported for the tests */
-/* Draws the face of champ into the dragged champion cursor. */
-void input_set_champion_cursor(int champ);
+/* Draws the face of the champion champion_index into the dragged champion cursor. */
+void input_set_champion_cursor(int16_t champion_index);
 /* The image of a cursor of input_cursor_at. The bits of the object cursor stay valid until the next call for the
    object cursor, the bits of the champion cursor until the next input_set_champion_cursor. */
 CursorImage input_cursor_image(enum CursorKind cursor); /* exported for the tests */

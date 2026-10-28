@@ -36,7 +36,7 @@ typedef struct {
     void (*present_viewport)(void);              /* copies the view picture to the screen */
     void (*refresh_input_mode)(void);            /* recomputes the active zones of the input mode */
     void (*set_wait)(int steps);                 /* the commands wait for steps timer ticks */
-    void (*set_champion_cursor)(int champ);      /* the dragged champion cursor shows the face of champ */
+    void (*set_champion_cursor)(int16_t champion_index); /* the dragged champion cursor shows the face of a champion */
     void (*toggle_inventory)(
         int16_t champion_index); /* opens the inventory of a champion, or closes it (CHAMPION_MAX) */
     void (*draw_champion_state)(int16_t champion_index); /* draws what changed of the status box of a champion */

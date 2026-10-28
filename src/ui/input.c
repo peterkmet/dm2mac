@@ -1301,14 +1301,14 @@ static const uint8_t cursor_hand[HAND_W * CURSOR_H / 2] = {
     0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xcc, 0xcc, 0xcc, 0xc0, 0xff, 0xff, 0xff, 0xff,
 };
 
-void input_set_champion_cursor(int champ)
+void input_set_champion_cursor(int16_t champion_index)
 {
     Bitmap *face = draw_temp_bitmap(FACE_SIZE, FACE_SIZE, IMAGE_4BPP);
     if (!face)
         return;
     memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
     uint8_t colors[FACE_ICON_COLORS];
-    ui_draw_champion_face_icon(face, champ, colors);
+    ui_draw_champion_face_icon(face, champion_index, colors);
     Bitmap cursor = {in.champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
     memset(in.champion_cursor, UI_KEY, sizeof in.champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
