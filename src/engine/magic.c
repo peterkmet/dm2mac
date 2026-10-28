@@ -64,11 +64,9 @@
 #define SUMMON_RECAST_VANISHES 0x35 /* a cast of this summon makes a summoned one vanish instead */
 
 /* Rune glyphs. */
-#define RUNE_FIRST      0x60 /* the glyph of the first rune; 6 runes per set */
 #define POWER_RUNE_BASE 0x5f /* power = power rune - this */
 
 /* Rune counts. */
-#define RUNES_PER_SET           6
 #define RUNE_SETS               4 /* the power runes, then the three runes after them */
 #define POWER_RUNE_FACTOR_SHIFT 3 /* the mana factor of a power rune is in eighths */
 
@@ -191,10 +189,10 @@ static const Spell spells[SPELL_COUNT] = {
     {0x00686e73, 2, 0x03, 0x58a2},
 };
 /* The mana of a rune by rune set (6 runes each); the power runes of set 0 cost the plain value. */
-static const uint8_t rune_mana[RUNE_SETS * RUNES_PER_SET] = {1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 7,
-                                                             4, 5, 6, 7, 7, 9, 2, 2, 3, 4, 6, 7};
+static const uint8_t rune_mana[RUNE_SETS * SPELL_RUNES_PER_SET] = {1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 7,
+                                                                   4, 5, 6, 7, 7, 9, 2, 2, 3, 4, 6, 7};
 /* The mana factor (in eighths) of each power rune for the runes after it. */
-static const uint8_t power_rune_mana_factor[RUNES_PER_SET] = {8, 12, 16, 20, 24, 28};
+static const uint8_t power_rune_mana_factor[SPELL_RUNES_PER_SET] = {8, 12, 16, 20, 24, 28};
 /* The port names of the spells by kind and type: a potion is named by its drink effect, a missile by its explosion,
    a summon by its minion. */
 static const SpellName spell_names[] = {
@@ -234,7 +232,7 @@ static const SpellName spell_names[] = {
     {SPELL_SUMMON,  MINION_ARMY,                                 "ARMY MINION"      },
 };
 /* The rune names by rune: the power runes, then the three rune sets. */
-static const char *const rune_names[RUNE_SETS * RUNES_PER_SET] = {
+static const char *const rune_names[RUNE_SETS * SPELL_RUNES_PER_SET] = {
     "lo",  "um", "on",   "ee", "pal", "mon", "ya", "vi",  "oh",   "ful",  "des", "zo",
     "ven", "ew", "kath", "ir", "bro", "gor", "ku", "ros", "dain", "neta", "ra",  "sar",
 };
@@ -319,7 +317,7 @@ const char *magic_get_spell_name(const Spell *spell)
 
 const char *magic_get_rune_name(int rune)
 {
-    return rune >= 0 && rune < RUNE_SETS * RUNES_PER_SET ? rune_names[rune] : NULL;
+    return rune >= 0 && rune < RUNE_SETS * SPELL_RUNES_PER_SET ? rune_names[rune] : NULL;
 }
 
 void magic_add_light(int kind, int power)
@@ -691,9 +689,9 @@ uint16_t magic_rune_mana_cost(int champ, int rune)
     Champion *c = champion(champ);
     uint8_t *runes = runes_of(c);
     int n = c->rune_count;
-    uint16_t mana = rune_mana[n * RUNES_PER_SET + rune];
+    uint16_t mana = rune_mana[n * SPELL_RUNES_PER_SET + rune];
     if (n)
-        mana = (uint16_t)(mana * power_rune_mana_factor[runes[0] - RUNE_FIRST] >> POWER_RUNE_FACTOR_SHIFT);
+        mana = (uint16_t)(mana * power_rune_mana_factor[runes[0] - SPELL_RUNE_GLYPH_FIRST] >> POWER_RUNE_FACTOR_SHIFT);
     return mana;
 }
 
@@ -707,7 +705,7 @@ void magic_add_rune(int rune)
     if (added) {
         c->mana = (int16_t)(c->mana - mana);
         c->redraw |= REDRAW_BARS;
-        runes[n] = (uint8_t)(rune + n * RUNES_PER_SET + RUNE_FIRST);
+        runes[n] = (uint8_t)(rune + n * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST);
         c->rune_count = (uint8_t)(n + 1);
         runes[n + 1] = 0;
     }
