@@ -943,7 +943,7 @@ static MoveDest transit_finish(const Transit *t)
             sndreq_request_after(sndreq_cue_with_fallback((SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_HURT,
                                                                      SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
                                                           SOUND_FALLBACK),
-                                 t->x, t->y, 2);
+                                 t->x, t->y, SOUND_DELAY_HURT);
     dun_set_party_position((Position){(int16_t)pmap, (int16_t)px, (int16_t)py});
     dun_set_current_map(saved_map);
     return dest;

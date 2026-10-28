@@ -45,8 +45,6 @@
 /* Sound entries of a thing: launched, explodes. */
 #define SOUND_LAUNCH          0x86
 #define SOUND_PRIORITY_LAUNCH 0x6e
-/* A champion that a creature hurts screams after the next game step. */
-#define SOUND_DELAY_HURT      2
 
 /* Sensor data: any object or explosion type. */
 #define SENSOR_ANY_THING   0x1ff

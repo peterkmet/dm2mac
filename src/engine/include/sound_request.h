@@ -24,6 +24,8 @@
 #define SOUND_ENTRY_SWALLOW      0x83 /* a champion eats or drinks */
 #define SOUND_PRIORITY_SWALLOW   0x96
 #define SOUND_PRIORITY_CREATURE  0x46 /* the steps and cries of a creature, a creature that a door crushes */
+/* The ticks before a hurt champion screams: after the next game step. */
+#define SOUND_DELAY_HURT         2
 /* Sounds of clicks and switches: the entry and the priority. */
 #define SOUND_ENTRY_CLICK        0x84 /* a click on a wall or on a creature that cannot move */
 #define SOUND_ENTRY_ACTIVATE     0x88 /* an ornament, a door button, or a warp marker works */
