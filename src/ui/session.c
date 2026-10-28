@@ -264,7 +264,7 @@ static int16_t choose_load_slot(void)
             session_draw_slot_selection(chosen);
             dialog_present();
         }
-        g_input_match.choice = 0; /* DIALOG_NO_CHOICE while the dialog waits; 0 once a choice is handled */
+        g_input_match.choice = 0; /* 0: no button; the next pass waits for a new click */
         if (!done)
             play_wait_frames(1);
     }

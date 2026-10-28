@@ -85,8 +85,8 @@ extern int g_input_mouse_buttons;
 /* The save slot and the sizes of the session paths. */
 #define SAVE_SLOT_NONE (-1)
 typedef struct {
-    /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot; or a MENU_* state of the start menu
-       (ui/session.h) */
+    /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot; other values: a state of the start menu that
+       the interface sets */
     int new_game;
     bool use_dungenb;   /* the new game reads DUNGENB.DAT when it exists */
     bool loaded;        /* a game is in memory: the end of the game can load the last slot again */

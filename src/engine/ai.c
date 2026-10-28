@@ -176,7 +176,8 @@
 /* Random bits of the wander scanner. */
 #define ROLL_WANDER_STOP  0x1f
 #define ROLL_WANDER_START 0x3f /* random bits: a creature starts to wander in 1 of 64 updates */
-/* The roll of a creature that wanders at random: 0 turns, up to WANDER_ROLL_STEP steps forward, above it stands. */
+/* The roll of a creature that wanders at random: 0 turns, 1 to WANDER_ROLL_STEP steps one square forward, above it
+   stands. */
 #define WANDER_ROLL_MASK  0x07
 /* The highest wander roll that steps forward. */
 #define WANDER_ROLL_STEP  3
@@ -680,7 +681,7 @@ uint8_t ai_action_flag(int action)
 
 /* Conditions of the target records. */
 
-/* True when the wall squares around the party have a sensor of the special type. */
+/* True when a wall square around the party has a reset wall sensor (WALL_CLICK_RESET). */
 static bool party_beside_special_wall(void)
 {
     for (int d = 0; d < DIR_COUNT; d++) {

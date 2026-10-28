@@ -156,7 +156,8 @@ bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y);
 /* The outcome of a click on the objects of a square cell. */
 enum ObjectClick {
     OBJECT_CLICK_HIT,  /* thing: the object that the click hits, or the click thing when it hits no object */
-    OBJECT_CLICK_DONE, /* a chest opened or closed, took the click thing, or gave its last item to the leader */
+    OBJECT_CLICK_DONE, /* a chest opened or closed, took the click thing, or gave its last item to the leader; or the
+                          cell has no object and the click places nothing */
     OBJECT_CLICK_DROP  /* the click thing must drop into the cell */
 };
 typedef struct {

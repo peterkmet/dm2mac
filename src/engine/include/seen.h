@@ -22,7 +22,8 @@ typedef struct {
 
 /* ---- Setup ---- */
 
-/* Forgets every seen square and sizes the storage from the loaded dungeon; each dungeon load calls it. */
+/* Forgets every seen square and sizes the storage from the loaded dungeon; the session and the save load call it
+   after the dungeon load. */
 void seen_reset(void);
 /* Frees the seen squares; safe to call twice. */
 void seen_free(void);

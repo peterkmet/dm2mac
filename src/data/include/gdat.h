@@ -34,7 +34,7 @@ enum GdatResult {
 #define GDAT_TYPE_DATA          0x0d /* raw data, for example the interface colors */
 
 /* GDAT categories: the first part of a key (category, index, type, entry). */
-#define CAT_GENERAL        0x00 /* index 0: two values; it holds no sound */
+#define CAT_GENERAL        0x00 /* index 0: two values; index 1: the item (0, 1, 0, 0); it holds no sound */
 #define CAT_INTERFACE      0x01 /* the interface pictures, the font, the palette, the layout */
 #define CAT_DUNGEON        0x03 /* index 0: the dungeon (sounds, texts, the start hour); index map + 1: a map */
 #define CAT_MUSIC          0x04
@@ -79,7 +79,8 @@ typedef struct {
     int entry;
 } GdatKey;
 
-/* The size of an image item: bits per pixel IMAGE_4BPP or IMAGE_8BPP, and the decoded byte size. */
+/* The size of an image item: the width and the height in pixels, bits per pixel IMAGE_4BPP or IMAGE_8BPP, and the
+   decoded byte size. */
 typedef struct {
     int width, height, bpp;
     size_t size;
