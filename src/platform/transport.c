@@ -107,6 +107,8 @@ static void send_line(Json *reply)
     json_raw(reply, "\n");
     for (size_t sent = 0; transport.client_fd >= 0 && sent < reply->len;) {
         ssize_t n = send(transport.client_fd, reply->s + sent, reply->len - sent, SEND_FLAGS);
+        if (n < 0 && errno == EINTR)
+            continue; /* fix: a signal stopped the write before a byte went out; send again */
         if (n <= 0)
             close_client();
         else
@@ -165,7 +167,7 @@ static void drop_closed_client(void)
     if (transport.client_fd < 0)
         return;
     ssize_t n = recv(transport.client_fd, &next, 1, MSG_PEEK | MSG_DONTWAIT);
-    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK))
+    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR))
         close_client(); /* the client left */
 }
 
@@ -192,7 +194,7 @@ static void read_requests(void)
         return;
     ssize_t n = recv(transport.client_fd, transport.input + transport.input_length,
                      sizeof transport.input - transport.input_length, MSG_DONTWAIT);
-    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+    if (n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
         close_client();
         return;
     }
