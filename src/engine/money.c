@@ -24,12 +24,42 @@
 /* The miscellaneous items that the coin table scans. */
 #define COIN_SCAN_COUNT        128
 
+/* An item index range of a GDAT text ("3-7", or "5" alone), read so far. */
+typedef struct {
+    int16_t low; /* -1: no '-' yet */
+    int16_t number;
+    bool digits; /* a digit was read */
+} ItemRange;
+
 static struct {
     bool ready;
     int count;
     uint16_t items[COIN_TYPE_MAX];
     int16_t values[COIN_TYPE_MAX];
 } coins;
+
+/* Reads the digits and '-' of an item index range from *p into r; *p stops at the first other character. */
+static void scan_range(const char **p, ItemRange *r)
+{
+    for (;; (*p)++) {
+        char c = **p;
+        if (c >= '0' && c <= '9') {
+            r->number = (int16_t)(r->number * DECIMAL_BASE + (c - '0'));
+            r->digits = true;
+        } else if (c == '-') {
+            r->low = r->number;
+            r->number = 0;
+        } else {
+            return;
+        }
+    }
+}
+
+/* The first item index of a range: low, or the number alone. */
+static int16_t range_first(const ItemRange *r)
+{
+    return r->low < 0 ? r->number : r->low;
+}
 
 /* True when the thing is a coin. */
 static bool is_coin(uint16_t thing)
@@ -98,36 +128,24 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
     if (!*p)
         return -1;
     /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */
-    int16_t number = 0;
     int16_t counter = 0;
-    for (bool done = false; !done;) {
-        int16_t low = -1;
+    while (*p) {
+        ItemRange r = {-1, 0, false};
         int16_t base = -1;
-        for (;;) {
-            char c = *p++;
-            if (c >= '0' && c <= '9') {
-                number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
-            } else if (c == '-') {
-                low = number;
-                number = 0;
-            } else if (c == 'J' && number == 0) {
-                base = ITEM_FIRST_MISC;
-            } else {
-                if (c == 'J')
-                    p--;
-                if (c == '\0')
-                    done = true;
-                break;
-            }
+        scan_range(&p, &r);
+        while (*p == 'J' && r.number == 0) {
+            base = ITEM_FIRST_MISC;
+            p++;
+            scan_range(&p, &r);
         }
-        if (low < 0)
-            low = number;
-        for (; low <= number; low++, counter++)
+        /* a 'J' after a number starts the next range; another character ends this one */
+        if (*p && *p != 'J')
+            p++;
+        for (int16_t low = range_first(&r); low <= r.number; low++, counter++)
             if (counter == slot)
                 for (int t = 0; t < coins.count; t++)
                     if ((int16_t)coins.items[t] == base + low)
                         return t;
-        number = 0;
     }
     return -1;
 }
@@ -135,11 +153,10 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
 int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count)
 {
     int16_t left = amount;
-    int16_t n = 0;
     int type = money_coin_type_count() - 1;
     int16_t total = 0;
     *coin_count = 0;
-    while (n < max_coins && left > 0 && type >= 0) {
+    while (*coin_count < max_coins && left > 0 && type >= 0) {
         int16_t value = money_coin_value(type);
         if (value < 1)
             break;
@@ -147,10 +164,9 @@ int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_type
             type--;
             continue;
         }
-        coin_types[n++] = (uint8_t)type;
+        coin_types[(*coin_count)++] = (uint8_t)type;
         left = (int16_t)(left - value);
         total = (int16_t)(total + value);
-        (*coin_count)++;
     }
     return total;
 }
@@ -275,31 +291,16 @@ bool money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, b
     const char *p = gtext_gdat(CAT_CREATURE, creature, (uint8_t)(class_list + GFX_CREATURE_CLASS_TEXT), text);
     if (!*p)
         return false;
-    int16_t number = 0;
-    int16_t low = -1;
+    ItemRange r = {-1, 0, false};
     int16_t base = -1;
-    bool digits = false;
     char c;
     do {
+        scan_range(&p, &r);
         c = *p++;
-        if (c >= '0' && c <= '9') {
-            number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
-            digits = true;
-            continue;
-        }
-        if (c == '-') {
-            low = number;
-            number = 0;
-            continue;
-        }
-        if (digits) {
-            if (low < 0)
-                low = number;
-            set_class_range(bitset, low, number, base);
-            number = 0;
-            low = -1;
+        if (r.digits) {
+            set_class_range(bitset, range_first(&r), r.number, base);
+            r = (ItemRange){-1, 0, false};
             base = -1;
-            digits = false;
         }
         /* the letters choose the item kind of the next numbers */
         switch (c) {
