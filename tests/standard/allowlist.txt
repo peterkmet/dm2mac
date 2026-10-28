@@ -17,7 +17,6 @@ decimal engine/ai.c bridge: task 20
 decimal engine/ai_data.c:g_ai_after_command_table bridge: task 19
 decimal engine/ai_data.c:g_ai_possession_cells bridge: task 19
 decimal engine/ai_move.c bridge: task 21
-decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor rule 3.12: wound location defense factors of SKULL.EXE
 decimal engine/creature.c:cell_grid bridge: task 24

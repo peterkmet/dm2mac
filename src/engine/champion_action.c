@@ -134,8 +134,6 @@ typedef struct {
 ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
 /* g_action.result after the last champ_perform_action (damage >= 0, failure < 0). */
 int16_t g_champ_action_result;
-/* The creature info records of things that a blow does not hurt (static, without the bytes 2 and 8 of a fighter), from SKULL.EXE. */
-static const uint8_t furniture_infos[] = {0, 1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 20, 37, 38, 39, 45, 51, 56, 60};
 
 /* A field of the GDAT text of action. */
 static int16_t field_of(ChampionAction action, int field)
@@ -632,14 +630,11 @@ static bool run_spell_projectile(ActionRun *a)
     return done;
 }
 
-/* True when the creature group is furniture that a blow does not hurt. */
-static bool is_furniture(uint16_t group)
+/* True when the creature is furniture that a blow does not hurt: static, not hurt, and not hit. */
+static bool is_furniture(const CreatureInfo *info)
 {
-    int index = (int)(creature_group_info(group) - creature_info_at(0));
-    for (size_t i = 0; i < sizeof furniture_infos; i++)
-        if (furniture_infos[i] == index)
-            return true;
-    return false;
+    return info->flags & CREATURE_STATIC && info->defense == CREATURE_NO_HURT &&
+           info->dexterity == DEXTERITY_UNHITTABLE;
 }
 
 /* A melee action: it bashes a closed door in front, or attacks the creature group in front. */
@@ -655,7 +650,7 @@ static bool run_melee(ActionRun *a)
         return true;
     }
     bool done = true;
-    if (a->target != THING_NONE && is_furniture(a->target)) {
+    if (a->target != THING_NONE && is_furniture(creature_group_info(a->target))) {
         a->experience = (int16_t)(a->experience >> 1);
     } else {
         done = melee_attack_front(a, field_of(a->action, FIELD_MODE), field_of(a->action, FIELD_MELEE_KIND));
