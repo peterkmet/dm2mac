@@ -279,17 +279,6 @@ type engine/move.c:meet_target_square bridge: task 32
 type engine/move.c:push_party_aside bridge: task 32
 type engine/move.c:set_party_position bridge: task 32
 type engine/move.c:take_free_step bridge: task 32
-type engine/projectile.c:blast_square bridge: task 33
-type engine/projectile.c:hit_champion bridge: task 33
-type engine/projectile.c:hit_creature bridge: task 33
-type engine/projectile.c:hit_explode bridge: task 33
-type engine/projectile.c:hit_impact bridge: task 33
-type engine/projectile.c:hit_square bridge: task 33
-type engine/projectile.c:hit_wall_sensors bridge: task 33
-type engine/projectile.c:launch_object bridge: task 33
-type engine/projectile.c:reflect_spell bridge: task 33
-type engine/projectile.c:set_event_dir bridge: task 33
-type engine/projectile.c:trigger_explosion_sensors bridge: task 33
 type engine/recruit.c:add_to_party bridge: task 34
 type engine/recruit.c:mirror_sensor bridge: task 34
 type engine/save.c:held_thing bridge: task 35
