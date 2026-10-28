@@ -15,9 +15,12 @@
 #define ENCODINGS_PER_BYTE   2 /* the decoding map holds 4 bits per block */
 #define HALF_BLOCK           (MVE_BLOCK_SIZE / 2)
 #define BLOCK_PIXELS         (MVE_BLOCK_SIZE * MVE_BLOCK_SIZE)
-#define CELLS_PER_ROW        4 /* 2 × 2 cells in a block row */
+#define CELL_SIDE            2 /* pixels per side of a 2 × 2 cell */
+#define CELLS_PER_ROW        (MVE_BLOCK_SIZE / CELL_SIDE)
 #define CELLS_PER_BLOCK      (CELLS_PER_ROW * CELLS_PER_ROW)
 #define QUADRANT_COUNT       4
+#define QUADRANT_PIXELS      (BLOCK_PIXELS / QUADRANT_COUNT)
+#define HALF_PIXELS          (BLOCK_PIXELS / 2)
 #define TWO_COLORS           2
 #define FOUR_COLORS          4
 #define FOUR_COLOR_BIT_COUNT 2 /* bits per pixel or cell for one of four colors */
@@ -46,12 +49,6 @@
 #define ENC_QUADRANTS        0xd
 #define ENC_SOLID            0xe
 #define ENC_DITHER           0xf
-
-/* The quadrants of encodings 8 and 10 in column order, and of encoding 13 in row order. */
-static const int column_quadrant_x[QUADRANT_COUNT] = {0, 0, HALF_BLOCK, HALF_BLOCK};
-static const int column_quadrant_y[QUADRANT_COUNT] = {0, HALF_BLOCK, 0, HALF_BLOCK};
-static const int row_quadrant_x[QUADRANT_COUNT] = {0, HALF_BLOCK, 0, HALF_BLOCK};
-static const int row_quadrant_y[QUADRANT_COUNT] = {0, 0, HALF_BLOCK, HALF_BLOCK};
 
 /* The block data of one video opcode; a read past its end gives 0 and marks the data short. */
 typedef struct {
@@ -87,6 +84,12 @@ typedef struct {
 typedef struct {
     int x, y, cols, rows, cell_w, cell_h;
 } Grid;
+
+/* The quadrants of encodings 8 and 10 in column order, and of encoding 13 in row order. */
+static const int column_quadrant_x[QUADRANT_COUNT] = {0, 0, HALF_BLOCK, HALF_BLOCK};
+static const int column_quadrant_y[QUADRANT_COUNT] = {0, HALF_BLOCK, 0, HALF_BLOCK};
+static const int row_quadrant_x[QUADRANT_COUNT] = {0, HALF_BLOCK, 0, HALF_BLOCK};
+static const int row_quadrant_y[QUADRANT_COUNT] = {0, 0, HALF_BLOCK, HALF_BLOCK};
 
 /* Reads the next byte of the block data; 0 and the short flag past its end. */
 static uint8_t get8(Reader *r)
@@ -172,27 +175,8 @@ static void two_colors(Block *b)
     if (p[0] <= p[1])
         pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, MVE_BLOCK_SIZE, 1, 1}, p, get_bits(&b->r, sizeof(uint64_t)), 1);
     else
-        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, 2, 2}, p, get_bits(&b->r, sizeof(uint16_t)), 1);
-}
-
-/* Encoding 8: two colors per quadrant, or per half of the block. */
-static void two_color_parts(Block *b)
-{
-    uint8_t p[TWO_COLORS * 2];
-    get_colors(&b->r, p, TWO_COLORS);
-    if (p[0] <= p[1]) {
-        for (int q = 0; q < QUADRANT_COUNT; q++) {
-            if (q)
-                get_colors(&b->r, p, TWO_COLORS);
-            Grid g = {column_quadrant_x[q], column_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, 1, 1};
-            pattern(b, g, p, get_bits(&b->r, sizeof(uint16_t)), 1);
-        }
-        return;
-    }
-    uint64_t first = get_bits(&b->r, sizeof(uint32_t));
-    get_colors(&b->r, p + TWO_COLORS, TWO_COLORS);
-    halves(b, p[TWO_COLORS] <= p[TWO_COLORS + 1], (Palette){p, first},
-           (Palette){p + TWO_COLORS, get_bits(&b->r, sizeof(uint32_t))}, 1);
+        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, CELL_SIDE, CELL_SIDE}, p,
+                get_bits(&b->r, sizeof(uint16_t)), 1);
 }
 
 /* Encoding 9: four colors per pixel, or per cell of 2 × 2, 2 × 1, or 1 × 2 pixels. */
@@ -205,35 +189,37 @@ static void four_colors(Block *b)
         uint64_t top = get_bits(&b->r, sizeof(uint64_t));
         halves(b, false, (Palette){p, top}, (Palette){p, get_bits(&b->r, sizeof(uint64_t))}, FOUR_COLOR_BIT_COUNT);
     } else if (p[0] <= p[1]) {
-        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, 2, 2}, p, get_bits(&b->r, sizeof(uint32_t)),
-                FOUR_COLOR_BIT_COUNT);
+        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, CELL_SIDE, CELL_SIDE}, p,
+                get_bits(&b->r, sizeof(uint32_t)), FOUR_COLOR_BIT_COUNT);
     } else if (second_low) {
-        pattern(b, (Grid){0, 0, CELLS_PER_ROW, MVE_BLOCK_SIZE, 2, 1}, p, get_bits(&b->r, sizeof(uint64_t)),
+        pattern(b, (Grid){0, 0, CELLS_PER_ROW, MVE_BLOCK_SIZE, CELL_SIDE, 1}, p, get_bits(&b->r, sizeof(uint64_t)),
                 FOUR_COLOR_BIT_COUNT);
     } else {
-        pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, CELLS_PER_ROW, 1, 2}, p, get_bits(&b->r, sizeof(uint64_t)),
+        pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, CELLS_PER_ROW, 1, CELL_SIDE}, p, get_bits(&b->r, sizeof(uint64_t)),
                 FOUR_COLOR_BIT_COUNT);
     }
 }
 
-/* Encoding 10: four colors per quadrant, or per half of the block. */
-static void four_color_parts(Block *b)
+/* Encodings 8 and 10: count colors (2 or 4) per quadrant, or per half of the block. */
+static void color_parts(Block *b, int count, int bits_per_cell)
 {
+    int quadrant_bytes = QUADRANT_PIXELS * bits_per_cell / BYTE_BIT_COUNT;
+    int half_bytes = HALF_PIXELS * bits_per_cell / BYTE_BIT_COUNT;
     uint8_t p[FOUR_COLORS * 2];
-    get_colors(&b->r, p, FOUR_COLORS);
+    get_colors(&b->r, p, count);
     if (p[0] <= p[1]) {
         for (int q = 0; q < QUADRANT_COUNT; q++) {
             if (q)
-                get_colors(&b->r, p, FOUR_COLORS);
+                get_colors(&b->r, p, count);
             Grid g = {column_quadrant_x[q], column_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, 1, 1};
-            pattern(b, g, p, get_bits(&b->r, sizeof(uint32_t)), FOUR_COLOR_BIT_COUNT);
+            pattern(b, g, p, get_bits(&b->r, quadrant_bytes), bits_per_cell);
         }
         return;
     }
-    uint64_t first = get_bits(&b->r, sizeof(uint64_t));
-    get_colors(&b->r, p + FOUR_COLORS, FOUR_COLORS);
-    halves(b, p[FOUR_COLORS] <= p[FOUR_COLORS + 1], (Palette){p, first},
-           (Palette){p + FOUR_COLORS, get_bits(&b->r, sizeof(uint64_t))}, FOUR_COLOR_BIT_COUNT);
+    uint64_t first = get_bits(&b->r, half_bytes);
+    get_colors(&b->r, p + count, count);
+    halves(b, p[count] <= p[count + 1], (Palette){p, first}, (Palette){p + count, get_bits(&b->r, half_bytes)},
+           bits_per_cell);
 }
 
 /* Encodings 11 to 15: raw pixels, 2 × 2 cells, quadrants, one color, and a checkerboard. */
@@ -247,7 +233,8 @@ static void plain_colors(Block *b, int encoding)
         break;
     case ENC_CELLS:
         for (int i = 0; i < CELLS_PER_BLOCK; i++)
-            fill(b, (Rect){i % CELLS_PER_ROW * 2, i / CELLS_PER_ROW * 2, 2, 2}, get8(&b->r));
+            fill(b, (Rect){i % CELLS_PER_ROW * CELL_SIDE, i / CELLS_PER_ROW * CELL_SIDE, CELL_SIDE, CELL_SIDE},
+                 get8(&b->r));
         break;
     case ENC_QUADRANTS:
         for (int q = 0; q < QUADRANT_COUNT; q++)
@@ -304,13 +291,13 @@ static void decode_block(Block *b, int encoding)
         two_colors(b);
         break;
     case ENC_TWO_COLOR_PARTS:
-        two_color_parts(b);
+        color_parts(b, TWO_COLORS, 1);
         break;
     case ENC_FOUR_COLORS:
         four_colors(b);
         break;
     case ENC_FOUR_COLOR_PARTS:
-        four_color_parts(b);
+        color_parts(b, FOUR_COLORS, FOUR_COLOR_BIT_COUNT);
         break;
     default:
         plain_colors(b, encoding);
