@@ -204,7 +204,7 @@ void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor)
     g_hooks.render_hand_icon();
     inv_show_object_name(thing);
     (void)defer_cursor; /* the port draws the cursor each frame (inv_cursor_object) */
-    champ_apply_item_effects((int16_t)g_game.leader, thing, -1, EFFECT_MODE_ADD);
+    champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_ADD);
     sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
 }
 
@@ -217,7 +217,7 @@ uint16_t champ_take_from_leader_hand(void)
     g_leader_hand.weight = 0;
     g_game.leader_hand = THING_NONE;
     g_leader_hand.icon = HAND_ICON_NONE;
-    champ_apply_item_effects((int16_t)g_game.leader, thing, -1, EFFECT_MODE_REMOVE);
+    champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_REMOVE);
     sensor_leave_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
     return thing;
 }
@@ -273,7 +273,7 @@ void inv_click_slot(int16_t slot)
 {
     uint16_t hand = g_game.leader_hand;
     int champ;
-    if ((int16_t)g_game.leader == -1)
+    if (g_game.leader == LEADER_NONE)
         return;
     if (slot < CLICK_STATUS_HANDS) {
         champ = slot / SLOT_HAND_COUNT;

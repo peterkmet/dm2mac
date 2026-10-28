@@ -504,7 +504,7 @@ static void kill_champion(int champ)
         g_hooks.flush_input();
         g_party_sleeping = false;
         g_main_loop.view_hidden = 0;
-    } else if (champ == (int16_t)g_game.leader) {
+    } else if (champ == champ_leader()) {
         champ_set_leader(alive);
     }
     g_hooks.refresh_input_mode();

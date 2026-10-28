@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "champion.h"
+#include <stdio.h>
+#include <string.h>
 #include "action.h"
 #include "champion_internal.h"
 #include "creature.h"
@@ -86,7 +88,7 @@ void champ_init_party_state(void)
         g_leader_hand.icon = HAND_ICON_NONE;
     } else {
         uint16_t leader = g_game.leader;
-        g_game.leader = (uint16_t)-1;
+        g_game.leader = LEADER_NONE;
         champ_put_in_leader_hand(g_game.leader_hand, true);
         g_game.leader = leader;
     }
@@ -95,9 +97,9 @@ void champ_init_party_state(void)
         action_reset_champion(i);
     }
     set_redraw_flags(REDRAW_STATUS_BOX);
-    int leader = (int16_t)g_game.leader;
-    if (leader != -1) {
-        g_game.leader = (uint16_t)-1;
+    if (g_game.leader != LEADER_NONE) {
+        int16_t leader = champ_leader();
+        g_game.leader = LEADER_NONE;
         champ_set_leader(leader);
     }
 }
@@ -293,6 +295,20 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
     return item_is_minion_map(thing) || count > 0;
 }
 
+void champ_action_list_save(ChampActionList *out)
+{
+    memcpy(out->actions, g_champ_actions, sizeof out->actions);
+    out->count = g_champ_action_count;
+    out->thing = g_champ_action_thing;
+}
+
+void champ_action_list_restore(const ChampActionList *in)
+{
+    memcpy(g_champ_actions, in->actions, sizeof in->actions);
+    g_champ_action_count = in->count;
+    g_champ_action_thing = in->thing;
+}
+
 /* Party */
 
 int champ_get_index_in_cell(int16_t cell)
@@ -305,14 +321,26 @@ int champ_get_index_in_cell(int16_t cell)
 
 void champ_set_leader(int champ)
 {
-    int16_t leader = (int16_t)g_game.leader;
+    int16_t leader = champ_leader();
     if (champ == leader || (champ != -1 && !champion(champ)->health))
         return;
-    if (leader != -1)
+    if (g_game.leader != LEADER_NONE)
         champion(leader)->redraw |= REDRAW_LOAD | REDRAW_NAME;
     g_game.leader = (uint16_t)champ;
     if (champ != -1 && champ + 1 != g_ui.candidate)
         champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
+}
+
+int16_t champ_leader(void)
+{
+    return (int16_t)g_game.leader;
+}
+
+void champ_set_name(int16_t champion_index, const char *name, const char *title)
+{
+    Champion *c = champion(champion_index);
+    snprintf(c->name, sizeof c->name, "%s", name);
+    snprintf(c->title, sizeof c->title, "%s", title);
 }
 
 void champ_set_party_direction(int16_t dir)
