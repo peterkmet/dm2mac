@@ -499,6 +499,6 @@ const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT] = {
 };
 /* The bytes after g_ai_command_enabled in SKULL.EXE (0x752ac to 0x752e7): commands 0x20 and up read them. */
 const uint8_t g_ai_after_command_table[AI_AFTER_COMMAND_BYTES] = {
-    0, 0, 0, 0, 0,    0,    0xff, 0xff, 0, 0, 0xff, 0xff, 1, 0, 0, 0, 1, 0, 0,    0,
-    0, 0, 1, 0, 0xff, 0xff, 0,    0,    0, 0, 1,    0,    0, 0, 1, 0, 0, 0, 0xff, 0xff,
-    1, 0, 0, 0, 0xff, 0xff, 0,    0,    0, 0, 3,    0,    6, 0, 6, 0, 0, 3, 2,    1};
+    0xff, 0xff, 0, 0, 0,    0,    0xff, 0xff, 0, 0, 0xff, 0xff, 1, 0, 0, 0, 1, 0, 0,    0,
+    0,    0,    1, 0, 0xff, 0xff, 0,    0,    0, 0, 1,    0,    0, 0, 1, 0, 0, 0, 0xff, 0xff,
+    1,    0,    0, 0, 0xff, 0xff, 0,    0,    0, 0, 3,    0,    6, 0, 6, 0, 0, 3, 2,    1};
