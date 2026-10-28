@@ -25,7 +25,8 @@
 #define COIN_SCAN_COUNT        128
 
 static struct {
-    int ready, count;
+    bool ready;
+    int count;
     uint16_t items[COIN_TYPE_MAX];
     int16_t values[COIN_TYPE_MAX];
 } coins;
@@ -42,7 +43,7 @@ void money_init_coin_table(void)
 {
     if (coins.ready)
         return;
-    coins.ready = 1;
+    coins.ready = true;
     for (int index = 0; index < COIN_SCAN_COUNT; index++) {
         if (!(gdat_entry_index(gdat_current(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
             continue;
@@ -99,7 +100,7 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
     /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */
     int16_t number = 0;
     int16_t counter = 0;
-    for (int done = 0; !done;) {
+    for (bool done = false; !done;) {
         int16_t low = -1;
         int16_t base = -1;
         for (;;) {
@@ -115,7 +116,7 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
                 if (c == 'J')
                     p--;
                 if (c == '\0')
-                    done = 1;
+                    done = true;
                 break;
             }
         }
@@ -277,13 +278,13 @@ bool money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, b
     int16_t number = 0;
     int16_t low = -1;
     int16_t base = -1;
-    int digits = 0;
+    bool digits = false;
     char c;
     do {
         c = *p++;
         if (c >= '0' && c <= '9') {
             number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
-            digits = 1;
+            digits = true;
             continue;
         }
         if (c == '-') {
@@ -298,7 +299,7 @@ bool money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, b
             number = 0;
             low = -1;
             base = -1;
-            digits = 0;
+            digits = false;
         }
         /* the letters choose the item kind of the next numbers */
         switch (c) {
