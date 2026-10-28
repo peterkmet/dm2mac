@@ -44,3 +44,5 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
 - `gtext_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `gtext_decode_raw` in `engine/game_text.c`. `gtext_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
 - Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types.
+- Kept quirks of the original:
+  - the action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`)
