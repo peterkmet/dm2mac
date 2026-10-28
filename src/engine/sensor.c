@@ -356,9 +356,10 @@ static void fall_risk(uint16_t text, int16_t x, int16_t y, bool on_square)
         int c = rand_2bits();
         if (!champion(c)->health)
             c = champ_leader();
-        sndreq_request_with_fallback(
-            (SoundCue){CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_STEP_END);
+        if (c >= 0) /* fix: without a leader the original reads the portrait before the champion table */
+            sndreq_request_with_fallback(
+                (SoundCue){CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
+                SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_STEP_END);
     } else {
         sndreq_request((SoundCue){CAT_FLOOR_ORNAMENT, textrec_value(text), SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK,
                                   SOUND_VOLUME_NORMAL},
