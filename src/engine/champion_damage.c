@@ -17,7 +17,7 @@
 
 /* Attack and wound bits. */
 #define ATTACK_TYPE_MASK           0x7fff
-#define WOUND_HAND_BIT(hand)       ((hand) ? 2 : 1)
+#define WOUND_HAND_BIT(hand)       ((hand) ? WOUND_ACTION_HAND : WOUND_READY_HAND)
 /* Masks of the random rolls. */
 #define WOUND_ROLL_MASK            0x7f
 #define WOUND_LOCATION_ROLL        0x07 /* the random wound location of a hit: 0 to 7 */
