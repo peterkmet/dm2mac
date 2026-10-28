@@ -543,10 +543,10 @@ static void put_champions(Json *j)
     if (g_ui.candidate && members)
         candidate = --members;
     json_key(j, "leader");
-    if ((int16_t)g_game.leader == -1 || (int16_t)g_game.leader == candidate)
+    if (g_game.leader == LEADER_NONE || champ_leader() == candidate)
         put_null(j);
     else
-        json_int(j, (int16_t)g_game.leader);
+        json_int(j, champ_leader());
     json_key(j, "leader_hand");
     object_json(j, g_game.champion_count ? g_game.leader_hand : THING_NONE);
     json_key(j, "candidate");

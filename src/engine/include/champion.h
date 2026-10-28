@@ -213,6 +213,12 @@ typedef struct {
 } ChampionAction;
 /* The actions that the action menu of a hand shows at most. */
 #define CHAMPION_ACTION_MAX 3
+/* The open action menu: its actions, their count, and the hand thing. */
+typedef struct {
+    ChampionAction actions[CHAMPION_ACTION_MAX];
+    int count;
+    uint16_t thing;
+} ChampActionList;
 
 extern ChampionAction g_champ_actions[CHAMPION_ACTION_MAX];
 extern int g_champ_action_count;
@@ -256,12 +262,20 @@ int champ_get_move_delay(int champ);
 /* Lists in g_champ_actions the actions of the thing in hand (THING_NONE: the champion's own actions);
    true when the action area has something to show. */
 bool champ_list_actions(int champ, uint16_t thing, int hand);
+/* Copies the open action menu into out. */
+void champ_action_list_save(ChampActionList *out);
+/* Makes the saved list in the open action menu again. */
+void champ_action_list_restore(const ChampActionList *in);
 
 /* Party */
 /* The living champion in cell (0 to 3), -1 none. */
 int champ_get_index_in_cell(int16_t cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
+/* The index of the leader, -1 for none. */
+int16_t champ_leader(void);
+/* Gives champion_index a new name and title; each is cut to the size of its field. */
+void champ_set_name(int16_t champion_index, const char *name, const char *title);
 /* Turns the party to dir; the champions turn with it. */
 void champ_set_party_direction(int16_t dir);
 /* Turns one champion to dir; the party keeps its direction. */
@@ -312,6 +326,8 @@ void champ_revive(int champ);
 /* Champion actions (champion_action.c). */
 /* g_action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
 extern int16_t g_champ_action_result;
+/* Clears g_champ_action_result before a new action. */
+void champ_action_clear_result(void);
 /* Makes the hand (-1: both hands and the spell) of champ busy for about ticks game steps. */
 void champ_add_action_delay(int champ, uint16_t ticks, int16_t hand);
 /* Takes the charges of action from its item in the open hand of champ; true when the item has no charges left;
