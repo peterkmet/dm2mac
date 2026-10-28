@@ -960,10 +960,9 @@ static bool get_input_zone_rect(uint16_t zone, int16_t *rect)
     if (!zone_get_rect(zone & ZONE_ID_MASK, rect))
         return false;
     if (zone & (ZONE_IN_PANEL | ZONE_IN_ACTION_AREA)) {
-        int16_t x, y;
-        zone_get_position(zone & ZONE_IN_PANEL ? ZONE_VIEWPORT : ZONE_ACTION_ORIGIN, &x, &y);
-        rect[RECT_X] = (int16_t)(rect[RECT_X] + x);
-        rect[RECT_Y] = (int16_t)(rect[RECT_Y] + y);
+        ScreenPoint origin = zone_get_position(zone & ZONE_IN_PANEL ? ZONE_VIEWPORT : ZONE_ACTION_ORIGIN);
+        rect[RECT_X] = (int16_t)(rect[RECT_X] + origin.x);
+        rect[RECT_Y] = (int16_t)(rect[RECT_Y] + origin.y);
     }
     return true;
 }
@@ -1593,7 +1592,7 @@ static void feedback_init_rect(Feedback *f, int16_t *r, int w, int h)
 {
     if (!f->opened) {
         memcpy(f->o.rect, in.current.rect, sizeof f->o.rect);
-        offscreen_create(&f->o, -1, false);
+        offscreen_create(&f->o, ZONE_NONE, false);
         f->opened = true;
     }
     rect_center_in(r, f->o.rect, w, h);
@@ -1656,7 +1655,7 @@ static void feedback_hand_icon(int icon)
             return;
         champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
-    area_draw_hand_icon(champ, icon, 1);
+    area_draw_hand_icon(champ, icon, true);
     present_action_area();
 }
 
@@ -1666,7 +1665,7 @@ static void feedback_spell_icon(int cell)
     int champ = party_cell_champion(cell);
     if (champ < 0)
         return;
-    area_draw_spell_icon(champ, 1);
+    area_draw_spell_icon(champ, true);
     present_action_area();
 }
 
@@ -1688,7 +1687,7 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         feedback_hand_icon(*p++);
         break;
     case FB_ACTION_NAME:
-        area_draw_name(*p++, 1);
+        area_draw_name(*p++, true);
         present_action_area();
         break;
     case FB_ENTERED_RUNES:
@@ -1708,7 +1707,7 @@ static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p
         break;
     case FB_DIALOG_BUTTON:
     case FB_DIALOG_BUTTON_2:
-        dialog_draw_button(g_input_match.zone, 1, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
+        dialog_draw_button(true, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
         p += DIALOG_BUTTON_ARGS;
         f->opened = false; /* the original forgets the open feedback bitmap */
         dialog_present();
@@ -1952,9 +1951,9 @@ void input_update_viewport_arrow(void)
     if (dun_square_blocks_movement(dun_get_square(
             (Location){(int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step])})))
         return;
-    if (!creature_can_be_pushed((int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
-                                (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]),
-                                dir_turn(push_dirs[arrow], g_game.party_dir), NULL))
+    Location front = {(int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
+                      (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir])};
+    if (!creature_can_be_pushed(front, dir_turn(push_dirs[arrow], g_game.party_dir), false, NULL))
         return;
     show_move_arrow(entries[arrow], zones[arrow], true);
     move_set_push_arrow(arrow);
@@ -1997,18 +1996,18 @@ static void click_wall_sensor(int cell)
 static void click_creature(uint16_t group, int x, int y, int square_x, int square_y)
 {
     int side;
-    if (!view_hit_test_creature(x, y, square_x, square_y, &side))
+    if (!view_hit_test_creature(x, y, (Location){square_x, square_y}, &side))
         return;
     if (creature_group_info(group)->push_resistance == PUSH_RESISTANCE_FIXED) {
         sndreq_request_with_fallback((SoundCue){CAT_CREATURE, item_gdat_index(group), SOUND_ENTRY_CLICK,
                                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, square_x, square_y, 0);
+                                     SOUND_FALLBACK, square_x, square_y, SOUND_NOW);
     } else if (!side) {
         move_set_push_mode(true);
         ui_draw_movement_arrows();
         move_set_push_arrow(PUSH_ARROW_NONE);
     } else {
-        creature_turn_group(group, 0, side);
+        creature_turn_group(group, false, side);
     }
 }
 
@@ -2020,7 +2019,7 @@ static void click_front_wall(bool passable, int x, int y)
     if (!passable)
         sndreq_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
                                                 SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
-                                     SOUND_FALLBACK, x, y, 0);
+                                     SOUND_FALLBACK, x, y, SOUND_NOW);
     game_set_command_stop(true);
 }
 
@@ -2028,7 +2027,7 @@ static void click_front_wall(bool passable, int x, int y)
 static void click_door_button(int x, int y, uint16_t door)
 {
     sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                   g_game.party_x, g_game.party_y, 1);
+                   g_game.party_x, g_game.party_y, SOUND_STEP_END);
     sensor_press_door_button((Location){(int16_t)x, (int16_t)y}, door);
     game_set_command_stop(true);
 }
@@ -2053,11 +2052,13 @@ static void click_take_object(int x, int y, int index)
         sx += g_dir_dx[g_game.party_dir];
         sy += g_dir_dy[g_game.party_dir];
     }
-    uint16_t thing = view_hit_test_object(&(ViewObjectClick){x, y, z->cell, sx, sy, z->kind}, z->thing, false);
+    Location square_at = {sx, sy};
+    ViewObjectClick click = {x, y, z->cell, square_at, z->kind};
+    uint16_t thing = view_hit_test_object(&click, z->thing, false);
     if (thing != THING_NONE) {
-        move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
+        move_thing(thing, sx, sy, MOVE_NO_SQUARE, z->kind == CLICK_POSSESSIONS ? MOVE_IN_POSSESSIONS : 0);
         clear_moneybox_placed(thing);
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
     }
     game_set_command_stop(true);
 }
@@ -2078,7 +2079,7 @@ static bool click_drop_object(int x, int y, int cell)
     if (x == g_game.party_x && y == g_game.party_y && is_party_in_wall())
         return true; /* no drop inside a wall: the object stays in the hand */
     int dir_cell = dir_turn(g_game.party_dir, cell);
-    uint16_t group = creature_group_at(g_party.cur_map, x, y);
+    uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
     bool possession = cell >= CELL_POSSESSION_FIRST && cell <= CELL_POSSESSION_LAST;
     if (group != THING_NONE) {
         const CreatureInfo *info = creature_group_info(group);
@@ -2098,9 +2099,9 @@ static bool click_drop_object(int x, int y, int cell)
             for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (thing_cell(t) == dir_cell)
                     clear_moneybox_placed(t);
-        move_thing(thing_with_cell(thing, dir_cell), -1, -1, x, y);
+        move_thing(thing_with_cell(thing, dir_cell), MOVE_NO_SQUARE, MOVE_IN_POSSESSIONS, x, y);
     } else {
-        move_thing(thing_with_cell(thing, dir_cell), -1, 0, x, y);
+        move_thing(thing_with_cell(thing, dir_cell), MOVE_NO_SQUARE, 0, x, y);
     }
     game_set_command_stop(true);
     return true;
@@ -2112,7 +2113,9 @@ static bool click_drop_object(int x, int y, int cell)
 static bool click_place_object(int x, int y, ViewCell at)
 {
     uint16_t hand = thing_with_cell(g_game.leader_hand, dir_turn(g_game.party_dir, at.cell));
-    uint16_t hit = view_hit_test_object(&(ViewObjectClick){x, y, at.pos, at.x, at.y, at.kind}, hand, true);
+    Location square_at = {at.x, at.y};
+    ViewObjectClick click = {x, y, at.pos, square_at, at.kind};
+    uint16_t hit = view_hit_test_object(&click, hand, true);
     if (hit == THING_NONE) {
         champ_take_from_leader_hand();
         return true;
@@ -2212,7 +2215,7 @@ static void click_with_object(const ViewSquares *v, int x, int y, bool front_blo
         if (point_in_zone(ZONE_DROP_CELL_FIRST + k, x, y) && click_drop_object(v->fx, v->fy, k))
             return;
     }
-    uint16_t g = creature_group_at(g_party.cur_map, v->fx, v->fy);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, v->fx, v->fy});
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
         const CreatureInfo *info = creature_group_info(g);
         for (int k = 0; k < (info->possessions & POSSESSIONS_KIND_MASK); k++) {
@@ -2259,7 +2262,7 @@ static void click_in_viewport(int16_t x, int16_t y)
         click_front_wall(passable, v.fx, v.fy);
         return;
     }
-    uint16_t g = creature_group_at(g_party.cur_map, v.fx, v.fy);
+    uint16_t g = creature_group_at((Position){g_party.cur_map, v.fx, v.fy});
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC)
         click_creature(g, x, y, v.fx, v.fy);
 }
@@ -2335,10 +2338,10 @@ static bool execute_party_command(const Command *c, bool idle)
             int16_t turn = command == CMD_ROTATE_LEFT ? TURN_LEFT : TURN_RIGHT;
             champ_set_direction(champ, dir_turn(champion(champ)->dir, turn));
         }
-        area_update(0);
+        area_update(false);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
         champ_set_leader(party_cell_champion(command - CMD_LEADER_FIRST));
-        ui_draw_all_champion_states(0);
+        ui_draw_all_champion_states(false);
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
         int champ = command - CMD_INVENTORY_FIRST;
         if (g_ui.candidate)
@@ -2414,7 +2417,7 @@ static bool execute_champion_command(int command, bool idle)
         else
             champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
-        area_update(0);
+        area_update(false);
     } else if (command >= CMD_QUICK_SAVE && command <= CMD_OPTIONS) {
         if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)
@@ -2430,7 +2433,7 @@ static bool execute_champion_command(int command, bool idle)
         }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
         if (g_ui.inventory)
-            session_edit_champion_name(champion(g_ui.inventory - 1));
+            session_edit_champion_name(g_ui.inventory - 1);
     } else {
         return false;
     }

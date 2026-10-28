@@ -38,9 +38,9 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
         sensor_process_map_entry(false);
-    dun_set_party_location((Position){map, x, y});
+    dun_set_party_position((Position){map, x, y});
     g_hooks.enter_map_view(map);
-    world_update_day_night(0);
+    world_update_day_night(false);
     sensor_process_map_entry(true);
     creature_activate_groups_on_map();
     g_party.redraw |= REDRAW_SQUARES;
@@ -95,14 +95,14 @@ static bool process_world_event(TimelineEvent *e)
         break;
     case EVENT_CREATURE_ANIMATION:
     case EVENT_CREATURE_THINK:
-        creature_process_event(e->data[EVENT_X], e->data[EVENT_Y], e->type);
+        creature_process_event((Location){e->data[EVENT_X], e->data[EVENT_Y]}, e->type);
         break;
     case EVENT_MOVE_GROUP:
     case EVENT_MOVE_GROUP_2:
         timeline_event_move_group(e);
         break;
     case EVENT_WEATHER:
-        world_update_day_night(1);
+        world_update_day_night(true);
         break;
     case EVENT_SENSOR_ANIMATION_STEP:
     case EVENT_SENSOR_TIMER:
@@ -118,8 +118,8 @@ static bool process_world_event(TimelineEvent *e)
         int dir = rand_2bits()
                       ? dun_get_direction_to(e->data[EVENT_X], e->data[EVENT_Y], g_game.party_x, g_game.party_y)
                       : rand_2bits();
-        creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir, e->data[EVENT_X],
-                              e->data[EVENT_Y]);
+        creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir,
+                              (Location){e->data[EVENT_X], e->data[EVENT_Y]});
         break;
     }
     default:
@@ -177,7 +177,7 @@ void game_process_timeline(void)
         g_hooks.poll_input();
         TimelineEvent e;
         timeline_pop_first_event(&e);
-        dun_set_current_map((int8_t)timeline_event_map(&e));
+        dun_set_current_map(timeline_event_map(&e));
         uint16_t word = le16(e.data);
         if (!process_world_event(&e))
             process_party_event(&e, word);
@@ -189,7 +189,7 @@ void game_enter_new_map(void)
 {
     game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
     g_party.move_steps = 0;
-    move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+    move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_party.new_map = -1;
 }
 

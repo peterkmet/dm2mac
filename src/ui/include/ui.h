@@ -19,11 +19,13 @@
 #define STAMINA_DISPLAY_UNIT 10 /* the screen shows the stamina divided by this */
 #define WEIGHT_TENTHS        10 /* weights and loads are in tenths of a kilogram */
 
-/* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
+/* GDAT images of the interface: (CAT_INTERFACE, index, GDAT_TYPE_IMAGE, entry), the inventory set (CAT_PANEL, 0,
+   GDAT_TYPE_IMAGE, entry), the wall sets. */
 #define UI_INDEX_STATUS 2
 #define UI_INDEX_ARROWS 3
 #define UI_INDEX_ACTION 4
 #define UI_INDEX_FACES  6
+#define UI_INDEX_AURA   7 /* the aura pictures of the action area */
 
 /* The transparent color and the icon sizes of the interface pictures. */
 #define UI_KEY    12 /* transparent color of the interface pictures */
@@ -71,11 +73,11 @@ void ui_reset(void);
 int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE]);
 /* The rank text of a base skill as the skills panel shows it (for example "NOVICE FIGHTER"), in text (TEXT_SIZE bytes).
    The master ranks start with a power rune glyph of the font. */
-char *ui_skill_rank_text(int champ, int skill, char *text);
+char *ui_skill_rank_text(int16_t champion_index, int skill, char *text);
 
 /* ---- Offscreen bitmaps ---- */
 
-/* Opens an offscreen bitmap of zone (-1: of o->rect); mark_dirty marks it all as changed. */
+/* Opens an offscreen bitmap of zone (ZONE_NONE: of o->rect); mark_dirty marks it all as changed. */
 void offscreen_create(Offscreen *o, int zone, bool mark_dirty);
 /* Copies the changed parts to the screen; close frees the bitmap. */
 void offscreen_flush(Offscreen *o, bool close);
@@ -87,7 +89,7 @@ void offscreen_fill_rect_dithered(Offscreen *o, const int16_t *rect, int ui_colo
 void offscreen_blit(Offscreen *o, const BlitSource *source, const int16_t *rect);
 /* Draws a GDAT image placed in zone. */
 void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int transparent);
-/* Draws a prepared picture placed in zone (-1: at its rect). */
+/* Draws a prepared picture placed in zone (ZONE_NONE: at its rect). */
 void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
 /* Draws text with its base line at (x, y) in screen coordinates. */
 void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors colors, const char *text);
@@ -105,7 +107,7 @@ void ui_draw_viewport_image(int category, int index, int entry, int zone, int tr
 /* Fills the screen rectangle of zone with palette color color. */
 void ui_fill_zone_screen(int zone, int color);
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
-void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
+void ui_draw_champion_face_icon(Bitmap *dst, int16_t champion_index, uint8_t *palette);
 
 /* ---- Screen ---- */
 
@@ -116,11 +118,11 @@ void ui_draw_movement_arrows(void);
 
 /* ---- Status boxes and inventory ---- */
 
-/* Draws what changed of the status box (and of the inventory) of champ. */
-void ui_draw_champion_state(int champ);
+/* Draws what changed of the status box (and of the inventory) of a champion. */
+void ui_draw_champion_state(int16_t champion_index);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
-void ui_draw_all_champion_states(int tick);
-/* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
-void ui_toggle_inventory(int champ);
+void ui_draw_all_champion_states(bool tick);
+/* Opens the inventory of a champion, or closes it when it is open (CHAMPION_MAX: close). */
+void ui_toggle_inventory(int16_t champion_index);
 
 #endif /* DM2_UI_UI_H */

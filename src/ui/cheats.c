@@ -23,6 +23,8 @@
 #define ROW_SPELLS        8
 #define ROW_CLOSE         9
 #define PAGE_ROW_COUNT    10
+#define CHEAT_COUNT       6 /* the cheat rows, ROW_LIGHT to ROW_MAP */
+_Static_assert(CHEAT_COUNT == ROW_QUICK_SAVE, "the cheat rows come first on the cheat page");
 
 /* The items after the spells of a spell page. */
 #define SPELL_ITEM_NEXT  0
@@ -38,10 +40,10 @@
 #define CHEAT_LABEL_COLUMNS 20
 #define ANY_POWER           "X"
 
-static const char *const cheat_labels[ROW_QUICK_SAVE] = {"FULL LIGHT",   "IMMORTAL",           "FOOD AND WATER",
-                                                         "ONE-HIT KILL", "WALK THROUGH WALLS", "REVEAL MAP"};
-static const uint8_t cheat_bits[ROW_QUICK_SAVE] = {CHEAT_LIGHT, CHEAT_IMMORTAL, CHEAT_FOOD,
-                                                   CHEAT_KILL,  CHEAT_WALLS,    CHEAT_MAP};
+static const char *const cheat_labels[CHEAT_COUNT] = {"FULL LIGHT",   "IMMORTAL",           "FOOD AND WATER",
+                                                      "ONE-HIT KILL", "WALK THROUGH WALLS", "REVEAL MAP"};
+static const uint8_t cheat_bits[CHEAT_COUNT] = {CHEAT_LIGHT, CHEAT_IMMORTAL, CHEAT_FOOD,
+                                                CHEAT_KILL,  CHEAT_WALLS,    CHEAT_MAP};
 static const char *const spell_items[SPELL_ITEM_COUNT] = {"NEXT", "BACK", "CLOSE"};
 
 static CheatsCursor screen;
@@ -125,12 +127,12 @@ CheatsCursor cheats_get_cursor(void)
 /* Draws the cheat page with the state of each cheat. */
 static void show_cheat_page(void)
 {
-    char texts[ROW_QUICK_SAVE][ROW_TEXT_SIZE];
+    char texts[CHEAT_COUNT][ROW_TEXT_SIZE];
     const char *rows[PAGE_ROW_COUNT] = {[ROW_QUICK_SAVE] = "QUICK SAVE F5",
                                         [ROW_QUICK_LOAD] = "QUICK LOAD F9",
                                         [ROW_SPELLS] = "SPELLS",
                                         [ROW_CLOSE] = "CLOSE"};
-    for (int16_t i = ROW_LIGHT; i < ROW_QUICK_SAVE; i++) {
+    for (int16_t i = ROW_LIGHT; i < CHEAT_COUNT; i++) {
         snprintf(texts[i], ROW_TEXT_SIZE, "%-*s%s", CHEAT_LABEL_COLUMNS, cheat_labels[i],
                  game_has_cheat(cheat_bits[i]) ? "ON" : "OFF");
         rows[i] = texts[i];

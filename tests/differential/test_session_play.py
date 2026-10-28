@@ -11,6 +11,7 @@ from dm2test.dialog import DialogState, InputMatch, Session, find_point, main_lo
 from dm2test.scenario import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
+from dm2test.view import ScreenPoint
 from dm2test.lib import load_lib
 
 
@@ -65,9 +66,9 @@ def click_slot(slot):
         x, y = find_point(lib, INPUT_MODE_DIALOG, lambda m: m.choice == 3)
         rect = (ctypes.c_int16 * 4)()
         assert lib.zone_get_rect(0x1C3, rect)
-        vx, vy = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(InputMatch.in_dll(lib, "g_input_match").origin, ctypes.byref(vx), ctypes.byref(vy))
-        lib.input_mouse_click(x, rect[1] + vy.value + slot * 7 + 3, 2)
+        lib.zone_get_position.restype = ScreenPoint
+        origin = lib.zone_get_position(InputMatch.in_dll(lib, "g_input_match").origin)
+        lib.input_mouse_click(x, rect[1] + origin.y + slot * 7 + 3, 2)
     return act
 
 

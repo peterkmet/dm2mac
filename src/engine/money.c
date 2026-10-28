@@ -227,7 +227,7 @@ void money_box_click_coin(int16_t slot)
             champ_compute_load(champ);
             return;
         }
-        champ_put_in_leader_hand(coin, 0);
+        champ_put_in_leader_hand(coin);
     } else {
         if (!money_add_coin_to_box(box, g_game.leader_hand)) {
             champ_compute_load(champ);
@@ -236,7 +236,7 @@ void money_box_click_coin(int16_t slot)
         champ_take_from_leader_hand();
     }
     g_action.redraw_delay = 1;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     champ_compute_load(champ);
 }
 

@@ -49,6 +49,7 @@
 #define CMD_CANCEL_CAPTURE       0xe3
 #define CMD_TEXT_FIRST           0xa5
 #define CMD_TEXT_LAST            0xc6
+#define CMD_SLOT_TEXT_LAST       0xd6 /* the slot name field also types the text keys after CMD_TEXT_LAST up to this */
 #define CMD_LAST                 0xf2
 #define CMD_PARTY_ICON_FIRST     0x5f
 #define CMD_PARTY_ICON_LAST      0x62

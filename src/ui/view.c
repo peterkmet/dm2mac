@@ -2,6 +2,7 @@
 #include "view.h"
 #include <stdlib.h>
 #include <string.h>
+#include "ai.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
@@ -637,10 +638,11 @@ ViewSquare g_view_squares[VIEW_SQUARE_COUNT];
 static uint8_t viewport_pixels[VIEWPORT_WIDTH * VIEWPORT_HEIGHT];
 Bitmap g_view_viewport = {viewport_pixels, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, IMAGE_8BPP};
 
-/* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, and the transparent
-   colors of its color remap. */
+/* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, the transparent
+   colors of its color remap, and its draw mode. */
 typedef struct {
     int flip, scale_x, scale_y, dx, dy, depth, zone, anchor, key, key2;
+    enum DrawMode mode;
 } PicturePlace;
 
 /* How an object shows: lifted by dy, at a jitter spot that keeps the objects of a cell apart (-1 none), as a
@@ -1127,6 +1129,7 @@ static void setup_picture(const PicturePlace *p, int category, int index, int en
     c->anchor = (int16_t)p->anchor;
     c->dst = &g_view_viewport;
     c->transparent = (int16_t)p->key;
+    c->mode = p->mode;
     get_depth_shading(c->palette, depth, p->key, p->key2, &c->palette_count);
     draw_ctx_prepare(c);
 }
@@ -1568,7 +1571,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
                                   .key2 = NO_KEY},
                   category, index, pic.entry);
     if (!look->record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_projectile(look->projectile, pos);
 }
 
@@ -1598,7 +1601,7 @@ static void show_cell_objects(uint16_t thing, int pos, int cell, uint16_t group)
         show_object(thing, pos, &(ObjectLook){.spot = spot, .group = group, .record_click = true});
         spot = (spot + 1) % JITTER_COUNT;
         if (info) {
-            if (creature_cell_mask(info->possessions) >> cell & 1)
+            if (creature_cell_mask(info->possessions, DIR_NORTH) >> cell & 1)
                 set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, pos, CLICK_POSSESSIONS);
         } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > CELL_FRONT_RIGHT)) {
             Location at = {g_view_squares[pos].x, g_view_squares[pos].y};
@@ -1665,7 +1668,7 @@ static void show_creature(int pos, int depth, uint16_t group)
     uint8_t still[CREATURE_FRAME_SIZE];
     memcpy(still, frame, sizeof still);
     ActiveGroup *active = creature_active(group);
-    if (active && active->action == CREATURE_ACTION_VANISH)
+    if (active && active->action == ACTION_VANISH)
         creature_anim_frame_of(g, type, (uint16_t)active->counters[0], (uint16_t)active->counters[1], still);
     int anim = active ? active->anim_bits : 0;
     int side = creature_info(g, type)->flags & CREATURE_FACES_PARTY ? DIR_SOUTH
@@ -2260,12 +2263,11 @@ static void show_shop_label(uint16_t shop, uint16_t item, int creature, uint8_t 
 {
     int category = item_index_gdat_category(item);
     int index = item_index_gdat_index(item);
-    int16_t lx, ly;
-    zone_get_position(p->zone, &lx, &ly);
+    ScreenPoint label = zone_get_position(p->zone);
     uint16_t place =
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
     char raw[TEXT_SIZE], name[TEXT_SIZE];
-    show_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
+    show_centered_label(label.x + gdat_offset_x(place), label.y + gdat_offset_y(place),
                         gtext_format(gtext_gdat(category, index, GFX_ITEM_NAME, raw), name));
     int list = sensor_delay(shop);
     PriceTerms buying = {creature, list, true, true};
@@ -2421,7 +2423,7 @@ static void show_wall_portrait(int pos, uint8_t ornament, const PicturePlace *p,
                                   .key2 = NO_KEY},
                   CAT_CHAMPION, (uint8_t)g_view_squares[pos].text, GFX_PORTRAIT);
     if (!record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     if (record_click && p->depth == DEPTH_FRONT)
         add_click_zone(view.ctx.rect, CLICK_WALL_ORNAMENT, pos);
@@ -2450,7 +2452,7 @@ static void show_wall_plate(int pos, int side, const PicturePlace *p, int record
                                   .key2 = NO_KEY},
                   CAT_WALLSET, view.gfx_set, entry);
     if (!record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     if (side == 0 && g_view_squares[pos].text != THING_TEXT_NONE)
         show_wall_text(pos, entry, p);
@@ -2466,8 +2468,9 @@ static void show_wet_wall_ornament(uint8_t ornament, int entry, const PicturePla
                                   .depth = p->depth,
                                   .zone = p->zone,
                                   .anchor = p->anchor,
-                                  .key = DRAW_NO_IMAGE,
-                                  .key2 = DRAW_NO_IMAGE},
+                                  .key = NO_KEY,
+                                  .key2 = NO_KEY,
+                                  .mode = DRAW_NO_IMAGE},
                   CAT_WALL_ORNAMENT, ornament, entry);
     setup_picture(&(PicturePlace){.flip = p->flip,
                                   .scale_x = p->scale_x,
@@ -2481,7 +2484,7 @@ static void show_wet_wall_ornament(uint8_t ornament, int entry, const PicturePla
                                   .key2 = NO_KEY},
                   CAT_WALL_ORNAMENT, ornament, GFX_ORN_WET_BACKGROUND);
     if (!record_click)
-        view.ctx.transparent = DRAW_NO_BLIT;
+        view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     DrawCtx c;
     Bitmap *offscreen = render_offscreen(
@@ -2519,7 +2522,7 @@ static void show_ornament_contents(int pos, uint8_t ornament, int kind, const Pi
                                           .key2 = NO_KEY},
                           CAT_WALL_ORNAMENT, ornament, GFX_ORN_OVERLAY);
             if (!record_click)
-                view.ctx.transparent = DRAW_NO_BLIT;
+                view.ctx.mode = DRAW_RECT_ONLY;
             flush_picture();
         }
     } else if (kind == KIND_ALCOVE) {
@@ -2593,7 +2596,7 @@ static int show_wall_ornament(int pos, int side, int record_click)
     } else {
         setup_picture(&p, CAT_WALL_ORNAMENT, ornament, entry);
         if (!record_click)
-            view.ctx.transparent = DRAW_NO_BLIT;
+            view.ctx.mode = DRAW_RECT_ONLY;
         flush_picture();
         if (!record_click)
             return key;
@@ -2794,8 +2797,9 @@ static bool show_floor_ornament(int pos)
         return false;
     }
     PicturePlace no_image = p;
-    no_image.key = DRAW_NO_IMAGE;
-    no_image.key2 = DRAW_NO_IMAGE;
+    no_image.key = NO_KEY;
+    no_image.key2 = NO_KEY;
+    no_image.mode = DRAW_NO_IMAGE;
     setup_picture(&no_image, CAT_FLOOR_ORNAMENT, ornament, entry);
     if (lateral_of(pos) == 0) {
         PicturePlace background = p;
@@ -3562,14 +3566,14 @@ static bool hit_test_picture(int x, int y, int key)
 #define HIT_SIDE_LIMIT 75 /* percent of the half picture width: a click beyond it hits a side */
 #define HIT_DEPTH      1  /* the depth at which the creature in front is drawn for a hit test */
 
-bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side)
+bool view_hit_test_creature(int16_t x, int16_t y, Location at, int *out_side)
 {
-    uint16_t group = creature_get_group_at(square_x, square_y);
+    uint16_t group = creature_get_group_at(at);
     if (group == THING_NONE)
         return false;
     show_creature(POS_FRONT, HIT_DEPTH, group);
     int key = view.ctx.transparent;
-    view.ctx.transparent = DRAW_NO_BLIT;
+    view.ctx.mode = DRAW_RECT_ONLY;
     flush_picture();
     if (!hit_test_picture(x, y, key)) {
         draw_free_temp();
@@ -3649,7 +3653,7 @@ static uint16_t chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_
             dungeon_append_thing(thing, contents);
         } else if (count > 0) {
             dungeon_unlink_thing_from_list(last, contents);
-            champ_put_in_leader_hand(last, 1);
+            champ_put_in_leader_hand(last);
         }
         break;
     }
@@ -3661,10 +3665,10 @@ uint16_t view_hit_test_object(const ViewObjectClick *click, uint16_t thing, bool
 {
     uint16_t group = THING_NONE, t;
     if (click->kind == CLICK_POSSESSIONS) {
-        group = creature_group_at(g_party.cur_map, click->square_x, click->square_y);
+        group = creature_group_at((Position){g_party.cur_map, click->at.x, click->at.y});
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
-        t = dungeon_square_first_thing(g_party.cur_map, click->square_x, click->square_y);
+        t = dungeon_square_first_thing(g_party.cur_map, click->at.x, click->at.y);
     }
     if (t == THING_ENDOFLIST)
         return placing ? thing : THING_NONE;

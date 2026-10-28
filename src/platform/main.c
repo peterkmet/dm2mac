@@ -4,6 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <process.h>
+#include <sys/stat.h>
+#else
+#include <unistd.h>
+#endif
 #include <SDL3/SDL.h>
 #include "advanced.h"
 #include "control.h"
@@ -31,12 +39,6 @@
 #include "transport.h"
 #include "video.h"
 #include "zone.h"
-#ifdef _WIN32
-#include <process.h>
-#include <sys/stat.h>
-#else
-#include <unistd.h>
-#endif
 
 /* Sizes of the window, the icon, and the paths. */
 #define WINDOW_SCALE    3
@@ -48,12 +50,19 @@
 /* The arguments that a RESTART adds: --mode and its value. */
 #define MODE_OPTION_ARGS 2
 
+/* The start of each command line option. */
+#define OPTION_PREFIX "--"
+
 /* The timer ticks of the main loops. */
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
-/* The environment variable and the files of the program. */
+/* The environment variables and the files of the program. */
+#define FILTER_ENV  "DM2_FILTER"    /* the filter when --filter is not given */
 #define RESTART_ENV "DM2_RESTARTED" /* set for the program that a RESTART starts: the launcher plays no start movies */
 #define LOG_FILE    "dm2.log"       /* the messages of the Windows build, in the game folder */
+
+/* The command line options; each takes a value. */
+enum Option { OPTION_DATA, OPTION_FILTER, OPTION_SAVE, OPTION_CONTROL, OPTION_MODE, OPTION_SAVES, OPTION_COUNT };
 
 /* The values of the command line options; NULL for an option that is not given. */
 typedef struct {
@@ -69,6 +78,12 @@ typedef struct {
 typedef struct {
     uint8_t sdl, pc;
 } ScanCode;
+
+/* The names of the command line options: read_options reads their values, a RESTART passes them on (without --save). */
+static const char *const option_names[OPTION_COUNT] = {
+    [OPTION_DATA] = "--data",       [OPTION_FILTER] = "--filter", [OPTION_SAVE] = "--save",
+    [OPTION_CONTROL] = "--control", [OPTION_MODE] = "--mode",     [OPTION_SAVES] = "--saves",
+};
 
 /* The PC scan codes of the SDL keys. */
 static const ScanCode scan_codes[] = {
@@ -412,29 +427,22 @@ _Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCAL
    *unknown is the first argument that starts with -- and matches no option, or NULL. */
 static const char *read_options(int argc, char **argv, Options *options, const char **unknown)
 {
-    const struct {
-        const char *name;
-        const char **value;
-    } names[] = {
-        {"--data",    &options->data   },
-        {"--filter",  &options->filter },
-        {"--save",    &options->save   },
-        {"--control", &options->control},
-        {"--mode",    &options->mode   },
-        {"--saves",   &options->saves  },
+    const char **values[OPTION_COUNT] = {
+        [OPTION_DATA] = &options->data,       [OPTION_FILTER] = &options->filter, [OPTION_SAVE] = &options->save,
+        [OPTION_CONTROL] = &options->control, [OPTION_MODE] = &options->mode,     [OPTION_SAVES] = &options->saves,
     };
     *unknown = NULL;
     for (int i = 1; i < argc; i++) {
         bool known = false;
-        for (size_t n = 0; n < sizeof names / sizeof names[0] && !known; n++) {
-            if (strcmp(argv[i], names[n].name))
+        for (int n = 0; n < OPTION_COUNT && !known; n++) {
+            if (strcmp(argv[i], option_names[n]))
                 continue;
             if (i + 1 == argc)
                 return argv[i];
-            *names[n].value = argv[++i];
+            *values[n] = argv[++i];
             known = true;
         }
-        if (!known && !*unknown && !strncmp(argv[i], "--", 2))
+        if (!known && !*unknown && !strncmp(argv[i], OPTION_PREFIX, strlen(OPTION_PREFIX)))
             *unknown = argv[i];
     }
     return NULL;
@@ -455,11 +463,11 @@ static bool options_are_valid(const char *missing, const char *unknown)
 /* Sets g_game_mode from its name; false with a message for an unknown name. */
 static bool select_mode(const char *mode)
 {
-    for (g_game_mode = 0; g_game_mode < GAME_MODE_COUNT && strcmp(mode, g_game_mode_names[g_game_mode]);
-         g_game_mode++) {
-    }
-    if (g_game_mode < GAME_MODE_COUNT)
-        return true;
+    for (enum GameMode m = GAME_MODE_VANILLA; m < GAME_MODE_COUNT; m++)
+        if (!strcmp(mode, g_game_mode_names[m])) {
+            g_game_mode = m;
+            return true;
+        }
     os_log("unknown mode %s: use vanilla, advanced, or turnbased", mode);
     return false;
 }
@@ -529,16 +537,33 @@ static void log_to_file(const char *message)
     fflush(program.log_file);
 }
 
-/* Opens dm2.log in the game folder and sends the messages to it. */
+/* Opens dm2.log in the game folder and sends the messages to it; the program that a RESTART starts does not inherit
+   the file. */
 static void open_log(const char *data)
 {
     char path[OS_PATH_SIZE];
     snprintf(path, sizeof path, "%s/%s", data, LOG_FILE);
-    program.log_file = fopen(path, "w");
-    if (!program.log_file)
+    int fd = _open(path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_TEXT | _O_NOINHERIT, _S_IREAD | _S_IWRITE);
+    if (fd < 0)
         return;
+    program.log_file = _fdopen(fd, "w");
+    if (!program.log_file) {
+        _close(fd);
+        return;
+    }
     g_os_log_hook = log_to_file;
     g_os_fatal_hook = log_to_file;
+}
+
+/* Sends the messages to the error output again and closes dm2.log. */
+static void close_log(void)
+{
+    if (!program.log_file)
+        return;
+    g_os_log_hook = NULL;
+    g_os_fatal_hook = NULL;
+    fclose(program.log_file);
+    program.log_file = NULL;
 }
 #endif
 
@@ -550,6 +575,7 @@ static void close_platform(void)
     draw_free();
     timeline_free();
     seen_free();
+    zone_free();
     gdat_select(NULL);
     gdat_free(program.gdat);
     program.gdat = NULL;
@@ -560,7 +586,8 @@ static void close_platform(void)
    it cannot start. */
 static void restart(int argc, char **argv, bool mode_given)
 {
-    int count = args_drop_save(argc, argv); /* the original always restarts into the start menu */
+    /* the original always restarts into the start menu */
+    int count = args_drop_save(argc, argv, option_names, OPTION_COUNT);
     char **args = calloc((size_t)count + MODE_OPTION_ARGS + 1, sizeof *args);
     if (!args)
         os_fatal("out of memory");
@@ -614,7 +641,7 @@ static bool open_game(const Options *options, int factor)
 
 int main(int argc, char **argv)
 {
-    Options options = {.data = "game", .filter = SDL_getenv("DM2_FILTER")};
+    Options options = {.data = "game", .filter = getenv(FILTER_ENV)};
     const char *unknown;
     const char *missing = read_options(argc, argv, &options, &unknown);
     bool mode_given = options.mode != NULL;
@@ -665,5 +692,8 @@ int main(int argc, char **argv)
     close_platform();
     if (g_session.exit_code == EXIT_RESTART)
         restart(argc, argv, mode_given);
+#ifdef _WIN32
+    close_log();
+#endif
     return g_session.exit_code;
 }

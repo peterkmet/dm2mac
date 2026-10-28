@@ -31,9 +31,17 @@
 /* Sound (CAT_DUNGEON, 0, SOUND_ENTRY_TRANSFORM): a creature transforms; the volume dialog plays it as its test sound. */
 #define SOUND_ENTRY_TRANSFORM    0x8b
 #define SOUND_PRIORITY_TRANSFORM 0x6c
+/* Sound (CAT_DUNGEON, 0, SOUND_ENTRY_TRANSFORMED): a creature transformed. */
+#define SOUND_ENTRY_TRANSFORMED  0x81
+
+/* The data byte of event EVENT_DELAYED_SOUND that holds the slot of its sound. */
+#define DELAYED_EVENT_SLOT 0x00
 
 /* The requests that went to the voices, for the tests. */
 #define SOUND_PLAYED_MAX 64
+
+/* When a sound request plays: now, at the end of the game step, or at the next sndreq_flush_requests(true). */
+enum SoundWhen { SOUND_NOW, SOUND_STEP_END, SOUND_DEFERRED };
 
 /* Signed 8-bit mono PCM of a GDAT sound item. */
 typedef struct {
@@ -90,16 +98,21 @@ enum GdatResult sndreq_load(const Gdat *g, int category, int index, int entry, S
 bool sndreq_party_offset(int dx, int dy, int party_dir, int path_distance, SoundOffset *offset);
 /* The loudness and stereo pan of a sound at lateral, forward. */
 SoundLevel sndreq_volume_pan(uint8_t volume, int lateral, int forward);
+/* cue with the sound of index fallback when the index of cue has no such sound. */
+SoundCue sndreq_cue_with_fallback(SoundCue cue, int fallback);
 
 /* Requests */
-/* Asks for the sound of cue at (x, y) of the current map: delay 0 plays it now, 1 at the end of the game step, a
-   negative delay at the next sndreq_flush_requests(1), a longer delay through the timeline. */
-void sndreq_request(SoundCue cue, int16_t x, int16_t y, int delay);
+/* Asks for the sound of cue at (x, y) of the current map at when. A sound at the end of the game step plays only
+   when the party sees the current map. */
+void sndreq_request(SoundCue cue, int16_t x, int16_t y, enum SoundWhen when);
 /* sndreq_request with the sound of index fallback when the index of cue has no such sound. */
-void sndreq_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay);
+void sndreq_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, enum SoundWhen when);
+/* Asks for the sound of cue at (x, y) of the current map after ticks game steps: 0 plays it now, 1 at the end of the
+   game step, more through the timeline. It plays only when the party sees the current map. */
+void sndreq_request_after(SoundCue cue, int16_t x, int16_t y, uint16_t ticks);
 /* A delayed sound (EVENT_DELAYED_SOUND) is due: it plays when the party is still on its map. */
 void sndreq_request_delayed(int16_t slot);
-/* Plays the requests of the game step (queue 0) or the deferred requests (queue 1). */
-void sndreq_flush_requests(int queue);
+/* Plays the requests of the game step, or the deferred requests when deferred. */
+void sndreq_flush_requests(bool deferred);
 
 #endif /* DM2_ENGINE_SOUND_REQUEST_H */

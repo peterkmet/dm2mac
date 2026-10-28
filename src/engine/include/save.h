@@ -19,9 +19,13 @@ typedef struct gdat Gdat;
 #define MAGIC_LIGHT_SIZE  6
 
 /* The save file header. */
-#define SAVE_NAME_SIZE   32 /* a slot name of up to 31 characters and its end mark */
-#define SAVE_HEADER_SIZE 42 /* the save file header: format word, slot name, empty slot mark */
-#define SAVE_HEADER_NAME 2  /* the offset of the slot name in the header */
+#define SAVE_NAME_SIZE         32 /* a slot name of up to 31 characters and its end mark */
+#define SAVE_HEADER_SIZE       42 /* the save file header: format word, slot name, empty slot mark */
+#define SAVE_HEADER_NAME       2  /* the offset of the slot name in the header */
+#define SAVE_HEADER_EMPTY_MARK 38 /* the offset of SAVE_EMPTY_SLOT_MARK in the header of an empty slot */
+
+/* The mark of an empty slot in the slot list. */
+#define SAVE_EMPTY_SLOT_MARK 0xdeadbeefu
 
 /* Start values of a loaded or new game. */
 #define EVENT_SLACK          50 /* timeline events beyond one for each group, projectile, and explosion record */

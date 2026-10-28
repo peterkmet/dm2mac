@@ -25,9 +25,9 @@ typedef struct {
     bool paused;
     bool playing;
     bool started;
-    int16_t requested_song; /* last song asked for, -1 at start */
-    uint8_t current_song, next_song;
-    int16_t volume; /* music volume setting, 0 to 7 */
+    int16_t requested_song;          /* last song asked for, -1 at start */
+    int16_t current_song, next_song; /* SONGLIST.DAT values; MUSIC_NO_SONG at start */
+    int16_t volume;                  /* music volume setting, 0 to 7 */
 } Music;
 
 /* The state of the music player. */
@@ -41,8 +41,8 @@ bool music_init(const Gdat *g, const char *data_dir);
 void music_quit(void);
 
 /* Songs */
-/* Starts song (GDAT key (4, song, 3, 0)); song 0 starts nothing. */
-void music_play_song(int song); /* exported for the tests */
+/* Starts song (the HMP item of CAT_MUSIC with index song); song 0 starts nothing. */
+void music_play_song(int16_t song); /* exported for the tests */
 /* Pauses the song until the next music_update_for_map. */
 void music_pause(void);
 /* Once per game step: resumes a paused song, steps the fade, and changes to the song of map. */

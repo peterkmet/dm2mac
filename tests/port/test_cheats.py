@@ -36,10 +36,11 @@ def lib():
     lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     lib.dungeon_square.restype = ctypes.c_uint8
     lib.creature_get_group_at.restype = ctypes.c_uint16
+    lib.creature_get_group_at.argtypes = [Location]
     lib.creature_info.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.creature_alert.argtypes = [ctypes.c_uint16, Location, ctypes.c_uint, ctypes.c_int, ctypes.c_int]
-    lib.creature_process_event.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
+    lib.creature_process_event.argtypes = [Location, ctypes.c_int]
     lib.move_party.restype = ctypes.c_bool
     return lib
 
@@ -73,10 +74,10 @@ def first_group(lib, gdat, game, wanted=lambda info: True):  # noqa: F811
         lib.dun_set_current_map(m)
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
-                group = lib.creature_get_group_at(x, y)
+                group = lib.creature_get_group_at(Location(x, y))
                 if group != C.THING_NONE and wanted(lib.creature_info(gdat, lib.thing_word(group, C.GROUP_CREATURE) & 0xFF)):
                     enter(lib, game, m, x, y, 0)
-                    assert lib.creature_get_group_at(x, y) == group
+                    assert lib.creature_get_group_at(Location(x, y)) == group
                     return group, x, y
     raise AssertionError("no creature group in the dungeon")
 
@@ -101,8 +102,8 @@ def hit(lib, group, x, y, damage):
     """A hit of damage on the group, with much health first; returns True when the group is gone."""
     lib.thing_set_word(group, C.GROUP_HEALTH, HEALTH)
     lib.creature_alert(group, Location(x, y), 0, 0, damage)
-    lib.creature_process_event(x, y, C.EVENT_CREATURE_THINK)
-    return lib.creature_get_group_at(x, y) != group or lib.thing_word(group, C.GROUP_HEALTH) <= 1
+    lib.creature_process_event(Location(x, y), C.EVENT_CREATURE_THINK)
+    return lib.creature_get_group_at(Location(x, y)) != group or lib.thing_word(group, C.GROUP_HEALTH) <= 1
 
 
 @pytest.mark.parametrize("cheat", [False, True])
@@ -147,7 +148,7 @@ def find_place(lib, game, wanted):
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
                 if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR or \
-                        lib.creature_get_group_at(x, y) != C.THING_NONE:
+                        lib.creature_get_group_at(Location(x, y)) != C.THING_NONE:
                     continue
                 for d, (dx, dy) in enumerate(DIRS):
                     if wanted(m, x + dx, y + dy):
@@ -296,10 +297,10 @@ def test_no_drop_inside_a_wall(lib, game, wanted):
         enter(lib, game, *find_place(lib, game, lambda m, x, y: is_wall(lib, m, x, y)))
     lib.game_set_cheats(C.CHEAT_WALLS)
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16, ctypes.c_bool]
+    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16]
     lib.champ_take_from_leader_hand()
     thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
-    lib.champ_put_in_leader_hand(thing, 0)
+    lib.champ_put_in_leader_hand(thing)
     view, cell = (ctypes.c_int16 * 4)(), (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, view) and lib.zone_get_rect(C.ZONE_DROP_CELL_FIRST, cell)
     lib.input_mouse_click(view[0] + cell[0] + cell[2] // 2, view[1] + cell[1] + cell[3] // 2, C.INPUT_BUTTON_LEFT)

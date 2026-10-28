@@ -68,6 +68,8 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define ITEM_FLAG_SCROLL_INFO  0x0020 /* the inventory shows the object info while it is in the hand */
 #define ITEM_FLAG_REFILLS      0x0001 /* the item holds water */
 #define ITEM_FLAG_LIGHT        0x0010 /* the item gives light */
+#define ITEM_FLAG_GRATE_PASSES 0x0002 /* the object can fly through a grate */
+#define ITEM_FLAG_CAUGHT       0x0040 /* a creature that catches objects catches it */
 #define ITEM_FLAG_USED_UP      0x0800 /* the item vanishes with its last charge */
 /* ATTR_ARMOUR_CLASS fields: the defense (bits 0-7), the sharp factor (bits 8-10), and the bit of a hand item that
    defends. */
@@ -149,7 +151,7 @@ void item_set_do_not_discard(uint16_t thing, bool keep);
 uint16_t item_create_by_index(uint16_t item);
 
 /* Minion links. */
-/* The projectile among the possessions of group that carries payload (THING_NONE: any); 0 when none. */
+/* The projectile among the possessions of group that carries payload (THING_NONE: any); THING_NONE when none. */
 uint16_t item_find_link_projectile(uint16_t group, uint16_t payload);
 
 /* Items of the champion actions. */

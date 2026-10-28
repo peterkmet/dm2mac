@@ -17,7 +17,7 @@ from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
 )
 from dm2test.save import Game, Timeline
-from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, draw_both
+from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
 from dm2test.lib import load_lib
 
 
@@ -32,6 +32,7 @@ EVENT_WEATHER, CHAMPION_HANDS = C.EVENT_WEATHER, 0xC3
 OUTDOOR_MAPS = (1, 14, 15, 16, 17, 25, 27, 29, 30, 33, 39, 41, 42)  # sky state 1 or 4: the weather shows
 MAP_LIGHTNING_TARGET = 1  # its graphics set gives a fixed square that lightning hits
 INDOOR_MAPS = (2, 5, 11, 20, 38)  # no weather: the hour does not update the light
+WHEN = {0: C.SOUND_NOW, 1: C.SOUND_STEP_END, -1: C.SOUND_DEFERRED}  # the delay of the original as SoundWhen
 
 
 @pytest.fixture
@@ -264,20 +265,20 @@ def test_zone_interpolate_offset_matches_original(world, lib):
     # The offset between two layout zones at a percent: the place of a lightning bolt in the sky.
     from dm2tools.emu import SCRATCH
     rng = random.Random(175)
-    dx, dy = ctypes.c_int16(), ctypes.c_int16()
+    offset = ScreenPoint()
     lib.zone_interpolate_offset.restype = ctypes.c_bool
     for n in range(400):
         a, b, p = rng.randrange(1, 7000), rng.randrange(1, 7000), rng.randrange(-20, 130)
         if rng.random() < 0.5:
             a = rng.choice((6001, 6002, 6003, 3100, 5000))
             b = a + 1
-        dx.value, dy.value = 7, 7
+        offset.x, offset.y = 7, 7
         sc = world
         sc.emu.write(SCRATCH + 0xF8300, struct.pack("<hh", 7, 7))
-        mine = lib.zone_interpolate_offset(a, b, p, ctypes.byref(dx), ctypes.byref(dy))
+        mine = lib.zone_interpolate_offset(a, b, p, ctypes.byref(offset))
         theirs = sc.emu.call(ZONE_INTERPOLATE_OFFSET, a, b, p, SCRATCH + 0xF8300, SCRATCH + 0xF8302)
         assert (mine is False) == (theirs & 0xFFFFFFFF == 0xFFFFFFFF), (a, b, p)
-        assert (dx.value, dy.value) == struct.unpack("<hh", sc.emu.read(SCRATCH + 0xF8300, 4)), (a, b, p)
+        assert (offset.x, offset.y) == struct.unpack("<hh", sc.emu.read(SCRATCH + 0xF8300, 4)), (a, b, p)
 
 
 def transfer_sensors(lib):
@@ -610,12 +611,15 @@ def test_sound_requests_match_original(world, lib, gdat):
                 step = rng.choice(((0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)))
                 args = last[:5] + (last[5] + step[0], last[6] + step[1], last[7])
             last = args
-            lib.sndreq_request(SoundCue(*args[:5]), *args[5:])
+            if args[7] > 1:
+                lib.sndreq_request_after(SoundCue(*args[:5]), *args[5:])
+            else:
+                lib.sndreq_request(SoundCue(*args[:5]), *args[5:7], WHEN[args[7]])
             sc.emu.call(SOUND_REQUEST, *args)
         lib.dun_set_current_map(map_)
         sc.emu.call(DUN_SET_CURRENT_MAP, map_)
         if rng.random() < 0.5:
-            lib.sndreq_flush_requests(1)
+            lib.sndreq_flush_requests(True)
             sc.emu.call(0x1616D, 1)
         if passage:
             sc.party.alt_view_map = -1
