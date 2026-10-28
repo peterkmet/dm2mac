@@ -11,7 +11,7 @@
 
 /* Weather and day state that the save file does not keep (the saved part is in game). */
 typedef struct {
-    int16_t strike_threshold; /* lightning strikes the party square only when global byte 0x40 is above it */
+    int16_t strike_threshold; /* lightning strikes the party square only when the storm count VAR_STORMS is above it */
     uint16_t storm_previous;  /* the storm intensity before the last storm step */
     int16_t hour_light;       /* the darkness of the hour: 1 (day) to 5 (night) */
     uint32_t day_time_offset; /* the game time that the day starts with */
@@ -40,7 +40,7 @@ extern int16_t g_light_source_sum, g_explosion_light_sum;
 #define LIGHT_CREATURES 0x02
 #define LIGHT_WALLS     0x04
 
-/* Map graphics value key (CAT_WALLSET, set, 0x0b, key): the sky. */
+/* Map graphics value key (CAT_WALLSET, graphics set, GDAT_TYPE_VALUE, key): the sky. */
 #define MAP_KEY_SKY_STATE 0x66
 
 /* Rain intensities: strong rain grows the clouds faster. */
@@ -61,13 +61,16 @@ extern int16_t g_light_source_sum, g_explosion_light_sum;
 #define HOUR_LIGHT_DAY   1
 #define HOUR_LIGHT_NIGHT 5
 
-/* A sky object of the outdoor view (the original record, 10 bytes): rain, clouds, lightning, landmarks. */
+/* A sky object of the outdoor view: rain, clouds, lightning, landmarks. */
 typedef struct {
-    uint8_t entry;        /* GDAT entry (0x17, graphics set, entry) */
+    uint8_t entry;        /* GDAT entry (CAT_SKY, graphics set, entry) */
     uint8_t flip;         /* how the picture mirrors */
     int16_t zone, dx, dy; /* layout zone and offset */
     uint8_t scale_x, scale_y;
 } SkyObject;
+/* The size of the sky object record of the original. */
+#define SKY_OBJECT_RECORD_SIZE 10
+_Static_assert(sizeof(SkyObject) == SKY_OBJECT_RECORD_SIZE, "the original sky object record has 10 bytes");
 
 /* The end mark of the sky objects. */
 #define SKY_OBJECT_END 0xff
