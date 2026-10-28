@@ -2028,13 +2028,7 @@ static void click_door_button(int x, int y, uint16_t door)
 {
     sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
                    g_game.party_x, g_game.party_y, 1);
-    sensor_schedule_square_event(x, y, 0, EFFECT_TOGGLE, g_game.game_time + 1);
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_party.cur_map),
-                       .type = EVENT_DOOR_BUTTON_RELEASE};
-    uint16_t first = dungeon_square_first_thing(g_party.cur_map, x, y);
-    put_le16(e.data + SENSOR_EVENT_THING, first);
-    timeline_add_event(&e);
-    door_set_flag(door, DOOR_BUTTON_PRESSED, true);
+    sensor_press_door_button((Location){(int16_t)x, (int16_t)y}, door);
     game_set_command_stop(true);
 }
 
