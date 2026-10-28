@@ -48,7 +48,6 @@
 #define DISPLACE_DAMAGE_ROLL      10
 #define DISPLACE_RESISTANCE_SHIFT 3
 #define FALL_ALERT_DAMAGE         20 /* the damage alert of a creature that falls into a pit */
-#define ALERT_MOOD_BORED          5  /* alert flags: mood bit 5, MOOD_BORED */
 #define BUMP_ALERT_CHANCE         5
 #define ARRIVAL_ALERT_SHIFT 2 /* a creature that the party pushes aside: alert damage of a quarter of the step time */
 #define PUSH_ALERT_SHIFT 2 /* a creature that another pushes aside: alert damage of a quarter of the push resistance */
@@ -162,18 +161,18 @@ const int8_t g_dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
 static const int8_t command_forward[DIR_COUNT] = {1, 0, -1, 0};
 static const int8_t command_right[DIR_COUNT] = {0, 1, 0, -1};
 /* The order in which find_free_adjacent_square tries the 4 sides, by a random row: for the party
-   relative to its direction, for things absolute. */
+   relative to its direction (DIR_NORTH: ahead), for things absolute. */
 static const uint8_t free_square_order_party[FREE_SQUARE_ROWS][DIR_COUNT] = {
-    {2, 0, 1, 3},
-    {2, 1, 0, 3},
-    {2, 3, 0, 1},
-    {2, 1, 3, 0}
+    {DIR_SOUTH, DIR_NORTH, DIR_EAST,  DIR_WEST },
+    {DIR_SOUTH, DIR_EAST,  DIR_NORTH, DIR_WEST },
+    {DIR_SOUTH, DIR_WEST,  DIR_NORTH, DIR_EAST },
+    {DIR_SOUTH, DIR_EAST,  DIR_WEST,  DIR_NORTH}
 };
 static const uint8_t free_square_order_thing[FREE_SQUARE_ROWS][DIR_COUNT] = {
-    {0, 2, 1, 3},
-    {1, 0, 2, 3},
-    {2, 3, 0, 1},
-    {3, 1, 2, 0}
+    {DIR_NORTH, DIR_SOUTH, DIR_EAST,  DIR_WEST },
+    {DIR_EAST,  DIR_NORTH, DIR_SOUTH, DIR_WEST },
+    {DIR_SOUTH, DIR_WEST,  DIR_NORTH, DIR_EAST },
+    {DIR_WEST,  DIR_EAST,  DIR_SOUTH, DIR_NORTH}
 };
 /* The sensor kinds whose square keeps its things. */
 static const uint8_t sensor_blocks_discard[SENSOR_KIND_TABLE] = {
@@ -267,7 +266,7 @@ int dun_get_stairs_exit_direction(Location at)
     int probe = along_y ? DIR_EAST : DIR_NORTH;
     int type =
         square_type(dun_get_square((Location){(int16_t)(at.x + g_dir_dx[probe]), (int16_t)(at.y + g_dir_dy[probe])}));
-    return (type == SQUARE_WALL || type == SQUARE_STAIRS) * 2 + along_y;
+    return type == SQUARE_WALL || type == SQUARE_STAIRS ? dir_opposite(probe) : probe;
 }
 
 bool dun_get_linked_teleporter_dest(PassageEnd *end, Location at)
@@ -328,7 +327,7 @@ static void bump_champion(int champ, int16_t x, int16_t y)
 
 BumpedChampions move_party_bump_damage(Location at, int16_t dir, int step)
 {
-    int side = step + dir + 2;
+    int side = dir_opposite(dir_turn(dir, step));
     BumpedChampions bumped;
     bumped.first = (int16_t)move_nearest_champion_at(at, side & DIR_MASK);
     bumped.second = (int16_t)move_nearest_champion_at(at, dir_turn(side, TURN_RIGHT));
@@ -382,7 +381,7 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
 /* The party takes the stairs up or down: it leaves the square and arrives on the map above or below. */
 static void take_stairs(bool up)
 {
-    move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
+    move_thing(THING_NONE, g_game.party_x, g_game.party_y, MOVE_NO_SQUARE, 0);
     Position to = dungeon_location_on_map((Position){g_game.party_map, g_game.party_x, g_game.party_y}, up ? -1 : 1);
     g_party.new_map = to.map;
     g_game.party_x = (uint16_t)to.x;
@@ -403,7 +402,7 @@ void move_party_turn(int command)
 {
     if (!command)
         return;
-    g_input_command_stop = 1;
+    g_input_command_stop = true;
     sync_champion_directions();
     uint8_t square = dun_get_square((Location){g_game.party_x, g_game.party_y});
     if (square_type(square) == SQUARE_STAIRS) {
@@ -434,7 +433,7 @@ static void take_free_step(int16_t map, bool on_stairs, PartyStep s)
         s.y = back.y;
     }
     if (on_stairs) {
-        move_thing(THING_NONE, -1, 0, s.x, s.y);
+        move_thing(THING_NONE, MOVE_NO_SQUARE, 0, s.x, s.y);
         return;
     }
     PassageEnd end;
@@ -498,13 +497,13 @@ static bool step_party(int command, uint8_t here, bool on_stairs)
     s.x = ahead.x;
     s.y = ahead.y;
     s.ahead = dun_get_square(ahead);
-    g_input_command_stop = 1;
+    g_input_command_stop = true;
     pay_stamina_by_load(LOAD_PER_STEP_FACTOR);
     sync_champion_directions();
     uint16_t group;
     switch (get_step_result(&s, &group)) {
     case STEP_STAIRS_AHEAD:
-        move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
+        move_thing(THING_NONE, g_game.party_x, g_game.party_y, MOVE_NO_SQUARE, 0);
         g_game.party_x = (uint16_t)s.x;
         g_game.party_y = (uint16_t)s.y;
         here = s.ahead;
@@ -566,7 +565,7 @@ bool move_party(int command)
         return true;
     } else if (!step_party(command, here, on_stairs)) {
         g_hooks.flush_input();
-        g_input_command_stop = 0;
+        g_input_command_stop = false;
         return false;
     }
     /* the cooldown: half the delay, at least 1 while the party walks */
@@ -595,9 +594,9 @@ void move_party_to(Position at, int16_t dir)
     int sy = g_game.party_y;
     if (other) {
         dun_set_current_map(g_game.party_map);
-        move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
+        move_thing(THING_NONE, g_game.party_x, g_game.party_y, MOVE_NO_SQUARE, 0);
         game_enter_map(x, y, map, 1);
-        sx = -1;
+        sx = MOVE_NO_SQUARE;
         sy = 0;
     }
     move_thing(THING_NONE, sx, sy, x, y);
@@ -621,8 +620,8 @@ void move_compute_map_arrival(Position at)
                                             (Location){(int16_t)(at.x + g_dir_dx[d]), (int16_t)(at.y + g_dir_dy[d])}))
             continue;
         found = true;
-        turn = end.target_side + 6 - end.side;
-        int side = dir_turn(d, turn + 2);
+        turn = dir_opposite(end.target_side) - end.side;
+        int side = dir_turn(d, dir_opposite(turn));
         g_party.alt_view_x = (int16_t)(end.x + g_dir_dx[side]);
         g_party.alt_view_y = (int16_t)(end.y + g_dir_dy[side]);
     }
@@ -989,7 +988,8 @@ Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool c
         if (t.type == THING_GROUP)
             t.scope = item_attr(thing, ATTR_TELEPORT_SCOPE) ? SCOPE_PARTY : SCOPE_CREATURES;
         else if (t.type == THING_PROJECTILE)
-            g_party.dest_dir = (int16_t)projectile_dir(thing); /* fix: bits 10-11 of the position word */
+            g_party.dest_dir =
+                (int16_t)projectile_dir(thing); /* the flight direction: bits 10-11 of the position word */
     }
     for (int loop = TRANSITION_MAX; --loop;) {
         uint8_t square = dungeon_square(g_party.cur_map, t.x, t.y);
@@ -1116,7 +1116,7 @@ static void arrive_party(const ThingMove *m)
             if (aside.x >= 0) {
                 dun_set_party_position((Position){(int16_t)map, aside.x, aside.y});
                 g_party.new_map = (int16_t)map;
-                move_thing(THING_NONE, -1, 0, aside.x, aside.y);
+                move_thing(THING_NONE, MOVE_NO_SQUARE, 0, aside.x, aside.y);
                 dun_set_party_position((Position){m->start_map, g_game.party_x, g_game.party_y});
                 if (g_party.new_map != m->start_map)
                     return;
@@ -1171,7 +1171,7 @@ static GroupArrival meet_target_square(uint16_t thing, Position to)
         aside = find_free_adjacent_square(thing, dst);
         if (aside.x < 0)
             return ARRIVAL_WAIT;
-        move_thing(thing, -1, 0, aside.x, aside.y);
+        move_thing(thing, MOVE_NO_SQUARE, 0, aside.x, aside.y);
         return ARRIVAL_DONE;
     } else {
         aside = find_free_adjacent_square(other, dst);
@@ -1232,7 +1232,7 @@ static void arrive_object(const ThingMove *m)
         dungeon_link_thing_to_square(m->thing, g_party.cur_map, dst_x, dst_y);
         return;
     }
-    bool added = m->path.src_x < 0 && m->path.src_y < 0;
+    bool added = m->path.src_x < 0 && m->path.src_y == MOVE_IN_POSSESSIONS;
     bool under_static = added;
     if (!added && m->map != m->start_map) {
         uint16_t g = creature_group_at(g_party.cur_map, dst_x, dst_y);
@@ -1257,8 +1257,8 @@ static void leave_square(const ThingMove *m)
         dungeon_unlink_thing_from_square(m->thing, g_party.cur_map, src_x, src_y);
     else
         sensor_leave_square(src_x, src_y, m->thing, dun_on_party_square((Location){(int16_t)src_x, (int16_t)src_y}),
-                            m->path.dst_x < 0 && m->path.dst_y < 0);
-    if (thing_type(m->thing) == THING_GROUP && m->path.dst_x < -1) {
+                            m->path.dst_x < 0 && m->path.dst_y == MOVE_IN_POSSESSIONS);
+    if (thing_type(m->thing) == THING_GROUP && m->path.dst_x < MOVE_NO_SQUARE) {
         int a = group_active(m->thing);
         if (a != GROUP_NOT_ACTIVE)
             creature_deactivate_group(a);
@@ -1427,7 +1427,7 @@ static bool discard_take(uint16_t t, int type, int subtype, DiscardSquare at, in
     if (subtype != DISCARD_ANY_KIND && kind != subtype)
         return false;
     dun_set_current_map(at.map);
-    move_thing(t, at.x, at.y, -1, at.holder != THING_NONE ? -1 : 0);
+    move_thing(t, at.x, at.y, MOVE_NO_SQUARE, at.holder != THING_NONE ? MOVE_IN_POSSESSIONS : 0);
     return true;
 }
 
@@ -1563,7 +1563,7 @@ bool dun_set_pit_teleporter_state(Location at, int mode)
     bool open = (*square & on_flag) != 0;
     /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
     if (mode == PIT_STATE_TOGGLE)
-        mode = open;
+        mode = open ? PIT_STATE_CLOSED : PIT_STATE_OPEN;
     if (mode == PIT_STATE_OPEN) {
         *square |= on_flag;
         move_square_contents_through(at);
@@ -1687,7 +1687,7 @@ bool dun_is_alcove_shown(uint16_t first, uint16_t thing)
     int ornament = item_gdat_index(thing);
     if (ornament == GDAT_NO_INDEX ||
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
-        return 0;
+        return false;
     return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
 }
 

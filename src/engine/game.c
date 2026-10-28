@@ -189,7 +189,7 @@ void game_enter_new_map(void)
 {
     game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
     g_party.move_steps = 0;
-    move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+    move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_party.new_map = -1;
 }
 

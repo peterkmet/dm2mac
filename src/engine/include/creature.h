@@ -242,6 +242,7 @@ typedef struct {
 
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
+#define ALERT_MOOD_BORED 0x0005 /* alert flags: mood bit 5, MOOD_BORED */
 #define ALERT_MOOD_QUICK 0x0006 /* alert flags: mood bit 6, MOOD_QUICK */
 #define ALERT_LOUD       0x2000 /* the alert wakes the creature */
 #define ALERT_ANGER      0x4000 /* alert flags: the creature may become angry */

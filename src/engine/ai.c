@@ -2461,7 +2461,7 @@ static int act_move_stairs(void)
     if (a->action == ACTION_STAIRS_UP || a->action == ACTION_STAIRS_DOWN)
         dir = dun_get_stairs_exit_direction((Location){ai_state.dest_x, ai_state.dest_y});
     group_set_dir(g_ai.group_thing, dir);
-    MoveOutcome moved = move_thing_dest(g_ai.group_thing, -1, 0, ai_state.dest_x, ai_state.dest_y);
+    MoveOutcome moved = move_thing_dest(g_ai.group_thing, MOVE_NO_SQUARE, 0, ai_state.dest_x, ai_state.dest_y);
     if (moved.result != MOVE_DONE)
         g_ai.removed = true;
     else

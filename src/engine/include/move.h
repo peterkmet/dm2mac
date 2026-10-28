@@ -33,10 +33,13 @@
 #define PUSH_ARROW_NONE       PUSH_ARROW_COUNT
 
 /* Special source and destination x of move_thing. */
-#define MOVE_NEW_ITEM           (-1)
+#define MOVE_NO_SQUARE          (-1) /* move_thing: as src_x the thing is new, as dst_x it leaves the squares */
 #define MOVE_DROPPED_PROJECTILE (-2) /* move_thing: the object of a projectile drops; teleporters keep its cell */
 #define MOVE_RETRY              (-3) /* move_thing: a group that waited enters its square */
 #define MOVE_CREATED            (-4) /* move_thing: the group is new, or it leaves the dungeon */
+/* The y beside a negative src_x or dst_x of move_thing: the thing comes from or goes into the possessions of a static
+   creature. */
+#define MOVE_IN_POSSESSIONS     (-1)
 
 /* The group move events (EVENT_MOVE_GROUP, EVENT_MOVE_GROUP_2): data bytes 2-3 hold the group. */
 #define EVENT_GROUP_WORD 2
@@ -57,7 +60,7 @@ typedef struct {
     int16_t new_map;                                       /* the map that the party entered in this step, -1 none */
     int16_t fell;                                          /* the party falls without damage (a levitation action) */
     int16_t dest_x, dest_y, dest_map, dest_cell, dest_dir; /* the last end of a move, as in the original */
-    int teleporter_flag;                                   /* the last teleporter had its bit 15 set */
+    int teleporter_flag;                                   /* the last teleporter is TELEPORTER_AUDIBLE */
     uint32_t redraw;                                       /* REDRAW_* */
     uint16_t push_pending_group;                           /* creature group that a push waits for, THING_NONE none */
     int push_mode;                                         /* the movement arrows show the push arrows */
@@ -146,7 +149,8 @@ void move_compute_map_arrival(Position at);
    in the original). creature_sound: the teleporter sounds, the fall alert, and the drop sound play. */
 Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool creature_sound);
 /* Moves a thing (THING_NONE: the party) from (src_x, src_y) to (dst_x, dst_y) of the current map, through
-   pits, teleporters, and stairs; a negative src_x adds it, a negative dst_x removes it. */
+   pits, teleporters, and stairs; a negative src_x adds it, a negative dst_x removes it (MOVE_*), and a y of
+   MOVE_IN_POSSESSIONS beside it takes it from or puts it into the possessions of a static creature. */
 MoveResult move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
 /* move_thing, with where the thing ends (g_party.dest_* keep a copy, as in the original). */
 MoveOutcome move_thing_dest(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
@@ -182,9 +186,11 @@ bool move_party_warp_to_marker(void);
 bool dun_is_alcove_shown(uint16_t first, uint16_t thing);
 /* The value of the global variable var: a flag bit, a byte, or a word of the game record; 0 for an unknown var. */
 int dun_get_global_var(int var);
-/* Changes the global variable var by op (GLOBAL_VAR_*) with value; the bytes stay in their range. */
-int dun_modify_global_var(int var, int value, int op); /* returns the new value */
-/* The door type (0 or 1 of the party map) of a door thing, 0xff for none. */
+/* Changes the global variable var by op (GLOBAL_VAR_*) with value and returns the new value; the bytes stay in their
+   range. */
+int dun_modify_global_var(int var, int value, int op);
+/* The door type (0 or 1 of the party map) of a door thing, 0xff for none as in the original (the callers pass it to
+   GDAT as the entry index). */
 int dun_get_door_type(uint16_t door);
 
 /* Party state that the interface sets. */

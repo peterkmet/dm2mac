@@ -976,7 +976,7 @@ void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, i
                 if (item == THING_NONE)
                     break;
                 uint16_t t = thing_with_cell(item, drop_cell(x, y));
-                move_thing(t, MOVE_NEW_ITEM, 0, x, y);
+                move_thing(t, MOVE_NO_SQUARE, 0, x, y);
                 if ((int16_t)sound_map >= 0)
                     sndreq_request_with_fallback((SoundCue){item_gdat_category(item), item_gdat_index(item),
                                                             SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
@@ -992,7 +992,7 @@ void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, i
         if (thing_type(t) == THING_PROJECTILE) {
             thing_set_word(t, THING_NEXT, THING_NONE);
         } else {
-            move_thing(t, MOVE_NEW_ITEM, 0, x, y);
+            move_thing(t, MOVE_NO_SQUARE, 0, x, y);
             if ((int16_t)sound_map >= 0)
                 sndreq_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
                                                         SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},

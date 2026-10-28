@@ -220,7 +220,7 @@ void projectile_create(const ProjectileLaunch *launch)
     uint16_t t = dungeon_unused_thing(THING_PROJECTILE);
     if (t == THING_NONE) {
         if (thing_type(payload) != THING_EXPLOSION)
-            move_thing(thing_with_cell(payload, launch->cell), -1, 0, launch->x, launch->y);
+            move_thing(thing_with_cell(payload, launch->cell), MOVE_NO_SQUARE, 0, launch->x, launch->y);
         return;
     }
     sndreq_request_with_fallback((SoundCue){item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH,
@@ -392,7 +392,8 @@ void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t 
                 int cell = thing_cell(projectile);
                 if ((creature_group_info(g)->possessions & POSSESSIONS_KIND_MASK) == POSSESSIONS_DIRECTION)
                     cell = projectile_dir(projectile);
-                move_thing(thing_with_cell(payload, cell), MOVE_DROPPED_PROJECTILE, -1, (int16_t)x, (int16_t)y);
+                move_thing(thing_with_cell(payload, cell), MOVE_DROPPED_PROJECTILE, MOVE_IN_POSSESSIONS, (int16_t)x,
+                           (int16_t)y);
             } else {
                 move_thing(thing_with_cell(payload, thing_cell(projectile)), MOVE_DROPPED_PROJECTILE, 0, (int16_t)x,
                            (int16_t)y);

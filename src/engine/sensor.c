@@ -838,8 +838,9 @@ static void transfer_object(uint16_t thing, uint16_t sensor, const SquareCell *f
     if (square_type(*current_square(to.x, to.y)) != SQUARE_WALL)
         to.cell = rand_below(CELL_COUNT);
     if (from)
-        move_thing(thing, from->x, from->y, -1, from_creature ? -1 : 0);
-    move_thing(thing_with_cell(thing, to.cell), -1, sensor_flag(sensor, SENSOR_KEEP_BONES) ? -1 : 0, to.x, to.y);
+        move_thing(thing, from->x, from->y, MOVE_NO_SQUARE, from_creature ? MOVE_IN_POSSESSIONS : 0);
+    move_thing(thing_with_cell(thing, to.cell), MOVE_NO_SQUARE,
+               sensor_flag(sensor, SENSOR_KEEP_BONES) ? MOVE_IN_POSSESSIONS : 0, to.x, to.y);
 }
 
 /* An object transfer of a Skullkeep machine: the square event and the sensor, and how the sensor picks the objects. */
@@ -1702,7 +1703,7 @@ static bool wall_click_give(WallClick *c, int item)
     if (object == THING_NONE)
         return false;
     item_add_charges(object, CHARGES_FULL_AMOUNT);
-    move_thing(object, c->x, c->y, -1, 0);
+    move_thing(object, c->x, c->y, MOVE_NO_SQUARE, 0);
     c->give = object;
     return true;
 }
@@ -1711,7 +1712,7 @@ static bool wall_click_give(WallClick *c, int item)
 static void wall_click_put(WallClick *c)
 {
     c->take = true;
-    move_thing(thing_with_cell(c->hand, c->cell), -1, 0, c->x, c->y);
+    move_thing(thing_with_cell(c->hand, c->cell), MOVE_NO_SQUARE, 0, c->x, c->y);
 }
 
 /* An empty hand takes the last object of an alcove cell; an object in the hand goes into the alcove. */
@@ -1727,7 +1728,7 @@ static void wall_click_alcove(WallClick *c)
         if (thing_cell(o) == c->cell)
             object = o;
     if (object != THING_NONE && thing_type(object) >= THING_WEAPON && thing_type(object) <= THING_MISC) {
-        move_thing(object, c->x, c->y, -1, 0);
+        move_thing(object, c->x, c->y, MOVE_NO_SQUARE, 0);
         c->give = object;
     }
 }
