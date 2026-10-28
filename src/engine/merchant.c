@@ -25,9 +25,6 @@
 #define FILTER_MONEY_BOX 0x3e
 #define FILTER_NEW_COINS 0x47 /* g_ai.arg1 of the carried item search after the change */
 
-/* Any cell of a square. */
-#define ANY_CELL 0xff
-
 /* Prices, waits and chances of a merchant. */
 #define COIN_MAX         18 /* the most coins of a price */
 #define DISCOUNT_FROM    16 /* a price above it gets a random discount of up to 15 % */
@@ -67,11 +64,11 @@ static uint16_t front_group(void)
                                  (uint16_t)(g_ai.event.data[EVENT_Y] + g_dir_dy[d]));
 }
 
-/* True when the group in front holds an item in cell (relative to the merchant, ANY_CELL: any) that is neither coins
+/* True when the group in front holds an item in cell (relative to the merchant, CELL_ANY: any) that is neither coins
    nor goods: the customer shows what it wants to sell. */
 static bool front_customer_has_goods(int cell)
 {
-    if (cell != ANY_CELL)
+    if (cell != CELL_ANY)
         cell = dir_opposite(cell + facing());
     uint16_t g = front_group();
     if (g == THING_NONE)
@@ -80,7 +77,7 @@ static bool front_customer_has_goods(int cell)
         int type = thing_type(t);
         if (!(type > THING_GROUP && type < THING_PROJECTILE))
             continue;
-        if (cell != ANY_CELL && cell != thing_cell(t))
+        if (cell != CELL_ANY && cell != thing_cell(t))
             continue;
         if (!ai_thing_matches_filter(t, FILTER_COINS) && !ai_thing_matches_filter(t, FILTER_GOODS))
             return true;
@@ -101,14 +98,14 @@ static void sum_thing(uint16_t t, ItemSum *s)
     s->sum = (int16_t)(s->sum + money_get_item_value(item_get_index(t), &terms, (int16_t)charges));
 }
 
-/* Adds the values of the items of a thing list in cell (ANY_CELL: any), also inside chests. */
+/* Adds the values of the items of a thing list in cell (CELL_ANY: any), also inside chests. */
 static void sum_list(uint16_t first, int cell, ItemSum *s)
 {
     for (uint16_t t = first; t != THING_ENDOFLIST && t != THING_NONE; t = dungeon_next_thing(t)) {
-        if (cell != ANY_CELL && thing_cell(t) != cell)
+        if (cell != CELL_ANY && thing_cell(t) != cell)
             continue;
         if (item_is_chest(t))
-            sum_list(thing_word(t, CONTAINER_CONTENTS), ANY_CELL, s);
+            sum_list(thing_word(t, CONTAINER_CONTENTS), CELL_ANY, s);
         sum_thing(t, s);
     }
 }
