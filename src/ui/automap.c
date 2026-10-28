@@ -210,11 +210,12 @@ static void fill_clipped(Offscreen *o, const int16_t *clip, const int16_t *rect,
     offscreen_fill_rect(o, r, color);
 }
 
-/* Light gray on every pixel of the icon at (x, y) with an even x + y: the wall icon shows a checkerboard. */
-static void checker_overlay(Offscreen *o, const int16_t *clip, int x, int y)
+/* Light gray on every pixel of the icon at the screen place (icon_x, icon_y) with an even x + y: the wall icon shows a
+   checkerboard. */
+static void checker_overlay(Offscreen *o, const int16_t *clip, int icon_x, int icon_y)
 {
-    for (int py = y; py < y + MAP_ICON_H; py++)
-        for (int px = x; px < x + MAP_ICON_W; px++)
+    for (int py = icon_y; py < icon_y + MAP_ICON_H; py++)
+        for (int px = icon_x; px < icon_x + MAP_ICON_W; px++)
             if (!((px + py) & 1))
                 fill_clipped(o, clip, (int16_t[RECT_SIZE]){(int16_t)px, (int16_t)py, 1, 1}, g_ui_colors[UI_LIGHT_GRAY]);
 }
@@ -249,9 +250,9 @@ static Span visible_span(int origin, int start, int count, int clip_start, int c
     return span;
 }
 
-/* Draws the square that the level position level_at shows, with its icon at the screen place (x, y), when it is seen
-   or the reveal map cheat is on. */
-static void show_level_square(Offscreen *o, const int16_t *clip, Location level_at, int x, int y)
+/* Draws the square that the level position level_at shows, with its icon at the screen place (icon_x, icon_y), when it
+   is seen or the reveal map cheat is on. */
+static void show_level_square(Offscreen *o, const int16_t *clip, Location level_at, int icon_x, int icon_y)
 {
     Position position;
     if (!automap_level_square(level_at, &position) || !(game_has_cheat(CHEAT_MAP) || automap_level_seen(level_at)))
@@ -261,8 +262,8 @@ static void show_level_square(Offscreen *o, const int16_t *clip, Location level_
     /* the things of a minion map without options: the static creatures */
     SquareIcon icon = {.sx = position.x,
                        .sy = position.y,
-                       .x = x,
-                       .y = y,
+                       .x = icon_x,
+                       .y = icon_y,
                        .party_item = party ? mmap_party_icons_item() : -1,
                        .party_dir = g_game.party_dir,
                        .flags = MAP_STATIC_CREATURES};
@@ -270,11 +271,11 @@ static void show_level_square(Offscreen *o, const int16_t *clip, Location level_
     if (!covers(position.map, level_at, &position))
         return; /* an edge wall has no imaginary wall and no pad */
     if (automap_is_imaginary_wall(dungeon_square(position.map, position.x, position.y)))
-        checker_overlay(o, clip, x, y);
+        checker_overlay(o, clip, icon_x, icon_y);
     else if (automap_is_pressure_pad(position.map, position.x, position.y))
         fill_clipped(o, clip,
-                     (int16_t[RECT_SIZE]){(int16_t)(x + PAD_MARK_OFFSET), (int16_t)(y + PAD_MARK_OFFSET), PAD_MARK_SIZE,
-                                          PAD_MARK_SIZE},
+                     (int16_t[RECT_SIZE]){(int16_t)(icon_x + PAD_MARK_OFFSET), (int16_t)(icon_y + PAD_MARK_OFFSET),
+                                          PAD_MARK_SIZE, PAD_MARK_SIZE},
                      g_ui_colors[UI_GRAY]);
 }
 

@@ -311,8 +311,6 @@ type engine/sound_request.c:request_later bridge: task 38
 type engine/timeline.c:fix_queue_slot bridge: task 39
 type engine/weather.c:add_floor_light bridge: task 40
 type platform/scale.c:pixel bridge: task 57
-type ui/automap.c:checker_overlay bridge: task 42
-type ui/automap.c:show_level_square bridge: task 42
 type ui/input.c:click_command bridge: task 45
 type ui/input.c:click_creature bridge: task 45
 type ui/input.c:click_door_button bridge: task 45
