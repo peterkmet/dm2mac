@@ -77,7 +77,8 @@ void minion_toggle_map_option(int option)
 
 bool minion_map_set_location(uint16_t thing, Position at)
 {
-    int saved = g_party.cur_map;
+    /* as in the original: switches the current map to the map of at, then back */
+    int16_t saved = g_party.cur_map;
     dun_set_current_map(at.map);
     bool inside = at.x >= 0 && at.x < dungeon_map_width(g_party.cur_map) && at.y >= 0 &&
                   at.y < dungeon_map_height(g_party.cur_map);
@@ -96,13 +97,13 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     g_hooks.zone_rect(ZONE_MAP_GRID, r);
     int16_t px = (int16_t)(x - (r[RECT_X] - g_minion_map.x_offset));
     int16_t py = (int16_t)(y - (r[RECT_Y] - g_minion_map.y_offset));
-    if (px % (MAP_ICON_W + GAP_X) < GAP_X || py % (MAP_ICON_H + GAP_Y) < GAP_Y)
+    if (px % MAP_CELL_SIZE < GAP_X || py % MAP_CELL_SIZE < GAP_Y)
         return;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!item_find_link_projectile(group, thing))
         return;
-    int col = px / (MAP_ICON_W + GAP_X);
-    int row = py / (MAP_ICON_H + GAP_Y);
+    int col = px / MAP_CELL_SIZE;
+    int row = py / MAP_CELL_SIZE;
     Location at = dun_move_relative((Location){g_minion_map.x, g_minion_map.y}, g_minion_map.dir, GRID_RADIUS - row,
                                     col - GRID_RADIUS);
     Position found = dungeon_location_on_map((Position){g_minion_map.map, at.x, at.y}, 0);
@@ -110,8 +111,9 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         return;
     int16_t sx = found.x;
     int16_t sy = found.y;
-    int map = found.map;
-    int saved = g_party.cur_map;
+    int16_t map = found.map;
+    /* as in the original: switches the current map to the map of the square, then back */
+    int16_t saved = g_party.cur_map;
     dun_set_current_map(map);
     uint8_t square = dun_get_square((Location){sx, sy});
     int type = square_type(square);
@@ -130,7 +132,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
                 map = g_minion_map.below_map;
             }
         }
-        minion_map_set_location(thing, (Position){(int16_t)map, sx, sy});
+        minion_map_set_location(thing, (Position){map, sx, sy});
         ai_free_cached_data(group);
         g_hooks.update_action_area(0);
     }
@@ -140,7 +142,8 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
 void minion_dismiss(uint16_t group)
 {
     uint16_t projectile = item_find_link_projectile(group, THING_NONE);
-    int saved = g_party.cur_map;
+    /* as in the original: switches the current map to the map of the minion map, then back */
+    int16_t saved = g_party.cur_map;
     if (!projectile)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);

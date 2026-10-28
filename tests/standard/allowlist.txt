@@ -29,7 +29,7 @@ decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:rune_mana bridge: task 29
 decimal engine/magic.c:spells bridge: task 29
-decimal engine/minion.c:option_mana bridge: task 31
+decimal engine/minion.c:option_mana rule 3.12: the mana of the minion map options of SKULL.EXE
 decimal engine/move.c bridge: task 32
 decimal engine/move.c:free_square_order_party bridge: task 32
 decimal engine/move.c:free_square_order_thing bridge: task 32
