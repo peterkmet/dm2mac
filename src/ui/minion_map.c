@@ -461,7 +461,7 @@ static bool show_square_base(const ViewSquare *s, const Strip *base, const MapSq
     }
     case ASPECT_STAIRS_FRONT:
     case ASPECT_STAIRS_SIDE: {
-        int d = dir_relative(dun_get_stairs_exit_direction(at->sx, at->sy), at->dir);
+        int d = dir_relative(dun_get_stairs_exit_direction((Location){at->sx, at->sy}), at->dir);
         if (s->side[SIDE_STAIRS_UP])
             d = dir_opposite(d);
         show_icon(base, d + ICON_STAIRS_FIRST, x, y, 0);
@@ -618,7 +618,7 @@ static void find_minion_and_marker(uint16_t thing, int flags, MinionSquares *ms)
         ms->map = location_map(w);
         dun_set_current_map(ms->map);
         PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, ms->x, ms->y)) {
+        if (dun_get_linked_teleporter_dest(&end, (Location){ms->x, ms->y})) {
             ms->linked_x = end.x;
             ms->linked_y = end.y;
             ms->linked_map = end.map;
@@ -634,16 +634,17 @@ static void find_minion_and_marker(uint16_t thing, int flags, MinionSquares *ms)
 static GridSquare grid_square(const GridView *view, int row, int col)
 {
     GridSquare g;
-    int16_t sx = (int16_t)view->x;
-    int16_t sy = (int16_t)view->y;
-    dun_move_relative(view->dir, row, col, &sx, &sy);
+    Location at = dun_move_relative((Location){(int16_t)view->x, (int16_t)view->y}, (int16_t)view->dir, row, col);
+    int16_t sx = at.x;
+    int16_t sy = at.y;
     int square_map = dungeon_location_on_map(view->map, 0, &sx, &sy);
     g.x = sx;
     g.y = sy;
     if (square_map < 0) {
         dun_set_current_map(view->map);
-        g.icon_set = square_type(dun_get_square(g.x, g.y)) == SQUARE_UNKNOWN ? level_icon_set()
-                                                                             : dungeon_map_wallset(g_party.cur_map);
+        g.icon_set = square_type(dun_get_square((Location){g.x, g.y})) == SQUARE_UNKNOWN
+                         ? level_icon_set()
+                         : dungeon_map_wallset(g_party.cur_map);
         g.map = (int16_t)view->map;
         return g;
     }

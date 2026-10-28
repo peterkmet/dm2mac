@@ -105,29 +105,29 @@ extern const int8_t g_dir_dx[DIR_COUNT], g_dir_dy[DIR_COUNT];
 
 /* Makes map the map of the square reads; updates the party position as seen from it. */
 void dun_set_current_map(int16_t map);
-/* Puts the party at (x, y) of map and makes map current. */
-void dun_set_party_location(int16_t x, int16_t y, int16_t map);
-/* Moves (*out_x, *out_y) forward and to the right of dir. */
-void dun_move_relative(int16_t dir, int forward, int right, int16_t *out_x, int16_t *out_y);
-/* The square byte of (x, y) of the current map, with the edge walls around it. */
-uint8_t dun_get_square(int16_t x, int16_t y);
-/* True when (x, y) of the current map is the party square. */
-bool dun_on_party_square(int16_t x, int16_t y);
+/* Puts the party at the square at and makes its map current. */
+void dun_set_party_location(Position at);
+/* The square forward and to the right of from, seen in dir. */
+Location dun_move_relative(Location from, int16_t dir, int forward, int right);
+/* The square byte of at, with the edge walls around the map. */
+uint8_t dun_get_square(Location at);
+/* True when at is the party square. */
+bool dun_on_party_square(Location at);
 /* True when a square stops the party: walls, closed doors, closed fake walls, unknown squares. */
 bool dun_square_blocks_movement(uint8_t square);
-/* The direction that leads out of the stairs at (x, y) of the current map. */
-int dun_get_stairs_exit_direction(int16_t x, int16_t y);
-/* Puts the other end of the seamless passage at (x, y) of the current map into *end; false when there is none. */
-bool dun_get_linked_teleporter_dest(PassageEnd *end, int16_t x, int16_t y);
+/* The direction that leads out of the stairs on at. */
+int dun_get_stairs_exit_direction(Location at);
+/* Puts the other end of the seamless passage on at into *end; false when there is none. */
+bool dun_get_linked_teleporter_dest(PassageEnd *end, Location at);
 
 /* ---- Champions ---- */
 
 /* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
 int dun_get_direction_to(int x1, int y1, int x2, int y2);
-/* The champion nearest to the side of the party square that faces (x, y), seen from cell (0xff: any); -1 none. */
-int move_nearest_champion_at(int16_t x, int16_t y, int16_t cell);
-/* Damage of a bump into a wall or a creature at (x, y) for the two champions on that side; returns them. */
-BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int step);
+/* The champion nearest to the side of the party square that faces at, seen from cell (0xff: any); -1 none. */
+int move_nearest_champion_at(Location at, int16_t cell);
+/* Damage of a bump into a wall or a creature on at for the two champions on that side; returns them. */
+BumpedChampions move_party_bump_damage(Location at, int16_t dir, int step);
 
 /* ---- Steps ---- */
 
@@ -135,10 +135,10 @@ BumpedChampions move_party_bump_damage(int16_t x, int16_t y, int16_t dir, int st
 void move_party_turn(int command);
 /* Moves the party one square in a move command; false when the command must wait. */
 bool move_party(int command);
-/* Puts the party on (x, y) of map, facing dir. */
-void move_party_to(int16_t x, int16_t y, int16_t map, int16_t dir);
-/* Sets the alternate view position of a party at (x, y) of map beside a seamless passage. */
-void move_compute_map_arrival(int16_t x, int16_t y, int16_t map);
+/* Puts the party on the square at, facing dir. */
+void move_party_to(Position at, int16_t dir);
+/* Sets the alternate view position of a party on the square at beside a seamless passage. */
+void move_compute_map_arrival(Position at);
 
 /* ---- Moving things ---- */
 
@@ -162,12 +162,12 @@ uint16_t dun_get_discarded_thing(int type, int subtype);
 #define PIT_STATE_OPEN   0
 #define PIT_STATE_CLOSED 1
 #define PIT_STATE_TOGGLE 2
-/* The direction of a level link (sensor or stairs marker) beside (x, y) toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(int16_t x, int16_t y, int level_delta, uint16_t *out_sensor);
-/* Opens or closes the pit or teleporter on (x, y); true when the state changed. */
-bool dun_set_pit_teleporter_state(int16_t x, int16_t y, int mode);
-/* The things on (x, y) of the current map fall or teleport through its open pit or teleporter. */
-void move_square_contents_through(int16_t x, int16_t y);
+/* The direction of a level link (sensor or stairs marker) beside at toward level_delta, -1 none. */
+int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sensor);
+/* Opens or closes the pit or teleporter on at; true when the state changed. */
+bool dun_set_pit_teleporter_state(Location at, int mode);
+/* The things on at fall or teleport through its open pit or teleporter. */
+void move_square_contents_through(Location at);
 
 /* Pushing creature groups. */
 /* True when the champions push the group; the push costs stamina. */

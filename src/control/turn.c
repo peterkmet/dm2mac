@@ -382,12 +382,11 @@ static bool was_bumped(void)
 /* The party was turned or moved by something else than its action: a spinner, a teleporter, a pit, stairs. */
 static const char *displacement(void)
 {
-    int16_t x = turn.x;
-    int16_t y = turn.y;
+    Location to = {turn.x, turn.y};
     if (turn.moving)
-        dun_move_relative(turn.dir, turn.step_forward, turn.step_right, &x, &y);
+        to = dun_move_relative(to, turn.dir, turn.step_forward, turn.step_right);
     bool stayed = g_game.party_x == turn.x && g_game.party_y == turn.y;
-    if (g_game.party_map != turn.map || (!stayed && (g_game.party_x != x || g_game.party_y != y)))
+    if (g_game.party_map != turn.map || (!stayed && (g_game.party_x != to.x || g_game.party_y != to.y)))
         return "moved";
     if (g_game.party_dir != turn.dir && g_game.party_dir != dir_turn(turn.dir, turn.rotation))
         return "turned";

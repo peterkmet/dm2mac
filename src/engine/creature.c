@@ -1302,7 +1302,7 @@ uint16_t creature_summon_group(CreatureSummon summon)
     int16_t sx = (int16_t)x;
     int16_t sy = (int16_t)y;
     for (;;) {
-        uint8_t square = dun_get_square(sx, sy);
+        uint8_t square = dun_get_square((Location){sx, sy});
         int type = square_type(square);
         if (type != SQUARE_WALL && type != SQUARE_STAIRS &&
             (type != SQUARE_FAKE_WALL || square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0)) &&
@@ -1384,12 +1384,12 @@ bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_gro
     if (g == THING_NONE || creature_group_info(g)->push_resistance >= PUSH_IMMOVABLE)
         return false;
     PassageEnd end;
-    if (dun_get_linked_teleporter_dest(&end, x, y) && dir == dir_opposite(end.side)) {
+    if (dun_get_linked_teleporter_dest(&end, (Location){x, y}) && dir == dir_opposite(end.side)) {
         if (!creature_is_native_to_map(g, end.map))
             return false;
         int saved = g_party.cur_map;
         dun_set_current_map(end.map);
-        int blocked = dun_square_blocks_movement(dun_get_square(end.x, end.y)) ||
+        int blocked = dun_square_blocks_movement(dun_get_square((Location){end.x, end.y})) ||
                       (out_group && creature_get_group_at((uint16_t)(end.x + g_dir_dx[end.target_side]),
                                                           (uint16_t)(end.y + g_dir_dy[end.target_side])) != THING_NONE);
         dun_set_current_map(saved);
@@ -1398,12 +1398,12 @@ bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_gro
     }
     int16_t nx = (int16_t)(x + g_dir_dx[dir]);
     int16_t ny = (int16_t)(y + g_dir_dy[dir]);
-    uint8_t square = dun_get_square(nx, ny);
+    uint8_t square = dun_get_square((Location){nx, ny});
     if (dun_square_blocks_movement(square) || square_type(square) == SQUARE_STAIRS)
         return false;
     if (out_group && creature_get_group_at(nx, ny) != THING_NONE)
         return false;
-    if (dun_get_linked_teleporter_dest(&end, nx, ny) && !creature_is_native_to_map(g, end.map))
+    if (dun_get_linked_teleporter_dest(&end, (Location){nx, ny}) && !creature_is_native_to_map(g, end.map))
         return false;
     if (out_group)
         *out_group = g;
@@ -1424,7 +1424,7 @@ void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength)
             uint16_t flags = creature_group_info(g)->flags;
             if (g_party.cur_map == g_party.square_map && nx == g_party.square_x && ny == g_party.square_y &&
                 !(flags & CREATURE_NOT_SOLID)) {
-                move_party_bump_damage(x, y, g_game.party_dir, dir_opposite(dir));
+                move_party_bump_damage((Location){x, y}, g_game.party_dir, dir_opposite(dir));
             } else {
                 ai_free_cached_data(g);
                 ActiveGroup *a = creature_active(g);

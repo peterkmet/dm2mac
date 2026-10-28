@@ -1949,8 +1949,8 @@ void input_update_viewport_arrow(void)
         arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
     }
     int step = dir_turn(step_dirs[arrow], g_game.party_dir);
-    if (dun_square_blocks_movement(
-            dun_get_square((int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step]))))
+    if (dun_square_blocks_movement(dun_get_square(
+            (Location){(int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step])})))
         return;
     if (!creature_can_be_pushed((int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
                                 (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir]),
@@ -2244,7 +2244,7 @@ static void click_in_viewport(int16_t x, int16_t y)
     int dir = g_game.party_dir;
     ViewSquares v = {dir, g_game.party_x, g_game.party_y, g_game.party_x + g_dir_dx[dir],
                      g_game.party_y + g_dir_dy[dir]};
-    uint8_t front = dun_get_square(v.fx, v.fy);
+    uint8_t front = dun_get_square((Location){v.fx, v.fy});
     uint16_t hand = g_game.leader_hand;
     if (click_zones_hit(&v, x, y, hand))
         return;

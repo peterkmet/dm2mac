@@ -399,7 +399,7 @@ static void set_action_destination(int16_t x, int16_t y)
 
 bool ai_square_is_obstacle(int16_t x, int16_t y)
 {
-    uint8_t square = dun_get_square(x, y);
+    uint8_t square = dun_get_square((Location){x, y});
     int type = square_type(square);
     if (type == SQUARE_DOOR)
         return (square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED && !read_door_value(x, y, DOOR_KEY_SEE_THROUGH);
@@ -411,7 +411,7 @@ bool ai_square_blocks_line(int16_t x, int16_t y)
 {
     int16_t sx = x;
     int16_t sy = y;
-    uint8_t square = dun_get_square(sx, sy);
+    uint8_t square = dun_get_square((Location){sx, sy});
     int type = square_type(square);
     if (type == SQUARE_WALL)
         return true;
@@ -517,7 +517,7 @@ void ai_cache_square(int16_t x, int16_t y)
     g_ai_square.map = g_party.cur_map;
     g_ai_square.x = x;
     g_ai_square.y = y;
-    g_ai_square.square = dun_get_square(x, y);
+    g_ai_square.square = dun_get_square((Location){x, y});
     g_ai_square.first_thing = g_ai_square.square & SQUARE_HAS_THINGS ? THING_NONE : THING_ENDOFLIST;
     g_ai_square.first_object = g_ai_square.first_thing;
     g_ai_square.first_group = g_ai_square.first_thing;
@@ -643,7 +643,7 @@ AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, Location
             ty += g_dir_dy[d];
             if (!on_map(tx, ty))
                 continue;
-            uint8_t square = dun_get_square(tx, ty);
+            uint8_t square = dun_get_square((Location){tx, ty});
             if (square & SQUARE_HAS_THINGS) {
                 if (square_type(square) == SQUARE_WALL) {
                     if (!ranged)
@@ -681,7 +681,7 @@ static int16_t steal_target_cell(int16_t x, int16_t y)
 {
     int16_t cell = -1;
     for (int16_t i = 0; i < DIR_COUNT; i++) {
-        int c = move_nearest_champion_at(x, y, i);
+        int c = move_nearest_champion_at((Location){x, y}, i);
         if (c == -1)
             continue;
         uint16_t action = champion(c)->slots[SLOT_ACTION_HAND];
@@ -748,15 +748,15 @@ static bool party_door_stops_attack(int16_t x, int16_t y)
     if (g_ai_party.map != g_party.cur_map || !(class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS) ||
         g_ai.info->flags & CREATURE_NOT_SEEN_THROUGH || (x == own_x() && y == own_y() && g_party.cur_map == g_ai.map))
         return false;
-    return square_type(dun_get_square(x, y)) == SQUARE_DOOR && axis_distance(x, y, g_ai_party.x, g_ai_party.y) < 2 &&
-           rand_2bits();
+    return square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR &&
+           axis_distance(x, y, g_ai_party.x, g_ai_party.y) < 2 && rand_2bits();
 }
 
 /* The cell of the target that the attack aims at; r: the random bit of the attack variant, a ranged attack may flip it. */
 static int16_t attack_cell(int mode, Location from, int16_t dir, bool melee, int *r)
 {
     if (melee) {
-        int c = mode > ATTACK_MODE_PARTY_RANGED ? -1 : move_nearest_champion_at(from.x, from.y, CELL_ANY);
+        int c = mode > ATTACK_MODE_PARTY_RANGED ? -1 : move_nearest_champion_at(from, CELL_ANY);
         return c == -1 ? dir_turn(dir, *r + 2) : champion(c)->cell;
     }
     if (mode <= ATTACK_MODE_PARTY_RANGED && rand_2bits()) {
@@ -1115,8 +1115,10 @@ static bool search_square_test(int command, int16_t x, int16_t y)
             uint16_t link = THING_NONE;
             /* an open teleporter next to a seamless passage: test the square behind it */
             PassageEnd end;
-            if (!dun_get_linked_teleporter_dest(&end, x + 1, y) && !dun_get_linked_teleporter_dest(&end, x - 1, y) &&
-                !dun_get_linked_teleporter_dest(&end, x, y + 1) && !dun_get_linked_teleporter_dest(&end, x, y - 1))
+            if (!dun_get_linked_teleporter_dest(&end, (Location){x + 1, y}) &&
+                !dun_get_linked_teleporter_dest(&end, (Location){x - 1, y}) &&
+                !dun_get_linked_teleporter_dest(&end, (Location){x, y + 1}) &&
+                !dun_get_linked_teleporter_dest(&end, (Location){x, y - 1}))
                 return true;
             link = first_thing(x, y);
             if (end.map != teleporter_map(link) ||
@@ -1132,7 +1134,7 @@ static bool search_square_test(int command, int16_t x, int16_t y)
             ai_set_map(saved);
             return r;
         }
-        g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, x, y);
+        g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, (Location){x, y});
         if (!g_ai_square_scan.passage)
             return true;
         return g_ai_square_scan.end.map == g_game.party_map || g_ai_square_scan.end.map == g_party.alt_view_map;
@@ -1182,7 +1184,7 @@ static uint16_t needed_move_flags(int kind, bool no_movers, bool map_changed, in
     }
     case SQUARE_TELEPORTER:
         if (!(square & SQUARE_TELEPORTER_ON)) {
-            if (!dun_get_linked_teleporter_dest(&g_ai_square_scan.end, x, y))
+            if (!dun_get_linked_teleporter_dest(&g_ai_square_scan.end, (Location){x, y}))
                 return MOVE_TELEPORTER | MOVE_FLOOR;
             g_ai_square_scan.passage = 1;
             return creature_is_native_to_map(g_ai.group_thing, g_ai_square_scan.end.map) ? MOVE_LEVELS : 0;
@@ -1207,7 +1209,7 @@ static int16_t level_change(Move *m)
     int16_t dir = m->d;
     uint16_t need = 0;
     uint16_t link = THING_NONE;
-    uint8_t square = dun_get_square(x, y);
+    uint8_t square = dun_get_square((Location){x, y});
     int type = square_type(square);
     if (type == SQUARE_PIT && dir == DIR_LEVEL_DOWN && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0)) {
         need = MOVE_OPEN_PIT;
@@ -1215,8 +1217,8 @@ static int16_t level_change(Move *m)
         m->facing = (int16_t)group_dir(g_ai.group_thing);
     } else if (type == SQUARE_FLOOR || type == SQUARE_PIT || type == SQUARE_TELEPORTER || type == SQUARE_FAKE_WALL) {
         if (square & SQUARE_LEVEL_LINK) {
-            int16_t side =
-                (int16_t)dun_find_adjacent_level_link(x, y, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &link);
+            int16_t side = (int16_t)dun_find_adjacent_level_link((Location){x, y},
+                                                                 dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &link);
             m->facing = side;
             if (side >= 0) {
                 m->action = dir == DIR_LEVEL_UP ? ACTION_LINK_UP : ACTION_LINK_DOWN;
@@ -1229,7 +1231,7 @@ static int16_t level_change(Move *m)
         }
     } else if (type == SQUARE_STAIRS && (square & SQUARE_STAIRS_UP ? dir == DIR_LEVEL_UP : dir == DIR_LEVEL_DOWN)) {
         m->action = square & SQUARE_STAIRS_UP ? ACTION_STAIRS_UP : ACTION_STAIRS_DOWN;
-        m->facing = (int16_t)dir_opposite(dun_get_stairs_exit_direction(x, y));
+        m->facing = (int16_t)dir_opposite(dun_get_stairs_exit_direction((Location){x, y}));
         need = MOVE_STAIRS;
     }
     if (!(g_ai.move_flags & need))
@@ -1476,7 +1478,7 @@ static void execute_move(Move *m)
                 continue;
             int16_t nx = (int16_t)(m->sx + g_dir_dx[i]);
             int16_t ny = (int16_t)(m->sy + g_dir_dy[i]);
-            if (square_type(dun_get_square(nx, ny)) == SQUARE_DOOR &&
+            if (square_type(dun_get_square((Location){nx, ny})) == SQUARE_DOOR &&
                 ai_try_door_action((AiTest){DOOR_MODE_CLOSE_MARKED, true}, ai_location(m->sx, m->sy),
                                    ai_location(nx, ny), i)
                     .passed)
@@ -2422,7 +2424,7 @@ static bool blocked_party_view(Search *s, const AiCandidate *c, int16_t x, int16
             return true;
         s->visit = VISIT_BLOCKED;
     } else if (c->item == VIEW_PARTY_AT_PIT) {
-        uint8_t square = dun_get_square(x + g_dir_dx[s->dir], y + g_dir_dy[s->dir]);
+        uint8_t square = dun_get_square((Location){x + g_dir_dx[s->dir], y + g_dir_dy[s->dir]});
         if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0))
             return true;
         s->visit = VISIT_BLOCKED;
@@ -2832,7 +2834,7 @@ static void search_start(Search *s, Location start, int command, int count, AiCa
     s->passage_map = -1;
     ai_cache_square(x, y);
     if (s->locations &&
-        (g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, x, y))) {
+        (g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, (Location){x, y}))) {
         s->passage_map = g_ai_square_scan.end.map;
         s->passage_x = g_ai_square_scan.end.x;
         s->passage_y = g_ai_square_scan.end.y;

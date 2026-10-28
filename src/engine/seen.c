@@ -130,11 +130,9 @@ int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squa
                     (!depth && !side) || (side && open[depth][column - sign]) || (depth && open[depth - 1][column]);
                 if (!visible)
                     continue;
-                int16_t sx = (int16_t)x;
-                int16_t sy = (int16_t)y;
-                dun_move_relative(dir, depth, side * sign, &sx, &sy);
-                squares[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), sx, sy};
-                open[depth][column] = !blocks_sight(map, sx, sy);
+                Location at = dun_move_relative((Location){(int16_t)x, (int16_t)y}, dir, depth, side * sign);
+                squares[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), at.x, at.y};
+                open[depth][column] = !blocks_sight(map, at.x, at.y);
             }
         if (!open[depth][VIEW_HALF_WIDTH])
             break; /* the view ends at the first middle square that blocks sight */

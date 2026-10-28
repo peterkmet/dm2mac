@@ -315,7 +315,7 @@ static bool lightning_strike(void)
     ViewSquare s;
     aspect_get(&s, g_party.cur_map, DIR_NORTH, x, y);
     PassageEnd end;
-    if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, x, y))
+    if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, (Location){x, y}))
         return false;
     bool weak = (int16_t)g_game.storm_intensity < STORM_WEAK;
     if (g_game.party_map == g_party.cur_map && x == g_game.party_x && y == g_game.party_y &&
@@ -558,7 +558,7 @@ static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int x, int y)
         if (!v && !animated_only)
             return false;
         PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, x, y))
+        if (dun_get_linked_teleporter_dest(&end, (Location){x, y}))
             sum->window = (int16_t)(sum->window + v * daylight() / PERCENT);
         else if (!animated_only || animated)
             sum->light = (int16_t)(sum->light + v);
