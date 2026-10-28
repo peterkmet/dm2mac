@@ -28,9 +28,6 @@ decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:rune_mana bridge: task 29
 decimal engine/magic.c:spells bridge: task 29
 decimal engine/minion.c:option_mana bridge: task 31
-decimal engine/move.c bridge: task 32
-decimal engine/move.c:free_square_order_party bridge: task 32
-decimal engine/move.c:free_square_order_thing bridge: task 32
 decimal engine/projectile.c:attack_cell_orders bridge: task 33
 decimal engine/projectile.c:attack_cell_orders_random bridge: task 33
 decimal engine/projectile.c:spell_reflection bridge: task 33
@@ -266,17 +263,6 @@ type engine/merchant.c:offered_value bridge: task 30
 type engine/merchant.c:price_in_coins bridge: task 30
 type engine/merchant.c:sum_items_value bridge: task 30
 type engine/merchant.c:sum_list bridge: task 30
-type engine/move.c:bash_door bridge: task 32
-type engine/move.c:bump_champion bridge: task 32
-type engine/move.c:discard_next_map bridge: task 32
-type engine/move.c:discard_scan_map bridge: task 32
-type engine/move.c:find_free_adjacent_square bridge: task 32
-type engine/move.c:first_thing bridge: task 32
-type engine/move.c:is_side_blocked bridge: task 32
-type engine/move.c:meet_target_square bridge: task 32
-type engine/move.c:push_party_aside bridge: task 32
-type engine/move.c:set_party_position bridge: task 32
-type engine/move.c:take_free_step bridge: task 32
 type engine/projectile.c:blast_square bridge: task 33
 type engine/projectile.c:hit_champion bridge: task 33
 type engine/projectile.c:hit_creature bridge: task 33
