@@ -102,9 +102,6 @@
 /* The bit position of the music volume in the volume byte. */
 #define MUSIC_VOLUME_SHIFT 4
 
-/* The powers of a magic light event (its event data is the power, negative for darkness). */
-#define LIGHT_POWER_COUNT 16
-
 /* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
    animated ornament (0x2c), shop display (0x30), activation with sound (0x32), and four of unknown use. */
 static const uint8_t sensors_with_data[] = {0x27, 0x1b, 0x1d, 0x41, 0x2c, 0x32, 0x30, 0x2d};
@@ -149,9 +146,6 @@ static const uint8_t misc_mask[] = {0x00, 0x00, 0xff, 0xc0};
 static const uint8_t moneybox_misc_mask[] = {0x00, 0x00, 0x7f, 0xff};
 static const uint8_t projectile_mask[] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x03};
 static const uint8_t carried_projectile_mask[] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00};
-
-/* The light of a magic light event by its power (event data), from SKULL.EXE. */
-static const int8_t light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 
 /* The mask of each thing type; teleporters and the unused types are not stored. */
 static const uint8_t *const thing_masks[THING_TYPE_COUNT] = {
@@ -869,7 +863,8 @@ static void restore_timed_effects(void)
             break;
         case EVENT_MAGIC_LIGHT:
             if (v && v > -LIGHT_POWER_COUNT && v < LIGHT_POWER_COUNT) {
-                save_set_magic_light((int16_t)(save_magic_light() + (v < 0 ? light_power[-v] : light_power[v] * -2)));
+                save_set_magic_light(
+                    (int16_t)(save_magic_light() + (v < 0 ? g_light_power[-v] : g_light_power[v] * -2)));
             }
             break;
         case EVENT_INVISIBILITY:

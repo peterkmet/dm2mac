@@ -8,15 +8,13 @@ decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.
 decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
-decimal engine/magic.c:light_power rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
-decimal engine/save.c:light_power rule 3.12: magic light by power of SKULL.EXE
 decimal engine/sensor.c:ambient_wall_dx rule 3.12: a table of SKULL.EXE
 decimal engine/sensor.c:ambient_wall_dy rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:creature_lightning rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_falloff rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
-decimal engine/weather.c:light_power rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:g_light_power rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
 decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
