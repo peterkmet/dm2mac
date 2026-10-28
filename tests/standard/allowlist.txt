@@ -51,7 +51,7 @@ decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
 decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
-decimal ui/dialog.c bridge: task 43
+decimal ui/dialog.c:button_zone_first rule 3.12: the first button text zone by button count of SKULL.EXE
 decimal ui/fm.c:level_attenuation rule 3.12: a table of SKULL.EXE
 decimal ui/fm.c:op_carrier rule 3.12: a table of SKULL.EXE
 decimal ui/fm.c:op_modulator rule 3.12: a table of SKULL.EXE

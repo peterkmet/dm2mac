@@ -18,6 +18,7 @@
 #include "zone.h"
 
 /* The buttons of the dialogs. */
+#define DIALOG_BUTTONS_MAX    4
 #define DIALOG_VOLUME_BUTTONS 7
 #define BUTTON_KEY            7 /* transparent color of a pressed button picture */
 #define BUTTON_PRESS_VBLANKS  20
@@ -30,15 +31,18 @@
 #define WRAP_MARGIN_SHIFT  3 /* a text wider than 7/8 of the zone wraps */
 #define WRAP_SHRINK_SHIFT  2 /* to 3/4 of its width, when it is not wider than 5/4 of the zone */
 #define BUTTON_TEXT_ZONES  10
-/* The zones of the button texts (table of SKULL.EXE); the first one by button count: 2 at 1, 3 at 3, 4 at 6, else 0. */
-static const uint16_t button_text_zones[BUTTON_TEXT_ZONES] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2,
-                                                              0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
 
 /* The volume settings 0 to 7 of the volume dialog. */
 #define VOLUME_LEVELS 8
 
 /* The cancel of a dialog without a button for a right click. */
 #define DIALOG_NO_CANCEL (-1)
+
+/* The zones of the button texts (table of SKULL.EXE), and the first zone of the texts by button count; a dialog with
+   more than DIALOG_BUTTONS_MAX buttons starts at the first zone. */
+static const uint16_t button_text_zones[BUTTON_TEXT_ZONES] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2,
+                                                              0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
+static const uint8_t button_zone_first[DIALOG_BUTTONS_MAX + 1] = {0, 0, 1, 3, 6};
 
 DialogState g_dialog = {.screen_mode = 1};
 
@@ -126,7 +130,7 @@ int dialog_draw(int id, int message)
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, GFX_DIALOG_PICTURE), &g_view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, GFX_DIALOG_PICTURE));
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
-    int first = count == 2 ? 1 : count == 3 ? 3 : count == 4 ? 6 : 0;
+    int first = count <= DIALOG_BUTTONS_MAX ? button_zone_first[count] : 0;
     /* fix: the texts stop at the end of the zone table; the original reads past it with more than 10 texts */
     for (int i = 0; i < count && first + i < BUTTON_TEXT_ZONES; i++)
         text_draw_in_zone(button_text_zones[first + i], g_ui_colors[UI_YELLOW], texts[i]);

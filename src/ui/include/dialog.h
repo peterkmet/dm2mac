@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include "gdat.h"
 
-/* Dialogs: a picture of GDAT category 0x1a in the viewport with up to 4 buttons and a message. */
+/* Dialogs: a picture of CAT_DIALOG in the viewport with up to 4 buttons and a message. */
 #define DIALOG_ERROR      0x00
 #define DIALOG_LOADED     0x06
 #define DIALOG_NOT_SAVED  0x0c
