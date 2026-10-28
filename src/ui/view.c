@@ -676,6 +676,16 @@ typedef struct {
     int entry, flip, mirrored;
 } SidePicture;
 
+/* An offset on the map as the party sees it: to the right (negative to the left) and forward. */
+typedef struct {
+    int16_t lateral, forward;
+} RelativeOffset;
+
+/* A grid cell (0 to 24) of the square at a view position. */
+typedef struct {
+    int pos, cell;
+} SquareCell;
+
 /* The picture of a thing: its entry and its mirror (MIRROR_*). */
 typedef struct {
     int entry, flip;
@@ -766,10 +776,27 @@ static uint8_t map_door_type(uint16_t door)
     return view.door_types[door_map_type(door)];
 }
 
-static void step_relative(int dir, int forward, int right, int *x, int *y)
+/* The square forward squares ahead of at and right squares to the right, for the party looking to dir. */
+static Location step_relative(Location at, int dir, int forward, int right)
 {
-    *x += g_dir_dx[dir & DIR_MASK] * forward + g_dir_dx[dir_turn(dir, TURN_RIGHT)] * right;
-    *y += g_dir_dy[dir & DIR_MASK] * forward + g_dir_dy[dir_turn(dir, TURN_RIGHT)] * right;
+    return (Location){
+        (int16_t)(at.x + g_dir_dx[dir & DIR_MASK] * forward + g_dir_dx[dir_turn(dir, TURN_RIGHT)] * right),
+        (int16_t)(at.y + g_dir_dy[dir & DIR_MASK] * forward + g_dir_dy[dir_turn(dir, TURN_RIGHT)] * right)};
+}
+
+/* The offset (dx, dy) on the map as the party looking to dir sees it. */
+static RelativeOffset relative_offset(int16_t dir, int dx, int dy)
+{
+    switch (dir) {
+    case DIR_NORTH:
+        return (RelativeOffset){(int16_t)dx, (int16_t)-dy};
+    case DIR_EAST:
+        return (RelativeOffset){(int16_t)dy, (int16_t)dx};
+    case DIR_SOUTH:
+        return (RelativeOffset){(int16_t)-dx, (int16_t)dy};
+    default:
+        return (RelativeOffset){(int16_t)-dy, (int16_t)-dx};
+    }
 }
 
 /* ---- Map graphics ---- */
@@ -935,28 +962,11 @@ static void load_square_things(int pos, const ViewEye *eye, int x, int y)
             if (pos != POS_PARTY)
                 c = view_offset_toward_party((GridPoint){eye->x, eye->y}, c,
                                              (int8_t)creature_info(gdat_current(), group_creature(thing))->size);
-            int16_t lateral, forward;
-            switch (dir) {
-            case DIR_NORTH:
-                lateral = (int16_t)(c.x - eye->x);
-                forward = (int16_t)(eye->y - c.y);
-                break;
-            case DIR_EAST:
-                lateral = (int16_t)(c.y - eye->y);
-                forward = (int16_t)(c.x - eye->x);
-                break;
-            case DIR_SOUTH:
-                lateral = (int16_t)(eye->x - c.x);
-                forward = (int16_t)(c.y - eye->y);
-                break;
-            default:
-                lateral = (int16_t)(eye->y - c.y);
-                forward = (int16_t)(eye->x - c.x);
-                break;
-            }
-            if (forward >= GRID_FORWARD_LIMIT || abs(lateral) >= GRID_LATERAL_LIMIT)
+            RelativeOffset offset = relative_offset(dir, c.x - eye->x, c.y - eye->y);
+            int16_t forward = offset.forward;
+            if (forward >= GRID_FORWARD_LIMIT || abs(offset.lateral) >= GRID_LATERAL_LIMIT)
                 continue;
-            uint8_t *column = g_view_object_grid + (lateral + GRID_LATERAL_CENTER) * GRID_STRIDE;
+            uint8_t *column = g_view_object_grid + (offset.lateral + GRID_LATERAL_CENTER) * GRID_STRIDE;
             while (forward >= 0 && column[forward] != NO_POSITION)
                 forward--;
             if (forward >= 0)
@@ -1011,18 +1021,16 @@ static void load_walking_party_square(ViewSquare *s)
 
 void view_load_square(int16_t x, int16_t y, int pos, int16_t dir)
 {
-    int square_x = x;
-    int square_y = y;
-    step_relative(dir, depth_of(pos), lateral_of(pos), &square_x, &square_y);
+    Location square = step_relative((Location){x, y}, dir, depth_of(pos), lateral_of(pos));
     ViewSquare *s = g_view_squares + pos;
-    s->x = (int8_t)square_x;
-    s->y = (int8_t)square_y;
-    aspect_get(s, view.map, dir, square_x, square_y);
+    s->x = (int8_t)square.x;
+    s->y = (int8_t)square.y;
+    aspect_get(s, view.map, dir, square.x, square.y);
     if (view.walking && pos == POS_PARTY)
         load_walking_party_square(s);
     GridPoint point = aspect_cell_to_xy(x, y, eye_cell[dir]);
     ViewEye eye = {.dir = dir, .x = point.x, .y = point.y};
-    load_square_things(pos, &eye, square_x, square_y);
+    load_square_things(pos, &eye, square.x, square.y);
 }
 
 void view_unhide_linked_squares(void)
@@ -1270,15 +1278,20 @@ static void show_offscreen(DrawCtx *ctx, Bitmap *offscreen, int zone, int anchor
 
 /* ---- Rain ---- */
 
-/* The rain picture for the wind as the party sees it; *side is the wind direction relative to the party. */
-static int rain_picture(int *side)
+/* The wind direction relative to the party. */
+static int rain_side(void)
 {
-    *side = dir_relative(g_game.wind_dir, view.party_dir);
+    return dir_relative(g_game.wind_dir, view.party_dir);
+}
+
+/* The rain picture for the rain intensity and the wind from side (relative to the party). */
+static int rain_picture(int side)
+{
     int level = g_game.rain_intensity >= RAIN_STRONG   ? 3
                 : g_game.rain_intensity >= RAIN_MEDIUM ? 2
                 : g_game.rain_intensity >= RAIN_LIGHT  ? 1
                                                        : 0;
-    return (*side == DIR_NORTH || *side == DIR_SOUTH ? RAIN_ALONG : RAIN_ACROSS) + level;
+    return (side == DIR_NORTH || side == DIR_SOUTH ? RAIN_ALONG : RAIN_ACROSS) + level;
 }
 
 bool view_rain_shows(void)
@@ -1296,7 +1309,8 @@ static void show_rain(void)
     int16_t h = VIEWPORT_HEIGHT;
     if (!zone_compute_rect(NULL, rect, ZONE_WALL, &w, &h))
         return;
-    int side, entry = rain_picture(&side);
+    int side = rain_side();
+    int entry = rain_picture(side);
     const Bitmap *rain = draw_gdat_image(CAT_SKY, view.gfx_set, entry);
     if (!rain)
         return;
@@ -1321,7 +1335,8 @@ void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int color_key)
         gfx_fill_bitmap(offscreen, transparent);
         return;
     }
-    int side, entry = rain_picture(&side);
+    int side = rain_side();
+    int entry = rain_picture(side);
     const Bitmap *rain = draw_gdat_image(CAT_SKY, view.gfx_set, entry);
     Bitmap *drops = rain ? draw_temp_bitmap(ctx->rect[RECT_W], rain->height, IMAGE_4BPP) : NULL;
     const uint8_t *shaded = get_shaded_palette(CAT_SKY, view.gfx_set, entry, 0);
@@ -1404,40 +1419,39 @@ static void show_sparkle_field(int pos, int category, int index)
     gfx_blit_tiled_4to8(&fill, g_view_viewport.pixels, VIEWPORT_WIDTH, rect);
 }
 
-/* Moves a cell of the square at *pos by columns and rows (rows toward the far side); the cell can go onto a
-   neighbour square. False when it leaves the view. */
-static bool shift_object_cell(int *pos, int *cell, int columns, int rows)
+/* Moves the cell at by columns and rows (rows toward the far side); the cell can go onto a neighbour square. False
+   when it leaves the view. */
+static bool shift_object_cell(SquareCell *at, int columns, int rows)
 {
-    int p = *pos;
-    int c = *cell;
+    int p = at->pos;
+    int c = at->cell;
     if (rows) {
         c -= rows * CELL_GRID_SIDE;
         if (c < 0) {
-            p = (int8_t)linked_squares[p][NEIGHBOUR_AHEAD];
+            p = linked_squares[p][NEIGHBOUR_AHEAD];
             c += CELL_ROW_STEP;
         } else if (c >= CELL_GRID_COUNT) {
-            p = (int8_t)linked_squares[p][NEIGHBOUR_BEHIND];
+            p = linked_squares[p][NEIGHBOUR_BEHIND];
             c -= CELL_ROW_STEP;
         }
-        if (p < 0)
+        if (p == LINK_NONE)
             return false;
     }
     if (columns) {
         int column = c % CELL_GRID_SIDE + columns;
         if (column > CELL_COLUMN_LAST) {
             c += columns - GRID_SQUARE_CELLS;
-            p = (int8_t)linked_squares[p][NEIGHBOUR_RIGHT];
+            p = linked_squares[p][NEIGHBOUR_RIGHT];
         } else if (column < 0) {
             c += columns + GRID_SQUARE_CELLS;
-            p = (int8_t)linked_squares[p][NEIGHBOUR_LEFT];
+            p = linked_squares[p][NEIGHBOUR_LEFT];
         } else {
             c += columns;
         }
-        if (p < 0)
+        if (p == LINK_NONE)
             return false;
     }
-    *pos = p;
-    *cell = c;
+    *at = (SquareCell){p, c};
     return true;
 }
 
@@ -1516,8 +1530,8 @@ static void flush_projectile(uint16_t thing, int pos)
 static void show_object(uint16_t thing, int pos, const ObjectLook *look)
 {
     const Gdat *g = gdat_current();
-    int cell = CELL_CENTER, row, zone;
-    int dx = 0;
+    SquareCell at = {pos, CELL_CENTER};
+    int row, zone, dx = 0;
     int dy = look->dy;
     if (look->group != THING_NONE) {
         int type = group_creature(look->group);
@@ -1526,12 +1540,12 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
         dy -= lift ? lift : possession_lift[low];
         int side = dir_relative(thing_cell(thing), view.party_dir);
         /* this adds the cell of the push arrow for a creature in front of the party */
-        if (!shift_object_cell(&pos, &cell, possession_column_shift[low][side], possession_row_shift[low][side]))
+        if (!shift_object_cell(&at, possession_column_shift[low][side], possession_row_shift[low][side]))
             return;
     } else if (!look->in_alcove) {
-        cell = get_thing_position(thing, view.party_dir);
+        at.cell = get_thing_position(thing, view.party_dir);
     }
-    int depth = depth_of(pos);
+    int depth = depth_of(at.pos);
     if (look->in_alcove) {
         row = 0;
         uint16_t place =
@@ -1540,14 +1554,14 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
         dy = gdat_offset_y(place) + view.alcove.dy + jitter_offset[jitter[look->spot][1]];
         zone = view.alcove.zone;
     } else {
-        row = CELL_COLUMN_LAST - cell / CELL_GRID_SIDE;
-        if (pos == POS_PARTY && row < 2)
+        row = CELL_COLUMN_LAST - at.cell / CELL_GRID_SIDE;
+        if (at.pos == POS_PARTY && row < 2)
             return; /* the near rows of the party square are below the view */
-        zone = zone_id_for_view_cell(pos, cell, 0) | ZONE_RELATIVE;
+        zone = zone_id_for_view_cell(at.pos, at.cell, 0) | ZONE_RELATIVE;
     }
     uint8_t category = item_gdat_category(thing);
     uint8_t index = item_gdat_index(thing);
-    ThingPicture pic = pick_object_picture(thing, pos, cell, look->open_state, look->in_alcove);
+    ThingPicture pic = pick_object_picture(thing, at.pos, at.cell, look->open_state, look->in_alcove);
     if (look->spot != -1) {
         dx += jitter_offset[jitter[look->spot][0]];
         if (look->group == THING_NONE)
@@ -1571,7 +1585,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
                   category, index, pic.entry);
     if (!look->record_click)
         view.ctx.mode = DRAW_RECT_ONLY;
-    flush_projectile(look->projectile, pos);
+    flush_projectile(look->projectile, at.pos);
 }
 
 /* Draws the objects of a thing list in cell (0 to 3, relative to the party) of the square at pos; with group,
@@ -2129,19 +2143,18 @@ static uint8_t wall_text_glyph(uint8_t c)
 
 int16_t g_view_hit_offset_y;
 
-static void record_target(uint16_t record, int *x, int *y)
+/* The target square of the sensor record. */
+static Location record_target(uint16_t record)
 {
-    *x = sensor_target_x(record);
-    *y = sensor_target_y(record);
+    return (Location){(int16_t)sensor_target_x(record), (int16_t)sensor_target_y(record)};
 }
 
 /* True when the target square of the sensor record holds an item of the item index type: in the possessions of a
    creature, or loose when loose is set. */
 static bool target_has_item(uint16_t record, int type, int loose)
 {
-    int x, y;
-    record_target(record, &x, &y);
-    for (uint16_t t = aspect_first_thing(view.map, x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    Location at = record_target(record);
+    for (uint16_t t = aspect_first_thing(view.map, at.x, at.y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         int kind = thing_type(t);
         if (loose && kind >= THING_WEAPON && kind <= THING_MISC) {
             if (item_get_index(t) == type)
@@ -2281,11 +2294,10 @@ static void show_shop_label(uint16_t shop, uint16_t item, int creature, uint8_t 
 /* Draws the shop display of the wall sensor shop with the shop ornament: the item, its name and prices in front. */
 static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const PicturePlace *p)
 {
-    int x, y;
-    record_target(shop, &x, &y);
+    Location target = record_target(shop);
     uint16_t display = THING_ENDOFLIST;
-    for (uint16_t t = aspect_first_thing(view.map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
-         t = dungeon_next_thing(t))
+    for (uint16_t t = aspect_first_thing(view.map, target.x, target.y);
+         t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_SENSOR && sensor_type(t) == SENSOR_SHOP) {
             display = t;
             break;
@@ -2318,7 +2330,7 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
                             ? item_create_by_index(item)
                             : THING_NONE;
         if (made != THING_NONE) {
-            dungeon_link_thing_to_square(made, view.map, x, y);
+            dungeon_link_thing_to_square(made, view.map, target.x, target.y);
         } else {
             setup_picture(&item_place, CAT_WALL_ORNAMENT, ornament, GFX_ORN_SHOP_EMPTY);
             flush_picture();
@@ -2530,23 +2542,21 @@ static void show_ornament_contents(int pos, uint8_t ornament, int kind, const Pi
     }
 }
 
-/* The picture entry of the wall ornament on the face at side (0 front, < 0 left, > 0 right) in frame; *flip is set
-   when a right face shows the mirrored side picture. */
-static int wall_ornament_entry(uint8_t ornament, int side, int frame, int *flip)
+/* The picture of the wall ornament on the face at side (0 front, < 0 left, > 0 right) in frame: a right face without
+   a picture of its own shows the side picture mirrored. */
+static ThingPicture wall_ornament_picture(uint8_t ornament, int side, int frame)
 {
-    int entry;
+    ThingPicture pic = {.entry = ORN_PICTURE_SIDE, .flip = 0};
     if (side == 0) {
-        entry = ORN_PICTURE_FRONT; /* front ornaments are not mirrored: the depth flip of the original is off */
-    } else {
-        entry = ORN_PICTURE_SIDE;
-        if (side > 0) {
-            if (picture_exists(CAT_WALL_ORNAMENT, ornament, (uint8_t)(frame + ORN_PICTURE_RIGHT)))
-                entry = ORN_PICTURE_RIGHT;
-            else
-                *flip = 1;
-        }
+        pic.entry = ORN_PICTURE_FRONT; /* front ornaments are not mirrored: the depth flip of the original is off */
+    } else if (side > 0) {
+        if (picture_exists(CAT_WALL_ORNAMENT, ornament, (uint8_t)(frame + ORN_PICTURE_RIGHT)))
+            pic.entry = ORN_PICTURE_RIGHT;
+        else
+            pic.flip = 1;
     }
-    return (uint8_t)(entry + frame);
+    pic.entry = (uint8_t)(pic.entry + frame);
+    return pic;
 }
 
 /* Draws the ornament of the wall face at side (0 front, < 0 left, > 0 right) of the wall at pos; returns its color key. */
@@ -2590,7 +2600,9 @@ static int show_wall_ornament(int pos, int side, int record_click)
         return key;
     }
     int16_t click_rect[RECT_SIZE] = {0};
-    int entry = wall_ornament_entry(ornament, side, frame, &p.flip);
+    ThingPicture pic = wall_ornament_picture(ornament, side, frame);
+    int entry = pic.entry;
+    p.flip = pic.flip;
     if (side == 0 && aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_WET)) {
         show_wet_wall_ornament(ornament, entry, &p, record_click, click_rect);
     } else {
@@ -2706,15 +2718,13 @@ static void show_floor_ornament_offscreen(uint8_t ornament, int entry, const Pic
 static void show_linked_squares(const TeleporterLink *link, int pos, int depth)
 {
     /* the squares behind the passage, on the linked map */
-    int x = link->x;
-    int y = link->y;
     int saved_dir = view.party_dir;
     int saved_map = view.map;
     view.party_dir = link->target_side;
     view.map = link->map;
-    step_relative(view.party_dir, -depth, 0, &x, &y);
+    Location at = step_relative((Location){link->x, link->y}, view.party_dir, -depth, 0);
     for (int d = POS_DEPTH_MAX; d >= depth; d--)
-        view_load_square(x, y, depth_center[d], view.party_dir);
+        view_load_square(at.x, at.y, depth_center[d], view.party_dir);
     for (int d = POS_DEPTH_MAX; d > depth; d--)
         show_square_things(depth_center[d], THINGS_ALL, 1);
     view.map = saved_map;
@@ -2722,9 +2732,9 @@ static void show_linked_squares(const TeleporterLink *link, int pos, int depth)
     show_square_things(pos, THINGS_NEAR, 1);
 }
 
-/* Where and how the floor ornament in frame shows on the square at pos; *entry becomes the scaled picture when the
-   ornament has no picture of its own there. */
-static PicturePlace floor_ornament_place(int pos, uint8_t ornament, int frame, int *entry)
+/* Where and how the floor ornament shows on the square at pos; scaled: it shows the scaled picture of an ornament
+   without a picture of its own there. */
+static PicturePlace floor_ornament_place(int pos, uint8_t ornament, bool scaled)
 {
     int depth = depth_of(pos);
     int flip = 0;
@@ -2745,11 +2755,7 @@ static PicturePlace floor_ornament_place(int pos, uint8_t ornament, int frame, i
         cell = LOW_BYTE(place) - 1;
     }
     int zone = zone_id_for_view_cell(pos, cell, 0);
-    int scale = SCALE_FULL;
-    if (!picture_exists(CAT_FLOOR_ORNAMENT, ornament, *entry)) {
-        *entry = (uint8_t)(floor_ornament_scaled_entry[pos] + frame);
-        scale = depth_scale[depth];
-    }
+    int scale = scaled ? depth_scale[depth] : SCALE_FULL;
     if ((pos == POS_NEAR_SIDE_1 || pos == POS_NEAR_SIDE_2) &&
         aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_BIG_NEAR))
         scale = SCALE_BIG_NEAR;
@@ -2789,7 +2795,10 @@ static bool show_floor_ornament(int pos)
     if ((pos == POS_FAR_SIDE_1 || pos == POS_FAR_SIDE_2) &&
         aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_NOT_FAR_SIDE))
         return false;
-    PicturePlace p = floor_ornament_place(pos, ornament, frame, &entry);
+    bool scaled = !picture_exists(CAT_FLOOR_ORNAMENT, ornament, entry);
+    if (scaled)
+        entry = (uint8_t)(floor_ornament_scaled_entry[pos] + frame);
+    PicturePlace p = floor_ornament_place(pos, ornament, scaled);
     int wet = depth ? aspect_value_key(CAT_FLOOR_ORNAMENT, ornament, ORN_KEY_WET) : 0;
     if (!depth || (!linked && !wet)) {
         setup_picture(&p, CAT_FLOOR_ORNAMENT, ornament, entry);
@@ -3137,35 +3146,12 @@ static void show_door_front(int pos)
 
 /* ---- The sky of outdoor maps ---- */
 
-/* The lateral and forward distance from the party at (*x, *y) to (x2, y2) looking to dir, and the distance;
-   0 for a point not in front. */
-static int outdoor_relative_distance(int dir, int16_t *x, int16_t *y, int x2, int y2)
+/* The distance from the party to a point at offset, rounded down; 0 for a point not in front. */
+static int outdoor_relative_distance(RelativeOffset offset)
 {
-    int16_t forward = 0;
-    int16_t lateral = 0;
-    switch (dir) {
-    case DIR_NORTH:
-        forward = (int16_t)(*y - y2);
-        lateral = (int16_t)(x2 - *x);
-        break;
-    case DIR_EAST:
-        forward = (int16_t)(x2 - *x);
-        lateral = (int16_t)(y2 - *y);
-        break;
-    case DIR_SOUTH:
-        forward = (int16_t)(y2 - *y);
-        lateral = (int16_t)(*x - x2);
-        break;
-    case DIR_WEST:
-        forward = (int16_t)(*x - x2);
-        lateral = (int16_t)(*y - y2);
-        break;
-    }
-    *x = lateral;
-    *y = forward;
-    if (forward < 1)
+    if (offset.forward < 1)
         return 0;
-    uint16_t n = (uint16_t)(lateral * lateral + forward * forward);
+    uint16_t n = (uint16_t)(offset.lateral * offset.lateral + offset.forward * offset.forward);
     if (n <= 2)
         return 1;
     uint16_t root = n >> 1, next;
@@ -3194,12 +3180,13 @@ static bool outdoor_place_sky_object(SkyObject *o, const char *definition, int d
     int16_t py = (int16_t)(y + dungeon_map_offset_y(view.map));
     int lx = (int16_t)gdat_text_int_field(definition, "xl");
     int ly = (int16_t)gdat_text_int_field(definition, "yl");
-    int distance = outdoor_relative_distance(dir, &px, &py, lx, ly);
-    if (py < 1)
+    RelativeOffset offset = relative_offset(dir, lx - px, ly - py);
+    if (offset.forward < 1)
         return false;
+    int distance = outdoor_relative_distance(offset);
     int16_t near = (int16_t)(SHADE_FULL - (distance - gdat_text_int_field(definition, "fd")));
     int scale = near > 1 ? near : 1;
-    o->dx = (int16_t)(px * SKY_LANDMARK_DISTANCE / distance);
+    o->dx = (int16_t)(offset.lateral * SKY_LANDMARK_DISTANCE / distance);
     o->scale_y = (uint8_t)rounded_scale(scale, SHADE_FULL);
     o->scale_x = o->scale_y;
     return true;
@@ -3597,12 +3584,11 @@ bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y)
     if (pos > POS_FRONT)
         return false;
     ViewSquare saved = g_view_squares[pos];
-    int sx = view.party_x;
-    int sy = view.party_y;
-    step_relative(view.party_dir, depth_of(pos), lateral_of(pos), &sx, &sy);
-    g_view_squares[pos].x = (int8_t)sx;
-    g_view_squares[pos].y = (int8_t)sy;
-    aspect_get(&g_view_squares[pos], view.map, view.party_dir, sx, sy);
+    Location at = step_relative((Location){(int16_t)view.party_x, (int16_t)view.party_y}, view.party_dir, depth_of(pos),
+                                lateral_of(pos));
+    g_view_squares[pos].x = (int8_t)at.x;
+    g_view_squares[pos].y = (int8_t)at.y;
+    aspect_get(&g_view_squares[pos], view.map, view.party_dir, at.x, at.y);
     bool hit = false;
     int key = show_wall_ornament(pos, lateral_of(pos), 0); /* the face that the party sees of the wall */
     if (key >= 0)
