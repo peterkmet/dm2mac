@@ -60,6 +60,7 @@ The rules of the champions: the leader hand, damage and time effects, the action
 - Kept quirk: `champ_cure_poison` (`0x475d3`) reads only as many timeline slots from the start as the timeline holds events. A poison event in a later slot (the events before it were deleted, for example the events of creatures that died or stayed behind) gets no cure: an antidote does nothing. The advanced mode reads all slots.
 - Kept quirk: bit 15 of the attack value of a melee action (`FIELD_ATTACK`) also makes the hit pierce, and the hit chance ignores the bit (`melee_attack_front`).
 - Kept quirk: when the quiver holds no throwing item, a thrower reloads its hand with what lies in the quiver slot (slot 12), also an item that cannot be thrown (`take_next_missile`).
+- Not ported: `click_throw_object` (`0x22942`) tests the zones `0x300` and `0x301` instead of `0x2fd` and `0x2fe` when the type of the square in front is `0x11`. The type is bits 5 to 7 of the square byte (0 to 7, `0x7f52c`), so the original never takes this branch.
 - Fix: `melee_hit_damage` reads its rest uninitialized for a strength of 0; the port starts the rest at 0.
 - Fix: `item_icon_index` divides by the step of the icon animation attribute (bits 5 to 7 of value key `0x06`) in the modes by charges and time; the shipped GRAPHICS.DAT has no step of 0. For a step of 0 the port shows the first icon.
 - Fix: `item_add_charges` returns a register of no meaning for a thing type without charges; the port returns 0.
