@@ -12,7 +12,6 @@
 #include "move.h"
 #include "num.h"
 #include "random.h"
-#include "sensor.h"
 #include "timeline.h"
 #include "weather.h"
 

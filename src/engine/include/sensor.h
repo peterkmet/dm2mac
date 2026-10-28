@@ -3,7 +3,7 @@
 #define DM2_ENGINE_SENSOR_H
 /* Prefixes: sensor_ */
 
-/* Floor and wall sensors: their record fields, their timeline events, and the missiles. */
+/* Floor and wall sensors: their record fields, their square events and timers, and wall clicks. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -77,59 +77,29 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
     return thing_field(sensor, SENSOR_TARGET, LAUNCH_STEP_SHIFT, LAUNCH_STEP_MASK);
 }
 
-/* Timeline event types. */
-#define EVENT_DOOR_ANIMATION        0x01
-#define EVENT_DOOR_DESTRUCTION      0x02
-#define EVENT_SQUARE                0x04
-#define EVENT_HIDE_DAMAGE           0x0c
-#define EVENT_ALTAR_REBIRTH         0x0d
-#define EVENT_ITEM_EFFECT           0x0e
-#define EVENT_DELAYED_SOUND         0x15
-#define EVENT_EXPLOSION             0x19
-#define EVENT_PROJECTILE_MOVE       0x1d
-#define EVENT_PROJECTILE_MOVE_2     0x1e
-#define EVENT_CREATURE_ANIMATION    0x21
-#define EVENT_CREATURE_THINK        0x22
-#define EVENT_MOVE_GROUP            0x3c
-#define EVENT_MOVE_GROUP_2          0x3d
-#define EVENT_MAGIC_LIGHT           0x46
-#define EVENT_INVISIBILITY          0x47
-#define EVENT_AURA                  0x48
-#define EVENT_POISON                0x4b
-#define EVENT_WEATHER               0x54
-#define EVENT_SENSOR_ANIMATION_STEP 0x55
-#define EVENT_SENSOR_TIMER          0x56
-#define EVENT_SENSOR_IDLE           0x57
-#define EVENT_DOOR_BUTTON_RELEASE   0x58
-#define EVENT_SENSOR_ANIMATION_END  0x59
-#define EVENT_SENSOR_AMBIENT_SOUND  0x5a
-#define EVENT_SENSOR_READY          0x5b
-#define EVENT_SET_MARKER            0x5c
-#define EVENT_TELEPORT_PARTY        0x5d
-#define EVENT_SPAWN_CREATURE        0x5e
 /* Effects of a square event: what it does to its target. */
-#define EFFECT_SET                  0
-#define EFFECT_CLEAR                1
-#define EFFECT_TOGGLE               2
-#define EFFECT_HOLD                 3
+#define EFFECT_SET                0
+#define EFFECT_CLEAR              1
+#define EFFECT_TOGGLE             2
+#define EFFECT_HOLD               3
 /* Bytes of a square event. */
-#define EVENT_X                     0x00
-#define EVENT_Y                     0x01
-#define EVENT_CELL                  0x02
-#define EVENT_EFFECT                0x03
+#define EVENT_X                   0x00
+#define EVENT_Y                   0x01
+#define EVENT_CELL                0x02
+#define EVENT_EFFECT              0x03
 /* Bytes of the other events of this module: a sensor event holds its sensor thing (an ambient sound or animation end
    event after its square), then the wall flag or the timer factor and phase; a party teleport holds the target word
    and the map; a creature spawn holds the square and the creature type; an altar rebirth holds a square event with
    the steps left in place of the effect. */
-#define SENSOR_EVENT_THING          0x00
-#define SENSOR_EVENT_WALL           0x02
-#define SENSOR_EVENT_TIMER_FACTOR   0x02
-#define SENSOR_EVENT_TIMER_PHASE    0x03
-#define SENSOR_EVENT_SQUARE_THING   0x02
-#define TELEPORT_EVENT_TARGET       0x00
-#define TELEPORT_EVENT_MAP          0x02
-#define SPAWN_EVENT_CREATURE        0x03
-#define ALTAR_EVENT_STEPS           0x03
+#define SENSOR_EVENT_THING        0x00
+#define SENSOR_EVENT_WALL         0x02
+#define SENSOR_EVENT_TIMER_FACTOR 0x02
+#define SENSOR_EVENT_TIMER_PHASE  0x03
+#define SENSOR_EVENT_SQUARE_THING 0x02
+#define TELEPORT_EVENT_TARGET     0x00
+#define TELEPORT_EVENT_MAP        0x02
+#define SPAWN_EVENT_CREATURE      0x03
+#define ALTAR_EVENT_STEPS         0x03
 
 /* Sensor types that launch missiles. */
 #define LAUNCH_ITEM             0x07
