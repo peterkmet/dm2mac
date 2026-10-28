@@ -18,50 +18,45 @@
 #define AMAP_MAP_SIZE    2
 
 /* The side squares of each row of the dungeon view: 3 squares at depth 0 and 1, 5 at depth 2 and 3, 7 at depth 4. */
-static const int8_t row_half_width[VIEW_DEPTHS] = {1, 1, 2, 2, 3};
+static const int8_t row_half_width[VIEW_DEPTHS] = {1, 1, 2, 2, VIEW_HALF_WIDTH};
 
 /* One byte per square of every map, the maps one after another, each map column by column. */
 static uint8_t *seen;
 static size_t seen_size;
 
 /* The index of the first square of map in the storage. */
-static size_t map_first_square(int map)
+static size_t map_first_square(int16_t map)
 {
     size_t offset = 0;
-    for (int m = 0; m < map; m++)
+    for (int16_t m = 0; m < map; m++)
         offset += (size_t)dungeon_map_width(m) * (size_t)dungeon_map_height(m);
     return offset;
 }
 
-void seen_reset(void)
-{
-    free(seen);
-    seen_size = map_first_square(dungeon_map_count());
-    seen = calloc(seen_size ? seen_size : 1, 1);
-    if (!seen)
-        os_fatal("out of memory");
-}
-
-/* Makes the storage fit the loaded dungeon. */
-static void fit_storage(void)
-{
-    if (!seen || seen_size != map_first_square(dungeon_map_count()))
-        seen_reset();
-}
-
-static bool on_map(int map, int x, int y)
+static bool on_map(int16_t map, int16_t x, int16_t y)
 {
     return map >= 0 && map < dungeon_map_count() && x >= 0 && x < dungeon_map_width(map) && y >= 0 &&
            y < dungeon_map_height(map);
 }
 
-/* The byte of square (x, y) of map, NULL outside the map. */
-static uint8_t *known_byte(int map, int x, int y)
+/* The byte of square (x, y) of map, NULL outside the map or outside a storage that seen_reset did not size. */
+static uint8_t *known_byte(int16_t map, int16_t x, int16_t y)
 {
-    fit_storage();
-    if (!on_map(map, x, y))
+    if (!seen || !on_map(map, x, y))
         return NULL;
-    return seen + map_first_square(map) + (size_t)x * dungeon_map_height(map) + y;
+    size_t at = map_first_square(map) + (size_t)x * (size_t)dungeon_map_height(map) + (size_t)y;
+    return at < seen_size ? seen + at : NULL;
+}
+
+/* ---- Setup ---- */
+
+void seen_reset(void)
+{
+    free(seen);
+    seen_size = map_first_square((int16_t)dungeon_map_count());
+    seen = calloc(seen_size ? seen_size : 1, 1);
+    if (!seen)
+        os_fatal("out of memory");
 }
 
 void seen_free(void)
@@ -71,19 +66,10 @@ void seen_free(void)
     seen_size = 0;
 }
 
-void seen_mark(int16_t map, int16_t x, int16_t y, int16_t dir)
-{
-    SeenSquare squares[SEEN_VISIBLE_MAX];
-    int count = seen_visible(map, x, y, dir, squares);
-    for (int i = 0; i < count; i++) {
-        uint8_t *square = known_byte(map, squares[i].x, squares[i].y);
-        if (square)
-            *square = 1;
-    }
-}
+/* ---- Queries ---- */
 
 /* A square that the view cannot look through: a wall, a closed fake wall, a closed door, a square off the map. */
-static bool blocks_sight(int map, int x, int y)
+static bool blocks_sight(int16_t map, int16_t x, int16_t y)
 {
     if (!on_map(map, x, y))
         return true;
@@ -103,8 +89,7 @@ static bool blocks_sight(int map, int x, int y)
 /* The view rows that the party makes out in the current light. */
 static int visible_depths(void)
 {
-    /* A fixed cut by light level (4: one row less, 5: two rows less), as in the DM port; a finer rule if a player
-       needs it */
+    /* A fixed cut by light level: one row less at DARKEST_LIGHT - 1, two rows less at DARKEST_LIGHT. */
     if (game_has_cheat(CHEAT_LIGHT))
         return VIEW_DEPTHS;
     if (g_view_light_level >= DARKEST_LIGHT)
@@ -116,7 +101,7 @@ static int visible_depths(void)
 
 int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squares[SEEN_VISIBLE_MAX])
 {
-    uint8_t open[VIEW_DEPTHS][VIEW_WIDTH] = {{0}}; /* seen, and the view looks on through it */
+    bool open[VIEW_DEPTHS][VIEW_WIDTH] = {{false}}; /* seen, and the view looks on through it */
     int depths = visible_depths();
     int count = 0;
     for (int depth = 0; depth < depths; depth++) {
@@ -126,11 +111,11 @@ int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squa
                     continue;
                 int column = VIEW_HALF_WIDTH + side * sign;
                 /* a square is seen through the open square beside it toward the middle, or in front of it */
-                int visible =
+                bool visible =
                     (!depth && !side) || (side && open[depth][column - sign]) || (depth && open[depth - 1][column]);
                 if (!visible)
                     continue;
-                Location at = dun_move_relative((Location){(int16_t)x, (int16_t)y}, dir, depth, side * sign);
+                Location at = dun_move_relative((Location){x, y}, dir, depth, side * sign);
                 squares[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), at.x, at.y};
                 open[depth][column] = !blocks_sight(map, at.x, at.y);
             }
@@ -146,16 +131,32 @@ bool seen_is_seen(int16_t map, int16_t x, int16_t y)
     return square && *square;
 }
 
+/* ---- Commands ---- */
+
+void seen_mark(int16_t map, int16_t x, int16_t y, int16_t dir)
+{
+    SeenSquare squares[SEEN_VISIBLE_MAX];
+    int count = seen_visible(map, x, y, dir, squares);
+    for (int i = 0; i < count; i++) {
+        uint8_t *square = known_byte(map, squares[i].x, squares[i].y);
+        if (square)
+            *square = 1;
+    }
+}
+
+/* ---- Save block ---- */
+
 bool seen_write(FILE *f)
 {
-    fit_storage();
     int count = dungeon_map_count();
+    if (!seen || seen_size != map_first_square((int16_t)count))
+        return false; /* the storage does not fit the dungeon: seen_reset did not run after the load */
     uint8_t header[AMAP_HEADER_SIZE];
     memcpy(header, AMAP_MAGIC, AMAP_MAGIC_SIZE);
     header[AMAP_MAGIC_SIZE] = AMAP_VERSION;
     header[AMAP_COUNT_AT] = (uint8_t)count;
     bool ok = fwrite(header, 1, sizeof header, f) == sizeof header;
-    for (int map = 0; ok && map < count; map++)
+    for (int16_t map = 0; ok && map < count; map++)
         ok = fputc(dungeon_map_width(map), f) != EOF && fputc(dungeon_map_height(map), f) != EOF;
     return ok && fwrite(seen, 1, seen_size, f) == seen_size;
 }
@@ -169,7 +170,7 @@ bool seen_read(FILE *f)
     bool ok = block && fread(block, 1, size, f) == size && !memcmp(block, AMAP_MAGIC, AMAP_MAGIC_SIZE) &&
               block[AMAP_MAGIC_SIZE] == AMAP_VERSION && block[AMAP_COUNT_AT] == count;
     const uint8_t *p = block + AMAP_HEADER_SIZE;
-    for (int map = 0; ok && map < count; map++, p += AMAP_MAP_SIZE)
+    for (int16_t map = 0; ok && map < count; map++, p += AMAP_MAP_SIZE)
         ok = p[0] == dungeon_map_width(map) && p[1] == dungeon_map_height(map);
     for (size_t i = 0; ok && i < seen_size; i++)
         ok = p[i] <= 1;
