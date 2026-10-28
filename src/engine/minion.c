@@ -77,6 +77,7 @@ void minion_toggle_map_option(int option)
 
 bool minion_map_set_location(uint16_t thing, Position at)
 {
+    /* as in the original: switches the current map to the map of at, then back */
     int16_t saved = g_party.cur_map;
     dun_set_current_map(at.map);
     bool inside = at.x >= 0 && at.x < dungeon_map_width(g_party.cur_map) && at.y >= 0 &&
@@ -111,6 +112,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     int16_t sx = found.x;
     int16_t sy = found.y;
     int16_t map = found.map;
+    /* as in the original: switches the current map to the map of the square, then back */
     int16_t saved = g_party.cur_map;
     dun_set_current_map(map);
     uint8_t square = dun_get_square((Location){sx, sy});
@@ -140,6 +142,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
 void minion_dismiss(uint16_t group)
 {
     uint16_t projectile = item_find_link_projectile(group, THING_NONE);
+    /* as in the original: switches the current map to the map of the minion map, then back */
     int16_t saved = g_party.cur_map;
     if (!projectile)
         return;
