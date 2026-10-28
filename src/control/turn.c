@@ -46,11 +46,7 @@
 #define NAME_QUOTE_COUNT         2          /* the quotes around a name item of an act_many list */
 
 /* The kinds of the inputs of an action. */
-#define INPUT_KEY_PRESS 0
-#define INPUT_CLICK     1
-#define INPUT_PRESS     2
-#define INPUT_RELEASE   3
-#define INPUT_COMMAND   4
+typedef enum { INPUT_KEY_PRESS, INPUT_CLICK, INPUT_PRESS, INPUT_RELEASE, INPUT_COMMAND } InputKind;
 
 /* The reasons why an action cannot run. */
 #define NO_CHAMPION "no living champion with this index"
@@ -60,7 +56,7 @@
 
 /* An input of an action: a key, a mouse button at a point, or the click on the zone of a command. */
 typedef struct {
-    uint8_t kind;   /* INPUT_* */
+    InputKind kind;
     uint16_t value; /* a key code, a command, or a mouse button bit */
     int16_t x, y;
 } TurnInput;
@@ -150,7 +146,7 @@ void turn_drop_reply(void)
 
 /* Inputs: an action lists them; the turn gives each one when the input of the one before is done. */
 
-static void add_input(uint8_t kind, uint16_t value, int16_t x, int16_t y)
+static void add_input(InputKind kind, uint16_t value, int16_t x, int16_t y)
 {
     if (turn.input_count < TURN_INPUT_MAX)
         turn.inputs[turn.input_count++] = (TurnInput){kind, value, x, y};
@@ -640,18 +636,18 @@ static const char *close_inventory(const char *r)
 
 /* The command of a click on a slot of champion c: a hand of a status box, a slot of the open inventory, or a slot of
    the open chest (30 to 37); NULL, or the reason why the slot cannot be clicked now. */
-static const char *slot_command(int c, int64_t slot, uint16_t *command)
+static const char *slot_command(int c, int64_t requested_slot, uint16_t *command)
 {
-    if (slot < 0 || slot >= SLOT_CONTAINER_FIRST + CONTAINER_SLOTS)
+    if (requested_slot < 0 || requested_slot >= SLOT_CONTAINER_FIRST + CONTAINER_SLOTS)
         return "slot must be 0-37";
-    if (slot >= SLOT_CONTAINER_FIRST) {
+    if (requested_slot >= SLOT_CONTAINER_FIRST) {
         if (g_action.mode != ACTION_MODE_CONTAINER)
             return "no open chest";
-        *command = CMD_SLOT_CHEST_FIRST + (uint16_t)(slot - SLOT_CONTAINER_FIRST);
+        *command = CMD_SLOT_CHEST_FIRST + (uint16_t)(requested_slot - SLOT_CONTAINER_FIRST);
     } else if (g_ui.inventory == c + 1) {
-        *command = CMD_SLOT_INVENTORY_FIRST + (uint16_t)slot;
-    } else if (slot < SLOT_HAND_COUNT) {
-        *command = CMD_SLOT_FIRST + SLOT_HAND_COUNT * c + (uint16_t)slot;
+        *command = CMD_SLOT_INVENTORY_FIRST + (uint16_t)requested_slot;
+    } else if (requested_slot < SLOT_HAND_COUNT) {
+        *command = CMD_SLOT_FIRST + SLOT_HAND_COUNT * c + (uint16_t)requested_slot;
     } else {
         return "open the inventory of this champion first (open_inventory)";
     }
