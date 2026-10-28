@@ -299,7 +299,7 @@ static void blast_square(uint16_t type, int power, int16_t x, int16_t y, int16_t
         }
         if (!first)
             return;
-        GroupNear near = creature_find_group_near_point((Location){nx, ny}, (uint16_t)cell);
+        GroupNear near = creature_find_group_near_point((Location){nx, ny}, cell);
         g = near.group;
         nx = near.at.x;
         ny = near.at.y;
@@ -524,7 +524,7 @@ static bool hit_wall_sensors(int16_t x, int16_t y, int16_t dir, uint16_t project
 /* The projectile meets the creature near the cell of its hit square; true when it hits. */
 static bool hit_creature(Hit *h, int16_t cell)
 {
-    GroupNear near = creature_find_group_near_point((Location){h->x, h->y}, (uint16_t)cell);
+    GroupNear near = creature_find_group_near_point((Location){h->x, h->y}, cell);
     uint16_t g = near.group;
     if (g == THING_NONE || creature_current_step_acts(g))
         return false;
@@ -572,7 +572,7 @@ static bool hit_creature(Hit *h, int16_t cell)
 /* The projectile hits the champion in cell; false when no champion stands there. */
 static bool hit_champion(Hit *h, int16_t cell)
 {
-    int champ = champ_get_index_in_cell((uint16_t)cell);
+    int champ = champ_get_index_in_cell(cell);
     if (champ < 0)
         return false;
     h->hit = true;

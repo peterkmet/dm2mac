@@ -551,7 +551,7 @@ void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int tran
     int16_t sy = 0;
     if (!image)
         return;
-    int16_t *rect = zone_compute_rect(image, r, (int16_t)zone, &sx, &sy);
+    int16_t *rect = zone_compute_rect(image, r, zone, &sx, &sy);
     offscreen_blit(o,
                    &(BlitSource){.bitmap = image,
                                  .x = sx,
@@ -570,7 +570,7 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
     } else {
         int16_t w = ctx->w;
         int16_t h = ctx->h;
-        if (!ctx->image || !zone_compute_rect(ctx->image, r, (int16_t)zone, &w, &h))
+        if (!ctx->image || !zone_compute_rect(ctx->image, r, zone, &w, &h))
             return;
         /* as in the original, the clipped part goes into the size of the picture part, not its position */
         ctx->w = (int16_t)(ctx->w + w);
@@ -601,7 +601,7 @@ static int16_t *zoned_text_rect(int zone, const char *text, int16_t *r)
     TextSize size = text_measure(text);
     if (!size.w)
         return NULL;
-    return zone_compute_rect(NULL, r, (int16_t)zone, &size.w, &size.h);
+    return zone_compute_rect(NULL, r, zone, &size.w, &size.h);
 }
 
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)

@@ -288,7 +288,7 @@ int shop_cmd_pay_change(void)
         int16_t value = sum_items_value(g, dir_opposite(dir), (ItemSum){-1, FILTER_COINS, false, true, true});
         if ((value == 0 || value == -1) && box == THING_NONE)
             return AI_RESULT_FAIL;
-        a->counters[1] = (int16_t)max_int(0, (int16_t)value);
+        a->counters[1] = (int16_t)max_int(0, value);
         return AI_RESULT_DONE;
     }
     /* else position: the change due that shop_cmd_count_payment set */

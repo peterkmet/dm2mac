@@ -322,7 +322,7 @@ BumpedChampions move_party_bump_damage(Location at, int16_t dir, int step)
 {
     int side = dir_opposite(dir_turn(dir, step));
     BumpedChampions bumped;
-    bumped.first = (int16_t)move_nearest_champion_at(at, side & DIR_MASK);
+    bumped.first = (int16_t)move_nearest_champion_at(at, side);
     bumped.second = (int16_t)move_nearest_champion_at(at, dir_turn(side, TURN_RIGHT));
     bump_champion(bumped.first, at.x, at.y);
     if (bumped.second != bumped.first)
