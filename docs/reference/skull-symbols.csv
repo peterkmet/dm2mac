@@ -989,7 +989,7 @@ address,name,signature,subsystem
 0x000560b8,timeline_event_is_later,"int timeline_event_is_later(const uint8_t *a, const uint8_t *b)",timeline
 0x000560f9,find_queue_slot,int16_t find_queue_slot(uint16_t event_index),timeline
 0x00056134,timeline_fix_queue_slot,void timeline_fix_queue_slot(uint16_t slot),timeline
-0x000562ce,timeline_reposition_event,void timeline_reposition_event(uint16_t event_index),timeline
+0x000562ce,reposition_event,void reposition_event(uint16_t event_index),timeline
 0x000562ff,timeline_delete_event,void timeline_delete_event(uint16_t event_index),timeline
 0x00056390,timeline_add_event,int timeline_add_event(void *event),timeline
 0x0005643d,timeline_pop_first_event,void timeline_pop_first_event(void *event),timeline

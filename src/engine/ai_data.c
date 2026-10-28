@@ -503,8 +503,9 @@ const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT] = {
     {0x00, 0x00, 0x00, 0x00},
 };
 
-/* The hit offset and hit radius tables of creature_find_group_near_point as bytes; the commands from
-   COMMAND_AFTER_GLOBALS read them as their enabled byte, as in the original. */
+/* The hit offset and hit radius tables of creature_find_group_near_point as bytes (g_creature_hit_offsets to
+   g_creature_hit_radius_sq in the symbol table); the commands from COMMAND_AFTER_GLOBALS read them as their enabled
+   byte, as in the original. */
 const uint8_t g_ai_command_enabled_overrun[AI_ENABLED_OVERRUN_BYTES] = {
     0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00, 0x00,
     0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
