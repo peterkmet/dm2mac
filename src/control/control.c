@@ -651,11 +651,12 @@ static bool handle_turnbased_game_request(const char *request, const char *cmd, 
     else if (!strcmp(cmd, "get_map"))
         put_part(reply, "map", state_json_map);
     else {
-        for (size_t i = 0; i < sizeof turns / sizeof turns[0] && state_json_game_over(); i++)
-            if (!strcmp(cmd, turns[i])) {
-                put_error(reply, "game over");
-                return true;
-            }
+        if (state_json_game_over())
+            for (size_t i = 0; i < sizeof turns / sizeof turns[0]; i++)
+                if (!strcmp(cmd, turns[i])) {
+                    put_error(reply, "game over");
+                    return true;
+                }
         if (!strcmp(cmd, "save"))
             handle_save(reply);
         else if (!strcmp(cmd, "act"))

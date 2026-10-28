@@ -12,6 +12,7 @@ MAGIC_TABLES = {"rune_names"}
 STATE_TABLES = {
     "mode_names", "direction_names", "party_cell_names", "statistic_names", "skill_names", "wound_names",
     "slot_names", "hand_names", "map_option_names", "amount_names", "side_names", "explosion_names",
+    "element_names",
 }  # fmt: skip
 
 
