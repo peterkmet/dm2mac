@@ -679,7 +679,7 @@ static void report_cast_failure(int result)
 
 bool magic_cast_entered_runes(void)
 {
-    int champ = (uint16_t)(g_action.champion - 1);
+    int champ = g_action.champion - 1;
     Champion *c = champion(champ);
     uint8_t *runes = runes_of(c);
     const Spell *spell = magic_find_spell(runes);
