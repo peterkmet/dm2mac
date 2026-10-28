@@ -62,6 +62,12 @@ static void add_magic_light(int delta)
     save_set_magic_light((int16_t)(save_magic_light() + delta));
 }
 
+/* True when mode takes the effect back: the item leaves, or its timed effect ends. */
+static bool is_reverse_effect(enum EffectMode mode)
+{
+    return mode == EFFECT_MODE_REMOVE || mode == EFFECT_MODE_CONSUME_END;
+}
+
 /* The modifier of attribute attr of thing for mode; equipped: the item is in a slot that fits it. */
 static int stat_modifier(uint16_t thing, int attr, bool equipped, enum EffectMode mode)
 {
@@ -75,7 +81,7 @@ static int stat_modifier(uint16_t thing, int attr, bool equipped, enum EffectMod
         return 0;
     }
     int r = (int8_t)v;
-    return mode < 0 ? -r : r;
+    return is_reverse_effect(mode) ? -r : r;
 }
 
 /* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
@@ -146,7 +152,7 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum Effe
         return;
     if (slot < SLOT_COUNT) {
         uint16_t flags = item_attr(thing, ATTR_FLAGS);
-        if (mode && flags & ITEM_FLAG_LIGHT)
+        if (mode != EFFECT_MODE_LOAD && flags & ITEM_FLAG_LIGHT)
             light_update_party_light();
         if (flags & ATTR_HAS_EFFECTS) {
             Champion *c = champion(champ);
@@ -169,14 +175,14 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum Effe
             if (mode != EFFECT_MODE_CONSUME && mode != EFFECT_MODE_CONSUME_END && mode != EFFECT_MODE_RESTORE &&
                 (m = stat_modifier(thing, ATTR_LIGHT, equipped, mode))) {
                 add_magic_light(m);
-                if (mode)
+                if (mode != EFFECT_MODE_LOAD)
                     light_update_party_light();
             }
             if (timed && mode == EFFECT_MODE_CONSUME)
                 add_effect_end_event(champ, thing);
         }
     }
-    if (mode)
+    if (mode != EFFECT_MODE_LOAD)
         champ_compute_load(champ);
 }
 
@@ -332,7 +338,7 @@ void inv_put_in_free_slot(int champ, uint16_t thing)
     for (size_t r = 0; r < sizeof ranges / sizeof *ranges; r++)
         for (int slot = ranges[r].first; slot <= ranges[r].last; slot++)
             if (champion(champ)->slots[slot] == THING_NONE && item_fits_slot(thing, slot, false) &&
-                (ranges[r].type < 0 || ranges[r].type == (int)thing_type(thing))) {
+                (ranges[r].type < 0 || ranges[r].type == thing_type(thing))) {
                 champ_add_object_to_slot(champ, thing, slot);
                 return;
             }

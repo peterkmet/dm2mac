@@ -517,6 +517,7 @@ bool item_has_action_command(int champ, uint16_t thing, int command)
                 break;
             }
     }
+    /* restores the action list of the open hand that the search overwrote */
     if (g_action.champion && (g_action.hand == SLOT_READY_HAND || g_action.hand == SLOT_ACTION_HAND))
         champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
     return found;
