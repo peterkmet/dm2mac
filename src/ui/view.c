@@ -65,11 +65,6 @@
 #define CELL_FAR_MIDDLE   2 /* the middle cell of the far row */
 #define CELL_LEFT_MIDDLE  10
 #define CELL_RIGHT_MIDDLE 14
-/* The cells of a square, as the party sees them. */
-#define CELL_FRONT_LEFT   0
-#define CELL_FRONT_RIGHT  1
-#define CELL_BACK_RIGHT   2
-#define CELL_BACK_LEFT    3
 /* Zone anchors of the two sides of a door frame. */
 #define ANCHOR_DOOR_RIGHT 4
 #define ANCHOR_DOOR_LEFT  3

@@ -223,9 +223,9 @@ void area_draw_spell_icon(int champ, bool flash)
     offscreen_fill_rect(&area, zone_get_rect(ZONE_SPELL_ICON_FIRST + rel, r), g_ui_colors[UI_BLACK]);
     if (!c->health)
         return;
-    bool mirror = rel == 1 || rel == 2;
-    int rune = rel <= 1 ? GFX_ACTION_SPELL_RUNE_LEFT : GFX_ACTION_SPELL_RUNE_RIGHT;
-    int hand = rel <= 1 ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
+    bool mirror = rel == CELL_FRONT_RIGHT || rel == CELL_BACK_RIGHT;
+    int rune = rel <= CELL_FRONT_RIGHT ? GFX_ACTION_SPELL_RUNE_LEFT : GFX_ACTION_SPELL_RUNE_RIGHT;
+    int hand = rel <= CELL_FRONT_RIGHT ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
     if (champ == g_game.leader)
         rune++;
     if (flash)

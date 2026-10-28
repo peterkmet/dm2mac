@@ -84,6 +84,12 @@
 #define dir_opposite(d)         dir_turn(d, TURN_BACK)
 /* The direction or cell d seen from a party or creature that looks to facing. */
 #define dir_relative(d, facing) dir_turn(d, -(facing))
+/* The relative cells of a square (dir_relative of a cell), as the party or a creature that looks to facing sees
+   them. */
+#define CELL_FRONT_LEFT         0
+#define CELL_FRONT_RIGHT        1
+#define CELL_BACK_RIGHT         2
+#define CELL_BACK_LEFT          3
 /* The cell on side dir of a square that is in the same column (seen from dir) as cell. */
 static inline int16_t dir_side_cell(int16_t cell, int16_t dir)
 {

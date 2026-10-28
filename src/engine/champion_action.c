@@ -487,8 +487,8 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
     if (group == THING_NONE)
         return false;
     int rel = dir_relative(c->cell, c->dir);
-    if (rel > 1) {
-        int other = dir_turn(c->cell, rel == 2 ? TURN_LEFT : TURN_RIGHT);
+    if (rel >= CELL_BACK_RIGHT) {
+        int other = dir_turn(c->cell, rel == CELL_BACK_RIGHT ? TURN_LEFT : TURN_RIGHT);
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
             show_failure(RESULT_NOTHING, VAR_BLOCKED_ACTIONS);

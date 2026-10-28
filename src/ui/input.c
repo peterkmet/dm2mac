@@ -178,10 +178,8 @@
 
 /* Relative cells of the squares of a view click. */
 #define HALF_CELLS                 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
-#define RIGHT_COLUMN_FIRST         1 /* relative cells 1 and 2: the right column of a square */
-#define RIGHT_COLUMN_LAST          2
-#define POSSESSION_VIEW_CELL_FIRST HALF_CELLS /* the possessions of a static creature show in the back half */
-#define ALCOVE_CELL                2          /* the alcove in front keeps its objects in relative cell 2 */
+#define POSSESSION_VIEW_CELL_FIRST HALF_CELLS      /* the possessions of a static creature show in the back half */
+#define ALCOVE_CELL                CELL_BACK_RIGHT /* the alcove in front keeps its objects in this relative cell */
 
 /* The middle part of the viewport without a push arrow. */
 #define ARROW_CENTER_X       20 /* half size of the middle part of the viewport, without an arrow */
@@ -1498,8 +1496,8 @@ void input_refine_champion_click(Command *c)
     const int16_t *r = c->rect;
     /* the distances to the edges of the icon that face the party center */
     int16_t dy = (int16_t)(icon < HALF_CELLS ? r[RECT_Y] + r[RECT_H] - 1 - c->y : c->y - r[RECT_Y]);
-    int16_t dx = (int16_t)(icon >= RIGHT_COLUMN_FIRST && icon <= RIGHT_COLUMN_LAST ? c->x - r[RECT_X]
-                                                                                   : r[RECT_X] + r[RECT_W] - 1 - c->x);
+    int16_t dx = (int16_t)(icon == CELL_FRONT_RIGHT || icon == CELL_BACK_RIGHT ? c->x - r[RECT_X]
+                                                                               : r[RECT_X] + r[RECT_W] - 1 - c->x);
     if (dx <= dy)
         c->command = (uint16_t)(CMD_LEADER_FIRST + icon);
     else if (champion(champ)->action_delay[ACTION_SPELL])
