@@ -133,8 +133,8 @@ static int16_t price_in_coins(uint16_t group, int cell)
 {
     uint8_t coins[COIN_MAX];
     int16_t count;
-    return (int16_t)money_split_amount(sum_items_value(group, cell, (ItemSum){-1, FILTER_COINS, 1, 1, 0}), COIN_MAX,
-                                       coins, &count);
+    return money_split_amount(sum_items_value(group, cell, (ItemSum){-1, FILTER_COINS, 1, 1, 0}), COIN_MAX, coins,
+                              &count);
 }
 
 /* An offer below the price: the merchant haggles (MERCHANT_HAGGLE) or refuses, by chance. */

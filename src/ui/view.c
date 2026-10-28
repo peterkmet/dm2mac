@@ -2185,7 +2185,7 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
     uint16_t item = sensor_data(display);
     uint8_t set[SHOP_CLASS_SET_SIZE];
     int list = sensor_delay(shop); /* the delay bits of a shop: its price list */
-    if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, 0)) {
+    if (money_parse_item_class_set(creature, list * SHOP_CLASS_TEXT_STEP + SHOP_CLASS_TEXT, set, false)) {
         int count, at = item;
         const uint8_t *table = price_table(ornament, &count);
         if (table)

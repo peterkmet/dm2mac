@@ -37,7 +37,7 @@ void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
 /* The coin type that the money box shows in slot (0 to 9), -1 none. */
 int money_coin_type_for_slot(uint16_t box, int16_t slot);
 /* Splits amount into at most max_coins coins, the most valuable first; returns the value of the coins. */
-int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *coin_count);
+int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count);
 
 /* Money boxes */
 /* Puts coin into the money box; false when box is no money box or coin no coin. */
@@ -51,9 +51,10 @@ void money_box_click_coin(int16_t slot);
 bool money_normalize_coins(bool check_only, uint16_t box);
 
 /* Merchant prices */
-/* The item class set of class_list of a merchant creature (its GDAT text 0x10 + class_list): a bit per item index. */
-int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, int skip_containers);
+/* The item class set of class_list of a merchant creature (its GDAT text 0x10 + class_list): a bit per item index;
+   false when the creature has no such text. skip_containers: the letter C chooses the weapons. */
+bool money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, bool skip_containers);
 /* The price of item at a merchant under terms; charges -1: the full charges. */
-int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges);
+uint16_t money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges);
 
 #endif /* DM2_ENGINE_MONEY_H */

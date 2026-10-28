@@ -131,14 +131,14 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
     return -1;
 }
 
-int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *coin_count)
+int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count)
 {
-    int16_t left = (int16_t)amount;
+    int16_t left = amount;
     int16_t n = 0;
     int type = money_coin_type_count() - 1;
-    int total = 0;
+    int16_t total = 0;
     *coin_count = 0;
-    while (n < (int16_t)max_coins && left > 0 && type >= 0) {
+    while (n < max_coins && left > 0 && type >= 0) {
         int16_t value = money_coin_value(type);
         if (value < 1)
             break;
@@ -148,7 +148,7 @@ int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *
         }
         coin_types[n++] = (uint8_t)type;
         left = (int16_t)(left - value);
-        total += value;
+        total = (int16_t)(total + value);
         (*coin_count)++;
     }
     return total;
@@ -267,13 +267,13 @@ static void set_class_range(uint8_t *bitset, int16_t low, int16_t number, int16_
     }
 }
 
-int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, int skip_containers)
+bool money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, bool skip_containers)
 {
     char text[TEXT_SIZE];
     memset(bitset, 0, SHOP_CLASS_SET_SIZE);
     const char *p = gtext_gdat(CAT_CREATURE, creature, (uint8_t)(class_list + GFX_CREATURE_CLASS_TEXT), text);
     if (!*p)
-        return 0;
+        return false;
     int16_t number = 0;
     int16_t low = -1;
     int16_t base = -1;
@@ -322,7 +322,7 @@ int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, in
             break;
         }
     } while (c);
-    return 1;
+    return true;
 }
 
 /* True when the item class set holds item index item. */
@@ -336,14 +336,14 @@ static uint16_t apply_factor(uint16_t price, uint16_t item, int creature, int at
 {
     uint8_t set[SHOP_CLASS_SET_SIZE];
     uint16_t factor = gdat_entry_index(gdat_current(), CAT_CREATURE, creature, GDAT_TYPE_VALUE, (uint8_t)attr);
-    if (!factor || !money_parse_item_class_set(creature, (int16_t)list, set, 0))
+    if (!factor || !money_parse_item_class_set(creature, list, set, false))
         return price;
     if (!class_set_has(set, item & ITEM_INDEX_NONE))
         return price;
     return (uint16_t)((uint32_t)factor * price / PERCENT);
 }
 
-int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges)
+uint16_t money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges)
 {
     int creature = terms->creature;
     int list = terms->list;
@@ -369,5 +369,5 @@ int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges
         else if ((uint16_t)value > 1)
             value -= part > 1 ? part : 1;
     }
-    return value;
+    return (uint16_t)value;
 }
