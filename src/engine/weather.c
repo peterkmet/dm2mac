@@ -12,6 +12,7 @@
 #include "ids.h"
 #include "item.h"
 #include "move.h"
+#include "num.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
@@ -156,11 +157,6 @@ static const uint8_t creature_lightning[CREATURE_INFO_COUNT] = {
 Weather g_weather = {.first_init = true};
 int16_t g_light_source_sum, g_explosion_light_sum;
 
-static int clamp(int lo, int v, int hi)
-{
-    return v < lo ? lo : v > hi ? hi : v;
-}
-
 static uint16_t map_value(int key)
 {
     return gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_VALUE, key);
@@ -208,7 +204,7 @@ static bool load_sky_object(SkyObject *object)
 /* The daylight in % that a window lets in now. */
 static int daylight(void)
 {
-    return light_levels[clamp(0, (int16_t)(g_game.heavy_rain + g_weather.hour_light), LIGHT_LEVEL_MAX)];
+    return light_levels[clamp_int(0, (int16_t)(g_game.heavy_rain + g_weather.hour_light), LIGHT_LEVEL_MAX)];
 }
 
 static void set_hour_light(void)
@@ -261,7 +257,7 @@ void weather_init(bool keep_state)
 void weather_load(const Gdat *g)
 {
     /* (CAT_DUNGEON, 0, 0x0b, 0): the hour of the day at the start of the dungeon */
-    int hour = clamp(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);
+    int hour = clamp_int(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);
     g_weather.day_time_offset = (uint32_t)hour * HOUR_TICKS;
     weather_init(g_weather.dungeon_loaded);
     g_weather.dungeon_loaded = true;
@@ -278,7 +274,7 @@ static void step_storm(void)
     g_weather.storm_previous = g_game.storm_intensity;
     g_game.storm_intensity = (uint16_t)(g_game.storm_intensity +
                                         g_game.storm_multiplier * storm_curves[g_game.storm_curve][g_game.storm_step]);
-    g_game.storm_intensity = (uint16_t)clamp(0, (int16_t)g_game.storm_intensity, STORM_MAX);
+    g_game.storm_intensity = (uint16_t)clamp_int(0, (int16_t)g_game.storm_intensity, STORM_MAX);
     schedule_storm_step(rand_below(STORM_RANDOM_SPAN) + STORM_STEP_DELAY);
 }
 
@@ -309,15 +305,6 @@ static bool update_rain(void)
     return sky_has(GFX_SKY_LIGHTNING) && rand_below(span) <= chance;
 }
 
-static int abs16(int v)
-{
-    return (int16_t)v < 0 ? -(int16_t)v : (int16_t)v;
-}
-static int max16(int lo, int v)
-{
-    return (int16_t)v > lo ? (int16_t)v : lo;
-}
-
 /* Lightning hits a random floor square of the current map; returns true when it struck. Creatures far from the party
    or not in front of it are spared; the party square only in a strong storm, late, and after enough storms. */
 static bool lightning_strike(void)
@@ -335,7 +322,7 @@ static bool lightning_strike(void)
     if (g_game.party_map == g_party.cur_map && x == g_game.party_x && y == g_game.party_y &&
         (weak || g_game.game_time < STRIKE_PARTY_TIME || dun_get_global_var(VAR_STORMS) <= g_weather.strike_threshold))
         return false;
-    int distance = (int16_t)(abs16(g_game.party_x - x) + abs16(g_game.party_y - y));
+    int distance = (int16_t)(abs_int((int16_t)(g_game.party_x - x)) + abs_int((int16_t)(g_game.party_y - y)));
     uint16_t group = creature_group_at(g_party.cur_map, x, y);
     if (group != THING_NONE) {
         if (creature_lightning[creature_group_info(group) - creature_info_at(0)] == CREATURE_LIGHTNING_PROOF)
@@ -394,7 +381,7 @@ static SkyObject *show_lightning(SkyObject *o)
                 delay = THUNDER_DELAY_BASE - (int16_t)g_game.storm_intensity /
                                                  (g_game.storm_multiplier ? g_game.storm_multiplier
                                                                           : 1); /* fix: the original divides by 0 */
-            delay = clamp(1, (int16_t)delay, THUNDER_DELAY_MAX);
+            delay = clamp_int(1, (int16_t)delay, THUNDER_DELAY_MAX);
             sndreq_request(
                 (SoundCue){CAT_SKY, dungeon_map_wallset(g_game.party_map), 0, THUNDER_PRIORITY, THUNDER_VOLUME},
                 g_game.party_x, g_game.party_y, delay);
@@ -499,7 +486,7 @@ void light_update_party_light(void)
             level = 0;
     }
     level -= g_explosion_light_sum > EXPLOSION_GLARE;
-    g_view_light_level = clamp(0, (int16_t)level, LIGHT_LEVEL_MAX);
+    g_view_light_level = clamp_int(0, (int16_t)level, LIGHT_LEVEL_MAX);
 }
 
 /* The light value of an ornament (0: none); *animated_only: it shines only while it animates. */
@@ -608,15 +595,15 @@ void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, uns
         break;
     }
     if (distance <= FALLOFF_WEATHER_MAX && sum.window)
-        sum.window = (int16_t)max16(WINDOW_LIGHT_MIN, sum.window - window_falloff[distance]);
+        sum.window = (int16_t)max_int(WINDOW_LIGHT_MIN, (int16_t)(sum.window - window_falloff[distance]));
     else
         sum.window = 0;
     if (distance > FALLOFF_MAX)
         distance = FALLOFF_MAX;
     if (sum.light)
-        sum.light = (int16_t)max16(SQUARE_LIGHT_MIN, sum.light - light_falloff[distance]);
+        sum.light = (int16_t)max_int(SQUARE_LIGHT_MIN, (int16_t)(sum.light - light_falloff[distance]));
     g_light_source_sum = (int16_t)(g_light_source_sum + sum.light + sum.window);
     if (sum.missiles)
-        sum.missiles = (int16_t)max16(SQUARE_LIGHT_MIN, sum.missiles - light_falloff[distance]);
+        sum.missiles = (int16_t)max_int(SQUARE_LIGHT_MIN, (int16_t)(sum.missiles - light_falloff[distance]));
     g_explosion_light_sum = (int16_t)(g_explosion_light_sum + sum.missiles);
 }

@@ -15,6 +15,7 @@
 #include "le.h"
 #include "money.h"
 #include "move.h"
+#include "num.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
@@ -1135,15 +1136,6 @@ static void flush_picture(void)
     draw_ctx_draw(&view.ctx);
 }
 
-static int imax(int a, int b)
-{
-    return a > b ? a : b;
-}
-static int imin(int a, int b)
-{
-    return a < b ? a : b;
-}
-
 /* Adds a click zone at rect. */
 static void add_click_zone(const int16_t *rect, int kind, int cell)
 {
@@ -1183,12 +1175,12 @@ static void set_click_zone(int index, uint16_t thing, int cell, int kind)
             z->rect[RECT_X] = (int16_t)(z->rect[RECT_X] + (w >> 1) - CLICK_HALF_SIZE);
         }
     } else {
-        int x2 = imax((int16_t)(z->rect[RECT_X] + z->rect[RECT_W]), (int16_t)(r[RECT_X] + r[RECT_W]));
-        int x1 = imin(z->rect[RECT_X], r[RECT_X]);
+        int x2 = max_int((int16_t)(z->rect[RECT_X] + z->rect[RECT_W]), (int16_t)(r[RECT_X] + r[RECT_W]));
+        int x1 = min_int(z->rect[RECT_X], r[RECT_X]);
         z->rect[RECT_X] = (int16_t)x1;
         z->rect[RECT_W] = (int16_t)(x2 - x1);
-        int y2 = imax((int16_t)(z->rect[RECT_Y] + z->rect[RECT_H]), (int16_t)(r[RECT_Y] + r[RECT_H]));
-        int y1 = imin(z->rect[RECT_Y], r[RECT_Y]);
+        int y2 = max_int((int16_t)(z->rect[RECT_Y] + z->rect[RECT_H]), (int16_t)(r[RECT_Y] + r[RECT_H]));
+        int y1 = min_int(z->rect[RECT_Y], r[RECT_Y]);
         z->rect[RECT_Y] = (int16_t)y1;
         z->rect[RECT_H] = (int16_t)(y2 - y1);
     }

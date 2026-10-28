@@ -11,6 +11,7 @@
 #include "ids.h"
 #include "item.h"
 #include "move.h"
+#include "num.h"
 #include "random.h"
 #include "recruit.h"
 #include "sensor.h"
@@ -111,7 +112,7 @@ int champ_get_stat(Champion *c, int stat, int which)
         int aura = c->aura_value > AURA_MAX ? AURA_MAX : c->aura_value;
         v = (uint16_t)(v + rand_below((uint16_t)((aura * v >> AURA_STAT_SHIFT) + 1)) + AURA_BASE);
     }
-    return champ_clamp16(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
+    return clamp_int(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
 }
 
 int champ_get_skill_level(int champ, int skill, bool with_bonus)

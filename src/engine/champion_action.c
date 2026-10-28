@@ -14,6 +14,7 @@
 #include "magic.h"
 #include "minion.h"
 #include "move.h"
+#include "num.h"
 #include "projectile.h"
 #include "random.h"
 #include "sensor.h"
@@ -278,7 +279,7 @@ static void raise_maximum(Champion *c, int stat, int amount)
 /* A priest or wizard level raises the maximum mana a little more, up to its limit, and the anti-magic. */
 static void raise_magic(Champion *c, uint16_t level)
 {
-    c->max_mana = (int16_t)(c->max_mana + champ_min16(rand_2bits(), (int16_t)(level - 1)));
+    c->max_mana = (int16_t)(c->max_mana + min_int((int16_t)rand_2bits(), (int16_t)(level - 1)));
     if (c->max_mana > MAX_MANA_LIMIT)
         c->max_mana = MAX_MANA_LIMIT;
     raise_maximum(c, STAT_ANTI_MAGIC, rand_2bits());
@@ -403,7 +404,7 @@ static int16_t melee_hit_damage(int strength, uint16_t factor, const CreatureInf
     if (rest > 0 || rand_bit()) {
         damage = (int16_t)(damage + rand_2bits());
         if (!rand_2bits())
-            damage = (int16_t)(damage + champ_max16(0, (int16_t)(rest + (rand_next() & MELEE_WEAK_RANDOM))));
+            damage = (int16_t)(damage + max_int(0, (int16_t)(rest + (rand_next() & MELEE_WEAK_RANDOM))));
     }
     return damage;
 }
@@ -484,7 +485,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
             g_action.result = RESULT_BLOCKED;
-            g_action.redraw_delay = (int16_t)champ_max16(
+            g_action.redraw_delay = (int16_t)max_int(
                 1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_ACTIONS, 1, GLOBAL_VAR_ADD)));
             return false;
         }
@@ -598,14 +599,14 @@ static bool run_minion_command(ActionRun *a, int command)
 static void show_failure(int result, int counter)
 {
     int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
-    g_action.redraw_delay = (int16_t)champ_max16(1, (int16_t)(RESULT_DELAY_BASE - count));
+    g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
     g_action.result = (int16_t)result;
 }
 
 /* The party becomes invisible for power game steps, at least POWER_MIN. */
 static void run_invisibility(int16_t power)
 {
-    power = (int16_t)champ_max16(POWER_MIN, power);
+    power = (int16_t)max_int(POWER_MIN, (int16_t)power);
     if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && g_ui.inventory)
         champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
     /* fix: the original leaves the priority and the data bytes uninitialized */
@@ -618,10 +619,10 @@ static void run_invisibility(int16_t power)
 static bool run_spell_projectile(ActionRun *a)
 {
     int spell = (uint16_t)(field_of(a->action, FIELD_MODE) - SPELL_BASE);
-    int16_t cost =
-        (int16_t)(SPELL_COST_BASE - champ_min16(SPELL_COST_SKILL_MAX, champ_get_skill_level(a->champ, a->skill, true)));
+    int16_t cost = (int16_t)(SPELL_COST_BASE -
+                             min_int(SPELL_COST_SKILL_MAX, (int16_t)champ_get_skill_level(a->champ, a->skill, true)));
     if (cost > a->c->mana) {
-        a->power = (int16_t)champ_max16(SPELL_POWER_MIN, (int16_t)(a->power * a->c->mana / cost));
+        a->power = (int16_t)max_int(SPELL_POWER_MIN, (int16_t)(a->power * a->c->mana / cost));
         cost = a->c->mana;
     }
     bool done = magic_cast_projectile_spell(a->champ, spell, a->power, (uint16_t)cost);
@@ -696,8 +697,8 @@ static void run_aura(ActionRun *a, int command)
     static const uint8_t shields[] = {AURA_SPELL_SHIELD, AURA_FIRE_SHIELD, AURA_DEFENSE};
     bool shield = command >= COMMAND_SHIELD_FIRST;
     int aura = shield ? shields[command - COMMAND_SHIELD_FIRST] : auras[command - COMMAND_AURA_FIRST];
-    a->power = (int16_t)(shield ? champ_max16(POWER_MIN, a->power) * SHIELD_POWER_FACTOR
-                                : champ_max16(POWER_MIN, a->power) << AURA_POWER_SHIFT);
+    a->power = (int16_t)(shield ? max_int(POWER_MIN, (int16_t)a->power) * SHIELD_POWER_FACTOR
+                                : max_int(POWER_MIN, (int16_t)a->power) << AURA_POWER_SHIFT);
     if (!magic_cast_party_aura(a->c, aura, (uint16_t)a->power, shield)) {
         a->experience = (int16_t)(a->experience >> 2);
         a->delay = (uint16_t)(a->delay >> 1);
@@ -747,10 +748,10 @@ static void run_heal(ActionRun *a)
     int16_t missing = (int16_t)(c->max_health - c->health);
     if (missing <= 0 || !c->mana)
         return;
-    int16_t most = (int16_t)champ_min16(HEAL_PER_STEP_MAX, champ_get_skill_level(a->champ, SKILL_HEAL, true));
+    int16_t most = (int16_t)min_int(HEAL_PER_STEP_MAX, (int16_t)champ_get_skill_level(a->champ, SKILL_HEAL, true));
     a->experience = HEAL_EXPERIENCE;
     while (missing) {
-        int16_t v = (int16_t)champ_min16(missing, most);
+        int16_t v = (int16_t)min_int((int16_t)missing, (int16_t)most);
         c->health = (int16_t)(c->health + v);
         a->experience = (int16_t)(a->experience + HEAL_EXPERIENCE);
         c->mana = (int16_t)(c->mana - HEAL_MANA);
@@ -777,20 +778,20 @@ static void run_party_magic(ActionRun *a, int command)
         magic_add_light(command, a->power);
         break;
     case COMMAND_EXPLOSION:
-        explosion_create(EXPLOSION_COMMAND, (uint16_t)champ_max16(EXPLOSION_POWER_MIN, a->power), g_game.party_x,
+        explosion_create(EXPLOSION_COMMAND, (uint16_t)max_int(EXPLOSION_POWER_MIN, (int16_t)a->power), g_game.party_x,
                          g_game.party_y, CENTER_CELL);
         break;
     case COMMAND_HASTE:
-        a->power = (int16_t)champ_max16(POWER_MIN, a->power);
+        a->power = (int16_t)max_int(POWER_MIN, (int16_t)a->power);
         g_game.magic_light[MAGIC_HASTE] =
-            (uint8_t)champ_min16(HASTE_MAX, (int16_t)(g_game.magic_light[MAGIC_HASTE] + a->power));
+            (uint8_t)min_int(HASTE_MAX, (int16_t)(g_game.magic_light[MAGIC_HASTE] + a->power));
         break;
     case COMMAND_LEVITATE_DOWN:
         run_levitate_down(a);
         break;
     case COMMAND_ACTION_EFFECT:
         g_game.magic_light[MAGIC_ACTION_EFFECT] =
-            (uint8_t)champ_min16(ACTION_EFFECT_MAX, g_game.magic_light[MAGIC_ACTION_EFFECT] + a->power);
+            (uint8_t)min_int(ACTION_EFFECT_MAX, (int16_t)(g_game.magic_light[MAGIC_ACTION_EFFECT] + a->power));
         break;
     case COMMAND_AURA_FIRST:
     case COMMAND_AURA_2:
@@ -974,7 +975,7 @@ void champ_process_repeated_actions(void)
 static int throw_fatigue(uint16_t thing)
 {
     int16_t left = (int16_t)((uint16_t)item_weight(thing) >> 1);
-    uint16_t fatigue = (uint16_t)champ_clamp16(1, left, THROW_FATIGUE_STEP);
+    uint16_t fatigue = (uint16_t)clamp_int(1, (int16_t)left, THROW_FATIGUE_STEP);
     while ((left = (int16_t)(left - THROW_FATIGUE_STEP)) > 0)
         fatigue = (uint16_t)(fatigue + (left >> 1));
     return (int16_t)fatigue;
@@ -1018,12 +1019,12 @@ bool champ_throw_object(int champ, int16_t hand, bool right_side)
     int level = champ_get_skill_level(champ, SKILL_THROW, true);
     kinetic =
         (int16_t)(kinetic + rand_below((uint16_t)((kinetic >> THROW_KINETIC_SHIFT) + THROW_KINETIC_RANDOM)) + level);
-    kinetic = (int16_t)champ_min16(kinetic, KINETIC_MAX);
-    int attack = champ_clamp16(
-        ATTACK_MIN, (int16_t)((rand_next() & THROW_ATTACK_RANDOM) + level * THROW_ATTACK_PER_LEVEL), ATTACK_MAX);
+    kinetic = (int16_t)min_int((int16_t)kinetic, KINETIC_MAX);
+    int attack = clamp_int(ATTACK_MIN, (int16_t)((rand_next() & THROW_ATTACK_RANDOM) + level * THROW_ATTACK_PER_LEVEL),
+                           ATTACK_MAX);
     int step = item_attr(thing, ATTR_STEP);
     if (!step)
-        step = champ_max16(STEP_MIN, (int16_t)(STEP_BASE - level));
+        step = max_int(STEP_MIN, (int16_t)(STEP_BASE - level));
     projectile_create(&(ProjectileLaunch){.payload = thing,
                                           .x = g_game.party_x,
                                           .y = g_game.party_y,

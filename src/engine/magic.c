@@ -14,6 +14,7 @@
 #include "item.h"
 #include "le.h"
 #include "move.h"
+#include "num.h"
 #include "projectile.h"
 #include "random.h"
 #include "sensor.h"
@@ -254,19 +255,6 @@ static int spell_type(const Spell *spell)
     return spell->effect >> SPELL_TYPE_SHIFT & SPELL_TYPE_MASK;
 }
 
-static int imin(int a, int b)
-{
-    return a < b ? a : b;
-}
-static int imax(int a, int b)
-{
-    return a > b ? a : b;
-}
-static int iclamp(int lo, int v, int hi)
-{
-    return v < lo ? lo : v > hi ? hi : v;
-}
-
 /* Adds delta to the light of the party spells. */
 static void add_spell_light(int delta)
 {
@@ -340,8 +328,9 @@ const char *magic_get_rune_name(int rune)
 
 void magic_add_light(int kind, int power)
 {
-    int level = imax(LIGHT_STRENGTH_MIN,
-                     (int16_t)iclamp(LIGHT_POWER_MIN, (int16_t)(power + 1), LIGHT_POWER_MAX) >> LIGHT_POWER_SHIFT);
+    int level =
+        max_int(LIGHT_STRENGTH_MIN,
+                (int16_t)clamp_int(LIGHT_POWER_MIN, (int16_t)(power + 1), LIGHT_POWER_MAX) >> LIGHT_POWER_SHIFT);
     int sign = 1;
     uint16_t ticks = 0; /* the callers use only the three kinds; the original leaves the delay of another kind unset */
     if (kind == LIGHT_DARKNESS) {
@@ -453,7 +442,7 @@ bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
         return false;
     c->mana = (int16_t)(c->mana - cost);
     c->redraw |= REDRAW_BARS;
-    int step = MISSILE_STEP_MAX - imin(MISSILE_STEP_BONUS_MAX, c->max_mana >> MISSILE_STEP_MANA_SHIFT);
+    int step = MISSILE_STEP_MAX - min_int(MISSILE_STEP_BONUS_MAX, c->max_mana >> MISSILE_STEP_MANA_SHIFT);
     if ((int16_t)power < (int16_t)step * MISSILE_POWER_PER_STEP) {
         power += MISSILE_POWER_PER_STEP;
         step = (int16_t)power >> MISSILE_POWER_STEP_SHIFT;
@@ -550,12 +539,12 @@ static void cast_other(Champion *c, int type, int skill, int power)
         return;
     case OTHER_HASTE:
         g_game.magic_light[MAGIC_HASTE] =
-            (uint8_t)imin((int16_t)(steps * HASTE_PER_STEP + g_game.magic_light[MAGIC_HASTE]), HASTE_MAX);
+            (uint8_t)min_int((int16_t)(steps * HASTE_PER_STEP + g_game.magic_light[MAGIC_HASTE]), HASTE_MAX);
         return;
     case OTHER_EXPLOSION: {
         int strength =
-            iclamp(MISSILE_POWER_MIN, (int16_t)((skill * 2 + MISSILE_SKILL_BASE) * (power + MISSILE_POWER_BASE)),
-                   MISSILE_POWER_MAX);
+            clamp_int(MISSILE_POWER_MIN, (int16_t)((skill * 2 + MISSILE_SKILL_BASE) * (power + MISSILE_POWER_BASE)),
+                      MISSILE_POWER_MAX);
         explosion_create(MISSILE_THING_BASE + OTHER_EXPLOSION, strength, g_game.party_x, g_game.party_y,
                          EXPLOSION_ON_SQUARE);
         return;
@@ -610,8 +599,9 @@ static int cast_effect(int champ, const Spell *spell, int power, int skill)
     }
     case SPELL_MISSILE: {
         int s = type == MISSILE_DOUBLE_SKILL ? skill * 2 : skill;
-        int strength = iclamp(MISSILE_POWER_MIN, (int16_t)((s * 2 + MISSILE_SKILL_BASE) * (power + MISSILE_POWER_BASE)),
-                              MISSILE_POWER_MAX);
+        int strength =
+            clamp_int(MISSILE_POWER_MIN, (int16_t)((s * 2 + MISSILE_SKILL_BASE) * (power + MISSILE_POWER_BASE)),
+                      MISSILE_POWER_MAX);
         magic_cast_projectile_spell(champ, (uint16_t)(MISSILE_THING_BASE + type), strength, 0);
         break;
     }
@@ -636,7 +626,7 @@ int magic_cast_spell(int champ, const Spell *spell, int power)
     int skill = champ_get_skill_level(champ, spell->skill, 1);
     for (int16_t tries = (int16_t)(level - skill); tries > 0; tries--) {
         int roll = (int)(rand_next() & CAST_ROLL_MASK);
-        if (imin(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
+        if (min_int(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
             champ_add_experience(champ, spell->skill, experience >> ((level - skill) & BIT_INDEX_MASK));
             return cast_failure(CAST_FAILED, spell);
         }
@@ -687,7 +677,7 @@ static void report_cast_failure(int result)
         return;
     }
     int count = dun_modify_global_var(var, 1, GLOBAL_VAR_ADD);
-    g_action.redraw_delay = (int16_t)imax(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
+    g_action.redraw_delay = (int16_t)max_int(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
 }
 
 bool magic_cast_entered_runes(void)

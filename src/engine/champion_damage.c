@@ -10,6 +10,7 @@
 #include "hooks.h"
 #include "item.h"
 #include "move.h"
+#include "num.h"
 #include "random.h"
 #include "sensor.h"
 #include "timeline.h"
@@ -176,7 +177,7 @@ int champ_get_strength(int champ, int hand, int skill)
     v = (int16_t)champ_scale_by_stamina(c, v);
     if (c->wounds & WOUND_HAND_BIT(hand))
         v = (int16_t)(v >> 1);
-    return champ_clamp16(0, v >> 1, PERCENT);
+    return clamp_int(0, (int16_t)(v >> 1), PERCENT);
 }
 
 int champ_get_dexterity(int champ)
@@ -191,7 +192,7 @@ int champ_get_dexterity(int champ)
         v = (int16_t)(v >> 1);
     int high = (int16_t)(PERCENT - (rand_next() & DEXTERITY_ROLL));
     int low = (int16_t)((rand_next() & DEXTERITY_ROLL) + 1);
-    return champ_clamp16(low, v >> 1, high);
+    return clamp_int((int16_t)low, (int16_t)(v >> 1), (int16_t)high);
 }
 
 bool champ_test_luck(Champion *c, int chance)
@@ -199,10 +200,10 @@ bool champ_test_luck(Champion *c, int chance)
     if (rand_bit() && rand_below(PERCENT) > (uint16_t)chance)
         return true;
     uint16_t roll = rand_below((uint16_t)(champ_get_stat(c, STAT_LUCK, STAT_CURRENT) * 2));
-    int max = champ_min16(STAT_MAX, champ_get_stat(c, STAT_LUCK, STAT_MAXIMUM));
+    int max = min_int(STAT_MAX, (int16_t)champ_get_stat(c, STAT_LUCK, STAT_MAXIMUM));
     bool lucky = roll > (uint16_t)chance;
     uint8_t *luck = &c->stats[STAT_LUCK][STAT_CURRENT];
-    *luck = (uint8_t)champ_clamp16(STAT_MIN, (lucky ? -LUCK_STEP : LUCK_STEP) + *luck, max);
+    *luck = (uint8_t)clamp_int(STAT_MIN, (int16_t)((lucky ? -LUCK_STEP : LUCK_STEP) + *luck), (int16_t)max);
     return lucky;
 }
 
@@ -232,7 +233,7 @@ static int wound_defense(int champ, int location, bool sharp)
         v = (int16_t)(v - (rand_2bits() + WOUNDED_DEFENSE_LOSS));
     if (g_party_sleeping)
         v = (int16_t)(v >> 1);
-    return champ_clamp16(0, v >> 1, PERCENT);
+    return clamp_int(0, (int16_t)(v >> 1), PERCENT);
 }
 
 /* The mean defense of champ over the wound locations of wound_mask against an attack of type. */
@@ -558,7 +559,7 @@ static void regen_mana(int i)
             if (cost < MANA_STAMINA_MIN)
                 cost = MANA_STAMINA_MIN;
             champ_decrease_stamina(i, (int16_t)(cost * gain));
-            c->mana = (int16_t)(c->mana + champ_min16(gain, c->max_mana - c->mana));
+            c->mana = (int16_t)(c->mana + min_int((int16_t)gain, (int16_t)(c->max_mana - c->mana)));
         }
     } else if (c->mana > c->max_mana) {
         c->mana--;
@@ -572,7 +573,8 @@ static void consume_food_and_water(int i)
     uint16_t hunger = HUNGER_BASE;
     for (int16_t half = (int16_t)(c->max_stamina >> 1); half > c->stamina; half = (int16_t)(half >> 1))
         hunger += HUNGER_PER_HALF;
-    int step = champ_clamp16(HUNGER_STEP_MIN, (int8_t)(c->max_stamina >> HUNGER_STAMINA_SHIFT) - 1, HUNGER_STEP_MAX);
+    int step =
+        clamp_int(HUNGER_STEP_MIN, (int16_t)((int8_t)(c->max_stamina >> HUNGER_STAMINA_SHIFT) - 1), HUNGER_STEP_MAX);
     uint16_t since = (uint16_t)(g_game.game_time - g_game.first_recruit_time);
     if (since > NEW_PARTY_TIME)
         step++;
@@ -638,7 +640,7 @@ void champ_apply_time_effects(void)
             int gain = (c->max_health >> HEALTH_REGEN_SHIFT) + 1;
             if (g_party_sleeping)
                 gain *= 2;
-            c->health = (int16_t)(c->health + champ_min16(gain, c->max_health - c->health));
+            c->health = (int16_t)(c->health + min_int((int16_t)gain, (int16_t)(c->max_health - c->health)));
         }
         if (!((uint16_t)g_game.game_time & (g_party_sleeping ? STATS_TIME_MASK_ASLEEP : STATS_TIME_MASK))) {
             for (int s = 0; s < STAT_COUNT; s++) {

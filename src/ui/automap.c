@@ -8,6 +8,7 @@
 #include "minion.h"
 #include "minion_map.h"
 #include "move.h"
+#include "num.h"
 #include "save.h"
 #include "seen.h"
 #include "sensor.h"
@@ -28,11 +29,6 @@ typedef struct {
 } Span;
 
 static int scroll_x, scroll_y; /* squares between the party and the middle of the drawn map */
-
-static int clamp(int lo, int v, int hi)
-{
-    return v < lo ? lo : v > hi ? hi : v;
-}
 
 /* The maps of the party level, ended by LEVEL_LIST_END. */
 static const uint8_t *party_level_maps(void)
@@ -310,8 +306,8 @@ void automap_scroll(int dx, int dy)
     Location middle = middle_square();
     int16_t rect[RECT_SIZE];
     level_rect(rect);
-    scroll_x += clamp(rect[RECT_X], middle.x + dx, rect[RECT_X] + rect[RECT_W] - 1) - middle.x;
-    scroll_y += clamp(rect[RECT_Y], middle.y + dy, rect[RECT_Y] + rect[RECT_H] - 1) - middle.y;
+    scroll_x += clamp_int(rect[RECT_X], middle.x + dx, rect[RECT_X] + rect[RECT_W] - 1) - middle.x;
+    scroll_y += clamp_int(rect[RECT_Y], middle.y + dy, rect[RECT_Y] + rect[RECT_H] - 1) - middle.y;
 }
 
 void automap_scroll_reset(void)

@@ -7,6 +7,7 @@
 #include "item.h"
 #include "money.h"
 #include "move.h"
+#include "num.h"
 #include "random.h"
 #include "sensor.h"
 
@@ -45,15 +46,6 @@
 /* g_ai.arg1 of shop_cmd_pay_change: the counter that holds the change. */
 #define PAY_COUNTED 1
 #define PAY_PRICE   2
-
-static int max16(int a, int b)
-{
-    return (int16_t)a > (int16_t)b ? (int16_t)a : (int16_t)b;
-}
-static int min16(int a, int b)
-{
-    return (int16_t)a < (int16_t)b ? (int16_t)a : (int16_t)b;
-}
 
 /* The values that a sum of items needs (the stack record of sum_items_value). */
 typedef struct {
@@ -151,7 +143,7 @@ static int16_t price_in_coins(uint16_t group, int cell)
 /* An offer below the price: the merchant haggles (MERCHANT_HAGGLE) or refuses, by chance. */
 static void haggle_or_refuse(int percent)
 {
-    bool low = rand_below((uint16_t)max16(1, (int16_t)(PERCENT - percent))) < LOW_OFFER_CHANCE;
+    bool low = rand_below((uint16_t)max_int(1, (int16_t)(PERCENT - percent))) < LOW_OFFER_CHANCE;
     bool odd = rand_2bits() == 0;
     g_ai.active->action = low ^ odd ? MERCHANT_HAGGLE : MERCHANT_REFUSE;
 }
@@ -221,7 +213,7 @@ int shop_cmd_evaluate_offer(void)
     /* fix: the original divides by 0 for a price of 0 */
     int16_t percent = (int16_t)(price ? (int)offer * PERCENT / (int16_t)price : PERCENT);
     if (offer >= price) {
-        a->counters[0] = (int16_t)min16((int16_t)offer, (int16_t)full);
+        a->counters[0] = (int16_t)min_int((int16_t)offer, (int16_t)full);
         a->action = MERCHANT_ACCEPT;
         return AI_RESULT_DONE;
     }
@@ -279,7 +271,7 @@ int shop_cmd_count_payment(void)
         a->action = MERCHANT_ACCEPT;
         a->counters[1] = (int16_t)paid;
     }
-    a->position = (uint16_t)max16(0, (int16_t)(paid - due));
+    a->position = (uint16_t)max_int(0, (int16_t)(paid - due));
     return AI_RESULT_DONE;
 }
 
@@ -298,7 +290,7 @@ int shop_cmd_pay_change(void)
         int16_t value = sum_items_value(g, dir_opposite(dir), (ItemSum){-1, FILTER_COINS, 0, 1, 1});
         if ((value == 0 || value == -1) && box == THING_NONE)
             return AI_RESULT_FAIL;
-        a->counters[1] = (int16_t)max16(0, value);
+        a->counters[1] = (int16_t)max_int(0, (int16_t)value);
         return AI_RESULT_DONE;
     }
     uint16_t *change = g_ai.arg1 == PAY_COUNTED ? (uint16_t *)&a->counters[1]
