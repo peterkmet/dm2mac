@@ -3,7 +3,8 @@
 #define DM2_ENGINE_CREATURE_H
 /* Prefixes: creature_ */
 
-/* Creature groups: the creature info records and the update of the groups. */
+/* Creature groups: the creature info records and the update of the groups. The AI (ai.c) chooses the actions; this
+   module does not plan, and it draws nothing. */
 
 #include <stdbool.h>
 #include <stdint.h>

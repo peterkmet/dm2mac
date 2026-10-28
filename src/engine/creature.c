@@ -417,18 +417,24 @@ void creature_anim_frame_of(const Gdat *g, int type, uint16_t sequence, uint16_t
         memcpy(frame, data + index * CREATURE_FRAME_SIZE, CREATURE_FRAME_SIZE);
 }
 
+/* The step at state of the sequence that starts at sequence, in the steps of a creature type. */
+static const uint8_t *step_at(const uint8_t *steps, uint16_t sequence, unsigned state)
+{
+    return steps + (uint16_t)(state + sequence) * ANIM_STEP_SIZE;
+}
+
 /* The 4-byte step of a creature animation at its current state. */
 static const uint8_t *anim_current_step(int creature_type, uint16_t sequence, uint16_t *state)
 {
     const uint8_t *steps = read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL);
-    return steps + (uint16_t)(anim_frame_offset(state) + sequence) * ANIM_STEP_SIZE;
+    return step_at(steps, sequence, anim_frame_offset(state));
 }
 
 /* The number of steps of the animation sequence that starts at sequence. */
 static int anim_sequence_length(int creature_type, uint16_t sequence)
 {
-    const uint8_t *step = read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL) +
-                          sequence * ANIM_STEP_SIZE;
+    const uint8_t *step =
+        step_at(read_creature_data(creature_type, GDAT_TYPE_CREATURE_DATA, GFX_CREATURE_STEPS, NULL), sequence, 0);
     int n = 1;
     while (step[STEP_NEXT] >> STEP_NEXT_SHIFT) {
         n++;
@@ -446,14 +452,14 @@ AnimStep creature_anim_next_random_step(int creature_type, uint16_t sequence, ui
     if (s == ANIM_STEP_NONE) {
         s = 0;
     } else {
-        int next = steps[((uint16_t)(s + sequence)) * ANIM_STEP_SIZE + STEP_NEXT] >> STEP_NEXT_SHIFT;
+        int next = step_at(steps, sequence, s)[STEP_NEXT] >> STEP_NEXT_SHIFT;
         if (!next)
             ended = true;
         else
             s += next;
     }
     if (!ended) {
-        const uint8_t *p = steps + ((uint16_t)(s + sequence)) * ANIM_STEP_SIZE;
+        const uint8_t *p = step_at(steps, sequence, s);
         while (p[STEP_NEXT] >> STEP_NEXT_SHIFT) {
             unsigned chance = p[STEP_NEXT] & STEP_CHANCE_MASK;
             if (chance != STEP_CHANCE_MASK && (rand_next() & STEP_CHANCE_MASK) > chance) {
@@ -467,7 +473,7 @@ AnimStep creature_anim_next_random_step(int creature_type, uint16_t sequence, ui
             break;
         }
     }
-    return (AnimStep){sequence, (uint16_t)s, steps + ((uint16_t)(s + sequence)) * ANIM_STEP_SIZE, result};
+    return (AnimStep){sequence, (uint16_t)s, step_at(steps, sequence, s), result};
 }
 
 AnimStep creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t state)
@@ -476,13 +482,12 @@ AnimStep creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t 
     if (state == ANIM_STEP_NONE) {
         state = 0;
     } else {
-        int jump = steps[((uint16_t)(state + sequence)) * ANIM_STEP_SIZE + STEP_JUMP] & STEP_JUMP_MASK;
+        int jump = step_at(steps, sequence, state)[STEP_JUMP] & STEP_JUMP_MASK;
         if (!jump)
-            return (AnimStep){sequence, state, steps + ((uint16_t)(state + sequence)) * ANIM_STEP_SIZE,
-                              ANIM_SEQUENCE_END};
+            return (AnimStep){sequence, state, step_at(steps, sequence, state), ANIM_SEQUENCE_END};
         state = (uint16_t)(state + jump);
     }
-    const uint8_t *frame = steps + ((uint16_t)(state + sequence)) * ANIM_STEP_SIZE;
+    const uint8_t *frame = step_at(steps, sequence, state);
     return (AnimStep){sequence, state, frame, frame[STEP_NEXT] >> STEP_NEXT_SHIFT ? ANIM_MORE_STEPS : ANIM_LAST_STEP};
 }
 
@@ -687,44 +692,41 @@ void creature_activate_group(uint16_t group, Location at)
     /* the group keeps its record while it looks for a free active group */
     bool kept = group_flag(group, GROUP_DO_NOT_DISCARD);
     group_set_flag(group, GROUP_DO_NOT_DISCARD, true);
-    {
-        for (int i = 0; i < g_active_group_max; i++) {
-            ActiveGroup *a = g_active_groups + i;
-            if (a->group != ACTIVE_FREE)
-                continue;
-            group_set_flag(group, GROUP_DO_NOT_DISCARD, kept);
-            g_active_group_count++;
-            memset(a, 0, sizeof *a);
-            a->group = thing_index(group);
-            group_set_active(group, (uint8_t)i);
-            a->event = EVENT_NO_SLOT;
-            a->action = ACTIVE_ACTION_NONE;
-            AiContext saved;
-            bool restored = ai_begin(group, at.x, at.y, EVENT_CREATURE_THINK, &saved);
-            g_ai.active->plan = -1;
-            g_ai.active->plan_step = 0;
-            a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - 1);
-            a->last_action_time = (uint8_t)(g_game.game_time - ACTION_TIME_LONG_AGO);
-            a->position = (uint16_t)location_pack(g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], g_party.cur_map);
-            g_ai.cache.path_left = 0;
-            a->behavior = -1;
-            a->next_action = -1;
-            a->anim_bits = 0;
-            schedule_update(at);
-            a->action = thing_word(group, GROUP_ITEM_CLASS) == THING_NONE ? ACTION_IDLE : ACTION_NONE;
-            if (!(g_ai.info->flags & CREATURE_STATIC)) {
-                group_set_mood_flag(g_ai.group_thing, MOOD_FAR, true);
-                group_set_mood_flag(g_ai.group_thing, MOOD_HURRY, false);
-                creature_animate_step();
-            }
-            ai_end(restored, &saved);
-            return;
-        }
-        /* no free entry: the original discards a creature group of the dungeon and tries again; the port
-           leaves the group inactive (the table has room for 100 more groups than the dungeon has) */
+    for (int i = 0; i < g_active_group_max; i++) {
+        ActiveGroup *a = g_active_groups + i;
+        if (a->group != ACTIVE_FREE)
+            continue;
         group_set_flag(group, GROUP_DO_NOT_DISCARD, kept);
+        g_active_group_count++;
+        memset(a, 0, sizeof *a);
+        a->group = thing_index(group);
+        group_set_active(group, (uint8_t)i);
+        a->event = EVENT_NO_SLOT;
+        a->action = ACTIVE_ACTION_NONE;
+        AiContext saved;
+        bool restored = ai_begin(group, at.x, at.y, EVENT_CREATURE_THINK, &saved); /* g_ai.active is a */
+        a->plan = -1;
+        a->plan_step = 0;
+        a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - 1);
+        a->last_action_time = (uint8_t)(g_game.game_time - ACTION_TIME_LONG_AGO);
+        a->position = (uint16_t)location_pack(at.x, at.y, g_party.cur_map);
+        g_ai.cache.path_left = 0;
+        a->behavior = -1;
+        a->next_action = -1;
+        a->anim_bits = 0;
+        schedule_update(at);
+        a->action = thing_word(group, GROUP_ITEM_CLASS) == THING_NONE ? ACTION_IDLE : ACTION_NONE;
+        if (!(g_ai.info->flags & CREATURE_STATIC)) {
+            group_set_mood_flag(g_ai.group_thing, MOOD_FAR, true);
+            group_set_mood_flag(g_ai.group_thing, MOOD_HURRY, false);
+            creature_animate_step();
+        }
+        ai_end(restored, &saved);
         return;
     }
+    /* no free entry: the original discards a creature group of the dungeon and tries again; the port
+       leaves the group inactive (the table has room for 100 more groups than the dungeon has) */
+    group_set_flag(group, GROUP_DO_NOT_DISCARD, kept);
 }
 
 void creature_deactivate_group(int active_index)
