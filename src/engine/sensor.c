@@ -40,44 +40,6 @@
 #define SOUND_ENTRY_DOOR_SHUT    0x8f
 #define SOUND_PRIORITY_DOOR      0x5f
 
-/* Sensor types of square events. A wall and a floor give some types other meanings. */
-#define SENSOR_GAME_END           0x12
-#define SENSOR_MAP_RELAY          0x16
-#define SENSOR_COUNTER            0x1d
-#define SENSOR_TIMER              0x1e /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
-#define SENSOR_RELAY              0x20
-#define SENSOR_MAP_ENTRY          0x21
-#define SENSOR_WALL_STATE         0x26
-#define SENSOR_ANIMATION          0x2c
-#define SENSOR_COUNTDOWN          0x2d
-#define SENSOR_GENERATOR          0x2e
-#define SENSOR_PARTY_TELEPORT     0x2e
-#define SENSOR_BUSY_RELAY         0x31
-#define SENSOR_ACTIVATION         0x32
-#define SENSOR_TIMER_8            0x33
-#define SENSOR_TIMER_16           0x34
-#define SENSOR_TIMER_32           0x35
-#define SENSOR_TIMER_64           0x36
-#define SENSOR_TIMER_128          0x37
-#define SENSOR_CREATURE_ANIMATION 0x3a
-#define SENSOR_TRANSFER           0x3b
-#define SENSOR_CREATE_ITEM        0x3c
-#define SENSOR_FORWARD            0x3d
-#define SENSOR_TRANSFER_CLASS     0x40
-#define SENSOR_FRAME_STEP         0x41
-#define SENSOR_TURN_CREATURES     0x42
-#define SENSOR_SET_GLOBAL         0x43
-#define SENSOR_TEST_GLOBAL        0x44
-#define SENSOR_RELAY_SCALED       0x45
-#define SENSOR_DOOR_SWITCH        0x46
-#define SENSOR_TRANSFER_BACK      0x47
-#define SENSOR_TRANSFER_ONE       0x48
-#define SENSOR_TRANSFER_BACK_ONE  0x49
-/* The effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse. */
-#define SENSOR_KEEP_ITEM          EFFECT_HOLD
-/* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
-#define TIMER_SLOW_FACTOR         8
-
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET    1
 #define SQUARE_PRIORITY_TOGGLE 2
