@@ -128,6 +128,27 @@ def test_storm_steps_match_original(world):
     world.assert_equal("end")
 
 
+def test_storm_above_a_byte_matches_original(world, lib):
+    # A damaged save with a storm intensity of 0x8000 or more: the storm tests compare it as a signed word, as in the
+    # original (the Ghidra output of SKULL.EXE reads like an unsigned compare).
+    rng = random.Random(185)
+    sc = world
+    for n in range(60):
+        map_ = rng.choice(OUTDOOR_MAPS)
+        _, x, y, _ = rng.choice([s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_])
+        sc.place(map_, x, y, rng.randrange(C.DIR_COUNT))
+        sc.set_time(12000 + rng.randrange(1 << 20))
+        weather = random_weather(rng)
+        weather["storm_intensity"] = rng.choice((0x8000, 0x80B6, 0x80CD, 0xFF00, 0xFFFF))
+        weather["next_hour_time"] = sc.time() + 100
+        set_weather(sc, strike_threshold=rng.randrange(4, 8), light_level=0, **weather)
+        for i in range(5):
+            lib.world_update_day_night(0)
+            sc.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
+            assert_world(sc, (n, map_, i))
+    sc.assert_equal("end")
+
+
 @pytest.mark.parametrize("part", range(3))
 def test_weather_steps_on_outdoor_maps(world, lib, part):
     # Game steps on the outdoor maps: hours, rain, clouds, storm steps, lightning that strikes squares, creatures, and
