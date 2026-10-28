@@ -29,8 +29,6 @@ enum Trigger { TRIGGER_NONE, TRIGGER_OFF, TRIGGER_ON };
    hold sensor: clear). */
 enum ClickResult { CLICK_IGNORED, CLICK_MATCH, CLICK_MISMATCH };
 
-/* The sound category of a creature that a generator creates: sound (0, 0, 0x89). */
-#define CAT_CREATURE_APPEARS     0x00
 /* Values of the door and ornament GDAT entries. */
 #define DOOR_KEY_STRENGTH        0x0e /* door value: the strength that breaks the door */
 #define DOOR_KEY_DAMAGE          0x0f /* door value: the damage of a closing door */
@@ -729,7 +727,7 @@ static void set_text_shown(uint16_t text, int effect)
 /* The ornament value of a ladder that goes up: the linked twin is on the level above. */
 #define ORNAMENT_KEY_UP         0x11
 
-/* A wall text of subtype 7 shows the same state as its twin on the level above or below. */
+/* A SUBTYPE_LADDER_HIDDEN wall text shows the same state as its twin on the level above or below. */
 static void update_linked_ladder(const TimelineEvent *e, uint16_t text)
 {
     bool visible = textrec_is_visible(text);
@@ -989,10 +987,10 @@ static void generate_creature(uint16_t t)
     uint16_t g = creature_create_group(sensor_data(t), GROUP_COUNT_FULL_HEALTH, dir, tx, ty);
     if (sensor_flag(t, SENSOR_INVERTED) && g != THING_NONE)
         thing_set_word(g, GROUP_ITEM_CLASS, sensor_delay(t));
+    /* the sound comes from CAT_GENERAL, which holds no sound: the generator stays silent, as in the original */
     if (sensor_flag(t, SENSOR_AUDIBLE))
-        sndreq_request(
-            (SoundCue){CAT_CREATURE_APPEARS, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, tx, ty,
-            1);
+        sndreq_request((SoundCue){CAT_GENERAL, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, tx,
+                       ty, 1);
 }
 
 /* A counter: clear counts up, set counts down. */
@@ -1047,7 +1045,7 @@ static void relay_to_map(const TimelineEvent *e, uint16_t t)
     timeline_add_event(&ev);
 }
 
-/* Sets bit 13 of the door at the target. */
+/* Sets, clears, or toggles DOOR_SWITCH_ON of the door at the target. */
 static void switch_door(uint16_t t, int effect)
 {
     uint16_t door = first_thing(sensor_target_x(t), sensor_target_y(t));
@@ -1185,12 +1183,12 @@ static void floor_text_event(uint16_t t, int effect, int16_t x, int16_t y)
     }
 }
 
-/* A sensor reaches the groups of the creature type of its data in the rectangle around (x, y) that its target spans:
+/* A sensor reaches the groups of the group class of its data in the rectangle around (x, y) that its target spans:
    SENSOR_VANISH makes them vanish (power VANISH_POWER), SENSOR_ALERT sets mood bit power (cleared when effect is set). */
 static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int effect)
 {
     int power = sensor_area_power(sensor);
-    int creature_type = sensor_area_creature(sensor);
+    uint16_t group_class = sensor_area_class(sensor);
     int16_t tx = sensor_target_x(sensor);
     int16_t ty = sensor_target_y(sensor);
     int kind = sensor_type(sensor);
@@ -1206,7 +1204,7 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
                 sy >= dungeon_map_height(g_party.cur_map))
                 continue;
             uint16_t g = creature_get_group_at(sx, sy);
-            if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != (uint16_t)creature_type)
+            if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != group_class)
                 continue;
             if (kind == SENSOR_VANISH) {
                 if ((uint16_t)power > 1) {

@@ -50,7 +50,6 @@
 /* Bit widths of the values between the records, as masks. */
 #define MORE_MASK        0x0001
 #define TYPE_MASK        0x000f
-#define CELL_MASK        0x0003
 #define CREATURE_MASK    0x007f
 #define SPELL_MASK       0x007f
 #define INDEX_MASK       0x03ff

@@ -63,13 +63,10 @@
 /* The GDAT value of a wall ornament that is an alcove. */
 #define ORNAMENT_KEY_ALCOVE 0x0a /* ornament value 1: an alcove */
 
-/* The first word variable and the end of the script variables. */
-#define GLOBAL_WORD_FIRST 0x80
-#define GLOBAL_VAR_END    0xc0
 /* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
-#define GLOBAL_BIT_SHIFT  3
+#define GLOBAL_BIT_SHIFT 3
 /* The bit of a flag variable in its byte. */
-#define GLOBAL_BIT_MASK   0x07
+#define GLOBAL_BIT_MASK  0x07
 
 /* Random parts of the champion values. */
 #define BASH_ROLL_MASK 0x0f /* the random part of the strength of a champion who bashes a door */

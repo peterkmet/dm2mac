@@ -161,19 +161,19 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 #define TIMER_SLOW_FACTOR         8
 
 /* Sensor data sub-fields: the target map (bits 0-5) and wall cell (bits 6-7) of a map relay and a teleport button,
-   the direction of a creature turn sensor, and the power (bits 0-3) and creature type of an area sensor. */
-#define SENSOR_MAP_MASK     0x3f
-#define AREA_POWER_MASK     0x0f
-/* The positions of the wall cell and the creature type in the sensor data. */
-#define SENSOR_CELL_SHIFT   6
-#define AREA_CREATURE_SHIFT 4
+   the direction of a creature turn sensor, and the power (bits 0-3) and group class of an area sensor. */
+#define SENSOR_MAP_MASK   0x3f
+#define AREA_POWER_MASK   0x0f
+/* The positions of the wall cell and the group class in the sensor data. */
+#define SENSOR_CELL_SHIFT 6
+#define AREA_CLASS_SHIFT  4
 static inline uint16_t sensor_data_map(uint16_t sensor)
 {
     return sensor_data(sensor) & SENSOR_MAP_MASK;
 }
 static inline uint16_t sensor_data_cell(uint16_t sensor)
 {
-    return sensor_data(sensor) >> SENSOR_CELL_SHIFT & DIR_MASK;
+    return sensor_data(sensor) >> SENSOR_CELL_SHIFT & CELL_MASK;
 }
 static inline uint16_t sensor_turn_dir(uint16_t sensor)
 {
@@ -183,9 +183,10 @@ static inline uint16_t sensor_area_power(uint16_t sensor)
 {
     return sensor_data(sensor) & AREA_POWER_MASK;
 }
-static inline uint16_t sensor_area_creature(uint16_t sensor)
+/* The GROUP_ITEM_CLASS word of the groups that an area sensor reaches (an inverted generator sets this word). */
+static inline uint16_t sensor_area_class(uint16_t sensor)
 {
-    return sensor_data(sensor) >> AREA_CREATURE_SHIFT;
+    return sensor_data(sensor) >> AREA_CLASS_SHIFT;
 }
 
 /* Wall sensor types of objects put on a wall cell. */
@@ -258,15 +259,18 @@ int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
    reacts, so that the command stops. */
 bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held);
 
-/* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
+/* The operations of a set-global sensor on a script variable. */
 #define GLOBAL_VAR_SET      0
 #define GLOBAL_VAR_CLEAR    1
 #define GLOBAL_VAR_TOGGLE   2
 #define GLOBAL_VAR_ADD      3
 #define GLOBAL_VAR_SUBTRACT 4
 #define GLOBAL_VAR_ASSIGN   6
-/* The first byte variable, and the largest value of a byte variable. */
+/* The script variables: the flags, then the bytes, then the words; the first byte, the first word, the end. */
 #define GLOBAL_BYTE_FIRST   (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT)
+#define GLOBAL_WORD_FIRST   (GLOBAL_BYTE_FIRST + GLOBAL_BYTE_COUNT)
+#define GLOBAL_VAR_END      (GLOBAL_WORD_FIRST + GLOBAL_WORD_COUNT)
+/* The largest value of a byte variable. */
 #define GLOBAL_BYTE_MAX     255
 
 #endif /* DM2_ENGINE_SENSOR_H */
