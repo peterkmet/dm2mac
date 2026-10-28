@@ -193,7 +193,7 @@ static int16_t find_caster(void)
     if (g_action.champion > 0 && g_action.hand == ACTION_HAND_SPELL)
         return (int16_t)(g_action.champion - 1);
     if (g_game.leader != LEADER_NONE && g_game.leader < g_game.champion_count && champion(g_game.leader)->health)
-        return (int16_t)g_game.leader;
+        return champ_leader();
     for (int16_t i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
             return i;

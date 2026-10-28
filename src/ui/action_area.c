@@ -578,7 +578,7 @@ static void show_party_hands(bool full, bool changed)
             drawn.busy[i][ACTION_SPELL] = busy;
             redraw = true;
         }
-        int16_t leader = (int16_t)g_game.leader;
+        int16_t leader = champ_leader();
         if (full || redraw || (drawn.leader != leader && (drawn.leader == i || leader == i)))
             area_draw_spell_icon(i, flash);
         if (c->aura_value || drawn.aura_mask)
@@ -820,7 +820,7 @@ static void redraw_changes(int tick)
     }
     if (!g_action.champion)
         show_party_hands(full, party_changed);
-    drawn.leader = (int16_t)g_game.leader;
+    drawn.leader = champ_leader();
     if (g_action.champion > 0 && !show_open_panel(full, party_changed, tick))
         return;
     show_panel_face_aura();
