@@ -197,40 +197,45 @@ CHAMP_EDIT_NAME, COMMAND_PROCESS_QUEUE, CHAMP_DRAW_STATE, UI_HIDE_GAME_VIEW, UI_
     0x496E5, 0x224A9, 0x48890, 0x54E41, 0x54EAC)
 KBD_KEY_TO_ASCII = 0x114C5
 G_INVENTORY_ORDINAL, G_DIALOG_VALUE, G_DIALOG_KEY, INPUT_PUSH_MODE = 0x7F972, 0x7F526, 0x7F51A, 0x2073F
+NAME_FIELDS_SIZE = 28  # the name (8 bytes) and the title (20 bytes) at the start of a champion record
+KEY_ESCAPE = 0x01  # the cancel key of the name editor
 # Typed keys: X, backspace, Q, 1 (no name character), space, Enter (to the title), 3 backspaces, Z, Tab (back to the
 # name), Enter (to the title), Enter (done).
 NAME_KEYS = [0x2D, C.KEY_BACKSPACE, 0x10, 0x02, 0x39, C.KEY_ENTER, C.KEY_BACKSPACE, C.KEY_BACKSPACE, C.KEY_BACKSPACE, 0x2C, C.KEY_TAB,
              C.KEY_ENTER, C.KEY_ENTER]
 
 
-def test_champion_name_editor_matches_original(ui, original):
-    # The name editor of the inventory: the name and title fields with the cursor after each key, and the new name and
-    # title of the champion.
+def run_name_editor(lib, original, keys, fields=None):
+    """Runs the name editor of champion 0 in both with the typed keys (fields: the 28 bytes of name and title to start
+    with). Returns the views after each key of both, the record bytes before, and the record bytes after of both."""
     from dm2test.interface import G_CHAMPIONS, UiState, champion_records
-    lib, emu = ui, original.emu
+    emu = original.emu
     lib.input_init()
     lib.input_key_down.argtypes = [ctypes.c_uint16]
     lib.input_key_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
-    commands = [lib.input_key_command(C.INPUT_MODE_NAME, k, rect) for k in NAME_KEYS]
+    commands = [lib.input_key_command(C.INPUT_MODE_NAME, k, rect) for k in keys]
     assert all(commands), commands
+    if fields is not None:
+        champion_records(lib)[:NAME_FIELDS_SIZE] = list(fields)
+        emu.write(G_CHAMPIONS, fields)
     UiState.in_dll(lib, "g_ui").inventory = 1
     emu.write(G_INVENTORY_ORDINAL, struct.pack("<h", 1))
-    keys = list(NAME_KEYS)
+    queue = list(keys)
     theirs, mine = [], []
 
     def process(*_):
         theirs.append(original.view())
-        if keys:
-            emu.write(G_DIALOG_VALUE, struct.pack("<H", commands[len(NAME_KEYS) - len(keys)]))
-            emu.write(G_DIALOG_KEY, struct.pack("<H", keys.pop(0)))
+        if queue:
+            emu.write(G_DIALOG_VALUE, struct.pack("<H", commands[len(keys) - len(queue)]))
+            emu.write(G_DIALOG_KEY, struct.pack("<H", queue.pop(0)))
 
     for addr, fn in ((COMMAND_PROCESS_QUEUE, process), (INPUT_PUSH_MODE, None), (INPUT_POP_MODE, None),
                      (UI_HIDE_GAME_VIEW, None), (UI_SHOW_GAME_VIEW, None), (CHAMP_DRAW_STATE, None),
                      (KBD_KEY_TO_ASCII, lambda k, *_: lib.kbd_key_to_ascii(k & 0xFFFF) & 0xFF)):  # IBMIOP service 0x1b
         stub(original, addr, fn or (lambda *_: 0))
     emu.call(CHAMP_EDIT_NAME, G_CHAMPIONS)
-    port_keys = list(NAME_KEYS)
+    port_keys = list(keys)
 
     def frame():
         mine.append(c_view(lib))
@@ -240,17 +245,39 @@ def test_champion_name_editor_matches_original(ui, original):
     hook = ctypes.CFUNCTYPE(None)(frame)
     ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     try:
-        game_champions = bytes(champion_records(lib))
-        lib.session_edit_champion_name.argtypes = [ctypes.c_void_p]
-        lib.session_edit_champion_name(ctypes.addressof(champion_records(lib)))
+        before = bytes(champion_records(lib))[:NAME_FIELDS_SIZE]
+        lib.session_edit_champion_name.argtypes = [ctypes.c_int16]
+        lib.session_edit_champion_name(0)
     finally:
         ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = None
-    after = bytes(champion_records(lib))[:28]
-    assert after == emu.read(G_CHAMPIONS, 28)
-    assert after != game_champions[:28]
+    after = bytes(champion_records(lib))[:NAME_FIELDS_SIZE]
+    return mine, theirs, before, after, emu.read(G_CHAMPIONS, NAME_FIELDS_SIZE)
+
+
+def test_champion_name_editor_matches_original(ui, original):
+    # The name editor of the inventory: the name and title fields with the cursor after each key, and the new name and
+    # title of the champion.
+    mine, theirs, before, after, original_after = run_name_editor(ui, original, NAME_KEYS)
+    assert after == original_after
+    assert after != before
     assert len(mine) == len(theirs) == len(NAME_KEYS)
     for i, (a, b) in enumerate(zip(mine, theirs)):
         assert a == b, (i, diff(a, b, VIEW_W))
+
+
+# A name and a title with bytes after their end marks; typed keys: D, E, F, G, Enter (to the title), 2 backspaces, Z,
+# Escape (cancel).
+CANCEL_FIELDS = b"ABC\0WXYZ" + b"KNIGHT\0QRSTUVWXYZABC"
+CANCEL_KEYS = [0x20, 0x12, 0x21, 0x22, C.KEY_ENTER, C.KEY_BACKSPACE, C.KEY_BACKSPACE, 0x2C, KEY_ESCAPE]
+
+
+def test_champion_name_cancel_restores_all_bytes(ui, original):
+    # Regression: a cancel of the name editor gives back the whole name and title fields, the bytes after the end
+    # marks too, as the original does.
+    mine, theirs, before, after, original_after = run_name_editor(ui, original, CANCEL_KEYS, CANCEL_FIELDS)
+    assert before == CANCEL_FIELDS
+    assert original_after == CANCEL_FIELDS
+    assert after == original_after
 
 
 GAME_END, GAME_QUIT, SAVE_CHECK_DISK = 0x1FEF6, 0x2005B, 0x346D1
