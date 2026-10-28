@@ -38,7 +38,7 @@ typedef struct {
     void (*set_champion_cursor)(int champ);        /* the dragged champion cursor shows the face of champ */
     void (*toggle_inventory)(int champ);           /* opens the inventory of champ, or closes it (CHAMPION_MAX) */
     void (*draw_champion_state)(int champ);        /* draws what changed of the status box of champ */
-    void (*draw_all_champion_states)(int tick);    /* draws all status boxes, the inventory, the action area */
+    void (*draw_all_champion_states)(bool tick);   /* draws all status boxes, the inventory, the action area */
     void (*draw_movement_arrows)(void);            /* draws the movement arrows */
     void (*fill_screen_zone)(int zone, int color); /* fills a screen zone with a palette color */
     void (*draw_viewport_image)(int category, int index, int entry, int zone,

@@ -337,9 +337,6 @@ type ui/session.c:slot_path bridge: task 48
 type ui/session.c:slot_unused bridge: task 48
 type ui/session.c:type_name_key bridge: task 48
 type ui/session.c:write_slot bridge: task 48
-type ui/ui.c:show_changed_slot bridge: task 50
-type ui/ui.c:show_scroll_line bridge: task 50
-type ui/ui.c:show_slot bridge: task 50
 type ui/view.c:add_click_zone bridge: task 52
 type ui/view.c:get_flip_parity bridge: task 52
 type ui/view.c:get_thing_position bridge: task 52
