@@ -87,6 +87,16 @@ class AiLineTarget(ctypes.Structure):
     _fields_ = [("found", ctypes.c_bool), ("location", ctypes.c_uint16)]
 
 
+class AiInsideItem(ctypes.Structure):
+    """An item inside a chest or a group in the port: the cell (-1 none) and whether it is a cell of the possessions."""
+    _fields_ = [("cell", ctypes.c_int16), ("in_possessions", ctypes.c_bool)]
+
+
+def inside_item(result):
+    """The (cell, in possessions) of a result of the original: the chest cell, 8 plus the possession cell, or -1."""
+    return (result - 8, True) if result >= 8 else (result, False)
+
+
 class AiTest(ctypes.Structure):
     """A command test of the port: the mode and whether the test sets the action."""
     _fields_ = [("mode", ctypes.c_uint8), ("execute", ctypes.c_bool)]
@@ -660,7 +670,7 @@ def test_item_lists(ai):
     rng = random.Random(25)
     lib = ai.lib
     lib.ai_find_matching_item.restype = ctypes.c_uint16
-    lib.ai_find_matching_item_inside.restype = ctypes.c_int16
+    lib.ai_find_matching_item_inside.restype = AiInsideItem
     things = all_things(lib)
     containers = [t for t in things if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK in (C.THING_GROUP, C.THING_CONTAINER)]
     for g, x, y, m in rng.sample(ai.groups(), 10):
@@ -676,7 +686,7 @@ def test_item_lists(ai):
             assert mine == s16(theirs), (g, n, "count")
             c = rng.choice(containers)
             mine, theirs = ai.call("ai_find_matching_item_inside", c, f, rng.randrange(4))
-            assert mine == s16(theirs), (g, n, "inside", hex(c))
+            assert (mine.cell, mine.in_possessions) == inside_item(s16(theirs)), (g, n, "inside", hex(c))
             ai.check((g, n))
         # removals from the contents of chests and the possessions of groups
         for c in rng.sample(containers, 6):

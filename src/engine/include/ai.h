@@ -148,6 +148,13 @@ typedef struct {
 #define DISTANCE_FAR     127
 extern DistanceMap g_party_distance, g_alt_distance;
 
+/* Where an item of a filter is inside a chest or a group: the cell (-1 none), and whether the cell is a cell of the
+   possessions of a group (else the cell of the chest). */
+typedef struct {
+    int16_t cell;
+    bool in_possessions;
+} AiInsideItem;
+
 /* Setup */
 
 /* Forgets the AI data of all groups (a load). */
@@ -196,9 +203,9 @@ bool ai_blocks_line_except_self(Location at);
 uint16_t ai_cached_first_object(void);
 /* The first creature group of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_group(void);
-/* An item of filter inside a chest or in the possessions of a group that the creature may take from: the chest
-   cell (0 to 3), POSSESSION_CELL_BASE plus the cell of the possession, -1 none; exported for the tests. */
-int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
+/* An item of filter inside a chest or in the possessions of a group that the creature may take from: the cell of the
+   chest or of the possession, cell -1 for none; exported for the tests. */
+AiInsideItem ai_find_matching_item_inside(uint16_t thing, int filter, int side);
 /* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
    actuator of the cell; THING_NONE for none; exported for the tests. */
 uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int filter);

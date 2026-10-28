@@ -196,8 +196,6 @@
 /* The kinds of the group in front target (AiCandidate.mask). */
 #define GROUP_TARGET_ANY          1
 #define GROUP_TARGET_CARRIES      2
-/* A found item in the possessions of a group: this plus its cell. */
-#define POSSESSION_CELL_BASE      8
 /* AI marker levels: the markers whose id holds the sides of a square that a creature does not enter, and the
    markers of level 2 that count with them while their text shows. */
 #define MARKER_LEVEL_SIDES        1
@@ -1544,22 +1542,23 @@ static int possession_cell_mask(uint16_t possessions, int side)
     return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];
 }
 
-int ai_find_matching_item_inside(uint16_t thing, int filter, int side)
+AiInsideItem ai_find_matching_item_inside(uint16_t thing, int filter, int side)
 {
-    int16_t found_cell;
+    AiInsideItem none = {-1, false};
+    AiInsideItem found;
     uint16_t list;
     int mask = CELLS_ALL;
     if (g_ai.item_flags & ITEM_SKILL_CHESTS && item_is_chest(thing)) {
-        found_cell = (int16_t)thing_cell(thing);
+        found = (AiInsideItem){(int16_t)thing_cell(thing), false};
         list = thing_word(thing, CONTAINER_CONTENTS);
     } else {
         if (thing_type(thing) != THING_GROUP || !(g_ai.item_flags & (ITEM_SKILL_STATIC | ITEM_SKILL_GROUPS)))
-            return -1;
+            return none;
         const CreatureInfo *info = creature_group_info(thing);
         bool is_static = info->flags & CREATURE_STATIC;
         if (!(g_ai.item_flags & (is_static ? ITEM_SKILL_STATIC : ITEM_SKILL_GROUPS)))
-            return -1;
-        found_cell = POSSESSION_CELL_BASE;
+            return none;
+        found = (AiInsideItem){-1, true};
         list = thing_word(thing, GROUP_POSSESSIONS);
         if (is_static)
             mask = possession_cell_mask(info->possessions, side);
@@ -1567,13 +1566,13 @@ int ai_find_matching_item_inside(uint16_t thing, int filter, int side)
     for (uint16_t t = list; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!(mask >> thing_cell(t) & 1))
             continue;
-        if (ai_thing_matches_filter(t, filter) || ai_find_matching_item_inside(t, filter, side) != -1) {
-            if (found_cell == POSSESSION_CELL_BASE)
-                found_cell = (int16_t)(POSSESSION_CELL_BASE + thing_cell(t));
-            return found_cell;
+        if (ai_thing_matches_filter(t, filter) || ai_find_matching_item_inside(t, filter, side).cell != -1) {
+            if (found.in_possessions)
+                found.cell = (int16_t)thing_cell(t);
+            return found;
         }
     }
-    return -1;
+    return none;
 }
 
 /* Reads which wall faces of the square in the AI cache show an alcove: the face toward the creature (side). */
@@ -1600,7 +1599,7 @@ static bool alcove_has_item(int16_t cell, int16_t d, int filter)
         int type = thing_type(t);
         if (thing_cell(t) != cell || type == THING_GROUP || type >= THING_PROJECTILE)
             continue;
-        if (ai_thing_matches_filter(t, filter) || ai_find_matching_item_inside(t, filter, d) != -1)
+        if (ai_thing_matches_filter(t, filter) || ai_find_matching_item_inside(t, filter, d).cell != -1)
             return true;
     }
     return false;
@@ -1619,14 +1618,14 @@ static bool floor_item_in_reach(ItemTest *it)
         if (type < THING_GROUP || type >= THING_PROJECTILE)
             continue;
         if (!(type != THING_GROUP && ai_thing_matches_filter(t, filter))) {
-            it->cell = (int16_t)ai_find_matching_item_inside(t, filter, d);
+            AiInsideItem inside = ai_find_matching_item_inside(t, filter, d);
+            it->cell = inside.cell;
             if (it->cell == -1)
                 continue;
-        }
-        if ((uint16_t)it->cell >= POSSESSION_CELL_BASE) {
-            it->action = ACTION_TAKE_FROM_GROUP;
-            it->cell &= DIR_MASK;
-            return true;
+            if (inside.in_possessions) {
+                it->action = ACTION_TAKE_FROM_GROUP;
+                return true;
+            }
         }
         if ((uint8_t)g_ai_square_scan.cells[0] == CELL_ANY) {
             /* the cells in reach: the near half of the square, or all of the own square */
